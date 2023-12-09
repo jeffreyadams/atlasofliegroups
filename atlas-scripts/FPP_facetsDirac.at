@@ -104,8 +104,8 @@ set facet_verbose = false
 
 set fund_facet_verbose = false
 
-{ if true, loca; facet data is sorted by increasing height}
-set sort_LFD_flag = true
+{ if true, local facet data is sorted by increasing height}
+set sort_LFD_flag = false
 { for facets of codim > facet_codim, use shifted char formula to
 improve memory use. Setting equal to folded semisimple rank means no
 use of shifted char formula.}
@@ -797,6 +797,7 @@ set low_FPP_facets(RealForm G) = [[FacetVertsIndex]]:
 	 then () = if facet_verbose
 	      	   then prints("start low_FPP_facets")
 	           fi
+	 then () = adjust_global_top(G)
     	 then answer = [[vec]]: [[vec]: for k:#Avlist do [k] od] ##
        	    for d:global_top from 1
        	    do if d < Affd.semisimple_rank+1 then FPP_facets(Affd, Avd, d, j0)
@@ -1309,8 +1310,8 @@ set localFD_Lvd2 \
     then () = for i@k in Perm2.fixed do mapAct[i]:= k od
     then () = for (i,j)@ell in Perm2.trans do mapAct[i]:=#Perm2.fixed + ell;
     	      	  	       		      mapAct[j]:=#Perm2.fixed + ell od
-    then () = if time_verbose then prints("     ",print_time_string(elapsed_ms() - start),
-    	      	 		     " for localFD_Lvd2") fi
+    { then () = if time_verbose then prints("     ",print_time_string(elapsed_ms() - start),
+    	      	 		     " for localFD_Lvd2") fi }
     in (Lvd, Perm2, mapAct)
 )
 
@@ -1866,34 +1867,37 @@ set localFD_1Dirac2\
 	    else [[j]]
 	    fi
 	 od.##
+    {then () = prints("after LFO, time is ",print_time_string(elapsed_ms() - start))}
     then Llookup = is_member_sorted((for v in LF0 do v[0] od))
-    then (Affd, M, j0) = cofolded(G)
-    then top = int: let pairs = #Perm2.trans
-    	       	    in if pairs > 1 then 3
-    	       	       elif pairs > 0 then 2
-		       else 1
-		       fi
     then Edges = [vec]:
-    	       let EdgesFixFix = [vec]:
-	       if #Perm2.fixed > 1
- 	       then for v in globalFacets[1]
-	       	    do if is_member_sorted(Perm2.fixed)(v[0]) and is_member_sorted(Perm2.fixed)(v[1])
-		       then let mloc = mapAct[v[0]], nloc = mapAct[v[1]]
-		       	    in if Llookup(mloc) and Llookup(nloc)
-			       then [[mloc,nloc].sort]
-			       else []
-			       fi
-			else []
-			fi
-		    od.##
-	       else []
+    	 let EdgesFixFix = [vec]:
+    	     if #LF0 = #globalFacets[0]
+	     then for v in globalFacets[1]
+	      	  do [mapAct[v[0]], mapAct[v[1]]].sort
+	      	  od
+	      else if #Perm2.fixed > 1
+ 	      	   then for v in globalFacets[1]
+	       	   	do if is_member_sorted(Perm2.fixed)(v[0]) and
+		       	      is_member_sorted(Perm2.fixed)(v[1])
+		      	   then let mloc = mapAct[v[0]], nloc = mapAct[v[1]]
+		       	   in if Llookup(mloc) and Llookup(nloc)
+			      then [[mloc,nloc].sort]
+			      else []
+			      fi
+		     	   else []
+		      	   fi
+		   	 od.##
+	       	    else []
+	       	    fi
 	       fi
-	       then EdgesFixTrans = [vec]:
-	       if global_top >= 2 and #Perm2.trans > 0 and #Perm2.fixed > 0
-	       then for v in globalFacets[2]
-	       	    do let mixes = [[v[0],v[1],v[2]],[v[1],v[0],v[2]],[v[2],v[0],v[1]]]
-		       in for w in mixes
-		       	  do if is_member_sorted(Perm2.fixed)(w[0]) and trans_hash.lookup([w[1],w[2]]) >= 0
+	   {then () = prints("after FixFix, time is ",print_time_string(elapsed_ms() - start))}
+      	   then EdgesFixTrans = [vec]:
+	   	if global_top >= 2 and #Perm2.trans > 0 and #Perm2.fixed > 0
+	       	then for v in globalFacets[2]
+	       	     do let mixes = [[v[0],v[1],v[2]],[v[1],v[0],v[2]],[v[2],v[0],v[1]]]
+		       	in for w in mixes
+		       	   do if is_member_sorted(Perm2.fixed)(w[0]) and
+			     	trans_hash.lookup([w[1],w[2]]) >= 0
 		       	     then let xloc = mapAct[w[0]], yloc = mapAct[w[1]]
 		       	     	  in if Llookup(xloc) and Llookup(yloc)
 			       	     then [[xloc,yloc].sort]
@@ -1903,14 +1907,17 @@ set localFD_1Dirac2\
 			      fi
 			  od.##
 		     od.##
-	       else []
-	       fi
-	       then EdgesTransTrans = [vec]:
+	       	 else []
+	       	 fi
+           {then () = prints("after FixTrans, time is ",print_time_string(elapsed_ms() - start))}
+	   then EdgesTransTrans = [vec]:
 	       if global_top >= 3 and #Perm2.trans > 1
 	       then for v in globalFacets[3]
-	       	    do let mixes = [[v[0],v[1],v[2],v[3]], [v[0],v[2],v[1],v[3]], [v[0],v[3],v[1],v[2]]]
+	       	    do let mixes = [[v[0],v[1],v[2],v[3]], [v[0],v[2],v[1],v[3]],
+		       	   	   [v[0],v[3],v[1],v[2]]]
 		       in for w in mixes
-		       	  do if trans_hash.lookup([w[0],w[1]]) >= 0 and trans_hash.lookup([w[2],w[3]]) >= 0 
+		       	  do if trans_hash.lookup([w[0],w[1]]) >= 0 and
+			     	trans_hash.lookup([w[2],w[3]]) >= 0 
 		       	     then let xloc = mapAct[w[0]], zloc = mapAct[w[2]]
 		       	     	  in if Llookup(xloc) and Llookup(zloc)
 			       	     then [[xloc,zloc].sort]
@@ -1922,7 +1929,9 @@ set localFD_1Dirac2\
 		     od.##
 	       else []
 	       fi
-	       in EdgesFixFix ## EdgesFixTrans ## EdgesTransTrans
+	  {then () = prints("after TransTrans, time is ",print_time_string(elapsed_ms() - start))}
+	   in EdgesFixFix ## EdgesFixTrans ## EdgesTransTrans
+     { then () = prints("after Edges, time is ",print_time_string(elapsed_ms() - start))}
      then LF1 = [FacetVertsIndex]:
     	 for v in Edges
 	 do let p = parameter(x,lambda,facet_bary(Lvd.list, v))
@@ -1931,11 +1940,12 @@ set localFD_1Dirac2\
 	    else []
 	    fi
 	 od.##
+    { then () = prints("after LF1, time is ",print_time_string(elapsed_ms() - start))}
     then answer = sort(G, Lvd, [LF0]##[LF1], 0)
-    in if(facet_verbose) then prints("After localFD_1Dirac2, facet counts are [",#LF0,
+    in {if(facet_verbose) then prints("After localFD_1Dirac2, facet counts are [",#LF0,
     		      	   	  ",",#LF1,"]") fi;
        if(time_verbose) then prints("     ",print_time_string(elapsed_ms() - start),
-       			     		  " for localFD_1Dirac2") fi;
+       			     		  " for localFD_1Dirac2") fi;}
        answer
 )
 
@@ -2173,10 +2183,10 @@ set localFD_KHashbt_lookDownGEO \
 		    	      	   od.## {[FacetVertsKHash]})
 	 od
     then () = LFKH := sort(G, Lvd, LFKH, 2)
-    then time = elapsed_ms() - start
+    {then time = elapsed_ms() - start
     then () = if time_verbose
 	      then prints("     ", print_time_string(time),
-	       " for localFD_Khashbt to height ", HT, " and dim ",t-1) fi
+	       " for localFD_Khashbt to height ", HT, " and dim ",t-1) fi}
     in if(facet_verbose)
        then prints("After localFD_KHashbt_lookDownGEO, facet counts are ",
        			      for list in LFKH do #list od) fi;
@@ -2310,9 +2320,9 @@ set extend_K_characters(KGBElt x, ratvec lambda, VertexData Lvd, {vec Perm,
 		 in w
               od
       od
-     then time = elapsed_ms() - start
+     {then time = elapsed_ms() - start
      then () = if time_verbose then prints("     ", print_time_string(time),
-     	       	  " for extend_K_characters") fi
+     	       	  " for extend_K_characters") fi}
      in answer
 
 set extend_K_characters(KGBElt x, ratvec lambda, VertexData Lvd, {vec Perm,
@@ -2340,7 +2350,7 @@ set extend_K_characters(KGBElt x, ratvec lambda, VertexData Lvd, {vec Perm,
 		 in w
               od
        od
-     then time = elapsed_ms() - start
+     {then time = elapsed_ms() - start
      then () = if time_verbose then prints("     ", print_time_string(time),
-     	       	  " for extend_K_characters") fi
+     	       	  " for extend_K_characters") fi}
      in answer

@@ -400,7 +400,7 @@ set FPP_unitary_hash_general_prev(RealForm G,Param_hash Uhash,
     	      then coh_ind_unip_long(G,Uhash)
 	      fi
     then times = [int]: null(#KGB(G))
-    then () = adjust_global_top(G)
+    {then () = adjust_global_top(G)} {done internally by low_FPP_facets}
     then () = if #global_facets = 0 or #global_facets[0] != #vd.list
     	      then global_facets := low_FPP_facets(G)
 	      fi
@@ -495,8 +495,8 @@ set FPP_unitary_hash_general([(KGBElt,ratvec)] xlambdas, Param_hash Uhash,
 	      od
     then old_facet_verbose = facet_verbose, old_time_verbose = time_verbose,
     	 old_test_verbose = test_verbose, old_test_slightly_verbose = test_slightly_verbose
-    then () = time_verbose:=false
-{    then () = test_verbose:=false}
+    then () = time_verbose:=true
+    then () = test_verbose:=true
 {   then () = test_slightly_verbose:=false}
 {    then () = facet_verbose:=false}
 {    then () = revert_flag:=false}
@@ -506,7 +506,7 @@ set FPP_unitary_hash_general([(KGBElt,ratvec)] xlambdas, Param_hash Uhash,
     	      then coh_ind_unip_long(G,Uhash)
 	      fi
     then xlambdatimes = [int]: null(#xlambdas)
-    then () = adjust_global_top(G)
+    {then () = adjust_global_top(G)} {done internally by low_FPP_facets}
     then () = if #global_facets = 0 or #global_facets[0] != #vd.list
     	      then global_facets := low_FPP_facets(G)
 	      fi
@@ -518,19 +518,19 @@ set FPP_unitary_hash_general([(KGBElt,ratvec)] xlambdas, Param_hash Uhash,
 		 then j = dlambda_hashes[i].lookup(ratvec_as_vec(lambda+theta*lambda))
 		 then (Lvd, Perm2, mapAct) = Lvd_Perm2_mapAct[i][j]
 		 then LF = localFD_1Dirac2(x, lambda, Lvd, Perm2, mapAct, global_facets)
+		 in if #LF[0] = 0 then ()
 		 { then () = prints(new_line,"starting (x,lambda) = (", xnums[k], ",", lambdas[k],
 		      	   	  "), #Lvd.list = ", #Lvd.list, ", #LFs = ", for list in LF do #list od)}
-		 then output = if #LF[0] >0 then local(x, lambda, vd, Lvd, {Perm, mapAct,}
-		      	       	      LF, pol_hash, Uhash)
-			   else []
-			   fi
-   		 then () = current := elapsed_ms()
-    		 then () = xlambdatimes[k] := current -former_time
-    			in if old_time_verbose
-	      		   then prints("time for (x,lambda) = (", xnums[k], ",", lambdas[k], ") was ",
-			     		print_time_string(xlambdatimes[k]), "; #output = ",#output,
-			     		", #Uhash = ", Uhash.size(),new_line)
-			   fi
+		    else let output = local(x, lambda, vd, Lvd, LF, pol_hash, Uhash)
+   		    	 then () = current := elapsed_ms()
+    		 	 then () = xlambdatimes[k] := current -former_time
+    			 in if old_time_verbose
+	      		    then prints(print_time_string(xlambdatimes[k]),
+			   	" = time for (x,lambda) = (", xnums[k], ",",
+				k{lambdas[k]}, "); #output = ",#output,
+			     	", #Uhash = ", Uhash.size(),new_line)
+			    fi
+		    fi
 		 od{xlambdas}
     then () = facet_verbose:=old_facet_verbose
     then () = time_verbose:=old_time_verbose
@@ -579,7 +579,7 @@ set FPP_unitary_hash_general([KGBElt] xs, Param_hash Uhash,
 	      fi
     then times = [int]: null(#xs)
     then lambdatimes = [[int]]: for j:#xs do [] od
-    then () = adjust_global_top(G)
+    { then () = adjust_global_top(G) } {done internally by low_FPP_facets}
     then () = if #global_facets = 0 or #global_facets[0] != #vd.list
     	      then global_facets := low_FPP_facets(G)
 	      fi

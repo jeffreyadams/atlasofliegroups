@@ -253,9 +253,9 @@ set localGraphK([[FacetVertsKHash]] LFvertsK) = (GraphData, [vec],[vec]):
     then classListByFacet = [vec]: class_lists(LFvertsK,(eq,gr))
     	 , IUCL = full_down_classes(eq,gr) {[vec]:[[]]}
     then time = elapsed_ms() - start
-    then () = if time_verbose
+    { then () = if time_verbose
 	      then prints("     ", print_time_string(time),
-	           " for localGraphK calculation ") fi
+	           " for localGraphK calculation ") fi }
     in ((eq,gr), IUCL, classListByFacet)
 
 set localGraphK([[FacetVertsKHash]] FDKH, KTypePol_hash pol_hash, int level) =
@@ -267,10 +267,10 @@ set localGraphK([[FacetVertsKHash]] FDKH, KTypePol_hash pol_hash, int level) =
     then (eq,gr) = GraphData: up_data(FDKH,pol_hash,level)
     then classListByFacet = [vec]: class_lists(FDKH,(eq,gr))
     	 , IUCL = full_down_classes(eq,gr)
-    then time = elapsed_ms() - start
+    { then time = elapsed_ms() - start
     then () = if time_verbose
 	      then prints("     ", print_time_string(time),
-	      	   " for localGraphK calculation") fi
+	      	   " for localGraphK calculation") fi}
 	 in ((eq,gr), IUCL, classListByFacet)
 
 set look_up_vertices ([ratvec] vertices, [int] facet)=[ratvec]:
@@ -855,8 +855,14 @@ set local_test_GEO_hash_no_dumb(KGBElt x, ratvec lambda, VertexData vd, VertexDa
                       LFDKH, eq, gr, CLBF, (Param->bool): (Param p):
 		      {Uhash.lookup(p).>= or} is_unitary_to_ht(p,test_hts[D]), Uhash)
 		      {is_unitary_to_hts(p,hts[:D+1]), Uhash)}
-		 then () = if test_verbose then prints("facet counts to dim ",
-		     D+1,": ", for list in LFDKH do #list od) fi
+
+                then () = if test_verbose {and
+		      	   ((D = rank(x.involution-1)-1)  or
+    	      	    	   (#LFDKH < D) or
+		    	   (#(LFDKH~[0]) <= D+2)) }
+			   then prints("unitary to ht ",test_hts[D],
+		      	      		" facet counts to dim ",D+1,
+				": ", for list in LFDKH do #list od) fi
                  then ()= D:=D+1
                  in ()
      	     od
@@ -1031,8 +1037,13 @@ set local_test_GEO_hash2(KGBElt x, ratvec lambda, VertexData vd, VertexData Lvd,
 		      (Param->bool):(Param p): {Uhash.lookup(p).>= or}
 		      			   is_unitary_to_ht(p, test_hts[D]), Uhash)
 			  {is_unitary_to_hts(p, hts[test_levels[D-1]+1:test_levels[D]+1])}
-		 then () = if test_verbose then prints("unitary to ht ",test_hts[D],
-                        " facet counts to dim ",D,": ",for list in LFDKH do #list od) fi
+                then () = if test_verbose {and
+		      	   ((D = rank(x.involution-1)-1)  or
+    	      	    	   (#LFDKH < D) or
+		    	   (#(LFDKH~[0]) <= D+2))}
+			   then prints("unitary to ht ",test_hts[D],
+		      	      		" facet counts to dim ",D+1,
+				": ", for list in LFDKH do #list od) fi
                  then ()= D:=D+1
                  in ()
      	     od
@@ -1250,7 +1261,11 @@ set local_test_GEO_hash_one_level(KGBElt x, ratvec lambda, VertexData vd,
 			  fi
 		       od.##
 		 then () = LFDKH := LFDKH[:D+1] # newDplus1
-                 then () = if test_verbose then prints("unitary to ht ",one_ht,
+                 then () = if test_verbose and
+		      	   ((D = rank(x.involution-1)-1)  or
+    	      	    	   (#LFDKH < D) or
+		    	   (#(LFDKH~[0]) <= D+2))
+			   then prints("unitary to ht ",one_ht,
 		      	      		   " facet counts to dim ",D+1,
 				": ", for list in LFDKH do #list od) fi
                  then ()= D:=D+1
@@ -1374,6 +1389,10 @@ set spherical_general(RealForm G, (KGBElt, ratvec->[Param]) local) = [Param]:
 {this gives def_dumb if def_flag = true}
 set spherical_dumb(RealForm G) = [Param]:
     spherical_general(G, local_test_GEO_dumb@(KGBElt, ratvec))
+
+set spherical_def_dumb(RealForm G) = [Param]:
+    let () = def_flag:=true
+    in spherical_general(G, local_test_GEO_dumb@(KGBElt, ratvec))
 
 set spherical(RealForm G) = [Param]:
     spherical_general(G, local_test_GEO@(KGBElt, ratvec))
