@@ -39,8 +39,14 @@ set prev_flag = false
 are treated in FPP_unitary}
 set lambda_skip = int:10
 
-{if true, then report start of each lambda in FPP_unitary}
+{if true, then report summary each lambda in FPP_unitary}
 set every_lambda_flag = false
+
+{if true, then report progress during each lambda in FPP_unitary}
+set every_lambda_deets_flag = false
+
+{if true, then report summary each KGBElt in FPP_unitary}
+set every_KGB_flag = false
 
 set spherical_xs(RealForm G) = [KGBElt]:
     let real_rank = rank(x_open(G).involution + 1)
@@ -462,7 +468,7 @@ set FPP_unitary_hash_general_prev(RealForm G,Param_hash Uhash,
 {this version makes an involution_hash; for each involution, a list dlambda_hashes of
 possible dlambda; and a list Lvd_Perm_mapActs (one for each dlambda) of
 (Lvd, Perm, mapAct)}
-
+{should add running counters for test numbers, instead of just "#tests,...}
 set FPP_unitary_hash_general([(KGBElt,ratvec)] xlambdas, Param_hash Uhash,
     (KGBElt, ratvec,VertexData,VertexData,{vec,vec,}[[FacetVertsIndex]],
     KTypePol_hash, Param_hash->[Param])
@@ -495,12 +501,7 @@ set FPP_unitary_hash_general([(KGBElt,ratvec)] xlambdas, Param_hash Uhash,
 	      od
     then old_facet_verbose = facet_verbose, old_time_verbose = time_verbose,
     	 old_test_verbose = test_verbose, old_test_slightly_verbose = test_slightly_verbose
-    then () = time_verbose:=true
-    then () = test_verbose:=true
-{   then () = test_slightly_verbose:=false}
-{    then () = facet_verbose:=false}
-{    then () = revert_flag:=false}
-{    then () = deform_flag :=true }
+    then () = facet_verbose:=false; time_verbose:=false; test_verbose:=false; test_slightly_verbose:=false
     then () = unipotents_to_hash(G,Uhash)
     then () = if coh_ind_flag
     	      then coh_ind_unip_long(G,Uhash)
@@ -520,23 +521,24 @@ set FPP_unitary_hash_general([(KGBElt,ratvec)] xlambdas, Param_hash Uhash,
 		 then (Lvd, Perm2, mapAct) = Lvd_Perm2_mapAct[i][j]
 		 then LF = localFD_1Dirac2(x, lambda, Lvd, Perm2, mapAct, global_facets)
 		 in if #LF[0] = 0 then ()
-		 { then () = prints(new_line,"starting (x,lambda) = (", xnums[k], ",", lambdas[k],
-		      	   	  "), #Lvd.list = ", #Lvd.list, ", #LFs = ", for list in LF do #list od)}
-		    else let output = local(x, lambda, vd, Lvd, LF, pol_hash, Uhash)
-   		    	 then () = current := elapsed_ms()
-    		 	 then () = xlambdatimes[k] := current -former_time
-    			 in if old_time_verbose
-	      		    then prints("     ",print_time_string(xlambdatimes[k]),
-			   	" = time for (x,lambda) = (", xnums[k], ",",
-				k{lambdas[k]}, "); #output = ",#output,
-			     	", #new unitary = ", Uhash.size() - currentUhash, new_line)
-			    fi
+		     else if every_lambda_deets_flag
+			  then facet_verbose := old_facet_verbose; time_verbose := old_time_verbose;
+			       test_verbose :=old_test_verbose; test_slightly_verbose := old_test_slightly_verbose
+			  fi;
+			  let output = local(x, lambda, vd, Lvd, LF, pol_hash, Uhash)
+   		    	  then () = current := elapsed_ms()
+    		 	  then () = xlambdatimes[k] := current -former_time
+    			  in if every_lambda_flag
+	      		     then prints("  ",print_time_string(xlambdatimes[k]),
+			   	" = time for (x,lambda) = (", xnums[k], ",",k{lambdas[k]},")");
+			         prints("    #LF = ", for L in LF do #L od, "; #unitary params = ",#output,
+				 ", #new unitary = ", Uhash.size() - currentUhash);
+				 prints("  ------------------")
+			     fi
 		    fi
 		 od{xlambdas}
-    then () = facet_verbose:=old_facet_verbose
-    then () = time_verbose:=old_time_verbose
-    then () = test_verbose:=old_test_verbose
-    then () = test_slightly_verbose:=old_test_slightly_verbose
+    then () = facet_verbose:=old_facet_verbose; time_verbose:=old_time_verbose;
+    	      test_verbose:=old_test_verbose; test_slightly_verbose:=old_test_slightly_verbose
     then longest = max_loc(xlambdatimes)
     in prints(new_line,"Total time = ", print_time_string(current-start),
        	      "; max time = ",print_time_string(xlambdatimes[longest]),
@@ -552,6 +554,7 @@ set FPP_unitary_hash_general([(KGBElt,ratvec)] xlambdas, Param_hash Uhash,
               ", number found on this run = ", Uhash.size() - oldUhash)
     fi
 
+{should add running counters for test numbers, instead of just "#tests,...}
 set FPP_unitary_hash_general([KGBElt] xs, Param_hash Uhash,
     (KGBElt, ratvec,VertexData,VertexData,{vec,vec,}[[FacetVertsIndex]],
     KTypePol_hash, Param_hash->[Param])
@@ -574,19 +577,11 @@ set FPP_unitary_hash_general([KGBElt] xs, Param_hash Uhash,
     then dlambda_hashes = for i:NumInvs do make_vec_hash() od
     then Lvd_Perm2_mapAct = for i:NumInvs do [(VertexData,PermOrderTwo,vec)]:[] od
     then old_facet_verbose = facet_verbose, old_time_verbose = time_verbose,
-    	 old_test_verbose = test_verbose
-{   then () = test_slightly_verbose:=false}
-{    then () = facet_verbose:=false}
-{    then () = revert_flag:=false}
-{    then () = deform_flag :=true }
-{    then () = time_verbose:=false}
-    then () = time_verbose:=true
-    then () = test_verbose:=true
-    then () = facet_verbose:=true
-{    then () = test_slightly_verbose:=false}
-{    then () = facet_verbose:=false}
-{    then () = revert_flag:=false}
-{    then () = deform_flag :=true}
+    	 old_test_verbose = test_verbose, old_test_slightly_verbose = test_slightly_verbose
+    then () = facet_verbose:=false
+    then () = time_verbose:=false
+    then () = test_verbose:=false
+    then () = test_slightly_verbose:=false
     then () = unipotents_to_hash(G,Uhash)
     then () = if coh_ind_flag
     	      then coh_ind_unip_long(G,Uhash)
@@ -613,54 +608,60 @@ set FPP_unitary_hash_general([KGBElt] xs, Param_hash Uhash,
 				  od.##
     	 then Ncases = #lambdas
 	 then templambdatimes = null(Ncases)
-	 then () = if old_time_verbose
-      	      	   then prints(new_line, "start KGBElt #", xnums[j], ", #lambdas = ",#lambdas,
-		               "; time for FPP_lambdas_big_new = ",
-                                 print_time_string(postFPPbigNew - current))
+	 then () = if every_KGB_flag
+      	      	   then prints("     start KGBElt #", xnums[j], ", #lambdas = ",#lambdas);
+		   	prints("     ------------------")
         	   fi
 	 then () = for (lambda0, Lvd, Perm2, mapAct)@k in FPPbigNew
       	      	   do for tau@ell in twists
-                      do let startlambda = elapsed_ms()
+                      do let startlambda = elapsed_ms(), startUhash = Uhash.size()
 			 then LF = localFD_1Dirac2(x, lambda0+tau, Lvd, Perm2,
                              mapAct, global_facets)
 			 in if #LF[0] = 0
 			    then []
-                            else let answer = local(x, lambda0+tau, vd, Lvd,
+                            else if every_lambda_deets_flag
+			    	 then facet_verbose := old_facet_verbose; time_verbose := old_time_verbose;
+				 test_verbose :=old_test_verbose; test_slightly_verbose := old_test_slightly_verbose
+				 fi;
+				 let answer = local(x, lambda0+tau, vd, Lvd,
 			      	     {Perm, mapAct,} LF, pol_hash, Uhash)
+				 then () = if every_lambda_deets_flag
+			    	      	   then facet_verbose := false; time_verbose := false;
+				 	   	test_verbose := false; test_slightly_verbose := false
+				 	   fi
  			 	 then () = templambdatimes [k*#twists + ell] := elapsed_ms() - startlambda
 			 	 in if every_lambda_flag
-			      	    then prints(k*#twists + ell, "/", Ncases, "@", xnums[j],
-				   	       	", lambda = ", lambdas[k*#twists + ell], " took time ",
-				   	       	print_time_string(templambdatimes [k*#twists + ell]))
+				    then prints("  ",print_time_string(templambdatimes[k*#twists + ell]),
+			   	    	 	" = time for (x,lambda) = (", xnums[j], ",",
+						k*#twists + ell, ")");
+				         prints("    #LF = ", for L in LF do #L od, ", #unitary params = ",#answer,
+			     	                ", #new unitary = ", Uhash.size() - startUhash);
+					 prints("  ------------------")
 				    fi
 			    fi
                       od
                    od {would be easy enough to get [Param] for each (x,lambda), but for now
 		       just put unitary reps in Uhash}
-           then () = current := elapsed_ms()
-	   then () = currentUhash := Uhash.size()
-           then () = times[j] := current -former_time
-	   then () = lambdatimes[j] := templambdatimes
+           then () = current := elapsed_ms(); currentUhash := Uhash.size();  times[j] := current -former_time;
+	   	     lambdatimes[j] := templambdatimes
 	   then longLambdaLoc = max_loc(templambdatimes)
-           then () = if old_time_verbose
-                     then prints(new_line, "**********************");
-		     	  prints({new_line,}"   time for KGBElt ",xnums[j]," was ",
+           then () = if every_KGB_flag
+                     then  prints("     time for KGBElt ",xnums[j]," was ",
                           print_time_string(times[j]), "; longest lambda = ",
 			  print_time_string(templambdatimes[longLambdaLoc]),
 			  " for lambda = ",lambdas[longLambdaLoc]);
-			  prints("   #new unitary facets = ", currentUhash - formerUhash, ", #tests = ",
+			  prints("     #new unitary facets = ", currentUhash - formerUhash, ", #tests = ",
 		     	     unitary_test_counter.use_count(), ", #def lookups = ",
 		      	     deformLookupCounter.use_count(), ", #def calcs = ",
-		     	     deformCalcCounter.use_count());
-			  prints("**********************")
+		     	     deformCalcCounter.use_count())
                      fi
            in ()
          od {xs}
-    then () = facet_verbose:=old_facet_verbose
-    then () = time_verbose:=old_time_verbose
-    then () = test_verbose:=old_test_verbose
-   then longest = max_loc(times)
-    in prints(new_line,"Total time = ", print_time_string(current-start),
+    then () = facet_verbose:=old_facet_verbose; time_verbose:=old_time_verbose; test_verbose:=old_test_verbose;
+    	      test_slightly_verbose:=old_test_slightly_verbose
+    then longest = max_loc(times)
+    in prints("----------------");
+       prints("Total time = ", print_time_string(current-start),
               "; max time = ",print_time_string(times[longest]),
               " for KGBElt ",xnums[longest]);
        prints("#hash_dumb calls=", hash_dumbCounter.use_count(),
