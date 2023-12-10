@@ -3,9 +3,11 @@
 set G=GL(5,R)
 set delta=G.distinguished_involution
 set (H,M)=endoscopic(G,delta)
+
 set H=H.split_form
 set all_G=unipotent_representations(G)
 set all_H_u=unipotent_representations(H)
+
 set all=all_H_u
 set lift_std(Param p)=lift_std(p,M,G,delta)
 set abv(Param p)=abv(p,M,G,delta)
@@ -28,5 +30,9 @@ set ecfreg=extended_character_formula(preg,delta)
 set Pregbig=big_KL_P_signed_polynomials(preg,delta)
 
 set (Breg,Preg)=KL_P_signed_polynomials(preg)
+
+
 set (Breg_delta,Preg_delta)=KL_P_signed_polynomials(preg,delta)
-set   (I_delta,g,complete_indices,delta_action)=tabulate_indices(Breg,delta)
+set (I_deltareg,,complete_indicesreg,perm)=tabulate_indices(Breg,delta)
+
+set (params_delta,P_delta,polys_delta)=partial_extended_KL_block(preg,delta)
