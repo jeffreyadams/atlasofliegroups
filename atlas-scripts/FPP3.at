@@ -1,0 +1,101 @@
+prints("loading FPP3.at")
+<FPP_globalDirac.at
+<FPP_local.at
+prints("Done loading FPP_globalDiract.at and FPP_local.at")
+<E7except589to15851.at
+prints("Done reading E7except589to15851.at")
+< global_facets_E7.at
+prints("Done reading global_facets_E7.at")
+
+revert_flag:=false
+test_slightly_verbose:=false
+test_verbose:=false
+deform_flag:=false
+
+{for testing only}
+set makeFPPbigNew(KGBElt x)=
+let inv_hash = make_mat_hash() then
+vd=FPP_vertex_data(x.real_form) then 
+()=inv_hash.match(x.involution)  then
+NumInvs = inv_hash.size() then
+()=prints("Numinvs: ", NumInvs) then
+dlambda_hashes = for i:NumInvs do make_vec_hash() od then
+Lvd_Perm_mapAct = for i:NumInvs do [(VertexData,vec,vec)]:[] od in
+FPP_lambdas_big_new(x, vd, inv_hash,dlambda_hashes, Lvd_Perm_mapAct)
+
+
+set FPP3(RealForm G,
+         int KGB_number,
+         ((KGBElt, ratvec,Param_hash)->[Param]) test_function,
+         Param_hash my_unitary_hash,
+         [[vec]] global_facets)=[Param]:
+let x=KGB(G,KGB_number) then
+vd = FPP_vertex_data(G) {this takes a few seconds for E7}  then
+inv_hash = make_mat_hash() then
+pol_hash=make_KTypePol_hash() then
+()=inv_hash.match(x.involution)  then
+NumInvs = inv_hash.size() then
+()=prints("Numinvs: ", NumInvs) then
+dlambda_hashes = for i:NumInvs do make_vec_hash() od then
+Lvd_Perm_mapAct = for i:NumInvs do [(VertexData,vec,vec)]:[] od then
+FPPbigNew = FPP_lambdas_big_new(x, vd, inv_hash,dlambda_hashes, Lvd_Perm_mapAct) then
+twists = all_lambda_differential_0(x) then
+Ncases = #FPPbigNew * #twists then
+answers =
+ ##for (lambda0, Lvd, Perm, mapAct)@k in FPPbigNew do
+   ##for tau@ell in twists do
+       prints("  working on ",k*#twists + ell,"th lambda out of ", Ncases);
+         let LF = localFD_1Dirac(x, lambda0+tau, Lvd, Perm, mapAct, global_facets) in
+           if #LF[0] >0
+            then
+             local_test_GEO_hash_one_level(x, lambda0+tau, vd, Lvd, Perm, mapAct,LF, pol_hash, my_unitary_hash)
+            else
+             []
+           fi
+     od{\for tau}
+   od{\for (lambda0...}
+in answers
+
+set FPP3(RealForm G,
+         int KGB_number,
+         ((KGBElt, ratvec,Param_hash)->[Param]) test_function,
+         Param_hash my_unitary_hash)=[Param]:
+let global_facets=low_FPP_facets(G) then
+pol_hash=make_KTypePol_hash() in
+FPP3(G,KGB_number,local_test_GEO_hash_one_level@(KGBElt, ratvec, Param_hash),unitary_hash,global_facets)
+
+set FPP3(RealForm G,int KGB_number,Param_hash unitary_hash,[[vec]] global_facets)=[Param]:
+    FPP3(G,KGB_number,local_test_GEO_hash_one_level@(KGBElt, ratvec, Param_hash),unitary_hash,global_facets)
+
+set FPP3(RealForm G,int KGB_number,((KGBElt, ratvec, Param_hash)->[Param]) test_function)=[Param]:
+let my_unitary_hash=make_Param_hash() then
+all=unipotent_representations(G) then
+()=for p in all do my_unitary_hash.match(p) od then
+global_facets=low_FPP_facets(G) in
+FPP3(G,KGB_number,test_function,my_unitary_hash,global_facets)
+
+set FPP3(RealForm G,int KGB_number)=[Param]:
+let my_unitary_hash=make_Param_hash() then
+all=unipotent_representations(G) then
+()=for p in all do my_unitary_hash.match(p) od then
+global_facets=low_FPP_facets(G) in
+FPP3(G,KGB_number,local_test_GEO_hash_one_level@(KGBElt, ratvec,Param_hash),my_unitary_hash,global_facets)
+
+{to write a list of Param's for a single RealForm}
+{only change from writeFiles.at: "<groups.at"}
+set write_param_list_jda([Param] list, string listName,bool header) = void:
+if header then
+ prints("<groups.at");
+ if #list=0
+   then prints(listName,"[Param]:=[]")
+ else
+ write_real_form(list[0].real_form, "G_temp") fi;
+ begin
+  prints("set Nullp = U(1,0).trivial");
+  prints("set ",listName,"=[Param]: for i:",#list," do Nullp od");
+  for p@i in list
+    do let (,x) = %p.x
+     in prints("void:",listName,"[",i,"]:=parameter(KGB(G_temp,",x,"),",p.lambda,",",p.nu,")")
+     od
+ end
+fi
