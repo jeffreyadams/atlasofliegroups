@@ -468,7 +468,6 @@ set FPP_unitary_hash_general_prev(RealForm G,Param_hash Uhash,
 {this version makes an involution_hash; for each involution, a list dlambda_hashes of
 possible dlambda; and a list Lvd_Perm_mapActs (one for each dlambda) of
 (Lvd, Perm, mapAct)}
-{should add running counters for test numbers, instead of just "#tests,...}
 set FPP_unitary_hash_general([(KGBElt,ratvec)] xlambdas, Param_hash Uhash,
     (KGBElt, ratvec,VertexData,VertexData,{vec,vec,}[[FacetVertsIndex]],
     KTypePol_hash, Param_hash->[Param])
@@ -558,7 +557,6 @@ set FPP_unitary_hash_general([(KGBElt,ratvec)] xlambdas, Param_hash Uhash,
               ", number found on this run = ", Uhash.size() - oldUhash)
     fi
 
-{should add running counters for test numbers, instead of just "#tests,...}
 set FPP_unitary_hash_general([KGBElt] xs, Param_hash Uhash,
     (KGBElt, ratvec,VertexData,VertexData,{vec,vec,}[[FacetVertsIndex]],
     KTypePol_hash, Param_hash->[Param])
@@ -656,7 +654,7 @@ set FPP_unitary_hash_general([KGBElt] xs, Param_hash Uhash,
                      then  prints("     time for KGBElt ",xnums[j]," was ",
                           print_time_string(times[j]), "; longest lambda = ",
 			  print_time_string(templambdatimes[longLambdaLoc]),
-			  " for lambda = ",lambdas[longLambdaLoc]);
+			  " for #", longLambdaLoc, " = ",lambdas[longLambdaLoc]);
 			  prints("     #new unitary facets = ", currentUhash - formerUhash, ", #tests = ",
 		     	     currentUcounter - formerUcounter, ", #def lookups = ",
 		      	     deformLookupCounter.use_count(), ", #def calcs = ",

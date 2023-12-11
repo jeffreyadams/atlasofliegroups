@@ -1301,10 +1301,10 @@ set local_test_GEO_hash_one_level(KGBElt x, ratvec lambda, VertexData vd,
 		   					 else Uhash.lookup(p).>= or
 							      is_unitary_test(p,hts[LAST])
 							 fi)
-    	      then time = elapsed_ms() - start
-    	      then () = if time_verbose
+    	      {then time = elapsed_ms() - start
+    	       then () = if time_verbose
 	      	      	then prints("     ", print_time_string(time),
-	      		     	    " for UParams calculation ", test_string, new_line) fi
+	      		     	    " for UParams calculation ", test_string, new_line) fi}
                in UParams
          else let UParams =
                   for list@d in LFDKH

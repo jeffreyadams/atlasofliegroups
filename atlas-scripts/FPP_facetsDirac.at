@@ -1970,7 +1970,7 @@ set localFD_KHash_01 (KGBElt x, ratvec lambda, VertexData Lvd, KTypePol_hash ktp
 	      	in v##[ktp_hash.match(Q), #monomials(P)]
        	     od
     	od
-   then () = answer:= sort(x.real_form, Lvd, answer, 2)
+   {then () = answer:= sort(x.real_form, Lvd, answer, 2)} {ARGUMENT ALREADY SORTED}
    then time = elapsed_ms() - start
    then () = if time_verbose then prints("     ", print_time_string(time),
    	     		     " for localFD_KHash_01") fi
@@ -1996,7 +1996,7 @@ set localFD_KHash_01 (KGBElt x, ratvec lambda, VertexData Lvd, int HT, KTypePol_
 	      in v##[ktp_hash.match(Q), #monomials(P)]
        	    od
     	  od
-   then () = answer:= sort(x.real_form, Lvd, answer, 2)
+   {then () = answer:= sort(x.real_form, Lvd, answer, 2)} {argument already sorted}
    then time = elapsed_ms() - start
    then () = if time_verbose then prints("     ", print_time_string(time),
    	     		     " for localFD_KHash_01 to height ", HT) fi
