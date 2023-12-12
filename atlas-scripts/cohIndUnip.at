@@ -172,9 +172,11 @@ set coh_ind_unip_long(RealForm G, Param_hash Uhash) = void:
 		    " after ",print_time_string(elapsed_ms() - startTime),
 		    "; found ",Uhash.size() - oldSize, " reps.") fi}
 	      od
-    then () = prints("Found ",Uhash.size() - oldSize, " new unitary reps.")
-    then () = prints("Total time for coh_ind_unip_long = ",
+    then () = if time_verbose
+    	 then prints("Found ",Uhash.size() - oldSize, " new unitary reps.");
+    	      prints("Total time for coh_ind_unip_long = ",
     	      	  print_time_string(elapsed_ms() - startTime))
+         fi
     in ()
 
 {broken because of dependence on unipotent_representations2}
@@ -195,11 +197,14 @@ set coh_ind_unip(RealForm G, Param_hash Uhash) = void:
     let startTime = elapsed_ms(), oldSize = Uhash.size(), Qs = Qs(G)
     then () = for Q@j in Qs
     	      do coh_ind_unip(Q,Uhash);
-	         if j%(#Qs\20) = 0 then prints("finished parabolic #", j,
+	         if time_verbose and j%(#Qs\20) = 0
+		 then prints("finished parabolic #", j,
 		    " after ",print_time_string(elapsed_ms() - startTime),
 		    "; found ",Uhash.size() - oldSize, " reps.") fi
     	      od
-    then () = prints("Found ",Uhash.size() - oldSize, " new unitary reps.")
-    then () = prints("Total time for coh_ind_unip = ",
+    then () = if time_verbose
+    	 then prints("Found ",Uhash.size() - oldSize, " new unitary reps.");
+    	      prints("Total time for coh_ind_unip = ",
     	      	  print_time_string(elapsed_ms() - startTime))
+	      fi
     in ()
