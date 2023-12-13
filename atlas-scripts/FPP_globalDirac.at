@@ -487,6 +487,8 @@ set FPP_unitary_hash_general([(KGBElt,ratvec)] xlambdas, Param_hash Uhash,
     then dlambda_hashes = for i:NumInvs do make_vec_hash() od
     then Lvd_Perm2_mapAct = for i:NumInvs do [(VertexData,PermOrderTwo,vec)]:[] od
     {now compute all the local vertex data}
+    then old_facet_verbose = facet_verbose, old_time_verbose = time_verbose,
+    	 old_test_verbose = test_verbose, old_test_slightly_verbose = test_slightly_verbose
     then () = for (x,lambda) in xlambdas
     	      do let theta = x.involution
 	      	 then i = inv_hash.lookup(theta)
@@ -498,8 +500,6 @@ set FPP_unitary_hash_general([(KGBElt,ratvec)] xlambdas, Param_hash Uhash,
                       	    fi
 		in ()
 	      od
-    then old_facet_verbose = facet_verbose, old_time_verbose = time_verbose,
-    	 old_test_verbose = test_verbose, old_test_slightly_verbose = test_slightly_verbose
     then () = facet_verbose:=false; time_verbose:=false; test_verbose:=false; test_slightly_verbose:=false
     then () = unipotents_to_hash(G,Uhash)
     then () = if coh_ind_flag
@@ -546,15 +546,15 @@ set FPP_unitary_hash_general([(KGBElt,ratvec)] xlambdas, Param_hash Uhash,
     in prints(new_line,"Total time = ", print_time_string(current-start),
        	      "; max time = ",print_time_string(xlambdatimes[longest]),
 	      " for (x,lambda) = (",  xnums[longest], ",", lambdas[longest],")");
-       prints("Time in is_unitary = ", print_time_string(unitaryTime),
-       	       "; #tests = ", unitary_test_counter.use_count());
        prints("#hash_dumb calls=", hash_dumbCounter.use_count(),
        	      ", #hash_def_dumb calls=", hash_def_dumbCounter.use_count(),
        	      ", #hash calls=", hashCounter.use_count(),
 	      ", #hash2 calls=", hash2Counter.use_count(),
 	      ", #hash_one_level calls=", hash_one_levelCounter.use_count());
        prints("Number of FPP-unitary facets = ",Uhash.size(),
-              ", number found on this run = ", Uhash.size() - oldUhash)
+              ", number found on this run = ", Uhash.size() - oldUhash);
+       prints("Number of unitarity tests = ", unitary_test_counter.use_count(),
+       	      ", time spent in is_unitary = ",print_time_string(unitaryTime))
     fi
 
 set FPP_unitary_hash_general([KGBElt] xs, Param_hash Uhash,
@@ -675,7 +675,9 @@ set FPP_unitary_hash_general([KGBElt] xs, Param_hash Uhash,
               ", #hash2 calls=", hash2Counter.use_count(),
               ", #hash_one_level calls=", hash_one_levelCounter.use_count());
        prints("Number of known FPP-unitary facets = ",Uhash.size(),
-       	      ", number found on this run = ", Uhash.size() - oldUhash)
+       	      ", number found on this run = ", Uhash.size() - oldUhash);
+       prints("Number of unitarity tests = ", unitary_test_counter.use_count(),
+       	      ", time spent in is_unitary = ",print_time_string(unitaryTime))
 
 set FPP_unitary_hash_general(RealForm G,Param_hash Uhash,
     (KGBElt,ratvec,VertexData,VertexData,{vec,vec,} [[FacetVertsIndex]],
