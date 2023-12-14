@@ -17,7 +17,7 @@ def report(q,i,proc):
 def atlas_compute(i,pid):
    print("starting atlas_compute process #", i, "pid: ", str(pid))
    proc=procs[i]
-   test_function="local_test_GEO_hash_one_level@(KGBElt, ratvec, Param_hash)"
+   test_function="FPP_unitary_hash"
    data_file=directory + "/" + str(i) + ".at"
    log_file=directory + "/logs/" + str(i) + ".txt"
    data=open(data_file,"w", buffering=1)
@@ -27,27 +27,39 @@ def atlas_compute(i,pid):
    log.write("Job number: " + str(i) + "\n")
    log.write("Job pid: " +  str(pid) + "\n")
    log.write("function: " +  test_function + "\n")
+   vars=['coh_ind_flag','revert_flag','deform_flag','every_KGB_flag','every_lambda_flag','every_lambda_deets_flag','test_slightly_verbose','test_verbose']
+
+   #for var in vars:
+#      print("var=", var)
+#      atlas_arg='{}'.format("prints(\"" + var + "\"," +  var + ")").encode('utf-8')
+#      print("atlas_arg: ", atlas_arg)
+#      proc.stdin.write(atlas_arg)
+#      proc.stdin.flush()
+#      line = proc.stdout.readline().decode('ascii')
+#      log.write("my line=" + line)
+#      print("wrote line: ", line)
+
    starttime=time.time()
    #some initialization
 
    atlas_arg='{}'.format("set G=" + group + "\n").encode('utf-8')
-   print("atlas_arg: ", atlas_arg)
+#   print("atlas_arg: ", atlas_arg)
    proc.stdin.write(atlas_arg)
    proc.stdin.flush()
    line = proc.stdout.readline().decode('ascii')  #discard this line
 #   time.sleep(.1)
    include_header=True
    while kgb_queue.qsize()>0:
-      print("q size: ", kgb_queue.qsize())
+#      print("q size: ", kgb_queue.qsize())
+      log.write("==================================================================\n")
       log.write("size of kgb_queue: " + str(kgb_queue.qsize()) + "\n")
       x=kgb_queue.get()
       log.write("x=" + str(x) + "\n")
-      log.write("KGB loop: "  + str(x) +  " size of queue: " + str(kgb_queue.qsize()))
-      atlas_arg_txt="set list=FPP(" + group + "," + str(x) + "," + test_function + ",unitary_hash)" + "\n"
-      print("atlas_arg: ", atlas_arg_txt)
+      atlas_arg_txt="set list=" + test_function + "(" + group + "," + str(x) + ")\n"
+#      print("atlas_arg: ", atlas_arg_txt)
       atlas_arg='{}'.format(atlas_arg_txt).encode('utf-8')
       proc.stdin.write(atlas_arg)
-      print("Done executing atlas_arg")
+#      print("Done executing atlas_arg")
       proc.stdin.flush()
       newtime=starttime
       while True:
@@ -59,7 +71,7 @@ def atlas_compute(i,pid):
          if line.find("Variable")>=0:
 #            print("BREAK")
             break
-         line =line + "  " + time.strftime("%H:%M:%S", time.gmtime(timediff)) + "  " + time.strftime("%H:%M:%S", time.gmtime(newtime-starttime))
+         line =line + "  [" + time.strftime("%H:%M:%S", time.gmtime(timediff)) + "  " + time.strftime("%H:%M:%S", time.gmtime(newtime-starttime)) + "]"
          log.write(line + "\n")
 #      print("DONE WITH FIRST LOOP")
       proc.stdout.flush()
@@ -79,13 +91,13 @@ def atlas_compute(i,pid):
          if line.find("done")>=0:
             break
          data.write(line + "\n")
-   print("DONE")
-
+      log.write("Finished KGB element " + str(x)   +  "  [" + time.strftime("%H:%M:%S", time.gmtime(timediff)) + "  " + time.strftime("%H:%M:%S", time.gmtime(newtime-starttime)) + "]\n")
+      
    stoptime=time.time()
    log.write("Finished computation at " + str(time.ctime()) + "\n")
    elapsed = time.strftime("%H:%M:%S", time.gmtime(stoptime-starttime))
-   print("Finished ",group, "  time: ", elapsed)
-   log.write("elapsed time: "+ elapsed)
+   log.write("Finished " + group)
+   log.write(" elapsed time: "+ elapsed + "\n")
    log.close()
    data.close()
    return()
@@ -103,7 +115,6 @@ def main(argv):
    kgb_list=[]
    opts, args = getopt.getopt(argv, "d:n:g:k:e:s:S:")
    print("Starting at ", time.ctime())
-
    for opt, arg in opts:
       if opt in ('-g'):
           group=arg
@@ -150,14 +161,15 @@ def main(argv):
    print("number of kgb elements: ", kgb_number)
    if group=="" or directory=="" or len(kgb_list)==0 or number_jobs==0:
 #      print(group, " ", directory, " ", len(kgb_list), " ", number_jobs)
-      print("Usage: \n-d: directory\n-n: number jobs\n-g: group\n-s: start KGB\n-k: file of KGB elements-e: end KGB\n-S: step size (each job does x=k,k+S,k+2S...), default is 1")
-      print("-g group, -d directory, -n number jobs are required")
+      print("Usage: \n-d: directory\n-n: number jobs\n-g: group\n-s: start KGB\n-e: end KGB\n-k: file of KGB elements\n-S: step size (each job does x=s,s+S,s+2S...(mod n)), default is 1")
+      print("\n-g group, -d directory, -n number jobs are required")
       print("-s/-e (start/end kgb elements) or -k (kgb file) are required")
-      print("-k kgb file: list of numbers, one per line")
       exit()
    print("----------------------------")
    cpu_count=mp.cpu_count()
    print("Number of cores available: ", cpu_count)
+   shutil.copy("FPP.at",directory + "/logs")
+   print("Copied FPP.at to logs directory")
 
 #make kgb_queue from kgb_list
    kgb_queue=Queue()
@@ -187,7 +199,7 @@ def main(argv):
    for i in range(number_jobs):
       atlas_cmd=symlinks_dir + "/atlas_" + str(i)
       symlink_cmd="ln -s " + executable_dir + "atlas " + atlas_cmd
-      print("symlink cmd: ", symlink_cmd)
+#      print("symlink cmd: ", symlink_cmd)
       os.system(symlink_cmd)
       proc=subprocess.Popen([atlas_cmd,"FPP.at"], stdin=PIPE,stdout=PIPE)
       procs.append(proc)
