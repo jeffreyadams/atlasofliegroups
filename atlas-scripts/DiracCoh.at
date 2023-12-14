@@ -49,8 +49,8 @@ set DiracCohContributions(ratvec gamma, KGBElt x) = [[(int,KType)]]:
      then down_on_K_0 = for mutildes in tensortildes
      	  	      	do for (m,mutilde) in mutildes
      	  	      	   do (m, ratvec_as_vec(Minv*mutilde))
-			   od
-			od
+			   od {highest weights for K-types that can lead to a gammaKtilde in Dirac} 
+			od 
 
      {this is all relevant K-types, made into KTypePol on K. Each appears too often, by a factor of # conn comps?}
      then K_types = [KTypePol]: {one for each gammaKtilde}
@@ -74,7 +74,7 @@ set dirac_cohomology(Param p, KGBElt x) = [(int, ratvec)]:
     then () = assert(is_equal_rank(G),"dirac_cohomology works only for G equal rank")
     then K0 = K_0(x)
     then gammaKtildes = gammaKs(G,K0,gamma)
-    then mulists = DiracCohContributions(gamma,G) {one list for each gammaKtilde}
+    then mulists = DiracCohContributions(gamma,x) {one list for each gammaKtilde}
     then () = if #mulists = 0
     	      then return []
 	      fi
