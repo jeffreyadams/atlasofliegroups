@@ -819,7 +819,7 @@ set low_FPP_facets(RealForm G) = [[FacetVertsIndex]]:
 {replace each list by a collection of lists indexed by first entries (assumed
 to take all values from 0 to #lowFPP[0]-1) }
 set low_FPP_facets_by_zero([[FacetVertsIndex]] lowFPP) = [[[FacetVertsIndex]]]:
-    let answer = [[[FacetVertsIndex]]]:
+    let start = elapsed_ms(), answer = [[[FacetVertsIndex]]]:
     	for list in lowFPP
     	do [[]]
 	od
@@ -829,11 +829,20 @@ set low_FPP_facets_by_zero([[FacetVertsIndex]] lowFPP) = [[[FacetVertsIndex]]]:
 		     do []
 		     od
 		 then () = for w in list
-	      	      	   do answerd[w[0]]#:=w
-	         	   od
+		      	   do answerd[w[0]]:=
+			   (answerd[w[0]] next answerd[w[0]]:=[])
+			   #w
+			   od
+	      	      	   {do answerd[w[0]]#:=w
+	         	   od}
 		 then () = answer[d]:=answerd
 		 in ()
 	      od
+    then () = if time_verbose
+	      then prints("time for low_FPP_facets_by_zero was ",
+		      	       print_time_string(elapsed_ms() - start),
+			       "; counts = ", for L in answer do #L od)
+		   fi
     in answer
 
 {Need low_facets to be size dim  \ge 2, so it includes edges and
@@ -1006,9 +1015,9 @@ set thetaAct2 (KGBElt x, ratvec lambda, VertexData vd,  [(ratvec->int)] edge_loo
     then () = for v@i in vlist
     	      do let j = vd.lookup(-theta*v + thetaPlus)
     	      	 in if j = i
-		    then answer.fixed#:= i
+		    then answer.fixed:= (answer.fixed next answer.fixed:=[])#i {answer.fixed#:= i}
 		    else if j > i and is_edge(G, edge_lookups, v, vlist[j])
-		    	 then answer.trans#:= (i,j)
+		    	 then answer.trans := (answer.trans next answer.trans:=[])#(i,j) {answer.trans#:= (i,j)}
 		    	 fi
 		    fi
 	      od
@@ -1041,14 +1050,14 @@ set local_vertices2(Param p, VertexData vd, VertexData Lvd, PermOrderTwo Perm) =
     then perm = PermOrderTwo: ([],[])
     then () = for n@j in nums
 	      do if is_member_sorted(Perm.fixed)(n)
-	      	 then perm.fixed #:=n
+	      	 then perm.fixed := (perm.fixed next perm.fixed:=[])#n {perm.fixed #:=n}
 	    	 else if is_member_sorted(firsts)(n)
 		      then let j = first(for (x,y) in Perm.trans
 		      	       	   	 do x = n
 					 od)
 		      	   then (,m) = Perm.trans[j]
 	              	   then () = assert(is_member(nums)(m),"p appears not to be a hermitian parameter")
-			   in perm.trans #:=(n,m)
+			   in perm.trans := (perm.trans next perm.trans:=[])#(n,m) {perm.trans #:=(n,m)}
 		      fi
 	    	 fi
 	      od
@@ -1193,7 +1202,7 @@ set known_unitaries(Param_hash UhashLocal, VertexData Lvd,
 	       then let local_verts = vec: for ell in list do Lvd.lookup(ell) od.sort
 	     	    then m = lookups[#list-1](local_verts)
 		    then () = assert(m.>=,"have known unitary not appearing in LFDKH")
-		    then () = out[#list-1]:=out[#list-1]#m
+		    then () = out[#list-1]:=(out[#list-1] next out[#list -1]:=[])#m {out[#list-1]#m}
 		    in ()
 	       fi
 	 od

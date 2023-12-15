@@ -485,8 +485,12 @@ set local_test_hash(KGBElt x, ratvec lambda, VertexData Lvd,
 				     fi
 				     od
 			   then () = if long_out_flag
-		      	   	     then let () = ParamsByDim[d] := ParamsByDim[d]#q
-			   	     	  then () = LFDKHByDim[d] := LFDKHByDim[d]#LFVH[d][j]
+		      	   	     then let () = ParamsByDim[d]:=(ParamsByDim[d] next ParamsByDim[d]:=[])
+				     	  #q
+				     {ParamsByDim[d] := ParamsByDim[d]#q}
+			   	     	  then ()=LFDKHByDim[d]:=(LFDKHByDim[d] next LFDKHByDim[d]:=[])
+					  #LFVH[d][j]
+					  {LFDKHByDim[d]#LFVH[d][j]}
 				     	  in ()
 			   	     fi
 		       	   in q
@@ -615,8 +619,10 @@ set local_test_GEO_hash_real_dumb(KGBElt x, ratvec lambda, VertexData vd, Vertex
 			      fi
                           od
 		 then () = if long_out_flag
-		      	   then let () = ParamsByDim[d] := ParamsByDim[d]#p
-			   	then () = LFDKHByDim[d] := LFDKHByDim[d]#v
+		      	   then let () =ParamsByDim[d]:=(ParamsByDim[d] next ParamsByDim[d]:=[])#p
+			   {ParamsByDim[d] := ParamsByDim[d]#p}
+			   	then ()=LFDKHByDim[d] :=(LFDKHByDim[d] next LFDKHByDim[d]:=[])#v
+				{LFDKHByDim[d] := LFDKHByDim[d]#v}
 				in ()
 			   fi
 		 in p
