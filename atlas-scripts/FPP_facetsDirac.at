@@ -320,6 +320,10 @@ set_type
 {meant to hold FPP_facets up to dimension global_top}
 set global_facets = [[FacetVertsIndex]]: []
 
+{in this version, the dth list consists of #global_facets[0] lists; list k
+consists of all d-facets beginning with k}
+set global_facets_by_zero = [[[FacetVertsIndex]]]: []
+
 set to_vertex_data ([ratvec] vlist) = VertexData: (vlist,index_in(vlist))
 
 set facet_indices((ratvec->int) lookup, FacetVerts facet) = FacetVertsIndex:
@@ -811,6 +815,26 @@ set low_FPP_facets(RealForm G) = [[FacetVertsIndex]]:
 		   fi
 	 in answer
     fi
+
+{replace each list by a collection of lists indexed by first entries (assumed
+to take all values from 0 to #lowFPP[0]-1) }
+set low_FPP_facets_by_zero([[FacetVertsIndex]] lowFPP) = [[[FacetVertsIndex]]]:
+    let answer = [[[FacetVertsIndex]]]:
+    	for list in lowFPP
+    	do [[]]
+	od
+    then () = for list@d in lowFPP
+    	      do let answerd = [[FacetVertsIndex]]:
+	      	     for w in lowFPP[0]
+		     do []
+		     od
+		 then () = for w in list
+	      	      	   do answerd[w[0]]#:=w
+	         	   od
+		 then () = answer[d]:=answerd
+		 in ()
+	      od
+    in answer
 
 {Need low_facets to be size dim  \ge 2, so it includes edges and
 facets dim - 1; then find facets of dim by starting with any dim-1
@@ -1833,7 +1857,7 @@ set localFD_1Dirac\
 )
 
 
-{takes local data and global 0 to 3 facets and computes vertices and edges, imposing
+{takes local data and low global facets and computes vertices and edges, imposing
 hermitian, pos on LKTs, and Dirac. Subspace is fixed points of affine involution of
 h*. Perm records involution action on FPP verts. mapAct records local vertex to which an FPP
 vertex "belongs" (either "is" or "is vertex of the edge")}
@@ -1932,6 +1956,126 @@ set localFD_1Dirac2\
 	  {then () = prints("after TransTrans, time is ",print_time_string(elapsed_ms() - start))}
 	   in EdgesFixFix ## EdgesFixTrans ## EdgesTransTrans
      { then () = prints("after Edges, time is ",print_time_string(elapsed_ms() - start))}
+     then LF1 = [FacetVertsIndex]:
+    	 for v in Edges
+	 do let p = parameter(x,lambda,facet_bary(Lvd.list, v))
+	    in  if all(for q in monomials(p) do is_pos_on_LKTs(q) od)
+	    then [v]
+	    else []
+	    fi
+	 od.##
+    { then () = prints("after LF1, time is ",print_time_string(elapsed_ms() - start))}
+    then answer = sort(G, Lvd, [LF0]##[LF1], 0)
+    in {if(facet_verbose) then prints("After localFD_1Dirac2, facet counts are [",#LF0,
+    		      	   	  ",",#LF1,"]") fi;
+       if(time_verbose) then prints("     ",print_time_string(elapsed_ms() - start),
+       			     		  " for localFD_1Dirac2") fi;}
+       answer
+)
+
+
+
+{takes local data and low global facets and computes vertices and edges, imposing
+hermitian, pos on LKTs, and Dirac. Subspace is fixed points of affine involution of
+h*. Perm records involution action on FPP verts. mapAct records local vertex to which an FPP
+vertex "belongs" (either "is" or "is vertex of the edge")}
+{Edge in local picture is either
+1) edge in FPP contained subspace, OR
+2) triangle in FPP meeting subspace in line (one vertex of tri in subspace, other
+   two flipped by involution, OR
+3) tetrahedron in FPP, two pairs of verts exchanged by involution}
+{This time assume that globalFacets[d] is list of size
+#globalFacets[d-1] of d-facets, the jth list being all global facets that
+begin with the jth global (d-1)-facet.}
+set localFD_1Dirac2_by_zero\
+  ( KGBElt x, ratvec lambda, VertexData Lvd, PermOrderTwo Perm2, vec mapAct,
+    [[[FacetVertsIndex]]] globalFacetsBYZERO) = [[FacetVertsIndex]]:
+(   {if facet_verbose
+    then prints(new_line,"start localFD_1DiracBYZERO")
+    fi;}
+    let G = x.real_form, start = elapsed_ms(), trans_hash = make_vec_hash()
+    then () = for (m,n) in Perm2.trans do trans_hash.match([m,n]) od
+    then Q = (ratvec,ratvec->rat): (ratvec v, ratvec w) rat: 0/1
+    then DiracBD = 0/1
+    then () = if Dirac_flag
+    	      then let () = DiracBD := DiracBD(x,lambda)
+	      	   then () = Q:=invariant_form(G)
+	      	   in ()
+	      fi
+    then LF0 = [FacetVertsIndex]:
+    	 for v@j in Lvd.list
+	 do let p = parameter(x,lambda,v)
+	    in if any(for q in monomials(finalize(p)) do not is_pos_on_LKTs(q) od) or
+ 	       (Dirac_flag and Q(v, v)> DiracBD)
+	    then []
+	    else [[j]]
+	    fi
+	 od.##
+    {then () = prints("after LFO, time is ",print_time_string(elapsed_ms() - start))}
+    then Llookup = is_member_sorted((for v in LF0 do v[0] od))
+    then Edges = [vec]:
+    	 let EdgesFixFix = [vec]:
+             if #Perm2.fixed > 1
+	     then for j in Perm2.fixed
+	     	  do let mloc = mapAct[j]
+		     in if Llookup(mloc)
+		     	then for v in globalFacetsBYZERO[1][j]
+			     do if is_member_sorted(Perm2.fixed)(v[1])
+			     	then let nloc =  mapAct[v[1]]
+				     in if Llookup(nloc)
+				     	then [[mloc,nloc].sort]
+             				else []
+					fi
+				else []
+				fi
+			     od.## {this is the list of edges starting with j}
+	     		 else []
+			 fi
+		   od.## {all FixFix edges}
+	       else []
+	       fi
+	   {then () = prints("after FixFix, time is ",print_time_string(elapsed_ms() - start))}
+      	   then EdgesFixTrans = [vec]:
+	   	if global_top >= 2 and #Perm2.trans > 0 and #Perm2.fixed > 0
+	       	then let GF2 = globalFacetsBYZERO[2].##
+		     in  for v in GF2
+	       	     	 do let mixes = [[v[0],v[1],v[2]],[v[1],v[0],v[2]],[v[2],v[0],v[1]]]
+		       	    in for w in mixes
+		       	       do if is_member_sorted(Perm2.fixed)(w[0]) and
+			     	     	trans_hash.lookup([w[1],w[2]]) >= 0
+		       	     	  then let xloc = mapAct[w[0]], yloc = mapAct[w[1]]
+		       	     	        in if Llookup(xloc) and Llookup(yloc)
+			       	     	   then [[xloc,yloc].sort]
+			       	     	   else []
+			       	     	   fi
+			      	   else []
+			      	   fi
+			        od.##
+		     	  od.##
+	       	 else []
+	       	 fi
+           {then () = prints("after FixTrans, time is ",print_time_string(elapsed_ms() - start))}
+	   then EdgesTransTrans = [vec]:
+	       if global_top >= 3 and #Perm2.trans > 1
+	       then let GF3 = globalFacetsBYZERO[3].##
+	       	    in for v in GF3
+	       	    do let mixes = [[v[0],v[1],v[2],v[3]], [v[0],v[2],v[1],v[3]],
+		       	   	   [v[0],v[3],v[1],v[2]]]
+		       in for w in mixes
+		       	  do if trans_hash.lookup([w[0],w[1]]) >= 0 and
+			     	trans_hash.lookup([w[2],w[3]]) >= 0 
+		       	     then let xloc = mapAct[w[0]], zloc = mapAct[w[2]]
+		       	     	  in if Llookup(xloc) and Llookup(zloc)
+			       	     then [[xloc,zloc].sort]
+			       	     else []
+			       	     fi
+			     else []
+			     fi
+			  od.##
+		     od.##
+	       else []
+	       fi
+	   in EdgesFixFix ## EdgesFixTrans ## EdgesTransTrans
      then LF1 = [FacetVertsIndex]:
     	 for v in Edges
 	 do let p = parameter(x,lambda,facet_bary(Lvd.list, v))

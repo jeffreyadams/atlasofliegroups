@@ -48,6 +48,9 @@ set every_lambda_deets_flag = false
 {if true, then report summary each KGBElt in FPP_unitary}
 set every_KGB_flag = false
 
+{if true, uses the (faster?) function localFD_1Dirac2_by_zero to compute local vertices and edges}
+set by_zero_flag = true
+
 set spherical_xs(RealForm G) = [KGBElt]:
     let real_rank = rank(x_open(G).involution + 1)
     in for x in KGB(G)
@@ -511,6 +514,7 @@ set FPP_unitary_hash_general([(KGBElt,ratvec)] xlambdas, Param_hash Uhash,
     then () = if #global_facets = 0 or #global_facets[0] != #vd.list
     	      then global_facets := low_FPP_facets(G)
 	      fi
+    then () = global_facets_by_zero := low_FPP_facets_by_zero(global_facets)
     then current = elapsed_ms(), oldUhash = Uhash.size(), currentUhash = Uhash.size(), formerUhash = Uhash.size(),
     	 	   oldUcounter = unitary_test_counter.use_count(), currentUcounter = unitary_test_counter.use_count()
     then () = for (x,lambda)@k in xlambdas
@@ -520,7 +524,10 @@ set FPP_unitary_hash_general([(KGBElt,ratvec)] xlambdas, Param_hash Uhash,
 		 then i = inv_hash.lookup(theta)
 		 then j = dlambda_hashes[i].lookup(ratvec_as_vec(lambda+theta*lambda))
 		 then (Lvd, Perm2, mapAct) = Lvd_Perm2_mapAct[i][j]
-		 then LF = localFD_1Dirac2(x, lambda, Lvd, Perm2, mapAct, global_facets)
+		 then LF = if by_zero_flag
+		      	   then localFD_1Dirac2_by_zero(x, lambda, Lvd, Perm2, mapAct, global_facets_by_zero)
+			   else localFD_1Dirac2(x, lambda, Lvd, Perm2, mapAct, global_facets)
+			   fi
 		 in if #LF[0] = 0 then ()
 		     else if every_lambda_deets_flag
 			  then facet_verbose := old_facet_verbose; time_verbose := old_time_verbose;
@@ -594,6 +601,7 @@ set FPP_unitary_hash_general([KGBElt] xs, Param_hash Uhash,
     then () = if #global_facets = 0 or #global_facets[0] != #vd.list
     	      then global_facets := low_FPP_facets(G)
 	      fi
+    then () = global_facets_by_zero := low_FPP_facets_by_zero(global_facets)
     then current = elapsed_ms()
     then oldUhash = Uhash.size(), currentUhash = Uhash.size(), formerUhash = Uhash.size(),
     	 oldUcounter = unitary_test_counter.use_count(), currentUcounter = unitary_test_counter.use_count()
@@ -619,8 +627,10 @@ set FPP_unitary_hash_general([KGBElt] xs, Param_hash Uhash,
       	      	   do for tau@ell in twists
                       do let startlambda = elapsed_ms(), startUhash = Uhash.size(),
 		      	     startUcounter = unitary_test_counter.use_count()
-			 then LF = localFD_1Dirac2(x, lambda0+tau, Lvd, Perm2,
-                             mapAct, global_facets)
+			 then LF = if by_zero_flag
+		      	      	   then localFD_1Dirac2_by_zero(x, lambda0+tau, Lvd, Perm2, mapAct, global_facets_by_zero)
+			   	   else localFD_1Dirac2(x, lambda0+tau, Lvd, Perm2, mapAct, global_facets)
+			   	   fi
 			 in if #LF[0] = 0
 			    then []
                             else if every_lambda_deets_flag
