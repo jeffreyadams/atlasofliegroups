@@ -174,7 +174,7 @@ set step_flag = false
 {If "true", then hash_dumb uses is_unitary}
 set real_flag = true
 
-{If "true", then hash_dumb uses is_unitary_def_test}
+{If "true", then hash_dumb uses is_unitary_def_test, and hts are calculated with deform_hts}
 set def_flag = true
 
 {if "false" use next_heights instead of short_hts, to avoid calculating
@@ -182,6 +182,10 @@ deform (KL calculations). So prefer false for rank \ge 7?}
 set short_hts_flag = true
 
 set long_out_flag = false
+
+{almost always it makes sense to preload the Arthur unipotent
+reps. But not in a few test situations.}
+set load_unipotents_flag = true
 
 {for is_unitary calculations on parameters of approxDiff > CUTOFF,
 it's assumed that is_unitary_to_ht is faster. Setting CUTOFF :=100
@@ -323,17 +327,21 @@ set local_unipotent_classes(KGBElt x, ratvec lambda, VertexData (list,lookup)) =
 
 {inserts special unipotent reps in unitary_hash}
 set unipotents_to_hash(RealForm G, Param_hash Uhash) = void:
-    let mus = for p in unipotent_representations(G) do Uhash.match(p) od
-    in ()
+    if load_unipotents_flag
+    then for p in unipotent_representations(G) do Uhash.match(p) od
+    else ()
+    fi
 
 {inserts special unipotent reps in [unitary_hash]; assumed to have one
  for each KGBElt}
 set unipotents_to_hashes(RealForm G, [Param_hash] Uhashes) = void:
-    let mus = for p in unipotent_representations(G)
+    if load_unipotents_flag
+    then for p in unipotent_representations(G)
     	      do let (,xnum) = %p.x
 	         in Uhashes[xnum].match(p)
 	      od
-    in ()
+    else ()
+    fi
 
 {. The next family of functions all need simple derived group. Always
 |vd.list| should be ALL vertices in the FPP; Lvd.list will be all infl
@@ -539,9 +547,15 @@ set local_test_GEO_hash_real_dumb(KGBElt x, ratvec lambda, VertexData vd, Vertex
 		      else return []
 		      fi
 	      fi
-    {then test_hts = hts[:min(#hts,1)]}
-    then tester = (Param->bool): (Param p) bool:
-    	 is_unitary(p{,test_hts})
+
+     then maxDiffLoc = max_loc(for v in Lvd.list
+    	 	       	       do G.two_rho_check*(dominant(G,thetaMinus*v))
+			       od)
+    then pmax = first_param(finalize(parameter(x, lambda, Lvd.list[maxDiffLoc]))),
+    	 r = rank(x.involution - 1)
+    then (test_hts,FLAG) = deform_hts(pmax,r\3) {!!this r\2 is a parameter to fiddle}
+    then tester = (Param->bool): (Param p) bool: {!!if FLAG, can omit is_unitary at end}
+    	 is_unitary_test(p,test_hts)
     {then () = if facet_verbose then prints("test_hts = ",test_hts) fi}
     then () = test_string:= " using local_test_GEO_hash_real_dumb"
     then  () = hash_real_dumbCounter.use()
@@ -869,13 +883,13 @@ set local_test_GEO_hash_dumb(KGBElt x, ratvec lambda, VertexData vd, VertexData 
     if real_flag
     then local_test_GEO_hash_real_dumb(x, lambda, vd, Lvd, LF, pol_hash, Uhash)
     elif def_flag
-    then local_test_GEO_hash_def_dumb(x, lambda, vd, Lvd, {Perm, mapAct,} LF, pol_hash, Uhash)
+    then local_test_GEO_hash_def_dumb(x, lambda, vd, Lvd, LF, pol_hash, Uhash)
     else let shorts = if short_hts_flag
     	     	      then short_hts(parameter(x,lambda,Lvd.list[0]))
 		      else next_heights(parameter(x,lambda, Lvd.list[0]), 1)
 		      fi
     	 then hts = shorts[:min(1,#shorts)]
-    	 in local_test_GEO_hash_dumb(x, lambda, vd, Lvd, {Perm, mapAct,} LF, hts, pol_hash, Uhash)
+    	 in local_test_GEO_hash_dumb(x, lambda, vd, Lvd, LF, hts, pol_hash, Uhash)
     fi
 
 set local_test_GEO_hash_dumb(KGBElt x, ratvec lambda, VertexData vd, VertexData Lvd,
@@ -1042,26 +1056,26 @@ set local_test_GEO_hash(KGBElt x, ratvec lambda, VertexData vd, VertexData Lvd,
 				fi
     	      	then () = if #Shorthts < depth and revert_flag
 		     	  then return local_test_GEO_hash_dumb(x, lambda, vd,
-    	      	 	     	   	       Lvd, {Perm, mapAct,} LF, Shorthts[:min(1,#Shorthts)],
+    	      	 	     	   	       Lvd, LF, Shorthts[:min(1,#Shorthts)],
 					       pol_hash, Uhash)
 	      		  fi
 		then () = test_string:= " using local_test_GEO_hash"
     	        then hts = [int]:
 		     let d0 = min(#Shorthts, depth)
 		     in Shorthts[:d0] ## for j:depth-d0 do -1 od
-    	      	in local_test_GEO_hash_no_dumb(x, lambda, vd, Lvd, {Perm, mapAct,} LF, hts,
+    	      	in local_test_GEO_hash_no_dumb(x, lambda, vd, Lvd, LF, hts,
 	      	 pol_hash, Uhash)
 
 set local_test_GEO_hash(KGBElt x, ratvec lambda, VertexData vd, VertexData Lvd,
     vec Perm, vec mapAct, KTypePol_hash pol_hash, Param_hash Uhash) = [Param]:
     let LF = localFD_1Dirac(x, lambda, vd, Lvd, Perm, mapAct)
-    in local_test_GEO_hash(x, lambda, vd, Lvd, {Perm, mapAct,} LF, pol_hash, Uhash)
+    in local_test_GEO_hash(x, lambda, vd, Lvd, LF, pol_hash, Uhash)
 
 set local_test_GEO_hash(KGBElt x, ratvec lambda, VertexData vd, VertexData Lvd,
     vec Perm, vec mapAct, KTypePol_hash pol_hash, Param_hash Uhash,
     [[FacetVertsIndex]] global_facets) = [Param]:
     let LF = [[FacetVertsIndex]]: localFD_1Dirac(x,lambda, Lvd, Perm, mapAct, global_facets)
-    in local_test_GEO_hash(x, lambda, vd, Lvd, {Perm, mapAct,} LF, pol_hash, Uhash)
+    in local_test_GEO_hash(x, lambda, vd, Lvd, LF, pol_hash, Uhash)
 
 set local_test_GEO_hash(KGBElt x, ratvec lambda, VertexData vd,
     KTypePol_hash pol_hash, Param_hash Uhash) = [Param]:

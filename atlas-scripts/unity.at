@@ -279,8 +279,8 @@ set next_heights(KType mu, int m) = [int]:
 			 od);
 	    N:=N+5
 	 od
-    then () = if time_verbose then prints("    ",print_time_string(
-    elapsed_ms() - start)," for next_heights to ",m) fi
+    { then () = if time_verbose then prints("    ",print_time_string(
+    elapsed_ms() - start)," for next_heights to ",m) fi }
     in list[:m]
 
 set next_heights(Param p, int m) = [int]:
