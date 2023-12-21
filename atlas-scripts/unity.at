@@ -308,6 +308,14 @@ set is_unitary_test_next(Param p) = bool:
     is_unitary_to_ht(p, next_height(p)) and
     is_unitary(p)
 
+{. tests unitarity first on LKTs, then on m next-to-lowest, then
+everywhere .}
+set is_unitary_test_next(Param p,int m) = bool:
+    is_pos_on_LKTs(p) and
+    is_unitary_to_hts(p, next_heights(p,m)) and
+    is_unitary(p)
+ 
+
 {. tests unitarity first on LKTs, then on next-to-lowest up to
 height(nu), then everywhere. If no K-types to height(nu), then true .}
 set is_unitary_test_nextB(Param p) = bool:
@@ -367,18 +375,22 @@ set is_unitary_test(Param p, [int] Ns, KTypePol_hash cert_hash) = bool:
     {all(for N in Ns do is_unitary_to_ht(p,N,cert_hash) od) and}
     is_unitary(p,cert_hash)
 
-{use the first N heights from short_heights to test}
-set is_unitary_short_test(Param p,int N) = bool:
+{use the first m heights from short_heights to test}
+set is_unitary_short_test(Param p,int m) = bool:
     let short= short_hts(p)
-    in is_unitary_test(p,short[:min(N,#short)])
+    in is_unitary_test(p,short[:min(m, #short)])
 
-{use the first N heights from short_heights to test}
-set is_unitary_def_test(Param p,int N) = bool:
-    let (def,flag)= deform_hts(p,N)
+{use the first m heights from deform_heights to test}
+set is_unitary_def_test(Param p,int m) = bool:
+    let (def,flag)= deform_hts(p,m)
     in if flag
        then is_pos_on_LKTs(p) and is_unitary_to_hts(p,def)
        else is_unitary_test(p,def)
        fi
+
+{use the first height from deform_heights to test}
+set is_unitary_def_test(Param p) = bool:
+    is_unitary_def_test(p,1)
 
 { these commands are useful for speed tests over bunches of parameters
 

@@ -39,6 +39,7 @@ set FPP_unitary_hash_LF([KGBElt] xs) = void:
 set FPP_unitary_hash_LF(RealForm G) = void:
     FPP_unitary_hash_LF(KGB(G))
 
+{the functions ending in _test actually determine unitarity. Others only rule out some possibles}
 set time_test([Param] params) = void:
     let start_time = elapsed_ms(), N = #params
     then ps = for p in params do first_param(finalize(p)) od
@@ -69,40 +70,40 @@ set time_test(Param_hash LFhash) = void:
 
 set time_test() = time_test(local_verts_param_hash)
 
-set time_test_next([Param] params) = void:
+set time_next_test([Param] params, int m) = void:
     let start_time = elapsed_ms(), N = #params
     then ps = for p in params do first_param(finalize(p)) od
     then bools = for j:N do false od
     then times = vec: null(N)
     then () = for p@j in ps
     	      do let startp = elapsed_ms()
-	      	 then () = bools[j]:= is_unitary_test_next(p)
+	      	 then () = bools[j]:= is_unitary_test_next(p,m)
 		 then () = times[j] := elapsed_ms() - startp
 		 in ()
 	      od
     then maxLoc = max_loc(times)
-    then () = prints("for to_ht, total time = ", print_time_string(elapsed_ms() - start_time),
+    then () = prints("for next_test to ",m, ", total time = ", print_time_string(elapsed_ms() - start_time),
     	      	     " for ", N, " parameters; #true = ", count(bools));
 	      prints("longest = ", print_time_string(times[maxLoc]),
 		     " for #", maxLoc)
     in ()
 
-set time_test_next(Param_hash LFhash) = void:
+set time_next_test(Param_hash LFhash, int m) = void:
     let N = LFhash.size()
     then params = for j:N do LFhash.index(j) od
-    in time_test_next(params)
+    in time_next_test(params, m)
 
-set time_test_next() = time_test_next(local_verts_param_hash)
+set time_next_test(int m) = time_next_test(local_verts_param_hash, m)
 
-{d is number of heights to which to test}
-set time_to_hts([Param] params, int d) = void:
+{m is number of heights to which to test}
+set time_next([Param] params, int m) = void:
     let start_time = elapsed_ms(), N = #params
     then ps = for p in params do first_param(finalize(p)) od
     then bools = for j:N do false od
     then times = vec: null(N)
     then () = for p@j in ps
     	      do let startp = elapsed_ms()
-	      	 then () = bools[j] := is_unitary_to_hts(p, next_heights(p,d))
+	      	 then () = bools[j] := is_unitary_to_hts(p, next_heights(p,m))
 		 then () = times[j] := elapsed_ms() - startp
 		 { then () = if j%(N\20) = 0
 		      	   then prints("up to ",j," out of ",N,
@@ -111,44 +112,69 @@ set time_to_hts([Param] params, int d) = void:
 		 in ()
 	      od
     then maxLoc = max_loc(times)
-    then () = prints("for to_hts, total time = ", print_time_string(elapsed_ms() - start_time),
+    then () = prints("for next to ", m, ", total time = ", print_time_string(elapsed_ms() - start_time),
     	      	     " for ", N, " parameters; #true = ", count(bools));
 	      prints("longest = ", print_time_string(times[maxLoc]),
 		     " for #", maxLoc)
     in ()
 
-set time_to_hts(Param_hash LFhash, int d) = void:
+set time_next(Param_hash LFhash, int m) = void:
     let N = LFhash.size()
     then params = for j:N do LFhash.index(j) od
-    in time_to_hts(params,d)
+    in time_next(params,m)
 
-set time_to_hts(int d) = time_to_hts(local_verts_param_hash, d)
+set time_next(int m) = time_next(local_verts_param_hash, m)
 
-{use is_unitary_to_hts(p, deform_hts(p,d)}
-set time_def([Param] params, int d) = void:
+{use is_unitary_to_hts(p, deform_hts(p,m)}
+set time_def([Param] params, int m) = void:
     let start_time = elapsed_ms(), N = #params
     then ps = for j:N do first_param(finalize(params[j])) od
     then bools = for j:N do false od
     then times = vec: null(N)
     then () = for p@j in ps
     	      do let startp = elapsed_ms()
-	      	 then (DEFHTS,) = deform_hts(p,d)
+	      	 then (DEFHTS,) = deform_hts(p,m)
 	      	 then () = bools[j]:= is_unitary_to_hts(p, DEFHTS)
 		 then () = times[j] := elapsed_ms() - startp
 		 in ()
 	      od
     then maxLoc = max_loc(times)
-    then () = prints("for to_def_hts, total time = ", print_time_string(elapsed_ms() - start_time),
+    then () = prints("for def to ", m, ", total time = ", print_time_string(elapsed_ms() - start_time),
     	      	     " for ", N, " parameters; #true = ", count(bools));
 	      prints("longest = ", print_time_string(times[maxLoc]),
 		     " for #", maxLoc)
     in ()
 
-set time_def(Param_hash LFhash, int d) = void:
+set time_def(Param_hash LFhash, int m) = void:
     let N = LFhash.size()
     then params = for j:N do LFhash.index(j) od
-    in time_def(params, d)
+    in time_def(params, m)
 
-set time_def(int d) = time_def(local_verts_param_hash, d)
+set time_def(int m) = time_def(local_verts_param_hash, m)
 
+set time_def_test([Param] params, int m) = void:
+    let start_time = elapsed_ms(), N = #params
+    then ps = for j:N do first_param(finalize(params[j])) od
+    then bools = for j:N do false od
+    then times = vec: null(N)
+    then () = for p@j in ps
+    	      do let startp = elapsed_ms()
+	      	 then (DEFHTS,) = deform_hts(p,m)
+	      	 then () = bools[j]:= is_unitary_test(p, DEFHTS)
+		 then () = times[j] := elapsed_ms() - startp
+		 in ()
+	      od
+    then maxLoc = max_loc(times)
+    then () = prints("for to_def_test to ", m, ", total time = ", print_time_string(elapsed_ms() - start_time),
+    	      	     " for ", N, " parameters; #true = ", count(bools));
+	      prints("longest = ", print_time_string(times[maxLoc]),
+		     " for #", maxLoc)
+    in ()
+
+set time_def_test(Param_hash LFhash, int m) = void:
+    let N = LFhash.size()
+    then params = for j:N do LFhash.index(j) od
+    in time_def_test(params, m)
+
+set time_def_test(int m) = time_def(local_verts_param_hash, m)
 {doing timeTest second seems to give little speed advantage}
