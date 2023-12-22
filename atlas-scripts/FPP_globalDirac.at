@@ -559,9 +559,10 @@ set FPP_unitary_hash_general([(KGBElt,ratvec)] xlambdas, Param_hash Uhash,
     in prints(new_line,"Total time = ", print_time_string(current-start),
        	      "; max time = ",print_time_string(xlambdatimes[longest]),
 	      " for (x,lambda) = (",  xnums[longest], ",", lambdas[longest],")");
-       prints("#hash_dumb calls=", hash_dumbCounter.use_count(),
-       	      ", #hash_def_dumb calls=", hash_def_dumbCounter.use_count(),
-       	      ", #hash calls=", hashCounter.use_count(),
+       prints("  #hash_real_dumb_calls=",hash_real_dumbCounter.use_count(),
+	      ", #hash_dumb calls=", hash_dumbCounter.use_count(),
+       	      ", #hash_def_dumb calls=", hash_def_dumbCounter.use_count());
+       prints("  #hash calls=", hashCounter.use_count(),
 	      ", #hash2 calls=", hash2Counter.use_count(),
 	      ", #hash_one_level calls=", hash_one_levelCounter.use_count());
        prints("Number of FPP-unitary facets = ",Uhash.size(),
@@ -686,11 +687,12 @@ set FPP_unitary_hash_general([KGBElt] xs, Param_hash Uhash,
        prints("Total time = ", print_time_string(current-start),
               "; max time = ",print_time_string(times[longest]),
               " for KGBElt ",xnums[longest]);
-       prints("#hash_dumb calls=", hash_dumbCounter.use_count(),
-              ", #hash_def_dumb calls=", hash_def_dumbCounter.use_count(),
-              ", #hash calls=", hashCounter.use_count(),
-              ", #hash2 calls=", hash2Counter.use_count(),
-              ", #hash_one_level calls=", hash_one_levelCounter.use_count());
+       prints("  #hash_real_dumb_calls=",hash_real_dumbCounter.use_count(),
+	      ", #hash_dumb calls=", hash_dumbCounter.use_count(),
+       	      ", #hash_def_dumb calls=", hash_def_dumbCounter.use_count());
+       prints("  #hash calls=", hashCounter.use_count(),
+	      ", #hash2 calls=", hash2Counter.use_count(),
+	      ", #hash_one_level calls=", hash_one_levelCounter.use_count());
        prints("Number of known FPP-unitary facets = ",Uhash.size(),
        	      ", number found on this run = ", Uhash.size() - oldUhash);
        prints("Number of unitarity tests = ", unitary_test_counter.use_count(),

@@ -538,11 +538,12 @@ set local_test_GEO_hash_real_dumb(KGBElt x, ratvec lambda, VertexData vd, Vertex
     {then () = LF := localFD_01Dirac(x, lambda, vd, Lvd, Perm, mapAct,
     LF) {impose Dirac AND hermitian AND pos on LKTs}}
     then () = if #LF[0] = 0 then return [] fi
+    then r = rank(x.involution - 1)
     then () = if {TINY CASE} #LF[0]=1
     	      then let p = parameter(x,lambda,Lvd.list[LF[0][0][0]])
 	      	   then Q = monomials(finalize(p))
 	      	   then test = all(for q in Q do Uhash.lookup(q).>= or
-		   	       is_unitary_def_test(q) od)
+		   	       is_unitary_def_test(q, r\2) od)
 		   then () = if test
 		   	     then let () = for q in Q
 		      	       	    do Uhash.match(herm_center(q))
@@ -559,7 +560,7 @@ set local_test_GEO_hash_real_dumb(KGBElt x, ratvec lambda, VertexData vd, Vertex
 			       od)
     then pmax = first_param(finalize(parameter(x, lambda, Lvd.list[maxDiffLoc]))),
     	 r = rank(x.involution - 1)
-    then (test_hts,FLAG) = deform_hts(pmax,r\3) {!!this r\2 is a parameter to fiddle}
+    then (test_hts,FLAG) = deform_hts(pmax,r\2) {!!this r\2 is a parameter to fiddle}
     then tester = (Param->bool): (Param p) bool: {!!if FLAG, can omit is_unitary at end}
     	 is_unitary_test(p,test_hts)
     {then () = if facet_verbose then prints("test_hts = ",test_hts) fi}
@@ -664,11 +665,12 @@ set local_test_GEO_hash_dumb(KGBElt x, ratvec lambda, VertexData vd, VertexData 
     {then () = LF := localFD_01Dirac(x, lambda, vd, Lvd, Perm, mapAct,
     LF) {impose Dirac AND hermitian AND pos on LKTs}}
     then () = if #LF[0] = 0 then return [] fi
+    then r = rank(x.involution - 1)
     then () = if {TINY CASE} #LF[0]=1
     	      then let p = parameter(x,lambda,Lvd.list[LF[0][0][0]])
 	      	   then Q = monomials(finalize(p))
 	      	   then test = all(for q in Q do Uhash.lookup(q).>= or
-		   	       is_unitary_def_test(q) od)
+		   	       is_unitary_def_test(q,r\2) od)
 		   then () = if test
 		   	     then let () = for q in Q
 		      	       	    do Uhash.match(herm_center(q))
@@ -794,11 +796,12 @@ set local_test_GEO_hash_def_dumb(KGBElt x, ratvec lambda, VertexData vd, VertexD
     Param_hash Uhash) = [Param]:
     let (G,j0) = %x, thetaMinus = x.involution - 1, start = elapsed_ms()
     then () = if #LF[0] = 0 then return [] fi
+    then r = rank(x.involution - 1)
     then () = if {TINY CASE} #LF[0]=1
     	      then let p = parameter(x,lambda,Lvd.list[LF[0][0][0]])
 	      	   then Q = monomials(finalize(p))
 	      	   then test = all(for q in Q do Uhash.lookup(q).>= or
-		   	       is_unitary_def_test(q) od)
+		   	       is_unitary_def_test(q,r\2) od)
 		   then () = if test
 		   	     then let () = for q in Q
 		      	       	    do Uhash.match(herm_center(q))
@@ -821,7 +824,6 @@ set local_test_GEO_hash_def_dumb(KGBElt x, ratvec lambda, VertexData vd, VertexD
 		      else return []
 		      fi
 	      fi}
-    then r = rank(x.involution - 1)
     then def_steps_temp = if def_steps = -1
     	 		  then (r+G.rank)\2
 			  else def_steps
@@ -1060,11 +1062,12 @@ set local_test_GEO_hash(KGBElt x, ratvec lambda, VertexData vd, VertexData Lvd,
     Param_hash Uhash) = [Param]:
     let (G,j0) = %x, thetaMinus = x.involution - 1
     then () = if {EMPTY CASE} #LF[0] = 0 then return [] fi
+    then r = rank(x.involution - 1)
     then () = if {TINY CASE} #LF[0]=1
     	      then let p = parameter(x,lambda,Lvd.list[LF[0][0][0]])
 	      	   then Q = monomials(finalize(p))
 	      	   then test = all(for q in Q do Uhash.lookup(q).>= or
-		   	       is_unitary_def_test(q) od)
+		   	       is_unitary_def_test(q,r\2) od)
 		   then () = if test
 		   	     then let () = for q in Q
 		      	       	    do Uhash.match(herm_center(q))
@@ -1094,7 +1097,6 @@ set local_test_GEO_hash(KGBElt x, ratvec lambda, VertexData vd, VertexData Lvd,
 	      	   	  	    LF, pol_hash, Uhash) {use
 				    real_dumb if real_flag, def_dumb if def_flag}
 	      fi
-    then r = rank(x.involution -1)
     then edge_offset_temp = edge_offset
     then () = if edge_offset = -1
     	      then edge_offset_temp := r\2 {3 seems best for F4}
@@ -1158,11 +1160,13 @@ set hash2Counter = make_counter()
 set local_test_GEO_hash2(KGBElt x, ratvec lambda, VertexData vd, VertexData Lvd, {vec Perm,
     vec mapAct,} [[FacetVertsIndex]] LF, KTypePol_hash pol_hash, Param_hash Uhash) = [Param]:
     let G = x.real_form, thetaMinus = x.involution - 1, start = elapsed_ms()
+    then r = rank(x.involution -1)
+
     then () = if {TINY CASE} #LF[0]=1
     	      then let p = parameter(x,lambda,Lvd.list[LF[0][0][0]])
 	      	   then Q = monomials(finalize(p))
 	      	   then test = all(for q in Q do Uhash.lookup(q).>= or
-		   	       is_unitary_def_test(q) od)
+		   	       is_unitary_def_test(q,r\2) od)
 		   then () = if test
 		   	     then let () = for q in Q
 		      	       	    do Uhash.match(herm_center(q))
@@ -1362,7 +1366,7 @@ set local_test_GEO_hash_one_level(KGBElt x, ratvec lambda, VertexData vd,
     	      then let p = parameter(x,lambda,Lvd.list[LF[0][0][0]])
 	      	   then Q = monomials(finalize(p))
 	      	   then test = all(for q in Q do Uhash.lookup(q).>= or
-		   	       is_unitary_def_test(q) od)
+		   	       is_unitary_def_test(q,r\2) od)
 		   then () = if test
 		   	     then let () = for q in Q
 		      	       	    do Uhash.match(herm_center(q))
