@@ -6653,7 +6653,7 @@ different wrapper functions.
 Syntactically there is hardly anything simpler than simple assignment
 statements. However, semantically we distinguish assignments to local and to
 global variables. Then there are ``component assignments'' which modify
-repetitive values like row values by changing just one component; these too will
+composite values like row values by changing just one component; these too will
 distinguish local and global versions. Finally, while not present in the initial
 language design, a multiple assignment statement was added to the language that
 can take apart tuple components, just as can be done in definitions of new
@@ -6747,7 +6747,7 @@ void local_assignment::evaluate(level l) const
 
 @ The type for multiple assignments has to cater for a mixture of global and
 local names present in the destination pattern. This is done by having
-(possibly empty) vectors for both types of destination, and a |Bitmap| telling
+(possibly empty) vectors for both types of destination, and a |BitMap| telling
 for each name in left-to-right order whether it is global.
 
 The constructor here is more elaborate than for simple assignments, because
@@ -6763,6 +6763,7 @@ class multiple_assignment : public expression_base
 {
  public:
   struct local_dest {@; size_t depth, offset; };
+    // type to describe a local binding
   typedef containers::simple_list<local_dest> loc_list;
   typedef containers::simple_list<shared_share> glob_list;
  private:
@@ -6896,28 +6897,31 @@ void report_constant_modified (id_type id,const expr& e,const char* where)
   throw program_error (o.str());
 }
 
-@ Converting assignment statements follows the same lines as for applied
-identifiers, as far as discriminating between local and global is concerned.
-We first look in |id_context| for a local binding of the identifier, and then
-maybe in |global_id_table|. If found in either way, the right hand side is
-converted in a type context given by the type of the variable found. After
-forming the proper kind of assignment expression, we must as usual allow for a
-coercion to be applied to the result of the assignment, if the required |type|
+@ Assignment statements follows the same rules for locating the binding of their
+left hand side as are used for applied identifiers. We first look in
+|id_context| for a local binding of the identifier, and then maybe in
+|global_id_table|. If found in either way, the right hand side is converted in a
+type context given by the type of the variable found. After forming the proper
+kind of assignment expression, we must as usual allow for a coercion to be
+applied to the result of the assignment, if the externally required |type|
 demands this.
 
-While in most successful cases the type of the variable may direct the
-conversion of the right hand side, the type of the right hand side may
-occasionally be more specific than the previously known type of the variable
-(only if it is a specialisation of the latter will the conversion succeed).
-For instance this happens when assigning a row of concrete type to a variable
-initialised with an empty row. In those cases we call the
-|specialise| method of |frame| or of |global_id_table| to make sure the type
-assumed by the variable is recorded.
+While in most successful cases the type of the variable governs the conversion
+of the right hand side, the type of the right hand side may occasionally be more
+specific than the previously known type of the variable (but any type that is
+not a specialisation of the known type will cause the conversion to fail). For
+instance, this specialisation happens when assigning a row of concrete type to a
+variable initialised with an empty row. In those cases we call the |specialise|
+method of |frame| or of |global_id_table| to make sure the type assumed by the
+variable is recorded.
 
-Since variables of |void| type are allowed and can be assigned to (and due to
-the voiding coercion a right hand side of any type will be accepted), we must
-take care to insert a |voiding| in such rare cases, to ensure that no actual
-(non void) value will be computed and assigned.
+Since variables of |void| type are allowed (even if pretty useless), and can be
+assigned to, we must take care to test for the necessity of a |voiding|. Indeed,
+due to the voiding coercion a right hand side of any type will be accepted in an
+assignment to a variable of void type, and since in this case the voiding is not
+implied by the structure of the expression, we need to insert an explicit
+|voiding| in such rare cases, to ensure that no actual (non void) value will be
+computed and assigned.
 
 After the call to |convert_expr|, we insert some code that tries to apply an
 optimisation for certain built-in operations, to be detailed in the following
@@ -6944,17 +6948,18 @@ if ( e.assign_variant->lhs.kind==0x1) // single identifier, do simple assign
   expression_ptr r(convert_expr(e.assign_variant->rhs,rhs_type));
   if (rhs_type!=*id_t)
     // assignment will specialise identifier, record to which type it does
-  {@; if (is_local)
+  { if (is_local)
       layer::specialise(depth,offset,rhs_type);
       else
       global_id_table->specialise(lhs,rhs_type);
   }
+  @< Check whether |r| refers to an |builtin_call| of a function with nonzero
+  |hunger|, and with the identifier |lhs| as its corresponding argument;
+  if so modify that argument, and possibly the application, accordingly @>
+
   if (rhs_type==void_type and not is_empty(e.assign_variant->rhs))
     r.reset(new voiding(std::move(r)));
-@)
-  @< Check whether |r| refers to an |builtin_call| of a function with nonzero
-  |hunger|, and with the identifier |lhs| as corresponding argument;
-  if so modify that argument, and possibly the application, accordingly @>
+
 @)
   expression_ptr assign = is_local
   ? expression_ptr(new local_assignment(lhs,depth,offset,std::move(r)))
@@ -6964,21 +6969,28 @@ if ( e.assign_variant->lhs.kind==0x1) // single identifier, do simple assign
 else @< Generate and |return| a |multiple_assignment| @>
 
 @ The optimisation that is sought here, for operations that try to get exclusive
-access to an argument value so that it can be change in-place, consists of
-detaching that argument in the right hand side from a user variable that might
-hold it (as is often the case). It only applies to certain built-in operations
-(for user defined functions it would both be difficult to determine whether it
-would benefit from such a detachment in the first place, and also to ensure that
-it has no way to access the variable in question independently, as it vital for
-the optimisation to be valid) and none of these functions is variadic, which is
-why we test for |rhs| to refer to a |builtin_call|, namely the
+access to an argument value (so that it can be changed in-place), tries to
+enable such exclusive access even when the argument in question is held in a
+user variable, as is often the case. Normally the potential access via that
+variable makes the access to its operand given to the operation non-exclusive,
+so that a copy must be made for the operation to modify. However, if the result
+of that operation is then to be assigned to the same variable, one can defeat
+this unwanted and unneeded sharing by detaching the operand value from the
+variable before invoking the operation, so that during a short time the user
+variable is not bound to any value. In cases where this can be done safely, this
+is realised by replacing the ordinary applied identifier operand expression by
+a version that moves the value out of the variable, leaving it empty.
+
+This optimisation only applies to certain built-in operations, and none of them
+are variadic, so we test whether |rhs| refers to a |builtin_call|, namely the
 |overloaded_builtin_call| template instance with temple parameter |variadic| set
-to |false|. The cases catered for are either single-argument operations or
+to |false|. The cases catered for are either single-argument operations, or
 two-argument operations where the variable to be modified is expected to be a
-specific one of the two; the attribute |hunger| of the |builtin_value| template
-informs about this, with value $0$ meaning no argument to eat, values $1$ and
-$2$ for wanting to gobble up the left and right argument out of two,
-respectively, and $3$ indicates a wish to transform a unique argument.
+specific one of the two operands; the attribute |hunger| of the |builtin_value|
+template informs about this, with value $0$ stands for no desire to eat any
+argument, values $1$ and $2$ for wanting to gobble up the left respectively
+right argument out of two, and a value $3$ indicates a wish to transform a
+unique argument.
 
 @< Check whether |r| refers to an |builtin_call|... @>=
 {
@@ -6999,17 +7011,18 @@ respectively, and $3$ indicates a wish to transform a unique argument.
 
 @ Although we only need to change the |argument| field of the call pointed to by
 |rhs|, the type of |rhs| is pointer to |const builtin_call|, which only gives
-|const| access to that field (and the |const|ness was inherited from the
-|expression_ptr| type of |r|, which is a unique pointer to |const
-expression_base|; the |dynamic_cast| above would refuse to remove it). So
-instead of assigning to the field, we build a new call, using mostly the values
-found at |rhs|, but building the argument expression anew with the |pilfer|
-template argument to |global_identifier| set to |true|, which will empty the
-variable upon evaluation, as it our goal here. An alternative would be to
-explicitly ignore the |const|ness by assigning to
-|*const_cast<expression_ptr*>(&c)|; since such actions are frowned upon we shall
-not do so here, but in the next module where the necessary reconstruction
-efforts would be even more elaborate, we shall prefer to cheat.
+|const| access to |rhs->argument| (and in initialising |rhs| above, this
+|const|ness was inherited from the |expression_ptr| type of |r|, which is a
+unique pointer to |const expression_base|; the |dynamic_cast| used would fail to
+work if we had omitted the |const|). So rather than assigning to |rhs->argument|
+we build a new call, using mostly the values found at |rhs|, and assign it
+to~|r|. In contrast to the original call, the new one sets the |pilfer| template
+argument to |local_identifier| or |global_identifier| to |true|; at run time
+this will cause evaluation to empty the variable, as is our goal here. An
+alternative would be to defeat the |const|ness by assigning to
+|const_cast<expression_ptr&>(c)|. Such casts are frowned upon, so we shall not
+use one here. But in the next module the reconstruction efforts needed
+would be even more tedious, and there we shall choose to cheat.
 
 @< See if |rhs->argument| is the variable |lhs|, and if so...@>=
 { const expression_ptr& c = rhs->argument;
@@ -7023,7 +7036,37 @@ efforts would be even more elaborate, we shall prefer to cheat.
   }
 }
 
-@ 
+@ When the built-in function that might benefit from changing a value in-place
+takes two arguments, the value of |h| indicates which argument could so be
+modified: left for $h=1$ and right for $h=2$. The change can only be applied if
+there is a $2$-tuple of arguments, and the appropriate argument expression is an
+applied identifier the coincides with the destination variable (since both
+occurrences of the identifier arise in the same context, having the same name
+ensures they will identify the same variable). When it applies, we want the
+variable to be evaluated after the other argument, so that in the event where
+that other argument also references the same variable, it will not find that
+variable already detached from its value. Therefore the case $h=2$ is simpler
+here, as the normal left-to-right evaluation order can be used.
+
+In either case as before we first build a ``pilfering applied identifier''
+expression |new_arg| (the pilfering being signalled by the |true| template
+argument) with the otherwise same characteristics as the old applied identifier.
+We still face the difficulty signalled above that we want to (move-)assign
+|new_arg| to |c|, but that is a reference to |const expression_ptr|. Rather than
+to construct anew all subexpressions that are to contain |new_arg|, we choose to
+remove the |const| from the reference using a |const_cast|; doing so is safe
+here, as no one else shares the expression under construction yet. For $h=2$,
+that trick directly gives us what we want, but for $h=1$ we must also rebuild the
+tuple expression as one with right-to-left evaluation semantics. In this case we
+must not only defeat the |const|-ness when assigning to |rhs->argument|, but we
+must also defeat the |const|-ness of the \emph{other} component of the old
+$2$-tuple: we want to move from that $2$-tuple that is not going to get used,
+to avoid having to make a deep copy, but moving from a reference to constant
+will not work, and would instead try to copy construct a temporary, which is not
+possible for |std::unique_ptr| instances. These uses of |const_cast| amount
+to paying the price for wanting to rebuild the tree structure accessed by
+|expressions_ptr| that was not designed to allow alteration after construction.
+
 @< See if the argument of |rhs| indicated by $h\in\{1,2\}$ is...@>=
 {
   const tuple_expression* p =
@@ -7041,14 +7084,13 @@ efforts would be even more elaborate, we shall prefer to cheat.
         std::unique_ptr<tuple_expression_tmpl<true> > args @|
           (new tuple_expression_tmpl<true>(2));
         args->component[0] = std::move(new_arg);
-        auto src = const_cast<expression_ptr*>(&p->component[1]);
-        args->component[1] = std::move(*src);
-          // move other argument into new pair
-        auto dst = const_cast<expression_ptr*>(&rhs->argument);
-        *dst = std::move(args);
+        args->component[1] =
+          // move other argument into new pair, after removing |const|-ness
+          std::move(const_cast<expression_ptr&>(p->component[1]));
+        const_cast<expression_ptr&>(rhs->argument) = std::move(args);
       }
       else
-        *const_cast<expression_ptr*>(&c)= std::move(new_arg);
+        const_cast<expression_ptr&>(c)= std::move(new_arg);
     }
   }
 }
@@ -7057,11 +7099,18 @@ efforts would be even more elaborate, we shall prefer to cheat.
 some semi-local variables, to be accessible from within the recursive function
 but not renewed for each recursive call. The solution of passing around a
 reference to a structure containing those variables is elegantly realised by
-definition the traversal function as a recursive method |thread| of that
-structure (the implicit reference |*this| is passed around unchanged). We will
-also use the structure to keep some information after |thread| has completed,
-allowing an additional method |refine| to do some final action at the completion
-of type checking for the multiple assignment.
+defining the traversal function as a recursive method |thread| of that structure
+(the implicit reference |*this| is passed around unchanged). The goal of
+|thread| is on one hand to determine the type expected for the right hand side
+of the assignment, and to collect the target variables over which the components
+of the right hand side value will be distributed; for the former an output
+parameter |type| is used, while the latter is stored in the fields of the
+|threader| structure itself, which fields are |public|, so no methods need to be
+declared to be able to recover them. After |thread| has completed, we can use
+another method |refine| to specialise, if necessary, the types associated to the
+variables in question. Those variables have been stored in the |locs| and
+|globs| fields, and may get modified there. All in all, and somewhat
+surprisingly, both methods return |void|.
 
 @< Local class definitions @>=
 struct threader
@@ -7102,33 +7151,49 @@ void threader::thread(const id_pat& pat,type_expr& type)
       thread(*it,*t_it);
   }
   if ((pat.kind&0x1)!=0)
-  { id_type id = pat.name;
-    const_type_p id_t; // will point to type of local or global |id|
-    @< Check that |id| did not occur previously in this left hand side @>
-    size_t i,j; bool is_const;
-    const bool is_local = (id_t=layer::lookup(id,i,j,is_const))!=nullptr;
-    if (not is_local and (id_t = global_id_table->type_of(id,is_const))==nullptr)
-      report_undefined(id,e,"multiple assignment");
-    if (is_const)
-      report_constant_modified(id,e,"multiple assignment");
-    is_global.extend_capacity(not is_local);
-@)
-    if (not type.specialise(*id_t))
-    // incorporate type found for |id| into |type|
-      @< Throw an error to signal type incompatibility for |id| @>
-    assoc.push_back(std::make_pair(id,&type));
-      // record pointer to |type| for later refinement of |id|
-    if (is_local)
-      locs.push_back(multiple_assignment::local_dest{i,j});
-    else
-      globs.push_back(global_id_table->address_of(id));
-  }
+  @< Look up type associated to |pat.name|, and after making some checks,
+     record it in |type|, updating our fields |locs|, |globs|, |is_global| and
+     |assoc| @>
 }
 
-@ The error signalled here should really be a syntax error, but the fact that
-a generator without conflicts can be generated for our grammar depends on the
-pattern after \.{set} being independent of whether \.= or \.{:=} follows it;
-this is why we allowed these qualifiers to arrive up to this point.
+@ While there are several things to do when processing each target, everything
+is quite straightforward here. We need to check for the absence of repeated
+identifiers, look up each identifier locally and maybe globally, refuse
+assigning to identifiers that were marked as being constant, transfer the type
+information from that lookup into |type| using a |specialise| call, and finally
+recording the localisation of the identifiers in our various fields.
+
+@< Look up type associated to |pat.name|, and after making some checks... @>=
+{ id_type id = pat.name;
+  const_type_p id_t; // will point to type of local or global |id|
+  @< Check that |id| did not occur previously in this left hand side @>
+  size_t i,j; bool is_const;
+  const bool is_local = (id_t=layer::lookup(id,i,j,is_const))!=nullptr;
+  if (not is_local and (id_t = global_id_table->type_of(id,is_const))==nullptr)
+    report_undefined(id,e,"multiple assignment");
+  if (is_const)
+    report_constant_modified(id,e,"multiple assignment");
+  is_global.extend_capacity(not is_local); // push one bit onto the |BitMap|
+@)
+  if (not type.specialise(*id_t))
+  // incorporate type found for |id| into |type|
+    @< Throw an error to signal type incompatibility for |id| @>
+  assoc.push_back(std::make_pair(id,&type));
+    // record pointer to |type| for later refinement of |id|
+  if (is_local)
+    locs.push_back(multiple_assignment::local_dest{i,j});
+  else
+    globs.push_back(global_id_table->address_of(id));
+}
+
+@ The error signalled here is quite silly: the user has qualified a target
+identifier in the multiple assignment with ``\.!''. This should really be a
+syntax error, as it is indeed in the case of simple assignments. But the fact
+that a parser without conflicts can be generated for our grammar depends on the
+fact that the pattern allowed after \.{set} is independent of whether \.=
+or \.{:=} follows it; this is why we allowed these qualifiers to sneak and only
+be detected here during context sensitive analysis. We are in fact paying here
+for the use of the same keyword for two different purposes,
 
 @< Throw an error to signal forbidden qualifier \.! before |pat.name| @>=
 { std::ostringstream o;
@@ -7226,15 +7291,15 @@ stored in |thr|.
 %
 The language we are implementing does not employ the notion of sub-object; in
 other words if one sets $b=a[i]$ for some list, vector or matrix $a$, then $b$
-will behave as a copy of the entry $a[i]$ rather than as an alias, so
-subsequent assignment to $b$ will not affect~$a$ or vice versa. (This does no
-prevent us to share storage between $b$ and $a$ initially, it just means the
-sharing should be broken if $b$ or $a$ are modified; we practice
-copy-on-write.) This simplifies the semantic model considerably; notably we
-avoid the distinction necessary for instance in Python between a (compound)
-value and the object that holds it, because in \.{axis} values that share the
-same memory behave exactly like values in separate memory that happen to be
-equal.
+will behave as a copy of the entry $a[i]$ rather than as an alias, so subsequent
+assignment to $b$ will not affect~$a$ or vice versa. (This does no prevent us to
+share storage between $b$ and $a$ initially, it just means the sharing should be
+broken if $b$ or $a$ are modified; we practice copy-on-write.) This simplifies
+the semantic model considerably; it makes no distinction between primitive and
+composite values, avoids the distinction necessary for instance in Python or
+Java between a (compound) value and the object that holds it. In \.{axis},
+values that share the same memory behave exactly like values in separate memory
+locations that happen to be equal.
 
 However, if we want to allow creating composite values by sequentially setting
 their components, we need to allow assignments of the form $a[i]:=c$ to achieve
@@ -7243,20 +7308,21 @@ $a[i]$ of~$a$ (not having such a notion). The meaning of this is assignment will
 be taken to be that of assigning a new value to all of $a$, which differs from
 the original value only at index~$i$ (it will however be implemented more
 efficiently if the storage of $a$ is not currently shared, as would usually be
-the case at least from the second such assignment to~$a$ on). The interpreter
-will treat such component assignments as a whole, using an expression type with
-three components $a,i,c$, in which $a$ must be an identifier. The type of this
-identifier may be one of several cases that allow component assignments: any row
-type, vector, matrix, or an Atlas-specific polynomial type. The class
-|component_assignment| below is a base class from which specific classes for
-local and global assignments will be derived; its only new data member is an
-expression |index| which at run time determines the component that is to be
-changed (the aggregate name |lhs| and expression |rhs| for the value to be
-assigned are members of its |assignment_expr| base class). This class provides a
-method |assign| that will do the real work for the |evaluate| methods of the
-derived classes, after those have located address of the aggregate to be
-modified and the type of component assignment to apply. Also, the class
-itself is templated over a Boolean |reversed| to allow for reversed indexing.
+the case, at least from the second such assignment to~$a$ onward). The
+interpreter will treat such component assignments as a whole, using an
+expression type with three components $a,i,c$, in which $a$ must be an
+identifier. The type of this identifier may be one of several cases that allow
+component assignments: any row type, vector, matrix, or an Atlas-specific
+polynomial type. The class |component_assignment| below is a base class from
+which specific classes for local and global assignments will be derived; its
+only new data member is an expression |index| which at run time determines the
+component that is to be changed (the aggregate name |lhs| and expression |rhs|
+for the value to be assigned are members of its |assignment_expr| base class).
+This class provides a method |assign| that will do the real work for the
+|evaluate| methods of the derived classes, after those have located address of
+the aggregate to be modified and the type of component assignment to apply.
+Also, the class itself is templated over a Boolean |reversed| to allow for
+reversed indexing.
 
 @< Type definitions @>=
 
@@ -7280,7 +7346,7 @@ computed with aid of its previous value; this both avoids computing the indexing
 expression twice, and allows to try to optimise the case where the component can
 be modified without duplication when the transformation allows for modification
 in-place. And finally we define a base class |field_assignment| for assignments
-to a field of a value of some tuple type (whose usage requires declaring names
+to a field of a value of some tuple type (whose usage requires declaring named
 field selectors for that type).
 
 @< Type definitions @>=
