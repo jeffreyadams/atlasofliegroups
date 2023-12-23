@@ -723,15 +723,21 @@ set Aq(RealForm G,ratvec lambda)=Param:
 {----------------------Good/Fair conditions------------------}
 
 {. Decide whether a parameter defines a one-dimensional representation. .}
-set is_one_dimensional(Param p)=bool:
-  is_finite_dimensional(p) and dimension(p)=1
+{ set is_one_dimensional(Param p)=bool:
+  is_finite_dimensional(p) and dimension(p)=1}
+set is_one_dimensional(Param p) = bool:
+    let G = p.real_form, gamma = p.infinitesimal_character
+    in (#tau(p) = G.semisimple_rank) and
+        all(for av in G.simple_coroots do av*gamma = 1 od)
+
 
 {. Decide whether a parameter defines a unitary one-dimensional character. .}
 set is_unitary_character(Param p)=bool:
-  if is_one_dimensional(p) then let ic=infinitesimal_character(p) in
+  is_one_dimensional(p) and equivalent(twist(p),p)
+  {if is_one_dimensional(p) then let ic=infinitesimal_character(p) in
   let theta=involution(x(p)) in let lam=ic-rho(root_datum(p)) in
   theta*lam=lam
-  else false fi
+  else false fi}
 
 {. Decide whether A_q(lambda) is good. .}
 set is_good(KGBElt x_in,ratvec lambda_in,ratvec lambda_q_in)=bool:

@@ -93,13 +93,14 @@ rat_as_int(f(ad.rd.highest_root)/f(ad.affine_roots[0]))
 {apply folding_order to each simple factor}
 set folding_orders(AffineDatum ad)=[int]:
 let f(ratvec v)=invariant_form(ad.rd)(v,v) in
-for alpha@i in ad.rd.highest_roots do
-{let ()=prints("ad:", ad) in
-let ()=prints("simple roots:", ad.rd.simple_roots) in
-let ()=prints("first affine root:", ad.rd.simple_factors[0].highest_root) in
-let ()=prints("second affine root:", ad.rd.simple_factors[1].highest_root) in
-let ()=prints("fg(alpha):", f(alpha), " f(affine):", f(ad.affine_roots[i])) in}
-rat_as_int(f(alpha)/f(ad.affine_roots[i]))  od
+{
+for alpha@i in ad.rd.highest_roots do  
+{rat_as_int(f(alpha)/f(ad.affine_roots[i]))  od
+NO: these roots might not be in the same order as ad.affine_roots}
+}
+for alpha in ad.affine_roots do
+ let beta=highest_root(simple_factor(ad.rd,alpha)) in
+ rat_as_int(f(beta)/f(alpha)) od
 
 {the affine reflections are labeled -1,-2,...}
 set_type AffineWeylElt = (AffineDatum ad, [int] w)

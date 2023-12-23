@@ -386,10 +386,7 @@ set local_testK_hash(KGBElt x, ratvec lambda, VertexData vd,
     [[FacetVertsKHash]] FVKH, [[int]] eq, [[int]] gr, [vec] classListByFacet,
     int ht, Param_hash Uhash) = [[FacetVertsKHash]]:
     let tester = ((Param->bool): (Param p) bool:
-	      Uhash.lookup(p).>= or 
-	      (if ht.>= then is_unitary_to_ht(p, ht)
-	      	 	  else is_unitary(p)
-	      fi))
+	      Uhash.lookup(p).>= or is_unitary_to_ht(p, ht))
      in local_testK_hash(x, lambda, vd, FVKH, eq, gr, classListByFacet, tester, Uhash)
 
 { Input is candidate facets, and graph info. Output is the tester-unitary ones. 
@@ -535,7 +532,7 @@ set local_test_GEO_hash_dumb(KGBElt x, ratvec lambda, VertexData vd, VertexData 
     then ((eq,gr),IUCL,CLBF) = localGraphK(LFDKH)
            {remove from LFDKH all facets failing is_unitary}
     then () = LFDKH := local_testK_hash(x,lambda,Lvd, LFDKH, eq, gr, CLBF, tester, Uhash)
-    then () = if test_verbose then prints("unitary facet counts to dim 1: ",
+    then () = if test_verbose then prints("unitary candidate facet counts to dim 1: ",
     for list in LFDKH do #list od) fi
     then D = int:1
     then () = while (D <= rank(x.involution-1) - 1  ) and
@@ -1102,8 +1099,8 @@ set sphericalK_levels_B(RealForm G) = [Param]:
 set spherical_general(RealForm G, (KGBElt, ratvec->[Param]) local) = [Param]:
     let start = elapsed_ms()
     then answer = local(x_open(G), G.rho)
-    then () =  if time_verbose
-    	       then prints("Total time ", print_time_string(elapsed_ms() -start)) fi
+    then () =  {if time_verbose
+    	       then} prints("Total time ", print_time_string(elapsed_ms() -start)) {fi}
     in answer
 
 set spherical_dumb(RealForm G) = [Param]:

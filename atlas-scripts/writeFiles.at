@@ -1,5 +1,5 @@
 < basic.at {for x}
-
+<groups.at {for GL(1,R)}
 {These functions are meant for writing .at files that can later be
 read by atlas. For files of type [vec], such writing can be done ad
 hoc very easily; but the ad hoc files, which might look like
@@ -191,11 +191,14 @@ set write_p_pols(RealForm G, [ParamPol] pPols) = void:
 {to write a list of Param's for a single RealForm}
 set write_param_list([Param] list, string listName) = void:
     begin
-	write_real_form(list[0].real_form, "G_temp")
+	let G_temp = GL(1,R)
+	then () = if #list > 0 then G_temp := list[0].real_form
+	fi
+	; write_real_form(G_temp, "G_temp")
 	; prints("set Nullp = U(1,0).trivial")
 	; prints("set ",listName,"=[Param]: for i:",#list,
 	  	      " do Nullp od")
-        ; for p@i in list
+        in for p@i in list
 	  do let (,x) = %p.x
 	     in prints("void:",listName,"[",i,"]:=parameter(KGB(G_temp,",
 	     	x,"),",p.lambda,",",p.nu,")")

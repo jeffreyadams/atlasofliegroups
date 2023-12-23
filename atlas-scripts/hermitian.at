@@ -2,6 +2,7 @@
 <convert_c_form.at
 <hash.at {for KTypePol_hash}
 <count.at {for unitary_test_counter}
+<time.at {for print_time_string}
 
 set deformedParams = for m:1500 do make_Param_hash() od
 set twistedDeformedParams = for m:1500 do make_Param_hash() od
@@ -205,10 +206,17 @@ set hermitian_form_irreducible (Param p) = KTypePol:
   else check_hermitian(p,true); twisted_c_form_irreducible(p)
   fi.convert_cform_hermitian
 
+set unitaryTime = int: 0
+set show_unitary_time() = void: prints("Time so far for is_unitary = ",
+    		      print_time_string(unitaryTime))
+
 { compute Hermitian form on p, and report if it is unitary }
 set is_unitary (Param p) = bool:
   unitary_test_counter.use();
-  p.is_hermitian and hermitian_form_irreducible(p).is_pure
+  let start_time = elapsed_ms(), answer =
+      p.is_hermitian and hermitian_form_irreducible(p).is_pure
+  then () = unitaryTime+:=elapsed_ms() - start_time
+  in answer
 
 { compute Hermitian form on p, and report
 certificate; unitary means empty certificate }
