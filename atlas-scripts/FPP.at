@@ -1,3 +1,6 @@
+<FPP_globalDirac.at
+<FPP_global.at
+
 {This script runs (backward, for no serious reason) over a sequence of
 KGBElts x in E7_s, beginning at start and ending before start +
 interval. For each x, it computes the corresponding lambdas; then for
@@ -23,13 +26,42 @@ I'm not sure whether my little experiment proves that this is viable
 idea or not. My do-them-all jobs on atlas are computing an average of
 one KGBElt each 90 minutes.
 }
-<FPP_global.at
+
+set params(Param_hash unitary_hash)=[Param]:
+ for i:unitary_hash.size() do unitary_hash.index(i) od
+ 
+set FPP_unitary_hash(RealForm G, int x)=[Param]:let ()=FPP_unitary_hash([KGB(G,x)]) in params(unitary_hash)
+set FPP_unitary_hash2(RealForm G, int x)=[Param]:let ()=FPP_unitary_hash2([KGB(G,x)]) in params(unitary_hash)
+set FPP_unitary_hash_one_level(RealForm G, int x)=[Param]:let ()=FPP_unitary_hash_one_level([KGB(G,x)]) in params(unitary_hash)
+
 set test_verbose=false
+coh_ind_flag:=true   {recommended; don't look for coh ind from Arthur unipotents}
+revert_flag:=true     {false: only use the given function; true: try other possibly faster ones}
+deform_flag:=false
+
+{output flags:}
+every_KGB_flag:=true
+every_lambda_flag:=true
+every_lambda_deets_flag:=true
+test_slightly_verbose:=true
+test_verbose:=true
 
 
 {to write a list of Param's for a single RealForm}
 {only change from writeFiles.at: "<groups.at"}
 set write_param_list_jda([Param] list, string listName) = void:
+if #list=0
+  then prints(listName,"[Param]:=[]")
+else
+  prints("set Nullp = U(1,0).trivial");
+  prints("set ",listName,"=[Param]: for i:",#list," do Nullp od");
+  for p@i in list
+    do let (,x) = %p.x
+     in prints("void:",listName,"[",i,"]:=parameter(KGB(G_temp,",x,"),",p.lambda,",",p.nu,")")
+    od
+fi
+
+{set write_param_list_jda([Param] list, string listName) = void:
     begin
         prints("<groups.at");
 	write_real_form(list[0].real_form, "G_temp")
@@ -41,7 +73,7 @@ set write_param_list_jda([Param] list, string listName) = void:
 	     in prints("void:",listName,"[",i,"]:=parameter(KGB(G_temp,",
 	     	x,"),",p.lambda,",",p.nu,")")
 	  od
-    end
+    end}
 
 set FPP(RealForm G,int KGB_number)=[Param]:
 let vd = FPP_vertex_data(G) then
