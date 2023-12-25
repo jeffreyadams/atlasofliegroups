@@ -44,15 +44,22 @@ set time_test([Param] params) = void:
     let start_time = elapsed_ms(), N = #params
     then ps = for p in params do first_param(finalize(p)) od
     then bools = for j:N do false od
+    then step = N
+    then () = if test_slightly_verbose
+    	      then step := step\20
+	      fi
+    then () = if test_verbose
+    	      then step := 1
+	      fi
     then times = vec: null(N)
     then () = for p@j in ps
     	      do let startp = elapsed_ms()
 	      	 then () = bools[j]:= is_unitary(p)
 		 then () = times[j] := elapsed_ms() - startp
-		 { then () = if j%(N\20) = 0
-		      	   then prints("up to ",j," out of ",N,
-			   	"; time so far = ", print_time_string(elapsed_ms()-start_time))
-			   fi}
+		 then () = if j%step = 0
+		      	   then prints("param ",j," tests ",bools[j]," in ",
+			   	print_time_string(times[j]))
+			   fi
 		 in ()
 	      od
     then maxLoc = max_loc(times)
@@ -74,11 +81,22 @@ set time_next_test([Param] params, int m) = void:
     let start_time = elapsed_ms(), N = #params
     then ps = for p in params do first_param(finalize(p)) od
     then bools = for j:N do false od
+    then step = N
+    then () = if test_slightly_verbose
+    	      then step := step\20
+	      fi
+    then () = if test_verbose
+    	      then step := 1
+	      fi
     then times = vec: null(N)
     then () = for p@j in ps
     	      do let startp = elapsed_ms()
 	      	 then () = bools[j]:= is_unitary_test_next(p,m)
 		 then () = times[j] := elapsed_ms() - startp
+		 then () = if j%step = 0
+		      	   then prints("param ",j," tests ",bools[j]," in ",
+			   	print_time_string(times[j]))
+			   fi
 		 in ()
 	      od
     then maxLoc = max_loc(times)
@@ -99,16 +117,30 @@ set time_next_test(int m) = time_next_test(local_verts_param_hash, m)
 set time_next([Param] params, int m) = void:
     let start_time = elapsed_ms(), N = #params
     then ps = for p in params do first_param(finalize(p)) od
+    then step = N
+    then () = if test_slightly_verbose
+    	      then step := step\20
+	      fi
+    then () = if test_verbose
+    	      then step := 1
+	      fi
     then bools = for j:N do false od
+    then step = N
+    then () = if test_slightly_verbose
+    	      then step := step\20
+	      fi
+    then () = if test_verbose
+    	      then step := 1
+	      fi
     then times = vec: null(N)
     then () = for p@j in ps
     	      do let startp = elapsed_ms()
 	      	 then () = bools[j] := is_unitary_to_hts(p, next_heights(p,m))
 		 then () = times[j] := elapsed_ms() - startp
-		 { then () = if j%(N\20) = 0
-		      	   then prints("up to ",j," out of ",N,
-			   	"; time so far = ", print_time_string(elapsed_ms()-start_time))
-			   fi}
+		 then () = if j%step = 0
+		      	   then prints("param ",j," tests ",bools[j]," in ",
+			   	print_time_string(times[j]))
+			   fi
 		 in ()
 	      od
     then maxLoc = max_loc(times)
@@ -130,12 +162,23 @@ set time_def([Param] params, int m) = void:
     let start_time = elapsed_ms(), N = #params
     then ps = for j:N do first_param(finalize(params[j])) od
     then bools = for j:N do false od
+    then step = N
+    then () = if test_slightly_verbose
+    	      then step := step\20
+	      fi
+    then () = if test_verbose
+    	      then step := 1
+	      fi
     then times = vec: null(N)
     then () = for p@j in ps
     	      do let startp = elapsed_ms()
 	      	 then (DEFHTS,) = deform_hts(p,m)
 	      	 then () = bools[j]:= is_unitary_to_hts(p, DEFHTS)
 		 then () = times[j] := elapsed_ms() - startp
+		 then () = if j%step = 0
+		      	   then prints("param ",j," tests ",bools[j]," in ",
+			   	print_time_string(times[j]))
+			   fi
 		 in ()
 	      od
     then maxLoc = max_loc(times)
@@ -156,12 +199,23 @@ set time_def_test([Param] params, int m) = void:
     let start_time = elapsed_ms(), N = #params
     then ps = for j:N do first_param(finalize(params[j])) od
     then bools = for j:N do false od
+    then step = N
+    then () = if test_slightly_verbose
+    	      then step := step\20
+	      fi
+    then () = if test_verbose
+    	      then step := 1
+	      fi
     then times = vec: null(N)
     then () = for p@j in ps
     	      do let startp = elapsed_ms()
 	      	 then (DEFHTS,) = deform_hts(p,m)
 	      	 then () = bools[j]:= is_unitary_test(p, DEFHTS)
 		 then () = times[j] := elapsed_ms() - startp
+		 then () = if j%step = 0
+		      	   then prints("param ",j," tests ",bools[j]," in ",
+			   	print_time_string(times[j]))
+			   fi
 		 in ()
 	      od
     then maxLoc = max_loc(times)
