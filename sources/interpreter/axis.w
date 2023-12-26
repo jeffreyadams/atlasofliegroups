@@ -7322,7 +7322,10 @@ This class provides a method |assign| that will do the real work for the
 |evaluate| methods of the derived classes, after those have located address of
 the aggregate to be modified and the type of component assignment to apply.
 Also, the class itself is templated over a Boolean |reversed| to allow for
-reversed indexing.
+reversed indexing. We similarly define a base class |field_assignment| for
+assignments to a field of a value of some tuple type (whose usage requires
+declaring named field selectors for that type).
+
 
 @< Type definitions @>=
 
@@ -7334,40 +7337,6 @@ struct component_assignment : public assignment_expr
    (id_type a,expression_ptr&& i,expression_ptr&& r)
    : assignment_expr(a,std::move(r)), index(i.release()) @+{}
   virtual ~component_assignment() = default;
-
-  virtual void print (std::ostream& out) const;
-@)
-  void assign(level l,shared_value& aggregate,subscr_base::sub_type kind) const;
-};
-
-@ We define a variant of |component_assignment| called
-|component_transform_assignment|, in which the new value of the component is
-computed with aid of its previous value; this both avoids computing the indexing
-expression twice, and allows to try to optimise the case where the component can
-be modified without duplication when the transformation allows for modification
-in-place. And finally we define a base class |field_assignment| for assignments
-to a field of a value of some tuple type (whose usage requires declaring named
-field selectors for that type).
-
-@< Type definitions @>=
-
-template <bool reversed>
-struct component_transform_assignment : public assignment_expr
-{ using ptr_to_builtin = std::shared_ptr<const builtin_value<false> >;
-  source_location loc; // as in |call_base|
-  std::string name; // as in |overloaded_call|
-  ptr_to_builtin f; // as in |overloaded_builtin_call<false>|
-  wrapper_function f_ptr; // shortcut, as in |overloaded_builtin_call<false>|
-  expression_ptr index; // as in |component_assignment|
-@)
-  component_transform_assignment
-   (id_type a, expression_ptr&& i,expression_ptr&& r,
-    const ptr_to_builtin& fun,
-    const std::string& name, const source_location& loc)
-   : assignment_expr(a,std::move(r))
-   , loc(loc), name(fun->print_name), f(fun), f_ptr(fun->val)
-   , index(i.release()) @+{}
-  virtual ~component_transform_assignment() = default;
 
   virtual void print (std::ostream& out) const;
 @)
@@ -7385,6 +7354,41 @@ struct field_assignment : public assignment_expr
   virtual void print (std::ostream& out) const;
 @)
   void assign(level l,shared_value& tupple) const;
+};
+
+@ We define a variant of |component_assignment| called |component_transform|, in
+which the new value of the component is computed with aid of its previous value;
+this both avoids computing the indexing expression twice, and allows to try to
+optimise the case where the component can be modified without duplication when
+the transformation allows for modification in-place. The second point is
+relevant only in the case of a component of a row-of type aggregate (rather than
+a vector or matrix, whose components cannot be shared anyway), so we limit this
+to cases corresponding to |kind==subscr_base::row_entry|, and there is no need
+for a |kind| argument to |transform|.
+
+@< Type definitions @>=
+
+template <bool reversed>
+struct component_transform : public assignment_expr
+{ using ptr_to_builtin = std::shared_ptr<const builtin_value<false> >;
+  source_location loc; // as in |call_base|
+  std::string name; // as in |overloaded_call|
+  ptr_to_builtin f; // as in |overloaded_builtin_call<false>|
+  wrapper_function f_ptr; // shortcut, as in |overloaded_builtin_call<false>|
+  expression_ptr index; // as in |component_assignment|
+@)
+  component_transform
+   (id_type a, expression_ptr&& i,expression_ptr&& r,
+    const ptr_to_builtin& fun,
+    const std::string& name, const source_location& loc)
+   : assignment_expr(a,std::move(r))
+   , loc(loc), name(fun->print_name), f(fun), f_ptr(fun->val)
+   , index(i.release()) @+{}
+  virtual ~component_transform() = default;
+
+  virtual void print (std::ostream& out) const;
+@)
+  void transform(level l,shared_value& aggregate) const;
 };
 
 @ Printing reassembles the subexpressions according to the input syntax,
@@ -7427,7 +7431,8 @@ public:
 };
 
 @ The constructor for |global_component_assignment| stores the address of the
-aggregate object and the component kind.
+aggregate object, the expression to be assigned, and the component kind. The
+other cases don not store a component kind.
 
 @< Function def... @>=
 template <bool reversed>
@@ -7436,21 +7441,30 @@ global_component_assignment<reversed>::global_component_assignment @|
 : base(a,std::move(i),std::move(r))
 , kind(k),address(global_id_table->address_of(a)) @+{}
 @)
+template <bool reversed>
+global_component_transform<reversed>::global_component_transform @|
+    (id_type a, expression_ptr&& i,expression_ptr&& r,
+    const typename base::ptr_to_builtin& fun,
+    const std::string& name, const source_location& loc)
+: base(a,std::move(i),std::move(r),fun,name,loc)
+, address(global_id_table->address_of(a)) @+{}
+@)
 global_field_assignment::global_field_assignment @|
   (id_type a, unsigned pos,expression_ptr&& r)
 : field_assignment(a,pos,std::move(r))
 , address(global_id_table->address_of(a)) @+{}
 
 @ It is in evaluation that component assignments differ most from ordinary ones.
-The work is delegated to the |assign| method of the base class, which is given a
-reference to the |shared_value| pointer holding the current value of the
-aggregate; it is this pointer that is in principle modified. In the templated
-context of |global_component_assignment::evaluate|, the base class must be
-explicitly mentioned using the local type name |base| when calling its |assign|
-method; while |global_field_assignment::evaluate| is also calling a method of
-that name from its base class, no local type name is needed (nor is it defined)
-in this case. Like when fetching the value of a global variable, we must be
-aware of a possible undefined value in the variable.
+The work is delegated to the |assign| method of the base class (to be defined
+below), which is given a reference to the |shared_value| pointer holding the
+current value of the aggregate; it is this pointer that is in principle
+modified. In the templated context of |global_component_assignment| and
+|global_component_transform|, the base class must be explicitly mentioned using
+the local type name |base| when calling its |assign| method. On the other hand,
+while |global_field_assignment::evaluate| is also calling a method of that name
+from its base class, no local type name is needed (nor is it defined) in this
+case. Like when fetching the value of a global variable, we must be aware of a
+possible undefined value in the variable.
 
 @< Function def... @>=
 template <bool reversed>
@@ -7474,17 +7488,30 @@ void global_field_assignment::evaluate(expression_base::level l) const
   }
   assign(l,*address); // call method from base class (not called |base| here)
 }
+@)
+template <bool reversed>
+void global_component_transform<reversed>::evaluate(expression_base::level l)
+  const
+{ if (address->get()==nullptr)
+  { std::ostringstream o;
+    o << "Transforming component of uninitialized variable " @|
+      << main_hash_table->name_of(this->lhs);
+    throw runtime_error(o.str());
+  }
+  base::transform(l,*address);
+}
 
 @ The |assign| method, which will also be called for local component
-assignments, starts by the common work of evaluating the (component) value to
-be assigned, and of then making sure the aggregate variable is made to point
-to a unique copy of its current value, which copy can then be modified in
-place. The index is not yet evaluated at this point, but this will be done
-inside the |switch| statement; this is because possible expansion of a tuple
-index value depends on~|kind|. For actually changing the aggregate, we must
-distinguish cases according to the kind of component assignment at hand.
-Assignments to components of rational vectors and of strings will be
-forbidden, see module @#comp_ass_type_check@>.
+assignments, starts by the common work of evaluating the (component) value to be
+assigned. For actually changing the aggregate, we must distinguish cases
+according to the kind of component assignment at hand. Assignments to components
+of rational vectors and of strings will be forbidden, see module
+@#comp_ass_type_check@>. The evaluation of the aggregate index is done inside
+this case distinction, because possible expansion of a tuple index value depends
+on~|kind|. Finally we shall make sure we hold a unique copy of the aggregate;
+since |uniquify|, which does this operation, needs to know the type of the
+aggregate in a template argument, its call has to be done inside each branch.
+
 
 @< Function def... @>=
 template <bool reversed>
