@@ -35,7 +35,7 @@ set FPP_unitary_hash2(RealForm G, int x)=[Param]:let ()=FPP_unitary_hash2([KGB(G
 set FPP_unitary_hash_one_level(RealForm G, int x)=[Param]:let ()=FPP_unitary_hash_one_level([KGB(G,x)]) in params(unitary_hash)
 
 set test_verbose=false
-coh_ind_flag:=true   {recommended; don't look for coh ind from Arthur unipotents}
+coh_ind_flag:=false   {recommended; don't look for coh ind from Arthur unipotents}
 revert_flag:=true     {false: only use the given function; true: try other possibly faster ones}
 deform_flag:=false
 

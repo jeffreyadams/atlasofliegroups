@@ -8,7 +8,8 @@ from multiprocessing import Process, Queue
 progress_step_size=10 #how often to report progress
 
 FPP_at_file="FPP.at" #default
-extra_files=["global_facets_E7.at","coh_ind_E7_to_hash.at"]
+FPP_py_file="FPP.py" #default
+extra_files=["global_facets_E7.at","coh_ind_E7_to_hash.at","E7except589to15851.at"]
 
 #simple reporting function
 def report(q,i,proc):
@@ -35,7 +36,6 @@ def atlas_compute(i,pid):
       for file in extra_files:
          print("extra: ", file)
          log.write(file + " ")
-   log.write("\n")
    log.write("Job number: " + str(i) + "\n")
    log.write("Job pid: " +  str(pid) + "\n")
    log.write("function: " +  test_function + "\n")
@@ -134,6 +134,12 @@ def main(argv):
    opts, args = getopt.getopt(argv, "d:n:g:k:e:s:S:f:aD")
    print("Starting at ", time.ctime())
    print("command line: ", " ".join(sys.argv))
+   print("extra files:")
+   if len(extra_files)==0:
+      print(" none")
+   else:
+      for file in extra_files:
+         print("  ",file)
    for opt, arg in opts:
       if opt in ('-g'):
           group=arg
@@ -211,6 +217,8 @@ def main(argv):
    print("Number of cores available: ", cpu_count)
    shutil.copy(FPP_at_file,directory + "/logs")
    print("Copied " + FPP_at_file + " to logs directory")
+   shutil.copy(FPP_py_file,directory + "/logs")
+   print("Copied " + FPP_py_file + " to logs directory")
    all_files=" ".join([FPP_at_file] + extra_files)
    print("atlas will load: " + all_files)
 
