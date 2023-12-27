@@ -251,6 +251,8 @@ set time_def_test(Param_hash LFhash, int m) = void:
 set time_def_test(int m) = time_def(local_verts_param_hash, m)
 {doing timeTest second seems to give little speed advantage}
 
+{if KGB number is below this, use is_unitary rather than is_unitary_to_ht}
+set low_KGB_frac = rat: 1/4
 {use is_unitary for small x, def for large x}
 set time_mix_test([Param] params, int m) = void:
     let start_time = elapsed_ms(), N = #params, G = params[0].real_form
@@ -267,7 +269,7 @@ set time_mix_test([Param] params, int m) = void:
     then () = for p@j in ps
     	      do let startp = elapsed_ms()
 	      	 then DEFHTS = [int]:
-		       if number(p.x) < NK/4
+		       if number(p.x) < NK*low_KGB_frac
 		       then []
 	      	       else let (answer,) = deform_hts(p,m)
 			    in answer
