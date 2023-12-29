@@ -1,0 +1,89 @@
+< induction.at {for theta_stable_quasi_data}
+< unity.at {for deform_support}
+< hermitian.at {for to_ht}
+<K_types.at {for branch_std}
+
+{trying to get at bottom layer K-types. Use D for bound on height, d
+for bound on number of terms. The "min" refers to the theta-stable
+parabolic built by theta_stable_quasi_data. Parabolics _containing_
+that one should certainly be supported; there's a chance also of
+getting useful information from parabolics _not_ containing it.}
+
+set deform_support(Param p, int D) = KTypePol:
+    to_ht(deform_support(p), D)
+
+set two_rho_u_check(KGPElt Q) = vec:
+    two_rho_check(Q.real_form) - two_rho_check(Q.Levi)
+
+{Each (muG,muL) in output list is a Q-bottom layer K-type for p with (Q,pL) =
+theta_stable_quasi_data(p). D is the largest height to which to compute
+K-types. For now assume K connected.}
+set min_bottom(Param p, int D) = [(KType,KType)]:
+    let (Q,pL) = theta_stable_quasi_data(p), {x = p.x, lambda = p.lambda}
+    	G = p.real_form
+    then L = Q.Levi
+    then xcL = KGB(L,0)
+    then xcG = embed_KGB(xcL, G), LKTG = LKTs(p)[0], LKTL = LKTs(pL)[0]
+    then TRUCH = two_rho_u_check(Q)
+    then bottom = TRUCH*(highest_weight(LKTG, xcG).mu)
+    then too_many_mus = monomials(branch_std(p,D))
+    { monomials(deform_support(p,D)) }
+    then mus = for mu in too_many_mus
+       	       do if TRUCH*(highest_weight(mu, xcG).mu) = bottom
+	       	  then [mu]
+	  	  else []
+	  	  fi
+	  	od.##
+    then shift = highest_weight(LKTG,xcG).mu - highest_weight(LKTL,xcL).mu
+    in  for mu in mus
+    	do (mu, K_types(K_highest_weight_from_K0_weight(xcL,
+       	       	       highest_weight(mu,xcG).mu - shift))[0])
+	od
+
+set min_bottom_test(Param p, int D) = bool:
+    let (Q,pL) = theta_stable_quasi_data(p), G = p.real_form
+    then L = Q.Levi
+    then pairs = min_bottom(p,D)
+    in if #pairs = 0 then true
+       else let DL = max(for (,muL) in pairs do height(muL) od)
+       	    then (posL,) = K_signature_irr(pL,DL)
+	    	 {positive part of the signature on L}
+	    then DG = max(for(mu,) in pairs do height(mu) od)
+	    then multG = branch_irr(p,DG)
+	    	 {all K-mults to height of largest mu}
+    	    in all( for (mu,muL) in pairs
+       	       	    do int_part(posL[muL]) >= int_part(multG[mu])
+		    od )
+	fi
+
+
+{Haven't gotten this to work}
+
+{PROBLEM: muL of height DL + M can give K-type of height D+m, with m \ne M}
+{each muL in output list is an L\cap K-type inducing to a bottom layer
+K-type. ASSUME K CONNECTED}
+
+{set min_L_bottom(Param p, int D) = [KType]:
+    let (Q,pL) = theta_stable_quasi_data(p), {x = p.x, lambda = p.lambda,}
+    	G = p.real_form
+    then L = Q.Levi
+    then xcL = KGB(L,0)
+    then xcG = embed_KGB(xcL, G), LKTG = LKTs(p)[0],
+    	 LKTL = LKTs(pL)[0]
+    then shift = highest_weight(LKTG,xcG).mu - highest_weight(LKTL,xcL).mu
+    then DL = D-height(p) + height(pL)
+    then too_many_muLs = monomials(branch_irr(pL,DL))
+    then K0 = K_0(xcG), LK0 = K_0(xcL)
+    then muLs =  for muL in too_many_muLs
+       	      	 do if is_dominant(shift + highest_weight(muL,xcL).mu, K0)
+       	  	    then [muL]
+	  	    else []
+	  	    fi
+		 od.##
+    then () =  for muL in muLs
+    	       do prints(highest_weight( muL,xcL).mu)
+	       od
+    in muLs}
+
+
+
