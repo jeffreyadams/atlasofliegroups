@@ -548,6 +548,8 @@ straightforward.
 @)
   expr(id_type id, const YYLTYPE& loc, identifier_tag)
 @/: kind(applied_identifier), identifier_variant(id), loc(loc) @+{}
+  expr(id_type id, const source_location& loc, identifier_tag)
+@/: kind(applied_identifier), identifier_variant(id), loc(loc) @+{}
   expr (const YYLTYPE& loc, dollar_tag)
   : kind(last_value_computed), loc(loc) @+{}
   expr (const YYLTYPE& loc, break_tag t)
@@ -993,6 +995,9 @@ expr_p make_unary_call(id_type name, expr_p arg,
    const YYLTYPE& loc, const YYLTYPE& op_loc);
 expr_p make_binary_call(id_type name, expr_p x, expr_p y,
    const YYLTYPE& loc, const YYLTYPE& op_loc);
+expr_ptr internal_binary_call(id_type name, expr_ptr x, expr_ptr y,
+   const source_location& range, const source_location& op_loc);
+
 
 @~In the binary case, we must construct an argument list of two expressions.
 We were tempted to initialise |args| below using a two-element initialiser
@@ -1006,15 +1011,21 @@ constructing arguments lists will apply more often below.
 expr_p make_binary_call(id_type name, expr_p x, expr_p y,
    const YYLTYPE& loc, const YYLTYPE& op_loc)
 {
-  expr_ptr xx(x), yy(y); // wrap in smart pointers for exception safety
-  const source_location range = join(xx->loc,yy->loc); // extent of operands
-  expr_list args; // start with empty argument list
+  return internal_binary_call
+    (expr_ptr(x),exp_ptr(y), join(xx->loc,yy->loc, source_location(op_loc)))
+    .release();
+}
+
+expr_ptr internal_binary_call
+   (id_type name, expr_ptr xx, expr_ptr yy,
+    const source_location& range, const source_location& op_loc)
+{ expr_list args; // start with empty argument list
   args.push_front(std::move(*yy));
-  args.push_front(std::move(*xx)); // build up lest back-to-front
+  args.push_front(std::move(*xx)); // build up list back-to-front
   expr arg_pack(std::move(args),expr::tuple_display_tag(),range);
   app a(new application_node @|
     { expr(name,op_loc,expr::identifier_tag()), std::move(arg_pack) });
-  return new expr(std::move(a),loc); // move construct application expression
+  return expr_ptr(new expr(std::move(a),range)); // application expression
 }
 
 @~In the unary case we avoid making an argument list, constructing the
@@ -2851,12 +2862,24 @@ expr(fld_assignment fa, const YYLTYPE& loc)
  , field_assign_variant(fa)
  , loc(loc)
 @+{}
+@)
+expr(comp_transform ct, const YYLTYPE& loc)
+ : kind(static_cast<expr_kind>(4711))
+ , comp_trans_variant(ct)
+ , loc(loc)
+@+{}
+@)
+expr(fld_transform ft, const YYLTYPE& loc)
+ : kind(static_cast<expr_kind>(8086))
+ , field_trans_variant(ft)
+ , loc(loc)
+@+{}
 
 @ Compound assignment statements are built by |make_comp_ass|, which for once
 does not simply combine the expression components, because for reason of
 parser generation the array and index will have already been combined before
 this function can be called. There is also |make_comp_upd_ass| for the
-operate-assign form of component assignments, as in $v[i]\mathrel+:=a$.
+operation-assign form of component assignments, as in $v[i]\mathrel+:=a$.
 Finally, similar functions are also given for field assignments. The plain
 assignment just needs the identifiers, but the operate-assign forms wraps them
 into |applied_identifier| expressions (which attaches the proper location
