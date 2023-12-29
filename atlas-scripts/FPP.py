@@ -9,7 +9,8 @@ progress_step_size=10 #how often to report progress
 
 FPP_at_file="FPP.at" #default
 FPP_py_file="FPP.py" #default
-extra_files=["global_facets_E7.at","coh_ind_E7_to_hash.at","E7except589to15851.at"]
+#extra_files=["global_facets_E7.at","coh_ind_E7_to_hash.at","E7except589to15851.at"]
+extra_files=["global_facets_E7.at","coh_ind_E7_to_hash.at"]]
 
 #simple reporting function
 def report(q,i,proc):
@@ -34,12 +35,11 @@ def atlas_compute(i,pid):
       log.write("none")
    else:
       for file in extra_files:
-         print("extra: ", file)
-         log.write(file + " ")
-   log.write("Job number: " + str(i) + "\n")
+         log.write("\n  " + file)
+   log.write("\nJob number: " + str(i) + "\n")
    log.write("Job pid: " +  str(pid) + "\n")
    log.write("function: " +  test_function + "\n")
-   vars=['coh_ind_flag','revert_flag','deform_flag','every_KGB_flag','every_lambda_flag','every_lambda_deets_flag','test_slightly_verbose','test_verbose']
+   vars=['coh_ind_flag','revert_flag','deform_flag','every_KGB_flag','every_lambda_flag','every_lambda_deets_flag','test_slightly_verbose','test_verbose','global_top']
 
    for var in vars:
       atlas_arg='{}'.format("prints(\"" + var + ": \"," +  var + ")" + "\n").encode('utf-8')
@@ -221,6 +221,13 @@ def main(argv):
    print("Copied " + FPP_py_file + " to logs directory")
    all_files=" ".join([FPP_at_file] + extra_files)
    print("atlas will load: " + all_files)
+   #run git log -n 1 to get last log entry and print it out
+   print("git log -n 1:")
+   git_cmd=['git','log','-n','1']
+   proc=subprocess.Popen(git_cmd, stdin=PIPE,stdout=PIPE)
+   proc.stdin.flush()
+   gitlog=proc.stdout.read().decode('ascii')
+   print(gitlog)
 
 
 #make kgb_queue from kgb_list

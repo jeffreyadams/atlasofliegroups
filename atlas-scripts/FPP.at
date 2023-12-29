@@ -1,6 +1,7 @@
 <FPP_globalDirac.at
 <FPP_global.at
 
+
 {This script runs (backward, for no serious reason) over a sequence of
 KGBElts x in E7_s, beginning at start and ending before start +
 interval. For each x, it computes the corresponding lambdas; then for
@@ -29,15 +30,17 @@ one KGBElt each 90 minutes.
 
 set params(Param_hash unitary_hash)=[Param]:
  for i:unitary_hash.size() do unitary_hash.index(i) od
- 
+
 set FPP_unitary_hash(RealForm G, int x)=[Param]:let ()=FPP_unitary_hash([KGB(G,x)]) in params(unitary_hash)
 set FPP_unitary_hash2(RealForm G, int x)=[Param]:let ()=FPP_unitary_hash2([KGB(G,x)]) in params(unitary_hash)
 set FPP_unitary_hash_one_level(RealForm G, int x)=[Param]:let ()=FPP_unitary_hash_one_level([KGB(G,x)]) in params(unitary_hash)
 
 set test_verbose=false
-coh_ind_flag:=false   {recommended; don't look for coh ind from Arthur unipotents}
-revert_flag:=true     {false: only use the given function; true: try other possibly faster ones}
-deform_flag:=false
+{coh_ind_flag:   default true, means COMPUTE cohomological induction
+                 if you precompute cohomological induction, load the data file (e.g. coh_ind_E7_has.at) which should set it to false}
+revert_flag:=true     {default is true: try other possibly faster ones (default is true; false: only use the given function}
+deform_flag:=false    {default is false}
+{global_top: should be set by file such as global_facets_E7.at}
 
 {output flags:}
 every_KGB_flag:=true
@@ -46,6 +49,7 @@ every_lambda_deets_flag:=true
 test_slightly_verbose:=true
 test_verbose:=true
 
+{NOTE: extra_files is defined in FPP.py}
 
 {to write a list of Param's for a single RealForm}
 {only change from writeFiles.at: "<groups.at"}
