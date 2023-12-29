@@ -45,7 +45,7 @@ module have been relegated to a separate module \.{global.w}.
 #include "axis-types.h"
 
 @< Includes needed in the header file @>@;
-namespace atlas { namespace interpreter {
+namespace @;atlas { namespace interpreter {
 @< Type definitions @>@;
 @< Declarations of global variables @>@;
 @< Declarations of exported functions @>@;
@@ -57,7 +57,7 @@ namespace atlas { namespace interpreter {
 @h "axis.h"
 @h <cstdlib>
 @c
-namespace atlas { namespace interpreter {
+namespace @;atlas { namespace interpreter {
 @< Global variable definitions @>@;
 namespace {
 @< Local class definitions @>@;
@@ -1512,7 +1512,7 @@ expression_ptr resolve_overload
 { const expr& args = e.call_variant->arg;
   auto n_args = args.kind==tuple_display ? length(args.sublist) : 1;
   std::unique_ptr<tuple_expression> tup_exp(new tuple_expression(n_args));
-  std::vector<expression_ptr>& arg_expr = tup_exp->component;;
+  std::vector<expression_ptr>& arg_expr = tup_exp->component;
   type_expr apt; // modifiable temporary
   @< Fill |arg_expr| with the results of converting the expressions from
      |args|, setting |apt| to the type deduced @>
@@ -1530,8 +1530,8 @@ expression_ptr resolve_overload
   @< If |id| is a special operator like \# and it matches
      |a_priori_type|, |return| a call |id(args)| @>
   if (var_it!=variants.end())
-    @< Construct and |return| a call, after applying for every argument whose
-       type in |a_priori_type| differs from that required in |arg_type|, either
+    @< Construct and |return| a call, after either applying, for every argument
+       whose type in |a_priori_type| differs from that required in |arg_type|,
        an implicit conversion, or converting the expression anew @>
   @< Complain about failing overload resolution @>
 }
@@ -1637,8 +1637,7 @@ at all, so we could not define he iterators with in the case of more than one
 argument. We therefore separate the two cases, even though the actions are the
 same; we do share one module.
 
-@< Construct and |return| a call, after applying for every argument whose type
-   in |a_priori_type| differs... @>=
+@< Construct and |return| a call, after either applying... @>=
 {
   const auto& arg_type=var_it->type().arg_type;
   if (n_args==1)
@@ -2131,12 +2130,12 @@ a call of~|extend_message|.
 
 @< Catch block for exceptions thrown within call of |f| with |arg_string| @>=
 catch (error_base& e)
-{@; extend_message(e,this,f,arg_string);
+{@; extend_message(e,this->function_name(),loc,f,arg_string);
   throw;
 }
 catch (const std::exception& e)
 { runtime_error new_error(e.what());
-  extend_message(new_error,this,f,arg_string);
+  extend_message(new_error,this->function_name(),loc,f,arg_string);
   throw new_error;
 }
 
@@ -2157,10 +2156,12 @@ user-defined; when the called function was built in we just report that.
 
 @< Local fun... @>=
 void extend_message
-  (error_base& e,const call_base* call, const shared_function& f,
+  (error_base& e,
+   const std::string& name, const source_location& loc,
+   shared_function f,
    const std::string& arg)
 { std::ostringstream o;
-  o << "In call of " << call->function_name() << ' ' << call->loc << ", ";
+  o << "In call of " << name << ' ' << loc << ", ";
   f->report_origin(o);
   o << '.';
   if (verbosity>0)
@@ -7373,8 +7374,8 @@ struct component_transform : public assignment_expr
 { using ptr_to_builtin = std::shared_ptr<const builtin_value<false> >;
   source_location loc; // as in |call_base|
   std::string name; // as in |overloaded_call|
-  ptr_to_builtin f; // as in |overloaded_builtin_call<false>|
-  wrapper_function f_ptr; // shortcut, as in |overloaded_builtin_call<false>|
+  ptr_to_builtin f; // as in |builtin_call|
+  wrapper_function f_ptr; // shortcut, as in |builtin_call|
   expression_ptr index; // as in |component_assignment|
 @)
   component_transform
@@ -7405,9 +7406,16 @@ void field_assignment::print (std::ostream& out) const
 {@; out << main_hash_table->name_of(lhs) << '.' << this->position << ":="
         << *rhs;
 }
+@)
+template <bool reversed>
+void component_transform<reversed>::print (std::ostream& out) const
+{@; out << main_hash_table->name_of(lhs) << (reversed ? "~[" : "[")
+        << *index << "] " @| << name << ":= " << *rhs;
+}
 
-@ For global assignments, we need to have non-|const| access the location
-where the identifier is stored.
+@ For global assignments or transforms, we need to have non-|const| access the
+location where the identifier is stored, whence the |shared_share| fields in the
+definitions below.
 
 @< Type definitions @>=
 template <bool reversed>
@@ -7420,6 +7428,21 @@ public:
   global_component_assignment
     (id_type a,expression_ptr&& i,expression_ptr&& r,
      subscr_base::sub_type k);
+  virtual void evaluate(expression_base::level l) const;
+};
+@)
+template <bool reversed>
+class global_component_transform
+: public component_transform<reversed>
+{ using base = component_transform<reversed>;
+  using ptr_to_builtin = typename base::ptr_to_builtin;
+@)
+  shared_share address;
+public:
+  global_component_transform
+    (id_type a, expression_ptr&& i,expression_ptr&& r,
+    const ptr_to_builtin& fun,
+    const std::string& name, const source_location& loc);
   virtual void evaluate(expression_base::level l) const;
 };
 @)
@@ -7444,7 +7467,7 @@ global_component_assignment<reversed>::global_component_assignment @|
 template <bool reversed>
 global_component_transform<reversed>::global_component_transform @|
     (id_type a, expression_ptr&& i,expression_ptr&& r,
-    const typename base::ptr_to_builtin& fun,
+    const ptr_to_builtin& fun,
     const std::string& name, const source_location& loc)
 : base(a,std::move(i),std::move(r),fun,name,loc)
 , address(global_id_table->address_of(a)) @+{}
@@ -7455,16 +7478,16 @@ global_field_assignment::global_field_assignment @|
 , address(global_id_table->address_of(a)) @+{}
 
 @ It is in evaluation that component assignments differ most from ordinary ones.
-The work is delegated to the |assign| method of the base class (to be defined
-below), which is given a reference to the |shared_value| pointer holding the
-current value of the aggregate; it is this pointer that is in principle
-modified. In the templated context of |global_component_assignment| and
-|global_component_transform|, the base class must be explicitly mentioned using
-the local type name |base| when calling its |assign| method. On the other hand,
-while |global_field_assignment::evaluate| is also calling a method of that name
-from its base class, no local type name is needed (nor is it defined) in this
-case. Like when fetching the value of a global variable, we must be aware of a
-possible undefined value in the variable.
+The work is delegated to the |assign| or |transform| method of the base class
+(to be defined below), which is given a reference to the |shared_value| pointer
+holding the current value of the aggregate; it is this pointer that is in
+principle modified. In the templated context of |global_component_assignment|
+and |global_component_transform|, the base class must be explicitly mentioned
+using the local type name |base| when calling its |assign| method. On the other
+hand, while |global_field_assignment::evaluate| is also calling a method of that
+name from its base class, no local type name is needed (nor is it defined) in
+this case. Like when fetching the value of a global variable, we must be aware
+of a possible undefined value in the variable.
 
 @< Function def... @>=
 template <bool reversed>
@@ -7501,17 +7524,99 @@ void global_component_transform<reversed>::evaluate(expression_base::level l)
   base::transform(l,*address);
 }
 
+@ For local assignments we also need to access the location where the
+identifier is stored, which as before is done by storing coordinates of the
+identifier in the execution context.
+
+@< Type definitions @>=
+template <bool reversed>
+class local_component_assignment : public component_assignment<reversed>
+{ typedef component_assignment<reversed> base;
+@)
+  subscr_base::sub_type kind;
+  size_t depth, offset;
+public:
+  local_component_assignment @|
+   (id_type arr, expression_ptr&& i,size_t d, size_t o,
+    expression_ptr&& r, subscr_base::sub_type k);
+  virtual void evaluate(expression_base::level l) const;
+};
+@)
+template <bool reversed>
+class local_component_transform : public component_transform<reversed>
+{ using base = component_transform<reversed>;
+  using ptr_to_builtin = typename base::ptr_to_builtin;
+@)
+  size_t depth, offset;
+public:
+  local_component_transform @|
+   (id_type arr, expression_ptr&& i,size_t d, size_t o, expression_ptr&& r,
+    const ptr_to_builtin& fun,
+    const std::string& name, const source_location& loc);
+  virtual void evaluate(expression_base::level l) const;
+};
+@)
+class local_field_assignment : public field_assignment
+{ size_t depth, offset;
+public:
+  local_field_assignment
+    (id_type a, unsigned pos,size_t d, size_t o, expression_ptr&& r);
+  virtual void evaluate(expression_base::level l) const;
+};
+
+@ The constructors for these structures are all quite straightforward, in
+spite of their number of arguments.
+
+@< Function def... @>=
+template <bool reversed>
+local_component_assignment<reversed>::local_component_assignment
+ (id_type arr, expression_ptr&& i,size_t d, size_t o, expression_ptr&& r,
+  subscr_base::sub_type k)
+: base(arr,std::move(i),std::move(r)), kind(k), depth(d), offset(o) @+{}
+@)
+template <bool reversed>
+local_component_transform<reversed>::local_component_transform @|
+    (id_type a, expression_ptr&& i,size_t d, size_t o,expression_ptr&& r,
+    const ptr_to_builtin& fun,
+    const std::string& name, const source_location& loc)
+: base(a,std::move(i),std::move(r),fun,name,loc)
+, depth(d), offset(o) @+{}
+@)
+local_field_assignment::local_field_assignment @|
+  (id_type a, unsigned pos,size_t d, size_t o, expression_ptr&& r)
+: field_assignment(a,pos,std::move(r)), depth(d), offset(o) @+{}
+
+@ The |evaluate| methods locate the |shared_value| pointer of the aggregate,
+then |assign| or |transform| does its job.
+
+@< Function def... @>=
+template <bool reversed>
+void local_component_assignment<reversed>::evaluate(expression_base::level l)
+  const
+{@; base::assign (l,frame::current->elem(depth,offset),kind); }
+@)
+template <bool reversed>
+void local_component_transform<reversed>::evaluate(expression_base::level l)
+  const
+{@; base::transform (l,frame::current->elem(depth,offset)); }
+@)
+void local_field_assignment::evaluate(expression_base::level l) const
+{@; assign (l,frame::current->elem(depth,offset)); }
+
 @ The |assign| method, which will also be called for local component
 assignments, starts by the common work of evaluating the (component) value to be
 assigned. For actually changing the aggregate, we must distinguish cases
 according to the kind of component assignment at hand. Assignments to components
-of rational vectors and of strings will be forbidden, see module
-@#comp_ass_type_check@>. The evaluation of the aggregate index is done inside
-this case distinction, because possible expansion of a tuple index value depends
-on~|kind|. Finally we shall make sure we hold a unique copy of the aggregate;
-since |uniquify|, which does this operation, needs to know the type of the
-aggregate in a template argument, its call has to be done inside each branch.
+of rational vectors and of strings will be forbidden, see
+module@#comp_ass_type_check@>. The evaluation of the aggregate index is done
+inside this case distinction, because possible expansion of a tuple index value
+depends on~|kind|. Finally we shall make sure we hold a unique copy of the
+aggregate; since |uniquify|, which does this operation, needs to know the type
+of the aggregate in a template argument, its call has to be done inside each
+branch.
 
+For assignments to a field of a tuple value, no case distinction is necessary,
+and the code is quite simple.
 
 @< Function def... @>=
 template <bool reversed>
@@ -7549,13 +7654,13 @@ void field_assignment::assign (level lev,shared_value& tupple) const
   push_expanded(lev,field=pop_value());
 }
 
-@ A |row_value| component assignment is the simplest kind. The variable |loc|
-holds a generic pointer, known to refer to a |row_value|. Since we need to
-access the vector of shared pointers, we use |force| to get an ordinary
-pointer, and then select the |val| field. Then we do a bound check, and on
-success replace a component of the value held in |a| by the stack-top value.
-Afterwards, depending on |l|, we may put back the stack-top value as result of
-the component assignment, possibly expanding a tuple in the process.
+@ A |row_value| component assignment is the simplest kind. The variable
+|aggregate| holds a generic |shared_value|, known to refer to a |row_value|.
+Since we need to access the vector of shared pointers, we use |uniquify| to
+ensure unshared and unconstrained access to its |val| field. After a bound check
+we then replace a component by the stack-top value. Afterwards, depending on
+|lev|, we may put back the stack-top value as result of the component assignment,
+possibly expanding a tuple in the process.
 
 @< Replace component at |index| in row |loc|... @>=
 { auto i = (index->eval(),get<int_value>()->long_val());
@@ -7564,14 +7669,64 @@ the component assignment, possibly expanding a tuple in the process.
   if (static_cast<size_t>(i) >= n)
     throw runtime_error(range_mess(i,a.size(),this,"component assignment"));
   auto& ai = a[reversed ? n-1-i : i];
+  push_expanded(lev,ai = pop_value()); // assign component and yield that value
+}
+
+@ The |transform| method of |component_transform| is similar to the |assign|
+methods above. However, instead of assigning the evaluation of |rhs| into the
+aggregate, it combines it with the previous value of the destination component
+using |f_ptr| (which is a |ptr_to_builtin|).
+
+@< Function def... @>=
+template <bool reversed>
+void component_transform<reversed>::transform
+  (level lev,shared_value& aggregate) const
+{ rhs->eval();
+  auto op2 = pop_value(); // put aside additional operand
+  auto i = (index->eval(),get<int_value>()->long_val());
+  auto& a = uniquify<row_value>(aggregate)->val;
+  size_t n=a.size();
+  if (static_cast<size_t>(i) >= n)
+    throw runtime_error(range_mess(i,a.size(),this,"component assignment"));
+  auto& ai = a[reversed ? n-1-i : i];
+  push_value(std::move(ai)); // move-push component before transformation
+  push_value(std::move(op2)); // additional argument
+  @< Call |*f_ptr| to produce a single value, taking measures for back tracing @>
   ai = pop_value(); // assign non-expanded value
   push_expanded(lev,ai); // return value may need expansion, or be omitted
 }
 
-@ For |vec_value| entry assignments the type of the aggregate object is
-vector, and the value assigned always an integer. The latter certainly needs
-no expansion, so we either leave it on the stack, or remove it if the value of
-the component assignment expression is not used.
+@ This code is similar to that of |built_in::evaluate|, except that we know we
+have exactly two arguments, and that they are already placed on the
+|execution_stack|.
+
+@< Call |*f_ptr| to produce a single value, taking measures for back tracing @>=
+{ std::string arg_string;
+  if (verbosity!=0) // record argument(s) as string
+  { const auto* p = &execution_stack[execution_stack.size()-2];
+    std::ostringstream o;
+    o << '(' << *p[0] << ',' << *p[1] << ')';
+    arg_string = o.str();
+  }
+@)
+  try
+  {@; (*f_ptr)(expression_base::single_value); } // call the built-in function
+  catch (error_base& e)
+  {@; extend_message(e,name,loc,f,arg_string);
+    throw;
+  }
+  catch (const std::exception& e)
+  { runtime_error new_error(e.what());
+    extend_message(new_error,name,loc,f,arg_string);
+    throw new_error;
+  }
+}
+
+@ We complete our definition with the non-row component assignments, starting
+with the case of |vec_value| entry assignments. Here the type of the aggregate
+object is vector, and the value assigned always an integer. The latter certainly
+needs no expansion, so we either leave it on the stack, or remove it if the
+value of the component assignment expression is not used.
 
 @< Replace entry at |index| in vector |loc|... @>=
 { auto i=(index->eval(),get<int_value>()->long_val());
@@ -7579,13 +7734,14 @@ the component assignment expression is not used.
   size_t n=v.size();
   if (static_cast<size_t>(i) >= n)
     throw runtime_error(range_mess(i,v.size(),this,"component assignment"));
-  v[reversed ? n-1-i : i]= // assign |int| from un-popped top
+  v[reversed ? n-1-i : i] =
+  // assign |int| extracted from stack top without popping
     force<int_value>(execution_stack.back().get())->int_val();
   if (lev==no_value)
     execution_stack.pop_back(); // pop it anyway if result not needed
 }
 
-@ For matrix entry assignments at |index| must be split into a pair of
+@ For matrix entry assignments, the value |index| must be split into a pair of
 indices, and there are two bound checks.
 
 @< Replace entry at |index| in matrix |loc|... @>=
@@ -7596,11 +7752,11 @@ indices, and there are two bound checks.
   auto& m = uniquify<matrix_value>(aggregate)->val;
   size_t k=m.n_rows(),l=m.n_columns();
   if (static_cast<size_t>(i) >= k)
-    throw runtime_error
-      (range_mess(i,m.n_rows(),this,"matrix entry assignment"));
+    throw runtime_error@|
+      ("initial "+range_mess(i,m.n_rows(),this,"matrix entry assignment"));
   if (static_cast<size_t>(j) >= l)
-    throw runtime_error(
-      range_mess(j,m.n_columns(),this,"matrix entry assignment"));
+    throw runtime_error@|
+      ("final "+range_mess(j,m.n_columns(),this,"matrix entry assignment"));
   m(reversed ? k-1-i : i,reversed ? l-1-j : j)=
     // assign |int| from un-popped top
     force<int_value>(execution_stack.back().get())->int_val();
@@ -7638,9 +7794,9 @@ remove it if the value of the component assignment expression is not used.
 @< Replace coefficient at |index| in $K$-type polynomial |loc|... @>=
 { index->eval();
   auto t = get<K_type_value>();
-  auto* poly = uniquify<K_type_pol_value>(aggregate);
+  auto* pol = uniquify<K_type_pol_value>(aggregate);
   const auto& top = force<split_int_value>(execution_stack.back().get());
-  poly->assign_coef(*t,top->val);
+  pol->assign_coef(*t,top->val);
   if (lev==no_value)
     execution_stack.pop_back(); // pop the vector if result not needed
 }
@@ -7659,59 +7815,6 @@ one are hidden in the respective |assign_coef| methods.
   if (lev==no_value)
     execution_stack.pop_back(); // pop the vector if result not needed
 }
-
-@ For local assignments we also need to access the location where the
-identifier is stored, which as before is done by storing coordinates of the
-identifier in the execution context.
-
-@< Type definitions @>=
-template <bool reversed>
-class local_component_assignment : public component_assignment<reversed>
-{ typedef component_assignment<reversed> base;
-@)
-  subscr_base::sub_type kind;
-  size_t depth, offset;
-public:
-  local_component_assignment @|
-   (id_type arr, expression_ptr&& i,size_t d, size_t o,
-    expression_ptr&& r, subscr_base::sub_type k);
-  virtual void evaluate(expression_base::level l) const;
-};
-@)
-class local_field_assignment : public field_assignment
-{ size_t depth, offset;
-public:
-  local_field_assignment
-    (id_type a, unsigned pos,size_t d, size_t o, expression_ptr&& r);
-  virtual void evaluate(expression_base::level l) const;
-};
-
-@ The constructors for |local_component_assignment| and
-|local_field_assignment| are both quite straightforward, in spite of their
-number of arguments.
-
-@< Function def... @>=
-template <bool reversed>
-local_component_assignment<reversed>::local_component_assignment
- (id_type arr, expression_ptr&& i,size_t d, size_t o, expression_ptr&& r,
-  subscr_base::sub_type k)
-: base(arr,std::move(i),std::move(r)), kind(k), depth(d), offset(o) @+{}
-@)
-local_field_assignment::local_field_assignment @|
-  (id_type a, unsigned pos,size_t d, size_t o, expression_ptr&& r)
-: field_assignment(a,pos,std::move(r)), depth(d), offset(o) @+{}
-
-@ The |evaluate| methods locate the |shared_value| pointer of the aggregate,
-then |assign| does its job.
-
-@< Function def... @>=
-template <bool reversed>
-void local_component_assignment<reversed>::evaluate(expression_base::level l)
-  const
-{@; base::assign (l,frame::current->elem(depth,offset),kind); }
-@)
-void local_field_assignment::evaluate(expression_base::level l) const
-{@; assign (l,frame::current->elem(depth,offset)); }
 
 @ Type-checking and converting component assignment statements follows the
 same lines as that of ordinary assignment statements, but must also
@@ -7754,7 +7857,7 @@ case comp_ass_stat:
     throw expr_error(e,o.str());
   }
   expression_ptr r = convert_expr(rhs,comp_t);
-  if (aggr_t->kind()==row_type)
+  if (kind==subscr_base::row_entry)
     aggr_t->component_type()->specialise(comp_t); // record type
   if (comp_t==void_type and not is_empty(rhs))
     r.reset(new voiding(std::move(r)));
@@ -7840,6 +7943,217 @@ case field_ass_stat:
   else
     p.reset(new global_field_assignment(tupple,proj->position,std::move(r)));
   return conform_types(*comp_loc,type,std::move(p),e);
+}
+
+@ Type-checking and converting component transform statements is relatively
+complicated. Since we come here before type checking is done, we have to handle
+all expressions of the syntactic form (operation-assigning to a subscripted
+name), whether or not that gives any occasion to invoke in-place modification.
+The conditions that need to be satisfied for the latter to be possible include:
+the name must have row-of type, the operation should not identify a local
+symbol, in the global table it must identify a non-variadic built-in function,
+whose first argument and return type both equal the aggregate component type.
+We shall type check the call of the operator as if no in-place modification is
+to be done, and then from the result try to find out whether we are in a case
+where it can; if it can, we then need to take apart the converted call
+expression to find the identified built-in operator, and build a new conversion
+for the whole expression. In the other case we reassemble the pieces together
+differently, to form a combination of ordinary expressions (which will allow a
+more general aggregate subscription, and introduces a temporary variable to
+ensure the index is evaluated only once).
+
+@:comp_ass_type_check@>
+
+@< Cases for type-checking and converting... @>=
+case comp_trans_stat:
+{ expr& subscr=e.comp_trans_variant->subscr;
+  subscription_node* s = subscr.subscription_variant;
+  assert(s->array.kind==applied_identifier); // grammar ensures this
+  id_type aggr=s->array.identifier_variant;
+  expr& index=s->index;
+  bool reversed=s->reversed;
+  id_type op = e.comp_trans_variant->op;
+@/const_type_p aggr_t; size_t d,o; bool is_const;
+  bool is_local = (aggr_t=layer::lookup(aggr,d,o,is_const))!=nullptr;
+  if (not is_local and (aggr_t=global_id_table->type_of(aggr,is_const))==nullptr)
+    report_undefined(aggr,e,"component transform");
+@.Undefined identifier@>
+  if (is_const)
+    report_constant_modified(aggr,e,"component transform");
+@.Name is constant @>
+@)
+  subscr_base::sub_type kind=subscr_base::not_so; // value will be overwritten
+  type_expr ind_t, comp_t;
+  expr_ptr appl;
+  expression_ptr ind, call;
+  @< Assign to |call| the |resolve_overload| of application |appl| of |op| to
+     an argument pair formed of |subscr| and |e.comp_trans_variant->arg|; while
+     doing so set |ind| to the converted index expression, |kind| to the kind of
+     subscription, and |ind_t|, |comp_t| to the index respectively component
+     types @>
+
+  @< If the conditions for an optimised in-place transformation are met... @>
+  skip:
+  @< Construct a nested tree of expressions for an ordinary subscripted
+     aggregate assignment to a value computed from the previous value @>
+}
+
+@ Here we build an application of |op| as an |expr| structure, just to pass it
+to |resolve_overload| in order to get the relevant instance of that overloaded
+symbol.
+
+@< Assign to |call| the |resolve_overload| of application |appl| of |op| to
+     an argument pair formed of |subscr|... @>=
+{
+  ind = convert_expr(index,ind_t);
+@/kind=subscr_base::index_kind(*aggr_t,ind_t,comp_t);
+  if (not subscr_base::assignable(kind))
+  { std::ostringstream o;
+    o << "Cannot assign to component of value of type " << *aggr_t @|
+      << " selected by index of type " << ind_t
+      << " in transforming assignment";
+    throw expr_error(e,o.str());
+  }
+@)
+  expr_ptr subs(new expr(std::move(subscr)));
+    // move top level data into isolated |expr|
+  expr_ptr arg(new expr(std::move(e.comp_trans_variant->arg))); // likewise
+@/appl =
+    internal_binary_call(op,std::move(subs),std::move(arg),
+                         e.loc,e.comp_trans_variant->op_loc);
+  call = resolve_overload(*appl,comp_t,global_overload_table->variants(op));
+}
+
+@ As said above, we only construct a |component_transform| if the aggregate has
+row-of type, the operator has identified a non-variadic built-in function
+(necessarily a global binding since the actual value bound to local variables is
+not known), whose first argument and return type both equal the aggregate
+component type. These conditions can be determined only after type checking,
+which is why they are tested only here, in terms of |kind| and |call| (an
+|expression_ptr|) as set in the previous module. The type condition on first
+argument and return value of the operator mostly guide the overload resolution
+process, but a conversion might have been applied to either of them, in which
+case we shall find an unexpected |expression_base| derived type, and one of the
+dynamic casts below will fail.
+
+@< If the conditions for an optimised in-place transformation are met,
+   construct a structure derived from |comp_transform_node| from pieces
+   of |*call| and |return| the result of passing it through |conform_types|,
+   otherwise, |goto skip| @>=
+{ if (kind!=subscr_base::row_entry)
+    goto skip;
+  auto* c = dynamic_cast<const builtin_call*>(call.get());
+  if (c==nullptr)
+    goto skip;
+  auto* tup = dynamic_cast<const tuple_expression *>(c->argument.get());
+  if (tup==nullptr)
+    goto skip; // a non-tuple argument, this should not happen
+  if (dynamic_cast<const subscr_base*>(tup->component[0].get())==nullptr)
+     goto skip; // any conversions invalidate optimisation
+  auto& rhe = const_cast<expression_ptr&>(tup->component[1]);
+  expression_ptr p;
+  if (is_local)
+  { if (reversed)
+    @/ p.reset
+      (new local_component_transform<true>@|
+        (aggr,std::move(ind),d,o,std::move(rhe),c->f,c->name,e.loc));
+    else
+    @/ p.reset
+      (new local_component_transform<false>@|
+        (aggr,std::move(ind),d,o,std::move(rhe),c->f,c->name,e.loc));
+  }
+  else
+  { if (reversed)
+    @/ p.reset
+      (new global_component_transform<true>@|
+        (aggr,std::move(ind),std::move(rhe),c->f,c->name,e.loc));
+    else
+    @/ p.reset
+      (new global_component_transform<false>@|
+        (aggr,std::move(ind),std::move(rhe),c->f,c->name,e.loc));
+  }
+  return conform_types(comp_t,type,std::move(p),e);
+}
+
+
+@ In case the special version of transformation of an aggregate component cannot
+be used for whatever reason, we revert to the ``normal'' way of handling them,
+using ordinary component assignment where the right hand side uses in an operand
+the subscription expression that is also the destination of the assignment. So
+$v[i]\mathrel\star:=E$ is translated as ``$v[i]:=v[i]\star{E}$''. However,
+if the index expression $I$ is more complicated, we avoid evaluating it twice,
+notably to avoid doubled side effects
+
+In the simpler case the parts |aggr|, |ind|, and |call| that go into the
+|component_assignment| are already available
+
+@< Construct a nested tree of expressions for an ordinary subscripted
+   aggregate assignment to a value computed from the previous value @>=
+if (index.kind==integer_denotation or index.kind==applied_identifier)
+{ expression_ptr p;
+  if (is_local)
+  { if (reversed)
+    @/ p.reset
+      (new local_component_assignment<true>@|
+        (aggr,std::move(ind),d,o,std::move(call),kind));
+    else
+    @/ p.reset
+      (new local_component_assignment<false>@|
+        (aggr,std::move(ind),d,o,std::move(call),kind));
+  }
+  else
+  { if (reversed)
+    @/ p.reset
+      (new global_component_assignment<true>@|
+        (aggr,std::move(ind),std::move(call),kind));
+    else
+    @/ p.reset
+      (new global_component_assignment<false>@|
+        (aggr,std::move(ind),std::move(call),kind));
+  }
+  return conform_types(comp_t,type,std::move(p),e);
+}
+else @< Construct a \&{let} expression containing an ordinary subscripted
+   aggregate assignment to a value computed using its previous value @>
+
+@ Here $v[I]\mathrel\star:= E$ is translated essentially as
+``\&{let}~$\$=I$~\&{in}~$v[\$]:=v[\$]\star E$'', where $\$$ is a local variable
+that can't conflict with $v$ or any names used in the expression~$E$.
+Since here the lexical level of $E$ is deeper here than in the earlier
+conversion, we cannot extract and use a part of the converted |call| as we did
+above, and rather convert the expression again in a modified setting.
+
+Here is the plan: get the |id_type| value for the hidden identifier $\$$,
+construct an applied identifier expression for this identifier, swap it out with
+the index expression $I$ that is held as subexpression of the |call| that was
+set to represent $v[I]\mathrel\star{E}$, then build a |layer| as when
+processing \&{let}~$\$=I$, then convert the modified |appl| in then new context,
+and finally build and return a new |let_expression| that wraps everything up.
+
+
+@< Construct a \&{let} expression containing... @>=
+{
+  id_type hidden = lookup_identifier("$");@q$@>
+  id_pat dollar(hidden);
+  expr& target =
+    appl->call_variant @q app @>
+        ->arg.sublist @q raw pointer to sl_node @>
+        ->contents @q expr @>
+        .subscription_variant @q sub @>
+        ->index;
+  target.clear(); // remove index expression, we hold it converted in |ind|
+  expr applied_dollar(hidden,index.loc,expr::identifier_tag());
+  target.set_from(applied_dollar);
+    // modify |call| to use $\$$
+  expr ca (new comp_assignment_node @|
+     {aggr
+     ,expr(hidden,index.loc,expr::identifier_tag())
+     ,std::move(*appl)
+     ,reversed},e.loc);
+  layer let_layer(1);
+  thread_bindings(dollar,ind_t,let_layer,true);
+  return expression_ptr(new let_expression @|
+    (dollar,std::move(ind),convert_expr(std::move(ca),type)));
 }
 
 @* Some special wrapper functions.

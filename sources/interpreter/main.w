@@ -148,7 +148,7 @@ dependency on the readline library.
 @< Declaration of interface to the parser @>@;
 namespace {@; @< Local static data @>@; }
 @< Definitions of global namespace functions @>@;
-namespace atlas
+namespace @;atlas
 { namespace interpreter
   {@; @< Definitions of other functions @>@;}
 }

@@ -384,15 +384,6 @@ definition for an identifier. The |variants| method will signal absence of an
 identifier by returning an empty list of variants, and no separate test for
 this condition is provided.
 
-Without full support for \Cpp11, we are again faced by the requirement of
-having a copy constructor for (the second component of)
-|map_type::value_type|. The class |std::vector<overload_data>| does not have
-such a constructor because |overload_data| does not, so without full support
-for \Cpp11 we derive a class whose main utility is that it provides a default
-and a copy constructor, the latter in fact being just another way to create an
-empty value; it does check though that it is not asked to duplicate a
-non-empty vector.
-
 @< Type definitions @>=
 
 class overload_table
@@ -3435,7 +3426,7 @@ void matrix_column_wrapper(expression_base::level l)
 their generic counterparts for row values, the suffix and prefix wrappers get
 ownership of they argument, which they modify in place. The effect of this on
 efficiency is no doubt more obvious in the suffix case, due to the way
-|std:vector| functions.
+|std::vector| functions.
 
 @< Local function definitions @>=
 void vector_suffix_wrapper(expression_base::level l)

@@ -25,7 +25,7 @@
 This is the program unit \.{parsetree} which produces the implementation file
 \.{parsetree.cpp} and two header files \.{parse\_types.h} and \.{parsetree.h}.
 The file \.{parse\_types.h} is read, using \&{\#include}, early in the
-file \.{parser.tab.c} generated from \.{parser.y}, so that the type |YYSTYPE|
+file \.{parser.tab.c} generated from \.{parser.y}, so that the type |YYLTYPE|
 used on the parsing stack can be properly defined, while the
 file \.{parsetree.h} containing declarations of the functions defined here is
 read later. This separation is done mainly so that we can without circularity
@@ -546,17 +546,15 @@ straightforward.
   struct return_tag @+{};
   struct die_tag @+{};
 @)
-  expr(id_type id, const YYLTYPE& loc, identifier_tag)
+  expr(id_type id, source_location loc, identifier_tag)
 @/: kind(applied_identifier), identifier_variant(id), loc(loc) @+{}
-  expr(id_type id, const source_location& loc, identifier_tag)
-@/: kind(applied_identifier), identifier_variant(id), loc(loc) @+{}
-  expr (const YYLTYPE& loc, dollar_tag)
+  expr (source_location loc, dollar_tag)
   : kind(last_value_computed), loc(loc) @+{}
-  expr (const YYLTYPE& loc, break_tag t)
+  expr (source_location loc, break_tag t)
   : kind(break_expr), break_variant(t.depth), loc(loc) @+{}
-  expr (expr_p exp, const YYLTYPE& loc, return_tag t)
+  expr (expr_p exp, source_location loc, return_tag t)
   : kind(return_expr), return_variant(exp), loc(loc) @+{}
-  expr (const YYLTYPE& loc, die_tag)
+  expr (source_location loc, die_tag)
   : kind(die_expr), loc(loc) @+{}
 
 @ As usual there are interface function to the parser.
@@ -683,18 +681,13 @@ right hand sides of parallel \&{let}-declarations).
 
 @< Methods of |expr| @>=
 struct tuple_display_tag @+ {};@+ struct list_display_tag @+{};
-expr(expr_list&& nodes, tuple_display_tag, const YYLTYPE& loc)
+expr(expr_list&& nodes, tuple_display_tag, source_location loc)
 @/: kind(tuple_display)
   , sublist(nodes.release())
   , loc(loc)
 @+{}
-expr(expr_list&& nodes, list_display_tag, const YYLTYPE& loc)
+expr(expr_list&& nodes, list_display_tag, source_location loc)
 @/: kind(list_display)
-  , sublist(nodes.release())
-  , loc(loc)
-@+{}
-expr(expr_list&& nodes, tuple_display_tag, const source_location& loc)
-@/: kind(tuple_display)
   , sublist(nodes.release())
   , loc(loc)
 @+{}
@@ -898,12 +891,7 @@ for building this variant, differing by the type through which they take the
 source location.
 
 @< Methods of |expr| @>=
-expr(app fx, const YYLTYPE& loc)
-@/: kind(function_call)
- , call_variant(fx)
- , loc(loc)
- @+{}
-expr(app fx, const source_location& loc)
+expr(app fx, source_location loc)
 @/: kind(function_call)
  , call_variant(fx)
  , loc(loc)
@@ -1012,7 +1000,7 @@ expr_p make_binary_call(id_type name, expr_p x, expr_p y,
    const YYLTYPE& loc, const YYLTYPE& op_loc)
 {
   return internal_binary_call
-    (expr_ptr(x),exp_ptr(y), join(xx->loc,yy->loc, source_location(op_loc)))
+    (name,expr_ptr(x),expr_ptr(y), join(x->loc,y->loc), source_location(op_loc))
     .release();
 }
 
@@ -1064,7 +1052,7 @@ expr* negation_variant;
 @ There is a constructor for building the new variant.
 @< Methods of |expr| @>=
 struct negate_tag @+{}; @+
-expr(expr* p, const YYLTYPE& loc,negate_tag)
+expr(expr* p, source_location loc,negate_tag)
  : kind(negation_expr)
  , negation_variant(p)
  , loc(loc)
@@ -1514,7 +1502,7 @@ let let_variant;
 
 @ There is a constructor for building this variant.
 @< Methods of |expr| @>=
-expr(let declaration, const YYLTYPE& loc)
+expr(let declaration, source_location loc)
  : kind(let_expr)
  , let_variant(declaration)
  , loc(loc)
@@ -1713,12 +1701,12 @@ rec_lambda_p rec_lambda_variant;
 
 @ There are constructors for building lambda expressions, and recursive ones.
 @< Methods of |expr| @>=
-expr(lambda_p fun, const YYLTYPE& loc)
+expr(lambda_p fun, source_location loc)
  : kind(lambda_expr)
  , lambda_variant(fun)
  , loc(loc)
 @+{}
-expr(rec_lambda_p fun, const YYLTYPE& loc)
+expr(rec_lambda_p fun, source_location loc)
  : kind(rec_lambda_expr)
  , rec_lambda_variant(fun)
  , loc(loc)
@@ -1887,7 +1875,7 @@ cond if_variant;
 below, the variant |if_variant| will be reused (for case expressions), so
 exceptionally we pass the |expr_kind| tag explicitly.
 @< Methods of |expr| @>=
-expr(expr_kind which, cond conditional, const YYLTYPE& loc)
+expr(expr_kind which, cond conditional, source_location loc)
  : kind(which)
  , if_variant(conditional)
  , loc(loc)
@@ -2154,7 +2142,7 @@ disc disc_variant;
 expressions.
 
 @< Methods of |expr| @>=
-expr(disc discrimination, const YYLTYPE& loc)
+expr(disc discrimination, source_location loc)
  : kind(discrimination_expr)
  , disc_variant(discrimination)
  , loc(loc)
@@ -2329,17 +2317,17 @@ c_loop cfor_variant;
 
 @ There is a constructor for building each type of loop expression.
 @< Methods of |expr| @>=
-expr(w_loop loop, const YYLTYPE& loc)
+expr(w_loop loop, source_location loc)
  : kind(while_expr)
  , while_variant(loop)
  , loc(loc)
 @+{}
-expr(f_loop loop, const YYLTYPE& loc)
+expr(f_loop loop, source_location loc)
  : kind(for_expr)
  , for_variant(loop)
  , loc(loc)
 @+{}
-expr(c_loop loop, const YYLTYPE& loc)
+expr(c_loop loop, source_location loc)
  : kind(cfor_expr)
  , cfor_variant(loop)
  , loc(loc)
@@ -2482,17 +2470,12 @@ slc slice_variant;
 @ There are constructors for building the new variants. For the furst one a
 variation will be useful too.
 @< Methods of |expr| @>=
-expr(sub s, const YYLTYPE& loc)
+expr(sub s, source_location loc)
  : kind(subscription)
  , subscription_variant(s)
  , loc(loc)
  @+{}
-expr(sub s, const source_location& loc)
- : kind(subscription)
- , subscription_variant(s)
- , loc(loc)
- @+{}
-expr(slc s, const YYLTYPE& loc)
+expr(slc s, source_location loc)
  : kind(slice)
  , slice_variant(s)
  , loc(loc)
@@ -2600,7 +2583,7 @@ cast cast_variant;
 
 @ There is a constructor for building the new variant.
 @< Methods of |expr| @>=
-expr(cast c, const YYLTYPE& loc)
+expr(cast c, source_location loc)
  : kind(cast_expr)
  , cast_variant(c)
  , loc(loc)
@@ -2669,7 +2652,7 @@ op_cast op_cast_variant;
 
 @ There is a constructor for building the new variant.
 @< Methods of |expr| @>=
-expr(op_cast c, const YYLTYPE& loc)
+expr(op_cast c, source_location loc)
  : kind(op_cast_expr)
  , op_cast_variant(c)
  , loc(loc)
@@ -2741,7 +2724,7 @@ assignment assign_variant;
 
 @ As always there is a constructor for building the new variant.
 @< Methods of |expr| @>=
-expr(assignment a, const YYLTYPE& loc)
+expr(assignment a, source_location loc)
  : kind(ass_stat)
  , assign_variant(a)
  , loc(loc)
@@ -2796,15 +2779,22 @@ break;
 
 @*2 Component and field assignments.
 %
-We have special expressions for assignments to an indexed component of an
-indexable value (like a row, vector, or matrix) that is bound to an
-identifier, and for assignments to a named field of a tuple that is bound to
-an identifier. The |typedef| names are shortened here to avoid a name conflict
-with types defined in \.{axis.w}.
+We have special expressions for assignments to a component of an indexable value
+(like a row, vector, or matrix) that is bound to an identifier, and for
+assignments to a named field of a tuple that is bound to an identifier. As a
+relatively recent addition to the language, we also provide variants that modify
+the component using its old value, by calling a function on it, optionally with
+another argument (given by its own expression).
+
+The |typedef| names introduced here are shortened here to avoid a name conflict
+with types defined in \.{axis.w}, those for structures that will represent the
+same type of expression after the type checking operation.
 
 @< Type declarations needed in definition of |struct expr@;| @>=
 typedef struct comp_assignment_node* comp_assignment;
 typedef struct field_assignment_node* fld_assignment;
+typedef struct comp_transform_node* comp_transform;
+typedef struct field_transform_node* fld_transform;
 
 @~In a component assignment, the left hand side records an identifier (holding
 the whole value) and an index. In addition the user may have specified reverse
@@ -2837,39 +2827,67 @@ struct field_assignment_node
   @+{}
 };
 
+@ Here are the variants of these structures for transforming assignments.
+
+@< Structure and typedef declarations for types built upon |expr| @>=
+struct comp_transform_node
+{ expr subscr; id_type op; expr arg; source_location op_loc;
+@)
+  comp_transform_node(expr&& subscr, id_type op, expr&& arg,
+    const source_location op_loc)
+@/: subscr(std::move(subscr))
+  , op(op)
+  , arg(std::move(arg))
+  , op_loc(op_loc)
+  @+{}
+};
+@)
+struct field_transform_node
+{ id_type aggr, selector, op; expr arg;
+@)
+  field_transform_node(id_type aggr, id_type selector, id_type op, expr&& rhs)
+@/: aggr(aggr)
+  , selector(selector)
+  , op(op)
+  , arg(std::move(arg))
+  @+{}
+};
+
 @ The tags used for component assignment statements are |comp_ass_stat| for
 the indexed case, and |select_ass_stat| for the field-selected case.
 
 @< Enumeration tags for |expr_kind| @>=
-comp_ass_stat, field_ass_stat, @[@]
+comp_ass_stat, field_ass_stat, comp_trans_stat, @[@]
 
 @ And there are of course variants of |expr_union| for these component
 assignments.
 @< Variants of ... @>=
 comp_assignment comp_assign_variant;
 fld_assignment field_assign_variant;
+comp_transform comp_trans_variant;
+fld_transform field_trans_variant;
 
 @ As always there are constructors for building the new variants.
 @< Methods of |expr| @>=
-expr(comp_assignment ca, const YYLTYPE& loc)
+expr(comp_assignment ca, source_location loc)
  : kind(comp_ass_stat)
  , comp_assign_variant(ca)
  , loc(loc)
 @+{}
 @)
-expr(fld_assignment fa, const YYLTYPE& loc)
+expr(fld_assignment fa, source_location loc)
  : kind(field_ass_stat)
  , field_assign_variant(fa)
  , loc(loc)
 @+{}
 @)
-expr(comp_transform ct, const YYLTYPE& loc)
- : kind(static_cast<expr_kind>(4711))
+expr(comp_transform ct, source_location loc)
+ : kind(comp_trans_stat)
  , comp_trans_variant(ct)
  , loc(loc)
 @+{}
 @)
-expr(fld_transform ft, const YYLTYPE& loc)
+expr(fld_transform ft, source_location loc)
  : kind(static_cast<expr_kind>(8086))
  , field_trans_variant(ft)
  , loc(loc)
@@ -2939,26 +2957,13 @@ expr_p make_comp_upd_ass(expr_p l, id_type op, expr_p r,
 {
   expr_ptr ll(l), rr(r);
   assert(ll->kind==subscription); // grammar ensures this
-  auto& s = *ll->subscription_variant;
-  assert(s.array.kind==applied_identifier); // likewise
-  id_type array_name=s.array.identifier_variant;
-      // save before move from |s.array|
-  id_type hidden=lookup_identifier("$");@q$@>
-  id_pat v(hidden);
-  expr::identifier_tag id_tag;
-  expr_ptr subs(new expr (new subscription_node@|
-    (std::move(s.array)
-    ,expr(hidden,loc,id_tag)
-    ,s.reversed
-    ),ll->loc));
-  expr_ptr formula(make_binary_call(op,subs.release(),rr.release(),loc,op_loc));
-  expr ca (new comp_assignment_node @|
-     {array_name
-     ,expr(hidden,loc,id_tag)
-     ,std::move(*formula)
-     ,s.reversed},loc);
-  return new expr(new let_expr_node @|
-    (std::move(v),std::move(s.index), std::move(ca)),loc);
+  assert(ll->subscription_variant->array.kind==applied_identifier); // likewise
+  return new expr(new comp_transform_node @|
+  { std::move(*ll)
+  , op
+  , std::move(*rr)
+  , op_loc
+  },loc);
 }
 
 @ Here is the corresponding code for field assignments.
@@ -2986,12 +2991,14 @@ expr_p make_field_upd_ass(expr_p tupex, expr_p selex, id_type op, expr_p r,
 @< Cases for copying... @>=
 case comp_ass_stat: comp_assign_variant=other.comp_assign_variant; break;
 case field_ass_stat: field_assign_variant=other.field_assign_variant; break;
+case comp_trans_stat: comp_trans_variant=other.comp_trans_variant; break;
 
 @~Destruction one the other hand is as straightforward as usual.
 
 @< Cases for destroying... @>=
 case comp_ass_stat: delete comp_assign_variant; break;
 case field_ass_stat: delete field_assign_variant; break;
+case comp_trans_stat: delete comp_trans_variant; break;
 
 @ Printing component assignment statements follow the input syntax.
 
@@ -3008,6 +3015,13 @@ case field_ass_stat:
   out << main_hash_table->name_of(ass.aggr)
       << '.' << main_hash_table->name_of(ass.selector) @|
       << ":=" << ass.rhs ;
+}
+break;
+case comp_trans_stat:
+{ const auto& trf = *e.comp_trans_variant;
+  out << trf.subscr << ' '
+      << main_hash_table->name_of(trf.op) << ":= "
+      << trf.arg ;
 }
 break;
 
@@ -3052,7 +3066,7 @@ sequence sequence_variant;
 
 @ As always there is a constructor for building the new variant.
 @< Methods of |expr| @>=
-expr(sequence s, unsigned which, const YYLTYPE& loc)
+expr(sequence s, unsigned which, source_location loc)
  : kind(which==0 ? seq_expr : which==1 ? next_expr : do_expr)
  , sequence_variant(s)
  , loc(loc)
