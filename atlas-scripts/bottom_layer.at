@@ -2,12 +2,14 @@
 < unity.at {for deform_support}
 < hermitian.at {for to_ht}
 <K_types.at {for branch_std}
-
+<time.at {for print_time_string}
 {trying to get at bottom layer K-types. Use D for bound on height, d
 for bound on number of terms. The "min" refers to the theta-stable
 parabolic built by theta_stable_quasi_data. Parabolics _containing_
 that one should certainly be supported; there's a chance also of
 getting useful information from parabolics _not_ containing it.}
+
+set min_bottom_verbose = false
 
 set deform_support(Param p, int D) = KTypePol:
     to_ht(deform_support(p), D)
@@ -41,23 +43,44 @@ set min_bottom(Param p, int D) = [(KType,KType)]:
 	od
 
 set min_bottom_test(Param p, int D) = bool:
-    let (Q,pL) = theta_stable_quasi_data(p), G = p.real_form
+    let start = elapsed_ms()
+    then(Q,pL) = theta_stable_quasi_data(p), G = p.real_form
     then L = Q.Levi
-    then pairs = min_bottom(p,D)
+    then pairs = min_bottom(p,D), amb_time = int:0, pLK_time = int:0,
+    	 mK_time = int:0
+    then () = if min_bottom_verbose
+    	      then let () = amb_time := elapsed_ms()
+    	      	   in  prints("min_bottom used ",
+    	    	       print_time_string(amb_time - start))
+	      fi
     in if #pairs = 0 then true
        else let DL = max(for (,muL) in pairs do height(muL) od)
        	    then (posL,) = K_signature_irr(pL,DL)
 	    	 {positive part of the signature on L}
+	    then () = if min_bottom_verbose
+	    	      then let () = pLK_time := elapsed_ms()
+		      	   in prints("LK_sig used ",
+    	    	      	      print_time_string(pLK_time - amb_time))
+		      fi
 	    then DG = max(for(mu,) in pairs do height(mu) od)
 	    then multG = branch_irr(p,DG)
+	    then () = if min_bottom_verbose
+	    	      then let () = mK_time := elapsed_ms()
+		      	   in prints("mK used ",
+    	    	      	      print_time_string(mK_time - pLK_time))
+		      fi
 	    	 {all K-mults to height of largest mu}
-    	    in all( for (mu,muL) in pairs
+    	    in if min_bottom_verbose
+	       then prints("min_bottom_test used ",
+    	    	    print_time_string(elapsed_ms() - start), new_line)
+	       fi;
+	    all( for (mu,muL) in pairs
        	       	    do int_part(posL[muL]) >= int_part(multG[mu])
 		    od )
 	fi
 
 
-{Haven't gotten this to work}
+{Haven't gotten function below to work}
 
 {PROBLEM: muL of height DL + M can give K-type of height D+m, with m \ne M}
 {each muL in output list is an L\cap K-type inducing to a bottom layer

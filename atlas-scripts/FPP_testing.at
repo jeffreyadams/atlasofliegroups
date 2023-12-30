@@ -251,9 +251,6 @@ set time_def_test(Param_hash LFhash, int m) = void:
 set time_def_test(int m) = time_def(local_verts_param_hash, m)
 {doing timeTest second seems to give little speed advantage}
 
-{if KGB number is below this, use is_unitary rather than is_unitary_to_ht}
-set low_KGB_frac = rat: 1/4
-{use is_unitary for small x, def for large x}
 set time_mix_test([Param] params, int m) = void:
     let start_time = elapsed_ms(), N = #params, G = params[0].real_form
     then ps = for j:N do first_param(finalize(params[j])) od
@@ -296,3 +293,21 @@ set time_mix_test(Param_hash LFhash, int m) = void:
 
 set time_mix_test(int m) = time_def(local_verts_param_hash, m)
 {doing timeTest second seems to give little speed advantage}
+
+set time_general([(Param,int)] data, ((Param,int)->bool) tester) = void:
+    let start = elapsed_ms()
+    then times = [int]: null(#data), bools = for j:#data do false od
+    then () = for (p,d)@j in data
+    	      do let local_start = elapsed_ms()
+	      	 then () = bools[j]:= tester(p,d)
+	    	 then () = times[j] := elapsed_ms() - local_start
+	    	 in ()
+	      od
+    then maxLoc = max_loc(times)
+    then () = prints("total time = ", print_time_string(elapsed_ms() - start),
+    	      	     " for ", #data, " parameters; #true = ", count(bools));
+	      prints("longest = ", print_time_string(times[maxLoc]),
+		     " for #", maxLoc)
+    in ()
+
+	    
