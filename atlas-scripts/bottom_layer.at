@@ -31,7 +31,8 @@ set min_bottom(Param p, int D) = [(KType,KType)]:
     then too_many_mus = monomials(branch_std(p,D))
     { monomials(deform_support(p,D)) }
     then mus = for mu in too_many_mus
-       	       do if TRUCH*(highest_weight(mu, xcG).mu) = bottom
+       	       do if height(mu) > height(LKTG) and
+	       	      TRUCH*(highest_weight(mu, xcG).mu) = bottom
 	       	  then [mu]
 	  	  else []
 	  	  fi
@@ -42,51 +43,11 @@ set min_bottom(Param p, int D) = [(KType,KType)]:
        	       	       highest_weight(mu,xcG).mu - shift))[0])
 	od
 
-set min_bottom_test(Param p, int D) = bool:
-    let start = elapsed_ms()
-    then(Q,pL) = theta_stable_quasi_data(p), G = p.real_form
-    then L = Q.Levi
-    then pairs = min_bottom(p,D), amb_time = int:0, pLK_time = int:0,
-    	 mK_time = int:0
-    then () = if min_bottom_verbose
-    	      then let () = amb_time := elapsed_ms()
-    	      	   in  prints("min_bottom used ",
-    	    	       print_time_string(amb_time - start))
-	      fi
-    in if #pairs = 0 then true
-       else let DL = max(for (,muL) in pairs do height(muL) od)
-       	    then (posL,) = K_signature_irr(pL,DL)
-	    	 {positive part of the signature on L}
-	    then () = if min_bottom_verbose
-	    	      then let () = pLK_time := elapsed_ms()
-		      	   in prints("LK_sig used ",
-    	    	      	      print_time_string(pLK_time - amb_time))
-		      fi
-	    then DG = max(for(mu,) in pairs do height(mu) od)
-	    then multG = branch_irr(p,DG)
-	    then () = if min_bottom_verbose
-	    	      then let () = mK_time := elapsed_ms()
-		      	   in prints("mK used ",
-    	    	      	      print_time_string(mK_time - pLK_time))
-		      fi
-	    	 {all K-mults to height of largest mu}
-    	    in if min_bottom_verbose
-	       then prints("min_bottom_test used ",
-    	    	    print_time_string(elapsed_ms() - start), new_line)
-	       fi;
-	    all( for (mu,muL) in pairs
-       	       	    do int_part(posL[muL]) >= int_part(multG[mu])
-		    od )
-	fi
-
-
-{Haven't gotten function below to work}
-
 {PROBLEM: muL of height DL + M can give K-type of height D+m, with m \ne M}
 {each muL in output list is an L\cap K-type inducing to a bottom layer
 K-type. ASSUME K CONNECTED}
 
-{set min_L_bottom(Param p, int D) = [KType]:
+set min_L_bottom(Param p, int D) = [(KType,KType)]:
     let (Q,pL) = theta_stable_quasi_data(p), {x = p.x, lambda = p.lambda,}
     	G = p.real_form
     then L = Q.Levi
@@ -95,18 +56,148 @@ K-type. ASSUME K CONNECTED}
     	 LKTL = LKTs(pL)[0]
     then shift = highest_weight(LKTG,xcG).mu - highest_weight(LKTL,xcL).mu
     then DL = D-height(p) + height(pL)
-    then too_many_muLs = monomials(branch_irr(pL,DL))
+    then too_many_muLs = monomials(branch_std(pL,DL))
     then K0 = K_0(xcG), LK0 = K_0(xcL)
     then muLs =  for muL in too_many_muLs
-       	      	 do if is_dominant(shift + highest_weight(muL,xcL).mu, K0)
+       	      	 do if height(muL) > 0 and
+		       is_dominant(K0,shift + highest_weight(muL,xcL).mu)
        	  	    then [muL]
 	  	    else []
 	  	    fi
 		 od.##
-    then () =  for muL in muLs
-    	       do prints(highest_weight( muL,xcL).mu)
-	       od
-    in muLs}
+    { then () =  if min_bottom_verbose
+    	       then for muL in muLs
+    	       	    do prints(highest_weight( muL,xcL).mu)
+	       	    od
+	       fi}
+    in for muL in muLs
+       do (K_types(K_highest_weight_from_K0_weight(xcG,
+       	       	       highest_weight(muL,xcL).mu + shift))[0], muL)
+       od
+
+{false guarantees not unitary, but true does not guarantee unitary}
+set min_bottom_elim(Param p, [(KType,KType)] pairs) = bool:
+    let start = elapsed_ms(), (,pL) = theta_stable_quasi_data(p)
+    in if #pairs = 0 then true
+       else let DL = max(for (,muL) in pairs do height(muL) od),
+       	    posLK_time = int:0, multK_time = int:0
+       	    then (posL,) = K_signature_irr(pL,DL)
+	    	 {positive part of the signature on L}
+	    then () = if min_bottom_verbose
+	    	      then let () = posLK_time := elapsed_ms()
+		      	   in prints("LK_sig used ",
+    	    	      	      print_time_string(posLK_time - start))
+		      fi
+	    then DG = max(for(mu,) in pairs do height(mu) od)
+	    then multG = branch_irr(p,DG)
+	    then () = if min_bottom_verbose
+	    	      then let () = multK_time := elapsed_ms()
+		      	   in prints("multK used ",
+    	    	      	      print_time_string(multK_time - posLK_time))
+		      fi
+	    	 {all K-mults to height of largest mu}
+
+	    then answer =  all( for (mu,muL) in pairs
+       	       	    do int_part(posL[muL]) >= int_part(multG[mu])
+		    od )
+    	    then () = if min_bottom_verbose
+	       	      then prints("min_bottom_elim used ",
+    	    	      	   print_time_string(elapsed_ms() - start))
+	       	      fi
+            in answer
+	fi
 
 
+{false guarantees not unitary, but true does not guarantee unitary}
+{Here P is the K-character of p, at least to heights of pairs}
+set min_bottom_elim(Param p, [(KType,KType)] pairs, KTypePol P) = bool:
+    let start = elapsed_ms(), (,pL) = theta_stable_quasi_data(p)
+    in if #pairs = 0 then true
+       else let DL = max(for (,muL) in pairs do height(muL) od),
+       	    posLK_time = int:0, multK_time = int:0
+       	    then (posL,) = K_signature_irr(pL,DL)
+	    	 {positive part of the signature on L}
+	    then () = if min_bottom_verbose
+	    	      then let () = posLK_time := elapsed_ms()
+		      	   in prints("LK_sig used ",
+    	    	      	      print_time_string(posLK_time - start))
+		      fi
+	    then DG = max(for(mu,) in pairs do height(mu) od)
+	    then multG = P
+	    then () = if min_bottom_verbose
+	    	      then let () = multK_time := elapsed_ms()
+		      	   in prints("multK used ",
+    	    	      	      print_time_string(multK_time - posLK_time))
+		      fi
+	    	 {all K-mults to height of largest mu}
+
+	    then answer =  all( for (mu,muL) in pairs
+       	       	    do int_part(posL[muL]) >= int_part(multG[mu])
+		    od )
+    	    then () = if min_bottom_verbose
+	       	      then prints("min_bottom_elim used ",
+    	    	      	   print_time_string(elapsed_ms() - start))
+	       	      fi
+            in answer
+	fi
+
+
+set min_bottom_test(Param p,[(KType,KType)] pairs) = bool:
+    if not min_bottom_elim(p, pairs)
+    then return false
+    else is_unitary(p)
+    fi
+
+set min_bottom_test(Param p,[(KType,KType)] pairs, KTypePol P) = bool:
+    if not min_bottom_elim(p, pairs, P)
+    then return false
+    else is_unitary(p)
+    fi
+
+
+set min_bottom_elim(Param p, int D) = bool:
+    let start = elapsed_ms()
+    then pairs = min_L_bottom(p,D), minLb_time = int:0, posLK_time = int:0,
+    	 multK_time = int:0
+    then () = if min_bottom_verbose
+    	      then let () = minLb_time := elapsed_ms()
+    	      	   in  prints(new_line,"min_L_bottom used ",
+    	    	       print_time_string(minLb_time - start))
+	      fi
+    in min_bottom_elim(p, pairs)
+
+set min_bottom_test(Param p, int D) = bool:
+    if not min_bottom_elim(p, D)
+    then return false
+    else is_unitary(p)
+    fi
+
+
+{if #pairs = 0 then true
+       else let DL = max(for (,muL) in pairs do height(muL) od)
+       	    then (posL,) = K_signature_irr(pL,DL)
+	    	 {positive part of the signature on L}
+	    then () = if min_bottom_verbose
+	    	      then let () = posLK_time := elapsed_ms()
+		      	   in prints("LK_sig used ",
+    	    	      	      print_time_string(posLK_time - minLb_time))
+		      fi
+	    then DG = max(for(mu,) in pairs do height(mu) od)
+	    then multG = branch_irr(p,DG)
+	    then () = if min_bottom_verbose
+	    	      then let () = multK_time := elapsed_ms()
+		      	   in prints("multK used ",
+    	    	      	      print_time_string(multK_time - posLK_time))
+		      fi
+	    	 {all K-mults to height of largest mu}
+
+	    then answer =  all( for (mu,muL) in pairs
+       	       	    do int_part(posL[muL]) >= int_part(multG[mu])
+		    od )
+    	    then () = if min_bottom_verbose
+	       	      then prints("min_bottom_test used ",
+    	    	      	   print_time_string(elapsed_ms() - start))
+	       	      fi
+            in answer
+	fi}
 

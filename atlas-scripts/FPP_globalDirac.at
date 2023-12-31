@@ -835,6 +835,25 @@ set FPP_unitary_hash_one_level([KGBElt] xs) = void:
 set FPP_unitary_hash_one_level(RealForm G) = void:
     FPP_unitary_hash_one_level(KGB(G))
 
+set FPP_unitary_hash_bottom_layer([(KGBElt,ratvec)] xlambdas, Param_hash Uhash) = void:
+    FPP_unitary_hash_general(xlambdas, Uhash, local_test_GEO_hash_bottom_layer@(
+    KGBElt,ratvec,VertexData,VertexData,{vec,vec,} [[FacetVertsIndex]],
+    KTypePol_hash, Param_hash))
+
+set FPP_unitary_hash_bottom_layer([(KGBElt,ratvec)] xlambdas) = void:
+    FPP_unitary_hash_bottom_layer(xlambdas, unitary_hash)
+
+set FPP_unitary_hash_bottom_layer([KGBElt] xs, Param_hash Uhash) = void:
+    FPP_unitary_hash_general(xs, Uhash, local_test_GEO_hash_bottom_layer@(
+    KGBElt,ratvec,VertexData,VertexData,{vec,vec,} [[FacetVertsIndex]],
+    KTypePol_hash, Param_hash))
+
+set FPP_unitary_hash_bottom_layer([KGBElt] xs) = void:
+    FPP_unitary_hash_bottom_layer(xs, unitary_hash)
+
+set FPP_unitary_hash_bottom_layer(RealForm G) = void:
+    FPP_unitary_hash_bottom_layer(KGB(G))
+
 { lists real and/or complex simple factors }
 set simple_factors(RealForm G) = [RealForm]:
     let delta=G.distinguished_involution, tf=KGB(G,0).torus_factor,
