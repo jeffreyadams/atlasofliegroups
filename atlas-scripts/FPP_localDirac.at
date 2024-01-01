@@ -502,7 +502,7 @@ set local_testK_hash_bottom_layer(KGBElt x, ratvec lambda, VertexData vd,
 			      od
      then time = elapsed_ms() - start
      then () = if time_verbose then prints("     ", print_time_string(time),
-     	       	  	       " for local_testK_hash") fi
+     	       	  	       " for local_testK_hash_bottom_layer") fi
      in  FVKHnew
 
 
@@ -1655,7 +1655,7 @@ set local_test_GEO_hash_bottom_layer(KGBElt x, ratvec lambda, VertexData vd,
    then ((eq,gr),IUCL,CLBF) = localGraphK(LFDKH)
     	{next remove from LFDKH all facets failing min_bottom_elim(one_ht)}
    then () = LFDKH := local_testK_hash_bottom_layer(x,lambda,Lvd, LFDKH, eq,
-		      gr, CLBF, pairs, pol_hash,  Uhash)
+		      gr, CLBF, pairs, pol_hash_one_ht,  Uhash)
    then () = if test_verbose then prints("unitary on bottom layer to ",one_ht,
 		   	   " facet counts to dim 1: ",for list in LFDKH do
 			     #list od)
