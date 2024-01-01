@@ -1,0 +1,417 @@
+< basic {for required_solution, etc.}
+< ratmat {for ratmat}
+< induction {for theta-stable parabolics}
+< hermitian {for is_unitary}
+< to_ht {for is_unitary_to_ht}
+< FPP_facets {for herm_center}
+< weak_packets {for unipotent_representations}
+{placed in hermitian.at, where it belongs.}
+{
+{take a KTypePol _apparently_ attached to G and make it _actually_ attached
+to G}
+set regroup(RealForm G, KTypePol P) = KTypePol:
+    sum(G, for c@q in P do let (,m) = %q.x
+    	   in c*K_type(KGB(G,m), q.lambda_minus_rho) od)
+}
+
+{ND stands for non-derived: just use simple factors as Levis in G}
+{ lists real and/or complex simple factors }
+set simple_factors(RealForm G) = [RealForm]:
+    let delta=G.distinguished_involution, tf=KGB(G,0).torus_factor,
+	simpleFactors = simple_factors(RootDatum: G),
+	Factors = [RealForm]:[]
+    in
+    for rd@i in simpleFactors
+    do
+    let root = simple_roots(rd)[0]
+    then newRoot = delta*root
+    then simpleRootIndex = simple_root_index(G,root),
+	 newSimpleRootIndex = simple_root_index(G,newRoot)
+    then diagram = diagram_component(G,simpleRootIndex),
+	 newDiagram = diagram_component(G,newSimpleRootIndex)
+    in  if diagram=newDiagram then Factors##:=
+	 [real_form(inner_class(rd,delta), delta, tf)]
+	 else if diagram[0] < newDiagram[0] then Factors##:=
+	 [real_form(inner_class(sub_datum(G,diagram##newDiagram),
+		delta), delta, tf)]
+	      fi
+	fi
+    od; Factors
+
+{for this built-in version, I don't know how to construct the
+KGBElts. If G is U(2,1) and D is SU(2,1), any reasonable construction
+of torus factors seems to have denominators of 3, but those don't
+appear in derived(U(2,1)).}
+{set derived_simple_factors_easy(RealForm G) = [RealForm]:
+    for S in simple_factors(G) do derived(S) od }
+
+{(M,N): M is natural restriction from X^*(S) onto X^*(D).
+ N is right inverse of M.}
+{ set derived_infos(RealForm G) = [(mat,mat)]:
+    for S in simple_factors(G) 
+    do let (,M) = derived_info(S)
+    in (M,required_solution(M, id_mat(S.semisimple_rank)))
+    od}
+
+{(M,Nrat): M is natural restriction from X^*(S) onto X^*(D).
+ Nrat is unique right inverse of M.}
+{set derived_infos_rat(RealForm G) = [(mat,ratmat)]:
+    for S in simple_factors(G) 
+    do let (,M) = derived_info(S)
+       then N = required_solution(M, id_mat(S.semisimple_rank))
+       then Nrat = ratmat:
+       	    ratvecs_as_ratmat(
+		for v in N
+		do sum(G.rank, for xi@j in S.fundamental_weights
+  	      	      	       do (v*S.simple_coroots[j])*xi
+			       od)
+		od)
+       in (M,Nrat)
+    od}
+
+{projection of X^* onto radical: size G.rank square}
+{set radical_rat(InnerClass G) = ratmat:
+    let I = id_mat(G.rank)
+    in ratvecs_as_ratmat(
+	 for  v in I
+	 do v - sum(G.rank, for xi@j in G.fundamental_weights
+	    		 do (v*G.simple_coroots[j])*xi
+			 od)
+	 od)}
+
+{restriction of distinguished involution to radical: size G.rank square,
+zero on roots}
+{set radical_delta(InnerClass G) = ratmat:
+    let delta = G.distinguished_involution
+    in ratvecs_as_ratmat(
+	 for  v in delta
+	 do v - sum(G.rank, for xi@j in G.fundamental_weights
+	    		 do (v*G.simple_coroots[j])*xi
+			 od)
+	 od)}
+
+{projection of torus factor on center}
+set radical_torus_factor(KGBElt x) = ratvec:
+    let tf = torus_factor(x), G = x.real_form
+    in tf - sum(G.rank, for e@i in G.fundamental_coweights
+       	    		do (tf*G.simple_roots[i])*e
+			od)
+
+{projection of torus factor on center}
+{set radical_torus_factor(RealForm G) = ratvec:
+    let tf = torus_factor(KGB(G,0))
+    in tf - sum(G.rank, for e@i in G.fundamental_coweights
+       	    		do (tf*G.simple_roots[i])*e
+			od)}
+
+{projection from ratl coweight of G to coweight of S, respecting
+values on roots of S}
+set cowt_inclusions(RealForm G) = [(ratvec->ratvec)]:
+    for S in simple_factors(G)
+    do (ratvec->ratvec):
+    (ratvec v) : sum(G.rank,
+      for xi@j in fundamental_coweights(S) do (v*S.simple_roots[j])*xi od)
+    od
+
+{projection from ratl coweight of G to coweight of S, respecting
+values on roots of S}
+set wt_projections(RealForm G) = [(ratvec->ratvec)]:
+    for S in simple_factors(G)
+    do (ratvec->ratvec):
+    (ratvec gamma) : sum(G.rank,
+      for xi@j in fundamental_weights(S) do (gamma*S.simple_coroots[j])*xi od)
+    od
+
+
+{now suppose x is a KGBElt for G. Want to project it on the derived
+simple factors}
+{set derived_thetas(mat theta, RealForm G) = [mat]:
+    for (M,N) in derived_infos(G)
+    do M*theta*N
+    od}
+
+{set derived_torus_factors(KGBElt x) = [ratvec]:
+    let G = x.real_form
+    then tf0 = torus_factor(x), DSFs = derived_simple_factors_easy(G)
+    in for DSF@j in DSFs
+       do let (M,N) = derived_infos(G)[j]
+       	  in ^N*(cowt_inclusions(G)[j](tf0))
+       od}
+
+set factor_KGBs(KGBElt x) = [KGBElt]:
+    let G = x.real_form
+    then SF = simple_factors(G)
+    in for S in SF
+       do let (w,) = from_dominant(S, x.involution *S.two_rho)
+       	  then winv = w.inverse
+       	  in KGB_elt(S.inner_class, KGB(G,0).involution * winv,
+       	     		torus_factor(x) {+G.rho_check - S.rho_check})
+       od
+
+set factor_params(Param p) = [Param]:
+    let PIs = wt_projections(p.real_form)
+    in for xj@j in factor_KGBs(p.x)
+       do parameter(xj, p.lambda - p.real_form.rho + xj.real_form.rho,
+       	  		PIs[j](p.nu))
+       od
+
+
+{set derived_KGBs(KGBElt x) = [KGBElt]:
+    let G = x.real_form
+    then thetas = derived_thetas(x.involution, G),
+    	tfs = derived_torus_factors(x)
+    then DSF = derived_simple_factors_easy(G)
+    in for DS@j in DSF
+    do KGB_elt(inner_class(DS), thetas[j], tfs[j])
+    od}
+
+{set derived_simple_factors(RealForm G) = [RealForm]:
+    for xD in derived_KGBs(x_open(G))
+    do xD.real_form
+    od}
+
+{invert derived_thetas: given an involution thetas[j] for each DSF(G),
+ construct an involution for G}
+{set glued_thetas([mat] thetas, RealForm G) = mat:
+    let DSFs = derived_simple_factors(G)
+    then MNrats = derived_infos_rat(G)
+    then delta = G.distinguished_involution
+    then theta = radical_delta(G)
+    then () = for (M,Nrat)@j in MNrats
+    	      do theta := theta +  Nrat*thetas[j]*M
+	      od
+    in ratmat_as_mat(theta)}
+
+{should add a radical_torus_factor from glued_thetas}
+{invert derived_torus_factors: given torus factor tfs on each derived
+simple factor, and central part rf, construct torus factor tf for G}
+{set glued_tfs([ratvec] tfs, RealForm G) = ratvec:
+    let DSFs = derived_simple_factors(G)
+    then MNs = derived_infos(G)
+    in sum(G.rank, for (M,)@j in MNs
+    	      	   do ^M*tfs[j]
+	      	   od)}
+
+{invert descents: given a rational weights gamma,
+ on each derived simple factor, construct rational weight gamma for G}
+{set glued_gammas([ratvec] gammas, RealForm G) = ratvec:
+    let DSFs = derived_simple_factors(G)
+    then MNrats = derived_infos_rat(G)
+    in sum(G.rank, for (,Nrat)@j in MNrats
+       		   do Nrat*gammas[j]
+		   od)}
+
+{M  mxn integral matrix
+ N  mxr integral matrix
+ D int; want a solution with denominator D; assume D*v is a vec
+ v= rational vector size m
+ solve: M*w=v mod (Z-span of columns of N)
+  i.e. M(Dw)=Dv modulo the lattice spanned by the columns of DN
+  algorithm:  M##(D*N) is an mx(n+r) matrix
+  solve M##(D*N)*x=Dv in integers
+  #x=r+n
+  x=(x1,x2) #x1=r,#x2=n
+  M##DNx=Mx1+DNx2=v
+  Mx1=Dv-DNx2
+  M(x1/D) = v - Nx2, so x1/D is desired ratvec solution
+  }
+set solve_mod_N(mat M,mat N,ratvec v, int D)=[ratvec]:
+  let Dv = ratvec_as_vec(D*v), DN = D*N
+  then sol=solve((M##DN),Dv)
+  in
+   if any(sol)
+   then [ ratvec_as_vec(M*(sol.requisition)[:n_columns(M)]/D + v)]
+   else []
+   fi
+
+
+{lambdas is one lambdaj for each derived simple factor; assemble into
+ lambda for G}
+{set glued_lambdas([ratvec] lambdas, RealForm G) = [ratvec]:
+    let lr0 = glued_gammas(lambdas,G) - G.rho
+    then d = lr0.denom
+    then ((,),(Zgens,)) = Z_hat(G)
+    then N = id_mat(G.rank)
+    in for lr in solve_mod_N(Zgens,N,lr0,2*d) do lr + G.rho od
+    { then zs = [vec]: Zgens
+    then B = box(d,#zs)
+    in for b in B
+       do let lr = ((Zgens*b)/d) + lr0
+       	  in if lr.denom = 1
+	     then [lr+G.rho]
+	     else []
+	     fi
+       od.##}}
+
+{Doing actual gluing led to lots of difficult details about torus
+factors that I was unable to sort out.
+This version fails in G=GL(2,R), when it is unable to lift KGBElt #1
+of the derived group SL(2,R) to G.}
+{set glued_KGBs([KGBElt] xs, RealForm G) = [KGBElt]:
+    let theta = glued_thetas(for x in xs do x.involution od, G)
+    then X = KGB(G)
+    then j0 = first(for j:#X do X[j].involution = theta od)
+    then k0 = first(for k:#X-j0 do X[j0+k].involution != theta od)
+    then () = if k0 = -1 then k0 := #X-j0 fi
+    {X's with correct involution run j0 to j0+k0-1}
+    in for j:k0 from j0
+       do let x = X[j]
+       	  then ys = derived_KGBs(x)
+       	  in if all(for k:#ys do ys[k] = xs[k] od)
+	     then [x]
+	     else []
+	     fi
+       od.##}
+
+{these KGBElts are not necessarily for G, but rather for some central
+twist of G. Maybe OK just to move to G-KGBElts with same numbers?}
+{set glued_KGBs([mat] thetas, [ratvec] tfs,
+    [KGBElt] xs, RealForm G) = [KGBElt]:
+    let theta = glued_thetas(thetas, G), tf = glued_tfs(tfs,G)
+    then X = KGB(G)
+    then j0 = first(for j:#X  do X[j].involution = theta od)
+    then k0 = first(for k:#X-j0 do X[j0+k].involution != theta od)
+    {X's with correct involution run j0 to j0+k0-1}
+    in for j:k0 from j0 do if KGB_elt(G.root_datum, theta, tf +
+    	      	              radical_torus_factor(X[j])).real_form = G
+		           then [X[j]]
+		    	   else []
+		   	   fi
+		 	od.##}
+
+
+{lift the parameters ps[j] on the derived simple factors to parameters
+on G. Preserves unitarity}
+{FAILS TO LIFT SOME LIFTABLE THINGS, like ds#1 for SL(2,R) to GL(2,R)}
+{set ascents([Param] ps, RealForm G) = [Param]:
+    let xGs = glued_KGBs(for pj in ps do pj.x od,G)
+    then nu = glued_gammas(for pj in ps do pj.nu od, G)
+    then lambdas = glued_lambdas(for pj in ps do pj.lambda od, G)
+    in for xG in xGs
+       do for lambda in lambdas
+       	  do parameter(xG,lambda,nu)
+	  od
+       od.##}
+
+{misses half of unip reps in some Levis in SO(5,5) and SO(4,6)}
+{set unipotent_representations2(RealForm G) = [Param]:
+    let DSFs = derived_simple_factors(G)
+    then USFs = for DSF in DSFs do unipotent_representations(DSF) od
+    	 {[[Param]], size #DSFs}
+    then Ubox = box(for USF in USFs do #USF od)
+    then descents = for b in Ubox do for k@j in b do USFs[j][k] od od
+        {long list of [Param]; each [Param] has size #DSFs}
+    in for ps in descents do ascents(ps, G) od.##}
+
+
+set weak_support(Param p) = [int]:
+    support(p.x)
+
+set weakly_good(Param p) = Parabolic: (support(p.x), p.x)
+
+set good_support(Param p) = [int]:
+    let S = support(p.x), gamma=p.infinitesimal_character, G = p.real_form
+    in for j: G.semisimple_rank
+       do if (is_member(S)(j) or (G.simple_coroots[j]*gamma) = 0)
+       	  then [j]
+	  else []
+	  fi
+       od.##
+
+set good(Param p) = Parabolic: (good_support(p), p.x)
+
+{one Param for each derived simple factor of L}
+{set descents(Param p, [int] S) = [Param]:
+    let  x = p.x, G = p.real_form, lambda = p.lambda, nu = p.nu,
+    	 gamma = p.infinitesimal_character
+    then P = Parabolic: (S, x)
+    then () = assert(is_parabolic_theta_stable(P),"Designated P is not theta-stable")
+    then L = P.Levi
+    then lambdaL = lambda - G.rho + L.rho, nuL = nu, xL = inverse_embed_KGB(x,L)
+    then DSF = derived_simple_factors_easy(L), DSFinfos = derived_infos(L)
+    then xDSs = derived_KGBs(xL)
+    then nuDSs = for (M,) in DSFinfos do M*nu od
+    in for DS@j in DSF
+       do let (M,) = DSFinfos[j]
+       	  in parameter(xDSs[j], M*lambda, M*nu)
+       od
+
+{the reps from which p is cohomologically induced in the weakly
+     good range}
+set weak_descents(Param p) = [Param]:
+    descents(p, weak_support(p))}
+
+{the reps from which p is cohomologically induced in the good range.}
+{set good_descents(Param p) = [Param]:
+    descents(p, good_support(p))}
+
+set is_unitary_good(Param p) = bool:
+    if not is_hermitian(p)
+    then return false
+    fi;
+    for q in good_descents(p)
+    do if not(is_unitary(q))
+       then return false
+       fi
+    od;
+    true
+
+set is_unitary_good_look(Param p, RealForm_hash RF_hash, [[Param_hash]] Uhasheses) = bool:
+    if not is_hermitian(p)
+    then return false
+    fi;
+    if #good_support(p) = p.real_form.semisimple_rank
+    then is_unitary(p)
+    else all( for q in good_descents(p)
+    	      do let a = RF_hash.lookup(q.real_form), (,n) = %q.x
+    	      	 in if a = -1 then is_unitary(q)
+       	   	    else Uhasheses[a][n].lookup(herm_center(q)) >= 0
+       	   	    fi
+	      od )
+     fi
+
+set is_unitary_good_look(Param p, RealForm_hash RF_hash, [Param_hash] Uhashes) = bool:
+    if not is_hermitian(p)
+    then return false
+    fi;
+    if #good_support(p) = p.real_form.semisimple_rank
+    then is_unitary(p)
+    else all( for q in good_descents(p)
+    	      do let a = RF_hash.lookup(q.real_form)
+    	      	 in if a = -1 then is_unitary(q)
+       	   	    else Uhashes[a].lookup(herm_center(q)) >= 0
+       	   	    fi
+	      od )
+     fi
+
+set is_unitary_weak(Param p) = bool:
+    if not is_hermitian(p)
+    then return false
+    fi;
+    if all (for q in weak_descents(p)
+       	    do is_unitary(q)
+	    od)
+    then return true
+    else if weakly_good(p).Levi = p.real_form
+    	 then return false
+    	 else return all (for r in good_descents(p)
+    	      	     	  do is_unitary(r)
+	      	     	  od)
+    	 fi
+
+     fi
+
+{passing this I think may guarantee is_unitary_to_ht, but
+FAILING this may not guarantee failure of is_unitary_to_ht???
+Probably dangerous to use in its present form.}
+set is_unitary_to_ht_good(Param p, int N) = bool:
+    let D = N - height(p)
+    then () = if not is_hermitian(p)
+    	      then return false
+    	      fi
+    then () = for q in good_descents(p)
+    	      do if not(is_unitary_to_ht(q, D+height(q)))
+       	      	 then return false
+       		 fi
+    	      od
+    in true
