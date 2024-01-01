@@ -475,13 +475,13 @@ set local_testK_hash_bottom_layer(KGBElt x, ratvec lambda, VertexData vd,
 		    	  , facet_bary(vd.list, verts))))
 	          in if #ps = 1
 		     then if Uhash.lookup(ps[0]).>= or
-		     	     min_bottom_test(ps[0], pairs, pol_hash.index(FVKH[d][j][d+1]))
+		     	     min_bottom_elim(ps[0], pairs, pol_hash.index(FVKH[d][j][d+1]))
 		     	  then newStatuses[k]:= "T"
 			  else newStatuses:= updateNUclassesB(newStatuses, gr, k)
 			  ; newStatuses[k] := "F"
 			  fi
 		     else if{NEWU} all(for p in ps do Uhash.lookup(p).>= or
-					       min_bottom_test(p,pairs) od)
+					       min_bottom_elim(p,pairs) od)
 			  then newStatuses[k]:= "T"
 			  else newStatuses:= updateNUclassesB(newStatuses, gr, k)
 			  ; newStatuses[k] := "F"
@@ -651,7 +651,7 @@ set one_param_test(Param p, Param pL, [(KType,KType)] pairs, Param_hash Uhash) =
        else let () = one_false_counter.use()
 	    in []
        fi
- 
+
 {Assume we have local vertices and edges LF, herm and pos on LKTs.
 Called when there are not enough heights; presumably small KGBElts??}
 set local_test_GEO_hash_real_dumb(KGBElt x, ratvec lambda, VertexData vd, VertexData Lvd,
@@ -1378,12 +1378,6 @@ set local_test_GEO_hash_one_level(KGBElt x, ratvec lambda, VertexData vd,
     	 	       	      do G.two_rho_check*(dominant(G,thetaMinus*v))
 		       	      od)
     then pmax = parameter(x, lambda, Lvd.list[maxDiffLoc])
-    {then (Q,qL) = theta_stable_quasi_data(pmax)
-    then L = Q.Levi, qLhts = next_hts(qL,BLsteps)}
-        {TINY CASE handles L abelian, so qLhts is guaranteed to have size BL-steps}
-    {then pairs = min_L_bottom(q,height(q) + qLhts[BLsteps-1])
-    then ()= qLhts:= for (,muL) in pairs do height(muL) od.sort
-    then qhts = for (mu,) in pairs do height(mu) od.sort}
     then Shorthts = if short_hts_flag
     	 	    then short_hts(pmax)
 		    else next_heights(pmax,max(depth, LAST+1))
@@ -1606,9 +1600,8 @@ set BL_steps = int:2
 set hash_bottom_layerCounter = make_counter()
 
 {assume local facets to dim 1 are recorded in LF, already herm and pos
-on LKTs. Pairs is a collection (mu,muL) of bottom layer K-types for
-(x,lambda). This version uses min_bottom_test instead of
-unitary_to_ht. Should only be called when #pairs > 0, so L is non-abelian.}
+on LKTs. This version uses min_bottom_elim instead of
+unitary_to_ht.}
 
 set local_test_GEO_hash_bottom_layer(KGBElt x, ratvec lambda, VertexData vd,
     VertexData Lvd, [[FacetVertsIndex]] LF, KTypePol_hash pol_hash,
@@ -1622,13 +1615,13 @@ set local_test_GEO_hash_bottom_layer(KGBElt x, ratvec lambda, VertexData vd,
 	      fi}
     then r = rank(thetaMinus){, NK = #KGB(G)}
     then ONE = BL_steps
-    then maxDiffLoc = max_loc(for v in Lvd.list
-    	 	       	      do G.two_rho_check*(dominant(G,thetaMinus*v))
+    then maxDiffLoc = max_loc(for w in LF[0] {v in Lvd.list}
+    	 	       	      do G.two_rho_check*(dominant(G,thetaMinus*Lvd.list[w[0]]))
 		       	      od)
-    then pmax = parameter(x, lambda, Lvd.list[maxDiffLoc])
+    then pmax = parameter(x, lambda, Lvd.list[LF[0][maxDiffLoc][0]])
     then (Q,pmaxL) = theta_stable_quasi_data(pmax)
     then () = if is_abelian(Q.Levi)
-    	      then let () = Uhash.match(pmax)
+    	      then let () = Uhash.match(first_param(finalize(pmax)))
 	      	   in return [pmax]
 	      fi
     then L = Q.Levi, qLhts = next_heights(pmaxL,BL_steps)
@@ -1637,8 +1630,7 @@ set local_test_GEO_hash_bottom_layer(KGBElt x, ratvec lambda, VertexData vd,
     	      then return local_test_GEO_hash_one_level(x, lambda, vd, Lvd, LF, pol_hash, Uhash)
 	      fi
     then () = if {TINY CASE} #LF[0]=1
-    	      then let p = parameter(x,lambda,Lvd.list[LF[0][0][0]])
-	      	   in return one_param_test(pmax, pmaxL, pairs, Uhash)
+    	      then return one_param_test(pmax, pmaxL, pairs, Uhash)
 	      fi
     then ()= qLhts:= for (,muL) in pairs do height(muL) od.sort
     then qhts = for (mu,) in pairs do height(mu) od.sort
@@ -1690,7 +1682,7 @@ set local_test_GEO_hash_bottom_layer(KGBElt x, ratvec lambda, VertexData vd,
 					  facet_bary(Lvd.list, verts))))
 			      in if #ps = 1
 			      	 then if Uhash.lookup(ps[0]).>= or
-                             	      	 min_bottom_test(ps[0], pairs, pol_hash_one_ht.index(LFDKH[D+1][m][D+2]))
+                             	      	 min_bottom_elim(ps[0], pairs, pol_hash_one_ht.index(LFDKH[D+1][m][D+2]))
 				      then [LFDKH[D+1][m]]
 				      else []
 				      fi
@@ -1726,33 +1718,6 @@ set local_test_GEO_hash_bottom_layer(KGBElt x, ratvec lambda, VertexData vd,
     then UParams = [Param]:
          let ((eq,gr),IUCL,CLBF) = localGraphK(LFDKH)
          in local_test_hash(x, lambda, Lvd, LFDKH, eq, gr, CLBF, Uhash)
-		   {everything here has passed unitary on bottom layer, so just is_unitary}
-	    	      {then time = elapsed_ms() - start
-    	       then () = if time_verbose
-	      	      	then prints("     ", print_time_string(time),
-	      		     	    " for UParams calculation ", test_string, new_line) fi}
- {         else let UParams =
-                  for list@d in LFDKH
-                  do for v in list
-                     do let p = parameter(x,lambda, facet_bary(Lvd.list, v[:d+1]))
-		     	then () = for  p1 in monomials(finalize(p))
-                      	     	  do Uhash.match(herm_center(p1));
-                             	  if deform_flag
-			     	  then for q in face_deformed_unitaries_new(p1)
-                             	       do Uhash.match(q)
-				       od
-			     	  fi
-                             	  od
-			then () = if long_out_flag
-		      	     	  then let () = ParamsByDim[d] := ParamsByDim[d]#p
-			   	       then () = LFDKHByDim[d] := LFDKHByDim[d]#v
-				       in ()
-			   	  fi
-		     	in p
-                     od
-                  od.##
-	      in UParams
-	 fi}
     then time = elapsed_ms() - start
     then () = if time_verbose
 	      then prints("     ", print_time_string(time),

@@ -90,13 +90,12 @@ set min_bottom_elim(Param p, [(KType,KType)] pairs) = bool:
 		      fi
 	    then DG = max(for(mu,) in pairs do height(mu) od)
 	    then multG = branch_irr(p,DG)
+	    	 {all K-mults to height of largest mu}
 	    then () = if min_bottom_verbose
 	    	      then let () = multK_time := elapsed_ms()
 		      	   in prints("multK used ",
     	    	      	      print_time_string(multK_time - posLK_time))
 		      fi
-	    	 {all K-mults to height of largest mu}
-
 	    then answer =  all( for (mu,muL) in pairs
        	       	    do int_part(posL[muL]) >= int_part(multG[mu])
 		    od )
@@ -154,7 +153,6 @@ set min_bottom_test(Param p,[(KType,KType)] pairs, KTypePol P) = bool:
     else is_unitary(p)
     fi
 
-
 set min_bottom_elim(Param p, int D) = bool:
     let start = elapsed_ms()
     then pairs = min_L_bottom(p,D), minLb_time = int:0, posLK_time = int:0,
@@ -171,33 +169,3 @@ set min_bottom_test(Param p, int D) = bool:
     then return false
     else is_unitary(p)
     fi
-
-
-{if #pairs = 0 then true
-       else let DL = max(for (,muL) in pairs do height(muL) od)
-       	    then (posL,) = K_signature_irr(pL,DL)
-	    	 {positive part of the signature on L}
-	    then () = if min_bottom_verbose
-	    	      then let () = posLK_time := elapsed_ms()
-		      	   in prints("LK_sig used ",
-    	    	      	      print_time_string(posLK_time - minLb_time))
-		      fi
-	    then DG = max(for(mu,) in pairs do height(mu) od)
-	    then multG = branch_irr(p,DG)
-	    then () = if min_bottom_verbose
-	    	      then let () = multK_time := elapsed_ms()
-		      	   in prints("multK used ",
-    	    	      	      print_time_string(multK_time - posLK_time))
-		      fi
-	    	 {all K-mults to height of largest mu}
-
-	    then answer =  all( for (mu,muL) in pairs
-       	       	    do int_part(posL[muL]) >= int_part(multG[mu])
-		    od )
-    	    then () = if min_bottom_verbose
-	       	      then prints("min_bottom_test used ",
-    	    	      	   print_time_string(elapsed_ms() - start))
-	       	      fi
-            in answer
-	fi}
-
