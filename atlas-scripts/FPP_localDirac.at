@@ -1690,7 +1690,7 @@ set local_test_GEO_hash_bottom_layer(KGBElt x, ratvec lambda, VertexData vd,
 					  facet_bary(Lvd.list, verts))))
 			      in if #ps = 1
 			      	 then if Uhash.lookup(ps[0]).>= or
-                             	      	 min_bottom_test(ps[0], pairs, pol_hash.index(LFDKH[D+1][m][D+2]))
+                             	      	 min_bottom_test(ps[0], pairs, pol_hash_one_ht.index(LFDKH[D+1][m][D+2]))
 				      then [LFDKH[D+1][m]]
 				      else []
 				      fi
