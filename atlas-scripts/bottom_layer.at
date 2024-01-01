@@ -3,6 +3,7 @@
 < hermitian.at {for to_ht}
 <K_types.at {for branch_std}
 <time.at {for print_time_string}
+<cohom_reductionND {for factor_params}
 {trying to get at bottom layer K-types. Use D for bound on height, d
 for bound on number of terms. The "min" refers to the theta-stable
 parabolic built by theta_stable_quasi_data. Parabolics _containing_
@@ -65,14 +66,44 @@ set min_L_bottom(Param p, int D) = [(KType,KType)]:
 	  	    else []
 	  	    fi
 		 od.##
-    { then () =  if min_bottom_verbose
-    	       then for muL in muLs
-    	       	    do prints(highest_weight( muL,xcL).mu)
-	       	    od
-	       fi}
-    in for muL in muLs
-       do (K_types(K_highest_weight_from_K0_weight(xcG,
-       	       	       highest_weight(muL,xcL).mu + shift))[0], muL)
+    in for muL in muLs do (K_types(K_highest_weight_from_K0_weight(xcG,
+       	       	       highest_weight(muL, xcL).mu + shift))[0] ,muL) od
+
+set min_L_bottom_factors(Param p, int level) = [Param,[(KType, KType)]]:
+    let (Q,pL) = theta_stable_quasi_data(p), {x = p.x, lambda = p.lambda,}
+    	G = p.real_form
+    then pjs = factor_params(pL), L = Q.Levi
+     {restriction to each simple factor of L}
+    then Ljs = simple_factors(L)
+    then DLjs = for pj in pjs do next_heights(pj, level) od
+    then too_many_mujs = [[KType]]:
+    	 for pj@j in pjs
+	 do monomials(branch_std(pj, DLjs[j][level -1]))
+	 od
+    then xcL = KGB(L,0)
+    then xcLjs = for pj in pjs
+    	       	 do KGB(pj.real_form,0) {KGB(Lj, 0)}
+		 od
+    then xcG = embed_KGB(xcL, G), LKTG = LKTs(p)[0],
+    	 LKTL = LKTs(pL)[0]
+    then shift = highest_weight(LKTG,xcG).mu - highest_weight(LKTL,xcL).mu
+    then K0 = K_0(xcG), LK0 = K_0(xcL)
+    then taujs =  for listj@j in too_many_mujs {list of vecs, K0 weights}
+    	      	  do for muLj in listj
+       	      	     do let tauj = highest_weight(muLj, xcLjs[j]).mu + shift
+		     	in if height(muLj) > 0 and
+			   is_dominant(K0, tauj)
+		        {is_dominant(K0,shift + highest_weight(muLj,xcLjs[j]).mu)}
+       	  	        then [(tauj,muLj)]
+	  	        else []
+	  	        fi
+		     od.##
+		  od
+    in for listj@j in taujs
+       do (pjs[j],
+       	  for (tauj,muLj) in listj
+       	  do (K_types(K_highest_weight_from_K0_weight(xcG, tauj))[0],muLj)
+	  od)
        od
 
 {false guarantees not unitary, but true does not guarantee unitary}
@@ -81,7 +112,7 @@ set min_bottom_elim(Param p, [(KType,KType)] pairs) = bool:
     in if #pairs = 0 then true
        else let DL = max(for (,muL) in pairs do height(muL) od),
        	    posLK_time = int:0, multK_time = int:0
-       	    then (posL,) = K_signature_irr(pL,DL)
+       	    then (posL,) = K_signature_irr(first_param(finalize(pL)),DL)
 	    	 {positive part of the signature on L}
 	    then () = if min_bottom_verbose
 	    	      then let () = posLK_time := elapsed_ms()
@@ -114,7 +145,7 @@ set min_bottom_elim(Param p, [(KType,KType)] pairs, KTypePol P) = bool:
     in if #pairs = 0 then true
        else let DL = max(for (,muL) in pairs do height(muL) od),
        	    posLK_time = int:0, multK_time = int:0
-       	    then (posL,) = K_signature_irr(pL,DL)
+       	    then (posL,) = K_signature_irr(first_param(finalize(pL)),DL)
 	    	 {positive part of the signature on L}
 	    then () = if min_bottom_verbose
 	    	      then let () = posLK_time := elapsed_ms()
@@ -166,6 +197,72 @@ set min_bottom_elim(Param p, int D) = bool:
 
 set min_bottom_test(Param p, int D) = bool:
     if not min_bottom_elim(p, D)
+    then return false
+    else is_unitary(p)
+    fi
+
+{false guarantees not unitary, but true does not guarantee unitary}
+set min_bottom_elim_factors(Param p, [Param,[(KType,KType)]] pjpairss) = bool:
+    let start = elapsed_ms(), answers = for k:#pjpairss do false od
+    then () = if #pjpairss = 0 then return true
+       	      else for (pj, pairsj)@j in pjpairss
+       	      	   do let DLj = max(for (,muLj) in pairsj do height(muLj) od#height(pj))
+       	      	      then (posLj,) = K_signature_irr(first_param(finalize(pj)),DLj)
+	    	      	   {positive part of the signature on Lj}
+	    	      then DGj = max(for(muj,) in pairsj do height(muj) od #height(p))
+	    	      then multGj = branch_irr(p,DGj)
+	    	      	   {all K-mults to height of largest muj}
+	    	      then () = answers[j] :=  all( for (muj,muLj) in pairsj
+       	       	    	    	 do int_part(posLj[muLj]) >= int_part(multGj[muj])
+		    		 od )
+		      in ()
+	     	   od
+	      fi
+     in all(answers)
+
+{false guarantees not unitary, but true does not guarantee unitary}
+{Here P is the K-character of p, at least to heights of pairs}
+set min_bottom_elim_factors(Param p, [Param,[(KType,KType)]] pjpairss, KTypePol P) = bool:
+    let start = elapsed_ms(), answers = for k:#pjpairss do false od
+    then () = if #pjpairss = 0 then return true
+       	      else for (pj, pairsj)@j in pjpairss
+       	      	   do let DLj = max(for (,muLj) in pairsj do height(muLj) od# height(pj))
+       	      	      then (posLj,) = K_signature_irr(first_param(finalize(pj)),DLj)
+	    	      	   {positive part of the signature on Lj}
+	    	      then DGj = max(for(muj,) in pairsj do height(muj) od#height(p))
+	    	      then () = answers[j] :=  all( for (muj,muLj) in pairsj
+       	       	    	    	 do int_part(posLj[muLj]) >= int_part(P[muj])
+		    		 od )
+		      in ()
+	     	   od
+	      fi
+     in all(answers)
+
+set min_bottom_test_factors(Param p, [Param,[(KType,KType)]] pjpairss) = bool:
+    if not min_bottom_elim_factors(p, pjpairss)
+    then return false
+    else is_unitary(p)
+    fi
+
+set min_bottom_test_factors(Param p,[Param, [(KType,KType)]] pjpairss, KTypePol P) = bool:
+    if not min_bottom_elim_factors(p, pjpairss, P)
+    then return false
+    else is_unitary(p)
+    fi
+
+set min_bottom_elim_factors(Param p, int level) = bool:
+    let start = elapsed_ms()
+    then pjpairss = min_L_bottom_factors(p,level), minLb_time = int:0, posLK_time = int:0,
+    	 multK_time = int:0
+    then () = if min_bottom_verbose
+    	      then let () = minLb_time := elapsed_ms()
+    	      	   in  prints(new_line,"min_L_bottom used ",
+    	    	       print_time_string(minLb_time - start))
+	      fi
+    in min_bottom_elim_factors(p, pjpairss)
+
+set min_bottom_test_factors(Param p, int level) = bool:
+    if not min_bottom_elim_factors(p, level)
     then return false
     else is_unitary(p)
     fi

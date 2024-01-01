@@ -434,10 +434,11 @@ set local_testK_hash(KGBElt x, ratvec lambda, VertexData vd,
 
 {test candidate classes with (new) tester; delete
  from LFVKH facets established to be nonunitary in this way. Output is new
- shorter list of candidate facets. vd is LOCAL VertexData}
+ shorter list of candidate facets. vd is LOCAL VertexData.
+ Assume pjpairss only has mu to height the level of the K-chars in pol_hash.}
 set local_testK_hash_bottom_layer(KGBElt x, ratvec lambda, VertexData vd,
     [[FacetVertsKHash]] FVKH, [[int]] eq, [[int]] gr, [vec] classListByFacet,
-    [(KType,KType)] pairs, KTypePol_hash pol_hash, Param_hash Uhash) = [[FacetVertsKHash]]:
+    [Param,[(KType,KType)]] pjpairss, KTypePol_hash pol_hash, Param_hash Uhash) = [[FacetVertsKHash]]:
     let newStatuses = for j:#eq do "?" od,  NumClasses = #eq
     	, printInterval = int: 1
     {use Uhash to mark some classes at known? (those that hit a unitary Param)}
@@ -475,13 +476,14 @@ set local_testK_hash_bottom_layer(KGBElt x, ratvec lambda, VertexData vd,
 		    	  , facet_bary(vd.list, verts))))
 	          in if #ps = 1
 		     then if Uhash.lookup(ps[0]).>= or
-		     	     min_bottom_elim(ps[0], pairs, pol_hash.index(FVKH[d][j][d+1]))
+		     	     min_bottom_elim_factors(ps[0], pjpairss,
+			     		pol_hash.index(FVKH[d][j][d+1]))
 		     	  then newStatuses[k]:= "T"
 			  else newStatuses:= updateNUclassesB(newStatuses, gr, k)
 			  ; newStatuses[k] := "F"
 			  fi
 		     else if{NEWU} all(for p in ps do Uhash.lookup(p).>= or
-					       min_bottom_elim(p,pairs) od)
+					       min_bottom_elim_factors(p,pjpairss) od)
 			  then newStatuses[k]:= "T"
 			  else newStatuses:= updateNUclassesB(newStatuses, gr, k)
 			  ; newStatuses[k] := "F"
@@ -627,7 +629,7 @@ set one_param_test(Param p, Param_hash Uhash) = [Param]:
 	    in []
        fi
 
-set one_param_test(Param p, Param pL, [(KType,KType)] pairs, Param_hash Uhash) = [Param]:
+set one_param_test(Param p, Param pL, [(Param,[(KType,KType)])] pjpairss, Param_hash Uhash) = [Param]:
     let QG = monomials(finalize(p)), QL = monomials(finalize(pL)), G = p.real_form
     then paramPairs = [(Param,Param)]:
     	 for q in QG
@@ -640,7 +642,7 @@ set one_param_test(Param p, Param pL, [(KType,KType)] pairs, Param_hash Uhash) =
 	 od.##
     then test = all(for (q,qL) in paramPairs
     	      	    do Uhash.lookup(q).>= or
-    	      	       min_bottom_test(q, pairs)
+    	      	       min_bottom_test_factors(q, pjpairss)
 		    od)
     in if test
        then let () = for q in QG
@@ -1624,30 +1626,34 @@ set local_test_GEO_hash_bottom_layer(KGBElt x, ratvec lambda, VertexData vd,
     	      then let () = Uhash.match(first_param(finalize(pmax)))
 	      	   in return [pmax]
 	      fi
-    then L = Q.Levi, qLhts = next_heights(pmaxL,BL_steps)
-    then pairs = min_L_bottom(pmax,height(pmax) + qLhts[BL_steps-1])
-    then () = if L = G or #pairs = 0
+    then L = Q.Levi
+    then pjpairss = min_L_bottom_factors(pmax,BL_steps)
+    then () = if L = G or #pjpairss = 0
     	      then return local_test_GEO_hash_one_level(x, lambda, vd, Lvd, LF, pol_hash, Uhash)
 	      fi
     then () = if {TINY CASE} #LF[0]=1
-    	      then return one_param_test(pmax, pmaxL, pairs, Uhash)
+    	      then return one_param_test(pmax, pmaxL, pjpairss, Uhash)
 	      fi
-    then ()= qLhts:= for (,muL) in pairs do height(muL) od.sort
-    then qhts = for (mu,) in pairs do height(mu) od.sort
+    then qLhts = for (pj,pairsj) in pjpairss
+    	     	 do max( for(,muL) in pairsj do height(muL) od# height(pj))
+		 od
+    then qhts = max(for (,pairsj) in pjpairss
+    	      	    do max( for (mu,) in pairsj do height(mu) od#height(pmax))
+		    od)
     then () = test_string:= " using local_test_GEO_hash_bottom_layer"
     then  () = hash_bottom_layerCounter.use()
     {then hts = next_heights(parameter(x,lambda,0*lambda), LAST+1)}
-    then one_ht = max(qhts)
+    then one_ht = qhts
     then () =  if test_verbose then prints("facet counts to dim 1: ",
 			  for list in LF do #list od);
-		  prints("testing level = ", ONE, "; heights = ", qhts, new_line)
+		  prints("testing level = ", ONE, "; height = ", qhts, new_line)
 	       fi
-   then pol_hash_one_ht = make_KTypePol_hash() {to hold K_chars to height one_ht = hts[ONE]}
+   then pol_hash_one_ht = make_KTypePol_hash() {to hold K_chars to height one_ht}
    then LFDKH = [[FacetVertsKHash]]: localFD_KHash_01(x, lambda, Lvd, one_ht, pol_hash_one_ht, LF)
    then ((eq,gr),IUCL,CLBF) = localGraphK(LFDKH)
     	{next remove from LFDKH all facets failing min_bottom_elim(one_ht)}
    then () = LFDKH := local_testK_hash_bottom_layer(x,lambda,Lvd, LFDKH, eq,
-		      gr, CLBF, pairs, pol_hash_one_ht,  Uhash)
+		      gr, CLBF, pjpairss, pol_hash_one_ht,  Uhash)
    then () = if test_verbose then prints("unitary on bottom layer to ",one_ht,
 		   	   " facet counts to dim 1: ",for list in LFDKH do
 			     #list od)
@@ -1682,13 +1688,14 @@ set local_test_GEO_hash_bottom_layer(KGBElt x, ratvec lambda, VertexData vd,
 					  facet_bary(Lvd.list, verts))))
 			      in if #ps = 1
 			      	 then if Uhash.lookup(ps[0]).>= or
-                             	      	 min_bottom_elim(ps[0], pairs, pol_hash_one_ht.index(LFDKH[D+1][m][D+2]))
+                             	      	 min_bottom_elim_factors(ps[0], pjpairss,
+					 	pol_hash_one_ht.index(LFDKH[D+1][m][D+2]))
 				      then [LFDKH[D+1][m]]
 				      else []
 				      fi
 				 else if all(for p in ps
 					     	    do Uhash.lookup(p).>= or
-						       min_bottom_elim(p, pairs)
+						       min_bottom_elim_factors(p, pjpairss)
 						    od)
 				      then [LFDKH[D+1][m]]
 				      else []
