@@ -3095,7 +3095,7 @@ from |required|, whose owner will be destructed before the error is caught.
 expression_ptr conform_types
 (const type_expr& found, type_expr& required, expression_ptr&& d, const expr& e)
 { if (not required.specialise(found) and not coerce(found,required,d))
-    throw type_error(e,found.copy(),std::move(required));
+    throw type_error(e,found.copy(),required.copy());
   return std::move(d); // invoking |std::move| is necessary here
 }
 

@@ -8320,7 +8320,7 @@ discrimination on a |reversed| attribute (of the subscription) is necessary.
 
 The code below illustrates one way to solve the coding problem of avoiding
 multiple identical |else| clauses in a situation where the positive option (here
-that of using a |field_transform| rather than a |field_assignment| is dependent
+that of using a |field_transform| rather than a |field_assignment|) is dependent
 on the conjunction of several (here two) conditions, among which later
 conditions are in terms of one or more values (here |c| and |tup|) that are only
 defined if earlier conditions succeed. The latter circumstance makes it
