@@ -7391,6 +7391,28 @@ struct component_transform : public assignment_expr
 @)
   void transform(level l,shared_value& aggregate) const;
 };
+@)
+struct field_transform : public assignment_expr
+{ using ptr_to_builtin = std::shared_ptr<const builtin_value<false> >;
+  source_location loc; // as in |call_base|
+  std::string name; // as in |overloaded_call|
+  ptr_to_builtin f; // as in |builtin_call|
+  wrapper_function f_ptr; // shortcut, as in |builtin_call|
+  const unsigned position;
+@)
+  field_transform
+   (id_type a,unsigned pos,expression_ptr&& r,
+    const ptr_to_builtin& fun,
+    const std::string& name, const source_location& loc)
+   : assignment_expr(a,std::move(r))
+   , loc(loc), name(fun->print_name), f(fun), f_ptr(fun->val)
+   , position(pos) @+{}
+  virtual ~field_transform() = default;
+
+  virtual void print (std::ostream& out) const;
+@)
+  void transform(level l,shared_value& tupple) const;
+};
 
 @ Printing reassembles the subexpressions according to the input syntax,
 except for field assignments which just print the position to be modified.
@@ -7402,15 +7424,20 @@ void component_assignment<reversed>::print (std::ostream& out) const
         << *index << "]:=" << *rhs;
 }
 @)
+template <bool reversed>
+void component_transform<reversed>::print (std::ostream& out) const
+{@; out << main_hash_table->name_of(lhs) << (reversed ? "~[" : "[")
+        << *index << "] " @| << name << ":= " << *rhs;
+}
+@)
 void field_assignment::print (std::ostream& out) const
 {@; out << main_hash_table->name_of(lhs) << '.' << this->position << ":="
         << *rhs;
 }
 @)
-template <bool reversed>
-void component_transform<reversed>::print (std::ostream& out) const
-{@; out << main_hash_table->name_of(lhs) << (reversed ? "~[" : "[")
-        << *index << "] " @| << name << ":= " << *rhs;
+void field_transform::print (std::ostream& out) const
+{@; out << main_hash_table->name_of(lhs) << '.' << this->position
+        << ' ' << name << ":=" << *rhs;
 }
 
 @ For global assignments or transforms, we need to have non-|const| access the
@@ -7452,6 +7479,15 @@ public:
   global_field_assignment (id_type a, unsigned pos,expression_ptr&& r);
   virtual void evaluate(expression_base::level l) const;
 };
+@)
+class global_field_transform : public field_transform
+{ shared_share address;
+public:
+  global_field_transform (id_type a, unsigned pos,expression_ptr&& r,
+    const ptr_to_builtin& fun,
+    const std::string& name, const source_location& loc);
+  virtual void evaluate(expression_base::level l) const;
+};
 
 @ The constructor for |global_component_assignment| stores the address of the
 aggregate object, the expression to be assigned, and the component kind. The
@@ -7475,6 +7511,13 @@ global_component_transform<reversed>::global_component_transform @|
 global_field_assignment::global_field_assignment @|
   (id_type a, unsigned pos,expression_ptr&& r)
 : field_assignment(a,pos,std::move(r))
+, address(global_id_table->address_of(a)) @+{}
+@)
+global_field_transform::global_field_transform @|
+  (id_type a, unsigned pos,expression_ptr&& r,
+    const ptr_to_builtin& fun,
+    const std::string& name, const source_location& loc)
+: field_transform(a,pos,std::move(r),fun,name,loc)
 , address(global_id_table->address_of(a)) @+{}
 
 @ It is in evaluation that component assignments differ most from ordinary ones.
@@ -7502,16 +7545,6 @@ void global_component_assignment<reversed>::evaluate(expression_base::level l)
   base::assign(l,*address,kind);
 }
 @)
-void global_field_assignment::evaluate(expression_base::level l) const
-{ if (address->get()==nullptr)
-  { std::ostringstream o;
-    o << "Assigning to field of uninitialized variable " @|
-      << main_hash_table->name_of(this->lhs);
-    throw runtime_error(o.str());
-  }
-  assign(l,*address); // call method from base class (not called |base| here)
-}
-@)
 template <bool reversed>
 void global_component_transform<reversed>::evaluate(expression_base::level l)
   const
@@ -7522,6 +7555,26 @@ void global_component_transform<reversed>::evaluate(expression_base::level l)
     throw runtime_error(o.str());
   }
   base::transform(l,*address);
+}
+@)
+void global_field_assignment::evaluate(expression_base::level l) const
+{ if (address->get()==nullptr)
+  { std::ostringstream o;
+    o << "Assigning to field of uninitialized variable " @|
+      << main_hash_table->name_of(this->lhs);
+    throw runtime_error(o.str());
+  }
+  assign(l,*address); // call method from base class (not called |base| here)
+}
+@)
+void global_field_transform::evaluate(expression_base::level l) const
+{ if (address->get()==nullptr)
+  { std::ostringstream o;
+    o << "Transforming field of uninitialized variable " @|
+      << main_hash_table->name_of(this->lhs);
+    throw runtime_error(o.str());
+  }
+  transform(l,*address); // call method from base class (not called |base| here)
 }
 
 @ For local assignments we also need to access the location where the
@@ -7563,6 +7616,16 @@ public:
     (id_type a, unsigned pos,size_t d, size_t o, expression_ptr&& r);
   virtual void evaluate(expression_base::level l) const;
 };
+@)
+class local_field_transform : public field_transform
+{ size_t depth, offset;
+public:
+  local_field_transform
+    (id_type a, unsigned pos,size_t d, size_t o, expression_ptr&& r,
+    const ptr_to_builtin& fun,
+    const std::string& name, const source_location& loc);
+  virtual void evaluate(expression_base::level l) const;
+};
 
 @ The constructors for these structures are all quite straightforward, in
 spite of their number of arguments.
@@ -7579,12 +7642,17 @@ local_component_transform<reversed>::local_component_transform @|
     (id_type a, expression_ptr&& i,size_t d, size_t o,expression_ptr&& r,
     const ptr_to_builtin& fun,
     const std::string& name, const source_location& loc)
-: base(a,std::move(i),std::move(r),fun,name,loc)
-, depth(d), offset(o) @+{}
+: base(a,std::move(i),std::move(r),fun,name,loc), depth(d), offset(o) @+{}
 @)
 local_field_assignment::local_field_assignment @|
   (id_type a, unsigned pos,size_t d, size_t o, expression_ptr&& r)
 : field_assignment(a,pos,std::move(r)), depth(d), offset(o) @+{}
+@)
+local_field_transform::local_field_transform @|
+  (id_type a, unsigned pos,size_t d, size_t o, expression_ptr&& r,
+    const ptr_to_builtin& fun,
+    const std::string& name, const source_location& loc)
+: field_transform(a,pos,std::move(r),fun,name,loc), depth(d), offset(o) @+{}
 
 @ The |evaluate| methods locate the |shared_value| pointer of the aggregate,
 then |assign| or |transform| does its job.
@@ -7602,6 +7670,9 @@ void local_component_transform<reversed>::evaluate(expression_base::level l)
 @)
 void local_field_assignment::evaluate(expression_base::level l) const
 {@; assign (l,frame::current->elem(depth,offset)); }
+@)
+void local_field_transform::evaluate(expression_base::level l) const
+{@; transform (l,frame::current->elem(depth,offset)); }
 
 @ The |assign| method, which will also be called for local component
 assignments, starts by the common work of evaluating the (component) value to be
@@ -7675,7 +7746,15 @@ possibly expanding a tuple in the process.
 @ The |transform| method of |component_transform| is similar to the |assign|
 methods above. However, instead of assigning the evaluation of |rhs| into the
 aggregate, it combines it with the previous value of the destination component
-using |f_ptr| (which is a |ptr_to_builtin|).
+using |f_ptr| (which is a |ptr_to_builtin|). Since the first operand of |f_ptr|,
+which is the old value of the row component |ai|, is moved out of the row to the
+stack, we make sure to evaluate the second operand before it, so that during its
+evaluation the row |a| is still intact. This requires temporarily moving that
+second argument off the stack before moving it back on. (The expression for that
+operand is called |rhs|, in the |assignment| class we inherit from.)
+
+The method |field_transform::transform| is similar but simpler, and shares the
+part calling |f_ptr|.
 
 @< Function def... @>=
 template <bool reversed>
@@ -7692,8 +7771,17 @@ void component_transform<reversed>::transform
   push_value(std::move(ai)); // move-push component before transformation
   push_value(std::move(op2)); // additional argument
   @< Call |*f_ptr| to produce a single value, taking measures for back tracing @>
-  ai = pop_value(); // assign non-expanded value
-  push_expanded(lev,ai); // return value may need expansion, or be omitted
+  push_expanded(lev,ai = pop_value()); // assign component and yield that value
+}
+@)
+void field_transform::transform (level lev,shared_value& tupple) const
+{ rhs->eval();
+  auto op2 = pop_value(); // put aside additional operand
+  shared_value& field=uniquify<tuple_value>(tupple)->val[position];
+  push_value(std::move(field)); // move-push field before transformation
+  push_value(std::move(op2)); // additional argument
+  @< Call |*f_ptr| to produce a single value, taking measures for back tracing @>
+  push_expanded(lev,field=pop_value());
 }
 
 @ This code is similar to that of |built_in::evaluate|, except that we know we
@@ -7904,7 +7992,7 @@ that can be specialised at all.
 @< Cases for type-checking and converting... @>=
 case field_ass_stat:
 { id_type tupple=e.field_assign_variant->aggr;
-  id_type sel =e.field_assign_variant->selector;
+  id_type selector =e.field_assign_variant->selector;
   const expr& rhs=e.field_assign_variant->rhs;
 @/const_type_p tuple_t; size_t d,o; bool is_const;
   bool is_local = (tuple_t=layer::lookup(tupple,d,o,is_const))!=nullptr;
@@ -7915,34 +8003,42 @@ case field_ass_stat:
   if (is_const)
     report_constant_modified(tupple,e,"field assignment");
 @.Name is constant @>
-@) // Now get selector function from the overload table; ignore local bindings
-  const projector_value* proj;
-  { const auto* entry=global_overload_table->entry(sel,*tuple_t);
-    if (entry==nullptr)
-      throw expr_error (e,"Improper selection in field assignment");
-    proj=dynamic_cast<const projector_value*>(entry->value().get());
-    if (proj==nullptr)
-      throw expr_error
-        (e,"Selector in field assignment is not a projector function");
-    assert(tuple_t->kind() == tuple_type and
-           proj->position < length(tuple_t->tuple()));
-  }
 @)
-  type_p comp_loc;
-    // we shall pass a modifiable reference to component type to |convert_expr|
-  { // to get component type from list pointer we need to use a short loop
-    auto p=tuple_t->tuple();
-    for (auto count=proj->position; count-->0; )
-      p=p->next.get();
-    comp_loc=&p->contents;
-  }
+  unsigned pos; type_p comp_loc;
+  @< Look up a projector for |*tuple_t| named |selector|, and if found assign
+     its |position| to |pos| and make |comp_loc| point to the corresponding
+     component |type_expr| of |*tuple_t|; on failure |throw expr_error| @>
   expression_ptr r = convert_expr(rhs,*comp_loc);
   expression_ptr p;
   if (is_local)
-    p.reset(new local_field_assignment(tupple,proj->position,d,o,std::move(r)));
+    p.reset(new local_field_assignment(tupple,pos,d,o,std::move(r)));
   else
-    p.reset(new global_field_assignment(tupple,proj->position,std::move(r)));
+    p.reset(new global_field_assignment(tupple,pos,std::move(r)));
   return conform_types(*comp_loc,type,std::move(p),e);
+}
+
+@ If either no function at all doing the requested projection is found, or if
+the function found is not a projector, then we signal failure. If things go
+well, the type list in |tuple_t| is not actually a |simple_list<expr>| but a raw
+node pointer, and we are forced to do a but of traditional node chasing.
+
+@< Look up a projector for |*tuple_t| named |selector|... @>=
+{ const auto* entry=global_overload_table->entry(selector,*tuple_t);
+  if (entry==nullptr)
+    throw expr_error (e,"Improper selection in field assignment");
+  const projector_value* proj=
+    dynamic_cast<const projector_value*>(entry->value().get());
+  if (proj==nullptr)
+    throw expr_error
+      (e,"Selector in field assignment is not a projector function");
+  pos=proj->position;
+  assert(tuple_t->kind() == tuple_type and pos < length(tuple_t->tuple()));
+@)
+// |comp_loc| needs to point to a modifiable |type_expr|; point it into |tuple_t|
+  raw_type_list p=tuple_t->tuple(); // using |type_list| would take possession
+  for (auto count=pos; count-->0; )
+    p=p->next.get();
+  comp_loc=&p->contents;
 }
 
 @ Type-checking and converting component transform statements is relatively
@@ -7962,12 +8058,11 @@ differently, to form a combination of ordinary expressions (which will allow a
 more general aggregate subscription, and introduces a temporary variable to
 ensure the index is evaluated only once).
 
-@:comp_ass_type_check@>
-
 @< Cases for type-checking and converting... @>=
 case comp_trans_stat:
-{ expr& subscr=e.comp_trans_variant->subscr;
-  subscription_node* s = subscr.subscription_variant;
+{ expr& subscr=e.comp_trans_variant->dest;
+  assert(subscr.kind == subscription);
+  sub s = subscr.subscription_variant;
   assert(s->array.kind==applied_identifier); // grammar ensures this
   id_type aggr=s->array.identifier_variant;
   expr& index=s->index;
@@ -7992,7 +8087,7 @@ case comp_trans_stat:
      subscription, and |ind_t|, |comp_t| to the index respectively component
      types @>
 
-  @< If the conditions for an optimised in-place transformation are met... @>
+  @< If the conditions for an optimised in-place component transformation... @>
   skip:
   @< Construct a nested tree of expressions for an ordinary subscripted
      aggregate assignment to a value computed from the previous value @>
@@ -8036,7 +8131,8 @@ process, but a conversion might have been applied to either of them, in which
 case we shall find an unexpected |expression_base| derived type, and one of the
 dynamic casts below will fail.
 
-@< If the conditions for an optimised in-place transformation are met,
+
+@< If the conditions for an optimised in-place component transformation are met,
    construct a structure derived from |comp_transform_node| from pieces
    of |*call| and |return| the result of passing it through |conform_types|,
    otherwise, |goto skip| @>=
@@ -8046,8 +8142,7 @@ dynamic casts below will fail.
   if (c==nullptr)
     goto skip;
   auto* tup = dynamic_cast<const tuple_expression *>(c->argument.get());
-  if (tup==nullptr)
-    goto skip; // a non-tuple argument, this should not happen
+  assert (tup!=nullptr); // no conversion can be inserted around argument pair
   if (dynamic_cast<const subscr_base*>(tup->component[0].get())==nullptr)
      goto skip; // any conversions invalidate optimisation
   auto& rhe = const_cast<expression_ptr&>(tup->component[1]);
@@ -8154,6 +8249,119 @@ and finally build and return a new |let_expression| that wraps everything up.
   thread_bindings(dollar,ind_t,let_layer,true);
   return expression_ptr(new let_expression @|
     (dollar,std::move(ind),convert_expr(std::move(ca),type)));
+}
+
+@ All that was done for the case of component transformations must also be done
+for field transformations in a tuple, although some simplifications apply. Again
+we handle all expressions of the syntactic form (operation-assigning to field
+selected from a name), and decide only after the identification of the operation
+whether we can actually generate a |field_transform| or whether we expand to an
+ordinary |field_assignment|. This time the conditions are that a built-in
+operator is identified by the argument types, and that its result type is the
+same as its first operand. If the latter condition is not satisfied, the
+identification will in fact fail with an error unless an implicit conversion can
+resolve the type mismatch, so our test will be that the latter does not happen.
+Concretely, we type check the call of the operator ignoring field-transforming
+context (but supplying the required return type) and then test whether we can
+use a |field_transform|; if we can, we build it using pieces of the converted
+expression. In the contrary case, we reassemble the pieces together differently,
+to form an ordinary |field_assignment| instead.
+
+@< Cases for type-checking and converting... @>=
+case field_trans_stat:
+{ expr& sel = e.comp_trans_variant->dest;
+  assert(sel.kind == function_call);
+  app dot = sel.call_variant;
+  assert(dot->arg.kind==applied_identifier); // grammar ensures this
+  assert(dot->fun.kind==applied_identifier); // grammar ensures this
+  id_type tuple = dot->arg.identifier_variant;
+  id_type selector = dot->fun.identifier_variant;
+  id_type op = e.comp_trans_variant->op;
+@/const_type_p tuple_t; size_t d,o; bool is_const;
+  bool is_local = (tuple_t=layer::lookup(tuple,d,o,is_const))!=nullptr;
+  if (not is_local and
+      (tuple_t=global_id_table->type_of(tuple,is_const))==nullptr)
+    report_undefined(tuple,e,"field transform");
+@.Undefined identifier@>
+  if (is_const)
+    report_constant_modified(tuple,e,"field transform");
+@.Name is constant @>
+@)
+  unsigned pos; type_p comp_loc;
+  @< Look up a projector for |*tuple_t| named |selector|... @>
+  expr_ptr appl;
+  expression_ptr call;
+  @< Assign to |call| the |resolve_overload| of application |appl| of |op| to
+     an argument pair formed of |sel| and |e.comp_trans_variant->arg|; while
+     doing so set |comp_t| to the component type @>
+  @< Construct, from |tuple|, |pos| and |*call|... @>
+}
+
+@ Here we build an application of |op| as an |expr| structure, just to pass it
+to |resolve_overload| in order to get the relevant instance of that overloaded
+symbol.
+
+@< Assign to |call| the |resolve_overload| of application |appl| of |op| to
+     an argument pair formed of |sel|... @>=
+{
+  expr_ptr select(new expr(std::move(sel)));
+    // move top level data into isolated |expr|
+  expr_ptr arg(new expr(std::move(e.comp_trans_variant->arg))); // likewise
+@/appl =
+    internal_binary_call(op,std::move(select),std::move(arg),
+                         e.loc,e.comp_trans_variant->op_loc);
+  call = resolve_overload(*appl,*comp_loc,global_overload_table->variants(op));
+}
+
+@ The code here is considerably simpler than for a transformation of a
+\emph{row} component, on one hand because there is no index expression whose
+double evaluation must be avoided, en on the other hand because no
+discrimination on a |reversed| attribute (of the subscription) is necessary.
+
+The code below illustrates one way to solve the coding problem of avoiding
+multiple identical |else| clauses in a situation where the positive option (here
+that of using a |field_transform| rather than a |field_assignment| is dependent
+on the conjunction of several (here two) conditions, among which later
+conditions are in terms of one or more values (here |c| and |tup|) that are only
+defined if earlier conditions succeed. The latter circumstance makes it
+difficult to use a single test involving a logical conjunction (|and|), and
+nesting the later test within the ``then'' clause of the earlier |if| would
+naturally lead to several identical |else| clauses. Those clauses can be fused
+into a single one using |goto|, but that solution is distinctly ugly. The
+solution adopted here is to have a sequence of tests leading to a pointer
+variable |tup| being non-null only if all tests succeed, then the main
+conditional simply tests this condition. In general all information needed in
+the positive clause and possibly accumulated during the sequence of test must be
+stored in variables declared outside the sequence of tests; here however just
+|tup| suffices.
+
+
+@< Construct, from |tuple|, |pos| and |*call|, either a structure derived from
+   |field_transform| or one derived from |field_assignment|, and |return|
+   the result of passing it through |conform_types| @>=
+{ expression_ptr p; const tuple_expression *tup = nullptr;
+  auto* c = dynamic_cast<const builtin_call*>(call.get());
+  if (c!=nullptr)
+    tup = dynamic_cast<const tuple_expression *>(c->argument.get());
+@)
+  if (tup!=nullptr and
+      dynamic_cast<const projector_call*>(tup->component[0].get())!=nullptr)
+  {
+    auto& rhe = const_cast<expression_ptr&>(tup->component[1]);
+    if (is_local)
+      p.reset (new local_field_transform@|
+        (tuple,pos,d,o,std::move(rhe),c->f,c->name,e.loc));
+    else
+      p.reset (new global_field_transform@|
+        (tuple,pos,std::move(rhe),c->f,c->name,e.loc));
+  }
+  else
+  { if (is_local)
+      p.reset(new local_field_assignment(tuple,pos,d,o,std::move(call)));
+    else
+      p.reset(new global_field_assignment(tuple,pos,std::move(call)));
+  }
+  return conform_types(*comp_loc,type,std::move(p),e);
 }
 
 @* Some special wrapper functions.

@@ -2793,8 +2793,7 @@ same type of expression after the type checking operation.
 @< Type declarations needed in definition of |struct expr@;| @>=
 typedef struct comp_assignment_node* comp_assignment;
 typedef struct field_assignment_node* fld_assignment;
-typedef struct comp_transform_node* comp_transform;
-typedef struct field_transform_node* fld_transform;
+typedef struct comp_transform_node* comp_transform; // row or tuple component
 
 @~In a component assignment, the left hand side records an identifier (holding
 the whole value) and an index. In addition the user may have specified reverse
@@ -2827,29 +2826,24 @@ struct field_assignment_node
   @+{}
 };
 
-@ Here are the variants of these structures for transforming assignments.
+@ Here is a variant of these structures for transforming assignments. Both row
+component end tuple component transforming assignments share this structure,
+with as left hand side different and very limited expression forms: a
+subscription or a (field selector) application, in both cases with an applied
+identifier in the aggregate position, and the application case the also in the
+function position (the grammar ensures these structures, and the expression tag
+will indicate which of the two applies).
 
 @< Structure and typedef declarations for types built upon |expr| @>=
 struct comp_transform_node
-{ expr subscr; id_type op; expr arg; source_location op_loc;
+{ expr dest; id_type op; expr arg; source_location op_loc;
 @)
-  comp_transform_node(expr&& subscr, id_type op, expr&& arg,
+  comp_transform_node(expr&& dest, id_type op, expr&& arg,
     const source_location op_loc)
-@/: subscr(std::move(subscr))
+@/: dest(std::move(dest))
   , op(op)
   , arg(std::move(arg))
   , op_loc(op_loc)
-  @+{}
-};
-@)
-struct field_transform_node
-{ id_type aggr, selector, op; expr arg;
-@)
-  field_transform_node(id_type aggr, id_type selector, id_type op, expr&& rhs)
-@/: aggr(aggr)
-  , selector(selector)
-  , op(op)
-  , arg(std::move(arg))
   @+{}
 };
 
@@ -2857,15 +2851,14 @@ struct field_transform_node
 the indexed case, and |select_ass_stat| for the field-selected case.
 
 @< Enumeration tags for |expr_kind| @>=
-comp_ass_stat, field_ass_stat, comp_trans_stat, @[@]
+comp_ass_stat, field_ass_stat, comp_trans_stat, field_trans_stat, @[@]
 
 @ And there are of course variants of |expr_union| for these component
 assignments.
 @< Variants of ... @>=
 comp_assignment comp_assign_variant;
 fld_assignment field_assign_variant;
-comp_transform comp_trans_variant;
-fld_transform field_trans_variant;
+comp_transform comp_trans_variant; // row or tuple component
 
 @ As always there are constructors for building the new variants.
 @< Methods of |expr| @>=
@@ -2881,17 +2874,13 @@ expr(fld_assignment fa, source_location loc)
  , loc(loc)
 @+{}
 @)
-expr(comp_transform ct, source_location loc)
- : kind(comp_trans_stat)
+expr(comp_transform ct, expr_kind kind, source_location loc)
+ : kind(kind)
  , comp_trans_variant(ct)
  , loc(loc)
-@+{}
-@)
-expr(fld_transform ft, source_location loc)
- : kind(static_cast<expr_kind>(8086))
- , field_trans_variant(ft)
- , loc(loc)
-@+{}
+{
+  assert(kind == comp_trans_stat or kind == field_trans_stat);
+}
 
 @ Compound assignment statements are built by |make_comp_ass|, which for once
 does not simply combine the expression components, because for reason of
@@ -2963,7 +2952,7 @@ expr_p make_comp_upd_ass(expr_p l, id_type op, expr_p r,
   , op
   , std::move(*rr)
   , op_loc
-  },loc);
+  }, comp_trans_stat, loc);
 }
 
 @ Here is the corresponding code for field assignments.
@@ -2977,13 +2966,14 @@ expr_p make_field_upd_ass(expr_p tupex, expr_p selex, id_type op, expr_p r,
   expr_ptr sel_exp(selex);
   assert(tup_exp->kind==applied_identifier and
          sel_exp->kind==applied_identifier); // grammar
-  id_type tup=tup_exp->identifier_variant, sel=sel_exp->identifier_variant;
-   // save, then move
-  expr_ptr selec(new expr (new application_node@|
+  expr_ptr selection(new expr (@|new application_node
     (std::move(*sel_exp),std::move(*tup_exp)),loc));
-  expr_ptr formula
-    (make_binary_call(op,selec.release(),rr.release(),loc,op_loc));
-  return new expr(new field_assignment_node(tup,sel,std::move(*formula)),loc);
+  return new expr(@| new comp_transform_node
+  { std::move(*selection)
+  , op
+  , std::move(*rr)
+  , op_loc
+  }, field_trans_stat, loc);
 }
 
 @ This is getting boring; fortunately we are almost done with the syntax.
@@ -2991,14 +2981,15 @@ expr_p make_field_upd_ass(expr_p tupex, expr_p selex, id_type op, expr_p r,
 @< Cases for copying... @>=
 case comp_ass_stat: comp_assign_variant=other.comp_assign_variant; break;
 case field_ass_stat: field_assign_variant=other.field_assign_variant; break;
-case comp_trans_stat: comp_trans_variant=other.comp_trans_variant; break;
+case comp_trans_stat: case field_trans_stat:
+    comp_trans_variant=other.comp_trans_variant; break;
 
 @~Destruction one the other hand is as straightforward as usual.
 
 @< Cases for destroying... @>=
 case comp_ass_stat: delete comp_assign_variant; break;
 case field_ass_stat: delete field_assign_variant; break;
-case comp_trans_stat: delete comp_trans_variant; break;
+case comp_trans_stat: case field_trans_stat: delete comp_trans_variant; break;
 
 @ Printing component assignment statements follow the input syntax.
 
@@ -3017,9 +3008,9 @@ case field_ass_stat:
       << ":=" << ass.rhs ;
 }
 break;
-case comp_trans_stat:
+case comp_trans_stat: case field_trans_stat:
 { const auto& trf = *e.comp_trans_variant;
-  out << trf.subscr << ' '
+  out << trf.dest << ' '
       << main_hash_table->name_of(trf.op) << ":= "
       << trf.arg ;
 }
