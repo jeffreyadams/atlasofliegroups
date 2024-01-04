@@ -960,12 +960,11 @@ case function_call: delete call_variant; break;
 
 @< Cases for printing... @>=
 case function_call:
-{ const app& a=e.call_variant;
-  const expr& fun=a->fun; const expr& arg=a->arg;
-  if (fun.kind==applied_identifier) out << fun;
-  else out << '(' << fun << ')';
-  if (arg.kind==tuple_display) out << arg;
-  else out << '(' << arg << ')';
+{ const application_node& a = *e.call_variant;
+  if (a.fun.kind==applied_identifier) out << a.fun;
+  else out << '(' << a.fun << ')';
+  if (a.arg.kind==tuple_display) out << a.arg;
+  else out << '(' << a.arg << ')';
 }
 break;
 
@@ -2878,7 +2877,7 @@ expr(comp_transform ct, expr_kind kind, source_location loc)
  : kind(kind)
  , comp_trans_variant(ct)
  , loc(loc)
-{
+{@;
   assert(kind == comp_trans_stat or kind == field_trans_stat);
 }
 
@@ -2991,7 +2990,10 @@ case comp_ass_stat: delete comp_assign_variant; break;
 case field_ass_stat: delete field_assign_variant; break;
 case comp_trans_stat: case field_trans_stat: delete comp_trans_variant; break;
 
-@ Printing component assignment statements follow the input syntax.
+@ Printing component assignment statements follow the input syntax. For field
+transformation expressions this implies printing the destination, which is
+stored as a function call, in the dotted form (argument before function, both
+are applied identifiers) in which it must have been entered.
 
 @< Cases for printing... @>=
 case comp_ass_stat:
@@ -3008,14 +3010,24 @@ case field_ass_stat:
       << ":=" << ass.rhs ;
 }
 break;
-case comp_trans_stat: case field_trans_stat:
+case comp_trans_stat:
 { const auto& trf = *e.comp_trans_variant;
   out << trf.dest << ' '
       << main_hash_table->name_of(trf.op) << ":= "
       << trf.arg ;
 }
 break;
-
+case field_trans_stat:
+{ const auto& trf = *e.comp_trans_variant;
+  assert(trf.dest.kind==function_call);
+  const auto& a = *trf.dest.call_variant;
+  assert(a.fun.kind==applied_identifier and a.arg.kind==applied_identifier);
+  out << main_hash_table->name_of(a.arg.identifier_variant)@| << '.'
+      << main_hash_table->name_of(a.fun.identifier_variant)@| << ' '
+      << main_hash_table->name_of(trf.op) << ":= "
+      << trf.arg ;
+}
+break;
 
 @*1 Sequence statements.
 %
