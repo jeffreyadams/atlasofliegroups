@@ -438,7 +438,8 @@ set local_testK_hash(KGBElt x, ratvec lambda, VertexData vd,
  Assume pjpairss only has mu to height the level of the K-chars in pol_hash.}
 set local_testK_hash_bottom_layer(KGBElt x, ratvec lambda, VertexData vd,
     [[FacetVertsKHash]] FVKH, [[int]] eq, [[int]] gr, [vec] classListByFacet,
-    [Param,[(KType,KType)]] pjpairss, KTypePol_hash pol_hash, Param_hash Uhash) = [[FacetVertsKHash]]:
+    steady_bottom_data bott_data, KTypePol_hash pol_hash, Param_hash Uhash) =
+    			    [[FacetVertsKHash]]: 
     let newStatuses = for j:#eq do "?" od,  NumClasses = #eq
     	, printInterval = int: 1
     {use Uhash to mark some classes at known? (those that hit a unitary Param)}
@@ -476,14 +477,16 @@ set local_testK_hash_bottom_layer(KGBElt x, ratvec lambda, VertexData vd,
 		    	  , facet_bary(vd.list, verts))))
 	          in if #ps = 1
 		     then if Uhash.lookup(ps[0]).>= or
-		     	     min_bottom_elim_factors(ps[0], pjpairss,
+		     	     min_bottom_elim_factors(ps[0], bott_data,
 			     		pol_hash.index(FVKH[d][j][d+1]))
 		     	  then newStatuses[k]:= "T"
 			  else newStatuses:= updateNUclassesB(newStatuses, gr, k)
 			  ; newStatuses[k] := "F"
 			  fi
-		     else if{NEWU} all(for p in ps do Uhash.lookup(p).>= or
-					       min_bottom_elim_factors(p,pjpairss) od)
+		     else if{NEWU} all(for p in ps
+		     	  	       do Uhash.lookup(p).>= or
+					  min_bottom_elim_factors(p, bott_data)
+				       od)
 			  then newStatuses[k]:= "T"
 			  else newStatuses:= updateNUclassesB(newStatuses, gr, k)
 			  ; newStatuses[k] := "F"
@@ -629,20 +632,11 @@ set one_param_test(Param p, Param_hash Uhash) = [Param]:
 	    in []
        fi
 
-set one_param_test(Param p, Param pL, [(Param,[(KType,KType)])] pjpairss, Param_hash Uhash) = [Param]:
-    let QG = monomials(finalize(p)), QL = monomials(finalize(pL)), G = p.real_form
-    then paramPairs = [(Param,Param)]:
-    	 for q in QG
-    	 do for qL in QL
-	    do if theta_induce_standard(qL,G) = 1*q
-	       then [(q,qL)]
-	       else []
-	       fi
-	     od.##
-	 od.##
-    then test = all(for (q,qL) in paramPairs
+set one_param_test(Param p, steady_bottom_data bott_data, Param_hash Uhash) = [Param]:
+    let QG = monomials(finalize(p)),G = p.real_form
+    then test = all(for q in QG
     	      	    do Uhash.lookup(q).>= or
-    	      	       min_bottom_test_factors(q, pjpairss)
+    	      	       min_bottom_test_factors(q, bott_data)
 		    od)
     in if test
        then let () = for q in QG
@@ -1606,18 +1600,15 @@ on LKTs. This version uses min_bottom_elim instead of
 unitary_to_ht.}
 
 set local_test_GEO_hash_bottom_layer(KGBElt x, ratvec lambda, VertexData vd,
-    VertexData Lvd, [[FacetVertsIndex]] LF, KTypePol_hash pol_hash,
-    Param_hash Uhash) = [Param]:
+    VertexData Lvd, [[FacetVertsIndex]] LF,  steady_bottom_data bott_data,
+    	       KTypePol_hash pol_hash, Param_hash Uhash) = [Param]:
     let G = x.real_form, thetaMinus = x.involution - 1, start = elapsed_ms()
     then vertexDiff = #Lvd.list/#vd.list
     then approxVertexDiff = vertexDiff.numer*100\vertexDiff.denom
-    { then () = if approxVertexDiff < vert_diff_cutoff and revert_flag
-    	      then return local_test_GEO_hash_dumb(x, lambda, vd, Lvd, {Perm,
-	      	   	  	    mapAct,} LF, pol_hash, Uhash) {use def_dumb if def_flag}
-	      fi}
-    then r = rank(thetaMinus){, NK = #KGB(G)}
+    then r = rank(thetaMinus)
     then ONE = BL_steps
-    then maxDiffLoc = max_loc(for w in LF[0] {v in Lvd.list}
+    then () = bott_data.adjust_BL_depth(BL_steps)
+    then maxDiffLoc = max_loc(for w in LF[0]
     	 	       	      do G.two_rho_check*(dominant(G,thetaMinus*Lvd.list[w[0]]))
 		       	      od)
     then pmax = parameter(x, lambda, Lvd.list[LF[0][maxDiffLoc][0]])
@@ -1627,17 +1618,30 @@ set local_test_GEO_hash_bottom_layer(KGBElt x, ratvec lambda, VertexData vd,
 	      	   in return [pmax]
 	      fi
     then L = Q.Levi
-    then pjpairss = min_L_bottom_factors(pmax,BL_steps)
-    then () = if L = G or #pjpairss = 0
-    	      then return local_test_GEO_hash_one_level(x, lambda, vd, Lvd, LF, pol_hash, Uhash)
+    then LKdata  = for mu in LKTs(pmax)
+    	 	   do
+		   bott_data.entry(mu)
+		   od.##
+{		  let M = Khash.size()
+		     then m = Khash.match(mu)
+		     then () = if m = M
+		       	       then Kdata := Kdata {next Kdata := []}
+			   	    	  #min_L_bottom_factors(mu, BL_steps)
+			       fi
+		     in Kdata[m]
+		  od.##}
+    {then () = prints(Khash.size(), "  ",#Kdata) }{, "  ",std_K_type_hash.size(),"  ", #bottom_layer_data)}
+    then () = if L = G or #LKdata = 0
+    	      then return local_test_GEO_hash_one_level(x, lambda, vd, Lvd, LF,
+	      	   	  				   pol_hash, Uhash)
 	      fi
     then () = if {TINY CASE} #LF[0]=1
-    	      then return one_param_test(pmax, pmaxL, pjpairss, Uhash)
+    	      then return one_param_test(pmax, bott_data, Uhash)
 	      fi
-    then qLhts = for (pj,pairsj) in pjpairss
-    	     	 do max( for(,muL) in pairsj do height(muL) od# height(pj))
+    then qLhts = for (muj,pairsj) in LKdata
+    	     	 do max( for(,tauLj) in pairsj do height(tauLj) od# height(muj))
 		 od
-    then qhts = max(for (,pairsj) in pjpairss
+    then qhts = max(for (,pairsj) in LKdata
     	      	    do max( for (mu,) in pairsj do height(mu) od#height(pmax))
 		    od)
     then () = test_string:= " using local_test_GEO_hash_bottom_layer"
@@ -1653,7 +1657,7 @@ set local_test_GEO_hash_bottom_layer(KGBElt x, ratvec lambda, VertexData vd,
    then ((eq,gr),IUCL,CLBF) = localGraphK(LFDKH)
     	{next remove from LFDKH all facets failing min_bottom_elim(one_ht)}
    then () = LFDKH := local_testK_hash_bottom_layer(x,lambda,Lvd, LFDKH, eq,
-		      gr, CLBF, pjpairss, pol_hash_one_ht,  Uhash)
+		      gr, CLBF, bott_data, pol_hash_one_ht,  Uhash)
    then () = if test_verbose then prints("unitary on bottom layer to ",one_ht,
 		   	   " facet counts to dim 1: ",for list in LFDKH do
 			     #list od)
@@ -1688,14 +1692,14 @@ set local_test_GEO_hash_bottom_layer(KGBElt x, ratvec lambda, VertexData vd,
 					  facet_bary(Lvd.list, verts))))
 			      in if #ps = 1
 			      	 then if Uhash.lookup(ps[0]).>= or
-                             	      	 min_bottom_elim_factors(ps[0], pjpairss,
+                             	      	 min_bottom_elim_factors(ps[0], LKdata,
 					 	pol_hash_one_ht.index(LFDKH[D+1][m][D+2]))
 				      then [LFDKH[D+1][m]]
 				      else []
 				      fi
 				 else if all(for p in ps
 					     	    do Uhash.lookup(p).>= or
-						       min_bottom_elim_factors(p, pjpairss)
+						       min_bottom_elim_factors(p, LKdata)
 						    od)
 				      then [LFDKH[D+1][m]]
 				      else []
@@ -1735,18 +1739,27 @@ set local_test_GEO_hash_bottom_layer(KGBElt x, ratvec lambda, VertexData vd,
    in UParams
    {fi}
 
+set local_test_GEO_hash_bottom_layer(KGBElt x, ratvec lambda, VertexData vd,
+    VertexData Lvd, [[FacetVertsIndex]] LF, KTypePol_hash pol_hash, Param_hash Uhash) = [Param]:
+    let p = parameter(x, lambda, 0*lambda)
+    then bott_data = make_steady_bottom_data()
+    then () = for mu in LKTs(p)
+    	      do bott_data.append(mu)
+	      od
+    in local_test_GEO_hash_bottom_layer(x, lambda, vd, Lvd, LF, bott_data,  pol_hash, Uhash)
+
 set local_test_GEO_hash_bottom_layer(KGBElt x, ratvec lambda, VertexData vd, VertexData Lvd,
     vec Perm, vec mapAct, KTypePol_hash pol_hash, Param_hash Uhash) = [Param]:
     let G = x.real_form, thetaMinus = x.involution - 1
     then LF = [[FacetVertsIndex]]: [for k:#Lvd.list do [k] od] {0-facets only}
     then () = LF:=localFD_1(x,lambda, vd,Lvd, Perm, mapAct, LF) {impose Dirac}
-    in local_test_GEO_hash_bottom_layer(x, lambda, vd, Lvd, {Perm, mapAct,} LF, pol_hash, Uhash)
+    in local_test_GEO_hash_bottom_layer(x, lambda, vd, Lvd, LF, pol_hash, Uhash)
 
 set local_test_GEO_hash_bottom_layer(KGBElt x, ratvec lambda, VertexData vd, VertexData Lvd,
     vec Perm, vec mapAct, KTypePol_hash pol_hash, Param_hash Uhash, [[FacetVertsIndex]] global_facets) = [Param]:
     let G = x.real_form, thetaMinus = x.involution - 1
     then LF = [[FacetVertsIndex]]: localFD_1Dirac(x,lambda, Lvd, Perm, mapAct, global_facets)
-    in local_test_GEO_hash_bottom_layer(x, lambda, vd, Lvd, {Perm, mapAct,} LF, pol_hash, Uhash)
+    in local_test_GEO_hash_bottom_layer(x, lambda, vd, Lvd, LF, pol_hash, Uhash)
 
 set local_test_GEO_hash_bottom_layer(KGBElt x, ratvec lambda, VertexData vd,
     KTypePol_hash pol_hash, Param_hash Uhash) = [Param]:
@@ -1769,8 +1782,8 @@ set local_test_GEO_bottom_layer(KGBElt x, ratvec lambda) = [Param]:
 
 set local_facets(KGBElt x, ratvec lambda) = [[vec]]:
     let G = x.real_form
-    then (Affd,,) = cofolded(G)
-    then (vd, Lvd, Perm, mapAct, LF) = localFD_000(x,lambda)
+    then (Affd,,) = cofolded(G), vd = FPP_vertex_data(G)
+    then (vd, Lvd, Perm, mapAct, LF) = localFD_000(x,lambda,vd)
     in localFD_bt(x,lambda,vd, Lvd, Perm, mapAct, LF,1,rank(x.involution-1)+2)
 
 set spherical_facets(RealForm G) = local_facets(x_open(G), G.rho)
