@@ -4283,7 +4283,10 @@ component back on the stack, according to the policy |l| requested from us.
 void projector_value::apply(expression_base::level l) const
 {@; push_expanded(l,get<tuple_value>()->val[position]); }
 
-@
+@ When a projector is found in the global overload table (as is almost always
+the case) its application produces an executable object of class
+|projector_call|. It records the projector position and its name.
+
 @< Type def... @>=
 struct projector_call : public overloaded_call
 { unsigned position; id_type id;
@@ -7346,10 +7349,11 @@ struct component_assignment : public assignment_expr
 @)
 struct field_assignment : public assignment_expr
 { const unsigned position;
+  id_type id;
 @)
   field_assignment
-   (id_type a,unsigned pos,expression_ptr&& r)
-   : assignment_expr(a,std::move(r)), position(pos) @+{}
+   (id_type a,unsigned pos,id_type id,expression_ptr&& r)
+   : assignment_expr(a,std::move(r)), position(pos), id(id) @+{}
   virtual ~field_assignment() = default;
 
   virtual void print (std::ostream& out) const;
@@ -7399,14 +7403,15 @@ struct field_transform : public assignment_expr
   ptr_to_builtin f; // as in |builtin_call|
   wrapper_function f_ptr; // shortcut, as in |builtin_call|
   const unsigned position;
+  id_type id;
 @)
   field_transform
-   (id_type a,unsigned pos,expression_ptr&& r,
+   (id_type a,unsigned pos,id_type id,expression_ptr&& r,
     const ptr_to_builtin& fun,
     const std::string& name, const source_location& loc)
    : assignment_expr(a,std::move(r))
    , loc(loc), name(fun->print_name), f(fun), f_ptr(fun->val)
-   , position(pos) @+{}
+   , position(pos), id(id) @+{}
   virtual ~field_transform() = default;
 
   virtual void print (std::ostream& out) const;
@@ -7431,13 +7436,17 @@ void component_transform<reversed>::print (std::ostream& out) const
 }
 @)
 void field_assignment::print (std::ostream& out) const
-{@; out << main_hash_table->name_of(lhs) << '.' << this->position << ":="
+{@; out << main_hash_table->name_of(lhs) << '.'
+        << main_hash_table->name_of(id)
+        << '(' << this->position << ") := "
         << *rhs;
 }
 @)
 void field_transform::print (std::ostream& out) const
-{@; out << main_hash_table->name_of(lhs) << '.' << this->position
-        << ' ' << name << ":=" << *rhs;
+{@; out << main_hash_table->name_of(lhs) << '.'
+        << main_hash_table->name_of(id)
+        << '(' << this->position << ") "
+        << name << ":= " << *rhs;
 }
 
 @ For global assignments or transforms, we need to have non-|const| access the
@@ -7476,14 +7485,15 @@ public:
 class global_field_assignment : public field_assignment
 { shared_share address;
 public:
-  global_field_assignment (id_type a, unsigned pos,expression_ptr&& r);
+  global_field_assignment
+    (id_type a, unsigned pos,id_type id,expression_ptr&& r);
   virtual void evaluate(expression_base::level l) const;
 };
 @)
 class global_field_transform : public field_transform
 { shared_share address;
 public:
-  global_field_transform (id_type a, unsigned pos,expression_ptr&& r,
+  global_field_transform (id_type a, unsigned pos,id_type id,expression_ptr&& r,
     const ptr_to_builtin& fun,
     const std::string& name, const source_location& loc);
   virtual void evaluate(expression_base::level l) const;
@@ -7509,15 +7519,15 @@ global_component_transform<reversed>::global_component_transform @|
 , address(global_id_table->address_of(a)) @+{}
 @)
 global_field_assignment::global_field_assignment @|
-  (id_type a, unsigned pos,expression_ptr&& r)
-: field_assignment(a,pos,std::move(r))
+  (id_type a, unsigned pos,id_type id,expression_ptr&& r)
+: field_assignment(a,pos,id,std::move(r))
 , address(global_id_table->address_of(a)) @+{}
 @)
 global_field_transform::global_field_transform @|
-  (id_type a, unsigned pos,expression_ptr&& r,
+  (id_type a, unsigned pos,id_type id,expression_ptr&& r,
     const ptr_to_builtin& fun,
     const std::string& name, const source_location& loc)
-: field_transform(a,pos,std::move(r),fun,name,loc)
+: field_transform(a,pos,id,std::move(r),fun,name,loc)
 , address(global_id_table->address_of(a)) @+{}
 
 @ It is in evaluation that component assignments differ most from ordinary ones.
@@ -7613,7 +7623,7 @@ class local_field_assignment : public field_assignment
 { size_t depth, offset;
 public:
   local_field_assignment
-    (id_type a, unsigned pos,size_t d, size_t o, expression_ptr&& r);
+    (id_type a, unsigned pos,id_type id,size_t d, size_t o, expression_ptr&& r);
   virtual void evaluate(expression_base::level l) const;
 };
 @)
@@ -7621,7 +7631,7 @@ class local_field_transform : public field_transform
 { size_t depth, offset;
 public:
   local_field_transform
-    (id_type a, unsigned pos,size_t d, size_t o, expression_ptr&& r,
+    (id_type a, unsigned pos,id_type id,size_t d, size_t o, expression_ptr&& r,
     const ptr_to_builtin& fun,
     const std::string& name, const source_location& loc);
   virtual void evaluate(expression_base::level l) const;
@@ -7645,14 +7655,14 @@ local_component_transform<reversed>::local_component_transform @|
 : base(a,std::move(i),std::move(r),fun,name,loc), depth(d), offset(o) @+{}
 @)
 local_field_assignment::local_field_assignment @|
-  (id_type a, unsigned pos,size_t d, size_t o, expression_ptr&& r)
-: field_assignment(a,pos,std::move(r)), depth(d), offset(o) @+{}
+  (id_type a, unsigned pos,id_type id,size_t d, size_t o, expression_ptr&& r)
+: field_assignment(a,pos,id,std::move(r)), depth(d), offset(o) @+{}
 @)
 local_field_transform::local_field_transform @|
-  (id_type a, unsigned pos,size_t d, size_t o, expression_ptr&& r,
+  (id_type a, unsigned pos,id_type id,size_t d, size_t o, expression_ptr&& r,
     const ptr_to_builtin& fun,
     const std::string& name, const source_location& loc)
-: field_transform(a,pos,std::move(r),fun,name,loc), depth(d), offset(o) @+{}
+: field_transform(a,pos,id,std::move(r),fun,name,loc), depth(d), offset(o) @+{}
 
 @ The |evaluate| methods locate the |shared_value| pointer of the aggregate,
 then |assign| or |transform| does its job.
@@ -8011,9 +8021,9 @@ case field_ass_stat:
   expression_ptr r = convert_expr(rhs,*comp_loc);
   expression_ptr p;
   if (is_local)
-    p.reset(new local_field_assignment(tupple,pos,d,o,std::move(r)));
+    p.reset(new local_field_assignment(tupple,pos,selector,d,o,std::move(r)));
   else
-    p.reset(new global_field_assignment(tupple,pos,std::move(r)));
+    p.reset(new global_field_assignment(tupple,pos,selector,std::move(r)));
   return conform_types(*comp_loc,type,std::move(p),e);
 }
 
@@ -8350,16 +8360,17 @@ stored in variables declared outside the sequence of tests; here however just
     auto& rhe = const_cast<expression_ptr&>(tup->component[1]);
     if (is_local)
       p.reset (new local_field_transform@|
-        (tuple,pos,d,o,std::move(rhe),c->f,c->name,e.loc));
+        (tuple,pos,selector,d,o,std::move(rhe),c->f,c->name,e.loc));
     else
       p.reset (new global_field_transform@|
-        (tuple,pos,std::move(rhe),c->f,c->name,e.loc));
+        (tuple,pos,selector,std::move(rhe),c->f,c->name,e.loc));
   }
   else
   { if (is_local)
-      p.reset(new local_field_assignment(tuple,pos,d,o,std::move(call)));
+      p.reset(new local_field_assignment
+        (tuple,pos,selector,d,o,std::move(call)));
     else
-      p.reset(new global_field_assignment(tuple,pos,std::move(call)));
+      p.reset(new global_field_assignment(tuple,selector,pos,std::move(call)));
   }
   return conform_types(*comp_loc,type,std::move(p),e);
 }

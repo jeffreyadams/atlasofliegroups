@@ -3448,13 +3448,18 @@ struct runtime_error : public error_base
 addition to the error message a reference to an expression to which the
 message applies. Placing a reference in an error object may seem hazardous,
 because the error might terminate the lifetime of the object referred to, but
-in fact it is safe: all |expr| objects are constructed in dynamic memory
-during parsing, and destructed at the disposal of the now translated
-expression at the end of the main interpreter loop; all throwing of
-|expr_error| (or derived types) happens after the parser has finished, and the
-corresponding |catch| happens in the main loop before disposal of the
-expression, so the reference certainly survives the lifetime of the
-|expr_error| object.
+in fact in the way we use it, it is safe. Nearly all |expr| objects are
+constructed in dynamic memory during parsing, and destructed at the disposal of
+the now translated expression at the end of the main interpreter loop; all
+throwing of |expr_error| (or derived types) happens after the parser has
+finished, and the corresponding |catch| happens in the main loop before disposal
+of the expression, so the reference certainly survives the lifetime of the
+|expr_error| object. There are a couple of exceptions to this, where a temporary
+|expr| value is built during type analysis (the recursive function
+|convert_expr| defined in \.{axis.w}), which we arrange to be held in a |static|
+variable (with some effort to make this safe in the recursion) at the point
+where an error might be thrown, to protect it from being destructed before the
+|expr_error| is caught.
 
 The error type is declared a |struct|, so that the |catch| clause may access
 the |offender| expression for use in an error message. At the point where this
