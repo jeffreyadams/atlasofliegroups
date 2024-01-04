@@ -8051,22 +8051,217 @@ node pointer, and we are forced to do a but of traditional node chasing.
   comp_loc=&p->contents;
 }
 
-@ Type-checking and converting component transform statements is relatively
+@ Type-checking and converting component and field transform statements is quite
 complicated. Since we come here before type checking is done, we have to handle
-all expressions of the syntactic form (operation-assigning to a subscripted
-name), whether or not that gives any occasion to invoke in-place modification.
-The conditions that need to be satisfied for the latter to be possible include:
-the name must have row-of type, the operation should not identify a local
-symbol, in the global table it must identify a non-variadic built-in function,
-whose first argument and return type both equal the aggregate component type.
-We shall type check the call of the operator as if no in-place modification is
-to be done, and then from the result try to find out whether we are in a case
-where it can; if it can, we then need to take apart the converted call
-expression to find the identified built-in operator, and build a new conversion
-for the whole expression. In the other case we reassemble the pieces together
-differently, to form a combination of ordinary expressions (which will allow a
-more general aggregate subscription, and introduces a temporary variable to
-ensure the index is evaluated only once).
+all expressions of the syntactic form (operation-assigning to a field selection
+from an identifier expression), whether or not that gives any occasion to invoke
+in-place modification. The conditions for that to be possible are that the
+transformation is to be performed by a built-in operator, and that its first
+operand and result types coincide with that of the selected field. The
+identification of the operator in fact uses that type for the first operand, so
+that part of the condition is likely to be satisfied if the operator can be
+found at all, but the type condition still requires the absence of implicit
+conversions; if there were any, that would frustrate any in-place operation
+anyway. The condition of being built-in (which implies being found in the global
+overload table, as we cannot determine the actual value in local bindings) is
+rather restrictive, and we would have like to not impose it, but the in-place
+field transformation semantics we want to apply mean that the tuple has a hole
+in it at the moment the operation is applied, and for user defined functions we
+cannot ensure that it cannot notice this circumstance.
+
+Concretely, we type check the call of the operator ignoring field-transforming
+context (but supplying the required return type) and then test whether we can
+use a |field_transform|; if we can, we build it using pieces of the converted
+expression, which includes the identity of the built-in operation that was
+found. In the contrary case, we reassemble the pieces together differently, to
+form an ordinary |field_assignment| instead, with a value produced by an
+ordinary function call of the operator.
+
+@< Cases for type-checking and converting... @>=
+case field_trans_stat:
+{ expr& lhs = e.comp_trans_variant->dest;
+  expr& rhs=e.comp_trans_variant->arg;
+  assert(lhs.kind == function_call);
+  app dot = lhs.call_variant;
+  assert(dot->arg.kind==applied_identifier); // grammar ensures this
+  assert(dot->fun.kind==applied_identifier); // grammar ensures this
+  id_type tuple = dot->arg.identifier_variant;
+  id_type selector = dot->fun.identifier_variant;
+  id_type op = e.comp_trans_variant->op;
+@)const_type_p tuple_t; size_t d,o; bool is_const;
+  bool is_local = (tuple_t=layer::lookup(tuple,d,o,is_const))!=nullptr;
+  if (not is_local and
+      (tuple_t=global_id_table->type_of(tuple,is_const))==nullptr)
+    report_undefined(tuple,e,"field transform");
+@.Undefined identifier@>
+  if (is_const)
+    report_constant_modified(tuple,e,"field transform");
+@.Name is constant @>
+@)
+  unsigned pos; type_p comp_loc;
+  @< Look up a projector for |*tuple_t| named |selector|... @>
+  expression_ptr call;
+  @< Assign to |call| the |resolve_overload| of the application of |op| to
+     an argument pair formed of |lhs|... @>
+  @< Construct, from |tuple|, |pos| and |*call|... @>
+}
+
+@ Here we build the application |appl| of the symbol |op| mentioned in the title
+as an |expr| structure, and pass it to |resolve_overload|. This mainly serves to
+find the relevant instance of |op|, but the converted expression |call| or part
+of it will also be used. The reason |appl| is |static| is for correct error
+reporting, as explained below.
+
+@< Assign to |call| the |resolve_overload| of the application of |op| to
+     an argument pair formed of |lhs| and |rhs|,
+     converted to type |*comp_loc| @>=
+{
+  static expr_ptr appl; expr_ptr saved_appl;
+  @< Set |appl| to the application of |op| to |lhs| and |rhs|... @>
+  call = resolve_overload(*appl,*comp_loc,global_overload_table->variants(op));
+  @< Restore initial state of |*e.comp_trans_variant| and of |appl| @>
+}
+
+@ The elements of the argument pair we construct are stolen (i.e., moved) from
+the (component transformation) expression |e| we are processing. This is
+necessary because we cannot copy |expr| values; after converting |appl| we shall
+move these parts back into |lhs| and |rhs| so that |e| is intact on successful
+return, and can be used for later error messages. For similar reasons we must
+move aside the previous contents of the |static| variable |appl| so that it
+won't be destructed in the assignment; in fact it could well hold an expression
+that contains |e| as subexpression, in which case its destruction would have
+catastrophic consequences.
+
+Moving the two arguments is done in two steps, since in a |tuple_expression| the
+components are accessed by an |expr_ptr|, which cannot point to an |expr| value
+that is contained in a larger structure, as is the case for |lhs| and |rhs|.
+
+@< Set |appl| to the application of |op| to |lhs| and |rhs|... @>=
+{ saved_appl = std::move(appl);
+  expr_ptr arg1(new expr(std::move(lhs)));
+    // move top level data into isolated |expr|
+  expr_ptr arg2(new expr(std::move(rhs))); // likewise
+@/appl =
+    internal_binary_call(op,std::move(arg1),std::move(arg2),
+                         e.loc,e.comp_trans_variant->op_loc);
+}
+
+@ We have moved parts from the expression |*e.comp_trans_variant| into the one
+accessed by |appl|, but our caller must see the whole expression |e| intact, in
+case it is a subexpression of a larger one for which an |expr_error| (or derived
+instance) will be thrown. So upon successful conversion, we must dig into the
+parts of |appl| and move them back where they came from. Then (and only then) we
+must also restore the value of the |static| variable |appl| itself, which was
+saved in a local variable |save|; this will also clean up the parts of the
+|appl| expression that we built ourselves (rather than moved). These manoeuvres
+could have been avoided if |expr| were copy constructible, but writing a
+(recursive, deep) copy constructor would be even more work.
+
+The reason |appl| is a static variable is that in case the |resolve_overload|
+call above should throw an error, a reference to |*appl| will be stored in the
+|expr_error| object, and it will be caught only after stack unwinding has
+destroyed all local variables of our (recursive) function |convert_expr|; if
+|appl| were such a local variable the mentioned reference would become a
+dangling one. As it is, the static variable will keep alive the |expr| it points
+to, even after reporting it, which is useless. However this memory wastage is a
+one-off (a new error thrown from the same place will replace and clean up the
+|expr| value), so we don't care.
+
+@< Restore initial state of |*e.comp_trans_variant| and of |appl| @>=
+{
+  auto* args = appl->call_variant->arg.sublist;
+@/lhs = std::move(args->contents);
+  rhs = std::move(args->next->contents);
+@/appl = std::move(saved_appl); // restore, so our caller will not notice
+}
+
+@ The code below illustrates one way to solve the coding problem of avoiding
+multiple identical |else| clauses in a situation where the positive option (here
+that of using a |field_transform| rather than a |field_assignment|) is dependent
+on the conjunction of several (here three) conditions, among which later
+conditions are in terms of one or more values (here |c| and |tup|) that are only
+defined if earlier conditions succeed. The latter circumstance makes it
+difficult to use a single test involving a logical conjunction (|and|), and
+nesting the later test within the ``then'' clause of the earlier |if| would
+naturally lead to several identical |else| clauses. Those clauses can be fused
+into a single one using |goto|, but that solution is distinctly ugly. The
+solution adopted here is to have a sequence of tests leading to a pointer
+variable |tup| being non-null only if all tests succeed, then the main
+conditional simply tests this condition. (In fact the third and last condition,
+the absence of implicit conversion of the first argument, is joined using a
+conjunction, because even upon success the value of this |dynamic_cast| will not
+be needed.) In general all information needed in the positive clause and
+possibly accumulated during the sequence of test must be stored in variables
+declared outside the sequence of tests; here however just |tup| suffices.
+
+The actual work to be done is quite straightforward, since all the pieces from
+which we want to construct either a |field_transform| or a
+|field_assignment| have already been converted. In the former case we use just
+the converted first argument of the |call| of |op|, while in the latter case we
+use |call| as a whole.
+
+@< Construct, from |tuple|, |pos| and |*call|, either a structure derived from
+   |field_transform| or one derived from |field_assignment|, and |return|
+   the result of passing it through |conform_types| @>=
+{ const tuple_expression *tup = nullptr;
+  auto* c = dynamic_cast<const builtin_call*>(call.get());
+  if (c!=nullptr)
+    tup = dynamic_cast<const tuple_expression *>(c->argument.get());
+@)
+  expression_ptr result;
+  if (tup!=nullptr and
+      dynamic_cast<const projector_call*>(tup->component[0].get())!=nullptr)
+  {
+    auto& rhe = const_cast<expression_ptr&>(tup->component[1]);
+    if (is_local)
+      result.reset (new local_field_transform@|
+        (tuple,pos,selector,d,o,std::move(rhe),c->f,c->name,e.loc));
+    else
+      result.reset (new global_field_transform@|
+        (tuple,pos,selector,std::move(rhe),c->f,c->name,e.loc));
+  }
+  else
+  { if (is_local)
+      result.reset(new local_field_assignment
+        (tuple,pos,selector,d,o,std::move(call)));
+    else
+      result.reset(new global_field_assignment(tuple,selector,pos,std::move(call)));
+  }
+  return conform_types(*comp_loc,type,std::move(result),e);
+}
+
+@ All that was done for the case of field transformations in a tuple must also
+be done for transformations of a component in a row, with some extra
+complications. Again we handle all expressions of the syntactic form
+(operation-assigning to a subscripted name), and decide only after the
+identification of the operation whether we can actually generate a
+|component_transform| or whether we expand to an ordinary
+|component_assignment|. The additional complications here are that there is an
+index expression whose double evaluation must be avoided, which may require
+additional rewriting of the syntax tree when we revert to a
+|component_assignment|, and the presence of a |reversed| attribute which makes
+the code for generating |component_transform| or |component_assignment| more
+repetitive.
+
+The conditions that need to be satisfied are those of a field transformation,
+plus the fact that name we are subscripting must have row-of type: the
+|component_transform| class was not designed to handle any other |kind| of
+subscription, which indeed do not appear to be able to benefit from in-place
+transformation. As before we shall type check a call of the operator as if
+|component_transform| is involved, and then from the result try to find out
+whether our conditions are satisfied. If they are, then we proceed much like in
+the field transformation case. In the other case we reassemble the pieces into a
+|component_assignment|.
+
+By consistent choice of variable names, we can reuse here the pieces of code
+that assemble the pieces of our original |comp_transform_node| into a function
+application, and then later restore everything to its initial state. The two
+pieces are further apart here, because as we shall see the function call
+expression |appl| may need to be converted a second time in a different context,
+so it is left intact until that is behind us. This also means that we cannot
+have and |return| expressions before the restoring is done (as that would skip
+their execution), and instead we just have a variable |result| that is set
+differently in different cases.
 
 @< Cases for type-checking and converting... @>=
 case comp_trans_stat:
@@ -8105,26 +8300,8 @@ case comp_trans_stat:
   return result;
 }
 
-@  Here we build an application of the symbol |op| as an |expr| structure, by
-stealing from the (component transformation) expression |e| we are processing.
-This is necessary because we cannot copy |expr| values; after converting |appl|
-we shall move these parts back into |lhs| and |rhs| so that |e| is intact on
-successful return, and can be used for later error messages. For similar reasons
-we must move aside the previous contents of the |static| variable |appl| so that
-it won't be destructed in the assignment; in fact it could well hold an
-expression that contains |e| as subexpression.
-
-@< Set |appl| to the application of |op| to |lhs| and |rhs|... @>=
-{ saved_appl = std::move(appl);
-  expr_ptr arg1(new expr(std::move(lhs)));
-    // move top level data into isolated |expr|
-  expr_ptr arg2(new expr(std::move(rhs))); // likewise
-@/appl =
-    internal_binary_call(op,std::move(arg1),std::move(arg2),
-                         e.loc,e.comp_trans_variant->op_loc);
-}
-
-@ All variables in the title are set here and may be used in subsequent modules.
+@ All variables in the title were declared before, and the values set here may
+be used in subsequent modules.
 
 @< Convert |index| to |ind|, set |ind_t| to its type, and |comp_t| to the
    type of subscription of |*aggr_t| by it; throw an exception if the |kind| of
@@ -8143,21 +8320,22 @@ expression that contains |e| as subexpression.
 }
 
 @ As said above, we can only construct a |component_transform| under certain
-conditions, of which the main one is that the operation to be applied to the old
-row element and the additional value is known (i.e., comes from the global
-overload table) and gives rise to a |builtin_call| (restricting to built-in
-functions is limiting, but we must ensure that in no way the hole in the row
-that the implementation will leave while the operation is active can be noticed,
-and user defined functions could have an indirect way to access the row). We
-also only consider row-of aggregates (others could hardly benefit), and refuse
-in case implicit conversions were needed to make types match (again this make
-in-place operation impossible), which will show by the converted expression not
-having the precise structure of the |expr| from which it was converted, as
-witnessed by failing |dynamic_cast| invocations. It is because these conditions
-can be determined only after type checking that we had to convert |appl|, even
-though this |call| will not be used when producing a |component_transform|. in
-that case we shall need |aggr|, |ind|, the resolved |c->f| and |c->name|, and
-the second argument |tup->component[1]| of the call.
+conditions. To sum up, we only consider row-of aggregates, we must find a
+|builtin_call| after overload resolution, and we refuse implicit conversions.
+The absence of the latter is tested by seeing if the converted expression has
+the precise structure of the |expr| from which it was converted, as witnessed by
+succeeding |dynamic_cast| invocations. It is because these conditions can be
+determined only after type checking that we had to convert |appl|, even though
+this |call| will not be used when producing a |component_transform|. In that
+case we shall need |aggr|, |ind|, the resolved |c->f| and |c->name|, and the
+second argument |tup->component[1]| of the call.
+
+In the case that we must use a |component_assignment|, there is an additional
+complication that we must avoid to use the index expression being evaluated
+twice. That will be handled by evaluating the index in a |let| expression
+generated on the spot, but since that requires some effort and has a slight run
+time penalty, we avoid this complication for simple enough index expressions:
+integer denotations and applied identifiers.
 
 @< If the conditions for an optimised in-place component transformation are met,
    construct a structure derived from |component_transform| from pieces
@@ -8249,12 +8427,15 @@ already tested) here.
   result = conform_types(comp_t,type,std::move(result),e);
 }
 
-@ Here $v[I]\mathrel\star:= E$ is translated into the equivalent of
-``\&{let}~$\$=I$~\&{in}~$v[\$]:=v[\$]\star E$'', where $\$$ is a local variable
-that can't conflict with $v$ or any names used in the expression~$E$.
-Since here the lexical level of $E$ is deeper here than in the earlier
-conversion, we cannot extract and use a part of the converted |call| as we did
-above, and rather convert the expression again in a modified setting.
+@ In this final case $v[I]\mathrel\star:= E$ is translated into the equivalent
+of ``\&{let}~$\$=I$~\&{in}~$v[\$]:=v[\$]\star E$'', where $\$$ is a local
+variable that can't conflict with $v$ or any names used in the expression~$E$.
+(By the way, the original implementation of operation-assign to an aggregate
+component was to always do this rewriting; it was achieved during syntax tree
+construction in \.{parsetree.w} with relative ease.) Since here the lexical
+level of $E$ is deeper here than in the earlier conversion, we cannot extract
+and use a part of the converted |call| as we did above, and rather convert the
+expression again in a modified setting.
 
 Here is the plan: get the |id_type| value for the hidden identifier $\$$,
 construct an applied identifier expression for this identifier, swap it out with
@@ -8292,154 +8473,6 @@ completion,
   index.swap(temp); // restore our original expression for outer error reporting
   ca = std::move(saved_ca);
     // restore state of static variable now that no error was thrown
-}
-
-@ All that was done for the case of component transformations must also be done
-for field transformations in a tuple, although some simplifications apply. Again
-we handle all expressions of the syntactic form (operation-assigning to field
-selected from a name), and decide only after the identification of the operation
-whether we can actually generate a |field_transform| or whether we expand to an
-ordinary |field_assignment|. This time the conditions are that a built-in
-operator is identified by the argument types, and that its result type is the
-same as its first operand. If the latter condition is not satisfied, the
-identification will in fact fail with an error unless an implicit conversion can
-resolve the type mismatch, so our test will be that the latter does not happen.
-Concretely, we type check the call of the operator ignoring field-transforming
-context (but supplying the required return type) and then test whether we can
-use a |field_transform|; if we can, we build it using pieces of the converted
-expression. In the contrary case, we reassemble the pieces together differently,
-to form an ordinary |field_assignment| instead.
-
-@< Cases for type-checking and converting... @>=
-case field_trans_stat:
-{ expr& lhs = e.comp_trans_variant->dest;
-  expr& rhs=e.comp_trans_variant->arg;
-  assert(lhs.kind == function_call);
-  app dot = lhs.call_variant;
-  assert(dot->arg.kind==applied_identifier); // grammar ensures this
-  assert(dot->fun.kind==applied_identifier); // grammar ensures this
-  id_type tuple = dot->arg.identifier_variant;
-  id_type selector = dot->fun.identifier_variant;
-  id_type op = e.comp_trans_variant->op;
-@/const_type_p tuple_t; size_t d,o; bool is_const;
-  bool is_local = (tuple_t=layer::lookup(tuple,d,o,is_const))!=nullptr;
-  if (not is_local and
-      (tuple_t=global_id_table->type_of(tuple,is_const))==nullptr)
-    report_undefined(tuple,e,"field transform");
-@.Undefined identifier@>
-  if (is_const)
-    report_constant_modified(tuple,e,"field transform");
-@.Name is constant @>
-@)
-  unsigned pos; type_p comp_loc;
-  @< Look up a projector for |*tuple_t| named |selector|... @>
-  expression_ptr call;
-  @< Assign to |call| the |resolve_overload| of the application of |op| to
-     an argument pair formed of |lhs|... @>
-  @< Construct, from |tuple|, |pos| and |*call|... @>
-}
-
-@ Here we build the application |appl| of the symbol |op| mentioned in the title
-as an |expr| structure, and pass it to |resolve_overload|. This mainly serves to
-find the relevant instance of |op|, but the converted expression |call| or part
-of it will also be used. The reason |appl| is |static| is for correct error
-reporting, as explained below.
-
-@< Assign to |call| the |resolve_overload| of the application of |op| to
-     an argument pair formed of |lhs| and |rhs|,
-     converted to type |*comp_loc| @>=
-{
-  expr_ptr select(new expr(std::move(lhs)));
-    // move top level data into isolated |expr|
-  expr_ptr arg(new expr(std::move(rhs))); // likewise
-  static expr_ptr appl;
-  expr_ptr saved_appl(std::move(appl)); // ensure recursive safety
-@/appl =
-    internal_binary_call(op,std::move(select),std::move(arg),
-                         e.loc,e.comp_trans_variant->op_loc);
-  call = resolve_overload(*appl,*comp_loc,global_overload_table->variants(op));
-  @< Restore initial state of |*e.comp_trans_variant| and of |appl| @>
-}
-
-@ We have moved parts from the expression |*e.comp_trans_variant| into the one
-accessed by |appl|, but our caller must see the whole expression |e| intact, in
-case it is a subexpression of a larger one for which and |expr_error| (or
-derived) will be called. So upon successful conversion, we must dig into the
-parts of |appl| and move them back where they came from. Then (and only then) we
-must also restore the value of the |static| variable |appl| itself, which was
-saved in a local variable |save|; this will also clean up the parts of the
-|appl| expression that we built ourselves (rather than moved). These manoeuvres
-could have been avoided if |expr| were copy constructible, but writing a
-(recursive, deep) copy constructor would be even more work.
-
-The reason |appl| is a static variable is that in case the |resolve_overload|
-call above should throw an error, a reference to |*appl| will be stored in the
-|expr_error| object, and it will be caught only after stack unwinding has
-destroyed all local variables of our (recursive) function |convert_expr|; if
-|appl| were such a local variable the mentioned reference would become a
-dangling one. As it is, the static variable will keep alive the |expr| it points
-to after reporting it; however this memory wastage is a one-off (a new error
-thrown from the same place will replace and clean up the |expr| value), so we
-don't care.
-
-@< Restore initial state of |*e.comp_trans_variant| and of |appl| @>=
-{
-  auto* args = appl->call_variant->arg.sublist;
-@/lhs = std::move(args->contents);
-  rhs = std::move(args->next->contents);
-@/appl = std::move(saved_appl); // restore, so our caller will not notice
-}
-
-@ The code here is considerably simpler than for a transformation of a
-\emph{row} component, on one hand because there is no index expression whose
-double evaluation must be avoided, en on the other hand because no
-discrimination on a |reversed| attribute (of the subscription) is necessary.
-
-The code below illustrates one way to solve the coding problem of avoiding
-multiple identical |else| clauses in a situation where the positive option (here
-that of using a |field_transform| rather than a |field_assignment|) is dependent
-on the conjunction of several (here two) conditions, among which later
-conditions are in terms of one or more values (here |c| and |tup|) that are only
-defined if earlier conditions succeed. The latter circumstance makes it
-difficult to use a single test involving a logical conjunction (|and|), and
-nesting the later test within the ``then'' clause of the earlier |if| would
-naturally lead to several identical |else| clauses. Those clauses can be fused
-into a single one using |goto|, but that solution is distinctly ugly. The
-solution adopted here is to have a sequence of tests leading to a pointer
-variable |tup| being non-null only if all tests succeed, then the main
-conditional simply tests this condition. In general all information needed in
-the positive clause and possibly accumulated during the sequence of test must be
-stored in variables declared outside the sequence of tests; here however just
-|tup| suffices.
-
-
-@< Construct, from |tuple|, |pos| and |*call|, either a structure derived from
-   |field_transform| or one derived from |field_assignment|, and |return|
-   the result of passing it through |conform_types| @>=
-{ expression_ptr p; const tuple_expression *tup = nullptr;
-  auto* c = dynamic_cast<const builtin_call*>(call.get());
-  if (c!=nullptr)
-    tup = dynamic_cast<const tuple_expression *>(c->argument.get());
-@)
-  if (tup!=nullptr and
-      dynamic_cast<const projector_call*>(tup->component[0].get())!=nullptr)
-  {
-    auto& rhe = const_cast<expression_ptr&>(tup->component[1]);
-    if (is_local)
-      p.reset (new local_field_transform@|
-        (tuple,pos,selector,d,o,std::move(rhe),c->f,c->name,e.loc));
-    else
-      p.reset (new global_field_transform@|
-        (tuple,pos,selector,std::move(rhe),c->f,c->name,e.loc));
-  }
-  else
-  { if (is_local)
-      p.reset(new local_field_assignment
-        (tuple,pos,selector,d,o,std::move(call)));
-    else
-      p.reset(new global_field_assignment(tuple,selector,pos,std::move(call)));
-  }
-  return conform_types(*comp_loc,type,std::move(p),e);
 }
 
 @* Some special wrapper functions.
