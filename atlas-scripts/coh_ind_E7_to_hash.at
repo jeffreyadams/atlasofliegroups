@@ -1,14 +1,14 @@
 {Puts all cohomologically induced from Arthur unipotent for E7 in unitary_hash, and set coh_ind_flag
 to false.}
-set rd_saved = RootDatum: root_datum(mat: 
+set rd_saved = RootDatum: root_datum(mat:
 [[  2,  0, -1,  0,  0,  0,  0 ],[  0,  2,  0, -1,  0,  0,  0 ],[ -1,  0,  2, -1,  0,  0,  0 ],[  0, -1, -1,  2, -1,  0,  0 ],[  0,  0,  0, -1,  2, -1,  0 ],[  0,  0,  0,  0, -1,  2, -1 ],[  0,  0,  0,  0,  0, -1,  2 ]], mat:
 [[ 1, 0, 0, 0, 0, 0, 0 ],[ 0, 1, 0, 0, 0, 0, 0 ],[ 0, 0, 1, 0, 0, 0, 0 ],[ 0, 0, 0, 1, 0, 0, 0 ],[ 0, 0, 0, 0, 1, 0, 0 ],[ 0, 0, 0, 0, 0, 1, 0 ],[ 0, 0, 0, 0, 0, 0, 1 ]]
 ,true)
-set DI_saved = mat: 
+set DI_saved = mat:
 [[ 1, 0, 0, 0, 0, 0, 0 ],[ 0, 1, 0, 0, 0, 0, 0 ],[ 0, 0, 1, 0, 0, 0, 0 ],[ 0, 0, 0, 1, 0, 0, 0 ],[ 0, 0, 0, 0, 1, 0, 0 ],[ 0, 0, 0, 0, 0, 1, 0 ],[ 0, 0, 0, 0, 0, 0, 1 ]]
 set IC_saved = inner_class(rd_saved, DI_saved)
 set G_temp= real_form(IC_saved, DI_saved,[ 0, 0, 0, 0, 0, 0, 0 ]/1)
-set Nullp = U(1,0).trivial
+set Nullp = compact_torus(0).trivial
 set E7ind=[Param]: for i:31255 do Nullp od
 void:E7ind[0]:=parameter(KGB(G_temp,2853),[ -3,  1,  1,  1,  1, -3,  1 ]/1,[ 0, 0, 0, 0, 0, 0, 0 ]/1)
 void:E7ind[1]:=parameter(KGB(G_temp,2853),[ -3,  1,  1,  1,  1, -3,  0 ]/1,[ 0, 0, 0, 0, 0, 0, 0 ]/1)
@@ -31267,3 +31267,4 @@ void:E7ind[31253]:=parameter(KGB(G_temp,20925),[ 1, 1, 1, 1, 1, 1, 1 ]/1,[ 1, 1,
 void:E7ind[31254]:=parameter(KGB(G_temp,20925),[ 1, 1, 1, 1, 1, 1, 1 ]/1,[ 1, 1, 1, 1, 1, 1, 1 ]/1)
 void: for p in E7ind do unitary_hash.match(p) od
 coh_ind_flag:= false
+set coh_ind_file_loaded=true

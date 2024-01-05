@@ -32,10 +32,11 @@ if testonly:
     exit()
 
 #nice format of datetime: 2022-05-23 16:13:19
-my_time=datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+start_time_raw=time.time()
+start_time=time.ctime()
 
 file=open(outputfile,'w')
-file.write("free report started at " + my_time + "\n")
+file.write("free report started at " + start_time + "\n")
 file.write("interval in seconds: " + str(interval) + "\n")
 file.close()
 #run top
@@ -45,7 +46,9 @@ file.close()
 
 while (1):
     finished=0
-    my_time=datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    my_time_raw=time.time()
+    my_time=time.ctime()
+    elapsed_time_in_seconds = my_time_raw-start_time_raw
     top=os.popen('free -h')
     top_text = top.read()
     top.close()
@@ -58,7 +61,10 @@ while (1):
             finish= subprocess.run(['grep','Finish',str(directory + "/" + filename)],stdout=subprocess.PIPE)
             number=len(finish.stdout.splitlines())
             finished += number
-    file.write("#KGB elements: " + str(finished) + "\n\n")
+    file.write("#KGB elements: " + str(finished) + "\n")
+    avg_time=finished/(elapsed_time_in_seconds/60)
+    file.write("elapsed time: " + "{:.2f}".format(elapsed_time_in_seconds) + "\n")
+    file.write("average time per minute for each x from beginning: " + "{:.2f}".format(avg_time) + "\n")
     file.close()
     time.sleep(interval)
 

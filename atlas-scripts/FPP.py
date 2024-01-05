@@ -10,7 +10,7 @@ progress_step_size=10 #how often to report progress
 FPP_at_file="FPP.at" #default
 FPP_py_file="FPP.py" #default
 #extra_files=["global_facets_E7.at","coh_ind_E7_to_hash.at","E7except589to15851.at"]
-extra_files=["global_facets_E7.at","coh_ind_E7_to_hash.at"]]
+extra_files=["global_facets_E7.at","coh_ind_E7_to_hash.at"]
 
 #simple reporting function
 def report(q,i,proc):
@@ -39,7 +39,7 @@ def atlas_compute(i,pid):
    log.write("\nJob number: " + str(i) + "\n")
    log.write("Job pid: " +  str(pid) + "\n")
    log.write("function: " +  test_function + "\n")
-   vars=['coh_ind_flag','revert_flag','deform_flag','every_KGB_flag','every_lambda_flag','every_lambda_deets_flag','test_slightly_verbose','test_verbose','global_top']
+   vars=['coh_ind_flag','revert_flag','deform_flag','every_KGB_flag','every_lambda_flag','every_lambda_deets_flag','test_slightly_verbose','test_verbose','global_top','global_facets_file_loaded','coh_ind_file_loaded']
 
    for var in vars:
       atlas_arg='{}'.format("prints(\"" + var + ": \"," +  var + ")" + "\n").encode('utf-8')
@@ -48,6 +48,11 @@ def atlas_compute(i,pid):
       line = proc.stdout.readline().decode('ascii')
       log.write(line)
       time.sleep(.1)
+#   atlas_arg='{}'.format("prints(\"global_facets"  + ": \",#global_facets"  + ")" + "\n").encode('utf-8')
+#   proc.stdin.write(atlas_arg)
+#   proc.stdin.flush()
+#   line = proc.stdout.readline().decode('ascii')
+#   log.write(line)
 
    starttime=time.time()
    #some initialization
@@ -173,7 +178,9 @@ def main(argv):
          print("loading KGB file ", kgb_file)
          data=open("kgb_file","r")
          while True:
-            line=data.readline()
+#           line = proc.stdout.readline().decode('ascii').strip()
+            line=data.readline().strip()
+            print("Line{}: {}".format(3, line.strip()))    
             if not line:
                break
             else:
@@ -219,8 +226,11 @@ def main(argv):
    print("Copied " + FPP_at_file + " to logs directory")
    shutil.copy(FPP_py_file,directory + "/logs")
    print("Copied " + FPP_py_file + " to logs directory")
-   all_files=" ".join([FPP_at_file] + extra_files)
-   print("atlas will load: " + all_files)
+#   all_files=" ".join([FPP_at_file] + extra_files)
+   print("extra_files: ", extra_files)
+   all_files=[FPP_at_file] + extra_files
+   print("all_files: ", all_files)
+   print("atlas will load: " + " ".join(all_files))
    #run git log -n 1 to get last log entry and print it out
    print("git log -n 1:")
    git_cmd=['git','log','-n','1']
@@ -257,6 +267,7 @@ def main(argv):
    #Run atlas once to write the file defining the group
    print("running one atlas job to write group definition file")
    atlas_cmd=executable_dir + "atlas" 
+#   proc=subprocess.Popen([atlas_cmd,"writeFiles.at"], stdin=PIPE,stdout=PIPE)
    proc=subprocess.Popen([atlas_cmd,"writeFiles.at"], stdin=PIPE,stdout=PIPE)
    atlas_arg='{}'.format("write_real_form(" + group + ",\"G\")" + "\n").encode('utf-8')
    proc.stdin.write(atlas_arg)
@@ -277,10 +288,18 @@ def main(argv):
    symlinks_dir=directory + "/symlinks"
    for i in range(number_jobs):
       atlas_cmd=symlinks_dir + "/atlas_" + str(i)
+#      print("atlas_cmd: ", atlas_cmd)
       symlink_cmd="ln -s " + executable_dir + "atlas " + atlas_cmd
 #      print("symlink cmd: ", symlink_cmd)
       os.system(symlink_cmd)
-      proc=subprocess.Popen([atlas_cmd,"FPP.at"], stdin=PIPE,stdout=PIPE)
+
+      print("all_files: ", all_files)
+      myarg=[atlas_cmd]+all_files
+#      print("myarg: ", myarg)
+#     proc=subprocess.Popen([atlas_cmd,"writeFiles.at"], stdin=PIPE,stdout=PIPE)
+#      proc=subprocess.Popen(myarg stdin=PIPE,stdout=PIPE)
+#      proc=subprocess.Popen([atlas_cmd,"all.at"], stdin=PIPE,stdout=PIPE)
+      proc=subprocess.Popen(myarg, stdin=PIPE,stdout=PIPE)
       procs.append(proc)
       pid=proc.pid
    print("executing ", number_jobs, " atlas functions")
