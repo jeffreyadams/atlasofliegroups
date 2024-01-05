@@ -1925,7 +1925,7 @@ argument to not be shared if it can be avoided. The |hunger| field tells whether
 this is such a function: a value $0$ means no desire to eat anything, a value
 $1$ means it wishes to modify the first of two arguments in-place, a value of
 $2$ that it wishes to do so for the second argument, and a value of $3$ means
-that there is a unique argument that it wished to modify.
+that there is a unique argument, which it wishes to modify.
 
 @< Type definitions @>=
 template <bool variadic>
@@ -8342,7 +8342,7 @@ integer denotations and applied identifiers.
    of |*call| and set |result| by passing it through |conform_types|,
    otherwise build a |comp_assignment| @>=
 { const builtin_call* c;
-  const tuple_expression *tup;
+  const tuple_expression *tup=nullptr;
   if (kind==subscr_base::row_entry)
   { c = dynamic_cast<const builtin_call*>(call.get());
     if (c!=nullptr)
