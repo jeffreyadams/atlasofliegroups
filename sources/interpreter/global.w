@@ -2711,11 +2711,33 @@ void divmod_wrapper(expression_base::level l)
   if (l==expression_base::single_value)
     wrap_tuple<2>();
 }
+@ Here are a few unary operations. We start with successor and predecessor,
+which are intended to be inserted mostly by rewriting during parsing, with $x+1$
+and $x-1$ respectively becoming |succ(x)| and |pred(x)|.
+
+@< Local function definitions @>=
+void successor_wrapper(expression_base::level l)
+{ own_int i=get_own<int_value>();
+  if (l!=expression_base::no_value)
+    ++i->val, push_value(std::move(i));
+}
+@)
+void predecessor_wrapper(expression_base::level l)
+{ own_int i=get_own<int_value>();
+  if (l!=expression_base::no_value)
+    --i->val, push_value(std::move(i));
+}
 @)
 void unary_minus_wrapper(expression_base::level l)
 { own_int i=get_own<int_value>();
   if (l!=expression_base::no_value)
     i->val.negate(), push_value(std::move(i));
+}
+@)
+void bitwise_complement_wrapper(expression_base::level l)
+{ own_int i=get_own<int_value>();
+  if (l!=expression_base::no_value)
+    i->val.complement(), push_value(std::move(i));
 }
 
 @ Powers of integers are defined whenever the result is integer. They get a bit
@@ -4130,7 +4152,10 @@ install_function(times_wrapper,"*","(int,int->int)");
 install_function(divide_wrapper,"\\","(int,int->int)",1);
 install_function(modulo_wrapper,"%","(int,int->int)",1);
 install_function(divmod_wrapper,"\\%","(int,int->int,int)",1);
+install_function(successor_wrapper,"succ","(int->int)",3);
+install_function(predecessor_wrapper,"pred","(int->int)",3);
 install_function(unary_minus_wrapper,"-","(int->int)",3);
+install_function(bitwise_complement_wrapper,"~","(int->int)",3);
 install_function(power_wrapper,"^","(int,int->int)");
 install_function(and_wrapper,"AND","(int,int->int)",1);
 install_function(or_wrapper,"OR","(int,int->int)",1);
