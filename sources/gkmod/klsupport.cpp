@@ -95,15 +95,15 @@ KLSupport::KLSupport(const Block_base& b)
   blocks) ascent through a complex ascent or Cayley transform is attempted,
   which link points outside of the block (it is represented as |UnderBlock|).
 
-  A primitive element for |d| is one for which all elements in |d| are either
-  descents or type II imaginary ascents. So if |x| is not primitive, it has an
-  ascent in |d| that is either complex, imaginary type I or real nonparity. In
-  the first two cases we replace |x| by the (unique) ascended element and
-  continue; in the last case, we return |UndefBlock| (for K-L computations, this
-  case implies that $P_{x,y}=0$; the value of |UndefBlock| is conveniently
-  larger than any valid BlockElt |y|, so this case will be handled effortlessly
-  together with triangularity). It is also permissible to pass |x==UndefBlock|,
-  for which will |d_block.size()| be returned immediately.
+  A primitive element for |desc_y| is one for which all elements in |desc_y| are
+  either descents or type II imaginary ascents. So if |x| is not primitive, it
+  has an ascent in |desc_y| that is either complex, imaginary type I or real
+  nonparity. In the first two cases we replace |x| by the (unique) ascended
+  element and continue; in the last case, we return |UndefBlock| (for K-L
+  computations, this case implies that $P_{x,y}=0$; the value of |UndefBlock| is
+  conveniently larger than any valid BlockElt |y|, so this case will be handled
+  effortlessly together with triangularity). It is also permissible to pass
+  |x==UndefBlock|, for which will |d_block.size()| be returned immediately.
 */
 BlockElt
   KLSupport::primitivize(BlockElt x, RankFlags desc_y) const
@@ -121,21 +121,6 @@ BlockElt
   }
   return d_block.size(); // indicate that a dead end was reached
 }
-
-#ifndef NDEBUG
-void KLSupport::check_sub(const KLSupport& sub, const BlockEltList& embed)
-{
-  assert(sub.rank()==rank());
-  for (BlockElt z=0; z<sub.block().size(); ++z)
-  {
-    assert(sub.block().length(z)==d_block.length(embed[z]));
-    assert(sub.block().descent(z)==d_block.descent(embed[z]));
-    for (weyl::Generator s=0; s<d_block.rank(); ++s)
-      if (sub.cross(s,z)!=UndefBlock)
-	assert(embed[sub.cross(s,z)]==cross(s,embed[z]));
-  }
-}
-#endif
 
 } // |namespace klsupport|
 

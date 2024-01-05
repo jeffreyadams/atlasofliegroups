@@ -13,7 +13,7 @@ set_type W_rep = (int dimension, [mat] operators)
 
 { matrix of pi(w) }
 set operator (W_rep (dimension,operators), WeylElt w) = mat:
-   product(dimension,for s in w.word ~do operators[s] od)
+   product(dimension,for s in w.word do operators[s] od)
 
 set operator (W_rep pi) = (WeylElt -> mat):
   (WeylElt w) mat: operator(pi,w)

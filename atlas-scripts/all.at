@@ -1,4 +1,8 @@
 {Load this file to load all recommended .at files}
+<basic.at
+<combinatorics.at
+<number_theory.at
+<hermitian.at
 <extParamPol.at
 <nilpotent_orbits.at
 <complex.at

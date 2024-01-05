@@ -398,7 +398,7 @@ size_t KL_table::fill_KL_column
     while (prim_back_up(x,desc_y))
     {
       auto& Pxy = klv[x];
-      if (Pxy.isZero())
+      if (Pxy.is_zero())
 	++zero_count;
       else
       {
@@ -489,7 +489,7 @@ void KL_table::recursion_column (BlockElt y,weyl::Generator s,
     }
     // for now |Pxy.degree()| might be one notch too high, which will be
     // corrected in |mu_correction|; also |assert| there are based on this one
-    assert(Pxy.isZero() or 2*Pxy.degree()<l(y,x) or
+    assert(Pxy.is_zero() or 2*Pxy.degree()<l(y,x) or
 	   (2*Pxy.degree()==l(y,x) and
 	    Pxy[Pxy.degree()]==mu(x,sy)
 	    ));
@@ -604,7 +604,7 @@ size_t KL_table::complete_primitives(std::vector<KLPol>& klv,
     if (is_extremal(x,desc_y))
     { // extremal element for |y|; use polynomial from vector passed to us
       const KLPol& Pxy=klv[x];
-      if (Pxy.isZero())
+      if (Pxy.is_zero())
 	++zero_count;
       else
       {
@@ -623,7 +623,7 @@ size_t KL_table::complete_primitives(std::vector<KLPol>& klv,
       KLPol& Pxy = klv[x]; // the polynomial computed here on the fly
       Pxy = klv[primitivize(xs.first,desc_y)]; // look up $P_{xs.first,y}$
       Pxy.safeAdd(klv[primitivize(xs.second,desc_y)]);
-      if (Pxy.isZero())
+      if (Pxy.is_zero())
 	++zero_count;
       else
       {
@@ -641,7 +641,7 @@ size_t KL_table::complete_primitives(std::vector<KLPol>& klv,
 
 #ifndef NDEBUG
   for (auto P : klv)
-    P.isZero();
+    P.is_zero();
 #endif
 
   Mu_list downs;
@@ -782,7 +782,7 @@ void KL_table::new_recursion_column
 
       default: assert(false); //we've handled all possible NiceAscents
       }
-      if (not Pxy.isZero() and l_y==l_x+2*Pxy.degree()+1)
+      if (not Pxy.is_zero() and l_y==l_x+2*Pxy.degree()+1)
 	mu_pairs.emplace_back(x,Pxy[Pxy.degree()]);
 
     } // end of |first_nice_and_real| case
@@ -832,11 +832,11 @@ void KL_table::new_recursion_column
 	  Pxy.safeSubtract(KL_y(sx_up_t.second));
 	}
 
-	if (not Pxy.isZero() and l_y==l_x+2*Pxy.degree()+1)
+	if (not Pxy.is_zero() and l_y==l_x+2*Pxy.degree()+1)
 	  mu_pairs.emplace_back(x,Pxy[Pxy.degree()]);
       } // |if (endgame_pair(x,y)) |
       else // |first_endgame_pair| found nothing
-	assert(Pxy.isZero()); // just check unchanged since initialised
+	assert(Pxy.is_zero()); // just check unchanged since initialised
     } // end of no NiceAscent case
   } // while (j-->0)
 
@@ -1014,9 +1014,6 @@ void KL_table::verbose_fill(BlockElt limit)
 void KL_table::swallow
   (KL_table&& sub, const BlockEltList& embed, KL_hash_Table& hash)
 {
-#ifndef NDEBUG
-  check_sub(sub,embed);
-#endif
   // set up polynomial translation while ensuring those of |sub| are known here
   const bool shared_KL_pool =
     sub.pol_hash!=nullptr and &hash.pool()==&sub.pol_hash->pool();

@@ -19,6 +19,7 @@
 #include "innerclass.h"	// |integrality_datum_item| construction
 #include "cartanclass.h"// |InvolutionData|
 #include "weyl.h"	// subobject
+#include "repr.h"       // for |repr::codec|
 
 #include <cassert>
 
@@ -38,13 +39,13 @@ SubSystem::SubSystem(const RootDatum& parent, const sl_list<RootNbr>& sub_sys)
   pos_map.reserve(numPosRoots()); // |pos_map| is indexed by \emph{our} posroots
   for (RootNbr alpha : sub_sys)
   {
-    pos_map.push_back(alpha);
+    pos_map.push_back(alpha); // push simple roots (for subsystem) first
     which.insert(rd.posroot_index(alpha));
   }
 
   for (unsigned int i=sub_sys.size(); i<numPosRoots(); ++i)
   {
-    RootNbr sub_alpha = posRootNbr(i);
+    RootNbr sub_alpha = posRootNbr(i); // a non-simple posroot of subsystem
     weyl::Generator s = find_descent(sub_alpha); // generator for subsystem
     simple_reflect_root(s,sub_alpha); // lower |sub_alpha| in our system
     RootNbr beta = pos_map[posroot_index(sub_alpha)]; // |beta| is in parent
@@ -133,52 +134,13 @@ PreRootDatum SubSystem::pre_root_datum() const
   return PreRootDatum(simple_roots,simple_coroots,not prefer_coroots());
 }
 
-#if 0 // method is unused
-// compute (dual side) twist and subsystem twisted involution |ww| for |theta|
-weyl::Twist SubSystem::twist(const WeightInvolution& theta, WeylWord& ww) const
-{
-  RootNbrList Delta(rank()); // list of subsystem simple images by theta
-  for (weyl::Generator i=0; i<rank(); ++i)
-  {
-    RootNbr image =
-      from_parent(rd.root_index(theta*rd.root(parent_nr_simple(i))));
-    assert(image < numRoots());  // |image| is number of image in subsystem
-    Delta[i] = rootMinus(image); // |-theta| image of |root(i)|
-  }
-
-  WeylWord wrt = // its rightmost letter applies first to distinguished |Delta|
-    rootdata::wrt_distinguished(*this,Delta); // make |Delta| distinguished
-
-  // |Delta| now describes a twist of the subsystem Dynkin diagram
-
-  weyl::Twist result; // the subsystem twist that |Delta| has been reduced to
-  for (weyl::Generator i=0; i<rank(); ++i)
-    result[i] = RootSystem::simpleRootIndex(Delta[i]);
-
-  // Let |theta_0| be the involution such that |Delta| describes $-theta_0^t$
-  // then (for integrality systems) |theta_0| is parent quasi-split involution
-  // and $theta=pw.theta_0$ where |pw| is |wrt| in terms of parent generators;
-  // equivalently, $-theta^t=Delta.wrt^{-1}$ in terms of the subsystem
-
-  // However, we want |ww| such that $-theta^t=ww.Delta$ (on subsystem side),
-  // therefore |ww=twist(wrt^{-1})|. Nonetheless if |theta| is an involution,
-  // it is the same to say $-theta^t=ww.Delta$ or $-theta^t=Delta.ww^{-1}$,
-  // so following reversal and twist do nothing (|ww| is twisted involution).
-  ww.resize(wrt.size()); // we must reverse and twist, to express on our side
-  for (size_t i=0; i<wrt.size(); ++i)
-    ww[wrt.size()-1-i] = result[wrt[i]];
-
-  return result; // the result returned is the subsystem twist, not |ww|
-}
-#endif
-
+// get simple roots by converting intial range of |pos_map| to a |BitMap|
+RootNbrSet SubSystem::simple_roots() const
+{ return RootNbrSet(rd.numRoots(),&pos_map[0],&pos_map[rank()]); }
 
 // get positive roots by converting the array |pos_map| to a |BitMap|
 RootNbrSet SubSystem::positive_roots() const
 { return RootNbrSet(rd.numRoots(),pos_map); }
-
-ext_gens SubSystem::fold_orbits (const WeightInvolution& delta) const
-{ return rootdata::fold_orbits(pre_root_datum(),delta); }
 
 RankFlags SubSystem::singular_generators(const RatWeight& gamma) const
 {
@@ -214,36 +176,52 @@ SubSystemWithGroup SubSystemWithGroup::integral // pseudo constructor
 }
 
 integral_datum_item::integral_datum_item
-    (InnerClass& ic,const RootNbrSet& int_poscoroots)
-      : integral(new SubSystem
-		 {ic.rootDatum(),ic.rootDatum().pos_simples(int_poscoroots)})
-  , simple_coroots(integral->rank(),ic.rank())
+  (InnerClass& ic,const RootNbrSet& int_poscoroots)
+    : ic(ic)
+    , int_sys( ic.root_datum(), ic.root_datum().pos_simples(int_poscoroots) )
+    , simple_coroots(int_sys.rank(),ic.rank()) // first is |RootSystem::rank|
 {
   for (unsigned i=0; i<simple_coroots.n_rows(); ++i)
-    simple_coroots.set_row(i,integral->simple_coroot(i));
+    simple_coroots.set_row(i,int_sys.simple_coroot(i));
 }
 
-integral_datum_item::codec::codec
-  (const InnerClass& ic,
-   unsigned int int_sys_nr, InvolutionNbr inv, const int_Matrix& coroots_mat)
-    : coroots_matrix(ic.int_item(int_sys_nr).coroots_matrix())
-    , theta_1_image_basis(ic.involution_table().theta_1_image_basis(inv))
-    , diagonal(), in(), out()
+
+SubSystem integral_datum_item::int_system(const WeylElt& w) const
+{ return SubSystem { int_sys.parent_datum(), image_simples(w) }; }
+
+sl_list<RootNbr> integral_datum_item::image_simples(const WeylElt& w) const
 {
-  // get image of $-1$ eigenlattice in int-orth quotient, in coroot coordinates
-  int_Matrix A = coroots_mat * theta_1_image_basis, row,col;
-  diagonal=matreduc::diagonalise(A,row,col);
-  // ensure |diagonal| entries positive, since we shall be reducing modulo them
-  if (diagonal.size()>0 and diagonal[0]<0) // only this entry might be negative
-  {
-    diagonal[0] = -diagonal[0];
-    row.rowMultiply(0u,-1); // restablish relation |row*A*col==diagonal|
-  }
+  WeylWord ww = ic.Weyl_group().word(w);
+  sl_list<RootNbr> result;
 
-  auto rank = diagonal.size();
-  in  = std::move(row); // keep full coordinate transform
-  out = col.block(0,0,col.n_rows(),rank); // chop part for final zero entries
+  const auto& rd = ic.root_datum();
+  for (weyl::Generator s=0; s<int_sys.rank(); ++s)
+  {
+    RootNbr image = rd.permuted_root(ww,int_sys.parent_nr_simple(s));
+    assert(rd.is_posroot(image)); // |ww| must map to integrally dominant
+    result.push_back(image);
+  }
+  result.sort(); // force |integrality_datum| numbering
+  return result;
 }
+
+int_Matrix integral_datum_item::coroots_matrix(const WeylElt& w) const
+{
+  auto integral_simples = image_simples(w);
+
+  const auto& rd = ic.root_datum(); // the inner class root datum
+  int_Matrix result(integral_simples.size(), rd.rank());
+  unsigned i=0;
+  for (const auto& alpha : integral_simples)
+    result.set_row(i++,rd.coroot(alpha));
+  return result;
+}
+
+repr::codec integral_datum_item::data (InvolutionNbr inv) const
+  { return { ic,inv,simple_coroots }; }
+
+repr::codec integral_datum_item::data (InvolutionNbr inv, const WeylElt& w) const
+  { return { ic,inv, coroots_matrix(w) }; }
 
 } // |namespace subdatum|
 

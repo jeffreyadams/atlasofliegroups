@@ -69,8 +69,10 @@ namespace {
   void blockorder_f();
   void blockwrite_f();
   void blockstabilizer_f();
+#if 0
   void extblock_f();
   void gextblock_f();
+#endif
   void klbasis_f();
   void kllist_f();
   void primkl_f();
@@ -127,9 +129,11 @@ CommandNode blockNode()
 	     "writes the block information to disk",std_help);
   result.add("blockstabilizer",blockstabilizer_f,
 	     "print the real Weyl group for the block",std_help);
+#if 0 // these two functions never worked correctly; so they are ripped out
   result.add("extblock",extblock_f,
 	     "prints block for group extended by inner class involution");
   result.add("gextblock",gextblock_f,"prints block for general extended group");
+#endif
   result.add("klbasis",klbasis_f,
 	     "prints the KL basis for the Hecke module",std_help);
   result.add("kllist",kllist_f,
@@ -425,6 +429,7 @@ void blockstabilizer_f()
     (file,currentRealGroup(),cn,currentDualRealForm());
 }
 
+#if 0
 void extblock_f()
 {
   ext_block::ext_block eblock
@@ -448,7 +453,7 @@ void gextblock_f()
   ioutils::OutputFile file;
   eblock.print_to(file);
 }
-
+#endif
 
 /* For each element $y$ in the block, outputs the list of non-zero K-L
    polynomials $P_{x,y}$.

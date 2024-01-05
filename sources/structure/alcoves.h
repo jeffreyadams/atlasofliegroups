@@ -25,9 +25,14 @@ RootNbrSet wall_set
   (const RootDatum& rd, const RatWeight& gamma, RootNbrSet& integrals);
 
 sl_list<RootNbr> sorted_by_label
-  (const RootSystem& rs, RootNbrSet walls, const RootNbrSet& integrals);
+  (const RootSystem& rs, const RootNbrSet& walls);
 
-StandardRepr alcove_center(const Rep_context& rc, const StandardRepr& sr);
+// replace |walls| by the walls of the fundamental alcove in some permutation,
+// and return Weyl word for element that maps the fundamental alcove to one
+// with walls in the same configuration (up to translation) as orignal |walls|
+WeylWord from_fundamental_alcove (const RootSystem& rs, RootNbrSet& walls);
+
+StandardRepr alcove_center (const Rep_context& rc, const StandardRepr& sr);
 
 Weight root_vertex_of_alcove (const RootDatum& rd, const RatWeight& gamma);
 

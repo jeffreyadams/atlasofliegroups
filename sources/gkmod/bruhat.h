@@ -66,8 +66,9 @@ class BruhatOrder
   const std::vector<poset::Poset::Elt>& hasse(size_t x) const
   { return d_hasse[x]; }
 
-  // while we're being pilfered, allow modifiable access to |d_hasse|
-  std::vector<poset::Poset::Elt>& Hasse(size_t x) && { return d_hasse[x]; }
+  // Get row |x| of the Hasse diagram with intention to pilfer it
+  std::vector<poset::Poset::Elt>&& Hasse(size_t x) &&
+  { return std::move(d_hasse[x]); }
 
   // Return the number of comparable pairs in the order.
   unsigned long n_comparable() const

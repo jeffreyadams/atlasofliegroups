@@ -319,7 +319,7 @@ lead to entirely zero rows and columns.
 void Cartan_matrix_wrapper(expression_base::level l)
 { shared_Lie_type t=get<Lie_type_value>();
   if (l!=expression_base::no_value)
-    push_value(std::make_shared<matrix_value>(t->val.Cartan_matrix()));
+    push_value(std::make_shared<matrix_value>(t->val.true_Cartan_matrix()));
 }
 
 
@@ -1032,7 +1032,10 @@ public:
 @)
   root_datum_value(const PreRootDatum& v,token)
   : classes(), W_ptr(), val(v) @+ {}
+  root_datum_value(RootDatum&& v,token)
+  : classes(), W_ptr(), val(std::move(v)) @+ {}
   static shared_root_datum build(PreRootDatum&& pre);
+  static shared_root_datum copy(const RootDatum& rd);
   virtual void print(std::ostream& out) const;
   static const char* name() @+{@; return "root datum"; }
   root_datum_value (const root_datum_value& ) = delete;
@@ -1095,6 +1098,34 @@ shared_root_datum root_datum_value::build(PreRootDatum&& pre)
   } // save a weak pointer version in |store|
   return result;
 }
+
+@ Sometimes a |RootDatum| value exists in the program without necessarily being
+recorded in the |static| variable |RootDatum::hash|; when we want to make a user
+program value from it, we need to pass it through the same test as |build|
+above; the static method |copy| does this, which involves testing the
+|PreRootDatum| to which it can be implicitly converted, but then not
+constructing the root datum again if it is not found.
+
+@< Function definitions @>=
+shared_root_datum root_datum_value::copy(const RootDatum& rd)
+{ auto loc = hash.match(root_datum_entry(rd));
+    // |rd| implicitly converted of |PreRootDatum|
+  if (loc<store.size())
+  { if (auto result=store[loc].lock()) // previous root datum still exists
+      return result; // so return it
+    auto result = std::make_shared<root_datum_value>(hash[loc],token());
+      // otherwise re-construct
+    store[loc]=result; // save a weak pointer version in |store|
+    return result; // and return a strong version of the same
+  }
+  else // this is the first time we ever see a copy of this |PreRootDatum|
+  { assert (loc==store.size());
+    auto result = std::make_shared<root_datum_value>(rd.copy(),token());
+    store.push_back(result); // save a weak pointer version in |store|
+    return result;
+  }
+}
+
 @ The method |W| constructs a |WeylGroup| object if this is not already done,
 and returns a reference to it.
 %
@@ -1394,16 +1425,17 @@ negative (co)roots) to the unsigned internal root numbering, while checking that
 the index is in the valid range.
 
 @< Local function definitions @>=
-RootNbr internal_root_index(const RootDatum& rd, int index, bool is_coroot)
+RootNbr internal_root_index
+  (const RootSystem& rs, int index, bool is_coroot)
 {
-  RootNbr npr = rd.numPosRoots();
-  RootNbr alpha = npr+index;
-  if (alpha>=2*npr)
+  const int alpha_signed = index+rs.numPosRoots();
+  // cast not necessary here; unsigned arithmetic
+  if (static_cast<RootNbr>(alpha_signed) >= rs.numRoots())
   { std::ostringstream o;
     o << "Illegal "<< (is_coroot ? "co" : "") << "root index " << index;
     throw runtime_error(o.str());
   }
-  return alpha;
+  return alpha_signed; // reinterpret as unsigned
 }
 
 @ The following functions allow us to look at individual simple roots and simple
@@ -1431,29 +1463,41 @@ void coroot_wrapper(expression_base::level l)
      push_value(std::make_shared<vector_value>(rd->val.coroot(alpha)));
 }
 
-@ Also important are look-up functions for roots and coroots.
+@ Also important are look-up functions for roots and coroots. Conversion from
+unsigned internal numbering of roots to external signed numbering, or vice
+versa, is painful due to \Cpp\ semantics. The signed-ness conversion between
+same size integers is given precise a specification in all cases only in the
+direction from signed to unsigned; in the opposite direction this is so only if
+the value can be represented in the signed type. But at the same time arithmetic
+with mixed signed-ness of operands will be performed unsigned, and this should
+be avoided when a potentially negative result is to be computed. We define a
+helper function |convert_to_signed_root_index| to do this conversions safely.
 
 @< Local function definitions @>=
+
+shared_int convert_to_signed_root_index(const RootSystem& rs, RootNbr alpha)
+{
+  assert(alpha < rs.numRoots());
+  int sa = alpha;
+  sa -= static_cast<int>(rs.numPosRoots());
+  // cast is necessary, blame the \Cpp\ standard
+  return std::make_shared<int_value>(sa); // uses signed interpretation
+}
+@)
 void root_index_wrapper(expression_base::level l)
 { shared_vector alpha = get<vector_value>();
   shared_root_datum rd = get<root_datum_value>();
-  if (l==expression_base::no_value)
-    return;
-@)
-  int index=rd->val.root_index(alpha->val); // ensure signed type here
-  index -= static_cast<int>(rd->val.numPosRoots()); // and signed subtract here
-  push_value(std::make_shared<int_value>(index));
+  if (l!=expression_base::no_value)
+    push_value(convert_to_signed_root_index
+      (rd->val,rd->val.root_index(alpha->val)));
 }
 @)
 void coroot_index_wrapper(expression_base::level l)
 { shared_vector alpha_v = get<vector_value>();
   shared_root_datum rd = get<root_datum_value>();
-  if (l==expression_base::no_value)
-    return;
-@)
-  int index=rd->val.coroot_index(alpha_v->val); // ensure signed type here
-  index -= static_cast<int>(rd->val.numPosRoots()); // and signed subtract here
-  push_value(std::make_shared<int_value>(index));
+  if (l!=expression_base::no_value)
+    push_value
+    (convert_to_signed_root_index(rd->val,rd->val.coroot_index(alpha_v->val)));
 }
 
 @ The library knows additive decompositions of roots and coroots into simple
@@ -1529,13 +1573,11 @@ void root_ladder_bottoms_wrapper(expression_base::level l)
   if (l==expression_base::no_value)
     return;
 
-  RootNbr npr = rd->val.numPosRoots();
   const RootNbrSet& bots = rd->val.min_roots_for(alpha);
   own_row result = std::make_shared<row_value>(0);
   result->val.reserve(bots.size());
-  for (auto it=bots.begin(); it(); ++it)
-    result->val.push_back(std::make_shared<int_value>
-      (static_cast<int>(*it-npr)));
+  for (RootNbr alpha : bots)
+    result->val.push_back(convert_to_signed_root_index(rd->val,alpha));
   push_value(std::move(result));
 }
 @)
@@ -1546,13 +1588,11 @@ void coroot_ladder_bottoms_wrapper(expression_base::level l)
   if (l==expression_base::no_value)
     return;
 
-  RootNbr npr = rd->val.numPosRoots();
   const RootNbrSet& bots = rd->val.min_coroots_for(alpha);
   own_row result = std::make_shared<row_value>(0);
   result->val.reserve(bots.size());
-  for (auto it=bots.begin(); it(); ++it)
-    result->val.push_back(std::make_shared<int_value>
-      (static_cast<int>(*it-npr)));
+  for (RootNbr alpha : bots)
+    result->val.push_back(convert_to_signed_root_index(rd->val,alpha));
   push_value(std::move(result));
 }
 
@@ -1847,6 +1887,20 @@ void Weyl_coorbit_ws_wrapper(expression_base::level l)
   push_value(std::move(result));
 }
 
+@ For a root datum with distinguished involution, one can form a ``cofolded''
+version of the root datum. (What is usually called the ``folded'' diagram has a
+dual construction and is different, but it does not interest us here.) Since we
+use this only when the distinguished involution is the one defining our inner
+class, we use an argument of type |InnerClass|.
+
+@< Local function def...@>=
+void cofolded_wrapper(expression_base::level l)
+{
+  const auto& ic = get<inner_class_value>();
+  if (l!=expression_base::no_value)
+    push_value(root_datum_value::copy(ic->val.cofolded_datum()));
+}
+
 @ Here are two functions making available to the user the |wall_set| and
 |alcove_center| functions defined in \.{alcoves.cpp}, which serve to improve the
 efficiency and safety against rational number overflow of the deformation
@@ -1868,21 +1922,20 @@ void walls_wrapper(expression_base::level l)
   if (l==expression_base::no_value)
     return;
 @)
-  int npr = rd->val.numPosRoots();
   RootNbrSet integrals,walls = weyl::wall_set(rd->val,gamma->val,integrals);
   own_row roots = std::make_shared<row_value>(0);
-  roots->val.reserve(walls.size());
-  for (auto it=integrals.begin(); it(); ++it)
-  {
-    assert(*it-npr < static_cast<unsigned>(npr)); // must be positive root
-    roots->val.push_back(std::make_shared<int_value>(*it-npr));
-  }
 
-  auto non_integrals = weyl::sorted_by_label(rd->val,walls,integrals);
-  for (auto it=non_integrals.begin(); not non_integrals.at_end(it); ++it)
-    roots->val.push_back(std::make_shared<int_value>
-    // convert to signed root index
-       (static_cast<int>(*it)-npr));
+  auto sorted = weyl::sorted_by_label(rd->val,walls);
+  roots->val.reserve(walls.size());
+  for (RootNbr alpha : sorted)
+    if (integrals.isMember(alpha))
+    {
+      assert(rd->val.is_posroot(alpha)); // must be positive root
+      roots->val.push_back(convert_to_signed_root_index(rd->val,alpha));
+    }
+  for (RootNbr alpha : sorted)
+    if (not integrals.isMember(alpha))
+      roots->val.push_back(convert_to_signed_root_index(rd->val,alpha));
   push_value(std::move(roots));
   push_value(std::make_shared<int_value>(integrals.size()));
   if (l==expression_base::single_value)
@@ -1892,11 +1945,47 @@ void walls_wrapper(expression_base::level l)
 void alcove_center_wrapper(expression_base::level l)
 {
   shared_module_parameter p = get<module_parameter_value>();
-  if (l==expression_base::no_value)
-    return;
+  if (l!=expression_base::no_value)
+    push_value(std::make_shared<module_parameter_value> @|
+      (p->rf,weyl::alcove_center(p->rc(),p->val)));
+}
 
-  push_value(std::make_shared<module_parameter_value> @|
-    (p->rf,weyl::alcove_center(p->rc(),p->val)));
+@ Another useful function is |walls_attitude|, which from a set of walls deduces
+a Weyl group element~$w$ (which is not unique) that sends the fundamental
+alcove~$FA$ to an alcove with that walls set. If the set of walls is obtained
+from an alcove, then the alcove can be obtained from $w(FA)$ by a translation
+(not necessarily by an element of the root lattice).
+
+@< Local function definitions @>=
+void walls_attitude_wrapper (expression_base::level l)
+{
+  shared_row walls_list = get<row_value>();
+  shared_root_datum rd = get<root_datum_value>();
+  RootNbrSet walls(rd->val.numRoots());
+  for (const auto& wall_obj : walls_list->val)
+  { int wall = force<int_value>(wall_obj.get())->int_val();
+    walls.insert(internal_root_index(rd->val,wall,false));
+  }
+
+  for (auto it=walls.begin(); it(); ++it)
+    for (auto jt=std::next(it); jt(); ++jt)
+      if (rd->val.bracket(*it,*jt)>0)
+      { std::ostringstream o;
+        o << "Roots set involves roots with acute angle: "
+          << convert_to_signed_root_index(rd->val,*it)->int_val() << " and "
+          << convert_to_signed_root_index(rd->val,*jt)->int_val();
+        throw runtime_error(o.str());
+      }
+
+  if (walls.size()<rd->val.fundamental_alcove_walls().size())
+  { std::ostringstream o;
+    o << "Too few walls: " << walls.size() << " < "
+      << rd->val.fundamental_alcove_walls().size();
+    throw runtime_error(o.str());
+  }
+  if (l!=expression_base::no_value)
+    push_value(std::make_shared<W_elt_value> @|
+     (rd,rd->W().element(weyl::from_fundamental_alcove(rd->val,walls))));
 }
 
 @ One interesting property of alcoves is that (projected to the rational span of
@@ -1979,27 +2068,23 @@ first |stab_rank| entries, and in |final| the one following it.
 @< Check validity of root indices in |v->val| and... @>=
 {
   RootNbrList walls; walls.reserve(v->val.size());
-  const unsigned int npr = rd->val.numPosRoots();
   for (const auto& entry : v->val)
   { int r = force<int_value>(entry.get())->int_val();
       // could be positive or negative
-    if (r+npr < rd->val.numRoots()) // unsigned comparison
-      walls.push_back(r+npr); // convert to internal index
-    else
-    { std::ostringstream o;
-      o << "Invalid root number " << r;
-      throw runtime_error(o.str());
-    }
+    walls.push_back(internal_root_index(rd->val,r,false)); // convert to internal
   }
 
-  for (const RootNbr& alpha : walls)
-    for (const RootNbr& beta : walls)
-      if (&alpha!=&beta and rd->val.bracket(alpha,beta)>0)
-      { std::ostringstream o;
-        o << "Roots " << int(alpha-npr) << " and " << int(beta-npr)
-          << " have acute angle.";
-        throw runtime_error(o.str());
-      }
+  { const int npr = rd->val.numPosRoots();
+    // for convenience; converted to signed
+    for (const RootNbr& alpha : walls)
+      for (const RootNbr& beta : walls)
+        if (&alpha!=&beta and rd->val.bracket(alpha,beta)>0)
+        { std::ostringstream o;
+          o << "Roots " << int(alpha-npr) << " and " << int(beta-npr)
+            << " have acute angle.";
+          throw runtime_error(o.str());
+        }
+  }
   stab = RootNbrSet(rd->val.numRoots(),&walls[0],&walls[stab_rank]);
   final = walls[stab_rank];
 }
@@ -2189,8 +2274,11 @@ install_function(Weyl_orbit_ws_wrapper@|,"Weyl_orbit_ws",
 		"(RootDatum,vec->[WeylElt])");
 install_function(Weyl_coorbit_ws_wrapper@|,"Weyl_orbit_ws",
 		"(vec,RootDatum->[WeylElt])");
+install_function(cofolded_wrapper@|,"cofolded","(InnerClass->RootDatum)");
 install_function(walls_wrapper,"walls","(RootDatum,ratvec->[int],int)");
 install_function(alcove_center_wrapper,"alcove_center","(Param->Param)");
+install_function(walls_attitude_wrapper@|,"walls_attitude",
+		"(RootDatum,[int]->WeylElt)");
 install_function(alcove_root_vertex_wrapper@|,"alcove_root_vertex",
 		"(RootDatum,ratvec->vec)");
 install_function(basic_orbit_ws_wrapper@|,"basic_orbit_ws",
@@ -3752,12 +3840,12 @@ element for this (strong) real form.
 @< Local function def...@>=
 TwistedInvolution twisted_from_involution
   (const InnerClass& G, WeightInvolution theta)
-{ const RootDatum& rd = G.rootDatum();
+{ const RootDatum& rd = G.root_datum();
   WeylWord ww;
   if (check_involution(theta,rd,ww)!=G.twistedWeylGroup().twist() @| or
       theta!=G.distinguished())
     throw runtime_error("Involution not in this inner class");
-  return G.weylGroup().element(ww);
+  return G.Weyl_group().element(ww);
 }
 @)
 void synthetic_real_form_wrapper(expression_base::level l)
@@ -3795,7 +3883,7 @@ the evaluations are even, before halving to obtain the actual projection.
     // make torus factor $\theta$-fixed, temporarily doubled
   TorusElement t(torus_factor->val,false);
     // take a copy as |TorusElement|, using $\exp_{-1}$
-  const RootDatum& rd = G->val.rootDatum();
+  const RootDatum& rd = G->val.root_datum();
   LatticeMatrix alpha
     (rd.beginSimpleRoot(),rd.endSimpleRoot(),rd.rank(),tags::IteratorTag());
   if (not is_central(alpha,t)) // every root should now have even evaluation
@@ -4025,7 +4113,7 @@ void Cartan_info_wrapper(expression_base::level l)
 
   const weyl::TwistedInvolution& tw =
     cc->ic_ptr->val.involution_of_Cartan(cc->number);
-  WeylWord ww = cc->ic_ptr->val.weylGroup().word(tw);
+  WeylWord ww = cc->ic_ptr->val.Weyl_group().word(tw);
 
   push_value(std::make_shared<vector_value>
     (std::vector<int>(ww.begin(),ww.end())));
@@ -4034,7 +4122,7 @@ void Cartan_info_wrapper(expression_base::level l)
   push_value(std::make_shared<int_value>(cc->val.fiber().fiberSize()));
   wrap_tuple<2>();
 
-  const RootSystem& rs=cc->ic_ptr->val.rootDatum();
+  const RootSystem& rs=cc->ic_ptr->val.root_datum();
 
 @)// print types of imaginary and real root systems and of Complex factor
   push_value(std::make_shared<Lie_type_value> @|
@@ -4206,7 +4294,7 @@ void print_gradings_wrapper(expression_base::level l)
 functions from \.{dynkin.cpp}.
 
 @< Compute the Cartan matrix |cm|... @>=
-{ cm=cc->ic_ptr->val.rootDatum().Cartan_matrix(si);
+{ cm=cc->ic_ptr->val.root_datum().Cartan_matrix(si);
   dynkin::DynkinDiagram d(cm); sigma = d.perm();
 }
 
@@ -4402,23 +4490,25 @@ inline RootNbr get_reflection_index(int root_index, RootNbr n_posroots)
 void KGB_cross_wrapper(expression_base::level l)
 { own_KGB_elt x = get_own<KGB_elt_value>();
   const KGB& kgb=x->rf->kgb();
-  RootNbr npr=kgb.rootDatum().numPosRoots();
-  RootNbr alpha = get_reflection_index(get<int_value>()->int_val(),npr);
+  const RootDatum& rd = kgb.root_datum();
+  RootNbr alpha =
+    get_reflection_index(get<int_value>()->int_val(),rd.numPosRoots());
   if (l==expression_base::no_value)
     return;
 @)
   if (alpha<kgb.rank()) // do simple cross action
     x->val= kgb.cross(alpha,x->val);
   else // do non-simple cross action
-    x->val = cross(kgb,x->val,npr+alpha);
+    x->val = cross(kgb,x->val,rd.posRootNbr(alpha));
   push_value(std::move(x));
 }
 @)
 void KGB_Cayley_wrapper(expression_base::level l)
 { own_KGB_elt x = get_own<KGB_elt_value>();
   const KGB& kgb=x->rf->kgb();
-  RootNbr npr=kgb.rootDatum().numPosRoots();
-  RootNbr alpha = get_reflection_index(get<int_value>()->int_val(),npr);
+  const RootDatum& rd = kgb.root_datum();
+  RootNbr alpha =
+    get_reflection_index(get<int_value>()->int_val(),rd.numPosRoots());
   if (l==expression_base::no_value)
     return;
 @)
@@ -4430,7 +4520,7 @@ void KGB_Cayley_wrapper(expression_base::level l)
   }
   else // do (inverse) Cayley transform through arbitrary root
   { try
-    {@; x->val= any_Cayley(kgb,x->val,npr+alpha); }
+    {@; x->val= any_Cayley(kgb,x->val,rd.posRootNbr(alpha)); }
     catch (std::runtime_error&) {}
       // ignore undefined Cayley error, leave |x| unchanged
   }
@@ -4449,8 +4539,9 @@ defined if |v==3|.
 void KGB_status_wrapper(expression_base::level l)
 { shared_KGB_elt x = get<KGB_elt_value>();
   const KGB& kgb=x->rf->kgb();
-  RootNbr npr=kgb.rootDatum().numPosRoots();
-  RootNbr alpha = get_reflection_index(get<int_value>()->int_val(),npr);
+  const RootDatum& rd = kgb.root_datum();
+  RootNbr alpha =
+    get_reflection_index(get<int_value>()->int_val(),rd.numPosRoots());
   if (l==expression_base::no_value)
     return;
 @)
@@ -4462,13 +4553,13 @@ void KGB_status_wrapper(expression_base::level l)
   }
   else
   {
-    alpha += npr; // convert to general root number
+    alpha = rd.posRootNbr(alpha); // convert to general root number
     unsigned stat=kgb::status(kgb,x->val,alpha);
     if (stat==0) // $\alpha$ is a complex root, check if it is an ascent
     {
       RootNbr theta_alpha = kgb.innerClass().involution_table().
         root_involution(kgb.inv_nr(x->val),alpha);
-      if (kgb.rootDatum().is_posroot(theta_alpha))
+      if (kgb.root_datum().is_posroot(theta_alpha))
        stat = 4; // set status to complex ascent
     }
     push_value(std::make_shared<int_value> (stat));
@@ -4505,7 +4596,7 @@ void build_KGB_element_wrapper(expression_base::level l)
 
   const InnerClass& G = rf->val.innerClass();
   TitsElt a
-   (G.titsGroup(),TorusPart(num),twisted_from_involution(G,theta->val));
+   (G.Tits_group(),TorusPart(num),twisted_from_involution(G,theta->val));
 
   KGBElt x = rf->kgb().lookup(a);
   if (x==UndefKGB)
@@ -4534,7 +4625,7 @@ void KGB_twist_wrapper(expression_base::level l)
 }
 @)
 void test_compatible (const InnerClass& ic, shared_matrix& delta)
-{ check_based_root_datum_involution(ic.rootDatum(),delta->val);
+{ check_based_root_datum_involution(ic.root_datum(),delta->val);
   const auto& xi = ic.distinguished();
   if (delta->val*xi!=xi*delta->val)
     throw runtime_error("Non commuting distinguished involution");
@@ -6556,32 +6647,76 @@ void test_final(const module_parameter_value& p, const char* descr)
 }
 
 @ Here is the first block generating function, which just reproduces to output
-of the \.{full\_block} command in the \.{Fokko} program, and a variation for
-partial blocks.
+of the \.{full\_block} command in the \.{Fokko} program.
 
 @< Local function def...@>=
+void print_param_block_wrapper(expression_base::level l)
+{ own_module_parameter p = get_own<module_parameter_value>();
+  test_standard(*p,"Cannot generate block");
+  auto srm = StandardReprMod::mod_reduce(p->rc(),p->val);
+  common_context ctxt(p->rc(),srm.gamma_lambda());
+  BlockElt init_index; // will hold index in the block of the initial element
+  blocks::common_block block (ctxt,srm,init_index);
+  *output_stream << "Parameter defines element " << init_index
+               @|<< " of the following block:" << std::endl;
+  block.print_to(*output_stream,block.singular(p->val.gamma()));
+    // print block using involution expressions
+  if (l==expression_base::single_value)
+    wrap_tuple<0>(); // |no_value| needs no special care
+}
+@)
 void print_c_block_wrapper(expression_base::level l)
 { own_module_parameter p = get_own<module_parameter_value>();
   test_standard(*p,"Cannot generate block");
   BlockElt init_index; // will hold index in the block of the initial element
-  blocks::common_block& block = p->rt().lookup_full_block(p->val,init_index);
-  RatWeight diff = p->rc().offset(p->val, block.representative(init_index));
+  repr::block_modifier bm;
+  blocks::common_block& block = p->rt().lookup_full_block(p->val,init_index,bm);
+  auto ww = p->rc().Weyl_group().word(bm.w);
+
   *output_stream << "Parameter defines element " << init_index
-               @|<< " of the following common block:" << std::endl;
-  block.shift(diff);
-  block.print_to(*output_stream,block.singular(p->val.gamma()));
+               @|<< " of the following common block,\nas transformed by <";
+  for (unsigned int i=0; i<ww.size(); ++i)
+     *output_stream << (i==0 ? "" : ".") << static_cast<unsigned int>(ww[i]);
+  *output_stream << '>';
+  if (not bm.simple_pi.is_identity())
+  {
+    *output_stream << ", simple reflections permuted (";
+    for (unsigned int i=0; i<bm.simple_pi.size(); ++i)
+       *output_stream << i << "->" << bm.simple_pi[i] <<
+          (i<bm.simple_pi.size()-1 ? ',' : ')');
+  }
+  *output_stream << ':' << std::endl;
+  block.shift(bm.shift);
+  block.print_to(*output_stream,block.singular(bm,p->val.gamma()));
     // print block using involution expressions
-  block.shift(-diff);
+  block.shift(-bm.shift);
   if (l==expression_base::single_value)
     wrap_tuple<0>(); // |no_value| needs no special care
 }
 
+@ Here is a variation generating and printing only a partial block.
+@< Local function def...@>=
+
+void print_part_param_block_wrapper(expression_base::level l)
+{ own_module_parameter p = get_own<module_parameter_value>();
+  test_standard(*p,"Cannot generate block");
+  auto srm = StandardReprMod::mod_reduce(p->rc(),p->val);
+  common_context ctxt(p->rc(),srm.gamma_lambda());
+  auto interval = p->rt().Bruhat_below(ctxt,srm);
+  blocks::common_block block(ctxt,interval);
+  block.print_to(*output_stream,block.singular(p->val.gamma()));
+    // print using involution expressions
+  if (l==expression_base::single_value)
+    wrap_tuple<0>(); // |no_value| needs no special care
+}
+@)
 void print_pc_block_wrapper(expression_base::level l)
 { own_module_parameter p = get_own<module_parameter_value>();
   test_standard(*p,"Cannot generate block");
   BlockElt init_index; // will hold index in the block of the initial element
-  blocks::common_block& block = p->rt().lookup(p->val,init_index);
-  RatWeight diff = p->rc().offset(p->val, block.representative(init_index));
+  repr::block_modifier bm;
+  blocks::common_block& block = p->rt().lookup(p->val,init_index,bm);
+  const RatWeight& diff = bm.shift;
   BitMap less = block.bruhatOrder().poset().below(init_index);
   if (less.full())
   {
@@ -6596,7 +6731,7 @@ void print_pc_block_wrapper(expression_base::level l)
     *output_stream << init_index << "} in the following common block:\n";
   }
   block.shift(diff);
-  block.print_to(*output_stream,block.singular(p->val.gamma()));
+  block.print_to(*output_stream,block.singular(bm,p->val.gamma()));
     // print using involution expressions
   block.shift(-diff);
   if (l==expression_base::single_value)
@@ -6616,11 +6751,12 @@ void common_block_wrapper(expression_base::level l)
   if (l==expression_base::no_value)
     return;
 @)
+  const auto& rc = p->rc();
   BlockElt start; // will hold index in the block of the initial element
-  auto& block = p->rt().lookup_full_block(p->val,start);
-  RatWeight diff = p->rc().offset(p->val,block.representative(start));
+  repr::block_modifier bm;
+  auto& block = p->rt().lookup_full_block(p->val,start,bm);
   const auto& gamma = p->val.gamma();
-  { const RankFlags singular = block.singular(gamma);
+  { const RankFlags singular = block.singular(bm,gamma);
     int start_pos = -1;
     own_row param_list = std::make_shared<row_value>(0);
     for (BlockElt z=0; z<block.size(); ++z)
@@ -6630,7 +6766,7 @@ void common_block_wrapper(expression_base::level l)
           start_pos=param_list->val.size();
         param_list->val.push_back @|
           (std::make_shared<module_parameter_value> @|
-               (p->rf,p->rc().sr(block.representative(z),diff,gamma)));
+               (p->rf,rc.sr(block.representative(z),bm,gamma)));
       }
     push_value(std::move(param_list));
     push_value(std::make_shared<int_value>(start_pos));
@@ -6639,7 +6775,7 @@ void common_block_wrapper(expression_base::level l)
     wrap_tuple<2>();
 }
 
-@ There are also a functions that compute just a partial block. We generate
+@ There are also functions that compute just a partial block. We generate
 the Bruhat interval inside the block (which might have more elements than just
 the requested partial bock because of earlier computations) by completing the
 downward closure of the Hasse relation (which is filled anyway by the partial
@@ -6654,8 +6790,8 @@ void partial_common_block_wrapper(expression_base::level l)
     return;
 @)
   BlockElt start;
-  blocks::common_block& block = p->rt().lookup(p->val,start);
-  RatWeight diff = p->rc().offset(p->val,block.representative(start));
+  repr::block_modifier bm;
+  blocks::common_block& block = p->rt().lookup(p->val,start,bm);
   const auto& gamma = p->val.gamma();
 @)
   unsigned long n=block.size();
@@ -6666,13 +6802,13 @@ void partial_common_block_wrapper(expression_base::level l)
     for (BlockElt y : block.bruhatOrder().hasse(n))
       subset.insert(y);
 @)
-  { const RankFlags singular = block.singular(gamma);
+  { const RankFlags singular = block.singular(bm,gamma);
     own_row param_list = std::make_shared<row_value>(0);
     for (auto z : subset)
       if (block.survives(z,singular))
         param_list->val.push_back @|
           (std::make_shared<module_parameter_value> @|
-             (p->rf,p->rc().sr(block.representative(z),diff,gamma)));
+             (p->rf,p->rc().sr(block.representative(z),bm,gamma)));
     push_value(std::move(param_list));
   }
 }
@@ -6697,14 +6833,27 @@ void block_Hasse_wrapper(expression_base::level l)
     return;
 @)
   BlockElt init_index; // will hold index in the block of the initial element
-  blocks::common_block& block = p->rt().lookup_full_block(p->val,init_index);
+  repr::block_modifier bm;
+  blocks::common_block& block = p->rt().lookup_full_block(p->val,init_index,bm);
+
+  const auto& gamma = p->val.gamma();
+  own_row param_list = std::make_shared<row_value>(0);
+  param_list->val.reserve(block.size());
+  for (BlockElt z=0; z<block.size(); ++z)
+     param_list->val.push_back @|
+       (std::make_shared<module_parameter_value> @|
+          (p->rf,p->rc().sr(block.representative(z),bm,gamma)));
+
   const BruhatOrder& Bruhat = block.bruhatOrder();
   auto n= block.size();
   own_matrix M = std::make_shared<matrix_value>(int_Matrix(n,n,0));
   for (unsigned j=0; j<n; ++j)
     for (unsigned int i : Bruhat.hasse(j))
       M->val(i,j)=1;
+  push_value(std::move(param_list));
   push_value(std::move(M));
+  if (l==expression_base::single_value)
+    wrap_tuple<2>();
 }
 
 @ Here is a version of the |block| command that also exports the table of
@@ -6723,10 +6872,10 @@ void KL_block_wrapper(expression_base::level l)
     return;
 @)
   BlockElt start; // will hold index in the block of the initial element
-  auto& block = p->rt().lookup_full_block(p->val,start);
-  RatWeight diff = p->rc().offset(p->val,block.representative(start));
+  repr::block_modifier bm;
+  auto& block = p->rt().lookup_full_block(p->val,start,bm);
   const auto& gamma = p->val.gamma();
-  const RankFlags singular = block.singular(gamma);
+  const RankFlags singular = block.singular(bm,gamma);
 @)
   sl_list<BlockElt> survivors;
   BlockEltList loc(block.size(),UndefBlock);
@@ -6744,8 +6893,7 @@ void KL_block_wrapper(expression_base::level l)
 @/@< Condense the polynomials from |kl_tab| into the matrix |M| @>
 @)
   @< Push list of parameters corresponding to |survivors| in |block|,
-     with difference |diff| of $\gamma-\lambda$ values, and
-     at infinitesimal character |gamma| @>
+     adapted thorough |bm| and at infinitesimal character |gamma| @>
   if (loc[start]==UndefBlock)
     push_value(std::make_shared<int_value>(-1));
   else
@@ -6785,14 +6933,14 @@ by constructing a new polynomial |Pol(P)|.
 	for (auto it=start; not survivors.at_end(it); ++it)
 	{ BlockElt y = *it;
           const auto& P = kl_tab.KL_pol(x,y);
-          if (not P.isZero())
+          if (not P.is_zero())
             M(i,loc[y]) += Pol(P);
         }
       else
 	for (auto it=start; not survivors.at_end(it); ++it)
 	{ BlockElt y = *it;
           const auto& P = kl_tab.KL_pol(x,y);
-          if (not P.isZero())
+          if (not P.is_zero())
             M(i,loc[y]) -= Pol(P);
         }
     }
@@ -6801,13 +6949,12 @@ by constructing a new polynomial |Pol(P)|.
 
 @ Here is another module that will be shared.
 @< Push list of parameters corresponding to |survivors| in |block|,
-   with difference |diff| of $\gamma-\lambda$ values, and
-   at infinitesimal character |gamma| @>=
+   adapted thorough |bm| and at infinitesimal character |gamma| @>=
 { own_row param_list = std::make_shared<row_value>(0);
   param_list->val.reserve(survivors.size());
   for (BlockElt z : survivors)
     param_list->val.push_back (std::make_shared<module_parameter_value> @|
-           (p->rf,p->rc().sr(block.representative(z),diff,gamma)));
+           (p->rf,p->rc().sr(block.representative(z),bm,gamma)));
   push_value(std::move(param_list));
 }
 
@@ -6855,8 +7002,8 @@ void partial_KL_block_wrapper(expression_base::level l)
     return;
 @)
   BlockElt start; // will hold index in the block of the initial element
-  auto& block = p->rt().lookup(p->val,start);
-  RatWeight diff = p->rc().offset(p->val,block.representative(start));
+  repr::block_modifier bm;
+  auto& block = p->rt().lookup(p->val,start,bm);
   const auto& gamma = p->val.gamma();
 @)
   unsigned long n=block.size();
@@ -6867,7 +7014,7 @@ void partial_KL_block_wrapper(expression_base::level l)
     for (BlockElt y : block.bruhatOrder().hasse(n))
       subset.insert(y);
   @)
-  const RankFlags singular = block.singular(gamma);
+  const RankFlags singular = block.singular(bm,gamma);
   sl_list<BlockElt> survivors;
   BlockEltList loc(block.size(),UndefBlock);
   for (BlockElt z : subset)
@@ -6910,9 +7057,9 @@ void dual_KL_block_wrapper(expression_base::level l)
     return;
 @)
   BlockElt start; // will hold index into |block| of the initial element
-  auto& block = p->rt().lookup_full_block(p->val,start);
+  repr::block_modifier bm;
+  auto& block = p->rt().lookup_full_block(p->val,start,bm);
 @/const auto& gamma = p->val.gamma();
-  RatWeight diff = p->rc().offset(p->val,block.representative(start));
   auto dual_block = blocks::Bare_block::dual(block);
   const kl::KL_table& kl_tab = dual_block.kl_tab(nullptr);
   // fill entire KL table, don't share polys
@@ -6949,7 +7096,7 @@ and |survives| from |blocks::common_block|.
      and for each, put into its slot in |loc| the index at which |survivors|
      contains it @>=
 {
-  const RankFlags singular = block.singular(gamma);
+  const RankFlags singular = block.singular(bm,gamma);
   for (BlockElt z=0; z<block.size(); ++z)
     if (block.survives(z,singular))
     @/{@;
@@ -7000,7 +7147,8 @@ void param_W_graph_wrapper(expression_base::level l)
     return;
 @)
   BlockElt start; // will hold index in the block of the initial element
-  auto& block = p->rt().lookup_full_block(p->val,start);
+  repr::block_modifier bm;
+  auto& block = p->rt().lookup_full_block(p->val,start,bm);
   push_value(std::make_shared<int_value>(start));
 @)
   const kl::KL_table& kl_tab = block.kl_tab(nullptr);
@@ -7009,7 +7157,8 @@ void param_W_graph_wrapper(expression_base::level l)
 @)
   own_row vertices=std::make_shared<row_value>(0);
   @< Push to |vertices| a list of pairs for each element of |wg|, each
-     consisting of a descent set and a list of outgoing labelled edges @>
+     consisting of a descent set transformed by the permutation |bm.simple_pi|,
+     and a list of outgoing labelled edges @>
   push_value(std::move(vertices));
   if (l==expression_base::single_value)
     wrap_tuple<2>();
@@ -7022,7 +7171,8 @@ void param_W_cells_wrapper(expression_base::level l)
     return;
 @)
   BlockElt start; // will hold index in the block of the initial element
-  auto& block = p->rt().lookup_full_block(p->val,start);
+  repr::block_modifier bm;
+  auto& block = p->rt().lookup_full_block(p->val,start,bm);
   push_value(std::make_shared<int_value>(start));
 @)
   const kl::KL_table& kl_tab = block.kl_tab(nullptr);
@@ -7043,7 +7193,8 @@ void param_W_cells_wrapper(expression_base::level l)
     }
     own_row vertices=std::make_shared<row_value>(0);
     @< Push to |vertices| a list of pairs for each element of |wg|, each
-       consisting of a descent set and a list of outgoing labelled edges @>
+       consisting of a descent set transformed by the permutation
+       |bm.simple_pi|, and a list of outgoing labelled edges @>
     auto tup = std::make_shared<tuple_value>(2);
     tup->val[0] = members;
     tup->val[1] = vertices;
@@ -7057,10 +7208,12 @@ void param_W_cells_wrapper(expression_base::level l)
 @ The following code was isolated so that it can be reused below.
 
 @< Push to |vertices| a list of pairs for each element of |wg|, each
-   consisting of a descent set and a list of outgoing labelled edges @>=
+   consisting of a descent set transformed by the permutation... @>=
 vertices->val.reserve(wg.size());
 for (unsigned int i = 0; i < wg.size(); ++i)
-{ auto ds = wg.descent_set(i);
+{ RankFlags ds;
+  for (unsigned b=0; b<wg.rank(); ++b)
+    ds.set(bm.simple_pi[b],wg.descent_set(i)[b]);
   own_row descents=std::make_shared<row_value>(0);
   descents->val.reserve(ds.count());
   for (auto it=ds.begin(); it(); ++it)
@@ -7157,7 +7310,7 @@ void extended_block_wrapper(expression_base::level l)
   shared_module_parameter p = get<module_parameter_value>();
   test_standard(*p,"Cannot generate block");
   test_compatible(p->rc().inner_class(),delta);
-  if (not ((delta->val-1)*p->val.gamma().numerator()).isZero())
+  if (not ((delta->val-1)*p->val.gamma().numerator()).is_zero())
     throw runtime_error@|("Involution does not fix infinitesimal character");
   if (l==expression_base::no_value)
     return;
@@ -7290,13 +7443,17 @@ install_function(reducibility_points_wrapper,@|
 		"reducibility_points" ,"(Param->[rat])");
 install_function(scale_parameter_wrapper,"*", "(Param,rat->Param)",1);
 @)
-install_function(print_c_block_wrapper,@|"print_block","(Param->)");
-install_function(print_pc_block_wrapper,@|"print_partial_block","(Param->)");
+install_function(print_param_block_wrapper,@|"print_block","(Param->)");
+install_function(print_c_block_wrapper,@|"print_common_block","(Param->)");
+install_function(print_part_param_block_wrapper,@|
+		"print_partial_block","(Param->)");
+install_function(print_pc_block_wrapper,@|
+		"print_partial_common_block","(Param->)");
 install_function(common_block_wrapper,@|"block" ,"(Param->[Param],int)");
 install_function(partial_common_block_wrapper,@|"partial_block"
                 ,"(Param->[Param])");
 install_function(param_length_wrapper,@|"length","(Param->int)");
-install_function(block_Hasse_wrapper,@|"block_Hasse","(Param->mat)");
+install_function(block_Hasse_wrapper,@|"block_Hasse","(Param->[Param],mat)");
 install_function(KL_block_wrapper,@|"KL_block"
                 ,"(Param->[Param],int,mat,[vec])");
 install_function(dual_KL_block_wrapper,@|"dual_KL_block"
@@ -7875,9 +8032,9 @@ void deform_wrapper(expression_base::level l)
   {
     auto& q = it->first;
     BlockElt q_index; // will hold index of |q| in the block
-    auto& block = rt.lookup(q,q_index); // generate partial common block
-    RatWeight diff = rc.offset(q,block.representative(q_index));
-    for (auto&& term : rt.deformation_terms(block,q_index,diff,q.gamma()))
+    repr::block_modifier bm;
+    auto& block = rt.lookup(q,q_index,bm); // generate partial common block
+    for (auto&& term : rt.deformation_terms(block,q_index,bm,q.gamma()))
     result.add_term(std::move(term.first),
                     Split_integer(term.second,-term.second)*it->second);
   }
@@ -7901,30 +8058,27 @@ non-dominant terms, which should never happen.
 void twisted_deform_wrapper(expression_base::level l)
 { own_module_parameter p = get_own<module_parameter_value>();
   auto& rt=p->rt();
-  const auto& delta=rt.inner_class().distinguished();
   test_standard(*p,"Cannot compute twisted deformation terms");
-  if (not rt.is_twist_fixed(p->val,delta))
+  if (not rt.is_delta_fixed(p->val))
     throw runtime_error@|("Parameter not fixed by inner class involution");
   test_final(*p,"Twisted deformation requires final parameter");
   if (l==expression_base::no_value)
     return;
 @)
   BlockElt entry_elem;
-  auto& block = rt.lookup(p->val,entry_elem);
+  repr::block_modifier bm;
+  auto& block = rt.lookup(p->val,entry_elem,bm);
     // though by reference, does not change |p->val|
-  RatWeight diff = rt.offset(p->val, block.representative(entry_elem));
-  block.shift(diff);
-  auto& eblock = block.extended_block(rt.shared_poly_table());
-  block.shift(-diff);
+  auto& eblock = block.extended_block(bm,rt.shared_poly_table());
 @)
-  RankFlags singular = block.singular(p->val.gamma());
+  RankFlags singular = block.singular(bm,p->val.gamma());
   RankFlags singular_orbits;
   for (weyl::Generator s=0; s<eblock.rank(); ++s)
     singular_orbits.set(s,singular[eblock.orbit(s).s0]);
 @)
   auto terms = rt.twisted_deformation_terms@|(block,eblock,entry_elem,
 					     singular_orbits,
-                                             diff,p->val.gamma());
+                                             bm,p->val.gamma());
   SR_poly result;
   for (auto&& term : terms)
     result.add_term(std::move(term.first),
@@ -7951,6 +8105,11 @@ Returning two parts can be helpful in understanding the details of the
 deformation, but in practice the deformed terms are probably to be added back to
 the accumulator after which another block is deformed.
 
+The method |Rep_table::block_deformation_to_height| does the work inside the
+block, but leaves post-deformation parameters of the block in its result; to
+avoid that these should get deformed again, we slide them down here to the next
+deformation point in the direction of $\nu=0$.
+
 @s SR_poly vector
 
 @< Local function def...@>=
@@ -7962,11 +8121,12 @@ void block_deform_wrapper(expression_base::level l)
     return;
 @)
   SR_poly result;
+  repr::level limit = bound>=0 ? bound : -1;
+    // negative becomes maximal unsigned value
   if (not p->rc().nu(p->val).is_zero())
   {
-    auto deformed = p->rt().block_deformation_to_height @|
-      (p->val,accumulator->val
-      ,bound>=0 ? static_cast<repr::level>(bound) : repr::level(-1));
+    auto deformed =
+      p->rt().block_deformation_to_height (p->val,accumulator->val,limit);
     for (const auto& term : deformed)
     { auto rps = p->rc().reducibility_points(term.first);
       auto i =
@@ -8008,7 +8168,7 @@ void twisted_full_deform_wrapper(expression_base::level l)
 { shared_module_parameter p = get<module_parameter_value>();
   const auto& rc=p->rc(); auto& rt=p->rt();
   test_standard(*p,"Cannot compute full twisted deformation");
-  if (not rc.is_twist_fixed(p->val))
+  if (not rc.is_delta_fixed(p->val))
     throw runtime_error@|("Parameter not fixed by inner class involution");
   if (l==expression_base::no_value)
     return;
@@ -8039,8 +8199,11 @@ computes
 $$
   \sum_{x\leq y}(-1)^{l(y)-l(x)}P_{x,y}[q:=s] * x
 $$
-There are in fact two variants, of this function an ordinary one and one using
-twisted KLV polynomials, computed for the inner class involution.
+There are in fact two kinds for this function: an ordinary one and one using
+twisted KLV polynomials, computed for the inner class involution. In addition,
+the first kind has a variant that limits its output to those parameter whose
+height does not exceed a given limit, and which can therefore in many cases be
+more efficient in producing those terms.
 
 @< Local function def...@>=
 void KL_sum_at_s_wrapper(expression_base::level l)
@@ -8051,6 +8214,17 @@ void KL_sum_at_s_wrapper(expression_base::level l)
     push_value(std::make_shared<virtual_module_value>@|
       (p->rf,p->rt().KL_column_at_s(p->val)));
 }
+void KL_sum_at_s_to_ht_wrapper(expression_base::level l)
+{ int bound = get<int_value>()->int_val();
+  shared_module_parameter p = get<module_parameter_value>();
+  test_standard(*p,"Cannot compute Kazhdan-Lusztig sum");
+  test_final(*p,"Cannot compute Kazhdan-Lusztig sum");
+  repr::level limit = bound>=0 ? bound : -1;
+    // negative becomes maximal unsigned value
+  if (l!=expression_base::no_value)
+    push_value(std::make_shared<virtual_module_value>@|
+      (p->rf,p->rt().KL_column_at_s_to_height(p->val,limit)));
+}
 @)
 void twisted_KL_sum_at_s_wrapper(expression_base::level l)
 { shared_module_parameter p = get<module_parameter_value>();
@@ -8058,15 +8232,18 @@ void twisted_KL_sum_at_s_wrapper(expression_base::level l)
   test_final(*p,"Cannot compute Kazhdan-Lusztig sum");
   auto sr=p->val; // take a copy
   p->rc().make_dominant(sr);
-    // |is_twist_fixed| and |twisted_KL_column_at_s| like this
-  if (not p->rc().is_twist_fixed(sr))
+    // |is_delta_fixed| and |twisted_KL_column_at_s| like this
+  if (not p->rc().is_delta_fixed(sr))
     throw runtime_error@|("Parameter not fixed by inner class involution");
   if (l!=expression_base::no_value)
     push_value (std::make_shared<virtual_module_value>@|
       (p->rf,p->rt().twisted_KL_column_at_s(sr)));
 }
 
-@ Here is a function to directly access a stored Kazhdan-Lusztig polynomial
+@ Here is a function to directly access a stored Kazhdan-Lusztig polynomial; no
+evaluation at |s| is performed. The computation necessary, and storage of the
+result, will be performed automatically by the method |Rep_table::KL_column| if
+it was not already done before.
 
 @< Local function def...@>=
 void KL_column_wrapper(expression_base::level l)
@@ -8076,15 +8253,15 @@ void KL_column_wrapper(expression_base::level l)
   if (l==expression_base::no_value)
     return;
 @)
-  auto col = p->rt().KL_column(p->val);
   BlockElt z;
-  const blocks::common_block& block = p->rt().lookup(p->val,z);
-  RatWeight diff = p->rc().offset(p->val, block.representative(z));
+  repr::block_modifier bm;
+  blocks::common_block& block = p->rt().lookup(p->val,z,bm);
+  auto col = p->rt().KL_column(block,z);
   own_row column = std::make_shared<row_value>(0);
   column->val.reserve(length(col));
   for (auto it=col.wcbegin(); not col.at_end(it); ++it)
   {
-    StandardRepr sr = block.sr(it->first,diff,p->val.gamma());
+    StandardRepr sr = block.sr(it->first,bm,p->val.gamma());
     auto tup = std::make_shared<tuple_value>(3);
     tup->val[0] = std::make_shared<int_value>(it->first);
     tup->val[1] = std::make_shared<module_parameter_value>(p->rf,std::move(sr));
@@ -8105,7 +8282,7 @@ void external_twisted_KL_sum_at_s_wrapper(expression_base::level l)
   test_standard(*p,"Cannot compute Kazhdan-Lusztig sum");
   test_final(*p,"Cannot compute Kazhdan-Lusztig sum");
   test_compatible(p->rc().inner_class(),delta);
-  if (not p->rc().is_twist_fixed(p->val,delta->val))
+  if (not p->rc().is_fixed(p->val,delta->val))
     throw runtime_error("Parameter not fixed by given involution");
   if (l!=expression_base::no_value)
     push_value (std::make_shared<virtual_module_value>@|
@@ -8138,7 +8315,7 @@ void scale_extended_wrapper(expression_base::level l)
   if (not factor->val.is_positive())
     throw runtime_error("Factor in scale_extended must be positive");
   test_compatible(p->rc().inner_class(),delta);
-  if (not rc.is_twist_fixed(sr,delta->val))
+  if (not rc.is_fixed(sr,delta->val))
     throw runtime_error@|
       ("Parameter to be scaled not fixed by given involution");
   if (l==expression_base::no_value)
@@ -8172,7 +8349,7 @@ void K_type_pol_extended_wrapper(expression_base::level l)
   const auto& rc = p->rc();
   test_standard(*p,"Parameter in K_type_pol_extended| must be standard");
   test_compatible(rc.inner_class(),delta);
-  if (not p->rc().is_twist_fixed(p->val,delta->val))
+  if (not p->rc().is_fixed(p->val,delta->val))
     throw runtime_error("Parameter not fixed by given involution");
   if (l==expression_base::no_value)
     return;
@@ -8199,8 +8376,14 @@ void finalize_extended_wrapper(expression_base::level l)
   const auto& rc = p->rc();
   test_standard(*p,"Cannot finalize extended parameter");
   test_compatible(rc.inner_class(),delta);
-  if (not p->rc().is_twist_fixed(p->val,delta->val))
+  if (not p->rc().is_fixed(p->val,delta->val))
     throw runtime_error("Parameter not fixed by given involution");
+  { const InvolutionTable& i_tab = rc.involution_table();
+    auto theta=i_tab.matrix(rc.kgb().involution(p->val.x()));
+    if (theta*delta->val!=delta->val*theta)
+      throw
+        runtime_error("Involution of parameter does not commute with delta");
+  }
   if (l==expression_base::no_value)
     return;
 @)
@@ -8253,6 +8436,8 @@ install_function(full_deform_wrapper,@|"full_deform","(Param->KTypePol)");
 install_function(twisted_full_deform_wrapper,@|"twisted_full_deform"
                 ,"(Param->KTypePol)");
 install_function(KL_sum_at_s_wrapper,@|"KL_sum_at_s","(Param->ParamPol)");
+install_function(KL_sum_at_s_to_ht_wrapper,@|"KL_sum_at_s_to_height"
+		,"(Param,int->ParamPol)");
 install_function(twisted_KL_sum_at_s_wrapper,@|"twisted_KL_sum_at_s"
                 ,"(Param->ParamPol)");
 install_function(KL_column_wrapper,@|"KL_column","(Param->[int,Param,vec])");
@@ -8364,7 +8549,7 @@ void raw_ext_KL_wrapper (expression_base::level l)
   BlockElt start;
   common_context ctxt(rc,srm.gamma_lambda());
   blocks::common_block block(ctxt,srm,start); // build full block
-  if (not((delta->val-1)*gamma.numerator()).isZero())
+  if (not((delta->val-1)*gamma.numerator()).is_zero())
   { // block not globally stable, so return empty values;
     push_value(std::make_shared<matrix_value>(int_Matrix()));
     push_value(std::make_shared<row_value>(0));
@@ -8415,9 +8600,36 @@ void W_graph_wrapper(expression_base::level l)
 @)
   own_row vertices=std::make_shared<row_value>(0);
   @< Push to |vertices| a list of pairs for each element of |wg|, each
-     consisting of a descent set and a list of outgoing labelled edges @>
+   consisting of a descent set and a list of outgoing labelled edges @>
   push_value(std::move(vertices));
 }
+
+@ This is simplified with respect to an earlier module in that no permutation of
+the descent set is performed.
+
+@< Push to |vertices| a list of pairs for each element of |wg|, each
+   consisting of a descent set and a list of outgoing labelled edges @>=
+vertices->val.reserve(wg.size());
+for (unsigned int i = 0; i < wg.size(); ++i)
+{ RankFlags ds = wg.descent_set(i);
+  own_row descents=std::make_shared<row_value>(0);
+  descents->val.reserve(ds.count());
+  for (auto it=ds.begin(); it(); ++it)
+    descents->val.push_back(std::make_shared<int_value>(*it));
+  own_row out_edges = std::make_shared<row_value>(0);
+  out_edges->val.reserve(wg.degree(i));
+  for (unsigned j=0; j<wg.degree(i); ++j)
+  { auto tup = std::make_shared<tuple_value>(2);
+    tup->val[0] = std::make_shared<int_value>(wg.edge_target(i,j));
+    tup->val[1] = std::make_shared<int_value>(wg.coefficient(i,j));
+  @/out_edges->val.push_back(tup);
+  }
+  auto tup = std::make_shared<tuple_value>(2);
+  tup->val[0] = descents;
+  tup->val[1] = out_edges;
+  vertices->val.push_back(std::move(tup));
+}
+
 
 @ This function computes |W_cells| for a block, as list of nested integer
 structures.

@@ -77,7 +77,7 @@ class RationalVector
   C denominator() const { return (C)d_denom; }
   const V& numerator() const { return d_num; }
   size_t size() const { return d_num.size(); }
-  bool is_zero() const { return d_num.isZero(); }
+  bool is_zero() const { return d_num.is_zero(); }
 
   bool operator== (const RationalVector& a) const;
   bool operator!= (const RationalVector& a) const
@@ -166,10 +166,10 @@ class RationalVector
 
 // evalutiong as a rational number needs another name than |dot|, whence |dot_Q|
   template <typename C1>
-  arithmetic::Rational<C> dot_Q (const matrix::Vector<C1>& w) const
+    arithmetic::Rational<C> dot_Q (const matrix::Vector<C1>& w) const
   {
     auto num = w.dot(d_num); // compute scalar product with type |C| arithmetic
-    return arithmetic::Rational<C> { num, d_denom };
+    return arithmetic::Rational<C> { num, d_denom }; // constructed normalised
   }
 
 // take difference as integer vector (which it is assumed to be here), converting

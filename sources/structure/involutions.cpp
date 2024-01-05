@@ -190,7 +190,7 @@ InvolutionNbr InvolutionTable::add_involution
   if (result<data.size()) return result; // skip if |canonical| already known
 
   // compute the involution matrix |theta| using |Cayley_roots|
-  const WeylGroup& W= tW.weylGroup();
+  const WeylGroup& W= tW.Weyl_group();
   TwistedInvolution cross; // records $w\in W$ conjugating |delta| to |theta|
   RootNbrList Cayleys = Cayley_roots(canonical,rd,tW,cross);
 

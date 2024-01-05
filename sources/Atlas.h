@@ -508,8 +508,11 @@ namespace atlas {
     using SR_poly = Free_Abelian<StandardRepr,Split_integer>;
     class StandardReprMod; // represent an $X^*$-shift class of |StandardRepr|
     class Reduced_param; // even coarser representation, mod integral orthogonal
+    struct codec;
     class Repr_mod_entry;
     class common_context;
+    struct locator;
+    struct block_modifier;
     class Rep_context;	// support class for interpreting |StandardRepr|
     class Rep_table;	// storage class for |StandardRepr| computations
   }

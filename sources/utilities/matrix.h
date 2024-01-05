@@ -131,7 +131,7 @@ public:
     return result;
   }
 
-  bool isZero() const;
+  bool is_zero() const;
 
   Vector operator+ (const Vector& v) const &
     { Vector result(*this); return result +=v; }
@@ -196,7 +196,7 @@ public:
 // constructors
   Matrix_base(): d_rows(0),d_columns(0),d_data() {}
 
-  Matrix_base(index_t m, index_t n)
+  Matrix_base(index_t m, index_t n) // leaves all entries unset
     : d_rows(m),d_columns(n),d_data(static_cast<std::size_t>(m)*n) {}
   Matrix_base(index_t m, index_t n, const C& c)
     : d_rows(m), d_columns(n), d_data(static_cast<std::size_t>(m)*n,c) {}
@@ -332,6 +332,9 @@ public:
   void swapRows(index_t, index_t);
 
 }; // |template<typename C> class Matrix|
+
+template <typename C> Matrix<C> inverse_upper_triangular (const Matrix<C>& U);
+template <typename C> Matrix<C> inverse_lower_triangular (const Matrix<C>& L);
 
 // The following derived class is for integer types only
 template<typename C> class PID_Matrix : public Matrix<C>

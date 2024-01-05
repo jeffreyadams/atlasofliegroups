@@ -786,7 +786,7 @@ SubSystemWithGroup get_parameter(RealReductiveGroup& GR,
   // first step: get initial x in canonical fiber
   size_t cn=get_Cartan_class(GR.Cartan_set());
   const InnerClass& G=GR.innerClass();
-  const RootDatum& rd=G.rootDatum();
+  const RootDatum& rd=G.root_datum();
 
   const KGB& kgb=GR.kgb();
   KGBEltList canonical_fiber;

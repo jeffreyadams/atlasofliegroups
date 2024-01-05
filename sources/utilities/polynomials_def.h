@@ -71,7 +71,7 @@ template<typename C>
   Polynomial<C>::Polynomial(Degree d,const Polynomial& Q)
     : d_data()
 {
-  if (Q.isZero())
+  if (Q.is_zero())
     return; // avoid moving zeroes into an empty |d_data| array
   d_data.reserve(d+Q.size());
   d_data.resize(d); // fills the |d| initial entries with |C(0)|
@@ -112,7 +112,7 @@ void Polynomial<C>::adjustSize()
 template<typename C>
 Polynomial<C>& Polynomial<C>::operator+= (const Polynomial& q)
 {
-  if (q.isZero())
+  if (q.is_zero())
     return *this; // avoid comparison of |&*q.d_data.end()| and |&q.d_data[0]|
 
   // make sure our polynomial has all the coefficients to be modified
@@ -130,7 +130,7 @@ Polynomial<C>& Polynomial<C>::operator+= (const Polynomial& q)
 template<typename C>
 Polynomial<C>& Polynomial<C>::operator-= (const Polynomial& q)
 {
-  if (q.isZero())
+  if (q.is_zero())
     return *this;
   if (q.size() > size())
     resize(q.size());
@@ -187,7 +187,7 @@ Polynomial<C>& Polynomial<C>::operator/= (C c)
 template<typename C>
 Polynomial<C> Polynomial<C>::operator* (const Polynomial& q) const
 {
-  if (isZero() or q.isZero()) // we must avoid negative degrees!
+  if (is_zero() or q.is_zero()) // we must avoid negative degrees!
     return Polynomial();
   Polynomial<C> result(degree()+q.degree(),C(1));
   // we have |result.size()==size()+q.size()-1|
@@ -207,7 +207,7 @@ Polynomial<C> Polynomial<C>::operator* (const Polynomial& q) const
 // rising degree division by $(1+cX)$, return remainder in coefficient of $X^d$
 template<typename C> C Polynomial<C>::up_remainder(C c, Degree d) const
 {
-  if (isZero())
+  if (is_zero())
     return C(0);
   assert(degree()<=d);
   C remainder = d_data[0];
@@ -219,7 +219,7 @@ template<typename C> C Polynomial<C>::up_remainder(C c, Degree d) const
 // version of the same, with $c=1$, that also changes |*this| into the quotient
 template<typename C> C Polynomial<C>::factor_by_1_plus_q(Degree d)
 {
-  if (isZero())
+  if (is_zero())
     return C(0);
   assert(this->degree()<=d);
   if (d>this->degree())
@@ -240,7 +240,7 @@ template<typename C> C Polynomial<C>::factor_by_1_plus_q(Degree d)
 template<typename C>
 C Polynomial<C>::factor_by_1_plus_q_to_the(Degree k,Degree d)
 {
-  if (isZero())
+  if (is_zero())
     return C(0);
   assert(this->degree()<=d);
   if (d>this->degree())
@@ -257,7 +257,7 @@ C Polynomial<C>::factor_by_1_plus_q_to_the(Degree k,Degree d)
 template<typename C>
 bool Polynomial<C>::multi_term () const
 {
-  if (isZero())
+  if (is_zero())
     return false;
   for (Degree i=degree(); i-->0; ) // skip leading term, which is nonzero
     if ((*this)[i]!=C(0))
@@ -320,7 +320,7 @@ std::ostream& Polynomial<C>::print(std::ostream& strm, const char* x) const
 {
   const Polynomial<C>& p = *this;
   std::ostringstream o; // accumulate in string for interpretation of width
-  if (p.isZero())
+  if (p.is_zero())
     o << "0";
   else
     for (size_t i = p.size(); i-->0; )
@@ -392,7 +392,7 @@ template<typename C> void safe_divide(C& a, C b)
 template<typename C>
 void Safe_Poly<C>::safeAdd(const Safe_Poly& q, Degree d, C c)
 {
-  if (q.isZero() or c==C(0))
+  if (q.is_zero() or c==C(0))
     return; // do nothing
 
   const auto qs = q.size();   // save the original size of q, it might change
@@ -415,7 +415,7 @@ void Safe_Poly<C>::safeAdd(const Safe_Poly& q, Degree d, C c)
 template<typename C>
 void Safe_Poly<C>::safeAdd(const Safe_Poly& q, Degree d)
 {
-  if (q.isZero()) // do nothing
+  if (q.is_zero()) // do nothing
     return;
 
   const auto qs = q.size();   // save the original size of q, it might change
@@ -438,7 +438,7 @@ void Safe_Poly<C>::safeAdd(const Safe_Poly& q, Degree d)
 template<typename C>
 void Safe_Poly<C>::safeSubtract(const Safe_Poly& q, Degree d, C c)
 {
-  if (q.isZero() or c==C(0))
+  if (q.is_zero() or c==C(0))
     return; // do nothing
 
   const auto qs = q.size();   // save the original size of q, it might change
@@ -462,7 +462,7 @@ void Safe_Poly<C>::safeSubtract(const Safe_Poly& q, Degree d, C c)
 template<typename C>
 void Safe_Poly<C>::safeSubtract(const Safe_Poly& q, Degree d)
 {
-  if (q.isZero()) // do nothing
+  if (q.is_zero()) // do nothing
     return;
 
   const auto qs = q.size();   // save the original size of q, it might change
@@ -512,7 +512,7 @@ void Safe_Poly<C>::safeDivide(C c)
 template<typename C>
 void Safe_Poly<C>::safe_quotient_by_1_plus_q(Degree delta)
 {
-  if (base::isZero()) // this avoids problems with |base::degree()|
+  if (base::is_zero()) // this avoids problems with |base::degree()|
     return; // need not and cannot invent nonzero \mu*q^{d+1} here
   for (size_t j = 1; j <= base::degree(); ++j)
     polynomials::safe_subtract((*this)[j],(*this)[j-1]); // does c[j] -= c[j-1]
