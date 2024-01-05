@@ -19,7 +19,7 @@ set # (int n)= [int]: for i:n do i od       { [0,1,...,n-1] }
 set # (bool b) = int: if b then 1 else 0 fi { Iverson symbol }
 set sign (bool b) = int: { |minus_1^#b|, i.e.: } if b then minus_1 else 1 fi
 
-set ^ = !=@(bool,bool) { exclusive or }
+set ^ = !=@(bool,bool) { simple exclusive or }
 
 set assert (bool b,(->string) report) = void: if not b then error(report()) fi
 set assert (bool b) = void: assert(b,@:"assertion failed") { default message }
@@ -83,10 +83,13 @@ set binary_search_first ((int->bool)pred, int low, int high) = int:
   do let mid=(low+high)\2 in if pred(mid) then high:=mid else low:=mid+1 fi
   od; low
 
+set locate_sorted ([int] v,int lwb) = int: { first index of entry >= |lwb| }
+  binary_search_first((int i):v[i]>=lwb,0,#v)
+
 { transform "stops" representation of weakly increasing function to function }
 set from_stops ([int] stops) = (int->int):
-  stops:=stops[1:]; { ignore the first stop, which should always be 0 }
-  (int k): binary_search_first((int i):stops[i]>k,0,#stops) { first excess }
+  { at |k| find last index |i| with |stops[i]<=k|; calculated via complement }
+  (int k): locate_sorted(stops,k+1)-1 { find first excess, then back up }
 
 {                               Integers                                }
 
@@ -173,26 +176,24 @@ set is_member_sorted ([int] v) = (int->bool):
   , (int n):
        case n-v[2] then n=v[0] or n=v[1] in true else n=v[3] or n=v[4] esac
   else
-     (int n)bool:
-     let m = binary_search_first((int i)bool:v[i]>=n,0,l)
-     in m<l and v[m]=n
+     (int n)bool: let m = locate_sorted(v,n) in m<l and v[m]=n
   esac
 set isnt_member_sorted ([int] v) = (int->bool):
   let member = is_member_sorted(v) in (int n): not member(n)
 
+set is_member_bitset (int i,int B) = bool: bitwise_subset([i].to_bitset,B)
 
-set is_member_fast  (vec L) = (int->bool):
-   let B=L.to_bitset in (int n) bool: bitwise_subset(2^n,B)
+set is_member_fast (vec L) = (int->bool):
+   let B=L.to_bitset in (int n) bool: is_member_bitset(n,B)
 set isnt_member_fast  (vec L) = (int->bool):
-   let B = ~L.to_bitset in (int n) bool: bitwise_subset(2^n,B)
+   let B = ~L.to_bitset in (int n) bool: is_member_bitset(n,B)
 
 set is_subset (vec S,vec L) = bool: bitwise_subset(S.to_bitset,L.to_bitset)
 set is_disjoint (vec S,vec L) = bool: bitwise_subset(S.to_bitset,~L.to_bitset)
 
 set contains (vec S) = (vec->bool):
    let b = S.to_bitset in (vec L)bool: bitwise_subset(b,L.to_bitset)
-set contains (int s) = (vec->bool):
-   let b = 2^s in (vec L)bool: bitwise_subset(b,L.to_bitset)
+set contains (int s) = (vec->bool): contains(vec:[s])
 
 set is_subset_of (vec L) = (vec->bool):
    let b = L.to_bitset in (vec S)bool: bitwise_subset(S.to_bitset,b)
@@ -928,9 +929,9 @@ set is_poscoroot ((RootDatum,vec)(rd,):p) = bool:
   let cri=coroot_index(p) in >=cri and cri<nr_of_posroots(rd)
 
 set posroot_index ((RootDatum,vec)p) = int: { fold roots to positive }
-  let i=root_index(p) in if <i then minus_1-i else i fi
+  let i=root_index(p) in if <i then ~i else i fi
 set poscoroot_index ((RootDatum,vec)p) = int: { fold coroots to positive }
-  let i=coroot_index(p) in if <i then minus_1-i else i fi
+  let i=coroot_index(p) in if <i then ~i else i fi
 
 
 set Cartan_matrix (RootDatum rd,[int] simples) = mat: { NB strange convention }
@@ -1222,32 +1223,40 @@ in root_datum_from_positive((columns_with(pred,posroots(rd))
 			   ,rd.prefers_coroots
 			   )
 
-set highest_root_indices (RootDatum rd) = [int]:
-   let ssr = semisimple_rank(rd)
-   then intersection =
-      for i:ssr from -ssr
-      do for j in root_ladder_bottoms(rd,i) do if <j then [] else [j] fi od.##
-         .to_bitset
-      od.bitwise_intersection
-in intersection.set_bit_positions
-set highest_coroot_indices (RootDatum rd) = [int]:
-   let ssr = semisimple_rank(rd)
-   then intersection =
-      for i:ssr from -ssr
-      do for j in coroot_ladder_bottoms(rd,i) do if <j then [] else [j] fi od.##
-         .to_bitset
-      od.bitwise_intersection
-in intersection.set_bit_positions
+set (highest_root_indices,highest_coroot_indices) =
+    ((RootDatum->[int]),(RootDatum->[int])):
+   let work((RootDatum,int->[int])bottom_f) = (RootDatum rd)[int]:
+   (  let (lt,map)= rd.Cartan_matrix.Cartan_matrix_type
+      , ssr = semisimple_rank(rd)
+      then sf = simple_factors(lt), factor_of=for :ssr do minus_1 od
+      , i=0
+   in for (,r)@j in sf do for :r do factor_of[map[i]]:=j; i+:=1 od od
+   ;  let result = for :#sf do minus_1 od
+      , tops = [int]: { bitsets marking ladder tops for the simple roots }
+	 for i: ssr downto -ssr
+	 do let t=bottom_f(rd,i) in t[locate_sorted(t,0):].to_bitset
+	 od
+      in for i in tops.bitwise_intersection.set_bit_positions
+	 do let re = root_expression(rd,i) { of size |ssr| }
+	    then f=factor_of[first(ssr,(int k):re[k].>)]
+	 in assert(for v@j in re do =v or factor_of[j]=f od.all)
+	 ;  result[f]:=i
+	 od
+      ;  result
+   )
+in (work(  root_ladder_bottoms@(RootDatum,int))
+   ,work(coroot_ladder_bottoms@(RootDatum,int))
+   )
 
 { list of all highest roots (one for each simple factor) }
 set highest_roots (RootDatum rd) = [vec]:
    for i in highest_root_indices(rd) do root(rd,i) od
 set highest_coroots (RootDatum rd) = [vec]:
-   for i in highest_coroot_indices(rd) do root(rd,i) od
+   for i in highest_coroot_indices(rd) do coroot(rd,i) od
 set lowest_roots (RootDatum rd) = [vec]:
-   for i in highest_root_indices(rd) do root(rd,minus_1-i) od
+   for i in highest_root_indices(rd) do root(rd,~i) od
 set lowest_coroots (RootDatum rd) = [vec]:
-   for i in highest_coroot_indices(rd) do root(rd,minus_1-i) od
+   for i in highest_coroot_indices(rd) do coroot(rd,~i) od
 
 set simple_root_labels (RootDatum rd) = vec:
    let exprs = [vec]:
@@ -1933,7 +1942,7 @@ set print_extended_block = (Param,mat->):
       od
   then wx=width(G.KGB_size-1), wp=width(#parent_block-1)
   , with_sign(int n) = string:
-    if n<0 then "-"+(indices[minus_1-n]) else "+"+indices[n] fi
+    if n<0 then "-"+(indices[~n]) else "+"+indices[n] fi
   in
   for q@i in block
   do prints

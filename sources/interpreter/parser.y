@@ -59,8 +59,8 @@
 %locations
 %parse-param { atlas::interpreter::expr_p* parsed_expr}
 %parse-param { int* verbosity }
-%pure-parser
-%error-verbose
+%define api.pure
+%define parse.error verbose
 
 %token QUIT SET LET IN BEGIN END IF THEN ELSE ELIF FI AND OR NOT
 %token NEXT DO DONT FROM DOWNTO WHILE FOR OD CASE ESAC REC_FUN

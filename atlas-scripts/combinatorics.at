@@ -30,6 +30,33 @@ set rising_power (int n, int k) = int: assert(>=0,"Negative exponent");
 
 { Combinatorial number system ${\N\choose k}\to\N$ encoding and decoding }
 
+{ represent a permutation as a single number: its lexicographic position }
+set permutation_encode([int] sigma) = int:
+   let n=#sigma then unseen=#n, acc=0
+in for x in sigma
+   do let l=#unseen
+      then pos = binary_search_first((int i): unseen[i]>=x,0,l)
+   in assert(unseen[pos]=x)
+   ; unseen:=unseen[:pos]##unseen[pos+1:]
+   ; acc:=l*acc+pos
+   od; acc
+
+set permutation_decode(int code, int n) = [int]:
+(   let result=null(n), unseen=#n
+in  (code,1).
+    (rec_fun f (int rem, int i) void:
+       let (q,r)=rem\%i in
+       if i<n then f(q,i+1) fi
+    ;  result~[i-1] := unseen[r]
+    ;  unseen := unseen[:r]##unseen[r+1:]
+    )
+;   result
+)
+
+set permutations([vec] vs) = [[vec]]: { any type for |vec|, ignore equalities }
+   let n  = #vs
+in for i:fac(n) do for e in permutation_decode(i,n) do vs[e] od od
+
 { Represent any $k$-combination on $\N$ as a single natural number
   For fixed $k$ this is bijective, and a decoding follows.
 }

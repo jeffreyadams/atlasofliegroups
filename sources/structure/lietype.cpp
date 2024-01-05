@@ -201,13 +201,19 @@ int_Matrix SimpleLieType::transpose_Cartan_matrix() const
   return result;
 }
 
-int_Matrix LieType::Cartan_matrix() const
-{ const auto r=rank();
-  int_Matrix result(r,r);
-  for (unsigned int i=0; i<r; ++i)
-    for (unsigned int j=0; j<r; ++j)
-      result(i,j)=Cartan_entry(i,j);
-
+int_Matrix LieType::true_Cartan_matrix() const
+{ const auto ssr=semisimple_rank();
+  int_Matrix result(ssr,ssr,0);
+  unsigned offset=0;
+  for (base::const_iterator it=begin(); it!=end(); ++it)
+    if (it->type()!='T') // ignore torus factors
+    {
+      auto r=it->rank();
+      for (unsigned int i=0; i<r; ++i)
+	for (unsigned int j=0; j<r; ++j)
+	  result(offset+i,offset+j)=it->Cartan_entry(i,j);
+      offset+=r; // advance |offset| for non-torus factors
+    }
   return result;
 }
 

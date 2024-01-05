@@ -319,7 +319,7 @@ lead to entirely zero rows and columns.
 void Cartan_matrix_wrapper(expression_base::level l)
 { shared_Lie_type t=get<Lie_type_value>();
   if (l!=expression_base::no_value)
-    push_value(std::make_shared<matrix_value>(t->val.Cartan_matrix()));
+    push_value(std::make_shared<matrix_value>(t->val.true_Cartan_matrix()));
 }
 
 
@@ -8371,6 +8371,12 @@ void finalize_extended_wrapper(expression_base::level l)
   test_compatible(rc.inner_class(),delta);
   if (not p->rc().is_fixed(p->val,delta->val))
     throw runtime_error("Parameter not fixed by given involution");
+  { const InvolutionTable& i_tab = rc.involution_table();
+    auto theta=i_tab.matrix(rc.kgb().involution(p->val.x()));
+    if (theta*delta->val!=delta->val*theta)
+      throw
+        runtime_error("Involution of parameter does not commute with delta");
+  }
   if (l==expression_base::no_value)
     return;
 @)
