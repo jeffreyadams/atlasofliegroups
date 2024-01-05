@@ -2227,6 +2227,10 @@ SR_poly Rep_table::KL_column_at_s_to_height (StandardRepr p, level height_bound)
   normalise(p); // implies that |p| it will appear at the top of its own block
   assert(is_final(p));
 
+  SR_poly result;
+  if (p.height()>height_bound)
+    return result;
+
   BlockElt z; block_modifier bm;
   auto& block = lookup_full_block(p,z,bm); // also makes |p| dominant
 
@@ -2275,7 +2279,6 @@ SR_poly Rep_table::KL_column_at_s_to_height (StandardRepr p, level height_bound)
   auto signed_P = inverse_upper_triangular(Q_mat);
   // with signs in place, the alternating sum is obtained without any effort
 
-  SR_poly result;
   { const unsigned int j = retained.position(z); // final column
     auto it = retained.begin();
     for (unsigned int i=0; i<=j; ++i,++it)
