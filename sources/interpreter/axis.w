@@ -8358,7 +8358,7 @@ integer denotations and applied identifiers.
      |c->f|, |c->name|, and |tup->component[1]|, passed through
    |conform_types| from |comp_t| to |type| @>
   else
-    if (index.kind==integer_denotation or index.kind==applied_identifier)
+    if (@< |index| is a constant expression @>@;@;)
 @/@< Set |result| to a |component_assignment| assembled from |aggr|, |ind|,
      |call|, and |kind|,
      passed through |conform_types| from |comp_t| to |type| @>
@@ -8426,6 +8426,38 @@ already tested) here.
   }
   result = conform_types(comp_t,type,std::move(result),e);
 }
+
+@ The most frequent case of an expression type that we shall recognise as
+guaranteed without side effects is that of |applied_identifier| expressions, but
+we shall also recognise |integer_denotation| expressions (for various kinds of
+subscription) and, only for matrix subscriptions, $2$-tuples of two identifier
+or denotation expressions. The last part a bit cumbersome to test, and inside an
+expression we cannot introduce variables to help us, but since we already
+successfully type-checked the subscription expression, we are at least sure that
+any tuple expression used as index is a $2$-tuple, so we don't test for that.
+
+It is somewhat questionable whether using a |let| expression to bind a constant
+index pair for a matrix subscription, and using it twice, would actually have
+been less efficient than evaluating the pair of constant indices twice.
+However, the |let| expression would force the actual formation of a $2$-tuple to
+be bound to the hidden variable, and then use |push_expanded| to get the
+components back on the stack (where they were before the $2$-tuple was formed),
+while the direct approach never forms a $2$-tuple; therefore our guess would be
+that the |let| solution is indeed less efficient, so that trying to avoid it (as
+is done here) is justified.
+
+@< |index| is a constant expression @>=
+index.kind==applied_identifier or
+index.kind==integer_denotation or @|
+(index.kind==tuple_display and @|
+ (index.sublist->contents.kind==applied_identifier or
+  index.sublist->contents.kind==integer_denotation
+ )
+ and @|
+ (index.sublist->next->contents.kind==applied_identifier or
+  index.sublist->next->contents.kind==integer_denotation
+ )
+)
 
 @ In this final case $v[I]\mathrel\star:= E$ is translated into the equivalent
 of ``\&{let}~$\$=I$~\&{in}~$v[\$]:=v[\$]\star E$'', where $\$$ is a local
