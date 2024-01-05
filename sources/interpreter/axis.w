@@ -8359,13 +8359,13 @@ integer denotations and applied identifiers.
    |conform_types| from |comp_t| to |type| @>
   else
     if (index.kind==integer_denotation or index.kind==applied_identifier)
-  @< Set |result| to a |component_assignment| assembled from |aggr|, |ind|,
-     |c->f|, |c->name|, and |call|, passed through |conform_types| from
-     |comp_t| to |type| @>
+@/@< Set |result| to a |component_assignment| assembled from |aggr|, |ind|,
+     |call|, and |kind|,
+     passed through |conform_types| from |comp_t| to |type| @>
    else
-  @< Set |result| to a \&{let} expression containing an ordinary
-  subscripted aggregate assignment to a value computed using its previous
-  value @>
+  @< Set |result| to a \&{let} expression that binds the index expression
+     to a hidden identifier, within which |convert_expr| is applied (again) to
+     a |component_assignment| containing a modified version of |appl| @>
 
 }
 
@@ -8454,7 +8454,7 @@ which does not need a new conversion but must be swapped out for a variable, is
 put back in place so that our expressions |e| will be intact on successful
 completion,
 
-@< Set |result| to a \&{let} expression containing... @>=
+@< Set |result| to a \&{let} expression... @>=
 {
   id_type hidden = lookup_identifier("$");@q$@>
   id_pat dollar(hidden);
@@ -8470,6 +8470,8 @@ completion,
   thread_bindings(dollar,ind_t,let_layer,true);
   result.reset(new let_expression @|
     (dollar,std::move(ind),convert_expr(*ca,type)));
+  *appl = std::move(ca->comp_assign_variant->rhs);
+    // restore |appl| for further restoration
   index.swap(temp); // restore our original expression for outer error reporting
   ca = std::move(saved_ca);
     // restore state of static variable now that no error was thrown
