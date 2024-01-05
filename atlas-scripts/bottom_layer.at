@@ -302,7 +302,8 @@ set min_bottom_test(Param p, int D) = bool:
 {LKdata is [(muj,[(tauj,tauLj)]: muj is an Lj\cap K-type inducing to a LKT of p; each pair
    (tauj,tauLj)
 tauj = an Lj-bottom K-type on G
-tauLj = the corresponding Lj\cap K-type on Lj}
+tauLj = the corresponding Lj\cap K-type on Lj
+All related to ONE LKT of p}
 set min_bottom_elim_factors(Param p, [KType,[(KType,KType)]] LKdata) = bool:
     let start = elapsed_ms(), answers = for k:#LKdata do false od,
         	(,pL) = theta_stable_quasi_data(p)
@@ -339,6 +340,7 @@ set min_bottom_elim_factors(Param p, steady_bottom_data bott_data) = bool:
 
 {false guarantees not unitary, but true does not guarantee unitary}
 {Here P is the K-character of p, at least to heights of pairs}
+{LKdatas is supposed to have size #LKTs(p)}
 set min_bottom_elim_factors(Param p, [KType,[(KType,KType)]] LKdata, KTypePol P) = bool:
     let start = elapsed_ms(), answers = for k:#LKdata do false od,
     	(,pL) = theta_stable_quasi_data(p)
@@ -393,14 +395,16 @@ set min_bottom_test_factors(Param p, steady_bottom_data bott_data, KTypePol P) =
 
 set min_bottom_elim_factors(Param p, int level) = bool:
     let start = elapsed_ms()
-    then LKdata = for mu in LKTs(p) do min_L_bottom_factors(mu,level) od.##
+    then LKdatas = for mu in LKTs(p) do min_L_bottom_factors(mu,level) od
     	 , minLb_time = int:0, posLK_time = int:0, multK_time = int:0
     then () = if min_bottom_verbose
     	      then let () = minLb_time := elapsed_ms()
     	      	   in  prints(new_line,"min_L_bottom used ",
     	    	       print_time_string(minLb_time - start))
 	      fi
-    in min_bottom_elim_factors(p, LKdata)
+    in all( [(->bool)]: for LKdata in LKdatas do @bool: min_bottom_elim_factors(
+       	    	   p, LKdata)
+       	    od)
 
 set min_bottom_test_factors(Param p, int level) = bool:
     if not min_bottom_elim_factors(p, level)
