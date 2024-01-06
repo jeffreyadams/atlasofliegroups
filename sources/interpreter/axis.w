@@ -2013,6 +2013,10 @@ member~|f|. An additional constructor without |name| argument is provided for
 convenience to places where our interpreter directly produces calls to
 certain built-in functions, without going through the overload table; the
 function name is then deduced from the one stored in the |builtin_value|.
+The first constructor take the shared pointer |fun| is by value since it is most
+often, but not always, held in a local variable of the caller from which it can
+be moved; for the second constructor we pass by constant reference since the
+argument will not come from a local variable.
 
 @< Type definitions @>=
 template <bool variadic>
@@ -2024,11 +2028,12 @@ template <bool variadic>
   wrapper_function f_ptr; // shortcut to implementing function
 @)
   overloaded_builtin_call
-    (const ptr_to_builtin& fun,
+    (ptr_to_builtin fun,
      const std::string& name,
      expression_ptr&& arg,
      const source_location& loc)
-@/: overloaded_call(name,std::move(arg),loc), f(fun), f_ptr(fun->val) @+ {}
+@/: overloaded_call(name,std::move(arg),loc)
+  , f(std::move(fun)), f_ptr(f->val) @+ {}
   overloaded_builtin_call
     (const ptr_to_builtin& fun,
      expression_ptr&& arg,
@@ -2833,16 +2838,15 @@ just like for and definition a binding between a name and a value, which are (as
 usual) treated as separate entities. The value created is a called a
 $\lambda$-expression (in honour of the $\lambda$ calculus, but using the Greek
 letter $\lambda$ is actually a dreadful choice of notation, which we avoid) and
-it an anonymous function: it represents the argument pattern and body (the
-definiens) but without the name given (the definiendum). In fact one can write a
-$\lambda$-expression without giving it a name (creating an anonymous user
-defined function), which can be quite practical for instance to pass the value
+it represents the function, with its argument pattern and body (the definiens),
+but without the name given (the definiendum). In fact one can write a
+$\lambda$-expression without giving it a name at all, creating an anonymous user
+defined function; this can be quite practical, for instance to pass the function
 to another function. A $\lambda$-expression is basically a denotation for a
 piece of code, whose evaluation involves no action and returns that code.
-However a $\lambda$-expression may refer to identifiers known in
-the context in which it is written, so evaluating it captures the bindings of
-those identifiers at the time of evaluation into a runtime value know as a
-closure.
+However a $\lambda$-expression may refer to identifiers known in the context in
+which it is written, so evaluating it captures the bindings of those identifiers
+at the time of evaluation into a runtime value know as a closure.
 
 So in contrast to let-expressions which just extend the context with new
 bindings, a closure captures the current context inside a value, which after
@@ -2850,32 +2854,26 @@ possibly being passed around, can later be combined with argument values to
 provide an extended context in which its body is evaluated. A closure might
 outlive the expression that contained its $\lambda$-expression, and evaluations
 of the same textual $\lambda$-expression can create multiple closures whose
-lifetimes may overlap; if creating a closure is to avoid copying the
-$\lambda$-expression, yet memory for it is to be freed when the last reference
-to it disappears, we must use a |std::shared_ptr| based mechanism for sharing
-the $\lambda$-expression among its closures. Although the $\lambda$ is already
-referred to by a |expression_ptr| shared pointer from its containing expression,
-we choose to not use that general pointer for sharing among closures, but a more
-specific pointer-to-$\lambda$-expression. We in fact make a distinction between
-the $\lambda$-expression object itself that is executable, yielding a closure,
-and the object that it shares with its closures. The former is of type
-|lambda_expression| derived from |expression_base|, the latter of type
-|lambda_struct| which is not so derived. Upon construction of a
+lifetimes may overlap.
+
+We wish to create closures without copying the $\lambda$-expression into them,
+rather by storing a reference, yet memory for the $\lambda$-expression should be
+freed when the last reference to it disappears, so we must use a
+|std::shared_ptr| based mechanism for sharing the $\lambda$-expression among its
+closures. Now the $\lambda$ is already referred to by an |expression_ptr| shared
+pointer from its containing expression, but we choose to not use that general
+pointer for sharing among closures, but a more specific
+pointer-to-$\lambda$-expression. We in fact make a distinction between the
+$\lambda$-expression object itself that is executable, yielding a closure, and
+the object that it shares with its closures. The former is of type
+|lambda_expression| derived from |expression_base| and accessed through unique
+pointers (of type |expression_ptr|), the latter of type
+|lambda_struct| which is not so derived, and will be accessed via shared
+pointers (of type |shared_lambda|). Upon construction of a
 |lambda_expression|, it dynamically creates a second object of class
 |lambda_struct| where it stores all its information (argument pattern, body,
-source location) and to which it holds a shared pointer. The stored pointer to
-the |lambda_struct| is what will be shared by the closures it spawns.
-
-One might imagine an implementation that avoids this distinction between
-|lambda_expression| and |lambda_struct|, but it would not be without
-complications. The main problem is that closures are generated by the method
-|lambda_expression::evaluate|, which does not have at its disposition the
-(shared) |expression_ptr| value pointing to (and owning) that
-|lambda_expression|, even though the caller of that virtual method used such a
-pointer to make the call. Passing this information to the callee is not easy,
-though in principle something could be arranged, as is done for the
-|function_base::build_call| method; of course storing a shared pointer to
-itself in |lambda_expression| is a no-no (maybe a weak pointer is viable?).
+source location) and to which it holds a shared pointer. The stored
+|shared_lambda| pointer is what will be shared with the closures it spawns.
 
 @< Type def... @>=
 struct lambda_struct
@@ -2907,30 +2905,28 @@ $\lambda$-expression cannot call itself recursively. In order give explicit
 support for recursive functions, we define a second structure |recursive_lambda|
 for a $\lambda$-expression whose body can also refer to the $\lambda$-expression
 itself. In addition to a |lambda_expression| it will store a recursive
-identifier. Nonetheless we derive |recursive_lambda| from |lambda_expression|
-without adding any data members, as the recursive identifier is wrapped with the
-argument names of the function into an identifier pattern, which is already
-handled by |lambda_expression|. So the |recursive_lambda| constructor forms an
-|id_pat| as a pair with the recursive identifier as first component
-and the usual argument pattern as second field, and passes that to the base
-|lambda_expression| constructor, which in fact places it into its
-|lambda_struct| object, where it can be seen by closures created by the
-|recursive_lambda|. The distinctive interpretation of this pattern is handled by
-the virtual method |recursive_lambda::evaluate|, and by that of the recursive
-closures it generates.
+identifier the user gave to it (called |self_id| below). In spite of this
+addition, we derive |recursive_lambda| from |lambda_expression| without adding
+any data members: |self_id| will be combined into the identifier pattern already
+used for the ordinary argument names in |lambda_expression|. The distinctive
+interpretation of this pattern will be handled by the virtual method
+|recursive_lambda::evaluate|, and by similar methods of the recursive closures
+it generates.
 
 @< Type def... @>=
 struct recursive_lambda : public lambda_expression
-{ recursive_lambda(id_type self_id,@|
+{ recursive_lambda@|(id_type self_id,
      id_pat&& p, expression_ptr&& b, const source_location& loc);
   virtual ~recursive_lambda() = default;
   virtual void evaluate(level l) const;
   virtual void print(std::ostream& out) const;
 };
 
-@ For recursive functions we assemble a pair-pattern, consisting of the
-recursive identifier, and the actual argument pattern for the
-recursive function. Although the recursive identifier cannot be assigned to,
+@ The |recursive_lambda| constructor forms as |id_pat| a pair with the recursive
+identifier as first component and the usual argument pattern as second field,
+and passes that to the |lambda_expression| constructor, which in fact places it
+into its |lambda_struct| object, where it can be seen by closures created by the
+|recursive_lambda|. Although the recursive identifier cannot be assigned to,
 there is no need to set the constant bit in its pattern here, as that property
 will be enforced when setting up the context for type checking the body of a
 recursive function.
@@ -2944,7 +2940,7 @@ id_pat rec_pair(id_type s,id_pat && p)
   return id_pat(std::move(pl));
 }
 @)
-inline recursive_lambda::recursive_lambda(id_type self_id,@|
+inline recursive_lambda::recursive_lambda@|(id_type self_id,
      id_pat&& p, expression_ptr&& b, const source_location& loc)
   : lambda_expression(rec_pair(self_id,std::move(p)),std::move(b),loc) @+{}
 
@@ -3042,20 +3038,20 @@ case lambda_expr:
 @ Type checking recursive lambda expressions is slightly different. We must, in
 addition to binding the argument pattern to the argument type, bind the
 recursive identifier to the function type given by |fun.parameter_type| and
-|fun.result_type|; we build that type as |f_type| rather than use the
-specialised |type|, just in case the latter should be |void|. The type
-|fun.return_type| will be determined (due to syntactic constraints on recursive
-functions) so |f_type| will be full determined, and |type| will be specialised
-to it during the condition |type.specialise(f_type)|, unless we already had
-|type==void_type|. The call to |thread_bindings| for the recursive identifier
-has final argument |true| indicating the identifier should be treated as
-constant during the call to |convert_expr| for the body. That call needs an
+|fun.result_type|; we build that type as |f_type| rather than specialise and
+then use |type|, just to allow cases with |type==void_type| initially, which
+even if silly is legal. The type |fun.return_type| will be determined (due to
+syntactic constraints on recursive functions) so |f_type| will be full
+determined, and |type| will be specialised to it during the condition
+|type.specialise(f_type)|. The call to |thread_bindings| for the recursive
+identifier has final argument |true| indicating the identifier should be treated
+as constant during the call to |convert_expr| for the body. That call needs an
 lvalue for its expected type, and the |layer| constructor needs the same in the
 form of a pointer to non-|const| (in both cases because the type might be
 specialised, from the type of the body respectively from |return| clauses inside
 it), For these uses we supply |f_type.func()->result_type| (aliased |r_type|)
 rather than using |type.func_type()->return_type|, which since |f_type| is a
-local variable means any specialisation done to it will be lost; however there
+local variable means any specialisation done to it would be lost; however there
 should be no such changes since |fun.result_type| is already fully specialised.
 
 @< Cases for type-checking and converting... @>=
@@ -3112,19 +3108,28 @@ executed less than once on average; in such cases we are actually wasting effort
 here. It is however impossible to know here whether the closure will be globally
 of locally bound.
 
+Because of slight differences in evaluation that we do not want to implement
+using runtime tests, we define three types of closure. The case of non recursive
+$\lambda$-expressions being split into those that introduce no parameters at all
+(usually but not necessarily because the argument type is |void|), and those
+that introduce at least one name; this distinction reflects our implementation
+choice to omit empty layers on the stack of local bindings. For recursive
+$\lambda$-expressions there is (only) a third type of closures; calling them
+will always push at least the recursive identifier.
+
 We defined a virtual method |function_base::maybe_push| that will push a shared
 pointer (which in fact will be one to the closure itself) on the stack, as is
 needed for the implementation of recursive functions. Since the default
-implementation of this method is to do nothing, we need to implement it only
-when the template argument |recursive| holds, but it is most convenient to
-define it here regardless of the |recursive| status, and in its implementation
-use a dynamic test of the template argument, which the compiler should hopefully
-optimise away.
+implementation of this method is to do nothing, we need to implement it only for
+|kind==recursive_closure|, but it is most convenient to define it here
+regardless of |kind|, and in its implementation use a test of the
+template argument, which the compiler should hopefully optimise away.
 
-@s closure_ptr vector
-@s shared_closure vector
 @< Type def... @>=
-template<bool recursive>
+
+enum Closure_kind @+{ parameterless, with_parameters, recursive_closure };
+@)
+template<Closure_kind kind>
 struct closure_value : public function_base
 { shared_context context;
   shared_lambda p;
@@ -3138,7 +3143,7 @@ struct closure_value : public function_base
   virtual expression_base::level argument_policy() const
   {@; return expression_base::single_value; }
   virtual void maybe_push(const std::shared_ptr<const function_base>& p) const
-  {@; if (recursive)
+  {@; if (kind==recursive_closure)
       push_value(p);
   }
   virtual void report_origin(std::ostream& o) const;
@@ -3147,13 +3152,16 @@ struct closure_value : public function_base
      expression_ptr&& arg, const source_location& loc) const;
 @)
   static const char* name() @+
-   {@; return recursive ? "recursive closure" : "closure"; }
+   {@; return kind==recursive_closure ? "recursive closure" : "closure"; }
   closure_value (const closure_value& ) = delete;
 };
-template<bool recursive>
-using  closure_ptr = std::unique_ptr<closure_value<recursive> >;
-template<bool recursive>
-using shared_closure = std::shared_ptr<const closure_value<recursive> >;
+
+@ For readability, we define |shared_closure| as a type template.
+
+@s shared_closure vector
+@< Type def... @>=
+template<Closure_kind kind>
+using shared_closure = std::shared_ptr<const closure_value<kind> >;
 
 @ A closure prints the |lambda_expression| from which it was obtained, but we
 also print an indication of where the function was defined (this was not
@@ -3165,12 +3173,17 @@ be printed. But it's not done yet.
 
 @< Function def... @>=
 template<>
-void closure_value<false>::print(std::ostream& out) const
+void closure_value<parameterless>::print(std::ostream& out) const
 {@; print_lambda(out << "Function defined " << p->loc << std::endl,
                  p->param,p->body);
 }
 template<>
-void closure_value<true>::print(std::ostream& out) const
+void closure_value<with_parameters>::print(std::ostream& out) const
+{@; print_lambda(out << "Function defined " << p->loc << std::endl,
+                 p->param,p->body);
+}
+template<>
+void closure_value<recursive_closure>::print(std::ostream& out) const
 { auto it=p->param.sublist.begin();
   id_type self_id=it->name;
   const id_pat& param=*++it;
@@ -3178,17 +3191,19 @@ void closure_value<true>::print(std::ostream& out) const
   print_lambda(out<< main_hash_table->name_of(self_id) << " = ",param,p->body);
 }
 
-template<bool recursive>
-void closure_value<recursive>::report_origin(std::ostream& o) const
+template<Closure_kind kind>
+void closure_value<kind>::report_origin(std::ostream& o) const
 {@; o << "defined " << p->loc; }
 
 @ Evaluating a $\lambda$-expression just forms a closure using the current
 execution context, and returns that. Since the |recursive_lambda| already has
 done the work of wrapping the recursive identifier into a pattern with that of
-the arguments, the recursive case only differs from the ordinary one here by
-making |true| the template argument of the |closure_value| constructor. The
-actual difference in implementation between the two types of closure will be
-mostly evident in the |closure_value<recursive>::apply| methods.
+the arguments, the recursive case only differs from the ordinary one here by the
+setting of the template argument of the |closure_value| constructor. For non
+recursive $\lambda$-expression, this is the place where we test for the absence
+of any introduced identifiers. The actual difference in implementation between
+the three types of closure will be mostly evident in the
+|closure_value<kind>::apply| methods.
 
 While this code looks rather innocent, note that the sharing of
 |frame::current| created here may survive after one or more frames on the list
@@ -3200,12 +3215,19 @@ kind of stack, in particular it cannot be embedded in the \Cpp\ runtime stack
 
 @< Function def... @>=
 void lambda_expression::evaluate(level l) const
-{@;if (l!=no_value)
-     push_value(std::make_shared<closure_value<false> >(frame::current,p));
+{ if (l!=no_value)
+  { if (count_identifiers(p->param)==0)
+      push_value(std::make_shared<closure_value<parameterless> >
+       (frame::current,p));
+    else
+      push_value(std::make_shared<closure_value<with_parameters> >
+       (frame::current,p));
+  }
 }
 void recursive_lambda::evaluate(level l) const
-{@;if (l!=no_value)
-     push_value(std::make_shared<closure_value<true> >(frame::current,p));
+{ if (l!=no_value)
+    push_value(std::make_shared<closure_value<recursive_closure> >
+      (frame::current,p));
 }
 
 @*1 Calling user-defined functions.
@@ -3220,34 +3242,19 @@ precisely, |lambda_frame| variables are local to functions performing evaluation
 of user defined functions, and their construction modifies |frame::current| by
 swapping it out with the context of the closure, which means replacement of the
 run time stack for local user variables by another that is partially or wholly
-disjoint from the previous stack, which remains in effect until the end of the
-function containing the variable (when the destructor reinstates the old stack).
-The stack records themselves are in dynamic memory, not on the \Cpp\ runtime
-stack, and will remain in existence as long as anybody might access them.
+disjoint from the previous stack. The new stack remains in effect until the end
+of the function containing the variable (when the destructor reinstates the old
+stack). The stack records themselves are in dynamic memory, not on the \Cpp\
+runtime stack, and will remain in existence as long as anybody might access
+them.
 
 This context switching is a crucial and recurrent step in the evaluation
 process, so we take care to not uselessly change the reference count of
 |frame::current|. It is \emph{moved} into |saved| upon construction, and upon
-destruction moved back again to |frame::current|. On the other hand we don't mid
-performing |count_identifiers(pattern)| each time a |lambda_frame| is
-constructed, even though the number could have been precomputed, because it
-will very rarely take a lot of time.
-
-In contrast to |frame|, the constructor here needs a try block for exception
-safety, as an exception may be thrown during construction (in the call to
-|std::make_shared<evaluation_context>|), after |frame::current| has been moved
-from, but before out constructor completes; since the destructor would in this
-scenario \emph{not} be called, we then need to move the pointer back explicitly
-in the |catch| block.
-
-Since a |lambda_frame::bind| will be called every time a user defined function
-with arguments is called, it provides a convenient point to check whether the
-signal handler has set the interrupt flag, and to bail out if it did. (Choosing
-the points to do this test is a somewhat delicate matter. One wants to do it at
-points that are regularly encountered during evaluation, but not so frequently
-that the checks incur a serious performance penalty. Just having the test here
-does not provide an absolute guarantee of rapid detection of a signalled
-interrupt.)
+destruction moved back again to |frame::current|. We also use a template
+parameter to indicate whether we are called for a |parameterless| closure or
+not, which avoids any run time test for this condition. The distinction between
+recursive and non recursive closures is not relevant here.
 
 It might seem that we could have derived this class from |frame|, which already
 provides a similar constructor-destructor pair. However, we would then have to
@@ -3259,48 +3266,76 @@ do of course have to make use of the static member |frame::current| of that
 class, which is the whole point of defining the |lambda_frame| class.
 
 @< Local class definitions @>=
+template<bool no_names>
 class lambda_frame
 {
   const id_pat& pattern;
   const shared_context saved;
-  const bool empty;
 public:
-  lambda_frame (const id_pat& pattern, const shared_context& outer)
+  lambda_frame (const id_pat& pattern, const shared_context& outer);
+  ~lambda_frame() @+{@; frame::current = std::move(saved); }
+@)
+  void bind (const shared_value& val);
+  std::vector<id_type> id_list() const; // list identifiers, for back-tracing
+};
+
+@ In contrast to |frame|, the constructor here needs a try block for exception
+safety, as an exception may be thrown during construction (in the call to
+|std::make_shared<evaluation_context>|), after |frame::current| has been moved
+from, but before out constructor completes; since the destructor would in this
+scenario \emph{not} be called, we then need to move the pointer back explicitly
+in the |catch| block.
+
+This function requires that the argument |outer| is not an alias of
+|frame_current|, as its logic would then fail. This condition is satisfied
+whenever |outer| is a |context| member of a closure, as it should. When
+|no_names| holds, the addition of a new |evaluation_context| stack frame (for
+the function parameters) is omitted here.
+
+@< Local function definitions @>=
+template<bool no_names>
+  lambda_frame<no_names>::lambda_frame
+    (const id_pat& pattern, const shared_context& outer)
   : pattern(pattern)
   , saved(std::move(frame::current))
-  , empty(count_identifiers(pattern)==0)
-  { assert(&outer!=&frame::current); // for excluded case use |frame| instead
+  { assert(&outer!=&frame::current); // for excluded case, use |frame| instead
     try {@;
       frame::current =
-        empty ? outer : std::make_shared<evaluation_context>(outer);
+        no_names ? outer : std::make_shared<evaluation_context>(outer);
     }
     catch(...)
     {@; frame::current = std::move(saved); throw; }
     // restore as destructor would do
   }
-  ~lambda_frame() @+{@; frame::current = std::move(saved); }
-@)
-  bool is_empty() const @+{@; return empty; }
-  void bind (const shared_value& val);
-  std::vector<id_type> id_list() const; // list identifiers, for back-tracing
-};
 
-@ The following function needs to be lifted out of the class definition
-because it calls |check_interrupt|.
+@ Since a |lambda_frame::bind| will be called every time a user defined function
+with arguments is called, it provides a convenient point to check whether the
+signal handler has set the interrupt flag, and to bail out if it did. (Choosing
+the points to do this test is a somewhat delicate matter. One wants to do it at
+points that are regularly encountered during evaluation, but not so frequently
+that the checks incur a serious performance penalty. Just having the test here
+does not provide an absolute guarantee of rapid detection of a signalled
+interrupt.) This call to |check_interrupt| is the reason this method definition
+was lifted out of the class definition. Since this method is never called when
+the template argument |no_name| holds, we take the opportunity to only define it
+for the other case (in practice it makes no difference to define a declared
+method that is never called, but we want to avoid the impression that
+|check_interrupt| is called for parameterless functions).
 
 @< Local function definitions @>=
-void lambda_frame::bind (const shared_value& val)
-{ assert(not empty); // one should not call |bind| for an |empty| lambda frame
-  check_interrupt();
+template<>
+void lambda_frame<false>::bind (const shared_value& val)
+{ check_interrupt();
   frame::current->reserve(count_identifiers(pattern));
   thread_components(pattern,val,frame::current->back_inserter());
 }
 
 @ This method is identical to the one in |frame|, but as said, we cannot use
-inheritance.
+inheritance. Again, it is never called if |no_names| holds.
 
 @< Local function definitions @>=
-std::vector<id_type> lambda_frame::id_list() const
+template<>
+std::vector<id_type> lambda_frame<false>::id_list () const
 { std::vector<id_type> names; names.reserve(count_identifiers(pattern));
   list_identifiers(pattern,names);
   return names;
@@ -3329,15 +3364,15 @@ latter is entered more than once in the the tables. This is in contrast to
 cannot be dissociated from the wrapper function.
 
 @< Type definitions @>=
-template<bool recursive>
+template<Closure_kind kind>
 class closure_call : public overloaded_call
-{ shared_closure<recursive> f; // remaining fields are shortcuts into |f|
+{ shared_closure<kind> f; // remaining fields are shortcuts into |f|
   const id_pat& param;
   const shared_context& context;
   const expression_base& body;
 public:
   closure_call @|
-   (shared_closure<recursive>&& f_ref,const std::string& n,expression_ptr&& a
+   (shared_closure<kind >&& f_ref,const std::string& n,expression_ptr&& a
    ,const source_location& loc)
 @/: overloaded_call(n,std::move(a),loc)
   , f(std::move(f_ref))
@@ -3348,23 +3383,25 @@ public:
   virtual void evaluate(level l) const;
 };
 
-@ Here is how a |closure_value| can turn itself into an
-|closure_call| when provided with an argument expression, as well
-as a |name| to call itself and a |source_location| for the call. The method
-|build_call| constructs a shared pointer |me| to the |closure_value| object it is
-called for, but whose sharing is managed by a separately provided |shared_ptr
-owner@;|, and constructs a |closure_call| from that pointer and the provided
-argument(s) |arg|, and named according to the separately provided |name|.
+@ Here is how a |closure_value| can turn itself into a |closure_call| when
+provided with an argument expression, as well as a |name| to call itself and a
+|source_location| for the call. Every call of |build_call| will provide the
+shared pointer to the |functions_base| derived object it is called for as first
+argument |master|; for lack of covariance this pointer has been up-cast to
+|shared_function|. In order to provide the constructed |closure_call| with a
+shared pointer |f| to our |closure_value|, we perform a (static) down-cast of
+|master|. The provided argument(s) |arg|, and |name| are also passed into the
+|closure_call|.
 
 @< Function def... @>=
-template<bool recursive>
-expression_ptr closure_value<recursive>::build_call
+template<Closure_kind kind>
+expression_ptr closure_value<kind>::build_call
     (const shared_function& master,const std::string& name,
      expression_ptr&& arg, const source_location& loc) const
 { assert(master.get()==this);
-  auto f=std::static_pointer_cast<const  closure_value<recursive> >(master);
-@/return expression_ptr(new @| closure_call<recursive>
-    (std::move(f),name,std::move(arg),loc));
+  auto p=std::static_pointer_cast<const closure_value<kind> >(master);
+@/return expression_ptr(new @| closure_call<kind>
+    (std::move(p),name,std::move(arg),loc));
 }
 
 
@@ -3399,13 +3436,14 @@ block, as was mentioned when that block was defined earlier.
 @: lambda evaluation @>
 
 @< Function def... @>=
-template<>
-void closure_value<false>::apply(expression_base::level l) const
+template<Closure_kind kind>
+void closure_value<kind>::apply(expression_base::level l) const
 {
+  static const bool no_names=kind==parameterless;
   try
-  { lambda_frame fr(p->param,context);
+  { lambda_frame<no_names> fr(p->param,context);
       // save context, create new one for |*this|
-    if (fr.is_empty()) // we must test for functions without named arguments
+    if (no_names) // functions without named arguments are different
     {@; execution_stack.pop_back();
       body.evaluate(l);
     } //  drop arg, evaluate avoiding |bind|
@@ -3428,10 +3466,10 @@ of a |lambda_frame| without any identifiers.
 
 @< Function def... @>=
 template<>
-void closure_value<true>::apply(expression_base::level l) const
+void closure_value<recursive_closure>::apply(expression_base::level l) const
 {
   try
-  { lambda_frame fr(p->param,context);
+  { lambda_frame<false> fr(p->param,context);
       // save context, create new one for |*this|
     wrap_tuple<2>(); // combine pre-pushed self object with pushed argument(s)
     fr.bind(pop_value()); // bind self value and arguments in |fr|
@@ -3468,9 +3506,10 @@ a fourth textual reuse of the |catch| block for function calls, as well as
 (|fr|) a third reuse of the |catch| block for local variables.
 
 @< Function definitions @>=
-template<bool recursive>
-void closure_call<recursive>::evaluate(level l) const
-{ if (recursive)
+template<Closure_kind kind>
+void closure_call<kind>::evaluate(level l) const
+{ static const bool no_names=kind==parameterless;
+  if (kind==recursive_closure)
     push_value(f); // duplicate our closure to the execution stack
   argument->eval(); // evaluate arguments as a single value
   std::string arg_string;
@@ -3480,15 +3519,15 @@ void closure_call<recursive>::evaluate(level l) const
     arg_string = o.str();
   }
   try
-  { lambda_frame fr(param,context);
+  { lambda_frame<no_names> fr(param,context);
       // save context, create new one for |f|
 @)
-    if (not recursive and fr.is_empty())
+    if (no_names)
        // we must test for functions without named arguments
       {@; execution_stack.pop_back(); body.evaluate(l); }
       //  avoid |bind|, evaluate
     else
-    { if (recursive)
+    { if (kind==recursive_closure)
         wrap_tuple<2>(); // combine our closure with actual arguments
       fr.bind(pop_value()); // decompose arguments(s) and bind values in |fr|
       try {@; body.evaluate(l); }
@@ -7058,18 +7097,16 @@ if ( e.assign_variant->lhs.kind==0x1) // single identifier, do simple assign
 }
 else @< Generate and |return| a |multiple_assignment| @>
 
-@ The optimisation that is sought here, for operations that try to get exclusive
-access to an argument value (so that it can be changed in-place), tries to
-enable such exclusive access even when the argument in question is held in a
-user variable, as is often the case. Normally the potential access via that
-variable makes the access to its operand given to the operation non-exclusive,
-so that a copy must be made for the operation to modify. However, if the result
-of that operation is then to be assigned to the same variable, one can defeat
-this unwanted and unneeded sharing by detaching the operand value from the
-variable before invoking the operation, so that during a short time the user
-variable is not bound to any value. In cases where this can be done safely, this
-is realised by replacing the ordinary applied identifier operand expression by
-a version that moves the value out of the variable, leaving it empty.
+@ Here we seek top optimise assignments of the form $x:=\star x$ where $\star$
+is a built-in operation that wants to change its argument in place. Normally the
+potential access via the variable~$x$ makes the access to the operand of~$\star$
+non-exclusive, so that a copy must be made for $\star$ to modify. However, if as
+it is in the example the result of the operation is immediately assigned to~$x$,
+one can defeat this unwanted and unneeded sharing by detaching the operand value
+from~$x$ before invoking~$\star$, so that during a short time $x$ is not bound
+to any value. In cases where this can be done safely, this is realised by
+replacing the applied identifier expression for $x$ by a version that moves the
+value out of~$x$, leaving it empty until the assignment.
 
 This optimisation only applies to certain built-in operations, and none of them
 are variadic, so we test whether |rhs| refers to a |builtin_call|, namely the
