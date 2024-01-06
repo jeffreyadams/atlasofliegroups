@@ -103,7 +103,7 @@ namespace atlas
   }
 }
 
-@*1 Outline of the type \ {\bf expr}.
+@*1 Outline of the type {\bf expr}.
 %
 For a large part the declarations for the parser consist of the recursive
 definition of the type |expr|. While that used to be a POD type used directly on
@@ -1680,13 +1680,14 @@ struct lambda_node
 @)
 struct rec_lambda_node : public lambda_node
 {
-  id_type self;
+  id_type self_id;
   type_expr result_type;
 @)
   rec_lambda_node@|
-    (id_type self, id_pat&& pattern, type_expr&& pt, expr&& body, type_expr&& rt)
+    (id_type self_id, id_pat&& pattern,
+     type_expr&& pt, expr&& body, type_expr&& rt)
   : lambda_node(std::move(pattern),std::move(pt),std::move(body))
-  , self(self), result_type(std::move(rt)) @+{}
+  , self_id(self_id), result_type(std::move(rt)) @+{}
 };
 
 @ The tag used for user-defined functions is |lambda_expr|.
@@ -1813,7 +1814,7 @@ case lambda_expr:
 break;
 case rec_lambda_expr:
 { const auto& fun=*e.rec_lambda_variant;
-  out << fun.self << ':';
+  out << "rec_fun " << main_hash_table->name_of(fun.self_id);
   if (fun.parameter_type==void_type)
     out << '@@';
   else

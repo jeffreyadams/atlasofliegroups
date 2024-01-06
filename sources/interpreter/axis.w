@@ -1562,13 +1562,14 @@ value~|var_it->value()|, which is has type |shared_function|, more specific than
 values can either hold a built-in function or a user-defined function with its
 evaluation context, and we shall add to the list of possibilities later. Each
 type has a corresponding specialised function call type, and we shall provide a
-virtual method |function_value::build_call| that binds an argument expression to
+virtual method |function_base::build_call| that binds an argument expression to
 form a complete call; this renders the expression-building part of code below
 particularly simple. One noteworthy point is that |build_call| may need to store
-a shared pointer to the |function_value| itself in the call it builds, and we
-therefore need to pass the shared pointer |var_it->value()| to the virtual
-method so that it can do so while sharing ownership with the pointer is was
-called from.
+a shared pointer back to the |function_base| derived object that created it, and
+we therefore pass the shared pointer |var_it->value()| that gave us access to
+the |function_base| as first argument to its |build_call| virtual method. The
+underlying raw pointer equals |this| of that object, but we need a
+|std::shared_ptr| so that we also transfer shared ownership.
 
 This is one of the places where we might have to insert a |voiding|, in the
 rare case that a function with void argument type is called with a nonempty
@@ -2872,7 +2873,7 @@ struct lambda_expression : public expression_base
 };
 @)
 struct recursive_lambda : public lambda_expression
-{ recursive_lambda(id_type self,@|
+{ recursive_lambda(id_type self_id,@|
      id_pat&& p, expression_ptr&& b, const source_location& loc);
   virtual ~recursive_lambda() = default;
   virtual void evaluate(level l) const;
@@ -2883,33 +2884,36 @@ struct recursive_lambda : public lambda_expression
 recursive identifier, and the actual argument pattern for the
 recursive function. Although the recursive identifier cannot be assigned to,
 there is no need to set the constant bit in its pattern here, as that property
-will be enforced during type checking.
+will be enforced when setting up the context for type checking the body of a
+recursive function.
 
 @< Function def... @>=
 id_pat rec_pair(id_type s,id_pat && p)
-{ patlist pl;
+{@;
+  patlist pl;
   pl.push_front(std::move(p));
   pl.push_front(id_pat(s));
   return id_pat(std::move(pl));
 }
-inline recursive_lambda::recursive_lambda(id_type self,@|
+@)
+inline recursive_lambda::recursive_lambda(id_type self_id,@|
      id_pat&& p, expression_ptr&& b, const source_location& loc)
-  : lambda_expression(rec_pair(self,std::move(p)),std::move(b),loc) @+{}
+  : lambda_expression(rec_pair(self_id,std::move(p)),std::move(b),loc) @+{}
 
 
 @ To print an anonymous function, we print the parameter list, followed by a
 colon and by the function body. If the parameter list contains a name for the
 whole, as happens in particular when there is just a single parameter, then it
-must be enclosed in parentheses to resemble in the input syntax, but if it is
-an unnamed nonempty tuple then it will supply its own parentheses; this leaves
-the case of an empty parameter list, for which we reconstitute the input
-syntax~`\.@@'. The printed parameter list cannot include types with the
-current setup, as they are not explicitly stored after type analysis. It could
+must be enclosed in parentheses to resemble in the input syntax, but if it is an
+unnamed nonempty tuple then it will supply its own parentheses; this leaves the
+case of an empty parameter list, for which we reconstitute the input
+syntax~`\.@@'. The printed parameter list cannot include types with the current
+implementation, as they are not explicitly stored after type analysis. It could
 be made possible to print types if a type were explicitly stored in the
 |lambda_expression| structure; at the time of writing this would seem possible
 because each function has to have a definite type, but if the type system were
-extended with second order types (which would be quite useful), then this
-might no longer be true. For now leaving out the types indicates to the
+extended with second order types (which would be quite useful), then this might
+no longer be true. For now leaving out the types indicates to the
 (knowledgeable) user that a runtime value is being printed rather than just a
 syntax tree representing the user input (as happens in messages from the type
 checker).
@@ -2927,11 +2931,14 @@ void print_lambda(std::ostream& out,
 @)
 void lambda_expression::print(std::ostream& out) const
 {@; print_lambda(out,p->param,p->body); }
+@)
 void recursive_lambda::print(std::ostream& out) const
 { auto it=p->param.sublist.begin();
   id_type self_id=it->name;
   const id_pat& param=*++it;
-  print_lambda(out << main_hash_table->name_of(self_id) << ':',param,p->body);
+  out << "(recfun " << main_hash_table->name_of(self_id) << ' ';
+  print_lambda(out,param,p->body);
+  out << ')';
 }
 
 @ Handling of user-defined functions in type analysis is usually uneventful
@@ -3018,10 +3025,10 @@ case rec_lambda_expr:
   type_expr& r_type=f_type.func()->result_type;
     // non |const| though it cannot change
   layer new_layer(1+count_identifiers(pat),&r_type);
-@/thread_bindings(id_pat(fun.self),f_type,new_layer,true);
+@/thread_bindings(id_pat(fun.self_id),f_type,new_layer,true);
   thread_bindings(pat,arg_type,new_layer,false);
 @/return expression_ptr(new @| recursive_lambda
-   (fun.self,copy_id_pat(pat),
+   (fun.self_id,copy_id_pat(pat),
     convert_expr(fun.body,r_type), std::move(e.loc)));
 }
 
@@ -3114,7 +3121,7 @@ void closure_value<true>::print(std::ostream& out) const
   id_type self_id=it->name;
   const id_pat& param=*++it;
   out << "Recursive function defined " << p->loc << std::endl;
-  print_lambda(out<< main_hash_table->name_of(self_id) << ':',param,p->body);
+  print_lambda(out<< main_hash_table->name_of(self_id) << " = ",param,p->body);
 }
 
 template<bool recursive>
@@ -7425,28 +7432,28 @@ except for field assignments which just print the position to be modified.
 @< Function def...@>=
 template <bool reversed>
 void component_assignment<reversed>::print (std::ostream& out) const
-{@; out << main_hash_table->name_of(lhs) << (reversed ? "~[" : "[")
-        << *index << "]:=" << *rhs;
+{ out << main_hash_table->name_of(lhs) << (reversed ? "~[" : "[")
+      << *index << "]:=" << *rhs;
 }
 @)
 template <bool reversed>
 void component_transform<reversed>::print (std::ostream& out) const
-{@; out << main_hash_table->name_of(lhs) << (reversed ? "~[" : "[")
-        << *index << "] " @| << name << ":= " << *rhs;
+{ out << main_hash_table->name_of(lhs) << (reversed ? "~[" : "[")
+      << *index << "] " @| << name << ":= " << *rhs;
 }
 @)
 void field_assignment::print (std::ostream& out) const
-{@; out << main_hash_table->name_of(lhs) << '.'
-        << main_hash_table->name_of(id)
-        << '(' << this->position << ") := "
-        << *rhs;
+{ out << main_hash_table->name_of(lhs) << '.' @|
+      << main_hash_table->name_of(id)
+      << '(' << this->position << ") := " @|
+      << *rhs;
 }
 @)
 void field_transform::print (std::ostream& out) const
-{@; out << main_hash_table->name_of(lhs) << '.'
-        << main_hash_table->name_of(id)
-        << '(' << this->position << ") "
-        << name << ":= " << *rhs;
+{ out << main_hash_table->name_of(lhs) << '.' @|
+      << main_hash_table->name_of(id)
+      << '(' << this->position << ") " @|
+      << name << ":= " << *rhs;
 }
 
 @ For global assignments or transforms, we need to have non-|const| access the
