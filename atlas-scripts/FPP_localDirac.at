@@ -1617,32 +1617,29 @@ set local_test_GEO_hash_bottom_layer(KGBElt x, ratvec lambda, VertexData vd,
     	      then let () = Uhash.match(first_param(finalize(pmax)))
 	      	   in return [pmax]
 	      fi
-    then L = Q.Levi
-    then LKdata  = for mu in LKTs(pmax)
+    then L = Q.Levi {this is a mistake because of glomming together
+    various LKdata}
+    then ()  = for mu in LKTs(pmax)
     	 	   do
 		   bott_data.entry(mu)
-		   od.##
-{		  let M = Khash.size()
-		     then m = Khash.match(mu)
-		     then () = if m = M
-		       	       then Kdata := Kdata {next Kdata := []}
-			   	    	  #min_L_bottom_factors(mu, BL_steps)
-			       fi
-		     in Kdata[m]
-		  od.##}
+		   od
     {then () = prints(Khash.size(), "  ",#Kdata) }{, "  ",std_K_type_hash.size(),"  ", #bottom_layer_data)}
-    then () = if L = G or #LKdata = 0
+    then () = if L = G or sum(for mu in LKTs(pmax) do bott_data.card(mu) od)= 0
     	      then return local_test_GEO_hash_one_level(x, lambda, vd, Lvd, LF,
 	      	   	  				   pol_hash, Uhash)
 	      fi
     then () = if {TINY CASE} #LF[0]=1
     	      then return one_param_test(pmax, bott_data, Uhash)
 	      fi
-    then qLhts = for (muj,pairsj) in LKdata
-    	     	 do max( for(,tauLj) in pairsj do height(tauLj) od# height(muj))
+    then qLhts = for mu in LKTs(pmax)
+    	       	 do for (muj,pairsj) in bott_data.entry(mu)
+    	     	    do max( for(,tauLj) in pairsj do height(tauLj) od# height(muj))
+		    od
 		 od
-    then qhts = max(for (,pairsj) in LKdata
-    	      	    do max( for (mu,) in pairsj do height(mu) od#height(pmax))
+    then qhts = max(for mu in LKTs(pmax)
+    	      	    do max( for (,pairsj) in bott_data.entry(mu)
+    	      	       	    do max( for (mu,) in pairsj do height(mu) od#height(pmax))
+		       	    od)
 		    od)
     then () = test_string:= " using local_test_GEO_hash_bottom_layer"
     then  () = hash_bottom_layerCounter.use()
@@ -1692,14 +1689,14 @@ set local_test_GEO_hash_bottom_layer(KGBElt x, ratvec lambda, VertexData vd,
 					  facet_bary(Lvd.list, verts))))
 			      in if #ps = 1
 			      	 then if Uhash.lookup(ps[0]).>= or
-                             	      	 min_bottom_elim_factors(ps[0], LKdata,
+                             	      	 min_bottom_elim_factors(ps[0], bott_data,
 					 	pol_hash_one_ht.index(LFDKH[D+1][m][D+2]))
 				      then [LFDKH[D+1][m]]
 				      else []
 				      fi
 				 else if all(for p in ps
 					     	    do Uhash.lookup(p).>= or
-						       min_bottom_elim_factors(p, LKdata)
+						       min_bottom_elim_factors(p, bott_data)
 						    od)
 				      then [LFDKH[D+1][m]]
 				      else []

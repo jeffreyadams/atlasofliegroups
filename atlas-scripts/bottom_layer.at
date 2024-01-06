@@ -156,6 +156,7 @@ set_type
   , (int -> ) adjust_BL_depth
   , (KType->[KType,[(KType,KType)]]) entry
   , (KType->) append
+  , (KType -> int) card {how many bottom layer K_types are found}
   , (int -> KType) K_type_index
   , (int -> [KType,[(KType,KType)]]) data_index
   )
@@ -194,6 +195,15 @@ set make_steady_bottom_data () = steady_bottom_data:
 		       min_L_bottom_factors(mu, steps)
 		  fi
 	in ()
+     end
+   , (KType -> int): {card} (KType mu):
+     begin
+	let m = K_type_hash.lookup(mu)
+	in if m < 0 then 0
+	   else sum(for (,pairs) in bottom_data[m]
+	   	    do #pairs
+		    od)
+     	   fi
      end
    , (int -> KType): {K_type_index} (int j): K_type_hash.index(j)
    , (int -> [KType,[(KType,KType)]]): {data_index} (int j) [KType,[(KType,KType)]]: bottom_data[j]
