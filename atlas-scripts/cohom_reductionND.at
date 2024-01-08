@@ -1,0 +1,72 @@
+< basic {for required_solution, etc.}
+< ratmat {for ratmat}
+< induction {for theta-stable parabolics}
+< hermitian {for is_unitary}
+< to_ht {for is_unitary_to_ht}
+< FPP_facetsDirac {for herm_center}
+< weak_packets {for unipotent_representations}
+{placed in hermitian.at, where it belongs.}
+
+{ND stands for non-derived: just use simple factors as Levis in G}
+{ lists real and/or complex simple factors }
+set simple_factors(RealForm G) = [RealForm]:
+    let delta=G.distinguished_involution, tf=KGB(G,0).torus_factor,
+	simpleFactors = simple_factors(RootDatum: G),
+	Factors = [RealForm]:[]
+    in
+    for rd@i in simpleFactors
+    do
+    let root = simple_roots(rd)[0]
+    then newRoot = delta*root
+    then simpleRootIndex = simple_root_index(G,root),
+	 newSimpleRootIndex = simple_root_index(G,newRoot)
+    then diagram = diagram_component(G,simpleRootIndex),
+	 newDiagram = diagram_component(G,newSimpleRootIndex)
+    in  if diagram=newDiagram then Factors##:=
+	 [real_form(inner_class(rd,delta), delta, tf)]
+	 else if diagram[0] < newDiagram[0] then Factors##:=
+	 [real_form(inner_class(sub_datum(G,diagram##newDiagram),
+		delta), delta, tf)]
+	      fi
+	fi
+    od; Factors
+
+{projection from ratl coweight of G to coweight of S, respecting
+values on roots of S}
+set cowt_inclusions(RealForm G) = [(ratvec->ratvec)]:
+    for S in simple_factors(G)
+    do (ratvec->ratvec):
+    (ratvec v) : sum(G.rank,
+      for xi@j in fundamental_coweights(S) do (v*S.simple_roots[j])*xi od)
+    od
+
+{projection from ratl coweight of G to coweight of S, respecting
+values on roots of S}
+set wt_projections(RealForm G) = [(ratvec->ratvec)]:
+    for S in simple_factors(G)
+    do (ratvec->ratvec):
+    (ratvec gamma) : sum(G.rank,
+      for xi@j in fundamental_weights(S) do (gamma*S.simple_coroots[j])*xi od)
+    od
+
+set factor_KGBs(KGBElt x) = [KGBElt]:
+    let G = x.real_form
+    then SF = simple_factors(G)
+    in for S in SF
+       do let (w,) = from_dominant(S, x.involution *S.two_rho)
+       	  then winv = w.inverse
+       	  in KGB_elt(S.inner_class, KGB(G,0).involution * winv,
+       	     		torus_factor(x) {+G.rho_check - S.rho_check})
+       od
+
+set factor_params(Param p) = [Param]:
+    let PIs = wt_projections(p.real_form)
+    in for xj@j in factor_KGBs(p.x)
+       do parameter(xj, p.lambda - p.real_form.rho + xj.real_form.rho,
+       	  		PIs[j](p.nu))
+       od
+
+set factor_K_types(KType mu) = [KType]:
+    for xj@j in factor_KGBs(mu.x)
+    do K_type(xj, mu.lambda_minus_rho)
+    od

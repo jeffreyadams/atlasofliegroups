@@ -1,4 +1,5 @@
 <FPP_globalDirac
+<bottom_layer
 
 set local_verts_param_hash = make_Param_hash()
 
@@ -251,9 +252,6 @@ set time_def_test(Param_hash LFhash, int m) = void:
 set time_def_test(int m) = time_def(local_verts_param_hash, m)
 {doing timeTest second seems to give little speed advantage}
 
-{if KGB number is below this, use is_unitary rather than is_unitary_to_ht}
-set low_KGB_frac = rat: 1/4
-{use is_unitary for small x, def for large x}
 set time_mix_test([Param] params, int m) = void:
     let start_time = elapsed_ms(), N = #params, G = params[0].real_form
     then ps = for j:N do first_param(finalize(params[j])) od
@@ -295,4 +293,119 @@ set time_mix_test(Param_hash LFhash, int m) = void:
     in time_mix_test(params, m)
 
 set time_mix_test(int m) = time_def(local_verts_param_hash, m)
+{doing timeTest second seems to give little speed advantage}
+
+
+
+
+
+set time_general([(Param,int)] data, ((Param,int)->bool) tester) = void:
+    let start = elapsed_ms()
+    then times = [int]: null(#data), bools = for j:#data do false od
+    then () = for (p,d)@j in data
+    	      do let local_start = elapsed_ms()
+	      	 then () = bools[j]:= tester(p,d)
+	    	 then () = times[j] := elapsed_ms() - local_start
+	    	 in ()
+	      od
+    then maxLoc = max_loc(times)
+    then () = prints("total time = ", print_time_string(elapsed_ms() - start),
+    	      	     " for ", #data, " parameters; #true = ", count(bools));
+	      prints("longest = ", print_time_string(times[maxLoc]),
+		     " for #", maxLoc)
+    in ()
+
+{Take a bunch of Params, preferably with a small number of sets of LKTs}
+set time_bottom([Param] params, int level) = void:
+    let start_time = elapsed_ms(), N0 = #params
+    then Khash = make_KTypePol_hash()
+    then datas = [[(KType,[(KType,KType)])]] : []
+       {datas is always supposed to be the same size as Khash}
+    then ps = for param in params do monomials(finalize(param)) od.##
+    then N = #ps
+    {then datas_index = [int]: for j:N do minus_1 od}
+       {bottom layer data for ps[j] is datas[datas_index[j]]}
+    then () = for p in ps
+    	      do for mu in LKTs(p)
+		 do let M = Khash.size()
+	      	    then m = Khash.match(mu)
+		    then () = if m = M
+		      	      then datas:= (datas next datas := [])
+			   	#min_L_bottom_factors(mu,level)
+			      fi
+		    in ()
+	      	 od
+	      od
+    then bools = for j:N do false od
+    then step = N
+    then () = if test_slightly_verbose
+    	      then step := step\20
+	      fi
+    then () = if test_verbose
+    	      then step := 1
+	      fi
+    then times = vec: null(N)
+    then () = for p@j in ps
+    	      do let startp = elapsed_ms()
+	      	 then () = bools[j]:= min_bottom_elim_factors(p,
+		      	   for mu in LKTs(p) do datas[Khash.lookup(mu)] od.##)
+		 then () = times[j] := elapsed_ms() - startp
+		 then () = if j%step = 0
+		      	   then prints("param ",j," tests ",bools[j]," in ",
+			   	print_time_string(times[j]))
+			   fi
+		 in ()
+	      od
+    then maxLoc = max_loc(times)
+    then () = prints("for bottom to level ", level, ", total time = ",
+    	      	     print_time_string(elapsed_ms() - start_time),
+    	      	     " for ", N, " parameters; #true = ", count(bools));
+	      prints("longest = ", print_time_string(times[maxLoc]),
+		     " for #", maxLoc)
+    in ()
+
+{
+set time_def(Param_hash LFhash, int m) = void:
+    let N = LFhash.size()
+    then params = for j:N do LFhash.index(j) od
+    in time_def(params, m)
+
+set time_def(int m) = time_def(local_verts_param_hash, m)
+
+set time_def_test([Param] params, int m) = void:
+    let start_time = elapsed_ms(), N = #params
+    then ps = for j:N do first_param(finalize(params[j])) od
+    then bools = for j:N do false od
+    then step = N
+    then () = if test_slightly_verbose
+    	      then step := step\20
+	      fi
+    then () = if test_verbose
+    	      then step := 1
+	      fi
+    then times = vec: null(N)
+    then () = for p@j in ps
+    	      do let startp = elapsed_ms()
+	      	 then (DEFHTS,) = deform_hts(p,m)
+	      	 then () = bools[j]:= is_unitary_test(p, DEFHTS)
+		 then () = times[j] := elapsed_ms() - startp
+		 then () = if j%step = 0
+		      	   then prints("param ",j," tests ",bools[j]," in ",
+			   	print_time_string(times[j]))
+			   fi
+		 in ()
+	      od
+    then maxLoc = max_loc(times)
+    then () = prints("for to_def_test to ", m, ", total time = ", print_time_string(elapsed_ms() - start_time),
+    	      	     " for ", N, " parameters; #true = ", count(bools));
+	      prints("longest = ", print_time_string(times[maxLoc]),
+		     " for #", maxLoc)
+    in ()
+
+set time_def_test(Param_hash LFhash, int m) = void:
+    let N = LFhash.size()
+    then params = for j:N do LFhash.index(j) od
+    in time_def_test(params, m)
+
+set time_def_test(int m) = time_def(local_verts_param_hash, m)}
 {doing timeTest second seems to give little speed advantage}
