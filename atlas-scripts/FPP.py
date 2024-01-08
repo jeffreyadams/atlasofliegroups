@@ -10,7 +10,8 @@ progress_step_size=10 #how often to report progress
 FPP_at_file="FPP.at" #default
 FPP_py_file="FPP.py" #default
 #extra_files=["global_facets_E7.at","coh_ind_E7_to_hash.at","E7except589to15851.at"]
-extra_files=["global_facets_E7.at","coh_ind_E7_to_hash.at"]
+#extra_files=["global_facets_E7.at","coh_ind_E7_to_hash.at"]
+extra_files=[]
 
 #simple reporting function
 def report(q,i,proc):
@@ -73,10 +74,10 @@ def atlas_compute(i,pid):
       x_start_time=time.time()
       log.write("x=" + str(x) + "\n")
       atlas_arg_txt="set list=" + test_function + "(" + group + "," + str(x) + ")\n"
-#      print("atlas_arg: ", atlas_arg_txt)
+      print("atlas_arg: ", atlas_arg_txt)
       atlas_arg='{}'.format(atlas_arg_txt).encode('utf-8')
       proc.stdin.write(atlas_arg)
-#      print("Done executing atlas_arg")
+      print("Done executing atlas_arg")
       proc.stdin.flush()
       newtime=starttime
       while True:
@@ -92,14 +93,16 @@ def atlas_compute(i,pid):
          log.write(line + "\n")
 #      print("DONE WITH FIRST LOOP")
       proc.stdout.flush()
+      
       atlas_arg_txt="write_param_list_jda(list,\"p" + str(x) +  "\");print(\"done\")"+ "\n"
-#      print("atlas_arg: ", atlas_arg_txt)
+      print("atlas_arg: ", atlas_arg_txt)
       atlas_arg='{}'.format(atlas_arg_txt).encode('utf-8')
       proc.stdin.write(atlas_arg)
       proc.stdin.flush()
       #  exit()
       while True:
          line = proc.stdout.readline().decode('ascii').strip()
+         print("line: ", line)
          if line.find("done")>=0:
             break
          data.write(line + "\n")
@@ -178,9 +181,7 @@ def main(argv):
          print("loading KGB file ", kgb_file)
          data=open("kgb_file","r")
          while True:
-#           line = proc.stdout.readline().decode('ascii').strip()
-            line=data.readline().strip()
-            print("Line{}: {}".format(3, line.strip()))    
+            line=data.readline()
             if not line:
                break
             else:
@@ -192,18 +193,35 @@ def main(argv):
           print("number_jobs: ", number_jobs)
    if all_kgb and kgb_file=="":
       print("Doing all KGB elements")
-      #Run atlas once to get kgb_size
-      print("running one atlas job to get kgb_size")
-      atlas_cmd=executable_dir + "atlas" 
-      proc=subprocess.Popen([atlas_cmd,"groups.at"], stdin=PIPE,stdout=PIPE)
-      atlas_arg='{}'.format("KGB_size(" + group + ")\n").encode('utf-8')
+      #Run atlas twice to get [KGB_fixed] and [KGB_non_fixed]
+      #KGB_fixed:  cross(w_0,x)=x
+      #KGB_non_fixed:  one of each non-fixed pair
+      atlas_cmd=executable_dir + "atlas"
+      proc=subprocess.Popen([atlas_cmd,"FPP.at"], stdin=PIPE,stdout=PIPE)
+      atlas_arg='{}'.format("kgb_fixed(" + group + ")\n").encode('utf-8')
+#      print("atlas_arg: ", atlas_arg)
       proc.stdin.write(atlas_arg)
       proc.stdin.flush()
       line = proc.stdout.readline().decode('ascii').strip()
-      kgb_size=int(re.sub("\D","",line))
-      end_KGB=kgb_size-1
+      temp=re.sub("\].*","",re.sub(".*\[","",line));kgb_fixed=temp.split(',') if temp!= "" else []
+      print("kgb_fixed: " +  line)
+      print("number of fixed elements: ", len(kgb_fixed))
+#      print("fixed elements: ", kgb_fixed)
+
+      atlas_arg='{}'.format("kgb_non_fixed(" + group + ")\n").encode('utf-8')
+#      print("atlas_arg: ", atlas_arg)
+      proc.stdin.write(atlas_arg)
+      proc.stdin.flush()
+      line = proc.stdout.readline().decode('ascii').strip()
+      print("kgb_non_fixed: " +  line)
+      temp=re.sub("\].*","",re.sub(".*\[","",line));kgb_non_fixed=temp.split(',') if temp!= "" else []
+      print("number of non fixed pairs of elements: ", len(kgb_non_fixed))
+      print("total: ",len(kgb_fixed) + 2*len(kgb_non_fixed))
+      kgb_size=len(kgb_fixed) + 2*len(kgb_non_fixed)
+      for a in kgb_fixed + kgb_non_fixed:
+         kgb_list.append(int(a))
+      print("kgb_list: ", kgb_list)
       print("KGB size: " + str(kgb_size))
-      start_KGB=0
    if kgb_file=="":
       print("start KGB: ", start_KGB)
       print("end KGB: ", end_KGB)

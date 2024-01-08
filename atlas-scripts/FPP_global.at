@@ -154,7 +154,7 @@ set FPP_lambdas_big(KGBElt x, VertexData vd, mat_hash inv_hash, [vec_hash]
 	      esac
 	  od.##
 
-set unitary_hash = make_Param_hash()
+{set unitary_hash = make_Param_hash()}
 
 {load a bunch of Param_hash's into one}
 set transfer([Param_hash] Us, Param_hash target) = void:

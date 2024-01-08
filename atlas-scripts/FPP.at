@@ -33,7 +33,9 @@ set params(Param_hash unitary_hash)=[Param]:
 
 set FPP_unitary_hash(RealForm G, int x)=[Param]:let ()=FPP_unitary_hash([KGB(G,x)]) in params(unitary_hash)
 set FPP_unitary_hash2(RealForm G, int x)=[Param]:let ()=FPP_unitary_hash2([KGB(G,x)]) in params(unitary_hash)
-set FPP_unitary_hash_one_level(RealForm G, int x)=[Param]:let ()=FPP_unitary_hash_one_level([KGB(G,x)]) in params(unitary_hash)
+
+set FPP_unitary_hash_one_level(RealForm G, int x)=[Param]:
+unitary_hash:=make_Param_hash();prints("BEFORE:",params(unitary_hash));let ()=FPP_unitary_hash_one_level([KGB(G,x)]) in params(unitary_hash)
 
 set test_verbose=false
 {coh_ind_flag:   default true, means COMPUTE cohomological induction
@@ -51,45 +53,53 @@ test_verbose:=true
 
 {NOTE: extra_files is defined in FPP.py}
 
+set global_facets_file_loaded=false   {set true at the end of global_facets_file}
+set coh_ind_file_loaded=false   {set true at the end of global_facets_file}
+
+set FPP(RealForm G,int KGB_number)=[Param]:
+let vd = FPP_vertex_data(G) then
+Uhash = make_Param_hash() then
+()=unipotents_to_hash(G,Uhash) then
+()=prints("G=", G,new_line,"KGB element: ", KGB_number) then
+list=[Param]:[] then
+x = KGB(G,KGB_number) then
+lambdas = FPP_lambdas(x) then
+() = prints("KGB #",KGB_number,":",new_line, "#lambdas=",#lambdas,
+   	     	    ", #Uhash = ", Uhash.size())
+then ()= ##for lambda@j in lambdas
+  do prints("lambda #",j,", #Uhash = ", Uhash.size());
+    local_test_GEO_hash_one_level(x,lambda, Uhash)
+od
+in prints("got list: ", list);list
+
+
+set is_fixed(WeylElt w,KGBElt x)=bool: cross(w,x)=x
+set is_fixed(KGBElt x)=bool: cross(x.real_form.w0,x)=x
+
+set kgb_fixed(RealForm G)=[int]:
+   ##for x in KGB(G) do if is_fixed(G.w0,x) then [number(x)] else [] fi od
+
+set kgb_non_fixed(RealForm G)=
+   ##for x in KGB(G) do if number(cross(G.w0,x))>number(x) then [number(x)] else [] fi od
+
+
 {to write a list of Param's for a single RealForm}
-{only change from writeFiles.at: "<groups.at"}
+{change from writeFiles.at: "<groups.at"
+and if x\ne cross(w0,x) then write contragredient representation also}
 set write_param_list_jda([Param] list, string listName) = void:
 if #list=0
   then prints(listName,"[Param]:=[]")
 else
   prints("set Nullp = U(1,0).trivial");
   prints("set ",listName,"=[Param]: for i:",#list," do Nullp od");
+  prints("DOING regular",list[0].x);
+  prints("LIST: ", list);
   for p@i in list
     do let (,x) = %p.x
-     in prints("void:",listName,"[",i,"]:=parameter(KGB(G_temp,",x,"),",p.lambda,",",p.nu,")")
+     in prints("void:",listName,"[",i,"]:=parameter(KGB(G_temp,",x,"),",p.lambda,",",p.nu,")");
+     if not is_fixed(p.x) then
+        let dp=contragredient(p) in 
+        prints("void:",listName,"[",i,"]:=parameter(KGB(G_temp,",number(dp.x),"),",dp.lambda,",",dp.nu,")","  {dual}")
+     fi
     od
 fi
-
-{set write_param_list_jda([Param] list, string listName) = void:
-    begin
-        prints("<groups.at");
-	write_real_form(list[0].real_form, "G_temp")
-	; prints("set Nullp = U(1,0).trivial")
-	; prints("set ",listName,"=[Param]: for i:",#list,
-	  	      " do Nullp od")
-        ; for p@i in list
-	  do let (,x) = %p.x
-	     in prints("void:",listName,"[",i,"]:=parameter(KGB(G_temp,",
-	     	x,"),",p.lambda,",",p.nu,")")
-	  od
-    end}
-
-set FPP(RealForm G,int KGB_number)=[Param]:
-let vd = FPP_vertex_data(G) then
-Uhash = make_Param_hash() then
-()=unipotents_to_hash(G,Uhash) in
-prints("G=", G,new_line,"KGB element: ", KGB_number);
-let list=[Param]:[] then
-   x = KGB(G,KGB_number)
-   then lambdas = FPP_lambdas(x)
-   then () = prints("KGB #",KGB_number,":",new_line, "#lambdas=",#lambdas,
-   	     	    ", #Uhash = ", Uhash.size())
-   in for lambda@j in lambdas
-      do prints("lambda #",j,", #Uhash = ", Uhash.size());
-	    local_test_GEO_hash_one_level(x,lambda, Uhash)
-      od.##
