@@ -1,5 +1,5 @@
 <FPP_globalDirac.at
-<FPP_global.at
+
 
 
 {This script runs (backward, for no serious reason) over a sequence of
@@ -62,6 +62,13 @@ test_verbose:=true
 
 set global_facets_file_loaded=false   {set true at the end of global_facets_file}
 set coh_ind_file_loaded=false   {set true at the end of global_facets_file}
+
+set local_test_GEO_hash_one_level(KGBElt x, ratvec lambda, Param_hash Uhash) =
+    [Param]:
+    let G = x.real_form, pol_hash=make_KTypePol_hash()
+    then vd = FPP_vertex_data(G)
+    in local_test_GEO_hash_one_level(x, lambda, vd, pol_hash, Uhash)
+
 
 set FPP(RealForm G,int KGB_number)=[Param]:
 let vd = FPP_vertex_data(G) then
