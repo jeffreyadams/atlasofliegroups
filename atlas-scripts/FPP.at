@@ -73,11 +73,10 @@ x = KGB(G,KGB_number) then
 lambdas = FPP_lambdas(x) then
 () = prints("KGB #",KGB_number,":",new_line, "#lambdas=",#lambdas,
    	     	    ", #Uhash = ", Uhash.size())
-then ()= ##for lambda@j in lambdas
-  do prints("lambda #",j,", #Uhash = ", Uhash.size()); prints("lambda=",lambda);
+in  ##for lambda@j in lambdas
+  do prints("lambda #",j,", #Uhash = ", Uhash.size());
     local_test_GEO_hash_one_level(x,lambda, Uhash)
 od
-in prints("got list: ", list);list
 
 
 set is_fixed(WeylElt w,KGBElt x)=bool: cross(w,x)=x

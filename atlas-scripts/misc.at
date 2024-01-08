@@ -36,6 +36,8 @@ set  #(Split w,rat t)=let (a,b)=%w in rat: a+t*b
 set  #(ParamPol P,int t)= ParamPol: { with integer coefficients }
   null_module(real_form(P)) +  for w@q in P do (w#t,q) od
 
+set pr([Param] list)=void:for p@i in list do prints(i, " ", p) od
+
 {properties of groups}
 
 set fiber_partition(RealForm G) = [int]: fiber_partition(Cartan_class(G,0),G)
