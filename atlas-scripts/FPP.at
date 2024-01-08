@@ -31,6 +31,12 @@ one KGBElt each 90 minutes.
 set params(Param_hash unitary_hash)=[Param]:
  for i:unitary_hash.size() do unitary_hash.index(i) od
 
+set params(Param_hash unitary_hash,KGBElt x)=[Param]:
+ ##for i:unitary_hash.size() do let p=unitary_hash.index(i)  in if p.x=x then [p] else [] fi od
+
+set params([Param] params,KGBElt x)=[Param]:
+ ##for p in params do  if p.x=x then [p] else [] fi od
+
 set FPP_unitary_hash(RealForm G, int x)=[Param]:let ()=FPP_unitary_hash([KGB(G,x)]) in params(unitary_hash)
 set FPP_unitary_hash2(RealForm G, int x)=[Param]:let ()=FPP_unitary_hash2([KGB(G,x)]) in params(unitary_hash)
 
@@ -40,6 +46,7 @@ unitary_hash:=make_Param_hash();prints("BEFORE:",params(unitary_hash));let ()=FP
 set test_verbose=false
 {coh_ind_flag:   default true, means COMPUTE cohomological induction
                  if you precompute cohomological induction, load the data file (e.g. coh_ind_E7_has.at) which should set it to false}
+coh_ind_flag:=false
 revert_flag:=true     {default is true: try other possibly faster ones (default is true; false: only use the given function}
 deform_flag:=false    {default is false}
 {global_top: should be set by file such as global_facets_E7.at}
@@ -67,7 +74,7 @@ lambdas = FPP_lambdas(x) then
 () = prints("KGB #",KGB_number,":",new_line, "#lambdas=",#lambdas,
    	     	    ", #Uhash = ", Uhash.size())
 then ()= ##for lambda@j in lambdas
-  do prints("lambda #",j,", #Uhash = ", Uhash.size());
+  do prints("lambda #",j,", #Uhash = ", Uhash.size()); prints("lambda=",lambda);
     local_test_GEO_hash_one_level(x,lambda, Uhash)
 od
 in prints("got list: ", list);list
@@ -86,20 +93,22 @@ set kgb_non_fixed(RealForm G)=
 {to write a list of Param's for a single RealForm}
 {change from writeFiles.at: "<groups.at"
 and if x\ne cross(w0,x) then write contragredient representation also}
-set write_param_list_jda([Param] list, string listName) = void:
+set write_param_list_jda([Param] parameters, string listName, KGBElt x) = void:
+let list=params(parameters,x) {just those with correct x} in
 if #list=0
   then prints(listName,"[Param]:=[]")
 else
-  prints("set Nullp = U(1,0).trivial");
+  prints("set Nullp = trivial_group.trivial");
   prints("set ",listName,"=[Param]: for i:",#list," do Nullp od");
-  prints("DOING regular",list[0].x);
-  prints("LIST: ", list);
-  for p@i in list
-    do let (,x) = %p.x
-     in prints("void:",listName,"[",i,"]:=parameter(KGB(G_temp,",x,"),",p.lambda,",",p.nu,")");
-     if not is_fixed(p.x) then
-        let dp=contragredient(p) in 
-        prints("void:",listName,"[",i,"]:=parameter(KGB(G_temp,",number(dp.x),"),",dp.lambda,",",dp.nu,")","  {dual}")
-     fi
-    od
+  let not_fixed=not is_fixed(x) then
+  n=number(x) in
+  for p@i in list do
+   if p.x=x then
+      prints("void:",listName,"[",i,"]:=parameter(KGB(G_temp,",n,"),",p.lambda,",",p.nu,")");
+       if not_fixed then
+         let dp=contragredient(p) in
+         prints("void:",listName,"[",i,"]:=parameter(KGB(G_temp,",number(dp.x),"),",dp.lambda,",",dp.nu,")","  {dual}")
+       fi
+   fi
+  od
 fi
