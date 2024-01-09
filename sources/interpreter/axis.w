@@ -1828,9 +1828,8 @@ case of errors during execution of the function.
 // \.{global.h} predeclares |function_base|, and defines:
 // |typedef std::shared_ptr<const function_base> shared_function;|
 @)
-class function_base : public value_base
+struct function_base : public value_base
 {
-public:
   function_base() : value_base() @+{}
   virtual ~function_base() = default;
   static const char* name() @+{@; return "function value"; }
@@ -1844,7 +1843,7 @@ public:
   virtual void report_origin(std::ostream& o) const=0;
     // tell where we are from
   virtual expression_ptr build_call
-    (const shared_function& owner,const std::string& name,
+    (const shared_function& master,const std::string& name,
      expression_ptr&& arg, const source_location& loc) const=0;
 };
 
@@ -1948,14 +1947,15 @@ template <bool variadic>
   virtual void report_origin(std::ostream& o) const @+
   {@; o << "built-in"; }
   virtual expression_ptr build_call
-    (const shared_function& owner,const std::string& name,
+    (const shared_function& master,const std::string& name,
      expression_ptr&& arg, const source_location& loc) const;
 @)
   static const char* name() @+{@; return "built-in function"; }
   builtin_value(const builtin_value& v) = delete;
 };
-typedef std::shared_ptr<const builtin_value<false> > shared_builtin;
-typedef std::shared_ptr<const builtin_value<true> > shared_variadic_builtin;
+using builtin = builtin_value<false>;
+using shared_builtin = std::shared_ptr<const builtin>;
+using shared_variadic_builtin = std::shared_ptr<const builtin_value<true> >;
 
 @ While syntactically more complicated than ordinary function calls, the call
 of overloaded functions is actually more direct at run time, because the
@@ -2080,6 +2080,41 @@ expression_ptr builtin_value<variadic>::build_call
   return expression_ptr(new @|
     overloaded_builtin_call<variadic>(f,name,std::move(arg),loc));
 }
+
+@ Sometimes we want a builtin operator to have special behaviour at compile
+time, in the sense that when an application is formed with the global overload
+table matching the |builtin_value| for this operator, the virtual |build_call|
+method inspects the arguments and in some cases replaces the operator by another
+builtin function with a part of the arguments; the typical example is an
+application $E+1$ that transforms itself into |succ(E)|. To accommodate this we
+define a class derived from |builtin_value| that provides an alternative |apply|
+method that tries this substitution before reverting to
+|builtin_value::build_call| if special argument values were not found.
+
+@< Type definitions @>=
+struct special_builtin : public builtin
+{
+  typedef expression_ptr (*tester)
+    (expression_ptr&,const shared_builtin&,const source_location&);
+  using test_data = std::pair<tester,shared_builtin>;
+  sl_list<test_data> tests;
+@)
+  special_builtin
+    (wrapper_function v,const std::string& n, unsigned char hunger)
+  : builtin(v,n,hunger), tests() @+{}
+  virtual ~special_builtin() = default;
+
+  virtual expression_ptr build_call
+    (const shared_function& master,const std::string& name,
+     expression_ptr&& arg, const source_location& loc) const
+  {  for (const auto& test : tests)
+     { auto p = (*test.first)(arg,test.second,loc);
+       if (p!=nullptr)
+         return p;
+     }
+     return builtin::build_call(master,name,std::move(arg),loc);
+  }
+};
 
 @*1 Evaluating calls of built-in functions.
 %
@@ -3148,7 +3183,7 @@ struct closure_value : public function_base
   }
   virtual void report_origin(std::ostream& o) const;
   virtual expression_ptr build_call
-    (const shared_function& owner,const std::string& name,
+    (const shared_function& master,const std::string& name,
      expression_ptr&& arg, const source_location& loc) const;
 @)
   static const char* name() @+
@@ -4378,7 +4413,7 @@ struct projector_value : public function_base
   virtual expression_base::level argument_policy() const;
   virtual void report_origin(std::ostream& o) const;
   virtual expression_ptr build_call
-    (const shared_function& owner,const std::string& name,
+    (const shared_function& master,const std::string& name,
      expression_ptr&& arg, const source_location& loc) const;
 @)
   static const char* name() @+{@; return "built-in function"; }
@@ -4476,7 +4511,7 @@ struct injector_value : public function_base
   virtual expression_base::level argument_policy() const;
   virtual void report_origin(std::ostream& o) const;
   virtual expression_ptr build_call
-    (const shared_function& owner,const std::string& name,
+    (const shared_function& master,const std::string& name,
      expression_ptr&& arg, const source_location& loc) const;
 @)
   static const char* name() @+{@; return "built-in function"; }
@@ -7498,16 +7533,15 @@ for a |kind| argument to |transform|.
 
 template <bool reversed>
 struct component_transform : public assignment_expr
-{ using ptr_to_builtin = std::shared_ptr<const builtin_value<false> >;
-  source_location loc; // as in |call_base|
+{ source_location loc; // as in |call_base|
   std::string name; // as in |overloaded_call|
-  ptr_to_builtin f; // as in |builtin_call|
+  shared_builtin f; // as in |builtin_call|
   wrapper_function f_ptr; // shortcut, as in |builtin_call|
   expression_ptr index; // as in |component_assignment|
 @)
   component_transform
    (id_type a, expression_ptr&& i,expression_ptr&& r,
-    const ptr_to_builtin& fun,
+    const shared_builtin& fun,
     const std::string& name, const source_location& loc)
    : assignment_expr(a,std::move(r))
    , loc(loc), name(fun->print_name), f(fun), f_ptr(fun->val)
@@ -7520,17 +7554,16 @@ struct component_transform : public assignment_expr
 };
 @)
 struct field_transform : public assignment_expr
-{ using ptr_to_builtin = std::shared_ptr<const builtin_value<false> >;
-  source_location loc; // as in |call_base|
+{ source_location loc; // as in |call_base|
   std::string name; // as in |overloaded_call|
-  ptr_to_builtin f; // as in |builtin_call|
+  shared_builtin f; // as in |builtin_call|
   wrapper_function f_ptr; // shortcut, as in |builtin_call|
   const unsigned position;
   id_type id;
 @)
   field_transform
    (id_type a,unsigned pos,id_type id,expression_ptr&& r,
-    const ptr_to_builtin& fun,
+    const shared_builtin& fun,
     const std::string& name, const source_location& loc)
    : assignment_expr(a,std::move(r))
    , loc(loc), name(fun->print_name), f(fun), f_ptr(fun->val)
@@ -7594,13 +7627,12 @@ template <bool reversed>
 class global_component_transform
 : public component_transform<reversed>
 { using base = component_transform<reversed>;
-  using ptr_to_builtin = typename base::ptr_to_builtin;
 @)
   shared_share address;
 public:
   global_component_transform
     (id_type a, expression_ptr&& i,expression_ptr&& r,
-    const ptr_to_builtin& fun,
+    const shared_builtin& fun,
     const std::string& name, const source_location& loc);
   virtual void evaluate(expression_base::level l) const;
 };
@@ -7617,7 +7649,7 @@ class global_field_transform : public field_transform
 { shared_share address;
 public:
   global_field_transform (id_type a, unsigned pos,id_type id,expression_ptr&& r,
-    const ptr_to_builtin& fun,
+    const shared_builtin& fun,
     const std::string& name, const source_location& loc);
   virtual void evaluate(expression_base::level l) const;
 };
@@ -7636,7 +7668,7 @@ global_component_assignment<reversed>::global_component_assignment @|
 template <bool reversed>
 global_component_transform<reversed>::global_component_transform @|
     (id_type a, expression_ptr&& i,expression_ptr&& r,
-    const ptr_to_builtin& fun,
+    const shared_builtin& fun,
     const std::string& name, const source_location& loc)
 : base(a,std::move(i),std::move(r),fun,name,loc)
 , address(global_id_table->address_of(a)) @+{}
@@ -7648,7 +7680,7 @@ global_field_assignment::global_field_assignment @|
 @)
 global_field_transform::global_field_transform @|
   (id_type a, unsigned pos,id_type id,expression_ptr&& r,
-    const ptr_to_builtin& fun,
+    const shared_builtin& fun,
     const std::string& name, const source_location& loc)
 : field_transform(a,pos,id,std::move(r),fun,name,loc)
 , address(global_id_table->address_of(a)) @+{}
@@ -7731,13 +7763,12 @@ public:
 template <bool reversed>
 class local_component_transform : public component_transform<reversed>
 { using base = component_transform<reversed>;
-  using ptr_to_builtin = typename base::ptr_to_builtin;
 @)
   size_t depth, offset;
 public:
   local_component_transform @|
    (id_type arr, expression_ptr&& i,size_t d, size_t o, expression_ptr&& r,
-    const ptr_to_builtin& fun,
+    const shared_builtin& fun,
     const std::string& name, const source_location& loc);
   virtual void evaluate(expression_base::level l) const;
 };
@@ -7755,7 +7786,7 @@ class local_field_transform : public field_transform
 public:
   local_field_transform
     (id_type a, unsigned pos,id_type id,size_t d, size_t o, expression_ptr&& r,
-    const ptr_to_builtin& fun,
+    const shared_builtin& fun,
     const std::string& name, const source_location& loc);
   virtual void evaluate(expression_base::level l) const;
 };
@@ -7773,7 +7804,7 @@ local_component_assignment<reversed>::local_component_assignment
 template <bool reversed>
 local_component_transform<reversed>::local_component_transform @|
     (id_type a, expression_ptr&& i,size_t d, size_t o,expression_ptr&& r,
-    const ptr_to_builtin& fun,
+    const shared_builtin& fun,
     const std::string& name, const source_location& loc)
 : base(a,std::move(i),std::move(r),fun,name,loc), depth(d), offset(o) @+{}
 @)
@@ -7783,7 +7814,7 @@ local_field_assignment::local_field_assignment @|
 @)
 local_field_transform::local_field_transform @|
   (id_type a, unsigned pos,id_type id,size_t d, size_t o, expression_ptr&& r,
-    const ptr_to_builtin& fun,
+    const shared_builtin& fun,
     const std::string& name, const source_location& loc)
 : field_transform(a,pos,id,std::move(r),fun,name,loc), depth(d), offset(o) @+{}
 
@@ -7879,7 +7910,7 @@ possibly expanding a tuple in the process.
 @ The |transform| method of |component_transform| is similar to the |assign|
 methods above. However, instead of assigning the evaluation of |rhs| into the
 aggregate, it combines it with the previous value of the destination component
-using |f_ptr| (which is a |ptr_to_builtin|). Since the first operand of |f_ptr|,
+using |f_ptr| (which is a |shared_builtin|). Since the first operand of |f_ptr|,
 which is the old value of the row component |ai|, is moved out of the row to the
 stack, we make sure to evaluate the second operand before it, so that during its
 evaluation the row |a| is still intact. This requires temporarily moving that
@@ -8641,21 +8672,21 @@ current \.{axis.w} module.
 
 @< Static variable definitions that refer to local functions @>=
 static shared_builtin sizeof_row_builtin =
-    std::make_shared<const builtin_value<false> >(sizeof_wrapper,"#@@[T]",0);
+    std::make_shared<const builtin>(sizeof_wrapper,"#@@[T]",0);
 static shared_builtin sizeof_vector_builtin =
-    std::make_shared<const builtin_value<false> >
+    std::make_shared<const builtin>
       (sizeof_vector_wrapper,"#@@vec",0);
 static shared_builtin sizeof_ratvec_builtin =
-    std::make_shared<const builtin_value<false> >
+    std::make_shared<const builtin>
       (sizeof_ratvec_wrapper,"#@@ratvec",0);
 static shared_builtin sizeof_string_builtin =
-    std::make_shared<const builtin_value<false> >
+    std::make_shared<const builtin>
        (sizeof_string_wrapper,"#@@string",0);
 static shared_builtin matrix_columns_builtin =
-    std::make_shared<const builtin_value<false> >
+    std::make_shared<const builtin>
      (matrix_ncols_wrapper,"#@@mat",0);
 static shared_builtin sizeof_parampol_builtin =
-    std::make_shared<const builtin_value<false> >
+    std::make_shared<const builtin>
       (virtual_module_size_wrapper, "#@@ParamPol",0);
 static shared_variadic_builtin print_builtin =
   std::make_shared<const builtin_value<true> >(print_wrapper,"print@@T",0);
@@ -8667,19 +8698,19 @@ static shared_variadic_builtin prints_builtin =
 static shared_variadic_builtin error_builtin =
   std::make_shared<const builtin_value<true> >(error_wrapper,"error@@T",0);
 static shared_builtin prefix_elt_builtin =
-  std::make_shared<const builtin_value<false> >
+  std::make_shared<const builtin>
     (prefix_element_wrapper,"#@@(T,[T])",2);
 static shared_builtin suffix_elt_builtin =
-  std::make_shared<const builtin_value<false> >
+  std::make_shared<const builtin>
     (suffix_element_wrapper,"#@@([T],T)",1);
 static shared_builtin join_rows_builtin =
-  std::make_shared<const builtin_value<false> >
+  std::make_shared<const builtin>
     (join_rows_wrapper,"##@@([T],[T])",0);
 static shared_builtin join_rows_row_builtin =
-  std::make_shared<const builtin_value<false> >
+  std::make_shared<const builtin>
     (join_rows_row_wrapper,"##@@([[T]])",0);
 static shared_builtin boolean_negate_builtin =
-  std::make_shared<const builtin_value<false> >(bool_not_wrapper,"not@@bool",0);
+  std::make_shared<const builtin>(bool_not_wrapper,"not@@bool",0);
 
 @ The function |print| outputs any value in the format used by the interpreter
 itself. This function has an argument of unknown type; we just pass the popped

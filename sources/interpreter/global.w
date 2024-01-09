@@ -2564,14 +2564,19 @@ inform whether a result value should be produced at all, and if so whether it
 should be expanded on the |execution_stack| in case it is a tuple.
 
 @< Type definitions @>=
-typedef void @[(* wrapper_function)@](expression_base::level);
+typedef void (* wrapper_function)(expression_base::level);
 
 @ The following function will greatly
 facilitate the later repetitive task of installing wrapper functions.
 
 @< Declarations of exported functions @>=
-void install_function
- (wrapper_function f,const char*name, const char* type_string,
+struct function_base; // a class that |builtin_value<false>| derives from
+struct special_builtin; // must predeclare, we have not seen \.{axis.h} here
+std::shared_ptr<function_base> install_function
+ (wrapper_function f,@|const char*name, const char* type_string,
+  unsigned char hunger=0);
+std::shared_ptr<special_builtin> install_special_function
+ (wrapper_function f,@|const char*name, const char* type_string,
   unsigned char hunger=0);
 
 @ We start by determining the specified type, and building a print-name for
@@ -2583,7 +2588,7 @@ case they would be needed later; notably they should not be overloaded and are
 added to |global_id_table| instead.
 
 @< Global function def... @>=
-void install_function
+std::shared_ptr<function_base> install_function
  (wrapper_function f,const char*name, const char* type_string,
   unsigned char hunger)
 { type_ptr type = mk_type(type_string);
@@ -2594,7 +2599,33 @@ void install_function
   print_name << '@@' << type->func()->arg_type;
   auto val = std::make_shared<builtin_value<false> >(f,print_name.str(),hunger);
   global_overload_table->add
-    (main_hash_table->match_literal(name),std::move(val),std::move(*type));
+    (main_hash_table->match_literal(name),val,std::move(*type));
+  return val;
+}
+
+@ Here is a variation that installs a function whose |builtin_value| stored is
+actually an object of derived class |special_builtin|, whose |build_call| can be
+tweaked to first start to try some optimisations. Since these involve other
+built-in functions that are not available at definition here, we just install
+the function without tweaks here, but return a shared pointer to the
+|special_builtin| object, for which the caller can then call
+|tests.push_back(test)| to add a testing function that will modify the compile
+time behaviour of the (already installed) built-in function.
+
+@< Global function def... @>=
+std::shared_ptr<special_builtin> install_special_function
+ (wrapper_function f,const char*name, const char* type_string,
+  unsigned char hunger)
+{ type_ptr type = mk_type(type_string);
+  std::ostringstream print_name; print_name<<name;
+  if (type->kind()!=function_type)
+    throw logic_error
+     ("Built-in with non-function type: "+print_name.str());
+  print_name << '@@' << type->func()->arg_type;
+  auto val = std::make_shared<special_builtin>(f,print_name.str(),hunger);
+  global_overload_table->add
+    (main_hash_table->match_literal(name),val,std::move(*type));
+  return val;
 }
 
 @*1 Integer functions.
@@ -2739,6 +2770,49 @@ void bitwise_complement_wrapper(expression_base::level l)
   if (l!=expression_base::no_value)
     i->val.complement(), push_value(std::move(i));
 }
+
+@ This function will be needed to optimise function applications with as second
+argument an integral denotation with value $1$.
+
+@< Local function definitions @>=
+expression_ptr applies_to_1
+  (expression_ptr& args,const shared_builtin& f,const source_location& loc)
+{ auto t = dynamic_cast<const tuple_expression*>(args.get());
+  if (t!=nullptr and t->component.size()==2)
+  { auto a = dynamic_cast<const denotation*>(t->component[1].get());
+    if (a!=nullptr)
+    { auto v = force<int_value>(a->denoted_value.get());
+      if (v->val==1)
+      { auto& arg0 = const_cast<expression_ptr&>(t->component[0]);
+        return f->build_call(f,f->print_name,std::move(arg0),loc);
+      }
+    }
+  }
+  return nullptr;
+}
+
+@ Here is some special install code. We first install the successor and
+predecessor functions, then addition and subtraction that might revert to the
+former ones.
+
+
+@< Initialise... @>=
+{ auto p = install_function(successor_wrapper,"succ","(int->int)",3);
+  shared_builtin succ_val = std::static_pointer_cast<builtin>(p);
+  auto q = install_special_function(plus_wrapper,"+","(int,int->int)",1);
+  q->tests.emplace_back(applies_to_1,succ_val);
+}
+{ auto p = install_function(predecessor_wrapper,"pred","(int->int)",3);
+  shared_builtin pred_val = std::static_pointer_cast<builtin>(p);
+  auto q = install_special_function(minus_wrapper,"-","(int,int->int)",1);
+  q->tests.emplace_back(applies_to_1,pred_val);
+}
+install_function(times_wrapper,"*","(int,int->int)");
+install_function(divide_wrapper,"\\","(int,int->int)",1);
+install_function(modulo_wrapper,"%","(int,int->int)",1);
+install_function(divmod_wrapper,"\\%","(int,int->int,int)",1);
+install_function(unary_minus_wrapper,"-","(int->int)",3);
+install_function(bitwise_complement_wrapper,"~","(int->int)",3);
 
 @ Powers of integers are defined whenever the result is integer. They get a bit
 more attention than other arithmetic operations, since we want, in the cases
@@ -4146,16 +4220,6 @@ void rvm_prod_wrapper(expression_base::level l)
 @ We must not forget to install what we have defined.
 
 @< Initialise... @>=
-install_function(plus_wrapper,"+","(int,int->int)",1);
-install_function(minus_wrapper,"-","(int,int->int)",1);
-install_function(times_wrapper,"*","(int,int->int)");
-install_function(divide_wrapper,"\\","(int,int->int)",1);
-install_function(modulo_wrapper,"%","(int,int->int)",1);
-install_function(divmod_wrapper,"\\%","(int,int->int,int)",1);
-install_function(successor_wrapper,"succ","(int->int)",3);
-install_function(predecessor_wrapper,"pred","(int->int)",3);
-install_function(unary_minus_wrapper,"-","(int->int)",3);
-install_function(bitwise_complement_wrapper,"~","(int->int)",3);
 install_function(power_wrapper,"^","(int,int->int)");
 install_function(and_wrapper,"AND","(int,int->int)",1);
 install_function(or_wrapper,"OR","(int,int->int)",1);
