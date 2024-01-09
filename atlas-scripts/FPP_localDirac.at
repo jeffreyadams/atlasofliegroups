@@ -435,7 +435,7 @@ set local_testK_hash(KGBElt x, ratvec lambda, VertexData vd,
 {test candidate classes with (new) tester; delete
  from LFVKH facets established to be nonunitary in this way. Output is new
  shorter list of candidate facets. vd is LOCAL VertexData.
- Assume pjpairss only has mu to height the level of the K-chars in pol_hash.}
+ Assume bottdata only has mu to height the level of the K-chars in pol_hash.}
 set local_testK_hash_bottom_layer(KGBElt x, ratvec lambda, VertexData vd,
     [[FacetVertsKHash]] FVKH, [[int]] eq, [[int]] gr, [vec] classListByFacet,
     steady_bottom_data bott_data, KTypePol_hash pol_hash, Param_hash Uhash) =
@@ -477,12 +477,11 @@ set local_testK_hash_bottom_layer(KGBElt x, ratvec lambda, VertexData vd,
 		    	  , facet_bary(vd.list, verts))))
 	          in if #ps = 1
 		     then if Uhash.lookup(ps[0]).>= or
-		     	     min_bottom_elim_factors(ps[0], bott_data,
-			     		pol_hash.index(FVKH[d][j][d+1]))
+		     	     min_bottom_elim_factors(ps[0], bott_data, pol_hash.index(FVKH[d][j][d+1]))
 		     	  then newStatuses[k]:= "T"
 			  else newStatuses:= updateNUclassesB(newStatuses, gr, k)
-			  ; newStatuses[k] := "F"
-			  fi
+			  ; newStatuses[k] := "F"{; prints("false at ",ps[0])}
+			  fi {TRY HERE!}
 		     else if{NEWU} all(for p in ps
 		     	  	       do Uhash.lookup(p).>= or
 					  min_bottom_elim_factors(p, bott_data)
@@ -1619,28 +1618,29 @@ set local_test_GEO_hash_bottom_layer(KGBElt x, ratvec lambda, VertexData vd,
 	      fi
     then L = Q.Levi {this is a mistake because of glomming together
     various LKdata}
-    then ()  = for mu in LKTs(pmax)
+    then LKdatas  = for mu in LKTs(pmax)
     	 	   do
 		   bott_data.entry(mu)
 		   od
+    then NLKT = #LKdatas
     {then () = prints(Khash.size(), "  ",#Kdata) }{, "  ",std_K_type_hash.size(),"  ", #bottom_layer_data)}
-    then () = if L = G or sum(for mu in LKTs(pmax) do bott_data.card(mu) od)= 0
+    then () = if L = G or sum(for i:NLKT
+    	      	       	      do sum( for list in LKdatas[i] do #list od)
+			      od)= 0
     	      then return local_test_GEO_hash_one_level(x, lambda, vd, Lvd, LF,
 	      	   	  				   pol_hash, Uhash)
 	      fi
     then () = if {TINY CASE} #LF[0]=1
     	      then return one_param_test(pmax, bott_data, Uhash)
 	      fi
-    then qLhts = for mu in LKTs(pmax)
-    	       	 do for (muj,pairsj) in bott_data.entry(mu)
-    	     	    do max( for(,tauLj) in pairsj do height(tauLj) od# height(muj))
-		    od
-		 od
-    then qhts = max(for mu in LKTs(pmax)
-    	      	    do max( for (,pairsj) in bott_data.entry(mu)
-    	      	       	    do max( for (mu,) in pairsj do height(mu) od#height(pmax))
+    then pmaxjs = factor_params(pmaxL)
+    then qhts = max(for i:NLKT
+    	      	    do max( for pairs in LKdatas[i]
+    	      	       	    do max( for (tau,) in pairs do height(tau) od#height(pmax))
 		       	    od)
 		    od)
+	{this is the greates height at which we'll be looking at bottom layer K-types; so we can
+	compute K-chars just to this height}
     then () = test_string:= " using local_test_GEO_hash_bottom_layer"
     then  () = hash_bottom_layerCounter.use()
     {then hts = next_heights(parameter(x,lambda,0*lambda), LAST+1)}
@@ -1650,9 +1650,11 @@ set local_test_GEO_hash_bottom_layer(KGBElt x, ratvec lambda, VertexData vd,
 		  prints("testing level = ", ONE, "; height = ", qhts, new_line)
 	       fi
    then pol_hash_one_ht = make_KTypePol_hash() {to hold K_chars to height one_ht}
+      {next add K-chars to height one_ht for vertices and edges}
    then LFDKH = [[FacetVertsKHash]]: localFD_KHash_01(x, lambda, Lvd, one_ht, pol_hash_one_ht, LF)
    then ((eq,gr),IUCL,CLBF) = localGraphK(LFDKH)
-    	{next remove from LFDKH all facets failing min_bottom_elim(one_ht)}
+   {then () = prints(((eq,gr), IUCL,CLBF))}
+    	{next remove from LFDKH all facets failing min_bottom_factors_elim(one_ht)}
    then () = LFDKH := local_testK_hash_bottom_layer(x,lambda,Lvd, LFDKH, eq,
 		      gr, CLBF, bott_data, pol_hash_one_ht,  Uhash)
    then () = if test_verbose then prints("unitary on bottom layer to ",one_ht,

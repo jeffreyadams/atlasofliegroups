@@ -52,13 +52,15 @@ set wt_projections(RealForm G) = [(ratvec->ratvec)]:
 set factor_KGBs(KGBElt x) = [KGBElt]:
     let G = x.real_form
     then SF = simple_factors(G)
-    in for S in SF
-       do let (w,) = from_dominant(S, x.involution *S.two_rho)
+    in for S in SF {this is automatically a theta-stable Levi}
+       do {inverse_embed_KGB(x, S) doesn't work}
+       	  let (w,) = from_dominant(S, x.involution *S.two_rho)
        	  then winv = w.inverse
        	  in KGB_elt(S.inner_class, KGB(G,0).involution * winv,
        	     		torus_factor(x) {+G.rho_check - S.rho_check})
        od
-
+ 
+{these cohom induce (on K level) to p, I think}
 set factor_params(Param p) = [Param]:
     let PIs = wt_projections(p.real_form)
     in for xj@j in factor_KGBs(p.x)
@@ -66,7 +68,12 @@ set factor_params(Param p) = [Param]:
        	  		PIs[j](p.nu))
        od
 
+{these comologically induce to mu (on K), I think}
 set factor_K_types(KType mu) = [KType]:
     for xj@j in factor_KGBs(mu.x)
     do K_type(xj, mu.lambda_minus_rho)
     od
+
+{WHY DON'T LKTs of factor_params match factor_K_types???}
+{In changing nu can change KGBElt of final parameter}
+{In SL(2), (2,[0],[1]) has x =2, but (2,[0],[0]) has TWO x's, 0 and 1.}

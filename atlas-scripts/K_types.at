@@ -1,6 +1,7 @@
 <basic.at     { for *@(Param,rat) }
 <hermitian.at { for hermitian_form_irreducible }
 <K_highest_weights.at
+<to_ht.at {for hermitian_form_irreducible_to_ht}
 
 set int_part (KTypePol P) = KTypePol:
    P.null_K_module + for c@t in P do (c.int_part,t) od
@@ -28,6 +29,10 @@ set mult_irr (KType p_K,ParamPol P) = int:
 set K_signature_irr (Param p,int bound) = (KTypePol,KTypePol):
   let b=branch(hermitian_form_irreducible(p),bound) in (int_part(b),s_part(b) )
 
+set K_signature_irrB (Param p,int bound) = (KTypePol,KTypePol):
+  let b=branch(hermitian_form_irreducible_to_ht(p,bound),bound) in
+  (int_part(b),s_part(b) )
+  
 set signed_mult (KType p_K,Param p) = (int,int):
   let (P,Q)=K_signature_irr(p,height(p_K)) in (P[p_K].int_part,Q[p_K].int_part)
 

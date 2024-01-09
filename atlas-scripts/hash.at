@@ -74,6 +74,70 @@ set hash_code(RealForm G, int d_mod) = int:
     in hash%d_mod
 
 set_type
+[ RealForm_hash =
+  ( ( -> int) size
+  , ( -> int) capacity
+  , ( -> ) clear
+  , (int->RealForm) index
+  , (RealForm->int) match
+  , (RealForm->int) lookup
+  )
+]
+
+set make_RealForm_hash ([RealForm] list, (RealForm,int->int) hash) = RealForm_hash:
+(  let capacity = max(2,2*#list), !empty=minus_1
+   then seq_nbrs = for :capacity do empty od, maxfill = 2*capacity\3
+   then find(RealForm p) = (int,bool):
+     let code = hash(p,capacity)
+     in while let v=seq_nbrs[code] in if v=empty then return (code,true) fi
+        ; list[v] != p
+        do if (code+:=1)=capacity then code:=0 fi
+        od
+     ; (code,false) { slot in |seq_nbrs|, and whether it is new }
+   then rehash(int new_capacity) = void:
+     begin capacity := new_capacity
+     ;   seq_nbrs := for j:capacity do empty od { prepare new array }
+     ;   maxfill := 2*capacity\3
+     ;   for p@m in list
+	 do let (code,new) = find(p) in assert(new,"duplicate while rehashing")
+	 ;  seq_nbrs[code] := m
+	 od
+     end
+   then clear() = void:
+   	let () = capacity := 2
+   	then () = seq_nbrs := for :capacity do empty od
+	then () = maxfill := 2*capacity\3
+	then () = list:=[]
+	in ()
+in for p@m in list
+   do let (code,new) = find(p) in if new then seq_nbrs[code] := m fi
+   od
+;  ( ( -> int): { size } @int: #list
+   , ( -> int): { capacity } @int: capacity
+   , ( -> ): {clear} clear
+   , (int->RealForm): { index } (int i) RealForm: list[i]
+   , (RealForm->int): { match } (RealForm p) int:
+     begin
+        let (code,new) = find(p)
+     in if new { an empty slot was found, fill it }
+        then let val = seq_nbrs[code] := #list
+	in list := (list next list:=[]) # p
+        ; if #list >= maxfill then rehash(capacity+capacity) fi
+	; val { don't use |seq_nbrs[code]| as |seq_nbrs| may have changed here x}
+	else seq_nbrs[code]
+        fi
+     end
+   , (RealForm->int): { lookup } (RealForm p) int:
+     let (code,new) = find(p) in if new then minus_1 else seq_nbrs[code] fi
+   )
+)
+
+set make_RealForm_hash () = RealForm_hash:
+    make_RealForm_hash([RealForm]:[],hash_code@(RealForm,int))
+
+{could include a RealForm_hash to avoid inability to add KTypePols
+with real forms that are isomorphic but not identical?}
+set_type
 [ KTypePol_hash =
   ( ( -> int) size
   , ( -> int) capacity
@@ -84,10 +148,15 @@ set_type
   )
 ]
 
+
 set make_KTypePol_hash ([KTypePol] list, (KTypePol,int->int) hash) = KTypePol_hash:
 (  let capacity = max(2,2*#list), !empty=minus_1
+{   then real_form_hash = make_RealForm_hash(for Q in list do
+   Q.real_form od, hash_code@(RealForm,int)}
    then seq_nbrs = for :capacity do empty od, maxfill = 2*capacity\3
    then find(KTypePol P) = (int,bool):
+     {let r = real_form_hash.match(P.real_form)
+     then () = P:=regroup(real_form_hash.index(r), P)}
      let code = hash(P,capacity)
      in while let v=seq_nbrs[code] in if v=empty then return (code,true) fi
         ; list[v] != P
@@ -444,67 +513,3 @@ in for p@m in list
 set make_KType_hash () = KType_hash:
     make_KType_hash([KType]:[],hash_code@(KType,int))
 
-
-
-
-set_type
-[ RealForm_hash =
-  ( ( -> int) size
-  , ( -> int) capacity
-  , ( -> ) clear
-  , (int->RealForm) index
-  , (RealForm->int) match
-  , (RealForm->int) lookup
-  )
-]
-
-set make_RealForm_hash ([RealForm] list, (RealForm,int->int) hash) = RealForm_hash:
-(  let capacity = max(2,2*#list), !empty=minus_1
-   then seq_nbrs = for :capacity do empty od, maxfill = 2*capacity\3
-   then find(RealForm p) = (int,bool):
-     let code = hash(p,capacity)
-     in while let v=seq_nbrs[code] in if v=empty then return (code,true) fi
-        ; list[v] != p
-        do if (code+:=1)=capacity then code:=0 fi
-        od
-     ; (code,false) { slot in |seq_nbrs|, and whether it is new }
-   then rehash(int new_capacity) = void:
-     begin capacity := new_capacity
-     ;   seq_nbrs := for j:capacity do empty od { prepare new array }
-     ;   maxfill := 2*capacity\3
-     ;   for p@m in list
-	 do let (code,new) = find(p) in assert(new,"duplicate while rehashing")
-	 ;  seq_nbrs[code] := m
-	 od
-     end
-   then clear() = void:
-   	let () = capacity := 2
-   	then () = seq_nbrs := for :capacity do empty od
-	then () = maxfill := 2*capacity\3
-	then () = list:=[]
-	in ()
-in for p@m in list
-   do let (code,new) = find(p) in if new then seq_nbrs[code] := m fi
-   od
-;  ( ( -> int): { size } @int: #list
-   , ( -> int): { capacity } @int: capacity
-   , ( -> ): {clear} clear
-   , (int->RealForm): { index } (int i) RealForm: list[i]
-   , (RealForm->int): { match } (RealForm p) int:
-     begin
-        let (code,new) = find(p)
-     in if new { an empty slot was found, fill it }
-        then let val = seq_nbrs[code] := #list
-	in list := (list next list:=[]) # p
-        ; if #list >= maxfill then rehash(capacity+capacity) fi
-	; val { don't use |seq_nbrs[code]| as |seq_nbrs| may have changed here x}
-	else seq_nbrs[code]
-        fi
-     end
-   , (RealForm->int): { lookup } (RealForm p) int:
-     let (code,new) = find(p) in if new then minus_1 else seq_nbrs[code] fi
-   )
-)
-
-set make_RealForm_hash () = RealForm_hash:
-    make_RealForm_hash([RealForm]:[],hash_code@(RealForm,int))
