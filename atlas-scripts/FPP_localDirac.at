@@ -1587,7 +1587,7 @@ set local_test_GEO_one_level(KGBElt x, ratvec lambda) = [Param]:
     then () = unipotents_to_hash(x.real_form,Uhash)
     in local_test_GEO_hash_one_level(x,lambda,vd, pol_hash, Uhash)
 
-
+set bottom_length_frac = rat: 1/2
 
 {how many levels of bottom layer K-types to use}
 set BL_steps = int:2
@@ -1612,21 +1612,22 @@ set local_test_GEO_hash_bottom_layer(KGBElt x, ratvec lambda, VertexData vd,
 		       	      od)
     then pmax = parameter(x, lambda, Lvd.list[LF[0][maxDiffLoc][0]])
     then (Q,pmaxL) = theta_stable_quasi_data(pmax)
-    then () = if is_abelian(Q.Levi)
+    then L = Q.Levi
+    then () = if is_abelian(L)
     	      then let () = Uhash.match(first_param(finalize(pmax)))
 	      	   in return [pmax]
 	      fi
-    then L = Q.Levi {this is a mistake because of glomming together
-    various LKdata}
     then LKdatas  = for mu in LKTs(pmax)
     	 	   do
 		   bott_data.entry(mu)
 		   od
     then NLKT = #LKdatas
     {then () = prints(Khash.size(), "  ",#Kdata) }{, "  ",std_K_type_hash.size(),"  ", #bottom_layer_data)}
-    then () = if L = G or sum(for i:NLKT
-    	      	       	      do sum( for list in LKdatas[i] do #list od)
-			      od)= 0
+    then () = if L = G or
+    	      	 height(pmax) < bottom_length_frac* (G.two_rho * G.rho_check) or
+	         sum(for i:NLKT
+    	      	     do sum( for list in LKdatas[i] do #list od)
+		     od)= 0
     	      then return local_test_GEO_hash_one_level(x, lambda, vd, Lvd, LF,
 	      	   	  				   pol_hash, Uhash)
 	      fi

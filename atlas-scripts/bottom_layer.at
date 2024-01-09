@@ -35,7 +35,7 @@ set min_bottom(Param p, int D) = [(KType,KType)]:
     then too_many_mus = monomials(branch_std(p,D))
     { monomials(deform_support(p,D)) }
     then mus = for mu in too_many_mus
-       	       do if height(mu) > height(LKTG) and
+       	       do if {height(mu) > height(LKTG) and}
 	       	      TRUCH*(highest_weight(mu, xcG).mu) = bottom
 	       	  then [mu]
 	  	  else []
@@ -49,7 +49,8 @@ set min_bottom(Param p, int D) = [(KType,KType)]:
 
 {PROBLEM: muL of height DL + M can give K-type of height D+m, with m \ne M}
 {each (tau,tauL) in output list is a bottom layer
-K-type and the corr L\cap K-type. ASSUME K CONNECTED}
+K-type and the corr L\cap K-type. ASSUME K CONNECTED
+Lists include LKT pairs, so always nonempty.}
 
 set min_L_bottom(Param p, int D) = [(KType,KType)]:
     let (Q,pL) = theta_stable_quasi_data(p), {x = p.x, lambda = p.lambda,}
@@ -64,7 +65,7 @@ set min_L_bottom(Param p, int D) = [(KType,KType)]:
     then K0 = K_0(xcG), LK0 = K_0(xcL)
     then tauLs =  for tauL in too_many_tauLs
        	      	  do let weight = highest_weight(tauL,xcL).mu + shift
-		  in if height(tauL) > 0 and
+		  in if {height(tauL) > 0 and}
 		       	   is_dominant(K0,weight)
        	  	    then [(weight,tauL)]
 	  	    else []
@@ -74,7 +75,7 @@ set min_L_bottom(Param p, int D) = [(KType,KType)]:
        do (K_types(K_highest_weight_from_K0_weight(xcG, weight))[0] ,tauL) od
 
 {Each (tau,tauLj) in output is a bottom layer K-type tau for mu, and the
-corresponding Lj\cap K-type tauLj; one list for each Lj}
+corresponding Lj\cap K-type tauLj; one list for each Lj. Guaranteed to include LKT pairs, so nonempty}
 set min_L_bottom_factors(KType mu, int level) = [[(KType, KType)]]:
     let p = parameter(mu)
     then (Q,pL) = theta_stable_quasi_data(p), G = p.real_form
@@ -86,7 +87,7 @@ set min_L_bottom_factors(KType mu, int level) = [[(KType, KType)]]:
     then DLjs = for muLj in muLjs do next_heights(muLj, level) od
     then too_many_tauLjs = [[KType]]:
     	 for muLj@j in muLjs
-	 do monomials(branch(muLj, DLjs[j][level -1]))
+	 do monomials(branch(muLj, DLjs[j]~[0]))
 	 od
     then xcL = KGB(L,0)
     then xcLjs = for Lj in Ljs
@@ -96,11 +97,11 @@ set min_L_bottom_factors(KType mu, int level) = [[(KType, KType)]]:
     then shifts = for xcLj@j in xcLjs {Connects Lj\cap K-types to bottom layer K-types}
     	 	  do highest_weight(mu,xcGs[j]).mu - highest_weight(muLjs[j], xcLj).mu
 		  od
-    in for listj@j in too_many_tauLjs {list of (vec, Lj\cap-K-type)}
+    in for listj@j in too_many_tauLjs
        do let K0 = K_0(xcGs[j])
        	  in for tauLj in listj
        	     do let taujwt = highest_weight(tauLj, xcLjs[j]).mu + shifts[j]
-	     in if height(tauLj) > 0 and is_dominant(K0, taujwt)
+	     in if {height(tauLj) > 0 and} is_dominant(K0, taujwt)
   	             then [(K_types(K_highest_weight_from_K0_weight(xcGs[j], taujwt))[0], tauLj)]
 	  	     else []
 	  	     fi
@@ -118,6 +119,7 @@ set_type
   , (KType->) append
   , (int -> KType) K_type_index
   , (int -> [[(KType,KType)]]) data_index
+  , ( -> int) bottom_branch_time
   )
 ]
 
@@ -125,9 +127,11 @@ set make_steady_bottom_data () = steady_bottom_data:
 (  let K_type_hash = make_KType_hash()
    then bottom_data = [[[(KType,KType)]]] : []
    then steps = int:2
+   then branch_time = int: 0
    then clear() = void:
        let () = K_type_hash.clear()
        then () = bottom_data:=[]
+       then  () = branch_time := 0
        in ()
    in 
    ( ( -> int): { size } @int: K_type_hash.size()
@@ -140,8 +144,10 @@ set make_steady_bottom_data () = steady_bottom_data:
 	let M = K_type_hash.size()
 	then m = K_type_hash.match(mu)
 	then () = if m = M
-	     	  then bottom_data := (bottom_data next bottom_data:= [])
-		       #min_L_bottom_factors(mu, steps)
+	     	  then let start = elapsed_ms()
+		       then () = bottom_data := (bottom_data next bottom_data:= [])
+		       	       	 	     #min_L_bottom_factors(mu, steps)
+		       in branch_time +:= elapsed_ms() - start
 		  fi
 	in bottom_data[m]
      end
@@ -157,6 +163,7 @@ set make_steady_bottom_data () = steady_bottom_data:
      end
    , (int -> KType): {K_type_index} (int j): K_type_hash.index(j)
    , (int -> [[(KType,KType)]]): {data_index} (int j) [[(KType,KType)]]: bottom_data[j]
+   , ( -> int): {bottom_branch_time} @int: branch_time
   )
 )
 
@@ -164,7 +171,7 @@ set make_steady_bottom_data () = steady_bottom_data:
 a bottom layer K-type and the corresponding L\cap K-type}
 set min_bottom_elim(Param p, [(KType,KType)] pairs) = bool:
     let start = elapsed_ms(), (,pL) = theta_stable_quasi_data(p)
-    in if  #pairs = 0  then true
+    in if  #pairs = 1  then true
        else let DL = max(for (,tauL) in pairs do height(tauL) od),
        	    posLK_time = int:0, multK_time = int:0
        	    then (posL,) = K_signature_irrB(first_param(finalize(pL)),DL)
@@ -185,7 +192,7 @@ set min_bottom_elim(Param p, [(KType,KType)] pairs) = bool:
 		      {create a list of FUNCTIONS returning a bool. Functions
 		      are only evaluated until false }
 	    then (posL,) = K_signature_irrB(first_param(finalize(pL)),DL)
-	    then answer =  all( for (tau,tauL) in pairs
+	    then answer =  all( for (tau,tauL) in pairs[1:]
        	       	    do @bool: int_part(posL[tauL]) >= int_part(multG[tau])
 		       {let (posL,) = K_signature_irrB(first_param(finalize(pL)),DL)}
 		    od)
@@ -201,7 +208,7 @@ set min_bottom_elim(Param p, [(KType,KType)] pairs) = bool:
 {Here P is the K-character of p, at least to heights of pairs}
 set min_bottom_elim(Param p, [(KType,KType)] pairs, KTypePol P) = bool:
     let start = elapsed_ms(), (,pL) = theta_stable_quasi_data(p)
-    in if #pairs = 0 then true
+    in if #pairs = 1 then true
        else let DL = max(for (,muL) in pairs do height(muL) od){,
        	    posLK_time = int:0, multK_time = int:0}
        	    then (posL,) = K_signature_irrB(first_param(finalize(pL)),DL)
@@ -218,7 +225,7 @@ set min_bottom_elim(Param p, [(KType,KType)] pairs, KTypePol P) = bool:
 		      	   in prints("multK used ",
     	    	      	      print_time_string(multK_time - posLK_time))
 		      fi}
-	    in all( for (mu,muL) in pairs
+	    in all( for (mu,muL) in pairs[1:]
        	       	    do @:int_part(posL[muL]) >= int_part(multG[mu])
 		    od )
     	    {then () = if min_bottom_verbose
@@ -271,10 +278,8 @@ set min_bottom_elim_factors(Param p, [[(KType,KType)]] LKdata) = bool:
        then muLjs = factor_K_types(muL)
        then baseLjs = [KType]:
        	    for pairs@j in LKdata
-	    do if #pairs = 0 then muLjs[j]
-	       else let (,baseLj) = pairs[0]
-	       	    in baseLj
-	       fi
+	    do let (,baseLj) = pairs[0]
+	       in baseLj
 	    od
        then shiftjs = for pLj@j in pLjs
 	    	      do ratvec_as_vec(param(muLjs[j]).d_lambda - pLj.d_lambda)
@@ -286,19 +291,19 @@ set min_bottom_elim_factors(Param p, [[(KType,KType)]] LKdata) = bool:
        then DG = max(for pairs in LKdata
        	    	     do max(for (tauj,) in pairs
 			    do height(tauj)
-			    od # height(p))
+			    od)
 		     od)
        then multG = branch_irr(p,DG)
        then DLs = for pairs@j in LKdata
 	    	  do max(for (,tauLj) in pairs
 			 do height(tauLj)
-			 od # height(qLjs[j]))
+			 od)
 		  od
        in all( [(->bool)]: {list of functions, one for each factor Lj}
 	       for pairs@j in LKdata
 	       do let (posLj,) = K_signature_irrB(qLjs[j], DLs[j])
 		  in @:all( [(->bool)]:
-			    for(tauj, tauLj) in pairs
+			    for(tauj, tauLj) in pairs[1:]
 			    do @bool: int_part(posLj[tauLj]) >= int_part(multG[tauj])
 			    od )
 	       od )
@@ -315,17 +320,17 @@ set min_bottom_elim_factors(Param p, steady_bottom_data bott_data) = bool:
 set min_bottom_elim_factors(Param p, [[(KType,KType)]] LKdata, KTypePol P) = bool:
     let start = elapsed_ms(), answers = for k:#LKdata do false od,
     	(,pL) = theta_stable_quasi_data(p)
-    in if sum(for pairs in LKdata do #pairs od) = 0
+    in if sum(for pairs in LKdata do #pairs od) = #LKdata
        then true
        else let pjs = factor_params(pL)
        	    then DLs = for pairs@j in LKdata
 	       	       do max(for (,tauLj) in pairs
 		       	      do height(tauLj)
-		      	      od # height(pjs[j]))
+		      	      od)
 	       	       od
         in all( [(->bool)]: {list of functions, one for each factor Lj}
        	    	for pairs@j in LKdata
-       	    	do if #pairs = 0 then @: true
+       	    	do if #pairs = 1 then @: true
 		   else let (,tauj0) = pairs[0]
 		   	then Lj = tauj0.real_form, pj = pjs[j]
 		   	then qj = parameter(Lj,(pj.x).number, pj.lambda, pj.nu)
@@ -334,7 +339,7 @@ set min_bottom_elim_factors(Param p, [[(KType,KType)]] LKdata, KTypePol P) = boo
 		      {DANGER: THIS PARAM MAY NOT BE FINAL}
 	    	      	   {positive part of the signature on Lj}
 	           	in @:all( [(->bool)]:
-	       	  	     for (tauj,tauLj) in pairs
+	       	  	     for (tauj,tauLj) in pairs[1:]
        	       	    	     do @bool: int_part(posLj[tauLj]) >= int_part(P[tauj])
 		             od )
 		    fi
