@@ -268,7 +268,7 @@ set min_bottom_test(Param p, int D) = bool:
 {false guarantees not unitary, but true does not guarantee unitary}
 {LKdata[j] is [(tauj,tauLj)]: tauLj is an Lj\cap K-type inducing to a bottom layer tauj of p.}
 set min_bottom_elim_factors(Param p, [[(KType,KType)]] LKdata) = bool:
-    if sum(for pairs in LKdata do #pairs od) = 0 then return true fi;
+    if sum(for pairs in LKdata do #pairs od) = #LKdata then return true fi;
     let start = elapsed_ms(), answers = for k:#LKdata do false od,
         	(,pL) = theta_stable_quasi_data(p)
     in let pLjs = factor_params(pL) {1 for each simple factor Lj of L}
@@ -315,28 +315,41 @@ set min_bottom_elim_factors(Param p, steady_bottom_data bott_data) = bool:
        )
 
 {false guarantees not unitary, but true does not guarantee unitary}
-{Here P is the K-character of p, at least to heights of pairs}
+{Here P is branch_std(K-character of p to heights of pairs}
 {LKdatas is supposed to have size #LKTs(p)}
 set min_bottom_elim_factors(Param p, [[(KType,KType)]] LKdata, KTypePol P) = bool:
     let start = elapsed_ms(), answers = for k:#LKdata do false od,
     	(,pL) = theta_stable_quasi_data(p)
     in if sum(for pairs in LKdata do #pairs od) = #LKdata
        then true
-       else let pjs = factor_params(pL)
+       else let pLjs = factor_params(pL)
        	    then DLs = for pairs@j in LKdata
 	       	       do max(for (,tauLj) in pairs
 		       	      do height(tauLj)
 		      	      od)
 	       	       od
+      	    then muL = LKTs(pL)[0]
+       	    then muLjs = factor_K_types(muL)
+       	    then baseLjs = [KType]:
+       	    	 for pairs@j in LKdata
+	    	 do let (,baseLj) = pairs[0]
+	       	    in baseLj
+	    	 od
+       	    then shiftjs = for pLj@j in pLjs
+	    	      	   do ratvec_as_vec(param(muLjs[j]).d_lambda - pLj.d_lambda)
+		      	   od
+       	    then qLjs = for pLj@j in pLjs
+		      	do parameter(baseLjs[j].real_form, (pLj.x).number, pLj.lambda +
+		      				    shiftjs[j], pLj.nu)
+		   	od
         in all( [(->bool)]: {list of functions, one for each factor Lj}
        	    	for pairs@j in LKdata
        	    	do if #pairs = 1 then @: true
-		   else let (,tauj0) = pairs[0]
-		   	then Lj = tauj0.real_form, pj = pjs[j]
-		   	then qj = parameter(Lj,(pj.x).number, pj.lambda, pj.nu)
-		   	{qj is now a Param for the same real form as tauj}
-		   	then (posLj,) = K_signature_irrB(qj, DLs[j])
-		      {DANGER: THIS PARAM MAY NOT BE FINAL}
+		   else {let (,tauj0) = pairs[0]}
+		   	let qLj = qLjs[j]
+		   	{qLj is now a Param for the same real form as tauj}
+		   	then (posLj,) = K_signature_irrB(qLj, DLs[j])
+		      {DANGER: THIS PARAM MAY NOT BE FINAL ??}
 	    	      	   {positive part of the signature on Lj}
 	           	in @:all( [(->bool)]:
 	       	  	     for (tauj,tauLj) in pairs[1:]

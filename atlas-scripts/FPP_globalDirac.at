@@ -372,7 +372,10 @@ set FPP_unitary_hash_general([(KGBElt,ratvec)] xlambdas, Param_hash Uhash,
     then longest = max_loc(xlambdatimes)
     in prints(new_line,"Total time = ", print_time_string(current-start),
        	      "; max time = ",print_time_string(xlambdatimes[longest]),
-	      " for (x,lambda) = (",  xnums[longest], ",", lambdas[longest],")");
+	      " for (x,lambda) = (",  xnums[longest], ",",
+	      lambdas[longest],")");
+       prints(" time spent in is_unitary = ",print_time_string(unitaryTime),
+       	      ", number of unitarity tests = ", unitary_test_counter.use_count());
        prints("  #hash_real_dumb =",hash_real_dumbCounter.use_count(),
 	      ", #hash_dumb calls=", hash_dumbCounter.use_count(),
        	      ", #hash_def_dumb =", hash_def_dumbCounter.use_count());
@@ -382,9 +385,7 @@ set FPP_unitary_hash_general([(KGBElt,ratvec)] xlambdas, Param_hash Uhash,
 	      ", #hash_bottom_layer = ", hash_bottom_layerCounter.use_count());
        prints("Number of unitary params = ", sum(answerCards));
        prints("Number of FPP-unitary facets = ",Uhash.size(),
-              ", number found on this run = ", Uhash.size() - oldUhash);
-       prints("Number of unitarity tests = ", unitary_test_counter.use_count(),
-       	      ", time spent in is_unitary = ",print_time_string(unitaryTime))
+              ", number found on this run = ", Uhash.size() - oldUhash)
     fi
 
 set FPP_unitary_hash_general([KGBElt] xs, Param_hash Uhash,
@@ -509,6 +510,8 @@ set FPP_unitary_hash_general([KGBElt] xs, Param_hash Uhash,
        prints("Total time = ", print_time_string(current-start),
               "; max time = ",print_time_string(times[longest]),
               " for KGBElt ",xnums[longest]);
+       prints("Time spent in is_unitary = ",print_time_string(unitaryTime),
+       	      ", number of unitarity tests = ", unitary_test_counter.use_count());
        prints("  #hash_real_dumb =",hash_real_dumbCounter.use_count(),
 	      ", #hash_dumb =", hash_dumbCounter.use_count(),
        	      ", #hash_def_dumb =", hash_def_dumbCounter.use_count());
@@ -518,9 +521,7 @@ set FPP_unitary_hash_general([KGBElt] xs, Param_hash Uhash,
               ", #hash_bottom_layer =", hash_bottom_layerCounter.use_count());
        prints("Number of unitary params = ", sum((for list in answerCards do sum(list) od)));
        prints("Number of known FPP-unitary facets = ",Uhash.size(),
-       	      ", number found on this run = ", Uhash.size() - oldUhash);
-       prints("Number of unitarity tests = ", unitary_test_counter.use_count(),
-       	      ", time spent in is_unitary = ",print_time_string(unitaryTime))
+       	      ", number found on this run = ", Uhash.size() - oldUhash)
    fi
 
 set FPP_unitary_hash_general(RealForm G,Param_hash Uhash,
@@ -742,9 +743,11 @@ set FPP_unitary_hash_bottom_layer([(KGBElt,ratvec)] xlambdas, steady_bottom_data
     in prints(new_line,"Total time = ", print_time_string(current-start),
        	      "; max time = ",print_time_string(xlambdatimes[longest]),
 	      " for (x,lambda) = (",  xnums[longest], ",", lambdas[longest],")");
-       prints("Time spent in is_unitary = ",print_time_string(unitaryTime), " number of unitarity tests = ",
+       prints("Time spent in is_unitary = ",print_time_string(unitaryTime), ", number of unitarity tests = ",
        		unitary_test_counter.use_count());
-       prints("Time in bottom layer branching = ", print_time_string(bott_data.bottom_branch_time() - start_branch));
+       prints("Time in bottom layer branching = ",
+       	      print_time_string(bott_data.bottom_branch_time() - start_branch),
+	      ", number of K-types studied = ", bott_data.size());
        prints("  #hash_real_dumb =",hash_real_dumbCounter.use_count(),
 	      ", #hash_dumb =", hash_dumbCounter.use_count(),
        	      ", #hash_def_dumb =", hash_def_dumbCounter.use_count());
@@ -882,9 +885,11 @@ set FPP_unitary_hash_bottom_layer([KGBElt] xs,  steady_bottom_data bott_data,
        prints("Total time = ", print_time_string(current-start),
               "; max time = ",print_time_string(times[longest]),
               " for KGBElt ",xnums[longest]);
-       prints("Time spent in is_unitary = ",print_time_string(unitaryTime), " number of unitarity tests = ",
+       prints("Time spent in is_unitary = ",print_time_string(unitaryTime), ", number of unitarity tests = ",
        		unitary_test_counter.use_count());
-       prints("Time in bottom layer branching = ", print_time_string(bott_data.bottom_branch_time() - start_branch));
+       prints("Time in bottom layer branching = ",
+       print_time_string(bott_data.bottom_branch_time() - start_branch), ", number of K-types studied = ",
+       	      bott_data.size());
        prints("  #hash_real_dumb = ",hash_real_dumbCounter.use_count(),
 	      ", #hash_dumb = ", hash_dumbCounter.use_count(),
        	      ", #hash_def_dumb =", hash_def_dumbCounter.use_count());

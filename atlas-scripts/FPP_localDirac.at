@@ -438,7 +438,7 @@ set local_testK_hash(KGBElt x, ratvec lambda, VertexData vd,
  Assume bottdata only has mu to height the level of the K-chars in pol_hash.}
 set local_testK_hash_bottom_layer(KGBElt x, ratvec lambda, VertexData vd,
     [[FacetVertsKHash]] FVKH, [[int]] eq, [[int]] gr, [vec] classListByFacet,
-    steady_bottom_data bott_data, KTypePol_hash pol_hash, Param_hash Uhash) =
+    steady_bottom_data bott_data, int one_ht, KTypePol_hash pol_hash, Param_hash Uhash) =
     			    [[FacetVertsKHash]]: 
     let newStatuses = for j:#eq do "?" od,  NumClasses = #eq
     	, printInterval = int: 1
@@ -456,6 +456,14 @@ set local_testK_hash_bottom_layer(KGBElt x, ratvec lambda, VertexData vd,
 	      		     od
 		   in ()
 	       fi
+    {then LKdatas = for mu in LKTs(parameter(x,lambda)) do bott_data.entry(mu) od}
+    {then HT = max(for LKdata in LKdatas
+    	      	  do max(for pairs in LKdata
+		     	 do max(for (tau,) in pairs
+			    	do height(tau)
+				od)
+		         od)
+		  od)}
     then () = if fund_facet_verbose and NumClasses > 100
     then prints(); prints("start local_testK_hash ", NumClasses,
 		   " equiv classes of facets to dim ",#FVKH-1)
@@ -477,11 +485,12 @@ set local_testK_hash_bottom_layer(KGBElt x, ratvec lambda, VertexData vd,
 		    	  , facet_bary(vd.list, verts))))
 	          in if #ps = 1
 		     then if Uhash.lookup(ps[0]).>= or
-		     	     min_bottom_elim_factors(ps[0], bott_data, pol_hash.index(FVKH[d][j][d+1]))
+		     	     min_bottom_elim_factors(ps[0], bott_data,
+			     		branch_std(pol_hash.index(FVKH[d][j][d+1]), one_ht))
 		     	  then newStatuses[k]:= "T"
 			  else newStatuses:= updateNUclassesB(newStatuses, gr, k)
-			  ; newStatuses[k] := "F"{; prints("false at ",ps[0])}
-			  fi {TRY HERE!}
+			  ; newStatuses[k] := "F"
+			  fi
 		     else if{NEWU} all(for p in ps
 		     	  	       do Uhash.lookup(p).>= or
 					  min_bottom_elim_factors(p, bott_data)
@@ -1617,17 +1626,20 @@ set local_test_GEO_hash_bottom_layer(KGBElt x, ratvec lambda, VertexData vd,
     	      then let () = Uhash.match(first_param(finalize(pmax)))
 	      	   in return [pmax]
 	      fi
+    then () = if height(pmax) < bottom_length_frac* (G.two_rho * G.rho_check)
+    	 then return local_test_GEO_hash_one_level(x, lambda, vd, Lvd, LF,
+	      	   	  				   pol_hash, Uhash)
+	 fi
     then LKdatas  = for mu in LKTs(pmax)
     	 	   do
 		   bott_data.entry(mu)
 		   od
     then NLKT = #LKdatas
-    {then () = prints(Khash.size(), "  ",#Kdata) }{, "  ",std_K_type_hash.size(),"  ", #bottom_layer_data)}
     then () = if L = G or
-    	      	 height(pmax) < bottom_length_frac* (G.two_rho * G.rho_check) or
+    	      	 {height(pmax) < bottom_length_frac* (G.two_rho * G.rho_check) or}
 	         sum(for i:NLKT
     	      	     do sum( for list in LKdatas[i] do #list od)
-		     od)= 0
+		     od)= NLKT
     	      then return local_test_GEO_hash_one_level(x, lambda, vd, Lvd, LF,
 	      	   	  				   pol_hash, Uhash)
 	      fi
@@ -1644,7 +1656,6 @@ set local_test_GEO_hash_bottom_layer(KGBElt x, ratvec lambda, VertexData vd,
 	compute K-chars just to this height}
     then () = test_string:= " using local_test_GEO_hash_bottom_layer"
     then  () = hash_bottom_layerCounter.use()
-    {then hts = next_heights(parameter(x,lambda,0*lambda), LAST+1)}
     then one_ht = qhts
     then () =  if test_verbose then prints("facet counts to dim 1: ",
 			  for list in LF do #list od);
@@ -1657,7 +1668,7 @@ set local_test_GEO_hash_bottom_layer(KGBElt x, ratvec lambda, VertexData vd,
    {then () = prints(((eq,gr), IUCL,CLBF))}
     	{next remove from LFDKH all facets failing min_bottom_factors_elim(one_ht)}
    then () = LFDKH := local_testK_hash_bottom_layer(x,lambda,Lvd, LFDKH, eq,
-		      gr, CLBF, bott_data, pol_hash_one_ht,  Uhash)
+		      gr, CLBF, bott_data, one_ht, pol_hash_one_ht,  Uhash)
    then () = if test_verbose then prints("unitary on bottom layer to ",one_ht,
 		   	   " facet counts to dim 1: ",for list in LFDKH do
 			     #list od)
@@ -1733,11 +1744,8 @@ set local_test_GEO_hash_bottom_layer(KGBElt x, ratvec lambda, VertexData vd,
     then () = if time_verbose
 	      then prints("     ", print_time_string(time),
 	      " for UParams calculation ", test_string, new_line){;}
-	      {then () = if test_verbose then prints("total number of tests = ",
-                                        unitary_test_counter.use_count())}
 	      fi
    in UParams
-   {fi}
 
 set local_test_GEO_hash_bottom_layer(KGBElt x, ratvec lambda, VertexData vd,
     VertexData Lvd, [[FacetVertsIndex]] LF, KTypePol_hash pol_hash, Param_hash Uhash) = [Param]:
