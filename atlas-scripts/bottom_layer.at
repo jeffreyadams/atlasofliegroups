@@ -76,6 +76,7 @@ set min_L_bottom(Param p, int D) = [(KType,KType)]:
 
 {Each (tau,tauLj) in output is a bottom layer K-type tau for mu, and the
 corresponding Lj\cap K-type tauLj; one list for each Lj. Guaranteed to include LKT pairs, so nonempty}
+{
 set min_L_bottom_factors(KType mu, int level) = [[(KType, KType)]]:
     let p = parameter(mu)
     then (Q,pL) = theta_stable_quasi_data(p), G = p.real_form
@@ -107,7 +108,41 @@ set min_L_bottom_factors(KType mu, int level) = [[(KType, KType)]]:
 	  	     fi
 	       od.##
 	  od
- 
+}
+
+set min_L_bottom_factors(KType mu, int level) = [[(KType, KType)]]:
+    let p = parameter(mu)
+    then (Q,pL) = theta_stable_quasi_data(p), G = p.real_form
+    then muL = LKT(pL)
+    then muLjs = factor_K_types(muL), L = Q.Levi
+    then Ljs = for muLj in muLjs do muLj.real_form od
+     {restriction to each simple factor of L}
+    {then Ljs = simple_factors(L) doesn't match real forms of muLjs}
+    then DLjs = for muLj@j in muLjs do next_heights(muLj, (semisimple_rank(Ljs[j]) + 1)\2) od
+    then too_many_tauLjs = [[KType]]:
+    	 for muLj@j in muLjs
+	 do monomials(branch(muLj, DLjs[j]~[0]))
+	 od
+    then xcL = KGB(L,0)
+    then xcLjs = for Lj in Ljs
+    	       	 do KGB(Lj, 0)
+		 od
+    then xcGs = for xcLj in xcLjs do embed_KGB(xcLj,G) od
+    then shifts = for xcLj@j in xcLjs {Connects Lj\cap K-types to bottom layer K-types}
+    	 	  do highest_weight(mu,xcGs[j]).mu - highest_weight(muLjs[j], xcLj).mu
+		  od
+    in for listj@j in too_many_tauLjs
+       do let K0 = K_0(xcGs[j])
+       	  in for tauLj in listj
+       	     do let taujwt = highest_weight(tauLj, xcLjs[j]).mu + shifts[j]
+	     in if {height(tauLj) > 0 and} is_dominant(K0, taujwt)
+  	             then [(K_types(K_highest_weight_from_K0_weight(xcGs[j], taujwt))[0], tauLj)]
+	  	     else []
+	  	     fi
+	       od.##
+	  od
+
+
 {table of bottom layer data indexed by KType}
 set_type
 [steady_bottom_data =

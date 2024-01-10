@@ -1615,6 +1615,7 @@ set local_test_GEO_hash_bottom_layer(KGBElt x, ratvec lambda, VertexData vd,
     then approxVertexDiff = vertexDiff.numer*100\vertexDiff.denom
     then r = rank(thetaMinus)
     then ONE = BL_steps
+    then () = revert_flag:=false
     then () = bott_data.adjust_BL_depth(BL_steps)
     then maxDiffLoc = max_loc(for w in LF[0]
     	 	       	      do G.two_rho_check*(dominant(G,thetaMinus*Lvd.list[w[0]]))
@@ -1636,7 +1637,6 @@ set local_test_GEO_hash_bottom_layer(KGBElt x, ratvec lambda, VertexData vd,
 		   od
     then NLKT = #LKdatas
     then () = if L = G or
-    	      	 {height(pmax) < bottom_length_frac* (G.two_rho * G.rho_check) or}
 	         sum(for i:NLKT
     	      	     do sum( for list in LKdatas[i] do #list od)
 		     od)= NLKT
