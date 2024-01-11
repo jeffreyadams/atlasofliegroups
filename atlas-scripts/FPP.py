@@ -10,9 +10,12 @@ progress_step_size=10 #how often to report progress
 FPP_at_file="FPP.at" #default
 FPP_py_file="FPP.py" #default
 #extra_files=["global_facets_E7.at","coh_ind_E7_to_hash.at","E7except589to15851.at"]
-#extra_files=["global_facets_E7.at","coh_ind_E7_to_hash.at"]
+extra_files=["global_facets_E7.at","coh_ind_E7_to_hash.at"]
 extra_files=[]
 
+def nice_time(t):
+   return(re.sub("\..*","",str(datetime.timedelta(seconds=t))))
+ 
 #simple reporting function
 def report(q,i,proc):
    return("(i)[size of q]<status_i>: (" + str(i) + ")[:" + str(q.qsize()) +  "]<" + str(proc.poll()) + ">")
@@ -40,7 +43,7 @@ def atlas_compute(i,pid):
    log.write("\nJob number: " + str(i) + "\n")
    log.write("Job pid: " +  str(pid) + "\n")
    log.write("function: " +  test_function + "\n")
-   vars=['coh_ind_flag','revert_flag','deform_flag','every_KGB_flag','every_lambda_flag','every_lambda_deets_flag','test_slightly_verbose','test_verbose','global_top','global_facets_file_loaded','coh_ind_file_loaded']
+   vars=['coh_ind_flag','revert_flag','deform_flag','every_KGB_flag','every_lambda_flag','every_lambda_deets_flag','facet_verbose','test_slightly_verbose','test_verbose','global_top','global_facets_file_loaded','coh_ind_file_loaded','low_KGB_frac']
 
    for var in vars:
       atlas_arg='{}'.format("prints(\"" + var + ": \"," +  var + ")" + "\n").encode('utf-8')
@@ -74,10 +77,10 @@ def atlas_compute(i,pid):
       x_start_time=time.time()
       log.write("x=" + str(x) + "\n")
       atlas_arg_txt="set list=" + test_function + "(" + group + "," + str(x) + ")\n"
-      print("atlas_arg: ", atlas_arg_txt)
+#      print("atlas_arg: ", atlas_arg_txt)
       atlas_arg='{}'.format(atlas_arg_txt).encode('utf-8')
       proc.stdin.write(atlas_arg)
-      print("Done executing atlas_arg")
+#      print("Done executing atlas_arg")
       proc.stdin.flush()
       newtime=starttime
       while True:
@@ -89,36 +92,40 @@ def atlas_compute(i,pid):
          if line.find("Variable")>=0:
 #            print("BREAK")
             break
-         line =line + "  [" + time.strftime("%H:%M:%S", time.gmtime(timediff)) + "  " + time.strftime("%H:%M:%S", time.gmtime(newtime-starttime)) + "]"
+#         line =line + "  [" + time.strftime("%H:%M:%S", time.gmtime(timediff)) + "  " + time.strftime("%H:%M:%S", time.gmtime(newtime-starttime)) + "]"
+         line =line + "  [" + nice_time(timediff) + "  " + nice_time(newtime-starttime) + "]"
          log.write(line + "\n")
 #      print("DONE WITH FIRST LOOP")
       proc.stdout.flush()
-      
-      atlas_arg_txt="write_param_list_jda(list,\"p" + str(x) +  "\");print(\"done\")"+ "\n"
-      print("atlas_arg: ", atlas_arg_txt)
+#      print("OK")
+#      atlas_arg_txt="write_param_list_jda(list,\"p" + str(x) + "\"," + str(x) +  "," + str(x) ;
+      atlas_arg_txt="write_param_list_jda(list,\"p"  + str(x) + "\"," + str(x) + ");prints(\"done\")" + "\n"
+#      print("atlas_arg: ", atlas_arg_txt)
       atlas_arg='{}'.format(atlas_arg_txt).encode('utf-8')
       proc.stdin.write(atlas_arg)
       proc.stdin.flush()
       #  exit()
       while True:
          line = proc.stdout.readline().decode('ascii').strip()
-         print("line: ", line)
+#         print("line: ", line)
          if line.find("done")>=0:
             break
          data.write(line + "\n")
       x_time=newtime-x_start_time
-      log.write("Finished_KGB element " + str(x)   + ": elapsed time: " +
-                time.strftime("%H:%M:%S", time.gmtime(x_time)) +
-                "  time from start: " +
-                time.strftime("%H:%M:%S", time.gmtime(newtime-starttime)) + "\n")
+      log.write("Finished_KGB element " + str(x)   + ": elapsed time: " + nice_time(x_time) + 
+#                time.strftime("%H:%M:%S", time.gmtime(x_time)) +
+                "  time from start: " + nice_time(newtime-starttime+10000000) + "\n")
+#                time.strftime("%H:%M:%S", time.gmtime(newtime-starttime)) + "\n")
       reporting_data.append((x,x_time))
    log.write("No more KGB elements to do; time: " + str(time.ctime()) + "\n")
    stoptime=time.time()
-   elapsed = time.strftime("%H:%M:%S", time.gmtime(stoptime-starttime))
+#   elapsed = time.strftime("%H:%M:%S", time.gmtime(stoptime-starttime))
+   elapsed = nice_time(stoptime-starttime)
    log.write("Times:\n")
 #   print("data: ", reporting_data)
    for (x,t) in reporting_data:
-      log.write("x:" + str(x) + " " + time.strftime("%H:%M:%S", time.gmtime(t)) + "\n")
+#      log.write("x:" + str(x) + " " + time.strftime("%H:%M:%S", time.gmtime(t)) + "\n")
+      log.write("x:" + str(x) + " " + nice_time(t) + "\n")
    log.write("Total time for " + str(kgb_count) + " KGB elements: "+ elapsed + "\n")
    log.close()
    data.close()

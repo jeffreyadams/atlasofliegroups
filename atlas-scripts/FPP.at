@@ -1,7 +1,5 @@
 <FPP_globalDirac.at
 
-
-
 {This script runs (backward, for no serious reason) over a sequence of
 KGBElts x in E7_s, beginning at start and ending before start +
 interval. For each x, it computes the corresponding lambdas; then for
@@ -37,13 +35,15 @@ set params(Param_hash unitary_hash,KGBElt x)=[Param]:
 set params([Param] params,KGBElt x)=[Param]:
  ##for p in params do  if p.x=x then [p] else [] fi od
 
+set params([Param] params,int kgb_number)=[Param]:
+ ##for p in params do  if number(p.x)=kgb_number then [p] else [] fi od
+
 set FPP_unitary_hash(RealForm G, int x)=[Param]:let ()=FPP_unitary_hash([KGB(G,x)]) in params(unitary_hash)
 set FPP_unitary_hash2(RealForm G, int x)=[Param]:let ()=FPP_unitary_hash2([KGB(G,x)]) in params(unitary_hash)
+set FPP_unitary_hash_one_level(RealForm G, int x)=[Param]:let ()=FPP_unitary_hash_one_level([KGB(G,x)]) in params(unitary_hash)
 
-set FPP_unitary_hash_one_level(RealForm G, int x)=[Param]:
-unitary_hash:=make_Param_hash();prints("BEFORE:",params(unitary_hash));let ()=FPP_unitary_hash_one_level([KGB(G,x)]) in params(unitary_hash)
+low_KGB_frac:=2/5
 
-set test_verbose=false
 {coh_ind_flag:   default true, means COMPUTE cohomological induction
                  if you precompute cohomological induction, load the data file (e.g. coh_ind_E7_has.at) which should set it to false}
 coh_ind_flag:=false
@@ -52,11 +52,13 @@ deform_flag:=false    {default is false}
 {global_top: should be set by file such as global_facets_E7.at}
 
 {output flags:}
+test_verbose:=false
 every_KGB_flag:=true
 every_lambda_flag:=true
 every_lambda_deets_flag:=true
 test_slightly_verbose:=true
 test_verbose:=true
+facet_verbose:=true
 
 {NOTE: extra_files is defined in FPP.py}
 
@@ -99,22 +101,27 @@ set kgb_non_fixed(RealForm G)=
 {to write a list of Param's for a single RealForm}
 {change from writeFiles.at: "<groups.at"
 and if x\ne cross(w0,x) then write contragredient representation also}
-set write_param_list_jda([Param] parameters, string listName, KGBElt x) = void:
-let list=params(parameters,x) {just those with correct x} in
+set write_param_list_jda([Param] parameters, string listName, int kgb_number) = void:
+let list=params(parameters,kgb_number) {just those with correct x} in
 if #list=0
   then prints(listName,"[Param]:=[]")
 else
-  prints("set Nullp = trivial_group.trivial");
-  prints("set ",listName,"=[Param]: for i:",#list," do Nullp od");
-  let not_fixed=not is_fixed(x) then
-  n=number(x) in
-  for p@i in list do
+  let G=list[0].real_form then
+  x=KGB(G,kgb_number) in 
+  let ()=  prints("set Nullp = trivial_group.trivial") then
+  ()=prints("set ",listName,"=[Param]: for i:",#list," do Nullp od") then
+  not_fixed=not is_fixed(x) in
+  let ()=  for p@i in list do
    if p.x=x then
-      prints("void:",listName,"[",i,"]:=parameter(KGB(G_temp,",n,"),",p.lambda,",",p.nu,")");
-       if not_fixed then
-         let dp=contragredient(p) in
-         prints("void:",listName,"[",i,"]:=parameter(KGB(G_temp,",number(dp.x),"),",dp.lambda,",",dp.nu,")","  {dual}")
-       fi
-   fi
-  od
-fi
+      prints("void:",listName,"[",i,"]:=parameter(KGB(G_temp,",kgb_number,"),",p.lambda,",",p.nu,")")
+  fi
+  od in
+  if not is_fixed(x) then 
+   for p@i in list do
+    if p.x=x then
+       let dp=contragredient(p) in 
+       prints("void:",listName,"[",i,"]:=parameter(KGB(G_temp,",number(dp.x),"),",dp.lambda,",",dp.nu,")", "  {dual}")
+    fi
+   od
+  fi
+ fi
