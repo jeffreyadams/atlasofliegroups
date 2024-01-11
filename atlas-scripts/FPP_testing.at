@@ -340,7 +340,7 @@ set time_bottom([Param] params) = void:
 		 in ()
 	      od
     then maxLoc = max_loc(times)
-    then () = prints("for bottom to level ", level, ", total time = ",
+    then () = prints("for bottom with no level tweak, total time = ",
     	      	     print_time_string(elapsed_ms() - start_time),
     	      	     " for ", N, " parameters; #true = ", count(bools));
 	      prints("longest = ", print_time_string(times[maxLoc]),
