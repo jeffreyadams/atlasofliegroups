@@ -20,6 +20,9 @@ def nice_time(t):
 def report(q,i,proc):
    return("(i)[size of q]<status_i>: (" + str(i) + ")[:" + str(q.qsize()) +  "]<" + str(proc.poll()) + ">")
 
+#format atlas command, given as a text string, for passing to atlas via stdin.write
+def format_cmd(atlas_command):return('{}'.format(atlas_command).encode('utf-8'))
+
 #call the atlas process proc, with arguments:
 #procs: array of processes
 #i: number of process
@@ -70,6 +73,42 @@ def atlas_compute(i,pid):
    kgb_count=0
    reporting_data=[]
    while kgb_queue.qsize()>0:
+      # atlas_cmd=format_cmd("<\"" + directory + "/the_group.at\"" + "\n")
+      # print("atlas_cmd: ", atlas_cmd)
+      # proc.stdin.write(atlas_cmd)
+      # proc.stdin.flush()
+      # print("okok")
+      # while True:
+      #    print("in true loop")
+      #    line = proc.stdout.readline().decode('ascii').strip()
+      #    print("line: ",line)
+      #    print("flag: ", line.find("Completely"))
+      #    if line.find("Completely")>-1:
+      #       print("DONE with loop")
+      #       break
+      # print("moving on")
+      # #read all at files
+      # print("IN LOOP")
+      all_files=os.listdir(directory)
+      print("files: ", all_files)
+      for file in all_files:
+         if re.match(r'[0-9]*\.at',file):
+            print("opening at file: ", file)
+            atlas_cmd=format_cmd("<<\"" + directory + "/" + file + "\"\n")
+            print("atlas_cmd: ", atlas_cmd)
+            proc.stdin.write(atlas_cmd)
+            print("OK")
+            proc.stdin.flush()
+            print("saa")
+            while True:
+               print("true loop")
+               line=proc.stdout.readline().decode('ascii')
+               print("LINE: ", line)
+               if line.find("Completely")>-1:
+                  print("found completely")
+                  break
+      print("DONE")
+      exit()
       log.write("==================================================================\n")
       log.write("size of kgb_queue: " + str(kgb_queue.qsize()) + "\n")
       x=kgb_queue.get()

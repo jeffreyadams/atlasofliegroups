@@ -25,6 +25,7 @@ I'm not sure whether my little experiment proves that this is viable
 idea or not. My do-them-all jobs on atlas are computing an average of
 one KGBElt each 90 minutes.
 }
+set trivial_group=compact_form(trivial_group)
 
 set params(Param_hash unitary_hash)=[Param]:
  for i:unitary_hash.size() do unitary_hash.index(i) od
@@ -97,6 +98,9 @@ set kgb_fixed(RealForm G)=[int]:
 set kgb_non_fixed(RealForm G)=
    ##for x in KGB(G) do if number(cross(G.w0,x))>number(x) then [number(x)] else [] fi od
 
+set add_to_hash(Param_hash unitary_hash,[Param] params)=void:
+    for p in params do unitary_hash.match(p) od
+
 
 {to write a list of Param's for a single RealForm}
 {change from writeFiles.at: "<groups.at"
@@ -104,7 +108,7 @@ and if x\ne cross(w0,x) then write contragredient representation also}
 set write_param_list_jda([Param] parameters, string listName, int kgb_number) = void:
 let list=params(parameters,kgb_number) {just those with correct x} in
 if #list=0
-  then prints(listName,"[Param]:=[]")
+  then prints("set ",listName,"=[Param]:[]")
 else
   let G=list[0].real_form then
   x=KGB(G,kgb_number) in 
@@ -113,14 +117,14 @@ else
   not_fixed=not is_fixed(x) in
   let ()=  for p@i in list do
    if p.x=x then
-      prints("void:",listName,"[",i,"]:=parameter(KGB(G_temp,",kgb_number,"),",p.lambda,",",p.nu,")")
+      prints("void:",listName,"[",i,"]:=parameter(KGB(G,",kgb_number,"),",p.lambda,",",p.nu,")")
   fi
   od in
   if not is_fixed(x) then 
    for p@i in list do
     if p.x=x then
        let dp=contragredient(p) in 
-       prints("void:",listName,"[",i,"]:=parameter(KGB(G_temp,",number(dp.x),"),",dp.lambda,",",dp.nu,")", "  {dual}")
+       prints("void:",listName,"[",i,"]:=parameter(KGB(G,",number(dp.x),"),",dp.lambda,",",dp.nu,")", "  {dual}")
     fi
    od
   fi
