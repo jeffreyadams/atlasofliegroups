@@ -13,7 +13,6 @@ set where() = void:
    od
 
 set !minus_1 = -1 { using this constant avoids evaluating unary minus }
-set ~ (int n) = minus_1-n { subtract from -1, or bitwise complement }
 
 set # (int n)= [int]: for i:n do i od       { [0,1,...,n-1] }
 set # (bool b) = int: if b then 1 else 0 fi { Iverson symbol }
