@@ -59,12 +59,13 @@ set min_L_bottom(Param p, int D) = [(KType,KType)]:
     then xcL = KGB(L,0)
     then xcG = embed_KGB(xcL, G), LKTG = LKTs(p)[0],
     	 LKTL = LKTs(pL)[0]
-    then shift = highest_weight(LKTG,xcG).mu - highest_weight(LKTL,xcL).mu
+    then shift = K0_param(LKTG, xcG).lambda_minus_rho - K0_param(LKTL,xcL).lambda_minus_rho
+    	 {highest_weight(LKTG,xcG).mu - highest_weight(LKTL,xcL).mu}
     then DL = D-height(p) + height(pL)
-    then too_many_tauLs = monomials(branch_std(pL,DL))
+    then too_many_tauLs = monomials(branch_std(pL,DL)) {reps of L\cap K}
     then K0 = K_0(xcG), LK0 = K_0(xcL)
     then tauLs =  for tauL in too_many_tauLs
-       	      	  do let weight = highest_weight(tauL,xcL).mu + shift
+       	      	  do let weight = K0_param(tauL,xcL).lambda_minus_rho + shift
 		  in if {height(tauL) > 0 and}
 		       	   is_dominant(K0,weight)
        	  	    then [(weight,tauL)]
@@ -96,12 +97,15 @@ set min_L_bottom_factors(KType mu, int level) = [[(KType, KType)]]:
 		 od
     then xcGs = for xcLj in xcLjs do embed_KGB(xcLj,G) od
     then shifts = for xcLj@j in xcLjs {Connects Lj\cap K-types to bottom layer K-types}
-    	 	  do highest_weight(mu,xcGs[j]).mu - highest_weight(muLjs[j], xcLj).mu
+    	 	  do K0_param(mu, xcGs[j]).lambda_minus_rho -
+		     K0_param(muLjs[j],xcL).lambda_minus_rho
+{highest_weight(mu,xcGs[j]).mu - highest_weight(muLjs[j], xcLj).mu}
 		  od
     in for listj@j in too_many_tauLjs
        do let K0 = K_0(xcGs[j])
        	  in for tauLj in listj
-       	     do let taujwt = highest_weight(tauLj, xcLjs[j]).mu + shifts[j]
+       	     do let taujwt = K0_param(tauLj, xcLjs[j]).lambda_minus_rho + shifts[j]
+{highest_weight(tauLj, xcLjs[j]).mu + shifts[j]}
 	     in if {height(tauLj) > 0 and} is_dominant(K0, taujwt)
   	             then [(K_types(K_highest_weight_from_K0_weight(xcGs[j], taujwt))[0], tauLj)]
 	  	     else []
@@ -129,12 +133,15 @@ set min_L_bottom_factors(KType mu, int level) = [[(KType, KType)]]:
 		 od
     then xcGs = for xcLj in xcLjs do embed_KGB(xcLj,G) od
     then shifts = for xcLj@j in xcLjs {Connects Lj\cap K-types to bottom layer K-types}
-    	 	  do highest_weight(mu,xcGs[j]).mu - highest_weight(muLjs[j], xcLj).mu
+    	 	  do K0_param(mu, xcGs[j]).lambda_minus_rho -
+		     K0_param(muLjs[j],xcLjs[j]).lambda_minus_rho
+{highest_weight(mu,xcGs[j]).mu - highest_weight(muLjs[j], xcLj).mu}
 		  od
     in for listj@j in too_many_tauLjs
        do let K0 = K_0(xcGs[j])
        	  in for tauLj in listj
-       	     do let taujwt = highest_weight(tauLj, xcLjs[j]).mu + shifts[j]
+       	     do let taujwt = K0_param(tauLj, xcLjs[j]).lambda_minus_rho + shifts[j]
+{highest_weight(tauLj, xcLjs[j]).mu + shifts[j]}
 	     in if {height(tauLj) > 0 and} is_dominant(K0, taujwt)
   	             then [(K_types(K_highest_weight_from_K0_weight(xcGs[j], taujwt))[0], tauLj)]
 	  	     else []
@@ -184,6 +191,8 @@ set make_steady_bottom_data () = steady_bottom_data:
 		       	       	 	     #min_L_bottom_factors(mu, steps)
 		       in branch_time +:= elapsed_ms() - start
 		  fi
+	then () = assert(#bottom_data =
+	     	K_type_hash.size(),"steady_bottom_data damaged")
 	in bottom_data[m]
      end
    , (KType->): {append } (KType mu):
@@ -191,9 +200,13 @@ set make_steady_bottom_data () = steady_bottom_data:
 	let M = K_type_hash.size()
 	then m = K_type_hash.match(mu)
 	then () = if m = M
-	     	  then bottom_data := (bottom_data next bottom_data:= [])
-		       #min_L_bottom_factors(mu, steps)
+	     	  then let start = elapsed_ms()
+	     	       then () = bottom_data := (bottom_data next bottom_data:= [])
+		       	       	 	     #min_L_bottom_factors(mu, steps)
+		       in branch_time +:= elapsed_ms() - start
 		  fi
+        then () = assert(#bottom_data =
+	     	K_type_hash.size(),"steady_bottom_data damaged")
 	in ()
      end
    , (int -> KType): {K_type_index} (int j): K_type_hash.index(j)
@@ -303,45 +316,70 @@ set min_bottom_test(Param p, int D) = bool:
 {false guarantees not unitary, but true does not guarantee unitary}
 {LKdata[j] is [(tauj,tauLj)]: tauLj is an Lj\cap K-type inducing to a bottom layer tauj of p.}
 set min_bottom_elim_factors(Param p, [[(KType,KType)]] LKdata) = bool:
-    if sum(for pairs in LKdata do #pairs od) = #LKdata then return true fi;
     let start = elapsed_ms(), answers = for k:#LKdata do false od,
-        	(,pL) = theta_stable_quasi_data(p)
-    in let pLjs = factor_params(pL) {1 for each simple factor Lj of L}
-       	   {need to shift pLjs by one-diml of Lj to make infl char match those in LKdata}
-	   {also need to make them for same group as tauLj}
-       then muL = LKTs(pL)[0]
-       then muLjs = factor_K_types(muL)
-       then baseLjs = [KType]:
-       	    for pairs@j in LKdata
-	    do let (,baseLj) = pairs[0]
-	       in baseLj
-	    od
-       then shiftjs = for pLj@j in pLjs
-	    	      do ratvec_as_vec(param(muLjs[j]).d_lambda - pLj.d_lambda)
-		      od
-       then qLjs = for pLj@j in pLjs
-		   do parameter(baseLjs[j].real_form, (pLj.x).number, pLj.lambda +
+    	(,pL) = theta_stable_quasi_data(p)
+    then (mu,) = LKdata[0][0]
+    then LKTloc = first(for muprime@m in LKTs(p) do muprime=mu od)
+    in if LKTloc <0
+       then prints("mu isn't a LKT of p"); true
+       elif sum(for pairs in LKdata do #pairs od) = #LKdata
+       	    then true
+       else let pLjs = factor_params(pL)
+       	    then DLs = for pairs@j in LKdata
+	       	       do max(for (,tauLj) in pairs
+		       	      do height(tauLj)
+		      	      od)
+	       	       od
+      	    then muL = LKTs(pL)[LKTloc]
+       	    then muLjs = factor_K_types(muL) {need to line up each muLjs[j] with ONE LKT of pLjs[j]}
+       	    then baseLjs = [KType]:
+       	    	 for pairs@j in LKdata
+	    	 do let (,baseLj) = pairs[0]
+	       	    in baseLj
+	    	 od
+       	    then shiftjs  = for pLj@j in pLjs {for shifting an LKj type to one attached to muLj}
+	    	      	    do  let cands = for phiLjk in LKTs(pLj)
+			       	   	   do  K0_param(muLjs[j]).lambda_minus_rho -
+			       	   	       K0_param(phiLjk).lambda_minus_rho
+					   od
+		      	        then wts = for cand in cands
+				     	   do K_highest_weight_from_K0_weight(
+					       	    muLjs[j].real_form.KGB[0], cand).mu
+			   			     {this lifts cand on K0 to X^*}
+					   od
+				then loc = first(for wt@k in wts
+				     	   	 do is_one_dimensional(
+				     parameter(x_open(pLj.real_form), pLj.real_form.rho + wt, pLj.real_form.rho))
+				     		 od)
+				in assert(loc >= 0,"this muLj doesn't match any LKT of pLj"); wts[loc]
+			   {ratvec_as_vec(param(muLjs[j]).d_lambda - pLj.d_lambda)}
+		      	   od
+       	    then qLjs = for pLj@j in pLjs
+		      	do let qLj = parameter(baseLjs[j].real_form, (pLj.x).number, pLj.lambda +
 		      				    shiftjs[j], pLj.nu)
-		   od
-       then DG = max(for pairs in LKdata
+		           then () = assert(any(for psiLj in LKTs(qLj) do psiLj = baseLjs[j] od),
+			   	     		   "qLj fails to have baseLj as a LKT")
+			   in qLj
+		   	od
+            then DG = max(for pairs in LKdata
        	    	     do max(for (tauj,) in pairs
 			    do height(tauj)
 			    od)
 		     od)
-       then multG = branch_irr(p,DG)
-       then DLs = for pairs@j in LKdata
-	    	  do max(for (,tauLj) in pairs
-			 do height(tauLj)
-			 od)
-		  od
+       	    then multG = branch_irr(p,DG)
        in all( [(->bool)]: {list of functions, one for each factor Lj}
 	       for pairs@j in LKdata
-	       do let (posLj,) = K_signature_irrB(qLjs[j], DLs[j])
+	       do let (posLj,negLj) = K_signature_irrB(qLjs[j], DLs[j])
+	       	  then () = if posLj[baseLjs[j]] = 0
+		       	    then posLj := negLj
+			    fi
 		  in @:all( [(->bool)]:
 			    for(tauj, tauLj) in pairs[1:]
-			    do @bool: int_part(posLj[tauLj]) >= int_part(multG[tauj])
+			    do {prints(posLj[tauLj]," ",multG[tauj]);}
+			    @bool: int_part(posLj[tauLj]) >= int_part(multG[tauj])
 			    od )
 	       od )
+       fi
 
 set min_bottom_elim_factors(Param p, steady_bottom_data bott_data) = bool:
     all( for mu in LKTs(p)
@@ -351,41 +389,64 @@ set min_bottom_elim_factors(Param p, steady_bottom_data bott_data) = bool:
 
 {false guarantees not unitary, but true does not guarantee unitary}
 {Here P is branch_std(K-character of p to heights of pairs}
-{LKdatas is supposed to have size #LKTs(p)}
+{LKdata refers to ONE LKT of p}
 set min_bottom_elim_factors(Param p, [[(KType,KType)]] LKdata, KTypePol P) = bool:
     let start = elapsed_ms(), answers = for k:#LKdata do false od,
     	(,pL) = theta_stable_quasi_data(p)
-    in if sum(for pairs in LKdata do #pairs od) = #LKdata
-       then true
+    then (mu,) = LKdata[0][0]
+    then LKTloc = first(for muprime@m in LKTs(p) do muprime=mu od)
+    in if LKTloc <0
+       then prints("mu isn't a LKT of p"); true
+       elif sum(for pairs in LKdata do #pairs od) = #LKdata
+       	    then true
        else let pLjs = factor_params(pL)
        	    then DLs = for pairs@j in LKdata
 	       	       do max(for (,tauLj) in pairs
 		       	      do height(tauLj)
 		      	      od)
 	       	       od
-      	    then muL = LKTs(pL)[0]
-       	    then muLjs = factor_K_types(muL)
+      	    then muL = LKTs(pL)[LKTloc]
+       	    then muLjs = factor_K_types(muL) {need to line up each muLjs[j] with ONE LKT of pLjs[j]}
        	    then baseLjs = [KType]:
        	    	 for pairs@j in LKdata
 	    	 do let (,baseLj) = pairs[0]
 	       	    in baseLj
 	    	 od
-       	    then shiftjs = for pLj@j in pLjs
-	    	      	   do ratvec_as_vec(param(muLjs[j]).d_lambda - pLj.d_lambda)
+       	    then shiftjs  = for pLj@j in pLjs {for shifting an LKj type to one attached to muLj}
+	    	      	    do  let cands = for phiLjk in LKTs(pLj)
+			       	   	   do  K0_param(muLjs[j]).lambda_minus_rho -
+			       	   	       K0_param(phiLjk).lambda_minus_rho
+					   od
+		      	        then wts = for cand in cands
+				     	   do K_highest_weight_from_K0_weight(
+					       	    muLjs[j].real_form.KGB[0], cand).mu
+			   			     {this lifts cand on K0 to X^*}
+					   od
+				then loc = first(for wt@k in wts
+				     	   	 do is_one_dimensional(
+				     parameter(x_open(pLj.real_form), pLj.real_form.rho + wt, pLj.real_form.rho))
+				     		 od)
+				in assert(loc >= 0,"this muLj doesn't match any LKT of pLj"); wts[loc]
+			   {ratvec_as_vec(param(muLjs[j]).d_lambda - pLj.d_lambda)}
 		      	   od
        	    then qLjs = for pLj@j in pLjs
-		      	do parameter(baseLjs[j].real_form, (pLj.x).number, pLj.lambda +
+		      	do let qLj = parameter(baseLjs[j].real_form, (pLj.x).number, pLj.lambda +
 		      				    shiftjs[j], pLj.nu)
+		           then () = assert(any(for psiLj in LKTs(qLj) do psiLj = baseLjs[j] od),
+			   	     		   "qLj fails to have baseLj as a LKT")
+			   in qLj
 		   	od
-        in all( [(->bool)]: {list of functions, one for each factor Lj}
+            in all( [(->bool)]: {list of functions, one for each factor Lj}
        	    	for pairs@j in LKdata
        	    	do if #pairs = 1 then @: true
 		   else {let (,tauj0) = pairs[0]}
 		   	let qLj = qLjs[j]
 		   	{qLj is now a Param for the same real form as tauj}
-		   	then (posLj,) = K_signature_irrB(qLj, DLs[j])
-		      {DANGER: THIS PARAM MAY NOT BE FINAL ??}
-	    	      	   {positive part of the signature on Lj}
+			then (posLj,negLj) = K_signature_irrB(qLjs[j], DLs[j])
+	       	  	then () = if posLj[baseLjs[j]] = 0
+		       	     	  then posLj := negLj
+			    	  fi
+	    	      	{positive part of the signature on Lj}
 	           	in @:all( [(->bool)]:
 	       	  	     for (tauj,tauLj) in pairs[1:]
        	       	    	     do @bool: int_part(posLj[tauLj]) >= int_part(P[tauj])

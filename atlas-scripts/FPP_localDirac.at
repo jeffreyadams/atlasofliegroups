@@ -618,6 +618,7 @@ set one_false_counter = make_counter()
 set hash_real_dumbCounter = make_counter()
 set hash_dumbCounter = make_counter()
 set hash_def_dumbCounter = make_counter()
+set hash_bottom_layerCounter = make_counter()
 
 set one_param_test(Param p, Param_hash Uhash) = [Param]:
     let Q = monomials(finalize(p)), G = p.real_form
@@ -628,6 +629,7 @@ set one_param_test(Param p, Param_hash Uhash) = [Param]:
 	 else let (answer,) = deform_hts(Q[0],r\2)
 	 in answer {could record boolean, use it to replace _test by _to_hts}
 	 fi
+    then  () = hash_def_dumbCounter.use()
     then test = all(for q in Q do Uhash.lookup(q).>= or
 		   	       is_unitary_test(q, DEFHTS) od)
     in if test
@@ -642,6 +644,7 @@ set one_param_test(Param p, Param_hash Uhash) = [Param]:
 
 set one_param_test(Param p, steady_bottom_data bott_data, Param_hash Uhash) = [Param]:
     let QG = monomials(finalize(p)),G = p.real_form
+    then () = hash_bottom_layerCounter.use()
     then test = all(for q in QG
     	      	    do Uhash.lookup(q).>= or
     	      	       min_bottom_test_factors(q, bott_data)
@@ -1600,8 +1603,6 @@ set bottom_length_frac = rat: 1/2
 
 {how many levels of bottom layer K-types to use}
 set BL_steps = int:2
-
-set hash_bottom_layerCounter = make_counter()
 
 {assume local facets to dim 1 are recorded in LF, already herm and pos
 on LKTs. This version uses min_bottom_elim instead of
