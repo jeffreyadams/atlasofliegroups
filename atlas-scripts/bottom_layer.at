@@ -337,28 +337,45 @@ set min_bottom_elim_factors(Param p, [[(KType,KType)]] LKdata) = bool:
 	    	 do let (,baseLj) = pairs[0]
 	       	    in baseLj
 	    	 od
+	    then x0js = for muLj@j in muLjs
+	    	 	    do muLj.real_form.KGB[0]
+			    od
        	    then shiftjs  = for pLj@j in pLjs {for shifting an LKj type to one attached to muLj}
 	    	      	    do  let cands = for phiLjk in LKTs(pLj)
 			       	   	   do  K0_param(muLjs[j]).lambda_minus_rho -
 			       	   	       K0_param(phiLjk).lambda_minus_rho
 					   od
+				then Lj = pLj.real_form, Lmuj = muLjs[j].real_form
+				then coroots = Lj.simple_coroots, zeroj = null(Lj.semisimple_rank)
 		      	        then wts = for cand in cands
-				     	   do K_highest_weight_from_K0_weight(
-					       	    muLjs[j].real_form.KGB[0], cand).mu
+				     	   do let try = K_highest_weight_from_K0_weight(x0js[j], cand).mu
 			   			     {this lifts cand on K0 to X^*}
+					      {then () = prints("try = ",try)
+					      in (1+x0js[j].involution)*try/2}
+					      in try
 					   od
+				{ then () = prints(new_line,"Lj = ",pLj.real_form, ", coroot = ",Lj.simple_coroots[0])
+				then () = prints("pLj = ",pLj)
+				then () = prints("cands = ",cands[0],", wts = ",wts[0])}
 				then loc = first(for wt@k in wts
-				     	   	 do is_one_dimensional(
-				     parameter(x_open(pLj.real_form), pLj.real_form.rho + wt, pLj.real_form.rho))
+				     	   	 do wt*coroots = zeroj
+						 {(wt.numer)*coroots = zeroj and wt.denom = 1}
+						 {is_one_dimensional(
+				     parameter(x_open(pLj.real_form), pLj.real_form.rho + wt, pLj.real_form.rho))}
 				     		 od)
-				in assert(loc >= 0,"this muLj doesn't match any LKT of pLj"); wts[loc]
+				in assert(loc >= 0,"this muLj doesn't match any LKT of pLj"); wts[loc].numer
 			   {ratvec_as_vec(param(muLjs[j]).d_lambda - pLj.d_lambda)}
 		      	   od
        	    then qLjs = for pLj@j in pLjs
 		      	do let qLj = parameter(baseLjs[j].real_form, (pLj.x).number, pLj.lambda +
 		      				    shiftjs[j], pLj.nu)
+			   { then () = prints(new_line, "shift = ",shiftjs[j], ", Lj coroots = ",
+			   	qLj.real_form.simple_coroots)
+			   then () = prints("qLj = ",qLj)}
 		           then () = assert(any(for psiLj in LKTs(qLj) do psiLj = baseLjs[j] od),
 			   	     		   "qLj fails to have baseLj as a LKT")
+			   then () = assert(is_hermitian(qLj),"qLj fails to be hermitian")
+			   then () = assert(is_final(qLj),"qLj fails to be final")
 			   in qLj
 		   	od
             then DG = max(for pairs in LKdata
@@ -369,7 +386,8 @@ set min_bottom_elim_factors(Param p, [[(KType,KType)]] LKdata) = bool:
        	    then multG = branch_irr(p,DG)
        in all( [(->bool)]: {list of functions, one for each factor Lj}
 	       for pairs@j in LKdata
-	       do let (posLj,negLj) = K_signature_irrB(qLjs[j], DLs[j])
+	       do {prints("qLjs[j] = ",qLjs[j]);}
+	       let (posLj,negLj) = K_signature_irrB(qLjs[j], DLs[j])
 	       	  then () = if posLj[baseLjs[j]] = 0
 		       	    then posLj := negLj
 			    fi
@@ -417,17 +435,21 @@ set min_bottom_elim_factors(Param p, [[(KType,KType)]] LKdata, KTypePol P) = boo
 			       	   	   do  K0_param(muLjs[j]).lambda_minus_rho -
 			       	   	       K0_param(phiLjk).lambda_minus_rho
 					   od
+				then Lj = pLj.real_form, Lmuj = muLjs[j].real_form
+				then coroots = Lj.simple_coroots, zeroj = null(Lj.semisimple_rank)
 		      	        then wts = for cand in cands
 				     	   do K_highest_weight_from_K0_weight(
-					       	    muLjs[j].real_form.KGB[0], cand).mu
+					       	    Lmuj.KGB[0], cand).mu
 			   			     {this lifts cand on K0 to X^*}
 					   od
 				then loc = first(for wt@k in wts
-				     	   	 do is_one_dimensional(
-				     parameter(x_open(pLj.real_form), pLj.real_form.rho + wt, pLj.real_form.rho))
+				     	   	 do wt*coroots = zeroj
+						 {is_one_dimensional(
+				     parameter(x_open(pLj.real_form), pLj.real_form.rho + wt, pLj.real_form.rho))}
 				     		 od)
 				in assert(loc >= 0,"this muLj doesn't match any LKT of pLj"); wts[loc]
 			   {ratvec_as_vec(param(muLjs[j]).d_lambda - pLj.d_lambda)}
+			   {loc may not be the right one to shift by}
 		      	   od
        	    then qLjs = for pLj@j in pLjs
 		      	do let qLj = parameter(baseLjs[j].real_form, (pLj.x).number, pLj.lambda +
