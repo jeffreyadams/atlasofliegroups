@@ -1,6 +1,7 @@
 < group_operations {for simply_connected_cover}
 < induction.at {for embed_KGB}
 < Vogan-dual.at {for dual_KGB}
+< K_highest_weights.at {for all_lambda_differential_0}
 set derived_cover_inner_class_info(InnerClass ic) = (InnerClass,mat):
     let (rdsc, (M,,)) = simply_connected_cover_derived_info(ic.root_datum)
 {now M maps weights for ic to weights for dcic}
