@@ -7,7 +7,7 @@
 <cohom_reduction {for possible use of cohomological induction}
 <FPP_localDirac
 <cohIndUnip {for weakly fair cohom ind}
-
+<derived_cover {for simply connected cover of derived group}
 {functions for computing the entire FPP_unitary dual}
 {typically functions take a Param_hash Uhash and fill it with all
 unitary reps having infinitesimal character in the FPP. Each p is
@@ -658,17 +658,30 @@ set FPP_unitary_hash_one_level(RealForm G) = void:
 
 set bottom_data = make_steady_bottom_data()
 
-set FPP_unitary_hash_bottom_layer([(KGBElt,ratvec)] xlambdas, steady_bottom_data bott_data, Param_hash Uhash) = void:
+set FPP_unitary_hash_bottom_layer([(KGBElt,ratvec)] xlambdas, steady_bottom_data bott_data, Param_hash UhashG) = void:
     if #xlambdas = 0 then return ()
     else let inv_hash = make_mat_hash()
     then (x,) = xlambdas[0]
     then () = deform_flag:=true
     then G = x.real_form
-    then vd = FPP_vertex_data(G), start = elapsed_ms()
+    then disconn_flag = components_rank(G) > 0
+    then (Gsc,M) = if disconn_flag
+    	      	   then derived_cover_real_form_info(G)
+	      	   else (G,id_mat(G.rank))
+	      	   fi
+    then xlambdas_sc = if disconn_flag
+    	      	       then for (x,lambda) in xlambdas do (inverse_embed_KGB(x, Gsc, M), M*lambda) od
+	      	       else xlambdas
+	      	       fi
+    then Uhash = if disconn_flag
+    	      	 then make_Param_hash() {this is for unitary reps of Gsc that factor to G}
+		 else UhashG
+		 fi
+    then vd_sc = FPP_vertex_data(Gsc), start = elapsed_ms()
     then () = unitaryTime := 0
-    then () = prepDirac(G)
+    then () = prepDirac(Gsc)
     then () = bott_data.adjust_BL_depth(BL_steps)
-    then ELs = edge_list_lookups(G) {one minute, 250 mb for E8_s}
+    then ELs = edge_list_lookups(Gsc) {one minute, 250 mb for E8_s}
     then xnums = for (x,) in xlambdas do let (,m) = %x in m od
     then lambdas = for (,lambda) in xlambdas do lambda od
     then () = for (x,) in xlambdas do inv_hash.match(x.involution) od
@@ -678,52 +691,62 @@ set FPP_unitary_hash_bottom_layer([(KGBElt,ratvec)] xlambdas, steady_bottom_data
     {now compute all the local vertex data}
     then old_facet_verbose = facet_verbose, old_time_verbose = time_verbose,
     	 old_test_verbose = test_verbose, old_test_slightly_verbose = test_slightly_verbose
-    then () = for (x,lambda) in xlambdas
+    then () = for (x,lambda) in xlambdas_sc
     	      do let theta = x.involution
 	      	 then i = inv_hash.lookup(theta)
-		 then dlambda = ratvec_as_vec(lambda + theta*lambda)
+		 then dlambda = ratvec_as_vec(M*(lambda + theta*lambda))
     	      	 then j = dlambda_hashes[i].match(dlambda)
               	 then () =  if j = #Lvd_Perm2_mapAct[i]
                       	    then Lvd_Perm2_mapAct[i]:= (Lvd_Perm2_mapAct[i] next Lvd_Perm2_mapAct[i]:=[])
-					      #localFD_Lvd2(x,lambda,vd,ELs)
+					      #localFD_Lvd2(x,M*lambda,vd_sc,ELs)
                       	    fi
 		in ()
 	      od
     then () = facet_verbose:=false; time_verbose:=false; test_verbose:=false; test_slightly_verbose:=false
-    then () = unipotents_to_hash(G,Uhash)
+    then () = unipotents_to_hash(G,UhashG)
     then () = if coh_ind_flag
-    	      then coh_ind_unip_long(G,Uhash)
+    	      then coh_ind_unip_long(G,UhashG)
+	      fi
+    then () = if disconn_flag
+    	      then for j:UhashG.size()
+	      	   do for psc in sc_lifts(UhashG.index(j), Gsc, M)
+		      do Uhash.match(psc)
+		      od
+		   od
 	      fi
     then xlambdatimes = [int]: null(#xlambdas)
     then answerCards = [int]: null(#xlambdas) {number of unitary parameters found}
     then oldUhash = Uhash.size()
-    {then () = adjust_global_top(G)} {done internally by low_FPP_facets}
-    then () = if #global_facets = 0 or #global_facets[0] != #vd.list
+    {then () = adjust_global_top(Gsc)} {done internally by low_FPP_facets}
+    {global_facets is lists of FacetVertsIndex, independent of cover}
+    then () = if #global_facets = 0 or #global_facets[0] != #vd_sc.list
     	      then global_facets := low_FPP_facets(G)
 	      fi
-    then () = if by_zero_flag and (#global_facets_by_zero = 0 or #global_facets_by_zero[0] != #vd.list)
+    then () = if by_zero_flag and (#global_facets_by_zero = 0 or #global_facets_by_zero[0] != #vd_sc.list)
     	      then global_facets_by_zero := low_FPP_facets_by_zero(global_facets)
 	      fi
-    then current = elapsed_ms(), oldUhash = Uhash.size(), currentUhash = Uhash.size(), formerUhash = Uhash.size(),
+    then current = elapsed_ms(), oldUhash = UhashG.size(), currentUhash = Uhash.size(), formerUhash = Uhash.size(),
     	 	   oldUcounter = unitary_test_counter.use_count(), currentUcounter = unitary_test_counter.use_count(),
 		   start_branch = bott_data.bottom_branch_time()
     then () = for (x,lambda)@k in xlambdas
     	      do {xlambdas} 
-	 	 let start = elapsed_ms(), startUhash = Uhash.size(),
+	 	 let start = elapsed_ms(), startUhash = Uhash.size(), (x_sc,lambda_sc) = xlambdas_sc[k],
 		     		   startUcounter = unitary_test_counter.use_count(), theta = x.involution
 		 then i = inv_hash.lookup(theta)
 		 then j = dlambda_hashes[i].lookup(ratvec_as_vec(lambda+theta*lambda))
 		 then (Lvd, Perm2, mapAct) = Lvd_Perm2_mapAct[i][j]
+		 then () = Lvd:= to_vertex_data(for v in Lvd.list do M*v od)
 		 then LF = if by_zero_flag
-		      	   then localFD_1Dirac2_by_zero(x, lambda, Lvd, Perm2, mapAct, global_facets_by_zero)
-			   else localFD_1Dirac2(x, lambda, Lvd, Perm2, mapAct, global_facets)
+		      	   then localFD_1Dirac2_by_zero(x_sc, lambda_sc, Lvd, Perm2, mapAct, global_facets_by_zero)
+			   else localFD_1Dirac2(x_sc, lambda_sc, Lvd, Perm2, mapAct, global_facets)
 			   fi
 		 in if #LF[0] = 0 then ()
 		     else if every_lambda_deets_flag
 			  then facet_verbose := old_facet_verbose; time_verbose := old_time_verbose;
 			       test_verbose :=old_test_verbose; test_slightly_verbose := old_test_slightly_verbose
 			  fi;
-			  let () = answerCards[k] := #local_test_GEO_hash_bottom_layer(x, lambda, vd, Lvd, LF, bott_data, pol_hash, Uhash)
+			  let () = answerCards[k] := #local_test_GEO_hash_bottom_layer(x_sc, lambda_sc, vd_sc, Lvd, LF, bott_data,
+			      	   		     					     pol_hash, Uhash)
    		    	  then () = current := elapsed_ms(); currentUhash := Uhash.size();
 			       	    currentUcounter := unitary_test_counter.use_count()
     		 	  then () = xlambdatimes[k] := current - start
@@ -737,6 +760,13 @@ set FPP_unitary_hash_bottom_layer([(KGBElt,ratvec)] xlambdas, steady_bottom_data
 			     fi
 		    fi
 		 od{xlambdas}
+    then () = if disconn_flag
+	      then for j: Uhash.size()
+		   do for p in sc_descends(Uhash.index(j), G, M)
+		      do UhashG.match(p)
+		      od
+		   od
+	       fi
     then () = facet_verbose:=old_facet_verbose; time_verbose:=old_time_verbose;
     	      test_verbose:=old_test_verbose; test_slightly_verbose:=old_test_slightly_verbose
     then longest = max_loc(xlambdatimes)
@@ -756,15 +786,15 @@ set FPP_unitary_hash_bottom_layer([(KGBElt,ratvec)] xlambdas, steady_bottom_data
 	      ", #hash_one_level =", hash_one_levelCounter.use_count(),
 	      ", #hash_bottom_layer =", hash_bottom_layerCounter.use_count());
        prints("Number of unitary params = ", sum(answerCards));
-       prints("Number of FPP-unitary facets = ",Uhash.size(),
-              ", number found on this run = ", Uhash.size() - oldUhash)
+       prints("Number of FPP-unitary facets = ",UhashG.size(),
+              ", number found on this run = ", UhashG.size() - oldUhash)
     fi
 
 set FPP_unitary_hash_bottom_layer([(KGBElt,ratvec)] xlambdas) = void:
     FPP_unitary_hash_bottom_layer(xlambdas, bottom_data, unitary_hash)
 
 set FPP_unitary_hash_bottom_layer([KGBElt] xs,  steady_bottom_data bott_data,
-				  Param_hash Uhash) = void:
+				  Param_hash UhashG) = void:
     if #xs = 0
     then return ()
     else
@@ -774,10 +804,23 @@ set FPP_unitary_hash_bottom_layer([KGBElt] xs,  steady_bottom_data bott_data,
     	      fi
     then inv_hash = make_mat_hash()
     then G = xs[0].real_form
-    then vd = FPP_vertex_data(G), start = elapsed_ms()
+    then disconn_flag = components_rank(G) > 0
+    then (Gsc,M) = if disconn_flag
+    	      	   then derived_cover_real_form_info(G)
+	      	   else (G,id_mat(G.rank))
+	      	   fi
+    then xs_sc = if disconn_flag
+    	       	 then for x in xs do inverse_embed_KGB(x, Gsc, M) od
+	      	 else xs
+	      	 fi
+    then Uhash = if disconn_flag
+    	       	 then make_Param_hash()
+		 else UhashG
+		 fi
+    then vd_sc = FPP_vertex_data(Gsc), vd = FPP_vertex_data(G), start = elapsed_ms()
     then ELs = edge_list_lookups(G) {one minute, 250 mb for E8_s}
     then () = unitaryTime := 0
-    then () = prepDirac(G)
+    then () = prepDirac(Gsc)
     then () = bott_data.adjust_BL_depth(BL_steps)
     then () = for x in xs do inv_hash.match(x.involution) od
     then xnums = for x in xs do let (,m) = %x in m od, xtimes = null(#xs)
@@ -790,32 +833,46 @@ set FPP_unitary_hash_bottom_layer([KGBElt] xs,  steady_bottom_data bott_data,
     then () = time_verbose:=false
     then () = test_verbose:=false
     then () = test_slightly_verbose:=false
-    then () = unipotents_to_hash(G,Uhash)
+    then () = unipotents_to_hash(G,UhashG)
     then () = if coh_ind_flag
-    	      then coh_ind_unip_long(G,Uhash)
+    	      then coh_ind_unip_long(G,UhashG)
 	      fi
+    then () = if disconn_flag
+    	      then for j:UhashG.size()
+	      	   do for psc in sc_lifts(UhashG.index(j), Gsc, M)
+		      do Uhash.match(psc)
+		      od
+		   od
+	       fi
     then times = [int]: null(#xs)
     then lambdatimes = [[int]]: for j:#xs do [] od
     then answerCards = [[int]]: for j:#xs do [] od {number of unitary parameters found}
     { then () = adjust_global_top(G) } {done internally by low_FPP_facets}
-    then () = if #global_facets = 0 or #global_facets[0] != #vd.list
+    {global_facets is lists of FacetVertsIndex, independent of cover}
+    then () = if #global_facets = 0 or #global_facets[0] != #vd_sc.list
     	      then global_facets := low_FPP_facets(G)
 	      fi
     then () = global_facets_by_zero := low_FPP_facets_by_zero(global_facets)
     then current = elapsed_ms()
-    then oldUhash = Uhash.size(), currentUhash = Uhash.size(), formerUhash = Uhash.size(),
+    then oldUhash = UhashG.size(), currentUhash = Uhash.size(), formerUhash = Uhash.size(),
     	 oldUcounter = unitary_test_counter.use_count(), currentUcounter = unitary_test_counter.use_count(),
 	 start_branch = bott_data.bottom_branch_time()
     then () = for x@j in xs
-    	      do {xs} 
-	 let former_time = current, formerUhash = currentUhash, formerUcounter = currentUcounter
+    	      do {xs}
+	 let former_time = current, formerUhash = currentUhash, formerUcounter = currentUcounter, x_sc = xs_sc[j]
 	 then twists = all_lambda_differential_0(x)
       	 then FPPbigNew = FPP_lambdas_big_new(x, vd, inv_hash,
     	      		dlambda_hashes, Lvd_Perm2_mapAct, ELs)
+	 then () = if disconn_flag
+	      	   then FPPbigNew := for (lambda0, Lvd, Perm2, mapAct) in FPPbigNew
+	      	   	     	     do (M*lambda0, to_vertex_data(for v in Lvd.list do M*v od), Perm2, mapAct)
+				     od
+		   fi
 	 then postFPPbigNew = elapsed_ms()
 	 then lambdas = [ratvec]: for (lambda0,,,) in FPPbigNew
-	      	      		  do for tau in twists
-				     do lambda0+tau
+	      	      		  do {prints(lambda0);}
+				     for tau in twists
+				     do lambda0+M*tau
 				     od
 				  od.##
     	 then Ncases = #lambdas
@@ -831,8 +888,8 @@ set FPP_unitary_hash_bottom_layer([KGBElt] xs,  steady_bottom_data bott_data,
                       do let startlambda = elapsed_ms(), startUhash = Uhash.size(),
 		      	     startUcounter = unitary_test_counter.use_count(), index = k*#twists + ell
 			 then LF = if by_zero_flag
-		      	      	   then localFD_1Dirac2_by_zero(x, lambda0+tau, Lvd, Perm2, mapAct, global_facets_by_zero)
-			   	   else localFD_1Dirac2(x, lambda0+tau, Lvd, Perm2, mapAct, global_facets)
+		      	      	   then localFD_1Dirac2_by_zero(x_sc, lambda0+M*tau, Lvd, Perm2, mapAct, global_facets_by_zero)
+			   	   else localFD_1Dirac2(x_sc, lambda0+M*tau, Lvd, Perm2, mapAct, global_facets)
 			   	   fi
 			 in if #LF[0] = 0
 			    then []
@@ -840,8 +897,8 @@ set FPP_unitary_hash_bottom_layer([KGBElt] xs,  steady_bottom_data bott_data,
 			    	 then facet_verbose := old_facet_verbose; time_verbose := old_time_verbose;
 				 test_verbose :=old_test_verbose; test_slightly_verbose := old_test_slightly_verbose
 				 fi;
-				 let () = tempanswerCards[index] := #local_test_GEO_hash_bottom_layer(x, lambda0+tau, vd, Lvd, LF, bott_data,
-				     		   				       pol_hash, Uhash)
+				 let () = tempanswerCards[index] := #local_test_GEO_hash_bottom_layer(x_sc, lambda0+M*tau, vd_sc,
+				     	  			 Lvd, LF, bott_data, pol_hash, Uhash)
 				 then () = if every_lambda_deets_flag
 			    	      	   then facet_verbose := false; time_verbose := false;
 				 	   	test_verbose := false; test_slightly_verbose := false
@@ -861,7 +918,17 @@ set FPP_unitary_hash_bottom_layer([KGBElt] xs,  steady_bottom_data bott_data,
                       od
                    od {would be easy enough to get [Param] for each (x,lambda), but for now
 		       just put unitary reps in Uhash}
-           then () = current := elapsed_ms(); currentUhash := Uhash.size();  times[j] := current -former_time;
+	   {then () = for j:Uhash.size()
+	   	     do let psc = Uhash.index(j)
+	   	     in {if psc.real_form != Gsc then} prints(j," ",psc)  {fi} od}
+    	   then () = if disconn_flag
+	   	     then for j: Uhash.size()
+		     	  do for p in sc_descends(Uhash.index(j), G, M)
+			     do UhashG.match(p)
+			     od
+			  od
+		     fi
+            then () = current := elapsed_ms(); currentUhash := Uhash.size();  times[j] := current -former_time;
 	   	     lambdatimes[j] := templambdatimes; currentUcounter := unitary_test_counter.use_count();
 		     answerCards[j] := tempanswerCards
 	   then longLambdaLoc = max_loc(templambdatimes)
@@ -898,8 +965,8 @@ set FPP_unitary_hash_bottom_layer([KGBElt] xs,  steady_bottom_data bott_data,
 	      ", #hash_one_level = ", hash_one_levelCounter.use_count(),
 	      ", #hash_bottom_layer = ", hash_bottom_layerCounter.use_count());
        prints("Number of unitary params = ", sum(for list in answerCards do sum(list) od)); 
-        prints("Number of known FPP-unitary facets = ",Uhash.size(),
-       	      ", number found on this run = ", Uhash.size() - oldUhash)
+        prints("Number of known FPP-unitary facets = ",UhashG.size(),
+       	      ", number found on this run = ", UhashG.size() - oldUhash)
    fi
 
 set FPP_unitary_hash_bottom_layer([KGBElt] xs) = void: 
