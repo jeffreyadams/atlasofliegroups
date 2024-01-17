@@ -129,3 +129,22 @@ else
    od
   fi
  fi
+
+{add one parameter to hash, return false it was already there, true
+if it was actually added}
+set update(Param_hash param_hash,Param p)=bool:
+    let n=param_hash.size() then
+    ()=param_hash.match(p) in
+    param_hash.size()>n
+
+{add list of params to hash; return (number of new parameters, list of new parameters)}
+set update(Param_hash param_hash,[Param] params)=(int,[Param]):
+let rv= ##for p in params do
+    if update(param_hash,p) then [p] else [] fi
+    od
+in (#rv,rv)
+
+{list of parameter in hash}
+set parameters(Param_hash param_hash)=[Param]:
+    for i:param_hash.size() do param_hash.index(i) od
+

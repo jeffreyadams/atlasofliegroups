@@ -73,6 +73,12 @@ def atlas_compute(i,pid):
    kgb_count=0
    reporting_data=[]
    while kgb_queue.qsize()>0:
+      log.write("==================================================================\n")
+      log.write("size of kgb_queue: " + str(kgb_queue.qsize()) + "\n")
+      x=kgb_queue.get()
+      kgb_count+=1
+      x_start_time=time.time()
+      log.write("x=" + str(x) + "\n")
       # atlas_cmd=format_cmd("<\"" + directory + "/the_group.at\"" + "\n")
       # print("atlas_cmd: ", atlas_cmd)
       # proc.stdin.write(atlas_cmd)
@@ -90,31 +96,68 @@ def atlas_compute(i,pid):
       # #read all at files
       # print("IN LOOP")
       all_files=os.listdir(directory)
+      atlas_cmd=format_cmd("prints(unitary_hash.size())" + "\n")
+      proc.stdin.write(atlas_cmd)
+      proc.stdin.flush()
+      line = proc.stdout.readline().decode('ascii')
+      print("TOP process id: ", i, "Size of unitary hash: ",line)
+      log.write("TOP process id: " + str(i) +  "\nSize of unitary hash: " + line)
       print("files: ", all_files)
+      params_to_add=[]
+      
       for file in all_files:
          if re.match(r'[0-9]*\.at',file):
-            print("opening at file: ", file)
-            atlas_cmd=format_cmd("<<\"" + directory + "/" + file + "\"\n")
-            print("atlas_cmd: ", atlas_cmd)
-            proc.stdin.write(atlas_cmd)
-            print("OK")
-            proc.stdin.flush()
-            print("saa")
+#            print("doing",file)
+            at_file = directory + "/" + file;
+            print("opening at file: (",i,") ",at_file)
+            log.write("opening at file: " + at_file + "\n")
+            at_data=open(at_file,"r")
+#            print("data: ", at_data)
             while True:
-               print("true loop")
-               line=proc.stdout.readline().decode('ascii')
-               print("LINE: ", line)
-               if line.find("Completely")>-1:
-                  print("found completely")
+#               print("IN LOOP")
+               line=at_data.readline().strip()
+#               print("line is: ", line)
+               line=re.sub(".*:=","",line) 
+               line=re.sub("\)[^,].*",")",line)  #get rid of {dual}
+#               print("line is now: ", line)
+               if len(line)==0:
+#                  print("no lines, breaking")
                   break
-      print("DONE")
-      exit()
-      log.write("==================================================================\n")
-      log.write("size of kgb_queue: " + str(kgb_queue.qsize()) + "\n")
-      x=kgb_queue.get()
-      kgb_count+=1
-      x_start_time=time.time()
-      log.write("x=" + str(x) + "\n")
+               elif line.find("parameter")==-1:
+                   ()
+#                  print("no parameter in: ", line)
+               else:
+#                  print("got something:", line)
+                  params_to_add.append(line)
+      print("Done reading at files")
+      print("number of new parameters to possibly add to unitary_hash:", len(params_to_add))
+      log.write("number of new parameters to possibly add to unitary_hash:" + str(len(params_to_add)) + "\n")
+      if len(params_to_add)>0:
+#         print("adding params to unitary_hash")
+         params_string="[" + ','.join(params_to_add) + "]"
+#         print("params_string: ", params_string)
+         atlas_cmd=format_cmd("update(unitary_hash," + params_string + ")" + "\n")
+#         print("atlas_cmd: ", atlas_cmd)
+         proc.stdin.write(atlas_cmd)
+         proc.stdin.flush()
+         line = proc.stdout.readline().decode('ascii')  #(number of new params,[Param])
+         line=re.sub(".*Value: *\(","",line)
+         line=re.sub(",.*","",line)
+         print("number of parameters added to unitary_hash: ", line.strip())
+         log.write("number of parameters added to unitary_hash: " + line)
+         proc.stdout.flush()
+#         print("atlas result: ", line)
+         atlas_cmd=format_cmd("prints(unitary_hash.size())" + "\n")
+#         print("atlas_cmd: ", atlas_cmd)
+         proc.stdin.write(atlas_cmd)
+         proc.stdin.flush()
+         line = proc.stdout.readline().decode('ascii')
+         print("[",i,"] Size of unitary hash: ",line)
+         log.write("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA" + "\n")
+         log.write("Size of unitary hash: " + line)
+
+
+
       atlas_arg_txt="set list=" + test_function + "(" + group + "," + str(x) + ")\n"
 #      print("atlas_arg: ", atlas_arg_txt)
       atlas_arg='{}'.format(atlas_arg_txt).encode('utf-8')
@@ -226,6 +269,8 @@ def main(argv):
          kgb_file=arg
          print("loading KGB file ", kgb_file)
          data=open("kgb_file","r")
+         line=data.readline().decode('ascii')
+         print("MY LINE: ", line)
          while True:
             line=data.readline()
             if not line:
