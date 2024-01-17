@@ -457,12 +457,14 @@ set main_diagonal (mat A) = vec:  for i:shape(A).min do A[i,i] od
 set = (mat m,int k) = bool: =(m-k)
 
 { add a column to a matrix, which is not predefined as operator # }
-set # (mat m, vec v) = mat: n_rows(m) { require size match } # (columns(m)#v)
-set # (vec v, mat m) = mat: n_rows(m) { require size match } # (v#columns(m))
+{ this definition is better than defining #@(mat,vec), as it will allow the
+  generic version to be used with argument types |[vec]| and |[int]| }
+set # = #@([vec],vec) { implicit conversion wil handle |(mat,vec)| arguments }
+set # = #@(vec,[vec]) { implicit conversion wil handle |(vec,mat)| arguments }
 
 { add row to a matrix, which is similar; use operator ^ for it }
-set ^ (mat m, vec v) = mat: n_columns(m) ^ (rows(m)#v)
-set ^ (vec v, mat m) = mat: n_columns(m) ^ (v#rows(m))
+set ^ (mat m, vec v) = mat: #v ^ rows(m)#v
+set ^ (vec v, mat m) = mat: #v ^ v#rows(m)
 
 set ## (mat A, mat B) = mat: { concatenate horizontally, must have same depth }
    n_rows(B) # (columns(A)##columns(B))
