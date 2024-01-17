@@ -12,11 +12,11 @@ set where() = void:
    do if line[:3]="In " then prints([i]," ",line) fi
    od
 
-set !minus_1 = -1 { using this constant avoids evaluating unary minus }
+set !minus_1 = -1 { used to be more efficient than |-1|, now equally efficient }
 
 set # (int n)= [int]: for i:n do i od       { [0,1,...,n-1] }
 set # (bool b) = int: if b then 1 else 0 fi { Iverson symbol }
-set sign (bool b) = int: { |minus_1^#b|, i.e.: } if b then minus_1 else 1 fi
+set sign (bool b) = int: { |(-1)^#b|, i.e.: } if b then -1 else 1 fi
 
 set ^ = !=@(bool,bool) { simple exclusive or }
 
@@ -44,7 +44,7 @@ set any ([bool] p) = bool:
 set none ([bool] p) = bool:
   for x in p do if x then return false fi od; true
 set first ([bool] p) = int:
-  for x@i in p do if x then return i fi od; minus_1
+  for x@i in p do if x then return i fi od; -1
 set last ([bool] p) = int:
   let i=#p-1 in while >=i and not p[i] do i-:=1 od; i
 set count ([bool] p) = int: { count (sum) number of truths in list }
@@ -59,9 +59,9 @@ set any (int limit,(int->bool) predicate) = bool:
 set none (int limit,(int->bool) predicate) = bool:
   for i:limit do if predicate(i) then return false fi od; true
 set first (int limit,(int->bool) predicate) = int:
-  for i:limit do if predicate(i) then return i fi od; minus_1
+  for i:limit do if predicate(i) then return i fi od; -1
 set last (int limit,(int->bool) predicate) = int:
-  for i:limit ~do if predicate(i) then return i fi od; minus_1
+  for i:limit ~do if predicate(i) then return i fi od; -1
 
 { if evaluating conditions is expensive, one can procedure them with '@:'}
 set all ([(->bool)] p) = bool:
@@ -71,7 +71,7 @@ set any ([(->bool)] p) = bool:
 set none ([(->bool)] p) = bool:
   for x in p do if x() then return false fi od; true
 set first ([(->bool)] p) = int:
-  for x@i in p do if x() then return i fi od; minus_1
+  for x@i in p do if x() then return i fi od; -1
 set last ([(->bool)] p) = int: { this is somewhat more efficient than first }
   let i=#p-1 in while >=i and not p[i]() do i-:=1 od; i
 
@@ -93,7 +93,7 @@ set from_stops ([int] stops) = (int->int):
 {                               Integers                                }
 
 set abs (int k)= int: if <k then -k else k fi
-set sign (int k)= int: case k then minus_1 in 0 else 1 esac
+set sign (int k)= int: case k then -1 in 0 else 1 esac
 
 set is_odd  (int n) = bool: !=n%2
 set is_even (int n) = bool:  =n%2
@@ -108,13 +108,13 @@ set max ([int] a) = int: let l=#a in assert(l.>,"Maximum of an empty list");
 
 set min_loc ([int] a) = int: { position of first occurrence of minimum, or -1 }
   let l=#a in
-  if =l then minus_1
+  if =l then -1
   else let p=0, m=a[0] in
     for i:l-1 from 1 do if a[i]<m then set (p,m):=(i,a[i]) fi od; p
   fi
 set max_loc ([int] a) = int: { position of first occurrence of maximum, or -1 }
   let l=#a in
-  if =l then minus_1
+  if =l then -1
   else let p=0, m=a[0] in
     for i:l-1 from 1 do if a[i]>m then set (p,m):=(i,a[i]) fi od; p
   fi
@@ -204,7 +204,7 @@ set set_bit_positions (int n) = vec:
    while let pow = AND_NOT(n,n-1) in !=pow do n-:=pow; bit_length(pow)-1 od
 
 set bitwise_intersection ([int] ns) = int:
-   let a=minus_1 in for n in ns do a:=AND(a,n) od; a
+   let a=-1 in for n in ns do a:=AND(a,n) od; a
 set bitwise_union ([int] ns) = int:
    let a=0 in for n in ns do a:=OR(a,n) od; a
 
@@ -269,13 +269,13 @@ set max ([rat] a) = rat: let l=#a in assert(l.>,"Maximum of an empty list");
 
 set min_loc ([rat] a) = int: { position of first occurrence of minimum, or -1 }
   let l=#a in
-  if =l then minus_1
+  if =l then -1
   else let p=0, m=a[0] in
     for i:l-1 from 1 do if a[i]<m then set (p,m):=(i,a[i]) fi od; p
   fi
 set max_loc ([rat] a) = int: { position of first occurrence of maximum, or -1 }
   let l=#a in
-  if =l then minus_1
+  if =l then -1
   else let p=0, m=a[0] in
     for i:l-1 from 1 do if a[i]>m then set (p,m):=(i,a[i]) fi od; p
   fi
@@ -740,7 +740,7 @@ set required_solution ((mat,ratvec) system) = ratvec: system.solve.requisition
 
 set !s = Split:(0,1) { ! means it is a constant }
 set !split_1 = Split:1 { do conversion now }
-set !split_minus_1 = Split: minus_1
+set !split_minus_1 = Split: -1
 set !one_minus_s = Split:(1,-1), !one_plus_s = Split:(1,1)  { near idempotents }
 
 set int_part (Split x) = int: let (r,)=%x in r
@@ -1212,10 +1212,10 @@ set (highest_root_indices,highest_coroot_indices) =
    let work((RootDatum,int->[int])bottom_f) = (RootDatum rd)[int]:
    (  let (lt,map)= rd.Cartan_matrix.Cartan_matrix_type
       , ssr = semisimple_rank(rd)
-      then sf = simple_factors(lt), factor_of=for :ssr do minus_1 od
+      then sf = simple_factors(lt), factor_of=for :ssr do -1 od
       , i=0
    in for (,r)@j in sf do for :r do factor_of[map[i]]:=j; i+:=1 od od
-   ;  let result = for :#sf do minus_1 od
+   ;  let result = for :#sf do -1 od
       , tops = [int]: { bitsets marking ladder tops for the simple roots }
 	 for i: ssr downto -ssr
 	 do let t=bottom_f(rd,i) in t[locate_sorted(t,0):].to_bitset
@@ -1673,14 +1673,14 @@ set involution (KType t) = mat: involution(t.x)
 
 set root_datum (KTypePol P) = RootDatum: real_form(P)
 
-set K_type_formula (KType t) = KTypePol: K_type_formula(t,minus_1) { no cutoff }
+set K_type_formula (KType t) = KTypePol: K_type_formula(t,-1) { no cutoff }
 
 set null_module (KType t) = KTypePol:
   null_K_module(real_form(t)) { avoid useless conversion to KTypePol }
 set null_module (KTypePol P) = KTypePol: 0*P { built-in does this efficiently }
 set null_K_module = null_module@KType    { allow more explicit name }
 set null_K_module = null_module@KTypePol { allow more explicit name }
-set -(KTypePol P) = KTypePol: minus_1*P
+set -(KTypePol P) = KTypePol: (-1)*P
 
 set first_K_type (KTypePol P) = KType: let (,p)=first_term(P) in p
 set last_K_type (KTypePol P)  = KType: let (,p)=last_term(P) in p
@@ -1965,7 +1965,7 @@ set print_extended_block = (Param,mat->):
 set root_datum (ParamPol P) = RootDatum: real_form(P)
 
 set null_module (ParamPol P) = ParamPol: 0*P { built-in does this efficiently }
-set -(ParamPol P) = ParamPol: minus_1*P
+set -(ParamPol P) = ParamPol: (-1)*P
 
 set param_pol (KTypePol P) = ParamPol:
    null_module(P.real_form) + for c@t in P do (c,param(t)) od
@@ -2096,7 +2096,7 @@ set purity (KTypePol P) = (int,int,int):
 set index_in = ([vec]->(vec->int)):
    let limit = [30].to_bitset { $2^{30}$ } in
    ([vec] L) { equal size vectors } (vec->int):
-  if =#L then (vec .)int: minus_1 { search in empty list always fails }
+  if =#L then (vec .)int: -1 { search in empty list always fails }
   else
      let n=#L[0] then R=null(n,0)
      then G = inner_class(root_datum(R,R),id_mat(n)).quasicompact_form
@@ -2113,7 +2113,7 @@ set index_in = ([vec]->(vec->int)):
   fi
 
 set index_in ([ratvec] L) { equal size vectors } = (ratvec->int):
-  if =#L then (ratvec .)int: minus_1 { search in empty list always fails }
+  if =#L then (ratvec .)int: -1 { search in empty list always fails }
   else
      let n=#L[0] then R=null(n,0)
      then G = inner_class(root_datum(R,R),-id_mat(n)).quasisplit_form
@@ -2123,7 +2123,7 @@ set index_in ([ratvec] L) { equal size vectors } = (ratvec->int):
   fi
 
 set index_in ([Param] L) = (Param->int): { an efficiency hack: }
-  if =#L then (Param .)int: minus_1 { search in empty list always fails }
+  if =#L then (Param .)int: -1 { search in empty list always fails }
   else
      let G=L[0].real_form
      then P = G.null_module + for q@i in L do (i+1,q) od

@@ -671,9 +671,9 @@ break; case '*': operator_termination(c);
        valp->oper.id = id_table.match_literal("*");
        valp->oper.priority = 6;
        code = becomes_follows() ? OPERATOR_BECOMES : c;
-break; case '%': case '/': operator_termination(c);
+break; case '%': case '/': case '&': operator_termination(c);
        valp->oper.id =
-          id_table.match_literal(c=='%' ? "%" : "/");
+          id_table.match_literal(c=='%' ? "%" : c=='/' ? "/" : "&");
        valp->oper.priority = 6;
        code = becomes_follows() ? OPERATOR_BECOMES : OPERATOR;
 break; case '\\':

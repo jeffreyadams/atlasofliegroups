@@ -2609,7 +2609,7 @@ tweaked to first start to try some optimisations. Since these involve other
 built-in functions that are not available at definition here, we just install
 the function without tweaks here, but return a shared pointer to the
 |special_builtin| object, for which the caller can then call
-|tests.push_back(test)| to add a testing function that will modify the compile
+|tests.emplace_back| to add a testing function that will modify the compile
 time behaviour of the (already installed) built-in function.
 
 @< Global function def... @>=
@@ -2682,22 +2682,31 @@ void times_wrapper(expression_base::level l)
 }
 
 @ Euclidean division operation will be bound to the operator ``$\backslash$'',
-because ``$/$'' is used to form rational numbers. We take the occasion of
-defining a division operation to repair the integer division operation
-|operator/| built into \Cpp, which is traditionally broken for negative
-dividends. This used to be done by using |arithmetic::divide| that handles
-such cases correctly (rounding the quotient systematically downwards); the
-same precaution are taken by the |reduce_mod| method of |arithmetic::big_int|
-that now implements integers of the \axis. programming language. It also
-handles negative dividends by stipulating $a\backslash(-b)=(-a)\backslash b$,
-which implies $a\%(-b)=-(a\%b)$: for division by $-b<0$ the remainder~$r$ is
-in the range $-b<r\leq0$.
+because ``$/$'' is used to form rational numbers. Unlike the integer division
+|operator/| and modulo |operator%|
+%
+built into \Cpp, which are traditionally broken for negative dividends, these
+operations on |arithmetic::big_int| do the right thing (through the method
+|big_int::reduce_mod|), namely round the quotient systematically, independently
+of the sign of the dividend; the direction is always downwards for positive
+divisors. For handling negative divisors, it is not so obvious what is the best
+way to define the result; the way chosen is such that changing signs of both
+dividend and divisor results in the same quotient and the opposite remainder, so
+that rounding is upwards for negative divisors: for division by $-b<0$ the
+remainder~$r$ is in the range $-b<r\leq0$. This means that if one wants a
+version of Euclidean division by $b>0$ with systematic \emph{upwards} rounding
+of the quotient, one should divide by $-b$ and negate the quotient, keeping the
+(non-positive) remainder. (An alternative convention would have been to always
+use downwards rounding of the quotient, and therefore always give a non-negative
+remainder; in that case upwards rounding could be simulated by negating the
+divisor, and in the result negate both quotient and remainder.)
 
 Like for additive functions, we try to get unique ownership of the first
-argument (the dividend); we couldn't re-use the storage for the second (the
-divisor) anyway (integer division uses the storage of the dividend in all cases;
-in case of a long dividend the quotient gets copied to new storage in the
-process, but that is if no concern to us here).
+argument (the dividend), which as its name suggests |/=| replaces by the
+quotient. It is not really an in-place operation, since the method
+|big_int::reduce_mod| it uses initially replaces the dividend by the remainder,
+which |/=| then discards by moving the quotient into the |big_int| object; that
+implementation detail however is if no concern to us here.
 
 @< Local function definitions @>=
 void divide_wrapper(expression_base::level l)
@@ -2712,10 +2721,12 @@ void divide_wrapper(expression_base::level l)
 }
 
 @ We also define a remainder operation |modulo|, a combined
-quotient-and-remainder operation |divmod|, and unary subtraction. For the first
-two we can again re-use storage of the dividend. For the second it may be noted
-that untypically the non-|const| method |reduce_mod| does not return the
-modified object, but rather the quotient of the division operation.
+quotient-and-remainder operation |divmod|. For these we can again re-use storage
+of the dividend. For the second case we directly use the non-|const| method
+|big_int::reduce_mod|. Note that that it untypically does not return the
+|big_int| object |i->val| that it was called for, originally holding the
+dividend and which it modified to become the remainder, but rather the quotient
+of the division operation.
 
 @< Local function definitions @>=
 void modulo_wrapper(expression_base::level l)
@@ -2770,49 +2781,6 @@ void bitwise_complement_wrapper(expression_base::level l)
   if (l!=expression_base::no_value)
     i->val.complement(), push_value(std::move(i));
 }
-
-@ This function will be needed to optimise function applications with as second
-argument an integral denotation with value $1$.
-
-@< Local function definitions @>=
-expression_ptr applies_to_1
-  (expression_ptr& args,const shared_builtin& f,const source_location& loc)
-{ auto t = dynamic_cast<const tuple_expression*>(args.get());
-  if (t!=nullptr and t->component.size()==2)
-  { auto a = dynamic_cast<const denotation*>(t->component[1].get());
-    if (a!=nullptr)
-    { auto v = force<int_value>(a->denoted_value.get());
-      if (v->val==1)
-      { auto& arg0 = const_cast<expression_ptr&>(t->component[0]);
-        return f->build_call(f,f->print_name,std::move(arg0),loc);
-      }
-    }
-  }
-  return nullptr;
-}
-
-@ Here is some special install code. We first install the successor and
-predecessor functions, then addition and subtraction that might revert to the
-former ones.
-
-
-@< Initialise... @>=
-{ auto p = install_function(successor_wrapper,"succ","(int->int)",3);
-  shared_builtin succ_val = std::static_pointer_cast<builtin>(p);
-  auto q = install_special_function(plus_wrapper,"+","(int,int->int)",1);
-  q->tests.emplace_back(applies_to_1,succ_val);
-}
-{ auto p = install_function(predecessor_wrapper,"pred","(int->int)",3);
-  shared_builtin pred_val = std::static_pointer_cast<builtin>(p);
-  auto q = install_special_function(minus_wrapper,"-","(int,int->int)",1);
-  q->tests.emplace_back(applies_to_1,pred_val);
-}
-install_function(times_wrapper,"*","(int,int->int)");
-install_function(divide_wrapper,"\\","(int,int->int)",1);
-install_function(modulo_wrapper,"%","(int,int->int)",1);
-install_function(divmod_wrapper,"\\%","(int,int->int,int)",1);
-install_function(unary_minus_wrapper,"-","(int->int)",3);
-install_function(bitwise_complement_wrapper,"~","(int->int)",3);
 
 @ Powers of integers are defined whenever the result is integer. They get a bit
 more attention than other arithmetic operations, since we want, in the cases
@@ -2931,18 +2899,122 @@ void vec_to_bitset_wrapper(expression_base::level l)
   push_value(std::make_shared<int_value>(big_int(b)));
 }
 
+@ While installing the integer functions, we shall make some automatic rewriting
+be performed using the |special_builtin| magic. The data stored in those objects
+involve a pointer to a function that recognises and possibly rewrites converted
+argument expressions to these specif built-in functions. These functions are
+very specific to the built-in in question.
+
+Here we define some of these functions, to be used for the installation of
+special integer functions. The function |negate_denotation| turns expressions
+like |-3| into denotations (with negative value) rather than a applications of
+the unary minus, and the others help to turn |-1-n| into ${\sim}{n}$ (bitwise
+complement), respectively to turn |n+1| into |succ(n)| and |n-1| into |pred(n)|.
+These functions use dynamic casts on |expression| pointer values to test for
+certain argument patterns.
+
+@< Local function definitions @>=
+expression_ptr negate_denotation
+  (expression_ptr& arg,const shared_builtin&,const source_location& loc)
+{ auto a = dynamic_cast<const denotation*>(arg.get());
+  if (a!=nullptr)
+  { auto v = force<int_value>(a->denoted_value.get());
+    return expression_ptr(new denotation(std::make_shared<int_value>(-v->val)));
+  }
+  return nullptr;
+}
+@)
+expression_ptr rhs_is_1
+  (expression_ptr& args,const shared_builtin& f,const source_location& loc)
+{ auto t = dynamic_cast<const tuple_expression*>(args.get());
+  if (t!=nullptr and t->component.size()==2)
+  { auto a = dynamic_cast<const denotation*>(t->component[1].get());
+    if (a!=nullptr)
+    { auto v = force<int_value>(a->denoted_value.get());
+      if (v->val==1)
+      { auto& arg0 = const_cast<expression_ptr&>(t->component[0]);
+        return f->build_call(f,f->print_name,std::move(arg0),loc);
+      }
+    }
+  }
+  return nullptr;
+}
+expression_ptr lhs_is_minus_1
+  (expression_ptr& args,const shared_builtin& f,const source_location& loc)
+{ auto t = dynamic_cast<const tuple_expression*>(args.get());
+  if (t!=nullptr and t->component.size()==2)
+  { auto a = dynamic_cast<const denotation*>(t->component[0].get());
+    if (a!=nullptr)
+    { auto v = force<int_value>(a->denoted_value.get());
+      if (v->val==-1)
+      { auto& arg1 = const_cast<expression_ptr&>(t->component[1]);
+        return f->build_call(f,f->print_name,std::move(arg1),loc);
+      }
+    }
+  }
+  return nullptr;
+}
+
+@ Here is some special install code. We install the successor and
+predecessor functions before addition, subtraction, and bitwise complement,
+so that special cases of the latter may revert to the uses of the
+former ones. The |negate_denotation| optimisation does not return a function
+call at all, so unary minus can be handled all on its own.
+
+
+@< Initialise... @>=
+{ auto p = install_special_function(unary_minus_wrapper,"-","(int->int)",3);
+  p->tests.emplace_back(negate_denotation,nullptr);
+}
+{ auto p = install_function(successor_wrapper,"succ","(int->int)",3);
+  shared_builtin succ_val = std::static_pointer_cast<builtin>(p);
+  auto q = install_special_function(plus_wrapper,"+","(int,int->int)",1);
+  q->tests.emplace_back(rhs_is_1,succ_val);
+}
+{ auto p = install_function(predecessor_wrapper,"pred","(int->int)",3);
+  shared_builtin pred_val = std::static_pointer_cast<builtin>(p);
+  auto b = install_function(bitwise_complement_wrapper,"~","(int->int)",3);
+  shared_builtin bc_val = std::static_pointer_cast<builtin>(b);
+  auto q = install_special_function(minus_wrapper,"-","(int,int->int)",1);
+  q->tests.emplace_back(rhs_is_1,pred_val);
+  q->tests.emplace_back(lhs_is_minus_1,bc_val);
+}
+install_function(times_wrapper,"*","(int,int->int)");
+install_function(divide_wrapper,"\\","(int,int->int)",1);
+install_function(modulo_wrapper,"%","(int,int->int)",1);
+install_function(divmod_wrapper,"\\%","(int,int->int,int)",1);
+install_function(power_wrapper,"^","(int,int->int)");
+install_function(and_wrapper,"AND","(int,int->int)",1);
+install_function(or_wrapper,"OR","(int,int->int)",1);
+install_function(xor_wrapper,"XOR","(int,int->int)",1);
+install_function(and_not_wrapper,"AND_NOT","(int,int->int)",1);
+install_function(bitwise_subset_wrapper,"bitwise_subset","(int,int->bool)");
+install_function(nth_set_bit_wrapper,"nth_set_bit","(int,int->int)");
+install_function(bit_length_wrapper,"bit_length","(int->int)");
+install_function(vec_to_bitset_wrapper,"to_bitset","(vec->int)");
+
 @*1 Rationals.
 %
-As mentioned above the operator `/' applied to integers will not denote
-integer division, but rather formation of fractions (rational numbers). Since
-the |Rational| constructor requires an unsigned denominator, we must make sure
-the integer passed to it is positive. The opposite operation of separating a
-rational number into numerator and denominator is also provided; this
-operation is essential in order to be able to get from rationals back into the
-world of integers.
+As mentioned above the operator `/' applied to integers will not denote integer
+division, but rather formation of fractions (rational numbers). We need only to
+test for a zero denominator here, since the |big_rat::from_fraction| static
+method calls |big_rat::normalise| for the fraction it builds, which will
+simplify by common factors and ensure a positive denominator. The opposite
+operation of separating a rational number into numerator and denominator is also
+provided; this operation is essential in order to be able to get from rationals
+back into the world of integers.
 
 @< Local function definitions @>=
 
+void int_inverse_wrapper(expression_base::level l)
+{ shared_int i=get<int_value>();
+  if (i->val==0)
+    throw runtime_error("Inverse of zero");
+  if (l!=expression_base::no_value)
+    push_value(std::make_shared<rat_value>
+      (big_rat::from_fraction(big_int(1),i->val)));
+}
+@)
 void fraction_wrapper(expression_base::level l)
 { shared_int d=get<int_value>();
   shared_int n=get<int_value>();
@@ -3069,11 +3141,12 @@ void rat_unary_minus_wrapper(expression_base::level l)
     push_value(std::make_shared<rat_value>(-i->val));
 }
 void rat_inverse_wrapper(expression_base::level l)
-{ shared_rat i=get<rat_value>();
+{ own_rat i=get_own<rat_value>();
   if (i->val.numerator()==0)
     throw runtime_error("Inverse of zero");
+
   if (l!=expression_base::no_value)
-    push_value(std::make_shared<rat_value>(i->val.inverse()));
+    push_value((i->val.invert(),std::move(i)));
 }
 
 @)
@@ -3121,6 +3194,62 @@ void rat_power_wrapper(expression_base::level l)
   else push_value
       (std::make_shared<rat_value>(b->val.power(exponent->val.uint_val())));
 }
+
+@ We want to transform user expressions of the for $1/d$ into $/d$ (the rational
+inverse of the integer $d$); while the user can perfectly well write that
+directly, it goes sufficiently against common habits to allow the longer form
+and convert it silently (but we don't bother to similarly convert the additive
+equivalent |0-n| that nobody writes). For this we need a function testing for a
+left hand side equal to $1$, a trivial variation of the one testing for $-1$
+used earlier.
+
+@< Local function definitions @>=
+expression_ptr lhs_is_1
+  (expression_ptr& args,const shared_builtin& f,const source_location& loc)
+{ auto t = dynamic_cast<const tuple_expression*>(args.get());
+  if (t!=nullptr and t->component.size()==2)
+  { auto a = dynamic_cast<const denotation*>(t->component[0].get());
+    if (a!=nullptr)
+    { auto v = force<int_value>(a->denoted_value.get());
+      if (v->val==1)
+      { auto& arg1 = const_cast<expression_ptr&>(t->component[1]);
+        return f->build_call(f,f->print_name,std::move(arg1),loc);
+      }
+    }
+  }
+  return nullptr;
+}
+
+@ As said we rewrite expressions $1/n$ as $/n$. We could also do some constant
+folding here, introducing ``rational number denotations''. The denotation
+expression type can already handle this, and can indeed handle constant values
+of any type as it already does for the ``previous value computed'' expression.
+
+@< Initialise... @>=
+{ auto p = install_function(int_inverse_wrapper,"/","(int->rat)");
+  shared_builtin inv_val = std::static_pointer_cast<builtin>(p);
+  auto q = install_special_function(fraction_wrapper,"/","(int,int->rat)");
+  q->tests.emplace_back(lhs_is_1,inv_val);
+}
+install_function(unfraction_wrapper,"%","(rat->int,int)");
+   // unary \% means ``break open''
+install_function(rat_plus_int_wrapper,"+","(rat,int->rat)",1);
+install_function(rat_minus_int_wrapper,"-","(rat,int->rat)",1);
+install_function(rat_times_int_wrapper,"*","(rat,int->rat)",1);
+install_function(rat_divide_int_wrapper,"/","(rat,int->rat)");
+install_function(rat_quotient_int_wrapper,"\\","(rat,int->int)");
+install_function(rat_modulo_int_wrapper,"%","(rat,int->rat)",1);
+install_function(rat_plus_wrapper,"+","(rat,rat->rat)",1);
+install_function(rat_minus_wrapper,"-","(rat,rat->rat)",1);
+install_function(rat_times_wrapper,"*","(rat,rat->rat)",1);
+install_function(rat_divide_wrapper,"/","(rat,rat->rat)",1);
+install_function(rat_modulo_wrapper,"%","(rat,rat->rat)",1);
+install_function(rat_unary_minus_wrapper,"-","(rat->rat)",3);
+install_function(rat_inverse_wrapper,"/","(rat->rat)",3);
+install_function(rat_floor_wrapper,"floor","(rat->int)");
+install_function(rat_ceil_wrapper,"ceil","(rat->int)");
+install_function(rat_frac_wrapper,"frac","(rat->rat)",3);
+install_function(rat_power_wrapper,"^","(rat,int->rat)",1);
 
 @*1 Booleans.
 %
@@ -4220,35 +4349,6 @@ void rvm_prod_wrapper(expression_base::level l)
 @ We must not forget to install what we have defined.
 
 @< Initialise... @>=
-install_function(power_wrapper,"^","(int,int->int)");
-install_function(and_wrapper,"AND","(int,int->int)",1);
-install_function(or_wrapper,"OR","(int,int->int)",1);
-install_function(xor_wrapper,"XOR","(int,int->int)",1);
-install_function(and_not_wrapper,"AND_NOT","(int,int->int)",1);
-install_function(bitwise_subset_wrapper,"bitwise_subset","(int,int->bool)");
-install_function(nth_set_bit_wrapper,"nth_set_bit","(int,int->int)");
-install_function(bit_length_wrapper,"bit_length","(int->int)");
-install_function(vec_to_bitset_wrapper,"to_bitset","(vec->int)");
-install_function(fraction_wrapper,"/","(int,int->rat)");
-install_function(unfraction_wrapper,"%","(rat->int,int)");
-   // unary \% means ``break open''
-install_function(rat_plus_int_wrapper,"+","(rat,int->rat)",1);
-install_function(rat_minus_int_wrapper,"-","(rat,int->rat)",1);
-install_function(rat_times_int_wrapper,"*","(rat,int->rat)",1);
-install_function(rat_divide_int_wrapper,"/","(rat,int->rat)");
-install_function(rat_quotient_int_wrapper,"\\","(rat,int->int)");
-install_function(rat_modulo_int_wrapper,"%","(rat,int->rat)",1);
-install_function(rat_plus_wrapper,"+","(rat,rat->rat)",1);
-install_function(rat_minus_wrapper,"-","(rat,rat->rat)",1);
-install_function(rat_times_wrapper,"*","(rat,rat->rat)",1);
-install_function(rat_divide_wrapper,"/","(rat,rat->rat)",1);
-install_function(rat_modulo_wrapper,"%","(rat,rat->rat)",1);
-install_function(rat_unary_minus_wrapper,"-","(rat->rat)",3);
-install_function(rat_inverse_wrapper,"/","(rat->rat)",3);
-install_function(rat_floor_wrapper,"floor","(rat->int)");
-install_function(rat_ceil_wrapper,"ceil","(rat->int)");
-install_function(rat_frac_wrapper,"frac","(rat->rat)",3);
-install_function(rat_power_wrapper,"^","(rat,int->rat)",1);
 install_function(int_unary_eq_wrapper,"=","(int->bool)");
 install_function(int_unary_neq_wrapper,"!=","(int->bool)");
 install_function(int_non_negative_wrapper,">=","(int->bool)");

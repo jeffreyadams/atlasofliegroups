@@ -201,7 +201,7 @@ set cmp_equal_sum_partitions(Partition lambda, Partition mu) = int:
    let m=#mu in
    for l@i in lambda
    do if l!=mu[i] { equal sum, nonzero entries, so |mu| cannot run out }
-      then return if l<mu[i] then minus_1 else 1 fi
+      then return if l<mu[i] then -1 else 1 fi
       fi
    od; 0 { if |lambda| exhausted then so is |mu|, and we have equality }
 
@@ -290,7 +290,7 @@ set Murnaghan_Nakayama (Partition lambda, [int] cycle_type) = int:
        else { traverse candidate positions for removal of a |k| rim hook: }
 	  for i in list(#edge-k,(int i)bool: not edge[i] and edge[i+k])
 	  do edge[i+k]:=false; edge[i]:=true { remove our chosen |k| rim hook }
-	  ; minus_1^count(edge[i+1:i+k])*MN(j-1) { recursive value, hook sign }
+	  ; (-1)^count(edge[i+1:i+k])*MN(j-1) { recursive value, hook sign }
 	  next edge[i]:=false; edge[i+k]:=true { restore: add rim hook back }
 	  od
 	 .sum { add up value from all candidate positions }
@@ -386,7 +386,7 @@ set_type BiPartition = (Partition,Partition)
   positive/even/0/false/trivial repn BEFORE negative/odd/1/true/sign repn one }
 
 { cycles with product of signs, for simple types B,C,D }
-set_type Signed_cycles = [int,bool] { bool |b| encodes product |minus_1^#b| }
+set_type Signed_cycles = [int,bool] { bool |b| encodes product |(-1)^#b| }
 
 set = (Signed_cycles cyc0,Signed_cycles cyc1) = bool:
    #cyc0=#cyc1 and
@@ -550,13 +550,13 @@ set hyperoctahedral_character (
        else { traverse candidate positions for removal of a |k| rim hook: }
        (  for i in list(#edge0-k,(int i)bool: not edge0[i] and edge0[i+k])
 	  do edge0[i+k]:=false; edge0[i]:=true { remove chosen |k| rim hook }
-	  ; f(j-1)*minus_1^count(edge0[i+1:i+k]) { recursive value, hook sign }
+	  ; f(j-1)*(-1)^count(edge0[i+1:i+k]) { recursive value, hook sign }
 	  next edge0[i]:=false; edge0[i+k]:=true { restore: add rim hook back }
 	  od
 	 .sum { add up value from all candidate positions }
        ,  for i in list(#edge1-k,(int i)bool: not edge1[i] and edge1[i+k])
 	  do edge1[i+k]:=false; edge1[i]:=true { remove chosen |k| rim hook }
-	  ; f(j-1)*minus_1^count(edge1[i+1:i+k]) { recursive value, hook sign }
+	  ; f(j-1)*(-1)^count(edge1[i+1:i+k]) { recursive value, hook sign }
 	  next edge1[i]:=false; edge1[i+k]:=true { restore: add rim hook back }
 	  od
 	 .sum { add up value from all candidate positions }
@@ -576,7 +576,7 @@ set hyperoctahedral_character (
             (a,b) = (#hl0,#hl1) { partition sizes to be filled }
           then lwb = max(0,d-a{=b-c}), upb=min(b,d) { bounds for l }
           in assert(a+b=c+d);
-          for l:upb-lwb+1 from lwb do minus_1^l*binom(c,b-l)*binom(d,l)od.sum
+          for l:upb-lwb+1 from lwb do (-1)^l*binom(c,b-l)*binom(d,l)od.sum
           * (a.fac\hl0.product)*(b.fac\hl1.product) { factor independent of l }
        fi
     fi
@@ -612,7 +612,7 @@ set core_number (int k) = int: assert(k.>=); case k in -k\2, -k\-2 esac
   convention, the partition coming from the EVEN edge positions comes first }
 set core_quotient_2 (Partition lambda) = (int,BiPartition):
    let d = int: { black/white unbalance of diagram }
-      for l@i in lambda do case l in 0, minus_1^i esac od.sum
+      for l@i in lambda do case l in 0, (-1)^i esac od.sum
    ,  positions = [int]: for l@i in lambda do l-i-1 od
    then e = for p in positions do case p in [p\2-d],[] esac od.##
    ,    o = for p in positions do case p in [],[p\2+d] esac od.##
@@ -710,7 +710,7 @@ set cycle_class_size (Signed_cycles cycles) = int:
 set cycle_power (Signed_cycles cycles, int k) = Signed_cycles:
 (  let m = for (c,) in cycles do c od.(max(0))
    then n_cycles = { multiplicities by cycle length and sign }
-     mat: null(m,2) { row index offset by 1, minus_1^(column index) is sign }
+     mat: null(m,2) { row index offset by 1, (-1)^(column index) is sign }
 in for (l,sign) in cycles
    do let d=gcd(l,k) in n_cycles[l\d-1,#sign*(k\d)%2] +:= d
    od

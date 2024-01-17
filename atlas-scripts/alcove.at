@@ -55,7 +55,7 @@ in for place in ranking[start:] ## ranking[:start]
 
 set check_walls(RootDatum rd, ratvec gamma,[int] walls) = bool:
   for i in walls
-  do let exception = if i.< do minus_1-i fi { exceptional positive root}
+  do let exception = if i.< do -1-i fi { exceptional positive root}
   , proj = gamma - root(rd,i)*(coroot_frac(rd,coroot(rd,i),gamma)/2)
   then crossings = { positive coroot indices for which integral part changes }
     for alpha_v@k in poscoroots(rd)
