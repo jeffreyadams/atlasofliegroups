@@ -153,10 +153,7 @@ def atlas_compute(i,pid):
          proc.stdin.flush()
          line = proc.stdout.readline().decode('ascii')
          print("[",i,"] Size of unitary hash: ",line)
-         log.write("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA" + "\n")
          log.write("Size of unitary hash: " + line)
-
-
 
       atlas_arg_txt="set list=" + test_function + "(" + group + "," + str(x) + ")\n"
 #      print("atlas_arg: ", atlas_arg_txt)
