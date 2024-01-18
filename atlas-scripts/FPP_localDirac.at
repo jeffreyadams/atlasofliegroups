@@ -8,6 +8,7 @@
 <springer_tables_reductive.at { for Springer_table }
 <associated_variety_annihilator.at { for GK_dim, used in identifying unipotent reps }
 <weak_packets.at {for unipotent_representations}
+<derived_cover.at {for sc_descends}
 { <lietypes.at { for simple_type }}
 { <parabolics.at {for parabolic_by_wt}}
 <K_highest_weights.at {for all_lambda_differential_zero}
@@ -336,6 +337,29 @@ set unipotents_to_hash(RealForm G, Param_hash Uhash) = void:
     else ()
     fi
 
+{add only those unipotent reps of Gsc factoring to a quotient G, with M: X*(G1) -->
+X*(G) the corr wt inclusion}
+set unipotents_to_hash(RealForm G, RealForm Gsc, Param_hash Uhash, mat M) = void:
+    for psc in unipotent_representations(Gsc)
+    do if solve(M,psc.lambda_minus_rho).any
+       then for  p in sc_descends(psc, G, M)
+	    do Uhash.match(p)
+	    od
+       fi
+    od
+
+{assume Gsc --> G corrs to M: X*(G) --> X*(Gsc); assume Usc_hash is
+reps of Gsc; put in U_hash those descending to G}
+set descend_to_quotient(RealForm G, Param_hash Usc_hash, Param_hash U_hash, mat M) = void:
+    for j:Usc_hash.size()
+    do let psc = Usc_hash.index(j)
+       in if solve(M, psc.lambda_minus_rho).any
+       	  then for p in sc_descends(psc, G, M)
+	       do U_hash.match(p)
+	       od
+	  fi
+    od
+
 {inserts special unipotent reps in [unitary_hash]; assumed to have one
  for each KGBElt}
 set unipotents_to_hashes(RealForm G, [Param_hash] Uhashes) = void:
@@ -618,6 +642,7 @@ set one_false_counter = make_counter()
 set hash_real_dumbCounter = make_counter()
 set hash_dumbCounter = make_counter()
 set hash_def_dumbCounter = make_counter()
+set hash_bottom_layerCounter = make_counter()
 
 set one_param_test(Param p, Param_hash Uhash) = [Param]:
     let Q = monomials(finalize(p)), G = p.real_form
@@ -628,6 +653,7 @@ set one_param_test(Param p, Param_hash Uhash) = [Param]:
 	 else let (answer,) = deform_hts(Q[0],r\2)
 	 in answer {could record boolean, use it to replace _test by _to_hts}
 	 fi
+    then  () = hash_def_dumbCounter.use()
     then test = all(for q in Q do Uhash.lookup(q).>= or
 		   	       is_unitary_test(q, DEFHTS) od)
     in if test
@@ -642,6 +668,7 @@ set one_param_test(Param p, Param_hash Uhash) = [Param]:
 
 set one_param_test(Param p, steady_bottom_data bott_data, Param_hash Uhash) = [Param]:
     let QG = monomials(finalize(p)),G = p.real_form
+    then () = hash_bottom_layerCounter.use()
     then test = all(for q in QG
     	      	    do Uhash.lookup(q).>= or
     	      	       min_bottom_test_factors(q, bott_data)
@@ -1600,8 +1627,6 @@ set bottom_length_frac = rat: 1/2
 
 {how many levels of bottom layer K-types to use}
 set BL_steps = int:2
-
-set hash_bottom_layerCounter = make_counter()
 
 {assume local facets to dim 1 are recorded in LF, already herm and pos
 on LKTs. This version uses min_bottom_elim instead of

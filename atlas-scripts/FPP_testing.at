@@ -316,26 +316,10 @@ set time_general([(Param,int)] data, ((Param,int)->bool) tester) = void:
     in ()
 
 {Take a bunch of Params, preferably with a small number of sets of LKTs}
-set time_bottom([Param] params, int level) = void:
+set time_bottom([Param] params) = void:
     let start_time = elapsed_ms(), N0 = #params
-    then Khash = make_KTypePol_hash()
-    then datas = [[(KType,[(KType,KType)])]] : []
-       {datas is always supposed to be the same size as Khash}
     then ps = for param in params do monomials(finalize(param)) od.##
     then N = #ps
-    {then datas_index = [int]: for j:N do minus_1 od}
-       {bottom layer data for ps[j] is datas[datas_index[j]]}
-    then () = for p in ps
-    	      do for mu in LKTs(p)
-		 do let M = Khash.size()
-	      	    then m = Khash.match(mu)
-		    then () = if m = M
-		      	      then datas:= (datas next datas := [])
-			   	#min_L_bottom_factors(mu,level)
-			      fi
-		    in ()
-	      	 od
-	      od
     then bools = for j:N do false od
     then step = N
     then () = if test_slightly_verbose
@@ -347,8 +331,7 @@ set time_bottom([Param] params, int level) = void:
     then times = vec: null(N)
     then () = for p@j in ps
     	      do let startp = elapsed_ms()
-	      	 then () = bools[j]:= min_bottom_elim_factors(p,
-		      	   for mu in LKTs(p) do datas[Khash.lookup(mu)] od.##)
+	      	 then () = bools[j]:= min_bottom_elim_factors(p, bottom_data)
 		 then () = times[j] := elapsed_ms() - startp
 		 then () = if j%step = 0
 		      	   then prints("param ",j," tests ",bools[j]," in ",
@@ -357,7 +340,7 @@ set time_bottom([Param] params, int level) = void:
 		 in ()
 	      od
     then maxLoc = max_loc(times)
-    then () = prints("for bottom to level ", level, ", total time = ",
+    then () = prints("for bottom with no level tweak, total time = ",
     	      	     print_time_string(elapsed_ms() - start_time),
     	      	     " for ", N, " parameters; #true = ", count(bools));
 	      prints("longest = ", print_time_string(times[maxLoc]),

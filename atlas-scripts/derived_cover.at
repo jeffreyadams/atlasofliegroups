@@ -1,0 +1,124 @@
+< group_operations {for simply_connected_cover}
+< induction.at {for embed_KGB}
+< Vogan-dual.at {for dual_KGB}
+< K_highest_weights.at {for all_lambda_differential_0}
+set derived_cover_inner_class_info(InnerClass ic) = (InnerClass,mat):
+    let (rdsc, (M,,)) = simply_connected_cover_derived_info(ic.root_datum)
+{now M maps weights for ic to weights for dcic}
+    then deltasc = ratmat_as_mat(M*(ic.distinguished_involution)*right_inverse(M/1))
+    in (inner_class(rdsc, deltasc), M)
+
+
+set derived_cover_inner_class(InnerClass ic) = InnerClass:
+    let (icsc,) = derived_cover_inner_class_info(ic)
+    in icsc
+
+set derived_cover_real_form_info(RealForm G, KGBElt x) = (RealForm, KGBElt, mat):
+    let (icsc, M) = derived_cover_inner_class_info(G)
+    then Minv = right_inverse(M/1)
+    then thetasc = ratmat_as_mat(M*(x.involution)*Minv), tfsc = (x.torus_factor)*Minv
+    then Gsc = real_form(icsc, thetasc, tfsc)
+    then xsc = KGB_elt(Gsc, thetasc, tfsc)
+    in (Gsc, xsc, M)
+
+set derived_cover_KGBElt_info(KGBElt x) = (KGBElt,mat):
+    let (, xsc,M) = derived_cover_real_form_info(x.real_form, x)
+    in (xsc,M)
+
+set derived_cover_KGBElt(KGBElt x) = KGBElt:
+    let (, xsc,) = derived_cover_real_form_info(x.real_form, x)
+    in xsc
+
+set derived_cover_real_form_info(RealForm G) = (RealForm,mat):
+    let (Gsc, ,M) = derived_cover_real_form_info(G, KGB(G)[0])
+    in (Gsc, M)
+
+set derived_cover_real_form(RealForm G) = RealForm:
+    let (Gsc,,) = derived_cover_real_form_info(G, KGB(G)[0])
+    in Gsc
+
+{xsc is a KGBElt for a group Gsc; M is a map from X*(G) to X*(Gsc).
+ Result is a KGBElt for G}
+set embed_KGB(KGBElt xsc, RealForm G, mat M) = KGBElt:
+    let Gsc = xsc.real_form
+    then Minv_entries(int i, int j) = rat:
+    	 G.fundamental_weights[j][i]
+    {let Minv = right_inverse(M/1)}{this may fail to land in derived subalg?}
+    then Minv = matrix((G.rank, Gsc.rank), Minv_entries)
+    then tf = (xsc.torus_factor)*M
+    then theta = ratmat_as_mat((Minv*(xsc.involution)*(Gsc.distinguished_involution))*M + (id_mat(G.rank) -Minv*M))*
+    	       G.distinguished_involution
+    in KGB_elt(G, theta, tf)
+
+set all_even_lambda_differential_0(KGBElt x) = [ratvec]:
+    let (,corootsR) = simple_real_subsystem(x)
+    then twists = all_lambda_differential_0(x)
+    in for tau in twists
+       do if all(for ac in corootsR do is_even(ac*tau) od)
+       	  then [tau]
+	  else []
+	  fi
+       od.##
+
+{x is a KGBElt for a group G; M is a map from X*(G) to X*(Gsc).
+ Result is a list of KGBElts for Gsc}
+set inverse_embed_KGBs(KGBElt x, RealForm Gsc, mat M) = [KGBElt]:
+    let Minv = right_inverse(M/1), G = x.real_form
+    then tf_sc0 = (x.torus_factor)*Minv {NOT UNIQUE!}
+    then theta_sc = ratmat_as_mat(M*(x.involution)*Minv)
+    then x0_sc = KGB_elt(Gsc, theta_sc, tf_sc0)
+    then p0_sc = parameter(x0_sc, Gsc.rho,Gsc.rho)
+    then x0_sc_d = dual(p0_sc).x
+    then shifts = all_even_lambda_differential_0(x0_sc_d)
+    then tf_scs = for ell in shifts do tf_sc0 + ell od
+    in for tf_sc in tf_scs do KGB_elt(Gsc, theta_sc, tf_sc) od
+
+set inverse_embed_KGB(KGBElt x, RealForm Gsc, mat M) = KGBElt:
+    inverse_embed_KGBs(x, Gsc, M)[0]
+
+set sc_lifts(Param p, RealForm Gsc, mat M) = [Param]:
+    for xsc in inverse_embed_KGBs(p.x, Gsc,M)
+    do parameter(xsc, M*(p.lambda), M*(p.nu))
+    od
+
+set sc_lift(Param p, RealForm Gsc, mat M) = Param:
+    parameter(inverse_embed_KGB(p.x, Gsc, M), M*(p.lambda), M*(p.nu))
+
+set sc_lifts(Param p) = [Param]:
+    let (Gsc, M) = derived_cover_real_form_info(p.real_form)
+    in sc_lifts(p, Gsc, M)
+
+set sc_lift(Param p) = Param:
+    let (Gsc, M) = derived_cover_real_form_info(p.real_form)
+    in sc_lift(p, Gsc, M)
+
+set sc_descend(Param psc, RealForm G, mat M) = Param:
+    {let Minv = right_inverse(M/1)}{ fails to give approp integral lambda}
+    let Gsc = psc.real_form
+    then Minv_entries(int i, int j) = rat:
+    	 G.fundamental_weights[j][i]
+    then Minv = matrix((G.rank, Gsc.rank), Minv_entries)
+    {need to SOLVE M*lambda = psc.lambda}
+    then lambdar = required_solution(M, psc.lambda_minus_rho)
+    in parameter(embed_KGB(psc.x, G, M), lambdar+G.rho, Minv*(psc.nu))
+
+set sc_descends(Param psc, RealForm G, mat M) = [Param]:
+    {let Minv = right_inverse(M/1)}{ fails to give approp integral lambda}
+    let Gsc = psc.real_form
+    then Minv_entries(int i, int j) = rat:
+    	 G.fundamental_weights[j][i]
+    then Minv = matrix((G.rank, Gsc.rank), Minv_entries)
+    {need to SOLVE M*lambda = psc.lambda}
+    then lambdar = required_solution(M, psc.lambda_minus_rho)
+    then x = embed_KGB(psc.x, G, M)
+    in for tau in all_even_lambda_differential_0(x)
+       do parameter(x, lambdar + G.rho + tau, Minv*psc.nu)
+       od
+
+set sc_descend(Param psc, RealForm G) = Param:
+    let (,M) = derived_cover_real_form_info(G)
+    in sc_descend(psc, G, M)
+
+set sc_descends(Param psc, RealForm G) = [Param]:
+    let (,M) = derived_cover_real_form_info(G)
+    in sc_descends(psc, G, M)
