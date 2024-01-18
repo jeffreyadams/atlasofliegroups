@@ -5,14 +5,26 @@
 < to_ht {for is_unitary_to_ht}
 < FPP_facetsDirac {for herm_center}
 < weak_packets {for unipotent_representations}
+< derived_cover {to pass simple factors to derived simple factors}
 {placed in hermitian.at, where it belongs.}
+{all root data live on same Z^n}
+{The jth [int] sigmaj is the map of simple roots for the jth little_rd into simple roots for G.}
+set resorted([RootDatum] little_rds, RootDatum rd) = [[int]]:
+    for little_rd in little_rds
+    do for alpha@j in little_rd.simple_roots
+	  do find_vec(alpha,rd.simple_roots)
+	  od
+       od
 
 {ND stands for non-derived: just use simple factors as Levis in G}
 { lists real and/or complex simple factors }
+{warning: simple roots may be ordered differently in simple_factors than in G. Example
+is G = SO(2) x SO(6): simple roots (0,1,2) for G become (1,0,2) in simple_factors(G)[0]}
 set simple_factors(RealForm G) = [RealForm]:
     let delta=G.distinguished_involution, tf=KGB(G,0).torus_factor,
 	simpleFactors = simple_factors(RootDatum: G),
 	Factors = [RealForm]:[]
+{need to provide the permutation of the simple roots in}
     in
     for rd@i in simpleFactors
     do
@@ -40,7 +52,7 @@ set cowt_inclusions(RealForm G) = [(ratvec->ratvec)]:
       for xi@j in fundamental_coweights(S) do (v*S.simple_roots[j])*xi od)
     od
 
-{projection from ratl coweight of G to coweight of S, respecting
+{projection from ratl weight of G to ratl weight of S, respecting
 values on roots of S}
 set wt_projections(RealForm G) = [(ratvec->ratvec)]:
     for S in simple_factors(G)
@@ -72,6 +84,90 @@ set factor_params(Param p) = [Param]:
 set factor_K_types(KType mu) = [KType]:
     for xj@j in factor_KGBs(mu.x)
     do K_type(xj, mu.lambda_minus_rho)
+    od
+
+{WHY DON'T LKTs of factor_params match factor_K_types???}
+{In changing nu can change KGBElt of final parameter}
+{In SL(2), (2,[0],[1]) has x =2, but (2,[0],[0]) has TWO x's, 0 and 1.}
+
+set derived_info(RealForm G) = (RealForm, mat):
+    let (,M) = derived_info(G.root_datum)
+    in (derived(G),M)
+
+{ lists derived groups DS ofreal and/or complex simple factors S.
+  Matrix M maps weights for S to weights for DS. Result is (S,DS,M)}
+  {because of simple_factors, roots in S and DS can be ordered differently}
+set derived_simple_factors_info(RealForm G) = [(RealForm,RealForm, mat)]:
+    for S in simple_factors(G)
+    do let (DS,M) = {derived_cover_real_form_info(S)} derived_info(S)
+    then () = if Cartan_matrix(DS) != Cartan_matrix(S) then prints("S and DS permuted!") fi 
+    in (S,DS,M)
+    od
+
+{projection from ratl coweight of G to coweight of DS, respecting
+values on roots of S}
+set derived_cowt_inclusions(RealForm G) = [(ratvec->ratvec)]:
+    for (S,DS,M) in derived_simple_factors_info(G)
+    do (ratvec->ratvec):
+    (ratvec v) : sum(G.rank,
+      for xi@j in fundamental_coweights(DS) do (v*S.simple_roots[j])*xi od)
+    od
+
+{projection from ratl weight of G to rational weight of DS, respecting
+values on roots of S}
+set derived_wt_projections(RealForm G) = [(ratvec->ratvec)]:
+    for (S,DS,M) in derived_simple_factors_info(G)
+    do (ratvec->ratvec):
+       (ratvec gamma) : sum(DS.rank,
+      for xi@j in fundamental_weights(DS) do (M*gamma*DS.simple_coroots[j])*xi od)
+    od
+
+{x is a KGBElt for G; want to pass to a KGBElt for each derived simple factor}
+set derived_factor_KGBs(KGBElt x) = [KGBElt]:
+    let DSF = derived_simple_factors_info(x.real_form)
+    in for (S,DS,M) in DSF {this is automatically a theta-stable Levi}
+       do {let Minv = right_inverse(M/1)}
+       	  {let Minv_entries(int i, int j) = rat:
+	      S.fundamental_weights[j][i]
+	  then Minv = matrix((S.rank, DS.rank),Minv_entries)}
+	  let DSsimp = DS.simple_roots
+	  then DDS = det(DSsimp)
+	  then Minv = required_solution(DS.simple_roots.^, DDS*S.simple_roots.^).^/DDS
+	  then () = assert(let (N,,denom) = M*Minv in denom = 1 and N = id_mat(DS.rank),
+	       	    	       "bad Minv in derived_factor_KGBs")
+       	  then Dtheta = ratmat_as_mat(M*x.involution*Minv)
+       	  then Dx = KGB_elt(DS.inner_class, Dtheta, torus_factor(x)*Minv)
+	  then DSprime = Dx.real_form
+	  {then tfshift = (KGB(DS,0).torus_factor - KGB(DSprime,0).torus_factor)/2}
+	  {then () = assert(all(for alpha in DS.simple_roots do (tfshift*alpha).denom = 1 od),
+	       	    "derived KGB is really bad")}
+	  then () = Dx := KGB(DS, KGB_elt(DS.inner_class, Dtheta, torus_factor(x)*Minv).number)
+	  in Dx
+       od
+
+set derived_factor_params(Param p) = [Param]:
+    let DSFinfo = derived_simple_factors_info(p.real_form)
+    {let DPIs = derived_wt_projections(p.real_form)
+    in}
+    in for xj@j in derived_factor_KGBs(p.x)
+       do let (,DS,M) = DSFinfo[j]
+       	  in parameter(xj, M*(p.lambda_minus_rho) + DS.rho, M*p.nu)
+         { replace M by DPIS[J]?? }
+       od
+
+{these comologically induce to mu (on K), I think}
+set derived_factor_K_types_info(KType mu) = [(KType,mat)]:
+    let DSFinfo = derived_simple_factors_info(mu.real_form)
+    in for xj@j in derived_factor_KGBs(mu.x)
+       do let (,,M) = DSFinfo[j]
+       	  then muj = K_type(xj, M*mu.lambda_minus_rho)
+	  in (muj,M)
+       od
+
+{these comologically induce to mu (on K), I think}
+set derived_factor_K_types(KType mu) = [KType]:
+    for (muj,) in derived_factor_K_types_info(mu)
+    do muj
     od
 
 {WHY DON'T LKTs of factor_params match factor_K_types???}

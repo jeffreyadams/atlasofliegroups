@@ -2,6 +2,7 @@
 < induction.at {for embed_KGB}
 < Vogan-dual.at {for dual_KGB}
 < K_highest_weights.at {for all_lambda_differential_0}
+
 set derived_cover_inner_class_info(InnerClass ic) = (InnerClass,mat):
     let (rdsc, (M,,)) = simply_connected_cover_derived_info(ic.root_datum)
 {now M maps weights for ic to weights for dcic}
@@ -41,14 +42,20 @@ set derived_cover_real_form(RealForm G) = RealForm:
  Result is a KGBElt for G}
 set embed_KGB(KGBElt xsc, RealForm G, mat M) = KGBElt:
     let Gsc = xsc.real_form
+    {then sigma = for alpha@j in G.simple_roots
+	      	do find_vec(M*alpha,Gsc.simple_roots)
+	  	od
+    then sigmainv = inverse(sigma)}
+    {then () = assert(G.Cartan_matrix = Gsc.Cartan_matrix,"simple roots permuted in embed_KGB")}
     then Minv_entries(int i, int j) = rat:
-    	 G.fundamental_weights[j][i]
+    	 G.fundamental_weights[j][{sigmainv[}i{]}]
     {let Minv = right_inverse(M/1)}{this may fail to land in derived subalg?}
     then Minv = matrix((G.rank, Gsc.rank), Minv_entries)
     then tf = (xsc.torus_factor)*M
     then theta = ratmat_as_mat((Minv*(xsc.involution)*(Gsc.distinguished_involution))*M + (id_mat(G.rank) -Minv*M))*
     	       G.distinguished_involution
-    in KGB_elt(G, theta, tf)
+    then x = KGB_elt(G.inner_class, theta, tf)
+    in KGB(G, x.number)
 
 set all_even_lambda_differential_0(KGBElt x) = [ratvec]:
     let (,corootsR) = simple_real_subsystem(x)
@@ -95,6 +102,7 @@ set sc_lift(Param p) = Param:
 set sc_descend(Param psc, RealForm G, mat M) = Param:
     {let Minv = right_inverse(M/1)}{ fails to give approp integral lambda}
     let Gsc = psc.real_form
+    then () = assert(G.Cartan_matrix = Gsc.Cartan_matrix,"simple roots permuted in sc_descend")
     then Minv_entries(int i, int j) = rat:
     	 G.fundamental_weights[j][i]
     then Minv = matrix((G.rank, Gsc.rank), Minv_entries)
@@ -105,11 +113,13 @@ set sc_descend(Param psc, RealForm G, mat M) = Param:
 set sc_descends(Param psc, RealForm G, mat M) = [Param]:
     {let Minv = right_inverse(M/1)}{ fails to give approp integral lambda}
     let Gsc = psc.real_form
+    then () = assert(G.Cartan_matrix = Gsc.Cartan_matrix,"simple roots permuted in sc_descends")
     then Minv_entries(int i, int j) = rat:
     	 G.fundamental_weights[j][i]
     then Minv = matrix((G.rank, Gsc.rank), Minv_entries)
-    {need to SOLVE M*lambda = psc.lambda}
-    then lambdar = required_solution(M, psc.lambda_minus_rho)
+    {need to SOLVE M*lambda = psc.lambda + (1-thetasc)X^*}
+    then U = M##(-psc.x.involution + 1)
+    then lambdar = required_solution(U, psc.lambda_minus_rho)[:G.rank]
     then x = embed_KGB(psc.x, G, M)
     in for tau in all_even_lambda_differential_0(x)
        do parameter(x, lambdar + G.rho + tau, Minv*psc.nu)
