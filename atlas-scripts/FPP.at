@@ -42,6 +42,7 @@ set params([Param] params,int kgb_number)=[Param]:
 set FPP_unitary_hash(RealForm G, int x)=[Param]:let ()=FPP_unitary_hash([KGB(G,x)]) in params(unitary_hash)
 set FPP_unitary_hash2(RealForm G, int x)=[Param]:let ()=FPP_unitary_hash2([KGB(G,x)]) in params(unitary_hash)
 set FPP_unitary_hash_one_level(RealForm G, int x)=[Param]:let ()=FPP_unitary_hash_one_level([KGB(G,x)]) in params(unitary_hash)
+set FPP_unitary_hash_bottom_layer(RealForm G, int x)=[Param]:let ()=FPP_unitary_hash_bottom_layer([KGB(G,x)]) in params(unitary_hash)
 
 low_KGB_frac:=2/5
 
@@ -66,11 +67,11 @@ facet_verbose:=true
 set global_facets_file_loaded=false   {set true at the end of global_facets_file}
 set coh_ind_file_loaded=false   {set true at the end of global_facets_file}
 
-set local_test_GEO_hash_one_level(KGBElt x, ratvec lambda, Param_hash Uhash) =
+set local_test_GEO_hash_bottom_layer(KGBElt x, ratvec lambda, Param_hash Uhash) =
     [Param]:
     let G = x.real_form, pol_hash=make_KTypePol_hash()
     then vd = FPP_vertex_data(G)
-    in local_test_GEO_hash_one_level(x, lambda, vd, pol_hash, Uhash)
+    in local_test_GEO_hash_bottom_layer(x, lambda, vd, pol_hash, Uhash)
 
 
 set FPP(RealForm G,int KGB_number)=[Param]:
@@ -85,7 +86,7 @@ lambdas = FPP_lambdas(x) then
    	     	    ", #Uhash = ", Uhash.size())
 in  ##for lambda@j in lambdas
   do prints("lambda #",j,", #Uhash = ", Uhash.size());
-    local_test_GEO_hash_one_level(x,lambda, Uhash)
+    FPP_unitary_hash_bottom_layer(x,lambda, Uhash)
 od
 
 

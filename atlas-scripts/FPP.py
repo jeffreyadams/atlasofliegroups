@@ -29,7 +29,7 @@ def format_cmd(atlas_command):return('{}'.format(atlas_command).encode('utf-8'))
 def atlas_compute(i,pid):
    print("starting atlas_compute process #:",i, "pid: ", str(pid))
    proc=procs[i]
-   test_function="FPP_unitary_hash_one_level"
+   test_function="FPP_unitary_hash_bottom_layer"
    data_file=directory + "/" + str(i) + ".at"
    log_file=directory + "/logs/" + str(i) + ".txt"
    data=open(data_file,"w", buffering=1)
