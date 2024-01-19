@@ -56,6 +56,7 @@ set spherical_xs(RealForm G) = [KGBElt]:
 
 {this seems to fail to find all relevant lambdas for some unequal rank cases.
 Following function FPP_lambdas_big seems OK?}
+{need to allow also EDGE barycenters for edges reversed by x}
 set FPP_lambdas(KGBElt x) = [ratvec]:
     let G=x.real_form, twists = all_lambda_differential_0(x)
     then zeroPol = ParamPol: 0*G.trivial
@@ -181,6 +182,7 @@ set FPP_lambdas_big(KGBElt x, VertexData vd, mat_hash inv_hash, [vec_hash]
 corresponding (Lvd, Perm, mapAct). If x is involution #i (in inv_hash), then ith term
 in Lvd_Perm_mapAct is list of (Lvd,Perm,mapAct) for various dlambda (indexed by
 dlambda_hashes[i])}
+{MISSES some vertices which are edge barycenters!}
 set FPP_lambdas_big_new(KGBElt x, VertexData vd, mat_hash inv_hash, [vec_hash]
     dlambda_hashes, [[(VertexData, PermOrderTwo, vec)]] Lvd_Perm2_mapAct,
     [(ratvec->int)] ELs) =[(ratvec, VertexData, PermOrderTwo, vec)]:
@@ -663,7 +665,7 @@ set FPP_unitary_hash_bottom_layer([(KGBElt,ratvec)] xlambdas, steady_bottom_data
     else let inv_hash = make_mat_hash()
     then () = qrf_sig_tables.clear()
     then () = bott_data.clear()
-    then () = unitary_hash.clear()
+    {then () = unitary_hash.clear()} {interferes with preloading coh_ind}
     then (x,) = xlambdas[0]
     then () = deform_flag:=true
     then G = x.real_form
@@ -806,7 +808,7 @@ set FPP_unitary_hash_bottom_layer([KGBElt] xs,  steady_bottom_data bott_data,
     let () = deform_flag:=true
     then () = qrf_sig_tables.clear()
     then () = bott_data.clear()
-    then () = unitary_hash.clear()
+    {then () = unitary_hash.clear()}{interferes with preloading coh_ind}
     then () = if tilde_flag
     	      then xs:= for x in xs ~do x od; deform_flag:=false
     	      fi
