@@ -4,6 +4,8 @@
 <K_types.at {for branch_std}
 <time.at {for print_time_string}
 <cohom_reductionND {for factor_params, factor_K_types}
+<derived_cover.at
+<K.at {for projection_to_K_matrix}
 {trying to get at bottom layer K-types. Use D for bound on height, d
 for bound on number of terms. The "min" refers to the theta-stable
 parabolic built by theta_stable_quasi_data. Parabolics _containing_
@@ -24,6 +26,7 @@ set two_rho_u_check(KGPElt Q) = vec:
 {Each (muG,muL) in output list is a Q-bottom layer K-type for p with (Q,pL) =
 theta_stable_quasi_data(p). D is the largest height to which to compute
 K-types. For now assume K connected.}
+
 set min_bottom(Param p, int D) = [(KType,KType)]:
     let (Q,pL) = theta_stable_quasi_data(p), {x = p.x, lambda = p.lambda}
     	G = p.real_form
@@ -130,7 +133,7 @@ set make_QRF_sig_tables () = QRF_sig_tables:
    , ( -> vec): {K_type_size} @vec: for hash in K_type_hashes do hash.size() od
    , ( -> vec): {K_type_pol_size} @vec: for hash in K_type_pol_hashes do hash.size() od
    , ( -> vec): {Param_size} @vec: for hash in param_hashes do hash.size() od
-   , (KType -> KTypePol): {entry} (KType mu) KTypePol:
+   , (KType -> KTypePol): {branch_entry} (KType mu) KTypePol:
      begin
      	let RF = real_form_hash.size()
 	then rf = real_form_hash.match(mu.real_form)
@@ -164,7 +167,7 @@ set make_QRF_sig_tables () = QRF_sig_tables:
 	then () = assert(#branches[rf] = K_type_hashes[rf].size(), "QRF_sig_table damaged")
 	in K_type_pol_hashes[rf].index(branches[rf][ktypenum])
      end
-   , (KType ->): {append_k_type} (KType mu):
+   , (KType ->): {branch_append} (KType mu):
      begin
      	let RF = real_form_hash.size()
 	then rf = real_form_hash.match(mu.real_form)
@@ -282,43 +285,59 @@ set min_L_bottom_factors(KType mu, int level) = [[(KType, KType)]]:
     let p = parameter(mu)
     then (Q,pL) = theta_stable_quasi_data(p), G = p.real_form
     then muL = LKT(pL)
-    then muLjs = factor_K_types(muL), L = Q.Levi
-    then Ljs = for muLj in muLjs do muLj.real_form od
-     {restriction to each simple factor of L}
+    then muLMjs = derived_factor_K_types_info(muL), L = Q.Levi
+    then derLMjs = for (muLj,Mj) in muLMjs do (muLj.real_form,Mj) od {DERIVED simple factors}
+     {restriction to each derived simple factor of L}
     {then Ljs = simple_factors(L) doesn't match real forms of muLjs}
-    then DLjs = for muLj@j in muLjs
+    then DLjs = for (muLj,)@j in muLMjs
     	      	do if QR_code
 		   then [0]
 		   else
-		   next_heights(muLj, (semisimple_rank(Ljs[j]) + 1)\2)
+		   let (derLj,) = derLMjs[j]
+		   in next_heights(muLj, (semisimple_rank(derLj) + 1)\2)
 		   fi
 		od
-    then too_many_tauLjs = [[KType]]:
-    	 for muLj@j in muLjs
+     then too_many_tauLjs = [[KType]]: {on derived simple factors}
+    	 for (muLj,)@j in muLMjs
 	 do if QR_code
 	    then monomials(qrf_sig_tables.branch_entry(muLj))
 	    else monomials(branch(muLj, DLjs[j]~[0]))
 	    fi
 	 od
     then xcL = KGB(L,0)
-    then xcLjs = for Lj in Ljs
-    	       	 do KGB(Lj, 0)
+    then xcLMjs = for (derLj,Mj) in derLMjs
+    	       	 do (KGB(derLj, 0),Mj)
 		 od
-    then xcGs = for xcLj in xcLjs do embed_KGB(xcLj,G) od
-    then shifts = for xcLj@j in xcLjs {Connects Lj\cap K-types to bottom layer K-types}
-    	 	  do K0_param(mu, xcGs[j]).lambda_minus_rho -
-		     K0_param(muLjs[j],xcLjs[j]).lambda_minus_rho
-		  od
+    then Ljs = simple_factors(L)
+    then xcGs = for (xcLj,Mj)@j in xcLMjs {do embed_KGB(xcLj,G,Mj) od}
+    	      	do embed_KGB(embed_KGB(embed_KGB(xcLj,Ljs[j],Mj),L),G)
+		od
+    then muwts = for xcG in xcGs do K0_param(mu,xcG).lambda_minus_rho od
+{    then shifts = for (xcLMj,)@j in xcLMjs {Connects Lj\cap K-types to bottom layer K-types}
+    	 	  do (K0_param(mu, xcGs[j]).lambda_minus_rho) -
+		     K0_param(factor_K_types(muL)[j],xcLjs[j]).lambda_minus_rho
+		  od}
+    then MK = projection_to_K_matrix(mu.inner_class)
     in for listj@j in too_many_tauLjs
        do let K0 = K_0(xcGs[j])
        	  in for tauLj in listj
-       	     do let taujwt = K0_param(tauLj, xcLjs[j]).lambda_minus_rho + shifts[j]
-{highest_weight(tauLj, xcLjs[j]).mu + shifts[j]}
-	     in if is_dominant(K0, taujwt)
-  	        then [(K_types(K_highest_weight_from_K0_weight(xcGs[j], taujwt))[0], tauLj)]
-	  	else []
-	  	fi
-	     od.##
+       	     do let (muLj,Mj) = muLMjs[j], (xcLj,) = xcLMjs[j], (derLj,) = derLMjs[j],
+	     	Lj = Ljs[j]
+	     	then taujwt = muwts[j] + 
+			ratvec_as_vec(MK*sum(G.rank,
+				      for xi@k in fundamental_coweights(derLj)
+		     		      do ( K0_param(tauLj, xcLj).lambda_minus_rho -
+		     	      	      	   K0_param( muLj, xcLj).lambda_minus_rho ) *
+					    xi * Lj.simple_roots[k]
+				      od))
+	{K0_param difference is sum of roots of derLj, restricted to derLKj
+	Want to add corr sum of roots of Lj to highest weight of mu}
+	     	in if is_dominant(K0, taujwt)
+  	           then [(K_types(K_highest_weight_from_K0_weight(xcGs[j], taujwt))[0],
+		   	  tauLj)]
+	  	   else []
+	  	   fi
+	      od.##
 	od
 
 
@@ -333,7 +352,7 @@ set_type
   , (KType->) append
   , (int -> KType) K_type_index
   , (int -> [[(KType,KType)]]) data_index
-  , ( -> int) bottom_branch_time
+  , ( -> int) min_L_bottom_factors_time
   )
 ]
 
@@ -341,11 +360,11 @@ set make_steady_bottom_data () = steady_bottom_data:
 (  let K_type_hash = make_KType_hash()
    then bottom_data = [[[(KType,KType)]]] : []
    then steps = int:2
-   then branch_time = int: 0
+   then bottom_factors_time = int: 0
    then clear() = void:
        let () = K_type_hash.clear()
        then () = bottom_data:=[]
-       then  () = branch_time := 0
+       then  () = bottom_factors_time := 0
        in ()
    in 
    ( ( -> int): { size } @int: K_type_hash.size()
@@ -361,7 +380,7 @@ set make_steady_bottom_data () = steady_bottom_data:
 	     	  then let start = elapsed_ms()
 		       then () = bottom_data := (bottom_data next bottom_data:= [])
 		       	       	 	     #min_L_bottom_factors(mu, steps)
-		       in branch_time +:= elapsed_ms() - start
+		       in bottom_factors_time +:= elapsed_ms() - start
 		  fi
 	then () = assert(#bottom_data =
 	     	K_type_hash.size(),"steady_bottom_data damaged")
@@ -375,7 +394,7 @@ set make_steady_bottom_data () = steady_bottom_data:
 	     	  then let start = elapsed_ms()
 	     	       then () = bottom_data := (bottom_data next bottom_data:= [])
 		       	       	 	     #min_L_bottom_factors(mu, steps)
-		       in branch_time +:= elapsed_ms() - start
+		       in bottom_factors_time +:= elapsed_ms() - start
 		  fi
         then () = assert(#bottom_data =
 	     	K_type_hash.size(),"steady_bottom_data damaged")
@@ -383,7 +402,7 @@ set make_steady_bottom_data () = steady_bottom_data:
      end
    , (int -> KType): {K_type_index} (int j): K_type_hash.index(j)
    , (int -> [[(KType,KType)]]): {data_index} (int j) [[(KType,KType)]]: bottom_data[j]
-   , ( -> int): {bottom_branch_time} @int: branch_time
+   , ( -> int): {bottom_min_L_bottom_time} @int: bottom_factors_time
   )
 )
 
@@ -486,7 +505,7 @@ set min_bottom_elim_factors(Param p, [[(KType,KType)]] LKdata) = bool:
        then prints("mu isn't a LKT of p"); true
        elif sum(for pairs in LKdata do #pairs od) = #LKdata
        	    then true
-       else let pLjs = factor_params(pL)
+       else let pLjs = derived_factor_params(pL)
        	    then DLs = if QR_code
 	    	       then null(#LKdata)
 		       else for pairs@j in LKdata
@@ -496,7 +515,8 @@ set min_bottom_elim_factors(Param p, [[(KType,KType)]] LKdata) = bool:
 	       	            od
 		       fi
       	    then muL = LKTs(pL)[LKTloc]
-       	    then muLjs = factor_K_types(muL) {need to line up each muLjs[j] with ONE LKT of pLjs[j]}
+       	    then muLjs = derived_factor_K_types(muL)
+	    {need to line up each muLjs[j] with ONE LKT of pLjs[j]}
        	    then baseLjs = [KType]:
        	    	 for pairs@j in LKdata
 	    	 do let (,baseLj) = pairs[0]
@@ -575,14 +595,14 @@ set min_bottom_elim_factors(Param p, [[(KType,KType)]] LKdata, KTypePol P) = boo
        then prints("mu isn't a LKT of p"); true
        elif sum(for pairs in LKdata do #pairs od) = #LKdata
        	    then true
-       else let pLjs = factor_params(pL)
+       else let pLjs = derived_factor_params(pL)
        	    then DLs = for pairs@j in LKdata
 	       	       do max(for (,tauLj) in pairs
 		       	      do height(tauLj)
 		      	      od)
 	       	       od
       	    then muL = LKTs(pL)[LKTloc]
-       	    then muLjs = factor_K_types(muL) {need to line up each muLjs[j] with ONE LKT of pLjs[j]}
+       	    then muLjs = derived_factor_K_types(muL) {need to line up each muLjs[j] with ONE LKT of pLjs[j]}
        	    then baseLjs = [KType]:
        	    	 for pairs@j in LKdata
 	    	 do let (,baseLj) = pairs[0]

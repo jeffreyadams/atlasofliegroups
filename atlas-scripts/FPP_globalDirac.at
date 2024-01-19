@@ -56,6 +56,7 @@ set spherical_xs(RealForm G) = [KGBElt]:
 
 {this seems to fail to find all relevant lambdas for some unequal rank cases.
 Following function FPP_lambdas_big seems OK?}
+{need to allow also EDGE barycenters for edges reversed by x}
 set FPP_lambdas(KGBElt x) = [ratvec]:
     let G=x.real_form, twists = all_lambda_differential_0(x)
     then zeroPol = ParamPol: 0*G.trivial
@@ -181,6 +182,7 @@ set FPP_lambdas_big(KGBElt x, VertexData vd, mat_hash inv_hash, [vec_hash]
 corresponding (Lvd, Perm, mapAct). If x is involution #i (in inv_hash), then ith term
 in Lvd_Perm_mapAct is list of (Lvd,Perm,mapAct) for various dlambda (indexed by
 dlambda_hashes[i])}
+{MISSES some vertices which are edge barycenters!}
 set FPP_lambdas_big_new(KGBElt x, VertexData vd, mat_hash inv_hash, [vec_hash]
     dlambda_hashes, [[(VertexData, PermOrderTwo, vec)]] Lvd_Perm2_mapAct,
     [(ratvec->int)] ELs) =[(ratvec, VertexData, PermOrderTwo, vec)]:
@@ -661,6 +663,9 @@ set bottom_data = make_steady_bottom_data()
 set FPP_unitary_hash_bottom_layer([(KGBElt,ratvec)] xlambdas, steady_bottom_data bott_data, Param_hash UhashG) = void:
     if #xlambdas = 0 then return ()
     else let inv_hash = make_mat_hash()
+    then () = qrf_sig_tables.clear()
+    then () = bott_data.clear()
+    {then () = unitary_hash.clear()} {interferes with preloading coh_ind}
     then (x,) = xlambdas[0]
     then () = deform_flag:=true
     then G = x.real_form
@@ -727,7 +732,7 @@ set FPP_unitary_hash_bottom_layer([(KGBElt,ratvec)] xlambdas, steady_bottom_data
 	      fi
     then current = elapsed_ms(), oldUhash = UhashG.size(), currentUhash = Uhash.size(), formerUhash = Uhash.size(),
     	 	   oldUcounter = unitary_test_counter.use_count(), currentUcounter = unitary_test_counter.use_count(),
-		   start_branch = bott_data.bottom_branch_time()
+		   start_min_L_bottom_factors = bott_data.min_L_bottom_factors_time()
     then () = for (x,lambda)@k in xlambdas
     	      do {xlambdas} 
 	 	 let start = elapsed_ms(), startUhash = Uhash.size(), (x_sc,lambda_sc) = xlambdas_sc[k],
@@ -775,9 +780,11 @@ set FPP_unitary_hash_bottom_layer([(KGBElt,ratvec)] xlambdas, steady_bottom_data
 	      " for (x,lambda) = (",  xnums[longest], ",", lambdas[longest],")");
        prints("Time spent in is_unitary = ",print_time_string(unitaryTime), ", number of unitarity tests = ",
        		unitary_test_counter.use_count());
-       prints("Time in bottom layer branching = ",
-       	      print_time_string(bott_data.bottom_branch_time() - start_branch),
+       prints("Time in min_L_bottom_factors = ",
+       	      print_time_string(bott_data.min_L_bottom_factors_time() - start_min_L_bottom_factors),
 	      ", number of K-types studied = ", bott_data.size());
+       prints("Time in bottom layer branching = ",print_time_string(qrf_sig_tables.bottom_branch_time()));
+       prints("Time in bottom layer sig = ",print_time_string(qrf_sig_tables.bottom_sig_time()));
        prints("  #hash_real_dumb =",hash_real_dumbCounter.use_count(),
 	      ", #hash_dumb =", hash_dumbCounter.use_count(),
        	      ", #hash_def_dumb =", hash_def_dumbCounter.use_count());
@@ -799,6 +806,9 @@ set FPP_unitary_hash_bottom_layer([KGBElt] xs,  steady_bottom_data bott_data,
     then return ()
     else
     let () = deform_flag:=true
+    then () = qrf_sig_tables.clear()
+    then () = bott_data.clear()
+    {then () = unitary_hash.clear()}{interferes with preloading coh_ind}
     then () = if tilde_flag
     	      then xs:= for x in xs ~do x od; deform_flag:=false
     	      fi
@@ -855,8 +865,8 @@ set FPP_unitary_hash_bottom_layer([KGBElt] xs,  steady_bottom_data bott_data,
     then () = global_facets_by_zero := low_FPP_facets_by_zero(global_facets)
     then current = elapsed_ms()
     then oldUhash = UhashG.size(), currentUhash = Uhash.size(), formerUhash = Uhash.size(),
-    	 oldUcounter = unitary_test_counter.use_count(), currentUcounter = unitary_test_counter.use_count(),
-	 start_branch = bott_data.bottom_branch_time()
+    	 oldUcounter = unitary_test_counter.use_count(), currentUcounter = unitary_test_counter.use_count(){,
+	 start_branch = qrf_sig_tables.bottom_branch_time()}
     then () = for x@j in xs
     	      do {xs}
 	 let former_time = current, formerUhash = currentUhash, formerUcounter = currentUcounter, x_sc = xs_sc[j]
@@ -954,9 +964,11 @@ set FPP_unitary_hash_bottom_layer([KGBElt] xs,  steady_bottom_data bott_data,
               " for KGBElt ",xnums[longest]);
        prints("Time spent in is_unitary = ",print_time_string(unitaryTime), ", number of unitarity tests = ",
        		unitary_test_counter.use_count());
-       prints("Time in bottom layer branching = ",
-       print_time_string(bott_data.bottom_branch_time() - start_branch), ", number of K-types studied = ",
-       	      bott_data.size());
+       prints("Time in min_L_bottom_factors = ",
+       	      print_time_string(bott_data.min_L_bottom_factors_time()),
+	      ", number of K-types studied = ", bott_data.size());
+       prints("Time in bottom layer branching = ",print_time_string(qrf_sig_tables.bottom_branch_time()));
+       prints("Time in bottom layer sig = ",print_time_string(qrf_sig_tables.bottom_sig_time()));
        prints("  #hash_real_dumb = ",hash_real_dumbCounter.use_count(),
 	      ", #hash_dumb = ", hash_dumbCounter.use_count(),
        	      ", #hash_def_dumb =", hash_def_dumbCounter.use_count());
@@ -976,6 +988,7 @@ set FPP_unitary_hash_bottom_layer(RealForm G) = void:
     FPP_unitary_hash_bottom_layer(KGB(G))
 
 { lists real and/or complex simple factors }
+{moved to cohom_reductionND.at}{
 set simple_factors(RealForm G) = [RealForm]:
     let delta=G.distinguished_involution, tf=KGB(G,0).torus_factor,
 	simpleFactors = simple_factors(RootDatum: G),
@@ -997,9 +1010,12 @@ set simple_factors(RealForm G) = [RealForm]:
 	      fi
 	fi
     od; Factors
-
+}
+{moved to cohom_reduction.at}
+{
 set derived_simple_factors(RealForm G) = [RealForm]:
     for S in simple_factors(G) do derived(S) od
+}
 
 {(M,N): M is natural restriction from X^*(G) onto X^*(D).
  N is right inverse of M.}
@@ -1009,6 +1025,8 @@ set derived_simple_factors(RealForm G) = [RealForm]:
 
 {descend a parameter for G to all simple factors of theta-stable Levi support(x)}
 
+{elsewhere}
+{
 set descents(Param p) = [Param]:
     let  x = p.x, G = p.real_form, lambda = p.lambda, nu = p.nu
     then P = Parabolic: (support(x), x) {, theta = x.involution}
@@ -1022,3 +1040,4 @@ set descents(Param p) = [Param]:
     then DSF = for S in SF do derived(S) od
     then DSFinfos = for S in SF do derived_infos(S) od
     }
+}

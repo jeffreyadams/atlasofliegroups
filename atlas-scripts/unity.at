@@ -245,11 +245,10 @@ set rec_fun deform_hts(Param p, int N) = ([int],bool):
 
 
 { To test a bunch of parameters attached to one KGB element x, and one
-lambda, a good idea might be to compute N =
-next_to_lowest((x,lambda)); then on each parameter p run
-unitarity_test(p,N). Maybe even better: if mu is a LKT, compute tau =
-next_to_lowest(mu), and then run unitary_test(p, height (tau),
-next_height(tau) }
+lambda, a good idea might be to compute N = next_to_lowest((x,lambda));
+then on each parameter p run is_unitarity_test(p,N). Maybe even better:
+if mu is a LKT, compute tau = next_to_lowest(mu), and then run
+unitary_test(p, height (tau), next_height(tau) }
 
 {. gives (one of) the K-types of lowest height above mu in the
 standard of LKT mu .} {NEED USEFUL BOUND in K_type_formula.}
@@ -274,7 +273,7 @@ set next_heights(KType mu, int m) = [int]:
     let h = height(mu), start = elapsed_ms()
     then N = h+10, list = [int]: []
     then () = while #list < m
-    	 do list:=sort_u(for tau in monomials(branch(mu,N) - mu)
+    	 do list:=sort_u(for tau in monomials(branch_std(mu,N) - mu)
 	    		 do height(tau)
 			 od);
 	    N:=N+5
