@@ -1623,9 +1623,12 @@ set local_test_GEO_one_level(KGBElt x, ratvec lambda) = [Param]:
     then () = unipotents_to_hash(x.real_form,Uhash)
     in local_test_GEO_hash_one_level(x,lambda,vd, pol_hash, Uhash)
 
-set bottom_length_frac = rat: 1/2
+{when LKT length is smaller than bottom_length_frac*(max possible), DO NOT use bottom_layer}
+set bottom_length_frac = rat: 1/4 {??}
 
 {how many levels of bottom layer K-types to use}
+{this now has no effect; essentially hard coded in min_L_bottom_factors, in
+argument of next_heights}
 set BL_steps = int:2
 
 {assume local facets to dim 1 are recorded in LF, already herm and pos
