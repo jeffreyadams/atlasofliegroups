@@ -4,6 +4,7 @@
 <sort.at {for sort_u}
 <count.at
 <time.at {for time_verbose}
+<K_types.at {for branch_std}
 set height(RootDatum R, ratvec nu) = int:
     let q = dominant(R,nu)*R.two_rho_check
     in q.numer\q.denom

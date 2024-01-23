@@ -86,6 +86,14 @@ set factor_K_types(KType mu) = [KType]:
     do K_type(xj, mu.lambda_minus_rho)
     od
 
+{these comologically induce to mu (on K), I think}
+{x is supposed to be a fundamental fiber KGBElt}
+set factor_K_types(KType mu, KGBElt x) = [KType]:
+    for xj@j in factor_KGBs(x)
+    do K_types(K_highest_weight_from_K0_weight(xj, K0_param(mu, x).lambda_minus_rho))[0]
+    od
+
+
 {WHY DON'T LKTs of factor_params match factor_K_types???}
 {In changing nu can change KGBElt of final parameter}
 {In SL(2), (2,[0],[1]) has x =2, but (2,[0],[0]) has TWO x's, 0 and 1.}
@@ -99,50 +107,50 @@ set derived_info(RealForm G) = (RealForm, mat):
   {because of simple_factors, roots in S and DS can be ordered differently}
 set derived_simple_factors_info(RealForm G) = [(RealForm,RealForm, mat)]:
     for S in simple_factors(G)
-    do let (DS,M) = {derived_cover_real_form_info(S)} derived_info(S)
-    then () = if Cartan_matrix(DS) != Cartan_matrix(S) then prints("S and DS permuted!") fi 
-    in (S,DS,M)
+    do let (derS,M) = {derived_cover_real_form_info(S)} derived_info(S)
+    then () = if Cartan_matrix(derS) != Cartan_matrix(S) then prints("S and derS permuted!") fi 
+    in (S,derS,M)
     od
 
 {projection from ratl coweight of G to coweight of DS, respecting
 values on roots of S}
 set derived_cowt_inclusions(RealForm G) = [(ratvec->ratvec)]:
-    for (S,DS,M) in derived_simple_factors_info(G)
+    for (S,derS,M) in derived_simple_factors_info(G)
     do (ratvec->ratvec):
     (ratvec v) : sum(G.rank,
-      for xi@j in fundamental_coweights(DS) do (v*S.simple_roots[j])*xi od)
+      for xi@j in fundamental_coweights(derS) do (v*S.simple_roots[j])*xi od)
     od
 
 {projection from ratl weight of G to rational weight of DS, respecting
 values on roots of S}
 set derived_wt_projections(RealForm G) = [(ratvec->ratvec)]:
-    for (S,DS,M) in derived_simple_factors_info(G)
+    for (S,derS,M) in derived_simple_factors_info(G)
     do (ratvec->ratvec):
-       (ratvec gamma) : sum(DS.rank,
-      for xi@j in fundamental_weights(DS) do (M*gamma*DS.simple_coroots[j])*xi od)
+       (ratvec gamma) : sum(derS.rank,
+      for xi@j in fundamental_weights(derS) do (M*gamma*derS.simple_coroots[j])*xi od)
     od
 
 {x is a KGBElt for G; want to pass to a KGBElt for each derived simple factor}
 set derived_factor_KGBs(KGBElt x) = [KGBElt]:
-    let DSF = derived_simple_factors_info(x.real_form)
-    in for (S,DS,M) in DSF {this is automatically a theta-stable Levi}
+    let derSF = derived_simple_factors_info(x.real_form)
+    in for (S,derS,M) in derSF {this is automatically a theta-stable Levi}
        do {let Minv = right_inverse(M/1)}
        	  {let Minv_entries(int i, int j) = rat:
 	      S.fundamental_weights[j][i]
 	  then Minv = matrix((S.rank, DS.rank),Minv_entries)}
-	  let DSsimp = DS.simple_roots
-	  then DDS = det(DSsimp)
-	  then Minv = required_solution(DS.simple_roots.^, DDS*S.simple_roots.^).^/DDS
-	  then () = assert(let (N,,denom) = M*Minv in denom = 1 and N = id_mat(DS.rank),
+	  let derSsimp = derS.simple_roots
+	  then DderS = det(derSsimp)
+	  then Minv = required_solution(derS.simple_roots.^, DderS*S.simple_roots.^).^/DderS
+	  then () = assert(let (N,,denom) = M*Minv in denom = 1 and N = id_mat(derS.rank),
 	       	    	       "bad Minv in derived_factor_KGBs")
-       	  then Dtheta = ratmat_as_mat(M*x.involution*Minv)
-       	  then Dx = KGB_elt(DS.inner_class, Dtheta, torus_factor(x)*Minv)
-	  then DSprime = Dx.real_form
+       	  then dertheta = ratmat_as_mat(M*x.involution*Minv)
+       	  then derx = KGB_elt(derS.inner_class, dertheta, torus_factor(x)*Minv)
+	  then derSprime = derx.real_form
 	  {then tfshift = (KGB(DS,0).torus_factor - KGB(DSprime,0).torus_factor)/2}
 	  {then () = assert(all(for alpha in DS.simple_roots do (tfshift*alpha).denom = 1 od),
 	       	    "derived KGB is really bad")}
-	  then () = Dx := KGB(DS, KGB_elt(DS.inner_class, Dtheta, torus_factor(x)*Minv).number)
-	  in Dx
+	  then () = derx := KGB(derS, KGB_elt(derS.inner_class, dertheta, torus_factor(x)*Minv).number)
+	  in derx
        od
 
 set derived_factor_params(Param p) = [Param]:

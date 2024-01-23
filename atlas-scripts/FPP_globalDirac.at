@@ -60,7 +60,7 @@ Following function FPP_lambdas_big seems OK?}
 set FPP_lambdas(KGBElt x) = [ratvec]:
     let G=x.real_form, twists = all_lambda_differential_0(x)
     then zeroPol = ParamPol: 0*G.trivial
-    then rho = G.rho, verts = FPP_vertices(G)
+    then rho = G.rho, verts = FPP_local_vertices(G)
     then th1 = x.involution + 1
     then lamthlams = [vec]:
     	 for v in verts
@@ -86,9 +86,9 @@ set FPP_lambdas(KGBElt x) = [ratvec]:
 	  fi
        od.##
 
-set all_FPP_vertices(RootDatum G) = [ratvec]:
+set all_FPP_vertices({RootDatum}RealForm G) = [ratvec]:
     let factors = for S in simple_factors(G)
-    		  do FPP_vertices(S,-1)
+    		  do FPP_local_vertices(G){FPP_vertices(S,-1)}
 		  od
     in case #factors
        in [ratvec:null(rank(G))/1],
@@ -149,7 +149,8 @@ set FPP_lambdas_big(KGBElt x, VertexData vd, mat_hash inv_hash, [vec_hash]
     let G=x.real_form
     then zeroPol = ParamPol: 0*G.trivial, theta = x.involution
     then i = inv_hash.lookup(theta)
-    then rho = G.rho, verts = all_FPP_vertices(G)
+    then rho = G.rho, verts = {all_FPP_vertices(G)}
+    	 FPP_local_vertices(G)
     then th1 = theta + 1
     then lamthlams = [vec]:
     	 for v in verts
@@ -189,7 +190,8 @@ set FPP_lambdas_big_new(KGBElt x, VertexData vd, mat_hash inv_hash, [vec_hash]
     let G=x.real_form
     then zeroPol = ParamPol: 0*G.trivial, theta = x.involution
     then i = inv_hash.lookup(theta)
-    then rho = G.rho, verts = all_FPP_vertices(G)
+    then rho = G.rho, verts = {all_FPP_vertices(G)}
+    	 FPP_local_vertices(G)
     then th1 = theta + 1
     then lamthlams = [vec]:
     	 for v in verts
@@ -240,7 +242,7 @@ set FPP_lambdas_big_global(KGBElt x, VertexData vd,
     	[(ratvec, VertexData, vec, vec,[[FacetVertsIndex]])]:
     let G=x.real_form
     then zeroPol = ParamPol: 0*G.trivial, theta = x.involution
-    then rho = G.rho, verts = vd.list
+    then rho = G.rho, verts = {vd.list} FPP_local_vertices(G)
     then th1 = theta + 1
     then lamthlams = [vec]:
     	 for v in verts

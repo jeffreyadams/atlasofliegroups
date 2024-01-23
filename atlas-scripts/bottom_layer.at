@@ -285,59 +285,152 @@ set min_L_bottom_factors(KType mu, int level) = [[(KType, KType)]]:
     let p = parameter(mu)
     then (Q,pL) = theta_stable_quasi_data(p), G = p.real_form
     then muL = LKT(pL)
-    then muLMjs = derived_factor_K_types_info(muL), L = Q.Levi
-    then derLMjs = for (muLj,Mj) in muLMjs do (muLj.real_form,Mj) od {DERIVED simple factors}
-     {restriction to each derived simple factor of L}
-    {then Ljs = simple_factors(L) doesn't match real forms of muLjs}
-    then DLjs = for (muLj,)@j in muLMjs
-    	      	do if QR_code
-		   then [0]
-		   else
-		   let (derLj,) = derLMjs[j]
-		   in next_heights(muLj, (semisimple_rank(derLj) + 1)\2)
-		   fi
-		od
-     then too_many_tauLjs = [[KType]]: {on derived simple factors}
-    	 for (muLj,)@j in muLMjs
-	 do if QR_code
-	    then monomials(qrf_sig_tables.branch_entry(muLj))
-	    else monomials(branch(muLj, DLjs[j]~[0]))
-	    fi
-	 od
+    { then muLs = factor_K_types(muL) }
+    { then Ljs = for muLj in muLs do muLj.real_form od }
+    then {dermuLMjs = derived_factor_K_types_info(muL),} L = Q.Levi
     then xcL = KGB(L,0)
-    then xcLMjs = for (derLj,Mj) in derLMjs
+    then xcG = embed_KGB(xcL,G)
+    then muLs = factor_K_types(muL, xcL)
+    then muLjs = derived_factor_K_types(muL)
+    then Ljs = for muLj in muLs do muLj.real_form od
+    then derLMjs = {for (dermuLj,Mj) in dermuLMjs do (dermuLj.real_form,Mj) od {DERIVED simple factors}}
+    	for (Lj,derLj,Mj) in derived_simple_factors_info(L) do (derLj,Mj) od
+    then derMjs = for (,Mj) in derLMjs do Mj od
+    then derLjs = for (derLj,) in derLMjs do derLj od {DERIVED simple factors}
+    then derLjs = for (derLj,) in derLMjs do derLj od
+     then xcderLMjs = for (derLj,Mj) in derLMjs
     	       	 do (KGB(derLj, 0),Mj)
 		 od
-    then Ljs = simple_factors(L)
-    then xcGs = for (xcLj,Mj)@j in xcLMjs {do embed_KGB(xcLj,G,Mj) od}
-    	      	do embed_KGB(embed_KGB(embed_KGB(xcLj,Ljs[j],Mj),L),G)
-		od
-    then muwts = for xcG in xcGs do K0_param(mu,xcG).lambda_minus_rho od
+    then xcderLjs = for (xcderLj,) in xcderLMjs
+    	       	 do xcderLj
+		 od
+    {then Ljs = {} for muLj in muLs simple_factors(L)}
+    then xcLjs = for (xcderLj,Mj)@j in xcderLMjs{KGBElts for Lj, lifted from derLj}
+    	      	 do embed_KGB(xcderLj,Ljs[j],Mj)
+		 od
+
+    {then xcLs = for xcLj in xcLjs {KGBElts for L, lifted from Lj}
+    	      	do embed_KGB(xcLj,L)
+		od}
+    {then xcGs = for (xcL)@j in xcLs {do embed_KGB(xcLj,G,Mj) od} {KGBElts for G, lifted from L}
+    	      	do embed_KGB(xcLs[j],G)
+		{embed_KGB(embed_KGB(embed_KGB(xcLj,Ljs[j],Mj),L),G)}
+		od}
 {    then shifts = for (xcLMj,)@j in xcLMjs {Connects Lj\cap K-types to bottom layer K-types}
     	 	  do (K0_param(mu, xcGs[j]).lambda_minus_rho) -
 		     K0_param(factor_K_types(muL)[j],xcLjs[j]).lambda_minus_rho
 		  od}
     then MK = projection_to_K_matrix(mu.inner_class)
-    in for listj@j in too_many_tauLjs
-       do let K0 = K_0(xcGs[j])
-       	  in for tauLj in listj
-       	     do let (muLj,Mj) = muLMjs[j], (xcLj,) = xcLMjs[j], (derLj,) = derLMjs[j],
+    {just lift to Lj}
+    then dermuLjs = derived_factor_K_types(muL) {maybe twist to live on 0th principal orbit?}
+    {for (derLj, Mj)@j in derLMjs
+    	      	    do {K_types(K_highest_weight_from_K0_weight(xcderLjs[j],
+				Mj*MK*K0_param(muLs[j],xcLjs[j]).lambda_minus_rho))[0]}
+				{WRONG: Mj is 2 x 6, MK 3 x 6 in Sp(6,C)}
+		    od}
+{K_types(K_highest_weight_from_K0_weight(xcderLjs[j],
+		   Mj*K0_param(muLs[j],xcLjs[j]).lambda_minus_rho ))[0]}
+    then DLjs = for derLj@j in derLjs
+    	      	do if QR_code
+		   then 0
+		   else
+		   max(next_heights(dermuLjs[j], (semisimple_rank(derLj) + 1)\2))
+		   fi
+		od
+    then dertauLjs = [[KType]]: {jth list on derived simple factor derLj}
+    	 for dermuLj@j in dermuLjs
+	 do if QR_code
+	    then monomials(qrf_sig_tables.branch_entry(dermuLj))
+	    else monomials(branch(dermuLj, DLjs[j]))
+	    fi
+	 od
+    {then tauLjups = [[KType]]: {jth list on Lj, meant to be K-types of muLjs[j]}
+       for listj@j in dertauLjs
+       do let muLjwt = K0_param(muLs[j], xcLjs[j]).lambda_minus_rho,
+       	      dermuLjwt = K0_param(dermuLjs[j], xcderLjs[j]).lambda_minus_rho
+       	  {in let listupj = [KType]: {on Lj}}
+	  in for dertauLj in listj
+	     do let shiftj = ratvec_as_vec(MK*sum(G.rank,
+					      for xi@k in fundamental_coweights(derLjs[j])
+					      do ((K0_param(dertauLj,xcderLjs[j]).lambda_minus_rho -
+		     	      	      	           dermuLjwt) * xi) *
+					   	   Ljs[j].simple_roots[k]
+					      od))
+		in K_types(K_highest_weight_from_K0_weight(xcLjs[j], muLjwt + shiftj))[0]
+	     od
+        od}
+    {now lift to L}
+    {then tauLs = [[KType]]: {jth list on L, meant to be lifted K-types from Lj of muL}
+       for listupj@j in tauLjups
+       do let muLwt = K0_param(muL, xcLs[j]).lambda_minus_rho
+       	  in {let listupj = [KType]: {on L}}
+	     for tauLj in listupj
+	     do let shiftj = ratvec_as_vec(MK*sum(G.rank,
+					      for xi@k in fundamental_coweights(Ljs[j])
+					      do ((K0_param(tauLj, xcLjs[j]).lambda_minus_rho -
+		     	      	      	           muLwt) * xi) *
+					   	   Ljs[j].simple_roots[k]
+					      od))
+		 in K_types(K_highest_weight_from_K0_weight(xcLs[j], muLwt + shiftj))[0]
+	     od
+        od}
+    {then BLjs = for dermuLj@j in dermuLjs
+    	      	do branch_std(dermuLj,DLjs[j])
+		od}
+    {then BLjups = for tauLjup@j in tauLjups
+    	 	  do branch_std(tauLjup[0], DLjs[j])
+		  od}
+    {then BL = branch_std(muL, max(DLjs))}
+    {then () = for tauLjups@j in tauLjups {[KType] on Lj}
+    	      do for tauLj@k in tauLjups {one KType on Lj}
+	      	 do if BLjups[j][tauLj] != BLjs[j][dertauLjs[j][k]]
+		    then prints("at j = ",j," and k = ",k,", BLj fails to match BLjup")
+		    fi
+		 od
+	      od}
+    {then () = for tauLjups@j in tauLjups
+    	      do for tauLj@k in tauLjups
+	      	 do if BLjups[j][tauLj] != BL[tauLs[j][k]]
+		    then prints("at j = ",j," and k = ",k,", BLj fails to match BL")
+		    fi
+		 od
+	      od}
+    in for listj@j in dertauLjs
+       do let K0 = K_0(xcG)
+       	  then muwtj = K0_param(mu,xcG).lambda_minus_rho
+       	  then cands = [(KType, KType)]: {meant to be list of pairs (tau, dertauLj) with tau bottom layer for G,
+	       	       			 dertauLj corr LjK-type}
+	     for dertauLj in listj
+       	     do let dermuLj = dermuLjs[j], (xcLj,) = xcderLMjs[j], (derLj,) = derLMjs[j],
 	     	Lj = Ljs[j]
-	     	then taujwt = muwts[j] + 
+		then () = if Lj.Cartan_matrix != derLj.Cartan_matrix
+		     	  then prints("WARNING: CM mismatch at Lj = ",Lj)
+			  fi
+	     	then taujwt = muwtj + 
 			ratvec_as_vec(MK*sum(G.rank,
-				      for xi@k in fundamental_coweights(derLj)
-		     		      do ( K0_param(tauLj, xcLj).lambda_minus_rho -
-		     	      	      	   K0_param( muLj, xcLj).lambda_minus_rho ) *
-					    xi * Lj.simple_roots[k]
-				      od))
+						for xi@k in fundamental_coweights(derLj)
+		     		      		do (dertauLj.lambda_minus_rho - dermuLj.lambda_minus_rho)*xi*
+				         	   Lj.simple_roots[k]
+						od))
+{((K0_param(dertauLj, xcLj).lambda_minus_rho -
+		     	      	      	   K0_param( dermuLj, xcLj).lambda_minus_rho) * xi) * 
+					   Lj.simple_roots[k]}
 	{K0_param difference is sum of roots of derLj, restricted to derLKj
 	Want to add corr sum of roots of Lj to highest weight of mu}
 	     	in if is_dominant(K0, taujwt)
-  	           then [(K_types(K_highest_weight_from_K0_weight(xcGs[j], taujwt))[0],
-		   	  tauLj)]
+  	           then [(K_types(K_highest_weight_from_K0_weight(xcG, taujwt))[0],
+		   	  dertauLj)]
 	  	   else []
 	  	   fi
 	      od.##
+	  then DG =  max(for (tau,) in cands do height(tau) od)
+	  then DLj = max(for (,dertauLj) in cands do height(dertauLj) od)
+	  then (tau0, tauLj0) = cands[0]
+	  {then BSG = branch_std(tau0, DG), BSLj = branch_std(tauLj0,DLj)
+	  then () = if not all(for (tau,tauLj) in cands do BSG[tau] = BSLj[tauLj] od)
+	       	    then prints ("WARNING!! ",mu)
+		    fi}
+          in cands
 	od
 
 
@@ -494,79 +587,104 @@ set min_bottom_test(Param p, int D) = bool:
     else is_unitary(p)
     fi
 
+set basis_lambda_differential_0(mat theta) = mat: {columns are weights lambda with (1+theta)lambda = 0,
+    				   	    	  mod (1-theta)X^*}
+    let E = eigen_lattice(theta, -1)
+    then(A,v) = adapted_basis(in_lattice_basis(E,1-theta))
+    in E*columns_with((int j):v[j] = 2,A)
+
+set all_even_lambda_differential_0(RootDatum rd, mat theta) = [vec]:
+    let basis = basis_lambda_differential_0(theta), (RSC,) = {real simple coroots}
+    	      	simple_system_from_positive(real_poscoroots(rd,theta), real_posroots(rd,theta))
+    in for v in all_0_1_vecs(n_columns(basis))
+       do let C = basis*v
+       	  in if all(for ac in RSC do is_even(ac*C) od)
+	     then [C]
+	     else []
+	     fi
+	od.##
+
+{******* Need to rewrite construction of qLjs to be consistent with min_L_bottom_factors revieion *******}
 {false guarantees not unitary, but true does not guarantee unitary}
 {LKdata[j] is [(tauj,tauLj)]: tauLj is an Lj\cap K-type inducing to a bottom layer tauj of p.}
 set min_bottom_elim_factors(Param p, [[(KType,KType)]] LKdata) = bool:
     let start = elapsed_ms(), answers = for k:#LKdata do false od,
     	(,pL) = theta_stable_quasi_data(p)
     then (mu,) = LKdata[0][0]
-    then LKTloc = first(for muprime@m in LKTs(p) do muprime=mu od)
-    in if LKTloc <0
-       then prints("mu isn't a LKT of p"); true
-       elif sum(for pairs in LKdata do #pairs od) = #LKdata
-       	    then true
-       else let pLjs = derived_factor_params(pL)
-       	    then DLs = if QR_code
-	    	       then null(#LKdata)
-		       else for pairs@j in LKdata
-	       	       	    do max(for (,tauLj) in pairs
-		       	       	   do height(tauLj)
-		      	    	   od)
-	       	            od
-		       fi
-      	    then muL = LKTs(pL)[LKTloc]
-       	    then muLjs = derived_factor_K_types(muL)
-	    {need to line up each muLjs[j] with ONE LKT of pLjs[j]}
-       	    then baseLjs = [KType]:
-       	    	 for pairs@j in LKdata
-	    	 do let (,baseLj) = pairs[0]
-	       	    in baseLj
-	    	 od
-	    then x0js = for muLj@j in muLjs
-	    	 	    do muLj.real_form.KGB[0]
-			    od
-       	    then shiftjs  = for pLj@j in pLjs {for shifting an LKj type to one attached to muLj}
-	    	      	    do  let cands = for phiLjk in LKTs(pLj)
-			       	   	   do  K0_param(muLjs[j]).lambda_minus_rho -
-			       	   	       K0_param(phiLjk).lambda_minus_rho
-					   od
-				then Lj = pLj.real_form, Lmuj = muLjs[j].real_form
-				then coroots = Lj.simple_coroots, zeroj = null(Lj.semisimple_rank)
-		      	        then wts = for cand in cands
-				     	   do let try = K_highest_weight_from_K0_weight(x0js[j], cand).mu
-			   			     {this lifts cand on K0 to X^*}
-					      {then () = prints("try = ",try)
-					      in (1+x0js[j].involution)*try/2}
-					      in try
-					   od
-				then loc = first(for wt@k in wts
-				     	   	 do wt*coroots = zeroj
-				     		 od)
-				in assert(loc >= 0,"this muLj doesn't match any LKT of pLj"); wts[loc].numer
-		      	   od
-       	    then qLjs = for pLj@j in pLjs
-		      	do let qLj = parameter(baseLjs[j].real_form, (pLj.x).number, pLj.lambda +
-		      				    shiftjs[j], pLj.nu)
-		           then () = assert(any(for psiLj in LKTs(qLj) do psiLj = baseLjs[j] od),
-			   	     		   "qLj fails to have baseLj as a LKT")
-			   then () = assert(is_hermitian(qLj),"qLj fails to be hermitian")
-			   then () = assert(is_final(qLj),"qLj fails to be final")
-			   in qLj
-		   	od
-            then DG = max(for pairs in LKdata
+    then () = if K_type_pol(p)[mu] = 0
+       	      then return prints("mu isn't a LKT of p"); true
+       	      fi
+    then () = if sum(for pairs in LKdata do #pairs od) = #LKdata
+    	      then return true
+	      fi
+    then pLjs = derived_factor_params(pL) {one for each derived simple factor derLj}
+    then xLjs = for pLj in pLjs do pLj.x od
+    then derLjs = for pLj in pLjs do pLj.real_form od
+    {we wish these muLjs were LKTs of pLj; need to twist pLj to make this true.}
+    then muLjs = for pairs in LKdata do let (,muLj) = pairs[0] in muLj od
+    then DLs = if QR_code
+	       then null(#LKdata)
+	       else for pairs@j in LKdata
+	       	    do max(for (,tauLj) in pairs
+		       	   do height(tauLj)
+		      	   od)
+	       	    od
+	       fi
+	       {difficulty is that muLj may not be a LKT of pLj.  Need to twist pLj to
+	        make this true, record twist as qLj}
+	       {these can be added to torus factor of pLj: action of automorphism of Lj}
+    then twistjs = [[vec]]:
+	for xLj@j in xLjs
+ 	do all_even_lambda_differential_0(derLjs[j].dual, - xLj.involution.^)
+	od
+		{next is list of twisted xLj's for derLj}
+    then twistxLjs = for xLj@j in xLjs
+	    	     do let Genx = KGB_elt_gen(xLj)
+			in for t@i in twistjs[j]
+			   do let () = Genx.torus_factor +:= t
+			      in KGB_elt(Genx)
+			   od
+		     od
+		{shiftjs are meant to be weights of one-diml reps of derLj}
+      then shiftjs  = [[vec]]:
+      	   for xLj@j in xLjs 
+	   do
+	   all_even_lambda_differential_0(derLjs[j], xLj.involution)
+	   od
+      then twistpLjiks = [[Param]]:
+      	   for pLj@j in pLjs
+	   do for xLji in twistxLjs[j]
+	      do for shiftjk in shiftjs[j]
+	      	 do parameter(xLji, pLj.lambda + shiftjk, pLj.nu)
+		 od
+	      od.##
+	   od
+      {now which of these has muLjs[j] as a LKT?}
+      then qLjs = for muLj@j in muLjs
+      	   	       do let m = first(for qLjik@m in twistpLjiks[j]
+		       	  	  	do K_type_pol(qLjik)[muLj] != 0
+					od)
+			  in  if m>=0
+			      then twistpLjiks[j][m]
+			      else
+			      prints("for p = ",p, " and j = ",j, ", no twist of pLj has LKT muLj");
+			      return true
+			      fi
+		       od
+       then DG = max(for pairs in LKdata
        	    	     do max(for (tauj,) in pairs
 			    do height(tauj)
 			    od)
 		     od)
-       	    then multG = branch_irr(p,DG)
+       then multG = branch_irr(p,DG)
        in all( [(->bool)]: {list of functions, one for each factor Lj}
 	       for pairs@j in LKdata
 	       do 
 	       let (posLj, negLj) = if QR_code
 	    	      	    	    then qrf_sig_tables.entry(qLjs[j])
 			   	    else K_signature_irrB(qLjs[j],DLs[j])
-				  fi
-	       then () = if posLj[baseLjs[j]] = 0
+				    fi
+	       then () = if posLj[muLjs[j]] = 0
 		       	 then posLj := negLj
 			 fi
 	       in @:all( [(->bool)]:
@@ -575,7 +693,6 @@ set min_bottom_elim_factors(Param p, [[(KType,KType)]] LKdata) = bool:
 			@bool: int_part(posLj[tauLj]) >= int_part(multG[tauj])
 			od )
 	       od )
-       fi
 
 set min_bottom_elim_factors(Param p, steady_bottom_data bott_data) = bool:
     all( for mu in LKTs(p)
@@ -587,6 +704,92 @@ set min_bottom_elim_factors(Param p, steady_bottom_data bott_data) = bool:
 {Here P is branch_std(K-character of p to heights of pairs}
 {LKdata refers to ONE LKT of p}
 set min_bottom_elim_factors(Param p, [[(KType,KType)]] LKdata, KTypePol P) = bool:
+    let start = elapsed_ms(), answers = for k:#LKdata do false od,
+    	(,pL) = theta_stable_quasi_data(p)
+    then (mu,) = LKdata[0][0]
+    then () = if K_type_pol(p)[mu] = 0
+       	      then return prints("mu isn't a LKT of p"); true
+       	      fi
+    then () = if sum(for pairs in LKdata do #pairs od) = #LKdata
+    	      then return true
+	      fi
+    then pLjs = derived_factor_params(pL) {one for each derived simple factor derLj}
+    then xLjs = for pLj in pLjs do pLj.x od
+    then derLjs = for pLj in pLjs do pLj.real_form od
+    {we wish these muLjs were LKTs of pLj; need to twist pLj to make this true.}
+    then muLjs = for pairs in LKdata do let (,muLj) = pairs[0] in muLj od
+    then DLs = if QR_code
+	       then null(#LKdata)
+	       else for pairs@j in LKdata
+	       	    do max(for (,tauLj) in pairs
+		       	   do height(tauLj)
+		      	   od)
+	       	    od
+	       fi
+	       {difficulty is that muLj may not be a LKT of pLj.  Need to twist pLj to
+	        make this true, record twist as qLj}
+	       {these can be added to torus factor of pLj: action of automorphism of Lj}
+    then twistjs = [[vec]]:
+	for xLj@j in xLjs
+ 	do all_even_lambda_differential_0(derLjs[j].dual, - xLj.involution.^)
+	od
+		{next is list of twisted xLj's for derLj}
+    then twistxLjs = for xLj@j in xLjs
+	    	     do let Genx = KGB_elt_gen(xLj)
+			in for t@i in twistjs[j]
+			   do let () = Genx.torus_factor +:= t
+			      in KGB_elt(Genx)
+			   od
+		     od
+		{shiftjs are meant to be weights of one-diml reps of derLj}
+      then shiftjs  = [[vec]]:
+      	   for xLj@j in xLjs 
+	   do all_even_lambda_differential_0(derLjs[j], xLj.involution)
+	   od
+      then twistpLjiks = [[Param]]:
+      	   for pLj@j in pLjs
+	   do for xLji in twistxLjs[j]
+	      do for shiftjk in shiftjs[j]
+	      	 do parameter(xLji, pLj.lambda + shiftjk, pLj.nu)
+		 od
+	      od.##
+	   od
+      {now which of these has muLjs[j] as a LKT?}
+      then qLjs = for muLj@j in muLjs
+      	   	       do let m = first(for qLjik@m in twistpLjiks[j]
+		       	  	  	do K_type_pol(qLjik)[muLj] != 0
+					od)
+			  in  if m>=0
+			      then twistpLjiks[j][m]
+			      else
+			      prints("for p = ",p, " and j = ",j, ", no twist of pLj has LKT muLj");
+			      return true
+			      fi
+		       od
+       then DG = max(for pairs in LKdata
+       	    	     do max(for (tauj,) in pairs
+			    do height(tauj)
+			    od)
+		     od)
+       in all( [(->bool)]: {list of functions, one for each factor Lj}
+	       for pairs@j in LKdata
+	       do 
+	       let (posLj, negLj) = if QR_code
+	    	      	    	    then qrf_sig_tables.entry(qLjs[j])
+			   	    else K_signature_irrB(qLjs[j],DLs[j])
+				    fi
+	       then () = if posLj[muLjs[j]] = 0
+		       	 then posLj := negLj
+			 fi
+	       in @:all( [(->bool)]:
+			for(tauj, tauLj) in pairs[1:]
+			do {prints(posLj[tauLj]," ",multG[tauj]);}
+			@bool: int_part(posLj[tauLj]) >= int_part(P[tauj])
+			od )
+	       od )
+
+{
+
     let start = elapsed_ms(), answers = for k:#LKdata do false od,
     	(,pL) = theta_stable_quasi_data(p)
     then (mu,) = LKdata[0][0]
@@ -610,20 +813,20 @@ set min_bottom_elim_factors(Param p, [[(KType,KType)]] LKdata, KTypePol P) = boo
 	    	 od
        	    then shiftjs  = for pLj@j in pLjs {for shifting an LKj type to one attached to muLj}
 	    	      	    do  let cands = for phiLjk in LKTs(pLj)
-			       	   	   do  K0_param(muLjs[j]).lambda_minus_rho -
+			       	   	   do  K0_param({muL}baseLjs[j]).lambda_minus_rho -
 			       	   	       K0_param(phiLjk).lambda_minus_rho
 					   od
-				then Lj = pLj.real_form, Lmuj = muLjs[j].real_form
+				then Lj = pLj.real_form, Lbasej = baseLjs[j].real_form
 				then coroots = Lj.simple_coroots, zeroj = null(Lj.semisimple_rank)
 		      	        then wts = for cand in cands
 				     	   do K_highest_weight_from_K0_weight(
-					       	    Lmuj.KGB[0], cand).mu
+					       	    Lbasej.KGB[0], cand).mu
 			   			     {this lifts cand on K0 to X^*}
 					   od
 				then loc = first(for wt@k in wts
 				     	   	 do wt*coroots = zeroj
 				     		 od)
-				in assert(loc >= 0,"this muLj doesn't match any LKT of pLj"); wts[loc]
+				in assert(loc >= 0,"this baseLj doesn't match any LKT of pLj"); wts[loc]
 		      	   od
        	    then qLjs = for pLj@j in pLjs
 		      	do let qLj = parameter(baseLjs[j].real_form, (pLj.x).number, pLj.lambda +
@@ -650,7 +853,7 @@ set min_bottom_elim_factors(Param p, [[(KType,KType)]] LKdata, KTypePol P) = boo
 		    fi
 	        od )
 	fi
-
+}
 set min_bottom_elim_factors(Param p, steady_bottom_data bott_data, KTypePol P) = bool:
     all( for mu in LKTs(p)
     	 do min_bottom_elim_factors(p, bott_data.entry(mu), P)

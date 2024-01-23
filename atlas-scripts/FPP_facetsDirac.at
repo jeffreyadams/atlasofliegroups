@@ -787,6 +787,39 @@ set FPP_facets(SimpleAffine Affd, VertexData vd, int dim, int j0) =
 	     od { type is [FacetVertsIndex], remains for next line}
 	 od.##
 
+{this is everything that can be a local vertex: the global vertices,
+plus the barycenters of edges that are flipped by an automorphism that
+can be realized in G. This means that the edge must be in X^*.}
+set FPP_local_vertices(RealForm G) = [ratvec]:
+    let (Affd,M,j0) = cofolded(G)
+    then vlist = FPP_vertices(Affd,j0)
+    then vdAff = to_vertex_data(vlist)
+    then all_fund_edges = [FacetVerts]: facets_fundamental(Affd,1)
+    then fund_flippable_edges = [FacetVerts]:
+    	 for edge in all_fund_edges
+    	 do if (edge[0] - edge[1]).denom = 1
+	    then [edge]
+	    else []
+	    fi
+	 od.##
+    then FPP_flippable_edge_barys = [ratvec]:
+    	 for FV in facets_fundamental(Affd,1)
+       	 do let bary_F=FacetBary: sum(Affd.rank,FV)/2
+	    then aff_short_list = FPP_w_shifts(Affd,bary_F,j0)
+	    then aff_list = [AffineCoWeylElt]:
+	       	 for (w,taus) in aff_short_list
+	       	 do for tau in taus do (tau,w) od
+	       	 od.##
+	     in for wtilde in aff_list do wtilde*bary_F od
+	     	{for wtilde in aff_list
+	     	do FacetVertsIndex:
+		   for v in wtilde*FV
+		   do vdAff.lookup(v)
+		   od.sort
+	     	od { type is [FacetVertsIndex], remains for next line}}
+	  od.##
+     in (for v in vlist do M*v od)##(for w in FPP_flippable_edge_barys do M*w od)
+
 set FPP_facets (SimpleAffine Affd, [ratvec] vlist, int dim,
     int j) =
     [FacetVertsIndex]:
@@ -1336,6 +1369,7 @@ set localFD_Lvd2 \
     then vlistAct = [ratvec]:
     	 for i in Perm2.fixed do vlist[i] od ##
 	 for (i,j) in Perm2.trans do (vlist[i] + vlist[j])/2 od
+{DANGER! this may not be an edge!}
     then Lvd = vlistAct.to_vertex_data
     then Llookup = Lvd.lookup
     then mapAct = vec: for j:#vlist do minus_1 od
