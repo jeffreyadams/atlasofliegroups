@@ -11,7 +11,7 @@ FPP_at_file="FPP.at" #default
 FPP_py_file="FPP.py" #default
 #extra_files=["global_facets_E7.at","coh_ind_E7_to_hash.at","E7except589to15851.at"]
 extra_files=["global_facets_E7.at","coh_ind_E7_to_hash.at"]
-extra_files=[]
+#extra_files=[]
 
 def nice_time(t):
    return(re.sub("\..*","",str(datetime.timedelta(seconds=t))))
@@ -27,9 +27,8 @@ def format_cmd(atlas_command):return('{}'.format(atlas_command).encode('utf-8'))
 #procs: array of processes
 #i: number of process
 def atlas_compute(i,pid):
-   print("starting atlas_compute process #:",i, "pid: ", str(pid))
+   print("starting atlas_compute process #:",i, "pid: ", str(pid), " at ", str(time.ctime()))
    proc=procs[i]
-   test_function="FPP_unitary_hash_bottom_layer"
    data_file=directory + "/" + str(i) + ".at"
    log_file=directory + "/logs/" + str(i) + ".txt"
    data=open(data_file,"w", buffering=1)
@@ -45,8 +44,8 @@ def atlas_compute(i,pid):
          log.write("\n  " + file)
    log.write("\nJob number: " + str(i) + "\n")
    log.write("Job pid: " +  str(pid) + "\n")
-   log.write("function: " +  test_function + "\n")
-   vars=['coh_ind_flag','revert_flag','deform_flag','every_KGB_flag','every_lambda_flag','every_lambda_deets_flag','facet_verbose','test_slightly_verbose','test_verbose','global_top','global_facets_file_loaded','coh_ind_file_loaded','low_KGB_frac']
+   log.write("function: " +  unitary_hash_function + "\n")
+   vars=['coh_ind_flag','revert_flag','deform_flag','every_KGB_flag','every_lambda_flag','every_lambda_deets_flag','facet_verbose','test_slightly_verbose','test_verbose','global_top','global_facets_file_loaded','coh_ind_file_loaded','low_KGB_frac','bottom_length_frac']
 
    for var in vars:
       atlas_arg='{}'.format("prints(\"" + var + ": \"," +  var + ")" + "\n").encode('utf-8')
@@ -95,68 +94,75 @@ def atlas_compute(i,pid):
       # print("moving on")
       # #read all at files
       # print("IN LOOP")
-      all_files=os.listdir(directory)
-      atlas_cmd=format_cmd("prints(unitary_hash.size())" + "\n")
-      proc.stdin.write(atlas_cmd)
-      proc.stdin.flush()
-      line = proc.stdout.readline().decode('ascii')
-      print("TOP process id: ", i, "Size of unitary hash: ",line)
-      log.write("TOP process id: " + str(i) +  "\nSize of unitary hash: " + line)
-      print("files: ", all_files)
-      params_to_add=[]
-      
-      for file in all_files:
-         if re.match(r'[0-9]*\.at',file):
-#            print("doing",file)
-            at_file = directory + "/" + file;
-            print("opening at file: (",i,") ",at_file)
-            log.write("opening at file: " + at_file + "\n")
-            at_data=open(at_file,"r")
-#            print("data: ", at_data)
-            while True:
-#               print("IN LOOP")
-               line=at_data.readline().strip()
-#               print("line is: ", line)
-               line=re.sub(".*:=","",line) 
-               line=re.sub("\)[^,].*",")",line)  #get rid of {dual}
-#               print("line is now: ", line)
-               if len(line)==0:
-#                  print("no lines, breaking")
-                  break
-               elif line.find("parameter")==-1:
-                   ()
-#                  print("no parameter in: ", line)
-               else:
-#                  print("got something:", line)
-                  params_to_add.append(line)
-      print("Done reading at files")
-      print("number of new parameters to possibly add to unitary_hash:", len(params_to_add))
-      log.write("number of new parameters to possibly add to unitary_hash:" + str(len(params_to_add)) + "\n")
-      if len(params_to_add)>0:
-#         print("adding params to unitary_hash")
-         params_string="[" + ','.join(params_to_add) + "]"
-#         print("params_string: ", params_string)
-         atlas_cmd=format_cmd("update(unitary_hash," + params_string + ")" + "\n")
-#         print("atlas_cmd: ", atlas_cmd)
-         proc.stdin.write(atlas_cmd)
-         proc.stdin.flush()
-         line = proc.stdout.readline().decode('ascii')  #(number of new params,[Param])
-         line=re.sub(".*Value: *\(","",line)
-         line=re.sub(",.*","",line)
-         print("number of parameters added to unitary_hash: ", line.strip())
-         log.write("number of parameters added to unitary_hash: " + line)
-         proc.stdout.flush()
-#         print("atlas result: ", line)
+      if read_at_files:
+         print("Reading at files")
+         log.write("Reading at files")
+         all_files=os.listdir(directory)
          atlas_cmd=format_cmd("prints(unitary_hash.size())" + "\n")
-#         print("atlas_cmd: ", atlas_cmd)
          proc.stdin.write(atlas_cmd)
          proc.stdin.flush()
          line = proc.stdout.readline().decode('ascii')
-         print("[",i,"] Size of unitary hash: ",line)
-         log.write("Size of unitary hash: " + line)
+         print("process id: ", i, "Size of unitary hash: ",line)
+         log.write("process id: " + str(i) +  "\nSize of unitary hash: " + line)
+         print("files: ", all_files)
+         params_to_add=[]
+         
+         for file in all_files:
+            if re.match(r'[0-9]*\.at',file):
+               #            print("doing",file)
+               at_file = directory + "/" + file;
+               print("opening at file: (",i,") ",at_file)
+               log.write("opening at file: " + at_file + "\n")
+               at_data=open(at_file,"r")
+               #            print("data: ", at_data)
+               while True:
+                  #               print("IN LOOP")
+                  line=at_data.readline().strip()
+                  #               print("line is: ", line)
+                  line=re.sub(".*:=","",line) 
+                  line=re.sub("\)[^,].*",")",line)  #get rid of {dual}
+                  #               print("line is now: ", line)
+                  if len(line)==0:
+                     #                  print("no lines, breaking")
+                     break
+                  elif line.find("parameter")==-1:
+                     ()
+                     #                  print("no parameter in: ", line)
+                  else:
+                     #                  print("got something:", line)
+                     params_to_add.append(line)
+                     print("Done reading at files")
+                     print("number of new parameters to possibly add to unitary_hash:", len(params_to_add))
+                     log.write("number of new parameters to possibly add to unitary_hash:" + str(len(params_to_add)) + "\n")
+                     if len(params_to_add)>0:
+                        #         print("adding params to unitary_hash")
+                        params_string="[" + ','.join(params_to_add) + "]"
+                        #         print("params_string: ", params_string)
+                        atlas_cmd=format_cmd("update(unitary_hash," + params_string + ")" + "\n")
+                        #         print("atlas_cmd: ", atlas_cmd)
+                        proc.stdin.write(atlas_cmd)
+                        proc.stdin.flush()
+                        line = proc.stdout.readline().decode('ascii')  #(number of new params,[Param])
+                        line=re.sub(".*Value: *\(","",line)
+                        line=re.sub(",.*","",line)
+                        print("number of parameters added to unitary_hash: ", line.strip())
+                        log.write("number of parameters added to unitary_hash: " + line)
+                        proc.stdout.flush()
+                        #         print("atlas result: ", line)
+                        atlas_cmd=format_cmd("prints(unitary_hash.size())" + "\n")
+                        #         print("atlas_cmd: ", atlas_cmd)
+                        proc.stdin.write(atlas_cmd)
+                        proc.stdin.flush()
+                        line = proc.stdout.readline().decode('ascii')
+                        print("[",i,"] Size of unitary hash: ",line)
+                        log.write("Size of unitary hash: " + line)
+      else:
+         log.write("Not reading at files\n")
 
-      atlas_arg_txt="set list=" + test_function + "(" + group + "," + str(x) + ")\n"
-#      print("atlas_arg: ", atlas_arg_txt)
+#primary atlas function
+      atlas_arg_txt="set list=" + unitary_hash_function + "(" + group + "," + str(x) + ")\n"
+#      print("main atlas function:", atlas_arg_txt)
+      log.write("main atlas function: " + atlas_arg_txt)
       atlas_arg='{}'.format(atlas_arg_txt).encode('utf-8')
       proc.stdin.write(atlas_arg)
 #      print("Done executing atlas_arg")
@@ -193,7 +199,7 @@ def atlas_compute(i,pid):
       x_time=newtime-x_start_time
       log.write("Finished_KGB element " + str(x)   + ": elapsed time: " + nice_time(x_time) + 
 #                time.strftime("%H:%M:%S", time.gmtime(x_time)) +
-                "  time from start: " + nice_time(newtime-starttime+10000000) + "\n")
+                "  time from start: " + nice_time(newtime-starttime) + "\n")
 #                time.strftime("%H:%M:%S", time.gmtime(newtime-starttime)) + "\n")
       reporting_data.append((x,x_time))
    log.write("No more KGB elements to do; time: " + str(time.ctime()) + "\n")
@@ -206,13 +212,17 @@ def atlas_compute(i,pid):
 #      log.write("x:" + str(x) + " " + time.strftime("%H:%M:%S", time.gmtime(t)) + "\n")
       log.write("x:" + str(x) + " " + nice_time(t) + "\n")
    log.write("Total time for " + str(kgb_count) + " KGB elements: "+ elapsed + "\n")
+   log.write("Killing process at " + str(time.ctime()) + "\n")
    log.close()
    data.close()
+
+   print("killing process ",i, " at " + str(time.ctime()) + "\n")
+   proc.kill()
    return()
 
 def main(argv):
-   global directory, number_jobs,group, start_KGB,end_KGB, kgb_queue, kgb_file, step_size,all_kgb
-   #   executable_dir="~/atlasSoftware/FPP_jeff/"
+   global directory, number_jobs,group, start_KGB,end_KGB, kgb_queue, kgb_file, step_size,all_kgb, read_at_files,log_file, unitary_hash_function
+   unitary_hash_function="FPP_unitary_hash_bottom_layer"
    executable_dir="/.ccs/u02/jdada11/atlasSoftware/FPP_jeff/"
    group=""
    FPP_at_file="FPP.at"
@@ -225,35 +235,31 @@ def main(argv):
    kgb_file=""
    kgb_list=[]
    dry_run=False
-   opts, args = getopt.getopt(argv, "d:n:g:k:e:s:S:f:aD")
-   print("Starting at ", time.ctime())
-   print("command line: ", " ".join(sys.argv))
-   print("extra files:")
-   if len(extra_files)==0:
-      print(" none")
-   else:
-      for file in extra_files:
-         print("  ",file)
+   read_at_files=False
+   log_file=""
+   opts, args = getopt.getopt(argv, "d:n:g:k:e:s:S:f:l:aD")
    for opt, arg in opts:
-      if opt in ('-g'):
-          group=arg
-          print("G=",arg)
-      if opt in ('-f'):
-          FPP_at_file=arg
-          print("main FPP file: " + FPP_at_file)
-      elif opt in ('-D'):
-         dry_run=True
-      elif opt in ('-d'):
+      if opt in ('-d'):
          directory=arg
-         print("directory: ", directory)
          if not os.path.exists(directory):
             os.makedirs(directory)
          if not os.path.exists(directory + "/logs"):
             os.makedirs(directory + "/logs")
-         #if symlinks dir exists, remove it, and make it again empty
          if os.path.exists(directory + "/symlinks"):
             shutil.rmtree(directory + "/symlinks")
          os.makedirs(directory + "/symlinks")
+      elif opt in ('-l'):
+         log_file=arg
+         log_file=directory + "/logs/" + arg
+         print("redirecting output to ", log_file)
+         sys.stdout = open(log_file, 'w')
+         sys.stderr = sys.stdout
+      elif opt in ('-g'):
+          group=arg
+      elif opt in ('-f'):
+          FPP_at_file=arg
+      elif opt in ('-D'):
+         dry_run=True
       elif opt in ('-S'):
           step_size=arg
       elif opt in ('-s'):
@@ -265,9 +271,8 @@ def main(argv):
       elif opt in ('-k'):
          kgb_file=arg
          print("loading KGB file ", kgb_file)
-         data=open("kgb_file","r")
-         line=data.readline().decode('ascii')
-         print("MY LINE: ", line)
+         data=open(kgb_file,"r")
+#         line=data.readline.decode('ascii')
          while True:
             line=data.readline()
             if not line:
@@ -279,6 +284,17 @@ def main(argv):
       elif opt in ('-n'):
           number_jobs=int(arg)
           print("number_jobs: ", number_jobs)
+   print("Starting at ", time.ctime())
+   print("command line: ", " ".join(sys.argv))
+   print("unitary hash function: ", unitary_hash_function)
+   print("extra files:")
+   if len(extra_files)==0:
+      print(" none")
+   else:
+      for file in extra_files:
+         print("  ",file)
+   print("running free.py")
+
    if all_kgb and kgb_file=="":
       print("Doing all KGB elements")
       #Run atlas twice to get [KGB_fixed] and [KGB_non_fixed]
@@ -325,6 +341,7 @@ def main(argv):
       print("\n-g group, -d directory, -n number jobs are required")
       print("-s/-e (start/end kgb elements) or -k (kgb file) or -a (all kgb elements) are required")
       exit()
+   freeproc=subprocess.Popen(["./free.py","-d" + directory + "/logs"], stdin=PIPE,stdout=PIPE)   
    print("----------------------------")
    cpu_count=mp.cpu_count()
    print("Number of cores available: ", cpu_count)
@@ -387,6 +404,7 @@ def main(argv):
       if line.find("real_form")>=0:
          break
    group_definition.close()
+   proc.kill()
    if dry_run:
       print("Dry run only: exiting")
       exit()
@@ -416,7 +434,8 @@ def main(argv):
          T.append(Q)
    print("removing: ", symlinks_dir)
    shutil.rmtree(symlinks_dir)
-
+   freeproc.kill()
+   print("Ending computation at " + str(time.ctime()) + "\n")
    exit()
 
 if __name__ == "__main__":

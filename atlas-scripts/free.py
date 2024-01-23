@@ -5,7 +5,7 @@ import time,re
 import datetime
 
 interval=600              #number of seconds between reports (default, reset with -s)
-filename="freereport.txt" #default, reset with -f
+filename="freereport.log" #default, reset with -f
 directory=""              #set with -d
 
 argv=sys.argv[1:]
