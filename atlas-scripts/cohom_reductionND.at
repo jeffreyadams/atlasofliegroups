@@ -171,9 +171,6 @@ set derived_factor_K_types_info(KType mu) = [(KType,mat)]:
     then derSs = for (,derS,) in DSFinfo
     	       	 do derS
 		 od
-    then Ms = for (,,M) in DSFinfo
-    	      do M
-	      od
     then xcLs = for (,derS,M) in DSFinfo
     	       	do embed_KGB(KGB(derS,0),L,M)
 	        od
@@ -181,13 +178,14 @@ set derived_factor_K_types_info(KType mu) = [(KType,mat)]:
     	       	     	    	 various derS}
     	       	 do K0_param(mu,xcL).lambda_minus_rho
 		 od
-    then derwts = for (,derS,M)@j in DSFinfo
-    	 	  do let derM = projection_to_K_matrix(derS)
-		     in derM*ratvec_as_vec(
+    then derwts = for (S,derS,M)@j in DSFinfo
+    	 	  do let derMK = projection_to_K_matrix(derS), MK = projection_to_K_matrix(S)
+		     then MKinv = right_inverse(MK)
+		     in derMK*ratvec_as_vec(
 		     	sum(derS.rank, for alpha@k in simple_roots(derS)
-    	 	     do (derS.fundamental_coweights[k]*M*muwts[j])*
-		      	   alpha
-		     od))
+    	 	     		       do (S.fundamental_coweights[k]*MKinv*muwts[j])*
+						alpha
+		     		       od))
 		  od
     in for derwt@j in derwts
        do let (,derS,M) = DSFinfo[j]
