@@ -6,6 +6,7 @@
 < FPP_facetsDirac {for herm_center}
 < weak_packets {for unipotent_representations}
 < derived_cover {to pass simple factors to derived simple factors}
+<K_highest_weights {for K_highest_weight_from_K0_weight}
 {placed in hermitian.at, where it belongs.}
 {all root data live on same Z^n}
 {The jth [int] sigmaj is the map of simple roots for the jth little_rd into simple roots for G.}
@@ -165,12 +166,38 @@ set derived_factor_params(Param p) = [Param]:
 
 {these comologically induce to mu (on K), I think}
 set derived_factor_K_types_info(KType mu) = [(KType,mat)]:
-    let DSFinfo = derived_simple_factors_info(mu.real_form)
-    in for xj@j in derived_factor_KGBs(mu.x)
+    let L = mu.real_form
+    then DSFinfo = derived_simple_factors_info(L)
+    then derSs = for (,derS,) in DSFinfo
+    	       	 do derS
+		 od
+    then xcLs = for (,derS,M) in DSFinfo
+    	       	do embed_KGB(KGB(derS,0),L,M)
+	        od
+    then muwts = for xcL in xcLs {highest wts for mu aligned with
+    	       	     	    	 various derS}
+    	       	 do K0_param(mu,xcL).lambda_minus_rho
+		 od
+    then derwts = for (S,derS,M)@j in DSFinfo
+    	 	  do let derMK = projection_to_K_matrix(derS), MK = projection_to_K_matrix(S)
+		     then MKinv = right_inverse(MK)
+		     in derMK*ratvec_as_vec(
+		     	sum(derS.rank, for alpha@k in simple_roots(derS)
+    	 	     		       do (S.fundamental_coweights[k]*MKinv*muwts[j])*
+						alpha
+		     		       od))
+		  od
+    in for derwt@j in derwts
+       do let (,derS,M) = DSFinfo[j]
+       	  in (K_types(K_highest_weight_from_K0_weight(KGB(derS,0),
+		derwt))[0],M)
+       od
+{in case of mu = LKT(140,[5,3,3,1,1,-1]/2, [1,0,0,-1,0,0]/2), below fails}
+{    in for xj@j in derived_factor_KGBs(mu.x)
        do let (,,M) = DSFinfo[j]
        	  then muj = K_type(xj, M*mu.lambda_minus_rho)
 	  in (muj,M)
-       od
+       od}
 
 {these comologically induce to mu (on K), I think}
 set derived_factor_K_types(KType mu) = [KType]:
