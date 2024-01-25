@@ -1,8 +1,12 @@
 set fpp_times([int,int,string] kgb_times)=
-let kgb_sorted=sort(#kgb_times,(int a,int b)bool:let (,x,)=kgb_times[a] then (,y,)=kgb_times[b] in x<=y) 
+let kgb_sorted=sort(#kgb_times,(int a,int b)bool:let (,x,)=kgb_times[a] then (,y,)=kgb_times[b] in y>=x) 
 in tabulate(["x","secs","time"]#for i in kgb_sorted do  let (x,ts,t)=kgb_times[i] in [to_string(x),to_string(ts),t] od)
 
-{
-set fpp_done([int,int,string] kgb_done)=[(int,int,string)]:
-let f(int a,int b)=bool:let (,x,)=kgb_done[a] then (,y,)=kgb_done[b] in a=1 then
-kgb_sorted=for j in  sort(#kgb_done,f@(int,int)) do kgb_done[j] od 
+set fpp_times(RealForm G,[int,int,string] kgb_times)=
+let done=for (j,,) in kgb_times do j od then
+kgb_sorted=sort(#kgb_times,(int a,int b)bool:let (,x,)=kgb_times[a] then (,y,)=kgb_times[b] in y>=x) then
+missing = ##for j in kgb_representatives(G) do if find(done,j)=-1 then [j] else [] fi od
+in tabulate(["x","secs","time"]#for i in kgb_sorted do  let (x,ts,t)=kgb_times[i] in [to_string(x),to_string(ts),t] od);
+prints("missing: ");
+for j in missing do prints(j) od;(kgb_sorted,sort(done),missing)
+

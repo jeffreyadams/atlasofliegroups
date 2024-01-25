@@ -100,6 +100,8 @@ set kgb_fixed(RealForm G)=[int]:
 set kgb_non_fixed(RealForm G)=
    ##for x in KGB(G) do if number(cross(G.w0,x))>number(x) then [number(x)] else [] fi od
 
+set kgb_representatives(RealForm G)=kgb_fixed(G)##kgb_non_fixed(G)
+
 set add_to_hash(Param_hash unitary_hash,[Param] params)=void:
     for p in params do unitary_hash.match(p) od
 

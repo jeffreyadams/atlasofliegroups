@@ -6,17 +6,25 @@ from subprocess import Popen, PIPE, STDOUT
 
 def main(argv):
     directory=""
-    outputfile=""
-    opts,args=getopt.getopt(argv,"d:o:")
+    outputfile="fpp_times.log"
+    force=False
+    opts,args=getopt.getopt(argv,"d:o:f")
     for opt, arg in opts:
         if opt in ('-d'):
-            directory=arg
+            directory=arg.strip()
         elif opt in ('-o'):
             outputfile=arg
-    if directory=="" or outputfile=="":
-        print("Usage: \n-d: directory\n-o: output file")
+        elif opt in ('-f'):
+            force=True
+    if directory=="":
+        print("Usage: \n-d: directory\n-o: output file (optional: default is directory/fpp.log)\n-f: force (overwrite output file)")
         exit()
-    print("reading directory: ", directory,"\nwriting to file: ", outputfile)
+    outputfile=directory + "/" + outputfile
+    if os.path.isfile(outputfile) and not force:
+        print("File ", outputfile , " exists, (abort)")
+        exit()
+#    print("out:", outputfile)
+    print("reading directory: ", directory,"\nwriting to file: ",  outputfile)
     all_files=os.listdir(directory)
     kgb=[]
     for file in all_files:
@@ -37,22 +45,21 @@ def main(argv):
                        (day,hms)=time.split(', ')
                        days=re.sub("[^0-9]*",'',day)
                        (hours,minutes,seconds)=hms.split(':')
-                       time_seconds=str(int(days)* 24 * 60 * 60 + int(hours) * 60 * 60 + int(minutes) * 60 + int(seconds))
+                       time_seconds=int(days)* 24 * 60 * 60 + int(hours) * 60 * 60 + int(minutes) * 60 + int(seconds)
                        kgb.append((x,time_seconds,time))
                    else:
                        (hours,minutes,seconds)=time.split(':')
 #                       print("hours: ", hours, "minutes", minutes, "seconds", seconds)
-                       time_seconds=str( int(hours) * 60 * 60 + int(minutes) * 60 + int(seconds))
-#                       print("ts: ", time_seconds)
+                       time_seconds=int(hours) * 60 * 60 + int(minutes) * 60 + int(seconds)
+#                       print("ts: ", int(time_seconds))
                        kgb.append((x,time_seconds,time))
     print("Number of KGB elements: ", len(kgb))
+    kgb=sorted(kgb,  key=lambda a:a[1], reverse=True)
     out=open(outputfile,"w")
-    out.write("set kgb_times=[")
-    for i in range(len(kgb)-1):
+    out.write("Times for KGB elements (seconds, days hours:minutes:seconds)\n\n")
+    for i in range(len(kgb)):
         (x,time_seconds,time)=kgb[i]
-        out.write("(" + x + "," + time_seconds + ",\"" + time + "\"),\n")
-    (x,time_seconds,time)=kgb[-1]
-    out.write("(" + x + "," + time_seconds + ",\"" + time + "\")]\n")
+        out.write("x=" + x + "  " + str(time_seconds) + "  " + time + "\n")
     out.close()
 
 if __name__ == "__main__":
