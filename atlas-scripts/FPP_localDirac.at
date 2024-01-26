@@ -1623,8 +1623,10 @@ set local_test_GEO_one_level(KGBElt x, ratvec lambda) = [Param]:
     then () = unipotents_to_hash(x.real_form,Uhash)
     in local_test_GEO_hash_one_level(x,lambda,vd, pol_hash, Uhash)
 
-{when LKT length is smaller than bottom_length_frac*(max possible), DO NOT use bottom_layer}
-set bottom_length_frac = rat: 1/4 {??}
+{when LKT length is GREATER than bottom_length_frac*(max possible), DO
+NOT use bottom_layer. Setting this to 1 means always use bottom_layer,
+to negative means never bottom layer.}
+set bottom_length_frac = rat: 2/3 {??}
 
 {how many levels of bottom layer K-types to use}
 {this now has no effect; essentially hard coded in min_L_bottom_factors, in
@@ -1655,7 +1657,7 @@ set local_test_GEO_hash_bottom_layer(KGBElt x, ratvec lambda, VertexData vd,
     	      then let () = Uhash.match(first_param(finalize(pmax)))
 	      	   in return [pmax]
 	      fi
-    then () = if height(pmax) < bottom_length_frac* (G.two_rho * G.rho_check)
+    then () = if height(pmax) > bottom_length_frac* (G.two_rho * G.rho_check)
     	 then return local_test_GEO_hash_one_level(x, lambda, vd, Lvd, LF,
 	      	   	  				   pol_hash, Uhash)
 	 fi
