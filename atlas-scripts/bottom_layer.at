@@ -295,45 +295,45 @@ set min_L_bottom_factors(KType mu, int level) = [[(KType, KType)]]:
     then xcderLMs = for (derLj,Mj) in derLMs
     	       	 do (KGB(derLj, 0),Mj)
 		 od
-    then xcderLs = for (xcderLj,) in xcderLMs
+    {then xcderLs = for (xcderLj,) in xcderLMs
     	       	 do xcderLj
-		 od
+		 od}
     then xcLs = for (xcderLj,Mj)@j in xcderLMs {KGBElts for Lj, lifted from #zero on derLj}
     	      	 do embed_KGB(xcderLj,Ls[j],Mj) {PROBABLY these are all #0 on Lj???}
 		 od
     then xcGs = for xcLj@j in xcLs do embed_KGB(xcLj,G) od
-    then MK = projection_to_K_matrix(mu.inner_class)
-    then MKinv = right_inverse(MK)
-    then DLs = for derLj@j in derLs {maximum height to find Lj/derLj K-types}
+    {then MK = projection_to_K_matrix(mu.inner_class)}
+    {then MKinv = right_inverse(MK)}
+    {then DLs = for derLj@j in derLs {maximum height to find Lj/derLj K-types}
     	      	do if QR_code
 		   then 0
 		   else
 		   max(next_heights(dermuLs[j], (semisimple_rank(derLj) + 1)\2))
 		   fi
-		od
+		od}
     then dertauLs = [[KType]]: {jth list on derived simple factor derLj}
     	 for dermuLj@j in dermuLs
 	 do if QR_code
 	    then monomials(qrf_sig_tables.branch_entry(dermuLj))
-	    else monomials(branch(dermuLj, DLs[j]))
+	    else monomials(branch(dermuLj, max(next_heights(dermuLs[j], (semisimple_rank(derLs[j]) + 1)\2))))
 	    fi
 	 od
-    then answer = for listj@j in dertauLs
+    in {then answer =} for listj@j in dertauLs
        do let K0 = K_0(xcGs[j])
        	  then muwtj = K0_param(mu,xcGs[j]).lambda_minus_rho {size is rank(K)}
-	  then dermuLj = dermuLs[j], xcLj = xcderLs[j], derLj = derLs[j], Lj = Ls[j]
-	  then MderK = projection_to_K_matrix(derLj), dermuLjwt = K0_param(dermuLj).lambda_minus_rho
+	  then dermuLj = dermuLs[j], (xcLj,) = xcderLMs[j], derLj = derLs[j], Lj = Ls[j]
+	  then {MderK = projection_to_K_matrix(derLj),} dermuLjwt = K0_param(dermuLj).lambda_minus_rho
 	  then () = if Lj.Cartan_matrix != derLj.Cartan_matrix
 		     	  then prints("WARNING: CM mismatch at Lj = ",Lj)
 			  fi
 
-       	  then cands = [(KType, KType)]: {meant to be list of pairs (tau, dertauLj) with tau bottom layer for G,
+       	  in {then cands =} [(KType, KType)]: {meant to be list of pairs (tau, dertauLj) with tau bottom layer for G,
 	       	       			 dertauLj corr LjK-type}
 	     for dertauLj in listj
        	     do  let dertauLjwt = K0_param(dertauLj).lambda_minus_rho {this is a wt for K on derLj}
 	     	 then taujwt = muwtj + ratvec_as_vec(sum(K0.rank, for xi@k in fundamental_coweights(derLj)
-		     		      				 do MK* ((dertauLjwt - dermuLjwt)*xi*
-				         	   		    	Lj.simple_roots[k])
+		     		      				  do projection_to_K_matrix(mu.inner_class)*
+								    ((dertauLjwt - dermuLjwt)*xi*Lj.simple_roots[k])
 								  od))
 	     	 in if is_dominant(K0, taujwt)
   	            then [(K_types(K_highest_weight_from_K0_weight(xcGs[j], taujwt))[0],
@@ -341,9 +341,10 @@ set min_L_bottom_factors(KType mu, int level) = [[(KType, KType)]]:
 	  	    else []
 	  	    fi
 	     od.##
-          in cands
+          {in cands}
 	od
-      in answer
+      {in answer}
+
 {table of bottom layer data indexed by KType}
 set_type
 [steady_bottom_data =
@@ -513,11 +514,11 @@ set all_even_lambda_differential_0(RootDatum rd, mat theta) = [vec]:
 	     else []
 	     fi
 	od.##
-
+set mbefTime = int: 0
 {false guarantees not unitary, but true does not guarantee unitary}
 {LKdata[j] is [(tauj,tauLj)]: tauLj is an Lj\cap K-type inducing to a bottom layer tauj of p.}
 set min_bottom_elim_factors(Param p, [[(KType,KType)]] LKdata) = bool:
-    let {start = elapsed_ms(),} answers = for k:#LKdata do false od,
+    let start = elapsed_ms(), {answers = for k:#LKdata do false od,}
     	(,pL) = theta_stable_quasi_data(p)
     then (mu,) = LKdata[0][0]
     then () = if K_type_pol(p)[mu] = 0
@@ -529,20 +530,13 @@ set min_bottom_elim_factors(Param p, [[(KType,KType)]] LKdata) = bool:
     then derpLjs = derived_factor_params(pL) {one for each derived simple factor derLj}
     then derxLjs = for derpLj in derpLjs do derpLj.x od
     then derLjs = for derpLj in derpLjs do derpLj.real_form od
-    {we wish these muLjs were LKTs of pLj; need to twist pLj to make this true??}
+    {we wish these dermuLjs were LKTs of derpLj; may need to twist pLj to make this true??}
     then dermuLjs = for pairs in LKdata do let (,dermuLj) = pairs[0] in dermuLj od
-    then DLs = if QR_code
-	       then null(#LKdata)
-	       else for pairs@j in LKdata
-	       	    do max(for (,tauLj) in pairs
-		       	   do height(tauLj)
-		      	   od)
-	       	    od
-	       fi
-      {check pLj has muLj as a LKT}
-      then () = for derpLj@j in derpLjs
+      {check derpLj has dermuLj as a LKT}
+    then () = for derpLj@j in derpLjs
       	      	do if K_type_pol(derpLj)[dermuLjs[j]] = 0
 		   then let twistj = all_even_lambda_differential_0(derLjs[j].dual, - derxLjs[j].involution.^)
+		   	{then () = prints("twisting derpLj needed at p = ",p, ", j = ",j)}
 		   	then twistxLj = let Genx = KGB_elt_gen(derxLjs[j])
 				      	in for t@i in twistj
 			   	      	   do let () = Genx.torus_factor +:= t
@@ -561,21 +555,24 @@ set min_bottom_elim_factors(Param p, [[(KType,KType)]] LKdata) = bool:
 		    	in ()
 		    fi
 		od
-       then () = for derpLj@j in derpLjs
+       { then () = for derpLj@j in derpLjs
        	       	 do assert(K_type_pol(derpLj)[dermuLjs[j]] != 0, "derpLj does not have LKT dermuLj")
-		 od
+		 od }
        then DG = max(for pairs in LKdata
        	    	     do max(for (tauj,) in pairs
 			    do height(tauj)
 			    od)
 		     od)
        then multG = branch_irr(p,DG)
-       in all( [(->bool)]: {list of functions, one for each factor Lj}
+       then result = all( [(->bool)]: {list of functions, one for each factor Lj}
 	       for pairs@j in LKdata
 	       do 
 	       let (posLj, negLj) = if QR_code
 	    	      	    	    then qrf_sig_tables.entry(derpLjs[j])
-			   	    else K_signature_irrB(derpLjs[j],DLs[j])
+			   	    else K_signature_irrB(derpLjs[j],max(
+				    	 for (,tauLj) in LKdata[j]
+		       	  		 do height(tauLj)
+		      	   		 od)){DLs[j])}
 				    fi
 	       then () = if posLj[dermuLjs[j]] = 0
 		       	 then posLj := negLj
@@ -586,6 +583,8 @@ set min_bottom_elim_factors(Param p, [[(KType,KType)]] LKdata) = bool:
 			@bool: int_part(posLj[tauLj]) >= int_part(multG[tauj])
 			od )
 	       od )
+	then () = mbefTime +:= elapsed_ms()-start
+	in result
 
 set min_bottom_elim_factors(Param p, steady_bottom_data bott_data) = bool:
     all( for mu in LKTs(p)
@@ -597,7 +596,7 @@ set min_bottom_elim_factors(Param p, steady_bottom_data bott_data) = bool:
 {Here P is branch_std(K-character of p to heights of pairs}
 {LKdata refers to ONE LKT of p}
 set min_bottom_elim_factors(Param p, [[(KType,KType)]] LKdata, KTypePol P) = bool:
-    let {start = elapsed_ms(),} answers = for k:#LKdata do false od,
+    let start = elapsed_ms(), {answers = for k:#LKdata do false od,}
     	(,pL) = theta_stable_quasi_data(p)
     then (mu,) = LKdata[0][0]
     then () = if K_type_pol(p)[mu] = 0
@@ -609,20 +608,13 @@ set min_bottom_elim_factors(Param p, [[(KType,KType)]] LKdata, KTypePol P) = boo
     then derpLjs = derived_factor_params(pL) {one for each derived simple factor derLj}
     then derxLjs = for derpLj in derpLjs do derpLj.x od
     then derLjs = for derpLj in derpLjs do derpLj.real_form od
-    {we wish these muLjs were LKTs of pLj; need to twist pLj to make this true.}
+    {we wish these dermuLjs were LKTs of derpLj; need to twist derpLj to make this true.}
     then dermuLjs = for pairs in LKdata do let (,muLj) = pairs[0] in muLj od
-    then DLs = if QR_code
-	       then null(#LKdata)
-	       else for pairs@j in LKdata
-	       	    do max(for (,tauLj) in pairs
-		       	   do height(tauLj)
-		      	   od)
-	       	    od
-	       fi
-      {check pLj has muLjs as a LKT}
-      then () = for derpLj@j in derpLjs
+      {check derpLj has dermuLj as a LKT}
+    then () = for derpLj@j in derpLjs
       	      	do if K_type_pol(derpLj)[dermuLjs[j]] = 0
 		   then let twistj = all_even_lambda_differential_0(derLjs[j].dual, - derxLjs[j].involution.^)
+		   	{then () = prints("twisting derpLj needed at p = ",p, ", j = ",j)}
 		   	then twistxLj = let Genx = KGB_elt_gen(derxLjs[j])
 				      	in for t@i in twistj
 			   	      	   do let () = Genx.torus_factor +:= t
@@ -641,20 +633,23 @@ set min_bottom_elim_factors(Param p, [[(KType,KType)]] LKdata, KTypePol P) = boo
 		    	in ()
 		    fi
 		od
-      then () = for derpLj@j in derpLjs
+      { then () = for derpLj@j in derpLjs
       	      	do assert(K_type_pol(derpLj)[dermuLjs[j]] != 0, "derpLj does not have LKT dermuLj")
-		od
-       then DG = max(for pairs in LKdata
+		od }
+     { then DG = max(for pairs in LKdata
        	    	     do max(for (tauj,) in pairs
 			    do height(tauj)
 			    od)
-		     od)
-       in all( [(->bool)]: {list of functions, one for each factor Lj}
+		     od)}
+     then result = all( [(->bool)]: {list of functions, one for each factor Lj}
 	       for pairs@j in LKdata
 	       do 
 	       let (posLj, negLj) = if QR_code
 	    	      	    	    then qrf_sig_tables.entry(derpLjs[j])
-			   	    else K_signature_irrB(derpLjs[j],DLs[j])
+			   	    else K_signature_irrB(derpLjs[j],max(
+				    	 for (,tauLj) in LKdata[j]
+		       	  		 do height(tauLj)
+		      	   		 od))
 				    fi
 	       then () = if posLj[dermuLjs[j]] = 0
 		       	 then posLj := negLj
@@ -665,6 +660,10 @@ set min_bottom_elim_factors(Param p, [[(KType,KType)]] LKdata, KTypePol P) = boo
 			@bool: int_part(posLj[tauLj]) >= int_part(P[tauj])
 			od )
 	       od )
+     then () = mbefTime +:= elapsed_ms() - start
+     in result
+
+
 set min_bottom_elim_factors(Param p, steady_bottom_data bott_data, KTypePol P) = bool:
     all( for mu in LKTs(p)
     	 do min_bottom_elim_factors(p, bott_data.entry(mu), P)
