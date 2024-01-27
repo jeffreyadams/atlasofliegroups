@@ -164,9 +164,11 @@ set derived_factor_params(Param p) = [Param]:
          { replace M by DPIS[J]?? }
        od
 
+set dfkiTime = int: 0
+
 {these comologically induce to mu (on K), I think}
 set derived_factor_K_types_info(KType mu) = [(KType,mat)]:
-    let L = mu.real_form
+    let start = elapsed_ms(), L = mu.real_form
     then DSFinfo = derived_simple_factors_info(L)
     then derSs = for (,derS,) in DSFinfo
     	       	 do derS
@@ -187,12 +189,14 @@ set derived_factor_K_types_info(KType mu) = [(KType,mat)]:
 						alpha
 		     		       od))
 		  od
-    in for derwt@j in derwts
+    then answer = for derwt@j in derwts
        do let (,derS,M) = DSFinfo[j]
        	  in (K_types(K_highest_weight_from_K0_weight(KGB(derS,0),
 		derwt))[0],M)
        od
-{in case of mu = LKT(140,[5,3,3,1,1,-1]/2, [1,0,0,-1,0,0]/2), below fails}
+   then () = dfkiTime +:= elapsed_ms() - start
+   in answer
+{in case of mu = LKT(140,[5,3,3,1,1,-1]/2, [1,0,0,-1,0,0]/2), below fails in U(3,3)}
 {    in for xj@j in derived_factor_KGBs(mu.x)
        do let (,,M) = DSFinfo[j]
        	  then muj = K_type(xj, M*mu.lambda_minus_rho)
