@@ -6,6 +6,7 @@
 <cohom_reductionND {for factor_params, factor_K_types}
 <derived_cover.at
 <K.at {for projection_to_K_matrix}
+{ <sub_cells.at {for is_complex}}
 {trying to get at bottom layer K-types. Use D for bound on height, d
 for bound on number of terms. The "min" refers to the theta-stable
 parabolic built by theta_stable_quasi_data. Parabolics _containing_
@@ -79,12 +80,16 @@ set min_L_bottom(Param p, int D) = [(KType,KType)]:
 
 {meant to be applied to quasisplit simple L}
 set next_heights(RealForm L) = int:
-    if not is_quasisplit(L) then 0
-    elif is_abelian(L) then 0
-    else max(for p in all_parameters_gamma(L, null(L.rank))
-    	     do next_heights(p, (semisimple_rank(L) + 1)\2)
-	     od.##)
-    fi
+    let N = if not is_quasisplit(L) then 0
+    	    elif is_abelian(L) then 0
+    	    else max(for p in all_parameters_gamma(L, null(L.rank))
+    	     	     do next_heights(p, (semisimple_rank(L) + 3)\2)
+	     	     od.##)
+    	    fi
+     in N {if not is_simple(L)
+     	then (N+1)\2
+	else N
+	fi}
  
 set_type
 [QRF_sig_tables =

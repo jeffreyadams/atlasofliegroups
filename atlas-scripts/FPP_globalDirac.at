@@ -24,6 +24,11 @@ set chop_bound = int: 6
 {if true, compute reps weakly fair cohom induced from Arthur unipotent}
 set coh_ind_flag = true
 
+{if true, load Arthur unipotent reps into unitary hash before starting FPP.
+Computing Arthur unipotents takes a long time for high rank (e.g. rank 4
+complex}
+set unip_flag = true
+
 {if true, pass through KGB backwards}
 set tilde_flag = true
 {next functions aim to compute FULL spherical dual in non-split case,
@@ -54,8 +59,6 @@ set spherical_xs(RealForm G) = [KGBElt]:
 	  fi
        od.##
 
-{this seems to fail to find all relevant lambdas for some unequal rank cases.
-Following function FPP_lambdas_big seems OK?}
 {need to allow also EDGE barycenters for edges reversed by x}
 set FPP_lambdas(KGBElt x) = [ratvec]:
     let G=x.real_form, twists = all_lambda_differential_0(x)
@@ -86,7 +89,7 @@ set FPP_lambdas(KGBElt x) = [ratvec]:
 	  fi
        od.##
 
-set all_FPP_vertices({RootDatum}RealForm G) = [ratvec]:
+{set all_FPP_vertices({RootDatum}RealForm G) = [ratvec]:
     let factors = for S in simple_factors(G)
     		  do FPP_local_vertices(G){FPP_vertices(S,-1)}
 		  od
@@ -98,59 +101,17 @@ set all_FPP_vertices({RootDatum}RealForm G) = [ratvec]:
        	  do v+w
 	  od
        od.##
-       esac
-
-{not used?
-{each term is a candidate lambda0 (mod comp gp char twists) and the
-corresponding Lvd, Perm, mapAct}
-set FPP_lambdas_big(KGBElt x, VertexData vd, mat_hash inv_hash, [vec_hash]
-    dlambda_hashes, [[(VertexData, vec, vec)]] LvdEtcs) =
-    		    [(ratvec,VertexData, vec, vec)]:
-    let G=x.real_form
-    then zeroPol = ParamPol: 0*G.trivial, theta = x.involution
-    then i = inv_hash.lookup(theta)
-    then rho = G.rho, verts = all_FPP_vertices(G)
-    then th1 = theta + 1
-    then lamthlams = [vec]:
-    	 for v in verts
-    	 do if ((th1*v).denom = 1) then [ratvec_as_vec(th1*v)]
-	    else []
-	    fi
-	 od.##.no_reps
-    in [(ratvec, VertexData, vec, vec)]:
-    	 for lamthlam in lamthlams
-    	 do case vec_solve(th1,lamthlam - th1*rho)
-	    | else [(ratvec,VertexData,vec,vec)]: []
-	    | solution(lr):
-	      let lambda0 = rho + lr
-	      then dlambda0 = ratvec_as_vec(lambda0 + theta*lambda0)
-    	      then j = dlambda_hashes[i].match(dlambda0)
-              then () = if j = #LvdEtcs[i]
-                      	then
-                      	LvdEtcs[i]:=LvdEtcs[i]#localFD_Lvd(x,lambda0,vd)
-                      	fi
-              then (Lvd, Perm, mapAct) = LvdEtcs[i][j]
-	      in if #Lvd.list > 0 and
-	      	    1*parameter(x,lambda0,0*lambda0) != zeroPol
-		 then [(lambda0, Lvd, Perm, mapAct)]
-	      	 else []
-		 fi
-	      esac
-	  od.##
-}
-
+       esac}
 
 {each term is a candidate lambda0 (mod comp gp char twists) and the
-corresponding Lvd, Perm, mapAct, LF, with LF the 0 and 1-diml local facets
-Should use EITHER this OR FPP_lambdas_big in one session}
+corresponding Lvd, Perm, mapAct, LF, with LF the 0 and 1-diml local facets}
 set FPP_lambdas_big(KGBElt x, VertexData vd, mat_hash inv_hash, [vec_hash]
     dlambda_hashes, [[(VertexData, vec, vec,[[FacetVertsIndex]])]] LvdEtAlia) =
     		    [(ratvec, VertexData, vec, vec,[[FacetVertsIndex]])]:
     let G=x.real_form
     then zeroPol = ParamPol: 0*G.trivial, theta = x.involution
     then i = inv_hash.lookup(theta)
-    then rho = G.rho, verts = {all_FPP_vertices(G)}
-    	 FPP_local_vertices(G)
+    then rho = G.rho, verts = FPP_local_vertices(G)
     then th1 = theta + 1
     then lamthlams = [vec]:
     	 for v in verts
@@ -183,15 +144,13 @@ set FPP_lambdas_big(KGBElt x, VertexData vd, mat_hash inv_hash, [vec_hash]
 corresponding (Lvd, Perm, mapAct). If x is involution #i (in inv_hash), then ith term
 in Lvd_Perm_mapAct is list of (Lvd,Perm,mapAct) for various dlambda (indexed by
 dlambda_hashes[i])}
-{MISSES some vertices which are edge barycenters!}
 set FPP_lambdas_big_new(KGBElt x, VertexData vd, mat_hash inv_hash, [vec_hash]
     dlambda_hashes, [[(VertexData, PermOrderTwo, vec)]] Lvd_Perm2_mapAct,
-    [(ratvec->int)] ELs) =[(ratvec, VertexData, PermOrderTwo, vec)]:
+    (vec->int) FEL) =[(ratvec, VertexData, PermOrderTwo, vec)]:
     let G=x.real_form
     then zeroPol = ParamPol: 0*G.trivial, theta = x.involution
     then i = inv_hash.lookup(theta)
-    then rho = G.rho, verts = {all_FPP_vertices(G)}
-    	 FPP_local_vertices(G)
+    then rho = G.rho, verts = FPP_local_vertices(G)
     then th1 = theta + 1
     then lamthlams = [vec]:
     	 for v in verts
@@ -210,8 +169,7 @@ set FPP_lambdas_big_new(KGBElt x, VertexData vd, mat_hash inv_hash, [vec_hash]
               then () = if j = #Lvd_Perm2_mapAct[i]
                       	then
 			Lvd_Perm2_mapAct[i]:= (Lvd_Perm2_mapAct[i] next Lvd_Perm2_mapAct[i]:=[])
-					      #localFD_Lvd2(x,lambda0,vd,ELs)
-                      	{Lvd_Perm2_mapAct[i]:=Lvd_Perm2_mapAct[i]#localFD_Lvd2(x,lambda0,vd,ELs)}
+					      #localFD_Lvd2(x,lambda0,vd,FEL)
                       	fi
               then (Lvd, Perm2, mapAct) = Lvd_Perm2_mapAct[i][j]
 	      in if #Lvd.list > 0 and
@@ -223,7 +181,7 @@ set FPP_lambdas_big_new(KGBElt x, VertexData vd, mat_hash inv_hash, [vec_hash]
 	  od.##
 
 {take a list of x, get for each x a list of the output data above}
-set FPP_lambdas_big_new([KGBElt] xs, VertexData vd, [(ratvec->int)] ELs) =
+set FPP_lambdas_big_new([KGBElt] xs, VertexData vd, (vec->int) FEL) =
     		    [[(ratvec, VertexData, PermOrderTwo, vec)]]:
     let inv_hash = make_mat_hash()
 then () = for x in xs do inv_hash.match(x.involution) od
@@ -231,18 +189,17 @@ then () = for x in xs do inv_hash.match(x.involution) od
     then dlambda_hashes = for i:NumInvs do make_vec_hash() od
     then Lvd_Perm2_mapAct = for i:NumInvs do [(VertexData,PermOrderTwo,vec)]:[] od
     in for x in xs
-       do FPP_lambdas_big_new(x, vd, inv_hash, dlambda_hashes, Lvd_Perm2_mapAct, ELs)
+       do FPP_lambdas_big_new(x, vd, inv_hash, dlambda_hashes, Lvd_Perm2_mapAct, FEL)
        od
 
 {each term is a candidate lambda0 (mod comp gp char twists) and the
-corresponding Lvd, Perm, mapAct, LF, with LF the 0 and 1-diml local facets
-Should use EITHER this OR FPP_lambdas_big in one session}
+corresponding Lvd, Perm, mapAct, LF, with LF the 0 and 1-diml local facets}
 set FPP_lambdas_big_global(KGBElt x, VertexData vd,
     [[FacetVertsIndex]] global_facets) =
     	[(ratvec, VertexData, vec, vec,[[FacetVertsIndex]])]:
     let G=x.real_form
     then zeroPol = ParamPol: 0*G.trivial, theta = x.involution
-    then rho = G.rho, verts = {vd.list} FPP_local_vertices(G)
+    then rho = G.rho, verts = FPP_local_vertices(G)
     then th1 = theta + 1
     then lamthlams = [vec]:
     	 for v in verts
@@ -305,7 +262,8 @@ set FPP_unitary_hash_general([(KGBElt,ratvec)] xlambdas, Param_hash Uhash,
     then vd = FPP_vertex_data(G), start = elapsed_ms()
     then () = unitaryTime := 0
     then () = prepDirac(G)
-    then ELs = edge_list_lookups(G) {one minute, 250 mb for E8_s}
+    then FEL = FPP_flippable_edge_lookup(G)
+    {ELs = edge_list_lookups(G) {one minute, 250 mb for E8_s}}
     then () = for (x,lambda) in xlambdas do inv_hash.match(x.involution) od
     then xnums = for (x,) in xlambdas do let (,m) = %x in m od
     then lambdas = for (,lambda) in xlambdas do lambda od
@@ -322,12 +280,14 @@ set FPP_unitary_hash_general([(KGBElt,ratvec)] xlambdas, Param_hash Uhash,
     	      	 then j = dlambda_hashes[i].match(dlambda)
               	 then () =  if j = #Lvd_Perm2_mapAct[i]
                       	    then Lvd_Perm2_mapAct[i]:= (Lvd_Perm2_mapAct[i] next Lvd_Perm2_mapAct[i]:=[])
-					      #localFD_Lvd2(x,lambda,vd,ELs)
+					      #localFD_Lvd2(x,lambda,vd,FEL)
                       	    fi
 		in ()
 	      od
     then () = facet_verbose:=false; time_verbose:=false; test_verbose:=false; test_slightly_verbose:=false
-    then () = unipotents_to_hash(G,Uhash)
+    then () = if unip_flag
+    	      then unipotents_to_hash(G,Uhash)
+	      fi
     then () = if coh_ind_flag
     	      then coh_ind_unip_long(G,Uhash)
 	      fi
@@ -410,7 +370,8 @@ set FPP_unitary_hash_general([KGBElt] xs, Param_hash Uhash, Param_hash Uparamhas
     then inv_hash = make_mat_hash()
     then G = xs[0].real_form
     then vd = FPP_vertex_data(G), start = elapsed_ms()
-    then ELs = edge_list_lookups(G) {one minute, 250 mb for E8_s}
+    then FEL = FPP_flippable_edge_lookup(G)
+    {ELs = edge_list_lookups(G) {one minute, 250 mb for E8_s}}
     then () = unitaryTime := 0
     then () = prepDirac(G)
     then () = for x in xs do inv_hash.match(x.involution) od
@@ -424,7 +385,9 @@ set FPP_unitary_hash_general([KGBElt] xs, Param_hash Uhash, Param_hash Uparamhas
     then () = time_verbose:=false
     then () = test_verbose:=false
     then () = test_slightly_verbose:=false
-    then () = unipotents_to_hash(G,Uhash)
+    then () = if unip_flag
+    	      then unipotents_to_hash(G,Uhash)
+	      fi
     then () = if coh_ind_flag
     	      then coh_ind_unip_long(G,Uhash)
 	      fi
@@ -444,7 +407,7 @@ set FPP_unitary_hash_general([KGBElt] xs, Param_hash Uhash, Param_hash Uparamhas
 	 let former_time = current, formerUhash = currentUhash, formerUcounter = currentUcounter
 	 then twists = all_lambda_differential_0(x)
       	 then FPPbigNew = FPP_lambdas_big_new(x, vd, inv_hash,
-    	      		dlambda_hashes, Lvd_Perm2_mapAct, ELs)
+    	      		dlambda_hashes, Lvd_Perm2_mapAct, FEL)
 	 then postFPPbigNew = elapsed_ms()
 	 then lambdas = [ratvec]: for (lambda0,,,) in FPPbigNew
 	      	      		  do for tau in twists
@@ -694,7 +657,8 @@ set FPP_unitary_hash_bottom_layer([(KGBElt,ratvec)] xlambdas, steady_bottom_data
     then () = dfkiTime := 0
     then () = prepDirac(Gsc)
     then () = bott_data.adjust_BL_depth(BL_steps)
-    then ELs = edge_list_lookups(Gsc) {one minute, 250 mb for E8_s}
+    then FEL = FPP_flippable_edge_lookup(G)
+    {ELs = edge_list_lookups(Gsc) {one minute, 250 mb for E8_s}}
     then xnums = for (x,) in xlambdas do let (,m) = %x in m od
     then lambdas = for (,lambda) in xlambdas do lambda od
     then () = for (x,) in xlambdas do inv_hash.match(x.involution) od
@@ -711,12 +675,14 @@ set FPP_unitary_hash_bottom_layer([(KGBElt,ratvec)] xlambdas, steady_bottom_data
     	      	 then j = dlambda_hashes[i].match(dlambda)
               	 then () =  if j = #Lvd_Perm2_mapAct[i]
                       	    then Lvd_Perm2_mapAct[i]:= (Lvd_Perm2_mapAct[i] next Lvd_Perm2_mapAct[i]:=[])
-					      #localFD_Lvd2(x,M*lambda,vd_sc,ELs)
+					      #localFD_Lvd2(x,M*lambda,vd_sc,FEL)
                       	    fi
 		in ()
 	      od
     then () = facet_verbose:=false; time_verbose:=false; test_verbose:=false; test_slightly_verbose:=false
-    then () = unipotents_to_hash(G,UhashG)
+    then () = if unip_flag
+    	      then unipotents_to_hash(G,UhashG)
+	      fi
     then () = if coh_ind_flag
     	      then coh_ind_unip_long(G,UhashG)
 	      fi
@@ -744,7 +710,8 @@ set FPP_unitary_hash_bottom_layer([(KGBElt,ratvec)] xlambdas, steady_bottom_data
     then () = for (x,lambda)@k in xlambdas
     	      do {xlambdas} 
 	 	 let start = elapsed_ms(), startUhash = Uhash.size(), (x_sc,lambda_sc) = xlambdas_sc[k],
-		     		   startUcounter = unitary_test_counter.use_count(), theta = x.involution
+		     		   startUcounter = unitary_test_counter.use_count(), theta = x.involution,
+				   startUparamhash = Uparamhash.size()
 		 then i = inv_hash.lookup(theta)
 		 then j = dlambda_hashes[i].lookup(ratvec_as_vec(lambda+theta*lambda))
 		 then (Lvd, Perm2, mapAct) = Lvd_Perm2_mapAct[i][j]
@@ -842,7 +809,8 @@ set FPP_unitary_hash_bottom_layer([KGBElt] xs,  steady_bottom_data bott_data,
 		 else UhashG
 		 fi
     then vd_sc = FPP_vertex_data(Gsc), vd = FPP_vertex_data(G), start = elapsed_ms()
-    then ELs = edge_list_lookups(G) {one minute, 250 mb for E8_s}
+    then FEL = FPP_flippable_edge_lookup(G)
+    {ELs = edge_list_lookups(G) {one minute, 250 mb for E8_s}}
     then () = unitaryTime := 0
     then () = dfkiTime := 0
     then () = prepDirac(Gsc)
@@ -858,7 +826,9 @@ set FPP_unitary_hash_bottom_layer([KGBElt] xs,  steady_bottom_data bott_data,
     then () = time_verbose:=false
     then () = test_verbose:=false
     then () = test_slightly_verbose:=false
-    then () = unipotents_to_hash(G,UhashG)
+    then () = if unip_flag
+    	      then unipotents_to_hash(G,UhashG)
+	      fi
     then () = if coh_ind_flag
     	      then coh_ind_unip_long(G,UhashG)
 	      fi
@@ -887,7 +857,7 @@ set FPP_unitary_hash_bottom_layer([KGBElt] xs,  steady_bottom_data bott_data,
 	 let former_time = current, formerUhash = currentUhash, formerUcounter = currentUcounter, x_sc = xs_sc[j]
 	 then twists = all_lambda_differential_0(x)
       	 then FPPbigNew = FPP_lambdas_big_new(x, vd, inv_hash,
-    	      		dlambda_hashes, Lvd_Perm2_mapAct, ELs)
+    	      		dlambda_hashes, Lvd_Perm2_mapAct, FEL)
 	 then () = if disconn_flag
 	      	   then FPPbigNew := for (lambda0, Lvd, Perm2, mapAct) in FPPbigNew
 	      	   	     	     do (M*lambda0, to_vertex_data(for v in Lvd.list do M*v od), Perm2, mapAct)
@@ -911,7 +881,8 @@ set FPP_unitary_hash_bottom_layer([KGBElt] xs,  steady_bottom_data bott_data,
 	 then () = for (lambda0, Lvd, Perm2, mapAct)@k in FPPbigNew
       	      	   do for tau@ell in twists
                       do let startlambda = elapsed_ms(), startUhash = Uhash.size(),
-		      	     startUcounter = unitary_test_counter.use_count(), index = k*#twists + ell
+		      	     startUcounter = unitary_test_counter.use_count(), index = k*#twists + ell,
+			     startUparamhash = Uparamhash.size()
 			 then LF = if by_zero_flag
 		      	      	   then localFD_1Dirac2_by_zero(x_sc, lambda0+M*tau, Lvd, Perm2, mapAct, global_facets_by_zero)
 			   	   else localFD_1Dirac2(x_sc, lambda0+M*tau, Lvd, Perm2, mapAct, global_facets)

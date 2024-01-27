@@ -1624,9 +1624,9 @@ set local_test_GEO_one_level(KGBElt x, ratvec lambda) = [Param]:
     in local_test_GEO_hash_one_level(x,lambda,vd, pol_hash, Uhash)
 
 {when LKT length is GREATER than bottom_length_frac*(max possible), DO
-NOT use bottom_layer. Setting this to 1 means always use bottom_layer,
+NOT use bottom_layer. Leaving this at 1 means always use bottom_layer,
 to negative means never bottom layer.}
-set bottom_length_frac = rat: 2/3 {??}
+set bottom_length_frac = rat: 1{??}
 
 {how many levels of bottom layer K-types to use}
 {this now has no effect; essentially hard coded in min_L_bottom_factors, in
