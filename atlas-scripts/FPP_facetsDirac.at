@@ -787,23 +787,39 @@ set FPP_facets(SimpleAffine Affd, VertexData vd, int dim, int j0) =
 	     od { type is [FacetVertsIndex], remains for next line}
 	 od.##
 
+{these are pairs [i,j] of fundamental facet vertices that can be flipped by an automorphism
+related to G; condition is that adding something in X^* to v[i] is Waff-conjugate to v[j]}
+set fund_flippable_edges(SimpleAffine Affd) = [vec]:
+    let FVs = fundamental_vertices(Affd)
+    then FVlookup = index_in(FVs)
+    then ((ZM,Zorder),) = Z_hat(Affd) {(mat, vec) cols of mat are reps of X^*/roots, entries of
+    	 	       		     vec give orders of reps}
+    then boxZ = box(Zorder)
+    then Zshifts = for b in boxZ do ZM*b od
+    in for v@i in FVs
+       do let ilist = for shift in Zshifts
+       	      	      do let (,vshift) = from_fundamental_alcove(Affd,v+shift)
+       	     	      	 then j = FVlookup(vshift)
+	     		 in if j>i then [j]
+	     		    else []
+			    fi
+		      od.##.sort_u
+	   in for j in ilist
+	      do [i,j]
+	      od
+	od.##
+
 {these are pairs [p,q] index FPP vertices that can be flipped by an automorphism
-related to G; condition is that the ratvec connecting the vertices is in X^*.}
+related to G; condition is that the vertices differ by the extended affine Weyl group.}
 set FPP_flippable_edges(RealForm G) = [FacetVertsIndex]:
     let (Affd,M,j0) = cofolded(G)
-    then vlist = FPP_vertices(Affd,j0)
+    then vlist = FPP_vertices(Affd,j0), FVs = fundamental_vertices(Affd)
     then vdAff = to_vertex_data(vlist)
-    then all_fund_edges = [FacetVerts]: facets_fundamental(Affd,1)
-    then fund_flippable_edges = [FacetVerts]:
-    	 for edge in all_fund_edges
-    	 do if (edge[0] - edge[1]).denom = 1
-	    then [edge]
-	    else []
-	    fi
-	 od.##
+    then fundFlippableEdges = fund_flippable_edges(Affd)
     in
-    	 for FV in fund_flippable_edges
-       	 do let bary_F=FacetBary: sum(Affd.rank,FV)/2
+    	 for FVind in fundFlippableEdges
+       	 do let bary_F=facet_bary(FVs,FVind)
+	    then FV = for i in FVind do FVs[i] od
 	    then aff_short_list = FPP_w_shifts(Affd,bary_F,j0)
 	    then aff_list = [AffineCoWeylElt]:
 	       	 for (w,taus) in aff_short_list
