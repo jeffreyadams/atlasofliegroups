@@ -61,7 +61,7 @@ every_lambda_deets_flag:=true
 test_slightly_verbose:=true
 test_verbose:=true
 facet_verbose:=true
-bottom_length_frac:=1/4
+{bottom_length_frac:=1/4}
 {NOTE: extra_files is defined in FPP.py}
 
 set global_facets_file_loaded=false   {set true at the end of global_facets_file}
