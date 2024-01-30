@@ -1633,6 +1633,8 @@ set bottom_length_frac = rat: 1{??}
 argument of next_heights}
 {set BL_steps = int:2}
 
+set full_K_char_flag = true
+
 {assume local facets to dim 1 are recorded in LF, already herm and pos
 on LKTs. This version uses min_bottom_elim instead of
 unitary_to_ht.}
@@ -1697,10 +1699,22 @@ set local_test_GEO_hash_bottom_layer(KGBElt x, ratvec lambda, VertexData vd,
 			  for list in LF do #list od);
 		  prints("testing height = ", qhts, new_line)
 	       fi
-   then pol_hash_one_ht = make_KTypePol_hash() {to hold K_chars to height one_ht}
+   then pol_hash_one_ht = KTypePol_hash:
+   	if full_K_char_flag
+	then pol_hash
+	else make_KTypePol_hash() {to hold K_chars to height one_ht}
+	fi
       {next add K-chars to height one_ht for vertices and edges}
-   then LFDKH = [[FacetVertsKHash]]: localFD_KHash_01(x, lambda, Lvd, one_ht, pol_hash_one_ht, LF)
-   then ((eq,gr),IUCL,CLBF) = localGraphK(LFDKH)
+   then LFDKH = [[FacetVertsKHash]]:
+   	if full_K_char_flag
+	then localFD_KHash_01(x,lambda, Lvd, pol_hash, LF)
+	else localFD_KHash_01(x, lambda, Lvd, one_ht, pol_hash_one_ht, LF)
+	fi
+   then ((eq,gr),IUCL,CLBF) =
+   	if full_K_char_flag
+	then localGraphK(LFDKH, pol_hash, one_ht)
+	else localGraphK(LFDKH)
+	fi
    {then () = prints(((eq,gr), IUCL,CLBF))}
     	{next remove from LFDKH all facets failing min_bottom_factors_elim(one_ht)}
    then () = LFDKH := local_testK_hash_bottom_layer(x,lambda,Lvd, LFDKH, eq,
@@ -1770,7 +1784,10 @@ set local_test_GEO_hash_bottom_layer(KGBElt x, ratvec lambda, VertexData vd,
        	       	   		      		      unitary_by_dim);}
 		prints("number of tests so far = ",unitary_test_counter.use_count())
 	      fi
-    then () = LFDKH:= extend_K_characters(x, lambda, Lvd, LFDKH, pol_hash)
+    then () = LFDKH:= if full_K_char_flag
+    	      	      then LFDKH
+    	      	      else extend_K_characters(x, lambda, Lvd, LFDKH, pol_hash)
+		      fi
     then start=elapsed_ms()
     { then () = long_out_flag := long_out_temp_flag }
     then UParams = [Param]:
