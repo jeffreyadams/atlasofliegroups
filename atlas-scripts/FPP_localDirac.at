@@ -1375,6 +1375,11 @@ from one_level+1 to last_level) to speed elimination of nonunitary. Need
 to have last_level \ge one_level}
 set last_level = int: -1
 
+{if changed to false, then K-characters are computed only to the necessary height.
+But in at least many cases, that to-height computation seems MUCH slower; so the
+default is "true". But maybe things are different at low height???}
+set full_K_char_flag = true
+
 set hash_one_levelCounter = make_counter()
 
 {assume local facets to dim 1 are recorded in LF, already herm and pos on LKTs}
@@ -1440,7 +1445,11 @@ set local_test_GEO_hash_one_level(KGBElt x, ratvec lambda, VertexData vd,
 			  for list in LF do #list od);
 		  prints("testing level = ", ONE, ", final level = ",LAST, "; heights = ", hts, new_line)
 	       fi
-   then pol_hash_one_ht = make_KTypePol_hash() {to hold K_chars to height one_ht = hts[ONE]}
+   then pol_hash_one_ht = KTypePol_hash:
+   	if full_K_char_flag
+	then pol_hash
+	else make_KTypePol_hash() {to hold K_chars to height one_ht = hts[ONE]}
+	fi
    then LFDKH = [[FacetVertsKHash]]:
    	if step_flag and ONE > 0{just calculate K-chars to hts[0], reduce the problem, then go to one_ht}
 	then let pol_hash_low = make_KTypePol_hash()
@@ -1468,7 +1477,10 @@ set local_test_GEO_hash_one_level(KGBElt x, ratvec lambda, VertexData vd,
 				{is_unitary_to_hts(p,hts[1:ONE+1]))}
 				{is_unitary_to_ht(p,one_ht)}
 	else {get K-type formulas for all vertices and edges}
-    	     let LFDKH = localFD_KHash_01(x, lambda, Lvd, one_ht, pol_hash_one_ht, LF)
+    	     let LFDKH = if full_K_char_flag
+	     	       	 then localFD_KHash_01(x,lambda,Lvd,pol_hash, LF)
+			 else localFD_KHash_01(x, lambda, Lvd, one_ht, pol_hash_one_ht, LF)
+			 fi
     	     {now have all local facets of dims 0 and 1.}
  	     {compute graph on facets to dim 1, to one_ht}
     	     then tester1 = (Param->bool): (Param p) bool:
@@ -1476,7 +1488,10 @@ set local_test_GEO_hash_one_level(KGBElt x, ratvec lambda, VertexData vd,
 	 	  else is_unitary_to_ht(p,one_ht)
 	 	  {to_ht is definitely 2% slower for F4 spherical, 10% slower for Sp(10) spherical}
 	 	  fi
-    	     then ((eq,gr),IUCL,CLBF) = localGraphK(LFDKH)
+    	     then ((eq,gr),IUCL,CLBF) = if full_K_char_flag
+	     	  		      	then localGraphK(LFDKH, pol_hash, one_ht)
+					else localGraphK(LFDKH)
+					fi
     	      {remove from LFDKH all facets failing is_unitary_to_ht(one_ht)}
 	     {then () = prints("at one_ht, #eq = ", #eq)}
     	     in local_testK_hash(x,lambda,Lvd, LFDKH, eq,
@@ -1540,7 +1555,10 @@ set local_test_GEO_hash_one_level(KGBElt x, ratvec lambda, VertexData vd,
        	       	   		      		      unitary_by_dim);}
 		prints("number of tests so far = ",unitary_test_counter.use_count())
 	      fi
-    then () = LFDKH:= extend_K_characters(x, lambda, Lvd, {Perm, mapAct,} LFDKH, pol_hash)
+    then () = LFDKH:= if full_K_char_flag
+    	      	      then LFDKH
+		      else extend_K_characters(x, lambda, Lvd, LFDKH, pol_hash)
+		      fi
     then start=elapsed_ms()
     then () = long_out_flag := long_out_temp_flag
     then UParams = [Param]:
@@ -1632,8 +1650,6 @@ set bottom_length_frac = rat: 1{??}
 {this now has no effect; essentially hard coded in min_L_bottom_factors, in
 argument of next_heights}
 {set BL_steps = int:2}
-
-set full_K_char_flag = true
 
 {assume local facets to dim 1 are recorded in LF, already herm and pos
 on LKTs. This version uses min_bottom_elim instead of
