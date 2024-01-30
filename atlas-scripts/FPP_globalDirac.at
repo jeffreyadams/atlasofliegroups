@@ -633,8 +633,8 @@ set FPP_unitary_hash_bottom_layer([(KGBElt,ratvec)] xlambdas, steady_bottom_data
     Param_hash Uparamhash) = void:
     if #xlambdas = 0 then return ()
     else let inv_hash = make_mat_hash()
-    then () = qrf_sig_tables.clear()
-    then () = bott_data.clear()
+    {then () = qrf_sig_tables.clear()}
+    {then () = bott_data.clear()}
     {then () = unitary_hash.clear()} {interferes with preloading coh_ind}
     then (x,) = xlambdas[0]
     {then () = deform_flag:=true}
@@ -656,7 +656,6 @@ set FPP_unitary_hash_bottom_layer([(KGBElt,ratvec)] xlambdas, steady_bottom_data
     then () = unitaryTime := 0
     then () = dfkiTime := 0
     then () = prepDirac(Gsc)
-    then () = bott_data.adjust_BL_depth(BL_steps)
     then FEL = FPP_flippable_edge_lookup(G)
     {ELs = edge_list_lookups(Gsc) {one minute, 250 mb for E8_s}}
     then xnums = for (x,) in xlambdas do let (,m) = %x in m od
@@ -735,7 +734,9 @@ set FPP_unitary_hash_bottom_layer([(KGBElt,ratvec)] xlambdas, steady_bottom_data
     			  in if every_lambda_flag
 	      		     then prints("  ",print_time_string(xlambdatimes[k]),
 			   	" = time for (x,lambda) = (", xnums[k], ",",k,"), ht = ",
-				  height(parameter(x,lambda,0*lambda)), ",",test_string);
+				  height(parameter(x,lambda,0*lambda)), ", L = ", let (Q,) =
+				  theta_stable_quasi_data(parameter(x,lambda,0*lambda)) in Q.Levi,
+				  ",",test_string);
 			         prints("    #LF = ", for L in LF do #L od, "; #unitary params = ", answerCards[k],
 				 ", #new unitary = ", Uhash.size() - startUhash,
 				 ", #tests = ", unitary_test_counter.use_count() - startUcounter);
@@ -787,10 +788,10 @@ set FPP_unitary_hash_bottom_layer([KGBElt] xs,  steady_bottom_data bott_data,
     then return ()
     else
     {let () = deform_flag:=true}
-    let () = qrf_sig_tables.clear()
-    then () = bott_data.clear()
+    {let () = qrf_sig_tables.clear()}
+    {let () = bott_data.clear()}
     {then () = unitary_hash.clear()}{interferes with preloading coh_ind}
-    then () = if tilde_flag
+    let () = if tilde_flag
     	      then xs:= for x in xs ~do x od{; deform_flag:=false}
     	      fi
     then inv_hash = make_mat_hash()
@@ -814,7 +815,6 @@ set FPP_unitary_hash_bottom_layer([KGBElt] xs,  steady_bottom_data bott_data,
     then () = unitaryTime := 0
     then () = dfkiTime := 0
     then () = prepDirac(Gsc)
-    then () = bott_data.adjust_BL_depth(BL_steps)
     then () = for x in xs do inv_hash.match(x.involution) od
     then xnums = for x in xs do let (,m) = %x in m od, xtimes = null(#xs)
     then NumInvs = inv_hash.size(), pol_hash = make_KTypePol_hash()
@@ -850,8 +850,7 @@ set FPP_unitary_hash_bottom_layer([KGBElt] xs,  steady_bottom_data bott_data,
     then () = global_facets_by_zero := low_FPP_facets_by_zero(global_facets)
     then current = elapsed_ms()
     then oldUhash = UhashG.size(), currentUhash = Uhash.size(), formerUhash = Uhash.size(),
-    	 oldUcounter = unitary_test_counter.use_count(), currentUcounter = unitary_test_counter.use_count(){,
-	 start_branch = qrf_sig_tables.bottom_branch_time()}
+    	 oldUcounter = unitary_test_counter.use_count(), currentUcounter = unitary_test_counter.use_count()
     then () = for x@j in xs
     	      do {xs}
 	 let former_time = current, formerUhash = currentUhash, formerUcounter = currentUcounter, x_sc = xs_sc[j]
@@ -904,9 +903,10 @@ set FPP_unitary_hash_bottom_layer([KGBElt] xs,  steady_bottom_data bott_data,
  			 	 then () = templambdatimes [index] := elapsed_ms() - startlambda
 			 	 in if every_lambda_flag
 				    then prints("  ",print_time_string(templambdatimes[index]),
-			   	    	 	" = time for (x,lambda) = (", xnums[j], ",",
-						k*#twists + ell, "), ht = ",
-				  		height(parameter(x,lambda0+M*tau,0*tau)), ",",test_string);
+			   	    " = time for (x,lambda) = (", xnums[j], ",", k*#twists + ell, "), ht = ",
+				    height(parameter(x,lambda0+M*tau,0*tau)),", L = ",
+				    let (Q,) = theta_stable_quasi_data(parameter(x,lambda0+M*tau,0*tau))
+				    in Q.Levi, ",",test_string);
 				         prints("    #LF = ", for L in LF do #L od, ", #unitary params = ",
 					 tempanswerCards[index],
 			     	                ", #new unitary = ", Uhash.size() - startUhash,
@@ -959,7 +959,7 @@ set FPP_unitary_hash_bottom_layer([KGBElt] xs,  steady_bottom_data bott_data,
        prints("Time in derived_factor_K_types_info = ",print_time_string(dfkiTime),
        	      ", time in min_bottom_elim_factors = ", print_time_string(mbefTime));
        prints("Time in bottom layer branching = ",print_time_string(qrf_sig_tables.bottom_branch_time()),
-       		    ", time in bottom layer sig = ", print_time_string(qrf_sig_tables.bottom_sig_time())); 
+       		    ", time in bottom layer sig = ", print_time_string(qrf_sig_tables.bottom_sig_time()));
        prints("  #hash_real_dumb = ",hash_real_dumbCounter.use_count(),
 	      ", #hash_dumb = ", hash_dumbCounter.use_count(),
        	      ", #hash_def_dumb =", hash_def_dumbCounter.use_count());
@@ -967,12 +967,12 @@ set FPP_unitary_hash_bottom_layer([KGBElt] xs,  steady_bottom_data bott_data,
 	      ", #hash2 = ", hash2Counter.use_count(),
 	      ", #hash_one_level = ", hash_one_levelCounter.use_count(),
 	      ", #hash_bottom_layer = ", hash_bottom_layerCounter.use_count());
-       prints("Number of unitary params = ", sum(for list in answerCards do sum(list) od)); 
+       prints("Number of unitary params = ", sum(for list in answerCards do sum(list) od));
         prints("Number of known FPP-unitary facets = ",UhashG.size(),
        	      ", number found on this run = ", UhashG.size() - oldUhash)
    fi
 
-set FPP_unitary_hash_bottom_layer([KGBElt] xs) = void: 
+set FPP_unitary_hash_bottom_layer([KGBElt] xs) = void:
     FPP_unitary_hash_bottom_layer(xs,  bottom_data, unitary_hash, uparam_hash)
 
 set FPP_unitary_hash_bottom_layer(RealForm G) = void:

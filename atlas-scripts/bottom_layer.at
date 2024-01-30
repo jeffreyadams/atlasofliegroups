@@ -90,7 +90,7 @@ set next_heights(RealForm L) = int:
      	then (N+1)\2
 	else N
 	fi}
- 
+
 set_type
 [QRF_sig_tables =
 ( ( -> int) real_form_size
@@ -129,8 +129,9 @@ set make_QRF_sig_tables () = QRF_sig_tables:
        then () = K_type_pol_hashes := []
        then () = branches := []
        then () = sigs := []
-       then  () = bottom_sig_time := 0
-       then  () = bottom_branch_time := 0
+       then () = heights := []
+       then () = bottom_branch_time := 0
+       then () = bottom_sig_time := 0
        in ()
    in 
    ( ( -> int): { real_form_size } @int: real_form_hash.size()
@@ -142,14 +143,15 @@ set make_QRF_sig_tables () = QRF_sig_tables:
      begin
      	let RF = real_form_hash.size()
 	then rf = real_form_hash.match(mu.real_form)
-	then () = if rf = RF
+	then () = if rf = RF {haven't seen this quasisplit form before}
 	     	  then let () = param_hashes := (param_hashes next param_hashes:= [])
 		       	       	 	     #make_Param_hash()
 		       then () = K_type_hashes := (K_type_hashes next K_type_hashes:= [])
 		       	       	 	     #make_KType_hash()
 		       then () = K_type_pol_hashes := (K_type_pol_hashes next K_type_pol_hashes:= [])
 		       	       	 	     #make_KTypePol_hash()
-		       then () = heights := heights#next_heights(mu.real_form)
+		       then () = heights := (heights next heights := [])#next_heights(mu.real_form)
+		       { then () = if heights[rf] != next_heights(mu.real_form) then prints(mu.real_form) fi}
 		       then () = sigs := (sigs next sigs := [])
 		       	    	     # []
 		       then () = branches #:= null(0){(branches next branches := [])
@@ -183,9 +185,9 @@ set make_QRF_sig_tables () = QRF_sig_tables:
 		       	       	 	     #make_KType_hash()
 		       then () = K_type_pol_hashes := (K_type_pol_hashes next K_type_pol_hashes:= [])
 		       	       	 	     #make_KTypePol_hash()
-		       then () = heights := heights#next_heights(mu.real_form)
-		       then () = sigs := (sigs next sigs := [])
-		       	    	     # []
+		       then () = heights := (heights next heights := [])#next_heights(mu.real_form)
+		       {then () = if heights[rf] != next_heights(mu.real_form) then prints(mu.real_form) fi}
+		       then () = sigs := (sigs next sigs := [])# []
 		       then () = branches #:= null(0)
 		       in ()
 		  fi
@@ -201,6 +203,7 @@ set make_QRF_sig_tables () = QRF_sig_tables:
 	then () = assert(real_form_hash.size() = #K_type_pol_hashes,"QRF_sig_table damaged")
         then () = assert(real_form_hash.size() = #K_type_hashes,"QRF_sig_table damaged")
 	then () = assert(real_form_hash.size() = #param_hashes,"QRF_sig_table damaged")
+	then () = assert(real_form_hash.size() = #heights,"QRF_sig_table damaged")
 	then () = assert(#sigs[rf] = param_hashes[rf].size(), "QRF_sig_table damaged")
 	then () = assert(#branches[rf] = K_type_hashes[rf].size(), "QRF_sig_table damaged")
 	in ()
@@ -215,7 +218,8 @@ set make_QRF_sig_tables () = QRF_sig_tables:
 		       	       	 	     #make_Param_hash()
 		       then () = K_type_pol_hashes := (K_type_pol_hashes next K_type_pol_hashes:= [])
 		       	       	 	     #make_KTypePol_hash()
-		       then () = heights := heights#next_heights(p.real_form)
+		       then () = heights := (heights next heights := [])#next_heights(p.real_form)
+		       {then () = if heights[rf] != next_heights(p.real_form) then prints(p.real_form) fi}
 		       then () = sigs := (sigs next sigs := [])
 		       	    	     # []
 		       in ()
@@ -234,6 +238,7 @@ set make_QRF_sig_tables () = QRF_sig_tables:
 		  fi
 	then () = assert(real_form_hash.size() = #K_type_pol_hashes,"QRF_sig_table damaged")
 	then () = assert(real_form_hash.size() = #param_hashes,"QRF_sig_table damaged")
+	then () = assert(real_form_hash.size() = #heights,"QRF_sig_table damaged")
 	then () = assert(#sigs[rf] = param_hashes[rf].size(), "QRF_sig_table damaged")
 	in (K_type_pol_hashes[rf].index(sigs[rf][pnum][0]), K_type_pol_hashes[rf].index(sigs[rf][pnum][1]))
      end
@@ -246,7 +251,8 @@ set make_QRF_sig_tables () = QRF_sig_tables:
 		       	       	 	     #make_Param_hash()
 		       then () = K_type_pol_hashes := (K_type_pol_hashes next K_type_pol_hashes:= [])
 		       	       	 	     #make_KTypePol_hash()
-		       then () = heights := heights#next_heights(p.real_form)
+		       then () = heights := (heights next heights:=[])#next_heights(p.real_form)
+		       {then () = if heights[rf] != next_heights(p.real_form) then prints(p.real_form) fi}
 		       then () = sigs := (sigs next sigs := [])
 		       	    	     #[]
 		       in ()
@@ -265,6 +271,7 @@ set make_QRF_sig_tables () = QRF_sig_tables:
 		  fi
 	then () = assert(real_form_hash.size() = #K_type_pol_hashes,"QRF_sig_table damaged")
 	then () = assert(real_form_hash.size() = #param_hashes,"QRF_sig_table damaged")
+	then () = assert(real_form_hash.size() = #heights,"QRF_sig_table damaged")
 	then () = assert(#sigs[rf] = param_hashes[rf].size(), "QRF_sig_table damaged")
 	in ()
      end
@@ -286,11 +293,11 @@ set QR_code = true
 
 set qrf_sig_tables = make_QRF_sig_tables()
 
-set min_L_bottom_factors(KType mu, int level) = [[(KType, KType)]]:
+set min_L_bottom_factors(KType mu) = [[(KType, KType)]]:
     let p = parameter(mu)
     then (Q,pL) = theta_stable_quasi_data(p), G = p.real_form
     then muL = LKT(pL), L = Q.Levi
-    then muLs = factor_K_types(muL {, xcL}) {each muLj is on a simple mod center Lj}
+    then muLs = factor_K_types(muL) {each muLj is on a simple mod center Lj}
     then dermuLs = derived_factor_K_types(muL) {each dermuLj is on a simple derived derLj}
     then Ls = for muL in muLs do muL.real_form od {these are the Lj}
     then derLMs = for (Lj,derLj,Mj) in derived_simple_factors_info(L) do (derLj,Mj) od {DERIVED simple factors}
@@ -300,22 +307,10 @@ set min_L_bottom_factors(KType mu, int level) = [[(KType, KType)]]:
     then xcderLMs = for (derLj,Mj) in derLMs
     	       	 do (KGB(derLj, 0),Mj)
 		 od
-    {then xcderLs = for (xcderLj,) in xcderLMs
-    	       	 do xcderLj
-		 od}
     then xcLs = for (xcderLj,Mj)@j in xcderLMs {KGBElts for Lj, lifted from #zero on derLj}
     	      	 do embed_KGB(xcderLj,Ls[j],Mj) {PROBABLY these are all #0 on Lj???}
 		 od
     then xcGs = for xcLj@j in xcLs do embed_KGB(xcLj,G) od
-    {then MK = projection_to_K_matrix(mu.inner_class)}
-    {then MKinv = right_inverse(MK)}
-    {then DLs = for derLj@j in derLs {maximum height to find Lj/derLj K-types}
-    	      	do if QR_code
-		   then 0
-		   else
-		   max(next_heights(dermuLs[j], (semisimple_rank(derLj) + 1)\2))
-		   fi
-		od}
     then dertauLs = [[KType]]: {jth list on derived simple factor derLj}
     	 for dermuLj@j in dermuLs
 	 do if QR_code
@@ -323,16 +318,16 @@ set min_L_bottom_factors(KType mu, int level) = [[(KType, KType)]]:
 	    else monomials(branch(dermuLj, max(next_heights(dermuLs[j], (semisimple_rank(derLs[j]) + 1)\2))))
 	    fi
 	 od
-    in {then answer =} for listj@j in dertauLs
+    in for listj@j in dertauLs
        do let K0 = K_0(xcGs[j])
        	  then muwtj = K0_param(mu,xcGs[j]).lambda_minus_rho {size is rank(K)}
 	  then dermuLj = dermuLs[j], (xcLj,) = xcderLMs[j], derLj = derLs[j], Lj = Ls[j]
-	  then {MderK = projection_to_K_matrix(derLj),} dermuLjwt = K0_param(dermuLj).lambda_minus_rho
+	  then dermuLjwt = K0_param(dermuLj).lambda_minus_rho
 	  then () = if Lj.Cartan_matrix != derLj.Cartan_matrix
 		     	  then prints("WARNING: CM mismatch at Lj = ",Lj)
 			  fi
 
-       	  in {then cands =} [(KType, KType)]: {meant to be list of pairs (tau, dertauLj) with tau bottom layer for G,
+       	  in [(KType, KType)]: {meant to be list of pairs (tau, dertauLj) with tau bottom layer for G,
 	       	       			 dertauLj corr LjK-type}
 	     for dertauLj in listj
        	     do  let dertauLjwt = K0_param(dertauLj).lambda_minus_rho {this is a wt for K on derLj}
@@ -346,17 +341,13 @@ set min_L_bottom_factors(KType mu, int level) = [[(KType, KType)]]:
 	  	    else []
 	  	    fi
 	     od.##
-          {in cands}
 	od
-      {in answer}
-
+ 
 {table of bottom layer data indexed by KType}
 set_type
 [steady_bottom_data =
 ( ( -> int) size
   , ( -> ) clear
-  , ( -> int) BL_depth
-  , (int -> ) adjust_BL_depth
   , (KType->[[(KType,KType)]]) entry
   , (KType->) append
   , (int -> KType) K_type_index
@@ -368,7 +359,6 @@ set_type
 set make_steady_bottom_data () = steady_bottom_data:
 (  let K_type_hash = make_KType_hash()
    then bottom_data = [[[(KType,KType)]]] : []
-   then steps = int:2
    then bottom_factors_time = int: 0
    then clear() = void:
        let () = K_type_hash.clear()
@@ -378,8 +368,6 @@ set make_steady_bottom_data () = steady_bottom_data:
    in 
    ( ( -> int): { size } @int: K_type_hash.size()
    , ( -> ): {clear} clear
-   , ( -> int): {BL_depth} @int: steps
-   , (int -> ): {adjust_BL_depth} (int b): steps:= b
    , (KType -> [[(KType,KType)]]): {entry} (KType mu)
      [[(KType,KType)]]:
      begin
@@ -388,7 +376,7 @@ set make_steady_bottom_data () = steady_bottom_data:
 	then () = if m = M
 	     	  then let start = elapsed_ms()
 		       then () = bottom_data := (bottom_data next bottom_data:= [])
-		       	       	 	     #min_L_bottom_factors(mu, steps)
+		       	       	 	     #min_L_bottom_factors(mu)
 		       in bottom_factors_time +:= elapsed_ms() - start
 		  fi
 	then () = assert(#bottom_data =
@@ -402,7 +390,7 @@ set make_steady_bottom_data () = steady_bottom_data:
 	then () = if m = M
 	     	  then let start = elapsed_ms()
 	     	       then () = bottom_data := (bottom_data next bottom_data:= [])
-		       	       	 	     #min_L_bottom_factors(mu, steps)
+		       	       	 	     #min_L_bottom_factors(mu)
 		       in bottom_factors_time +:= elapsed_ms() - start
 		  fi
         then () = assert(#bottom_data =
@@ -698,9 +686,9 @@ set min_bottom_test_factors(Param p, steady_bottom_data bott_data, KTypePol P) =
     else is_unitary(p)
     fi
 
-set min_bottom_elim_factors(Param p, int level) = bool:
+set min_bottom_elim_factors(Param p) = bool:
     let start = elapsed_ms()
-    then LKdatas = for mu in LKTs(p) do min_L_bottom_factors(mu,level) od
+    then LKdatas = for mu in LKTs(p) do min_L_bottom_factors(mu) od
     	 , minLb_time = int:0, posLK_time = int:0, multK_time = int:0
     then () = if min_bottom_verbose
     	      then let () = minLb_time := elapsed_ms()
@@ -711,8 +699,8 @@ set min_bottom_elim_factors(Param p, int level) = bool:
        	    	   p, LKdata)
        	    od)
 
-set min_bottom_test_factors(Param p, int level) = bool:
-    if not min_bottom_elim_factors(p, level)
+set min_bottom_test_factors(Param p) = bool:
+    if not min_bottom_elim_factors(p)
     then return false
     else is_unitary(p)
     fi

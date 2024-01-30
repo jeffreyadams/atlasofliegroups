@@ -788,7 +788,7 @@ set FPP_facets(SimpleAffine Affd, VertexData vd, int dim, int j0) =
 	 od.##
 
 {these are pairs [i,j] of fundamental facet vertices that can be flipped by an automorphism
-related to G; condition is that adding something in X^* to v[i] is Waff-conjugate to v[j]}
+related to G; condition is that adding tau in X^* to v[i] is Waff-conjugate to v[j]}
 set fund_flippable_edges(SimpleAffine Affd) = [vec]:
     let FVs = fundamental_vertices(Affd)
     then FVlookup = index_in(FVs)
@@ -800,7 +800,8 @@ set fund_flippable_edges(SimpleAffine Affd) = [vec]:
        do let ilist = for shift in Zshifts
        	      	      do let (,vshift) = from_fundamental_alcove(Affd,v+shift)
        	     	      	 then j = FVlookup(vshift)
-	     		 in if j>i then [j]
+	     		 in if j>i
+			    then [j]
 	     		    else []
 			    fi
 		      od.##.sort_u

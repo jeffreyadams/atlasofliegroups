@@ -1631,7 +1631,7 @@ set bottom_length_frac = rat: 1{??}
 {how many levels of bottom layer K-types to use}
 {this now has no effect; essentially hard coded in min_L_bottom_factors, in
 argument of next_heights}
-set BL_steps = int:2
+{set BL_steps = int:2}
 
 {assume local facets to dim 1 are recorded in LF, already herm and pos
 on LKTs. This version uses min_bottom_elim instead of
@@ -1641,12 +1641,14 @@ set local_test_GEO_hash_bottom_layer(KGBElt x, ratvec lambda, VertexData vd,
     VertexData Lvd, [[FacetVertsIndex]] LF,  steady_bottom_data bott_data,
     	       KTypePol_hash pol_hash, Param_hash Uhash) = [Param]:
     let G = x.real_form, thetaMinus = x.involution - 1, start = elapsed_ms()
+    then () = if height(parameter(x,lambda,0*lambda)) = 0 {fine K-type in quasisplit G}
+    	      then return local_test_GEO_hash_one_level(x, lambda, vd, Lvd, LF,
+	      	   	  				   pol_hash, Uhash)
+	      fi
     then vertexDiff = #Lvd.list/#vd.list
     then approxVertexDiff = vertexDiff.numer*100\vertexDiff.denom
     then r = rank(thetaMinus)
-    then ONE = BL_steps
     then () = revert_flag:=false
-    then () = bott_data.adjust_BL_depth(BL_steps)
     then maxDiffLoc = max_loc(for w in LF[0]
     	 	       	      do G.two_rho_check*(dominant(G,thetaMinus*Lvd.list[w[0]]))
 		       	      od)
@@ -1661,10 +1663,14 @@ set local_test_GEO_hash_bottom_layer(KGBElt x, ratvec lambda, VertexData vd,
     	 then return local_test_GEO_hash_one_level(x, lambda, vd, Lvd, LF,
 	      	   	  				   pol_hash, Uhash)
 	 fi
+    then startLKdatas = elapsed_ms()
     then LKdatas  = for mu in LKTs(pmax)
     	 	   do
 		   bott_data.entry(mu)
 		   od
+    then () = if time_verbose then prints("time for LKdatas was ",
+    	      	 print_time_string(elapsed_ms() - startLKdatas), " at lambda = ",lambda)
+	      fi
     then NLKT = #LKdatas
     then () = if L = G or
 	         sum(for i:NLKT
@@ -1679,7 +1685,7 @@ set local_test_GEO_hash_bottom_layer(KGBElt x, ratvec lambda, VertexData vd,
     then pmaxjs = factor_params(pmaxL)
     then qhts = max(for i:NLKT
     	      	    do max( for pairs in LKdatas[i]
-    	      	       	    do max( for (tau,) in pairs do height(tau) od#height(pmax))
+    	      	       	    do max( for (tau,) in pairs do height(tau) od)
 		       	    od)
 		    od)
 	{this is the greates height at which we'll be looking at bottom layer K-types; so we can
@@ -1689,7 +1695,7 @@ set local_test_GEO_hash_bottom_layer(KGBElt x, ratvec lambda, VertexData vd,
     then one_ht = qhts
     then () =  if test_verbose then prints("facet counts to dim 1: ",
 			  for list in LF do #list od);
-		  prints("testing level = ", ONE, "; height = ", qhts, new_line)
+		  prints("testing height = ", qhts, new_line)
 	       fi
    then pol_hash_one_ht = make_KTypePol_hash() {to hold K_chars to height one_ht}
       {next add K-chars to height one_ht for vertices and edges}

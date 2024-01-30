@@ -194,6 +194,7 @@ set derived_factor_K_types_info(KType mu) = [(KType,mat)]:
        	  in (K_types(K_highest_weight_from_K0_weight(KGB(derS,0),
 		derwt))[0],M)
        od
+   then () = assert(none(for (dermu,) in answer do is_zero(dermu) od), "zero K-type in derived_factor_K_types_info")
    then () = dfkiTime +:= elapsed_ms() - start
    in answer
 {in case of mu = LKT(140,[5,3,3,1,1,-1]/2, [1,0,0,-1,0,0]/2), below fails in U(3,3)}
