@@ -189,12 +189,6 @@ set long_out_flag = false
 reps. But not in a few test situations.}
 set load_unipotents_flag = true
 
-{for is_unitary calculations on parameters of approxDiff > CUTOFF,
-it's assumed that is_unitary_to_ht is faster. Setting CUTOFF :=100
-means always is_unitary, and CUTOFF:=-1 means always
-is_unitary_to_ht.}
-set CUTOFF = int: 70
-
 {if KGB number is below this times #KGB, use is_unitary rather than is_unitary_to_ht}
 set low_KGB_frac = rat: 1/4
 
@@ -1375,9 +1369,19 @@ from one_level+1 to last_level) to speed elimination of nonunitary. Need
 to have last_level \ge one_level}
 set last_level = int: -1
 
-{if changed to false, then K-characters are computed only to the necessary height.
-But in at least many cases, that to-height computation seems MUCH slower; so the
-default is "true". But maybe things are different at low height???}
+{for is_unitary calculations on parameters of
+
+    height/(G.rho * G.two_rho) < CUTOFF,
+
+it's assumed that is_unitary_to_ht is faster. Setting CUTOFF :=1
+means always is_unitary_to_ht, and CUTOFF:=0 means always
+is_unitary_to_ht.}
+set CUTOFF =rat: 1/10
+
+{if changed to false, then K-characters are computed only to the
+necessary height.  But in at least many cases, that to-height
+computation seems MUCH slower; so the default is "true". But maybe
+things are different at low height???}
 set full_K_char_flag = true
 
 set hash_one_levelCounter = make_counter()
@@ -1390,6 +1394,11 @@ set local_test_GEO_hash_one_level(KGBElt x, ratvec lambda, VertexData vd,
     then () = if {TINY CASE} #LF[0]=1
     	      then return one_param_test(parameter(x,lambda,Lvd.list[LF[0][0][0]]), Uhash)
 	      fi
+    then htFrac = height(parameter(x,lambda,0*lambda))/(G.rho * G.two_rho_check)
+    then temp_K_char_flag = if htFrac < CUTOFF
+    	 		    then false
+			    else full_K_char_flag
+			    fi
     then vertexDiff = #Lvd.list/#vd.list
     then approxVertexDiff = vertexDiff.numer*100\vertexDiff.denom
     then () = if approxVertexDiff < vert_diff_cutoff and revert_flag
@@ -1446,7 +1455,7 @@ set local_test_GEO_hash_one_level(KGBElt x, ratvec lambda, VertexData vd,
 		  prints("testing level = ", ONE, ", final level = ",LAST, "; heights = ", hts, new_line)
 	       fi
    then pol_hash_one_ht = KTypePol_hash:
-   	if full_K_char_flag
+   	if temp_K_char_flag
 	then pol_hash
 	else make_KTypePol_hash() {to hold K_chars to height one_ht = hts[ONE]}
 	fi
@@ -1477,7 +1486,7 @@ set local_test_GEO_hash_one_level(KGBElt x, ratvec lambda, VertexData vd,
 				{is_unitary_to_hts(p,hts[1:ONE+1]))}
 				{is_unitary_to_ht(p,one_ht)}
 	else {get K-type formulas for all vertices and edges}
-    	     let LFDKH = if full_K_char_flag
+    	     let LFDKH = if temp_K_char_flag
 	     	       	 then localFD_KHash_01(x,lambda,Lvd,pol_hash, LF)
 			 else localFD_KHash_01(x, lambda, Lvd, one_ht, pol_hash_one_ht, LF)
 			 fi
@@ -1488,7 +1497,7 @@ set local_test_GEO_hash_one_level(KGBElt x, ratvec lambda, VertexData vd,
 	 	  else is_unitary_to_ht(p,one_ht)
 	 	  {to_ht is definitely 2% slower for F4 spherical, 10% slower for Sp(10) spherical}
 	 	  fi
-    	     then ((eq,gr),IUCL,CLBF) = if full_K_char_flag
+    	     then ((eq,gr),IUCL,CLBF) = if temp_K_char_flag
 	     	  		      	then localGraphK(LFDKH, pol_hash, one_ht)
 					else localGraphK(LFDKH)
 					fi
@@ -1555,7 +1564,7 @@ set local_test_GEO_hash_one_level(KGBElt x, ratvec lambda, VertexData vd,
        	       	   		      		      unitary_by_dim);}
 		prints("number of tests so far = ",unitary_test_counter.use_count())
 	      fi
-    then () = LFDKH:= if full_K_char_flag
+    then () = LFDKH:= if temp_K_char_flag
     	      	      then LFDKH
 		      else extend_K_characters(x, lambda, Lvd, LFDKH, pol_hash)
 		      fi
@@ -1658,11 +1667,17 @@ unitary_to_ht.}
 set local_test_GEO_hash_bottom_layer(KGBElt x, ratvec lambda, VertexData vd,
     VertexData Lvd, [[FacetVertsIndex]] LF,  steady_bottom_data bott_data,
     	       KTypePol_hash pol_hash, Param_hash Uhash) = [Param]:
-    let G = x.real_form, thetaMinus = x.involution - 1, start = elapsed_ms()
-    then () = if height(parameter(x,lambda,0*lambda)) = 0 {fine K-type in quasisplit G}
+    let G = x.real_form, thetaMinus = x.involution - 1, start = elapsed_ms(),
+    	ht = height(parameter(x,lambda,0*lambda))
+    then () = if ht = 0 {fine K-type in quasisplit G}
     	      then return local_test_GEO_hash_one_level(x, lambda, vd, Lvd, LF,
 	      	   	  				   pol_hash, Uhash)
 	      fi
+    then htFrac = ht/(G.rho * G.two_rho_check)
+    then temp_K_char_flag= if htFrac < CUTOFF
+    	 		   then false
+			   else full_K_char_flag
+			   fi
     then vertexDiff = #Lvd.list/#vd.list
     then approxVertexDiff = vertexDiff.numer*100\vertexDiff.denom
     then r = rank(thetaMinus)
@@ -1716,18 +1731,18 @@ set local_test_GEO_hash_bottom_layer(KGBElt x, ratvec lambda, VertexData vd,
 		  prints("testing height = ", qhts, new_line)
 	       fi
    then pol_hash_one_ht = KTypePol_hash:
-   	if full_K_char_flag
+   	if temp_K_char_flag
 	then pol_hash
 	else make_KTypePol_hash() {to hold K_chars to height one_ht}
 	fi
       {next add K-chars to height one_ht for vertices and edges}
    then LFDKH = [[FacetVertsKHash]]:
-   	if full_K_char_flag
+   	if temp_K_char_flag
 	then localFD_KHash_01(x,lambda, Lvd, pol_hash, LF)
 	else localFD_KHash_01(x, lambda, Lvd, one_ht, pol_hash_one_ht, LF)
 	fi
    then ((eq,gr),IUCL,CLBF) =
-   	if full_K_char_flag
+   	if temp_K_char_flag
 	then localGraphK(LFDKH, pol_hash, one_ht)
 	else localGraphK(LFDKH)
 	fi
@@ -1800,7 +1815,7 @@ set local_test_GEO_hash_bottom_layer(KGBElt x, ratvec lambda, VertexData vd,
        	       	   		      		      unitary_by_dim);}
 		prints("number of tests so far = ",unitary_test_counter.use_count())
 	      fi
-    then () = LFDKH:= if full_K_char_flag
+    then () = LFDKH:= if temp_K_char_flag
     	      	      then LFDKH
     	      	      else extend_K_characters(x, lambda, Lvd, LFDKH, pol_hash)
 		      fi

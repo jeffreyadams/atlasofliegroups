@@ -144,19 +144,13 @@ set make_QRF_sig_tables () = QRF_sig_tables:
      	let RF = real_form_hash.size()
 	then rf = real_form_hash.match(mu.real_form)
 	then () = if rf = RF {haven't seen this quasisplit form before}
-	     	  then let () = param_hashes := (param_hashes next param_hashes:= [])
-		       	       	 	     #make_Param_hash()
-		       then () = K_type_hashes := (K_type_hashes next K_type_hashes:= [])
-		       	       	 	     #make_KType_hash()
-		       then () = K_type_pol_hashes := (K_type_pol_hashes next K_type_pol_hashes:= [])
-		       	       	 	     #make_KTypePol_hash()
-		       then () = heights := (heights next heights := [])#next_heights(mu.real_form)
-		       { then () = if heights[rf] != next_heights(mu.real_form) then prints(mu.real_form) fi}
-		       then () = sigs := (sigs next sigs := [])
-		       	    	     # []
-		       then () = branches #:= null(0){(branches next branches := [])
-		       	    	     # []}
-		       in ()
+	     	  then param_hashes := (param_hashes next param_hashes:= []) #make_Param_hash();
+		       K_type_hashes := (K_type_hashes next K_type_hashes:= []) #make_KType_hash();
+		       K_type_pol_hashes := (K_type_pol_hashes next K_type_pol_hashes:= [])
+		       	       	 	     #make_KTypePol_hash();
+		       heights := (heights next heights := [])#next_heights(mu.real_form);
+		       sigs := (sigs next sigs := []) # [];
+		       branches #:= null(0)
 		  fi
 	then KTYPENUM = K_type_hashes[rf].size()
 	then ktypenum = K_type_hashes[rf].match(mu)
@@ -179,17 +173,13 @@ set make_QRF_sig_tables () = QRF_sig_tables:
      	let RF = real_form_hash.size()
 	then rf = real_form_hash.match(mu.real_form)
 	then () = if rf = RF
-	     	  then let () = param_hashes := (param_hashes next param_hashes:= [])
-		       	       	 	     #make_Param_hash()
-		       then () = K_type_hashes := (K_type_hashes next K_type_hashes:= [])
-		       	       	 	     #make_KType_hash()
-		       then () = K_type_pol_hashes := (K_type_pol_hashes next K_type_pol_hashes:= [])
-		       	       	 	     #make_KTypePol_hash()
-		       then () = heights := (heights next heights := [])#next_heights(mu.real_form)
-		       {then () = if heights[rf] != next_heights(mu.real_form) then prints(mu.real_form) fi}
-		       then () = sigs := (sigs next sigs := [])# []
-		       then () = branches #:= null(0)
-		       in ()
+	     	  then param_hashes := (param_hashes next param_hashes:= []) #make_Param_hash();
+		       K_type_hashes := (K_type_hashes next K_type_hashes:= []) #make_KType_hash();
+		       K_type_pol_hashes := (K_type_pol_hashes next K_type_pol_hashes:= [])
+		       	       	 	     #make_KTypePol_hash();
+		       heights := (heights next heights := [])#next_heights(mu.real_form);
+		       sigs := (sigs next sigs := [])# [];
+		       branches #:= null(0)
 		  fi
 	then KTYPENUM = K_type_hashes[rf].size()
 	then ktypenum = K_type_hashes[rf].match(mu)
@@ -214,15 +204,11 @@ set make_QRF_sig_tables () = QRF_sig_tables:
 	let RF = real_form_hash.size()
 	then rf = real_form_hash.match(p.real_form)
 	then () = if rf = RF
-	     	  then let () = param_hashes := (param_hashes next param_hashes:= [])
-		       	       	 	     #make_Param_hash()
-		       then () = K_type_pol_hashes := (K_type_pol_hashes next K_type_pol_hashes:= [])
-		       	       	 	     #make_KTypePol_hash()
-		       then () = heights := (heights next heights := [])#next_heights(p.real_form)
-		       {then () = if heights[rf] != next_heights(p.real_form) then prints(p.real_form) fi}
-		       then () = sigs := (sigs next sigs := [])
-		       	    	     # []
-		       in ()
+	     	  then param_hashes := (param_hashes next param_hashes:= []) #make_Param_hash();
+		       K_type_pol_hashes := (K_type_pol_hashes next K_type_pol_hashes:= [])
+		       	       	 	     #make_KTypePol_hash();
+		       heights := (heights next heights := [])#next_heights(p.real_form);
+		       sigs := (sigs next sigs := []) # []
 		  fi
 	then PNUM = param_hashes[rf].size()
 	then pnum = param_hashes[rf].match(p)
@@ -247,15 +233,11 @@ set make_QRF_sig_tables () = QRF_sig_tables:
  	let RF = real_form_hash.size()
 	then rf = real_form_hash.match(p.real_form)
 	then () = if rf = RF
-	     	  then let () = param_hashes := (param_hashes next param_hashes:= [])
-		       	       	 	     #make_Param_hash()
-		       then () = K_type_pol_hashes := (K_type_pol_hashes next K_type_pol_hashes:= [])
-		       	       	 	     #make_KTypePol_hash()
-		       then () = heights := (heights next heights:=[])#next_heights(p.real_form)
-		       {then () = if heights[rf] != next_heights(p.real_form) then prints(p.real_form) fi}
-		       then () = sigs := (sigs next sigs := [])
-		       	    	     #[]
-		       in ()
+	     	  then param_hashes := (param_hashes next param_hashes:= []) #make_Param_hash();
+		       K_type_pol_hashes := (K_type_pol_hashes next K_type_pol_hashes:= [])
+		       	       	 	     #make_KTypePol_hash();
+		       heights := (heights next heights:=[])#next_heights(p.real_form);
+		       sigs := (sigs next sigs := [])#[]
 		  fi
 	then PNUM = param_hashes[rf].size()
 	then pnum = param_hashes[rf].match(p)
@@ -265,8 +247,7 @@ set make_QRF_sig_tables () = QRF_sig_tables:
 		       then () = bottom_sig_time +:= elapsed_ms() - start_sig
 		       then (p,q) = (K_type_pol_hashes[rf].match(pos), K_type_pol_hashes[rf].match(neg))
 		       in sigs[rf] := if #sigs[rf] = 0 then [[p,q]]
-		     	      	 else (sigs[rf] next sigs[rf] := [])
-		       		    # [p,q]
+		     	      	      else (sigs[rf] next sigs[rf] := [])# [p,q]
 				      fi
 		  fi
 	then () = assert(real_form_hash.size() = #K_type_pol_hashes,"QRF_sig_table damaged")
