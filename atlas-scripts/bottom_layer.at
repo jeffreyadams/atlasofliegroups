@@ -489,6 +489,21 @@ set all_even_lambda_differential_0(RootDatum rd, mat theta) = [vec]:
 	     fi
 	od.##
 set mbefTime = int: 0
+{just checks whether it's cohom ind from unitary; doesn't check good range.
+So could be wrong in either direction}
+set coh_ind_is_unitary(Param p) = bool:
+    let mu = LKTs(p)[0], G = p.real_form
+    then (,pL) = theta_stable_quasi_data(p)
+    then derpLjs = derived_factor_params(pL) {one for each derived simple factor derLj}
+    then test = all(for derpLj in derpLjs do is_unitary(derpLj) od)
+    then () = if is_good(pL,G)
+    	      then return test
+	      fi
+    then () = if is_weakly_good(pL,G) and test
+    	      then return true
+	      fi
+    in is_unitary(p)
+
 {false guarantees not unitary, but true does not guarantee unitary}
 {LKdata[j] is [(tauj,tauLj)]: tauLj is an Lj\cap K-type inducing to a bottom layer tauj of p.}
 set min_bottom_elim_factors(Param p, [[(KType,KType)]] LKdata) = bool:

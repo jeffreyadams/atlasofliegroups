@@ -1655,6 +1655,8 @@ NOT use bottom_layer. Leaving this at 1 means always use bottom_layer,
 to negative means never bottom layer.}
 set bottom_length_frac = rat: 1{??}
 
+{if true, use coh_ind_is_unitary in final tests; else is_unitary} 
+set coh_ind_tester_flag = true
 {how many levels of bottom layer K-types to use}
 {this now has no effect; essentially hard coded in min_L_bottom_factors, in
 argument of next_heights}
@@ -1821,9 +1823,14 @@ set local_test_GEO_hash_bottom_layer(KGBElt x, ratvec lambda, VertexData vd,
 		      fi
     then start=elapsed_ms()
     { then () = long_out_flag := long_out_temp_flag }
+    then tester = (Param->bool): (Param p) bool:
+	      if coh_ind_tester_flag
+	      then coh_ind_is_unitary(p)
+	      else is_unitary(p)
+	      fi
     then UParams = [Param]:
-         let ((eq,gr),IUCL,CLBF) = localGraphK(LFDKH)
-         in local_test_hash(x, lambda, Lvd, LFDKH, eq, gr, CLBF, Uhash)
+         let ((eq,gr),IUCL,CLBF) = localGraphK(LFDKH) {next line: use tester}
+         in local_test_hash(x, lambda, Lvd, LFDKH, eq, gr, CLBF, Uhash, tester)
     then time = elapsed_ms() - start
     then () = if time_verbose
 	      then prints("     ", print_time_string(time),
