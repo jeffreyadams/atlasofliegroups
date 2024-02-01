@@ -492,17 +492,21 @@ set mbefTime = int: 0
 {just checks whether it's cohom ind from unitary; doesn't check good range.
 So could be wrong in either direction}
 set coh_ind_is_unitary(Param p) = bool:
-    let mu = LKTs(p)[0], G = p.real_form
-    then (,pL) = theta_stable_quasi_data(p)
+    let {mu = LKTs(p)[0],} G = p.real_form
+    then (Q,pL) = theta_stable_quasi_data(p)
+    then gamma = pL.infinitesimal_character + G.rho - pL.real_form.rho
+    then () = if not (is_dominant(G,gamma))
+    	      then return is_unitary_hash(p)
+	      fi
     then derpLjs = derived_factor_params(pL) {one for each derived simple factor derLj}
-    then test = all(for derpLj in derpLjs do is_unitary(derpLj) od)
-    then () = if is_good(pL,G)
+    then test = all(for derpLj in derpLjs do is_unitary_hash(derpLj) od)
+    then () = if all(for j in Q.S do gamma*G.simple_coroots[j] > 0 od) {is_good(pL,G)}
     	      then return test
 	      fi
-    then () = if is_weakly_good(pL,G) and test
+    then () = if test
     	      then return true
 	      fi
-    in is_unitary(p)
+    in is_unitary_hash(p)
 
 {false guarantees not unitary, but true does not guarantee unitary}
 {LKdata[j] is [(tauj,tauLj)]: tauLj is an Lj\cap K-type inducing to a bottom layer tauj of p.}

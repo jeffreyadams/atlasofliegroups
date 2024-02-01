@@ -4,7 +4,7 @@
 <hash.at { for KTypePol_hash }
 <goodroots.at { for is_pos_on_LKTs }
 <sort.at { for no_reps }
-<to_ht.at { for is_unitary_to_ht }
+{<to_ht.at for is_unitary_to_ht }
 <time.at { for print_time_string }
 <Dirac.at { to restrict to local facets subject to Dirac inequality }
 <lietypes.at { for Lie_type_matrix }

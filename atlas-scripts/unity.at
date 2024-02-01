@@ -299,21 +299,21 @@ set next_heightB(Param p) = int:
 {. tests unitarity first on LKTs, then everywhere .}
 set is_unitary_test(Param p) = bool:
     is_pos_on_LKTs(p) and
-    is_unitary(p)
+    is_unitary_hash(p)
 
 {. tests unitarity first on LKTs, then on next-to-lowest, then
 everywhere .}
 set is_unitary_test_next(Param p) = bool:
     is_pos_on_LKTs(p) and
     is_unitary_to_ht(p, next_height(p)) and
-    is_unitary(p)
+    is_unitary_hash(p)
 
 {. tests unitarity first on LKTs, then on m next-to-lowest, then
 everywhere .}
 set is_unitary_test_next(Param p,int m) = bool:
     is_pos_on_LKTs(p) and
     is_unitary_to_hts(p, next_heights(p,m)) and
-    is_unitary(p)
+    is_unitary_hash(p)
  
 
 {. tests unitarity first on LKTs, then on next-to-lowest up to
@@ -326,7 +326,7 @@ set is_unitary_test_nextB(Param p) = bool:
     if n = -1 then true
     else
     is_unitary_to_ht(p,n) and
-    is_unitary(p)
+    is_unitary_hash(p)
     fi
     )
 
@@ -335,7 +335,7 @@ lowest term}
 {. same as previous if next_height N is known .}
 set is_unitary_test(Param p, int N) = bool:
     is_unitary_to_ht(p, N) and
-    is_unitary(p)
+    is_unitary_hash(p)
 
 set is_unitary_test(Param p, int N, KTypePol_hash cert_hash) = bool:
     is_pos_on_LKTs(p) and
@@ -345,7 +345,7 @@ set is_unitary_test(Param p, int N, KTypePol_hash cert_hash) = bool:
 set is_unitary_test(Param p, int N1, int N2) = bool:
     is_unitary_to_ht(p, N1) and
     is_unitary_to_ht(p, N2) and
-    is_unitary(p)
+    is_unitary_hash(p)
 
 set is_unitary_test(Param p, int N1, int N2, KTypePol_hash cert_hash) = bool:
     is_unitary_to_ht(p, N1, cert_hash) and
@@ -356,7 +356,7 @@ set is_unitary_test(Param p, int N1, int N2, int N3) = bool:
     is_unitary_to_ht(p, N1) and
     is_unitary_to_ht(p, N2) and
     is_unitary_to_ht(p, N3) and
-    is_unitary(p)
+    is_unitary_hash(p)
 
 set is_unitary_test(Param p, [int] Ns) = bool:
     for N in Ns
@@ -364,7 +364,7 @@ set is_unitary_test(Param p, [int] Ns) = bool:
        then return false
        fi
     od;
-    is_unitary(p)
+    is_unitary_hash(p)
 
 set is_unitary_test(Param p, [int] Ns, KTypePol_hash cert_hash) = bool:
     for N in Ns
