@@ -153,7 +153,7 @@ set hermitian_form_irreducible_to_ht (Param p,int N) = KTypePol:
   fi.convert_cform_hermitian
 
 { compute Hermitian form to ht on p, and report if it is unitary }
-set is_unitary_to_ht (Param p,int N) = bool:
+set is_unitary_to_ht_base (Param p,int N) = bool:
   unitary_test_counter.use();
   let start_time = elapsed_ms(), answer =
       if N < 0 then is_unitary(p)
@@ -169,13 +169,101 @@ set is_unitary_to_ht_old (Param p,int N) = bool:
       p.is_hermitian and hermitian_form_irreducible_to_ht_old(p,N).is_pure
   then () = unitaryTime+:=elapsed_ms() - start_time
   in answer
-  
+
 { compute Hermitian form to ht on p, report if it is unitary,
   and record certificate }
 set is_unitary_to_ht (Param p,int N, KTypePol_hash cert_hash) = bool:
   unitary_test_counter.use();
   p.is_hermitian and is_pure_cert_hash(hermitian_form_irreducible_to_ht(
   p,N), cert_hash)
+
+{table of is_unitary results, indexed by Param}
+set_type
+[ unitarity_to_hts_bool_hash =
+( ( -> int) heights_size {number of heights stored}
+  , ( -> vec) heights_list
+  , ( -> vec) count {entry i is number of Param's at ith height}
+  , ( -> ) clear
+  , ((Param,int)->bool) entry
+  , ((Param,int)->) append
+  , ((int,int) -> Param) param_index {for (i,j), returns Param #j
+    	       	  	 	     from ith list}
+  , ((int,int) -> bool) data_index
+  )
+]
+
+set make_unitarity_to_hts_bool_hash () = unitarity_to_hts_bool_hash:
+(  let heights_list = vec: []
+   then param_hashes = [Param_hash]: []
+   then bool_datas = [[bool]] : []
+   then clear() = void:
+   	let () = heights_list := []
+	then () = param_hashes := []
+ 	then () = bool_datas:=[]
+       	in ()
+   in
+   ( ( -> int): { heights_size } @int: #heights_list
+   , ( -> vec): {heights_list} @vec: for data in bool_datas
+       	  		       	     do #data
+				     od
+   , ( -> vec): { count } @vec: for data in bool_datas
+       	  	  	  	  do count(data)
+				  od
+   , ( -> ): {clear} clear
+   , ((Param,int)-> bool): {entry} (Param p, int h) bool:
+     begin
+	let M = #heights_list
+	then m = find(heights_list, h)
+	then () = if m = -1 {we haven't seen this height before}
+	     	  then bool_datas:= (bool_datas next bool_datas:= [])#[];
+		       param_hashes:=(param_hashes next param_hashes:=[])
+		       				   #make_Param_hash();
+		       heights_list:= (heights_list next heights_list := [])
+		       		      #h;
+		       m:=M
+		  fi
+	then N = param_hashes[m].size()
+	then n = param_hashes[m].match(p)
+	then () = if n = N {we haven't seen this p at this height}
+	     	  then bool_datas[m]:=(bool_datas[m] next bool_datas[m] :=[])
+		  		#is_unitary_to_ht_base(p,h)
+		  fi
+	then () =  assert(#bool_datas = #heights_list,
+		       	      "unitarity_to_hts_bool_hash is damaged")
+	then () = assert(#param_hashes = #heights_list,
+		       	      "unitarity_to_hts_bool_hash is damaged")
+	then () = assert(#bool_datas[m] = param_hashes[m].size(),
+	     	  	      "unitarity_to_hts_bool_hash is damaged")
+	in bool_datas[m][n]
+     end
+   , ((Param,int)->): {append } (Param p, int h):
+     begin
+	let M = #heights_list
+	then m = find(heights_list, h)
+	then () = if m = -1 {we haven't seen this height before}
+	     	  then bool_datas:= (bool_datas next bool_datas:= [])#[];
+		       param_hashes:=(param_hashes next param_hashes:=[])
+		       				   #make_Param_hash();
+		       heights_list:= (heights_list next heights_list := [])
+		       		      #h;
+		       m:=M
+		  fi
+	then N = param_hashes[m].size()
+	then n = param_hashes[m].match(p)
+	in if n = N {we haven't seen this p at this height}
+	   then bool_datas[m]:=(bool_datas[m] next bool_datas[m] :=[])
+		  		#is_unitary_to_ht_base(p,h)
+	   fi
+     end
+   , ((int,int) -> Param): {param_index} (int i, int j):
+     		param_hashes[i].index(j)
+   , ((int,int) -> bool): {data_index} (int i, int j): bool_datas[i][j]
+  )
+)
+
+set unitarity_to_hts_hash = make_unitarity_to_hts_bool_hash ()
+
+set is_unitary_to_ht(Param p, int h) =  unitarity_to_hts_hash.entry(p,h)
 
 set is_unitary_to_hts(Param p, [int] Ns) = bool:
     { is_pos_on_LKTs(p) and }
@@ -186,3 +274,4 @@ set is_unitary_to_hts(Param p, [int] Ns) = bool:
        fi
     od;
     true
+
