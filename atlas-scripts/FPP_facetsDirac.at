@@ -1006,7 +1006,6 @@ set low_FPP_facets_BB(RealForm G) = [[FacetVertsIndex]]:
  	    in low_facets
     fi
 
-
 { m is a class known to be nonunitary; update classes above using
 graph; label as "Ffrom"##tail}
 { first list in toDo all n covering m; then what covers those...
@@ -1099,7 +1098,7 @@ set thetaAct2 (KGBElt x, ratvec lambda, VertexData vd,  (vec->int) FlippedEdgeLo
     in answer
 
 {want a faster version using already computed stuff?}
-set local_vertices(Param p, VertexData vd, VertexData Lvd, vec Perm) = FacetVerts:
+{set local_vertices(Param p, VertexData vd, VertexData Lvd, vec Perm) = FacetVerts:
     let G = p.real_form, gamma = p.infinitesimal_character
     then list = [ratvec]: {these are vertices in vd}
     	 if is_equal_rank(G) then facet_verts(G, gamma)
@@ -1109,7 +1108,7 @@ set local_vertices(Param p, VertexData vd, VertexData Lvd, vec Perm) = FacetVert
 	 fi
     then perm = for v in list do Perm[vd.lookup(v)] od
     then () = assert(perm.>=,"p appears not to be a hermitian parameter")
-    in for v@j in list do (v + vd.list[perm[j]])/2 od.no_reps
+    in for v@j in list do (v + vd.list[perm[j]])/2 od.no_reps}
 
 set local_vertices2(Param p, VertexData vd, VertexData Lvd, PermOrderTwo Perm) = FacetVerts:
     let G = p.real_form, gamma = p.infinitesimal_character
@@ -1347,7 +1346,7 @@ set DiracTest(Param p) = bool:
 gives only 3 elts of vlistAct: need to get rid of 3 repetitions.
 
 parameter(x,lambda,v) (v in Lvd.list) may NOT be hermitian in unequal rank.}
-set localFD_Lvd \
+{set localFD_Lvd \
   ( KGBElt x, ratvec lambda, VertexData vd) =
   (VertexData, vec, vec):
 (   {if facet_verbose
@@ -1391,7 +1390,7 @@ set localFD_Lvd \
     then () = if time_verbose then prints("     ",print_time_string(elapsed_ms() - start),
     	      	 		     " for localFD_Lvd") fi
     in (Lvd, Perm, mapAct)
-)
+)}
 
 {creates LVD, map Perm on FPPverts at (x,lambda), mapAct from FPPverts to local verts}
 {in U(3,2), x_open, #vlist = 16: 4 fixed, 6 pairs flipped by Perm. The set of 6 pairs
@@ -1445,12 +1444,12 @@ set localFD_000(VertexData Lvd) = [[FacetVertsIndex]]:
 
 {creates vd, LVD, map Perm on FPPverts at (x,lambda), mapAct from FPPverts to local
  verts, and 0-facets for (x,lambda)}
-set localFD_000 \
+{set localFD_000 \
   ( KGBElt x, ratvec lambda, VertexData vd) =
   (VertexData, VertexData, vec, vec, [[FacetVertsIndex]]):
 (   let (Lvd, Perm, mapAct) = localFD_Lvd(x, lambda, vd)
   in (vd, Lvd, Perm, mapAct, sort(x.real_form, Lvd,[ for v@k in Lvd.list do [k] od ],2))
-)
+)}
 
 {creates vd, LVD, map Perm on FPPverts at (x,lambda), mapAct from FPPverts to local
  verts, and 0-facets for (x,lambda)}
@@ -1531,7 +1530,7 @@ set localFD_KHash12 \
 
 {takes local vertices LF, and adds local 1-d facets; so output is size
 2. Only depends on x.involution and dlambda. MAY NOT BE HERMITIAN}
-set localFD_1\
+{set localFD_1\
   ( KGBElt x, ratvec lambda, VertexData vd, VertexData Lvd, vec Perm,
   vec mapAct, [[FacetVertsIndex]] LF) = [[FacetVertsIndex]]:
 (   assert(#LF = 1,"localFD_1 takes only local VERTEX list");
@@ -1581,7 +1580,7 @@ set localFD_1\
        			     		  " for localFD_1") fi;
        answer
  )
-
+}
 
 
 {takes local vertices LF, and adds local 1-d facets; so output is size
@@ -1642,13 +1641,13 @@ set localFD_12\
 
 {computes local 1-d facets; so output is size
 2. Only depends on x.involution and dlambda. PARAMS MAY NOT BE HERMITIAN!}
-set localFD_01 \
+{set localFD_01 \
   ( KGBElt x, ratvec lambda, VertexData vd) = (VertexData, vec, vec, [[FacetVertsIndex]]):
  let start = elapsed_ms(), (Lvd, Perm, mapAct) = localFD_Lvd(x,lambda,vd)
  then LF = localFD_000(Lvd)
  then () = if time_verbose then prints("     ",print_time_string(elapsed_ms()-start),
       	      		   	" for localFD_01") fi
- in (Lvd, Perm, mapAct, localFD_1(x,lambda,vd, Lvd, Perm,  mapAct, LF))
+ in (Lvd, Perm, mapAct, localFD_1(x,lambda,vd, Lvd, Perm,  mapAct, LF))}
 
 {computes local 1-d facets; so output is size
 2. Only depends on x.involution and dlambda. PARAMS MAY NOT BE HERMITIAN!}
@@ -1662,7 +1661,7 @@ set localFD_012 \
  in (Lvd, Perm2, mapAct, localFD_12(x,lambda,vd, Lvd, Perm2,  mapAct, LF)) {???}
  
 {takes local vertices and edges LF, and imposes Dirac AND hermitian}
-set localFD_01Dirac\
+{set localFD_01Dirac\
   ( KGBElt x, ratvec lambda, VertexData vd, VertexData Lvd, vec Perm,
   vec mapAct, [[FacetVertsIndex]] LF) = [[FacetVertsIndex]]:
 (   assert(#LF = 2,"localFD_01Dirac takes only vertex and edge list");
@@ -1704,11 +1703,11 @@ set localFD_01Dirac\
        if(time_verbose) then prints("     ",print_time_string(elapsed_ms() - start),
        			     		  " for localFD_01Dirac") fi;
        answer
- )
+ )}
 
 {takes local data and computes vertices and edges, imposing hermitian,
 pos on LKTs, and Dirac}
-set localFD_1Dirac\
+{set localFD_1Dirac\
   ( KGBElt x, ratvec lambda, VertexData vd, VertexData Lvd, vec Perm,
   vec mapAct) = [[FacetVertsIndex]]:
 (   { if facet_verbose
@@ -1782,12 +1781,12 @@ set localFD_1Dirac\
        if(time_verbose) then prints("     ",print_time_string(elapsed_ms() - start),
        			     		  " for localFD_1Dirac") fi;
        answer
- )
+ )}
 
 
   {takes local data and global 0 to 3 facets and computes vertices and edges, imposing hermitian,
 pos on LKTs, and Dirac}
-set localFD_1Dirac\
+{set localFD_1Dirac\
   ( KGBElt x, ratvec lambda, VertexData Lvd, vec Perm, vec mapAct,
     [[FacetVertsIndex]] globalFacets) = [[FacetVertsIndex]]:
 (   if facet_verbose
@@ -1846,7 +1845,7 @@ set localFD_1Dirac\
        if(time_verbose) then prints("     ",print_time_string(elapsed_ms() - start),
                                           " for localFD_1Dirac") fi;
        answer
-)
+)}
 
 
 {takes local data and low global facets and computes vertices and edges, imposing
@@ -2141,7 +2140,7 @@ set localFD_KHash_01 (KGBElt x, ratvec lambda, VertexData Lvd, int HT, KTypePol_
 {takes local facets of dimension \le b-1, and adds facets from
 b to (t-1)-dimensional FPP-facets. Need to be sure that input is based only
 on FPP facets up to dim b-1, or repetitions can appear in output.}
-set localFD_bt \
+{set localFD_bt \
   ( KGBElt x, ratvec lambda, VertexData vd, VertexData Lvd, vec Perm, vec mapAct,
     [[FacetVertsIndex]] LF, int b, int t) = [[FacetVertsIndex]]:
 (   if facet_verbose
@@ -2196,7 +2195,7 @@ set localFD_bt \
 			    " facet counts are ",for j:dim+1 do #LF[j] od) fi
 		od
     in sort(G, Lvd, LF, 0)
-)
+)}
 
 {takes list of 0- and d-diml facets, with d \ge 1, and builds all
 d+1-diml facets having all faces in the d-diml list. The int e is the
@@ -2257,8 +2256,8 @@ Roughly input goes from 0 to b-1 (size b), output 0 to t-1 (size t).
 
 Need to assume b \ge 2, so have a list of potentially unitary facets and edges.}
 set localFD_KHashbt_lookDownGEO \
-  ( KGBElt x, ratvec lambda, VertexData Lvd, {vec Perm, vec mapAct,}
-    [[FacetVertsKHash]] LFKH, int b, int t, KTypePol_hash ktp_hash) = [[FacetVertsKHash]]:
+  ( KGBElt x, ratvec lambda, VertexData Lvd, [[FacetVertsKHash]] LFKH,
+    int b, int t, KTypePol_hash ktp_hash) = [[FacetVertsKHash]]:
 (   {if facet_verbose
     then prints(new_line,"start localFD_Khashbt_lookDownGEO, b = ",b,", t = ",t)
     fi;}
@@ -2297,8 +2296,8 @@ just calculate K characters to HT
 
 Need to assume b \ge 2, so have a list of potentially unitary facets and edges.}
 set localFD_KHashbt_lookDownGEO \
-  ( KGBElt x, ratvec lambda, VertexData Lvd, {vec Perm, vec mapAct,}
-    [[FacetVertsKHash]] LFKH, int b, int t, int HT, KTypePol_hash ktp_hash) = [[FacetVertsKHash]]:
+  ( KGBElt x, ratvec lambda, VertexData Lvd, [[FacetVertsKHash]] LFKH,
+    int b, int t, int HT, KTypePol_hash ktp_hash) = [[FacetVertsKHash]]:
 (   if facet_verbose
     then prints(new_line,"start localFD_Khashbt_lookDownGEO, b = ",b,", t = ",t)
     fi;
@@ -2335,7 +2334,7 @@ Roughly input goes from 0 to b-1 (size b), output 0 to t-1 (size t).
 
 Need to assume b \ge 2, so have known vertices and edges.}
 set localFbt_lookDown_GEO \
-  ( KGBElt x, ratvec lambda, VertexData vd, VertexData Lvd, {vec Perm, vec mapAct,}
+  ( KGBElt x, ratvec lambda, VertexData vd, VertexData Lvd,
     [[FacetVertsIndex]] LF, int b, int t) = [[FacetVertsIndex]]:
 (   if facet_verbose
     then prints(new_line,"start localFDbt_lookDown_GEO")
@@ -2351,7 +2350,7 @@ set localFbt_lookDown_GEO \
 
 {takes local data to height level, dimension \le b-1, and adds facets from
 b to (t-1)-dimensional FPP-facets; make sure subfacets are also in list}
-set localFD_KHashbt_lookDown \
+{set localFD_KHashbt_lookDown \
   ( KGBElt x, ratvec lambda, VertexData vd, VertexData Lvd, vec Perm, vec mapAct,
     [[FacetVertsKHash]] LFKH, int t, KTypePol_hash ktp_hash) = [[FacetVertsKHash]]:
 (   if facet_verbose
@@ -2430,10 +2429,10 @@ set localFD_KHashbt_lookDown \
 	od
     then dAct = last(for j:#LFKHnew do #LFKHnew[j] > 0 od)
     in sort(G, Lvd, LFKHnew[:dAct+1], 2)
-)
+)}
 
-set extend_K_characters(KGBElt x, ratvec lambda, VertexData Lvd, {vec Perm,
-    vec mapAct,} [[FacetVertsKHash]] LFKH, KTypePol_hash ktp_hash) = [[FacetVertsKHash]]:
+set extend_K_characters(KGBElt x, ratvec lambda, VertexData Lvd,
+    [[FacetVertsKHash]] LFKH, KTypePol_hash ktp_hash) = [[FacetVertsKHash]]:
     {if facet_verbose
     then prints(new_line,"start extend_K_characters")
     fi;}
@@ -2461,8 +2460,8 @@ set extend_K_characters(KGBElt x, ratvec lambda, VertexData Lvd, {vec Perm,
      	       	  " for extend_K_characters") fi}
      in answer
 
-set extend_K_characters(KGBElt x, ratvec lambda, VertexData Lvd, {vec Perm,
-    vec mapAct,} [[FacetVertsKHash]] LFKH, int ht, KTypePol_hash ktp_hash) =
+set extend_K_characters(KGBElt x, ratvec lambda, VertexData Lvd,
+    [[FacetVertsKHash]] LFKH, int ht, KTypePol_hash ktp_hash) =
     	[[FacetVertsKHash]]:
     if facet_verbose
     then prints(new_line,"start extend_K_characters to height ",ht)

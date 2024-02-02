@@ -89,60 +89,9 @@ set FPP_lambdas(KGBElt x) = [ratvec]:
 	  fi
        od.##
 
-{set all_FPP_vertices({RootDatum}RealForm G) = [ratvec]:
-    let factors = for S in simple_factors(G)
-    		  do FPP_local_vertices(G){FPP_vertices(S,-1)}
-		  od
-    in case #factors
-       in [ratvec:null(rank(G))/1],
-       factors[0],
-       for v in factors[0]
-       do for w in factors[1]
-       	  do v+w
-	  od
-       od.##
-       esac}
-
 {each term is a candidate lambda0 (mod comp gp char twists) and the
-corresponding Lvd, Perm, mapAct, LF, with LF the 0 and 1-diml local facets}
-set FPP_lambdas_big(KGBElt x, VertexData vd, mat_hash inv_hash, [vec_hash]
-    dlambda_hashes, [[(VertexData, vec, vec,[[FacetVertsIndex]])]] LvdEtAlia) =
-    		    [(ratvec, VertexData, vec, vec,[[FacetVertsIndex]])]:
-    let G=x.real_form
-    then zeroPol = ParamPol: 0*G.trivial, theta = x.involution
-    then i = inv_hash.lookup(theta)
-    then rho = G.rho, verts = FPP_local_vertices(G)
-    then th1 = theta + 1
-    then lamthlams = [vec]:
-    	 for v in verts
-    	 do if ((th1*v).denom = 1) then [ratvec_as_vec(th1*v)]
-	    else []
-	    fi
-	 od.##.no_reps
-    in [(ratvec, VertexData, vec, vec, [[FacetVertsIndex]])]:
-    	 for lamthlam in lamthlams
-    	 do case vec_solve(th1,lamthlam - th1*rho)
-	    | else [(ratvec,VertexData,vec,vec,[[FacetVertsIndex]])]: []
-	    | solution(lr):
-	      let lambda0 = rho + lr
-	      then dlambda0 = ratvec_as_vec(lambda0 + theta*lambda0)
-    	      then j = dlambda_hashes[i].match(dlambda0)
-              then () = if j = #LvdEtAlia[i]
-                      	then LvdEtAlia[i]:= (LvdEtAlia[i] next LvdEtAlia[i]:=[])#localFD_01(x,lambda0,vd)
-                      	{LvdEtAlia[i]:=LvdEtAlia[i]#localFD_01(x,lambda0,vd)}
-                      	fi
-              then (Lvd, Perm, mapAct,LF) = LvdEtAlia[i][j]
-	      in if #Lvd.list > 0 and
-	      	    1*parameter(x,lambda0,0*lambda0) != zeroPol
-		 then [(lambda0, Lvd, Perm, mapAct,LF)]
-	      	 else []
-		 fi
-	      esac
-	  od.##
-
-{each term is a candidate lambda0 (mod comp gp char twists) and the
-corresponding (Lvd, Perm, mapAct). If x is involution #i (in inv_hash), then ith term
-in Lvd_Perm_mapAct is list of (Lvd,Perm,mapAct) for various dlambda (indexed by
+corresponding (Lvd, Perm2, mapAct). If x is involution #i (in inv_hash), then ith term
+in Lvd_Perm2_mapAct is list of (Lvd,Perm2,mapAct) for various dlambda (indexed by
 dlambda_hashes[i])}
 set FPP_lambdas_big_new(KGBElt x, VertexData vd, mat_hash inv_hash, [vec_hash]
     dlambda_hashes, [[(VertexData, PermOrderTwo, vec)]] Lvd_Perm2_mapAct,
@@ -191,40 +140,6 @@ then () = for x in xs do inv_hash.match(x.involution) od
     in for x in xs
        do FPP_lambdas_big_new(x, vd, inv_hash, dlambda_hashes, Lvd_Perm2_mapAct, FEL)
        od
-
-{each term is a candidate lambda0 (mod comp gp char twists) and the
-corresponding Lvd, Perm, mapAct, LF, with LF the 0 and 1-diml local facets}
-set FPP_lambdas_big_global(KGBElt x, VertexData vd,
-    [[FacetVertsIndex]] global_facets) =
-    	[(ratvec, VertexData, vec, vec,[[FacetVertsIndex]])]:
-    let G=x.real_form
-    then zeroPol = ParamPol: 0*G.trivial, theta = x.involution
-    then rho = G.rho, verts = FPP_local_vertices(G)
-    then th1 = theta + 1
-    then lamthlams = [vec]:
-    	 for v in verts
-    	 do if ((th1*v).denom = 1) then [ratvec_as_vec(th1*v)]
-	    else []
-	    fi
-	 od.##.no_reps
-    in [(ratvec, VertexData, vec, vec, [[FacetVertsIndex]])]:
-    	 for lamthlam in lamthlams
-    	 do case vec_solve(th1,lamthlam - th1*rho)
-	    | else [(ratvec,VertexData,vec,vec,[[FacetVertsIndex]])]: []
-	    | solution(lr):
-	      let lambda0 = rho + lr
-	      then twists = all_lambda_differential_0(x)
-	      in for twist in twists
-	      	 do let lambda = lambda0 + twist
-		    then (Lvd, Perm, mapAct) = localFD_Lvd(x,lambda0+twist,vd)
-		    then LF = localFD_1Dirac(x, lambda, Lvd, Perm,
-		    	     mapAct, global_facets)
-		    in if #LF[0] > 0 then [(lambda, Lvd, Perm, mapAct, LF)]
-		       else []
-		       fi
-		 od.##
-	      esac
-	  od.##
 
 {meant to hold barycenters of unitary facets}
 set unitary_hash = make_Param_hash()
