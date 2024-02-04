@@ -384,93 +384,6 @@ set make_steady_bottom_data () = steady_bottom_data:
   )
 )
 
-{false guarantees not unitary, but true does not guarantee unitary. pairs is (tau, tauL):
-a bottom layer K-type and the corresponding L\cap K-type}
-set min_bottom_elim(Param p, [(KType,KType)] pairs) = bool:
-    let start = elapsed_ms(), (,pL) = theta_stable_quasi_data(p)
-    in if  #pairs = 1  then true
-       else let DL = max(for (,tauL) in pairs do height(tauL) od),
-       	    posLK_time = int:0, multK_time = int:0
-       	    then (posL,negL) = K_signature_irrB(first_param(finalize(pL)),DL)
-	    	 {positive part of the signature on L}
-	    then () = if min_bottom_verbose
-	    	      then let () = posLK_time := elapsed_ms()
-		      	   in prints("LK_sig used ",
-    	    	      	      print_time_string(posLK_time - start))
-		      fi
-	    then DG = max(for(tau,) in pairs do height(tau) od)
-	    then multG = branch_irr(p,DG)
-	    	 {all K-mults to height of largest tau}
-	    then () = if min_bottom_verbose
-	    	      then let () = multK_time := elapsed_ms()
-		      	   in prints("multK used ",
-    	    	      	      print_time_string(multK_time - posLK_time))
-		      fi
-		      {create a list of FUNCTIONS returning a bool. Functions
-		      are only evaluated until false }
-	    then () = if let (, muL) = pairs[0] in posL[muL] = 0
-		      then posL := negL
-		      fi
-	    then answer =  all( for (tau,tauL) in pairs[1:]
-       	       	    do @bool: int_part(posL[tauL]) >= int_part(multG[tau])
-		    od)
-		    {or @bool:int_part...}
-    	    then () = if min_bottom_verbose
-	       	      then prints("min_bottom_elim used ",
-    	    	      	   print_time_string(elapsed_ms() - start))
-	       	      fi
-            in answer
-	fi
-
-{false guarantees not unitary, but true does not guarantee unitary}
-{Here P is the K-character of p, at least to heights of pairs}
-set min_bottom_elim(Param p, [(KType,KType)] pairs, KTypePol P) = bool:
-    let start = elapsed_ms(), (,pL) = theta_stable_quasi_data(p)
-    in if #pairs = 1 then true
-       else let DL = max(for (,muL) in pairs do height(muL) od){,
-       	    posLK_time = int:0, multK_time = int:0}
-	    then (posL, negL) = K_signature_irrB(first_param(finalize(pL)),DL)
-       	    {then (posL,) = K_signature_irrB(first_param(finalize(pL)),DL)}
-	    then () = if let (,muL) = pairs[0] in posL[muL] = 0
-		      then posL := negL
-		      fi
-	    	 {positive part of the signature on L}
-	    then DG = max(for(mu,) in pairs do height(mu) od)
-	    then multG = P {all K-mults to height of largest mu}
-	    in all( for (mu,muL) in pairs[1:]
-       	       	    do @:int_part(posL[muL]) >= int_part(multG[mu])
-		    od )
-	fi
-
-
-set min_bottom_test(Param p,[(KType,KType)] pairs) = bool:
-    if not min_bottom_elim(p, pairs)
-    then return false
-    else is_unitary(p)
-    fi
-
-set min_bottom_test(Param p,[(KType,KType)] pairs, KTypePol P) = bool:
-    if not min_bottom_elim(p, pairs, P)
-    then return false
-    else is_unitary(p)
-    fi
-
-set min_bottom_elim(Param p, int D) = bool:
-    let start = elapsed_ms()
-    then pairs = min_L_bottom(p,D), minLb_time = int:0, posLK_time = int:0,
-    	 multK_time = int:0
-    then () = if min_bottom_verbose
-    	      then let () = minLb_time := elapsed_ms()
-    	      	   in  prints(new_line,"min_L_bottom used ",
-    	    	       print_time_string(minLb_time - start))
-	      fi
-    in min_bottom_elim(p, pairs)
-
-set min_bottom_test(Param p, int D) = bool:
-    if not min_bottom_elim(p, D)
-    then return false
-    else is_unitary(p)
-    fi
 
 set basis_lambda_differential_0(mat theta) = mat: {columns are weights lambda with (1+theta)lambda = 0,
     				   	    	  mod (1-theta)X^*}
@@ -701,6 +614,190 @@ set min_bottom_elim_factors(Param p) = bool:
 
 set min_bottom_test_factors(Param p) = bool:
     if not min_bottom_elim_factors(p)
+    then return false
+    else is_unitary(p)
+    fi
+{permutation of the simple roots defined by delta}
+set delta_on_simple(InnerClass ic) = [int]:
+    let r = ic.semisimple_rank, SR = ic.simple_roots, delta = ic.distinguished_involution
+    in for i:r do first(for j:r do SR[i] = delta*SR[j] od) od
+
+{all theta-stable parabolics containing a given one}
+set larger_Ps(KGPElt Q) = [KGPElt]:
+    let (S,x) = Q, L = Q.Levi
+    then xL = inverse_embed_KGB(x,L), G = x.real_form
+    then Sc = complement(G.semisimple_rank,S), DOS = delta_on_simple(G),
+    	 delta = G.distinguished_involution
+    then fixc = for a in Sc
+    	      	do if DOS[a] = a
+		   then [a]
+		   else []
+		   fi
+		od.##
+    then pairsc = for a in Sc
+    	 	  do if DOS[a] > a
+		     then [[a,DOS[a]]]
+		     else []
+		     fi
+		  od.##
+    then PSfixc = power_set(#fixc), PSpairsc = power_set(#pairsc)
+    then Snew = S
+    in for A in PSfixc
+       do for B in PSpairsc
+       	  do (S## for i in A
+	     	 do fixc[i]
+		 od
+	      ## for j in B
+	      	 do pairsc[j]
+		 od.## , x)
+	  od
+       od.##
+
+{for each pair (MN,pM), p is cohomologically induced from pM. First
+pair is theta_stable_quasi_data(p), last is (G,p).}
+set larger_Qps(Param p) = [(KGPElt,Param)]:
+    let (Q,pL) = theta_stable_quasi_data(p)
+    then LPs = larger_Ps(Q)
+    in for P in LPs
+       do let M = P.Levi
+       	  in (P, first_param(theta_induce_standard(pL,M)))
+       od
+
+{Let (Q0,pL0) = theta_stable_quasi_data(p) and assume Q containing Q0
+is theta-stable.  Each (tau,tauL) in output list is a Q-bottom layer
+K-type for p. D is the largest height to which to compute K-types.
+List includes LKT pairs, so always nonempty.  Assume K connected.}
+set bottom(Param p, int D, KGPElt Q) = [(KType,KType)]:
+    let (Q0,pL0) = theta_stable_quasi_data(p),
+    	G = p.real_form, L = Q.Levi
+    then L0 = Q0.Levi, pL = first_param(theta_induce_standard(pL0,L))
+    then xcL = KGB(L,0)
+    then xcG = embed_KGB(xcL, G), LKTG = LKTs(p)[0], LKTL = LKTs(pL)[0]
+    then TRUCH = two_rho_u_check(Q)
+    then bottom = TRUCH*(highest_weight(LKTG, xcG).mu)
+    then too_many_taus = monomials(branch_std(p,D))
+    then taus = for tau in too_many_taus
+       	       do if TRUCH*(highest_weight(tau, xcG).mu) = bottom
+	       	  then [tau]
+	  	  else []
+	  	  fi
+	  	od.##
+    then shift = highest_weight(LKTG,xcG).mu - highest_weight(LKTL,xcL).mu
+    in  for tau in taus
+    	do (tau, K_types(K_highest_weight_from_K0_weight(xcL,
+       	       	       highest_weight(tau,xcG).mu - shift))[0])
+	od
+
+{Let (Q0,pL0) = theta_stable_quasi_data(p) and assume Q containing Q0
+is theta-stable.  Each (tau,tauL) in output list is a Q-bottom layer
+K-type for p. D is the largest height to which to compute K-types.
+List includes LKT pairs, so always nonempty.  Assume K connected.}
+set L_bottom(Param p, int D, KGPElt Q) = [(KType,KType)]:
+    let (Q0,pL0) = theta_stable_quasi_data(p), G = p.real_form,
+    	L = Q.Levi
+    then L0 = Q0.Levi, pL = first_param(theta_induce_standard(pL0,L))
+    then xcL = KGB(L,0)
+    then xcG = embed_KGB(xcL, G), LKTG = LKTs(p)[0], LKTL = LKTs(pL)[0]
+    then shift = K0_param(LKTG, xcG).lambda_minus_rho - K0_param(LKTL,xcL).lambda_minus_rho
+    	 {highest_weight(LKTG,xcG).mu - highest_weight(LKTL,xcL).mu}
+    then DL = D-height(p) + height(pL)
+    then too_many_tauLs = monomials(branch_std(pL,DL)) {reps of L\cap K}
+    then K0 = K_0(xcG), LK0 = K_0(xcL)
+    then tauLs =  for tauL in too_many_tauLs
+       	      	  do let weight = K0_param(tauL,xcL).lambda_minus_rho + shift
+		  in if is_dominant(K0,weight)
+       	  	     then [(weight,tauL)]
+	  	     else []
+	  	     fi
+		  od.##
+    in for (weight,tauL) in tauLs
+       do (K_types(K_highest_weight_from_K0_weight(xcG, weight))[0] ,tauL) od
+
+{false guarantees not unitary, but true does not guarantee unitary.
+Assume p is cohom ind from pL; pairs is (tau, tauL):
+a bottom layer K-type and the corresponding L\cap K-type}
+set bottom_elim(Param p, Param pL, [(KType,KType)] pairs) = bool:
+    let start = elapsed_ms()
+    in if  #pairs = #LKTs(p)  then true
+       else let DL = max(for (,tauL) in pairs do height(tauL) od),
+       	    posLK_time = int:0, multK_time = int:0
+       	    then (posL,negL) = K_signature_irrB(first_param(finalize(pL)),DL)
+	    	 {positive part of the signature on L}
+	    then () = if min_bottom_verbose
+	    	      then let () = posLK_time := elapsed_ms()
+		      	   in prints("LK_sig used ",
+    	    	      	      print_time_string(posLK_time - start))
+		      fi
+	    then DG = max(for(tau,) in pairs do height(tau) od)
+	    then multG = branch_irr(p,DG)
+	    	 {all K-mults to height of largest tau}
+	    then () = if min_bottom_verbose
+	    	      then let () = multK_time := elapsed_ms()
+		      	   in prints("multK used ",
+    	    	      	      print_time_string(multK_time - posLK_time))
+		      fi
+		      {create a list of FUNCTIONS returning a bool. Functions
+		      are only evaluated until false }
+	    then () = if let (, muL) = pairs[0] in posL[muL] = 0
+		      then posL := negL
+		      fi
+	    then answer =  all( for (tau,tauL) in pairs[1:]
+       	       	    do @bool: int_part(posL[tauL]) >= int_part(multG[tau])
+		    od)
+		    {or @bool:int_part...}
+    	    then () = if min_bottom_verbose
+	       	      then prints("min_bottom_elim used ",
+    	    	      	   print_time_string(elapsed_ms() - start))
+	       	      fi
+            in answer
+	fi
+
+{false guarantees not unitary, but true does not guarantee unitary}
+{Here P is the K-character of p, at least to heights of pairs}
+set bottom_elim(Param p, Param pL, [(KType,KType)] pairs, KTypePol P) = bool:
+    let start = elapsed_ms()
+    in if #pairs = #LKTs(p) then true
+       else let DL = max(for (,tauL) in pairs do height(tauL) od){,
+       	    posLK_time = int:0, multK_time = int:0}
+	    then (posL, negL) = K_signature_irrB(first_param(finalize(pL)),DL)
+       	    {then (posL,) = K_signature_irrB(first_param(finalize(pL)),DL)}
+	    then () = if let (,muL) = pairs[0] in posL[muL] = 0
+		      then posL := negL
+		      fi
+	    	 {positive part of the signature on L}
+	    then DG = max(for(tau,) in pairs do height(tau) od)
+	    then multG = P {all K-mults to height of largest mu}
+	    in all( for (tau,tauL) in pairs[1:]
+       	       	    do @:int_part(posL[tauL]) >= int_part(multG[tau])
+		    od )
+	fi
+
+set bottom_test(Param p, Param pL, [(KType,KType)] pairs) = bool:
+    if not bottom_elim(p, pL, pairs)
+    then return false
+    else is_unitary(p)
+    fi
+
+set bottom_test(Param p, Param pL, [(KType,KType)] pairs, KTypePol P) = bool:
+    if not bottom_elim(p, pL, pairs, P)
+    then return false
+    else is_unitary(p)
+    fi
+
+set bottom_elim(Param p, int D, KGPElt Q) = bool:
+    let start = elapsed_ms(), (Q0,pL0) = theta_stable_quasi_data(p)
+    then pL = first_param(theta_induce_standard(pL0,Q.Levi))
+    then pairs = L_bottom(p,D,Q), minLb_time = int:0, posLK_time = int:0,
+    	 multK_time = int:0
+    then () = if min_bottom_verbose
+    	      then let () = minLb_time := elapsed_ms()
+    	      	   in  prints(new_line,"min_L_bottom used ",
+    	    	       print_time_string(minLb_time - start))
+	      fi
+    in bottom_elim(p, pL, pairs)
+
+set bottom_test(Param p, int D, KGPElt Q) = bool:
+    if not bottom_elim(p, D, Q)
     then return false
     else is_unitary(p)
     fi

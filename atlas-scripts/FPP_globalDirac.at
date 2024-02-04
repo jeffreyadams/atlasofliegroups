@@ -724,7 +724,11 @@ set FPP_unitary_hash_bottom_layer([KGBElt] xs,  steady_bottom_data bott_data,
     	       	 then make_Param_hash()
 		 else UhashG
 		 fi
-    then vd_sc = FPP_vertex_data(Gsc), vd = FPP_vertex_data(G), start = elapsed_ms()
+    then vd = FPP_vertex_data(G), start = elapsed_ms()
+    then vd_sc = if disconn_flag
+    	       	 then FPP_vertex_data(Gsc)
+		 else vd
+		 fi
     then FEL = FPP_flippable_edge_lookup(G)
     {ELs = edge_list_lookups(G) {one minute, 250 mb for E8_s}}
     then () = unitaryTime := 0
