@@ -113,7 +113,7 @@ what is placed on the parser stack. The parser rarely needs to take apart
 parsing values, so one might think that just having seen |typedef struct expr*
 expr_p;| would have sufficed for it. But in fact it needs to know about several
 types occurring in the recursive definition of |expr|, using them as values on
-the parsing stack, so we put the detailed definition of |expr| here where to the
+the parsing stack, so we put the detailed definition of |expr| here where the
 parser can see it.
 
 @< Type declarations for the parser @>=
@@ -363,24 +363,30 @@ scanner, and the parser will build an appropriate node for them, which just
 stores a value from which an internal \.{axis} value will be constructed after
 type checking. To keep the size of the |union| in |expr| small, we only use
 variants that are no bigger than a pointer, and store a pointer when more than
-that would otherwise be needed. It turns out that |std::string| has the size
-of a pointer,
+that would otherwise be needed. Since |std::string| has considerably larger size
+(on a $64$-but system $4$ times as much, half of which is used to store
+characters inside the string object in the common case of short strings),
+we shall use a pointer to |std::string|.
+
 
 @< Includes needed... @>=
 #include <string>
 
 @~For Boolean denotations, the value itself will fit comfortably inside the
-|struct expr@;|. For integers and strings we store a |std::string| value
+|struct expr@;|. For integers and strings we store a |std::string*| value
 (sharing a single variant), leaving in the case of integers the conversion from
-decimal to |big_int| to be done later. Storing |std::string| will provide an
-example of how the special member functions of |expr| should handle non-POD
-variants (those that require the use of constructors and destructors at the
-beginning and end of their lifetime).
+decimal to |big_int| to be done later. We used to store |std::string| which
+provided an example of how the special member functions of |expr| should handle
+non-POD variants (those that require the use of constructors and destructors at
+the beginning and end of their lifetime). Even though we now have POD types
+again here (and in most if not all other places), we avoid a programming style
+that depends on this, like assigning to |union| variants as initialisation,
+preferring to construct the value into the proper variant instead.
 
 @< Variants of ... @>=
 
 bool bool_denotation_variant;
-std::string str_denotation_variant;
+std::string* str_denotation_variant;
 
 @~Each of the three types of denotation has a tag identifying it.
 
@@ -388,14 +394,12 @@ std::string str_denotation_variant;
 integer_denotation, string_denotation, boolean_denotation, @[@]
 
 @ For each of these variants there is a corresponding constructor that
-constructs the constant value into that variant. For the Boolean case we might
-alternatively have assigned to the field, but not for the integer and string
-variants. Constructors whose arguments other than |loc| have easily convertible
-argument types like |int| or |bool| are given an additional tag argument to
-avoid accidentally invoking an unintended constructor. This also removes in
-particular the danger of accidentally invoking the Boolean constructor by
-accidentally passing some unrelated type by pointer (which would implicitly
-convert to |bool|).
+constructs the constant value into that variant. Constructors, whose arguments
+other than |loc| have easily convertible argument types like |int| or |bool|,
+are given an additional tag argument to avoid accidentally invoking an
+unintended constructor. This also removes in particular the danger of
+accidentally invoking the Boolean constructor by accidentally passing some
+unrelated type by pointer (which would implicitly convert to |bool|).
 
 @< Methods of |expr| @>=
   struct int_tag @+{}; @+
@@ -403,14 +407,10 @@ convert to |bool|).
   struct string_tag @+{};
   expr (bool b, const YYLTYPE& loc, bool_tag)
 @/: kind(boolean_denotation), bool_denotation_variant(b), loc(loc) @+{}
-  expr(std::string&& s, const YYLTYPE& loc, int_tag)
-@/: kind(integer_denotation)
-  , str_denotation_variant(std::move(s))
-  , loc(loc) @+{}
-  expr(std::string&& s, const YYLTYPE& loc, string_tag)
-@/ : kind(string_denotation)
-   , str_denotation_variant(std::move(s))
-   , loc(loc) @+{}
+  expr(std::unique_ptr<std::string> s, const YYLTYPE& loc, int_tag)
+@/: kind(integer_denotation), str_denotation_variant(s.release()), loc(loc) @+{}
+  expr(std::unique_ptr<std::string> s, const YYLTYPE& loc, string_tag)
+@/ : kind(string_denotation), str_denotation_variant(s.release()), loc(loc) @+{}
 
 @~For more explicit construction of these variants into a dynamically allocated
 |expr| object, we provide the functions below. Note that |make_int_denotation|
@@ -426,13 +426,11 @@ expr_p make_string_denotation(std::string* val_p, const YYLTYPE& loc);
 node-building functions. Since the parser stack only contains plain types, the
 argument to |make_int_denotation| and |make_string_denotation| are raw pointers
 to |std::string|, for which they will take ownership here. (The parser itself
-only performs clean-up of tokens are never passed to functions like these, when
-they get popped from the parsing stack during error recovery.) We move from the
-pointed-to string before it gets destroyed, so the only thing cleaned up due to
-our ownership is an empty |std::string| shell. This action is done by the
-destructor of a |std::unique_ptr<std::string>| value created for this
-sole purpose, and takes place when these functions |return|; the returned value
-is a raw pointer to an |expr| that holds the moved |string| contents.
+only performs clean-up of tokens that are never passed to functions like these,
+when they get popped from the parsing stack during error recovery.) We wrap the
+pointer in a |std::unique_ptr<std::string>| value to ensure destruction in those
+cases where the pointer never gets stored; this pointer is moved as argument to
+the |expr| constructor which then releases it upon construction into a variant.
 
 As a special service to the parser, which for some rules will generate
 integer denotations with the value $0$ not coming from the program text (for
@@ -443,10 +441,10 @@ the value $0$, so we provide that string rather than |"0"| here.
 
 @< Definitions of functions for the parser @>=
 expr_p make_int_denotation (std::string* val_p, const YYLTYPE& loc)
-{ std::unique_ptr<std::string>p(val_p); // this ensures clean-up
+{ std::unique_ptr<std::string>p(val_p); // ensure clean-up
   if (val_p==nullptr)
     p.reset(new @[std::string@]); // empty string will convert to $0$
-  return new expr(std::move(*p),loc,expr::int_tag());
+  return new expr(std::move(p),loc,expr::int_tag());
 }
 
 expr_p make_bool_denotation(bool val, const YYLTYPE& loc)
@@ -454,24 +452,17 @@ expr_p make_bool_denotation(bool val, const YYLTYPE& loc)
 
 expr_p make_string_denotation(std::string* val_p, const YYLTYPE& loc)
 { std::unique_ptr<std::string>p(val_p); // this ensures clean-up
-  return new expr(std::move(*val_p),loc,expr::string_tag());;
+  return new expr(std::move(p),loc,expr::string_tag());;
 }
 
 @ For Boolean denotations there is nothing to destroy. For integer and string
-denotations however we must destroy the object held through the variant. Since
+denotations however we must .destroy the object held through the variant. Since
 there is no level of pointer, we should call the destructor for the variant
-itself explicitly (in other variants we shall see raw pointers as variants, for
-which calling |delete| is the proper action). Note that although |delete
-&str_denotation_variant| would compile, and would result in calling the
-|std::string| destructor, it would then also try to free the memory in the
-middle our |expr| structure and crash the program, so it cannot be used. (Indeed
-we should think of the object in the union variant as being constructed by
-placement-|new| and therefore needing manual destruction, even though the |expr|
-constructors can do this without using any |new| syntax; below we see that
-constructing during a copy does use placement-|new|.) It was quite a puzzle to
-find the right syntax for manual destruction of a |std:string| object, because
-of what essentially is a bug in \.{gcc}, namely that with |string| in place of
-|basic_string<char>| below, the look-up of the destructor fails. (Also
+itself explicitly. For raw pointers, calling |delete| is the proper action.
+While previously we stored |std::string| rather than a pointer to it, it was
+quite a puzzle to find the right syntax for manual destruction of that object,
+because of what essentially is a bug in \.{gcc}, namely that with |string| in
+place of |basic_string<char>| below, the look-up of the destructor fails. (Also
 qualifying |std::basic_string<char>| is neither needed nor syntactically allowed
 in an explicit destructor call.)
 
@@ -480,17 +471,17 @@ in an explicit destructor call.)
 @< Cases for destroying... @>=
 case boolean_denotation: break;
 case integer_denotation:
-case string_denotation:
-  str_denotation_variant.~basic_string<char>(); break;
+case string_denotation: delete str_denotation_variant; break;
 
 @ In the |expr::set_from| method we changed variants both in |*this|, whose
 initial |no_expr| was set to the variant of |other|, and in |other| (whose
-variant is than set tp |no_expr|). This means that for non-POD types we must
-both construct an object, using a placement |new| into a variant of |*this|, and
-manually destruct the object of that same type in |other|. We use move
-construction for efficiency, which just leaves an empty shell of |std::string|
-in |other.str_denotation_variant|, but this does not mean we can omit its
-destruction.
+variant is than set tp |no_expr|). For non-POD type variants we need to perform
+placement |new| into a variant of |*this| (an assignment would try to destruct
+the nonexistent previous value with catastrophic consequences), and
+manually destruct the object of that same variant in |other|. For pointers we
+could just use assignment (and the destructor for a raw pointer does nothing),
+but as a remnant of our old approach we leave the placement |new| here, which
+has the same effect as an assignment (but later pointers will just be assigned).
 
 @< Cases for copying... @>=
   case boolean_denotation:
@@ -498,8 +489,7 @@ destruction.
   case integer_denotation:
   case string_denotation:
     new (&str_denotation_variant)
-    std::string(std::move(other.str_denotation_variant));
-    other.str_denotation_variant.~basic_string<char>();
+    (std::string*)@+(other.str_denotation_variant);
   break;
 
 @ To print an integer or Boolean denotation we just print its variant field;
@@ -508,11 +498,11 @@ for Boolean denotations this requires making sure that the stream has its
 print the stored string enclosed in quotes.
 
 @< Cases for printing... @>=
-case integer_denotation: out << e.str_denotation_variant; break; // no quotes
+case integer_denotation: out << *e.str_denotation_variant; break; // no quotes
 case boolean_denotation:
    out << std::boolalpha << e.bool_denotation_variant; break;
 case string_denotation:
-  out << '"' << e.str_denotation_variant << '"'; break;
+  out << '"' << *e.str_denotation_variant << '"'; break;
 
 @*2 Applied identifiers, the last value computed, break, return, die.
 %

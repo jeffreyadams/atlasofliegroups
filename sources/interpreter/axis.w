@@ -491,12 +491,12 @@ latter case.
 case integer_denotation:
   { expression_ptr d@|(new denotation
       (std::make_shared<int_value>(@|
-         big_int(e.str_denotation_variant.c_str(),10))));
+         big_int(e.str_denotation_variant->c_str(),10))));
     return conform_types(int_type,type,std::move(d),e);
   }
 case string_denotation:
   { expression_ptr d@|(new denotation
-      (std::make_shared<string_value>(e.str_denotation_variant)));
+      (std::make_shared<string_value>(*e.str_denotation_variant)));
     return conform_types(str_type,type,std::move(d),e);
   }
 case boolean_denotation:
