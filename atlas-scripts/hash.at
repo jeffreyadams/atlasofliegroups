@@ -67,11 +67,81 @@ set hash_code(Param p, int d_mod) = int:
     in hash_code(vec: (twolambda)##nun#n#nud, d_mod)
 
 {meant to hash RealForms}
+set hash_code_ic(InnerClass ic, int d_mod) = int:
+    let hash = hash_code(ic.simple_roots, d_mod*8) + 5*hash_code(ic.simple_coroots, d_mod) +
+    	hash_code(vec: ic.distinguished_involution.##, d_mod*8)
+    in hash%d_mod
+
+{meant to hash RealForms}
 set hash_code(RealForm G, int d_mod) = int:
     let (bgvn, bgvd) = %base_grading_vector(G)
     then hash = hash_code(G.simple_roots, d_mod*8) + 5*hash_code(G.simple_coroots, d_mod) +
     	hash_code(vec: bgvn#rank(G.distinguished_involution - 1)#bgvd, d_mod*8)
     in hash%d_mod
+
+
+set_type
+[ InnerClass_hash =
+  ( ( -> int) size
+  , ( -> int) capacity
+  , ( -> ) clear
+  , (int->InnerClass) index
+  , (InnerClass->int) match
+  , (InnerClass->int) lookup
+  )
+]
+
+set make_InnerClass_hash ([InnerClass] list, (InnerClass,int->int) hash) = InnerClass_hash:
+(  let capacity = max(2,2*#list), !empty=minus_1
+   then seq_nbrs = for :capacity do empty od, maxfill = 2*capacity\3
+   then find(InnerClass p) = (int,bool):
+     let code = hash(p,capacity)
+     in while let v=seq_nbrs[code] in if v=empty then return (code,true) fi
+        ; list[v] != p
+        do if (code+:=1)=capacity then code:=0 fi
+        od
+     ; (code,false) { slot in |seq_nbrs|, and whether it is new }
+   then rehash(int new_capacity) = void:
+     begin capacity := new_capacity
+     ;   seq_nbrs := for j:capacity do empty od { prepare new array }
+     ;   maxfill := 2*capacity\3
+     ;   for p@m in list
+	 do let (code,new) = find(p) in assert(new,"duplicate while rehashing")
+	 ;  seq_nbrs[code] := m
+	 od
+     end
+   then clear() = void:
+   	let () = capacity := 2
+   	then () = seq_nbrs := for :capacity do empty od
+	then () = maxfill := 2*capacity\3
+	then () = list:=[]
+	in ()
+in for p@m in list
+   do let (code,new) = find(p) in if new then seq_nbrs[code] := m fi
+   od
+;  ( ( -> int): { size } @int: #list
+   , ( -> int): { capacity } @int: capacity
+   , ( -> ): {clear} clear
+   , (int->InnerClass): { index } (int i) InnerClass: list[i]
+   , (InnerClass->int): { match } (InnerClass p) int:
+     begin
+        let (code,new) = find(p)
+     in if new { an empty slot was found, fill it }
+        then let val = seq_nbrs[code] := #list
+	in list := (list next list:=[]) # p
+        ; if #list >= maxfill then rehash(capacity+capacity) fi
+	; val { don't use |seq_nbrs[code]| as |seq_nbrs| may have changed here x}
+	else seq_nbrs[code]
+        fi
+     end
+   , (InnerClass->int): { lookup } (InnerClass p) int:
+     let (code,new) = find(p) in if new then minus_1 else seq_nbrs[code] fi
+   )
+)
+
+set make_InnerClass_hash () = InnerClass_hash:
+    make_InnerClass_hash([InnerClass]:[],hash_code_ic@(InnerClass,int))
+
 
 set_type
 [ RealForm_hash =

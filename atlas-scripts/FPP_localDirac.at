@@ -683,6 +683,8 @@ set local_test_GEO_hash_real_dumb(KGBElt x, ratvec lambda, VertexData vd, Vertex
      [[FacetVertsIndex]] LF, KTypePol_hash pol_hash, Param_hash Uhash) = [Param]:
     let (G,j0) = %x, thetaMinus = x.involution - 1, start = elapsed_ms()
     then () = if #LF[0] = 0 then return [] fi
+    then zero_pol = null_module(G)
+    then () = if 1*parameter(x,lambda,lambda) = zero_pol then return [] fi
     then r = rank(x.involution - 1), NK = #KGB(x.real_form)
     then () = if {TINY CASE} #LF[0]=1
     	      then return one_param_test(parameter(x,lambda,Lvd.list[LF[0][0][0]]), Uhash)
@@ -801,6 +803,8 @@ set local_test_GEO_hash_dumb(KGBElt x, ratvec lambda, VertexData vd, VertexData 
     Param_hash Uhash) = [Param]:
     let (G,j0) = %x, thetaMinus = x.involution - 1, start = elapsed_ms()
     then () = if #LF[0] = 0 then return [] fi
+    then zero_pol = null_module(G)
+    then () = if 1*parameter(x,lambda,lambda) = zero_pol then return [] fi
     then r = rank(x.involution - 1), NK = #KGB(G)
     then () = if {TINY CASE} #LF[0]=1
     	      then return one_param_test(parameter(x,lambda,Lvd.list[LF[0][0][0]]), Uhash)
@@ -908,6 +912,8 @@ set local_test_GEO_hash_def_dumb(KGBElt x, ratvec lambda, VertexData vd, VertexD
     Param_hash Uhash) = [Param]:
     let (G,j0) = %x, thetaMinus = x.involution - 1, start = elapsed_ms()
     then () = if #LF[0] = 0 then return [] fi
+    then zero_pol = null_module(G)
+    then () = if 1*parameter(x,lambda,lambda) = zero_pol then return [] fi
     then r = rank(x.involution - 1)
     then () = if {TINY CASE} #LF[0]=1
     	      then return one_param_test(parameter(x,lambda,Lvd.list[LF[0][0][0]]), Uhash)
@@ -1167,6 +1173,8 @@ set local_test_GEO_hash(KGBElt x, ratvec lambda, VertexData vd, VertexData Lvd,
     Param_hash Uhash) = [Param]:
     let (G,j0) = %x, thetaMinus = x.involution - 1
     then () = if {EMPTY CASE} #LF[0] = 0 then return [] fi
+    then zero_pol = null_module(G)
+    then () = if 1*parameter(x,lambda,lambda) = zero_pol then return [] fi
     then r = rank(x.involution - 1) {, NK = #KGB(G)}
     then () = if {TINY CASE} #LF[0]=1
     	      then return one_param_test(parameter(x,lambda,Lvd.list[LF[0][0][0]]), Uhash)
@@ -1240,6 +1248,9 @@ set hash2Counter = make_counter()
 set local_test_GEO_hash2(KGBElt x, ratvec lambda, VertexData vd, VertexData Lvd, [[FacetVertsIndex]] LF,
 KTypePol_hash pol_hash, Param_hash Uhash) = [Param]:
     let G = x.real_form, thetaMinus = x.involution - 1, start = elapsed_ms()
+    then () = if #LF[0] = 0 then return [] fi
+    then zero_pol = null_module(G)
+    then () = if 1*parameter(x,lambda,lambda) = zero_pol then return [] fi
     then r = rank(x.involution -1){, NK = #KGB(G)}
     then () = if {TINY CASE} #LF[0]=1
     	      then return one_param_test(parameter(x,lambda,Lvd.list[LF[0][0][0]]), Uhash)
@@ -1399,6 +1410,9 @@ set local_test_GEO_hash_one_level(KGBElt x, ratvec lambda, VertexData vd,
     VertexData Lvd, [[FacetVertsIndex]] LF, KTypePol_hash pol_hash,
     Param_hash Uhash) = [Param]:
     let G = x.real_form, thetaMinus = x.involution - 1, start = elapsed_ms()
+    then () = if #LF[0] = 0 then return [] fi
+    then zero_pol = null_module(G)
+    then () = if 1*parameter(x,lambda,lambda) = zero_pol then return [] fi
     then () = if {TINY CASE} #LF[0]=1
     	      then return one_param_test(parameter(x,lambda,Lvd.list[LF[0][0][0]]), Uhash)
 	      fi
@@ -1690,8 +1704,11 @@ unitary_to_ht.}
 set local_test_GEO_hash_bottom_layer(KGBElt x, ratvec lambda, VertexData vd,
     VertexData Lvd, [[FacetVertsIndex]] LF,  steady_bottom_data bott_data,
     	       KTypePol_hash pol_hash, Param_hash Uhash) = [Param]:
-    let G = x.real_form, thetaMinus = x.involution - 1, start = elapsed_ms(),
-    	ht = height(parameter(x,lambda,0*lambda))
+    let G = x.real_form, thetaMinus = x.involution - 1, start = elapsed_ms()
+    then () = if #LF[0] = 0 then return [] fi
+    then zero_pol = null_module(G)
+    then () = if 1*parameter(x,lambda,0*lambda) = zero_pol then return [] fi
+    then ht = height(parameter(x,lambda,0*lambda))
     then () = if ht = 0 {fine K-type in quasisplit G}
     	      then return local_test_GEO_hash_one_level(x, lambda, vd, Lvd, LF,
 	      	   	  				   pol_hash, Uhash)

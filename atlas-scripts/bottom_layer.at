@@ -95,7 +95,7 @@ set_type
 [QRF_sig_tables =
 ( ( -> int) real_form_size
   , ( -> ) clear
-  , ( -> vec) K_type_size {number of fine K-types for each real form}
+  , ( -> vec) K_type_size {number of (fine) K-types for each real form}
   , ( -> vec) K_type_pol_size
   , ( -> vec) Param_size
   , (KType -> KTypePol) branch_entry {branch std to height}
