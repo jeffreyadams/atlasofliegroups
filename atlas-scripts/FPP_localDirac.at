@@ -504,7 +504,7 @@ set local_testK_hash_bottom_layer(KGBElt x, ratvec lambda, VertexData vd,
 	          in if #ps = 1
 		     then if Uhash.lookup(ps[0]).>= or
 		     	     min_bottom_elim_factors(ps[0], bott_data,
-			     		branch_std(pol_hash.index(FVKH[d][j][d+1]), one_ht))
+			     		pol_hash.index(FVKH[d][j][d+1]))
 		     	  then newStatuses[k]:= "T"
 			  else newStatuses:= updateNUclassesB(newStatuses, gr, k)
 			  ; newStatuses[k] := "F"
@@ -624,6 +624,79 @@ set local_test_hash(KGBElt x, ratvec lambda, VertexData Lvd,
 	      fi
     in  UParams
 
+{ Input is candidate facets, and graph info. Output is the tester-unitary ones. 
+ use and update a complete list Uhash of known tester-unitary facets. 
+ try to compute and systematically use partial order on facets.
+Assume the input params are already bottom layer positive for minimal parabolic; try
+to use larger ones.}
+set local_test_hash_bottom(KGBElt x, ratvec lambda, VertexData Lvd,
+    [[LocalFacetVertsHash]] LFVH, [[int]] eq, [[int]] gr, [vec] classListByFacet,
+    steady_bottom_data bott_data, KTypePol_hash pol_hash, Param_hash Uhash) = [Param]:
+    let NumClasses = #eq, printInterval = int: 1{, start = elapsed_ms()}
+    { then listZero = [ratvec]: if #LFVH = 0
+    	 	    	      then []
+    			      else for w in LFVH[0] do Lvd.list[w[0]] od
+			      fi
+    then vdZero = to_vertex_data(listZero) }
+    then () = if fund_facet_verbose and NumClasses > 100
+    	      then prints("start local_test, ",NumClasses,
+	      " equiv classes of facets")
+	      fi
+    then unitary_by_dim = vec: null(#LFVH)
+    then UParams = [Param]:
+    	 for m:NumClasses
+    	~do if fund_facet_verbose and NumClasses > 100 and
+	      	 ((NumClasses-m-1)%printInterval = 0)
+	    then prints("examining equivalence class #"
+	      ,NumClasses-m -1, "; so far ",unitary_test_counter.use_count()
+	      ," 'is_unitary' tests.")
+	      ; printInterval := (3*printInterval)\2 + 1
+	    fi
+	    ;   let C=eq[m]
+	      	then (d,j) = coords(LFVH,C[0])
+	      	then verts = vec: LFVH[d][j][:d+1]
+		  {first_param makes trouble in UParams list!}
+	      	  then ps = monomials(finalize(parameter(x, lambda
+		    	  , facet_bary(Lvd.list, verts))))
+	      	in if{NEWU} all(for p in ps
+		   	    	do Uhash.lookup(p).>= or bottom_test_factors_more(p, bott_data,
+				pol_hash.index(LFVH[d][j][d+1]))
+				od)
+		   then for i in C
+		   	do let (d,j) = coords(LFVH,i)
+			   then verts = vec: LFVH[d][j][:d+1]
+			   then () = unitary_by_dim[d]+:=1
+			   then q = parameter(x,lambda, facet_bary(Lvd.list,verts))
+			   then () = for q1 in monomials(finalize(q))
+			   	     do Uhash.match(herm_center(q1));
+				     if deform_flag
+				     then for q1d in face_deformed_unitaries_new(q1)
+				     	  do Uhash.match(q1d)
+					  od
+				     fi
+				     od
+			   then () = if long_out_flag
+		      	   	     then let () = ParamsByDim[d]:=(ParamsByDim[d] next ParamsByDim[d]:=[])
+				     	  #q
+				     {ParamsByDim[d] := ParamsByDim[d]#q}
+			   	     	  then ()=LFDKHByDim[d]:=(LFDKHByDim[d] next LFDKHByDim[d]:=[])
+					  #LFVH[d][j]
+					  {LFDKHByDim[d]#LFVH[d][j]}
+				     	  in ()
+			   	     fi
+		       	   in q
+		    	od {list of tester unitary Params}
+		   else []
+		   fi{NEWU}
+	  od.##
+    then () = if test_verbose or test_slightly_verbose
+    	      then prints("tester unitary facets by dim = ",
+       	       	    	   unitary_by_dim, test_string);
+		 prints("number of tests = ",unitary_test_counter.use_count())
+	      fi
+    in  UParams
+
+
 { Input is candidate facets, and graph info. Output is the unitary ones.}
 set local_test_hash(KGBElt x, ratvec lambda, VertexData Lvd,
     [[LocalFacetVertsHash]] LFVH, [[int]] eq, [[int]] gr,
@@ -665,7 +738,7 @@ set one_param_test(Param p, steady_bottom_data bott_data, Param_hash Uhash) = [P
     then () = hash_bottom_layerCounter.use()
     then test = all(for q in QG
     	      	    do Uhash.lookup(q).>= or
-    	      	       min_bottom_test_factors(q, bott_data)
+    	      	       bottom_test_factors_more(q, bott_data)
 		    od)
     in if test
        then let () = for q in QG
@@ -1097,7 +1170,7 @@ set local_test_GEO_hash_no_dumb(KGBElt x, ratvec lambda, VertexData vd, VertexDa
     {then () = prints("start no_dumb, hts = ",hts)}
     then edge_offset_temp = edge_offset, ht0 = height(parameter(x,lambda,0*lambda)),
     	 G = x.real_form
-    then temp_K_char_flag = ht0/(G.rho * G.two_rho_check) > CUTOFF
+    then temp_K_char_flag = ht0/(G.rho * G.two_rho_check) <= CUTOFF
     then () = if edge_offset = -1
     	      then edge_offset_temp := r\2 {3 seems best for F4}
 	      fi
@@ -1117,8 +1190,8 @@ set local_test_GEO_hash_no_dumb(KGBElt x, ratvec lambda, VertexData vd, VertexDa
                           for list in LFDKH do #list od) fi
         {compute graph on facets to dim 1, to hts[0]}
     then ((eq,gr),IUCL,CLBF) = if temp_K_char_flag
-    	 		       then localGraphK(LFDKH, pol_hash, hts[0])
-			       else localGraphK(LFDKH)
+    	 		       then localGraphK(LFDKH)
+			       else localGraphK(LFDKH, pol_hash, test_hts[0])
 			       fi
         {remove from LFDKH all facets failing is_unitary_to_ht(test_hts[0])}
     then () = LFDKH := local_testK_hash(x,lambda,Lvd, LFDKH, eq, gr, CLBF,
@@ -1128,8 +1201,8 @@ set local_test_GEO_hash_no_dumb(KGBElt x, ratvec lambda, VertexData vd, VertexDa
                         " facet counts to dim 1: ",for list in LFDKH
 			do #list od) fi
     then () = LFDKH := if temp_K_char_flag
-    	      	       then LFDKH
-		       else extend_K_characters(x, lambda, Lvd, LFDKH, pol_hash)
+    	      	       then extend_K_characters(x, lambda, Lvd, LFDKH, pol_hash)
+		       else LFDKH
 		       fi
     then D = int:1
     then () = while (D <= rank(x.involution-1) - 1  ) and
@@ -1287,21 +1360,21 @@ KTypePol_hash pol_hash, Param_hash Uhash) = [Param]:
     	 test_levels, ", test heights = ",test_hts) fi
     {get K-type formulas for all vertices and edges}
     {then () = print(LF)}
-    then temp_K_char_flag = height(parameter(x,lambda,0*lambda))/(G.rho * G.two_rho_check) > CUTOFF
+    then temp_K_char_flag = height(parameter(x,lambda,0*lambda))/(G.rho * G.two_rho_check) <= CUTOFF
     then pol_hash0 = if temp_K_char_flag
-    	 	     then pol_hash
-		     else make_KTypePol_hash() {to hold chars to height hts[0]}
+    	 	     then make_KTypePol_hash() {to hold chars to height hts[0]}
+		     else pol_hash
 		     fi
     then LFDKH = if temp_K_char_flag
-    	       	 then localFD_KHash_01(x, lambda, Lvd, pol_hash, LF)
-		 else localFD_KHash_01(x, lambda, Lvd, test_hts[0], pol_hash0, LF)
+    	       	 then localFD_KHash_01(x, lambda, Lvd, test_hts[0], pol_hash0, LF)
+		 else localFD_KHash_01(x, lambda, Lvd, pol_hash, LF)
 		 fi
     then () =  if test_verbose then prints("facet counts to dim 1: ",
                           for list in LFDKH do #list od) fi
         {compute graph on facets to dim 1, to hts[edge_offset]}
     then ((eq,gr),IUCL,CLBF) = if temp_K_char_flag
-    	 		       then localGraphK(LFDKH, pol_hash, test_hts[0])
-			       else localGraphK(LFDKH) {pol_hash ,test_hts[0])}
+    	 		       then localGraphK(LFDKH)
+			       else localGraphK(LFDKH, pol_hash0, test_hts[0])
 			       fi
     then () = LFDKH := local_testK_hash(x,lambda,Lvd, LFDKH, eq, gr, CLBF,
     	   (Param->bool):(Param p): if prefer_to_hts
@@ -1311,8 +1384,8 @@ KTypePol_hash pol_hash, Param_hash Uhash) = [Param]:
 				    is_unitary_to_ht(p,test_hts[0])
 				    fi, Uhash)
     then () = LFDKH:= if temp_K_char_flag
-    	      	      then LFDKH
-		      else extend_K_characters(x, lambda, Lvd, LFDKH, pol_hash)
+    	      	      then extend_K_characters(x, lambda, Lvd, LFDKH, pol_hash)
+		      else LFDKH
 		      fi
     then () = if test_verbose then prints("unitary to ht ",hts[test_levels[0]],
                         " facet counts to dim 1: ",for list in LFDKH do #list od) fi
@@ -1417,7 +1490,7 @@ set local_test_GEO_hash_one_level(KGBElt x, ratvec lambda, VertexData vd,
     	      then return one_param_test(parameter(x,lambda,Lvd.list[LF[0][0][0]]), Uhash)
 	      fi
     then htFrac = height(parameter(x,lambda,0*lambda))/(G.rho * G.two_rho_check)
-    then temp_K_char_flag = htFrac > CUTOFF
+    then temp_K_char_flag = htFrac <= CUTOFF
     then vertexDiff = #Lvd.list/#vd.list
     then approxVertexDiff = vertexDiff.numer*100\vertexDiff.denom
     then () = if approxVertexDiff < vert_diff_cutoff and revert_flag
@@ -1473,33 +1546,33 @@ set local_test_GEO_hash_one_level(KGBElt x, ratvec lambda, VertexData vd,
 	       fi
    then pol_hash_one_ht = KTypePol_hash:
    	if temp_K_char_flag
-	then pol_hash
-	else make_KTypePol_hash() {to hold K_chars to height one_ht = hts[ONE]}
+	then make_KTypePol_hash() {to hold K_chars to height one_ht = hts[ONE]}
+	else pol_hash
 	fi
    then LFDKH = [[FacetVertsKHash]]:
    	if step_flag and ONE > 0{just calculate K-chars to hts[0], reduce the problem, then go to one_ht}
 	then let pol_hash_low = if temp_K_char_flag
-	     	 	      	then pol_hash
-				else make_KTypePol_hash() {to hold K-chars to hts[0] only}
+	     	 	      	then make_KTypePol_hash() {to hold K-chars to hts[0] only}
+				else pol_hash
 				fi
              {get K-type formulas for all vertices and edges}
              then LFDKH = if temp_K_char_flag
-	     	  	  then localFD_KHash_01(x, lambda, Lvd, pol_hash, LF)
-			  else localFD_KHash_01(x, lambda, Lvd, hts[0], pol_hash_low, LF)
+	     	  	  then localFD_KHash_01(x, lambda, Lvd, hts[0], pol_hash_low, LF)
+			  else localFD_KHash_01(x, lambda, Lvd, pol_hash, LF)
 			  fi
 	     {then () = prints("#Lvd = ", #Lvd.list, ", #LFDKH[0] = ",#LFDKH[0])}
 	     then tester0 = (Param->bool): (Param p) bool:
      	     	  is_unitary_to_ht(p, hts[0])
              then ((eq,gr),IUCL,CLBF) = if temp_K_char_flag
-	     	  		      	then localGraphK(LFDKH, pol_hash, hts[0])
-					else localGraphK(LFDKH)
+	     	  		      	then localGraphK(LFDKH)
+					else localGraphK(LFDKH, pol_hash, hts[0])
 					fi
              {then () = prints("at hts[0], #eq = ", #eq)}
 	     then () = LFDKH := local_testK_hash(x,lambda,Lvd, LFDKH, eq,
 		      gr, CLBF, tester0, Uhash)
    	     then () = LFDKH := if temp_K_char_flag
-	     	       	     	then LFDKH
-				else extend_K_characters(x, lambda, Lvd, LFDKH, one_ht, pol_hash_one_ht)
+	     	       	     	then extend_K_characters(x, lambda, Lvd, LFDKH, one_ht, pol_hash_one_ht)
+				else LFDKH
 				fi
 	     then ((eq,gr),IUCL,CLBF) = localGraphK(LFDKH)
 	     { then () = prints("at one_ht, #eq = ", #eq) }
@@ -1525,8 +1598,8 @@ set local_test_GEO_hash_one_level(KGBElt x, ratvec lambda, VertexData vd,
 	 	  {to_ht is definitely 2% slower for F4 spherical, 10% slower for Sp(10) spherical}
 	 	  fi
     	     then ((eq,gr),IUCL,CLBF) = if temp_K_char_flag
-	     	  		      	then localGraphK(LFDKH, pol_hash, one_ht)
-					else localGraphK(LFDKH)
+	     	  		      	then localGraphK(LFDKH)
+					else localGraphK(LFDKH, pol_hash, one_ht)
 					fi
     	      {remove from LFDKH all facets failing is_unitary_to_ht(one_ht)}
 	     {then () = prints("at one_ht, #eq = ", #eq)}
@@ -1548,10 +1621,10 @@ set local_test_GEO_hash_one_level(KGBElt x, ratvec lambda, VertexData vd,
     facets of dim D+1; then adds facets of dim D+2, etc. If there are less than
     D+2 possibly unitary facets of dim D, then none of dim D+1.}
     	      do let () = LFDKH := if temp_K_char_flag
-	      	     	  	   then localFD_KHashbt_lookDownGEO(x,lambda,Lvd,
-				   	LFDKH,D+1,D+2,pol_hash)
-				   else localFD_KHashbt_lookDownGEO(x,lambda, Lvd,
+	      	     	  	   then localFD_KHashbt_lookDownGEO(x,lambda, Lvd,
                        	  	   	LFDKH, D+1,D+2, one_ht, pol_hash_one_ht)
+				   else localFD_KHashbt_lookDownGEO(x,lambda,Lvd,
+				   	LFDKH,D+1,D+2,pol_hash)
 				   fi
 		    {now top degree in LFDKH is D+1}
 		 then ((eq,gr),IUCL,CLBF) = if temp_K_char_flag
@@ -1599,8 +1672,8 @@ set local_test_GEO_hash_one_level(KGBElt x, ratvec lambda, VertexData vd,
 		prints("number of tests so far = ",unitary_test_counter.use_count())
 	      fi
     then () = LFDKH:= if temp_K_char_flag
-    	      	      then LFDKH
-		      else extend_K_characters(x, lambda, Lvd, LFDKH, pol_hash)
+    	      	      then extend_K_characters(x, lambda, Lvd, LFDKH, pol_hash)
+		      else LFDKH
 		      fi
     then start=elapsed_ms()
     then () = long_out_flag := long_out_temp_flag
@@ -1714,7 +1787,7 @@ set local_test_GEO_hash_bottom_layer(KGBElt x, ratvec lambda, VertexData vd,
 	      	   	  				   pol_hash, Uhash)
 	      fi
     then htFrac = ht/(G.rho * G.two_rho_check)
-    then temp_K_char_flag= htFrac > CUTOFF
+    then temp_K_char_flag= htFrac <= CUTOFF
     then vertexDiff = #Lvd.list/#vd.list
     then approxVertexDiff = vertexDiff.numer*100\vertexDiff.denom
     then r = rank(thetaMinus)
@@ -1769,19 +1842,19 @@ set local_test_GEO_hash_bottom_layer(KGBElt x, ratvec lambda, VertexData vd,
 	       fi
    then pol_hash_one_ht = KTypePol_hash:
    	if temp_K_char_flag
-	then pol_hash
-	else make_KTypePol_hash() {to hold K_chars to height one_ht}
+	then make_KTypePol_hash() {to hold K_chars to height one_ht}
+	else pol_hash
 	fi
       {next add K-chars to height one_ht for vertices and edges}
    then LFDKH = [[FacetVertsKHash]]:
    	if temp_K_char_flag
-	then localFD_KHash_01(x,lambda, Lvd, pol_hash, LF)
-	else localFD_KHash_01(x, lambda, Lvd, one_ht, pol_hash_one_ht, LF)
+	then localFD_KHash_01(x, lambda, Lvd, one_ht, pol_hash_one_ht, LF)
+	else localFD_KHash_01(x,lambda, Lvd, pol_hash, LF)
 	fi
    then ((eq,gr),IUCL,CLBF) =
    	if temp_K_char_flag
-	then localGraphK(LFDKH, pol_hash, one_ht)
-	else localGraphK(LFDKH)
+	then localGraphK(LFDKH)
+	else localGraphK(LFDKH, pol_hash, one_ht)
 	fi
    {then () = prints(((eq,gr), IUCL,CLBF))}
     	{next remove from LFDKH all facets failing min_bottom_factors_elim(one_ht)}
@@ -1853,19 +1926,19 @@ set local_test_GEO_hash_bottom_layer(KGBElt x, ratvec lambda, VertexData vd,
 		prints("number of tests so far = ",unitary_test_counter.use_count())
 	      fi
     then () = LFDKH:= if temp_K_char_flag
-    	      	      then LFDKH
-    	      	      else extend_K_characters(x, lambda, Lvd, LFDKH, pol_hash)
+    	      	      then extend_K_characters(x, lambda, Lvd, LFDKH, pol_hash)
+    	      	      else LFDKH
 		      fi
     then start=elapsed_ms()
     { then () = long_out_flag := long_out_temp_flag }
-    then tester = (Param->bool): (Param p) bool:
-	      if coh_ind_tester_flag
+    {then tester = (Param->bool): (Param p) bool:
+	      {if coh_ind_tester_flag
 	      then coh_ind_is_unitary(p)
-	      else is_unitary(p)
-	      fi
+	      else} is_unitary(p)
+	      {fi}}
     then UParams = [Param]:
-         let ((eq,gr),IUCL,CLBF) = localGraphK(LFDKH) {next line: use tester}
-         in local_test_hash(x, lambda, Lvd, LFDKH, eq, gr, CLBF, Uhash, tester)
+         let ((eq,gr),IUCL,CLBF) = localGraphK(LFDKH)
+         in local_test_hash_bottom(x, lambda, Lvd, LFDKH, eq, gr, CLBF, bott_data, pol_hash, Uhash)
     then time = elapsed_ms() - start
     then () = if time_verbose
 	      then prints("     ", print_time_string(time),
