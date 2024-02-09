@@ -32,13 +32,20 @@ let (simple_imaginary_roots,)=simple_imaginary_subsystem(x) in simple_imaginary_
 set simple_imaginary_reflections(KGBElt x)=[WeylElt]:
 for alpha in simple_imaginary_roots(x) do root_reflection(x.root_datum,alpha) od
 
+{all elements in given real form in same fiber (same involution)}
 set fiber(KGBElt x)=[KGBElt]:
 for (y,) in cross_sub_orbit(simple_imaginary_reflections(x),x) do y od
 
-{if G is quasisplit this is guaranteed to work
- if not, it will fail with an error if there is no x with x.involution=theta}
 set fiber(RealForm G,mat theta)=[KGBElt]:
-fiber(KGB_elt(G,theta,G.base_grading_vector))
+let j=first(for x in KGB(G) do x.involution=theta od) in
+if j=-1 then [] else fiber(KGB(G,j)) fi
+
+set fiber(InnerClass ic,mat theta)=[KGBElt]:
+##for G in strong_real_forms(ic) do fiber(G,theta) od
+
+set fiber(InnerClass ic,KGBElt x)=[KGBElt]:fiber(ic,x.involution)
+
+
 
 {given G, gamma,y -> defines an L-homomorphism phi: W_R -> LG}
 
