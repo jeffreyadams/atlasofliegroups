@@ -425,9 +425,9 @@ size_t KL_table::fill_KL_column
 
   where y' = cross(s,y) when s is complex for y, one of the two elements in
   inverseCayley(s,y) when s is real. The (c_s.c_{y'})-part depends on what kind
-  of descent |s| is for |x|. The correction term comes from $\sum_z mu(z,y1)c_z$
+  of descent |s| is for |x|. The correction term comes from $\sum_z mu(z,y')c_z$
   and is handled by |muCorrection|; the form of the summation depends only on
-  |y1| (which is recomputed here), but the summation itself involves polynomials
+  |y'| (which is recomputed here), but the summation itself involves polynomials
   $P_{x,z}$ that depend on $x$ as well.
 */
 void KL_table::recursion_column (BlockElt y,weyl::Generator s,
