@@ -1466,7 +1466,7 @@ void coroot_wrapper(expression_base::level l)
 @ Also important are look-up functions for roots and coroots. Conversion from
 unsigned internal numbering of roots to external signed numbering, or vice
 versa, is painful due to \Cpp\ semantics. The signed-ness conversion between
-same size integers is given precise a specification in all cases only in the
+same size integers is given a precise specification in all cases only in the
 direction from signed to unsigned; in the opposite direction this is so only if
 the value can be represented in the signed type. But at the same time arithmetic
 with mixed signed-ness of operands will be performed unsigned, and this should
@@ -1477,7 +1477,7 @@ helper function |convert_to_signed_root_index| to do this conversions safely.
 
 shared_int convert_to_signed_root_index(const RootSystem& rs, RootNbr alpha)
 {
-  assert(alpha < rs.numRoots());
+  assert(alpha <= rs.numRoots());
   int sa = alpha;
   sa -= static_cast<int>(rs.numPosRoots());
   // cast is necessary, blame the \Cpp\ standard
