@@ -7575,8 +7575,10 @@ struct field_transform : public assignment_expr
   void transform(level l,shared_value& tupple) const;
 };
 
-@ Printing reassembles the subexpressions according to the input syntax,
-except for field assignments which just print the position to be modified.
+@ Printing reassembles the subexpressions according to the input syntax, except
+for field assignments which just print the position to be modified. As we shall
+see below, the |right hand side| field can be null for the \&{transform}
+structures, so we take care not to crash the program when this is the case.
 
 @< Function def...@>=
 template <bool reversed>
@@ -7588,7 +7590,8 @@ void component_assignment<reversed>::print (std::ostream& out) const
 template <bool reversed>
 void component_transform<reversed>::print (std::ostream& out) const
 { out << main_hash_table->name_of(lhs) << (reversed ? "~[" : "[")
-      << *index << "] " @| << name << ":= " << *rhs;
+      << *index << "] " @| << name << ":= ";
+  if (rhs==nullptr) out << "()"; @+ else out << *rhs;
 }
 @)
 void field_assignment::print (std::ostream& out) const
@@ -7602,7 +7605,8 @@ void field_transform::print (std::ostream& out) const
 { out << main_hash_table->name_of(lhs) << '.' @|
       << main_hash_table->name_of(id)
       << '(' << this->position << ") " @|
-      << name << ":= " << *rhs;
+      << name << ":= ";
+  if (rhs==nullptr) out << "()"; @+ else out << *rhs;
 }
 
 @ For global assignments or transforms, we need to have non-|const| access the
@@ -7915,7 +7919,13 @@ which is the old value of the row component |ai|, is moved out of the row to the
 stack, we make sure to evaluate the second operand before it, so that during its
 evaluation the row |a| is still intact. This requires temporarily moving that
 second argument off the stack before moving it back on. (The expression for that
-operand is called |rhs|, in the |assignment| class we inherit from.)
+operand is called |rhs|, in the |assignment| class we inherit from.) The code
+takes into account the possibility of an absent second argument, indicated by
+the condition |rhs=nullptr|; this is because an optimisation may have replaced a
+call of an operator with two arguments by a call of a function with only one
+argument, as in $v[i]\mathrel+:=1$ where the addition gets replaced by a call of
+|succ|. In that case |f_ptr| will point to the replacement function and a null
+pointer is substituted for~|rhs|.
 
 The method |field_transform::transform| is similar but simpler, and shares the
 part calling |f_ptr|.
@@ -7924,8 +7934,8 @@ part calling |f_ptr|.
 template <bool reversed>
 void component_transform<reversed>::transform
   (level lev,shared_value& aggregate) const
-{ rhs->eval();
-  auto op2 = pop_value(); // put aside additional operand
+{ auto op2 = (rhs==nullptr ? nullptr : (rhs->eval(),pop_value()));
+   // put aside additional operand
   auto i = (index->eval(),get<int_value>()->long_val());
   auto& a = uniquify<row_value>(aggregate)->val;
   size_t n=a.size();
@@ -7933,17 +7943,19 @@ void component_transform<reversed>::transform
     throw runtime_error(range_mess(i,a.size(),this,"component assignment"));
   auto& ai = a[reversed ? n-1-i : i];
   push_value(std::move(ai)); // move-push component before transformation
-  push_value(std::move(op2)); // additional argument
+  if (op2!=nullptr)
+    push_value(std::move(op2)); // and possibly additional argument
   @< Call |*f_ptr| to produce a single value, taking measures for back tracing @>
   push_expanded(lev,ai = pop_value()); // assign component and yield that value
 }
 @)
 void field_transform::transform (level lev,shared_value& tupple) const
-{ rhs->eval();
-  auto op2 = pop_value(); // put aside additional operand
+{ auto op2 = (rhs==nullptr ? nullptr : (rhs->eval(),pop_value()));
+   // put aside additional operand
   shared_value& field=uniquify<tuple_value>(tupple)->val[position];
   push_value(std::move(field)); // move-push field before transformation
-  push_value(std::move(op2)); // additional argument
+  if (op2!=nullptr)
+    push_value(std::move(op2)); // and possibly additional argument
   @< Call |*f_ptr| to produce a single value, taking measures for back tracing @>
   push_expanded(lev,field=pop_value());
 }
@@ -7955,9 +7967,13 @@ have exactly two arguments, and that they are already placed on the
 @< Call |*f_ptr| to produce a single value, taking measures for back tracing @>=
 { std::string arg_string;
   if (verbosity!=0) // record argument(s) as string
-  { const auto* p = &execution_stack[execution_stack.size()-2];
-    std::ostringstream o;
-    o << '(' << *p[0] << ',' << *p[1] << ')';
+  { std::ostringstream o;
+    if (rhs==nullptr)
+      o << '(' << *execution_stack[execution_stack.size()-1] << ')';
+    else
+    { const auto* p = &execution_stack[execution_stack.size()-2];
+      o << '(' << *p[0] << ',' << *p[1] << ')';
+    }
     arg_string = o.str();
   }
 @)
@@ -8332,41 +8348,55 @@ one-off (a new error thrown from the same place will replace and clean up the
 @ The code below illustrates one way to solve the coding problem of avoiding
 multiple identical |else| clauses in a situation where the positive option (here
 that of using a |field_transform| rather than a |field_assignment|) is dependent
-on the conjunction of several (here three) conditions, among which later
-conditions are in terms of one or more values (here |c| and |tup|) that are only
-defined if earlier conditions succeed. The latter circumstance makes it
-difficult to use a single test involving a logical conjunction (|and|), and
-nesting the later test within the ``then'' clause of the earlier |if| would
-naturally lead to several identical |else| clauses. Those clauses can be fused
-into a single one using |goto|, but that solution is distinctly ugly. The
-solution adopted here is to have a sequence of tests leading to a pointer
-variable |tup| being non-null only if all tests succeed, then the main
-conditional simply tests this condition. (In fact the third and last condition,
-the absence of implicit conversion of the first argument, is joined using a
-conjunction, because even upon success the value of this |dynamic_cast| will not
-be needed.) In general all information needed in the positive clause and
-possibly accumulated during the sequence of test must be stored in variables
-declared outside the sequence of tests; here however just |tup| suffices.
+on the conjunction of several conditions. Here the positive option requires that
+the |call| is an application of a built-in operator (necessarily found in the
+global overload table), and that its argument is either a pair with a projector
+call (i.e., a field selection) as first element, or just a projector call.
+Testing this involves introducing several intermediate values |c|, |arg|, and
+|tup| that depend on previous ones, and may be used (only) in the branch for
+this option. The straightforward approach of using nested |if| expressions to
+successively test the conditions would introduce several identical |else|
+clauses. Those clauses could be fused into a single one using |goto|, but that
+solution is distinctly ugly. The solution adopted here is to have a sequence of
+tests conditionally setting the intermediate variables, which are pointers left
+null otherwise, and then leave the initial |if| expression and follow it by a
+second one that tests the final value. (In fact the test is a dynamic cast of
+|arg|, which can fail either if |arg==nullptr| or if the dynamic cast finds a
+wrong pointer; the cast pointer itself is not needed in the sequel.)
+
+The complication that |arg| can be defined in two was is due to the optimisation
+that, although we used |build_binary_call| which involves two arguments, on
+optimisation during conversion may have replaced it by a call with a single
+argument, like replacing |x.a+1| by |succ(x.a)|. If this happens and the
+|field_transform| branch applies, it passes a null pointer in place of the |rhe|
+right hand expression to the |field_transform| constructor, which the evaluation
+functions will detect to avoid actually evaluating a second argument.
 
 The actual work to be done is quite straightforward, since all the pieces from
-which we want to construct either a |field_transform| or a
-|field_assignment| have already been converted. In the former case we use just
-the converted first argument of the |call| of |op|, while in the latter case we
-use |call| as a whole.
+which we want to construct either a |field_transform| or a |field_assignment|
+have already been converted. In the former case we use just the converted second
+argument |rhe| of the |call| of |op|, while in the latter case we use |call| as
+a whole.
 
 @< Construct, from |tuple|, |pos| and |*call|, either a structure derived from
    |field_transform| or one derived from |field_assignment|, and |return|
    the result of passing it through |conform_types| @>=
-{ const tuple_expression *tup = nullptr;
+{ const tuple_expression* tup = nullptr;
+  const expression_base* arg = nullptr;
   auto* c = dynamic_cast<const builtin_call*>(call.get());
   if (c!=nullptr)
-    tup = dynamic_cast<const tuple_expression *>(c->argument.get());
+  {
+    tup = dynamic_cast<const tuple_expression *>(arg = c->argument.get());
+    if (tup != nullptr)
+      arg = tup->component[0].get();
+  }
 @)
   expression_ptr result;
-  if (tup!=nullptr and
-      dynamic_cast<const projector_call*>(tup->component[0].get())!=nullptr)
+  if (dynamic_cast<const projector_call*>(arg)!=nullptr)
   {
-    auto& rhe = const_cast<expression_ptr&>(tup->component[1]);
+    expression_ptr nil(nullptr);
+    auto& rhe =
+      tup==nullptr ? nil : const_cast<expression_ptr&>(tup->component[1]);
     if (is_local)
       result.reset (new local_field_transform@|
         (tuple,pos,selector,d,o,std::move(rhe),c->f,c->name,e.loc));
@@ -8496,20 +8526,20 @@ integer denotations and applied identifiers.
    of |*call| and set |result| by passing it through |conform_types|,
    otherwise build a |comp_assignment| @>=
 { const builtin_call* c;
-  const tuple_expression *tup=nullptr;
+  const tuple_expression* tup = nullptr;
+  const expression_base* arg = nullptr;
   if (kind==subscr_base::row_entry)
   { c = dynamic_cast<const builtin_call*>(call.get());
     if (c!=nullptr)
     {
-      tup = dynamic_cast<const tuple_expression *>(c->argument.get());
-      assert (tup!=nullptr);
-      // no conversion can be inserted around argument pair
+      tup = dynamic_cast<const tuple_expression *>(arg=c->argument.get());
+      if (tup!=nullptr)
+        arg=tup->component[0].get();
     }
   }
-  if (tup!=nullptr and
-      dynamic_cast<const subscr_base*>(tup->component[0].get())!=nullptr)
+  if (dynamic_cast<const subscr_base*>(arg)!=nullptr)
   @< Set |result| to a |component_transform| assembled from |aggr|, |ind|,
-     |c->f|, |c->name|, and |tup->component[1]|, passed through
+     |c->f|, |c->name|, and maybe |tup->component[1]|, passed through
    |conform_types| from |comp_t| to |type| @>
   else
     if (@< |index| is a constant expression @>@;@;)
@@ -8527,7 +8557,9 @@ integer denotations and applied identifiers.
 |component_transform| all need their own line.
 
 @< Set |result| to a |component_transform| assembled... @>=
-{ auto& rhe = const_cast<expression_ptr&>(tup->component[1]);
+{ expression_ptr nil(nullptr);
+  auto& rhe =
+    tup==nullptr ? nil : const_cast<expression_ptr&>(tup->component[1]);
   if (is_local)
   { if (reversed)
     @/ result.reset
