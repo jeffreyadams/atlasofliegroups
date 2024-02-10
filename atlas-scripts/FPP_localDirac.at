@@ -1818,7 +1818,7 @@ set local_test_GEO_hash_bottom_layer(KGBElt x, ratvec lambda, VertexData vd,
     then () = if L = G or
 	         sum(for i:NLKT
     	      	     do sum( for list in LKdatas[i] do #list od)
-		     od)= NLKT
+		     od)= NLKT and not more_flag
     	      then return local_test_GEO_hash_one_level(x, lambda, vd, Lvd, LF,
 	      	   	  				   pol_hash, Uhash)
 	      fi
