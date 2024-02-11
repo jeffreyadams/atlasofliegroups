@@ -152,7 +152,7 @@ begin
    , theta_1 = involution(x)-1
    in { prints("u_p:", u_p); }
    for H in all_H(P.real_form)
-      if not(=H*theta_1 and =H*rho_L and >H*u_p) { all its entries >0 }
+      if =H*theta_1 and =H*rho_L and >H*u_p { all its entries >0 }
       do let level_two_roots = columns_with((vec alpha): H*alpha=2, u_p ) in
          (H,level_two_roots)
       fi
