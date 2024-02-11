@@ -1477,7 +1477,7 @@ helper function |convert_to_signed_root_index| to do this conversions safely.
 
 shared_int convert_to_signed_root_index(const RootSystem& rs, RootNbr alpha)
 {
-  assert(alpha < rs.numRoots());
+  assert(alpha <= rs.numRoots());
   int sa = alpha;
   sa -= static_cast<int>(rs.numPosRoots());
   // cast is necessary, blame the \Cpp\ standard

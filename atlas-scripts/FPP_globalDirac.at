@@ -402,9 +402,7 @@ set FPP_unitary_hash_general([KGBElt] xs, Param_hash Uhash, Param_hash Uparamhas
     	      do {xs} 
 	 let former_time = current, formerUhash = currentUhash, formerUcounter = currentUcounter
 	 then twists = all_lambda_differential_0(x)
-	 then () = prints("defined twists")
 	 then LPm_entries = LPm_table.LPm_entries(G,x.involution)
-	 then () = prints("defined LPm_entries")
          then good_entries = for (lambda0,entry) in LPm_entries
                               do  if 1*parameter(x,lambda0,zeroNu) != zeroPol
                                   then [(lambda0,entry)]
@@ -422,7 +420,8 @@ set FPP_unitary_hash_general([KGBElt] xs, Param_hash Uhash, Param_hash Uparamhas
 	 then templambdatimes = null(Ncases)
 	 then () = if every_KGB_flag
       	      	   then prints("     start KGBElt #", xnums[j], ", #lambdas = ",#lambdas,
-		   	       " Uhash.size() = ", Uhash.size());
+		   	       " Uhash.size() = ", Uhash.size(), ", running time = ",
+			       print_time_string(elapsed_ms() - start));
 		   	prints("  ------------------")
         	   fi
 	 then () = for (lambda0, (Lvd, Perm2, mapAct))@k in good_entries
@@ -743,8 +742,8 @@ set FPP_unitary_hash_bottom_layer([(KGBElt,ratvec)] xlambdas, steady_bottom_data
 	      ", number of K-types studied = ", bott_data.size());
        prints("Time in derived_factor_K_types_info = ", print_time_string(dfkiTime),
        	      ", time in min_bottom_elim_factors = ",print_time_string(mbefTime));
-       prints("Time in bottom layer branching = ",print_time_string(qrf_sig_tables.bottom_branch_time()),
-       		    ", time in bottom layer sig = ", print_time_string(qrf_sig_tables.bottom_sig_time()));
+       prints("Time in bottom layer branching = ",print_time_string(rf_sig_tables.bottom_branch_time()),
+       		    ", time in bottom layer sig = ", print_time_string(rf_sig_tables.bottom_sig_time()));
        prints("Time in min_bottom_elim_factors = ",print_time_string(mbefTime));
        prints("  #hash_real_dumb =",hash_real_dumbCounter.use_count(),
 	      ", #hash_dumb =", hash_dumbCounter.use_count(),
@@ -839,7 +838,8 @@ set FPP_unitary_hash_bottom_layer([KGBElt] xs,  steady_bottom_data bott_data,
 	 then templambdatimes = null(Ncases)
 	 then () = if every_KGB_flag
       	      	   then prints("     start KGBElt #", xnums[j], ", #lambdas = ",Ncases,
-		   	       " Uhash.size() = ", Uhash.size());
+		   	       " Uhash.size() = ", Uhash.size(), ", running time = ",
+			       print_time_string(elapsed_ms() - start));
 		   	prints("  ------------------")
         	   fi
 	 then () = for (lambda1,(Lvd1,Perm2,mapAct)) @k in good_entries
@@ -930,8 +930,8 @@ set FPP_unitary_hash_bottom_layer([KGBElt] xs,  steady_bottom_data bott_data,
 	      ", number of K-types studied = ", bott_data.size());
        prints("Time in derived_factor_K_types_info = ",print_time_string(dfkiTime),
        	      ", time in min_bottom_elim_factors = ", print_time_string(mbefTime));
-       prints("Time in bottom layer branching = ",print_time_string(qrf_sig_tables.bottom_branch_time()),
-       		    ", time in bottom layer sig = ", print_time_string(qrf_sig_tables.bottom_sig_time()));
+       prints("Time in bottom layer branching = ",print_time_string(rf_sig_tables.bottom_branch_time()),
+       		    ", time in bottom layer sig = ", print_time_string(rf_sig_tables.bottom_sig_time()));
        prints("  #hash_real_dumb = ",hash_real_dumbCounter.use_count(),
 	      ", #hash_dumb = ", hash_dumbCounter.use_count(),
        	      ", #hash_def_dumb =", hash_def_dumbCounter.use_count());

@@ -688,5 +688,4 @@ set make_unitarity_bool_hash () = unitarity_bool_hash:
 
 set unitarity_hash = make_unitarity_bool_hash()
 
-set is_unitary_hash(Param p) = bool:
-    unitarity_hash.entry(p)
+set is_unitary_hash(Param p) = bool: unitarity_hash.entry(p)
