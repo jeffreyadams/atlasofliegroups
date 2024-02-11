@@ -133,7 +133,7 @@ Fokko. Note however that the specification [[1,0,0]/2,[0,1,1]/2], of the
 kernel generators is somewhat more liberal than allowed in the Fokko program.
 The kernel generators are needed to describe root data in full generality, but
 are not needed for simply connected or adjoint root data; whereas in Fokko
-this is achieved by recognizing 'sc' or 'ad' in lieu of kernel generators, the
+this is achieved by recognising 'sc' or 'ad' in lieu of kernel generators, the
 'atlas' program provides alternative functions to the above 'inner_class' that
 do not take the kernel generator specification as argument.
 
@@ -642,7 +642,7 @@ this command but without permanently binding it, as follows:
   Error during analysis of expression at <standard input>:75:0-2
     Undefined identifier 'ic'
 
-Note that axis recognized that the let-expression was incomplete after the
+Note that axis recognised that the let-expression was incomplete after the
 first line, changing the prompt to 'L >' in the second line to indicate this.
 
 
@@ -812,7 +812,7 @@ A matrix can be obtained from the lists of its columns by a cast:
   | 2, 5 |
   | 4, 7 |
 
-Each list of integers giving a column is in fact first impolicitly converted
+Each list of integers giving a column is in fact first implicitly converted
 to a vector, and one could therefore also use a vector-valued expression in
 its place (for instance an identifier bound to a vector value).
 
@@ -943,7 +943,7 @@ similarly for any operator in the place of '+', so in the above examples one
 could say i+:=1 and n-:=1. This is a transformation performed in the parser,
 so '+:=' is not really an operator (and is composed of separate '+' and ':=').
 The left hand side must be an expression that is accepted for assignment, which
-(currently) means eaither a variable or a simply subscritped variable (if v is a
+(currently) means either a variable or a simply subscripted variable (if v is a
 vector and i an integer then both v[i]:=5 and v[i]*:=5 are valid, and even
 v[i*:=2]+:=1 is accepted (the parser transforms it into 'let $=(i*:=2) in
 v[$]:=v[$]*2' where $ designates a fresh identifier); although this also works
@@ -1138,7 +1138,7 @@ find the return type by itself (and in the example it would without the cast);
 the reply it gives to the command, here 'Defined f: (LieType->)', indicates
 which type it has found. Note that when calling 'f' we provided a 'string'
 rather than a 'Lie_type' value; axis has inserted the necessary conversion
-implicitly when analyzing those calls.
+implicitly when analysing those calls.
 
 The example also illustrates a typical composition of the function body
 consisting of a 'let' construction introducing a sequence of introductions of
@@ -1191,7 +1191,7 @@ all right, because it can be distinguished by the argument type.
 
 (As an aside, this call could not possibly be taken to be a recursive call,
 even if the types would have matched, since the 'set' definition is only taken
-into account after the body has been analyzed and found correct; the
+into account after the body has been analysed and found correct; the
 definition is therefore unknown during the analysis of its own body.)
 
 New meanings of operator symbols can also be defined in this way. So while
@@ -1282,7 +1282,7 @@ Here the interpreter is saying it refuses to have two definitions overloaded
 for the same name 'inner_class', with argument types so similar that for
 certain argument expressions there would be no way to tell which of them is to
 be called. The language prefers to bar the road to such a pitfall and inform
-the user immediately, rather then to wait with signaling an error until an
+the user immediately, rather then to wait with signalling an error until an
 actual ambiguous call occurs, or worse to resolve such ambiguity without any
 warning by some subtle rule that might not correspond to what the user,
 unaware of the ambiguity, had in mind.
@@ -1315,7 +1315,7 @@ to be passed as arguments to other functions. So supposing g was defined by
 a function that takes as parameter another function, of type '(int->int)'. As
 argument of 'g' one can provide an anonymous function, for instance one that
 adds 1 to an integer, which can be denoted by '(int n) : n+1', or to make the
-return type explicit '(int n) int: n+1' (the syntax is a parenthesized
+return type explicit '(int n) int: n+1' (the syntax is a parenthesised
 parameter list, an optional return type followed by a colon, and an expression
 giving the function body). One can now call g with this argument:
 
@@ -1373,7 +1373,7 @@ in which case it is strictly equivalent to 'set name = value'.
 
 Although the design of axis aims at always giving variables a value at their
 introduction, deducing their type from that value and avoiding the possibility
-of uninitialized variables, it does allow introducing a global variable
+of uninitialised variables, it does allow introducing a global variable
 without specifying an initial value, but only a type. To this end there is the
 variation of the 'name : value' syntax consisting of writing 'name : type'
 instead. For instance the function variable 'f' above could have been
@@ -1431,7 +1431,7 @@ this can be particularly relevant for the values of function calls and loops.
 
 One might consider ';' as an associative operator with very low precedence
 (lower than assignment, and on the same level as 'let': if the final operand
-starts with 'let' it need not be parenthesized) that evaluates its operands in
+starts with 'let' it need not be parenthesised) that evaluates its operands in
 order and returns the value of the rightmost one. Occasionally useful
 (especially in loops) is its variant written as the keyword 'next', that also
 evaluates its operands (usually just two of them) from left to right, but
@@ -1602,7 +1602,7 @@ way to inspect the value is to do a case distinction on the variants, and to
 provide for each a function to handle the case; these functions must all
 return values of the same type (if any), but each can take an argument whose
 type is that of the variant in question. There are two forms of case
-expressions for union values, a simple one that realizes exactly this idea
+expressions for union values, a simple one that realises exactly this idea
 without frills, and a second for intended to be more user friendly. We call
 the first form "union case expression", the other "discrimination expression".
 
@@ -1719,7 +1719,7 @@ and expression sequenced by 'next' can be used. So for instance the variation
 produces the row [0,1,...,n-1]. It can also be useful to use 'next' in the
 condition of the loop, to program an action that is to be performed whether or
 not the loop will terminate, but after the evaluation of the condition proper;
-this is possible, provided the condition is parenthesized (without which there
+this is possible, provided the condition is parenthesised (without which there
 could be ambiguity, in view of the possibilities discussed below). For instance
 
   set i=0
@@ -1734,7 +1734,7 @@ allows for more flexible uses, in which the condition and loop body are
 considered together rather than as two completely separate expressions. A first
 manifestation of this is that local variables introduced by 'let' in the
 condition (for which a separate instance is created each time the condition is
-evaluated) remain in scope in the loop body. For instance, in Euclids algorithm
+evaluated) remain in scope in the loop body. For instance, in Euclid's algorithm
 for the greatest common divisor of two integers a,b, one needs to repeatedly
 compute the remainder r=a%b, stopping when r=0, but when r>0 also using r to
 replace a. Rather than recomputing r, or keeping it in a variable not local to
@@ -1755,7 +1755,7 @@ signals continuation while producing a component added to the value of the loop.
 This "expression" can only occur inside a while-loop, and has more limited way
 of composition than ordinary expressions: descending from the loop, it can be
 the body of a 'let' declaration, the second part in a sequence expression using
-a semicolon, and as we saw it can be parenthesized. It can also be the branch of
+a semicolon, and as we saw it can be parenthesised. It can also be the branch of
 a choice expression, in which case all branches must have a separate 'do', each
 providing both a termination condition and their own loop body. This may seem
 odd, but can be useful when the way to proceed in a loop depends on some
@@ -1967,24 +1967,95 @@ backwards, but assembling the result in the original increasing order), and
 apply also to versions of 'for' loops given below (the second variant also
 applies to 'while' loops; not the first variant, which is meaningless there).
 
-Like for the while loop, the body may be a sequence expression, and it may
-have side effects. However, assignments to the variables introduced in the
-loop (index and/or value of iteration) are forbidden. This is so because it
-would usually mask an error: once the heading of a loop is processed, there is
-no way to alter the number of iterations (in particular the expressions for
-bounds or array iterated over are evaluated just once), and assignment to the
-loop index suggests that the user tries to do so anyway. (In rare cases where
-one really needs a modified version of an iteration value, copy it to a local
-variable and modify that.) In fact the loop variables are distinct for each
-iteration: if one captures them in functions, each one stays at its initial
-value; so to create a list of functions that add respectively 1,3,6, doing
+If executing the loop body has no side effects, then any necessary reversal is
+best indicated in the heading of the for loop (actually reversing the
+traversal), for instance
+
+  for i:4 ~ do for j:i do (i,j) od od
+
+produces the values [ [(3,0),(3,1),(3,2)], [(2,0),(2,1)], [(1,0)], []] in that
+order; the same result would be obtained by placing the '~' between the two
+instances of 'od' instead, but the loop would have visited the pairs in a
+different order, starting with (1,0) and ending with (3,2). However when
+producing the values depends on side effects being produced in a particular
+order that does not have to be the order of the result, it may be necessary to
+use a final |~od|, possibly in combination with an initial |~do|. For instance
+the left-to-right partial sums of a list |seq| can be produced as
+
+  let sum=0 in for k in seq do sum+:=k od
+
+but to get the right-to-left partial sums one would instead need to say
+
+  let sum=0 in for k in seq ~do sum+:=k ~od
+
+Like for the while loop, the body of a for loop may be a sequence expression,
+and (as we just saw) it may have side effects. However, assignments to the loop
+variables (index and/or value of iteration variables introduced in the heading
+of the loop) are forbidden. This is so because it would usually mask an error:
+once the heading of a loop is processed, the pattern of iteration is fixed; in
+particular the bounds for the index or the value of that array iterated over are
+evaluated just once. An assignment to the loop index suggests that the user
+tries to modify the iteration pattern anyway, so it will be flagged as an error.
+(In rare cases where one really needs a modified version of an iteration value,
+one can copy it to a local variable and then modify that copy.) In fact the loop
+variables are distinct (constant) entities for each iteration, which is of
+importance if one captures them in functions. It means the value is frozen in
+the captured instance, even though the loop has continued with other values and
+has then terminated. So one can for instance create a list of functions that add
+respectively 1,3,6, doing
 
   functions := for x in [1,3,6] do (int n): n+x od
 
-has the desired effect (functions[1] adds 3, not the "final value" 6 of 'x').
+with the desired effect (e.g., functions[0] adds 1, and function[2] adds 6).
 
+** Concatenating nested loops
 
-* Forced exit from loops and functions: 'break' and 'return'
+The body of a loop can be any kind of expression, in particular it can be
+another loop. In this case the value produced by the outer loop will be nested
+as well: a list of lists of the type of value produced by the body of the inner
+loop. It can be desirable in some cases to produce a single concatenated list
+instead, and for that purpose a generic concatenation operation is available,
+bound to the name '##', which can be applied to the result of the outer loop.
+Since it acts after the loop is completed, it is customary to write the
+application of this operator by adding '.##' after the final 'od', for instance
+
+  for i:4 do for j:i+1 do (i,j) od od.##
+
+produces [(0,0),(1,0),(1,1),(2,0),(2,1),(2,2),(3,0),(3,1),(3,2),(3,3)] as value.
+Using the same operator, one can exclude some values from the list produced by a
+loop by using as body a conditional statement that produces a list of length 1
+(if the body should contribute to the result) or 0 (otherwise); for instance
+
+  for d in [3,1,4,1,5,9,2,6,5,3,5] do if d%2=1 then [d] else [] fi od.##
+
+produces the value [3,1,1,5,9,5,3,5]. Here the conditional statement acts as a
+loop without loop variable iterating 1 or 0 times (indeed one could have written
+
+  for d in [3,1,4,1,5,9,2,6,5,3,5] do for :d%2 do d od od.##
+
+to produce the same result). To facilitate this style of programming, the
+language provides some syntactic sugar (new syntax that the parser will convert
+into appropriate applications of the concatenation operator), in which the 'do'
+of the outer loop is omitted. Using this, the first example above can be written
+
+  for i:4 for j:i+1 do (i,j) od od
+
+and, interpreting 'if .. do .. fi' as a Boolean-counted loop, the second as
+
+  for d in [3,1,4,1,5,9,2,6,5,3,5] if d%2=1 do d fi od
+
+Both forms can be combined and nested to any depth; for instance one can iterate
+over all relatively prime pairs of digits by
+
+  for i:9 for j:10 if gcd(i,j)=1 do ... fi od od
+
+Note that although only a single 'do' is present (corresponding to the fact that
+only a single level of list is produced), each 'for' or 'if' needs to be closed
+by a separate 'od' respectively 'fi' (this is mainly so that opening and closing
+symbols straightforwardly match up, but also gives the occasion to apply ending
+"reversal after iteration" indications '~' to each level of 'for' separately).
+
+** Forced exit from loops and functions: 'break' and 'return'
 
 It is occasionally useful to force, inside a branch of some possibly nested
 choice expression, an exit from a larger expression evaluation; this kind of
@@ -2103,7 +2174,7 @@ this gives the following (optimal though maybe not optimally readable) style:
 Normally each complete line entered is executed as a command (an expression to
 evaluate, an identifier or operator definition, or a miscellaneous command);
 the type check execution are performed without the need for a symbol
-signaling that a command is completed. However, commands may require more
+signalling that a command is completed. However, commands may require more
 text than fits on a line, especially if they contain function definitions, so
 some simple provisions are made to not necessarily consider each end-of-line
 as a command terminator. It is not practically possible, nor really desirable,
@@ -2295,16 +2366,16 @@ The formal syntax is defined in the parser generator source file "parser.y"; a
 readable summary can be found at the beginning of "parser.output" which if
 needed can be created by the shell command "bison --report=states parser.y".
 
-The syntax is very largely centered around a single "part of speech", the
+The syntax is very largely centred around a single "part of speech", the
 expression. There is no distinction between expressions and statements: every
 expression may have side effects (if it contains assignments for instance) and
-yields a value (although it might be void, i.e., useless). The only part of
-the syntax not directly concerned with expressions is that defining commands,
-which are only allowed at the outermost level. Some other categories, such as
-type specifications and formal parameter lists, are used within certain kinds
-of expressions, but do not themselves constitute expressions. The command level
-will be described at the beginning, the other non-expressions categories at
-the end. In between we enumerate the different kinds of expressions, in order
+yields a value (although it might be void, i.e., useless). The only part of the
+syntax not directly concerned with expressions is that defining type, and
+commands; both are only allowed at the outermost level. Some other categories,
+such as type specifications and formal parameter lists, are used within certain
+kinds of expressions, but do not themselves constitute expressions. The command
+level will be described at the beginning, the other non-expressions categories
+at the end. In between we enumerate the different kinds of expressions, in order
 from most loosely bound to most tightly bound; using a loosely bound form in
 more tightly bound context requires enclosing the expression in parentheses.
 
@@ -2315,6 +2386,9 @@ value printed. Nothing will be printed if the expression has void type, so for
 a statement evaluated only for its side effect (for instance an assignment) one
 may suppress output either by casting it to void (prefix "void:" to the
 statement), or by following it by a semicolon and then and empty tuple '()'.
+This is particularly recommended for loops executed for their side effect (for
+instance printing statements), since they otherwise produce uninteresting but
+potentially long lists (often of void values) as result, which distracts.
 
 Another common command is the definition starting with 'set'. In it's basic
 form 'set' is followed by a an identifier pattern or an operator name, an '='
@@ -2354,8 +2428,8 @@ the types of all overloads currently defined for that symbol.
 
 A command 'showall' displays the contents of overload and identifier tables.
 
-The command 'quit' terminates the interpreter, while 'verbose' and 'quiet'
-turn on or off extra diagnostics during expression analysis.
+The command 'quit' terminates the interpreter, while 'set verbose' and 'set
+quiet' respectively turn on or off extra diagnostics during expression analysis.
 
 A command starting with '>' or '>>' redirect output to a file; the symbol is
 followed by a file name (either delimited by whitespace or enclosed in quotes)
@@ -2364,6 +2438,9 @@ and then the expression to be evaluated.
 A command starting with '<' or '<<' opens a subsidiary input file as described
 above; it should be followed just by the name of the file to include
 
+The last two cases make it a bit difficult to enter an expression beginning
+with '<' or '>' used as unary operator. In the rare cases where one wants such
+an expression to be evaluated, one can enclose the expression in parentheses.
 
 (b) Quaternary expressions: 'let', anonymous functions, casts, sequences
 
@@ -2418,7 +2495,7 @@ assignments, component assignments like v[i]:=3, and compound assignments like
 n+:=1, or even compound component assignments like v[i]-:=1. Each of them end
 with ":=" followed by a tertiary level expression. To the left of ":=" they have
 respectively an identifier, a subscripted identifier (the subscript being an
-expression enclosed in '[' and ']'), or a possibly subscritped identifier
+expression enclosed in '[' and ']'), or a possibly subscripted identifier
 followed by an operator symbol. For a component assignment to be valid it is
 necessary that the type of identifier and index are such that the subscription
 would be a valid expression, but component assignments are not allowed for
@@ -2428,10 +2505,10 @@ assigns to the variable v a new value that differs from the old value only at
 index i, where the new entry is c. In a component assignment involving an
 identifier whose value is of type KTypePol or ParamPol, the "index" has to be a
 value of type KType respectively Param, and it has to satisfy is_final (since
-only sich terms can arise in these polynomials); the value assigned is the
+only such terms can arise in these polynomials); the value assigned is the
 coefficient of the term for that KType or Param, which term is created if
 needed, and may disappear if the coefficient assigned is zero. On the other hand
-compound assignments are just rewritten as a non-compund assignment in a more
+compound assignments are just rewritten as a non-compound assignment in a more
 complicated context; notably, a compound assignment 'ident # := expr' is
 rewritten as 'indent := ident # (expr)'; the same goes for any infix operator in
 the place of '#'. As a consequence, the meaning of a compound assignment it is
@@ -2503,17 +2580,18 @@ function), which construct is artificially introduced at the secondary level.
 Atomic expressions are identifiers, non-negative integer constants, the
 keywords true, false, string constants (enclosed in quotes and on a single
 line), the symbol '$' (representing the value of the last evaluated
-expression) and specializations of overloaded symbols. The latter are formed
+expression) and specialisations of overloaded symbols. The latter are formed
 by an (overloaded) identifier or operator followed by '@' and a type.
 
 (g) Closed expressions: displays and groupings, conditionals, loops
 
 These compound expressions include delimiters at both ends, so they never need
-(additional) parentheses; a single parenthesized expression also forms a closed
+(additional) parentheses; a single parenthesised expression also forms a closed
 expression. The different forms are as follows, where '*' is any expression
 
 if * then * fi		  	which abbreviates: if * then * else () fi)
 if * then * else * fi
+if * else * then * fi
 if * then * elif * then ... fi
 case * in * , * , ... esac     integer case
 case * in * | * | ... esac     union case
@@ -2523,11 +2601,15 @@ case * | else  | p.t: *  ... esac    discrimination expression with default
 
 while * do * od                 optionally with ~ before do
 for pattern in * do * od        optionally with ~ before do and/or od
-for pattern @ ident in * do * od idem
+for pattern @ ident in * do * od idem (and ident may be omitted)
 for ident : * do * od            idem (implicit 'from 0')
 for ident : * from * do * od     idem
 for ident : * downto * do * od  deprecated, means 'for ident : to * ~do * od'
-( * )                           a parenthesized expression
+if * do * fi                    Boolean-counted: returns singleton or empty list
+for pattern in * <loop> od      like first for-loop, but concatenate inner lists
+...                             in these forms <loop> is any type of for-loop,
+for ident : * downto * <loop> od   or a 'if ... do ... fi' Boolean-counted loop
+( * )                           a parenthesised expression
 begin * end			which is equivalent to: ( * )
 ( * , * , ... )			which builds a tuple
 [ * , ... ]   			which builds a list
@@ -2537,10 +2619,10 @@ begin * end			which is equivalent to: ( * )
 
 Identifier patterns occur in parameter lists for functions, and in local
 ('let') or global ('set') declarations. An identifier pattern can be a single
-identifier, or a parenthesized and comma-separated list of optional identifier
+identifier, or a parenthesised and comma-separated list of optional identifier
 patterns, optionally followed by ':' and an identifier. If a pattern consist
 of or ends with an identifier, that identifier names the entire value
-corresponding to the pattern. If it contains a parenthesized and
+corresponding to the pattern. If it contains a parenthesised and
 comma-separated list, the corresponding value must have tuple type with as
 many components as the list, and each identifier pattern in the list
 corresponds to the component of that tuple value at its position. If a pattern
@@ -2549,7 +2631,7 @@ named in the pattern, nor (should it be a tuple) any of its own components.
 
 (i) Types
 
-In the grammar types occur in parameter lists, casts, and in specializations
+In the grammar types occur in parameter lists, casts, and in specialisations
 of overloaded symbols. Currently possibilities of specifying types is fairly
 limited: they are built up of primitive types (one of 'int', 'rat', 'bool',
 'string', 'vec', 'mat', 'ratvec', 'Lie_type', 'RootDatum', 'InnerClass',

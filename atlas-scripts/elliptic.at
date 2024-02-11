@@ -168,15 +168,15 @@ set elliptic_simple = (string,int->[[int]]):
 
   { local functions that use the |rank| argument: }
   let cycle_product (Partition lambda) { where |sum(lambda)=rank| } = [int]:
-    let a=0 in ##for part in lambda do BC_cycle(a,a+part,rank) next a+:=part od
+    let a=0 in for part in lambda do BC_cycle(a,a+part,rank) next a+:=part od.##
   , cycles_product (Partition lambda) { with |sum(lambda)=rank|, |#lambda| even}
     = [int]:
       let a=0 in
-      ##for i:#lambda\2
-	do let ii=i+i then b=a+lambda[ii] then c=b+lambda[ii+1]
-	   in D_cycles(a,b,c,rank)
-	next a:=c { afterwards advance over two parts }
-	od
+      for i:#lambda\2
+      do let ii=i+i then b=a+lambda[ii] then c=b+lambda[ii+1]
+	 in D_cycles(a,b,c,rank)
+      next a:=c { afterwards advance over two parts }
+      od.##
   in
 
   { body }

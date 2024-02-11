@@ -64,8 +64,10 @@ set support (Param p) = [int]:
    support(x(p)) { using |support@KGBElt| from parabolics.at }
 
 set blocku(RealForm G) = [Param]:
- ##for p in block_of(trivial(G))
-   do if for k in support(x(p)) do is_descent(k,p) od.all then [p] else [] fi
+   for p in block_of(trivial(G))
+      if for k in support(x(p)) do is_descent(k,p) od.all
+      do p
+      fi
    od
 
 set sort_by_length = ([vec,rat]->[vec,rat]): sort_by((vec v,rat c)rat: c)
@@ -83,28 +85,27 @@ set H_candidates (RootDatum rd) = [ratvec]:
 {. Choose the H among the candidates which correspond to distinguished
    nilpotent orbits. .}
 set distinguished_H (RootDatum rd_L) = [vec]:
- ##for H in H_candidates(rd_L)
-   do if dim_eigenspace(rd_L,H,2) =
+   for H in H_candidates(rd_L)
+      if dim_eigenspace(rd_L,H,2) =
          dim_eigenspace(rd_L,H,0)+semisimple_rank(rd_L)-rank(rd_L)
-      then [ratvec_as_vec(H)]
-      else []
+      do ratvec_as_vec(H)
       fi
    od
 
 {. Given a Root Datum rd for a complex group G, list the neutral elements
    (dominant for G) corresponding to the complex nilpotent orbits. .}
 set all_H (RootDatum rd) = [vec]:
- ##for S in standard_Levi_conjugacy_representatives(rd)
-   do for H in distinguished_H(Levi_datum(rd,S)) do dominant(H,rd) od
+   for S in standard_Levi_conjugacy_representatives(rd)
+      for H in distinguished_H(Levi_datum(rd,S)) do dominant(H,rd) od
    od
 
 {. As previous function, except the coweights H are given as sums of fundamental
    weights for the standard (Bala-Carter) Levi M in which the orbit is
    distinguished. This is the conjugate of H used for further calculation. .}
 set all_H_nd (RootDatum rd) = [vec]:
- ##for S in standard_Levi_conjugacy_representatives(rd)
+   for S in standard_Levi_conjugacy_representatives(rd)
    do distinguished_H(Levi_datum(rd,S))
-   od
+   od.##
 
 {. List all (complex) nilpotent orbits (with H dominant) for a complex group. .}
 set complex_nilpotent_orbits (RootDatum rd) = [ComplexNilpotent]:
@@ -150,12 +151,10 @@ begin
    , rho_L = rho(P.Levi)
    , theta_1 = involution(x)-1
    in { prints("u_p:", u_p); }
- ##for H in all_H(P.real_form)
-   do { prints("H=", H, ", ", rho_L, ", ", H*rho_L); }
-      if =H*theta_1 and =H*rho_L and >H*u_p { all its entries >0 }
-      else []
-      then let level_two_roots = columns_with((vec alpha): H*alpha=2, u_p ) in
-           [ (H,level_two_roots) ]
+   for H in all_H(P.real_form)
+      if not(=H*theta_1 and =H*rho_L and >H*u_p) { all its entries >0 }
+      do let level_two_roots = columns_with((vec alpha): H*alpha=2, u_p ) in
+         (H,level_two_roots)
       fi
    od
 end
@@ -164,7 +163,7 @@ set max_only ([vec,mat] arg) = [vec,mat]:
    if >#arg else [(null(0),null(0,0))] { one cannot pick a bald chicken }
    then
       let (H_last,vectors_last)=arg[#arg-1] then max=#vectors_last in
-    ##for (H,vectors) in arg do if #vectors=max then [(H,vectors)] else [] fi od
+      for (H,vectors) in arg if #vectors=max do (H,vectors) fi od
    fi
 
 
@@ -215,8 +214,7 @@ set tau_invariants_of_cell_raw (Block B, [int] cell) = [[int]]:
    for i in cell do let (x,y)=element(B,i) in tau(parameter(x,y,gamma)) od
 
 set tau_containing (Block B,[int] P) = [int]:
-   let t=tau_invariants(B) in
- ##for ti@i in t do if P<=ti then [i] else [] fi od
+   for ti@i in tau_invariants(B) if P<=ti do i fi od
 
 { test if p is an Aq }
 set is_Aq (Param p) = bool:
@@ -231,7 +229,7 @@ set is_Aq ((KGBElt x,KGBElt y)) = bool: is_Aq(parameter(x,y,choose_gamma(x,y)))
 { compute all Aq's for G as [int], (coming from principal block) }
 set Blocku (RealForm G) = [int]:
    let B=principal_block(G) in
- ##for i:#B do if is_Aq(element(B,i)) then [i] else [] fi od
+   for i:#B if is_Aq(element(B,i)) do i fi od
 
 set is_Aq_cell (Block B,[int] C) = bool:
    any(#C,(int i)bool: is_Aq(element(B,C[i])))
@@ -239,22 +237,22 @@ set is_Aq_cell (Block B,[int] C) = bool:
 set is_Aq (Block B,int i) = bool: is_Aq(element(B,i))
 
 set Aq_cells (Block B,[[int]] cells) = [[int]]:
- ##for C in cells do if is_Aq_cell(B,C) then [C] else [] fi od
+   for C in cells if is_Aq_cell(B,C) do C fi od
 
 set Aq_reps (Block B,[int] cell) = [int]:
- ##for i in cell do if is_Aq(B,i) then [i] else [] fi od
+   for i in cell if is_Aq(B,i) do i fi od
 
 set Aq_cells (RealForm G,[[int]] cells) = [[int]]:
    Aq_cells(principal_block(G),cells)
 
 
 { |set_type RealNilpotent = (vec H, KGBElt x, void .)| defined above
-
+tau_invariants(B)
   A real nilpotent orbit is determined by a coweight H and a KGBElt x
   where x should be in the distinguished fiber, and H\in X_* is the semisimple
   element of a Lie triple.
   It is required that \theta_x(H)=H
-  set q=parabolic_by_cwt(x,H), then
+ tau_invariants(B) set q=parabolic_by_cwt(x,H), then
   orbit=induced from trivial orbit of Levi factor, equivalently
        =associated variety of A_q(lambda)
 
@@ -293,7 +291,7 @@ set sort_by_dimension = ([RealNilpotent]->[RealNilpotent]):
    sort_by(dimension@RealNilpotent)
 
 set simple_roots_from_coweight (RootDatum rd, ratvec v) = [int]:
- ##for alpha@i in simple_roots(rd) do if =alpha*v then [i] else [] fi od
+   for alpha@i in simple_roots(rd) if =alpha*v do i fi od
 
 set simple_roots_from_coweights (RootDatum rd,[ratvec] list) = [[int]]:
    for v in list do simple_roots_from_coweight(rd,v) od
@@ -328,7 +326,7 @@ set move_to_distinguished_fiber (RealNilpotent O) = RealNilpotent:
 
 set stabilizer_of_x (KGBElt x) = [WeylElt]:
    let G=real_form(x) in
- ##for w in W(G) do if cross(w,x)=x then [w] else [] fi od
+   for w in W(G) if cross(w,x)=x do w fi od
 
 {. Given a real group G and a list of simple roots determining a standard
    complex Levi MC, make a list of real forms of MC in G. .}
@@ -341,7 +339,7 @@ set viable_Levis (RealForm G,[int] S) = [RealForm]:
    determined by the simple roots S. H must be the conjugate determined
    by MC. .}
 set test_real_orbit (RealForm G,[int] H, RealForm M, [int] S) = [KGBElt]:
- ##for x_M in KGB(M)
+   for x_M in KGB(M)
    do let P_L=Parabolic:(simple_roots_from_coweight(root_datum(M),H),x_M)
    in if is_parabolic_theta_stable(P_L) and x_M=x_min(P_L) else []
       then
@@ -356,11 +354,10 @@ set test_real_orbit (RealForm G,[int] H, RealForm M, [int] S) = [KGBElt]:
             od.sum
       in if dimension(K_0(Levi_of_orbit(real_nilpotent(H,x_M))))
            =dim_center+number_roots
-         then [embed_KGB(x_M,G)]
-         else []
+         do embed_KGB(x_M,G)
          fi
       fi
-    od
+   od.##
 
 {. Given G and a coweight H, find all x so that (H_nd,x,) is a real
    nilpotent orbit. Here H_nd is the conjugate of H corresponding to
@@ -368,7 +365,7 @@ set test_real_orbit (RealForm G,[int] H, RealForm M, [int] S) = [KGBElt]:
    orbits. .}
 set all_real_nilpotent_orbit_KGBs (RealForm G,[int] H) = [KGBElt]:
    let (S,K)=Levi_of_H(H,G) then Levis=viable_Levis(G,S) in
- ##for M in Levis do test_real_orbit(G,K,M,S) od
+   for M in Levis do test_real_orbit(G,K,M,S) od.##
 
 set is_conjugate_orbit (RealNilpotent O,RealNilpotent P) = bool:
    assert(O.real_form=P.real_form);
@@ -416,8 +413,7 @@ set real_nilpotent_orbit_KGPs (RealForm G,vec H) = [KGPElt]:
 set real_nilpotent_orbits (RealForm G) = [RealNilpotent]:
    for H in all_H_nd(G)
    do let K=dominant(H,root_datum(G))
-      then kgps=real_nilpotent_orbit_KGPs(G,H)
-   in for P in kgps do real_nilpotent(K,x_min(P)) od
+   in for P in real_nilpotent_orbit_KGPs(G,H) do real_nilpotent(K,x_min(P)) od
    od.##.sort_by_dimension
 
 {. Make a list of the real forms of a given complex nilpotent orbit. .}
@@ -440,11 +436,10 @@ set make_dominant_H (RealNilpotent (H,x,):O) = RealNilpotent:
 set Levis_with_distinguished_orbit (RealNilpotent (H,x,):O) =
        [(vec,KGBElt),RealForm]:
    let G=x.real_form then (S,K)=Levi_of_H(H,G.root_datum) in
- ##for (M,xes) in for M in viable_Levis(G,S) do (M,test_real_orbit(G,K,M,S)) od
-   do
-    ##for y in xes
-      do if is_conjugate_orbit(O,real_nilpotent(K,y)) then [((K,y),M)]
-         else []
-         fi
+   for M in viable_Levis(G,S)
+      for y in test_real_orbit(G,K,M,S)
+         if is_conjugate_orbit(O,real_nilpotent(K,y))
+         do ((K,y),M)
+	 fi
       od
    od

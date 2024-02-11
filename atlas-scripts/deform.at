@@ -89,11 +89,8 @@ set deformation_terms_by_dual (Param p) = ParamPol:
   then solution = sum
     ( #block { size of vectors being summed (after conversion to matrix) }
     # for q@i in block
-      do if length(q)%2=opposite_parity
-	 then [ Q_mat[i.to_full,start]*P_mat[i] ]
-	 else []
-	 fi
-      od.##
+         if length(q)%2=opposite_parity do Q_mat[i.to_full,start]*P_mat[i] fi
+      od
     )
   , !on_p = orientation_nr(p)
 in null_module(p) +
@@ -107,7 +104,7 @@ set deformation_terms_by_dual (Param p,int max_height) = ParamPol:
 ;  assert(p.height<=max_height,"height bound kills term to deform")
 ;  let (full_block,start,dual_KL_mat,polys) = dual_KL_block(p)
    then subset = [int]:
-     for q@i in full_block do if q.height<=max_height then [i] else [] fi od.##
+     for q@i in full_block if q.height<=max_height do i fi od
    , ev = for P in polys do eval(P,minus_1) od
    , Q_col = vec:[] { vector variable to be assigned below }
    then Q_mat = mat: { transpose, select rows/cols from |subset|, set $q:=-1$ }
@@ -123,7 +120,7 @@ set deformation_terms_by_dual (Param p,int max_height) = ParamPol:
       { compute more efficiently: |signed_P_mat*diagonal(odd_levels)*Q_col|,
         where |odd_levels=vec: for q@i in block do #q.length%2!=lp_parity| }
         subset := { reuse local variable, now for selecting odd levels }
-           for q@i in block do if q.length%2=lp_parity then [] else [i] fi od.##
+           for q@i in block if q.length%2!=lp_parity do i fi od
       ; (mat: signed_P_mat.n_rows # for j in subset do signed_P_mat[j] od)
        *(vec: for i in subset do Q_col[i] od)
   , !on_p = orientation_nr(p)

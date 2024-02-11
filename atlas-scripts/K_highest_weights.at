@@ -365,7 +365,7 @@ set characters_order_2 (KGBElt x) = [vec]:
 prints("A=",A);
 prints("v=",v);
 prints ("B=",B);}
-   in ## for f@i in v do if f=2 then [B[i]] else [] fi od
+   in for f@i in v if f=2 do B[i] fi od
 
 { reduce [Param] by combining equivalent parameters;
   returns a list of inequivalent parameters }
@@ -428,7 +428,7 @@ set all_lambda_differential_0 (KGBElt x) = [vec]:
 set all_equal_dlambda_K_parameters (KType t) = [KType]:
    for v in all_lambda_differential_0(t.x)
    do let new_t = K_type(t.x,t.lambda_minus_rho+v)
-   in if new_t.is_final then [new_t] else [] fi
+   in if new_t.is_final do new_t fi
    od.##
 {  for v in all_lambda_differential_0(x) do (x,lambda+v) od}
 
@@ -468,8 +468,9 @@ set all_parameters_gamma (RealForm G,ratvec gamma) = [Param]:
 {. All G-spherical K-types with same differential as given one. .}
 set all_G_spherical_same_differential(KType mu)=[KType]:
   let p=parameter(mu) in
-  ##for q in all_parameters_x_gamma(p.x,p.infinitesimal_character) do
-  if is_split_spherical(q) then [LKT(q)] else [] fi od
+  for q in all_parameters_x_gamma(p.x,p.infinitesimal_character)
+     if is_split_spherical(q) do LKT(q) fi
+  od
 
 {. All G-spherical K-types with same differential as the LKT of parameter p. .}
 set all_G_spherical_same_differential (Param p) = [KType]:
@@ -542,9 +543,9 @@ in an R-group orbit.
 Choosing singletons corresponds to choosing the (unique) strongly dominant
 weight in the orbit. .}
 set choose_irred_inds ([[[Param]]] list)=[[[Param]]]:
-  ##for item in list do if
-    all(for params in item do #params=1 od) and #item>0
-     then [item] else [] fi od
+   for item in list
+      if all(for params in item do #params=1 od) and #item>0 do item fi
+   od
 
 {. This function takes KHighestWeight mu -> |R(K,mu)| K_types,
   see top of this file. .}
@@ -558,11 +559,10 @@ in assert(is_parabolic_theta_stable(Q), "Q is not theta stable");
    then good_mu_list=choose_irred_inds(test) then k=#good_mu_list
 in assert (k>0,"There is no suitable weight in the R-group orbit.");
    assert (k=1,"There is more than one suitable highest weight.");
- ##for p in good_mu_list[0]
-   do if any(for wt in highest_weights(K_type(p[0]))
+   for p in good_mu_list[0]
+      if any(for wt in highest_weights(K_type(p[0]))
              do move_weight(wt,x_Q)=move_weight(mu_in,x_Q) od)
-      then [K_type(p[0])]
-      else []
+      do K_type(p[0])
       fi
    od
 

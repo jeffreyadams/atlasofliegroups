@@ -7,8 +7,7 @@ set KL_block_raw (Param p, mat delta) = { emulate built-in |KL_block| }
     ([Param],int,mat,[vec],vec,vec,mat):
   let (regular_extblock,,,) = extended_block(p,delta)
   , (KL_mat,polys,stops) = raw_ext_KL(p,delta)
-  then survivors =
-    ## for q@j in regular_extblock do if q.survives then [j] else [] fi od
+  then survivors = for q@j in regular_extblock if q.survives do j fi od
   , length = from_stops(stops)
   in ( regular_extblock,  first(for q in regular_extblock do q=p od)
      , KL_mat, polys, stops

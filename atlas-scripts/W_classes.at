@@ -97,18 +97,16 @@ in while { loop with embedded |do| instances near end }
       let shorter=false
       then new_level = [WeylElt,WeylElt]:
 	 for s in W_gens(rd)
-	 do for (w,witness) in stack~[0]
+	    for (w,witness) in stack~[0]
 	    do let sws=s*w*s in
 	       case length(sws)-lw
 	       then { less }
 		  stack:=[[],[(sws,s*witness)]]; shorter:=true; break 1
 	       in { equal }
-		 if absent(stack~[1]##stack~[0],sws) then [(sws,s*witness)]
-		 else []
-		 fi
+		 if absent(stack~[1]##stack~[0],sws) do (sws,s*witness) fi
 	       else { greater } []
 	       esac
-	    od.##
+	    od
 	 od.##
       in
       if shorter then do lw:=lw-2 { and |stack| was reset }
@@ -357,9 +355,7 @@ set Levi_normalizer_index ((RootDatum,(int->bool))(rd,select):Levi_info) = int:
 	       do let L = [int]: decode(code)
 	       in for k:#root_perm
                   do let M=combination_encode(act(k,L))
-		  in if present(stack~[1],M) or present(stack~[0],M)
-		     then [] else [M]
-		     fi
+		  in if not (present(stack~[1],M) or present(stack~[0],M)) do M fi
                   od.##
                od.##
 	 in >#new_level { whether any new elements were found for new level }
@@ -391,9 +387,7 @@ set elliptic_simple_decomposition (WeylElt w) = [WeylElt,(string,int)]:
 in for (,rank):code in codes { traverse the simple factors }
    do let sub_map = map[offset:offset+rank] { index mapping for this factor }
       then factor_word =
-	 ## for s in w_L.word
-	    do let i=find(sub_map,s) in if i.>= then [i] else [] fi
-	    od
+         for s in w_L.word do let i=find(sub_map,s) in if i.>= do i fi od.##
       , simple_datum = root_datum
 	( r # for i in sub_map do rd_L.simple_roots[i]   od
 	, r # for i in sub_map do rd_L.simple_coroots[i] od

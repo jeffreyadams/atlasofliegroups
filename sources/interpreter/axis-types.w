@@ -2484,11 +2484,17 @@ be popped from the stack in reverse order.
 std::vector<shared_value> execution_stack;
 
 @ Sometimes we may need to expand a value into tuple components separately
-pushed onto the stack, but only if the |level l@;| so indicates and the value
-is indeed of tuple type; the function |push_expanded| will help doing this.
+pushed onto the stack, but only if the |level l@;| so indicates and the value is
+indeed of tuple type; the function |push_expanded| will help doing this. Since
+the argument might well be a shared pointer that was just created by
+|std::make_shared|, we provide an rvalue version that will avoid changing any
+reference count in such cases; it also provides the caller with an opportunity
+to explicitly let it give up its ``share'' of an existing shared pointer in
+passing it to |push_expanded|, by invoking |std::move| on the argument.
 
 @< Declarations of exported functions @>=
 void push_expanded(expression_base::level l, const shared_value& v);
+void push_expanded(expression_base::level l, shared_value&& v);
 
 @~Type information is not retained in compiled expression values, so
 |push_expanded| cannot know which type had been found for |v| (moreover,
@@ -2506,7 +2512,24 @@ void push_expanded(expression_base::level l, const shared_value& v)
       push_value(v);
     else
       for (size_t i=0; i<p->length(); ++i)
-        push_value(p->val[i]); // push components
+        push_value(p->val[i]); // push components, copying shared pointers
+  }
+} // if |l==expression_base::no_value| then do nothing
+void push_expanded(expression_base::level l, shared_value&& v)
+{ if (l==expression_base::single_value)
+    push_value(std::move(v));
+  else if (l==expression_base::multi_value)
+  { shared_tuple p = std::dynamic_pointer_cast<const tuple_value>(v);
+    if (p==nullptr)
+      push_value(std::move(v));
+    else if (v=nullptr,p.unique())
+      // if caller held unique copy of pointer, we may dismember the tuple
+      for (size_t i=0; i<p->length(); ++i)
+        push_value(std::move(p->val[i]));
+          // push components, moving shared pointers
+    else // others than caller might hold a copy
+      for (size_t i=0; i<p->length(); ++i)
+        push_value(p->val[i]); // push components, copying shared pointers
   }
 } // if |l==expression_base::no_value| then do nothing
 
@@ -2576,12 +2599,17 @@ internal tables that will \emph{benefit} other shareholders), and
 
 template <typename D> // |D| is a type derived from |value_base|
  inline std::shared_ptr<const D> get()
-{ std::shared_ptr<const D> p=std::dynamic_pointer_cast<const D>(pop_value());
+{
+#ifdef NDEBUG
+  return std::static_pointer_cast<const D>(pop_value());
+#else
+  std::shared_ptr<const D> p=std::dynamic_pointer_cast<const D>(pop_value());
   if (p.get()==nullptr)
   { std::ostringstream o; o << "Argument is no " << D::name();
     throw logic_error(o.str());
   }
   return p;
+#endif
 }
 @.Argument is no ...@>
 
@@ -2590,16 +2618,20 @@ template <typename D> // |D| is a type derived from |value_base|
   inline std::shared_ptr<D> non_const_get()
 {@; return std::const_pointer_cast<D>(get<D>()); }
 
-@ Here is a function template similar to |get|, that applies in situations
-where the value whose type is known does not reside on the stack. As for |get|
-we convert using a |dynamic_cast|, and to throw a |logic_error| in case our
-type prediction was wrong. This function is defined at the level of ordinary
+@ Here is a function template similar to |get|, that applies in situations where
+the value whose type is known does not reside on the stack. As for |get| we
+convert using a dynamic case, and to throw a |logic_error| in case our type
+prediction was wrong. This function is defined at the level of ordinary
 pointers, and it is not intended for use where the caller assumes ownership of
 the result; the original pointer is assumed to retain ownership as long as the
-result of this call survives, and in particular that pointer should probably
-not be obtained by calling the |get| method for a smart pointer temporary, nor
-should the result of |force| converted to a smart pointer, lest double
-deletion would ensue.
+result of this call survives, and in particular that pointer should probably not
+be obtained by calling the |get| method for a smart pointer temporary, nor
+should the result of |force| converted to a smart pointer, lest double deletion
+would ensue. As a consequence, we here use the basic |dynamic_cast| of a raw
+pointer rather than a |dynamic_pointer_cast| of a |std::shared_ptr|. Like in the
+case of |get| we provide a version using a static cast (omitting any check) when
+no debugging is enabled, since the validity of the downcast should be ensured by
+haveing passed the type check.
 
 We provide two versions, where overloading will choose one or the other
 depending on the const-ness of the argument. Since calling |get| for a
@@ -2609,22 +2641,32 @@ will often be the second one that is selected.
 @< Template and inline function definitions @>=
 template <typename D> // |D| is a type derived from |value_base|
   D* force (value_base* v)
-{ D* p=dynamic_cast<D*>(v);
+{
+#ifdef NDEBUG
+  return static_cast<D*>(v);
+#else
+  D* p=dynamic_cast<D*>(v);
   if (p==nullptr)
   { std::ostringstream o; o << "forced value is no " << D::name();
     throw logic_error(o.str());
   }
   return p;
+#endif
 }
 @)
 template <typename D> // |D| is a type derived from |value_base|
   const D* force (value v)
-{ const D* p=dynamic_cast<const D*>(v);
+{
+#ifdef NDEBUG
+  return static_cast<const D*>(v);
+#else
+  const D* p=dynamic_cast<const D*>(v);
   if (p==nullptr)
   { std::ostringstream o; o << "forced value is no " << D::name();
     throw logic_error(o.str());
   }
   return p;
+#endif
 }
 
 @ The \.{axis} language allows assignment operations to components of aggregates
@@ -2643,6 +2685,18 @@ and it returns a raw pointer-to-non-const, which can then be used to make the
 change to the unique copy. The argument |v| retains ownership. Not surprisingly
 the implementation of |uniquify| uses a |const_cast| operation when no
 duplication takes place.
+
+The method |std::shared_ptr::unique| used here was removed from recent versions
+of the \Cpp-standard, because it does not play well in multi-threaded
+environments where some other thread might either still be working on a method
+invoked using a since destroyed copy of the pointer, or resuscitate a copy form
+a still existing |std::weak_ptr|. Our interpreter is not (yet) capable of
+running simultaneously in multiple threads (the only multi-threading currently
+used occurs withing a single built-in function), so this is no concern to us.
+Should we for some other reason need to move to a recent version of \Cpp, then
+we must make a home grown variant of |std::shared_ptr| that provides an
+attribute that makes |unique| possible again, which is set immediately after
+|make_shared| and irreversibly cleared as soon as any copy is made.
 
 @< Template and inline function def... @>=
 template <typename D> // |D| is a type derived from |value_base|
@@ -2676,10 +2730,10 @@ the original copy of the pointer must be cleared at the time |unique| is called,
 so that this call has some chance of returning |true|. To the end we take the
 argument as rvalue reference, and make sure a temporary is move-constructed from
 it inside the body of |force_own|; the temporary is constructed in the argument
-to |std::dynamic_pointer_cast| (which has no overloads that directly bind to,
-and upon success move from, and rvalue argument; our work-around moves from the
-rvalue even if the dynamic cast fails, but then we throw a |logic_error|
-anyway).
+to |std::dynamic_pointer_cast| (which, until \Cpp20, has no overloads that
+directly bind to, and upon success move from, and rvalue argument; our
+work-around moves from the rvalue even if the dynamic cast fails, but then we
+throw a |logic_error| anyway).
 
 Since these functions return pointers that are guaranteed to be unique, one
 might wonder why no use of |std::unique_ptr| is made. The answer is this is
@@ -2699,12 +2753,17 @@ template <typename D> // |D| is a type derived from |value_base|
 @)
 template <typename D> // |D| is a type derived from |value_base|
   std::shared_ptr<D> force_own(shared_value&& q)
-{ std::shared_ptr<const D> p=
+{
+  std::shared_ptr<const D> p=
+#ifdef NDEBUG
+     std::static_pointer_cast<const D>(shared_value(std::move(q)));
+#else
      std::dynamic_pointer_cast<const D>(shared_value(std::move(q)));
   if (p==nullptr)
   { std::ostringstream o; o << "forced value is no " << D::name();
     throw logic_error(o.str());
   }
+#endif
   if (p.unique())
     return std::const_pointer_cast<D>(p);
   return std::make_shared<D>(*p); // invokes copy constructor; assumes it exists
@@ -3036,7 +3095,7 @@ from |required|, whose owner will be destructed before the error is caught.
 expression_ptr conform_types
 (const type_expr& found, type_expr& required, expression_ptr&& d, const expr& e)
 { if (not required.specialise(found) and not coerce(found,required,d))
-    throw type_error(e,found.copy(),std::move(required));
+    throw type_error(e,found.copy(),required.copy());
   return std::move(d); // invoking |std::move| is necessary here
 }
 
@@ -3389,13 +3448,18 @@ struct runtime_error : public error_base
 addition to the error message a reference to an expression to which the
 message applies. Placing a reference in an error object may seem hazardous,
 because the error might terminate the lifetime of the object referred to, but
-in fact it is safe: all |expr| objects are constructed in dynamic memory
-during parsing, and destructed at the disposal of the now translated
-expression at the end of the main interpreter loop; all throwing of
-|expr_error| (or derived types) happens after the parser has finished, and the
-corresponding |catch| happens in the main loop before disposal of the
-expression, so the reference certainly survives the lifetime of the
-|expr_error| object.
+in fact in the way we use it, it is safe. Nearly all |expr| objects are
+constructed in dynamic memory during parsing, and destructed at the disposal of
+the now translated expression at the end of the main interpreter loop; all
+throwing of |expr_error| (or derived types) happens after the parser has
+finished, and the corresponding |catch| happens in the main loop before disposal
+of the expression, so the reference certainly survives the lifetime of the
+|expr_error| object. There are a couple of exceptions to this, where a temporary
+|expr| value is built during type analysis (the recursive function
+|convert_expr| defined in \.{axis.w}), which we arrange to be held in a |static|
+variable (with some effort to make this safe in the recursion) at the point
+where an error might be thrown, to protect it from being destructed before the
+|expr_error| is caught.
 
 The error type is declared a |struct|, so that the |catch| clause may access
 the |offender| expression for use in an error message. At the point where this

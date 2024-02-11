@@ -261,7 +261,7 @@ set K_norm = (KTypePol->int):
 
 set leading_terms (KTypePol P) = KTypePol:
    let max=K_norm(P) in null_K_module(P)+
-   for c@p in P do if K_norm(p)=max then [(c,p)] else [] fi od.##
+   for c@p in P if K_norm(p)=max do (c,p) fi od
 
 set all_K_norms = K_norms@KTypePol { no need to sort; already sorted }
 
