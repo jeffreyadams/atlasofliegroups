@@ -79,15 +79,15 @@ set real_form  (KGPElt(,x)) = RealForm:  real_form(x)
 
 {. ascents of |x| by generators in |S|; there may be duplicates. .}
 set ascents ([int] S, KGBElt x) = [KGBElt]:
-##for s in S
+  for s in S
   do case status(s,x)
      in [], [], [] { descents }, { nc } [Cayley(s,x)], { C+ } [cross(s,x)]
      esac
-  od
+  od.##
 
 {. all descents of |x| by generators in |S|; there may be duplicates. .}
 set down_neighbors ([int] S,KGBElt x) = [KGBElt]:
-##for s in S
+  for s in S
   do case status(s,x)
      in { C- } [cross(s,x)]
      , { ic } []
@@ -95,15 +95,14 @@ set down_neighbors ([int] S,KGBElt x) = [KGBElt]:
      , { nc } []
      , { C+ } []
      esac
-  od
+  od.##
 
 {. decide whether x is maximal in the partial order defined by S. .}
 set is_maximal_for ([int] S,KGBElt x) = bool: =#ascents(S,x)
 
 {. list maximal KGB elements in the partial order defined by S. .}
 set maxima_for ([int] S,RealForm G) = [KGBElt]:
-##for x in KGB(G)
-  do if is_maximal_for(S,x) then [x] else [] fi od
+  for x in KGB(G) if is_maximal_for(S,x) do x fi od
 
 {. (Unique) maximal element in equivalence class of x. .}
 set maximal ([int] S, KGBElt x) = KGBElt:
@@ -138,7 +137,7 @@ set equivalence_class_of (KGPElt(S,x):S_x) = [KGBElt]:
     for x in down_neighbors(S,todo[seen]) next seen +:= 1
     do if not in_class[#x] then in_class[#x] := true; todo #:= x fi od
   od; { return |todo.(sort_by(#@KGBElt))|, but maybe more efficiently: }
-  ## for present@i in in_class do if present then [KGB(G,i)] else [] fi od
+  for present@i in in_class if present do KGB(G,i) fi od
 
 set is_in_class_of (KGBElt x, KGPElt(S,):P) = bool:
    maximal(S,x) = maximal(P)
@@ -309,9 +308,7 @@ set rho_l (Parabolic P) = ratvec: rho_l(complex_parabolic(P))
 
 {. Simple coroots on which weight lambda (in $\mathfrak h^*$) is zero. .}
 set zero_simple_coroots (RootDatum rd, vec lambda) = [int]:
-##for alpha_v@j in simple_coroots(rd)
-  do if =alpha_v*lambda then [j] else [] fi
-  od
+  for alpha_v@j in simple_coroots(rd) if =alpha_v*lambda do j fi od
 
 {. Parabolic defined by weight lambda .}
 set parabolic_by_wt (ratvec lambda,KGBElt x) = Parabolic:
@@ -365,7 +362,7 @@ set rho_u_by_wt ((ratvec,KGBElt)  lambda_x) = ratvec:
 
 {. Simple roots which are zero on coweight H (in $\mathfrak h$). .}
 set zero_simple_roots (RootDatum rd, vec cowt) = [int]:
-##for alpha@j in simple_roots(rd) do if =cowt*alpha then [j] else [] fi od
+  for alpha@j in simple_roots(rd) if =cowt*alpha do j fi od
 
 {. Parabolic defined by coweight H .}
 set parabolic_by_cwt (ratvec H,KGBElt x) = Parabolic:
@@ -447,16 +444,13 @@ set parabolics (RealForm G,ComplexParabolic (,S)) = [Parabolic]:
 
 {. List K-conjugacy classes of given ComplexParabolic that are theta-stable. .}
 set theta_stable_parabolics (RealForm G,ComplexParabolic P) = [Parabolic]:
-##for Q in parabolics(G,P)
-  do if is_parabolic_theta_stable(Q) then [Q] else [] fi
-  od
+  for Q in parabolics(G,P) if is_parabolic_theta_stable(Q) do Q fi od
 
 {. List all theta-stable parabolics for G. .}
 set theta_stable_parabolics (RealForm G) = [Parabolic]:
-## { concatenate all loop bodies }
   for S in power_set(semisimple_rank(G))
   do theta_stable_parabolics(G,ComplexParabolic:(G,S))
-  od
+  od.## { concatenate all loop bodies }
 
 {. List all theta-stable parabolics of G, of type S. .}
 set theta_stable_parabolics_type (RealForm G,[int] P) = [Parabolic]:
@@ -466,22 +460,17 @@ set theta_stable_parabolics_type (RealForm G,[int] P) = [Parabolic]:
 
 {. List all theta-stable parabolics of G with relatively split L. .}
 set all_rel_split_theta_stable_parabolics (RealForm G) = [Parabolic]:
-##for P in theta_stable_parabolics(G)
-  do if is_relatively_split(Levi(P)) then [P] else [] fi
-  od
+  for P in theta_stable_parabolics(G) if is_relatively_split(Levi(P)) do P fi od
 
 set all_real_parabolics (RealForm G) = [Parabolic]:
-##for S in power_set(semisimple_rank(G))
-  do
-  ##for P in parabolics(G,(G,S))
-    do if is_parabolic_real(P) then [P] else [] fi
+  for S in power_set(semisimple_rank(G))
+    for P in parabolics(G,(G,S))
+       if is_parabolic_real(P) do P fi
     od
   od
 
 set parabolics_with_theta_stable_Levi (RealForm G,[int] S) = [Parabolic]:
-##for P in parabolics(G,(G,S))
-  do if has_theta_stable_Levi(P) then [P] else [] fi
-  od
+  for P in parabolics(G,(G,S)) if has_theta_stable_Levi(P) do P fi od
 
 set minimal_real_parabolic(RealForm G)=Parabolic:real_parabolic(G.x_open)
 set minimal_real_Levi(RealForm G)=RealForm:G.minimal_real_parabolic.Levi
@@ -547,10 +536,9 @@ proper_theta_parabolics=##for P in theta_parabolics do if #P.S<G.ss_rank then [P
  if any(for Q in proper_theta_parabolics do  P.x=Q.x and is_proper_subset(P.S,Q.S) od) then [] else [P] fi od
 
 set all_parabolics_with_theta_stable_Levi (RealForm G) = [KGPElt]:
-##for S in power_set(semisimple_rank(G))
-  do
-  ##for P in parabolics(G,(G,S))
-    do if has_theta_stable_Levi(P) then [P] else [] fi
+  for S in power_set(semisimple_rank(G))
+    for P in parabolics(G,(G,S))
+       if has_theta_stable_Levi(P) do P fi
     od
   od
 }
@@ -598,14 +586,18 @@ set coset_reps (RootDatum rd, RootDatum rd_L) = [WeylElt]:
 
 
 {test the coset_reps function}
-{set test_coset_reps(RootDatum rd,RootDatum rd_L)=
-let co=coset_reps(rd,rd_L) then
-WL=generate_W(rd_L) then
-prods=##for w@i in co do for x@j in WL do (i,j,w*convert_to(rd,x)) od od then
-failures=##for i:#prods do for j:#prods do
-  let (,,w)=prods[i] then
-  (,,x)=prods[j] in
-  if i!=j  and x=w then [(i,j)] else [] fi od od in (prods,##failures)
+{
+set test_coset_reps(RootDatum rd,RootDatum rd_L)=
+   let co=coset_reps(rd,rd_L)
+   then WL=W(rd_L)
+   then prods =
+      for w@i in co for x@j in WL do (i,j,w*promote(x,rd)) od od
+   then failures =
+      for i:#prods for j:#prods
+        do let (,,w)=prods[i] then (,,x)=prods[j]
+        in if i!=j and x=w do (i,j) fi
+      od od
+   in (prods,##failures)
 }
 
 {. If L is a theta-stable Levi factor in G,  KGB for L embeds in KGB for G. .}

@@ -215,16 +215,12 @@ set twisted_c_form_irreducible_contributions (Param p) =
   in { two value-producing loops can be a lot more efficient than one: }
   ( G.null_module +
       for c@q in formula
-      do if twist(q)=q then [(half(c)*orientation_nr_term(ori_nr_p,q),q)]
-         else []
-	 fi
-      od.##
+         if twist(q)=q do (half(c)*orientation_nr_term(ori_nr_p,q),q) fi
+      od
    , G.null_module +
       for c@q in formula
-      do if twist(q)=q then []
-         else [(c*orientation_nr_term(ori_nr_p,q),q)]
-	 fi
-      od.##
+         if twist(q)!=q do (c*orientation_nr_term(ori_nr_p,q),q) fi
+      od
   )
 
 { The following function implements algorithm from Vogan in email 9/22/16:
@@ -387,7 +383,7 @@ in prints(new_line,new_line
 { print only terms with "mixed" coefficient (a+bs), i.e., both a,b\ne 0 }
 set mixed (Split w)= bool: not w.is_pure
 set mixed_terms (ParamPol P) = ParamPol:
-  0*P + ## for w@p in P do if w.mixed then [(w,p)] else [] fi od
+  0*P + for w@p in P if w.mixed do (w,p) fi od
 set analyse (ParamPol P) = void:
   prints("Mixed terms:",P.mixed_terms.pol_format)
 
@@ -616,7 +612,7 @@ set test_line (Param p) = void:
 set weak_test (Param p) = bool:
   let formula=twisted_c_form_irreducible(p)
   then bad=null_K_module(real_form(p)) +
-    for w@p in formula do if is_pure(w) then [] else [w*p] fi od.##
+    for w@p in formula if not is_pure(w) do w*p fi od
   in
   if #bad=0 then prints("number of terms: ", #formula); true
   else prints("number of terms: ", #formula,new_line,"bad terms:", bad ); false
@@ -625,7 +621,7 @@ set weak_test (Param p) = bool:
 set strong_test (Param p)=bool:
   let formula=hermitian_form_irreducible(p)
   then bad=null_K_module(real_form(p)) +
-    for w@p in formula do if is_pure(w) then [] else [w*p] fi od.##
+    for w@p in formula if not is_pure(w) do w*p fi od
   then OK = =bad { return whether bad terms are absent }
   in prints("number of terms: ", #formula);
   if not OK then prints("bad terms:", bad) fi; OK

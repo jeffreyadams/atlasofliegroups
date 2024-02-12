@@ -57,8 +57,8 @@ set symbol (Orbit P) = Symbol:
 (  if type_C and is_even(#P) then P#:=0 { make length odd in all cases } fi
 ;  let e = { transform partition into strictly increasing sequence }
            for i:#P do P~[i]+i od
-   then f = for x in e do if x.is_odd  then [x\2] else [] fi od.##
-   ,    g = for x in e do if x.is_even then [x\2] else [] fi od.##
+   then f = for x in e if x.is_odd  do x\2 fi od
+   ,    g = for x in e if x.is_even do x\2 fi od
 in if type_C then [g,f] else [f,g] fi
 )
 
@@ -157,16 +157,18 @@ set dimension (Hn_rep(p,q)) = int: { using hook length formula twice: }
 set all_reps_BC (int n) = [Hn_rep]:
    let ps = for r: n+1 do partitions(r) od in
    for pr@r in ps { every list |pr| of |ps| will be paired with another one: }
-   do for p in pr { traverse partitions of |r| }
-      do for q in ps[n-r] { and of |n-r| } do (p,q) od
-      od.## { and everything gets concatenated to a single list }
-   od.##
+      for p in pr { traverse partitions of |r| }
+         for q in ps[n-r] { and of |n-r| }
+	 do (p,q)
+	 od
+      od
+   od
 
 set all_reps_BC(RootDatum rd)=[Hn_rep]:
 test_simple_BC(rd);all_reps_BC(rd.rank)
 
 { a (normalized) symbol is special if f_0<=g_0<= f_1...;
-  this is the "raison d'être" of |Symbol|
+  this is the "raison d'etre" of |Symbol|
 }
 set is_special (Symbol S) = bool:
    let f=S[0], g=S[1] in all(for gi@i in g do f[i]<=gi and gi<=f[i+1] od)
@@ -237,7 +239,7 @@ for S in rd.symbols do large_symbol(rd,S) od
 }
 
 
-{ given v=[a_0,...,a_n] increasing, returns (j,[a_{j},...,a_n])
+{ given v=[a_0,...,a_n] increasing, returns (j,[a_j,...,a_n])
   where [a_0,...,a_{j-1}] is the longest string (of length j)
   increasing by 1 at each step
 }
@@ -260,9 +262,8 @@ set cut_off_last_string ([int] v) = (int,[int]):
    in if =k then (#v,[]) else (k,v[:k~]) fi
    fi
 
-{ recursive function: given v=[a1,...,am] (increasing) return
- [c1,...,cr]: length of strings in v
- for example [0,1,4,5,7,9,10,11,12] -> [4,2,2,1]
+{ given v=[a1,...,am] (increasing) return [c1,...,cr]: length of strings in v
+  for example [0, 1, 4,5, 7, 9,10,11,12] -> [4,2,2,1]
 }
 set extract_strings ([int] v) = Partition:
    let j=0 in while >#v do set (j,v):=cut_off_string(v); j od.sort_to_partition
@@ -339,7 +340,7 @@ set inclusion_maximals ([[int]] taus) = [[int]]:
    taus := taus.(sort_by(([int]tau)int:#tau));
    while >#taus
    do let tau=taus~[0] then is_sub = is_sorted_subset(tau)
-   in taus := ##for i:#taus-1 do if taus[i].is_sub then [] else [taus[i]] fi od
+   in taus := for i:#taus-1 if not taus[i].is_sub do taus[i] fi od
    ;  tau
   ~od
 
@@ -366,11 +367,11 @@ set max_first_entry ([Partition] v) = int:
    if #v=1 and #v[0]=0 then 0 else 0.max(for x in v do x.reverse_sort[0] od) fi
 set keep_by_first_entry ([Partition] v,int k)=[Partition]:
    if #v=1 and #v[0]=0 then v
-   else ## for w in v do if w.reverse_sort[0]=k then [w] else [] fi od
+   else for w in v if w.reverse_sort[0]=k do w fi od
    fi
 set keep_by_first_entry_and_truncate ([Partition] v,int k) = [Partition]:
    let w=keep_by_first_entry(v,k) in
-   ## for u in w do if #u>1 then [u.reverse_sort[1:]] else [] fi od
+   for u in w if #u>1 do u.reverse_sort[1:] fi od
 
 { set max_first_entry([(int,Partition)] v)=int:
     max(for i:#v do let (,w)=v[i] in w[0] od)
@@ -378,13 +379,12 @@ set keep_by_first_entry_and_truncate ([Partition] v,int k) = [Partition]:
 
 set max_tagged_entry ([int,Partition] v)=int: 0.max(for (c,) in v do c od)
 set keep_by_first_entry ([int,Partition] v,int k) = [int,Partition]:
-   ##for (c,w) in v
-     do let r=w.reverse_sort in if r[0]=k then [(c,r)] else [] fi
-     od
+   for (c,w) in v
+   do let r=w.reverse_sort in if r[0]=k do (c,r) fi
+   od.##
 set keep_by_first_entry_and_truncate ([int,Partition] v,int k) =
       [int,Partition]:
-   let w=keep_by_first_entry(v,k) in
-   ##for (c,u) in w do if c>0 and #u>1 then [(c,u[1:])] else [] fi od
+   for (c,u) in keep_by_first_entry(v,k) if c>0 and #u>1 do (c,u[1:]) fi od
 
 { find maxmimal part, maximal label, and filter to only maximal part owners }
 set filter_max ([Partition,int] sig) = (int,int,[Partition,int]):
@@ -397,15 +397,13 @@ in for (lambda,C_rank) in sig
 ;  if max_part>=max_label
    then
       (max_part,max_label
-      , ##for (lambda,r) in sig { |C_rank| is ignored for filtering purposes }
-          do if >#lambda and lambda[0]=max_part then [(lambda[1:],r)] else [] fi
-          od
+      ,for (lambda,r) in sig { |C_rank| is ignored for filtering purposes }
+          if >#lambda and lambda[0]=max_part do (lambda[1:],r) fi
+       od
       )
    else { avoid producing empty set by grabbing |max_label|, but clear labels }
-      (max_label,max_label
-      , ##for (lambda,r) in sig
-          do if r=max_label then [(lambda,0)] else [] fi
-          od
+      ( max_label, max_label
+      , for (lambda,r) in sig if r=max_label do (lambda,0) fi od
       )
    fi
 )

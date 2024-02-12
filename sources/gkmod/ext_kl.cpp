@@ -945,7 +945,7 @@ void ext_KL_matrix (const StandardRepr p, const int_Matrix& delta,
   if (not ((delta-1)*p.gamma().numerator()).is_zero())
   {
     std::cout << "Delta does not fix gamma=" << p.gamma() << "." << std::endl;
-    throw std::runtime_error("No valid extended bock");
+    throw std::runtime_error("No valid extended block");
   }
   auto srm = repr::StandardReprMod::mod_reduce(rc,p); // modular |z|
   common_context ctxt(rc,srm.gamma_lambda());

@@ -31,11 +31,11 @@ in P +:= { calls +@(KTypePol,[(Split,KType)]) }
 ;  while !=P
    do let (x,lambda) = %first_K_type(P), acc=null_K_module(P)
    then level = alpha_v*lambda
-   in if level.< then lambda+:=alpha*(minus_1-level) fi
+   in if level.< then lambda+:=alpha*(-1-level) fi
    ;  assert(!=P[K_type(x,lambda)], @:to_string("absent term for ",(x,lambda)))
    ;  while !=P[K_type(x,lambda+alpha)] do lambda+:=alpha od { back up }
    ;  level := alpha_v*lambda { recompute |level| }
-   ;  let top = K_type(x,lambda), bot=K_type(x,lambda+alpha*(minus_1-level))
+   ;  let top = K_type(x,lambda), bot=K_type(x,lambda+alpha*(-1-level))
       then c=P[top]
    in while assert(=P[top]+P[bot],"failing anti-symmetry"); P[top]:=P[bot]:=0
       ; acc[top]+:=c

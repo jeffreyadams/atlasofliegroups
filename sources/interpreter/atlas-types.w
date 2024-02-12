@@ -319,7 +319,7 @@ lead to entirely zero rows and columns.
 void Cartan_matrix_wrapper(expression_base::level l)
 { shared_Lie_type t=get<Lie_type_value>();
   if (l!=expression_base::no_value)
-    push_value(std::make_shared<matrix_value>(t->val.Cartan_matrix()));
+    push_value(std::make_shared<matrix_value>(t->val.true_Cartan_matrix()));
 }
 
 
@@ -421,7 +421,7 @@ void rank_of_Lie_type_wrapper
 
 @< Install wrapper functions @>=
 install_function(Lie_type_wrapper,"Lie_type","(string->LieType)");
-install_function(compose_Lie_types_wrapper,"*","(LieType,LieType->LieType)");
+install_function(compose_Lie_types_wrapper,"*","(LieType,LieType->LieType)",1);
 install_function(extend_Lie_type_wrapper,@|"extend"
                 ,"(LieType,string,int->LieType)");
 install_function(Lie_type_eq_wrapper,@|"=","(LieType,LieType->bool)");
@@ -1466,7 +1466,7 @@ void coroot_wrapper(expression_base::level l)
 @ Also important are look-up functions for roots and coroots. Conversion from
 unsigned internal numbering of roots to external signed numbering, or vice
 versa, is painful due to \Cpp\ semantics. The signed-ness conversion between
-same size integers is given precise a specification in all cases only in the
+same size integers is given a precise specification in all cases only in the
 direction from signed to unsigned; in the opposite direction this is so only if
 the value can be represented in the signed type. But at the same time arithmetic
 with mixed signed-ness of operands will be performed unsigned, and this should
@@ -2446,11 +2446,12 @@ void W_elt_prod_wrapper(expression_base::level l)
 }
 
 void W_elt_invert_wrapper(expression_base::level l)
-{ shared_W_elt w = get<W_elt_value>();
+{ own_W_elt w = get_own<W_elt_value>();
   if (l==expression_base::no_value)
     return;
 @)
-  push_value(std::make_shared<W_elt_value>(w->rd,w->W.inverse(w->val)));
+  w->W.invert(w->val);
+  push_value(std::move(w));
 }
 
 @ Since only one argument needs to furnish the Weyl group, we also define
@@ -2517,7 +2518,7 @@ and (appropriate) square matrices.
 
 @< Local function def... @>=
 void W_elt_weight_prod_wrapper(expression_base::level l)
-{ shared_vector v = get<vector_value>();
+{ own_vector v = get_own<vector_value>();
   shared_W_elt w = get<W_elt_value>();
   const auto& rd = w->rd->val;
   if (v->val.size()!=rd.rank())
@@ -2527,11 +2528,14 @@ void W_elt_weight_prod_wrapper(expression_base::level l)
     throw runtime_error(o.str());
   }
   if (l!=expression_base::no_value)
-    push_value(std::make_shared<vector_value>(w->W.image_by(rd,w->val,v->val)));
+  @/{@;
+    w->W.act(rd,w->val,v->val);
+    push_value(std::move(v));
+  }
 }
 void coweight_W_elt_prod_wrapper(expression_base::level l)
 { shared_W_elt w = get<W_elt_value>();
-  shared_vector v = get<vector_value>();
+  own_vector v = get_own<vector_value>();
   const auto& rd = w->rd->val;
   if (v->val.size()!=rd.rank())
   { std::ostringstream o;
@@ -2540,7 +2544,10 @@ void coweight_W_elt_prod_wrapper(expression_base::level l)
     throw runtime_error(o.str());
   }
   if (l!=expression_base::no_value)
-    push_value(std::make_shared<vector_value>(w->W.image_by(rd,v->val,w->val)));
+  @/{@;
+    w->W.co_act(rd,v->val,w->val);
+    push_value(std::move(v));
+  }
 }
 
 @ A converse operation is to decompose a weight into a Weyl group element and a
@@ -2566,7 +2573,7 @@ void W_decompose_wrapper(expression_base::level l)
 @)
   auto ww = rd->val.factor_dominant(v->val);
 @/push_value(std::make_shared<W_elt_value>(rd,rd->W().element(ww)));
-  push_value(v);
+  push_value(std::move(v));
   if (l==expression_base::single_value)
     wrap_tuple<2>();
 }
@@ -2584,7 +2591,7 @@ void W_codecompose_wrapper(expression_base::level l)
     return;
 @)
   auto ww = rd->val.factor_codominant(v->val);
-@/push_value(v);
+@/push_value(std::move(v));
   push_value(std::make_shared<W_elt_value>(rd,rd->W().element(ww)));
   if (l==expression_base::single_value)
     wrap_tuple<2>();
@@ -2628,14 +2635,14 @@ install_function(W_elt_unary_eq_wrapper,"=","(WeylElt->bool)");
 install_function(W_elt_unary_neq_wrapper,"!=","(WeylElt->bool)");
 install_function(W_elt_eq_wrapper,"=","(WeylElt,WeylElt->bool)");
 install_function(W_elt_neq_wrapper,"!=","(WeylElt,WeylElt->bool)");
-install_function(W_elt_prod_wrapper,"*","(WeylElt,WeylElt->WeylElt)");
-install_function(W_elt_invert_wrapper,"/","(WeylElt->WeylElt)");
-install_function(W_elt_gen_prod_wrapper,"#","(WeylElt,int->WeylElt)");
-install_function(W_gen_elt_prod_wrapper,"#","(int,WeylElt->WeylElt)");
-install_function(W_elt_word_prod_wrapper,"##","(WeylElt,[int]->WeylElt)");
-install_function(W_word_elt_prod_wrapper,"##","([int],WeylElt->WeylElt)");
-install_function(W_elt_weight_prod_wrapper,"*","(WeylElt,vec->vec)");
-install_function(coweight_W_elt_prod_wrapper,"*","(vec,WeylElt->vec)");
+install_function(W_elt_prod_wrapper,"*","(WeylElt,WeylElt->WeylElt)",1);
+install_function(W_elt_invert_wrapper,"/","(WeylElt->WeylElt)",3);
+install_function(W_elt_gen_prod_wrapper,"#","(WeylElt,int->WeylElt)",1);
+install_function(W_gen_elt_prod_wrapper,"#","(int,WeylElt->WeylElt)",2);
+install_function(W_elt_word_prod_wrapper,"##","(WeylElt,[int]->WeylElt)",1);
+install_function(W_word_elt_prod_wrapper,"##","([int],WeylElt->WeylElt)",2);
+install_function(W_elt_weight_prod_wrapper,"*","(WeylElt,vec->vec)",2);
+install_function(coweight_W_elt_prod_wrapper,"*","(vec,WeylElt->vec)",1);
 install_function(W_decompose_wrapper,@|
                  "from_dominant","(RootDatum,vec->WeylElt,vec)");
 install_function(W_codecompose_wrapper,@|
@@ -3406,9 +3413,8 @@ install_function(root_datum_of_inner_class_wrapper,@|"root_datum"
 install_function(dual_datum_of_inner_class_wrapper,@|"dual_datum"
                 ,"(InnerClass->RootDatum)");
 install_function(dual_inner_class_wrapper,@|"dual"
-                ,"(InnerClass->InnerClass)");
-install_function(form_names_wrapper,@|"form_names"
-                ,"(InnerClass->[string])");
+                ,"(InnerClass->InnerClass)",3);
+install_function(form_names_wrapper,@|"form_names","(InnerClass->[string])");
 install_function(dual_form_names_wrapper,@|"dual_form_names"
                 ,"(InnerClass->[string])");
 install_function(n_real_forms_wrapper,@|"nr_of_real_forms"
@@ -4696,13 +4702,13 @@ void KGB_neq_wrapper(expression_base::level l)
 @< Install wrapper functions @>=
 install_function(KGB_elt_wrapper,@|"KGB","(RealForm,int->KGBElt)");
 install_function(decompose_KGB_wrapper,@|"%","(KGBElt->RealForm,int)");
-install_function(KGB_cross_wrapper,@|"cross","(int,KGBElt->KGBElt)");
-install_function(KGB_Cayley_wrapper,@|"Cayley","(int,KGBElt->KGBElt)");
+install_function(KGB_cross_wrapper,@|"cross","(int,KGBElt->KGBElt)",2);
+install_function(KGB_Cayley_wrapper,@|"Cayley","(int,KGBElt->KGBElt)",2);
 install_function(KGB_status_wrapper,@|"status","(int,KGBElt->int)");
 install_function(build_KGB_element_wrapper,@|"KGB_elt"
 		,"(RealForm,mat,ratvec->KGBElt)");
-install_function(KGB_twist_wrapper,@|"twist","(KGBElt->KGBElt)");
-install_function(KGB_outer_twist_wrapper,@|"twist","(KGBElt,mat->KGBElt)");
+install_function(KGB_twist_wrapper,@|"twist","(KGBElt->KGBElt)",3);
+install_function(KGB_outer_twist_wrapper,@|"twist","(KGBElt,mat->KGBElt)",1);
 install_function(KGB_Cartan_wrapper,@|"Cartan_class","(KGBElt->CartanClass)");
 install_function(KGB_involution_wrapper,@|"involution","(KGBElt->mat)");
 install_function(KGB_length_wrapper,@|"length","(KGBElt->int)");
@@ -5093,9 +5099,9 @@ void split_unary_minus_wrapper(expression_base::level l)
 
 void split_times_wrapper(expression_base::level l)
 { Split_integer j=get<split_int_value>()->val;
-  Split_integer i=get<split_int_value>()->val;
+  own_split_int i=get_own<split_int_value>();
   if (l!=expression_base::no_value)
-    push_value(std::make_shared<split_int_value>(i*j));
+  {@; i->val*=j; push_value(std::move(i)); }
 }
 
 @ We also provide implicit conversions from integers or pairs of integers to
@@ -5133,10 +5139,10 @@ install_function(split_unary_eq_wrapper,@|"=","(Split->bool)");
 install_function(split_unary_neq_wrapper,@|"!=","(Split->bool)");
 install_function(split_eq_wrapper,@|"=","(Split,Split->bool)");
 install_function(split_neq_wrapper,@|"!=","(Split,Split->bool)");
-install_function(split_plus_wrapper,@|"+","(Split,Split->Split)");
-install_function(split_minus_wrapper,@|"-","(Split,Split->Split)");
-install_function(split_unary_minus_wrapper,@|"-","(Split->Split)");
-install_function(split_times_wrapper,@|"*","(Split,Split->Split)");
+install_function(split_plus_wrapper,@|"+","(Split,Split->Split)",1);
+install_function(split_minus_wrapper,@|"-","(Split,Split->Split)",1);
+install_function(split_unary_minus_wrapper,@|"-","(Split->Split)",3);
+install_function(split_times_wrapper,@|"*","(Split,Split->Split)",2);
 install_function(from_split_wrapper,@|"%","(Split->int,int)");
 
 @*1 $K$-types.
@@ -6076,12 +6082,12 @@ install_function(K_type_is_dominant_wrapper,@|"is_dominant" ,"(KType->bool)");
 install_function(K_type_is_zero_wrapper,@|"is_zero" ,"(KType->bool)");
 install_function(K_type_is_semifinal_wrapper,@|"is_semifinal" ,"(KType->bool)");
 install_function(K_type_is_final_wrapper,@|"is_final" ,"(KType->bool)");
-install_function(K_type_dominant_wrapper,@|"dominant" ,"(KType->KType)");
+install_function(K_type_dominant_wrapper,@|"dominant" ,"(KType->KType)",3);
 install_function(to_canonical_fiber_wrapper,@|"to_canonical_fiber"
-		,"(KType->KType)");
-install_function(K_type_normal_wrapper,@|"normal" ,"(KType->KType)");
+		,"(KType->KType)",3);
+install_function(K_type_normal_wrapper,@|"normal" ,"(KType->KType)",3);
 install_function(K_type_theta_stable_wrapper,@|"theta_stable"
-		,"(KType->KType)");
+		,"(KType->KType)",3);
 @)
 install_function(K_type_pol_wrapper,@|"null_K_module","(RealForm->KTypePol)");
 install_function(real_form_of_K_type_pol_wrapper,@|"real_form"
@@ -6091,31 +6097,31 @@ install_function(K_type_pol_unary_neq_wrapper,@|"!=","(KTypePol->bool)");
 install_function(K_type_pol_eq_wrapper,@|"=","(KTypePol,KTypePol->bool)");
 install_function(K_type_pol_neq_wrapper,@|"!=","(KTypePol,KTypePol->bool)");
 install_function(K_type_pol_size_wrapper,@|"#","(KTypePol->int)");
-install_function(add_K_type_wrapper,@|"+","(KTypePol,KType->KTypePol)");
-install_function(subtract_K_type_wrapper,@|"-","(KTypePol,KType->KTypePol)");
+install_function(add_K_type_wrapper,@|"+","(KTypePol,KType->KTypePol)",1);
+install_function(subtract_K_type_wrapper,@|"-","(KTypePol,KType->KTypePol)",1);
 install_function(add_K_type_term_wrapper,@|"+"
-		,"(KTypePol,(Split,KType)->KTypePol)");
+		,"(KTypePol,(Split,KType)->KTypePol)",1);
 install_function(add_K_type_termlist_wrapper,@|"+"
-		,"(KTypePol,[(Split,KType)]->KTypePol)");
+		,"(KTypePol,[(Split,KType)]->KTypePol)",1);
 install_function(add_K_type_pols_wrapper,@|"+"
-		,"(KTypePol,KTypePol->KTypePol)");
+		,"(KTypePol,KTypePol->KTypePol)",1);
 install_function(subtract_K_type_pols_wrapper,@|"-"
-		,"(KTypePol,KTypePol->KTypePol)");
+		,"(KTypePol,KTypePol->KTypePol)",1);
 install_function(int_mult_K_type_pol_wrapper,@|"*"
-		,"(int,KTypePol->KTypePol)");
+		,"(int,KTypePol->KTypePol)",2);
 install_function(split_mult_K_type_pol_wrapper,@|"*"
-		,"(Split,KTypePol->KTypePol)");
+		,"(Split,KTypePol->KTypePol)",2);
 install_function(last_K_type_term_wrapper,@|"last_term"
 		,"(KTypePol->Split,KType)");
 install_function(first_K_type_term_wrapper,@|"first_term"
 		,"(KTypePol->Split,KType)");
 install_function(truncate_K_type_poly_above_wrapper,@|"truncate_above_height"
-		,"(KTypePol,int->KTypePol)");
+		,"(KTypePol,int->KTypePol)",1);
 @)
 install_function(KGP_sum_wrapper,@|"KGP_sum","(KType->[int,KType])");
 install_function(K_type_formula_wrapper,@|"K_type_formula"
 		,"(KType,int->KTypePol)");
-install_function(branch_wrapper,@|"branch" ,"(KTypePol,int->KTypePol)");
+install_function(branch_wrapper,@|"branch" ,"(KTypePol,int->KTypePol)",1);
 
 @*1 Standard module parameters.
 %
@@ -7424,18 +7430,19 @@ install_function(is_dominant_wrapper,@|"is_dominant" ,"(Param->bool)");
 install_function(is_zero_wrapper,@|"is_zero" ,"(Param->bool)");
 install_function(is_semifinal_wrapper,@|"is_semifinal" ,"(Param->bool)");
 install_function(is_final_wrapper,@|"is_final" ,"(Param->bool)");
-install_function(parameter_dominant_wrapper,@|"dominant" ,"(Param->Param)");
-install_function(parameter_normal_wrapper,@|"normal" ,"(Param->Param)");
-install_function(parameter_cross_wrapper,@|"cross" ,"(int,Param->Param)");
-install_function(parameter_Cayley_wrapper,@|"Cayley" ,"(int,Param->Param)");
-install_function(root_parameter_cross_wrapper,@|"cross" ,"(vec,Param->Param)");
-install_function(root_parameter_Cayley_wrapper,@|"Cayley" ,"(vec,Param->Param)");
-install_function(parameter_twist_wrapper,@|"twist" ,"(Param->Param)");
-install_function(parameter_outer_twist_wrapper,@|"twist" ,"(Param,mat->Param)");
+install_function(parameter_dominant_wrapper,@|"dominant" ,"(Param->Param)",3);
+install_function(parameter_normal_wrapper,@|"normal" ,"(Param->Param)",3);
+install_function(parameter_cross_wrapper,@|"cross" ,"(int,Param->Param)",2);
+install_function(parameter_Cayley_wrapper,@|"Cayley" ,"(int,Param->Param)",2);
+install_function(root_parameter_cross_wrapper,@|"cross" ,"(vec,Param->Param)",2);
+install_function(root_parameter_Cayley_wrapper,@|"Cayley"
+                ,"(vec,Param->Param)",2);
+install_function(parameter_twist_wrapper,@|"twist" ,"(Param->Param)",3);
+install_function(parameter_outer_twist_wrapper,@|"twist" ,"(Param,mat->Param)",1);
 install_function(orientation_number_wrapper,@|"orientation_nr" ,"(Param->int)");
 install_function(reducibility_points_wrapper,@|
 		"reducibility_points" ,"(Param->[rat])");
-install_function(scale_parameter_wrapper,"*", "(Param,rat->Param)");
+install_function(scale_parameter_wrapper,"*", "(Param,rat->Param)",1);
 @)
 install_function(print_param_block_wrapper,@|"print_block","(Param->)");
 install_function(print_c_block_wrapper,@|"print_common_block","(Param->)");
@@ -8130,7 +8137,7 @@ void block_deform_wrapper(expression_base::level l)
     }
   }
   push_value(std::make_shared<virtual_module_value>(p->rf,std::move(result)));
-  push_value(accumulator);
+  push_value(std::move(accumulator));
   if (l==expression_base::single_value)
     wrap_tuple<2>();
 }
@@ -8372,6 +8379,12 @@ void finalize_extended_wrapper(expression_base::level l)
   test_compatible(rc.inner_class(),delta);
   if (not p->rc().is_fixed(p->val,delta->val))
     throw runtime_error("Parameter not fixed by given involution");
+  { const InvolutionTable& i_tab = rc.involution_table();
+    auto theta=i_tab.matrix(rc.kgb().involution(p->val.x()));
+    if (theta*delta->val!=delta->val*theta)
+      throw
+        runtime_error("Involution of parameter does not commute with delta");
+  }
   if (l==expression_base::no_value)
     return;
 @)
@@ -8396,25 +8409,25 @@ install_function(virtual_module_unary_eq_wrapper,@|"=","(ParamPol->bool)");
 install_function(virtual_module_unary_neq_wrapper,@|"!=","(ParamPol->bool)");
 install_function(virtual_module_eq_wrapper,@|"=","(ParamPol,ParamPol->bool)");
 install_function(virtual_module_neq_wrapper,@|"!=","(ParamPol,ParamPol->bool)");
-install_function(add_module_wrapper,@|"+","(ParamPol,Param->ParamPol)");
-install_function(subtract_module_wrapper,@|"-","(ParamPol,Param->ParamPol)");
+install_function(add_module_wrapper,@|"+","(ParamPol,Param->ParamPol)",1);
+install_function(subtract_module_wrapper,@|"-","(ParamPol,Param->ParamPol)",1);
 install_function(add_module_term_wrapper,@|"+"
-		,"(ParamPol,(Split,Param)->ParamPol)");
+		,"(ParamPol,(Split,Param)->ParamPol)",1);
 install_function(add_module_termlist_wrapper,@|"+"
-		,"(ParamPol,[(Split,Param)]->ParamPol)");
+		,"(ParamPol,[(Split,Param)]->ParamPol)",1);
 install_function(add_virtual_modules_wrapper,@|"+"
-		,"(ParamPol,ParamPol->ParamPol)");
+		,"(ParamPol,ParamPol->ParamPol)",1);
 install_function(subtract_virtual_modules_wrapper,@|"-"
-		,"(ParamPol,ParamPol->ParamPol)");
+		,"(ParamPol,ParamPol->ParamPol)",1);
 install_function(int_mult_virtual_module_wrapper,@|"*"
-		,"(int,ParamPol->ParamPol)");
+		,"(int,ParamPol->ParamPol)",2);
 install_function(split_mult_virtual_module_wrapper,@|"*"
-		,"(Split,ParamPol->ParamPol)");
+		,"(Split,ParamPol->ParamPol)",2);
 install_function(last_term_wrapper,"last_term","(ParamPol->Split,Param)");
 install_function(first_term_wrapper,"first_term","(ParamPol->Split,Param)");
 install_function(truncate_param_poly_above_wrapper,@|"truncate_above_height"
-		,"(ParamPol,int->ParamPol)");
-install_function(scale_poly_wrapper,"*", "(ParamPol,rat->ParamPol)");
+		,"(ParamPol,int->ParamPol)",1);
+install_function(scale_poly_wrapper,"*", "(ParamPol,rat->ParamPol)",1);
 
 install_function(deform_wrapper,@|"deform" ,"(Param->ParamPol)");
 install_function(twisted_deform_wrapper,@|"twisted_deform" ,"(Param->ParamPol)");

@@ -93,20 +93,15 @@ set nilpotent_orbit_ss_elements (RootDatum rd) = [vec]:
   orbits[j] contained in the closures of orbits[i]
 }
 set closures([Partition] orbits) = [[int]]:
-   for P@i in orbits := {pre-sort} for P in orbits do reverse_sort(P) od
-   do
-      prints("P=",P, "i=",i);
-      for lambda@j in orbits
-      do
-         prints("j=",j);
-	 if j!=i and leq_dominance_order_partitions_presorted(lambda,P)
-         then
-	    prints("got",i, " ", j);
-	    [j]
-	 else []
-	 fi
-      od.##
+(  {pre-sort}
+   orbits:=for P in orbits do reverse_sort(P) od
+;  for P@i in orbits
+   do for orb@j in orbits
+      if j!=i and leq_dominance_order_partitions_presorted(orb,P)
+      do j
+      fi od
    od
+)
 
 { this only works for simple classical groups, fails for exceptional groups;
   the more general version in nilpotent_orbits_exceptional handles the

@@ -1,5 +1,6 @@
 operators +, -, * : (int,int->int): usual integer arithmetic operations
 operator - : (int->int): integral unary minus
+operator ~ : (int->int): subtraction from -1; also bitwise complementation
 operator ^ : (int,int->int): integer exponentiation (whenever result integral)
 operators \ : (int,int->int): integer quotient (of Euclidean division)
 operators % : (int,int->int): integer remainder (of Euclidean division)
@@ -100,13 +101,16 @@ elapsed_ms: (->int): number of milliseconds elapsed since program start-up
   if (n<0) set of natural numbers, the positions (from 0 on the right) of their
   set bits (for n<0, these are the complement of those for -1-n, which is >=0 }
 
+succ: (int->int): successor of integer; n+1 gets converted to succ(n)
+pred: (int->int): predecessor of integer; n-1 gets converted to pred(n)
+
 AND,OR,XOR: (int,int->int): bitwise AND|OR|XOR of the integers
 AND_NOT: (int,int->int): bitwise AND NOT: AND_NOT(n,m) = AND(n,-1-m)
 bitwise_subset: (int,int->bool): fast test whether AND_NOT(arguments)=0
 nth_set_bit: (int,int->int): position of n-th bit 1 of k (from 0 at the right)
   Here n is the first argument, and k the second argument of nth_set_bit.
   If k>=0 then number N(k) of bits 1 of k is finite; for n>=N(k) returns -1.
-  If k<0 and n>=0 this always returns a nonegative number (indeed at least n)
+  If k<0 and n>=0 this always returns a non negative number (indeed at least n)
   If n<0 returns nth_set_bit(-1-k,-1-n), so searches among the bits 0 of k
 bit_length: (int->int): for n>=0 return least k>=0 such that n<2^k
   If n<0 returns the well defined negative value -1-bit_length(-1-n)
@@ -241,13 +245,15 @@ operator % : (LieType->[string,int]) Expand into row of simple factors codes
   Each simple factor is described by a one-letter string and an integer rank,
   while factors ("T",1) are contributions to the central torus
 
-Cartan_matrix: (LieType->mat): Cartan matrix of Lie type (square of size rank).
-  A block form Cartan matrix, with zeros in rows and columns of torus factors
+Cartan_matrix: (LieType->mat): Cartan matrix of Lie type (size: semisimple rank)
+  A block form Cartan matrix, ignoring any torus factors. Each block uses the
+  standard (Bourbaki) diagram ordering of a simple factor of the Lie type.
 Cartan_matrix_type: (mat->LieType,[int]): type given by Cartan matrix.
-  The input should be a Cartan matrix for a semisimple type (no zero rows or
-  columns). The function returns the semisimple type, and the permutation of
-  mapping the standard (Bourbaki) ordering of the diagram of that type to the
-  positions of the (co)roots corresponding to then in matrix rows and columns.
+  The function returns the semisimple type, if one exists, whose Cartan matrix
+  conjugated by a permutation matrix matches the given matrix, and the
+  permutation involved. So the permutation maps the (standard) diagram ordering
+  for the returned type to the positions of the rows and columns of the given
+  matrix, which contain the pairings for the simple (co)roots of the diagram.
 is_Cartan_matrix: (mat->bool): whether calling Cartan_matrix_type is safe
   This function can be used to protect code that fails for non-Cartan matrices,
   calling Cartan_matrix_type directly, or indirectly by constructing root data
@@ -349,7 +355,7 @@ adjoint: (LieType,bool->RootDatum): "adjoint" root datum for given type.
   Dual to simply_connected: adjoint(type,b) = dual(simply_connected(type,not b))
   The final argument has the 'refers_coroots' meaning, as in root_datum versions
 
-root, coroot: (RootDatum,int->vec): root/cooroot with given index in root system
+root, coroot: (RootDatum,int->vec): root/coroot with given index in root system
   Indexing is from -nr_of_posroots(rd) up to nr_of_posroots(rd)-1, with
   negative indices giving negative (co)roots, and non-negative indices giving
   positive (co)roots; simple (co)roots are consecutive from index 0 upwards.
@@ -434,7 +440,7 @@ W_elt: (RootDatum,[int]->WeylElt): Make a WeylElt from a word in W-generators
   The root datum specifies the type of Weyl group, the vector gives the word in
   terms of simple reflections (indexed from 0) defining the Weyl group element
 word: (WeylElt->[int]): chosen reduced Weyl word for a Weyl group element
-root_datum: (WeylElt->rootDatum): Root datum underlying a Weyl group element
+root_datum: (WeylElt->RootDatum): Root datum underlying a Weyl group element
 length: (WeylElt->int): Length in Weyl group of an element
 operators =, != : (WeylElt->bool): test Weyl group element against identity
 operators =, != : (WeylElt,WeylElt->bool): comparison of Weyl group elements
@@ -516,8 +522,8 @@ dual_form_names: (InnerClass->[string]): list of names of dual real forms.
   These are the names for the real forms of the dual InnerClass value
 
 occurrence_matrix: (InnerClass->mat): real form-Cartan class incidence matrix
-  For the given inner class, construct a matrix whose rows are parametrized by
-  the real forms, and whose columns are parametrized by the Cartan classes,
+  For the given inner class, construct a matrix whose rows are parameterized by
+  the real forms, and whose columns are parameterized by the Cartan classes,
   showing whether (1) or not (0) the Cartan class occurs for the real form
 dual_occurrence_matrix: (InnerClass->mat): dual real form-Cartan class matrix
   This is like occurrence_matrix, but with rows representing dual real forms
@@ -577,7 +583,7 @@ KGB_Hasse: (RealForm->mat): Hasse diagram of Bruhat order on K\G/B
   The Bruhat order x<=y among K-orbits in G/B describes when x is contained in
   the (topological) closure of y. KGB_Hasse(G) is a matrix describing the Hasse
   diagram of this finite partial order: the set of pairs (x,z) for which the
-  interval { y | x<=y<=z } contains exactly the two elements, namely x et z.
+  interval { y | x<=y<=z } contains exactly the two elements, namely x and z.
   The matrix is indexed by the numbers #x of the K\G/B elements x, and the
   entry at (#x,#z) is 1 when (x,z) is in the Hasse diagram, and 0 otherwise.
 
@@ -667,7 +673,7 @@ central_fiber: (RealForm->[vec]): Set of torus bits not affecting any gradings
   of these values to torus bits defines an automorphism of the KGB structure
 initial_torus_bits: (RealForm->vec) Torus bits for initial KGB element
   This test computes the torus bits of KGB(G,0) as used in the implementation to
-  initialise the construction of the KGB structure for G. Contrary to computing
+  initialize the construction of the KGB structure for G. Contrary to computing
   torus_bits(KGB(G,0)), calling this function does not require the KGB set for
   G to be actually generated, so it should be fast even when that set is large.
 
@@ -793,7 +799,7 @@ theta_stable: (KType->KType): ensure K-type is moved to a theta-stable situation
   The name theta-stable refers to the parabolic subalgebra associated to the
   involution theta of the x component of the K-type: the subalgebra whose Levi
   factor has the real roots and whose nilpotent radical has the remaining
-  positive roots is theta-stable, maning that theta permutes those remaining
+  positive roots is theta-stable, meaning that theta permutes those remaining
   positive roots among each other. In terms of the K-type it means there are no
   complex descents, which is obtained by greedily performing any complex
   descents; multiple candidate results may exist, among which one is chosen.
@@ -880,7 +886,7 @@ is_semifinal: (Param->bool): whether parameter has no singular real descents
   on more compact Cartans by a Hecht-Schmid identity. So is_semifinal(p) is
   true provided no real coroots for which gamma is singular satisfy the parity
   condition. Note: one could still have is_zero(p); this needs a separate test.
-is_final: (Param->bool): whether p parametrizes an irreducible representation
+is_final: (Param->bool): whether p parameterizes an irreducible representation
   This means that is_standard(p) and not is_zero(p) and is_semifinal(p) holds,
   as well as p=dominant(p)=normal(p). Parameters that satisfy |is_final(p)|
   are the ones that can occur as monomials in a |ParamPol| value.
@@ -920,7 +926,7 @@ print_block: (Param->): print block for the given parameter
   Also, the block elements that correspond to irreducible representations at the
   (possibly singular) infinitesimal character of the given parameter are marked
   by an asterisk before those components; for these elements the corresponding
-  paraemters are returned as a list by the built-in function 'block@Param'.
+  parameters are returned as a list by the built-in function 'block@Param'.
 print_partial_block: (Param->): print Bruhat interval below the given parameter
   The output is a subset of the lines printed by print_block@Param, same format
 print_common_block: (Param->): print archetypal block for parameter
@@ -951,7 +957,7 @@ block_Hasse: (Param->[Param],mat): block and Hasse diagram of its Bruhat order
   generated, and returns a list of corresponding parameters, and a matrix
   describing the Hasse diagram of its Bruhat order: the set of pairs (x,z) for
   which the interval { y | x<=y<=z } contains exactly the two elements, namely
-  x et z. The matrix positions correspond to positions of block elements in the
+  x and z. The matrix positions correspond to positions of block elements in the
   list, which is ordered as the block elements in print_common_block(p).
 KL_block: (Param->[Param],int,mat,[vec]): block for parameter, with its KL table
   This combines block with the computation of the its Kazhdan-Lusztig table.
@@ -981,7 +987,7 @@ dual_KL_block: (Param->[Param],int,mat,[vec]): KL_block values for dual block
 partial_KL_block: (Param->[Param],mat,[vec]): partial KL_block
   This function relates to KL_block as partial_block relates to block. The first
   component of the result is the Bruhat interval as in partial_block, and the
-  last two components have the same meansing as in KL_block; no index of the
+  last two components have the same meaning as in KL_block; no index of the
   given parameter is returned (if present, it is always the last listed element).
 W_graph: (Param->int,[[int],[int,int]]): W-graph for parameter block
   Generate block and decompose into W-cells; return the number of the parameter
@@ -1145,7 +1151,10 @@ finalize_extended: (Param,mat->ParamPol): conversion for extended parameters
   extension, the finalization process on extended parameters may involve flips
   with respect to the default choices for the terms of the finalization as an
   ordinary parameter; such flips are recorded as a factor of (split integer
-  unit) s in the coefficient if the parameter in question.
+  unit) s in the coefficient if the parameter in question. For this function
+  the supplied parameter obviously does not have to be final; however, it must
+  be equivalent to a delta-fixed parameter, and in addition its KGB element
+  x must have an involution that commutes with the given involution delta.
 
 raw_KL: (Block->mat,[vec],vec): Kazhdan-Lusztig data for block, raw form
   The call raw_KL(b) produces a matrix of numbers identifying polynomials, a
@@ -1203,16 +1212,16 @@ W_cells: (Block->[[int],[[int],[int,int]]])): data describing W-cells for block
 cofolded: (InnerClass->RootDatum): Reduced root datum for delta-fixed weights
   This is a root datum whose dimple coroots are a subset of those of the root
   datum rd of the inner class, and whose simple roots are among the positive
-  roots of rd that are delta-fixed (for the distincuished involution delta of
+  roots of rd that are delta-fixed (for the distinguished involution delta of
   the inner class). The root datum is somewhat skewed in the sense that among
   each delta-orbit of 2 simple coroots whose sum is not a coroot, one is
   arbitrarily chosen to be retained; it would be more natural to retain the
   average of these two instead. However that might introduce non-integer
-  coordinates, and the root datum constucted here does not, and is a perfectly
+  coordinates, and the root datum constructed here does not, and is a perfectly
   valid root datum. It is intended to be used only with delta-fixed (rational)
   weights, and notably to decompose that space into alcoves; this is independent
   of the choice of simple coroots, and the alcoves are the same as those into
-  which the subspace is cut by the full set of affine coroot hyperplaces for rd.
+  which the subspace is cut by the full set of affine coroot hyperplanes for rd.
 
 walls: (RootDatum,ratvec->[int],int): Set of coroots defining walls of alcove
   The alcove is the one containing the given rational weight gamma, possibly on
@@ -1233,13 +1242,13 @@ walls: (RootDatum,ratvec->[int],int): Set of coroots defining walls of alcove
   an integer k such that within the alcove, the maximal fractional part of the
   evaluation is 1/k). This is a useful property for generating, modulo
   translations, the affine Weyl group orbit of the facet containing gamma
-  ('affine_orbit_ws'), and ensures that in at leat one of the two sorted
+  ('affine_orbit_ws'), and ensures that in at least one of the two sorted
   sublists the final element determines a coroot with label equal to 1.
 walls_attitude: (RootDatum,[int]->WeylElt) classify alcove up to translation
   For any alcove there are alcoves in the W-orbit of the fundamental alcove that
   are equal to it up to a translation; this function determines a Weyl group
   element that witnesses this from the set of walls of the alcove, represented
-  by a list of root indices as retuned by the 'walls' for an interior point of
+  by a list of root indices as returned by the 'walls' for an interior point of
   the alcove. The set of root indices must be that of the walls of some alcove,
   so in the W-orbit of the set of walls of the fundamental alcove (necessary
   conditions for this is the absence of acute angles, and a number of walls
@@ -1293,7 +1302,7 @@ FPP_numers: (RootDatum,ratvec->[vec]): Affine Weyl orbit intersected with FPP
   under the affine Weyl group lying inside the FPP, and lists their numerators;
   this is to save space as the denominators are all equal to that of gamma.
 FPP_w_shifts: (RootDatum,ratvec->[WeylElt,[vec]]): Affine Weyl elements for FPP
-  This function has the same funcionality as FPP_numers, but presents the
+  This function has the same functionality as FPP_numers, but presents the
   results differently, namely as a list of affine Weyl group elements (an
   ordinary Weyl group element followed by a shift in the root lattice), grouped
   by common Weyl group elements, each followed by a list of associated shifts.
@@ -1325,14 +1334,13 @@ partial_extended_KL_block: (Param,mat->[Param],mat,[vec]): extended KL data
   extended block. The list is also truncated by removing any elements that are
   beyond p from it, so if present, p is the last element on the list. The matrix
   of KL polynomials is condensed to a square matrix indexed by just the listed
-  elements, as in partial_KL_block. Moreover, since the deformation algorithm
-  can work with just the evaluations of the P polynomials at q=-1, these
-  evaluations are computed (so that the result can be returned as a plain
-  matrix, the second component) and the resulting number is negated for those
-  entries for which the length difference for the block elements for its row and
-  column is odd (here length is as length@Param, there is no separate length in
-  extended blocks). The form of the result is meant to be directly usable in the
-  deformation algorithm.
+  elements, as in partial_KL_block; the resulting polynomial is negated for
+  those entries for which the length difference for the block elements for its
+  row and column is odd (here length is as length@Param, as there is no separate
+  notion of length in extended blocks). The distinct polynomials that arise in
+  this matrix are listed as vec values in the final component of the result, and
+  the returned matrix entries are indices into this list. The form of the result
+  (with signs) is meant to be adapted to its use in the deformation algorithm.
 
 print_gradings: (CartanClass,RealForm->): print gradings defined by real form
   This more or less gives the output of the 'gradings' command in Fokko, for the

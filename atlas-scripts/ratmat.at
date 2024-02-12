@@ -57,10 +57,8 @@ set columns_with ((int->bool) p,ratmat(M,,d)) = ratmat:
   { we can use mat version here } columns_with(p,M) / d
 
 set rows_with ((int,ratvec->bool) p,ratmat(M,,d)) = ratmat:
-( n_columns(M)
-^ for row@i in rows(M) do if p(i,row/d) then [row] else [] fi od.##
-/ d
-)
+   n_columns(M) ^ for row@i in rows(M) if p(i,row/d) do row fi od / d
+
 set rows_with ((ratvec->bool) p,ratmat T) = ratmat:
   rows_with((int .,ratvec row)bool: p(row),T)
 set rows_with ((int->bool) p,ratmat(M,,d)) = ratmat:

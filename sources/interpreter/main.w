@@ -128,7 +128,7 @@ dependency on the readline library.
 
 @q axis_version "0.9" @>
 @q axis_version "0.9.1" multiple assignments, multi-overload set command @>
-@q axis_version "0.9.2" balancing, break, return, ++reach in while loops @>
+@q axis_version "0.9.2" balancing, break, return, extended reach in while loops @>
 @q axis_version "0.9.3" avoid voiding, internals calls, field selectors @>
 @q axis_version "0.9.4" types |int| and |rat| use arbitrary size values @>
 @q axis_version "0.9.5" unions, discrimination expressions @>
@@ -136,7 +136,8 @@ dependency on the readline library.
 @q axis_version "0.9.7" set_type command, possibly recursive, added @>
 @q axis_version "0.9.8" fully functional set_type command @>
 @q axis_version "0.9.9" integer 'case': optional out-of-bounds clause(s) @>
-@d axis_version "1.0" @q recursion implemented without creating memory leak @>
+@q axis_version "1.0" recursion implemented without creating memory leak @>
+@d axis_version "1.1" @q concatenating for and if loop syntax @>
 
  // numbering from 0.5 (on 27/11/2010); last change April 1st, 2020
 
@@ -147,14 +148,14 @@ dependency on the readline library.
 @< Declaration of interface to the parser @>@;
 namespace {@; @< Local static data @>@; }
 @< Definitions of global namespace functions @>@;
-namespace atlas
+namespace @;atlas
 { namespace interpreter
   {@; @< Definitions of other functions @>@;}
 }
 @/
 @< Main program @>
 
-@ Since the file \.{parser.y} declares \.{\%pure-parser} and \.{\%locations},
+@ Since the file \.{parser.y} declares \.{\%define api.pure} and \.{\%locations},
 the prototype of the lexical analyser (wrapper) function |yylex| is the one
 below. Curiously, the program~\.{bison} does not write this prototype to
 \.{parser.tab.h}, but it does write the definitions of the types |YYSTYPE| and
