@@ -659,8 +659,12 @@ set local_test_hash_bottom(KGBElt x, ratvec lambda, VertexData Lvd,
 	      	  then ps = monomials(finalize(parameter(x, lambda
 		    	  , facet_bary(Lvd.list, verts))))
 	      	in if{NEWU} all(for p in ps
-		   	    	do Uhash.lookup(p).>= or bottom_test_factors_more(p, bott_data,
-				   nQs, D, pol_hash.index(LFVH[d][j][d+1]))
+		   	    	do Uhash.lookup(p).>= or
+				   if more_flag
+				   then bottom_test_factors_more(p, bott_data, nQs, D,
+				   	pol_hash.index(LFVH[d][j][d+1]))
+				   else is_unitary_hash(p)
+				   fi
 				od)
 		   then for i in C
 		   	do let (d,j) = coords(LFVH,i)
@@ -1788,7 +1792,7 @@ set local_test_GEO_hash_bottom_layer(KGBElt x, ratvec lambda, VertexData vd,
     then () = if 1*parameter(x,lambda,0*lambda) = zero_pol then return [] fi
     then ht = height(parameter(x,lambda,0*lambda))
     then () = if ht = 0 {fine K-type in quasisplit G}
-    	      then return local_test_GEO_hash_one_level(x, lambda, vd, Lvd, LF,
+    	      then return local_test_GEO_hash2(x, lambda, vd, Lvd, LF,
 	      	   	  				   pol_hash, Uhash)
 	      fi
     then htFrac = ht/(G.rho * G.two_rho_check)

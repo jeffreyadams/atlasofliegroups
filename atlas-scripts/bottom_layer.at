@@ -268,7 +268,7 @@ set make_RF_sig_tables () = RF_sig_tables:
 		   fi
 	 in (rf,pnum, sigs[rf][pnum][0], sigs[rf][pnum][1])
 
-   in 
+   in
    ( ( -> int): { real_form_size } @int: real_form_hash.size()
    , ( -> ): {clear} clear
    , ( -> vec): {K_type_size} @vec: for hash in K_type_hashes do hash.size() od
@@ -277,7 +277,7 @@ set make_RF_sig_tables () = RF_sig_tables:
    , ((KType,int) -> KTypePol): {branch_entry} (KType mu, int D) KTypePol:
      begin
      	let (rf, ktypenum,m) = add_K_type(mu,D)
-	in K_type_pol_hashes[rf].index(m)
+	in to_ht(K_type_pol_hashes[rf].index(m), D)
      end
    , ((Param,int) -> (KTypePol,KTypePol)): {sig_entry} (Param p, int D)
      (KTypePol,KTypePol):
@@ -312,8 +312,8 @@ set min_L_bottom_factors(KType mu) = [[(KType, KType)]]:
     then muL = LKT(pL), L = Q.Levi
     then muLs = factor_K_types(muL) {each muLj is on a simple mod center Lj}
     then dermuLs = derived_factor_K_types(muL) {each dermuLj is on a simple derived derLj}
-    then Ls = for muL in muLs do muL.real_form od {these are the Lj}
-    then DLs = for L in Ls do next_heights(L) od
+    then Ljs = for muL in muLs do muL.real_form od {these are the Lj}
+    then DLjs = for Lj in Ljs do next_heights(Lj) od
     then derLMs = for (Lj,derLj,Mj) in derived_simple_factors_info(L) do (derLj,Mj) od {DERIVED simple factors}
 
     then derMs = for (,Mj) in derLMs do Mj od
@@ -322,20 +322,20 @@ set min_L_bottom_factors(KType mu) = [[(KType, KType)]]:
     	       	 do (KGB(derLj, 0),Mj)
 		 od
     then xcLs = for (xcderLj,Mj)@j in xcderLMs {KGBElts for Lj, lifted from #zero on derLj}
-    	      	 do embed_KGB(xcderLj,Ls[j],Mj) {PROBABLY these are all #0 on Lj???}
+    	      	 do embed_KGB(xcderLj,Ljs[j],Mj) {PROBABLY these are all #0 on Lj???}
 		 od
     then xcGs = for xcLj@j in xcLs do embed_KGB(xcLj,G) od
     then dertauLs = [[KType]]: {jth list on derived simple factor derLj}
     	 for dermuLj@j in dermuLs
-	 do if RF_code
-	    then monomials(rf_sig_tables.branch_entry(dermuLj,DLs[j]))
-	    else monomials(branch(dermuLj, max(next_heights(dermuLs[j], (semisimple_rank(derLs[j]) + 1)\2))))
+	 do if RF_code {should use bott_data}
+	    then monomials(rf_sig_tables.branch_entry(dermuLj,DLjs[j]))
+	    else monomials(branch(dermuLj, DLjs[j]))
 	    fi
 	 od
     in for listj@j in dertauLs
        do let K0 = K_0(xcGs[j])
        	  then muwtj = K0_param(mu,xcGs[j]).lambda_minus_rho {size is rank(K)}
-	  then dermuLj = dermuLs[j], (xcLj,) = xcderLMs[j], derLj = derLs[j], Lj = Ls[j]
+	  then dermuLj = dermuLs[j], (xcLj,) = xcderLMs[j], derLj = derLs[j], Lj = Ljs[j]
 	  then dermuLjwt = K0_param(dermuLj).lambda_minus_rho
 	  then () = if Lj.Cartan_matrix != derLj.Cartan_matrix
 		     	  then prints("WARNING: CM mismatch at Lj = ",Lj)
@@ -434,7 +434,9 @@ set all_even_lambda_differential_0(RootDatum rd, mat theta) = [vec]:
 	     else []
 	     fi
 	od.##
-set mbefTime = int: 0
+
+set mbefTime = int: 0 {time spent in min_bottom_elim_factors}
+
 {just checks whether it's cohom ind from unitary; doesn't check good range.
 So could be wrong in either direction}
 set coh_ind_is_unitary(Param p) = bool:
@@ -617,7 +619,6 @@ set min_bottom_elim_factors(Param p, [[(KType,KType)]] LKdata, KTypePol P) = boo
      then () = mbefTime +:= elapsed_ms() - start
      in result
 
-
 set min_bottom_elim_factors(Param p, steady_bottom_data bott_data, KTypePol P) = bool:
     all( for mu in LKTs(p)
     	 do min_bottom_elim_factors(p, bott_data.entry(mu), P)
@@ -688,10 +689,10 @@ set L_bottom_factors(KType mu, KGPElt Q, int D) = [[(KType, KType)]]:
     then xcGs = for xcLj@j in xcLs do embed_KGB(xcLj,G) od
     then dertauLs = [[KType]]: {jth list on derived simple factor derLj}
     	 for dermuLj@j in dermuLs
-	 do {if RF_code
-	    then} monomials(branch_std(dermuLj, height(dermuLj)+Dshift))
-	    {else monomials(branch(dermuLj, max(next_heights(dermuLs[j], (semisimple_rank(derLs[j]) + 1)\2))))
-	    fi}
+	 do if RF_code
+	    then monomials(rf_sig_tables.branch_entry(dermuLj,height(dermuLj)+Dshift))
+	    else monomials(branch(dermuLj,height(dermuLj)+Dshift ))
+	    fi
 	 od
     in for listj@j in dertauLs
        do let K0 = K_0(xcGs[j])
@@ -701,7 +702,6 @@ set L_bottom_factors(KType mu, KGPElt Q, int D) = [[(KType, KType)]]:
 	  then () = if Lj.Cartan_matrix != derLj.Cartan_matrix
 		     	  then prints("WARNING: CM mismatch at Lj = ",Lj)
 			  fi
-
        	  in [(KType, KType)]: {meant to be list of pairs (tau, dertauLj) with tau bottom layer for G,
 	       	       			 dertauLj corr LjK-type}
 	     for dertauLj in listj
@@ -1008,8 +1008,8 @@ set bottom_K_types(KType mu, int D) = [(KType,[int])]:
     then xcG0 = embed_KGB(xcL0, G)
     then too_many_taus = monomials(branch_irr(q,D))
     then hwt0 = highest_weight(too_many_taus[0],xcG0).mu
-    then too_many_shifts = for mu in too_many_taus
-    	 	       	 do highest_weight(mu,xcG0).mu - hwt0
+    then too_many_shifts = for tau in too_many_taus
+    	 	       	 do highest_weight(tau,xcG0).mu - hwt0
 			 od
     then too_many_Ss = [[int]]:
     	 for shift in too_many_shifts
