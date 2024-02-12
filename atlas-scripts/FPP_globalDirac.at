@@ -629,9 +629,7 @@ set FPP_unitary_hash_one_level([KGBElt] xs) = void:
 set FPP_unitary_hash_one_level(RealForm G) = void:
     FPP_unitary_hash_one_level(KGB(G))
 
-set bottom_data = make_steady_bottom_data()
-
-set FPP_unitary_hash_bottom_layer([(KGBElt,ratvec)] xlambdas, steady_bottom_data bott_data, Param_hash UhashG,
+set FPP_unitary_hash_bottom_layer([(KGBElt,ratvec)] xlambdas, Param_hash UhashG,
     Param_hash Uparamhash) = void:
     if #xlambdas = 0 then return ()
     else let (x,) = xlambdas[0], pol_hash = make_KTypePol_hash()
@@ -686,7 +684,7 @@ set FPP_unitary_hash_bottom_layer([(KGBElt,ratvec)] xlambdas, steady_bottom_data
 	      fi
     then current = elapsed_ms(), oldUhash = UhashG.size(), currentUhash = Uhash.size(), formerUhash = Uhash.size(),
     	 	   oldUcounter = unitary_test_counter.use_count(), currentUcounter = unitary_test_counter.use_count(),
-		   start_min_L_bottom_factors = bott_data.min_L_bottom_factors_time()
+		   start_min_L_bottom_factors = bottom_data.min_L_bottom_factors_time()
     then () = for (x,lambda)@k in xlambdas
     	      do {xlambdas} 
 	 	 let start = elapsed_ms(), startUhash = Uhash.size(), (x_sc,lambda_sc) = xlambdas_sc[k],
@@ -702,8 +700,8 @@ set FPP_unitary_hash_bottom_layer([(KGBElt,ratvec)] xlambdas, steady_bottom_data
 			 then facet_verbose := old_facet_verbose; time_verbose := old_time_verbose;
 			      test_verbose :=old_test_verbose; test_slightly_verbose := old_test_slightly_verbose
 			 fi;
-			 let answer = local_test_GEO_hash_bottom_layer(x_sc, lambda_sc, LPm_table.FPP_vertex_data(Gsc),
-			     	      					     Lvd, LF, bott_data, pol_hash, Uhash)
+			 let answer = local_test_GEO_hash_bottom_layer(x_sc, lambda_sc,
+			     LPm_table.FPP_vertex_data(Gsc), Lvd, LF, pol_hash, Uhash)
 			 then () = answerCards[k] := #answer
 			 then () = for p in answer do Uparamhash.match(p) od
    		    	 then () = current := elapsed_ms(); currentUhash := Uhash.size();
@@ -738,8 +736,8 @@ set FPP_unitary_hash_bottom_layer([(KGBElt,ratvec)] xlambdas, steady_bottom_data
        prints("Time spent in is_unitary = ",print_time_string(unitaryTime), ", number of unitarity tests = ",
        		unitary_test_counter.use_count());
        prints("Time in min_L_bottom_factors = ",
-       print_time_string(bott_data.min_L_bottom_factors_time() - start_min_L_bottom_factors),
-	      ", number of K-types studied = ", bott_data.size());
+       print_time_string(bottom_data.min_L_bottom_factors_time() - start_min_L_bottom_factors),
+	      ", number of K-types studied = ", bottom_data.size());
        prints("Time in derived_factor_K_types_info = ", print_time_string(dfkiTime),
        	      ", time in min_bottom_elim_factors = ",print_time_string(mbefTime));
        prints("Time in bottom layer branching = ",print_time_string(rf_sig_tables.bottom_branch_time()),
@@ -758,10 +756,9 @@ set FPP_unitary_hash_bottom_layer([(KGBElt,ratvec)] xlambdas, steady_bottom_data
     fi
 
 set FPP_unitary_hash_bottom_layer([(KGBElt,ratvec)] xlambdas) = void:
-    FPP_unitary_hash_bottom_layer(xlambdas, bottom_data, unitary_hash, uparam_hash)
+    FPP_unitary_hash_bottom_layer(xlambdas, unitary_hash, uparam_hash)
 
-set FPP_unitary_hash_bottom_layer([KGBElt] xs,  steady_bottom_data bott_data,
-				  Param_hash UhashG, Param_hash Uparamhash) = void:
+set FPP_unitary_hash_bottom_layer([KGBElt] xs, Param_hash UhashG, Param_hash Uparamhash) = void:
     if #xs = 0
     then return ()
     else let () = if tilde_flag
@@ -867,7 +864,7 @@ set FPP_unitary_hash_bottom_layer([KGBElt] xs,  steady_bottom_data bott_data,
 				      old_test_slightly_verbose
 				 fi;
 				 let answer = local_test_GEO_hash_bottom_layer(x_sc, lambda0+M*tau,
-				     	    LPm_table.FPP_vertex_data(Gsc), Lvd, LF, bott_data, pol_hash, Uhash)
+				     	    LPm_table.FPP_vertex_data(Gsc), Lvd, LF, pol_hash, Uhash)
 			  	 then () = tempanswerCards[index] := #answer
 			  	 then () = for p in answer do Uparamhash.match(p) od
 				 then () = if every_lambda_deets_flag
@@ -926,8 +923,8 @@ set FPP_unitary_hash_bottom_layer([KGBElt] xs,  steady_bottom_data bott_data,
        prints("Time spent in is_unitary = ",print_time_string(unitaryTime), ", number of unitarity tests = ",
        		unitary_test_counter.use_count());
        prints("Time in min_L_bottom_factors = ",
-       	      print_time_string(bott_data.min_L_bottom_factors_time()),
-	      ", number of K-types studied = ", bott_data.size());
+       	      print_time_string(bottom_data.min_L_bottom_factors_time()),
+	      ", number of K-types studied = ", bottom_data.size());
        prints("Time in derived_factor_K_types_info = ",print_time_string(dfkiTime),
        	      ", time in min_bottom_elim_factors = ", print_time_string(mbefTime));
        prints("Time in bottom layer branching = ",print_time_string(rf_sig_tables.bottom_branch_time()),
@@ -945,7 +942,7 @@ set FPP_unitary_hash_bottom_layer([KGBElt] xs,  steady_bottom_data bott_data,
    fi
 
 set FPP_unitary_hash_bottom_layer([KGBElt] xs) = void:
-    FPP_unitary_hash_bottom_layer(xs,  bottom_data, unitary_hash, uparam_hash)
+    FPP_unitary_hash_bottom_layer(xs, unitary_hash, uparam_hash)
 
 set FPP_unitary_hash_bottom_layer(RealForm G) = void:
     FPP_unitary_hash_bottom_layer(KGB(G))
