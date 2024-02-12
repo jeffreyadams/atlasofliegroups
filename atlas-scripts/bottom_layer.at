@@ -1033,18 +1033,25 @@ set bottom_K_types(KType mu, int D) = [(KType,[int])]:
 	  fi
        od.##
 
-set newQs(KType mu, int D) = [KGPElt]:
-    let cands = for (tau,S) in bottom_K_types(mu, D) do S.sort od
-    then x = param(mu).x
-    in for S in cands.sort_u
+{cands is meant to be a list of K-types above mu that are bottom layer
+for parabolic defined by S}
+set newQs(KType mu, [(KType,[int])] cands) = [KGPElt]:
+    let x = param(mu).x
+    then max_size = max(for (,S) in cands do #S od)
+    then min_size = min(for (,S) in cands do #S od)
+    then cands_by_size = [[int]]:
+    	 for size: max_size+1 - min_size from min_size
+       	 do for (,S) in cands
+	    do if #S= size then [S] else [] fi
+	    od.##.sort_u
+       	 od.##{zeroth term is guaranteed to be Smin, defined by mu.d_lambda}
+    in for S in cands_by_size
        do KGPElt: (S,x)
        od
 
-set newQs(KType mu, [(KType,[int])] BKT) = [KGPElt]:
-    let cands = for (tau,S) in BKT do S.sort od, x = param(mu).x
-    in for S in cands.sort_u
-       do KGPElt: (S,x)
-       od
+set newQs(KType mu, int D) = [KGPElt]:
+    let cands = bottom_K_types(mu,D)
+    in newQs(mu, cands)
 
 {For the irreducible p, lists the K-types to height D which are bottom layer for some proper parabolic;
 the smallest such parabolic is defined by the simple coroots in S. S always contains the coroots S0
@@ -1119,13 +1126,15 @@ set goodness(Param p, KGPElt Q) = (bool, bool, bool):
 set more_flag = false
 
 {meant to hold nonunitary reps NOT found by more}
-set bad_hash = make_Param_hash()
+{set bad_hash = make_Param_hash()}
 
 {D is meant to be max(height(tau) for tau in BKT. nQs are the parabolics where bottom layer might help.}
+{nQs is meant to be new_Qs()m, P the K-character of P}
+{meant to be applied AFTER min_bottom_elim_factors, so skip minimal nQ}
 set bottom_elim_factors_more(Param p, steady_bottom_data bott_data, [KGPElt] nQs, int D, KTypePol P) = bool:
     let three_bools = max_goodness(p), maxQps = max_Qps(p)
-    then () = if #nQs > 0
-    	      then if not all(for Q in nQs
+    then () = if #nQs > 1
+    	      then if not all(for Q in nQs[1:]
     	    	      	      do all(for mu in LKTs(p)
 			      	     do bottom_elim_factors(p, Q, L_bottom_factors(mu,Q,D), P)
 				     od)
@@ -1225,9 +1234,9 @@ set bottom_elim_factors_more(Param p, steady_bottom_data bott_data) = bool:
 {P is K-character at least to appropriate height, NOT branch!. Assume already eliminated using minimal P0}
 set bottom_test_factors_more(Param p, steady_bottom_data bott_data, [KGPElt] nQs, int D, KTypePol P) = bool:
     if not more_flag
-    then min_bottom_test_factors(p,bott_data,P)
+    then is_unitary_hash(p) {min_bottom_test_factors(p,bott_data,P)}
     else
-    let () = if not all(for Q in nQs
+    let () = if not all(for Q in nQs[1:]
     	    	      	 do all(for mu in LKTs(p)
 			      	do bottom_elim_factors(p, Q, L_bottom_factors(mu,Q,D), P)
 				od)
@@ -1256,7 +1265,7 @@ set bottom_test_factors_more(Param p, steady_bottom_data bott_data, [KGPElt] nQs
 
 set bottom_test_factors_more(Param p, steady_bottom_data bott_data, [KGPElt] nQs, int D) = bool:
     if not more_flag
-    then min_bottom_test_factors(p,bott_data)
+    then is_unitary_hash(p) {min_bottom_test_factors(p,bott_data)}
     else
     let P = K_type_pol(character_formula(p))
     in bottom_test_factors_more(p, bott_data, nQs, D, P)
