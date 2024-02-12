@@ -569,7 +569,7 @@ set min_bottom_elim_factors(Param p, [[(KType,KType)]] LKdata, KTypePol P) = boo
 				      	in for t@i in twistk
 			   	      	   do let () = Genx.torus_factor +:= t
 					      {now need to force real form}
-			      	      	      in KGB(badderLjs[j], KGB_elt(Genx).number)
+			      	      	      in KGB(badderLjs[k], KGB_elt(Genx).number)
 			   	      	   od
 		    	then twistbadderpLks = for yLk in twistxLs
 		    	 	      	do parameter(yLk, badderpLj.lambda, badderpLj.nu)
@@ -828,7 +828,7 @@ set bottom_elim_factors(Param p, KGPElt Q, [[(KType,KType)]] LKdata, KTypePol P)
 				      	in for t@i in twistk
 			   	      	   do let () = Genx.torus_factor +:= t
 					      {need to force real form}
-			      	      	      in KGB(derpLj.real_form, KGB_elt(Genx).number) 
+			      	      	      in KGB(badderpLj.real_form, KGB_elt(Genx).number) 
 			   	      	   od
 		    	then twistbadderpLks = for yLk in twistxLs
 		    	 	      	do parameter(yLk, badderpLj.lambda, badderpLj.nu)
