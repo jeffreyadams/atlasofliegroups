@@ -45,7 +45,7 @@ module have been relegated to a separate module \.{global.w}.
 #include "axis-types.h"
 
 @< Includes needed in the header file @>@;
-namespace atlas { namespace interpreter {
+namespace @;atlas { namespace interpreter {
 @< Type definitions @>@;
 @< Declarations of global variables @>@;
 @< Declarations of exported functions @>@;
@@ -57,7 +57,7 @@ namespace atlas { namespace interpreter {
 @h "axis.h"
 @h <cstdlib>
 @c
-namespace atlas { namespace interpreter {
+namespace @;atlas { namespace interpreter {
 @< Global variable definitions @>@;
 namespace {
 @< Local class definitions @>@;
@@ -202,7 +202,7 @@ automatically gain ownership of any new nodes added in the process, and
 accessible from |type|. The latter, if it happens, will be caused by calls of
 the |specialise| method for |type|, or for its descendants, within
 |convert_expr|. It is a modifiable lvalue reference argument in which normally
-the result of the type analysis is returned. It should not be an reference to a
+the result of the type analysis is returned. It should not be a reference to a
 table entry or other permanent value: any changes to the |type| argument made by
 |convert_expr| should remain locally confined until successful completion, so
 that in case the function should instead terminate by throwing an exception, no
@@ -491,12 +491,12 @@ latter case.
 case integer_denotation:
   { expression_ptr d@|(new denotation
       (std::make_shared<int_value>(@|
-         big_int(e.str_denotation_variant.c_str(),10))));
+         big_int(e.str_denotation_variant->c_str(),10))));
     return conform_types(int_type,type,std::move(d),e);
   }
 case string_denotation:
   { expression_ptr d@|(new denotation
-      (std::make_shared<string_value>(e.str_denotation_variant)));
+      (std::make_shared<string_value>(*e.str_denotation_variant)));
     return conform_types(str_type,type,std::move(d),e);
   }
 case boolean_denotation:
@@ -692,27 +692,33 @@ Tuple values can be produced by tuple displays, which list explicitly their
 component expressions. After type-checking, they are given by a
 |tuple_expression| object (the name |tuple_display| was already taken).
 
+Sometimes we wish to indicate that the components of a tuple expression should
+be evaluated right-to-left; we make this distinction possible through a Boolean
+template parameter |r_to_l|.
 
 @< Type definitions @>=
-struct tuple_expression : public expression_base
+template<bool r_to_l> struct tuple_expression_tmpl : public expression_base
 { std::vector<expression_ptr> component;
 @)
-  explicit tuple_expression(size_t n) : component(n) @+{}
+  explicit tuple_expression_tmpl(size_t n) : component(n) @+{}
    // always start out with null pointers
   virtual void evaluate(level l) const;
   virtual void print(std::ostream& out) const;
 };
+
+using tuple_expression = tuple_expression_tmpl<false>;
 
 @ When we print a tuple display, we just print the component expressions,
 enclosed in parentheses and separated by commas, to match their input syntax.
 
 
 @< Function def... @>=
-void tuple_expression::print(std::ostream& out) const
+template<bool r_to_l>
+  void tuple_expression_tmpl<r_to_l>::print(std::ostream& out) const
 { out << '(';
   for (auto it=component.begin(); it!=component.end(); ++it)
     out << (it==component.begin() ? "" : ",") << **it;
-  out << ')';
+  out << (r_to_l ? "~)" : ")");
 }
 
 @ When converting a tuple expression, we first try to specialise |type| to a
@@ -794,7 +800,8 @@ wasted at all (assuming, as seems reasonable, that simply entering a
 |try|-block does not involve any work).
 
 @< Function def... @>=
-void tuple_expression::evaluate(level l) const
+template<>
+  void tuple_expression::evaluate(level l) const
 { switch(l)
   {
   case no_value:
@@ -827,6 +834,46 @@ void tuple_expression::evaluate(level l) const
           execution_stack.pop_back();
         throw; // propagate the \&{return}
       }
+    }
+  } // |switch(l)|
+}
+
+@ And here is the right-to-left evaluation function. For the |no_value| case we
+simply |void_eval| the components in reverse order; for the |single_value| case
+the results of |eval| are placed as |component| value of a pre-allocated tuple
+from back to front. In the |multi_value|
+case the values are needed separately on the |execution_stack|, but in reverse
+order to what would be produced by the successive |eval| calls. We therefore pop
+the values off after each evaluation, storing them temporarily in a local
+|stack<shared_value>| variable, from which they are then popped again afterwards
+to be placed on the |execution_stack| in reverse order. Since the values are now
+held in a local variable, the |execution_stack| remains unchanged in between
+these evaluations, and the is no need for a |try|--|catch| construction to
+correctly handle possible exceptions thrown during the evaluation of a component.
+
+@< Function def... @>=
+template<>
+  void tuple_expression_tmpl<true>::evaluate(level l) const
+{ switch(l)
+  {
+  case no_value:
+    for (auto it=component.crbegin(); it!=component.crend(); ++it)
+      (*it)->void_eval();
+    break;
+  case single_value:
+    { auto result = std::make_shared<tuple_value>(component.size());
+      auto dst_it = result->val.rbegin(); // fill |result| tuple from rear to front
+      for (auto it=component.crbegin(); it!=component.crend(); ++it,++dst_it)
+      @/{@; (*it)->eval(); *dst_it=pop_value(); }
+      push_value(result);
+    } break;
+  case multi_value:
+    { stack<shared_value> args;
+      for (auto it=component.crbegin(); it!=component.crend(); ++it)
+      @/{@; (*it)->eval(); args.push(pop_value()); }
+
+@)    while(not args.empty()) // push components onto stack again in reverse order
+        push_value(std::move(args.top())),args.pop();
     }
   } // |switch(l)|
 }
@@ -1178,23 +1225,38 @@ may change the type of the identifier, but the applied identifier expression
 has already been type-checked and should not be allowed to return a value of a
 different type than it did originally.
 
+We add a Boolean template parameter to this class, in order to have a variant
+where the evaluation empties the variable itself, which the compiler can employ
+for efficiency purposes.
+
 @< Type definitions @>=
-class global_identifier : public identifier
+template<bool pilfer=false>
+  class global_identifier : public identifier
 { const shared_share address;
 public:
   explicit global_identifier(id_type id);
   virtual ~global_identifier() = default;
+  virtual void print(std::ostream& out) const;
   virtual void evaluate(level l) const;
 };
 
-@ The constructor for |global_identifier::evaluate| locates the value
-associated to the identifier in the global identifier table.
+@ The constructor for |global_identifier| locates the value
+associated to the identifier in the global identifier table. Because of the
+reference to |global_id_table| we made it definition out-of-line.
 
 @< Function definitions @>=
-global_identifier::global_identifier(id_type id)
+template<bool pilfer>
+  global_identifier<pilfer>::global_identifier(id_type id)
 : identifier(id), address(global_id_table->address_of(id))
 @+{}
 
+@)
+template<>
+  void global_identifier<false>::print(std::ostream& out) const
+@+{@; out << name(); }
+template<>
+  void global_identifier<true>::print(std::ostream& out) const
+@+{@; out << '$' << name(); }
 
 @ Evaluating a global identifier returns the value currently stored in the
 location |address|, possibly expanded if |l==multi_value|, or nothing at all
@@ -1203,13 +1265,17 @@ possible in the language, we have to watch out for a (shared) null pointer at
 |*address|.
 
 @< Function definitions @>=
-void global_identifier::evaluate(level l) const
+template<bool pilfer>
+  void global_identifier<pilfer>::evaluate(level l) const
 { if (address->get()==nullptr)
   { std::ostringstream o;
     o << "Taking value of uninitialized variable '" << name() << '\'';
     throw runtime_error(o.str());
   }
-  push_expanded(l,*address);
+  if (pilfer)
+    push_expanded(l,std::move(*address));
+  else
+    push_expanded(l,*address);
 }
 
 @*1 Local identifiers.
@@ -1252,12 +1318,18 @@ shared_context frame::current; // points to topmost current frame
 takes care of its |print| method. The data stored are |depth| identifying a
 layer, and |offset| locating the proper values within the layer.
 
+Like for global identifiers we add a Boolean template parameter to this class,
+which indicates whether the evaluation empties the variable itself, which again
+the compiler can employ for efficiency purposes.
+
 @< Type definitions @>=
-class local_identifier : public identifier
+template<bool pilfer=false>
+  class local_identifier : public identifier
 { size_t depth, offset;
 public:
   explicit local_identifier(id_type id, size_t i, size_t j)
      : identifier(id), depth(i), offset(j) @+{}
+  virtual void print(std::ostream& out) const;
   virtual void evaluate(level l) const; // only this method is redefined
 };
 
@@ -1265,8 +1337,21 @@ public:
 context |frame::current|, by calling the method |evaluation_context::elem|.
 
 @< Function definitions @>=
-void local_identifier::evaluate(level l) const
-{@; push_expanded(l,frame::current->elem(depth,offset)); }
+template<>
+  void local_identifier<false>::print(std::ostream& out) const
+@+{@; out << name(); }
+template<>
+  void local_identifier<true>::print(std::ostream& out) const
+@+{@; out << '$' << name(); }
+
+template<bool pilfer>
+  void local_identifier<pilfer>::evaluate(level l) const
+{
+  if (pilfer)
+    push_expanded(l,std::move(frame::current->elem(depth,offset)));
+  else
+    push_expanded(l,frame::current->elem(depth,offset));
+}
 
 @ When type-checking an applied identifier, we first look in
 |layer::lexical_context| for a binding of the identifier; if found it will be
@@ -1306,8 +1391,8 @@ case applied_identifier:
   }
 @.Undefined identifier@>
   expression_ptr id_expr = @| is_local
-  ? expression_ptr(new local_identifier(id,i,j))
-  : expression_ptr(new global_identifier(id));
+  ? expression_ptr(new local_identifier<false>(id,i,j))
+  : expression_ptr(new global_identifier<false>(id));
   if (type.specialise(*id_t)) // then required type admits known identifier type
     { if (type!=*id_t)
       // usage has made type of identifier more specialised
@@ -1427,7 +1512,7 @@ expression_ptr resolve_overload
 { const expr& args = e.call_variant->arg;
   auto n_args = args.kind==tuple_display ? length(args.sublist) : 1;
   std::unique_ptr<tuple_expression> tup_exp(new tuple_expression(n_args));
-  std::vector<expression_ptr>& arg_expr = tup_exp->component;;
+  std::vector<expression_ptr>& arg_expr = tup_exp->component;
   type_expr apt; // modifiable temporary
   @< Fill |arg_expr| with the results of converting the expressions from
      |args|, setting |apt| to the type deduced @>
@@ -1445,8 +1530,8 @@ expression_ptr resolve_overload
   @< If |id| is a special operator like \# and it matches
      |a_priori_type|, |return| a call |id(args)| @>
   if (var_it!=variants.end())
-    @< Construct and |return| a call, after applying for every argument whose
-       type in |a_priori_type| differs from that required in |arg_type|, either
+    @< Construct and |return| a call, after either applying, for every argument
+       whose type in |a_priori_type| differs from that required in |arg_type|,
        an implicit conversion, or converting the expression anew @>
   @< Complain about failing overload resolution @>
 }
@@ -1477,13 +1562,14 @@ value~|var_it->value()|, which is has type |shared_function|, more specific than
 values can either hold a built-in function or a user-defined function with its
 evaluation context, and we shall add to the list of possibilities later. Each
 type has a corresponding specialised function call type, and we shall provide a
-virtual method |function_value::build_call| that binds an argument expression to
+virtual method |function_base::build_call| that binds an argument expression to
 form a complete call; this renders the expression-building part of code below
 particularly simple. One noteworthy point is that |build_call| may need to store
-a shared pointer to the |function_value| itself in the call it builds, and we
-therefore need to pass the shared pointer |var_it->value()| to the virtual
-method so that it can do so while sharing ownership with the pointer is was
-called from.
+a shared pointer back to the |function_base| derived object that created it, and
+we therefore pass the shared pointer |var_it->value()| that gave us access to
+the |function_base| as first argument to its |build_call| virtual method. The
+underlying raw pointer equals |this| of that object, but we need a
+|std::shared_ptr| so that we also transfer shared ownership.
 
 This is one of the places where we might have to insert a |voiding|, in the
 rare case that a function with void argument type is called with a nonempty
@@ -1552,8 +1638,7 @@ at all, so we could not define he iterators with in the case of more than one
 argument. We therefore separate the two cases, even though the actions are the
 same; we do share one module.
 
-@< Construct and |return| a call, after applying for every argument whose type
-   in |a_priori_type| differs... @>=
+@< Construct and |return| a call, after either applying... @>=
 {
   const auto& arg_type=var_it->type().arg_type;
   if (n_args==1)
@@ -1653,6 +1738,10 @@ id_type concatenate_name()
 {@; static id_type name=main_hash_table->match_literal("##");
   return name;
 }
+id_type protected_concatenate_name()
+{@; static id_type name=main_hash_table->match_literal("## ");
+  return name;
+}
 id_type print_name()
 {@; static id_type name=main_hash_table->match_literal("print");
   return name;
@@ -1673,6 +1762,7 @@ id_type error_name()
 inline bool is_special_operator(id_type id)
 {@; return id==size_of_name()
     @|  or id==concatenate_name()
+    @|  or id==protected_concatenate_name()
     @|  or id==print_name()
     @|  or id==to_string_name()
     @|  or id==prints_name()
@@ -1696,7 +1786,7 @@ built-in functions, while leaving the particulars of user defined functions
 later. This corresponds more or less to the development history of the
 interpreter, in which initially only built-in functions were catered for;
 however many of the aspects that we deal with right away, notably function
-overloading, are in fact much more recent additions than used-defined
+overloading, are in fact much more recent additions than user-defined
 functions were.
 
 There will be several classes of expressions to represent function calls,
@@ -1730,7 +1820,7 @@ object once arguments have been evaluated to the stack, and |build_call| that is
 instead used to build a specialised call expression when a function value is
 identified at analysis time (in overloaded calls). In addition |argument_policy|
 tells how the function object wants its arguments prepared, |maybe_push| is a
-hook that does nothing except for recursive functions that it it for their
+hook that does nothing except for recursive functions that use it for their
 implementation, and |report_origin| which serves in forming an back-trace in
 case of errors during execution of the function.
 
@@ -1738,9 +1828,8 @@ case of errors during execution of the function.
 // \.{global.h} predeclares |function_base|, and defines:
 // |typedef std::shared_ptr<const function_base> shared_function;|
 @)
-class function_base : public value_base
+struct function_base : public value_base
 {
-public:
   function_base() : value_base() @+{}
   virtual ~function_base() = default;
   static const char* name() @+{@; return "function value"; }
@@ -1754,7 +1843,7 @@ public:
   virtual void report_origin(std::ostream& o) const=0;
     // tell where we are from
   virtual expression_ptr build_call
-    (const shared_function& owner,const std::string& name,
+    (const shared_function& master,const std::string& name,
      expression_ptr&& arg, const source_location& loc) const=0;
 };
 
@@ -1824,16 +1913,29 @@ making this a class template with a Boolean template argument |variadic|. This
 is necessary because operator casts make it possible to use specialisations
 of variadic functions as function values (of the correspondingly specialised
 type), so they can occur not only in overloaded calls, but in any place that
-other built-in of user-defined functions can.
+other built-in or user-defined functions can.
+
+As another supplementary information, we store an indication of whether this
+built-in function wants to produce its result by modifying one of its arguments;
+for instance, |suffix_element_wrapper| likes to modify the row value that is its
+first element in-place by adding a suffix. That operation can be done without
+creating a copy of the argument only if it is not shared in any way, and in
+certain cases we want to be able to optimise performance by arranging for that
+argument to not be shared if it can be avoided. The |hunger| field tells whether
+this is such a function: a value $0$ means no desire to eat anything, a value
+$1$ means it wishes to modify the first of two arguments in-place, a value of
+$2$ that it wishes to do so for the second argument, and a value of $3$ means
+that there is a unique argument, which it wishes to modify.
 
 @< Type definitions @>=
 template <bool variadic>
   struct builtin_value : public function_base
 { wrapper_function val;
   std::string print_name;
+  unsigned char hunger; // (always |0| when |variadic| holds)
 @)
-  builtin_value(wrapper_function v,const std::string& n)
-  : function_base(), val(v), print_name(n) @+ {}
+  builtin_value(wrapper_function v,const std::string& n, unsigned char hunger)
+  : function_base(), val(v), print_name(n), hunger(hunger) @+ {}
   virtual ~builtin_value() = default;
   virtual void print(std::ostream& out) const
   @+{@; out << '{' << print_name << '}'; }
@@ -1845,14 +1947,15 @@ template <bool variadic>
   virtual void report_origin(std::ostream& o) const @+
   {@; o << "built-in"; }
   virtual expression_ptr build_call
-    (const shared_function& owner,const std::string& name,
+    (const shared_function& master,const std::string& name,
      expression_ptr&& arg, const source_location& loc) const;
 @)
   static const char* name() @+{@; return "built-in function"; }
   builtin_value(const builtin_value& v) = delete;
 };
-typedef std::shared_ptr<const builtin_value<false> > shared_builtin;
-typedef std::shared_ptr<const builtin_value<true> > shared_variadic_builtin;
+using builtin = builtin_value<false>;
+using shared_builtin = std::shared_ptr<const builtin>;
+using shared_variadic_builtin = std::shared_ptr<const builtin_value<true> >;
 
 @ While syntactically more complicated than ordinary function calls, the call
 of overloaded functions is actually more direct at run time, because the
@@ -1888,13 +1991,19 @@ void overloaded_call::print(std::ostream& out) const
   else out << '(' << *argument << ')';
 }
 
-@ If its function value is a |builtin_value|, an overloaded call will become
-an |overloaded_builtin_call| rather than a |call_expression|. Here we store a
-shared pointer to the |builtin_value|, which is useful to identify the actual
-function when an error is thrown. However we want to avoid accessing that
-(unchanging) value each time from the |evaluate| method, so we copy the
-function pointer |f_ptr| to be called directly into the
-|overloaded_builtin_call|.
+@ If its function value is a |builtin_value|, an overloaded call will become an
+|overloaded_builtin_call| rather than a |call_expression|. The
+|overloaded_builtin_call| stores a pointer |f| back to |builtin_value| that
+created it, which is useful to identify the actual function when an error is
+thrown during its execution. To ensure that the |builtin_value| remains in
+existence as long as the |overloaded_builtin_call| is, this is in fact a shared
+pointer. (This back reference might have been avoided by copying relevant
+information from the |builtin_value| into the |overloaded_builtin_call|, but a
+given built-in function might generate many calls, so it would be wasteful to do
+so.) What is most frequently needed about concerning the |builtin_value| is its
+stored function pointer, which is needed every time the
+|overloaded_builtin_call| is executed, so we do copy this pointer into a member
+|f_ptr| of the latter, which avoid an extra indirection when using it.
 
 When accessed through overloading, the condition whether a built-in function
 is variadic or not is known at compile time, so we can make this a class
@@ -1904,6 +2013,10 @@ member~|f|. An additional constructor without |name| argument is provided for
 convenience to places where our interpreter directly produces calls to
 certain built-in functions, without going through the overload table; the
 function name is then deduced from the one stored in the |builtin_value|.
+The first constructor take the shared pointer |fun| is by value since it is most
+often, but not always, held in a local variable of the caller from which it can
+be moved; for the second constructor we pass by constant reference since the
+argument will not come from a local variable.
 
 @< Type definitions @>=
 template <bool variadic>
@@ -1915,11 +2028,12 @@ template <bool variadic>
   wrapper_function f_ptr; // shortcut to implementing function
 @)
   overloaded_builtin_call
-    (const ptr_to_builtin& fun,
+    (ptr_to_builtin fun,
      const std::string& name,
      expression_ptr&& arg,
      const source_location& loc)
-@/: overloaded_call(name,std::move(arg),loc), f(fun), f_ptr(fun->val) @+ {}
+@/: overloaded_call(name,std::move(arg),loc)
+  , f(std::move(fun)), f_ptr(f->val) @+ {}
   overloaded_builtin_call
     (const ptr_to_builtin& fun,
      expression_ptr&& arg,
@@ -1949,19 +2063,58 @@ expression_ptr make_variadic_call
   return expression_ptr(new variadic_builtin_call(f,name,std::move(a),loc));
 }
 
-@ Here is how a |builtin_value| can turn itself into an
-|overloaded_builtin_call| when provided with an argument expression, as well
-as a |name| to call itself and a |source_location| for the call.
+@ A |builtin_value| can turn itself into an |overloaded_builtin_call| when
+provided with a shared pointer |master| to itself, an argument expression, a
+|name| to call itself and a |source_location| for the call. The
+|static_pointer_cast| reverts |master| back to the type it had before it was
+up-cast in the caller to the pointer-to-base type |shared_function|; one cannot
+make a virtual method argument of covariant pointer type.
 
 @< Function def... @>=
 template <bool variadic>
 expression_ptr builtin_value<variadic>::build_call
-    (const shared_function& owner,const std::string& name,
+    (const shared_function& master,const std::string& name,
      expression_ptr&& arg, const source_location& loc) const
-{ std::shared_ptr<const builtin_value<variadic> > f(owner,this);
+{ assert(master.get()==this);
+  auto f=std::static_pointer_cast<const builtin_value<variadic> >(master);
   return expression_ptr(new @|
     overloaded_builtin_call<variadic>(f,name,std::move(arg),loc));
 }
+
+@ Sometimes we want a builtin operator to have special behaviour at compile
+time, in the sense that when an application is formed with the global overload
+table matching the |builtin_value| for this operator, the virtual |build_call|
+method inspects the arguments and in some cases replaces the operator by another
+builtin function with a part of the arguments; the typical example is an
+application $E+1$ that transforms itself into |succ(E)|. To accommodate this we
+define a class derived from |builtin_value| that provides an alternative |apply|
+method that tries this substitution before reverting to
+|builtin_value::build_call| if special argument values were not found.
+
+@< Type definitions @>=
+struct special_builtin : public builtin
+{
+  typedef expression_ptr (*tester)
+    (expression_ptr&,const shared_builtin&,const source_location&);
+  using test_data = std::pair<tester,shared_builtin>;
+  sl_list<test_data> tests;
+@)
+  special_builtin
+    (wrapper_function v,const std::string& n, unsigned char hunger)
+  : builtin(v,n,hunger), tests() @+{}
+  virtual ~special_builtin() = default;
+
+  virtual expression_ptr build_call
+    (const shared_function& master,const std::string& name,
+     expression_ptr&& arg, const source_location& loc) const
+  {  for (const auto& test : tests)
+     { auto p = (*test.first)(arg,test.second,loc);
+       if (p!=nullptr)
+         return p;
+     }
+     return builtin::build_call(master,name,std::move(arg),loc);
+  }
+};
 
 @*1 Evaluating calls of built-in functions.
 %
@@ -2028,12 +2181,12 @@ a call of~|extend_message|.
 
 @< Catch block for exceptions thrown within call of |f| with |arg_string| @>=
 catch (error_base& e)
-{@; extend_message(e,this,f,arg_string);
+{@; extend_message(e,this->function_name(),loc,f,arg_string);
   throw;
 }
 catch (const std::exception& e)
 { runtime_error new_error(e.what());
-  extend_message(new_error,this,f,arg_string);
+  extend_message(new_error,this->function_name(),loc,f,arg_string);
   throw new_error;
 }
 
@@ -2054,10 +2207,12 @@ user-defined; when the called function was built in we just report that.
 
 @< Local fun... @>=
 void extend_message
-  (error_base& e,const call_base* call, const shared_function& f,
+  (error_base& e,
+   const std::string& name, const source_location& loc,
+   shared_function f,
    const std::string& arg)
 { std::ostringstream o;
-  o << "In call of " << call->function_name() << ' ' << call->loc << ", ";
+  o << "In call of " << name << ' ' << loc << ", ";
   f->report_origin(o);
   o << '.';
   if (verbosity>0)
@@ -2276,7 +2431,7 @@ the case of \&{die}.
   name << main_hash_table->name_of(id) << '@@' << a_priori_type;
   if (id==size_of_name())
     @< Recognise and return versions of `\#', or fall through @>
-  else if (id==concatenate_name())
+  else if (id==concatenate_name() or id==protected_concatenate_name())
     @< Recognise and return instances of `\#\#', or fall through @>
   else // remaining cases always match
   { const bool needs_voiding = a_priori_type==void_type and not is_empty(args);
@@ -2712,37 +2867,48 @@ catch (error_base& e)
 
 @*1 Lambda-expressions (user-defined functions).
 %
-In contrast to let-expressions, a $\lambda$-expression not merely extends the
-current context with new bindings, but upon evaluation yields a ``closure'', a
-value that captures the current context, and which after possibly being passed
-around, can later be combined with argument values to provide an extended
-context in which its body is evaluated. The closure might outlive the expression
-in which it occurs, and different closures for the same $\lambda$-expression can
-have overlapping lifetimes; if creating a closure is to avoid copying the
-$\lambda$-expression, yet memory for it is to be freed when the last reference
-to it disappears, we organise a |std::shared_ptr| based mechanism for sharing
-it. The general mechanism employed by the evaluator is not suited for this, as
-it handles expressions by reference to |expression_base|, which is too general
-for us. So instead we split off a structure |lambda_struct| to which both
-$\lambda$-expressions and closures will store a shared pointer.
+When a user defines a function, either globally with \&{set} or inside an
+expression (possibly another user defined function) using \&{let}, this creates
+just like for and definition a binding between a name and a value, which are (as
+usual) treated as separate entities. The value created is a called a
+$\lambda$-expression (in honour of the $\lambda$ calculus, but using the Greek
+letter $\lambda$ is actually a dreadful choice of notation, which we avoid) and
+it represents the function, with its argument pattern and body (the definiens),
+but without the name given (the definiendum). In fact one can write a
+$\lambda$-expression without giving it a name at all, creating an anonymous user
+defined function; this can be quite practical, for instance to pass the function
+to another function. A $\lambda$-expression is basically a denotation for a
+piece of code, whose evaluation involves no action and returns that code.
+However a $\lambda$-expression may refer to identifiers known in the context in
+which it is written, so evaluating it captures the bindings of those identifiers
+at the time of evaluation into a runtime value know as a closure.
 
-Since this is the kind of runtime value that will hold the result of a user
-function definition, we provide a field |loc| to record the source location.
+So in contrast to let-expressions which just extend the context with new
+bindings, a closure captures the current context inside a value, which after
+possibly being passed around, can later be combined with argument values to
+provide an extended context in which its body is evaluated. A closure might
+outlive the expression that contained its $\lambda$-expression, and evaluations
+of the same textual $\lambda$-expression can create multiple closures whose
+lifetimes may overlap.
 
-The constructor for |lambda_expression| moves the provided pattern and creates a
-new shared reference to the copy (further sharing will occur when the
-$\lambda$-expression is evaluated). The |loc| field is copy-constructed from the
-one passed, which resides in a |const|-qualified |expr| object produced by the
-parser; therefore moving is not an option here, and since this is plain data it
-wouldn't be more efficient anyway.
-
-To give explicit support for recursive functions, we define a second structure
-|recursive_lambda| for a $\lambda$-expression whose body can also refer to the
-$\lambda$-expression itself. In addition to a |lambda_expression| it stores a
-recursive identifier. We choose to derive |recursive_lambda| from
-|lambda_expression|, but to store the recursive identifier inside the base
-|lambda_expression| itself, by having the |id_pat| be a pair with the recursive
-identifier as first component and the usual argument pattern as second field.
+We wish to create closures without copying the $\lambda$-expression into them,
+rather by storing a reference, yet memory for the $\lambda$-expression should be
+freed when the last reference to it disappears, so we must use a
+|std::shared_ptr| based mechanism for sharing the $\lambda$-expression among its
+closures. Now the $\lambda$ is already referred to by an |expression_ptr| shared
+pointer from its containing expression, but we choose to not use that general
+pointer for sharing among closures, but a more specific
+pointer-to-$\lambda$-expression. We in fact make a distinction between the
+$\lambda$-expression object itself that is executable, yielding a closure, and
+the object that it shares with its closures. The former is of type
+|lambda_expression| derived from |expression_base| and accessed through unique
+pointers (of type |expression_ptr|), the latter of type
+|lambda_struct| which is not so derived, and will be accessed via shared
+pointers (of type |shared_lambda|). Upon construction of a
+|lambda_expression|, it dynamically creates a second object of class
+|lambda_struct| where it stores all its information (argument pattern, body,
+source location) and to which it holds a shared pointer. The stored
+|shared_lambda| pointer is what will be shared with the closures it spawns.
 
 @< Type def... @>=
 struct lambda_struct
@@ -2766,46 +2932,67 @@ struct lambda_expression : public expression_base
   virtual void evaluate(level l) const;
   virtual void print(std::ostream& out) const;
 };
-@)
+
+@ In a function definition the $\lambda$-expression itself does not have access
+to the name the user binds it to (it is included in the context
+only \emph{after} the definition is processed), so an ordinary
+$\lambda$-expression cannot call itself recursively. In order give explicit
+support for recursive functions, we define a second structure |recursive_lambda|
+for a $\lambda$-expression whose body can also refer to the $\lambda$-expression
+itself. In addition to a |lambda_expression| it will store a recursive
+identifier the user gave to it (called |self_id| below). In spite of this
+addition, we derive |recursive_lambda| from |lambda_expression| without adding
+any data members: |self_id| will be combined into the identifier pattern already
+used for the ordinary argument names in |lambda_expression|. The distinctive
+interpretation of this pattern will be handled by the virtual method
+|recursive_lambda::evaluate|, and by similar methods of the recursive closures
+it generates.
+
+@< Type def... @>=
 struct recursive_lambda : public lambda_expression
-{ recursive_lambda(id_type self,@|
+{ recursive_lambda@|(id_type self_id,
      id_pat&& p, expression_ptr&& b, const source_location& loc);
   virtual ~recursive_lambda() = default;
   virtual void evaluate(level l) const;
   virtual void print(std::ostream& out) const;
 };
 
-@ For recursive functions we assemble a pair-pattern, consisting of the
-recursive identifier, and the actual argument pattern for the
-recursive function. Although the recursive identifier cannot be assigned to,
+@ The |recursive_lambda| constructor forms as |id_pat| a pair with the recursive
+identifier as first component and the usual argument pattern as second field,
+and passes that to the |lambda_expression| constructor, which in fact places it
+into its |lambda_struct| object, where it can be seen by closures created by the
+|recursive_lambda|. Although the recursive identifier cannot be assigned to,
 there is no need to set the constant bit in its pattern here, as that property
-will be enforced during type checking.
+will be enforced when setting up the context for type checking the body of a
+recursive function.
 
 @< Function def... @>=
 id_pat rec_pair(id_type s,id_pat && p)
-{ patlist pl;
+{@;
+  patlist pl;
   pl.push_front(std::move(p));
   pl.push_front(id_pat(s));
   return id_pat(std::move(pl));
 }
-inline recursive_lambda::recursive_lambda(id_type self,@|
+@)
+inline recursive_lambda::recursive_lambda@|(id_type self_id,
      id_pat&& p, expression_ptr&& b, const source_location& loc)
-  : lambda_expression(rec_pair(self,std::move(p)),std::move(b),loc) @+{}
+  : lambda_expression(rec_pair(self_id,std::move(p)),std::move(b),loc) @+{}
 
 
 @ To print an anonymous function, we print the parameter list, followed by a
 colon and by the function body. If the parameter list contains a name for the
 whole, as happens in particular when there is just a single parameter, then it
-must be enclosed in parentheses to resemble in the input syntax, but if it is
-an unnamed nonempty tuple then it will supply its own parentheses; this leaves
-the case of an empty parameter list, for which we reconstitute the input
-syntax~`\.@@'. The printed parameter list cannot include types with the
-current setup, as they are not explicitly stored after type analysis. It could
+must be enclosed in parentheses to resemble in the input syntax, but if it is an
+unnamed nonempty tuple then it will supply its own parentheses; this leaves the
+case of an empty parameter list, for which we reconstitute the input
+syntax~`\.@@'. The printed parameter list cannot include types with the current
+implementation, as they are not explicitly stored after type analysis. It could
 be made possible to print types if a type were explicitly stored in the
 |lambda_expression| structure; at the time of writing this would seem possible
 because each function has to have a definite type, but if the type system were
-extended with second order types (which would be quite useful), then this
-might no longer be true. For now leaving out the types indicates to the
+extended with second order types (which would be quite useful), then this might
+no longer be true. For now leaving out the types indicates to the
 (knowledgeable) user that a runtime value is being printed rather than just a
 syntax tree representing the user input (as happens in messages from the type
 checker).
@@ -2823,11 +3010,14 @@ void print_lambda(std::ostream& out,
 @)
 void lambda_expression::print(std::ostream& out) const
 {@; print_lambda(out,p->param,p->body); }
+@)
 void recursive_lambda::print(std::ostream& out) const
 { auto it=p->param.sublist.begin();
   id_type self_id=it->name;
   const id_pat& param=*++it;
-  print_lambda(out << main_hash_table->name_of(self_id) << ':',param,p->body);
+  out << "(recfun " << main_hash_table->name_of(self_id) << ' ';
+  print_lambda(out,param,p->body);
+  out << ')';
 }
 
 @ Handling of user-defined functions in type analysis is usually uneventful
@@ -2880,22 +3070,24 @@ case lambda_expr:
    (copy_id_pat(pat), convert_expr(fun.body,*rt), std::move(e.loc)));
 }
 
-@ Type checking recursive lambda expressions is slightly different. The return
-type must be specified, so we should be able to fully specialise |type| (unless
-it is |void|). We must, in addition to binding the argument pattern to the
-argument type, bind the recursive identifier to the function type given by
-|fun.parameter_type| and |fun.result_type|; we build that type as |f_type|
-rather than use the specialised |type|, just in case the latter should be
-|void|. The call to |thread_bindings| for the recursive identifier has final
-argument |true| indicating the identifier should be treated as constant during
-the call to |convert_expr| for the body. That call needs an lvalue for its
-expected type, and the |layer| constructor needs the same in the form of a
-pointer to non-|const| (in both cases because the type might be specialised,
-from the type of the body respectively from |return| clauses inside it), For
-these uses we supply |f_type.func()->result_type| (aliased |r_type|) rather than
-using |type| (again, it might be |void|), which since |f_type| is local means
-any specialisation done to it will be lost; however there should be no such
-changes since |fun.result_type| is already fully specialised.
+@ Type checking recursive lambda expressions is slightly different. We must, in
+addition to binding the argument pattern to the argument type, bind the
+recursive identifier to the function type given by |fun.parameter_type| and
+|fun.result_type|; we build that type as |f_type| rather than specialise and
+then use |type|, just to allow cases with |type==void_type| initially, which
+even if silly is legal. The type |fun.return_type| will be determined (due to
+syntactic constraints on recursive functions) so |f_type| will be full
+determined, and |type| will be specialised to it during the condition
+|type.specialise(f_type)|. The call to |thread_bindings| for the recursive
+identifier has final argument |true| indicating the identifier should be treated
+as constant during the call to |convert_expr| for the body. That call needs an
+lvalue for its expected type, and the |layer| constructor needs the same in the
+form of a pointer to non-|const| (in both cases because the type might be
+specialised, from the type of the body respectively from |return| clauses inside
+it), For these uses we supply |f_type.func()->result_type| (aliased |r_type|)
+rather than using |type.func_type()->return_type|, which since |f_type| is a
+local variable means any specialisation done to it would be lost; however there
+should be no such changes since |fun.result_type| is already fully specialised.
 
 @< Cases for type-checking and converting... @>=
 case rec_lambda_expr:
@@ -2914,10 +3106,10 @@ case rec_lambda_expr:
   type_expr& r_type=f_type.func()->result_type;
     // non |const| though it cannot change
   layer new_layer(1+count_identifiers(pat),&r_type);
-@/thread_bindings(id_pat(fun.self),f_type,new_layer,true);
+@/thread_bindings(id_pat(fun.self_id),f_type,new_layer,true);
   thread_bindings(pat,arg_type,new_layer,false);
 @/return expression_ptr(new @| recursive_lambda
-   (fun.self,copy_id_pat(pat),
+   (fun.self_id,copy_id_pat(pat),
     convert_expr(fun.body,r_type), std::move(e.loc)));
 }
 
@@ -2937,29 +3129,42 @@ encountered.
 
 Sharing the |lambda_struct| among different closures obtained from the same
 $\lambda$-expression is efficient in terms of space, but would require double
-dereference upon evaluation. Since the latter occurs frequently, we speed up
-evaluation by also using a reference |body| directly to the function body. Note
-that closures are formed when the \emph{definition} of a user-defined function
-is processed, so this optimisation should make evaluation of globally defined
-functions a bit faster. For local functions, the closure is formed during the
-execution of the outer function, so the optimisation only helps if the closure
-formed will be called more than once; this is still probable, though there are
-usage patterns (for instance simulating a case statement by selecting a closure
-from an array of closures, and then calling it) for which local closures are
-actually executed less than once on average; in such cases we are actually
-wasting effort here.
+dereference upon evaluation. Since the latter occurs frequently at run time, we
+speed up evaluation by also using a reference |body| directly to the function
+body. Note that closures are formed when the \emph{definition} of a user-defined
+function is processed, so this optimisation should make evaluation of globally
+defined functions a bit faster. For local functions, the closure is formed
+during the execution of the outer function, so the optimisation only helps if
+the closure formed will be called more than once; this is still probable, though
+there are usage patterns (for instance finding the first of a sequence of
+conditions that is satisfied, the conditions being produced as a list of
+parameterless functions in a loop) for which local closures are actually
+executed less than once on average; in such cases we are actually wasting effort
+here. It is however impossible to know here whether the closure will be globally
+of locally bound.
 
-We provide a method |maybe_push| that will push a shared pointer (which in fact
-will be one to the closure itself) on the stack, as is needed for the
-implementation of recursive functions. Since the default implementation of this
-method is to do nothing, we need to implement it only when the template argument
-|recursive| holds, but it is most convenient to define it here anyway and use a
-dynamic test of the template argument that the compiler should optimise away.
+Because of slight differences in evaluation that we do not want to implement
+using runtime tests, we define three types of closure. The case of non recursive
+$\lambda$-expressions being split into those that introduce no parameters at all
+(usually but not necessarily because the argument type is |void|), and those
+that introduce at least one name; this distinction reflects our implementation
+choice to omit empty layers on the stack of local bindings. For recursive
+$\lambda$-expressions there is (only) a third type of closures; calling them
+will always push at least the recursive identifier.
 
-@s closure_ptr vector
-@s shared_closure vector
+We defined a virtual method |function_base::maybe_push| that will push a shared
+pointer (which in fact will be one to the closure itself) on the stack, as is
+needed for the implementation of recursive functions. Since the default
+implementation of this method is to do nothing, we need to implement it only for
+|kind==recursive_closure|, but it is most convenient to define it here
+regardless of |kind|, and in its implementation use a test of the
+template argument, which the compiler should hopefully optimise away.
+
 @< Type def... @>=
-template<bool recursive>
+
+enum Closure_kind @+{ parameterless, with_parameters, recursive_closure };
+@)
+template<Closure_kind kind>
 struct closure_value : public function_base
 { shared_context context;
   shared_lambda p;
@@ -2973,22 +3178,25 @@ struct closure_value : public function_base
   virtual expression_base::level argument_policy() const
   {@; return expression_base::single_value; }
   virtual void maybe_push(const std::shared_ptr<const function_base>& p) const
-  {@; if (recursive)
+  {@; if (kind==recursive_closure)
       push_value(p);
   }
   virtual void report_origin(std::ostream& o) const;
   virtual expression_ptr build_call
-    (const shared_function& owner,const std::string& name,
+    (const shared_function& master,const std::string& name,
      expression_ptr&& arg, const source_location& loc) const;
 @)
   static const char* name() @+
-   {@; return recursive ? "recursive closure" : "closure"; }
+   {@; return kind==recursive_closure ? "recursive closure" : "closure"; }
   closure_value (const closure_value& ) = delete;
 };
-template<bool recursive>
-using  closure_ptr = std::unique_ptr<closure_value<recursive> >;
-template<bool recursive>
-using shared_closure = std::shared_ptr<const closure_value<recursive> >;
+
+@ For readability, we define |shared_closure| as a type template.
+
+@s shared_closure vector
+@< Type def... @>=
+template<Closure_kind kind>
+using shared_closure = std::shared_ptr<const closure_value<kind> >;
 
 @ A closure prints the |lambda_expression| from which it was obtained, but we
 also print an indication of where the function was defined (this was not
@@ -3000,28 +3208,37 @@ be printed. But it's not done yet.
 
 @< Function def... @>=
 template<>
-void closure_value<false>::print(std::ostream& out) const
+void closure_value<parameterless>::print(std::ostream& out) const
 {@; print_lambda(out << "Function defined " << p->loc << std::endl,
                  p->param,p->body);
 }
 template<>
-void closure_value<true>::print(std::ostream& out) const
+void closure_value<with_parameters>::print(std::ostream& out) const
+{@; print_lambda(out << "Function defined " << p->loc << std::endl,
+                 p->param,p->body);
+}
+template<>
+void closure_value<recursive_closure>::print(std::ostream& out) const
 { auto it=p->param.sublist.begin();
   id_type self_id=it->name;
   const id_pat& param=*++it;
   out << "Recursive function defined " << p->loc << std::endl;
-  print_lambda(out<< main_hash_table->name_of(self_id) << ':',param,p->body);
+  print_lambda(out<< main_hash_table->name_of(self_id) << " = ",param,p->body);
 }
 
-template<bool recursive>
-void closure_value<recursive>::report_origin(std::ostream& o) const
+template<Closure_kind kind>
+void closure_value<kind>::report_origin(std::ostream& o) const
 {@; o << "defined " << p->loc; }
 
 @ Evaluating a $\lambda$-expression just forms a closure using the current
 execution context, and returns that. Since the |recursive_lambda| already has
 done the work of wrapping the recursive identifier into a pattern with that of
-the arguments, the recursive case only differs from the ordinary one here by
-making |true| the template argument of the |closure_value| constructor.
+the arguments, the recursive case only differs from the ordinary one here by the
+setting of the template argument of the |closure_value| constructor. For non
+recursive $\lambda$-expression, this is the place where we test for the absence
+of any introduced identifiers. The actual difference in implementation between
+the three types of closure will be mostly evident in the
+|closure_value<kind>::apply| methods.
 
 While this code looks rather innocent, note that the sharing of
 |frame::current| created here may survive after one or more frames on the list
@@ -3033,92 +3250,127 @@ kind of stack, in particular it cannot be embedded in the \Cpp\ runtime stack
 
 @< Function def... @>=
 void lambda_expression::evaluate(level l) const
-{@;if (l!=no_value)
-     push_value(std::make_shared<closure_value<false> >(frame::current,p));
+{ if (l!=no_value)
+  { if (count_identifiers(p->param)==0)
+      push_value(std::make_shared<closure_value<parameterless> >
+       (frame::current,p));
+    else
+      push_value(std::make_shared<closure_value<with_parameters> >
+       (frame::current,p));
+  }
 }
 void recursive_lambda::evaluate(level l) const
-{@;if (l!=no_value)
-     push_value(std::make_shared<closure_value<true> >(frame::current,p));
+{ if (l!=no_value)
+    push_value(std::make_shared<closure_value<recursive_closure> >
+      (frame::current,p));
 }
 
 @*1 Calling user-defined functions.
 %
 In order to implement calling of user-defined functions, we define a variation
-of the class |frame|. Again the purpose is to have a constructor-destructor
-pair that temporarily suspends the current execution context, replacing it by
-a new one determined by the parameter(s) of the $\lambda$-expression, on top
-of the execution context stored in the closure. Again instances of this class
-should be automatic variables, to ensure that they have nested lifetimes.
+of the class |frame|. Again the purpose is to have a constructor-destructor pair
+that temporarily suspends the current execution context, replacing it by a new
+one determined by the parameter(s) of the $\lambda$-expression, on top of the
+execution context stored in the closure. Here too, instances of this class
+should be automatic variables, to ensure that they have nested lifetimes. More
+precisely, |lambda_frame| variables are local to functions performing evaluation
+of user defined functions, and their construction modifies |frame::current| by
+swapping it out with the context of the closure, which means replacement of the
+run time stack for local user variables by another that is partially or wholly
+disjoint from the previous stack. The new stack remains in effect until the end
+of the function containing the variable (when the destructor reinstates the old
+stack). The stack records themselves are in dynamic memory, not on the \Cpp\
+runtime stack, and will remain in existence as long as anybody might access
+them.
 
 This context switching is a crucial and recurrent step in the evaluation
 process, so we take care to not uselessly change the reference count of
 |frame::current|. It is \emph{moved} into |saved| upon construction, and upon
-destruction moved back again to |frame::current|. In contrast to |frame|, the
-constructor here needs a try block for exception safety, as the call to
-|std::make_shared<evaluation_context>| may throw an exception after
-|frame::current| has been moved from, but before out constructor completes;
-since the destructor would in this scenario \emph{not} be called, we then need
-to move the pointer back explicitly in the |catch| block.
+destruction moved back again to |frame::current|. We also use a template
+parameter to indicate whether we are called for a |parameterless| closure or
+not, which avoids any run time test for this condition. The distinction between
+recursive and non recursive closures is not relevant here.
 
-Since a |lambda_frame::bind| is called every time a user defined function is
-called, this is a convenient point to check whether the signal handler has set
-the interrupt flag, and to bail out if it did. (Choosing the points to do this
-test is a somewhat delicate matter. One wants to do it at points that are
-regularly encountered during evaluation, but not so frequently that the
-checks incur a serious performance penalty. Just the test here does not
-provide an absolute guarantee of rapid detection of a signalled interrupt.)
-
-If one tried to derive this class from |frame|, one would have to construct
-the base (which modifies |frame::current|) before doing anything else; this
-would make saving the value of |frame::current| problematic. For that reason
-it is better to just repeat some of the things done for |frame| independently,
-similarly but with a few important changes. We do of course have to make use
-of the static member |frame::current| of that class, which is the whole point
-of defining the |lambda_frame| class.
+It might seem that we could have derived this class from |frame|, which already
+provides a similar constructor-destructor pair. However, we would then have to
+construct the base (which modifies the value |frame::current|) before doing
+anything else; this would make saving the value of |frame::current| problematic.
+For that reason it is better to keep the two independent, and just repeat some
+of the things done for |frame|, similarly but with a few important changes. We
+do of course have to make use of the static member |frame::current| of that
+class, which is the whole point of defining the |lambda_frame| class.
 
 @< Local class definitions @>=
+template<bool no_names>
 class lambda_frame
 {
   const id_pat& pattern;
   const shared_context saved;
-  const bool empty;
 public:
-  lambda_frame (const id_pat& pattern, const shared_context& outer)
+  lambda_frame (const id_pat& pattern, const shared_context& outer);
+  ~lambda_frame() @+{@; frame::current = std::move(saved); }
+@)
+  void bind (const shared_value& val);
+  std::vector<id_type> id_list() const; // list identifiers, for back-tracing
+};
+
+@ In contrast to |frame|, the constructor here needs a try block for exception
+safety, as an exception may be thrown during construction (in the call to
+|std::make_shared<evaluation_context>|), after |frame::current| has been moved
+from, but before out constructor completes; since the destructor would in this
+scenario \emph{not} be called, we then need to move the pointer back explicitly
+in the |catch| block.
+
+This function requires that the argument |outer| is not an alias of
+|frame_current|, as its logic would then fail. This condition is satisfied
+whenever |outer| is a |context| member of a closure, as it should. When
+|no_names| holds, the addition of a new |evaluation_context| stack frame (for
+the function parameters) is omitted here.
+
+@< Local function definitions @>=
+template<bool no_names>
+  lambda_frame<no_names>::lambda_frame
+    (const id_pat& pattern, const shared_context& outer)
   : pattern(pattern)
   , saved(std::move(frame::current))
-  , empty(count_identifiers(pattern)==0)
-  { assert(&outer!=&frame::current); // for excluded case use |frame| instead
+  { assert(&outer!=&frame::current); // for excluded case, use |frame| instead
     try {@;
       frame::current =
-        empty ? outer : std::make_shared<evaluation_context>(outer);
+        no_names ? outer : std::make_shared<evaluation_context>(outer);
     }
     catch(...)
     {@; frame::current = std::move(saved); throw; }
     // restore as destructor would do
   }
-  ~lambda_frame() @+{@; frame::current = std::move(saved); }
-@)
-  bool is_empty() const @+{@; return empty; }
-  void bind (const shared_value& val);
-  std::vector<id_type> id_list() const; // list identifiers, for back-tracing
-};
 
-@ The following function needs to be lifted out of the class definition
-because it calls |check_interrupt|.
+@ Since a |lambda_frame::bind| will be called every time a user defined function
+with arguments is called, it provides a convenient point to check whether the
+signal handler has set the interrupt flag, and to bail out if it did. (Choosing
+the points to do this test is a somewhat delicate matter. One wants to do it at
+points that are regularly encountered during evaluation, but not so frequently
+that the checks incur a serious performance penalty. Just having the test here
+does not provide an absolute guarantee of rapid detection of a signalled
+interrupt.) This call to |check_interrupt| is the reason this method definition
+was lifted out of the class definition. Since this method is never called when
+the template argument |no_name| holds, we take the opportunity to only define it
+for the other case (in practice it makes no difference to define a declared
+method that is never called, but we want to avoid the impression that
+|check_interrupt| is called for parameterless functions).
 
 @< Local function definitions @>=
-void lambda_frame::bind (const shared_value& val)
-{ assert(not empty); // one should not call |bind| for an |empty| lambda frame
-  check_interrupt();
+template<>
+void lambda_frame<false>::bind (const shared_value& val)
+{ check_interrupt();
   frame::current->reserve(count_identifiers(pattern));
   thread_components(pattern,val,frame::current->back_inserter());
 }
 
 @ This method is identical to the one in |frame|, but as said, we cannot use
-inheritance.
+inheritance. Again, it is never called if |no_names| holds.
 
 @< Local function definitions @>=
-std::vector<id_type> lambda_frame::id_list() const
+template<>
+std::vector<id_type> lambda_frame<false>::id_list () const
 { std::vector<id_type> names; names.reserve(count_identifiers(pattern));
   list_identifiers(pattern,names);
   return names;
@@ -3147,34 +3399,44 @@ latter is entered more than once in the the tables. This is in contrast to
 cannot be dissociated from the wrapper function.
 
 @< Type definitions @>=
-template<bool recursive>
-struct closure_call : public overloaded_call
-{ shared_closure<recursive> f;
-@)
+template<Closure_kind kind>
+class closure_call : public overloaded_call
+{ shared_closure<kind> f; // remaining fields are shortcuts into |f|
+  const id_pat& param;
+  const shared_context& context;
+  const expression_base& body;
+public:
   closure_call @|
-   (shared_closure<recursive>&& f,const std::string& n,expression_ptr&& a
+   (shared_closure<kind >&& f_ref,const std::string& n,expression_ptr&& a
    ,const source_location& loc)
-  : overloaded_call(n,std::move(a),loc), f(std::move(f)) @+ {}
+@/: overloaded_call(n,std::move(a),loc)
+  , f(std::move(f_ref))
+@/, param(f->p->param)
+  , context(f->context)
+  , body(f->body) @+ {}
   virtual ~closure_call() = default;
   virtual void evaluate(level l) const;
 };
 
-@ Here is how a |closure_value| can turn itself into an
-|closure_call| when provided with an argument expression, as well
-as a |name| to call itself and a |source_location| for the call. The method
-|build_call| constructs a shared pointer |me| to the |closure_value| object it is
-called for, but whose sharing is managed by a separately provided |shared_ptr
-owner@;|, and constructs a |closure_call| from that pointer and the provided
-argument(s) |arg|, and named according to the separately provided |name|.
+@ Here is how a |closure_value| can turn itself into a |closure_call| when
+provided with an argument expression, as well as a |name| to call itself and a
+|source_location| for the call. Every call of |build_call| will provide the
+shared pointer to the |functions_base| derived object it is called for as first
+argument |master|; for lack of covariance this pointer has been up-cast to
+|shared_function|. In order to provide the constructed |closure_call| with a
+shared pointer |f| to our |closure_value|, we perform a (static) down-cast of
+|master|. The provided argument(s) |arg|, and |name| are also passed into the
+|closure_call|.
 
 @< Function def... @>=
-template<bool recursive>
-expression_ptr closure_value<recursive>::build_call
-    (const shared_function& owner,const std::string& name,
+template<Closure_kind kind>
+expression_ptr closure_value<kind>::build_call
+    (const shared_function& master,const std::string& name,
      expression_ptr&& arg, const source_location& loc) const
-{ std::shared_ptr<const closure_value<recursive> > me(owner,this);
-@/return expression_ptr(new @| closure_call<recursive>
-    (std::move(me),name,std::move(arg),loc));
+{ assert(master.get()==this);
+  auto p=std::static_pointer_cast<const closure_value<kind> >(master);
+@/return expression_ptr(new @| closure_call<kind>
+    (std::move(p),name,std::move(arg),loc));
 }
 
 
@@ -3209,13 +3471,14 @@ block, as was mentioned when that block was defined earlier.
 @: lambda evaluation @>
 
 @< Function def... @>=
-template<>
-void closure_value<false>::apply(expression_base::level l) const
+template<Closure_kind kind>
+void closure_value<kind>::apply(expression_base::level l) const
 {
+  static const bool no_names=kind==parameterless;
   try
-  { lambda_frame fr(p->param,context);
+  { lambda_frame<no_names> fr(p->param,context);
       // save context, create new one for |*this|
-    if (fr.is_empty()) // we must test for functions without named arguments
+    if (no_names) // functions without named arguments are different
     {@; execution_stack.pop_back();
       body.evaluate(l);
     } //  drop arg, evaluate avoiding |bind|
@@ -3238,10 +3501,10 @@ of a |lambda_frame| without any identifiers.
 
 @< Function def... @>=
 template<>
-void closure_value<true>::apply(expression_base::level l) const
+void closure_value<recursive_closure>::apply(expression_base::level l) const
 {
   try
-  { lambda_frame fr(p->param,context);
+  { lambda_frame<false> fr(p->param,context);
       // save context, create new one for |*this|
     wrap_tuple<2>(); // combine pre-pushed self object with pushed argument(s)
     fr.bind(pop_value()); // bind self value and arguments in |fr|
@@ -3278,9 +3541,10 @@ a fourth textual reuse of the |catch| block for function calls, as well as
 (|fr|) a third reuse of the |catch| block for local variables.
 
 @< Function definitions @>=
-template<bool recursive>
-void closure_call<recursive>::evaluate(level l) const
-{ if (recursive)
+template<Closure_kind kind>
+void closure_call<kind>::evaluate(level l) const
+{ static const bool no_names=kind==parameterless;
+  if (kind==recursive_closure)
     push_value(f); // duplicate our closure to the execution stack
   argument->eval(); // evaluate arguments as a single value
   std::string arg_string;
@@ -3290,18 +3554,18 @@ void closure_call<recursive>::evaluate(level l) const
     arg_string = o.str();
   }
   try
-  { lambda_frame fr(f->p->param,f->context);
+  { lambda_frame<no_names> fr(param,context);
       // save context, create new one for |f|
 @)
-    if (not recursive and fr.is_empty())
+    if (no_names)
        // we must test for functions without named arguments
-      {@; execution_stack.pop_back(); f->body.evaluate(l); }
+      {@; execution_stack.pop_back(); body.evaluate(l); }
       //  avoid |bind|, evaluate
     else
-    { if (recursive)
+    { if (kind==recursive_closure)
         wrap_tuple<2>(); // combine our closure with actual arguments
       fr.bind(pop_value()); // decompose arguments(s) and bind values in |fr|
-      try {@; f->body.evaluate(l); }
+      try {@; body.evaluate(l); }
       // call, passing evaluation level |l| to function body
       @< Catch block for providing a trace-back of local variables @>
     }
@@ -4149,7 +4413,7 @@ struct projector_value : public function_base
   virtual expression_base::level argument_policy() const;
   virtual void report_origin(std::ostream& o) const;
   virtual expression_ptr build_call
-    (const shared_function& owner,const std::string& name,
+    (const shared_function& master,const std::string& name,
      expression_ptr&& arg, const source_location& loc) const;
 @)
   static const char* name() @+{@; return "built-in function"; }
@@ -4179,7 +4443,10 @@ component back on the stack, according to the policy |l| requested from us.
 void projector_value::apply(expression_base::level l) const
 {@; push_expanded(l,get<tuple_value>()->val[position]); }
 
-@
+@ When a projector is found in the global overload table (as is almost always
+the case) its application produces an executable object of class
+|projector_call|. It records the projector position and its name.
+
 @< Type def... @>=
 struct projector_call : public overloaded_call
 { unsigned position; id_type id;
@@ -4244,7 +4511,7 @@ struct injector_value : public function_base
   virtual expression_base::level argument_policy() const;
   virtual void report_origin(std::ostream& o) const;
   virtual expression_ptr build_call
-    (const shared_function& owner,const std::string& name,
+    (const shared_function& master,const std::string& name,
      expression_ptr&& arg, const source_location& loc) const;
 @)
   static const char* name() @+{@; return "built-in function"; }
@@ -6103,7 +6370,7 @@ assemble a call to the appropriate size-computing built-in function. The needed
 |shared_builtin| values are held in variables whose definition will be given
 later. It is specifically for this purpose that some of the actual built-in
 functions needed here are declared (and in one case even defined in the first
-place) as global rather than local functions.
+place) as global rather than as local functions.
 
 @< Set |loop| to a index-less counted |for| loop... @>=
 { expression_ptr call; const source_location &loc = f.in_part.loc;
@@ -6550,16 +6817,15 @@ different wrapper functions.
 Syntactically there is hardly anything simpler than simple assignment
 statements. However, semantically we distinguish assignments to local and to
 global variables. Then there are ``component assignments'' which modify
-repetitive values like row values by changing one component; these too will
-distinguish local and global versions. Finally, while not present in the
-initial language design, a multiple assignment statement was added to the
-language that can take apart tuple components, just as can be done in
-definitions of new (global or local) variables. As these can mix local and
-global destinations, we will introduce a separate expression type for these
-somewhat more expensive assignments. We retain the following intermediate
-class for all assignment statements except multiple assignments (the latter
-will derive directly from |expression_base|), as it allows to avoid a bit of
-code duplication.
+composite values like row values by changing just one component; these too will
+distinguish local and global versions. Finally, while not present in the initial
+language design, a multiple assignment statement was added to the language that
+can take apart tuple components, just as can be done in definitions of new
+(global or local) variables. As these can mix local and global destinations, we
+will introduce a separate expression type for these somewhat more expensive
+assignments. We retain the following intermediate class for all assignment
+statements except multiple assignments (the latter will derive directly from
+|expression_base|), as it allows to avoid a bit of code duplication.
 
 @< Type definitions @>=
 struct assignment_expr : public expression_base
@@ -6645,7 +6911,7 @@ void local_assignment::evaluate(level l) const
 
 @ The type for multiple assignments has to cater for a mixture of global and
 local names present in the destination pattern. This is done by having
-(possibly empty) vectors for both types of destination, and a |Bitmap| telling
+(possibly empty) vectors for both types of destination, and a |BitMap| telling
 for each name in left-to-right order whether it is global.
 
 The constructor here is more elaborate than for simple assignments, because
@@ -6661,6 +6927,7 @@ class multiple_assignment : public expression_base
 {
  public:
   struct local_dest {@; size_t depth, offset; };
+    // type to describe a local binding
   typedef containers::simple_list<local_dest> loc_list;
   typedef containers::simple_list<shared_share> glob_list;
  private:
@@ -6794,36 +7061,46 @@ void report_constant_modified (id_type id,const expr& e,const char* where)
   throw program_error (o.str());
 }
 
-@ Converting assignment statements follows the same lines as for applied
-identifiers, as far as discriminating between local and global is concerned.
-We first look in |id_context| for a local binding of the identifier, and then
-maybe in |global_id_table|. If found in either way, the right hand side is
-converted in a type context given by the type of the variable found. After
-forming the proper kind of assignment expression, we must as usual allow for a
-coercion to be applied to the result of the assignment, if the required |type|
+@ Assignment statements follows the same rules for locating the binding of their
+left hand side as are used for applied identifiers. We first look in
+|id_context| for a local binding of the identifier, and then maybe in
+|global_id_table|. If found in either way, the right hand side is converted in a
+type context given by the type of the variable found. After forming the proper
+kind of assignment expression, we must as usual allow for a coercion to be
+applied to the result of the assignment, if the externally required |type|
 demands this.
 
-While in most successful cases the type of the variable may direct the
-conversion of the right hand side, the type of the right hand side may
-occasionally be more specific than the previously known type of the variable
-(only if it is a specialisation of the latter will the conversion succeed).
-For instance this happens when assigning a row of concrete type to a variable
-initialised with an empty row. In those cases we call the
-|specialise| method of |frame| or of |global_id_table| to make sure the type
-assumed by the variable is recorded.
+While in most successful cases the type of the variable governs the conversion
+of the right hand side, the type of the right hand side may occasionally be more
+specific than the previously known type of the variable (but any type that is
+not a specialisation of the known type will cause the conversion to fail). For
+instance, this specialisation happens when assigning a row of concrete type to a
+variable initialised with an empty row. In those cases we call the |specialise|
+method of |frame| or of |global_id_table| to make sure the type assumed by the
+variable is recorded.
 
-Since variables of |void| type are allowed and can be assigned to (and due to
-the voiding coercion a right hand side of any type will be accepted), we must
-take care to insert a |voiding| in such rare cases, to ensure that no actual
-(non void) value will be computed and assigned.
+Since variables of |void| type are allowed (even if pretty useless), and can be
+assigned to, we must take care to test for the necessity of a |voiding|. Indeed,
+due to the voiding coercion a right hand side of any type will be accepted in an
+assignment to a variable of void type, and since in this case the voiding is not
+implied by the structure of the expression, we need to insert an explicit
+|voiding| in such rare cases, to ensure that no actual (non void) value will be
+computed and assigned.
+
+After the call to |convert_expr|, we insert some code that tries to apply an
+optimisation for certain built-in operations, to be detailed in the following
+sections. Since identification of operations depends on types of their
+arguments, this code needs to come after types have been checked, and must
+operate on the converted expression |r| rather than on~|e|, even though this is
+more difficult.
 
 @< Cases for type-checking and converting... @>=
 case ass_stat:
 if ( e.assign_variant->lhs.kind==0x1) // single identifier, do simple assign
 {
   id_type lhs=e.assign_variant->lhs.name;
-  const_type_p id_t; size_t i,j; bool is_const;
-  const bool is_local = (id_t=layer::lookup(lhs,i,j,is_const))!=nullptr;
+  const_type_p id_t; size_t depth,offset; bool is_const;
+  const bool is_local = (id_t=layer::lookup(lhs,depth,offset,is_const))!=nullptr;
   if (not is_local and (id_t=global_id_table->type_of(lhs,is_const))==nullptr)
     report_undefined(lhs,e,"assignment");
 @.Undefined identifier@>
@@ -6835,30 +7112,167 @@ if ( e.assign_variant->lhs.kind==0x1) // single identifier, do simple assign
   expression_ptr r(convert_expr(e.assign_variant->rhs,rhs_type));
   if (rhs_type!=*id_t)
     // assignment will specialise identifier, record to which type it does
-  {@; if (is_local)
-      layer::specialise(i,j,rhs_type);
+  { if (is_local)
+      layer::specialise(depth,offset,rhs_type);
       else
       global_id_table->specialise(lhs,rhs_type);
   }
+  @< Check whether |r| refers to an |builtin_call| of a function with nonzero
+  |hunger|, and with the identifier |lhs| as its corresponding argument;
+  if so modify that argument, and possibly the application, accordingly @>
+
   if (rhs_type==void_type and not is_empty(e.assign_variant->rhs))
     r.reset(new voiding(std::move(r)));
+
 @)
   expression_ptr assign = is_local
-  ? expression_ptr(new local_assignment(lhs,i,j,std::move(r)))
+  ? expression_ptr(new local_assignment(lhs,depth,offset,std::move(r)))
 @/: expression_ptr(new global_assignment(lhs,std::move(r)));
   return conform_types(rhs_type,type,std::move(assign),e);
 }
 else @< Generate and |return| a |multiple_assignment| @>
 
+@ Here we seek top optimise assignments of the form $x:=\star x$ where $\star$
+is a built-in operation that wants to change its argument in place. Normally the
+potential access via the variable~$x$ makes the access to the operand of~$\star$
+non-exclusive, so that a copy must be made for $\star$ to modify. However, if as
+it is in the example the result of the operation is immediately assigned to~$x$,
+one can defeat this unwanted and unneeded sharing by detaching the operand value
+from~$x$ before invoking~$\star$, so that during a short time $x$ is not bound
+to any value. In cases where this can be done safely, this is realised by
+replacing the applied identifier expression for $x$ by a version that moves the
+value out of~$x$, leaving it empty until the assignment.
+
+This optimisation only applies to certain built-in operations, and none of them
+are variadic, so we test whether |rhs| refers to a |builtin_call|, namely the
+|overloaded_builtin_call| template instance with temple parameter |variadic| set
+to |false|. The cases catered for are either single-argument operations, or
+two-argument operations where the variable to be modified is expected to be a
+specific one of the two operands; the attribute |hunger| of the |builtin_value|
+template informs about this, with value $0$ stands for no desire to eat any
+argument, values $1$ and $2$ for wanting to gobble up the left respectively
+right argument out of two, and a value $3$ indicates a wish to transform a
+unique argument.
+
+@< Check whether |r| refers to an |builtin_call|... @>=
+{
+  auto* rhs = dynamic_cast<const builtin_call*>(r.get());
+  if (rhs!=nullptr and rhs->f->hunger!=0)
+  {
+    const unsigned char h = rhs->f->hunger;
+    if (h==3)
+      @< See if |rhs->argument| is the variable |lhs|, and if so assign to~|r|
+         a new call in which this variable gets emptied before the call @>
+    else
+      @< See if the argument of |rhs| indicated by $h\in\{1,2\}$ is the
+         variable |lhs|, and if so change the argument list |rhs->argument| so
+         that that argument gets evaluated last, emptying the variable while
+         doing so @>
+  }
+}
+
+@ Although we only need to change the |argument| field of the call pointed to by
+|rhs|, the type of |rhs| is pointer to |const builtin_call|, which only gives
+|const| access to |rhs->argument| (and in initialising |rhs| above, this
+|const|ness was inherited from the |expression_ptr| type of |r|, which is a
+unique pointer to |const expression_base|; the |dynamic_cast| used would fail to
+work if we had omitted the |const|). So rather than assigning to |rhs->argument|
+we build a new call, using mostly the values found at |rhs|, and assign it
+to~|r|. In contrast to the original call, the new one sets the |pilfer| template
+argument to |local_identifier| or |global_identifier| to |true|; at run time
+this will cause evaluation to empty the variable, as is our goal here. An
+alternative would be to defeat the |const|ness by assigning to
+|const_cast<expression_ptr&>(c)|. Such casts are frowned upon, so we shall not
+use one here. But in the next module the reconstruction efforts needed
+would be even more tedious, and there we shall choose to cheat.
+
+@< See if |rhs->argument| is the variable |lhs|, and if so...@>=
+{ const expression_ptr& c = rhs->argument;
+  const identifier* a = dynamic_cast<const identifier *>(c.get());
+  if (a!=nullptr and a->code == lhs)
+  { auto new_arg = is_local
+      ? expression_ptr(new local_identifier<true>(a->code,depth,offset))
+      : expression_ptr(new global_identifier<true>(a->code));
+    r = expression_ptr(new builtin_call @|
+        (rhs->f,rhs->name,std::move(new_arg),rhs->loc));
+  }
+}
+
+@ When the built-in function that might benefit from changing a value in-place
+takes two arguments, the value of |h| indicates which argument could so be
+modified: left for $h=1$ and right for $h=2$. The change can only be applied if
+there is a $2$-tuple of arguments, and the appropriate argument expression is an
+applied identifier the coincides with the destination variable (since both
+occurrences of the identifier arise in the same context, having the same name
+ensures they will identify the same variable). When it applies, we want the
+variable to be evaluated after the other argument, so that in the event where
+that other argument also references the same variable, it will not find that
+variable already detached from its value. Therefore the case $h=2$ is simpler
+here, as the normal left-to-right evaluation order can be used.
+
+In either case as before we first build a ``pilfering applied identifier''
+expression |new_arg| (the pilfering being signalled by the |true| template
+argument) with the otherwise same characteristics as the old applied identifier.
+We still face the difficulty signalled above that we want to (move-)assign
+|new_arg| to |c|, but that is a reference to |const expression_ptr|. Rather than
+to construct anew all subexpressions that are to contain |new_arg|, we choose to
+remove the |const| from the reference using a |const_cast|; doing so is safe
+here, as no one else shares the expression under construction yet. For $h=2$,
+that trick directly gives us what we want, but for $h=1$ we must also rebuild the
+tuple expression as one with right-to-left evaluation semantics. In this case we
+must not only defeat the |const|-ness when assigning to |rhs->argument|, but we
+must also defeat the |const|-ness of the \emph{other} component of the old
+$2$-tuple: we want to move from that $2$-tuple that is not going to get used,
+to avoid having to make a deep copy, but moving from a reference to constant
+will not work, and would instead try to copy construct a temporary, which is not
+possible for |std::unique_ptr| instances. These uses of |const_cast| amount
+to paying the price for wanting to rebuild the tree structure accessed by
+|expressions_ptr| that was not designed to allow alteration after construction.
+
+@< See if the argument of |rhs| indicated by $h\in\{1,2\}$ is...@>=
+{
+  const tuple_expression* p =
+    dynamic_cast<const tuple_expression*>(rhs->argument.get());
+  if (p!=nullptr and p->component.size()==2)
+  {
+    const expression_ptr& c = p->component[h-1];
+    const identifier* a = dynamic_cast<const identifier *>(c.get());
+    if (a!=nullptr and a->code == lhs)
+    { auto new_arg = is_local
+      ? expression_ptr(new local_identifier<true>(a->code,depth,offset))
+      : expression_ptr(new global_identifier<true>(a->code));
+      if (h==1) // hungry for first argument: evaluate arguments right-to-left
+      {
+        std::unique_ptr<tuple_expression_tmpl<true> > args @|
+          (new tuple_expression_tmpl<true>(2));
+        args->component[0] = std::move(new_arg);
+        args->component[1] =
+          // move other argument into new pair, after removing |const|-ness
+          std::move(const_cast<expression_ptr&>(p->component[1]));
+        const_cast<expression_ptr&>(rhs->argument) = std::move(args);
+      }
+      else
+        const_cast<expression_ptr&>(c)= std::move(new_arg);
+    }
+  }
+}
+
 @ For traversing the left hand side pattern in a multiple assignment, we need
 some semi-local variables, to be accessible from within the recursive function
 but not renewed for each recursive call. The solution of passing around a
 reference to a structure containing those variables is elegantly realised by
-definition the traversal function as a recursive method |thread| of that
-structure (the implicit reference |*this| is passed around unchanged). We will
-also use the structure to keep some information after |thread| has completed,
-allowing an additional method |refine| to do some final action at the completion
-of type checking for the multiple assignment.
+defining the traversal function as a recursive method |thread| of that structure
+(the implicit reference |*this| is passed around unchanged). The goal of
+|thread| is on one hand to determine the type expected for the right hand side
+of the assignment, and to collect the target variables over which the components
+of the right hand side value will be distributed; for the former an output
+parameter |type| is used, while the latter is stored in the fields of the
+|threader| structure itself, which fields are |public|, so no methods need to be
+declared to be able to recover them. After |thread| has completed, we can use
+another method |refine| to specialise, if necessary, the types associated to the
+variables in question. Those variables have been stored in the |locs| and
+|globs| fields, and may get modified there. All in all, and somewhat
+surprisingly, both methods return |void|.
 
 @< Local class definitions @>=
 struct threader
@@ -6899,33 +7313,49 @@ void threader::thread(const id_pat& pat,type_expr& type)
       thread(*it,*t_it);
   }
   if ((pat.kind&0x1)!=0)
-  { id_type id = pat.name;
-    const_type_p id_t; // will point to type of local or global |id|
-    @< Check that |id| did not occur previously in this left hand side @>
-    size_t i,j; bool is_const;
-    const bool is_local = (id_t=layer::lookup(id,i,j,is_const))!=nullptr;
-    if (not is_local and (id_t = global_id_table->type_of(id,is_const))==nullptr)
-      report_undefined(id,e,"multiple assignment");
-    if (is_const)
-      report_constant_modified(id,e,"multiple assignment");
-    is_global.extend_capacity(not is_local);
-@)
-    if (not type.specialise(*id_t))
-    // incorporate type found for |id| into |type|
-      @< Throw an error to signal type incompatibility for |id| @>
-    assoc.push_back(std::make_pair(id,&type));
-      // record pointer to |type| for later refinement of |id|
-    if (is_local)
-      locs.push_back(multiple_assignment::local_dest{i,j});
-    else
-      globs.push_back(global_id_table->address_of(id));
-  }
+  @< Look up type associated to |pat.name|, and after making some checks,
+     record it in |type|, updating our fields |locs|, |globs|, |is_global| and
+     |assoc| @>
 }
 
-@ The error signalled here should really be a syntax error, but the fact that
-a generator without conflicts can be generated for our grammar depends on the
-pattern after \.{set} being independent of whether \.= or \.{:=} follows it;
-this is why we allowed these qualifiers to arrive up to this point.
+@ While there are several things to do when processing each target, everything
+is quite straightforward here. We need to check for the absence of repeated
+identifiers, look up each identifier locally and maybe globally, refuse
+assigning to identifiers that were marked as being constant, transfer the type
+information from that lookup into |type| using a |specialise| call, and finally
+recording the localisation of the identifiers in our various fields.
+
+@< Look up type associated to |pat.name|, and after making some checks... @>=
+{ id_type id = pat.name;
+  const_type_p id_t; // will point to type of local or global |id|
+  @< Check that |id| did not occur previously in this left hand side @>
+  size_t i,j; bool is_const;
+  const bool is_local = (id_t=layer::lookup(id,i,j,is_const))!=nullptr;
+  if (not is_local and (id_t = global_id_table->type_of(id,is_const))==nullptr)
+    report_undefined(id,e,"multiple assignment");
+  if (is_const)
+    report_constant_modified(id,e,"multiple assignment");
+  is_global.extend_capacity(not is_local); // push one bit onto the |BitMap|
+@)
+  if (not type.specialise(*id_t))
+  // incorporate type found for |id| into |type|
+    @< Throw an error to signal type incompatibility for |id| @>
+  assoc.push_back(std::make_pair(id,&type));
+    // record pointer to |type| for later refinement of |id|
+  if (is_local)
+    locs.push_back(multiple_assignment::local_dest{i,j});
+  else
+    globs.push_back(global_id_table->address_of(id));
+}
+
+@ The error signalled here is quite silly: the user has qualified a target
+identifier in the multiple assignment with ``\.!''. This should really be a
+syntax error, as it is indeed in the case of simple assignments. But the fact
+that a parser without conflicts can be generated for our grammar depends on the
+fact that the pattern allowed after \.{set} is independent of whether \.=
+or \.{:=} follows it; this is why we allowed these qualifiers to sneak and only
+be detected here during context sensitive analysis. We are in fact paying here
+for the use of the same keyword for two different purposes,
 
 @< Throw an error to signal forbidden qualifier \.! before |pat.name| @>=
 { std::ostringstream o;
@@ -7023,15 +7453,15 @@ stored in |thr|.
 %
 The language we are implementing does not employ the notion of sub-object; in
 other words if one sets $b=a[i]$ for some list, vector or matrix $a$, then $b$
-will behave as a copy of the entry $a[i]$ rather than as an alias, so
-subsequent assignment to $b$ will not affect~$a$ or vice versa. (This does no
-prevent us to share storage between $b$ and $a$ initially, it just means the
-sharing should be broken if $b$ or $a$ are modified; we practice
-copy-on-write.) This simplifies the semantic model considerably; notably we
-avoid the distinction necessary for instance in Python between a (compound)
-value and the object that holds it, because in \.{axis} values that share the
-same memory behave exactly like values in separate memory that happen to be
-equal.
+will behave as a copy of the entry $a[i]$ rather than as an alias, so subsequent
+assignment to $b$ will not affect~$a$ or vice versa. (This does no prevent us to
+share storage between $b$ and $a$ initially, it just means the sharing should be
+broken if $b$ or $a$ are modified; we practice copy-on-write.) This simplifies
+the semantic model considerably; it makes no distinction between primitive and
+composite values, avoids the distinction necessary for instance in Python or
+Java between a (compound) value and the object that holds it. In \.{axis},
+values that share the same memory behave exactly like values in separate memory
+locations that happen to be equal.
 
 However, if we want to allow creating composite values by sequentially setting
 their components, we need to allow assignments of the form $a[i]:=c$ to achieve
@@ -7040,29 +7470,27 @@ $a[i]$ of~$a$ (not having such a notion). The meaning of this is assignment will
 be taken to be that of assigning a new value to all of $a$, which differs from
 the original value only at index~$i$ (it will however be implemented more
 efficiently if the storage of $a$ is not currently shared, as would usually be
-the case at least from the second such assignment to~$a$ on). The interpreter
-will treat such component assignments as a whole, using an expression type with
-three components $a,i,c$, in which $a$ must be an identifier. The latter
-requirement means that it will not be able to handle something like $a[i][j]:=c$
-even when that would seem to make sense (because $a[i]$ is not a name); however
-$m[i,j]:=c$ for matrix values $m$ will be supported. The design decision made
-here is made in the assumption that the type of assignments that $a[i][j]:=c$
-would represent are rare; when really needed they can be achieved by temporarily
-naming the value $a[i]$ and assigning to that name, and then assigning the value
-bound to the name back to~$a[i]$.
+the case, at least from the second such assignment to~$a$ onward). The
+interpreter will treat such component assignments as a whole, using an
+expression type with three components $a,i,c$, in which $a$ must be an
+identifier. The type of this identifier may be one of several cases that allow
+component assignments: any row type, vector, matrix, or an Atlas-specific
+polynomial type. The class |component_assignment| below is a base class from
+which specific classes for local and global assignments will be derived; its
+only new data member is an expression |index| which at run time determines the
+component that is to be changed (the aggregate name |lhs| and expression |rhs|
+for the value to be assigned are members of its |assignment_expr| base class).
+This class provides a method |assign| that will do the real work for the
+|evaluate| methods of the derived classes, after those have located address of
+the aggregate to be modified and the type of component assignment to apply.
+Also, the class itself is templated over a Boolean |reversed| to allow for
+reversed indexing. We similarly define a base class |field_assignment| for
+assignments to a field of a value of some tuple type (whose usage requires
+declaring named field selectors for that type).
 
-In fact we need to implement a whole range of component assignments: there are
-assignments to general row-value components, to vector and matrix components
-and to matrix columns, and all this for local variables as well as for global
-ones. Like for general assignments we can start with a base class that
-implements common methods, and derive the specialised versions from it later.
-In fact by deriving from |assignment_expr| we only need to add the index as
-data member. We also provide a method |assign| that will do the real work for
-the |evaluate| methods of the derived classes, after those have located
-address of the aggregate to be modified and the type of component assignment
-to apply.
 
 @< Type definitions @>=
+
 template <bool reversed>
 struct component_assignment : public assignment_expr
 { expression_ptr index;
@@ -7079,10 +7507,11 @@ struct component_assignment : public assignment_expr
 @)
 struct field_assignment : public assignment_expr
 { const unsigned position;
+  id_type id;
 @)
   field_assignment
-   (id_type a,unsigned pos,expression_ptr&& r)
-   : assignment_expr(a,std::move(r)), position(pos) @+{}
+   (id_type a,unsigned pos,id_type id,expression_ptr&& r)
+   : assignment_expr(a,std::move(r)), position(pos), id(id) @+{}
   virtual ~field_assignment() = default;
 
   virtual void print (std::ostream& out) const;
@@ -7090,23 +7519,99 @@ struct field_assignment : public assignment_expr
   void assign(level l,shared_value& tupple) const;
 };
 
-@ Printing reassembles the subexpressions according to the input syntax,
-except for field assignments which just print the position to be modified.
+@ We define a variant of |component_assignment| called |component_transform|, in
+which the new value of the component is computed with aid of its previous value;
+this both avoids computing the indexing expression twice, and allows to try to
+optimise the case where the component can be modified without duplication when
+the transformation allows for modification in-place. The second point is
+relevant only in the case of a component of a row-of type aggregate (rather than
+a vector or matrix, whose components cannot be shared anyway), so we limit this
+to cases corresponding to |kind==subscr_base::row_entry|, and there is no need
+for a |kind| argument to |transform|.
+
+@< Type definitions @>=
+
+template <bool reversed>
+struct component_transform : public assignment_expr
+{ source_location loc; // as in |call_base|
+  std::string name; // as in |overloaded_call|
+  shared_builtin f; // as in |builtin_call|
+  wrapper_function f_ptr; // shortcut, as in |builtin_call|
+  expression_ptr index; // as in |component_assignment|
+@)
+  component_transform
+   (id_type a, expression_ptr&& i,expression_ptr&& r,
+    const shared_builtin& fun,
+    const std::string& name, const source_location& loc)
+   : assignment_expr(a,std::move(r))
+   , loc(loc), name(fun->print_name), f(fun), f_ptr(fun->val)
+   , index(i.release()) @+{}
+  virtual ~component_transform() = default;
+
+  virtual void print (std::ostream& out) const;
+@)
+  void transform(level l,shared_value& aggregate) const;
+};
+@)
+struct field_transform : public assignment_expr
+{ source_location loc; // as in |call_base|
+  std::string name; // as in |overloaded_call|
+  shared_builtin f; // as in |builtin_call|
+  wrapper_function f_ptr; // shortcut, as in |builtin_call|
+  const unsigned position;
+  id_type id;
+@)
+  field_transform
+   (id_type a,unsigned pos,id_type id,expression_ptr&& r,
+    const shared_builtin& fun,
+    const std::string& name, const source_location& loc)
+   : assignment_expr(a,std::move(r))
+   , loc(loc), name(fun->print_name), f(fun), f_ptr(fun->val)
+   , position(pos), id(id) @+{}
+  virtual ~field_transform() = default;
+
+  virtual void print (std::ostream& out) const;
+@)
+  void transform(level l,shared_value& tupple) const;
+};
+
+@ Printing reassembles the subexpressions according to the input syntax, except
+for field assignments which just print the position to be modified. As we shall
+see below, the |right hand side| field can be null for the \&{transform}
+structures, so we take care not to crash the program when this is the case.
 
 @< Function def...@>=
 template <bool reversed>
 void component_assignment<reversed>::print (std::ostream& out) const
-{@; out << main_hash_table->name_of(lhs) << (reversed ? "~[" : "[")
-        << *index << "]:=" << *rhs;
+{ out << main_hash_table->name_of(lhs) << (reversed ? "~[" : "[")
+      << *index << "]:=" << *rhs;
+}
+@)
+template <bool reversed>
+void component_transform<reversed>::print (std::ostream& out) const
+{ out << main_hash_table->name_of(lhs) << (reversed ? "~[" : "[")
+      << *index << "] " @| << name << ":= ";
+  if (rhs==nullptr) out << "()"; @+ else out << *rhs;
 }
 @)
 void field_assignment::print (std::ostream& out) const
-{@; out << main_hash_table->name_of(lhs) << '.' << this->position << ":="
-        << *rhs;
+{ out << main_hash_table->name_of(lhs) << '.' @|
+      << main_hash_table->name_of(id)
+      << '(' << this->position << ") := " @|
+      << *rhs;
+}
+@)
+void field_transform::print (std::ostream& out) const
+{ out << main_hash_table->name_of(lhs) << '.' @|
+      << main_hash_table->name_of(id)
+      << '(' << this->position << ") " @|
+      << name << ":= ";
+  if (rhs==nullptr) out << "()"; @+ else out << *rhs;
 }
 
-@ For global assignments, we need to have non-|const| access the location
-where the identifier is stored.
+@ For global assignments or transforms, we need to have non-|const| access the
+location where the identifier is stored, whence the |shared_share| fields in the
+definitions below.
 
 @< Type definitions @>=
 template <bool reversed>
@@ -7122,15 +7627,40 @@ public:
   virtual void evaluate(expression_base::level l) const;
 };
 @)
+template <bool reversed>
+class global_component_transform
+: public component_transform<reversed>
+{ using base = component_transform<reversed>;
+@)
+  shared_share address;
+public:
+  global_component_transform
+    (id_type a, expression_ptr&& i,expression_ptr&& r,
+    const shared_builtin& fun,
+    const std::string& name, const source_location& loc);
+  virtual void evaluate(expression_base::level l) const;
+};
+@)
 class global_field_assignment : public field_assignment
 { shared_share address;
 public:
-  global_field_assignment (id_type a, unsigned pos,expression_ptr&& r);
+  global_field_assignment
+    (id_type a, unsigned pos,id_type id,expression_ptr&& r);
+  virtual void evaluate(expression_base::level l) const;
+};
+@)
+class global_field_transform : public field_transform
+{ shared_share address;
+public:
+  global_field_transform (id_type a, unsigned pos,id_type id,expression_ptr&& r,
+    const shared_builtin& fun,
+    const std::string& name, const source_location& loc);
   virtual void evaluate(expression_base::level l) const;
 };
 
 @ The constructor for |global_component_assignment| stores the address of the
-aggregate object and the component kind.
+aggregate object, the expression to be assigned, and the component kind. The
+other cases don not store a component kind.
 
 @< Function def... @>=
 template <bool reversed>
@@ -7139,17 +7669,37 @@ global_component_assignment<reversed>::global_component_assignment @|
 : base(a,std::move(i),std::move(r))
 , kind(k),address(global_id_table->address_of(a)) @+{}
 @)
+template <bool reversed>
+global_component_transform<reversed>::global_component_transform @|
+    (id_type a, expression_ptr&& i,expression_ptr&& r,
+    const shared_builtin& fun,
+    const std::string& name, const source_location& loc)
+: base(a,std::move(i),std::move(r),fun,name,loc)
+, address(global_id_table->address_of(a)) @+{}
+@)
 global_field_assignment::global_field_assignment @|
-  (id_type a, unsigned pos,expression_ptr&& r)
-: field_assignment(a,pos,std::move(r))
+  (id_type a, unsigned pos,id_type id,expression_ptr&& r)
+: field_assignment(a,pos,id,std::move(r))
+, address(global_id_table->address_of(a)) @+{}
+@)
+global_field_transform::global_field_transform @|
+  (id_type a, unsigned pos,id_type id,expression_ptr&& r,
+    const shared_builtin& fun,
+    const std::string& name, const source_location& loc)
+: field_transform(a,pos,id,std::move(r),fun,name,loc)
 , address(global_id_table->address_of(a)) @+{}
 
-@ It is in evaluation that component assignments differ most from ordinary
-ones. The work is delegated to the |assign| method of the base class, which is
-given a reference to the |shared_value| pointer holding the current value of
-the aggregate; it is this pointer that is in principle modified. Like when
-fetching the value of a global variable, we must be aware of a possible
-undefined value in the variable.
+@ It is in evaluation that component assignments differ most from ordinary ones.
+The work is delegated to the |assign| or |transform| method of the base class
+(to be defined below), which is given a reference to the |shared_value| pointer
+holding the current value of the aggregate; it is this pointer that is in
+principle modified. In the templated context of |global_component_assignment|
+and |global_component_transform|, the base class must be explicitly mentioned
+using the local type name |base| when calling its |assign| method. On the other
+hand, while |global_field_assignment::evaluate| is also calling a method of that
+name from its base class, no local type name is needed (nor is it defined) in
+this case. Like when fetching the value of a global variable, we must be aware
+of a possible undefined value in the variable.
 
 @< Function def... @>=
 template <bool reversed>
@@ -7164,6 +7714,18 @@ void global_component_assignment<reversed>::evaluate(expression_base::level l)
   base::assign(l,*address,kind);
 }
 @)
+template <bool reversed>
+void global_component_transform<reversed>::evaluate(expression_base::level l)
+  const
+{ if (address->get()==nullptr)
+  { std::ostringstream o;
+    o << "Transforming component of uninitialized variable " @|
+      << main_hash_table->name_of(this->lhs);
+    throw runtime_error(o.str());
+  }
+  base::transform(l,*address);
+}
+@)
 void global_field_assignment::evaluate(expression_base::level l) const
 { if (address->get()==nullptr)
   { std::ostringstream o;
@@ -7171,19 +7733,129 @@ void global_field_assignment::evaluate(expression_base::level l) const
       << main_hash_table->name_of(this->lhs);
     throw runtime_error(o.str());
   }
-  assign(l,*address);
+  assign(l,*address); // call method from base class (not called |base| here)
+}
+@)
+void global_field_transform::evaluate(expression_base::level l) const
+{ if (address->get()==nullptr)
+  { std::ostringstream o;
+    o << "Transforming field of uninitialized variable " @|
+      << main_hash_table->name_of(this->lhs);
+    throw runtime_error(o.str());
+  }
+  transform(l,*address); // call method from base class (not called |base| here)
 }
 
+@ For local assignments we also need to access the location where the
+identifier is stored, which as before is done by storing coordinates of the
+identifier in the execution context.
+
+@< Type definitions @>=
+template <bool reversed>
+class local_component_assignment : public component_assignment<reversed>
+{ typedef component_assignment<reversed> base;
+@)
+  subscr_base::sub_type kind;
+  size_t depth, offset;
+public:
+  local_component_assignment @|
+   (id_type arr, expression_ptr&& i,size_t d, size_t o,
+    expression_ptr&& r, subscr_base::sub_type k);
+  virtual void evaluate(expression_base::level l) const;
+};
+@)
+template <bool reversed>
+class local_component_transform : public component_transform<reversed>
+{ using base = component_transform<reversed>;
+@)
+  size_t depth, offset;
+public:
+  local_component_transform @|
+   (id_type arr, expression_ptr&& i,size_t d, size_t o, expression_ptr&& r,
+    const shared_builtin& fun,
+    const std::string& name, const source_location& loc);
+  virtual void evaluate(expression_base::level l) const;
+};
+@)
+class local_field_assignment : public field_assignment
+{ size_t depth, offset;
+public:
+  local_field_assignment
+    (id_type a, unsigned pos,id_type id,size_t d, size_t o, expression_ptr&& r);
+  virtual void evaluate(expression_base::level l) const;
+};
+@)
+class local_field_transform : public field_transform
+{ size_t depth, offset;
+public:
+  local_field_transform
+    (id_type a, unsigned pos,id_type id,size_t d, size_t o, expression_ptr&& r,
+    const shared_builtin& fun,
+    const std::string& name, const source_location& loc);
+  virtual void evaluate(expression_base::level l) const;
+};
+
+@ The constructors for these structures are all quite straightforward, in
+spite of their number of arguments.
+
+@< Function def... @>=
+template <bool reversed>
+local_component_assignment<reversed>::local_component_assignment
+ (id_type arr, expression_ptr&& i,size_t d, size_t o, expression_ptr&& r,
+  subscr_base::sub_type k)
+: base(arr,std::move(i),std::move(r)), kind(k), depth(d), offset(o) @+{}
+@)
+template <bool reversed>
+local_component_transform<reversed>::local_component_transform @|
+    (id_type a, expression_ptr&& i,size_t d, size_t o,expression_ptr&& r,
+    const shared_builtin& fun,
+    const std::string& name, const source_location& loc)
+: base(a,std::move(i),std::move(r),fun,name,loc), depth(d), offset(o) @+{}
+@)
+local_field_assignment::local_field_assignment @|
+  (id_type a, unsigned pos,id_type id,size_t d, size_t o, expression_ptr&& r)
+: field_assignment(a,pos,id,std::move(r)), depth(d), offset(o) @+{}
+@)
+local_field_transform::local_field_transform @|
+  (id_type a, unsigned pos,id_type id,size_t d, size_t o, expression_ptr&& r,
+    const shared_builtin& fun,
+    const std::string& name, const source_location& loc)
+: field_transform(a,pos,id,std::move(r),fun,name,loc), depth(d), offset(o) @+{}
+
+@ The |evaluate| methods locate the |shared_value| pointer of the aggregate,
+then |assign| or |transform| does its job.
+
+@< Function def... @>=
+template <bool reversed>
+void local_component_assignment<reversed>::evaluate(expression_base::level l)
+  const
+{@; base::assign (l,frame::current->elem(depth,offset),kind); }
+@)
+template <bool reversed>
+void local_component_transform<reversed>::evaluate(expression_base::level l)
+  const
+{@; base::transform (l,frame::current->elem(depth,offset)); }
+@)
+void local_field_assignment::evaluate(expression_base::level l) const
+{@; assign (l,frame::current->elem(depth,offset)); }
+@)
+void local_field_transform::evaluate(expression_base::level l) const
+{@; transform (l,frame::current->elem(depth,offset)); }
+
 @ The |assign| method, which will also be called for local component
-assignments, starts by the common work of evaluating the (component) value to
-be assigned, and of then making sure the aggregate variable is made to point
-to a unique copy of its current value, which copy can then be modified in
-place. The index is not yet evaluated at this point, but this will be done
-inside the |switch| statement; this is because possible expansion of a tuple
-index value depends on~|kind|. For actually changing the aggregate, we must
-distinguish cases according to the kind of component assignment at hand.
-Assignments to components of rational vectors and of strings will be
-forbidden, see module @#comp_ass_type_check@>.
+assignments, starts by the common work of evaluating the (component) value to be
+assigned. For actually changing the aggregate, we must distinguish cases
+according to the kind of component assignment at hand. Assignments to components
+of rational vectors and of strings will be forbidden, see
+module@#comp_ass_type_check@>. The evaluation of the aggregate index is done
+inside this case distinction, because possible expansion of a tuple index value
+depends on~|kind|. Finally we shall make sure we hold a unique copy of the
+aggregate; since |uniquify|, which does this operation, needs to know the type
+of the aggregate in a template argument, its call has to be done inside each
+branch.
+
+For assignments to a field of a tuple value, no case distinction is necessary,
+and the code is quite simple.
 
 @< Function def... @>=
 template <bool reversed>
@@ -7221,13 +7893,13 @@ void field_assignment::assign (level lev,shared_value& tupple) const
   push_expanded(lev,field=pop_value());
 }
 
-@ A |row_value| component assignment is the simplest kind. The variable |loc|
-holds a generic pointer, known to refer to a |row_value|. Since we need to
-access the vector of shared pointers, we use |force| to get an ordinary
-pointer, and then select the |val| field. Then we do a bound check, and on
-success replace a component of the value held in |a| by the stack-top value.
-Afterwards, depending on |l|, we may put back the stack-top value as result of
-the component assignment, possibly expanding a tuple in the process.
+@ A |row_value| component assignment is the simplest kind. The variable
+|aggregate| holds a generic |shared_value|, known to refer to a |row_value|.
+Since we need to access the vector of shared pointers, we use |uniquify| to
+ensure unshared and unconstrained access to its |val| field. After a bound check
+we then replace a component by the stack-top value. Afterwards, depending on
+|lev|, we may put back the stack-top value as result of the component assignment,
+possibly expanding a tuple in the process.
 
 @< Replace component at |index| in row |loc|... @>=
 { auto i = (index->eval(),get<int_value>()->long_val());
@@ -7236,14 +7908,93 @@ the component assignment, possibly expanding a tuple in the process.
   if (static_cast<size_t>(i) >= n)
     throw runtime_error(range_mess(i,a.size(),this,"component assignment"));
   auto& ai = a[reversed ? n-1-i : i];
-  ai = pop_value(); // assign non-expanded value
-  push_expanded(lev,ai); // return value may need expansion, or be omitted
+  push_expanded(lev,ai = pop_value()); // assign component and yield that value
 }
 
-@ For |vec_value| entry assignments the type of the aggregate object is
-vector, and the value assigned always an integer. The latter certainly needs
-no expansion, so we either leave it on the stack, or remove it if the value of
-the component assignment expression is not used.
+@ The |transform| method of |component_transform| is similar to the |assign|
+methods above. However, instead of assigning the evaluation of |rhs| into the
+aggregate, it combines it with the previous value of the destination component
+using |f_ptr| (which is a |shared_builtin|). Since the first operand of |f_ptr|,
+which is the old value of the row component |ai|, is moved out of the row to the
+stack, we make sure to evaluate the second operand before it, so that during its
+evaluation the row |a| is still intact. This requires temporarily moving that
+second argument off the stack before moving it back on. (The expression for that
+operand is called |rhs|, in the |assignment| class we inherit from.) The code
+takes into account the possibility of an absent second argument, indicated by
+the condition |rhs=nullptr|; this is because an optimisation may have replaced a
+call of an operator with two arguments by a call of a function with only one
+argument, as in $v[i]\mathrel+:=1$ where the addition gets replaced by a call of
+|succ|. In that case |f_ptr| will point to the replacement function and a null
+pointer is substituted for~|rhs|.
+
+The method |field_transform::transform| is similar but simpler, and shares the
+part calling |f_ptr|.
+
+@< Function def... @>=
+template <bool reversed>
+void component_transform<reversed>::transform
+  (level lev,shared_value& aggregate) const
+{ auto op2 = (rhs==nullptr ? nullptr : (rhs->eval(),pop_value()));
+   // put aside additional operand
+  auto i = (index->eval(),get<int_value>()->long_val());
+  auto& a = uniquify<row_value>(aggregate)->val;
+  size_t n=a.size();
+  if (static_cast<size_t>(i) >= n)
+    throw runtime_error(range_mess(i,a.size(),this,"component assignment"));
+  auto& ai = a[reversed ? n-1-i : i];
+  push_value(std::move(ai)); // move-push component before transformation
+  if (op2!=nullptr)
+    push_value(std::move(op2)); // and possibly additional argument
+  @< Call |*f_ptr| to produce a single value, taking measures for back tracing @>
+  push_expanded(lev,ai = pop_value()); // assign component and yield that value
+}
+@)
+void field_transform::transform (level lev,shared_value& tupple) const
+{ auto op2 = (rhs==nullptr ? nullptr : (rhs->eval(),pop_value()));
+   // put aside additional operand
+  shared_value& field=uniquify<tuple_value>(tupple)->val[position];
+  push_value(std::move(field)); // move-push field before transformation
+  if (op2!=nullptr)
+    push_value(std::move(op2)); // and possibly additional argument
+  @< Call |*f_ptr| to produce a single value, taking measures for back tracing @>
+  push_expanded(lev,field=pop_value());
+}
+
+@ This code is similar to that of |built_in::evaluate|, except that we know we
+have exactly two arguments, and that they are already placed on the
+|execution_stack|.
+
+@< Call |*f_ptr| to produce a single value, taking measures for back tracing @>=
+{ std::string arg_string;
+  if (verbosity!=0) // record argument(s) as string
+  { std::ostringstream o;
+    if (rhs==nullptr)
+      o << '(' << *execution_stack[execution_stack.size()-1] << ')';
+    else
+    { const auto* p = &execution_stack[execution_stack.size()-2];
+      o << '(' << *p[0] << ',' << *p[1] << ')';
+    }
+    arg_string = o.str();
+  }
+@)
+  try
+  {@; (*f_ptr)(expression_base::single_value); } // call the built-in function
+  catch (error_base& e)
+  {@; extend_message(e,name,loc,f,arg_string);
+    throw;
+  }
+  catch (const std::exception& e)
+  { runtime_error new_error(e.what());
+    extend_message(new_error,name,loc,f,arg_string);
+    throw new_error;
+  }
+}
+
+@ We complete our definition with the non-row component assignments, starting
+with the case of |vec_value| entry assignments. Here the type of the aggregate
+object is vector, and the value assigned always an integer. The latter certainly
+needs no expansion, so we either leave it on the stack, or remove it if the
+value of the component assignment expression is not used.
 
 @< Replace entry at |index| in vector |loc|... @>=
 { auto i=(index->eval(),get<int_value>()->long_val());
@@ -7251,13 +8002,14 @@ the component assignment expression is not used.
   size_t n=v.size();
   if (static_cast<size_t>(i) >= n)
     throw runtime_error(range_mess(i,v.size(),this,"component assignment"));
-  v[reversed ? n-1-i : i]= // assign |int| from un-popped top
+  v[reversed ? n-1-i : i] =
+  // assign |int| extracted from stack top without popping
     force<int_value>(execution_stack.back().get())->int_val();
   if (lev==no_value)
     execution_stack.pop_back(); // pop it anyway if result not needed
 }
 
-@ For matrix entry assignments at |index| must be split into a pair of
+@ For matrix entry assignments, the value |index| must be split into a pair of
 indices, and there are two bound checks.
 
 @< Replace entry at |index| in matrix |loc|... @>=
@@ -7268,11 +8020,11 @@ indices, and there are two bound checks.
   auto& m = uniquify<matrix_value>(aggregate)->val;
   size_t k=m.n_rows(),l=m.n_columns();
   if (static_cast<size_t>(i) >= k)
-    throw runtime_error
-      (range_mess(i,m.n_rows(),this,"matrix entry assignment"));
+    throw runtime_error@|
+      ("initial "+range_mess(i,m.n_rows(),this,"matrix entry assignment"));
   if (static_cast<size_t>(j) >= l)
-    throw runtime_error(
-      range_mess(j,m.n_columns(),this,"matrix entry assignment"));
+    throw runtime_error@|
+      ("final "+range_mess(j,m.n_columns(),this,"matrix entry assignment"));
   m(reversed ? k-1-i : i,reversed ? l-1-j : j)=
     // assign |int| from un-popped top
     force<int_value>(execution_stack.back().get())->int_val();
@@ -7310,9 +8062,9 @@ remove it if the value of the component assignment expression is not used.
 @< Replace coefficient at |index| in $K$-type polynomial |loc|... @>=
 { index->eval();
   auto t = get<K_type_value>();
-  auto* poly = uniquify<K_type_pol_value>(aggregate);
+  auto* pol = uniquify<K_type_pol_value>(aggregate);
   const auto& top = force<split_int_value>(execution_stack.back().get());
-  poly->assign_coef(*t,top->val);
+  pol->assign_coef(*t,top->val);
   if (lev==no_value)
     execution_stack.pop_back(); // pop the vector if result not needed
 }
@@ -7331,59 +8083,6 @@ one are hidden in the respective |assign_coef| methods.
   if (lev==no_value)
     execution_stack.pop_back(); // pop the vector if result not needed
 }
-
-@ For local assignments we also need to access the location where the
-identifier is stored, which as before is done by storing coordinates of the
-identifier in the execution context.
-
-@< Type definitions @>=
-template <bool reversed>
-class local_component_assignment : public component_assignment<reversed>
-{ typedef component_assignment<reversed> base;
-@)
-  subscr_base::sub_type kind;
-  size_t depth, offset;
-public:
-  local_component_assignment @|
-   (id_type arr, expression_ptr&& i,size_t d, size_t o,
-    expression_ptr&& r, subscr_base::sub_type k);
-  virtual void evaluate(expression_base::level l) const;
-};
-@)
-class local_field_assignment : public field_assignment
-{ size_t depth, offset;
-public:
-  local_field_assignment
-    (id_type a, unsigned pos,size_t d, size_t o, expression_ptr&& r);
-  virtual void evaluate(expression_base::level l) const;
-};
-
-@ The constructors for |local_component_assignment| and
-|local_field_assignment| are both quite straightforward, in spite of their
-number of arguments.
-
-@< Function def... @>=
-template <bool reversed>
-local_component_assignment<reversed>::local_component_assignment
- (id_type arr, expression_ptr&& i,size_t d, size_t o, expression_ptr&& r,
-  subscr_base::sub_type k)
-: base(arr,std::move(i),std::move(r)), kind(k), depth(d), offset(o) @+{}
-@)
-local_field_assignment::local_field_assignment @|
-  (id_type a, unsigned pos,size_t d, size_t o, expression_ptr&& r)
-: field_assignment(a,pos,std::move(r)), depth(d), offset(o) @+{}
-
-@ The |evaluate| methods locate the |shared_value| pointer of the aggregate,
-then |assign| does its job.
-
-@< Function def... @>=
-template <bool reversed>
-void local_component_assignment<reversed>::evaluate(expression_base::level l)
-  const
-{@; base::assign (l,frame::current->elem(depth,offset),kind); }
-@)
-void local_field_assignment::evaluate(expression_base::level l) const
-{@; assign (l,frame::current->elem(depth,offset)); }
 
 @ Type-checking and converting component assignment statements follows the
 same lines as that of ordinary assignment statements, but must also
@@ -7426,7 +8125,7 @@ case comp_ass_stat:
     throw expr_error(e,o.str());
   }
   expression_ptr r = convert_expr(rhs,comp_t);
-  if (aggr_t->kind()==row_type)
+  if (kind==subscr_base::row_entry)
     aggr_t->component_type()->specialise(comp_t); // record type
   if (comp_t==void_type and not is_empty(rhs))
     r.reset(new voiding(std::move(r)));
@@ -7473,7 +8172,7 @@ that can be specialised at all.
 @< Cases for type-checking and converting... @>=
 case field_ass_stat:
 { id_type tupple=e.field_assign_variant->aggr;
-  id_type sel =e.field_assign_variant->selector;
+  id_type selector =e.field_assign_variant->selector;
   const expr& rhs=e.field_assign_variant->rhs;
 @/const_type_p tuple_t; size_t d,o; bool is_const;
   bool is_local = (tuple_t=layer::lookup(tupple,d,o,is_const))!=nullptr;
@@ -7484,34 +8183,516 @@ case field_ass_stat:
   if (is_const)
     report_constant_modified(tupple,e,"field assignment");
 @.Name is constant @>
-@) // Now get selector function from the overload table; ignore local bindings
-  const projector_value* proj;
-  { const auto* entry=global_overload_table->entry(sel,*tuple_t);
-    if (entry==nullptr)
-      throw expr_error (e,"Improper selection in field assignment");
-    proj=dynamic_cast<const projector_value*>(entry->value().get());
-    if (proj==nullptr)
-      throw expr_error
-        (e,"Selector in field assignment is not a projector function");
-    assert(tuple_t->kind() == tuple_type and
-           proj->position < length(tuple_t->tuple()));
-  }
 @)
-  type_p comp_loc;
-    // we shall pass a modifiable reference to component type to |convert_expr|
-  { // to get component type from list pointer we need to use a short loop
-    auto p=tuple_t->tuple();
-    for (auto count=proj->position; count-->0; )
-      p=p->next.get();
-    comp_loc=&p->contents;
-  }
+  unsigned pos; type_p comp_loc;
+  @< Look up a projector for |*tuple_t| named |selector|, and if found assign
+     its |position| to |pos| and make |comp_loc| point to the corresponding
+     component |type_expr| of |*tuple_t|; on failure |throw expr_error| @>
   expression_ptr r = convert_expr(rhs,*comp_loc);
   expression_ptr p;
   if (is_local)
-    p.reset(new local_field_assignment(tupple,proj->position,d,o,std::move(r)));
+    p.reset(new local_field_assignment(tupple,pos,selector,d,o,std::move(r)));
   else
-    p.reset(new global_field_assignment(tupple,proj->position,std::move(r)));
+    p.reset(new global_field_assignment(tupple,pos,selector,std::move(r)));
   return conform_types(*comp_loc,type,std::move(p),e);
+}
+
+@ If either no function at all doing the requested projection is found, or if
+the function found is not a projector, then we signal failure. If things go
+well, the type list in |tuple_t| is not actually a |simple_list<expr>| but a raw
+node pointer, and we are forced to do a but of traditional node chasing.
+
+@< Look up a projector for |*tuple_t| named |selector|... @>=
+{ const auto* entry=global_overload_table->entry(selector,*tuple_t);
+  if (entry==nullptr)
+    throw expr_error (e,"Improper selection in field assignment");
+  const projector_value* proj=
+    dynamic_cast<const projector_value*>(entry->value().get());
+  if (proj==nullptr)
+    throw expr_error
+      (e,"Selector in field assignment is not a projector function");
+  pos=proj->position;
+  assert(tuple_t->kind() == tuple_type and pos < length(tuple_t->tuple()));
+@)
+// |comp_loc| needs to point to a modifiable |type_expr|; point it into |tuple_t|
+  raw_type_list p=tuple_t->tuple(); // using |type_list| would take possession
+  for (auto count=pos; count-->0; )
+    p=p->next.get();
+  comp_loc=&p->contents;
+}
+
+@ Type-checking and converting component and field transform statements is quite
+complicated. Since we come here before type checking is done, we have to handle
+all expressions of the syntactic form (operation-assigning to a field selection
+from an identifier expression), whether or not that gives any occasion to invoke
+in-place modification. The conditions for that to be possible are that the
+transformation is to be performed by a built-in operator, and that its first
+operand and result types coincide with that of the selected field. The
+identification of the operator in fact uses that type for the first operand, so
+that part of the condition is likely to be satisfied if the operator can be
+found at all, but the type condition still requires the absence of implicit
+conversions; if there were any, that would frustrate any in-place operation
+anyway. The condition of being built-in (which implies being found in the global
+overload table, as we cannot determine the actual value in local bindings) is
+rather restrictive, and we would have like to not impose it, but the in-place
+field transformation semantics we want to apply mean that the tuple has a hole
+in it at the moment the operation is applied, and for user defined functions we
+cannot ensure that it cannot notice this circumstance.
+
+Concretely, we type check the call of the operator ignoring field-transforming
+context (but supplying the required return type) and then test whether we can
+use a |field_transform|; if we can, we build it using pieces of the converted
+expression, which includes the identity of the built-in operation that was
+found. In the contrary case, we reassemble the pieces together differently, to
+form an ordinary |field_assignment| instead, with a value produced by an
+ordinary function call of the operator.
+
+@< Cases for type-checking and converting... @>=
+case field_trans_stat:
+{ expr& lhs = e.comp_trans_variant->dest;
+  expr& rhs=e.comp_trans_variant->arg;
+  assert(lhs.kind == function_call);
+  app dot = lhs.call_variant;
+  assert(dot->arg.kind==applied_identifier); // grammar ensures this
+  assert(dot->fun.kind==applied_identifier); // grammar ensures this
+  id_type tuple = dot->arg.identifier_variant;
+  id_type selector = dot->fun.identifier_variant;
+  id_type op = e.comp_trans_variant->op;
+@)const_type_p tuple_t; size_t d,o; bool is_const;
+  bool is_local = (tuple_t=layer::lookup(tuple,d,o,is_const))!=nullptr;
+  if (not is_local and
+      (tuple_t=global_id_table->type_of(tuple,is_const))==nullptr)
+    report_undefined(tuple,e,"field transform");
+@.Undefined identifier@>
+  if (is_const)
+    report_constant_modified(tuple,e,"field transform");
+@.Name is constant @>
+@)
+  unsigned pos; type_p comp_loc;
+  @< Look up a projector for |*tuple_t| named |selector|... @>
+  expression_ptr call;
+  @< Assign to |call| the |resolve_overload| of the application of |op| to
+     an argument pair formed of |lhs|... @>
+  @< Construct, from |tuple|, |pos| and |*call|... @>
+}
+
+@ Here we build the application |appl| of the symbol |op| mentioned in the title
+as an |expr| structure, and pass it to |resolve_overload|. This mainly serves to
+find the relevant instance of |op|, but the converted expression |call| or part
+of it will also be used. The reason |appl| is |static| is for correct error
+reporting, as explained below.
+
+@< Assign to |call| the |resolve_overload| of the application of |op| to
+     an argument pair formed of |lhs| and |rhs|,
+     converted to type |*comp_loc| @>=
+{
+  static expr_ptr appl; expr_ptr saved_appl;
+  @< Set |appl| to the application of |op| to |lhs| and |rhs|... @>
+  call = resolve_overload(*appl,*comp_loc,global_overload_table->variants(op));
+  @< Restore initial state of |*e.comp_trans_variant| and of |appl| @>
+}
+
+@ The elements of the argument pair we construct are stolen (i.e., moved) from
+the (component transformation) expression |e| we are processing. This is
+necessary because we cannot copy |expr| values; after converting |appl| we shall
+move these parts back into |lhs| and |rhs| so that |e| is intact on successful
+return, and can be used for later error messages. For similar reasons we must
+move aside the previous contents of the |static| variable |appl| so that it
+won't be destructed in the assignment; in fact it could well hold an expression
+that contains |e| as subexpression, in which case its destruction would have
+catastrophic consequences.
+
+Moving the two arguments is done in two steps, since in a |tuple_expression| the
+components are accessed by an |expr_ptr|, which cannot point to an |expr| value
+that is contained in a larger structure, as is the case for |lhs| and |rhs|.
+
+@< Set |appl| to the application of |op| to |lhs| and |rhs|... @>=
+{ saved_appl = std::move(appl);
+  expr_ptr arg1(new expr(std::move(lhs)));
+    // move top level data into isolated |expr|
+  expr_ptr arg2(new expr(std::move(rhs))); // likewise
+@/appl =
+    internal_binary_call(op,std::move(arg1),std::move(arg2),
+                         e.loc,e.comp_trans_variant->op_loc);
+}
+
+@ We have moved parts from the expression |*e.comp_trans_variant| into the one
+accessed by |appl|, but our caller must see the whole expression |e| intact, in
+case it is a subexpression of a larger one for which an |expr_error| (or derived
+instance) will be thrown. So upon successful conversion, we must dig into the
+parts of |appl| and move them back where they came from. Then (and only then) we
+must also restore the value of the |static| variable |appl| itself, which was
+saved in a local variable |save|; this will also clean up the parts of the
+|appl| expression that we built ourselves (rather than moved). These manoeuvres
+could have been avoided if |expr| were copy constructible, but writing a
+(recursive, deep) copy constructor would be even more work.
+
+The reason |appl| is a static variable is that in case the |resolve_overload|
+call above should throw an error, a reference to |*appl| will be stored in the
+|expr_error| object, and it will be caught only after stack unwinding has
+destroyed all local variables of our (recursive) function |convert_expr|; if
+|appl| were such a local variable the mentioned reference would become a
+dangling one. As it is, the static variable will keep alive the |expr| it points
+to, even after reporting it, which is useless. However this memory wastage is a
+one-off (a new error thrown from the same place will replace and clean up the
+|expr| value), so we don't care.
+
+@< Restore initial state of |*e.comp_trans_variant| and of |appl| @>=
+{
+  auto* args = appl->call_variant->arg.sublist;
+@/lhs = std::move(args->contents);
+  rhs = std::move(args->next->contents);
+@/appl = std::move(saved_appl); // restore, so our caller will not notice
+}
+
+@ The code below illustrates one way to solve the coding problem of avoiding
+multiple identical |else| clauses in a situation where the positive option (here
+that of using a |field_transform| rather than a |field_assignment|) is dependent
+on the conjunction of several conditions. Here the positive option requires that
+the |call| is an application of a built-in operator (necessarily found in the
+global overload table), and that its argument is either a pair with a projector
+call (i.e., a field selection) as first element, or just a projector call.
+Testing this involves introducing several intermediate values |c|, |arg|, and
+|tup| that depend on previous ones, and may be used (only) in the branch for
+this option. The straightforward approach of using nested |if| expressions to
+successively test the conditions would introduce several identical |else|
+clauses. Those clauses could be fused into a single one using |goto|, but that
+solution is distinctly ugly. The solution adopted here is to have a sequence of
+tests conditionally setting the intermediate variables, which are pointers left
+null otherwise, and then leave the initial |if| expression and follow it by a
+second one that tests the final value. (In fact the test is a dynamic cast of
+|arg|, which can fail either if |arg==nullptr| or if the dynamic cast finds a
+wrong pointer; the cast pointer itself is not needed in the sequel.)
+
+The complication that |arg| can be defined in two was is due to the optimisation
+that, although we used |build_binary_call| which involves two arguments, on
+optimisation during conversion may have replaced it by a call with a single
+argument, like replacing |x.a+1| by |succ(x.a)|. If this happens and the
+|field_transform| branch applies, it passes a null pointer in place of the |rhe|
+right hand expression to the |field_transform| constructor, which the evaluation
+functions will detect to avoid actually evaluating a second argument.
+
+The actual work to be done is quite straightforward, since all the pieces from
+which we want to construct either a |field_transform| or a |field_assignment|
+have already been converted. In the former case we use just the converted second
+argument |rhe| of the |call| of |op|, while in the latter case we use |call| as
+a whole.
+
+@< Construct, from |tuple|, |pos| and |*call|, either a structure derived from
+   |field_transform| or one derived from |field_assignment|, and |return|
+   the result of passing it through |conform_types| @>=
+{ const tuple_expression* tup = nullptr;
+  const expression_base* arg = nullptr;
+  auto* c = dynamic_cast<const builtin_call*>(call.get());
+  if (c!=nullptr)
+  {
+    tup = dynamic_cast<const tuple_expression *>(arg = c->argument.get());
+    if (tup != nullptr)
+      arg = tup->component[0].get();
+  }
+@)
+  expression_ptr result;
+  if (dynamic_cast<const projector_call*>(arg)!=nullptr)
+  {
+    expression_ptr nil(nullptr);
+    auto& rhe =
+      tup==nullptr ? nil : const_cast<expression_ptr&>(tup->component[1]);
+    if (is_local)
+      result.reset (new local_field_transform@|
+        (tuple,pos,selector,d,o,std::move(rhe),c->f,c->name,e.loc));
+    else
+      result.reset (new global_field_transform@|
+        (tuple,pos,selector,std::move(rhe),c->f,c->name,e.loc));
+  }
+  else
+  { if (is_local)
+      result.reset(new local_field_assignment
+        (tuple,pos,selector,d,o,std::move(call)));
+    else
+      result.reset(new global_field_assignment(tuple,selector,pos,std::move(call)));
+  }
+  return conform_types(*comp_loc,type,std::move(result),e);
+}
+
+@ All that was done for the case of field transformations in a tuple must also
+be done for transformations of a component in a row, with some extra
+complications. Again we handle all expressions of the syntactic form
+(operation-assigning to a subscripted name), and decide only after the
+identification of the operation whether we can actually generate a
+|component_transform| or whether we expand to an ordinary
+|component_assignment|. The additional complications here are that there is an
+index expression whose double evaluation must be avoided, which may require
+additional rewriting of the syntax tree when we revert to a
+|component_assignment|, and the presence of a |reversed| attribute which makes
+the code for generating |component_transform| or |component_assignment| more
+repetitive.
+
+The conditions that need to be satisfied are those of a field transformation,
+plus the fact that name we are subscripting must have row-of type: the
+|component_transform| class was not designed to handle any other |kind| of
+subscription, which indeed do not appear to be able to benefit from in-place
+transformation. As before we shall type check a call of the operator as if
+|component_transform| is involved, and then from the result try to find out
+whether our conditions are satisfied. If they are, then we proceed much like in
+the field transformation case. In the other case we reassemble the pieces into a
+|component_assignment|.
+
+By consistent choice of variable names, we can reuse here the pieces of code
+that assemble the pieces of our original |comp_transform_node| into a function
+application, and then later restore everything to its initial state. The two
+pieces are further apart here, because as we shall see the function call
+expression |appl| may need to be converted a second time in a different context,
+so it is left intact until that is behind us. This also means that we cannot
+have and |return| expressions before the restoring is done (as that would skip
+their execution), and instead we just have a variable |result| that is set
+differently in different cases.
+
+@< Cases for type-checking and converting... @>=
+case comp_trans_stat:
+{ expr& lhs=e.comp_trans_variant->dest;
+  expr& rhs=e.comp_trans_variant->arg;
+  assert(lhs.kind == subscription);
+  sub s = lhs.subscription_variant;
+  assert(s->array.kind==applied_identifier); // grammar ensures this
+  id_type aggr=s->array.identifier_variant;
+  expr& index=s->index;
+  bool reversed=s->reversed;
+  id_type op = e.comp_trans_variant->op;
+@/const_type_p aggr_t; size_t d,o; bool is_const;
+  bool is_local = (aggr_t=layer::lookup(aggr,d,o,is_const))!=nullptr;
+  if (not is_local and (aggr_t=global_id_table->type_of(aggr,is_const))==nullptr)
+    report_undefined(aggr,e,"component transform");
+@.Undefined identifier@>
+  if (is_const)
+    report_constant_modified(aggr,e,"component transform");
+@.Name is constant @>
+@)
+  static expr_ptr appl; expr_ptr saved_appl;
+  @< Set |appl| to the application of |op| to |lhs| and |rhs| while saving the
+     previous value in |saved_appl| @>
+  expression_ptr ind;
+  type_expr ind_t, comp_t;
+  subscr_base::sub_type kind;
+  @< Convert |index| to |ind|...
+  @>
+  expression_ptr call =
+    resolve_overload(*appl,comp_t,global_overload_table->variants(op));
+
+  expression_ptr result;
+  @< If the conditions for an optimised in-place component transformation... @>
+  @< Restore initial state of |*e.comp_trans_variant| and of |appl| @>
+  return result;
+}
+
+@ All variables in the title were declared before, and the values set here may
+be used in subsequent modules.
+
+@< Convert |index| to |ind|, set |ind_t| to its type, and |comp_t| to the
+   type of subscription of |*aggr_t| by it; throw an exception if the |kind| of
+   subscription does not allow assignment @>=
+{
+  ind = convert_expr(index,ind_t);
+@/kind=subscr_base::index_kind(*aggr_t,ind_t,comp_t);
+  if (not subscr_base::assignable(kind))
+  { std::ostringstream o;
+    o << "Cannot assign to component of value of type " << *aggr_t @|
+      << " selected by index of type " << ind_t
+      << " in transforming assignment";
+    throw expr_error(e,o.str());
+  }
+@)
+}
+
+@ As said above, we can only construct a |component_transform| under certain
+conditions. To sum up, we only consider row-of aggregates, we must find a
+|builtin_call| after overload resolution, and we refuse implicit conversions.
+The absence of the latter is tested by seeing if the converted expression has
+the precise structure of the |expr| from which it was converted, as witnessed by
+succeeding |dynamic_cast| invocations. It is because these conditions can be
+determined only after type checking that we had to convert |appl|, even though
+this |call| will not be used when producing a |component_transform|. In that
+case we shall need |aggr|, |ind|, the resolved |c->f| and |c->name|, and the
+second argument |tup->component[1]| of the call.
+
+In the case that we must use a |component_assignment|, there is an additional
+complication that we must avoid to use the index expression being evaluated
+twice. That will be handled by evaluating the index in a |let| expression
+generated on the spot, but since that requires some effort and has a slight run
+time penalty, we avoid this complication for simple enough index expressions:
+integer denotations and applied identifiers.
+
+@< If the conditions for an optimised in-place component transformation are met,
+   construct a structure derived from |component_transform| from pieces
+   of |*call| and set |result| by passing it through |conform_types|,
+   otherwise build a |comp_assignment| @>=
+{ const builtin_call* c;
+  const tuple_expression* tup = nullptr;
+  const expression_base* arg = nullptr;
+  if (kind==subscr_base::row_entry)
+  { c = dynamic_cast<const builtin_call*>(call.get());
+    if (c!=nullptr)
+    {
+      tup = dynamic_cast<const tuple_expression *>(arg=c->argument.get());
+      if (tup!=nullptr)
+        arg=tup->component[0].get();
+    }
+  }
+  if (dynamic_cast<const subscr_base*>(arg)!=nullptr)
+  @< Set |result| to a |component_transform| assembled from |aggr|, |ind|,
+     |c->f|, |c->name|, and maybe |tup->component[1]|, passed through
+   |conform_types| from |comp_t| to |type| @>
+  else
+    if (@< |index| is a constant expression @>@;@;)
+@/@< Set |result| to a |component_assignment| assembled from |aggr|, |ind|,
+     |call|, and |kind|,
+     passed through |conform_types| from |comp_t| to |type| @>
+   else
+  @< Set |result| to a \&{let} expression that binds the index expression
+     to a hidden identifier, within which |convert_expr| is applied (again) to
+     a |component_assignment| containing a modified version of |appl| @>
+
+}
+
+@ This is straightforward; the $4$ classes derived from
+|component_transform| all need their own line.
+
+@< Set |result| to a |component_transform| assembled... @>=
+{ expression_ptr nil(nullptr);
+  auto& rhe =
+    tup==nullptr ? nil : const_cast<expression_ptr&>(tup->component[1]);
+  if (is_local)
+  { if (reversed)
+    @/ result.reset
+      (new local_component_transform<true>@|
+        (aggr,std::move(ind),d,o,std::move(rhe),c->f,c->name,e.loc));
+    else
+    @/ result.reset
+      (new local_component_transform<false>@|
+        (aggr,std::move(ind),d,o,std::move(rhe),c->f,c->name,e.loc));
+  }
+  else
+  { if (reversed)
+    @/ result.reset
+      (new global_component_transform<true>@|
+        (aggr,std::move(ind),std::move(rhe),c->f,c->name,e.loc));
+    else
+    @/ result.reset
+      (new global_component_transform<false>@|
+        (aggr,std::move(ind),std::move(rhe),c->f,c->name,e.loc));
+  }
+  result = conform_types(comp_t,type,std::move(result),e);
+}
+
+@ When we cannot build a |component_transform|, we build a
+|component_assignment|, translating $v[i]\mathrel\star:=E$ as
+``$v[i]:=v[i]\star{E}$''. In this case we do use the full converted |call|, as
+well as |kind|, which is not restricted (apart from being assignable as was
+already tested) here.
+
+@< Set |result| to a |component_assignment|... @>=
+{ if (is_local)
+  { if (reversed)
+    @/ result.reset
+      (new local_component_assignment<true>@|
+        (aggr,std::move(ind),d,o,std::move(call),kind));
+    else
+    @/ result.reset
+      (new local_component_assignment<false>@|
+        (aggr,std::move(ind),d,o,std::move(call),kind));
+  }
+  else
+  { if (reversed)
+    @/ result.reset
+      (new global_component_assignment<true>@|
+        (aggr,std::move(ind),std::move(call),kind));
+    else
+    @/ result.reset
+      (new global_component_assignment<false>@|
+        (aggr,std::move(ind),std::move(call),kind));
+  }
+  result = conform_types(comp_t,type,std::move(result),e);
+}
+
+@ The most frequent case of an expression type that we shall recognise as
+guaranteed without side effects is that of |applied_identifier| expressions, but
+we shall also recognise |integer_denotation| expressions (for various kinds of
+subscription) and, only for matrix subscriptions, $2$-tuples of two identifier
+or denotation expressions. The last part a bit cumbersome to test, and inside an
+expression we cannot introduce variables to help us, but since we already
+successfully type-checked the subscription expression, we are at least sure that
+any tuple expression used as index is a $2$-tuple, so we don't test for that.
+
+It is somewhat questionable whether using a |let| expression to bind a constant
+index pair for a matrix subscription, and using it twice, would actually have
+been less efficient than evaluating the pair of constant indices twice.
+However, the |let| expression would force the actual formation of a $2$-tuple to
+be bound to the hidden variable, and then use |push_expanded| to get the
+components back on the stack (where they were before the $2$-tuple was formed),
+while the direct approach never forms a $2$-tuple; therefore our guess would be
+that the |let| solution is indeed less efficient, so that trying to avoid it (as
+is done here) is justified.
+
+@< |index| is a constant expression @>=
+index.kind==applied_identifier or
+index.kind==integer_denotation or @|
+(index.kind==tuple_display and @|
+ (index.sublist->contents.kind==applied_identifier or
+  index.sublist->contents.kind==integer_denotation
+ )
+ and @|
+ (index.sublist->next->contents.kind==applied_identifier or
+  index.sublist->next->contents.kind==integer_denotation
+ )
+)
+
+@ In this final case $v[I]\mathrel\star:= E$ is translated into the equivalent
+of ``\&{let}~$\$=I$~\&{in}~$v[\$]:=v[\$]\star E$'', where $\$$ is a local
+variable that can't conflict with $v$ or any names used in the expression~$E$.
+(By the way, the original implementation of operation-assign to an aggregate
+component was to always do this rewriting; it was achieved during syntax tree
+construction in \.{parsetree.w} with relative ease.) Since here the lexical
+level of $E$ is deeper here than in the earlier conversion, we cannot extract
+and use a part of the converted |call| as we did above, and rather convert the
+expression again in a modified setting.
+
+Here is the plan: get the |id_type| value for the hidden identifier $\$$,
+construct an applied identifier expression for this identifier, swap it out with
+the index expression $I$ that is held, at location |index|, as subexpression of
+the |call| that was set to represent $v[I]\mathrel\star{E}$ (and which already
+has its converted form in |ind|), then build a |layer| as when
+processing \&{let}~$\$=I$, then convert the modified |appl| in this new context
+and as a part of a new |let_expression| using |ind| that wraps everything up,
+and finally return the |let_expression|.
+
+Since we now pass our locally built |comp_assignment_node| through another call
+of |convert_expr|, we again need a |static| variable to hold it for correct
+error reporting, and the old contents needs to be saved in a local variable as
+was the case for |appl|. We must also make sure that the |index| expression,
+which does not need a new conversion but must be swapped out for a variable, is
+put back in place so that our expressions |e| will be intact on successful
+completion,
+
+@< Set |result| to a \&{let} expression... @>=
+{
+  id_type hidden = lookup_identifier("$");@q$@>
+  id_pat dollar(hidden);
+  expr temp(hidden,index.loc,expr::identifier_tag()); // applied $\$$
+  index.swap(temp); // modify |call| to use $\$$
+  static expr_ptr ca; expr_ptr saved_ca = std::move(ca);
+  ca.reset(new expr(new comp_assignment_node @|
+     {aggr
+     ,expr(hidden,index.loc,expr::identifier_tag())
+     ,std::move(*appl)
+     ,reversed},e.loc));
+  layer let_layer(1);
+  thread_bindings(dollar,ind_t,let_layer,true);
+  result.reset(new let_expression @|
+    (dollar,std::move(ind),convert_expr(*ca,type)));
+  *appl = std::move(ca->comp_assign_variant->rhs);
+    // restore |appl| for further restoration
+  index.swap(temp); // restore our original expression for outer error reporting
+  ca = std::move(saved_ca);
+    // restore state of static variable now that no error was thrown
 }
 
 @* Some special wrapper functions.
@@ -7523,44 +8704,45 @@ current \.{axis.w} module.
 
 @< Static variable definitions that refer to local functions @>=
 static shared_builtin sizeof_row_builtin =
-    std::make_shared<const builtin_value<false> >(sizeof_wrapper,"#@@[T]");
+    std::make_shared<const builtin>(sizeof_wrapper,"#@@[T]",0);
 static shared_builtin sizeof_vector_builtin =
-    std::make_shared<const builtin_value<false> >
-      (sizeof_vector_wrapper,"#@@vec");
+    std::make_shared<const builtin>
+      (sizeof_vector_wrapper,"#@@vec",0);
 static shared_builtin sizeof_ratvec_builtin =
-    std::make_shared<const builtin_value<false> >
-      (sizeof_ratvec_wrapper,"#@@ratvec");
+    std::make_shared<const builtin>
+      (sizeof_ratvec_wrapper,"#@@ratvec",0);
 static shared_builtin sizeof_string_builtin =
-    std::make_shared<const builtin_value<false> >
-       (sizeof_string_wrapper,"#@@string");
+    std::make_shared<const builtin>
+       (sizeof_string_wrapper,"#@@string",0);
 static shared_builtin matrix_columns_builtin =
-    std::make_shared<const builtin_value<false> >
-     (matrix_ncols_wrapper,"#@@mat");
+    std::make_shared<const builtin>
+     (matrix_ncols_wrapper,"#@@mat",0);
 static shared_builtin sizeof_parampol_builtin =
-    std::make_shared<const builtin_value<false> >
-      (virtual_module_size_wrapper, "#@@ParamPol");
+    std::make_shared<const builtin>
+      (virtual_module_size_wrapper, "#@@ParamPol",0);
 static shared_variadic_builtin print_builtin =
-  std::make_shared<const builtin_value<true> >(print_wrapper,"print@@T");
+  std::make_shared<const builtin_value<true> >(print_wrapper,"print@@T",0);
 static shared_variadic_builtin to_string_builtin =
-  std::make_shared<const builtin_value<true> >(to_string_wrapper,"to_string@@T");
+  std::make_shared<const builtin_value<true> >
+  (to_string_wrapper,"to_string@@T",0);
 static shared_variadic_builtin prints_builtin =
-  std::make_shared<const builtin_value<true> >(prints_wrapper,"prints@@T");
+  std::make_shared<const builtin_value<true> >(prints_wrapper,"prints@@T",0);
 static shared_variadic_builtin error_builtin =
-  std::make_shared<const builtin_value<true> >(error_wrapper,"error@@T");
+  std::make_shared<const builtin_value<true> >(error_wrapper,"error@@T",0);
 static shared_builtin prefix_elt_builtin =
-  std::make_shared<const builtin_value<false> >
-    (prefix_element_wrapper,"#@@(T,[T])");
+  std::make_shared<const builtin>
+    (prefix_element_wrapper,"#@@(T,[T])",2);
 static shared_builtin suffix_elt_builtin =
-  std::make_shared<const builtin_value<false> >
-    (suffix_element_wrapper,"#@@([T],T)");
+  std::make_shared<const builtin>
+    (suffix_element_wrapper,"#@@([T],T)",1);
 static shared_builtin join_rows_builtin =
-  std::make_shared<const builtin_value<false> >
-    (join_rows_wrapper,"##@@([T],[T])");
+  std::make_shared<const builtin>
+    (join_rows_wrapper,"##@@([T],[T])",0);
 static shared_builtin join_rows_row_builtin =
-  std::make_shared<const builtin_value<false> >
-    (join_rows_row_wrapper,"##@@([[T]])");
+  std::make_shared<const builtin>
+    (join_rows_row_wrapper,"##@@([[T]])",0);
 static shared_builtin boolean_negate_builtin =
-  std::make_shared<const builtin_value<false> >(bool_not_wrapper,"not@@bool");
+  std::make_shared<const builtin>(bool_not_wrapper,"not@@bool",0);
 
 @ The function |print| outputs any value in the format used by the interpreter
 itself. This function has an argument of unknown type; we just pass the popped
@@ -7647,7 +8829,19 @@ void sizeof_wrapper(expression_base::level l)
 
 
 @ Here are functions for adding individual elements to a row value, and for
-joining two such values.
+joining two such values. The function |suffix_element_wrapper| can run in
+amortised constant time if obtaining ownership of the argument can be done
+without copying (the |push_back| method of |std::vector| only needs to
+reallocate occasionally), which allows repeated extension of a row-value
+variable using the \.{\#:=} combined operator to be relatively efficient (this is
+true only because of the optimisation that now allows the variable to be emptied
+when its old value is fetched; it used to be that sharing of the pointer with
+that variable meant that obtaining ownership required copying. By contrast,
+while |prefix_element_wrapper| also modifies its argument (in this case the
+second) in-place, it still requires time linear in the size of that argument
+since the |insert| method of |std::vector| needs to move all old entries, so the
+gain in efficiency is limited here, if positive at all. The |join_rows_wrapper|
+function does not attempt to gain any ownership and just builds a fresh value.
 
 @:hash wrappers@>
 

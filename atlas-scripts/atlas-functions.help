@@ -1,5 +1,6 @@
 operators +, -, * : (int,int->int): usual integer arithmetic operations
 operator - : (int->int): integral unary minus
+operator ~ : (int->int): subtraction from -1; also bitwise complementation
 operator ^ : (int,int->int): integer exponentiation (whenever result integral)
 operators \ : (int,int->int): integer quotient (of Euclidean division)
 operators % : (int,int->int): integer remainder (of Euclidean division)
@@ -99,6 +100,9 @@ elapsed_ms: (->int): number of milliseconds elapsed since program start-up
 { in bitwise operations, an integer n represents a finite (if n>=0) or co-finite
   if (n<0) set of natural numbers, the positions (from 0 on the right) of their
   set bits (for n<0, these are the complement of those for -1-n, which is >=0 }
+
+succ: (int->int): successor of integer; n+1 gets converted to succ(n)
+pred: (int->int): predecessor of integer; n-1 gets converted to pred(n)
 
 AND,OR,XOR: (int,int->int): bitwise AND|OR|XOR of the integers
 AND_NOT: (int,int->int): bitwise AND NOT: AND_NOT(n,m) = AND(n,-1-m)

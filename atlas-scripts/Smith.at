@@ -126,7 +126,7 @@ in for i:m
 
 set ech_det (Mat A) = int:
    let (M,,s,flip)=column_echelon(A) in
-   if #M=#s then minus_1^#flip*M.main_diagonal.product else 0 fi
+   if #M=#s then (-1)^#flip*M.main_diagonal.product else 0 fi
 
 
 set ech_solve (Mat A, Vec b) = maybe_a_Vec:

@@ -149,9 +149,8 @@ set graph_action (WGraph (rd,nodes),int s) = sparse_mat:
    do if node.tau_has_s
       then [(j,-1)] { single diagonal term -1 }
       else (j,1) { diagonal term, the rest come from outward edges } #
-        for (i,):link in node.out_list
-        do if nodes[i].tau_has_s then [link] else [] fi
-        od.## { filter, keeping destination nodes with |s| in tau invariant }
+        for (i,):link in node.out_list if nodes[i].tau_has_s do link fi od
+	{ filter, keeping destination nodes with |s| in tau invariant }
       fi
    od
 
