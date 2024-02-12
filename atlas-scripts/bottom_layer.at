@@ -313,18 +313,23 @@ set min_L_bottom_factors(KType mu) = [[(KType, KType)]]:
     then muLs = factor_K_types(muL) {each muLj is on a simple mod center Lj}
     then dermuLs = derived_factor_K_types(muL) {each dermuLj is on a simple derived derLj}
     then Ljs = for muL in muLs do muL.real_form od {these are the Lj}
-    then DLjs = for Lj in Ljs do next_heights(Lj) od
     then derLMs = for (Lj,derLj,Mj) in derived_simple_factors_info(L) do (derLj,Mj) od {DERIVED simple factors}
 
     then derMs = for (,Mj) in derLMs do Mj od
     then derLs = for (derLj,) in derLMs do derLj od {DERIVED simple factors}
+    then DLjs = for derLj in Ljs do next_heights(derLj) od
     then xcderLMs = for (derLj,Mj) in derLMs
     	       	 do (KGB(derLj, 0),Mj)
 		 od
-    then xcLs = for (xcderLj,Mj)@j in xcderLMs {KGBElts for Lj, lifted from #zero on derLj}
+    then xcLjs = for (xcderLj,Mj)@j in xcderLMs {KGBElts for Lj, lifted from #zero on derLj}
     	      	 do embed_KGB(xcderLj,Ljs[j],Mj) {PROBABLY these are all #0 on Lj???}
 		 od
-    then xcGs = for xcLj@j in xcLs do embed_KGB(xcLj,G) od
+    then xcGs = for xcLj@j in xcLjs do embed_KGB(xcLj,G) od
+    {then xcnewGs = for (xcderLj,Mj)@j in xcderLMs {different for G=Sp(6,R), mu = K_type(KGB(Sp(6,R),9),[-2,-2,-1])}
+    	      	do embed_KGB(xcderLj,G,Mj)
+		od}
+    {then () = assert(all(for j:#xcGs do xcGs[j] = xcnewGs[j] od), "problem at mu = "##to_string(mu))}
+    {xc and xcnew are different; new finds 8 too few unitary on Sp(6,R) }
     then dertauLs = [[KType]]: {jth list on derived simple factor derLj}
     	 for dermuLj@j in dermuLs
 	 do if RF_code {should use bott_data}
@@ -335,14 +340,14 @@ set min_L_bottom_factors(KType mu) = [[(KType, KType)]]:
     in for listj@j in dertauLs
        do let K0 = K_0(xcGs[j])
        	  then muwtj = K0_param(mu,xcGs[j]).lambda_minus_rho {size is rank(K)}
-	  then dermuLj = dermuLs[j], (xcLj,) = xcderLMs[j], derLj = derLs[j], Lj = Ljs[j]
+	  then dermuLj = dermuLs[j], (xcderLj,) = xcderLMs[j], derLj = derLs[j], Lj = Ljs[j]
 	  then dermuLjwt = K0_param(dermuLj).lambda_minus_rho
 	  then () = if Lj.Cartan_matrix != derLj.Cartan_matrix
 		     	  then prints("WARNING: CM mismatch at Lj = ",Lj)
 			  fi
 
-       	  in [(KType, KType)]: {meant to be list of pairs (tau, dertauLj) with tau bottom layer for G,
-	       	       			 dertauLj corr LjK-type}
+       	  in [(KType, KType)]: {meant to be list of pairs (tau, dertauLj) with
+	     	      	       tau bottom layer for G, dertauLj corr LjK-type}
 	     for dertauLj in listj
        	     do  let dertauLjwt = K0_param(dertauLj).lambda_minus_rho {this is a wt for K on derLj}
 	     	 then taujwt = muwtj + ratvec_as_vec(sum(K0.rank, for xi@k in fundamental_coweights(derLj)
@@ -417,6 +422,7 @@ set make_steady_bottom_data () = steady_bottom_data:
   )
 )
 
+set bottom_data = make_steady_bottom_data()
 
 set basis_lambda_differential_0(mat theta) = mat: {columns are weights lambda with (1+theta)lambda = 0,
     				   	    	  mod (1-theta)X^*}
