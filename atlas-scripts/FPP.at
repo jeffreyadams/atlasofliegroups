@@ -44,6 +44,16 @@ set FPP_unitary_hash2(RealForm G, int x)=[Param]:let ()=FPP_unitary_hash2([KGB(G
 set FPP_unitary_hash_one_level(RealForm G, int x)=[Param]:let ()=FPP_unitary_hash_one_level([KGB(G,x)]) in params(unitary_hash)
 set FPP_unitary_hash_bottom_layer(RealForm G, int x)=[Param]:let ()=FPP_unitary_hash_bottom_layer([KGB(G,x)]) in params(unitary_hash)
 
+set FPP_unitary_hash_bottom_layer(RealForm G, [[(KGBElt, ratvec)]] xlambdalists,int list_number)= [Param]:
+let start=unitary_hash.size() then
+()=prints("Starting size of unitary_hash: ", start) then
+list=xlambdalists[list_number] then
+reverse_list=for i:#list do list~[i] od then
+()=FPP_unitary_hash_bottom_layer(reverse_list) then
+finish=unitary_hash.size() in
+let ()=prints("finishing size of unitary_hash: ", finish) in
+for i:finish-start from start do unitary_hash.index(i) od
+
 low_KGB_frac:=2/5
 
 {coh_ind_flag:   default true, means COMPUTE cohomological induction
@@ -133,6 +143,25 @@ else
    od
   fi
  fi
+
+{same as write_param_list@([Param],string) except don't define G at the top of the file}
+{version of write_param_list suited to:
+ start with Param_hash, run FPP_unitary_hash_bottom_layer(one row of xlambdalists) to add a new
+ list of unitary params, all with LKTs in a given R-packet of K-types
+ print out just these new parameters to file}
+set write_param_list_jda([Param] list, string listName)=void:
+if #list=0
+  then prints("set ",listName,"=[Param]:[]")
+else
+  let ()=prints("printing list of size: ", #list) in
+  let G=list[0].real_form then
+  ()=  prints("set Nullp = trivial_group.trivial") then
+  ()=prints("set ",listName,"=[Param]: for i:",#list," do Nullp od") in
+  for p@i in list do
+      prints("void:",listName,"[",i,"]:=parameter(KGB(G,",number(p.x),"),",p.lambda,",",p.nu,")")
+  od
+fi
+
 
 {add one parameter to hash, return false it was already there, true
 if it was actually added}

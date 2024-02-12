@@ -31266,5 +31266,6 @@ void:E7ind[31252]:=parameter(KGB(G_temp,20925),[ 1, 1, 1, 1, 1, 1, 1 ]/1,[ 1, 1,
 void:E7ind[31253]:=parameter(KGB(G_temp,20925),[ 1, 1, 1, 1, 1, 1, 1 ]/1,[ 1, 1, 1, 0, 1, 1, 1 ]/1)
 void:E7ind[31254]:=parameter(KGB(G_temp,20925),[ 1, 1, 1, 1, 1, 1, 1 ]/1,[ 1, 1, 1, 1, 1, 1, 1 ]/1)
 void: for p in E7ind do unitary_hash.match(p) od
+set coh_ind_params=E7ind    {this is the name used by FPP.py}
 coh_ind_flag:= false
 set coh_ind_file_loaded=true
