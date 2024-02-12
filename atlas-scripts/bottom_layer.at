@@ -479,8 +479,8 @@ set min_bottom_elim_factors(Param p, [[(KType,KType)]] LKdata) = bool:
 		   	{then () = prints("twisting derpLj needed at p = ",p, ", j = ",j)}
 		   	then twistxLj = let Genx = KGB_elt_gen(derxLjs[j])
 				      	in for t@i in twistj
-			   	      	   do let () = Genx.torus_factor +:= t
-			      	      	      in KGB_elt(Genx)
+			   	      	   do let () = Genx.torus_factor +:= t {now need to force real}
+			      	      	      in KGB(derLjs[j], KGB_elt(Genx).number)
 			   	      	   od
 		    	then twistpLj = for yLj in twistxLj
 		    	 	      	do parameter(yLj, derpLj.lambda, derpLj.nu)
@@ -568,7 +568,8 @@ set min_bottom_elim_factors(Param p, [[(KType,KType)]] LKdata, KTypePol P) = boo
 		   	then twistxLs = let Genx = KGB_elt_gen(badderxLjs[k])
 				      	in for t@i in twistk
 			   	      	   do let () = Genx.torus_factor +:= t
-			      	      	      in KGB_elt(Genx)
+					      {now need to force real form}
+			      	      	      in KGB(badderLjs[j], KGB_elt(Genx).number)
 			   	      	   od
 		    	then twistbadderpLks = for yLk in twistxLs
 		    	 	      	do parameter(yLk, badderpLj.lambda, badderpLj.nu)
@@ -746,10 +747,12 @@ set bottom_elim_factors(Param p, KGPElt Q, [[(KType,KType)]] LKdata) = bool:
 		   	then twistxLj = let Genx = KGB_elt_gen(derxLjs[j])
 				      	in for t@i in twistj
 			   	      	   do let () = Genx.torus_factor +:= t
-			      	      	      in KGB_elt(Genx)
+					      {need to FORCE elt to have correct real form}
+			      	      	      in KGB(derLjs[j],KGB_elt(Genx).number)
 			   	      	   od
 		    	then twistpLj = for yLj in twistxLj
-		    	 	      	do parameter(yLj, derpLj.lambda, derpLj.nu)
+		    	 	      	do let (,m) = yLj.%
+					   in parameter(yLj, derpLj.lambda, derpLj.nu)
 				    	od
 		    	then m = first(for derqLj in twistpLj
 		    	     	       do K_type_pol(derqLj)[dermuLjs[j]] != 0
@@ -824,7 +827,8 @@ set bottom_elim_factors(Param p, KGPElt Q, [[(KType,KType)]] LKdata, KTypePol P)
 		   	then twistxLs = let Genx = KGB_elt_gen(badderxLjs[k])
 				      	in for t@i in twistk
 			   	      	   do let () = Genx.torus_factor +:= t
-			      	      	      in KGB_elt(Genx)
+					      {need to force real form}
+			      	      	      in KGB(derpLj.real_form, KGB_elt(Genx).number) 
 			   	      	   od
 		    	then twistbadderpLks = for yLk in twistxLs
 		    	 	      	do parameter(yLk, badderpLj.lambda, badderpLj.nu)
