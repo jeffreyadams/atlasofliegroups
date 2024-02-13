@@ -1,4 +1,4 @@
-#!/bin/python3.6
+#!/bin/python
 
 import os, time, getopt,sys, subprocess, glob
 import time,re

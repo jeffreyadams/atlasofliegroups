@@ -21,7 +21,7 @@ cwebx_dir := $(Atlas_root)/cwebx
 sources_subdirs := utilities structure gkmod error io interface
 
 # this variable is used both by g++, and by cweavex needing the trailing slash
-INCLUDE_FLAGS := $(sources_subdirs:%=-I$(sources_dir)/%/)
+INCLUDE_FLAGS := $(sources_subdirs:%=-I$(sources_dir)/%/) -I/u02/jdada11/local/include
 
 CTANGLE := $(cwebx_dir)/ctanglex
 CWEAVE := $(cwebx_dir)/cweavex
@@ -131,7 +131,7 @@ else
 # $ make LDFLAGS="-lreadline.5 -lcurses"
 endif
 
-LDFLAGS := $(rl_libs)
+LDFLAGS := -L/u02/jdada11/local/lib $(rl_libs) 
 
 
 # RULES follow now

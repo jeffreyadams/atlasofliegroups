@@ -49,8 +49,8 @@ Fokko_sources := $(wildcard $(Fokko_dirs:%=sources/%/*.cpp))
 Fokko_objects := $(Fokko_sources:%.cpp=%.o)
 
 # headers are searched in the all directories containing source files
-Fokko_includes := $(addprefix -Isources/,$(Fokko_dirs))
-atlas_includes := $(addprefix -Isources/,$(atlas_dirs))
+Fokko_includes := $(addprefix -Isources/,$(Fokko_dirs)) -I/u02/jdada11/local/include
+atlas_includes := $(addprefix -Isources/,$(atlas_dirs)) -I/u02/jdada11/local/include
 
 # for the interpreter (atlas sans the Atlas library) sources are *.w files
 interpreter_cwebs := $(wildcard sources/interpreter/*.w)
@@ -83,14 +83,14 @@ dependencies := $(Fokko_objects:%.o=%.d)
 # optimizing (oflags)
 # development with debugging (gflags)
 # profiling (pflags), which implies optimization and excludes readline
-nflags := -Wall -DNDEBUG
+nflags := -Wall -DNDEBUG 
 oflags := -Wall -O3 -DNDEBUG
 gflags := -Wall -ggdb
 pflags := -Wall -pg -O3 -DNDEBUG -DNREADLINE
 goflags := -Wall -ggdb -O3
 
 # these flags are necessary for compilation, the -c should not be altered
-CXXFLAGS  = -c $(CXXFLAVOR)
+CXXFLAGS  = -c $(CXXFLAVOR) 
 
 # additional flags specific for Fokko (atlas specifics are in its own Makefile)
 Fokko_flags = $(Fokko_includes)
@@ -135,9 +135,9 @@ endif
 # for readline on the Mac give the command: make rl_libs="-lreadline.5 -lcurses"
 # Any value of LDFLAGS set in the environment is also included in $(LDFLAGS)
 ifdef LDFLAGS
-    LDFLAGS := $(LDFLAGS) $(rl_libs)
+    LDFLAGS := $(LDFLAGS) $(rl_libs) -L/u02/jdada11/local/lib $(rl_libs) 
 else
-    LDFLAGS := $(rl_libs)
+    LDFLAGS := $(rl_libs)  -L/u02/jdada11/local/lib $(rl_libs) 
 endif
 
 ifeq ($(verbose),true)

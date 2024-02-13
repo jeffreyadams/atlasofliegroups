@@ -1,4 +1,4 @@
-#!/bin/python3
+#!/bin/python
 
 import sys, time, datetime, os, getopt, subprocess, gc,re,shutil, math
 import concurrent.futures
@@ -11,7 +11,7 @@ FPP_at_file="FPP.at" #default
 FPP_py_file="FPP.py" #default
 #extra_files=["global_facets_E7.at","coh_ind_E7_to_hash.at","E7except589to15851.at"]
 extra_files=["global_facets_E7.at","coh_ind_E7_to_hash.at"]
-#extra_files=[]
+extra_files=[]
 
 def nice_time(t):
    return(re.sub("\..*","",str(datetime.timedelta(seconds=t))))
@@ -73,15 +73,15 @@ def atlas_compute(i,pid):
    reporting_data=[]
    print("starting Q size: ", main_queue.qsize())
    #add all parameters from coh_ind_params to unitary_hash
-   atlas_cmd=format_cmd("update(unitary_hash,coh_ind_params)\n")
-   proc.stdin.write(atlas_cmd)
-   proc.stdin.flush()
-   atlas_cmd=format_cmd("unitary_hash.size()\n")
-   proc.stdin.write(atlas_cmd)
-   proc.stdin.flush()
-   line = proc.stdout.readline().decode('ascii')  #discard
-   line = proc.stdout.readline().decode('ascii')
-   print("starting size of unitary_hash: (list number ",str(i), ")", line)
+#   atlas_cmd=format_cmd("update(unitary_hash,coh_ind_params)\n")
+#   proc.stdin.write(atlas_cmd)
+#   proc.stdin.flush()
+#   atlas_cmd=format_cmd("unitary_hash.size()\n")
+#   proc.stdin.write(atlas_cmd)
+#   proc.stdin.flush()
+#   line = proc.stdout.readline().decode('ascii')  #discard
+#   line = proc.stdout.readline().decode('ascii')
+#   print("starting size of unitary_hash: (list number ",str(i), ")", line)
    while main_queue.qsize()>0:
 #      print("MAIN LOOP")
       log.write("==================================================================\n")
@@ -97,11 +97,10 @@ def atlas_compute(i,pid):
          list_number=next_queue_entry
          log.write("list_number=" + str(list_number) + "\n")
       else:
-         x=next_entry
+         x=next_queue_entry
          log.write("x=" + str(x) + "\n")
       queue_count+=1
       x_start_time=time.time()
-
 
       #ONLY IF READING AT FILES:
       if read_at_files:
@@ -169,7 +168,6 @@ def atlas_compute(i,pid):
       #DONE ONLY READING AT FILES
       else:
          log.write("Not reading at files\n")
-
       #primary atlas function
       #if xlambdalists_flag: pass 2nd argument = xlambdalists, then 3rd argument is the listnumber
       if xlambdalists_flag:
@@ -179,7 +177,6 @@ def atlas_compute(i,pid):
       #otherwise just need 2nd argument=kgb number
       else:
          atlas_cmd=format_cmd("set list=" + unitary_hash_function + "(" + group + ",xlambdalists,"  + str(list_number ) + ")\n")
-#      print("NOW: atlas_cmd: ", atlas_cmd)
       proc.stdin.write(atlas_cmd)
       proc.stdin.flush()
       newtime=starttime
