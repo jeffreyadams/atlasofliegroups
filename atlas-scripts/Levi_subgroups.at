@@ -51,8 +51,8 @@ set standard_Levi_conjugacy_representatives (RootDatum rd) = [ [int] ]:
       in for subset in list
 	 do let rho2=dominant(rd,two_rho(rd,subset))
 	 in if none(#rho2s,(int i)bool: rho2s[i]=rho2)
-	    then rho2s#:=rho2 { now we know |rho2|}; [subset] { contribute }
-	    else [] { |rho2| was already present, contribute nothing }
+	    do rho2s#:=rho2 { now we know |rho2|}; subset { contribute }
+	    { else |rho2| was already present, contribute nothing }
 	    fi
 	 od.## { wrap up contributing standard Levis as result |reps_by_rho| }
    , r = rd.semisimple_rank
@@ -140,8 +140,8 @@ set rho_stabiliser_orbit (RootDatum rd, [int] standard_Levi) = orbit_data:
 	    do let L = [int]: decode(code) in
 	       for alpha@k in rho_stabiliser.simple_roots
 	       do let M=act(k,L) in
-	          if present(stack~[1],M) or present(stack~[0],M)
-		  then [] else [(M,root_reflection(rd,alpha)*w)]
+	          if not (present(stack~[1],M) or present(stack~[0],M))
+		  do (M,root_reflection(rd,alpha)*w)
 		  fi
 	       od.##
 	    od.##

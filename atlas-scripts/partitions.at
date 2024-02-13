@@ -26,11 +26,10 @@ set rec_fun compositions_le (int limit, int n) = [[int]]:
 { close set |S| under operation of adding |a|, up to limit |m| }
 set multi_add (int a, [int] S, int m) = [int]:
 (  assert(>a,"Positivity fails")
-;  let bit=null(m+1), i=0
-   then most = for s in S do bit[s]:=1 od
-             ; for i:m-a+1 do if =bit[i] then [] else bit[i+a]:=1; [i] fi od.##
-   in most ## { |most| of the result is ready, get |a| more values passively }
-      for i: a from m-a+1 do if=bit[i] then [] else [i] fi od.##
+;  let bits = S.to_bitset
+   then pat = bits, mult=[a].to_bitset, mask = [m+1].to_bitset-1
+in while !=(pat:=AND(pat*mult,mask)) do bits:=OR(bits,pat) od
+;  bits.set_bit_positions
 )
 
 { Given a set |S| of position numbers and a maximum |m|, find all sums |s| of
@@ -45,7 +44,7 @@ set inter_sums ([int] S, int m) = [int]:
      for r in result
      do if r+r>m then break fi
      ;  while r+result[e]>m do e-:=1 od
-     ;  if r+result[e]=m then [r] else [] fi
+     ;  if r+result[e]=m do r fi
      od.##
 ; result ##
   for r in if 2*result~[0]=m then result[:1~] else result fi ~do m-r od

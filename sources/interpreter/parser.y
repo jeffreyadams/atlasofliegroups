@@ -59,8 +59,8 @@
 %locations
 %parse-param { atlas::interpreter::expr_p* parsed_expr}
 %parse-param { int* verbosity }
-%pure-parser
-%error-verbose
+%define api.pure
+%define parse.error verbose
 
 %token QUIT SET LET IN BEGIN END IF THEN ELSE ELIF FI AND OR NOT
 %token NEXT DO DONT FROM DOWNTO WHILE FOR OD CASE ESAC REC_FUN
@@ -81,6 +81,7 @@
 %type <expression> not_expr formula operand secondary primary unit selector
 %type <expression> subscription slice comprim assignable_subsn ident_expr
 %type <expression> do_expr do_lettail do_iftail iftail
+%type <expression> iffor_loop if_loop for_loop
 %type <ini_form> formula_start
 %type <oper> operator
 %type <id_code> id_op
@@ -89,6 +90,7 @@
 %destructor { destroy_expr ($$); } and_expr not_expr formula operand secondary
 %destructor { destroy_expr ($$); } primary comprim unit selector subscription
 %destructor { destroy_expr ($$); } slice assignable_subsn ident_expr
+%destructor { destroy_expr ($$); } iffor_loop if_loop for_loop
 %destructor { destroy_expr ($$); } do_expr do_lettail do_iftail iftail
 %destructor { destroy_formula($$); } formula_start
 %destructor { delete $$; } INT STRING
@@ -360,26 +362,7 @@ unit    : INT { $$ = make_int_denotation($1,@$); }
 	  { $$=make_discrimination_node($2,$4,@$); }
 
 	| WHILE do_expr tilde_opt OD { $$=make_while_node($2,2*$3,@$); }
-	| FOR pattern_opt IN expr tilde_opt DO expr tilde_opt OD
-	  { struct raw_id_pat p,x; p.kind=0x2; x.kind=0x0;
-	    p.sublist=make_pattern_node(make_pattern_node(nullptr,$2),x);
-	    $$=make_for_node(p,$4,$7,$5+2*$8,@$);
-	  }
-	| FOR pattern_opt '@' IDENT IN expr tilde_opt DO expr tilde_opt OD
-	  { struct raw_id_pat p,i; p.kind=0x2; i.kind=0x1; i.name=$4;
-	    p.sublist=make_pattern_node(make_pattern_node(nullptr,$2),i);
-	    $$=make_for_node(p,$6,$9,$7+2*$10,@$);
-	  }
-	| FOR IDENT ':' expr tilde_opt DO expr tilde_opt OD
-	  { $$=make_cfor_node($2,$4,wrap_tuple_display(nullptr,@$)
-	                     ,$7,$5+2*$8,@$); }
-	| FOR IDENT ':' expr FROM expr tilde_opt DO expr tilde_opt OD
-	  { $$=make_cfor_node($2,$4,$6,$9,$7+2*$10,@$); }
-	| FOR ':' expr DO expr tilde_opt OD
-	  { $$=make_cfor_node(-1,$3,wrap_tuple_display(nullptr,@$)
-	                     ,$5,2*$6+4,@$); }
-	| FOR IDENT ':' expr DOWNTO expr DO expr OD
-	  { $$=make_cfor_node($2,$4,$6,$8,1,@$); }
+	| iffor_loop
 	| '(' expr ')'		       { $$=$2; }
 	| BEGIN expr END	       { $$=$2; }
 	| '[' commalist_opt ']'
@@ -424,6 +407,12 @@ commabarlist: commalist '|' commalist
 	| commabarlist '|' commalist
 	{ $$=make_exprlist_node
 	    (wrap_list_display(reverse_expr_list($3),@$),$1); }
+;
+
+iftail	: expr THEN expr ELSE expr FI { $$=make_conditional_node($1,$3,$5,@$); }
+	| expr THEN expr ELIF iftail { $$=make_conditional_node($1,$3,$5,@$); }
+	| expr THEN expr FI
+	  { $$=make_conditional_node($1,$3,wrap_tuple_display(nullptr,@$),@$); }
 ;
 
 caselist: IDENT closed_pattern  ':' expr { $$=make_case_node($1,$2,$4); }
@@ -514,6 +503,76 @@ do_caselist: IDENT closed_pattern  ':' do_expr { $$=make_case_node($1,$2,$4); }
 	  }
 ;
 
+iffor_loop: if_loop | for_loop
+;
+
+if_loop: IF expr DO expr FI
+	{
+	  expr_p singleton = wrap_list_display
+	    (make_exprlist_node($4,raw_expr_list(nullptr)),@$);
+	  expr_p nilton = wrap_list_display(raw_expr_list(nullptr),@$);
+	  $$=make_conditional_node($2,singleton,nilton,@$);
+	}
+	| IF expr iffor_loop FI
+	{
+	  expr_p nilton = wrap_list_display(raw_expr_list(nullptr),@$);
+	  $$=make_conditional_node($2,$3,nilton,@$);
+	}
+;
+
+for_loop: FOR pattern_opt IN expr tilde_opt DO expr tilde_opt OD
+	  { struct raw_id_pat p,x; p.kind=0x2; x.kind=0x0;
+	    p.sublist=make_pattern_node(make_pattern_node(nullptr,$2),x);
+	    $$=make_for_node(p,$4,$7,$5+2*$8,@$);
+	  }
+	| FOR pattern_opt IN expr tilde_opt iffor_loop tilde_opt OD
+	  { struct raw_id_pat p,x; p.kind=0x2; x.kind=0x0;
+	    p.sublist=make_pattern_node(make_pattern_node(nullptr,$2),x);
+	    expr_p lp = make_for_node(p,$4,$6,$5+2*$7,@$);
+	    $$ = make_unary_call(lookup_identifier("## "),lp,@$,@1);
+	  }
+	| FOR pattern_opt '@' IDENT IN expr tilde_opt DO expr tilde_opt OD
+	  { struct raw_id_pat p,i; p.kind=0x2; i.kind=0x1; i.name=$4;
+	    p.sublist=make_pattern_node(make_pattern_node(nullptr,$2),i);
+	    $$=make_for_node(p,$6,$9,$7+2*$10,@$);
+	  }
+	| FOR pattern_opt '@' IDENT IN expr tilde_opt iffor_loop tilde_opt OD
+	  { struct raw_id_pat p,i; p.kind=0x2; i.kind=0x1; i.name=$4;
+	    p.sublist=make_pattern_node(make_pattern_node(nullptr,$2),i);
+	    expr_p lp = make_for_node(p,$6,$8,$7+2*$9,@$);
+	    $$ = make_unary_call(lookup_identifier("## "),lp,@$,@1);
+	  }
+	| FOR IDENT ':' expr tilde_opt DO expr tilde_opt OD
+	  { $$ = make_cfor_node
+	      ($2,$4,wrap_tuple_display(nullptr,@$),$7,$5+2*$8,@$);
+	  }
+	| FOR IDENT ':' expr tilde_opt iffor_loop tilde_opt OD
+	  { expr_p lp = make_cfor_node
+	      ($2,$4,wrap_tuple_display(nullptr,@$),$6,$5+2*$7,@$);
+	    $$ = make_unary_call(lookup_identifier("## "),lp,@$,@1);
+	  }
+	| FOR IDENT ':' expr FROM expr tilde_opt DO expr tilde_opt OD
+	  { $$ = make_cfor_node($2,$4,$6,$9,$7+2*$10,@$); }
+	| FOR IDENT ':' expr FROM expr tilde_opt iffor_loop tilde_opt OD
+	  { expr_p lp = make_cfor_node($2,$4,$6,$8,$7+2*$9,@$);
+	    $$ = make_unary_call(lookup_identifier("## "),lp,@$,@1);
+	  }
+	| FOR ':' expr DO expr tilde_opt OD
+	  { $$ = make_cfor_node
+	      (-1,$3,wrap_tuple_display(nullptr,@$),$5,2*$6+4,@$);
+	  }
+	| FOR ':' expr iffor_loop tilde_opt OD
+	  { expr_p lp  = make_cfor_node
+	      (-1,$3,wrap_tuple_display(nullptr,@$),$4,2*$5+4,@$);
+	    $$ = make_unary_call(lookup_identifier("## "),lp,@$,@1);
+	  }
+	| FOR IDENT ':' expr DOWNTO expr DO expr OD
+	  { $$=make_cfor_node($2,$4,$6,$8,1,@$); }
+	| FOR IDENT ':' expr DOWNTO expr iffor_loop OD
+	  { expr_p lp = make_cfor_node($2,$4,$6,$7,1,@$);
+	    $$ = make_unary_call(lookup_identifier("## "),lp,@$,@1);
+	  }
+;
 
 
 assignable_subsn:
@@ -644,12 +703,6 @@ slice   : IDENT '[' expr_opt tilde_opt ':' expr_opt tilde_opt ']'
 	    $$ =
 	      make_unary_call(lookup_identifier("matrix slicer"),arg_tup,@$,@2);
 	  }
-;
-
-iftail	: expr THEN expr ELSE expr FI { $$=make_conditional_node($1,$3,$5,@$); }
-	| expr THEN expr ELIF iftail { $$=make_conditional_node($1,$3,$5,@$); }
-	| expr THEN expr FI
-	  { $$=make_conditional_node($1,$3,wrap_tuple_display(nullptr,@$),@$); }
 ;
 
 pattern : IDENT		    { $$.kind=0x1; $$.name=$1; }

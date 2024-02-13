@@ -15,7 +15,7 @@ integers such that \sum a_i weights_i < x}
 
 
 set tuples_weighted(rat x, ratvec weights) = [vec]:
-let t=min(for w in weights do floor(w) od) then
+let t=min(weights) then
 n=#weights then
 tuples=tuples(x/t,n) in
 ##(for X in tuples do if X*weights<x then [X] else [] fi od)

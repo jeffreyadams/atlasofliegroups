@@ -59,172 +59,195 @@ set spherical_xs(RealForm G) = [KGBElt]:
 	  fi
        od.##
 
-{need to allow also EDGE barycenters for edges reversed by x}
+set all_lambda_differential_0(mat theta) = [vec]:
+    let BLD0 = basis_lambda_differential_0(theta)
+    in for v in all_0_1_vecs(n_columns(BLD0))
+       do BLD0*v
+       od
+
+set_type Lvd_Perm2_mapAct = (VertexData Lvd, PermOrderTwo Perm2, vec mapAct)
+
+{Record for each inner class a list of some involutions in inner class; and for each such involution,
+ some possible lambdas; and for each such lambda, a list of (local vertex data, Perm2, mapAct)}
+set_type
+[Lvd_Perm2_mapAct_table =
+
+( (->int) inner_class_size {number of inner classes included}
+  , ( -> vec) ic_vlist_size {for each inner class, the number of FPP-vertices}
+  , ( -> ) clear
+  , ( -> vec) involution_size {for each inner class, number of involutions so far considered}
+  , ( -> [vec]) lamthlam_size {for each inner class and involution, number of d_lambdas (actually lambda+theta*lambda)
+      	 		       so far considered}
+  , ( -> [[vec]]) Lvd_list_size {for each inner class and involution and d_lambda, size of Lvd.list}
+  , (InnerClass -> VertexData) FPP_vertex_data {one for each inner class}
+  , (InnerClass -> (vec -> int)) flippable_edge_lookup
+  , (InnerClass -> [ratvec]) FPP_local_vertices {one for each inner class}
+  , ((InnerClass, mat) -> [vec]) lamthlams {for each involution, list of allowed lambda+theta_lambda}
+  , ((InnerClass, mat) -> [ratvec]) lambda0s {for each involution, list of allowed lambda mod twists}
+  , ((InnerClass, mat) -> [(ratvec, Lvd_Perm2_mapAct)]) LPm_entries {allowed lambda mod twists, corr entry}
+    		       	  	    {like output of old FPP_lambdas_big_new}
+  , ((InnerClass, mat, vec) -> VertexData) Lvd {local vertex data, one for each theta and lambda+theta*lambda}
+  , ((InnerClass, mat, vec) -> Lvd_Perm2_mapAct) LPm_entry {one for each theta and lambda+theta*lambda}
+{  , ((InnerClass, mat, vec) -> ) append {just compute, don't report LPm entry}}
+  , (int -> InnerClass) inner_class_index
+  , (int -> VertexData) vd_index {vertex data for inner class}
+  , ((int,int,int) -> Lvd_Perm2_mapAct) Lvd_Perm2_mapAct_index {one for each inner class, involution,
+    		      					       lambda + theta*lambda}
+)
+]
+
+set make_Lvd_Perm2_mapAct_table() = Lvd_Perm2_mapAct_table:
+(   let inner_class_hash = make_InnerClass_hash()
+    then inv_hashes = [mat_hash]: [] {one for each inner class}
+    then vertex_datas = [VertexData]: [] {one for each inner class}
+    then FELs = [(vec->int)]: [] {one for each inner class}
+    then FPP_local_verts = [[ratvec]]: [] {one list for each inner class}
+    then lamthlam_hashess = [[vec_hash]]: [] {one for each inner class and involution}
+    	 {entries are vecs of size ic.rank: lamba+theta*lambda, for a
+	 	  certain choice of lambda (defined up to twist and equivalence}
+    then entries = [[[Lvd_Perm2_mapAct]]]: [] {one list for each involution and lamthlam}
+    then clear() = void:
+    	 let () = inner_class_hash.clear()
+	 then () = inv_hashes := []
+	 then () = vertex_datas := []
+	 then () = FELs := []
+	 then () = FPP_local_verts := []
+	 then () = lamthlam_hashess := []
+	 then () = entries := []
+	 in ()
+    then add_inner_class(InnerClass ic) = int:
+    	 let I = inner_class_hash.size()
+	 then i = inner_class_hash.match(ic)
+    	 then () = if i = I {haven't seen this inner class before}
+	      	   then inv_hashes := (inv_hashes next inv_hashes:=[])#make_mat_hash();
+	    	   	vertex_datas := (vertex_datas next vertex_datas := [])#FPP_vertex_data(ic);
+	    	   	FELs := (FELs next FELs:=[])# FPP_flippable_edge_lookup(ic);
+	    	   	FPP_local_verts := (FPP_local_verts next FPP_local_verts:=[])
+		     	#FPP_local_vertices(ic, vertex_datas[i].list, FELs[i]);
+	    	   	lamthlam_hashess := (lamthlam_hashess next lamthlam_hashess := [])#[];
+	    	   	entries := (entries next entries :=[])# []
+	    	   fi
+	  in i
+    then add_involution(InnerClass ic, mat theta) = (int, int):
+    	 let i = add_inner_class(ic)
+	 then J = inv_hashes[i].size()
+      	 then j = inv_hashes[i].match(theta)
+     	 then () = if j = J {haven't seen this involution before}
+      	      	   then lamthlam_hashess[i] := (lamthlam_hashess[i] next lamthlam_hashess[i] := [])
+		    	 			    # make_vec_hash();
+		   	entries[i] := (entries[i] next entries[i] := []) # []
+		   fi
+	 in (i, j)
+    then add_lamthlam_hash(InnerClass ic, mat theta) = (int, int):
+      	 let (i,j) = add_involution(ic,theta)
+      	 then th1 = 1+theta, verts = FPP_local_verts[i]
+      	 then cands = for v in verts
+      	   	      do if ((th1*v).denom = 1) then [ratvec_as_vec(th1*v)]
+		      	 else []
+		      	 fi
+		      od.##.no_reps
+      	 then () = for lamthlam in cands
+      	      	   do case vec_solve(th1,lamthlam - th1*ic.rho)
+                    | else () {[(ratvec,VertexData,PermOrderTwo,vec)]: []}
+                    | solution(lr):
+                      let k = lamthlam_hashess[i][j].match(lamthlam)
+		      then tempi = entries[i]
+                      then () = if k = #tempi[j]
+                                then tempi[j]:=
+                                (tempi[j] next tempi[j]:=[])
+                                              #localFD_Lvd2(th1-1,lr+ic.rho,vertex_datas[i],FELs[i])
+                                fi
+		      then () = entries[i]:= tempi
+		      in ()
+                      esac
+		   od
+         in (i, j)
+    in
+    ( ( -> int): {inner_class_size} @int: inner_class_hash.size()
+    , ( -> vec): {ic_vlist_size} @vec: for vd in vertex_datas do #vd.list od
+    , ( -> ): {clear} clear
+    , ( -> vec): {involution_size} @vec: for inv_hash in inv_hashes do inv_hash.size() od
+    , ( -> [vec]): {lamthlam_size} @[vec]:
+      for lamthlam_hashes in lamthlam_hashess {ith inner class}
+      do for lamthlam_hash in lamthlam_hashes    {jth involution}
+      	 do lamthlam_hash.size()
+	 od
+      od
+    , ( -> [[vec]]): {Lvd_list_size} @[[vec]]:
+      for i: #entries
+      do for j: #entries[i]
+	 do for k: #entries[i][j]
+	    do #(entries[i][j][k].Lvd.list)
+	    od {vec for involution}
+	 od {[vec] for inner class}
+      od
+    , (InnerClass -> VertexData): {FPP_vertex_data}  (InnerClass ic) VertexData:
+      let i = add_inner_class(ic)
+      in vertex_datas[i]
+    , (InnerClass -> (vec -> int)): {flippable_edge_lookup} (InnerClass ic) (vec -> int):
+      let i = add_inner_class(ic)
+      in FELs[i]
+    , (InnerClass -> [ratvec]): {FPP_local_vertices} (InnerClass ic)  [ratvec]:
+      let i = add_inner_class(ic)
+       in FPP_local_verts[i]
+    , ((InnerClass, mat) -> [vec]): {lamthlams} (InnerClass ic, mat theta) [vec]:
+      let (i,j) = add_lamthlam_hash(ic,theta)
+      in for k:lamthlam_hashess[i][j].size() do lamthlam_hashess[i][j].index(k)[:ic.rank] od
+    , ((InnerClass, mat) -> [ratvec]): {lambda0s} (InnerClass ic, mat theta) [ratvec]:
+      let (i,j) = add_lamthlam_hash(ic,theta)
+      in for k:lamthlam_hashess[i][j].size()
+      	 do let lamthlam = lamthlam_hashess[i][j].index(k), th1 = 1+theta
+	    then lr = required_solution(th1,lamthlam - ratvec_as_vec(th1*ic.rho))
+      	    in lr+ic.rho
+	 od
+    , ((InnerClass, mat) -> [(ratvec, Lvd_Perm2_mapAct)]): {LPm_entries} (InnerClass ic, mat theta) [(ratvec, Lvd_Perm2_mapAct)]:
+      let (i,j) = add_lamthlam_hash(ic,theta), th1 = theta+1
+      in for k:lamthlam_hashess[i][j].size()
+      	 do let lamthlam = lamthlam_hashess[i][j].index(k)
+	    then lr = required_solution(th1,lamthlam - ratvec_as_vec(th1*ic.rho))
+	    in (lr+ic.rho, entries[i][j][k])
+	 od
+    , ((InnerClass, mat, vec) -> VertexData): {Lvd} (InnerClass ic, mat theta, vec lamthlam) VertexData:
+      let (i,j) = add_lamthlam_hash(ic,theta), th1 = theta+1
+      then k = lamthlam_hashess[i][j].lookup(lamthlam)
+      in entries[i][j][k].Lvd
+    , ((InnerClass, mat, vec) -> Lvd_Perm2_mapAct): {LPm_entry} (InnerClass ic, mat theta, vec lamthlam) Lvd_Perm2_mapAct:
+      let (i,j) = add_lamthlam_hash(ic,theta), th1 = theta+1
+      then k = lamthlam_hashess[i][j].lookup(lamthlam)
+      in entries[i][j][k]
+    , (int -> InnerClass): {inner_class_index} (int i) InnerClass: inner_class_hash.index(i)
+    , (int -> VertexData): {vd_index} (int i) VertexData: vertex_datas[i]
+    , ((int,int,int) -> Lvd_Perm2_mapAct): {Lvd_Perm2_mapAct_index} (int i, int j, int k): Lvd_Perm2_mapAct: entries[i][j][k]
+)
+)
+
+set LPm_table = make_Lvd_Perm2_mapAct_table()
+
+{this is the list of all possible lambda + theta*lambda for ic and theta}
+set FPP_lamthlams(InnerClass ic, mat theta) = [vec]:
+    LPm_table.lamthlams(ic,theta)
+
+{list of lambdas up to twist by differential zero}
+set FPP_lambda0s(InnerClass ic, mat theta) = [ratvec]:
+    LPm_table.lambda0s(ic, theta)
+
 set FPP_lambdas(KGBElt x) = [ratvec]:
-    let G=x.real_form, twists = all_lambda_differential_0(x)
-    then zeroPol = ParamPol: 0*G.trivial
-    then rho = G.rho, verts = FPP_local_vertices(G)
-    then th1 = x.involution + 1
-    then lamthlams = [vec]:
-    	 for v in verts
-    	 do if ((th1*v).denom = 1) then [ratvec_as_vec(th1*v)]
-	    else []
-	    fi
-	 od.##.no_reps
-    then cands = [ratvec]:
-    	 for lamthlam in lamthlams
-    	 do case vec_solve(th1,lamthlam - th1*rho)
-	    | else [ratvec]: []
-	    | solution(lr):
-	      let lambda = rho + lr
-	      in for lambda0 in twists do lambda + lambda0 od
-	    esac
-	  od.##
-    in for lambda in cands
-       do let p = parameter(x,lambda,0*lambda)
-       	  then lambdaNorm = p.lambda
-	  in if 1*p = zeroPol
-       	     then []
-	     else [lambdaNorm]
+    let lambda0s = FPP_lambda0s(x.inner_class, x.involution), G = x.real_form
+    then twists = all_lambda_differential_0(x.involution)
+    then zeroPol = null_module(G), zeroNu = null(G.rank)/1
+    in for lambda0 in lambda0s
+       do if 1*parameter(x, lambda0, zeroNu) != zeroPol
+       	  then for tau in twists
+	       do parameter(x, lambda0+tau, zeroNu).lambda
+	       od
+	  else []
 	  fi
        od.##
 
-{set all_FPP_vertices({RootDatum}RealForm G) = [ratvec]:
-    let factors = for S in simple_factors(G)
-    		  do FPP_local_vertices(G){FPP_vertices(S,-1)}
-		  od
-    in case #factors
-       in [ratvec:null(rank(G))/1],
-       factors[0],
-       for v in factors[0]
-       do for w in factors[1]
-       	  do v+w
-	  od
-       od.##
-       esac}
-
-{each term is a candidate lambda0 (mod comp gp char twists) and the
-corresponding Lvd, Perm, mapAct, LF, with LF the 0 and 1-diml local facets}
-set FPP_lambdas_big(KGBElt x, VertexData vd, mat_hash inv_hash, [vec_hash]
-    dlambda_hashes, [[(VertexData, vec, vec,[[FacetVertsIndex]])]] LvdEtAlia) =
-    		    [(ratvec, VertexData, vec, vec,[[FacetVertsIndex]])]:
-    let G=x.real_form
-    then zeroPol = ParamPol: 0*G.trivial, theta = x.involution
-    then i = inv_hash.lookup(theta)
-    then rho = G.rho, verts = FPP_local_vertices(G)
-    then th1 = theta + 1
-    then lamthlams = [vec]:
-    	 for v in verts
-    	 do if ((th1*v).denom = 1) then [ratvec_as_vec(th1*v)]
-	    else []
-	    fi
-	 od.##.no_reps
-    in [(ratvec, VertexData, vec, vec, [[FacetVertsIndex]])]:
-    	 for lamthlam in lamthlams
-    	 do case vec_solve(th1,lamthlam - th1*rho)
-	    | else [(ratvec,VertexData,vec,vec,[[FacetVertsIndex]])]: []
-	    | solution(lr):
-	      let lambda0 = rho + lr
-	      then dlambda0 = ratvec_as_vec(lambda0 + theta*lambda0)
-    	      then j = dlambda_hashes[i].match(dlambda0)
-              then () = if j = #LvdEtAlia[i]
-                      	then LvdEtAlia[i]:= (LvdEtAlia[i] next LvdEtAlia[i]:=[])#localFD_01(x,lambda0,vd)
-                      	{LvdEtAlia[i]:=LvdEtAlia[i]#localFD_01(x,lambda0,vd)}
-                      	fi
-              then (Lvd, Perm, mapAct,LF) = LvdEtAlia[i][j]
-	      in if #Lvd.list > 0 and
-	      	    1*parameter(x,lambda0,0*lambda0) != zeroPol
-		 then [(lambda0, Lvd, Perm, mapAct,LF)]
-	      	 else []
-		 fi
-	      esac
-	  od.##
-
-{each term is a candidate lambda0 (mod comp gp char twists) and the
-corresponding (Lvd, Perm, mapAct). If x is involution #i (in inv_hash), then ith term
-in Lvd_Perm_mapAct is list of (Lvd,Perm,mapAct) for various dlambda (indexed by
-dlambda_hashes[i])}
-set FPP_lambdas_big_new(KGBElt x, VertexData vd, mat_hash inv_hash, [vec_hash]
-    dlambda_hashes, [[(VertexData, PermOrderTwo, vec)]] Lvd_Perm2_mapAct,
-    (vec->int) FEL) =[(ratvec, VertexData, PermOrderTwo, vec)]:
-    let G=x.real_form
-    then zeroPol = ParamPol: 0*G.trivial, theta = x.involution
-    then i = inv_hash.lookup(theta)
-    then rho = G.rho, verts = FPP_local_vertices(G)
-    then th1 = theta + 1
-    then lamthlams = [vec]:
-    	 for v in verts
-    	 do if ((th1*v).denom = 1) then [ratvec_as_vec(th1*v)]
-	    else []
-	    fi
-	 od.##.no_reps
-    in [(ratvec, VertexData, PermOrderTwo, vec)]:
-    	 for lamthlam in lamthlams
-    	 do case vec_solve(th1,lamthlam - th1*rho)
-	    | else [(ratvec,VertexData,PermOrderTwo,vec)]: []
-	    | solution(lr):
-	      let lambda0 = rho + lr
-	      then dlambda0 = ratvec_as_vec(lambda0 + theta*lambda0)
-    	      then j = dlambda_hashes[i].match(dlambda0)
-              then () = if j = #Lvd_Perm2_mapAct[i]
-                      	then
-			Lvd_Perm2_mapAct[i]:= (Lvd_Perm2_mapAct[i] next Lvd_Perm2_mapAct[i]:=[])
-					      #localFD_Lvd2(x,lambda0,vd,FEL)
-                      	fi
-              then (Lvd, Perm2, mapAct) = Lvd_Perm2_mapAct[i][j]
-	      in if #Lvd.list > 0 and
-	      	    1*parameter(x,lambda0,0*lambda0) != zeroPol
-		 then [(lambda0, Lvd, Perm2, mapAct)]
-	      	 else []
-		 fi
-	      esac
-	  od.##
-
-{take a list of x, get for each x a list of the output data above}
-set FPP_lambdas_big_new([KGBElt] xs, VertexData vd, (vec->int) FEL) =
-    		    [[(ratvec, VertexData, PermOrderTwo, vec)]]:
-    let inv_hash = make_mat_hash()
-then () = for x in xs do inv_hash.match(x.involution) od
-    then NumInvs = inv_hash.size()
-    then dlambda_hashes = for i:NumInvs do make_vec_hash() od
-    then Lvd_Perm2_mapAct = for i:NumInvs do [(VertexData,PermOrderTwo,vec)]:[] od
-    in for x in xs
-       do FPP_lambdas_big_new(x, vd, inv_hash, dlambda_hashes, Lvd_Perm2_mapAct, FEL)
-       od
-
-{each term is a candidate lambda0 (mod comp gp char twists) and the
-corresponding Lvd, Perm, mapAct, LF, with LF the 0 and 1-diml local facets}
-set FPP_lambdas_big_global(KGBElt x, VertexData vd,
-    [[FacetVertsIndex]] global_facets) =
-    	[(ratvec, VertexData, vec, vec,[[FacetVertsIndex]])]:
-    let G=x.real_form
-    then zeroPol = ParamPol: 0*G.trivial, theta = x.involution
-    then rho = G.rho, verts = FPP_local_vertices(G)
-    then th1 = theta + 1
-    then lamthlams = [vec]:
-    	 for v in verts
-    	 do if ((th1*v).denom = 1) then [ratvec_as_vec(th1*v)]
-	    else []
-	    fi
-	 od.##.no_reps
-    in [(ratvec, VertexData, vec, vec, [[FacetVertsIndex]])]:
-    	 for lamthlam in lamthlams
-    	 do case vec_solve(th1,lamthlam - th1*rho)
-	    | else [(ratvec,VertexData,vec,vec,[[FacetVertsIndex]])]: []
-	    | solution(lr):
-	      let lambda0 = rho + lr
-	      then twists = all_lambda_differential_0(x)
-	      in for twist in twists
-	      	 do let lambda = lambda0 + twist
-		    then (Lvd, Perm, mapAct) = localFD_Lvd(x,lambda0+twist,vd)
-		    then LF = localFD_1Dirac(x, lambda, Lvd, Perm,
-		    	     mapAct, global_facets)
-		    in if #LF[0] > 0 then [(lambda, Lvd, Perm, mapAct, LF)]
-		       else []
-		       fi
-		 od.##
-	      esac
-	  od.##
+set FPP_lambdas([KGBElt] xs) = [[ratvec]]:
+    for x in xs
+    do FPP_lambdas(x)
+    od
 
 {meant to hold barycenters of unitary facets}
 set unitary_hash = make_Param_hash()
@@ -248,42 +271,24 @@ set DSFLevis(RealForm G) = [RealForm]:
 set DSFLevi_hash(RealForm G) = RealForm_hash:
     make_RealForm_hash(DSFLevis(G), hash_code@(RealForm,int))
 
-{this version makes an involution_hash; for each involution, a list dlambda_hashes of
-possible dlambda; and a list Lvd_Perm_mapActs (one for each dlambda) of
-(Lvd, Perm, mapAct)}
+{uses LPm_table to keep track of local facet info}
 set FPP_unitary_hash_general([(KGBElt,ratvec)] xlambdas, Param_hash Uhash,
     Param_hash Uparamhash, (KGBElt, ratvec,VertexData,VertexData,[[FacetVertsIndex]],
     KTypePol_hash, Param_hash->[Param])
     local) = void:
     if #xlambdas = 0 then return ()
-    else let inv_hash = make_mat_hash()
-    then (x,) = xlambdas[0]
+    else let (x,) = xlambdas[0]
     then G = x.real_form
-    then vd = FPP_vertex_data(G), start = elapsed_ms()
+    then {vd = FPP_vertex_data(G),} start = elapsed_ms()
     then () = unitaryTime := 0
     then () = prepDirac(G)
-    then FEL = FPP_flippable_edge_lookup(G)
-    {ELs = edge_list_lookups(G) {one minute, 250 mb for E8_s}}
-    then () = for (x,lambda) in xlambdas do inv_hash.match(x.involution) od
     then xnums = for (x,) in xlambdas do let (,m) = %x in m od
-    then lambdas = for (,lambda) in xlambdas do lambda od
-    then NumInvs = inv_hash.size(), pol_hash = make_KTypePol_hash()
-    then dlambda_hashes = for i:NumInvs do make_vec_hash() od
-    then Lvd_Perm2_mapAct = for i:NumInvs do [(VertexData,PermOrderTwo,vec)]:[] od
-    {now compute all the local vertex data}
+    then lambdas = for (,lambda) in xlambdas do lambda od, pol_hash = make_KTypePol_hash()
     then old_facet_verbose = facet_verbose, old_time_verbose = time_verbose,
     	 old_test_verbose = test_verbose, old_test_slightly_verbose = test_slightly_verbose
-    then () = for (x,lambda) in xlambdas
-    	      do let theta = x.involution
-	      	 then i = inv_hash.lookup(theta)
-		 then dlambda = ratvec_as_vec(lambda + theta*lambda)
-    	      	 then j = dlambda_hashes[i].match(dlambda)
-              	 then () =  if j = #Lvd_Perm2_mapAct[i]
-                      	    then Lvd_Perm2_mapAct[i]:= (Lvd_Perm2_mapAct[i] next Lvd_Perm2_mapAct[i]:=[])
-					      #localFD_Lvd2(x,lambda,vd,FEL)
-                      	    fi
-		in ()
-	      od
+    then LPmss = for (x,lambda) in xlambdas
+    	       	 do LPm_table.LPm_entry(G,x.involution, ratvec_as_vec(lambda+x.involution*lambda))
+              	 od
     then () = facet_verbose:=false; time_verbose:=false; test_verbose:=false; test_slightly_verbose:=false
     then () = if unip_flag
     	      then unipotents_to_hash(G,Uhash)
@@ -295,10 +300,11 @@ set FPP_unitary_hash_general([(KGBElt,ratvec)] xlambdas, Param_hash Uhash,
     then answerCards = [int]: null(#xlambdas) {number of unitary parameters found}
     then oldUhash = Uhash.size()
     {then () = adjust_global_top(G)} {done internally by low_FPP_facets}
-    then () = if #global_facets = 0 or #global_facets[0] != #vd.list
+    then () = if #global_facets = 0 or #global_facets[0] != LPm_table.FPP_vertex_data(G).list.#
     	      then global_facets := low_FPP_facets(G)
 	      fi
-    then () = if by_zero_flag and (#global_facets_by_zero = 0 or #global_facets_by_zero[0] != #vd.list)
+    then () = if by_zero_flag and (#global_facets_by_zero = 0 or
+    	      	 #global_facets_by_zero[0] != LPm_table.FPP_vertex_data(G).list.#)
     	      then global_facets_by_zero := low_FPP_facets_by_zero(global_facets)
 	      fi
     then current = elapsed_ms(), oldUhash = Uhash.size(), currentUhash = Uhash.size(), formerUhash = Uhash.size(),
@@ -307,9 +313,7 @@ set FPP_unitary_hash_general([(KGBElt,ratvec)] xlambdas, Param_hash Uhash,
     	      do {xlambdas} 
 	 	 let start = elapsed_ms(), startUhash = Uhash.size(),
 		     		   startUcounter = unitary_test_counter.use_count(), theta = x.involution
-		 then i = inv_hash.lookup(theta)
-		 then j = dlambda_hashes[i].lookup(ratvec_as_vec(lambda+theta*lambda))
-		 then (Lvd, Perm2, mapAct) = Lvd_Perm2_mapAct[i][j]
+		 then (Lvd, Perm2, mapAct) = LPmss[k]
 		 then LF = if by_zero_flag
 		      	   then localFD_1Dirac2_by_zero(x, lambda, Lvd, Perm2, mapAct, global_facets_by_zero)
 			   else localFD_1Dirac2(x, lambda, Lvd, Perm2, mapAct, global_facets)
@@ -319,7 +323,7 @@ set FPP_unitary_hash_general([(KGBElt,ratvec)] xlambdas, Param_hash Uhash,
 			  then facet_verbose := old_facet_verbose; time_verbose := old_time_verbose;
 			       test_verbose :=old_test_verbose; test_slightly_verbose := old_test_slightly_verbose
 			  fi;
-			  let answer = local(x, lambda, vd, Lvd, LF, pol_hash, Uhash)
+			  let answer = local(x, lambda, LPm_table.FPP_vertex_data(G) , Lvd, LF, pol_hash, Uhash)
 			  then () = answerCards[k] := #answer
 			  then () = for p in answer do Uparamhash.match(p) od
    		    	  then () = current := elapsed_ms(); currentUhash := Uhash.size();
@@ -367,18 +371,11 @@ set FPP_unitary_hash_general([KGBElt] xs, Param_hash Uhash, Param_hash Uparamhas
     let () = if tilde_flag
     	      then xs:= for x in xs ~do x od{; deform_flag:=false}
     	      fi
-    then inv_hash = make_mat_hash()
     then G = xs[0].real_form
-    then vd = FPP_vertex_data(G), start = elapsed_ms()
-    then FEL = FPP_flippable_edge_lookup(G)
-    {ELs = edge_list_lookups(G) {one minute, 250 mb for E8_s}}
+    then start = elapsed_ms(), zeroPol = null_module(G), zeroNu = null(G.rank)/1
     then () = unitaryTime := 0
     then () = prepDirac(G)
-    then () = for x in xs do inv_hash.match(x.involution) od
-    then xnums = for x in xs do let (,m) = %x in m od, xtimes = null(#xs)
-    then NumInvs = inv_hash.size(), pol_hash = make_KTypePol_hash()
-    then dlambda_hashes = for i:NumInvs do make_vec_hash() od
-    then Lvd_Perm2_mapAct = for i:NumInvs do [(VertexData,PermOrderTwo,vec)]:[] od
+    then xnums = for x in xs do let (,m) = %x in m od, xtimes = null(#xs), pol_hash = make_KTypePol_hash()
     then old_facet_verbose = facet_verbose, old_time_verbose = time_verbose,
     	 old_test_verbose = test_verbose, old_test_slightly_verbose = test_slightly_verbose
     then () = facet_verbose:=false
@@ -394,8 +391,7 @@ set FPP_unitary_hash_general([KGBElt] xs, Param_hash Uhash, Param_hash Uparamhas
     then times = [int]: null(#xs)
     then lambdatimes = [[int]]: for j:#xs do [] od
     then answerCards = [[int]]: for j:#xs do [] od {number of unitary parameters found}
-    { then () = adjust_global_top(G) } {done internally by low_FPP_facets}
-    then () = if #global_facets = 0 or #global_facets[0] != #vd.list
+    then () = if #global_facets = 0 or #global_facets[0] != LPm_table.FPP_vertex_data(G).list.# {#vd.list}
     	      then global_facets := low_FPP_facets(G)
 	      fi
     then () = global_facets_by_zero := low_FPP_facets_by_zero(global_facets)
@@ -406,23 +402,29 @@ set FPP_unitary_hash_general([KGBElt] xs, Param_hash Uhash, Param_hash Uparamhas
     	      do {xs} 
 	 let former_time = current, formerUhash = currentUhash, formerUcounter = currentUcounter
 	 then twists = all_lambda_differential_0(x)
-      	 then FPPbigNew = FPP_lambdas_big_new(x, vd, inv_hash,
-    	      		dlambda_hashes, Lvd_Perm2_mapAct, FEL)
-	 then postFPPbigNew = elapsed_ms()
-	 then lambdas = [ratvec]: for (lambda0,,,) in FPPbigNew
-	      	      		  do for tau in twists
-				     do lambda0+tau
-				     od
-				  od.##
+	 then LPm_entries = LPm_table.LPm_entries(G,x.involution)
+         then good_entries = for (lambda0,entry) in LPm_entries
+                              do  if 1*parameter(x,lambda0,zeroNu) != zeroPol
+                                  then [(lambda0,entry)]
+                                  else []
+                                  fi
+                              od.##
+         then lambdas = [ratvec]:
+              for (lambda0,) in good_entries
+              do for tau in twists
+                 do lambda0+tau
+                 od
+              od.##
     	 then Ncases = #lambdas
 	 then tempanswerCards = null(Ncases)
 	 then templambdatimes = null(Ncases)
 	 then () = if every_KGB_flag
       	      	   then prints("     start KGBElt #", xnums[j], ", #lambdas = ",#lambdas,
-		   	       " Uhash.size() = ", Uhash.size());
+		   	       " Uhash.size() = ", Uhash.size(), ", running time = ",
+			       print_time_string(elapsed_ms() - start));
 		   	prints("  ------------------")
         	   fi
-	 then () = for (lambda0, Lvd, Perm2, mapAct)@k in FPPbigNew
+	 then () = for (lambda0, (Lvd, Perm2, mapAct))@k in good_entries
       	      	   do for tau@ell in twists
                       do let startlambda = elapsed_ms(), startUhash = Uhash.size(),
 		      	     startUcounter = unitary_test_counter.use_count(), index = k*#twists+ell
@@ -436,7 +438,7 @@ set FPP_unitary_hash_general([KGBElt] xs, Param_hash Uhash, Param_hash Uparamhas
 			    	 then facet_verbose := old_facet_verbose; time_verbose := old_time_verbose;
 				 test_verbose :=old_test_verbose; test_slightly_verbose := old_test_slightly_verbose
 				 fi;
-				 let answer = local(x, lambda0+tau, vd, Lvd, LF, pol_hash, Uhash)
+				 let answer = local(x, lambda0+tau, LPm_table.FPP_vertex_data(G), Lvd, LF, pol_hash, Uhash)
 			  	 then () = tempanswerCards[index] := #answer
 			  	 then () = for p in answer do Uparamhash.match(p) od
 				 then () = if every_lambda_deets_flag
@@ -627,17 +629,10 @@ set FPP_unitary_hash_one_level([KGBElt] xs) = void:
 set FPP_unitary_hash_one_level(RealForm G) = void:
     FPP_unitary_hash_one_level(KGB(G))
 
-set bottom_data = make_steady_bottom_data()
-
-set FPP_unitary_hash_bottom_layer([(KGBElt,ratvec)] xlambdas, steady_bottom_data bott_data, Param_hash UhashG,
+set FPP_unitary_hash_bottom_layer([(KGBElt,ratvec)] xlambdas, Param_hash UhashG,
     Param_hash Uparamhash) = void:
     if #xlambdas = 0 then return ()
-    else let inv_hash = make_mat_hash()
-    {then () = qrf_sig_tables.clear()}
-    {then () = bott_data.clear()}
-    {then () = unitary_hash.clear()} {interferes with preloading coh_ind}
-    then (x,) = xlambdas[0]
-    {then () = deform_flag:=true}
+    else let (x,) = xlambdas[0], pol_hash = make_KTypePol_hash()
     then G = x.real_form
     then disconn_flag = components_rank(G) > 0
     then (Gsc,M) = if disconn_flag
@@ -652,32 +647,17 @@ set FPP_unitary_hash_bottom_layer([(KGBElt,ratvec)] xlambdas, steady_bottom_data
     	      	 then make_Param_hash() {this is for unitary reps of Gsc that factor to G}
 		 else UhashG
 		 fi
-    then vd_sc = FPP_vertex_data(Gsc), start = elapsed_ms()
+    then start = elapsed_ms()
     then () = unitaryTime := 0
     then () = dfkiTime := 0
     then () = prepDirac(Gsc)
-    then FEL = FPP_flippable_edge_lookup(G)
-    {ELs = edge_list_lookups(Gsc) {one minute, 250 mb for E8_s}}
     then xnums = for (x,) in xlambdas do let (,m) = %x in m od
     then lambdas = for (,lambda) in xlambdas do lambda od
-    then () = for (x,) in xlambdas do inv_hash.match(x.involution) od
-    then NumInvs = inv_hash.size(), pol_hash = make_KTypePol_hash()
-    then dlambda_hashes = for i:NumInvs do make_vec_hash() od
-    then Lvd_Perm2_mapAct = for i:NumInvs do [(VertexData,PermOrderTwo,vec)]:[] od
-    {now compute all the local vertex data}
+    then LPmss = for (x,lambda) in xlambdas_sc
+    	       	 do LPm_table.LPm_entry(Gsc,x.involution, ratvec_as_vec(lambda+x.involution*lambda))
+		 od
     then old_facet_verbose = facet_verbose, old_time_verbose = time_verbose,
     	 old_test_verbose = test_verbose, old_test_slightly_verbose = test_slightly_verbose
-    then () = for (x,lambda) in xlambdas_sc
-    	      do let theta = x.involution
-	      	 then i = inv_hash.lookup(theta)
-		 then dlambda = ratvec_as_vec(M*(lambda + theta*lambda))
-    	      	 then j = dlambda_hashes[i].match(dlambda)
-              	 then () =  if j = #Lvd_Perm2_mapAct[i]
-                      	    then Lvd_Perm2_mapAct[i]:= (Lvd_Perm2_mapAct[i] next Lvd_Perm2_mapAct[i]:=[])
-					      #localFD_Lvd2(x,M*lambda,vd_sc,FEL)
-                      	    fi
-		in ()
-	      od
     then () = facet_verbose:=false; time_verbose:=false; test_verbose:=false; test_slightly_verbose:=false
     then () = if unip_flag
     	      then unipotents_to_hash(G,UhashG)
@@ -695,44 +675,40 @@ set FPP_unitary_hash_bottom_layer([(KGBElt,ratvec)] xlambdas, steady_bottom_data
     then xlambdatimes = [int]: null(#xlambdas)
     then answerCards = [int]: null(#xlambdas) {number of unitary parameters found}
     then oldUhash = Uhash.size()
-    {then () = adjust_global_top(Gsc)} {done internally by low_FPP_facets}
-    {global_facets is lists of FacetVertsIndex, independent of cover}
-    then () = if #global_facets = 0 or #global_facets[0] != #vd_sc.list
+    then () = if #global_facets = 0 or #global_facets[0] != LPm_table.FPP_vertex_data(Gsc).list.#
     	      then global_facets := low_FPP_facets(G)
 	      fi
-    then () = if by_zero_flag and (#global_facets_by_zero = 0 or #global_facets_by_zero[0] != #vd_sc.list)
+    then () = if by_zero_flag and (#global_facets_by_zero = 0 or #global_facets_by_zero[0] !=
+    	      	 LPm_table.FPP_vertex_data(Gsc).list.#) {#vd_sc.list)}
     	      then global_facets_by_zero := low_FPP_facets_by_zero(global_facets)
 	      fi
     then current = elapsed_ms(), oldUhash = UhashG.size(), currentUhash = Uhash.size(), formerUhash = Uhash.size(),
     	 	   oldUcounter = unitary_test_counter.use_count(), currentUcounter = unitary_test_counter.use_count(),
-		   start_min_L_bottom_factors = bott_data.min_L_bottom_factors_time()
+		   start_min_L_bottom_factors = bottom_data.min_L_bottom_factors_time()
     then () = for (x,lambda)@k in xlambdas
     	      do {xlambdas} 
 	 	 let start = elapsed_ms(), startUhash = Uhash.size(), (x_sc,lambda_sc) = xlambdas_sc[k],
 		     		   startUcounter = unitary_test_counter.use_count(), theta = x.involution,
 				   startUparamhash = Uparamhash.size()
-		 then i = inv_hash.lookup(theta)
-		 then j = dlambda_hashes[i].lookup(ratvec_as_vec(lambda+theta*lambda))
-		 then (Lvd, Perm2, mapAct) = Lvd_Perm2_mapAct[i][j]
-		 then () = Lvd:= to_vertex_data(for v in Lvd.list do M*v od)
+		 then (Lvd, Perm2, mapAct) = LPmss[k] {already lives on Gsc}
 		 then LF = if by_zero_flag
 		      	   then localFD_1Dirac2_by_zero(x_sc, lambda_sc, Lvd, Perm2, mapAct, global_facets_by_zero)
 			   else localFD_1Dirac2(x_sc, lambda_sc, Lvd, Perm2, mapAct, global_facets)
 			   fi
 		 in if #LF[0] = 0 then ()
-		     else if every_lambda_deets_flag
-			  then facet_verbose := old_facet_verbose; time_verbose := old_time_verbose;
-			       test_verbose :=old_test_verbose; test_slightly_verbose := old_test_slightly_verbose
-			  fi;
-			  let answer = local_test_GEO_hash_bottom_layer(x_sc, lambda_sc, vd_sc, Lvd, LF,
-			      	       					      bott_data, pol_hash, Uhash)
-			  then () = answerCards[k] := #answer
-			  then () = for p in answer do Uparamhash.match(p) od
-   		    	  then () = current := elapsed_ms(); currentUhash := Uhash.size();
+		    else if every_lambda_deets_flag
+			 then facet_verbose := old_facet_verbose; time_verbose := old_time_verbose;
+			      test_verbose :=old_test_verbose; test_slightly_verbose := old_test_slightly_verbose
+			 fi;
+			 let answer = local_test_GEO_hash_bottom_layer(x_sc, lambda_sc,
+			     LPm_table.FPP_vertex_data(Gsc), Lvd, LF, pol_hash, Uhash)
+			 then () = answerCards[k] := #answer
+			 then () = for p in answer do Uparamhash.match(p) od
+   		    	 then () = current := elapsed_ms(); currentUhash := Uhash.size();
 			       	    currentUcounter := unitary_test_counter.use_count()
-    		 	  then () = xlambdatimes[k] := current - start
-    			  in if every_lambda_flag
-	      		     then prints("  ",print_time_string(xlambdatimes[k]),
+    		 	 then () = xlambdatimes[k] := current - start
+    			 in if every_lambda_flag
+	      		    then prints("  ",print_time_string(xlambdatimes[k]),
 			   	" = time for (x,lambda) = (", xnums[k], ",",k,"), ht = ",
 				  height(parameter(x,lambda,0*lambda)), ", L = ", let (Q,) =
 				  theta_stable_quasi_data(parameter(x,lambda,0*lambda)) in Q.Levi,
@@ -741,7 +717,7 @@ set FPP_unitary_hash_bottom_layer([(KGBElt,ratvec)] xlambdas, steady_bottom_data
 				 ", #new unitary = ", Uhash.size() - startUhash,
 				 ", #tests = ", unitary_test_counter.use_count() - startUcounter);
 				 prints("  ------------------")
-			     fi
+			    fi
 		    fi
 		 od{xlambdas}
     then () = if disconn_flag
@@ -760,12 +736,12 @@ set FPP_unitary_hash_bottom_layer([(KGBElt,ratvec)] xlambdas, steady_bottom_data
        prints("Time spent in is_unitary = ",print_time_string(unitaryTime), ", number of unitarity tests = ",
        		unitary_test_counter.use_count());
        prints("Time in min_L_bottom_factors = ",
-       print_time_string(bott_data.min_L_bottom_factors_time() - start_min_L_bottom_factors),
-	      ", number of K-types studied = ", bott_data.size());
+       print_time_string(bottom_data.min_L_bottom_factors_time() - start_min_L_bottom_factors),
+	      ", number of K-types studied = ", bottom_data.size());
        prints("Time in derived_factor_K_types_info = ", print_time_string(dfkiTime),
        	      ", time in min_bottom_elim_factors = ",print_time_string(mbefTime));
-       prints("Time in bottom layer branching = ",print_time_string(qrf_sig_tables.bottom_branch_time()),
-       		    ", time in bottom layer sig = ", print_time_string(qrf_sig_tables.bottom_sig_time()));
+       prints("Time in bottom layer branching = ",print_time_string(rf_sig_tables.bottom_branch_time()),
+       		    ", time in bottom layer sig = ", print_time_string(rf_sig_tables.bottom_sig_time()));
        prints("Time in min_bottom_elim_factors = ",print_time_string(mbefTime));
        prints("  #hash_real_dumb =",hash_real_dumbCounter.use_count(),
 	      ", #hash_dumb =", hash_dumbCounter.use_count(),
@@ -780,23 +756,16 @@ set FPP_unitary_hash_bottom_layer([(KGBElt,ratvec)] xlambdas, steady_bottom_data
     fi
 
 set FPP_unitary_hash_bottom_layer([(KGBElt,ratvec)] xlambdas) = void:
-    FPP_unitary_hash_bottom_layer(xlambdas, bottom_data, unitary_hash, uparam_hash)
+    FPP_unitary_hash_bottom_layer(xlambdas, unitary_hash, uparam_hash)
 
-set FPP_unitary_hash_bottom_layer([KGBElt] xs,  steady_bottom_data bott_data,
-				  Param_hash UhashG, Param_hash Uparamhash) = void:
+set FPP_unitary_hash_bottom_layer([KGBElt] xs, Param_hash UhashG, Param_hash Uparamhash) = void:
     if #xs = 0
     then return ()
-    else
-    {let () = deform_flag:=true}
-    {let () = qrf_sig_tables.clear()}
-    {let () = bott_data.clear()}
-    {then () = unitary_hash.clear()}{interferes with preloading coh_ind}
-    let () = if tilde_flag
-    	      then xs:= for x in xs ~do x od{; deform_flag:=false}
-    	      fi
-    then inv_hash = make_mat_hash()
+    else let () = if tilde_flag
+    	     	  then xs:= for x in xs ~do x od{; deform_flag:=false}
+    	      	  fi
     then G = xs[0].real_form
-    then disconn_flag = components_rank(G) > 0
+    then disconn_flag = components_rank(G) > 0, zeroPol = null_module(G), zeroNu = null(G.rank)/1
     then (Gsc,M) = if disconn_flag
     	      	   then derived_cover_real_form_info(G)
 	      	   else (G,id_mat(G.rank))
@@ -809,17 +778,12 @@ set FPP_unitary_hash_bottom_layer([KGBElt] xs,  steady_bottom_data bott_data,
     	       	 then make_Param_hash()
 		 else UhashG
 		 fi
-    then vd_sc = FPP_vertex_data(Gsc), vd = FPP_vertex_data(G), start = elapsed_ms()
-    then FEL = FPP_flippable_edge_lookup(G)
-    {ELs = edge_list_lookups(G) {one minute, 250 mb for E8_s}}
+    then start = elapsed_ms()
     then () = unitaryTime := 0
     then () = dfkiTime := 0
     then () = prepDirac(Gsc)
-    then () = for x in xs do inv_hash.match(x.involution) od
     then xnums = for x in xs do let (,m) = %x in m od, xtimes = null(#xs)
-    then NumInvs = inv_hash.size(), pol_hash = make_KTypePol_hash()
-    then dlambda_hashes = for i:NumInvs do make_vec_hash() od
-    then Lvd_Perm2_mapAct = for i:NumInvs do [(VertexData,PermOrderTwo,vec)]:[] od
+    then pol_hash = make_KTypePol_hash()
     then old_facet_verbose = facet_verbose, old_time_verbose = time_verbose,
     	 old_test_verbose = test_verbose, old_test_slightly_verbose = test_slightly_verbose
     then () = facet_verbose:=false
@@ -842,9 +806,7 @@ set FPP_unitary_hash_bottom_layer([KGBElt] xs,  steady_bottom_data bott_data,
     then times = [int]: null(#xs)
     then lambdatimes = [[int]]: for j:#xs do [] od
     then answerCards = [[int]]: for j:#xs do [] od {number of unitary parameters found}
-    { then () = adjust_global_top(G) } {done internally by low_FPP_facets}
-    {global_facets is lists of FacetVertsIndex, independent of cover}
-    then () = if #global_facets = 0 or #global_facets[0] != #vd_sc.list
+    then () = if #global_facets = 0 or #global_facets[0] != LPm_table.FPP_vertex_data(G).list.#
     	      then global_facets := low_FPP_facets(G)
 	      fi
     then () = global_facets_by_zero := low_FPP_facets_by_zero(global_facets)
@@ -855,45 +817,54 @@ set FPP_unitary_hash_bottom_layer([KGBElt] xs,  steady_bottom_data bott_data,
     	      do {xs}
 	 let former_time = current, formerUhash = currentUhash, formerUcounter = currentUcounter, x_sc = xs_sc[j]
 	 then twists = all_lambda_differential_0(x)
-      	 then FPPbigNew = FPP_lambdas_big_new(x, vd, inv_hash,
-    	      		dlambda_hashes, Lvd_Perm2_mapAct, FEL)
-	 then () = if disconn_flag
-	      	   then FPPbigNew := for (lambda0, Lvd, Perm2, mapAct) in FPPbigNew
-	      	   	     	     do (M*lambda0, to_vertex_data(for v in Lvd.list do M*v od), Perm2, mapAct)
-				     od
-		   fi
-	 then postFPPbigNew = elapsed_ms()
-	 then lambdas = [ratvec]: for (lambda0,,,) in FPPbigNew
-	      	      		  do {prints(lambda0);}
-				     for tau in twists
-				     do lambda0+M*tau
-				     od
-				  od.##
+	 then LPm_entries = [(ratvec, Lvd_Perm2_mapAct)]: LPm_table.LPm_entries(G, x.involution)
+	 then good_entries = for (lambda0,entry) in LPm_entries
+	      	       	      do  if 1*parameter(x,lambda0,zeroNu) != zeroPol
+		       	      	  then [(lambda0,entry)]
+			   	  else []
+			   	  fi
+		       	      od.##
+	 then lambdas = [ratvec]:
+	      for (lambda0,) in good_entries
+	      do for tau in twists
+	      	 do lambda0+M*tau
+		 od
+	      od.##
     	 then Ncases = #lambdas
 	 then tempanswerCards = null(Ncases)
 	 then templambdatimes = null(Ncases)
 	 then () = if every_KGB_flag
-      	      	   then prints("     start KGBElt #", xnums[j], ", #lambdas = ",#lambdas,
-		   	       " Uhash.size() = ", Uhash.size());
+      	      	   then prints("     start KGBElt #", xnums[j], ", #lambdas = ",Ncases,
+		   	       " Uhash.size() = ", Uhash.size(), ", running time = ",
+			       print_time_string(elapsed_ms() - start));
 		   	prints("  ------------------")
         	   fi
-	 then () = for (lambda0, Lvd, Perm2, mapAct)@k in FPPbigNew
-      	      	   do for tau@ell in twists
+	 then () = for (lambda1,(Lvd1,Perm2,mapAct)) @k in good_entries
+	      	   do let lambda0 = M*lambda1
+		      then Lvd = if disconn_flag
+		      	      	 then to_vertex_data(for v in Lvd1.list do M*v od)
+				 else Lvd1
+				 fi
+		      then () =
+		      for tau@ell in twists
                       do let startlambda = elapsed_ms(), startUhash = Uhash.size(),
 		      	     startUcounter = unitary_test_counter.use_count(), index = k*#twists + ell,
 			     startUparamhash = Uparamhash.size()
 			 then LF = if by_zero_flag
-		      	      	   then localFD_1Dirac2_by_zero(x_sc, lambda0+M*tau, Lvd, Perm2, mapAct, global_facets_by_zero)
-			   	   else localFD_1Dirac2(x_sc, lambda0+M*tau, Lvd, Perm2, mapAct, global_facets)
+		      	      	   then localFD_1Dirac2_by_zero(x_sc, lambda0+M*tau, Lvd, Perm2,
+						     mapAct, global_facets_by_zero)
+			   	   else localFD_1Dirac2(x_sc, lambda0+M*tau, Lvd, Perm2, mapAct,
+						     global_facets)
 			   	   fi
 			 in if #LF[0] = 0
 			    then []
                             else if every_lambda_deets_flag
 			    	 then facet_verbose := old_facet_verbose; time_verbose := old_time_verbose;
-				 test_verbose :=old_test_verbose; test_slightly_verbose := old_test_slightly_verbose
+				      test_verbose :=old_test_verbose; test_slightly_verbose :=
+				      old_test_slightly_verbose
 				 fi;
-				 let answer = local_test_GEO_hash_bottom_layer(x_sc, lambda0+M*tau, vd_sc,
-				     	  			 Lvd, LF, bott_data, pol_hash, Uhash)
+				 let answer = local_test_GEO_hash_bottom_layer(x_sc, lambda0+M*tau,
+				     	    LPm_table.FPP_vertex_data(Gsc), Lvd, LF, pol_hash, Uhash)
 			  	 then () = tempanswerCards[index] := #answer
 			  	 then () = for p in answer do Uparamhash.match(p) od
 				 then () = if every_lambda_deets_flag
@@ -913,13 +884,11 @@ set FPP_unitary_hash_bottom_layer([KGBElt] xs,  steady_bottom_data bott_data,
 						", #tests = ", unitary_test_counter.use_count() - startUcounter);
 					 prints("  ------------------")
 				    fi
-			    fi
-                      od
-                   od {would be easy enough to get [Param] for each (x,lambda), but for now
+			       fi
+                          od {twists}
+	         in ()
+                 od {good_entries} {would be easy enough to get [Param] for each (x,lambda), but for now
 		       just put unitary reps in Uhash}
-	   {then () = for j:Uhash.size()
-	   	     do let psc = Uhash.index(j)
-	   	     in {if psc.real_form != Gsc then} prints(j," ",psc)  {fi} od}
     	   then () = if disconn_flag
 	   	     then for j: Uhash.size()
 		     	  do for p in sc_descends(Uhash.index(j), G, M)
@@ -954,12 +923,12 @@ set FPP_unitary_hash_bottom_layer([KGBElt] xs,  steady_bottom_data bott_data,
        prints("Time spent in is_unitary = ",print_time_string(unitaryTime), ", number of unitarity tests = ",
        		unitary_test_counter.use_count());
        prints("Time in min_L_bottom_factors = ",
-       	      print_time_string(bott_data.min_L_bottom_factors_time()),
-	      ", number of K-types studied = ", bott_data.size());
+       	      print_time_string(bottom_data.min_L_bottom_factors_time()),
+	      ", number of K-types studied = ", bottom_data.size());
        prints("Time in derived_factor_K_types_info = ",print_time_string(dfkiTime),
        	      ", time in min_bottom_elim_factors = ", print_time_string(mbefTime));
-       prints("Time in bottom layer branching = ",print_time_string(qrf_sig_tables.bottom_branch_time()),
-       		    ", time in bottom layer sig = ", print_time_string(qrf_sig_tables.bottom_sig_time()));
+       prints("Time in bottom layer branching = ",print_time_string(rf_sig_tables.bottom_branch_time()),
+       		    ", time in bottom layer sig = ", print_time_string(rf_sig_tables.bottom_sig_time()));
        prints("  #hash_real_dumb = ",hash_real_dumbCounter.use_count(),
 	      ", #hash_dumb = ", hash_dumbCounter.use_count(),
        	      ", #hash_def_dumb =", hash_def_dumbCounter.use_count());
@@ -973,7 +942,7 @@ set FPP_unitary_hash_bottom_layer([KGBElt] xs,  steady_bottom_data bott_data,
    fi
 
 set FPP_unitary_hash_bottom_layer([KGBElt] xs) = void:
-    FPP_unitary_hash_bottom_layer(xs,  bottom_data, unitary_hash, uparam_hash)
+    FPP_unitary_hash_bottom_layer(xs, unitary_hash, uparam_hash)
 
 set FPP_unitary_hash_bottom_layer(RealForm G) = void:
     FPP_unitary_hash_bottom_layer(KGB(G))

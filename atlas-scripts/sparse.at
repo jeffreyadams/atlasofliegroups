@@ -7,9 +7,7 @@
 set_type [ sparse_column = [(int,int)], sparse_mat=[sparse_column] ]
 
 set sparse(mat M) = sparse_mat:
-  for C in M
-  do for coef@i in C do if =coef then [] else [(i,coef)] fi od.##
-  od
+  for C in M do for coef@i in C if !=coef do (i,coef) fi od od
 
 set unsparse(sparse_mat S, int height) = mat:
   for C in S do let v=null(height) in for (i,coef) in C do v[i]+:=coef od; v od
@@ -23,14 +21,11 @@ set * (mat M, sparse_mat S) = mat:
 
 {transpose of a sparse_mat, requires specifying height}
 set ^(sparse_mat S,int height)=
-let rv=sparse_mat:for i:height do [] od in
-for C@i in S do
- for (row,entry) in C do
-  rv[row]#:=(i,entry) od
- od;rv
+   let result = sparse_mat:for i:height do [] od
+in for C@i in S
+   do for (row,entry) in C
+      do result[row] := (result[row] next result[row]:=[]) # (i,entry) od
+   od; result
 
-{sparse_mat * mat: (S*M)=^(^M* ^S
- for ^S use height=#M}
+{sparse_mat * mat: (S*M)=^(^M* ^S);  for computing ^S use height=#M}
 set *(sparse_mat S,mat M)=mat:^(^M* ^(S,#M))
-
-
