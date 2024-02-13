@@ -736,13 +736,18 @@ set one_param_test(Param p, Param_hash Uhash) = [Param]:
 	    in []
        fi
 
-set one_param_test(Param p, [KGPElt] nQs, int D, Param_hash Uhash) = [Param]:
+set one_param_test(Param p, [([[(KType,KType)]], [int])] helpful_datas, Param_hash Uhash) = [Param]:
     let QG = monomials(finalize(p)),G = p.real_form
     then () = hash_bottom_layerCounter.use()
     then test = all(for q in QG
+    	      	    do all(for (helpful_data,helpful_js) in helpful_datas
+		       	   do min_bottom_test_factors(q, helpful_data, helpful_js)
+		       	   od)
+		    od)
+{    then test = all(for q in QG
     	      	    do Uhash.lookup(q).>= or
     	      	       bottom_test_factors_more(q, nQs, D)
-		    od)
+		    od)}
     in if test
        then let () = for q in QG
 		     do Uhash.match(herm_center(q))
@@ -1814,37 +1819,30 @@ set local_test_GEO_hash_bottom_layer(KGBElt x, ratvec lambda, VertexData vd,
     	 then return local_test_GEO_hash2(x, lambda, vd, Lvd, LF,
 	      	   	  				   pol_hash, Uhash)
 	 fi
-    then startLKdatas = elapsed_ms()
-    then LKdatas  = for mu in LKTs(pmax)
-    	 	   do
-		   bottom_data.entry(mu)
-		   od
-
-    then DG0 = max(for LKdata in LKdatas
-    	      	   do max(for list in LKdata
-		     	  do max(for (tau,) in list do height(tau) od)
-			  od)
-		   od)
-
-	{this is the greates height at which we'll be looking at bottom layer K-types; during the first pass;
+    then helpful_datas  = for mu in LKTs(pmax)
+    	 	   	  do bottom_data.helpful_entry(mu)
+		   	  od
+    then DG0 = if #helpful_datas = 0
+    	       then height(pmax)
+    	       else max(for (helpful_data,) in helpful_datas
+	       	    	do if #helpful_data = 0 then height(pmax)
+			   else max(for list in helpful_data
+		     	       	    do if #list = 0
+				       then height(pmax)
+			       	       else max(for (tau,) in list do height(tau) od)
+				       fi
+			       	    od)
+			    fi
+		        od)
+		fi
+	{this is the greatest height at which we'll be looking at bottom layer K-types; during the first pass;
 	 so we can compute K-chars just to this height}
-    then D = DG0+2
-    then BKT = ## for mu in LKTs(pmax) do bottom_K_types(mu,D) od {K-types appearing in some bottom layer}
-    then  nQs = newQs(LKTs(pmax)[0], BKT) {theta-stable parabolics from which coh ind is interesting here}
-    then maxQs = max_Qs(Q0)
-    then () = if time_verbose then prints("time for LKdatas/BKT was ",
-    	      	 print_time_string(elapsed_ms() - startLKdatas), " at lambda = ",lambda)
-	      fi
-    then NLKT = #LKdatas
-    then () = if L0 = G or
-	         sum(for i:NLKT
-    	      	     do sum( for list in LKdatas[i] do #list od)
-		     od)= NLKT and not more_flag
+    then () = if L0 = G or #helpful_datas = 0 and not more_flag
     	      then return local_test_GEO_hash2(x, lambda, vd, Lvd, LF,
 	      	   	  				   pol_hash, Uhash)
 	      fi
     then () = if {TINY CASE} #LF[0]=1
-    	      then return one_param_test(pmax, nQs, D, Uhash)
+    	      then return one_param_test(pmax, helpful_datas, Uhash)
 	      fi
     then pmaxjs = factor_params(pmaxL0)
     then qhts = DG0
@@ -1909,23 +1907,21 @@ set local_test_GEO_hash_bottom_layer(KGBElt x, ratvec lambda, VertexData vd,
 					  facet_bary(Lvd.list, verts))))
 			      in if #ps = 1
 			      	 then if Uhash.lookup(ps[0]).>= or
-				      	  if all_more_flag
-				      	  then bottom_elim_factors_more(ps[0], nQs, D,
-				 		pol_hash_one_ht.index(LFDKH[Dcount+1][m][Dcount+2]))
-                             	 	  else min_bottom_elim_factors(ps[0],
-					 	pol_hash_one_ht.index(LFDKH[Dcount+1][m][Dcount+2]))
-				 	  fi
+                             	 	 all (for (helpful_data, helpful_js) in helpful_datas
+					  	     do min_bottom_elim_factors(ps[0], helpful_data,
+					        helpful_js, pol_hash_one_ht.index(LFDKH[Dcount+1][m][Dcount+2]))
+						     od)
+				 	  {fi}
 				      then [LFDKH[Dcount+1][m]]
 				      else []
 				      fi
 				 else if all(for p in ps
-					     	    do Uhash.lookup(p).>= or
-					     if all_more_flag
-					     then bottom_elim_factors_more(p, nQs, D,
-				 		pol_hash_one_ht.index(LFDKH[Dcount+1][m][Dcount+2]))
-					     else min_bottom_elim_factors(p)
-					     fi
-						    od)
+					     do Uhash.lookup(p).>= or
+					     	all (for (helpful_data, helpful_js) in helpful_datas
+					  	     do min_bottom_elim_factors(p, helpful_data, helpful_js,
+					 	pol_hash_one_ht.index(LFDKH[Dcount+1][m][Dcount+2]))
+						     od)
+					      od)
 				      then [LFDKH[Dcount+1][m]]
 				      else []
 				      fi
@@ -1952,6 +1948,14 @@ set local_test_GEO_hash_bottom_layer(KGBElt x, ratvec lambda, VertexData vd,
     	      	      then extend_K_characters(x, lambda, Lvd, LFDKH, pol_hash)
     	      	      else LFDKH
 		      fi
+    then start_more_datas = elapsed_ms()
+    then D = DG0 {to be used in more}
+    then BKT = ## for mu in LKTs(pmax) do bottom_K_types(mu,D) od {K-types appearing in some bottom layer}
+    then  nQs = newQs(LKTs(pmax)[0], BKT) {theta-stable parabolics from which coh ind is interesting here}
+    then maxQs = max_Qs(Q0)
+    then () = if time_verbose then prints("time for more datas/BKT was ",
+    	      	 print_time_string(elapsed_ms() - start_more_datas), " at lambda = ",lambda)
+	      fi
     then start=elapsed_ms()
     then UParams = [Param]:
          let ((eq,gr),IUCL,CLBF) = localGraphK(LFDKH)
@@ -1966,9 +1970,9 @@ set local_test_GEO_hash_bottom_layer(KGBElt x, ratvec lambda, VertexData vd,
 set local_test_GEO_hash_bottom_layer(KGBElt x, ratvec lambda, VertexData vd,
     VertexData Lvd, [[FacetVertsIndex]] LF, KTypePol_hash pol_hash, Param_hash Uhash) = [Param]:
     let p = parameter(x, lambda, 0*lambda)
-    then () = for mu in LKTs(p)
+    {then () = for mu in LKTs(p)
     	      do bottom_data.append(mu)
-	      od
+	      od}
     in local_test_GEO_hash_bottom_layer(x, lambda, vd, Lvd, LF, pol_hash, Uhash)
 
 set local_test_GEO_hash_bottom_layer(KGBElt x, ratvec lambda, VertexData vd, VertexData Lvd,

@@ -306,7 +306,7 @@ set RF_code = true
 
 set rf_sig_tables = make_RF_sig_tables()
 
-set min_L_bottom_factors(KType mu) = [[(KType, KType)]]:
+set min_L_bottom_factors(KType mu) = ([[(KType, KType)]], [int]):
     let p = parameter(mu)
     then (Q,pL) = theta_stable_quasi_data(p), G = p.real_form
     then muL = LKT(pL), L = Q.Levi
@@ -337,51 +337,58 @@ set min_L_bottom_factors(KType mu) = [[(KType, KType)]]:
 	    else} monomials(branch(dermuLj, DLjs[j]))
 	    {fi}
 	 od
-    in for listj@j in dertauLs
-       do let K0 = K_0(xcGs[j])
-       	  then muwtj = K0_param(mu,xcGs[j]).lambda_minus_rho {size is rank(K)}
-	  then dermuLj = dermuLs[j], (xcderLj,) = xcderLMs[j], derLj = derLs[j], Lj = Ljs[j]
-	  then dermuLjwt = K0_param(dermuLj).lambda_minus_rho
-	  then () = if Lj.Cartan_matrix != derLj.Cartan_matrix
-		     	  then prints("WARNING: CM mismatch at Lj = ",Lj)
-			  fi
+    then LKdata = for listj@j in dertauLs
+       	 	  do let K0 = K_0(xcGs[j])
+       	  	     then muwtj = K0_param(mu,xcGs[j]).lambda_minus_rho {size is rank(K)}
+	  	     then dermuLj = dermuLs[j], (xcderLj,) = xcderLMs[j], derLj = derLs[j], Lj = Ljs[j]
+	  	     then dermuLjwt = K0_param(dermuLj).lambda_minus_rho
+	  	     then () = if Lj.Cartan_matrix != derLj.Cartan_matrix
+		     	       then prints("WARNING: CM mismatch at Lj = ",Lj)
+			       fi
 
-       	  in [(KType, KType)]: {meant to be list of pairs (tau, dertauLj) with
+       	  	     in [(KType, KType)]: {meant to be list of pairs (tau, dertauLj) with
 	     	      	       tau bottom layer for G, dertauLj corr LjK-type}
-	     for dertauLj in listj
-       	     do  let dertauLjwt = K0_param(dertauLj).lambda_minus_rho {this is a wt for K on derLj}
-	     	 then taujwt = muwtj + ratvec_as_vec(sum(K0.rank, for xi@k in fundamental_coweights(derLj)
+	     	     for dertauLj in listj
+       	     	     do  let dertauLjwt = K0_param(dertauLj).lambda_minus_rho {this is a wt for K on derLj}
+	     	     	 then taujwt = muwtj + ratvec_as_vec(sum(K0.rank, for xi@k in fundamental_coweights(derLj)
 		     		      				  do projection_to_K_matrix(mu.inner_class)*
 								    ((dertauLjwt - dermuLjwt)*xi*Lj.simple_roots[k])
 								  od))
-	     	 in if is_dominant(K0, taujwt)
-  	            then [(K_types(K_highest_weight_from_K0_weight(xcGs[j], taujwt))[0],
+	     	     in if is_dominant(K0, taujwt)
+  	             	then [(K_types(K_highest_weight_from_K0_weight(xcGs[j], taujwt))[0],
 		   	  dertauLj)]
-	  	    else []
-	  	    fi
+	  	   	 else []
+	  	    	fi
 	     od.##
 	od
+     then helpful_js = for j:#LKdata
+     	  	       do if #LKdata[j] > 1
+		       	  then [j]
+			  else []
+			  fi
+		       od.##
+      in (for j in helpful_js do LKdata[j] od, helpful_js)
  
 {table of bottom layer data indexed by KType}
 set_type
 [steady_bottom_data =
 ( ( -> int) size
   , ( -> ) clear
-  , (KType->[[(KType,KType)]]) entry {for each derived simple factor derLj of the min Levi L, a list of
+{  , (KType->[[(KType,KType)]]) entry} {for each derived simple factor derLj of the min Levi L, a list of
     			       	     pairs (tauj,tauLj) with dertauj min bottom layer K-type, and tauLj corr
 				     derLj_K-type. Each list starts with (mu, dermuj) lowest.}
   , (KType->([[(KType,KType)]], [int])) helpful_entry {subset of entry where list has more than one elt (so
     						      might detect nonunitarity), and the corr numbers of derLj}
-  , (KType->) append
+{  , (KType->) append}
   , (int -> KType) K_type_index
-  , (int -> [[(KType,KType)]]) data_index
+  , (int -> ([[(KType,KType)]],[int])) data_index
   , ( -> int) min_L_bottom_factors_time
   )
 ]
 
 set make_steady_bottom_data () = steady_bottom_data:
 (  let K_type_hash = make_KType_hash()
-   then bottom_data = [[[(KType,KType)]]] : []
+   then bottom_data = [([[(KType, KType)]], [int])]:[]
    then bottom_factors_time = int: 0
    then clear() = void:
        let () = K_type_hash.clear()
@@ -402,7 +409,7 @@ set make_steady_bottom_data () = steady_bottom_data:
    in
    ( ( -> int): { size } @int: K_type_hash.size()
    , ( -> ): {clear} clear
-   , (KType -> [[(KType,KType)]]): {entry} (KType mu)
+ {  , (KType -> [[(KType,KType)]]): {entry} (KType mu)
      [[(KType,KType)]]:
      begin
 	let m = enter(mu)
@@ -417,20 +424,13 @@ set make_steady_bottom_data () = steady_bottom_data:
 	then () = assert(#bottom_data =
 	     	K_type_hash.size(),"steady_bottom_data damaged")}
 	in bottom_data[m]
-     end
+     end}
    , (KType->([[(KType,KType)]], [int])): {helpful_entry} (KType mu) ([[(KType,KType)]], [int]):
      begin
 	let m = enter(mu)
-	then LKdata = bottom_data[m]
-     	then helpful_js = for j:#LKdata
-     	  	       	  do if #LKdata[j] > 1
-		       	     then [j]
-			     else []
-			     fi
-		       	  od.##
-        in (for j in helpful_js do LKdata[j] od, helpful_js)
+	in bottom_data[m]
      end
-   , (KType->): {append } (KType mu):
+{   , (KType->): {append } (KType mu):
      begin
 	let M = K_type_hash.size()
 	then m = K_type_hash.match(mu)
@@ -443,9 +443,9 @@ set make_steady_bottom_data () = steady_bottom_data:
         then () = assert(#bottom_data =
 	     	K_type_hash.size(),"steady_bottom_data damaged")
 	in ()
-     end
+     end}
    , (int -> KType): {K_type_index} (int j): K_type_hash.index(j)
-   , (int -> [[(KType,KType)]]): {data_index} (int j) [[(KType,KType)]]: bottom_data[j]
+   , (int -> ([[(KType,KType)]],[int])): {data_index} (int j) ([[(KType,KType)]],[int]): bottom_data[j]
    , ( -> int): {bottom_min_L_bottom_time} @int: bottom_factors_time
   )
 )
@@ -500,7 +500,7 @@ set min_bottom_elim_factors(Param p, [[(KType,KType)]] helpful_data, [int] helpf
     then start = elapsed_ms(), (,pL) = theta_stable_quasi_data(p)
     then (mu,) = helpful_data[0][0]
     then () = if K_type_pol(p)[mu] = 0
-       	      then return prints("mu isn't a LKT of p"); true
+              then return {prints("mu = ",mu," isn't a LKT of p = ", p);} true
        	      fi
     then derpLjs = derived_factor_params(pL)
      then helpful_derpLjs = for j in helpful_js do derpLjs[j] od
@@ -584,7 +584,7 @@ set min_bottom_elim_factors(Param p, [[(KType,KType)]] helpful_data, [int] helpf
     then start = elapsed_ms(), (,pL) = theta_stable_quasi_data(p)
     then (mu,) = helpful_data[0][0]
     then () = if K_type_pol(p)[mu] = 0
-       	      then return prints("mu isn't a LKT of p"); true
+       	      then return {prints("mu = ",mu," isn't a LKT of p = ", p);} true
        	      fi
     then derpLjs = derived_factor_params(pL)
     then helpful_derpLjs = for j in helpful_js do derpLjs[j] od
@@ -1185,7 +1185,7 @@ set bottom_elim_factors_more(Param p, [KGPElt] nQs, int D) = bool:
     in  bottom_elim_factors_more(p, nQs, D, P)
 
 {don't use?}
-set bottom_elim_factors_more(Param p, KTypePol P) = bool:
+{set bottom_elim_factors_more(Param p, KTypePol P) = bool:
      let all_Qps = larger_Qps(p)
     then all_proper_Qps = all_Qps[:#all_Qps - 1]
     then three_bools = for (P,) in all_proper_Qps do goodness(p,P) od
@@ -1224,10 +1224,10 @@ set bottom_elim_factors_more(Param p, KTypePol P) = bool:
 	      	   fi
 	       fi
     then () = prints("sorry, don't know")
-    in true
+    in true}
 
 {don't use}
-set bottom_elim_factors_more(Param p) = bool:
+{set bottom_elim_factors_more(Param p) = bool:
     let D0 = max(for mu in LKTs(p)
     	     	 do max(for list in bottom_data.entry(mu)
 		    	do max(for (tau,) in list do height(tau) od)
@@ -1249,7 +1249,7 @@ set bottom_elim_factors_more(Param p) = bool:
 	      	   fi
 	       fi
     then () = prints("sorry, don't know")
-    in true
+    in true}
 
 {P is K-character at least to appropriate height, NOT branch!. Assume already eliminated using minimal P0}
 set bottom_test_factors_more(Param p, [KGPElt] nQs, int D, KTypePol P) = bool:
