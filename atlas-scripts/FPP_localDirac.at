@@ -623,8 +623,8 @@ set local_test_hash(KGBElt x, ratvec lambda, VertexData Lvd,
 	      fi
     in  UParams
 
-{ Input is candidate facets, and graph info. Output is the tester-unitary ones. 
- use and update a complete list Uhash of known tester-unitary facets. 
+{ Input is candidate facets, and graph info. Output is the unitary ones.
+ use and update a complete list Uhash of known tester-unitary facets.
  try to compute and systematically use partial order on facets.
 Assume the input params are already bottom layer positive for minimal parabolic; try
 to use larger ones.}
@@ -657,15 +657,22 @@ set local_test_hash_bottom(KGBElt x, ratvec lambda, VertexData Lvd,
 		  {first_param makes trouble in UParams list!}
 	      	  then ps = monomials(finalize(parameter(x, lambda
 		    	  , facet_bary(Lvd.list, verts))))
-	      	in if{NEWU} all(for p in ps
-		   	    	do Uhash.lookup(p).>= or
-				   if more_flag
-				   then bottom_test_factors_more(p, nQs, D,
-				   	pol_hash.index(LFVH[d][j][d+1]))
-				   else is_unitary_hash(p)
-				   fi
-				od)
-		   then for i in C
+		  {then () = if #ps = 2 and ps[1].x.number = 127 then prints(ps[1],"  ",Uhash.lookup(ps[1])) fi}
+	      	in if{NEWU} (#ps = 1  {THIS IS COMPUTING A BOOL}
+		            and (Uhash.lookup(ps[0]).>= or
+			    	if more_flag
+				then bottom_test_factors_more(ps[0], nQs, D, pol_hash.index(LFVH[d][j][d+1]))
+				else is_unitary_hash(ps[0])
+				fi))
+		            or (#ps > 1
+			       	and all(for p in ps
+		   	       	    	do Uhash.lookup(p).>= or
+			       	       	   if more_flag
+			       	       	   then bottom_test_factors_more(p, nQs, D)
+			      	           else is_unitary_hash(p)
+			       		   fi
+			     	         od))
+		   then for i in C {if all Langlands quotients are unitary, does this persist on C?}
 		   	do let (d,j) = coords(LFVH,i)
 			   then verts = vec: LFVH[d][j][:d+1]
 			   then () = unitary_by_dim[d]+:=1
@@ -688,12 +695,12 @@ set local_test_hash_bottom(KGBElt x, ratvec lambda, VertexData Lvd,
 				     	  in ()
 			   	     fi
 		       	   in q
-		    	od {list of tester unitary Params}
+		    	od {list of unitary Params}
 		   else []
 		   fi{NEWU}
 	  od.##
     then () = if test_verbose or test_slightly_verbose
-    	      then prints("tester unitary facets by dim = ",
+    	      then prints("unitary facets by dim = ",
        	       	    	   unitary_by_dim, test_string);
 		 prints("number of tests = ",unitary_test_counter.use_count())
 	      fi
@@ -713,9 +720,10 @@ set hash_real_dumbCounter = make_counter()
 set hash_dumbCounter = make_counter()
 set hash_def_dumbCounter = make_counter()
 set hash_bottom_layerCounter = make_counter()
+set one_param_time = int: 0
 
 set one_param_test(Param p, Param_hash Uhash) = [Param]:
-    let Q = monomials(finalize(p)), G = p.real_form
+    let start = elapsed_ms(), Q = monomials(finalize(p)), G = p.real_form
     then NK = #KGB(G), r = rank(Q[0].x.involution - 1)
     then DEFHTS = [int]:
     	 if number(Q[0].x) < NK*low_KGB_frac
@@ -731,32 +739,53 @@ set one_param_test(Param p, Param_hash Uhash) = [Param]:
 		     do Uhash.match(herm_center(q))
 		     od
 	    then () = one_true_counter.use()
+	    then () = one_param_time +:= elapsed_ms() - start
 	    in [p]
        else let () = one_false_counter.use()
+	    then () = one_param_time +:= elapsed_ms() - start
 	    in []
        fi
 
-set one_param_test(Param p, [([[(KType,KType)]], [int])] helpful_datas, Param_hash Uhash) = [Param]:
-    let QG = monomials(finalize(p)),G = p.real_form
+set one_param_test_bottom(Param p, int D, Param_hash Uhash) = [Param]:
+    let start = elapsed_ms(), QG = monomials(finalize(p)),G = p.real_form
     then () = hash_bottom_layerCounter.use()
-    then test = all(for q in QG
-    	      	    do all(for (helpful_data,helpful_js) in helpful_datas
-		       	   do min_bottom_test_factors(q, helpful_data, helpful_js)
-		       	   od)
-		    od)
-{    then test = all(for q in QG
-    	      	    do Uhash.lookup(q).>= or
-    	      	       bottom_test_factors_more(q, nQs, D)
-		    od)}
-    in if test
-       then let () = for q in QG
-		     do Uhash.match(herm_center(q))
-		     od
-	    then () = one_true_counter.use()
-	    in [p]
-       else let () = one_false_counter.use()
+    then elim_min = all(for q in QG
+    	      	    	do min_bottom_elim_factors(q)
+		    	od)
+    in if not elim_min {minimal bottom layer proved not a unitary Param}
+       then let () = one_false_counter.use()
+	    then () = one_param_time +:= elapsed_ms() - start
 	    in []
-       fi
+       else if more_flag
+       	    then let nQs = newQs(p, D)
+       	    	 then test_more = all(for q in QG
+	    	 	     	      do bottom_test_factors_more(q, nQs, D)
+				      od)
+	    	 in if test_more
+	    	    then let () = for q in QG
+		     	      	   do Uhash.match(herm_center(q))
+		     		   od
+	    		   then () = one_true_counter.use()
+	    		   then () = one_param_time +:= elapsed_ms() - start
+	    		   in [p]
+		    else let () = one_false_counter.use()
+	    	    	 then () = one_param_time +:= elapsed_ms() - start
+		    	 in []
+         	    fi
+	    else let test = all(for q in QG do is_unitary_hash(q) od) {what to do if more_flag is false}
+	     	 in if test
+	     	    then  let () = for q in QG
+		      	    	   do Uhash.match(herm_center(q))
+		      		   od
+	   	      	  then () = one_true_counter.use()
+	    		  then () = one_param_time +:= elapsed_ms() - start
+	    	      	  in [p]
+		    else let () = one_false_counter.use()
+	    	    	 then ()= one_param_time +:= elapsed_ms() - start
+		    	 in []
+		    fi
+	      fi
+	  fi
 
 {Assume we have local vertices and edges LF, herm and pos on LKTs.
 Called when there are not enough heights; presumably small KGBElts??}
@@ -1777,6 +1806,10 @@ set coh_ind_tester_flag = true
 {if true, does more extensive bottom layer elimination in first steps}
 set all_more_flag = false
 
+{when the non-minimal parabolics are used at the end, how much higher in K-types to look.
+A larger number finds more nonunitary, takes longer}
+set more_shift = 0
+
 {how many levels of bottom layer K-types to use}
 {this now has no effect; essentially hard coded in min_L_bottom_factors, in
 argument of next_heights}
@@ -1801,8 +1834,6 @@ set local_test_GEO_hash_bottom_layer(KGBElt x, ratvec lambda, VertexData vd,
 	      fi
     then htFrac = ht/(G.rho * G.two_rho_check)
     then temp_K_char_flag= htFrac <= CUTOFF
-    {then vertexDiff = #Lvd.list/#vd.list
-    then approxVertexDiff = vertexDiff.numer*100\vertexDiff.denom}
     then r = rank(thetaMinus)
     then () = revert_flag:=false
     then maxDiffLoc = max_loc(for w in LF[0]
@@ -1819,39 +1850,28 @@ set local_test_GEO_hash_bottom_layer(KGBElt x, ratvec lambda, VertexData vd,
     	 then return local_test_GEO_hash2(x, lambda, vd, Lvd, LF,
 	      	   	  				   pol_hash, Uhash)
 	 fi
-    then helpful_datas  = for mu in LKTs(pmax)
+    {then helpful_datas  = for mu in LKTs(pmax)
     	 	   	  do bottom_data.helpful_entry(mu)
-		   	  od
-    then DG0 = if #helpful_datas = 0
-    	       then height(pmax)
-    	       else max(for (helpful_data,) in helpful_datas
-	       	    	do if #helpful_data = 0 then height(pmax)
-			   else max(for list in helpful_data
-		     	       	    do if #list = 0
-				       then height(pmax)
-			       	       else max(for (tau,) in list do height(tau) od)
-				       fi
-			       	    od)
-			    fi
-		        od)
-		fi
+		   	  od}
+    then DG0 = max(for mu in LKTs(pmax)
+    	       	   do bottom_data.G_min_height(mu)
+		   od)
 	{this is the greatest height at which we'll be looking at bottom layer K-types; during the first pass;
 	 so we can compute K-chars just to this height}
-    then () = if L0 = G or #helpful_datas = 0 and not more_flag
+    then () = if L0 = G or (DG0= height(pmax) and not more_flag)
     	      then return local_test_GEO_hash2(x, lambda, vd, Lvd, LF,
 	      	   	  				   pol_hash, Uhash)
 	      fi
+    then D = max(height(pmax), DG0+more_shift)
     then () = if {TINY CASE} #LF[0]=1
-    	      then return one_param_test(pmax, helpful_datas, Uhash)
+    	      then return one_param_test_bottom(pmax, D, Uhash)
 	      fi
-    then pmaxjs = factor_params(pmaxL0)
-    then qhts = DG0
     then () = test_string:= " using local_test_GEO_hash_bottom_layer"
     then  () = hash_bottom_layerCounter.use()
-    then one_ht = qhts
+    then one_ht = DG0
     then () =  if test_verbose then prints("facet counts to dim 1: ",
 			  for list in LF do #list od);
-		  prints("testing height = ", qhts, new_line)
+		  prints("testing height = ", DG0, new_line)
 	       fi
    then pol_hash_one_ht = KTypePol_hash:
    	if temp_K_char_flag
@@ -1907,21 +1927,20 @@ set local_test_GEO_hash_bottom_layer(KGBElt x, ratvec lambda, VertexData vd,
 					  facet_bary(Lvd.list, verts))))
 			      in if #ps = 1
 			      	 then if Uhash.lookup(ps[0]).>= or
-                             	 	 all (for (helpful_data, helpful_js) in helpful_datas
+                             	 	 min_bottom_elim_factors(ps[0], pol_hash_one_ht.index(LFDKH[Dcount+1][m][Dcount+2]))
+					 {(helpful_data, helpful_js) in helpful_datas
 					  	     do min_bottom_elim_factors(ps[0], helpful_data,
 					        helpful_js, pol_hash_one_ht.index(LFDKH[Dcount+1][m][Dcount+2]))
-						     od)
-				 	  {fi}
+						     od)}
 				      then [LFDKH[Dcount+1][m]]
 				      else []
 				      fi
 				 else if all(for p in ps
-					     do Uhash.lookup(p).>= or
-					     	all (for (helpful_data, helpful_js) in helpful_datas
-					  	     do min_bottom_elim_factors(p, helpful_data, helpful_js,
-					 	pol_hash_one_ht.index(LFDKH[Dcount+1][m][Dcount+2]))
-						     od)
-					      od)
+					     do Uhash.lookup(p).>= or min_bottom_elim_factors(p)
+					     od)
+					     	{all (for (helpful_data, helpful_js) in helpful_datas
+					  	     do min_bottom_elim_factors(p, helpful_data, helpful_js)
+						     od)}
 				      then [LFDKH[Dcount+1][m]]
 				      else []
 				      fi
@@ -1949,9 +1968,8 @@ set local_test_GEO_hash_bottom_layer(KGBElt x, ratvec lambda, VertexData vd,
     	      	      else LFDKH
 		      fi
     then start_more_datas = elapsed_ms()
-    then D = DG0 {to be used in more}
-    then BKT = ## for mu in LKTs(pmax) do bottom_K_types(mu,D) od {K-types appearing in some bottom layer}
-    then  nQs = newQs(LKTs(pmax)[0], BKT) {theta-stable parabolics from which coh ind is interesting here}
+    {then BKT = ## for mu in LKTs(pmax) do bottom_K_types(mu,D) od {K-types appearing in some bottom layer}}
+    then  nQs = newQs(pmax, D) {theta-stable parabolics from which coh ind is interesting here}
     then maxQs = max_Qs(Q0)
     then () = if time_verbose then prints("time for more datas/BKT was ",
     	      	 print_time_string(elapsed_ms() - start_more_datas), " at lambda = ",lambda)
