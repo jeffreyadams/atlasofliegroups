@@ -1023,11 +1023,9 @@ big_rat big_rat::operator- (const big_rat& x) const
 
 big_int big_rat::floor () const { return num/den; }
 big_int big_rat::ceil () const { return -((-num)/den); }
-big_rat big_rat::frac () const { return big_rat(num%den,den); }
 big_int big_rat::quotient (const big_int& n) const { return num/(n*den); }
-big_rat& big_rat::operator%= (const big_int& n) { num%=n*den; return *this; }
 big_int big_rat::quotient (const big_rat& r) const
-  { return (num*r.den)/(den*r.num); }
+  { return (num*r.den)/(den*r.num); } // |operator/| produces Euclidean quotient
 big_rat big_rat::operator% (const big_rat& r) const
 { big_int d = gcd(den,r.den);
   if (d==1)

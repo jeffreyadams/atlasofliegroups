@@ -1883,19 +1883,15 @@ inserted, as this could lead to erroneous |big_int| values; however the only
 way \Cpp\ provides to avoid such conversions is to provide an exact match for
 each type that is ever presented. Each of these constructors then either
 called the |big_int| constructor for |int|, or one of the factory functions
-|from_signed| or |from_unsigned| for wide integer types. For |big_rat| there
-is no such difficulty, as there is only one |Rational| type.
+|from_signed| or |from_unsigned| for wide integer types.
 
-Values are generally accessed through shared pointers to constant values, so
-for each type we give a |typedef| for a corresponding |const| instance of the
-|shared_ptr| template, using the \&{shared\_} prefix. In some cases we need to
-construct values to be returned by first allocating and then setting a value,
-which only then (when being pushed onto the execution stack) becomes available
-for sharing; for the types where this applies we also |typedef| a non-|const|
-instance of the |shared_ptr| template, using the \&{own\_} prefix.
-
-@s Numer_t int
-@s RatNum int
+Values are generally accessed through shared pointers to constant values, so for
+each type we give a |typedef| for a corresponding |const| instance of the
+|shared_ptr| template, using the \&{shared\_} prefix. In some cases we use a
+|shared_ptr| that is know to be unique (either because we just created it or
+because we made a test), so that we can safely modify the destination. For those
+occasions we also |typedef| a non-|const| instance of the |shared_ptr| template,
+using the \&{own\_} prefix.
 
 @< Type definitions @>=
 
@@ -1922,9 +1918,18 @@ struct int_value : public value_base
   std::uint64_t ulong_val () const @+{@; return val.ulong_val(); }
 };
 @)
-typedef std::shared_ptr<const int_value> shared_int;
-typedef std::shared_ptr<int_value> own_int;
-@)
+using shared_int = std::shared_ptr<const int_value>;
+using own_int = std::shared_ptr<int_value>;
+
+@  For |big_rat| there no multitude of constructors, as there is only one
+|RatNum| type (even though it is a template instance; no other instances are in
+use).
+
+@s Numer_t int
+@s RatNum int
+
+@< Type definitions @>=
+
 struct rat_value : public value_base
 { big_rat val;
 @)
@@ -1942,8 +1947,8 @@ struct rat_value : public value_base
   RatNum rat_val() const @+{@; return val.rat_val(); }
 };
 @)
-typedef std::shared_ptr<const rat_value> shared_rat;
-typedef std::shared_ptr<rat_value> own_rat;
+using shared_rat = std::shared_ptr<const rat_value>;
+using own_rat = std::shared_ptr<rat_value>;
 
 @ Here are two more; this is quite repetitive.
 
@@ -1958,11 +1963,12 @@ struct string_value : public value_base
   ~string_value()@+ {}
   void print(std::ostream& out) const @+{@; out << '"' << val << '"'; }
   static const char* name() @+{@; return "string"; }
-  string_value (const string_value& ) = delete;
+  string_value (const string_value& ) = default;
+    // we use |get_own<string_value>|
 };
 @)
-typedef std::shared_ptr<const string_value> shared_string;
-typedef std::shared_ptr<string_value> own_string;
+using shared_string = std::shared_ptr<const string_value>;
+using own_string = std::shared_ptr<string_value>;
  @)
 
 struct bool_value : public value_base
@@ -1975,7 +1981,7 @@ struct bool_value : public value_base
   bool_value (const bool_value& ) = delete;
 };
 @)
-typedef std::shared_ptr<const bool_value> shared_bool;
+using shared_bool = std::shared_ptr<const bool_value>;
 
 @ Since there are only two possible Boolean values, we can save storage
 allocation and deallocation by pre-allocating two constant objects, one of
@@ -2038,8 +2044,8 @@ struct vector_value : public value_base
     // we use |get_own<vector_value>|
 };
 @)
-typedef std::shared_ptr<const vector_value> shared_vector;
-typedef std::shared_ptr<vector_value> own_vector;
+using shared_vector = std::shared_ptr<const vector_value>;
+using own_vector = std::shared_ptr<vector_value>;
 
 @ Matrices follow the same pattern, but in this case there is no need for
 constructors that will accept a base type like |matrix::Matrix_base<int>|, so we
@@ -2060,8 +2066,8 @@ struct matrix_value : public value_base
     // we use |get_own<matrix_value>|
 };
 @)
-typedef std::shared_ptr<const matrix_value> shared_matrix;
-typedef std::shared_ptr<matrix_value> own_matrix;
+using shared_matrix = std::shared_ptr<const matrix_value>;
+using own_matrix = std::shared_ptr<matrix_value>;
 
 @ Rational vectors are anther variation on the same theme. Note that the
 constructors ensure that rational vectors are always normalised.
@@ -2090,11 +2096,11 @@ struct rational_vector_value : public value_base
   virtual void print(std::ostream& out) const;
   static const char* name() @+{@; return "rational vector"; }
   rational_vector_value (const rational_vector_value& ) = default;
-    // we use |get_own|
+    // we use |get_own<rational_vector_value>|
 };
 @)
-typedef std::shared_ptr<const rational_vector_value> shared_rational_vector;
-typedef std::shared_ptr<rational_vector_value> own_rational_vector;
+using shared_rational_vector = std::shared_ptr<const rational_vector_value>;
+using own_rational_vector = std::shared_ptr<rational_vector_value>;
 @)
 
 @ To make a small but visible difference in printing between vectors and lists
@@ -2645,10 +2651,10 @@ trying to figure out which one is best (it would be preferable, if both options
 are available, to use the one with currently the larger storage), so instead we
 just place our bets on the first argument; this will cause repeated re-use of
 the same storage when repeatedly adding or subtraction of integers into the same
-variable if the most usual form $n:=n+a$, or its abbreviation $n+:=a$, is used.
-This is due to the optimisation we put in place to make such variable detach
-from its value before the operation is called (and whose second argument was
-evaluated before its first, so before the detachment). For multiplication
+variable if the most usual form $n:=n+a$, or its abbreviation $n\mathrel+:=a$,
+is used. This is due to the optimisation we put in place to make such variable
+detach from its value before the operation is called (and whose second argument
+was evaluated before its first, so before the detachment). For multiplication
 neither of the arguments can be clobbered into, so we don't even try to
 |get_own| here.
 
@@ -2675,8 +2681,6 @@ void minus_wrapper(expression_base::level l)
 void times_wrapper(expression_base::level l)
 { shared_int j=get<int_value>();
   shared_int i=get<int_value>();
-  if (l==expression_base::no_value)
-    return;
   if (l!=expression_base::no_value)
     push_value(std::make_shared<int_value>(i->val*j->val));
 }
@@ -2921,7 +2925,7 @@ expression_ptr negate_denotation
   { auto v = force<int_value>(a->denoted_value.get());
     return expression_ptr(new denotation(std::make_shared<int_value>(-v->val)));
   }
-  return nullptr;
+  return nullptr; // signal that we made no substitution
 }
 @)
 expression_ptr rhs_is_1
@@ -2937,7 +2941,7 @@ expression_ptr rhs_is_1
       }
     }
   }
-  return nullptr;
+  return nullptr; // signal that we made no substitution
 }
 expression_ptr lhs_is_minus_1
   (expression_ptr& args,const shared_builtin& f,const source_location& loc)
@@ -2952,7 +2956,7 @@ expression_ptr lhs_is_minus_1
       }
     }
   }
-  return nullptr;
+  return nullptr; // signal that we made no substitution
 }
 
 @ Here is some special install code. We install the successor and
@@ -3061,17 +3065,23 @@ void rat_minus_int_wrapper(expression_base::level l)
 }
 void rat_times_int_wrapper(expression_base::level l)
 { shared_int i=get<int_value>();
-  shared_rat q=get<rat_value>();
+  own_rat q=get_own<rat_value>();
   if (l!=expression_base::no_value)
-    push_value(std::make_shared<rat_value>(q->val*i->val));
+  {@;
+    q->val*=i->val;
+    push_value(std::move(q));
+  }
 }
 void rat_divide_int_wrapper(expression_base::level l)
 { shared_int i=get<int_value>();
-  shared_rat q=get<rat_value>();
+  own_rat q=get_own<rat_value>();
   if (i==0)
     throw runtime_error("Rational division by zero");
   if (l!=expression_base::no_value)
-    push_value(std::make_shared<rat_value>(q->val/i->val));
+  {@;
+    q->val/=i->val;
+    push_value(std::move(q));
+  }
 }
 
 void rat_quotient_int_wrapper(expression_base::level l)
@@ -3114,17 +3124,21 @@ void rat_minus_wrapper(expression_base::level l)
 }
 void rat_times_wrapper(expression_base::level l)
 { shared_rat j=get<rat_value>();
-  shared_rat i=get<rat_value>();
+  own_rat i=get_own<rat_value>();
   if (l!=expression_base::no_value)
-    push_value(std::make_shared<rat_value>(i->val*j->val));
+  {@;
+    i->val*=j->val;
+    push_value(std::move(i));
+  }
 }
 void rat_divide_wrapper(expression_base::level l)
 { shared_rat j=get<rat_value>();
-  shared_rat i=get<rat_value>();
-  if (j->val.numerator()==0)
-    throw runtime_error("Rational division by zero");
+  own_rat i=get_own<rat_value>();
   if (l!=expression_base::no_value)
-    push_value(std::make_shared<rat_value>(i->val/j->val));
+  {@;
+    i->val/=j->val;
+    push_value(std::move(i));
+  }
 }
 void rat_modulo_wrapper(expression_base::level l)
 { shared_rat j=get<rat_value>();
@@ -3136,17 +3150,23 @@ void rat_modulo_wrapper(expression_base::level l)
 }
 @)
 void rat_unary_minus_wrapper(expression_base::level l)
-{ shared_rat i=get<rat_value>();
-  if (l!=expression_base::no_value)
-    push_value(std::make_shared<rat_value>(-i->val));
+{ own_rat i=get_own<rat_value>();
+
+  if (l==expression_base::no_value)
+    return;
+  i->val.negate();
+  push_value(std::move(i));
 }
+
 void rat_inverse_wrapper(expression_base::level l)
 { own_rat i=get_own<rat_value>();
   if (i->val.numerator()==0)
     throw runtime_error("Inverse of zero");
 
-  if (l!=expression_base::no_value)
-    push_value((i->val.invert(),std::move(i)));
+  if (l==expression_base::no_value)
+    return;
+  i->val.invert();
+  push_value(std::move(i));
 }
 
 @)
@@ -3161,9 +3181,11 @@ void rat_ceil_wrapper(expression_base::level l)
     push_value(std::make_shared<int_value>(i->val.ceil()));
 }
 void rat_frac_wrapper(expression_base::level l)
-{ shared_rat i=get<rat_value>();
-  if (l!=expression_base::no_value)
-    push_value(std::make_shared<rat_value>(i->val.frac()));
+{ own_rat i=get_own<rat_value>();
+  if (l==expression_base::no_value)
+    return;
+  i->val.take_frac();
+  push_value(std::move(i));
 }
 
 @ Powers of rational numbers get a bit more attention than other arithmetic
@@ -3217,7 +3239,7 @@ expression_ptr lhs_is_1
       }
     }
   }
-  return nullptr;
+  return nullptr; // signal that we made no substitution
 }
 
 @ As said we rewrite expressions $1/n$ as $/n$. We could also do some constant
@@ -3236,20 +3258,20 @@ install_function(unfraction_wrapper,"%","(rat->int,int)");
 install_function(rat_plus_int_wrapper,"+","(rat,int->rat)",1);
 install_function(rat_minus_int_wrapper,"-","(rat,int->rat)",1);
 install_function(rat_times_int_wrapper,"*","(rat,int->rat)",1);
-install_function(rat_divide_int_wrapper,"/","(rat,int->rat)");
+install_function(rat_divide_int_wrapper,"/","(rat,int->rat)",1);
 install_function(rat_quotient_int_wrapper,"\\","(rat,int->int)");
 install_function(rat_modulo_int_wrapper,"%","(rat,int->rat)",1);
-install_function(rat_plus_wrapper,"+","(rat,rat->rat)",1);
-install_function(rat_minus_wrapper,"-","(rat,rat->rat)",1);
+install_function(rat_plus_wrapper,"+","(rat,rat->rat)");
+install_function(rat_minus_wrapper,"-","(rat,rat->rat)");
 install_function(rat_times_wrapper,"*","(rat,rat->rat)",1);
 install_function(rat_divide_wrapper,"/","(rat,rat->rat)",1);
-install_function(rat_modulo_wrapper,"%","(rat,rat->rat)",1);
+install_function(rat_modulo_wrapper,"%","(rat,rat->rat)");
 install_function(rat_unary_minus_wrapper,"-","(rat->rat)",3);
 install_function(rat_inverse_wrapper,"/","(rat->rat)",3);
 install_function(rat_floor_wrapper,"floor","(rat->int)");
 install_function(rat_ceil_wrapper,"ceil","(rat->int)");
 install_function(rat_frac_wrapper,"frac","(rat->rat)",3);
-install_function(rat_power_wrapper,"^","(rat,int->rat)",1);
+install_function(rat_power_wrapper,"^","(rat,int->rat)");
 
 @*1 Booleans.
 %
@@ -3484,9 +3506,12 @@ void string_geq_wrapper(expression_base::level l)
 
 @< Local function definitions @>=
 void string_concatenate_wrapper(expression_base::level l)
-{ shared_string b=get<string_value>(); shared_string a=get<string_value>();
-  if (l!=expression_base::no_value)
-    push_value(std::make_shared<string_value>(a->val+b->val));
+{ shared_string b=get<string_value>();
+  own_string a=get_own<string_value>();
+  if (l==expression_base::no_value)
+    return;
+  a->val.append(b->val);
+  push_value(std::move(a));
 }
 @)
 void concatenate_strings_wrapper(expression_base::level l)
@@ -3666,21 +3691,18 @@ void vector_suffix_wrapper(expression_base::level l)
 void vector_prefix_wrapper(expression_base::level l)
 { own_vector r=get_own<vector_value>();
   int e=get<int_value>()->int_val();
-  if (l!=expression_base::no_value)
-  {@; r->val.insert(r->val.begin(),e);
-    push_value(std::move(r));
-  }
+  if (l==expression_base::no_value)
+    return;
+  r->val.insert(r->val.begin(),e);
+  push_value(std::move(r));
 }
 @)
 void join_vectors_wrapper(expression_base::level l)
 { shared_vector y=get<vector_value>();
-  shared_vector x=get<vector_value>();
+  own_vector x=get_own<vector_value>();
   if (l!=expression_base::no_value)
-  { own_vector result = std::make_shared<vector_value>(int_Vector());
-    result->val.reserve(x->val.size()+y->val.size());
-    result->val.insert(result->val.end(),x->val.begin(),x->val.end());
-    result->val.insert(result->val.end(),y->val.begin(),y->val.end());
-    push_value(std::move(result));
+  { x->val.insert(x->val.end(),y->val.begin(),y->val.end());
+    push_value(std::move(x));
   }
 
 }
@@ -3880,22 +3902,22 @@ void check_size (std::size_t a, std::size_t b)
 }
 
 void vec_plus_wrapper(expression_base::level l)
-{ own_vector v1= get_own<vector_value>();
-  shared_vector v0= get<vector_value>();
+{ shared_vector v1= get<vector_value>();
+  own_vector v0= get_own<vector_value>();
   check_size(v0->val.size(),v1->val.size());
   if (l==expression_base::no_value)
     return;
-  v1->val += v0->val;
-  push_value(std::move(v1));
+  v0->val += v1->val;
+  push_value(std::move(v0));
 }
 void vec_minus_wrapper(expression_base::level l)
-{ own_vector v1= get_own<vector_value>();
-  shared_vector v0= get<vector_value>();
+{ shared_vector v1= get<vector_value>();
+  own_vector v0= get_own<vector_value>();
   check_size(v0->val.size(),v1->val.size());
   if (l==expression_base::no_value)
     return;
-  v1->val.negate_add(v0->val);
-  push_value(std::move(v1));
+  v0->val -= v1->val;
+  push_value(std::move(v0));
 }
 
 void vec_unary_minus_wrapper(expression_base::level l)
@@ -3947,121 +3969,92 @@ void vv_prod_wrapper(expression_base::level l)
 arithmetic, it is useful to have variants of vector addition and subtraction
 operations that do not require equal size arguments, but that adapt to the
 larger argument, assuming zero entries when they are absent. It is then also
-natural to remove trailing zeros.
+natural to remove trailing zeros. We used to want to actually acquire (unique)
+access to the larger argument, but that created may cases without it being
+obvious that the result was always the fastest possible. Also the processing of
+operation-assignments makes it more desirable to try to reuse the first
+argument, so that is what we now do through the usual |get_own| call. There are
+still a few cases to distinguish, but the situation remains quite simple.
 
 @< Local function def... @>=
 
 void flex_add_wrapper(expression_base::level l)
 { shared_vector v1= get<vector_value>();
-  shared_vector v0= get<vector_value>();
+  own_vector v0= get_own<vector_value>();
+
   if (l==expression_base::no_value)
     return;
-  const int_Vector& V0=v0->val;
+  int_Vector& V0=v0->val;
   auto i0=V0.size();
 @/const int_Vector& V1=v1->val;
   auto i1=V1.size();
+@)
+  // now drop leading zeros
   while (i0>0 and V0[i0-1]==0)
     --i0;
   while (i1>0 and V1[i1-1]==0)
     --i1;
-  if (i0==i1) // equal size case
+  if (i0==i1)// equal size case
   { while (i0>0 and V0[i0-1]+V1[i0-1]==0)
       --i0; // skip leading zeros in result
-    int_Vector result(i0);
-    while (i0-->0)
-      result[i0]=V0[i0]+V1[i0];
-    push_value(std::make_shared<vector_value>(std::move(result)));
-    return;
+    V0.resize(i0); // set size after dropping leading zeros
   }
-  shared_vector& larger = *(i0>i1 ? &v0 : &v1); // unequal size case
-  if (larger.unique()) // then we can grab the larger vector
-  { own_vector result =
-      std::const_pointer_cast<vector_value>(std::move(larger));
-    if (i0>i1)
-    {
-      result->val.resize(i0);
-      while (i1-->0)
-        result->val[i1]+=V1[i1]; // add |V1| to result
-    }
-    else
-    {
-      result->val.resize(i1);
-      while (i0-->0)
-        result->val[i0]+=V0[i0]; // add |V0| to result
-    }
-    push_value(std::move(result));
-  }
-  else // we must allocate
+  else // unequal size, final size will be |max(i0,i1)|
   {
-    int_Vector result(std::max(i0,i1));
-    while (i0>i1)
-      --i0,result[i0]=V0[i0]; // copy excess of |V0|
-    while (i1>i0)
-      --i1,result[i1]=V1[i1]; // copy excess of |V1|
-    while (i0-->0)
-      result[i0]=V0[i0]+V1[i0];
-    push_value(std::make_shared<vector_value>(std::move(result)));
+    V0.resize(i0); // drop any zeros we skipped
+    if (i0>i1)
+      i0=i1; // descend through high part of |V0|
+    else
+      V0.insert(V0.end(),&V1[i0],&V1[i1]);
+        // copy high part of |V1|, may reallocate |V0|
   }
+  while (i0-->0)
+    V0[i0]+=V1[i0]; // do addition by hand on common part
+  push_value(std::move(v0));
 }
 
-@ There is a subtraction counterpart, which is similar but even more
-complicated due to its asymmetry.
+@ There is a subtraction counterpart. This used to be more complicated when we
+tried to reuse the memory of the larger vector if it was uniquely shared. Now
+that we decided to reuse the memory of the first argument always, there are just
+a few small changes with respect to the addition case.
 
 @< Local function def... @>=
 
 void flex_sub_wrapper(expression_base::level l)
 { shared_vector v1= get<vector_value>();
-  shared_vector v0= get<vector_value>();
+  own_vector v0= get_own<vector_value>();
+
   if (l==expression_base::no_value)
     return;
-  const int_Vector& V0=v0->val;
+  int_Vector& V0=v0->val;
   auto i0=V0.size();
 @/const int_Vector& V1=v1->val;
   auto i1=V1.size();
+@)
+  // now drop leading zeros
   while (i0>0 and V0[i0-1]==0)
     --i0;
   while (i1>0 and V1[i1-1]==0)
     --i1;
-  if (i0==i1) // equal size case
+  if (i0==i1)// equal size case
   { while (i0>0 and V0[i0-1]==V1[i0-1])
       --i0; // skip leading zeros in result
-    int_Vector result(i0);
-    while (i0-->0)
-      result[i0]=V0[i0]-V1[i0];
-    push_value(std::make_shared<vector_value>(std::move(result)));
-    return;
+    V0.resize(i0); // set size after dropping leading zeros
   }
-  shared_vector& larger = *(i0>i1 ? &v0 : &v1); // unequal size case
-  if (larger.unique()) // then we can grab the larger vector
-  { own_vector result =
-      std::const_pointer_cast<vector_value>(std::move(larger));
-    if (i0>i1)
-    {
-      result->val.resize(i0);
-      while (i1-->0)
-        result->val[i1]-=V1[i1]; // subtract |V1| from result
-    }
-    else
-    {
-      result->val.resize(i1);
-      while (i1-->i0)
-        result->val[i1]=-result->val[i1]; // negate top part of result
-      while (i0-->0)
-        result->val[i0]=V0[i0]-result->val[i0]; // negate result, add |V0|
-    }
-    push_value(std::move(result));
-  }
-  else // we must allocate
+  else // unequal size, final size will be |max(i0,i1)|
   {
-    int_Vector result(std::max(i0,i1));
-    while (i0>i1)
-      --i0,result[i0]=V0[i0]; // copy excess of |V0|
-    while (i1>i0)
-      --i1,result[i1]=-V1[i1]; // copy excess of |V1|, negated
-    while (i0-->0)
-      result[i0]=V0[i0]-V1[i0];
-    push_value(std::make_shared<vector_value>(std::move(result)));
+    V0.resize(i0); // drop any zeros we skipped
+    if (i0>i1)
+      i0=i1; // descend through high part of |V0|
+    else
+    { V0.reserve(i1); // we must negate entries of |V1| while copying
+      std::for_each(&V1[i0],&V1[i1],
+                    @[[&V0](int val)@+ {@; V0.push_back(-val); }@]);
+    }
   }
+  while (i0-->0)
+    V0[i0]-=V1[i0]; // do subtraction by hand on common part
+  push_value(std::move(v0));
 }
 
 @ While we are defining functions to help doing polynomial arithmetic, we
@@ -4126,29 +4119,38 @@ void ratvec_unfraction_wrapper(expression_base::level l)
 @)
 void ratvec_plus_wrapper(expression_base::level l)
 { shared_rational_vector v1= get<rational_vector_value>();
-  shared_rational_vector v0= get<rational_vector_value>();
+  own_rational_vector v0= get_own<rational_vector_value>();
   check_size(v0->val.size(),v1->val.size());
-  if (l!=expression_base::no_value)
-    push_value(std::make_shared<rational_vector_value>(v0->val+v1->val));
+
+  if (l==expression_base::no_value)
+    return;
+  v0->val += v1->val;
+  push_value(std::move(v0));
 }
 void ratvec_minus_wrapper(expression_base::level l)
 { shared_rational_vector v1= get<rational_vector_value>();
-  shared_rational_vector v0= get<rational_vector_value>();
+  own_rational_vector v0= get_own<rational_vector_value>();
   check_size(v0->val.size(),v1->val.size());
-  if (l!=expression_base::no_value)
-    push_value(std::make_shared<rational_vector_value>(v0->val-v1->val));
+
+  if (l==expression_base::no_value)
+    return;
+  v0->val -= v1->val;
+  push_value(std::move(v0));
 }
 void ratvec_unary_minus_wrapper(expression_base::level l)
-{ shared_rational_vector v = get<rational_vector_value>();
-  if (l!=expression_base::no_value)
-    push_value(std::make_shared<rational_vector_value>(-v->val));
+{ own_rational_vector v = get_own<rational_vector_value>();
+
+  if (l==expression_base::no_value)
+    return;
+  v->val.negate();
+  push_value(std::move(v));
 }
 
 @ Here are multiplication and division of rational vectors by integers, and by
 rational numbers. The modulo operation is only provided for the integer case.
 All operations must normalise the result, since the library operations do not
 do this automatically, with the exception of the modulo operation which cannot
-lead to a smaller denominator since it effectively adds an integer vector.
+lead to a smaller denominator since it effectively subtracts an integer vector.
 
 @< Local function def... @>=
 void ratvec_times_int_wrapper(expression_base::level l)
@@ -4176,7 +4178,7 @@ void ratvec_modulo_int_wrapper(expression_base::level l)
     throw runtime_error("Rational vector modulo 0");
   if (l==expression_base::no_value)
     return;
-  v->val %= i;
+  v->val %= i; // this cannot change the denominator, no need for |normalize|
   push_value(std::move(v));
 }
 @)
@@ -4444,11 +4446,11 @@ install_function(flex_sub_wrapper,"flex_sub","(vec,vec->vec)",1);
 install_function(vector_convolve_wrapper,"convolve","(vec,vec->vec)",1);
 install_function(mat_plus_mat_wrapper,"+","(mat,mat->mat)",1);
 install_function(mat_minus_mat_wrapper,"-","(mat,mat->mat)",1);
-install_function(mrv_prod_wrapper,"*","(mat,ratvec->ratvec)",2);
-install_function(mv_prod_wrapper,"*","(mat,vec->vec)",2);
-install_function(mm_prod_wrapper,"*","(mat,mat->mat)",1);
-install_function(vm_prod_wrapper,"*","(vec,mat->vec)",1);
-install_function(rvm_prod_wrapper,"*","(ratvec,mat->ratvec)",1);
+install_function(mrv_prod_wrapper,"*","(mat,ratvec->ratvec)");
+install_function(mv_prod_wrapper,"*","(mat,vec->vec)");
+install_function(mm_prod_wrapper,"*","(mat,mat->mat)");
+install_function(vm_prod_wrapper,"*","(vec,mat->vec)");
+install_function(rvm_prod_wrapper,"*","(ratvec,mat->ratvec)");
 
 @*1 Other wrapper functions for vectors and matrices.
 %
@@ -5061,7 +5063,7 @@ relations that show the excluded vectors to be dependent on the retained ones.
 @< Local function definitions @>=
 void subspace_normal_wrapper(expression_base::level l)
 {
-  typedef BitVector<64> bitvec;
+  using bitvec = BitVector<64>;
   shared_matrix generators=get<matrix_value>();
   unsigned int n_gens = generators->val.n_columns();
   unsigned int dim = generators->val.n_rows();
