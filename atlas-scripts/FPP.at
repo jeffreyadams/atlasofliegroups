@@ -183,3 +183,7 @@ in (#rv,rv)
 set parameters(Param_hash param_hash)=[Param]:
     for i:param_hash.size() do param_hash.index(i) od
 
+
+{bad(p) should ONLY be applied if p is NOT unitary, otherwise the result is meangingless (but don't test for this)
+ bad(p)=true if (p is not unitary and) pL is unitary}
+set bad(Param p)=bool:let (,pL)=theta_stable_quasi_data(p) in is_unitary(pL)

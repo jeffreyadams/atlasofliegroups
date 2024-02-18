@@ -11,8 +11,8 @@ FPP_at_file="FPP.at" #default
 FPP_py_file="FPP.py" #default
 #extra_files=["global_facets_E7.at","coh_ind_E7_to_hash.at","E7except589to15851.at"]
 extra_files=["global_facets_E7.at","coh_ind_E7_to_hash.at"]
-#extra_files=[]
-
+extra_files=[]
+coh_ind_flag=False  #this is a hack, fix later
 def nice_time(t):
    return(re.sub("\..*","",str(datetime.timedelta(seconds=t))))
  
@@ -73,15 +73,19 @@ def atlas_compute(i,pid):
    reporting_data=[]
    print("starting Q size: ", main_queue.qsize())
    #add all parameters from coh_ind_params to unitary_hash
-#   atlas_cmd=format_cmd("update(unitary_hash,coh_ind_params)\n")
-#   proc.stdin.write(atlas_cmd)
-#   proc.stdin.flush()
-#   atlas_cmd=format_cmd("unitary_hash.size()\n")
-#   proc.stdin.write(atlas_cmd)
-#   proc.stdin.flush()
-#   line = proc.stdout.readline().decode('ascii')  #discard
-#   line = proc.stdout.readline().decode('ascii')
-#   print("starting size of unitary_hash: (list number ",str(i), ")", line)
+   if coh_ind_flag:
+      print("loading params from coh_ind_params")
+      atlas_cmd=format_cmd("update(unitary_hash,coh_ind_params)\n")
+      proc.stdin.write(atlas_cmd)
+      proc.stdin.flush()
+      atlas_cmd=format_cmd("unitary_hash.size()\n")
+      proc.stdin.write(atlas_cmd)
+      proc.stdin.flush()
+      line = proc.stdout.readline().decode('ascii')  #discard
+      line = proc.stdout.readline().decode('ascii')
+   else:
+      print("not loading params from coh_ind_params")
+   print("starting size of unitary_hash: (list number ",str(i), ")", line)
    while main_queue.qsize()>0:
 #      print("MAIN LOOP")
       log.write("==================================================================\n")
@@ -207,7 +211,7 @@ def atlas_compute(i,pid):
       reporting_data.append((x,x_time))
       print("end of loop, Qsize is ", main_queue.qsize())
 #      print("Get another item from queue")
-      log.write("Get another item from queue")
+      log.write("Get another item from queue\n")
    log.write("No more KGB elements to do; time: " + str(time.ctime()) + "\n")
    stoptime=time.time()
    elapsed = nice_time(stoptime-starttime)
