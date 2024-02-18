@@ -684,4 +684,10 @@ set make_unitarity_bool_hash () = unitarity_bool_hash:
 
 set unitarity_hash = make_unitarity_bool_hash()
 
-set is_unitary_hash(Param p) = bool: unitarity_hash.entry(p)
+set crazy_flag = false
+set is_unitary_hash(Param p) = bool:
+    let (,pL) = theta_stable_data(p)
+    in if crazy_flag and is_hermitian(pL) and unitarity_hash.entry(pL)
+       then true
+       else unitarity_hash.entry(p)
+       fi

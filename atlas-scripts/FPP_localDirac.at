@@ -474,16 +474,8 @@ set local_testK_hash_bottom_layer(KGBElt x, ratvec lambda, VertexData vd,
 	      		     od
 		   in ()
 	       fi
-    {then LKdatas = for mu in LKTs(parameter(x,lambda)) do bottom_data.entry(mu) od}
-    {then HT = max(for LKdata in LKdatas
-    	      	  do max(for pairs in LKdata
-		     	 do max(for (tau,) in pairs
-			    	do height(tau)
-				od)
-		         od)
-		  od)}
     then () = if fund_facet_verbose and NumClasses > 100
-    then prints(); prints("start local_testK_hash ", NumClasses,
+    then prints(); prints("start local_testK_hash_bottom_layer ", NumClasses,
 		   " equiv classes of facets to dim ",#FVKH-1)
 	      ; prints()
 	      fi
@@ -534,8 +526,6 @@ set local_testK_hash_bottom_layer(KGBElt x, ratvec lambda, VertexData vd,
      then () = if time_verbose then prints("     ", print_time_string(time),
      	       	  	       " for local_testK_hash_bottom_layer") fi
      in  FVKHnew
-
-
 
 set ParamsByDim = [[Param]]: for d:16 do [] od
 set LFDKHByDim = [[FacetVertsKHash]]: for d:16 do [] od
@@ -623,8 +613,16 @@ set local_test_hash(KGBElt x, ratvec lambda, VertexData Lvd,
 	      fi
     in  UParams
 
+set more_verbose =false
+
+{meant to hold nonunitary Params not eliminated by more}
+set more_bad_hash = make_Param_hash()
+
+{meant to hold params p with pL unitary and p not}
+set surprise_hash = make_Param_hash()
+
 { Input is candidate facets, and graph info. Output is the unitary ones.
- use and update a complete list Uhash of known tester-unitary facets.
+ use and update a complete list Uhash of known unitary facets.
  try to compute and systematically use partial order on facets.
 Assume the input params are already bottom layer positive for minimal parabolic; try
 to use larger ones.}
@@ -655,50 +653,56 @@ set local_test_hash_bottom(KGBElt x, ratvec lambda, VertexData Lvd,
 	      	then (d,j) = coords(LFVH,C[0])
 	      	then verts = vec: LFVH[d][j][:d+1]
 		  {first_param makes trouble in UParams list!}
-	      	  then ps = monomials(finalize(parameter(x, lambda
-		    	  , facet_bary(Lvd.list, verts))))
-		  {then () = if #ps = 2 and ps[1].x.number = 127 then prints(ps[1],"  ",Uhash.lookup(ps[1])) fi}
-	      	in if{NEWU} (#ps = 1  {THIS IS COMPUTING A BOOL}
-		            and (Uhash.lookup(ps[0]).>= or
-			    	if more_flag
-				then bottom_test_factors_more(ps[0], nQs, D, pol_hash.index(LFVH[d][j][d+1]))
-				else is_unitary_hash(ps[0])
-				fi))
-		            or (#ps > 1
-			       	and all(for p in ps
-		   	       	    	do Uhash.lookup(p).>= or
-			       	       	   if more_flag
-			       	       	   then bottom_test_factors_more(p, nQs, D)
-			      	           else is_unitary_hash(p)
-			       		   fi
-			     	         od))
-		   then for i in C {if all Langlands quotients are unitary, does this persist on C?}
-		   	do let (d,j) = coords(LFVH,i)
-			   then verts = vec: LFVH[d][j][:d+1]
-			   then () = unitary_by_dim[d]+:=1
-			   then q = parameter(x,lambda, facet_bary(Lvd.list,verts))
-			   then () = for q1 in monomials(finalize(q))
-			   	     do Uhash.match(herm_center(q1));
-				     if deform_flag
-				     then for q1d in face_deformed_unitaries_new(q1)
-				     	  do Uhash.match(q1d)
-					  od
+		then p = parameter(x, lambda, facet_bary(Lvd.list, verts))
+	      	then ps = monomials(finalize(p))
+	      	then elim_more = if more_flag
+				   then if #ps = 1
+				     	then bottom_elim_factors_more(ps[0], nQs, D, pol_hash.index(LFVH[d][j][d+1]))
+		                     	else all(for p1 in ps
+		   	       	    	     	 do Uhash.lookup(p1).>= or
+			       	       	    	    bottom_elim_factors_more(p1, nQs, D)
+					 	 od)
+				        fi
+				   else true {if we're not using more}
+				   fi
+		 then () = if more_verbose and more_flag then prints("result of elim_more was ",elim_more) fi
+		 then test = if not elim_more then false
+		      	     else all(for p1 in ps do is_unitary_hash(p1) od)
+			     fi
+		 then () = if more_verbose then prints("your final answer was ",test) fi
+		 in if test
+		      then {let () = for p1 in ps
+                                    do Uhash.match(herm_center(p1))
+                                    od
+			   then () =} for i in C 
+		   	   	     do let (d,j) = coords(LFVH,i)
+			   	     	then verts = vec: LFVH[d][j][:d+1]
+			   	   	then () = unitary_by_dim[d]+:=1
+			   	   	then q = parameter(x,lambda, facet_bary(Lvd.list,verts))
+			   	   	then () = for q1 in monomials(finalize(q))
+			   	     	     	  do Uhash.match(herm_center(q1));
+				     	     	     if deform_flag
+				     	     	     then for q1d in face_deformed_unitaries_new(q1)
+				     	     	     	  do Uhash.match(q1d)
+					  	  	  od
+				     	     	     fi
+						   od
+			   		then () = if long_out_flag
+		      	   	     	     	  then let () = ParamsByDim[d] #:= q
+			   	     	  	       then ()=LFDKHByDim[d] #:= LFVH[d][j]
+				     	  	       in ()
+			   	     		   fi
+					 in q
+				      od
+		      else let () = if more_flag then more_bad_hash.match(p) fi
+		      	       	    {in this case p passed elim_more but is not unitary}
+			   then (,pL) = theta_stable_quasi_data(p)
+			   then () = if is_final(pL) and is_unitary_hash(pL)
+			      	     then surprise_hash.match(p)
 				     fi
-				     od
-			   then () = if long_out_flag
-		      	   	     then let () = ParamsByDim[d]:=(ParamsByDim[d] next ParamsByDim[d]:=[])
-				     	  #q
-				     {ParamsByDim[d] := ParamsByDim[d]#q}
-			   	     	  then ()=LFDKHByDim[d]:=(LFDKHByDim[d] next LFDKHByDim[d]:=[])
-					  #LFVH[d][j]
-					  {LFDKHByDim[d]#LFVH[d][j]}
-				     	  in ()
-			   	     fi
-		       	   in q
-		    	od {list of unitary Params}
-		   else []
-		   fi{NEWU}
-	  od.##
+		      	   in []
+		      fi
+	     od.## {list of unitary Params}
     then () = if test_verbose or test_slightly_verbose
     	      then prints("unitary facets by dim = ",
        	       	    	   unitary_by_dim, test_string);
@@ -743,35 +747,55 @@ set one_param_test(Param p, Param_hash Uhash) = [Param]:
 	    in [p]
        else let () = one_false_counter.use()
 	    then () = one_param_time +:= elapsed_ms() - start
+	    then (,pL) = theta_stable_quasi_data(p)
+	    then () = if is_final(pL) and is_unitary_hash(pL)
+		      then surprise_hash.match(p)
+		      fi
 	    in []
        fi
 
 set one_param_test_bottom(Param p, int D, Param_hash Uhash) = [Param]:
     let start = elapsed_ms(), QG = monomials(finalize(p)),G = p.real_form
     then () = hash_bottom_layerCounter.use()
+    {then () = if one_param_verbose then prints(new_line,"start one_param_test_bottom at p = ",p) fi}
     then elim_min = all(for q in QG
     	      	    	do min_bottom_elim_factors(q)
 		    	od)
+    {then () = if one_param_verbose then prints("result of elim_min was ",elim_min) fi}
     in if not elim_min {minimal bottom layer proved not a unitary Param}
        then let () = one_false_counter.use()
 	    then () = one_param_time +:= elapsed_ms() - start
 	    in []
        else if more_flag
        	    then let nQs = newQs(p, D)
-       	    	 then test_more = all(for q in QG
-	    	 	     	      do bottom_test_factors_more(q, nQs, D)
+	    	 then () = if more_verbose then prints("start more with p = ",p, ", D = ",D,", #nQs = ",#nQs) fi
+       	    	 then elim_more = all(for q in QG
+	    	 	     	      do bottom_elim_factors_more(q, nQs, D)
 				      od)
-	    	 in if test_more
-	    	    then let () = for q in QG
-		     	      	   do Uhash.match(herm_center(q))
-		     		   od
-	    		   then () = one_true_counter.use()
-	    		   then () = one_param_time +:= elapsed_ms() - start
-	    		   in [p]
-		    else let () = one_false_counter.use()
-	    	    	 then () = one_param_time +:= elapsed_ms() - start
-		    	 in []
-         	    fi
+		 then () = if more_verbose then prints("result of elim_more was ",elim_more) fi
+	    	 in if elim_more
+		    then let test = all(for q in QG do is_unitary_hash(q) od)
+		    	 then () = if more_verbose then prints("your final answer was ",test) fi
+	    	    	 in  if test
+		    	     then let () = for q in QG
+		     	      	      	   do Uhash.match(herm_center(q))
+		     		      	   od
+	    		     	 then () = one_true_counter.use()
+	    		     	 then () = one_param_time +:= elapsed_ms() - start
+	    		     	 in [p]
+		            else let () = one_false_counter.use() {if test is false}
+	    	    	     	 then () = one_param_time +:= elapsed_ms() - start
+				 then () = more_bad_hash.match(p)
+		    	     	 in []
+         	            fi
+		     else let () = one_false_counter.use() {if elim_more is false}
+	    	    	  then () = one_param_time +:= elapsed_ms() - start
+			  then (,pL) = theta_stable_quasi_data(p)
+			  then () = if is_final(pL) and is_unitary_hash(pL)
+			      	     then surprise_hash.match(p)
+				     fi
+		    	  in []
+		     fi
 	    else let test = all(for q in QG do is_unitary_hash(q) od) {what to do if more_flag is false}
 	     	 in if test
 	     	    then  let () = for q in QG
@@ -782,6 +806,10 @@ set one_param_test_bottom(Param p, int D, Param_hash Uhash) = [Param]:
 	    	      	  in [p]
 		    else let () = one_false_counter.use()
 	    	    	 then ()= one_param_time +:= elapsed_ms() - start
+			 then (,pL) = theta_stable_quasi_data(p)
+			 then () = if is_final(pL) and is_unitary_hash(pL)
+			      	   then surprise_hash.match(p)
+				   fi
 		    	 in []
 		    fi
 	      fi
@@ -1803,12 +1831,10 @@ set bottom_length_frac = rat: 1{??}
 {if true, use coh_ind_is_unitary in final tests; else is_unitary} 
 set coh_ind_tester_flag = true
 
-{if true, does more extensive bottom layer elimination in first steps}
-set all_more_flag = false
-
-{when the non-minimal parabolics are used at the end, how much higher in K-types to look.
-A larger number finds more nonunitary, takes longer}
-set more_shift = 0
+{when the non-minimal parabolics are used at the end, how much above
+height(p) to look at K-types.  A larger number finds more nonunitary,
+takes longer}
+set more_shift = 2
 
 {how many levels of bottom layer K-types to use}
 {this now has no effect; essentially hard coded in min_L_bottom_factors, in
@@ -1862,7 +1888,7 @@ set local_test_GEO_hash_bottom_layer(KGBElt x, ratvec lambda, VertexData vd,
     	      then return local_test_GEO_hash2(x, lambda, vd, Lvd, LF,
 	      	   	  				   pol_hash, Uhash)
 	      fi
-    then D = max(height(pmax), DG0+more_shift)
+    then D = height(pmax)+more_shift
     then () = if {TINY CASE} #LF[0]=1
     	      then return one_param_test_bottom(pmax, D, Uhash)
 	      fi

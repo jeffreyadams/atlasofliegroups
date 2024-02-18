@@ -742,13 +742,12 @@ set FPP_unitary_hash_bottom_layer([(KGBElt,ratvec)] xlambdas, Param_hash UhashG,
        	      ", time in min_bottom_elim_factors = ",print_time_string(mbefTime));
        prints("Time in bottom layer branching = ",print_time_string(rf_sig_tables.bottom_branch_time()),
        		    ", time in bottom layer sig = ", print_time_string(rf_sig_tables.bottom_sig_time()));
-       prints("Time in min_bottom_elim_factors = ",print_time_string(mbefTime));
-       prints("  #hash_real_dumb =",hash_real_dumbCounter.use_count(),
-	      ", #hash_dumb =", hash_dumbCounter.use_count(),
-       	      ", #hash_def_dumb =", hash_def_dumbCounter.use_count());
-       prints("  #hash =", hashCounter.use_count(),
+       if more_flag then prints("Time in bottom_elim_factors_more = ", print_time_string(befmoreTime), ", more_shift = ",
+       	      more_shift, ", #Params missed by more = ",  more_bad_hash.size()) fi;
+       if surprise_hash.size() > 0 then prints("  Found ", surprise_hash.size(),
+       	  		    " counterexamples to coh_ind(unitary) = unitary; they're in surprise_hash.") fi;
+       prints("  #hash_def_dumb =", hash_def_dumbCounter.use_count(),
 	      ", #hash2 =", hash2Counter.use_count(),
-	      ", #hash_one_level =", hash_one_levelCounter.use_count(),
 	      ", #hash_bottom_layer =", hash_bottom_layerCounter.use_count());
        prints("Number of unitary params = ", sum(answerCards));
        prints("Number of FPP-unitary facets = ",UhashG.size(),
@@ -929,12 +928,11 @@ set FPP_unitary_hash_bottom_layer([KGBElt] xs, Param_hash UhashG, Param_hash Upa
        	      ", time in min_bottom_elim_factors = ", print_time_string(mbefTime));
        prints("Time in bottom layer branching = ",print_time_string(rf_sig_tables.bottom_branch_time()),
        		    ", time in bottom layer sig = ", print_time_string(rf_sig_tables.bottom_sig_time()));
-       prints("  #hash_real_dumb = ",hash_real_dumbCounter.use_count(),
-	      ", #hash_dumb = ", hash_dumbCounter.use_count(),
-       	      ", #hash_def_dumb =", hash_def_dumbCounter.use_count());
-       prints("  #hash = ", hashCounter.use_count(),
-	      ", #hash2 = ", hash2Counter.use_count(),
-	      ", #hash_one_level = ", hash_one_levelCounter.use_count(),
+       if more_flag then prints("Time in bottom_elim_factors_more = ", print_time_string(befmoreTime), ", more_shift = ",
+       	      more_shift, ", #Params missed by more = ", more_bad_hash.size()) fi;
+       if surprise_hash.size() > 0 then prints("Found ", surprise_hash.size(),
+       	  		    " counterexamples to coh_ind(unitary) = unitary; they're in surprise.hash.") fi;
+       prints("  #hash_def_dumb =", hash_def_dumbCounter.use_count(), ", #hash2 = ", hash2Counter.use_count(),
 	      ", #hash_bottom_layer = ", hash_bottom_layerCounter.use_count());
        prints("Number of unitary params = ", sum(for list in answerCards do sum(list) od));
         prints("Number of known FPP-unitary facets = ",UhashG.size(),
