@@ -331,7 +331,7 @@ set FPP_unitary_hash_general([(KGBElt,ratvec)] xlambdas, Param_hash Uhash,
     		 	  then () = xlambdatimes[k] := current - start
     			  in if every_lambda_flag
 	      		     then prints("  ",print_time_string(xlambdatimes[k]),
-			   	" = time for (x,lambda) = (", xnums[k], ",",k{lambdas[k]},")", test_string);
+			   	" = time for (x,lambda) = (", xnums[k], ",",k, ",", lambdas[k],")", test_string);
 			         prints("    #LF = ", for L in LF do #L od, "; #unitary params = ", answerCards[k],
 				 ", #new unitary = ", Uhash.size() - startUhash,
 				 ", #tests = ", unitary_test_counter.use_count() - startUcounter);
@@ -709,7 +709,7 @@ set FPP_unitary_hash_bottom_layer([(KGBElt,ratvec)] xlambdas, Param_hash UhashG,
     		 	 then () = xlambdatimes[k] := current - start
     			 in if every_lambda_flag
 	      		    then prints("  ",print_time_string(xlambdatimes[k]),
-			   	" = time for (x,lambda) = (", xnums[k], ",",k,"), ht = ",
+			   	" = time for (x,lambda) = (", xnums[k], ",",k,",",lambdas[k],"), ht = ",
 				  height(parameter(x,lambda,0*lambda)), ", L = ", let (Q,) =
 				  theta_stable_quasi_data(parameter(x,lambda,0*lambda)) in Q.Levi,
 				  ",",test_string);

@@ -26,6 +26,7 @@ idea or not. My do-them-all jobs on atlas are computing an average of
 one KGBElt each 90 minutes.
 }
 set trivial_group=compact_form(trivial_group)
+set Nullp = trivial_group.trivial
 
 set params(Param_hash unitary_hash)=[Param]:
  for i:unitary_hash.size() do unitary_hash.index(i) od
@@ -155,9 +156,9 @@ set write_param_list_jda([Param] list, string listName)=void:
 if #list=0
   then prints("set ",listName,"=[Param]:[]")
 else
-  let ()=prints("printing list of size: ", #list) in
+{  let ()=prints("printing list of size: ", #list) in}
   let G=list[0].real_form then
-  ()=  prints("set Nullp = trivial_group.trivial") then
+{  ()=  prints("set Nullp = trivial_group.trivial") then}
   ()=prints("set ",listName,"=[Param]: for i:",#list," do Nullp od") in
   for p@i in list do
       prints("void:",listName,"[",i,"]:=parameter(KGB(G,",number(p.x),"),",p.lambda,",",p.nu,")")
