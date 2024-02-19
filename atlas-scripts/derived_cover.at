@@ -39,7 +39,8 @@ set derived_cover_real_form(RealForm G) = RealForm:
     in Gsc
 
 {xsc is a KGBElt for a group Gsc; M is a map from X*(G) to X*(Gsc).
- Result is a KGBElt for G}
+ Result is a KGBElt for G. Would like this to work when Gsc is a simple derived factor of a Levi
+ in G, but it does not.}
 set embed_KGB(KGBElt xsc, RealForm G, mat M) = KGBElt:
     let Gsc = xsc.real_form
     {then sigma = for alpha@j in G.simple_roots

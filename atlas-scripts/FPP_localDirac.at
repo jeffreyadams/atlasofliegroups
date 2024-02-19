@@ -620,6 +620,7 @@ set more_bad_hash = make_Param_hash()
 
 {meant to hold params p with pL unitary and p not}
 set surprise_hash = make_Param_hash()
+set surprise_flag = false
 
 { Input is candidate facets, and graph info. Output is the unitary ones.
  use and update a complete list Uhash of known unitary facets.
@@ -697,7 +698,7 @@ set local_test_hash_bottom(KGBElt x, ratvec lambda, VertexData Lvd,
 		      else let () = if more_flag then more_bad_hash.match(p) fi
 		      	       	    {in this case p passed elim_more but is not unitary}
 			   then (,pL) = theta_stable_quasi_data(p)
-			   then () = if is_final(pL) and is_unitary_hash(pL)
+			   then () = if surprise_flag and is_final(pL) and is_unitary_hash(pL)
 			      	     then surprise_hash.match(p)
 				     fi
 		      	   in []
@@ -748,7 +749,7 @@ set one_param_test(Param p, Param_hash Uhash) = [Param]:
        else let () = one_false_counter.use()
 	    then () = one_param_time +:= elapsed_ms() - start
 	    then (,pL) = theta_stable_quasi_data(p)
-	    then () = if is_final(pL) and is_unitary_hash(pL)
+	    then () = if surprise_flag and is_final(pL) and is_unitary_hash(pL)
 		      then surprise_hash.match(p)
 		      fi
 	    in []
@@ -791,7 +792,7 @@ set one_param_test_bottom(Param p, int D, Param_hash Uhash) = [Param]:
 		     else let () = one_false_counter.use() {if elim_more is false}
 	    	    	  then () = one_param_time +:= elapsed_ms() - start
 			  then (,pL) = theta_stable_quasi_data(p)
-			  then () = if is_final(pL) and is_unitary_hash(pL)
+			  then () = if surprise_flag and is_final(pL) and is_unitary_hash(pL)
 			      	     then surprise_hash.match(p)
 				     fi
 		    	  in []
@@ -807,7 +808,7 @@ set one_param_test_bottom(Param p, int D, Param_hash Uhash) = [Param]:
 		    else let () = one_false_counter.use()
 	    	    	 then ()= one_param_time +:= elapsed_ms() - start
 			 then (,pL) = theta_stable_quasi_data(p)
-			 then () = if is_final(pL) and is_unitary_hash(pL)
+			 then () = if surprise_flag and is_final(pL) and is_unitary_hash(pL)
 			      	   then surprise_hash.match(p)
 				   fi
 		    	 in []
@@ -1877,10 +1878,10 @@ set local_test_GEO_hash_bottom_layer(KGBElt x, ratvec lambda, VertexData vd,
 	      	   	  				   pol_hash, Uhash)
 	 fi
     {then helpful_datas  = for mu in LKTs(pmax)
-    	 	   	  do bottom_data.helpful_entry(mu)
+    	 	   	  do minBottomData.helpful_entry(mu)
 		   	  od}
     then DG0 = max(for mu in LKTs(pmax)
-    	       	   do bottom_data.G_min_height(mu)
+    	       	   do minBottomData.G_min_height(mu)
 		   od)
 	{this is the greatest height at which we'll be looking at bottom layer K-types; during the first pass;
 	 so we can compute K-chars just to this height}
@@ -2015,7 +2016,7 @@ set local_test_GEO_hash_bottom_layer(KGBElt x, ratvec lambda, VertexData vd,
     VertexData Lvd, [[FacetVertsIndex]] LF, KTypePol_hash pol_hash, Param_hash Uhash) = [Param]:
     let p = parameter(x, lambda, 0*lambda)
     {then () = for mu in LKTs(p)
-    	      do bottom_data.append(mu)
+    	      do minBottomData.append(mu)
 	      od}
     in local_test_GEO_hash_bottom_layer(x, lambda, vd, Lvd, LF, pol_hash, Uhash)
 
