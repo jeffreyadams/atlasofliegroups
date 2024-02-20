@@ -314,7 +314,7 @@ set min_bottom_factors(KType mu) = ([[(KType, KType)]], [int]):
     then (Q,pL) = theta_stable_quasi_data(p), G = p.real_form, ProjK = projection_to_K_matrix(mu.inner_class)
     then SFRP = simple_factor_root_partition(Q)
     then muL = LKT(pL), L = Q.Levi
-    then dermuLs = derived_factor_K_types(muL) {each dermuLj is on a simple derived derLj}
+    then dermuLs = derived_factor_K_types2(muL) {each dermuLj is on a simple derived derLj}
     then derLs = derived_simple_factors(L)
     then DLjs = for derLj in derLs do next_heights(derLj) od
     then xcG = embed_KGB(KGB(L,0),G)
@@ -459,7 +459,7 @@ set coh_ind_is_unitary(Param p) = bool:
     then () = if not (is_dominant(G,gamma))
     	      then return is_unitary_hash(p)
 	      fi {now induction is at least weakly good}
-    then derpLjs = derived_factor_params(pL) {one for each derived simple factor derLj}
+    then derpLjs = derived_factor_params2(pL) {one for each derived simple factor derLj}
     then test = all(for derpLj in derpLjs do is_unitary_hash(derpLj) od)
     then () = if all(for j in Q.S do gamma*G.simple_coroots[j] > 0 od) {is_good(pL,G)}
     	      then return test
@@ -473,7 +473,7 @@ set coh_ind_is_unitary(Param p) = bool:
 set min_bottom_elim_factors(Param p) = bool:
     let start = elapsed_ms(), (,pL) = theta_stable_quasi_data(p)
     {then () = if is_unitary_hash(pL) then return true fi} {seems to slow things down}
-    then derpLjs = derived_factor_params(pL)
+    then derpLjs = derived_factor_params2(pL)
     then answers = [bool]:
     	 for mu in LKTs(p)
     	 do let (helpful_data, helpful_js) = minBottomData.helpful_entry(mu)
@@ -493,7 +493,8 @@ set min_bottom_elim_factors(Param p) = bool:
       					    {check derpLj has dermuLj as a LKT}
 		    {then () = mbefTime +:= elapsed_ms()-start}
     		    then () = for derpLj@k in helpful_derpLjs
-		    	      do if K_type_pol(derpLj)[helpful_dermuLjs[k]] = 0
+		    	      do {assert(not K_type_pol(derpLj)[helpful_dermuLjs[k]].=,"oops, we needed a twist")}
+			      	 if K_type_pol(derpLj)[helpful_dermuLjs[k]].=
 		   	      	 then let twistk = all_even_lambda_differential_0(helpful_derLjs[k].dual,
 					  	 -helpful_derxLjs[k].involution.^)
 				      then () = if bottom_verbose then prints("need a twist at p = ",p) fi
@@ -535,7 +536,7 @@ set min_bottom_elim_factors(Param p) = bool:
 			     	    	      	     for(tauj, tauLj) in pairs[1:]
 				    		     do @bool: int_part(posLj[tauLj]) >= int_part(multG[tauj])
 				    		     od )
-	       			        od )
+	       			        od)
 		   fi
              od
 	then () = mbefTime +:= elapsed_ms()-start
@@ -544,7 +545,7 @@ set min_bottom_elim_factors(Param p) = bool:
 set min_bottom_elim_factors(Param p, KTypePol P) = bool:
     let start = elapsed_ms(), (,pL) = theta_stable_quasi_data(p)
     {then () = if is_unitary_hash(pL) then return true fi} {seems to slow things down}
-    then derpLjs = derived_factor_params(pL)
+    then derpLjs = derived_factor_params2(pL)
     then answers = [bool]:
     	 for mu in LKTs(p)
     	 do let (helpful_data, helpful_js) = minBottomData.helpful_entry(mu)
@@ -564,8 +565,9 @@ set min_bottom_elim_factors(Param p, KTypePol P) = bool:
       					    {check derpLj has dermuLj as a LKT}
 		    {then () = mbefTime +:= elapsed_ms()-start}
     		    then () = for derpLj@k in helpful_derpLjs
-		    	      do if K_type_pol(derpLj)[helpful_dermuLjs[k]] = 0
-		   	      	 then let twistk = all_even_lambda_differential_0(helpful_derLjs[k].dual,
+		    	      do {assert(not K_type_pol(derpLj)[helpful_dermuLjs[k]].=, "oops, we needed a twist")}
+		   	      	  if K_type_pol(derpLj)[helpful_dermuLjs[k]].=
+				  then let twistk = all_even_lambda_differential_0(helpful_derLjs[k].dual,
 					  	 -helpful_derxLjs[k].involution.^)
 				      then () = if bottom_verbose then prints("need a twist at p = ",p) fi
 		   		      then twistxLk = let Genx = KGB_elt_gen(helpful_derxLjs[k])
@@ -638,7 +640,7 @@ set bottom_factors(KType mu, KGPElt Q, int D) = [[(KType, KType)]]:
     then (Q0,pL0) = theta_stable_quasi_data(p), G = p.real_form, L = Q.Levi
     then pL = first_param(theta_induce_standard(pL0,L)), SFRP = simple_factor_root_partition(Q)
     then muL = LKT(pL)
-    then dermuLs = derived_factor_K_types(muL) {each dermuLj is on a simple derived derLj}
+    then dermuLs = derived_factor_K_types2(muL) {each dermuLj is on a simple derived derLj}
     then DLjs = for dermuLj in dermuLs do height(dermuLj) + Dshift od
     then derLs = derived_simple_factors(L) {DERIVED simple factors}
     then xcG = embed_KGB(KGB(L,0),G)
@@ -693,7 +695,7 @@ set bottom_elim_factors(Param p, KGPElt Q, [[(KType,KType)]] LKdata) = bool:
 	      fi
     then pL = first_param(theta_induce_standard(pL0,L))
     {then () = if is_unitary_hash(pL) then return true fi}{seems to slow things}
-    then derpLjs = derived_factor_params(pL) {one for each derived simple factor derLj}
+    then derpLjs = derived_factor_params2(pL) {one for each derived simple factor derLj}
     then badjs = {#(#derpLjs)}
     	       	 for derpLj@j in derpLjs
     	       	 do if is_unitary_hash(derpLj)
@@ -710,9 +712,10 @@ set bottom_elim_factors(Param p, KGPElt Q, [[(KType,KType)]] LKdata) = bool:
     	 	       do let (,muLj) = LKdata[j][0] in muLj od
       {check badderpLj has baddermuLj as a LKT}
     then () = for badderpLj@k in badderpLjs
-      	      	do if K_type_pol(badderpLj)[baddermuLjs[k]] = 0
+      	      	do {assert(not K_type_pol(badderpLj)[baddermuLjs[k]].=,"oops, we needed a twist")}
+		   if K_type_pol(badderpLj)[baddermuLjs[k]].=
 		   then let twistk = all_even_lambda_differential_0(badderLjs[k].dual, - badderxLjs[k].involution.^)
-		   	then () = if bottom_verbose then prints("twisting derpLj needed at p = ",p, ", j = ",j) fi
+		   	then () = if bottom_verbose then prints("twisting derpLj needed at p = ",p, ", j = ",badjs[k]) fi
 		   	then twistxLs = let Genx = KGB_elt_gen(badderxLjs[k])
 				      	in for t@i in twistk
 			   	      	   do let () = Genx.torus_factor +:= t
@@ -778,7 +781,7 @@ set bottom_elim_factors(Param p, KGPElt Q, [[(KType,KType)]] LKdata, KTypePol P)
 	      fi
     then pL = first_param(theta_induce_standard(pL0,L))
     {then () = if is_unitary_hash(pL) then return true fi}{seems to slow things down}
-    then derpLjs = derived_factor_params(pL) {one for each derived simple factor derLj}
+    then derpLjs = derived_factor_params2(pL) {one for each derived simple factor derLj}
     then badjs = {#(#derpLjs)}
 		 for derpLj@j in derpLjs
     	       	 do if is_unitary_hash(derpLj)
@@ -796,9 +799,10 @@ set bottom_elim_factors(Param p, KGPElt Q, [[(KType,KType)]] LKdata, KTypePol P)
     	 	       do let (,muLj) = LKdata[j][0] in muLj od
       {check badderpLj has baddermuLj as a LKT}
     then () = for badderpLj@k in badderpLjs
-      	      	do if K_type_pol(badderpLj)[baddermuLjs[k]] = 0
+      	      	do {assert(not K_type_pol(badderpLj)[baddermuLjs[k]].=, "oops, we needed a twist")}
+		   if K_type_pol(badderpLj)[baddermuLjs[k]].=
 		   then let twistk = all_even_lambda_differential_0(badderLjs[k].dual, - badderxLjs[k].involution.^)
-		   	then () = if bottom_verbose then prints("twisting derpLj needed at p = ",p, ", j = ",j)
+		   	then () = if bottom_verbose then prints("twisting derpLj needed at p = ",p, ", j = ",badjs[k]) fi
 		   	then twistxLs = let Genx = KGB_elt_gen(badderxLjs[k])
 				      	in for t@i in twistk
 			   	      	   do let () = Genx.torus_factor +:= t
@@ -1124,14 +1128,14 @@ set bottom_elim_factors_more(Param p, [KGPElt] nQs, int D, KTypePol P)= bool:
     	    	      	 do all(for mu in LKTs(p)
 			      	do bottom_elim_factors(p, Q, bottom_factors(mu,Q,D), P)
 				od)
-		         od)
+		         od) {this seems to be quite rare??}
 	       then if bottom_verbose then prints("at p = ",p,", more helped!") fi;
 		   	befmoreTime +:= elapsed_ms() - start; return false
 	       fi
      then good = first(for (g,,) in three_bools do g od)
      then () = if good>=0
     	       then let (,pL) =  maxQps[good]
-	      	    then () = if bottom_verbose then prints("p = ",p," is a good one!") fi
+	      	    {then () = if bottom_verbose then prints("p = ",p," is a good one!") fi}
 		    then () = befmoreTime +:= elapsed_ms() - start
 		    in return is_unitary_hash(pL)
 	      	fi
@@ -1139,11 +1143,11 @@ set bottom_elim_factors_more(Param p, [KGPElt] nQs, int D, KTypePol P)= bool:
      then () = if wk_good >= 0
     	       then let (,pL) = maxQps[wk_good]
 	      	    in if is_unitary_hash(pL)
-		       then if bottom_verbose then prints("p = ",p," is weakly good") fi;
+		       then {if bottom_verbose then prints("p = ",p," is weakly good") fi;}
 		      	   	         befmoreTime +:= elapsed_ms() - start; return true
 		       fi
 	        fi
-     then () = if bottom_verbose then prints("sorry, don't know") fi
+     {then () = if bottom_verbose then prints("sorry, don't know") fi}
      then () = befmoreTime +:= elapsed_ms() - start
      in true
 
@@ -1184,12 +1188,12 @@ set bottom_test_factors_more(Param p, [KGPElt] nQs, int D, KTypePol P) = bool:
     then wk_good = first(for (,wg,) in three_bools do wg = true od)
     then () = if wk_good >= 0
     	      then let (,pL) = maxQps[wk_good]
-	      	   in if is_unitary_hash(pL)
+	      	   in if is_unitary_hash(pL) {seems rare?}
 		      then if bottom_verbose then prints("p = ",p," is weakly good") fi;
 		      	      return true
 		      fi
 	      fi
-     then () = if bottom_verbose then prints("sorry, doing is_unitary") fi
+     {then () = if bottom_verbose then prints("sorry, doing is_unitary") fi}
      then () = befmoreTime+:= elapsed_ms() - start
      in is_unitary_hash(p)
      fi
