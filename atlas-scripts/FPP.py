@@ -11,7 +11,7 @@ FPP_at_file="FPP.at" #default
 FPP_py_file="FPP.py" #default
 #extra_files=["global_facets_E7.at","coh_ind_E7_to_hash.at","E7except589to15851.at"]
 extra_files=["global_facets_E7.at","coh_ind_E7_to_hash.at"]
-extra_files=[]
+#extra_files=[]
 coh_ind_flag=False  #this is a hack, fix later
 def nice_time(t):
    return(re.sub("\..*","",str(datetime.timedelta(seconds=t))))
@@ -53,7 +53,6 @@ def atlas_compute(i,pid):
    log.write("Job pid: " +  str(pid) + "\n")
    log.write("function: " +  unitary_hash_function + "\n")
    vars=['coh_ind_flag','revert_flag','deform_flag','every_KGB_flag','every_lambda_flag','every_lambda_deets_flag','facet_verbose','test_slightly_verbose','test_verbose','global_top','low_KGB_frac','bottom_length_frac','global_facets_file_loaded','coh_ind_file_loaded', 'more_flag','more_shift']
-
    for var in vars:
       atlas_arg='{}'.format("prints(\"" + var + ": \"," +  var + ")" + "\n").encode('utf-8')
       proc.stdin.write(atlas_arg)
@@ -61,7 +60,6 @@ def atlas_compute(i,pid):
       line = proc.stdout.readline().decode('ascii')
       log.write(line)
       time.sleep(.1)
-
    starttime=time.time()
    #some initialization
 
@@ -73,7 +71,7 @@ def atlas_compute(i,pid):
    reporting_data=[]
    print("starting Q size: ", main_queue.qsize())
    #add all parameters from coh_ind_params to unitary_hash
-   if coh_ind_flag:
+   if not coh_ind_flag:   #this means you ARE loading from the file
       print("loading params from coh_ind_params")
       atlas_cmd=format_cmd("update(unitary_hash,coh_ind_params)\n")
       proc.stdin.write(atlas_cmd)
@@ -96,6 +94,14 @@ def atlas_compute(i,pid):
       line = proc.stdout.readline().decode('ascii').strip()
       print("current size of unitary_hash: (list number ",str(i), ")", line)
       log.write("current size of unitary_hash: " + line + "\n")
+
+      atlas_cmd=format_cmd("surprise_hash.size()\n")
+      proc.stdin.write(atlas_cmd)
+      proc.stdin.flush()
+      line = proc.stdout.readline().decode('ascii').strip()
+      print("Current size of surprise_hash: (list number ",str(i), ")", line)
+      log.write("Current size of surprise_hash: " + line + "\n")
+
       next_queue_entry=main_queue.get()
       if xlambdalists_flag:
          list_number=next_queue_entry
@@ -106,72 +112,6 @@ def atlas_compute(i,pid):
       queue_count+=1
       x_start_time=time.time()
 
-      #ONLY IF READING AT FILES:
-      if read_at_files:
-         print("Reading at files")
-         log.write("Reading at files")
-         all_files=os.listdir(directory)
-         atlas_cmd=format_cmd("prints(unitary_hash.size())" + "\n")
-         proc.stdin.write(atlas_cmd)
-         proc.stdin.flush()
-         line = proc.stdout.readline().decode('ascii')
-         print("process id: ", i, "Size of unitary hash: ",line)
-         log.write("process id: " + str(i) +  "\nSize of unitary hash: " + line)
-         print("files: ", all_files)
-         params_to_add=[]
-
-         for file in all_files:
-            if re.match(r'[0-9]*\.at',file):
-               #            print("doing",file)
-               at_file = directory + "/" + file;
-               print("opening at file: (",i,") ",at_file)
-               log.write("opening at file: " + at_file + "\n")
-               at_data=open(at_file,"r")
-               #            print("data: ", at_data)
-               while True:
-                  #               print("IN LOOP")
-                  line=at_data.readline().strip()
-                  #               print("line is: ", line)
-                  line=re.sub(".*:=","",line) 
-                  line=re.sub("\)[^,].*",")",line)  #get rid of {dual}
-                  #               print("line is now: ", line)
-                  if len(line)==0:
-                     #                  print("no lines, breaking")
-                     break
-                  elif line.find("parameter")==-1:
-                     ()
-                     #                  print("no parameter in: ", line)
-                  else:
-                     #                  print("got something:", line)
-                     params_to_add.append(line)
-                     print("Done reading at files")
-                     print("number of new parameters to possibly add to unitary_hash:", len(params_to_add))
-                     log.write("number of new parameters to possibly add to unitary_hash:" + str(len(params_to_add)) + "\n")
-                     if len(params_to_add)>0:
-                        #         print("adding params to unitary_hash")
-                        params_string="[" + ','.join(params_to_add) + "]"
-                        #         print("params_string: ", params_string)
-                        atlas_cmd=format_cmd("update(unitary_hash," + params_string + ")" + "\n")
-                        #         print("atlas_cmd: ", atlas_cmd)
-                        proc.stdin.write(atlas_cmd)
-                        proc.stdin.flush()
-                        line = proc.stdout.readline().decode('ascii')  #(number of new params,[Param])
-                        line=re.sub(".*Value: *\(","",line)
-                        line=re.sub(",.*","",line)
-                        print("number of parameters added to unitary_hash: ", line.strip())
-                        log.write("number of parameters added to unitary_hash: " + line)
-                        proc.stdout.flush()
-                        #         print("atlas result: ", line)
-                        atlas_cmd=format_cmd("prints(unitary_hash.size())" + "\n")
-                        #         print("atlas_cmd: ", atlas_cmd)
-                        proc.stdin.write(atlas_cmd)
-                        proc.stdin.flush()
-                        line = proc.stdout.readline().decode('ascii')
-                        print("[",i,"] Size of unitary hash: ",line)
-                        log.write("Size of unitary hash: " + line)
-      #DONE ONLY READING AT FILES
-      else:
-         log.write("Not reading at files\n")
       #primary atlas function
       #if xlambdalists_flag: pass 2nd argument = xlambdalists, then 3rd argument is the listnumber
       if xlambdalists_flag:
@@ -219,6 +159,21 @@ def atlas_compute(i,pid):
    for (x,t) in reporting_data:
       log.write("x:" + str(x) + " " + nice_time(t) + "\n")
    log.write("Total time for " + str(queue_count) + " KGB elements: "+ elapsed + "\n")
+   #report on unitary_hash
+   atlas_cmd=format_cmd("unitary_hash.size()\n")
+   proc.stdin.write(atlas_cmd)
+   proc.stdin.flush()
+   line = proc.stdout.readline().decode('ascii').strip()
+   print("Size of unitary_hash: (list number ",str(i), ")", line)
+   log.write("Size of unitary_hash: " + line + "\n")
+   #report on suprise_hash
+   atlas_cmd=format_cmd("surprise_hash.size()\n")
+   proc.stdin.write(atlas_cmd)
+   proc.stdin.flush()
+   line = proc.stdout.readline().decode('ascii').strip()
+   print("Size of surprise_hash: (list number ",str(i), ")", line)
+   log.write("Size of surprise_hash: " + line + "\n")
+   
    log.write("Killing process at " + str(time.ctime()) + "\n")
    log.close()
    data.close()

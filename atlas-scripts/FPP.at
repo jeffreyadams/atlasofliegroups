@@ -73,7 +73,7 @@ test_slightly_verbose:=true
 test_verbose:=true
 facet_verbose:=true
 more_flag:=true   {this uses non-minimal parabolic bottom layer arguments}
-more_shift: = 5 
+more_shift:=20
 {bottom_length_frac:=1/4}
 {NOTE: extra_files is defined in FPP.py}
 

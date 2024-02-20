@@ -698,8 +698,9 @@ set local_test_hash_bottom(KGBElt x, ratvec lambda, VertexData Lvd,
 		      	       	    {in this case p passed elim_more but is not unitary}
 			   then (,pL) = theta_stable_quasi_data(p)
 			   then () = if is_final(pL) and is_unitary_hash(pL)
-			      	     then surprise_hash.match(p)
-				     fi
+                                   then
+                                      surprise_hash.match(p)
+				  fi
 		      	   in []
 		      fi
 	     od.## {list of unitary Params}
