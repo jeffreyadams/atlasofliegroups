@@ -113,6 +113,11 @@ set derived_simple_factors_info(RealForm G) = [(RealForm,RealForm, mat)]:
     in (S,derS,M)
     od
 
+set derived_simple_factors(RealForm G) = [RealForm]:
+    for S in simple_factors(G)
+    do derived(S)
+    od
+
 {projection from ratl coweight of G to coweight of DS, respecting
 values on roots of S}
 set derived_cowt_inclusions(RealForm G) = [(ratvec->ratvec)]:
@@ -132,7 +137,7 @@ set derived_wt_projections(RealForm G) = [(ratvec->ratvec)]:
     od
 
 {x is a KGBElt for G; want to pass to a KGBElt for each derived simple factor}
-set derived_factor_KGBs(KGBElt x) = [KGBElt]:
+set derived_factor_KGBs(KGBElt x) = [KGBElt]: {need to change this to use highest weights somehow...}
     let derSF = derived_simple_factors_info(x.real_form)
     in for (S,derS,M) in derSF {this is automatically a theta-stable Levi}
        do {let Minv = right_inverse(M/1)}
@@ -154,18 +159,55 @@ set derived_factor_KGBs(KGBElt x) = [KGBElt]:
 	  in derx
        od
 
+set old_derived_flag = false
+{x is a KGBElt for G; want to pass to a KGBElt for each derived simple factor}
+set derived_factor_KGBs2(KGBElt x) = [KGBElt]:
+if old_derived_flag then return derived_factor_KGBs(x) fi;
+    let G = x.real_form
+    then derSF = derived_simple_factors_info(G), P = projection_to_K_matrix(G)
+    {then () = if #derSF = 1 and G.components_rank.=
+    	      then let (,derS,) = derSF[0]
+	      	   in return [KGB(derS,x.number)]
+	      fi} {this fails for G=F4_s, p = final parameter(x=51,lambda=[0,0,0,3]/1,nu=[-1,0,0,2]/2)}
+    then Pinv = right_inverse(P)
+    then derPs = for (S,derS,) in derSF do projection_to_K_matrix(derS) od
+    in for (S,derS,M)@j in derSF {this is automatically a theta-stable Levi}
+       do let mu = LKTs(parameter(x, G.rho, G.rho))[0]
+       	  then muwt = K0_param(mu).lambda_minus_rho {on K-torus for G}
+	  then DderS = det(derS.simple_roots)
+	  then Minv = required_solution(derS.simple_roots.^, DderS*S.simple_roots.^).^/DderS
+	  then dermuwt = derPs[j]*M*Pinv*muwt
+       	  then derK_hash = make_KType_hash(), theta_hash = make_mat_hash(), index_hash = make_vec_hash()
+	  then () = for derx in KGB(derS) do index_hash.match([derK_hash.match(LKTs(parameter(derx, derS.rho, derS.rho))[0]),
+	  theta_hash.match(derx.involution)]) od
+	  then () = assert(index_hash.size() = #KGB(derS),"indices failed in derived_factor_KGBs2")
+	  in KGB(derS)[index_hash.lookup( [derK_hash.lookup(K_types(K_highest_weight_from_K0_weight(KGB(derS,0),dermuwt))[0]),
+	     theta_hash.lookup(ratmat_as_mat(M*x.involution*Minv))])]
+        od
+
 set derived_factor_params(Param p) = [Param]:
     let DSFinfo = derived_simple_factors_info(p.real_form)
-    {let DPIs = derived_wt_projections(p.real_form)
-    in}
+    {let DPIs = derived_wt_projections(p.real_form)}
     in for xj@j in derived_factor_KGBs(p.x)
        do let (,DS,M) = DSFinfo[j]
        	  in parameter(xj, M*(p.lambda_minus_rho) + DS.rho, M*p.nu)
          { replace M by DPIS[J]?? }
        od
 
+set derived_factor_params2(Param p) = [Param]:
+if old_derived_flag then return derived_factor_params(p) fi;
+    let DSFinfo = derived_simple_factors_info(p.real_form)
+    {let DPIs = derived_wt_projections(p.real_form)
+    in}
+    in for xj@j in derived_factor_KGBs2(p.x)
+       do let (,DS,M) = DSFinfo[j]
+       	  in parameter(xj, M*(p.lambda_minus_rho) + DS.rho, M*p.nu)
+       od
+
 set dfkiTime = int: 0
 
+{L is Levi; has bunch of simple factors S (same rank as L), derived groups derS (simple!)}
+{M maps X^* for L to X^* for derS}
 {these comologically induce to mu (on K), I think}
 set derived_factor_K_types_info(KType mu) = [(KType,mat)]:
     let start = elapsed_ms(), L = mu.real_form
@@ -205,8 +247,30 @@ set derived_factor_K_types_info(KType mu) = [(KType,mat)]:
        od}
 
 {these comologically induce to mu (on K), I think}
+set derived_factor_K_types_info2(KType mu) = [(KType,mat)]:
+if old_derived_flag then return derived_factor_K_types_info(mu) fi;
+    let start = elapsed_ms(), L = mu.real_form
+    then DSFinfo = derived_simple_factors_info(L), P = projection_to_K_matrix(L)
+    then Pinv = right_inverse(P)
+    then derPs = for (,derS,) in DSFinfo do projection_to_K_matrix(derS) od
+    then answer =  for (,derS,M)@j in DSFinfo {this is automatically a theta-stable Levi}
+       	 	   do let dermuwt = derPs[j]*M*Pinv*K0_param(mu).lambda_minus_rho
+          	      in (K_types(K_highest_weight_from_K0_weight(KGB(derS,0),dermuwt))[0], M)
+       		   od
+    then () = assert(none(for (dermu,) in answer do is_zero(dermu) od), "zero K-type in derived_factor_K_types_info")
+    then () = dfkiTime +:= elapsed_ms() - start
+    in answer
+
+{these comologically induce to mu (on K), I think}
 set derived_factor_K_types(KType mu) = [KType]:
     for (muj,) in derived_factor_K_types_info(mu)
+    do muj
+    od
+
+{these comologically induce to mu (on K), I think}
+set derived_factor_K_types2(KType mu) = [KType]:
+if old_derived_flag then return derived_factor_K_types(mu) fi;
+    for (muj,) in derived_factor_K_types_info2(mu)
     do muj
     od
 

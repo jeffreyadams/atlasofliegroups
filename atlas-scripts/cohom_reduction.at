@@ -95,7 +95,7 @@ set radical_torus_factor(KGBElt x) = ratvec:
     in tf - sum(G.rank, for e@i in G.fundamental_coweights
        	    		do (tf*G.simple_roots[i])*e
 			od)
-			
+
 {projection of torus factor on center}
 set radical_torus_factor(RealForm G) = ratvec:
     let tf = torus_factor(KGB(G,0))
