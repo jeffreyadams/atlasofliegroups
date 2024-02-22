@@ -689,7 +689,7 @@ set FPP_unitary_hash_bottom_layer([(KGBElt,ratvec)] xlambdas, Param_hash UhashG,
     	      do {xlambdas} 
 	 	 let start = elapsed_ms(), startUhash = Uhash.size(), (x_sc,lambda_sc) = xlambdas_sc[k],
 		     		   startUcounter = unitary_test_counter.use_count(), theta = x.involution,
-				   startUparamhash = Uparamhash.size()
+				   startUparamhash = Uparamhash.size(), startmorebad = more_bad_hash.size()
 		 then (Lvd, Perm2, mapAct) = LPmss[k] {already lives on Gsc}
 		 then LF = if by_zero_flag
 		      	   then localFD_1Dirac2_by_zero(x_sc, lambda_sc, Lvd, Perm2, mapAct, global_facets_by_zero)
@@ -715,7 +715,8 @@ set FPP_unitary_hash_bottom_layer([(KGBElt,ratvec)] xlambdas, Param_hash UhashG,
 				  ",",test_string);
 			         prints("    #LF = ", for L in LF do #L od, "; #unitary params = ", answerCards[k],
 				 ", #new unitary = ", Uhash.size() - startUhash,
-				 ", #tests = ", unitary_test_counter.use_count() - startUcounter);
+				 ", #tests = ", unitary_test_counter.use_count() - startUcounter,
+				 ", #Params missed by more = ", more_bad_hash.size() - startmorebad);
 				 prints("  ------------------")
 			    fi
 		    fi
@@ -811,7 +812,8 @@ set FPP_unitary_hash_bottom_layer([KGBElt] xs, Param_hash UhashG, Param_hash Upa
     	 oldUcounter = unitary_test_counter.use_count(), currentUcounter = unitary_test_counter.use_count()
     then () = for x@j in xs
     	      do {xs}
-	 let former_time = current, formerUhash = currentUhash, formerUcounter = currentUcounter, x_sc = xs_sc[j]
+	 let former_time = current, formerUhash = currentUhash, formerUcounter = currentUcounter, x_sc = xs_sc[j],
+	     startmorebadx = more_bad_hash.size()
 	 then twists = all_lambda_differential_0(x)
 	 then LPm_entries = [(ratvec, Lvd_Perm2_mapAct)]: LPm_table.LPm_entries(G, x.involution)
 	 then good_entries = for (lambda0,entry) in LPm_entries
@@ -845,7 +847,7 @@ set FPP_unitary_hash_bottom_layer([KGBElt] xs, Param_hash UhashG, Param_hash Upa
 		      for tau@ell in twists
                       do let startlambda = elapsed_ms(), startUhash = Uhash.size(),
 		      	     startUcounter = unitary_test_counter.use_count(), index = k*#twists + ell,
-			     startUparamhash = Uparamhash.size()
+			     startUparamhash = Uparamhash.size(), startmorebadlambda = more_bad_hash.size()
 			 then LF = if by_zero_flag
 		      	      	   then localFD_1Dirac2_by_zero(x_sc, lambda0+M*tau, Lvd, Perm2,
 						     mapAct, global_facets_by_zero)
@@ -877,7 +879,8 @@ set FPP_unitary_hash_bottom_layer([KGBElt] xs, Param_hash UhashG, Param_hash Upa
 				         prints("    #LF = ", for L in LF do #L od, ", #unitary params = ",
 					 tempanswerCards[index],
 			     	                ", #new unitary = ", Uhash.size() - startUhash,
-						", #tests = ", unitary_test_counter.use_count() - startUcounter);
+						", #tests = ", unitary_test_counter.use_count() - startUcounter,
+						", #Params missed by more = ",more_bad_hash.size() - startmorebadlambda);
 					 prints("  ------------------")
 				    fi
 			       fi
@@ -901,6 +904,7 @@ set FPP_unitary_hash_bottom_layer([KGBElt] xs, Param_hash UhashG, Param_hash Upa
                           print_time_string(times[j]), "; longest lambda = ",
 			  print_time_string(templambdatimes[longLambdaLoc]),
 			  " for #", longLambdaLoc, " = ",lambdas[longLambdaLoc]);
+			  prints("      #Params missed by more for this x = ",more_bad_hash.size() - startmorebadx);
 			  prints("     #unitary params = ", sum(tempanswerCards), ", #new unitary facets = ",
 			     currentUhash - formerUhash, ", #tests = ",
 		     	     currentUcounter - formerUcounter, ", #def lookups = ",
