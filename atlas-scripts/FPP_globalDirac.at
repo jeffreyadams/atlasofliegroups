@@ -686,7 +686,8 @@ set FPP_unitary_hash_bottom_layer([(KGBElt,ratvec)] xlambdas, Param_hash UhashG,
     	 	   oldUcounter = unitary_test_counter.use_count(), currentUcounter = unitary_test_counter.use_count()
 		   {start_min_L_bottom_factors = minBottomData.min_L_bottom_factors_time()}
     then () = for (x,lambda)@k in xlambdas
-    	      do {xlambdas} 
+    	      do {xlambdas}
+                 let ()=prints("entry number ",k,new_line,"(x,lambda)=(",x,",",lambda,")",new_line) in
 	 	 let start = elapsed_ms(), startUhash = Uhash.size(), (x_sc,lambda_sc) = xlambdas_sc[k],
 		     		   startUcounter = unitary_test_counter.use_count(), theta = x.involution,
 				   startUparamhash = Uparamhash.size()

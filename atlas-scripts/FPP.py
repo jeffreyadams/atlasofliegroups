@@ -11,8 +11,8 @@ FPP_at_file="FPP.at" #default
 FPP_py_file="FPP.py" #default
 #extra_files=["global_facets_E7.at","coh_ind_E7_to_hash.at","E7except589to15851.at"]
 extra_files=["global_facets_E7.at","coh_ind_E7_to_hash.at"]
-#extra_files=[]
-coh_ind_flag=False  #this is a hack, fix later
+extra_files=[]
+coh_ind_flag=True #this is a hack, fix later
 def nice_time(t):
    return(re.sub("\..*","",str(datetime.timedelta(seconds=t))))
  
@@ -106,6 +106,13 @@ def atlas_compute(i,pid):
       if xlambdalists_flag:
          list_number=next_queue_entry
          log.write("list_number=" + str(list_number) + "\n")
+         #get size of list
+         atlas_cmd=format_cmd("#xlambdalists[" + str(list_number) + "]" + "\n")
+         proc.stdin.write(atlas_cmd)
+         proc.stdin.flush()
+         line = proc.stdout.readline().decode('ascii').strip()
+         line = re.sub(".*:",'',line)
+         log.write("size of list: "+ line + "\n")
       else:
          x=next_queue_entry
          log.write("x=" + str(x) + "\n")
@@ -271,7 +278,7 @@ def main(argv):
       #KGB_fixed:  cross(w_0,x)=x
       #KGB_non_fixed:  one of each non-fixed pair
       atlas_cmd=executable_dir + "atlas"
-      proc=subprocess.Popen([atlas_cmd,"FPP.at"], stdin=PIPE,stdout=PIPE)
+      proc=subprocess.run([atlas_cmd,"FPP.at"], stdin=PIPE,stdout=PIPE)
       atlas_arg='{}'.format("kgb_fixed(" + group + ")\n").encode('utf-8')
 #      print("atlas_arg: ", atlas_arg)
       proc.stdin.write(atlas_arg)
