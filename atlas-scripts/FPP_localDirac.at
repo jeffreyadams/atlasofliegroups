@@ -428,15 +428,23 @@ set local_testK_hash(KGBElt x, ratvec lambda, VertexData vd,
 	      od
      {make new local facet list using only facets not already proven nonunitary}
      then FVKHnew = for @m in FVKH do [FacetVertsKHash]: [] od
-          then () = for C@m in eq do if newStatuses[m][0] = "T"
-     	     	     	      	then for k in C
-			      	   do let (d,j) = coords(FVKH,k)
-				      in FVKHnew[d] :=
-				      (FVKHnew[d] next FVKHnew[d]:=[])
-				      #FVKH[d][j]
-				   od
-			         fi
-			      od
+          then () = for C@m in eq
+	       	    do if newStatuses[m][0] = "T"
+     	     	       then for k in C
+			    do let (d,j) = coords(FVKH,k)
+			       in FVKHnew[d] := (FVKHnew[d] next FVKHnew[d]:=[]) #FVKH[d][j]
+			    od
+		       else for k in C
+		       	    do let (d,j) = coords(FVKH,k)
+			       then verts = vec: FVKH[d][j][:d+1]
+			       then ps = monomials(finalize(parameter(x, lambda
+		    	       	       	 , facet_bary(vd.list, verts))))
+			       in if #ps = 1
+			       	  then attest_is_unitary(ps[0],false)
+				  fi
+			    od
+		       fi
+		    od
      then time = elapsed_ms() - start
      then () = if time_verbose then prints("     ", print_time_string(time),
      	       	  	       " for local_testK_hash") fi
@@ -514,14 +522,21 @@ set local_testK_hash_bottom_layer(KGBElt x, ratvec lambda, VertexData vd,
      {make new local facet list using only facets not already proven nonunitary}
      then FVKHnew = for @m in FVKH do [FacetVertsKHash]: [] od
           then () = for C@m in eq do if newStatuses[m][0] = "T"
-     	     	     	      	then for k in C
-			      	   do let (d,j) = coords(FVKH,k)
-				      in FVKHnew[d] :=
-				      (FVKHnew[d] next FVKHnew[d]:=[])
-				      #FVKH[d][j]
-				   od
-			         fi
-			      od
+     	     	     	      	     then for k in C
+			      	     	  do let (d,j) = coords(FVKH,k)
+				      	     in FVKHnew[d] := (FVKHnew[d] next FVKHnew[d]:=[]) #FVKH[d][j]
+				   	  od
+		       		     else for k in C {record the false ones}
+		       	    	     	  do let (d,j) = coords(FVKH,k)
+			       		     then verts = vec: FVKH[d][j][:d+1]
+			       		     then ps = monomials(finalize(parameter(x, lambda
+		    	       	       	     	     , facet_bary(vd.list, verts))))
+			       		     in if #ps = 1
+			       	  	     	then attest_is_unitary(ps[0],false)
+				  		fi
+			    		  od
+			             fi
+			      	  od
      then time = elapsed_ms() - start
      then () = if time_verbose then prints("     ", print_time_string(time),
      	       	  	       " for local_testK_hash_bottom_layer") fi
@@ -603,7 +618,13 @@ set local_test_hash(KGBElt x, ratvec lambda, VertexData Lvd,
 			   	     fi
 		       	   in q
 		    	od {list of tester unitary Params}
-		   else []
+		   else for k in C {record the false ones}
+		       	do let (d,j) = coords(LFVH,k)
+			   then verts = vec: LFVH[d][j][:d+1]
+			   then ps = monomials(finalize(parameter(x, lambda
+		    	       	       	     , facet_bary(Lvd.list, verts))))
+			   in if #ps = 1 then attest_is_unitary(ps[0],false) fi
+			od; []
 		   fi{NEWU}
 	  od.##
     then () = if test_verbose or test_slightly_verbose
