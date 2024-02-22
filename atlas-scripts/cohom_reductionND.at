@@ -23,9 +23,10 @@ set resorted([RootDatum] little_rds, RootDatum rd) = [[int]]:
 is G = SO(2) x SO(6): simple roots (0,1,2) for G become (1,0,2) in simple_factors(G)[0]}
 set simple_factors(RealForm G) = [RealForm]:
     let delta=G.distinguished_involution, tf=KGB(G,0).torus_factor,
-	simpleFactors = simple_factors(RootDatum: G),
+	simpleFactors = simple_factors(RootDatum: G), {these have simple roots reordered}
 	Factors = [RealForm]:[]
 {need to provide the permutation of the simple roots in}
+{2/22/24: add sort}
     in
     for rd@i in simpleFactors
     do
@@ -33,15 +34,17 @@ set simple_factors(RealForm G) = [RealForm]:
     then newRoot = delta*root
     then simpleRootIndex = simple_root_index(G,root),
 	 newSimpleRootIndex = simple_root_index(G,newRoot)
-    then diagram = diagram_component(G,simpleRootIndex),
-	 newDiagram = diagram_component(G,newSimpleRootIndex)
-    in  if diagram=newDiagram then Factors##:=
-	 [real_form(inner_class(rd,delta), delta, tf)]
-	 else if diagram[0] < newDiagram[0] then Factors##:=
-	 [real_form(inner_class(sub_datum(G,diagram##newDiagram),
-		delta), delta, tf)]
-	      fi
-	fi
+    then diagram = diagram_component(G,simpleRootIndex).sort,
+	 newDiagram = diagram_component(G,newSimpleRootIndex).sort
+    then Diagram = if diagram=newDiagram
+    	      	   then diagram
+		   elif diagram[0] < newDiagram[0]
+		     then (diagram##newDiagram).sort
+	      	   else []
+	      	   fi
+    in if #Diagram > 0
+       then Factors##:= [real_form(inner_class(sub_datum(G,Diagram), delta), delta, tf)]
+       fi
     od; Factors
 
 {projection from ratl coweight of G to coweight of S, respecting
@@ -141,7 +144,8 @@ K-weight of the first LKT of parameter(x, G.rho, G.rho).}
 set_type
 [KGBElt_index =
 ( ( -> ) clear
-  , ((RealForm,mat,vec) -> KGBElt) KGB_index {take x.theta and K0-highest weight of 1st LKT of parameter(x, G.rho, G.rho)}
+  , ((RealForm,mat,vec) -> KGBElt) KGB_index {take x.theta and K0-highest weight of 1st
+    			   	   	     LKT of parameter(x, G.rho, G.rho)}
 )
 ]
 
@@ -158,8 +162,12 @@ set make_KGBElt_index () = KGBElt_index:
      		     then () = theta_hashes #:= make_mat_hash()
      		     then () = index_hashes #:= make_vec_hash()
      		     then () = for x in KGB(S)
-     	       	     	       do index_hashes[RF].match([hwt_hashes[rf].match(
-			       	  K0_param(LKTs(parameter(x, S.rho, S.rho))[0]).lambda_minus_rho),
+     	       	     	       do let mus = LKTs(parameter(x, S.rho, S.rho))
+			       	  then muwt =
+				       for mu in LKTs(parameter(x, S.rho, S.rho))
+				       do K0_param(mu).lambda_minus_rho
+				       od.sort[0]
+			       	  in index_hashes[RF].match([hwt_hashes[rf].match(muwt),
 			   		theta_hashes[RF].match(x.involution)])
 	       		       od
      		     then () = assert(real_form_hash.size() = #hwt_hashes,"KGB_index damaged")
@@ -219,11 +227,12 @@ if old_derived_flag then return derived_factor_KGBs(x) fi;
     then Pinv = right_inverse(P)
     then derPs = for (S,derS,) in derSF do projection_to_K_matrix(derS) od
     in for (S,derS,M)@j in derSF {this is automatically a theta-stable Levi}
-       do let mu = LKTs(parameter(x, G.rho, G.rho))[0]
-       	  then muwt = K0_param(mu).lambda_minus_rho {on K-torus for G}
+       do let mus = LKTs(parameter(x, G.rho, G.rho))
+       	  then muwts = for mu in mus do K0_param(mu).lambda_minus_rho od {on K-torus for G}
 	  then DderS = det(derS.simple_roots)
 	  then Minv = required_solution(derS.simple_roots.^, DderS*S.simple_roots.^).^/DderS
-	  then dermuwt = derPs[j]*M*Pinv*muwt, dertheta = ratmat_as_mat(M*x.involution*Minv)
+	  then dermuwt = for muwt in muwts do derPs[j]*M*Pinv*muwt od.sort[0],  {worry about numbering of LKTs}
+	       dertheta = ratmat_as_mat(M*x.involution*Minv)
 	  in KGBIndex.KGB_index(derS, dertheta, dermuwt)
        	  { then derK_hash = make_KType_hash(), theta_hash = make_mat_hash(), index_hash = make_vec_hash()
 	  then () = for derx in KGB(derS) do index_hash.match([derK_hash.match(LKTs(parameter(derx, derS.rho, derS.rho))[0]),
