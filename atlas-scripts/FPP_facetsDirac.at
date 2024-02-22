@@ -1013,6 +1013,7 @@ set low_FPP_facets_BB(RealForm G) = [[FacetVertsIndex]]:
 graph; label as "Ffrom"##tail}
 { first list in toDo all n covering m; then what covers those...
 These get larger and larger.}
+{Should make this function put nonunitary statuses into unitarity_hash?}
 set updateNUclassesB([string] statuses, [[int]] covers, int m,
 string tail) = [string]:
     let G1 = inner_class(root_datum(null(1,0),null(1,0))

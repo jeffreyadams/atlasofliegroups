@@ -428,15 +428,23 @@ set local_testK_hash(KGBElt x, ratvec lambda, VertexData vd,
 	      od
      {make new local facet list using only facets not already proven nonunitary}
      then FVKHnew = for @m in FVKH do [FacetVertsKHash]: [] od
-          then () = for C@m in eq do if newStatuses[m][0] = "T"
-     	     	     	      	then for k in C
-			      	   do let (d,j) = coords(FVKH,k)
-				      in FVKHnew[d] :=
-				      (FVKHnew[d] next FVKHnew[d]:=[])
-				      #FVKH[d][j]
-				   od
-			         fi
-			      od
+          then () = for C@m in eq
+	       	    do if newStatuses[m][0] = "T"
+     	     	       then for k in C
+			    do let (d,j) = coords(FVKH,k)
+			       in FVKHnew[d] := (FVKHnew[d] next FVKHnew[d]:=[]) #FVKH[d][j]
+			    od
+		       else for k in C
+		       	    do let (d,j) = coords(FVKH,k)
+			       then verts = vec: FVKH[d][j][:d+1]
+			       then ps = monomials(finalize(parameter(x, lambda
+		    	       	       	 , facet_bary(vd.list, verts))))
+			       in if #ps = 1
+			       	  then attest_is_unitary(ps[0],false)
+				  fi
+			    od
+		       fi
+		    od
      then time = elapsed_ms() - start
      then () = if time_verbose then prints("     ", print_time_string(time),
      	       	  	       " for local_testK_hash") fi
@@ -493,35 +501,42 @@ set local_testK_hash_bottom_layer(KGBElt x, ratvec lambda, VertexData vd,
 	      	  then verts = vec: FVKH[d][j][:d+1]
 	      	  then ps = monomials(finalize(parameter(x, lambda
 		    	  , facet_bary(vd.list, verts))))
-	          in if #ps = 1
-		     then if Uhash.lookup(ps[0]).>= or
-		     	     min_bottom_elim_factors(ps[0], pol_hash.index(FVKH[d][j][d+1]))
-		     	  then newStatuses[k]:= "T"
-			  else newStatuses:= updateNUclassesB(newStatuses, gr, k)
-			  ; newStatuses[k] := "F"
-			  fi
-		     else if{NEWU} all(for p in ps
-		     	  	       do Uhash.lookup(p).>= or
-					  min_bottom_elim_factors(p)
-				       od)
-			  then newStatuses[k]:= "T"
-			  else newStatuses:= updateNUclassesB(newStatuses, gr, k)
-			  ; newStatuses[k] := "F"
-			  fi{NEWU}
+               	  {then knew_that = all(for p1 in ps do do_you_know_is_unitary(p1) od)}
+                  then test = {if knew_that {this could eliminate some p which are positive to height, and could be equiv
+		       	      	 	    to some p' which ARE unitary. Oops.}
+                            then all(for p1 in ps do is_unitary_hash(p1) od)}
+                              if #ps = 1
+			      then  Uhash.lookup(ps[0]).>= or
+		     	      	    min_bottom_elim_factors(ps[0], pol_hash.index(FVKH[d][j][d+1]))
+			      else{d#ps > 1}
+			            all(for p in ps
+		     	  	       	do Uhash.lookup(p).>= or min_bottom_elim_factors(p)
+				        od)
+			      fi {#ps}
+		  in if test
+		     then newStatuses[k]:= "T"
+		     else newStatuses:= updateNUclassesB(newStatuses, gr, k); newStatuses[k] := "F"
 		     fi
-	         fi
-	      od
+		  fi {newStatuses[k] = "?"}
+		  od {NumClasses}
      {make new local facet list using only facets not already proven nonunitary}
      then FVKHnew = for @m in FVKH do [FacetVertsKHash]: [] od
           then () = for C@m in eq do if newStatuses[m][0] = "T"
-     	     	     	      	then for k in C
-			      	   do let (d,j) = coords(FVKH,k)
-				      in FVKHnew[d] :=
-				      (FVKHnew[d] next FVKHnew[d]:=[])
-				      #FVKH[d][j]
-				   od
-			         fi
-			      od
+     	     	     	      	     then for k in C
+			      	     	  do let (d,j) = coords(FVKH,k)
+				      	     in FVKHnew[d] := (FVKHnew[d] next FVKHnew[d]:=[]) #FVKH[d][j]
+				   	  od
+		       		     else for k in C {record the false ones}
+		       	    	     	  do let (d,j) = coords(FVKH,k)
+			       		     then verts = vec: FVKH[d][j][:d+1]
+			       		     then ps = monomials(finalize(parameter(x, lambda
+		    	       	       	     	     , facet_bary(vd.list, verts))))
+			       		     in if #ps = 1
+			       	  	     	then attest_is_unitary(ps[0],false)
+				  		fi
+			    		  od
+			             fi
+			      	  od
      then time = elapsed_ms() - start
      then () = if time_verbose then prints("     ", print_time_string(time),
      	       	  	       " for local_testK_hash_bottom_layer") fi
@@ -603,7 +618,13 @@ set local_test_hash(KGBElt x, ratvec lambda, VertexData Lvd,
 			   	     fi
 		       	   in q
 		    	od {list of tester unitary Params}
-		   else []
+		   else for k in C {record the false ones}
+		       	do let (d,j) = coords(LFVH,k)
+			   then verts = vec: LFVH[d][j][:d+1]
+			   then ps = monomials(finalize(parameter(x, lambda
+		    	       	       	     , facet_bary(Lvd.list, verts))))
+			   in if #ps = 1 then attest_is_unitary(ps[0],false) fi
+			od; []
 		   fi{NEWU}
 	  od.##
     then () = if test_verbose or test_slightly_verbose
@@ -656,23 +677,27 @@ set local_test_hash_bottom(KGBElt x, ratvec lambda, VertexData Lvd,
 		  {first_param makes trouble in UParams list!}
 		then p = parameter(x, lambda, facet_bary(Lvd.list, verts))
 	      	then ps = monomials(finalize(p))
-	      	then elim_more = if more_flag
-				   then if #ps = 1
-				     	then bottom_elim_factors_more(ps[0], nQs, D, pol_hash.index(LFVH[d][j][d+1]))
-		                     	else all(for p1 in ps
-		   	       	    	     	 do Uhash.lookup(p1).>= or
-			       	       	    	    bottom_elim_factors_more(p1, nQs, D)
-					 	 od)
-				        fi
-				   else true {if we're not using more}
-				   fi
+		{then knew_that = all(for p1 in ps do do_you_know_is_unitary(p1) od)}
+		then test = {if knew_that
+    	      	     	    then all(for p1 in ps do is_unitary_hash(p1) od)
+	      	   	    else} {didn't know that}
+		let elim_more = if more_flag
+				then if #ps = 1
+				     then bottom_elim_factors_more(ps[0], nQs, D, pol_hash.index(LFVH[d][j][d+1]))
+		                     else all(for p1 in ps
+		   	       	    	      do Uhash.lookup(p1).>= or
+			       	       	    	      bottom_elim_factors_more(p1, nQs, D)
+					      od)
+				     fi
+				else true {if we're not using more}
+				     fi
 		 then () = if more_verbose and more_flag then prints("result of elim_more was ",elim_more) fi
-		 then test = if not elim_more then false
-		      	     else all(for p1 in ps do is_unitary_hash(p1) od)
-			     fi
+		 in  if not elim_more then false
+		     else all(for p1 in ps do is_unitary_hash(p1) od)
+		     fi
 		 then () = if more_verbose then prints("your final answer was ",test) fi
 		 in if test
-		      then {let () = for p1 in ps
+		       then {let () = for p1 in ps
                                     do Uhash.match(herm_center(p1))
                                     od
 			   then () =} for i in C 
@@ -710,7 +735,6 @@ set local_test_hash_bottom(KGBElt x, ratvec lambda, VertexData Lvd,
 		 prints("number of tests = ",unitary_test_counter.use_count())
 	      fi
     in  UParams
-
 
 { Input is candidate facets, and graph info. Output is the unitary ones.}
 set local_test_hash(KGBElt x, ratvec lambda, VertexData Lvd,
@@ -757,6 +781,13 @@ set one_param_test(Param p, Param_hash Uhash) = [Param]:
 
 set one_param_test_bottom(Param p, int D, Param_hash Uhash) = [Param]:
     let start = elapsed_ms(), QG = monomials(finalize(p)),G = p.real_form
+    then knew_that = all(for q in QG do do_you_know_is_unitary(q) od)
+    then () = if knew_that
+    	      then if all(for q in QG do is_unitary_hash(q) od)
+	      	   then return [p]
+		   else return []
+		   fi
+	      fi
     then () = hash_bottom_layerCounter.use()
     {then () = if one_param_verbose then prints(new_line,"start one_param_test_bottom at p = ",p) fi}
     then elim_min = all(for q in QG

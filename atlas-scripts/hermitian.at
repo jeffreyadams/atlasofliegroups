@@ -637,7 +637,9 @@ set_type
   , ( -> int) count
   , ( -> ) clear
   , (Param->bool) entry
+  , (Param->bool) do_you_know {asks if the answer is tabulated}
   , (Param->) append
+  , ((Param,bool)->) attest {attest to unitarity of Param}
   , (int -> Param) param_index
   , (int -> bool) data_index
   )
@@ -667,6 +669,8 @@ set make_unitarity_bool_hash () = unitarity_bool_hash:
 		  fi
 	in bool_data[m]
      end
+   , (Param -> bool): {do_you_know} (Param p) bool:
+     param_hash.lookup(p).>=
    , (Param->): {append } (Param p):
      begin
 	let M = param_hash.size()
@@ -677,6 +681,16 @@ set make_unitarity_bool_hash () = unitarity_bool_hash:
 		       	     	   # is_unitary(p)
            fi
      end
+   , ((Param,bool)->): {attest} (Param p, bool answer):
+     begin
+	let M = param_hash.size()
+	then m = param_hash.match(p)
+	in if m = M
+	   then bool_data#:= answer {(bool_data next bool_data:= [])
+		       	     	   # answer}
+	   else assert(bool_data[m] = answer,"bad attest")
+           fi
+     end
    , (int -> Param): {param_index} (int j): param_hash.index(j)
    , (int -> bool): {data_index} (int j): bool_data[j]
   )
@@ -684,10 +698,11 @@ set make_unitarity_bool_hash () = unitarity_bool_hash:
 
 set unitarity_hash = make_unitarity_bool_hash()
 
-set crazy_flag = false
 set is_unitary_hash(Param p) = bool:
-    let (,pL) = theta_stable_data(p)
-    in if crazy_flag and is_hermitian(pL) and unitarity_hash.entry(pL)
-       then true
-       else unitarity_hash.entry(p)
-       fi
+    unitarity_hash.entry(p)
+
+set do_you_know_is_unitary(Param p) = bool:
+    unitarity_hash.do_you_know(p)
+
+set attest_is_unitary(Param p, bool answer) = void:
+    unitarity_hash.attest(p,answer)

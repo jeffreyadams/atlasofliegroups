@@ -16,7 +16,7 @@ getting useful information from parabolics _not_ containing it.}
 
 {K_signature_irrB is hermitian_form_irr_to_ht; K_signature_irr is hermitian_form_irr truncated.
 Haven't figured out which is faster when.}
-set bottom_verbose = true
+set bottom_verbose = false
 
 set deform_support(Param p, int D) = KTypePol:
     to_ht(deform_support(p), D)
@@ -113,7 +113,7 @@ set_type
   , (int, int -> int) sig_height {largest ht to which param j on real form i has had sig computed}
   , ( -> int) bottom_branch_time
   , ( -> int) bottom_sig_time
-  )
+)
 ]
 
 set make_RF_sig_tables () = RF_sig_tables:
@@ -126,7 +126,7 @@ set make_RF_sig_tables () = RF_sig_tables:
    		   	      ith entry is index of branching KTypePol for KType #i}
    then sigs = [[vec]]: [] {one [vec] for each real form, one vec for each Param}
    then branch_heights = [vec]: [] {one list for each real form; jth entry is vec with ith entry the height
-   		       	 	   to which sig(param i) is known}
+   		       	 	   to which branch(param i) is known}
    then sig_heights = [vec]: [] {one list for each real form; jth entry is vec with ith entry the height
    		       	 	   to which sig(param i) is known}
    then bottom_branch_time = int: 0
@@ -176,7 +176,7 @@ set make_RF_sig_tables () = RF_sig_tables:
 		       in ()
 		  fi
 	in (rf, ktypenum)
-   then add_K_type(KType mu, int D) = (int, int, int): {this time add to height}
+   then add_K_type(KType mu, int D) = (int, int, int): {this time add to height; D should be >= height(mu)}
    	let rf = add_real_form(mu.real_form)
 	then KTYPENUM = K_type_hashes[rf].size()
 	then ktypenum = K_type_hashes[rf].match(mu)
@@ -221,7 +221,7 @@ set make_RF_sig_tables () = RF_sig_tables:
 				               	sum(p.real_form, for c@tau in sig do let (,b) = %c in b*tau  od))
 				       fi
 		       then (pos_ind,neg_ind) = (K_type_pol_hashes[rf].match(pos), K_type_pol_hashes[rf].match(neg))
-		       then () = sigs[rf] := if #sigs[rf] = 0 then [[pos_ind,neg_ind]]
+then () = sigs[rf] := if #sigs[rf] = 0 then [[pos_ind,neg_ind]]
 		     	      	      	     else (sigs[rf] next sigs[rf] := [])# [pos_ind,neg_ind]
 				      	     fi
 		       then () = sig_heights[rf] #:= 0
@@ -342,7 +342,7 @@ set min_bottom_factors(KType mu) = ([[(KType, KType)]], [int]):
 							      od))
 		      od
 		   od
-    {then () = mbfTime +:= elapsed_ms() - start}{Sp(6): .84 secs to here}
+{then () = mbfTime +:= elapsed_ms() - start}{Sp(6): .84 secs to here}
     then LKdata = for listj@j in dertauLs
        	 	  do let taulist = tauwts[j]
 		     in [(KType, KType)]: {meant to be list of pairs (tau, dertauLj) with
@@ -371,7 +371,8 @@ set_type
 ( ( -> int) size
   , ( -> ) clear
   , (KType->([[(KType,KType)]], [int])) helpful_entry {subset of entry where list has more than one elt (so
-    						      might detect nonunitarity), and the corr numbers of derLj}
+    						      might detect nonunitarity), and the corr numbers of derLj
+						      (among the derived simple factors of L}
   , (KType->int) G_min_height {largest height of a G K-type in helpful_entry; at least height(mu)}
   , (int -> KType) K_type_index
   , (int -> ([[(KType,KType)]],[int])) data_index
@@ -539,8 +540,10 @@ set min_bottom_elim_factors(Param p) = bool:
 	       			        od)
 		   fi
              od
+	then answer = all(answers)
+	then () = if not answer then attest_is_unitary(p,answer) fi
 	then () = mbefTime +:= elapsed_ms()-start
-        in all(answers)
+        in answer
 
 set min_bottom_elim_factors(Param p, KTypePol P) = bool:
     let start = elapsed_ms(), (,pL) = theta_stable_quasi_data(p)
@@ -611,8 +614,10 @@ set min_bottom_elim_factors(Param p, KTypePol P) = bool:
 	       			        od )
 		   fi
              od
+	then answer = all(answers)
+	then () = if not answer then attest_is_unitary(p,answer) fi
 	then () = mbefTime +:= elapsed_ms()-start
-        in all(answers)
+        in answer
 
 set min_bottom_test_factors(Param p) = bool:
     if not min_bottom_elim_factors(p)
@@ -675,7 +680,11 @@ set bottom_factors(KType mu, KGPElt Q, int D) = [[(KType, KType)]]:
                                tau bottom layer for G, dertauLj corr LjK-type}
              for taujwt@m in taulist
              do if is_dominant(K0, taujwt) {MAY NOT BE CORRECT HEIGHT!}
-                then [(K_types(K_highest_weight_from_K0_weight(xcG, taujwt))[0], listj[m])]
+                then let tauj = K_types(K_highest_weight_from_K0_weight(xcG, taujwt))[0]
+		     in if height(tauj) <= D
+		     	then [(tauj, listj[m])]
+			else []
+			fi
                 else []
                 fi
              od.##
@@ -763,6 +772,7 @@ set bottom_elim_factors(Param p, KGPElt Q, [[(KType,KType)]] LKdata) = bool:
 			@bool: int_part(posLj[tauLj]) >= int_part(multG[tauj])
 			od )
 	       od )
+        then () = if not result then attest_is_unitary(p,result) fi
 	then () = {mbefTime} befmoreTime +:= elapsed_ms()-start
 	in result
 
@@ -851,6 +861,7 @@ set bottom_elim_factors(Param p, KGPElt Q, [[(KType,KType)]] LKdata, KTypePol P)
 			@bool: int_part(posLj[tauLj]) >= int_part(Pmult[tauj])
 			od )
 	       od )
+     then () = if not result then attest_is_unitary(p,result) fi
      then () = {mbefTime} befmoreTime +:= elapsed_ms() - start
      in result
 
@@ -886,7 +897,7 @@ set larger_Ps(KGPElt Q) = [KGPElt]:
 		 od
 	      ## for j in B
 	      	 do pairsc[j]
-		 od.## , x)
+		 od.##.sort , x)
 	  od
        od.##
 
@@ -1001,7 +1012,7 @@ set bottom_K_types(KType mu, int D) = [(KType,[int])]:
 		       	    for which corr tau is bottom layer}
     in for tau@k in too_many_taus
        do if #too_many_Ss[k]= G.semisimple_rank then []
-	  else [(tau, too_many_Ss[k])]
+	  else [(tau, too_many_Ss[k].sort)]
 	  fi
        od.##
 
@@ -1114,38 +1125,47 @@ set goodness(Param p, KGPElt Q) = (bool, bool, bool):
 {whether to use _more versions of bottom layer tests for unitarity}
 set more_flag = false
 
-{meant to hold nonunitary reps NOT found by more}
-{set bad_hash = make_Param_hash()}
+{meant to hold nonunitary reps identified first by more}
+set more_good_hash = make_Param_hash()
 
 {D is meant to be max(height(tau) for tau in BKT. nQs are the parabolics where bottom layer might help.}
 {nQs is meant to be new_Qs(), P the K-character of P}
 {meant to be applied AFTER min_bottom_elim_factors, so skip minimal nQ}
 set bottom_elim_factors_more(Param p, [KGPElt] nQs, int D, KTypePol P)= bool:
-    let start =  elapsed_ms()
-    then three_bools = max_goodness(p), maxQps = max_Qps(p)
+    let start =  elapsed_ms(), G=p.real_form
+    then three_bools = max_goodness(p), maxQps = max_Qps(p), R = more_good_hash.size()
     {then () = if #nQs > 1}
     then () = if not all(for Q in nQs{[1:]}
     	    	      	 do all(for mu in LKTs(p)
 			      	do bottom_elim_factors(p, Q, bottom_factors(mu,Q,D), P)
 				od)
 		         od) {this seems to be quite rare??}
-	       then if bottom_verbose then prints("at p = ",p,", more helped!") fi;
-		   	befmoreTime +:= elapsed_ms() - start; return false
+	       then let MG = more_good_hash.size()
+		    then mg = more_good_hash.match(p)
+		    then () = if bottom_verbose and mg=MG
+			      then prints("at p = ",p,", more helped!")
+			      fi
+                    then () = attest_is_unitary(p,false)
+		    then () = befmoreTime +:= elapsed_ms() - start
+		    in return false
 	       fi
      then good = first(for (g,,) in three_bools do g od)
      then () = if good>=0
     	       then let (,pL) =  maxQps[good]
-	      	    {then () = if bottom_verbose then prints("p = ",p," is a good one!") fi}
+	      	    then () = if bottom_verbose then prints("p = ",p," is a good one!") fi
+                    then answer = is_unitary_hash(pL)
+                    then () = attest_is_unitary(p,answer)
 		    then () = befmoreTime +:= elapsed_ms() - start
-		    in return is_unitary_hash(pL)
+                    in return answer
 	      	fi
      then wk_good = first(for (,wg,) in three_bools do wg = true od)
-     then () = if wk_good >= 0
+     then () = if wk_good >= 0 {form on p is induced from form on L}
     	       then let (,pL) = maxQps[wk_good]
-	      	    in if is_unitary_hash(pL)
-		       then {if bottom_verbose then prints("p = ",p," is weakly good") fi;}
-		      	   	         befmoreTime +:= elapsed_ms() - start; return true
-		       fi
+	       	    then HG = theta_induce_signature(pL,G), Ip = theta_induce_irreducible(pL,G)
+		    then G_pure = is_pure(HG)
+		    in  befmoreTime +:= elapsed_ms() - start;
+                        attest_is_unitary(p, G_pure);
+			return G_pure
 	        fi
      {then () = if bottom_verbose then prints("sorry, don't know") fi}
      then () = befmoreTime +:= elapsed_ms() - start
@@ -1169,31 +1189,41 @@ set bottom_test_factors_more(Param p, [KGPElt] nQs, int D, KTypePol P) = bool:
     if not more_flag
     then is_unitary_hash(p) {min_bottom_test_factors(p,P)}
     else
-    let start = elapsed_ms()
+    let start = elapsed_ms(), G = p.real_form
     then () = if not all(for Q in nQs{[1:]}
     	    	      	 do all(for mu in LKTs(p)
 			      	do bottom_elim_factors(p, Q, bottom_factors(mu,Q,D), P)
 				od)
 		         od)
-	      then if bottom_verbose then prints("at p = ",p,", more helped!") fi; return false
-	      fi
+	       then let MG = more_good_hash.size()
+		    then mg = more_good_hash.match(p)
+		    then () = if bottom_verbose and mg=MG
+			      then prints("at p = ",p,", more helped!")
+			      fi
+		    then () = attest_is_unitary(p,false)
+		    then () = befmoreTime +:= elapsed_ms() - start
+		    in return false
+	       fi
     {now either bottom layer has succeeded, or it can't help}
     then three_bools = max_goodness(p), maxQps = max_Qps(p)
     then good = first(for (g,,) in three_bools do g od)
     then () = if good>=0
     	      then let (,pL) =  maxQps[good]
 	      	   then () = if bottom_verbose then prints("p = ",p," is a good one!") fi
-		   		in return is_unitary_hash(pL)
+		   then answer = is_unitary_hash(pL)
+		   then () = attest_is_unitary(p,answer)
+		   in return answer
 	      fi
     then wk_good = first(for (,wg,) in three_bools do wg = true od)
     then () = if wk_good >= 0
     	      then let (,pL) = maxQps[wk_good]
-	      	   in if is_unitary_hash(pL) {seems rare?}
-		      then if bottom_verbose then prints("p = ",p," is weakly good") fi;
-		      	      return true
-		      fi
+	       	   then HG = theta_induce_signature(pL,G), Ip = theta_induce_irreducible(pL,G)
+		   then G_pure = is_pure(HG)
+		   in befmoreTime +:= elapsed_ms() - start;
+		      attest_is_unitary(p,G_pure);
+		      return G_pure
 	      fi
-     {then () = if bottom_verbose then prints("sorry, doing is_unitary") fi}
+     then () = if bottom_verbose then prints("sorry, doing is_unitary") fi
      then () = befmoreTime+:= elapsed_ms() - start
      in is_unitary_hash(p)
      fi
@@ -1205,147 +1235,3 @@ set bottom_test_factors_more(Param p, [KGPElt] nQs, int D) = bool:
     let P = K_type_pol(character_formula(p))
     in bottom_test_factors_more(p, nQs, D, P)
     fi
-
-
-{Let (Q0,pL0) = theta_stable_quasi_data(p) and assume Q containing Q0
-is theta-stable.  Each (tau,tauL) in output list is a Q-bottom layer
-K-type for p. D is the largest height to which to compute K-types.
-List includes LKT pairs, so always nonempty.  Assume K connected.}
-{set bottom(Param p, int D, KGPElt Q) = [(KType,KType)]:
-    let (Q0,pL0) = theta_stable_quasi_data(p),
-    	G = p.real_form, L = Q.Levi
-    then L0 = Q0.Levi, pL = first_param(theta_induce_standard(pL0,L))
-    then xcL = KGB(L,0)
-    then xcG = embed_KGB(xcL, G), LKTG = LKTs(p)[0], LKTL = LKTs(pL)[0]
-    then TRUCH = two_rho_u_check(Q)
-    then bottom = TRUCH*(highest_weight(LKTG, xcG).mu)
-    then too_many_taus = monomials(branch_std(p,D))
-    then taus = for tau in too_many_taus
-       	       do if TRUCH*(highest_weight(tau, xcG).mu) = bottom
-	       	  then [tau]
-	  	  else []
-	  	  fi
-	  	od.##
-    then shift = highest_weight(LKTG,xcG).mu - highest_weight(LKTL,xcL).mu
-    in  for tau in taus
-    	do (tau, K_types(K_highest_weight_from_K0_weight(xcL,
-       	       	       highest_weight(tau,xcG).mu - shift))[0])
-	od}
-
-{Let (Q0,pL0) = theta_stable_quasi_data(p) and assume Q containing Q0
-is theta-stable.  Each (tau,tauL) in output list is a Q-bottom layer
-K-type for p. D is the largest height to which to compute K-types.
-List includes LKT pairs, so always nonempty.  Assume K connected.}
-
-{
-set L_bottom(Param p, int D, KGPElt Q) = [(KType,KType)]:
-    let (Q0,pL0) = theta_stable_quasi_data(p), G = p.real_form,
-    	L = Q.Levi
-    then L0 = Q0.Levi, pL = first_param(theta_induce_standard(pL0,L))
-    then xcL = KGB(L,0)
-    then xcG = embed_KGB(xcL, G), LKTG = LKTs(p)[0], LKTL = LKTs(pL)[0]
-    then shift = K0_param(LKTG, xcG).lambda_minus_rho - K0_param(LKTL,xcL).lambda_minus_rho
-    	 {highest_weight(LKTG,xcG).mu - highest_weight(LKTL,xcL).mu}
-    then DL = D-height(p) + height(pL)
-    then too_many_tauLs = monomials(branch_std(pL,DL)) {reps of L\cap K}
-    then K0 = K_0(xcG), LK0 = K_0(xcL)
-    then tauLs =  for tauL in too_many_tauLs
-       	      	  do let weight = K0_param(tauL,xcL).lambda_minus_rho + shift
-		  in if is_dominant(K0,weight)
-       	  	     then [(weight,tauL)]
-	  	     else []
-	  	     fi
-		  od.##
-    in for (weight,tauL) in tauLs
-       do (K_types(K_highest_weight_from_K0_weight(xcG, weight))[0] ,tauL) od
-
-{false guarantees not unitary, but true does not guarantee unitary.
-Assume p is cohom ind from pL; pairs is (tau, tauL):
-a bottom layer K-type and the corresponding L\cap K-type}
-set bottom_elim(Param p, Param pL, [(KType,KType)] pairs) = bool:
-    let start = elapsed_ms()
-    in if  #pairs = #LKTs(p)  then true
-       else let DL = max(for (,tauL) in pairs do height(tauL) od),
-       	    posLK_time = int:0, multK_time = int:0
-       	    then (posL,negL) = K_signature_irr(first_param(finalize(pL)),DL)
-	    	 {positive part of the signature on L}
-	    then () = if bottom_verbose
-	    	      then let () = posLK_time := elapsed_ms()
-		      	   in prints("LK_sig used ",
-    	    	      	      print_time_string(posLK_time - start))
-		      fi
-	    then DG = max(for(tau,) in pairs do height(tau) od)
-	    then multG = branch_irr(p,DG)
-	    	 {all K-mults to height of largest tau}
-	    then () = if bottom_verbose
-	    	      then let () = multK_time := elapsed_ms()
-		      	   in prints("multK used ",
-    	    	      	      print_time_string(multK_time - posLK_time))
-		      fi
-		      {create a list of FUNCTIONS returning a bool. Functions
-		      are only evaluated until false }
-	    then () = if let (, muL) = pairs[0] in posL[muL] = 0
-		      then posL := negL
-		      fi
-	    then answer =  all( for (tau,tauL) in pairs[1:]
-       	       	    do @bool: int_part(posL[tauL]) >= int_part(multG[tau])
-		    od)
-		    {or @bool:int_part...}
-    	    then () = if bottom_verbose
-	       	      then prints("bottom_elim used ",
-    	    	      	   print_time_string(elapsed_ms() - start))
-	       	      fi
-            in answer
-	fi
-
-{false guarantees not unitary, but true does not guarantee unitary}
-{Here P is the K-character of p, at least to heights of pairs}
-set bottom_elim(Param p, Param pL, [(KType,KType)] pairs, KTypePol P) = bool:
-    let start = elapsed_ms()
-    in if #pairs = #LKTs(p) then true
-       else let DL = max(for (,tauL) in pairs do height(tauL) od){,
-       	    posLK_time = int:0, multK_time = int:0}
-	    then (posL, negL) = K_signature_irr(first_param(finalize(pL)),DL)
-       	    {then (posL,) = K_signature_irr(first_param(finalize(pL)),DL)}
-	    then () = if let (,muL) = pairs[0] in posL[muL] = 0
-		      then posL := negL
-		      fi
-	    	 {positive part of the signature on L}
-	    then DG = max(for(tau,) in pairs do height(tau) od)
-	    then multG = branch_std(P,DG) {all K-mults to height of largest mu}
-	    in all( for (tau,tauL) in pairs[1:]
-       	       	    do @:int_part(posL[tauL]) >= int_part(multG[tau])
-		    od )
-	fi
-
-set bottom_test(Param p, Param pL, [(KType,KType)] pairs) = bool:
-    if not bottom_elim(p, pL, pairs)
-    then return false
-    else is_unitary_hash(p)
-    fi
-
-set bottom_test(Param p, Param pL, [(KType,KType)] pairs, KTypePol P) = bool:
-    if not bottom_elim(p, pL, pairs, P)
-    then return false
-    else is_unitary_hash(p)
-    fi
-
-
-set bottom_elim(Param p, int D, KGPElt Q) = bool:
-    let start = elapsed_ms(), (Q0,pL0) = theta_stable_quasi_data(p)
-    then pL = first_param(theta_induce_standard(pL0,Q.Levi))
-    then pairs = L_bottom(p,D,Q), minLb_time = int:0, posLK_time = int:0,
-    	 multK_time = int:0
-    then () = if bottom_verbose
-    	      then let () = minLb_time := elapsed_ms()
-    	      	   in  prints(new_line,"min_L_bottom used ",
-    	    	       print_time_string(minLb_time - start))
-	      fi
-    in bottom_elim(p, pL, pairs)
-
-set bottom_test(Param p, int D, KGPElt Q) = bool:
-    if not bottom_elim(p, D, Q)
-    then return false
-    else is_unitary_hash(p)
-    fi
-}
