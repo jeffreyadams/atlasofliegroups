@@ -434,7 +434,7 @@ set local_testK_hash(KGBElt x, ratvec lambda, VertexData vd,
 			    do let (d,j) = coords(FVKH,k)
 			       in FVKHnew[d] := (FVKHnew[d] next FVKHnew[d]:=[]) #FVKH[d][j]
 			    od
-		       else for k in C
+		       {else for k in C
 		       	    do let (d,j) = coords(FVKH,k)
 			       then verts = vec: FVKH[d][j][:d+1]
 			       then ps = monomials(finalize(parameter(x, lambda
@@ -442,7 +442,7 @@ set local_testK_hash(KGBElt x, ratvec lambda, VertexData vd,
 			       in if #ps = 1
 			       	  then attest_is_unitary(ps[0],false)
 				  fi
-			    od
+			    od}
 		       fi
 		    od
      then time = elapsed_ms() - start
@@ -526,7 +526,7 @@ set local_testK_hash_bottom_layer(KGBElt x, ratvec lambda, VertexData vd,
 			      	     	  do let (d,j) = coords(FVKH,k)
 				      	     in FVKHnew[d] := (FVKHnew[d] next FVKHnew[d]:=[]) #FVKH[d][j]
 				   	  od
-		       		     else for k in C {record the false ones}
+		       		     {else for k in C {record the false ones}
 		       	    	     	  do let (d,j) = coords(FVKH,k)
 			       		     then verts = vec: FVKH[d][j][:d+1]
 			       		     then ps = monomials(finalize(parameter(x, lambda
@@ -534,7 +534,7 @@ set local_testK_hash_bottom_layer(KGBElt x, ratvec lambda, VertexData vd,
 			       		     in if #ps = 1
 			       	  	     	then attest_is_unitary(ps[0],false)
 				  		fi
-			    		  od
+			    		  od}
 			             fi
 			      	  od
      then time = elapsed_ms() - start
@@ -618,13 +618,13 @@ set local_test_hash(KGBElt x, ratvec lambda, VertexData Lvd,
 			   	     fi
 		       	   in q
 		    	od {list of tester unitary Params}
-		   else for k in C {record the false ones}
+		   else {for k in C {record the false ones}
 		       	do let (d,j) = coords(LFVH,k)
 			   then verts = vec: LFVH[d][j][:d+1]
 			   then ps = monomials(finalize(parameter(x, lambda
 		    	       	       	     , facet_bary(Lvd.list, verts))))
 			   in if #ps = 1 then attest_is_unitary(ps[0],false) fi
-			od; []
+			od;} []
 		   fi{NEWU}
 	  od.##
     then () = if test_verbose or test_slightly_verbose
