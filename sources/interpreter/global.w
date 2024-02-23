@@ -2906,8 +2906,8 @@ void vec_to_bitset_wrapper(expression_base::level l)
 @ While installing the integer functions, we shall make some automatic rewriting
 be performed using the |special_builtin| magic. The data stored in those objects
 involve a pointer to a function that recognises and possibly rewrites converted
-argument expressions to these specif built-in functions. These functions are
-very specific to the built-in in question.
+argument expressions to these built-in functions. These functions are very
+specific to the built-in in question.
 
 Here we define some of these functions, to be used for the installation of
 special integer functions. The function |negate_denotation| turns expressions
@@ -3449,6 +3449,104 @@ void inequiv_wrapper(expression_base::level l)
   if (l!=expression_base::no_value)
     push_value(whether(a!=b));
 }
+
+@ The unary operator version will automatically be applied when a binary one has
+right hand side $0$.
+
+@< Local function definitions @>=
+expression_ptr rhs_is_0
+  (expression_ptr& args,const shared_builtin& f,const source_location& loc)
+{ auto t = dynamic_cast<const tuple_expression*>(args.get());
+  if (t!=nullptr and t->component.size()==2)
+  { auto a = dynamic_cast<const denotation*>(t->component[1].get());
+    if (a!=nullptr)
+    { auto v = force<int_value>(a->denoted_value.get());
+      if (v->val.is_zero())
+      { auto& arg0 = const_cast<expression_ptr&>(t->component[0]);
+        return f->build_call(f,f->print_name,std::move(arg0),loc);
+      }
+    }
+  }
+  return nullptr; // signal that we made no substitution
+}
+
+@ We must not forget to install what we have defined properly, making all those
+|special_function|s.
+
+@< Initialise... @>=
+{ auto p = install_function(int_unary_eq_wrapper,"=","(int->bool)");
+  shared_builtin eq_val = std::static_pointer_cast<builtin>(p);
+  auto q = install_special_function(int_eq_wrapper,"=","(int,int->bool)");
+  q->tests.emplace_back(rhs_is_0,eq_val);
+  p = install_function(int_unary_neq_wrapper,"!=","(int->bool)");
+  shared_builtin neq_val = std::static_pointer_cast<builtin>(p);
+  q = install_special_function(int_neq_wrapper,"!=","(int,int->bool)");
+  q->tests.emplace_back(rhs_is_0,neq_val);
+  p = install_function(int_non_negative_wrapper,">=","(int->bool)");
+  shared_builtin geq_val = std::static_pointer_cast<builtin>(p);
+  q = install_special_function(int_greatereq_wrapper,">=","(int,int->bool)");
+  q->tests.emplace_back(rhs_is_0,geq_val);
+  p = install_function(int_positive_wrapper,">","(int->bool)");
+  shared_builtin gt_val = std::static_pointer_cast<builtin>(p);
+  q = install_special_function(int_greater_wrapper,">","(int,int->bool)");
+  q->tests.emplace_back(rhs_is_0,gt_val);
+  p = install_function(int_non_positive_wrapper,"<=","(int->bool)");
+  shared_builtin leq_val = std::static_pointer_cast<builtin>(p);
+  q = install_special_function(int_lesseq_wrapper,"<=","(int,int->bool)");
+  q->tests.emplace_back(rhs_is_0,leq_val);
+  p = install_function(int_negative_wrapper,"<","(int->bool)");
+  shared_builtin lt_val = std::static_pointer_cast<builtin>(p);
+  q = install_special_function(int_less_wrapper,"<","(int,int->bool)");
+  q->tests.emplace_back(rhs_is_0,lt_val);
+}
+
+@ We take a breath, and then doe the same stuff for the rationals. Since a zero
+right hand side will be implicitly converted to rational, our test for such a
+right hand side must be ``rationalised'' first. But the code below won't be
+effective unless the implicit conversion has produced a denotation with a
+rational value stored in it, rather than an integer denotation wrapped in a
+conversion to rational (which would necessitate more elaborate testing here); in
+other words, unless we did constant folding for this kind of implicit
+conversion.
+
+@< Local function definitions @>=
+expression_ptr rhs_is_rat0
+  (expression_ptr& args,const shared_builtin& f,const source_location& loc)
+{ auto t = dynamic_cast<const tuple_expression*>(args.get());
+  if (t!=nullptr and t->component.size()==2)
+  { auto a = dynamic_cast<const denotation*>(t->component[1].get());
+    if (a!=nullptr)
+    { auto v = force<rat_value>(a->denoted_value.get());
+      if (v->val.is_zero())
+      { auto& arg0 = const_cast<expression_ptr&>(t->component[0]);
+        return f->build_call(f,f->print_name,std::move(arg0),loc);
+      }
+    }
+  }
+  return nullptr; // signal that we made no substitution
+}
+
+@
+@< Initialise... @>=
+{ auto p = install_function(rat_unary_eq_wrapper,"=","(rat->bool)");
+  shared_builtin eq_val = std::static_pointer_cast<builtin>(p);
+  auto q = install_special_function(rat_eq_wrapper,"=","(rat,rat->bool)");
+  q->tests.emplace_back(rhs_is_rat0,eq_val);
+}
+install_function(rat_unary_eq_wrapper,"=","(rat->bool)");
+install_function(rat_unary_neq_wrapper,"!=","(rat->bool)");
+install_function(rat_non_negative_wrapper,">=","(rat->bool)");
+install_function(rat_positive_wrapper,">","(rat->bool)");
+install_function(rat_non_positive_wrapper,"<=","(rat->bool)");
+install_function(rat_negative_wrapper,"<","(rat->bool)");
+install_function(rat_eq_wrapper,"=","(rat,rat->bool)");
+install_function(rat_neq_wrapper,"!=","(rat,rat->bool)");
+install_function(rat_less_wrapper,"<","(rat,rat->bool)");
+install_function(rat_lesseq_wrapper,"<=","(rat,rat->bool)");
+install_function(rat_greater_wrapper,">","(rat,rat->bool)");
+install_function(rat_greatereq_wrapper,">=","(rat,rat->bool)");
+install_function(equiv_wrapper,"=","(bool,bool->bool)");
+install_function(inequiv_wrapper,"!=","(bool,bool->bool)");
 
 @*1 Strings.
 %
@@ -4351,31 +4449,6 @@ void rvm_prod_wrapper(expression_base::level l)
 @ We must not forget to install what we have defined.
 
 @< Initialise... @>=
-install_function(int_unary_eq_wrapper,"=","(int->bool)");
-install_function(int_unary_neq_wrapper,"!=","(int->bool)");
-install_function(int_non_negative_wrapper,">=","(int->bool)");
-install_function(int_positive_wrapper,">","(int->bool)");
-install_function(int_non_positive_wrapper,"<=","(int->bool)");
-install_function(int_negative_wrapper,"<","(int->bool)");
-install_function(int_eq_wrapper,"=","(int,int->bool)");
-install_function(int_neq_wrapper,"!=","(int,int->bool)");
-install_function(int_less_wrapper,"<","(int,int->bool)");
-install_function(int_lesseq_wrapper,"<=","(int,int->bool)");
-install_function(int_greater_wrapper,">","(int,int->bool)");
-install_function(int_greatereq_wrapper,">=","(int,int->bool)");
-install_function(rat_unary_eq_wrapper,"=","(rat->bool)");
-install_function(rat_unary_neq_wrapper,"!=","(rat->bool)");
-install_function(rat_non_negative_wrapper,">=","(rat->bool)");
-install_function(rat_positive_wrapper,">","(rat->bool)");
-install_function(rat_non_positive_wrapper,"<=","(rat->bool)");
-install_function(rat_negative_wrapper,"<","(rat->bool)");
-install_function(rat_eq_wrapper,"=","(rat,rat->bool)");
-install_function(rat_neq_wrapper,"!=","(rat,rat->bool)");
-install_function(rat_less_wrapper,"<","(rat,rat->bool)");
-install_function(rat_lesseq_wrapper,"<=","(rat,rat->bool)");
-install_function(rat_greater_wrapper,">","(rat,rat->bool)");
-install_function(rat_greatereq_wrapper,">=","(rat,rat->bool)");
-install_function(equiv_wrapper,"=","(bool,bool->bool)");
 install_function(inequiv_wrapper,"!=","(bool,bool->bool)");
 install_function(string_unary_eq_wrapper,"=","(string->bool)");
 install_function(string_unary_neq_wrapper,"!=","(string->bool)");
