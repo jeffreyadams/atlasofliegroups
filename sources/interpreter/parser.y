@@ -269,8 +269,14 @@ tertiary: IDENT BECOMES tertiary { $$ = make_assignment($1,$3,@$); }
 	  { $$ = make_assignment($1,
 		  make_binary_call($2.id,
 		    make_applied_identifier($1,@1),$3,@$,@2),@$); }
+	| IDENT IDENT BECOMES tertiary
+	  { $$ = make_assignment($1,
+		  make_binary_call($2,
+		    make_applied_identifier($1,@1),$4,@$,@2),@$); }
 	| assignable_subsn OPERATOR_BECOMES tertiary
 	  { $$ = make_comp_upd_ass($1,$2.id,$3,@$,@2); }
+	| assignable_subsn IDENT BECOMES tertiary
+	  { $$ = make_comp_upd_ass($1,$2,$4,@$,@2); }
 	| IDENT '.' ident_expr OPERATOR_BECOMES tertiary
 	{ $$ = make_field_upd_ass
 	        (make_applied_identifier($1,@1),$3,$4.id,$5,@$,@2); }
