@@ -1877,6 +1877,9 @@ argument of next_heights}
 on LKTs. This version uses min_bottom_elim instead of
 unitary_to_ht.}
 
+
+set one_level_revert_flag = false
+
 set local_test_GEO_hash_bottom_layer(KGBElt x, ratvec lambda, VertexData vd,
     			VertexData Lvd, [[FacetVertsIndex]] LF, KTypePol_hash pol_hash,
     			Param_hash Uhash) = [Param]:
@@ -1886,8 +1889,10 @@ set local_test_GEO_hash_bottom_layer(KGBElt x, ratvec lambda, VertexData vd,
     then () = if 1*parameter(x,lambda,0*lambda) = zero_pol then return [] fi
     then ht = height(parameter(x,lambda,0*lambda))
     then () = if ht = 0 {fine K-type in quasisplit G}
-    	      then return local_test_GEO_hash_one_level(x, lambda, vd, Lvd, LF,
-	      	   	  				   pol_hash, Uhash)
+    	      then if one_level_revert_flag
+	      	   then return local_test_GEO_hash_one_level(x, lambda, vd, Lvd, LF, pol_hash, Uhash)
+		   else return local_test_GEO_hash2(x, lambda, vd, Lvd, LF, pol_hash, Uhash)
+		   fi
 	      fi
     then htFrac = ht/(G.rho * G.two_rho_check)
     then temp_K_char_flag= htFrac <= CUTOFF {CUTOFF defaults to 0}
@@ -1916,8 +1921,10 @@ set local_test_GEO_hash_bottom_layer(KGBElt x, ratvec lambda, VertexData vd,
 	{this is the greatest height at which we'll be looking at bottom layer K-types; during the first pass;
 	 so we can compute K-chars just to this height}
     then () = if L0 = G or (DG0= height(pmax) and not more_flag)
-    	      then return local_test_GEO_hash_one_level(x, lambda, vd, Lvd, LF,
-	      	   	  				   pol_hash, Uhash)
+    	      then if one_level_revert_flag
+	      	   then return local_test_GEO_hash_one_level(x, lambda, vd, Lvd, LF, pol_hash, Uhash)
+		   else return local_test_GEO_hash2(x, lambda, vd, Lvd, LF, pol_hash, Uhash)
+		   fi
 	      fi
     then D = height(pmax)+more_shift
     then () = if {TINY CASE} #LF[0]=1
