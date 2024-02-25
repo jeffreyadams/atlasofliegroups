@@ -677,24 +677,23 @@ set local_test_hash_bottom(KGBElt x, ratvec lambda, VertexData Lvd,
 		  {first_param makes trouble in UParams list!}
 		then p = parameter(x, lambda, facet_bary(Lvd.list, verts))
 	      	then ps = monomials(finalize(p))
-		{then knew_that = all(for p1 in ps do do_you_know_is_unitary(p1) od)}
+		then elim_more = if more_flag
+				 then if #ps = 1
+				      then bottom_elim_factors_more(ps[0], nQs, D, pol_hash.index(LFVH[d][j][d+1]))
+		                      else all(for p1 in ps
+		   	       	    	       do Uhash.lookup(p1).>= or
+			       	       	    	      bottom_elim_factors_more(p1, nQs, D)
+					       od)
+				      fi
+				  else true {if we're not using more}
+				  fi
+		 then () = if more_verbose and more_flag then prints("result of elim_more was ",elim_more) fi
 		then test = {if knew_that
     	      	     	    then all(for p1 in ps do is_unitary_hash(p1) od)
 	      	   	    else} {didn't know that}
-		let elim_more = if more_flag
-				then if #ps = 1
-				     then bottom_elim_factors_more(ps[0], nQs, D, pol_hash.index(LFVH[d][j][d+1]))
-		                     else all(for p1 in ps
-		   	       	    	      do Uhash.lookup(p1).>= or
-			       	       	    	      bottom_elim_factors_more(p1, nQs, D)
-					      od)
-				     fi
-				else true {if we're not using more}
-				     fi
-		 then () = if more_verbose and more_flag then prints("result of elim_more was ",elim_more) fi
-		 in  if not elim_more then false
-		     else all(for p1 in ps do is_unitary_hash(p1) od)
-		     fi
+			    if not elim_more then false
+		     	    else all(for p1 in ps do is_unitary_hash(p1) od)
+		     	    fi
 		 then () = if more_verbose then prints("your final answer was ",test) fi
 		 in if test
 		       then {let () = for p1 in ps
@@ -720,7 +719,7 @@ set local_test_hash_bottom(KGBElt x, ratvec lambda, VertexData Lvd,
 			   	     		   fi
 					 in q
 				      od
-		      else let () = if more_flag then more_bad_hash.match(p) fi
+		      else let () = if more_flag and elim_more then more_bad_hash.match(p) fi
 		      	       	    {in this case p passed elim_more but is not unitary}
 			   then (,pL) = theta_stable_quasi_data(p)
 			   then () = if surprise_flag and is_final(pL) and is_unitary_hash(pL)
@@ -1887,13 +1886,13 @@ set local_test_GEO_hash_bottom_layer(KGBElt x, ratvec lambda, VertexData vd,
     then () = if 1*parameter(x,lambda,0*lambda) = zero_pol then return [] fi
     then ht = height(parameter(x,lambda,0*lambda))
     then () = if ht = 0 {fine K-type in quasisplit G}
-    	      then return local_test_GEO_hash2(x, lambda, vd, Lvd, LF,
+    	      then return local_test_GEO_hash_one_level(x, lambda, vd, Lvd, LF,
 	      	   	  				   pol_hash, Uhash)
 	      fi
     then htFrac = ht/(G.rho * G.two_rho_check)
-    then temp_K_char_flag= htFrac <= CUTOFF
+    then temp_K_char_flag= htFrac <= CUTOFF {CUTOFF defaults to 0}
     then r = rank(thetaMinus)
-    then () = revert_flag:=false
+    {then () = revert_flag:=false}
     then maxDiffLoc = max_loc(for w in LF[0]
     	 	       	      do G.two_rho_check*(dominant(G,thetaMinus*Lvd.list[w[0]]))
 		       	      od)
@@ -1906,7 +1905,7 @@ set local_test_GEO_hash_bottom_layer(KGBElt x, ratvec lambda, VertexData vd,
 	      fi
     then () = if height(pmax) > bottom_length_frac* (G.two_rho * G.rho_check)
     	 then return local_test_GEO_hash2(x, lambda, vd, Lvd, LF,
-	      	   	  				   pol_hash, Uhash)
+	      {bottom_length_frac defaults to 1}   pol_hash, Uhash)
 	 fi
     {then helpful_datas  = for mu in LKTs(pmax)
     	 	   	  do minBottomData.helpful_entry(mu)
@@ -1917,7 +1916,7 @@ set local_test_GEO_hash_bottom_layer(KGBElt x, ratvec lambda, VertexData vd,
 	{this is the greatest height at which we'll be looking at bottom layer K-types; during the first pass;
 	 so we can compute K-chars just to this height}
     then () = if L0 = G or (DG0= height(pmax) and not more_flag)
-    	      then return local_test_GEO_hash2(x, lambda, vd, Lvd, LF,
+    	      then return local_test_GEO_hash_one_level(x, lambda, vd, Lvd, LF,
 	      	   	  				   pol_hash, Uhash)
 	      fi
     then D = height(pmax)+more_shift
