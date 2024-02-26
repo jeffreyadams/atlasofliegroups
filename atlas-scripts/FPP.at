@@ -50,7 +50,8 @@ let start=unitary_hash.size() then
 ()=prints("Starting size of unitary_hash: ", start) then
 list=xlambdalists[list_number] then
 reverse_list=for i:#list do list~[i] od then
-()=FPP_unitary_hash_bottom_layer(reverse_list) then
+{()=FPP_unitary_hash_bottom_layer(reverse_list) then}
+()=FPP_unitary_hash_bottom_layer(list) then
 finish=unitary_hash.size() in
 let ()=prints("finishing size of unitary_hash: ", finish) in
 for i:finish-start from start do unitary_hash.index(i) od
