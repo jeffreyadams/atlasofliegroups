@@ -4,6 +4,7 @@
 <count.at {for unitary_test_counter}
 <time.at {for print_time_string}
 <cohom_reductionND {for derived_factor_params}
+<FPP_facets_geom {for herm_center}
 set deformLookupCounter = make_counter()
 set deformCalcCounter = make_counter()
 
@@ -658,6 +659,9 @@ set make_unitarity_bool_hash () = unitarity_bool_hash:
    , ( -> ): {clear} clear
    , (Param -> bool): {entry} (Param p) bool:
      begin
+	if #simple_factors(p.real_form) = 1
+	then p:=herm_center(p)
+	fi;
 	let M = param_hash.size()
 	then m = param_hash.match(p)
 	then () = if m = M
@@ -670,9 +674,15 @@ set make_unitarity_bool_hash () = unitarity_bool_hash:
 	in bool_data[m]
      end
    , (Param -> bool): {do_you_know} (Param p) bool:
+     if #simple_factors(p.real_form) = 1
+     then p:=herm_center(p)
+     fi;
      param_hash.lookup(p).>=
    , (Param->): {append } (Param p):
      begin
+	if #simple_factors(p.real_form) = 1
+	then p:=herm_center(p)
+	fi;
 	let M = param_hash.size()
 	then m = param_hash.match(p)
 	in if m = M
@@ -683,6 +693,9 @@ set make_unitarity_bool_hash () = unitarity_bool_hash:
      end
    , ((Param,bool)->): {attest} (Param p, bool answer):
      begin
+	if #simple_factors(p.real_form) = 1
+	then p:=herm_center(p)
+	fi;
 	let M = param_hash.size()
 	then m = param_hash.match(p)
 	in if m = M
@@ -718,7 +731,8 @@ set is_unitary_hash(Param p) = bool:
     if not is_hermitian(p) then return false fi;
     let (,pL) = good_Q(p)
     then derpLs = derived_factor_params(pL)
-    in all(for derpL in derpLs do unitarity_hash.entry(derpL) od)
+    in all([(->bool)] : for derpL in derpLs do @bool:
+       			unitarity_hash.entry(derpL) od)
     {unitarity_hash.entry(p)}
 
 set do_you_know_is_unitary(Param p) = bool:

@@ -1,4 +1,4 @@
-<FPP_facetsDirac
+<FPP_facets_herm
 <simple_factors { for simple_factors }
 <basic.at { for power_set, choices_from, sum@(int,[ratvec]), no_reps}
 <hermitian.at { for is_unitary }
@@ -971,7 +971,8 @@ set one_param_test_bottom(Param p, int D, Param_hash Uhash) = [Param]:
 				      od)
 		 then () = if more_verbose then prints("result of elim_more was ",elim_more) fi
 	    	 in if elim_more
-		    then let test = all(for q in QG do is_unitary_hash(q) od)
+		    then let test =  all( [(->bool)]:
+		    	     for q in QG do @bool: is_unitary_hash(q) od)
 		    	 then () = if more_verbose then prints("your final answer was ",test) fi
 	    	    	 in  if test
 		    	     then let () = for q in QG
@@ -993,22 +994,24 @@ set one_param_test_bottom(Param p, int D, Param_hash Uhash) = [Param]:
 				     fi
 		    	  in []
 		     fi
-	    else let test = all(for q in QG do is_unitary_hash(q) od) {what to do if more_flag is false}
-	     	 in if test
-	     	    then  let () = for q in QG
-		      	    	   do Uhash.match(herm_center(q))
-		      		   od
-	   	      	  then () = one_true_counter.use()
-	    		  then () = one_param_time +:= elapsed_ms() - start
-	    	      	  in [p]
-		    else let () = one_false_counter.use()
-	    	    	 then ()= one_param_time +:= elapsed_ms() - start
-			 then (,pL) = theta_stable_quasi_data(p)
-			 then () = if surprise_flag and is_final(pL) and is_unitary_hash(pL)
-			      	   then surprise_hash.match(p)
-				   fi
-		    	 in []
-		    fi
+	    else let test =  all( [(->bool)]:
+	    	     for q in QG
+		     do @bool: is_unitary_hash(q) od) {what to do if more_flag is false}
+	     	     	in if test
+	     	    	   then  let () = for q in QG
+		      	    	     	  do Uhash.match(herm_center(q))
+		      		   	  od
+	   	      	  	 then () = one_true_counter.use()
+	    		  	 then () = one_param_time +:= elapsed_ms() - start
+	    	      	  	 in [p]
+		    	   else let () = one_false_counter.use()
+	    	    	   	then ()= one_param_time +:= elapsed_ms() - start
+			 	then (,pL) = theta_stable_quasi_data(p)
+			 	then () = if surprise_flag and is_final(pL) and is_unitary_hash(pL)
+			      	     	  then surprise_hash.match(p)
+				   	  fi
+		    	 	in []
+		    	   fi
 	      fi
 	  fi
 
@@ -2033,18 +2036,11 @@ height(p) to look at K-types.  A larger number finds more nonunitary,
 takes longer}
 set more_shift = 2
 
-{how many levels of bottom layer K-types to use}
-{this now has no effect; essentially hard coded in min_L_bottom_factors, in
-argument of next_heights}
-{set BL_steps = int:2}
-
+set one_level_revert_flag = false
 
 {assume local facets to dim 1 are recorded in LF, already herm and pos
 on LKTs. This version uses min_bottom_elim instead of
 unitary_to_ht.}
-
-set one_level_revert_flag = false
-
 set local_test_GEO_hash_bottom_layer(KGBElt x, ratvec lambda, VertexData vd,
     			VertexData Lvd, [[FacetVertsIndex]] LF, KTypePol_hash pol_hash,
     			Param_hash Uhash) = [Param]:
