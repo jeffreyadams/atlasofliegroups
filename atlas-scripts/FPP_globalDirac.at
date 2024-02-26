@@ -746,7 +746,7 @@ set FPP_unitary_hash_bottom_layer([(KGBElt,ratvec)] xlambdas, Param_hash UhashG,
        if surprise_flag and surprise_hash.size() > 0 then prints("  Found ", surprise_hash.size(),
        	  		    " counterexamples to coh_ind(unitary) = unitary; they're in surprise_hash.") fi;
        prints("  #hash_def_dumb =", hash_def_dumbCounter.use_count(),
-	      ", #hash2 =", hash2Counter.use_count(),
+	      ", #hash2 =", hash2Counter.use_count(), ", #hash_one_level = ", hash_one_levelCounter.use_count(),
 	      ", #hash_bottom_layer =", hash_bottom_layerCounter.use_count());
        prints("Number of unitary params = ", sum(answerCards));
        prints("Number of FPP-unitary facets = ",UhashG.size(),
@@ -932,7 +932,7 @@ set FPP_unitary_hash_bottom_layer([KGBElt] xs, Param_hash UhashG, Param_hash Upa
        if surprise_flag and surprise_hash.size() > 0 then prints("Found ", surprise_hash.size(),
        	  		    " counterexamples to coh_ind(unitary) = unitary; they're in surprise.hash.") fi;
        prints("  #hash_def_dumb =", hash_def_dumbCounter.use_count(), ", #hash2 = ", hash2Counter.use_count(),
-	      ", #hash_bottom_layer = ", hash_bottom_layerCounter.use_count());
+	      ", #hash_one_level = ", hash_one_levelCounter.use_count(), ", #hash_bottom_layer = ", hash_bottom_layerCounter.use_count());
        prints("Number of unitary params = ", sum(for list in answerCards do sum(list) od));
         prints("Number of known FPP-unitary facets = ",UhashG.size(),
        	      ", number found on this run = ", UhashG.size() - oldUhash)

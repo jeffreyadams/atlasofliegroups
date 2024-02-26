@@ -475,13 +475,13 @@ set min_bottom_elim_factors(Param p) = bool:
     let start = elapsed_ms(), (,pL) = theta_stable_quasi_data(p)
     {then () = if is_unitary_hash(pL) then return true fi} {seems to slow things down}
     then derpLjs = derived_factor_params2(pL)
-    then answers = [bool]:
+    then answers = [(->bool)]:
     	 for mu in LKTs(p)
     	 do let (helpful_data, helpful_js) = minBottomData.helpful_entry(mu)
 	    then DG = minBottomData.G_min_height(mu)
 	    {then () = mbefTime +:= elapsed_ms()-start}
     	    in if #helpful_js = 0
-	       then true
+	       then return true
 	       else let helpful_derpLjs = for j in helpful_js do derpLjs[j] od
     	 {one for each helpful derived simple factor derLj}
     	      	    then helpful_derxLjs = for derpLj in helpful_derpLjs do derpLj.x od
@@ -519,7 +519,7 @@ set min_bottom_elim_factors(Param p) = bool:
 			       od {now helpful_derpLjs are aligned with K-types in helpful_entry}
 		     {time spent is all before here}
                      then multG = branch_irr(p,DG)
-                     in all( [(->bool)]: {list of functions, one for each helpful factor Lj}
+                     in @: all( [(->bool)]: {list of functions, one for each helpful factor Lj}
 	       	     	  	        for k:#helpful_js
 	       				do let (posLj, negLj) =
 					       if RF_code
@@ -549,13 +549,13 @@ set min_bottom_elim_factors(Param p, KTypePol P) = bool:
     let start = elapsed_ms(), (,pL) = theta_stable_quasi_data(p)
     {then () = if is_unitary_hash(pL) then return true fi} {seems to slow things down}
     then derpLjs = derived_factor_params2(pL)
-    then answers = [bool]:
+    then answers = [(->bool)]:
     	 for mu in LKTs(p)
     	 do let (helpful_data, helpful_js) = minBottomData.helpful_entry(mu)
 	    then DG = minBottomData.G_min_height(mu)
 	    {then () = mbefTime +:= elapsed_ms()-start}
     	    in if #helpful_js = 0
-	       then true
+	       then return true
 	       else let helpful_derpLjs = for j in helpful_js do derpLjs[j] od
     	 {one for each helpful derived simple factor derLj}
     	      	    then helpful_derxLjs = for derpLj in helpful_derpLjs do derpLj.x od
@@ -593,7 +593,7 @@ set min_bottom_elim_factors(Param p, KTypePol P) = bool:
 			       od {now helpful_derpLjs are aligned with K-types in helpful_entry}
 		     {time spent is all before here}
                      then multG = branch_std(P,DG)
-                     in all( [(->bool)]: {list of functions, one for each helpful factor Lj}
+                     in @: all( [(->bool)]: {list of functions, one for each helpful factor Lj}
 	       	     	  	        for k:#helpful_js
 	       				do let (posLj, negLj) =
 					       if RF_code
@@ -1137,7 +1137,7 @@ set bottom_elim_factors_more(Param p, [KGPElt] nQs, int D, KTypePol P)= bool:
     {then () = if #nQs > 1}
     then () = if not all(for Q in nQs{[1:]}
     	    	      	 do all(for mu in LKTs(p)
-			      	do bottom_elim_factors(p, Q, bottom_factors(mu,Q,D), P)
+			      	do @:bottom_elim_factors(p, Q, bottom_factors(mu,Q,D), P)
 				od)
 		         od) {this seems to be quite rare??}
 	       then let MG = more_good_hash.size()
@@ -1191,8 +1191,8 @@ set bottom_test_factors_more(Param p, [KGPElt] nQs, int D, KTypePol P) = bool:
     else
     let start = elapsed_ms(), G = p.real_form
     then () = if not all(for Q in nQs{[1:]}
-    	    	      	 do all(for mu in LKTs(p)
-			      	do bottom_elim_factors(p, Q, bottom_factors(mu,Q,D), P)
+    	    	      	 do @:all(for mu in LKTs(p)
+			      	do @:bottom_elim_factors(p, Q, bottom_factors(mu,Q,D), P)
 				od)
 		         od)
 	       then let MG = more_good_hash.size()
