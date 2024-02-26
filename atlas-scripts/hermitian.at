@@ -3,7 +3,7 @@
 <hash.at {for KTypePol_hash}
 <count.at {for unitary_test_counter}
 <time.at {for print_time_string}
-
+<cohom_reductionND {for derived_factor_params}
 set deformLookupCounter = make_counter()
 set deformCalcCounter = make_counter()
 
@@ -696,10 +696,30 @@ set make_unitarity_bool_hash () = unitarity_bool_hash:
   )
 )
 
+{smallest theta-stable Q from which p is good range cohomologically induced, and the inducing parameter}
+set good_Q(Param p) = (KGPElt, Param):
+    let G = p.real_form, x = p.x, gamma = p.infinitesimal_character
+    then theta = x.involution, suppS = support(x), SCR = G.simple_coroots
+    then goodS = ((for j in complement(G.semisimple_rank,suppS)
+		     do if (gamma*SCR[j]).=
+		        then [j]
+		       	else []
+		       	fi
+		     od.##)##suppS).sort_u
+    then goodQ = KGPElt:(goodS, x)
+    then goodL = goodQ.Levi
+    then xL = inverse_embed_KGB(x,goodL)
+    then goodpL = parameter(xL, p.lambda_minus_rho+goodL.rho, p.nu)
+    in (goodQ,goodpL)
+
 set unitarity_hash = make_unitarity_bool_hash()
 
 set is_unitary_hash(Param p) = bool:
-    unitarity_hash.entry(p)
+    if not is_hermitian(p) then return false fi;
+    let (,pL) = good_Q(p)
+    then derpLs = derived_factor_params(pL)
+    in all(for derpL in derpLs do unitarity_hash.entry(derpL) od)
+    {unitarity_hash.entry(p)}
 
 set do_you_know_is_unitary(Param p) = bool:
     unitarity_hash.do_you_know(p)
