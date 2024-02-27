@@ -5,7 +5,7 @@
 < to_ht {for is_unitary_to_ht}
 < FPP_facets_geom {for herm_center}
 < weak_packets {for unipotent_representations}
-{placed in hermitian.at, where it belongs.}
+
 {
 {take a KTypePol _apparently_ attached to G and make it _actually_ attached
 to G}

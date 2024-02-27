@@ -2062,34 +2062,36 @@ set local_test_GEO_hash_bottom_layer(KGBElt x, ratvec lambda, VertexData vd,
     then maxDiffLoc = max_loc(for w in LF[0]
     	 	       	      do G.two_rho_check*(dominant(G,thetaMinus*Lvd.list[w[0]]))
 		       	      od)
-    then pmax = parameter(x, lambda, Lvd.list[LF[0][maxDiffLoc][0]])
-    then (Q0,pmaxL0) = theta_stable_quasi_data(pmax)
+    then {pmax = parameter(x, lambda, Lvd.list[LF[0][maxDiffLoc][0]])}
+    	 pmin = parameter(x, lambda, Lvd.list[LF[0][0][0]] )
+    {then (Q0,pmaxL0) = theta_stable_quasi_data(pmax)}
+    then (Q0, pminL0) = theta_stable_quasi_data(pmin)
     then L0 = Q0.Levi
-    then () = if is_abelian(L0)
-    	      then let () = Uhash.match(first_param(finalize(pmax)))
-	      	   in return [pmax]
+    then () = if (x.involution - 1).= {is_abelian(L0)}
+    	      then let () = Uhash.match(first_param(finalize(pmin{pmax})))
+	      	   in return [pmin{pmax}]
 	      fi
-    then () = if height(pmax) > bottom_length_frac* (G.two_rho * G.rho_check)
+    {then () = if height(pmax) > bottom_length_frac* (G.two_rho * G.rho_check)
     	 then return local_test_GEO_hash2(x, lambda, vd, Lvd, LF,
 	      {bottom_length_frac defaults to 1}   pol_hash, Uhash)
-	 fi
+	 fi}
     {then helpful_datas  = for mu in LKTs(pmax)
     	 	   	  do minBottomData.helpful_entry(mu)
 		   	  od}
-    then DG0 = max(for mu in LKTs(pmax)
+    then DG0 = max(for mu in LKTs(pmin{pmax})
     	       	   do minBottomData.G_min_height(mu)
 		   od)
 	{this is the greatest height at which we'll be looking at bottom layer K-types; during the first pass;
 	 so we can compute K-chars just to this height}
-    then () = if L0 = G or (DG0= height(pmax) and not more_flag)
+    then () = if {L0 = G or} (DG0= height(pmin{pmax}) and not more_flag)
     	      then if one_level_revert_flag
 	      	   then return local_test_GEO_hash_one_level(x, lambda, vd, Lvd, LF, pol_hash, Uhash)
 		   else return local_test_GEO_hash2(x, lambda, vd, Lvd, LF, pol_hash, Uhash)
 		   fi
 	      fi
-    then D = height(pmax)+more_shift
+    then D = max(height(pmin)+more_shift, DG0)
     then () = if {TINY CASE} #LF[0]=1
-    	      then return one_param_test_bottom(pmax, D, Uhash)
+    	      then return one_param_test_bottom(pmin, D, Uhash)
 	      fi
     then () = test_string:= " using local_test_GEO_hash_bottom_layer"
     then  () = hash_bottom_layerCounter.use()
@@ -2194,7 +2196,7 @@ set local_test_GEO_hash_bottom_layer(KGBElt x, ratvec lambda, VertexData vd,
 		      fi
     then start_more_datas = elapsed_ms()
     {then BKT = ## for mu in LKTs(pmax) do bottom_K_types(mu,D) od {K-types appearing in some bottom layer}}
-    then  nQs = newQs(pmax, D) {theta-stable parabolics from which coh ind is interesting here}
+    then  nQs = newQs(pmin, D) {theta-stable parabolics from which coh ind is interesting here}
     then maxQs = max_Qs(Q0)
     then () = if time_verbose then prints("time for more datas/BKT was ",
     	      	 print_time_string(elapsed_ms() - start_more_datas), " at lambda = ",lambda)
