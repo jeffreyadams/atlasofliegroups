@@ -2,7 +2,6 @@
 < Dirac.at {for thetaStable}
 < weak_packets.at {for unipotent_representations}
 < time.at {for print_time_string}
-<cohom_reduction.at {for unipotent_representations2}
 {enumerate weakly fair cohomologically induced from unipotent reps in
 the FPP}
 

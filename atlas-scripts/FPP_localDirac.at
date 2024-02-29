@@ -17,7 +17,6 @@
 <facet_classes.at {for ordering on facets}
 <hash.at {for KPolHash}
 <TWOHEIGHTS {for HTA and HT}
-<cohom_reduction
 <translate {for translate_param_by}
 <time {for print_string}
 {This is meant to be functions for computing all unitary reps with

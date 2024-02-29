@@ -4,7 +4,6 @@
 <facet_classes {for ordering on facets}
 <hash {for KPolHash}
 <TWOHEIGHTS {for HTA and HT}
-<cohom_reduction {for possible use of cohomological induction}
 <FPP_localDirac
 <cohIndUnip {for weakly fair cohom ind}
 <derived_cover {for simply connected cover of derived group}
@@ -713,11 +712,17 @@ set FPP_unitary_hash_bottom_layer([KGBElt] xs, Param_hash UhashG, Param_hash Upa
 				    height(parameter(x,lambda0+M*tau,0*tau)),", L = ",
 				    let (Q,) = theta_stable_quasi_data(parameter(x,lambda0+M*tau,0*tau))
 				    in Q.Levi, ",",test_string);
-				         prints("    #LF = ", for L in LF do #L od, ", #unitary params = ",
-					 tempanswerCards[index],
-			     	                ", #new unitary = ", Uhash.size() - startUhash,
+				         if more_flag
+					 then prints("    #LF = ", for L in LF do #L od, ", #unitary params = ",
+					      	tempanswerCards[index], ", #new unitary = ", Uhash.size() - startUhash,
 						", #tests = ", unitary_test_counter.use_count() - startUcounter,
-						", #Params missed by more = ",more_bad_hash.size() - startmorebadlambda);
+						", more_shift = ",more_shift, ", #Params missed by more = ",more_bad_hash.size() - startmorebadlambda)
+					 else prints("    #LF = ", for L in LF do #L od, ", #unitary params = ",
+					      	tempanswerCards[index],
+			     	                ", #new unitary = ", Uhash.size() - startUhash,
+						", #tests = ", unitary_test_counter.use_count() - startUcounter)
+					 fi ;
+
 					 prints("  ------------------")
 				    fi
 			       fi
@@ -741,7 +746,7 @@ set FPP_unitary_hash_bottom_layer([KGBElt] xs, Param_hash UhashG, Param_hash Upa
                           print_time_string(times[j]), "; longest lambda = ",
 			  print_time_string(templambdatimes[longLambdaLoc]),
 			  " for #", longLambdaLoc, " = ",lambdas[longLambdaLoc]);
-			  prints("      #Params missed by more for this x = ",more_bad_hash.size() - startmorebadx);
+			  if more_flag then prints("       more_shift = ", more_shift, ", #Params missed by more for this x = ",more_bad_hash.size() - startmorebadx) fi;
 			  prints("     #unitary params = ", sum(tempanswerCards), ", #new unitary facets = ",
 			     currentUhash - formerUhash, ", #tests = ",
 		     	     currentUcounter - formerUcounter, ", #def lookups = ",

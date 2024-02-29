@@ -730,9 +730,16 @@ set unitarity_hash = make_unitarity_bool_hash()
 set is_unitary_hash(Param p) = bool:
     if not is_hermitian(p) then return false fi;
     let (,pL) = good_Q(p)
-    then derpLs = derived_factor_params(pL)
+    then derpLs = derived_factor_params2(pL)
     in all([(->bool)] : for derpL in derpLs do @bool:
        			unitarity_hash.entry(derpL) od)
+    {in if answer or pL = p then answer
+       else {answer is false, and pL is on proper Levi}
+       then is_pure(sum(p.real_form, for c@qL in
+       	    			     	 hermitian_form_irreducible(pL)
+				     do c*theta_induce_standard(qL)
+				     od))
+       fi} {something like this would allow weakly good}
     {unitarity_hash.entry(p)}
 
 set do_you_know_is_unitary(Param p) = bool:
