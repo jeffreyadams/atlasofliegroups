@@ -323,7 +323,7 @@ Grading Fiber::makeBaseGrading
     flagged_roots.set_mod2
       (imaginaryRootSet().n_th(j),count); // and flag imaginary root
   }
-  return Grading(constants::lMask[imaginaryRank()]); // all ones
+  return Grading(constants::lt_mask[imaginaryRank()]); // all ones
 }
 
 /*

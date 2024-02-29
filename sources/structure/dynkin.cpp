@@ -55,7 +55,7 @@ DynkinDiagram::DynkinDiagram(const int_Matrix& c)
 void DynkinDiagram::classify(const int_Matrix& Cartan)
 {
   for (unsigned i=0; i<rank(); ++i)
-    if ((d_star[i].to_ulong() & constants::lMask[i])==0) // fresh component?
+    if ((d_star[i].to_ulong() & constants::lt_mask[i])==0) // fresh component?
       comps.emplace_back(i); // creat a new singleton component
     else
     {
