@@ -283,7 +283,7 @@ class Rep_context
   void to_canonical_involution (K_repr::K_type& z, RankFlags gens) const;
   void to_canonical_involution (K_repr::K_type& z) const
   { return to_canonical_involution
-      (z,RankFlags(constants::lMask[root_datum().semisimple_rank()])); }
+      (z,RankFlags(constants::lt_mask[root_datum().semisimple_rank()])); }
   void normalise(K_repr::K_type& z) const; // which ensures a normalised form
 
   simple_list<std::pair<K_repr::K_type,int> >

@@ -25,11 +25,11 @@
 namespace atlas {
 
   // definition of static arrays
-  unsigned long constants::bitMask[longBits];
+  unsigned long constants::eq_mask[longBits];
   unsigned char constants::firstbit[1 << charBits];
   unsigned char constants::lastbit[1 << charBits];
-  unsigned long constants::leqMask[longBits];
-  unsigned long constants::lMask[longBits+1];
+  unsigned long constants::lt_mask[longBits+1];
+  const unsigned long* constants::leq_mask;
 
 
 /******** static member function *******************************************/
@@ -42,11 +42,11 @@ namespace atlas {
 
   This function initializes the following constants :
 
-    - bitMask : bitMask[j] flags bit j            : bitMask[j]==1ul<<j
-    - lMask   : lMask[j]   flags bits i with i<j  : lMask[j]==(1ul<<j)-1
+    - eq_mask : eq_mask[j] flags bit j            : eq_mask[j]==1ul<<j
+    - lt_mask : lt_mask[j] flags bits i with i<j  : lt_mask[j]==(1ul<<j)-1
     - leqMask : leqMask[j] flags bits i with i<=j : leqMask[j]==(1ul<<j+1)-1
 
-    for lMask the index j==longBits is useful and used; Fokko forgot this!
+    for |lt_mask|, the index j==longBits is useful and used; Fokko forgot this!
 
     - firstbit : |firstbit[j]| gives greatest $k$ such that $2^k$ divides $j$
                  (number of trailing bits 0); it is the position of lowest
@@ -58,13 +58,14 @@ namespace atlas {
 
 constants constants::init()
 {
+  lt_mask[0] = 0;
+  auto* leq_base = &lt_mask[1];
+  leq_mask = leq_base; // the same, but as pointer to |const|
   for (unsigned long j = 0; j < longBits; ++j)
   {
-    bitMask[j] = 1ul << j;              // bit j set
-    lMask[j]   = bitMask[j]-1;          // lMask[j] has bits 0..j-1 set
-    leqMask[j] = lMask[j] | bitMask[j]; // bits 0..j set
+    eq_mask[j] = 1ul << j;              // bit j set
+    leq_base[j] = lt_mask[j] | eq_mask[j]; // bits 0..j (inclusive) set
   }
-  lMask[longBits] = leqMask[longBits-1]; // add final entry; all bits set
 
   firstbit[0] = charBits; // out-of-bounds indication
   firstbit[1] = 0;
