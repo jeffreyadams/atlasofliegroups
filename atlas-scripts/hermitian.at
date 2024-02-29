@@ -725,21 +725,47 @@ set good_Q(Param p) = (KGPElt, Param):
     then goodpL = parameter(xL, p.lambda_minus_rho+goodL.rho, p.nu)
     in (goodQ,goodpL)
 
+set good_L(Param p) = RealForm:
+    let G = p.real_form, x = p.x, gamma = p.infinitesimal_character
+    then theta = x.involution, suppS = support(x), SCR = G.simple_coroots
+    then goodS = ((for j in complement(G.semisimple_rank,suppS)
+		     do if (gamma*SCR[j]).=
+		        then [j]
+		       	else []
+		       	fi
+		     od.##)##suppS).sort_u
+    in (goodS,x).Levi
+
+{smallest easy theta-stable Q from which p is weakly good range cohomologically
+induced, and the inducing parameter}
+set wkgood_Q(Param p) = (KGPElt, Param):
+    let G = p.real_form, x = p.x, gamma = p.infinitesimal_character
+    then theta = x.involution, suppS = support(x), SCR = G.simple_coroots
+    then wkgoodQ = KGPElt:(suppS, x)
+    then wkgoodL = wkgoodQ.Levi
+    then xL = inverse_embed_KGB(x,wkgoodL)
+    then wkgoodpL = parameter(xL, p.lambda_minus_rho+wkgoodL.rho, p.nu)
+    in (wkgoodQ,wkgoodpL)
+
 set unitarity_hash = make_unitarity_bool_hash()
 
 set is_unitary_hash(Param p) = bool:
     if not is_hermitian(p) then return false fi;
-    let (,pL) = good_Q(p)
+    let (,pL) = wkgood_Q(p), G=p.real_form
     then derpLs = derived_factor_params2(pL)
-    in all([(->bool)] : for derpL in derpLs do @bool:
+    then answer = all([(->bool)] : for derpL in derpLs do @bool:
        			unitarity_hash.entry(derpL) od)
-    {in if answer or pL = p then answer
+    {then formL = hermitian_form_irreducible(pL)}
+    {then answer = is_pure(formL)}
+    in if answer or pL = p
+       then answer
        else {answer is false, and pL is on proper Levi}
-       then is_pure(sum(p.real_form, for c@qL in
-       	    			     	 hermitian_form_irreducible(pL)
-				     do c*theta_induce_standard(qL)
-				     od))
-       fi} {something like this would allow weakly good}
+       	    let goodL = good_L(p)
+       	    in is_pure(sum(G, for c@qL in hermitian_form_irreducible(pL)
+			      do c*theta_induce_standard(param(qL),
+			           goodL)
+			      od))
+       fi
     {unitarity_hash.entry(p)}
 
 set do_you_know_is_unitary(Param p) = bool:

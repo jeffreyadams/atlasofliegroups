@@ -136,62 +136,8 @@ set derived_wt_projections(RealForm G) = [(ratvec->ratvec)]:
       for xi@j in fundamental_weights(derS) do (M*gamma*derS.simple_coroots[j])*xi od)
     od
 
-{for each RealForm, store an index into KGBElts x using the involution theta = x.involution and the highest
-K-weight of the first LKT of parameter(x, G.rho, G.rho).}
-{
-
-set_type
-[KGBElt_index =
-( ( -> ) clear
-  , ((RealForm,mat,vec) -> KGBElt) KGB_index {take x.theta and K0-highest weight of 1st
-    			   	   	     LKT of parameter(x, G.rho, G.rho)}
-)
-]
-
-set make_KGBElt_index () = KGBElt_index:
-  let real_form_hash = make_RealForm_hash()
-  then hwt_hashes = [vec_hash] : [] {one for each real form}
-  then theta_hashes = [mat_hash] : [] {one for each real form}
-  then index_hashes = [vec_hash] : [] {one for each real form}
-  then add_real_form(RealForm S) = int:
-     let RF = real_form_hash.size()
-     then rf = real_form_hash.match(S)
-     then () =  if rf = RF {haven't seen this real form before}
-     	     	then let  () = hwt_hashes #:= make_vec_hash()
-     		     then () = theta_hashes #:= make_mat_hash()
-     		     then () = index_hashes #:= make_vec_hash()
-     		     then () = for x in KGB(S)
-     	       	     	       do let mus = LKTs(parameter(x, S.rho, S.rho))
-			       	  then muwt =
-				       for mu in LKTs(parameter(x, S.rho, S.rho))
-				       do K0_param(mu).lambda_minus_rho
-				       od.sort[0]
-			       	  in index_hashes[RF].match([hwt_hashes[rf].match(muwt),
-			   		theta_hashes[RF].match(x.involution)])
-	       		       od
-     		     then () = assert(real_form_hash.size() = #hwt_hashes,"KGB_index damaged")
-     		     then () = assert(#index_hashes = #hwt_hashes,"KGB_index damaged")
-     		     then () = assert(#theta_hashes = #hwt_hashes,"KGB_index damaged")
-     		     in assert(index_hashes[RF].size() = #KGB(S), "KGB_index too small")
-		fi
-      in rf
-   then clear() = void:
-   	let () = real_form_hash.clear()
-	then () = hwt_hashes := []
-	then () = theta_hashes := []
-	then () = index_hashes := []
-	in ()
-   in KGBElt_index:
-   ( ( -> ): {clear} clear
-   , ((RealForm, mat, vec)->KGBElt): {KGB_index} (RealForm S, mat theta, vec tau) KGBElt:
-      let rf = add_real_form(S)
-      in KGB(S, index_hashes[rf].match([hwt_hashes[rf].match(tau), theta_hashes[rf].match(theta)])  )
-   )
-
-set KGBIndex = make_KGBElt_index()
-}
 {x is a KGBElt for G; want to pass to a KGBElt for each derived simple factor}
-set derived_factor_KGBs(KGBElt x) = [KGBElt]: {need to change this to use highest weights somehow...}
+set derived_factor_KGBs(KGBElt x) = [KGBElt]:
     let derSF = derived_simple_factors_info(x.real_form)
     in for (S,derS,M) in derSF {this is automatically a theta-stable Levi}
        do let derSsimp = derS.simple_roots
