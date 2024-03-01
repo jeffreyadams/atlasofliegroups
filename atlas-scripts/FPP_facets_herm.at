@@ -1,0 +1,637 @@
+{this file concerns (local) facets of parameters, in preparation of analysis of their unitarity.}
+<FPP_facets_geom.at
+<goodroots.at { for is_pos_on_LKTs }
+<Dirac.at
+<hermitian.at
+
+{BREAK HERE?}
+
+
+{takes the known unitaries from unitary_hash having the given x and lambda,
+ and returns their locations in LFDKH}
+set known_unitaries(Param_hash Uhash, KGBElt x, ratvec lambda, VertexData Lvd,
+    [[FacetVertsKHash]] LFDKH) = [vec]:
+    let lookups = for list@d in LFDKH do index_in(if #list = 0 then [vec]:[]
+    	      	  	    	     	      else for v in list do v[:d+1] od
+					      fi)
+				      od
+    then NumKnown = Uhash.size(), out = [vec]: for j:#LFDKH do vec:[] od
+    then () = for k:NumKnown
+       	 do let p = Uhash.index(k)
+       	    then list = local_vertices(p)
+            in if p.x = x and p.lambda=lambda and #list-1 < #LFDKH
+	       then let local_verts = vec: for ell in list do Lvd.lookup(ell) od.sort
+	     	    then m = lookups[#list-1](local_verts)
+		    then () = assert(m.>=,"have known unitary not appearing in LFDKH")
+		    then () = out[#list-1]:= (out[#list-1] next out[#list -1]:=[])#m
+		    in ()
+	       fi
+	 od
+     in out
+
+{Here UhashLocal is assumed to consist of Param's at (x,lambda)}
+{this misses (in local_testK_level) unitary Param's that finalize to different x;
+those are caught by local_testK_hash}
+set known_unitaries(Param_hash UhashLocal, VertexData Lvd,
+    [[FacetVertsKHash]] LFDKH) = [vec]:
+    let lookups = for list@d in LFDKH do index_in(if #list = 0 then [vec]:[]
+    	      	  	    	     	      else for v in list do v[:d+1] od
+					      fi)
+				      od
+    then NumKnown = UhashLocal.size(), out = [vec]: for j:#LFDKH do vec:[] od
+    then () = for k:NumKnown
+       	 do let p = UhashLocal.index(k)
+       	    then list = local_vertices(p)
+            in if #list-1 < #LFDKH
+	       then let local_verts = vec: for ell in list do Lvd.lookup(ell) od.sort
+	     	    then m = lookups[#list-1](local_verts)
+		    then () = assert(m.>=,"have known unitary not appearing in LFDKH")
+		    then () = out[#list-1]:=(out[#list-1] next out[#list -1]:=[])#m {out[#list-1]#m}
+		    in ()
+	       fi
+	 od
+     in out
+
+set localize(Param_hash Uhash, KGBElt x, ratvec lambda) = Param_hash:
+    let NumKnown = Uhash.size(), UhashLoc = make_Param_hash()
+    then () = for k:NumKnown
+       	      do let p = Uhash.index(k)
+	      	 in if p.x = x and p.lambda = lambda
+		    then UhashLoc.match(p)
+		    else -1
+		    fi
+	      od
+    in UhashLoc
+
+set localize(Param_hash Uhash, ratvec lambda) = Param_hash:
+    let NumKnown = Uhash.size(), UhashLoc = make_Param_hash()
+    then () = for k:NumKnown
+       	      do let p = Uhash.index(k)
+	      	 in if p.lambda = lambda
+		    then UhashLoc.match(p)
+		    else -1
+		    fi
+	      od
+    in UhashLoc
+{collection of lookup functions for facets of various dimensions}
+set lookups([[vec]] LFD) = [(vec->int)]:
+    for L@d in LFD do index_in(for v in L do v[:d+1] od) od
+
+{assume LFDKH has tail coords referring to K-char}
+set sort(RealForm G, VertexData Lvd, [[FacetVertsKHash]] LFDKH, int tail) = [[FacetVertsKHash]]:
+    if sort_LFD_flag
+    then let tworhocheck = G.two_rho_check
+    	 then f(vec v) = int:
+    	      let (num,den) = %(sum(for j in v[:#v - tail] do Lvd.list[j]*tworhocheck od)*1000)
+	      in num\den
+    	 in for LFDKHd@d in LFDKH do sort_by(f)(LFDKHd) od
+    else LFDKH
+    fi
+
+{this is the Q(infinitesimal character) bound provided by Dirac inequality on all LKTs}
+set DiracBD(KGBElt x, ratvec lambda) = rat:
+    let G = x.real_form
+    then Q = invariant_form(G)
+    in if not(Dirac_flag and is_equal_rank(G))
+       then Q(G.rho,G.rho)
+       else let mus = LKTs(parameter(x,lambda,0*lambda))
+       	    then ics = for mu in mus do DiracIC(mu) od
+    	    in min(for ic in ics do Q(ic,ic) od)
+       fi
+
+{"true" means unitarity is possible in light of Dirac}
+{avoid using is_hermitian defined in hermitian.at}
+set DiracTest(Param p) = bool:
+    let G=p.real_form
+    then () = Dirac_flag:=true
+    in if not is_equal_rank(G) then return equivalent(twist(p),p) {is_hermitian(p)}
+       else let gamma = p.infinitesimal_character
+    	    then Q = invariant_form(G)
+	    then bound = DiracBD(p.x, p.lambda)
+	    in Q(gamma, gamma) <= bound
+       fi
+
+{creates LVD, map Perm on FPPverts at (x,lambda), mapAct from FPPverts to local verts}
+{in U(3,2), x_open, #vlist = 16: 4 fixed, 6 pairs flipped by Perm. The set of 6 pairs
+gives only 3 elts of vlistAct: need to get rid of 3 repetitions.
+parameter(x,lambda,v) (v in Lvd.list) may NOT be hermitian in unequal rank.}
+
+set localFD_Lvd2 \
+  (RealForm G, mat theta, ratvec lambda, VertexData vd, [(ratvec->int)] edge_lookups) =
+  (VertexData, PermOrderTwo, vec):
+(   let Perm2 = thetaAct2(G, theta, lambda, vd, edge_lookups)
+    then vlist = vd.list
+    then vlistAct = [ratvec]:
+    	 for i in Perm2.fixed do vlist[i] od ##
+	 for (i,j) in Perm2.trans do (vlist[i] + vlist[j])/2 od
+{DANGER! this may not be an edge!}
+    then Lvd = vlistAct.to_vertex_data
+    then Llookup = Lvd.lookup
+    then mapAct = vec: for j:#vlist do minus_1 od
+    {maps FPP vertex indices from vd to local indices from Lvd}
+    then () = for i@k in Perm2.fixed do mapAct[i]:= k od
+    then () = for (i,j)@ell in Perm2.trans do mapAct[i]:=#Perm2.fixed + ell;
+    	      	  	       		      mapAct[j]:=#Perm2.fixed + ell od
+    in (Lvd, Perm2, mapAct)
+)
+
+set localFD_Lvd2 \
+  ( KGBElt x, ratvec lambda, VertexData vd, [(ratvec->int)] edge_lookups) =
+  (VertexData, PermOrderTwo, vec):
+(   let Perm2 = thetaAct2(x, lambda, vd, edge_lookups), G = x.real_form
+    then vlist = vd.list
+    then vlistAct = [ratvec]:
+    	 for i in Perm2.fixed do vlist[i] od ##
+	 for (i,j) in Perm2.trans do (vlist[i] + vlist[j])/2 od
+{DANGER! this may not be an edge!}
+    then Lvd = vlistAct.to_vertex_data
+    then Llookup = Lvd.lookup
+    then mapAct = vec: for j:#vlist do minus_1 od
+    {maps FPP vertex indices from vd to local indices from Lvd}
+    then () = for i@k in Perm2.fixed do mapAct[i]:= k od
+    then () = for (i,j)@ell in Perm2.trans do mapAct[i]:=#Perm2.fixed + ell;
+    	      	  	       		      mapAct[j]:=#Perm2.fixed + ell od
+    in (Lvd, Perm2, mapAct)
+)
+
+set localFD_Lvd2 \
+  ( mat theta, ratvec lambda, VertexData vd, (vec->int) FlippedEdgeLookup) =
+  (VertexData, PermOrderTwo, vec):
+(   let start = elapsed_ms(), Perm2 = thetaAct2(theta, lambda, vd, FlippedEdgeLookup)
+    then vlist = vd.list
+    then vlistAct = [ratvec]:
+    	 for i in Perm2.fixed do vlist[i] od ##
+	 for (i,j) in Perm2.trans
+	 do if FlippedEdgeLookup([i,j]) >= 0
+	    then [(vlist[i] + vlist[j])/2]
+	    else []
+	    fi
+	 od.##
+    then Lvd = vlistAct.to_vertex_data
+    then Llookup = Lvd.lookup
+    then mapAct = vec: for j:#vlist do minus_1 od
+    {maps FPP vertex indices from vd to local indices from Lvd}
+    then () = for i@k in Perm2.fixed do mapAct[i]:= k od
+    then () = for (i,j)@ell in Perm2.trans do mapAct[i]:=#Perm2.fixed + ell;
+    	      	  	       		      mapAct[j]:=#Perm2.fixed + ell od
+    in (Lvd, Perm2, mapAct)
+)
+
+set localFD_Lvd2 \
+  (KGBElt x, ratvec lambda, VertexData vd, (vec->int) FlippedEdgeLookup) = (VertexData, PermOrderTwo, vec):
+  localFD_Lvd2(x.involution, lambda, vd, FlippedEdgeLookup)
+
+{takes local data and low global facets and computes vertices and edges, imposing
+hermitian, pos on LKTs, and Dirac. Subspace is fixed points of affine involution of
+h*. Perm records involution action on FPP verts. mapAct records local vertex to which an FPP
+vertex "belongs" (either "is" or "is vertex of the edge")}
+{Edge in local picture is either
+1) edge in FPP contained subspace, OR
+2) triangle in FPP meeting subspace in line (one vertex of tri in subspace, other
+   two flipped by involution, OR
+3) tetrahedron in FPP, two pairs of verts exchanged by involution}
+
+set localFD_1Dirac2\
+  ( KGBElt x, ratvec lambda, VertexData Lvd, PermOrderTwo Perm2, vec mapAct,
+    [[FacetVertsIndex]] globalFacets) = [[FacetVertsIndex]]:
+(   {if facet_verbose
+    then prints(new_line,"start localFD_1Dirac")
+    fi;}
+    let G = x.real_form, start = elapsed_ms(), trans_hash = make_vec_hash()
+    then () = for (m,n) in Perm2.trans do trans_hash.match([m,n]) od
+    then Q = (ratvec,ratvec->rat): (ratvec v, ratvec w) rat: 0/1
+    then DiracBD = 0/1
+    then () = if Dirac_flag
+    	      then let () = DiracBD := DiracBD(x,lambda)
+	      	   then () = Q:=invariant_form(G)
+	      	   in ()
+	      fi
+    then LF0 = [FacetVertsIndex]:
+    	 for v@j in Lvd.list
+	 do let p = parameter(x,lambda,v)
+	    in if any(for q in monomials(finalize(p)) do not is_pos_on_LKTs(q) od) or
+ 	       (Dirac_flag and Q(v, v)> DiracBD)
+	    then []
+	    else [[j]]
+	    fi
+	 od.##
+    {then () = prints("after LFO, time is ",print_time_string(elapsed_ms() - start))}
+    then Llookup = is_member_sorted((for v in LF0 do v[0] od))
+    then Edges = [vec]:
+    	 let EdgesFixFix = [vec]:
+    	     if #LF0 = #globalFacets[0]
+	     then for v in globalFacets[1]
+	      	  do [mapAct[v[0]], mapAct[v[1]]].sort
+	      	  od
+	      else if #Perm2.fixed > 1
+ 	      	   then for v in globalFacets[1]
+	       	   	do if is_member_sorted(Perm2.fixed)(v[0]) and
+		       	      is_member_sorted(Perm2.fixed)(v[1])
+		      	   then let mloc = mapAct[v[0]], nloc = mapAct[v[1]]
+		       	   in if Llookup(mloc) and Llookup(nloc)
+			      then [[mloc,nloc].sort]
+			      else []
+			      fi
+		     	   else []
+		      	   fi
+		   	 od.##
+	       	    else []
+	       	    fi
+	       fi
+	   {then () = prints("after FixFix, time is ",print_time_string(elapsed_ms() - start))}
+      	   then EdgesFixTrans = [vec]:
+	   	if global_top >= 2 and #Perm2.trans > 0 and #Perm2.fixed > 0
+	       	then for v in globalFacets[2]
+	       	     do let mixes = [[v[0],v[1],v[2]],[v[1],v[0],v[2]],[v[2],v[0],v[1]]]
+		       	in for w in mixes
+		       	   do if is_member_sorted(Perm2.fixed)(w[0]) and
+			     	trans_hash.lookup([w[1],w[2]]) >= 0
+		       	     then let xloc = mapAct[w[0]], yloc = mapAct[w[1]]
+		       	     	  in if Llookup(xloc) and Llookup(yloc)
+			       	     then [[xloc,yloc].sort]
+			       	     else []
+			       	     fi
+			      else []
+			      fi
+			  od.##
+		     od.##
+	       	 else []
+	       	 fi
+           {then () = prints("after FixTrans, time is ",print_time_string(elapsed_ms() - start))}
+	   then EdgesTransTrans = [vec]:
+	       if global_top >= 3 and #Perm2.trans > 1
+	       then for v in globalFacets[3]
+	       	    do let mixes = [[v[0],v[1],v[2],v[3]], [v[0],v[2],v[1],v[3]],
+		       	   	   [v[0],v[3],v[1],v[2]]]
+		       in for w in mixes
+		       	  do if trans_hash.lookup([w[0],w[1]]) >= 0 and
+			     	trans_hash.lookup([w[2],w[3]]) >= 0 
+		       	     then let xloc = mapAct[w[0]], zloc = mapAct[w[2]]
+		       	     	  in if Llookup(xloc) and Llookup(zloc)
+			       	     then [[xloc,zloc].sort]
+			       	     else []
+			       	     fi
+			     else []
+			     fi
+			  od.##
+		     od.##
+	       else []
+	       fi
+	  {then () = prints("after TransTrans, time is ",print_time_string(elapsed_ms() - start))}
+	   in EdgesFixFix ## EdgesFixTrans ## EdgesTransTrans
+     { then () = prints("after Edges, time is ",print_time_string(elapsed_ms() - start))}
+     then LF1 = [FacetVertsIndex]:
+    	 for v in Edges
+	 do let p = parameter(x,lambda,facet_bary(Lvd.list, v))
+	    in  if all(for q in monomials(p) do is_pos_on_LKTs(q) od)
+	    then [v]
+	    else []
+	    fi
+	 od.##
+    { then () = prints("after LF1, time is ",print_time_string(elapsed_ms() - start))}
+    then answer = sort(G, Lvd, [LF0]##[LF1], 0)
+    in {if(facet_verbose) then prints("After localFD_1Dirac2, facet counts are [",#LF0,
+    		      	   	  ",",#LF1,"]") fi;
+       if(time_verbose) then prints("     ",print_time_string(elapsed_ms() - start),
+       			     		  " for localFD_1Dirac2") fi;}
+       answer
+)
+
+
+
+{takes local data and low global facets and computes vertices and edges, imposing
+hermitian, pos on LKTs, and Dirac. Subspace is fixed points of affine involution of
+h*. Perm records involution action on FPP verts. mapAct records local vertex to which an FPP
+vertex "belongs" (either "is" or "is vertex of the edge")}
+{Edge in local picture is either
+1) edge in FPP contained subspace, OR
+2) triangle in FPP meeting subspace in line (one vertex of tri in subspace, other
+   two flipped by involution, OR
+3) tetrahedron in FPP, two pairs of verts exchanged by involution}
+{This time assume that globalFacets[d] is list of size
+#globalFacets[d-1] of d-facets, the jth list being all global facets that
+begin with the jth global (d-1)-facet.}
+set localFD_1Dirac2_by_zero\
+  ( KGBElt x, ratvec lambda, VertexData Lvd, PermOrderTwo Perm2, vec mapAct,
+    [[[FacetVertsIndex]]] globalFacetsBYZERO) = [[FacetVertsIndex]]:
+(   {if facet_verbose
+    then prints(new_line,"start localFD_1DiracBYZERO")
+    fi;}
+    let G = x.real_form, start = elapsed_ms(), trans_hash = make_vec_hash()
+    then () = for (m,n) in Perm2.trans do trans_hash.match([m,n]) od
+    then Q = (ratvec,ratvec->rat): (ratvec v, ratvec w) rat: 0/1
+    then DiracBD = 0/1
+    then () = if Dirac_flag
+    	      then let () = DiracBD := DiracBD(x,lambda)
+	      	   then () = Q:=invariant_form(G)
+	      	   in ()
+	      fi
+    then LF0 = [FacetVertsIndex]:
+    	 for v@j in Lvd.list
+	 do let p = parameter(x,lambda,v)
+	    in if any(for q in monomials(finalize(p)) do not is_pos_on_LKTs(q) od) or
+ 	       (Dirac_flag and Q(v, v)> DiracBD)
+	    then []
+	    else [[j]]
+	    fi
+	 od.##
+    {then () = prints("after LFO, time is ",print_time_string(elapsed_ms() - start))}
+    then Llookup = is_member_sorted((for v in LF0 do v[0] od))
+    then Edges = [vec]:
+    	 let EdgesFixFix = [vec]:
+             if #Perm2.fixed > 1
+	     then for j in Perm2.fixed
+	     	  do let mloc = mapAct[j]
+		     in if Llookup(mloc)
+		     	then for v in globalFacetsBYZERO[1][j]
+			     do if is_member_sorted(Perm2.fixed)(v[1])
+			     	then let nloc =  mapAct[v[1]]
+				     in if Llookup(nloc)
+				     	then [[mloc,nloc].sort]
+             				else []
+					fi
+				else []
+				fi
+			     od.## {this is the list of edges starting with j}
+	     		 else []
+			 fi
+		   od.## {all FixFix edges}
+	       else []
+	       fi
+	   {then () = prints("after FixFix, time is ",print_time_string(elapsed_ms() - start))}
+      	   then EdgesFixTrans = [vec]:
+	   	if global_top >= 2 and #Perm2.trans > 0 and #Perm2.fixed > 0
+	       	then let GF2 = globalFacetsBYZERO[2].##
+		     in  for v in GF2
+	       	     	 do let mixes = [[v[0],v[1],v[2]],[v[1],v[0],v[2]],[v[2],v[0],v[1]]]
+		       	    in for w in mixes
+		       	       do if is_member_sorted(Perm2.fixed)(w[0]) and
+			     	     	trans_hash.lookup([w[1],w[2]]) >= 0
+		       	     	  then let xloc = mapAct[w[0]], yloc = mapAct[w[1]]
+		       	     	        in if Llookup(xloc) and Llookup(yloc)
+			       	     	   then [[xloc,yloc].sort]
+			       	     	   else []
+			       	     	   fi
+			      	   else []
+			      	   fi
+			        od.##
+		     	  od.##
+	       	 else []
+	       	 fi
+           {then () = prints("after FixTrans, time is ",print_time_string(elapsed_ms() - start))}
+	   then EdgesTransTrans = [vec]:
+	       if global_top >= 3 and #Perm2.trans > 1
+	       then let GF3 = globalFacetsBYZERO[3].##
+	       	    in for v in GF3
+	       	    do let mixes = [[v[0],v[1],v[2],v[3]], [v[0],v[2],v[1],v[3]],
+		       	   	   [v[0],v[3],v[1],v[2]]]
+		       in for w in mixes
+		       	  do if trans_hash.lookup([w[0],w[1]]) >= 0 and
+			     	trans_hash.lookup([w[2],w[3]]) >= 0 
+		       	     then let xloc = mapAct[w[0]], zloc = mapAct[w[2]]
+		       	     	  in if Llookup(xloc) and Llookup(zloc)
+			       	     then [[xloc,zloc].sort]
+			       	     else []
+			       	     fi
+			     else []
+			     fi
+			  od.##
+		     od.##
+	       else []
+	       fi
+	   in EdgesFixFix ## EdgesFixTrans ## EdgesTransTrans
+     then LF1 = [FacetVertsIndex]:
+    	 for v in Edges
+	 do let p = parameter(x,lambda,facet_bary(Lvd.list, v))
+	    in  if all(for q in monomials(p) do is_pos_on_LKTs(q) od)
+	    then [v]
+	    else []
+	    fi
+	 od.##
+    { then () = prints("after LF1, time is ",print_time_string(elapsed_ms() - start))}
+    then answer = sort(G, Lvd, [LF0]##[LF1], 0)
+    in {if(facet_verbose) then prints("After localFD_1Dirac2, facet counts are [",#LF0,
+    		      	   	  ",",#LF1,"]") fi;
+       if(time_verbose) then prints("     ",print_time_string(elapsed_ms() - start),
+       			     		  " for localFD_1Dirac2") fi;}
+       answer
+)
+
+{takes 0 and 1-diml local facets and adds K-char index}
+set localFD_KHash_01 (KGBElt x, ratvec lambda, VertexData Lvd, KTypePol_hash ktp_hash,
+[[FacetVertsIndex]] LF) = [[FacetVertsKHash]]:
+    let start = elapsed_ms()
+    then answer = for d:#LF
+    	 do if fund_facet_verbose then prints(new_line, "start to compute ",#LF[d],
+       	  		     " K-characters in dimension ",d,
+			     " in localFD_KHash_01")
+       	     fi;
+	     for v@k in LF[d]
+       	     do if k%(max(#LF[d]\10,2))=0 and fund_facet_verbose
+	      	then prints("examining facet ",k,
+	      	   "; #ktp_hash = ",ktp_hash.size())
+	      	fi;
+		let nu = facet_bary(Lvd.list, v)
+       	      	then p0 = parameter(x, lambda, nu)
+	      	then P = finalize(p0)
+	      	then Q = K_type_pol(character_formula(P))
+	      	in v##[ktp_hash.match(Q), #monomials(P)]
+       	     od
+    	od
+   {then () = answer:= sort(x.real_form, Lvd, answer, 2)} {ARGUMENT ALREADY SORTED}
+   then time = elapsed_ms() - start
+   then () = if time_verbose then prints("     ", print_time_string(time),
+   	     		     " for localFD_KHash_01") fi
+   in answer
+
+{takes 0 and 1-diml local facets and adds K-char index to height HT}
+set localFD_KHash_01 (KGBElt x, ratvec lambda, VertexData Lvd, int HT, KTypePol_hash ktp_hash,
+[[FacetVertsIndex]] LF) = [[FacetVertsKHash]]:
+    let start = elapsed_ms()
+    then answer = for d:#LF
+    	 do if fund_facet_verbose then prints(new_line, "start to compute ",#LF[d],
+       	  		     " K-characters to height ",HT, " in dimension ",d,
+			     " in localFD_KHash_01")
+       	    fi; for v@k in LF[d]
+       	   do if k%(max(#LF[d]\10,2))=0 and fund_facet_verbose
+	      then prints("examining facet ",k,
+	      	   "; #ktp_hash = ",ktp_hash.size())
+	      fi;
+	      let nu = facet_bary(Lvd.list, v)
+       	      then p0 = parameter(x, lambda, nu)
+	      then P = finalize(p0)
+	      then Q = K_type_pol(character_formula_to_height(P,HT))
+	      in v##[ktp_hash.match(Q), #monomials(P)]
+       	    od
+    	  od
+   {then () = answer:= sort(x.real_form, Lvd, answer, 2)} {argument already sorted}
+   then time = elapsed_ms() - start
+   then () = if time_verbose then prints("     ", print_time_string(time),
+   	     		     " for localFD_KHash_01 to height ", HT) fi
+   in answer
+
+{takes list of 0- and d-diml facets, with d \ge 1, and builds all
+d+1-diml facets having all faces in the d-diml list. The int e is the
+number of extra coords in each facet.}
+set superFacets([vec] L0, [vec] Ld, int e) =
+    [vec]:
+if #Ld = 0 then []
+else
+let d = #Ld[0] - e-1 {, start = elapsed_ms()}
+then lookupsd = index_in(for v in Ld do v[:d+1] od)
+then answer = [vec]:
+   for v in L0
+   do let m0 = v[0] {first vertex in new facet}
+      in [vec]:
+      	 for small in Ld
+      	 do if small[0] <= m0
+	    then [] {require m0 to be FIRST}
+	    elif any(for k:d+1 do lookupsd( m0#(small[:k]##small[k+1:d+1])) = -1 od)
+	    then [] {require all d-faces to be in Ld}
+	    else [m0#small[:d+1]] {now m0##small is a candidate facet}
+	    fi
+	 od.## {now have a list of candidates starting m0}
+   od.##
+{ then () = if time_verbose
+	  then prints("time for superFacets was ",
+		      	print_time_string(elapsed_ms() - start))
+          fi}
+in answer
+fi
+
+{takes local data to height level, dimension \le b-1, and adds facets from
+b to (t-1)-dimensional FPP-facets; make sure subfacets are also in list
+Roughly input goes from 0 to b-1 (size b), output 0 to t-1 (size t).
+
+Need to assume b \ge 2, so have a list of potentially unitary facets and edges.}
+set localFD_KHashbt_lookDownGEO \
+  ( KGBElt x, ratvec lambda, VertexData Lvd, [[FacetVertsKHash]] LFKH,
+    int b, int t, KTypePol_hash ktp_hash) = [[FacetVertsKHash]]:
+(   {if facet_verbose
+    then prints(new_line,"start localFD_Khashbt_lookDownGEO, b = ",b,", t = ",t)
+    fi;}
+    let G = x.real_form, start=elapsed_ms()
+    then () = for dim:t-#LFKH from #LFKH {b has to be at least 2}
+    	      do LFKH := LFKH# (let acts = superFacets(LFKH[0],LFKH[dim-1],2)
+	      	    	       	in for actual in acts
+	       	    	      	   do let bary =
+				      sum(G.rank, for j in actual do Lvd.list[j] od)/(dim+1)
+		       	      	      then p0 = parameter(x,lambda, bary)
+				      then P = finalize(p0)
+				      then ms = monomials(P)
+				      in if all(for p in ms do is_pos_on_LKTs(p) od)
+				      	 then [actual##[ktp_hash.match(
+				              K_type_pol(character_formula(P))), #ms]]
+		       		    	 else []
+				    	 fi
+		    	      	   od.## {[FacetVertsKHash]})
+	 od
+    then () = LFKH := sort(G, Lvd, LFKH, 2)
+    then time = elapsed_ms() - start
+    then () = if time_verbose
+	      then prints("     ", print_time_string(time),
+	      	   		" for localFD_Khashbt to dim ",t-1) fi
+    in if(facet_verbose)
+       then prints("After localFD_KHashbt_lookDownGEO, facet counts are ",
+       			      for list in LFKH do #list od) fi;
+       LFKH
+)
+
+
+{takes local data to height level, dimension \le b-1, and adds facets from
+b to (t-1)-dimensional FPP-facets; make sure subfacets are also in list
+Roughly input goes from 0 to b-1 (size b), output 0 to t-1 (size t). This time
+just calculate K characters to HT
+
+Need to assume b \ge 2, so have a list of potentially unitary facets and edges.}
+set localFD_KHashbt_lookDownGEO \
+  ( KGBElt x, ratvec lambda, VertexData Lvd, [[FacetVertsKHash]] LFKH,
+    int b, int t, int HT, KTypePol_hash ktp_hash) = [[FacetVertsKHash]]:
+(   if facet_verbose
+    then prints(new_line,"start localFD_Khashbt_lookDownGEO, b = ",b,", t = ",t)
+    fi;
+    let G = x.real_form, start=elapsed_ms()
+    then () = for dim:t-#LFKH from #LFKH {b has to be at least 2}
+    	      do LFKH := LFKH# (let acts = superFacets(LFKH[0],LFKH[dim-1],2)
+	      	    	       	in for actual in acts
+	       	    	      	   do let bary =
+				      sum(G.rank, for j in actual do Lvd.list[j] od)/(dim+1)
+		       	      	      then p0 = parameter(x,lambda, bary)
+				      then P = finalize(p0)
+				      then ms = monomials(P)
+				      in if all(for p in ms do is_pos_on_LKTs(p) od)
+				      	 then [actual##[ktp_hash.match(
+				              K_type_pol(character_formula_to_height(P, HT))), #ms]]
+		       		    	 else []
+				    	 fi
+		    	      	   od.## {[FacetVertsKHash]})
+	 od
+    then () = LFKH := sort(G, Lvd, LFKH, 2)
+    {then time = elapsed_ms() - start
+    then () = if time_verbose
+	      then prints("     ", print_time_string(time),
+	       " for localFD_Khashbt to height ", HT, " and dim ",t-1) fi}
+    in if(facet_verbose)
+       then prints("After localFD_KHashbt_lookDownGEO, facet counts are ",
+       			      for list in LFKH do #list od) fi;
+       LFKH
+)
+
+set extend_K_characters(KGBElt x, ratvec lambda, VertexData Lvd,
+    [[FacetVertsKHash]] LFKH, KTypePol_hash ktp_hash) = [[FacetVertsKHash]]:
+    {if facet_verbose
+    then prints(new_line,"start extend_K_characters")
+    fi;}
+    let G = x.real_form, start = elapsed_ms()
+    then answer =
+       for d:#LFKH
+       do if fund_facet_verbose then prints(new_line, "start to extend ",#LFKH[d],
+       	  		     " K-characters in dimension ",d,
+			     " in extend_K_characters")
+       	  fi; for v@k in LFKH[d]
+       	      do if k%(max(#LFKH[d]\10,2))=0 and fund_facet_verbose
+	      	 then prints("examining facet ",k,
+	    	      "; #ktp_hash = ",ktp_hash.size())
+	  	 fi;
+	  	 let nu = facet_bary(Lvd.list, v[:d+1]), w=v
+       	  	 then p0 = parameter(x, lambda, nu)
+	  	 then P = finalize(p0)
+	  	 then Q = K_type_pol(character_formula(P))
+	  	 then () = w[d+1] := ktp_hash.match(Q)
+		 in w
+              od
+      od
+     {then time = elapsed_ms() - start
+     then () = if time_verbose then prints("     ", print_time_string(time),
+     	       	  " for extend_K_characters") fi}
+     in answer
+
+set extend_K_characters(KGBElt x, ratvec lambda, VertexData Lvd,
+    [[FacetVertsKHash]] LFKH, int ht, KTypePol_hash ktp_hash) =
+    	[[FacetVertsKHash]]:
+    if facet_verbose
+    then prints(new_line,"start extend_K_characters to height ",ht)
+    fi;
+    let G = x.real_form, start = elapsed_ms()
+    then answer =
+       for d:#LFKH
+       do if fund_facet_verbose then prints(new_line, "start to extend ",#LFKH[d],
+       	  		     " K-characters in dimension ",d,
+			     " in extend_K_characters")
+       	  fi; for v@k in LFKH[d]
+       	      do if k%(max(#LFKH[d]\10,2))=0 and fund_facet_verbose
+	      	 then prints("examining facet ",k,
+	    	      "; #ktp_hash = ",ktp_hash.size())
+	  	 fi;
+	  	 let nu = facet_bary(Lvd.list, v[:d+1]), w=v
+       	  	 then p0 = parameter(x, lambda, nu)
+	  	 then P = finalize(p0)
+	  	 then Q = K_type_pol(character_formula_to_height(P,ht))
+	  	 then () = w[d+1] := ktp_hash.match(Q)
+		 in w
+              od
+       od
+     {then time = elapsed_ms() - start
+     then () = if time_verbose then prints("     ", print_time_string(time),
+     	       	  " for extend_K_characters") fi}
+     in answer

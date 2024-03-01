@@ -1,11 +1,13 @@
+{NOT CURRENTLY CALLED 2.27.24}
+
 < basic {for required_solution, etc.}
 < ratmat {for ratmat}
 < induction {for theta-stable parabolics}
 < hermitian {for is_unitary}
 < to_ht {for is_unitary_to_ht}
-< FPP_facetsDirac {for herm_center}
+< FPP_facets_geom {for herm_center}
 < weak_packets {for unipotent_representations}
-{placed in hermitian.at, where it belongs.}
+
 {
 {take a KTypePol _apparently_ attached to G and make it _actually_ attached
 to G}

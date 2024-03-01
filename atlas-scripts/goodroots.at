@@ -1,6 +1,6 @@
 <induction.at {for theta_stable_quasi_data, theta_stable_quasi_data_im}
 <K.at {for K_0}
-<hermitian.at {for is_hermitian}
+{<hermitian.at} {for is_hermitian}
 <convert_c_form.at {for convert_cform_hermitian}
 <Vogan-dual.at {for dual@Param}
 <translate.at {for translate_param_by}
@@ -169,7 +169,7 @@ set w0_good_matrixAP(Param p) = mat:
 
 
 set is_pos_on_LKTs_old(Param p) = bool:
-    let () = if not is_hermitian(p) then
+    let () = if not equivalent(p,twist(p)) {is_hermitian(p)} then
     	 { prints("oops, parameter is not hermitian");} return false fi
     then () = if #LKTs(p) = 1 then return true fi
     then nu = p.nu, wpos = w0_good_matrix_old(p)
@@ -177,13 +177,13 @@ set is_pos_on_LKTs_old(Param p) = bool:
 
 {Version using new w0_good_matrix}
 set is_pos_on_LKTsDV(Param p) = bool:
-   if not is_hermitian(p) then
+   if not equivalent(p, twist(p)) {is_hermitian(p)} then
     	 {prints("oops, parameter is not hermitian");} false
    else #LKTs(p) = 1 or w0_good_matrix(p)*p.nu = -p.nu
    fi
 
 set is_pos_on_LKTsAP(Param p) = bool:
-   if not is_hermitian(p) then
+   if not equivalent(p,twist(p)) {is_hermitian(p)} then
     	 {prints("oops, parameter is not hermitian");} false
    else #LKTs(p) = 1 or w0_good_matrixAP(p)*p.nu = -p.nu
    fi
@@ -191,7 +191,7 @@ set is_pos_on_LKTsAP(Param p) = bool:
 {. this is Jeff's version, which is fastest .}
 set is_pos_on_LKTs(Param p) = bool:
     let delta = p.real_form.distinguished_involution
-    in if not is_hermitian(p) then
+    in if not equivalent(p,twist(p)) {is_hermitian(p)} then
     	 {prints("oops, parameter is not hermitian");} false
    	 else  #LKTs(p) = 1 or is_pure(convert_cform_hermitian(
    	 	  K_type_pol(finalize_extended(p*0, delta))))

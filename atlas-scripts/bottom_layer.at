@@ -1041,7 +1041,7 @@ set newQs(Param p, int D) = [KGPElt]:
     	      	   do bottom_K_types(mu,D)
 		   od
     then max_size = max(for (,S) in cands do #S od)
-    then min_size = min(for (,S) in cands do #S od)
+    then min_size = max(min(for (,S) in cands do #S od),1) {max prevents including Borel}
     then cands_by_size = [[int]]:
     	 for size: max_size+1 - min_size from min_size
        	 do for (,S) in cands
@@ -1131,6 +1131,7 @@ set more_good_hash = make_Param_hash()
 {D is meant to be max(height(tau) for tau in BKT. nQs are the parabolics where bottom layer might help.}
 {nQs is meant to be new_Qs(), P the K-character of P}
 {meant to be applied AFTER min_bottom_elim_factors, so skip minimal nQ}
+{need to be sure nQs does not include a Borel}
 set bottom_elim_factors_more(Param p, [KGPElt] nQs, int D, KTypePol P)= bool:
     let start =  elapsed_ms(), G=p.real_form
     then three_bools = max_goodness(p), maxQps = max_Qps(p), R = more_good_hash.size()

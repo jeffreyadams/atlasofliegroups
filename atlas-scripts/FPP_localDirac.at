@@ -1,4 +1,4 @@
-<FPP_facetsDirac
+<FPP_facets_herm
 <simple_factors { for simple_factors }
 <basic.at { for power_set, choices_from, sum@(int,[ratvec]), no_reps}
 <hermitian.at { for is_unitary }
@@ -17,7 +17,6 @@
 <facet_classes.at {for ordering on facets}
 <hash.at {for KPolHash}
 <TWOHEIGHTS {for HTA and HT}
-<cohom_reduction
 <translate {for translate_param_by}
 <time {for print_string}
 {This is meant to be functions for computing all unitary reps with
@@ -247,6 +246,172 @@ set approx_ht_saving(Param p, int N) = int:
 	 fi
     in result
 
+set all_lambda_differential_0(mat theta) = [vec]:
+    let BLD0 = basis_lambda_differential_0(theta)
+    in for v in all_0_1_vecs(n_columns(BLD0))
+       do BLD0*v
+       od
+
+set_type Lvd_Perm2_mapAct = (VertexData Lvd, PermOrderTwo Perm2, vec mapAct)
+
+{Record for each inner class a list of some involutions in inner class; and for each such involution,
+ some possible lambdas; and for each such lambda, a list of (local vertex data, Perm2, mapAct)}
+set_type
+[Lvd_Perm2_mapAct_table =
+
+( (->int) inner_class_size {number of inner classes included}
+  , ( -> vec) ic_vlist_size {for each inner class, the number of FPP-vertices}
+  , ( -> ) clear
+  , ( -> vec) involution_size {for each inner class, number of involutions so far considered}
+  , ( -> [vec]) lamthlam_size {for each inner class and involution, number of d_lambdas (actually lambda+theta*lambda)
+      	 		       so far considered}
+  , ( -> [[vec]]) Lvd_list_size {for each inner class and involution and d_lambda, size of Lvd.list}
+  , (InnerClass -> VertexData) FPP_vertex_data {one for each inner class}
+  , (InnerClass -> (vec -> int)) flippable_edge_lookup
+  , (InnerClass -> [ratvec]) FPP_local_vertices {one for each inner class}
+  , ((InnerClass, mat) -> [vec]) lamthlams {for each involution, list of allowed lambda+theta_lambda}
+  , ((InnerClass, mat) -> [ratvec]) lambda0s {for each involution, list of allowed lambda mod twists}
+  , ((InnerClass, mat) -> [(ratvec, Lvd_Perm2_mapAct)]) LPm_entries {allowed lambda mod twists, corr entry}
+    		       	  	    {like output of old FPP_lambdas_big_new}
+  , ((InnerClass, mat, vec) -> VertexData) Lvd {local vertex data, one for each theta and lambda+theta*lambda}
+  , ((InnerClass, mat, vec) -> Lvd_Perm2_mapAct) LPm_entry {one for each theta and lambda+theta*lambda}
+{  , ((InnerClass, mat, vec) -> ) append {just compute, don't report LPm entry}}
+  , (int -> InnerClass) inner_class_index
+  , (int -> VertexData) vd_index {vertex data for inner class}
+  , ((int,int,int) -> Lvd_Perm2_mapAct) Lvd_Perm2_mapAct_index {one for each inner class, involution,
+    		      					       lambda + theta*lambda}
+)
+]
+
+set make_Lvd_Perm2_mapAct_table() = Lvd_Perm2_mapAct_table:
+(   let inner_class_hash = make_InnerClass_hash()
+    then inv_hashes = [mat_hash]: [] {one for each inner class}
+    then vertex_datas = [VertexData]: [] {one for each inner class}
+    then FELs = [(vec->int)]: [] {one for each inner class}
+    then FPP_local_verts = [[ratvec]]: [] {one list for each inner class}
+    then lamthlam_hashess = [[vec_hash]]: [] {one for each inner class and involution}
+    	 {entries are vecs of size ic.rank: lamba+theta*lambda, for a
+	 	  certain choice of lambda (defined up to twist and equivalence}
+    then entries = [[[Lvd_Perm2_mapAct]]]: [] {one list for each involution and lamthlam}
+    then clear() = void:
+    	 let () = inner_class_hash.clear()
+	 then () = inv_hashes := []
+	 then () = vertex_datas := []
+	 then () = FELs := []
+	 then () = FPP_local_verts := []
+	 then () = lamthlam_hashess := []
+	 then () = entries := []
+	 in ()
+    then add_inner_class(InnerClass ic) = int:
+    	 let I = inner_class_hash.size()
+	 then i = inner_class_hash.match(ic)
+    	 then () = if i = I {haven't seen this inner class before}
+	      	   then inv_hashes := (inv_hashes next inv_hashes:=[])#make_mat_hash();
+	    	   	vertex_datas := (vertex_datas next vertex_datas := [])#FPP_vertex_data(ic);
+	    	   	FELs := (FELs next FELs:=[])# FPP_flippable_edge_lookup(ic);
+	    	   	FPP_local_verts := (FPP_local_verts next FPP_local_verts:=[])
+		     	#FPP_local_vertices(ic, vertex_datas[i].list, FELs[i]);
+	    	   	lamthlam_hashess := (lamthlam_hashess next lamthlam_hashess := [])#[];
+	    	   	entries := (entries next entries :=[])# []
+	    	   fi
+	  in i
+    then add_involution(InnerClass ic, mat theta) = (int, int):
+    	 let i = add_inner_class(ic)
+	 then J = inv_hashes[i].size()
+      	 then j = inv_hashes[i].match(theta)
+     	 then () = if j = J {haven't seen this involution before}
+      	      	   then lamthlam_hashess[i] := (lamthlam_hashess[i] next lamthlam_hashess[i] := [])
+		    	 			    # make_vec_hash();
+		   	entries[i] := (entries[i] next entries[i] := []) # []
+		   fi
+	 in (i, j)
+    then add_lamthlam_hash(InnerClass ic, mat theta) = (int, int):
+      	 let (i,j) = add_involution(ic,theta)
+      	 then th1 = 1+theta, verts = FPP_local_verts[i]
+      	 then cands = for v in verts
+      	   	      do if ((th1*v).denom = 1) then [ratvec_as_vec(th1*v)]
+		      	 else []
+		      	 fi
+		      od.##.no_reps
+      	 then () = for lamthlam in cands
+      	      	   do case vec_solve(th1,lamthlam - th1*ic.rho)
+                    | else () {[(ratvec,VertexData,PermOrderTwo,vec)]: []}
+                    | solution(lr):
+                      let k = lamthlam_hashess[i][j].match(lamthlam)
+		      then tempi = entries[i]
+                      then () = if k = #tempi[j]
+                                then tempi[j]:=
+                                (tempi[j] next tempi[j]:=[])
+                                              #localFD_Lvd2(th1-1,lr+ic.rho,vertex_datas[i],FELs[i])
+                                fi
+		      then () = entries[i]:= tempi
+		      in ()
+                      esac
+		   od
+         in (i, j)
+    in
+    ( ( -> int): {inner_class_size} @int: inner_class_hash.size()
+    , ( -> vec): {ic_vlist_size} @vec: for vd in vertex_datas do #vd.list od
+    , ( -> ): {clear} clear
+    , ( -> vec): {involution_size} @vec: for inv_hash in inv_hashes do inv_hash.size() od
+    , ( -> [vec]): {lamthlam_size} @[vec]:
+      for lamthlam_hashes in lamthlam_hashess {ith inner class}
+      do for lamthlam_hash in lamthlam_hashes    {jth involution}
+      	 do lamthlam_hash.size()
+	 od
+      od
+    , ( -> [[vec]]): {Lvd_list_size} @[[vec]]:
+      for i: #entries
+      do for j: #entries[i]
+	 do for k: #entries[i][j]
+	    do #(entries[i][j][k].Lvd.list)
+	    od {vec for involution}
+	 od {[vec] for inner class}
+      od
+    , (InnerClass -> VertexData): {FPP_vertex_data}  (InnerClass ic) VertexData:
+      let i = add_inner_class(ic)
+      in vertex_datas[i]
+    , (InnerClass -> (vec -> int)): {flippable_edge_lookup} (InnerClass ic) (vec -> int):
+      let i = add_inner_class(ic)
+      in FELs[i]
+    , (InnerClass -> [ratvec]): {FPP_local_vertices} (InnerClass ic)  [ratvec]:
+      let i = add_inner_class(ic)
+       in FPP_local_verts[i]
+    , ((InnerClass, mat) -> [vec]): {lamthlams} (InnerClass ic, mat theta) [vec]:
+      let (i,j) = add_lamthlam_hash(ic,theta)
+      in for k:lamthlam_hashess[i][j].size() do lamthlam_hashess[i][j].index(k)[:ic.rank] od
+    , ((InnerClass, mat) -> [ratvec]): {lambda0s} (InnerClass ic, mat theta) [ratvec]:
+      let (i,j) = add_lamthlam_hash(ic,theta)
+      in for k:lamthlam_hashess[i][j].size()
+      	 do let lamthlam = lamthlam_hashess[i][j].index(k), th1 = 1+theta
+	    then lr = required_solution(th1,lamthlam - ratvec_as_vec(th1*ic.rho))
+      	    in lr+ic.rho
+	 od
+    , ((InnerClass, mat) -> [(ratvec, Lvd_Perm2_mapAct)]): {LPm_entries} (InnerClass ic, mat theta) [(ratvec, Lvd_Perm2_mapAct)]:
+      let (i,j) = add_lamthlam_hash(ic,theta), th1 = theta+1
+      in for k:lamthlam_hashess[i][j].size()
+      	 do let lamthlam = lamthlam_hashess[i][j].index(k)
+	    then lr = required_solution(th1,lamthlam - ratvec_as_vec(th1*ic.rho))
+	    in (lr+ic.rho, entries[i][j][k])
+	 od
+    , ((InnerClass, mat, vec) -> VertexData): {Lvd} (InnerClass ic, mat theta, vec lamthlam) VertexData:
+      let (i,j) = add_lamthlam_hash(ic,theta), th1 = theta+1
+      then k = lamthlam_hashess[i][j].lookup(lamthlam)
+      in entries[i][j][k].Lvd
+    , ((InnerClass, mat, vec) -> Lvd_Perm2_mapAct): {LPm_entry} (InnerClass ic, mat theta, vec lamthlam) Lvd_Perm2_mapAct:
+      let (i,j) = add_lamthlam_hash(ic,theta), th1 = theta+1
+      then k = lamthlam_hashess[i][j].lookup(lamthlam)
+      in entries[i][j][k]
+    , (int -> InnerClass): {inner_class_index} (int i) InnerClass: inner_class_hash.index(i)
+    , (int -> VertexData): {vd_index} (int i) VertexData: vertex_datas[i]
+    , ((int,int,int) -> Lvd_Perm2_mapAct): {Lvd_Perm2_mapAct_index} (int i, int j, int k): Lvd_Perm2_mapAct: entries[i][j][k]
+)
+)
+
+set LPm_table = make_Lvd_Perm2_mapAct_table()
+
+
+
 {computes directed graph of local facets. Output GraphData is
 [[int]],[[int]] giving equivalence classes and the graph. Next output
 [vec]s are IUCL and classListByFacet}
@@ -454,7 +619,7 @@ set local_testK_hash(KGBElt x, ratvec lambda, VertexData vd,
     [[FacetVertsKHash]] FVKH, [[int]] eq, [[int]] gr, [vec] classListByFacet,
     int ht, Param_hash Uhash) = [[FacetVertsKHash]]:
     let tester = ((Param->bool): (Param p) bool:
-	      Uhash.lookup(p).>= or is_unitary_to_ht(p, ht))
+	      Uhash.lookup(p).>= or is_unitary_to_ht_hash(p, ht))
      in local_testK_hash(x, lambda, vd, FVKH, eq, gr, classListByFacet, tester, Uhash)
 
 
@@ -636,6 +801,9 @@ set local_test_hash(KGBElt x, ratvec lambda, VertexData Lvd,
 
 set more_verbose =false
 
+{whether to use non-minimal parabolics for bottom layer}
+set more_flag = false
+
 {meant to hold nonunitary Params not eliminated by more}
 set more_bad_hash = make_Param_hash()
 
@@ -740,7 +908,7 @@ set local_test_hash(KGBElt x, ratvec lambda, VertexData Lvd,
     [[LocalFacetVertsHash]] LFVH, [[int]] eq, [[int]] gr,
     [vec] classListByFacet, Param_hash Uhash) = [Param]:
     local_test_hash(x, lambda, Lvd, LFVH, eq, gr,
-    classListByFacet, Uhash, is_unitary@Param)
+    classListByFacet, Uhash, is_unitary_hash@Param)
 
 set one_true_counter = make_counter()
 set one_false_counter = make_counter()
@@ -805,7 +973,8 @@ set one_param_test_bottom(Param p, int D, Param_hash Uhash) = [Param]:
 				      od)
 		 then () = if more_verbose then prints("result of elim_more was ",elim_more) fi
 	    	 in if elim_more
-		    then let test = all(for q in QG do is_unitary_hash(q) od)
+		    then let test =  all( [(->bool)]:
+		    	     for q in QG do @bool: is_unitary_hash(q) od)
 		    	 then () = if more_verbose then prints("your final answer was ",test) fi
 	    	    	 in  if test
 		    	     then let () = for q in QG
@@ -827,22 +996,24 @@ set one_param_test_bottom(Param p, int D, Param_hash Uhash) = [Param]:
 				     fi
 		    	  in []
 		     fi
-	    else let test = all(for q in QG do is_unitary_hash(q) od) {what to do if more_flag is false}
-	     	 in if test
-	     	    then  let () = for q in QG
-		      	    	   do Uhash.match(herm_center(q))
-		      		   od
-	   	      	  then () = one_true_counter.use()
-	    		  then () = one_param_time +:= elapsed_ms() - start
-	    	      	  in [p]
-		    else let () = one_false_counter.use()
-	    	    	 then ()= one_param_time +:= elapsed_ms() - start
-			 then (,pL) = theta_stable_quasi_data(p)
-			 then () = if surprise_flag and is_final(pL) and is_unitary_hash(pL)
-			      	   then surprise_hash.match(p)
-				   fi
-		    	 in []
-		    fi
+	    else let test =  all( [(->bool)]:
+	    	     for q in QG
+		     do @bool: is_unitary_hash(q) od) {what to do if more_flag is false}
+	     	     	in if test
+	     	    	   then  let () = for q in QG
+		      	    	     	  do Uhash.match(herm_center(q))
+		      		   	  od
+	   	      	  	 then () = one_true_counter.use()
+	    		  	 then () = one_param_time +:= elapsed_ms() - start
+	    	      	  	 in [p]
+		    	   else let () = one_false_counter.use()
+	    	    	   	then ()= one_param_time +:= elapsed_ms() - start
+			 	then (,pL) = theta_stable_quasi_data(p)
+			 	then () = if surprise_flag and is_final(pL) and is_unitary_hash(pL)
+			      	     	  then surprise_hash.match(p)
+				   	  fi
+		    	 	in []
+		    	   fi
 	      fi
 	  fi
 
@@ -1292,7 +1463,7 @@ set local_test_GEO_hash_no_dumb(KGBElt x, ratvec lambda, VertexData vd, VertexDa
         {remove from LFDKH all facets failing is_unitary_to_ht(test_hts[0])}
     then () = LFDKH := local_testK_hash(x,lambda,Lvd, LFDKH, eq, gr, CLBF,
     	   (Param->bool):(Param p): {Uhash.lookup(p).>= or}
-	   			is_unitary_to_hts(p,hts[:test_levels[0]+1]), Uhash)
+	   			is_unitary_to_hts_hash(p,hts[:test_levels[0]+1]), Uhash)
     then () = if test_verbose then prints("unitary to ht ",test_hts[0],
                         " facet counts to dim 1: ",for list in LFDKH
 			do #list od) fi
@@ -1413,6 +1584,14 @@ set local_test_GEO(KGBElt x, ratvec lambda) =
 
 set hash2Counter = make_counter()
 
+{if true, uses bottom more at last step instead of is_unitary}
+set mix2_flag = false
+
+{when the non-minimal parabolics are used at the end, how much above
+height(p) to look at K-types.  A larger number finds more nonunitary,
+takes longer}
+set more_shift = 2
+
 {This version assumes edges and vertices already computed, with herm and pos on LKTs; called by one_level}
 set local_test_GEO_hash2(KGBElt x, ratvec lambda, VertexData vd, VertexData Lvd, [[FacetVertsIndex]] LF,
 KTypePol_hash pol_hash, Param_hash Uhash) = [Param]:
@@ -1477,7 +1656,7 @@ KTypePol_hash pol_hash, Param_hash Uhash) = [Param]:
 	   			    then {Uhash.lookup(p).>= or}
 				    is_unitary_to_hts(p,hts[:test_levels[0]+1])
 				    else {Uhash.lookup(p).>= or}
-				    is_unitary_to_ht(p,test_hts[0])
+				    is_unitary_to_ht_hash(p,test_hts[0])
 				    fi, Uhash)
     then () = LFDKH:= if temp_K_char_flag
     	      	      then extend_K_characters(x, lambda, Lvd, LFDKH, pol_hash)
@@ -1499,7 +1678,7 @@ KTypePol_hash pol_hash, Param_hash Uhash) = [Param]:
        	      	 {compute graph on facets to dim D+1}
 		 then () = LFDKH := local_testK_hash(x, lambda, Lvd, LFDKH, eq, gr, CLBF,
 		      (Param->bool):(Param p): {Uhash.lookup(p).>= or}
-		      			   is_unitary_to_ht(p, test_hts[D]), Uhash)
+		      			   is_unitary_to_ht_hash(p, test_hts[D]), Uhash)
 			  {is_unitary_to_hts(p, hts[test_levels[D-1]+1:test_levels[D]+1])}
                 then () = if test_verbose {and
 		      	   ((D = rank(x.involution-1)-1)  or
@@ -1513,7 +1692,16 @@ KTypePol_hash pol_hash, Param_hash Uhash) = [Param]:
      	     od
     {now have facets of all dims, to height hts[?]}
     then ((eq,gr),IUCL,CLBF) = localGraphK(LFDKH)
-    then UParams = local_test_hash(x,lambda,Lvd,LFDKH,eq,gr,CLBF,Uhash)
+    then start=elapsed_ms()
+    then more_flag_hold = more_flag, pmin = parameter(x,lambda,Lvd.list[0])
+    then () = more_flag:=true
+    then UParams = if  (height(pmin) = 0) or (not mix2_flag) then local_test_hash(x,lambda,Lvd,LFDKH,eq,gr,CLBF,Uhash)
+    	 	   else let (Q0,) = theta_stable_quasi_data(pmin), HT = height(pmin) + more_shift
+		   	then nQs = newQs(pmin,HT) {theta-stable parabolics from which coh ind is interesting here}
+    		   	then maxQs = max_Qs(Q0)
+    			in local_test_hash_bottom(x, lambda, Lvd, LFDKH, eq, gr, CLBF, nQs, HT, pol_hash, Uhash)
+		   fi
+    then () = more_flag:=more_flag_hold
     then time = elapsed_ms() - start
     then () = if time_verbose
 	      then prints("     ", print_time_string(time),
@@ -1658,7 +1846,7 @@ set local_test_GEO_hash_one_level(KGBElt x, ratvec lambda, VertexData vd,
 			  fi
 	     {then () = prints("#Lvd = ", #Lvd.list, ", #LFDKH[0] = ",#LFDKH[0])}
 	     then tester0 = (Param->bool): (Param p) bool:
-     	     	  is_unitary_to_ht(p, hts[0])
+     	     	  is_unitary_to_ht_hash(p, hts[0])
              then ((eq,gr),IUCL,CLBF) = if temp_K_char_flag
 	     	  		      	then localGraphK(LFDKH)
 					else localGraphK(LFDKH, pol_hash, hts[0])
@@ -1673,8 +1861,8 @@ set local_test_GEO_hash_one_level(KGBElt x, ratvec lambda, VertexData vd,
 	     then ((eq,gr),IUCL,CLBF) = localGraphK(LFDKH)
 	     { then () = prints("at one_ht, #eq = ", #eq) }
 	     then tester1 = (Param->bool): (Param p) bool:
-     	     	  if prefer_to_hts then is_unitary_to_hts(p, hts[1:ONE+1])
-	 	  else is_unitary_to_ht(p,one_ht)
+     	     	  if prefer_to_hts then is_unitary_to_hts_hash(p, hts[1:ONE+1])
+	 	  else is_unitary_to_ht_hash(p,one_ht)
 	 {to_ht is definitely 2% slower for F4 spherical, 10% slower for Sp(10) spherical}
 	 	  fi
 	     in local_testK_hash(x,lambda,Lvd, LFDKH, eq,
@@ -1690,7 +1878,7 @@ set local_test_GEO_hash_one_level(KGBElt x, ratvec lambda, VertexData vd,
  	     {compute graph on facets to dim 1, to one_ht}
     	     then tester1 = (Param->bool): (Param p) bool:
      	     	  if prefer_to_hts then is_unitary_to_hts(p, hts[:ONE+1])
-	 	  else is_unitary_to_ht(p,one_ht)
+	 	  else is_unitary_to_ht_hash(p,one_ht)
 	 	  {to_ht is definitely 2% slower for F4 spherical, 10% slower for Sp(10) spherical}
 	 	  fi
     	     then ((eq,gr),IUCL,CLBF) = if temp_K_char_flag
@@ -1743,7 +1931,7 @@ set local_test_GEO_hash_one_level(KGBElt x, ratvec lambda, VertexData vd,
 					  facet_bary(Lvd.list, verts))))
 					  in if all(for p in ps
 					     	    do Uhash.lookup(p).>= or
-					{tester}is_unitary_to_ht(p,one_ht)
+					{tester}is_unitary_to_ht_hash(p,one_ht)
 	{better to use to_ht because usually p _already_ unitary to one_ht}
 						    od)
 					     then [LFDKH[D+1][m]]
@@ -1862,24 +2050,11 @@ set bottom_length_frac = rat: 1{??}
 {if true, use coh_ind_is_unitary in final tests; else is_unitary} 
 set coh_ind_tester_flag = true
 
-{when the non-minimal parabolics are used at the end, how much above
-height(p) to look at K-types.  A larger number finds more nonunitary,
-takes longer}
-set more_shift = 2
-
-{how many levels of bottom layer K-types to use}
-{this now has no effect; essentially hard coded in min_L_bottom_factors, in
-argument of next_heights}
-{set BL_steps = int:2}
-
+set one_level_revert_flag = false
 
 {assume local facets to dim 1 are recorded in LF, already herm and pos
 on LKTs. This version uses min_bottom_elim instead of
 unitary_to_ht.}
-
-
-set one_level_revert_flag = false
-
 set local_test_GEO_hash_bottom_layer(KGBElt x, ratvec lambda, VertexData vd,
     			VertexData Lvd, [[FacetVertsIndex]] LF, KTypePol_hash pol_hash,
     			Param_hash Uhash) = [Param]:
@@ -1901,34 +2076,36 @@ set local_test_GEO_hash_bottom_layer(KGBElt x, ratvec lambda, VertexData vd,
     then maxDiffLoc = max_loc(for w in LF[0]
     	 	       	      do G.two_rho_check*(dominant(G,thetaMinus*Lvd.list[w[0]]))
 		       	      od)
-    then pmax = parameter(x, lambda, Lvd.list[LF[0][maxDiffLoc][0]])
-    then (Q0,pmaxL0) = theta_stable_quasi_data(pmax)
+    then {pmax = parameter(x, lambda, Lvd.list[LF[0][maxDiffLoc][0]])}
+    	 pmin = parameter(x, lambda, Lvd.list[LF[0][0][0]] )
+    {then (Q0,pmaxL0) = theta_stable_quasi_data(pmax)}
+    then (Q0, pminL0) = theta_stable_quasi_data(pmin)
     then L0 = Q0.Levi
-    then () = if is_abelian(L0)
-    	      then let () = Uhash.match(first_param(finalize(pmax)))
-	      	   in return [pmax]
+    then () = if (x.involution - 1).= {is_abelian(L0)}
+    	      then let () = Uhash.match(first_param(finalize(pmin{pmax})))
+	      	   in return [pmin{pmax}]
 	      fi
-    then () = if height(pmax) > bottom_length_frac* (G.two_rho * G.rho_check)
+    {then () = if height(pmax) > bottom_length_frac* (G.two_rho * G.rho_check)
     	 then return local_test_GEO_hash2(x, lambda, vd, Lvd, LF,
 	      {bottom_length_frac defaults to 1}   pol_hash, Uhash)
-	 fi
+	 fi}
     {then helpful_datas  = for mu in LKTs(pmax)
     	 	   	  do minBottomData.helpful_entry(mu)
 		   	  od}
-    then DG0 = max(for mu in LKTs(pmax)
+    then DG0 = max(for mu in LKTs(pmin{pmax})
     	       	   do minBottomData.G_min_height(mu)
 		   od)
 	{this is the greatest height at which we'll be looking at bottom layer K-types; during the first pass;
 	 so we can compute K-chars just to this height}
-    then () = if L0 = G or (DG0= height(pmax) and not more_flag)
+    then () = if {L0 = G or} (DG0= height(pmin{pmax}) and not more_flag)
     	      then if one_level_revert_flag
 	      	   then return local_test_GEO_hash_one_level(x, lambda, vd, Lvd, LF, pol_hash, Uhash)
 		   else return local_test_GEO_hash2(x, lambda, vd, Lvd, LF, pol_hash, Uhash)
 		   fi
 	      fi
-    then D = height(pmax)+more_shift
+    then D = max(height(pmin)+more_shift, DG0)
     then () = if {TINY CASE} #LF[0]=1
-    	      then return one_param_test_bottom(pmax, D, Uhash)
+    	      then return one_param_test_bottom(pmin, D, Uhash)
 	      fi
     then () = test_string:= " using local_test_GEO_hash_bottom_layer"
     then  () = hash_bottom_layerCounter.use()
@@ -2033,7 +2210,7 @@ set local_test_GEO_hash_bottom_layer(KGBElt x, ratvec lambda, VertexData vd,
 		      fi
     then start_more_datas = elapsed_ms()
     {then BKT = ## for mu in LKTs(pmax) do bottom_K_types(mu,D) od {K-types appearing in some bottom layer}}
-    then  nQs = newQs(pmax, D) {theta-stable parabolics from which coh ind is interesting here}
+    then  nQs = newQs(pmin, D) {theta-stable parabolics from which coh ind is interesting here}
     then maxQs = max_Qs(Q0)
     then () = if time_verbose then prints("time for more datas/BKT was ",
     	      	 print_time_string(elapsed_ms() - start_more_datas), " at lambda = ",lambda)

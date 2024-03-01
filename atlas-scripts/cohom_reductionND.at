@@ -1,12 +1,9 @@
 < basic {for required_solution, etc.}
 < ratmat {for ratmat}
 < induction {for theta-stable parabolics}
-< hermitian {for is_unitary}
-< to_ht {for is_unitary_to_ht}
-< FPP_facetsDirac {for herm_center}
-< weak_packets {for unipotent_representations}
 < derived_cover {to pass simple factors to derived simple factors}
 <K_highest_weights {for K_highest_weight_from_K0_weight}
+{< hash.at }{needed if the KGB-related hash tables are restored}
 {placed in hermitian.at, where it belongs.}
 {all root data live on same Z^n}
 {The jth [int] sigmaj is the map of simple roots for the jth little_rd into simple roots for G.}
@@ -139,65 +136,13 @@ set derived_wt_projections(RealForm G) = [(ratvec->ratvec)]:
       for xi@j in fundamental_weights(derS) do (M*gamma*derS.simple_coroots[j])*xi od)
     od
 
-{for each RealForm, store an index into KGBElts x using the involution theta = x.involution and the highest
-K-weight of the first LKT of parameter(x, G.rho, G.rho).}
-set_type
-[KGBElt_index =
-( ( -> ) clear
-  , ((RealForm,mat,vec) -> KGBElt) KGB_index {take x.theta and K0-highest weight of 1st
-    			   	   	     LKT of parameter(x, G.rho, G.rho)}
-)
-]
-
-set make_KGBElt_index () = KGBElt_index:
-  let real_form_hash = make_RealForm_hash()
-  then hwt_hashes = [vec_hash] : [] {one for each real form}
-  then theta_hashes = [mat_hash] : [] {one for each real form}
-  then index_hashes = [vec_hash] : [] {one for each real form}
-  then add_real_form(RealForm S) = int:
-     let RF = real_form_hash.size()
-     then rf = real_form_hash.match(S)
-     then () =  if rf = RF {haven't seen this real form before}
-     	     	then let  () = hwt_hashes #:= make_vec_hash()
-     		     then () = theta_hashes #:= make_mat_hash()
-     		     then () = index_hashes #:= make_vec_hash()
-     		     then () = for x in KGB(S)
-     	       	     	       do let mus = LKTs(parameter(x, S.rho, S.rho))
-			       	  then muwt =
-				       for mu in LKTs(parameter(x, S.rho, S.rho))
-				       do K0_param(mu).lambda_minus_rho
-				       od.sort[0]
-			       	  in index_hashes[RF].match([hwt_hashes[rf].match(muwt),
-			   		theta_hashes[RF].match(x.involution)])
-	       		       od
-     		     then () = assert(real_form_hash.size() = #hwt_hashes,"KGB_index damaged")
-     		     then () = assert(#index_hashes = #hwt_hashes,"KGB_index damaged")
-     		     then () = assert(#theta_hashes = #hwt_hashes,"KGB_index damaged")
-     		     in assert(index_hashes[RF].size() = #KGB(S), "KGB_index too small")
-		fi
-      in rf
-   then clear() = void:
-   	let () = real_form_hash.clear()
-	then () = hwt_hashes := []
-	then () = theta_hashes := []
-	then () = index_hashes := []
-	in ()
-   in KGBElt_index:
-   ( ( -> ): {clear} clear
-   , ((RealForm, mat, vec)->KGBElt): {KGB_index} (RealForm S, mat theta, vec tau) KGBElt:
-      let rf = add_real_form(S)
-      in KGB(S, index_hashes[rf].match([hwt_hashes[rf].match(tau), theta_hashes[rf].match(theta)])  )
-   )
-
-set KGBIndex = make_KGBElt_index()
-
 {x is a KGBElt for G; want to pass to a KGBElt for each derived simple factor}
-set derived_factor_KGBs(KGBElt x) = [KGBElt]: {need to change this to use highest weights somehow...}
+set derived_factor_KGBs(KGBElt x) = [KGBElt]:
     let derSF = derived_simple_factors_info(x.real_form)
     in for (S,derS,M) in derSF {this is automatically a theta-stable Levi}
        do let derSsimp = derS.simple_roots
 	  then DderS = det(derSsimp)
-	  then Minv = required_solution(derS.simple_roots.^, DderS*S.simple_roots.^).^/DderS
+	  then Minv = required_solution(derSsimp.^, DderS*S.simple_roots.^).^/DderS
 	  then () = assert(let (N,,denom) = M*Minv in denom = 1 and N = id_mat(derS.rank),
 	       	    	       "bad Minv in derived_factor_KGBs")
        	  then dertheta = ratmat_as_mat(M*x.involution*Minv)
@@ -209,6 +154,7 @@ set derived_factor_KGBs(KGBElt x) = [KGBElt]: {need to change this to use highes
 
 set old_derived_flag = false
 {x is a KGBElt for G; want to pass to a KGBElt for each derived simple factor}
+{
 set derived_factor_KGBs3(KGBElt x) = [KGBElt]:
 if old_derived_flag then return derived_factor_KGBs(x) fi;
     let G = x.real_form
@@ -228,6 +174,7 @@ if old_derived_flag then return derived_factor_KGBs(x) fi;
 	       dertheta = ratmat_as_mat(M*x.involution*Minv)
 	  in KGBIndex.KGB_index(derS, dertheta, dermuwt)
         od
+}
 
 {x is a KGBElt for G; want to pass to a KGBElt for each derived simple factor}
 set derived_factor_KGBs2(KGBElt x) = [KGBElt]:
@@ -237,7 +184,7 @@ set derived_factor_KGBs2(KGBElt x) = [KGBElt]:
     then () = if #derSF = 1 and G.components_rank.=
     	      then let (,derS,) = derSF[0]
 	      	   in return [KGB(derS,x.number)]
-	      fi {this fails for G=F4_s, p = final parameter(x=51,lambda=[0,0,0,3]/1,nu=[-1,0,0,2]/2)}
+	      fi
     then tf = torus_factor(x), theta = x.involution
     then derPs = for (S,derS,) in derSF do projection_to_K_matrix(derS) od
     in for (S,derS,M)@j in derSF {this is automatically a theta-stable Levi}
@@ -307,6 +254,7 @@ set derived_factor_K_types_info(KType mu) = [(KType,mat)]:
        od}
 
 {these comologically induce to mu (on K), I think}
+{
 set derived_factor_K_types_info3(KType mu) = [(KType,mat)]:
 if old_derived_flag then return derived_factor_K_types_info(mu) fi;
     let start = elapsed_ms(), L = mu.real_form
@@ -320,6 +268,7 @@ if old_derived_flag then return derived_factor_K_types_info(mu) fi;
     then () = assert(none(for (dermu,) in answer do is_zero(dermu) od), "zero K-type in derived_factor_K_types_info")
     then () = dfkiTime +:= elapsed_ms() - start
     in answer
+}
 
 {these comologically induce to mu (on K), I think}
 set derived_factor_K_types_info2(KType mu) = [(KType,mat)]:
@@ -329,7 +278,7 @@ if old_derived_flag then return derived_factor_K_types_info(mu) fi;
     then Pinv = right_inverse(P)
     then derPs = for (,derS,) in DSFinfo do projection_to_K_matrix(derS) od
     then answer = for (,derS,M)@j in DSFinfo {this is automatically a theta-stable Levi}
-       	 	  do (K_type(derived_factor_KGBs3(mu.x)[j], M*(mu.lambda_minus_rho)), M)
+       	 	  do (K_type(derived_factor_KGBs2(mu.x)[j], M*(mu.lambda_minus_rho)), M)
        		  od
     then () = dfkiTime +:= elapsed_ms() - start
     in answer
