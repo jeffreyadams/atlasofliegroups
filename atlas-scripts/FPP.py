@@ -11,8 +11,8 @@ FPP_at_file="FPP.at" #default
 FPP_py_file="FPP.py" #default
 #extra_files=["global_facets_E7.at","coh_ind_E7_to_hash.at","E7except589to15851.at"]
 extra_files=["global_facets_E7.at","coh_ind_E7_to_hash.at"]
-extra_files=[]
-coh_ind_flag=True #this is a hack, fix later
+#extra_files=[]
+coh_ind_flag=False #False: load from the file/True: don't load from the file
 def nice_time(t):
    return(re.sub("\..*","",str(datetime.timedelta(seconds=t))))
  
@@ -71,7 +71,8 @@ def atlas_compute(i,pid):
    reporting_data=[]
    print("starting Q size: ", main_queue.qsize())
    #add all parameters from coh_ind_params to unitary_hash
-   if not coh_ind_flag:   #this means you ARE loading from the file
+   if not coh_ind_flag:
+      #here means: coh_ind_flag False; loading from the file
       print("loading params from coh_ind_params")
       atlas_cmd=format_cmd("update(unitary_hash,coh_ind_params)\n")
       proc.stdin.write(atlas_cmd)
@@ -82,6 +83,7 @@ def atlas_compute(i,pid):
       line = proc.stdout.readline().decode('ascii')  #discard
       line = proc.stdout.readline().decode('ascii')
    else:
+      #otherwise: coh_ind_flag=True: not loading from the file
       print("not loading params from coh_ind_params")
    print("starting size of unitary_hash: (list number ",str(i), ")", line)
    while main_queue.qsize()>0:

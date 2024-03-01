@@ -49,9 +49,9 @@ set FPP_unitary_hash_bottom_layer(RealForm G, [[(KGBElt, ratvec)]] xlambdalists,
 let start=unitary_hash.size() then
 ()=prints("Starting size of unitary_hash: ", start) then
 list=xlambdalists[list_number] then
+{()=FPP_unitary_hash_bottom_layer(list) then}
 reverse_list=for i:#list do list~[i] od then
-{()=FPP_unitary_hash_bottom_layer(reverse_list) then}
-()=FPP_unitary_hash_bottom_layer(list) then
+()=FPP_unitary_hash_bottom_layer(reverse_list) then
 finish=unitary_hash.size() in
 let ()=prints("finishing size of unitary_hash: ", finish) in
 for i:finish-start from start do unitary_hash.index(i) od
@@ -74,7 +74,7 @@ test_slightly_verbose:=true
 test_verbose:=true
 facet_verbose:=true
 more_flag:=true   {this uses non-minimal parabolic bottom layer arguments}
-more_shift:=20
+more_shift:=15
 {bottom_length_frac:=1/4}
 {NOTE: extra_files is defined in FPP.py}
 
