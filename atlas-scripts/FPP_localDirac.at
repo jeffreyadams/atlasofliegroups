@@ -619,7 +619,7 @@ set local_testK_hash(KGBElt x, ratvec lambda, VertexData vd,
     [[FacetVertsKHash]] FVKH, [[int]] eq, [[int]] gr, [vec] classListByFacet,
     int ht, Param_hash Uhash) = [[FacetVertsKHash]]:
     let tester = ((Param->bool): (Param p) bool:
-	      Uhash.lookup(p).>= or is_unitary_to_ht(p, ht))
+	      Uhash.lookup(p).>= or is_unitary_to_ht_hash(p, ht))
      in local_testK_hash(x, lambda, vd, FVKH, eq, gr, classListByFacet, tester, Uhash)
 
 
@@ -801,6 +801,9 @@ set local_test_hash(KGBElt x, ratvec lambda, VertexData Lvd,
 
 set more_verbose =false
 
+{whether to use non-minimal parabolics for bottom layer}
+set more_flag = false
+
 {meant to hold nonunitary Params not eliminated by more}
 set more_bad_hash = make_Param_hash()
 
@@ -905,7 +908,7 @@ set local_test_hash(KGBElt x, ratvec lambda, VertexData Lvd,
     [[LocalFacetVertsHash]] LFVH, [[int]] eq, [[int]] gr,
     [vec] classListByFacet, Param_hash Uhash) = [Param]:
     local_test_hash(x, lambda, Lvd, LFVH, eq, gr,
-    classListByFacet, Uhash, is_unitary@Param)
+    classListByFacet, Uhash, is_unitary_hash@Param)
 
 set one_true_counter = make_counter()
 set one_false_counter = make_counter()
@@ -1460,7 +1463,7 @@ set local_test_GEO_hash_no_dumb(KGBElt x, ratvec lambda, VertexData vd, VertexDa
         {remove from LFDKH all facets failing is_unitary_to_ht(test_hts[0])}
     then () = LFDKH := local_testK_hash(x,lambda,Lvd, LFDKH, eq, gr, CLBF,
     	   (Param->bool):(Param p): {Uhash.lookup(p).>= or}
-	   			is_unitary_to_hts(p,hts[:test_levels[0]+1]), Uhash)
+	   			is_unitary_to_hts_hash(p,hts[:test_levels[0]+1]), Uhash)
     then () = if test_verbose then prints("unitary to ht ",test_hts[0],
                         " facet counts to dim 1: ",for list in LFDKH
 			do #list od) fi
@@ -1581,6 +1584,14 @@ set local_test_GEO(KGBElt x, ratvec lambda) =
 
 set hash2Counter = make_counter()
 
+{if true, uses bottom more at last step instead of is_unitary}
+set mix2_flag = false
+
+{when the non-minimal parabolics are used at the end, how much above
+height(p) to look at K-types.  A larger number finds more nonunitary,
+takes longer}
+set more_shift = 2
+
 {This version assumes edges and vertices already computed, with herm and pos on LKTs; called by one_level}
 set local_test_GEO_hash2(KGBElt x, ratvec lambda, VertexData vd, VertexData Lvd, [[FacetVertsIndex]] LF,
 KTypePol_hash pol_hash, Param_hash Uhash) = [Param]:
@@ -1645,7 +1656,7 @@ KTypePol_hash pol_hash, Param_hash Uhash) = [Param]:
 	   			    then {Uhash.lookup(p).>= or}
 				    is_unitary_to_hts(p,hts[:test_levels[0]+1])
 				    else {Uhash.lookup(p).>= or}
-				    is_unitary_to_ht(p,test_hts[0])
+				    is_unitary_to_ht_hash(p,test_hts[0])
 				    fi, Uhash)
     then () = LFDKH:= if temp_K_char_flag
     	      	      then extend_K_characters(x, lambda, Lvd, LFDKH, pol_hash)
@@ -1667,7 +1678,7 @@ KTypePol_hash pol_hash, Param_hash Uhash) = [Param]:
        	      	 {compute graph on facets to dim D+1}
 		 then () = LFDKH := local_testK_hash(x, lambda, Lvd, LFDKH, eq, gr, CLBF,
 		      (Param->bool):(Param p): {Uhash.lookup(p).>= or}
-		      			   is_unitary_to_ht(p, test_hts[D]), Uhash)
+		      			   is_unitary_to_ht_hash(p, test_hts[D]), Uhash)
 			  {is_unitary_to_hts(p, hts[test_levels[D-1]+1:test_levels[D]+1])}
                 then () = if test_verbose {and
 		      	   ((D = rank(x.involution-1)-1)  or
@@ -1681,7 +1692,16 @@ KTypePol_hash pol_hash, Param_hash Uhash) = [Param]:
      	     od
     {now have facets of all dims, to height hts[?]}
     then ((eq,gr),IUCL,CLBF) = localGraphK(LFDKH)
-    then UParams = local_test_hash(x,lambda,Lvd,LFDKH,eq,gr,CLBF,Uhash)
+    then start=elapsed_ms()
+    then more_flag_hold = more_flag, pmin = parameter(x,lambda,Lvd.list[0])
+    then () = more_flag:=true
+    then UParams = if  (height(pmin) = 0) or (not mix2_flag) then local_test_hash(x,lambda,Lvd,LFDKH,eq,gr,CLBF,Uhash)
+    	 	   else let (Q0,) = theta_stable_quasi_data(pmin), HT = height(pmin) + more_shift
+		   	then nQs = newQs(pmin,HT) {theta-stable parabolics from which coh ind is interesting here}
+    		   	then maxQs = max_Qs(Q0)
+    			in local_test_hash_bottom(x, lambda, Lvd, LFDKH, eq, gr, CLBF, nQs, HT, pol_hash, Uhash)
+		   fi
+    then () = more_flag:=more_flag_hold
     then time = elapsed_ms() - start
     then () = if time_verbose
 	      then prints("     ", print_time_string(time),
@@ -1826,7 +1846,7 @@ set local_test_GEO_hash_one_level(KGBElt x, ratvec lambda, VertexData vd,
 			  fi
 	     {then () = prints("#Lvd = ", #Lvd.list, ", #LFDKH[0] = ",#LFDKH[0])}
 	     then tester0 = (Param->bool): (Param p) bool:
-     	     	  is_unitary_to_ht(p, hts[0])
+     	     	  is_unitary_to_ht_hash(p, hts[0])
              then ((eq,gr),IUCL,CLBF) = if temp_K_char_flag
 	     	  		      	then localGraphK(LFDKH)
 					else localGraphK(LFDKH, pol_hash, hts[0])
@@ -1841,8 +1861,8 @@ set local_test_GEO_hash_one_level(KGBElt x, ratvec lambda, VertexData vd,
 	     then ((eq,gr),IUCL,CLBF) = localGraphK(LFDKH)
 	     { then () = prints("at one_ht, #eq = ", #eq) }
 	     then tester1 = (Param->bool): (Param p) bool:
-     	     	  if prefer_to_hts then is_unitary_to_hts(p, hts[1:ONE+1])
-	 	  else is_unitary_to_ht(p,one_ht)
+     	     	  if prefer_to_hts then is_unitary_to_hts_hash(p, hts[1:ONE+1])
+	 	  else is_unitary_to_ht_hash(p,one_ht)
 	 {to_ht is definitely 2% slower for F4 spherical, 10% slower for Sp(10) spherical}
 	 	  fi
 	     in local_testK_hash(x,lambda,Lvd, LFDKH, eq,
@@ -1858,7 +1878,7 @@ set local_test_GEO_hash_one_level(KGBElt x, ratvec lambda, VertexData vd,
  	     {compute graph on facets to dim 1, to one_ht}
     	     then tester1 = (Param->bool): (Param p) bool:
      	     	  if prefer_to_hts then is_unitary_to_hts(p, hts[:ONE+1])
-	 	  else is_unitary_to_ht(p,one_ht)
+	 	  else is_unitary_to_ht_hash(p,one_ht)
 	 	  {to_ht is definitely 2% slower for F4 spherical, 10% slower for Sp(10) spherical}
 	 	  fi
     	     then ((eq,gr),IUCL,CLBF) = if temp_K_char_flag
@@ -1911,7 +1931,7 @@ set local_test_GEO_hash_one_level(KGBElt x, ratvec lambda, VertexData vd,
 					  facet_bary(Lvd.list, verts))))
 					  in if all(for p in ps
 					     	    do Uhash.lookup(p).>= or
-					{tester}is_unitary_to_ht(p,one_ht)
+					{tester}is_unitary_to_ht_hash(p,one_ht)
 	{better to use to_ht because usually p _already_ unitary to one_ht}
 						    od)
 					     then [LFDKH[D+1][m]]
@@ -2029,11 +2049,6 @@ set bottom_length_frac = rat: 1{??}
 
 {if true, use coh_ind_is_unitary in final tests; else is_unitary} 
 set coh_ind_tester_flag = true
-
-{when the non-minimal parabolics are used at the end, how much above
-height(p) to look at K-types.  A larger number finds more nonunitary,
-takes longer}
-set more_shift = 2
 
 set one_level_revert_flag = false
 

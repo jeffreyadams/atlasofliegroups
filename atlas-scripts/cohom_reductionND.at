@@ -142,7 +142,7 @@ set derived_factor_KGBs(KGBElt x) = [KGBElt]:
     in for (S,derS,M) in derSF {this is automatically a theta-stable Levi}
        do let derSsimp = derS.simple_roots
 	  then DderS = det(derSsimp)
-	  then Minv = required_solution(derS.simple_roots.^, DderS*S.simple_roots.^).^/DderS
+	  then Minv = required_solution(derSsimp.^, DderS*S.simple_roots.^).^/DderS
 	  then () = assert(let (N,,denom) = M*Minv in denom = 1 and N = id_mat(derS.rank),
 	       	    	       "bad Minv in derived_factor_KGBs")
        	  then dertheta = ratmat_as_mat(M*x.involution*Minv)
