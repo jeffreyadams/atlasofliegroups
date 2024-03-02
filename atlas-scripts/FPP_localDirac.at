@@ -814,7 +814,8 @@ set surprise_flag = false
 { Input is candidate facets, and graph info. Output is the unitary ones.
  use and update a complete list Uhash of known unitary facets.
  try to compute and systematically use partial order on facets.
-Assume the input params are already bottom layer positive for minimal parabolic; try
+IF mix_flag, DON'T assume the input params are already bottom layer positive
+for minimal parabolic; try
 to use larger ones.}
 set local_test_hash_bottom(KGBElt x, ratvec lambda, VertexData Lvd,
     [[LocalFacetVertsHash]] LFVH, [[int]] eq, [[int]] gr, [vec] classListByFacet,
@@ -856,12 +857,9 @@ set local_test_hash_bottom(KGBElt x, ratvec lambda, VertexData Lvd,
 				  else true {if we're not using more}
 				  fi
 		 then () = if more_verbose and more_flag then prints("result of elim_more was ",elim_more) fi
-		then test = {if knew_that
-    	      	     	    then all(for p1 in ps do is_unitary_hash(p1) od)
-	      	   	    else} {didn't know that}
-			    if not elim_more then false
-		     	    else all(for p1 in ps do is_unitary_hash(p1) od)
-		     	    fi
+		 then test = if not elim_more then false
+		     	     else all(for p1 in ps do is_unitary_hash(p1) od)
+		     	     fi
 		 then () = if more_verbose then prints("your final answer was ",test) fi
 		 in if test
 		       then {let () = for p1 in ps
@@ -1017,6 +1015,14 @@ set one_param_test_bottom(Param p, int D, Param_hash Uhash) = [Param]:
 	      fi
 	  fi
 
+{if true, uses bottom more at last step instead of is_unitary}
+set mix_flag = false
+
+{when the non-minimal parabolics are used at the end, how much above
+height(p) to look at K-types.  A larger number finds more nonunitary,
+takes longer}
+set more_shift = 2
+
 {Assume we have local vertices and edges LF, herm and pos on LKTs.
 Called when there are not enough heights; presumably small KGBElts??}
 set local_test_GEO_hash_real_dumb(KGBElt x, ratvec lambda, VertexData vd, VertexData Lvd,
@@ -1026,8 +1032,12 @@ set local_test_GEO_hash_real_dumb(KGBElt x, ratvec lambda, VertexData vd, Vertex
     then zero_pol = null_module(G)
     then () = if 1*parameter(x,lambda,lambda) = zero_pol then return [] fi
     then r = rank(x.involution - 1), NK = #KGB(x.real_form)
+    then pmin = parameter(x,lambda,0*lambda)
     then () = if {TINY CASE} #LF[0]=1
-    	      then return one_param_test(parameter(x,lambda,Lvd.list[LF[0][0][0]]), Uhash)
+    	      then if mix_flag
+	      	   then return one_param_test_bottom(parameter(x,lambda,Lvd.list[LF[0][0][0]]),height(pmin) + more_shift, Uhash) 
+		   else return one_param_test(parameter(x,lambda,Lvd.list[LF[0][0][0]]), Uhash)
+		   fi
 	      fi
     then maxDiffLoc = max_loc(for v in Lvd.list
     	 	       	       do G.two_rho_check*(dominant(G,thetaMinus*v))
@@ -1146,8 +1156,12 @@ set local_test_GEO_hash_dumb(KGBElt x, ratvec lambda, VertexData vd, VertexData 
     then zero_pol = null_module(G)
     then () = if 1*parameter(x,lambda,lambda) = zero_pol then return [] fi
     then r = rank(x.involution - 1), NK = #KGB(G)
+    then pmin = parameter(x,lambda,0*lambda)
     then () = if {TINY CASE} #LF[0]=1
-    	      then return one_param_test(parameter(x,lambda,Lvd.list[LF[0][0][0]]), Uhash)
+    	      then if mix_flag
+	      	   then return one_param_test_bottom(parameter(x,lambda,Lvd.list[LF[0][0][0]]),height(pmin) + more_shift, Uhash) 
+		   else return one_param_test(parameter(x,lambda,Lvd.list[LF[0][0][0]]), Uhash)
+		   fi
 	      fi
     then test_hts = hts[:min(#hts,1)]
     then tester = (Param->bool): (Param p) bool:
@@ -1499,7 +1513,15 @@ set local_test_GEO_hash_no_dumb(KGBElt x, ratvec lambda, VertexData vd, VertexDa
     {now have facets of all dims, to height hts[?]}
     then ((eq,gr),IUCL,CLBF) = localGraphK(LFDKH)
     then () = long_out_flag := long_out_temp_flag
-    then UParams = local_test_hash(x,lambda,Lvd,LFDKH,eq,gr,CLBF,Uhash)
+    then more_flag_hold = more_flag, start = elapsed_ms(), pmin = parameter(x,lambda,0*lambda)
+    then () = more_flag:=true
+    then UParams = if  (height(pmin) = 0) or (not mix_flag) then local_test_hash(x,lambda,Lvd,LFDKH,eq,gr,CLBF,Uhash)
+    	 	   else let (Q0,) = theta_stable_quasi_data(pmin), HT = height(pmin) + more_shift
+		   	then nQs = newQs(pmin,HT) {theta-stable parabolics from which coh ind is interesting here}
+    		   	then maxQs = max_Qs(Q0)
+    			in local_test_hash_bottom(x, lambda, Lvd, LFDKH, eq, gr, CLBF, nQs, HT, pol_hash, Uhash)
+		   fi
+    then () = more_flag:=more_flag_hold
     then time = elapsed_ms() - start
     then () = if time_verbose
 	      then prints("     ", print_time_string(time),
@@ -1583,14 +1605,6 @@ set local_test_GEO(KGBElt x, ratvec lambda) =
     in local_test_GEO_hash(x,lambda, vd, pol_hash, Uhash)
 
 set hash2Counter = make_counter()
-
-{if true, uses bottom more at last step instead of is_unitary}
-set mix2_flag = false
-
-{when the non-minimal parabolics are used at the end, how much above
-height(p) to look at K-types.  A larger number finds more nonunitary,
-takes longer}
-set more_shift = 2
 
 {This version assumes edges and vertices already computed, with herm and pos on LKTs; called by one_level}
 set local_test_GEO_hash2(KGBElt x, ratvec lambda, VertexData vd, VertexData Lvd, [[FacetVertsIndex]] LF,
@@ -1695,7 +1709,7 @@ KTypePol_hash pol_hash, Param_hash Uhash) = [Param]:
     then start=elapsed_ms()
     then more_flag_hold = more_flag, pmin = parameter(x,lambda,Lvd.list[0])
     then () = more_flag:=true
-    then UParams = if  (height(pmin) = 0) or (not mix2_flag) then local_test_hash(x,lambda,Lvd,LFDKH,eq,gr,CLBF,Uhash)
+    then UParams = if  (height(pmin) = 0) or (not mix_flag) then local_test_hash(x,lambda,Lvd,LFDKH,eq,gr,CLBF,Uhash)
     	 	   else let (Q0,) = theta_stable_quasi_data(pmin), HT = height(pmin) + more_shift
 		   	then nQs = newQs(pmin,HT) {theta-stable parabolics from which coh ind is interesting here}
     		   	then maxQs = max_Qs(Q0)
@@ -1959,63 +1973,69 @@ set local_test_GEO_hash_one_level(KGBElt x, ratvec lambda, VertexData vd,
     	      	      then extend_K_characters(x, lambda, Lvd, LFDKH, pol_hash)
 		      else LFDKH
 		      fi
+{    then start=elapsed_ms()
+    then more_flag_hold = more_flag, pmin = parameter(x,lambda,Lvd.list[0])
+    then () = more_flag:=true
+    then UParams = if  (height(pmin) = 0) or (not mix_flag) then local_test_hash(x,lambda,Lvd,LFDKH,eq,gr,CLBF,Uhash)
+    	 	   else let (Q0,) = theta_stable_quasi_data(pmin), HT = height(pmin) + more_shift
+		   	then nQs = newQs(pmin,HT) {theta-stable parabolics from which coh ind is interesting here}
+    		   	then maxQs = max_Qs(Q0)
+    			in local_test_hash_bottom(x, lambda, Lvd, LFDKH, eq, gr, CLBF, nQs, HT, pol_hash, Uhash)
+		   fi
+    then () = more_flag:=more_flag_hold
+    then time = elapsed_ms() - start
+    then () = if time_verbose
+	      then prints("     ", print_time_string(time),
+	      " for UParams calculation ", test_string, new_line) fi
+    in UParams}
+
+
     then start=elapsed_ms()
     then () = long_out_flag := long_out_temp_flag
     then UParams = [Param]:
          if one_ht >=  0
          then let ((eq,gr),IUCL,CLBF) = localGraphK(LFDKH)
-              then UParams = local_test_hash(x, lambda, Lvd, LFDKH, eq, gr,
-                   CLBF, Uhash, (Param->bool):(Param p): if prefer_to_hts
-		   	 			     	 then Uhash.lookup(p).>= or
-							      is_unitary_test(p,hts[ONE+1:])
-		   					 else Uhash.lookup(p).>= or
-							      is_unitary_test(p,hts[LAST])
-							 fi)
-    	      {then time = elapsed_ms() - start
-    	       then () = if time_verbose
-	      	      	then prints("     ", print_time_string(time),
-	      		     	    " for UParams calculation ", test_string, new_line) fi}
-               in UParams
-         else let UParams =
-                  for list@d in LFDKH
-                  do for v in list
-                     do let p = parameter(x,lambda, facet_bary(Lvd.list, v[:d+1]))
-		     	then () = for  p1 in monomials(finalize(p))
-                      	     	  do Uhash.match(herm_center(p1));
+              in if  (height(pmax) = 0) or (not mix_flag)
+	      	 then local_test_hash(x, lambda, Lvd, LFDKH, eq, gr,
+                   	     CLBF, Uhash, (Param->bool):(Param p):
+		      if prefer_to_hts
+		      then Uhash.lookup(p).>= or is_unitary_test(p,hts[ONE+1:])
+		      else Uhash.lookup(p).>= or is_unitary_test(p,hts[LAST])
+		      fi)
+		  else let (Q0,) = theta_stable_quasi_data(pmax), HT = height(pmax) + more_shift
+		       then nQs = newQs(pmax,HT) {theta-stable parabolics from which coh ind is interesting here}
+    		       then maxQs = max_Qs(Q0)
+    		       in local_test_hash_bottom(x, lambda, Lvd, LFDKH, eq, gr, CLBF, nQs, HT, pol_hash, Uhash)
+		  fi
+          else for list@d in LFDKH
+               do for v in list
+                  do let p = parameter(x,lambda, facet_bary(Lvd.list, v[:d+1]))
+		     then () = for  p1 in monomials(finalize(p))
+                      	       do Uhash.match(herm_center(p1));
                              	  if deform_flag
 			     	  then for q in face_deformed_unitaries_new(p1)
                              	       do Uhash.match(q)
 				       od
 			     	  fi
                              	  od
-			then () = if long_out_flag
-		      	     	  then let () = ParamsByDim[d] := ParamsByDim[d]#p
-			   	       then () = LFDKHByDim[d] := LFDKHByDim[d]#v
-				       in ()
-			   	  fi
-		     	in p
-                     od
-                  od.##
-	      in UParams
+		     then () = if long_out_flag
+		      	       then let () = ParamsByDim[d] := ParamsByDim[d]#p
+			   	    then () = LFDKHByDim[d] := LFDKHByDim[d]#v
+				    in ()
+			       fi
+		     in p
+                  od
+                od.##
 	 fi
     then time = elapsed_ms() - start
     then () = if time_verbose
 	      then prints("     ", print_time_string(time),
-	      " for UParams calculation ", test_string, new_line){;}
-	      {then () = if test_verbose then prints("total number of tests = ",
-                                        unitary_test_counter.use_count())}
+	      " for UParams calculation ", test_string, new_line)
 	      fi
    in UParams
    {fi}
 
 {JUST CALCULATE FIRST TWO LEVELS}
-set local_test_GEO_hash_one_level(KGBElt x, ratvec lambda, VertexData vd, VertexData Lvd,
-    (vec,[(int,int)]) Perm2, vec mapAct, KTypePol_hash pol_hash, Param_hash Uhash) = [Param]:
-    let G = x.real_form, thetaMinus = x.involution - 1
-    {then LF = [[FacetVertsIndex]]: [for k:#Lvd.list do [k] od] {0-facets only}}
-    then LF = localFD_1Dirac2(x,lambda, Lvd, Perm2, mapAct, global_facets) {impose Dirac}
-    in local_test_GEO_hash_one_level(x, lambda, vd, Lvd, LF, pol_hash, Uhash)
-
 set local_test_GEO_hash_one_level(KGBElt x, ratvec lambda, VertexData vd, VertexData Lvd,
     (vec,[(int,int)]) Perm2, vec mapAct, KTypePol_hash pol_hash, Param_hash Uhash,
     [[FacetVertsIndex]] global_facets) = [Param]:
