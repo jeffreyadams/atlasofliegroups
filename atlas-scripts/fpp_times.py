@@ -37,29 +37,29 @@ def main(argv):
                if len(line)==0:
                    break
 #               print(line)
-               if re.search('x:',line):
-                   x=re.sub('x:','',line)
-                   x=re.sub(' .*','',x)
-                   time=re.sub('x:[0-9]* ','',line)   #1 day, 2:04:34
+               if re.search('list_number:',line):
+                   list_number=re.sub('list_number:','',line)
+                   list_number=re.sub(' .*','',list_number)
+                   time=re.sub('list_number:[0-9]* ','',line)   #1 day, 2:04:34
                    if re.search('day',time):
                        (day,hms)=time.split(', ')
                        days=re.sub("[^0-9]*",'',day)
                        (hours,minutes,seconds)=hms.split(':')
                        time_seconds=int(days)* 24 * 60 * 60 + int(hours) * 60 * 60 + int(minutes) * 60 + int(seconds)
-                       kgb.append((x,time_seconds,time))
+                       kgb.append((list_number,time_seconds,time))
                    else:
                        (hours,minutes,seconds)=time.split(':')
 #                       print("hours: ", hours, "minutes", minutes, "seconds", seconds)
                        time_seconds=int(hours) * 60 * 60 + int(minutes) * 60 + int(seconds)
 #                       print("ts: ", int(time_seconds))
-                       kgb.append((x,time_seconds,time))
+                       kgb.append((list_number,time_seconds,time))
     print("Number of KGB elements: ", len(kgb))
     kgb=sorted(kgb,  key=lambda a:a[1], reverse=True)
     out=open(outputfile,"w")
-    out.write("Times for KGB elements (seconds, days hours:minutes:seconds)\n\n")
+    out.write("list number/time in seconds/time in (days) hours:minutes:seconds\n\n")
     for i in range(len(kgb)):
         (x,time_seconds,time)=kgb[i]
-        out.write("x=" + x + "  " + str(time_seconds) + "  " + time + "\n")
+        out.write("list number=" + x + "  " + str(time_seconds) + "  " + time + "\n")
     out.close()
 
 if __name__ == "__main__":
