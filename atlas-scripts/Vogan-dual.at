@@ -117,8 +117,8 @@ set dual_KGB (Param p, InnerClass dual_int_ic) = KGBElt:
   (rho_corr,dLR) { correct the change of rho_check implicit in dual_tf }
     = fixed_lift(dual_theta-1,rho(root_datum(p))-rho(integrality_datum(p))) then
   integral_shift=integral_shift(rho_corr-rho_r(x),simple_ims,dLR) then
-  phi = dual_tf + rho_corr { dual_theta stable rep.tive of dual square } then
-  ()=prints("gamma: ", p.infinitesimal_character,
+  phi = dual_tf + rho_corr { dual_theta stable rep.tive of dual square }{ then} in
+{  ()=prints("gamma: ", p.infinitesimal_character,
   new_line,  "lambda: ", p.lambda,
   new_line, "starting tf: ", dual_tf,
   new_line, "rho=", rho(p.root_datum),
@@ -127,7 +127,7 @@ set dual_KGB (Param p, InnerClass dual_int_ic) = KGBElt:
   new_line,"rho_corr: ", rho_corr,
   new_line,  "phi=dual_tf+rho_corr: ", phi,
   new_line,"integral_shift:", integral_shift,
-  new_line, "new tf=phi+integral_shift: ", phi+integral_shift) in
+  new_line, "new tf=phi+integral_shift: ", phi+integral_shift) in}
   KGB_elt(dual_int_ic,
           dual_theta,
           phi+integral_shift)

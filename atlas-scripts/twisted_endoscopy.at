@@ -1,8 +1,11 @@
+<galois.at
 <L_packet.at
 <hodgeParamLaurentPol.at
 <stable.at
 <extParamPol.at
 <extended_character_formula.at
+
+
 
 set te_verbose=true
 {move nice_format elsewhere}
@@ -680,3 +683,12 @@ prints("=============================================================");
 show_nilpotent_orbits_long(all_H_u[0].real_form.dual_quasisplit_form);
 prints("+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++");
 show_long(wp)
+
+
+set endoscopic(RootDatum G,mat delta,ratvec v)=(RootDatum,mat):
+let Gd=G.dual then
+trd=twisted_root_datum(Gd,^delta) then
+{the old version of folded @(TwistedRootDatum in root_datum.at should work}
+(Hd,M)=folded(Gd,^delta) then
+H=Hd.dual in
+(H,M)

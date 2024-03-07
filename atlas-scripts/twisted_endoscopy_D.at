@@ -1,0 +1,22 @@
+<twisted_endoscopy.at
+
+
+{SO(2n) in SO(2n+1)}
+set Dn_in_Bn(int n)=
+let G=SO(2*n+1) then
+v=for i:n-1 do i od#n in
+pseudo_Levi(G,v)
+
+{G must be of type B_n}
+set Dn_in_Bn(RootDatum G)=
+let n=ss_rank(G) then
+v=for i:n-1 do i od#n in
+pseudo_Levi(G,v)
+
+{SO(2n) as endoscopic group in GL(2n)}
+set endoscopy_Dn(int n)=
+let G=GL(2*n,R) then
+delta=G.distinguished_involution then
+(H_Bn,M)=endoscopic(G,delta) then
+H=Dn_in_Bn(H_Bn) in
+(H,M)
