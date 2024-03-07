@@ -14,6 +14,8 @@ that one should certainly be supported; there's a chance also of
 getting useful information from parabolics _not_ containing it.}
 {"pairs" is...}
 
+{INVESTIGATE parabolic_LKT function in K_highest_weights.at}
+{See Ktest.at}
 {K_signature_irrB is hermitian_form_irr_to_ht; K_signature_irr is hermitian_form_irr truncated.
 Haven't figured out which is faster when.}
 set bottom_verbose = false
@@ -640,16 +642,17 @@ set bottom_factors(KType mu, (KGPElt,[KType]) (Q,taus)) = [(KType, [KType])]:
     let p = parameter(mu), {Dshift = D - height(mu),} start = elapsed_ms()
     then (Q0,pL0) = theta_stable_quasi_data(p), G = p.real_form, L = Q.Levi
     then pL = first_param(theta_induce_standard(pL0,L)), SFRP = simple_factor_root_partition(Q)
-    then muL = LKT(pL)
+    then muL = LKT(pL), xcL = KGB(L,0)
     then dermuLs = derived_factor_K_types2(muL) {each dermuLj is on a simple derived derLj}
     {then DLjs = for dermuLj in dermuLs do height(dermuLj) + Dshift od}
     then derLsInfo = derived_simple_factors_info(L) {DERIVED simple factors}
-    then xcG = embed_KGB(KGB(L,0),G)
-    then derxjs = derived_factor_KGBs2(KGB(L,0))
+    then xcG = embed_KGB(xcL,G)
+    then derxjs = derived_factor_KGBs2(xcL)
     {then K0 = K_0(xcG), ProjK = projection_to_K_matrix(mu.inner_class)}
-    then muwt = {highest_weight(mu,xcG).mu} K0_param(mu,xcG).lambda_minus_rho
-    then tau_shifts = for tau@j in taus do {highest_weight(tau,xcG).mu} K0_param(tau,xcG).lambda_minus_rho - muwt od
-    then tauLs = for shift in tau_shifts do K_types(K_highest_weight_from_K0_weight(KGB(L,0),muwt+shift))[0] od
+    then muwt = {highest_weight(mu,xcG).mu} K0_param(mu,xcG).lambda_minus_rho,
+    	      	muLwt = K0_param(muL,xcL).lambda_minus_rho
+    then tau_shifts = for tau in taus do {highest_weight(tau,xcG).mu} K0_param(tau,xcG).lambda_minus_rho - muwt od
+    then tauLs = for shift in tau_shifts do K_types(K_highest_weight_from_K0_weight(xcL,muLwt+shift))[0] od
     then () = bfTime+:= elapsed_ms() - start
     in for tau@k in taus
        do (tau, derived_factor_K_types2(tauLs[k]))
