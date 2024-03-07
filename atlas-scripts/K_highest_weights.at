@@ -303,7 +303,11 @@ set tworho_K (KGBElt x) = ratvec:
 {. Vogan algorithm to project k_highest_weight(x,mu) on dominant cone; returns
    (x',mu+2rho_K(x)-rho,tau) with tau dominant and x' corresponding to the new
    Weyl chamber. .}
-set project_on_dominant_cone (KGBElt x, ratvec mu) = (KGBElt,ratvec,ratvec):
+
+{true uses the old version here}
+set old_proj_flag = false
+
+set project_on_dominant_cone_old (KGBElt x, ratvec mu) = (KGBElt,ratvec,ratvec):
 { let ()=prints("project_on_dominant_cone with x=", x, " mu=", mu) in }
   let rd=root_datum(x)
   then (w,mu_1) = from_dominant
@@ -341,6 +345,45 @@ in (cross(x_1,y),mu_3, inverse(y)*mu_3). { initial data; apply recursive functio
          in f(sub_x,mu_3_orig,new_tau)
        fi
    )
+
+set project_on_dominant_cone(KGBElt x, ratvec mu) = (KGBElt,ratvec,ratvec):
+    if old_proj_flag
+    then  project_on_dominant_cone_old(x, mu)
+    else
+  let rd=root_datum(x)
+  then (w,mu_1) = from_dominant
+      (rd,mu:=(1+involution(x))*mu/2) { make |mu| zero on the split part of |h| }
+  then x_1=cross(x,w)
+{ Note: tworho_K (x) (above) is in (\h^*)^theta,
+  while rho_K(x) is in \t^*, need the former
+}
+  then mu_2=mu_1+tworho_K (x_1)
+  then y=chamber(rd,mu_2)
+  then mu_3=mu_2-y*rho(rd)
+in (cross(x_1,y),mu_3, inverse(y)*mu_3). { initial data; apply recursive function to it: }
+  ( rec_fun f(KGBElt x, ratvec mu_3_orig, ratvec tau) (KGBElt,ratvec,ratvec):
+      let rd_x=root_datum(x), zero = null(rd.rank)/1, terms = [vec]:[]
+      in { may differ from |rd| in the recursion }
+      if is_dominant(rd_x,tau)
+      then {return this triple:}
+        ( cross(x_1,y), inverse(y)*mu_3, tau)
+      else
+	 let new_tau = tau+sum(rd.rank, for av@j in rd_x.simple_coroots
+	     	       	    		 do let d = -av*tau
+					    in if d > 0
+					       then {prints("av = ",av,", d = ",d,
+					       	    ", #terms = ",#terms);}
+					       terms #:= av;
+						    rd_x.simple_roots[j]*d/2
+					       else zero
+					       fi
+					 od)
+	 then rd_perp = centralizer(rd_x, terms)
+  	 then x_perp = KGB_elt(rd_perp,involution(x),torus_factor(x))
+	 in f(x_perp,mu_3_orig,new_tau)
+       fi
+       )
+    fi
 
 {. Vogan algorithm; previous function in case mu is given as a vec,
   rather than ratvec. .}

@@ -811,6 +811,9 @@ set more_bad_hash = make_Param_hash()
 set surprise_hash = make_Param_hash()
 set surprise_flag = false
 
+{if true, uses bottom_more at last step instead of is_unitary}
+set mix_flag = false
+
 { Input is candidate facets, and graph info. Output is the unitary ones.
  use and update a complete list Uhash of known unitary facets.
  try to compute and systematically use partial order on facets.
@@ -819,7 +822,7 @@ for minimal parabolic; try
 to use larger ones.}
 set local_test_hash_bottom(KGBElt x, ratvec lambda, VertexData Lvd,
     [[LocalFacetVertsHash]] LFVH, [[int]] eq, [[int]] gr, [vec] classListByFacet,
-    [KGPElt] nQs, int D, KTypePol_hash pol_hash, Param_hash Uhash) = [Param]:
+    int D, KTypePol_hash pol_hash, Param_hash Uhash) = [Param]:
     let NumClasses = #eq, printInterval = int: 1{, start = elapsed_ms()}
     { then listZero = [ratvec]: if #LFVH = 0
     	 	    	      then []
@@ -846,17 +849,19 @@ set local_test_hash_bottom(KGBElt x, ratvec lambda, VertexData Lvd,
 		  {first_param makes trouble in UParams list!}
 		then p = parameter(x, lambda, facet_bary(Lvd.list, verts))
 	      	then ps = monomials(finalize(p))
-		then elim_more = if more_flag
+		then elim_more = if more_flag or mix_flag
 				 then if #ps = 1
-				      then bottom_elim_factors_more(ps[0], nQs, D, pol_hash.index(LFVH[d][j][d+1]))
+				      then bottom_elim_factors_more(ps[0], D, pol_hash.index(LFVH[d][j][d+1]))
 		                      else all(for p1 in ps
 		   	       	    	       do Uhash.lookup(p1).>= or
-			       	       	    	      bottom_elim_factors_more(p1, nQs, D)
+			       	       	    	      bottom_elim_factors_more(p1, D)
 					       od)
 				      fi
 				  else true {if we're not using more}
 				  fi
-		 then () = if more_verbose and more_flag then prints("result of elim_more was ",elim_more) fi
+		 then () = if more_verbose and (more_flag or mix_flag)
+		      	   then prints("result of elim_more was ",elim_more)
+			   fi
 		 then test = if not elim_more then false
 		     	     else all(for p1 in ps do is_unitary_hash(p1) od)
 		     	     fi
@@ -885,7 +890,7 @@ set local_test_hash_bottom(KGBElt x, ratvec lambda, VertexData Lvd,
 			   	     		   fi
 					 in q
 				      od
-		      else let () = if more_flag and elim_more then more_bad_hash.match(p) fi
+		      else let () = if (more_flag or mix_flag) and elim_more then more_bad_hash.match(p) fi
 		      	       	    {in this case p passed elim_more but is not unitary}
 			   then (,pL) = theta_stable_quasi_data(p)
 			   then () = if surprise_flag and is_final(pL) and is_unitary_hash(pL)
@@ -963,11 +968,11 @@ set one_param_test_bottom(Param p, int D, Param_hash Uhash) = [Param]:
        then let () = one_false_counter.use()
 	    then () = one_param_time +:= elapsed_ms() - start
 	    in []
-       else if more_flag
-       	    then let nQs = newQs(p, D)
-	    	 then () = if more_verbose then prints("start more with p = ",p, ", D = ",D,", #nQs = ",#nQs) fi
+       else if more_flag or mix_flag
+       	    then {let nQs = newQs(p, D)}
+	    	 let () = if more_verbose then prints("start more with p = ",p, ", D = ",D) fi
        	    	 then elim_more = all(for q in QG
-	    	 	     	      do bottom_elim_factors_more(q, nQs, D)
+	    	 	     	      do bottom_elim_factors_more(q, D)
 				      od)
 		 then () = if more_verbose then prints("result of elim_more was ",elim_more) fi
 	    	 in if elim_more
@@ -1014,9 +1019,6 @@ set one_param_test_bottom(Param p, int D, Param_hash Uhash) = [Param]:
 		    	   fi
 	      fi
 	  fi
-
-{if true, uses bottom more at last step instead of is_unitary}
-set mix_flag = false
 
 {when the non-minimal parabolics are used at the end, how much above
 height(p) to look at K-types.  A larger number finds more nonunitary,
@@ -1266,11 +1268,15 @@ set local_test_GEO_hash_def_dumb(KGBElt x, ratvec lambda, VertexData vd, VertexD
     Param_hash Uhash) = [Param]:
     let (G,j0) = %x, thetaMinus = x.involution - 1, start = elapsed_ms()
     then () = if #LF[0] = 0 then return [] fi
-    then zero_pol = null_module(G)
-    then () = if 1*parameter(x,lambda,lambda) = zero_pol then return [] fi
+    then zero_pol = null_module(G), pmin = parameter(x,lambda, 0*lambda)
+    then () = if 1*pmin = zero_pol then return [] fi
     then r = rank(x.involution - 1)
     then () = if {TINY CASE} #LF[0]=1
-    	      then return one_param_test(parameter(x,lambda,Lvd.list[LF[0][0][0]]), Uhash)
+    	      then if mix_flag
+	      	   then return one_param_test_bottom(parameter(x,lambda,Lvd.list[LF[0][0][0]]),
+		   	       height(pmin) + more_shift, Uhash) 
+		   else return one_param_test(parameter(x,lambda,Lvd.list[LF[0][0][0]]), Uhash)
+		   fi
 	      fi
     then def_steps_temp = if def_steps = -1
     	 		  then (r+G.rank)\2
@@ -1513,15 +1519,12 @@ set local_test_GEO_hash_no_dumb(KGBElt x, ratvec lambda, VertexData vd, VertexDa
     {now have facets of all dims, to height hts[?]}
     then ((eq,gr),IUCL,CLBF) = localGraphK(LFDKH)
     then () = long_out_flag := long_out_temp_flag
-    then more_flag_hold = more_flag, start = elapsed_ms(), pmin = parameter(x,lambda,0*lambda)
-    then () = more_flag:=true
+    then start = elapsed_ms(), pmin = parameter(x,lambda,0*lambda)
     then UParams = if  (height(pmin) = 0) or (not mix_flag) then local_test_hash(x,lambda,Lvd,LFDKH,eq,gr,CLBF,Uhash)
     	 	   else let (Q0,) = theta_stable_quasi_data(pmin), HT = height(pmin) + more_shift
-		   	then nQs = newQs(pmin,HT) {theta-stable parabolics from which coh ind is interesting here}
     		   	then maxQs = max_Qs(Q0)
-    			in local_test_hash_bottom(x, lambda, Lvd, LFDKH, eq, gr, CLBF, nQs, HT, pol_hash, Uhash)
+    			in local_test_hash_bottom(x, lambda, Lvd, LFDKH, eq, gr, CLBF, HT, pol_hash, Uhash)
 		   fi
-    then () = more_flag:=more_flag_hold
     then time = elapsed_ms() - start
     then () = if time_verbose
 	      then prints("     ", print_time_string(time),
@@ -1535,11 +1538,15 @@ set local_test_GEO_hash(KGBElt x, ratvec lambda, VertexData vd, VertexData Lvd,
     Param_hash Uhash) = [Param]:
     let (G,j0) = %x, thetaMinus = x.involution - 1
     then () = if {EMPTY CASE} #LF[0] = 0 then return [] fi
-    then zero_pol = null_module(G)
-    then () = if 1*parameter(x,lambda,lambda) = zero_pol then return [] fi
+    then zero_pol = null_module(G), pmin = parameter(x,lambda,0*lambda)
+    then () = if 1*pmin = zero_pol then return [] fi
     then r = rank(x.involution - 1) {, NK = #KGB(G)}
     then () = if {TINY CASE} #LF[0]=1
-    	      then return one_param_test(parameter(x,lambda,Lvd.list[LF[0][0][0]]), Uhash)
+    	      then if mix_flag
+	      	   then return one_param_test_bottom(parameter(x,lambda,Lvd.list[LF[0][0][0]]),
+		   	       height(pmin) + more_shift, Uhash) 
+		   else return one_param_test(parameter(x,lambda,Lvd.list[LF[0][0][0]]), Uhash)
+		   fi
 	      fi
     then vertexDiff = #Lvd.list/#vd.list
     then approxVertexDiff = vertexDiff.numer*100\vertexDiff.denom
@@ -1611,11 +1618,15 @@ set local_test_GEO_hash2(KGBElt x, ratvec lambda, VertexData vd, VertexData Lvd,
 KTypePol_hash pol_hash, Param_hash Uhash) = [Param]:
     let G = x.real_form, thetaMinus = x.involution - 1, start = elapsed_ms()
     then () = if #LF[0] = 0 then return [] fi
-    then zero_pol = null_module(G)
-    then () = if 1*parameter(x,lambda,lambda) = zero_pol then return [] fi
-    then r = rank(x.involution -1){, NK = #KGB(G)}
+    then zero_pol = null_module(G), pmin = parameter(x,lambda,0*lambda)
+    then () = if 1*pmin = zero_pol then return [] fi
+    then r = rank(x.involution -1)
     then () = if {TINY CASE} #LF[0]=1
-    	      then return one_param_test(parameter(x,lambda,Lvd.list[LF[0][0][0]]), Uhash)
+    	      then if mix_flag
+	      	   then return one_param_test_bottom(parameter(x,lambda,Lvd.list[LF[0][0][0]]),
+		   	       height(pmin) + more_shift, Uhash) 
+		   else return one_param_test(parameter(x,lambda,Lvd.list[LF[0][0][0]]), Uhash)
+		   fi
 	      fi
     then edge_offset_temp = edge_offset
     then () = if edge_offset = -1
@@ -1711,9 +1722,9 @@ KTypePol_hash pol_hash, Param_hash Uhash) = [Param]:
     then () = more_flag:=true
     then UParams = if  (height(pmin) = 0) or (not mix_flag) then local_test_hash(x,lambda,Lvd,LFDKH,eq,gr,CLBF,Uhash)
     	 	   else let (Q0,) = theta_stable_quasi_data(pmin), HT = height(pmin) + more_shift
-		   	then nQs = newQs(pmin,HT) {theta-stable parabolics from which coh ind is interesting here}
+		   	{then nQs = newQs(pmin,HT)} {theta-stable parabolics from which coh ind is interesting here}
     		   	then maxQs = max_Qs(Q0)
-    			in local_test_hash_bottom(x, lambda, Lvd, LFDKH, eq, gr, CLBF, nQs, HT, pol_hash, Uhash)
+    			in local_test_hash_bottom(x, lambda, Lvd, LFDKH, eq, gr, CLBF, HT, pol_hash, Uhash)
 		   fi
     then () = more_flag:=more_flag_hold
     then time = elapsed_ms() - start
@@ -1782,10 +1793,14 @@ set local_test_GEO_hash_one_level(KGBElt x, ratvec lambda, VertexData vd,
     Param_hash Uhash) = [Param]:
     let G = x.real_form, thetaMinus = x.involution - 1, start = elapsed_ms()
     then () = if #LF[0] = 0 then return [] fi
-    then zero_pol = null_module(G)
-    then () = if 1*parameter(x,lambda,lambda) = zero_pol then return [] fi
+    then zero_pol = null_module(G), pmin = parameter(x,lambda,0*lambda)
+    then () = if 1*pmin = zero_pol then return [] fi
     then () = if {TINY CASE} #LF[0]=1
-    	      then return one_param_test(parameter(x,lambda,Lvd.list[LF[0][0][0]]), Uhash)
+    	      then if mix_flag
+	      	   then return one_param_test_bottom(parameter(x,lambda,Lvd.list[LF[0][0][0]]),
+		   	       height(pmin) + more_shift, Uhash) 
+		   else return one_param_test(parameter(x,lambda,Lvd.list[LF[0][0][0]]), Uhash)
+		   fi
 	      fi
     then htFrac = height(parameter(x,lambda,0*lambda))/(G.rho * G.two_rho_check)
     then temp_K_char_flag = htFrac <= CUTOFF
@@ -2003,9 +2018,10 @@ set local_test_GEO_hash_one_level(KGBElt x, ratvec lambda, VertexData vd,
 		      else Uhash.lookup(p).>= or is_unitary_test(p,hts[LAST])
 		      fi)
 		  else let (Q0,) = theta_stable_quasi_data(pmax), HT = height(pmax) + more_shift
-		       then nQs = newQs(pmax,HT) {theta-stable parabolics from which coh ind is interesting here}
+		       {then nQs = newQs(pmax,HT)}
+		       	     {theta-stable parabolics from which coh ind is interesting here}
     		       then maxQs = max_Qs(Q0)
-    		       in local_test_hash_bottom(x, lambda, Lvd, LFDKH, eq, gr, CLBF, nQs, HT, pol_hash, Uhash)
+    		       in local_test_hash_bottom(x, lambda, Lvd, LFDKH, eq, gr, CLBF, HT, pol_hash, Uhash)
 		  fi
           else for list@d in LFDKH
                do for v in list
@@ -2096,34 +2112,39 @@ set local_test_GEO_hash_bottom_layer(KGBElt x, ratvec lambda, VertexData vd,
     then maxDiffLoc = max_loc(for w in LF[0]
     	 	       	      do G.two_rho_check*(dominant(G,thetaMinus*Lvd.list[w[0]]))
 		       	      od)
-    then {pmax = parameter(x, lambda, Lvd.list[LF[0][maxDiffLoc][0]])}
-    	 pmin = parameter(x, lambda, Lvd.list[LF[0][0][0]] )
-    {then (Q0,pmaxL0) = theta_stable_quasi_data(pmax)}
+    then pmin = parameter(x, lambda, Lvd.list[LF[0][0][0]] )
     then (Q0, pminL0) = theta_stable_quasi_data(pmin)
     then L0 = Q0.Levi
     then () = if (x.involution - 1).= {is_abelian(L0)}
     	      then let () = Uhash.match(first_param(finalize(pmin{pmax})))
-	      	   in return [pmin{pmax}]
+	      	   in return [pmin]
 	      fi
-    {then () = if height(pmax) > bottom_length_frac* (G.two_rho * G.rho_check)
-    	 then return local_test_GEO_hash2(x, lambda, vd, Lvd, LF,
-	      {bottom_length_frac defaults to 1}   pol_hash, Uhash)
-	 fi}
+
+    then DG0 = max(for mu in LKTs(pmin)
+    	       	   do minBottomData.G_min_height(mu)
+		   od)
+    then D = max(height(pmin)+more_shift, DG0)
+	{this is the greatest height at which we'll be looking at bottom layer K-types; during the first pass;
+	 so we can compute K-chars just to this height}
+    then start_more_datas = elapsed_ms()
+    then  maxQs = if more_flag
+    	  	  then max_Qs(Q0)
+		  else []
+		  fi
+    	  {then nQs = newQs(pmin, D),} 
+	  {theta-stable parabolics from which coh ind is interesting here}
+    then () = if time_verbose then prints("time for more datas/BKT was ",
+    	      	 print_time_string(elapsed_ms() - start_more_datas), " at lambda = ",lambda)
+	      fi
     {then helpful_datas  = for mu in LKTs(pmax)
     	 	   	  do minBottomData.helpful_entry(mu)
 		   	  od}
-    then DG0 = max(for mu in LKTs(pmin{pmax})
-    	       	   do minBottomData.G_min_height(mu)
-		   od)
-	{this is the greatest height at which we'll be looking at bottom layer K-types; during the first pass;
-	 so we can compute K-chars just to this height}
-    then () = if {L0 = G or} (DG0= height(pmin{pmax}) and not more_flag)
+    then () = if (DG0= height(pmin) and not more_flag)
     	      then if one_level_revert_flag
 	      	   then return local_test_GEO_hash_one_level(x, lambda, vd, Lvd, LF, pol_hash, Uhash)
 		   else return local_test_GEO_hash2(x, lambda, vd, Lvd, LF, pol_hash, Uhash)
 		   fi
 	      fi
-    then D = max(height(pmin)+more_shift, DG0)
     then () = if {TINY CASE} #LF[0]=1
     	      then return one_param_test_bottom(pmin, D, Uhash)
 	      fi
@@ -2230,7 +2251,7 @@ set local_test_GEO_hash_bottom_layer(KGBElt x, ratvec lambda, VertexData vd,
 		      fi
     then start_more_datas = elapsed_ms()
     {then BKT = ## for mu in LKTs(pmax) do bottom_K_types(mu,D) od {K-types appearing in some bottom layer}}
-    then  nQs = newQs(pmin, D) {theta-stable parabolics from which coh ind is interesting here}
+    {then  nQs = newQs(pmin, D)} {theta-stable parabolics from which coh ind is interesting here}
     then maxQs = max_Qs(Q0)
     then () = if time_verbose then prints("time for more datas/BKT was ",
     	      	 print_time_string(elapsed_ms() - start_more_datas), " at lambda = ",lambda)
@@ -2238,7 +2259,7 @@ set local_test_GEO_hash_bottom_layer(KGBElt x, ratvec lambda, VertexData vd,
     then start=elapsed_ms()
     then UParams = [Param]:
          let ((eq,gr),IUCL,CLBF) = localGraphK(LFDKH)
-         in local_test_hash_bottom(x, lambda, Lvd, LFDKH, eq, gr, CLBF, nQs, D, pol_hash, Uhash)
+         in local_test_hash_bottom(x, lambda, Lvd, LFDKH, eq, gr, CLBF, D, pol_hash, Uhash)
     then time = elapsed_ms() - start
     then () = if time_verbose
 	      then prints("     ", print_time_string(time),
