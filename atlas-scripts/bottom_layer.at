@@ -383,6 +383,7 @@ set_type
     						      might detect nonunitarity), and the corr numbers of derLj
 						      (among the derived simple factors of L}
   , (KType->int) G_min_height {largest height of a G K-type in helpful_entry; at least height(mu)}
+  , (KType->vec) L_min_heights {largest heights of derLj\cap K-types in helpful_entry}
   , (int -> KType) K_type_index
   , (int -> ([[(KType,KType)]],[int])) data_index
 {  , ( -> int) min_bottom_factors_time}
@@ -393,6 +394,7 @@ set make_min_bottom_data () = min_bottom_data:
 (  let K_type_hash = make_KType_hash()
    then bottom_data = [([[(KType, KType)]], [int])]:[] {one helpful_entry for each K-type}
    then heights = vec: [] {one for each K-type}
+   then Lheights = [vec]: [] {one for each K-type; size is size of helpful_entry}
    {then min_bottom_factors_time = int: 0}
    then clear() = void:
        let () = K_type_hash.clear()
@@ -414,10 +416,18 @@ set make_min_bottom_data () = min_bottom_data:
 							   od)
 						    od)
 					    fi
+		      then () = Lheights#:= if #lists = 0 then vec:[]
+		      	      		    else for list in lists
+					    	 do max(for (,tauLj) in list
+						    	do height(tauLj)
+							od)
+						 od
+					     fi
 		      in () {bottom_factors_time +:= elapsed_ms() - start}
 		 fi
         then () = assert(#bottom_data = K_type_hash.size(),"min_bottom_data damaged")
 	then () = assert(#heights = #bottom_data,"min_bottom_data damaged")
+	then () = assert(#Lheights = #bottom_data,"min_bottom_data damaged")
 	in m
    in
    ( ( -> int): { size } @int: K_type_hash.size()
@@ -431,6 +441,11 @@ set make_min_bottom_data () = min_bottom_data:
      begin
 	let m = enter(mu)
 	in heights[m]
+     end
+   , (KType->vec): {L_min_heights} (KType mu) vec:
+     begin
+	let m = enter(mu)
+	in Lheights[m]
      end
    , (int -> KType): {K_type_index} (int j): K_type_hash.index(j)
    , (int -> ([[(KType,KType)]],[int])): {data_index} (int j) ([[(KType,KType)]],[int]): bottom_data[j]
@@ -726,6 +741,7 @@ set min_bottom_elim_factors(Param p, {[KGPElt] maxQs,} KTypePol P) = bool:
     	 for mu in LKTs(p)
     	 do let (helpful_data, helpful_js) = minBottomData.helpful_entry(mu)
 	    then DG = minBottomData.G_min_height(mu)
+	    then helpful_DLs = minBottomData.L_min_heights(mu)
 	    {then () = mbefTime +:= elapsed_ms()-start}
     	    in if #helpful_js = 0
 	       then return true
@@ -733,7 +749,7 @@ set min_bottom_elim_factors(Param p, {[KGPElt] maxQs,} KTypePol P) = bool:
     	 {one for each helpful derived simple factor derLj}
     	      	    then helpful_derxLjs = for derpLj in helpful_derpLjs do derpLj.x od
     		    then helpful_derLjs = for derpLj in helpful_derpLjs do derpLj.real_form od
-    		    then helpful_DLs = for derLj in helpful_derLjs do next_heights(derLj) od
+    		    {then helpful_DLs = for derLj in helpful_derLjs do next_heights(derLj) od}
     		    {we wish these dermuLjs were LKTs of derpLj; may need to twist pLj to make this true??}
     		    then helpful_dermuLjs = for j@k in helpful_js
     	 		    		    do let (,dermuLj) = helpful_data[k][0] in dermuLj
