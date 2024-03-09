@@ -541,7 +541,7 @@ set more_good_hash = make_Param_hash()
 	      fi
     in is_unitary_hash(p)}
 
-{false guarantees not unitary, but true does not guarantee unitary}
+{
 set min_bottom_elim_factors_old(Param p) = bool:
     let start = elapsed_ms(), (,pL) = theta_stable_quasi_data(p)
     {then () = if is_unitary_hash(pL) then return true fi} {seems to slow things down}
@@ -615,101 +615,9 @@ set min_bottom_elim_factors_old(Param p) = bool:
 	then () = if not answer then attest_is_unitary(p,answer) fi
 	then () = mbefTime +:= elapsed_ms()-start
         in answer
+}
 
-set min_bottom_elim_factors(Param p{, [KGPElt] maxQs}) = bool:
-    let start = elapsed_ms(), (,pL) = theta_stable_quasi_data(p), G=p.real_form
-     then maxQps = max_Qps(p)
-     then three_bools = max_goodness(p, maxQps), R = more_good_hash.size()
-     then good = first(for (g,,) in three_bools do g od)
-     then () = if good>=0
-    	       then let (,pL) =  maxQps[good]
-	      	    then () = if bottom_verbose then prints("p = ",p," is a good one!") fi
-                    then answer = is_unitary_hash(pL)
-                    then () = attest_is_unitary(p,answer)
-		    then () = befmoreTime +:= elapsed_ms() - start
-                    in return answer
-	      	fi
-     then wk_good = first(for (,wg,) in three_bools do wg = true od)
-     then () = if wk_good >= 0 {form on p is induced from form on L}
-    	       then let (,pL) = maxQps[wk_good]
-	       	    then HG = theta_induce_signature(pL,G), Ip = theta_induce_irreducible(pL,G)
-		    then G_pure = is_pure(HG)
-		    in  befmoreTime +:= elapsed_ms() - start;
-                        attest_is_unitary(p, G_pure);
-			return G_pure
-	        fi
-    {then () = if is_unitary_hash(pL) then return true fi} {seems to slow things down}
-    then derpLjs = derived_factor_params2(pL)
-    then answers = [(->bool)]:
-    	 for mu in LKTs(p)
-    	 do let (helpful_data, helpful_js) = minBottomData.helpful_entry(mu)
-	    then DG = minBottomData.G_min_height(mu)
-	    {then () = mbefTime +:= elapsed_ms()-start}
-    	    in if #helpful_js = 0
-	       then return true
-	       else let helpful_derpLjs = for j in helpful_js do derpLjs[j] od
-    	 {one for each helpful derived simple factor derLj}
-    	      	    then helpful_derxLjs = for derpLj in helpful_derpLjs do derpLj.x od
-    		    then helpful_derLjs = for derpLj in helpful_derpLjs do derpLj.real_form od
-    		    then helpful_DLs = for derLj in helpful_derLjs do next_heights(derLj) od
-    		    {we wish these dermuLjs were LKTs of derpLj; may need to twist pLj to make this true??}
-    		    then helpful_dermuLjs = for j@k in helpful_js
-    	 		    		    do let (,dermuLj) = helpful_data[k][0] in dermuLj
-			    		    od
-      					    {check derpLj has dermuLj as a LKT}
-		    {then () = mbefTime +:= elapsed_ms()-start}
-    		    then () = for derpLj@k in helpful_derpLjs
-		    	      do {assert(not K_type_pol(derpLj)[helpful_dermuLjs[k]].=,"oops, we needed a twist")}
-			      	 if K_type_pol(derpLj)[helpful_dermuLjs[k]].=
-		   	      	 then let twistk = all_even_lambda_differential_0(helpful_derLjs[k].dual,
-					  	 -helpful_derxLjs[k].involution.^)
-				      then () = if bottom_verbose then prints("need a twist at p = ",p) fi
-		   		      then twistxLk = let Genx = KGB_elt_gen(helpful_derxLjs[k])
-				      in for t@i in twistk
-			   	      	 do let () = Genx.torus_factor +:= t {now need to force real}
-			      	      	    in KGB(helpful_derLjs[k], KGB_elt(Genx).number)
-			   	      	 od
-		    	         then twistpLk = for yLk in twistxLk
-		    	 	      	       	 do parameter(yLk, derpLj.lambda, derpLj.nu)
-				    		 od
-		    		 then m = first(for derqLk in twistpLk
-		    	     	       	  	do K_type_pol(derqLk)[helpful_dermuLjs[k]] != 0
-				       		od)
-		    		  then () = if m < 0
-		     	       	       	    then prints("x twisting failed at p = ",p,", k = ",k)
-			       	  	    else helpful_derpLjs[k] := twistpLk[m]
-			       	  	    fi
-		    		  	    in ()
-		    		  fi
-			       od {now helpful_derpLjs are aligned with K-types in helpful_entry}
-		     {time spent is all before here}
-                     then multG = branch_irr(p,DG)
-                     in @: all( [(->bool)]: {list of functions, one for each helpful factor Lj}
-	       	     	  	        for k:#helpful_js
-	       				do let (posLj, negLj) =
-					       if RF_code
-	    	      	    	    	       then rf_sig_tables.sig_entry(helpful_derpLjs[k], helpful_DLs[k])
-			   	    	       else K_signature_irr(helpful_derpLjs[k],max(
-							for (,tauLj) in helpful_data[k]
-		       	  				 do height(tauLj)
-		      	   				  od))
-				    	       fi
-	              			   then () = if posLj[helpful_dermuLjs[k]] = 0
-		       	        	   	     then posLj := negLj
-			        		     fi
-	              			   then pairs = helpful_data[k]
-	                  		   in @:all( [(->bool)]:
-			     	    	      	     for(tauj, tauLj) in pairs[1:]
-				    		     do @bool: int_part(posLj[tauLj]) >= int_part(multG[tauj])
-				    		     od )
-	       			        od)
-		   fi
-             od
-	then answer = all(answers)
-	then () = if not answer then attest_is_unitary(p,answer) fi
-	then () = mbefTime +:= elapsed_ms()-start
-        in answer
-
+{false guarantees not unitary, but true does not guarantee unitary}
 set min_bottom_elim_factors_old(Param p, KTypePol P) = bool:
     let start = elapsed_ms(), (,pL) = theta_stable_quasi_data(p)
     {then () = if is_unitary_hash(pL) then return true fi} {seems to slow things down}
@@ -784,30 +692,35 @@ set min_bottom_elim_factors_old(Param p, KTypePol P) = bool:
 	then () = mbefTime +:= elapsed_ms()-start
         in answer
 
+set min_bottom_elim_factors_old(Param p{, [KGPElt] maxQs}) = bool:
+    min_bottom_elim_factors_old(p, K_type_pol(character_formula(p)))
+
 
 set min_bottom_elim_factors(Param p, {[KGPElt] maxQs,} KTypePol P) = bool:
     let start = elapsed_ms(), (,pL) = theta_stable_quasi_data(p), G = p.real_form
     {then () = if is_unitary_hash(pL) then return true fi} {seems to slow things down}
-     then maxQps = max_Qps(p{,maxQs})
-     then three_bools = max_goodness(p, maxQps), R = more_good_hash.size()
-     then good = first(for (g,,) in three_bools do g od)
-     then () = if good>=0
-    	       then let (,pL) =  maxQps[good]
-	      	    then () = if bottom_verbose then prints("p = ",p," is a good one!") fi
-                    then answer = is_unitary_hash(pL)
-                    then () = attest_is_unitary(p,answer)
-		    then () = befmoreTime +:= elapsed_ms() - start
-                    in return answer
-	      	fi
-     then wk_good = first(for (,wg,) in three_bools do wg = true od)
-     then () = if wk_good >= 0 {form on p is induced from form on L}
-    	       then let (,pL) = maxQps[wk_good]
-	       	    then HG = theta_induce_signature(pL,G), Ip = theta_induce_irreducible(pL,G)
-		    then G_pure = is_pure(HG)
-		    in  befmoreTime +:= elapsed_ms() - start;
-                        attest_is_unitary(p, G_pure);
-			return G_pure
-	        fi
+     then () = if more_flag {do good range stuff}
+     	       then let maxQps = max_Qps(p{,maxQs})
+     	       	    then three_bools = max_goodness(p, maxQps), R = more_good_hash.size()
+     	  	    then good = first(for (g,,) in three_bools do g od)
+     	  	    then () = if good>=0
+    	       	    	      then let (,pL) =  maxQps[good]
+	      	    	      	   then () = if bottom_verbose then prints("p = ",p," is a good one!") fi
+                    	 	   then answer = is_unitary_hash(pL)
+                    	 	   then () = attest_is_unitary(p,answer)
+		    	 	   then () = befmoreTime +:= elapsed_ms() - start
+                    	      	   in return answer
+	      	     	      fi
+     	  	    then wk_good = first(for (,wg,) in three_bools do wg = true od)
+     	  	    in if wk_good >= 0 {form on p is induced from form on L}
+    	     	       then let (,pL) = maxQps[wk_good]
+	       	       	    then HG = theta_induce_signature(pL,G){, Ip = theta_induce_irreducible(pL,G)}
+		  	    then G_pure = is_pure(HG)
+		  	    in  befmoreTime +:= elapsed_ms() - start;
+                       	     attest_is_unitary(p, G_pure);
+			     return G_pure
+	     	       fi
+    	        fi
     then derpLjs = derived_factor_params2(pL)
     then answers = [(->bool)]:
     	 for mu in LKTs(p)
@@ -879,7 +792,8 @@ set min_bottom_elim_factors(Param p, {[KGPElt] maxQs,} KTypePol P) = bool:
 	then () = mbefTime +:= elapsed_ms()-start
         in answer
 
-
+set min_bottom_elim_factors(Param p{, [KGPElt] maxQs}) = bool:
+    min_bottom_elim_factors(p, K_type_pol(character_formula(p)))
 
 {
      then maxQps = max_Qps(p,maxQs)
@@ -1552,7 +1466,7 @@ set bottom_elim_factors_more(Param p, [KGPElt] maxQs, [KType, [QKL_bottom_data]]
      then wk_good = first(for (,wg,) in three_bools do wg = true od)
      then () = if wk_good >= 0 {form on p is induced from form on L}
     	       then let (,pL) = maxQps[wk_good]
-	       	    then HG = theta_induce_signature(pL,G), Ip = theta_induce_irreducible(pL,G)
+	       	    then HG = theta_induce_signature(pL,G){, Ip = theta_induce_irreducible(pL,G)}
 		    then G_pure = is_pure(HG)
 		    in  befmoreTime +:= elapsed_ms() - start;
                         attest_is_unitary(p, G_pure);
@@ -1606,7 +1520,7 @@ set bottom_elim_factors_more(Param p, int D, KTypePol P)= bool:
      then wk_good = first(for (,wg,) in three_bools do wg = true od)
      then () = if wk_good >= 0 {form on p is induced from form on L}
     	       then let (,pL) = maxQps[wk_good]
-	       	    then HG = theta_induce_signature(pL,G), Ip = theta_induce_irreducible(pL,G)
+	       	    then HG = theta_induce_signature(pL,G){, Ip = theta_induce_irreducible(pL,G)}
 		    then G_pure = is_pure(HG)
 		    in  befmoreTime +:= elapsed_ms() - start;
                         attest_is_unitary(p, G_pure);
@@ -1658,7 +1572,7 @@ set bottom_test_factors_more(Param p, [KGPElt] maxQs, [KType, [QKL_bottom_data]]
      then wk_good = first(for (,wg,) in three_bools do wg = true od)
      then () = if wk_good >= 0 {form on p is induced from form on L}
     	       then let (,pL) = maxQps[wk_good]
-	       	    then HG = theta_induce_signature(pL,G), Ip = theta_induce_irreducible(pL,G)
+	       	    then HG = theta_induce_signature(pL,G){, Ip = theta_induce_irreducible(pL,G)}
 		    then G_pure = is_pure(HG)
 		    in  befmoreTime +:= elapsed_ms() - start;
                         attest_is_unitary(p, G_pure);
@@ -1701,7 +1615,7 @@ set bottom_test_factors_more(Param p, int D, KTypePol P) = bool:
     then wk_good = first(for (,wg,) in three_bools do wg = true od)
     then () = if wk_good >= 0
     	      then let (,pL) = maxQps[wk_good]
-	       	   then HG = theta_induce_signature(pL,G), Ip = theta_induce_irreducible(pL,G)
+	       	   then HG = theta_induce_signature(pL,G){, Ip = theta_induce_irreducible(pL,G)}
 		   then G_pure = is_pure(HG)
 		   in befmoreTime +:= elapsed_ms() - start;
 		      attest_is_unitary(p,G_pure);
