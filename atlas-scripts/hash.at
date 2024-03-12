@@ -221,7 +221,7 @@ set_type
 
 set make_KTypePol_hash ([KTypePol] list, (KTypePol,int->int) hash) = KTypePol_hash:
 (  let capacity = max(2,2*#list), !empty=minus_1
-{   then real_form_hash = make_RealForm_hash(for Q in list do
+   {then real_form_hash = make_RealForm_hash(for Q in list do
    Q.real_form od, hash_code@(RealForm,int)}
    then seq_nbrs = for :capacity do empty od, maxfill = 2*capacity\3
    then find(KTypePol P) = (int,bool):

@@ -305,7 +305,7 @@ set tworho_K (KGBElt x) = ratvec:
    Weyl chamber. .}
 
 {true uses the old version here}
-set old_proj_flag = false
+set old_proj_flag = true
 
 set project_on_dominant_cone_old (KGBElt x, ratvec mu) = (KGBElt,ratvec,ratvec):
 { let ()=prints("project_on_dominant_cone with x=", x, " mu=", mu) in }
@@ -566,7 +566,7 @@ set find_x_with_dominant_rho_c (KGPElt Q) = (KGBElt,bool):
 {. Auxiliary function: Given a highest weight mu, calculate the
 corresponding one-dimensional parameter on the relatively split Levi
 factor of the theta-stable parabolic determined by mu. Then for all
-L-shperical parameters with the same infinitesimal character, theta-induce
+L-spherical parameters with the same infinitesimal character, theta-induce
 to G, and make a list of the constituents of the induced. This results in
 a list of parameters for each L-spherical parameter. If mu is strongly
 dominant, the output should be a list of singletons. .}
@@ -601,6 +601,9 @@ in assert(is_parabolic_theta_stable(Q), "Q is not theta stable");
    then list=for wt in R_K_dom_mu_orbit(mu_in) do move_weight(wt,x_Q) od
    then test=for weight in list do inds(weight) od
    then good_mu_list=choose_irred_inds(test) then k=#good_mu_list
+   {then () = prints("test=",test)
+   then () = prints("x=",x,", v=",v)
+   then () = prints(good_mu_list)}
 in assert (k>0,"There is no suitable weight in the R-group orbit.");
    assert (k=1,"There is more than one suitable highest weight.");
    for p in good_mu_list[0]
