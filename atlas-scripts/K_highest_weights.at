@@ -303,7 +303,14 @@ set tworho_K (KGBElt x) = ratvec:
 {. Vogan algorithm to project k_highest_weight(x,mu) on dominant cone; returns
    (x',mu+2rho_K(x)-rho,tau) with tau dominant and x' corresponding to the new
    Weyl chamber. .}
-set project_on_dominant_cone (KGBElt x, ratvec mu) = (KGBElt,ratvec,ratvec):
+
+{true uses the old version here. At some point I thought there was an example
+in rank 6 or 7 (E7_s?? U(3,3)?? where the new projection led to a bad answer;
+but now I can't find it, so I'm back to defaulting to the new one. It's a tiny
+bit faster.}
+set old_proj_flag = false
+
+set project_on_dominant_cone_old (KGBElt x, ratvec mu) = (KGBElt,ratvec,ratvec):
 { let ()=prints("project_on_dominant_cone with x=", x, " mu=", mu) in }
   let rd=root_datum(x)
   then (w,mu_1) = from_dominant
@@ -341,6 +348,45 @@ in (cross(x_1,y),mu_3, inverse(y)*mu_3). { initial data; apply recursive functio
          in f(sub_x,mu_3_orig,new_tau)
        fi
    )
+
+set project_on_dominant_cone(KGBElt x, ratvec mu) = (KGBElt,ratvec,ratvec):
+    if old_proj_flag
+    then  project_on_dominant_cone_old(x, mu)
+    else
+  let rd=root_datum(x)
+  then (w,mu_1) = from_dominant
+      (rd,mu:=(1+involution(x))*mu/2) { make |mu| zero on the split part of |h| }
+  then x_1=cross(x,w)
+{ Note: tworho_K (x) (above) is in (\h^*)^theta,
+  while rho_K(x) is in \t^*, need the former
+}
+  then mu_2=mu_1+tworho_K (x_1)
+  then y=chamber(rd,mu_2)
+  then mu_3=mu_2-y*rho(rd)
+in (cross(x_1,y),mu_3, inverse(y)*mu_3). { initial data; apply recursive function to it: }
+  ( rec_fun f(KGBElt x, ratvec mu_3_orig, ratvec tau) (KGBElt,ratvec,ratvec):
+      let rd_x=root_datum(x), zero = null(rd.rank)/1, terms = [vec]:[]
+      in { may differ from |rd| in the recursion }
+      if is_dominant(rd_x,tau)
+      then {return this triple:}
+        ( cross(x_1,y), inverse(y)*mu_3, tau)
+      else
+	 let new_tau = tau+sum(rd.rank, for av@j in rd_x.simple_coroots
+	     	       	    		 do let d = -av*tau
+					    in if d > 0
+					       then {prints("av = ",av,", d = ",d,
+					       	    ", #terms = ",#terms);}
+					       terms #:= av;
+						    rd_x.simple_roots[j]*d/2
+					       else zero
+					       fi
+					 od)
+	 then rd_perp = centralizer(rd_x, terms)
+  	 then x_perp = KGB_elt(rd_perp,involution(x),torus_factor(x))
+	 in f(x_perp,mu_3_orig,new_tau)
+       fi
+       )
+    fi
 
 {. Vogan algorithm; previous function in case mu is given as a vec,
   rather than ratvec. .}
@@ -523,7 +569,7 @@ set find_x_with_dominant_rho_c (KGPElt Q) = (KGBElt,bool):
 {. Auxiliary function: Given a highest weight mu, calculate the
 corresponding one-dimensional parameter on the relatively split Levi
 factor of the theta-stable parabolic determined by mu. Then for all
-L-shperical parameters with the same infinitesimal character, theta-induce
+L-spherical parameters with the same infinitesimal character, theta-induce
 to G, and make a list of the constituents of the induced. This results in
 a list of parameters for each L-spherical parameter. If mu is strongly
 dominant, the output should be a list of singletons. .}
@@ -558,6 +604,9 @@ in assert(is_parabolic_theta_stable(Q), "Q is not theta stable");
    then list=for wt in R_K_dom_mu_orbit(mu_in) do move_weight(wt,x_Q) od
    then test=for weight in list do inds(weight) od
    then good_mu_list=choose_irred_inds(test) then k=#good_mu_list
+   {then () = prints("test=",test)
+   then () = prints("x=",x,", v=",v)
+   then () = prints(good_mu_list)}
 in assert (k>0,"There is no suitable weight in the R-group orbit.");
    assert (k=1,"There is more than one suitable highest weight.");
    for p in good_mu_list[0]

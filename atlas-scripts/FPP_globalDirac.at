@@ -185,7 +185,7 @@ set FPP_unitary_hash_general([(KGBElt,ratvec)] xlambdas, Param_hash Uhash,
        prints(" time spent in is_unitary = ",print_time_string(unitaryTime),
        	      ", number of unitarity tests = ", unitary_test_counter.use_count());
        if mix_flag then prints("Time in bottom_factors = ", print_time_string(bfTime), ", time in bottom_elim_factors_more = ",
-       	  	    print_time_string(befmoreTime - bfTime), ", more_shift = ", more_shift, ", #Params missed by more = ",
+       	  	    print_time_string(befmoreTime), ", more_shift = ", more_shift, ", #Params missed by more = ",
 		    more_bad_hash.size()) fi;
        prints("  #hash_real_dumb =",hash_real_dumbCounter.use_count(),
 	      ", #hash_dumb calls=", hash_dumbCounter.use_count(),
@@ -326,7 +326,7 @@ set FPP_unitary_hash_general([KGBElt] xs, Param_hash Uhash, Param_hash Uparamhas
        prints("Time spent in is_unitary = ",print_time_string(unitaryTime),
        	      ", number of unitarity tests = ", unitary_test_counter.use_count());
        if mix_flag then prints("Time in bottom_factors = ", print_time_string(bfTime), ", time in bottom_elim_factors_more = ",
-       	  	    print_time_string(befmoreTime - bfTime), ", more_shift = ", more_shift, ", #Params missed by more = ",
+       	  	    print_time_string(befmoreTime), ", more_shift = ", more_shift, ", #Params missed by more = ",
 		    more_bad_hash.size()) fi;
        prints("  #hash_real_dumb =",hash_real_dumbCounter.use_count(),
 	      ", #hash_dumb =", hash_dumbCounter.use_count(),
@@ -584,7 +584,7 @@ set FPP_unitary_hash_bottom_layer([(KGBElt,ratvec)] xlambdas, Param_hash UhashG,
        prints("Time in bottom layer branching = ",print_time_string(rf_sig_tables.bottom_branch_time()),
        		    ", time in bottom layer sig = ", print_time_string(rf_sig_tables.bottom_sig_time()));
        if more_flag then prints("Time in bottom_factors = ", print_time_string(bfTime), ", time in bottom_elim_factors_more = ",
-       	  	    print_time_string(befmoreTime - bfTime), ", more_shift = ", more_shift, ", #Params missed by more = ", more_bad_hash.size()) fi;
+       	  	    print_time_string(befmoreTime), ", more_shift = ", more_shift, ", #Params missed by more = ", more_bad_hash.size()) fi;
        if surprise_flag and surprise_hash.size() > 0 then prints("  Found ", surprise_hash.size(),
        	  		    " counterexamples to coh_ind(unitary) = unitary; they're in surprise_hash.") fi;
        prints("  #hash_def_dumb =", hash_def_dumbCounter.use_count(),
@@ -776,7 +776,7 @@ set FPP_unitary_hash_bottom_layer([KGBElt] xs, Param_hash UhashG, Param_hash Upa
        prints("Time in bottom layer branching = ",print_time_string(rf_sig_tables.bottom_branch_time()),
        		    ", time in bottom layer sig = ", print_time_string(rf_sig_tables.bottom_sig_time()));
        if more_flag then prints("Time in bottom_factors = ", print_time_string(bfTime), ", time in bottom_elim_factors_more = ",
-       	  	    print_time_string(befmoreTime - bfTime), ", more_shift = ", more_shift, ", #Params missed by more = ", more_bad_hash.size()) fi;
+       	  	    print_time_string(befmoreTime), ", more_shift = ", more_shift, ", #Params missed by more = ", more_bad_hash.size()) fi;
        if surprise_flag and surprise_hash.size() > 0 then prints("Found ", surprise_hash.size(),
        	  		    " counterexamples to coh_ind(unitary) = unitary; they're in surprise.hash.") fi;
        prints("  #hash_def_dumb =", hash_def_dumbCounter.use_count(), ", #hash2 = ", hash2Counter.use_count(),

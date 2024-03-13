@@ -254,23 +254,6 @@ set derived_factor_K_types_info(KType mu) = [(KType,mat)]:
        od}
 
 {these comologically induce to mu (on K), I think}
-{
-set derived_factor_K_types_info3(KType mu) = [(KType,mat)]:
-if old_derived_flag then return derived_factor_K_types_info(mu) fi;
-    let start = elapsed_ms(), L = mu.real_form
-    then DSFinfo = derived_simple_factors_info(L), P = projection_to_K_matrix(L)
-    then Pinv = right_inverse(P)
-    then derPs = for (,derS,) in DSFinfo do projection_to_K_matrix(derS) od
-    then answer =  for (,derS,M)@j in DSFinfo {this is automatically a theta-stable Levi}
-       	 	   do let dermuwt = derPs[j]*M*Pinv*K0_param(mu).lambda_minus_rho
-          	      in (K_types(K_highest_weight_from_K0_weight(KGB(derS,0),dermuwt))[0], M)
-       		   od
-    then () = assert(none(for (dermu,) in answer do is_zero(dermu) od), "zero K-type in derived_factor_K_types_info")
-    then () = dfkiTime +:= elapsed_ms() - start
-    in answer
-}
-
-{these comologically induce to mu (on K), I think}
 set derived_factor_K_types_info2(KType mu) = [(KType,mat)]:
 if old_derived_flag then return derived_factor_K_types_info(mu) fi;
     let start = elapsed_ms(), L = mu.real_form
