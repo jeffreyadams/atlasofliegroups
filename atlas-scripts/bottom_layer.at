@@ -926,12 +926,13 @@ set min_bottom_elim_factors(Param p, {[KGPElt] maxQs,} KTypePol P) = bool:
 	     	       fi
     	        fi
     then derpLjs = derived_factor_params2(pL)
+    then () = mbefTime +:= elapsed_ms()-start
     then answers = [(->bool)]: {one function for each LKT mu of p}
     	 for mu in LKTs(p)
     	 do let LKData = minBottomData.entry(mu) {[tau,[dertauLj]]}, pmu = param(mu)
 	    then DG = minBottomData.G_min_height(mu), (,pLmu) = theta_stable_quasi_data(pmu)
 	    then DLs = minBottomData.L_min_heights(mu), muL = LKT(pLmu)
-	    {then () = mbefTime +:= elapsed_ms()-start}
+	    then () = start:= elapsed_ms()
     	    then derxLjs = for derpLj in derpLjs do derpLj.x od
             then derLjs = for derpLj in derpLjs do derpLj.real_form od
  	    then dermuLjs = derived_factor_K_types2(muL)
@@ -949,6 +950,7 @@ set min_bottom_elim_factors(Param p, {[KGPElt] maxQs,} KTypePol P) = bool:
 				fi
 			 od
 	    {then () = for Lsig in Lsigs do prints(Lsig) od}
+	    then () = mbefTime +:= elapsed_ms()-start
 	    in @: all( [(->bool)]:
 	       	       for (tau,list) in LKData[1:] {one function for each min_bottom K-type tau}
  		       do let coeff = Split: 1 {this will be the bottom layer signature at tau}
@@ -963,7 +965,7 @@ set min_bottom_elim_factors(Param p, {[KGPElt] maxQs,} KTypePol P) = bool:
         od
 	then answer = all(answers)
 	then () = if not answer then attest_is_unitary(p,answer) fi
-	then () = mbefTime +:= elapsed_ms()-start
+	{then () = mbefTime +:= elapsed_ms()-start}
         in answer
 
 set min_bottom_elim_factors(Param p{, [KGPElt] maxQs}) = bool:
@@ -1331,52 +1333,11 @@ set delta_on_simple(InnerClass ic) = [int]:
     let r = ic.semisimple_rank, SR = ic.simple_roots, delta = ic.distinguished_involution
     in for i:r do first(for j:r do SR[i] = delta*SR[j] od) od
 
-{all theta-stable parabolics containing a given one}
-{set larger_Ps(KGPElt Q) = [KGPElt]:
-    let S= Q.S, x = Q.x, L = Q.Levi
-    then xL = inverse_embed_KGB(x,L), G = x.real_form
-    then Sc = complement(G.semisimple_rank,S), DOS = delta_on_simple(G),
-    	 delta = G.distinguished_involution
-    then fixc = for a in Sc
-    	      	do if DOS[a] = a
-		   then [a]
-		   else []
-		   fi
-		od.##
-    then pairsc = for a in Sc
-    	 	  do if DOS[a] > a
-		     then [[a,DOS[a]]]
-		     else []
-		     fi
-		  od.##
-    then PSfixc = power_set(#fixc), PSpairsc = power_set(#pairsc)
-    then Snew = S
-    in for A in PSfixc
-       do for B in PSpairsc
-       	  do (S## for i in A
-	     	 do fixc[i]
-		 od
-	      ## for j in B
-	      	 do pairsc[j]
-		 od.##.sort , x)
-	  od
-       od.##}
-
-{for each pair (MN,pM), p is cohomologically induced from pM. First
-pair is theta_stable_quasi_data(p), last is (G,p).}
-{set larger_Qps(Param p) = [(KGPElt,Param)]:
-    let (Q,pL) = theta_stable_quasi_data(p)
-    then LPs = larger_Ps(Q)
-    in for P in LPs
-       do let M = P.Levi
-       	  in (P, first_param(theta_induce_standard(pL,M)))
-       od}
-
 {For the irreducible p, lists the K-types to height D which are bottom layer for some proper parabolic;
 the smallest such parabolic is defined by the simple coroots in S. S always contains the coroots S0
 vanishing on p.d_lambda.} {useless case is #bottom_K_types = 1}
 set bottom_K_types(KType mu, int D) = [(KType,[int])]:
-    let q = param(mu), Proj = projection_to_K_matrix(mu.real_form)
+    let q = param(mu), Proj = projection_to_K_matrix(mu.real_form), start = elapsed_ms()
     then (Q0,) = theta_stable_quasi_data(q), G = mu.real_form
     then L0 = Q0.Levi, (S0,) = Q0
     then S0c = complement(G.semisimple_rank,S0), DOS = delta_on_simple(G),
@@ -1425,6 +1386,7 @@ set bottom_K_types(KType mu, int D) = [(KType,[int])]:
 		  od.##)
          od  {these are the coroots needed to make a parabolic
 		       	    for which corr tau is bottom layer}
+    then () = bfTime:=elapsed_ms() - start
     in for tau@k in too_many_taus
        do if #too_many_Ss[k]= G.semisimple_rank then []
 	  else [(tau, too_many_Ss[k].sort)]
@@ -1440,7 +1402,7 @@ c) are bottom layer for (smallest possible) theta-stable parabolic Q;
 list is indexed by Q.}
 
 set bottom_K_type_Qs(KType mu, int D) = [QK_bottom_data] {[KGPElt, [KType]]}:
-    let q = param(mu), Proj = projection_to_K_matrix(mu.real_form)
+    let q = param(mu), Proj = projection_to_K_matrix(mu.real_form), start = elapsed_ms()
     then (Q0,) = theta_stable_quasi_data(q), G = mu.real_form
     then L0 = Q0.Levi, (S0,) = Q0
     then S0c = complement(G.semisimple_rank,S0), DOS = delta_on_simple(G),
@@ -1494,6 +1456,7 @@ set bottom_K_type_Qs(KType mu, int D) = [QK_bottom_data] {[KGPElt, [KType]]}:
     	 	       	 then candSs
     	 	       	 else candSs[:#candSs-1] {omit G}
 			 fi
+    then () = bfTime:=elapsed_ms() - start
     in for S in proper_candSs
        do let list = for tau@j in too_many_taus
        	      	     do if too_many_Ss[j] = S
@@ -1505,62 +1468,11 @@ set bottom_K_type_Qs(KType mu, int D) = [QK_bottom_data] {[KGPElt, [KType]]}:
 	   in ((S, xcG0),list)
        od
 
-
-{cands is meant to be a list of (tau,S) with tau a K-type above mu that is
-bottom layer for parabolic defined by S}
-{set newQs(KType mu, [(KType,[int])] cands) = [KGPElt]:
-    let x = param(mu).x
-    then max_size = max(for (,S) in cands do #S od)
-    then min_size = min(for (,S) in cands do #S od)
-    then cands_by_size = [[int]]:
-    	 for size: max_size+1 - min_size from min_size
-       	 do for (,S) in cands
-	    do if #S= size then [S] else [] fi
-	    od.##.sort_u
-       	 od.##{zeroth term is guaranteed to be Smin, defined by mu.d_lambda}
-    in for S in cands_by_size
-       do KGPElt: (S,x)
-       od}
-
-{set newQs([KGPElt,[KType]] cands) = [KGPElt]:
-    for (Q,) in cands do Q od}
-
-{set newQs(KType mu, int D) = [KGPElt]:
-    newQs(bottom_K_type_Qs(mu,D))}
-
-{HERE IS WHERE TO FIX!}
-
-{set newQs(KType mu, int D) = [KGPElt]:
-    let cands = bottom_K_types(mu,D)
-    in newQs(mu, cands)}
-
-{set newQs(Param p, int D) = [KGPElt]:
-    let cand_Ss = (## for mu in LKTs(p) do for Q in newQs(mu,D) do Q.S od od).sort_u
-    in for S in cand_Ss do (S,LKTs(p)[0].x) od}
-
-
-{set newQs(Param p, int D) = [KGPElt]:
-    let cands = ## for mu in LKTs(p)
-    	      	   do bottom_K_types(mu,D)
-		   od
-    then max_size = max(for (,S) in cands do #S od)
-    then min_size = max(min(for (,S) in cands do #S od),1) {max prevents including Borel}
-    then cands_by_size = [[int]]:
-    	 for size: max_size+1 - min_size from min_size
-       	 do for (,S) in cands
-	    do if #S= size then [S] else [] fi
-	    od.##.sort_u
-       	 od.##{zeroth term is guaranteed to be Smin, defined by mu.d_lambda}
-    then x = LKTs(p)[0].x
-    in for S in cands_by_size
-       do KGPElt: (S,x)
-       od}
-
 {For the irreducible p, lists the K-types to height D which are bottom layer for some proper parabolic;
 the smallest such parabolic is defined by the simple coroots in S. S always contains the coroots S0
 vanishing on p.d_lambda.}
 set bottom_K_types(Param p, int D) = [(KType,[int])]:
-    let q = first_param(finalize(p))
+    let q = first_param(finalize(p)), start = elapsed_ms()
     then (Q0,) = theta_stable_quasi_data(q), {x = p.x, lambda = p.lambda}
     	G = p.real_form
     then L0 = Q0.Levi, (S0,) = Q0, Proj = projection_to_K_matrix(G)
@@ -1610,6 +1522,7 @@ set bottom_K_types(Param p, int D) = [(KType,[int])]:
 		  od.##)
          od  {these are the coroots needed to make a parabolic
 		       	    for which corr tau is bottom layer}
+    then () = bfTime:=elapsed_ms() - start
     in for tau@k in too_many_taus
        do if #too_many_Ss[k]= G.semisimple_rank then []
 	  else [(tau, too_many_Ss[k])]
@@ -1651,7 +1564,8 @@ set bottom_elim_factors_more(Param p, [KGPElt] maxQs, [KType, [QKL_bottom_data]]
                         attest_is_unitary(p, G_pure);
 			return G_pure
 	        fi
-    then () = if not all(for (mu, data) in datas
+     then () = befmoreTime +:= elapsed_ms() - start
+     then () = if not all(for (mu, data) in datas
 			 do @bool: all(for (Q,list) in data
 				       do  @bool: bottom_elim_factors(p, mu, (Q, list), P)
 			      	       od)
@@ -1666,7 +1580,6 @@ set bottom_elim_factors_more(Param p, [KGPElt] maxQs, [KType, [QKL_bottom_data]]
 		    in return false
 	       fi
      then () = if bottom_verbose then prints("sorry, don't know") fi
-     then () = befmoreTime +:= elapsed_ms() - start
      in true
 
 set bottom_elim_factors_more(Param p, [KGPElt] maxQs, [KType, [QKL_bottom_data]] mudatas)= bool:
@@ -1705,7 +1618,7 @@ set bottom_elim_factors_more(Param p, int D, KTypePol P)= bool:
                         attest_is_unitary(p, G_pure);
 			return G_pure
 	        fi
-
+     then () = befmoreTime +:= elapsed_ms() - start
      then () = if not all(for mu in LKTs(p)
 			 do @bool: all(for (Q,list) in bottom_K_type_Qs(mu,D)
 				       do  @bool: bottom_elim_factors(p, mu, bottom_factors(mu, (Q, list)), P)
@@ -1721,7 +1634,6 @@ set bottom_elim_factors_more(Param p, int D, KTypePol P)= bool:
 		    in return false
 	       fi
      then () = if bottom_verbose then prints("sorry, don't know") fi
-     then () = befmoreTime +:= elapsed_ms() - start
      in true
 
 set bottom_elim_factors_more(Param p, int D) = bool:
@@ -1757,7 +1669,8 @@ set bottom_test_factors_more(Param p, [KGPElt] maxQs, [KType, [QKL_bottom_data]]
                         attest_is_unitary(p, G_pure);
 			return G_pure
 	        fi
-    then () = if not all(for (mu, data) in datas
+     then () = befmoreTime +:= elapsed_ms() - start
+     then () = if not all(for (mu, data) in datas
 			 do @bool: all(for (Q,list) in data
 				       do  @bool: bottom_elim_factors(p, mu, (Q, list), P)
 			      	       od)
@@ -1772,7 +1685,6 @@ set bottom_test_factors_more(Param p, [KGPElt] maxQs, [KType, [QKL_bottom_data]]
 		    in return false
 	       fi
      then () = if bottom_verbose then prints("sorry, doing is_unitary") fi
-     then () = befmoreTime +:= elapsed_ms() - start
      in is_unitary_hash(p)
     fi
 
@@ -1800,6 +1712,8 @@ set bottom_test_factors_more(Param p, int D, KTypePol P) = bool:
 		      attest_is_unitary(p,G_pure);
 		      return G_pure
 	      fi
+
+    then () = befmoreTime+:= elapsed_ms() - start
     then () = if not all(for mu in LKTs(p)
 			 do @bool: all(for (Q,list) in bottom_K_type_Qs(mu,D)
 			    	       do @bool: bottom_elim_factors(p, mu, bottom_factors(mu,(Q,list)), P)
@@ -1816,7 +1730,6 @@ set bottom_test_factors_more(Param p, int D, KTypePol P) = bool:
 	       fi
      {now either bottom layer has succeeded, or it can't help}
      then () = if bottom_verbose then prints("sorry, doing is_unitary") fi
-     then () = befmoreTime+:= elapsed_ms() - start
      in is_unitary_hash(p)
      fi
 

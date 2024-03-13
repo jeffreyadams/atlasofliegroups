@@ -304,8 +304,11 @@ set tworho_K (KGBElt x) = ratvec:
    (x',mu+2rho_K(x)-rho,tau) with tau dominant and x' corresponding to the new
    Weyl chamber. .}
 
-{true uses the old version here}
-set old_proj_flag = true
+{true uses the old version here. At some point I thought there was an example
+in rank 6 or 7 (E7_s?? U(3,3)?? where the new projection led to a bad answer;
+but now I can't find it, so I'm back to defaulting to the new one. It's a tiny
+bit faster.}
+set old_proj_flag = false
 
 set project_on_dominant_cone_old (KGBElt x, ratvec mu) = (KGBElt,ratvec,ratvec):
 { let ()=prints("project_on_dominant_cone with x=", x, " mu=", mu) in }
