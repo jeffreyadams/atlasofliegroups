@@ -121,10 +121,12 @@ def atlas_compute(i,pid):
       queue_count+=1
       start_time=time.time()
 
-      #primary atlas function
+     #primary atlas function
       #if xlambdalists_flag: pass 2nd argument = xlambdalists, then 3rd argument is the listnumber
       if xlambdalists_flag:
-         atlas_cmd=format_cmd("set list=" + unitary_hash_function + "(" + group + ",xlambdalists," + str(list_number) + ")\n")
+         max_time=5
+         atlas_cmd=format_cmd("set list=" + unitary_hash_function + "(" + group + ",xlambdalists," + str(list_number) + "," + str(max_time) ")\n")
+#         atlas_cmd=format_cmd("set list=" + unitary_hash_function + "(" + group + ",xlambdalists," + str(list_number) + ")\n")
 #         atlas_cmd=format_cmd("prints(xlambdalists)" + "\n")
 #         print("CMD IS: atlas_cmd: ", atlas_cmd)
       #otherwise just need 2nd argument=kgb number
@@ -196,7 +198,7 @@ def atlas_compute(i,pid):
 
 def main(argv):
    global directory, number_jobs,group, start_KGB,end_KGB, main_queue, kgb_file, step_size,all_kgb, read_at_files,log_file, unitary_hash_function, xlambdalists_flag, global_facets_file_loaded, xlambdalists_file
-   unitary_hash_function="FPP_unitary_hash2"
+   unitary_hash_function="FPP_unitary_hash_bottom_layer"
    executable_dir="/.ccs/u02/jdada11/atlasSoftware/FPP_jeff/"
    group=""
    FPP_at_file="FPP.at"

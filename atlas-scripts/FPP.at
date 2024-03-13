@@ -199,3 +199,16 @@ set parameters(Param_hash param_hash)=[Param]:
 {bad(p) should ONLY be applied if p is NOT unitary, otherwise the result is meangingless (but don't test for this)
  bad(p)=true if (p is not unitary and) pL is unitary}
 set bad(Param p)=bool:let (,pL)=theta_stable_quasi_data(p) in is_unitary(pL)
+
+{------------------------ timeout versions--------------------}
+
+set FPP_unitary_hash_bottom_layer(RealForm G, [[(KGBElt, ratvec)]] xlambdalists,int list_number,int max_time)= [Param]:
+let start=unitary_hash.size() then
+()=prints("Starting size of unitary_hash: ", start) then
+list=xlambdalists[list_number] then
+{()=FPP_unitary_hash_bottom_layer(list) then}
+reverse_list=for i:#list do list~[i] od then
+()=FPP_unitary_hash_bottom_layer(reverse_list) then
+finish=unitary_hash.size() in
+let ()=prints("finishing size of unitary_hash: ", finish) in
+for i:finish-start from start do unitary_hash.index(i) od

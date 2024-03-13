@@ -274,6 +274,121 @@ set is_unitary (Param p) = bool:
   then () = unitaryTime+:=elapsed_ms() - start_time
   in answer
 
+
+{------------------------ timeout versions----------------------}
+
+set c_form_irreducible (Param p,int max_time) =(KTypePol,int):
+let P=KL_sum_at_s(p), count=0 then
+ori_nr_p = orientation_nr(p) then
+nP=#P then
+start_time=elapsed_ms() then
+timedout=-1 then  {-1: calculation succeeded; >=1: calculation timed out (never returns 0)}
+rv=null_K_module(p.real_form) then
+()=for c@q in P do
+  let t=elapsed_ms()-start_time in
+  if t>max_time then
+      let ()=prints("timed out (c_form_irreducible), time=",t) in
+      rv:=K_type_pol(0*p); timedout:=t;break
+  else
+      rv+:=c*orientation_nr_term(ori_nr_p,q)*c_form_std(q)
+  fi
+od in
+(rv,timedout)
+
+set hermitian_form_irreducible (Param p,int max_time) = (KTypePol,int):
+  if is_equal_rank(real_form(p))
+   then let (cfi,timedout)= c_form_irreducible(p,max_time) { not twisted, in equal rank case this is faster }
+    in if timedout=-1 then
+     (cfi.convert_cform_hermitian,timedout)
+    else
+      prints("timed out (hermitian_form_irreducible), time=", timedout);(K_type_pol(p*0),timedout)
+    fi
+  else
+   check_hermitian(p,true); (twisted_c_form_irreducible(p).convert_cform_hermitian,-1)
+  fi
+
+set c_form_irreducible_long (Param p, int max_time) =
+      (ParamPol,[(Param,Split,KTypePol)],KTypePol):
+   let ori_nr_p = orientation_nr(p), formula=KL_sum_at_s(p) then
+   start_time=elapsed_ms() then
+   timedout=-1 then
+   standards = { list of contributions }
+      for c@q in formula 
+      do
+       let t=elapsed_ms()-start_time in
+       if t>max_time then
+            timedout:=t;prints("--------------------------------------------------------");break fi;
+       let form_on_standard = c_form_std(q)
+         ,   factor= c*orientation_nr_term(ori_nr_p,q)
+      in (q,factor,form_on_standard)
+      od
+in 
+if timedout>0 then
+ (1*p,[],K_type_pol(p)) else
+( formula, standards
+   , null_K_module(p.real_form)+for(,c,f) in standards do c*f od
+   )
+fi
+
+
+
+{smallest easy theta-stable Q from which p is weakly good range cohomologically
+induced, and the inducing parameter}
+set wkgood_Q(Param p) = (KGPElt, Param):
+    let G = p.real_form, x = p.x, gamma = p.infinitesimal_character
+    then theta = x.involution, suppS = support(x), SCR = G.simple_coroots
+    then wkgoodQ = KGPElt:(suppS, x)
+    then wkgoodL = wkgoodQ.Levi
+    then xL = inverse_embed_KGB(x,wkgoodL)
+    then wkgoodpL = parameter(xL, p.lambda_minus_rho+wkgoodL.rho, p.nu)
+    in (wkgoodQ,wkgoodpL)
+
+{smallest theta-stable Q from which p is good range cohomologically induced, and the inducing parameter}
+set good_Q(Param p) = (KGPElt, Param):
+    let G = p.real_form, x = p.x, gamma = p.infinitesimal_character
+    then theta = x.involution, suppS = support(x), SCR = G.simple_coroots
+    then goodS = ((for j in complement(G.semisimple_rank,suppS)
+		     do if (gamma*SCR[j]).=
+		        then [j]
+		       	else []
+		       	fi
+		     od.##)##suppS).sort_u
+    then goodQ = KGPElt:(goodS, x)
+    then goodL = goodQ.Levi
+    then xL = inverse_embed_KGB(x,goodL)
+    then goodpL = parameter(xL, p.lambda_minus_rho+goodL.rho, p.nu)
+    in (goodQ,goodpL)
+
+set good_L(Param p) = RealForm:
+    let G = p.real_form, x = p.x, gamma = p.infinitesimal_character
+    then theta = x.involution, suppS = support(x), SCR = G.simple_coroots
+    then goodS = ((for j in complement(G.semisimple_rank,suppS)
+		     do if (gamma*SCR[j]).=
+		        then [j]
+		       	else []
+		       	fi
+		     od.##)##suppS).sort_u
+    in (goodS,x).Levi
+
+
+
+
+
+{ compute Hermitian form on p, and report if it is unitary }
+set is_unitary (Param p,int max_time) = (bool,int):
+if not p.is_hermitian
+   then (false,-1)  {2nd false: did not timeout}
+else
+   let (hf,timedout)=hermitian_form_irreducible(p,max_time) in
+   let ()=prints("timdeout value in is_unitary: ", timedout) in
+   if timedout=-1
+       then (hf.is_pure,-1)    {succeeded}
+   else
+       prints("timed out (is_unitary), time=",timedout);
+       (false,timedout)  {failed}
+   fi
+fi
+
 { compute Hermitian form on p, and report
 certificate; unitary means empty certificate }
 set is_unitary_cert (Param p) = [KType]:
@@ -638,6 +753,7 @@ set_type
   , ( -> int) count
   , ( -> ) clear
   , (Param->bool) entry
+  , ((Param,int)->(bool,int)) entry_timeout
   , (Param->bool) do_you_know {asks if the answer is tabulated}
   , (Param->) append
   , ((Param,bool)->) attest {attest to unitarity of Param}
@@ -672,6 +788,31 @@ set make_unitarity_bool_hash () = unitarity_bool_hash:
 		       			 "unitarity_bool_hash is damaged")
 		  fi
 	in bool_data[m]
+     end
+     , ((Param,int) -> (bool,int)): {entry_timeout} (Param p, int max_time) (bool,int):
+     begin
+	if #simple_factors(p.real_form) = 1
+	then p:=herm_center(p)
+	fi;
+	let M = param_hash.size()
+	then m = param_hash.match(p)
+        then timedout=-1
+	then () = if m = M
+	     	  then prints("m=M");unitary_test_counter.use();
+                     let (is_unitary_result,timedout_result)=is_unitary(p,max_time) in
+                     timedout:=timedout_result;
+                     prints("timed_out_result: ", timedout_result);
+                     if timedout_result=-1
+                         then bool_data#:=is_unitary_result;prints("added a result");
+                              assert(#bool_data = param_hash.size(),"unitarity_bool_hash is damaged")
+                         fi
+		  fi
+        in
+          prints("timedout in make_unitarity_bool_hash: ", timedout);
+          if timedout>0
+             then (false,timedout)
+          else prints("timedout: ", timedout, "  m=",m);(bool_data[m],-1)
+          fi
      end
    , (Param -> bool): {do_you_know} (Param p) bool:
      if #simple_factors(p.real_form) = 1
@@ -709,45 +850,34 @@ set make_unitarity_bool_hash () = unitarity_bool_hash:
   )
 )
 
-{smallest theta-stable Q from which p is good range cohomologically induced, and the inducing parameter}
-set good_Q(Param p) = (KGPElt, Param):
-    let G = p.real_form, x = p.x, gamma = p.infinitesimal_character
-    then theta = x.involution, suppS = support(x), SCR = G.simple_coroots
-    then goodS = ((for j in complement(G.semisimple_rank,suppS)
-		     do if (gamma*SCR[j]).=
-		        then [j]
-		       	else []
-		       	fi
-		     od.##)##suppS).sort_u
-    then goodQ = KGPElt:(goodS, x)
-    then goodL = goodQ.Levi
-    then xL = inverse_embed_KGB(x,goodL)
-    then goodpL = parameter(xL, p.lambda_minus_rho+goodL.rho, p.nu)
-    in (goodQ,goodpL)
-
-set good_L(Param p) = RealForm:
-    let G = p.real_form, x = p.x, gamma = p.infinitesimal_character
-    then theta = x.involution, suppS = support(x), SCR = G.simple_coroots
-    then goodS = ((for j in complement(G.semisimple_rank,suppS)
-		     do if (gamma*SCR[j]).=
-		        then [j]
-		       	else []
-		       	fi
-		     od.##)##suppS).sort_u
-    in (goodS,x).Levi
-
-{smallest easy theta-stable Q from which p is weakly good range cohomologically
-induced, and the inducing parameter}
-set wkgood_Q(Param p) = (KGPElt, Param):
-    let G = p.real_form, x = p.x, gamma = p.infinitesimal_character
-    then theta = x.involution, suppS = support(x), SCR = G.simple_coroots
-    then wkgoodQ = KGPElt:(suppS, x)
-    then wkgoodL = wkgoodQ.Levi
-    then xL = inverse_embed_KGB(x,wkgoodL)
-    then wkgoodpL = parameter(xL, p.lambda_minus_rho+wkgoodL.rho, p.nu)
-    in (wkgoodQ,wkgoodpL)
-
 set unitarity_hash = make_unitarity_bool_hash()
+
+set is_unitary_hash(Param p,int max_time) = (bool,int):
+    if not is_hermitian(p) then return (false,-1) fi;
+    let (,pL) = wkgood_Q(p), G=p.real_form
+    then derpLs = derived_factor_params2(pL)
+    then timedout=-1
+    in if pL=p 
+        then let (answer,timed_out)=unitarity_hash.entry_timeout(p,max_time) in
+        if
+           timedout=-1 then (answer,-1)
+        else
+           prints("timed out: ", timedout);
+           (false,timedout)
+        fi
+    else let answer = all([(->bool)] : for derpL in derpLs do @bool: unitarity_hash.entry(derpL) od)
+    in if
+       answer then (answer,-1)
+    else
+       let goodL = good_L(p) in 
+            (is_pure(sum(G, for c@qL in hermitian_form_irreducible(pL)
+			      do c*theta_induce_standard(param(qL),
+			           goodL)
+			      od)),-1)
+       fi
+    fi
+
+
 
 set is_unitary_hash(Param p) = bool:
     if not is_hermitian(p) then return false fi;
@@ -773,3 +903,5 @@ set do_you_know_is_unitary(Param p) = bool:
 
 set attest_is_unitary(Param p, bool answer) = void:
     unitarity_hash.attest(p,answer)
+
+

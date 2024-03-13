@@ -846,3 +846,325 @@ set descents(Param p) = [Param]:
     then DSFinfos = for S in SF do derived_infos(S) od
     }
 }
+
+{----------------------- timeout versions-------------------------}
+
+set FPP_unitary_hash_bottom_layer([(KGBElt,ratvec)] xlambdas, Param_hash UhashG,Param_hash Uparamhash,int max_time) = void:
+    if #xlambdas = 0 then return ()
+    else let (x,) = xlambdas[0], pol_hash = make_KTypePol_hash()
+    then G = x.real_form
+    then disconn_flag = components_rank(G) > 0
+    then (Gsc,M) = if disconn_flag
+    	      	   then derived_cover_real_form_info(G)
+	      	   else (G,id_mat(G.rank))
+	      	   fi
+    then xlambdas_sc = if disconn_flag
+    	      	       then for (x,lambda) in xlambdas do (inverse_embed_KGB(x, Gsc, M), M*lambda) od
+	      	       else xlambdas
+	      	       fi
+    then Uhash = if disconn_flag
+    	      	 then make_Param_hash() {this is for unitary reps of Gsc that factor to G}
+		 else UhashG
+		 fi
+    then start = elapsed_ms()
+    then () = unitaryTime := 0
+    then () = dfkiTime := 0
+    then () = if Dirac_flag then prepDirac(Gsc) fi
+    then xnums = for (x,) in xlambdas do let (,m) = %x in m od
+    then lambdas = for (,lambda) in xlambdas do lambda od
+    then LPmss = for (x,lambda) in xlambdas_sc
+    	       	 do LPm_table.LPm_entry(Gsc,x.involution, ratvec_as_vec(lambda+x.involution*lambda))
+		 od
+    then old_facet_verbose = facet_verbose, old_time_verbose = time_verbose,
+    	 old_test_verbose = test_verbose, old_test_slightly_verbose = test_slightly_verbose
+    then () = facet_verbose:=false; time_verbose:=false; test_verbose:=false; test_slightly_verbose:=false
+    then () = if unip_flag
+    	      then unipotents_to_hash(G,UhashG)
+	      fi
+    then () = if coh_ind_flag
+    	      then coh_ind_unip_long(G,UhashG)
+	      fi
+    then () = if disconn_flag
+    	      then for j:UhashG.size()
+	      	   do for psc in sc_lifts(UhashG.index(j), Gsc, M)
+		      do Uhash.match(psc)
+		      od
+		   od
+	      fi
+    then xlambdatimes = [int]: null(#xlambdas)
+    then answerCards = [int]: null(#xlambdas) {number of unitary parameters found}
+    then oldUhash = Uhash.size()
+    then () = if #global_facets = 0 or #global_facets[0] != LPm_table.FPP_vertex_data(Gsc).list.#
+    	      then global_facets := low_FPP_facets(G)
+	      fi
+    then () = if by_zero_flag and (#global_facets_by_zero = 0 or #global_facets_by_zero[0] !=
+    	      	 LPm_table.FPP_vertex_data(Gsc).list.#) {#vd_sc.list)}
+    	      then global_facets_by_zero := low_FPP_facets_by_zero(global_facets)
+	      fi
+    then current = elapsed_ms(), oldUhash = UhashG.size(), currentUhash = Uhash.size(), formerUhash = Uhash.size(),
+    	 	   oldUcounter = unitary_test_counter.use_count(), currentUcounter = unitary_test_counter.use_count()
+		   {start_min_L_bottom_factors = minBottomData.min_L_bottom_factors_time()}
+    then () = for (x,lambda)@k in xlambdas
+    	      do {xlambdas}
+                 let ()=prints("entry number ",k,new_line,"(x,lambda)=(",x,",",lambda,")",new_line) in
+	 	 let start = elapsed_ms(), startUhash = Uhash.size(), (x_sc,lambda_sc) = xlambdas_sc[k],
+		     		   startUcounter = unitary_test_counter.use_count(), theta = x.involution,
+				   startUparamhash = Uparamhash.size(), startmorebad = more_bad_hash.size()
+		 then (Lvd, Perm2, mapAct) = LPmss[k] {already lives on Gsc}
+		 then LF = if by_zero_flag
+		      	   then localFD_1Dirac2_by_zero(x_sc, lambda_sc, Lvd, Perm2, mapAct, global_facets_by_zero)
+			   else localFD_1Dirac2(x_sc, lambda_sc, Lvd, Perm2, mapAct, global_facets)
+			   fi
+		 in if #LF[0] = 0 then ()
+		    else if every_lambda_deets_flag
+			 then facet_verbose := old_facet_verbose; time_verbose := old_time_verbose;
+			      test_verbose :=old_test_verbose; test_slightly_verbose := old_test_slightly_verbose
+			 fi;
+			 let answer = local_test_GEO_hash_bottom_layer(x_sc, lambda_sc,
+			     LPm_table.FPP_vertex_data(Gsc), Lvd, LF, pol_hash, Uhash)
+			 then () = answerCards[k] := #answer
+			 then () = for p in answer do Uparamhash.match(p) od
+   		    	 then () = current := elapsed_ms(); currentUhash := Uhash.size();
+			       	    currentUcounter := unitary_test_counter.use_count()
+    		 	 then () = xlambdatimes[k] := current - start
+    			 in if every_lambda_flag
+	      		    then prints("  ",print_time_string(xlambdatimes[k]),
+			   	" = time for (x,lambda) = (", xnums[k], ",",k,",",lambdas[k],"), ht = ",
+				  height(parameter(x,lambda,0*lambda)), ", L = ", let (Q,) =
+				  theta_stable_quasi_data(parameter(x,lambda,0*lambda)) in Q.Levi,
+				  ",",test_string);
+			         prints("    #LF = ", for L in LF do #L od, "; #unitary params = ", answerCards[k],
+				 ", #new unitary = ", Uhash.size() - startUhash,
+				 ", #tests = ", unitary_test_counter.use_count() - startUcounter,
+				 ", #Params missed by more = ", more_bad_hash.size() - startmorebad);
+				 prints("  ------------------")
+			    fi
+		    fi
+		 od{xlambdas}
+    then () = if disconn_flag
+	      then for j: Uhash.size()
+		   do for p in sc_descends(Uhash.index(j), G, M)
+		      do UhashG.match(p)
+		      od
+		   od
+	       fi
+    then () = facet_verbose:=old_facet_verbose; time_verbose:=old_time_verbose;
+    	      test_verbose:=old_test_verbose; test_slightly_verbose:=old_test_slightly_verbose
+    then longest = max_loc(xlambdatimes)
+    in prints(new_line,"Total time = ", print_time_string(current-start),
+       	      "; max time = ",print_time_string(xlambdatimes[longest]),
+	      " for (x,lambda) = (",  xnums[longest], ",", lambdas[longest],")");
+       prints("Time spent in is_unitary = ",print_time_string(unitaryTime), ", #unitarity tests = ",
+       		unitary_test_counter.use_count(), ", #K-types studied = ", minBottomData.size());
+       prints("Time in derived_factor_K_types_info = ", print_time_string(dfkiTime));
+       prints("Time in min_bottom_factors = ",print_time_string(mbfTime), ", time in min_bottom_elim_factors = ",print_time_string(mbefTime));
+       prints("Time in bottom layer branching = ",print_time_string(rf_sig_tables.bottom_branch_time()),
+       		    ", time in bottom layer sig = ", print_time_string(rf_sig_tables.bottom_sig_time()));
+       if more_flag then prints("Time in bottom_factors = ", print_time_string(bfTime), ", time in bottom_elim_factors_more = ",
+       	  	    print_time_string(befmoreTime - bfTime), ", more_shift = ", more_shift, ", #Params missed by more = ", more_bad_hash.size()) fi;
+       if surprise_flag and surprise_hash.size() > 0 then prints("  Found ", surprise_hash.size(),
+       	  		    " counterexamples to coh_ind(unitary) = unitary; they're in surprise_hash.") fi;
+       prints("  #hash_def_dumb =", hash_def_dumbCounter.use_count(),
+	      ", #hash2 =", hash2Counter.use_count(), ", #hash_one_level = ", hash_one_levelCounter.use_count(),
+	      ", #hash_bottom_layer =", hash_bottom_layerCounter.use_count());
+       prints("Number of unitary params = ", sum(answerCards));
+       prints("Number of FPP-unitary facets = ",UhashG.size(),
+              ", number found on this run = ", UhashG.size() - oldUhash)
+    fi
+
+set FPP_unitary_hash_bottom_layer([(KGBElt,ratvec)] xlambdas, int max_time) = void:
+    FPP_unitary_hash_bottom_layer(xlambdas, unitary_hash, uparam_hash, max_time)
+
+set FPP_unitary_hash_bottom_layer([KGBElt] xs, Param_hash UhashG, Param_hash Uparamhash,int max_time) = void:
+    if #xs = 0
+    then return ()
+    else let () = if tilde_flag
+    	     	  then xs:= for x in xs ~do x od{; deform_flag:=false}
+    	      	  fi
+    then G = xs[0].real_form
+    then disconn_flag = components_rank(G) > 0, zeroPol = null_module(G), zeroNu = null(G.rank)/1
+    then (Gsc,M) = if disconn_flag
+    	      	   then derived_cover_real_form_info(G)
+	      	   else (G,id_mat(G.rank))
+	      	   fi
+    then xs_sc = if disconn_flag
+    	       	 then for x in xs do inverse_embed_KGB(x, Gsc, M) od
+	      	 else xs
+	      	 fi
+    then Uhash = if disconn_flag
+    	       	 then make_Param_hash()
+		 else UhashG
+		 fi
+    then start = elapsed_ms()
+    then () = unitaryTime := 0
+    then () = dfkiTime := 0
+    then () = if Dirac_flag then prepDirac(Gsc) fi
+    then xnums = for x in xs do let (,m) = %x in m od, xtimes = null(#xs)
+    then pol_hash = make_KTypePol_hash()
+    then old_facet_verbose = facet_verbose, old_time_verbose = time_verbose,
+    	 old_test_verbose = test_verbose, old_test_slightly_verbose = test_slightly_verbose
+    then () = facet_verbose:=false
+    then () = time_verbose:=false
+    then () = test_verbose:=false
+    then () = test_slightly_verbose:=false
+    then () = if unip_flag
+    	      then unipotents_to_hash(G,UhashG)
+	      fi
+    then () = if coh_ind_flag
+    	      then coh_ind_unip_long(G,UhashG)
+	      fi
+    then () = if disconn_flag
+    	      then for j:UhashG.size()
+	      	   do for psc in sc_lifts(UhashG.index(j), Gsc, M)
+		      do Uhash.match(psc)
+		      od
+		   od
+	       fi
+    then times = [int]: null(#xs)
+    then lambdatimes = [[int]]: for j:#xs do [] od
+    then answerCards = [[int]]: for j:#xs do [] od {number of unitary parameters found}
+    then () = if #global_facets = 0 or #global_facets[0] != LPm_table.FPP_vertex_data(G).list.#
+    	      then global_facets := low_FPP_facets(G)
+	      fi
+    then () = global_facets_by_zero := low_FPP_facets_by_zero(global_facets)
+    then current = elapsed_ms()
+    then oldUhash = UhashG.size(), currentUhash = Uhash.size(), formerUhash = Uhash.size(),
+    	 oldUcounter = unitary_test_counter.use_count(), currentUcounter = unitary_test_counter.use_count()
+    then () = for x@j in xs
+    	      do {xs}
+	 let former_time = current, formerUhash = currentUhash, formerUcounter = currentUcounter, x_sc = xs_sc[j],
+	     startmorebadx = more_bad_hash.size()
+	 then twists = all_lambda_differential_0(x)
+	 then LPm_entries = [(ratvec, Lvd_Perm2_mapAct)]: LPm_table.LPm_entries(G, x.involution)
+	 then good_entries = for (lambda0,entry) in LPm_entries
+	      	       	      do  if 1*parameter(x,lambda0,zeroNu) != zeroPol
+		       	      	  then [(lambda0,entry)]
+			   	  else []
+			   	  fi
+		       	      od.##
+	 then lambdas = [ratvec]:
+	      for (lambda0,) in good_entries
+	      do for tau in twists
+	      	 do lambda0+M*tau
+		 od
+	      od.##
+    	 then Ncases = #lambdas
+	 then tempanswerCards = null(Ncases)
+	 then templambdatimes = null(Ncases)
+	 then () = if every_KGB_flag
+      	      	   then prints("     start KGBElt #", xnums[j], ", #lambdas = ",Ncases,
+		   	       " Uhash.size() = ", Uhash.size(), ", running time = ",
+			       print_time_string(elapsed_ms() - start));
+		   	prints("  ------------------")
+        	   fi
+	 then () = for (lambda1,(Lvd1,Perm2,mapAct)) @k in good_entries
+	      	   do let lambda0 = M*lambda1
+		      then Lvd = if disconn_flag
+		      	      	 then to_vertex_data(for v in Lvd1.list do M*v od)
+				 else Lvd1
+				 fi
+		      then () =
+		      for tau@ell in twists
+                      do let startlambda = elapsed_ms(), startUhash = Uhash.size(),
+		      	     startUcounter = unitary_test_counter.use_count(), index = k*#twists + ell,
+			     startUparamhash = Uparamhash.size(), startmorebadlambda = more_bad_hash.size()
+			 then LF = if by_zero_flag
+		      	      	   then localFD_1Dirac2_by_zero(x_sc, lambda0+M*tau, Lvd, Perm2,
+						     mapAct, global_facets_by_zero)
+			   	   else localFD_1Dirac2(x_sc, lambda0+M*tau, Lvd, Perm2, mapAct,
+						     global_facets)
+			   	   fi
+			 in if #LF[0] = 0
+			    then []
+                            else if every_lambda_deets_flag
+			    	 then facet_verbose := old_facet_verbose; time_verbose := old_time_verbose;
+				      test_verbose :=old_test_verbose; test_slightly_verbose :=
+				      old_test_slightly_verbose
+				 fi;
+				 let answer = local_test_GEO_hash_bottom_layer(x_sc, lambda0+M*tau,
+				     	    LPm_table.FPP_vertex_data(Gsc), Lvd, LF, pol_hash, Uhash)
+			  	 then () = tempanswerCards[index] := #answer
+			  	 then () = for p in answer do Uparamhash.match(p) od
+				 then () = if every_lambda_deets_flag
+			    	      	   then facet_verbose := false; time_verbose := false;
+				 	   	test_verbose := false; test_slightly_verbose := false
+				 	   fi
+ 			 	 then () = templambdatimes [index] := elapsed_ms() - startlambda
+			 	 in if every_lambda_flag
+				    then prints("  ",print_time_string(templambdatimes[index]),
+			   	    " = time for (x,lambda) = (", xnums[j], ",", k*#twists + ell, "), ht = ",
+				    height(parameter(x,lambda0+M*tau,0*tau)),", L = ",
+				    let (Q,) = theta_stable_quasi_data(parameter(x,lambda0+M*tau,0*tau))
+				    in Q.Levi, ",",test_string);
+				         if more_flag
+					 then prints("    #LF = ", for L in LF do #L od, ", #unitary params = ",
+					      	tempanswerCards[index], ", #new unitary = ", Uhash.size() - startUhash,
+						", #tests = ", unitary_test_counter.use_count() - startUcounter,
+						", more_shift = ",more_shift, ", #Params missed by more = ",more_bad_hash.size() - startmorebadlambda)
+					 else prints("    #LF = ", for L in LF do #L od, ", #unitary params = ",
+					      	tempanswerCards[index],
+			     	                ", #new unitary = ", Uhash.size() - startUhash,
+						", #tests = ", unitary_test_counter.use_count() - startUcounter)
+					 fi ;
+
+					 prints("  ------------------")
+				    fi
+			       fi
+                          od {twists}
+	         in ()
+                 od {good_entries} {would be easy enough to get [Param] for each (x,lambda), but for now
+		       just put unitary reps in Uhash}
+    	   then () = if disconn_flag
+	   	     then for j: Uhash.size()
+		     	  do for p in sc_descends(Uhash.index(j), G, M)
+			     do UhashG.match(p)
+			     od
+			  od
+		     fi
+            then () = current := elapsed_ms(); currentUhash := Uhash.size();  times[j] := current -former_time;
+	   	     lambdatimes[j] := templambdatimes; currentUcounter := unitary_test_counter.use_count();
+		     answerCards[j] := tempanswerCards
+	   then longLambdaLoc = max_loc(templambdatimes)
+           then () = if every_KGB_flag
+                     then  prints("     time for KGBElt ",xnums[j]," was ",
+                          print_time_string(times[j]), "; longest lambda = ",
+			  print_time_string(templambdatimes[longLambdaLoc]),
+			  " for #", longLambdaLoc, " = ",lambdas[longLambdaLoc]);
+			  if more_flag then prints("       more_shift = ", more_shift, ", #Params missed by more for this x = ",more_bad_hash.size() - startmorebadx) fi;
+			  prints("     #unitary params = ", sum(tempanswerCards), ", #new unitary facets = ",
+			     currentUhash - formerUhash, ", #tests = ",
+		     	     currentUcounter - formerUcounter, ", #def lookups = ",
+		      	     deformLookupCounter.use_count(), ", #def calcs = ",
+		     	     deformCalcCounter.use_count())
+                     fi
+           in ()
+         od {xs}
+    then () = facet_verbose:=old_facet_verbose; time_verbose:=old_time_verbose; test_verbose:=old_test_verbose;
+    	      test_slightly_verbose:=old_test_slightly_verbose
+    then longest = max_loc(times)
+    in prints("----------------");
+       prints("Total time = ", print_time_string(current-start),
+              "; max time = ",print_time_string(times[longest]),
+              " for KGBElt ",xnums[longest]);
+       prints("Time spent in is_unitary = ",print_time_string(unitaryTime), ", number of unitarity tests = ",
+       		unitary_test_counter.use_count(), ", #K-types studied = ", minBottomData.size());
+       prints("Time in derived_factor_K_types_info = ",print_time_string(dfkiTime));
+       prints("Time in min_bottom_factors = ",print_time_string(mbfTime), ", time in min_bottom_elim_factors = ", print_time_string(mbefTime));
+       prints("Time in bottom layer branching = ",print_time_string(rf_sig_tables.bottom_branch_time()),
+       		    ", time in bottom layer sig = ", print_time_string(rf_sig_tables.bottom_sig_time()));
+       if more_flag then prints("Time in bottom_factors = ", print_time_string(bfTime), ", time in bottom_elim_factors_more = ",
+       	  	    print_time_string(befmoreTime - bfTime), ", more_shift = ", more_shift, ", #Params missed by more = ", more_bad_hash.size()) fi;
+       if surprise_flag and surprise_hash.size() > 0 then prints("Found ", surprise_hash.size(),
+       	  		    " counterexamples to coh_ind(unitary) = unitary; they're in surprise.hash.") fi;
+       prints("  #hash_def_dumb =", hash_def_dumbCounter.use_count(), ", #hash2 = ", hash2Counter.use_count(),
+	      ", #hash_one_level = ", hash_one_levelCounter.use_count(), ", #hash_bottom_layer = ", hash_bottom_layerCounter.use_count());
+       prints("Number of unitary params = ", sum(for list in answerCards do sum(list) od));
+        prints("Number of known FPP-unitary facets = ",UhashG.size(),
+       	      ", number found on this run = ", UhashG.size() - oldUhash)
+   fi
+
+set FPP_unitary_hash_bottom_layer([KGBElt] xs, int max_time) = void:
+    FPP_unitary_hash_bottom_layer(xs, unitary_hash, uparam_hash, max_time)
+
+set FPP_unitary_hash_bottom_layer(RealForm G,int max_time) = void:
+    FPP_unitary_hash_bottom_layer(KGB(G), max_time)
