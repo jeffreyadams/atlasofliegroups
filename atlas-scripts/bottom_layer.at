@@ -1,3 +1,6 @@
+{This version fails for U(3,3): finds only 804 unitary facets, instead
+of the 810 it's supposed to.}
+
 < induction.at {for theta_stable_quasi_data}
 < unity.at {for deform_support}
 < hermitian.at {for to_ht}
@@ -301,9 +304,10 @@ set RF_code = true
 
 set rf_sig_tables = make_RF_sig_tables()
 
+set nKeTime = int: 0
 {pick the distinguished one making mu+2\rho_c dominant}
 set natural_KGB_elt(KType mu) = KGBElt:
-  let (,x, hwt) = highest_weight(mu)
+  let start = elapsed_ms(), (,x, hwt) = highest_weight(mu)
   then rd=root_datum(x), theta = x.involution
   then (w,hwt_1) = from_dominant
       (rd,(1+theta)*hwt/2) { make |hwt| zero on the split part of |h| }
@@ -312,6 +316,7 @@ set natural_KGB_elt(KType mu) = KGBElt:
   while rho_K(x) is in \t^*, need the former
 }
   then hwt_2=hwt_1+tworho_K (x_1)
+  then () = nKeTime+:= elapsed_ms() - start
   in cross(x_1,chamber(rd,hwt_2))
 
 {If Q = LU is a parabolic represented by KGPElt (S,x), then S is the set of simple roots of L; so
@@ -332,8 +337,10 @@ set min_bottom_factors_old(KType mu) = ([[(KType, KType)]], [int]):
     then dermuLs = derived_factor_K_types2(muL) {each dermuLj is on a simple derived derLj}
     then derLs = derived_simple_factors(L)
     then DLjs = for derLj in derLs do next_heights(derLj) od
-    then xcG = {embed_KGB(xcL,G)} natural_KGB_elt(mu){this is needed to make shifts for L equal to shifts for G}
-    then xcL = {KGB(L,0)} {natural_KGB_elt(muL)} inverse_embed_KGB(xcG,L)
+    {then xcG = {embed_KGB(xcL,G)} natural_KGB_elt(mu){this is needed to make shifts for L equal to shifts for G}
+    then xcL = {KGB(L,0)} {natural_KGB_elt(muL)} inverse_embed_KGB(xcG,L)}
+    then xcL = natural_KGB_elt(muL){ KGB(L,0)}
+    then xcG = embed_KGB(xcL,G)
     then derxcLs = derived_factor_KGBs2(xcL)
     then muwt=K0_param(mu,xcG).lambda_minus_rho {size is rank(K)}
     then K0 = K_0(xcG)
@@ -468,7 +475,7 @@ set make_min_bottom_data_old () = min_bottom_data_old:
 set minBottomDataOld = make_min_bottom_data_old()
 
 {this time the results are a list of (Qmin,[tau, [dertauLj]). Second argument is natural_KGB_elt(mu)}
-set min_bottom_factors(KType mu, KGBElt xcG) = QKL_bottom_data:
+set min_bottom_factors(KType mu{, KGBElt xcG}) = QKL_bottom_data:
     let p = parameter(mu), start = elapsed_ms()
     then (Q,pL) = theta_stable_quasi_data(p), G = p.real_form, ProjK = projection_to_K_matrix(mu.inner_class)
     then SFRP = simple_factor_root_partition(Q)
@@ -477,8 +484,8 @@ set min_bottom_factors(KType mu, KGBElt xcG) = QKL_bottom_data:
     then derLs = derived_simple_factors(L)
     then derProjKinvs = for derL in derLs do right_inverse(projection_to_K_matrix(derL)) od
     then DLjs = for derLj in derLs do next_heights(derLj) od
-    {then xcG = {embed_KGB(xcL,G)} natural_KGB_elt(mu)} {this is needed to make shifts for L equal to shifts for G}
-    then xcL = {KGB(L,0)} {natural_KGB_elt(muL)} inverse_embed_KGB(xcG,L)
+    then xcL = {KGB(L,0)} natural_KGB_elt(muL) {inverse_embed_KGB(xcG,L)}
+    then xcG = embed_KGB(xcL,G) {natural_KGB_elt(mu)} {this is needed to make shifts for L equal to shifts for G}
     then derxcLs = derived_factor_KGBs2(xcL)
     then muwt=K0_param(mu,xcG).lambda_minus_rho {size is rank(K)}
     then K0 = K_0(xcG)
@@ -519,8 +526,8 @@ set min_bottom_factors(KType mu, KGBElt xcG) = QKL_bottom_data:
     then () = mbfTime +:= elapsed_ms() - start
     in (Q,LKData) 
 
-set min_bottom_factors(KType mu, KGBElt xcG) = QKL_bottom_data:
-    min_bottom_factors(mu, natural_KGB_elt(mu))
+{set min_bottom_factors(KType mu, KGBElt xcG) = QKL_bottom_data:
+    min_bottom_factors(mu, natural_KGB_elt(mu))}
 
 {table of bottom layer data indexed by KType}
 set_type
@@ -530,7 +537,7 @@ set_type
   , (KType->LK_data) entry
   , (KType->int) G_min_height {largest height of a G K-type in entry; at least height(mu)}
   , (KType->vec) L_min_heights {bounds (not nec achieved) of derLj\cap K-types in entry}
-  , (KType->KGBElt) natural_KGB {result of natural_KGB_elt(mu)}
+{  , (KType->KGBElt) natural_KGB} {result of natural_KGB_elt(mu)}
   , (int -> KType) K_type_index
   , (int -> LK_data) data_index
   )
@@ -541,35 +548,35 @@ set make_min_bottom_data () = min_bottom_data:
    then bottom_data = [LK_data]:[] {one entry for each K-type}
    then heights = vec: [] {one for each K-type}
    then Lheights = [vec]: [] {one for each K-type; size #simple factors of L}
-   then natural_KGBs = [KGBElt]: [] {one for each K-type; value of natural_KGB_elt}
+   {then natural_KGBs = [KGBElt]: []} {one for each K-type; value of natural_KGB_elt}
    then clear() = void:
        let () = K_type_hash.clear()
        then () = bottom_data:=[]
        then  () = heights := []
        then () = Lheights :=[]
-       then () = natural_KGBs := []
+       {then () = natural_KGBs := []}
        in ()
    then enter(KType mu) = int:
        let M = K_type_hash.size()
        then m = K_type_hash.match(mu)
        then () = if m = M
 	     	 then let start = elapsed_ms()
-		      then xcG = natural_KGB_elt(mu)
-		      then (,mbf) = min_bottom_factors(mu,xcG)
+		      {then xcG = natural_KGB_elt(mu)}
+		      then (,mbf) = min_bottom_factors(mu{,xcG})
 		      then () = bottom_data#:= mbf
 		      then () = heights#:= max(for (tau,) in mbf
 					       do height(tau)
 					       od)
 		      then (,list) = mbf[0]
-		      then () =  Lheights#:= for dertauL in list
+		      in Lheights#:= for dertauL in list
 				     	     do next_heights(dertauL.real_form)
 				     	     od
-		      in natural_KGBs#:= xcG
+		      {in natural_KGBs#:= xcG}
 		 fi
         then () = assert(#bottom_data = K_type_hash.size(),"min_bottom_data damaged")
 	then () = assert(#heights = #bottom_data,"min_bottom_data damaged")
 	then () = assert(#Lheights = #bottom_data,"min_bottom_data damaged")
-	then () = assert(#natural_KGBs = #bottom_data,"min_bottom_data damaged")
+	{then () = assert(#natural_KGBs = #bottom_data,"min_bottom_data damaged")}
 	in m
    in
    ( ( -> int): { size } @int: K_type_hash.size()
@@ -589,11 +596,11 @@ set make_min_bottom_data () = min_bottom_data:
 	let m = enter(mu)
 	in Lheights[m]
      end
-   , (KType->KGBElt): {natural_KGB} (KType mu) KGBElt:
+{   , (KType->KGBElt): {natural_KGB} (KType mu) KGBElt:
      begin
 	let m = enter(mu)
 	in natural_KGBs[m]
-     end
+     end}
    , (int -> KType): {K_type_index} (int j): K_type_hash.index(j)
    , (int -> LK_data): {data_index} (int j): bottom_data[j]
   )
@@ -1015,8 +1022,9 @@ set bfTime = int: 0
 set bottom_factors(KType mu, QK_bottom_data (Q,taus)) = QKL_bottom_data: {(KGPElt,[(KType, [KType])])}
     let p = parameter(mu), {Dshift = D - height(mu),} start = elapsed_ms()
     then (Q0,pL0) = theta_stable_quasi_data(p), G = p.real_form, L = Q.Levi
-    then xcG = minBottomData.natural_KGB(mu), L0 = Q0.Levi
-    then xcL0 = inverse_embed_KGB(xcG, L0) {x_min(Q0)}
+    then L0 = Q0.Levi, muL0 = LKT(pL0)
+    then xcL0 = natural_KGB_elt(muL0){KGB(L0,0)}{inverse_embed_KGB(xcG, L0)} {x_min(Q0)}
+    then xcG = embed_KGB(xcL0,G){minBottomData.natural_KGB(mu),} 
     then pL = first_param(theta_induce_standard(pL0,L)), SFRP = simple_factor_root_partition(Q)
     then muL = LKT(pL)
     then dermuLs = derived_factor_K_types2(muL) {each dermuLj is on a simple derived derLj}
