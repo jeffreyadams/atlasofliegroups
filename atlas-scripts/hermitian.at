@@ -287,7 +287,7 @@ rv=null_K_module(p.real_form) then
 ()=for c@q in P do
   let t=elapsed_ms()-start_time in
   if t>max_time then
-      let ()=prints("timed out (c_form_irreducible), time=",t) in
+      let ()=prints("TIMED OUT (c_form_irreducible), time=",t) in
       rv:=K_type_pol(0*p); timedout:=t;break
   else
       rv+:=c*orientation_nr_term(ori_nr_p,q)*c_form_std(q)
@@ -301,7 +301,7 @@ set hermitian_form_irreducible (Param p,int max_time) = (KTypePol,int):
     in if timedout=-1 then
      (cfi.convert_cform_hermitian,timedout)
     else
-      prints("timed out (hermitian_form_irreducible), time=", timedout);(K_type_pol(p*0),timedout)
+      prints("TIMED OUT (hermitian_form_irreducible), time=", timedout);(K_type_pol(p*0),timedout)
     fi
   else
    check_hermitian(p,true); (twisted_c_form_irreducible(p).convert_cform_hermitian,-1)
@@ -384,7 +384,7 @@ else
    if timedout=-1
        then (hf.is_pure,-1)    {succeeded}
    else
-       prints("timed out (is_unitary), time=",timedout);
+       prints("TIMED OUT (is_unitary), time=",timedout);
        (false,timedout)  {failed}
    fi
 fi
@@ -853,19 +853,21 @@ set make_unitarity_bool_hash () = unitarity_bool_hash:
 set unitarity_hash = make_unitarity_bool_hash()
 
 set is_unitary_hash(Param p,int max_time) = (bool,int):
+    let ()=prints("In is_unitary_hash, max_time=", max_time) in 
     if not is_hermitian(p) then return (false,-1) fi;
     let (,pL) = wkgood_Q(p), G=p.real_form
     then derpLs = derived_factor_params2(pL)
-    then timedout=-1
     in if pL=p 
-        then let (answer,timed_out)=unitarity_hash.entry_timeout(p,max_time) in
+        then let (answer,timedout)=unitarity_hash.entry_timeout(p,max_time) in
+        let ()=prints("timedout=", timedout) in
         if
            timedout=-1 then (answer,-1)
         else
-           prints("timed out: ", timedout);
+           prints("TIMED OUT: ", timedout);
            (false,timedout)
         fi
-    else let answer = all([(->bool)] : for derpL in derpLs do @bool: unitarity_hash.entry(derpL) od)
+    else
+       let ()=prints("is_unitary_hash, other case") in     let answer = all([(->bool)] : for derpL in derpLs do @bool: unitarity_hash.entry(derpL) od)
     in if
        answer then (answer,-1)
     else

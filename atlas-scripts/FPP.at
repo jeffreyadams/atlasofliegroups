@@ -204,6 +204,8 @@ set bad(Param p)=bool:let (,pL)=theta_stable_quasi_data(p) in is_unitary(pL)
 
 set FPP_unitary_hash_bottom_layer(RealForm G, [[(KGBElt, ratvec)]] xlambdalists,int list_number,int max_time)= [Param]:
 let start=unitary_hash.size() then
+()=prints("FPP_unitary_hash_bottom_layer(G,xlambdalists,list_number,max_time)") then
+()=prints("#xlambdalists: ", #xlambdalists, new_line, "listl_number: ", list_number) then 
 ()=prints("Starting size of unitary_hash: ", start) then
 list=xlambdalists[list_number] then
 {()=FPP_unitary_hash_bottom_layer(list) then}
