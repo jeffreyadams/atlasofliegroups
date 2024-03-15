@@ -606,7 +606,7 @@ set FPP_unitary_hash_bottom_layer([KGBElt] xs, Param_hash UhashG, Param_hash Upa
     	     	  then xs:= for x in xs ~do x od{; deform_flag:=false}
     	      	  fi
     then G = xs[0].real_form
-    then disconn_flag = components_rank(G) > 0, zeroPol = null_module(G), zeroNu = null(G.rank)/1
+    then disconn_flag = components_rank(G) > 0
     then (Gsc,M) = if disconn_flag
     	      	   then derived_cover_real_form_info(G)
 	      	   else (G,id_mat(G.rank))
@@ -619,7 +619,7 @@ set FPP_unitary_hash_bottom_layer([KGBElt] xs, Param_hash UhashG, Param_hash Upa
     	       	 then make_Param_hash()
 		 else UhashG
 		 fi
-    then start = elapsed_ms()
+    then start = elapsed_ms(), zeroPol = null_module(G), zeroNu = null(G.rank)/1
     then () = unitaryTime := 0
     then () = dfkiTime := 0
     then () = if Dirac_flag then prepDirac(Gsc) fi
@@ -669,7 +669,7 @@ set FPP_unitary_hash_bottom_layer([KGBElt] xs, Param_hash UhashG, Param_hash Upa
 	 then lambdas = [ratvec]:
 	      for (lambda0,) in good_entries
 	      do for tau in twists
-	      	 do lambda0+M*tau
+	      	 do M*(lambda0+tau)
 		 od
 	      od.##
     	 then Ncases = #lambdas
