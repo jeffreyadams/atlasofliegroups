@@ -308,7 +308,7 @@ set tworho_K (KGBElt x) = ratvec:
 in rank 6 or 7 (E7_s?? U(3,3)?? where the new projection led to a bad answer;
 but now I can't find it, so I'm back to defaulting to the new one. It's a tiny
 bit faster.}
-set old_proj_flag = false
+set old_proj_flag = true
 
 set project_on_dominant_cone_old (KGBElt x, ratvec mu) = (KGBElt,ratvec,ratvec):
 { let ()=prints("project_on_dominant_cone with x=", x, " mu=", mu) in }
@@ -349,6 +349,8 @@ in (cross(x_1,y),mu_3, inverse(y)*mu_3). { initial data; apply recursive functio
        fi
    )
 
+{this fails in function min_bottom_factors(mu) for G=Spin(5,7),
+mu = K_type(170,[0,-1,-3,0,0,0] - [1,1,1,1,1,1])}
 set project_on_dominant_cone(KGBElt x, ratvec mu) = (KGBElt,ratvec,ratvec):
     if old_proj_flag
     then  project_on_dominant_cone_old(x, mu)
