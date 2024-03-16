@@ -1,3 +1,6 @@
+{This version fails for U(3,3): finds only 804 unitary facets, instead
+of the 810 it's supposed to.}
+
 < induction.at {for theta_stable_quasi_data}
 < unity.at {for deform_support}
 < hermitian.at {for to_ht}
@@ -301,9 +304,10 @@ set RF_code = true
 
 set rf_sig_tables = make_RF_sig_tables()
 
+set nKeTime = int: 0
 {pick the distinguished one making mu+2\rho_c dominant}
 set natural_KGB_elt(KType mu) = KGBElt:
-  let (,x, hwt) = highest_weight(mu)
+  let start = elapsed_ms(), (,x, hwt) = highest_weight(mu)
   then rd=root_datum(x), theta = x.involution
   then (w,hwt_1) = from_dominant
       (rd,(1+theta)*hwt/2) { make |hwt| zero on the split part of |h| }
@@ -312,6 +316,7 @@ set natural_KGB_elt(KType mu) = KGBElt:
   while rho_K(x) is in \t^*, need the former
 }
   then hwt_2=hwt_1+tworho_K (x_1)
+  then () = nKeTime+:= elapsed_ms() - start
   in cross(x_1,chamber(rd,hwt_2))
 
 {If Q = LU is a parabolic represented by KGPElt (S,x), then S is the set of simple roots of L; so
@@ -332,8 +337,10 @@ set min_bottom_factors_old(KType mu) = ([[(KType, KType)]], [int]):
     then dermuLs = derived_factor_K_types2(muL) {each dermuLj is on a simple derived derLj}
     then derLs = derived_simple_factors(L)
     then DLjs = for derLj in derLs do next_heights(derLj) od
-    then xcG = {embed_KGB(xcL,G)} natural_KGB_elt(mu){this is needed to make shifts for L equal to shifts for G}
-    then xcL = {KGB(L,0)} {natural_KGB_elt(muL)} inverse_embed_KGB(xcG,L)
+    {then xcG = {embed_KGB(xcL,G)} natural_KGB_elt(mu){this is needed to make shifts for L equal to shifts for G}
+    then xcL = {KGB(L,0)} {natural_KGB_elt(muL)} inverse_embed_KGB(xcG,L)}
+    then xcL = natural_KGB_elt(muL){ KGB(L,0)}
+    then xcG = embed_KGB(xcL,G)
     then derxcLs = derived_factor_KGBs2(xcL)
     then muwt=K0_param(mu,xcG).lambda_minus_rho {size is rank(K)}
     then K0 = K_0(xcG)
@@ -467,8 +474,8 @@ set make_min_bottom_data_old () = min_bottom_data_old:
 {use this constant one instead of carrying around bott_data}
 set minBottomDataOld = make_min_bottom_data_old()
 
-{this time the results are a list of (Qmin,[tau, [dertauLj]). Second argument is natural_KGB_elt(mu)}
-set min_bottom_factors(KType mu, KGBElt xcG) = QKL_bottom_data:
+{this time the results are a list of (Qmin,[tau, [dertauLj]).}
+set min_bottom_factors(KType mu) = QKL_bottom_data:
     let p = parameter(mu), start = elapsed_ms()
     then (Q,pL) = theta_stable_quasi_data(p), G = p.real_form, ProjK = projection_to_K_matrix(mu.inner_class)
     then SFRP = simple_factor_root_partition(Q)
@@ -477,8 +484,8 @@ set min_bottom_factors(KType mu, KGBElt xcG) = QKL_bottom_data:
     then derLs = derived_simple_factors(L)
     then derProjKinvs = for derL in derLs do right_inverse(projection_to_K_matrix(derL)) od
     then DLjs = for derLj in derLs do next_heights(derLj) od
-    {then xcG = {embed_KGB(xcL,G)} natural_KGB_elt(mu)} {this is needed to make shifts for L equal to shifts for G}
-    then xcL = {KGB(L,0)} {natural_KGB_elt(muL)} inverse_embed_KGB(xcG,L)
+    then xcL = {KGB(L,0)} natural_KGB_elt(muL) {inverse_embed_KGB(xcG,L)}
+    then xcG = embed_KGB(xcL,G) {natural_KGB_elt(mu)} {this is needed to make shifts for L equal to shifts for G}
     then derxcLs = derived_factor_KGBs2(xcL)
     then muwt=K0_param(mu,xcG).lambda_minus_rho {size is rank(K)}
     then K0 = K_0(xcG)
@@ -519,9 +526,6 @@ set min_bottom_factors(KType mu, KGBElt xcG) = QKL_bottom_data:
     then () = mbfTime +:= elapsed_ms() - start
     in (Q,LKData) 
 
-set min_bottom_factors(KType mu, KGBElt xcG) = QKL_bottom_data:
-    min_bottom_factors(mu, natural_KGB_elt(mu))
-
 {table of bottom layer data indexed by KType}
 set_type
 [min_bottom_data =
@@ -530,7 +534,7 @@ set_type
   , (KType->LK_data) entry
   , (KType->int) G_min_height {largest height of a G K-type in entry; at least height(mu)}
   , (KType->vec) L_min_heights {bounds (not nec achieved) of derLj\cap K-types in entry}
-  , (KType->KGBElt) natural_KGB {result of natural_KGB_elt(mu)}
+{  , (KType->KGBElt) natural_KGB} {result of natural_KGB_elt(mu)}
   , (int -> KType) K_type_index
   , (int -> LK_data) data_index
   )
@@ -541,35 +545,35 @@ set make_min_bottom_data () = min_bottom_data:
    then bottom_data = [LK_data]:[] {one entry for each K-type}
    then heights = vec: [] {one for each K-type}
    then Lheights = [vec]: [] {one for each K-type; size #simple factors of L}
-   then natural_KGBs = [KGBElt]: [] {one for each K-type; value of natural_KGB_elt}
+   {then natural_KGBs = [KGBElt]: []} {one for each K-type; value of natural_KGB_elt}
    then clear() = void:
        let () = K_type_hash.clear()
        then () = bottom_data:=[]
        then  () = heights := []
        then () = Lheights :=[]
-       then () = natural_KGBs := []
+       {then () = natural_KGBs := []}
        in ()
    then enter(KType mu) = int:
        let M = K_type_hash.size()
        then m = K_type_hash.match(mu)
        then () = if m = M
 	     	 then let start = elapsed_ms()
-		      then xcG = natural_KGB_elt(mu)
-		      then (,mbf) = min_bottom_factors(mu,xcG)
+		      {then xcG = natural_KGB_elt(mu)}
+		      then (,mbf) = min_bottom_factors(mu{,xcG})
 		      then () = bottom_data#:= mbf
 		      then () = heights#:= max(for (tau,) in mbf
 					       do height(tau)
 					       od)
 		      then (,list) = mbf[0]
-		      then () =  Lheights#:= for dertauL in list
+		      in Lheights#:= for dertauL in list
 				     	     do next_heights(dertauL.real_form)
 				     	     od
-		      in natural_KGBs#:= xcG
+		      {in natural_KGBs#:= xcG}
 		 fi
         then () = assert(#bottom_data = K_type_hash.size(),"min_bottom_data damaged")
 	then () = assert(#heights = #bottom_data,"min_bottom_data damaged")
 	then () = assert(#Lheights = #bottom_data,"min_bottom_data damaged")
-	then () = assert(#natural_KGBs = #bottom_data,"min_bottom_data damaged")
+	{then () = assert(#natural_KGBs = #bottom_data,"min_bottom_data damaged")}
 	in m
    in
    ( ( -> int): { size } @int: K_type_hash.size()
@@ -589,11 +593,11 @@ set make_min_bottom_data () = min_bottom_data:
 	let m = enter(mu)
 	in Lheights[m]
      end
-   , (KType->KGBElt): {natural_KGB} (KType mu) KGBElt:
+{   , (KType->KGBElt): {natural_KGB} (KType mu) KGBElt:
      begin
 	let m = enter(mu)
 	in natural_KGBs[m]
-     end
+     end}
    , (int -> KType): {K_type_index} (int j): K_type_hash.index(j)
    , (int -> LK_data): {data_index} (int j): bottom_data[j]
   )
@@ -1015,8 +1019,9 @@ set bfTime = int: 0
 set bottom_factors(KType mu, QK_bottom_data (Q,taus)) = QKL_bottom_data: {(KGPElt,[(KType, [KType])])}
     let p = parameter(mu), {Dshift = D - height(mu),} start = elapsed_ms()
     then (Q0,pL0) = theta_stable_quasi_data(p), G = p.real_form, L = Q.Levi
-    then xcG = minBottomData.natural_KGB(mu), L0 = Q0.Levi
-    then xcL0 = inverse_embed_KGB(xcG, L0) {x_min(Q0)}
+    then L0 = Q0.Levi, muL0 = LKT(pL0)
+    then xcL0 = natural_KGB_elt(muL0){KGB(L0,0)}{inverse_embed_KGB(xcG, L0)} {x_min(Q0)}
+    then xcG = embed_KGB(xcL0,G)
     then pL = first_param(theta_induce_standard(pL0,L)), SFRP = simple_factor_root_partition(Q)
     then muL = LKT(pL)
     then dermuLs = derived_factor_K_types2(muL) {each dermuLj is on a simple derived derLj}
@@ -1029,7 +1034,7 @@ set bottom_factors(KType mu, QK_bottom_data (Q,taus)) = QKL_bottom_data: {(KGPEl
     then muwt = {highest_weight(mu,xcG).mu} K0_param(mu,xcG).lambda_minus_rho,
     	      	muLwt = K0_param(muL,xcL).lambda_minus_rho
     then tau_shifts = for tau in taus do {highest_weight(tau,xcG).mu} K0_param(tau,xcG).lambda_minus_rho - muwt od
-    then tauLs = for shift in tau_shifts do K_types(K_highest_weight_from_K0_weight(xcL,muLwt+shift))[0] od
+    then tauLs = for shift in tau_shifts do K_type(K_highest_weight_from_K0_weight(xcL,muLwt+shift)) od
     then () = bfTime+:= elapsed_ms() - start
     in (Q, for tau@k in taus
        	   do (tau, derived_factor_K_types2(tauLs[k]))
@@ -1039,7 +1044,7 @@ set bottom_factors(KType mu, [QK_bottom_data] data) = [QKL_bottom_data]: {[(KGPE
     for (Q,taus) in data do bottom_factors(mu, (Q,taus)) od
 
 {false guarantees not unitary, but true does not guarantee unitary}
-{LKdata[j] is [(tauj,tauLj)]: tauLj is an Lj\cap K-type inducing to a bottom layer tauj of p.}
+{LKdata[j] is [(tauj,tauLj)]: tauLj are thes Lj\cap K-types inducing to a bottom layer tauj of p.}
 set bottom_elim_factors(Param p, KType mu, QKL_bottom_data (Q,LKdata)) = bool:
     let start = elapsed_ms(), {answers = for k:#LKdata do false od,}
     	(,pL0) = theta_stable_quasi_data(p), L = Q.Levi, pmu = param(mu)
@@ -1054,7 +1059,7 @@ set bottom_elim_factors(Param p, KType mu, QKL_bottom_data (Q,LKdata)) = bool:
     {then () = if is_unitary_hash(pL) then return true fi}{seems to slow things}
     then derpLjs = derived_factor_params2(pL){one for each derived simple factor derLj}, muL = LKT(pmuL)
     then dermuLjs = derived_factor_K_types2(muL)
-    then badjs = {#(#derpLjs)}
+    {then badjs = {#(#derpLjs)}
     	       	 for derpLj@j in derpLjs
     	       	 do if is_unitary_hash(derpLj)
 		    then []
@@ -1062,34 +1067,34 @@ set bottom_elim_factors(Param p, KType mu, QKL_bottom_data (Q,LKdata)) = bool:
 		    fi
 		 od.##
     then () = if #badjs = 0 then return true fi
-    then badderpLjs = for j in badjs do derpLjs[j] od
-    then badderxLjs = for badderpLj in badderpLjs do badderpLj.x od
-    then badderLjs = for badderpLj in badderpLjs do badderpLj.real_form od
+    then badderpLjs = for j in badjs do derpLjs[j] od}
+    then derxLjs = for {bad} derpLj in {bad} derpLjs do derpLj.x od
+    then {bad} derLjs = for derpLj in derpLjs do derpLj.real_form od
     {we wish these dermuLjs were LKTs of derpLj; need to twist derpLj to make this true.}
-    then baddermuLjs = for j in badjs
+    {then baddermuLjs = for j in badjs
     	 	       do dermuLjs[j]
-		       od
+		       od}
       {check badderpLj has baddermuLj as a LKT}
-    then () = for badderpLj@k in badderpLjs
+    then () = for {bad}derpLj@j in {bad}derpLjs
       	      	do {assert(not K_type_pol(badderpLj)[baddermuLjs[k]].=,"oops, we needed a twist")}
-		   if K_type_pol(badderpLj)[baddermuLjs[k]].=
-		   then let twistk = all_even_lambda_differential_0(badderLjs[k].dual, - badderxLjs[k].involution.^)
-		   	then () = if bottom_verbose then prints("twisting derpLj needed at p = ",p, ", j = ",badjs[k]) fi
-		   	then twistxLs = let Genx = KGB_elt_gen(badderxLjs[k])
-				      	in for t@i in twistk
+		   if K_type_pol({bad}derpLj)[{bad}dermuLjs[j]].=
+		   then let twistj = all_even_lambda_differential_0({bad}derLjs[j].dual, - {bad}derxLjs[j].involution.^)
+		   	then () = if bottom_verbose then prints("twisting derpLj needed at p = ",p, ", j = ",j) fi
+		   	then twistxLs = let Genx = KGB_elt_gen({bad}derxLjs[j])
+				      	in for t@i in twistj
 			   	      	   do let () = Genx.torus_factor +:= t
 					      {need to force real form}
-			      	      	      in KGB(badderpLj.real_form, KGB_elt(Genx).number) 
+			      	      	      in KGB({bad}derpLj.real_form, KGB_elt(Genx).number) 
 			   	      	   od
-		    	then twistbadderpLks = for yLk in twistxLs
-		    	 	      	do parameter(yLk, badderpLj.lambda, badderpLj.nu)
+		    	then twistderpLjs = for yLj in twistxLs
+		    	 	      	do parameter(yLj, {bad}derpLj.lambda, {bad}derpLj.nu)
 				    	od
-		    	then m = first(for badderqLk in twistbadderpLks
-		    	     	       do K_type_pol(badderqLk)[baddermuLjs[k]] != 0
+		    	then m = first(for derqLj in twistderpLjs
+		    	     	       do K_type_pol(derqLj)[{bad}dermuLjs[j]] != 0
 				       od)
 		    	then () = if m < 0
-		     	       	  then prints("x twisting failed at p = ",p,", k = ",k)
-			       	  else badderpLjs[k] := twistbadderpLks[m]
+		     	       	  then prints("x twisting failed at p = ",p,", j = ",j)
+			       	  else {bad}derpLjs[j] := twistderpLjs[m]
 			       	  fi
 		    	in ()
 		    fi
@@ -1097,30 +1102,35 @@ set bottom_elim_factors(Param p, KType mu, QKL_bottom_data (Q,LKdata)) = bool:
        then DG = max(for (tau,) in LKdata
 		     do height(tau)
 		     od)
-       then DLs = for j in badjs
+       then DLs = for j:#derpLjs
        	    	  do max(for (,list) in LKdata
 		     	 do height(list[j])
 			 od)
 		  od
        then multG = branch_irr(p,DG)
-       then result = all( [(->bool)]: {list of functions, one for each factor Lj}
-	       for j@k in badjs
-	       do
-	       let sigLj =
-	       	   if RF_code
-		   then rf_sig_tables.sig_entry(badderpLjs[k]){, DLs[k])}
-		   else hermitian_form_irreducible(badderpLjs[k])
-		   fi
-	       then () = if int_part(sigLj[baddermuLjs[j]]) = 0
-		       	 then sigLj := s*sigLj
-			 fi
-	       then branchLj = branch_std(sigLj, DLs[k])
-	       in @:all( [(->bool)]:
+       then branchLjs = for derpLj@j in derpLjs
+	       	      	do let sigLj =
+	       	   	       if RF_code
+		   	       then rf_sig_tables.sig_entry(derpLj){, DLs[k])}
+		   	       else hermitian_form_irreducible(derpLj)
+		   	       fi
+			   then () = if int_part(sigLj[dermuLjs[j]]) = 0
+		       	   	     then sigLj := s*sigLj
+			 	     fi
+	       		   in branch_std(sigLj, DLs[j])
+			od
+        then result = all( [(->bool)]: {list of functions, one for each bottom layer K-type tau}
 			for(tau,list) in LKdata
 			do {prints(posLj[tauLj]," ",multG[tauj]);}
-			@bool: int_part(sigLj[list[j]]) >= int_part(multG[tau])
+			   let coeff = Split: 1 {this will be the bottom layer signature at tau}
+			   then () = for tauLj@j in list
+			       	    do {if Lsigs[j][tauLj] = 0
+			     	       then prints(j," ",tauLj," ",Lsigs[j]," ",Lsigs[j])
+			     	       fi;}
+			     	       coeff*:= branchLjs[j][tauLj]
+			  	    od
+			   in @bool: int_part(coeff) >= int_part(multG[tau])
 			od )
-	       od )
         then () = if not result then attest_is_unitary(p,result) fi
 	then () = {mbefTime} befmoreTime +:= elapsed_ms()-start
 	in result
@@ -1138,7 +1148,7 @@ set bottom_elim_factors(Param p, KType mu, int D, KGPElt Q, [(KType,[KType])] LK
     then muL = LKT(pL)
     {then () = if is_unitary_hash(pL) then return true fi}{seems to slow things}
     then derpLjs = derived_factor_params2(pL) {one for each derived simple factor derLj}
-    then badjs = {#(#derpLjs)}
+    {then badjs = {#(#derpLjs)}
     	       	 for derpLj@j in derpLjs
     	       	 do if is_unitary_hash(derpLj)
 		    then []
@@ -1146,37 +1156,40 @@ set bottom_elim_factors(Param p, KType mu, int D, KGPElt Q, [(KType,[KType])] LK
 		    fi
 		 od.##
     then () = if #badjs = 0 then return true fi
-    then badderpLjs = for j in badjs do derpLjs[j] od
-    then badderxLjs = for badderpLj in badderpLjs do badderpLj.x od
-    then badderLjs = for badderpLj in badderpLjs do badderpLj.real_form od
+    then badderpLjs = for j in badjs do derpLjs[j] od}
+    then derxLjs = for derpLj in derpLjs do derpLj.x od
+    then derLjs = for derpLj in derpLjs do derpLj.real_form od
     {we wish these dermuLjs were LKTs of derpLj; need to twist derpLj to make this true.}
-    then baddermuLjs = for j in badjs
-    	 	       do derived_factor_K_types2(muL)[j]
-		       od
-    then DLs = for j in badjs
-       	       do max(for (tau, list) in LKdata {one for each bad j}
+    then dermuLjs = derived_factor_K_types2(muL)
+    then DLs = for j:#derLjs
+       	       do max(for (tau, list) in LKdata {one for each j}
        	    	      do height(list[j])
 		      od)
 	       od
     then multG = branch_irr(p,D)
-    then result = all( [(->bool)]: {list of functions, one for each bad factor derLj}
-	       	       for j@k in badjs
-	       	       do let sigLj =
-	       	       	      if RF_code
-		   	      then rf_sig_tables.sig_entry(badderpLjs[k]){, DLs[k])}
-		   	      else hermitian_form_irreducible(badderpLjs[k]){, DLs[k])}
-		   	      fi
-	       		   then () = if int_part(sigLj[baddermuLjs[j]]) = 0
-		       	   	     then sigLj := s*sigLj
-			   	     fi
-			   then branchLj = branch_std(sigLj, DLs[k])
-	       in @:all( [(->bool)]:
-			for(tau, list) in LKdata
+    then branchLjs = for derpLj@j in derpLjs
+	       	     do let sigLj =
+	       	   	    if RF_code
+		   	    then rf_sig_tables.sig_entry(derpLj){, DLs[k])}
+		   	    else hermitian_form_irreducible(derpLj)
+		   	    fi
+			then () = if int_part(sigLj[dermuLjs[j]]) = 0
+		       	   	  then sigLj := s*sigLj
+			 	  fi
+	       		in branch_std(sigLj, DLs[j])
+		     od
+     then result = all( [(->bool)]: {list of functions, one for each bottom layer K-type tau}
+			for(tau,list) in LKdata
 			do {prints(posLj[tauLj]," ",multG[tauj]);}
-			let tauLj = list[j]
-			in @bool: int_part(branchLj[tauLj]) >= int_part(multG[tau])
+			   let coeff = Split: 1 {this will be the bottom layer signature at tau}
+			   then () = for tauLj@j in list
+			       	    do {if Lsigs[j][tauLj] = 0
+			     	       then prints(j," ",tauLj," ",Lsigs[j]," ",Lsigs[j])
+			     	       fi;}
+			     	       coeff*:= branchLjs[j][tauLj]
+			  	    od
+			   in @bool: int_part(coeff) >= int_part(multG[tau])
 			od )
-	       od )
         then () = if not result then attest_is_unitary(p,result) fi
 	then () = {mbefTime} befmoreTime +:= elapsed_ms()-start
 	in result
@@ -1193,7 +1206,7 @@ set bottom_elim_factors(Param p, KType mu, (KGPElt Q, [(KType,[KType])] LKdata),
     then muL = muLs[first(for muL in muLs do mu = LKT(first_param(theta_induce_standard(parameter(muL),p.real_form))) od)]
     {then () = if is_unitary_hash(pL) then return true fi}{seems to slow things}
     then derpLjs = derived_factor_params2(pL) {one for each derived simple factor derLj}
-    then badjs = {#(#derpLjs)}
+{    then badjs = {#(#derpLjs)}
     	       	 for derpLj@j in derpLjs
     	       	 do if is_unitary_hash(derpLj)
 		    then []
@@ -1201,132 +1214,44 @@ set bottom_elim_factors(Param p, KType mu, (KGPElt Q, [(KType,[KType])] LKdata),
 		    fi
 		 od.##
     then () = if #badjs = 0 then return true fi
-    then badderpLjs = for j in badjs do derpLjs[j] od
-    then badderxLjs = for badderpLj in badderpLjs do badderpLj.x od
-    then badderLjs = for badderpLj in badderpLjs do badderpLj.real_form od
-    {we wish these dermuLjs were LKTs of derpLj; need to twist derpLj to make this true.}
-    then baddermuLjs = for j in badjs
-    	 	       do derived_factor_K_types2(muL)[j]
-		       od
-    then DLs = for j in badjs
-       	       do max(for (, list) in LKdata {one for each bad j}
+    then badderpLjs = for j in badjs do derpLjs[j] od}
+    then derxLjs = for derpLj in derpLjs do derpLj.x od
+    then derLjs = for derpLj in derpLjs do derpLj.real_form od
+    {we wish these dermuLjs were LKTs of derpLj; hope we don't need to twist derpLj to make this true.}
+    then dermuLjs = derived_factor_K_types2(muL)
+    then DLs = for j:#derpLjs
+       	       do max(for (, list) in LKdata {one for each j}
        	    	      do height(list[j])
 		      od)
 	       od
-
     then D = max(for (tau,) in LKdata do height(tau) od)
     then Pmult = branch_std(P, D)
-    then result = all( [(->bool)]: {list of functions, one for each bad factor derLj}
-	       	       for j@k in badjs
-	       	       do let sigLj=
-	       	       	      if RF_code
-		   	      then rf_sig_tables.sig_entry(badderpLjs[k]){, DLs[k])}
-		   	      else hermitian_form_irreducible(badderpLjs[k]){, DLs[k])}
-		   	      fi
-	       		   then () = if int_part(sigLj[baddermuLjs[k]]) = 0
-		       	   	     then sigLj := s*sigLj
-			   	     fi
-			   then branchLj = branch_std(sigLj,DLs[k])
-	       in @:all( [(->bool)]:
-			for(tau, list) in LKdata
+    then branchLjs = for derpLj@j in derpLjs
+	       	     do let sigLj =
+	       	   	    if RF_code
+		   	    then rf_sig_tables.sig_entry(derpLj){, DLs[k])}
+		   	    else hermitian_form_irreducible(derpLj)
+		   	    fi
+			then () = if int_part(sigLj[dermuLjs[j]]) = 0
+		       	   	  then sigLj := s*sigLj
+			 	  fi
+	       		in branch_std(sigLj, DLs[j])
+		     od
+       then result = all( [(->bool)]: {list of functions, one for each bottom layer K-type tau}
+			for(tau,list) in LKdata
 			do {prints(posLj[tauLj]," ",multG[tauj]);}
-			let tauLj = list[j]
-			in @bool: int_part(sigLj[tauLj]) >= int_part(Pmult[tau])
+			   let coeff = Split: 1 {this will be the bottom layer signature at tau}
+			   then () = for tauLj@j in list
+			       	    do {if Lsigs[j][tauLj] = 0
+			     	       then prints(j," ",tauLj," ",Lsigs[j]," ",Lsigs[j])
+			     	       fi;}
+			     	       coeff*:= branchLjs[j][tauLj]
+			  	    od
+			   in @bool: int_part(coeff) >= int_part(Pmult[tau])
 			od )
-	       od )
         then () = if not result then attest_is_unitary(p,result) fi
 	then () = {mbefTime} befmoreTime +:= elapsed_ms()-start
 	in result
-
-{false guarantees not unitary, but true does not guarantee unitary}
-{Here P K-character of p to heights of pairs, NOT BRANCH!}
-{LKdata refers to ONE LKT of p}
-{ set bottom_elim_factors(Param p, KType mu, (KGPElt Q, [(KType,[KType])] LKdata), KTypePol P) = bool:
-    let start = elapsed_ms(), {answers = for k:#LKdata do false od,}
-    	(,pL0) = theta_stable_quasi_data(p)
-    then L =Q.Levi
-    then () = if K_type_pol(p)[mu] = 0
-       	      then return prints("mu isn't a LKT of p"); true
-       	      fi
-    {then () = if sum(for pairs in LKdata do #pairs od) = #LKdata
-    	      then return true
-	      fi}
-    then pL = first_param(theta_induce_standard(pL0,L))
-    {then () = if is_unitary_hash(pL) then return true fi}{seems to slow things down}
-    then derpLjs = derived_factor_params2(pL) {one for each derived simple factor derLj}
-    then badjs = {#(#derpLjs)}
-		 for derpLj@j in derpLjs
-    	       	 do if is_unitary_hash(derpLj)
-		    then []
-		    else [j]
-		    fi
-		 od.##
-    {then () = if #badjs < #LKdata then prints(#LKdata, "  ",#badjs) fi}
-    then () = if #badjs = 0 then return true fi
-    then badderpLjs = for j in badjs do derpLjs[j] od
-    then badderxLjs = for badderpLj in badderpLjs do badderpLj.x od
-    then badderLjs = for badderpLj in badderpLjs do badderpLj.real_form od
-    {we wish these dermuLjs were LKTs of derpLj; need to twist derpLj to make this true.}
-    then baddermuLjs = for j in badjs
-    	 	       do let (,muLj) = LKdata[j][0] in muLj od
-      {check badderpLj has baddermuLj as a LKT}
-    then () = for badderpLj@k in badderpLjs
-      	      	do {assert(not K_type_pol(badderpLj)[baddermuLjs[k]].=, "oops, we needed a twist")}
-		   if K_type_pol(badderpLj)[baddermuLjs[k]].=
-		   then let twistk = all_even_lambda_differential_0(badderLjs[k].dual, - badderxLjs[k].involution.^)
-		   	then () = if bottom_verbose then prints("twisting derpLj needed at p = ",p, ", j = ",badjs[k]) fi
-		   	then twistxLs = let Genx = KGB_elt_gen(badderxLjs[k])
-				      	in for t@i in twistk
-			   	      	   do let () = Genx.torus_factor +:= t
-					      {need to force real form}
-			      	      	      in KGB(badderpLj.real_form, KGB_elt(Genx).number) 
-			   	      	   od
-		    	then twistbadderpLks = for yLk in twistxLs
-		    	 	      	do parameter(yLk, badderpLj.lambda, badderpLj.nu)
-				    	od
-		    	then m = first(for badderqLk@k in twistbadderpLks
-		    	     	       do K_type_pol(badderqLk)[baddermuLjs[k]] != 0
-				       od)
-		    	then () = if m < 0
-		     	       	  then prints("x twisting failed at p = ",p,", k = ",k)
-			       	  else badderpLjs[k] := twistbadderpLks[m]
-			       	  fi
-		    	in ()
-		    fi
-		od
-      { then () = for derpLj@j in derpLjs
-      	      	do assert(K_type_pol(derpLj)[dermuLjs[j]] != 0, "derpLj does not have LKT dermuLj")
-		od }
-     then DG = max(for j in badjs
-       	    	     do max(for (tauj,) in LKdata[j]
-			    do height(tauj)
-			    od)
-		     od)
-     then DLs = for j in badjs {pairs in LKdata}
-     	      	do max(for (,tauLj) in LKdata[j] do height(tauLj) od)
-		od
-     then Pmult = branch_std(P, DG)
-     then result = all( [(->bool)]: {list of functions, one for each factor Lj}
-	       for j@k in badjs {pairs@j in LKdata} {this is automatically true if derpLj is unitary, so omit those}
-	       do 
-	       let pairs = LKdata[j]
-	       then (posLj, negLj) = if RF_code
-	    	      	    	     then rf_sig_tables.sig_entry(badderpLjs[k], DLs[k])
-			   	     else K_signature_irr(badderpLjs[k], DLs[k])
-				     fi
-	       then () = if posLj[baddermuLjs[k]] = 0
-		       	 then posLj := negLj
-			 fi
-	       in @:all( [(->bool)]:
-			for(tauj, tauLj) in pairs[1:]
-			do {prints(posLj[tauLj]," ",multG[tauj]);}
-			@bool: int_part(posLj[tauLj]) >= int_part(Pmult[tauj])
-			od )
-	       od )
-     then () = if not result then attest_is_unitary(p,result) fi
-     then () = {mbefTime} befmoreTime +:= elapsed_ms() - start
-     in result
-}
 
 {permutation of the simple roots defined by delta}
 set delta_on_simple(InnerClass ic) = [int]:
@@ -1338,8 +1263,8 @@ the smallest such parabolic is defined by the simple coroots in S. S always cont
 vanishing on p.d_lambda.} {useless case is #bottom_K_types = 1}
 set bottom_K_types(KType mu, int D) = [(KType,[int])]:
     let q = param(mu), Proj = projection_to_K_matrix(mu.real_form), start = elapsed_ms()
-    then (Q0,) = theta_stable_quasi_data(q), G = mu.real_form
-    then L0 = Q0.Levi, (S0,) = Q0
+    then (Q0,) = theta_stable_quasi_data(q), G = mu.real_form, ProjInv = right_inverse(Proj)
+    then L0 = Q0.Levi, (S0,) = Q0, Krk = #ProjInv
     then S0c = complement(G.semisimple_rank,S0), DOS = delta_on_simple(G),
     	 delta = G.distinguished_involution
     then fixc = for a in S0c {type [int]}
@@ -1358,14 +1283,14 @@ set bottom_K_types(KType mu, int D) = [(KType,[int])]:
     	 if #fixc = 0
 	 then null(rank(G),0)
     	 else for a in fixc
-    	      do G.fundamental_coweights[a].numer
+    	      do G.fundamental_coweights[a].numer*ProjInv
 	      od
 	 fi
     then pairsc_cowts = mat:
     	 if #pairsc = 0
 	 then null(rank(G),0)
     	 else for pair in pairsc
-    	      do sum(G.rank, for a in pair do G.fundamental_coweights[a].numer od)
+    	      do sum(G.rank, for a in pair do G.fundamental_coweights[a].numer od)*ProjInv
               od
 	 fi
     then xcL0 = KGB(L0,0)
@@ -1379,10 +1304,10 @@ set bottom_K_types(KType mu, int D) = [(KType,[int])]:
     then too_many_Ss = [[int]]:
     	 for shift in too_many_shifts
 	 do S0## (for col@i in fixc_cowts
-		  do if (shift*Proj*col).= then [] else [fixc[i]] fi
+		  do if (shift*col).= then [] else [fixc[i]] fi
 		  od.##)
 	      ## (for col@j in pairsc_cowts
-		  do if (shift*Proj*col).= then [] else pairsc[j] fi
+		  do if (shift*col).= then [] else pairsc[j] fi
 		  od.##)
          od  {these are the coroots needed to make a parabolic
 		       	    for which corr tau is bottom layer}
@@ -1403,8 +1328,8 @@ list is indexed by Q.}
 
 set bottom_K_type_Qs(KType mu, int D) = [QK_bottom_data] {[KGPElt, [KType]]}:
     let q = param(mu), Proj = projection_to_K_matrix(mu.real_form), start = elapsed_ms()
-    then (Q0,) = theta_stable_quasi_data(q), G = mu.real_form
-    then L0 = Q0.Levi, (S0,) = Q0
+    then (Q0,) = theta_stable_quasi_data(q), G = mu.real_form, ProjInv = right_inverse(Proj)
+    then L0 = Q0.Levi, (S0,) = Q0, Krk = #ProjInv
     then S0c = complement(G.semisimple_rank,S0), DOS = delta_on_simple(G),
     	 delta = G.distinguished_involution
     then fixc = for a in S0c {type [int]}
@@ -1423,14 +1348,14 @@ set bottom_K_type_Qs(KType mu, int D) = [QK_bottom_data] {[KGPElt, [KType]]}:
     	 if #fixc = 0
 	 then null(rank(G),0)
     	 else for a in fixc
-    	      do G.fundamental_coweights[a].numer
+    	      do (G.fundamental_coweights[a].numer)*ProjInv
 	      od
 	 fi
     then pairsc_cowts = mat:
     	 if #pairsc = 0
 	 then null(rank(G),0)
     	 else for pair in pairsc
-    	      do sum(G.rank, for a in pair do G.fundamental_coweights[a].numer od)
+    	      do sum(G.rank, for a in pair do G.fundamental_coweights[a].numer od)*ProjInv
               od
 	 fi
     then xcL0 = KGB(L0,0)
@@ -1444,10 +1369,10 @@ set bottom_K_type_Qs(KType mu, int D) = [QK_bottom_data] {[KGPElt, [KType]]}:
     then too_many_Ss = [[int]]:
     	 for shift in too_many_shifts
 	 do (S0## (for col@i in fixc_cowts
-		  do if (shift*Proj*col).= then [] else [fixc[i]] fi
+		  do if (shift*col).= then [] else [fixc[i]] fi
 		  od.##)
 	      ## (for col@j in pairsc_cowts
-		  do if (shift*Proj*col).= then [] else pairsc[j] fi
+		  do if (shift*col).= then [] else pairsc[j] fi
 		  od.##)).sort_u
          od  {these are the coroots needed to make a parabolic
 		       	    for which tau is bottom layer}
@@ -1476,8 +1401,9 @@ set bottom_K_types(Param p, int D) = [(KType,[int])]:
     then (Q0,) = theta_stable_quasi_data(q), {x = p.x, lambda = p.lambda}
     	G = p.real_form
     then L0 = Q0.Levi, (S0,) = Q0, Proj = projection_to_K_matrix(G)
+    then ProjInv = right_inverse(Proj)
     then S0c = complement(G.semisimple_rank,S0), DOS = delta_on_simple(G),
-    	 delta = G.distinguished_involution
+    	 delta = G.distinguished_involution, Krk = #ProjInv
     then fixc = for a in S0c {type [int]}
     	      	do if DOS[a] = a
 		   then [a]
@@ -1494,14 +1420,14 @@ set bottom_K_types(Param p, int D) = [(KType,[int])]:
     	 if #fixc = 0
 	 then null(rank(Proj),0)
     	 else for a in fixc
-    	      do (G.fundamental_coweights[a].numer)*Proj
+    	      do (G.fundamental_coweights[a].numer)*ProjInv
 	      od
 	 fi
     then pairsc_cowts = mat:
     	 if #pairsc = 0
 	 then null(rank(Proj),0)
     	 else for pair in pairsc
-    	      do sum(G.rank, for a in pair do (G.fundamental_coweights[a].numer)*Proj od)
+    	      do sum(G.rank, for a in pair do G.fundamental_coweights[a].numer od)*ProjInv
               od
 	 fi
     then xcL0 = KGB(L0,0)
@@ -1514,12 +1440,12 @@ set bottom_K_types(Param p, int D) = [(KType,[int])]:
 			 od
     then too_many_Ss = [[int]]:
     	 for shift in too_many_shifts
-	 do S0## (for col@i in fixc_cowts
+	 do (S0## (for col@i in fixc_cowts
 		  do if (shift*col).= then [] else [fixc[i]] fi
 		  od.##)
 	      ## (for col@j in pairsc_cowts
 		  do if (shift*col).= then [] else pairsc[j] fi
-		  od.##)
+		  od.##)).sort
          od  {these are the coroots needed to make a parabolic
 		       	    for which corr tau is bottom layer}
     then () = bfTime:=elapsed_ms() - start
