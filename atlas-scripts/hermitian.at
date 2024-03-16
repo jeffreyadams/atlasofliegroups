@@ -795,15 +795,16 @@ set make_unitarity_bool_hash () = unitarity_bool_hash:
 	then p:=herm_center(p)
 	fi;
 	let M = param_hash.size()
-	then m = param_hash.match(p)
+	then m = param_hash.match(p) {use lookup here instead: it doesn't add to the hash yet}
         then timedout=-1
-	then () = if m = M
+	then () = if m = M   {m=-1 other syntax}
 	     	  then prints("m=M");unitary_test_counter.use();
                      let (is_unitary_result,timedout_result)=is_unitary(p,max_time) in
                      timedout:=timedout_result;
                      prints("timed_out_result: ", timedout_result);
                      if timedout_result=-1
-                         then bool_data#:=is_unitary_result;prints("added a result");
+                         then   {param_hash.match(p) to add it }
+                              bool_data#:=is_unitary_result;prints("added a result");
                               assert(#bool_data = param_hash.size(),"unitarity_bool_hash is damaged")
                          fi
 		  fi

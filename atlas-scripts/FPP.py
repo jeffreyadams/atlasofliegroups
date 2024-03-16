@@ -10,8 +10,8 @@ progress_step_size=10 #how often to report progress
 FPP_at_file="FPP.at" #default
 FPP_py_file="FPP.py" #default
 #extra_files=["global_facets_E7.at","coh_ind_E7_to_hash.at","E7except589to15851.at"]
-#extra_files=["global_facets_E7.at","coh_ind_E7_to_hash.at"]
-extra_files=[]
+extra_files=["global_facets_E7.at","coh_ind_E7_to_hash.at"]
+#extra_files=[]
 coh_ind_flag=True #False: load from the file/True: don't load from the file
 def nice_time(t):
    return(re.sub("\..*","",str(datetime.timedelta(seconds=t))))
@@ -121,12 +121,10 @@ def atlas_compute(i,pid):
       queue_count+=1
       start_time=time.time()
 
-     #primary atlas function
+      #primary atlas function
       #if xlambdalists_flag: pass 2nd argument = xlambdalists, then 3rd argument is the listnumber
       if xlambdalists_flag:
-         max_time=5
-         atlas_cmd=format_cmd("set list=" + unitary_hash_function + "(" + group + ",xlambdalists," + str(list_number) + "," + str(max_time) ")\n")
-#         atlas_cmd=format_cmd("set list=" + unitary_hash_function + "(" + group + ",xlambdalists," + str(list_number) + ")\n")
+         atlas_cmd=format_cmd("set list=" + unitary_hash_function + "(" + group + ",xlambdalists," + str(list_number) + ")\n")
 #         atlas_cmd=format_cmd("prints(xlambdalists)" + "\n")
 #         print("CMD IS: atlas_cmd: ", atlas_cmd)
       #otherwise just need 2nd argument=kgb number
