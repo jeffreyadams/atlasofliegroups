@@ -258,6 +258,12 @@ set centralizer(KGBElt x,ratvec v) = KGBElt:
   then subrd = root_datum_from_positive((roots,coroots),rd.prefers_coroots)
   in KGB_elt(subrd,involution(x),torus_factor(x))
 
+{orthogonal to a collection V of coweights}
+set perp(RootDatum rd, [ratvec] V) = RootDatum:
+  let roots = columns_with((vec alpha): all(for av in V do =av*alpha od), posroots(rd))
+  then coroots = rank(rd) # for alpha in roots do coroot(rd,alpha) od
+  in root_datum_from_positive((roots,coroots),rd.prefers_coroots)
+
 {function called by project_on_dominant_cone}
 {. (Auxiliary function) .}
 set find_nci_root (KGBElt x,ratvec tau) = int:
@@ -308,7 +314,7 @@ set tworho_K (KGBElt x) = ratvec:
 in rank 6 or 7 (E7_s?? U(3,3)?? where the new projection led to a bad answer;
 but now I can't find it, so I'm back to defaulting to the new one. It's a tiny
 bit faster.}
-set old_proj_flag = true
+set old_proj_flag = false
 
 set project_on_dominant_cone_old (KGBElt x, ratvec mu) = (KGBElt,ratvec,ratvec):
 { let ()=prints("project_on_dominant_cone with x=", x, " mu=", mu) in }
@@ -356,6 +362,7 @@ set project_on_dominant_cone(KGBElt x, ratvec mu) = (KGBElt,ratvec,ratvec):
     then  project_on_dominant_cone_old(x, mu)
     else
   let rd=root_datum(x)
+  then delta = x.real_form.distinguished_involution
   then (w,mu_1) = from_dominant
       (rd,mu:=(1+involution(x))*mu/2) { make |mu| zero on the split part of |h| }
   then x_1=cross(x,w)
@@ -365,9 +372,12 @@ set project_on_dominant_cone(KGBElt x, ratvec mu) = (KGBElt,ratvec,ratvec):
   then mu_2=mu_1+tworho_K (x_1)
   then y=chamber(rd,mu_2)
   then mu_3=mu_2-y*rho(rd)
+  {then () = prints("mu_3 = ", mu_3)}
 in (cross(x_1,y),mu_3, inverse(y)*mu_3). { initial data; apply recursive function to it: }
   ( rec_fun f(KGBElt x, ratvec mu_3_orig, ratvec tau) (KGBElt,ratvec,ratvec):
       let rd_x=root_datum(x), zero = null(rd.rank)/1, terms = [vec]:[]
+      {then () = prints("mu_3_orig = ", mu_3_orig,", rd_x.simple_coroots = ",
+      	   rd_x.simple_coroots)}
       in { may differ from |rd| in the recursion }
       if is_dominant(rd_x,tau)
       then {return this triple:}
@@ -378,12 +388,17 @@ in (cross(x_1,y),mu_3, inverse(y)*mu_3). { initial data; apply recursive functio
 					    in if d > 0
 					       then {prints("av = ",av,", d = ",d,
 					       	    ", #terms = ",#terms);}
-					       terms #:= av;
-						    rd_x.simple_roots[j]*d/2
+					       	    if is_coroot(rd_x,av*(1+delta))
+					       	    then terms #:=av*(1+delta);
+						    	 d:=2*d
+						    else terms #:=av
+						    fi;
+					       	    rd_x.simple_roots[j]*d/2
 					       else zero
 					       fi
 					 od)
-	 then rd_perp = centralizer(rd_x, terms)
+	 then rd_perp = perp(rd_x, terms)
+	 {then () = prints("new_tau = ",new_tau,", rd_perp = ",rd_perp)}
   	 then x_perp = KGB_elt(rd_perp,involution(x),torus_factor(x))
 	 in f(x_perp,mu_3_orig,new_tau)
        fi
@@ -536,9 +551,20 @@ set all_G_spherical_same_differential (Param p) = [KType]:
  {. Parabolic attached to KHighestWeight by Vogan algorithm. .}
 set parabolic_LKT (KHighestWeight(,x,mu)) = Parabolic:
   let rd=root_datum(x), (y,mu_3_orig,lambda) = project_on_dominant_cone(x,mu)
+  { then () = prints(y," ",mu_3_orig," ",lambda)
+  then (newy, new_mu_3_orig,new_lambda) = project_on_dominant_cone_old(x,mu)
+  then () = prints(newy," ",new_mu_3_orig," ",new_lambda)}
+  {then () = assert(y = newy,"Oops, bad y")
+  then () = assert(mu_3_orig = new_mu_3_orig,"Oops, bad mu")
+  then () = assert(lambda = new_lambda,"Oops, bad lambda")}
   then diff=lambda-mu_3_orig
   then S= list(semisimple_rank(rd), (int i): fundamental_coweight(rd,i)*diff>0)
   in Parabolic:(S,y)
+
+ {. quasisplit Levi parabolic attached to KHighestWeight by Vogan algorithm. .}
+set quasi_parabolic_LKT (KHighestWeight(,x,mu)) = (Parabolic,KGBElt,ratvec):
+  let rd=root_datum(x), (y,mu_3_orig,lambda) = project_on_dominant_cone(x,mu)
+  in (parabolic_by_wt(lambda,y),y,lambda)
 
 { go from KHighestWeight mu to K_types [KType]  mu -> [t_1,...,t_r]
   multivalued: highest_weight(t_i)=mu
@@ -596,9 +622,10 @@ set choose_irred_inds ([[[Param]]] list)=[[[Param]]]:
       if all(for params in item do #params=1 od) and #item>0 do item fi
    od
 
+set old_K_type_flag = true
 {. This function takes KHighestWeight mu -> |R(K,mu)| K_types,
   see top of this file. .}
-set K_types (KHighestWeight(,x,v):mu_in)= [KType]:
+set K_types_old (KHighestWeight(,x,v):mu_in)= [KType]:
    let G=real_form(x)
    then Q=parabolic_LKT(mu_in)
 in assert(is_parabolic_theta_stable(Q), "Q is not theta stable");
@@ -618,6 +645,41 @@ in assert (k>0,"There is no suitable weight in the R-group orbit.");
       fi
    od
 
+{. This function takes KHighestWeight mu -> |R(K,mu)| K_types,
+  see top of this file. .}
+set K_types(KHighestWeight(,x,v):mu_in)= [KType]:
+    if old_K_type_flag then return K_types_old(mu_in) fi;
+   let G=real_form(x), nullNu = null(#v)/1
+   then (Q,y,lambda)=quasi_parabolic_LKT(mu_in)
+   {I think that next commented out 14 lines work, but they are slower}
+   {then L=Q.Levi
+   then xL = KGB(L)~[0]
+   then xG = embed_KGB(xL,G), T=1+xL.involution
+   then lamthlam = T*lambda
+   then lambda = required_solution(T,ratvec_as_vec(lamthlam - T*G.rho)) + G.rho
+   then twists = all_lambda_differential_0(xL)
+   in for tw in twists
+      do for tau in LKTs(parameter(xG,lambda+tw,nullNu))
+      	 do let mucand = highest_weight(tau,x)
+	    in if mucand = mu_in
+	    then [tau]
+	    else []
+	    fi
+      	 od.##
+       od.##}
+   then lambdaL = lambda -rho_u(Q)
+   {then () = prints("lambda = ",lambda,", lambdaL = ",lambdaL)}
+   then L = Q.Levi
+   then xL1 = KGB(L)~[0]
+   in for pL in all_parameters_x_gamma(xL1,lambdaL)
+   {this does finalizing, so pL has unique LKT}
+      do let tau = K_type(embed_KGB(pL.x,G), pL.lambda_minus_rho)
+      	 then mucand = highest_weight(tau,x)
+	 in if mucand = mu_in
+	    then [tau]
+	    else []
+	    fi
+      od.##
 
 {. K_type with given KHighestWeight if unique (otherwise error). .}
 set K_type (KHighestWeight khwt) = KType:
