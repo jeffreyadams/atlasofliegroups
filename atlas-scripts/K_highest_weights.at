@@ -3,7 +3,7 @@
 <induction.at { for |theta_stable_data| }
 <representations.at { for |finite_dimensional| }
 <W_K.at { |R_K_dom|, |R_K_dom_mu| }
-
+<hash.at {for make_KType_hash}
 <center.at { for |Z_2@RealForm| }
 
 {! Functions involving K-types (final tempered limit parameters) and
@@ -566,6 +566,13 @@ set quasi_parabolic_LKT (KHighestWeight(,x,mu)) = (Parabolic,KGBElt,ratvec):
   let rd=root_datum(x), (y,mu_3_orig,lambda) = project_on_dominant_cone(x,mu)
   in (parabolic_by_wt(lambda,y),y,lambda)
 
+ {. small split Levi parabolic attached to KHighestWeight by Adams-Paul algorithm. .}
+set AP_parabolic_LKT (KHighestWeight(,x,mu)) = (Parabolic,KGBElt,ratvec):
+  let rd=root_datum(x), (y,mu_3_orig,lambda) = project_on_dominant_cone(x,mu)
+  then diff=lambda-mu_3_orig
+  then S= list(semisimple_rank(rd), (int i): fundamental_coweight(rd,i)*diff>0)
+  in (Parabolic:(S,y),y,lambda)
+
 { go from KHighestWeight mu to K_types [KType]  mu -> [t_1,...,t_r]
   multivalued: highest_weight(t_i)=mu
  algorithm:
@@ -622,7 +629,7 @@ set choose_irred_inds ([[[Param]]] list)=[[[Param]]]:
       if all(for params in item do #params=1 od) and #item>0 do item fi
    od
 
-set old_K_type_flag = true
+set old_K_type_flag = false
 {. This function takes KHighestWeight mu -> |R(K,mu)| K_types,
   see top of this file. .}
 set K_types_old (KHighestWeight(,x,v):mu_in)= [KType]:
@@ -645,41 +652,45 @@ in assert (k>0,"There is no suitable weight in the R-group orbit.");
       fi
    od
 
+
+set DV_K_type_flag = false
 {. This function takes KHighestWeight mu -> |R(K,mu)| K_types,
-  see top of this file. .}
-set K_types(KHighestWeight(,x,v):mu_in)= [KType]:
-    if old_K_type_flag then return K_types_old(mu_in) fi;
+  see top of this file. . Uses the parabolic in theta_stable_quasi_data.}
+set K_types_DV(KHighestWeight(,x,v):mu_in)= [KType]:
    let G=real_form(x), nullNu = null(#v)/1
    then (Q,y,lambda)=quasi_parabolic_LKT(mu_in)
-   {I think that next commented out 14 lines work, but they are slower}
-   {then L=Q.Levi
-   then xL = KGB(L)~[0]
-   then xG = embed_KGB(xL,G), T=1+xL.involution
-   then lamthlam = T*lambda
-   then lambda = required_solution(T,ratvec_as_vec(lamthlam - T*G.rho)) + G.rho
-   then twists = all_lambda_differential_0(xL)
-   in for tw in twists
-      do for tau in LKTs(parameter(xG,lambda+tw,nullNu))
-      	 do let mucand = highest_weight(tau,x)
-	    in if mucand = mu_in
-	    then [tau]
-	    else []
-	    fi
-      	 od.##
-       od.##}
+   then answer = make_KType_hash()
    then lambdaL = lambda -rho_u(Q)
    {then () = prints("lambda = ",lambda,", lambdaL = ",lambdaL)}
    then L = Q.Levi
    then xL1 = KGB(L)~[0]
-   in for pL in all_parameters_x_gamma(xL1,lambdaL)
+   then () = for pL in all_parameters_x_gamma(xL1,lambdaL)
    {this does finalizing, so pL has unique LKT}
-      do let tau = K_type(embed_KGB(pL.x,G), pL.lambda_minus_rho)
-      	 then mucand = highest_weight(tau,x)
-	 in if mucand = mu_in
-	    then [tau]
-	    else []
-	    fi
-      od.##
+      	     do let tau = K_type(embed_KGB(pL.x,G), pL.lambda_minus_rho)
+      	     	then mucand = highest_weight(tau,x)
+	 	in if mucand = mu_in
+	   	   then answer.match(tau)
+	    	   fi
+	     od
+   in for j:answer.size() do answer.index(j) od
+
+set K_types(KHighestWeight(,x,v):mu_in)= [KType]:
+   if old_K_type_flag then return K_types_old(mu_in) fi;
+   if DV_K_type_flag then return K_types_DV(mu_in) fi;
+   let G=real_form(x), nullNu = null(#v)/1
+   then (Q,y,lambda)=AP_parabolic_LKT(mu_in)
+   then answer = make_KType_hash(), lambdaL = lambda -rho_u(Q), L = Q.Levi
+   {then () = prints("lambda = ",lambda,", lambdaL = ",lambdaL)}
+   then xL1 = KGB(L)~[0]
+   then () = for pL in all_parameters_x_gamma(xL1,lambdaL)
+   {this does finalizing, so pL has unique LKT}
+      	     do let tau = K_type(embed_KGB(pL.x,G), pL.lambda_minus_rho)
+      	     	then mucand = highest_weight(tau,x)
+	 	in if mucand = mu_in
+	   	   then answer.match(tau)
+	    	   fi
+	     od
+   in for j:answer.size() do answer.index(j) od
 
 {. K_type with given KHighestWeight if unique (otherwise error). .}
 set K_type (KHighestWeight khwt) = KType:
