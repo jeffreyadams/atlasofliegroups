@@ -859,7 +859,7 @@ set descents(Param p) = [Param]:
 {----------------------- timeout versions-------------------------}
 
 set FPP_unitary_hash_bottom_layer([(KGBElt,ratvec)] xlambdas, Param_hash UhashG,Param_hash Uparamhash,int max_time) = int: {int is -1 (success) or timedout>0}
-    if timeout_verbose then prints("start of function: FPP_unitary_hash_bottom_layer with max_time=", max_time) fi;
+    if timeout_verbose then prints("start of function (2): FPP_unitary_hash_bottom_layer with max_time=", max_time) fi;
     let timedout=-1 in
     if #xlambdas = 0 then return -1
     else let (x,) = xlambdas[0], pol_hash = make_KTypePol_hash()
@@ -878,22 +878,26 @@ set FPP_unitary_hash_bottom_layer([(KGBElt,ratvec)] xlambdas, Param_hash UhashG,
 		 else UhashG
 		 fi
     then start = elapsed_ms()
+    then ()= if timeout_verbose then prints("starting timer") fi
     then () = unitaryTime := 0
     then () = dfkiTime := 0
     then () = if Dirac_flag then prepDirac(Gsc) fi
     then xnums = for (x,) in xlambdas do let (,m) = %x in m od
     then lambdas = for (,lambda) in xlambdas do lambda od
-    then LPmss = for (x,lambda) in xlambdas_sc
+    then LPmss = prints("LM");for (x,lambda) in xlambdas_sc
     	       	 do LPm_table.LPm_entry(Gsc,x.involution, ratvec_as_vec(lambda+x.involution*lambda))
-		 od
-    then old_facet_verbose = facet_verbose, old_time_verbose = time_verbose,
+		 od 
+    then old_facet_verbose = prints("DONELM"); facet_verbose, old_time_verbose = time_verbose,
     	 old_test_verbose = test_verbose, old_test_slightly_verbose = test_slightly_verbose
-    then () = facet_verbose:=false; time_verbose:=false; test_verbose:=false; test_slightly_verbose:=false
+    then () = prints("FF");facet_verbose:=false; time_verbose:=false; test_verbose:=false; test_slightly_verbose:=false
     then () = if unip_flag
-    	      then unipotents_to_hash(G,UhashG)
+    	      then
+              if timeout_verbose then prints("computing unipotents_to_hash") fi;
+              unipotents_to_hash(G,UhashG)
 	      fi
     then () = if coh_ind_flag
-    	      then coh_ind_unip_long(G,UhashG)
+    	      then
+              if timeout_verbose then prints("computing coh_ind_unip_long") fi;coh_ind_unip_long(G,UhashG)
 	      fi
     then () = if disconn_flag
     	      then for j:UhashG.size()
@@ -985,9 +989,32 @@ set FPP_unitary_hash_bottom_layer([(KGBElt,ratvec)] xlambdas, Param_hash UhashG,
     fi fi;
     if timeout_verbose then prints("end of function: FPP_unitary_hash_bottom_layer with max_time, timedout=",timedout) fi;timedout
 
-set FPP_unitary_hash_bottom_layer([(KGBElt,ratvec)] xlambdas, int max_time) = void:
-    if timeout_verbose then prints("start of function: FPP_unitary_hash_bottom_layer([(KGBElt,ratvec)] xlambdas, int max_time), with max_time=",max_time) fi;
-    FPP_unitary_hash_bottom_layer(xlambdas, unitary_hash, uparam_hash, max_time)
+set FPP_unitary_hash_bottom_layer([(KGBElt,ratvec)] xlambdas, int max_time) = int:
+    if timeout_verbose then prints("start of function (1): FPP_unitary_hash_bottom_layer([(KGBElt,ratvec)] xlambdas, int max_time), with max_time=",max_time) fi;
+    let timedout=FPP_unitary_hash_bottom_layer(xlambdas, unitary_hash, uparam_hash, max_time) in
+    if timedout=-1 then
+        prints("In (1) FPP_unitary_hash_bottom_layer([(KGBElt,ratvec)] xlambdas, int max_time, succeeded");-1
+    else
+        let ()=prints("In (2) FPP_unitary_hash_bottom_layer([(KGBElt,ratvec)] xlambdas, int max_time, failed, timedout=",timedout) then
+        ()=prints("try again with more_shift incremented by 10") then
+        more_shift=more_shift+10 then
+        ()=prints("more_shift: ", more_shift) then
+        timedout=FPP_unitary_hash_bottom_layer(xlambdas,unitary_hash,uparam_hash, max_time) {-1: success} in
+        if timedout=-1 then
+            prints("In (2) FPP_unitary_hash_bottom_layer([(KGBElt,ratvec)],int) succeeded");-1
+        else
+            prints("In (3) FPP_unitary_hash_bottom_layer([(KGBElt,ratvec)],int) failed, timedout=",timedout);timedout
+        fi
+    fi
+
+
+set FPP_unitary_hash_bottom_layer([[(KGBElt,ratvec)]] xldata, int max_time) = 
+    if timeout_verbose then prints("FPP_unitary_hash_bottom_layer([[(KGBElt,ratvec)],int max_time)") fi;
+    for list@i in xldata do
+        let ()=prints("FPP_unitary_hash_bottom_layer, doing list #", i,new_line,"more_shift=",more_shift) in
+        FPP_unitary_hash_bottom_layer(xldata[i],max_time)
+    od
+           
 
 {move to xlambdalists.at, since it requires this
 set FPP_unitary_hash_bottom_layer(RealForm G,int max_time) = void:

@@ -124,7 +124,7 @@ def atlas_compute(i,pid):
       #primary atlas function
       #if xlambdalists_flag: pass 2nd argument = xlambdalists, then 3rd argument is the listnumber
       if xlambdalists_flag:
-         atlas_cmd=format_cmd("set list=" + unitary_hash_function + "(" + group + ",xlambdalists," + str(list_number) + ")\n")
+         atlas_cmd=format_cmd("set list=" + unitary_hash_function + "(" + group + ",xlambdalists," + str(list_number) +  ", 10)\n")
 #         atlas_cmd=format_cmd("prints(xlambdalists)" + "\n")
 #         print("CMD IS: atlas_cmd: ", atlas_cmd)
       #otherwise just need 2nd argument=kgb number

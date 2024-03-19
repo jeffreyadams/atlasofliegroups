@@ -2420,7 +2420,7 @@ to use larger ones.}
 set local_test_hash_bottom(KGBElt x, ratvec lambda, VertexData Lvd,
     [[LocalFacetVertsHash]] LFVH, [[int]] eq, [[int]] gr, [vec] classListByFacet,
     [KGPElt] maxQs, [KType,[QKL_bottom_data]] datas, KTypePol_hash pol_hash, Param_hash Uhash, int max_time) = ([Param],int):
-    if timeout_verbose then prints("start of function local_test_hash_bottom(KGBElt x, ...), max_time=",max_time) fi;
+    if timeout_verbose then prints("start of function (3): local_test_hash_bottom(KGBElt x, ...), max_time=",max_time) fi;
     let NumClasses = #eq, printInterval = int: 1{, start = elapsed_ms()}
     { then listZero = [ratvec]: if #LFVH = 0
     	 	    	      then []
@@ -2470,10 +2470,12 @@ set local_test_hash_bottom(KGBElt x, ratvec lambda, VertexData Lvd,
                               if timeout_verbose then prints("finished is_unitary_hash, timedout=",timedout) fi;
                               if timedout>0
                                 then test_result:=[]; timedout_result:=timedout;
+                                if timeout_verbose then prints("timed out in is_unitary_hash..., breaking") fi;
                                 break  {return (test,timedout)=([],>0)}
                               else
                                 if result=false
                                   then
+                                    if timeout_verbose then prints("no timeout, result is false, not unitary") fi;
                                     test_result:=[false];break  {return ([false],-1}
                                 fi
                               fi
