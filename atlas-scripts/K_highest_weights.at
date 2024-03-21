@@ -357,7 +357,7 @@ in (cross(x_1,y),mu_3, inverse(y)*mu_3). { initial data; apply recursive functio
 
 {this fails in function min_bottom_factors(mu) for G=Spin(5,7),
 mu = K_type(170,[0,-1,-3,0,0,0] - [1,1,1,1,1,1])}
-set project_on_dominant_cone(KGBElt x, ratvec mu) = (KGBElt,ratvec,ratvec):
+set project_on_dominant_cone_DV(KGBElt x, ratvec mu) = (KGBElt,ratvec,ratvec):
     if old_proj_flag
     then  project_on_dominant_cone_old(x, mu)
     else
@@ -405,10 +405,89 @@ in (cross(x_1,y),mu_3, inverse(y)*mu_3). { initial data; apply recursive functio
        )
     fi
 
-{. Vogan algorithm; previous function in case mu is given as a vec,
+{for each root_datum rd, holds list of size 2^{rd.semisimple_rank} of projection-on-walls
+numerators, and a vec of size 2^{rd.semisimple_rank}  of their denominators.}
+set_type
+[ proj_hash =
+  ( ( -> int) size {# root data held}
+  , ( -> ) clear
+  , (int -> [(mat,int)]) index
+  , (RootDatum -> [(mat,int)]) full_entry {all wall projectors for rd}
+  , ((RootDatum, int)->(mat,int)) entry {projector for set bit positions of int}
+  )
+]
+
+set make_proj_hash () = proj_hash:
+(  let rd_hash = make_RootDatum_hash()
+   then data_list = [[(mat,int)]]: []
+   then clear() = void:
+   	let () = rd_hash.clear()
+	then () = data_list:=[]
+	in ()
+   then full_entry(RootDatum rd) = [(mat,int)]:  
+	let N = rd_hash.size()
+     	then n = rd_hash.match(rd)
+	then () = if n = N {haven't seen this rd before}
+	     	  then data_list := (data_list next data_list:=[]) #
+		       for j:2^(rd.semisimple_rank)
+		       do wall_projector(rd, set_bit_positions(j))
+		       od
+		  fi
+	in data_list[n]
+   in  ( ( -> int): { size } @int: #data_list
+   , ( -> ): {clear} clear
+   , (int->[(mat,int)]): { index } (int n) [(mat,int)]: data_list[n]
+   , (RootDatum->[(mat,int)]): { full_entry } full_entry
+   , ((RootDatum,int)-> (mat,int)): {entry} (RootDatum rd, int j) (mat,int):
+     full_entry(rd)[j])
+)
+
+set ProjHash = make_proj_hash()
+set proj_hash_flag = true
+set MvL_flag=true
+
+{. MvL algorithm to project k_highest_weight(x,mu) on dominant cone; returns
+   (x',mu+2rho_K(x)-rho,tau) with tau dominant and x' corresponding to the new
+   Weyl chamber. .}
+set project_on_dominant_cone (KGBElt x, ratvec mu) =
+   (KGBElt,ratvec,ratvec):
+   if MvL_flag = false then return(project_on_dominant_cone_DV(x,mu)) fi;
+  let rd=root_datum(x)
+  then (w,mu_1) = from_dominant
+      (rd,mu:=(1+involution(x))*mu/2) { make |mu| zero on the split part of |h| }
+  then x_1=cross(x,w)
+  then mu_2=mu_1+tworho_K (x_1)
+  then y=chamber(rd,mu_2)
+  then mu_3=mu_2-y*rho(rd)
+in if proj_hash_flag
+   then (cross(x_1,y), inverse(y)*mu_3, let (gamma,) = project_to_dominant_cone(rd,
+   	inverse(y)*mu_3, ProjHash.full_entry(rd)) in gamma)
+   else (cross(x_1,y), inverse(y)*mu_3, let (gamma,) = project_to_dominant_cone(rd,
+   	inverse(y)*mu_3) in gamma)
+   fi
+
+set project_on_dominant_cone_pre (KGBElt x, ratvec mu, [(mat,int)] wall_projs) =
+   (KGBElt,ratvec,ratvec):
+   if MvL_flag = false then return(project_on_dominant_cone_DV(x,mu)) fi;
+  let rd=root_datum(x)
+  then (w,mu_1) = from_dominant
+      (rd,mu:=(1+involution(x))*mu/2) { make |mu| zero on the split part of |h| }
+  then x_1=cross(x,w)
+  then mu_2=mu_1+tworho_K (x_1)
+  then y=chamber(rd,mu_2)
+  then mu_3=mu_2-y*rho(rd)
+in (cross(x_1,y), inverse(y)*mu_3, let (gamma,) = project_to_dominant_cone(rd,
+   inverse(y)*mu_3, wall_projs) in gamma)
+
+{. Previous function in case mu is given as a vec,
   rather than ratvec. .}
 set project_on_dominant_cone (KGBElt x, vec mu) = (KGBElt,ratvec,ratvec):
   project_on_dominant_cone(x,ratvec:mu)
+
+{. Previous function in case mu is given as a vec,
+  rather than ratvec. .}
+set project_on_dominant_cone_pre (KGBElt x, vec mu, [(mat,int)] wall_projs) = (KGBElt,ratvec,ratvec):
+  project_on_dominant_cone_pre(x,ratvec:mu, wall_projs)
 
 { possibly multivalued, coming from G-spherical case }
 
@@ -573,6 +652,14 @@ set AP_parabolic_LKT (KHighestWeight(,x,mu)) = (Parabolic,KGBElt,ratvec):
   then S= list(semisimple_rank(rd), (int i): fundamental_coweight(rd,i)*diff>0)
   in (Parabolic:(S,y),y,lambda)
 
+set AP_parabolic_LKT_pre (KHighestWeight(,x,mu), [(mat,int)] wall_projs) =
+    (Parabolic,KGBElt,ratvec):
+  let rd=root_datum(x), (y,mu_3_orig,lambda) = project_on_dominant_cone_pre(x,mu,wall_projs)
+  then diff=lambda-mu_3_orig
+  then S= list(semisimple_rank(rd), (int i): fundamental_coweight(rd,i)*diff>0)
+  in (Parabolic:(S,y),y,lambda)
+
+
 { go from KHighestWeight mu to K_types [KType]  mu -> [t_1,...,t_r]
   multivalued: highest_weight(t_i)=mu
  algorithm:
@@ -685,10 +772,33 @@ set K_types(KHighestWeight(,x,v):mu_in)= [KType]:
    then () = for pL in all_parameters_x_gamma(xL1,lambdaL)
    {this does finalizing, so pL has unique LKT}
       	     do let tau = K_type(embed_KGB(pL.x,G), pL.lambda_minus_rho)
-      	     	then mucand = highest_weight(tau,x)
-	 	in if mucand = mu_in
-	   	   then answer.match(tau)
-	    	   fi
+	     	then mucand = highest_weight(tau,x)
+	 	in {if is_semifinal(tau)
+		   then 
+			in} if mucand = mu_in
+			   then answer.match(tau)
+			   fi
+	    	   {fi}
+	     od
+   in for j:answer.size() do answer.index(j) od
+
+set K_types_pre(KHighestWeight(,x,v):mu_in, [(mat,int)] wall_projs)= [KType]:
+   if old_K_type_flag then return K_types_old(mu_in) fi;
+   if DV_K_type_flag then return K_types_DV(mu_in) fi;
+   let G=real_form(x), nullNu = null(#v)/1
+   then (Q,y,lambda)=AP_parabolic_LKT_pre(mu_in, wall_projs)
+   then answer = make_KType_hash(), lambdaL = lambda -rho_u(Q), L = Q.Levi
+   {then () = prints("lambda = ",lambda,", lambdaL = ",lambdaL)}
+   then xL1 = KGB(L)~[0]
+   then () = for pL in all_parameters_x_gamma(xL1,lambdaL)
+   {this does finalizing, so pL has unique LKT}
+      	     do let tau = K_type(embed_KGB(pL.x,G), pL.lambda_minus_rho)
+      	     	in if is_semifinal(tau)
+		   then let mucand = highest_weight(tau,x)
+	 	   	in if mucand = mu_in
+	   	   	   then answer.match(tau)
+	    	   	   fi
+		   fi
 	     od
    in for j:answer.size() do answer.index(j) od
 
