@@ -1,0 +1,177 @@
+<parameters.at
+
+{parameters for linear covers
+ G=complex, reductive, connected
+ \tau \in X^*\otimes _Q, n\tau\in X^*
+ this defines an n-fold cover of G
+ primary case: <tau,\alpha^\vee>=0 for all roots, so n\tau defines a character \chi of G,
+ and G~ is the "n^th root of n\tau" cover
+ all of the commands are designed to work in this setting, which is enforced by "cover_strict:=true"
+ example: the rho(u)=rho(G)-rho(L) cover of a Levi subgroup L
+ it will be interesting to see what can be made to work more generally
+ Note: some extra conditions are necessary for a real form to be compatible with this cover
+
+basic example of the more general situation: G=PGL(2)\simeq SO(3),
+ G(R)=SO(2,1), \tau=rho/2, so \tau\not\in X^*
+ in this case G(R)~= {g \in SL(2,C) | p(g)\in PGL(2,R)=SO(2,1) } = <SL(2,R), diag(i,i)>
+ note that G(R)~ is not the real points of a connected complex group
+}
+
+set cover_verbose=false
+
+set cover_strict=true
+
+
+set_type [CoveringGroup=(RootDatum G,ratvec tau),
+          CoveringRealForm=(RealForm G,ratvec tau),
+          CoveringParam=(CoveringRealForm CG,Param p),
+          CoveringParamPol=(CoveringRealForm CG,ParamPol P)]
+
+set tau(CoveringParam (CG,))=ratvec:CG.tau
+set parameter(CoveringParam (,p))=Param:p
+set infinitesimal_character(CoveringParam cp)=ratvec:infinitesimal_character(parameter(cp)) + tau(cp)
+
+{tau\in X^*_Q, satisfying <tau,\alpha^v>=0 for all coroots alpha^v
+ covering_index: minimal n so that n\tau\in X^*
+ often covering_index=2
+ tau defines an n-fold covering group G~(C) of G(C), and a character tau of G~(C)
+ such that tau^n (i.e. n\tau\in X^*) is a character of G(C)
+ let A\simeq Z/nZ be the inverse image of 1 in G~(C), A(R)=A\cap G(R)
+ tensoring with tau gives a bijection
+ {irreducible representations of G(R)} <->
+ {irreducible representations pi of G~(R) satisfying:
+  \chi_pi(z)=\tau(z) for all z\in A(R)}   [chi_pi is the central character of pi]
+
+  To do: check if something goes wrong if A(R) is strictly smaller than A
+}
+
+{CoveringParam: (CG,p) = ((G,tau),p):
+ p=(x,lambda,nu) is a parameter for G
+ (CG,p) corresponds to the parameter p\otimes\tau for G~  (when tau is central)
+ (if tau isn't central we can use translation functors but some care is needed)
+ all operations on CoveringParams are obtained by the same operation on parameters;
+  tau just comes along for the ride
+
+ We'd like to think of a parameter for CG to be (x,lambda,nu) where these satisfy the usual conditiions,
+  except that \lambda\in (rho+tau) + X^*
+ Note: tau =0 <-> trivial cover
+ The main thing we do is enable input/output of such parameters
+ We can input (CG,x,lambda,nu) with lambda\in rho+tau, and represent it as (CG,p=(x,lambda-tau,nu-tau))
+}
+
+set covering_group(RootDatum G,ratvec tau)=CoveringGroup:
+assert( not cover_strict or =tau*simple_coroots(G), "tau not orthogonal to roots");(G,tau)
+set covering_real_form(RealForm G,ratvec tau)=CoveringRealForm:
+assert(not cover_strict or =tau*simple_coroots(G), "tau not orthogonal to roots");(G,tau)
+set covering_group(RealForm G,ratvec tau)=CoveringRealForm: {same as previous, avoids defaulting to making a CoveringGroup rather than a CoveringRealForm}
+assert(not cover_strict or =tau*simple_coroots(G), "tau not orthogonal to roots");(G,tau)
+
+{covering_parameter(CG,p) <-> parameter(p)\otimes CG.tau}
+set covering_parameter(CoveringRealForm CG,Param p)=CoveringParam:(CG,p)
+set to_string(CoveringParam((G,tau),p))=string:"covering parameter(x="+p.x.number+",lambda="+compact_string(p.lambda+tau)+",nu="+compact_string(p.nu+tau)+")_"+compact_string(tau)
+set prints(CoveringParam((G,tau),p))=void:prints(to_string((G,tau),p))
+
+{fake parameter: (CG,x,lambda,nu) satisfying lambda\in (rho+tau)+X^*: precisely, this is
+ the CoveringParamter (CG,p) where p=(x,lambda-tau,nu-tau), which is a valid parameter for G}
+
+{covering_parameter(x,lambda,nu) <-> parameter(x,lambda-tau,nu-nu)\otimes\tau,
+ infinitesimal character is 1/2(1+theta_x)lambda + 1/2(1-theta_x)nu}
+set covering_parameter(CoveringRealForm CG,KGBElt x,ratvec lambda, ratvec nu)=CoveringParam:
+    (CG,parameter(x,lambda-CG.tau,nu-CG.tau))
+
+set prints(CoveringParamPol(CG,P))=void:
+for c@p in P do prints(to_string(c) + "*" + to_string(covering_parameter(CG,p))) od
+
+set composition_series(CoveringParam cp)=CoveringParamPol:(CG(cp),composition_series(p(cp)))
+
+{theta_induce_standard_normalized:
+ P=LU is a theta-stable parabolic
+ L~ = rho(u)=rho(G)-rho(L) cover of L
+ pi_L has infinitesimal character gamma_L
+ normalized cohomological induction takes
+ {reps of L~(R) of infinitesimal character gamma_L} to {reps of G(R) of infinitesimal character gamma_L}
+ in atlas: CL is the tau_L=rho(u) cover of L, i.e. CL=(L,tau) where tau=rho_u(L)
+ if p_L is a character of L of infinitesimal character \gamma_L
+  then (CL,p_L) represents a representation of L with infinitesimal character \gamma_L+tau
+  theta_induce_standard_normalized((CL,p_L)),G) = theta_induce_standard(p_L,G)  not much to see here,
+ the only new feature: the representation (CL,p_L) of the rho(u)-cover of L has the same infinitesimal character as the
+  cohomologically induced representation
+}
+
+{
+Example:
+set G=SO(3,2)
+set L=theta_stable_parabolics(G)[0].Levi
+set CL=covering_group(L,G.rho)
+set pL=parameter(KGB(L,0),[0,0],[0,0])
+set cpL=covering_parameter(CL,pL)
+
+atlas> theta_induce_standard(pL,G).infinitesimal_character
+Value: [ 3, 1 ]/2
+atlas> pL.infinitesimal_character
+Value: [ 0, 0 ]/1
+atlas> theta_induce_standard(pL,G).infinitesimal_character
+Value: [ 3, 1 ]/2
+atlas> cpL.infinitesimal_character
+Value: [ 3, 1 ]/2
+atlas> theta_induce_standard(cpL,G).infinitesimal_character
+Value: [ 3, 1 ]/2
+atlas> theta_induce_standard(pL,G)=theta_induce_standard(cpL,G)
+Value: true
+atlas> theta_induce_standard(cpL,G)
+Value: 1*parameter(x=0,lambda=[3,1]/2,nu=[0,0]/1) [7]
+}
+
+set theta_induce_standard(CoveringParam cp,RealForm G)=
+let (CL,pL)=cp in theta_induce_standard(pL,G)
+
+{Classical A_q(lambda) = A_q(G,lambda_q,lambda)
+ means q=q(G,lambda_q) , L=L(G,lambda_q) = roots which are zero on lambda_q
+ lambda \in X^*+rho_u -> one-dimensional representation C_lambda of the rho_u-cover of L
+   with infinitesimal character lambda+rho_L
+ pi_G= normalized cohomological induction (preserving infinitesimal character) applied to C_lambda
+     =>  pi_Ghas infinitesimal character lambda+rho_L (which is in X^*+rho_u+rho_L=X^*+rho_G)
+
+ to compute it:
+ Aq_reducible_normalized(x,lambda,lambda_q)
+  -> L=L(lambda_q)
+  lambda \in X^*+rho_u
+  -> lambda_shifted = lambda-rho_u \in X^*
+  -> Aq_reducible(x,lambda_shifted,lambda_q) 
+     note: infinitesimal character is lambda_shifted + rho = lambda-rho_u+rho=lambda+rho_L
+}
+
+{requirement: lambda \in X^*+rho_u so it gives a one-dimensional of the rho_u-cover of L}
+set Aq_reducible_normalized (KGBElt x,ratvec lambda, ratvec lambda_q) = ParamPol:
+  let G=real_form(x)
+  then (w,lambda_q_new)=from_dominant(G,lambda_q)
+  then w1=/w
+  then P_new=parabolic_by_wt(lambda_q_new,cross(w1,x))
+  then t_L_new=trivial(Levi(P_new))
+  , shift = w1*lambda-rho_u(P_new) then
+  ()=if cover_verbose then prints("L: ", P_new.Levi) fi  then
+  ()= assert(is_parabolic_theta_stable(P_new),"q is not theta-stable") then
+  pi_L= parameter( x(t_L_new), lambda(t_L_new)+shift, nu(t_L_new)+shift ) then
+  ()= if cover_verbose then prints("pi_L: ", pi_L, new_line, "inf char_L: ", infinitesimal_character(pi_L)) fi 
+  in
+  assert(dimension(pi_L)=1,"pi_L is not one-dimensional");
+  theta_induce_irreducible(pi_L,G)
+
+{return single irreducible, or error}
+set Aq_normalized (KGBElt x_in,ratvec lambda, ratvec lambda_q) = Param:
+  let P=%Aq_reducible_normalized(x_in,lambda,lambda_q)
+  in assert(#P<=1,"Aq is not irreducible. Use Aq_reducible_normalized(x,lambda) instead");
+  let (c,p)=P[0]
+  in assert(c=1,"Aq has multiplicity. Use Aq_reducible_normalized(x,lambda) instead");
+  p
+
+{If not provided, assume lambda_q=lambda in the definition of A_q}
+set Aq_normalized (KGBElt x,ratvec lambda) = Param:
+  Aq_normalized(x,lambda,lambda)
+
+set Aq_normalized (RealForm G,ratvec lambda, ratvec lambda_q) = Param:
+  Aq_normalized(KGB(G)[0],lambda,lambda_q)
+
+
+set Aq_normalized(RealForm G,ratvec lambda)=Param:
+  Aq_normalized(G,lambda,lambda)

@@ -5,8 +5,6 @@
 <extParamPol.at
 <extended_character_formula.at
 
-
-
 set te_verbose=true
 {move nice_format elsewhere}
 set nice_format(Param p)=string:
@@ -312,7 +310,8 @@ set lift_std(Param p_H,mat M,RealForm G, mat delta)=Param:
 let E_H=E(p_H.real_form.distinguished_involution,p_H) then
 x=lift(p_H.x,M,G) then
 gamma_G=M*p_H.infinitesimal_character then
-lambda_rho_G=(M*(p_H.lambda)-G.rho)\1 {vec}  then
+lambda_rho_G=ratvec_as_vec9(M*(p_H.lambda)-G.rho)) then
+{if this fails then some nontrivial work is needed involving covering groups}
 theta_G=lift(p_H.involution,G,M).matrix*delta then
 g_G=G.rho_check then
 l_G=null(#g_G) then
