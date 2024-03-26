@@ -47,6 +47,7 @@ set every_lambda_deets_flag = false
 set every_KGB_flag = false
 
 {if true, uses the (faster?) function localFD_1Dirac2_by_zero to compute local vertices and edges}
+{seems SLOWER in F4, E7}
 set by_zero_flag = true
 
 set spherical_xs(RealForm G) = [KGBElt]:
@@ -115,45 +116,61 @@ set FPP_unitary_hash_general([(KGBElt,ratvec)] xlambdas, Param_hash Uhash,
     if #xlambdas = 0 then return ()
     else let (x,) = xlambdas[0]
     then G = x.real_form
-    then {vd = FPP_vertex_data(G),} start = elapsed_ms()
+    then {vd = FPP_vertex_data(G),} start = elapsed_ms(),  zeroNu = null(G.rank)/1
     then () = unitaryTime := 0
     then () = prepDirac(G)
     then xnums = for (x,) in xlambdas do let (,m) = %x in m od
     then lambdas = for (,lambda) in xlambdas do lambda od, pol_hash = make_KTypePol_hash()
     then old_facet_verbose = facet_verbose, old_time_verbose = time_verbose,
     	 old_test_verbose = test_verbose, old_test_slightly_verbose = test_slightly_verbose
+    then startLPmss = elapsed_ms()
     then LPmss = for (x,lambda) in xlambdas
     	       	 do LPm_table.LPm_entry(G,x.involution, ratvec_as_vec(lambda+x.involution*lambda))
               	 od
+    {then () = if every_lambda_deets_flag
+    	      then prints("time thru LPmss = ",print_time_string(elapsed_ms() - start))
+	      fi}
     then () = facet_verbose:=false; time_verbose:=false; test_verbose:=false; test_slightly_verbose:=false
     then () = if unip_flag
     	      then unipotents_to_hash(G,Uhash)
 	      fi
-    then () = if coh_ind_flag
-    	      then coh_ind_unip_long(G,Uhash)
+    then () = if coh_ind_flag 
+    	      then coh_ind_unip_long(G,Uhash) {this takes several seconds for F4_s}
 	      fi
     then xlambdatimes = [int]: null(#xlambdas)
     then answerCards = [int]: null(#xlambdas) {number of unitary parameters found}
     then oldUhash = Uhash.size()
-    {then () = adjust_global_top(G)} {done internally by low_FPP_facets}
+    then startgf = elapsed_ms()
     then () = if #global_facets = 0 or #global_facets[0] != LPm_table.FPP_vertex_data(G).list.#
     	      then global_facets := low_FPP_facets(G)
 	      fi
+    {then () = prints("time thru global_facets = ",print_time_string(elapsed_ms() - start))}
     then () = if by_zero_flag and (#global_facets_by_zero = 0 or
     	      	 #global_facets_by_zero[0] != LPm_table.FPP_vertex_data(G).list.#)
-    	      then global_facets_by_zero := low_FPP_facets_by_zero(global_facets)
+    	      then global_facets_by_zero := global_facets_by_zero := low_FPP_facets_by_zero(global_facets)
 	      fi
+    {then () = prints("time thru global_facets_by_zero = ",print_time_string(elapsed_ms() - start))}
     then current = elapsed_ms(), oldUhash = Uhash.size(), currentUhash = Uhash.size(), formerUhash = Uhash.size(),
     	 	   oldUcounter = unitary_test_counter.use_count(), currentUcounter = unitary_test_counter.use_count()
+    {then () = if every_lambda_deets_flag
+    	      then prints("time up to main loop = ",print_time_string(elapsed_ms() - start))
+	      fi}
     then () = for (x,lambda)@k in xlambdas
     	      do {xlambdas} 
-	 	 let start = elapsed_ms(), startUhash = Uhash.size(),
+	 	 let startxl = elapsed_ms(), startUhash = Uhash.size(),
 		     		   startUcounter = unitary_test_counter.use_count(), theta = x.involution
+		 then p0 = parameter(x,lambda,zeroNu)
+		 {then () = prints("time before LPmss[",k,"] = ",print_time_string(elapsed_ms() - start))}
 		 then (Lvd, Perm2, mapAct) = LPmss[k]
-		 then LF = if by_zero_flag
+		 {then startLF = elapsed_ms()
+		 then () = prints("time thru LPmss[",k,"] = ",print_time_string(startLF - start))}
+		 then LF = if by_zero_flag and height(p0) > 0
 		      	   then localFD_1Dirac2_by_zero(x, lambda, Lvd, Perm2, mapAct, global_facets_by_zero)
 			   else localFD_1Dirac2(x, lambda, Lvd, Perm2, mapAct, global_facets)
 			   fi
+		 {then () = if every_lambda_deets_flag
+    	      	      	   then prints("time for localFD_1Dirac = ",print_time_string(elapsed_ms() - startLF))
+	      		   fi}
 		 in if #LF[0] = 0 then ()
 		     else if every_lambda_deets_flag
 			  then facet_verbose := old_facet_verbose; time_verbose := old_time_verbose;
@@ -164,7 +181,7 @@ set FPP_unitary_hash_general([(KGBElt,ratvec)] xlambdas, Param_hash Uhash,
 			  then () = for p in answer do Uparamhash.match(p) od
    		    	  then () = current := elapsed_ms(); currentUhash := Uhash.size();
 			       	    currentUcounter := unitary_test_counter.use_count()
-    		 	  then () = xlambdatimes[k] := current - start
+    		 	  then () = xlambdatimes[k] := current - startxl
     			  in if every_lambda_flag
 	      		     then prints("  ",print_time_string(xlambdatimes[k]),
 			   	" = time for (x,lambda) = (", xnums[k], ",",k{lambdas[k]},")", test_string);
@@ -230,11 +247,16 @@ set FPP_unitary_hash_general([KGBElt] xs, Param_hash Uhash, Param_hash Uparamhas
     then times = [int]: null(#xs)
     then lambdatimes = [[int]]: for j:#xs do [] od
     then answerCards = [[int]]: for j:#xs do [] od {number of unitary parameters found}
+    {then startgf = elapsed_ms()}
     then () = if #global_facets = 0 or #global_facets[0] != LPm_table.FPP_vertex_data(G).list.# {#vd.list}
     	      then global_facets := low_FPP_facets(G)
 	      fi
-    then () = global_facets_by_zero := low_FPP_facets_by_zero(global_facets)
+    then () = if by_zero_flag and (#global_facets_by_zero = 0 or
+    	      	 #global_facets_by_zero[0] != LPm_table.FPP_vertex_data(G).list.#)
+	      then global_facets_by_zero := low_FPP_facets_by_zero(global_facets)
+	      fi
     then current = elapsed_ms()
+    {then () = prints("time for global_facets = ",print_time_string(current - startgf))}
     then oldUhash = Uhash.size(), currentUhash = Uhash.size(), formerUhash = Uhash.size(),
     	 oldUcounter = unitary_test_counter.use_count(), currentUcounter = unitary_test_counter.use_count()
     then () = for x@j in xs
@@ -264,23 +286,24 @@ set FPP_unitary_hash_general([KGBElt] xs, Param_hash Uhash, Param_hash Uparamhas
 		   	prints("  ------------------")
         	   fi
 	 then () = for (lambda0, (Lvd, Perm2, mapAct))@k in good_entries
-      	      	   do for tau@ell in twists
-                      do let startlambda = elapsed_ms(), startUhash = Uhash.size(),
+      	      	   do let p0 = parameter(x,lambda0,zeroNu)
+		      in for tau@ell in twists
+                      	 do let startlambda = elapsed_ms(), startUhash = Uhash.size(),
 		      	     startUcounter = unitary_test_counter.use_count(), index = k*#twists+ell
-			 then LF = if by_zero_flag
-		      	      	   then localFD_1Dirac2_by_zero(x, lambda0+tau, Lvd, Perm2, mapAct, global_facets_by_zero)
-			   	   else localFD_1Dirac2(x, lambda0+tau, Lvd, Perm2, mapAct, global_facets)
-			   	   fi
-			 in if #LF[0] = 0
-			    then []
-                            else if every_lambda_deets_flag
-			    	 then facet_verbose := old_facet_verbose; time_verbose := old_time_verbose;
-				 test_verbose :=old_test_verbose; test_slightly_verbose := old_test_slightly_verbose
-				 fi;
-				 let answer = local(x, lambda0+tau, LPm_table.FPP_vertex_data(G), Lvd, LF, pol_hash, Uhash)
-			  	 then () = tempanswerCards[index] := #answer
-			  	 then () = for p in answer do Uparamhash.match(p) od
-				 then () = if every_lambda_deets_flag
+			    then LF = if by_zero_flag and height(p0) > 0
+		      	      	      then localFD_1Dirac2_by_zero(x, lambda0+tau, Lvd, Perm2, mapAct, global_facets_by_zero)
+			   	      else localFD_1Dirac2(x, lambda0+tau, Lvd, Perm2, mapAct, global_facets)
+			   	      fi
+			    in if #LF[0] = 0
+			       then []
+                               else if every_lambda_deets_flag
+			    	    then facet_verbose := old_facet_verbose; time_verbose := old_time_verbose;
+				    	 test_verbose :=old_test_verbose; test_slightly_verbose := old_test_slightly_verbose
+				    fi;
+				    let answer = local(x, lambda0+tau, LPm_table.FPP_vertex_data(G), Lvd, LF, pol_hash, Uhash)
+			  	    then () = tempanswerCards[index] := #answer
+			  	    then () = for p in answer do Uparamhash.match(p) od
+				    then () = if every_lambda_deets_flag
 			    	      	   then facet_verbose := false; time_verbose := false;
 				 	   	test_verbose := false; test_slightly_verbose := false
 				 	   fi
@@ -533,7 +556,7 @@ set FPP_unitary_hash_bottom_layer([(KGBElt,ratvec)] xlambdas, Param_hash UhashG,
 		     		   startUcounter = unitary_test_counter.use_count(), theta = x.involution,
 				   startUparamhash = Uparamhash.size(), startmorebad = more_bad_hash.size()
 		 then (Lvd, Perm2, mapAct) = LPmss[k] {already lives on Gsc}
-		 then LF = if by_zero_flag
+		 then LF = if by_zero_flag and height(parameter(x,lambda,0*lambda)) > 0
 		      	   then localFD_1Dirac2_by_zero(x_sc, lambda_sc, Lvd, Perm2, mapAct, global_facets_by_zero)
 			   else localFD_1Dirac2(x_sc, lambda_sc, Lvd, Perm2, mapAct, global_facets)
 			   fi
@@ -684,6 +707,7 @@ set FPP_unitary_hash_bottom_layer([KGBElt] xs, Param_hash UhashG, Param_hash Upa
         	   fi
 	 then () = for (lambda1,(Lvd1,Perm2,mapAct)) @k in good_entries
 	      	   do let lambda0 = M*lambda1
+		      then p0 = parameter(x,lambda0, zeroNu)
 		      then Lvd = if disconn_flag
 		      	      	 then to_vertex_data(for v in Lvd1.list do M*v od)
 				 else Lvd1
@@ -693,7 +717,7 @@ set FPP_unitary_hash_bottom_layer([KGBElt] xs, Param_hash UhashG, Param_hash Upa
                       do let startlambda = elapsed_ms(), startUhash = Uhash.size(),
 		      	     startUcounter = unitary_test_counter.use_count(), index = k*#twists + ell,
 			     startUparamhash = Uparamhash.size(), startmorebadlambda = more_bad_hash.size()
-			 then LF = if by_zero_flag
+			 then LF = if by_zero_flag and height(p0) > 0
 		      	      	   then localFD_1Dirac2_by_zero(x_sc, lambda0+M*tau, Lvd, Perm2,
 						     mapAct, global_facets_by_zero)
 			   	   else localFD_1Dirac2(x_sc, lambda0+M*tau, Lvd, Perm2, mapAct,

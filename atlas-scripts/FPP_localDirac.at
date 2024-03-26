@@ -308,7 +308,7 @@ set make_Lvd_Perm2_mapAct_table() = Lvd_Perm2_mapAct_table:
     	 then () = if i = I {haven't seen this inner class before}
 	      	   then inv_hashes := (inv_hashes next inv_hashes:=[])#make_mat_hash();
 	    	   	vertex_datas := (vertex_datas next vertex_datas := [])#FPP_vertex_data(ic);
-	    	   	FELs := (FELs next FELs:=[])# FPP_flippable_edge_lookup(ic);
+			FELs := (FELs next FELs:=[])# FPP_flippable_edge_lookup(ic);
 	    	   	FPP_local_verts := (FPP_local_verts next FPP_local_verts:=[])
 		     	#FPP_local_vertices(ic, vertex_datas[i].list, FELs[i]);
 	    	   	lamthlam_hashess := (lamthlam_hashess next lamthlam_hashess := [])#[];
@@ -1658,6 +1658,7 @@ KTypePol_hash pol_hash, Param_hash Uhash) = [Param]:
     {get K-type formulas for all vertices and edges}
     {then () = print(LF)}
     then temp_K_char_flag = height(parameter(x,lambda,0*lambda))/(G.rho * G.two_rho_check) <= CUTOFF
+     {defaults to true if ht=0, false otherwise}
     then pol_hash0 = if temp_K_char_flag
     	 	     then make_KTypePol_hash() {to hold chars to height hts[0]}
 		     else pol_hash
@@ -1799,7 +1800,7 @@ set local_test_GEO_hash_one_level(KGBElt x, ratvec lambda, VertexData vd,
 		   fi
 	      fi
     then htFrac = height(parameter(x,lambda,0*lambda))/(G.rho * G.two_rho_check)
-    then temp_K_char_flag = htFrac <= CUTOFF
+    then temp_K_char_flag = htFrac <= CUTOFF  {defaults to true if ht=0, false otherwise}
     then vertexDiff = #Lvd.list/#vd.list
     then approxVertexDiff = vertexDiff.numer*100\vertexDiff.denom
     then () = if approxVertexDiff < vert_diff_cutoff and revert_flag

@@ -793,12 +793,13 @@ set K_types_pre(KHighestWeight(,x,v):mu_in, [(mat,int)] wall_projs)= [KType]:
    then () = for pL in all_parameters_x_gamma(xL1,lambdaL)
    {this does finalizing, so pL has unique LKT}
       	     do let tau = K_type(embed_KGB(pL.x,G), pL.lambda_minus_rho)
-      	     	in if is_semifinal(tau)
+	     	then mucand = highest_weight(tau,x)
+      	     	in {if is_semifinal(tau)
 		   then let mucand = highest_weight(tau,x)
-	 	   	in if mucand = mu_in
+	 	   	in} if mucand = mu_in
 	   	   	   then answer.match(tau)
 	    	   	   fi
-		   fi
+		   {fi}
 	     od
    in for j:answer.size() do answer.index(j) od
 
