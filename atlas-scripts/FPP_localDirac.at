@@ -661,10 +661,19 @@ set local_testK_hash_bottom_layer(KGBElt x, ratvec lambda, VertexData vd,
 		      	   	       	 then face_deformed_unitaries(pC)
 				   	 else monomials(finalize(pC))
 				   	 fi
-		      	    in if any(for q in pCdef do ((q.x != x) and (Uhash.lookup(q) = -1)) od)
+		      	    in if not is_final(pC)
+			       then newStatuses[k] := if all(for q in pCdef do @bool: Uhash.lookup(q) >= 0 od)
+			       	    		     then "T"
+						     else newStatuses:= updateNUclassesB(newStatuses, gr, k); "F"
+						     fi
+			       else if any(for q in pCdef do ((q.x != x) and (Uhash.lookup(q) = -1)) od)
+			       	    then newStatuses := updateNUclassesB(newStatuses, gr, k); "F"
+				    fi
+			       fi
+{if any(for q in pCdef do ((q.x != x) and (Uhash.lookup(q) = -1)) od)
 		      	       then let () = newStatuses[classListByFacet[d][j]] := "F"
 			       	    in newStatuses:= updateNUclassesB(newStatuses, gr, k); newStatuses[k] := "F"
-		    	        fi
+		    	        fi}
 			fi
 	      	   od
 	      fi
@@ -860,10 +869,15 @@ set local_test_hash_bottom(KGBElt x, ratvec lambda, VertexData Lvd,
                                          then face_deformed_unitaries(pC)
                                          else monomials(finalize(pC))
                                          fi
-                            in if any(for q in pCdef do ((q.x != x) and (Uhash.lookup(q) = -1)) od)
-                               then let () = newStatuses[classListByFacet[d][j]] := "F"
-                                    in newStatuses:= updateNUclassesB(newStatuses, gr, k); newStatuses[k] := "F"
-                                fi
+                            in if not is_final(pC)
+                               then newStatuses[k] := if all(for q in pCdef do @bool: Uhash.lookup(q) >= 0 od)
+                                                     then "T"
+                                                     else newStatuses:= updateNUclassesB(newStatuses, gr, k); "F"
+                                                     fi
+			       else if any(for q in pCdef do ((q.x != x) and (Uhash.lookup(q) = -1)) od)
+                                    then newStatuses := updateNUclassesB(newStatuses, gr, k); "F"
+                                    fi
+                               fi
                         fi
                    od
               fi
@@ -886,6 +900,8 @@ set local_test_hash_bottom(KGBElt x, ratvec lambda, VertexData Lvd,
 	    then test = bool:
 	        if newStatuses[m] = "F"
 	    	then false
+		elif newStatuses[m] = "T"
+		then true
 	    	else let C=eq[m]
 	      	     then (d,j) = coords(LFVH,C[0])
 	      	     then verts = vec: LFVH[d][j][:d+1]
@@ -960,10 +976,15 @@ set local_test_hash(KGBElt x, ratvec lambda, VertexData Lvd,
                                          then face_deformed_unitaries(pC)
                                          else monomials(finalize(pC))
                                          fi
-                            in if any(for q in pCdef do ((q.x != x) and (Uhash.lookup(q) = -1)) od)
-                               then let () = newStatuses[classListByFacet[d][j]] := "F"
-                                    in newStatuses:= updateNUclassesB(newStatuses, gr, k); newStatuses[k] := "F"
-                                fi
+                            in if not is_final(pC)
+                               then newStatuses[k] := if all(for q in pCdef do @bool: Uhash.lookup(q) >= 0 od)
+                                                     then "T"
+                                                     else newStatuses:= updateNUclassesB(newStatuses, gr, k); "F"
+                                                     fi
+                               else if any(for q in pCdef do ((q.x != x) and (Uhash.lookup(q) = -1)) od)
+                                    then newStatuses := updateNUclassesB(newStatuses, gr, k); "F"
+                                    fi
+                               fi
                         fi
                    od
               fi
