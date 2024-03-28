@@ -570,7 +570,7 @@ set local_testK_hash(KGBElt x, ratvec lambda, VertexData vd,
 	      ; prints()
 	      fi
 	      ; for k:NumClasses
-    	        ~do if fund_facet_verbose and NumClasses > 100 and
+    	        ~do if fund_facet_verbose and NumClasses > 100 and {removing ~ costs 5% in Spin(4,4)}
 	      	   ((NumClasses-k-1)%printInterval = 0)
 	      	   then prints("examining undet equiv class #"
 	      	   ,NumClasses-k -1, "; so far ",unitary_test_counter.use_count()
@@ -586,7 +586,7 @@ set local_testK_hash(KGBElt x, ratvec lambda, VertexData vd,
 	          in if{NEWU} all(for p in ps do Uhash.lookup(p).>= or
 					       tester(p) od)
 		     then newStatuses[k]:= "T"
-		     else newStatuses:= updateNUclassesB(newStatuses, gr, k)
+		     else newStatuses:= updateNUclassesB(newStatuses, gr, k, "F")
 		     ; newStatuses[k] := "F"
 		     fi{NEWU}
 	         fi
@@ -664,15 +664,15 @@ set local_testK_hash_bottom_layer(KGBElt x, ratvec lambda, VertexData vd,
 		      	    in if not is_final(pC)
 			       then newStatuses[k] := if all(for q in pCdef do @bool: Uhash.lookup(q) >= 0 od)
 			       	    		     then "T"
-						     else newStatuses:= updateNUclassesB(newStatuses, gr, k); "F"
+						     else newStatuses:= updateNUclassesB(newStatuses, gr, k,"F"); "F"
 						     fi
 			       else if any(for q in pCdef do ((q.x != x) and (Uhash.lookup(q) = -1)) od)
-			       	    then newStatuses := updateNUclassesB(newStatuses, gr, k); "F"
+			       	    then newStatuses := updateNUclassesB(newStatuses, gr, k,"F"); "F"
 				    fi
 			       fi
 {if any(for q in pCdef do ((q.x != x) and (Uhash.lookup(q) = -1)) od)
 		      	       then let () = newStatuses[classListByFacet[d][j]] := "F"
-			       	    in newStatuses:= updateNUclassesB(newStatuses, gr, k); newStatuses[k] := "F"
+			       	    in newStatuses:= updateNUclassesB(newStatuses, gr, k,"F"); newStatuses[k] := "F"
 		    	        fi}
 			fi
 	      	   od
@@ -717,7 +717,7 @@ set local_testK_hash_bottom_layer(KGBElt x, ratvec lambda, VertexData vd,
 			      fi {#ps}
 		  in if test
 		     then newStatuses[k]:= "T"
-		     else newStatuses:= updateNUclassesB(newStatuses, gr, k); newStatuses[k] := "F"
+		     else newStatuses:= updateNUclassesB(newStatuses, gr, k,"F"); newStatuses[k] := "F"
 		     fi
 		  fi {newStatuses[k] = "?"}
 		  od {NumClasses}
@@ -872,10 +872,10 @@ set local_test_hash_bottom(KGBElt x, ratvec lambda, VertexData Lvd,
                             in if not is_final(pC)
                                then newStatuses[k] := if all(for q in pCdef do @bool: Uhash.lookup(q) >= 0 od)
                                                      then "T"
-                                                     else newStatuses:= updateNUclassesB(newStatuses, gr, k); "F"
+                                                     else newStatuses:= updateNUclassesB(newStatuses, gr, k,"F"); "F"
                                                      fi
 			       else if any(for q in pCdef do ((q.x != x) and (Uhash.lookup(q) = -1)) od)
-                                    then newStatuses := updateNUclassesB(newStatuses, gr, k); "F"
+                                    then newStatuses := updateNUclassesB(newStatuses, gr, k,"F"); "F"
                                     fi
                                fi
                         fi
@@ -979,10 +979,10 @@ set local_test_hash(KGBElt x, ratvec lambda, VertexData Lvd,
                             in if not is_final(pC)
                                then newStatuses[k] := if all(for q in pCdef do @bool: Uhash.lookup(q) >= 0 od)
                                                      then "T"
-                                                     else newStatuses:= updateNUclassesB(newStatuses, gr, k); "F"
+                                                     else newStatuses:= updateNUclassesB(newStatuses, gr, k,"F"); "F"
                                                      fi
                                else if any(for q in pCdef do ((q.x != x) and (Uhash.lookup(q) = -1)) od)
-                                    then newStatuses := updateNUclassesB(newStatuses, gr, k); "F"
+                                    then newStatuses := updateNUclassesB(newStatuses, gr, k,"F"); "F"
                                     fi
                                fi
                         fi
@@ -1056,6 +1056,18 @@ set one_param_time = int: 0
 
 set one_param_test(Param p, Param_hash Uhash) = [Param]:
     let start = elapsed_ms(), Q = monomials(finalize(p)), G = p.real_form
+    then () = if know_lower_flag and not is_final(p)
+    	      then return if all(for q in Q do Uhash.lookup(q) >= 0 od)
+	      	   	  then [p]
+			  else []
+			  fi
+	      fi
+    then () = if know_lower_flag
+    	      then let pdef = face_deformed_unitaries(p)
+	      	   in if any(for q in pdef do (q.x!=p.x) and Uhash.lookup(q) < 0 od)
+		      then return []
+		      fi
+	       fi
     then NK = #KGB(G), r = rank(Q[0].x.involution - 1)
     then DEFHTS = [int]:
     	 if number(Q[0].x) < NK*low_KGB_frac
@@ -1084,6 +1096,18 @@ set one_param_test(Param p, Param_hash Uhash) = [Param]:
 
 set one_param_test_bottom(Param p, int D, Param_hash Uhash) = [Param]:
     let start = elapsed_ms(), QG = monomials(finalize(p)),G = p.real_form
+    then () = if know_lower_flag and not is_final(p)
+    	      then return if all(for q in QG do Uhash.lookup(q) >= 0 od)
+	      	   	  then [p]
+			  else []
+			  fi
+	      fi
+    then () = if know_lower_flag
+    	      then let pdef = face_deformed_unitaries(p)
+	      	   in if any(for q in pdef do (q.x!=p.x) and Uhash.lookup(q) < 0 od)
+		      then return []
+		      fi
+	       fi
     then knew_that = all(for q in QG do do_you_know_is_unitary(q) od)
     then () = if knew_that
     	      then if all(for q in QG do is_unitary_hash(q) od)
