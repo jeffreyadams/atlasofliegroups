@@ -204,3 +204,37 @@ set write_param_list([Param] list, string listName) = void:
 	     	x,"),",p.lambda,",",p.nu,")")
 	  od
     end
+
+{
+add an additional list of params to append to a previously written
+file of Param's for G_temp. REQUIRE all the lists to be for the same
+real form.
+
+If LIST1 and LIST2 are lists of Param's for G in atlas, you can type
+
+atlas> > file.at write_real_form (G,"G_temp")
+atlas> >> file.at write_append_param_list(LIST1,"LIST1")
+atlas> >> file.at write_append_param_list(LIST2,"LIST2")
+
+or alternatively (creates a functionally equivalent file.at)
+
+atlas> > file.at write_param_list(LIST1,"LIST1")
+atlas> >> file.at write_append_param_list(LIST2,"LIST2")
+
+When file.at is loaded into atlas, you'll recover LIST1 and LIST2. The
+lines above can be separated by other code.
+
+Wouldn't be so hard actually to append to LIST1, but I haven't done that.
+}
+
+set write_append_param_list([Param] list, string listName) = void:
+    begin
+	prints("set Nullp = U(1,0).trivial")
+	; prints("set ",listName,"=[Param]: for i:",#list,
+	  	      " do Nullp od")
+        ; for p@i in list
+	  do let (,x) = %p.x
+	     in prints("void:",listName,"[",i,"]:=parameter(KGB(G_temp,",
+	     	x,"),",p.lambda,",",p.nu,")")
+	  od
+    end
