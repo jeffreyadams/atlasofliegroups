@@ -1194,10 +1194,10 @@ set local_face_defs(Param p) = [ParamPol]:
     in if #list = 1 then [ParamPol]: []
        else let CF = character_formula(p), sum = sum(#list[0], list), d=#list
        	    in for v in list
-       do wiggle(CF, (sum - v)/(d-1))
-       od
+       	       do wiggle(CF, (sum - v)/(d-1))
+       	       od
        fi
-
+{
 {compute the deformations of parameter p to walls of its facet. This begins with a list of
 2^{#local_vertices} - 1 Param's (which may not be final), and finalizes.}
 set local_param_defs(Param p) =[Param]:
@@ -1209,23 +1209,42 @@ in for j:d from 1
       in monomials(1*parameter(p.x,p.lambda,gamma0))
       od.##
    od.##
+}
 
-{this is all the (automatically unitary) unitary irrs arising by
-deformation of one know unitary irr p}
-set deformed_unitaries_pol(Param p) = ParamPol:
+{this is all the irrs arising by deformation to facet walls of one irr p}
+set deformed_pol(Param p) = ParamPol:
 sum(p.real_form, local_defs(p))
 
-set face_deformed_unitaries_pol(Param p) = ParamPol:
+{this is all the irrs arising by deformation to facet faces of one irr p}
+set face_deformed_pol(Param p) = ParamPol:
 sum(p.real_form, local_face_defs(p))
 
-set deformed_unitaries(Param p) = [Param]:
-    monomials(composition_series(deformed_unitaries_pol(p)))
+set deformed(Param p) = [Param]:
+    monomials(composition_series(deformed_pol(p)))
 
-set face_deformed_unitaries(Param p) = [Param]:
-    monomials(composition_series(face_deformed_unitaries_pol(p)))
+set proper_deformed(Param p) = [Param]:
+    let x = p.x
+    in for q in deformed(p)
+       do if q.x != x
+       	  then [q]
+	  else []
+	  fi
+       od.##
 
-set face_deformed_unitaries_new(Param p) = [Param]:
-    for q in face_deformed_unitaries(p)
+set face_deformed(Param p) = [Param]:
+    monomials(composition_series(face_deformed_pol(p)))
+
+set proper_face_deformed(Param p) = [Param]:
+    let x = p.x
+    in for q in face_deformed(p)
+       do if q.x != x
+       	  then [q]
+	  else []
+	  fi
+       od.##
+
+set face_deformed_new(Param p) = [Param]:
+    for q in face_deformed(p)
     do if q.x != p.x
        then [herm_center(q)]
        else []
