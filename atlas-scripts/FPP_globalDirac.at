@@ -786,6 +786,7 @@ set FPP_unitary_hash_bottom_layer([KGBElt] xs, Param_hash UhashG, Param_hash Upa
 		      	     deformLookupCounter.use_count(), ", #def calcs = ",
 		     	     deformCalcCounter.use_count())
                      fi
+	   then () = if known_to = x.# then known_to+:=1 fi
            in ()
          od {xs}
     then () = facet_verbose:=old_facet_verbose; time_verbose:=old_time_verbose; test_verbose:=old_test_verbose;
