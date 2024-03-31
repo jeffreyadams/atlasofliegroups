@@ -622,8 +622,35 @@ set local_testK_hash(KGBElt x, ratvec lambda, VertexData vd,
 	      Uhash.lookup(p).>= or is_unitary_to_ht_hash(p, ht))
      in local_testK_hash(x, lambda, vd, FVKH, eq, gr, classListByFacet, tester, Uhash)
 
+{whether to use non-minimal parabolics for bottom layer}
+set more_flag = false
+
+{when the non-minimal parabolics are used at the end, how much above
+height(p) to look at K-types.  A larger number finds more nonunitary,
+takes longer}
+set more_shift = 2
+
+set more_shift(int n) = void:
+    more_flag:=true;
+    more_shift:=n
+
+{if true, functions in FPP_global pass through KGB backwards}
+set tilde_flag = true
+
 {set this to true if you're working up and have found all FPP unitary below x}
 set know_lower_flag = false
+
+set know_lower() = void:
+    know_lower_flag:=true;
+    tilde_flag:=false
+
+{set this to true to use wiggle tests in know_more mode in local_testK_hash_bottom_layer,
+which handles the most cases}
+set wiggle_flag0 = false
+
+{set this to true to use wiggle tests in know_more mode later on}
+set wiggle_flag = false
+
 
 {test candidate classes with (new) tester; delete
  from LFVKH facets established to be nonunitary in this way. Output is new
@@ -666,7 +693,10 @@ set local_testK_hash_bottom_layer(KGBElt x, ratvec lambda, VertexData vd,
 	      	      	    then verts = vec: FVKH[d][j][:d+1]
 		      	    then pC = parameter(x, lambda, facet_bary(vd.list, verts))
 		      	    then pCdef = if is_final(pC)
-		      	   	       	 then {let try =} {proper_face_deformed(pC)} []
+		      	   	       	 then if wiggle_flag0
+					      then proper_face_deformed(pC)
+					      else []
+					      fi
 {this function is invoked only on the 0/1 facets in bottom_layer. That's a relatively long list, with few wiggles; the cost of computing
 proper_face_deformed(pC) seems not justified by the few edges eliminated}
 					      {then if #try = 0 and #C > 1
@@ -675,9 +705,9 @@ proper_face_deformed(pC) seems not justified by the few edges eliminated}
 				   	 fi
 		      	    in if not is_final(pC)
 			       then newStatuses[k] := if all(for q in pCdef do @bool: Uhash.lookup(q) >= 0 od)
-			       	    		     then "T"
-						     else newStatuses:= updateNUclassesB(newStatuses, gr, k,"F"); "F"
-						     fi
+			       	    		      then "T"
+						      else newStatuses:= updateNUclassesB(newStatuses, gr, k,"F"); "F"
+						      fi
 			       else {now pC is final, and pCdef consists of wiggled Params with smaller x}
 			       	    if any(for q in pCdef do @bool: (Uhash.lookup(q) = -1) od)
 			       	    then newStatuses := updateNUclassesB(newStatuses, gr, k,"F"); newStatuses[k] := "F"
@@ -922,9 +952,6 @@ set local_test_hash(KGBElt x, ratvec lambda, VertexData Lvd,
 
 set more_verbose =false
 
-{whether to use non-minimal parabolics for bottom layer}
-set more_flag = false
-
 {meant to hold nonunitary Params not eliminated by more}
 set more_bad_hash = make_Param_hash()
 
@@ -953,7 +980,10 @@ set local_test_hash_bottom(KGBElt x, ratvec lambda, VertexData Lvd,
                             then verts = vec: LFVH[d][j][:d+1]
                             then pC = parameter(x, lambda, facet_bary(Lvd.list, verts))
                             then pCdef = if is_final(pC)
-                                         then face_deformed(pC)
+                                         then if wiggle_flag
+					      then proper_face_deformed(pC)
+					      else []
+					      fi
                                          else monomials(finalize(pC))
                                          fi
                             in if not is_final(pC)
@@ -961,7 +991,7 @@ set local_test_hash_bottom(KGBElt x, ratvec lambda, VertexData Lvd,
                                                      then "T"
                                                      else newStatuses:= updateNUclassesB(newStatuses, gr, k); "F"
                                                      fi
-			       else if any(for q in pCdef do ((q.x != x) and (Uhash.lookup(q) = -1)) od)
+			       else if any(for q in pCdef do (Uhash.lookup(q) = -1) od)
                                     then newStatuses := updateNUclassesB(newStatuses, gr, k); "F"
                                     fi
                                fi
@@ -1182,7 +1212,10 @@ set local_test_hash(KGBElt x, ratvec lambda, VertexData Lvd,
                             then verts = vec: LFVH[d][j][:d+1]
                             then pC = parameter(x, lambda, facet_bary(Lvd.list, verts))
                             then pCdef = if is_final(pC)
-                                         then proper_face_deformed(pC)
+                                         then if wiggle_flag
+					      then proper_face_deformed(pC)
+					      else []
+					      fi
                                          else monomials(finalize(pC))
                                          fi
                             in if not is_final(pC)
@@ -1190,7 +1223,7 @@ set local_test_hash(KGBElt x, ratvec lambda, VertexData Lvd,
                                                      then "T"
                                                      else newStatuses:= updateNUclassesB(newStatuses, gr, k,"F"); "F"
                                                      fi
-                               else if any(for q in pCdef do ((q.x != x) and (Uhash.lookup(q) = -1)) od)
+                               else if any(for q in pCdef do (Uhash.lookup(q) = -1) od)
                                     then newStatuses := updateNUclassesB(newStatuses, gr, k,"F"); newStatuses[k]:="F"
                                     fi
                                fi
@@ -1272,7 +1305,7 @@ set one_param_test(Param p, Param_hash Uhash) = [Param]:
 			  else []
 			  fi
 	      fi
-    then () = if know_lower_flag
+    then () = if know_lower_flag and wiggle_flag
     	      then let pdef = proper_face_deformed(p)
 	      	   in if any(for q in pdef do Uhash.lookup(q) < 0 od)
 		      then return []
@@ -1385,11 +1418,6 @@ set one_param_test_bottom(Param p, int D, Param_hash Uhash) = [Param]:
 		    	   fi
 	      fi
 	  fi
-
-{when the non-minimal parabolics are used at the end, how much above
-height(p) to look at K-types.  A larger number finds more nonunitary,
-takes longer}
-set more_shift = 2
 
 {Assume we have local vertices and edges LF, herm and pos on LKTs.
 Called when there are not enough heights; presumably small KGBElts??}
@@ -1694,15 +1722,23 @@ set local_test_GEO_hash_def_dumb(KGBElt x, ratvec lambda, VertexData vd, VertexD
 					   else [LFDKH[D+1][m]]
 					   fi
 				      else {now pC is final}
-				      	   let pCdef = proper_face_deformed(pC)
+				      	   if wiggle_flag
+					   then let pCdef = proper_face_deformed(pC)
 					   in if any(for q in pCdef do @bool: (Uhash.lookup(q) = -1) od)
 					      then []
 					      else if Uhash.lookup(pC) >= 0
-					      	      or is_unitary_hash(pC)
-						   then [LFDKH[D+1][m]]
-						   else []
-						   fi
+					      	   or is_unitary_hash(pC)
+					   	   then [LFDKH[D+1][m]]
+					   	   else []
+					     	   fi
+				      	      fi
+					   else {not wiggle_flag}
+					      if Uhash.lookup(pC) >= 0
+					      	  or is_unitary_hash(pC)
+					      then [LFDKH[D+1][m]]
+					      else []
 					      fi
+				       	   fi
 				      fi
 				 else {now know_lower_flag is false}
 			      	      if all(for p in ps
@@ -2588,7 +2624,10 @@ set local_test_GEO_hash_bottom_layer(KGBElt x, ratvec lambda, VertexData vd,
 					   else []
 					   fi
 				      else {now ps = ps[0] is final}
-				      	   let pdef = proper_face_deformed(ps[0])
+				      	   let pdef = if wiggle_flag
+					       	      then proper_face_deformed(ps[0])
+						      else []
+						      fi
 					   in if any(for q in pdef
 					      	     do @bool: (Uhash.lookup(q) = -1)
 						     od)
