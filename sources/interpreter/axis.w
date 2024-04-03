@@ -2849,6 +2849,15 @@ frame |fr| from which is can be obtained. This will also be reused on multiple
 other occasions where new identifiers, such as loop variables, are locally
 introduced.
 
+While users cannot leave an undefined value in a local name, certain
+optimisations will temporarily move a value from a local variable, so that there
+is no sharing that prevents its modification in-place; this happens just before
+a new value (quite likely that modified value) gets assigned to the variable. It
+can happen however that the function computing the new value throws a runtime
+error, and if this happens the code below will find the variable with its pants
+down. Therefore we are careful to handle the case where |*it==nullptr|, and
+print an indication of absence of any value at this point.
+
 @< Catch block for providing a trace-back of local variables @>=
 catch (error_base& e)
 { std::ostringstream o;
@@ -2857,7 +2866,11 @@ catch (error_base& e)
   for (auto it = frame::current->begin(); it!=frame::current->end();
        ++it,++id_it)
   { o << (it==frame::current->begin() ? "{ " :", ")
-   @| << main_hash_table->name_of(*id_it) << '=' << **it;
+   @| << main_hash_table->name_of(*id_it) << '=';
+    if (*it==nullptr)
+      o << "(.)"; // indicate a value that is gone
+    else
+      o << **it;
   }
   o << " }";
   e.trace(o.str());
