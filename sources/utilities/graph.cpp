@@ -115,13 +115,11 @@ partition::Partition OrientedGraph::to_unoriented_components()
 
   The strong components are going to be discovered in a highest (sink) first
   topological order ("topological order" means some total order compatible
-  with a given partial order): when a strong component is discovered all
+  with a given partial order): when a strong component is discovered, all
   outgoing edges from it lead to components that were previously discovered.
   Since the elements of the already discovered components are marked, and
   edges leading to them are henceforth ignored, the problem at each moment is
-  to try to isolate a strong component with no outgoing edges. Eventually we
-  prefer numbering in the opposite ordering to have the highest strong
-  component last, whence we perform a reversal at the end.
+  to try to isolate a strong component with no outgoing edges.
 
   The vertices will be traversed in the order of depth-first search. When they
   are first seen we say the become "active", and some data associated to them
@@ -168,14 +166,14 @@ partition::Partition OrientedGraph::to_unoriented_components()
 */
 
 namespace {
-typedef size_t seqno; // sequence number in depth-first traversal
-typedef size_t work_addr; // reference to an active vertex by location
+using seqno = Vertex; // sequence number in depth-first traversal
+using work_addr = unsigned; // reference to an active vertex by stack location
 
 struct info
 {
   Vertex v;    // identification of vertex in the graph
   work_addr parent; // location of parent in depth-first traversal
-  size_t next_edge; // index in edge list of next edge to consider
+  unsigned next_edge; // index in edge list of next edge to consider
   seqno min;        // minimal rank of vertex reachable as indicated above
 
   // constructor
@@ -193,6 +191,9 @@ partition::Partition OrientedGraph::cells(OrientedGraph* gr) const
   const seqno infinity= size()+1; // impossible sequence number
 
   std::vector<info> active;
+
+  // the next variable provides local fast storage without (de)construction
+  std::vector<const EdgeList*> out; // work space for each componenent
 
   partition::Partition pi(size()); // |pi| will be a partition of the vertex set
   if (gr!=nullptr) gr->resize(0); // start induced graph with a clean slate
@@ -229,21 +230,21 @@ partition::Partition OrientedGraph::cells(OrientedGraph* gr) const
 	  else // |y| was seen before (cross edge), or |y| is settled
 	  {  // if |y| is settled nothing will happen
 	    if (rank[y] < x.min) // then record that we can reach y
-	      x.min = rank[y];
+	      x.min = rank[y]; // see note below why this suffices
 	  }
 	} // while (x.next_edge < edges.size())
 
 	// at this point we have exhausted the edges of |x.v|, it matures
-	work_addr new_pos=x.parent; // we will back-up to parent of |x| next
+	const work_addr new_pos=x.parent; // will back-up to parent of |x| next
 
 	if (x.min == rank[x.v]) // no older vertex reachable from |x|
 	{ // split off strong component
 	  unsigned long c =
 	    pi.new_class(x.v);  // x will be added again in loop, harmless
-	  containers::sl_list<const EdgeList*> out; // to gather outgoing edges
-	  for (work_addr i=cur_pos; i<active.size(); ++i)
+	  out.clear(); // to gather outgoing edges
+	  for (auto it = &active[cur_pos]; it!=&*active.end(); ++it)
 	  {
-	    Vertex y=active[i].v; // the first time |y==x.v|
+	    Vertex y=it->v; // the first time |y==x.v|
 	    pi.addToClass(c,y);
 	    rank[y]=infinity;     // |y| is now settled
 	    out.push_back(&edgeList(y));
@@ -255,8 +256,8 @@ partition::Partition OrientedGraph::cells(OrientedGraph* gr) const
 	}
 	else // |x| matures but does not head a new strong component
 	{ // note that |x| cannot be |x0|, so active[x.parent] exists
-	  if (x.min < active[x.parent].min) // then update parent info
-	    active[x.parent].min=x.min; // what x sees, its parent sees
+	  if (x.min < active[new_pos].min) // then update parent info
+	    active[new_pos].min=x.min; // what x sees, its parent sees
 	}
 	cur_pos=new_pos;
       }  // while(cur_pos!=nil)
@@ -264,6 +265,16 @@ partition::Partition OrientedGraph::cells(OrientedGraph* gr) const
       assert(active.empty());
 
     } //for (x0) if (rank[x0]<infinity)
+
+/* Note: when we see from |x| an active |y| older than the current |x.min|, we
+   do not look up |y.min| value, but instead use |rank[y]| to lower |x.min|.
+   Indeed given our set-up it would be hard to do so since that |y| is just a
+   vertex that we know has an |active| record somewhere below that of |x|, but
+   we do not know where exactly. [Fokko had the |min| values in an array indexed
+   by the vertices, so he did use that value |min[y]|.] But the rank of |y|
+   itself will ensure that |x| will not head a component, nor will any node
+   below |x| but above |y| in |active|.
+*/
 
 #if 0
   // maybe reverse the numbering of the classes in the partition (deactivated)
@@ -348,8 +359,7 @@ void OrientedGraph::reverseNumbering()
   therefore also the number of the new vertex that |add_links| will create).
 */
 void OrientedGraph::add_links
-  (const containers::sl_list<const EdgeList*>& out,
-   const partition::Partition& pi)
+  (const std::vector<const EdgeList*>& out, const partition::Partition& pi)
 {
   Vertex c=newVertex(); // extend graph by vertex; it now has |c+1| vertices
   std::set<Vertex> seen;
@@ -359,7 +369,7 @@ void OrientedGraph::add_links
   seen.erase(c); // exclude any edge from class |c| to itself
   EdgeList& e = edgeList(c); // the new edge list to define
   e.reserve(seen.size());
-  e.assign(seen.begin(),seen.end()); // convert |BitMap| to |EdgeList|
+  e.assign(seen.begin(),seen.end()); // convert |std::set| to |EdgeList|
 
 }
 

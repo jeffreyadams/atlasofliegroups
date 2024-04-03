@@ -107,7 +107,7 @@ bitmap::BitMap Poset::maxima(const bitmap::BitMap& b) const
   bitmap::BitMap result = b; // working copy; we shall remove covered elements
 
   while (result.back_up(x))
-    result.andnot(d_below[x]); // remove below |x| (|bl[x]| remains set)
+    result.andnot(d_below[x]); // remove below |x| (|result[x]| remains set)
 
   return result;
 }
