@@ -48,6 +48,16 @@ set every_KGB_flag = false
 {seems SLOWER in F4, E7}
 set by_zero_flag = true
 
+set contragredient(KGBElt x) = KGBElt:
+    let wzero = w0(x.root_datum) in cross(wzero,x)
+
+set isotwistKGBs(KGBElt x) = [KGBElt]:
+    let G = x.real_form, theta = x.involution, tf = x.torus_factor, rd = x.root_datum
+    {then p = parameter(x,G.rho, G.rho)
+    then dp = p.dual}
+    then twists = all_even_lambda_differential_0(rd.dual, -theta.^)
+    in for tau in twists do KGB_elt(G, theta, tf + tau) od
+
 set spherical_xs(RealForm G) = [KGBElt]:
     let real_rank = rank(x_open(G).involution + 1)
     in for x in KGB(G)
@@ -260,7 +270,35 @@ set FPP_unitary_hash_general([KGBElt] xs, Param_hash Uhash, Param_hash Uparamhas
     then () = for x@j in xs
     	      do {xs} 
 	 let former_time = current, formerUhash = currentUhash, formerUcounter = currentUcounter
-	 then twists = all_lambda_differential_0(x)
+	 then xtwists = isotwistKGBs(x)
+	 {then () = prints(for y in xtwists do y.number od)}
+	 then tw = first(for y in xtwists do y.number < known_to od)
+	 {then () = prints("tw = ",tw," , known_to = ",known_to)}
+	 then xtwist = if tw.>=
+	      	       then {prints("skipping x = ",x.number," for xtwist = ",xtwists[tw].number);} xtwists[tw]
+		       else x
+		       fi
+	 in if xtwist.number < known_to
+	    then answerCards[x.number]:= answerCards[xtwist.number];
+	    	 {prints("skipping x = ",x.number," for xtwist = ",xtwist.number);}
+		 if (know_lower_flag and (known_to = x.#)) then known_to+:=1 fi;
+		 for ell:Uhash.size()
+	      	 do let p = Uhash.index(ell)
+		    in if p.x = xtwist
+		       then Uhash.match(parameter(x, p.lambda, p.nu))
+		       fi
+		 od
+	    else let xcont = contragredient(x)
+	    	 in if xcont.number < known_to
+	    	    then answerCards[x.number]:= answerCards[xcont.number];
+		    if (know_lower_flag and (known_to = x.#)) then known_to+:=1 fi;
+		    for ell:Uhash.size()
+	      	    do let p = Uhash.index(ell)
+		       in if p.x = xcont
+		       	  then Uhash.match(contragredient(p))
+		    	  fi
+		    od
+	     	    else let twists = all_lambda_differential_0(x)
 	 then LPm_entries = LPm_table.LPm_entries(G,x.involution)
          then good_entries = for (lambda0,entry) in LPm_entries
                               do  if 1*parameter(x,lambda0,zeroNu) != zeroPol
@@ -335,7 +373,10 @@ set FPP_unitary_hash_general([KGBElt] xs, Param_hash Uhash, Param_hash Uparamhas
 		      	     deformLookupCounter.use_count(), ", #def calcs = ",
 		     	     deformCalcCounter.use_count())
                      fi
+	   then () = if (know_lower_flag and (known_to = x.#)) then known_to+:=1 fi
            in ()
+	   fi {xcont.number < known_to}
+	   fi {xtwist.number < known_to}
          od {xs}
     then () = facet_verbose:=old_facet_verbose; time_verbose:=old_time_verbose; test_verbose:=old_test_verbose;
     	      test_slightly_verbose:=old_test_slightly_verbose
@@ -503,10 +544,14 @@ set FPP_unitary_hash_bottom_layer([(KGBElt,ratvec)] xlambdas, Param_hash UhashG,
 	      	   else (G,id_mat(G.rank))
 	      	   fi
     then xlambdas_sc = if disconn_flag
-    	      	       then for (x,lambda) in xlambdas do (inverse_embed_KGB(x, Gsc, M), M*lambda) od
+    	      	       then for (x,lambda) in xlambdas do (inverse_embed_KGB2(x, Gsc, M), M*lambda) od
 	      	       else xlambdas
 	      	       fi
-    then Uhash = if disconn_flag
+    then Gknown_to = known_to
+    then () = if disconn_flag
+    	      then known_to := inverse_embed_KGB2(KGB(G,known_to), Gsc, M).number
+	      fi
+    then Uhash = if disconn_flag {this will hold the unitary reps on Gsc}
     	      	 then make_Param_hash() {this is for unitary reps of Gsc that factor to G}
 		 else UhashG
 		 fi
@@ -530,10 +575,10 @@ set FPP_unitary_hash_bottom_layer([(KGBElt,ratvec)] xlambdas, Param_hash UhashG,
 	      fi
     then () = if disconn_flag
     	      then for j:UhashG.size()
-	      	   do for psc in sc_lifts(UhashG.index(j), Gsc, M)
+	      	   do for psc in sc_lifts2(UhashG.index(j), Gsc, M)
 		      do Uhash.match(psc)
 		      od
-		   od
+		   od{; prints("# unitary facets on Gsc = ",Uhash.size())}
 	      fi
     then xlambdatimes = [int]: null(#xlambdas)
     then answerCards = [int]: null(#xlambdas) {number of unitary parameters found}
@@ -593,7 +638,8 @@ set FPP_unitary_hash_bottom_layer([(KGBElt,ratvec)] xlambdas, Param_hash UhashG,
 		   od
 	       fi
     then () = facet_verbose:=old_facet_verbose; time_verbose:=old_time_verbose;
-    	      test_verbose:=old_test_verbose; test_slightly_verbose:=old_test_slightly_verbose
+    	      test_verbose:=old_test_verbose; test_slightly_verbose:=old_test_slightly_verbose;
+	      known_to:=Gknown_to
     then longest = max_loc(xlambdatimes)
     in prints(new_line,"Total time = ", print_time_string(current-start),
        	      "; max time = ",print_time_string(xlambdatimes[longest]),
@@ -633,10 +679,10 @@ set FPP_unitary_hash_bottom_layer([KGBElt] xs, Param_hash UhashG, Param_hash Upa
 	      	   else (G,id_mat(G.rank))
 	      	   fi
     then xs_sc = if disconn_flag
-    	       	 then for x in xs do inverse_embed_KGB(x, Gsc, M) od
+    	       	 then for x in xs do inverse_embed_KGB2(x, Gsc, M) od
 	      	 else xs
 	      	 fi
-    then Uhash = if disconn_flag
+    then Uhash = if disconn_flag {this will hold the unitary reps on Gsc}
     	       	 then make_Param_hash()
 		 else UhashG
 		 fi
@@ -660,7 +706,7 @@ set FPP_unitary_hash_bottom_layer([KGBElt] xs, Param_hash UhashG, Param_hash Upa
 	      fi
     then () = if disconn_flag
     	      then for j:UhashG.size()
-	      	   do for psc in sc_lifts(UhashG.index(j), Gsc, M)
+	      	   do for psc in sc_lifts2(UhashG.index(j), Gsc, M)
 		      do Uhash.match(psc)
 		      od
 		   od
@@ -679,7 +725,44 @@ set FPP_unitary_hash_bottom_layer([KGBElt] xs, Param_hash UhashG, Param_hash Upa
     	      do {xs}
 	 let former_time = current, formerUhash = currentUhash, formerUcounter = currentUcounter, x_sc = xs_sc[j],
 	     startmorebadx = more_bad_hash.size()
-	 then twists = all_lambda_differential_0(x)
+	 then xtwists = isotwistKGBs(x)
+	 then tw = first(for y in xtwists do y.number < known_to od)
+	 then xtwist = if tw.>=
+	      	       then xtwists[tw]
+		       else x
+		       fi
+	 in if xtwist.number < known_to
+	    then answerCards[x.number]:= answerCards[xtwist.number];
+	    	 if (know_lower_flag and (known_to = x.#)) then known_to+:=1 fi;
+		 for ell:UhashG.size()
+	      	 do let p = UhashG.index(ell)
+		    in if p.x = xtwist
+		       then let ptwist = parameter(x, p.lambda, p.nu)
+		       	    then () = UhashG.match(ptwist)
+		       	    in if disconn_flag
+			       then for psc in sc_lifts2(ptwist,Gsc,M)
+				    do  Uhash.match(psc)
+				    od
+			       fi
+		       fi
+		 od
+	    else let xcont = contragredient(x)
+	    	 in if xcont.number < known_to
+	    	    then answerCards[x.number]:= answerCards[xcont.number];
+		    if (know_lower_flag and (known_to = x.#)) then known_to+:=1 fi;
+		    for ell:UhashG.size()
+	      	    do let p = UhashG.index(ell)
+		       in if p.x = xcont
+		       	  then let pcont = contragredient(p)
+			       then () = UhashG.match(pcont)
+			       in if disconn_flag
+				  then for psc in sc_lifts2(pcont,Gsc,M)
+				       do Uhash.match(psc)
+				       od
+				  fi
+		    	  fi
+		    od
+	     	    else let twists = all_lambda_differential_0(x)
 	 then LPm_entries = [(ratvec, Lvd_Perm2_mapAct)]: LPm_table.LPm_entries(G, x.involution)
 	 then good_entries = for (lambda0,entry) in LPm_entries
 	      	       	      do  if 1*parameter(x,lambda0,zeroNu) != zeroPol
@@ -703,9 +786,13 @@ set FPP_unitary_hash_bottom_layer([KGBElt] xs, Param_hash UhashG, Param_hash Upa
 			       sum(for list in answerCards do sum(list) od));
 		   	prints("  ------------------")
         	   fi
+	 then Gknown_to = known_to {need to change known_to to apply know_lower on Gsc}
+	 then () = if disconn_flag and know_lower_flag
+    	      	   then known_to := min(for y  in inverse_embed_KGBs2(KGB(G,known_to), Gsc, M) do y.number od)
+	      	   fi
 	 then () = for (lambda1,(Lvd1,Perm2,mapAct)) @k in good_entries
 	      	   do let lambda0 = M*lambda1
-		      then p0 = parameter(x,lambda0, zeroNu)
+		      then p0 = parameter(x,lambda1, zeroNu)
 		      then Lvd = if disconn_flag
 		      	      	 then to_vertex_data(for v in Lvd1.list do M*v od)
 				 else Lvd1
@@ -730,6 +817,17 @@ set FPP_unitary_hash_bottom_layer([KGBElt] xs, Param_hash UhashG, Param_hash Upa
 				 fi;
 				 let answer = local_test_GEO_hash_bottom_layer(x_sc, lambda0+M*tau,
 				     	    LPm_table.FPP_vertex_data(Gsc), Lvd, LF, pol_hash, Uhash)
+				 then () = if disconn_flag
+				      	   then let y_scs = isotwistKGBs(x_sc)[1:]
+					   	in for qsc in answer
+					   	   do for y_sc in y_scs
+					   	      do let rsc = parameter(y_sc, qsc.lambda, qsc.nu)
+						      	 in for tsc in monomials(finalize(rsc))
+						      	    do Uhash.match(tsc)
+							    od
+						      od
+						   od
+					    fi
 			  	 then () = tempanswerCards[index] := #answer
 			  	 then () = for p in answer do Uparamhash.match(p) od
 				 then () = if every_lambda_deets_flag
@@ -786,8 +884,11 @@ set FPP_unitary_hash_bottom_layer([KGBElt] xs, Param_hash UhashG, Param_hash Upa
 		      	     deformLookupCounter.use_count(), ", #def calcs = ",
 		     	     deformCalcCounter.use_count())
                      fi
-	   then () = if known_to = x.# then known_to+:=1 fi
+	   then () = known_to :=Gknown_to
+	   then () = if (know_lower_flag and (known_to = x.#)) then known_to+:=1 fi
            in ()
+	 fi {xcont.number < known_to}
+	 fi {xtwist.number < known_to}
          od {xs}
     then () = facet_verbose:=old_facet_verbose; time_verbose:=old_time_verbose; test_verbose:=old_test_verbose;
     	      test_slightly_verbose:=old_test_slightly_verbose

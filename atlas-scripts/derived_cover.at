@@ -81,8 +81,25 @@ set inverse_embed_KGBs(KGBElt x, RealForm Gsc, mat M) = [KGBElt]:
     then tf_scs = for ell in shifts do tf_sc0 + ell od
     in for tf_sc in tf_scs do KGB_elt(Gsc, theta_sc, tf_sc) od
 
+{preceding function fails for G = PSU(2,2)}
+{x is a KGBElt for a group G; M is a map from X*(G) to X*(Gsc).
+ Result is a list of KGBElts for Gsc}
+set inverse_embed_KGBs2(KGBElt x, RealForm Gsc, mat M) = [KGBElt]:
+    let Minv = right_inverse(M/1), G = x.real_form
+    then tf_sc0 = (x.torus_factor)*Minv {NOT UNIQUE!}
+    then theta_sc = ratmat_as_mat(M*(x.involution)*Minv)
+    then x0_sc = KGB_elt(Gsc.inner_class, theta_sc, tf_sc0)
+    then p0_sc = parameter(x0_sc, Gsc.rho,Gsc.rho)
+    then x0_sc_d = dual(p0_sc).x
+    then shifts = all_even_lambda_differential_0(x0_sc_d)
+    then tf_scs = for ell in shifts do tf_sc0 + ell od
+    in for tf_sc in tf_scs do KGB(Gsc)[KGB_elt(Gsc.inner_class, theta_sc, tf_sc).number] od
+
 set inverse_embed_KGB(KGBElt x, RealForm Gsc, mat M) = KGBElt:
     inverse_embed_KGBs(x, Gsc, M)[0]
+
+set inverse_embed_KGB2(KGBElt x, RealForm Gsc, mat M) = KGBElt:
+    inverse_embed_KGBs2(x, Gsc, M)[0]
 
 set sc_lifts(Param p, RealForm Gsc, mat M) = [Param]:
     for xsc in inverse_embed_KGBs(p.x, Gsc,M)
@@ -99,6 +116,22 @@ set sc_lifts(Param p) = [Param]:
 set sc_lift(Param p) = Param:
     let (Gsc, M) = derived_cover_real_form_info(p.real_form)
     in sc_lift(p, Gsc, M)
+
+set sc_lifts2(Param p, RealForm Gsc, mat M) = [Param]:
+    for xsc in inverse_embed_KGBs2(p.x, Gsc,M)
+    do parameter(xsc, M*(p.lambda), M*(p.nu))
+    od
+
+set sc_lift2(Param p, RealForm Gsc, mat M) = Param:
+    parameter(inverse_embed_KGB2(p.x, Gsc, M), M*(p.lambda), M*(p.nu))
+
+set sc_lifts2(Param p) = [Param]:
+    let (Gsc, M) = derived_cover_real_form_info(p.real_form)
+    in sc_lifts2(p, Gsc, M)
+
+set sc_lift2(Param p) = Param:
+    let (Gsc, M) = derived_cover_real_form_info(p.real_form)
+    in sc_lift2(p, Gsc, M)
 
 set sc_descend(Param psc, RealForm G, mat M) = Param:
     {let Minv = right_inverse(M/1)}{ fails to give approp integral lambda}
