@@ -836,8 +836,10 @@ set local_testK_hash_bottom_layer(KGBElt x, ratvec lambda, VertexData vd,
 	      	  then ps = monomials(finalize(pC))
                   then test = all(for p in ps
 		     	  	  do @bool: Uhash.lookup(p).>= or
-				     if more_flag
-				     then bottom_elim_factors_more(p, maxQs, datas, pol_hash.index(FVKH[d][j][d+1]))
+				     if (more_flag and #ps = 1 {otherwise the K-char is wrong!})
+				     then bottom_elim_factors_more(p, maxQs, datas , pol_hash.index(FVKH[d][j][d+1]))
+				     elif more_flag
+				     then bottom_elim_factors_more(p, maxQs, datas)
 				     else min_bottom_elim_factors(p)
 				     fi
 				  od)
