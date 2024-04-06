@@ -834,15 +834,20 @@ set local_testK_hash_bottom_layer(KGBElt x, ratvec lambda, VertexData vd,
 	      	  then verts = vec: FVKH[d][j][:d+1]
 		  then pC = parameter(x, lambda, facet_bary(vd.list, verts))
 	      	  then ps = monomials(finalize(pC))
-                  then test = all(for p in ps
-		     	  	  do @bool: Uhash.lookup(p).>= or
-				     if (more_flag and #ps = 1 {otherwise the K-char is wrong!})
-				     then bottom_elim_factors_more(p, maxQs, datas , pol_hash.index(FVKH[d][j][d+1]))
-				     elif more_flag
-				     then bottom_elim_factors_more(p, maxQs, datas)
-				     else min_bottom_elim_factors(p)
-				     fi
-				  od)
+                  then test = if all(for p in ps do @bool: Uhash.lookup(p).>= od)
+		       	      then true
+			      elif not all(for p in ps
+		     	  	     	   do @bool: min_bottom_elim_factors(p)
+					   od)
+				then false
+			      elif (more_flag and #ps = 1 {otherwise the K-char is wrong!})
+				then bottom_elim_factors_more(ps[0], maxQs, datas , pol_hash.index(FVKH[d][j][d+1]))
+			      elif more_flag
+				then all(for p in ps
+				     	 do @bool: bottom_elim_factors_more(p, maxQs, datas)
+					 od)
+			      else true
+			      fi
      		  in if not test
 		     then newStatuses:= updateNUclassesB(newStatuses, gr, k,"F"); newStatuses[k] := "F"
 		     fi
@@ -880,6 +885,11 @@ set NumKchars() = int:
 {will be modified to name of local test being run}
 set test_string = ""
 
+set more_verbose =false
+
+{meant to hold nonunitary Params not eliminated by more}
+set more_bad_hash = make_Param_hash()
+
 { Input is candidate facets, and graph info. Output is the tester-unitary ones. 
  use and update a complete list Uhash of known tester-unitary facets. 
  try to compute and systematically use partial order on facets}
@@ -909,9 +919,9 @@ set local_test_hash(KGBElt x, ratvec lambda, VertexData Lvd,
 	    ;   let C=eq[m]
 	      	then (d,j) = coords(LFVH,C[0])
 	      	then verts = vec: LFVH[d][j][:d+1]
+		then pC = parameter(x, lambda, facet_bary(Lvd.list, verts))
 		  {first_param makes trouble in UParams list!}
-	      	  then ps = monomials(finalize(parameter(x, lambda
-		    	  , facet_bary(Lvd.list, verts))))
+	      	  then ps = monomials(finalize(pC))
 	      	in if{NEWU} all(for p in ps
 		   	    	do Uhash.lookup(p).>= or tester(p) od)
 		   then for i in C
@@ -938,7 +948,10 @@ set local_test_hash(KGBElt x, ratvec lambda, VertexData Lvd,
 			   	     fi
 		       	   in q
 		    	od {list of tester unitary Params}
-		   else []
+		   else if more_flag
+		   	then more_bad_hash.match(pC)
+			fi;
+			[]
 		   fi{NEWU}
 	  od.##
     then () = if test_verbose or test_slightly_verbose
@@ -948,10 +961,9 @@ set local_test_hash(KGBElt x, ratvec lambda, VertexData Lvd,
 	      fi
     in  UParams
 
-set more_verbose =false
-
-{meant to hold nonunitary Params not eliminated by more}
-set more_bad_hash = make_Param_hash()
+set local_test_hash(KGBElt x, ratvec lambda, VertexData Lvd, [[LocalFacetVertsHash]] LFVH, [[int]] eq, [[int]] gr,
+    			   [vec] classListByFacet, Param_hash Uhash) = [Param]:
+    local_test_hash(x, lambda, Lvd, LFVH, eq, gr, classListByFacet, Uhash, is_unitary_hash@Param)
 
 {meant to hold params p with pL unitary and p not}
 set surprise_hash = make_Param_hash()
@@ -1084,7 +1096,7 @@ set local_test_hash_bottom(KGBElt x, ratvec lambda, VertexData Lvd,
     in  UParams
 
 { Input is candidate facets, and graph info. Output is the unitary ones.}
-set local_test_hash(KGBElt x, ratvec lambda, VertexData Lvd,
+set local_test_wiggle_hash(KGBElt x, ratvec lambda, VertexData Lvd,
     [[LocalFacetVertsHash]] LFVH, [[int]] eq, [[int]] gr,
     [vec] classListByFacet, Param_hash Uhash) = [Param]:
     let NumClasses = #eq, printInterval = int: 1, newStatuses = for j:#eq do "?" od
@@ -1881,9 +1893,9 @@ set local_test_GEO_hash_no_dumb(KGBElt x, ratvec lambda, VertexData vd, VertexDa
     then () = long_out_flag := long_out_temp_flag
     then start = elapsed_ms(), pmin = parameter(x,lambda,0*lambda)
     then UParams = if  (height(pmin) = 0) or (not mix_flag) then local_test_hash(x,lambda,Lvd,LFDKH,eq,gr,CLBF,Uhash)
-    	 	   else let (Q0,) = theta_stable_quasi_data(pmin), HT = height(pmin) + more_shift
+    	 	   else {let (Q0,) = theta_stable_quasi_data(pmin), HT = height(pmin) + more_shift
     		   	then maxQs = max_Qs(Q0)
-    			in local_test_hash{_bottom}(x, lambda, Lvd, LFDKH, eq, gr, CLBF, Uhash)  {NEED TO PUT BOTTOM LAYER STUFF BACK}
+    			in} local_test_hash{_bottom}(x, lambda, Lvd, LFDKH, eq, gr, CLBF, Uhash)  {NEED TO PUT BOTTOM LAYER STUFF BACK}
 		   fi
     then time = elapsed_ms() - start
     then () = if time_verbose
@@ -2562,16 +2574,10 @@ set local_test_GEO_hash_bottom_layer(KGBElt x, ratvec lambda, VertexData vd,
 			      then () = if know_lower_flag and test = "?"
 			      	      	then if ps[0].x != x {ps is not final} and
 					     	any(for q in ps do @bool: (q.x.# < known_to) and (Uhash.lookup(q) = -1) od)
-				      	     { then if all( for q in ps
-				      	      	     	  do @bool: (q.x.# < known_to) and (Uhash.lookup(q).>=)
-						   	  od)
-					     	  then test:="T"} {this case can't happen when test = "?"}
-					     	  {elif any(for q in ps do @bool: (q.x.# < known_to) and (Uhash.lookup(q) = -1) od)}
                                     	     then test := "F"
 					     elif ps[0].x != x and
 					     	  all(for q in ps do @bool: (q.x.# < known_to) and (Uhash.lookup(q).>=) od)
 					     then test := "T"
-					     	  {fi}
 				      	     elif test = "?" {now ps = ps[0] is final}
 				      	     then let pCdef = if wiggle_flag and is_final(pC)
 						      	      then let CF = character_formula(pC)
@@ -2581,24 +2587,35 @@ set local_test_GEO_hash_bottom_layer(KGBElt x, ratvec lambda, VertexData vd,
 						      		       		   od))))
 							      else []
 							      fi
-							  {proper_face_deformed(pC)}
 				      	          in if any(for q in pCdef
 						      	    do @bool: ((q.x.# < known_to) and (Uhash.lookup(q) = -1))
 							    od)
 					      	     then test := "F"
 						     fi
 					     fi
-					 fi
-			       then () = if test = "?"
-			       	       	 then if more_flag
-					      then if not all(for q in ps do @bool: bottom_elim_factors_more(q, maxQs, datas) od)
-					      	   then test :="F"
-						   fi
-					      else if not all(for q in ps do @bool: min_bottom_elim_factors(q) od)
-					      	   then test:="F"
-					           fi
-					      fi
-					 fi
+			               elif (not know_lower_flag) and test = "?"
+			      	      	then if ps[0].x != x {ps is not final} and
+					     	any(for q in ps do @bool: (q.x.# < known_to) and (Uhash.lookup(q) = -1) od)
+                                    	     then test := "F"
+					     elif ps[0].x != x and
+					     	  all(for q in ps do @bool: (q.x.# < known_to) and (Uhash.lookup(q).>=) od)
+					     then test := "T"
+				      	     elif test = "?" {now ps = ps[0] is final}
+				      	     then let pCdef = if wiggle_flag and is_final(pC)
+						      	      then let CF = character_formula(pC)
+					      		     	  in monomials(composition_series((
+							     	     sum(x.real_form, for v in ratverts
+						      		       		   do wiggle(CF, (sigma - v)/(Dcount+1))
+						      		       		   od))))
+							      else []
+							      fi
+				      	          in if any(for q in pCdef
+						      	    do @bool: ((q.x.# < known_to) and (Uhash.lookup(q) = -1))
+							    od)
+					      	     then test := "F"
+						     fi
+					     fi
+					fi
 			       in if test = "F" then []
 			       	  else [LFDKH[Dcount+1][m]]
 				  fi
@@ -2627,8 +2644,9 @@ set local_test_GEO_hash_bottom_layer(KGBElt x, ratvec lambda, VertexData vd,
 
     then start=elapsed_ms()
     then UParams = [Param]:
-         let ((eq,gr),IUCL,CLBF) = localGraphK(LFDKH) 
-         in local_test_hash_bottom(x, lambda, Lvd, LFDKH, eq, gr, CLBF, maxQs, datas, pol_hash, Uhash)
+         let ((eq,gr),IUCL,CLBF) = localGraphK(LFDKH) {these have had know_lower, min_bottom, and bottom_elim
+	 already applied; so just do is_unitary}
+         in local_test_hash(x, lambda, Lvd, LFDKH, eq, gr, CLBF, Uhash, is_unitary_hash@Param)
     then time = elapsed_ms() - start
     then () = if time_verbose
 	      then prints("     ", print_time_string(time),
