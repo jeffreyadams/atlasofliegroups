@@ -782,7 +782,7 @@ set local_testK_hash_bottom_layer(KGBElt x, ratvec lambda, VertexData vd,
 				      fi
 			    then () = current:=elapsed_ms()
 			    then () = prevk:=k}
-		       	    then (d,j) = coords(FVKH,C[0]) {d is dimension of facet}
+		       	    then (d,j) = coords(FVKH,C~[0]) {d is dimension of facet. Tilde picks a largest-dimensional facet in C.}
 	      	      	    then verts = vec: FVKH[d][j][:d+1]
 			    then ratverts = [ratvec]: for m in verts do vd.list[m] od
 			    then sigma = sum(#lambda, ratverts)
@@ -830,7 +830,7 @@ set local_testK_hash_bottom_layer(KGBElt x, ratvec lambda, VertexData vd,
 	      	   fi
 	      ; if newStatuses[k] = "?"
 	      	then let C=eq[k]
-		  then (d,j) = coords(FVKH,C[0])
+		  then (d,j) = coords(FVKH,C[0]) {a lowest-diml facet in C; least likely to be final}
 	      	  then verts = vec: FVKH[d][j][:d+1]
 		  then pC = parameter(x, lambda, facet_bary(vd.list, verts))
 	      	  then ps = monomials(finalize(pC))
@@ -890,8 +890,8 @@ set more_verbose =false
 {meant to hold nonunitary Params not eliminated by more}
 set more_bad_hash = make_Param_hash()
 
-{ Input is candidate facets, and graph info. Output is the tester-unitary ones. 
- use and update a complete list Uhash of known tester-unitary facets. 
+{ Input is candidate facets, and graph info. Output is the tester-unitary ones.
+ use and update a complete list Uhash of known tester-unitary facets.
  try to compute and systematically use partial order on facets}
 set local_test_hash(KGBElt x, ratvec lambda, VertexData Lvd,
     [[LocalFacetVertsHash]] LFVH, [[int]] eq, [[int]] gr,
@@ -906,6 +906,7 @@ set local_test_hash(KGBElt x, ratvec lambda, VertexData Lvd,
     	      then prints("start local_test, ",NumClasses,
 	      " equiv classes of facets")
 	      fi
+    {then start_by_dim = vec: for list in LFVH do #list od}
     then unitary_by_dim = vec: null(#LFVH)
     then UParams = [Param]:
     	 for m:NumClasses
@@ -959,6 +960,10 @@ set local_test_hash(KGBElt x, ratvec lambda, VertexData Lvd,
        	       	    	   unitary_by_dim, test_string);
 		 prints("number of tests = ",unitary_test_counter.use_count())
 	      fi
+{    then () = if #start_by_dim > 2 and sum(start_by_dim) > #UParams
+              then prints(new_line,"Found ex at x = ",x.number,", lambda = ",lambda,"; start_by_dim = ",
+                   start_by_dim,", upar = ", unitary_by_dim)
+              fi}
     in  UParams
 
 set local_test_hash(KGBElt x, ratvec lambda, VertexData Lvd, [[LocalFacetVertsHash]] LFVH, [[int]] eq, [[int]] gr,
@@ -977,7 +982,7 @@ set mix_flag = false
  try to compute and systematically use partial order on facets.
 IF mix_flag, DON'T assume the input params are already bottom layer positive
 for minimal parabolic; try
-to use larger ones.}
+to use larger ones.}  {NOW NOT USED}
 set local_test_hash_bottom(KGBElt x, ratvec lambda, VertexData Lvd,
     [[LocalFacetVertsHash]] LFVH, [[int]] eq, [[int]] gr, [vec] classListByFacet,
     [KGPElt] maxQs, [KType,[QKL_bottom_data]] datas, KTypePol_hash pol_hash, Param_hash Uhash) = [Param]:
@@ -1256,12 +1261,6 @@ set one_param_test_bottom(Param p, int D, Param_hash Uhash) = [Param]:
 			fi
 		   fi
 	      fi
-    {then () = if know_lower_flag
-    	      then let pdef = proper_face_deformed(p)
-	      	   in if any(for q in pdef do @bool: (q.x.# < known_to) and (Uhash.lookup(q) < 0) od)
-		      then return []
-		      fi
-	       fi} {this is only called on local vertices, so proper_face_deformed is empty}
     then () = hash_bottom_layerCounter.use()
     {then () = if one_param_verbose then prints(new_line,"start one_param_test_bottom at p = ",p) fi}
     then elim_min = all(for q in QG
@@ -1302,7 +1301,7 @@ set one_param_test_bottom(Param p, int D, Param_hash Uhash) = [Param]:
 				     fi
 		    	  in []
 		     fi
-	    else let test =  all( [(->bool)]:
+	    else {more_flag and mix_flag are both false} let test =  all( [(->bool)]:
 	    	     for q in QG
 		     do @bool: is_unitary_hash(q) od) {what to do if more_flag is false}
 	     	     	in if test
@@ -2539,7 +2538,10 @@ set local_test_GEO_hash_bottom_layer(KGBElt x, ratvec lambda, VertexData vd,
 			     #list od)
 		    	   fi
 { Have facets to dim 1 bottom layer unitary to DG0. Seek to extend list to all higher dims }
-    then Dcount = int:1, long_out_temp_flag = long_out_flag
+
+  then () = LFDKH := localFD_KHashbt_lookDownGEO(x,lambda, Lvd, LFDKH, 2,
+       	    	     		rank(x.involution - 1) + 1, pol_hash)
+{    then Dcount = int:1, long_out_temp_flag = long_out_flag
     then () = long_out_flag:=false
     then () = while (Dcount <= rank(x.involution-1) - 1  ) and
     	      	    (#LFDKH = Dcount + 1) and
@@ -2551,6 +2553,8 @@ set local_test_GEO_hash_bottom_layer(KGBElt x, ratvec lambda, VertexData vd,
     	      do let () = LFDKH := localFD_KHashbt_lookDownGEO(x,lambda, Lvd,
                        	  	LFDKH, Dcount+1,Dcount+2, {one_ht,} pol_hash{_one_ht})
 		    {now top degree in LFDKH is Dcount+1}
+		    {all that follows has no effect since the tests have been applied to vertices}
+{		    
 		 then ((eq,gr),IUCL,CLBF) = localGraphK(LFDKH)
        	      	 {compute graph on facets to dim Dcount+1}
 		 {then lowUs = sum(for d:Dcount+1 do #LFDKH[d] od)}
@@ -2578,7 +2582,7 @@ set local_test_GEO_hash_bottom_layer(KGBElt x, ratvec lambda, VertexData vd,
 					     elif ps[0].x != x and
 					     	  all(for q in ps do @bool: (q.x.# < known_to) and (Uhash.lookup(q).>=) od)
 					     then test := "T"
-				      	     elif test = "?" {now ps = ps[0] is final}
+				      	     elif test = "?" {now often ps = ps[0] is final}
 				      	     then let pCdef = if wiggle_flag and is_final(pC)
 						      	      then let CF = character_formula(pC)
 					      		     	  in monomials(composition_series((
@@ -2592,36 +2596,33 @@ set local_test_GEO_hash_bottom_layer(KGBElt x, ratvec lambda, VertexData vd,
 							    od)
 					      	     then test := "F"
 						     fi
-					     fi
-			               elif (not know_lower_flag) and test = "?"
-			      	      	then if ps[0].x != x {ps is not final} and
-					     	any(for q in ps do @bool: (q.x.# < known_to) and (Uhash.lookup(q) = -1) od)
-                                    	     then test := "F"
-					     elif ps[0].x != x and
-					     	  all(for q in ps do @bool: (q.x.# < known_to) and (Uhash.lookup(q).>=) od)
-					     then test := "T"
-				      	     elif test = "?" {now ps = ps[0] is final}
-				      	     then let pCdef = if wiggle_flag and is_final(pC)
-						      	      then let CF = character_formula(pC)
-					      		     	  in monomials(composition_series((
-							     	     sum(x.real_form, for v in ratverts
-						      		       		   do wiggle(CF, (sigma - v)/(Dcount+1))
-						      		       		   od))))
-							      else []
-							      fi
-				      	          in if any(for q in pCdef
-						      	    do @bool: ((q.x.# < known_to) and (Uhash.lookup(q) = -1))
-							    od)
-					      	     then test := "F"
-						     fi
-					     fi
-					fi
+					      elif test = "?" and not all(for p in ps do @bool: min_bottom_elim_factors(p) od)
+                                	      then test := "F"
+					      elif test = "?" and more_flag and #ps = 1 and
+					           not bottom_elim_factors_more(ps[0], maxQs, datas,
+						       pol_hash.index(LFDKH[Dcount+1][j][Dcount+2]))
+					      then test := "F"
+                              		      elif test = "?" and more_flag and #ps > 1 and
+                                		   not all(for p in ps do @bool: bottom_elim_factors_more(p, maxQs, datas) od)
+					      then test := "F"
+					      fi {ps[0].x != x}
+			               elif (not know_lower_flag) and test = "?" and
+				            not all(for p in ps do @bool: min_bottom_elim_factors(p) od)
+				       then test := "F"
+				       elif (not know_lower_flag) and test = "?" and more_flag and (#ps = 1) and
+                                	    (not bottom_elim_factors_more(ps[0], maxQs, datas , pol_hash.index(LFDKH[Dcount+1][j][Dcount+2])))
+				       then test := "F"
+				       elif (not know_lower_flag) and test = "?" and more_flag and #ps > 1 and
+				            not all(for p in ps do @bool: bottom_elim_factors_more(p, maxQs, datas) od)
+			      	       then test := "F"
+				       fi
 			       in if test = "F" then []
 			       	  else [LFDKH[Dcount+1][m]]
 				  fi
 			   fi
 		        od.##
 		 then () = LFDKH := LFDKH[:Dcount+1] # newDplus1
+}
                  then () = if test_verbose and
 		      	   ((Dcount = rank(x.involution-1)-1)  or
     	      	    	   (#LFDKH < Dcount) or
@@ -2632,6 +2633,8 @@ set local_test_GEO_hash_bottom_layer(KGBElt x, ratvec lambda, VertexData vd,
                  then ()= Dcount:=Dcount+1
                  in ()
      	      od
+
+}
     then unitary_by_dim = vec: for L in LFDKH do #L od
     then () = if test_verbose then { prints("bottom layer unitary to ",one_ht, " facets by dim = ",
        	       	   		      		      unitary_by_dim);}
