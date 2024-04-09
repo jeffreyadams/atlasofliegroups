@@ -40,28 +40,28 @@ set params([Param] params,KGBElt x)=[Param]:
 set params([Param] params,int kgb_number)=[Param]:
  ##for p in params do  if number(p.x)=kgb_number then [p] else [] fi od
 
-set FPP_unitary_hash(RealForm G, int x)=[Param]:let ()=FPP_unitary_hash([KGB(G,x)]) in params(unitary_hash)
-set FPP_unitary_hash2(RealForm G, int x)=[Param]:let ()=FPP_unitary_hash2([KGB(G,x)]) in params(unitary_hash)
-set FPP_unitary_hash_one_level(RealForm G, int x)=[Param]:let ()=FPP_unitary_hash_one_level([KGB(G,x)]) in params(unitary_hash)
-set FPP_unitary_hash_bottom_layer(RealForm G, int x)=[Param]:let ()=FPP_unitary_hash_bottom_layer([KGB(G,x)]) in params(unitary_hash)
+set FPP_unitary_hash(RealForm G, int x,int more_shift)=[Param]:let ()=FPP_unitary_hash([KGB(G,x)],more_shift) in params(unitary_hash)
+set FPP_unitary_hash2(RealForm G, int x, int more_shift)=[Param]:let ()=FPP_unitary_hash2([KGB(G,x)],more_shift) in params(unitary_hash)
+set FPP_unitary_hash_one_level(RealForm G, int x,int more_shift)=[Param]:let ()=FPP_unitary_hash_one_level([KGB(G,x)],more_shift) in params(unitary_hash)
+set FPP_unitary_hash_bottom_layer(RealForm G, int x, int more_shift)=[Param]:let ()=FPP_unitary_hash_bottom_layer([KGB(G,x)],more_shift) in params(unitary_hash)
 
-set FPP_unitary_hash_bottom_layer(RealForm G, [[(KGBElt, ratvec)]] xlambdalists,int list_number)= [Param]:
+set FPP_unitary_hash_bottom_layer(RealForm G, [[(KGBElt, ratvec)]] xlambdalists,int list_number,int more_shift)= [Param]:
 let start=unitary_hash.size() then
 ()=prints("Starting size of unitary_hash: ", start) then
 list=xlambdalists[list_number] then
 {()=FPP_unitary_hash_bottom_layer(list) then}
 reverse_list=for i:#list do list~[i] od then
-()=FPP_unitary_hash_bottom_layer(reverse_list) then
+()=FPP_unitary_hash_bottom_layer(reverse_list,more_shift) then
 finish=unitary_hash.size() in
 let ()=prints("finishing size of unitary_hash: ", finish) in
 for i:finish-start from start do unitary_hash.index(i) od
 
-set FPP_unitary_hash2(RealForm G, [[(KGBElt, ratvec)]] xlambdalists,int list_number)= [Param]:
+set FPP_unitary_hash2(RealForm G, [[(KGBElt, ratvec)]] xlambdalists,int list_number,int more_shift)= [Param]:
 let start=unitary_hash.size() then
 ()=prints("Starting size of unitary_hash: ", start) then
 list=xlambdalists[list_number] then
 reverse_list=for i:#list do list~[i] od then
-()=FPP_unitary_hash2(reverse_list) then
+()=FPP_unitary_hash2(reverse_list,more_shift) then
 finish=unitary_hash.size() in
 let ()=prints("finishing size of unitary_hash: ", finish) in
 for i:finish-start from start do unitary_hash.index(i) od
@@ -84,7 +84,7 @@ test_slightly_verbose:=true
 test_verbose:=true
 facet_verbose:=true
 more_flag:=true   {this uses non-minimal parabolic bottom layer arguments}
-more_shift:=5
+set default_more_shift=5
 {bottom_length_frac:=1/4}
 {NOTE: extra_files is defined in FPP.py}
 
@@ -92,28 +92,11 @@ set global_facets_file_loaded=false   {set true at the end of global_facets_file
 set coh_ind_file_loaded=false   {set true at the end of global_facets_file}
 
 {not needed or used}
-set local_test_GEO_hash_one_level(KGBElt x, ratvec lambda, Param_hash Uhash) =
+set local_test_GEO_hash_one_level(KGBElt x, ratvec lambda, Param_hash Uhash,int more_shift) =
     [Param]:
     let G = x.real_form, pol_hash=make_KTypePol_hash()
     then vd = FPP_vertex_data(G)
-    in local_test_GEO_hash_one_level(x, lambda, vd, pol_hash, Uhash)
-
-{not needed or used}
-set FPPx(RealForm G,int KGB_number)=[Param]:
-let vd = FPP_vertex_data(G) then
-Uhash = make_Param_hash() then
-()=unipotents_to_hash(G,Uhash) then
-()=prints("G=", G,new_line,"KGB element: ", KGB_number) then
-list=[Param]:[] then
-x = KGB(G,KGB_number) then
-lambdas = FPP_lambdas(x) then
-() = prints("KGB #",KGB_number,":",new_line, "#lambdas=",#lambdas,
-   	     	    ", #Uhash = ", Uhash.size())
-in  ##for lambda@j in lambdas
-  do prints("lambda #",j,", #Uhash = ", Uhash.size());
-    local_test_GEO_hash_one_level(x,lambda, Uhash)
-od
-
+    in local_test_GEO_hash_one_level(x, lambda, vd, pol_hash, Uhash,more_shift)
 
 set is_fixed(WeylElt w,KGBElt x)=bool: cross(w,x)=x
 set is_fixed(KGBElt x)=bool: cross(x.real_form.w0,x)=x
@@ -132,27 +115,27 @@ set add_to_hash(Param_hash unitary_hash,[Param] params)=void:
 
 {to write a list of Param's for a single RealForm}
 {change from writeFiles.at: "<groups.at"
-and if x\ne cross(w0,x) then write contragredient representation also}
+and if x.number <  cross(w0,x).number then write contragredient representation also}
 set write_param_list_jda([Param] parameters, string listName, int kgb_number) = void:
 let list=params(parameters,kgb_number) {just those with correct x} in
 if #list=0
   then prints("set ",listName,"=[Param]:[]")
 else
   let G=list[0].real_form then
-  x=KGB(G,kgb_number) in 
+  x=KGB(G,kgb_number) in
   let ()=  prints("set Nullp = trivial_group.trivial") then
   ()=prints("set ",listName,"=[Param]: for i:",#list," do Nullp od") then
-  not_fixed=not is_fixed(x) in
-  let ()=  for p@i in list do
+  ()=  for p@i in list do
    if p.x=x then
-      prints("void:",listName,"[",i,"]:=parameter(KGB(G,",kgb_number,"),",p.lambda,",",p.nu,")")
+      prints("void:",listName,"[",i,"]:=parameter(KGB(G,",kgb_number,"),",p.lambda,",",p.nu,"MAIN)")
   fi
   od in
-  if not is_fixed(x) then 
+  if is_strict_rep(x) then
+  let ()=prints("is_strict_rep: ", x) in
    for p@i in list do
     if p.x=x then
-       let dp=contragredient(p) in 
-       prints("void:",listName,"[",i,"]:=parameter(KGB(G,",number(dp.x),"),",dp.lambda,",",dp.nu,")", "  {dual}")
+       let dp=contragredient(p) in
+       prints("void:",listName,"[",i,"]:=parameter(KGB(G,",number(dp.x),"),",dp.lambda,",",dp.nu,"dual)", "  {dual}")
     fi
    od
   fi
@@ -167,12 +150,16 @@ set write_param_list_jda([Param] list, string listName)=void:
 if #list=0
   then prints("set ",listName,"=[Param]:[]")
 else
-{  let ()=prints("printing list of size: ", #list) in}
   let G=list[0].real_form then
-{  ()=  prints("set Nullp = trivial_group.trivial") then}
   ()=prints("set ",listName,"=[Param]: for i:",#list," do Nullp od") in
   for p@i in list do
-      prints("void:",listName,"[",i,"]:=parameter(KGB(G,",number(p.x),"),",p.lambda,",",p.nu,")")
+     if is_rep(p.x) then
+            let ()=prints("void:",listName,"[",i,"]:=parameter(KGB(G,",number(p.x),"),",p.lambda,",",p.nu,")") in
+            if is_strict_rep(p.x) then
+                    let dp=contragredient(p) in
+                    prints("void:",listName,"[",i,"]:=parameter(KGB(G,",number(dp.x),"),",dp.lambda,",",dp.nu,")", "  {dual}")
+            fi
+      fi 
   od
 fi
 
@@ -200,9 +187,14 @@ set parameters(Param_hash param_hash)=[Param]:
  bad(p)=true if (p is not unitary and) pL is unitary}
 set bad(Param p)=bool:let (,pL)=theta_stable_quasi_data(p) in is_unitary(pL)
 
+{set up:
+> xldataF4.at output(F4_s,"F4_s")
+coh_ind_unip(F4_s,uparam_hash)
+> coh_ind_F4_to_hash.at write_param_list(parameters(uparam_hash),"F4_s")
+}
 {------------------------ timeout versions--------------------}
 
-set FPP_unitary_hash_bottom_layer(RealForm G, [[(KGBElt, ratvec)]] xlambdalists,int list_number,int max_time)= [Param]:
+set FPP_unitary_hash_bottom_layer(RealForm G, [[(KGBElt, ratvec)]] xlambdalists,int list_number,int more_shift,int max_time)= [Param]:
 let start=unitary_hash.size() then
 ()=prints("FPP_unitary_hash_bottom_layer(G,xlambdalists,list_number,max_time)") then
 ()=prints("max_time: ", max_time) then
@@ -210,7 +202,21 @@ let start=unitary_hash.size() then
 ()=prints("Starting size of unitary_hash: ", start) then
 list=xlambdalists[list_number] then
 reverse_list=for i:#list do list~[i] od then
-()=FPP_unitary_hash_bottom_layer(reverse_list,max_time) then
-finish=unitary_hash.size() in
-let ()=prints("finishing size of unitary_hash: ", finish) in
+failed=FPP_unitary_hash_bottom_layer(xlambdalists[list_number],unitary_hash,uparam_hash,more_shift,max_time) then
+()=prints("size of unitary_hash is now: ", unitary_hash.size()) then
+failed_1=if #failed>0 then
+   prints("failed: ", #failed);
+   for pair in failed do prints(pair) od;
+   prints("========================================STEP 2===================================================");
+      more_shift+:=20;
+   max_time:=2*max_time;
+   FPP_unitary_hash_bottom_layer(failed,unitary_hash,uparam_hash,more_shift,max_time)
+else
+  prints("#failed=0, finished");[]
+fi in
+let ()=prints("failed_1: ", #failed_1) then
+finish=unitary_hash.size() then
+()=prints("finishing size of unitary_hash: ", finish) in
 for i:finish-start from start do unitary_hash.index(i) od
+
+

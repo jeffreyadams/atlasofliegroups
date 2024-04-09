@@ -54,6 +54,7 @@ def nice_time(t):
 
 previous_time_raw=0
 previous_finished=0
+counter=0
 
 while (1):
     finished=0
@@ -78,14 +79,15 @@ while (1):
         file.write("/" + str(number_of_kgb_elements) + " (remaining: " +  str(number_of_kgb_elements-finished) + ")")
     file.write("\n")
     avg_time=finished/(elapsed_time_in_seconds/60)
-    file.write("x finished this step: " + str(finished-previous_finished) + "\n")
+    file.write("step " + str(counter) + "  finished this step: " + str(finished-previous_finished) + "  cumulative: " + str(finished) + "\n")
     local_avg_time=(finished-previous_finished)/(elapsed_time_in_seconds/60)
     file.write("total time: " + "{:.2f}".format(elapsed_time_in_seconds) + " seconds (" + nice_time(elapsed_time_in_seconds) + ")\n")
     file.write("time this step: " + nice_time(local_elapsed_time_in_seconds) + "\n")
-    file.write("average number of x per minute from start: " +  "{:.2f}".format(avg_time) + "\n")
-    file.write("average number of x per minute this step: " +  "{:.2f}".format(local_avg_time) + "\n")
+    file.write("average number per minute from start: " +  "{:.2f}".format(avg_time) + "\n")
+    file.write("average number per minute this step: " +  "{:.2f}".format(local_avg_time) + "\n")
     file.close()
     time.sleep(interval)
+    counter+=1
     previous_time_raw=my_time_raw
     previous_finished=finished
 

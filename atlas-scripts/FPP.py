@@ -11,8 +11,9 @@ FPP_at_file="FPP.at" #default
 FPP_py_file="FPP.py" #default
 #extra_files=["global_facets_E7.at","coh_ind_E7_to_hash.at","E7except589to15851.at"]
 extra_files=["global_facets_E7.at","coh_ind_E7_to_hash.at"]
+#extra_files=['coh_ind_F4_to_hash.at']
 #extra_files=[]
-coh_ind_flag=True #False: load from the file/True: don't load from the file
+coh_ind_flag=False  #False: load from the file/True: don't load from the file
 def nice_time(t):
    return(re.sub("\..*","",str(datetime.timedelta(seconds=t))))
  
@@ -28,8 +29,9 @@ def format_cmd(atlas_command):return('{}'.format(atlas_command).encode('utf-8'))
 #i: number of process
 def atlas_compute(i,pid):
    print("starting atlas_compute process #:",i, "pid: ", str(pid), " at ", str(time.ctime()))
-#   print("flag: ", xlambdalists_flag)
    print("xlambdalists_flag: ", xlambdalists_flag)
+   print("more_shift: ", more_shift)
+   print("max_time: ", max_time," ms",  "=", max_time/60000, "minutes")
    if xlambdalists_flag:
       print("Using xlambdalists")
    else:
@@ -52,7 +54,16 @@ def atlas_compute(i,pid):
    log.write("\nJob number: " + str(i) + "\n")
    log.write("Job pid: " +  str(pid) + "\n")
    log.write("function: " +  unitary_hash_function + "\n")
-   vars=['coh_ind_flag','revert_flag','deform_flag','every_KGB_flag','every_lambda_flag','every_lambda_deets_flag','facet_verbose','test_slightly_verbose','test_verbose','global_top','low_KGB_frac','bottom_length_frac','global_facets_file_loaded','coh_ind_file_loaded', 'more_flag','more_shift', 'old_proj_flag']
+   atlas_cmd=format_cmd("set more_shift=" + str(more_shift) + "\n")
+   proc.stdin.write(atlas_cmd)
+   proc.stdin.flush()
+   line = proc.stdout.readline().decode('ascii')  #discard this line
+   atlas_cmd=format_cmd("set max_time=" + str(max_time) + "\n")
+#   print(atlas_cmd)
+   proc.stdin.write(atlas_cmd)
+   proc.stdin.flush()
+   line = proc.stdout.readline().decode('ascii')  #discard this line
+   vars=['coh_ind_flag','revert_flag','deform_flag','every_KGB_flag','every_lambda_flag','every_lambda_deets_flag','facet_verbose','test_slightly_verbose','test_verbose','global_top','low_KGB_frac','bottom_length_frac','global_facets_file_loaded','coh_ind_file_loaded', 'more_flag', 'old_proj_flag']
    for var in vars:
       atlas_arg='{}'.format("prints(\"" + var + ": \"," +  var + ")" + "\n").encode('utf-8')
       proc.stdin.write(atlas_arg)
@@ -62,7 +73,7 @@ def atlas_compute(i,pid):
       time.sleep(.1)
    starttime=time.time()
    #some initialization
-
+   proc.stdout.flush()
    atlas_arg='{}'.format("set G=" + group + "\n").encode('utf-8')
    proc.stdin.write(atlas_arg)
    proc.stdin.flush()
@@ -77,15 +88,15 @@ def atlas_compute(i,pid):
       atlas_cmd=format_cmd("update(unitary_hash,coh_ind_params)\n")
       proc.stdin.write(atlas_cmd)
       proc.stdin.flush()
+      line = proc.stdout.readline().decode('ascii')  #discard
       atlas_cmd=format_cmd("unitary_hash.size()\n")
       proc.stdin.write(atlas_cmd)
       proc.stdin.flush()
-      line = proc.stdout.readline().decode('ascii')  #discard
       line = proc.stdout.readline().decode('ascii')
    else:
       #otherwise: coh_ind_flag=True: not loading from the file
       print("not loading params from coh_ind_params")
-   print("starting size of unitary_hash: (list number ",str(i), ")", line)
+   print("starting size of unitary_hash: (list number",str(i), ")", line)
    while main_queue.qsize()>0:
 #      print("MAIN LOOP")
       log.write("==================================================================\n")
@@ -94,14 +105,12 @@ def atlas_compute(i,pid):
       proc.stdin.write(atlas_cmd)
       proc.stdin.flush()
       line = proc.stdout.readline().decode('ascii').strip()
-      print("current size of unitary_hash: (list number ",str(i), ")", line)
       log.write("current size of unitary_hash: " + line + "\n")
 
       atlas_cmd=format_cmd("surprise_hash.size()\n")
       proc.stdin.write(atlas_cmd)
       proc.stdin.flush()
       line = proc.stdout.readline().decode('ascii').strip()
-      print("Current size of surprise_hash: (list number ",str(i), ")", line)
       log.write("Current size of surprise_hash: " + line + "\n")
 
       next_queue_entry=main_queue.get()
@@ -124,7 +133,9 @@ def atlas_compute(i,pid):
       #primary atlas function
       #if xlambdalists_flag: pass 2nd argument = xlambdalists, then 3rd argument is the listnumber
       if xlambdalists_flag:
-         atlas_cmd=format_cmd("set list=" + unitary_hash_function + "(" + group + ",xlambdalists," + str(list_number) +  ", 10)\n")
+#         print("more_shift: ", more_shift)
+#         print("max_time: ", max_time)
+         atlas_cmd=format_cmd("set list=" + unitary_hash_function + "(" + group + ",xlambdalists," + str(list_number) +  ", " + str(more_shift) + "," + str(max_time) + ")\n")
 #         atlas_cmd=format_cmd("prints(xlambdalists)" + "\n")
 #         print("CMD IS: atlas_cmd: ", atlas_cmd)
       #otherwise just need 2nd argument=kgb number
@@ -138,14 +149,12 @@ def atlas_compute(i,pid):
          newtime=time.time()
          timediff=newtime-oldtime
          line = proc.stdout.readline().decode('ascii').strip()
-#         print("line: ", line)
          if line.find("Variable")>=0:
             break
          line =line + "  [" + nice_time(timediff) + "  " + nice_time(newtime-starttime) + "]"
          log.write(line + "\n")
       proc.stdout.flush()
       atlas_cmd=format_cmd("write_param_list_jda(list,\"p" + str(list_number) + "\");prints(\"done\")" + "\n")
-#      print("cmd: ", atlas_cmd)
       proc.stdin.write(atlas_cmd)
       proc.stdin.flush()
       while True:
@@ -158,7 +167,7 @@ def atlas_compute(i,pid):
       log.write("Finished_KGB element " + str(i)   + ": elapsed time: " + nice_time(job_time) + 
                 "  time from start: " + nice_time(newtime-starttime) + "\n")
       reporting_data.append((list_number,job_time))
-      print("end of loop, Qsize is ", main_queue.qsize())
+#      print("end of loop, Qsize is ", main_queue.qsize())
 #      print("Get another item from queue")
       log.write("Get another item from queue\n")
    log.write("No more KGB elements to do; time: " + str(time.ctime()) + "\n")
@@ -173,14 +182,14 @@ def atlas_compute(i,pid):
    proc.stdin.write(atlas_cmd)
    proc.stdin.flush()
    line = proc.stdout.readline().decode('ascii').strip()
-   print("Size of unitary_hash: (list number ",str(i), ")", line)
+#   print("Size of unitary_hash: (list number ",str(i), ")", line)
    log.write("Size of unitary_hash: " + line + "\n")
    #report on suprise_hash
    atlas_cmd=format_cmd("surprise_hash.size()\n")
    proc.stdin.write(atlas_cmd)
    proc.stdin.flush()
    line = proc.stdout.readline().decode('ascii').strip()
-   print("Size of surprise_hash: (list number ",str(i), ")", line)
+#   print("Size of surprise_hash: (list number ",str(i), ")", line)
    log.write("Size of surprise_hash: " + line + "\n")
    
    log.write("Killing process at " + str(time.ctime()) + "\n")
@@ -195,7 +204,7 @@ def atlas_compute(i,pid):
    return()
 
 def main(argv):
-   global directory, number_jobs,group, start_KGB,end_KGB, main_queue, kgb_file, step_size,all_kgb, read_at_files,log_file, unitary_hash_function, xlambdalists_flag, global_facets_file_loaded, xlambdalists_file
+   global directory, number_jobs,group, start_KGB,end_KGB, main_queue, kgb_file, step_size,all_kgb, read_at_files,log_file, unitary_hash_function, xlambdalists_flag, global_facets_file_loaded, xlambdalists_file,more_shift,max_time
    unitary_hash_function="FPP_unitary_hash_bottom_layer"
    executable_dir="/.ccs/u02/jdada11/atlasSoftware/FPP_jeff/"
    group=""
@@ -205,6 +214,8 @@ def main(argv):
    start_KGB=0
    end_KGB=0
    kgb_number=0
+   more_shift=5
+   max_time=1000000
    all_kgb=False
    step_size=1
    kgb_file=""
@@ -214,7 +225,7 @@ def main(argv):
    dry_run=False
    read_at_files=False
    log_file=""
-   opts, args = getopt.getopt(argv, "d:n:g:k:e:s:S:f:l:x:aD")
+   opts, args = getopt.getopt(argv, "d:n:g:k:e:s:S:f:l:x:t:m:aDX")
    for opt, arg in opts:
       if opt in ('-d'):
          directory=arg
@@ -245,6 +256,10 @@ def main(argv):
          end_KGB=arg
       elif opt in ('-a'):
          all_kgb=True
+      elif opt in ('-m'):
+         more_shift=arg
+      elif opt in ('-t'):
+         max_time=int(arg)*1000*60  #given value is in arg minutes = arg*1000*60 milliseconds
       elif opt in ('-x'):
          xlambdalists_file=arg
          xlambdalists_flag=True
@@ -269,7 +284,7 @@ def main(argv):
    print("Starting at ", time.ctime())
    print("command line: ", " ".join(sys.argv))
    print("unitary hash function: ", unitary_hash_function)
-   print("extra filesx:")
+   print("extra files:")
    if len(extra_files)==0:
       print(" none")
    else:
@@ -323,7 +338,7 @@ def main(argv):
    print("number of kgb elements: ", kgb_number)
    if group=="" or directory=="" or (xlambdalists_file=="" and len(kgb_list)==0) or number_jobs==0:
 #      print(group, " ", directory, " ", len(kgb_list), " ", number_jobs)
-      print("Usage: \n-d: directory\n-n: number jobs\n-g: group\n-a: all kgb elements\n-s: start KGB\n-e: end KGB\n-k: file of KGB elements\n-x: file containing xlambdalists\n-S: step size (each job does x=s,s+S,s+2S...(mod n)), default is 1\n-D: dry run only")
+      print("Usage: \n-d: directory\n-n: number jobs\n-g: group\n-a: all kgb elements\n-s: start KGB\n-e: end KGB\n-k: file of KGB elements\n-x: file containing xlambdalists\n-S: step size (each job does x=s,s+S,s+2S...(mod n)), default is 1\n-D: dry run only\n-t: max_time (in minutes)\n-m: more_shift (default 5)")
       print("\n-g group, -d directory, -n number jobs are required")
       print("-s/-e (start/end kgb elements) or -k (kgb file) or -a (all kgb elements) or -x (xlambdalists_file) are required")
       exit()
@@ -348,7 +363,6 @@ def main(argv):
    gitlog=proc.stdout.read().decode('ascii')
    print(gitlog)
 
-
 #make main _queue from kgb_list OR xlambdalists
    main_queue=Queue()
    xlambdalists_queue=Queue()
@@ -365,7 +379,7 @@ def main(argv):
       for i in range(xlambdalists_size):
          main_queue.put(i)
       print("size of xlambdalists_queue: ", xlambdalists_queue.qsize())
-
+      
    print("step size: ", step_size)
    gcd=math.gcd(kgb_number,int(step_size))
    print("gcd=",gcd)
