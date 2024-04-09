@@ -767,7 +767,7 @@ case tuple_display:
 @)
   expression_ptr result(std::move(tup_exp));
     // convert |tup_exp| to a more generic pointer
-  if (n_tuple_expected or coerce(tup,type,result))
+  if (n_tuple_expected or coerce(tup,type,result,e.loc))
     return result;
   throw type_error(e,std::move(tup),type.copy());
 }
@@ -841,15 +841,15 @@ template<>
 @ And here is the right-to-left evaluation function. For the |no_value| case we
 simply |void_eval| the components in reverse order; for the |single_value| case
 the results of |eval| are placed as |component| value of a pre-allocated tuple
-from back to front. In the |multi_value|
-case the values are needed separately on the |execution_stack|, but in reverse
-order to what would be produced by the successive |eval| calls. We therefore pop
-the values off after each evaluation, storing them temporarily in a local
-|stack<shared_value>| variable, from which they are then popped again afterwards
-to be placed on the |execution_stack| in reverse order. Since the values are now
-held in a local variable, the |execution_stack| remains unchanged in between
-these evaluations, and the is no need for a |try|--|catch| construction to
-correctly handle possible exceptions thrown during the evaluation of a component.
+from back to front. In the |multi_value| case the values are needed separately
+on the |execution_stack|, but in reverse order to what would be produced by the
+successive |eval| calls. We therefore pop the values off after each evaluation,
+storing them temporarily in a local |stack<shared_value>| variable, from which
+they are then popped again afterwards to be placed on the |execution_stack| in
+reverse order. Since the values are now held in a local variable, the
+|execution_stack| remains unchanged in between these evaluations, and the is no
+need for a |try|--|catch| construction to correctly handle possible exceptions
+thrown during the evaluation of a component.
 
 @< Function def... @>=
 template<>
@@ -865,7 +865,7 @@ template<>
       auto dst_it = result->val.rbegin(); // fill |result| tuple from rear to front
       for (auto it=component.crbegin(); it!=component.crend(); ++it,++dst_it)
       @/{@; (*it)->eval(); *dst_it=pop_value(); }
-      push_value(result);
+      push_value(std::move(result));
     } break;
   case multi_value:
     { stack<shared_value> args;
@@ -1404,7 +1404,7 @@ case applied_identifier:
       }
       return id_expr;
     }
-  else if (coerce(*id_t,type,id_expr))
+  else if (coerce(*id_t,type,id_expr,e.loc))
     return id_expr;
   throw type_error(e,id_t->copy(),type.copy());
 }
@@ -1644,7 +1644,7 @@ same; we do share one module.
   if (n_args==1)
   { const expr& cur_arg = args;
     if (@< The form of |cur_arg| shields out the context type @>@;@;)
-    { if (not coerce(a_priori_type,arg_type,arg_expr[0]))
+    { if (not coerce(a_priori_type,arg_type,arg_expr[0],e.loc))
         throw type_error(e,std::move(apt),arg_type.copy());
     }
     else arg_expr[0] = convert_expr(cur_arg,as_lvalue(arg_type.copy()));
@@ -1658,7 +1658,7 @@ same; we do share one module.
       if (*apt_it!=*argt_it) // only act if a priori component type is not exact
       { const expr& cur_arg = *exp_it;
         if (@< The form of |cur_arg| shields out the context type @>@;@;)
-        { if (not coerce(*apt_it,*argt_it,*res_it))
+        { if (not coerce(*apt_it,*argt_it,*res_it,e.loc))
             throw type_error(e,apt_it->copy(),argt_it->copy());
         }
         else
@@ -2468,6 +2468,31 @@ the case of \&{die}.
         (error_builtin,name.str(),std::move(arg),needs_voiding,e.loc);
     }
   }
+}
+
+@ As a small intermezzo, we define a global function |frozen_error| that can be
+used to make a call of |error_builtin| with a fixed error message; the idea is
+that if during conversion it is found that evaluating a certain expression will
+always result in an error with a given message, it can be replaced by such a
+call (which will produce that error if and only if the converted expression ends
+up being actually evaluated). The function is typically used when we try to
+pre-evaluate a constant expression during compilation (an optimisation called
+constant folding) and an error occurs during that evaluation.
+
+@< Declarations of exported functions @> =
+expression_ptr frozen_error(std::string message, const source_location& loc);
+
+@ The implementation is straightforward: we make a |shared_value| for the
+string, wrap in into a |denotation|, and then build and return a call to
+|error_builtin| with this string as argument.
+
+@< Function def... @> =
+expression_ptr frozen_error(std::string message, const source_location& loc)
+{
+  auto mess_val = std::make_shared<string_value>(std::move(message));
+  expression_ptr arg(new denotation(std::move(mess_val)));
+  return expression_ptr (new variadic_builtin_call
+    (error_builtin,"error@@string",std::move(arg),loc) );
 }
 
 @ We shall use the following simple type predicate above. Contrary to

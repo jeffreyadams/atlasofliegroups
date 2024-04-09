@@ -2411,6 +2411,18 @@ from |value_base|), which classes have a virtual method |evaluate| that
 performs the operation described by the expression. We shall now define the
 base class.
 
+Most of the time, executable subexpressions will not be shared in any way, so
+they will be passed around and linked together via unique-pointer values. We
+choose to make |expressions_ptr| a pointer-to-constant type, because evaluating
+an expression (in some provided context) will never change that expression.
+During the building of the expression tree, it will sometimes happen that we
+want to modify it after the fact to achieve some kind of optimisation, and in
+such cases it will happen that we need to const-cast away the |const| that is
+introduced here (usually after also having applied a |dynamic_cast| to a derived
+type). When handling user defined functions, we shall have values that refer to
+(derived from) |expression| objects, and in doing so share them. So in those
+cases, |shared_expression| values will be used.
+
 A fundamental choice is whether to make the result type of the |evaluate| type
 equal to |value|. Although this would seem the natural choice, we prefer
 to make its result |void|, and to handle all value-passing via an execution
@@ -2439,9 +2451,9 @@ struct expression_base
   void multi_eval() const @+{@; evaluate(multi_value); }
 };
 @)
-typedef expression_base* expression;
-typedef std::unique_ptr<const expression_base> expression_ptr;
-typedef std::shared_ptr<const expression_base> shared_expression;
+using expression = expression_base*;
+using expression_ptr = std::unique_ptr<const expression_base>;
+using shared_expression = std::shared_ptr<const expression_base>;
 
 @ Like for values, we can assure right away that printing converted
 expressions will work.
@@ -2794,11 +2806,11 @@ template<unsigned int n>
 @* Implicit conversion of values between types.
 %
 When interfacing this generic interpreter with a concrete library such as that
-of the Atlas of Lie Groups and Representations, a mechanism must be provided
-to convert data in the interpreter (represented essentially as nested lists)
-into the internal format of the library. For transparency of this mechanism we
-have chosen to provide the conversion through implicit operations that are
-accompanied by type changes; thus when the user enters a list of lists of
+of the Atlas of Lie Groups and Representations, a mechanism must be provided to
+convert data in the interpreter (represented essentially as nested lists) into
+the internal format of the library. For this mechanism to be transparent to the
+user, we have chosen to provide the conversion through implicit operations that
+are accompanied by type changes; thus when the user enters a list of lists of
 integers in a position where an integral matrix is required, the necessary
 conversions are automatically inserted during type analysis. In fact we shall
 put in place a general mechanism of automatic type conversions, which will for
@@ -2817,15 +2829,17 @@ was found. The function |conform_types| first tries to specialise the type
 applied conversion function; if both fail an error mentioning the
 expression~|e| is thrown.
 
-The function |row_coercion| specialises if possible |row_variant| in such a
-way that the corresponding row type can be coerced to |final_type|, and
-returns a pointer to the |conversion_record| for the coercion in question. The
-function |coercion| serves for filling the coercion table.
+The function |row_coercion| specialises, if possible, |component_type| in such a
+way that the type ``row-of |component_type|'' can be coerced to |final_type|,
+and returns a pointer to the |conversion_record| for the coercion in question.
+The function |coercion| serves for filling the coercion table.
 
 @< Declarations of exported functions @>=
 
+struct source_location; // defined in \.{parsetree.w}, remains incomplete here
+
 bool coerce(const type_expr& from_type, const type_expr& to_type,
-            expression_ptr& e);
+            expression_ptr& e, const source_location& loc);
 expression_ptr conform_types
   (const type_expr& found, type_expr& required
   , expression_ptr&& d, const expr& e);
@@ -2912,11 +2926,11 @@ void conversion::print(std::ostream& out) const
 vector/matrix related conversions (problems while converting big integer or
 rational values to bounded size internal representation, or shape problems for
 matrices), though the Atlas specific implicit conversion from string to Lie type
-can also fail; in all case however the error is detected outside the library, so
-there is no need to catch |std::exception| here. Contrary to function calls, an
-implicit conversion stores no information about the source location for the
-place where it is invoked, so in case of an error we can only report the kind of
-conversion that was attempted.
+can also fail; in all cases however, the error is detected outside the library,
+so there is no need to catch |std::exception| (which is what library functions
+would throw) here. Contrary to function calls, an implicit conversion stores no
+information about the source location for the place where it is invoked, so in
+case of an error we can only report the kind of conversion that was attempted.
 
 @< Catch block for failing implicit conversion @>=
 catch (error_base& e)
@@ -3055,37 +3069,89 @@ we have moved responsibility to type analysis, which must now ensure that any
 subexpression with void type will have |l==no_value| when evaluated. This
 means that in some cases a |voiding| has to be constructed explicitly. This
 crops up in many places (for instance a component in a tuple display just
-might happen to have void type), but almost all such cases are far-fetched; so
-we trade some economy of code for efficiency in execution.
+might happen to have void type), but almost all such cases are far-fetched.
+So we gain in efficiency of execution by only applying a |voiding| in such rare
+cases, but the price to pay is quite a bit of code in our interpreter to ensure
+we do in fact find and properly handle all those exceptional cases.
+
+@h "parse_types.h" // for |source_location|
 
 @< Function definitions @>=
 bool coerce(const type_expr& from_type, const type_expr& to_type,
-	    expression_ptr& e)
+	    expression_ptr& e, const source_location& loc)
 { if (to_type==void_type)
   {@;
      return true;
   } // syntactically voided here, |e| is unchanged
   for (auto it=coerce_table.begin(); it!=coerce_table.end(); ++it)
     if (from_type==*it->from and to_type==*it->to)
-    @/{@; e.reset(new conversion(*it,std::move(e)));
+    {
+      @< Either replace |e| by the result of wrapping it in a |conversion|
+         indicated by |*it|, or if it currently holds a denotation, apply
+         that conversion function to the value held in it @>
       return true;
     }
   return false;
 }
 
+@ We want to ensure that constant expressions can be easily be recognised as
+such, even if their evaluation involves an implicit conversion. This is not very
+hard, but does imply some mixing of stages in the evaluation process. First we
+need to look into the expression that the |expression_ptr e| refers to, to see
+whether it refers to the type |denotation| derived from it. If so, we apply the
+conversion to the value held inside the denotation, for which that value is
+temporarily placed on the execution stack. Placing the converted value back into
+the |denotation| requires casting away the |const| from the type pointed to by
+the |expression_ptr e|, and inherited by |den_ptr| below. This could have been
+avoided by wrapping a fresh |denotation| around the new value and assigning that
+to |e|, but the current solution is both simpler and more efficient, and is
+really an indication that the old decision to make |expression_ptr| a
+pointer-to-const results in resistance against the evolution of the language:
+while it reflects the fact that evaluation never needs to modify the tree of
+executable expressions, such changes now are becoming common as compile-time
+restructuring of the expression tree is being implemented.
+
+Since we are here performing some evaluation during compile time, we must
+consider the possibility that this produces a ``runtime'' error (even though the
+situation at the time of writing, when applying an implicit conversion to a
+denotation expression, does not seem to ever produce such errors). Our solution
+is (for the moment) to not throw a |runtime_error| from the type analysis, but
+to compile in, though a call to |frozen_error|, an |error_builtin| call that
+will reproduce the error message when evaluated. Maybe at some future point we
+shall decide that it is actually preferable to already signal a problem at
+compile time when this happens.
+
+@h "axis.h"
+
+@< Either replace |e| by the result of wrapping it in a |conversion|...@> =
+if (auto* den_ptr = dynamic_cast<const denotation*>(e.get()))
+{ try {
+  push_value(std::move(den_ptr->denoted_value));
+  it->convert();
+  const_cast<denotation*>(den_ptr)->denoted_value=pop_value();
+  }
+  catch(std::exception& err)
+  {
+    e = frozen_error(err.what(),loc);
+  }
+}
+else
+  e.reset(new conversion(*it,std::move(e)));
+
 @ Often we first try to specialise a required type to the available type of a
-subexpression, or else (if the first fails) coerce the available type to the
-one required. The function |conform_types| will facilitate this. The argument
-|d| is a possibly already partially converted expression, which should be
-further wrapped in a conversion call if appropriate, while |e| is the original
-expression that should be mentioned in an error message if both attempts fail.
-A call to |conform_types| will be invariably followed (upon success) by
-returning the expression now held in the argument~|d| from the calling
-function; we can avoid having to repeat that argument in a return statement by
-returning the value in question already from |conform_types|. To indicate that
-the expression~|d| is incorporated into to return value, we choose to get |d|
-passed by rvalue reference, even though the argument will usually be held in a
-variable.
+subexpression, or else (if the first fails) coerce the available type to the one
+required. The function |conform_types| will facilitate this. The argument |d| is
+a possibly already partially converted expression, which should be further
+wrapped in a conversion call if appropriate, while |e| is the original
+expression that should be mentioned in an error message if both attempts fail. A
+call to |conform_types| will be invariably followed (upon success) by returning
+the expression that was passed as argument~|d|, possibly modified by
+|conform_types|, from that calling function. By returning the modified~|d| from
+|conform_types|, we can allow the caller to combine the two by writing |return
+conform_types(...)| (knowing that the action of returning might be aborted by an
+error thrown from |conform_types|). To indicate that the expression~|d| is
+incorporated into to return value, we choose to get |d| passed by rvalue
+reference, even though the argument will usually be held in a variable.
 
 If both attempts to conform the types fail we throw a |type_error|; doing so
 we must take a copy of |found| (since it a qualified |const|), but we can move
@@ -3094,7 +3160,7 @@ from |required|, whose owner will be destructed before the error is caught.
 @< Function def... @>=
 expression_ptr conform_types
 (const type_expr& found, type_expr& required, expression_ptr&& d, const expr& e)
-{ if (not required.specialise(found) and not coerce(found,required,d))
+{ if (not required.specialise(found) and not coerce(found,required,d,e.loc))
     throw type_error(e,found.copy(),required.copy());
   return std::move(d); // invoking |std::move| is necessary here
 }
@@ -3234,14 +3300,19 @@ containing \.*, that expression will not select any overload with a concrete
 type in its place (overloading does not perform type specialisation).
 
 
-@ So here is the (recursive) definition of the relation |is_close|. Equal
-types are always close, while undetermined types are not convertible to any
-other type. A primitive type is in the relation |is_close| to another type
-only if it is identical or if there is a direct conversion between the types,
-as decided by~|coerce|. Two row types are in the relation |is_close| if their
-component types are, and two tuple types are so if they have the same number
-of component types, and if each pair of corresponding component types is
-(recursively) in the relation |is_close|.
+@ So here is the (recursive) definition of the relation |is_close|. Equal types
+are always close, while undetermined types are not convertible to any other
+type. A primitive type is in the relation |is_close| to another type only if it
+is identical or if there is a direct conversion between the types, as decided
+by~|coerce|. (We are abusing that function somewhat here, as it will also try to
+actually insert conversions into the expression provided, which is a null
+pointer here; as currently written, the function |coerce| will not crash or
+complain when it is so abused, and no harm is done, but should later
+modifications make that no longer true, we shall need to write a special similar
+but simpler function to call here instead.) Two row types are in the relation
+|is_close| if their component types are, and two tuple types are so if they have
+the same number of component types, and if each pair of corresponding component
+types is (recursively) in the relation |is_close|.
 
 The above applies to the most significant of the three bits used in the result
 of the function |is_close|. The two other bits indicate whether, by applying
@@ -3256,6 +3327,7 @@ The expression |dummy| may be prepended to by |coerce|, but is then abandoned
 @< Function definitions @>=
 unsigned int is_close (const type_expr& x, const type_expr& y)
 { expression_ptr dummy(nullptr);
+  source_location nowhere;
   if (x==y)
     return 0x7; // this also makes recursive types equal to themselves
   auto xk=x.kind(), yk=y.kind();
@@ -3266,8 +3338,8 @@ unsigned int is_close (const type_expr& x, const type_expr& y)
     return 0x0; // |void| does not allow coercion for overload, and is not close
   if (xk==primitive_type or yk==primitive_type)
   { unsigned int flags=0x0;
-    if (coerce(x,y,dummy)) flags |= 0x1;
-    if (coerce(y,x,dummy)) flags |= 0x2;
+    if (coerce(x,y,dummy,nowhere)) flags |= 0x1;
+    if (coerce(y,x,dummy,nowhere)) flags |= 0x2;
     return flags==0 ? flags : flags|0x4;
   }
   if (xk!=yk)
