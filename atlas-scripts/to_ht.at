@@ -265,6 +265,8 @@ set unitarity_to_hts_hash = make_unitarity_to_hts_bool_hash ()
 
 set is_unitary_to_ht(Param p, int h) =  unitarity_to_hts_hash.entry(p,h)
 
+{Think this is wrong, and fails in Sp(8,R): even if p is in weakly
+good range from pL, the height of failures for p and pL can be different.}
 set is_unitary_to_ht_hash(Param p, int h) = bool:
     let (,pL) = wkgood_Q(p), G=p.real_form
     in if pL = p then unitarity_to_hts_hash.entry(p,h)
