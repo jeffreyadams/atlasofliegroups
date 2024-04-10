@@ -3500,7 +3500,7 @@ expression_ptr rhs_is_0
   q->tests.emplace_back(rhs_is_0,lt_val);
 }
 
-@ We take a breath, and then doe the same stuff for the rationals. Since a zero
+@ We take a breath, and then do the same stuff for the rationals. Since a zero
 right hand side will be implicitly converted to rational, our test for such a
 right hand side must be ``rationalised'' first. But the code below won't be
 effective unless the implicit conversion has produced a denotation with a
@@ -3532,19 +3532,27 @@ expression_ptr rhs_is_rat0
   shared_builtin eq_val = std::static_pointer_cast<builtin>(p);
   auto q = install_special_function(rat_eq_wrapper,"=","(rat,rat->bool)");
   q->tests.emplace_back(rhs_is_rat0,eq_val);
+  p = install_function(rat_unary_neq_wrapper,"!=","(rat->bool)");
+  shared_builtin neq_val = std::static_pointer_cast<builtin>(p);
+  q = install_special_function(rat_neq_wrapper,"!=","(rat,rat->bool)");
+  q->tests.emplace_back(rhs_is_rat0,neq_val);
+  p = install_function(rat_non_negative_wrapper,">=","(rat->bool)");
+  shared_builtin geq_val = std::static_pointer_cast<builtin>(p);
+  q = install_special_function(rat_greatereq_wrapper,">=","(rat,rat->bool)");
+  q->tests.emplace_back(rhs_is_rat0,geq_val);
+  p = install_function(rat_positive_wrapper,">","(rat->bool)");
+  shared_builtin gt_val = std::static_pointer_cast<builtin>(p);
+  q = install_special_function(rat_greater_wrapper,">","(rat,rat->bool)");
+  q->tests.emplace_back(rhs_is_rat0,gt_val);
+  p = install_function(rat_non_positive_wrapper,"<=","(rat->bool)");
+  shared_builtin leq_val = std::static_pointer_cast<builtin>(p);
+  q = install_special_function(rat_lesseq_wrapper,"<=","(rat,rat->bool)");
+  q->tests.emplace_back(rhs_is_rat0,leq_val);
+  p = install_function(rat_negative_wrapper,"<","(rat->bool)");
+  shared_builtin lt_val = std::static_pointer_cast<builtin>(p);
+  q = install_special_function(rat_less_wrapper,"<","(rat,rat->bool)");
+  q->tests.emplace_back(rhs_is_rat0,lt_val);
 }
-install_function(rat_unary_eq_wrapper,"=","(rat->bool)");
-install_function(rat_unary_neq_wrapper,"!=","(rat->bool)");
-install_function(rat_non_negative_wrapper,">=","(rat->bool)");
-install_function(rat_positive_wrapper,">","(rat->bool)");
-install_function(rat_non_positive_wrapper,"<=","(rat->bool)");
-install_function(rat_negative_wrapper,"<","(rat->bool)");
-install_function(rat_eq_wrapper,"=","(rat,rat->bool)");
-install_function(rat_neq_wrapper,"!=","(rat,rat->bool)");
-install_function(rat_less_wrapper,"<","(rat,rat->bool)");
-install_function(rat_lesseq_wrapper,"<=","(rat,rat->bool)");
-install_function(rat_greater_wrapper,">","(rat,rat->bool)");
-install_function(rat_greatereq_wrapper,">=","(rat,rat->bool)");
 install_function(equiv_wrapper,"=","(bool,bool->bool)");
 install_function(inequiv_wrapper,"!=","(bool,bool->bool)");
 
