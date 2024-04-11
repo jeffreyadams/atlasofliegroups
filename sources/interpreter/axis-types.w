@@ -3075,6 +3075,7 @@ cases, but the price to pay is quite a bit of code in our interpreter to ensure
 we do in fact find and properly handle all those exceptional cases.
 
 @h "parse_types.h" // for |source_location|
+@h "axis.h" // for |do_conversion|
 
 @< Function definitions @>=
 bool coerce(const type_expr& from_type, const type_expr& to_type,
@@ -3086,57 +3087,11 @@ bool coerce(const type_expr& from_type, const type_expr& to_type,
   for (auto it=coerce_table.begin(); it!=coerce_table.end(); ++it)
     if (from_type==*it->from and to_type==*it->to)
     {
-      @< Either replace |e| by the result of wrapping it in a |conversion|
-         indicated by |*it|, or if it currently holds a denotation, apply
-         that conversion function to the value held in it @>
+      do_conversion(e,*it,loc);
       return true;
     }
   return false;
 }
-
-@ We want to ensure that constant expressions can be easily be recognised as
-such, even if their evaluation involves an implicit conversion. This is not very
-hard, but does imply some mixing of stages in the evaluation process. First we
-need to look into the expression that the |expression_ptr e| refers to, to see
-whether it refers to the type |denotation| derived from it. If so, we apply the
-conversion to the value held inside the denotation, for which that value is
-temporarily placed on the execution stack. Placing the converted value back into
-the |denotation| requires casting away the |const| from the type pointed to by
-the |expression_ptr e|, and inherited by |den_ptr| below. This could have been
-avoided by wrapping a fresh |denotation| around the new value and assigning that
-to |e|, but the current solution is both simpler and more efficient, and is
-really an indication that the old decision to make |expression_ptr| a
-pointer-to-const results in resistance against the evolution of the language:
-while it reflects the fact that evaluation never needs to modify the tree of
-executable expressions, such changes now are becoming common as compile-time
-restructuring of the expression tree is being implemented.
-
-Since we are here performing some evaluation during compile time, we must
-consider the possibility that this produces a ``runtime'' error (even though the
-situation at the time of writing, when applying an implicit conversion to a
-denotation expression, does not seem to ever produce such errors). Our solution
-is (for the moment) to not throw a |runtime_error| from the type analysis, but
-to compile in, though a call to |frozen_error|, an |error_builtin| call that
-will reproduce the error message when evaluated. Maybe at some future point we
-shall decide that it is actually preferable to already signal a problem at
-compile time when this happens.
-
-@h "axis.h"
-
-@< Either replace |e| by the result of wrapping it in a |conversion|...@> =
-if (auto* den_ptr = dynamic_cast<const denotation*>(e.get()))
-{ try {
-  push_value(std::move(den_ptr->denoted_value));
-  it->convert();
-  const_cast<denotation*>(den_ptr)->denoted_value=pop_value();
-  }
-  catch(std::exception& err)
-  {
-    e = frozen_error(err.what(),loc);
-  }
-}
-else
-  e.reset(new conversion(*it,std::move(e)));
 
 @ Often we first try to specialise a required type to the available type of a
 subexpression, or else (if the first fails) coerce the available type to the one

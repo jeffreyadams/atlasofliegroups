@@ -752,6 +752,7 @@ case tuple_display:
   type_expr tup=unknown_tuple(n);
   bool n_tuple_expected = type.specialise(tup);
   // whether |type| is a tuple of size~|n|
+  bool is_constant = true; // whether all components are denotations
 @)
   wtl_iterator tl_it (n_tuple_expected ? type.tuple() : tup.tuple());
   // traverse either |type| or |tup|
@@ -760,6 +761,8 @@ case tuple_display:
   comp.reserve(n);
   for (wel_const_iterator it(e.sublist); not it.at_end(); ++it,++tl_it)
   { comp.push_back(convert_expr(*it,*tl_it));
+    is_constant = is_constant and
+      dynamic_cast<const denotation*>(comp.back().get()) != nullptr;
     if (*tl_it==void_type and not is_empty(*it))
       // though weird, we allow voiding a component
       comp.back().reset(new voiding(std::move(comp.back())));
@@ -767,9 +770,35 @@ case tuple_display:
 @)
   expression_ptr result(std::move(tup_exp));
     // convert |tup_exp| to a more generic pointer
+  if (is_constant)
+     make_row_denotation<false>(result); // wrap tuple inside a denotation, see below
   if (n_tuple_expected or coerce(tup,type,result,e.loc))
     return result;
   throw type_error(e,std::move(tup),type.copy());
+}
+
+@ When all components of a tuple expression are denotations, we make the tuple
+expression into a a denotation with a tuple value. Since a very similar
+operation will be needed for row displays, we implement this by a function
+template with a Boolean argument.
+
+@< Local function definitions @> =
+template<bool is_row>
+  void make_row_denotation(expression_ptr& p)
+{
+  const std::vector<expression_ptr>& comp =
+  is_row
+  ? static_cast<const list_expression*>(p.get())->component
+  : static_cast<const tuple_expression*>(p.get())->component;
+  tuple_value tup(comp.size());
+  for (size_t i=0; i<comp.size(); ++i)
+    tup.val[i] = static_cast<const denotation*>(comp[i].get())->denoted_value;
+  shared_value val;
+  if (is_row)
+    val = std::make_shared<row_value>(std::move(tup));
+  else
+    val = std::make_shared<tuple_value>(std::move(tup));
+  p.reset(new denotation(std::move(val)));
 }
 
 @*1 Evaluating tuple displays.
@@ -1091,15 +1120,15 @@ complete list of types that caused to balancing to fail.
   }
 }
 
-@ With balancing implemented, converting a list display become fairly easy.
-The simplest case is one where a |type| a row type (or |undefined_type| that
+@ With balancing implemented, converting a list display becomes fairly easy.
+The simplest case is one where |type| is a row type (or |undefined_type|, which
 can be specialised to such). In that case we prepare an initially empty
 |list_expression|, then call |balance| with the component type of |type|,
 which if successful will have converted to component types into our
 |list_expression|, and it remains to |return| that object.
 
 The case where a list display occurs in a void context is rare but valid.
-(Since no list will be created, even though all component expression will be
+(Since no list will be created, even though all component expressions will be
 evaluated, the choice of writing a list display is rather curious.) For it we
 perform balancing with an undetermined component type (as if the display were
 in undetermined type context).
@@ -1119,30 +1148,41 @@ analysed at this point).
 
 @< Cases for type-checking and converting... @>=
 case list_display:
-{ std::unique_ptr<list_expression> result (new list_expression(0));
-  auto& comps = result->component;
-  result->component.reserve(length(e.sublist));
+{ auto* const lp = new list_expression(0);
+@/auto& comps = lp->component;
+  comps.reserve(length(e.sublist));
+  expression_ptr result(lp); // convert to |std::unique_ptr<expression_base>|
+  auto is_const = @[ [] (const expression_ptr& p)
+    {@; return dynamic_cast<const denotation*>(p.get()) != nullptr; } @];
+
 @/static const char* const str = "components of list expression";
   if (type.specialise(row_of_type))
   {
     balance(*type.component_type(),e.sublist,e,str,comps);
     if (*type.component_type()==void_type)
       @< Insert voiding coercions into members of |comps| that need it @>
-    return std::move(result);
+    if (std::all_of(comps.begin(),comps.end(),is_const))
+      make_row_denotation<true>(result);
+    return result;
   }
 @)
   type_expr comp_type;
   if (type==void_type) // in void context leave undetermined target type
-  { balance(comp_type,e.sublist,e,str,result->component);
-    return std::move(result);
-    // and forget |comp_type|
+  { balance(comp_type,e.sublist,e,str,comps);
+    return result; // and forget |comp_type|
   }
 @)
   const conversion_record* conv = row_coercion(type,comp_type);
   if (conv!=nullptr)
-  { balance(comp_type,e.sublist,e,str,result->component);
-    return expression_ptr(new
-      conversion(*conv,expression_ptr(std::move(result))));
+  { balance(comp_type,e.sublist,e,str,comps);
+    if (std::all_of(comps.begin(),comps.end(),is_const))
+    {
+      make_row_denotation<true>(result);
+      do_conversion(result,*conv,e.loc);
+    }
+    else
+      result.reset(new conversion(*conv,std::move(result)));
+    return result;
   }
 @)
   throw type_error(e,row_of_type.copy(),type.copy());
@@ -1455,24 +1495,27 @@ will be considered an error rather than just a failed match (additional
 language restrictions are imposed to ensure that such an error will not
 mask a possible successful match).
 
-To implement the new rules we shall, after having found a variant where the
-expected operand type is unequal to the found operand type, but where |is_close|
-reports that a coercion may be possible, possibly redo the conversion of the
-operand expression in the context of the expected type of the variant. If we do
-so, this involves throwing away the previously converted argument expression. In
-principle this again gives a potential exponential growth of the search tree,
-albeit with base$~2$ rather than the number of variants: both the original and
-the new call of |convert_expr| can recursively call |resolve_overload|. With a
-few specific adaptations, we can avoid useless re-conversions in most cases,
-ensuring that such growth is exceedingly unlikely to happen in practice, though
-it can still be provoked in artificial examples.
+To implement the new rules we shall sometimes, namely after having found a
+variant where the expected operand type is unequal to the found operand type
+but where |is_close| reports that a coercion may be possible, redo the
+conversion of the operand expression in the context of the expected type of the
+variant. If we do so, this involves throwing away the previously converted
+argument expression. In principle this again gives a potential exponential
+growth of the search tree, albeit with base$~2$ rather than the number of
+variants: both the original and the new call of |convert_expr| can recursively
+call |resolve_overload|. With a few specific adaptations, we can avoid useless
+re-conversions in most cases, ensuring that such growth is exceedingly unlikely
+to happen in practice, though it can still be provoked in artificial examples.
 
-@ The matching condition is that the call |is_close(a_priori_type,arg_type)|
-sets the bit indicating a possible conversion from the |a_priori_type| to the
-expected |arg_type|. (Since |is_close| treats |void| as just the $0$-tuple
-type, this means that an instance with |arg_type==void_type| (no arguments)
-will not match any call with an argument (unless it has void type), even
-though any type can be voided to |void|; this is intended behaviour.)
+@ The matching condition used in |resolve_overload| is that, for an instance of
+the named function expecting |arg_type|, the call
+|is_close(a_priori_type,arg_type)| indicates (by setting the corresponding bit
+in its result) a possible conversion from the |a_priori_type| to |arg_type|. The
+function |is_close| treats |void| as just the $0$-tuple type with no voiding
+coercion associated to it. This means that when |arg_type==void_type| (for an
+instance of the function taking no arguments), the match will fail if an argument
+is present (unless it has void type), even though any type can be voided to
+|void|; this is intended behaviour.
 
 Apart from the cases listed in |variants|, there are also cases that match a
 ``generic'' operation (in fact an operation that has a second order type, but
@@ -2394,37 +2437,25 @@ table.
   }
 }
 
-@ Here is how inside |resolve_overload| we match special operators with
-generic argument type patterns; they have an identifier~|id| that satisfied
-the predicate |is_special_operator|, which ensures reaching the current code.
-Rather than from the |global_overload_table|, the built-in function objects
-that are inserted into the calls come from a collection of static variables
-whose name ends with |_builtin|, and which are initialised in a module given
-later, using calls to |std::make_shared| so that they refer to unique shared
-instances.
+@ Here is how, inside |resolve_overload|, we match special operators with generic
+argument type patterns; they have an identifier~|id| that satisfies the
+predicate |is_special_operator|, which leads to reaching the current code.
+Rather than from the |global_overload_table|, the built-in function objects that
+are inserted into the calls come from a collection of static variables whose
+name ends with |_builtin|, and which are initialised in a module given later,
+using calls to |std::make_shared| so that they refer to unique shared instances.
 
-The function |print| (but not |prints|) will return the value printed if
-required, so it has the type of a generic identity function. This is done so
-that inserting |print| around subexpressions for debugging purposes can be
-done without other modifications of the user program. For this to work in all
-cases, we treat the argument of |print| as if it we directly in the context of
-the call to |print| (unless that is a void context, lest the argument get
-voided before |print| sees it): if necessary, we re-convert the argument in a
-|type| context (then coercion will be done inside the argument, and no
-coercion applies directly to the |print| call itself). It is still
-theoretically possible that inserting a call to print into valid code results
-in an error, namely for argument expressions that fail to produce
-an \foreign{a priori} type at all in the initial conversion (done without the
-|type|context); in such cases an error will have been reported even before we
-even get to the code below. These cases are quite rare though, and can be
-overcome by inserting a cast inside the |print|.
-
-In the case of |prints|, the context must either expect or accept a |void|
-type, which is the condition that the call |type.specialise(void_type)| below
-tests. For |to_string| the context must similarly either expect or accept a
-|string| type. The case of |error| is like |prints| for its arguments, but
-will not return, so nothing at all is demanded of the context type, like in
-the case of \&{die}.
+Since these functions accept arguments of all types (or in some cases many
+different ones), no implicit conversions are applied to their argument(s), with
+the exception of |print| which (unlike |prints|) returns it argument unchanged,
+and for which any non-voiding conversion imposed by the context will be applied
+(exceptionally, and for practical reasons explained below) to the argument
+before |print| acts. In the case of |prints|, the context must either expect or
+accept a |void| type, which is the condition that the call
+|type.specialise(void_type)| below tests. For |to_string| the context must
+similarly either expect or accept a |string| type. The case of |error| is like
+|prints| for its arguments, but will not return, so nothing at all is demanded
+of the context type, like in the case of \&{die}.
 
 @< If |id| is a special operator like \#... @>=
 { std::ostringstream name;
@@ -2436,25 +2467,22 @@ the case of \&{die}.
   else // remaining cases always match
   { const bool needs_voiding = a_priori_type==void_type and not is_empty(args);
     if (id==print_name())
-    { expression_ptr arg =
+    { auto arg =
         n_args==1 ? std::move(arg_expr[0]) : expression_ptr(std::move(tup_exp));
-      if (type!=void_type and not type.specialise(a_priori_type))
-      {
-        arg = convert_expr(args,type); // redo conversion, now in |type| context
-        name.str(); name << "print@@" << type; // correct |type| in |name|
-      }
+      @< Ensure any non-voiding coercion is applied before rather than after
+         |print| @>
       return make_variadic_call
         (print_builtin,name.str(),std::move(arg),needs_voiding,e.loc);
     }
     else if(id==to_string_name())
-    { expression_ptr arg =
+    { auto arg =
         n_args==1 ? std::move(arg_expr[0]) : expression_ptr(std::move(tup_exp));
       expression_ptr call = make_variadic_call
         (to_string_builtin,name.str(),std::move(arg),needs_voiding,e.loc);
       return conform_types(str_type,type,std::move(call),e);
     }
     else if(id==prints_name())
-    { expression_ptr arg =
+    { auto arg =
         n_args==1 ? std::move(arg_expr[0]) : expression_ptr(std::move(tup_exp));
       expression_ptr call = make_variadic_call
        (prints_builtin,name.str(),std::move(arg),needs_voiding,e.loc);
@@ -2462,7 +2490,7 @@ the case of \&{die}.
       // check that |type==void_type|
     }
     else if(id==error_name()) // this always matches as well
-    { expression_ptr arg =
+    { auto arg =
         n_args==1 ? std::move(arg_expr[0]) : expression_ptr(std::move(tup_exp));
       return make_variadic_call
         (error_builtin,name.str(),std::move(arg),needs_voiding,e.loc);
@@ -2470,23 +2498,114 @@ the case of \&{die}.
   }
 }
 
-@ As a small intermezzo, we define a global function |frozen_error| that can be
-used to make a call of |error_builtin| with a fixed error message; the idea is
-that if during conversion it is found that evaluating a certain expression will
-always result in an error with a given message, it can be replaced by such a
-call (which will produce that error if and only if the converted expression ends
-up being actually evaluated). The function is typically used when we try to
-pre-evaluate a constant expression during compilation (an optimisation called
-constant folding) and an error occurs during that evaluation.
+@ As mentioned above, any non-voiding implicit conversions the context of a call
+of |print| requires will by applied in the argument before |print| acts. Having
+|print| return its argument unchanged This is done to facilitate inserting
+|print| calls at subexpressions into a program for debugging purposes, and the
+value printed will be that of the subexpression seen in the program, with any
+implicit conversions applied. So we treat the argument of |print| as if it we
+directly in the context of the call to |print| (unless that is a void context).
+If that type differs from the |a_priori_type| we deduced for the argument, we
+must therefor re-convert the argument in a |type| context; it is because this
+re-conversion is sometimes necessary when |print| is absent, that we wish to not
+have the presence of |print| block this possibility. It is still theoretically
+possible that inserting a call to print into valid code results in an error,
+namely for argument expressions that fail to produce an \foreign{a priori} type
+at all in the initial conversion (done without the |type| context); in such
+cases an error will have been reported even before we even get to the code
+below, so there is little we can do about it here. These cases are quite rare
+though, and can be overcome by inserting a cast inside the |print|.
+
+In the code below, |args| refers to the |expr| that holds the unconverted
+argument expression, introduced at the beginning of |resolve_overload| all the
+way back in section@#resolve_overload@>. Since, having recognised a call of
+print, we are basically throwing away the work done before and redoing it as if
+that call were absent, it might seem wasteful to not have made this decision at
+the start of |resolve_overload| instead, which would avoid having to redo
+anything here. But we cannot do, so because we allow defining non-generic
+instances of |print|, which if they match the argument type, without coercion,
+should be used in priority to the generic instance; if an externally required
+conversion crept into the argument before attempting to match the correct
+instance of |print|, it could prevent such in instance from being found when it
+should. It must be admitted though that we are dealing with quite subtle and
+unlikely scenarios here, and it might be preferable to simplify the rules around
+|print| rather than to use the current system for the sake of the principle of
+least astonishment.
+
+@< Ensure any non-voiding coercion is applied before rather than after |print| @>=
+if (type!=void_type and not type.specialise(a_priori_type))
+{
+  arg = convert_expr(args,type); // redo conversion, now in |type| context
+  name.str(); name << "print@@" << type; // correct |type| in |name|
+}
+
+@ As a small intermezzo, we define a function that implements constant folding
+across implicit conversions, in other words that ensures that if an implicit
+conversion is applied to a constant expression (represented as a |denotation|),
+then the conversion is done during analysis of the program (compile time) rather
+then being postponed to run time, as it must be if the argument is non constant.
+
+In its implementation we also used a function |frozen_error|, that is used to
+make a call of |error_builtin| with a fixed error message; the idea is that if
+during conversion it is found that evaluating a certain expression will always
+result in an error with a given message, it can be replaced by such a call
+(which will produce that error if and only if the converted expression ends up
+being actually evaluated).
 
 @< Declarations of exported functions @> =
+void do_conversion(expression_ptr& e, const conversion_info& ci,
+  const source_location& loc);
 expression_ptr frozen_error(std::string message, const source_location& loc);
 
-@ The implementation is straightforward: we make a |shared_value| for the
-string, wrap in into a |denotation|, and then build and return a call to
-|error_builtin| with this string as argument.
+@ Implementing |do_conversion| is not very hard, but does imply some mixing of
+stages in the evaluation process. First we need to look into the expression that
+the |e| points to using a |dynamic_cast|, to see whether its actual type is
+|denotation|. If so, we apply the conversion to the value held inside, for which
+that value is temporarily placed on the execution stack. Placing the converted
+value back into the |denotation| requires casting away the |const| in the type
+of |den_ptr|, inherited from that of |e|. This could have been avoided by
+wrapping a fresh |denotation| around the new value and assigning that to |e|,
+but the current solution is both simpler and more efficient, and is really an
+indication that the old decision to make |expression_ptr| a pointer-to-const
+results in resistance against the evolution of the language: while it reflects
+the fact that the evaluation process never needs to modify the tree of
+executable expressions, such changes now are becoming common as compile-time
+restructuring of the expression tree is being implemented.
+
+Since we are here performing some evaluation during compile time, we must
+consider the possibility that this produces a ``runtime'' error. Our solution is
+(for the moment) to not throw a |runtime_error| during the type analysis, but to
+compile in, using |frozen_error|, a call to |error_builtin| reproducing the
+error upon evaluation. Maybe at some future point we shall decide that it is
+actually preferable to already signal a problem at compile time when this
+happens.
 
 @< Function def... @> =
+void do_conversion(expression_ptr& e, const conversion_info& ci,
+  const source_location& loc)
+{
+  if (@[auto* den_ptr = dynamic_cast<const denotation*>(e.get())@])
+  { try
+    {
+       push_value(std::move(den_ptr->denoted_value));
+       ci.convert();
+       const_cast<denotation*>(den_ptr)->denoted_value=pop_value();
+    }
+    catch(std::exception& err)
+    {@;
+      e = frozen_error(err.what(),loc);
+    }
+  }
+  else
+    e.reset(new conversion(ci,std::move(e)));
+}
+
+@ The implementation of |frozen_error| is straightforward: we make a
+|shared_value| for the string, wrap in into a |denotation|, and then build and
+return a call to |error_builtin| with this string as argument.
+
+@< Function def... @> =
+@)
 expression_ptr frozen_error(std::string message, const source_location& loc)
 {
   auto mess_val = std::make_shared<string_value>(std::move(message));
@@ -2494,6 +2613,7 @@ expression_ptr frozen_error(std::string message, const source_location& loc)
   return expression_ptr (new variadic_builtin_call
     (error_builtin,"error@@string",std::move(arg),loc) );
 }
+
 
 @ We shall use the following simple type predicate above. Contrary to
 specialising to |pair_type|, this function cannot alter its argument.
