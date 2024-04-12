@@ -1046,6 +1046,45 @@ graph; label as "Ffrom"m}
 set updateNUclassesB([string] statuses, [[int]] covers, int m) = [string]:
     updateNUclassesB(statuses, covers, m, to_string(m))
 
+
+{m is a class known to be unitary; update classes below using graph}
+{first list in toDo everything covered by m: the n so m appears in covers[n].
+Then what those cover... These n get SMALLER.}
+set downdateUclassesB([string] statuses, [[int]] covers, int m,
+string tail) = [string]:
+    let G1 = inner_class(root_datum(null(1,0),null(1,0))
+        ,id_mat(1)).quasicompact_form
+    then x0 = KGB(G1,0)
+    then toDo = (if statuses[m] = "?" then 1 else 0 fi)*K_type(x0,[m])
+    then () = toDo +:= sum(G1, for C@n in covers[:m]
+                          ~do (if is_member_sorted(C)(m) then 1
+                              else 0 fi)*K_type(x0,[n])
+         {(if statuses[n] = "?" then 1 else 0 fi)}
+                           od)
+    then () = while #toDo != 0
+              do
+              let list = vec:
+                  for p in monomials(toDo)
+                  do lambda_rho(p)[0]
+                  od
+              then () = toDo :=
+                   sum(G1, for n in list
+                           do sum(G1, for C@q in covers[:n]
+                                      ~do (if is_member_sorted(C)(n)
+                                          then 1 else 0 fi)*K_type(x0,[q])
+                                      od)
+                           od)
+              in for k in list
+                 do  if statuses[k] = "?"
+                     then statuses[k] := "Ffrom"##tail{to_string(m)}
+                     fi
+                 od
+              od
+    in statuses
+
+set downdateUclassesB([string] statuses, [[int]] covers, int m) = [string]:
+    downdateUclassesB(statuses, covers, m, to_string(m))
+
 {vlist is a collection of possible infinitesimal characters for reps
 (x,lambda,?), typically vertices from FPP. If vlist[i] shows up as
 a vertex of a unitary facet, then there is another vertex vlist[j] so that
