@@ -538,10 +538,9 @@ fixed. The facet lists carried by [[FacetBary]] or [[FacetVertsIndex]]
 may be pruned of reps not interesting for unitarity, but the indices
 will always refer to a constant vlist.}
 
-{whether to fill in statuses for known unitaries in local_testK_hash}
-{this is useless, for reasons I don't understand; does NOT change # of
-is_unitary tests performed (for ex in FPP_unitary_hash_one_level(SO(4,4)))}
-set KU_flag = false
+{whether to fill in statuses for known unitaries in local_testK_hash
+and local_test_hash}
+set KU_flag = true
 
 {if true, functions in FPP_global pass through KGB backwards}
 set tilde_flag = true
@@ -581,7 +580,7 @@ set local_testK_hash(KGBElt x, ratvec lambda, VertexData vd,
      Use function known_unitaries from FPP_facets
      Look up class in classListByFacet, and mark "T"}
     then start = elapsed_ms()
-    {then () = if KU_flag and #FVKH = 2
+    then () = if KU_flag {and #FVKH = 2}
     	      then let knownUnitaries = known_unitaries(Uhash, x, lambda, vd, FVKH)
     	      	   then () = for list@d in knownUnitaries
     	      	   	     do for j in list
@@ -589,7 +588,7 @@ set local_testK_hash(KGBElt x, ratvec lambda, VertexData vd,
 	    	 		od
 	      		     od
 		   in ()
-	       fi}
+	       fi
     then () = if fund_facet_verbose and NumClasses > 100
     then prints(); prints("start local_testK_hash, ", NumClasses,
 		   " equiv classes of facets to dim ",#FVKH-1)
@@ -655,7 +654,7 @@ set local_testK_hash_know_lower(KGBElt x, ratvec lambda, VertexData vd,
      Use function known_unitaries from FPP_facets
      Look up class in classListByFacet, and mark "T"}
     then start = elapsed_ms()
-    {then () = if KU_flag and #FVKH = 2
+    then () = if KU_flag {and #FVKH = 2}
     	      then let knownUnitaries = known_unitaries(Uhash, x, lambda, vd, FVKH)
     	      	   then () = for list@d in knownUnitaries
     	      	   	     do for j in list
@@ -663,7 +662,7 @@ set local_testK_hash_know_lower(KGBElt x, ratvec lambda, VertexData vd,
 	    	 		od
 	      		     od
 		   in ()
-	       fi}
+	       fi
     then () = if fund_facet_verbose and NumClasses > 100
     then prints(); prints("start local_testK_hash_know_lower, ", NumClasses,
 		   " equiv classes of facets to dim ",#FVKH-1)
@@ -764,7 +763,7 @@ set local_testK_hash_bottom_layer(KGBElt x, ratvec lambda, VertexData vd,
      Look up class in classListByFacet, and mark "T"}
     then start = elapsed_ms(){, prevk = int: 0
     then current = start}
-    {then () = if KU_flag and #FVKH = 2
+    then () = if KU_flag {and #FVKH = 2}
     	      then let knownUnitaries = known_unitaries(Uhash, x, lambda, vd, FVKH)
     	      	   then () = for list@d in knownUnitaries
     	      	   	     do for j in list
@@ -772,7 +771,7 @@ set local_testK_hash_bottom_layer(KGBElt x, ratvec lambda, VertexData vd,
 	    	 		od
 	      		     od
 		   in ()
-	       fi}
+	       fi
 {next if possible label classes known to be nonunitary because they finalize or deform to nonunitary}
     then () = if know_lower_flag {assume ALL unitary facets with height(x') < known_to are in unitary_hash}
     	      then for k:NumClasses
