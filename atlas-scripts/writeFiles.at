@@ -238,3 +238,37 @@ set write_append_param_list([Param] list, string listName) = void:
 	     	x,"),",p.lambda,",",p.nu,")")
 	  od
     end
+
+{
+This is exactly like write_param_list, except that when the file is
+loaded it creates [Param] by successive concatenation rather than by
+creating a dummy list of the right size and modifying its entries. The
+advantage is that you can just add lines to this file to add more
+Param's. If you create the original file with
+> orig.at write_cat_param_list(MyFirstList,"listname")
+then you can add Params with
+>> orig.at write_append_cat_param_list(MySecondList,"listname")
+Only requirement is that all the Param's are for the same group.
+}
+set write_cat_param_list([Param] list, string listName) = void:
+    begin
+    	let G_temp = GL(1,R)
+	then () = if #list > 0 then G_temp := list[0].real_form
+	fi
+	; write_real_form(G_temp, "G_temp")
+	; prints("set ",listName,"=[Param]:[]")
+	in for p@i in list
+	   do let (,x) = %p.x
+	      in prints("void:",listName,"#:=parameter(KGB(G_temp,",
+	     	x,"),",p.lambda,",",p.nu,")")
+	   od
+    end
+
+set write_append_cat_param_list([Param] list, string listName) = void:
+    begin
+	 for p@i in list
+	 do let (,x) = %p.x
+	     in prints("void:",listName,"#:=parameter(KGB(G_temp,",
+	     	x,"),",p.lambda,",",p.nu,")")
+	 od
+    end
