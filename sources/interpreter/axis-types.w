@@ -2840,6 +2840,8 @@ struct source_location; // defined in \.{parsetree.w}, remains incomplete here
 
 bool coerce(const type_expr& from_type, const type_expr& to_type,
             expression_ptr& e, const source_location& loc);
+bool coercible(const type_expr& from_type, const type_expr& to_type);
+
 expression_ptr conform_types
   (const type_expr& found, type_expr& required
   , expression_ptr&& d, const expr& e);
@@ -3051,28 +3053,29 @@ void voiding::print(std::ostream& out) const
 
 @ The function |coerce| simply traverses the |coerce_table| looking for an
 appropriate entry, and wraps |e| into a corresponding |conversion| if it finds
-one. Ownership of the expression pointed to by |e| is handled implicitly: it
-is released during the construction of the |conversion|, and immediately
-afterwards |reset| reclaims ownership of the pointer to that |conversion|.
-Note that the |conversion| constructor uses |*it| only for its
-|conversion_info| base type; the types |from| and |to| are not retained at run
-time.
+one by calling the |do_conversion| function. The call of this function defined
+in the unit~\.{axis.w} that deals with actual compilation and execution is
+justified by the fact that when applied to a constant argument value, the value
+conversion will actually be performed on the value rather than wrapped in a
+|conversion| structure. We also define a variant function |coercible| that
+just evaluates the condition, omitting any action.
 
 When |to_type==void_type|, the conversion always succeeds, as the syntactic
-voiding coercion is allowed in all places where |coerce| is called. We used to
-do |e.reset(new voiding(std::move(e)));| in that case as well, which is a safe
-way to ensure that voiding will take place dynamically whenever present
-syntactically. However as argued above, in most cases no runtime action is
-necessary, since the context will have already set |l==no_value| for
-subexpressions with void type. In removing that statement from the code below,
-we have moved responsibility to type analysis, which must now ensure that any
-subexpression with void type will have |l==no_value| when evaluated. This
-means that in some cases a |voiding| has to be constructed explicitly. This
-crops up in many places (for instance a component in a tuple display just
-might happen to have void type), but almost all such cases are far-fetched.
-So we gain in efficiency of execution by only applying a |voiding| in such rare
-cases, but the price to pay is quite a bit of code in our interpreter to ensure
-we do in fact find and properly handle all those exceptional cases.
+voiding coercion is allowed in all places where |coerce| is called. We now
+perform no action in that case, although it would seem safer to, ans we used to
+do, wrap the result in a |voiding| in this case to ensure no value will be left
+on the runtime stack during evaluation. However as argued above, in most such
+cases no runtime action is actually needed, since the context will have already
+set |l==no_value| for subexpressions with void type. In not providing any
+|voiding| here, we have moved responsibility to type analysis, which must now
+ensure that any subexpression with void type will have |l==no_value| when
+evaluated. This means that in some cases a |voiding| will have to be inserted
+explicitly. This crops up in many places (for instance a component in a tuple
+display just might happen to have void type), but almost all such cases are
+far-fetched. So we gain in efficiency of execution by only applying a |voiding|
+in such rare cases, but the price to pay is quite a bit of code in our
+interpreter to ensure we do in fact find and properly handle all those
+exceptional cases.
 
 @h "parse_types.h" // for |source_location|
 @h "axis.h" // for |do_conversion|
@@ -3086,11 +3089,19 @@ bool coerce(const type_expr& from_type, const type_expr& to_type,
   } // syntactically voided here, |e| is unchanged
   for (auto it=coerce_table.begin(); it!=coerce_table.end(); ++it)
     if (from_type==*it->from and to_type==*it->to)
-    {
+    {@;
       do_conversion(e,*it,loc);
       return true;
     }
   return false;
+}
+@)
+bool coercible(const type_expr& from_type, const type_expr& to_type)
+{ auto match = @[ [&from_type,&to_type]
+     (const conversion_record& cr)
+     {@; return from_type==*cr.from and to_type==*cr.to; } @];
+  return to_type==void_type or
+    std::any_of(coerce_table.begin(), coerce_table.end(), match);
 }
 
 @ Often we first try to specialise a required type to the available type of a
@@ -3259,15 +3270,10 @@ type in its place (overloading does not perform type specialisation).
 are always close, while undetermined types are not convertible to any other
 type. A primitive type is in the relation |is_close| to another type only if it
 is identical or if there is a direct conversion between the types, as decided
-by~|coerce|. (We are abusing that function somewhat here, as it will also try to
-actually insert conversions into the expression provided, which is a null
-pointer here; as currently written, the function |coerce| will not crash or
-complain when it is so abused, and no harm is done, but should later
-modifications make that no longer true, we shall need to write a special similar
-but simpler function to call here instead.) Two row types are in the relation
-|is_close| if their component types are, and two tuple types are so if they have
-the same number of component types, and if each pair of corresponding component
-types is (recursively) in the relation |is_close|.
+by~|coerce|. Two row types are in the relation |is_close| if their component
+types are, and two tuple types are so if they have the same number of component
+types, and if each pair of corresponding component types is (recursively) in the
+relation |is_close|.
 
 The above applies to the most significant of the three bits used in the result
 of the function |is_close|. The two other bits indicate whether, by applying
@@ -3276,14 +3282,9 @@ tuple types, one of the types can be converted to the other. If the |is_close|
 relation is false all bits will be zero, but in the contrary case any of the 4
 possible combinations of the remaining bits could be set.
 
-The expression |dummy| may be prepended to by |coerce|, but is then abandoned
-(and cleaned up).
-
 @< Function definitions @>=
 unsigned int is_close (const type_expr& x, const type_expr& y)
-{ expression_ptr dummy(nullptr);
-  source_location nowhere;
-  if (x==y)
+{ if (x==y)
     return 0x7; // this also makes recursive types equal to themselves
   auto xk=x.kind(), yk=y.kind();
   if (xk==undetermined_type or yk==undetermined_type)
@@ -3293,8 +3294,8 @@ unsigned int is_close (const type_expr& x, const type_expr& y)
     return 0x0; // |void| does not allow coercion for overload, and is not close
   if (xk==primitive_type or yk==primitive_type)
   { unsigned int flags=0x0;
-    if (coerce(x,y,dummy,nowhere)) flags |= 0x1;
-    if (coerce(y,x,dummy,nowhere)) flags |= 0x2;
+    if (coercible(x,y)) flags |= 0x1;
+    if (coercible(y,x)) flags |= 0x2;
     return flags==0 ? flags : flags|0x4;
   }
   if (xk!=yk)

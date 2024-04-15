@@ -1515,7 +1515,9 @@ function |is_close| treats |void| as just the $0$-tuple type with no voiding
 coercion associated to it. This means that when |arg_type==void_type| (for an
 instance of the function taking no arguments), the match will fail if an argument
 is present (unless it has void type), even though any type can be voided to
-|void|; this is intended behaviour.
+|void|; this is intended behaviour. It is for this reason that the call to
+|is_close| should not be replaced by one of |coercible|, which would
+return |true| whenever |arg_type==void_type|.
 
 Apart from the cases listed in |variants|, there are also cases that match a
 ``generic'' operation (in fact an operation that has a second order type, but
@@ -2539,82 +2541,6 @@ if (type!=void_type and not type.specialise(a_priori_type))
   name.str(); name << "print@@" << type; // correct |type| in |name|
 }
 
-@ As a small intermezzo, we define a function that implements constant folding
-across implicit conversions, in other words that ensures that if an implicit
-conversion is applied to a constant expression (represented as a |denotation|),
-then the conversion is done during analysis of the program (compile time) rather
-then being postponed to run time, as it must be if the argument is non constant.
-
-In its implementation we also used a function |frozen_error|, that is used to
-make a call of |error_builtin| with a fixed error message; the idea is that if
-during conversion it is found that evaluating a certain expression will always
-result in an error with a given message, it can be replaced by such a call
-(which will produce that error if and only if the converted expression ends up
-being actually evaluated).
-
-@< Declarations of exported functions @> =
-void do_conversion(expression_ptr& e, const conversion_info& ci,
-  const source_location& loc);
-expression_ptr frozen_error(std::string message, const source_location& loc);
-
-@ Implementing |do_conversion| is not very hard, but does imply some mixing of
-stages in the evaluation process. First we need to look into the expression that
-the |e| points to using a |dynamic_cast|, to see whether its actual type is
-|denotation|. If so, we apply the conversion to the value held inside, for which
-that value is temporarily placed on the execution stack. Placing the converted
-value back into the |denotation| requires casting away the |const| in the type
-of |den_ptr|, inherited from that of |e|. This could have been avoided by
-wrapping a fresh |denotation| around the new value and assigning that to |e|,
-but the current solution is both simpler and more efficient, and is really an
-indication that the old decision to make |expression_ptr| a pointer-to-const
-results in resistance against the evolution of the language: while it reflects
-the fact that the evaluation process never needs to modify the tree of
-executable expressions, such changes now are becoming common as compile-time
-restructuring of the expression tree is being implemented.
-
-Since we are here performing some evaluation during compile time, we must
-consider the possibility that this produces a ``runtime'' error. Our solution is
-(for the moment) to not throw a |runtime_error| during the type analysis, but to
-compile in, using |frozen_error|, a call to |error_builtin| reproducing the
-error upon evaluation. Maybe at some future point we shall decide that it is
-actually preferable to already signal a problem at compile time when this
-happens.
-
-@< Function def... @> =
-void do_conversion(expression_ptr& e, const conversion_info& ci,
-  const source_location& loc)
-{
-  if (@[auto* den_ptr = dynamic_cast<const denotation*>(e.get())@])
-  { try
-    {
-       push_value(std::move(den_ptr->denoted_value));
-       ci.convert();
-       const_cast<denotation*>(den_ptr)->denoted_value=pop_value();
-    }
-    catch(std::exception& err)
-    {@;
-      e = frozen_error(err.what(),loc);
-    }
-  }
-  else
-    e.reset(new conversion(ci,std::move(e)));
-}
-
-@ The implementation of |frozen_error| is straightforward: we make a
-|shared_value| for the string, wrap in into a |denotation|, and then build and
-return a call to |error_builtin| with this string as argument.
-
-@< Function def... @> =
-@)
-expression_ptr frozen_error(std::string message, const source_location& loc)
-{
-  auto mess_val = std::make_shared<string_value>(std::move(message));
-  expression_ptr arg(new denotation(std::move(mess_val)));
-  return expression_ptr (new variadic_builtin_call
-    (error_builtin,"error@@string",std::move(arg),loc) );
-}
-
-
 @ We shall use the following simple type predicate above. Contrary to
 specialising to |pair_type|, this function cannot alter its argument.
 
@@ -2692,6 +2618,93 @@ and another concatenating two rows of the same type.
          (a_priori_type.tuple()->contents,type,std::move(call),e);
   }
 }
+
+@*1 Support for constant folding.
+%
+While our interpreter is based on the conversion, by the function
+|convert_expr|, of the abstract syntax tree represented in an |expr| into an
+executable form accessed by an |expression_ptr|, which is then executed, there
+are some points where we want to perform parts of the evaluation during the
+conversion process itself, so that constant subexpressions can be produced from
+a |denotation| even in cases where the value is not one of the basic cases
+provided by the grammar (an explicit natural number, Boolean value, or string).
+
+As a small intermezzo, we define a function that implements constant folding
+across implicit conversions, in other words that ensures that if an implicit
+conversion is applied to a constant expression (represented as a |denotation|),
+then the conversion is done during analysis of the program (compile time) rather
+then being postponed to run time, as it must be if the argument is non constant.
+
+In its implementation we also used a function |frozen_error|, that is used to
+make a call of |error_builtin| with a fixed error message; the idea is that if
+during conversion it is found that evaluating a certain expression will always
+result in an error with a given message, it can be replaced by such a call
+(which will produce that error if and only if the converted expression ends up
+being actually evaluated).
+
+@< Declarations of exported functions @> =
+void do_conversion(expression_ptr& e, const conversion_info& ci,
+  const source_location& loc);
+expression_ptr frozen_error(std::string message, const source_location& loc);
+
+@ Implementing |do_conversion| is not very hard, but does imply some mixing of
+stages in the evaluation process. First we need to look into the expression that
+the |e| points to using a |dynamic_cast|, to see whether its actual type is
+|denotation|. If so, we apply the conversion to the value held inside, for which
+that value is temporarily placed on the execution stack. Placing the converted
+value back into the |denotation| requires casting away the |const| in the type
+of |den_ptr|, inherited from that of |e|. This could have been avoided by
+wrapping a fresh |denotation| around the new value and assigning that to |e|,
+but the current solution is both simpler and more efficient, and is really an
+indication that the old decision to make |expression_ptr| a pointer-to-const
+results in resistance against the evolution of the language: while it reflects
+the fact that the evaluation process never needs to modify the tree of
+executable expressions, such changes now are becoming common as compile-time
+restructuring of the expression tree is being implemented.
+
+Since we are here performing some evaluation during compile time, we must
+consider the possibility that this produces a ``runtime'' error. Our solution is
+(for the moment) to not throw a |runtime_error| during the type analysis, but to
+compile in, using |frozen_error|, a call to |error_builtin| reproducing the
+error upon evaluation. Maybe at some future point we shall decide that it is
+actually preferable to already signal a problem at compile time when this
+happens.
+
+@< Function def... @> =
+void do_conversion(expression_ptr& e, const conversion_info& ci,
+  const source_location& loc)
+{
+  if (@[auto* den_ptr = dynamic_cast<const denotation*>(e.get())@])
+  { try
+    {
+       push_value(std::move(den_ptr->denoted_value));
+       ci.convert();
+       const_cast<denotation*>(den_ptr)->denoted_value=pop_value();
+    }
+    catch(std::exception& err)
+    {@;
+      e = frozen_error(err.what(),loc);
+    }
+  }
+  else
+    e.reset(new conversion(ci,std::move(e)));
+}
+
+@ The implementation of |frozen_error| is straightforward: we make a
+|shared_value| for the string, wrap in into a |denotation|, and then build and
+return a call to |error_builtin| with this string as argument.
+
+@< Function def... @> =
+@)
+expression_ptr frozen_error(std::string message, const source_location& loc)
+{
+  auto mess_val = std::make_shared<string_value>(std::move(message));
+  expression_ptr arg(new denotation(std::move(mess_val)));
+  return expression_ptr (new variadic_builtin_call
+    (error_builtin,"error@@string",std::move(arg),loc) );
+}
+
+
 
 @* Let-expressions, and identifier patterns.
 %
