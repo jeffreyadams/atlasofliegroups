@@ -180,7 +180,7 @@ set def_flag = true
 
 {if "false" use next_heights instead of short_hts, to avoid calculating
 deform (KL calculations). So prefer false for rank \ge 7?}
-set short_hts_flag = true
+set short_hts_flag = false
 
 set long_out_flag = false
 
@@ -1907,9 +1907,9 @@ set local_test_GEO_hash_no_dumb(KGBElt x, ratvec lambda, VertexData vd, VertexDa
 		       else LFDKH
 		       fi
     then () = if quick_flag
-    	      then let Dlast = rank(x.involution - 1) - 1
+    	      then let Dlast =  max((r-1)\2,1) {r - 1}
 	      	   then () = LFDKH := localFD_KHashbt_lookDownGEO(x,lambda, Lvd, LFDKH, 2,
-                                Dlast + 2, pol_hash)
+                                r + 2, pol_hash)
 		   then ((eq,gr),IUCL,CLBF) = localGraphK(LFDKH,pol_hash,test_hts[Dlast])
 		   then () = LFDKH := local_testK_hash(x,lambda,Lvd,
                       LFDKH, eq, gr, CLBF, (Param->bool): (Param p):
@@ -1920,7 +1920,7 @@ set local_test_GEO_hash_no_dumb(KGBElt x, ratvec lambda, VertexData vd, VertexDa
 				": ", for list in LFDKH do #list od)
 		      fi
 	      else let D = int:1
-    then () = while (D <= rank(x.involution-1) - 1  ) and
+    then () = while (D <= r - 1  ) and
     	      	    (#LFDKH = D + 1) and
 		    (#(LFDKH~[0]) > D+1)
     {can't omit middle because LFDKH is truncated!}
@@ -2118,20 +2118,20 @@ KTypePol_hash pol_hash, Param_hash Uhash) = [Param]:
     then () = if test_verbose then prints("unitary to ht ",hts[test_levels[0]],
                         " facet counts to dim 1: ",for list in LFDKH do #list od) fi
     then () = if quick_flag
-    	      then let Dlast = rank(x.involution - 1) - 1
+    	      then let Dlast = max((r-1)\2,1){Dlast = r - 1} {don't like testing to hts[11] for E8}
 	      	   then () = LFDKH := localFD_KHashbt_lookDownGEO(x,lambda, Lvd, LFDKH, 2,
-                                Dlast + 2, pol_hash)
+                                r + 2, pol_hash)
 		   then ((eq,gr),IUCL,CLBF) = localGraphK(LFDKH,pol_hash,test_hts[Dlast])
 		   then () = LFDKH := local_testK_hash(x,lambda,Lvd,
                       LFDKH, eq, gr, CLBF, (Param->bool): (Param p):
 		      {Uhash.lookup(p).>= or} is_unitary_to_ht(p,test_hts[Dlast]), Uhash)
                    in if test_verbose
 		      then prints("unitary to ht ",test_hts[Dlast],
-		      	      		" facet counts to dim ",Dlast+1,
+		      	      		" facet counts to dim ",r,
 				": ", for list in LFDKH do #list od)
 		      fi
 	      else let D = int:1
-     then () = while (D <= rank(x.involution-1) - 1  ) and
+     then () = while (D <= r - 1  ) and
     	      	    (#LFDKH = D + 1) and
 		    (#(LFDKH~[0]) > D+1)
     {can't omit middle because LFDKH is truncated!}
@@ -2156,7 +2156,7 @@ KTypePol_hash pol_hash, Param_hash Uhash) = [Param]:
      	     od
      in ()
      fi{quick_flag}
-    {now have facets of all dims, to height test_hts[last D]}
+    {now have facets of all dims, to height test_hts[Dlast]}
     then ((eq,gr),IUCL,CLBF) = localGraphK(LFDKH)
     then () = if test_verbose then prints(sum(for list in LFDKH do #list od),
 	      	      	" unitary candidates in ",#eq," equivalence classes.") fi
@@ -2365,10 +2365,10 @@ set local_test_GEO_hash_one_level(KGBElt x, ratvec lambda, VertexData vd,
     then long_out_temp_flag = long_out_flag
     then () = if quick_flag
     	      then LFDKH := localFD_KHashbt_lookDownGEO(x,lambda, Lvd, LFDKH, 2,
-                                rank(x.involution - 1) + 1, pol_hash_one_ht)
+                                r + 1, pol_hash_one_ht)
 	      else let D = int:1
     then () = long_out_flag:=false
-    then () = while (D <= rank(x.involution-1) - 1  ) and
+    then () = while (D <= r - 1  ) and
     	      	    (#LFDKH = D + 1) and
 		    (#(LFDKH~[0]) > D+1)
     {can't omit middle because LFDKH is truncated!}
@@ -2409,7 +2409,7 @@ set local_test_GEO_hash_one_level(KGBElt x, ratvec lambda, VertexData vd,
 		       od.##
 		 then () = LFDKH := LFDKH[:D+1] # newDplus1
                  then () = if test_verbose and
-		      	   ((D = rank(x.involution-1)-1)  or
+		      	   ((D = r-1)  or
     	      	    	   (#LFDKH < D) or
 		    	   (#(LFDKH~[0]) <= D+2))
 			   then prints("unitary to ht ",one_ht,
@@ -2592,7 +2592,7 @@ set local_test_GEO_hash_bottom_layer(KGBElt x, ratvec lambda, VertexData vd,
 		    	   fi
 { Have facets to dim 1 bottom layer unitary to DG0. Seek to extend list to all higher dims }
   then () = LFDKH := localFD_KHashbt_lookDownGEO(x,lambda, Lvd, LFDKH, 2,
-       	    	     		rank(x.involution - 1) + 1, pol_hash)
+       	    	     		r + 1, pol_hash)
     then unitary_by_dim = vec: for L in LFDKH do #L od
     then () = if test_verbose then prints("number of tests so far = ",unitary_test_counter.use_count() - UTCstart)
 	      fi
