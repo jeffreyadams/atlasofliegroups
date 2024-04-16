@@ -1472,77 +1472,66 @@ expression_ptr resolve_overload
    type_expr& type,
    const overload_table::variant_list& variants);
 
-@ To resolve overloading, we used to try each variant, recursively calling
-|convert_expr| to convert the arguments under the hypothesis that they could
-be so in the strong type context of the type expected by that variant, but
+@ To resolve overloading, we used to try each variant, each time recursively
+calling |convert_expr| to convert the arguments under the hypothesis that they
+were in the strong type context of the type expected by that variant; this while
 catching (type) errors, interpreting them simply as an indication that this
-variant fails to match. However in long formulae operator applications
-are nested, and |convert_expr| would call |resolve_overload| one level down,
+variant fails to match. However in long formulae, operator applications are
+nested, and each |convert_expr| would call |resolve_overload| one level down,
 leading to a recursive repetition of the same try-all-variants scenario. This
 led to a search tree growing exponentially with the size of the formula, and
 unacceptably long analysis times. So instead the rules were made slightly
 stricter: every operand combination must be such that is can be analysed in
 isolation, giving rise to an \foreign{a priori} type, which might however not
-quite be the actual type for the intended variant. Overload resolution will
-then try to find a variant, whose expected type is close enough to the
-found \foreign{a priori} type to expect that coercion will allow making the
-match. The necessary coercions might however have to ``creep inside'' the
-argument expression (most obviously so in the common cases of an operand pair
-or argument tuple) on order to apply. Since matching was based not on
-the \emph{structure} of the argument expression but on type only, there
-remains a possibility that coercion is not possible after all; such a case
-will be considered an error rather than just a failed match (additional
-language restrictions are imposed to ensure that such an error will not
-mask a possible successful match).
+quite be the actual type for the intended variant. Overload resolution will then
+try to find a variant whose expected type is close enough to the
+found \foreign{a priori} type to expect that zero or more coercions will allow
+making the match. The necessary coercions might however need to ``creep inside''
+the argument expression (most obviously so in the common cases of an operand
+pair or argument tuple) on order to apply, so that it might not be possible to
+use the expression as initially converted; if this appears to be the case, the
+conversion will be attempted as second time, this time in the strong context of
+the type expected by the matched variant. The second attempt may still fail (for
+instance if the expression structure does not allow for creeping inside), which
+will then be considered to be an error rather than just a failed match.
+Additional language restrictions are imposed to ensure that such an error cannot
+mask a possible successful match of a later variant.
 
-To implement the new rules we shall sometimes, namely after having found a
-variant where the expected operand type is unequal to the found operand type
-but where |is_close| reports that a coercion may be possible, redo the
-conversion of the operand expression in the context of the expected type of the
-variant. If we do so, this involves throwing away the previously converted
-argument expression. In principle this again gives a potential exponential
-growth of the search tree, albeit with base$~2$ rather than the number of
-variants: both the original and the new call of |convert_expr| can recursively
-call |resolve_overload|. With a few specific adaptations, we can avoid useless
-re-conversions in most cases, ensuring that such growth is exceedingly unlikely
-to happen in practice, though it can still be provoked in artificial examples.
+If we do decide to redo the initially converted argument expression, this again
+gives a potential exponential growth of the search tree, albeit with base$~2$
+rather than the number of variants: both the original and the new call of
+|convert_expr| can recursively call |resolve_overload|. With a few specific
+adaptations, we avoid useless re-conversions in most cases, ensuring that such
+growth is exceedingly unlikely to happen in practice, although it can still be
+provoked in artificial examples.
 
-@ The matching condition used in |resolve_overload| is that, for an instance of
-the named function expecting |arg_type|, the call
-|is_close(a_priori_type,arg_type)| indicates (by setting the corresponding bit
-in its result) a possible conversion from the |a_priori_type| to |arg_type|. The
-function |is_close| treats |void| as just the $0$-tuple type with no voiding
-coercion associated to it. This means that when |arg_type==void_type| (for an
-instance of the function taking no arguments), the match will fail if an argument
-is present (unless it has void type), even though any type can be voided to
-|void|; this is intended behaviour. It is for this reason that the call to
-|is_close| should not be replaced by one of |coercible|, which would
-return |true| whenever |arg_type==void_type|.
+@ The function |resolve_overload| must deal with a variety of possible
+situations. After an initial conversion has found an |a_priory_type|, we search
+for a match in |variants|, which match can be either exact or an indication by
+|is_close| that one or more coercions could help make the match. In the former
+case we immediately build the call with the variant found, but in the latter
+case we do stop the search, but then, and also if no match was found at all, we
+try if maybe the function name is one that (also) has a generic definition that
+matches (there are for operations like the operator~`\#' that represents several
+generic operations related to general row types; such operations should have a
+second order type, but our language does not have such types yet). Such a
+generic match has to be exact, and if one is found, it is given preference over
+an inexact match from |variants|. If no generic match is found, we either use a
+previously found inexact match or report failure to find any matching instance
+of the function.
 
-Apart from the cases listed in |variants|, there are also cases that match a
-``generic'' operation (in fact an operation that has a second order type, but
-our language does not have such types yet); for instance the operator~`\#'
-represents several generic operations related to general row types, like
-taking the size or adding an element. Contrary to ordinary overloading, we
-require (with one exception) such generic operations to have |a_priori_type|
-exactly matching their argument type pattern in order to apply, in other words
-we allow no coercion in their arguments. The exception is |print| which should
-behave transparently: its argument is matched as if the |print| was absent, so
-can contain coercions if they would be there with |print| absent.
+Whether in instance expecting |arg_type| in |variants| has an inexact match with
+|arg_type| is determined by calling |is_close(a_priori_type,arg_type)| and
+inspecting the relevant bit of the result. This call does not consider voiding
+coercions, so that when |arg_type==void_type| (for an instance of the function
+taking no arguments), the match will fail if an argument is present (unless it
+has void type); this is intended behaviour. It is for this reason that the call
+to |is_close| should not be replaced by one of |coercible|, which would return
+|true| whenever |arg_type==void_type|, regardless of the argument expression.
 
-We test for generic function after the (more specifically typed) operations
-with the same name from the overload table, so that a user definition can
-override a generic operator for specific cases. This however only applies when
-the table produced an exact match, since we consider a (necessarily exact)
-generic match better than a specific variant that requires a coercion. For
-this reason our table matching makes a distinction between exact matches, for
-which a result is immediately returned, and inexact matches, for which we
-temporarily store the call expression for the operator and its resulting type,
-and which will only become the final result if no generic match is found. It
-is important that the final call to |conform_types| is postponed in case of an
-inexact match, because it might irreversibly specialise |type| according to
-the tentative match, and this should be avoided if a generic match turns out
-to override this match.
+In case an inexact match is found, it is important that the final call to
+|conform_types| be postponed until after testing for generic instances, as it
+might irreversibly specialise |type| according to the tentative match.
 
 The parts of this function that actually construct a function call are
 postponed to be detailed later.
@@ -1554,75 +1543,108 @@ expression_ptr resolve_overload
   (const expr& e,
    type_expr& type,
    const overload_table::variant_list& variants)
-{ const expr& args = e.call_variant->arg;
+{
+  const expr& args = e.call_variant->arg;
   auto n_args = args.kind==tuple_display ? length(args.sublist) : 1;
   std::unique_ptr<tuple_expression> tup_exp(new tuple_expression(n_args));
-  std::vector<expression_ptr>& arg_expr = tup_exp->component;
-  type_expr apt; // modifiable temporary
-  @< Fill |arg_expr| with the results of converting the expressions from
-     |args|, setting |apt| to the type deduced @>
-  const type_expr& a_priori_type = apt;
+  std::vector<expression_ptr>& arg_vector = tup_exp->component;
+  @< Fill |arg_vector| with expressions converted from the components of |args|,
+     and set |type_expr a_priori_type| to be the type found @>
+@)
   id_type id =  e.call_variant->fun.identifier_variant;
+  expression_ptr arg; // will hold the final converted argument expression
   auto var_it = variants.begin(); // iterator will be saved when inexact match
   for (; var_it!=variants.end(); ++var_it)
-  { const auto& arg_type=var_it->type().arg_type;
-    if (a_priori_type==arg_type) // exact match
-      @< Construct and |return| a call of the function value |var_it->value()|
-         with argument constructed from |arg_expr| @>
-    else if ((is_close(a_priori_type,arg_type)&0x1)!=0) // inexact match
+  { if (a_priori_type==var_it->type().arg_type) // exact match
+    {
+      arg =
+        n_args==1 ? std::move(arg_vector[0]) : expression_ptr(std::move(tup_exp));
+       @< Construct and |return| a call of the function value |var_it->value()|
+         with argument |arg| @>
+    }
+    else if ((is_close(a_priori_type,var_it->type().arg_type)&0x1)!=0)
+      // inexact match
       break; // now |var_it| records the inexact match
   }
   @< If |id| is a special operator like \# and it matches
      |a_priori_type|, |return| a call |id(args)| @>
-  if (var_it!=variants.end())
-    @< Construct and |return| a call, after either applying, for every argument
-       whose type in |a_priori_type| differs from that required in |arg_type|,
-       an implicit conversion, or converting the expression anew @>
-  @< Complain about failing overload resolution @>
+  if (var_it==variants.end())
+    @< Complain about failing overload resolution @>
+
+  @< Apply an implicit conversion for every argument whose type in
+     |a_priori_type| differs from that required in |arg_type|, then assign
+     converted expression to |arg| @>
+  @< Construct and |return| a call of the function value |var_it->value()|... @>
 }
 
-@ Here for once in |arg_expr| we treat a single argument like a sequence of
-arguments of length~$1$. Nonetheless the case |n_args==1| will need singling out
-in the sequel, since notably the types do not hold a sequence in this case.
+@ The following code rather uncharacteristically treats all argument lists as
+tuples, even if |n_args==1| indicates that no tuple expression is actually
+present. The reason that we do not simply call |convert_expr| for the entire
+argument expression is that we want to be able to easily reconvert one argument
+expression at a time, and it is hard to get such an access from a single
+|expression_ptr| to a converted tuple. Since we are bypassing the normal
+conversion of tuple expressions, we also get the responsibility for doing
+constant folding across them (which is otherwise done as a part of converting
+tuple expressions), and this allows us to postpone it until the correct types
+have been found, and any needed coercions inserted.
 
-@< Fill |arg_expr| with the results of converting the expressions from...@>=
+There should be no braces around this code, since certainly the declaration of
+|a_priori_type| needs to be exported. The variable |is_constant| is also
+introduced for later use, namely to decide whether before building the call we
+should convert an argument that is a tuple of constants (represented as
+denotations) into a constant tuple; since this question does not arise in case
+of a single argument (and the conversion should not be attempted) we initialise
+the variable to |false| in that case. We use |apt| as a temporary non-|const|
+version of its later alias |a_priory_type|, that will not be used outside this
+code (although we cannot enforce that restriction).
+
+@< Fill |arg_vector| with expressions converted from... @>=
+bool is_constant = n_args>1;
+  // will record whether all |n_args>1| arguments are denotations
+type_expr apt; // modifiable temporary
 if (n_args==1)
-  arg_expr[0] = convert_expr(args,apt);
+  arg_vector[0] = convert_expr(args,apt);
   // get \foreign{a priori} type for argument
 else
 {
   apt = unknown_tuple(n_args);
   wtl_iterator apt_it(apt.tuple());
-  auto arg_expr_it = arg_expr.begin();
+  auto arg_vector_it = arg_vector.begin();
   for (wel_const_iterator it(args.sublist); not it.at_end();
-       ++it,++apt_it,++arg_expr_it)
-    *arg_expr_it = convert_expr(*it,*apt_it);
+       ++it,++apt_it,++arg_vector_it)
+  {
+    *arg_vector_it = convert_expr(*it,*apt_it);
+    is_constant = is_constant and
+       dynamic_cast<const denotation*>(arg_vector_it->get()) != nullptr;
+  }
 }
+const type_expr& a_priori_type = apt;
 
 @ Having found a match (exact or inexact; the code below is included twice), and
 converted the argument expression to |arg|, we need to construct a function call
 object. The overload table contains an already evaluated function
 value~|var_it->value()|, which is has type |shared_function|, more specific than
 |shared_value| as it points to a value that represents a function object. Such
-values can either hold a built-in function or a user-defined function with its
-evaluation context, and we shall add to the list of possibilities later. Each
-type has a corresponding specialised function call type, and we shall provide a
-virtual method |function_base::build_call| that binds an argument expression to
-form a complete call; this renders the expression-building part of code below
-particularly simple. One noteworthy point is that |build_call| may need to store
-a shared pointer back to the |function_base| derived object that created it, and
-we therefore pass the shared pointer |var_it->value()| that gave us access to
-the |function_base| as first argument to its |build_call| virtual method. The
-underlying raw pointer equals |this| of that object, but we need a
-|std::shared_ptr| so that we also transfer shared ownership.
+values can either hold a built-in function, or a user-defined function together
+with its evaluation context, and we shall add to the list of possibilities
+later. Each type has a corresponding specialised function call type, and we
+shall provide a virtual method |function_base::build_call| that binds an
+argument expression to form a complete call; this renders the
+expression-building part of code below particularly simple. One noteworthy point
+is that |build_call| may need to store a shared pointer back to the
+|function_base| derived object that created it, and we therefore pass the shared
+pointer |var_it->value()| that gave us access to the |function_base| as first
+argument to its |build_call| virtual method. The underlying raw pointer equals
+|this| of that object, but we need a |std::shared_ptr| so that we also transfer
+shared ownership.
 
-This is one of the places where we might have to insert a |voiding|, in the
-rare case that a function with void argument type is called with a nonempty
-argument expression. An alternative would be to replace the call by a sequence
-expression, evaluating the argument expression separately and then the
-function call with an empty argument expression. In any case the
-test \emph{can} be made here, since we have type argument type in the variable
-|arg_type|, and the argument expression in |args|.
+This is one of the places where we might have to insert a |voiding|, in the rare
+case that a function with void argument type is called with a nonempty argument
+expression (of void type). An alternative would be to replace such a call by a
+sequence expression, evaluating the argument expression separately and then the
+function call with an empty argument expression. In any case the test \emph{can}
+be made here, since we have the argument type in the variable |arg_type|, and
+the argument expression in |args|.
 
 As a special safety measure against the easily made error of writing `\.='
 instead of an assignment operator~`\.{:=}', we forbid converting to void the
@@ -1643,21 +1665,24 @@ will still be accepted.
     throw expr_error(e,o.str());
   }
 @) // now select unique component or consolidate tuple
-  expression_ptr arg =
-        n_args==1 ? std::move(arg_expr[0]) : expression_ptr(std::move(tup_exp));
+  const auto& arg_type = var_it->type().arg_type;
   std::ostringstream name;
   name << main_hash_table->name_of(id) << '@@' << arg_type;
 @)
-  if (arg_type==void_type and not is_empty(args))
-    arg.reset(new voiding(std::move(arg)));
+  if (arg_type==void_type)
+  { if (not is_empty(args))
+      arg.reset(new voiding(std::move(arg)));
+  }
+  else if (is_constant)
+    make_row_denotation<false>(arg); // wrap tuple inside a denotation
   auto call = var_it->value()->build_call
            (var_it->value(),name.str(),std::move(arg),e.loc);
   return conform_types(var_it->type().result_type,type,std::move(call),e);
 }
 
-@ When an inexact match is found, we traverse the arguments (maybe a single one)
-of the call, and modify only those whose a priori type does not match the type
-expected for that argument of the matching overload. By treating arguments
+@ When we come here, an inexact match is found; we traverse the arguments (maybe
+a single one) of the call, and modify only those whose a priori type does not
+match the type expected for that argument of the match. By treating arguments
 independently, we mostly avoid a potential inefficiency of our approach that had
 previously been present for years. When multiple arguments were treated as a
 single tuple-display argument, it would require being entirely converted anew if
@@ -1669,36 +1694,39 @@ increasing exponentially with the formula size.
 
 The code below avoids a new call of |convert_expr| in two circumstances, namely
 when the type found for this argument is already an exact match for the
-corresponding position of |arg_type|, and when the form of the argument is such
-(for instance a formula or function call) that implicit conversion is only
-possible on the outside of the expression (contrary to for instance list display
-or conditional expressions where the conversion can ``creep into'' the
-expression itself). This avoidance makes a scenario with exponential increase of
-processing time, thought theoretically still possible, exceedingly unlikely.
+corresponding position of |arg_type| (which can only happen if |n_args>1|), and
+when the form of the argument is such (for instance a formula or function call)
+that implicit conversion is only possible on the outside of the expression
+(contrary to for instance list display or conditional expressions where the
+conversion can ``creep into'' the expression itself). This avoidance makes a
+scenario with exponential increase of processing time, thought theoretically
+still possible, exceedingly unlikely.
 
 In the case of a single argument there is no tuple expression for the arguments.
-Nonetheless |arg_expr| will be a vector of length~$1$ in this case, but
+Nonetheless |arg_vector| will be a vector of length~$1$ in this case, but
 (probably) none of |a_priori_type|, |arg_type| and |args| hold vectors or lists
-at all, so we could not define he iterators with in the case of more than one
-argument. We therefore separate the two cases, even though the actions are the
-same; we do share one module.
+at all, so we could not define the iterators used below in the case of more than
+one argument. We therefore separate the two cases, even though the actions are
+the same; we do share one module.
 
-@< Construct and |return| a call, after either applying... @>=
+@< Apply an implicit conversion for every argument... @>=
 {
   const auto& arg_type=var_it->type().arg_type;
   if (n_args==1)
-  { const expr& cur_arg = args;
+  { const expr& cur_arg = args; // rename to allow sharing the following module:
     if (@< The form of |cur_arg| shields out the context type @>@;@;)
-    { if (not coerce(a_priori_type,arg_type,arg_expr[0],e.loc))
+    { arg = std::move(arg_vector[0]);
+      if (not coerce(a_priori_type,arg_type,arg,e.loc))
         throw type_error(e,std::move(apt),arg_type.copy());
-    }
-    else arg_expr[0] = convert_expr(cur_arg,as_lvalue(arg_type.copy()));
+      }
+    else arg = convert_expr(cur_arg,as_lvalue(arg_type.copy()));
+    // redo conversion
   }
   else
   { wtl_const_iterator apt_it(a_priori_type.tuple())
     , argt_it(arg_type.tuple());
     wel_const_iterator exp_it(args.sublist);
-    for (auto res_it = arg_expr.begin(); res_it!=arg_expr.end();
+    for (auto res_it = arg_vector.begin(); res_it!=arg_vector.end();
        ++res_it,++apt_it,++argt_it,++exp_it)
       if (*apt_it!=*argt_it) // only act if a priori component type is not exact
       { const expr& cur_arg = *exp_it;
@@ -1708,9 +1736,10 @@ same; we do share one module.
         }
         else
           *res_it = convert_expr(cur_arg,as_lvalue(argt_it->copy()));
+          // redo conversion
       }
+    arg = expression_ptr(std::move(tup_exp)); // wrap up modified tuple expression
   }
-  @< Construct and |return| a call of the function value |var_it->value()|... @>
 }
 
 @ Many expression types listed in |enum expr_kind@;| have an interpretation that
@@ -1723,7 +1752,7 @@ statements and casts. Some cases mentioned here are only for conceptual
 completeness, as they can only apply in erroneous situations: for instance no
 implicit conversion can apply to expressions of type |bool|, so no
 |boolean_denotation| or |negation_expression| can ever come here (with an
-inexact exact match).
+inexact match).
 
 @< The form of |cur_arg| shields out the context type @>=
 cur_arg.kind==function_call @| or
@@ -2470,7 +2499,7 @@ of the context type, like in the case of \&{die}.
   { const bool needs_voiding = a_priori_type==void_type and not is_empty(args);
     if (id==print_name())
     { auto arg =
-        n_args==1 ? std::move(arg_expr[0]) : expression_ptr(std::move(tup_exp));
+        n_args==1 ? std::move(arg_vector[0]) : expression_ptr(std::move(tup_exp));
       @< Ensure any non-voiding coercion is applied before rather than after
          |print| @>
       return make_variadic_call
@@ -2478,14 +2507,14 @@ of the context type, like in the case of \&{die}.
     }
     else if(id==to_string_name())
     { auto arg =
-        n_args==1 ? std::move(arg_expr[0]) : expression_ptr(std::move(tup_exp));
+        n_args==1 ? std::move(arg_vector[0]) : expression_ptr(std::move(tup_exp));
       expression_ptr call = make_variadic_call
         (to_string_builtin,name.str(),std::move(arg),needs_voiding,e.loc);
       return conform_types(str_type,type,std::move(call),e);
     }
     else if(id==prints_name())
     { auto arg =
-        n_args==1 ? std::move(arg_expr[0]) : expression_ptr(std::move(tup_exp));
+        n_args==1 ? std::move(arg_vector[0]) : expression_ptr(std::move(tup_exp));
       expression_ptr call = make_variadic_call
        (prints_builtin,name.str(),std::move(arg),needs_voiding,e.loc);
       return conform_types(void_type,type,std::move(call),e);
@@ -2493,7 +2522,7 @@ of the context type, like in the case of \&{die}.
     }
     else if(id==error_name()) // this always matches as well
     { auto arg =
-        n_args==1 ? std::move(arg_expr[0]) : expression_ptr(std::move(tup_exp));
+        n_args==1 ? std::move(arg_vector[0]) : expression_ptr(std::move(tup_exp));
       return make_variadic_call
         (error_builtin,name.str(),std::move(arg),needs_voiding,e.loc);
     }
@@ -2571,7 +2600,7 @@ $[[[2]]]$.
 @< Recognise and return versions of `\#'... @>=
 { if (a_priori_type.kind()==row_type)
   { expression_ptr call(new @|
-      builtin_call(sizeof_row_builtin,name.str(),std::move(arg_expr[0]),e.loc));
+      builtin_call(sizeof_row_builtin,name.str(),std::move(arg_vector[0]),e.loc));
     return conform_types(int_type,type,std::move(call),e);
   }
   else if (is_pair_type(a_priori_type))
@@ -2581,7 +2610,7 @@ $[[[2]]]$.
     if (ap_tp0.kind()==row_type and
         ap_tp0.component_type()->specialise(ap_tp1)) // suffix case
     { expression_ptr arg =
-        n_args==1 ? std::move(arg_expr[0]) : expression_ptr(std::move(tup_exp));
+        n_args==1 ? std::move(arg_vector[0]) : expression_ptr(std::move(tup_exp));
       expression_ptr call(new @| builtin_call
         (suffix_elt_builtin,std::move(arg),e.loc));
       return conform_types(ap_tp0,type,std::move(call),e);
@@ -2589,7 +2618,7 @@ $[[[2]]]$.
     if (ap_tp1.kind()==row_type and
         ap_tp1.component_type()->specialise(ap_tp0)) // prefix case
     { expression_ptr arg =
-        n_args==1 ? std::move(arg_expr[0]) : expression_ptr(std::move(tup_exp));
+        n_args==1 ? std::move(arg_vector[0]) : expression_ptr(std::move(tup_exp));
       expression_ptr call(new @| builtin_call
         (prefix_elt_builtin,std::move(arg),e.loc));
       return conform_types(ap_tp1,type,std::move(call),e);
@@ -2604,14 +2633,14 @@ and another concatenating two rows of the same type.
 { if (a_priori_type.kind()==row_type and
       a_priori_type.component_type()->kind()==row_type)
   { expression_ptr call(new @|
-      builtin_call(join_rows_row_builtin,std::move(arg_expr[0]),e.loc));
+      builtin_call(join_rows_row_builtin,std::move(arg_vector[0]),e.loc));
     return conform_types(*a_priori_type.component_type(),type,std::move(call),e);
   }
   if (is_pair_type(a_priori_type) and
     @|a_priori_type.tuple()->contents==a_priori_type.tuple()->next->contents and
     @|a_priori_type.tuple()->contents.kind()==row_type)
   { expression_ptr arg =
-        n_args==1 ? std::move(arg_expr[0]) : expression_ptr(std::move(tup_exp));
+        n_args==1 ? std::move(arg_vector[0]) : expression_ptr(std::move(tup_exp));
     expression_ptr call(new @| builtin_call
         (join_rows_builtin,std::move(arg),e.loc));
     return conform_types
@@ -2634,17 +2663,22 @@ across implicit conversions, in other words that ensures that if an implicit
 conversion is applied to a constant expression (represented as a |denotation|),
 then the conversion is done during analysis of the program (compile time) rather
 then being postponed to run time, as it must be if the argument is non constant.
+A similar function |do_builtin| is called to test for certain built-in functions
+whether their arguments are constant; unlike |do_conversion| which builds an
+expression in all cases, |do_builtin| does nothing if the arguments are not
+constant, so it returns a Boolean telling whether it did transform a denotation.
 
-In its implementation we also used a function |frozen_error|, that is used to
-make a call of |error_builtin| with a fixed error message; the idea is that if
-during conversion it is found that evaluating a certain expression will always
-result in an error with a given message, it can be replaced by such a call
-(which will produce that error if and only if the converted expression ends up
+In the implementation of these function we use a function |frozen_error|, in
+order to make a call of |error_builtin| with a fixed error message; the idea is
+that if during compile-time evaluation an error occurs, the expression is
+replaced by a call to |error_builtin| with the error message that was reported
+(this will produce that error if and only if the converted expression ends up
 being actually evaluated).
 
 @< Declarations of exported functions @> =
 void do_conversion(expression_ptr& e, const conversion_info& ci,
   const source_location& loc);
+bool do_builtin(expression_ptr& e, wrapper_function f, const source_location& loc);
 expression_ptr frozen_error(std::string message, const source_location& loc);
 
 @ Implementing |do_conversion| is not very hard, but does imply some mixing of
@@ -2672,22 +2706,49 @@ happens.
 
 @< Function def... @> =
 void do_conversion(expression_ptr& e, const conversion_info& ci,
-  const source_location& loc)
+  const source_location& locator)
 {
   if (@[auto* den_ptr = dynamic_cast<const denotation*>(e.get())@])
   { try
     {
-       push_value(std::move(den_ptr->denoted_value));
-       ci.convert();
-       const_cast<denotation*>(den_ptr)->denoted_value=pop_value();
+      auto& loc = const_cast<denotation*>(den_ptr)->denoted_value;
+      push_value(std::move(loc));
+      ci.convert();
+      loc=pop_value();
     }
     catch(std::exception& err)
     {@;
-      e = frozen_error(err.what(),loc);
+      e = frozen_error(err.what(),locator);
     }
   }
   else
     e.reset(new conversion(ci,std::move(e)));
+}
+
+@ The implementation of |do_builtin| is very similar, including the fact that it
+replaces |e| by a call to |error_builtin| if a runtime error if one was thrown
+by calling~|f|, but if |e| was not a constant expression, it simply returns
+|false|.
+
+@< Function def... @> =
+bool do_builtin(expression_ptr& e, wrapper_function f,
+  const source_location& locator)
+{
+  if (@[auto* den_ptr = dynamic_cast<const denotation*>(e.get())@])
+  { try
+    {
+      auto& loc = const_cast<denotation*>(den_ptr)->denoted_value;
+      push_expanded(expression_base::multi_value,std::move(loc));
+      (*f)(expression_base::single_value);
+      loc=pop_value();
+    }
+    catch(std::exception& err)
+    {@;
+      e = frozen_error(err.what(),locator);
+    }
+    return true;
+  }
+  return false;
 }
 
 @ The implementation of |frozen_error| is straightforward: we make a

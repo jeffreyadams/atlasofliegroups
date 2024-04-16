@@ -3242,6 +3242,23 @@ expression_ptr lhs_is_1
   return nullptr; // signal that we made no substitution
 }
 
+@ Another special case we want to treat for the division operator between two
+integers, producing a rational number, is when the argument pair is itself a
+constant. This function could be used for other built-in operations as well, and
+in each case the argument |f| should refer to that built-in itself. These
+functions will not be variadic, and so expect their arguments (if there is more
+than one) expanded on the execution stack, we call |push_expanded| with
+|multi_value| to so unpack any tuple value held in the denotation.
+
+@< Local function definitions @>=
+expression_ptr fold_constant
+  (expression_ptr& args,const shared_builtin& f,const source_location& loc)
+{
+  if (do_builtin(args,f->val,loc))
+    return std::move(args);
+  return nullptr;
+}
+
 @ As said we rewrite expressions $1/n$ as $/n$. We could also do some constant
 folding here, introducing ``rational number denotations''. The denotation
 expression type can already handle this, and can indeed handle constant values
@@ -3251,6 +3268,8 @@ of any type as it already does for the ``previous value computed'' expression.
 { auto p = install_function(int_inverse_wrapper,"/","(int->rat)");
   shared_builtin inv_val = std::static_pointer_cast<builtin>(p);
   auto q = install_special_function(fraction_wrapper,"/","(int,int->rat)");
+  shared_builtin div_val = std::static_pointer_cast<builtin>(q);
+  q->tests.emplace_back(fold_constant,div_val);
   q->tests.emplace_back(lhs_is_1,inv_val);
 }
 install_function(unfraction_wrapper,"%","(rat->int,int)");

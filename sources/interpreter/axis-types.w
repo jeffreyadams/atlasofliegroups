@@ -2527,6 +2527,7 @@ void push_expanded(expression_base::level l, const shared_value& v)
         push_value(p->val[i]); // push components, copying shared pointers
   }
 } // if |l==expression_base::no_value| then do nothing
+@)
 void push_expanded(expression_base::level l, shared_value&& v)
 { if (l==expression_base::single_value)
     push_value(std::move(v));
