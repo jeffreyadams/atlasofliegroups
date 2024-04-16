@@ -285,15 +285,20 @@ set is_unitary (Param p) = bool:
 {------------------------ timeout versions----------------------}
 
 set c_form_irreducible (Param p,int max_time) =(KTypePol,int):
-let P=KL_sum_at_s(p), count=0 then
+let ()=prints("in c_form_irreducible with p=", p, "max_time=", max_time)  then
+P=KL_sum_at_s(p), count=0 then
+()=prints("computed KL_sum_t_s") then
 ori_nr_p = orientation_nr(p) then
+()=prints("computed orientation number") then
 nP=#P then
 start_time=elapsed_ms() then
 timedout=-1 then  {-1: calculation succeeded; >=1: calculation timed out (never returns 0)}
 rv=null_K_module(p.real_form) then
 ()=for c@q in P do
 {  let stall=sleep(100) in}
+  let ()=prints("term q=",q) in
   let t=elapsed_ms()-start_time in
+  let ()=prints("t=",t)  in 
   if t>max_time then
       let ()=prints("TIMED OUT (c_form_irreducible), time=",t) in
       rv:=K_type_pol(0*p); timedout:=t;break

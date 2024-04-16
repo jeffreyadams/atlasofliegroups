@@ -5,15 +5,12 @@ import concurrent.futures
 from subprocess import Popen, PIPE, STDOUT
 import multiprocessing as mp   #only for cpu count
 from multiprocessing import Process, Queue
+
 progress_step_size=10 #how often to report progress
 
 FPP_at_file="FPP.at" #default
 FPP_py_file="FPP.py" #default
-#extra_files=["global_facets_E7.at","coh_ind_E7_to_hash.at","E7except589to15851.at"]
-extra_files=["global_facets_E7.at","coh_ind_E7_to_hash.at"]
-#extra_files=['coh_ind_F4_to_hash.at']
-#extra_files=[]
-coh_ind_flag=False  #False: load from the file/True: don't load from the file
+coh_ind_flag=True  #False: load from the file/True: don't load from the file
 def nice_time(t):
    return(re.sub("\..*","",str(datetime.timedelta(seconds=t))))
  
@@ -31,7 +28,8 @@ def atlas_compute(i,pid):
    print("starting atlas_compute process #:",i, "pid: ", str(pid), " at ", str(time.ctime()))
    print("xlambdalists_flag: ", xlambdalists_flag)
    print("more_shift: ", more_shift)
-   print("max_time: ", max_time," ms",  "=", max_time/60000, "minutes")
+   print("max_time_human (in minutes): ", max_time_human)
+   print("max_time (in milliseconds) ", max_time)
    if xlambdalists_flag:
       print("Using xlambdalists")
    else:
@@ -46,11 +44,6 @@ def atlas_compute(i,pid):
    log.write("Computing FPP for " + group + "\n")
    log.write("(default) main file: " +  FPP_at_file + "\n")
    log.write("other at files: ")
-   if len(extra_files)==0:
-      log.write("none")
-   else:
-      for file in extra_files:
-         log.write("\n  " + file)
    log.write("\nJob number: " + str(i) + "\n")
    log.write("Job pid: " +  str(pid) + "\n")
    log.write("function: " +  unitary_hash_function + "\n")
@@ -116,9 +109,12 @@ def atlas_compute(i,pid):
       next_queue_entry=main_queue.get()
       if xlambdalists_flag:
          list_number=next_queue_entry
+         print("list_number: ", list_number)
          log.write("list_number=" + str(list_number) + "\n")
          #get size of list
          atlas_cmd=format_cmd("#xlambdalists[" + str(list_number) + "]" + "\n")
+         print("atlas_cmd: ", atlas_cmd)
+         log.write("in xlambdalists_flag loop: ")
          proc.stdin.write(atlas_cmd)
          proc.stdin.flush()
          line = proc.stdout.readline().decode('ascii').strip()
@@ -133,15 +129,11 @@ def atlas_compute(i,pid):
       #primary atlas function
       #if xlambdalists_flag: pass 2nd argument = xlambdalists, then 3rd argument is the listnumber
       if xlambdalists_flag:
-#         print("more_shift: ", more_shift)
-#         print("max_time: ", max_time)
-         atlas_cmd=format_cmd("set list=" + unitary_hash_function + "(" + group + ",xlambdalists," + str(list_number) +  ", " + str(more_shift) + "," + str(max_time) + ")\n")
-#         atlas_cmd=format_cmd("prints(xlambdalists)" + "\n")
-#         print("CMD IS: atlas_cmd: ", atlas_cmd)
-      #otherwise just need 2nd argument=kgb number
-      else:
-         atlas_cmd=format_cmd("set list=" + unitary_hash_function + "(" + group + ",xlambdalists,"  + str(list_number ) + ")\n")
+         atlas_cmd=format_cmd("set list=FPP_unitary_hash_timeout(" + group + ",xlambdalists,"  + str(list_number) + ",functions,function_params" + ")\n")
+         print("ATLAS CMD: ", atlas_cmd)
+      print("executing ATLAS_CMD")
       proc.stdin.write(atlas_cmd)
+      print("EXECUTED ATLAS_CMD")
       proc.stdin.flush()
       newtime=starttime
       while True:
@@ -175,7 +167,7 @@ def atlas_compute(i,pid):
    elapsed = nice_time(stoptime-starttime)
    log.write("Times:\n")
    for (list_number,t) in reporting_data:
-      log.write("list_number:" + str(list_number) + " " + nice_time(t) + "\n")
+      log.write("Time for list number:" + str(list_number) + " " + nice_time(t) + "\n")
    log.write("Total time for " + str(queue_count) + " lists: "+ elapsed + "\n")
    #report on unitary_hash
    atlas_cmd=format_cmd("unitary_hash.size()\n")
@@ -204,7 +196,7 @@ def atlas_compute(i,pid):
    return()
 
 def main(argv):
-   global directory, number_jobs,group, start_KGB,end_KGB, main_queue, kgb_file, step_size,all_kgb, read_at_files,log_file, unitary_hash_function, xlambdalists_flag, global_facets_file_loaded, xlambdalists_file,more_shift,max_time
+   global directory, number_jobs,group, start_KGB,end_KGB, main_queue, kgb_file, step_size,all_kgb, read_at_files,log_file, unitary_hash_function, xlambdalists_flag, global_facets_file_loaded, xlambdalists_file,more_shift,max_time, max_time_human
    unitary_hash_function="FPP_unitary_hash_bottom_layer"
    executable_dir="/.ccs/u02/jdada11/atlasSoftware/FPP_jeff/"
    group=""
@@ -215,7 +207,8 @@ def main(argv):
    end_KGB=0
    kgb_number=0
    more_shift=5
-   max_time=1000000
+   max_time_human=10   #minutes
+   max_time=max_time_human*60*1000  #millliseconds
    all_kgb=False
    step_size=1
    kgb_file=""
@@ -224,8 +217,10 @@ def main(argv):
    kgb_list=[]
    dry_run=False
    read_at_files=False
+   other_file=""
+   extra_files=[]
    log_file=""
-   opts, args = getopt.getopt(argv, "d:n:g:k:e:s:S:f:l:x:t:m:aDX")
+   opts, args = getopt.getopt(argv, "d:n:g:S:f:l:x:t:m:o:D")
    for opt, arg in opts:
       if opt in ('-d'):
          directory=arg
@@ -237,50 +232,45 @@ def main(argv):
             shutil.rmtree(directory + "/symlinks")
          os.makedirs(directory + "/symlinks")
       elif opt in ('-l'):
-         log_file=arg
          log_file=directory + "/logs/" + arg
-         print("redirecting output to ", log_file)
-         sys.stdout = open(log_file, 'w')
-         sys.stderr = sys.stdout
       elif opt in ('-g'):
           group=arg
       elif opt in ('-f'):
-          FPP_at_file=arg
+         FPP_at_file=arg
       elif opt in ('-D'):
          dry_run=True
       elif opt in ('-S'):
           step_size=arg
-      elif opt in ('-s'):
-          start_KGB=arg
-      elif opt in ('-e'):
-         end_KGB=arg
-      elif opt in ('-a'):
-         all_kgb=True
       elif opt in ('-m'):
          more_shift=arg
       elif opt in ('-t'):
-         max_time=int(arg)*1000*60  #given value is in arg minutes = arg*1000*60 milliseconds
+         max_time_human=arg
+         max_time=max_time_human*60*1000
       elif opt in ('-x'):
          xlambdalists_file=arg
          xlambdalists_flag=True
          print("xlambdalists file: ", xlambdalists_file)
          extra_files.append(xlambdalists_file)
-      elif opt in ('-k'):
-         kgb_file=arg
-         print("loading KGB file ", kgb_file)
-         data=open(kgb_file,"r")
-#         line=data.readline.decode('ascii')
-         while True:
-            line=data.readline()
-            if not line:
-               break
-            else:
-               kgb_list.append(int(line.strip()))
-         print("loaded kgb elements from file", kgb_file)
-         print("number of kgb elements: ", len(kgb_list))
+      elif opt in ('-o'):
+         other_file=arg   #one extra file: loads other at files and sets some variables
+         extra_files.append(other_file)
+         #example (e7other.at):
+         #<global_facets_E7.at
+         #<coh_ind_E7_to_hash.at
+         #set functions = [FPP_unitary_hash_bottom_layer@(RealForm,[[(KGBElt,ratvec)]],int,int),
+         #                 FPP_unitary_hash_bottom_layer@(RealForm,[[(KGBElt,ratvec)]],int,int),
+         #                 FPP_unitary_hash2@(RealForm,[[(KGBElt,ratvec)]],int,int)]
+         #set function_params=[(5,10),(15,20),(-1,30)]
+
       elif opt in ('-n'):
           number_jobs=int(arg)
           print("number_jobs: ", number_jobs)
+   if log_file != "":
+      print("redirecting output to ", log_file)
+      sys.stdout = open(log_file, 'w')
+      sys.stderr = sys.stdout
+   else:
+      print("output to terminal")
    print("Starting at ", time.ctime())
    print("command line: ", " ".join(sys.argv))
    print("unitary hash function: ", unitary_hash_function)
@@ -291,6 +281,12 @@ def main(argv):
       for file in extra_files:
          print("  ",file)
    print("running free.py")
+   if group=="" or directory=="" or (xlambdalists_file=="" and len(kgb_list)==0) or number_jobs==0:
+      print("Usage: \n-d: directory\n-n: number jobs\n-g: group\n-a: x: file containing xlambdalists\n-o: other at file to load\n-f: main atlas file (default FPP.at)\n-l: logfile (default: directory/logs/fpp_group.log)\n-S: step size (each job does x=s,s+S,s+2S...(mod n)), default is 1\n-D: dry run only\n-t: max_time (in minutes)\n-m: more_shift (default 5)")
+      print("\n-g group, -d directory, -n number jobs are required")
+      print("-s/-e (start/end kgb elements) or -k (kgb file) or -a (all kgb elements) or -x (xlambdalists_file) are required")
+      exit()
+   
  
    if all_kgb and kgb_file=="":
       print("Doing all KGB elements")
@@ -336,12 +332,7 @@ def main(argv):
    print("Number of cores being used: ", number_jobs)
 
    print("number of kgb elements: ", kgb_number)
-   if group=="" or directory=="" or (xlambdalists_file=="" and len(kgb_list)==0) or number_jobs==0:
-#      print(group, " ", directory, " ", len(kgb_list), " ", number_jobs)
-      print("Usage: \n-d: directory\n-n: number jobs\n-g: group\n-a: all kgb elements\n-s: start KGB\n-e: end KGB\n-k: file of KGB elements\n-x: file containing xlambdalists\n-S: step size (each job does x=s,s+S,s+2S...(mod n)), default is 1\n-D: dry run only\n-t: max_time (in minutes)\n-m: more_shift (default 5)")
-      print("\n-g group, -d directory, -n number jobs are required")
-      print("-s/-e (start/end kgb elements) or -k (kgb file) or -a (all kgb elements) or -x (xlambdalists_file) are required")
-      exit()
+
    freeproc=subprocess.Popen(["./free.py","-d" + directory + "/logs"], stdin=PIPE,stdout=PIPE)   
    print("----------------------------")
    cpu_count=mp.cpu_count()
@@ -349,6 +340,9 @@ def main(argv):
    shutil.copy(FPP_at_file,directory + "/logs")
    print("Copied " + FPP_at_file + " to logs directory")
    shutil.copy(FPP_py_file,directory + "/logs")
+   if other_file != "":
+      shutil.copy(other_file,directory + "/logs")
+      print("Copied " + other_file + " to logs directory")
    print("Copied " + FPP_py_file + " to logs directory")
 #   all_files=" ".join([FPP_at_file] + extra_files)
    print("extra_files: ", extra_files)
@@ -430,7 +424,7 @@ def main(argv):
       #      print("symlink cmd: ", symlink_cmd)
       os.system(symlink_cmd)
 
-#      print("all_files: ", all_files)
+      print("all_files: ", all_files)
       myarg=[atlas_cmd]+all_files
       #     proc=subprocess.Popen([atlas_cmd,"writeFiles.at"], stdin=PIPE,stdout=PIPE)
       #      proc=subprocess.Popen(myarg stdin=PIPE,stdout=PIPE)

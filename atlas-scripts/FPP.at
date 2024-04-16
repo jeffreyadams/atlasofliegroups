@@ -42,6 +42,8 @@ set params([Param] params,int kgb_number)=[Param]:
 
 set FPP_unitary_hash(RealForm G, int x,int more_shift)=[Param]:let ()=FPP_unitary_hash([KGB(G,x)],more_shift) in params(unitary_hash)
 set FPP_unitary_hash2(RealForm G, int x, int more_shift)=[Param]:let ()=FPP_unitary_hash2([KGB(G,x)],more_shift) in params(unitary_hash)
+
+
 set FPP_unitary_hash_one_level(RealForm G, int x,int more_shift)=[Param]:let ()=FPP_unitary_hash_one_level([KGB(G,x)],more_shift) in params(unitary_hash)
 set FPP_unitary_hash_bottom_layer(RealForm G, int x, int more_shift)=[Param]:let ()=FPP_unitary_hash_bottom_layer([KGB(G,x)],more_shift) in params(unitary_hash)
 
@@ -50,13 +52,19 @@ let start=unitary_hash.size() then
 ()=prints("Starting size of unitary_hash: ", start) then
 list=xlambdalists[list_number] then
 {()=FPP_unitary_hash_bottom_layer(list) then}
-reverse_list=for i:#list do list~[i] od then
-()=FPP_unitary_hash_bottom_layer(reverse_list,more_shift) then
+()=FPP_unitary_hash_bottom_layer(list,more_shift) then
 finish=unitary_hash.size() in
 let ()=prints("finishing size of unitary_hash: ", finish) in
 for i:finish-start from start do unitary_hash.index(i) od
 
-set FPP_unitary_hash2(RealForm G, [[(KGBElt, ratvec)]] xlambdalists,int list_number,int more_shift)= [Param]:
+set FPP_unitary_hash2([(KGBElt,ratvec)] xlambdas, Param_hash Uhash, Param_hash Uparamhash,int more_shift,int ignored) = [(KGBElt,ratvec)]:
+let start=unitary_hash.size() then
+()=prints("Starting size of unitary_hash: ", start) then
+()=FPP_unitary_hash2(xlambdas,more_shift) then
+finish=unitary_hash.size() in
+let ()=prints("finishing size of unitary_hash: ", finish) in []
+
+set FPP_unitary_hash2(RealForm G, [[(KGBElt, ratvec)]] xlambdalists,int list_number,int more_shift)=  [(KGBElt,ratvec)]:
 let start=unitary_hash.size() then
 ()=prints("Starting size of unitary_hash: ", start) then
 list=xlambdalists[list_number] then
@@ -64,7 +72,7 @@ reverse_list=for i:#list do list~[i] od then
 ()=FPP_unitary_hash2(reverse_list,more_shift) then
 finish=unitary_hash.size() in
 let ()=prints("finishing size of unitary_hash: ", finish) in
-for i:finish-start from start do unitary_hash.index(i) od
+[]
 
 low_KGB_frac:=2/5
 
@@ -194,29 +202,44 @@ coh_ind_unip(F4_s,uparam_hash)
 }
 {------------------------ timeout versions--------------------}
 
-set FPP_unitary_hash_bottom_layer(RealForm G, [[(KGBElt, ratvec)]] xlambdalists,int list_number,int more_shift,int max_time)= [Param]:
-let start=unitary_hash.size() then
-()=prints("FPP_unitary_hash_bottom_layer(G,xlambdalists,list_number,max_time)") then
-()=prints("max_time: ", max_time) then
-()=prints("#xlambdalists: ", #xlambdalists, new_line, "listl_number: ", list_number) then 
-()=prints("Starting size of unitary_hash: ", start) then
-list=xlambdalists[list_number] then
-reverse_list=for i:#list do list~[i] od then
-failed=FPP_unitary_hash_bottom_layer(xlambdalists[list_number],unitary_hash,uparam_hash,more_shift,max_time) then
-()=prints("size of unitary_hash is now: ", unitary_hash.size()) then
-failed_1=if #failed>0 then
-   prints("failed: ", #failed);
-   for pair in failed do prints(pair) od;
-   prints("========================================STEP 2===================================================");
-      more_shift+:=20;
-   max_time:=2*max_time;
-   FPP_unitary_hash_bottom_layer(failed,unitary_hash,uparam_hash,more_shift,max_time)
-else
-  prints("#failed=0, finished");[]
-fi in
-let ()=prints("failed_1: ", #failed_1) then
-finish=unitary_hash.size() then
-()=prints("finishing size of unitary_hash: ", finish) in
-for i:finish-start from start do unitary_hash.index(i) od
-
+set FPP_unitary_hash_timeout(RealForm G,\
+                             [[(KGBElt, ratvec)]] xlambdalists,\
+                             int list_number,\
+                             [([(KGBElt,ratvec)],Param_hash,Param_hash,int,int->[(KGBElt,ratvec)])] unitary_hash_functions,\
+                             [(int,int)] function_params)=[Param]:
+let start_size=unitary_hash.size() then
+()=prints("starting FPP_unitary_hash_timeout with ", #unitary_hash_functions, " unitary hash functions") then
+()=prints("size of xlambdalists: ", #xlambdalists) then
+xlambdalist=xlambdalists[list_number] then
+()=prints("size of xlambdalist: ", #xlambdalist) then
+()=prints("Starting size of unitary_hash: ", start_size) then
+failed=[[(KGBElt, ratvec)]]:[] then
+todolist=xlambdalist in
+let ()=for f@i in unitary_hash_functions do
+ let ()=prints("==============================================================",new_line,"FPP_unitary_hash_timeout step ", i, new_line, "function= ", f, new_line, "function parameters=", function_params[i]) then
+ local_start_size=unitary_hash.size() then
+ ()=prints("size of unitary hash: ", local_start_size) then 
+ ()=prints("size of xlambdalist: ", #todolist) then
+ ()=prints("xlambdalist: ") then
+ ()=for entry@j in xlambdalist do prints(j, " ", entry) od then
+ (more_shift,max_time)=function_params[i] then
+ ()=prints("more_shift: ", more_shift, " max_time: ", max_time) then
+ failed_this_step =f(todolist,unitary_hash,uparam_hash,more_shift,max_time) in
+ if #failed_this_step=0 then
+  let ()=prints("end of step ", i, " nothing left to do") then
+  local_finish_size=unitary_hash.size() then
+  ()=prints("unitary reps found this step: ", local_finish_size-local_start_size) in
+  prints("size of unitary_hash: ", local_finish_size);break
+ else
+  let ()=prints("end of step ", i, "size of failed_this_step: ", failed_this_step) then
+  local_finish_size=unitary_hash.size() then
+  todolist=failed_this_step then
+  ()=prints("unitary rep found this step: ", local_finish_size-local_start_size) in
+  prints("size of unitary_hash: ", local_finish_size) 
+ fi
+od in
+let ()=prints("finished all ", #unitary_hash_functions, " steps ") then
+finish_size=unitary_hash.size() then
+()=prints("unitary reps found this step: ", finish_size-start_size) in
+for j:finish_size-start_size from start_size do unitary_hash.index(j) od  {return the new ones}
 
