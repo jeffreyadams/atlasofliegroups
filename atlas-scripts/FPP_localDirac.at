@@ -2103,7 +2103,7 @@ KTypePol_hash pol_hash, Param_hash Uhash) = [Param]:
         {compute graph on facets to dim 1, to hts[edge_offset]}
     then ((eq,gr),IUCL,CLBF) = if temp_K_char_flag
     	 		       then localGraphK(LFDKH)
-			       else localGraphK(LFDKH, pol_hash0, test_hts[0])
+    	 		       else localGraphK(LFDKH, pol_hash0, test_hts[0])
 			       fi
     {then () = prints("trial of eq at dim 1 is ",trial(x,lambda,Lvd,LFDKH, eq, test_hts[0]))}
     then () = LFDKH := local_testK_hash(x,lambda,Lvd, LFDKH, eq, gr, CLBF,
@@ -2117,16 +2117,15 @@ KTypePol_hash pol_hash, Param_hash Uhash) = [Param]:
 		      fi
     then () = if test_verbose then prints("unitary to ht ",hts[test_levels[0]],
                         " facet counts to dim 1: ",for list in LFDKH do #list od) fi
+    then Dmid = max(r\2,1)
     then () = if quick_flag
-    	      then let Dlast = max((r-1)\2,1){Dlast = r - 1} {don't like testing to hts[11] for E8}
-	      	   then () = LFDKH := localFD_KHashbt_lookDownGEO(x,lambda, Lvd, LFDKH, 2,
-                                r + 2, pol_hash)
-		   then ((eq,gr),IUCL,CLBF) = localGraphK(LFDKH,pol_hash,test_hts[Dlast])
+    	      then let () = LFDKH := localFD_KHashbt_lookDownGEO(x,lambda, Lvd, LFDKH, 2, r + 1, pol_hash)
+		   then ((eq,gr),IUCL,CLBF) = localGraphK(LFDKH,pol_hash,test_hts[Dmid])
 		   then () = LFDKH := local_testK_hash(x,lambda,Lvd,
                       LFDKH, eq, gr, CLBF, (Param->bool): (Param p):
-		      {Uhash.lookup(p).>= or} is_unitary_to_ht(p,test_hts[Dlast]), Uhash)
+		      is_unitary_to_ht(p,test_hts[Dmid]), Uhash)
                    in if test_verbose
-		      then prints("unitary to ht ",test_hts[Dlast],
+		      then prints("unitary to ht ",test_hts[Dmid],
 		      	      		" facet counts to dim ",r,
 				": ", for list in LFDKH do #list od)
 		      fi
@@ -2152,16 +2151,18 @@ KTypePol_hash pol_hash, Param_hash Uhash) = [Param]:
 		     	  then prints("unitary to ht ",test_hts[D], " facet counts to dim ",D+1,
 				": ", for list in LFDKH do #list od) fi
                  then ()= D:=D+1
+		 then ()= Dmid:=D
 		 in ()
      	     od
      in ()
      fi{quick_flag}
-    {now have facets of all dims, to height test_hts[Dlast]}
+    {now have facets of all dims, to height test_hts[Dlast] or test_hts[0]}
     then ((eq,gr),IUCL,CLBF) = localGraphK(LFDKH)
     then () = if test_verbose then prints(sum(for list in LFDKH do #list od),
 	      	      	" unitary candidates in ",#eq," equivalence classes.") fi
     then start=elapsed_ms()
-    then UParams = local_test_hash(x, lambda, Lvd, LFDKH, eq, gr, CLBF, Uhash) 
+    then UParams = local_test_hash(x, lambda, Lvd, LFDKH, eq, gr, CLBF, Uhash{, (Param->bool):
+    	 	   		   (Param p): is_unitary_test(p, test_hts[Dmid+1])})
     {Maybe NEED TO PUT BOTTOM LAYER STUFF BACK}
     then time = elapsed_ms() - start
     then () = if time_verbose
@@ -2501,6 +2502,9 @@ NOT use bottom_layer. Leaving this at 1 means always use bottom_layer,
 to negative means never bottom layer.}
 set bottom_length_frac = rat: 1{??}
 
+{when nu*2rho_check < (to_ht_frac)*(infl_char*2rho_check, don't use is_unitary_to_ht}
+set to_ht_frac = 9/10
+
 {if true, use coh_ind_is_unitary in final tests; else is_unitary} 
 set coh_ind_tester_flag = true
 
@@ -2529,9 +2533,6 @@ set local_test_GEO_hash_bottom_layer(KGBElt x, ratvec lambda, VertexData vd,
     {then temp_K_char_flag= htFrac <= CUTOFF {CUTOFF defaults to 0}}
     then r = rank(thetaMinus)
     {then () = revert_flag:=false}
-    then maxDiffLoc = max_loc(for w in LF[0]
-    	 	       	      do G.two_rho_check*(dominant(G,thetaMinus*Lvd.list[w[0]]))
-		       	      od)
     then pmin = parameter(x, lambda, Lvd.list[LF[0][0][0]] )
     then (Q0, pminL0) = theta_stable_quasi_data(pmin)
     then L0 = Q0.Levi
@@ -2590,6 +2591,19 @@ set local_test_GEO_hash_bottom_layer(KGBElt x, ratvec lambda, VertexData vd,
 		   	   " facet counts to dim 1: ",for list in LFDKH do
 			     #list od)
 		    	   fi
+   then () = if #LFDKH[0] = 0 then return [] fi
+   then DiffList = for v in LFDKH[0]
+    	 	      do G.two_rho_check*(dominant(G,thetaMinus*Lvd.list[v[0]]))
+		      od
+   then maxDiffLoc = max_loc(DiffList), minDiffLoc = min_loc(DiffList), Dmid = next_heights(pmin,{r}2)~[0]
+   {then pmaxTest = first_param(finalize(parameter(x,lambda,Lvd.list[LFDKH[0][maxDiffLoc][0]])*(1/2)))
+   	{this should be the hardest parameter we have to test.}
+   then testStart = elapsed_ms()
+   then () = is_unitary(pmaxTest)
+   then UTime = elapsed_ms() - testStart
+   then () = is_unitary_to_ht(pmaxTest, Dmid)
+   then toHtTime = elapsed_ms() - testStart - UTime}
+   {then () = prints("UTime = ",UTime, ", toHtTime = ",toHtTime)}
 { Have facets to dim 1 bottom layer unitary to DG0. Seek to extend list to all higher dims }
   then () = LFDKH := localFD_KHashbt_lookDownGEO(x,lambda, Lvd, LFDKH, 2,
        	    	     		r + 1, pol_hash)
@@ -2602,18 +2616,20 @@ set local_test_GEO_hash_bottom_layer(KGBElt x, ratvec lambda, VertexData vd,
 	 already applied; so just do is_unitary}
 	 then () = if test_verbose then prints(sum(for list in LFDKH do #list od),
 	      	      	  " unitary candidates in ",#eq," equivalence classes.") fi
-         in local_test_hash(x, lambda, Lvd, LFDKH, eq, gr, CLBF, Uhash, is_unitary_hash@Param)
+         in local_test_hash(x, lambda, Lvd, LFDKH, eq, gr, CLBF, Uhash, (Param->bool): (Param p) bool:
+    	  if  DiffList[maxDiffLoc] < to_ht_frac*(Lvd.list[LFDKH[0][maxDiffLoc][0]])*G.two_rho_check
+	  {term on left guaranteed <= main term on right. If close, then params are close to spherical princ
+	   series, and to_ht is fast}
+	  {UTime < toHtTime}
+	  then is_unitary_hash(p) {small nu compared to infl char, unitary_to_ht is slow}
+	  else is_unitary_test(p,Dmid) {large nu compared to infl char, unitary_to_ht is fast}
+	  fi)
     then time = elapsed_ms() - start
     then () = if time_verbose
 	      then prints("     ", print_time_string(time),
 	      " for UParams calculation ", test_string, new_line){;}
 	      fi
    in UParams
-
-set local_test_GEO_hash_bottom_layer(KGBElt x, ratvec lambda, VertexData vd,
-    VertexData Lvd, [[FacetVertsIndex]] LF, KTypePol_hash pol_hash, Param_hash Uhash) = [Param]:
-    let p = parameter(x, lambda, 0*lambda)
-    in local_test_GEO_hash_bottom_layer(x, lambda, vd, Lvd, LF, pol_hash, Uhash)
 
 set local_test_GEO_hash_bottom_layer(KGBElt x, ratvec lambda, VertexData vd, VertexData Lvd,
     (vec,[(int,int)]) Perm2, vec mapAct, KTypePol_hash pol_hash, Param_hash Uhash) = [Param]:
