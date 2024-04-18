@@ -37,12 +37,29 @@ interpreter used to represent user types and other fundamental notions.
 #ifndef AXIS_TYPES_H
 #define AXIS_TYPES_H
 
+#include "axis-types-fwd.h"
+
 @< Includes needed in \.{axis-types.h} @>@;
 namespace atlas { namespace interpreter {
 @< Type definitions @>@;
 @< Declarations of global variables @>@;
 @< Declarations of exported functions @>@;
 @< Template and inline function definitions @>@;
+}}
+#endif
+
+@ Some header files need to know about classes and class templates defined here,
+but do not want to include \.{axis-types.h} to avoid mutual dependence problems.
+For those uses we write a separate header file \.{axis-types-fwd.h} which
+introduces the relevant names as declared but not defined (incomplete types).
+
+@( axis-types-fwd.h @>=
+#ifndef AXIS_TYPES_FWD_H
+#define AXIS_TYPES_FWD_H
+
+@< Includes needed in \.{axis-types-fwd.h} @>@;
+namespace atlas { namespace interpreter {
+@< Type declarations @>@;
 }}
 #endif
 
@@ -110,9 +127,10 @@ duplication during manipulation. Altogether this part of the program will be
 of a quite different nature than that of the main mathematical library.
 
 
-@< Includes needed in \.{axis-types.h} @>=
+@< Includes needed in \.{axis-types-fwd.h} @>=
 #include <memory> // for |std::unique_ptr|, |std::shared_ptr|
-#include "../Atlas.h" // for utilities (like |sl_list|); this include must come first
+#include "../Atlas.h"
+  // for utilities (like |sl_list|); this include must come first
 #include "buffer.h" // for |id_type|
 
 
@@ -173,11 +191,11 @@ better adapted to the syntactic facilities. The structure also uses ordinary
 pointers of type~|type_p| in places where ownership is managed by the containing
 structure rather than by the pointer itself.
 
-@< Type definitions @>=
+@< Type declarations @>=
 class type_expr;
-typedef type_expr* type_p;
-typedef const type_expr* const_type_p;
-typedef std::unique_ptr<type_expr> type_ptr;
+using type_p = type_expr*;
+using const_type_p = const type_expr*;
+using type_ptr = std::unique_ptr<type_expr>;
 
 @*2 Type lists.
 %
@@ -187,10 +205,7 @@ types themselves, but since an STL-compatible singly-linked list container
 class templates |simple_list| and |sl_list| was added to the Atlas utilities
 library, these were used to replace the implementation of type lists.
 
-@< Includes needed in \.{axis-types.h} @>=
-#include "sl_list.h" // for internals of the |sl_list| class template
-
-@ When incorporating type lists into the |type_expr| structure, the class
+When incorporating type lists into the |type_expr| structure, the class
 template |simple_list| will be used; the more flexible but less compact
 |sl_list| template will be occasionally used for temporary variables, whose type
 is then |dressed_type_list|. This usage provides a good test for the usability
@@ -205,15 +220,15 @@ occasions where instead of normal iterators over type lists we use weak
 iterators (ones that cannot be used to insert or delete nodes), and the types
 |wtl_iterator| and |wtl_const_iterator| are defined for that purpose.
 
-@< Type definitions @>=
-typedef containers::simple_list<type_expr> type_list;
-typedef containers::sl_list<type_expr> dressed_type_list;
+@< Type declarations @>=
+using type_list = containers::simple_list<type_expr>;
+using dressed_type_list = containers::sl_list<type_expr>;
 @)
-typedef atlas::containers::sl_node<type_expr>* raw_type_list;
-typedef atlas::containers::sl_node<type_expr>const * const_raw_type_list;
-typedef containers::weak_sl_list_iterator<type_expr> wtl_iterator;
+using raw_type_list = atlas::containers::sl_node<type_expr>*;
+using const_raw_type_list = atlas::containers::sl_node<type_expr>const *;
+using wtl_iterator = containers::weak_sl_list_iterator<type_expr>;
   // wtl = weak type list
-typedef containers::weak_sl_list_const_iterator<type_expr> wtl_const_iterator;
+using wtl_const_iterator = containers::weak_sl_list_const_iterator<type_expr>;
 
 @ Since types and type lists own their trees, their copy constructors must
 make a deep copy. The class |type_expr| will provide no copy constructor but
@@ -357,8 +372,7 @@ expression) is identified with its unique component.
 
 @< Type definitions @>=
 
-@< Predeclare types that |type_expr| needs to know about @>
-typedef unsigned int type_nr_type;
+using type_nr_type = unsigned int;
 class type_expr
 { type_tag tag;
   union
@@ -475,7 +489,7 @@ as a structure before the definition of |type_expr| is seen. For type lists
 this kind of difficulty is taken care of because |simple_list<type_expr>|
 could be used in a |typedef| before |type_expr| was a complete type.
 
-@< Predeclare types that |type_expr| needs to know about @>=
+@< Type declarations @>=
 
 struct func_type;
 
@@ -2232,9 +2246,9 @@ struct tuple_value : public row_value
     // we use |uniquify<tuple_value>|
 };
 @)
-typedef std::unique_ptr<tuple_value> tuple_ptr;
-typedef std::shared_ptr<const tuple_value> shared_tuple;
-typedef std::shared_ptr<tuple_value> own_tuple;
+using tuple_ptr = std::unique_ptr<tuple_value>;
+using shared_tuple = std::shared_ptr<const tuple_value>;
+using own_tuple = std::shared_ptr<tuple_value>;
 
 @ We just need to redefine the |print| method.
 @< Function definitions @>=
@@ -2341,6 +2355,9 @@ the injector name.
 void union_value::print(std::ostream& out) const
 {@; out << *comp << '.' << main_hash_table->name_of(injector_name); }
 
+@*1 Built-in functions.
+
+
 
 @*1 Representation of an evaluation context.
 %
@@ -2354,7 +2371,7 @@ values.
 One of the methods for our frame type will produce a back insert iterator, so
 we need the following include in order to declare it.
 
-@< Includes needed... @>=
+@< Includes needed in \.{axis-types.h} @>=
 #include <iterator>
 
 @~Frames are actually allocated on the heap, and their lifetimes do not follow
@@ -2423,7 +2440,14 @@ type). When handling user defined functions, we shall have values that refer to
 (derived from) |expression| objects, and in doing so share them. So in those
 cases, |shared_expression| values will be used.
 
-A fundamental choice is whether to make the result type of the |evaluate| type
+@< Type declarations @>=
+struct expr; // abstract syntax tree representation, see \.{parsetree.w}
+struct expression_base; // executable expression
+using expression = expression_base*;
+using expression_ptr = std::unique_ptr<const expression_base>;
+using shared_expression = std::shared_ptr<const expression_base>;
+
+@ A fundamental choice is whether to make the result type of the |evaluate| type
 equal to |value|. Although this would seem the natural choice, we prefer
 to make its result |void|, and to handle all value-passing via an execution
 stack; thus we hope to be able to avoid packing and unpacking of tuple values
@@ -2450,10 +2474,6 @@ struct expression_base
   void eval() const @+{@; evaluate(single_value); }
   void multi_eval() const @+{@; evaluate(multi_value); }
 };
-@)
-using expression = expression_base*;
-using expression_ptr = std::unique_ptr<const expression_base>;
-using shared_expression = std::shared_ptr<const expression_base>;
 
 @ Like for values, we can assure right away that printing converted
 expressions will work.
@@ -2462,6 +2482,13 @@ expressions will work.
 inline std::ostream& operator<< (std::ostream& out, const expression_base& e)
 {@; e.print(out); return out; }
 
+@ Ultimately, the evaluation process leads to the evaluation of basic
+operations, which will be accessed though function pointers called wrapper
+functions; these will call library functions after checking preconditions that
+the latter assume without checking them on each call. The keeps the library
+independent of the interpreter, while providing the user of the interpreter with
+a level of safety from accidental crashes that is not (for efficiency reasons)
+provided systematically in the library.
 
 @ Since our |evaluate| methods will put values on the execution stack, let us
 declare it right away. We decide that values on the execution stack can be
@@ -3497,7 +3524,6 @@ message |s| for storage in the |program_error| base class, and the offending
 expression. There is no need to override either of the virtual methods here.
 
 @< Type definitions @>=
-struct expr; // predeclare
 struct expr_error : public program_error
 { const expr& offender; // the subexpression causing a problem
 @)

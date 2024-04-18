@@ -108,7 +108,8 @@ c++files      := $(cwebx_sources:%.w=%.cpp)
 c++objects    := $(c++files:%.cpp=%.o)
 webtexfiles   := $(cwebx_sources:%.w=%.tex)
 
-headers := $(filter-out main.h,$(c++files:%.cpp=%.h)) parser.tab.h parse_types.h
+headers := $(filter-out main.h,$(c++files:%.cpp=%.h)) \
+  parser.tab.h parse_types.h axis-types-fwd.h
 
 dvifiles := $(cwebx_sources:%.w=%.dvi)
 

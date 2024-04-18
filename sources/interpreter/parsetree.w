@@ -137,7 +137,7 @@ struct expr {
   @< Methods of |expr| @>@;
 };
 @)
-@< Structure and typedef declarations for types built upon |expr| @>@;
+@< Structure and typedef definitions for types built upon |expr| @>@;
 
 @ To represent identifiers efficiently, and also file names, we shall use the
 type |id_type| (a small integer type) of indices into the table of identifier or
@@ -854,7 +854,7 @@ display.
 The moving constructor does what the braced initialiser-list syntax would do
 by default; it is present only for backward compatibility \.{gcc}~4.6.
 
-@< Structure and typedef declarations for types built upon |expr| @>=
+@< Structure and typedef definitions for types built upon |expr| @>=
 struct application_node
 { expr fun; @+ expr arg;
 @)
@@ -1186,7 +1186,7 @@ importantly seem to invariably have infinite priority, so they could be
 handled in the parser without dynamic priority comparisons. So here is that
 structure:
 
-@< Structure and typedef declarations... @>=
+@< Structure and typedef definitions... @>=
 struct formula_node
 @/{ expr left_subtree; @+ expr op_exp; @+ int prio;
 @/  formula_node(expr&& l,expr&& o, int prio)
@@ -1467,7 +1467,7 @@ only one binding, and containing in addition a body.
 The moving constructor does what the braced initialiser-list syntax would do
 by default; it is present only for backward compatibility \.{gcc}~4.6.
 
-@< Structure and typedef declarations for types built upon |expr| @>=
+@< Structure and typedef definitions for types built upon |expr| @>=
 struct let_pair { id_pat pattern; expr val; };
 typedef containers::simple_list<let_pair> let_list;
 typedef containers::sl_node<let_pair>* raw_let_list;
@@ -1836,7 +1836,7 @@ requires as initial argument a deleter object for the |std::unique_ptr| is
 stores (even though the type is stateless, so there is not much choice), this is
 mode tedious than usual.
 
-@< Structure and typedef declarations for types built upon |expr| @>=
+@< Structure and typedef definitions for types built upon |expr| @>=
 struct conditional_node
 { expr condition; containers::sl_node<expr> branches;
 @)
@@ -2090,14 +2090,14 @@ case, and then a pattern and a body as in a \&{let} statement. In a
 |discrimination_node|, the expression being discriminated is called its
 |subject|, which is followed by a non-empty list of |branches|.
 
-@< Structure and typedef declarations for types built upon |expr| @>=
+@< Structure and typedef definitions for types built upon |expr| @>=
 struct case_variant
 { id_type label;
   id_pat pattern;
   expr branch;
 };
-typedef containers::simple_list<case_variant> case_list;
-typedef containers::sl_node<case_variant>* raw_case_list;
+using case_list = containers::simple_list<case_variant>;
+using raw_case_list = containers::sl_node<case_variant>*;
 @)
 struct discrimination_node
 { expr subject; containers::sl_node<case_variant> branches;
@@ -2259,7 +2259,7 @@ bits, the first tow having the same meaning as for |for| loops (the ``object
 traversed'' being a sequence of consecutive integers) and a third bit telling
 whether the loop index is absent.
 
-@< Structure and typedef declarations for types built upon |expr| @>=
+@< Structure and typedef definitions for types built upon |expr| @>=
 struct while_node
 { expr body; // contains a |do|-expression producing condition and body
   BitSet<2> flags;
@@ -2427,7 +2427,7 @@ typedef struct slice_node* slc;
 expressions (although the latter should have as type integer, or a tuple of
 integers).
 
-@< Structure and typedef declarations for types built upon |expr| @>=
+@< Structure and typedef definitions for types built upon |expr| @>=
 struct subscription_node
 { expr array; expr index; bool reversed;
 @)
@@ -2552,7 +2552,7 @@ typedef struct cast_node* cast;
 
 @~The corresponding node type stores both type and expression.
 
-@< Structure and typedef declarations for types built upon |expr| @>=
+@< Structure and typedef definitions for types built upon |expr| @>=
 struct cast_node
 { type_expr type; expr exp;
 @)
@@ -2621,7 +2621,7 @@ typedef struct op_cast_node* op_cast;
 @~We store an (operator) identifier and a type, as before represented by a
 void pointer.
 
-@< Structure and typedef declarations for types built upon |expr| @>=
+@< Structure and typedef definitions for types built upon |expr| @>=
 struct op_cast_node
 { id_type oper; type_expr type;
 @)
@@ -2691,7 +2691,7 @@ typedef struct assignment_node* assignment;
 now also cater for general identifier patterns as left hand side, but keep
 having a special constructor for the single identifier case.
 
-@< Structure and typedef declarations for types built upon |expr| @>=
+@< Structure and typedef definitions for types built upon |expr| @>=
 struct assignment_node
 { id_pat lhs; expr rhs;
 @)
@@ -2794,7 +2794,7 @@ In a field assignment, the the left hand side records two identifiers, one
 for the identifier holding the tuple, and one for the selection function
 indicating the field to modify.
 
-@< Structure and typedef declarations for types built upon |expr| @>=
+@< Structure and typedef definitions for types built upon |expr| @>=
 struct comp_assignment_node
 { id_type aggr; expr index; expr rhs; bool reversed;
 @)
@@ -2824,7 +2824,7 @@ identifier in the aggregate position, and the application case the also in the
 function position (the grammar ensures these structures, and the expression tag
 will indicate which of the two applies).
 
-@< Structure and typedef declarations for types built upon |expr| @>=
+@< Structure and typedef definitions for types built upon |expr| @>=
 struct comp_transform_node
 { expr dest; id_type op; expr arg; source_location op_loc;
 @)
@@ -3034,7 +3034,7 @@ sequences by chaining pairs, instead of storing a vector of expressions: at
 three pointers overhead per vector, a chained representation is more compact
 as long as the average length of a sequence is less than~$5$ expressions.
 
-@< Structure and typedef declarations for types built upon |expr| @>=
+@< Structure and typedef definitions for types built upon |expr| @>=
 struct sequence_node
 { expr first; expr last;
 @)
@@ -3130,11 +3130,10 @@ types. For ordinary type expressions we could do with the types |type_p| and
 |raw_type_list| defined in the \.{axis-types} module, but in type definitions
 we need a list of pairs of a type identifier and its defining type expression.
 
-@< Structure and typedef declarations for types built upon |expr| @>=
-typedef struct {@; id_type id; type_p type; patlist fields; } typedef_struct;
-   // sic
-typedef containers::simple_list<typedef_struct> typedef_list;
-typedef atlas::containers::sl_node<typedef_struct>* raw_typedef_list;
+@< Structure and typedef definitions for types built upon |expr| @>=
+struct typedef_struct {@; id_type id; type_p type; patlist fields; };
+using typedef_list = containers::simple_list<typedef_struct>;
+using raw_typedef_list = atlas::containers::sl_node<typedef_struct>*;
 
 @ Here are the functions defined for those types.
 
