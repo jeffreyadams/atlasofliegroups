@@ -352,11 +352,6 @@ however.
 
 @< Type definitions @>=
 
-class function_base;
-// derived from |value_base|, defined in \.{axis.h}; values with function type
-typedef std::shared_ptr<const function_base> shared_function;
-// specialises |shared_value|
-
 class overload_data
 { shared_function val; @+ func_type tp;
 public:
@@ -2560,25 +2555,24 @@ coercion(row_row_of_int_type,row_row_of_rat_type, "[[Q]][[I]]",
 
 @* Wrapper functions.
 %
-We now come to defining wrapper functions. The arguments and results of
-wrapper functions will be transferred from and to stack as a |shared_value|,
-so a wrapper function has neither arguments nor a result type. Variables that
-refer to a wrapper function have the type |wrapper_function| defined below;
-the |level| parameter serves the same function as for |evaluate| methods of
-classes derived from |expression_base|, as described in \.{axis.w}: to
-inform whether a result value should be produced at all, and if so whether it
-should be expanded on the |execution_stack| in case it is a tuple.
+We now come to defining wrapper functions. The arguments and results of wrapper
+functions will be transferred from and to stack as a |shared_value|, so a
+wrapper function has neither arguments nor a result type. Variables that refer
+to a wrapper function have the function pointer type |wrapper_function| defined
+in \.{axis-types.w}; they do take a the |eval_level| parameter that serves the
+same function as for |evaluate| methods of classes derived from
+|expression_base|, as described in \.{axis.w}: to inform whether a result value
+should be produced at all, and if so whether it should be expanded on the
+|execution_stack| in case it is a tuple.
 
-@< Type definitions @>=
-typedef void (* wrapper_function)(eval_level);
-
-@ The following function will greatly
-facilitate the later repetitive task of installing wrapper functions.
+The following function will greatly facilitate the later repetitive task of
+installing wrapper functions. The basic |install_function| returns a shared
+pointer to constant |builtin|, since we don't need to change anything there
+after installation, but |install_special_builtin| does give non-|const| access
+to the object just created.
 
 @< Declarations of exported functions @>=
-struct function_base; // a class that |builtin| derives from
-struct special_builtin; // must predeclare, we have not seen \.{axis.h} here
-std::shared_ptr<function_base> install_function
+shared_builtin install_function
  (wrapper_function f,@|const char*name, const char* type_string,
   unsigned char hunger=0);
 std::shared_ptr<special_builtin> install_special_function
@@ -2594,7 +2588,7 @@ case they would be needed later; notably they should not be overloaded and are
 added to |global_id_table| instead.
 
 @< Global function def... @>=
-std::shared_ptr<function_base> install_function
+shared_builtin install_function
  (wrapper_function f,const char*name, const char* type_string,
   unsigned char hunger)
 { type_ptr type = mk_type(type_string);
@@ -2978,21 +2972,19 @@ former ones.
 { auto p = install_special_function(unary_minus_wrapper,"-","(int->int)",3);
   p->tests.emplace_back(fold_constant,p);
 }
-{ auto p = install_function(successor_wrapper,"succ","(int->int)",3);
-  shared_builtin succ_val = std::static_pointer_cast<builtin>(p);
+{ auto succ_val = install_function(successor_wrapper,"succ","(int->int)",3);
   auto q = install_special_function(plus_wrapper,"+","(int,int->int)",1);
   q->tests.emplace_back(fold_constant,q);
   q->tests.emplace_back(rhs_is_1,succ_val);
 }
-{ auto p = install_function(predecessor_wrapper,"pred","(int->int)",3);
-  shared_builtin pred_val = std::static_pointer_cast<builtin>(p);
-  auto b = install_special_function(bitwise_complement_wrapper,"~","(int->int)",3);
+{ auto pred_val = install_function(predecessor_wrapper,"pred","(int->int)",3);
+  auto b = install_special_function
+           (bitwise_complement_wrapper,"~","(int->int)",3);
   b->tests.emplace_back(fold_constant,b);
-  shared_builtin bc_val = std::static_pointer_cast<builtin>(b);
   auto q = install_special_function(minus_wrapper,"-","(int,int->int)",1);
   q->tests.emplace_back(fold_constant,q);
   q->tests.emplace_back(rhs_is_1,pred_val);
-  q->tests.emplace_back(lhs_is_minus_1,bc_val);
+  q->tests.emplace_back(lhs_is_minus_1,b);
 }
 {
   auto p = install_special_function(times_wrapper,"*","(int,int->int)");
@@ -3522,29 +3514,23 @@ expression_ptr rhs_is_0
 
 @< Initialise... @>=
 { auto p = install_function(int_unary_eq_wrapper,"=","(int->bool)");
-  shared_builtin eq_val = std::static_pointer_cast<builtin>(p);
   auto q = install_special_function(int_eq_wrapper,"=","(int,int->bool)");
-  q->tests.emplace_back(rhs_is_0,eq_val);
+  q->tests.emplace_back(rhs_is_0,p);
 @/p = install_function(int_unary_neq_wrapper,"!=","(int->bool)");
-  shared_builtin neq_val = std::static_pointer_cast<builtin>(p);
   q = install_special_function(int_neq_wrapper,"!=","(int,int->bool)");
-  q->tests.emplace_back(rhs_is_0,neq_val);
+  q->tests.emplace_back(rhs_is_0,q);
 @/p = install_function(int_non_negative_wrapper,">=","(int->bool)");
-  shared_builtin geq_val = std::static_pointer_cast<builtin>(p);
   q = install_special_function(int_greatereq_wrapper,">=","(int,int->bool)");
-  q->tests.emplace_back(rhs_is_0,geq_val);
+  q->tests.emplace_back(rhs_is_0,p);
 @/p = install_function(int_positive_wrapper,">","(int->bool)");
-  shared_builtin gt_val = std::static_pointer_cast<builtin>(p);
   q = install_special_function(int_greater_wrapper,">","(int,int->bool)");
-  q->tests.emplace_back(rhs_is_0,gt_val);
+  q->tests.emplace_back(rhs_is_0,p);
 @/p = install_function(int_non_positive_wrapper,"<=","(int->bool)");
-  shared_builtin leq_val = std::static_pointer_cast<builtin>(p);
   q = install_special_function(int_lesseq_wrapper,"<=","(int,int->bool)");
-  q->tests.emplace_back(rhs_is_0,leq_val);
+  q->tests.emplace_back(rhs_is_0,p);
 @/p = install_function(int_negative_wrapper,"<","(int->bool)");
-  shared_builtin lt_val = std::static_pointer_cast<builtin>(p);
   q = install_special_function(int_less_wrapper,"<","(int,int->bool)");
-  q->tests.emplace_back(rhs_is_0,lt_val);
+  q->tests.emplace_back(rhs_is_0,p);
 }
 
 @ We take a breath, and then do the same stuff for the rationals. Our test for a
@@ -3578,29 +3564,23 @@ expression_ptr rhs_is_rat0
 integer comparisons.
 @< Initialise... @>=
 { auto p = install_function(rat_unary_eq_wrapper,"=","(rat->bool)");
-  shared_builtin eq_val = std::static_pointer_cast<builtin>(p);
   auto q = install_special_function(rat_eq_wrapper,"=","(rat,rat->bool)");
-  q->tests.emplace_back(rhs_is_rat0,eq_val);
+  q->tests.emplace_back(rhs_is_rat0,p);
 @/p = install_function(rat_unary_neq_wrapper,"!=","(rat->bool)");
-  shared_builtin neq_val = std::static_pointer_cast<builtin>(p);
   q = install_special_function(rat_neq_wrapper,"!=","(rat,rat->bool)");
-  q->tests.emplace_back(rhs_is_rat0,neq_val);
+  q->tests.emplace_back(rhs_is_rat0,p);
 @/p = install_function(rat_non_negative_wrapper,">=","(rat->bool)");
-  shared_builtin geq_val = std::static_pointer_cast<builtin>(p);
   q = install_special_function(rat_greatereq_wrapper,">=","(rat,rat->bool)");
-  q->tests.emplace_back(rhs_is_rat0,geq_val);
+  q->tests.emplace_back(rhs_is_rat0,p);
 @/p = install_function(rat_positive_wrapper,">","(rat->bool)");
-  shared_builtin gt_val = std::static_pointer_cast<builtin>(p);
   q = install_special_function(rat_greater_wrapper,">","(rat,rat->bool)");
-  q->tests.emplace_back(rhs_is_rat0,gt_val);
+  q->tests.emplace_back(rhs_is_rat0,p);
 @/p = install_function(rat_non_positive_wrapper,"<=","(rat->bool)");
-  shared_builtin leq_val = std::static_pointer_cast<builtin>(p);
   q = install_special_function(rat_lesseq_wrapper,"<=","(rat,rat->bool)");
-  q->tests.emplace_back(rhs_is_rat0,leq_val);
+  q->tests.emplace_back(rhs_is_rat0,p);
 @/p = install_function(rat_negative_wrapper,"<","(rat->bool)");
-  shared_builtin lt_val = std::static_pointer_cast<builtin>(p);
   q = install_special_function(rat_less_wrapper,"<","(rat,rat->bool)");
-  q->tests.emplace_back(rhs_is_rat0,lt_val);
+  q->tests.emplace_back(rhs_is_rat0,p);
 }
 install_function(equiv_wrapper,"=","(bool,bool->bool)");
 install_function(inequiv_wrapper,"!=","(bool,bool->bool)");
@@ -3760,14 +3740,12 @@ expression_ptr rhs_is_empty
 
 @< Initialise... @>=
 { auto p = install_function(string_unary_eq_wrapper,"=","(string->bool)");
-  shared_builtin eq_val = std::static_pointer_cast<builtin>(p);
   auto q =
     install_special_function(string_eq_wrapper,"=","(string,string->bool)");
-  q->tests.emplace_back(rhs_is_empty,eq_val);
+  q->tests.emplace_back(rhs_is_empty,p);
 @/p = install_function(string_unary_neq_wrapper,"!=","(string->bool)");
-  shared_builtin neq_val = std::static_pointer_cast<builtin>(p);
   q = install_special_function(string_neq_wrapper,"!=","(string,string->bool)");
-  q->tests.emplace_back(rhs_is_empty,neq_val);
+  q->tests.emplace_back(rhs_is_empty,p);
 }
 install_function(string_less_wrapper,"<","(string,string->bool)");
 install_function(string_leq_wrapper,"<=","(string,string->bool)");

@@ -2027,9 +2027,6 @@ template <bool variadic>
   static const char* name() @+{@; return "built-in function"; }
   builtin_value(const builtin_value& v) = delete;
 };
-using builtin = builtin_value<false>;
-using shared_builtin = std::shared_ptr<const builtin>;
-using shared_variadic_builtin = std::shared_ptr<const builtin_value<true> >;
 
 @ While syntactically more complicated than ordinary function calls, the call
 of overloaded functions is actually more direct at run time, because the

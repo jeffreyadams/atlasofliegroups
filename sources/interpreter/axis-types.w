@@ -2094,8 +2094,11 @@ reality we have dynamic type information stored within the values, even though
 that information had already been determined during type analysis. We shall in
 fact use this information to double-check our type analysis at run time.
 
-@< Includes needed in \.{axis-types.h} @>=
-#include <iostream> // needed for specification of |print| method below
+@< Type declarations @>=
+struct value_base;
+using value = const value_base*;
+using shared_value = std::shared_ptr<const value_base>;
+using  own_value = std::shared_ptr<value_base>;
 
 @~We start with a base class for values. For it to be an abstract class, there
 must be at least one pure virtual function in the class; the destructor having
@@ -2108,7 +2111,10 @@ implementation (in the base class). This |print| method will demonstrate the
 ease of using dynamic typing via inheritance; it will not do any dynamic
 casting, but other operations on values will.
 
-Apart from virtual methods, we define other methods that will be redefined in
+@< Includes needed in \.{axis-types.h} @>=
+#include <iostream> // needed for specification of |print| method below
+
+@~Apart from virtual methods, we define other methods that will be redefined in
 all or some derived classes, and which are selected based on the static type at
 hand in the calling code rather than on the dynamic type, as the former will be
 known to match the latter due to our type system. The method |name| is used in
@@ -2149,10 +2155,6 @@ struct value_base
   value_base& operator=(const value_base& x) = delete;
 };
 inline value_base::~value_base() @+{} // necessary but empty implementation
-@)
-typedef const value_base* value;
-typedef std::shared_ptr<const value_base> shared_value;
-typedef std::shared_ptr<value_base> own_value;
 
 @ We can already make sure that the operator~`|<<|' will do the right thing
 for any of our values.
@@ -2355,9 +2357,6 @@ the injector name.
 void union_value::print(std::ostream& out) const
 {@; out << *comp << '.' << main_hash_table->name_of(injector_name); }
 
-@*1 Built-in functions.
-
-
 
 @*1 Representation of an evaluation context.
 %
@@ -2484,18 +2483,10 @@ expressions will work.
 inline std::ostream& operator<< (std::ostream& out, const expression_base& e)
 {@; e.print(out); return out; }
 
-@ Ultimately, the evaluation process leads to the evaluation of basic
-operations, which will be accessed though function pointers called wrapper
-functions; these will call library functions after checking preconditions that
-the latter assume without checking them on each call. The keeps the library
-independent of the interpreter, while providing the user of the interpreter with
-a level of safety from accidental crashes that is not (for efficiency reasons)
-provided systematically in the library.
-
-@ Since our |evaluate| methods will put values on the execution stack, let us
-declare it right away. We decide that values on the execution stack can be
-shared with other values (for instance when the user subscripts a row, vector
-or matrix bound to an identifier, it would be wasteful to duplicate that
+@*1 The execution stack. Our |evaluate| methods will put values on the execution
+stack, which we shall now declare. We decide that values on the execution stack
+can be shared with other values (for instance when the user subscripts a row,
+vector or matrix bound to an identifier, it would be wasteful to duplicate that
 entire structure just so that it can briefly reside on the execution stack),
 whence we use |shared_value| smart pointers in the stack.
 
@@ -2575,7 +2566,7 @@ void push_expanded(eval_level l, shared_value&& v)
   }
 } // if |l==eval_level::no_value| then do nothing
 
-@* Some useful function templates.
+@*1 Some useful function templates.
 %
 We now define some inline functions to facilitate manipulating the stack. The
 function |push_value| does what its name suggests. For exception safety it
@@ -2831,7 +2822,27 @@ template<unsigned int n>
      do_wrap<n>(result->val.end());
      push_value(std::move(result));
    }
+@*1 Built-in functions.
+%
+Ultimately, the evaluation process leads to the evaluation of built-in
+operations or functions, which will be accessed though function pointers called
+wrapper functions; these will call library functions after checking
+preconditions that the latter assume without checking them on each call. The
+keeps the library independent of the interpreter, while providing the user of
+the interpreter with a level of safety from accidental crashes that is not (for
+efficiency reasons) provided systematically in the library.
 
+@< Type declarations @>=
+using wrapper_function = void (* )(eval_level);
+struct function_base; // a type derived from |value_base|, defined in \.{axis.w}
+using shared_function = std::shared_ptr<const function_base>;
+// specialises |shared_value|
+template <bool variadic> struct builtin_value;
+// derived from |function_base|, defined in \.{axis.w}
+using builtin = builtin_value<false>;
+using shared_builtin = std::shared_ptr<const builtin>;
+using shared_variadic_builtin = std::shared_ptr<const builtin_value<true> >;
+struct special_builtin; // derived from |builtin|, defined in \.{axis.w}
 
 @* Implicit conversion of values between types.
 %
