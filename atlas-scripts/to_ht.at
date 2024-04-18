@@ -192,6 +192,7 @@ set_type
   )
 ]
 
+{IS THERE A QUADRATIC CONCATENATION PROBLEM???}
 set make_unitarity_to_hts_bool_hash () = unitarity_to_hts_bool_hash:
 (  let heights_list = vec: []
    then param_hashes = [Param_hash]: []

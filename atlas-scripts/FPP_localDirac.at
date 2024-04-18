@@ -584,11 +584,17 @@ set local_testK_hash(KGBElt x, ratvec lambda, VertexData vd,
     	      then let knownUnitaries = known_unitaries(Uhash, x, lambda, vd, FVKH)
     	      	   then () = for list@d in knownUnitaries
     	      	   	     do for j in list
-	      	 	     	do newStatuses[classListByFacet[d][j]] := "T"
+	      	 	     	do let k = classListByFacet[d][j]
+				    then ()=newStatuses:= downdateUclassesB(newStatuses, gr, k, "T")
+				    in newStatuses[k] := "T"
 	    	 		od
 	      		     od
 		   in ()
 	       fi
+    then () = if fund_facet_verbose
+    	      then prints("     Examining ",NumClasses," classes in local_testK_hash; ",
+	      count(for ans in newStatuses do ans[0] = "T" od)," are known unitary.")
+	      fi
     then () = if fund_facet_verbose and NumClasses > 100
     then prints(); prints("start local_testK_hash, ", NumClasses,
 		   " equiv classes of facets to dim ",#FVKH-1)
@@ -615,14 +621,22 @@ set local_testK_hash(KGBElt x, ratvec lambda, VertexData vd,
 		     fi{NEWU}
 		 fi {newStatuses[k] = "?"}
 	      od
+     then () = if fund_facet_verbose
+    	       then prints("     Total of ", count(for ans in newStatuses do ans[0] = "T" od),
+	      	   		 " classes are unitary candidates.")
+	       fi
      {make new local facet list using only facets not already proven nonunitary}
      then FVKHnew = for @m in FVKH do [FacetVertsKHash]: [] od
           then () = for C@m in eq
 	       	    do if newStatuses[m][0] = "T"
      	     	       then for k in C
+		       	    do let (d,j) = coords(FVKH,k)
+			       in FVKHnew[d] #:= FVKH[d][j]
+			    od
+			   { for k in C
 			    do let (d,j) = coords(FVKH,k)
 			       in FVKHnew[d] := (FVKHnew[d] next FVKHnew[d]:=[]) #FVKH[d][j]
-			    od
+			    od}
 		       fi
 		    od
      {then () = if #FVKH = 3 then prints(FVKHnew[2]) fi}
@@ -635,7 +649,7 @@ set local_testK_hash(KGBElt x, ratvec lambda, VertexData vd,
     [[FacetVertsKHash]] FVKH, [[int]] eq, [[int]] gr, [vec] classListByFacet,
     int ht, Param_hash Uhash) = [[FacetVertsKHash]]:
     let tester = ((Param->bool): (Param p) bool:
-	      Uhash.lookup(p).>= or is_unitary_to_ht(p, ht))
+	      Uhash.lookup(p).>= or is_unitary_to_ht_base(p, ht))
      in local_testK_hash(x, lambda, vd, FVKH, eq, gr, classListByFacet, tester, Uhash)
 
 
@@ -1913,7 +1927,7 @@ set local_test_GEO_hash_no_dumb(KGBElt x, ratvec lambda, VertexData vd, VertexDa
 		   then ((eq,gr),IUCL,CLBF) = localGraphK(LFDKH,pol_hash,test_hts[Dlast])
 		   then () = LFDKH := local_testK_hash(x,lambda,Lvd,
                       LFDKH, eq, gr, CLBF, (Param->bool): (Param p):
-		      {Uhash.lookup(p).>= or} is_unitary_to_ht(p,test_hts[Dlast]), Uhash)
+		      is_unitary_to_hts(p,hts[test_levels[0]+1:test_levels[Dlast]+1]), Uhash)
                    in if test_verbose
 		      then prints("unitary to ht ",test_hts[Dlast],
 		      	      		" facet counts to dim ",Dlast+1,
@@ -1933,7 +1947,7 @@ set local_test_GEO_hash_no_dumb(KGBElt x, ratvec lambda, VertexData vd, VertexDa
        	      	 {compute graph on facets to dim D+1}
 		 then () = LFDKH := local_testK_hash(x,lambda,Lvd,
                       LFDKH, eq, gr, CLBF, (Param->bool): (Param p):
-		      {Uhash.lookup(p).>= or} is_unitary_to_ht(p,test_hts[D]), Uhash)
+		      is_unitary_to_hts(p,hts[test_levels[D-1]:test_levels[D]+1]), Uhash)
 		      {is_unitary_to_hts(p,hts[:D+1]), Uhash)}
                  then () = if test_verbose
 			   then prints("unitary to ht ",test_hts[D],
@@ -1945,7 +1959,7 @@ set local_test_GEO_hash_no_dumb(KGBElt x, ratvec lambda, VertexData vd, VertexDa
      	     od{end of D while loop}
     in ()
     fi {quick_flag}
-    {now have facets of all dims, to height hts[Dlast]}
+    {now have facets of all dims, to height test_hts[Dlast] or test_hts[Dmid]}
     then ((eq,gr),IUCL,CLBF) = localGraphK(LFDKH)
     then () = if test_verbose then prints(sum(for list in LFDKH do #list od),
 	      	      	   " unitary candidates in ",#eq," equivalence classes.") fi
@@ -2091,7 +2105,7 @@ KTypePol_hash pol_hash, Param_hash Uhash) = [Param]:
     then temp_K_char_flag = height(parameter(x,lambda,0*lambda))/(G.rho * G.two_rho_check) <= CUTOFF
      {defaults to true if ht=0, false otherwise}
     then pol_hash0 = if temp_K_char_flag
-    	 	     then make_KTypePol_hash() {to hold chars to height hts[0]}
+    	 	     then make_KTypePol_hash() {to hold chars to height test_hts[0]}
 		     else pol_hash
 		     fi
     then LFDKH = if temp_K_char_flag
@@ -2103,27 +2117,30 @@ KTypePol_hash pol_hash, Param_hash Uhash) = [Param]:
         {compute graph on facets to dim 1, to hts[edge_offset]}
     then ((eq,gr),IUCL,CLBF) = if temp_K_char_flag
     	 		       then localGraphK(LFDKH)
-    	 		       else localGraphK(LFDKH, pol_hash0, test_hts[0])
+    	 		       else localGraphK(LFDKH, pol_hash, test_hts[0])
 			       fi
     {then () = prints("trial of eq at dim 1 is ",trial(x,lambda,Lvd,LFDKH, eq, test_hts[0]))}
     then () = LFDKH := local_testK_hash(x,lambda,Lvd, LFDKH, eq, gr, CLBF,
-    	   (Param->bool):(Param p): if prefer_to_hts
-	   			    then is_unitary_to_hts(p,hts[:test_levels[0]+1])
-				    else is_unitary_to_ht(p,test_hts[0])
-				    fi, Uhash)
+    	      (Param->bool):(Param p): is_unitary_to_hts(p, hts[:test_levels[0]+1]), Uhash)
+    then () = if test_verbose then prints("unitary to ht ",test_hts[0],
+                        " facet counts to dim 1: ",for list in LFDKH do #list od) fi
     then () = LFDKH:= if temp_K_char_flag
     	      	      then extend_K_characters(x, lambda, Lvd, LFDKH, pol_hash)
 		      else LFDKH
 		      fi
-    then () = if test_verbose then prints("unitary to ht ",hts[test_levels[0]],
-                        " facet counts to dim 1: ",for list in LFDKH do #list od) fi
+    {then ((eq,gr),IUCL,CLBF) = localGraphK(LFDKH,pol_hash,test_hts[0])
+    then () = LFDKH := local_testK_hash(x,lambda,Lvd,
+                      LFDKH, eq, gr, CLBF, test_hts[0], Uhash) {(Param->bool): (Param p):
+		      is_unitary_to_ht(p,test_hts[0]), Uhash)}
+    then () = if test_verbose then prints("unitary to ht ",test_hts[0],
+                        " facet counts to dim 1: ",for list in LFDKH do #list od) fi}
     then Dmid = max(r\2,1)
     then () = if quick_flag
-    	      then let () = LFDKH := localFD_KHashbt_lookDownGEO(x,lambda, Lvd, LFDKH, 2, r + 1, pol_hash)
+    	      then let () = LFDKH := localFD_KHashbt_lookDownGEO(x,lambda, Lvd, LFDKH, 2, r+1, pol_hash)
 		   then ((eq,gr),IUCL,CLBF) = localGraphK(LFDKH,pol_hash,test_hts[Dmid])
 		   then () = LFDKH := local_testK_hash(x,lambda,Lvd,
                       LFDKH, eq, gr, CLBF, (Param->bool): (Param p):
-		      is_unitary_to_ht(p,test_hts[Dmid]), Uhash)
+		      is_unitary_to_hts(p,hts[test_levels[0]+1:test_levels[Dmid]+1]), Uhash)
                    in if test_verbose
 		      then prints("unitary to ht ",test_hts[Dmid],
 		      	      		" facet counts to dim ",r,
@@ -2144,9 +2161,8 @@ KTypePol_hash pol_hash, Param_hash Uhash) = [Param]:
        	      	 {compute graph on facets to dim D+1}
 		 {then () = prints("trial of eq at dim ",D+1," is ",trial(x,lambda,Lvd,LFDKH, eq, test_hts[D]))}
 		 then () = LFDKH := local_testK_hash(x, lambda, Lvd, LFDKH, eq, gr, CLBF,
-		      (Param->bool):(Param p): {Uhash.lookup(p).>= or}
-		      			   is_unitary_to_ht{_hash}(p, test_hts[D]), Uhash)
-			  {is_unitary_to_hts(p, hts[test_levels[D-1]+1:test_levels[D]+1])}
+		 (Param->bool):(Param p):
+		 is_unitary_to_hts(p,hts[test_levels[D-1]:test_levels[D]+1]), Uhash)
                  then () = if test_verbose
 		     	  then prints("unitary to ht ",test_hts[D], " facet counts to dim ",D+1,
 				": ", for list in LFDKH do #list od) fi
@@ -2156,7 +2172,7 @@ KTypePol_hash pol_hash, Param_hash Uhash) = [Param]:
      	     od
      in ()
      fi{quick_flag}
-    {now have facets of all dims, to height test_hts[Dlast] or test_hts[0]}
+    {now have facets of all dims, to height test_hts[Dlast] or test_hts[Dmid]}
     then ((eq,gr),IUCL,CLBF) = localGraphK(LFDKH)
     then () = if test_verbose then prints(sum(for list in LFDKH do #list od),
 	      	      	" unitary candidates in ",#eq," equivalence classes.") fi
@@ -2505,7 +2521,7 @@ set bottom_length_frac = rat: 1{??}
 {when nu*2rho_check < (to_ht_frac)*(infl_char*2rho_check, don't use is_unitary_to_ht}
 set to_ht_frac = 9/10
 
-{if true, use coh_ind_is_unitary in final tests; else is_unitary} 
+{if true, use coh_ind_is_unitary in final tests; else is_unitary}
 set coh_ind_tester_flag = true
 
 set one_level_revert_flag = false

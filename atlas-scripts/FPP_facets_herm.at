@@ -615,9 +615,9 @@ set extend_K_characters(KGBElt x, ratvec lambda, VertexData Lvd,
 		 in w
               od
       od
-     {then time = elapsed_ms() - start
+     then time = elapsed_ms() - start
      then () = if time_verbose then prints("     ", print_time_string(time),
-     	       	  " for extend_K_characters") fi}
+     	       	  " for extend_K_characters") fi
      in answer
 
 set extend_K_characters(KGBElt x, ratvec lambda, VertexData Lvd,
@@ -645,7 +645,7 @@ set extend_K_characters(KGBElt x, ratvec lambda, VertexData Lvd,
 		 in w
               od
        od
-     {then time = elapsed_ms() - start
+     then time = elapsed_ms() - start
      then () = if time_verbose then prints("     ", print_time_string(time),
-     	       	  " for extend_K_characters") fi}
+     	       	  " for extend_K_characters to ht ", ht) fi
      in answer
