@@ -833,18 +833,18 @@ template<>
   void tuple_expression::evaluate(level l) const
 { switch(l)
   {
-  case no_value:
+  case level::no_value:
     for (auto it=component.begin(); it!=component.end(); ++it)
       (*it)->void_eval();
     break;
-  case single_value:
+  case level::single_value:
     { auto result = std::make_shared<tuple_value>(component.size());
       auto dst_it = result->val.begin();
       for (auto it=component.cbegin(); it!=component.cend(); ++it,++dst_it)
       @/{@; (*it)->eval(); *dst_it=pop_value(); }
       push_value(result);
     } break;
-  case multi_value:
+  case level::multi_value:
     { auto it=component.begin();
       // this variable needs to survive |try| into the |catch| blocks
 @)
@@ -885,18 +885,18 @@ template<>
   void tuple_expression_tmpl<true>::evaluate(level l) const
 { switch(l)
   {
-  case no_value:
+  case level::no_value:
     for (auto it=component.crbegin(); it!=component.crend(); ++it)
       (*it)->void_eval();
     break;
-  case single_value:
+  case level::single_value:
     { auto result = std::make_shared<tuple_value>(component.size());
       auto dst_it = result->val.rbegin(); // fill |result| tuple from rear to front
       for (auto it=component.crbegin(); it!=component.crend(); ++it,++dst_it)
       @/{@; (*it)->eval(); *dst_it=pop_value(); }
       push_value(std::move(result));
     } break;
-  case multi_value:
+  case level::multi_value:
     { stack<shared_value> args;
       for (auto it=component.crbegin(); it!=component.crend(); ++it)
       @/{@; (*it)->eval(); args.push(pop_value()); }
@@ -947,7 +947,7 @@ are cleaned up.
 
 @< Function def... @>=
 void list_expression::evaluate(level l) const
-{ if (l==no_value)
+{ if (l==level::no_value)
     for (auto it=component.begin(); it!=component.end(); ++it)
       (*it)->void_eval();
   else
@@ -1300,7 +1300,7 @@ template<>
 
 @ Evaluating a global identifier returns the value currently stored in the
 location |address|, possibly expanded if |l==multi_value|, or nothing at all
-if |l==no_value|. However, since undefined global variables have been made
+if |l==level::no_value|. However, since undefined global variables have been made
 possible in the language, we have to watch out for a (shared) null pointer at
 |*address|.
 
@@ -1908,9 +1908,9 @@ struct function_base : public value_base
   virtual ~function_base() = default;
   static const char* name() @+{@; return "function value"; }
 @)
-  virtual void apply(expression_base::level l) const=0;
+  virtual void apply(eval_level l) const=0;
     // go; arg.\ values on |execution_stack|
-  virtual expression_base::level argument_policy() const=0;
+  virtual eval_level argument_policy() const=0;
     // form to prepare arguments in
   virtual void maybe_push(const std::shared_ptr<const function_base>& p) const
     @+{}
@@ -2013,11 +2013,11 @@ template <bool variadic>
   virtual ~builtin_value() = default;
   virtual void print(std::ostream& out) const
   @+{@; out << '{' << print_name << '}'; }
-  virtual void apply(expression_base::level l) const @+
+  virtual void apply(eval_level l) const @+
     {@; (*val)(l); } // apply function pointer
-  virtual expression_base::level argument_policy() const
+  virtual eval_level argument_policy() const
   {@; return variadic
-      ? expression_base::single_value : expression_base::multi_value; }
+      ? eval_level::single_value : eval_level::multi_value; }
   virtual void report_origin(std::ostream& o) const @+
   {@; o << "built-in"; }
   virtual expression_ptr build_call
@@ -2738,8 +2738,8 @@ bool do_builtin(expression_ptr& e, wrapper_function f,
   { try
     {
       auto& loc = const_cast<denotation*>(den_ptr)->denoted_value;
-      push_expanded(expression_base::multi_value,std::move(loc));
-      (*f)(expression_base::single_value);
+      push_expanded(eval_level::multi_value,std::move(loc));
+      (*f)(eval_level::single_value);
       loc=pop_value();
     }
     catch(std::exception& err)
@@ -3406,9 +3406,9 @@ struct closure_value : public function_base
   : function_base(), context(c), p(l), body(*p->body) @+{}
   virtual ~closure_value() = default;
   virtual void print(std::ostream& out) const;
-  virtual void apply(expression_base::level l) const;
-  virtual expression_base::level argument_policy() const
-  {@; return expression_base::single_value; }
+  virtual void apply(eval_level l) const;
+  virtual eval_level argument_policy() const
+  {@; return eval_level::single_value; }
   virtual void maybe_push(const std::shared_ptr<const function_base>& p) const
   {@; if (kind==recursive_closure)
       push_value(p);
@@ -3482,7 +3482,7 @@ kind of stack, in particular it cannot be embedded in the \Cpp\ runtime stack
 
 @< Function def... @>=
 void lambda_expression::evaluate(level l) const
-{ if (l!=no_value)
+{ if (l!=level::no_value)
   { if (count_identifiers(p->param)==0)
       push_value(std::make_shared<closure_value<parameterless> >
        (frame::current,p));
@@ -3492,7 +3492,7 @@ void lambda_expression::evaluate(level l) const
   }
 }
 void recursive_lambda::evaluate(level l) const
-{ if (l!=no_value)
+{ if (l!=level::no_value)
     push_value(std::make_shared<closure_value<recursive_closure> >
       (frame::current,p));
 }
@@ -3704,7 +3704,7 @@ block, as was mentioned when that block was defined earlier.
 
 @< Function def... @>=
 template<Closure_kind kind>
-void closure_value<kind>::apply(expression_base::level l) const
+void closure_value<kind>::apply(eval_level l) const
 {
   static const bool no_names=kind==parameterless;
   try
@@ -3733,7 +3733,7 @@ of a |lambda_frame| without any identifiers.
 
 @< Function def... @>=
 template<>
-void closure_value<recursive_closure>::apply(expression_base::level l) const
+void closure_value<recursive_closure>::apply(eval_level l) const
 {
   try
   { lambda_frame<false> fr(p->param,context);
@@ -4398,7 +4398,7 @@ void vector_subscription<reversed>::evaluate(level l) const
   size_t n = v->val.size();
   if (static_cast<size_t>(i)>=n)
     throw runtime_error(range_mess(i,n,this,"subscription"));
-  if (l!=no_value)
+  if (l!=level::no_value)
     push_value(std::make_shared<int_value>(v->val[reversed ? n-1-i : i]));
 }
 @)
@@ -4409,7 +4409,7 @@ void ratvec_subscription<reversed>::evaluate(level l) const
   size_t n = v->val.size();
   if (static_cast<size_t>(i)>=n)
     throw runtime_error(range_mess(i,n,this,"subscription"));
-  if (l!=no_value)
+  if (l!=level::no_value)
     push_value(std::make_shared<rat_value>(RatNum @|
        (v->val.numerator()[reversed ? n-1-i : i],v->val.denominator())));
 }
@@ -4421,7 +4421,7 @@ void string_subscription<reversed>::evaluate(level l) const
   size_t n = s->val.size();
   if (static_cast<size_t>(i)>=n)
     throw runtime_error(range_mess(i,n,this,"subscription"));
-  if (l!=no_value)
+  if (l!=level::no_value)
     push_value(std::make_shared<string_value>
       (s->val.substr(reversed ? n-1-i : i,1)));
 }
@@ -4446,7 +4446,7 @@ void matrix_subscription<reversed>::evaluate(level l) const
   if (static_cast<size_t>(j)>=c)
     throw runtime_error
      ("final "+range_mess(j,c,this,"matrix subscription"));
-  if (l!=no_value)
+  if (l!=level::no_value)
     push_value(std::make_shared<int_value>
       (reversed ? m->val(r-1-i,c-1-j): m->val(i,j)));
 }
@@ -4458,7 +4458,7 @@ void matrix_get_column<reversed>::evaluate(level l) const
   size_t c = m->val.n_columns();
   if (static_cast<size_t>(j)>=c)
     throw runtime_error(range_mess(j,c,this,"matrix column selection"));
-  if (l!=no_value)
+  if (l!=level::no_value)
     push_value(std::make_shared<vector_value>
       (m->val.column(reversed ? c-1-j : j)));
 }
@@ -4641,8 +4641,8 @@ struct projector_value : public function_base
   : type(t.copy()),position(i),id(id),loc(loc) @+ {}
   virtual ~projector_value() = default;
   virtual void print(std::ostream& out) const;
-  virtual void apply(expression_base::level l) const;
-  virtual expression_base::level argument_policy() const;
+  virtual void apply(eval_level l) const;
+  virtual eval_level argument_policy() const;
   virtual void report_origin(std::ostream& o) const;
   virtual expression_ptr build_call
     (const shared_function& master,const std::string& name,
@@ -4662,8 +4662,8 @@ components.
 void projector_value::print(std::ostream& out) const
   { out << "{." << main_hash_table->name_of(id) << ": projector_" << position
      @| << '('  << type << ") }"; }
-expression_base::level projector_value::argument_policy() const
-  {@; return expression_base::single_value; }
+eval_level projector_value::argument_policy() const
+  {@; return eval_level::single_value; }
 void projector_value::report_origin(std::ostream& o) const
  {@; o << "projector defined " << loc; }
 
@@ -4672,7 +4672,7 @@ selecting our component from it, then hand it to |push_expanded| to place the
 component back on the stack, according to the policy |l| requested from us.
 
 @< Function def... @>=
-void projector_value::apply(expression_base::level l) const
+void projector_value::apply(eval_level l) const
 {@; push_expanded(l,get<tuple_value>()->val[position]); }
 
 @ When a projector is found in the global overload table (as is almost always
@@ -4739,8 +4739,8 @@ struct injector_value : public function_base
   : type(t.copy()),position(i),id(id),loc(loc) @+ {}
   virtual ~injector_value() = default;
   virtual void print(std::ostream& out) const;
-  virtual void apply(expression_base::level l) const;
-  virtual expression_base::level argument_policy() const;
+  virtual void apply(eval_level l) const;
+  virtual eval_level argument_policy() const;
   virtual void report_origin(std::ostream& o) const;
   virtual expression_ptr build_call
     (const shared_function& master,const std::string& name,
@@ -4760,8 +4760,8 @@ components.
 void injector_value::print(std::ostream& out) const
   { out << "{."<< main_hash_table->name_of(id) << ": injector_" << position
      @| << '(' << type << ") }"; }
-expression_base::level injector_value::argument_policy() const
-  {@; return expression_base::single_value; }
+eval_level injector_value::argument_policy() const
+  {@; return eval_level::single_value; }
 void injector_value::report_origin(std::ostream& o) const
  {@; o << "injector defined " << loc; }
 
@@ -4769,7 +4769,7 @@ void injector_value::report_origin(std::ostream& o) const
 the proper tag (number), and then push that to the stack again.
 
 @< Function def... @>=
-void injector_value::apply(expression_base::level l) const
+void injector_value::apply(eval_level l) const
 { shared_value component = pop_value();
   push_value(std::make_shared<union_value>(position,std::move(component),id));
 }
@@ -5739,7 +5739,7 @@ case do_expr:
 break;
 
 @ The evaluation of a |do_expression| is somewhat special in that whether it
-places a value on the runtime stack (assuming that |l!=no_value|) depends on
+places a value on the runtime stack (assuming that |l!=level::no_value|) depends on
 the outcome of evaluation the condition. Nonetheless the definition is very
 simple. The only subtle point is to postpone setting |while_condition_result|
 to the end of the evaluation, since the call |body->evaluate(l)| may clobber
@@ -5796,7 +5796,7 @@ interrupt may be vital.
 @< Function definitions @>=
 template<unsigned flags>
 void while_expression<flags>::evaluate(level l) const
-{ if (l==no_value)
+{ if (l==level::no_value)
   { try
     { do
       { body->void_eval();
@@ -6181,7 +6181,7 @@ void for_expression<flags,kind>::evaluate(level l) const
   catch (loop_break& err)
   { if (err.depth-- > 0)
       throw;
-    if (l!=no_value)
+    if (l!=level::no_value)
     { if (out_reversed(flags))
         // doing \&{break} in reverse-gathering loop requires a shift
         dst=std::move(dst,result->val.end(),result->val.begin());
@@ -6191,7 +6191,7 @@ void for_expression<flags,kind>::evaluate(level l) const
     }
   }
 
-  if (l!=no_value)
+  if (l!=level::no_value)
     push_value(std::move(result));
 }
 
@@ -6297,7 +6297,7 @@ direction attributes.
 
 @< Define loop index |i|, allocate |result| and initialise iterator |dst| @>=
 size_t i= in_forward(flags) ? 0 : n;
-if (l!=no_value)
+if (l!=level::no_value)
 { result = std::make_shared<row_value>(n);
   dst = out_forward(flags) ? result->val.begin() : result->val.end();
 }
@@ -6339,7 +6339,7 @@ these things properly handled, the evaluation of the loop body is standard.
   frame fr (pattern);
   fr.bind(loop_var);
   try {
-    if (l==no_value)
+    if (l==level::no_value)
       body->void_eval();
     else
     {@; body->eval();
@@ -6362,14 +6362,14 @@ encountered during an iteration; therefore we must check after iteration whether
 the expected number of items was copied into |result|. These checks are
 independent of the traversal direction, so it is outside the conditional on
 |in_forward(flags)| (the checks have to test |out_forward(flags)| instead).
-These checks are conditional on |l!=no_value| however, since otherwise |result|
+These checks are conditional on |l!=level::no_value| however, since otherwise |result|
 still holds a null (shared) pointer and the test would crash.
 
 @h "atlas-types.h"
 @< Perform a loop over the terms of a $K$-type polynomial @>=
 { shared_K_type_pol pol_val = get<K_type_pol_value>();
   size_t n=pol_val->val.size(); // an upper bound for the number of nonzero terms
-  if (l!=no_value)
+  if (l!=level::no_value)
   { result = std::make_shared<row_value>(n);
     dst = out_forward(flags) ? result->val.begin() : result->val.end();
   }
@@ -6395,7 +6395,7 @@ still holds a null (shared) pointer and the test would crash.
     @< Catch block for reporting iteration number within loop over
        terms in a $K$-type polynomial @>
   }
-  if (l!=no_value)
+  if (l!=level::no_value)
     @< Adjust |result| in case loop produced fewer items that predicted @>
 }
 
@@ -6423,7 +6423,7 @@ catch (error_base& e)
   frame fr(pattern);
   fr.bind(loop_var);
   try {
-    if (l==no_value)
+    if (l==level::no_value)
       body->void_eval();
     else
     {@; body->eval();
@@ -6461,7 +6461,7 @@ predicted (from |pol_val->val.size()|) before the loop started.
 @< Perform a loop over the terms of a virtual module @>=
 { shared_virtual_module pol_val = get<virtual_module_value>();
   size_t n=pol_val->val.size();
-  if (l!=no_value)
+  if (l!=level::no_value)
   { result = std::make_shared<row_value>(n);
     dst = out_forward(flags) ? result->val.begin() : result->val.end();
   }
@@ -6511,7 +6511,7 @@ catch (error_base& e)
   frame fr(pattern);
   fr.bind(loop_var);
   try {
-    if (l==no_value)
+    if (l==level::no_value)
       body->void_eval();
     else
     {@; body->eval();
@@ -6709,7 +6709,7 @@ void counted_for_expression<flags>::evaluate(level l) const
   if (has_frame(flags)) // then loop uses index
   { long long int b=lwb;
     id_pat pattern(id);
-    if (l==no_value)
+    if (l==level::no_value)
       @< Perform counted loop that uses an index, without storing result,
          doing |c| iterations with lower bound |b| @>
     else
@@ -6717,7 +6717,7 @@ void counted_for_expression<flags>::evaluate(level l) const
          |execution_stack|,
          doing |c| iterations with lower bound |b| @>
   }
-  else if (l==no_value)
+  else if (l==level::no_value)
     @< Perform counted loop without index and no value @>
   else
     @< Perform counted loop without index producing a value @>
@@ -7856,7 +7856,7 @@ public:
   global_component_assignment
     (id_type a,expression_ptr&& i,expression_ptr&& r,
      subscr_base::sub_type k);
-  virtual void evaluate(expression_base::level l) const;
+  virtual void evaluate(eval_level l) const;
 };
 @)
 template <bool reversed>
@@ -7870,7 +7870,7 @@ public:
     (id_type a, expression_ptr&& i,expression_ptr&& r,
     const shared_builtin& fun,
     const std::string& name, const source_location& loc);
-  virtual void evaluate(expression_base::level l) const;
+  virtual void evaluate(eval_level l) const;
 };
 @)
 class global_field_assignment : public field_assignment
@@ -7878,7 +7878,7 @@ class global_field_assignment : public field_assignment
 public:
   global_field_assignment
     (id_type a, unsigned pos,id_type id,expression_ptr&& r);
-  virtual void evaluate(expression_base::level l) const;
+  virtual void evaluate(eval_level l) const;
 };
 @)
 class global_field_transform : public field_transform
@@ -7887,7 +7887,7 @@ public:
   global_field_transform (id_type a, unsigned pos,id_type id,expression_ptr&& r,
     const shared_builtin& fun,
     const std::string& name, const source_location& loc);
-  virtual void evaluate(expression_base::level l) const;
+  virtual void evaluate(eval_level l) const;
 };
 
 @ The constructor for |global_component_assignment| stores the address of the
@@ -7935,7 +7935,7 @@ of a possible undefined value in the variable.
 
 @< Function def... @>=
 template <bool reversed>
-void global_component_assignment<reversed>::evaluate(expression_base::level l)
+void global_component_assignment<reversed>::evaluate(eval_level l)
   const
 { if (address->get()==nullptr)
   { std::ostringstream o;
@@ -7947,7 +7947,7 @@ void global_component_assignment<reversed>::evaluate(expression_base::level l)
 }
 @)
 template <bool reversed>
-void global_component_transform<reversed>::evaluate(expression_base::level l)
+void global_component_transform<reversed>::evaluate(eval_level l)
   const
 { if (address->get()==nullptr)
   { std::ostringstream o;
@@ -7958,7 +7958,7 @@ void global_component_transform<reversed>::evaluate(expression_base::level l)
   base::transform(l,*address);
 }
 @)
-void global_field_assignment::evaluate(expression_base::level l) const
+void global_field_assignment::evaluate(eval_level l) const
 { if (address->get()==nullptr)
   { std::ostringstream o;
     o << "Assigning to field of uninitialized variable " @|
@@ -7968,7 +7968,7 @@ void global_field_assignment::evaluate(expression_base::level l) const
   assign(l,*address); // call method from base class (not called |base| here)
 }
 @)
-void global_field_transform::evaluate(expression_base::level l) const
+void global_field_transform::evaluate(eval_level l) const
 { if (address->get()==nullptr)
   { std::ostringstream o;
     o << "Transforming field of uninitialized variable " @|
@@ -7993,7 +7993,7 @@ public:
   local_component_assignment @|
    (id_type arr, expression_ptr&& i,size_t d, size_t o,
     expression_ptr&& r, subscr_base::sub_type k);
-  virtual void evaluate(expression_base::level l) const;
+  virtual void evaluate(eval_level l) const;
 };
 @)
 template <bool reversed>
@@ -8006,7 +8006,7 @@ public:
    (id_type arr, expression_ptr&& i,size_t d, size_t o, expression_ptr&& r,
     const shared_builtin& fun,
     const std::string& name, const source_location& loc);
-  virtual void evaluate(expression_base::level l) const;
+  virtual void evaluate(eval_level l) const;
 };
 @)
 class local_field_assignment : public field_assignment
@@ -8014,7 +8014,7 @@ class local_field_assignment : public field_assignment
 public:
   local_field_assignment
     (id_type a, unsigned pos,id_type id,size_t d, size_t o, expression_ptr&& r);
-  virtual void evaluate(expression_base::level l) const;
+  virtual void evaluate(eval_level l) const;
 };
 @)
 class local_field_transform : public field_transform
@@ -8024,7 +8024,7 @@ public:
     (id_type a, unsigned pos,id_type id,size_t d, size_t o, expression_ptr&& r,
     const shared_builtin& fun,
     const std::string& name, const source_location& loc);
-  virtual void evaluate(expression_base::level l) const;
+  virtual void evaluate(eval_level l) const;
 };
 
 @ The constructors for these structures are all quite straightforward, in
@@ -8059,19 +8059,19 @@ then |assign| or |transform| does its job.
 
 @< Function def... @>=
 template <bool reversed>
-void local_component_assignment<reversed>::evaluate(expression_base::level l)
+void local_component_assignment<reversed>::evaluate(eval_level l)
   const
 {@; base::assign (l,frame::current->elem(depth,offset),kind); }
 @)
 template <bool reversed>
-void local_component_transform<reversed>::evaluate(expression_base::level l)
+void local_component_transform<reversed>::evaluate(eval_level l)
   const
 {@; base::transform (l,frame::current->elem(depth,offset)); }
 @)
-void local_field_assignment::evaluate(expression_base::level l) const
+void local_field_assignment::evaluate(eval_level l) const
 {@; assign (l,frame::current->elem(depth,offset)); }
 @)
-void local_field_transform::evaluate(expression_base::level l) const
+void local_field_transform::evaluate(eval_level l) const
 {@; transform (l,frame::current->elem(depth,offset)); }
 
 @ The |assign| method, which will also be called for local component
@@ -8210,7 +8210,7 @@ have exactly two arguments, and that they are already placed on the
   }
 @)
   try
-  {@; (*f_ptr)(expression_base::single_value); } // call the built-in function
+  {@; (*f_ptr)(eval_level::single_value); } // call the built-in function
   catch (error_base& e)
   {@; extend_message(e,name,loc,f,arg_string);
     throw;
@@ -8237,7 +8237,7 @@ value of the component assignment expression is not used.
   v[reversed ? n-1-i : i] =
   // assign |int| extracted from stack top without popping
     force<int_value>(execution_stack.back().get())->int_val();
-  if (lev==no_value)
+  if (lev==level::no_value)
     execution_stack.pop_back(); // pop it anyway if result not needed
 }
 
@@ -8260,7 +8260,7 @@ indices, and there are two bound checks.
   m(reversed ? k-1-i : i,reversed ? l-1-j : j)=
     // assign |int| from un-popped top
     force<int_value>(execution_stack.back().get())->int_val();
-  if (lev==no_value)
+  if (lev==level::no_value)
     execution_stack.pop_back(); // pop it anyway if result not needed
 }
 
@@ -8282,7 +8282,7 @@ addition a necessary test for matching column length of the vector assigned.
        " by one of size "+str(v.size()));
   m.set_column(reversed ? l-j-1 : j,v);
     // copy value of |int_Vector| into the matrix
-  if (lev==no_value)
+  if (lev==level::no_value)
     execution_stack.pop_back(); // pop the vector if result not needed
 }
 
@@ -8297,7 +8297,7 @@ remove it if the value of the component assignment expression is not used.
   auto* pol = uniquify<K_type_pol_value>(aggregate);
   const auto& top = force<split_int_value>(execution_stack.back().get());
   pol->assign_coef(*t,top->val);
-  if (lev==no_value)
+  if (lev==level::no_value)
     execution_stack.pop_back(); // pop the vector if result not needed
 }
 
@@ -8312,7 +8312,7 @@ one are hidden in the respective |assign_coef| methods.
   auto* pol = uniquify<virtual_module_value>(aggregate);
   const auto& top = force<split_int_value>(execution_stack.back().get());
   pol->assign_coef(*t,top->val);
-  if (lev==no_value)
+  if (lev==level::no_value)
     execution_stack.pop_back(); // pop the vector if result not needed
 }
 
@@ -8989,10 +8989,10 @@ is a wrapper function there is no other way to convey the output stream to be
 used than via a dedicated global variable.
 
 @< Local function definitions @>=
-void print_wrapper(expression_base::level l)
+void print_wrapper(eval_level l)
 {
   *output_stream << *execution_stack.back() << std::endl;
-  if (l!=expression_base::single_value) // in |single_value| case we are done
+  if (l!=eval_level::single_value) // in |single_value| case we are done
     push_expanded(l,pop_value()); // otherwise remove and possibly expand value
 }
 
@@ -9005,7 +9005,7 @@ applies. The function |error| does the same, but collects the output into a
 string which it then throws as |runtime_error|.
 
 @< Local function definitions @>=
-std::ostream& to_string_aux(std::ostream& o, expression_base::level l)
+std::ostream& to_string_aux(std::ostream& o, eval_level l)
 { shared_value v=pop_value();
 @)
   const string_value* s=dynamic_cast<const string_value*>(v.get());
@@ -9028,20 +9028,20 @@ std::ostream& to_string_aux(std::ostream& o, expression_base::level l)
   return o;
 }
 
-void to_string_wrapper(expression_base::level l)
+void to_string_wrapper(eval_level l)
 { std::ostringstream o;
   to_string_aux(o,l);
-  if (l!=expression_base::no_value)
+  if (l!=eval_level::no_value)
     push_value(std::make_shared<string_value>(o.str()));
 }
 
-void prints_wrapper(expression_base::level l)
+void prints_wrapper(eval_level l)
 { to_string_aux(*output_stream,l) << std::endl;
-  if (l==expression_base::single_value)
+  if (l==eval_level::single_value)
     wrap_tuple<0>(); // don't forget to return a value if asked for
 }
 
-void error_wrapper(expression_base::level l)
+void error_wrapper(eval_level l)
 @/{@; std::ostringstream o;
   to_string_aux(o,l);
   throw runtime_error(o.str());
@@ -9053,9 +9053,9 @@ value. Finding sizes of other objects like vectors, matrices, polynomials,
 will require more specialised unary overloads of the `\#' operator.
 
 @< Local function definitions @>=
-void sizeof_wrapper(expression_base::level l)
+void sizeof_wrapper(eval_level l)
 { size_t s=get<row_value>()->val.size();
-  if (l!=expression_base::no_value)
+  if (l!=eval_level::no_value)
     push_value(std::make_shared<int_value>(s));
 }
 
@@ -9078,28 +9078,28 @@ function does not attempt to gain any ownership and just builds a fresh value.
 @:hash wrappers@>
 
 @< Local function definitions @>=
-void suffix_element_wrapper(expression_base::level l)
+void suffix_element_wrapper(eval_level l)
 { shared_value e=pop_value();
   own_row r=get_own<row_value>();
-  if (l!=expression_base::no_value)
+  if (l!=eval_level::no_value)
   {@; r->val.push_back(std::move(e));
     push_value(std::move(r));
   }
 }
 @)
-void prefix_element_wrapper(expression_base::level l)
+void prefix_element_wrapper(eval_level l)
 { own_row r=get_own<row_value>();
   shared_value e=pop_value();
-  if (l!=expression_base::no_value)
+  if (l!=eval_level::no_value)
   {@; r->val.insert(r->val.begin(),e);
     push_value(std::move(r));
   }
 }
 @)
-void join_rows_wrapper(expression_base::level l)
+void join_rows_wrapper(eval_level l)
 { shared_row second=get<row_value>();
   shared_row first=get<row_value>();
-  if (l==expression_base::no_value)
+  if (l==eval_level::no_value)
     return;
   const auto& x=first->val;
   const auto& y=second->val;
@@ -9110,9 +9110,9 @@ void join_rows_wrapper(expression_base::level l)
 }
 
 @)
-void join_rows_row_wrapper(expression_base::level l)
+void join_rows_row_wrapper(eval_level l)
 { shared_row arg=get<row_value>();
-  if (l==expression_base::no_value)
+  if (l==eval_level::no_value)
     return;
   const std::vector<shared_value>& x=arg->val;
   std::vector< const std::vector<shared_value>*> p; p.reserve(x.size());
@@ -9131,9 +9131,9 @@ void join_rows_row_wrapper(expression_base::level l)
 
 @ Finally we define the Boolean negation wrapper function.
 @< Local function definitions @>=
-void bool_not_wrapper(expression_base::level l)
+void bool_not_wrapper(eval_level l)
 { bool b=get<bool_value>()->val;
-  if (l!=expression_base::no_value)
+  if (l!=eval_level::no_value)
     push_value(whether(not b));
 }
 @)

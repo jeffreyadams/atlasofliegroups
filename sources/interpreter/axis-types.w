@@ -2443,6 +2443,7 @@ cases, |shared_expression| values will be used.
 @< Type declarations @>=
 struct expr; // abstract syntax tree representation, see \.{parsetree.w}
 struct expression_base; // executable expression
+enum class eval_level : unsigned;
 using expression = expression_base*;
 using expression_ptr = std::unique_ptr<const expression_base>;
 using shared_expression = std::shared_ptr<const expression_base>;
@@ -2457,8 +2458,9 @@ result is expected to be ``expanded'' on the runtime stack in case it is of a
 tuple type.
 
 @< Type definitions @>=
+enum class eval_level : unsigned @+{ no_value, single_value, multi_value };
 struct expression_base
-{ enum level @+{ no_value, single_value, multi_value };
+{ using level = eval_level;
 @)
   expression_base() @+ {}
   expression_base(const expression_base&) = delete; // they are never copied
@@ -2470,9 +2472,9 @@ struct expression_base
   virtual void evaluate(level l) const =0;
   virtual void print(std::ostream& out) const =0;
 @)// non-virtuals that call the virtual |evaluate|
-  void void_eval() const @+{@; evaluate(no_value); }
-  void eval() const @+{@; evaluate(single_value); }
-  void multi_eval() const @+{@; evaluate(multi_value); }
+  void void_eval() const @+{@; evaluate(eval_level::no_value); }
+  void eval() const @+{@; evaluate(eval_level::single_value); }
+  void multi_eval() const @+{@; evaluate(eval_level::multi_value); }
 };
 
 @ Like for values, we can assure right away that printing converted
@@ -2532,8 +2534,8 @@ to explicitly let it give up its ``share'' of an existing shared pointer in
 passing it to |push_expanded|, by invoking |std::move| on the argument.
 
 @< Declarations of exported functions @>=
-void push_expanded(expression_base::level l, const shared_value& v);
-void push_expanded(expression_base::level l, shared_value&& v);
+void push_expanded(eval_level l, const shared_value& v);
+void push_expanded(eval_level l, shared_value&& v);
 
 @~Type information is not retained in compiled expression values, so
 |push_expanded| cannot know which type had been found for |v| (moreover,
@@ -2542,10 +2544,10 @@ determined at \.{atlas} compile time). But it can use a dynamic
 cast do determine whether |v| actually is a tuple value or not.
 
 @< Function definitions @>=
-void push_expanded(expression_base::level l, const shared_value& v)
-{ if (l==expression_base::single_value)
+void push_expanded(eval_level l, const shared_value& v)
+{ if (l==eval_level::single_value)
     push_value(v);
-  else if (l==expression_base::multi_value)
+  else if (l==eval_level::multi_value)
   { shared_tuple p = std::dynamic_pointer_cast<const tuple_value>(v);
     if (p==nullptr)
       push_value(v);
@@ -2553,12 +2555,12 @@ void push_expanded(expression_base::level l, const shared_value& v)
       for (size_t i=0; i<p->length(); ++i)
         push_value(p->val[i]); // push components, copying shared pointers
   }
-} // if |l==expression_base::no_value| then do nothing
+} // if |l==eval_level::no_value| then do nothing
 @)
-void push_expanded(expression_base::level l, shared_value&& v)
-{ if (l==expression_base::single_value)
+void push_expanded(eval_level l, shared_value&& v)
+{ if (l==eval_level::single_value)
     push_value(std::move(v));
-  else if (l==expression_base::multi_value)
+  else if (l==eval_level::multi_value)
   { shared_tuple p = std::dynamic_pointer_cast<const tuple_value>(v);
     if (p==nullptr)
       push_value(std::move(v));
@@ -2571,7 +2573,7 @@ void push_expanded(expression_base::level l, shared_value&& v)
       for (size_t i=0; i<p->length(); ++i)
         push_value(p->val[i]); // push components, copying shared pointers
   }
-} // if |l==expression_base::no_value| then do nothing
+} // if |l==eval_level::no_value| then do nothing
 
 @* Some useful function templates.
 %
@@ -2945,7 +2947,7 @@ void conversion::evaluate(level l) const
 { exp->eval();
   try {@; (*conversion_type.convert)(); }
   @< Catch block for failing implicit conversion @>
-  if (l==no_value)
+  if (l==level::no_value)
     execution_stack.pop_back();
 }
 @)
@@ -3034,7 +3036,7 @@ entire conditional.
 At runtime, voiding is mostly taken care of by the |level| argument~|l| passed
 around in the evaluation mechanism. Any subexpressions with imposed void type,
 like the expression before the semicolon in a sequence expression, will get
-their |evaluate| method called with |l==no_value|, which suppresses the
+their |evaluate| method called with |l==level::no_value|, which suppresses the
 production of any value on the |execution_stack|. This setting will be
 inherited down to for instance the branches, if the subexpression was a
 conditional, so nothing special needs to be done to ensure that branches which
@@ -3047,7 +3049,7 @@ be produced (and in the example, assigned) where none was intended.
 
 The |voiding| expression type serves that purpose. It distinguishes itself
 from instances of |conversion|, in that |voiding::evaluate| calls |evaluate|
-for the contained expression with |l==no_value|, rather than with
+for the contained expression with |l==level::no_value|, rather than with
 |l==single_value| as |conversion::evaluate| does. If fact that is about all
 that |voiding| is about.
 
@@ -3071,7 +3073,7 @@ production of a value to be voided being avoided upstream, it is a no-op.
 @< Function definitions @>=
 void voiding::evaluate(level l) const
 @+{@; exp->void_eval();
-  if (l==single_value)
+  if (l==level::single_value)
     wrap_tuple<0>();
 }
 @)
@@ -3094,9 +3096,9 @@ perform no action in that case, although it would seem safer to, ans we used to
 do, wrap the result in a |voiding| in this case to ensure no value will be left
 on the runtime stack during evaluation. However as argued above, in most such
 cases no runtime action is actually needed, since the context will have already
-set |l==no_value| for subexpressions with void type. In not providing any
+set |l==level::no_value| for subexpressions with void type. In not providing any
 |voiding| here, we have moved responsibility to type analysis, which must now
-ensure that any subexpression with void type will have |l==no_value| when
+ensure that any subexpression with void type will have |l==level::no_value| when
 evaluated. This means that in some cases a |voiding| will have to be inserted
 explicitly. This crops up in many places (for instance a component in a tuple
 display just might happen to have void type), but almost all such cases are

@@ -486,7 +486,7 @@ new line of input, or abandons the program in case none can be obtained.
 last_value = shared_value (new tuple_value(0));
 last_type = void_type.copy();
  // |last_type| is a |type_ptr| defined in \.{axis.w}
-elapsed_wrapper(expression_base::no_value); // start the stopwatch
+elapsed_wrapper(eval_level::no_value); // start the stopwatch
 @)
 while (ana.prime())
   // get a fresh line for lexical analyser, or quit loop
@@ -592,7 +592,7 @@ for (auto it=prelude_filenames.begin(); it!=prelude_filenames.end(); ++it )
     else
     { try
       { expression_ptr e; type_expr found_type=analyse_types(*parse_tree,e);
-        e->evaluate(expression_base::single_value);
+        e->evaluate(eval_level::single_value);
         if (found_type!=void_type)
           log_stream << "Value: " << *pop_value() << '\n';
         else
