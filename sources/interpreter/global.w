@@ -2576,7 +2576,7 @@ typedef void (* wrapper_function)(expression_base::level);
 facilitate the later repetitive task of installing wrapper functions.
 
 @< Declarations of exported functions @>=
-struct function_base; // a class that |builtin_value<false>| derives from
+struct function_base; // a class that |builtin| derives from
 struct special_builtin; // must predeclare, we have not seen \.{axis.h} here
 std::shared_ptr<function_base> install_function
  (wrapper_function f,@|const char*name, const char* type_string,
@@ -2603,7 +2603,7 @@ std::shared_ptr<function_base> install_function
     throw logic_error
      ("Built-in with non-function type: "+print_name.str());
   print_name << '@@' << type->func()->arg_type;
-  auto val = std::make_shared<builtin_value<false> >(f,print_name.str(),hunger);
+  auto val = std::make_shared<builtin>(f,print_name.str(),hunger);
   global_overload_table->add
     (main_hash_table->match_literal(name),val,std::move(*type));
   return val;
@@ -2906,28 +2906,38 @@ void vec_to_bitset_wrapper(expression_base::level l)
 @ While installing the integer functions, we shall make some automatic rewriting
 be performed using the |special_builtin| magic. The data stored in those objects
 involve a pointer to a function that recognises and possibly rewrites converted
-argument expressions to these built-in functions. These functions are very
-specific to the built-in in question.
+argument expressions to these built-in functions, and a built-in function and
+source location that can be used in the rewriting process.
 
-Here we define some of these functions, to be used for the installation of
-special integer functions. The function |negate_denotation| turns expressions
-like |-3| into denotations (with negative value) rather than a applications of
-the unary minus, and the others help to turn |-1-n| into ${\sim}{n}$ (bitwise
-complement), respectively to turn |n+1| into |succ(n)| and |n-1| into |pred(n)|.
-These functions use dynamic casts on |expression| pointer values to test for
-certain argument patterns.
+While these functions are usually very specific to the built-in function whose
+call we are compiling, this is not so for our first such function,
+|fold_constant|, which can be used with almost any built-in function to ensure
+that it is evaluated at compile time in case the argument is a denotation; our
+first instance of thus will ensure that an expressions like |-7| is treated as
+the denotation of a negative number, rather than invoke the runtime negation of
+a positive number. In calling this function, the argument |f| should refer to
+the built-in whose call we are handling itself. The actual work is performed by
+|do_builtin| defined in \.{axis.w}.
+
+and for which. Our first application will
 
 @< Local function definitions @>=
-expression_ptr negate_denotation
-  (expression_ptr& arg,const shared_builtin&,const source_location& loc)
-{ auto a = dynamic_cast<const denotation*>(arg.get());
-  if (a!=nullptr)
-  { auto v = force<int_value>(a->denoted_value.get());
-    return expression_ptr(new denotation(std::make_shared<int_value>(-v->val)));
-  }
-  return nullptr; // signal that we made no substitution
+expression_ptr fold_constant
+  (expression_ptr& args,const shared_builtin& f,const source_location& loc)
+{
+  if (do_builtin(args,f->val,loc))
+    return std::move(args); // |args| was modified by |do_builtin|
+  return nullptr;
 }
-@)
+
+@ Here we define some more functions to be used for the installation of special
+integer functions. Using dynamic casts on |expression| pointer values to test
+for certain argument patterns, these help to turn |n+1| into |succ(n)| and |n-1|
+into |pred(n)|, respectively to turn |-1-n| into ${\sim}{n}$ (bitwise
+complement). In particular |f| will correspond to a different built-in function
+(e.g., |succ|) than mentioned in the original function call expression.
+
+@< Local function definitions @>=
 expression_ptr rhs_is_1
   (expression_ptr& args,const shared_builtin& f,const source_location& loc)
 { auto t = dynamic_cast<const tuple_expression*>(args.get());
@@ -2962,40 +2972,56 @@ expression_ptr lhs_is_minus_1
 @ Here is some special install code. We install the successor and
 predecessor functions before addition, subtraction, and bitwise complement,
 so that special cases of the latter may revert to the uses of the
-former ones. The |negate_denotation| optimisation does not return a function
-call at all, so unary minus can be handled all on its own.
-
+former ones.
 
 @< Initialise... @>=
 { auto p = install_special_function(unary_minus_wrapper,"-","(int->int)",3);
-  p->tests.emplace_back(negate_denotation,nullptr);
+  p->tests.emplace_back(fold_constant,p);
 }
 { auto p = install_function(successor_wrapper,"succ","(int->int)",3);
   shared_builtin succ_val = std::static_pointer_cast<builtin>(p);
   auto q = install_special_function(plus_wrapper,"+","(int,int->int)",1);
+  q->tests.emplace_back(fold_constant,q);
   q->tests.emplace_back(rhs_is_1,succ_val);
 }
 { auto p = install_function(predecessor_wrapper,"pred","(int->int)",3);
   shared_builtin pred_val = std::static_pointer_cast<builtin>(p);
-  auto b = install_function(bitwise_complement_wrapper,"~","(int->int)",3);
+  auto b = install_special_function(bitwise_complement_wrapper,"~","(int->int)",3);
+  b->tests.emplace_back(fold_constant,b);
   shared_builtin bc_val = std::static_pointer_cast<builtin>(b);
   auto q = install_special_function(minus_wrapper,"-","(int,int->int)",1);
+  q->tests.emplace_back(fold_constant,q);
   q->tests.emplace_back(rhs_is_1,pred_val);
   q->tests.emplace_back(lhs_is_minus_1,bc_val);
 }
-install_function(times_wrapper,"*","(int,int->int)");
-install_function(divide_wrapper,"\\","(int,int->int)",1);
-install_function(modulo_wrapper,"%","(int,int->int)",1);
-install_function(divmod_wrapper,"\\%","(int,int->int,int)",1);
-install_function(power_wrapper,"^","(int,int->int)");
-install_function(and_wrapper,"AND","(int,int->int)",1);
-install_function(or_wrapper,"OR","(int,int->int)",1);
-install_function(xor_wrapper,"XOR","(int,int->int)",1);
-install_function(and_not_wrapper,"AND_NOT","(int,int->int)",1);
-install_function(bitwise_subset_wrapper,"bitwise_subset","(int,int->bool)");
-install_function(nth_set_bit_wrapper,"nth_set_bit","(int,int->int)");
-install_function(bit_length_wrapper,"bit_length","(int->int)");
-install_function(vec_to_bitset_wrapper,"to_bitset","(vec->int)");
+{
+  auto p = install_special_function(times_wrapper,"*","(int,int->int)");
+  p->tests.emplace_back(fold_constant,p);
+@/p = install_special_function(divide_wrapper,"\\","(int,int->int)",1);
+  p->tests.emplace_back(fold_constant,p);
+@/p = install_special_function(modulo_wrapper,"%","(int,int->int)",1);
+  p->tests.emplace_back(fold_constant,p);
+@/p = install_special_function(divmod_wrapper,"\\%","(int,int->int,int)",1);
+  p->tests.emplace_back(fold_constant,p);
+@/p = install_special_function(power_wrapper,"^","(int,int->int)");
+  p->tests.emplace_back(fold_constant,p);
+@)
+@/p = install_special_function(and_wrapper,"AND","(int,int->int)",1);
+  p->tests.emplace_back(fold_constant,p);
+@/p = install_special_function(or_wrapper,"OR","(int,int->int)",1);
+  p->tests.emplace_back(fold_constant,p);
+@/p = install_special_function(xor_wrapper,"XOR","(int,int->int)",1);
+  p->tests.emplace_back(fold_constant,p);
+@/p = install_special_function(and_not_wrapper,"AND_NOT","(int,int->int)",1);
+  p->tests.emplace_back(fold_constant,p);
+  install_function(bitwise_subset_wrapper,"bitwise_subset","(int,int->bool)");
+  p = install_special_function(nth_set_bit_wrapper,"nth_set_bit","(int,int->int)");
+  p->tests.emplace_back(fold_constant,p);
+@/p = install_special_function(bit_length_wrapper,"bit_length","(int->int)");
+  p->tests.emplace_back(fold_constant,p);
+@/p = install_special_function(vec_to_bitset_wrapper,"to_bitset","(vec->int)");
+  p->tests.emplace_back(fold_constant,p);
+}
 
 @*1 Rationals.
 %
@@ -3242,55 +3268,57 @@ expression_ptr lhs_is_1
   return nullptr; // signal that we made no substitution
 }
 
-@ Another special case we want to treat for the division operator between two
-integers, producing a rational number, is when the argument pair is itself a
-constant. This function could be used for other built-in operations as well, and
-in each case the argument |f| should refer to that built-in itself. These
-functions will not be variadic, and so expect their arguments (if there is more
-than one) expanded on the execution stack, we call |push_expanded| with
-|multi_value| to so unpack any tuple value held in the denotation.
-
-@< Local function definitions @>=
-expression_ptr fold_constant
-  (expression_ptr& args,const shared_builtin& f,const source_location& loc)
-{
-  if (do_builtin(args,f->val,loc))
-    return std::move(args);
-  return nullptr;
-}
-
 @ As said we rewrite expressions $1/n$ as $/n$. We could also do some constant
 folding here, introducing ``rational number denotations''. The denotation
 expression type can already handle this, and can indeed handle constant values
 of any type as it already does for the ``previous value computed'' expression.
 
 @< Initialise... @>=
-{ auto p = install_function(int_inverse_wrapper,"/","(int->rat)");
+{ auto p = install_special_function(int_inverse_wrapper,"/","(int->rat)");
+  p->tests.emplace_back(fold_constant,p);
   shared_builtin inv_val = std::static_pointer_cast<builtin>(p);
   auto q = install_special_function(fraction_wrapper,"/","(int,int->rat)");
-  shared_builtin div_val = std::static_pointer_cast<builtin>(q);
-  q->tests.emplace_back(fold_constant,div_val);
+  q->tests.emplace_back(fold_constant,q);
   q->tests.emplace_back(lhs_is_1,inv_val);
+@)
+@/p = install_special_function(unfraction_wrapper,"%","(rat->int,int)");
+   // ``break open''
+  p->tests.emplace_back(fold_constant,p);
+@/p = install_special_function(rat_plus_int_wrapper,"+","(rat,int->rat)",1);
+  p->tests.emplace_back(fold_constant,p);
+@/p = install_special_function(rat_minus_int_wrapper,"-","(rat,int->rat)",1);
+  p->tests.emplace_back(fold_constant,p);
+@/p = install_special_function(rat_times_int_wrapper,"*","(rat,int->rat)",1);
+  p->tests.emplace_back(fold_constant,p);
+@/p = install_special_function(rat_divide_int_wrapper,"/","(rat,int->rat)",1);
+  p->tests.emplace_back(fold_constant,p);
+@/p = install_special_function(rat_quotient_int_wrapper,"\\","(rat,int->int)");
+  p->tests.emplace_back(fold_constant,p);
+@/p = install_special_function(rat_modulo_int_wrapper,"%","(rat,int->rat)",1);
+  p->tests.emplace_back(fold_constant,p);
+@/p = install_special_function(rat_plus_wrapper,"+","(rat,rat->rat)");
+  p->tests.emplace_back(fold_constant,p);
+@/p = install_special_function(rat_minus_wrapper,"-","(rat,rat->rat)");
+  p->tests.emplace_back(fold_constant,p);
+@/p = install_special_function(rat_times_wrapper,"*","(rat,rat->rat)",1);
+  p->tests.emplace_back(fold_constant,p);
+@/p = install_special_function(rat_divide_wrapper,"/","(rat,rat->rat)",1);
+  p->tests.emplace_back(fold_constant,p);
+@/p = install_special_function(rat_modulo_wrapper,"%","(rat,rat->rat)");
+  p->tests.emplace_back(fold_constant,p);
+@/p = install_special_function(rat_unary_minus_wrapper,"-","(rat->rat)",3);
+  p->tests.emplace_back(fold_constant,p);
+@/p = install_special_function(rat_inverse_wrapper,"/","(rat->rat)",3);
+  p->tests.emplace_back(fold_constant,p);
+@/p = install_special_function(rat_floor_wrapper,"floor","(rat->int)");
+  p->tests.emplace_back(fold_constant,p);
+@/p = install_special_function(rat_ceil_wrapper,"ceil","(rat->int)");
+  p->tests.emplace_back(fold_constant,p);
+@/p = install_special_function(rat_frac_wrapper,"frac","(rat->rat)",3);
+  p->tests.emplace_back(fold_constant,p);
+@/p = install_special_function(rat_power_wrapper,"^","(rat,int->rat)");
+  p->tests.emplace_back(fold_constant,p);
 }
-install_function(unfraction_wrapper,"%","(rat->int,int)");
-   // unary \% means ``break open''
-install_function(rat_plus_int_wrapper,"+","(rat,int->rat)",1);
-install_function(rat_minus_int_wrapper,"-","(rat,int->rat)",1);
-install_function(rat_times_int_wrapper,"*","(rat,int->rat)",1);
-install_function(rat_divide_int_wrapper,"/","(rat,int->rat)",1);
-install_function(rat_quotient_int_wrapper,"\\","(rat,int->int)");
-install_function(rat_modulo_int_wrapper,"%","(rat,int->rat)",1);
-install_function(rat_plus_wrapper,"+","(rat,rat->rat)");
-install_function(rat_minus_wrapper,"-","(rat,rat->rat)");
-install_function(rat_times_wrapper,"*","(rat,rat->rat)",1);
-install_function(rat_divide_wrapper,"/","(rat,rat->rat)",1);
-install_function(rat_modulo_wrapper,"%","(rat,rat->rat)");
-install_function(rat_unary_minus_wrapper,"-","(rat->rat)",3);
-install_function(rat_inverse_wrapper,"/","(rat->rat)",3);
-install_function(rat_floor_wrapper,"floor","(rat->int)");
-install_function(rat_ceil_wrapper,"ceil","(rat->int)");
-install_function(rat_frac_wrapper,"frac","(rat->rat)",3);
-install_function(rat_power_wrapper,"^","(rat,int->rat)");
 
 @*1 Booleans.
 %
@@ -3497,36 +3525,37 @@ expression_ptr rhs_is_0
   shared_builtin eq_val = std::static_pointer_cast<builtin>(p);
   auto q = install_special_function(int_eq_wrapper,"=","(int,int->bool)");
   q->tests.emplace_back(rhs_is_0,eq_val);
-  p = install_function(int_unary_neq_wrapper,"!=","(int->bool)");
+@/p = install_function(int_unary_neq_wrapper,"!=","(int->bool)");
   shared_builtin neq_val = std::static_pointer_cast<builtin>(p);
   q = install_special_function(int_neq_wrapper,"!=","(int,int->bool)");
   q->tests.emplace_back(rhs_is_0,neq_val);
-  p = install_function(int_non_negative_wrapper,">=","(int->bool)");
+@/p = install_function(int_non_negative_wrapper,">=","(int->bool)");
   shared_builtin geq_val = std::static_pointer_cast<builtin>(p);
   q = install_special_function(int_greatereq_wrapper,">=","(int,int->bool)");
   q->tests.emplace_back(rhs_is_0,geq_val);
-  p = install_function(int_positive_wrapper,">","(int->bool)");
+@/p = install_function(int_positive_wrapper,">","(int->bool)");
   shared_builtin gt_val = std::static_pointer_cast<builtin>(p);
   q = install_special_function(int_greater_wrapper,">","(int,int->bool)");
   q->tests.emplace_back(rhs_is_0,gt_val);
-  p = install_function(int_non_positive_wrapper,"<=","(int->bool)");
+@/p = install_function(int_non_positive_wrapper,"<=","(int->bool)");
   shared_builtin leq_val = std::static_pointer_cast<builtin>(p);
   q = install_special_function(int_lesseq_wrapper,"<=","(int,int->bool)");
   q->tests.emplace_back(rhs_is_0,leq_val);
-  p = install_function(int_negative_wrapper,"<","(int->bool)");
+@/p = install_function(int_negative_wrapper,"<","(int->bool)");
   shared_builtin lt_val = std::static_pointer_cast<builtin>(p);
   q = install_special_function(int_less_wrapper,"<","(int,int->bool)");
   q->tests.emplace_back(rhs_is_0,lt_val);
 }
 
-@ We take a breath, and then do the same stuff for the rationals. Since a zero
-right hand side will be implicitly converted to rational, our test for such a
-right hand side must be ``rationalised'' first. But the code below won't be
-effective unless the implicit conversion has produced a denotation with a
+@ We take a breath, and then do the same stuff for the rationals. Our test for a
+zero right hand side must be ``rationalised'' first. But the code also depends
+on the fact that such a right hand side ``0'' appears as a denotation with a
 rational value stored in it, rather than an integer denotation wrapped in a
-conversion to rational (which would necessitate more elaborate testing here); in
-other words, unless we did constant folding for this kind of implicit
-conversion.
+conversion to rational (which would necessitate more elaborate testing here),
+due to constant folding. Indeed the present optimisation was what motivated
+implementing constant folding for implicit conversions, which was done even
+before many arithmetic operations that we have already seen above would
+implement constant folding.
 
 @< Local function definitions @>=
 expression_ptr rhs_is_rat0
@@ -3545,29 +3574,30 @@ expression_ptr rhs_is_rat0
   return nullptr; // signal that we made no substitution
 }
 
-@
+@ So with what was said above, this becomes very similar to installation of the
+integer comparisons.
 @< Initialise... @>=
 { auto p = install_function(rat_unary_eq_wrapper,"=","(rat->bool)");
   shared_builtin eq_val = std::static_pointer_cast<builtin>(p);
   auto q = install_special_function(rat_eq_wrapper,"=","(rat,rat->bool)");
   q->tests.emplace_back(rhs_is_rat0,eq_val);
-  p = install_function(rat_unary_neq_wrapper,"!=","(rat->bool)");
+@/p = install_function(rat_unary_neq_wrapper,"!=","(rat->bool)");
   shared_builtin neq_val = std::static_pointer_cast<builtin>(p);
   q = install_special_function(rat_neq_wrapper,"!=","(rat,rat->bool)");
   q->tests.emplace_back(rhs_is_rat0,neq_val);
-  p = install_function(rat_non_negative_wrapper,">=","(rat->bool)");
+@/p = install_function(rat_non_negative_wrapper,">=","(rat->bool)");
   shared_builtin geq_val = std::static_pointer_cast<builtin>(p);
   q = install_special_function(rat_greatereq_wrapper,">=","(rat,rat->bool)");
   q->tests.emplace_back(rhs_is_rat0,geq_val);
-  p = install_function(rat_positive_wrapper,">","(rat->bool)");
+@/p = install_function(rat_positive_wrapper,">","(rat->bool)");
   shared_builtin gt_val = std::static_pointer_cast<builtin>(p);
   q = install_special_function(rat_greater_wrapper,">","(rat,rat->bool)");
   q->tests.emplace_back(rhs_is_rat0,gt_val);
-  p = install_function(rat_non_positive_wrapper,"<=","(rat->bool)");
+@/p = install_function(rat_non_positive_wrapper,"<=","(rat->bool)");
   shared_builtin leq_val = std::static_pointer_cast<builtin>(p);
   q = install_special_function(rat_lesseq_wrapper,"<=","(rat,rat->bool)");
   q->tests.emplace_back(rhs_is_rat0,leq_val);
-  p = install_function(rat_negative_wrapper,"<","(rat->bool)");
+@/p = install_function(rat_negative_wrapper,"<","(rat->bool)");
   shared_builtin lt_val = std::static_pointer_cast<builtin>(p);
   q = install_special_function(rat_less_wrapper,"<","(rat,rat->bool)");
   q->tests.emplace_back(rhs_is_rat0,lt_val);
@@ -3705,6 +3735,58 @@ void readline_completions_wrapper(expression_base::level l)
     result->val.push_back(std::make_shared<string_value>(s));
   push_value(std::move(result));
 }
+
+@ We shall make some optimisations for testing explicitly against an empty
+string.
+@< Local function definitions @>=
+expression_ptr rhs_is_empty
+  (expression_ptr& args,const shared_builtin& f,const source_location& loc)
+{ auto t = dynamic_cast<const tuple_expression*>(args.get());
+  if (t!=nullptr and t->component.size()==2)
+  { auto a = dynamic_cast<const denotation*>(t->component[1].get());
+    if (a!=nullptr)
+    { auto v = force<string_value>(a->denoted_value.get());
+      if (v->val.empty())
+      { auto& arg0 = const_cast<expression_ptr&>(t->component[0]);
+        return f->build_call(f,f->print_name,std::move(arg0),loc);
+      }
+    }
+  }
+  return nullptr; // signal that we made no substitution
+}
+
+
+@ We must not forget to install what we have defined.
+
+@< Initialise... @>=
+{ auto p = install_function(string_unary_eq_wrapper,"=","(string->bool)");
+  shared_builtin eq_val = std::static_pointer_cast<builtin>(p);
+  auto q =
+    install_special_function(string_eq_wrapper,"=","(string,string->bool)");
+  q->tests.emplace_back(rhs_is_empty,eq_val);
+@/p = install_function(string_unary_neq_wrapper,"!=","(string->bool)");
+  shared_builtin neq_val = std::static_pointer_cast<builtin>(p);
+  q = install_special_function(string_neq_wrapper,"!=","(string,string->bool)");
+  q->tests.emplace_back(rhs_is_empty,neq_val);
+}
+install_function(string_less_wrapper,"<","(string,string->bool)");
+install_function(string_leq_wrapper,"<=","(string,string->bool)");
+install_function(string_greater_wrapper,">","(string,string->bool)");
+install_function(string_geq_wrapper,">=","(string,string->bool)");
+{ auto p = install_special_function
+           (string_concatenate_wrapper,"##","(string,string->string)",1);
+  p->tests.emplace_back(fold_constant,p);
+@/p = install_special_function
+      (concatenate_strings_wrapper,"##","([string]->string)");
+  p->tests.emplace_back(fold_constant,p);
+@/p = install_special_function
+      (string_to_ascii_wrapper,"ascii","(string->int)");
+  p->tests.emplace_back(fold_constant,p);
+@/p = install_special_function(ascii_char_wrapper,"ascii","(int->string)");
+  p->tests.emplace_back(fold_constant,p);
+}
+install_function(readline_completions_wrapper,@|"readline_completions",
+   "(string->[string])");
 
 @*1 Special instances of size-of and other generic operators.
 %
@@ -4476,21 +4558,6 @@ void rvm_prod_wrapper(expression_base::level l)
 @ We must not forget to install what we have defined.
 
 @< Initialise... @>=
-install_function(inequiv_wrapper,"!=","(bool,bool->bool)");
-install_function(string_unary_eq_wrapper,"=","(string->bool)");
-install_function(string_unary_neq_wrapper,"!=","(string->bool)");
-install_function(string_eq_wrapper,"=","(string,string->bool)");
-install_function(string_neq_wrapper,"!=","(string,string->bool)");
-install_function(string_less_wrapper,"<","(string,string->bool)");
-install_function(string_leq_wrapper,"<=","(string,string->bool)");
-install_function(string_greater_wrapper,">","(string,string->bool)");
-install_function(string_geq_wrapper,">=","(string,string->bool)");
-install_function(string_concatenate_wrapper,"##","(string,string->string)",1);
-install_function(concatenate_strings_wrapper,"##","([string]->string)");
-install_function(string_to_ascii_wrapper,"ascii","(string->int)");
-install_function(ascii_char_wrapper,"ascii","(int->string)");
-install_function(readline_completions_wrapper,@|"readline_completions",
-   "(string->[string])");
 install_function(sizeof_string_wrapper,"#","(string->int)");
 install_function(sizeof_vector_wrapper,"#","(vec->int)");
 install_function(sizeof_ratvec_wrapper,"#","(ratvec->int)");
