@@ -55,12 +55,13 @@ set contragredient(KGBElt x, ratvec lambda) = (KGBElt, ratvec):
     let p = contragredient(parameter(x,lambda,0*lambda))
     in (p.x, p.lambda)
 
+{cheating with x.number means list has repetitions; tries to add to KGB(SU(p,q) KGBElts for SU(q,p)}
 set isotwistKGBs(KGBElt x) = [KGBElt]:
     let G = x.real_form, theta = x.involution, tf = x.torus_factor, rd = x.root_datum
     {then p = parameter(x,G.rho, G.rho)
     then dp = p.dual}
-    then twists = all_even_lambda_differential_0(rd.dual, -theta.^)
-    in for tau in twists do KGB_elt(G, theta, tf + tau) od
+    then twists = all_even_lambda_differential_0(rd.dual, -theta.^), X = KGB(G)
+    in for tau in twists do X[KGB_elt(rd, theta, tf + tau).number] od
 
 set spherical_xs(RealForm G) = [KGBElt]:
     let real_rank = rank(x_open(G).involution + 1)
