@@ -2569,13 +2569,18 @@ The following function will greatly facilitate the later repetitive task of
 installing wrapper functions. The basic |install_function| returns a shared
 pointer to constant |builtin|, since we don't need to change anything there
 after installation, but |install_special_builtin| does give non-|const| access
-to the object just created.
+to the object just created. The function |install_folding_function| will be a
+version of |install_special_builtin| that already installs a constant-folding
+compile time adaptation.
 
 @< Declarations of exported functions @>=
 shared_builtin install_function
  (wrapper_function f,@|const char*name, const char* type_string,
   unsigned char hunger=0);
 std::shared_ptr<special_builtin> install_special_function
+ (wrapper_function f,@|const char*name, const char* type_string,
+  unsigned char hunger=0);
+std::shared_ptr<special_builtin> install_folding_function
  (wrapper_function f,@|const char*name, const char* type_string,
   unsigned char hunger=0);
 
@@ -2913,8 +2918,6 @@ a positive number. In calling this function, the argument |f| should refer to
 the built-in whose call we are handling itself. The actual work is performed by
 |do_builtin| defined in \.{axis.w}.
 
-and for which. Our first application will
-
 @< Local function definitions @>=
 expression_ptr fold_constant
   (expression_ptr& args,const shared_builtin& f,const source_location& loc)
@@ -2923,6 +2926,21 @@ expression_ptr fold_constant
     return std::move(args); // |args| was modified by |do_builtin|
   return nullptr;
 }
+
+@ Since the argument |f| of |fold_constant| should coincide with the special
+function into which this function is installed, we define a function that will
+make that call after invoking |install_special_function|.
+
+@< Global function def... @>=
+std::shared_ptr<special_builtin> install_folding_function
+ (wrapper_function f,const char*name, const char* type_string,
+  unsigned char hunger)
+{ std::shared_ptr<special_builtin> p =
+    install_special_function(f,name,type_string,hunger);
+  p->tests.emplace_back(fold_constant,p);
+  return p;
+}
+
 
 @ Here we define some more functions to be used for the installation of special
 integer functions. Using dynamic casts on |expression| pointer values to test
@@ -2969,51 +2987,31 @@ so that special cases of the latter may revert to the uses of the
 former ones.
 
 @< Initialise... @>=
-{ auto p = install_special_function(unary_minus_wrapper,"-","(int->int)",3);
-  p->tests.emplace_back(fold_constant,p);
-}
+install_folding_function(unary_minus_wrapper,"-","(int->int)",3);
 { auto succ_val = install_function(successor_wrapper,"succ","(int->int)",3);
-  auto q = install_special_function(plus_wrapper,"+","(int,int->int)",1);
-  q->tests.emplace_back(fold_constant,q);
+  auto q = install_folding_function(plus_wrapper,"+","(int,int->int)",1);
   q->tests.emplace_back(rhs_is_1,succ_val);
 }
 { auto pred_val = install_function(predecessor_wrapper,"pred","(int->int)",3);
-  auto b = install_special_function
+  auto b = install_folding_function
            (bitwise_complement_wrapper,"~","(int->int)",3);
-  b->tests.emplace_back(fold_constant,b);
-  auto q = install_special_function(minus_wrapper,"-","(int,int->int)",1);
-  q->tests.emplace_back(fold_constant,q);
+  auto q = install_folding_function(minus_wrapper,"-","(int,int->int)",1);
   q->tests.emplace_back(rhs_is_1,pred_val);
   q->tests.emplace_back(lhs_is_minus_1,b);
 }
-{
-  auto p = install_special_function(times_wrapper,"*","(int,int->int)");
-  p->tests.emplace_back(fold_constant,p);
-@/p = install_special_function(divide_wrapper,"\\","(int,int->int)",1);
-  p->tests.emplace_back(fold_constant,p);
-@/p = install_special_function(modulo_wrapper,"%","(int,int->int)",1);
-  p->tests.emplace_back(fold_constant,p);
-@/p = install_special_function(divmod_wrapper,"\\%","(int,int->int,int)",1);
-  p->tests.emplace_back(fold_constant,p);
-@/p = install_special_function(power_wrapper,"^","(int,int->int)");
-  p->tests.emplace_back(fold_constant,p);
-@)
-@/p = install_special_function(and_wrapper,"AND","(int,int->int)",1);
-  p->tests.emplace_back(fold_constant,p);
-@/p = install_special_function(or_wrapper,"OR","(int,int->int)",1);
-  p->tests.emplace_back(fold_constant,p);
-@/p = install_special_function(xor_wrapper,"XOR","(int,int->int)",1);
-  p->tests.emplace_back(fold_constant,p);
-@/p = install_special_function(and_not_wrapper,"AND_NOT","(int,int->int)",1);
-  p->tests.emplace_back(fold_constant,p);
-  install_function(bitwise_subset_wrapper,"bitwise_subset","(int,int->bool)");
-  p = install_special_function(nth_set_bit_wrapper,"nth_set_bit","(int,int->int)");
-  p->tests.emplace_back(fold_constant,p);
-@/p = install_special_function(bit_length_wrapper,"bit_length","(int->int)");
-  p->tests.emplace_back(fold_constant,p);
-@/p = install_special_function(vec_to_bitset_wrapper,"to_bitset","(vec->int)");
-  p->tests.emplace_back(fold_constant,p);
-}
+install_folding_function(times_wrapper,"*","(int,int->int)");
+install_folding_function(divide_wrapper,"\\","(int,int->int)",1);
+install_folding_function(modulo_wrapper,"%","(int,int->int)",1);
+install_folding_function(divmod_wrapper,"\\%","(int,int->int,int)",1);
+install_folding_function(power_wrapper,"^","(int,int->int)");
+install_folding_function(and_wrapper,"AND","(int,int->int)",1);
+install_folding_function(or_wrapper,"OR","(int,int->int)",1);
+install_folding_function(xor_wrapper,"XOR","(int,int->int)",1);
+install_folding_function(and_not_wrapper,"AND_NOT","(int,int->int)",1);
+install_function(bitwise_subset_wrapper,"bitwise_subset","(int,int->bool)");
+install_folding_function(nth_set_bit_wrapper,"nth_set_bit","(int,int->int)");
+install_folding_function(bit_length_wrapper,"bit_length","(int->int)");
+install_folding_function(vec_to_bitset_wrapper,"to_bitset","(vec->int)");
 
 @*1 Rationals.
 %
@@ -3266,50 +3264,29 @@ expression type can already handle this, and can indeed handle constant values
 of any type as it already does for the ``previous value computed'' expression.
 
 @< Initialise... @>=
-{ auto p = install_special_function(int_inverse_wrapper,"/","(int->rat)");
-  p->tests.emplace_back(fold_constant,p);
-  shared_builtin inv_val = std::static_pointer_cast<builtin>(p);
-  auto q = install_special_function(fraction_wrapper,"/","(int,int->rat)");
-  q->tests.emplace_back(fold_constant,q);
-  q->tests.emplace_back(lhs_is_1,inv_val);
+{ auto p = install_folding_function(int_inverse_wrapper,"/","(int->rat)");
+  auto q = install_folding_function(fraction_wrapper,"/","(int,int->rat)");
+  q->tests.emplace_back(lhs_is_1,p);
 @)
-@/p = install_special_function(unfraction_wrapper,"%","(rat->int,int)");
+install_folding_function(unfraction_wrapper,"%","(rat->int,int)");
    // ``break open''
-  p->tests.emplace_back(fold_constant,p);
-@/p = install_special_function(rat_plus_int_wrapper,"+","(rat,int->rat)",1);
-  p->tests.emplace_back(fold_constant,p);
-@/p = install_special_function(rat_minus_int_wrapper,"-","(rat,int->rat)",1);
-  p->tests.emplace_back(fold_constant,p);
-@/p = install_special_function(rat_times_int_wrapper,"*","(rat,int->rat)",1);
-  p->tests.emplace_back(fold_constant,p);
-@/p = install_special_function(rat_divide_int_wrapper,"/","(rat,int->rat)",1);
-  p->tests.emplace_back(fold_constant,p);
-@/p = install_special_function(rat_quotient_int_wrapper,"\\","(rat,int->int)");
-  p->tests.emplace_back(fold_constant,p);
-@/p = install_special_function(rat_modulo_int_wrapper,"%","(rat,int->rat)",1);
-  p->tests.emplace_back(fold_constant,p);
-@/p = install_special_function(rat_plus_wrapper,"+","(rat,rat->rat)");
-  p->tests.emplace_back(fold_constant,p);
-@/p = install_special_function(rat_minus_wrapper,"-","(rat,rat->rat)");
-  p->tests.emplace_back(fold_constant,p);
-@/p = install_special_function(rat_times_wrapper,"*","(rat,rat->rat)",1);
-  p->tests.emplace_back(fold_constant,p);
-@/p = install_special_function(rat_divide_wrapper,"/","(rat,rat->rat)",1);
-  p->tests.emplace_back(fold_constant,p);
-@/p = install_special_function(rat_modulo_wrapper,"%","(rat,rat->rat)");
-  p->tests.emplace_back(fold_constant,p);
-@/p = install_special_function(rat_unary_minus_wrapper,"-","(rat->rat)",3);
-  p->tests.emplace_back(fold_constant,p);
-@/p = install_special_function(rat_inverse_wrapper,"/","(rat->rat)",3);
-  p->tests.emplace_back(fold_constant,p);
-@/p = install_special_function(rat_floor_wrapper,"floor","(rat->int)");
-  p->tests.emplace_back(fold_constant,p);
-@/p = install_special_function(rat_ceil_wrapper,"ceil","(rat->int)");
-  p->tests.emplace_back(fold_constant,p);
-@/p = install_special_function(rat_frac_wrapper,"frac","(rat->rat)",3);
-  p->tests.emplace_back(fold_constant,p);
-@/p = install_special_function(rat_power_wrapper,"^","(rat,int->rat)");
-  p->tests.emplace_back(fold_constant,p);
+install_folding_function(rat_plus_int_wrapper,"+","(rat,int->rat)",1);
+install_folding_function(rat_minus_int_wrapper,"-","(rat,int->rat)",1);
+install_folding_function(rat_times_int_wrapper,"*","(rat,int->rat)",1);
+install_folding_function(rat_divide_int_wrapper,"/","(rat,int->rat)",1);
+install_folding_function(rat_quotient_int_wrapper,"\\","(rat,int->int)");
+install_folding_function(rat_modulo_int_wrapper,"%","(rat,int->rat)",1);
+install_folding_function(rat_plus_wrapper,"+","(rat,rat->rat)");
+install_folding_function(rat_minus_wrapper,"-","(rat,rat->rat)");
+install_folding_function(rat_times_wrapper,"*","(rat,rat->rat)",1);
+install_folding_function(rat_divide_wrapper,"/","(rat,rat->rat)",1);
+install_folding_function(rat_modulo_wrapper,"%","(rat,rat->rat)");
+install_folding_function(rat_unary_minus_wrapper,"-","(rat->rat)",3);
+install_folding_function(rat_inverse_wrapper,"/","(rat->rat)",3);
+install_folding_function(rat_floor_wrapper,"floor","(rat->int)");
+install_folding_function(rat_ceil_wrapper,"ceil","(rat->int)");
+install_folding_function(rat_frac_wrapper,"frac","(rat->rat)",3);
+install_folding_function(rat_power_wrapper,"^","(rat,int->rat)");
 }
 
 @*1 Booleans.
@@ -3736,7 +3713,7 @@ expression_ptr rhs_is_empty
 }
 
 
-@ We must not forget to install what we have defined.
+@ We must not forget to install what we have defined for strings.
 
 @< Initialise... @>=
 { auto p = install_function(string_unary_eq_wrapper,"=","(string->bool)");
@@ -3751,18 +3728,11 @@ install_function(string_less_wrapper,"<","(string,string->bool)");
 install_function(string_leq_wrapper,"<=","(string,string->bool)");
 install_function(string_greater_wrapper,">","(string,string->bool)");
 install_function(string_geq_wrapper,">=","(string,string->bool)");
-{ auto p = install_special_function
-           (string_concatenate_wrapper,"##","(string,string->string)",1);
-  p->tests.emplace_back(fold_constant,p);
-@/p = install_special_function
-      (concatenate_strings_wrapper,"##","([string]->string)");
-  p->tests.emplace_back(fold_constant,p);
-@/p = install_special_function
-      (string_to_ascii_wrapper,"ascii","(string->int)");
-  p->tests.emplace_back(fold_constant,p);
-@/p = install_special_function(ascii_char_wrapper,"ascii","(int->string)");
-  p->tests.emplace_back(fold_constant,p);
-}
+install_folding_function(string_concatenate_wrapper,@|"##",
+  "(string,string->string)",1);
+install_folding_function(concatenate_strings_wrapper,"##","([string]->string)");
+install_folding_function (string_to_ascii_wrapper,"ascii","(string->int)");
+install_folding_function(ascii_char_wrapper,"ascii","(int->string)");
 install_function(readline_completions_wrapper,@|"readline_completions",
    "(string->[string])");
 
@@ -4542,13 +4512,13 @@ install_function(sizeof_ratvec_wrapper,"#","(ratvec->int)");
 install_function(matrix_ncols_wrapper,"#","(mat->int)");
 install_function(vector_suffix_wrapper,"#","(vec,int->vec)",1);
 install_function(vector_prefix_wrapper,"#","(int,vec->vec)",2);
-install_function(join_vectors_wrapper,"##","(vec,vec->vec)",1);
-install_function(join_vector_row_wrapper,"##","([vec]->vec)");
+install_folding_function(join_vectors_wrapper,"##","(vec,vec->vec)",1);
+install_folding_function(join_vector_row_wrapper,"##","([vec]->vec)");
 install_function(matrix_shape_wrapper,"shape","(mat->int,int)");
 install_function(matrix_row_wrapper,"row","(mat,int->vec)");
 install_function(matrix_column_wrapper,"column","(mat,int->vec)");
 install_function(rows_wrapper,"rows","(mat->[vec])");
-install_function(columns_wrapper,"columns","(mat->[vec])");
+install_folding_function(columns_wrapper,"columns","(mat->[vec])");
 install_function(vec_unary_eq_wrapper,"=","(vec->bool)");
 install_function(vec_unary_neq_wrapper,"!=","(vec->bool)");
 install_function(vec_eq_wrapper,"=","(vec,vec->bool)");
@@ -4565,37 +4535,37 @@ install_function(mat_unary_eq_wrapper,"=","(mat->bool)");
 install_function(mat_unary_neq_wrapper,"!=","(mat->bool)");
 install_function(mat_eq_wrapper,"=","(mat,mat->bool)");
 install_function(mat_neq_wrapper,"!=","(mat,mat->bool)");
-install_function(vec_plus_wrapper,"+","(vec,vec->vec)",1);
-install_function(vec_minus_wrapper,"-","(vec,vec->vec)",1);
-install_function(vec_unary_minus_wrapper,"-","(vec->vec)",3);
-install_function(vec_times_int_wrapper,"*","(vec,int->vec)",1);
-install_function(vec_divide_int_wrapper,"\\","(vec,int->vec)",1);
-install_function(vec_modulo_int_wrapper,"%","(vec,int->vec)",1);
-install_function(vector_div_wrapper,"/","(vec,int->ratvec)");
-install_function(ratvec_unfraction_wrapper,"%","(ratvec->vec,int)");
-install_function(ratvec_plus_wrapper,"+","(ratvec,ratvec->ratvec)",1);
-install_function(ratvec_minus_wrapper,"-","(ratvec,ratvec->ratvec)",1);
-install_function(ratvec_unary_minus_wrapper,"-","(ratvec->ratvec)",3);
-install_function(ratvec_times_int_wrapper,"*","(ratvec,int->ratvec)",1);
-install_function(ratvec_divide_int_wrapper,"/","(ratvec,int->ratvec)",1);
-install_function(ratvec_modulo_int_wrapper,"%","(ratvec,int->ratvec)",1);
-install_function(ratvec_times_rat_wrapper,"*","(ratvec,rat->ratvec)",1);
-install_function(ratvec_divide_rat_wrapper,"/","(ratvec,rat->ratvec)",1);
-install_function(mat_plus_int_wrapper,"+","(mat,int->mat)",1);
-install_function(mat_minus_int_wrapper,"-","(mat,int->mat)",1);
-install_function(int_plus_mat_wrapper,"+","(int,mat->mat)",2);
-install_function(int_minus_mat_wrapper,"-","(int,mat->mat)",2);
+install_folding_function(vec_plus_wrapper,"+","(vec,vec->vec)",1);
+install_folding_function(vec_minus_wrapper,"-","(vec,vec->vec)",1);
+install_folding_function(vec_unary_minus_wrapper,"-","(vec->vec)",3);
+install_folding_function(vec_times_int_wrapper,"*","(vec,int->vec)",1);
+install_folding_function(vec_divide_int_wrapper,"\\","(vec,int->vec)",1);
+install_folding_function(vec_modulo_int_wrapper,"%","(vec,int->vec)",1);
+install_folding_function(vector_div_wrapper,"/","(vec,int->ratvec)");
+install_folding_function(ratvec_unfraction_wrapper,"%","(ratvec->vec,int)");
+install_folding_function(ratvec_plus_wrapper,"+","(ratvec,ratvec->ratvec)",1);
+install_folding_function(ratvec_minus_wrapper,"-","(ratvec,ratvec->ratvec)",1);
+install_folding_function(ratvec_unary_minus_wrapper,"-","(ratvec->ratvec)",3);
+install_folding_function(ratvec_times_int_wrapper,"*","(ratvec,int->ratvec)",1);
+install_folding_function(ratvec_divide_int_wrapper,"/","(ratvec,int->ratvec)",1);
+install_folding_function(ratvec_modulo_int_wrapper,"%","(ratvec,int->ratvec)",1);
+install_folding_function(ratvec_times_rat_wrapper,"*","(ratvec,rat->ratvec)",1);
+install_folding_function(ratvec_divide_rat_wrapper,"/","(ratvec,rat->ratvec)",1);
+install_folding_function(mat_plus_int_wrapper,"+","(mat,int->mat)",1);
+install_folding_function(mat_minus_int_wrapper,"-","(mat,int->mat)",1);
+install_folding_function(int_plus_mat_wrapper,"+","(int,mat->mat)",2);
+install_folding_function(int_minus_mat_wrapper,"-","(int,mat->mat)",2);
 install_function(vv_prod_wrapper,"*","(vec,vec->int)");
-install_function(flex_add_wrapper,"flex_add","(vec,vec->vec)",1);
-install_function(flex_sub_wrapper,"flex_sub","(vec,vec->vec)",1);
-install_function(vector_convolve_wrapper,"convolve","(vec,vec->vec)",1);
-install_function(mat_plus_mat_wrapper,"+","(mat,mat->mat)",1);
-install_function(mat_minus_mat_wrapper,"-","(mat,mat->mat)",1);
-install_function(mrv_prod_wrapper,"*","(mat,ratvec->ratvec)");
-install_function(mv_prod_wrapper,"*","(mat,vec->vec)");
-install_function(mm_prod_wrapper,"*","(mat,mat->mat)");
-install_function(vm_prod_wrapper,"*","(vec,mat->vec)");
-install_function(rvm_prod_wrapper,"*","(ratvec,mat->ratvec)");
+install_folding_function(flex_add_wrapper,"flex_add","(vec,vec->vec)",1);
+install_folding_function(flex_sub_wrapper,"flex_sub","(vec,vec->vec)",1);
+install_folding_function(vector_convolve_wrapper,"convolve","(vec,vec->vec)",1);
+install_folding_function(mat_plus_mat_wrapper,"+","(mat,mat->mat)",1);
+install_folding_function(mat_minus_mat_wrapper,"-","(mat,mat->mat)",1);
+install_folding_function(mrv_prod_wrapper,"*","(mat,ratvec->ratvec)");
+install_folding_function(mv_prod_wrapper,"*","(mat,vec->vec)");
+install_folding_function(mm_prod_wrapper,"*","(mat,mat->mat)");
+install_folding_function(vm_prod_wrapper,"*","(vec,mat->vec)");
+install_folding_function(rvm_prod_wrapper,"*","(ratvec,mat->ratvec)");
 
 @*1 Other wrapper functions for vectors and matrices.
 %
@@ -5327,21 +5297,20 @@ from the parser to implement certain syntax, but which the user cannot access,
 and therefore cannot redefine or forget.
 
 @< Initialise... @>=
-install_function(null_vec_wrapper,"null","(int->vec)");
-install_function(null_mat_wrapper,"null","(int,int->mat)");
-install_function(transpose_vec_wrapper,"^","(vec->mat)");
-install_function(transpose_mat_wrapper,"^","(mat->mat)",3);
-  // install as operator
-install_function(transpose_mat_wrapper,@|"transpose ","(mat->mat)");
+install_folding_function(null_vec_wrapper,"null","(int->vec)");
+install_folding_function(null_mat_wrapper,"null","(int,int->mat)");
+install_folding_function(transpose_vec_wrapper,"^","(vec->mat)");
+install_folding_function(transpose_mat_wrapper,"^","(mat->mat)",3);
+install_folding_function(transpose_mat_wrapper,@|"transpose ","(mat->mat)");
   // use of space in the name makes this copy untouchable
-install_function(id_mat_wrapper,"id_mat","(int->mat)");
-install_function(diagonal_wrapper,"diagonal","(vec->mat)");
-install_function(stack_rows_wrapper,"stack_rows","([vec]->mat)");
-install_function(combine_columns_wrapper,"#","(int,[vec]->mat)");
-install_function(combine_rows_wrapper,"^","(int,[vec]->mat)");
-install_function(swiss_matrix_knife_wrapper,@|"swiss_matrix_knife"
+install_folding_function(id_mat_wrapper,"id_mat","(int->mat)");
+install_folding_function(diagonal_wrapper,"diagonal","(vec->mat)");
+install_folding_function(stack_rows_wrapper,"stack_rows","([vec]->mat)");
+install_folding_function(combine_columns_wrapper,"#","(int,[vec]->mat)");
+install_folding_function(combine_rows_wrapper,"^","(int,[vec]->mat)");
+install_folding_function(swiss_matrix_knife_wrapper,@|"swiss_matrix_knife"
     ,"(int,mat,int,int,int,int->mat)");
-install_function(swiss_matrix_knife_wrapper,@|"matrix slicer"
+install_folding_function(swiss_matrix_knife_wrapper,@|"matrix slicer"
     ,"(int,mat,int,int,int,int->mat)"); // space make an untouchable copy
 @)
 install_function(gcd_wrapper,"gcd","(vec->int)");
@@ -5392,7 +5361,7 @@ void elapsed_wrapper(eval_level l)
 install_function(elapsed_wrapper,"elapsed_ms","(->int)");
 
 @* Index.
-
+v
 % Local IspellDict: british
 
 % LocalWords:  introw
