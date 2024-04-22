@@ -1046,8 +1046,10 @@ set local_test_GEO_hash_real_dumb(KGBElt x, ratvec lambda, VertexData vd, Vertex
     then maxDiffLoc = max_loc(for v in Lvd.list
     	 	       	       do G.two_rho_check*(dominant(G,thetaMinus*v))
 			       od)
+    then ()=prints("maxDiffLoc (1): ", maxDiffLoc, "/","#Lvd.list: ", #Lvd.list) 
     then pmax = first_param(finalize(parameter(x, lambda, Lvd.list[maxDiffLoc]))),
     	 r = rank(x.involution - 1)
+    then ()=prints("pmax (1) =", pmax) 
     then test_hts = [int]:
     	 if number(pmax.x) < NK*low_KGB_frac
 	 then []
@@ -1566,7 +1568,9 @@ set local_test_GEO_hash(KGBElt x, ratvec lambda, VertexData vd, VertexData Lvd,
     in [Param]: let maxDiffLoc = max_loc(for v in Lvd.list
     	 	       		    do G.two_rho_check*(dominant(G,thetaMinus*v))
 		       		    od)
+                then ()=prints("maxDiffLoc (2): ", maxDiffLoc, "/","#Lvd.list: ", #Lvd.list)
     	      	then pmax = parameter(x, lambda, Lvd.list[maxDiffLoc])
+                then ()=prints("pmax (2) =", pmax) 
 		then Shorthts = if short_hts_flag then short_hts(pmax)
 		     	      	else next_heights(pmax,depth)
 				fi
@@ -1645,7 +1649,13 @@ KTypePol_hash pol_hash, Param_hash Uhash, int more_shift) = [Param]:
     then maxDiffLoc = max_loc(for v in {Lvd.list} LF[0]  {see david davidEmail4.20.24}
     	 	             do G.two_rho_check*(dominant(G,thetaMinus*v))
 		             od)
-    then hts =[int]: let pmax = parameter(x, lambda, Lvd.list[maxDiffLoc])
+    then ()=prints("maxDiffLoc (3): ", maxDiffLoc, "/","#Lvd.list: ", #Lvd.list)
+    then hts =[int]: let maxDiffLoc = max_loc(for v in Lvd.list
+    	 	             do G.two_rho_check*(dominant(G,thetaMinus*v))
+		             od)
+                     then ()=prints("maxDiffLoc (4): ", maxDiffLoc, "/","#Lvd.list: ", #Lvd.list)
+    		     then pmax = parameter(x, lambda, Lvd.list[maxDiffLoc])
+                                                          then ()=prints("pmax (4) =", pmax) 
     		     then Shorthts = if short_hts_flag then short_hts(pmax)
 		     	      	     else next_heights(pmax,depth)
 				     fi
@@ -1749,7 +1759,8 @@ KTypePol_hash pol_hash, Param_hash Uhash, int more_shift) = [Param]:
     in local_test_hash(x, lambda, Lvd, LFDKH, eq, gr, CLBF, Uhash, (Param->bool): (Param p) bool:
     if  DiffList[maxDiffLoc] < to_ht_frac*(Lvd.list[LFDKH[0][maxDiffLoc][0]])*G.two_rho_check
        {term on left guaranteed <= main term on right. If close, then params are close to spherical princ series, and to_ht is fast}
-       then is_unitary_hash(p) {small nu compared to infl char, unitary_to_ht is slow}
+       then let ()=prints("term on left (2): ", maxDiffLoc, " ", #DiffList) in
+ is_unitary_hash(p) {small nu compared to infl char, unitary_to_ht is slow}
     else
        is_unitary_test(p,next_heights(pmin,steps)) {large nu compared to infl char, unitary_to_ht is fast}
     fi)
@@ -1853,7 +1864,9 @@ set local_test_GEO_hash_one_level(KGBElt x, ratvec lambda, VertexData vd,
     then maxDiffLoc = max_loc(for v in Lvd.list
     	 	       	      do G.two_rho_check*(dominant(G,thetaMinus*v))
 		       	      od)
+    then ()=prints("maxDiffLoc (5): ", maxDiffLoc, "/","#Lvd.list: ", #Lvd.list)
     then pmax = parameter(x, lambda, Lvd.list[maxDiffLoc])
+                    then ()=prints("pmax (5) =", pmax) 
     then Shorthts = if short_hts_flag
     	 	    then short_hts(pmax)
 		    else next_heights(pmax,max(depth, LAST+1))
@@ -2123,7 +2136,9 @@ set local_test_GEO_hash_bottom_layer(KGBElt x, ratvec lambda, VertexData vd,
     then maxDiffLoc = max_loc(for w in LF[0]
     	 	       	      do G.two_rho_check*(dominant(G,thetaMinus*Lvd.list[w[0]]))
 		       	      od)
+    then ()=prints("maxDiffLoc (6): ", maxDiffLoc, "/","#Lvd.list: ", #Lvd.list)
     then pmin = parameter(x, lambda, Lvd.list[LF[0][0][0]] )
+                    then ()=prints("pMIN (6) =", pmin) 
     then (Q0, pminL0) = theta_stable_quasi_data(pmin)
     then L0 = Q0.Levi
     then () = if (x.involution - 1).= {is_abelian(L0)}
@@ -2290,7 +2305,8 @@ set local_test_GEO_hash_bottom_layer(KGBElt x, ratvec lambda, VertexData vd,
     in local_test_hash(x, lambda, Lvd, LFDKH, eq, gr, CLBF, Uhash, (Param->bool): (Param p) bool:
     if  DiffList[maxDiffLoc] < to_ht_frac*(Lvd.list[LFDKH[0][maxDiffLoc][0]])*G.two_rho_check
        {term on left guaranteed <= main term on right. If close, then params are close to spherical princ series, and to_ht is fast}
-       then is_unitary_hash(p) {small nu compared to infl char, unitary_to_ht is slow}
+       then         let ()=prints("term on left etc: ", maxDiffLoc, " ", #DiffList) in
+           is_unitary_hash(p) {small nu compared to infl char, unitary_to_ht is slow}
     else
        is_unitary_test(p,next_heights(pmin,steps)) {large nu compared to infl char, unitary_to_ht is fast}
     fi)
@@ -2596,6 +2612,7 @@ set local_test_GEO_hash_bottom_layer(KGBElt x, ratvec lambda, VertexData vd,
     then maxDiffLoc = max_loc(for w in LF[0]
     	 	       	      do G.two_rho_check*(dominant(G,thetaMinus*Lvd.list[w[0]]))
 		       	      od)
+    then ()=prints("maxDiffLoc (7): ", maxDiffLoc, "/","#Lvd.list: ", #Lvd.list)
     then pmin = parameter(x, lambda, Lvd.list[LF[0][0][0]] )
     then (Q0, pminL0) = theta_stable_quasi_data(pmin)
     then L0 = Q0.Levi
