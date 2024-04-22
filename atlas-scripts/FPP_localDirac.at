@@ -1616,6 +1616,7 @@ set local_test_GEO(KGBElt x, ratvec lambda,int more_shift) =
 set hash2Counter = make_counter()
 
 {This version assumes edges and vertices already computed, with herm and pos on LKTs; called by one_level}
+set to_ht_frac = rat: 9/10   {see david davidEmail4.20.24}
 set local_test_GEO_hash2(KGBElt x, ratvec lambda, VertexData vd, VertexData Lvd, [[FacetVertsIndex]] LF,
 KTypePol_hash pol_hash, Param_hash Uhash, int more_shift) = [Param]:
     let G = x.real_form, thetaMinus = x.involution - 1, start = elapsed_ms()
@@ -1641,10 +1642,10 @@ KTypePol_hash pol_hash, Param_hash Uhash, int more_shift) = [Param]:
 	      	   	  	   LF, pol_hash, Uhash,more_shift) {use def_dumb if def_flag}
 	      fi
     then depth= max((r-1)*edge_skip + edge_offset_temp + 1, edge_skip + edge_offset_temp + 1)
-    then hts =[int]: let maxDiffLoc = max_loc(for v in Lvd.list
+    then maxDiffLoc = max_loc(for v in {Lvd.list} LF[0]  {see david davidEmail4.20.24}
     	 	             do G.two_rho_check*(dominant(G,thetaMinus*v))
 		             od)
-    		     then pmax = parameter(x, lambda, Lvd.list[maxDiffLoc])
+    then hts =[int]: let pmax = parameter(x, lambda, Lvd.list[maxDiffLoc])
     		     then Shorthts = if short_hts_flag then short_hts(pmax)
 		     	      	     else next_heights(pmax,depth)
 				     fi
@@ -1719,7 +1720,7 @@ KTypePol_hash pol_hash, Param_hash Uhash, int more_shift) = [Param]:
      	     od
     {now have facets of all dims, to height hts[?]}
     then ((eq,gr),IUCL,CLBF) = localGraphK(LFDKH)
-    then start=elapsed_ms()
+{    then start=elapsed_ms()
     then more_flag_hold = more_flag, pmin = parameter(x,lambda,Lvd.list[0])
     then () = more_flag:=true
     then UParams = if  (height(pmin) = 0) or (not mix_flag) then local_test_hash(x,lambda,Lvd,LFDKH,eq,gr,CLBF,Uhash)
@@ -1729,6 +1730,31 @@ KTypePol_hash pol_hash, Param_hash Uhash, int more_shift) = [Param]:
 		   fi
     then () = more_flag:=more_flag_hold
     then time = elapsed_ms() - start
+}
+{see david davidEmail4.20.24}
+{same as changes around line 2276}
+    then () = if #LFDKH[0] = 0 then return [] fi
+    then DiffList =
+         for v in LFDKH[0] do G.two_rho_check*(dominant(G,thetaMinus*Lvd.list[v[0]])) od
+{these are the various "height of nu"s in your candidate list; you're going to care about the biggest one}
+    then steps = max((r-1)\2,1)
+{this is how many is_unitary_to_ht's to try; roughly half the dimension of A???}
+    then start=elapsed_ms()
+    then UParams = [Param]:
+         let ((eq,gr),IUCL,CLBF) = localGraphK(LFDKH)
+    then () =
+         if test_verbose then prints(sum(for list in LFDKH do #list od),
+             " unitary candidates in ",#eq," equivalence classes.")
+         fi
+    in local_test_hash(x, lambda, Lvd, LFDKH, eq, gr, CLBF, Uhash, (Param->bool): (Param p) bool:
+    if  DiffList[maxDiffLoc] < to_ht_frac*(Lvd.list[LFDKH[0][maxDiffLoc][0]])*G.two_rho_check
+       {term on left guaranteed <= main term on right. If close, then params are close to spherical princ series, and to_ht is fast}
+       then is_unitary_hash(p) {small nu compared to infl char, unitary_to_ht is slow}
+    else
+       is_unitary_test(p,next_heights(pmin,steps)) {large nu compared to infl char, unitary_to_ht is fast}
+    fi)
+    then time = elapsed_ms() - start
+
     then () = if time_verbose
 	      then prints("     ", print_time_string(time),
 	      " for UParams calculation ", test_string, new_line) fi
@@ -2074,6 +2100,7 @@ set one_level_revert_flag = false
 on LKTs. This version uses min_bottom_elim instead of
 unitary_to_ht. Because of incorporation of good range nonunitarity proofs in min_bottom_elim,
 MUST use full K-chars to compute graphs.}
+
 set local_test_GEO_hash_bottom_layer(KGBElt x, ratvec lambda, VertexData vd,
     			VertexData Lvd, [[FacetVertsIndex]] LF, KTypePol_hash pol_hash,
     			Param_hash Uhash, int more_shift) = [Param]:
@@ -2239,11 +2266,34 @@ set local_test_GEO_hash_bottom_layer(KGBElt x, ratvec lambda, VertexData vd,
     	      	      then extend_K_characters(x, lambda, Lvd, LFDKH, pol_hash)
     	      	      else LFDKH
 		      fi}
-
+{see david davidEmail4.20.24: replace the following lines:}
+{    then start=elapsed_ms()
+    then UParams = [Param]:
+         let ((eq,gr),IUCL,CLBF) = localGraphK(LFDKH)
+              in local_test_hash(x, lambda, Lvd, LFDKH, eq, gr, CLBF, pol_hash, Uhash)
+    then time = elapsed_ms() - start
+}
+{new lines:}
+    then () = if #LFDKH[0] = 0 then return [] fi
+    then DiffList =
+         for v in LFDKH[0] do G.two_rho_check*(dominant(G,thetaMinus*Lvd.list[v[0]])) od
+{these are the various "height of nu"s in your candidate list; you're going to care about the biggest one}
+    then steps = max((r-1)\2,1)
+{this is how many is_unitary_to_ht's to try; roughly half the dimension of A???}
     then start=elapsed_ms()
     then UParams = [Param]:
-         let ((eq,gr),IUCL,CLBF) = localGraphK(LFDKH) 
-              in local_test_hash_bottom(x, lambda, Lvd, LFDKH, eq, gr, CLBF, maxQs, datas, pol_hash, Uhash)
+         let ((eq,gr),IUCL,CLBF) = localGraphK(LFDKH)
+    then () =
+         if test_verbose then prints(sum(for list in LFDKH do #list od),
+             " unitary candidates in ",#eq," equivalence classes.")
+         fi
+    in local_test_hash(x, lambda, Lvd, LFDKH, eq, gr, CLBF, Uhash, (Param->bool): (Param p) bool:
+    if  DiffList[maxDiffLoc] < to_ht_frac*(Lvd.list[LFDKH[0][maxDiffLoc][0]])*G.two_rho_check
+       {term on left guaranteed <= main term on right. If close, then params are close to spherical princ series, and to_ht is fast}
+       then is_unitary_hash(p) {small nu compared to infl char, unitary_to_ht is slow}
+    else
+       is_unitary_test(p,next_heights(pmin,steps)) {large nu compared to infl char, unitary_to_ht is fast}
+    fi)
     then time = elapsed_ms() - start
     then () = if time_verbose
 	      then prints("     ", print_time_string(time),
