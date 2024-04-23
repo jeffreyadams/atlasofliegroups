@@ -1642,10 +1642,10 @@ KTypePol_hash pol_hash, Param_hash Uhash, int more_shift) = [Param]:
 	      	   	  	   LF, pol_hash, Uhash,more_shift) {use def_dumb if def_flag}
 	      fi
     then depth= max((r-1)*edge_skip + edge_offset_temp + 1, edge_skip + edge_offset_temp + 1)
-    then maxDiffLoc = max_loc(for v in {Lvd.list} LF[0]  {see david davidEmail4.20.24}
+    then maxDiffLoc0 = max_loc(for v in Lvd.list {see david davidEmail4.20.24}
     	 	             do G.two_rho_check*(dominant(G,thetaMinus*v))
 		             od)
-    then hts =[int]: let pmax = parameter(x, lambda, Lvd.list[maxDiffLoc])
+    then hts =[int]: let pmax = parameter(x, lambda, Lvd.list[maxDiffLoc0])
     		     then Shorthts = if short_hts_flag then short_hts(pmax)
 		     	      	     else next_heights(pmax,depth)
 				     fi
@@ -1734,9 +1734,10 @@ KTypePol_hash pol_hash, Param_hash Uhash, int more_shift) = [Param]:
 {see david davidEmail4.20.24}
 {same as changes around line 2276}
     then () = if #LFDKH[0] = 0 then return [] fi
-    then DiffList =
+    then DiffList1 =
          for v in LFDKH[0] do G.two_rho_check*(dominant(G,thetaMinus*Lvd.list[v[0]])) od
 {these are the various "height of nu"s in your candidate list; you're going to care about the biggest one}
+    then maxDiffLoc1 = max_loc(DiffList1)
     then steps = max((r-1)\2,1)
 {this is how many is_unitary_to_ht's to try; roughly half the dimension of A???}
     then start=elapsed_ms()
@@ -1747,7 +1748,7 @@ KTypePol_hash pol_hash, Param_hash Uhash, int more_shift) = [Param]:
              " unitary candidates in ",#eq," equivalence classes.")
          fi
     in local_test_hash(x, lambda, Lvd, LFDKH, eq, gr, CLBF, Uhash, (Param->bool): (Param p) bool:
-    if  DiffList[maxDiffLoc] < to_ht_frac*(Lvd.list[LFDKH[0][maxDiffLoc][0]])*G.two_rho_check
+    if  DiffList1[maxDiffLoc1] < to_ht_frac*(Lvd.list[LFDKH[0][maxDiffLoc1][0]])*G.two_rho_check
        {term on left guaranteed <= main term on right. If close, then params are close to spherical princ series, and to_ht is fast}
        then is_unitary_hash(p) {small nu compared to infl char, unitary_to_ht is slow}
     else
