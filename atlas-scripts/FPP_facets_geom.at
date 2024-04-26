@@ -517,9 +517,9 @@ set edge_lists_folded(SimpleAffine affd) = [[ratvec]]:
        od
 
 {lists of rational weights for affd}
-set edge_lists(RealForm G) = [[ratvec]]:
-    let (affd, ,) = cofolded(G)
-{    then N = required_solution(M.^, id_mat(affd.rank)).^} {maps (preferably delta-fixed) G-wts to affd-wts}
+set edge_lists(InnerClass ic) = [[ratvec]]:
+    let (affd, ,) = cofolded(ic)
+{    then N = required_solution(M.^, id_mat(affd.rank)).^} {maps (preferably delta-fixed) ic-wts to affd-wts}
     in edge_lists_folded(affd)
 
 {. the jth function here looks up its argument in the list of edges originating at fundamental vertex #j. }
@@ -527,14 +527,14 @@ set edge_list_lookups([[ratvec]] edgeLists) = [(ratvec->int)]:
     for list in edgeLists do index_in(list) od
 
 {. the jth function here looks up its argument in the list of edges originating at fundamental vertex #j. }
-set edge_list_lookups(RealForm G) = [(ratvec->int)]:
-    edge_list_lookups(edge_lists(G))
+set edge_list_lookups(InnerClass ic) = [(ratvec->int)]:
+    edge_list_lookups(edge_lists(ic))
 
 {. tests whether [v0, v1] is an edge of the affine facet decomposition. }
-set is_edge(RealForm G, [(ratvec->int)] lookups, ratvec gamma0, ratvec gamma1) = bool:
-    let (affd, M, j0) = cofolded(G)
+set is_edge(InnerClass ic, [(ratvec->int)] lookups, ratvec gamma0, ratvec gamma1) = bool:
+    let (affd, M, j0) = cofolded(ic)
     then N = required_solution(M.^, id_mat(affd.rank)).^
-         {maps (preferably delta-fixed) G-wts to affd-wts}
+         {maps (preferably delta-fixed) ic-wts to affd-wts}
     then v0 = N*gamma0, v1 = N*gamma1
     then lookupFundVert = index_in(fundamental_vertices(affd))
     then ((,w),xi0) = from_fundamental_alcove(affd,v0)
@@ -1111,7 +1111,7 @@ for v in vd.list
 set_type PermOrderTwo = (vec fixed, [(int,int)] trans)
 
 {only keep the transpositions (v,w) where [v,w] is an edge}
-set thetaAct2 (RealForm G, mat theta, ratvec lambda, VertexData vd,  [(ratvec->int)] edge_lookups) = PermOrderTwo:
+set thetaAct2 (InnerClass ic, mat theta, ratvec lambda, VertexData vd,  [(ratvec->int)] edge_lookups) = PermOrderTwo:
     let vlist = vd.list
     then thetaPlus = (1+theta)*lambda
     then answer = PermOrderTwo: ([],[])
@@ -1119,12 +1119,15 @@ set thetaAct2 (RealForm G, mat theta, ratvec lambda, VertexData vd,  [(ratvec->i
     	      do let j = vd.lookup(-theta*v + thetaPlus)
     	      	 in if j = i
 		    then answer.fixed:= (answer.fixed next answer.fixed:=[])#i {answer.fixed#:= i}
-		    else if j > i and is_edge(G, edge_lookups, v, vlist[j])
+		    else if j > i and is_edge(ic, edge_lookups, v, vlist[j])
 		    	 then answer.trans := (answer.trans next answer.trans:=[])#(i,j) {answer.trans#:= (i,j)}
 		    	 fi
 		    fi
 	      od
     in answer
+
+set thetaAct2 (KGBElt x, ratvec lambda, VertexData vd, [(ratvec->int)] edge_lookups) = PermOrderTwo:
+    thetaAct2(x.inner_class, x.involution, lambda, vd, edge_lookups)
 
 set thetaAct2 (KGBElt x, ratvec lambda, VertexData vd,  [(ratvec->int)] edge_lookups) = PermOrderTwo:
     thetaAct2(x.real_form, x.involution, lambda, vd, edge_lookups)

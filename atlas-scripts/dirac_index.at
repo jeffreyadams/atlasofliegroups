@@ -7,6 +7,23 @@ component, but it's precise meaning isn't clear}
 
 set dv=true  {dv standard for dirac_verbose: turn debugging on/off}
 
+{this is the differential of the central character on the central
+torus of G}
+set central_character(Param p) = ratvec:
+    let gamma = p.infinitesimal_character, G = p.real_form
+    in gamma - sum(G.rank, for ell@j in fundamental_coweights(G)
+       	       		   do simple_roots(G)[j]*(ell*gamma)
+			   od)
+
+{this is the restriction to the split part}
+set split_central_character(Param p) = ratvec:
+    let gammaz = central_character(p), theta = p.x.involution
+    in (1-theta)*gammaz/2
+
+set is_equal_rank_mod_center(InnerClass ic) = bool:
+    (split_rank(fundamental_Cartan(ic)) -
+    split_rank(fundamental_Cartan(radical(ic)))).=
+
 {two-fold cover of G(C) defined by \gamma\in (1/2)X^*}
 {X*(rd)=Z^n -> lattice <Z^n,v>\subset (1/2)Z^n
  where 2v is integral
@@ -19,7 +36,6 @@ set dv=true  {dv standard for dirac_verbose: turn debugging on/off}
  note that (^roots)*coroots=^(A*rd.simple_roots)*(^A_i*rd.simple_coroots)
   =rd.simple_roots*(^A*^A_i)*rd.simple_coroots = original Cartan matrix
 }
-
 set cover(RootDatum rd,ratvec v)=(RootDatum,mat):
 let n=rd.rank then
 A_i=image_lattice((2*id_mat(n))#ratvec_as_vec(2*v))/2 {rat_mat} then
@@ -31,47 +47,113 @@ in (root_datum(new_simple_roots,new_simple_coroots,rd.prefers_coroots),A)
 {mat:A takes roots for rd->roots for cover}
 
 {compact form of cover}
-set cover_c(RootDatum rd,ratvec v)=RealForm:let (cover,)=cover(rd,v) in cover.compact_form
+set cover_c(RootDatum rd,ratvec v)=RealForm:
+    let (cover,)=cover(rd,v)
+    in cover.compact_form
 
 set rho_cover(RootDatum rd)=cover(rd,rd.rho)
 
 {DS with HC parameter(lambda)
- K is defined by x_K, then K_cover;
- Dirac index is the K_cover-type with infinitesimal character (for K_cover) lambda
-}
-set dirac_index_ds(Param p,KGBElt x_K)=ParamPol:
-assert(p.real_form.is_equal_rank,"group not equal rank");
-assert(p.x.is_fundamental_Cartan,"p is not a (limit of) discrete series");
-let G=p.real_form then
-gamma=p.infinitesimal_character then
-K=K_0(x_K) then
-(K_cover,A)=cover(K,G.rho-K.rho) then
-w =cross_divide(x_K,p.x) in
-sgn(w)*parameter(K_cover.compact_form,0,A*(w*gamma),null(K_cover.rank))
+ K is defined by x_1, then K_cover;
+ Dirac index is the K_cover-type with infinitesimal character
+ (for K_cover) lambda.}
+{NOTICE that coords for the cover are very
+ different from the coordinates for G; the matrix A in these
+ functions is related to the coordinate change.}
+set dirac_index_ds(Param p,KGBElt x_1)=ParamPol:
+   assert(p.real_form.is_equal_rank_mod_center,
+	"group not equal rank mod center");
+   assert(p.x.is_fundamental_Cartan,
+	"p is not a (limit of) discrete series");
+   let G=p.real_form
+   then gamma=p.infinitesimal_character - p.split_central_character
+   {then pK = K0_params(p,x_1)[0]} {infl char gamma + rho_n(p.x) on K0}
+   then K=K_0(x_1)
+   then B = projection_to_K_matrix(x_1)
+   then (K_cover,A)=cover(K,B*(G.rho - rho_c(x_1)))
+   {then () = prints(A)}
+   then w =cross_divide(x_1,p.x)
+   {then pwK = K0_params(p,x_1)[0]} {K_0 infl char gamma +rho_n(x_1)}
+   in sgn(w)*parameter(K_cover.compact_form, 0,
+      		       A*(gamma - B*(G.rho - rho_c(x_1)) ),
+      					     null(K_cover.rank))
 
-{default x_K=KGB(G,0)}
+{meant to be infinitesimal character in G coords of Dirac index}
+set dirac_index_ds_test(Param p,KGBElt x_1)=(int, ratvec):
+   assert(p.real_form.is_equal_rank_mod_center,
+	"group not equal rank mod center");
+   assert(p.x.is_fundamental_Cartan,
+	"p is not a (limit of) discrete series");
+   let G=p.real_form
+   then gamma=p.infinitesimal_character - p.split_central_character
+   then pK = K0_params(p,x_1)[0] {infl char gamma + rho_n(x) on K0}
+   {then () = prints("pK has infl char ",pK.infinitesimal_character)}
+   then K=K_0(x_1)
+   then B = projection_to_K_matrix(x_1)
+   then B_inv = right_inverse(B)
+   {then () = prints("rho_n(x_1) = ",G.rho-rho_c(x_1))}
+   then (K_cover,A)=cover(K,B*(G.rho - rho_c(x_1)))
+   {then () = prints(A)}
+   then w =cross_divide(x_1,p.x)
+   {then pwK = K0_params(parameter(x_1, gamma, null(G.rank)),x_1)[0]} {K_0 infl char gamma +rho_n(x_1)}
+   {then () = prints("pwK has infl char ",pwK.infinitesimal_character)}
+   in (sgn(w), w*(1+x_1.involution)*gamma/2 + split_central_character(p)) 
+
+{default x_1=KGB(G,0)}
 set dirac_index_ds(Param p)=ParamPol:dirac_index_ds(p,KGB(p.real_form,0))
 
 {Dirac index of ParamPol of standards is a linear function}
-set dirac_index_std(ParamPol P,KGBElt x_K)=ParamPol:
-assert(P.real_form.is_equal_rank,"group not equal rank");
-let G=P.real_form then
-gamma=P.infinitesimal_character then
-K=K_0(x_K) then
-(K_cover,A)=cover(K,G.rho-K.rho) then
-K_cover_compact=K_cover.compact_form in
-null_module(K_cover.compact_form)+
-for c@p in P do c*
-  if is_fundamental_Cartan(p.x) then
-   let w =cross_divide(x_K,p.x) in
-   sgn(w)*parameter(K_cover.compact_form,0,A*(w*gamma),null(K_cover.rank))
-  else null_module(K_cover_compact)
-  fi
-od
+{NOTICE that coords for the cover are very
+ different from the coordinates for G; the matrix A in these
+ functions is related to the coordinate change.}
+set dirac_index_std(ParamPol P,KGBElt x_1)=ParamPol:
+    assert(P.real_form.is_equal_rank_mod_center,
+    "group not equal rank mod center");
+    let G=P.real_form
+    then q = parameter(x_1, G.rho, 0*G.rho)
+    then qK = K0_params(q, x_1)[0] {highest weight 2rho_n}
+    then K=K_0(x_1)
+    then (K_cover,A)=cover(K,{G.rho} (qK.infinitesimal_character -
+   	K.rho)/2)
+    then K_cover_compact=K_cover.compact_form
+    then () = if P.= then return null_module(K_cover_compact) fi
+    in null_module(K_cover_compact)+
+       for c@p in P
+       do c*if is_fundamental_Cartan(p.x)
+       	    then let gamma = p.infinitesimal_character - p.split_central_character
+		 then w =cross_divide(x_1,p.x)
+	    	 then pwK = K0_params(parameter(x_1, w*gamma, null(G.rank)))[0]
+	         in sgn(w)*parameter(K_cover_compact,0, A*pwK.infinitesimal_character,
+		 null(K_cover.rank))
+  	    else null_module(K_cover_compact)
+  	    fi
+       od
+
+{Dirac index of ParamPol of standards is a linear function}
+{ratvec is meant to be infl char of Dirac index in G coords}
+set dirac_index_std_test(ParamPol P,KGBElt x_1)=[(int,ratvec)]:
+    assert(P.real_form.is_equal_rank_mod_center,
+    "group not equal rank mod center");
+    let G=P.real_form
+    then q = parameter(x_1, G.rho, 0*G.rho)
+    then qK = K0_params(q, x_1)[0] {highest weight 2rho_n}
+    then K=K_0(x_1)
+    then (K_cover,A)=cover(K,{G.rho} (qK.infinitesimal_character -
+   	K.rho)/2)
+    then K_cover_compact=K_cover.compact_form
+    then () = if P.= then return [] fi
+    in for c@p in P
+       do if is_fundamental_Cartan(p.x)
+       	  then let (m, tau) = dirac_index_ds_test(p,x_1)
+	       in [(int_part(c)*m,tau)]
+	  else []
+	  fi
+        od.##
+
 set dirac_index_std(ParamPol P)=ParamPol:dirac_index_std(P,KGB(P.real_form,0))
 
-set dirac_index_irr(Param p,KGBElt x_K)=ParamPol:
-dirac_index_std(character_formula(p),x_K)
+set dirac_index_irr(Param p,KGBElt x_1)=ParamPol:
+dirac_index_std(character_formula(p),x_1)
 set dirac_index_irr(Param p)=ParamPol:dirac_index_irr(p,KGB(p.real_form,0))
 
 {nice output of Diract index of ParamPol of standards}
@@ -84,9 +166,9 @@ for c@p in P do
  fi
 
 {nice output of Dirac index of irreducible}
-set show_dirac_index(Param p,KGBElt x_K)=void:
+set show_dirac_index(Param p,KGBElt x_1)=void:
 prints(new_line,"G=",p.real_form,new_line,"p=",p);
-show_dirac_index_param_pol(dirac_index_irr(p,x_K))
+show_dirac_index_param_pol(dirac_index_irr(p,x_1))
 
-{nice output of Dirac index of irreducible, default x_K=KGB(G,0)}
+{nice output of Dirac index of irreducible, default x_1=KGB(G,0)}
 set show_dirac_index(Param p)=void:show_dirac_index(p,KGB(p.real_form,0))

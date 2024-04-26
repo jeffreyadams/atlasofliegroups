@@ -131,9 +131,28 @@ gives only 3 elts of vlistAct: need to get rid of 3 repetitions.
 parameter(x,lambda,v) (v in Lvd.list) may NOT be hermitian in unequal rank.}
 
 set localFD_Lvd2 \
-  (RealForm G, mat theta, ratvec lambda, VertexData vd, [(ratvec->int)] edge_lookups) =
+  (InnerClass ic, mat theta, ratvec lambda, VertexData vd, [(ratvec->int)] edge_lookups) =
   (VertexData, PermOrderTwo, vec):
-(   let Perm2 = thetaAct2(G, theta, lambda, vd, edge_lookups)
+(   let Perm2 = thetaAct2(ic, theta, lambda, vd, edge_lookups)
+    then vlist = vd.list
+    then vlistAct = [ratvec]:
+    	 for i in Perm2.fixed do vlist[i] od ##
+	 for (i,j) in Perm2.trans do (vlist[i] + vlist[j])/2 od
+{DANGER! this may not be an edge!}
+    then Lvd = vlistAct.to_vertex_data
+    then Llookup = Lvd.lookup
+    then mapAct = vec: for j:#vlist do minus_1 od
+    {maps FPP vertex indices from vd to local indices from Lvd}
+    then () = for i@k in Perm2.fixed do mapAct[i]:= k od
+    then () = for (i,j)@ell in Perm2.trans do mapAct[i]:=#Perm2.fixed + ell;
+    	      	  	       		      mapAct[j]:=#Perm2.fixed + ell od
+    in (Lvd, Perm2, mapAct)
+)
+
+set localFD_Lvd2 \
+  (InnerClass ic, mat theta, ratvec lambda, VertexData vd, [(ratvec->int)] edge_lookups) =
+  (VertexData, PermOrderTwo, vec):
+(   let Perm2 = thetaAct2(ic, theta, lambda, vd, edge_lookups)
     then vlist = vd.list
     then vlistAct = [ratvec]:
     	 for i in Perm2.fixed do vlist[i] od ##
@@ -151,22 +170,7 @@ set localFD_Lvd2 \
 
 set localFD_Lvd2 \
   ( KGBElt x, ratvec lambda, VertexData vd, [(ratvec->int)] edge_lookups) =
-  (VertexData, PermOrderTwo, vec):
-(   let Perm2 = thetaAct2(x, lambda, vd, edge_lookups), G = x.real_form
-    then vlist = vd.list
-    then vlistAct = [ratvec]:
-    	 for i in Perm2.fixed do vlist[i] od ##
-	 for (i,j) in Perm2.trans do (vlist[i] + vlist[j])/2 od
-{DANGER! this may not be an edge!}
-    then Lvd = vlistAct.to_vertex_data
-    then Llookup = Lvd.lookup
-    then mapAct = vec: for j:#vlist do minus_1 od
-    {maps FPP vertex indices from vd to local indices from Lvd}
-    then () = for i@k in Perm2.fixed do mapAct[i]:= k od
-    then () = for (i,j)@ell in Perm2.trans do mapAct[i]:=#Perm2.fixed + ell;
-    	      	  	       		      mapAct[j]:=#Perm2.fixed + ell od
-    in (Lvd, Perm2, mapAct)
-)
+  localFD_Lvd2(x.inner_class, x.involution, lambda, vd, edge_lookups)
 
 set localFD_Lvd2 \
   ( mat theta, ratvec lambda, VertexData vd, (vec->int) FlippedEdgeLookup) =
