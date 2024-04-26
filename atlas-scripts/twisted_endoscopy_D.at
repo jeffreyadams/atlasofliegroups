@@ -23,15 +23,23 @@ H=Dn_in_Bn(H_Bn) in
 
 
 
+
+{set involution_fundamental_part(mat A)=mat:
+let B=A+id_mat(#A) in
+mat:for i:#B do B[i]/2\1 od}
+
+
+
+
 set lift_involution(mat A, mat M, RealForm G)= mat:
-let n=rank(G) in
+let M0 = if M[0][0]=1 then M else -M fi then
+n=rank(G) in
 let A = if is_integer(n/2) then
-mat:for i:n do if i<n/2 then M*A[i]-M*A[i]/2\1 else -M*A[n-1-i]/2\1  fi od {in}
+mat:for i:n do if i<n/2 then M0*A[i]-M0*A[i]/2\1 else -M0*A[n-1-i]/2\1  fi od {in}
 else
-mat:for i:n do if i<(n-1)/2 then M*A[i]-M*A[i]/2\1 else if i=((n-1)/2) then id_mat(n)[(n-1)/2\1] else -M*A[n-1-i]/2\1  fi fi od fi
+mat:for i:n do if i<(n-1)/2 then M0*A[i]-M0*A[i]/2\1 else if i=((n-1)/2) then id_mat(n)[(n-1)/2\1] else -M0*A[n-1-i]/2\1  fi fi od fi
 in
 A*distinguished_involution(G)
-
 
 
 {set lift_involution(mat A, mat M, RealForm G)= mat:
@@ -41,6 +49,9 @@ A*distinguished_involution(G)
 }
 
 
+
+
+
 set lift( KGBElt_gen x_H_gen,mat M, RealForm G)=KGBElt_gen:
 let tf_H_raw=x_H_gen.unnormalized_torus_factor then
 theta_G=lift_involution(x_H_gen.involution,M,G) then
@@ -48,7 +59,8 @@ tf_G_raw=M*tf_H_raw then
 {tf_G=(2*tf_G_raw-G.rho_check)*(1+theta_G)/2 in}
 tf_G=(M*(-2*tf_H_raw+rho_check(x_H_gen.real_form)))\1+((1+theta_G)*(-M*(-2*tf_H_raw+rho_check(x_H_gen.real_form)))/2)\1 in
 KGB_elt_gen(G.inner_class,theta_G,tf_G)
-
+{tf_G=(M*(dual(p_H).lambda-rho(x_H_gen.real_form)))\1+((1+theta_G)*(-M*(dual(p_H).lambda-rho(x_H_gen.real_form)))/2)\1 in}
+{tf_G=(M*(dual(p_H).lambda-rho(x_H_gen.real_form)))\1+((1+theta_G)*(-M*(dual(p_H).lambda-rho(x_H_gen.real_form)))/2)\1 in}
 
 
 
@@ -87,11 +99,20 @@ in
 E_G.parameter
 
 
+
+
 set lift_std(Param p_H,mat M,RealForm G)=Param:
+let x=KGB_elt(lift(p_H.x,M,G)) then
+lambda_G=rho(G)+(M*(p_H.lambda-rho(p_H.real_form)))+solve(1+x.involution,(1+x.involution)*(M*(rho(p_H.real_form))-rho(G))).requisition {vec}  then
+nu_G=M*p_H.nu in
+parameter(x,lambda_G,nu_G)
+
+
+{set lift_std(Param p_H,mat M,RealForm G)=Param:
 let x=KGB_elt(lift(p_H.x,M,G)) then
 lambda_G=rho(G)+(M*(p_H.lambda-rho(p_H.real_form)))+solve(1+x.involution,(1+x.involution)*(M*p_H.infinitesimal_character-rho(G)-M*(p_H.lambda-rho(p_H.real_form)))).requisition {vec}  then
 nu_G=M*p_H.nu in
-parameter(x,lambda_G,nu_G)
+parameter(x,lambda_G,nu_G)}
 
 
 set lift_std_pp(Param p_H,mat M,RealForm G)=ParamPol:
@@ -103,9 +124,20 @@ param_pol(parameter(x,lambda_G,nu_G))
 
 set lift_std_Version2(Param p_H,mat M,RealForm G)=Param:
 let x=KGB_elt(lift(p_H.x,M,G)) then
-lambda_G=rho(G)+(M*(p_H.lambda-rho(p_H.real_form)))+((1+x.involution)*(M*p_H.infinitesimal_character-rho(G)-M*(p_H.lambda-rho(p_H.real_form)))/2)\1 {vec}  then
+lambda_G=rho(G)+(M*(p_H.lambda-rho(p_H.real_form)))+((1+x.involution)*(M*rho(p_H.real_form)-rho(G))/2)\1 {vec}  then
 nu_G=M*p_H.nu in
 parameter(x,lambda_G,nu_G)
+
+
+{set lift_std_Version2(Param p_H,mat M,RealForm G)=Param:
+let x=KGB_elt(lift(p_H.x,M,G)) then
+lambda_G=rho(G)+(M*(p_H.lambda-rho(p_H.real_form)))+((1+x.involution)*(M*p_H.infinitesimal_character-rho(G)-M*(p_H.lambda-rho(p_H.real_form)))/2)\1 {vec}  then
+nu_G=M*p_H.nu in
+parameter(x,lambda_G,nu_G)}
+
+
+
+
 
 
 set lift_std_preliminary(ParamPol P,mat M,RealForm G)=ParamPol:
@@ -252,13 +284,17 @@ composition_series(inverse_lift_std(Pw,p_H.real_form,M,p_H.infinitesimal_charact
 
 {Gives the distribution defining the A-packet for a classical group of type B, C and D. For type B same answer as before, for type C and
 D it gives the O_n orbit expressed as 1/2*eta^ABV_psi + 1/2*eta^ABV_\psi\circ O.}
-set A_packet_distribution_BCD(Param p_H,mat M,RealForm G,mat delta)=void:
+set A_packet_distribution_BCD(Param p_H,mat M,RealForm G,mat delta)=ParamPol:
 let ecf=extended_character_formula(Finalize(lift_std(p_H,M,G)),delta) in
 let P=twisted_character(ecf) in
 let Pw=twisted_character_whittaker(P,delta) in
 let A_sum=composition_series(inverse_lift_std_orbit(Pw,p_H.real_form,M,p_H.infinitesimal_character)) in
-void:for (c,p) in %A_sum do prints(1/2*c.s_to_1,"*",p) od {I need to do this since I don't know how to multiply a param_pol by 1/2}
-
+if all(for (c,) in %A_sum do is_even(c.s_to_1) od) then
+ null_module(p_H.real_form) + for (c,p) in %A_sum do  (c.s_to_1\2)*p od
+else
+ let ()=prints("can't divide by 2") in 
+ null_module(p_H.real_form) + for (c,p) in %A_sum do  (c.s_to_1)*p od
+fi
 
 {Gives the A-packet in the case of a classical group of type A and B}
 set A_packet_AB(Param p_H,mat M,RealForm G,mat delta)=[Param]:
@@ -276,17 +312,15 @@ let Pw=twisted_character_whittaker(P,delta) in
 let A_sum=composition_series(inverse_lift_std_orbit(Pw,p_H.real_form,M,p_H.infinitesimal_character)) in
 monomials(A_sum)
 
-
- set unipotent_A_packets(ComplexNilpotent N,RealForm H,mat M,RealForm G,mat delta)=void:
+set unipotent_A_packets(ComplexNilpotent N,RealForm H,mat M,RealForm G,mat delta)=[ParamPol]:
 let wpp=parameters(weak_packet(N,H)) then
 (,,l)=N in
 let all=all_parameters_x_gamma(KGB(H)~[0],l/2) in
 let wpp_in_all= ## for p in all do if first(for x in wpp do  x=p od)=-1 then [] else [p] fi od in
-for p in wpp_in_all do print(A_packet_distribution_BCD(p,M,G,delta)) od
-
+for p in wpp_in_all do A_packet_distribution_BCD(p,M,G,delta) od
 
 {Given a nilpotent orbit of ^H, H a classical group of type B, C or D, it returns the corresponding unipotent A-packets}
-set unipotent_A_packets_BCD(RealForm H, ComplexNilpotent N)=void:
+set unipotent_A_packets_BCD(RealForm H, ComplexNilpotent N)=[ParamPol]:
 let n=rank(H) in
 {let n=#columns(simple_roots(H)) in}
 let G= if H=Sp(2*n,R) then GL(2*n+1,R) else GL(2*n,R) fi then
@@ -298,61 +332,17 @@ let wpp=parameters(weak_packet(N,H)) then
 let all=all_parameters_x_gamma(KGB(H)~[0],l/2) in
 let wpp_in_all= ## for p in all do if first(for x in wpp do  x=p od)=-1 then [] else [p] fi od in
 let wpp_in_all_torusfactor0 = ## for p in wpp_in_all do if p.x.torus_factor=0*rho(H) then [p] else [] fi od in
-for p in wpp_in_all_torusfactor0 do prints(A_packet_distribution_BCD(p,M,G,delta)) od
+for p in wpp_in_all_torusfactor0 do A_packet_distribution_BCD(p,M,G,delta) od
 
+set unipotent_A_packets_BCD(RealForm H)=[(ComplexNilpotent,[ParamPol])]:
+for orbit in H.dual_orbits do (orbit, unipotent_A_packets_BCD(H,orbit)) od
 
-{set unipotent_A_packets_SO_odd(int n, ComplexNilpotent N)=void:
-let H=SO(n,n+1) then
-G=GL(2*n,R) then
-delta=distinguished_involution(G) then
-(,M0)=endoscopy_Dn(n) in
-let M=-M0 in
-let wpp=parameters(weak_packet(N,H)) then
-(,,l)=N in
-let all=all_parameters_x_gamma(KGB(H)~[0],l/2) in
-let wpp_in_all= ## for p in all do if first(for x in wpp do  x=p od)=-1 then [] else [p] fi od in
-for p in wpp_in_all do prints(A_packet_distribution_BCD(p,M,G,delta)) od}
+set unipotent_A_packets(RealForm G)=[(ComplexNilpotent,[ParamPol])]:
+unipotent_A_packets_BCD(G)
 
-
-{set unipotent_A_packets_SO_even(int n, ComplexNilpotent N)=void:
-let H=SO(n,n) then
-G=GL(2*n,R) then
-delta=distinguished_involution(G) then
-(,M0)=endoscopy_Dn(n) in
-let M=-M0 in
-let wpp=parameters(weak_packet(N,H)) then
-(,,l)=N in
-let all=all_parameters_x_gamma(KGB(H)~[0],l/2) in
-let wpp_in_all= ## for p in all do if first(for x in wpp do  x=p od)=-1 then [] else [p] fi od in
-for p in wpp_in_all do prints(A_packet_distribution_BCD(p,M,G,delta)) od}
-
-
-{set unipotent_A_packets_Sp(int n, ComplexNilpotent N)=void:
-let H=Sp(n,R) then
-G=GL(n+1,R) then
-delta=distinguished_involution(G) then
-(,M0)=endoscopic(G,delta) in
-let M=-M0 in
-let wpp=parameters(weak_packet(N,H)) then
-(,,l)=N in
-let all=all_parameters_x_gamma(KGB(H)~[0],l/2) in
-let wpp_in_all= ## for p in all do if first(for x in wpp do  x=p od)=-1 then [] else [p] fi od in
-for p in wpp_in_all do prints(A_packet_distribution_AB(p,M,G,delta)) od}
-
-
-{set A_packet_distribution_SO(Param p_H,mat M,RealForm G,mat delta)=ParamPol:
-let ecf=extended_character_formula(Finalize(lift_std(p_H,M,G)),delta) in
-let P=twisted_character(ecf) in
-let Pw=twisted_character_whittaker(P,delta) in
-composition_series(inverse_lift_std(Pw,p_H.real_form,M,p_H.infinitesimal_character)) }
-
-
-
-
-
-
-
-
-
-
-
+set show([(ComplexNilpotent,[ParamPol])] data)=void:
+let ()= prints("G=",G) in
+for (orbit,packets)@i in data do
+ let ()=prints(new_line,"___________________________________________________________",new_line,"orbit #",i,": ",orbit.H, " ", orbit.dim_nilpotent) then
+ ()= prints("number of packets: ", #packets) then
+ ()= for P in packets do prints(P) od  in () od 
