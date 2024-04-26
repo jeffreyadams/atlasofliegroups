@@ -5,6 +5,8 @@
 <extParamPol.at
 <extended_character_formula.at
 
+
+
 set te_verbose=true
 {move nice_format elsewhere}
 set nice_format(Param p)=string:
@@ -283,15 +285,34 @@ KGB(G,i).involution
  involution is straightforward
  unnormalize torus factor: M*unnormalized_torus_factor for H
  this requires a computation to get the normalized torus factor for G}
-set lift(KGBElt_gen x_H_gen,mat M, RealForm G)=KGBElt_gen:
+set lift( KGBElt_gen x_H_gen,mat M, RealForm G)=KGBElt_gen:
 let tf_H_raw=x_H_gen.unnormalized_torus_factor then
 theta_G=lift(x_H_gen.involution,M,G) then
 tf_G_raw=M*tf_H_raw then
-tf_G=(2*tf_G_raw-G.rho_check)*(1+theta_G)/2 in
+{tf_G=(2*tf_G_raw-G.rho_check)*(1+theta_G)/2 in}
+tf_G=(M*(-2*tf_H_raw+rho_check(x_H_gen.real_form)))\1+((1+theta_G)*(-M*(-2*tf_H_raw+rho_check(x_H_gen.real_form)))/2)\1 in
 KGB_elt_gen(G.inner_class,theta_G,tf_G)
+
+
+{set lift_pp( KGBElt_gen x_H_gen,mat M, RealForm G)=KGBElt_gen:
+let tf_H_raw=x_H_gen.unnormalized_torus_factor then
+theta_G=lift(x_H_gen.involution,M,G) then
+tf_G_raw=M*tf_H_raw then
+{tf_G=(2*tf_G_raw-G.rho_check)*(1+theta_G)/2 in}
+{tf_G=(M*(dual(p_H).lambda-rho(x_H_gen.real_form)))\1+((1+theta_G)*(-M*(dual(p_H).lambda-rho(x_H_gen.real_form)))/2)\1 in}
+{tf_G=(M*(-2*tf_H_raw+rho_check(x_H_gen.real_form)))\1+((1+theta_G)*(-M*(-2*tf_H_raw+rho_check(x_H_gen.real_form)))/2)\1 in}
+tf_G=0*rho(G) in
+KGB_elt_gen(G.inner_class,theta_G,tf_G)}
+
+
 
 set lift(KGBElt x_H,mat M, RealForm G)=KGBElt_gen:
 lift(KGB_elt_gen(x_H),M,G)
+
+
+{set lift_pp(KGBElt x_H,mat M, RealForm G)=KGBElt_gen:
+lift_pp(KGB_elt_gen(x_H),M,G)}
+
 
 {list standard module: (x,lambda,nu)
  easiest to say this in terms of extended parameters
@@ -306,12 +327,37 @@ lift(KGB_elt_gen(x_H),M,G)
   ^M*tau_G=tau_H
   ^M*t_G=t
 }
+
 set lift_std(Param p_H,mat M,RealForm G, mat delta)=Param:
 let E_H=E(p_H.real_form.distinguished_involution,p_H) then
 x=lift(p_H.x,M,G) then
 gamma_G=M*p_H.infinitesimal_character then
-lambda_rho_G=ratvec_as_vec9(M*(p_H.lambda)-G.rho)) then
-{if this fails then some nontrivial work is needed involving covering groups}
+lambda_rho_G=(M*(p_H.lambda-rho(p_H.real_form)))\1+((1+x.involution)*(M*p_H.infinitesimal_character-rho(G)-M*(p_H.lambda-rho(p_H.real_form)))/2)\1 {vec}  then
+theta_G=lift(p_H.involution,G,M).matrix*delta then
+g_G=G.rho_check then
+l_G=null(#g_G) then
+tau_G=solve(^M,E_H.tau).requisition then
+t_G=solve(^M,E_H.t).requisition then
+E_G=ExtParam:(
+G.inner_class,
+G.distinguished_involution,
+gamma_G,
+lambda_rho_G,
+theta_G,
+g_G,
+l_G,
+-^theta_G,
+tau_G,
+t_G) 
+in
+E_G.parameter
+
+
+set lift_std_old(Param p_H,mat M,RealForm G, mat delta)=Param:
+let E_H=E(p_H.real_form.distinguished_involution,p_H) then
+x=lift(p_H.x,M,G) then
+gamma_G=M*p_H.infinitesimal_character then
+lambda_rho_G=(M*(p_H.lambda)-G.rho)\1 {vec}  then
 theta_G=lift(p_H.involution,G,M).matrix*delta then
 g_G=G.rho_check then
 l_G=null(#g_G) then
@@ -329,6 +375,29 @@ l_G,
 tau_G,
 t_G) in
 E_G.parameter
+
+
+{lambda_G-rho(G)+M*rho(p_H.real_form)=M*p_H.lambda+((1+x.involution)*(M*p_H.infinitesimal_character-rho(G)-M*(p_H.lambda-rho(p_H.real_form)))/2)\1}
+
+
+{set lift_std(Param p_H,mat M,RealForm G)=Param:
+let x=KGB_elt(lift(p_H.x,M,G)) then
+lambda_G=rho(G)+(M*(p_H.lambda-rho(p_H.real_form)))\1+((1+x.involution)*(M*p_H.infinitesimal_character-rho(G)-M*(p_H.lambda-rho(p_H.real_form)))/2)\1 {vec}  then
+nu_G=M*p_H.nu in
+parameter(x,lambda_G,nu_G)}
+
+
+set lift_std(Param p_H,mat M,RealForm G)=Param:
+let x=KGB_elt(lift(p_H.x,M,G)) then
+lambda_G=rho(G)+(M*(p_H.lambda-rho(p_H.real_form)))+solve(1+x.involution,(1+x.involution)*(M*p_H.infinitesimal_character-rho(G)-M*(p_H.lambda-rho(p_H.real_form)))).requisition {vec}  then
+nu_G=M*p_H.nu in
+parameter(x,lambda_G,nu_G)
+
+set lift_std_V2(Param p_H,mat M,RealForm G)=Param:
+let x=KGB_elt(lift(p_H.x,M,G)) then
+lambda_G=rho(G)+(M*(p_H.lambda-rho(p_H.real_form)))+((1+x.involution)*(M*p_H.infinitesimal_character-rho(G)-M*(p_H.lambda-rho(p_H.real_form)))/2)\1 {vec}  then
+nu_G=M*p_H.nu in
+parameter(x,lambda_G,nu_G)
 
 
 {M  mxn integral matrix
@@ -399,7 +468,8 @@ if is_valid(y_H_gen,gamma_H) then
  let ()=if te_verbose then prints("is valid") fi in
  let  lp=L_packet(H,left_inverse(M)*p_G.infinitesimal_character,y_H_gen) then
  ()= if te_verbose then prints("lp="); for a in lp do prints(a) od fi in
- if lift_std(lp[0],M,p_G.real_form,delta)=p_G then
+ {if lift_std(lp[0],M,p_G.real_form,delta)=p_G then}
+ if lift_std(lp[0],M,p_G.real_form)=p_G then
   (true,sign_difference(p_G,delta)*param_pol(lp))
  else
   let ()=prints("valid, but wrong answer") in
@@ -414,7 +484,8 @@ let all=all_parameters_gamma(H,gamma_H) then
 {let y_G=y_gen(p_G) then
 action_H=-^restrict_action(y_G.involution,M) then
 all=##for x in fiber(H,action_H) do all_parameters_x_gamma(x,gamma_H) od then}
-index=int: first(for p@i in all do  Finalize(lift_std(p,M,p_G.real_form,delta))=p_G od) in
+{index=int: first(for p@i in all do  Finalize(lift_std(p,M,p_G.real_form,delta))=p_G od) in}
+index=int: first(for p@i in all do  Finalize(lift_std(p,M,p_G.real_form))=p_G od) in
 if index=-1 then prints("inverse_lift_std_by_search failed for p_G=",p_G);null_module(H) else
 sign_difference(p_G,delta)*param_pol(L_packet(all[index])) fi
 }
@@ -428,10 +499,12 @@ n_x=x.number then
 n=KGB_size(H) in
 for i:n-n_x from n_x do
  let all=all_parameters_x_gamma(KGB(H,i), gamma_H) then
- index=first(for p@i in all do  Finalize(lift_std(p,M,p_G.real_form,delta))=p_G od) in
+ {index=first(for p@i in all do  Finalize(lift_std(p,M,p_G.real_form,delta))=p_G od) in}
+ index=first(for p@i in all do  Finalize(lift_std(p,M,p_G.real_form))=p_G od) in
  if index!=-1 then
   prints("found solution with x=",i);
-  return(sign_difference(p_G,delta)*param_pol(L_packet(all[index])))
+  {return(sign_difference(p_G,delta)*param_pol(L_packet(all[index])))}
+  return(param_pol(L_packet(all[index])))
  else
   prints("no solution at x=",i)
  fi
@@ -442,7 +515,8 @@ null_module(H)
 set inverse_lift_std_mixed(Param p_G,RealForm H,mat M, mat delta,ratvec gamma_H)=ParamPol:
 let (valid,P_H)=inverse_lift_std(p_G,H,M,delta,gamma_H) in
 if valid then
- if lift_std(first_param(P_H),M,p_G.real_form,delta)=p_G then
+ {if lift_std(first_param(P_H),M,p_G.real_form,delta)=p_G then}
+ if lift_std(first_param(P_H),M,p_G.real_form)=p_G then
   P_H
  else
   let ()=prints("inverse_lift_std_mixed is valid, but gives wrong answer") in
@@ -455,7 +529,8 @@ fi
 {set inverse_lift_std_by_search_old(Param p_G,RealForm H,mat M,mat delta,ratvec gamma_H)=ParamPol:
 {let all=all_parameters_gamma(H,gamma_H) then}
 let all=all_parameters_gamma(H,gamma_H)  then
-index=int: first(for p@i in all do  Finalize(lift_std(p,M,p_G.real_form,delta))=p_G od) in
+{index=int: first(for p@i in all do  Finalize(lift_std(p,M,p_G.real_form,delta))=p_G od) in}
+index=int: first(for p@i in all do  Finalize(lift_std(p,M,p_G.real_form))=p_G od) in
 if index=-1 then prints("inverse_lift_std_by_search failed for p_G=",p_G);null_module(H) else
 sign_difference(p_G,delta)*param_pol(L_packet(all[index])) fi
 }
@@ -533,7 +608,8 @@ fi
 {to use: set G=GL(n,R), delta=G.distinguished_involution,
 (H,M)=endoscopic(G,delta) to define H,M,G,delta}
 set abv(Param p_H,mat M,RealForm G,mat delta)=ParamPol:
-let lift_std=lift_std(p_H,M,G,delta) then
+{let lift_std=lift_std(p_H,M,G,delta) then}
+let lift_std=lift_std(p_H,M,G) then
 (valid,inverse_lift)=inverse_lift_irr(lift_std,p_H.real_form,M,delta,p_H.infinitesimal_character) in
 if valid then
   let ()=assert(is_stable_std(inverse_lift), "purported Arthur lift is not stable") in
@@ -548,6 +624,74 @@ else
  if not is_stable(stable_sum) then prints("WARNING: not stable") fi;
  stable_sum
 fi
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+{set lambda_x(ratvec lambda_G, KGBElt x_H, RealForm H, mat M, RealForm G,mat delta,ratvec gamma_H)=ratvec:
+left_inverse(M)*(lambda_G-rho(G)) + solve(1+x_H.involution,(1+x_H.involution)*(gamma_H-rho(H)-(left_inverse(M)*(lambda_G-rho(G))))).requisition }
+
+
+
+
+
+
+
+{set inverse_lift_std_PP(Param p_G,RealForm H,mat M,ratvec gamma_H)=[Param]:
+{let x=KGB_elt(KGB_elt_gen(H,restrict_action(p_G.involution,M),0*rho(H))) then}
+let nu_H=left_inverse(M)*p_G.nu in
+let index = first(for x in KGB(H) do is_integer(lambda_x(p_G.lambda, x, H, M, p_G.real_form, gamma_H)) and 
+gamma_H=(1+x.involution)*(rho(H)+lambda_x(p_G.lambda, x, H, M, p_G.real_form, gamma_H))/2+nu_H od ) in  
+{let lambda_H=rho(H)+(left_inverse(M)*(p_G.lambda-rho(p_G.real_form))) + solve(1+x_H.involution,(1+x_H.involution)*(gamma_H-rho(H)-(left_inverse(M)*(p_G.lambda-rho(p_G.real_form))))).requisition  then}
+let p=parameter(KGB(H)[index],rho(H)+lambda_x(p_G.lambda, KGB(H)[index], H, M, p_G.real_form, gamma_H),nu_H) in
+L_packet(p)}
+
+
+
+{set inverse_lift_std_P(Param p_G,RealForm H,mat M)=ParamPol:
+let rv=null_module(H) in
+for (c,p) in %P do if is_integer(lambda_x(p_G.lambda, x, H, M, p_G.real_form, gamma_H)) 
+then let P=inverse_lift_std(p,H,M) else let P=inverse_lift_std_by_search(p,H,M,delta,infinitesimal_character) in
+rv+:=c*P + c*param_pol(O_shift(monomials(P),H))
+od;
+rv}
+
+
+
+
+
+
+set abv(Param p_H,mat M,RealForm G,mat delta)=ParamPol:
+let lift_std=lift_std(p_H,M,G) then
+(valid,inverse_lift)=inverse_lift_irr(lift_std,p_H.real_form,M,delta,p_H.infinitesimal_character) in
+if valid then
+  let ()=assert(is_stable_std(inverse_lift), "purported Arthur lift is not stable") in
+  let ()=if te_verbose then prints("lift_std=", lift_std) fi in
+  let stable_sum=composition_series(inverse_lift).s_to_1 in
+  stable_sum
+else
+  let ()=if te_verbose then prints("abv failed, using mixed instead") fi then
+  inverse_lift=inverse_lift_irr_mixed(lift_std,p_H.real_form,M,delta,p_H.infinitesimal_character) then
+  ()=assert(is_stable_std(inverse_lift), "purported Arthur lift is not stable") then
+ stable_sum=composition_series(inverse_lift).s_to_1 in
+ if not is_stable(stable_sum) then prints("WARNING: not stable") fi;
+ stable_sum
+fi
+
 
 {if you compute abv(p_H_i,M,G,delta) over a list of p_H_i, the resulting [ParamPol] may have multiplicity
  better to avoid this:
