@@ -1547,7 +1547,7 @@ set local_test_GEO_hash_real_dumb(KGBElt x, ratvec lambda, VertexData vd, Vertex
     then pmax = first_param(finalize(parameter(x, lambda, Lvd.list[maxDiffLoc]))),
     	 r = rank(x.involution - 1)
     then test_hts = [int]:
-    	 if number(pmax.x) < NK*low_KGB_frac
+    	 if number(pmax.x) < NK*low_KGB_frac {defaults to 1/4 of #KGB; so most of time, use to_ht}
 	 then []
 	 else let (answer,) = deform_hts(pmax,r\2)  {!!this r\2 is a parameter to fiddle}
 	      in answer
@@ -1693,10 +1693,10 @@ set local_test_GEO_hash_dumb(KGBElt x, ratvec lambda, VertexData vd, VertexData 
 		   else return one_param_test(parameter(x,lambda,Lvd.list[LF[0][0][0]]), Uhash)
 		   fi
 	      fi
-    then test_hts = hts[:min(#hts,1)]
+    then test_hts = hts[:min(#hts,r)]  {??? who knows about r!}
     then tester = (Param->bool): (Param p) bool:
     	 is_unitary_test(p,test_hts) {this settles unitarity absolutely}
-    then () = if facet_verbose then prints("test_hts = ",test_hts) fi
+    then () = if test_verbose then prints("test_hts = ",test_hts) fi
     then () = test_string:= " using local_test_GEO_hash_dumb"
     then  () = hash_dumbCounter.use()
     then LFDKH = localFD_KHash_01(x, lambda, Lvd, pol_hash,LF)
@@ -2227,7 +2227,7 @@ set hash2Counter = make_counter()
 {This version assumes edges and vertices already computed, with herm and pos on LKTs; called by one_level}
 set local_test_GEO_hash2(KGBElt x, ratvec lambda, VertexData vd, VertexData Lvd, [[FacetVertsIndex]] LF,
 KTypePol_hash pol_hash, Param_hash Uhash) = [Param]:
-    let G = x.real_form, thetaMinus = x.involution - 1, start = elapsed_ms()
+    let G = x.real_form, thetaMinus = 1-x.involution, start = elapsed_ms()
     then () = if quick_flag then short_hts_flag:=false fi
     then () = if #LF[0] = 0 then return [] fi
     then zero_pol = null_module(G), pmin = parameter(x,lambda,0*lambda)
@@ -2242,7 +2242,7 @@ KTypePol_hash pol_hash, Param_hash Uhash) = [Param]:
 	      fi
     then edge_offset_temp = edge_offset
     then () = if edge_offset = -1
-    	      then edge_offset_temp := r\2 {3 seems best for F4}
+    	      then edge_offset_temp := r\3 {3 seems best for F4}
 	      fi
     then vertexDiff = #Lvd.list/#vd.list
     then approxVertexDiff = vertexDiff.numer*100\vertexDiff.denom
@@ -2256,7 +2256,7 @@ KTypePol_hash pol_hash, Param_hash Uhash) = [Param]:
 		             od)
     then pmax = parameter(x, lambda, Lvd.list[maxDiffLoc])
     then gammamax = pmax.infinitesimal_character
-    then far_sph_flag = bool: (thetaMinus*gammamax)*G.two_rho_check < to_ht_frac*(gammamax*G.two_rho_check)
+    then far_sph_flag = bool: dominant(G,thetaMinus*gammamax)*G.two_rho_check/2 < to_ht_frac*(gammamax*G.two_rho_check)
     	      { left guaranteed <= right term on right. If close, then
 	       params are close to spherical princ series, and to_ht is fast}
     then hts =[int]: let Shorthts = if short_hts_flag
@@ -2282,7 +2282,7 @@ KTypePol_hash pol_hash, Param_hash Uhash) = [Param]:
     	 	     then make_KTypePol_hash() {to hold chars to height hts[0]}
 		     else pol_hash
 		     fi
-{for E8_s, K-chars to height test_hte[0] = 68 is 2.5 days. So maybe just hts[0]?}
+{for E8_s, K-chars to height test_hts[0] = 68 is 2.5 days. So maybe just hts[0]?}
     then LFDKH = if temp_K_char_flag
     	       	 then localFD_KHash_01(x, lambda, Lvd, test_hts[0], pol_hash0, LF)
 		 else localFD_KHash_01(x, lambda, Lvd, pol_hash, LF)
@@ -2303,17 +2303,6 @@ KTypePol_hash pol_hash, Param_hash Uhash) = [Param]:
     	      	      then extend_K_characters(x, lambda, Lvd, LFDKH, pol_hash)
 		      else LFDKH
 		      fi
-{        {compute graph on facets to dim 1, to hts[edge_offset]}
-    then ((eq,gr),IUCL,CLBF) = {if temp_K_char_flag
-    	 		       then localGraphK(LFDKH)
-    	 		       else} localGraphK(LFDKH, pol_hash, test_hts[0])
-			       {fi}
-    {then () = prints("trial of eq at dim 1 is ",trial(x,lambda,Lvd,LFDKH, eq, {test_}hts[0]))}
-    then () = LFDKH := local_testK_hash(x,lambda,Lvd, LFDKH, eq, gr, CLBF,
-    	      (Param->bool):(Param p): is_unitary_to_hts(p, hts[1:test_levels[0]+1]), Uhash)
-    then () = if test_verbose then prints("unitary to ht ",test_hts[0],
-                        " facet counts to dim 1: ",for list in LFDKH do #list od) fi
-}
     then Dmid = max(r\4,1) {changed from r\2, since test_levels[4] = 91 too slow for E8_s spherical}
     then () = if quick_flag
     	      then let () = LFDKH := localFD_KHashbt_lookDownGEO(x,lambda, Lvd, LFDKH, 2, r+1, pol_hash)
@@ -2354,16 +2343,23 @@ KTypePol_hash pol_hash, Param_hash Uhash) = [Param]:
      fi{quick_flag}
     {now have facets of all dims, to height test_hts[Dlast] or test_hts[Dmid]}
     then ((eq,gr),IUCL,CLBF) = localGraphK(LFDKH)
-    then () = if test_verbose then prints(sum(for list in LFDKH do #list od),
-	      	      	" unitary candidates in ",#eq," equivalence classes.") fi
+    then sph_far_flag = dominant(G,thetaMinus*gammamax)*G.two_rho_check/2 < to_ht_frac*(gammamax*G.two_rho_check)
+    {term on left guaranteed <= right term on right. If close, then
+    	       params are close to spherical princ series, and to_ht is fast}
+    then () = if test_verbose
+    	      then prints(for list in LFDKH do #list od, " = ",sum(for list in LFDKH do #list od),
+	      	      	" unitary candidates in ",#eq," equivalence classes.");
+	           if sph_far_flag
+		   then prints("using is_unitary")
+		   else prints("testing to height ",hts[test_levels[Dmid+1]])
+		   fi
+	      fi
     then start=elapsed_ms()
     then UParams = local_test_hash(x, lambda, Lvd, LFDKH, eq, gr, CLBF, Uhash, (Param->bool): (Param p):
-    	 	 if  (thetaMinus*gammamax)*G.two_rho_check < to_ht_frac*(gammamax*G.two_rho_check)
-	      {term on left guaranteed <= right term on right. If close, then
-	       params are close to spherical princ series, and to_ht is fast}
+    	 	 if sph_far_flag
 	       	 then is_unitary_hash(p) {small nu compared to infl char, unitary_to_ht is slow}
 	  	 else is_unitary_test(p,hts[test_levels[Dmid+1]])
-	      {large nu compared to infl char, unitary_to_ht is fast}
+		      {large nu compared to infl char, unitary_to_ht is fast}
 	      	 fi)
     {Maybe NEED TO PUT BOTTOM LAYER STUFF BACK}
     then time = elapsed_ms() - start
@@ -2371,7 +2367,6 @@ KTypePol_hash pol_hash, Param_hash Uhash) = [Param]:
 	      then prints("     ", print_time_string(time),
 	      " for UParams calculation ", test_string, new_line) fi
     in UParams
-
 
 {Compute 0 and 1 facets, pass to previous}
 set local_test_GEO_hash2(KGBElt x, ratvec lambda, VertexData vd, VertexData Lvd, (vec,[(int,int)]) Perm2,
@@ -2798,18 +2793,25 @@ set local_test_GEO_hash_bottom_layer(KGBElt x, ratvec lambda, VertexData vd,
   then () = LFDKH := localFD_KHashbt_lookDownGEO(x,lambda, Lvd, LFDKH, 2,
        	    	     		r + 1, pol_hash)
     then unitary_by_dim = vec: for L in LFDKH do #L od
-    then () = if test_verbose then prints("number of tests so far = ",unitary_test_counter.use_count() - UTCstart)
-	      fi
-    then steps = max((r-1)\2,1)
+    then gammamax = Lvd.list[LFDKH[0][maxDiffLoc][0]]
+    then sph_far_flag = dominant(G,thetaMinus*gammamax)*G.two_rho_check/2 < to_ht_frac*(gammamax*G.two_rho_check)
+    then steps = max(r-1,1)
     then start=elapsed_ms()
     then UParams = [Param]:
          let ((eq,gr),IUCL,CLBF) = localGraphK(LFDKH)
 	 {these have had know_lower, min_bottom, and bottom_elim
 	 already applied; so just do is_unitary}
-	 then () = if test_verbose then prints(sum(for list in LFDKH do #list od),
-	      	      	  " unitary candidates in ",#eq," equivalence classes.") fi
-         in local_test_hash(x, lambda, Lvd, LFDKH, eq, gr, CLBF, Uhash, (Param->bool): (Param p) bool:
-    	  if  DiffList[maxDiffLoc] < to_ht_frac*(Lvd.list[LFDKH[0][maxDiffLoc][0]])*G.two_rho_check
+    then () = if test_verbose
+    	      then prints(for list in LFDKH do #list od, " = ",sum(for list in LFDKH do #list od),
+	      	      	" unitary candidates in ",#eq," equivalence classes.");
+			prints("number of tests so far = ",unitary_test_counter.use_count() - UTCstart);
+	           if sph_far_flag
+		   then prints("using is_unitary")
+		   else prints("testing to height ",next_heights(pmin,steps))
+		   fi
+	      fi
+    in local_test_hash(x, lambda, Lvd, LFDKH, eq, gr, CLBF, Uhash, (Param->bool): (Param p) bool:
+    	  if  sph_far_flag
 	      {term on left guaranteed <= main term on right. If close, then
 	       params are close to spherical princ series, and to_ht is fast}
 	  then is_unitary_hash(p) {small nu compared to infl char, unitary_to_ht is slow}
