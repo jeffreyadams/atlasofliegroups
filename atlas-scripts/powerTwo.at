@@ -1,0 +1,50 @@
+set to_binary(int n) = [int]:
+    assert(n>= 0,"to_binary works only on nonnegative integers");
+    let answer = [int]:[]
+    then () = while n > 0
+    	      do let () = answer#:= n%2
+       	      	 in n:= n\2
+    	      od
+    in answer
+
+set_type Power_function =
+    ( ( -> int) base
+    , ( -> int) largest_power_now_known
+    , ( -> ) clear
+    , (int -> int) power
+    {, ( -> [int]) show}
+    )
+
+set make_power_function(int base) = Power_function:
+    ( let base = int: base
+      then basetwopowers = [int]: [base] {jth entry is base^{2^j}}
+      then add_power(int j) = void:
+      	   let J = #basetwopowers
+	   then () = if j>=J
+	   	     then for k:j-J+2 from J-1
+	   	     	  do basetwopowers#:=basetwopowers[k]^2
+			  od
+	   	     else ()
+	   	     fi
+	   in ()
+      then clear() = void:
+      	   let () = basetwopowers := []
+	   in ()
+      in ( ( -> int): {base} @int: base
+     	 , ( -> int): {largest_power_now_known} @int: #basetwopowers
+	 , ( -> ): {clear} clear
+	 , (int -> int): {power} (int n) int:
+	   let binary = to_binary(n)
+	   then log = #binary
+	   then () = add_power(log)
+	   in product(
+		for j:log
+	      	do if binary[j].=
+		   then []
+	           else [basetwopowers[j]]
+		   fi
+		   od.##
+		   )
+	{, ( -> [int]): {show} @[int]: basetwopowers}
+        )
+     )
