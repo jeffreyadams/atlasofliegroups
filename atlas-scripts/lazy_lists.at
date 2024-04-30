@@ -4,7 +4,7 @@
 
 set_type
 [ inf_list = (->inf_node) { defers creating of |inf_node| until called with () }
-, inf_node=(int head, inf_list thunk) { initial term, for remaining terms }
+, inf_node=(int head, inf_list thunk) { initial term, thunk for remaining terms }
 , maybe_a_node =(void no_node | inf_node stored) { needed to |memoize| below }
 ]
 
@@ -24,14 +24,22 @@ set series ((int->int) coef) = inf_list:
 set initial (int n) = (inf_list->[int]):
   (inf_list f) [int]: for :n do let (head,tail)=f() in head next f:=tail od
 
+set prepend (int c,inf_list F) = inf_list: @:(c,F)
+set shift(int n,inf_list F) = inf_list:
+  if >=n then for :n do F:=prepend(0,F) od else for :-n do set(,F):=F() od fi; F
+
+set constant_term (inf_list F) = int: let (c,)=F() in c
+set coefficient(int i,inf_list F) = int: shift(-i,F).constant_term
 
 set extend_0 ([int] pol) = inf_list:
 (  let result = rec_fun me () inf_node: (0,me)
-in for c in pol ~do result:= (let r=result { force fetch! } in @:(c,r)) od
+in for c in pol ~do result:= prepend(c,result) od
 ;  result
 )
 
-one : inf_list: [1].extend_0 { the algebraic unit for power series }
+zero : inf_list: extend_0(#0) { additive unit for power series }
+one :  inf_list: [1].extend_0  { multiplicative unit for power series }
+X :   inf_list: [0,1].extend_0 { neutral element for power series composition }
 
 { more general then |ones|, we can define arithmetic and geometric progressions }
 set arithmetic_progression (int stride) = rec_fun f (int start) inf_list:
@@ -45,7 +53,7 @@ set geometric_progression (int lambda) = rec_fun f (int start) inf_list:
   more than once, but instead store the values that have already been computed.
   Indeed this will make it possible to define a non-pure function as thunk that
   simply assumes that each successive call is done to produce the coefficient
-  following the one of the previous call; this assumes the no access to the
+  following the one of the previous call; this assumes that no access to the
   function is exported other than the one given to the |memoize| function below.
 
   Another application is when we want to solve a recursion like that of
@@ -80,25 +88,48 @@ set shift (int n) = (inf_list->inf_list):
 set rec_fun sum (inf_list f, inf_list g) = inf_list:
   @: let (x,ff)=f(), (y,gg)=g() in (x+y,sum(ff,gg))
 
-set scale_list_by (int a) = (inf_list->inf_list):
-  rec_fun a_times (inf_list f) inf_list: @: let (x,ff)=f() in (a*x,a_times(ff))
+set scale_by (int a) = (inf_list->inf_list):
+  if a=1 then (inf_list f)inf_list: f
+  elif a=0 then (inf_list .)inf_list: extend_0(#0)
+  else
+    rec_fun a_times (inf_list f) inf_list:
+    @: let (x,ff)=f() in (a*x,a_times(ff))
+  fi
+set downscale_by (int n) = (inf_list->inf_list):
+  if n=1 then (inf_list f)inf_list: f
+  else
+    rec_fun div_n (inf_list f) inf_list:
+    @: let (x,ff)=f() in (x\n,div_n(ff))
+  fi
+
+set + = sum@(inf_list,inf_list)
+set - = (inf_list->inf_list): scale_by(-1)
+set + (int n,inf_list f) = inf_list: let (c,t)=f() in @:(n+c,t)
+set + (inf_list f,int n) = inf_list: let (c,t)=f() in @:(n+c,t)
+set * (int n,inf_list f) = inf_list: scale_by(n)(f)
+set - (int n,inf_list f) = inf_list: let (c,t)=f() in @:(n-c,-t)
+set - (inf_list f,int n) = inf_list: let (c,t)=f() in @:(c-n,t)
+set - (inf_list f,inf_list g) = inf_list: f + -g
+set \ (inf_list f,int n) = inf_list: downscale_by(n)(f)
 
 { arithmetic of $\Z[[X]]$, using |inf_list| to represent the elements }
 
 set multiply (inf_list f, inf_list g) = inf_list:
 { an example of how |memoize| allows using an identical function to produce
   successive changing values each time it is called, without explicit control }
-  (let coefs = [int,int]:[] { pairs of corresponding coefficients of |f,g| }
-   in rec_fun m () inf_node: let (a,new_f)=f(), (b,new_g)=g() { get new values }
-        in f:=new_f; g:=new_g; coefs := (coefs next coefs:=[]) # (a,b)
+(  let coefs = [int,int]:[] { pairs of corresponding coefficients of |f,g| }
+in rec_fun m () inf_node: let (a,new_f)=f(), (b,new_g)=g() { get new values }
+        in set (f,g,coefs) :=(new_f,new_g, (coefs next coefs:=[]) # (a,b))
         ; ( sum(for (a,)@i in coefs do let (,b)=coefs~[i] in a*b od) , m )
-  ).memoize
+).memoize
+
+set * = multiply@(inf_list,inf_list)
 
 set multiply_by ([int] pol) = (inf_list->inf_list):
 (  let d = last(#pol,(int i)bool: !=pol[i])
 in case d { three way branch on sign of |d| }
    then (inf_list .) inf_list: extend_0(#0) { |d<0|: multiplication by 0 }
-   in scale_list_by(pol[0]) { multiplication by a nonzero constant polynomial }
+   in scale_by(pol[0]) { multiplication by a nonzero constant polynomial }
    else { |d>0| }
       let buf = { buffer for not yet yielded contributions from previous terms }
          for :d+1 { for first |d| degrees above current, plus a sentinel 0 }
@@ -134,12 +165,12 @@ in pol:=pol[1:] { drop leading coefficient 1 }
   increasing number of coefficients from both arguments, we retain them from $D$
   and from the quotient $Q$; those from $N$ can be forgotten once used. As in
   |multiply|, this imperative style together with |memoize| allow the thunk
-  being used to actually be the same non-pure function at all levels.
+  being used to actually be the same non-pure function |m| at all levels.
 
   The second is more slick and pure, producing the thunk by calls of a recursive
   function with different arguments (representing the remainder at each step),
   each next one being produced from the previous by a transformation involving
-  |sum| and |scale_list_by|. We need to ensure $D$ can be traversed multiple
+  |sum| and |scale_by|. We need to ensure $D$ can be traversed multiple
   times without needlessly repeating its computation, which is done by applying
   |memoize| to the tail of $D$ (this can be unnecessary depending on how $D$
   was constructed, but whether that is the case cannot be found out here). The
@@ -147,28 +178,55 @@ in pol:=pol[1:] { drop leading coefficient 1 }
   that goes on here. All in all, while slick, this might be less efficient.
 }
 set divide (inf_list N, inf_list denom) = inf_list:
-(  let (c,D)=denom() in assert(c=1,"Division requires unit constant term")
+(  let (c,D)=denom() in assert(c=1,"Division requires unit leading term")
 ;  let coefs = [int,int]:[] { pairs of corresponding coefficients of |D,result| }
+   , c=0, d=0
 in (rec_fun m () inf_node:
-      let (c,new_N)=N() { get new value }
-      then q = { solve: convolve(1#D_coefs,result_coefs#q) = c }
-         c - sum(for (d,)@i in coefs do let (,r)=coefs~[i] in d*r od)
-      , (d,new_D)=D() { advance in denominator as well, but don't use |d| yet }
-      in N:=new_N; D:=new_D; coefs := (coefs next coefs:=[]) # (d,q)
-      ; ( q , m )
+      set ((c,N),(d,D)) := (N(),D()) { get new values }
+      ; let q = { solve: convolve(1#D_coefs,result_coefs#q) = c }
+         c - sum(for (ci,)@i in coefs do let (,r)=coefs~[i] in ci*r od)
+      in coefs #:= (d,q); ( q , m )
    )
    .memoize
 )
 
 set divide_by (inf_list f) = (inf_list->inf_list):
-  let (head,tail)=f() then ff=memoize(tail) in
+  let (!head,!tail)=f() then !ff=memoize(tail) in
   assert(head=1,"Can only invert series with constant term 1");
   rec_fun divide (inf_list remainder) inf_list:
-  @: let (y,gg)=remainder() in (y, divide(sum(scale_list_by(-y)(ff),gg)))
+  @: let (y,gg)=remainder() in (y, divide(scale_by(-y)(ff)+gg))
   { here the final result is not passed through |memoize|; if that is desired
     the caller should take care to do so }
 
 set inverse (inf_list f) = inf_list: divide([1].extend_0,f)
+
+set / = (inf_list->inf_list): inverse@inf_list
+set / (int n,inf_list f) = inf_list:
+   let f1=/f in if n=1 then f1 else scale_by(n)(f1) fi
+set / (inf_list f,inf_list g) = inf_list:
+   if g.constant_term=0 else divide(f,g)
+   then { try to salvage division by shifting }
+     for i:8
+     do if f.constant_term!=0
+        then error("Numerator valuation "+i+" is less than that of denominator.")
+	fi
+     ; set ((,f),(,g)):=(f(),g())
+     ; if g.constant_term!=0 then return divide(f,g) fi
+     od
+   ; error("Denominator has too large valuation for division, is it 0?")
+   fi
+
+set ^ (inf_list F,int n) = inf_list:
+   let rec_fun p (int k) = inf_list:
+      if k=1 then F
+      else let (q,r)=k\%2 then h=p(q) then h2=h*h in if r=0 then h2 else h2*F fi
+      fi
+in case n
+   then assert(F.constant_term=1,"Negative power requires unit constant term")
+   ; inverse(p(-n))
+   in one
+   else p(n)
+   esac
 
 {
   As a proof of concept we show how an infinite list can be recursively
@@ -198,7 +256,7 @@ set Fibonacci = inf_list:
 { Note that leaving out |memoize| would be possible here, but makes the runtime
   increase exponentially with the list length because of repeated evaluations of
   the same list elements. That inefficient version would also be obtained by
-  | set rec_fun fibonacci () = inf_node:(0,@:(1,sum(fibo,shift(1)(fibo))))) |
+  | set rec_fun Fibo () = inf_node:(0,@:(1,sum(Fibo,shift(1)(Fibo))))) |
 }
 
 { and note Fibonacci is also |inverse([1,-1,-1].extend_0)|, easy and efficient }
@@ -238,3 +296,28 @@ in ( rec_fun E () inf_node:
 set n_partitions = (int->int):
   let !S=inverse(pentagonal_series) { this is already meomoized } in
   (int n) int: let (x,ff)=S() in for :n do set(x,ff):=ff() od; x
+
+
+set substitute (inf_list g) = (inf_list->inf_list): { f->f[X:=g] }
+(  let (g0,tail)=g() then gg=memoize(tail) { |gg=g/X| }
+in assert(=g0,"Can only substitute series with constant term 0")
+;  rec_fun subs (inf_list f) inf_list: { subtitute |g| into |f|, using |gg| }
+   memoize(@: let (c,f1)=f() in (c,multiply(gg,subs(f1))))
+)
+{ e.g., |substitute ([0,1,1].extend_0)(ones)| gives series 1/(1-X-X^2) }
+
+set compositional_inverse (inf_list g) = inf_list:
+(  let (!g0,!tail)=g()
+   then power=tail,(!g1,target)=tail() { |target:=(g-X)/X^2| }
+in assert(=g0 and g1=1,"Can only do series with leading term X")
+; let rec_fun r () = inf_node: { no arguments, call modifies |target|, |power| }
+     power:=multiply(tail,power) { next power of |g/X| }
+     ;  let (c,t_tail) = target(), (,t_power)=power()
+     in target := t_tail - c*t_power
+     ; (-c,r)
+in memoize(@:(0,@:(1,r))) { here |memoize| is essential }
+)
+{ e.g., compositional_inverse([0,1,-1].extend_0) solves $f-f^2=X$ }
+
+set series_precision = 12
+set show (inf_list f) = initial(series_precision)(f)
