@@ -19,6 +19,7 @@
 <TWOHEIGHTS {for HTA and HT}
 <translate {for translate_param_by}
 <time {for print_string}
+<powerTwo.at {for fast raising to powers of two using make_power_function }
 {This is meant to be functions for computing all unitary reps with
 fixed LKT (x,lambda) and infl char in the FPP. Functions are meant to
 use a Param_has Uhash containing a list of known unitary reps (like
@@ -394,6 +395,7 @@ set_type
   , (InnerClass -> (vec -> int)) flippable_edge_lookup
   , (InnerClass -> [ratvec]) FPP_local_vertices {one for each inner class}
   , ((InnerClass, mat) -> [vec]) lamthlams {for each involution, list of allowed lambda+theta_lambda}
+  , ((InnerClass, mat, vec) -> int) lamthlam_number {for each involution, number of lambda+theta_lambda in list}
   , ((InnerClass, mat) -> [ratvec]) lambda0s {for each involution, list of allowed lambda mod twists}
   , ((InnerClass, mat) -> [(ratvec, Lvd_Perm2_mapAct)]) LPm_entries {allowed lambda mod twists, corr entry}
     		       	  	    {like output of old FPP_lambdas_big_new}
@@ -537,6 +539,9 @@ set make_Lvd_Perm2_mapAct_table() = Lvd_Perm2_mapAct_table:
     , ((InnerClass, mat) -> [vec]): {lamthlams} (InnerClass ic, mat theta) [vec]:
       let (i,j) = add_lamthlam_hash(ic,theta)
       in for k:lamthlam_hashess[i][j].size() do lamthlam_hashess[i][j].index(k)[:ic.rank] od
+    , ((InnerClass, mat, vec) -> int): {lamthlam_number} (InnerClass ic, mat theta, vec lamthlam) int:
+      let (i,j) = add_lamthlam_hash(ic,theta), th1 = theta+1
+      in lamthlam_hashess[i][j].lookup(lamthlam)
     , ((InnerClass, mat) -> [ratvec]): {lambda0s} (InnerClass ic, mat theta) [ratvec]:
       let (i,j) = add_lamthlam_hash(ic,theta)
       in for k:lamthlam_hashess[i][j].size()
@@ -566,6 +571,80 @@ set make_Lvd_Perm2_mapAct_table() = Lvd_Perm2_mapAct_table:
 )
 
 set LPm_table = make_Lvd_Perm2_mapAct_table()
+
+set_type
+[big_unitary_hash_table =
+( ( -> int) real_form_size {number of real forms included}
+  , ( -> vec) uhash_sizes {for every real form, the number of unitary reps}
+  , (RealForm -> int) uhash_size {for one real form, number of unitary reps}
+  , ( -> ) clear
+  , (RealForm -> int) rf_index {index of real form in list}
+  , (RealForm -> (int->int)) power_function {for each real form, the function m -> 2^((4^semisimple_rank)*m)}
+  , (RealForm -> int) xl_known {bitmap of (x,lambda) for which FPP unitary dual is known}
+  , ((RealForm,int) -> ) finish {add bitmap of new known (x,lambda) to xl_known}
+  , (RealForm -> Param_hash) uhash {hash table of known unitary}
+  , (Param -> (int,int)) long_lookup {(rf_index(p.real_form), location of p in its uhash)}
+  , (Param -> int) lookup {(location of p in its uhash)}
+  , (Param -> int) match {add p to its hash table}
+  , ((Param,int) -> int) long_match {add p to ith hash table}
+)
+]
+
+set make_big_unitary_hash() = big_unitary_hash_table:
+(   let real_form_hash = make_RealForm_hash()
+    then uhashes = [Param_hash]: [] {one for each real form}
+    then power_functions = [Power_function]: [] {one for each real form}
+    then xl_known = [int]: [] {one bitmap of known (x,lambda) for each real form}
+    then clear() = void:
+    	 let () = real_form_hash.clear()
+	 then () = uhashes := []
+	 then () = power_functions := []
+	 then () = xl_known := []
+	 in ()
+   then add_real_form(RealForm rf) = int:
+    	 let I = real_form_hash.size()
+	 then i = real_form_hash.match(rf)
+    	 then () = if i = I {haven't seen this real form before}
+	      	   then uhashes := (uhashes next uhashes:=[])#make_Param_hash();
+		   	power_functions := (power_functions next power_functions := [])#
+					make_power_function(4^rf.semisimple_rank);
+			xl_known := (xl_known next xl_known := [])#0
+	    	   fi
+	  in i
+    in
+    ( (->int): {real_form_size} @int: real_form_hash.size()
+    , ( -> vec): {uhash_sizes} @vec: for uhash in uhashes do uhash.size() od
+    , (RealForm -> int): {uhash_size} (RealForm rf) int:
+      uhashes[add_real_form(rf)].size()
+    , ( -> ): {clear} clear
+    , (RealForm -> int): {rf_index} (RealForm rf) int: add_real_form(rf)
+    , (RealForm -> (int->int)): {power_function} (RealForm rf) (int->int):
+      let i = add_real_form(rf)
+      in power_functions[i].power
+    , (RealForm -> int): {xl_known} (RealForm rf) int:
+      let i = add_real_form(rf)
+      in xl_known[i]
+    , ((RealForm,int) -> ): {finish} (RealForm rf, int M):
+      let i = add_real_form(rf)
+      then () = xl_known[i] := OR(M,xl_known[i])
+      in ()
+    , (RealForm -> Param_hash): {uhash} (RealForm rf) Param_hash:
+      uhashes[add_real_form(rf)]
+    , (Param -> (int,int)): {long_lookup} (Param p) (int,int):
+      let i = add_real_form(p.real_form)
+      in (i, uhashes[i].lookup(p))
+    , (Param -> int): {lookup} (Param p) int:
+      let i = add_real_form(p.real_form)
+      in uhashes[i].lookup(p)
+    , (Param -> int): {match} (Param p):
+      let i = add_real_form(p.real_form)
+      in uhashes[i].match(p)
+    , ((Param,int) -> int): {long_match} (Param p, int i):
+      uhashes[i].match(p)
+    )
+)
+
+set big_unitary_hash = make_big_unitary_hash()
 
 {computes directed graph of local facets. Output GraphData is
 [[int]],[[int]] giving equivalence classes and the graph. Next output
@@ -714,6 +793,82 @@ set know_lower(int N) = void:
     know_lower_flag:=true;
     tilde_flag:=false;
     known_to:=N
+
+set twopowers = make_power_function(2)
+
+{meant to be a bitmap of (x,lambda) for a fixed G for which all FPP_unitary facets are in unitary_hash.
+For x number j and lambda = FPP_lambdas(x)[k], the corresponding bit is #(j*4^{G.semisimple_rank} + k)}
+set xl_known = int:0
+
+set set_bit(int N, int k) = int: OR(N, twopowers.power(k))
+
+{location in the bitmap for G}
+set position(KGBElt x, ratvec lambda) = int:
+    let theta = x.involution, ic = x.inner_class
+    then th1 = 1+theta, lr = (lambda- ic.rho).numer
+    then lamthlam = (th1*lambda).numer
+    then m0 = LPm_table.lamthlam_number(x.inner_class, theta, lamthlam)
+    then () = assert(m0.>=, "oops, lamthlam not found")
+    then taus = all_lambda_differential_0(x)
+    then tau = lr - required_solution(th1,lamthlam - ratvec_as_vec(th1*ic.rho))
+    then m1 = first(for tauprime in taus do tauprime = tau od)
+    then m = m0*#taus + m1, D = 4^(ic.semisimple_rank)
+    then () = if m >= D
+    	      then prints("warning: lambda number ", m," exceeds max ",D,
+	      		       "; not recording this (x,lambda)")
+	      fi
+    in D*x.number + m
+
+set two_to_position(KGBElt x, ratvec lambda) = int:
+    let POS = position(x, lambda), D = 4^x.inner_class.semisimple_rank
+    {then Dpowers = make_power_function(D)}
+    in big_unitary_hash.power_function(x.real_form)(POS\D)*twopowers.power(POS%D)
+
+{set a bit in xl_known}
+set finish(KGBElt x, ratvec lambda) = void:
+    big_unitary_hash.finish(x.real_form, two_to_position(x,lambda))
+    {let POWER = two_to_position(x,lambda)
+    then () = xl_known:= OR(xl_known, POWER)
+    in ()}
+{
+    let theta = x.involution, ic = x.inner_class, lr = (lambda-x.inner_class.rho).numer
+    then th1 = 1+theta
+    then lamthlam = (th1*lambda).numer
+    then m0 = LPm_table.lamthlam_number(ic, theta, lamthlam)
+    then () = assert(m0.>=, "oops, lamthlam not found")
+    then taus = all_lambda_differential_0(x)
+    then tau = lr - required_solution(th1,lamthlam - ratvec_as_vec(th1*ic.rho))
+    then m1 = first(for tauprime in taus do tauprime = tau od)
+    then m = m0*#taus + m1, D = 4^(ic.semisimple_rank)
+    then () = if m >= D
+    	      then prints("warning: lambda number ", m," exceeds max ",D,
+	      		       "; not recording this (x,lambda)")
+	      fi
+    then () = xl_known:= OR(xl_known, twopowers.power(D*x.number + m))
+    in ()
+}
+
+{check whether a bit in xl_known is set}
+set is_finished(KGBElt x, ratvec lambda) = bool:
+    let POWER = two_to_position(x,lambda)
+    in (big_unitary_hash.xl_known(x.real_form)\POWER) %2 = 1 {(xl_known\POWER)%2 = 1}
+
+{    let theta = x.involution, ic = x.inner_class, lr = (lambda-x.inner_class.rho).numer
+    then th1 = 1+theta
+    then lamthlam = (th1*lambda).numer
+    then m0 = LPm_table.lamthlam_number(x.inner_class, theta, lamthlam)
+    then () = assert(m0.>=, "oops, lamthlam not found")
+    then taus = all_lambda_differential_0(x)
+    then tau = lr - required_solution(th1,lamthlam - ratvec_as_vec(th1*ic.rho))
+    then m1 = first(for tauprime in taus do tauprime = tau od)
+    then m = m0*#taus + m1, D = 4^(ic.semisimple_rank)
+    then () = if m >= D
+    	      then prints("warning: lambda number ", m," exceeds max ",D,
+	      		       "; not recording this (x,lambda)")
+	      fi
+    then position = (D*x.number + m)
+    then power = twopowers.power(position)
+    in (xl_known\power)%2 = 1}
 
 {set this to true to use wiggle tests in know_more mode in local_testK_hash_bottom_layer,
 which handles the most cases}
@@ -1576,9 +1731,9 @@ set local_test_GEO_hash_real_dumb(KGBElt x, ratvec lambda, VertexData vd, Vertex
 	           then ((eq,gr),IUCL,CLBF) = localGraphK(LFDKH)
 		   in  LFDKH := if know_lower_flag
                        	      	then local_testK_hash_know_lower(x,lambda,Lvd, LFDKH, eq,
-				      gr, CLBF, tester, Uhash)
+				      gr, CLBF, is_unitary_hash@Param, Uhash)
                        		else local_testK_hash(x,lambda,Lvd, LFDKH, eq, gr, CLBF,
-				      tester, Uhash)
+				      is_unitary_hash@Param, Uhash)
                        		fi
 	      else let D = int:1
     then () = while (D <= rank(x.involution-1) - 1  ) and
@@ -2002,7 +2157,7 @@ set local_test_GEO_hash_dumb(KGBElt x, ratvec lambda, VertexData vd,
 
 set local_test_GEO_dumb(KGBElt x, ratvec lambda) =
     [Param]:
-    let Uhash = make_Param_hash(), pol_hash = make_KTypePol_hash(), G = x.real_form
+    let Uhash = big_unitary_hash.uhash(x.real_form), pol_hash = make_KTypePol_hash(), G = x.real_form
     then vd = FPP_vertex_data(G)
     then () = unipotents_to_hash(x.real_form,Uhash)
     in local_test_GEO_hash_dumb(x, lambda, vd, pol_hash, Uhash)
@@ -2029,6 +2184,7 @@ set edge_skip = int: 1
 set vert_diff_cutoff = int: 10
 
 {when nu*2rho_check < (to_ht_frac)*(infl_char*2rho_check, don't use is_unitary_to_ht}
+{If negative, always allow is_unitary_to_ht}
 set to_ht_frac = 9/10
 
 set hashCounter = make_counter()
@@ -2217,7 +2373,7 @@ set local_test_GEO_hash(KGBElt x, ratvec lambda, VertexData vd,
 
 set local_test_GEO(KGBElt x, ratvec lambda) =
     [Param]:
-    let Uhash = make_Param_hash(), G = x.real_form, pol_hash = make_KTypePol_hash()
+    let Uhash = big_unitary_hash.uhash(x.real_form) {make_Param_hash()}, G = x.real_form, pol_hash = make_KTypePol_hash()
     then vd = FPP_vertex_data(G)
     then () = unipotents_to_hash(x.real_form,Uhash)
     in local_test_GEO_hash(x,lambda, vd, pol_hash, Uhash)
@@ -2255,8 +2411,8 @@ KTypePol_hash pol_hash, Param_hash Uhash) = [Param]:
     	 	             do G.two_rho_check*(dominant(G,thetaMinus*v))
 		             od)
     then pmax = parameter(x, lambda, Lvd.list[maxDiffLoc])
-    then gammamax = pmax.infinitesimal_character
-    then far_sph_flag = bool: dominant(G,thetaMinus*gammamax)*G.two_rho_check/2 < to_ht_frac*(gammamax*G.two_rho_check)
+    {then gammamax = pmax.infinitesimal_character}
+    {then far_sph_flag = bool: dominant(G,thetaMinus*gammamax)*G.two_rho_check/2 < to_ht_frac*(gammamax*G.two_rho_check)}
     	      { left guaranteed <= right term on right. If close, then
 	       params are close to spherical princ series, and to_ht is fast}
     then hts =[int]: let Shorthts = if short_hts_flag
@@ -2272,7 +2428,7 @@ KTypePol_hash pol_hash, Param_hash Uhash) = [Param]:
     then () = test_string:= " using local_test_GEO_hash2"
     then  () = hash2Counter.use()
     then test_levels = for d:max(r+1,3) do d*edge_skip + edge_offset_temp od
-    then test_hts = for d:max(r+1,3) do hts[test_levels[d]] od
+    then test_hts = for d:max(r+1,3) do hts[test_levels[d]] od, Dlast = max(r,2)
     then () = if(test_verbose) then prints("heights = ", hts, " , test levels = ",
     	 test_levels, ", test heights = ",test_hts) fi
     {get K-type formulas for all vertices and edges}
@@ -2303,15 +2459,15 @@ KTypePol_hash pol_hash, Param_hash Uhash) = [Param]:
     	      	      then extend_K_characters(x, lambda, Lvd, LFDKH, pol_hash)
 		      else LFDKH
 		      fi
-    then Dmid = max(r\4,1) {changed from r\2, since test_levels[4] = 91 too slow for E8_s spherical}
+    {then Dmid = max(r\4,1)} {changed from r\2, since test_levels[4] = 91 too slow for E8_s spherical}
     then () = if quick_flag
     	      then let () = LFDKH := localFD_KHashbt_lookDownGEO(x,lambda, Lvd, LFDKH, 2, r+1, pol_hash)
-		   then ((eq,gr),IUCL,CLBF) = localGraphK(LFDKH,pol_hash,test_hts[Dmid])
+		   then ((eq,gr),IUCL,CLBF) = localGraphK(LFDKH,pol_hash,test_hts[Dlast])
 		   then () = LFDKH := local_testK_hash(x,lambda,Lvd,
                       LFDKH, eq, gr, CLBF, (Param->bool): (Param p):
-		      is_unitary_to_ht(p,hts[test_levels[Dmid]]), Uhash)
+		      is_unitary_to_hts(p,test_hts[1:Dlast+1]), Uhash) {test to the same height as not quick}
                    in if test_verbose
-		      then prints("unitary to ht ",test_hts[Dmid],
+		      then prints("unitary to ht ",test_hts[Dlast],
 		      	      		" facet counts to dim ",r,
 				": ", for list in LFDKH do #list od)
 		      fi
@@ -2335,32 +2491,32 @@ KTypePol_hash pol_hash, Param_hash Uhash) = [Param]:
 		 then () = if test_verbose
 		     	   then prints("unitary to ht ",test_hts[D], " facet counts to dim ",D+1,
 				": ", for list in LFDKH do #list od) fi
-		 then ()= Dmid:=D
+		 {then ()= Dmid:=D}
                  then ()= D:=D+1
 		 in ()
      	     od
      in ()
      fi{quick_flag}
-    {now have facets of all dims, to height test_hts[Dlast] or test_hts[Dmid]}
+    {now have facets of all dims, to height test_hts[Dlast] {or test_hts[Dmid]}}
     then ((eq,gr),IUCL,CLBF) = localGraphK(LFDKH)
-    then sph_far_flag = dominant(G,thetaMinus*gammamax)*G.two_rho_check/2 < to_ht_frac*(gammamax*G.two_rho_check)
+    {then sph_far_flag = dominant(G,thetaMinus*gammamax)*G.two_rho_check/2 < to_ht_frac*(gammamax*G.two_rho_check)}
     {term on left guaranteed <= right term on right. If close, then
     	       params are close to spherical princ series, and to_ht is fast}
     then () = if test_verbose
     	      then prints(for list in LFDKH do #list od, " = ",sum(for list in LFDKH do #list od),
 	      	      	" unitary candidates in ",#eq," equivalence classes.");
-	           if sph_far_flag
-		   then prints("using is_unitary")
-		   else prints("testing to height ",hts[test_levels[Dmid+1]])
-		   fi
+	           {if sph_far_flag
+		   then} prints("using is_unitary")
+		   {else prints("testing to height ",hts[test_levels[Dmid+1]])
+		   fi}
 	      fi
     then start=elapsed_ms()
     then UParams = local_test_hash(x, lambda, Lvd, LFDKH, eq, gr, CLBF, Uhash, (Param->bool): (Param p):
-    	 	 if sph_far_flag
-	       	 then is_unitary_hash(p) {small nu compared to infl char, unitary_to_ht is slow}
-	  	 else is_unitary_test(p,hts[test_levels[Dmid+1]])
+    	 	 {if sph_far_flag
+	       	 then} is_unitary_hash(p) {small nu compared to infl char, unitary_to_ht is slow}
+	  	 {else is_unitary_test(p,hts[test_levels[Dmid+1]])
 		      {large nu compared to infl char, unitary_to_ht is fast}
-	      	 fi)
+	      	 fi})
     {Maybe NEED TO PUT BOTTOM LAYER STUFF BACK}
     then time = elapsed_ms() - start
     then () = if time_verbose
@@ -2394,7 +2550,7 @@ set local_test_GEO_hash2(KGBElt x, ratvec lambda, VertexData vd,
     in local_test_GEO_hash2(x, lambda, vd, Lvd, LF, pol_hash, Uhash)
 
 set local_test_GEO2(KGBElt x, ratvec lambda) = [Param]:
-    let Uhash = make_Param_hash(), pol_hash = make_KTypePol_hash(), G = x.real_form
+    let Uhash = big_unitary_hash.uhash(x.real_form) {make_Param_hash()}, pol_hash = make_KTypePol_hash(), G = x.real_form
     then vd = FPP_vertex_data(G)
     then () = unipotents_to_hash(x.real_form,Uhash)
     in local_test_GEO_hash2(x,lambda,vd, pol_hash, Uhash)
@@ -2690,7 +2846,7 @@ set local_test_GEO_hash_one_level(KGBElt x, ratvec lambda, VertexData vd,
 
 set local_test_GEO_one_level(KGBElt x, ratvec lambda) = [Param]:
     let G = x.real_form
-    then Uhash = make_Param_hash(), pol_hash = make_KTypePol_hash(), vd = FPP_vertex_data(G)
+    then Uhash = big_unitary_hash.uhash(x.real_form){make_Param_hash()}, pol_hash = make_KTypePol_hash(), vd = FPP_vertex_data(G)
     then () = unipotents_to_hash(x.real_form,Uhash)
     in local_test_GEO_hash_one_level(x,lambda,vd, pol_hash, Uhash)
 
@@ -2793,31 +2949,31 @@ set local_test_GEO_hash_bottom_layer(KGBElt x, ratvec lambda, VertexData vd,
   then () = LFDKH := localFD_KHashbt_lookDownGEO(x,lambda, Lvd, LFDKH, 2,
        	    	     		r + 1, pol_hash)
     then unitary_by_dim = vec: for L in LFDKH do #L od
-    then gammamax = Lvd.list[LFDKH[0][maxDiffLoc][0]]
-    then sph_far_flag = dominant(G,thetaMinus*gammamax)*G.two_rho_check/2 < to_ht_frac*(gammamax*G.two_rho_check)
+    {then gammamax = Lvd.list[LFDKH[0][maxDiffLoc][0]]}
+    {then sph_far_flag = dominant(G,thetaMinus*gammamax)*G.two_rho_check/2 < to_ht_frac*(gammamax*G.two_rho_check)}
     then steps = max(r-1,1)
     then start=elapsed_ms()
     then UParams = [Param]:
          let ((eq,gr),IUCL,CLBF) = localGraphK(LFDKH)
 	 {these have had know_lower, min_bottom, and bottom_elim
-	 already applied; so just do is_unitary}
+	 already applied; so just do is_unitary_test}
     then () = if test_verbose
     	      then prints(for list in LFDKH do #list od, " = ",sum(for list in LFDKH do #list od),
 	      	      	" unitary candidates in ",#eq," equivalence classes.");
 			prints("number of tests so far = ",unitary_test_counter.use_count() - UTCstart);
-	           if sph_far_flag
+	           {if sph_far_flag
 		   then prints("using is_unitary")
-		   else prints("testing to height ",next_heights(pmin,steps))
-		   fi
+		   else} prints("testing to height ",next_heights(pmin,steps))
+		   {fi}
 	      fi
     in local_test_hash(x, lambda, Lvd, LFDKH, eq, gr, CLBF, Uhash, (Param->bool): (Param p) bool:
-    	  if  sph_far_flag
+    	  {if  sph_far_flag
 	      {term on left guaranteed <= main term on right. If close, then
 	       params are close to spherical princ series, and to_ht is fast}
 	  then is_unitary_hash(p) {small nu compared to infl char, unitary_to_ht is slow}
-	  else is_unitary_test(p,next_heights(pmin,steps))
+	  else} is_unitary_test(p,next_heights(pmin,steps)~[0])
 	       {large nu compared to infl char, unitary_to_ht is fast}
-	  fi)
+	  {fi})
     then time = elapsed_ms() - start
     then () = if time_verbose
 	      then prints("     ", print_time_string(time),
@@ -2853,7 +3009,7 @@ set local_test_GEO_hash_bottom_layer(KGBElt x, ratvec lambda, VertexData vd,
 
 set local_test_GEO_bottom_layer(KGBElt x, ratvec lambda) = [Param]:
     let G = x.real_form
-    then Uhash = make_Param_hash(), pol_hash = make_KTypePol_hash(), vd = FPP_vertex_data(G)
+    then Uhash = big_unitary_hash.uhash(x.real_form){make_Param_hash()}, pol_hash = make_KTypePol_hash(), vd = FPP_vertex_data(G)
     then () = unipotents_to_hash(x.real_form,Uhash)
     in local_test_GEO_hash_bottom_layer(x,lambda,vd, pol_hash, Uhash)
 

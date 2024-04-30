@@ -275,10 +275,16 @@ set FPP_unitary_hash_general([KGBElt] xs, Param_hash Uhash, Param_hash Uparamhas
     then () = for x@j in xs
     	      do {xs}
 	 let former_time = current, formerUhash = currentUhash, formerUcounter = currentUcounter
-	 then xtwists = isotwistKGBs(x)
+	 then xtwists = isotwistKGBs(x), D = 4^G.semisimple_rank, twists = all_lambda_differential_0(x)
+	 then M = #LPm_table.lambda0s(G,x.involution)*#twists
+	 then two_power_M = twopowers.power(M), Xpower = big_unitary_hash.power_function(G)(x.number)
+	 {should test M \= D!}
 	 {then () = prints(for y in xtwists do y.number od)}
 	 then tw = first(for y in xtwists[1:]
-	      	   	 do y.number < known_to
+	      	   	 do let Ypower = big_unitary_hash.power_function(G)(y.number)
+			    then yl_known = (big_unitary_hash.xl_known(G)\Ypower)%two_power_M
+			    in yl_known = two_power_M - 1 {#lambdas for x is M, so this says all are done}
+			 {y.number < known_to}
 			 od)
 	 {then () = prints("tw = ",tw," , known_to = ",known_to)}
 	 then xtwist = if tw.>=
@@ -293,6 +299,7 @@ set FPP_unitary_hash_general([KGBElt] xs, Param_hash Uhash, Param_hash Uparamhas
 	    then answerCards[j]:= answerCards[twnum];
 	    	 {prints("skipping x = ",x.number," for xtwist = ",xtwist.number);}
 		 if (know_lower_flag and (known_to = x.#)) then known_to+:=1 fi;
+		 big_unitary_hash.finish(G, Xpower*(two_power_M - 1)); {mark as done all lambdas for x}
 		 for ell:Uhash.size()
 	      	 do let p = Uhash.index(ell)
 		    in if p.x = xtwist
@@ -307,15 +314,15 @@ set FPP_unitary_hash_general([KGBElt] xs, Param_hash Uhash, Param_hash Uparamhas
 	    	 in if contnum.>= and contnum < j {now xcont is xs[contnum]}
 	    	    then answerCards[j]:= answerCards[contnum];
 		    if (know_lower_flag and (known_to = x.#)) then known_to+:=1 fi;
+		    big_unitary_hash.finish(G, Xpower*(two_power_M - 1)); {mark as done all lambdas for x}
 		    for ell:Uhash.size()
 	      	    do let p = Uhash.index(ell)
 		       in if p.x = xcont
 		       	  then Uhash.match(contragredient(p))
 		    	  fi
 		    od
-	     	    else let twists = all_lambda_differential_0(x)
-	 then LPm_entries = LPm_table.LPm_entries(G,x.involution)
-         then good_entries = for (lambda0,entry) in LPm_entries
+	     	    else let LPm_entries = LPm_table.LPm_entries(G,x.involution)
+         	    	 then good_entries = for (lambda0,entry) in LPm_entries
                               do  if 1*parameter(x,lambda0,zeroNu) != zeroPol
                                   then [(lambda0,entry)]
                                   else []
@@ -388,7 +395,8 @@ set FPP_unitary_hash_general([KGBElt] xs, Param_hash Uhash, Param_hash Uparamhas
 		      	     deformLookupCounter.use_count(), ", #def calcs = ",
 		     	     deformCalcCounter.use_count())
                      fi
-	   then () = if (know_lower_flag and (known_to = x.#)) then known_to+:=1 fi
+	   {then () = if (know_lower_flag and (known_to = x.#)) then known_to+:=1 fi}
+	   then () = big_unitary_hash.finish(G, Xpower*(two_power_M - 1)) {mark as done all lambdas for x}
            in ()
 	   fi {xcont.number < known_to}
 	   fi {xtwist.number < known_to}
@@ -435,7 +443,7 @@ set FPP_unitary_hash_real_dumb([(KGBElt,ratvec)] xlambdas, Param_hash Uhash, Par
     KTypePol_hash, Param_hash))
 
 set FPP_unitary_hash_real_dumb([(KGBElt,ratvec)] xlambdas) = void:
-    FPP_unitary_hash_real_dumb(xlambdas, unitary_hash, uparam_hash)
+    FPP_unitary_hash_real_dumb(xlambdas, let (x,) = xlambdas[0] in big_unitary_hash.uhash(x.real_form) {unitary_hash}, uparam_hash)
 
 set FPP_unitary_hash_real_dumb([KGBElt] xs, Param_hash Uhash, Param_hash Uparamhash) = void:
     let () = def_flag:=true in
@@ -444,7 +452,7 @@ set FPP_unitary_hash_real_dumb([KGBElt] xs, Param_hash Uhash, Param_hash Uparamh
     KTypePol_hash, Param_hash))
 
 set FPP_unitary_hash_real_dumb([KGBElt] xs) = void:
-    FPP_unitary_hash_real_dumb(xs, unitary_hash, uparam_hash)
+    FPP_unitary_hash_real_dumb(xs, big_unitary_hash.uhash(xs[0].real_form) {unitary_hash}, uparam_hash)
 
 set FPP_unitary_hash_real_dumb(RealForm G) = void:
     FPP_unitary_hash_real_dumb(KGB(G))
@@ -456,7 +464,7 @@ set FPP_unitary_hash_def_dumb([(KGBElt,ratvec)] xlambdas, Param_hash Uhash, Para
     KTypePol_hash, Param_hash))
 
 set FPP_unitary_hash_def_dumb([(KGBElt,ratvec)] xlambdas) = void:
-    FPP_unitary_hash_def_dumb(xlambdas, unitary_hash, uparam_hash)
+    FPP_unitary_hash_def_dumb(xlambdas, let (x,) = xlambdas[0] in big_unitary_hash.uhash(x.real_form) {unitary_hash}, uparam_hash)
 
 set FPP_unitary_hash_def_dumb([KGBElt] xs, Param_hash Uhash, Param_hash Uparamhash) = void:
     let () = def_flag:=true in
@@ -465,7 +473,7 @@ set FPP_unitary_hash_def_dumb([KGBElt] xs, Param_hash Uhash, Param_hash Uparamha
     KTypePol_hash, Param_hash))
 
 set FPP_unitary_hash_def_dumb([KGBElt] xs) = void:
-    FPP_unitary_hash_def_dumb(xs, unitary_hash, uparam_hash)
+    FPP_unitary_hash_def_dumb(xs, big_unitary_hash.uhash(xs[0].real_form) {unitary_hash}, uparam_hash)
 
 set FPP_unitary_hash_def_dumb(RealForm G) = void:
     FPP_unitary_hash_def_dumb(KGB(G))
@@ -477,7 +485,7 @@ set FPP_unitary_hash_dumb([(KGBElt,ratvec)] xlambdas, Param_hash Uhash, Param_ha
     KTypePol_hash, Param_hash))
 
 set FPP_unitary_hash_dumb([(KGBElt,ratvec)] xlambdas) = void:
-    FPP_unitary_hash_dumb(xlambdas, unitary_hash, uparam_hash)
+    FPP_unitary_hash_dumb(xlambdas, let (x,) = xlambdas[0] in big_unitary_hash.uhash(x.real_form) {unitary_hash}, uparam_hash)
 
 set FPP_unitary_hash_dumb([KGBElt] xs, Param_hash Uhash, Param_hash Uparamhash) = void:
     let () = def_flag:=false in
@@ -497,7 +505,7 @@ set FPP_unitary_hash([(KGBElt,ratvec)] xlambdas, Param_hash Uhash, Param_hash Up
     KTypePol_hash, Param_hash))
 
 set FPP_unitary_hash([(KGBElt,ratvec)] xlambdas) = void:
-    FPP_unitary_hash(xlambdas, unitary_hash, uparam_hash)
+    FPP_unitary_hash(xlambdas, let (x,) = xlambdas[0] in big_unitary_hash.uhash(x.real_form) {unitary_hash}, uparam_hash)
 
 set FPP_unitary_hash([KGBElt] xs, Param_hash Uhash, Param_hash Uparamhash) = void:
     FPP_unitary_hash_general(xs, Uhash, Uparamhash, local_test_GEO_hash@(
@@ -505,10 +513,10 @@ set FPP_unitary_hash([KGBElt] xs, Param_hash Uhash, Param_hash Uparamhash) = voi
     KTypePol_hash, Param_hash))
 
 set FPP_unitary_hash([KGBElt] xs) = void:
-    FPP_unitary_hash(xs,unitary_hash, uparam_hash)
+    FPP_unitary_hash(xs, big_unitary_hash.uhash(xs[0].real_form) {unitary_hash}, uparam_hash)
 
 set FPP_unitary_hash(RealForm G) = void:
-    FPP_unitary_hash(KGB(G),unitary_hash, uparam_hash)
+    FPP_unitary_hash(KGB(G), big_unitary_hash.uhash(G) {unitary_hash}, uparam_hash)
 
 set FPP_unitary_hash2([(KGBElt,ratvec)] xlambdas, Param_hash Uhash, Param_hash Uparamhash) = void:
     FPP_unitary_hash_general(xlambdas, Uhash, Uparamhash, local_test_GEO_hash2@(
@@ -516,7 +524,7 @@ set FPP_unitary_hash2([(KGBElt,ratvec)] xlambdas, Param_hash Uhash, Param_hash U
     KTypePol_hash, Param_hash))
 
 set FPP_unitary_hash2([(KGBElt,ratvec)] xlambdas) = void:
-    FPP_unitary_hash2(xlambdas, unitary_hash, uparam_hash)
+    FPP_unitary_hash2(xlambdas, let (x,) = xlambdas[0] in big_unitary_hash.uhash(x.real_form) {unitary_hash}, uparam_hash)
 
 set FPP_unitary_hash2([KGBElt] xs, Param_hash Uhash, Param_hash Uparamhash) = void:
     FPP_unitary_hash_general(xs, Uhash, Uparamhash, local_test_GEO_hash2@(
@@ -524,7 +532,7 @@ set FPP_unitary_hash2([KGBElt] xs, Param_hash Uhash, Param_hash Uparamhash) = vo
     KTypePol_hash, Param_hash))
 
 set FPP_unitary_hash2([KGBElt] xs) = void:
-    FPP_unitary_hash2(xs, unitary_hash, uparam_hash)
+    FPP_unitary_hash2(xs, big_unitary_hash.uhash(xs[0].real_form) {unitary_hash}, uparam_hash)
 
 set FPP_unitary_hash2(RealForm G) = void:
     FPP_unitary_hash2(KGB(G))
@@ -535,7 +543,7 @@ set FPP_unitary_hash_one_level([(KGBElt,ratvec)] xlambdas, Param_hash Uhash, Par
     KTypePol_hash, Param_hash))
 
 set FPP_unitary_hash_one_level([(KGBElt,ratvec)] xlambdas) = void:
-    FPP_unitary_hash_one_level(xlambdas, unitary_hash, uparam_hash)
+    FPP_unitary_hash_one_level(xlambdas, let (x,) = xlambdas[0] in big_unitary_hash.uhash(x.real_form) {unitary_hash}, uparam_hash)
 
 set FPP_unitary_hash_one_level([KGBElt] xs, Param_hash Uhash, Param_hash Uparamhash) = void:
     FPP_unitary_hash_general(xs, Uhash, Uparamhash, local_test_GEO_hash_one_level@(
@@ -543,7 +551,7 @@ set FPP_unitary_hash_one_level([KGBElt] xs, Param_hash Uhash, Param_hash Uparamh
     KTypePol_hash, Param_hash))
 
 set FPP_unitary_hash_one_level([KGBElt] xs) = void:
-    FPP_unitary_hash_one_level(xs, unitary_hash, uparam_hash)
+    FPP_unitary_hash_one_level(xs, big_unitary_hash.uhash(xs[0].real_form) {unitary_hash}, uparam_hash)
 
 set FPP_unitary_hash_one_level(RealForm G) = void:
     FPP_unitary_hash_one_level(KGB(G))
@@ -559,15 +567,22 @@ set FPP_unitary_hash_bottom_layer([(KGBElt,ratvec)] xlambdas, Param_hash UhashG,
 	      	   else (G,id_mat(G.rank))
 	      	   fi
     then xlambdas_sc = if disconn_flag
-    	      	       then for (x,lambda) in xlambdas do (inverse_embed_KGB2(x, Gsc, M), M*lambda) od
-	      	       else xlambdas
+    	      	       then for (x,lambda) in xlambdas
+		       	    do let (xt,lambdat) = (inverse_embed_KGB2(x, Gsc, M), M*lambda)
+			       then () = if is_finished(x,lambda)
+			       	       	 then finish(xt,lambdat)
+					 fi
+			       in (xt,lambdat)
+			    od
+		       else xlambdas
 	      	       fi
     then Gknown_to = known_to
     then () = if disconn_flag
     	      then known_to := inverse_embed_KGB2(KGB(G,known_to), Gsc, M).number
 	      fi
     then Uhash = if disconn_flag {this will hold the unitary reps on Gsc}
-    	      	 then make_Param_hash() {this is for unitary reps of Gsc that factor to G}
+    	      	 then big_unitary_hash.uhash(Gsc) {make_Param_hash()}
+		 {this is for unitary reps of Gsc that factor to G}
 		 else UhashG
 		 fi
     then start = elapsed_ms()
@@ -625,6 +640,10 @@ set FPP_unitary_hash_bottom_layer([(KGBElt,ratvec)] xlambdas, Param_hash UhashG,
 			 fi;
 			 let answer = local_test_GEO_hash_bottom_layer(x_sc, lambda_sc,
 			     LPm_table.FPP_vertex_data(Gsc), Lvd, LF, pol_hash, Uhash)
+			 then () = finish(x_sc, lambda_sc)
+			 then () = if disconn_flag
+			      	   then finish(x,lambda)
+				   fi
 			 then () = answerCards[k] := #answer
 			 then () = for p in answer do Uparamhash.match(p) od
    		    	 then () = current := elapsed_ms(); currentUhash := Uhash.size();
@@ -679,7 +698,8 @@ set FPP_unitary_hash_bottom_layer([(KGBElt,ratvec)] xlambdas, Param_hash UhashG,
     fi
 
 set FPP_unitary_hash_bottom_layer([(KGBElt,ratvec)] xlambdas) = void:
-    FPP_unitary_hash_bottom_layer(xlambdas, unitary_hash, uparam_hash)
+    FPP_unitary_hash_bottom_layer(xlambdas, let (x,lambda) = xlambdas[0] in big_unitary_hash.uhash(x.real_form),
+    					    uparam_hash)
 
 set FPP_unitary_hash_bottom_layer([KGBElt] xs, Param_hash UhashG, Param_hash Uparamhash) = void:
     if #xs = 0
@@ -740,8 +760,10 @@ set FPP_unitary_hash_bottom_layer([KGBElt] xs, Param_hash UhashG, Param_hash Upa
     	      do {xs}
 	 let former_time = current, formerUhash = currentUhash, formerUcounter = currentUcounter, x_sc = xs_sc[j],
 	     startmorebadx = more_bad_hash.size()
-	 then xtwists = isotwistKGBs(x)
-	 then tw = first(for y in xtwists[1:] do y.number < known_to od)
+	 then xtwists = isotwistKGBs(x), D = 4^G.semisimple_rank
+	 then two_power_D = twopowers.power(D), Xpower = big_unitary_hash.power_function(G)(x.number)
+	 then tw = first(for y in xtwists[1:]
+	      	   	 do y.number < known_to od)
 	 then xtwist = if tw.>=
 	      	       then xtwists[tw]
 		       else x
