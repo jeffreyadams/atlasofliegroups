@@ -740,7 +740,7 @@ set good_L(Param p) = RealForm:
 induced, and the inducing parameter}
 set wkgood_Q(Param p) = (KGPElt, Param):
     let G = p.real_form, x = p.x, gamma = p.infinitesimal_character
-    then theta = x.involution, suppS = support(x), SCR = G.simple_coroots
+    then theta = x.involution, suppS = support(x) {, SCR = G.simple_coroots}
     then wkgoodQ = KGPElt:(suppS, x)
     then wkgoodL = wkgoodQ.Levi
     then xL = inverse_embed_KGB(x,wkgoodL)

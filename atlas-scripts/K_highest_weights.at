@@ -550,22 +550,29 @@ it includes functions for constructing both Kparameters and parameters}
   let (A,v) = adapted_basis(1-involution(x))
   then (B,)=filter_units(A[:,:#v],v) in B
 }
-set basis_lambda_differential_0 (KGBElt x) = mat: { columns are weights }
-  let theta=involution(x) then E=eigen_lattice(theta,-1)
+set basis_lambda_differential_0 (mat theta) = mat: { columns are weights }
+  let E=eigen_lattice(theta,-1)
   then { express im(1-theta) in basis E, and find E-basis adapted to it }
     (A,v)=adapted_basis(in_lattice_basis(E,1-theta))
   in { prints("K=",E); prints("A=",A); prints("v=",v); prints ("B=",E*A); }
   E * { transform to original coordinates } columns_with((int j):v[j]=2,A)
 { }
+set basis_lambda_differential_0 (KGBElt x) = mat: { columns are weights }
+  basis_lambda_differential_0(x.involution)
+
+
 
 { all 2^k vectors in X^* representing the characters of H^theta with
   differential 0
   k= number of R^* factors in H
   if H^theta is connected, returns [[0,...,0]]
 }
-set all_lambda_differential_0 (KGBElt x) = [vec]:
-  let basis=basis_lambda_differential_0(x) in
+set all_lambda_differential_0 (mat theta) = [vec]:
+  let basis=basis_lambda_differential_0(theta) in
   for v in all_0_1_vecs(n_columns(basis)) do basis*v od
+
+set all_lambda_differential_0 (KGBElt x) = [vec]:
+    all_lambda_differential_0 (x.involution)
 
 { all K parameters with same d_lambda as (x,lambda) }
 set all_equal_dlambda_K_parameters (KType t) = [KType]:

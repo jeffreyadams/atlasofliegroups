@@ -9,6 +9,7 @@
 <associated_variety_annihilator.at { for GK_dim, used in identifying unipotent reps }
 <weak_packets.at {for unipotent_representations}
 <derived_cover.at {for sc_descends}
+<cohIndUnip.at {for is_FPP}
 { <lietypes.at { for simple_type }}
 { <parabolics.at {for parabolic_by_wt}}
 <K_highest_weights.at {for all_lambda_differential_zero}
@@ -247,405 +248,6 @@ set approx_ht_saving(Param p, int N) = int:
 	 fi
     in result
 
-set all_lambda_differential_0(mat theta) = [vec]:
-    let BLD0 = basis_lambda_differential_0(theta)
-    in for v in all_0_1_vecs(n_columns(BLD0))
-       do BLD0*v
-       od
-
-set cands(InnerClass ic, mat theta, [ratvec] verts) = [vec]:
-    let th1 = 1+theta
-    in for v in verts
-       do let w = th1*v
-       	  in if w.denom = 1
-	     then [w.numer]
-             else []
-             fi
-       od.##.no_reps
-
-{computes a set of integral vecs INCLUDING all of those in (1+theta)*FPP}
-set candsBIG(InnerClass ic, mat theta) = [vec]:
-    let th1 = 1+theta, {tester = [vec]: (1-theta).^} thmin = 1-theta
-    then th1xis = th1*ic.fundamental_weights
-    then mins = vec:
-    	      	for j:ic.rank
-    	        do floor(sum(for th1xi in th1xis do min(0,th1xi[j]) od))
-		od
-    then maxs = vec:
-    	      	for j:ic.rank
-    	        do ceil(sum(for th1xi in th1xis do max(0,th1xi[j]) od))+1
-		od
-    {jth coord of vector in th1*FPP is between mins[j] and maxs[j]}
-    then B = mat:for b in box(maxs-mins) do b+mins od
-    {number of rows = ic.rank}
-    in for answer in columns(B)
-       do if (thmin*(answer.numer)).=
-       	  then [answer]
-	  else []
-	  fi
-       od.##
-
-{a point in FPP has wfundamental[j] coord in the range [min[j], max[j]]}
-set candsNEW(InnerClass ic, mat theta) = [vec]:
-    let {y = theta,} two_rho = ic.two_rho, w = id_mat(ic.rank)
-    then x = KGB_elt(KGBElt_gen:(ic, theta, null(ic.rank)))
-    then G = x.real_form
-    then y = KGB(G, first(for z in KGB(G) do z.Cartan_class = x.Cartan_class od))
-    then theta0 = y.involution
-    then w = cross_divide(x,y)
-    {then () = prints(matrix(w)*theta0*matrix(w.inverse))}
-    then simple = [vec]: ic.simple_coroots, fundamental = ratmat:
-    	 if ic.semisimple_rank > 0
-	 then ratvecs_as_ratmat(ic.fundamental_weights)
-	 else null(ic.rank,0)/1
-	 fi
-{    then down = for av@j in simple
-    	      	do if (av*y)*two_rho < 0 and
-		      not (av + av*y).=
-		   then [j]
-		   else []
-		   fi
-		od.##
-    then () = while #down > 0
-    	      do let refl = reflection(ic,down[0])
-	      	 then () = y:= refl*y*refl
-		 then () = w:=w*refl {conjugates y back to theta}
-	      	 in down:= for av@j in simple
-    	      	      	      	  do if (av*y)*two_rho < 0 and
-		      		     	not (av + av*y).=
-		   	      	     then [j]
-		   		     else []
-		   		     fi
-			      	  od.##
-	       od
-    {then () = prints(w)}
-    {y = w.inverse * theta * w is the long Weyl elt of a split equal rank Levi.}
-    }
-    then Snonreal = for av@j in simple
-    	       	    do if ((theta0.^)*av + av).=
-		       then []
-		       else [j]
-		       fi
-		    od.##
-    then Sreal = for av@j in simple
-    	       	 do if ((theta0.^)*av + av).=
-		    then [j]
-		    else []
-		    fi
-		 od.##
-    then theta01 = theta0 + 1, wsimple = [vec]: for av in simple do av*(w.inverse) od, wfundamental = matrix(w)*fundamental
-    then allmaxs = [int]:
-    	 for k:ic.semisimple_rank
-    	 do let wak = wsimple[k]
-	    in max( (wak*two_rho)\2,0)
-	 od
-    then allmins = [int]:
-    	 for k:ic.semisimple_rank
-    	 do let wak = wsimple[k]
-	    in min( (wak*two_rho)\2,0)
-	 od
-    then nrmaxs = [int]:
-    	 for k in Snonreal
- 	 do 2*allmaxs[k] +
-	    sum(for j in Sreal
-	        do allmaxs[j]*((theta01*ic.fundamental_weights[j])*simple[k]).numer
-		od) + 1
-	 od
-    then nrmins = [int]:
-    	 for k in Snonreal
-	 do 2*allmins[k] +
-	    sum(for j in Sreal
-	        do allmins[j]*((theta01*ic.fundamental_weights[j])*simple[k]).numer
-		od)
-	 od
-    then wfundnonreal = ratmat:
-	 if #Snonreal > 0
-	 then ratvecs_as_ratmat(
-	      for j in Snonreal
-	      do w*ic.fundamental_weights[j] 
-	      od)
-	  else null(ic.rank,0)/1
-	  fi
-    {then () = prints("nrmins = ",nrmins,", nrmaxs = ",nrmaxs,", wsimple = ", wsimple,", wfundnonreal cols = ",for c in columns(wfundnonreal) do c od)}
-    {then () = assert(ratmat_as_mat((1-theta)*wfundnonreal).=, "oops, don't have eigenfunctions")}
-    then B = mat:for b in box(nrmaxs-nrmins) do b+nrmins od
-    {number of rows = size of Snonreal. Each column is a potential combination of wfundnonreal columns in th1*FPP}
-    in for v in columns (wfundnonreal*B)
-       do if v.denom = 1  {assume rho in X*; otherwise v-rho}
-	  then [v.numer]
-	  else []
-	  fi
-        od.##{.no_reps}  {automatically no reps}
-
-set_type Lvd_Perm2_mapAct = (VertexData Lvd, PermOrderTwo Perm2, vec mapAct)
-
-{Record for each inner class a list of some involutions in inner class; and for each such involution,
- some possible lambdas; and for each such lambda, a list of (local vertex data, Perm2, mapAct)}
-set_type
-[Lvd_Perm2_mapAct_table =
-
-( (->int) inner_class_size {number of inner classes included}
-  , ( -> vec) ic_vlist_size {for each inner class, the number of FPP-vertices}
-  , ( -> ) clear
-  , ( -> vec) involution_size {for each inner class, number of involutions so far considered}
-  , ( -> [vec]) lamthlam_size {for each inner class and involution, number of d_lambdas (actually lambda+theta*lambda)
-      	 		       so far considered}
-  , ( -> [[vec]]) Lvd_list_size {for each inner class and involution and d_lambda, size of Lvd.list}
-  , (InnerClass -> VertexData) FPP_vertex_data {one for each inner class}
-  , (InnerClass -> (vec -> int)) flippable_edge_lookup
-  , (InnerClass -> [ratvec]) FPP_local_vertices {one for each inner class}
-  , ((InnerClass, mat) -> [vec]) lamthlams {for each involution, list of allowed lambda+theta_lambda}
-  , ((InnerClass, mat, vec) -> int) lamthlam_number {for each involution, number of lambda+theta_lambda in list}
-  , ((InnerClass, mat) -> [ratvec]) lambda0s {for each involution, list of allowed lambda mod twists}
-  , ((InnerClass, mat) -> [(ratvec, Lvd_Perm2_mapAct)]) LPm_entries {allowed lambda mod twists, corr entry}
-    		       	  	    {like output of old FPP_lambdas_big_new}
-  , ((InnerClass, mat, vec) -> VertexData) Lvd {local vertex data, one for each theta and lambda+theta*lambda}
-  , ((InnerClass, mat, vec) -> Lvd_Perm2_mapAct) LPm_entry {one for each theta and lambda+theta*lambda}
-{  , ((InnerClass, mat, vec) -> ) append {just compute, don't report LPm entry}}
-  , (int -> InnerClass) inner_class_index
-  , (int -> VertexData) vd_index {vertex data for inner class}
-  , ((int,int,int) -> Lvd_Perm2_mapAct) Lvd_Perm2_mapAct_index {one for each inner class, involution,
-    		      					       lambda + theta*lambda}
-)
-]
-set old_flag = true {use old cands function}
-set big_flag = false {use candsBIG}
-set new_flag = false {use candsNEW}
-
-set make_Lvd_Perm2_mapAct_table() = Lvd_Perm2_mapAct_table:
-(   let inner_class_hash = make_InnerClass_hash()
-    then inv_hashes = [mat_hash]: [] {one for each inner class}
-    then vertex_datas = [VertexData]: [] {one for each inner class}
-    then FELs = [(vec->int)]: [] {one for each inner class}
-    then ELLs = [[(ratvec->int)]]: [] {one for each inner class}
-    then FPP_local_verts = [[ratvec]]: [] {one list for each inner class}
-    then cands = [[[vec]]]: [] {one [vec] for each inner class and involution}
-    then lamthlam_hashess = [[vec_hash]]: [] {one for each inner class and involution}
-    	 {entries are vecs of size ic.rank: lamba+theta*lambda, for a
-	 	  certain choice of lambda (defined up to twist and equivalence}
-    then entries = [[[Lvd_Perm2_mapAct]]]: [] {one list for each involution and lamthlam}
-    then clear() = void:
-    	 let () = inner_class_hash.clear()
-	 then () = inv_hashes := []
-	 then () = vertex_datas := []
-	 then () = FELs := []
-	 {then () = ELLs := []}
-	 then () = FPP_local_verts := []
-	 then () = cands := []
-	 then () = lamthlam_hashess := []
-	 then () = entries := []
-	 in ()
-    then add_inner_class(InnerClass ic) = int:
-    	 let I = inner_class_hash.size()
-	 then i = inner_class_hash.match(ic)
-    	 then () = if i = I {haven't seen this inner class before}
-	      	   then inv_hashes := (inv_hashes next inv_hashes:=[])#make_mat_hash();
-	    	   	vertex_datas := (vertex_datas next vertex_datas := [])#FPP_vertex_data(ic);
-			FELs := (FELs next FELs:=[])# FPP_flippable_edge_lookup(ic);
-			{ELLs := (ELLs next ELLs:=[])# edge_list_lookups(ic);}
-	    	   	FPP_local_verts := (FPP_local_verts next FPP_local_verts:=[])
-		     	#FPP_local_vertices(ic, vertex_datas[i].list, FELs[i]);
-			cands := (cands next cands := [])#[];
-	    	   	lamthlam_hashess := (lamthlam_hashess next lamthlam_hashess := [])#[];
-	    	   	entries := (entries next entries :=[])# []
-	    	   fi
-	  in i
-    then add_involution(InnerClass ic, mat theta) = (int, int):
-    	 let i = add_inner_class(ic)
-	 then J = inv_hashes[i].size()
-      	 then j = inv_hashes[i].match(theta)
-     	 then () = if j = J {haven't seen this involution before}
-      	      	   then cands[i] := (cands[i] next cands[i] := [])
-		    	 			    # [];
-			lamthlam_hashess[i] := (lamthlam_hashess[i] next lamthlam_hashess[i] := [])
-		    	 			    # make_vec_hash();
-		   	entries[i] := (entries[i] next entries[i] := []) # []
-		   fi
-	 in (i, j)
-    then add_cands(InnerClass ic, mat theta) = (int, int):
-    	 let (i,j) = add_involution(ic,theta)
-	 then tempcandsi = cands[i]
-	 then () = tempcandsi[j] := if old_flag
-	      	   		    then cands(ic, theta, FPP_local_verts[i])
-				    elif big_flag
-				    then candsBIG(ic,theta)
-				    elif new_flag
-				    then candsNEW(ic,theta)
-				    else cands(ic, theta, FPP_local_verts[i])
-				    fi
-	 then () = cands[i]:=tempcandsi
-	 in (i,j)
-    then add_lamthlam_hash(InnerClass ic, mat theta) = (int, int):
-      	 let (i,j) = add_cands(ic,theta)
-      	 then th1 = 1+theta, verts = FPP_local_verts[i]
-      	 then cands = cands[i][j]
-	 {for v in verts
-      	   	      do if ((th1*v).denom = 1) then [ratvec_as_vec(th1*v)]
-		      	 else []
-		      	 fi
-		      od.##.no_reps}
-      	 then () = for lamthlam in cands
-      	      	   do case vec_solve(th1,lamthlam - th1*ic.rho)
-                    | else () {[(ratvec,VertexData,PermOrderTwo,vec)]: []}
-                    | solution(lr):
-                      let k = lamthlam_hashess[i][j].lookup(lamthlam)
-		      then tempi = entries[i]
-                      then () = if k = -1 {#tempi[j]}
-		      	      	then let trial =
-				     	 {if FEL_flag
-					 then} localFD_Lvd2(theta,lr+ic.rho,vertex_datas[i],FELs[i])
-					 {else localFD_Lvd2(ic, theta,lr+ic.rho,vertex_datas[i],ELLs[i])
-					 fi}
-				     in if #(trial.Lvd.list) > 0
-				     	then lamthlam_hashess[i][j].match(lamthlam);
-                                   	     tempi[j]:= (tempi[j] next tempi[j]:=[]) #trial
-                                    	fi
-				 {else lamthlam was valid and already computed entries[i][j]}
-				 fi
-		      then () = entries[i]:= tempi
-		      in ()
-                      esac
-		   od
-
-         in (i, j)
-    in
-    ( ( -> int): {inner_class_size} @int: inner_class_hash.size()
-    , ( -> vec): {ic_vlist_size} @vec: for vd in vertex_datas do #vd.list od
-    , ( -> ): {clear} clear
-    , ( -> vec): {involution_size} @vec: for inv_hash in inv_hashes do inv_hash.size() od
-    , ( -> [vec]): {lamthlam_size} @[vec]:
-      for lamthlam_hashes in lamthlam_hashess {ith inner class}
-      do for lamthlam_hash in lamthlam_hashes    {jth involution}
-      	 do lamthlam_hash.size()
-	 od
-      od
-    , ( -> [[vec]]): {Lvd_list_size} @[[vec]]:
-      for i: #entries
-      do for j: #entries[i]
-	 do for k: #entries[i][j]
-	    do #(entries[i][j][k].Lvd.list)
-	    od {vec for involution}
-	 od {[vec] for inner class}
-      od
-    , (InnerClass -> VertexData): {FPP_vertex_data}  (InnerClass ic) VertexData:
-      let i = add_inner_class(ic)
-      in vertex_datas[i]
-    , (InnerClass -> (vec -> int)): {flippable_edge_lookup} (InnerClass ic) (vec -> int):
-      let i = add_inner_class(ic)
-      in FELs[i]
-    , (InnerClass -> [ratvec]): {FPP_local_vertices} (InnerClass ic)  [ratvec]:
-      let i = add_inner_class(ic)
-       in FPP_local_verts[i]
-    , ((InnerClass, mat) -> [vec]): {lamthlams} (InnerClass ic, mat theta) [vec]:
-      let (i,j) = add_lamthlam_hash(ic,theta)
-      in for k:lamthlam_hashess[i][j].size() do lamthlam_hashess[i][j].index(k)[:ic.rank] od
-    , ((InnerClass, mat, vec) -> int): {lamthlam_number} (InnerClass ic, mat theta, vec lamthlam) int:
-      let (i,j) = add_lamthlam_hash(ic,theta), th1 = theta+1
-      in lamthlam_hashess[i][j].lookup(lamthlam)
-    , ((InnerClass, mat) -> [ratvec]): {lambda0s} (InnerClass ic, mat theta) [ratvec]:
-      let (i,j) = add_lamthlam_hash(ic,theta)
-      in for k:lamthlam_hashess[i][j].size()
-      	 do let lamthlam = lamthlam_hashess[i][j].index(k), th1 = 1+theta
-	    then lr = required_solution(th1,lamthlam - ratvec_as_vec(th1*ic.rho))
-      	    in lr+ic.rho
-	 od
-    , ((InnerClass, mat) -> [(ratvec, Lvd_Perm2_mapAct)]): {LPm_entries} (InnerClass ic, mat theta) [(ratvec, Lvd_Perm2_mapAct)]:
-      let (i,j) = add_lamthlam_hash(ic,theta), th1 = theta+1
-      in for k:lamthlam_hashess[i][j].size()
-      	 do let lamthlam = lamthlam_hashess[i][j].index(k)
-	    then lr = required_solution(th1,lamthlam - ratvec_as_vec(th1*ic.rho))
-	    in (lr+ic.rho, entries[i][j][k])
-	 od
-    , ((InnerClass, mat, vec) -> VertexData): {Lvd} (InnerClass ic, mat theta, vec lamthlam) VertexData:
-      let (i,j) = add_lamthlam_hash(ic,theta), th1 = theta+1
-      then k = lamthlam_hashess[i][j].lookup(lamthlam)
-      in entries[i][j][k].Lvd
-    , ((InnerClass, mat, vec) -> Lvd_Perm2_mapAct): {LPm_entry} (InnerClass ic, mat theta, vec lamthlam) Lvd_Perm2_mapAct:
-      let (i,j) = add_lamthlam_hash(ic,theta), th1 = theta+1
-      then k = lamthlam_hashess[i][j].lookup(lamthlam)
-      in entries[i][j][k]
-    , (int -> InnerClass): {inner_class_index} (int i) InnerClass: inner_class_hash.index(i)
-    , (int -> VertexData): {vd_index} (int i) VertexData: vertex_datas[i]
-    , ((int,int,int) -> Lvd_Perm2_mapAct): {Lvd_Perm2_mapAct_index} (int i, int j, int k): Lvd_Perm2_mapAct: entries[i][j][k]
-)
-)
-
-set LPm_table = make_Lvd_Perm2_mapAct_table()
-
-set_type
-[big_unitary_hash_table =
-( ( -> int) real_form_size {number of real forms included}
-  , ( -> vec) uhash_sizes {for every real form, the number of unitary reps}
-  , (RealForm -> int) uhash_size {for one real form, number of unitary reps}
-  , ( -> ) clear
-  , (RealForm -> int) rf_index {index of real form in list}
-  , (RealForm -> (int->int)) power_function {for each real form, the function m -> 2^((4^semisimple_rank)*m)}
-  , (RealForm -> int) xl_known {bitmap of (x,lambda) for which FPP unitary dual is known}
-  , ((RealForm,int) -> ) finish {add bitmap of new known (x,lambda) to xl_known}
-  , (RealForm -> Param_hash) uhash {hash table of known unitary}
-  , (Param -> (int,int)) long_lookup {(rf_index(p.real_form), location of p in its uhash)}
-  , (Param -> int) lookup {(location of p in its uhash)}
-  , (Param -> int) match {add p to its hash table}
-  , ((Param,int) -> int) long_match {add p to ith hash table}
-)
-]
-
-set make_big_unitary_hash() = big_unitary_hash_table:
-(   let real_form_hash = make_RealForm_hash()
-    then uhashes = [Param_hash]: [] {one for each real form}
-    then power_functions = [Power_function]: [] {one for each real form}
-    then xl_known = [int]: [] {one bitmap of known (x,lambda) for each real form}
-    then clear() = void:
-    	 let () = real_form_hash.clear()
-	 then () = uhashes := []
-	 then () = power_functions := []
-	 then () = xl_known := []
-	 in ()
-   then add_real_form(RealForm rf) = int:
-    	 let I = real_form_hash.size()
-	 then i = real_form_hash.match(rf)
-    	 then () = if i = I {haven't seen this real form before}
-	      	   then uhashes := (uhashes next uhashes:=[])#make_Param_hash();
-		   	power_functions := (power_functions next power_functions := [])#
-					make_power_function(4^rf.semisimple_rank);
-			xl_known := (xl_known next xl_known := [])#0
-	    	   fi
-	  in i
-    in
-    ( (->int): {real_form_size} @int: real_form_hash.size()
-    , ( -> vec): {uhash_sizes} @vec: for uhash in uhashes do uhash.size() od
-    , (RealForm -> int): {uhash_size} (RealForm rf) int:
-      uhashes[add_real_form(rf)].size()
-    , ( -> ): {clear} clear
-    , (RealForm -> int): {rf_index} (RealForm rf) int: add_real_form(rf)
-    , (RealForm -> (int->int)): {power_function} (RealForm rf) (int->int):
-      let i = add_real_form(rf)
-      in power_functions[i].power
-    , (RealForm -> int): {xl_known} (RealForm rf) int:
-      let i = add_real_form(rf)
-      in xl_known[i]
-    , ((RealForm,int) -> ): {finish} (RealForm rf, int M):
-      let i = add_real_form(rf)
-      then () = xl_known[i] := OR(M,xl_known[i])
-      in ()
-    , (RealForm -> Param_hash): {uhash} (RealForm rf) Param_hash:
-      uhashes[add_real_form(rf)]
-    , (Param -> (int,int)): {long_lookup} (Param p) (int,int):
-      let i = add_real_form(p.real_form)
-      in (i, uhashes[i].lookup(p))
-    , (Param -> int): {lookup} (Param p) int:
-      let i = add_real_form(p.real_form)
-      in uhashes[i].lookup(p)
-    , (Param -> int): {match} (Param p):
-      let i = add_real_form(p.real_form)
-      in uhashes[i].match(p)
-    , ((Param,int) -> int): {long_match} (Param p, int i):
-      uhashes[i].match(p)
-    )
-)
-
-set big_unitary_hash = make_big_unitary_hash()
-
 {computes directed graph of local facets. Output GraphData is
 [[int]],[[int]] giving equivalence classes and the graph. Next output
 [vec]s are IUCL and classListByFacet}
@@ -800,34 +402,19 @@ set twopowers = make_power_function(2)
 For x number j and lambda = FPP_lambdas(x)[k], the corresponding bit is #(j*4^{G.semisimple_rank} + k)}
 set xl_known = int:0
 
-set set_bit(int N, int k) = int: OR(N, twopowers.power(k))
-
-{location in the bitmap for G}
-set position(KGBElt x, ratvec lambda) = int:
-    let theta = x.involution, ic = x.inner_class
-    then th1 = 1+theta, lr = (lambda- ic.rho).numer
-    then lamthlam = (th1*lambda).numer
-    then m0 = LPm_table.lamthlam_number(x.inner_class, theta, lamthlam)
-    then () = assert(m0.>=, "oops, lamthlam not found")
-    then taus = all_lambda_differential_0(x)
-    then tau = lr - required_solution(th1,lamthlam - ratvec_as_vec(th1*ic.rho))
-    then m1 = first(for tauprime in taus do tauprime = tau od)
-    then m = m0*#taus + m1, D = 4^(ic.semisimple_rank)
-    then () = if m >= D
-    	      then prints("warning: lambda number ", m," exceeds max ",D,
-	      		       "; not recording this (x,lambda)")
-	      fi
-    in D*x.number + m
+set set_bit(int N, int k) = int: OR(N, to_bitset([k])) {twopowers.power(k))}
 
 set two_to_position(KGBElt x, ratvec lambda) = int:
-    let POS = position(x, lambda), D = 4^x.inner_class.semisimple_rank
+    to_bitset([position(x,lambda)])
+    {let POS = position(x, lambda), D = 4^x.inner_class.semisimple_rank
     {then Dpowers = make_power_function(D)}
-    in big_unitary_hash.power_function(x.real_form)(POS\D)*twopowers.power(POS%D)
+    in big_unitary_hash.power_function(x.real_form)(POS\D)*twopowers.power(POS%D)}
 
 {set a bit in xl_known}
 set finish(KGBElt x, ratvec lambda) = void:
-    big_unitary_hash.finish(x.real_form, two_to_position(x,lambda))
-    {let POWER = two_to_position(x,lambda)
+    big_unitary_hash.finish(x, two_to_position(x,lambda))
+
+{let POWER = two_to_position(x,lambda)
     then () = xl_known:= OR(xl_known, POWER)
     in ()}
 {
@@ -848,10 +435,25 @@ set finish(KGBElt x, ratvec lambda) = void:
     in ()
 }
 
+set finish(KGBElt x) = void:
+    let lambdas = FPP_lambdas(x) {, D = 4^(x.real_form.semisimple_rank)}
+    then m = #lambdas
+    then M = (to_bitset([m]) - 1) {*to_bitset([D*x.number])}
+    in big_unitary_hash.finish(x, M)
+
 {check whether a bit in xl_known is set}
 set is_finished(KGBElt x, ratvec lambda) = bool:
-    let POWER = two_to_position(x,lambda)
-    in (big_unitary_hash.xl_known(x.real_form)\POWER) %2 = 1 {(xl_known\POWER)%2 = 1}
+    let M = big_unitary_hash.xl_known(x.real_form)[x.number]
+    in is_member_bitset(position(x,lambda),M)
+{let POWER = two_to_position(x,lambda)
+    in (big_unitary_hash.xl_known(x.real_form)\POWER) %2 = 1 {(xl_known\POWER)%2 = 1}}
+
+set is_finished_time = int:0
+set is_finished(KGBElt x, ratvec lambda, [int] N) = bool:
+let start = elapsed_ms()
+then ans = is_member_bitset(position(x, lambda), N[x.number])
+then ()= is_finished_time+:= elapsed_ms() - start
+in ans
 
 {    let theta = x.involution, ic = x.inner_class, lr = (lambda-x.inner_class.rho).numer
     then th1 = 1+theta
@@ -869,6 +471,22 @@ set is_finished(KGBElt x, ratvec lambda) = bool:
     then position = (D*x.number + m)
     then power = twopowers.power(position)
     in (xl_known\power)%2 = 1}
+
+{global variable to be assigned to big_unitary_hash.xl_known(G) during any local calculation,
+to avoid making new copies of it}
+set NG = [int]: []
+
+{list of all (x,lambda) where FPP-unitary reps are in bitmap for G}
+set all_finished(RealForm G) = [(KGBElt,ratvec)]:
+    let list = for x in KGB(G)
+    	       do set_bit_positions(big_unitary_hash.xl_known(G)[x.number])
+	       od
+    in for x in KGB(G)
+       do let poss = list[x.number]
+       	  in for pos in poss
+       	     do (x, FPP_lambdas(x)[pos])
+       	     od
+       od.##
 
 {set this to true to use wiggle tests in know_more mode in local_testK_hash_bottom_layer,
 which handles the most cases}
@@ -1007,11 +625,13 @@ set local_testK_hash_know_lower(KGBElt x, ratvec lambda, VertexData vd,
 		  then pC = parameter(x, lambda, facet_bary(vd.list, verts))
 	      	  then ps = monomials(finalize(pC))
 	          in if not is_final(pC) and all(for q in ps
-		     	    		     	 do @bool: q.x.# < known_to and Uhash.lookup(q).>=
+		     	    		     	 do {@bool: q.x.# < known_to} @bool: is_finished(q.x,q.lambda,NG)
+						    and Uhash.lookup(q).>=
 					    	 od)
 		     then newStatuses[k]:="T"
-		     elif know_lower_flag and any(for q in ps
-		     	    	   	    do @bool: (q.x.# < known_to) and (Uhash.lookup(q) = -1)
+		     elif {know_lower_flag and} any(for q in ps
+		     	    	   	    do @bool: is_finished(q.x,q.lambda,NG) {(q.x.# < known_to)}
+					    and (Uhash.lookup(q) = -1)
 					    od)
 		     then newStatuses:= updateNUclassesB(newStatuses, gr, k, "F")
 		     ; newStatuses[k] := "F"
@@ -1127,13 +747,15 @@ set local_testK_hash_bottom_layer(KGBElt x, ratvec lambda, VertexData vd,
 					      {then if #try = 0 and #C > 1
 					      	   then let}
 		      	    in if not is_final(pC)
-			       then if all(for q in pCdef do @bool: (q.x.# < known_to) and (Uhash.lookup(q) >= 0) od)
+			       then if all(for q in pCdef do @bool: is_finished(q.x, q.lambda,NG){(q.x.# < known_to)}
+			       	       	       	    	     and (Uhash.lookup(q) >= 0) od)
 			       	    then newStatuses[k] := "T"
-			       	    elif any(for q in pCdef do @bool: (q.x.# < known_to) and (Uhash.lookup(q) = -1) od)
+			       	    elif any(for q in pCdef do @bool: is_finished(q.x,q.lambda,NG) {(q.x.# < known_to)} and (Uhash.lookup(q) = -1) od)
 				    then newStatuses:= updateNUclassesB(newStatuses, gr, k,"F"); "F"
 				    fi
 			       else {now pC is final, and pCdef consists of wiggled Params with smaller x}
-			       	    if any(for q in pCdef do @bool: (q.x.# < known_to) and (Uhash.lookup(q) = -1) od)
+			       	    if any(for q in pCdef do @bool:  is_finished(q.x,q.lambda,NG){(q.x.# < known_to)}
+				       	       and (Uhash.lookup(q) = -1) od)
 			       	    then newStatuses := updateNUclassesB(newStatuses, gr, k,"F"); newStatuses[k] := "F"
 				    fi
 			       fi
@@ -1174,8 +796,7 @@ set local_testK_hash_bottom_layer(KGBElt x, ratvec lambda, VertexData vd,
 			      else true
 			      fi
 		  then () = if test and U_flag {get definitive yes/no}
-		       	    then let () = test:= all(for p in ps do (Uhash.lookup(p)).>= or
-			    	     	  	 is_unitary_hash(p) od)
+		       	    then let () = test:= all(for p in ps do is_unitary_hash_big(p) od)
 		       	    	 in if not test then more_bad_hash.match(pC) fi
 		            fi
      		  in if not test
@@ -1326,7 +947,7 @@ set local_test_hash(KGBElt x, ratvec lambda, VertexData Lvd,
 
 set local_test_hash(KGBElt x, ratvec lambda, VertexData Lvd, [[LocalFacetVertsHash]] LFVH, [[int]] eq, [[int]] gr,
     			   [vec] classListByFacet, Param_hash Uhash) = [Param]:
-    local_test_hash(x, lambda, Lvd, LFVH, eq, gr, classListByFacet, Uhash, is_unitary_hash@Param)
+    local_test_hash(x, lambda, Lvd, LFVH, eq, gr, classListByFacet, Uhash, is_unitary_hash_big@Param)
 
 {meant to hold params p with pL unitary and p not}
 set surprise_hash = make_Param_hash()
@@ -1366,13 +987,16 @@ set local_test_hash_bottom(KGBElt x, ratvec lambda, VertexData Lvd,
                                          else monomials(finalize(pC))
                                          fi
                             in if not is_final(pC)
-			       then if all(for q in pCdef do @bool: (q.x.# < known_to) and (Uhash.lookup(q) >= 0) od)
+			       then if all(for q in pCdef do @bool: is_finished(q.x,q.lambda,NG){(q.x.# < known_to)}
+			       	       	       and (Uhash.lookup(q) >= 0) od)
                                     then newStatuses[k] := "T"
-                                    elif any(for q in pCdef do @bool: (q.x.# < known_to) and (Uhash.lookup(q) = -1) od)
+                                    elif any(for q in pCdef do @bool: is_finished(q.x,q.lambda,NG){(q.x.# < known_to)}
+				    	 	 and (Uhash.lookup(q) = -1) od)
                                     then newStatuses:= updateNUclassesB(newStatuses, gr, k); "F"
                                     fi
                                else {now pC is final, and pCdef consists of wiggled Params with smaller x}
-                                    if any(for q in pCdef do @bool: (q.x.# < known_to) and (Uhash.lookup(q) = -1) od)
+                                    if any(for q in pCdef do @bool:  is_finished(q.x,q.lambda,NG){(q.x.# < known_to)}
+				       	       and (Uhash.lookup(q) = -1) od)
                                     then newStatuses := updateNUclassesB(newStatuses, gr, k); newStatuses[k] := "F"
                                     fi
                                fi
@@ -1417,7 +1041,7 @@ set local_test_hash_bottom(KGBElt x, ratvec lambda, VertexData Lvd,
 				     	   	 fi
 			        fi
 		      in if not elim_more then false {we got rid of p by bottom layer}
-			 else all(for p1 in ps do @bool: Uhash.lookup(p1).>= or is_unitary_hash(p1) od)
+			 else all(for p1 in ps do @bool: is_unitary_hash_big(p1) od)
 		     	 fi
 		  fi
 	      then () = if more_verbose then prints("your final answer was ",test) fi
@@ -1445,7 +1069,7 @@ set local_test_hash_bottom(KGBElt x, ratvec lambda, VertexData Lvd,
 		  else let () = if (more_flag or mix_flag) and elim_more then more_bad_hash.match(p) fi
 		      	       	    {in this case p passed elim_more but is not unitary}
 			   	then (,pL) = theta_stable_quasi_data(p)
-			   	then () = if surprise_flag and is_final(pL) and is_unitary_hash(pL)
+			   	then () = if surprise_flag and is_final(pL) and is_unitary_hash_big(pL)
 			      	     	  then surprise_hash.match(p)
 				     	  fi
 		       in []
@@ -1484,13 +1108,16 @@ set local_test_wiggle_hash(KGBElt x, ratvec lambda, VertexData Lvd,
                                          else monomials(finalize(pC))
                                          fi
                             in if not is_final(pC)
-			       then if all(for q in pCdef do @bool: (q.x.# < known_to) and (Uhash.lookup(q) >= 0) od)
+			       then if all(for q in pCdef do @bool: is_finished(q.x,q.lambda,NG){(q.x.# < known_to)}
+			       	       	       and (Uhash.lookup(q) >= 0) od)
                                     then newStatuses[k] := "T"
-                                    elif any(for q in pCdef do @bool: (q.x.# < known_to) and (Uhash.lookup(q) = -1) od)
+                                    elif any(for q in pCdef do @bool: is_finished(q.x,q.lambda,NG) {(q.x.# < known_to)}
+				    	 	 and (Uhash.lookup(q) = -1) od)
                                     then newStatuses:= updateNUclassesB(newStatuses, gr, k); "F"
                                     fi
                                else {now pC is final, and pCdef consists of wiggled Params}
-                                    if any(for q in pCdef do @bool: (q.x.# < known_to) and (Uhash.lookup(q) = -1) od)
+                                    if any(for q in pCdef do @bool: is_finished(q.x,q.lambda,NG) {(q.x.# < known_to)}
+				       	       	    	     	    and (Uhash.lookup(q) = -1) od)
 				    then newStatuses := updateNUclassesB(newStatuses, gr, k); newStatuses[k] := "F"
                                     fi
                                fi
@@ -1524,7 +1151,7 @@ set local_test_wiggle_hash(KGBElt x, ratvec lambda, VertexData Lvd,
                      then p = parameter(x, lambda, facet_bary(Lvd.list, verts))
                      then () = if more_verbose then prints("testing parameter ",p) fi
                      then ps = monomials(finalize(p))
-                     in all(for p1 in ps do @bool: Uhash.lookup(p1).>= or is_unitary_hash(p1) od)
+                     in all(for p1 in ps do @bool: is_unitary_hash_big(p1) od)
 		fi
              in if test
                 then for i in eq[m]
@@ -1548,7 +1175,7 @@ set local_test_wiggle_hash(KGBElt x, ratvec lambda, VertexData Lvd,
                          in q
                       od
                   else {let (,pL) = theta_stable_quasi_data(q)
-                       then () = if surprise_flag and is_final(pL) and is_unitary_hash(pL)
+                       then () = if surprise_flag and is_final(pL) and is_unitary_hash_big(pL)
                               	 then surprise_hash.match(q)
 				 fi
                        in} []
@@ -1566,10 +1193,12 @@ set one_param_time = int: 0
 
 set one_param_test(Param p, Param_hash Uhash) = [Param]:
     let start = elapsed_ms(), Q = monomials(finalize(p)), G = p.real_form
-    then () = if know_lower_flag and not is_final(p)
-    	      then if all(for q in Q do (q.x.# < known_to) and (Uhash.lookup(q) >= 0) od)
+    then () = if {know_lower_flag and} not is_final(p)
+    	      then if all(for q in Q do is_finished(q.x,q.lambda,NG) {(q.x.# < known_to)}
+	      	      	      and (Uhash.lookup(q) >= 0) od)
 	      	   then return [p]
-		   else if any(for q in Q do (q.x.# < known_to) and (Uhash.lookup(q) <0) od)
+		   else if any(for q in Q do is_finished(q.x,q.lambda,NG) {(q.x.# < known_to)}
+		   	   	   and (Uhash.lookup(q) <0) od)
 		   	then return []
 			fi
 		   fi
@@ -1600,7 +1229,7 @@ set one_param_test(Param p, Param_hash Uhash) = [Param]:
        else let () = one_false_counter.use()
 	    then () = one_param_time +:= elapsed_ms() - start
 	    then (,pL) = theta_stable_quasi_data(p)
-	    then () = if surprise_flag and is_final(pL) and is_unitary_hash(pL)
+	    then () = if surprise_flag and is_final(pL) and is_unitary_hash_big(pL)
 		      then surprise_hash.match(p)
 		      fi
 	    in []
@@ -1608,10 +1237,10 @@ set one_param_test(Param p, Param_hash Uhash) = [Param]:
 
 set one_param_test_bottom(Param p, int D, Param_hash Uhash) = [Param]:
     let start = elapsed_ms(), QG = monomials(finalize(p)),G = p.real_form
-    then () = if know_lower_flag and not is_final(p)
-    	      then if all(for q in QG do (q.x.# < known_to) and (Uhash.lookup(q) >= 0) od)
+    then () = if {know_lower_flag and} not is_final(p)
+    	      then if all(for q in QG do  is_finished(q.x,q.lambda,NG) {(q.x.# < known_to)} and (Uhash.lookup(q) >= 0) od)
 	      	   then return [p]
-		   else if any(for q in QG do (q.x.# < known_to) and (Uhash.lookup(q) < 0) od)
+		   else if any(for q in QG do  is_finished(q.x,q.lambda,NG) {(q.x.# < known_to)} and (Uhash.lookup(q) < 0) od)
 		   	then return []
 			fi
 		   fi
@@ -1634,7 +1263,7 @@ set one_param_test_bottom(Param p, int D, Param_hash Uhash) = [Param]:
 		 then () = if more_verbose then prints("result of elim_more was ",elim_more) fi
 	    	 in if elim_more
 		    then let test =  all( [(->bool)]:
-		    	     for q in QG do @bool: Uhash.lookup(q).>= or is_unitary_hash(q) od)
+		    	     for q in QG do @bool: is_unitary_hash_big(q) od)
 		    	 then () = if more_verbose then prints("your final answer was ",test) fi
 	    	    	 in  if test
 		    	     then let () = for q in QG
@@ -1651,14 +1280,14 @@ set one_param_test_bottom(Param p, int D, Param_hash Uhash) = [Param]:
 		     else let () = one_false_counter.use() {if elim_more is false}
 	    	    	  then () = one_param_time +:= elapsed_ms() - start
 			  then (,pL) = theta_stable_quasi_data(p)
-			  then () = if surprise_flag and is_final(pL) and is_unitary_hash(pL)
+			  then () = if surprise_flag and is_final(pL) and is_unitary_hash_big(pL)
 			      	     then surprise_hash.match(p)
 				     fi
 		    	  in []
 		     fi
 	    else {more_flag and mix_flag are both false} let test =  all( [(->bool)]:
 	    	     for q in QG
-		     do @bool: Uhash.lookup(q).>= or is_unitary_hash(q) od) {what to do if more_flag is false}
+		     do @bool: is_unitary_hash_big(q) od) {what to do if more_flag is false}
 	     	     	in if test
 	     	    	   then  let () = for q in QG
 		      	    	     	  do Uhash.match(herm_center(q))
@@ -1669,7 +1298,7 @@ set one_param_test_bottom(Param p, int D, Param_hash Uhash) = [Param]:
 		    	   else let () = one_false_counter.use()
 	    	    	   	then ()= one_param_time +:= elapsed_ms() - start
 			 	then (,pL) = theta_stable_quasi_data(p)
-			 	then () = if surprise_flag and is_final(pL) and is_unitary_hash(pL)
+			 	then () = if surprise_flag and is_final(pL) and is_unitary_hash_big(pL)
 			      	     	  then surprise_hash.match(p)
 				   	  fi
 		    	 	in []
@@ -1685,6 +1314,7 @@ Called when there are not enough heights; presumably small KGBElts??}
 set local_test_GEO_hash_real_dumb(KGBElt x, ratvec lambda, VertexData vd, VertexData Lvd,
      [[FacetVertsIndex]] LF, KTypePol_hash pol_hash, Param_hash Uhash) = [Param]:
     let (G,j0) = %x, thetaMinus = x.involution - 1, start = elapsed_ms()
+    then () = NG:=big_unitary_hash.xl_known(G)
     then () = if #LF[0] = 0 then return [] fi
     then zero_pol = null_module(G)
     then () = if 1*parameter(x,lambda,lambda) = zero_pol then return [] fi
@@ -1719,22 +1349,22 @@ set local_test_GEO_hash_real_dumb(KGBElt x, ratvec lambda, VertexData vd, Vertex
         {compute graph on facets to dim 1}
     then ((eq,gr),IUCL,CLBF) = localGraphK(LFDKH)
            {remove from LFDKH all facets failing is_unitary}
-    then () = LFDKH := if know_lower_flag
-                       then local_testK_hash_know_lower(x,lambda,Lvd, LFDKH, eq, gr, CLBF, tester, Uhash)
-                       else local_testK_hash(x,lambda,Lvd, LFDKH, eq, gr, CLBF, tester, Uhash)
-                       fi
+    then () = LFDKH := {if know_lower_flag
+                       then} local_testK_hash_know_lower(x,lambda,Lvd, LFDKH, eq, gr, CLBF, tester, Uhash)
+                       {else local_testK_hash(x,lambda,Lvd, LFDKH, eq, gr, CLBF, tester, Uhash)
+                       fi}
     then () = if test_verbose then prints("unitary facet counts to dim 1: ",
     for list in LFDKH do #list od) fi
     then () = if quick_flag
               then let () = LFDKH := localFD_KHashbt_lookDownGEO(x,lambda, Lvd, LFDKH, 2,
                                 rank(x.involution - 1) + 1, pol_hash)
 	           then ((eq,gr),IUCL,CLBF) = localGraphK(LFDKH)
-		   in  LFDKH := if know_lower_flag
-                       	      	then local_testK_hash_know_lower(x,lambda,Lvd, LFDKH, eq,
-				      gr, CLBF, is_unitary_hash@Param, Uhash)
-                       		else local_testK_hash(x,lambda,Lvd, LFDKH, eq, gr, CLBF,
-				      is_unitary_hash@Param, Uhash)
-                       		fi
+		   in  LFDKH := {if know_lower_flag
+                       	      	then} local_testK_hash_know_lower(x,lambda,Lvd, LFDKH, eq,
+				      gr, CLBF, is_unitary_hash_big@Param, Uhash)
+                       		{else local_testK_hash(x,lambda,Lvd, LFDKH, eq, gr, CLBF,
+				      is_unitary_hash_big@Param, Uhash)
+                       		fi}
 	      else let D = int:1
     then () = while (D <= rank(x.involution-1) - 1  ) and
     	      	    (#LFDKH = D + 1) and
@@ -1760,22 +1390,22 @@ set local_test_GEO_hash_real_dumb(KGBElt x, ratvec lambda, VertexData vd, Vertex
 			      then ps = monomials(finalize(
 					  parameter(x, lambda,
 					  facet_bary(Lvd.list, verts))))
-			      then test = if know_lower_flag
-                                     	  then if any(for p in ps
-                                                      do p.x.# < known_to and Uhash.lookup(p) = -1
+			      then test = {if know_lower_flag
+                                     	  then} if any(for p in ps
+                                                      do is_finished(p.x, p.lambda,NG){p.x.# < known_to} and
+						      	 	Uhash.lookup(p) = -1
                                                       od)
                                                then false
                                                elif all(for p in ps
                                                     	do Uhash.lookup(p).>=
                                                    	od)
                                                then true
-                                               else all(for p in ps do Uhash.lookup(p).>= or
-					       	    	    is_unitary_hash(p) od)
+                                               else all(for p in ps do is_unitary_hash_big(p) od)
                                                fi {any}
-                                     	  else all(for p in ps
+                                     	  {else all(for p in ps
                                                     do Uhash.lookup(p).>= or
-                                                    is_unitary_hash(p) od)
-                                     	  fi{know_lower}
+                                                    is_unitary_hash_big(p) od)
+                                     	  fi{know_lower}}
 		{ these are simplices of dim at least 2 with unitary faces,
 		so expect TRUE usually; so is_unitary faster than tester?}
                           in if test
@@ -1837,6 +1467,7 @@ set local_test_GEO_hash_dumb(KGBElt x, ratvec lambda, VertexData vd, VertexData 
     [[FacetVertsIndex]] LF, [int] hts, KTypePol_hash pol_hash,
     Param_hash Uhash) = [Param]:
     let (G,j0) = %x, thetaMinus = x.involution - 1, start = elapsed_ms()
+    then () = NG:=big_unitary_hash.xl_known(G)
     then () = if #LF[0] = 0 then return [] fi
     then zero_pol = null_module(G)
     then () = if 1*parameter(x,lambda,lambda) = zero_pol then return [] fi
@@ -1893,18 +1524,17 @@ set local_test_GEO_hash_dumb(KGBElt x, ratvec lambda, VertexData vd, VertexData 
 					  facet_bary(Lvd.list, verts))))
 		              then test = if know_lower_flag
 			      	   	  then if any(for p in ps
-					       	      do p.x.# < known_to and Uhash.lookup(p) = -1
+					       	      do is_finished(p.x, p.lambda,NG) {p.x.# < known_to} and
+						      	 Uhash.lookup(p) = -1
 						      od)
 					       then false
 					       elif all(for p in ps
 					       	       	   do Uhash.lookup(p).>=
 							   od)
 					       then true
-					       else all(for p in ps do Uhash.lookup(p).>= or
-					       	    	    is_unitary_hash(p) od)
+					       else all(for p in ps do is_unitary_hash_big(p) od)
 					       fi
-					   else all(for p in ps do Uhash.lookup(p).>= or
-					   		is_unitary_hash(p) od)
+					   else all(for p in ps do is_unitary_hash_big(p) od)
 					   fi
 		{ these are simplices of dim at least 2 with unitary faces,
 		so expect TRUE usually; so is_unitary faster than tester?}
@@ -1965,6 +1595,7 @@ set local_test_GEO_hash_def_dumb(KGBElt x, ratvec lambda, VertexData vd, VertexD
     [[FacetVertsIndex]] LF, KTypePol_hash pol_hash,
     Param_hash Uhash) = [Param]:
     let (G,j0) = %x, thetaMinus = x.involution - 1, start = elapsed_ms()
+    then () = NG:=big_unitary_hash.xl_known(G)
     then () = if #LF[0] = 0 then return [] fi
     then zero_pol = null_module(G), pmin = parameter(x,lambda, 0*lambda)
     then () = if 1*pmin = zero_pol then return [] fi
@@ -2024,12 +1655,11 @@ set local_test_GEO_hash_def_dumb(KGBElt x, ratvec lambda, VertexData vd, VertexD
 			      Actually this has no effect in SO(4,4)}
 			      in if know_lower_flag
 			      	 then if not is_final(pC)
-				      then if any(for q in ps do @bool: (q.x.# < known_to) and (Uhash.lookup(q) = -1) od)
+				      then if any(for q in ps do @bool:  is_finished(q.x,q.lambda,NG) {(q.x.# < known_to)} and (Uhash.lookup(q) = -1) od)
 				      	   then []
-					   else if all(for q in ps do @bool: (q.x.# < known_to) and (Uhash.lookup(q) >= 0) od)
+					   else if all(for q in ps do @bool:  is_finished(q.x,q.lambda,NG) {(q.x.# < known_to)} and (Uhash.lookup(q) >= 0) od)
 					   	then [LFDKH[D+1][m]]
-					   	else if all(for q in ps do @bool: Uhash.lookup(q).>= or
-						     		is_unitary_hash(q) od)
+					   	else if all(for q in ps do @bool: is_unitary_hash_big(q) od)
 					   	     then [LFDKH[D+1][m]]
 						     else []
 						     fi
@@ -2043,18 +1673,16 @@ set local_test_GEO_hash_def_dumb(KGBElt x, ratvec lambda, VertexData vd, VertexD
 						      		       			   od))))
 							  {proper_face_deformed(pC)}
 				      	        in if any(for q in pCdef
-						      	  do @bool: ((q.x.# < known_to) and (Uhash.lookup(q) = -1))
+						      	  do @bool: ( is_finished(q.x,q.lambda,NG) {(q.x.# < known_to)} and (Uhash.lookup(q) = -1))
 							  od)
 						   then []
-					      	   else if Uhash.lookup(pC) >= 0
-					      	   	   or is_unitary_hash(pC)
+					      	   else if is_unitary_hash_big(pC)
 					   	   	then [LFDKH[D+1][m]]
 					   	   	else []
 					     	   	fi
 				      	      	   fi
 					   else {not wiggle_flag}
-					      if Uhash.lookup(pC) >= 0
-					      	  or is_unitary_hash(pC)
+					      if is_unitary_hash_big(pC)
 					      then [LFDKH[D+1][m]]
 					      else []
 					      fi
@@ -2062,8 +1690,7 @@ set local_test_GEO_hash_def_dumb(KGBElt x, ratvec lambda, VertexData vd, VertexD
 				      fi
 				 else {now know_lower_flag is false}
 			      	      if all(for p in ps
-					     do Uhash.lookup(p).>= or
-						is_unitary_hash(p)
+					     do is_unitary_hash_big(p)
 					     od)
 		{ these are simplices of dim at least 2 with unitary faces,
 		so expect TRUE usually; so is_unitary faster than tester?}
@@ -2201,6 +1828,7 @@ set local_test_GEO_hash_no_dumb(KGBElt x, ratvec lambda, VertexData vd, VertexDa
     then () = long_out_flag:=false {to allow using local_test_hash without recording Params}
     then edge_offset_temp = edge_offset, ht0 = height(parameter(x,lambda,0*lambda)),
     	 G = x.real_form
+    then () = NG:=big_unitary_hash.xl_known(G)
     then temp_K_char_flag = ht0/(G.rho * G.two_rho_check) <= CUTOFF
     then () = if edge_offset = -1
     	      then edge_offset_temp := r\2 {3 seems best for F4}
@@ -2303,6 +1931,7 @@ set local_test_GEO_hash(KGBElt x, ratvec lambda, VertexData vd, VertexData Lvd,
     [[FacetVertsIndex]] LF, KTypePol_hash pol_hash,
     Param_hash Uhash) = [Param]:
     let (G,j0) = %x, thetaMinus = x.involution - 1
+    then () = NG:=big_unitary_hash.xl_known(G)
     then () = if {EMPTY CASE} #LF[0] = 0 then return [] fi
     then () = if quick_flag then short_hts_flag:=false fi
     then zero_pol = null_module(G), pmin = parameter(x,lambda,0*lambda)
@@ -2384,6 +2013,7 @@ set hash2Counter = make_counter()
 set local_test_GEO_hash2(KGBElt x, ratvec lambda, VertexData vd, VertexData Lvd, [[FacetVertsIndex]] LF,
 KTypePol_hash pol_hash, Param_hash Uhash) = [Param]:
     let G = x.real_form, thetaMinus = 1-x.involution, start = elapsed_ms()
+    then () = NG:=big_unitary_hash.xl_known(G)
     then () = if quick_flag then short_hts_flag:=false fi
     then () = if #LF[0] = 0 then return [] fi
     then zero_pol = null_module(G), pmin = parameter(x,lambda,0*lambda)
@@ -2513,7 +2143,7 @@ KTypePol_hash pol_hash, Param_hash Uhash) = [Param]:
     then start=elapsed_ms()
     then UParams = local_test_hash(x, lambda, Lvd, LFDKH, eq, gr, CLBF, Uhash, (Param->bool): (Param p):
     	 	 {if sph_far_flag
-	       	 then} is_unitary_hash(p) {small nu compared to infl char, unitary_to_ht is slow}
+	       	 then} is_unitary_hash_big(p) {small nu compared to infl char, unitary_to_ht is slow}
 	  	 {else is_unitary_test(p,hts[test_levels[Dmid+1]])
 		      {large nu compared to infl char, unitary_to_ht is fast}
 	      	 fi})
@@ -2581,6 +2211,7 @@ set local_test_GEO_hash_one_level(KGBElt x, ratvec lambda, VertexData vd,
     VertexData Lvd, [[FacetVertsIndex]] LF, KTypePol_hash pol_hash,
     Param_hash Uhash) = [Param]:
     let G = x.real_form, thetaMinus = x.involution - 1, start = elapsed_ms()
+    then () = NG:=big_unitary_hash.xl_known(G)
     then () = if #LF[0] = 0 then return [] fi
     then () = if quick_flag then short_hts_flag:=false fi
     then zero_pol = null_module(G), pmin = parameter(x,lambda,0*lambda)
@@ -2869,6 +2500,7 @@ set local_test_GEO_hash_bottom_layer(KGBElt x, ratvec lambda, VertexData vd,
     			Param_hash Uhash) = [Param]:
     let G = x.real_form, thetaMinus = x.involution - 1, start = elapsed_ms(),
     	UTCstart = unitary_test_counter.use_count()
+    then () = NG:=big_unitary_hash.xl_known(G)
     then () = if #LF[0] = 0 then return [] fi
     then zero_pol = null_module(G)
     then () = if 1*parameter(x,lambda,0*lambda) = zero_pol then return [] fi
@@ -2970,7 +2602,7 @@ set local_test_GEO_hash_bottom_layer(KGBElt x, ratvec lambda, VertexData vd,
     	  {if  sph_far_flag
 	      {term on left guaranteed <= main term on right. If close, then
 	       params are close to spherical princ series, and to_ht is fast}
-	  then is_unitary_hash(p) {small nu compared to infl char, unitary_to_ht is slow}
+	  then is_unitary_hash_big(p) {small nu compared to infl char, unitary_to_ht is slow}
 	  else} is_unitary_test(p,next_heights(pmin,steps)~[0])
 	       {large nu compared to infl char, unitary_to_ht is fast}
 	  {fi})

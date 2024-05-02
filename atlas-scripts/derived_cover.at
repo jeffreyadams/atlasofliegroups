@@ -86,7 +86,7 @@ set inverse_embed_KGBs(KGBElt x, RealForm Gsc, mat M) = [KGBElt]:
  Result is a list of KGBElts for Gsc}
 set inverse_embed_KGBs2(KGBElt x, RealForm Gsc, mat M) = [KGBElt]:
     let Minv = right_inverse(M/1), G = x.real_form
-    then tf_sc0 = (x.torus_factor)*Minv {NOT UNIQUE!}
+    then tf_sc0 = (x.torus_factor)*Minv {NOT UNIQUE!}{FIND tfsc for Gsc so tfsc*M = tf}
     then theta_sc = ratmat_as_mat(M*(x.involution)*Minv)
     then x0_sc = KGB_elt(Gsc.inner_class, theta_sc, tf_sc0)
     then p0_sc = parameter(x0_sc, Gsc.rho,Gsc.rho)

@@ -287,7 +287,7 @@ set is_unitary_to_ht_hashBAD(Param p, int h) = bool:
 	fi
 
 
-set is_unitary_hash(Param p) = bool:
+{set is_unitary_hash(Param p) = bool:
     if not is_hermitian(p) then return false fi;
     let (,pL) = wkgood_Q(p), G=p.real_form
     then derpLs = derived_factor_params2(pL)
@@ -303,7 +303,7 @@ set is_unitary_hash(Param p) = bool:
 			      do c*theta_induce_standard(param(qL),
 			           goodL)
 			      od))
-       fi
+       fi}
 
 set is_unitary_to_hts(Param p, [int] Ns) = bool:
     { is_pos_on_LKTs(p) and }

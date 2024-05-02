@@ -279,6 +279,25 @@ if old_derived_flag then return derived_factor_K_types(mu) fi;
     do muj
     od
 
+{
+{all dfqs are meant to be in block of derived_factor_params(p). So their lambdas are lambdas
+for p + sum of roots + [(1-theta)*X*]. Haven't yet got the last term.}
+set glued_params([Param] dfqs, Param p) = Param:
+    let dfps = derived_factor_params2(p)
+    then lambda = p.lambda, lambdaps = for dfp in dfps do dfp.lambda od,
+    	 lambdaqs = for dfq in dfqs do dfq.lambda od,
+    then fundcowts = [ratmat]: for dfp in dfps do dfp.real_form.fundamental_coweights od
+    then simpleroots = [mat]: for dfp in dfps do dfp.real_form.simple_roots
+    then shiftqs = vec: for dfq@j in dfqs do fundcowts[j]*(dfq.lambda - lambdaps[j])).numer od.##
+set hermitian_form_irr_factored(Param p) = ParamPol:
+    assert(is_hermitian(p),"sorry, Param is not hermitian");
+    let dfps = derived_factor_params2(p)
+    then 
 {WHY DON'T LKTs of factor_params match factor_K_types???}
 {In changing nu can change KGBElt of final parameter}
 {In SL(2), (2,[0],[1]) has x =2, but (2,[0],[0]) has TWO x's, 0 and 1.}
+    then dfps_forms = for pj in dfps
+    	 	      do hermitian_form_irreducible(pj)
+		      od
+
+}
