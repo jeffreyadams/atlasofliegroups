@@ -1025,19 +1025,20 @@ quick fix. I think that should make the code correct, but slower}
 {For non-simply connected ic, the value of global top may be smaller;
 I haven't trie to calculate it.}
 
+set adjust_time = int:0
 set adjust_global_top(InnerClass ic) = void:
-    let (rd,,) = cofolded(ic)
+    let (rd,,) = cofolded(ic), start = elapsed_ms()
     then CFLT = Lie_type_matrix(rd)
     {then CTQ = center_torsion_quotient(rd)}
     then () = if (not CFLT[5].=) or (not CFLT[6].=) or (not CFLT[4][7].=) {F4, G2, E8}
     	      then global_top:=1;
-	      	   global_facets := low_FPP_facets(ic); return ()
-	      elif (not CFLT[1].=) or (CFLT[2].=)
+	      	   global_facets := low_FPP_facets(ic); adjust_time +:= elapsed_ms() - start; return ()
+	      elif (not CFLT[1].=) or (not CFLT[2].=)
     	      then global_top:=2;
-	      	   global_facets := low_FPP_facets(ic); return ()
+	      	   global_facets := low_FPP_facets(ic); adjust_time +:= elapsed_ms() - start; return ()
 	      else global_top:=3
 	      fi
-    then ()= global_facets := low_FPP_facets(ic)
+    then ()= global_facets := low_FPP_facets(ic); adjust_time +:= elapsed_ms() - start
     in ()
  {   then () = if any(for j:7 do CFLT[3][2*j + 1] > 0 od) and
     	      	 #CTQ = 2

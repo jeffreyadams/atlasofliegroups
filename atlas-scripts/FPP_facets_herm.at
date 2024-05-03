@@ -374,7 +374,7 @@ set localFD_1Dirac2_by_zero\
 	    then []
 	    else [[j]]
 	    fi
-	 od.##
+	 od.##{list of j for which vertex j is a candidate}
     {then () = prints("after LFO, time is ",print_time_string(elapsed_ms() - start))}
     then Llookup = is_member_sorted((for v in LF0 do v[0] od))
     then Edges = [vec]:
@@ -383,11 +383,11 @@ set localFD_1Dirac2_by_zero\
 	     then for j in Perm2.fixed
 	     	  do let mloc = mapAct[j]
 		     in if Llookup(mloc)
-		     	then for v in globalFacetsBYZERO[1][j]
+		     	then for v in globalFacetsBYZERO[1][j] {global edges with v[0] = j}
 			     do if is_member_sorted(Perm2.fixed)(v[1])
 			     	then let nloc =  mapAct[v[1]]
-				     in if Llookup(nloc)
-				     	then [[mloc,nloc].sort]
+				     in if nloc > mloc and Llookup(nloc)
+				     	then [[mloc,nloc]]
              				else []
 					fi
 				else []
@@ -400,7 +400,18 @@ set localFD_1Dirac2_by_zero\
 	       fi
 	   {then () = prints("after FixFix, time is ",print_time_string(elapsed_ms() - start))}
       	   then EdgesFixTrans = [vec]:
-	   	
+	      for v in FPP_flippable_triangles(G)
+	      do if is_member_sorted(Perm2.fixed)(v[0])
+	      	    and trans_hash.lookup([v[1],v[2]]).>=
+		 then let xloc = mapAct[v[0]], yloc = mapAct[v[1]]
+		      in if Llookup(xloc) and Llookup(yloc)
+			 then [[xloc,yloc].sort]
+			 else []
+			 fi
+		  else []
+		  fi
+	       od.##
+{
 	   	if global_top >= 2 and #Perm2.trans > 0 and #Perm2.fixed > 0
 	       	then let GF2 = globalFacetsBYZERO[2].##
 		     in  for v in GF2
@@ -419,8 +430,20 @@ set localFD_1Dirac2_by_zero\
 		     	  od.##
 	       	 else []
 	       	 fi
-           {then () = prints("after FixTrans, time is ",print_time_string(elapsed_ms() - start))}
+           {then () = prints("after FixTrans, time is ",print_time_string(elapsed_ms() - start))}}
 	   then EdgesTransTrans = [vec]:
+	      for v in FPP_flippable_tetrahedra(G)
+	      do if trans_hash.lookup([v[0],v[1]]).>= {for e:5 if e < 3 do e fi od}
+	      	    and trans_hash.lookup([v[2],v[3]]).>=
+		 then let xloc = mapAct[v[0]], yloc = mapAct[v[2]]
+		      in if Llookup(xloc) and Llookup(yloc)
+			 then [[xloc,yloc].sort]
+			 else []
+			 fi
+		  else []
+	          fi
+	       od.##
+{
 	       if global_top >= 3 and #Perm2.trans > 1
 	       then let GF3 = globalFacetsBYZERO[3].##
 	       	    in for v in GF3
@@ -439,7 +462,7 @@ set localFD_1Dirac2_by_zero\
 			  od.##
 		     od.##
 	       else []
-	       fi
+	       fi}
 	   in EdgesFixFix ## EdgesFixTrans ## EdgesTransTrans
      then LF1 = [FacetVertsIndex]:
     	 for v in Edges
