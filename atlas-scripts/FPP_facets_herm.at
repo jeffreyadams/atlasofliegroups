@@ -258,7 +258,7 @@ set localFD_1Dirac2\
 	       fi
 	   {then () = prints("after FixFix, time is ",print_time_string(elapsed_ms() - start))}
       	   then EdgesFixTrans = [vec]:
-	   	if global_top >= 2 and #Perm2.trans > 0 and #Perm2.fixed > 0
+	   	{if global_top >= 2 and #Perm2.trans > 0 and #Perm2.fixed > 0
 	       	then for v in globalFacets[2]
 	       	     do let mixes = [[v[0],v[1],v[2]],[v[1],v[0],v[2]],[v[2],v[0],v[1]]]
 		       	in for w in mixes
@@ -274,10 +274,21 @@ set localFD_1Dirac2\
 			  od.##
 		     od.##
 	       	 else []
-	       	 fi
+	       	 fi}
+	      for v in FPP_flippable_triangles(G)
+	      do if is_member_sorted(Perm2.fixed)(v[0])
+	      	    and trans_hash.lookup([v[1],v[2]]).>=
+		 then let xloc = mapAct[v[0]], yloc = mapAct[v[1]]
+		      in if Llookup(xloc) and Llookup(yloc)
+			 then [[xloc,yloc].sort]
+			 else []
+			 fi
+		  else []
+		  fi
+	       od.##
            {then () = prints("after FixTrans, time is ",print_time_string(elapsed_ms() - start))}
-	   then EdgesTransTrans = [vec]:
-	       if global_top >= 3 and #Perm2.trans > 1
+	   then EdgesTransTrans = ([vec]:
+	       {if global_top >= 3 and #Perm2.trans > 1
 	       then for v in globalFacets[3]
 	       	    do let mixes = [[v[0],v[1],v[2],v[3]], [v[0],v[2],v[1],v[3]],
 		       	   	   [v[0],v[3],v[1],v[2]]]
@@ -294,7 +305,18 @@ set localFD_1Dirac2\
 			  od.##
 		     od.##
 	       else []
-	       fi
+	       fi}
+	      for v in FPP_flippable_tetrahedra(G)
+	      do if trans_hash.lookup([v[0],v[1]]).>= {for e:5 if e < 3 do e fi od}
+	      	    and trans_hash.lookup([v[2],v[3]]).>=
+		 then let xloc = mapAct[v[0]], yloc = mapAct[v[2]]
+		      in if Llookup(xloc) and Llookup(yloc)
+			 then [[xloc,yloc].sort]
+			 else []
+			 fi
+		  else []
+	          fi
+	       od.##)
 	  {then () = prints("after TransTrans, time is ",print_time_string(elapsed_ms() - start))}
 	   in EdgesFixFix ## EdgesFixTrans ## EdgesTransTrans
      { then () = prints("after Edges, time is ",print_time_string(elapsed_ms() - start))}
@@ -378,6 +400,7 @@ set localFD_1Dirac2_by_zero\
 	       fi
 	   {then () = prints("after FixFix, time is ",print_time_string(elapsed_ms() - start))}
       	   then EdgesFixTrans = [vec]:
+	   	
 	   	if global_top >= 2 and #Perm2.trans > 0 and #Perm2.fixed > 0
 	       	then let GF2 = globalFacetsBYZERO[2].##
 		     in  for v in GF2

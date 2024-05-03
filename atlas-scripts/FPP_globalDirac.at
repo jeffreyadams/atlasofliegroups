@@ -1059,7 +1059,7 @@ set theta_induced(RealForm G) = void:
 {simple derived factors of all theta-stable Levis of G}
 set SDLF(RealForm G) = [RealForm]:
     let answer = make_RealForm_hash()
-    then () = for L in Ls(G) {these are PROPER!}
+    then () = for L in Ls(G) {these are PROPER Levis of theta-stable parabolics}
     	      ~do for Lj in derived_simple_factors(L) {~ to put the small L first}
 	      	  do answer.match(Lj)
 	    	  od
@@ -1080,7 +1080,6 @@ set precompute(RealForm G) = void:
 	 	 FPP_unitary_hash2(rf)
 	      od
     in theta_induced(G)
-
 
 { lists real and/or complex simple factors }
 {moved to cohom_reductionND.at}{
