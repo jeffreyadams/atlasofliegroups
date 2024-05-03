@@ -205,20 +205,30 @@ set cofolded(InnerClass ic) = (RootDatum, mat, int):
 	 )
     in (rdB,M,j0)
 
-{3 is possible only for Spin(4k)}
+{3 is possible only for Spin(4k) FALSE! 5/2/24}
+{THIS SCRIPT WAS WRONG FOR SU(2,1), when global_top should be 2. I can't swear to this
+quick fix. I think that should
+make the code correct, but slower}
 set adjust_global_top(InnerClass ic) = void:
     let (rd,,) = cofolded(ic)
     then CFLT = Lie_type_matrix(rd)
-    then CTQ = center_torsion_quotient(rd)
-    then () = if any(for j:7 do CFLT[3][2*j + 1] > 0 od) and
+    {then CTQ = center_torsion_quotient(rd)}
+    then () = if (not CFLT[5].=) or (not CFLT[6].=) or (not CFLT[5][7].=)
+    	      then global_top:=1; return ()
+    	      {elif not CFLT[5][6].=
+    	      then global_top:=2; return ()}
+	      else global_top:=3
+	      fi
+    in ()
+ {   then () = if any(for j:7 do CFLT[3][2*j + 1] > 0 od) and
     	      	 #CTQ = 2
     	      then global_top :=3 ; return ()
-	      fi
-    then () = if any( for v in CTQ do is_even(v.denom) od)
+	      fi}
+    {then () = if any( for v in CTQ do is_even(v.denom) od)
     	      then global_top :=2; return ()
 	      fi
     then () = global_top :=1
-    in () 
+    in ()}
 
 { An affine root datum is a root datum rd (which in atlas means with
 chosen pos_roots), and a list of the lowest coroots betav[j] in each

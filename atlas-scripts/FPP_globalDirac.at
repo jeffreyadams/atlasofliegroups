@@ -965,6 +965,98 @@ set FPP_unitary_hash_bottom_layer([KGBElt] xs) = void:
 set FPP_unitary_hash_bottom_layer(RealForm G) = void:
     FPP_unitary_hash_bottom_layer(KGB(G))
 
+{all nu so parameter(x,lambda,nu) is in unitary hash for G}
+set unitary_nus(RealForm G, KGBElt x, ratvec lambda) = [ratvec]:
+    let Uhash = big_unitary_hash.uhash(G)
+    in for j:Uhash.size()
+       do let p = Uhash.index(j)
+	  in if p.x = x and p.lambda = lambda then [p.nu]
+	     else []
+	     fi
+       od.##
+
+{assume precompute has been done, so that all FPP unitary are known
+for all derived simple factors of theta_stable Levis of G. Run over
+(x,lambda) and put into unitary_hash all (x,lambda_nu) that are good
+range cohom induced from some theta_stable Levi. }
+set theta_induced(RealForm G) = void:
+ for x in KGB(G)
+    do for lambda in FPP_lambdas(x)
+       do let (Qmin,pmin) = theta_stable_quasi_data(parameter(x,lambda,0*lambda))
+       then Lmin = Qmin.Levi
+       then Qmaxs = max_Qs(Qmin)
+       then Lmaxs = for Qmax in Qmaxs do Qmax.Levi od
+       then pmaxs = for Lmax in Lmaxs
+       	    	    do first_param(theta_induce_standard(pmin,Lmax))
+		    od
+       then Lidatas = [[(RealForm, RealForm, mat)]]:
+       	    for Lmax in Lmaxs
+	    do derived_simple_factors_info(Lmax)
+	    od
+       then derLijss = [[RealForm]]:
+       	    for Lidata in Lidatas
+	    do for (,derLij,) in Lidata
+	       do derLij
+	       od
+	    od
+       then Mss = [[mat]]: {each of these maps G weights to weights for one factor Lij}
+       	    for Lidata in Lidatas
+	    do for (,,Mij) in Lidata
+	       do Mij
+	       od
+	    od
+        then Minvss = [[ratmat]]: {each of these maps Lij weights to G weights}
+	     for Lidata in Lidatas
+	     do for (Lij, derLij, Mij) in Lidata
+	     	do (Lij.simple_roots)*ratvecs_as_ratmat(derLij.fundamental_coweights).^
+		od
+	     od
+	then derpss = [[Param]]:
+	     for pmax in pmaxs {parameter on Lmax}
+	     do derived_factor_params2(pmax)
+	     od
+	then unitary_listss = [[[ratvec]]]:
+	     for Minvs@i in Minvss
+	     do for Minv@j in Minvs
+	     	do for nuij in unitary_nus(derLijss[i][j],derpss[i][j].x, derpss[i][j].lambda)
+		   do Minv*nuij
+		   od
+		od
+	     od
+	 then Bs = for unitary_lists@i in unitary_listss {this is [[ratvec]]}
+	      	   do box( for unitary_list in unitary_lists
+		      	     do #unitary_list
+			     od)
+		   od
+	then unitarynus = [[ratvec]]: {one list of candidate nus for each Lmax}
+	     for B@i in Bs 
+	     do for b in B
+	     	do sum(G.rank, for j:#b do unitary_listss[i][j][b[j]] od)
+	     	od
+	     od
+	{now each (xi,lambdai, nu) for nu in unitarynus[i] is unitary for Li}
+	{then () = for Lmax@i in Lmaxs
+	     	  do for nu in unitarynus[i]
+		     do assert(is_unitary(parameter(pmaxs[i].x, pmaxs[i].lambda, nu)),"sorry didn't work")
+		     {prints("candidate found!")}
+		     od
+		  od}  {to use this, need to finalize the Param on Lmax}
+	then () = for Lmax@i in Lmaxs
+	     	  do for nu in unitarynus[i]
+	     	     do let p = parameter(x,lambda,nu)
+	     	     	in if {is_dominant(G, p.infinitesimal_character)
+			      and} is_FPP(G, p.infinitesimal_character)
+		     	   then for q in monomials(finalize(p))
+		   	     	do big_unitary_hash.match(herm_center(q))
+			     	od
+		   	   fi
+	     	     od
+		  od
+	in ()
+     od
+ od
+ 
+{simple derived factors of all theta-stable Levis of G}
 set SDLF(RealForm G) = [RealForm]:
     let answer = make_RealForm_hash()
     then () = for L in Ls(G) {these are PROPER!}
@@ -976,14 +1068,18 @@ set SDLF(RealForm G) = [RealForm]:
        do answer.index(k)
        od
 
+{get complete FPP dual for each derived simple factor of a theta-stable Levi; and then cohom ind
+all those things in weakly good range to G}
 set precompute(RealForm G) = void:
     let rflist = SDLF(G)
     then () = coh_ind_flag:=false
     then () = know_lower() {to do everything by increasing KGB}
-    in for rf@k in rflist
-    	 do prints(new_line, "starting # ",k," = ",rf);
-	 FPP_unitary_hash2(rf)
-	 od
+    then () = for rf@k in rflist
+    	      do prints(new_line, "starting # ",k," = ",rf);
+	      	 theta_induced(rf);
+	 	 FPP_unitary_hash2(rf)
+	      od
+    in theta_induced(G)
 
 
 { lists real and/or complex simple factors }

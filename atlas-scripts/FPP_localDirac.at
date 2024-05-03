@@ -20,7 +20,7 @@
 <TWOHEIGHTS {for HTA and HT}
 <translate {for translate_param_by}
 <time {for print_string}
-<powerTwo.at {for fast raising to powers of two using make_power_function }
+{<powerTwo.at} {for fast raising to powers of two using make_power_function }
 {This is meant to be functions for computing all unitary reps with
 fixed LKT (x,lambda) and infl char in the FPP. Functions are meant to
 use a Param_has Uhash containing a list of known unitary reps (like
@@ -396,7 +396,7 @@ set know_lower(int N) = void:
     tilde_flag:=false;
     known_to:=N
 
-set twopowers = make_power_function(2)
+{set twopowers = make_power_function(2)}
 
 {meant to be a bitmap of (x,lambda) for a fixed G for which all FPP_unitary facets are in unitary_hash.
 For x number j and lambda = FPP_lambdas(x)[k], the corresponding bit is #(j*4^{G.semisimple_rank} + k)}
