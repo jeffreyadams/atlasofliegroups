@@ -1003,11 +1003,10 @@ set low_FPP_facets_by_zero([[FacetVertsIndex]] lowFPP) = [[[FacetVertsIndex]]]:
 		     do []
 		     od
 		 then () = for w in list
-		      	   do answerd[w[0]]:=
-			   (answerd[w[0]] next answerd[w[0]]:=[])
-			   #w
+		      	   do let v = w.sort
+			      in answerd[v[0]]:= (answerd[v[0]] next answerd[v[0]]:=[])#v
 			   od
-	      	      	   {do answerd[w[0]]#:=w
+	      	      	   {do answerd[v[0]]#:=v
 	         	   od}
 		 then () = answer[d]:=answerd
 		 in ()
@@ -1031,9 +1030,11 @@ set adjust_global_top(InnerClass ic) = void:
     then CFLT = Lie_type_matrix(rd)
     {then CTQ = center_torsion_quotient(rd)}
     then () = if (not CFLT[5].=) or (not CFLT[6].=) or (not CFLT[4][7].=) {F4, G2, E8}
-    	      then global_top:=1; return ()
+    	      then global_top:=1;
+	      	   global_facets := low_FPP_facets(ic); return ()
 	      elif (not CFLT[1].=) or (CFLT[2].=)
-    	      then global_top:=2; return ()
+    	      then global_top:=2;
+	      	   global_facets := low_FPP_facets(ic); return ()
 	      else global_top:=3
 	      fi
     then ()= global_facets := low_FPP_facets(ic)
