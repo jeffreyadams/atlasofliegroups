@@ -210,8 +210,8 @@ vertex "belongs" (either "is" or "is vertex of the edge")}
 3) tetrahedron in FPP, two pairs of verts exchanged by involution}
 
 set localFD_1Dirac2\
-  ( KGBElt x, ratvec lambda, VertexData Lvd, PermOrderTwo Perm2, vec mapAct,
-    [[FacetVertsIndex]] globalFacets) = [[FacetVertsIndex]]:
+  ( KGBElt x, ratvec lambda, VertexData Lvd, PermOrderTwo Perm2, vec mapAct{,
+    [[FacetVertsIndex]] globalFacets}) = [[FacetVertsIndex]]:
 (   {if facet_verbose
     then prints(new_line,"start localFD_1Dirac")
     fi;}
@@ -237,12 +237,12 @@ set localFD_1Dirac2\
     then Llookup = is_member_sorted((for v in LF0 do v[0] od))
     then Edges = [vec]:
     	 let EdgesFixFix = [vec]:
-    	     if #LF0 = #globalFacets[0]
+    	     {if #LF0 = #globalFacets[0]
 	     then for v in globalFacets[1]
 	      	  do [mapAct[v[0]], mapAct[v[1]]].sort
 	      	  od
-	      else if #Perm2.fixed > 1
- 	      	   then for v in globalFacets[1]
+	      else} if #Perm2.fixed > 1
+ 	      	   then for v in FPP_edges(G){globalFacets[1]}
 	       	   	do if is_member_sorted(Perm2.fixed)(v[0]) and
 		       	      is_member_sorted(Perm2.fixed)(v[1])
 		      	   then let mloc = mapAct[v[0]], nloc = mapAct[v[1]]
@@ -255,7 +255,7 @@ set localFD_1Dirac2\
 		   	 od.##
 	       	    else []
 	       	    fi
-	       fi
+	       {fi}
 	   {then () = prints("after FixFix, time is ",print_time_string(elapsed_ms() - start))}
       	   then EdgesFixTrans = [vec]:
 	   	{if global_top >= 2 and #Perm2.trans > 0 and #Perm2.fixed > 0
@@ -352,8 +352,8 @@ vertex "belongs" (either "is" or "is vertex of the edge")}
 #globalFacets[d-1] of d-facets, the jth list being all global facets that
 begin with the jth global (d-1)-facet.}
 set localFD_1Dirac2_by_zero\
-  ( KGBElt x, ratvec lambda, VertexData Lvd, PermOrderTwo Perm2, vec mapAct,
-    [[[FacetVertsIndex]]] globalFacetsBYZERO) = [[FacetVertsIndex]]:
+  ( KGBElt x, ratvec lambda, VertexData Lvd, PermOrderTwo Perm2, vec mapAct{,
+    [[[FacetVertsIndex]]] globalFacetsBYZERO}) = [[FacetVertsIndex]]:
 (   {if facet_verbose
     then prints(new_line,"start localFD_1DiracBYZERO")
     fi;}
@@ -383,7 +383,7 @@ set localFD_1Dirac2_by_zero\
 	     then for j in Perm2.fixed
 	     	  do let mloc = mapAct[j]
 		     in if Llookup(mloc)
-		     	then for v in globalFacetsBYZERO[1][j] {global edges with v[0] = j}
+		     	then for v in FPP_edges_by_zero(G)[j] {global edges with v[0] = j}
 			     do if is_member_sorted(Perm2.fixed)(v[1])
 			     	then let nloc =  mapAct[v[1]]
 				     in if nloc > mloc and Llookup(nloc)
@@ -846,6 +846,7 @@ set_type
   , ( -> [[vec]]) Lvd_list_size {for each inner class and involution and d_lambda, size of Lvd.list}
   , (InnerClass -> VertexData) FPP_vertex_data {one for each inner class}
   , (InnerClass -> (vec -> int)) flippable_edge_lookup
+  {, (InnerClass -> [FacetVertsIndex]) FPP_flip_tet}
   , (InnerClass -> [ratvec]) FPP_local_vertices {one for each inner class}
   , ((InnerClass, mat) -> [vec]) lamthlams {for each involution, list of allowed lambda+theta_lambda}
   , ((InnerClass, mat, vec) -> int) lamthlam_number {for each involution, number of lambda+theta_lambda in list}
@@ -870,7 +871,8 @@ set make_Lvd_Perm2_mapAct_table() = Lvd_Perm2_mapAct_table:
     then inv_hashes = [mat_hash]: [] {one for each inner class}
     then vertex_datas = [VertexData]: [] {one for each inner class}
     then FELs = [(vec->int)]: [] {one for each inner class}
-    then ELLs = [[(ratvec->int)]]: [] {one for each inner class}
+    {then ELLs = [[(ratvec->int)]]: [] {one for each inner class}}
+    {then Ffts = [[FacetVertsIndex]]:[] {one for each inner class}}
     then FPP_local_verts = [[ratvec]]: [] {one list for each inner class}
     then cands = [[[vec]]]: [] {one [vec] for each inner class and involution}
     then lamthlam_hashess = [[vec_hash]]: [] {one for each inner class and involution}
@@ -883,6 +885,7 @@ set make_Lvd_Perm2_mapAct_table() = Lvd_Perm2_mapAct_table:
 	 then () = vertex_datas := []
 	 then () = FELs := []
 	 {then () = ELLs := []}
+	 {then () = Ffts := []}
 	 then () = FPP_local_verts := []
 	 then () = cands := []
 	 then () = lamthlam_hashess := []
@@ -896,6 +899,7 @@ set make_Lvd_Perm2_mapAct_table() = Lvd_Perm2_mapAct_table:
 	    	   	vertex_datas := (vertex_datas next vertex_datas := [])#FPP_vertex_data(ic);
 			FELs := (FELs next FELs:=[])# FPP_flippable_edge_lookup(ic);
 			{ELLs := (ELLs next ELLs:=[])# edge_list_lookups(ic);}
+			{Ffts := (Ffts next Ffts:=[])#FPP_flippable_tetrahedra(ic);}
 	    	   	FPP_local_verts := (FPP_local_verts next FPP_local_verts:=[])
 		     	#FPP_local_vertices(ic, vertex_datas[i].list, FELs[i]);
 			cands := (cands next cands := [])#[];
@@ -986,6 +990,9 @@ set make_Lvd_Perm2_mapAct_table() = Lvd_Perm2_mapAct_table:
     , (InnerClass -> (vec -> int)): {flippable_edge_lookup} (InnerClass ic) (vec -> int):
       let i = add_inner_class(ic)
       in FELs[i]
+    {, (InnerClass -> [FacetVertsIndex]): {FPP_flip_tet} (InnerClass ic) [FacetVertsIndex]:
+      let i = add_inner_class(ic)
+      in Ffts[i]}
     , (InnerClass -> [ratvec]): {FPP_local_vertices} (InnerClass ic)  [ratvec]:
       let i = add_inner_class(ic)
        in FPP_local_verts[i]

@@ -1758,14 +1758,14 @@ set local_test_GEO_hash_dumb(KGBElt x, ratvec lambda, VertexData vd, VertexData 
     (vec,[(int,int)]) Perm2, vec mapAct, KTypePol_hash pol_hash, Param_hash Uhash) = [Param]:
     let DiracBD = DiracBD(x,lambda), G=x.real_form
     then rhocheck = G.rho_check
-    then LF = localFD_1Dirac2(x,lambda, Lvd, Perm2, mapAct, global_facets)
+    then LF = localFD_1Dirac2(x,lambda, Lvd, Perm2, mapAct{, global_facets})
     in local_test_GEO_hash_dumb(x, lambda, vd, Lvd, LF, pol_hash, Uhash)
 
 set local_test_GEO_hash_dumb(KGBElt x, ratvec lambda, VertexData vd, VertexData Lvd, (vec,[(int,int)]) Perm2,
-    vec mapAct, KTypePol_hash pol_hash, Param_hash Uhash, [[FacetVertsIndex]] global_facets) = [Param]:
+    vec mapAct, KTypePol_hash pol_hash, Param_hash Uhash{, [[FacetVertsIndex]] global_facets}) = [Param]:
     let DiracBD = DiracBD(x,lambda), G=x.real_form
     then rhocheck = G.rho_check
-    then LF = [[FacetVertsIndex]]: localFD_1Dirac2(x, lambda, Lvd, Perm2, mapAct, global_facets)
+    then LF = [[FacetVertsIndex]]: localFD_1Dirac2(x, lambda, Lvd, Perm2, mapAct{, global_facets})
     {imposes Dirac, herm, pos on LKTs for vertices and edges}
     in local_test_GEO_hash_dumb(x, lambda, vd, Lvd, LF, pol_hash, Uhash)
 
@@ -1773,9 +1773,9 @@ set local_test_GEO_hash_dumb(KGBElt x, ratvec lambda, VertexData vd,
     KTypePol_hash pol_hash, Param_hash Uhash) = [Param]:
     let G = x.real_form
     then ELs = edge_list_lookups(G)
-    then () = adjust_global_top(G)
+    {then () = adjust_global_top(G)}
     then (Lvd, Perm2, mapAct) = localFD_Lvd2(x, lambda, vd, ELs)
-    then LF = localFD_1Dirac2(x,lambda, Lvd, Perm2, mapAct, global_facets)
+    then LF = localFD_1Dirac2(x,lambda, Lvd, Perm2, mapAct{, global_facets})
     	{computes edges and verts, imposing hermitian and Dirac}
     in local_test_GEO_hash_dumb(x, lambda, vd, Lvd, LF, pol_hash, Uhash)
 
@@ -1975,23 +1975,23 @@ set local_test_GEO_hash(KGBElt x, ratvec lambda, VertexData vd, VertexData Lvd,
 
 set local_test_GEO_hash(KGBElt x, ratvec lambda, VertexData vd, VertexData Lvd,
     (vec,[(int,int)]) Perm2, vec mapAct, KTypePol_hash pol_hash, Param_hash Uhash) = [Param]:
-    let () = adjust_global_top(x.inner_class)
-    then LF = localFD_1Dirac2(x, lambda, Lvd, Perm2, mapAct,global_facets)
+    {let () = adjust_global_top(x.inner_class)}
+    let LF = localFD_1Dirac2(x, lambda, Lvd, Perm2, mapAct{,global_facets})
     in local_test_GEO_hash(x, lambda, vd, Lvd, LF, pol_hash, Uhash)
 
 set local_test_GEO_hash(KGBElt x, ratvec lambda, VertexData vd, VertexData Lvd,
-    (vec,[(int,int)]) Perm2, vec mapAct, KTypePol_hash pol_hash, Param_hash Uhash,
-    [[FacetVertsIndex]] global_facets) = [Param]:
-    let LF = [[FacetVertsIndex]]: localFD_1Dirac2(x,lambda, Lvd, Perm2, mapAct, global_facets)
+    (vec,[(int,int)]) Perm2, vec mapAct, KTypePol_hash pol_hash, Param_hash Uhash{,
+    [[FacetVertsIndex]] global_facets}) = [Param]:
+    let LF = [[FacetVertsIndex]]: localFD_1Dirac2(x,lambda, Lvd, Perm2, mapAct{, global_facets})
     in local_test_GEO_hash(x, lambda, vd, Lvd, LF, pol_hash, Uhash)
 
 set local_test_GEO_hash(KGBElt x, ratvec lambda, VertexData vd,
     KTypePol_hash pol_hash, Param_hash Uhash) = [Param]:
     let G = x.real_form
     then ELs = edge_list_lookups(G)
-    then () = adjust_global_top(G)
+    {then () = adjust_global_top(G)}
     then (Lvd, Perm2, mapAct) = localFD_Lvd2(x, lambda, vd, ELs)
-    then LF = localFD_1Dirac2(x,lambda, Lvd, Perm2, mapAct, global_facets)
+    then LF = localFD_1Dirac2(x,lambda, Lvd, Perm2, mapAct{, global_facets})
     	{computes edges and verts, imposing hermitian and Dirac}
     in local_test_GEO_hash(x, lambda, vd, Lvd, LF, pol_hash, Uhash)
 
@@ -2152,22 +2152,22 @@ KTypePol_hash pol_hash, Param_hash Uhash) = [Param]:
 {Compute 0 and 1 facets, pass to previous}
 set local_test_GEO_hash2(KGBElt x, ratvec lambda, VertexData vd, VertexData Lvd, (vec,[(int,int)]) Perm2,
     vec mapAct, KTypePol_hash pol_hash, Param_hash Uhash) = [Param]:
-    let LF = localFD_1Dirac2(x,lambda, Lvd, Perm2, mapAct, global_facets) {impose Dirac, pos on LKTs}
+    let LF = localFD_1Dirac2(x,lambda, Lvd, Perm2, mapAct{, global_facets}) {impose Dirac, pos on LKTs}
     in local_test_GEO_hash2(x, lambda, vd, Lvd, LF, pol_hash, Uhash)
 
 {Compute 0 and 1 facets, ensuring hermitian, pos on LKTs, pass to previous}
 set local_test_GEO_hash2(KGBElt x, ratvec lambda, VertexData vd, VertexData Lvd, (vec,[(int,int)]) Perm2,
-    vec mapAct, KTypePol_hash pol_hash, Param_hash Uhash, [[FacetVertsIndex]] global_facets) = [Param]:
-    let LF = [[FacetVertsIndex]]: localFD_1Dirac2(x, lambda, Lvd, Perm2, mapAct, global_facets)
+    vec mapAct, KTypePol_hash pol_hash, Param_hash Uhash{, [[FacetVertsIndex]] global_facets}) = [Param]:
+    let LF = [[FacetVertsIndex]]: localFD_1Dirac2(x, lambda, Lvd, Perm2, mapAct{, global_facets})
     in local_test_GEO_hash2(x, lambda, vd, Lvd, LF, pol_hash, Uhash)
 
 set local_test_GEO_hash2(KGBElt x, ratvec lambda, VertexData vd,
     KTypePol_hash pol_hash, Param_hash Uhash) = [Param]:
     let G = x.real_form
     then ELs = edge_list_lookups(G)
-    then () = adjust_global_top(G)
+    {then () = adjust_global_top(G)}
     then (Lvd, Perm2, mapAct) = localFD_Lvd2(x, lambda, vd, ELs)
-    then LF = localFD_1Dirac2(x,lambda, Lvd, Perm2, mapAct, global_facets)
+    then LF = localFD_1Dirac2(x,lambda, Lvd, Perm2, mapAct{, global_facets})
     	{computes edges and verts, imposing hermitian and Dirac}
     in local_test_GEO_hash2(x, lambda, vd, Lvd, LF, pol_hash, Uhash)
 
@@ -2448,19 +2448,19 @@ set local_test_GEO_hash_one_level(KGBElt x, ratvec lambda, VertexData vd,
 
 {JUST CALCULATE FIRST TWO LEVELS}
 set local_test_GEO_hash_one_level(KGBElt x, ratvec lambda, VertexData vd, VertexData Lvd,
-    (vec,[(int,int)]) Perm2, vec mapAct, KTypePol_hash pol_hash, Param_hash Uhash,
-    [[FacetVertsIndex]] global_facets) = [Param]:
+    (vec,[(int,int)]) Perm2, vec mapAct, KTypePol_hash pol_hash, Param_hash Uhash{,
+    [[FacetVertsIndex]] global_facets}) = [Param]:
     let G = x.real_form, thetaMinus = x.involution - 1
-    then LF = [[FacetVertsIndex]]: localFD_1Dirac2(x,lambda, Lvd, Perm2, mapAct, global_facets)
+    then LF = [[FacetVertsIndex]]: localFD_1Dirac2(x,lambda, Lvd, Perm2, mapAct{, global_facets})
     in local_test_GEO_hash_one_level(x, lambda, vd, Lvd, LF, pol_hash, Uhash)
 
 set local_test_GEO_hash_one_level(KGBElt x, ratvec lambda, VertexData vd,
     KTypePol_hash pol_hash, Param_hash Uhash) = [Param]:
     let G = x.real_form
     then ELs = edge_list_lookups(G)
-    then () = adjust_global_top(G)
+    {then () = adjust_global_top(G)}
     then (Lvd, Perm2, mapAct) = localFD_Lvd2(x, lambda, vd, ELs)
-    then LF = localFD_1Dirac2(x,lambda, Lvd, Perm2, mapAct, global_facets)
+    then LF = localFD_1Dirac2(x,lambda, Lvd, Perm2, mapAct{, global_facets})
     	{computes edges and verts, imposing hermitian and Dirac}
     in local_test_GEO_hash_one_level(x, lambda, vd, Lvd, LF, pol_hash, Uhash)
 
@@ -2605,23 +2605,23 @@ set local_test_GEO_hash_bottom_layer(KGBElt x, ratvec lambda, VertexData vd,
 set local_test_GEO_hash_bottom_layer(KGBElt x, ratvec lambda, VertexData vd, VertexData Lvd,
     (vec,[(int,int)]) Perm2, vec mapAct, KTypePol_hash pol_hash, Param_hash Uhash) = [Param]:
     let G = x.real_form, thetaMinus = x.involution - 1
-    then LF = localFD_1Dirac2(x, lambda, Lvd, Perm2, mapAct, global_facets) {impose Dirac}
+    then LF = localFD_1Dirac2(x, lambda, Lvd, Perm2, mapAct{, global_facets}) {impose Dirac}
     in local_test_GEO_hash_bottom_layer(x, lambda, vd, Lvd, LF, pol_hash, Uhash)
 
 set local_test_GEO_hash_bottom_layer(KGBElt x, ratvec lambda, VertexData vd, VertexData Lvd,
     (vec,[(int,int)]) Perm2, vec mapAct, KTypePol_hash pol_hash, Param_hash Uhash,
     [[FacetVertsIndex]] global_facets) = [Param]:
     let G = x.real_form, thetaMinus = x.involution - 1
-    then LF = [[FacetVertsIndex]]: localFD_1Dirac2(x,lambda, Lvd, Perm2, mapAct, global_facets)
+    then LF = [[FacetVertsIndex]]: localFD_1Dirac2(x,lambda, Lvd, Perm2, mapAct{, global_facets})
     in local_test_GEO_hash_bottom_layer(x, lambda, vd, Lvd, LF, pol_hash, Uhash)
 
 set local_test_GEO_hash_bottom_layer(KGBElt x, ratvec lambda, VertexData vd,
     KTypePol_hash pol_hash, Param_hash Uhash) = [Param]:
     let G = x.real_form
     then ELs = edge_list_lookups(G)
-    then () = adjust_global_top(G)
+    {then () = adjust_global_top(G)}
     then (Lvd, Perm2, mapAct) = localFD_Lvd2(x, lambda, vd, ELs)
-    then LF = localFD_1Dirac2(x,lambda, Lvd, Perm2, mapAct, global_facets)
+    then LF = localFD_1Dirac2(x,lambda, Lvd, Perm2, mapAct{, global_facets})
     	{computes edges and verts, imposing hermitian and Dirac}
     in local_test_GEO_hash_bottom_layer(x, lambda, vd, Lvd, LF, pol_hash, Uhash)
 
