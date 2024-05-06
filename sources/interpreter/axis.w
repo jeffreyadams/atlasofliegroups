@@ -134,15 +134,19 @@ data is associated.
 @< Type definitions @>=
 
 struct user_interrupt : public error_base {
-  user_interrupt() : error_base("User interrupt") @+{}
+  user_interrupt() : error_base("\nUser interrupt") @+{}
 };
 
 @ At several points in the interpreter we shall check whether a user interrupt
-has raised |interrupt_flag|. When this happens we clear the flag and throw an
-exception. We define a local function to do this, which helps us to never
-forget to clear the flag.
+has raised |interrupt_flag|. Since we want to also be able to interrupt certain
+built-in functions, we need to export this function.
 
-@< Local function definitions @>=
+@< Declarations of exported functions @>=
+void check_interrupt();
+
+@ When a user interrupt is handled, we clear the flag and throw an exception.
+
+@< Function definitions @>=
 void check_interrupt()
 {@;
   if (interrupt_flag!=0)
