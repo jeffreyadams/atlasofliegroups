@@ -918,86 +918,128 @@ set unitary_nus(RealForm G, KGBElt x, ratvec lambda) = [ratvec]:
        od.##
 
 {assume precompute has been done, so that all FPP unitary are known
-for all derived simple factors of theta_stable Levis of G. Run over
-(x,lambda) and put into unitary_hash all (x,lambda_nu) that are good
-range cohom induced from some PROPER theta_stable Levi. }
+for all derived simple factors of theta-stable Levis of G. For maximal LRi run
+over unitary (xin,lambdainm) and put into unitary_hash all (x,lambda_nu) that are
+induced from some PROPER real Levi. }
 set theta_induced(RealForm G) = void:
- for x in KGB(G)
-    do for lambda in FPP_lambdas(x)
-       do let (Qmin,pmin) = theta_stable_quasi_data(parameter(x,lambda,0*lambda))
-       then Lmin = Qmin.Levi
-       then Qmaxs = max_Qs(Qmin)
-       then Lmaxs = for Qmax in Qmaxs do Qmax.Levi od
-       then pmaxs = for Lmax in Lmaxs
-       	    	    do first_param(theta_induce_standard(pmin,Lmax))
-		    od
-       then Lidatas = [[(RealForm, RealForm, mat)]]:
-       	    for Lmax in Lmaxs
-	    do derived_simple_factors_info(Lmax)
+    let maxLthis = max_Ls(G)
+    then maxLthidatas = [[(RealForm, RealForm, mat)]]: {one list for each maxLthi, with
+    	 	     an entry (Sik, derLik, Mik) for each derived simple factor derLik}
+       	 for maxLthi in maxLthis
+	 do derived_simple_factors_info(maxLthi)
+	 od
+    then derLiks = [[RealForm]]:
+    	 for Lidata in maxLthidatas
+	 do for (,derLik,) in Lidata
+	    do derLik
 	    od
-       then derLijss = [[RealForm]]:
-       	    for Lidata in Lidatas
-	    do for (,derLij,) in Lidata
-	       do derLij
-	       od
+	 od
+    then Miks = [[mat]]: {each of these maps G weights to weights for one factor derLik}
+       	 for Lidata in maxLthidatas
+	 do for (,,Mik) in Lidata
+	    do Mik
 	    od
-       then Mss = [[mat]]: {each of these maps G weights to weights for one factor Lij}
-       	    for Lidata in Lidatas
-	    do for (,,Mij) in Lidata
-	       do Mij
-	       od
-	    od
-        then Minvss = [[ratmat]]: {each of these maps Lij weights to G weights}
-	     for Lidata in Lidatas
-	     do for (Lij, derLij, Mij) in Lidata
-	     	do (Lij.simple_roots)*ratvecs_as_ratmat(derLij.fundamental_coweights).^
+	 od
+    then Mikinvs = [[ratmat]]: {each of these maps Lik weights to G weights}
+	     for Lidata in maxLthidatas
+	     do for (Lik, derLik, Mik) in Lidata
+	     	do (Lik.simple_roots)*ratvecs_as_ratmat(derLik.fundamental_coweights).^
 		od
 	     od
-	then derpss = [[Param]]:
-	     for pmax in pmaxs {parameter on Lmax}
-	     do derived_factor_params2(pmax)
+    then KGBEltLis = [[KGBElt]]:
+    	 for maxLthi in maxLthis
+	 do KGB(maxLthi)
+	 od
+    then KGBEltGs = [[KGBElt]]:
+    	 for maxLthi@i in maxLthis
+	 do for xin in KGBEltLis[i]
+	    do embed_KGB(xin,G)
+	    od
+	 od
+    then lambdainmGs = [[[ratvec]]]: {one list for each KGBElt to G from an Lthi}
+    	 for maxLthi@i in maxLthis
+	 do for x in KGBEltGs[i]
+	    do FPP_lambdas(x)
+	    od
+	 od
+    then rhois = [ratvec]: for maxLthi in maxLthis do G.rho - maxLthi.rho od
+    then lambdainms = [[[ratvec]]]: {one list of Lthi lambdas for each xin}
+    	 for maxLthi@i in maxLthis
+	 do for n:#KGB(maxLthi)
+	    do for lambdaG in lambdainmGs[i][n]
+	       do lambdaG - rhois[i]
+	       od
+	    od
+	 od
+    then KGBEltinks = [[[KGBElt]]]: {one KGBElt for each xin and derived simple factor derLik}
+     	 for list in KGBEltLis
+     	     do for xin in list
+	     	do derived_factor_KGBs2(xin)
 	     od
-	then unitary_listss = [[[ratvec]]]:
-	     for Minvs@i in Minvss
-	     do for Minv@j in Minvs
-	     	do for nuij in unitary_nus(derLijss[i][j],derpss[i][j].x, derpss[i][j].lambda)
-		   do Minv*nuij
+	 od
+     then lambdainmks = [[[[ratvec]]]]: {one ratvec for each xin, corr lambdain, and derLik}
+     	  for maxLthi@i in maxLthis
+	  do for xin@n in KGBEltLis[i]
+	     do for lambdainm in lambdainms[i][n]
+		do let pinm = parameter(xin, lambdainm, 0*lambdainm)
+		   then pinmks = derived_factor_params2(pinm)
+		   in for pinmk in pinmks do pinmk.lambda od
+		od
+	     od
+	  od
+     then unitary_listinmks = [[[[[ratvec]]]]]:
+     	  for maxLthi@i in maxLthis
+	  do for xin@n in KGBEltLis[i]
+	     do for lambdainm@m in lambdainms[i][n]
+	     	do for lambdainmk@k in lambdainmks[i][n][m]
+		   do for nuinmj@j in unitary_nus(derLiks[i][k],KGBEltinks[i][n][k], lambdainmk)
+		      do Mikinvs[i][k]*nuinmj
+		      od {[ratvec]}
+		   od {[[ratvec]]}
+	     	od {[[[ratvec]]]}
+	     od
+	  od
+     then Binmks = for unitary_listi@i in unitary_listinmks
+     	  do for unitary_listin@n in unitary_listi
+	     do for unitary_listinm@m in unitary_listin
+	     	do box(for unitary_listinmk in unitary_listinm do #unitary_listinmk od)
+		od
+	     od
+	  od
+     then nuinms = for unitary_listi@i in unitary_listinmks
+     	  do for unitary_listin@n in unitary_listi
+	     do for unitary_listinm@m in unitary_listin {unitary_listinm has two indices: k (simple factor)
+	     and j (place on list)}
+	        do for B in Binmks[i][n][m]
+		   do sum(G.rank, for b@k in B do unitary_listinm[k][b] od)
 		   od
 		od
 	     od
-	 then Bs = for unitary_lists@i in unitary_listss {this is [[ratvec]]}
-	      	   do box( for unitary_list in unitary_lists
-		      	     do #unitary_list
-			     od)
-		   od
-	then unitarynus = [[ratvec]]: {one list of candidate nus for each Lmax}
-	     for B@i in Bs 
-	     do for b in B
-	     	do sum(G.rank, for j:#b do unitary_listss[i][j][b[j]] od)
-	     	od
-	     od
-	{now each (xi,lambdai, nu) for nu in unitarynus[i] is unitary for Li}
-	{then () = for Lmax@i in Lmaxs
-	     	  do for nu in unitarynus[i]
-		     do assert(is_unitary(parameter(pmaxs[i].x, pmaxs[i].lambda, nu)),"sorry didn't work")
-		     {prints("candidate found!")}
-		     od
-		  od}  {to use this, need to finalize the Param on Lmax}
-	then () = for Lmax@i in Lmaxs
-	     	  do for nu in unitarynus[i]
-	     	     do let p = parameter(x,lambda,nu)
-		     	in if {is_dominant(G, p.infinitesimal_character)
-			      and} is_FPP(G, p.infinitesimal_character)
-		     	   then for q in monomials(finalize(p))
-		   	     	do big_unitary_hash.match(herm_center(q))
-			     	od
-		   	   fi
+	  od
+     then cands = [[Param]]: {one list on each maxLthi}
+     	  for maxLthi@i in maxLthis
+	  do for xin@n in KGBEltLis[i]
+	     do for lambdainm@m in lambdainms[i][n]
+		do for nuinmj in nuinms[i][n][m]
+		   do let pL = parameter(xin, lambdainm, nuinmj)
+		      then gamma = pL.infinitesimal_character + rhois[i]
+		      in if is_FPP(G,gamma)
+		      	 then [pL]
+			 else {prints("parameter ",pL," failed to be FPP");}
+			      []
+			 fi
+		   od.## {list of relevant pL for this x,lambda}
+		od.## {put all lambda together}
+	     od.## {put all x together}
+	  od {but keep a separate list for each max Levi maxLthi}
+     then () = for maxLthi@i in maxLthis
+	     	  do for pL in cands[i]
+	     	     do for q in monomials(theta_induce_irreducible(pL,G))
+		   	do big_unitary_hash.match(herm_center(q))
+			od
 	     	     od
 		  od
-	in ()
-     od
- od
-
+     in ()
 
 {simple derived factors of all theta-stable Levis of G}
 set SDLF(RealForm G) = [RealForm]:
@@ -1202,7 +1244,7 @@ set real_induced(RealForm G) = void:
 		      then gamma = dominant(G,pL.infinitesimal_character)
 		      in if is_FPP(G,gamma)
 		      	 then [pL]
-			 else prints("parameter ",pL," failed to be FPP");
+			 else {prints("parameter ",pL," failed to be FPP");}
 			      []
 			 fi
 		   od.## {list of relevant pL for this x,lambda}
@@ -1284,7 +1326,10 @@ set precomputeALL(RealForm G) = void:
 
 set FPPpre(RealForm G) = void:
     let start = elapsed_ms()
+    then temp_KGB_flag = every_KGB_flag
+    then () = every_KGB_flag:= false
     then () = precomputeALL(G)
+    then () = every_KGB_flag := temp_KGB_flag
     then () = if pre_bottom_flag
        	      then FPP_unitary_hash_bottom_layer(G)
        	      else FPP_unitary_hash2(G)

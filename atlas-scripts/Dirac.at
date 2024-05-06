@@ -10,8 +10,12 @@
 
 {list of theta-stable positive systems for fundamental Cartan}
 set thetaStable(RealForm G) = [KGBElt]:
-    let delta = G.distinguished_involution in
-    for x in KGB(G) do if x.involution = delta then [x] else [] fi od.##
+    let delta = G.distinguished_involution
+    then N = first(for x in KGB(G) do @bool: x.involution != delta od)
+    in if N = -1
+       then KGB(G)
+       else KGB(G)[:N]
+       fi
 
 {corr K_0's in equal rank case}
 set Ks(RealForm G) = [RealForm]:

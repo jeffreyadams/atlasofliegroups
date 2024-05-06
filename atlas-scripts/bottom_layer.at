@@ -630,7 +630,7 @@ set delta_on_simple(InnerClass ic) = [int]:
     let r = ic.semisimple_rank, SR = ic.simple_roots, delta = ic.distinguished_involution
     in for i:r do first(for j:r do SR[i] = delta*SR[j] od) od
 
-{these are the maximal proper theta-stable Levis from which p is naturally cohom induced, with inducing reps}
+{these are the maximal proper theta-stable parabolics containing Q}
 set max_Qs(KGPElt Q) = [KGPElt]:
     let S= Q.S, x = Q.x, L = Q.Levi
     then xL = inverse_embed_KGB(x,L), G = x.real_form
@@ -651,7 +651,21 @@ set max_Qs(KGPElt Q) = [KGPElt]:
     in [KGPElt]: for a in fixc do (complement(G.semisimple_rank, [a]),x) od##
 	 	 for v in pairsc do (complement(G.semisimple_rank,v), x) od
 
-{these are the maximal proper theta-stable Levis from which p is naturally cohom induced, with inducing reps}
+{these are all maximal proper theta-stable Levis}
+set max_Ls(RealForm G) = [RealForm]:
+    let rfhash = make_RealForm_hash()
+    then () = for x in thetaStable(G)
+    	      do let Bx = KGPElt: ([],x)
+	      	 in for Q in max_Qs(Bx)
+	    	    do rfhash.match(Q.Levi)
+		    od
+	      od
+     in for j:rfhash.size()
+     	do rfhash.index(j)
+	od
+
+{these are the maximal proper theta-stable parabolics from which p is naturally cohom induced,
+       with inducing reps}
 set max_Qps(Param p, [KGPElt] maxQs) = [(KGPElt,Param)]:
     let (Q0,pL0) = theta_stable_quasi_data(p)
     in for Q in maxQs
