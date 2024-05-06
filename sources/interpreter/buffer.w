@@ -55,7 +55,7 @@ control to the file active at the point they were opened.
 #ifndef BUFFER_H
 #define BUFFER_H
 
-#include "../Atlas.h" // must be very first \.{atlas} include
+#include "Atlas.h" // must be very first \.{atlas} include
 
 @< Includes needed in the header file @>@;
 

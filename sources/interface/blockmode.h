@@ -10,7 +10,7 @@
 #ifndef BLOCKMODE_H  /* guard against multiple inclusions */
 #define BLOCKMODE_H
 
-#include "../Atlas.h"
+#include "Atlas.h"
 
 #include "commands_fwd.h"
 #include "wgraph.h"

@@ -83,7 +83,7 @@ defined in \.{kl.h}.
 @< Includes needed in the header file @>=
 #include <iosfwd>
 
-#include "../Atlas.h"
+#include "Atlas.h"
 #include "kl.h"
 
 @ The \.{filekl\_in} implementation does a lot of file reading, and notably uses
@@ -124,7 +124,7 @@ typedef ullong KLIndex;
 #ifndef FILEKL_IN_H
 #define FILEKL_IN_H
 
-#include "../Atlas.h" // must be very first \.{atlas} include
+#include "Atlas.h" // must be very first \.{atlas} include
 
 @< Includes needed in the input header file @>@;
 namespace atlas {

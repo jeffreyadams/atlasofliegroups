@@ -11,7 +11,7 @@
 #ifndef LATTICE_H  /* guard against multiple inclusions */
 #define LATTICE_H
 
-#include "../Atlas.h"
+#include "Atlas.h"
 
 /******** function declarations **********************************************/
 

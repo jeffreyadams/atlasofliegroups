@@ -8,7 +8,7 @@
 */
 // Functions relating to alcoves, for use in deformation computations
 
-#include "../Atlas.h"
+#include "Atlas.h"
 
 
 #ifndef ALCOVES_H  /* guard against multiple inclusions */

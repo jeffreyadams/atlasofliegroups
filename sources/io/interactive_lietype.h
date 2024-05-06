@@ -13,7 +13,7 @@
 #include <map>
 #include <string>
 
-#include "../Atlas.h"
+#include "Atlas.h"
 #include "lietype.h"	// |lietype::TypeLetter|
 
 /******** function declarations **********************************************/

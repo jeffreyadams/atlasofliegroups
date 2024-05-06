@@ -18,8 +18,6 @@
 #include <cassert>
 #include "bitset.h"
 
-#include "../Atlas.h"
-
 namespace atlas {
 
 /*****************************************************************************

@@ -16,7 +16,7 @@
 #ifndef WEYLSIZE_H  /* guard against multiple inclusions */
 #define WEYLSIZE_H
 
-#include "../Atlas.h"
+#include "Atlas.h"
 
 #include "size_fwd.h"
 

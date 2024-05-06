@@ -47,7 +47,7 @@ a large section with basic functions related to these types.
 #ifndef GLOBAL_H
 #define GLOBAL_H
 
-#include "../Atlas.h" // must be very first \.{atlas} include
+#include "Atlas.h" // must be very first \.{atlas} include
 
 @< Includes needed in the header file @>@;
 namespace atlas { namespace interpreter {
@@ -2006,12 +2006,12 @@ equivalents like |Weight| for |int_Vector|, as that might be more confusing
 that helpful to users. In any case, the interpretation of the values is not at
 all fixed (vectors are used for coweights and (co)roots as well as for
 weights, and matrices could denote either a basis or an automorphism of a
-lattice). The header \.{../Atlas.h} makes sure all types are pre-declared,
+lattice). The header \.{Atlas.h} makes sure all types are pre-declared,
 but we need to see the actual type definitions in order to incorporated these
 values in ours.
 
 @< Includes needed in the header file @>=
-#include "../Atlas.h" // type declarations that are ``common knowledge''
+#include "Atlas.h" // type declarations that are ``common knowledge''
 #include "matrix.h" // to make |int_Vector| and |int_Matrix| complete types
 #include "ratvec.h" // to make |RatWeight| a complete type
 

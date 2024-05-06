@@ -10,7 +10,7 @@
 #ifndef Y_VALUES_H  /* guard against multiple inclusions */
 #define Y_VALUES_H
 
-#include "../Atlas.h"
+#include "Atlas.h"
 
 #include "ratvec.h"   // containment
 

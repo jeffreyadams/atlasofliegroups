@@ -18,7 +18,7 @@
 #include <limits>
 #include <set>
 
-#include "../Atlas.h"
+#include "Atlas.h"
 
 #include "bitmap.h"
 #include "klsupport.h"	// containment

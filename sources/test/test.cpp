@@ -38,8 +38,6 @@
 #include <fstream>
 #include <map>
 
-#include "../Atlas.h" // here to preempt double inclusion of _fwd files
-
 #include "free_abelian.h"
 #include "permutations.h"
 #include "matreduc.h"

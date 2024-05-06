@@ -11,7 +11,7 @@
 #define INTERACTIVE_LATTICE_H
 
 
-#include "../Atlas.h"
+#include "Atlas.h"
 
 #include "error.h"
 

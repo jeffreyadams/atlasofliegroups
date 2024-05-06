@@ -12,7 +12,7 @@
 
 #include <memory> // for |std::unique_ptr|
 
-#include "../Atlas.h"
+#include "Atlas.h"
 
 #include "ext_block.h"
 #include "polynomials.h"

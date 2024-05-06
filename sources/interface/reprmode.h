@@ -11,7 +11,7 @@
 #define REPRMODE_H
 
 #include "commands_fwd.h"
-#include "../Atlas.h"
+#include "Atlas.h"
 #include "wgraph.h"
 
 namespace atlas {

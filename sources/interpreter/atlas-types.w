@@ -53,7 +53,7 @@ this file.
 #ifndef ATLAS_TYPES_H
 #define ATLAS_TYPES_H
 
-#include "../Atlas.h" // must be very first \.{atlas} include
+#include "Atlas.h" // must be very first \.{atlas} include
 
 @< Includes needed in the header file @>@;
 namespace atlas { namespace interpreter {
