@@ -1073,6 +1073,26 @@ set SDLRF(RealForm G) = [RealForm]:
        do answer.index(m)
        od
 
+{simple derived factors of all proper real and theta-stable Levis of G}
+set SDLALL(RealForm G) = [RealForm]:
+    let answer = make_RealForm_hash()
+    then () = for L in Ls(G) {these are PROPER Levis of theta-stable parabolics}
+    	      ~do for Lj in derived_simple_factors(L) {~ to put the small L first}
+	      	  do answer.match(Lj)
+	    	  od
+	      	od
+    then () = for LR in LRs(G) {these are PROPER Levis of real parabolics}
+    	      ~do for LRk in derived_simple_factors(LR) {tilde to put small LR first}
+	      	  do answer.match(LRk)
+	    	  od
+	       od
+    then rank_lists = [[RealForm]]: for r:G.semisimple_rank do [] od
+    then () = for k:answer.size()
+      	      do let rf =answer.index(k)
+	      	 in rank_lists[rf.semisimple_rank] #:= rf
+       	      od
+     in rank_lists.##
+
 {assume precompute has been done, so that all FPP unitary are known
 for all derived simple factors of real Levis of G. For maximal LRi run
 over unitary (xin,lambdainm) and put into unitary_hash all (x,lambda_nu) that are
@@ -1227,7 +1247,6 @@ set precomputeR(RealForm G) = void:
     then () = for rf@k in rflist
     	      do prints("starting # ",k," = ",rf);
 	      	 real_induced(rf);
-		 real_induced(rf);
 		 if pre_bottom_flag
 		 then FPP_unitary_hash_bottom_layer(rf)
 		 else FPP_unitary_hash2(rf)
@@ -1236,6 +1255,41 @@ set precomputeR(RealForm G) = void:
     then () = FPP_report_flag:=true
     in real_induced(G)
 
+set precomputeALL(RealForm G) = void:
+    let start = elapsed_ms(), rflist = SDLALL(G)
+    then () = coh_ind_flag:=false
+    then temp_report_flag = FPP_report_flag
+    then () = FPP_report_flag :=false
+    then () = for rf@k in rflist
+    	      do prints("At time ",print_time_string(elapsed_ms() - start), ", starting # ",k,"/",
+	      	 	    #rflist," = ",rf);
+	      	 real_induced(rf);
+		 theta_induced(rf);
+		 if pre_bottom_flag
+		 then FPP_unitary_hash_bottom_layer(rf)
+		 else FPP_unitary_hash2(rf)
+		 fi
+	      od
+    then FPP_time = elapsed_ms()
+    then () = FPP_report_flag:=true
+    then () = real_induced(G)
+    then NR = big_unitary_hash.uhash(G).size()
+    then () = prints("In ",print_time_string(elapsed_ms() -FPP_time), ", real induction found ",NR,
+    	      		 " FPP unitary facets.")
+    then RI_time = elapsed_ms()
+    then () = theta_induced(G)
+    then NTheta =  big_unitary_hash.uhash(G).size() - NR
+    in prints("In ",print_time_string(elapsed_ms() -RI_time), ", coh induction found additional ",NTheta,
+       		  	" FPP unitary facets.")
+
+set FPPpre(RealForm G) = void:
+    let start = elapsed_ms()
+    then () = precomputeALL(G)
+    then () = if pre_bottom_flag
+       	      then FPP_unitary_hash_bottom_layer(G)
+       	      else FPP_unitary_hash2(G)
+       	      fi
+    in prints("Total time required was ",print_time_string(elapsed_ms() - start))
 
 { lists real and/or complex simple factors }
 {moved to cohom_reductionND.at}{

@@ -945,7 +945,9 @@ set min_bottom_elim_factors(Param p, {[KGPElt] maxQs,} KTypePol P) = bool:
 	    {then () = prints(multG)}
 	    then Lbranches = for derpLj@j in derpLjs
 	    	       	 do let sigLj =
-		            	if RF_code
+		            	if big_unitary_hash.uhash(derLjs[j]).lookup(derpLj).>=
+				then K_type_pol(character_formula(derpLj))
+				elif RF_code
 	    	      		then rf_sig_tables.sig_entry(derpLj)
 				else hermitian_form_irreducible(derpLj){, DLs[j])}
 		        	fi
