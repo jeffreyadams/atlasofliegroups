@@ -379,104 +379,27 @@ and local_test_hash}
 set KU_flag = true
 
 {if true, functions in FPP_global pass through KGB backwards}
-set tilde_flag = true
-
-{Assume that all unitary FPP reps p with p.x.# < known_to are in unitary_hash}
-set known_to = int: 0
-
-{set this to true if you have found all FPP unitary below known_to}
-set know_lower_flag = false
-
-set know_lower() = void:
-    know_lower_flag:=true;
-    tilde_flag:=false
-
-set know_lower(int N) = void:
-    know_lower_flag:=true;
-    tilde_flag:=false;
-    known_to:=N
-
-{set twopowers = make_power_function(2)}
-
-{meant to be a bitmap of (x,lambda) for a fixed G for which all FPP_unitary facets are in unitary_hash.
-For x number j and lambda = FPP_lambdas(x)[k], the corresponding bit is #(j*4^{G.semisimple_rank} + k)}
-set xl_known = int:0
-
-set set_bit(int N, int k) = int: OR(N, to_bitset([k])) {twopowers.power(k))}
+set tilde_flag = false
 
 set two_to_position(KGBElt x, ratvec lambda) = int:
     to_bitset([position(x,lambda)])
-    {let POS = position(x, lambda), D = 4^x.inner_class.semisimple_rank
-    {then Dpowers = make_power_function(D)}
-    in big_unitary_hash.power_function(x.real_form)(POS\D)*twopowers.power(POS%D)}
 
 {set a bit in xl_known}
 set finish(KGBElt x, ratvec lambda) = void:
     big_unitary_hash.finish(x, two_to_position(x,lambda))
 
-{let POWER = two_to_position(x,lambda)
-    then () = xl_known:= OR(xl_known, POWER)
-    in ()}
-{
-    let theta = x.involution, ic = x.inner_class, lr = (lambda-x.inner_class.rho).numer
-    then th1 = 1+theta
-    then lamthlam = (th1*lambda).numer
-    then m0 = LPm_table.lamthlam_number(ic, theta, lamthlam)
-    then () = assert(m0.>=, "oops, lamthlam not found")
-    then taus = all_lambda_differential_0(x)
-    then tau = lr - required_solution(th1,lamthlam - ratvec_as_vec(th1*ic.rho))
-    then m1 = first(for tauprime in taus do tauprime = tau od)
-    then m = m0*#taus + m1, D = 4^(ic.semisimple_rank)
-    then () = if m >= D
-    	      then prints("warning: lambda number ", m," exceeds max ",D,
-	      		       "; not recording this (x,lambda)")
-	      fi
-    then () = xl_known:= OR(xl_known, twopowers.power(D*x.number + m))
-    in ()
-}
-
 set finish(KGBElt x) = void:
-    let lambdas = FPP_lambdas(x) {, D = 4^(x.real_form.semisimple_rank)}
+    let lambdas = FPP_lambdas(x)
     then m = #lambdas
-    then M = (to_bitset([m]) - 1) {*to_bitset([D*x.number])}
+    then M = (to_bitset([m]) - 1)
     in big_unitary_hash.finish(x, M)
+
 
 {check whether a bit in xl_known is set}
 set is_finished(KGBElt x, ratvec lambda) = bool:
     let M = big_unitary_hash.xl_known(x.real_form)[x.number]
     in is_member_bitset(position(x,lambda),M)
-{let POWER = two_to_position(x,lambda)
-    in (big_unitary_hash.xl_known(x.real_form)\POWER) %2 = 1 {(xl_known\POWER)%2 = 1}}
 
-set is_finished_time = int:0
-set is_finished(KGBElt x, ratvec lambda, [int] N) = bool:
-let start = elapsed_ms()
-then ans = is_member_bitset(position(x, lambda), N[x.number])
-then ()= is_finished_time+:= elapsed_ms() - start
-in ans
-
-{    let theta = x.involution, ic = x.inner_class, lr = (lambda-x.inner_class.rho).numer
-    then th1 = 1+theta
-    then lamthlam = (th1*lambda).numer
-    then m0 = LPm_table.lamthlam_number(x.inner_class, theta, lamthlam)
-    then () = assert(m0.>=, "oops, lamthlam not found")
-    then taus = all_lambda_differential_0(x)
-    then tau = lr - required_solution(th1,lamthlam - ratvec_as_vec(th1*ic.rho))
-    then m1 = first(for tauprime in taus do tauprime = tau od)
-    then m = m0*#taus + m1, D = 4^(ic.semisimple_rank)
-    then () = if m >= D
-    	      then prints("warning: lambda number ", m," exceeds max ",D,
-	      		       "; not recording this (x,lambda)")
-	      fi
-    then position = (D*x.number + m)
-    then power = twopowers.power(position)
-    in (xl_known\power)%2 = 1}
-
-{global variable to be assigned to big_unitary_hash.xl_known(G) during any local calculation,
-to avoid making new copies of it}
-set NG = [int]: []
-
-{list of all (x,lambda) where FPP-unitary reps are in bitmap for G}
 set all_finished(RealForm G) = [(KGBElt,ratvec)]:
     let list = for x in KGB(G)
     	       do set_bit_positions(big_unitary_hash.xl_known(G)[x.number])
@@ -625,12 +548,12 @@ set local_testK_hash_know_lower(KGBElt x, ratvec lambda, VertexData vd,
 		  then pC = parameter(x, lambda, facet_bary(vd.list, verts))
 	      	  then ps = monomials(finalize(pC))
 	          in if not is_final(pC) and all(for q in ps
-		     	    		     	 do {@bool: q.x.# < known_to} @bool: is_finished(q.x,q.lambda,NG)
+		     	    		     	 do @bool: is_finished(q.x,q.lambda)
 						    and Uhash.lookup(q).>=
 					    	 od)
 		     then newStatuses[k]:="T"
 		     elif {know_lower_flag and} any(for q in ps
-		     	    	   	    do @bool: is_finished(q.x,q.lambda,NG) {(q.x.# < known_to)}
+		     	    	   	    do @bool: is_finished(q.x,q.lambda)
 					    and (Uhash.lookup(q) = -1)
 					    od)
 		     then newStatuses:= updateNUclassesB(newStatuses, gr, k, "F")
@@ -717,51 +640,45 @@ set local_testK_hash_bottom_layer(KGBElt x, ratvec lambda, VertexData vd,
 		   in ()
 	       fi
 {next if possible label classes known to be nonunitary because they finalize or deform to nonunitary}
-    then () = if know_lower_flag {assume ALL unitary facets with height(x') < known_to are in unitary_hash}
-    	      then for k:NumClasses
-    	      	   ~do if newStatuses[k] = "?"
-		       then let C=eq[k] {should run backwards for update to be effective}
-		       	    {then () = if k < NumClasses - 1
-			    	      then prints("#eq[",prevk,"] = ",#C," time = ",print_time_string(elapsed_ms() - current),
-				      	   ", status = ",newStatuses[prevk])
-				      fi
-			    then () = current:=elapsed_ms()
-			    then () = prevk:=k}
-		       	    then (d,j) = coords(FVKH,C~[0]) {d is dimension of facet. Tilde picks a largest-dimensional facet in C.}
-	      	      	    then verts = vec: FVKH[d][j][:d+1]
-			    then ratverts = [ratvec]: for m in verts do vd.list[m] od
-			    then sigma = sum(#lambda, ratverts)
-		      	    then pC = parameter(x, lambda, sigma/(d+1))
-		      	    then pCdef = if not is_final(pC)
-			    	       	 then monomials(finalize(pC))
-			    		 elif wiggle_flag0 and d > 0
-					 then let CF = character_formula(finalize(pC))
-					      in  monomials(composition_series((sum(x.real_form, for v in ratverts
-						      		       			   do wiggle(CF, (sigma - v)/d)
-						      		       			   od))))
-							  {proper_face_deformed(pCtop)}
-					  else []
-					  fi
-{this function is invoked only on the 0/1 facets in bottom_layer. That's a relatively long list, with few wiggles;
- the cost of computing proper_face_deformed(pC) seems not justified by the few edges eliminated}
-					      {then if #try = 0 and #C > 1
-					      	   then let}
-		      	    in if not is_final(pC)
-			       then if all(for q in pCdef do @bool: is_finished(q.x, q.lambda,NG){(q.x.# < known_to)}
-			       	       	       	    	     and (Uhash.lookup(q) >= 0) od)
-			       	    then newStatuses[k] := "T"
-			       	    elif any(for q in pCdef do @bool: is_finished(q.x,q.lambda,NG) {(q.x.# < known_to)} and (Uhash.lookup(q) = -1) od)
-				    then newStatuses:= updateNUclassesB(newStatuses, gr, k,"F"); "F"
-				    fi
-			       else {now pC is final, and pCdef consists of wiggled Params with smaller x}
-			       	    if any(for q in pCdef do @bool:  is_finished(q.x,q.lambda,NG){(q.x.# < known_to)}
+    then () = for k:NumClasses
+    	     ~do if newStatuses[k] = "?"
+		 then let C=eq[k] {should run backwards for update to be effective}
+		      then (d,j) = coords(FVKH,C~[0]) {d is dimension of facet. Tilde picks a largest-dimensional facet in C.}
+	      	      then verts = vec: FVKH[d][j][:d+1]
+		      then ratverts = [ratvec]: for m in verts do vd.list[m] od
+		      then sigma = sum(#lambda, ratverts)
+		      then pC = parameter(x, lambda, sigma/(d+1))
+		      then pCdef = if not is_final(pC)
+		      then monomials(finalize(pC))
+		  elif wiggle_flag0 and d > 0
+		  then let CF = character_formula(finalize(pC))
+		       in  monomials(composition_series((sum(x.real_form,
+		       	   for v in ratverts
+			   do wiggle(CF, (sigma - v)/d)
+			   od))))
+		  {proper_face_deformed(pCtop)}
+		  else []
+		  fi
+{this function is invoked only on the 0/1 facets in bottom_layer. That's a relatively long list,
+      with few wiggles; the cost of computing proper_face_deformed(pC) seems not justified by
+      the few edges eliminated}
+		   in if not is_final(pC)
+		      then if all(for q in pCdef do @bool: is_finished(q.x, q.lambda) and
+			       	       	       	    	     (Uhash.lookup(q) >= 0) od)
+			   then newStatuses[k] := "T"
+			   elif any(for q in pCdef do @bool: is_finished(q.x,q.lambda) and
+				    	 (Uhash.lookup(q) = -1) od)
+			   then newStatuses:= updateNUclassesB(newStatuses, gr, k,"F"); "F"
+			   fi
+		      else {now pC is final, and pCdef consists of wiggled Params with smaller x}
+			  if any(for q in pCdef do @bool:  is_finished(q.x,q.lambda)
 				       	       and (Uhash.lookup(q) = -1) od)
-			       	    then newStatuses := updateNUclassesB(newStatuses, gr, k,"F"); newStatuses[k] := "F"
-				    fi
-			       fi
-			fi
-	      	   od
-	      fi
+			  then newStatuses := updateNUclassesB(newStatuses, gr, k,"F");
+			       newStatuses[k] := "F"
+		           fi {any}
+		      fi {not is_final(pC)}
+		fi {newStatuses[k]}
+	      od {k:NumClasses}
     then () = if fund_facet_verbose and NumClasses > 100
     then prints(); prints("start local_testK_hash_bottom_layer ", NumClasses,
 		   " equiv classes of facets to dim ",#FVKH-1)
@@ -838,6 +755,7 @@ set NumKchars() = int:
 set test_string = ""
 
 set more_verbose =false
+
 { set LvdHold = VertexData: to_vertex_data([ratvec]:[]), LFVHHold =  [[LocalFacetVertsHash]] :[],
     eqHold = [[int]]: [], grHold = [[int]]: [], CLBFHold = [vec]: []}
 { Input is candidate facets, and graph info. Output is the tester-unitary ones.
@@ -847,16 +765,6 @@ set local_test_hash(KGBElt x, ratvec lambda, VertexData Lvd,
     [[LocalFacetVertsHash]] LFVH, [[int]] eq, [[int]] gr,
     [vec] classListByFacet, Param_hash Uhash, (Param->bool) tester) = [Param]:
     let NumClasses = #eq, printInterval = int: 1, start = elapsed_ms()
-    { then listZero = [ratvec]: if #LFVH = 0
-    	 	    	      then []
-    			      else for w in LFVH[0] do Lvd.list[w[0]] od
-			      fi
-    then vdZero = to_vertex_data(listZero) }
-{    then () = LvdHold := Lvd
-    then () = LFVHHold := LFVH
-    then () = eqHold := eq
-    then () = grHold := gr
-    then () = CLBFHold := classListByFacet}
     then newStatuses = for m:NumClasses do "?" od
     then () = if fund_facet_verbose and NumClasses > 100
     	      then prints("start local_test, ",NumClasses,
@@ -873,9 +781,6 @@ set local_test_hash(KGBElt x, ratvec lambda, VertexData Lvd,
 	      		     od
 		   in ()
 	       fi
-    {then () = if KU_flag
-    	      then prints("Still undecided: ",for m:NumClasses do if newStatuses[m] = "?" then [m] else [] fi od.##)
-	      fi}
     then unitary_by_dim = vec: null(#LFVH)
     then UParams = [Param]:
     	 for m:NumClasses
@@ -966,43 +871,42 @@ set local_test_hash_bottom(KGBElt x, ratvec lambda, VertexData Lvd,
     [[LocalFacetVertsHash]] LFVH, [[int]] eq, [[int]] gr, [vec] classListByFacet,
     [KGPElt] maxQs, [KType,[QKL_bottom_data]] datas, KTypePol_hash pol_hash, Param_hash Uhash) = [Param]:
     let NumClasses = #eq, printInterval = int: 1, newStatuses = for j:#eq do "?" od
-    then () = if know_lower_flag
-              then for k:NumClasses
-                   ~do if newStatuses[k] = "?"
-                       then let C=eq[k] {should run backwards for update to be effective?}
-                            then (d,j) = coords(LFVH,C[0]) {search C to look for largest d?}
-                            then verts = vec: LFVH[d][j][:d+1]
-			    then ratverts = [ratvec]: for m in verts do Lvd.list[m] od
-			    then sigma = sum(#lambda, ratverts)
-                            then pC = parameter(x, lambda, sigma/(d+1))
-                            then pCdef = if is_final(pC)
-                                         then if wiggle_flag and d > 0
-					      then let CF = character_formula(pC)
-					      	   in monomials(composition_series((sum(x.real_form, for v in ratverts
+    then () = for k:NumClasses
+             ~do if newStatuses[k] = "?"
+                 then let C=eq[k] {should run backwards for update to be effective?}
+                      then (d,j) = coords(LFVH,C[0]) {search C to look for largest d?}
+                      then verts = vec: LFVH[d][j][:d+1]
+		      then ratverts = [ratvec]: for m in verts do Lvd.list[m] od
+		      then sigma = sum(#lambda, ratverts)
+                      then pC = parameter(x, lambda, sigma/(d+1))
+                      then pCdef = if is_final(pC)
+                                   then if wiggle_flag and d > 0
+					then let CF = character_formula(pC)
+					     in monomials(composition_series((sum(x.real_form, for v in ratverts
 						      		       			   do wiggle(CF, (sigma - v)/d)
 						      		       			   od))))
 							  {proper_face_deformed(pC)}
-					      else []
-					      fi
-                                         else monomials(finalize(pC))
-                                         fi
-                            in if not is_final(pC)
-			       then if all(for q in pCdef do @bool: is_finished(q.x,q.lambda,NG){(q.x.# < known_to)}
-			       	       	       and (Uhash.lookup(q) >= 0) od)
-                                    then newStatuses[k] := "T"
-                                    elif any(for q in pCdef do @bool: is_finished(q.x,q.lambda,NG){(q.x.# < known_to)}
-				    	 	 and (Uhash.lookup(q) = -1) od)
-                                    then newStatuses:= updateNUclassesB(newStatuses, gr, k); "F"
-                                    fi
-                               else {now pC is final, and pCdef consists of wiggled Params with smaller x}
-                                    if any(for q in pCdef do @bool:  is_finished(q.x,q.lambda,NG){(q.x.# < known_to)}
-				       	       and (Uhash.lookup(q) = -1) od)
-                                    then newStatuses := updateNUclassesB(newStatuses, gr, k); newStatuses[k] := "F"
-                                    fi
+					 else []
+					 fi
+                                    else monomials(finalize(pC))
+                                    fi {is_final(pC)}
+                       in if not is_final(pC)
+			  then if all(for q in pCdef do @bool: is_finished(q.x,q.lambda) and
+			       	       	       (Uhash.lookup(q) >= 0) od)
+                               then newStatuses[k] := "T"
+                               elif any(for q in pCdef do @bool: is_finished(q.x,q.lambda) and
+				    	 	 (Uhash.lookup(q) = -1) od)
+                               then newStatuses:= updateNUclassesB(newStatuses, gr, k); "F"
+                               fi {all (for q}
+                          else {now pC is final, and pCdef consists of wiggled Params with smaller x}
+                               if any(for q in pCdef do @bool:  is_finished(q.x,q.lambda) and
+				       	       (Uhash.lookup(q) = -1) od)
+                               then newStatuses := updateNUclassesB(newStatuses, gr, k);
+				    	 newStatuses[k] := "F"
                                fi
-                        fi
-                   od
-              fi
+                          fi {not is_final(pC)}
+                   fi {newStatuses[k]}
+               od
     then () = if fund_facet_verbose and NumClasses > 100
     	      then prints("start local_test, ",NumClasses,
 	      " equiv classes of facets")
@@ -1043,7 +947,7 @@ set local_test_hash_bottom(KGBElt x, ratvec lambda, VertexData Lvd,
 		      in if not elim_more then false {we got rid of p by bottom layer}
 			 else all(for p1 in ps do @bool: is_unitary_hash_big(p1) od)
 		     	 fi
-		  fi
+		  fi {newStatuses[m]}
 	      then () = if more_verbose then prints("your final answer was ",test) fi
 	      in if test
 		 then for i in eq[m]
@@ -1073,7 +977,7 @@ set local_test_hash_bottom(KGBElt x, ratvec lambda, VertexData Lvd,
 			      	     	  then surprise_hash.match(p)
 				     	  fi
 		       in []
-		  fi
+		  fi{test}
 	     od.## {list of unitary Params}
     then () = if test_verbose or test_slightly_verbose
     	      then prints("unitary facets by dim = ",
@@ -1087,43 +991,41 @@ set local_test_wiggle_hash(KGBElt x, ratvec lambda, VertexData Lvd,
     [[LocalFacetVertsHash]] LFVH, [[int]] eq, [[int]] gr,
     [vec] classListByFacet, Param_hash Uhash) = [Param]:
     let NumClasses = #eq, printInterval = int: 1, newStatuses = for j:#eq do "?" od
-    then () = if know_lower_flag
-              then for k:NumClasses
-                   ~do if newStatuses[k] = "?"
-                       then let C=eq[k] {should run backwards for update to be effective?}
-                            then (d,j) = coords(LFVH,C[0])
-                            then verts = vec: LFVH[d][j][:d+1]
-			    then ratverts = [ratvec]: for m in verts do Lvd.list[m] od
-			    then sigma = sum(#lambda, ratverts)
-                            then pC = parameter(x, lambda, sigma/(d+1))
-                            then pCdef = if is_final(pC)
-                                         then if wiggle_flag and d > 0
-					      then let CF = character_formula(pC)
-					      	   in monomials(composition_series((sum(x.real_form, for v in ratverts
+    then () = for k:NumClasses
+             ~do if newStatuses[k] = "?"
+                 then let C=eq[k] {should run backwards for update to be effective?}
+                      then (d,j) = coords(LFVH,C[0])
+                      then verts = vec: LFVH[d][j][:d+1]
+		      then ratverts = [ratvec]: for m in verts do Lvd.list[m] od
+		      then sigma = sum(#lambda, ratverts)
+                      then pC = parameter(x, lambda, sigma/(d+1))
+                      then pCdef = if is_final(pC)
+                                   then if wiggle_flag and d > 0
+					then let CF = character_formula(pC)
+					     in monomials(composition_series((sum(x.real_form, for v in ratverts
 						      		       			   do wiggle(CF, (sigma - v)/d)
 						      		       			   od))))
-							  {proper_face_deformed(pC)}
-					      else []
-					      fi
-                                         else monomials(finalize(pC))
-                                         fi
-                            in if not is_final(pC)
-			       then if all(for q in pCdef do @bool: is_finished(q.x,q.lambda,NG){(q.x.# < known_to)}
-			       	       	       and (Uhash.lookup(q) >= 0) od)
-                                    then newStatuses[k] := "T"
-                                    elif any(for q in pCdef do @bool: is_finished(q.x,q.lambda,NG) {(q.x.# < known_to)}
-				    	 	 and (Uhash.lookup(q) = -1) od)
-                                    then newStatuses:= updateNUclassesB(newStatuses, gr, k); "F"
-                                    fi
-                               else {now pC is final, and pCdef consists of wiggled Params}
-                                    if any(for q in pCdef do @bool: is_finished(q.x,q.lambda,NG) {(q.x.# < known_to)}
+					else []
+					fi
+                                   else monomials(finalize(pC))
+                                   fi {is_final}
+                      in if not is_final(pC)
+			 then if all(for q in pCdef do @bool: is_finished(q.x,q.lambda) and
+			       	       	       (Uhash.lookup(q) >= 0) od)
+                              then newStatuses[k] := "T"
+                              elif any(for q in pCdef do @bool: is_finished(q.x,q.lambda) and
+				    	 	 (Uhash.lookup(q) = -1) od)
+                              then newStatuses:= updateNUclassesB(newStatuses, gr, k); "F"
+                              fi
+                         else {now pC is final, and pCdef consists of wiggled Params}
+                              if any(for q in pCdef do @bool: is_finished(q.x,q.lambda)
 				       	       	    	     	    and (Uhash.lookup(q) = -1) od)
-				    then newStatuses := updateNUclassesB(newStatuses, gr, k); newStatuses[k] := "F"
+				 then newStatuses := updateNUclassesB(newStatuses, gr, k); newStatuses[k] := "F"
                                     fi
                                fi
                         fi
                    od
-              fi
+              {fi}
     then () = if fund_facet_verbose and NumClasses > 100
               then prints("start local_test, ",NumClasses,
               " equiv classes of facets")
@@ -1174,11 +1076,7 @@ set local_test_wiggle_hash(KGBElt x, ratvec lambda, VertexData Lvd,
                                   fi
                          in q
                       od
-                  else {let (,pL) = theta_stable_quasi_data(q)
-                       then () = if surprise_flag and is_final(pL) and is_unitary_hash_big(pL)
-                              	 then surprise_hash.match(q)
-				 fi
-                       in} []
+                  else [] 
                   fi
              od.## {list of unitary Params}
     in UParams
@@ -1194,21 +1092,15 @@ set one_param_time = int: 0
 set one_param_test(Param p, Param_hash Uhash) = [Param]:
     let start = elapsed_ms(), Q = monomials(finalize(p)), G = p.real_form
     then () = if {know_lower_flag and} not is_final(p)
-    	      then if all(for q in Q do is_finished(q.x,q.lambda,NG) {(q.x.# < known_to)}
-	      	      	      and (Uhash.lookup(q) >= 0) od)
+    	      then if all(for q in Q do is_finished(q.x,q.lambda) and
+	      	      	      (Uhash.lookup(q) >= 0) od)
 	      	   then return [p]
-		   else if any(for q in Q do is_finished(q.x,q.lambda,NG) {(q.x.# < known_to)}
-		   	   	   and (Uhash.lookup(q) <0) od)
+		   else if any(for q in Q do is_finished(q.x,q.lambda) and
+		   	   	   (Uhash.lookup(q) <0) od)
 		   	then return []
 			fi
 		   fi
 	      fi
-    {then () = if know_lower_flag and wiggle_flag
-    	      then let pdef = proper_face_deformed(p)
-	      	   in if any(for q in pdef do (q.x.# < known_to) and (Uhash.lookup(q) < 0) od)
-		      then return []
-		      fi
-	       fi} {this is only called on local vertices, so proper_face_deformed is empty}
     then NK = #KGB(G), r = rank(Q[0].x.involution - 1)
     then DEFHTS = [int]:
     	 if number(Q[0].x) < NK*low_KGB_frac
@@ -1238,9 +1130,11 @@ set one_param_test(Param p, Param_hash Uhash) = [Param]:
 set one_param_test_bottom(Param p, int D, Param_hash Uhash) = [Param]:
     let start = elapsed_ms(), QG = monomials(finalize(p)),G = p.real_form
     then () = if {know_lower_flag and} not is_final(p)
-    	      then if all(for q in QG do  is_finished(q.x,q.lambda,NG) {(q.x.# < known_to)} and (Uhash.lookup(q) >= 0) od)
+    	      then if all(for q in QG do  is_finished(q.x,q.lambda) and
+	      	      	      (Uhash.lookup(q) >= 0) od)
 	      	   then return [p]
-		   else if any(for q in QG do  is_finished(q.x,q.lambda,NG) {(q.x.# < known_to)} and (Uhash.lookup(q) < 0) od)
+		   else if any(for q in QG do  is_finished(q.x,q.lambda) and
+		   	   	   (Uhash.lookup(q) < 0) od)
 		   	then return []
 			fi
 		   fi
@@ -1314,7 +1208,6 @@ Called when there are not enough heights; presumably small KGBElts??}
 set local_test_GEO_hash_real_dumb(KGBElt x, ratvec lambda, VertexData vd, VertexData Lvd,
      [[FacetVertsIndex]] LF, KTypePol_hash pol_hash, Param_hash Uhash) = [Param]:
     let (G,j0) = %x, thetaMinus = x.involution - 1, start = elapsed_ms()
-    then () = NG:=big_unitary_hash.xl_known(G)
     then () = if #LF[0] = 0 then return [] fi
     then zero_pol = null_module(G)
     then () = if 1*parameter(x,lambda,lambda) = zero_pol then return [] fi
@@ -1392,7 +1285,7 @@ set local_test_GEO_hash_real_dumb(KGBElt x, ratvec lambda, VertexData vd, Vertex
 					  facet_bary(Lvd.list, verts))))
 			      then test = {if know_lower_flag
                                      	  then} if any(for p in ps
-                                                      do is_finished(p.x, p.lambda,NG){p.x.# < known_to} and
+                                                      do is_finished(p.x, p.lambda){p.x.# < known_to} and
 						      	 	Uhash.lookup(p) = -1
                                                       od)
                                                then false
@@ -1467,7 +1360,6 @@ set local_test_GEO_hash_dumb(KGBElt x, ratvec lambda, VertexData vd, VertexData 
     [[FacetVertsIndex]] LF, [int] hts, KTypePol_hash pol_hash,
     Param_hash Uhash) = [Param]:
     let (G,j0) = %x, thetaMinus = x.involution - 1, start = elapsed_ms()
-    then () = NG:=big_unitary_hash.xl_known(G)
     then () = if #LF[0] = 0 then return [] fi
     then zero_pol = null_module(G)
     then () = if 1*parameter(x,lambda,lambda) = zero_pol then return [] fi
@@ -1491,10 +1383,7 @@ set local_test_GEO_hash_dumb(KGBElt x, ratvec lambda, VertexData vd, VertexData 
         {compute graph on facets to dim 1}
     then ((eq,gr),IUCL,CLBF) = localGraphK(LFDKH)
            {remove from LFDKH all facets failing is_unitary}
-    then () =  LFDKH := if know_lower_flag
-    	       	     	then local_testK_hash_know_lower(x,lambda,Lvd, LFDKH, eq, gr, CLBF, tester, Uhash)
-			else local_testK_hash(x,lambda,Lvd, LFDKH, eq, gr, CLBF, tester, Uhash)
-			fi
+    then () =  LFDKH := local_testK_hash_know_lower(x,lambda,Lvd, LFDKH, eq, gr, CLBF, tester, Uhash)
     then () = if test_verbose then prints("unitary facet counts to dim 1: ",
     for list in LFDKH do #list od) fi
     then D = int:1
@@ -1522,20 +1411,17 @@ set local_test_GEO_hash_dumb(KGBElt x, ratvec lambda, VertexData vd, VertexData 
 			      then ps = monomials(finalize(
 					  parameter(x, lambda,
 					  facet_bary(Lvd.list, verts))))
-		              then test = if know_lower_flag
-			      	   	  then if any(for p in ps
-					       	      do is_finished(p.x, p.lambda,NG) {p.x.# < known_to} and
+		              then test = if any(for p in ps
+					       	 do is_finished(p.x, p.lambda) and
 						      	 Uhash.lookup(p) = -1
-						      od)
-					       then false
-					       elif all(for p in ps
-					       	       	   do Uhash.lookup(p).>=
-							   od)
-					       then true
-					       else all(for p in ps do is_unitary_hash_big(p) od)
-					       fi
-					   else all(for p in ps do is_unitary_hash_big(p) od)
-					   fi
+						 od)
+					  then false
+					  elif all(for p in ps
+					       	   do Uhash.lookup(p).>=
+						   od)
+					  then true
+					  else all(for p in ps do is_unitary_hash_big(p) od)
+					  fi
 		{ these are simplices of dim at least 2 with unitary faces,
 		so expect TRUE usually; so is_unitary faster than tester?}
 			       in if test
@@ -1595,7 +1481,6 @@ set local_test_GEO_hash_def_dumb(KGBElt x, ratvec lambda, VertexData vd, VertexD
     [[FacetVertsIndex]] LF, KTypePol_hash pol_hash,
     Param_hash Uhash) = [Param]:
     let (G,j0) = %x, thetaMinus = x.involution - 1, start = elapsed_ms()
-    then () = NG:=big_unitary_hash.xl_known(G)
     then () = if #LF[0] = 0 then return [] fi
     then zero_pol = null_module(G), pmin = parameter(x,lambda, 0*lambda)
     then () = if 1*pmin = zero_pol then return [] fi
@@ -1621,10 +1506,7 @@ set local_test_GEO_hash_def_dumb(KGBElt x, ratvec lambda, VertexData vd, VertexD
         {compute graph on facets to dim 1}
     then ((eq,gr),IUCL,CLBF) = localGraphK(LFDKH)
            {remove from LFDKH all facets failing is_unitary}
-    then () = LFDKH := if know_lower_flag
-    	      	       then local_testK_hash_know_lower(x,lambda,Lvd, LFDKH, eq, gr, CLBF, tester, Uhash)
-		       else local_testK_hash(x,lambda,Lvd, LFDKH, eq, gr, CLBF, tester, Uhash)
-		       fi
+    then () = LFDKH := local_testK_hash_know_lower(x,lambda,Lvd, LFDKH, eq, gr, CLBF, tester, Uhash)
     then () = if test_verbose then prints("unitary facet counts to dim 1: ",
     for list in LFDKH do #list od) fi
     then D = int:1
@@ -1653,51 +1535,44 @@ set local_test_GEO_hash_def_dumb(KGBElt x, ratvec lambda, VertexData vd, VertexD
 			      then ps = monomials(finalize(pC))
 			      {should insert Uhash.lookup(p).>=
 			      Actually this has no effect in SO(4,4)}
-			      in if know_lower_flag
-			      	 then if not is_final(pC)
-				      then if any(for q in ps do @bool:  is_finished(q.x,q.lambda,NG) {(q.x.# < known_to)} and (Uhash.lookup(q) = -1) od)
-				      	   then []
-					   else if all(for q in ps do @bool:  is_finished(q.x,q.lambda,NG) {(q.x.# < known_to)} and (Uhash.lookup(q) >= 0) od)
-					   	then [LFDKH[D+1][m]]
-					   	else if all(for q in ps do @bool: is_unitary_hash_big(q) od)
-					   	     then [LFDKH[D+1][m]]
-						     else []
-						     fi
-						fi
-					   fi
-				      else {now pC is final}
-				      	   if wiggle_flag
-					   then let CF = character_formula(pC)
-					      	then pCdef =  monomials(composition_series((sum(x.real_form, for v in ratverts
-						      		       			   do wiggle(CF, (sigma - v)/(D+1))
-						      		       			   od))))
+			      in if not is_final(pC)
+				 then if any(for q in ps do @bool:  is_finished(q.x,q.lambda) and
+				      	      	      (Uhash.lookup(q) = -1) od)
+				      then []
+				      else if all(for q in ps do @bool:  is_finished(q.x,q.lambda) and
+					   	   	   (Uhash.lookup(q) >= 0) od)
+				      	    then [LFDKH[D+1][m]]
+				      	    else if all(for q in ps do @bool: is_unitary_hash_big(q) od)
+					    	 then [LFDKH[D+1][m]]
+					   	 else []
+					   	 fi
+				       	    fi {all(for q}
+				      fi {any(for q}
+				 else {now pC is final}
+				      if wiggle_flag
+				      then let CF = character_formula(pC)
+					   then pCdef =  monomials(composition_series((sum(x.real_form,
+					   	      for v in ratverts
+						      do wiggle(CF, (sigma - v)/(D+1))
+						      od))))
 							  {proper_face_deformed(pC)}
 				      	        in if any(for q in pCdef
-						      	  do @bool: ( is_finished(q.x,q.lambda,NG) {(q.x.# < known_to)} and (Uhash.lookup(q) = -1))
+						      	  do @bool: ( is_finished(q.x,q.lambda) and
+							    (Uhash.lookup(q) = -1))
 							  od)
 						   then []
 					      	   else if is_unitary_hash_big(pC)
 					   	   	then [LFDKH[D+1][m]]
 					   	   	else []
 					     	   	fi
-				      	      	   fi
-					   else {not wiggle_flag}
+				      	      	   fi {any(for q}
+				      else {not wiggle_flag}
 					      if is_unitary_hash_big(pC)
 					      then [LFDKH[D+1][m]]
 					      else []
 					      fi
-				       	   fi
-				      fi
-				 else {now know_lower_flag is false}
-			      	      if all(for p in ps
-					     do is_unitary_hash_big(p)
-					     od)
-		{ these are simplices of dim at least 2 with unitary faces,
-		so expect TRUE usually; so is_unitary faster than tester?}
-				      then [LFDKH[D+1][m]]
-				      else []
-				      fi
-			          fi
+				      fi {wiggle_flag}
+				 fi {not is_final}
 			  fi
 		       od.##
 		 then () = LFDKH := LFDKH[:D+1] # newDplus1
@@ -1825,7 +1700,6 @@ set local_test_GEO_hash_no_dumb(KGBElt x, ratvec lambda, VertexData vd, VertexDa
     then () = long_out_flag:=false {to allow using local_test_hash without recording Params}
     then edge_offset_temp = edge_offset, ht0 = height(parameter(x,lambda,0*lambda)),
     	 G = x.real_form
-    then () = NG:=big_unitary_hash.xl_known(G)
     then temp_K_char_flag = ht0/(G.rho * G.two_rho_check) <= CUTOFF
     then () = if edge_offset = -1
     	      then edge_offset_temp := r\2 {3 seems best for F4}
@@ -1928,7 +1802,6 @@ set local_test_GEO_hash(KGBElt x, ratvec lambda, VertexData vd, VertexData Lvd,
     [[FacetVertsIndex]] LF, KTypePol_hash pol_hash,
     Param_hash Uhash) = [Param]:
     let (G,j0) = %x, thetaMinus = x.involution - 1
-    then () = NG:=big_unitary_hash.xl_known(G)
     then () = if {EMPTY CASE} #LF[0] = 0 then return [] fi
     then () = if quick_flag then short_hts_flag:=false fi
     then zero_pol = null_module(G), pmin = parameter(x,lambda,0*lambda)
@@ -2008,7 +1881,6 @@ set hash2Counter = make_counter()
 set local_test_GEO_hash2(KGBElt x, ratvec lambda, VertexData vd, VertexData Lvd, [[FacetVertsIndex]] LF,
 KTypePol_hash pol_hash, Param_hash Uhash) = [Param]:
     let G = x.real_form, thetaMinus = 1-x.involution, start = elapsed_ms()
-    then () = NG:=big_unitary_hash.xl_known(G)
     then () = if quick_flag then short_hts_flag:=false fi
     then () = if #LF[0] = 0 then return [] fi
     then zero_pol = null_module(G), pmin = parameter(x,lambda,0*lambda)
@@ -2203,7 +2075,6 @@ set local_test_GEO_hash_one_level(KGBElt x, ratvec lambda, VertexData vd,
     VertexData Lvd, [[FacetVertsIndex]] LF, KTypePol_hash pol_hash,
     Param_hash Uhash) = [Param]:
     let G = x.real_form, thetaMinus = x.involution - 1, start = elapsed_ms()
-    then () = NG:=big_unitary_hash.xl_known(G)
     then () = if #LF[0] = 0 then return [] fi
     then () = if quick_flag then short_hts_flag:=false fi
     then zero_pol = null_module(G), pmin = parameter(x,lambda,0*lambda)
@@ -2489,7 +2360,6 @@ set local_test_GEO_hash_bottom_layer(KGBElt x, ratvec lambda, VertexData vd,
     			Param_hash Uhash) = [Param]:
     let G = x.real_form, thetaMinus = x.involution - 1, start = elapsed_ms(),
     	UTCstart = unitary_test_counter.use_count()
-    then () = NG:=big_unitary_hash.xl_known(G)
     then () = if #LF[0] = 0 then return [] fi
     then zero_pol = null_module(G)
     then () = if 1*parameter(x,lambda,0*lambda) = zero_pol then return [] fi

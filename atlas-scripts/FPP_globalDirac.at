@@ -231,30 +231,18 @@ set FPP_unitary_hash_general([KGBElt] xs, Param_hash Uhash, Param_hash Uparamhas
     then times = [int]: null(#xs)
     then lambdatimes = [[int]]: for j:#xs do [] od
     then answerCards = [[int]]: for j:#xs do [] od {number of unitary parameters found}
-    {then startgf = elapsed_ms()}
-    {then () = adjust_global_top(G)}
-    {then () = if by_zero_flag
-    	      then global_facets_by_zero := low_FPP_facets_by_zero(global_facets)
-	      fi}
-    then current = elapsed_ms()
-    {then () = prints("time for global_facets = ",print_time_string(current - startgf))}
+     then current = elapsed_ms()
     then oldUhash = Uhash.size(), currentUhash = Uhash.size(), formerUhash = Uhash.size(),
     	 oldUcounter = unitary_test_counter.use_count(), currentUcounter = unitary_test_counter.use_count()
     then () = for x@j in xs
     	      do {xs}
 	 let former_time = current, formerUhash = currentUhash, formerUcounter = currentUcounter
-	 then xtwists = isotwistKGBs(x), {D = 4^G.semisimple_rank,} twists = all_lambda_differential_0(x)
-	 then M = #FPP_lambdas(x)  {LPm_table.lambda0s(G,x.involution)*#twists}
-	 then full_M = to_bitset([M])-1 {, Xpower = big_unitary_hash.power_function(G)(x.number)}
-	 {should test M \= D!}
-	 {then () = prints(for y in xtwists do y.number od)}
+	 then xtwists = isotwistKGBs(x), twists = all_lambda_differential_0(x)
+	 then M = #FPP_lambdas(x)
+	 then full_M = to_bitset([M])-1
 	 then tw = first(for y in xtwists[1:]
-	      	   	 do {let Ypower = big_unitary_hash.power_function(G)(y.number)}
-			    full_M = big_unitary_hash.xl_known(G)[y.number]
-			    {in yl_known = two_power_M - 1} {#lambdas for x is M, so this says all are done}
-			 {y.number < known_to}
+	      	   	 do full_M = big_unitary_hash.xl_known(G)[y.number]
 			 od)
-	 {then () = prints("tw = ",tw," , known_to = ",known_to)}
 	 then xtwist = if tw.>=
 	      	       then {prints("skipping x = ",x.number," for xtwist = ",xtwists[tw].number);} xtwists[tw]
 		       else x
@@ -266,7 +254,6 @@ set FPP_unitary_hash_general([KGBElt] xs, Param_hash Uhash, Param_hash Uparamhas
 	 in if twnum.>=  and twnum < j {now xtwist is xs[twnum]}
 	    then answerCards[j]:= answerCards[twnum];
 	    	 {prints("skipping x = ",x.number," for xtwist = ",xtwist.number);}
-		 {if (know_lower_flag and (known_to = x.#)) then known_to+:=1 fi;}
 		 big_unitary_hash.finish(x, full_M); {mark as done all lambdas for x}
 		 for ell:Uhash.size()
 	      	 do let p = Uhash.index(ell)
@@ -281,60 +268,46 @@ set FPP_unitary_hash_general([KGBElt] xs, Param_hash Uhash, Param_hash Uparamhas
 				fi
 	    	 in if contnum.>= and contnum < j {now xcont is xs[contnum]}
 	    	    then answerCards[j]:= answerCards[contnum];
-		    {if (know_lower_flag {and (known_to = x.#)) then known_to+:=1 fi;}}
-		       big_unitary_hash.finish(x,full_M); {mark as done all lambdas for x}
+		         big_unitary_hash.finish(x,full_M); {mark as done all lambdas for x}
 		       for ell:Uhash.size()
 	      	       do let p = Uhash.index(ell)
 		       	  in if p.x = xcont
 		       	     then Uhash.match(contragredient(p))
 		    	     fi
 		       od
-	     	    else {let LPm_entries = LPm_table.LPm_entries(G,x.involution)
-         	    	 then good_entries = for (lambda0,entry) in LPm_entries
-                              do  if 1*parameter(x,lambda0,zeroNu) != zeroPol
-                                  then [(lambda0,entry)]
-                                  else []
-                                  fi
-                              od.##}
-          		  let lambdas = FPP_lambdas(x) {[ratvec]:
-              for (lambda0,) in good_entries
-              do for tau in twists
-                 do lambda0+tau
-                 od
-              od.##}
-    	 then Ncases = #lambdas
-	 then tempanswerCards = null(Ncases)
-	 then templambdatimes = null(Ncases)
-	 then () = if every_KGB_flag
-      	      	   then prints("     start KGBElt #", x.number, ", #lambdas = ",#lambdas,
+	     	    else let lambdas = FPP_lambdas(x) 
+    	 	    	 then Ncases = #lambdas
+	 		 then tempanswerCards = null(Ncases)
+	 		 then templambdatimes = null(Ncases)
+	 		 then () = if every_KGB_flag
+      	      	   	      then prints("     start KGBElt #", x.number, ", #lambdas = ",#lambdas,
 		   	       " Uhash.size() = ", Uhash.size(), ", running time = ",
-			       print_time_string(elapsed_ms() - start));
-		   	prints("  ------------------")
-        	   fi
-	 then () = for lambda@index in lambdas
-	      	   do let lamthlam = ((1+x.involution)*lambda).numer
-		      then (Lvd, Perm2, mapAct) = LPm_table.LPm_entry(G,x.involution,lamthlam)
-		      then  startlambda = elapsed_ms(), startUhash = Uhash.size(), startUcounter =
-		      	    unitary_test_counter.use_count()
- 		      then LF = if by_zero_flag and dominant(G,lamthlam)*G.two_rho_check > 0
-		      	      	then localFD_1Dirac2_by_zero(x, lambda, Lvd, Perm2, mapAct{,
-				     				global_facets_by_zero})
-			   	else localFD_1Dirac2(x, lambda, Lvd, Perm2, mapAct{, global_facets})
-			   	fi
-			    in if #LF[0] = 0
-			       then []
-			       else if every_lambda_deets_flag
-			       	    then facet_verbose := old_facet_verbose; time_verbose := old_time_verbose;
+			       	 print_time_string(elapsed_ms() - start));
+		   		   prints("  ------------------")
+        	   		   fi {every_KGB_flag}
+	 		 then () = for lambda@index in lambdas
+	      	   	      	   do let lamthlam = ((1+x.involution)*lambda).numer
+		      		      then (Lvd, Perm2, mapAct) = LPm_table.LPm_entry(G,x.involution,lamthlam)
+		      		      then  startlambda = elapsed_ms(), startUhash = Uhash.size(), startUcounter =
+		      	    	      	    unitary_test_counter.use_count()
+ 		      		      then LF = if by_zero_flag and dominant(G,lamthlam)*G.two_rho_check > 0
+		      	      	      	      	then localFD_1Dirac2_by_zero(x, lambda, Lvd, Perm2, mapAct)
+			   			else localFD_1Dirac2(x, lambda, Lvd, Perm2, mapAct)
+			   			fi {by_zero_flag}
+			 in if #LF[0] = 0
+			    then []
+			    else if every_lambda_deets_flag
+			       	 then facet_verbose := old_facet_verbose; time_verbose := old_time_verbose;
 				    	 test_verbose :=old_test_verbose; test_slightly_verbose :=
 					 	      old_test_slightly_verbose
-				    fi;
-				    let answer = local(x, lambda, LPm_table.FPP_vertex_data(G), Lvd, LF, pol_hash, Uhash)
-			  	    then () = tempanswerCards[index] := #answer
-			  	    then () = for p in answer do Uparamhash.match(p) od
-				    then () = if every_lambda_deets_flag
-			    	      	      then facet_verbose := false; time_verbose := false;
+				 fi;
+				 let answer = local(x, lambda, LPm_table.FPP_vertex_data(G), Lvd, LF, pol_hash, Uhash)
+			  	 then () = tempanswerCards[index] := #answer
+			  	 then () = for p in answer do Uparamhash.match(p) od
+				 then () = if every_lambda_deets_flag
+			    	      	   then facet_verbose := false; time_verbose := false;
 				 	   	test_verbose := false; test_slightly_verbose := false
-				 	      fi
+				 	   fi
  			 	 then () = templambdatimes [index] := elapsed_ms() - startlambda
 			 	 in if every_lambda_flag
 				    then prints("  ",print_time_string(templambdatimes[index]),
@@ -347,9 +320,7 @@ set FPP_unitary_hash_general([KGBElt] xs, Param_hash Uhash, Param_hash Uparamhas
 					 prints("  ------------------")
 				    fi{every_lambda_flag}
 			      fi{#LF[0] = 0}
-                      {od {twists}}
-                   od{lambda} {would be easy enough to get [Param] for each (x,lambda), but for now
-		       just put unitary reps in Uhash}
+                   od{lambda} {would be easy enough to get [Param] for each (x,lambda), but for now just put unitary reps in Uhash}
            then () = current := elapsed_ms(); currentUhash := Uhash.size();  times[j] := current -former_time;
 	   	     lambdatimes[j] := templambdatimes; currentUcounter := unitary_test_counter.use_count();
 		     answerCards[j]:= tempanswerCards
@@ -365,11 +336,10 @@ set FPP_unitary_hash_general([KGBElt] xs, Param_hash Uhash, Param_hash Uparamhas
 		      	     deformLookupCounter.use_count(), ", #def calcs = ",
 		     	     deformCalcCounter.use_count())
                      fi
-	   {then () = if (know_lower_flag and (known_to = x.#)) then known_to+:=1 fi}
 	   then () = big_unitary_hash.finish(x, full_M) {mark as done all lambdas for x}
            in ()
-	   fi {xcont.number < known_to}
-	   fi {xtwist.number < known_to}
+	   fi {contnum.>= and contnum < j}
+	   fi {twnum.>=  and twnum < j}
          od {xs}
     then () = facet_verbose:=old_facet_verbose; time_verbose:=old_time_verbose; test_verbose:=old_test_verbose;
     	      test_slightly_verbose:=old_test_slightly_verbose
@@ -556,10 +526,6 @@ set FPP_unitary_hash_bottom_layer([(KGBElt,ratvec)] xlambdas, Param_hash UhashG,
 	      	      in finish(xt,lambda)
 	      	   od
 	       fi
-    then Gknown_to = known_to
-    then () = if disconn_flag
-    	      then known_to := inverse_embed_KGB2(KGB(G,known_to), Gsc, M).number
-	      fi
     then Uhash = if disconn_flag {this will hold the unitary reps on Gsc}
     	      	 then big_unitary_hash.uhash(Gsc) {make_Param_hash()}
 		 {this is for unitary reps of Gsc that factor to G}
@@ -649,8 +615,7 @@ set FPP_unitary_hash_bottom_layer([(KGBElt,ratvec)] xlambdas, Param_hash UhashG,
 		   od
 	       fi
     then () = facet_verbose:=old_facet_verbose; time_verbose:=old_time_verbose;
-    	      test_verbose:=old_test_verbose; test_slightly_verbose:=old_test_slightly_verbose;
-	      known_to:=Gknown_to
+    	      test_verbose:=old_test_verbose; test_slightly_verbose:=old_test_slightly_verbose
     then longest = max_loc(xlambdatimes)
     in if FPP_report_flag
        then prints(new_line,"Total time = ", print_time_string(current-start),
@@ -748,14 +713,10 @@ set FPP_unitary_hash_bottom_layer([KGBElt] xs, Param_hash UhashG, Param_hash Upa
 	      		   then for lambda in lambdas do M*lambda od
 			   else lambdas
 			   fi
-	 then N1 = #lambdas {#LPm_table.lambda0s(G,x.involution)*#twists}
-	 {then two_power_Nl = twopowers.power(Nl), Xpower = big_unitary_hash.power_function(G)(x.number)}
+	 then N1 = #lambdas
 	 then full_N1 = to_bitset([N1])-1
 	 then tw = first(for y in xtwists[1:]
-	      	   	 do {let Ypower = big_unitary_hash.power_function(G)(y.number)}
-			    big_unitary_hash.xl_known(G)[y.number] = full_N1 {\Ypower)%two_power_Nl}
-			    {in yl_known = full_N1} {#lambdas for x and y is Nl, so this says all are done}
-			    {y.number < known_to}
+	      	   	 do big_unitary_hash.xl_known(G)[y.number] = full_N1 {\Ypower)%two_power_Nl}
 			 od)
 	 then xtwist = if tw.>=
 	      	       then xtwists[tw]
@@ -767,7 +728,6 @@ set FPP_unitary_hash_bottom_layer([KGBElt] xs, Param_hash UhashG, Param_hash Upa
                       fi
 	 in if twnum.>= and twnum < j {now xtwist is xs[twnum]}
 	    then answerCards[j]:= answerCards[twnum];
-	    	 {if (know_lower_flag and (known_to = x.#)) then known_to+:=1 fi;}
 		 big_unitary_hash.finish(x, full_N1); {mark as done all lambdas for x}
 		 for ell:UhashG.size()
 	      	 do let p = UhashG.index(ell)
@@ -788,7 +748,6 @@ set FPP_unitary_hash_bottom_layer([KGBElt] xs, Param_hash UhashG, Param_hash Upa
 				fi
 	    	 in if contnum.>= and contnum < j
 	    	    then answerCards[j]:= answerCards[contnum];
-		    {if (know_lower_flag and (known_to = x.#)) then known_to+:=1 fi;}
 		    big_unitary_hash.finish(x, full_N1);
 		    for ell:UhashG.size()
 	      	    do let p = UhashG.index(ell)
@@ -803,19 +762,6 @@ set FPP_unitary_hash_bottom_layer([KGBElt] xs, Param_hash UhashG, Param_hash Upa
 		    	  fi
 		    od
 	     	    else let twists = all_lambda_differential_0(x)
-	 {then LPm_entries = [(ratvec, Lvd_Perm2_mapAct)]: LPm_table.LPm_entries(G, x.involution)
-	 then good_entries = for (lambda0,entry) in LPm_entries
-	      	       	      do  if 1*parameter(x,lambda0,zeroNu) != zeroPol
-		       	      	  then [(lambda0,entry)]
-			   	  else []
-			   	  fi
-		       	      od.##}
-{	 then lambdas = FPP_lambdas(x) {[ratvec]:
-	      for (lambda0,) in good_entries
-	      do for tau in twists
-	      	 do M*(lambda0+tau)
-		 od
-	      od.##}}
     	 then Ncases = #lambdas
 	 then tempanswerCards = null(Ncases)
 	 then templambdatimes = null(Ncases)
@@ -826,10 +772,6 @@ set FPP_unitary_hash_bottom_layer([KGBElt] xs, Param_hash UhashG, Param_hash Upa
 			       sum(for list in answerCards do sum(list) od));
 		   	prints("  ------------------")
         	   fi
-	 then Gknown_to = known_to {need to change known_to to apply know_lower on Gsc}
-	 then () = if disconn_flag and know_lower_flag
-    	      	   then known_to := min(for y  in inverse_embed_KGBs2(KGB(G,known_to), Gsc, M) do y.number od)
-	      	   fi
 	 then () = for lambda@index in lambdas
 	      	   do let lamthlam = ((1+x.involution)*lambda).numer
 		      then (Lvd1, Perm2, mapAct) = LPm_table.LPm_entry(G,x.involution,lamthlam)
@@ -840,9 +782,8 @@ set FPP_unitary_hash_bottom_layer([KGBElt] xs, Param_hash UhashG, Param_hash Upa
 		      then  startlambda = elapsed_ms(), startUhash = Uhash.size(), startUcounter =
 		      	    unitary_test_counter.use_count(), startmorebadlambda = more_bad_hash.size()
  		      then LF = if by_zero_flag and dominant(G,lamthlam)*G.two_rho_check > 0
-		      	      	then localFD_1Dirac2_by_zero(x_sc, M*lambda, Lvd, Perm2, mapAct{,
-				     				global_facets_by_zero})
-			   	else localFD_1Dirac2(x, lambda, Lvd, Perm2, mapAct{, global_facets})
+		      	      	then localFD_1Dirac2_by_zero(x_sc, M*lambda, Lvd, Perm2, mapAct)
+			   	else localFD_1Dirac2(x, lambda, Lvd, Perm2, mapAct)
 			   	fi
 		       in if #LF[0] = 0
 			  then []
@@ -925,12 +866,10 @@ set FPP_unitary_hash_bottom_layer([KGBElt] xs, Param_hash UhashG, Param_hash Upa
 		      	     deformLookupCounter.use_count(), ", #def calcs = ",
 		     	     deformCalcCounter.use_count())
                      fi
-	   then () = known_to :=Gknown_to
-	   then () = if (know_lower_flag and (known_to = x.#)) then known_to+:=1 fi
 	   then () = big_unitary_hash.finish(x, full_N1) {mark as done all lambdas for x}
            in ()
-	 fi {xcont.number < known_to}
-	 fi {xtwist.number < known_to}
+	 fi {contnum.>= and contnum < j}
+	 fi {twnum.>= and twnum < j}
          od {xs}
     then () = facet_verbose:=old_facet_verbose; time_verbose:=old_time_verbose; test_verbose:=old_test_verbose;
     	      test_slightly_verbose:=old_test_slightly_verbose
@@ -981,7 +920,7 @@ set unitary_nus(RealForm G, KGBElt x, ratvec lambda) = [ratvec]:
 {assume precompute has been done, so that all FPP unitary are known
 for all derived simple factors of theta_stable Levis of G. Run over
 (x,lambda) and put into unitary_hash all (x,lambda_nu) that are good
-range cohom induced from some theta_stable Levi. }
+range cohom induced from some PROPER theta_stable Levi. }
 set theta_induced(RealForm G) = void:
  for x in KGB(G)
     do for lambda in FPP_lambdas(x)
@@ -1047,7 +986,7 @@ set theta_induced(RealForm G) = void:
 	then () = for Lmax@i in Lmaxs
 	     	  do for nu in unitarynus[i]
 	     	     do let p = parameter(x,lambda,nu)
-	     	     	in if {is_dominant(G, p.infinitesimal_character)
+		     	in if {is_dominant(G, p.infinitesimal_character)
 			      and} is_FPP(G, p.infinitesimal_character)
 		     	   then for q in monomials(finalize(p))
 		   	     	do big_unitary_hash.match(herm_center(q))
@@ -1058,7 +997,8 @@ set theta_induced(RealForm G) = void:
 	in ()
      od
  od
- 
+
+
 {simple derived factors of all theta-stable Levis of G}
 set SDLF(RealForm G) = [RealForm]:
     let answer = make_RealForm_hash()
@@ -1071,21 +1011,231 @@ set SDLF(RealForm G) = [RealForm]:
        do answer.index(k)
        od
 
+{these are the restricted fundamental weights for G: the ones defining maximal real parabolics
+ at x_open(G)}
+set resFund(RealForm G) = [ratvec]:
+    let xo = x_open(G), simples = [vec]: G.simple_roots
+    then theta = xo.involution
+    then S0 = for j:G.semisimple_rank do if status(j,xo) = 1 then [j] else [] fi od.## {simple imag for M}
+    then S1 = complement(G.semisimple_rank, S0)
+    then Q0 = KGPElt: (S0,xo)
+    then L0 = Q0.Levi
+    then wL0 = w0(L0)
+    then thetaL0 = matrix(wL0)
+    then dualDelta = -theta*thetaL0 {preserves positive}
+    then fixDual = for a in S1 do if dualDelta*simples[a] = simples[a] then [a] else [] fi od.##
+    then pairsDual = for a in S1
+    	 	     do for b:#simples - a-1 from a+1
+    	 	       	do if dualDelta*simples[a] = simples[b]
+			   then [[a,b]]
+			   else []
+			   fi
+			od.##
+		     od.##
+    in for a in fixDual do G.fundamental_weights[a] od ##
+       for v in pairsDual do G.fundamental_weights[v[0]] + G.fundamental_weights[v[1]] od
+
+{all maximal real parabolics of G}
+set max_QRs(RealForm G) = [KGPElt]:
+    let xo = x_open(G)
+    in for xi in resFund(G) do parabolic_by_wt(xi,xo) od
+
+{all maximal real Levis of G}
+set max_LRs(RealForm G) = [RealForm]:
+    for QR in max_QRs(G) do QR.Levi od
+
+{all real parabolics of G, starting with G and ending with MAN}
+set QRs(RealForm G) = [KGPElt]:
+    let xo = x_open(G), res_fund = resFund(G)
+    then B = box(2,#res_fund)
+    in for wt in columns(res_fund*B)
+       do parabolic_by_wt(wt,xo)
+       od
+
+{simple derived factors of all real Levis of G}
+set LRs(RealForm G) = [RealForm]:
+    let Q_Rs = QRs(G)
+    in if #Q_Rs = 1 then []
+       else for QR in Q_Rs[1:]
+    	    do QR.Levi
+    	    od
+       fi
+
+{simple derived factors of all real Levis of G}
+set SDLRF(RealForm G) = [RealForm]:
+    let answer = make_RealForm_hash()
+    then () = for LR in LRs(G) {these are PROPER Levis of real parabolics}
+    	      ~do for LRk in derived_simple_factors(LR) {tilde to put small LR first}
+	      	  do answer.match(LRk)
+	    	  od
+	       od
+    in for m:answer.size()
+       do answer.index(m)
+       od
+
+{assume precompute has been done, so that all FPP unitary are known
+for all derived simple factors of real Levis of G. For maximal LRi run
+over unitary (xin,lambdainm) and put into unitary_hash all (x,lambda_nu) that are
+induced from some PROPER real Levi. }
+set real_induced(RealForm G) = void:
+    let maxLRis = max_LRs(G)
+    then maxLRidatas = [[(RealForm, RealForm, mat)]]: {one list for each maxLRi, with
+    	 	     an entry (Sik, derLik, Mik) for each derived simple factor derLik}
+       	 for maxLRi in maxLRis
+	 do derived_simple_factors_info(maxLRi)
+	 od
+    then derLiks = [[RealForm]]:
+    	 for Lidata in maxLRidatas
+	 do for (,derLik,) in Lidata
+	    do derLik
+	    od
+	 od
+    then Miks = [[mat]]: {each of these maps G weights to weights for one factor derLik}
+       	 for Lidata in maxLRidatas
+	 do for (,,Mik) in Lidata
+	    do Mik
+	    od
+	 od
+    then Mikinvs = [[ratmat]]: {each of these maps Lik weights to G weights}
+	     for Lidata in maxLRidatas
+	     do for (Lik, derLik, Mik) in Lidata
+	     	do (Lik.simple_roots)*ratvecs_as_ratmat(derLik.fundamental_coweights).^
+		od
+	     od
+    then KGBEltLis = [[KGBElt]]:
+    	 for maxLRi in maxLRis
+	 do KGB(maxLRi)
+	 od
+    then KGBEltGs = [[KGBElt]]:
+    	 for maxLRi@i in maxLRis
+	 do for xin in KGBEltLis[i]
+	    do embed_KGB(xin,G)
+	    od
+	 od
+    then lambdainmGs = [[[ratvec]]]: {one list for each KGBElt to G from an LRi}
+    	 for maxLRi@i in maxLRis
+	 do for x in KGBEltGs[i]
+	    do FPP_lambdas(x)
+	    od
+	 od
+
+    then lambdainms = [[[ratvec]]]: {one list of LRi lambdas for each xin}
+    	 for maxLRi@i in maxLRis
+	 do let rhoi = G.rho - maxLRi.rho
+	    in for n:#KGB(maxLRi)
+	       do for lambdaG in lambdainmGs[i][n]
+	       	  do lambdaG - rhoi
+		  od
+	       od
+	 od
+    then KGBEltinks = [[[KGBElt]]]: {one KGBElt for each xin and derived simple factor derLik}
+     	 for list in KGBEltLis
+     	     do for xin in list
+	     	do derived_factor_KGBs2(xin)
+	     od
+	 od
+     then lambdainmks = [[[[ratvec]]]]: {one ratvec for each xin, corr lambdain, and derLik}
+     	  for maxLRi@i in maxLRis
+	  do for xin@n in KGBEltLis[i]
+	     do for lambdainm in lambdainms[i][n]
+		do let pinm = parameter(xin, lambdainm, 0*lambdainm)
+		   then pinmks = derived_factor_params2(pinm)
+		   in for pinmk in pinmks do pinmk.lambda od
+		od
+	     od
+	  od
+     then unitary_listinmks = [[[[[ratvec]]]]]:
+     	  for maxLRi@i in maxLRis
+	  do for xin@n in KGBEltLis[i]
+	     do for lambdainm@m in lambdainms[i][n]
+	     	do for lambdainmk@k in lambdainmks[i][n][m]
+		   do for nuinmj@j in unitary_nus(derLiks[i][k],KGBEltinks[i][n][k], lambdainmk)
+		      do Mikinvs[i][k]*nuinmj
+		      od {[ratvec]}
+		   od {[[ratvec]]}
+	     	od {[[[ratvec]]]}
+	     od
+	  od
+     then Binmks = for unitary_listi@i in unitary_listinmks
+     	  do for unitary_listin@n in unitary_listi
+	     do for unitary_listinm@m in unitary_listin
+	     	do box(for unitary_listinmk in unitary_listinm do #unitary_listinmk od)
+		od
+	     od
+	  od
+     then nuinms = for unitary_listi@i in unitary_listinmks
+     	  do for unitary_listin@n in unitary_listi
+	     do for unitary_listinm@m in unitary_listin {unitary_listinm has two indices: k (simple factor)
+	     and j (place on list)}
+	        do for B in Binmks[i][n][m]
+		   do sum(G.rank, for b@k in B do unitary_listinm[k][b] od)
+		   od
+		od
+	     od
+	  od
+     then cands = [[Param]]: {one list on each maxLRi}
+     	  for maxLRi@i in maxLRis
+	  do for xin@n in KGBEltLis[i]
+	     do for lambdainm@m in lambdainms[i][n]
+		do for nuinmj in nuinms[i][n][m]
+		   do let pL = parameter(xin, lambdainm, nuinmj)
+		      then gamma = dominant(G,pL.infinitesimal_character)
+		      in if is_FPP(G,gamma)
+		      	 then [pL]
+			 else prints("parameter ",pL," failed to be FPP");
+			      []
+			 fi
+		   od.## {list of relevant pL for this x,lambda}
+		od.## {put all lambda together}
+	     od.## {put all x together}
+	  od {but keep a separate list for each max Levi maxLRi}
+     then () = for maxLRi@i in maxLRis
+	     	  do for pL in cands[i]
+	     	     do for q in monomials(real_induce_irreducible(pL,G))
+		   	do big_unitary_hash.match(herm_center(q))
+			od
+	     	     od
+		  od
+     in ()
+
 {get complete FPP dual for each derived simple factor of a theta-stable Levi; and then cohom ind
 all those things in weakly good range to G}
-set precompute(RealForm G) = void:
+set pre_bottom_flag = false
+
+set precomputeTheta(RealForm G) = void:
     let rflist = SDLF(G)
     then () = coh_ind_flag:=false
     then temp_report_flag = FPP_report_flag
     then () = FPP_report_flag :=false
-    then () = know_lower() {to do everything by increasing KGB}
     then () = for rf@k in rflist
     	      do prints("starting # ",k," = ",rf);
 	      	 theta_induced(rf);
-	 	 FPP_unitary_hash2(rf)
+		 real_induced(rf);
+	 	 if pre_bottom_flag
+		 then FPP_unitary_hash_bottom_layer(rf)
+		 else FPP_unitary_hash2(rf)
+		 fi
 	      od
     then () = FPP_report_flag:=true
     in theta_induced(G)
+
+set precomputeR(RealForm G) = void:
+    let rflist = SDLRF(G)
+    then () = coh_ind_flag:=false
+    then temp_report_flag = FPP_report_flag
+    then () = FPP_report_flag :=false
+    then () = for rf@k in rflist
+    	      do prints("starting # ",k," = ",rf);
+	      	 real_induced(rf);
+		 real_induced(rf);
+		 if pre_bottom_flag
+		 then FPP_unitary_hash_bottom_layer(rf)
+		 else FPP_unitary_hash2(rf)
+		 fi
+	      od
+    then () = FPP_report_flag:=true
+    in real_induced(G)
+
 
 { lists real and/or complex simple factors }
 {moved to cohom_reductionND.at}{
