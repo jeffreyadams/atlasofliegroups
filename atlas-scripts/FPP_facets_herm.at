@@ -1091,6 +1091,7 @@ set_type
   , (int -> RealForm) rf_index {jth real form in list}
   , (RealForm -> [int]) xl_known {for each x, bitmap of lambda) for which FPP unitary dual is known}
   , ((KGBElt,int) -> ) finish {add bitmap of new known (x,lambda) to xl_known}
+  , ((RealForm,[int]) -> ) finishall {add bitmaps of all new known (x,lambda) to xl_known}
   , (RealForm -> Param_hash) uhash {hash table of known unitary}
   , (Param -> (int,int)) long_lookup {(rf_index(p.real_form), location of p in its uhash)}
   , (Param -> int) lookup {(location of p in its uhash)}
@@ -1101,6 +1102,7 @@ set_type
 ]
 
 set finish_time = int:0
+set is_finished_time = int:0
 
 set make_big_unitary_hash() = big_unitary_hash_table:
 (   let real_form_hash = make_RealForm_hash()
@@ -1142,7 +1144,16 @@ set make_big_unitary_hash() = big_unitary_hash_table:
       then () = xl_knowni[x.number] := OR(M,xl_knowni[x.number])
       then () = xl_known[i] := xl_knowni
       then () = finish_time+:= elapsed_ms() - start
-      in []
+      in ()
+    , ((RealForm,[int]) -> ): {finishall} (RealForm rf, [int] Ms):
+      let start = elapsed_ms()
+      then i = add_real_form(rf)
+      then xl_knowni = [int]: xl_known[i]
+      then () = for n:#KGB(rf)
+      	      	do xl_knowni[n] := OR(Ms[n],xl_knowni[n])
+		od
+      then () = xl_known[i] := xl_knowni
+      in finish_time+:= elapsed_ms() - start
     , (RealForm -> Param_hash): {uhash} (RealForm rf) Param_hash:
       uhashes[add_real_form(rf)]
     , (Param -> (int,int)): {long_lookup} (Param p) (int,int):
@@ -1160,9 +1171,10 @@ set make_big_unitary_hash() = big_unitary_hash_table:
       	 then true
       	 elif is_member_bitset (position(p.x, p.lambda), xl_known[i][p.x.number])
 	 then false
-	 else let chk = is_unitary(p)
+	 else let () = unitary_test_counter.use()
+	      then chk = is_unitary(p)
 	      then () = if chk
-		     	then uhashes[i].match(p)
+		     	then uhashes[i].match(herm_center(p))
 		     	fi
 	      in chk
 	 fi
@@ -1198,9 +1210,12 @@ set finish(KGBElt x) = void:
 
 {check whether a bit in xl_known is set}
 set is_finished(KGBElt x, ratvec lambda) = bool:
-    let M = big_unitary_hash.xl_known(x.real_form)[x.number]
-    in is_member_bitset(position(x,lambda),M)
+    let start = elapsed_ms(), M = big_unitary_hash.xl_known(x.real_form)[x.number]
+    then answer = is_member_bitset(position(x,lambda),M)
+    then () = is_finished_time +:= elapsed_ms() - start
+    in answer
 
+{list of all pairs (x,lambda) for which complete FPP-unitary dual is present in big_unitary_hash}
 set all_finished(RealForm G) = [(KGBElt,ratvec)]:
     let list = for x in KGB(G)
     	       do set_bit_positions(big_unitary_hash.xl_known(G)[x.number])
@@ -1214,7 +1229,6 @@ set all_finished(RealForm G) = [(KGBElt,ratvec)]:
 
 
 set is_unitary_hash_big(Param p) = bool:
-    unitary_test_counter.use();
     if not is_hermitian(p) then return false fi;
     let G = p.real_form
     then () = if is_finished(p.x, p.lambda) then return big_unitary_hash.lookup(p).>= fi
@@ -1238,30 +1252,32 @@ set is_unitary_hash_big(Param p) = bool:
 
 { compute Hermitian form to ht on p, report if it is unitary}
 set is_unitary_to_ht_big (Param p,int N) = bool:
-  unitary_test_counter.use();
   if (not is_hermitian(p)) or (not is_pos_on_LKTs(p)) then return false fi;
   if is_finished(p.x, p.lambda) and big_unitary_hash.lookup(p).>=
   then return true
   fi;
+  unitary_test_counter.use();
   is_pure(hermitian_form_irreducible_to_ht(p,N))
 
 { compute Hermitian form to ht on p, report if it is unitary}
 set is_unitary_to_ht_big (Param p,int N) = bool:
-  unitary_test_counter.use();
   if (not is_hermitian(p)) or (not is_pos_on_LKTs(p)) then return false fi;
   if is_finished(p.x, p.lambda) and big_unitary_hash.lookup(p).>=
   then return true
   fi;
+  unitary_test_counter.use();
   is_pure(hermitian_form_irreducible_to_ht(p,N))
 
-{ compute Hermitian form to ht on p, report if it is unitary}
+{ compute Hermitian form to hts on p, report if it is unitary}
 set is_unitary_to_hts_big (Param p,[int] Ns) = bool:
-  unitary_test_counter.use();
   if #Ns = 0 then return is_unitary_hash_big(p) fi;
   if is_finished(p.x, p.lambda) and big_unitary_hash.lookup(p).>=
   then return true
   fi;
-  for N in Ns do if is_pure(hermitian_form_irreducible_to_ht(p,N)) then () else  return false fi  od;
+  for N in Ns
+  do if is_pure(hermitian_form_irreducible_to_ht(p,N))
+     then  unitary_test_counter.use()
+     else  return false fi  od;
   true
 
 {. same as previous if next_height N is known .}
@@ -1281,7 +1297,7 @@ set is_unitary_test_big (Param p, [int] Ns) = bool:
   then return true
   fi;
   if #Ns = 0 then return is_unitary_hash_big(p) fi;
-  for N in Ns do if is_pure(hermitian_form_irreducible_to_ht(p,N)) then () else  return false fi  od;
+  for N in Ns do if is_pure(hermitian_form_irreducible_to_ht(p,N)) then unitary_test_counter.use() else  return false fi  od;
   is_unitary_hash_big(p)
 
 {use the first m heights from deform_heights to test}

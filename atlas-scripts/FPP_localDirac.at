@@ -541,7 +541,7 @@ set local_testK_hash_know_lower(KGBElt x, ratvec lambda, VertexData vd,
 			       then verts = vec: FVKH[d][j][:d+1]
 			       then pC = parameter(x, lambda, facet_bary(vd.list, verts))
 			       then ps = monomials(finalize(pC))
-			       then () = for q in ps do Uhash.match(q) od
+			       then () = for q in ps do Uhash.match(herm_center(q)) od
 			       in FVKHnew[d] := (FVKHnew[d] next FVKHnew[d]:=[]) #FVKH[d][j]
 			    od
 		       fi
@@ -782,7 +782,7 @@ set local_test_hash(KGBElt x, ratvec lambda, VertexData Lvd,
 			   	     do Uhash.match(herm_center(q1));
 				     if deform_flag
 				     then for q1d in face_deformed_new(q1)
-				     	  do Uhash.match(q1d)
+				     	  do Uhash.match(herm_center(q1d))
 					  od
 				     fi
 				     od
@@ -922,7 +922,7 @@ set local_test_hash_bottom(KGBElt x, ratvec lambda, VertexData Lvd,
 			   	   do Uhash.match(herm_center(q1));
 				      if deform_flag
 				      then for q1d in face_deformed_new(q1)
-				     	   do Uhash.match(q1d)
+				     	   do Uhash.match(herm_center(q1d))
 					   od
 				      fi
 				   od
@@ -1028,7 +1028,7 @@ set local_test_wiggle_hash(KGBElt x, ratvec lambda, VertexData Lvd,
                                   do Uhash.match(herm_center(q1));
                                      if deform_flag
                                      then for q1d in face_deformed_new(q1)
-                                          do Uhash.match(q1d)
+                                          do Uhash.match(herm_center(q1d))
                                           od
                                      fi
                                   od
@@ -1296,7 +1296,7 @@ set local_test_GEO_hash_real_dumb(KGBElt x, ratvec lambda, VertexData vd, Vertex
                       	  do Uhash.match(herm_center(p1));
                              if deform_flag
 			     then for q in face_deformed_new(p1)
-                             	  do Uhash.match(q)
+                             	  do Uhash.match(herm_center(q))
 				  od
 			      fi
                           od
@@ -1417,7 +1417,7 @@ set local_test_GEO_hash_dumb(KGBElt x, ratvec lambda, VertexData vd, VertexData 
                       	  do Uhash.match(herm_center(p1));
                              if deform_flag
 			     then for q in face_deformed_new(p1)
-                             	  do Uhash.match(q)
+                             	  do Uhash.match(herm_center(q))
 				  od
 			      fi
                           od
@@ -1559,7 +1559,7 @@ set local_test_GEO_hash_def_dumb(KGBElt x, ratvec lambda, VertexData vd, VertexD
                       	  do Uhash.match(herm_center(p1));
                              if deform_flag
 			     then for q in face_deformed_new(p1)
-                             	  do Uhash.match(q)
+                             	  do Uhash.match(herm_center(q))
 				  od
 			      fi
                           od
@@ -2259,7 +2259,7 @@ set local_test_GEO_hash_one_level(KGBElt x, ratvec lambda, VertexData vd,
                       	       do Uhash.match(herm_center(p1));
                              	  if deform_flag
 			     	  then for q in face_deformed_new(p1)
-                             	       do Uhash.match(q)
+                             	       do Uhash.match(herm_center(q))
 				       od
 			     	  fi
                              	  od
@@ -2340,7 +2340,7 @@ set local_test_GEO_hash_bottom_layer(KGBElt x, ratvec lambda, VertexData vd,
     then (Q0, pminL0) = theta_stable_quasi_data(pmin)
     then L0 = Q0.Levi
     then () = if (x.involution - 1).= {is_abelian(L0)}
-    	      then let () = Uhash.match(first_param(finalize(pmin{pmax})))
+    	      then let () = Uhash.match(herm_center(first_param(finalize(pmin{pmax}))))
 	      	   in return [pmin]
 	      fi
 

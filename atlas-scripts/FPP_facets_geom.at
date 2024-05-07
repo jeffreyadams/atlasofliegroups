@@ -1444,10 +1444,12 @@ sum(P.real_form, for c@q in P do c*parameter(q.x, q.lambda, gamma0) od)
 {compute the deformations of irrep p to boundary facets of its facet. This is
 a list of 2^{#local_vertices} - 1 ParamPol's, the character formulas on the walls.
 If p is unitary, this is a sum with positive coeffs of characters of unitary reps}
+{OOPS! these may not be hermitian}
 set local_defs(Param p) = [ParamPol]:
  let list = local_vertices(p), CF = character_formula(p)
- then d = #list {dim of local facet plus 1}
- in for j:d from 1
+ then () = if #list = 1 then return [] fi
+ then d = #list {dim of local facet plus 1; between 2 and dim A+1}
+ in for j:d-2 from 2
     do for S in choices_from(list,j)
        do let gamma0 = sum(#list[0],S)/j
        in wiggle(CF,gamma0)

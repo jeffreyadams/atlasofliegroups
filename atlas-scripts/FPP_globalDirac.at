@@ -195,7 +195,8 @@ set FPP_unitary_hash_general([(KGBElt,ratvec)] xlambdas, Param_hash Uhash,
        	    prints("  #hash =", hashCounter.use_count(), ", #hash2 =", hash2Counter.use_count(),
 	      	 	", #hash_one_level =", hash_one_levelCounter.use_count(), ", #hash_bottom_layer = ",
 			hash_bottom_layerCounter.use_count());
-       	    prints("Number of unitary params = ", sum(answerCards));
+       	    prints("Number of unitary params = ", sum(answerCards), ", time for is_finished = ",
+	    print_time_string(is_finished_time));
        	    prints("Number of FPP-unitary facets = ",Uhash.size(), ", number found on this run = ", Uhash.size() - oldUhash)
        fi {FPP_report_flag}
        fi {#xlambdas = 0}
@@ -363,7 +364,8 @@ set FPP_unitary_hash_general([KGBElt] xs, Param_hash Uhash, Param_hash Uparamhas
 	      ", #hash2 =", hash2Counter.use_count(),
 	      ", #hash_one_level =", hash_one_levelCounter.use_count(),
               ", #hash_bottom_layer =", hash_bottom_layerCounter.use_count());
-       	    prints("Number of unitary params = ", sum((for list in answerCards do sum(list) od)));
+       	    prints("Number of unitary params = ", sum((for list in answerCards do sum(list) od)),
+	    		   ", time for is_finished = ", print_time_string(is_finished_time));
       	    prints("Number of known FPP-unitary facets = ",Uhash.size(),
        	      ", number found on this run = ", Uhash.size() - oldUhash)
       fi {FPP_report_flag}
@@ -638,7 +640,8 @@ set FPP_unitary_hash_bottom_layer([(KGBElt,ratvec)] xlambdas, Param_hash UhashG,
        	    prints("  #hash_def_dumb =", hash_def_dumbCounter.use_count(),
 	      ", #hash2 =", hash2Counter.use_count(), ", #hash_one_level = ", hash_one_levelCounter.use_count(),
 	      ", #hash_bottom_layer =", hash_bottom_layerCounter.use_count());
-       	    prints("Number of unitary params = ", sum(answerCards));
+       	    prints("Number of unitary params = ", sum(answerCards), ", time for is_finished = ",
+	    		   print_time_string(is_finished_time));
        	    prints("Number of FPP-unitary facets = ",UhashG.size(), ", number found on this run = ", UhashG.size() - oldUhash)
        fi {FPP_report_flag}
     fi {#xlambdas = 0}
@@ -895,7 +898,8 @@ set FPP_unitary_hash_bottom_layer([KGBElt] xs, Param_hash UhashG, Param_hash Upa
 	    fi;
        	    prints("  #hash_def_dumb =", hash_def_dumbCounter.use_count(), ", #hash2 = ", hash2Counter.use_count(),
 	      ", #hash_one_level = ", hash_one_levelCounter.use_count(), ", #hash_bottom_layer = ", hash_bottom_layerCounter.use_count());
-       	    prints("Number of unitary params = ", sum(for list in answerCards do sum(list) od));
+       	    prints("Number of unitary params = ", sum(for list in answerCards do sum(list) od),
+	    		   ", time for is_finished = ", print_time_string(is_finished_time));
             prints("Number of known FPP-unitary facets = ",UhashG.size(),
        	      ", number found on this run = ", UhashG.size() - oldUhash)
       fi {FPP_report_flag}
@@ -1254,7 +1258,12 @@ set real_induced(RealForm G) = void:
      then () = for maxLRi@i in maxLRis
 	     	  do for pL in cands[i]
 	     	     do for q in monomials(real_induce_irreducible(pL,G))
-		   	do big_unitary_hash.match(herm_center(q))
+		   	do let qdeflist = [q]## for Qdef in local_defs(q)
+			   	      	    	do monomials(composition_series(Qdef))
+					    	od.##
+			   in for qdef in qdeflist
+			      do big_unitary_hash.match(herm_center(qdef))
+			      od
 			od
 	     	     od
 		  od
@@ -1303,10 +1312,10 @@ set precomputeALL(RealForm G) = void:
     then temp_report_flag = FPP_report_flag
     then () = FPP_report_flag :=false
     then () = for rf@k in rflist
-    	      do prints("At time ",print_time_string(elapsed_ms() - start), ", starting # ",k,"/",
-	      	 	    #rflist," = ",rf);
-	      	 real_induced(rf);
+    	      do real_induced(rf);
 		 theta_induced(rf);
+		 prints("At time ",print_time_string(elapsed_ms() - start), ", finished # ",k,"/",
+	      	 	    #rflist," = ",rf);
 		 if pre_bottom_flag
 		 then FPP_unitary_hash_bottom_layer(rf)
 		 else FPP_unitary_hash2(rf)
