@@ -5,6 +5,7 @@
 <count.at
 <time.at {for time_verbose}
 <K_types.at {for branch_std}
+{<FPP_facets_herm.at {for unitary_hash_big}}
 set height(RootDatum R, ratvec nu) = int:
     let q = dominant(R,nu)*R.two_rho_check
     in q.numer\q.denom

@@ -2,6 +2,7 @@
 <hermitian.at
 <convert_c_form.at
 <count.at {for use counter}
+<FPP_facets_herm.at {for big_unitary_hash}
 {preferred to_ht(ParamPol,int)}
 {Turns out the "preferred" versions are significantly slower almost
 always; don't understand why. So switch to "old" versions as standard,
