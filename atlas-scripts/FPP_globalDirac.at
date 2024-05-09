@@ -282,8 +282,9 @@ set FPP_unitary_hash_general([KGBElt] xs, Param_hash Uhash, Param_hash Uparamhas
 	 		 then templambdatimes = null(Ncases)
 	 		 then () = if every_KGB_flag
       	      	   	      then prints("     start KGBElt #", x.number, ", #lambdas = ",#lambdas,
-		   	       " Uhash.size() = ", Uhash.size(), ", running time = ",
-			       	 print_time_string(elapsed_ms() - start));
+		   	       " Uhash.size() = ", Uhash.size(), ", runtime = ",
+			       	 print_time_string(elapsed_ms() - start), ", #uparams so far = ",
+			       sum(for list in answerCards do sum(list) od));
 		   		   prints("  ------------------")
         	   		   fi {every_KGB_flag}
 	 		 then () = for lambda@index in lambdas
@@ -825,8 +826,8 @@ set FPP_unitary_hash_bottom_layer([KGBElt] xs, Param_hash UhashG, Param_hash Upa
 			 	 in if every_lambda_flag
 				    then prints("  ",print_time_string(templambdatimes[index]),
 			   	    " = time for (x,lambda) = (", x.number, ",", lambda, "), ht = ",
-				    height(answer[0]),", L = ",
-				    let (Q,) = theta_stable_quasi_data(answer[0])
+				    height(parameter(x,lambda,0*lambda)),", L = ",
+				    let (Q,) = theta_stable_quasi_data(parameter(x,lambda,0*lambda))
 				    in Q.Levi, ",",test_string);
 				         if more_flag
 					 then prints("    #LF = ", for L in LF do #L od, ", #unitary params = ",
@@ -1314,24 +1315,24 @@ set precomputeALL(RealForm G) = void:
     then () = for rf@k in rflist
     	      do real_induced(rf);
 		 theta_induced(rf);
-		 prints("At time ",print_time_string(elapsed_ms() - start), ", finished # ",k,"/",
-	      	 	    #rflist," = ",rf);
 		 if pre_bottom_flag
 		 then FPP_unitary_hash_bottom_layer(rf)
 		 else FPP_unitary_hash2(rf)
-		 fi
+		 fi;
+		 prints("At time ",print_time_string(elapsed_ms() - start), ", finished # ",k,"/",
+	      	 	    #rflist," = ",rf, ", #FPPreps = ",big_unitary_hash.uhash(rf).size())
 	      od
     then FPP_time = elapsed_ms()
     then () = FPP_report_flag:=true
     then () = real_induced(G)
     then NR = big_unitary_hash.uhash(G).size()
     then () = prints("In ",print_time_string(elapsed_ms() -FPP_time), ", real induction found ",NR,
-    	      		 " FPP unitary facets.")
+    	      		 " FPP unitary facets for G.")
     then RI_time = elapsed_ms()
     then () = theta_induced(G)
     then NTheta =  big_unitary_hash.uhash(G).size() - NR
     in prints("In ",print_time_string(elapsed_ms() -RI_time), ", coh induction found additional ",NTheta,
-       		  	" FPP unitary facets.")
+       		  	" FPP unitary facets for G.")
 
 set FPPpre(RealForm G) = void:
     let start = elapsed_ms()

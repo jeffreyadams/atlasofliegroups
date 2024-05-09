@@ -737,7 +737,7 @@ set candsBIG(InnerClass ic, mat theta) = [vec]:
        	  then [answer]
 	  else []
 	  fi
-       od.##
+       od.## 
 
 {a point in FPP has wfundamental[j] coord in the range [min[j], max[j]]}
 set candsNEW(InnerClass ic, mat theta) = [vec]:

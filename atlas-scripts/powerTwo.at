@@ -1,3 +1,4 @@
+<basic.at {for assert}
 set to_binary(int n) = [int]:
     assert(n>= 0,"to_binary works only on nonnegative integers");
     let answer = [int]:[]

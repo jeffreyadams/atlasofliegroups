@@ -124,9 +124,9 @@ set KL_P_signed_polynomials_at_minus_one (Param p, mat delta) = mat:
 set KL_P_signed_polynomials([Param] B, mat delta) = i_poly_mat:
   assert(all(for p in B do is_fixed(delta,p) od)
         ,"not all parameters in B_fixed are fixed");
-  let (block,P,polys)=partial_extended_KL_block(B[0],delta)
+  let (block,P,polys)=partial_extended_KL_block(B~[0],delta)
   then (perm,valid)=permutation(B,block), n=#block
-in assert(valid,"given list of parameters does agree with a block");
+in assert(valid,"given list of parameters does not agree with a block");
   for i:n do for j:n do polys[P[perm[i],perm[j]]] od od
 
 set KL_P_signed_polynomials_at_minus_one([Param] B, mat delta) = mat:
