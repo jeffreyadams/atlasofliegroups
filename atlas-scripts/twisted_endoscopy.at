@@ -155,30 +155,32 @@ for alpha in roots do
  coroots#:=ratvec_as_vec(corestrict_w)
 od;(roots,coroots)
 
-set Folded(TwistedRootDatum (rd,delta))=(RootDatum,mat):
-{assert(rd.is_semisimple or delta=id_mat(#delta),"root datum is not semisimple and delta !=1");}
-assert(is_distinguished(rd,delta),"delta is not distinguished");
-let T=SubTorus:eigen_lattice(^delta,1) then   {T=(H^\delta)^0; columns are a basis of X_*(T)}
-{T is nxr where n=rd.rank and r=dimension(T)}
-{ T: matrix of map X_*(T)->X_*(H) \simeq Z^r -> Z^n: this is T.inject
- ^T: matrix of map X^*(H)->X^*(T) \simeq Z^n->Z^r:   this is T.project=T.restrict
+set Folded(TwistedRootDatum (G,delta))=(RootDatum,mat):
+{assert(G.is_semisimple or delta=id_mat(#delta),"root datum is not semisimple and delta !=1");}
+assert(is_distinguished(G,delta),"delta is not distinguished");
+let T_H=SubTorus:eigen_lattice(^delta,1) then   {T_H=(T^\delta)^0; columns are a basis of X_*(T_H)}
+{T_H is nxr where n=dim(T_G) and r=dim(T_H)}
+{ T_H: matrix of map X_*(T_H)->X_*(T_G) \simeq Z^r -> Z^n: this is T_H.inject
+ ^T_H: matrix of map X^*(T_G)->X^*(T_H) \simeq Z^n->Z^r:   this is T_H.project=T_H.restrict
 }
-roots_nonreduced=sort_u(for alpha in rd.posroots do T.restrict(alpha) od) then
+roots_nonreduced=sort_u(for alpha in G.posroots do T_H.restrict(alpha) od) then
 {roots=mat:##(for alpha in roots_nonreduced do if find(roots_nonreduced,2*alpha)=-1 then [alpha] else [] fi od) then}
 roots=mat:##(for alpha in roots_nonreduced do if find(2*roots_nonreduced,alpha)=-1 then [alpha] else [] fi od) then
 coroots=[] in
 for alpha in roots do
- let pullback_alpha=let j=first(for beta in rd.roots do T.restrict(beta)=alpha od) in rd.roots[j] then
- v=sum(##(for beta in rd.roots do if T.restrict(beta)=alpha then  [coroot(rd,beta)]
+ let pullback_alpha=let j=first(for beta in G.roots do T_H.restrict(beta)=alpha od) in G.roots[j] then
+ v=sum(##(for beta in G.roots do if T_H.restrict(beta)=alpha then  [coroot(G,beta)]
    else []
   fi od)) then
- w=2*v/(v*pullback_alpha) {element of X_*(H) which lives in X_*(T)} then
- corestrict_w=solve(T,w).requisition {coordinates of w in the given basis of X_*(T)} in
+ w=2*v/(v*pullback_alpha) {element of X_*(H) which lives in X_*(T_H)} then
+ corestrict_w=solve(T_H,w).requisition {cooGinates of w in the given basis of X_*(T_H)} in
  coroots#:=ratvec_as_vec(corestrict_w)
 od;
-(root_datum_from_positive((roots,coroots),rd.prefers_coroots),T)
+(root_datum_from_positive((roots,coroots),G.prefers_coroots),T_H)
+set Folded(RootDatum rd, mat delta)=(RootDatum,mat):Folded(twisted_root_datum(rd,delta))
 
-{this returns: (RootDatum H,mat M) where
+
+{endoscopic(G,delta): this returns: (RootDatum H,mat M) where
  Gd=G.dual, T_Gd=Cartan of Gd
  Hd=identity component of Gd^{delta^t}
  T_Hd=Cartan of Gd= identity component of (T_Gd)^{delta^t}
@@ -196,7 +198,6 @@ trd=twisted_root_datum(Gd,^delta) then
 (Hd,M)=Folded(Gd,^delta) then
 H=Hd.dual in
 (H,M)
-
 
 {atlas> set G=GL(5,R)
 Variable G: RealForm (overriding previous instance, which had type RealForm)
@@ -274,7 +275,7 @@ t_G=solve(left_inverse(M),E_H.t).requisition in}
 
 {g_G=M*E_H.g then
 l_G=M*E_H.l then}
-g_G=G.rho_check then 
+g_G=G.rho_check then
 l_G=null(#g_G) then
 tau_G=solve(^M,E_H.tau).requisition then
 t_G=solve(^M,E_H.t).requisition in
@@ -338,7 +339,7 @@ set solve(mat M,mat N,ratvec v)=maybe_a_ratvec:
 set inverse_lift_std(Param p_G,RealForm H,mat M, mat delta,ratvec gamma_H)=ParamPol:
 let y_G=y_gen(p_G) then
 action_H=restrict_action(y_G.involution,M) then
-tf_u_G=y_G.unnormalized_torus_factor {unnormalized torus factor for G} then  
+tf_u_G=y_G.unnormalized_torus_factor {unnormalized torus factor for G} then
 theta=p_G.x.involution then
 N=(1+theta)##id_mat(n_rows(theta)) then
 ()=if te_verbose then prints(M##N) fi then
@@ -356,7 +357,7 @@ if is_valid(y_H_gen,gamma_H) then
  ()= if te_verbose then prints("lp="); for a in lp do prints(a) od fi in
  sign_difference(p_G,delta)*param_pol(lp)
 else
- let ()=prints("not valid, consider using inverse_lift_std_by_search instead") in 
+ let ()=prints("not valid, consider using inverse_lift_std_by_search instead") in
  error("not valid")
 fi
 
@@ -376,20 +377,20 @@ N=(1+theta)##id_mat(n_rows(theta)) then
 ()=if te_verbose then prints(M##N) fi then
 tf_u_H_maybe=solve(M,N,tf_u_G) then
 tf_u_H=if not any(tf_u_H_maybe) then error("no solution") else
-        2*tf_u_H_maybe.requisition 
+        2*tf_u_H_maybe.requisition
 fi  then
 {tf_u_H=left_inverse(M)*tf_u_G then lift}
 tf_H=(1+action_H)*(2*tf_u_H-H.rho)/2 then
 ()=if te_verbose then prints("tf_u_G: ", tf_u_G, new_line, "tf_u_H: ", tf_u_H, new_line, "tf_H: ", tf_H) fi then
 y_H_gen=KGB_elt_gen(dual(inner_class(H)),action_H,tf_H) then
 ()=if te_verbose then prints("y_H_gen=", y_H_gen) fi in
-if is_valid(y_H_gen,gamma_H) then 
+if is_valid(y_H_gen,gamma_H) then
  let ()=if te_verbose then prints("is valid") fi in
  let  lp=L_packet(H,gamma_H,y_H_gen) then
  ()= if te_verbose then prints("lp="); for a in lp do prints(a) od fi in
  sign_difference(p_G,delta)*param_pol(lp)
 else
- let ()=prints("not valid, using inverse_lift_std_by_search instead") in 
+ let ()=prints("not valid, using inverse_lift_std_by_search instead") in
  inverse_lift_std_by_search(p_G,H,M,delta,gamma_H)
 fi
 
@@ -422,7 +423,7 @@ set abv_mixed(Param p_H,mat M,RealForm G,mat delta)=
 let lift_std_ext=lift_std(p_H,M,G,delta) then
 lift_std=parameter(lift_std_ext) then
 inverse_lift=inverse_lift_irr_mixed(lift_std,p_H.real_form,M,delta,p_H.infinitesimal_character) {sum of standards} then
-()=if te_verbose then prints("inverse_lift: (sum of stds): ", inverse_lift) fi in 
+()=if te_verbose then prints("inverse_lift: (sum of stds): ", inverse_lift) fi in
 (p_H,lift_std,inverse_lift,composition_series(inverse_lift))
 
 {to use: set G=GL(n,R), delta=G.distinguished_involution,
@@ -441,4 +442,155 @@ let (p_H,p_G,)=data[0] then
 ()=prints("H=", p_H.real_form,new_line, "G=", p_G.real_form) in
 for (p_H,p_G,abv)@i in data do
 prints(new_line,"i: ", i, new_line, "p_H: ", p_H,new_line,"inf char(p_H): ", p_H.infinitesimal_character,
-new_line, "p_G=lift(p_H): ", p_G, new_line,"inf_ char(p_G): ", p_G.infinitesimal_character	, new_line,"Packet(p_H): ", abv) od 
+new_line, "p_G=lift(p_H): ", p_G, new_line,"inf_ char(p_G): ", p_G.infinitesimal_character	, new_line,"Packet(p_H): ", abv) od
+
+
+{----------------------------------- Weyl group---------------------------}
+
+set is_multiple(vec v,vec w)=bool:rank(mat:[v,w])=1
+
+{lift simple root to list of simple roots restricting to a MULTIPLE of it}
+set lift_root(RootDatum G,SubTorus T,vec alpha)=[vec]:
+##for beta in G.simple_roots do
+ if is_multiple(T.restrict(beta),alpha) then [beta] else [] fi od 
+
+{set lift_root(RootDatum G,mat M,vec alpha)=[vec]:roots_restricting_to(G,M,alpha)}
+set lift_root(RootDatum G,RootDatum H,mat M,int i_H)=[int]:for v in lift_root(G,M,root(H,i_H)) do root_index(G,v) od
+ 
+{lift any root reflection}
+set lift_reflection(RootDatum G,RootDatum H,mat M,int i)=
+let roots=lift_root(G,H,M,i) in
+assert(#roots>0 and #roots<4, "problem lifting root");
+if #roots=1 then
+  W_elt(G,reflection(G,roots[0]))
+elif #roots=2 then
+   W_elt(G,reflection(G,roots[0])*reflection(G,roots[1]))
+elif #roots=3 then
+ W_elt(G,reflection(G,roots[0])*reflection(G,roots[1])*reflection(G,roots[0]+roots[1])){assuming: roots[0]+roots[1] is a root}
+else id_W(G)
+fi
+
+set lift_simple_reflection(RootDatum G,RootDatum H,mat M,int i)=
+assert(i>-1 and i<ss_rank(H),"not a simple root for H");lift_reflection(G,H,M,i)
+
+set lift_W_word(RootDatum G,RootDatum H, mat M,[int] word)=WeylElt:
+let lift=id_W(G) in
+ for i in word do lift*:=lift_simple_reflection(G,H,M,i) od;lift
+
+set lift_W_word(RootDatum G,RootDatum H, mat M,WeylElt w)=lift_W_word(G,H,M,word(w))
+
+
+
+
+
+set root_map(RootDatum G,mat delta)=
+let (H,M)=folded(G,delta) in
+for i:ss_rank(H) do lift_root(G,H,M,i) od
+
+set G=GL(7)
+set delta=distinguished_involution(GL(7,R))
+set (H,M)=Folded(G,delta)
+
+
+
+set *(mat M,KGBElt x)=KGBElt:
+let G=x.root_datum then
+tf_u=unnormalized_torus_factor(x) then
+theta=involution(x) then
+theta_1=M*theta*inverse(M) then
+tf_1_u=M*tf_u then
+tf_1=(2*tf_1_u-G.rho_check)*(1+theta_1)/2 in
+KGB_elt(G,tf_1_u,theta_1)
+
+set fixed_KGB(RealForm G,mat M)=[KGBElt]:
+##for x in KGB(G) do
+ if M*x=x then [x] else [] fi od
+
+{M=KGB_Hasse(G)
+ convert this to a poset
+ row j of M: entry i =1 means: KGB(j)<KGB(i) (and these are the covering relations)
+}
+set poset_of_Hasse_matrix(mat M)=
+  for v in ^M do
+   for j:#v do if v[j]=1 then [j] else [] fi od.##
+  od
+
+set lift_KGB_cross(int j_H,[[int]] root_map,KGBElt x_G)=KGBElt:
+let G=x_G.real_form then
+y=x_G then
+ roots=root_map[j_H] in
+ if #roots<2 then
+    cross(roots[0],y)
+ elif is_orthogonal(G,roots[0],roots[1]) then
+    for i in roots do y:=cross(i,y) od;y
+ else
+    let j=root_index(G,root(G,roots[0])+root(G,roots[1])) in
+    for i in roots#j do y:=cross(i,y) od;y
+ fi
+ 
+
+set lift_KGB_Cayley(int j_H,[[int]] root_map,KGBElt x_G)=KGBElt:
+let y=x_G in
+ for i in root_map[j_H] do y:=Cayley(i,y) od;y
+
+set embed_KGB(KGBElt x_H,KGBElt x_G,[[int]] root_map)=[(int,int)]:
+let H=x_H.real_form then
+G=x_G.real_form then
+known_H=[x_H.number] then
+known_G=[x_G.number] then
+map=[(x_H.number,x_G.number)] then
+done_H=[int]:[]  {x_H's for which we've computed all crosses and Cayleys} then
+is_known_H(int i)=bool:in_list(known_H,i) then
+is_known_G(int i)=bool:in_list(known_G,i) then
+is_known_H(KGBElt x_H)=bool:in_list(known_H,x_H.number) then
+is_known_G(KGBElt x_G)=bool:in_list(known_G,x_G.number) then
+lookup(int i_G)=  {given i_G find i_H which we've already computed which maps to it}
+  let index=first(for (,j) in map do j=i_G od) then (i_H,)=map[i_G] in i_H in
+while #map<KGB_size(H) do
+let ()=if te_verbose then prints("known_H: ", known_H, new_line, "known_G: ", known_G) fi in
+let ()=if te_verbose then prints("map: ", map) fi in
+let ()=if te_verbose then prints("done_H: ", done_H) fi in 
+ {find (i,j)  so that (i,j) occurs in map, but i is NOT in done_H}
+ let index_in_map= first(for (i,) in map do not in_list(done_H,i) od) then
+    ()=if index_in_map=-1 then 
+       prints("failed to compute complete map");prints("KGB size of H: ", KGB_size(H),new_line, "#map: ", #map);return(map) 
+    fi then
+    (i_H,i_G)=map[index_in_map] then
+    x_H=KGB(H,i_H) then
+    x_G=KGB(G,i_G) in
+    let    ()=if te_verbose then prints(new_line,"x_H: ", x_H) fi  then
+    ()=if te_verbose then prints("x_G: ", x_G) fi in
+    done_H#:=i_H;
+ for i:ss_rank(H) do
+    let y_H=cross(i,x_H) in
+    let ()=if te_verbose then prints("i=",i,"(cross)y_H=", y_H) fi in
+      let ()=if not is_known_H(y_H) then
+                let ()=if te_verbose then prints(i, " ", root_map, " ", x_G, " ", x_G.real_form) fi in
+              let y_G=lift_KGB_cross(i, root_map,x_G) in
+              let ()=if te_verbose then prints("y_G=",y_G) fi in
+              {map may not be injectived: (i,j) and (k,j) could both occur
+               for example on group side: G=GL(4,R), H=SO(3,2)->GL(4,R)}
+                if  true then
+{               if not is_known_G(y_G) then}
+               if te_verbose then prints("adding: ", y_H.number, " ", y_G.number) fi; 
+               map#:=(y_H.number, y_G.number);
+               known_G#:=y_G.number;
+               known_H#:=y_H.number
+              fi
+             fi
+  in
+  if is_noncompact(i,x_H) or is_real(i, x_H) then
+       let y_H=Cayley(i,x_H) in
+       let ()=if te_verbose then prints("i=",i,"(Cayley)y_H=", y_H) fi in
+       if not is_known_H(y_H) then
+               let y_G=lift_KGB_Cayley(i, root_map,x_G) in
+               if not is_known_G(y_G) then
+                 map#:=(y_H.number, y_G.number);
+                 known_G#:=y_G.number;
+                 known_H#:=y_H.number
+               fi
+              fi
+     fi
+  od{for i}
+od{while #map};prints("KGB size of H: ", KGB_size(H),new_line, "#map: ", #map);map 
+

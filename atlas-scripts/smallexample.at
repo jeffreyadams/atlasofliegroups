@@ -1,0 +1,25 @@
+<twisted_endoscopy.at
+te_verbose:=false
+set G=GL(4)
+set Gd=dual(G)
+set dd=split_form(Gd).distinguished_involution
+set icd=inner_class(Gd,"cc")
+set GdR=quasisplit_form(icd)
+set GR=dual_quasisplit_form(GdR)
+set ic=inner_class(GR)
+set (Hd,Md)=Folded(Gd,dd)
+set icHd=inner_class(Hd,"s")
+set HdR=quasisplit_form(icHd)
+set H=dual(Hd)
+{set HR=dual_quasisplit_form(HdR)}
+set (HR,M)=endoscopic(Gd,dd)
+set HR=split_form(HR)
+set icHR=inner_class(HR)
+
+set rm=root_map(Gd,dd)
+
+set ph=HR.trivial
+set (,pg,,)=abv_mixed(ph,M,GR,dd)
+
+
+{embed_KGB(KGB(HdR,0),KGB(GdR,0),rm) }
