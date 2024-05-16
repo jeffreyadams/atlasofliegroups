@@ -21,7 +21,7 @@ answers, but only to running more is_unitary tests .}
 set chop_bound = int: 6
 
 {if true, compute reps weakly fair cohom induced from Arthur unipotent}
-set coh_ind_flag = true
+set coh_ind_flag = false
 
 {if true, load Arthur unipotent reps into unitary hash before starting FPP.
 Computing Arthur unipotents takes a long time for high rank (e.g. rank 4
@@ -149,8 +149,8 @@ set FPP_unitary_hash_general([(KGBElt,ratvec)] xlambdas, Param_hash Uhash,
 		 {then startLF = elapsed_ms()
 		 then () = prints("time thru LPmss[",k,"] = ",print_time_string(startLF - start))}
 		 then LF = if by_zero_flag and height(p0) > 0
-		      	   then localFD_1Dirac2_by_zero(x, lambda, Lvd, Perm2, mapAct{, global_facets_by_zero})
-			   else localFD_1Dirac2(x, lambda, Lvd, Perm2, mapAct{, global_facets})
+		      	   then localFD_1Dirac2_by_zero(x, lambda, Lvd, Perm2, mapAct)
+			   else localFD_1Dirac2(x, lambda, Lvd, Perm2, mapAct)
 			   fi
 		 {then () = if every_lambda_deets_flag
     	      	      	   then prints("time for localFD_1Dirac = ",print_time_string(elapsed_ms() - startLF))

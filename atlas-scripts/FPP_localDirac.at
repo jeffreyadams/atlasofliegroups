@@ -719,8 +719,6 @@ set test_string = ""
 
 set more_verbose =false
 
-{ set LvdHold = VertexData: to_vertex_data([ratvec]:[]), LFVHHold =  [[LocalFacetVertsHash]] :[],
-    eqHold = [[int]]: [], grHold = [[int]]: [], CLBFHold = [vec]: []}
 { Input is candidate facets, and graph info. Output is the tester-unitary ones.
  use and update a complete list Uhash of known tester-unitary facets.
  try to compute and systematically use partial order on facets}
@@ -753,15 +751,8 @@ set local_test_hash(KGBElt x, ratvec lambda, VertexData Lvd,
 	      ,m, "; so far ",unitary_test_counter.use_count()
 	      ," 'is_unitary' tests.")
 	      ; printInterval := (3*printInterval)\2 + 1
-	    fi
-	    {; if newStatuses[m] = "?"
-	      then prints(new_line,"Still undecided: ", count(for n:NumClasses do newStatuses[n] = "?" od), " classes ",
-		   for n:NumClasses do if newStatuses[n] = "?" then [n] else [] fi od.##,
-		   ", comprising ",sum(for n:NumClasses do if newStatuses[n] = "?" then #eq[n] else 0 fi od), " Params.");
-		   prints("start class #", m, ", of size ", #eq[m], ". So far used ",
-	      	   		 print_time_string(elapsed_ms() - start))
-	      fi}
-	    ;   let C=eq[m]
+	    fi;
+	        let C=eq[m]
 	      	then (d,j) = coords(LFVH,C[0])
 	      	then verts = vec: LFVH[d][j][:d+1]
 		then pC = parameter(x, lambda, facet_bary(Lvd.list, verts))
@@ -1610,9 +1601,9 @@ set local_test_GEO_hash_dumb(KGBElt x, ratvec lambda, VertexData vd, VertexData 
 set local_test_GEO_hash_dumb(KGBElt x, ratvec lambda, VertexData vd,
     KTypePol_hash pol_hash, Param_hash Uhash) = [Param]:
     let G = x.real_form
-    then ELs = edge_list_lookups(G)
+    then FEL = LPm_table.flippable_edge_lookup(G)
     {then () = adjust_global_top(G)}
-    then (Lvd, Perm2, mapAct) = localFD_Lvd2(x, lambda, vd, ELs)
+    then (Lvd, Perm2, mapAct) = localFD_Lvd2(x, lambda, vd, FEL)
     then LF = localFD_1Dirac2(x,lambda, Lvd, Perm2, mapAct{, global_facets})
     	{computes edges and verts, imposing hermitian and Dirac}
     in local_test_GEO_hash_dumb(x, lambda, vd, Lvd, LF, pol_hash, Uhash)
@@ -1824,9 +1815,9 @@ set local_test_GEO_hash(KGBElt x, ratvec lambda, VertexData vd, VertexData Lvd,
 set local_test_GEO_hash(KGBElt x, ratvec lambda, VertexData vd,
     KTypePol_hash pol_hash, Param_hash Uhash) = [Param]:
     let G = x.real_form
-    then ELs = edge_list_lookups(G)
+    then FEL = LPm_table.flippable_edge_lookup(G)
     {then () = adjust_global_top(G)}
-    then (Lvd, Perm2, mapAct) = localFD_Lvd2(x, lambda, vd, ELs)
+    then (Lvd, Perm2, mapAct) = localFD_Lvd2(x, lambda, vd, FEL)
     then LF = localFD_1Dirac2(x,lambda, Lvd, Perm2, mapAct{, global_facets})
     	{computes edges and verts, imposing hermitian and Dirac}
     in local_test_GEO_hash(x, lambda, vd, Lvd, LF, pol_hash, Uhash)
@@ -1999,9 +1990,9 @@ set local_test_GEO_hash2(KGBElt x, ratvec lambda, VertexData vd, VertexData Lvd,
 set local_test_GEO_hash2(KGBElt x, ratvec lambda, VertexData vd,
     KTypePol_hash pol_hash, Param_hash Uhash) = [Param]:
     let G = x.real_form
-    then ELs = edge_list_lookups(G)
+    then FEL = LPm_table.flippable_edge_lookup(G)
     {then () = adjust_global_top(G)}
-    then (Lvd, Perm2, mapAct) = localFD_Lvd2(x, lambda, vd, ELs)
+    then (Lvd, Perm2, mapAct) = localFD_Lvd2(x, lambda, vd, FEL)
     then LF = localFD_1Dirac2(x,lambda, Lvd, Perm2, mapAct{, global_facets})
     	{computes edges and verts, imposing hermitian and Dirac}
     in local_test_GEO_hash2(x, lambda, vd, Lvd, LF, pol_hash, Uhash)
@@ -2291,9 +2282,9 @@ set local_test_GEO_hash_one_level(KGBElt x, ratvec lambda, VertexData vd, Vertex
 set local_test_GEO_hash_one_level(KGBElt x, ratvec lambda, VertexData vd,
     KTypePol_hash pol_hash, Param_hash Uhash) = [Param]:
     let G = x.real_form
-    then ELs = edge_list_lookups(G)
+    then FEL = LPm_table.flippable_edge_lookup(G)
     {then () = adjust_global_top(G)}
-    then (Lvd, Perm2, mapAct) = localFD_Lvd2(x, lambda, vd, ELs)
+    then (Lvd, Perm2, mapAct) = localFD_Lvd2(x, lambda, vd, FEL)
     then LF = localFD_1Dirac2(x,lambda, Lvd, Perm2, mapAct{, global_facets})
     	{computes edges and verts, imposing hermitian and Dirac}
     in local_test_GEO_hash_one_level(x, lambda, vd, Lvd, LF, pol_hash, Uhash)
@@ -2413,11 +2404,8 @@ set local_test_GEO_hash_bottom_layer(KGBElt x, ratvec lambda, VertexData vd,
     then () = if test_verbose
     	      then prints(for list in LFDKH do #list od, " = ",sum(for list in LFDKH do #list od),
 	      	      	" unitary candidates in ",#eq," equivalence classes.");
-			prints("number of tests so far = ",unitary_test_counter.use_count() - UTCstart);
-	           {if sph_far_flag
-		   then prints("using is_unitary")
-		   else} prints("testing to height ",next_heights(pmin,steps))
-		   {fi}
+		   prints("number of tests so far = ",unitary_test_counter.use_count() - UTCstart);
+		   prints("testing to height ",next_heights(pmin,steps))
 	      fi
     in local_test_hash(x, lambda, Lvd, LFDKH, eq, gr, CLBF, Uhash, (Param->bool): (Param p) bool:
     	  {if  sph_far_flag
@@ -2450,9 +2438,9 @@ set local_test_GEO_hash_bottom_layer(KGBElt x, ratvec lambda, VertexData vd, Ver
 set local_test_GEO_hash_bottom_layer(KGBElt x, ratvec lambda, VertexData vd,
     KTypePol_hash pol_hash, Param_hash Uhash) = [Param]:
     let G = x.real_form
-    then ELs = edge_list_lookups(G)
+    then FEL = LPm_table.flippable_edge_lookup(G)
     {then () = adjust_global_top(G)}
-    then (Lvd, Perm2, mapAct) = localFD_Lvd2(x, lambda, vd, ELs)
+    then (Lvd, Perm2, mapAct) = localFD_Lvd2(x, lambda, vd, FEL)
     then LF = localFD_1Dirac2(x,lambda, Lvd, Perm2, mapAct{, global_facets})
     	{computes edges and verts, imposing hermitian and Dirac}
     in local_test_GEO_hash_bottom_layer(x, lambda, vd, Lvd, LF, pol_hash, Uhash)

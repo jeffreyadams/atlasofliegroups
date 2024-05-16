@@ -1336,6 +1336,8 @@ for v in vd.list
     let theta = x.involution then thetaPlus = (1+theta)*lambda
     in for v in vd.list do vd.lookup(-theta*v + thetaPlus) od
 
+set thetaAct2_time = int:0
+
 {only keep the transpositions (v,w) where [v,w] is an edge}
 set thetaAct2 (InnerClass ic, mat theta, ratvec lambda, VertexData vd,  [(ratvec->int)] edge_lookups) = PermOrderTwo:
     let vlist = vd.list
@@ -1344,9 +1346,9 @@ set thetaAct2 (InnerClass ic, mat theta, ratvec lambda, VertexData vd,  [(ratvec
     then () = for v@i in vlist
     	      do let j = vd.lookup(-theta*v + thetaPlus)
     	      	 in if j = i
-		    then answer.fixed:= (answer.fixed next answer.fixed:=[])#i {answer.fixed#:= i}
+		    then answer.fixed #:= i {answer.fixed#:= i}
 		    else if j > i and is_edge(ic, edge_lookups, v, vlist[j])
-		    	 then answer.trans := (answer.trans next answer.trans:=[])#(i,j) {answer.trans#:= (i,j)}
+		    	 then answer.trans #:= (i,j) {answer.trans#:= (i,j)}
 		    	 fi
 		    fi
 	      od
@@ -1358,8 +1360,9 @@ set thetaAct2 (KGBElt x, ratvec lambda, VertexData vd, [(ratvec->int)] edge_look
 set thetaAct2 (KGBElt x, ratvec lambda, VertexData vd,  [(ratvec->int)] edge_lookups) = PermOrderTwo:
     thetaAct2(x.real_form, x.involution, lambda, vd, edge_lookups)
 
+{only keep the transpositions (v,w) where [v,w] is an edge}
 set thetaAct2 (mat theta, ratvec lambda, VertexData vd,  (vec->int) FlippedEdgeLookup) = PermOrderTwo:
-    let vlist = vd.list
+    let start = elapsed_ms(), vlist = vd.list
     then thetaPlus = (1+theta)*lambda
     then answer = PermOrderTwo: ([],[])
     then () = for v@i in vlist
@@ -1367,10 +1370,11 @@ set thetaAct2 (mat theta, ratvec lambda, VertexData vd,  (vec->int) FlippedEdgeL
     	      	 in if j = i
 		    then answer.fixed:= (answer.fixed next answer.fixed:=[])#i {answer.fixed#:= i}
 		    else if j > i and FlippedEdgeLookup([i,j])>=0
-		    	 then answer.trans := (answer.trans next answer.trans:=[])#(i,j)
+		    	 then answer.trans #:= (i,j)
 		    	 fi
 		    fi
 	      od
+    then () = thetaAct2_time +:= elapsed_ms() - start
     in answer
 
 set thetaAct2 (KGBElt x, ratvec lambda, VertexData vd,  (vec->int) FlippedEdgeLookup) = PermOrderTwo:

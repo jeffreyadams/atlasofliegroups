@@ -1977,25 +1977,29 @@ set print_extended_block = (Param,mat->):
   , has_defect(int n) =
     if n<14 then n>=12 else n>=26 and n<30 fi { 2Ci, 2Cr, 3Ci, 3r, 3i, 3Cr }
   in (Param p, mat delta) void:
-  let (block,types,L0,L1) = extended_block(p,delta)
-  , G=p.real_form, parent_block=block_of(p)
+  let G = p.real_form
+  then tr = G.two_rho
+  then preg = parameter(p.x, p.lambda+tr, p.nu+tr)
+  then (block,types,L0,L1) = extended_block(preg,delta), parent_block=block_of(preg)
   then (l,r)=shape(types), pbs=#parent_block
   then indices =
       let i=0 in
-      for p in block
-      do for j:pbs from 1
-         do if parent_block[(i+j)%pbs]=p then i:=(i+j)%pbs; break fi
+      for q in block
+      do for j:pbs from 0
+         do if parent_block[(i+j)%pbs]= q then i:=(i+j)%pbs; break fi
 	 od
       ; i
       od
-  then wx=width(G.KGB_size-1), wp=width(#parent_block-1)
+  then wx=width(G.KGB_size-1), wp=width(#parent_block-1), wh= width(length(KGB(G)~[0]))
   , with_sign(int n) = string:
     if n<0 then "-"+(indices[~n]) else "+"+indices[n] fi
   in
   for q@i in block
-  do prints
-  (r_adjust(wp,int_format(indices[i]))
-  ,": ["
+  do let qsing = parameter(q.x, q.lambda-tr, q.nu - tr)
+  in prints(r_adjust(wp,int_format(indices[i]))
+  ,": "
+  ,r_adjust(1+wh,int_format(length(q.x)))
+  ," ["
   , { statuses }
     for j:r
     do if j=0 then "" else "," fi
@@ -2021,7 +2025,8 @@ set print_extended_block = (Param,mat->):
        else "." { compact, nonparity or complex: no Cayley }
        fi)
     od.##
-  , "  x=" , r_adjust(wx,to_string(#x(q))) , ", " , lambda_minus_rho(q)
+  , if is_final(qsing) then " *x=" else "  x=" fi, r_adjust(wx,to_string(#x(q))) ,
+    ", " , lambda_minus_rho(qsing)
   )
   od
 

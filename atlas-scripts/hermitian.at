@@ -319,7 +319,7 @@ in ( formula, standards
 set twisted_c_form_irreducible_as_sum_of_standards (Param p) = ParamPol:
   +twisted_c_form_irreducible_contributions(p) { add twisted and untwisted }
 
-{.c_form_irrecible with extra information.}
+{.c_form_irreducible with extra information.}
 set twisted_c_form_irreducible_long (Param p) =
     (ParamPol,[(Param,Split,KTypePol)],[Param,Split,KType],KTypePol):
 ( assert(twist(p)=p,"parameter is not fixed by inner class involution");
