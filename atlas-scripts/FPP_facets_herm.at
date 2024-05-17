@@ -1016,6 +1016,8 @@ set_type
 ( ( -> int) real_form_size {number of real forms included}
   , ( -> vec) uhash_sizes {for every real form, the number of unitary reps}
   , (RealForm -> int) uhash_size {for one real form, number of unitary reps}
+  , ( -> vec) nuhash_sizes {for every real form, the number of nonunitary reps}
+  , (RealForm -> int) nuhash_size {for one real form, number of nonunitary reps}
   , ( -> ) clear
   , (RealForm -> int) rf_number {number of real form in list}
   , (int -> RealForm) rf_index {jth real form in list}
@@ -1023,11 +1025,17 @@ set_type
   , ((KGBElt,int) -> ) finish {add bitmap of new known (x,lambda) to xl_known}
   , ((RealForm,[int]) -> ) finishall {add bitmaps of all new known (x,lambda) to xl_known}
   , (RealForm -> Param_hash) uhash {hash table of known unitary}
+  , (RealForm -> Param_hash) nuhash {hash table of known nonunitary}
   , (Param -> (int,int)) long_lookup {(rf_index(p.real_form), location of p in its uhash)}
   , (Param -> int) lookup {(location of p in its uhash)}
   , (Param -> bool) check {check whether p is unitary, and if so add to its hash table}
   , (Param -> int) match {add p to its hash table}
   , ((Param,int) -> int) long_match {add p to ith hash table}
+  , (Param -> (int,int)) nulong_lookup {(rf_index(p.real_form), location of p in its nuhash)}
+  , (Param -> int) nulookup {(location of p in its nuhash)}
+  , (Param -> bool) nucheck {check whether p is nonunitary, and if so add to its hash table}
+  , (Param -> int) numatch {add p to its nuhash table}
+  , ((Param,int) -> int) long_numatch {add p to ith nuhash table}
 )
 ]
 
@@ -1037,10 +1045,12 @@ set is_finished_time = int:0
 set make_big_unitary_hash() = big_unitary_hash_table:
 (   let real_form_hash = make_RealForm_hash()
     then uhashes = [Param_hash]: [] {one for each real form}
+    then nuhashes = [Param_hash]: [] {one for each real form}
     then xl_known = [[int]]: [] {one bitmap of known (x,lambda) for each real form and x}
     then clear() = void:
     	 let () = real_form_hash.clear()
 	 then () = uhashes := []
+	 then () = nuhashes := []
 	 then () = xl_known := []
 	 in ()
     then add_real_form(RealForm rf) = int:
@@ -1048,17 +1058,22 @@ set make_big_unitary_hash() = big_unitary_hash_table:
 	 then i = real_form_hash.match(rf)
 	 then empty = [int]: null(#KGB(rf))
     	 then () = if i = I {haven't seen this real form before}
-	      	   then	xl_known:= (xl_known next xl_known:=[]) # empty {null(#KGB(rf))};
-			uhashes := (uhashes next uhashes:=[])#make_Param_hash()
+	      	   then	xl_known #:= empty {null(#KGB(rf))};
+			uhashes #:= make_Param_hash();
+			nuhashes #:= make_Param_hash()
 	    	   fi
 	  {then () = if i=I then prints((real_form_hash.size(), #uhashes, #xl_known)) fi}
-	  then () = assert(real_form_hash.size() = #uhashes and #uhashes = #xl_known, "big_unitarity_hash damaged")
+	  then () = assert(real_form_hash.size() = #uhashes and #uhashes = #xl_known
+	       	    				 and #nuhashes = #uhashes, "big_unitarity_hash damaged")
 	  in i
     in
     ( (->int): {real_form_size} @int: real_form_hash.size()
     , ( -> vec): {uhash_sizes} @vec: for uhash in uhashes do uhash.size() od
     , (RealForm -> int): {uhash_size} (RealForm rf) int:
       uhashes[add_real_form(rf)].size()
+    , ( -> vec): {nuhash_sizes} @vec: for nuhash in nuhashes do nuhash.size() od
+    , (RealForm -> int): {nuhash_size} (RealForm rf) int:
+      nuhashes[add_real_form(rf)].size()
     , ( -> ): {clear} clear
     , (RealForm -> int): {rf_number} (RealForm rf) int:
       add_real_form(rf)
@@ -1086,6 +1101,8 @@ set make_big_unitary_hash() = big_unitary_hash_table:
       in finish_time+:= elapsed_ms() - start
     , (RealForm -> Param_hash): {uhash} (RealForm rf) Param_hash:
       uhashes[add_real_form(rf)]
+    , (RealForm -> Param_hash): {nuhash} (RealForm rf) Param_hash:
+      nuhashes[add_real_form(rf)]
     , (Param -> (int,int)): {long_lookup} (Param p) (int,int):
       let i = add_real_form(p.real_form)
       in (i, uhashes[i].lookup(p))
@@ -1095,7 +1112,7 @@ set make_big_unitary_hash() = big_unitary_hash_table:
     , (Param -> bool): {check} (Param p) bool:
       let i = add_real_form(p.real_form)
       {then () = prints("bitmap for ",p.x.number," is ",xl_known[i][p.x.number])}
-      then () = p := alcove_center(p)
+      then () = p := herm_center(p)
       then j = uhashes[i].lookup(p)
       in if j.>=
       	 then true
@@ -1104,7 +1121,8 @@ set make_big_unitary_hash() = big_unitary_hash_table:
 	 else let () = unitary_test_counter.use()
 	      then chk = is_unitary(p)
 	      then () = if chk
-		     	then uhashes[i].match(herm_center(p))
+		     	then uhashes[i].match(p)
+			else nuhashes[i].match(p)
 		     	fi
 	      in chk
 	 fi
@@ -1113,6 +1131,36 @@ set make_big_unitary_hash() = big_unitary_hash_table:
       in uhashes[i].match(p)
     , ((Param,int) -> int): {long_match} (Param p, int i):
       uhashes[i].match(p)
+    , (Param -> (int,int)): {nulong_lookup} (Param p) (int,int):
+      let i = add_real_form(p.real_form)
+      in (i, nuhashes[i].lookup(p))
+    , (Param -> int): {nulookup} (Param p) int:
+      let i = add_real_form(p.real_form)
+      in nuhashes[i].lookup(p)
+    , (Param -> bool): {nucheck} (Param p) bool:
+      let i = add_real_form(p.real_form)
+      {then () = prints("bitmap for ",p.x.number," is ",xl_known[i][p.x.number])}
+      then () = p := herm_center(p)
+      then j = nuhashes[i].lookup(p)
+      in if j.>=
+      	 then false
+      	 elif is_member_bitset (position(p.x, p.lambda), xl_known[i][p.x.number])
+	 then true
+	 else let () = unitary_test_counter.use()
+	      then chk = is_unitary(p)
+	      then () = if chk
+		     	then uhashes[i].match(p)
+			else nuhashes[i].match(p)
+		     	fi
+	      in not chk
+	 fi
+    , (Param -> int): {numatch} (Param p):
+      let i = add_real_form(p.real_form)
+      in nuhashes[i].match(p)
+    , ((Param,int) -> int): {nulong_match} (Param p, int i):
+      nuhashes[i].match(p)
+
+
     )
 )
 

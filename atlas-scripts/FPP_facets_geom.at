@@ -925,8 +925,10 @@ set FPP_flippable_edges = (InnerClass -> [FacetVertsIndex]):
     let ichash = make_InnerClass_hash()
     then Ffes = [[FacetVertsIndex]]: [] {one for each inner class}
     in (InnerClass -> [FacetVertsIndex]): (InnerClass ic) [FacetVertsIndex]:
-       let I = ichash.size()
-       then i = ichash.match(ic)
+       let I = ichash.size() {how many inner classes do I know?}
+       then i = ichash.match(ic) {"match" means look up the new inner class in the list
+       	      			 ichash, and add it if it's new. "i" is the number of the
+				 new inner class in the list}
        then () = if i=I {haven't seen this inner class before}
     	      then let (Affd,M,j0) = cofolded(ic), start = elapsed_ms()
     	      then vlist = FPP_vertices(Affd,j0), FVs = fundamental_vertices(Affd)
@@ -949,7 +951,7 @@ set FPP_flippable_edges = (InnerClass -> [FacetVertsIndex]):
 		   	    od.sort
 	     		 od { type is [FacetVertsIndex], remains for next line}
 	  	    od.##
-	      then () = Ffes := (Ffes next Ffes := [])#answer
+	      then () = Ffes #:= answer
     	      then () = Ffe_time +:= elapsed_ms() - start
 	      in ()
 	      fi

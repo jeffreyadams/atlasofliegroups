@@ -1275,8 +1275,9 @@ set delta_on_simple(InnerClass ic) = [int]:
     let r = ic.semisimple_rank, SR = ic.simple_roots, delta = ic.distinguished_involution
     in for i:r do first(for j:r do SR[i] = delta*SR[j] od) od
 
-{For the irreducible p, lists the K-types to height D which are bottom layer for some proper parabolic;
-the smallest such parabolic is defined by the simple coroots in S. S always contains the coroots S0
+{For the tempered irr corr to mu, lists K-types to height D which are
+bottom layer for some proper parabolic; the smallest such parabolic is
+defined by the simple coroots in S. S always contains the coroots S0
 vanishing on p.d_lambda.} {useless case is #bottom_K_types = 1}
 set bottom_K_types(KType mu, int D) = [(KType,[int])]:
     let q = param(mu), Proj = projection_to_K_matrix(mu.real_form), start = elapsed_ms()
@@ -1377,7 +1378,7 @@ set bottom_K_type_Qs(KType mu, int D) = [QK_bottom_data] {[KGPElt, [KType]]}:
 	 fi
     then xcL0 = KGB(L0,0)
     then xcG0 = embed_KGB(xcL0, G)
-    then too_many_taus = monomials(branch_std(q,D))[1:] {OK since my is always term 0?}
+    then too_many_taus = monomials(branch_std(q,D))[1:] {OK since mu is always term 0?}
     {then () = if #too_many_taus > 1 then too_many_taus:=too_many_taus[1:]{omit mu}}
     then hwt0 = K0_param(mu,xcG0).lambda_minus_rho
     then too_many_shifts = for tau in too_many_taus
