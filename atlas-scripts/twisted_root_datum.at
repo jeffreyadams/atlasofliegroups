@@ -25,22 +25,32 @@ set roots_restricting_to(RootDatum rd,SubTorus T,vec alpha)=[vec]:
 ##for beta in rd.roots do
  if T.restrict(beta)=alpha  then [beta] else [] fi od
 
-{rd is semsimple and delta is distinguished
+set roots_restricting_to_multiple(RootDatum rd,SubTorus T,vec alpha)=[vec]:
+##for beta in rd.roots do
+ let res=T.restrict(beta) in
+  if res=alpha or res=2*alpha or alpha=2*res then [beta] else [] fi od
+
+{delta is distinguished
 returns (RootDatum folded, mat T) where T is a matrix relating H and H^delta
-}
-set folded(TwistedRootDatum (rd,delta))=(RootDatum,mat):
-{ don't understand what next line is doing. }
-{ assert(rd.is_semisimple or delta=id_mat(#delta),"root datum is not
-semisimple and delta !=1"); }
-assert(is_distinguished(rd,delta),"delta is not distinguished");
-let T=SubTorus:eigen_lattice(^delta,1) then   {T=(H^\delta)^0; columns are a basis of X_*(T)}
-{T is nxr where n=rd.rank and r=dimension(T)}
-{ T: matrix of map X_*(T)->X_*(H) \simeq Z^r -> Z^n: this is T.inject
+if G=A_2n, non-reduced root datum is BC_n
+last argument: "short" (resp. "long"): keep only short (resp. long) roots
+T is nxr where n=rd.rank and r=dimension(T)
+ T: matrix of map X_*(T)->X_*(H) \simeq Z^r -> Z^n: this is T.inject
  ^T: matrix of map X^*(H)->X^*(T) \simeq Z^n->Z^r:   this is T.project=T.restrict
 }
+set folded(TwistedRootDatum (rd,delta),string keep_short_or_long)=(RootDatum,mat):
+assert(is_distinguished(rd,delta),"delta is not distinguished");
+let T=SubTorus:eigen_lattice(^delta,1) then   {T=(H^\delta)^0; columns are a basis of X_*(T)}
 roots_nonreduced=sort_u(for alpha in rd.posroots do T.restrict(alpha) od) then
-roots=mat:##(for alpha in roots_nonreduced do if find(roots_nonreduced,2*alpha)=-1 then [alpha] else [] fi od) then
-coroots=[] in
+roots=mat:##(
+  for alpha in roots_nonreduced do 
+    if keep_short_or_long="short" then  
+        if alpha/2=alpha\2 and find(roots_nonreduced,alpha\2)!=-1 then {throw out long}[] else  [alpha] fi
+    elif keep_short_or_long="long" then
+        if find(roots_nonreduced,2*alpha)!=-1 then {throw out short} [] else  [alpha] fi 
+    else [] fi
+  od) 
+then coroots=[] in
 for alpha in roots do
  let pullback_alpha=let j=first(for beta in rd.roots do T.restrict(beta)=alpha od) in rd.roots[j] then
  v=sum(##(for beta in rd.roots do if T.restrict(beta)=alpha then  [coroot(rd,beta)]
@@ -52,6 +62,8 @@ for alpha in roots do
 od;
 (root_datum_from_positive((roots,coroots),rd.prefers_coroots),T)
 
+{default: keep short}
+set folded(TwistedRootDatum trd)=(RootDatum,mat):folded(trd,"short")
 {make it easy to construct in simple case:
 use the first outer automorphism of given order
 if you need to specify delta more precisely use folder(RootDatum,mat) above

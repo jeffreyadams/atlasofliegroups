@@ -120,7 +120,7 @@ known_H=1*p_H then
 known_G=1*p_G then
 map=[(p_H,p_G)] then
 done_H=ParamPol:null_module(H) {p_H's for which we've computed all crosses and Cayleys} then
-()=prints("known_H: ", known_H[p_H], " known_G: ", known_G[p_G]) then
+{()=prints("known_H: ", known_H[p_H], " known_G: ", known_G[p_G]) then}
 is_known_H(Param p)=bool:known_H[p]!=0 then
 is_known_G(Param p)=bool:known_G[p]!=0 in
 while #map<#block_of(p_H) do
@@ -128,7 +128,7 @@ let ()=if te_verbose then prints("known_H: ", known_H, new_line, "known_G: ", kn
 let ()=if te_verbose then prints(new_line,"map: ", map,new_line) fi in
 let ()=if te_verbose then prints("done_H: ", done_H) fi in
 let index_in_map= first(for (p_H,) in map do done_H[p_H]=0 od) then
-()=prints("index_in_map: ", index_in_map) then
+{()=prints("index_in_map: ", index_in_map) then}
     ()=if index_in_map=-1 then
        prints("failed to compute complete map");return(map)
     fi then

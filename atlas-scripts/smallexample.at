@@ -1,6 +1,6 @@
 <twisted_endoscopy.at
 te_verbose:=false
-set G=GL(4)
+set G=GL(8)
 set Gd=dual(G)
 set dd=split_form(Gd).distinguished_involution
 set icd=inner_class(Gd,"cc")
@@ -19,7 +19,7 @@ set icHR=inner_class(HR)
 set rm=root_map(Gd,dd)
 
 set ph=HR.trivial
-set (,pg,,)=abv_mixed(ph,M,GR,dd)
+{set (,pg,,)=abv_mixed(ph,M,GR,dd)}
 
 
 {embed_KGB(KGB(HdR,0),KGB(GdR,0),rm) }

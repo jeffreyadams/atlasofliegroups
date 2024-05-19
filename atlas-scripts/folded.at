@@ -1,0 +1,102 @@
+set is_orthogonal (RootDatum rd, vec alpha, vec beta) = bool: =alpha*coroot(rd,beta)
+
+
+set alpha_term_of_s(RootDatum rd,mat delta, ratvec v, vec alpha)=rat:
+if is_orthogonal(rd,alpha,delta*alpha)
+ then 2*alpha*v   {alpha(s)^2=1}
+elif alpha=delta*alpha
+ then alpha*v
+else
+{type A_2n}
+ 0 {to do}
+fi
+
+{algorithm:
+ see Kottwitz/Shelstad, Foundations of Twisted Endoscopy, 1.3.5-1.3.7
+make list restricted_roots
+for alpha in restricted_roots
+ let lifts={beta restricting to alpha}
+ cases:
+  lifts = [beta]: alpha is restriction of single delta-fixed root:  beta(s)=1
+        = [beta,delta(beta)]: two orthogonal roots                  beta(s)^2=1
+        = [beta_1,beta_2,beta_3]: delta(beta_1)=beta_2 beta_1+beta_2=beta_3 (after renumbering)
+            these restricted give: [alpha,alpha,2*alpha] OR [alpha/2,alpha/2,alpha]
+            let gamma=(beta_1+beta_2+beta_3) = beta_3
+            then condition is gamma(s)=1  if alpha is short (2*alpha is also a root)
+                              gamma(s)=-1 if alpha is long (alpha/2 is also a root)
+}
+set folded(TwistedRootDatum (rd,delta),ratvec v)=(RootDatum,mat):
+assert(is_distinguished(rd,delta),"delta is not distinguished");
+let T=SubTorus:eigen_lattice(^delta,1) then
+restricted_roots=sort_u(for alpha in rd.posroots do T.restrict(alpha) od) then
+roots=sort_u(##
+for alpha in restricted_roots do
+ let lifts=roots_restricting_to_multiple(rd,T,alpha) in
+ if #lifts=1 then
+{   let ()=prints("#lifts=1, alpha=",alpha) in}
+   if is_integer(lifts[0]*v) then [alpha] else [] fi
+ elif #lifts=2 then
+{    let ()=prints("#lifts=2,alpha=",alpha) in}
+    if is_integer(2*lifts[0]*v) then {prints("adding alpha; ", alpha);}[alpha] else [] fi
+ else
+  let ()=prints("#lifts=3,alpha=",alpha) in
+  let gamma=sum(lifts) in
+  let ()=prints("gamma=",gamma) then
+  restrictions = for beta in lifts do T.restrict(beta) od in
+  let ()=prints("alpha=",alpha,new_line,"lifts=", lifts, new_line, "restrictions=", restrictions) in 
+   if find(restrictions,2*alpha)!=-1 then
+      if is_integer(gamma*v) then prints("yes1");[alpha] else [] fi
+   elif find(restrictions,alpha\2)!=-1 then 
+      if is_integer(gamma*v) then prints("yes2");[] else [alpha] fi
+   else
+      assert(false,"failure in cases");[]
+   fi
+ fi
+od)
+then
+{()=prints("roots:");for a in roots do prints(a) od then}
+coroots=[] in
+for alpha in roots do
+  let pullback_alpha=
+    let j=first(for beta in rd.roots do T.restrict(beta)=alpha od) in rd.roots[j] then
+    v=sum(##(
+      for beta in rd.roots do
+        if T.restrict(beta)=alpha then  [coroot(rd,beta)]
+         else []
+        fi
+      od)) then
+   w=2*v/(v*pullback_alpha) {element of X_*(H) which lives in X_*(T)} then
+   corestrict_w=solve(T,w).requisition {coordinates of w in the given basis of X_*(T)} in
+   coroots#:=ratvec_as_vec(corestrict_w)
+od;
+(root_datum_from_positive((roots,coroots),rd.prefers_coroots),T)
+
+set folded(RootDatum rd,mat delta,ratvec v)=(RootDatum,mat):folded(TwistedRootDatum:(rd,delta),v)
+
+set orbit_size(mat delta, vec alpha)=
+let j=first(for i:10 from 1 do (delta^i)*alpha=alpha od)+1
+in assert(j!=0,"orbit_size failed");j
+
+set orbit_of_simple_root(RootDatum G,mat delta, int j)=
+let alpha=G.simple_roots[j] in
+for j:orbit_size(delta,alpha) do simple_root_index(G,delta^j*alpha) od
+
+set folded_2(TwistedRootDatum (rd,delta),[int] list_of_nodes)=(RootDatum,mat):
+{make the list of nodes invariant by delta}
+let list_of_nodes=sort_u(##for j in list_of_nodes do orbit_of_simple_root(rd,delta,j)  od) then
+v=sum(rank(rd),for j in list_of_nodes do
+  let denom=order(delta)*orbit_size(delta,rd.simple_roots[j]) in rd.fundamental_coweights[j]/denom od) in
+  folded(rd,delta,v)
+
+set folded_2(RootDatum rd,mat delta,[int] list_of_nodes)=(RootDatum,mat):folded_2(TwistedRootDatum:(rd,delta),list_of_nodes)
+
+set folded_2(TwistedRootDatum (rd,delta),int j)=(RootDatum,mat):folded_2((rd,delta),[j])
+set folded_2(RootDatum rd,mat delta,int j)=(RootDatum,mat):folded_2(TwistedRootDatum:(rd,delta),[j])
+
+set list_twisted_groups(RealForm G)=void:
+let all=for i:ss_rank(G) do folded_2(G,G.distinguished_involution,i) od
+in
+let (H,)=folded(G,G.distinguished_involution) in 
+prints(H);for (H,)@i in all do prints(i, " ", H) od
+
+
