@@ -899,6 +899,10 @@ set make_Lvd_Perm2_mapAct_table() = Lvd_Perm2_mapAct_table:
 			in ()
 		    fi
 	 in (i,j)
+    then add_KGBElt(KGBElt x) = (int,int):
+    	 let i = add_inner_class(x.inner_class)
+    	 then n = x.number
+	 in (i,n)
     in
     ( ( -> int): {inner_class_size} @int: inner_class_hash.size()
     , ( -> vec): {ic_vlist_size} @vec: for vd in vertex_datas do #vd.list od
@@ -964,7 +968,8 @@ set make_Lvd_Perm2_mapAct_table() = Lvd_Perm2_mapAct_table:
       in entries[i][j][k]
     , (int -> InnerClass): {inner_class_index} (int i) InnerClass: inner_class_hash.index(i)
     , (int -> VertexData): {vd_index} (int i) VertexData: vertex_datas[i]
-    , ((int,int,int) -> Lvd_Perm2_mapAct): {Lvd_Perm2_mapAct_index} (int i, int j, int k): Lvd_Perm2_mapAct: entries[i][j][k]
+    , ((int,int,int) -> Lvd_Perm2_mapAct): {Lvd_Perm2_mapAct_index} (int i, int j, int k): Lvd_Perm2_mapAct:
+      entries[i][j][k]
 )
 )
 
@@ -978,6 +983,68 @@ set FPP_lamthlams(InnerClass ic, mat theta) = [vec]:
 set FPP_lambda0s(InnerClass ic, mat theta) = [ratvec]:
     LPm_table.lambda0s(ic, theta)
 
+set_type
+[FPP_lambda_table =
+
+( (->int) real_form_size {number of RealForms included}
+  , ( -> ) clear
+  , (KGBElt -> int) add_KGBElt
+  , (KGBElt -> [ratvec]) FPP_lambdas {for each inner class, the number of FPP-vertices}
+  , ((KGBElt,ratvec) -> int) position {location of lambda in FPP_lambdas(x)}
+)
+]
+
+set make_FPP_lambda_table() = FPP_lambda_table:
+(   let real_form_hash = make_RealForm_hash()
+    then lambda_hashess = [[ratvec_hash]]: [] {one ratvec_hash for each real form and KGBElt}
+    then clear() = void:
+    	 let () = real_form_hash.clear()
+	 then () = lambda_hashess := []
+	 in ()
+    then add_real_form(RealForm rf) = int:
+    	 let I = real_form_hash.size()
+	 then i = real_form_hash.match(rf)
+    	 then () = if i = I {haven't seen this real form before}
+	      	   then lambda_hashess #:= for x in KGB(rf) do make_ratvec_hash() od
+	    	   fi
+	  in i
+    then add_KGBElt(KGBElt x) = int:
+    	 let i = add_real_form(x.real_form)
+    	 then n = x.number
+	 then () = if lambda_hashess[i][n].size() = 0 {haven't computed FPP_lambdas(x)}
+	      	   then let zeroPol = null_module(x.real_form), zeroNu = null(x.real_form.rank)/1
+		   	then longlist = LPm_table.lambda0s(x.inner_class, x.involution),
+			     twists = all_lambda_differential_0(x.involution)
+			then list0 = for lambda0 in longlist
+			     	     do if 1*parameter(x, lambda0, zeroNu) != zeroPol
+				     	then [lambda0]
+					else []
+					fi
+				     od.##
+			in for l0 in list0
+			   do for tau in twists
+			      do lambda_hashess[i][n].match(parameter(x,l0+tau,zeroNu).lambda)
+	  		      od
+       			   od.##
+		     fi
+	  in n
+     in
+( (->int): {real_form_size} @int: real_form_hash.size()
+  , ( -> ): clear
+  , (KGBElt -> int): {add_KGBElt} (KGBElt x) int: add_KGBElt(x)
+  , (KGBElt -> [ratvec]): {FPP_lambdas} (KGBElt x) [ratvec]:
+    let i = add_real_form(x.real_form)
+    then n = add_KGBElt(x)
+    in lambda_hashess[i][n].list()
+  , ((KGBElt,ratvec) -> int): {position} (KGBElt x, ratvec lambda) int:
+    let i = add_real_form(x.real_form)
+    then n = add_KGBElt(x)
+    in lambda_hashess[i][n].lookup(lambda)
+)
+)
+
+set FPP_lam_table = make_FPP_lambda_table()
+
 {list of lambdas for x up to twist by differential zero}
 set FPP_lambda0s(KGBElt x) = [ratvec]:
     let longlist = LPm_table.lambda0s(x.inner_class, x.involution), G=x.real_form
@@ -990,6 +1057,8 @@ set FPP_lambda0s(KGBElt x) = [ratvec]:
        od.##
 
 set FPP_lambdas(KGBElt x) = [ratvec]:
+    FPP_lam_table.FPP_lambdas(x)
+    {
     let lambda0s = FPP_lambda0s(x), zeroNu = null(x.real_form.rank)/1
     then twists = all_lambda_differential_0(x.involution)
     in for lambda0 in lambda0s
@@ -997,13 +1066,25 @@ set FPP_lambdas(KGBElt x) = [ratvec]:
 	  do parameter(x,lambda0+tau,zeroNu).lambda
 	  od
        od.##
+}
+set position_time = int:0
 
 {location of lambda in FPP_lambdas(x)}
 set position(KGBElt x, ratvec lambda) = int:
-    let lambda0s = FPP_lambda0s(x), theta = x.involution, lambdas = FPP_lambdas(x)
+    let start = elapsed_ms()
+    then lambdaNorm = parameter(x,lambda,0*lambda).lambda
+    then N = FPP_lam_table.position(x,lambdaNorm)
+    {then () = if N=-1 then prints("WARNING: at G = ",x.real_form,", x = ",x.number,", lambda = ",
+    	 lambdaNorm," is not attached to x.") fi}
+    then () = position_time +:= elapsed_ms() - start
+    in N
+
+{, lambda0s = FPP_lambda0s(x), theta = x.involution, lambdas = FPP_lambdas(x)
     then twists = all_lambda_differential_0(theta), lamthlam = (1+theta)*lambda
     then M = first(for lambda0 in lambda0s do (1+theta)*lambda0 = lamthlam od)
-    in first(for j:#twists from M*#twists do lambda = lambdas[j] od) +M*#twists
+    then N = first(for j:#twists from M*#twists do lambda = lambdas[j] od) +M*#twists
+    then () = position_time +:= elapsed_ms() - start
+    in N}
 
 set FPP_lambdas([KGBElt] xs) = [[ratvec]]:
     for x in xs
@@ -1021,7 +1102,7 @@ set_type
   , ( -> ) clear
   , (RealForm -> int) rf_number {number of real form in list}
   , (int -> RealForm) rf_index {jth real form in list}
-  , (RealForm -> [int]) xl_known {for each x, bitmap of lambda) for which FPP unitary dual is known}
+  , (RealForm -> [int]) xl_known {for each x, bitmap of lambda for which FPP unitary dual is known}
   , ((KGBElt,int) -> ) finish {add bitmap of new known (x,lambda) to xl_known}
   , ((RealForm,[int]) -> ) finishall {add bitmaps of all new known (x,lambda) to xl_known}
   , (RealForm -> Param_hash) uhash {hash table of known unitary}
@@ -1056,11 +1137,11 @@ set make_big_unitary_hash() = big_unitary_hash_table:
     then add_real_form(RealForm rf) = int:
     	 let I = real_form_hash.size()
 	 then i = real_form_hash.match(rf)
-	 then empty = [int]: null(#KGB(rf))
     	 then () = if i = I {haven't seen this real form before}
-	      	   then	xl_known #:= empty {null(#KGB(rf))};
-			uhashes #:= make_Param_hash();
-			nuhashes #:= make_Param_hash()
+	      	   then	let empty = [int]: null(#KGB(rf))
+		   	then () = xl_known #:= empty {null(#KGB(rf))}
+			then () = uhashes #:= make_Param_hash()
+			in nuhashes #:= make_Param_hash()
 	    	   fi
 	  {then () = if i=I then prints((real_form_hash.size(), #uhashes, #xl_known)) fi}
 	  then () = assert(real_form_hash.size() = #uhashes and #uhashes = #xl_known

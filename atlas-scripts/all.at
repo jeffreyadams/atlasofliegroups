@@ -54,7 +54,7 @@
 <families.at
 <FPP_globalDirac.at
 <L_packet.at
-<G2_unitary_dual.at
+{<G2_unitary_dual.at}
 <adams_johnson.at
 <speh.at
 

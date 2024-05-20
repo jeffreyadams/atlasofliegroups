@@ -51,6 +51,32 @@ set muPRVs(KType mu) = [ratvec]:
 	 in for mu@j in  muth do dominant(ks[j], (mu + rho_c(Xth[j]) - rhoo))+rho_c(Xth[j])  od
     fi
 
+{rewrite to remember answers that have already been computed}
+set muPRVs_remember = (KType -> [ratvec]):
+    let muhash = make_KType_hash() {list of known KType's}
+    then answers = [[ratvec]]: [] {list of answers for each known KType, start with empty list}
+    in (KType -> [ratvec]): (KType mu) [ratvec]:
+    let I = muhash.size()  {size() is a function attached to muhash, takes no argument}
+    then i = muhash.match(mu) {match@KType is a function attached to muhash, "adds" KType to list}
+    then () = if i=I
+    	      then let answer = if preppedDirac
+    	      	   	      then let muth = for x in fundxs
+		   	    	       	      do highest_weights(mu,x)[0].mu
+				   	      od
+    	 			   in for mu@j in muth
+				      do dominant(ks[j], mu + rhocs[j] - rho) + rhocs[j]
+			   	      od
+    	      		       else let Xth = thetaStable(mu.real_form),
+				     	 ks=Ks(mu.real_form), rhoo = rho(mu.real_form)
+	      	   		     then muth = for x in Xth do highest_weights(mu,x)[0].mu od
+	 	   		     in for mu@j in  muth
+		      		     	do dominant(ks[j], (mu + rho_c(Xth[j]) - rhoo))+rho_c(Xth[j])
+		      			od
+    	       		       fi
+		     in answers #:= answer
+	        fi
+      in answers[i]
+
 set DiracICtime = int:0
 
 {meant to hold all K-types whose DiracIC's have been computed...}

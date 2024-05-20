@@ -174,8 +174,8 @@ set revert_flag = true
 are done immediately to ONE_HT}
 set step_flag = false
 
-{If "true", then hash_dumb uses is_unitary}
-set real_flag = true
+{If "true", then hash_dumb uses real_dumb, which does less to_ht}
+set real_flag = false
 
 {If "true", then hash_dumb uses is_unitary_def_test, and hts are calculated with deform_hts}
 set def_flag = true
@@ -1045,7 +1045,7 @@ set one_param_time = int: 0
 
 set one_param_test(Param p, Param_hash Uhash) = [Param]:
     let start = elapsed_ms(), Q = monomials(finalize(p)), G = p.real_form
-    then () = if {know_lower_flag and} not is_final(p)
+    then () = if not is_final(p)
     	      then if all(for q in Q do is_finished(q.x,q.lambda) and
 	      	      	      (Uhash.lookup(q) >= 0) od)
 	      	   then return [p]
@@ -1083,11 +1083,11 @@ set one_param_test(Param p, Param_hash Uhash) = [Param]:
 
 set one_param_test_bottom(Param p, int D, Param_hash Uhash) = [Param]:
     let start = elapsed_ms(), QG = monomials(finalize(p)),G = p.real_form
-    then () = if {know_lower_flag and} not is_final(p)
-    	      then if all(for q in QG do  is_finished(q.x,q.lambda) and
+    then () = if is_final(p)
+    	      then if all(for q in QG do is_finished(q.x,q.lambda) and
 	      	      	      (Uhash.lookup(q) >= 0) od)
 	      	   then return [p]
-		   else if any(for q in QG do  is_finished(q.x,q.lambda) and
+		   else if any(for q in QG do is_finished(q.x,q.lambda) and
 		   	   	   (Uhash.lookup(q) < 0) od)
 		   	then return []
 			fi
@@ -1487,8 +1487,6 @@ set local_test_GEO_hash_def_dumb(KGBElt x, ratvec lambda, VertexData vd, VertexD
 			      then ratverts = [ratvec]: for m in verts do Lvd.list[m] od
 			      then sigma = sum(#lambda, ratverts)
 			      then pC = parameter(x, lambda, sigma/(D+2))
-			      {then () = if D=1 and x.number = 104 then prints(new_line,
-			      "verts = ", verts, ", ratverts = ",ratverts); prints(pC) fi}
 			      then ps = monomials(finalize(pC))
 			      {should insert Uhash.lookup(p).>=
 			      Actually this has no effect in SO(4,4)}
