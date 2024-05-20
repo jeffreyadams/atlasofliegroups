@@ -11,19 +11,27 @@ else
  0 {to do}
 fi
 
-{algorithm:
+{algorithm to compute fixecd points of int(s)*delta
+ where delta is distinguished, delta(s)=s, s=exp(2\pi i v)
  see Kottwitz/Shelstad, Foundations of Twisted Endoscopy, 1.3.5-1.3.7
-make list restricted_roots
-for alpha in restricted_roots
+1) make list of restricted_roots: {beta restricted to T^delta_0}
+2) for alpha in restricted_roots, include alpha by the following condition:
  let lifts={beta restricting to alpha}
  cases:
-  lifts = [beta]: alpha is restriction of single delta-fixed root:  beta(s)=1
-        = [beta,delta(beta)]: two orthogonal roots                  beta(s)^2=1
-        = [beta_1,beta_2,beta_3]: delta(beta_1)=beta_2 beta_1+beta_2=beta_3 (after renumbering)
+  lifts = [beta]: alpha is restriction of single delta-fixed root:  beta(s)=1 i.e. is_integer(beta*v)
+        = [beta,delta(beta)]: two orthogonal roots                  beta(s)^2=1 i.e. is_integer(2*beta*v)
+        = [beta_1,beta_2,beta_3]: after renumbering, let beta=beta_1, 
+              [beta_1,beta_2,beta_3]=[beta,delta(beta),beta+delta(beta)]
             these restricted give: [alpha,alpha,2*alpha] OR [alpha/2,alpha/2,alpha]
-            let gamma=(beta_1+beta_2+beta_3) = beta_3
-            then condition is gamma(s)=1  if alpha is short (2*alpha is also a root)
-                              gamma(s)=-1 if alpha is long (alpha/2 is also a root)
+            then condition is
+                 alpha short: beta(s)^2=1
+                 alpha long:  beta(s)^2=-1
+            let gamma=(beta_1+beta_2+beta_3) = 2(1+delta)beta => (gamma/2)=(1+delta)beta 
+                 => (gamma/2)(s)=(1+delta)(beta)(s)=beta(s)^2
+            then the condition is:
+                 alpha short: (gamma/2)*v\in Z      i.e. is_integer(v*gamma/2)
+                 alpha long:  (gamma/2)*v\not\in Z  i.e. not is_integer(v*gamma/2)
+
 }
 set folded(TwistedRootDatum (rd,delta),ratvec v)=(RootDatum,mat):
 assert(is_distinguished(rd,delta),"delta is not distinguished");
@@ -34,27 +42,36 @@ for alpha in restricted_roots do
  let lifts=roots_restricting_to_multiple(rd,T,alpha) in
  if #lifts=1 then
 {   let ()=prints("#lifts=1, alpha=",alpha) in}
-   if is_integer(lifts[0]*v) then [alpha] else [] fi
+   let beta=lifts[0] in
+     if is_integer(beta*v) then [alpha] else [] fi
  elif #lifts=2 then
 {    let ()=prints("#lifts=2,alpha=",alpha) in}
-    if is_integer(2*lifts[0]*v) then {prints("adding alpha; ", alpha);}[alpha] else [] fi
+    let beta=lifts[0] in 
+       if is_integer(2*beta*v) then {prints("adding alpha; ", alpha);}[alpha] else [] fi
  else
-  let ()=prints("#lifts=3,alpha=",alpha) in
-  let gamma=sum(lifts) in
-  let ()=prints("gamma=",gamma) then
+{  let ()=prints("#lifts=3,alpha=",alpha) in}
+  let gamma=sum(lifts) then
+  ()=assert(gamma\2=gamma/2,"something wrong") then
+  half_gamma=gamma\2 then
+{  ()=prints("gamma=",gamma) then}
+{  ()=prints("(gamma/2)*v: ", half_gamma*v) then}
+{  ()=prints("v=",v) then}
   restrictions = for beta in lifts do T.restrict(beta) od in
-  let ()=prints("alpha=",alpha,new_line,"lifts=", lifts, new_line, "restrictions=", restrictions) in 
-   if find(restrictions,2*alpha)!=-1 then
-      if is_integer(gamma*v) then prints("yes1");[alpha] else [] fi
-   elif find(restrictions,alpha\2)!=-1 then 
-      if is_integer(gamma*v) then prints("yes2");[] else [alpha] fi
+{  let ()=prints("alpha=",alpha,new_line,"lifts=", lifts, new_line, "restrictions=", restrictions) in }
+   if find(restrictions,2*alpha)!=-1 then  {alpha is short: condition isbeta(s)^2=1 i.e. (gamma/2)(s)=1 i.e. is_integer((gamma/2)*v)}
+{      let ()=prints("alpha is short, condition (gamma/2)*v is integer", new_line, "gamma/2=", half_gamma, new_line,"gamma*v/2=", half_gamma*v) in }
+      if is_integer(half_gamma*v)
+         then {let ()=prints("adding alpha", alpha) in} [alpha] else {let ()=prints("not adding alpha", alpha0)  in} [] fi
+   elif find(restrictions,alpha\2)!=-1 then  {alpha is long: condition isbeta(s)^2=\ne 11 i.e. (gamma/2)(s)\ne 1 i.e. not is_integer((gamma/2)*v)}
+      {let ()=prints("alpha is long, condition (gamma/2)*v is not integer", new_line, "gamma/2=", half_gamma, new_line,"gamma*v/2=", half_gamma*v) in }
+      if not is_integer(half_gamma*v)
+          then {let ()=prints("adding alpha", alpha) in} [alpha] else {let ()=prints("not adding alpha", alpha) in} [] fi 
    else
       assert(false,"failure in cases");[]
    fi
  fi
 od)
 then
-{()=prints("roots:");for a in roots do prints(a) od then}
 coroots=[] in
 for alpha in roots do
   let pullback_alpha=
