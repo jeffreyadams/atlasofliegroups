@@ -32,6 +32,10 @@ set write_vecs([vec] list, string VecsName) = void:
 set write_vecs([vec] list) = void:
     write_vecs(list, default_vecs_name)
 
+set write_append([int] list, string listname) = void:
+    begin
+	 for M in list do prints("void:",listname,"#:=",M) od
+    end
 set default_group_name = string:"G_saved"
 
 set write_real_form(RealForm G, string GroupName) = void:
@@ -264,11 +268,13 @@ set write_cat_param_list([Param] list, string listName) = void:
 	   od
     end
 
-set write_append_cat_param_list([Param] list, string listName) = void:
+set write_append_cat_param_list([Param] list, string listName, string groupName) = void:
     begin
 	 for p@i in list
-	 do let (,x) = %p.x
-	     in prints("void:",listName,"#:=parameter(KGB(G_temp,",
-	     	x,"),",p.lambda,",",p.nu,")")
+	 do prints("void:",listName,"#:=parameter(KGB(",groupName,",",
+	     	p.x.number,"),",p.lambda,",",p.nu,")")
 	 od
     end
+
+set write_append_cat_param_list([Param] list, string listName) = void:
+    write_append_cat_param_list(list, listName,"G_temp")

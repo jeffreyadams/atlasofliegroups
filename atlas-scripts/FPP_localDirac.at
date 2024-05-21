@@ -463,7 +463,7 @@ set local_testK_hash(KGBElt x, ratvec lambda, VertexData Lvd,
     [[FacetVertsKHash]] FVKH, [[int]] eq, [[int]] gr, [vec] classListByFacet,
     int ht, Param_hash Uhash) = [[FacetVertsKHash]]:
     let tester = ((Param->bool): (Param p) bool:
-	      {Uhash.lookup(p).>= or} is_unitary_to_ht{_big}(p, ht))
+	      {Uhash.lookup(p).>= or} is_unitary_to_ht_big(p, ht))  {comment out _big???}
      in local_testK_hash(x, lambda, Lvd, FVKH, eq, gr, classListByFacet, tester, Uhash)
 
 
@@ -676,7 +676,7 @@ set local_testK_hash_bottom_layer(KGBElt x, ratvec lambda, VertexData Lvd,
 			      else true
 			      fi
 		  then () = if test and U_flag {get definitive yes/no}
-		       	    then let () = test:= all(for p in ps do is_unitary_hash_big(p) od)
+		       	    then let () = test:= all(for p in ps do is_unitary_hash_big_SIMPLE(p) od)
 		       	    	 in if not test then more_bad_hash.match(pC) fi
 		            fi
      		  in if not test
@@ -806,7 +806,7 @@ set local_test_hash(KGBElt x, ratvec lambda, VertexData Lvd,
 
 set local_test_hash(KGBElt x, ratvec lambda, VertexData Lvd, [[LocalFacetVertsHash]] LFVH, [[int]] eq, [[int]] gr,
     			   [vec] classListByFacet, Param_hash Uhash) = [Param]:
-    local_test_hash(x, lambda, Lvd, LFVH, eq, gr, classListByFacet, Uhash, is_unitary_hash_big@Param)
+    local_test_hash(x, lambda, Lvd, LFVH, eq, gr, classListByFacet, Uhash, is_unitary_hash_big_SIMPLE@Param)
 
 {meant to hold params p with pL unitary and p not}
 set surprise_hash = make_Param_hash()
@@ -899,7 +899,7 @@ set local_test_hash_bottom(KGBElt x, ratvec lambda, VertexData Lvd,
 				     	   	 fi
 			        fi
 		      in if not elim_more then false {we got rid of p by bottom layer}
-			 else all(for p1 in ps do @bool: is_unitary_hash_big(p1) od)
+			 else all(for p1 in ps do @bool: is_unitary_hash_big_SIMPLE(p1) od)
 		     	 fi
 		  fi {newStatuses[m]}
 	      then () = if more_verbose then prints("your final answer was ",test) fi
@@ -927,7 +927,7 @@ set local_test_hash_bottom(KGBElt x, ratvec lambda, VertexData Lvd,
 		  else let () = if (more_flag or mix_flag) and elim_more then more_bad_hash.match(p) fi
 		      	       	    {in this case p passed elim_more but is not unitary}
 			   	then (,pL) = theta_stable_quasi_data(p)
-			   	then () = if surprise_flag and is_final(pL) and is_unitary_hash_big(pL)
+			   	then () = if surprise_flag and is_final(pL) and is_unitary_hash_big_SIMPLE(pL)
 			      	     	  then surprise_hash.match(p)
 				     	  fi
 		       in []
@@ -1007,7 +1007,7 @@ set local_test_wiggle_hash(KGBElt x, ratvec lambda, VertexData Lvd,
                      then p = parameter(x, lambda, facet_bary(Lvd.list, verts))
                      then () = if more_verbose then prints("testing parameter ",p) fi
                      then ps = monomials(finalize(p))
-                     in all(for p1 in ps do @bool: is_unitary_hash_big(p1) od)
+                     in all(for p1 in ps do @bool: is_unitary_hash_big_SIMPLE(p1) od)
 		fi
              in if test
                 then for i in eq[m]
@@ -1056,7 +1056,13 @@ set one_param_test(Param p, Param_hash Uhash) = [Param]:
 		   fi
 	      fi
     then NK = #KGB(G), r = rank(Q[0].x.involution - 1)
-    then DEFHTS = [int]:
+    {this is "true" 2/3 of the time in E6_s, so not much test_to_ht?}
+    then test = all(for q in Q
+    	      	    do @bool: Uhash.lookup(q).>= or
+		       is_unitary_next_big(q)
+		    od)
+    then  () = hash_real_dumbCounter.use()
+    {then DEFHTS = [int]:
     	 if number(Q[0].x) < NK*low_KGB_frac
 	 then []
 	 else let (answer,) = deform_hts(Q[0],r\2)
@@ -1064,7 +1070,7 @@ set one_param_test(Param p, Param_hash Uhash) = [Param]:
 	 fi
     then  () = hash_def_dumbCounter.use()
     then test = all(for q in Q do Uhash.lookup(q).>= or
-		   	       is_unitary_test(q, DEFHTS) od)
+		   	       is_unitary_test(q, DEFHTS) od)}
     in if test
        then let () = for q in Q
 		     do Uhash.match(herm_center(q))
@@ -1075,7 +1081,7 @@ set one_param_test(Param p, Param_hash Uhash) = [Param]:
        else let () = one_false_counter.use()
 	    then () = one_param_time +:= elapsed_ms() - start
 	    then (,pL) = theta_stable_quasi_data(p)
-	    then () = if surprise_flag and is_final(pL) and is_unitary_hash_big(pL)
+	    then () = if surprise_flag and is_final(pL) and is_unitary_hash_big_SIMPLE(pL)
 		      then surprise_hash.match(p)
 		      fi
 	    in []
@@ -1111,7 +1117,7 @@ set one_param_test_bottom(Param p, int D, Param_hash Uhash) = [Param]:
 		 then () = if more_verbose then prints("result of elim_more was ",elim_more) fi
 	    	 in if elim_more
 		    then let test =  all( [(->bool)]:
-		    	     for q in QG do @bool: is_unitary_hash_big(q) od)
+		    	     for q in QG do @bool: is_unitary_hash_big_SIMPLE(q) od)
 		    	 then () = if more_verbose then prints("your final answer was ",test) fi
 	    	    	 in  if test
 		    	     then let () = for q in QG
@@ -1128,14 +1134,14 @@ set one_param_test_bottom(Param p, int D, Param_hash Uhash) = [Param]:
 		     else let () = one_false_counter.use() {if elim_more is false}
 	    	    	  then () = one_param_time +:= elapsed_ms() - start
 			  then (,pL) = theta_stable_quasi_data(p)
-			  then () = if surprise_flag and is_final(pL) and is_unitary_hash_big(pL)
+			  then () = if surprise_flag and is_final(pL) and is_unitary_hash_big_SIMPLE(pL)
 			      	     then surprise_hash.match(p)
 				     fi
 		    	  in []
 		     fi
 	    else {more_flag and mix_flag are both false} let test =  all( [(->bool)]:
 	    	     for q in QG
-		     do @bool: is_unitary_hash_big(q) od) {what to do if more_flag is false}
+		     do @bool: is_unitary_hash_big_SIMPLE(q) od) {what to do if more_flag is false}
 	     	     	in if test
 	     	    	   then  let () = for q in QG
 		      	    	     	  do Uhash.match(herm_center(q))
@@ -1146,7 +1152,7 @@ set one_param_test_bottom(Param p, int D, Param_hash Uhash) = [Param]:
 		    	   else let () = one_false_counter.use()
 	    	    	   	then ()= one_param_time +:= elapsed_ms() - start
 			 	then (,pL) = theta_stable_quasi_data(p)
-			 	then () = if surprise_flag and is_final(pL) and is_unitary_hash_big(pL)
+			 	then () = if surprise_flag and is_final(pL) and is_unitary_hash_big_SIMPLE(pL)
 			      	     	  then surprise_hash.match(p)
 				   	  fi
 		    	 	in []
@@ -1178,16 +1184,18 @@ set local_test_GEO_hash_real_dumb(KGBElt x, ratvec lambda, VertexData vd, Vertex
 			       od)
     then pmax = first_param(finalize(parameter(x, lambda, Lvd.list[maxDiffLoc]))),
     	 r = rank(x.involution - 1)
-    then test_hts = [int]:
+    {then test_hts = [int]:
     	 if number(pmax.x) < NK*low_KGB_frac {defaults to 1/4 of #KGB; so most of time, use to_ht}
 	 then []
 	 else let (answer,) = deform_hts(pmax,r\2)  {!!this r\2 is a parameter to fiddle}
 	      in answer
-	 fi
-    then tester = (Param->bool): (Param p) bool: {could have recorded bool above to
+	 fi}
+    then test_ht = next_height(pmin)
+    {then tester = (Param->bool): (Param p) bool: {could have recorded bool above to
     	 	  		 	   	 omit is_unitary at end}
-    	 is_unitary_test(p,test_hts)
-    {then () = if facet_verbose then prints("test_hts = ",test_hts) fi}
+    	 is_unitary_test(p,test_hts)}
+    then tester = (Param->bool): (Param p) bool: is_unitary_to_ht_big(p, test_ht)
+    {then () = if facet_verbose then prints("test_ht = ",test_ht) fi}
     then () = test_string:= " using local_test_GEO_hash_real_dumb"
     then  () = hash_real_dumbCounter.use()
     then LFDKH = localFD_KHash_01(x, lambda, Lvd, pol_hash,LF)
@@ -1208,9 +1216,9 @@ set local_test_GEO_hash_real_dumb(KGBElt x, ratvec lambda, VertexData vd, Vertex
 	           then ((eq,gr),IUCL,CLBF) = localGraphK(LFDKH)
 		   in  LFDKH := {if know_lower_flag
                        	      	then} local_testK_hash_know_lower(x,lambda,Lvd, LFDKH, eq,
-				      gr, CLBF, is_unitary_hash_big@Param, Uhash)
+				      gr, CLBF, is_unitary_hash_big_SIMPLE@Param, Uhash)
                        		{else local_testK_hash(x,lambda,Lvd, LFDKH, eq, gr, CLBF,
-				      is_unitary_hash_big@Param, Uhash)
+				      is_unitary_hash_big_SIMPLE@Param, Uhash)
                        		fi}
 	      else let D = int:1
     then () = while (D <= rank(x.involution-1) - 1  ) and
@@ -1247,11 +1255,11 @@ set local_test_GEO_hash_real_dumb(KGBElt x, ratvec lambda, VertexData vd, Vertex
                                                     	do Uhash.lookup(p).>=
                                                    	od)
                                                then true
-                                               else all(for p in ps do is_unitary_hash_big(p) od)
+                                               else all(for p in ps do is_unitary_hash_big_SIMPLE(p) od)
                                                fi {any}
                                      	  {else all(for p in ps
                                                     do Uhash.lookup(p).>= or
-                                                    is_unitary_hash_big(p) od)
+                                                    is_unitary_hash_big_SIMPLE(p) od)
                                      	  fi{know_lower}}
 		{ these are simplices of dim at least 2 with unitary faces,
 		so expect TRUE usually; so is_unitary faster than tester?}
@@ -1374,7 +1382,7 @@ set local_test_GEO_hash_dumb(KGBElt x, ratvec lambda, VertexData vd, VertexData 
 					       	   do Uhash.lookup(p).>=
 						   od)
 					  then true
-					  else all(for p in ps do is_unitary_hash_big(p) od)
+					  else all(for p in ps do is_unitary_hash_big_SIMPLE(p) od)
 					  fi
 		{ these are simplices of dim at least 2 with unitary faces,
 		so expect TRUE usually; so is_unitary faster than tester?}
@@ -1451,7 +1459,7 @@ set local_test_GEO_hash_def_dumb(KGBElt x, ratvec lambda, VertexData vd, VertexD
 			  else def_steps
 			  fi
     then tester = (Param->bool): (Param p) bool:
-    	 is_unitary_def_test{_big}(p,def_steps_temp) {(G.rank+1)\2)}
+    	 is_unitary_def_test_big(p,def_steps_temp) {(G.rank+1)\2)}  {comment out _big???}
     then () = test_string:= " using local_test_GEO_hash_def_dumb"
     then  () = hash_def_dumbCounter.use()
     then LFDKH = localFD_KHash_01(x, lambda, Lvd, pol_hash,LF)
@@ -1497,7 +1505,7 @@ set local_test_GEO_hash_def_dumb(KGBElt x, ratvec lambda, VertexData vd, VertexD
 				      else if all(for q in ps do @bool:  is_finished(q.x,q.lambda) and
 					   	   	   (Uhash.lookup(q) >= 0) od)
 				      	    then [LFDKH[D+1][m]]
-				      	    else if all(for q in ps do @bool: is_unitary_hash_big(q) od)
+				      	    else if all(for q in ps do @bool: is_unitary_hash_big_SIMPLE(q) od)
 					    	 then [LFDKH[D+1][m]]
 					   	 else []
 					   	 fi
@@ -1516,13 +1524,13 @@ set local_test_GEO_hash_def_dumb(KGBElt x, ratvec lambda, VertexData vd, VertexD
 							    (Uhash.lookup(q) = -1))
 							  od)
 						   then []
-					      	   else if is_unitary_hash_big(pC)
+					      	   else if is_unitary_hash_big_SIMPLE(pC)
 					   	   	then [LFDKH[D+1][m]]
 					   	   	else []
 					     	   	fi
 				      	      	   fi {any(for q}
 				      else {not wiggle_flag}
-					      if is_unitary_hash_big(pC)
+					      if is_unitary_hash_big_SIMPLE(pC)
 					      then [LFDKH[D+1][m]]
 					      else []
 					      fi
@@ -1680,7 +1688,7 @@ set local_test_GEO_hash_no_dumb(KGBElt x, ratvec lambda, VertexData vd, VertexDa
 			       fi
     {then () = prints("trial of eq at dim 1 is ",trial(x,lambda,Lvd,LFDKH, eq, hts[0]))}
     then () = LFDKH := local_testK_hash(x,lambda,Lvd, LFDKH, eq, gr, CLBF,
-    	      (Param->bool):(Param p): is_unitary_to_ht{_big}(p, hts[0]), Uhash)
+    	      (Param->bool):(Param p): is_unitary_to_ht_big(p, hts[0]), Uhash) {comment out _big???}
     then () = if test_verbose then prints("unitary to ht ",hts[0],
                         " facet counts to dim 1: ",for list in LFDKH do #list od) fi
     then () = LFDKH := if temp_K_char_flag
@@ -1695,7 +1703,7 @@ set local_test_GEO_hash_no_dumb(KGBElt x, ratvec lambda, VertexData vd, VertexDa
         {remove from LFDKH all facets failing is_unitary_to_ht(test_hts[0])}
     then () = LFDKH := local_testK_hash(x,lambda,Lvd, LFDKH, eq, gr, CLBF,
     	   (Param->bool):(Param p): {Uhash.lookup(p).>= or}
-	   			is_unitary_to_hts{_hash}(p,hts[1:test_levels[0]+1]), Uhash)
+	   			is_unitary_to_hts_big(p,hts[1:test_levels[0]+1]), Uhash)
     then () = if test_verbose then prints("unitary to ht ",test_hts[0],
                         " facet counts to dim 1: ",for list in LFDKH
 			do #list od) fi
@@ -1705,8 +1713,8 @@ set local_test_GEO_hash_no_dumb(KGBElt x, ratvec lambda, VertexData vd, VertexDa
                                 r + 1, pol_hash)
 		   then ((eq,gr),IUCL,CLBF) = localGraphK(LFDKH,pol_hash,test_hts[Dlast])
 		   then () = LFDKH := local_testK_hash(x,lambda,Lvd,
-                      LFDKH, eq, gr, CLBF, (Param->bool): (Param p):
-		      is_unitary_to_hts{_big}(p,hts[test_levels[0]+1:test_levels[Dlast]+1]), Uhash)
+                      LFDKH, eq, gr, CLBF, (Param->bool): (Param p): {comment out _big???}
+		      is_unitary_to_hts_big(p,hts[test_levels[0]+1:test_levels[Dlast]+1]), Uhash)
                    in if test_verbose
 		      then prints("unitary to ht ",test_hts[Dlast],
 		      	      		" facet counts to dim ",Dlast+1,
@@ -1726,7 +1734,7 @@ set local_test_GEO_hash_no_dumb(KGBElt x, ratvec lambda, VertexData vd, VertexDa
        	      	 {compute graph on facets to dim D+1}
 		 then () = LFDKH := local_testK_hash(x,lambda,Lvd,
                       LFDKH, eq, gr, CLBF, (Param->bool): (Param p):
-		      is_unitary_to_hts{_big}(p,hts[test_levels[D-1]:test_levels[D]+1]), Uhash)
+		      is_unitary_to_hts_big(p,hts[test_levels[D-1]:test_levels[D]+1]), Uhash)
 		      {is_unitary_to_hts{_big}(p,hts[:D+1]), Uhash)}
                  then () = if test_verbose
 			   then prints("unitary to ht ",test_hts[D],
@@ -1903,8 +1911,8 @@ KTypePol_hash pol_hash, Param_hash Uhash) = [Param]:
     	 		       else localGraphK(LFDKH, pol_hash, test_hts[0])
 			       fi
     {then () = prints("trial of eq at dim 1 is ",trial(x,lambda,Lvd,LFDKH, eq, hts[0]))}
-    then () = LFDKH := local_testK_hash(x,lambda,Lvd, LFDKH, eq, gr, CLBF,
-    	      (Param->bool):(Param p): is_unitary_to_hts{_big}(p, hts[:test_levels[0]+1]), Uhash)
+    then () = LFDKH := local_testK_hash(x,lambda,Lvd, LFDKH, eq, gr, CLBF, {comment out _big???}
+    	      (Param->bool):(Param p): is_unitary_to_hts_big(p, hts[:test_levels[0]+1]), Uhash)
     then () = if test_verbose then prints("unitary to ht ",test_hts[0],
                         " facet counts to dim 1: ",for list in LFDKH do #list od) fi
     then () = LFDKH:= if temp_K_char_flag
@@ -1917,7 +1925,7 @@ KTypePol_hash pol_hash, Param_hash Uhash) = [Param]:
 		   then ((eq,gr),IUCL,CLBF) = localGraphK(LFDKH,pol_hash,test_hts[Dlast])
 		   then () = LFDKH := local_testK_hash(x,lambda,Lvd,
                       LFDKH, eq, gr, CLBF, (Param->bool): (Param p):
-		      is_unitary_to_hts{_big}(p,test_hts[1:Dlast+1]), Uhash) {test to the same height as not quick}
+		      is_unitary_to_hts_big(p,test_hts[1:Dlast+1]), Uhash) {test to the same height as not quick}
                    in if test_verbose
 		      then prints("unitary to ht ",test_hts[Dlast],
 		      	      		" facet counts to dim ",r,
@@ -1939,7 +1947,7 @@ KTypePol_hash pol_hash, Param_hash Uhash) = [Param]:
 		 {then () = prints("trial of eq at dim ",D+1," is ",
 		 trial(x,lambda,Lvd,LFDKH, eq, test_hts[D]))}
 		 then () = LFDKH := local_testK_hash(x, lambda, Lvd, LFDKH, eq, gr, CLBF,
-		 (Param->bool):(Param p): is_unitary_to_ht{_big}(p,hts[test_levels[D]]), Uhash)
+		 (Param->bool):(Param p): is_unitary_to_ht_big(p,hts[test_levels[D]]), Uhash)
 		 then () = if test_verbose
 		     	   then prints("unitary to ht ",test_hts[D], " facet counts to dim ",D+1,
 				": ", for list in LFDKH do #list od) fi
@@ -1965,8 +1973,8 @@ KTypePol_hash pol_hash, Param_hash Uhash) = [Param]:
     then start=elapsed_ms()
     then UParams = local_test_hash(x, lambda, Lvd, LFDKH, eq, gr, CLBF, Uhash, (Param->bool): (Param p):
     	 	 if sph_far_flag
-	       	 then is_unitary_hash_big(p) {small nu compared to infl char, unitary_to_ht is slow}
-	  	 else is_unitary_test(p,hts[test_levels[Dmid+1]])
+	       	 then is_unitary_hash_big_SIMPLE(p) {small nu compared to infl char, unitary_to_ht is slow}
+	  	 else is_unitary_test_big(p,hts[test_levels[Dmid+1]])
 		      {large nu compared to infl char, unitary_to_ht is fast}
 	      	 fi)
     {Maybe NEED TO PUT BOTTOM LAYER STUFF BACK}
@@ -2114,7 +2122,7 @@ set local_test_GEO_hash_one_level(KGBElt x, ratvec lambda, VertexData vd,
 			  fi
 	     {then () = prints("#Lvd = ", #Lvd.list, ", #LFDKH[0] = ",#LFDKH[0])}
 	     then tester0 = (Param->bool): (Param p) bool:
-     	     	  is_unitary_to_ht{_big}(p, hts[0])
+     	     	  is_unitary_to_ht_big(p, hts[0])
              then ((eq,gr),IUCL,CLBF) = if temp_K_char_flag
 	     	  		      	then localGraphK(LFDKH)
 					else localGraphK(LFDKH, pol_hash, hts[0])
@@ -2131,8 +2139,8 @@ set local_test_GEO_hash_one_level(KGBElt x, ratvec lambda, VertexData vd,
 					fi
 	     { then () = prints("at one_ht, #eq = ", #eq) }
 	     then tester1 = (Param->bool): (Param p) bool:
-     	     	  if prefer_to_hts then is_unitary_to_hts{_big}(p, hts[1:ONE+1])
-	 	  else is_unitary_to_ht{_big}(p,one_ht)
+     	     	  if prefer_to_hts then is_unitary_to_hts_big(p, hts[1:ONE+1])
+	 	  else is_unitary_to_ht_big(p,one_ht)
 	 {to_ht is definitely 2% slower for F4 spherical, 10% slower for Sp(10) spherical}
 	 	  fi
 	     in local_testK_hash(x,lambda,Lvd, LFDKH, eq,
@@ -2147,8 +2155,8 @@ set local_test_GEO_hash_one_level(KGBElt x, ratvec lambda, VertexData vd,
     	     {now have all local facets of dims 0 and 1.}
  	     {compute graph on facets to dim 1, to one_ht}
     	     then tester1 = (Param->bool): (Param p) bool:
-     	     	  if prefer_to_hts then is_unitary_to_hts{_big}(p, hts[:ONE+1])
-	 	  else is_unitary_to_ht{_hash}(p,one_ht)
+     	     	  if prefer_to_hts then is_unitary_to_hts_big(p, hts[:ONE+1])
+	 	  else is_unitary_to_ht_big(p,one_ht)
 	 	  {to_ht is definitely 2% slower for F4 spherical, 10% slower for Sp(10) spherical}
 	 	  fi
     	     then ((eq,gr),IUCL,CLBF) = if temp_K_char_flag
@@ -2202,7 +2210,7 @@ set local_test_GEO_hash_one_level(KGBElt x, ratvec lambda, VertexData vd,
 					  facet_bary(Lvd.list, verts))))
 					  in if all(for p in ps
 					     	    do Uhash.lookup(p).>= or
-					{tester}is_unitary_to_ht{_hash}(p,one_ht)
+					{tester}is_unitary_to_ht_big(p,one_ht)
 	{better to use to_ht because usually p _already_ unitary to one_ht}
 						    od)
 					     then [LFDKH[D+1][m]]
@@ -2240,8 +2248,8 @@ set local_test_GEO_hash_one_level(KGBElt x, ratvec lambda, VertexData vd,
 	      	      	   " unitary candidates in ",#eq," equivalence classes.") fi
               in local_test_hash(x, lambda, Lvd, LFDKH, eq, gr, CLBF, Uhash, (Param->bool):(Param p):
 		      		    if prefer_to_hts
-		      		    then Uhash.lookup(p).>= or is_unitary_test(p,hts[ONE+1:])
-		      		    else Uhash.lookup(p).>= or is_unitary_test(p,hts[LAST])
+		      		    then Uhash.lookup(p).>= or is_unitary_test_big(p,hts[ONE+1:])
+		      		    else Uhash.lookup(p).>= or is_unitary_test_big(p,hts[LAST])
 		      		    fi)
 		       {NEED PERHAPS TO PUT BOTTOM LAYER BACK}
           else for list@d in LFDKH
@@ -2412,8 +2420,8 @@ set local_test_GEO_hash_bottom_layer(KGBElt x, ratvec lambda, VertexData vd,
     	  {if  sph_far_flag
 	      {term on left guaranteed <= main term on right. If close, then
 	       params are close to spherical princ series, and to_ht is fast}
-	  then is_unitary_hash_big(p) {small nu compared to infl char, unitary_to_ht is slow}
-	  else} is_unitary_test(p,next_heights(pmin,steps)~[0])
+	  then is_unitary_hash_big_SIMPLE(p) {small nu compared to infl char, unitary_to_ht is slow}
+	  else} is_unitary_test_big(p,next_heights(pmin,steps)~[0])
 	       {large nu compared to infl char, unitary_to_ht is fast}
 	  {fi})
     then time = elapsed_ms() - start

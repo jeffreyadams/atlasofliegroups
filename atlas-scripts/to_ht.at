@@ -22,16 +22,18 @@ fi
 
 {This version seems NOT faster or smaller}
 set full_deform_to_ht(Param p, int N) = KTypePol:
+    if N < 0 then return full_deform(p) fi;
     let pc = alcove_center(p)
     in regroup(p.real_form,deformedParams[N].entry(pc))
 
 {deform_to_height(p,N)}
 
 set twisted_full_deform_to_ht(Param p,int N) = KTypePol:
+    if N < 0 then return twisted_full_deform(p) fi;
     let pc = alcove_center(p)
     in regroup(p.real_form, twistedDeformedParams[N].entry(pc))
 
-set KL_sum_at_s_to_ht(int N) = (Param p)ParamPol:
+set KL_sum_at_s_to_ht(int N) = (Param p) ParamPol:
   KL_sum_at_s_to_height(p,N)
 
 set twisted_KL_sum_at_s_to_ht(int N) = (Param p) ParamPol:

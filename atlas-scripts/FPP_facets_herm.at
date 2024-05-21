@@ -1117,6 +1117,7 @@ set_type
   , (Param -> bool) nucheck {check whether p is nonunitary, and if so add to its hash table}
   , (Param -> int) numatch {add p to its nuhash table}
   , ((Param,int) -> int) long_numatch {add p to ith nuhash table}
+  , ( -> ) write {output unitary data for file}
 )
 ]
 
@@ -1240,8 +1241,23 @@ set make_big_unitary_hash() = big_unitary_hash_table:
       in nuhashes[i].match(p)
     , ((Param,int) -> int): {nulong_match} (Param p, int i):
       nuhashes[i].match(p)
-
-
+    , ( -> ): {write} @void:
+    let rf_list = real_form_hash.list()
+    in for rf@i in rf_list
+       do let Gname = "G"+to_string(i)
+	  then listname = Gname+"_list"
+	  then intlistname = Gname+"_XLK"
+	  then plist = uhashes[i].list()
+	  then bitmapintlist = xl_known[i]
+	  in write_real_form(rf,Gname);
+	     prints("set j = big_unitary_hash.rf_number(",Gname,")");
+	     prints("set ",listname,"=[Param]:[]");
+	     write_append_cat_param_list(plist,listname,Gname);
+	     prints("set ",intlistname,"=[int]:[]");
+	     write_append(bitmapintlist,intlistname);
+	     prints("void: for p in ",listname," do big_unitary_hash.long_match(p,j) od");
+	     prints("big_unitary_hash.finishall(",Gname,",",intlistname,")")
+	od
     )
 )
 
@@ -1321,6 +1337,7 @@ set is_unitary_to_ht_big (Param p,int N) = bool:
   unitary_test_counter.use();
   is_pure(hermitian_form_irreducible_to_ht(p,N))
 
+{meant to be used for G simple}
 { compute Hermitian form to ht on p, report if it is unitary}
 set is_unitary_to_ht_big (Param p,int N) = bool:
   if (not is_hermitian(p)) or (not is_pos_on_LKTs(p)) then return false fi;
@@ -1330,6 +1347,7 @@ set is_unitary_to_ht_big (Param p,int N) = bool:
   unitary_test_counter.use();
   is_pure(hermitian_form_irreducible_to_ht(p,N))
 
+{meant to be used for G simple}
 { compute Hermitian form to hts on p, report if it is unitary}
 set is_unitary_to_hts_big (Param p,[int] Ns) = bool:
   if #Ns = 0 then return is_unitary_hash_big(p) fi;
@@ -1342,6 +1360,7 @@ set is_unitary_to_hts_big (Param p,[int] Ns) = bool:
      else  return false fi  od;
   true
 
+{ONLY for G simple}
 {. same as previous if next_height N is known .}
 set is_unitary_test_big(Param p, int N) = bool:
     unitary_test_counter.use();
@@ -1350,9 +1369,10 @@ set is_unitary_test_big(Param p, int N) = bool:
     then return true
     fi;
     is_pure(hermitian_form_irreducible_to_ht(p,N)) and
-    is_unitary_hash_big(p)
+    is_unitary_hash_big_SIMPLE(p)
 
-{ compute Hermitian form to ht on p, report if it is unitary}
+{ONLY for G simple}
+{. compute Hermitian form to ht on p, report if it is unitary .}
 set is_unitary_test_big (Param p, [int] Ns) = bool:
   if (not is_hermitian(p)) or (not is_pos_on_LKTs(p)) then return false fi;
   if is_finished(p.x, p.lambda) and big_unitary_hash.lookup(p).>=
@@ -1360,8 +1380,9 @@ set is_unitary_test_big (Param p, [int] Ns) = bool:
   fi;
   if #Ns = 0 then return is_unitary_hash_big(p) fi;
   for N in Ns do if is_pure(hermitian_form_irreducible_to_ht(p,N)) then unitary_test_counter.use() else  return false fi  od;
-  is_unitary_hash_big(p)
+  is_unitary_hash_big_SIMPLE(p)
 
+{ONLY for G simple}
 {use the first m heights from deform_heights to test}
 set is_unitary_def_test_big(Param p,int m) = bool:
     let (def,flag)= deform_hts(p,m)
@@ -1370,6 +1391,20 @@ set is_unitary_def_test_big(Param p,int m) = bool:
        else is_unitary_test_big(p,def)
        fi
 
+{ONLY for G simple}
 {use the first height from deform_heights to test}
 set is_unitary_def_test_big(Param p) = bool:
     is_unitary_def_test_big(p,1)
+
+{ONLY for G simple}
+set is_unitary_next_big(Param p) = bool:
+    if is_pos_on_LKTs@Param(p)
+    then  let n=next_heightB(p)
+    	  in  if (n-1).=
+	      then true
+	      elif is_unitary_to_ht_big(p,n)
+	      then is_unitary_hash_big_SIMPLE(p)
+	      else false
+	      fi
+    else false
+    fi
