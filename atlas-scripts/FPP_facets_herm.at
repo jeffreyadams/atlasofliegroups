@@ -1118,6 +1118,8 @@ set_type
   , (Param -> int) numatch {add p to its nuhash table}
   , ((Param,int) -> int) long_numatch {add p to ith nuhash table}
   , ( -> ) write {output unitary data for file}
+  , (RealForm -> ) writeG {output data for one group to file}
+  , ((RealForm, int, int) -> ) writeGrange {output data for KGB(G)[low,high]}
 )
 ]
 
@@ -1258,6 +1260,44 @@ set make_big_unitary_hash() = big_unitary_hash_table:
 	     prints("void: for p in ",listname," do big_unitary_hash.long_match(p,j) od");
 	     prints("big_unitary_hash.finishall(",Gname,",",intlistname,")")
 	od
+    , (RealForm -> ): {writeG} (RealForm G):
+      let i = add_real_form(G)
+      then Gname = "Gtemp"
+      then listname = Gname+"_list"
+      then intlistname = Gname+"_XLK"
+      then plist = uhashes[i].list()
+      then bitmapintlist = xl_known[i]
+      in write_real_form(G,Gname);
+	 prints("set j = big_unitary_hash.rf_number(",Gname,")");
+	 prints("set ",listname,"=[Param]:[]");
+	 write_append_cat_param_list(plist,listname,Gname);
+	 prints("set ",intlistname,"=[int]:[]");
+	 write_append(bitmapintlist,intlistname);
+	 prints("void: for p in ",listname," do big_unitary_hash.long_match(p,j) od");
+	 prints("big_unitary_hash.finishall(",Gname,",",intlistname,")")
+    , ((RealForm, int, int) -> ): {writeGrange} (RealForm G, int low, int high):
+      let i = add_real_form(G)
+      then Gname = "Gtemp"
+      then listname = Gname+"_list_"+to_string(low)+"_"+to_string(high)
+      then intlistname = Gname+"_XLK_"+to_string(low)+"_"+to_string(high)
+      then longlist = uhashes[i].list()
+      then plist = for p in longlist
+      	   	   do if p.x.number >= low and p.x.number < high
+		      then [p]
+		      else []
+		      fi
+		   od.##
+      then longbitmapintlist = xl_known[i]
+      then bitmapintlist = longbitmapintlist[low:high]
+      in write_real_form(G,Gname);
+	 prints("set j = big_unitary_hash.rf_number(",Gname,")");
+	 prints("set X = KGB(",Gname,")[",low,":",high,"]");
+	 prints("set ",listname,"=[Param]:[]");
+	 write_append_cat_param_list(plist,listname,Gname);
+	 prints("set ",intlistname,"=[int]:[]");
+	 write_append(bitmapintlist,intlistname);
+	 prints("void: for p in ",listname," do big_unitary_hash.long_match(p,j) od");
+	 prints("for N@m in ",intlistname," do big_unitary_hash.finish(X[m],N) od")
     )
 )
 
