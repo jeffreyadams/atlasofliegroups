@@ -636,9 +636,9 @@ set FPP_unitary_hash_bottom_layer([(KGBElt,ratvec)] xlambdas, Param_hash UhashG{
        	  	    print_time_string(befmoreTime), ", more_shift = ", more_shift);
       		 prints("     more_shift = ",more_shift,", #Params missed by more = ", more_bad_hash.size())
 	    fi;
-       	    if surprise_flag and surprise_hash.size() > 0
+       	    {if surprise_flag and surprise_hash.size() > 0
 	    then prints("  Found ", surprise_hash.size(), " counterexamples to coh_ind(unitary) = unitary; they're in surprise_hash.")
-	    fi;
+	    fi;}
        	    prints("  #hash_def_dumb =", hash_def_dumbCounter.use_count(),
 	      ", #hash2 =", hash2Counter.use_count(), ", #hash_one_level = ", hash_one_levelCounter.use_count(),
 	      ", #hash_bottom_layer =", hash_bottom_layerCounter.use_count());
@@ -896,9 +896,9 @@ set FPP_unitary_hash_bottom_layer([KGBElt] xs, Param_hash UhashG{, Param_hash Up
        	  	   	      print_time_string(befmoreTime));
 		 prints("     more_shift = ", more_shift, ", #Params missed by more = ", more_bad_hash.size())
 	    fi;
-       	    if surprise_flag and surprise_hash.size() > 0
+       	    {if surprise_flag and surprise_hash.size() > 0
 	    then prints("Found ", surprise_hash.size(), " counterexamples to coh_ind(unitary) = unitary; they're in surprise.hash.")
-	    fi;
+	    fi;}
        	    prints("  #hash_def_dumb =", hash_def_dumbCounter.use_count(), ", #hash2 = ", hash2Counter.use_count(),
 	      ", #hash_one_level = ", hash_one_levelCounter.use_count(), ", #hash_bottom_layer = ", hash_bottom_layerCounter.use_count());
        	    prints("Number of unitary params = ", sum(for list in answerCards do sum(list) od),
@@ -1631,7 +1631,8 @@ set precomputeR(RealForm G) = void:
     in real_induced(G)
 
 set precomputeALL(RealForm G) = void:
-    let start = elapsed_ms(), rflist = SDLALL(G)
+    let start = elapsed_ms(), rflist = SDLALL(G), iG = big_unitary_hash.rf_number(G)
+    then Norig = big_unitary_hash.uhash(G).size()
     then () = coh_ind_flag:=false
     then temp_report_flag = FPP_report_flag
     then () = FPP_report_flag :=false
@@ -1648,20 +1649,31 @@ set precomputeALL(RealForm G) = void:
     then FPP_time = elapsed_ms()
     then () = FPP_report_flag:=true
     then () = real_induced(G)
-    then NR = big_unitary_hash.uhash(G).size()
+    then NR = big_unitary_hash.uhash(G).size() - Norig
     then () = prints("In ",print_time_string(elapsed_ms() -FPP_time), ", real induction found ",NR,
     	      		 " FPP unitary facets for G.")
     then RI_time = elapsed_ms()
     then () = theta_induced(G)
-    then NTheta =  big_unitary_hash.uhash(G).size() - NR
-    in prints("In ",print_time_string(elapsed_ms() -RI_time), ", coh induction found additional ",NTheta,
-       		  	" FPP unitary facets for G.")
+    then NTheta =  big_unitary_hash.uhash(G).size() - NR - Norig
+    then () = prints("In ",print_time_string(elapsed_ms() -RI_time),
+    	 ", coh induction found additional ",
+    	 NTheta," FPP unitary facets for G.")
+    then ind_time = elapsed_ms()
+    then Gunip = unipotent_representations(G)
+    then () = for p in Gunip do big_unitary_hash.uhash(G).match(p) od
+    then Nunip = big_unitary_hash.uhash(G).size() - NTheta - NR - Norig
+    then () =  prints("In ",print_time_string(elapsed_ms() -ind_time),
+    	 ", found additional ",
+    	 Nunip," unipotent facets for G.")
+    in prints("altogether found ", big_unitary_hash.uhash(G).size() -
+    Norig," FPP unitary facets for G.")
 
 set FPPpre(RealForm G) = void:
     let start = elapsed_ms()
     then temp_KGB_flag = every_KGB_flag
     then () = every_KGB_flag:= false
     then () = precomputeALL(G)
+    then () = unip_flag:=false
     then () = every_KGB_flag := temp_KGB_flag
     then () = if pre_bottom_flag
        	      then FPP_unitary_hash_bottom_layer(G)

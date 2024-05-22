@@ -1167,8 +1167,15 @@ set quick_flag = true
 Called when there are not enough heights; presumably small KGBElts??}
 set local_test_GEO_hash_real_dumb(KGBElt x, ratvec lambda, VertexData vd, VertexData Lvd,
      [[FacetVertsIndex]] LF, KTypePol_hash pol_hash, Param_hash Uhash) = [Param]:
+    if {zero case} #LF[0] = 0 then return [] fi;
+    if {tempered case} #LF[0] = 1 and ((1-x.involution)*(Lvd.list[LF[0][0][0]])).=
+    then let p = parameter(x,lambda,0*lambda)
+    	 then () = for q in monomials(finalize(p))
+    	       	   do Uhash.match(q)
+		   od
+	 in return [p]
+    fi;
     let (G,j0) = %x, thetaMinus = x.involution - 1, start = elapsed_ms()
-    then () = if #LF[0] = 0 then return [] fi
     then zero_pol = null_module(G)
     then () = if 1*parameter(x,lambda,lambda) = zero_pol then return [] fi
     then r = rank(x.involution - 1), NK = #KGB(x.real_form)
@@ -1321,8 +1328,15 @@ Called when there are not enough heights; presumably small KGBElts??}
 set local_test_GEO_hash_dumb(KGBElt x, ratvec lambda, VertexData vd, VertexData Lvd,
     [[FacetVertsIndex]] LF, [int] hts, KTypePol_hash pol_hash,
     Param_hash Uhash) = [Param]:
+    if {zero case} #LF[0] = 0 then return [] fi;
+    if {tempered case} #LF[0] = 1 and ((1-x.involution)*(Lvd.list[LF[0][0][0]])).=
+    then let p = parameter(x,lambda,0*lambda)
+    	 then () = for q in monomials(finalize(p))
+    	       	   do Uhash.match(q)
+		   od
+	 in return [p]
+    fi;
     let (G,j0) = %x, thetaMinus = x.involution - 1, start = elapsed_ms()
-    then () = if #LF[0] = 0 then return [] fi
     then zero_pol = null_module(G)
     then () = if 1*parameter(x,lambda,lambda) = zero_pol then return [] fi
     then r = rank(x.involution - 1), NK = #KGB(G)
@@ -1442,8 +1456,15 @@ set def_steps = -1
 set local_test_GEO_hash_def_dumb(KGBElt x, ratvec lambda, VertexData vd, VertexData Lvd,
     [[FacetVertsIndex]] LF, KTypePol_hash pol_hash,
     Param_hash Uhash) = [Param]:
+    if {zero case} #LF[0] = 0 then return [] fi;
+    if {tempered case} #LF[0] = 1 and ((1-x.involution)*(Lvd.list[LF[0][0][0]])).=
+    then let p = parameter(x,lambda,0*lambda)
+    	 then () = for q in monomials(finalize(p))
+    	       	   do Uhash.match(q)
+		   od
+	 in return [p]
+    fi;
     let (G,j0) = %x, thetaMinus = x.involution - 1, start = elapsed_ms()
-    then () = if #LF[0] = 0 then return [] fi
     then zero_pol = null_module(G), pmin = parameter(x,lambda, 0*lambda)
     then () = if 1*pmin = zero_pol then return [] fi
     then r = rank(x.involution - 1)
@@ -1656,6 +1677,14 @@ Assume LF is vertices and edges, already pos on LKTs and hermitian and Dirac}
 set local_test_GEO_hash_no_dumb(KGBElt x, ratvec lambda, VertexData vd, VertexData Lvd,
     [[FacetVertsIndex]] LF, [int] hts, KTypePol_hash pol_hash,
     Param_hash Uhash) = [Param]:
+    if {zero case} #LF[0] = 0 then return [] fi;
+    if {tempered case} #LF[0] = 1 and ((1-x.involution)*(Lvd.list[LF[0][0][0]])).=
+    then let p = parameter(x,lambda,0*lambda)
+    	 then () = for q in monomials(finalize(p))
+    	       	   do Uhash.match(q)
+		   od
+	 in return [p]
+    fi;
     let () = hashCounter.use()
     then () = test_string:= " using local_test_GEO_hash"
     then () = if(facet_verbose) then prints("hts = ",hts) fi
@@ -1764,6 +1793,14 @@ set local_test_GEO_hash_no_dumb(KGBElt x, ratvec lambda, VertexData vd, VertexDa
 set local_test_GEO_hash(KGBElt x, ratvec lambda, VertexData vd, VertexData Lvd,
     [[FacetVertsIndex]] LF, KTypePol_hash pol_hash,
     Param_hash Uhash) = [Param]:
+    if {zero case} #LF[0] = 0 then return [] fi;
+    if {tempered case} #LF[0] = 1 and ((1-x.involution)*(Lvd.list[LF[0][0][0]])).=
+    then let p = parameter(x,lambda,0*lambda)
+    	 then () = for q in monomials(finalize(p))
+    	       	   do Uhash.match(q)
+		   od
+	 in return [p]
+    fi;
     let (G,j0) = %x, thetaMinus = x.involution - 1
     then () = if {EMPTY CASE} #LF[0] = 0 then return [] fi
     then () = if quick_flag then short_hts_flag:=false fi
@@ -1843,9 +1880,16 @@ set hash2Counter = make_counter()
 {This version assumes edges and vertices already computed, with herm and pos on LKTs; called by one_level}
 set local_test_GEO_hash2(KGBElt x, ratvec lambda, VertexData vd, VertexData Lvd, [[FacetVertsIndex]] LF,
 KTypePol_hash pol_hash, Param_hash Uhash) = [Param]:
+    if {zero case} #LF[0] = 0 then return [] fi;
+    if {tempered case} #LF[0] = 1 and ((1-x.involution)*(Lvd.list[LF[0][0][0]])).=
+    then let p = parameter(x,lambda,0*lambda)
+    	 then () = for q in monomials(finalize(p))
+    	       	   do Uhash.match(q)
+		   od
+	 in return [p]
+    fi;
     let G = x.real_form, thetaMinus = 1-x.involution, start = elapsed_ms()
     then () = if quick_flag then short_hts_flag:=false fi
-    then () = if #LF[0] = 0 then return [] fi
     then zero_pol = null_module(G), pmin = parameter(x,lambda,0*lambda)
     then () = if 1*pmin = zero_pol then return [] fi
     then r = rank(x.involution -1)
@@ -2037,8 +2081,15 @@ set hash_one_levelCounter = make_counter()
 set local_test_GEO_hash_one_level(KGBElt x, ratvec lambda, VertexData vd,
     VertexData Lvd, [[FacetVertsIndex]] LF, KTypePol_hash pol_hash,
     Param_hash Uhash) = [Param]:
+    if {zero case} #LF[0] = 0 then return [] fi;
+    if {tempered case} #LF[0] = 1 and ((1-x.involution)*(Lvd.list[LF[0][0][0]])).=
+    then let p = parameter(x,lambda,0*lambda)
+    	 then () = for q in monomials(finalize(p))
+    	       	   do Uhash.match(q)
+		   od
+	 in return [p]
+    fi;
     let G = x.real_form, thetaMinus = x.involution - 1, start = elapsed_ms()
-    then () = if #LF[0] = 0 then return [] fi
     then () = if quick_flag then short_hts_flag:=false fi
     then zero_pol = null_module(G), pmin = parameter(x,lambda,0*lambda)
     then () = if 1*pmin = zero_pol then return [] fi
@@ -2321,9 +2372,16 @@ MUST use full K-chars to compute graphs.}
 set local_test_GEO_hash_bottom_layer(KGBElt x, ratvec lambda, VertexData vd,
     			VertexData Lvd, [[FacetVertsIndex]] LF, KTypePol_hash pol_hash,
     			Param_hash Uhash) = [Param]:
+    if {zero case} #LF[0] = 0 then return [] fi;
+    if {tempered case} #LF[0] = 1 and ((1-x.involution)*(Lvd.list[LF[0][0][0]])).=
+    then let p = parameter(x,lambda,0*lambda)
+    	 then () = for q in monomials(finalize(p))
+    	       	   do Uhash.match(q)
+		   od
+	 in return [p]
+    fi;
     let G = x.real_form, thetaMinus = x.involution - 1, start = elapsed_ms(),
     	UTCstart = unitary_test_counter.use_count()
-    then () = if #LF[0] = 0 then return [] fi
     then zero_pol = null_module(G)
     then () = if 1*parameter(x,lambda,0*lambda) = zero_pol then return [] fi
     then ht = height(parameter(x,lambda,0*lambda))
