@@ -1202,8 +1202,7 @@ set make_big_unitary_hash() = big_unitary_hash_table:
       	 then true
       	 elif is_member_bitset (position(p.x, p.lambda), xl_known[i][p.x.number])
 	 then false
-	 else let () = unitary_test_counter.use()
-	      then chk = is_unitary(p)
+	 else let chk = is_unitary(p)
 	      then () = if chk
 		     	then uhashes[i].match(p)
 			else nuhashes[i].match(p)
@@ -1342,9 +1341,10 @@ set all_finished(RealForm G) = [(KGBElt,ratvec)]:
        	     od
        od.##
 
+set UHBS_time = int: 0
 {this version is only for G simple and hermitian FPP params}
 set is_unitary_hash_big_SIMPLE(Param p) = bool:
-    let G = p.real_form
+    let start = elapsed_ms(), G = p.real_form
     then () = if is_finished(p.x, p.lambda) then return big_unitary_hash.lookup(p).>= fi
     then (,pL) = wkgood_Q(p)
     then derpLs = derived_factor_params2(pL)
@@ -1353,7 +1353,8 @@ set is_unitary_hash_big_SIMPLE(Param p) = bool:
     then statuses = for derpL in derpLs
     		    do big_unitary_hash.check(derpL)
 		    od
-    in if all(statuses) or #statuses = 1
+    then answer =
+       if all(statuses) or #statuses = 1
        then statuses[0]
        else {some derpL is not unitary, but the induction is not trivial}
        	    let goodL = good_L(p)
@@ -1362,6 +1363,8 @@ set is_unitary_hash_big_SIMPLE(Param p) = bool:
 			           goodL)
 			      od))
        fi
+    then () = UHBS_time+:= elapsed_ms() - start
+    in answer
 
 set is_unitary_hash_big(Param p) = bool:
     if not is_hermitian(p) then return false fi;
@@ -1399,6 +1402,8 @@ set is_unitary_to_hts_big (Param p,[int] Ns) = bool:
      then  unitary_test_counter.use()
      else  return false fi  od;
   true
+{If N (nu part) > L*low_frac then figure to_ht could work}
+set low_frac = 1/1
 
 {ONLY for G simple}
 {. same as previous if next_height N is known .}
@@ -1408,8 +1413,12 @@ set is_unitary_test_big(Param p, int N) = bool:
     if is_finished(p.x, p.lambda) and big_unitary_hash.lookup(p).>=
     then return true
     fi;
-    is_pure(hermitian_form_irreducible_to_ht(p,N)) and
-    is_unitary_hash_big_SIMPLE(p)
+    let (LAM,NU) = low(p)
+    in if NU > LAM*low_frac
+       then is_pure(hermitian_form_irreducible_to_ht(p,N)) and
+       	    is_unitary_hash_big_SIMPLE(p)
+       else is_unitary_hash_big_SIMPLE(p)
+       fi
 
 {ONLY for G simple}
 {. compute Hermitian form to ht on p, report if it is unitary .}
@@ -1419,16 +1428,28 @@ set is_unitary_test_big (Param p, [int] Ns) = bool:
   then return true
   fi;
   if #Ns = 0 then return is_unitary_hash_big(p) fi;
-  for N in Ns do if is_pure(hermitian_form_irreducible_to_ht(p,N)) then unitary_test_counter.use() else  return false fi  od;
-  is_unitary_hash_big_SIMPLE(p)
+  let (LAM,NU) = low(p)
+  in if NU > LAM*low_frac
+     then for N in Ns
+     	  do if is_pure(hermitian_form_irreducible_to_ht(p,N))
+	     then unitary_test_counter.use()
+	     else return false fi
+	  od;
+  	  is_unitary_hash_big_SIMPLE(p)
+     else is_unitary_hash_big_SIMPLE(p)
+     fi
 
 {ONLY for G simple}
 {use the first m heights from deform_heights to test}
 set is_unitary_def_test_big(Param p,int m) = bool:
-    let (def,flag)= deform_hts(p,m)
-    in if flag
-       then is_pos_on_LKTs(p) and is_unitary_to_hts_big(p,def)
-       else is_unitary_test_big(p,def)
+    let (LAM,NU) = low(p)
+    in if NU > LAM*low_frac
+       then let (def,flag)= deform_hts(p,m)
+       	    in if flag
+       	       then is_pos_on_LKTs(p) and is_unitary_to_hts_big(p,def)
+       	       else is_unitary_test_big(p,def)
+       	       fi
+       else is_unitary_hash_big_SIMPLE(p)
        fi
 
 {ONLY for G simple}
@@ -1439,12 +1460,16 @@ set is_unitary_def_test_big(Param p) = bool:
 {ONLY for G simple}
 set is_unitary_next_big(Param p) = bool:
     if is_pos_on_LKTs@Param(p)
-    then  let n=next_heightB(p)
-    	  in  if (n-1).=
-	      then true
-	      elif is_unitary_to_ht_big(p,n)
-	      then is_unitary_hash_big_SIMPLE(p)
-	      else false
-	      fi
+    then let (LAM,NU) = low(p)
+    	 in if NU > LAM*low_frac
+	    then let n=next_heightB(p)
+    	       	 in  if (n+1).=
+	      	     then true
+	      	     elif is_unitary_to_ht_big(p,n)
+	      	     then is_unitary_hash_big_SIMPLE(p)
+		     else false {NOT unitary_to_ht}
+		     fi {n=-1}
+	    else is_unitary_hash_big_SIMPLE(p)
+	    fi {NU > LAM}
     else false
     fi
