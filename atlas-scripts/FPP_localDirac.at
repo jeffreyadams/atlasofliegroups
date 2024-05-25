@@ -385,6 +385,10 @@ set unipotents_to_hashes(RealForm G, [Param_hash] Uhashes) = void:
 and local_test_hash}
 set KU_flag = true
 
+{whether to fill in statuses for known non-unitaries in local_testK_hash
+and local_test_hash}
+set KNU_flag = true
+
 {if true, functions in FPP_global pass through KGB backwards}
 set tilde_flag = false
 
@@ -490,7 +494,7 @@ set local_testK_hash_know_lower(KGBElt x, ratvec lambda, VertexData Lvd,
     [[FacetVertsKHash]] FVKH, [[int]] eq, [[int]] gr, [vec] classListByFacet,
     (Param->bool) tester, Param_hash Uhash) = [[FacetVertsKHash]]:
     let newStatuses = for j:#eq do "?" od,  NumClasses = #eq
-    	, printInterval = int: 1
+    	, printInterval = int: 1, NUhash = big_unitary_hash.nuhash(x.real_form)
     {use Uhash to mark some classes at known? (those that hit a unitary Param)}
     {Find all Param's in Uhash with (x,lambda). For each, compute corresponding Facet.
      Use function known_unitaries from FPP_facets
@@ -501,6 +505,15 @@ set local_testK_hash_know_lower(KGBElt x, ratvec lambda, VertexData Lvd,
     	      	   then () = for list@d in knownUnitaries
     	      	   	     do for j in list
 	      	 	     	do newStatuses[classListByFacet[d][j]] := "T"
+	    	 		od
+	      		     od
+		   in ()
+	       fi
+    then () = if KNU_flag {and #FVKH = 2}
+    	      then let knownNonUnitaries = known_non_unitaries(NUhash, x, lambda, Lvd, FVKH)
+    	      	   then () = for list@d in knownNonUnitaries
+    	      	   	     do for j in list
+	      	 	     	do newStatuses[classListByFacet[d][j]] := "F"
 	    	 		od
 	      		     od
 		   in ()

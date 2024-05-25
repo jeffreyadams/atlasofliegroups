@@ -50,6 +50,26 @@ set known_unitaries(Param_hash UhashLocal, VertexData Lvd,
 	 od
      in out
 
+{takes the known non-unitaries from non-unitary_hash having the given x and lambda,
+ and returns their locations in LFDKH}
+set known_non_unitaries(Param_hash NUhash, KGBElt x, ratvec lambda, VertexData Lvd,
+    [[FacetVertsKHash]] LFDKH) = [vec]:
+    let ps = for d:#LFDKH
+    	     do for v in LFDKH[d]
+	     	do parameter(x,lambda,facet_bary(Lvd.list, v[:d+1]))
+		od
+	     od
+    in for d:#LFDKH
+       do for p@j in ps[d]
+       	  do let qs = monomials(finalize(p))
+	     in if all(for q in qs do @bool: NUhash.lookup(q).>= od)
+	     	then [j]
+		else []
+		fi
+	  od.##
+       od
+
+
 set localize(Param_hash Uhash, KGBElt x, ratvec lambda) = Param_hash:
     let NumKnown = Uhash.size(), UhashLoc = make_Param_hash()
     then () = for k:NumKnown
@@ -1107,6 +1127,7 @@ set_type
   , ((RealForm,[int]) -> ) finishall {add bitmaps of all new known (x,lambda) to xl_known}
   , (RealForm -> Param_hash) uhash {hash table of known unitary}
   , (RealForm -> Param_hash) nuhash {hash table of known nonunitary}
+  , (RealForm -> ) nuhash_fill {put known nonunitary vertices in nuhash}
   , (Param -> (int,int)) long_lookup {(rf_index(p.real_form), location of p in its uhash)}
   , (Param -> int) lookup {(location of p in its uhash)}
   , (Param -> bool) check {check whether p is unitary, and if so add to its hash table}
@@ -1187,6 +1208,22 @@ set make_big_unitary_hash() = big_unitary_hash_table:
       uhashes[add_real_form(rf)]
     , (RealForm -> Param_hash): {nuhash} (RealForm rf) Param_hash:
       nuhashes[add_real_form(rf)]
+    , (RealForm -> ): {nuhash_fill} (RealForm rf):
+      let i = add_real_form(rf)
+      in for x@n in KGB(rf)
+      	 do let lambdas = FPP_lambdas(x), theta = x.involution
+	    in for j in set_bit_positions(xl_known[i][n]) {uhash is complete at this lambda}
+	       do let lambda = lambdas[j]
+	       	  then Lvd = LPm_table.Lvd(rf, theta, ((1+theta)*lambda).numer)
+		  in for gamma in Lvd.list
+	             do let p = parameter(x,lambda,gamma)
+			in if is_final(p)
+			      and uhashes[i].lookup(p).<
+			    then nuhashes[i].match(p)
+			    fi
+		     od {gamma}
+	       od {lambda}
+	  od {x}
     , (Param -> (int,int)): {long_lookup} (Param p) (int,int):
       let i = add_real_form(p.real_form)
       in (i, uhashes[i].lookup(p))

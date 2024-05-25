@@ -636,9 +636,6 @@ set FPP_unitary_hash_bottom_layer([(KGBElt,ratvec)] xlambdas, Param_hash UhashG{
        	  	    print_time_string(befmoreTime), ", more_shift = ", more_shift);
       		 prints("     more_shift = ",more_shift,", #Params missed by more = ", more_bad_hash.size())
 	    fi;
-       	    {if surprise_flag and surprise_hash.size() > 0
-	    then prints("  Found ", surprise_hash.size(), " counterexamples to coh_ind(unitary) = unitary; they're in surprise_hash.")
-	    fi;}
        	    prints("  #hash_def_dumb =", hash_def_dumbCounter.use_count(),
 	      ", #hash2 =", hash2Counter.use_count(), ", #hash_one_level = ", hash_one_levelCounter.use_count(),
 	      ", #hash_bottom_layer =", hash_bottom_layerCounter.use_count());
@@ -896,9 +893,6 @@ set FPP_unitary_hash_bottom_layer([KGBElt] xs, Param_hash UhashG{, Param_hash Up
        	  	   	      print_time_string(befmoreTime));
 		 prints("     more_shift = ", more_shift, ", #Params missed by more = ", more_bad_hash.size())
 	    fi;
-       	    {if surprise_flag and surprise_hash.size() > 0
-	    then prints("Found ", surprise_hash.size(), " counterexamples to coh_ind(unitary) = unitary; they're in surprise.hash.")
-	    fi;}
        	    prints("  #hash_def_dumb =", hash_def_dumbCounter.use_count(), ", #hash2 = ", hash2Counter.use_count(),
 	      ", #hash_one_level = ", hash_one_levelCounter.use_count(), ", #hash_bottom_layer = ", hash_bottom_layerCounter.use_count());
        	    prints("Number of unitary params = ", sum(for list in answerCards do sum(list) od),
@@ -940,153 +934,32 @@ set unitary_nus(RealForm G) = [[[ratvec]]]:
 	       od
       in answer
 
-{
+
 {all nu so parameter(x,lambda,nu) is in nonunitary hash for G. To be applied only to G simple mod center.}
 set non_unitary_nus(RealForm G, KGBElt x, ratvec lambda) = [ratvec]:
-    let NUhash = big_unitary_hash.nuhash(G)
-    in for j:NUhash.size()
-       do let p = Uhash.index(j)
-	  in if p.x = x and p.lambda = lambda then [p.nu]
-	     else []
-	     fi
+    let () = big_unitary_hash.nuhash_fill(G)
+    then NUhash = big_unitary_hash.nuhash(G)
+    in for p in NUhash.list()
+       do if is_unitary(p)
+       	  then prints("line 950 OOPS! ",p," at ",G)
+	  fi;
+	  if p.x = x and p.lambda = lambda and is_hermitian(p)
+	  then [p.nu]
+	  else []
+	  fi
        od.##
-}
 
-{
-set non_unitary_vert_nus(RealForm G, KGBElt x, ratvec lambda) = [ratvec]:
-    let maxLRis = max_LRs(G)
-    then maxLRidatas = [[(RealForm, RealForm, mat)]]: {one list for each maxLRi, with
-    	 	     an entry (Sik, derLik, Mik) for each derived simple factor derLik}
-       	 for maxLRi in maxLRis
-	 do derived_simple_factors_info(maxLRi)
-	 od
-    then derLiks = [[RealForm]]:
-    	 for Lidata in maxLRidatas
-	 do for (,derLik,) in Lidata
-	    do derLik
-	    od
-	 od
-    then Miks = [[mat]]: {each of these maps G weights to weights for one factor derLik}
-       	 for Lidata in maxLRidatas
-	 do for (,,Mik) in Lidata
-	    do Mik
-	    od
-	 od
-    then Mikinvs = [[ratmat]]: {each of these maps Lik weights to G weights}
-	     for Lidata in maxLRidatas
-	     do for (Lik, derLik, Mik) in Lidata
-	     	do (Lik.simple_roots)*ratvecs_as_ratmat(derLik.fundamental_coweights).^
-		od
-	     od
-    then KGBEltLis = [[KGBElt]]: {one list for each max real Levi LRi}
-    	 for maxLRi in maxLRis
-	 do KGB(maxLRi)
-	 od
-    then KGBEltinks = [[[KGBElt]]]: {one KGBElt for each xin and derived simple factor derLik}
-     	 for list in KGBEltLis
-     	     do for xin in list
-	     	do derived_factor_KGBs2(xin)
-	     od
-	 od
-    then KGBEltGs = [[KGBElt]]: {one list for each maxLRi}
-    	 for maxLRi@i in maxLRis
-	 do for xin in KGBEltLis[i]
-	    do embed_KGB(xin,G)
-	    od
-	 od
-{need to know which lambdainm on maxLRi for xin can induce to FPP on G. Maybe this is some of them??}
-    then lambdainmGs = [[[ratvec]]]: {one list for each KGBElt to G from a maxLRi}
-    	 for maxLRi@i in maxLRis
-	 do for x in KGBEltGs[i]
-	    do FPP_lambdas(x)
-	    od
-	 od
-    then lambdainms = [[[ratvec]]]: {one list of LRi lambdas for each xin}
-    	 for maxLRi@i in maxLRis
-	 do let rhoi = G.rho - maxLRi.rho
-	    in for n:#KGB(maxLRi)
-	       do for lambdaG in lambdainmGs[i][n]
-	       	  do lambdaG - rhoi
-		  od
-	       od
-	 od
-    then KGBEltinks = [[[KGBElt]]]: {one KGBElt for each xin and derived simple factor derLik}
-     	 for list in KGBEltLis
-     	     do for xin in list
-	     	do derived_factor_KGBs2(xin)
-	     od
-	 od
-     then lambdainmks = [[[[ratvec]]]]: {one ratvec for each xin, corr lambdain, and derLik}
-     	  for maxLRi@i in maxLRis
-	  do for xin@n in KGBEltLis[i]
-	     do for lambdainm in lambdainms[i][n]
-		do let pinm = parameter(xin, lambdainm, 0*lambdainm)
-		   then pinmks = derived_factor_params2(pinm)
-		   in for pinmk in pinmks do pinmk.lambda od
-		od
-	     od
-	  od
-     then non_unitary_listinmks = [[[[[ratvec]]]]]: {one list for each xink, lambdainmk}
-     	  for maxLRi@i in maxLRis
-	  do for xin@n in KGBEltLis[i]
-	     do for lambdainm@m in lambdainms[i][n]
-	     	do for lambdainmk@k in lambdainmks[i][n][m]
-		   do for nuinmj@j in non_unitary_nus(derLiks[i][k],KGBEltinks[i][n][k], lambdainmk)
-		      do Mikinvs[i][k]*nuinmj
-		      od {[ratvec]}
-		   od {[[ratvec]]}
-	     	od {[[[ratvec]]]}
-	     od
-	  od
-{need to take every nu that's non-unitary (vertex) on one derLik, arbitrary on the other (verts). This will
-make a rep non-unitary on maxLRi. If induction to G is unitary, add it.}
-     then Binmks = for unitary_listi@i in unitary_listinmks
-     	  do for unitary_listin@n in unitary_listi
-	     do for unitary_listinm@m in unitary_listin
-	     	do box(for unitary_listinmk in unitary_listinm do #unitary_listinmk od)
-		od
-	     od
-	  od
-     then nuinms = for unitary_listi@i in unitary_listinmks
-     	  do for unitary_listin@n in unitary_listi
-	     do for unitary_listinm@m in unitary_listin {unitary_listinm has two indices: k (simple factor)
-	     and j (place on list)}
-	        do for B in Binmks[i][n][m]
-		   do sum(G.rank, for b@k in B do unitary_listinm[k][b] od)
-		   od
-		od
-	     od
-	  od
-     then cands = [[Param]]: {one list on each maxLRi}
-     	  for maxLRi@i in maxLRis
-	  do for xin@n in KGBEltLis[i]
-	     do for lambdainm@m in lambdainms[i][n]
-		do for nuinmj in nuinms[i][n][m]
-		   do let pL = parameter(xin, lambdainm, nuinmj)
-		      then gamma = dominant(G,pL.infinitesimal_character)
-		      in if is_FPP(G,gamma)
-		      	 then [pL]
-			 else {prints("parameter ",pL," failed to be FPP");}
-			      []
-			 fi
-		   od.## {list of relevant pL for this x,lambda}
-		od.## {put all lambda together}
-	     od.## {put all x together}
-	  od {but keep a separate list for each max Levi maxLRi}
-     then () = for maxLRi@i in maxLRis
-	     	  do for pL in cands[i]
-	     	     do for q in monomials(real_induce_irreducible(pL,G))
-		   	do let qdeflist = [q]## for Qdef in local_defs(q)
-			   	      	    	do monomials(composition_series(Qdef))
-					    	od.##
-			   in for qdef in qdeflist
-			      do big_unitary_hash.match(herm_center(qdef))
-			      od
-			od
-	     	     od
-		  od
-     in ()
-}
+
+{all local vertex nu for (x,lambda). To be applied only to G simple mod center.}
+set all_vertex_nus(RealForm G, KGBElt x, ratvec lambda) = [ratvec]:
+    let Lvd = LPm_table.Lvd(G,x.involution,((1+x.involution)*lambda).numer)
+    in for gamma in Lvd.list
+       do if is_final(parameter(x,lambda,gamma))
+       	  then [gamma]
+	  else []
+	  fi
+       od.##
+
 
 {assume precompute has been done, so that all FPP unitary are known
 for all derived simple factors of theta-stable Levis of G. For maximal LRi run
@@ -1458,14 +1331,10 @@ set real_induced(RealForm G) = void:
 	     	     od
 		  od
      in ()
-{
-{assume precompute has been done, so that all FPP unitary are known
-for all derived simple factors of real Levis of G. For maximal LRi run
-over FPP (xin,lambdainm) and put into non-unitary_hash all (x,lambda,nu) that are
-irr unitarily induced from nonunitary on some PROPER real Levi. For now, get nus by
-factoring maxLRi into derived simple; put an ARB local vertex on most derLik, but NONUNITARY
-local vertex on one.}
-set real_inducedNU(RealForm G) = void:
+
+
+{set non_unitary_vert_nus(RealForm G, KGBElt x, ratvec lambda) = [ratvec]:}
+set non_unitary_real_induced(RealForm G) = void:
     let maxLRis = max_LRs(G)
     then maxLRidatas = [[(RealForm, RealForm, mat)]]: {one list for each maxLRi, with
     	 	     an entry (Sik, derLik, Mik) for each derived simple factor derLik}
@@ -1490,23 +1359,29 @@ set real_inducedNU(RealForm G) = void:
 	     	do (Lik.simple_roots)*ratvecs_as_ratmat(derLik.fundamental_coweights).^
 		od
 	     od
-    then KGBEltLis = [[KGBElt]]:
+    then KGBEltLis = [[KGBElt]]: {one list for each max real Levi LRi}
     	 for maxLRi in maxLRis
 	 do KGB(maxLRi)
 	 od
-    then KGBEltGs = [[KGBElt]]:
+    then KGBEltinks = [[[KGBElt]]]: {one KGBElt for each xin and derived simple factor derLik}
+     	 for list in KGBEltLis
+     	     do for xin in list
+	     	do derived_factor_KGBs2(xin)
+	     od
+	 od
+    then KGBEltGs = [[KGBElt]]: {one list for each maxLRi}
     	 for maxLRi@i in maxLRis
 	 do for xin in KGBEltLis[i]
 	    do embed_KGB(xin,G)
 	    od
 	 od
-    then lambdainmGs = [[[ratvec]]]: {one list for each KGBElt to G from an LRi}
+{need to know which lambdainm on maxLRi for xin can induce to FPP on G. Maybe this is some of them??}
+    then lambdainmGs = [[[ratvec]]]: {one list for each KGBElt to G from a maxLRi}
     	 for maxLRi@i in maxLRis
 	 do for x in KGBEltGs[i]
 	    do FPP_lambdas(x)
 	    od
 	 od
-
     then lambdainms = [[[ratvec]]]: {one list of LRi lambdas for each xin}
     	 for maxLRi@i in maxLRis
 	 do let rhoi = G.rho - maxLRi.rho
@@ -1532,66 +1407,83 @@ set real_inducedNU(RealForm G) = void:
 		od
 	     od
 	  od
-     then nonunitary_listinmks = [[[[[ratvec]]]]]:
+     {indices are max Levi i, KGBElt n, lambda m, nonunitary factor k0, derived factor k, nu j}
+     then non_unitary_listinmk0ks = [[[[[[ratvec]]]]]]: {k0 is the nonunitary factor}
      	  for maxLRi@i in maxLRis
 	  do for xin@n in KGBEltLis[i]
+	     do for lambdainm@m in lambdainmks[i][n]
+	     	do if #lambdainm = 0
+		   then [[[ratvec]]]:[[[]]]
+		   else {prints("cardinality of k's is ",#lambdainm);}
+		   for k0:#lambdainm
+	     	        do for lambdainmk@k in lambdainm
+		      	   do if k = k0
+		      	      then for nuinmj@j in non_unitary_nus(derLiks[i][k],KGBEltinks[i][n][k], lambdainmk)
+		      	      	   do if is_unitary(parameter(KGBEltinks[i][n][k],lambdainmk,nuinmj))
+				      then prints("damn")
+				      fi;
+				   Mikinvs[i][k]*nuinmj
+		      	      	   od {[ratvec]}
+		      	      else for nuinmj@j in all_vertex_nus(derLiks[i][k],KGBEltinks[i][n][k], lambdainmk)
+		      	      	   do Mikinvs[i][k]*nuinmj
+		      		   od {[ratvec]}
+		      	      fi
+		      	   od {[[ratvec]] on kth factor}
+		        od {keep track of which factor is nonunitary; [[[ratvec]]]}
+		   fi
+	     	od {one for each lambdainm on maxLRi [[[[ratvec]]]]}
+	     od {xin on maxLRi [[[[[ratvec]]]]]}
+	  od {maxLRi [[[[[ratvec]]]]]] }
+{need to take every nu that's non-unitary (vertex) on one derLik, arbitrary on the other (verts). This will
+make a rep non-unitary on maxLRi. If induction to G is irreducible, add it.}
+     {then () = prints(non_unitary_listinmk0ks)}
+     then Binmk0ks = for non_unitary_listi@i in non_unitary_listinmk0ks {[[[[[ratvec]]]]]}
+     	  	   do for non_unitary_listin@n in non_unitary_listi {[[[[ratvec]]]]}
+	     	      do for non_unitary_listinm@m in non_unitary_listin {[[[ratvec]]]}
+		      	 do for non_unitary_listinmk0 in non_unitary_listinm
+	     		    do box(for non_unitary_listinmk0k in non_unitary_listinmk0 do #non_unitary_listinmk0k od)
+			    od
+			 od
+	     	      od
+	  	   od
+     then nuinms = for non_unitary_listi@i in non_unitary_listinmk0ks
+     	  do for non_unitary_listin@n in non_unitary_listi
+	     do for non_unitary_listinm@m in non_unitary_listin 
+	     	do for non_unitary_listinmk0@k0 in non_unitary_listinm
+		   {unitary_listinmk0 has two indices: k (simple factor) and j (place on list)}
+	           do for B in Binmk0ks[i][n][m][k0]
+		      do {prints([i,n,m,k0]);}
+		      	 let nu = sum(G.rank, for b@k in B do non_unitary_listinmk0[k][b] od)
+			 {then () = prints(nu)}
+			 in nu
+		      od {B}
+		   od {k0}
+		od {m}
+	     od {n}
+	  od {i}
+     then IG = big_unitary_hash.rf_number(G)
+     then () = for maxLRi@i in maxLRis
+	  do for xin@n in KGBEltLis[i]
 	     do for lambdainm@m in lambdainms[i][n]
-	     	do for lambdainmk@k in lambdainmks[i][n][m]
-		   do for nuinmj@j in nonunitary_nus(derLiks[i][k],KGBEltinks[i][n][k], lambdainmk)
-		      do Mikinvs[i][k]*nuinmj
-		      od {[ratvec]}
-		   od {[[ratvec]]}
-	     	od {[[[ratvec]]]}
-	     od
-	  od
-     then Binmks = for nonunitary_listi@i in unitary_listinmks
-     	  do for unitary_listin@n in unitary_listi
-	     do for unitary_listinm@m in unitary_listin
-	     	do box(for unitary_listinmk in unitary_listinm do #unitary_listinmk od)
-		od
-	     od
-	  od
-     then nuinms = for unitary_listi@i in unitary_listinmks
-     	  do for unitary_listin@n in unitary_listi
-	     do for unitary_listinm@m in unitary_listin {unitary_listinm has two indices: k (simple factor)
-	     and j (place on list)}
-	        do for B in Binmks[i][n][m]
-		   do sum(G.rank, for b@k in B do unitary_listinm[k][b] od)
+		do for nuinmk0s@k0 in nuinms[i][n][m]
+		   do for nuinmj in nuinmk0s
+		      do let pL = parameter(xin, lambdainm, nuinmj)
+		      	 then () = if is_unitary(first_param(finalize(pL)))
+		      	      	   then prints("OOPS! ",[i,n,m,k0], " pL = ")
+				   fi
+		      	 then gamma = dominant(G,pL.infinitesimal_character)
+		      	 then P = real_induce_irreducible(pL,G)
+		      	 in if is_FPP(G,gamma) and is_hermitian(pL)
+		      	    and #P = 1
+		      	    then
+			    big_unitary_hash.long_numatch(herm_center(first_param(P)),IG)
+			    fi
+		      od
 		   od
 		od
 	     od
 	  od
-     then cands = [[Param]]: {one list on each maxLRi}
-     	  for maxLRi@i in maxLRis
-	  do for xin@n in KGBEltLis[i]
-	     do for lambdainm@m in lambdainms[i][n]
-		do for nuinmj in nuinms[i][n][m]
-		   do let pL = parameter(xin, lambdainm, nuinmj)
-		      then gamma = dominant(G,pL.infinitesimal_character)
-		      in if is_FPP(G,gamma)
-		      	 then [pL]
-			 else {prints("parameter ",pL," failed to be FPP");}
-			      []
-			 fi
-		   od.## {list of relevant pL for this x,lambda}
-		od.## {put all lambda together}
-	     od.## {put all x together}
-	  od {but keep a separate list for each max Levi maxLRi}
-     then () = for maxLRi@i in maxLRis
-	     	  do for pL in cands[i]
-	     	     do for q in monomials(real_induce_irreducible(pL,G))
-		   	do let qdeflist = [q]## for Qdef in local_defs(q)
-			   	      	    	do monomials(composition_series(Qdef))
-					    	od.##
-			   in for qdef in qdeflist
-			      do big_unitary_hash.match(herm_center(qdef))
-			      od
-			od
-	     	     od
-		  od
      in ()
-
-}
 
 {get complete FPP dual for each derived simple factor of a theta-stable Levi; and then cohom ind
 all those things in weakly good range to G}
@@ -1630,9 +1522,25 @@ set precomputeR(RealForm G) = void:
     then () = FPP_report_flag:=true
     in real_induced(G)
 
+set precomputeNUR(RealForm G) = void:
+    let rflist = SDLRF(G)
+    then () = coh_ind_flag:=false
+    then temp_report_flag = FPP_report_flag
+    then () = FPP_report_flag :=false
+    then () = for rf@k in rflist
+    	      do prints("starting # ",k," = ",rf);
+	      	 real_induced(rf);
+		 if pre_bottom_flag
+		 then FPP_unitary_hash_bottom_layer(rf)
+		 else FPP_unitary_hash2(rf)
+		 fi;
+		 big_unitary_hash.nuhash_fill(rf)
+	      od
+    then () = FPP_report_flag:=true
+    in non_unitary_real_induced(G)
+    
 set precomputeALL(RealForm G) = void:
-    let start = elapsed_ms(), rflist = SDLALL(G), iG = big_unitary_hash.rf_number(G)
-    then Norig = big_unitary_hash.uhash(G).size()
+    let start = elapsed_ms(), rflist = SDLALL(G)
     then () = coh_ind_flag:=false
     then temp_report_flag = FPP_report_flag
     then () = FPP_report_flag :=false
@@ -1649,31 +1557,20 @@ set precomputeALL(RealForm G) = void:
     then FPP_time = elapsed_ms()
     then () = FPP_report_flag:=true
     then () = real_induced(G)
-    then NR = big_unitary_hash.uhash(G).size() - Norig
+    then NR = big_unitary_hash.uhash(G).size()
     then () = prints("In ",print_time_string(elapsed_ms() -FPP_time), ", real induction found ",NR,
     	      		 " FPP unitary facets for G.")
     then RI_time = elapsed_ms()
     then () = theta_induced(G)
-    then NTheta =  big_unitary_hash.uhash(G).size() - NR - Norig
-    then () = prints("In ",print_time_string(elapsed_ms() -RI_time),
-    	 ", coh induction found additional ",
-    	 NTheta," FPP unitary facets for G.")
-    then ind_time = elapsed_ms()
-    then Gunip = unipotent_representations(G)
-    then () = for p in Gunip do big_unitary_hash.uhash(G).match(p) od
-    then Nunip = big_unitary_hash.uhash(G).size() - NTheta - NR - Norig
-    then () =  prints("In ",print_time_string(elapsed_ms() -ind_time),
-    	 ", found additional ",
-    	 Nunip," unipotent facets for G.")
-    in prints("altogether found ", big_unitary_hash.uhash(G).size() -
-    Norig," FPP unitary facets for G.")
+    then NTheta =  big_unitary_hash.uhash(G).size() - NR
+    in prints("In ",print_time_string(elapsed_ms() -RI_time), ", coh induction found additional ",NTheta,
+       		  	" FPP unitary facets for G.")
 
 set FPPpre(RealForm G) = void:
     let start = elapsed_ms()
     then temp_KGB_flag = every_KGB_flag
     then () = every_KGB_flag:= false
     then () = precomputeALL(G)
-    then () = unip_flag:=false
     then () = every_KGB_flag := temp_KGB_flag
     then () = if pre_bottom_flag
        	      then FPP_unitary_hash_bottom_layer(G)
