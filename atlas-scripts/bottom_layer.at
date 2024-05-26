@@ -644,7 +644,7 @@ set min_bottom_elim_factors(Param p, {[KGPElt] maxQs,} KTypePol P) = bool:
 	      	    	      	   then () = if bottom_verbose then prints("p = ",p," is a good one!") fi
 				   then derpLs = derived_factor_params2(pL)
 				   then answer = all(for derpL in derpLs
-				   	       	     do @bool: is_unitary_hash_big(derpL)
+				   	       	     do @bool: is_unitary_hash_big_SIMPLE(derpL)
 						     od)
                     	 	   {then () = attest_is_unitary(p,answer)}
 		    	 	   then () = befmoreTime +:= elapsed_ms() - start
@@ -656,7 +656,7 @@ set min_bottom_elim_factors(Param p, {[KGPElt] maxQs,} KTypePol P) = bool:
     	     	       then let (,pwk) = maxQps[wk_good]
 		       	    then derpLwks = derived_factor_params2(pwk)
 			    then answer = if all(for derpLwk in derpLwks
-				   	       	 do @bool: is_unitary_hash_big(derpLwk)
+				   	       	 do @bool: is_unitary_hash_big_SIMPLE(derpLwk)
 						 od)
 					  then true
 					  else let HG = theta_induce_signature(pwk,G)
@@ -1327,7 +1327,7 @@ set bottom_test_factors_more(Param p, [KGPElt] maxQs, [KType, [QKL_bottom_data]]
 		    in return false
 	       fi
      then () = if bottom_verbose then prints("sorry, doing is_unitary") fi
-     in is_unitary_hash(p)
+     in is_unitary_hash_big(p)
     fi
 
 {P is K-character at least to appropriate height, NOT branch!. Assume already eliminated using minimal P0}
@@ -1366,13 +1366,13 @@ set bottom_test_factors_more(Param p, int D, KTypePol P) = bool:
 		    then () = if bottom_verbose and mg=MG
 			      then prints("at p = ",p,", more helped!")
 			      fi
-		    then () = attest_is_unitary(p,false)
+		    {then () = attest_is_unitary(p,false)}
 		    then () = befmoreTime +:= elapsed_ms() - start
 		    in return false
 	       fi
      {now either bottom layer has succeeded, or it can't help}
      then () = if bottom_verbose then prints("sorry, doing is_unitary") fi
-     in is_unitary_hash(p)
+     in is_unitary_hash_big(p)
      fi
 
 set bottom_test_factors_more(Param p, int D) = bool:
