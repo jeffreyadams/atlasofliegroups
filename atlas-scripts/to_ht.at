@@ -13,6 +13,9 @@ set to_ht (int N) = (ParamPol->ParamPol): (ParamPol P):
   else let (below,)=height_split(P,N) in below
   fi
 
+set full_deform_to_ht_MvL(ParamPol P, int N) = KTypePol:
+    deform_to_height(P,N)
+
 set full_deform_to_ht_old(Param p, int N) = KTypePol:
 if height(p) > N then null_K_module(p.real_form)
 elif height(p) = N then K_type_pol(p)
@@ -28,6 +31,11 @@ set full_deform_to_ht(Param p, int N) = KTypePol:
 
 {deform_to_height(p,N)}
 
+set twisted_full_deform_to_ht_MvL(Param p, int N) = KTypePol:
+    if N < 0 then return twisted_full_deform(p) fi;
+    let pc = alcove_center(p)
+    in to_ht(twisted_full_deform(pc), N)
+
 set twisted_full_deform_to_ht(Param p,int N) = KTypePol:
     if N < 0 then return twisted_full_deform(p) fi;
     let pc = alcove_center(p)
@@ -42,13 +50,16 @@ set twisted_KL_sum_at_s_to_ht(int N) = (Param p) ParamPol:
 {.write c-invariant form on standard module as a ParamPol of
 standardrepKs to specified height.}
 
-set c_form_std_to_ht_old(int N) = (Param->KTypePol):(Param p):
+set c_form_std_to_ht_MvL(int N) = (Param->KTypePol):(Param p):
 { never involves |twisted_full_deform| }
-   full_deform_to_ht_old(p,N)
+   full_deform_to_ht_MvL(p,N)
 
 set c_form_std_to_ht(int N) = (Param->KTypePol):(Param p):
 { never involves |twisted_full_deform| }
    full_deform_to_ht(p,N)
+
+set twisted_c_form_std_to_ht_MvL(int N) = (Param->KTypePol):(Param p):
+   twisted_full_deform_to_ht_MvL(p,N)
 
 set twisted_c_form_std_to_ht(int N) = (Param p)KTypePol:
    twisted_full_deform_to_ht(p,N)
@@ -61,9 +72,9 @@ set oriented_KL_sum_to_ht  (int N) = (Param p)ParamPol:
 
 { untwisted |c_form_irreducible|, for efficiency; only used in equal rank case }
 {.c-invariant form on irreducible module of p as ParamPol of standardrepKs.}
-set c_form_irreducible_to_ht_old (Param p,int N) = KTypePol:
+set c_form_irreducible_to_ht_MvL (Param p,int N) = KTypePol:
   if not(herm_report) then
-  map(c_form_std_to_ht_old(N), oriented_KL_sum_to_ht(N)(p) )
+  map(c_form_std_to_ht_MvL(N), oriented_KL_sum_to_ht(N)(p) )
   else
   let P=oriented_KL_sum_to_ht(N)(p), count=0 then nP=#P
   then
@@ -139,13 +150,16 @@ set twisted_c_form_irreducible_to_ht (Param p,int N) = KTypePol:
   fi
 )
 
+set twisted_c_form_irreducible_to_ht_MvL (Param p,int N) = KTypePol:
+    twisted_c_form_irreducible_to_ht (p,N)
+
 {.Hermitian form to ht on a irreducible module, normalization from its
 initial term.}
 
-set hermitian_form_irreducible_to_ht_old (Param p,int N) = KTypePol:
+set hermitian_form_irreducible_to_ht_MvL (Param p,int N) = KTypePol:
   if is_equal_rank(real_form(p))
-  then c_form_irreducible_to_ht_old(p,N) { not twisted, in equal rank case this is faster }
-  else  check_hermitian(p,true); twisted_c_form_irreducible_to_ht(p,N)
+  then c_form_irreducible_to_ht_MvL(p,N) { not twisted, in equal rank case this is faster }
+  else  check_hermitian(p,true); twisted_c_form_irreducible_to_ht_MvL(p,N)
   fi.convert_cform_hermitian
 
 set hermitian_form_irreducible_to_ht (Param p,int N) = KTypePol:
@@ -174,10 +188,10 @@ set is_unitary_to_ht_base (Param p,int N) = bool:
   in answer
 
 { compute Hermitian form to ht on p, and report if it is unitary }
-set is_unitary_to_ht_old (Param p,int N) = bool:
+set is_unitary_to_ht_MvL (Param p,int N) = bool:
   unitary_test_counter.use();
   let start_time = elapsed_ms(), answer =
-      p.is_hermitian and hermitian_form_irreducible_to_ht_old(p,N).is_pure
+      p.is_hermitian and hermitian_form_irreducible_to_ht_MvL(p,N).is_pure
   then () = unitaryTime+:=elapsed_ms() - start_time
   in answer
 

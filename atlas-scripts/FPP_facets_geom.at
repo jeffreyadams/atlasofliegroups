@@ -344,6 +344,11 @@ set sorted_is_disjoint([int] a, [int] b) = bool:
    ;  if x=b[i] then return false fi
    od; true
 
+set is_FPP(RootDatum rd, ratvec gamma) = bool:
+    all(for alphavee in rd.simple_coroots
+    	do gamma*alphavee <= 1 and gamma*alphavee >= 0
+	od)
+
 set index_in_facet_list([LocalFacetVertsKHash] L) = (vec->int):
     let m = #L[0]-4 
     in index_in(for v in L do v[:m] od)

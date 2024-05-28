@@ -387,7 +387,10 @@ set KU_flag = true
 
 {whether to fill in statuses for known non-unitaries in local_testK_hash
 and local_test_hash}
-set KNU_flag = true
+set KNU_flag = false
+
+{whether to look at ind_cand_params to determine unitarity}
+set ICP_flag = true
 
 {if true, functions in FPP_global pass through KGB backwards}
 set tilde_flag = false
@@ -455,7 +458,19 @@ set local_testK_hash(KGBElt x, ratvec lambda, VertexData Lvd,
 	      	  then verts = vec: FVKH[d][j][:d+1]
 	      	  then ps = monomials(finalize(parameter(x, lambda
 		    	  , facet_bary(Lvd.list, verts))))
-	          in if{NEWU} all(for p in ps do {Uhash.lookup(p).>= or} tester(p) od)
+		  then () = if ICP_flag {test for non-unitary}
+		       	    then if any(for p in ps
+		       	       	    	do any(for pi in ind_cand_params(p)
+				      	       do not is_unitary_hash_big_SIMPLE(pi)
+					       od)
+				   	od)
+		       	     then newStatuses:= updateNUclassesB(newStatuses, gr, k, "F");
+			     	  {prints("Khash ICP F: ",parameter(x,lambda,facet_bary(Lvd.list,verts)));}
+			     	  newStatuses[k] := "F"
+			     fi
+		       fi
+	          in if{NEWU} newStatuses[k] = "?"
+		     	and all(for p in ps do {Uhash.lookup(p).>= or} tester(p) od)
 		     then newStatuses[k]:= "T"
 		     else newStatuses:= updateNUclassesB(newStatuses, gr, k, "F")
 		     ; newStatuses[k] := "F"
@@ -546,7 +561,21 @@ set local_testK_hash_know_lower(KGBElt x, ratvec lambda, VertexData Lvd,
 	      	  then verts = vec: FVKH[d][j][:d+1]
 		  then pC = parameter(x, lambda, facet_bary(Lvd.list, verts))
 	      	  then ps = monomials(finalize(pC))
-	          in if not is_final(pC) and all(for q in ps
+		  then () = if ICP_flag {test for non-unitary}
+		       	    then if any(
+			    	    for p in ps
+				    do any(
+				       for pi in ind_cand_params(p)
+			    	       do not is_unitary_hash_big_SIMPLE(pi)
+				       od)
+				    od)
+		       	          then newStatuses:= updateNUclassesB(newStatuses, gr, k, "F");
+			          {prints("know_lower ICP F: ",pC);}
+			     	  newStatuses[k] := "F"
+			         fi {any p}
+		       	     fi {ICP_flag}
+	          in if newStatuses[k] = "?"
+		     	and not is_final(pC) and all(for q in ps
 		     	    		     	 do @bool: is_finished(q.x,q.lambda)
 						    and Uhash.lookup(q).>=
 					    	 od)
@@ -1259,6 +1288,11 @@ set local_test_GEO_hash_real_dumb(KGBElt x, ratvec lambda, VertexData vd, Vertex
     {then () = if facet_verbose then prints("test_ht = ",test_ht) fi}
     then () = test_string:= " using local_test_GEO_hash_real_dumb"
     then  () = hash_real_dumbCounter.use()
+ {because of to_ht, CANNOT use KNU testing: NO THIS IS TEST}
+    {then KNU_flag_hold = KNU_flag
+    then ICP_flag_hold = ICP_flag
+    then () = KNU_flag:=false
+    then () = ICP_flag:=false}
     then LFDKH = localFD_KHash_01(x, lambda, Lvd, pol_hash,LF)
     then () =  if test_verbose then prints("facet counts to dim 1: ",
                           for list in LFDKH do #list od) fi
@@ -1338,6 +1372,8 @@ set local_test_GEO_hash_real_dumb(KGBElt x, ratvec lambda, VertexData vd, Vertex
      	     od
 	     in ()
 	 fi {if quick_flag}
+    {then () = KNU_flag:=KNU_flag_hold
+    then () = ICP_flag:=ICP_flag_hold}
     then unitary_by_dim = for L in LFDKH do #L od
     {now have unitary facets of all dims}
      {then () = if test_verbose then prints("total number of tests = ",
@@ -1778,7 +1814,9 @@ set local_test_GEO_hash_no_dumb(KGBElt x, ratvec lambda, VertexData vd, VertexDa
     {then () = prints("trial of eq at dim 1 is ",trial(x,lambda,Lvd,LFDKH, eq, hts[0]))}
  {because of to_ht, CANNOT use KNU testing}
     then KNU_flag_hold = KNU_flag
+    then ICP_flag_hold = ICP_flag
     then () = KNU_flag:=false
+    then () = ICP_flag:=false
     then () = LFDKH := local_testK_hash(x,lambda,Lvd, LFDKH, eq, gr, CLBF,
     	      (Param->bool):(Param p): is_unitary_to_ht_big_SIMPLE(p, hts[0]), Uhash) {comment out {_big}???}
     then () = if test_verbose then prints("unitary to ht ",hts[0],
@@ -1840,6 +1878,7 @@ set local_test_GEO_hash_no_dumb(KGBElt x, ratvec lambda, VertexData vd, VertexDa
     fi {quick_flag}
     {now have facets of all dims, to height test_hts[Dlast] or test_hts[Dmid]}
     then () = KNU_flag:=KNU_flag_hold
+    then () = ICP_flag:=ICP_flag_hold
     then ((eq,gr),IUCL,CLBF) = localGraphK(LFDKH)
     then () = if test_verbose then prints(sum(for list in LFDKH do #list od),
 	      	      	   " unitary candidates in ",#eq," equivalence classes.") fi
@@ -2021,7 +2060,9 @@ KTypePol_hash pol_hash, Param_hash Uhash) = [Param]:
     {then () = prints("trial of eq at dim 1 is ",trial(x,lambda,Lvd,LFDKH, eq, hts[0]))}
  {because of to_ht, CANNOT use KNU testing}
     then KNU_flag_hold = KNU_flag
+    then ICP_flag_hold = ICP_flag
     then () = KNU_flag:=false
+    then () = ICP_flag:=false
     then () = LFDKH := local_testK_hash(x,lambda,Lvd, LFDKH, eq, gr, CLBF, {comment out _big???}
     	      (Param->bool):(Param p): is_unitary_to_hts_big_SIMPLE(p, hts[:test_levels[0]+1]), Uhash)
     then () = if test_verbose then prints("unitary to ht ",test_hts[0],
@@ -2071,6 +2112,7 @@ KTypePol_hash pol_hash, Param_hash Uhash) = [Param]:
      fi{quick_flag}
     {now have facets of all dims, to height test_hts[Dlast] {or test_hts[Dmid]}}
     then () = KNU_flag:=KNU_flag_hold
+    then () = ICP_flag:= ICP_flag_hold
     then ((eq,gr),IUCL,CLBF) = localGraphK(LFDKH)
     then sph_far_flag = dominant(G,thetaMinus*gammamax)*G.two_rho_check/2 < to_ht_frac*(gammamax*G.two_rho_check)
     {term on left guaranteed <= right term on right. If close, then
@@ -2230,6 +2272,10 @@ set local_test_GEO_hash_one_level(KGBElt x, ratvec lambda, VertexData vd,
 	then make_KTypePol_hash() {to hold K_chars to height one_ht = hts[ONE]}
 	else pol_hash
 	fi
+   then KNU_flag_hold = KNU_flag
+   then ICP_flag_hold = ICP_flag
+   then () = KNU_flag:=false
+   then () = ICP_flag:=false
    then LFDKH = [[FacetVertsKHash]]:
    	if step_flag and ONE > 0{just calculate K-chars to hts[0], reduce the problem, then go to one_ht}
 	then let pol_hash_low = if temp_K_char_flag
@@ -2352,6 +2398,8 @@ set local_test_GEO_hash_one_level(KGBElt x, ratvec lambda, VertexData vd,
      	      od
 	      in ()
 	      fi{quick_flag}
+    then () = KNU_flag:=KNU_flag_hold
+    then () = ICP_flag:= ICP_flag_hold
     then unitary_by_dim = vec: for L in LFDKH do #L od
     then () = if test_verbose then { prints("unitary to ht ",one_ht, " facets by dim = ",
        	       	   		      		      unitary_by_dim);}
