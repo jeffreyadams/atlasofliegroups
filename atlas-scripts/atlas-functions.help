@@ -1003,6 +1003,10 @@ default_extend: (Param,mat->ratvec,vec,vec,vec): default extension choice data
   Applied to (p,delta), this returns the data that identifies the default choice
   to extend p to a parameter for the group extension by the involution delta, in
   the form of a 5-tuple (lambda,tau,l,t) (two weights and then two coweights).
+shift_flip: (Param,mat,ratvec->bool): whether shifting flips default extension
+  Called for (p,delta,gamma) this tests whether the default extension at p,
+  after shifting the infinitesimal character to gamma is flipped with respect
+  to the default extension of the ordinary parameter that it extends
 extended_block: (Param,mat->[Param],mat,mat,mat): extended block with graph data
   The arguments are a parameter p and an external distinguished involution delta
   (which should commute with the inner class distinguished involution). The

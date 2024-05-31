@@ -342,11 +342,26 @@ struct ext_param // allow public member access; methods ensure no invariants
   K_repr::K_type restrict_K(Weight&& theta_plus_1_lambda) const;
 }; // |ext_param|
 
+bool same_sign (const ext_param& E, const ext_param& F);
+
 ext_param default_extend
     (const repr::Ext_rep_context& ec, const repr::StandardRepr& sr);
 ext_param default_extend
     (const repr::Ext_rep_context& ec, repr::StandardReprMod&& srm);
 
+inline
+ext_param shifted_default_extension
+    (const repr::Ext_rep_context& ec,
+     const repr::StandardRepr& sr, const RatWeight& new_gamma)
+{ auto result = default_extend(ec,sr);
+  auto shift = new_gamma-sr.gamma();
+  assert((result.theta()*shift+shift).is_zero());
+  result.gamma_lambda += std::move(shift);
+  return result;
+}
+
+inline bool is_default (const ext_param& E)
+{ return same_sign(E,default_extend(E.ctxt,E.restrict_mod())); }
 
 // restrict to K expanding to final K types, taking into account extended flips
 K_repr::K_type_pol extended_restrict_to_K

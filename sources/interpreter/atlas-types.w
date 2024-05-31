@@ -7333,6 +7333,32 @@ void default_extend_wrapper(eval_level l)
   wrap_tuple<4>();
 }
 
+@ The function |shift_flip| tells whether the default extension of a parameter
+when shifted to a different infinitesimal character |gamma| produces an extended
+parameter opposite to the default extensions at |gamma|.
+
+@< Local function def...@>=
+void shift_flip_wrapper(eval_level l)
+{
+  shared_rational_vector gamma = get<rational_vector_value>();
+  auto M =get<matrix_value>();
+  shared_module_parameter p = get<module_parameter_value>();
+  const auto& rc = p->rc();
+  const auto& delta = M->val;
+  test_compatible(rc.inner_class(),M);
+  if (not ((1-delta)*gamma->val.numerator()).is_zero())
+    throw runtime_error@|("Involution does not fix rational weight");
+  if (not ((1-delta)*p->val.gamma().numerator()).is_zero())
+    throw runtime_error@|("Involution does not fix infinitesimal character");
+  if (l==eval_level::no_value)
+    return;
+@)
+  repr::Ext_rep_context ctxt(rc,delta);
+  auto E = ext_block::shifted_default_extension(ctxt,p->val,gamma->val);
+  push_value(whether(not ext_block::is_default(E)));
+}
+
+
 @ The function |extended_block| makes computation of extended blocks available
 directly in \.{atlas}.
 
@@ -7501,6 +7527,7 @@ install_function(strong_components_wrapper,@|"strong_components"
 @)
 install_function(default_extend_wrapper,@|"default_extended"
                 ,"(Param,mat->vec,vec,vec,vec)");
+install_function(shift_flip_wrapper,@|"shift_flip","(Param,mat,ratvec->bool)");
 install_function(extended_block_wrapper,@|"extended_block"
                 ,"(Param,mat->[Param],mat,mat,mat)");
 install_function(extended_KL_block_wrapper,@|"partial_extended_KL_block"
