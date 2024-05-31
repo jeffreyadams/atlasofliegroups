@@ -947,9 +947,6 @@ bool same_sign (const ext_param& E, const ext_param& F)
   return ((i_exp/2+n1_exp)%2==0)!=(E.is_flipped()!=F.is_flipped());
 }
 
-inline bool is_default (const ext_param& E)
-{ return same_sign(E,default_extend(E.ctxt,E.restrict_mod())); }
-
 
 /*
   for real Cayley transforms, one will add $\rho_r$ to |E.gamma_lambda|
@@ -2450,11 +2447,10 @@ K_repr::K_type_pol extended_restrict_to_K
   K_repr::K_type restricted_sr = rc.sr_K(sr.x(),rc.lambda_rho(sr));
 
   // for convenience, make a (modifiable) copy of twice |gamma| at |nu==0|
-  Weight gamma = rc.theta_plus_1_lambda(restricted_sr); // $\theta$-fixed
+  Weight gamma2 = rc.theta_plus_1_lambda(restricted_sr); // $\theta$-fixed
 
-  ext_param E = default_extend(ctxt,sr); // start extension at |sr|
-  E.gamma_lambda -= rc.nu(sr); // shift extended parameter for restriction to K
-  // now |E.gamma_lambda| should be |RatWeight(gamma,2)-rc.lambda(sr)| up to
+  ext_param E = shifted_default_extension(ctxt,sr,RatWeight(gamma2,2));
+  // now |E.gamma_lambda| should be |RatWeight(gamma2,2)-rc.lambda(sr)| up to
   // an element of $(1-theta)X^*$, but such an |assert| is hard to formulate
 
   // now finalise |restricted_sr|, making |gamma| dominant, while updating |E|
@@ -2464,26 +2460,26 @@ K_repr::K_type_pol extended_restrict_to_K
 
   using q_element = std::pair<ext_param,Weight>;
   queue<q_element> to_do;
-  to_do.emplace(std::move(E),std::move(gamma));
+  to_do.emplace(std::move(E),std::move(gamma2));
   while (not to_do.empty())
   {
     // the variables that used to hold initial values now serve as temporaries:
     E = std::move(to_do.front().first);
-    gamma = std::move(to_do.front().second);
+    gamma2 = std::move(to_do.front().second);
     to_do.pop();
     InvolutionNbr i_theta = i_tab.nr(E.tw);
 
-  restart: // go here when |E|, |gamma| and |i_theta| have been modified
+  restart: // go here when |E|, |gamma2| and |i_theta| have been modified
     for (const auto& orbit : orbits)
     {
       const weyl::Generator s = orbit.s0;
       if (i_tab.is_complex_simple(i_theta,s))
-      { const auto eval = rd.simpleCoroot(s).dot(gamma);
+      { const auto eval = rd.simpleCoroot(s).dot(gamma2);
 	if (eval<0)
 	{ // apply complex reflections: anti-dominant to dominant for |kappa|
 	  const WeylWord& kappa = orbit.w_kappa;
 
-	  rd.act(kappa,gamma); // change infin.character representative
+	  rd.act(kappa,gamma2); // change infin.character representative
 	  tW.twistedConjugate(kappa,E.tw);
 	  i_theta = i_tab.nr(E.tw); // update involution
 	  rd.act(kappa,E.gamma_lambda); // corresponding operation on |E|
@@ -2496,7 +2492,7 @@ K_repr::K_type_pol extended_restrict_to_K
 	} // |if(eval<0)|
 	else if (eval==0 and
 		 i_tab.complex_is_descent(i_theta,rd.simpleRootNbr(s)))
-	{ // no change to |gamma| is needed as relevant reflections fix it
+	{ // no change to |gamma2| is needed as relevant reflections fix it
 	  containers::sl_list<ext_param> links;
 	  auto type =
 	    star(ctxt,E,orbit.length(),rd.simpleRootNbr(s),links);
@@ -2511,7 +2507,7 @@ K_repr::K_type_pol extended_restrict_to_K
 	// else |s| is a complex ascent; skip this |s|
       } // |if (i_tab.is_complex_simple(i_theta,s))|
       else if ((i_tab.is_real_simple(i_theta,s)))
-      {	assert(rd.simpleCoroot(s).dot(gamma)==0); // so |gamma| unchanged
+      {	assert(rd.simpleCoroot(s).dot(gamma2)==0); // so |gamma2| unchanged
 	if (E.gamma_lambda.dot(rd.simpleCoroot(s)) %2!=0) // nonparity?
 	  continue; // then |s| is an ascent; skip it
 	containers::sl_list<ext_param> links;
@@ -2527,14 +2523,14 @@ K_repr::K_type_pol extended_restrict_to_K
 	if (has_double_image(type)) // then queue up second image value
 	{ const auto it = std::next(links.begin());
 	  it->flip(flip); // like above undo etra flip
-	  to_do.emplace(std::move(*it),gamma);
+	  to_do.emplace(std::move(*it),gamma2);
 	}
 	goto restart;
       }
       else
       { assert(i_tab.is_imaginary_simple(i_theta,s));
-	assert(rd.simpleCoroot(s).dot(gamma)>=0); // K-type remains standard
-	if (rd.simpleCoroot(s).dot(gamma)==0 and // |s| is singular and
+	assert(rd.simpleCoroot(s).dot(gamma2)>=0); // K-type remains standard
+	if (rd.simpleCoroot(s).dot(gamma2)==0 and // |s| is singular and
 	    (E.ctxt.g_rho_check()-E.l).dot(rd.simpleRoot(s)) %2!=0) // compact
 	  goto drop; // since |E| satisfies "is zero" condition
 	// now continue with |(E,gamma)| in loop on |s|
@@ -2542,7 +2538,7 @@ K_repr::K_type_pol extended_restrict_to_K
     } // |for(orbit)|
 
     // contribute |E| here with coefficient |s^(not is_default(E))|
-    result.add_term(E.restrict_K(std::move(gamma)),
+    result.add_term(E.restrict_K(std::move(gamma2)),
 		    is_default(E) ? Split_integer(1,0) : Split_integer(0,1));
   drop: {} // when jumping here, proceed without contributing |current|
   } // |while(not todo.empty())|
