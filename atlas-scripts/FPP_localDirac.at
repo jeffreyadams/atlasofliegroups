@@ -193,19 +193,6 @@ set load_unipotents_flag = true
 {if KGB number is below this times #KGB, use is_unitary rather than is_unitary_to_ht}
 set low_KGB_frac = rat: 1/2
 
-{"true" should mean nu is small, and is_unitary is fast.
-"false" should mean  nu is large, so these elts are near the
-"top" of their blocks, and is_unitary_to_ht is fast.
-L/R is in [0,1], a measure of the size of dlambda.
-N/R is in [0,1], a measure of the size of nu.}
-set low(KGBElt x, ratvec lambda) = bool:
-    let G = x.inner_class
-    then theta = x.involution
-    then Lvd = LPm_table.Lvd(G, theta, (1+theta)*lambda.numer)
-    then LAM = dominant(G, (1+theta)*lambda)*G.two_rho_check
-    then NU = max(for gamma in Lvd.list do dominant(G, (1-theta)*gamma) *G.two_rho_check od)
-    {then R = G.two_rho * G.two_rho_check}
-    in NU < low_frac*LAM
 
 set difficulty(Param p) = rat:
     let rA = HTA(p)
@@ -470,7 +457,7 @@ set local_testK_hash(KGBElt x, ratvec lambda, VertexData Lvd,
 			     fi
 		       fi
 	          in if{NEWU} newStatuses[k] = "?"
-		     	and all(for p in ps do {Uhash.lookup(p).>= or} tester(p) od)
+		     	and all(for p in ps do Uhash.lookup(p).>= or tester(p) od)
 		     then newStatuses[k]:= "T"
 		     else newStatuses:= updateNUclassesB(newStatuses, gr, k, "F")
 		     ; newStatuses[k] := "F"
@@ -588,8 +575,7 @@ set local_testK_hash_know_lower(KGBElt x, ratvec lambda, VertexData Lvd,
 		     ; newStatuses[k] := "F"
 		     fi;
 		     if newStatuses[k] = "?"
-		     	then if{NEWU} all(for p in ps do {Uhash.lookup(p).>= or}
-					       tester(p) od)
+		     	then if{NEWU} all(for p in ps do Uhash.lookup(p).>= or tester(p) od)
 		     	     then newStatuses[k]:= "T"
 		     	     else newStatuses:= updateNUclassesB(newStatuses, gr, k, "F")
 		     	     ; newStatuses[k] := "F"
@@ -732,7 +718,7 @@ set local_testK_hash_bottom_layer(KGBElt x, ratvec lambda, VertexData Lvd,
 	      	  then verts = vec: FVKH[d][j][:d+1]
 		  then pC = parameter(x, lambda, facet_bary(Lvd.list, verts))
 	      	  then ps = monomials(finalize(pC))
-                  then test = if all(for p in ps do @bool: Uhash.lookup(p).>= od)
+                  then test = if all(for p in ps do @bool:Uhash.lookup(p).>= od)
 		       	      then true
 			      elif not all(for p in ps
 		     	  	     	   do @bool: min_bottom_elim_factors(p)
@@ -843,7 +829,7 @@ set local_test_hash(KGBElt x, ratvec lambda, VertexData Lvd,
 		   {vertices and edges have already been tested if U_flag is true}
 		   	    or newStatuses[m][0] = "T"
 			    or all(for p in ps
-		   	    	   do @bool: {Uhash.lookup(p).>= or} tester(p) od)
+		   	    	   do @bool: Uhash.lookup(p).>= or tester(p) od)
 		   then downdateUclassesB(newStatuses, gr, m, "T"); newStatuses[m]:="T";
 		   	for i in C
 		   	do let (e,k) = coords(LFVH,i)
@@ -886,7 +872,7 @@ set local_test_hash(KGBElt x, ratvec lambda, VertexData Lvd,
 set local_test_hash(KGBElt x, ratvec lambda, VertexData Lvd, [[LocalFacetVertsHash]] LFVH, [[int]] eq, [[int]] gr,
     			   [vec] classListByFacet, Param_hash Uhash) = [Param]:
     local_test_hash(x, lambda, Lvd, LFVH, eq, gr, classListByFacet, Uhash,
-    		       is_unitary_def_test_big{hash_big_SIMPLE}@Param)
+    		       is_unitary_def_test_big_SIMPLE@Param)
 
 {meant to hold params p with pL unitary and p not}
 {set surprise_hash = make_Param_hash()
@@ -979,7 +965,7 @@ set local_test_hash_bottom(KGBElt x, ratvec lambda, VertexData Lvd,
 				     	   	 fi
 			        fi
 		      in if not elim_more then false {we got rid of p by bottom layer}
-			 else all(for p1 in ps do @bool: is_unitary_def_test_big{_hash_big_SIMPLE}(p1) od)
+			 else all(for p1 in ps do @bool: is_unitary_def_test_big_SIMPLE(p1) od)
 		     	 fi
 		  fi {newStatuses[m]}
 	      then () = if more_verbose then prints("your final answer was ",test) fi
@@ -1087,7 +1073,7 @@ set local_test_wiggle_hash(KGBElt x, ratvec lambda, VertexData Lvd,
                      then p = parameter(x, lambda, facet_bary(Lvd.list, verts))
                      then () = if more_verbose then prints("testing parameter ",p) fi
                      then ps = monomials(finalize(p))
-                     in all(for p1 in ps do @bool: is_unitary_def_test_big{hash_big_SIMPLE}(p1) od)
+                     in all(for p1 in ps do @bool: is_unitary_def_test_big_SIMPLE(p1) od)
 		fi
              in if test
                 then for i in eq[m]
@@ -1150,7 +1136,7 @@ set one_param_test(Param p, Param_hash Uhash) = [Param]:
 	 fi
     then  () = hash_def_dumbCounter.use()
     then test = all(for q in Q do {Uhash.lookup(q).>= or}
-		   	       is_unitary_test_big(q, DEFHTS) od)
+		   	       is_unitary_test_big_SIMPLE(q, DEFHTS) od)
     in if test
        then let () = for q in Q
 		     do Uhash.match(herm_center(q))
@@ -1180,11 +1166,11 @@ set one_param_test_bottom(Param p, int D, Param_hash Uhash) = [Param]:
 		   fi
 	      fi
     then () = hash_bottom_layerCounter.use()
-    {then () = if one_param_verbose then prints(new_line,"start one_param_test_bottom at p = ",p) fi}
+    {then () = if one_param_verbose then () = prints(new_line,"start one_param_test_bottom at p = ",p) fi}
     then elim_min = all(for q in QG
     	      	    	do min_bottom_elim_factors(q)
 		    	od)
-    {then () = if one_param_verbose then prints("result of elim_min was ",elim_min) fi}
+    {then () = if one_param_verbose then then () = prints("result of elim_min was ",elim_min) fi}
     in if not elim_min {minimal bottom layer proved not a unitary Param}
        then let () = one_false_counter.use()
 	    then () = one_param_time +:= elapsed_ms() - start
@@ -1197,7 +1183,7 @@ set one_param_test_bottom(Param p, int D, Param_hash Uhash) = [Param]:
 		 then () = if more_verbose then prints("result of elim_more was ",elim_more) fi
 	    	 in if elim_more
 		    then let test =  all( [(->bool)]:
-		    	     for q in QG do @bool: is_unitary_def_test_big{hash_big_SIMPLE}(q) od)
+		    	     for q in QG do @bool: is_unitary_def_test_big_SIMPLE(q) od)
 		    	 then () = if more_verbose then prints("your final answer was ",test) fi
 	    	    	 in  if test
 		    	     then let () = for q in QG
@@ -1221,7 +1207,7 @@ set one_param_test_bottom(Param p, int D, Param_hash Uhash) = [Param]:
 		     fi
 	    else {more_flag and mix_flag are both false} let test =  all( [(->bool)]:
 	    	     for q in QG
-		     do @bool: is_unitary_def_test_big{_hash_big_simple}(q) od) {what to do if more_flag is false}
+		     do @bool: is_unitary_def_test_big_SIMPLE(q) od) {what to do if more_flag is false}
 	     	     	in if test
 	     	    	   then  let () = for q in QG
 		      	    	     	  do Uhash.match(herm_center(q))
@@ -1443,7 +1429,7 @@ set local_test_GEO_hash_dumb(KGBElt x, ratvec lambda, VertexData vd, VertexData 
 		   fi
     {then test_hts = hts[:min(#hts,1{r})]  {??? who knows about r!}}
     then tester = (Param->bool): (Param p) bool:
-    	 is_unitary_test_big(p,test_ht) {this settles unitarity absolutely}
+    	 is_unitary_test_big_SIMPLE(p,test_ht) {this settles unitarity absolutely}
     then () = if test_verbose then prints("test_ht = ",test_ht) fi
     then () = test_string:= " using local_test_GEO_hash_dumb"
     then  () = hash_dumbCounter.use()

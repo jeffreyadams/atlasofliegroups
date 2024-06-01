@@ -32,35 +32,6 @@ in p. { apply recursive function initially to our argument |p| }
    )
 )
 
-set support_params_hash = make_Param_hash()
-set deform_supports_table = [KTypePol]: []
-
-{Same answer as deform_support, but much faster}
-set rec_fun deform_support_hash (Param p) = KTypePol:
-( if not is_final(p) then error("improper parameter") fi
-;  let G=real_form(p)
-   then () = p:=alcove_center(p)
-   then j = support_params_hash.lookup(p)
-   then () = if not support_params_hash.size() = #deform_supports_table
-      	      	then error("haven't filled table with hash")
-	      	fi
-   then D = if j >= 0 
-      	    then deform_supports_table[j]
-	    else p.K_type +
-	       	    for @q in sum(G,for factor in reducibility_points(p)
-	       	    	       	     do deform(p*factor) od)
-	            do deform_support_hash(q) od
-      	    fi
-   then () = D:= sum(G, for @r in D do r od)
-   then j1 = support_params_hash.match(p)
-   then () = if j1 = #deform_supports_table
-      	      	then deform_supports_table:=
-		(deform_supports_table next deform_supports_table:=[])
-		# D
-		fi
-    in D
-)
-
 {this is the block_Hasse interval below p, including p if final}
 set lower_interval(Param p) = ParamPol: sum(p.real_form, for q in partial_block(p) do q od)
 
@@ -96,10 +67,8 @@ set rec_fun deform_support_int_hash(Param p) = KTypePol:
    then empty_K = null_K_module(G)
    then () = p:=alcove_center(p)
    then j = support_params_int_hash.lookup(p)
-   then () = if not support_params_int_hash.size() = #deform_supports_int_table
-      	     then error("haven't filled table with hash")
-	     fi
-   then D = if j >= 0 
+
+   then D = if j.>=
       	    then deform_supports_int_table[j]
 	    else p.K_type +
 	       	 for @q in sum(G,for factor in reducibility_points(p)
@@ -112,11 +81,13 @@ set rec_fun deform_support_int_hash(Param p) = KTypePol:
 		 od
       	    fi
     then () = D:= sum(G, for @r in D do r od)
-    then j1 = support_params_int_hash.match(p)
-    then () = if j1 = #deform_supports_int_table
-      	      then deform_supports_int_table:=
-		(deform_supports_int_table next deform_supports_int_table:=[])
-		# D
+    then J = support_params_int_hash.size()
+    then () = if not J = #deform_supports_int_table
+      	      then error("haven't filled table with int_hash")
+	      fi
+    then j = support_params_int_hash.lookup(p)
+    then () = if j = J
+      	      then deform_supports_int_table #:= D
 	      fi
     in D
 )
@@ -136,7 +107,7 @@ set lower_interval_dumb(Param p) = ParamPol:
 	       od)
 )
 
-set deform_support_dumb (Param p) = KTypePol:
+{ set deform_support_dumb (Param p) = KTypePol:
 ( if not is_final(p) then error("improper parameter") fi
 ;  let G=real_form(p)
    then () = p:=alcove_center(p)
@@ -162,29 +133,22 @@ set rec_fun deform_support_dumb_hash (Param p) = KTypePol:
 ( if not is_final(p) then error("improper parameter") fi
 ;  let G=real_form(p)
    then () = p:=alcove_center(p)
-   then j = support_params_dumb_hash.lookup(p)
-   then () = if not support_params_dumb_hash.size() = #deform_supports_dumb_table
-      	      then error("haven't filled table with hash")
+   then J = support_params_dumb_hash.size(), j = support_params_dumb_hash.match(p)
+   then () = if not J = #deform_supports_dumb_table
+      	      then error("haven't filled table with dumb_hash")
 	      fi
-   then D = if j >= 0
-      	    then deform_supports_dumb_table[j]
-	    else p.K_type +
-	       	    for k@q in sum(G,for factor in reducibility_points(p)
+   then () = if j = J
+      	     then let D = p.K_type +
+	       	      for k@q in sum(G,for factor in reducibility_points(p)
 	       	    	       	     do lower_interval_dumb(
 				     	first_param(p*factor)) od)
-	            do deform_support_dumb_hash(q) od
-      	    fi
-    then () = D:= sum(G, for @r in D do r od)
-    then j1 = support_params_dumb_hash.match(p)
-    then () = if j1 = #deform_supports_dumb_table
-      	      	then {deform_supports_dumb_table:=deform_supports_dumb_table # D}
-		deform_supports_dumb_table:=
-			(deform_supports_dumb_table next deform_supports_dumb_table :=[])
-		        	# D
-	       fi
-    in D
+	              do deform_support_dumb_hash(q) od
+    		  then () = D:= sum(G, for @r in D do r od)
+		  in  deform_supports_dumb_table #:= D
+	      fi
+   in deform_supports_dumb_table[j]
 )
-
+}
 set short_hts(Param p) = [int]:
     let start = elapsed_ms()
     then answer = [int]:

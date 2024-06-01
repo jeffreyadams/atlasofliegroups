@@ -1481,6 +1481,20 @@ set is_unitary_hash_big(Param p) = bool:
 {If NU (nu part) > LAM (lambda part) *low_frac, then figure to_ht could work better}
 set low_frac = 1/1
 
+{"true" should mean nu is small, and is_unitary is fast.
+"false" should mean  nu is large, so these elts are near the
+"top" of their blocks, and is_unitary_to_ht is fast.
+L/R is in [0,1], a measure of the size of dlambda.
+N/R is in [0,1], a measure of the size of nu.}
+set low(KGBElt x, ratvec lambda) = bool:
+    let G = x.inner_class
+    then theta = x.involution
+    then Lvd = LPm_table.Lvd(G, theta, (1+theta)*lambda.numer)
+    then LAM = dominant(G, (1+theta)*lambda)*G.two_rho_check
+    then NU = max(for gamma in Lvd.list do dominant(G, (1-theta)*gamma) *G.two_rho_check od)
+    {then R = G.two_rho * G.two_rho_check}
+    in NU < low_frac*LAM
+
 { meant to be used for G simple }
 { compute Hermitian form to ht on p, report if it is unitary}
 set is_unitary_to_ht_big_SIMPLE(Param p,int N) = bool:
@@ -1491,7 +1505,7 @@ set is_unitary_to_ht_big_SIMPLE(Param p,int N) = bool:
   unitary_test_counter.use();
   let (LAM,NU) = low(p)
   in if NU > LAM*low_frac
-     then is_pure(hermitian_form_irreducible_to_ht(p,N)) 
+     then is_pure(hermitian_form_irreducible_to_ht(p,N))
      else is_pure(to_ht(hermitian_form_irreducible(p),N))
      fi
 
@@ -1573,8 +1587,8 @@ set is_unitary_def_test_big_SIMPLE(Param p,int m) = bool:
     in if NU > LAM*low_frac
        then let (def,flag)= deform_hts(p,m)
        	    in if flag
-       	       then is_pos_on_LKTs(p) and is_unitary_to_hts_big(p,def)
-       	       else is_unitary_test_big(p,def)
+       	       then is_pos_on_LKTs(p) and is_unitary_to_hts_big_SIMPLE(p,def)
+       	       else is_unitary_test_big_SIMPLE(p,def)
        	       fi
        else is_unitary_hash_big_SIMPLE(p)
        fi
