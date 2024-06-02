@@ -17,7 +17,7 @@
 
 #include "bitmap_fwd.h"
 #include "poset_fwd.h"
-#include "../Atlas.h"
+#include "Atlas.h"
 
 #include "ratvec.h"     // containment of |RatCoweight| field
 #include "bitvector.h"  // containment of |SmallBitVectorList|

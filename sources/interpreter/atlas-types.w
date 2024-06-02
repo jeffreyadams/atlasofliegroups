@@ -53,7 +53,7 @@ this file.
 #ifndef ATLAS_TYPES_H
 #define ATLAS_TYPES_H
 
-#include "../Atlas.h" // must be very first \.{atlas} include
+#include "Atlas.h" // must be very first \.{atlas} include
 
 @< Includes needed in the header file @>@;
 namespace atlas { namespace interpreter {
@@ -7300,6 +7300,64 @@ void strong_components_wrapper(expression_base::level l)
     wrap_tuple<2>();
 }
 
+@ The computations with parameters for the extended group, like done by the
+built-in function |twisted_deform| to be defined below, depend on a choice, for
+each parameter, of one of the two extensions of it to the extended group (each
+one corresponding to an equivalence classes of extended parameters, which is
+made by the internal method |Rep_context::default_extend|. In order
+that the user have explicit knowledge of this choice, we also define a user
+function |default_extend| that returns a tuple of the essential components of
+this extended parameter.
+
+@< Local function def...@>=
+void default_extend_wrapper(expression_base::level l)
+{
+  auto M =get<matrix_value>();
+  shared_module_parameter p = get<module_parameter_value>();
+  const auto& rc = p->rc();
+  const auto& delta = M->val;
+  test_compatible(rc.inner_class(),M);
+  if (not ((1-delta)*p->val.gamma().numerator()).is_zero())
+    throw runtime_error@|("Involution does not fix infinitesimal character");
+  if (l==expression_base::no_value)
+    return;
+@)
+  repr::Ext_rep_context ctxt(rc,delta);
+  auto E = ext_block::default_extend(ctxt,p->val);
+  auto lambda = -E.gamma_lambda.integer_diff<int>(p->val.gamma());
+@)
+  push_value(std::make_shared<vector_value>(std::move(lambda)));
+  push_value(std::make_shared<vector_value>(std::move(E.tau)));
+  push_value(std::make_shared<vector_value>(std::move(E.l)));
+  push_value(std::make_shared<vector_value>(std::move(E.t)));
+  wrap_tuple<4>();
+}
+
+@ The function |shift_flip| tells whether the default extension of a parameter
+when shifted to a different infinitesimal character |gamma| produces an extended
+parameter opposite to the default extensions at |gamma|.
+
+@< Local function def...@>=
+void shift_flip_wrapper(expression_base::level l)
+{
+  shared_rational_vector gamma = get<rational_vector_value>();
+  auto M =get<matrix_value>();
+  shared_module_parameter p = get<module_parameter_value>();
+  const auto& rc = p->rc();
+  const auto& delta = M->val;
+  test_compatible(rc.inner_class(),M);
+  if (not ((1-delta)*gamma->val.numerator()).is_zero())
+    throw runtime_error@|("Involution does not fix rational weight");
+  if (not ((1-delta)*p->val.gamma().numerator()).is_zero())
+    throw runtime_error@|("Involution does not fix infinitesimal character");
+  if (l==expression_base::no_value)
+    return;
+@)
+  repr::Ext_rep_context ctxt(rc,delta);
+  auto E = ext_block::shifted_default_extension(ctxt,p->val,gamma->val);
+  push_value(whether(not ext_block::is_default(E)));
+}
+
 
 @ The function |extended_block| makes computation of extended blocks available
 directly in \.{atlas}.
@@ -7308,14 +7366,14 @@ directly in \.{atlas}.
 void extended_block_wrapper(expression_base::level l)
 { auto delta =get<matrix_value>();
   shared_module_parameter p = get<module_parameter_value>();
+  const auto& rc = p->rc();
   test_standard(*p,"Cannot generate block");
-  test_compatible(p->rc().inner_class(),delta);
-  if (not ((delta->val-1)*p->val.gamma().numerator()).is_zero())
+  test_compatible(rc.inner_class(),delta);
+  if (not ((1-delta->val)*p->val.gamma().numerator()).is_zero())
     throw runtime_error@|("Involution does not fix infinitesimal character");
   if (l==expression_base::no_value)
     return;
 @)
-  const auto& rc = p->rc();
   BlockElt start;
   auto zm = repr::StandardReprMod::mod_reduce(rc,p->val);
   common_context ctxt(rc,zm.gamma_lambda());
@@ -7466,6 +7524,10 @@ install_function(param_W_cells_wrapper,@|"W_cells"
                 ,"(Param->int,[[int],[[int],[int,int]]])");
 install_function(strong_components_wrapper,@|"strong_components"
                 ,"([[int]]->[[int]],[[int]])");
+@)
+install_function(default_extend_wrapper,@|"default_extended"
+                ,"(Param,mat->vec,vec,vec,vec)");
+install_function(shift_flip_wrapper,@|"shift_flip","(Param,mat,ratvec->bool)");
 install_function(extended_block_wrapper,@|"extended_block"
                 ,"(Param,mat->[Param],mat,mat,mat)");
 install_function(extended_KL_block_wrapper,@|"partial_extended_KL_block"

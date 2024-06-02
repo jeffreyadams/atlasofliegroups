@@ -16,7 +16,7 @@
 #ifndef PREROOTDATA_H  /* guard against multiple inclusions */
 #define PREROOTDATA_H
 
-#include "../Atlas.h"
+#include "Atlas.h"
 #include "matrix.h"
 
 namespace atlas {

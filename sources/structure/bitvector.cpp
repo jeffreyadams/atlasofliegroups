@@ -19,8 +19,6 @@
 
 #include "bitvector.h"
 
-#include "../Atlas.h"
-
 #include "comparison.h"
 #include "constants.h"
 #include "bitset.h"
@@ -83,7 +81,7 @@ void BitVector<dim>::slice(const BitSet<dim>& t)
     }
   /* actually we could have used a bitset iterator over |t| */
 
-  d_data&=BitSet<dim>(constants::lMask[c]); // clear remainder
+  d_data&=BitSet<dim>(constants::lt_mask[c]); // clear remainder
 
   d_size = c; // new size equals (counted) number of sliced out bits
 }

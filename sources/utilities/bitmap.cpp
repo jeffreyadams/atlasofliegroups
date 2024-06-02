@@ -154,7 +154,7 @@ BitMap::iterator BitMap::end() const
 bool BitMap::back_up(unsigned long& n) const
 {
   unsigned int i=n>>baseShift;
-  auto m=(n&posBits)==0 ? 0 : d_map[i]&constants::lMask[n&posBits];
+  auto m=(n&posBits)==0 ? 0 : d_map[i]&constants::lt_mask[n&posBits];
 
   while(m==0 and i>0)
     m=d_map[--i];
@@ -250,7 +250,7 @@ bool BitMap::full() const
      but needed an exception for |d_capacity==0|.
    */
   if ((d_capacity&posBits)!=0
-      and d_map.back()!=constants::lMask[d_capacity&posBits])
+      and d_map.back()!=constants::lt_mask[d_capacity&posBits])
     return false;
 
   for (unsigned long j = (d_capacity>>baseShift); j-->0; )
@@ -316,7 +316,7 @@ unsigned long BitMap::position(unsigned long n) const
     p += bits::bitCount(d_map[j]);
 
   if ((n&posBits)!=0)
-    p += bits::bitCount(d_map[b] & constants::lMask[n&posBits]);
+    p += bits::bitCount(d_map[b] & constants::lt_mask[n&posBits]);
 
   return p;
 }
@@ -337,7 +337,7 @@ unsigned long BitMap::range(size_t n, unsigned r) const
 {
   unsigned long m = n >> constants::baseShift; // index where data is stored
 
-  return (d_map[m] >> (n & constants::posBits)) & constants::lMask[r];
+  return (d_map[m] >> (n & constants::posBits)) & constants::lt_mask[r];
 
 }
 
@@ -371,7 +371,7 @@ BitMap& BitMap::take_complement ()
     d_map[j] = ~d_map[j];
 
   if ((d_capacity&posBits)!=0) // N.B. also makes |capacity()==0| safe (MvL)
-    d_map.back() &= constants::lMask[d_capacity&posBits];
+    d_map.back() &= constants::lt_mask[d_capacity&posBits];
 
   return *this;
 }
@@ -480,7 +480,7 @@ void BitMap::fill()
   d_map.assign(d_map.size(),~0ul); // (last word will be overwritten)
 
   if ((d_capacity&posBits)!=0) // N.B. also makes |capacity()=0| safe (MvL)
-    d_map.back() = constants::lMask[d_capacity&posBits];
+    d_map.back() = constants::lt_mask[d_capacity&posBits];
 }
 
 // Set all the bits in positions |i| with |start<=i<stop|.
@@ -490,14 +490,14 @@ void BitMap::fill(size_t start, size_t stop)
   size_t begin = start >> baseShift;
   size_t end   = stop >> baseShift;
   if (begin==end) // then only one word is affected
-    d_map[begin] |= constants::lMask[stop-start] << (start&posBits);
+    d_map[begin] |= constants::lt_mask[stop-start] << (start&posBits);
   else
   {
-    d_map[begin] |= ~constants::lMask[start&posBits];
+    d_map[begin] |= ~constants::lt_mask[start&posBits];
     for (size_t i=begin+1; i<end; ++i)
       d_map[i] = ~0ul;
     if ((stop&posBits)!=0) // protect against out-of-bounds setting of 0 bits
-      d_map[end] |= constants::lMask[stop&posBits];
+      d_map[end] |= constants::lt_mask[stop&posBits];
   }
 }
 
@@ -508,14 +508,14 @@ void BitMap::clear(size_t start, size_t stop)
   size_t begin = start >> baseShift;
   size_t end   = stop >> baseShift;
   if (begin==end) // then only one word is affected
-    d_map[begin] &= ~(constants::lMask[stop-start] << (start&posBits));
+    d_map[begin] &= ~(constants::lt_mask[stop-start] << (start&posBits));
   else
   {
-    d_map[begin] &= constants::lMask[start&posBits];
+    d_map[begin] &= constants::lt_mask[start&posBits];
     for (size_t i=begin+1; i<end; ++i)
       d_map[i] = 0ul;
     if ((stop&posBits)!=0) // protect against out-of-bounds setting of 0 bits
-      d_map[end] &= ~constants::lMask[stop&posBits];
+      d_map[end] &= ~constants::lt_mask[stop&posBits];
   }
 }
 
@@ -542,7 +542,7 @@ template<typename I> void BitMap::insert(I first, I last)
 void BitMap::set_capacity(unsigned long n)
 {
   if (n<d_capacity and (n&posBits)!=0)
-    d_map[n>>baseShift] &= constants::lMask[n&posBits]; // clear partial word
+    d_map[n>>baseShift] &= constants::lt_mask[n&posBits]; // clear partial word
   d_map.resize((n+posBits) >> baseShift,0);
   if (d_map.size()<d_map.capacity()) // |d_map| has become too large
     std::vector<unsigned long>(d_map).swap(d_map); // shrink-wrap vector |d_map|
@@ -570,8 +570,8 @@ void BitMap::setRange(size_t n, unsigned r, unsigned long a)
   size_t m = n >> baseShift;
   unsigned shift = n & posBits;
 
-  d_map[m] &= ~(constants::lMask[r] << shift);     // set bits to zero
-  d_map[m] |= (a & constants::lMask[r]) << shift;  // insert the bits from a
+  d_map[m] &= ~(constants::lt_mask[r] << shift);     // set bits to zero
+  d_map[m] |= (a & constants::lt_mask[r]) << shift;  // insert the bits from a
 }
 
 void BitMap::swap(BitMap& other)

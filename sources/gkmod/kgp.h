@@ -10,7 +10,7 @@
 #ifndef KGP_H
 #define KGP_H
 
-#include "../Atlas.h"
+#include "Atlas.h"
 
 #include "kgb.h"
 #include "bruhat.h"

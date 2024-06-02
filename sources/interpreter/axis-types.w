@@ -112,7 +112,7 @@ of a quite different nature than that of the main mathematical library.
 
 @< Includes needed in \.{axis-types.h} @>=
 #include <memory> // for |std::unique_ptr|, |std::shared_ptr|
-#include "../Atlas.h" // for utilities (like |sl_list|); this include must come first
+#include "Atlas.h" // for utilities (like |sl_list|); this include must come first
 #include "buffer.h" // for |id_type|
 
 

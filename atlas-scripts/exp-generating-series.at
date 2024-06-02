@@ -22,6 +22,91 @@ in (rec_fun m () inf_node:
   .memoize
 )
 
+{ the same, but start in degrees |k,l|, and return only relevan part }
+set exp_mult (inf_list f, int k, inf_list g, int l) = inf_list:
+(  let coefs = [int,int]: [], cf=0,cg=0
+in (rec_fun m () inf_node:
+      let n=#coefs+k+l in set ((cf,f),(cg,g)):=(f(),g()) { get new values }
+   ; ( for (a,)@i in coefs #:= (cf,cg)
+       do let (,b)=coefs~[i] in binom(n,i+k)*a*b
+       od.sum
+     , m
+     )
+   )
+  .memoize
+)
+
+
+set exp_divide (inf_list f, inf_list g) = inf_list:
+(  let (c,denom)=g() in assert(c=1,"Division requires unit constant term")
+;  let coefs = { pairs of corresponding coefficients of |denom,result| }
+      [int,int]: []
+in (rec_fun m () inf_node:
+      let (c,new_f)=f() { get one new value from numerator series }
+      , n = #coefs
+      then q = { solve: convolve_binom(1#denom_coefs,result_coefs#q) = c }
+         c - for (,b)@i in coefs do let (a,)=coefs~[i] in binom(n,i)*a*b od.sum
+      , (d,new_denom)=denom() { advance |denom| as well; don't use |d| yet }
+   in  f:=new_f; denom:=new_denom; coefs := (coefs next coefs:=[]) # (d,q)
+   ;   ( q , m )
+   )
+  .memoize
+)
+
+set exp_diff (inf_list f) = inf_list: let (,result)=f() in result
+
+set exp_substitute (inf_list g) = (inf_list->inf_list): { f->f[X:=g] }
+(  let (g0,tail)=g() then !gg=memoize(tail) { |gg=g/X| }
+   , exp_mult (inf_list f, inf_list p, int k) = inf_list:
+     let coefs = [int,int]: [], cf=0,cp=0 { local variable for each call }
+     in rec_fun m () inf_node:
+	   let n=#coefs+k in set ((cf,f),(cp,p)):=(f(),p()) { get new values }
+	; ( for (a,)@i in coefs #:= (cf,cp)
+	    do let (,b)=coefs~[i] in binom(n,i+1)*a*b
+	    od.sum\k
+	  , m
+	  )
+in assert(=g0,"Can only substitute series with constant term 0")
+;  (inf_list f) inf_list: { the map returned from |exp_substitute| }
+     let n=0, power=one, result=extend_0(#0), c=0 in
+     memoize
+     (rec_fun r () inf_node:
+       set (c,f):=f(); set (c,result):=(result+c*power)()
+       ; power := exp_mult(gg,power,n+:=1).memoize
+       ; (c,r)
+     )
+)
+
+
+set exp_comp_inverse (inf_list g) = inf_list:
+(  let (!g0,gg)=g()
+   then n=1, power= gg:=memoize(gg)
+   then (!g1,target)=gg() { |target:=(g-X)/X^2| }
+   , exp_mult (inf_list f, inf_list p, int k) = inf_list:
+     let coefs = [int,int]: [], cf=0,cp=0 { local variable for each call }
+     in rec_fun m () inf_node:
+	   let n=#coefs+k in set ((cf,f),(cp,p)):=(f(),p()) { get new values }
+	; ( for (a,)@i in coefs #:= (cf,cp)
+	    do let (,b)=coefs~[i] in binom(n,i+1)*a*b
+	    od.sum\k
+	  , m
+	  )
+in assert(=g0 and g1=1,"Can only do series with leading term X")
+; let rec_fun r () = inf_node: { no arguments, call modifies |target|, |power| }
+     power:=exp_mult(gg,power,n+:=1).memoize { |g^n/n!|, shifted }
+     ;  let (c,t_tail) = target(), (,t_power)=power()
+     in target := t_tail - c*t_power
+     ; (-c,r)
+in memoize(@:(0,@:(1,r))) { here |memoize| is essential }
+)
+{ e.g., exp_comp_inverse([0,1,-1].extend_0) solves $f-f^2/2=X$ }
+
+
+{ we can now define some trigonometric functions here; exp is just |ones| }
+sin : series((int n): let(q,r)=n\%2 in if r=0 then 0 else (-1)^q fi)
+cos : exp_diff(sin)
+tan : exp_divide(sin,cos)
+
 { for instance to count permutations with allowed cycles of distinct lengths
   given in a list |L|, one can compute $\exp(\sum_{l\in L}{X^l\over l})$,
   which by the property of the exponential can be done as follows

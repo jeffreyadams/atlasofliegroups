@@ -256,7 +256,7 @@ TorusPart minimal_torus_part
   { unsigned int i=0;
     while (i<r and rd.is_simple_root(basis[i]))
       basis_simples.set(rd.simpleRootIndex(basis[i++]));
-    mask = RankFlags(constants::lMask[i]);
+    mask = RankFlags(constants::lt_mask[i]);
   }
 
   Grading target // grading of |basis_simples| that we are looking for

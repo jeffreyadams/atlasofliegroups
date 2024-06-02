@@ -13,7 +13,7 @@
 #include <iosfwd>
 #include <vector>
 
-#include "../Atlas.h"
+#include "Atlas.h"
 
 /******** function declarations *********************************************/
 

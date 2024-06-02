@@ -147,7 +147,7 @@ class Partition
   has advanced |i| times, provided |pi.class_of| is surjective to an initial
   part of $\N$. The relative position of |jt| within the inner loop can as usual
   be computed as |jt-it->first|. Since the iterator runs through the classes for
-  |pi|, which are non-empty, the inner loop will run at least once in all cases.
+  |pi|, which are non-empty, each inner loop will has at least iteration.
 
   The vector |d_data| contains the integers [0,n[, where |n| is the size of the
   set being partitioned, stably sorted according to the associated |d_class|
