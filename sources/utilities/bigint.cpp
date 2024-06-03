@@ -419,7 +419,7 @@ big_int::big_int (const bitmap::BitMap& b, bool negative)
   // now |i<=cap<i+32|, add |cap-i+1| bits, including |negative|
   digit lead = i==cap ? 0 : b.range(i,32);
   if (negative) // then set sign bit and extend
-    lead |= ~ constants::lMask[cap-i];
+    lead |= ~ constants::lt_mask[cap-i];
   d.push_back(lead); // now all bits from |b| and |negative| are transferred
 
   shrink(); // needed if |b| has at least 32 leading copies of |negative|

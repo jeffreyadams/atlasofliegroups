@@ -49,8 +49,8 @@ Fokko_sources := $(wildcard $(Fokko_dirs:%=sources/%/*.cpp))
 Fokko_objects := $(Fokko_sources:%.cpp=%.o)
 
 # headers are searched in the all directories containing source files
-Fokko_includes := $(addprefix -Isources/,$(Fokko_dirs))
-atlas_includes := $(addprefix -Isources/,$(atlas_dirs))
+Fokko_includes := -Isources $(addprefix -Isources/,$(Fokko_dirs))
+atlas_includes := -Isources $(addprefix -Isources/,$(atlas_dirs))
 
 # for the interpreter (atlas sans the Atlas library) sources are *.w files
 interpreter_cwebs := $(wildcard sources/interpreter/*.w)

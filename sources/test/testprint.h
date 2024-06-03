@@ -12,7 +12,7 @@
 
 #include <iostream>
 
-#include "../Atlas.h"
+#include "Atlas.h"
 
 
 #include "gradings.h"

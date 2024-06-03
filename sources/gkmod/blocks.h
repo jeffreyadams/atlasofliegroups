@@ -17,7 +17,7 @@
 #include <iostream>
 #include <memory> // for |std::unique_ptr|
 
-#include "../Atlas.h"
+#include "Atlas.h"
 #include "ratvec.h"	// containment infinitesimal character
 #include "sl_list.h"    // return type |down_set| function
 

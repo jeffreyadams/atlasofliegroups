@@ -124,10 +124,10 @@ template<> class BitSetBase<1u>
   { return bits::lastBit(d_bits); }
 
   bool test(unsigned int j) const
-  { assert(j<32); return (d_bits & constants::bitMask[j])!=0; }
+  { assert(j<32); return (d_bits & constants::eq_mask[j])!=0; }
 
   unsigned int position(unsigned int j) const // rank among set bits of bit |j|
-  { assert(j<32); return bits::bitCount(d_bits & constants::lMask[j]); }
+  { assert(j<32); return bits::bitCount(d_bits & constants::lt_mask[j]); }
 
   bool scalarProduct(const BitSetBase<1>& b) const
   { return bits::bitCount(d_bits&b.d_bits)%2 != 0; }
@@ -160,15 +160,15 @@ template<> class BitSetBase<1u>
       d_bits = 0u; // simulate shifting out of all bits
   }
 
-  void flip(unsigned int j) { d_bits ^= constants::bitMask[j]; }
+  void flip(unsigned int j) { d_bits ^= constants::eq_mask[j]; }
   void reset() { d_bits = 0u; }
-  void reset(unsigned int j)  { d_bits &= ~constants::bitMask[j]; }
-  void set(unsigned int j) { d_bits |= constants::bitMask[j]; }
-  void fill(unsigned int limit) { d_bits |= constants::lMask[limit]; }
+  void reset(unsigned int j)  { d_bits &= ~constants::eq_mask[j]; }
+  void set(unsigned int j) { d_bits |= constants::eq_mask[j]; }
+  void fill(unsigned int limit) { d_bits |= constants::lt_mask[limit]; }
 
-  void complement(unsigned int limit) { d_bits ^= constants::lMask[limit]; }
+  void complement(unsigned int limit) { d_bits ^= constants::lt_mask[limit]; }
   void truncate(unsigned int limit)
-    { if (limit<32) d_bits &= constants::lMask[limit]; }
+    { if (limit<32) d_bits &= constants::lt_mask[limit]; }
 
   void slice(const BitSetBase<1>& c); // extract bits set in |c|, compacting
   void unslice(const BitSetBase<1>& c); // expand bits to positions set in |c|

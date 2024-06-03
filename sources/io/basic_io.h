@@ -14,7 +14,7 @@
 #include <iostream>
 #include <vector>
 
-#include "../Atlas.h"
+#include "Atlas.h"
 
 #include "K_repr.h"
 #include "repr.h"

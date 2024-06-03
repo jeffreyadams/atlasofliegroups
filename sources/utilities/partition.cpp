@@ -1,11 +1,4 @@
 /*
-  Implementation of Partition.
-
-  The purpose of the class Partition is to compute the partition of a
-  finite set given by a group action.  A typical example is a Weyl group
-  acting on elements of order 2 in a torus.
-*/
-/*
   This is partition.cpp
 
   Copyright (C) 2004,2005 Fokko du Cloux
@@ -20,14 +13,17 @@
 #include <map>
 
 #include "comparison.h"
+/*
+  Implementation of Partition.
 
-/*****************************************************************************
+  The purpose of the class Partition is to compute the partition of a finite set
+  given by a group action. A typical example is a Weyl group acting on elements
+  of order 2 in a torus.
 
-   ... describe here when it is stable ....  (Main application:
-computing the partition of a finite set under a group action. Typical
-example is a Weyl group acting on elements of order two in a torus.)
-
-******************************************************************************/
+  The only two data members are a vector |d_class| of classification numbers,
+  assigning to each position the number of its class, and a list of
+  positions of representatives of for each class.
+*/
 
 /*****************************************************************************
 

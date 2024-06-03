@@ -14,7 +14,7 @@
 
 #include <cassert>
 
-#include "../Atlas.h"
+#include "Atlas.h"
 
 #include "bitvector.h" // containment
 

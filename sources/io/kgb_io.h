@@ -12,7 +12,7 @@
 
 #include <iosfwd>
 
-#include "../Atlas.h"
+#include "Atlas.h"
 
 namespace atlas {
 

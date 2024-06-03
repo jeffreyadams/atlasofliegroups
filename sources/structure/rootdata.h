@@ -14,7 +14,7 @@
 
 #include <algorithm>
 
-#include "../Atlas.h"
+#include "Atlas.h"
 
 #include "tags.h"
 

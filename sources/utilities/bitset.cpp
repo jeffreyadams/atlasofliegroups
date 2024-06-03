@@ -86,17 +86,17 @@ unsigned int BitSetBase<2>::lastBit() const
 bool BitSetBase<2>::test(unsigned int j) const
 {
   return ((j < 32 ? d_bits0 : d_bits1)
-	  & constants::bitMask[j & 31])!=0;
+	  & constants::eq_mask[j & 31])!=0;
 }
 
 unsigned int BitSetBase<2>::position(unsigned int j) const
 {
   if (j >> constants::baseShift !=0) // two terms
     return bits::bitCount(d_bits1 &
-			  constants::lMask[j & 31])
+			  constants::lt_mask[j & 31])
       + bits::bitCount(d_bits0);
   else // one term
-    return bits::bitCount(d_bits0 & constants::lMask[j]);
+    return bits::bitCount(d_bits0 & constants::lt_mask[j]);
 }
 
 bool BitSetBase<2>::scalarProduct(const BitSetBase<2>& b) const
@@ -131,7 +131,7 @@ void BitSetBase<2>::operator<<= (unsigned int c)
     return;
   if (c < 32)
   {
-    bitset_chunk f = d_bits0&~constants::lMask[32-c]; // the |c| bits shifted out
+    bitset_chunk f = d_bits0&~constants::lt_mask[32-c]; // the |c| bits shifted out
     d_bits1 <<= c; // shift out high word
     d_bits1 |= f >> (32 - c); // do "carry over"
     d_bits0 <<= c; // shift remander of low word
@@ -154,7 +154,7 @@ void BitSetBase<2>::operator>>= (unsigned int c)
     return;
   if (c < 32)
   {
-    bitset_chunk f = d_bits1&constants::lMask[c]; // the |c| bits shifted out
+    bitset_chunk f = d_bits1&constants::lt_mask[c]; // the |c| bits shifted out
     d_bits0 >>= c;
     d_bits0 |= f << (32 - c);
     d_bits1 >>= c;
@@ -179,27 +179,27 @@ void BitSetBase<2>::andnot(const BitSetBase<2>& b)
 
 void BitSetBase<2>::flip(unsigned int j)
 {
-  (j < 32 ? d_bits0 : d_bits1) ^= constants::bitMask[j & 31];
+  (j < 32 ? d_bits0 : d_bits1) ^= constants::eq_mask[j & 31];
 }
 
 void BitSetBase<2>::reset(unsigned int j)
 {
-  (j < 32 ? d_bits0 : d_bits1) &= ~constants::bitMask[j & 31];
+  (j < 32 ? d_bits0 : d_bits1) &= ~constants::eq_mask[j & 31];
 }
 
 void BitSetBase<2>::set(unsigned int j)
 {
-  (j < 32 ? d_bits0 : d_bits1) |= constants::bitMask[j & 31];
+  (j < 32 ? d_bits0 : d_bits1) |= constants::eq_mask[j & 31];
 }
 
 void BitSetBase<2>::fill(unsigned int limit)
 {
   if (limit <= 32)
-    d_bits0 = constants::lMask[limit];
+    d_bits0 = constants::lt_mask[limit];
   else if (limit <= 64)
   {
     d_bits0 = ~0x0u; // set all bits here
-    d_bits1 = constants::lMask[limit - 32];
+    d_bits1 = constants::lt_mask[limit - 32];
   }
   else
     assert("limit out out range" and false);
@@ -209,12 +209,12 @@ void BitSetBase<2>::complement(unsigned int limit)
 {
   if (limit <= 32)
   {
-    d_bits0 ^= constants::lMask[limit];
+    d_bits0 ^= constants::lt_mask[limit];
   }
   else if (limit <= 64)
   {
     d_bits0 = ~d_bits0;
-    d_bits1 ^= constants::lMask[limit - 32];
+    d_bits1 ^= constants::lt_mask[limit - 32];
   }
   else
     assert("limit out out range" and false);
@@ -224,11 +224,11 @@ void BitSetBase<2>::truncate(unsigned int limit)
 {
   if (limit <= 32)
   {
-    d_bits0 &= constants::lMask[limit];
+    d_bits0 &= constants::lt_mask[limit];
     d_bits1 = 0u;
   }
   else if (limit <= 64)
-    d_bits1 &= constants::lMask[limit - 32];
+    d_bits1 &= constants::lt_mask[limit - 32];
   else
     assert("limit out out range" and false);
 }

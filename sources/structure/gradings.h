@@ -16,7 +16,7 @@
 
 #include <functional> // base class |std::binary_function| for |GradingCompare|
 
-#include "../Atlas.h"
+#include "Atlas.h"
 
 #include "bitset.h"
 

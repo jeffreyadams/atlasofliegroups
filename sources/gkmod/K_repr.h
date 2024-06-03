@@ -13,7 +13,7 @@
 #ifndef K_REPR_H  /* guard against multiple inclusions */
 #define K_REPR_H
 
-#include "../Atlas.h"
+#include "Atlas.h"
 
 #include "matrix.h"
 #include "hashtable.h"

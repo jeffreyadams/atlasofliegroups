@@ -134,7 +134,7 @@ set gcd = (int,int->int): { greatest common divisor; no size limit }
       while let r=a%b in r.!= do a:=b; b:=r od; b
    fi
 
-{ the following cannot be called |gcd|: too cloase to built-in |gcd@vec| }
+{ the following cannot be called |gcd|: too close to built-in |gcd@vec| }
 set gcd_big([int] v) = int:
    let d=0 in for x in v do if (d:=gcd(d,x))=1 then break fi od; d
 
@@ -1243,9 +1243,9 @@ set project_to_dominant_cone (RootDatum rd, ratvec gamma) =
 (  let candidates = [rd.semisimple_rank].to_bitset-1 { simple roots to start }
    then !simples = candidates { to use as universe for complementation }
 in while let new_indices = int:
-         for i in set_bit_positions(candidates) if (coroot(rd,i)*gamma).<=
-         do i
-         fi od.to_bitset
+	 for i in set_bit_positions(candidates) if (coroot(rd,i)*gamma).<=
+	 do i
+	 fi od.to_bitset
    in new_indices.> { |while|-condition: whether new roots were found }
    do candidates := AND_NOT(candidates,new_indices) { clear bits }
    ;  let (M,d)=wall_projector(rd,(simples-candidates).set_bit_positions)
