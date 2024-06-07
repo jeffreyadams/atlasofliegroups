@@ -93,7 +93,7 @@ class StandardRepr
 
   const RatWeight& gamma() const { return infinitesimal_char; }
   KGBElt x() const { return x_part; }
-  const TorusPart& y() const { return y_bits; }
+  TorusPart y() const { return y_bits; }
   unsigned int height() const { return hght; }
 
   // precomputed height is first criterion for ordering
