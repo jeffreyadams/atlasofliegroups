@@ -254,7 +254,7 @@ namespace atlas {
   typedef matrix::PID_Matrix<LatticeCoeff> LatticeMatrix;
 
   namespace bitvector {
-    template<unsigned int> class BitVector;
+    template<unsigned int> class BitVector; // |BitSet<n>|, with size field
     template<unsigned int> class BitVectorList;
     template<unsigned int> class BitMatrix;
   }
