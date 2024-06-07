@@ -617,8 +617,13 @@ void Rep_context::to_singular_canonical(RankFlags gens, StandardRepr& z) const
   assert(tw == kgb().involution(z.x_part));
 }
 
-// make dominant and descend though any singular complex descents
-// this is a version of |make_dominant| also doing singular |complex_crosses|
+/*  Make dominant and descend though any singular complex descents
+
+    This is a version of |finals_for| below, limited to complex transformations.
+    It is used only in the deformation algorithm (whence the name), where from
+    the context it is clear that |z.gamma()| remains dominant for non-complex
+    simple roots; we can do with just modifying a single parameter |z| here.
+*/
 void Rep_context::deform_readjust(StandardRepr& z) const
 {
   const RootDatum& rd = root_datum();
@@ -637,17 +642,17 @@ void Rep_context::deform_readjust(StandardRepr& z) const
 	  auto eval = rd.simpleCoroot(s).dot(numer); // needed for sign only
 	  if (eval<0)
 	  {
-	    rd.simple_reflect(s,numer); // real or complex reflection of |gamma|
+	    rd.simple_reflect(s,numer); // complex reflection of |gamma|
 	    rd.simple_reflect(s,lr,1);
 	    x = kgb().cross(s,x);
 	    break; // out of the loop |for(s)|
 	  }
-	else if (eval==0 and kgb().isDescent(s,x))
-	{ // here |numer| will be unchanged
-	  rd.simple_reflect(s,lr,1);
-	  x = kgb().cross(s,x);
-	  break; // out of the loop |for(s)|: other complex descents possible
-	}
+	  else if (eval==0 and kgb().isDescent(s,x))
+	  { // here |numer| will be unchanged
+	    rd.simple_reflect(s,lr,1);
+	    x = kgb().cross(s,x);
+	    break; // out of the loop |for(s)|: other complex descents possible
+	  }
       } // |for(s)|
     while (s<rd.semisimple_rank()); // wait until inner loop runs to completion
   }
@@ -709,6 +714,7 @@ StandardRepr Rep_context::scale(StandardRepr z, const RatNum& f) const
 } // |Rep_context::scale|
 
 
+// transform |srm| into equivalent by |w|; act by complex and real actions only
 template <bool left_to_right> void Rep_context::transform
   (const WeylElt& w, StandardReprMod& srm) const // here |w| is for |Weyl_group|
 {
@@ -1186,14 +1192,14 @@ K_repr::K_type_pol Rep_context::scale_0(const poly& P) const
 using sr_term = std::pair<StandardRepr,int>;
 using sr_term_list = simple_list<sr_term>;
 
-// insert (add) a new term into list |L|, assumed sorted decreasingly
+// insert (add) a new term into list |L|, assumed sorted increasingly
 void insert_into(sr_term_list& L, StandardRepr&& z, int coef)
 { auto it = L.begin();
   while (not L.at_end(it))
     if (z < it->first)
-      ++it; // skip higher terms
-    else if (it->first < z) // then we are looking at lower terms
-      break; // so break loop and insert before those lower terms
+      ++it; // skip lower terms
+    else if (it->first < z) // then we are looking at higher terms
+      break; // so break loop and insert before those higher terms
     else  // matching term; operate on coefficient
     { if ((it->second += coef) == 0)
         L.erase(it);
@@ -1202,13 +1208,15 @@ void insert_into(sr_term_list& L, StandardRepr&& z, int coef)
   L.insert(it,std::make_pair(std::move(z),coef));
 }
 
+// convert |z| into increasing list of final parameters, maybe with multiplicity
 sr_term_list Rep_context::finals_for(StandardRepr z) const
 {
   const RootDatum& rd = root_datum();
 
-  sr_term_list result, to_do;
-  to_do.emplace_front(std::move(z),1);
+  containers::queue<sr_term> to_do;
+  to_do.emplace(std::move(z),1);
 
+  sr_term_list result;
   do
   {
     KGBElt x = to_do.front().first.x();
@@ -1217,8 +1225,8 @@ sr_term_list Rep_context::finals_for(StandardRepr z) const
     auto height = to_do.front().first.height();
 #endif
     RatWeight gamma = std::move(to_do.front().first.infinitesimal_char);
-    auto coef = to_do.front().second;
-    to_do.pop_front();
+    auto coef = to_do.front().second; // always |1| or |-1|
+    to_do.pop();
 
   restart:
     for (weyl::Generator s=0; s<rd.semisimple_rank(); ++s)
@@ -1244,12 +1252,12 @@ sr_term_list Rep_context::finals_for(StandardRepr z) const
 	  KGBElt Cx = kgb().cayley(s,x);
 	  StandardRepr t1 = sr_gamma(Cx,lr,gamma);
 	  assert( t1.height() < height );
-	  insert_into(to_do,std::move(t1),coef);
+	  to_do.emplace(std::move(t1),coef);
 	  if (sx==x) // then type 2 Cayley
 	  {
 	    StandardRepr t2 = sr_gamma(Cx,lr+rd.simpleRoot(s),gamma);
 	    assert( t2.height() < height );
-	    insert_into(to_do,std::move(t2),coef);
+	    to_do.emplace(std::move(t2),coef);
 	  }
 	  x = sx; // after testing we can update |x| for nci cross action
 	  rd.simple_reflect(s,lr,1); // $-\rho$-based reflection
@@ -1276,9 +1284,9 @@ sr_term_list Rep_context::finals_for(StandardRepr z) const
 	  lr -= rd.simpleRoot(s)*((eval_lr+1)/2); // project to wall for |s|
 	  assert( rd.simpleCoroot(s).dot(lr) == -1 );
 	  const KGBEltPair Cxs = kgb().inverseCayley(s,x);
+	  to_do.emplace(sr_gamma(Cxs.first,lr,std::move(gamma)),coef);
 	  if (Cxs.second!=UndefKGB)
-	    insert_into(to_do,sr_gamma(Cxs.second,lr,gamma),coef);
-	  insert_into(to_do,sr_gamma(Cxs.first,lr,std::move(gamma)),coef);
+	    to_do.emplace(sr_gamma(Cxs.second,lr,gamma),coef);
 	  goto drop; // we have rewritten |current|, don't contribute it
 	} // (singular real root)
 	// |x = kgb().cross(s,x)|; real roots act trivially on KGB elements
@@ -1288,14 +1296,32 @@ sr_term_list Rep_context::finals_for(StandardRepr z) const
 	goto restart;
       } // |switch|
     } // |for(s)|
+
     // if loop terminates, then contribute modified, now final, parameter
-    result.emplace_front(sr_gamma(x,lr,gamma),coef);
+    // do this while keeping the list |result| in increasing order
+    {
+      z = sr_gamma(x,lr,gamma);
+      auto it = result.begin();
+      while (not result.at_end(it))
+	if (z < it->first)
+	  ++it; // skip lower terms
+	else if (it->first < z) // then we are looking at higher terms
+	  break; // so break loop and insert before those higher terms
+	else  // matching term; operate on coefficient
+	{ if ((it->second += coef) == 0)
+	    result.erase(it);
+	  goto drop; // whether by coefficient update or erasure, we are done
+	}
+      result.insert(it,std::make_pair(std::move(z),coef));
+    }
+
   drop: {} // when jumping here, proceed without contributing
   }
   while (not to_do.empty());
   return result;
 } // |Rep_context::finals_for| StandardRepr
 
+// function to consert |finals_for| output to |SR_poly| for Atlas user
 SR_poly Rep_context::expand_final (StandardRepr z) const
 {
   auto terms = finals_for(std::move(z));
@@ -2024,6 +2050,7 @@ sl_list<std::pair<StandardRepr,int> > Rep_table::deformation_terms
   return result;
 } // |deformation_terms|, common block version
 
+// a function trying to take advantage of a height bound; its milage varies
 sl_list<SR_poly::value_type> Rep_table::block_deformation_to_height
   (StandardRepr p, SR_poly& queue, level height_bound)
 {
@@ -2229,7 +2256,7 @@ SR_poly Rep_table::KL_column_at_s_to_height (StandardRepr p, level height_bound)
   return result;
 } // |Rep_table::KL_column_at_s_to_height|
 
-// maybe compute and return column of KL table for block element |z|
+// maybe compute, and in any case return column of KL table for block element |z|
 simple_list<std::pair<BlockElt,kl::KLPol> >
   Rep_table::KL_column(common_block& block, BlockElt z)
 {
@@ -2255,7 +2282,6 @@ const K_type_poly& Rep_table::deformation(StandardRepr z)
   assert(is_final(z));
   if (z.gamma().denominator() > (1LL<<rank()))
     z = weyl::alcove_center(*this,z);
-  RatNumList rp=reducibility_points(z);
 
   deformation_unit zn(*this,z);
   { // look up if deformation formula for |z| is already known and stored
@@ -2264,16 +2290,19 @@ const K_type_poly& Rep_table::deformation(StandardRepr z)
       return pool[h].def_formula();
   }
 
-  K_type_poly result {std::less<K_type_nr>()};
+  K_type_poly result;
   {
     auto base_pol = finals_for(scale_0(z)); // a $\Z$-linear combin. of K-types
+    K_type_poly::poly p;
+    p.reserve(containers::length(base_pol)); // efficiency gain, though minute
     for (auto it=base_pol.begin(); not base_pol.at_end(it); ++it)
-    {
-      K_type_nr h = K_type_hash.match(std::move(it->first));
-      result.add_term(h,Split_integer(it->second)); // purely integer coefficient
-    }
+      p.emplace_back
+	(K_type_hash.match(std::move(it->first)),Split_integer(it->second));
+    result = K_type_poly(std::move(p),false);
   }
 
+  RatNumList rp=reducibility_points(z);
+  // working towards $\nu=0$ might improve chances for reusage of early results:
   for (unsigned i=rp.size(); i-->0; )
   {
     auto zi = scale(z,rp[i]);
@@ -2554,20 +2583,6 @@ const K_type_poly& Rep_table::twisted_deformation(StandardRepr z, bool& flip)
     z = weyl::alcove_center(*this,z);
   const auto& delta = inner_class().distinguished();
 
-  RatNumList rp=reducibility_points(z);
-  flip = false; // ensure no flip is recorded when shrink wrapping is not done
-  if (not rp.empty() and rp.back()!=RatNum(1,1))
-  { // shrink wrap toward $\nu=0$ to get useful parameter to store result for
-    const RatNum f=rp.back();
-    std::pair<StandardRepr,bool> p =
-      ext_block::scaled_extended_finalise(*this,z,delta,f);
-    z = p.first; flip=p.second;
-    for (auto& a : rp)
-      a/=f; // rescale reducibility points to new parameter |z|
-    assert(rp.back()==RatNum(1,1)); // should make first reduction at |z|
-    // here we continue, with |flip| recording whether we already flipped
-  }
-
   deformation_unit zu(*this,z);
   { // if formula for |z| is stored, return it; caller multiplies by |s^flip|
     const auto h=alcove_hash.find(zu);
@@ -2576,10 +2591,11 @@ const K_type_poly& Rep_table::twisted_deformation(StandardRepr z, bool& flip)
       Ext_rep_context ctxt(*this,delta);
       auto E =
 	ext_block::shifted_default_extension(ctxt,z,pool[h].sample.gamma());
-      flip = flip==ext_block::is_default(E); // flip |flip| if not default
+      flip = not ext_block::is_default(E); // set |flip| if not default
       return pool[h].twisted_def_formula();
     }
   }
+  flip = false; // no flip will be exported in other cases
 
   K_type_poly result { std::less<K_type_nr>() };
   { // initialise |result| to restriction of |z| expanded to finals
@@ -2588,6 +2604,8 @@ const K_type_poly& Rep_table::twisted_deformation(StandardRepr z, bool& flip)
     for (auto&& term : z_K) // convert |K_repr::K_type_pol| to |K_type_poly|
       result.add_term(K_type_hash.match(std::move(term.first)),term.second);
   }
+
+  RatNumList rp=reducibility_points(z);
 
   // compute the deformation terms at all reducibility points
   for (unsigned i=rp.size(); i-->0; )
