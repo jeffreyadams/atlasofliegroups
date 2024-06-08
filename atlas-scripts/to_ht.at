@@ -20,14 +20,16 @@ set full_deform_to_ht_old(Param p, int N) = KTypePol:
 if height(p) > N then null_K_module(p.real_form)
 elif height(p) = N then K_type_pol(p)
 else let pc = alcove_center(p)
-     in regroup(p.real_form, deformedParams[N].entry(pc))
+     in {regroup(p.real_form, deformedParams[N].entry(pc))}
+     	regroup(p.real_form, deformedHash.entry(pc,N))
 fi
 
 {This version seems NOT faster or smaller}
 set full_deform_to_ht(Param p, int N) = KTypePol:
     if N < 0 then return full_deform(p) fi;
     let pc = alcove_center(p)
-    in regroup(p.real_form,deformedParams[N].entry(pc))
+    in {regroup(p.real_form,deformedParams[N].entry(pc))}
+       regroup(p.real_form,deformedHash.entry(pc,N))
 
 {deform_to_height(p,N)}
 
@@ -39,7 +41,8 @@ set twisted_full_deform_to_ht_MvL(Param p, int N) = KTypePol:
 set twisted_full_deform_to_ht(Param p,int N) = KTypePol:
     if N < 0 then return twisted_full_deform(p) fi;
     let pc = alcove_center(p)
-    in regroup(p.real_form, twistedDeformedParams[N].entry(pc))
+    in {regroup(p.real_form, twistedDeformedParams[N].entry(pc))}
+       regroup(p.real_form, twistedDeformedHash.entry_to_ht(pc,N))
 
 set KL_sum_at_s_to_ht(int N) = (Param p) ParamPol:
   KL_sum_at_s_to_height(p,N)

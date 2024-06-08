@@ -1452,6 +1452,11 @@ set UHBS_time = int: 0
 {this version is only for G simple and hermitian FPP params}
 set is_unitary_hash_big_SIMPLE(Param p) = bool:
     let start = elapsed_ms(), G = p.real_form
+    then FPP_flag = is_FPP(G,p.infinitesimal_character)
+    then () = if not FPP_flag
+    	      then return is_unitary(p) {prints("FPP DANGER at ",p)}
+	      fi
+    then () = p := herm_center(p)
     then () = if is_finished(p.x, p.lambda) then return big_unitary_hash.lookup(p).>= fi
     then (,pL) = wkgood_Q(p)
     then derpLs = derived_factor_params2(pL)
@@ -1499,11 +1504,17 @@ set low(KGBElt x, ratvec lambda) = bool:
 { compute Hermitian form to ht on p, report if it is unitary}
 set is_unitary_to_ht_big_SIMPLE(Param p,int N) = bool:
   if (not is_hermitian(p)) or (not is_pos_on_LKTs(p)) then return false fi;
-  if is_finished(p.x, p.lambda) and big_unitary_hash.lookup(p).>=
-  then return true
-  fi;
-  unitary_test_counter.use();
-  let (LAM,NU) = low(p)
+  let G = p.real_form
+  then FPP_flag = is_FPP(G,p.infinitesimal_character)
+  then () = if not FPP_flag
+    	    then return is_unitary_to_ht(p,N) {prints("FPP DANGER TO HT at ",p)}
+	    fi
+  then () = p := herm_center(p)
+  then () = if is_finished(p.x, p.lambda) and big_unitary_hash.lookup(p).>=
+       	    then return true
+  	    fi
+  then () = unitary_test_counter.use()
+  then (LAM,NU) = low(p)
   in if NU > LAM*low_frac
      then is_pure(hermitian_form_irreducible_to_ht(p,N))
      else is_pure(to_ht(hermitian_form_irreducible(p),N))
@@ -1519,14 +1530,20 @@ set is_unitary_to_ht_big(Param p,int N) = bool:
 { compute Hermitian form to hts on p, report if it is unitary}
 set is_unitary_to_hts_big_SIMPLE(Param p,[int] Ns) = bool:
   if (not is_hermitian(p)) or (not is_pos_on_LKTs(p)) then return false fi;
-  if #Ns = 0 then return is_unitary_hash_big_SIMPLE(p) fi;
-  for N in Ns
-  do if is_pure(hermitian_form_irreducible_to_ht(p,N))
-     then  unitary_test_counter.use()
-     else  return false
-     fi
-  od;
-  true
+  let G = p.real_form
+  then FPP_flag = is_FPP(G,p.infinitesimal_character)
+  then () = if not FPP_flag
+    	    then return is_unitary_to_hts(p,Ns) {prints("FPP DANGER TO HT at ",p)}
+	    fi
+  then () = p := herm_center(p)
+  then () =  if #Ns = 0 then return is_unitary_hash_big_SIMPLE(p) fi
+  then () = for N in Ns
+       	    do if is_pure(hermitian_form_irreducible_to_ht(p,N))
+     	       then  unitary_test_counter.use()
+     	       else  return false
+     	       fi
+  	    od
+  in true
 
 { compute Hermitian form to hts on p, report if it is unitary}
 set is_unitary_to_hts_big (Param p,[int] Ns) = bool:
@@ -1540,30 +1557,39 @@ set is_unitary_to_hts_big (Param p,[int] Ns) = bool:
 set is_unitary_test_big_SIMPLE(Param p, int N) = bool:
     unitary_test_counter.use();
     if (not is_hermitian(p)) or (not is_pos_on_LKTs(p)) then return false fi;
-    if is_finished(p.x, p.lambda) and big_unitary_hash.lookup(p).>=
-    then return true
-    fi;
-    let (LAM,NU) = low(p)
+    let G = p.real_form
+    then FPP_flag = is_FPP(G,p.infinitesimal_character)
+    then () = if not FPP_flag
+    	      then return is_unitary_test(p,N) {prints("FPP DANGER TO HT at ",p)}
+	      fi
+    then () = p := herm_center(p)
+    then () = if is_finished(p.x, p.lambda) and big_unitary_hash.lookup(p).>=
+    	      then return true
+    	      fi
+    then (LAM,NU) = low(p)
     in if NU > LAM*low_frac
        then is_pure(hermitian_form_irreducible_to_ht(p,N)) and
        	    is_unitary_hash_big_SIMPLE(p)
        else is_unitary_hash_big_SIMPLE(p)
        fi
 
-set is_unitary_test_big(Param p, int N) = bool:
-    if (not is_hermitian(p)) or (not is_pos_on_LKTs(p)) then return false fi;
-    let pds = derived_factor_params2(p)
-    in all(for pd in pds do @bool: is_unitary_test_big_SIMPLE(pd,N) od)
-
 {ONLY for G simple}
 { like previous, with list of heights }
 set is_unitary_test_big_SIMPLE (Param p, [int] Ns) = bool:
   if (not is_hermitian(p)) or (not is_pos_on_LKTs(p)) then return false fi;
-  if is_finished(p.x, p.lambda) and big_unitary_hash.lookup(p).>=
-  then return true
-  fi;
-  if #Ns = 0 then return is_unitary_hash_big_SIMPLE(p) fi;
-  let (LAM,NU) = low(p)
+  let G = p.real_form
+  then FPP_flag = is_FPP(G,p.infinitesimal_character)
+  then () = if not FPP_flag
+    	    then  return is_unitary_test(p,Ns) {prints("FPP DANGER TEST at ",p)}
+	    fi
+  then () = p := herm_center(p)
+  then () = if is_finished(p.x, p.lambda) and big_unitary_hash.lookup(p).>=
+       	    then return true
+  	    fi
+  then () = if #Ns = 0
+       	    then return is_unitary_hash_big_SIMPLE(p)
+	    fi
+  then (LAM,NU) = low(p)
   in if NU > LAM*low_frac
      then for N in Ns
      	  do if is_pure(hermitian_form_irreducible_to_ht(p,N))
@@ -1574,6 +1600,11 @@ set is_unitary_test_big_SIMPLE (Param p, [int] Ns) = bool:
      else is_unitary_hash_big_SIMPLE(p)
      fi
 
+set is_unitary_test_big(Param p, int N) = bool:
+    if (not is_hermitian(p)) or (not is_pos_on_LKTs(p)) then return false fi;
+    let pds = derived_factor_params2(p)
+    in all(for pd in pds do @bool: is_unitary_test_big_SIMPLE(pd,N) od)
+
 set is_unitary_test_big(Param p, [int] Ns) = bool:
     if (not is_hermitian(p)) or (not is_pos_on_LKTs(p)) then return false fi;
     let pds = derived_factor_params2(p)
@@ -1583,7 +1614,13 @@ set is_unitary_test_big(Param p, [int] Ns) = bool:
 {use the first m heights from deform_heights to test}
 set is_unitary_def_test_big_SIMPLE(Param p,int m) = bool:
     if (not is_hermitian(p)) or (not is_pos_on_LKTs(p)) then return false fi;
-    let (LAM,NU) = low(p)
+    let G = p.real_form
+    then FPP_flag = is_FPP(G,p.infinitesimal_character)
+    then () = if not FPP_flag
+    	      then return is_unitary_def_test(p,m) {prints("FPP DANGER DEF TEST at ",p)}
+	      fi
+    then () = p := herm_center(p)
+    then (LAM,NU) = low(p)
     in if NU > LAM*low_frac
        then let (def,flag)= deform_hts(p,m)
        	    in if flag
@@ -1609,7 +1646,22 @@ set is_unitary_def_test_big(Param p) = bool:
 {ONLY for G simple}
 set is_unitary_next_big_SIMPLE(Param p) = bool:
     if (not is_hermitian(p)) or (not is_pos_on_LKTs(p)) then return false fi;
-    let (LAM,NU) = low(p)
+    let G = p.real_form
+    then (LAM,NU) = low(p)
+    then FPP_flag = is_FPP(G,p.infinitesimal_character)
+    then () = if not FPP_flag
+    	      then if NU > LAM*low_frac
+       	      	   then let n=next_heightB(p)
+    	    	   	in if (n+1).=
+	      		   then return true
+	      		   elif is_unitary_to_ht_big(p,n)
+	      		   then return is_unitary_hash_big_SIMPLE(p)
+			   else return false {NOT unitary_to_ht}
+			   fi {n=-1}
+		   else return is_unitary_hash_big_SIMPLE(p)
+		   fi {NU > LAM}
+	       fi {not FPP_flag}
+    then () = p := herm_center(p)
     in if NU > LAM*low_frac
        then let n=next_heightB(p)
     	    in  if (n+1).=

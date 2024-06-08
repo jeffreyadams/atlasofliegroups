@@ -134,7 +134,7 @@ in for rd@m in list
         let (code,new) = find(rd)
      in if new { an empty slot was found, fill it }
         then let val = seq_nbrs[code] := #list
-	in list := (list next list:=[]) # rd
+	in list #:= rd
         ; if #list >= maxfill then rehash(capacity+capacity) fi
 	; val { don't use |seq_nbrs[code]| as |seq_nbrs| may have changed here x}
 	else seq_nbrs[code]
@@ -198,7 +198,7 @@ in for p@m in list
         let (code,new) = find(p)
      in if new { an empty slot was found, fill it }
         then let val = seq_nbrs[code] := #list
-	in list := (list next list:=[]) # p
+	in list #:= p
         ; if #list >= maxfill then rehash(capacity+capacity) fi
 	; val { don't use |seq_nbrs[code]| as |seq_nbrs| may have changed here x}
 	else seq_nbrs[code]
@@ -263,7 +263,7 @@ in for p@m in list
         let (code,new) = find(p)
      in if new { an empty slot was found, fill it }
         then let val = seq_nbrs[code] := #list
-	in list := (list next list:=[]) # p
+	in list #:= p
         ; if #list >= maxfill then rehash(capacity+capacity) fi
 	; val { don't use |seq_nbrs[code]| as |seq_nbrs| may have changed here x}
 	else seq_nbrs[code]
@@ -334,7 +334,7 @@ in for P@m in list
         let (code,new) = find(P)
      in if new { an empty slot was found, fill it }
         then let val = seq_nbrs[code] := #list
-	in list := (list next list:=[]) # P
+	in list #:= P
         ; if #list >= maxfill then rehash(capacity+capacity) fi
 	; val { don't use |seq_nbrs[code]| as |seq_nbrs| may have changed here x}
 	else seq_nbrs[code]
@@ -397,7 +397,7 @@ in for P@m in list
         let (code,new) = find(P)
      in if new { an empty slot was found, fill it }
         then let val = seq_nbrs[code] := #list
-	in list := (list next list:=[]) # P
+	in list #:= P
         ; if #list >= maxfill then rehash(capacity+capacity) fi
 	; val { don't use |seq_nbrs[code]| as |seq_nbrs| may have changed here x}
 	else seq_nbrs[code]
@@ -461,7 +461,7 @@ in for P@m in list
         let (code,new) = find(P)
      in if new { an empty slot was found, fill it }
         then let val = seq_nbrs[code] := #list
-	in list := (list next list:=[]) # P
+	in list #:= P
         ; if #list >= maxfill then rehash(capacity+capacity) fi
 	; val { don't use |seq_nbrs[code]| as |seq_nbrs| may have changed here x}
 	else seq_nbrs[code]
@@ -524,7 +524,7 @@ in for P@m in list
         let (code,new) = find(P)
      in if new { an empty slot was found, fill it }
         then let val = seq_nbrs[code] := #list
-	in list := (list next list:=[]) # P
+	in list #:= P
         ; if #list >= maxfill then rehash(capacity+capacity) fi
 	; val { don't use |seq_nbrs[code]| as |seq_nbrs| may have changed here x}
 	else seq_nbrs[code]
@@ -587,7 +587,7 @@ in for p@m in list
         let (code,new) = find(p)
      in if new { an empty slot was found, fill it }
         then let val = seq_nbrs[code] := #list
-	in list := (list next list:=[]) # p
+	in list #:= p
         ; if #list >= maxfill then rehash(capacity+capacity) fi
 	; val { don't use |seq_nbrs[code]| as |seq_nbrs| may have changed here x}
 	else seq_nbrs[code]
@@ -653,7 +653,7 @@ in for p@m in list
         let (code,new) = find(p)
      in if new { an empty slot was found, fill it }
         then let val = seq_nbrs[code] := #list
-	in list := (list next list:=[]) # p
+	in list #:= p
         ; if #list >= maxfill then rehash(capacity+capacity) fi
 	; val { don't use |seq_nbrs[code]| as |seq_nbrs| may have changed here x}
 	else seq_nbrs[code]

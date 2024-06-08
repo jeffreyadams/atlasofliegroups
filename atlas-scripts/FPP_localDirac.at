@@ -576,6 +576,7 @@ set local_testK_hash_know_lower(KGBElt x, ratvec lambda, VertexData Lvd,
 		     fi;
 		     if newStatuses[k] = "?"
 		     	then if{NEWU} all(for p in ps do Uhash.lookup(p).>= or tester(p) od)
+			     {if p is unitary, tester(p) may record that fact in Uhash}
 		     	     then newStatuses[k]:= "T"
 		     	     else newStatuses:= updateNUclassesB(newStatuses, gr, k, "F")
 		     	     ; newStatuses[k] := "F"
