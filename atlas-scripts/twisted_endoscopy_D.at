@@ -37,11 +37,11 @@ SR=simple_roots(G) then
 SCR=simple_coroots(G) then
 sr=## for  i:#SR-1 do if SR[i]*s=0 then [SR[i]] else [] fi od then
 scr=## for i:#SCR-1 do if SCR[i]*s=0 then [SCR[i]] else [] fi od then
-A = mat: for i:#sr+2 do if i<n-1 then sr[i] else if i=n-1 then v else if i<=#sr then sr[i-1] else u fi fi fi od in
-{B = mat: for i:#scr+2 do if i<n-1 then scr[i] else if i=n-1 then v else if i<=#sr then scr[i-1] else u fi fi fi od in}
+A = mat: for i:#sr+2 do if i<n-1 then sr[i] else if i=n-1 then v else if i<=#sr then sr[i-1] else u fi fi fi od then 
+B = mat: for i:#scr+2 do if i<n-1 then scr[i] else if i=n-1 then v else if i<=#scr then scr[i-1] else u fi fi fi od in
 {od then
 B = mat: for i:#scr do scr[i] od in}
-root_datum(A,A)
+root_datum(A,B)
 
 
 
@@ -85,8 +85,8 @@ let A=mat:for i:n do if i<(n-1)/2 then M*A[i]-M*A[i]/2\1 else if i=((n-1)/2) the
 A*distinguished_involution(G)
 }
 
-{this should be called lift_involution_W or something like that}
-set lift_involution_Tits(mat A, mat M,RealForm H, RealForm G)= mat:
+
+set lift_involution_W(mat A, mat M,RealForm H, RealForm G)= mat:
 let A0=A*distinguished_involution(H) then
 M0 = if M[0][0]=1 then M else -M fi then
 n=rank(G) in
@@ -114,8 +114,6 @@ KGB_elt_gen(G.inner_class,theta_G,tf_G)
 
 set lift(KGBElt x_H,mat M, RealForm G)=KGBElt_gen:
 lift(KGB_elt_gen(x_H),M,G)
-
-
 
 
 
@@ -260,7 +258,7 @@ od;
 prints("inverse_lift_by_search failed");
 null_module(H)
 
-set inverse_lift_std(Param p_G,RealForm H,mat M,ratvec gamma_H)=ParamPol:
+set inverse_lift_std(Param p_G,RealForm H,mat M, ratvec gamma_H)=ParamPol:
 let x=KGB_elt(KGB_elt_gen(H,restrict_action(p_G.involution,M),0*rho(H))) in
 let lambda=left_inverse(M)*(p_G.lambda-rho(p_G.real_form)) + solve(1+x.involution,(1+x.involution)*(gamma_H-rho(H)-(left_inverse(M)*(p_G.lambda-rho(p_G.real_form))))).requisition in
 {if #all_parameters_x_gamma(x,gamma_H)>0 then}	
@@ -323,16 +321,16 @@ let rv=null_module(monomials(P)[0].real_form) in
 for (c,p) in %P do let P=sign_difference(p,delta)*p in rv+:=c*P  od;
 rv
 
-{Gives the distribution defining the A-packet for a classical group of type A and B. In this case ABV=Arthur.}
-set A_packet_distribution_AB(Param p_H,mat M,RealForm G,mat delta)=ParamPol:
+{Gives the distribution defining the A-packet for a classical group of type A, B and C. In this case ABV=Arthur.}
+set A_packet_distribution_ABC(Param p_H,mat M,RealForm G,mat delta)=ParamPol:
 let ecf=extended_character_formula(Finalize(lift_std(p_H,M,G)),delta) in
 let P=twisted_character(ecf) in
 let Pw=twisted_character_whittaker(P,delta) in
 composition_series(inverse_lift_std(Pw,p_H.real_form,M,p_H.infinitesimal_character)) 
 
 
-{Gives the distribution defining the A-packet for a classical group of type B, C and D. For type B same answer as before, for type C and
-D it gives the O_n orbit expressed as 1/2*eta^ABV_psi + 1/2*eta^ABV_\psi\circ O.}
+{Gives the distribution defining the A-packet for a classical group of type B, C and D. For type B and C same answer as before, for type D 
+it gives the O_n orbit expressed as 1/2*eta^ABV_psi + 1/2*eta^ABV_\psi\circ O.}
 set A_packet_distribution_BCD(Param p_H,mat M,RealForm G,mat delta)=void:
 let ecf=extended_character_formula(Finalize(lift_std(p_H,M,G)),delta) in
 let P=twisted_character(ecf) in
@@ -341,15 +339,15 @@ let A_sum=composition_series(inverse_lift_std_orbit(Pw,p_H.real_form,M,p_H.infin
 void:for (c,p) in %A_sum do prints(1/2*c.s_to_1,"*",p) od {I need to do this since I don't know how to multiply a param_pol by 1/2}
 
 
-{Gives the A-packet in the case of a classical group of type A and B}
-set A_packet_AB(Param p_H,mat M,RealForm G,mat delta)=[Param]:
+{Gives the A-packet in the case of a classical group of type A, B and C}
+set A_packet_ABC(Param p_H,mat M,RealForm G,mat delta)=[Param]:
 let ecf=extended_character_formula(Finalize(lift_std(p_H,M,G)),delta) in
 let P=twisted_character(ecf) in
 let Pw=twisted_character_whittaker(P,delta) in
 let A_sum=composition_series(inverse_lift_std(Pw,p_H.real_form,M,p_H.infinitesimal_character)) in
 monomials(A_sum)
 
-{Gives the A-packet in the case of a classical group of type B, C and D. For C and D it gives the O(N) orbit}
+{Gives the A-packet in the case of a classical group of type B, C and D. For D it gives the O(N) orbit}
 set A_packet_BCD(Param p_H,mat M,RealForm G,mat delta)=[Param]:
 let ecf=extended_character_formula(Finalize(lift_std(p_H,M,G)),delta) in
 let P=twisted_character(ecf) in
@@ -358,7 +356,7 @@ let A_sum=composition_series(inverse_lift_std_orbit(Pw,p_H.real_form,M,p_H.infin
 monomials(A_sum)
 
 
- set unipotent_A_packets(ComplexNilpotent N,RealForm H,mat M,RealForm G,mat delta)=void:
+set unipotent_A_packets(ComplexNilpotent N,RealForm H,mat M,RealForm G,mat delta)=void:
 let wpp=parameters(weak_packet(N,H)) then
 (,,l)=N in
 let all=all_parameters_x_gamma(KGB(H)~[0],l/2) in
@@ -382,6 +380,169 @@ let wpp_in_all_torusfactor0 = ## for p in wpp_in_all do if p.x.torus_factor=0*rh
 for p in wpp_in_all_torusfactor0 do prints(A_packet_distribution_BCD(p,M,G,delta)) od
 
 
+
+set matrix(int n, int m)=mat:
+n#for j:m do for i:n do 0 od od
+
+
+{Suppose n is even. Let delta be the discrete series of GL(2,R) with infinitesimal character (m/2,-m/2). The following script 
+gives the Langlands quotient of the parabolically induced representation of GL(n,R) given by Ind_LN(delta x delta x ... x delta) where 
+L=GL(2,R) x GL(2,R) x ... x GL(2,R) and GL(2,R) appears n/2 times. The A-parameter attached to these representations is irreducible
+and non-unipotent.}
+
+set Speh(int n,int m)=ParamPol:
+assert(is_even(n), "n must be even");
+let G=GL(n,R) then
+Q=theta_stable_parabolics(G)~[1] then
+L=Q.Levi then
+u=for i:n/2\1 do  m/2 od then 
+v=for i:n/2\1 do -m/2 od then
+A=all_parameters_x_gamma(L.trivial.x,rho(L)+u##v-rho_u(Q)) then
+p_L=A[0] in
+theta_induce_irreducible(p_L,G)
+
+
+
+{Let u=[u_1,...,u_n], u_k a positive even integer. Let v=[v_1,...,v_n], v_k in Z. 
+The following script gives the standard representation of GL(N,R), N=sum_k u_k, given by Ind_LN(Speh(u_1,v_1) x ... x Speh(u_n,v_n)) where
+L=GL(u_1,R) x GL(u_2,R) x ... x GL(u_n,R). The A-parameter attached 
+to this representation decomposes into a sum of irreducible non-unipotent A-parameters.}
+
+set AJ_parameter([int] u,[int] v)=ParamPol:
+let S = for k:#u do monomials(Speh(u[k],v[k]))[0] od then
+G=split_form(trivial_group) then
+L=for j in u do G:=G*GL(j,R) od;G then
+M0=^(S[0].x.involution)##matrix(u[0],sum(u)-u[0]) then 
+A=for k:#u-2 do ^matrix(u[k+1],sum(for j:k+1 do u[j] od))##(S[k+1].x.involution)##matrix(u[k+1],sum(u)-sum(for j:k+2 do u[j] od)) od then
+M0=for a in A do M0:=M0##a od;M0 then
+M=if #u=1 then
+M0
+else
+M0##^(matrix(u~[0],sum(u)-u~[0])##(S~[0].x.involution)) fi then
+t_f= ## for p in S do p.x.torus_factor od then
+x=KGB_elt(KGB_elt_gen(L,M,t_f)) then 
+lambda= ## for p in S do p.lambda od then
+nu = ## for p in S do p.nu od then
+q=parameter(x,lambda,nu) in
+finalize(real_induce_standard(q,GL(sum(u),R)))
+
+
+{Let u=[u_1,...,u_n], u_k a positive even integer. Let v=[v_1,...,v_n], v_k in Z. 
+Suppose psi is the A-parameter of GL(N,R), N=sum_k u_k, corresponding to  
+the representation given by the previous script (i.e. Ind_LN(Speh(u_1,v_1) x ... x Speh(u_n,v_n))).
+The following script gives the A-packet of the classical group G, whose A-parameter psi_G
+factors through psi. These are the AJ-packets of G.
+Atlas will give an error when the parity condition on the v_k is not verified. This needs to be made more clear.}
+
+set AJ_packet_distribution([int] u,[int] v)=ParamPol:
+let n=sum(u) then
+p=monomials(AJ_parameter(u,v))[0] then
+G=real_form(p) then
+delta=distinguished_involution(G) then
+(,M)=endoscopic(G,delta) then
+H=if is_even(n) then SO(n/2\1,n/2\1+1) else Sp(n-1,R) fi then
+q=monomials(inverse_lift_std(p,H,-M))[0] in
+A_packet_distribution_ABC(q,-M,G,delta)
+
+
+set sgn_representation(int n)=Param:
+let G=GL(n,R) then
+rho=rho(G) in
+parameter(trivial(G).x,rho+ones(n),rho)
+
+{The following script gives the trivial representation of GL(n,R) when m=0 and
+the sgn representation of GL(n,R) when m=1. The A-parameters attached to these 
+representations are principal unipotent and irreducible.}
+
+set principal_unipotent(int n, int m)=Param:
+assert(m<=1 and m>=0, "m must be 0 or 1");
+let G=GL(n,R) in
+if m=0 then trivial(G) else sgn_representation(n) fi
+
+{Let u=[u_1,...,u_n], u_k a positive integer. Let v=[v_1,...,v_n], v_k in {0,1}. 
+The following script gives the standard representation of GL(N,R), N=sum_k u_k, given by Ind_LN(principal_unipotent(u_1, v_1) x ... x principal_unipotent(u_n,v_n)) where
+L=GL(u_1,R) x GL(u_2,R) x ... x GL(u_n,R). The A-parameter attached to this representation decomposes into a sum of irreducible unipotent A-parameters. These
+are the unipotent representations of GL(n,R). 
+}
+
+set unipotent_parameter([int] u,[int] v)=ParamPol:
+let Unip = for k:#u do principal_unipotent(u[k],v[k]) od then
+G=split_form(trivial_group) then
+L=for j in u do G:=G*GL(j,R) od;G then
+M0=^(Unip[0].x.involution)##matrix(u[0],sum(u)-u[0]) then 
+A=for k:#u-2 do ^matrix(u[k+1],sum(for j:k+1 do u[j] od))##(Unip[k+1].x.involution)##matrix(u[k+1],sum(u)-sum(for j:k+2 do u[j] od)) od then
+M0=for a in A do M0:=M0##a od;M0 then
+M=if #u=1 then
+M0
+else
+M0##^(matrix(u~[0],sum(u)-u~[0])##(Unip~[0].x.involution)) fi then
+t_f= ## for p in Unip do p.x.torus_factor od then
+x=KGB_elt(KGB_elt_gen(L,M,t_f)) then 
+lambda= ## for p in Unip do p.lambda od  then
+nu = ## for p in Unip do p.nu od then
+q=parameter(x,lambda,nu) in
+finalize(real_induce_standard(q,GL(sum(u),R)))
+
+{Let u=[u_1,...,u_n], u_k a positive integer. Let v=[v_1,...,v_n], v_k in {0,1}. 
+Suppose psi is the A-parameter of GL(N,R), N=sum_k u_k, corresponding to  
+the representation given by the previous script (i.e. Ind_LN(principal_unipotent(u_1, v_1) x ... x principal_unipotent(u_n,v_n))).
+The following script gives the A-packet of the classical group G, whose A-parameter psi_G
+factors through psi. These are the unipotent A-packets of G.
+Atlas will give an error when the parity condition on the v_k is not verified. This needs to be made more clear.}
+
+set unipotent_packet_distribution([int] u,[int] v)=ParamPol:
+let n=sum(u) then
+p=monomials(unipotent_parameter(u,v))[0] then
+G=real_form(p) then
+delta=distinguished_involution(G) then
+(,M)=endoscopic(G,delta) then
+H = if is_even(n) then SO(n/2\1,n/2\1+1) else Sp(n-1,R) fi then
+q=monomials(inverse_lift_std(p,H,-M))[0] in
+A_packet_distribution_ABC(q,-M,G,delta)
+
+
+{Let u=[u_1,...,u_n], u_k a positive even integer. Let v=[v_1,...,v_n], v_k in Z.
+Let u=[s_1,...,s_l], s_j a positive integer. Let v=[t_1,...,t_l], t_j in {0,1}.   
+The following script gives the standard representation of GL(N,R), N = sum_k u_k + sum_j s_j, given by 
+Ind_LN(Speh(u_1,v_1) x ... x Speh(u_n,v_n) x principal_unipotent(s_1, t_1) x ... x principal_unipotent(s_l,t_l)) where
+L = GL(u_1,R) x GL(u_2,R) x ... x GL(u_n,R) x GL(s_1,R) x ... x GL(s_l,R).}
+
+set A_parameter([int] u, [int] v, [int] s,[int] t)=ParamPol:
+let n=sum(u) then
+m=sum(s) then
+L=GL(n,R)*GL(m,R) then
+p=monomials(AJ_parameter(u,v))[0] then
+q=monomials(unipotent_parameter(s,t))[0] then
+M0=^(p.x.involution##matrix(n,m)) then
+M1=^(matrix(m,n)##q.x.involution) then 
+M=M0##M1 then
+t_f=p.x.torus_factor##q.x.torus_factor then
+x=KGB_elt(KGB_elt_gen(L,M,t_f)) then
+lambda=p.lambda##q.lambda then
+nu=p.nu##q.nu then
+r=parameter(x,lambda,nu) in
+finalize(real_induce_standard(r,GL(n+m,R)))
+
+
+{Let u=[u_1,...,u_n], u_k a positive even integer. Let v=[v_1,...,v_n], v_k in Z. Let u=[s_1,...,s_l], s_j a positive integer. 
+Let v=[t_1,...,t_l], t_j in {0,1}. Suppose psi is the A-parameter of GL(N,R), N=sum_k u_k + sum_j s_j, 
+corresponding to the representation given by the previous script 
+(i.e. Ind_LN(Speh(u_1,v_1) x ... x Speh(u_n,v_n) x principal_unipotent(s_1, t_1) x ... x principal_unipotent(s_l,t_l))).
+The following script gives the A-packet of the classical group G, whose A-parameter psi_G
+factors through psi. Atlas will give an error when the parity condition on the v_k is not verified. This needs to be made more clear.
+For the moment it only works for G a symplectic or odd orthogonal group.}
+
+set A_packet_distribution([int] u, [int] v, [int] s, [int] t)=ParamPol:
+let n=sum(u)+sum(s) then
+p=monomials(A_packet_parameter(u, v, s,t))[0] then
+G=real_form(p) then
+delta=distinguished_involution(G) then
+(,M)=endoscopic(G,delta) then
+H = if is_even(n) then SO(n/2\1,n/2\1+1) else Sp(n-1,R) fi then
+q=monomials(inverse_lift_std(p,H,-M))[0] in
+A_packet_distribution_ABC(q,-M,G,delta)
+
+
 {set unipotent_A_packets_SO_odd(int n, ComplexNilpotent N)=void:
 let H=SO(n,n+1) then
 G=GL(2*n,R) then
@@ -393,6 +554,7 @@ let wpp=parameters(weak_packet(N,H)) then
 let all=all_parameters_x_gamma(KGB(H)~[0],l/2) in
 let wpp_in_all= ## for p in all do if first(for x in wpp do  x=p od)=-1 then [] else [p] fi od in
 for p in wpp_in_all do prints(A_packet_distribution_BCD(p,M,G,delta)) od}
+
 
 
 {set unipotent_A_packets_SO_even(int n, ComplexNilpotent N)=void:
