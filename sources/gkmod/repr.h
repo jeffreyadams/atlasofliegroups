@@ -356,7 +356,7 @@ class Rep_context
 
   bool equivalent(StandardRepr z0, StandardRepr z1) const; // by value
 
-  // transform |srm| by cofolded Weyl element |w|, or its inverse
+  // transform |srm| by Weyl element |w|, or its inverse
   template<bool left_to_right> void transform
     (const WeylElt& w, StandardReprMod& srm) const;
 
@@ -481,15 +481,24 @@ public:
   size_t hashCode(size_t modulus) const; // value depending on alcove only
 }; // |class deformation_unit|
 
-// data to transform stored block to user attitude
+/*
+  Information about alcove face relative either to one of the fundamental alcove
+  or to a given other one (which in practice will be the representative in a
+  previously stored block that was in the same equivalence class). The
+  |int_sys_nr| is set by |InnerClass::int_item| for the initial |gamma| in its
+  class, setting the other fields as well. But when later parameters in the same
+  equivalence class come along, |w| and |simple_pi| are adapted relative to the
+  initial one, by |Rep_context::make_relative_to|.
+*/
 struct locator
 {
-  unsigned int int_sys_nr; // sequence number for integral system in inner class
-  WeylElt w; // in |Weyl_group|; apply to fundamental alcove integral system
-  sl_list<RootNbr> simp_int; // image simply integral roots in increasing order
-  Permutation simple_pi; // to transform integral system simple generators by
+  unsigned int int_syst_nr; // sequence number for integral system in inner class
+  WeylElt w; // initially from fundamental alcove integral system
+  sl_list<RootNbr> simp_int; // images simply integral roots in increasing order
+  Permutation simple_pi; // to reorder integral system simple generators by
 };
 
+// to describe any block in terms of a stored one, also record a final |shift|
 struct block_modifier : public locator
 {
   RatWeight shift; // add this one field
@@ -647,7 +656,7 @@ class Rep_table : public Rep_context
 class common_context
 {
   const Rep_context& rep_con;
-  sl_list<RootNbr> simp_int; // simply integral roots in increasing order
+  sl_list<RootNbr> simply_int; // simply integral roots in increasing order
   const SubSystem sub; // embeds |id_it|s |bm.w| image into full root datum
 public:
   common_context (const Rep_context& rc, const RatWeight& gamma);
@@ -660,7 +669,7 @@ public:
     { return rep_con.involution_table(); }
   const RootDatum& full_root_datum() const { return rep_con.root_datum(); }
   const SubSystem& subsys() const { return sub; }
-  RootNbrList simply_integrals() const { return simp_int.to_vector(); }
+  RootNbrList simply_integrals() const { return simply_int.to_vector(); }
 
   // methods for local common block construction, as in |Rep_context|
   // however, the generator |s| is interpreted for |subsys()|

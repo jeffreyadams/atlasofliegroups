@@ -1301,7 +1301,7 @@ bool common_block::is_integral_orthogonal(const RatWeight& shift) const
 }
 #endif
 
-// build extended block for custom built |common_block|, given an involution
+// build |delta|-extended block, when |*this| is a custom built |common_block|
 ext_block::ext_block common_block::extended_block
   (const WeightInvolution& delta) const
 {
