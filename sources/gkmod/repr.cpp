@@ -112,8 +112,8 @@ Reduced_param Reduced_param::reduce
    locator& loc)
 { // below |int_item| must set |loc| before argument to |transform| is evaluated
   InnerClass& ic = rc.inner_class();
-  const auto& integral = ic.int_item(gamma,loc); // sets |loc|
-  rc.transform<true>(loc.w,srm);
+  const auto& integral = ic.int_item(gamma,loc); // completely sets |loc|
+  rc.transform<true>(loc.w,srm); // move |srm| towards fundamental alcove
   const auto codec = integral.data(rc.kgb().inv_nr(srm.x()));
   auto evs = codec.internalise(srm.gamma_lambda());
   unsigned int reduction = 0; // mixed radix representation of remainders
@@ -121,13 +121,13 @@ Reduced_param Reduced_param::reduce
   { auto d = codec.diagonal[i];
     reduction = d*reduction + arithmetic::remainder(evs[i],d);
   }
-  return Reduced_param{ srm.x(), loc.int_sys_nr, reduction };
+  return Reduced_param{ srm.x(), loc.int_syst_nr, reduction };
 }
 
 Reduced_param Reduced_param::co_reduce
   (const Rep_context& rc, StandardReprMod srm, const locator& loc)
 { rc.transform<true>(loc.w,srm);
-  const auto& integral = rc.inner_class().int_item(loc.int_sys_nr);
+  const auto& integral = rc.inner_class().int_item(loc.int_syst_nr);
   const auto codec = integral.data(rc.kgb().inv_nr(srm.x()));
   auto evs = codec.internalise(srm.gamma_lambda());
   unsigned int reduction = 0; // mixed radix representation of remainders
@@ -135,7 +135,7 @@ Reduced_param Reduced_param::co_reduce
   { auto d = codec.diagonal[i];
     reduction = d*reduction + arithmetic::remainder(evs[i],d);
   }
-  return Reduced_param{ srm.x(), loc.int_sys_nr, reduction };
+  return Reduced_param{ srm.x(), loc.int_syst_nr, reduction };
 }
 
 size_t Reduced_param::hashCode(size_t modulus) const
@@ -330,10 +330,11 @@ RatWeight Rep_context::make_diff_integral_orthogonal
 
 /*
    The purpose of |Rep_context::make_relative_to| is to adapt |bm.w| so that
-   applying that to the facet of |srm0| returns (up to root translation) the
-   facet of |srm1|, and to set |bm.shift| so that in addition if we shift
-   |srm0.gamlam| first by |bm.shift| and then multiply by |bm.w| we end up in
-   |srm1.gamlam|; see second |Rep_context::sr| where this procedure is applied.
+   applying that to the facet of |srm0| (which has attitude |loc|) returns
+   (up to root translation) the facet of |srm1|, and to set |bm.shift| so that
+   in addition if we shift |srm0.gamlam| first by |bm.shift| and then multiply
+   by |bm.w| we end up in |srm1.gamlam|; see second |Rep_context::sr| where
+   this procedure is applied.
  */
 void Rep_context::make_relative_to // adapt information in |bm| relative to rest
 (const locator& loc, const StandardReprMod& srm0,
@@ -1192,22 +1193,6 @@ K_repr::K_type_pol Rep_context::scale_0(const poly& P) const
 using sr_term = std::pair<StandardRepr,int>;
 using sr_term_list = simple_list<sr_term>;
 
-// insert (add) a new term into list |L|, assumed sorted increasingly
-void insert_into(sr_term_list& L, StandardRepr&& z, int coef)
-{ auto it = L.begin();
-  while (not L.at_end(it))
-    if (z < it->first)
-      ++it; // skip lower terms
-    else if (it->first < z) // then we are looking at higher terms
-      break; // so break loop and insert before those higher terms
-    else  // matching term; operate on coefficient
-    { if ((it->second += coef) == 0)
-        L.erase(it);
-      return; // whether by coefficient update or erasure, we are done
-    }
-  L.insert(it,std::make_pair(std::move(z),coef));
-}
-
 // convert |z| into increasing list of final parameters, maybe with multiplicity
 sr_term_list Rep_context::finals_for(StandardRepr z) const
 {
@@ -1300,7 +1285,7 @@ sr_term_list Rep_context::finals_for(StandardRepr z) const
     // if loop terminates, then contribute modified, now final, parameter
     // do this while keeping the list |result| in increasing order
     {
-      z = sr_gamma(x,lr,gamma);
+      z = sr_gamma(x,lr,gamma); // temporarily reuse emptied parameter variable
       auto it = result.begin();
       while (not result.at_end(it))
 	if (z < it->first)
@@ -1325,7 +1310,7 @@ sr_term_list Rep_context::finals_for(StandardRepr z) const
 SR_poly Rep_context::expand_final (StandardRepr z) const
 {
   auto terms = finals_for(std::move(z));
-  poly result;
+  SR_poly result;
   for (auto it=terms.begin(); not terms.at_end(it); ++it)
     result.add_term(std::move(it->first),Split_integer(it->second));
   return result;
@@ -1424,22 +1409,27 @@ size_t deformation_unit::hashCode(size_t modulus) const
   return hash&(modulus-1);
 }
 
-//				|block_modifier| methods
+//			  |block_modifier| methods
 
+/* When |b| was custom built for a parameter (no looking up), the modifications
+   due to our storing blocks as fundamental alcove only are not needed. So that
+   we can nonetheless use functions that want to apply such transformations,
+   this constructor sets the modifier so that they will be no-ops.
+*/
 block_modifier::block_modifier (const common_block& b)
+  : locator {unsigned(-1),WeylElt(),sl_list<RootNbr>(), Permutation(b.rank(),1)}
+  , shift(RatWeight(b.root_datum().rank()))
 {
-  int_sys_nr = -1; // for local use only; no |common_context|, |Reduced_param|
-  clear(b.rank(), b.root_datum().rank()); // set |w|, |simple_pi|
   const auto simply_ints = b.simply_ints();
   simp_int.assign(simply_ints.begin(),simply_ints.end()); // convert to list
 }
 
-// when a block is relative to itself, we remove all modifiations
+// reset all fields, as if |make_relative_to| relative to a parameter itself
 void block_modifier::clear (unsigned int block_rank, unsigned int rd_rank)
 {
   // |int_sys_nr| not changed, maybe remains undefined
   w = WeylElt();
-  // |int_simp| is not relative; it remains
+  // |simp_int| is not relative; it remains
   simple_pi = Permutation(block_rank,1); // reset to identity
   shift = RatWeight(rd_rank);
 }
@@ -1618,14 +1608,14 @@ blocks::common_block& Rep_table::add_block_below
   gen.block_below(srm); // generate Bruhat interval below |srm| into |pool|
 
   // traverse elements in new interval and collect known blocks containing any
-  const size_t place_limit = place.size(); // needs fixing before the loop
+  const size_t place_limit = place.size(); // record this before the loop runs
   sl_list<sub_triple> sub_blocks;
   for (const StandardReprMod& elt : pool) // run over interval just generated
     append_block_containing(elt,place_limit,bm, sub_blocks); // defined below
 
   // adapt elements for all |sub_blocks|, and extend |pool| if necessary
   size_t limit = pool.size(); // limit of generated Bruhat interval
-  for (auto sub : sub_blocks)
+  for (const auto& sub : sub_blocks)
     for (BlockElt z=0; z<sub.bp->size(); ++z)
     { StandardReprMod rep = sub.bp->representative(z);
       shift(sub.bm.shift,rep);
@@ -1694,7 +1684,8 @@ void Rep_table::add_block (const StandardReprMod& srm, const block_modifier& bm)
 }// |Rep_table::add_block|
 
 
-void Rep_table::append_block_containing // appending is to final argument
+// append block of |elt| to |sub_blocks|, unless it is already there
+void Rep_table::append_block_containing
   (const StandardReprMod& elt, size_t place_limit, const locator& block_loc,
    sl_list<sub_triple>& sub_blocks)
 {
@@ -1711,12 +1702,12 @@ void Rep_table::append_block_containing // appending is to final argument
       static_cast<locator&>(sub_to_new) = block_loc; // copy locator
       const locator& sub_loc = place[h].first->second; // attitude of |sub|
       make_relative_to(sub_loc,sub->representative(place[h].second),
-		       sub_to_new,elt);
+		       sub_to_new,elt); // sets |sub_to_new.shift|
       assert(sub->is_integral_orthogonal(sub_to_new.shift));
       sub_blocks.emplace_back(sub,h,sub_to_new);
     }
   }
-} // |Rep_table::add_block_containing|
+} // |Rep_table::append_block_containing|
 
 void Rep_table::swallow_blocks_and_append
   (const sl_list<sub_triple>& subs,
@@ -1801,7 +1792,7 @@ blocks::common_block& Rep_table::lookup_full_block
 {
   make_dominant(sr); // without this we would not be in any valid block
   auto srm = StandardReprMod::mod_reduce(*this,sr); // modulo $X^*$
-  auto rp = Reduced_param::reduce(*this,srm,sr.gamma(),bm);
+  auto rp = Reduced_param::reduce(*this,srm,sr.gamma(),bm); // sets |bm::locator|
 
   auto h = reduced_hash.find(rp);
   if (h==reduced_hash.empty or not place[h].first->first.is_full()) // then
@@ -1815,7 +1806,7 @@ blocks::common_block& Rep_table::lookup_full_block
   auto& block = block_loc.first;
   assert(block.is_full());
   auto stored_srm = block.representative(z = place[h].second);
-  make_relative_to(block_loc.second,stored_srm, bm,srm);
+  make_relative_to(block_loc.second,stored_srm, bm,srm); // sets |bm.shift|
   return block;
 } // |Rep_table::lookup_full_block|
 
@@ -1825,7 +1816,7 @@ blocks::common_block& Rep_table::lookup
   normalise(sr); // gives a valid block, and smallest partial block
 
   auto srm = StandardReprMod::mod_reduce(*this,sr); // modulo $X^*$
-  auto rp = Reduced_param::reduce(*this,srm,sr.gamma(),bm);
+  auto rp = Reduced_param::reduce(*this,srm,sr.gamma(),bm); // sets |bm::locator|
 
   assert(reduced_hash.size()==place.size()); // should be in sync at this point
   auto h = reduced_hash.find(rp); // look up modulo $X^*+integral^\perp$
@@ -1835,7 +1826,7 @@ blocks::common_block& Rep_table::lookup
     auto& block_loc = *place[h].first;
     auto& block = block_loc.first;
     auto stored_srm = block.representative(which = place[h].second);
-    make_relative_to(block_loc.second,stored_srm, bm,srm);
+    make_relative_to(block_loc.second,stored_srm, bm,srm); // sets |bm.shift|
     return block; // use block of related |StandardReprMod| as ours
   }
 
@@ -2678,15 +2669,15 @@ K_repr::K_type_pol export_K_type_pol(const Rep_table& rt,const K_type_poly& P)
 
 common_context::common_context (const Rep_context& rc, const RatWeight& gamma)
 : rep_con(rc)
-, simp_int(integrality_simples(rc.root_datum(),gamma))
-, sub(rc.root_datum(),simp_int)
+, simply_int(integrality_simples(rc.root_datum(),gamma))
+, sub(rc.root_datum(),simply_int)
 {} // |common_context::common_context|
 
 common_context::common_context
   (const Rep_context& rc, const block_modifier& bm)
 : rep_con(rc)
-, simp_int(rc.inner_class().int_item(bm.int_sys_nr).image_simples(bm.w))
-, sub(rc.root_datum(),simp_int) // construct and store image subsystem
+, simply_int(rc.inner_class().int_item(bm.int_syst_nr).image_simples(bm.w))
+, sub(rc.root_datum(),simply_int) // construct and store image subsystem
 {} // |common_context::common_context|
 
 std::pair<gradings::Status::Value,bool>
