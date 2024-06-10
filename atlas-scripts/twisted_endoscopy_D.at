@@ -432,7 +432,8 @@ Suppose psi is the A-parameter of GL(N,R), N=sum_k u_k, corresponding to
 the representation given by the previous script (i.e. Ind_LN(Speh(u_1,v_1) x ... x Speh(u_n,v_n))).
 The following script gives the A-packet of the classical group G, whose A-parameter psi_G
 factors through psi. These are the AJ-packets of G.
-Atlas will give an error when the parity condition on the v_k is not verified. This needs to be made more clear.}
+Atlas will give an error when the parity condition on the v_k is not verified. This needs to be made more clear.
+For the moment it only works for G a symplectic or odd orthogonal group}
 
 set AJ_packet_distribution([int] u,[int] v)=ParamPol:
 let n=sum(u) then
@@ -462,8 +463,7 @@ if m=0 then trivial(G) else sgn_representation(n) fi
 {Let u=[u_1,...,u_n], u_k a positive integer. Let v=[v_1,...,v_n], v_k in {0,1}. 
 The following script gives the standard representation of GL(N,R), N=sum_k u_k, given by Ind_LN(principal_unipotent(u_1, v_1) x ... x principal_unipotent(u_n,v_n)) where
 L=GL(u_1,R) x GL(u_2,R) x ... x GL(u_n,R). The A-parameter attached to this representation decomposes into a sum of irreducible unipotent A-parameters. These
-are the unipotent representations of GL(n,R). 
-}
+are the unipotent representations of GL(n,R). }
 
 set unipotent_parameter([int] u,[int] v)=ParamPol:
 let Unip = for k:#u do principal_unipotent(u[k],v[k]) od then
@@ -488,7 +488,8 @@ Suppose psi is the A-parameter of GL(N,R), N=sum_k u_k, corresponding to
 the representation given by the previous script (i.e. Ind_LN(principal_unipotent(u_1, v_1) x ... x principal_unipotent(u_n,v_n))).
 The following script gives the A-packet of the classical group G, whose A-parameter psi_G
 factors through psi. These are the unipotent A-packets of G.
-Atlas will give an error when the parity condition on the v_k is not verified. This needs to be made more clear.}
+Atlas will give an error when the parity condition on the v_k is not verified. This needs to be made more clear.
+For the moment it only works for G a symplectic or odd orthogonal group}
 
 set unipotent_packet_distribution([int] u,[int] v)=ParamPol:
 let n=sum(u) then
@@ -534,7 +535,7 @@ For the moment it only works for G a symplectic or odd orthogonal group.}
 
 set A_packet_distribution([int] u, [int] v, [int] s, [int] t)=ParamPol:
 let n=sum(u)+sum(s) then
-p=monomials(A_packet_parameter(u, v, s,t))[0] then
+p=monomials(A_parameter(u, v, s,t))[0] then
 G=real_form(p) then
 delta=distinguished_involution(G) then
 (,M)=endoscopic(G,delta) then
