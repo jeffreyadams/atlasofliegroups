@@ -645,10 +645,9 @@ class Rep_table : public Rep_context
   void append_block_containing // appending is to final argument
     (const StandardReprMod& elt, size_t place_limit, const locator& block_loc,
      sl_list<sub_triple>& sub_blocks);
-  void swallow_blocks_and_append
-    (const sl_list<sub_triple>& subs,
-     common_block& block, const block_modifier& bm,
-     sl_list<located_block>& temp);
+  void swallow_blocks_and_append // swallow |subs| into |block|
+    (const sl_list<sub_triple>& subs, const block_modifier& bm,
+     common_block& block, sl_list<located_block>&& temp);
 }; // |Rep_table|
 
 
