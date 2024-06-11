@@ -44,7 +44,7 @@ set known_unitaries(Param_hash UhashLocal, VertexData Lvd,
 	       then let local_verts = vec: for ell in list do Lvd.lookup(ell) od.sort
 	     	    then m = lookups[#list-1](local_verts)
 		    then () = assert(m.>=,"have known unitary not appearing in LFDKH")
-		    then () = out[#list-1]:=(out[#list-1] next out[#list -1]:=[])#m {out[#list-1]#m}
+		    then () = out[#list-1]#:=m
 		    in ()
 	       fi
 	 od
@@ -821,7 +821,7 @@ set maxPR_cowts(Param p) = [vec]:
        	      od
     in M
 
-{result is pairs (LU, pL) with pL hermitian FPP and p in Ind_P^G(pL)}
+{result is tuples ([dpLs]) with pL hermitian and p = Ind_P^G(pL); so pL and p are unitary iff all the dpLs are}
 set ind_cand_params = (Param -> [Param]):
     let param_hash = make_Param_hash()
     then answers = [[Param]]: [] {one for each Param known}
@@ -842,16 +842,16 @@ set ind_cand_params = (Param -> [Param]):
 	       	       	      	      	   do let p1L = first_param(finalize(
 					      parameter(x1L, lambda1L, w1*p1.nu)))
 		       	  		      in if is_hermitian(p1L)
-		      	     		     	    and is_FPP(L, p1L.infinitesimal_character)
+		      	     		     	    {and is_FPP(L, p1L.infinitesimal_character)}
 		     	    			    and real_induce_irreducible(p1L,G) = p
-	       	     	     		          then list := for q in derived_factor_params2((p1L))								  do herm_center(q)
+	       	     	     		          then list := for q in derived_factor_params2((p1L))										  do herm_center(q)
 						       	       od
 	       		    			  fi
 	 	        		    od
 	    		      	      in list
 	 		    	    od
 		       then j = first(for list in lists do #list >0 od)
-		       in if j>0
+		       in if j.>=
 		       	  then answers#:= lists[j]
 			  else answers#:= []
 		   	  fi
@@ -937,9 +937,9 @@ set make_Lvd_Perm2_mapAct_table() = Lvd_Perm2_mapAct_table:
     	 let I = inner_class_hash.size()
 	 then i = inner_class_hash.match(ic)
     	 then () = if i = I {haven't seen this inner class before}
-	      	   then inv_hashes := (inv_hashes next inv_hashes:=[])#make_mat_hash();
+	      	   then inv_hashes #:= make_mat_hash();
 	    	   	vertex_datas := (vertex_datas next vertex_datas := [])#FPP_vertex_data(ic);
-			FELs := (FELs next FELs:=[])# FPP_flippable_edge_lookup(ic);
+			FELs #:= FPP_flippable_edge_lookup(ic);
 	    	   	FPP_local_verts #:= FPP_local_vertices(ic, vertex_datas[i].list, FELs[i]);
 			cands #:= [];
 	    	   	lamthlam_hashess #:= [];
@@ -952,8 +952,7 @@ set make_Lvd_Perm2_mapAct_table() = Lvd_Perm2_mapAct_table:
 	 then J = inv_hashes[i].size()
       	 then j = inv_hashes[i].match(theta)
      	 then () = if j = J {haven't seen this involution before}
-      	      	   then cands[i] := (cands[i] next cands[i] := [])
-		    	 			    # [];
+      	      	   then cands[i] #:= [];
 			lamthlam_hashess[i] #:= make_vec_hash();
 			Perm2s[i] #:= [];
 		   	entries[i] #:= []
