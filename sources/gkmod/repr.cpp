@@ -1626,12 +1626,13 @@ blocks::common_block& Rep_table::add_block_below
   sl_list<StandardReprMod> // the partial |common_block| constructor needs this
     elements(pool.begin(),pool.end()); // convert container
 
+  // a |located_block| is a pair of a |common_block| and a |locator|
   sl_list<located_block> temp; // must use temporary singleton
-  auto& block = temp.emplace_back // construct block and get a reference
+  auto& block = temp.emplace_back // construct partial block and get a reference
     (std::piecewise_construct,
      std::tuple<const common_context&,sl_list<StandardReprMod>&>
      (ctxt,elements), // arguments of partial |common_block| constructor
-     std::tuple<const block_modifier&>(bm)
+     std::tuple<const locator&>(bm) // |locator| copy constructor
     ) .first;
 
   *subset=BitMap(block.size()); // this bitmap will be exported via |subset|
@@ -1656,7 +1657,8 @@ blocks::common_block& Rep_table::add_block_below
   block.set_Bruhat(std::move(partial_Hasse_diagram));
   // remainder of Hasse diagram will be imported from swallowed sub-blocks
 
-  swallow_blocks_and_append(sub_blocks, block,bm, temp); // defined below
+  swallow_blocks_and_append // defined below
+    (sub_blocks,bm, block,std::move(temp));
   return block;
 } // |Rep_table::add_block_below|
 
@@ -1670,7 +1672,7 @@ void Rep_table::add_block (const StandardReprMod& srm, const block_modifier& bm)
     (std::piecewise_construct,
      std::tuple<const common_context&,const StandardReprMod&,BlockElt&>
      (ctxt,srm,srm_in_block), // arguments of full |common_block| constructor
-     std::tuple<const block_modifier&>(bm)
+     std::tuple<const locator&>(bm) // |locator| copy constructor
     ) .first;
 
   const size_t place_limit = place.size();
@@ -1680,7 +1682,8 @@ void Rep_table::add_block (const StandardReprMod& srm, const block_modifier& bm)
     append_block_containing // defined below
       (block.representative(z),place_limit,bm, sub_blocks);
 
-  swallow_blocks_and_append(sub_blocks, block,bm, temp); // defined below
+  swallow_blocks_and_append // defined below
+    (sub_blocks,bm, block,std::move(temp));
 }// |Rep_table::add_block|
 
 
@@ -1710,11 +1713,10 @@ void Rep_table::append_block_containing
 } // |Rep_table::append_block_containing|
 
 void Rep_table::swallow_blocks_and_append
-  (const sl_list<sub_triple>& subs,
-   common_block& block, const block_modifier& bm,
-   sl_list<located_block>& temp)
+  (const sl_list<sub_triple>& subs, const block_modifier& bm,
+   common_block& block, sl_list<located_block>&& temp)
 {
-  // swallow |embeddings|, and remove them from |block_list|
+  // swallow |subs|, and remove them from |block_list| array using |block_erase|
   for (const auto& sub : subs) // swallow sub-blocks
   {
     auto& sub_block = *sub.bp;
@@ -1734,7 +1736,7 @@ void Rep_table::swallow_blocks_and_append
     block_erase(place[sub.h].first); // remove |sub| while correcting iterators
   }
 
-  // only after |block_erase| upheavals is it safe to link in the new block
+  // only after the |block_erase| upheavals is it safe to link in the new block
   // also, it can only go to the end of the list, to not invalidate any iterators
   const auto new_block_it=block_list.end(); // iterator for new block elements
   block_list.splice(new_block_it,temp,temp.begin()); // link in |block| at end
@@ -1788,25 +1790,33 @@ void Rep_table::block_erase (bl_it pos)
 
 
 blocks::common_block& Rep_table::lookup_full_block
-  (StandardRepr& sr,BlockElt& z, block_modifier& bm)
+  (StandardRepr& sr,BlockElt& which, block_modifier& bm)
 {
   make_dominant(sr); // without this we would not be in any valid block
   auto srm = StandardReprMod::mod_reduce(*this,sr); // modulo $X^*$
   auto rp = Reduced_param::reduce(*this,srm,sr.gamma(),bm); // sets |bm::locator|
 
   auto h = reduced_hash.find(rp);
-  if (h==reduced_hash.empty or not place[h].first->first.is_full()) // then
-  { // generate a new full block (possibly swallowing older ones)
-    add_block(srm,bm);
-    h = reduced_hash.find(rp); // block containing |srm| is now present
+  if (h!=reduced_hash.empty and place[h].first->first.is_full()) // then
+  { // then we can return a looked-up block, suitably modified
+    auto& block_loc = *place[h].first;
+    auto& block = block_loc.first;
+    assert(block.is_full());
+    auto stored_srm = block.representative(which = place[h].second);
+    make_relative_to(block_loc.second,stored_srm, bm,srm); // sets |bm.shift|
+    return block; // use block of related |StandardReprMod| as ours
   }
-  assert(h<place.size());
 
-  auto& block_loc = *place[h].first;
-  auto& block = block_loc.first;
+  // now we must first add the full block for |srm|
+  add_block(srm,bm);
+  h = reduced_hash.find(rp); // block containing |srm| is now present
+  assert(h<place.size());
+  which = place[h].second;
+
+  auto& block = place[h].first->first;
   assert(block.is_full());
-  auto stored_srm = block.representative(z = place[h].second);
-  make_relative_to(block_loc.second,stored_srm, bm,srm); // sets |bm.shift|
+  assert(block.representative(which)==srm); // we should find |srm| here
+  bm.clear(block.rank(),root_datum().rank()); // we are relative to ourselves
   return block;
 } // |Rep_table::lookup_full_block|
 
@@ -1907,7 +1917,7 @@ std::vector<BlockElt_pol> contributions
       } // loop over singular descent generators
     if (not it()) // then previous loop ran to completion
       result[z].emplace_front(z,1); // record singleton contribution to ourselves
-    // the fact that |result[z].front()==z| also identifies |z| as "final"
+    // the fact that |result[z].front().first==z| also identifies |z| as "final"
   } // |for(z)|
   return result;
 } // |contributions|
@@ -1957,12 +1967,12 @@ sl_list<std::pair<StandardRepr,int> > Rep_table::deformation_terms
   if (block.length(y)==0)
     return result; // easy case, null result
 
-  std::vector<BlockElt_pol> contrib =
+  std::vector<BlockElt_pol> contrib = // precompute to-final mapping up to |y|
     contributions(block,block.singular(bm,gamma),y);
   sl_list<BlockElt> finals;
   for (BlockElt z=0; z<contrib.size(); ++z)
     if (not contrib[z].empty() and contrib[z].front().first==z)
-      finals.push_front(z); // accumulate in reverse order
+      finals.push_front(z); // extract the final block elements in reverse order
 
   assert(not finals.empty() and finals.front()==y); // otherwise don't call us
   const kl::KL_table& kl_tab =
@@ -1977,7 +1987,7 @@ sl_list<std::pair<StandardRepr,int> > Rep_table::deformation_terms
 
   // since we evaluate at $s=-1$ eventually, we can use integer coefficients
   std::vector<int> acc(finals.size(),0);
-  std::vector<int> remainder(finals.size(),0); // coeff.s by |survivor| position
+  std::vector<int> remainder(finals.size(),0); // coeff.s by |finals| position
   remainder.front()=1; // we initialised remainder = 1*sr_y
   auto y_parity=block.length(y)%2;
 
