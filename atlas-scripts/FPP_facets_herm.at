@@ -52,7 +52,7 @@ set known_unitaries(Param_hash UhashLocal, VertexData Lvd,
 
 {takes the known non-unitaries from non-unitary_hash having the given x and lambda,
  and returns their locations in LFDKH}
-set known_non_unitaries(Param_hash NUhash, KGBElt x, ratvec lambda, VertexData Lvd,
+{set known_non_unitaries(Param_hash NUhash, KGBElt x, ratvec lambda, VertexData Lvd,
     [[FacetVertsKHash]] LFDKH) = [vec]:
     let ps = for d:#LFDKH
     	     do for v in LFDKH[d]
@@ -67,7 +67,7 @@ set known_non_unitaries(Param_hash NUhash, KGBElt x, ratvec lambda, VertexData L
 		else []
 		fi
 	  od.##
-       od
+       od}
 
 
 set localize(Param_hash Uhash, KGBElt x, ratvec lambda) = Param_hash:
@@ -625,7 +625,7 @@ set solve(vec b, mat M, mat C, [int] s) = maybe_a_vec:
 )
 
 {these are the possible lambda+theta*lambda for x.involution = theta}
-set cands(InnerClass ic, mat theta, [ratvec] verts) = [vec]:
+{set cands(InnerClass ic, mat theta, [ratvec] verts) = [vec]:
     let th1 = 1+theta
     in for v in verts
        do let w = th1*v
@@ -633,7 +633,7 @@ set cands(InnerClass ic, mat theta, [ratvec] verts) = [vec]:
 	     then [w.numer]
              else []
              fi
-       od.##.no_reps
+       od.##.no_reps}
 
 {these are the possible lambda+theta*lambda for x.involution = theta. First
 vec hash includes all candidate lamthlam (for which a lambda in X* + rho exists).
@@ -678,7 +678,7 @@ set cands_hash(InnerClass ic, mat theta, vec_hash lamthlam_hash) = [PermOrderTwo
 
 
 {computes a set of integral vecs INCLUDING all of those in (1+theta)*FPP}
-set candsBIG(InnerClass ic, mat theta) = [vec]:
+{set candsBIG(InnerClass ic, mat theta) = [vec]:
     let th1 = 1+theta, {tester = [vec]: (1-theta).^} thmin = 1-theta
     then th1xis = th1*ic.fundamental_weights
     then mins = vec:
@@ -697,10 +697,10 @@ set candsBIG(InnerClass ic, mat theta) = [vec]:
        	  then [answer]
 	  else []
 	  fi
-       od.## 
+       od.##}
 
 {a point in FPP has wfundamental[j] coord in the range [min[j], max[j]]}
-set candsNEW(InnerClass ic, mat theta) = [vec]:
+{set candsNEW(InnerClass ic, mat theta) = [vec]:
     let {y = theta,} two_rho = ic.two_rho {, w = id_mat(ic.rank)}
     then x = KGB_elt(KGBElt_gen:(ic, theta, null(ic.rank)))
     then G = x.real_form
@@ -789,7 +789,7 @@ set candsNEW(InnerClass ic, mat theta) = [vec]:
 	  then [v.numer]
 	  else []
 	  fi
-        od.##{.no_reps}  {automatically no reps}
+        od.##{.no_reps}  {automatically no reps}}
 
 set Lnu(Param p) = RealForm:
     let p1 = to_no_Cplus(p), G=p.real_form
@@ -885,12 +885,14 @@ set_type
   , ( -> vec) involution_size {for each inner class, number of involutions so far considered}
   , ( -> [vec]) lamthlam_size {for each inner class and involution, number of d_lambdas (actually lambda+theta*lambda)
       	 		       so far considered}
+{  , ( -> [vec]) cands_size {for each inner class and involution, number of candidate lambda+theta*lambda
+      	 		       so far considered}}
   , ( -> [[vec]]) Lvd_list_size {for each inner class and involution and d_lambda, size of Lvd.list}
   , (InnerClass -> VertexData) FPP_vertex_data {one for each inner class}
   , (InnerClass -> (vec -> int)) flippable_edge_lookup
   {, (InnerClass -> [FacetVertsIndex]) FPP_flip_tet}
   , (InnerClass -> [ratvec]) FPP_local_vertices {one for each inner class}
-  , ((InnerClass, mat) -> [vec]) cands {for each involution, a list of candidates for lambda+theta_lambda}
+{  , ((InnerClass, mat) -> [vec]) cands {for each involution, a list of candidates for lambda+theta_lambda}}
   , ((InnerClass, mat) -> [vec]) lamthlams {for each involution, list of allowed lambda+theta_lambda}
   , ((InnerClass, mat, vec) -> int) lamthlam_number {for each involution, number of lambda+theta_lambda in list}
   , ((InnerClass, mat) -> [ratvec]) lambda0s {for each involution, list of allowed lambda mod twists}
@@ -906,9 +908,9 @@ set_type
     		      					       lambda + theta*lambda}
 )
 ]
-set old_flag = true {use old cands function}
-set big_flag = false {use candsBIG}
-set new_flag = false {use candsNEW}
+{set old_flag = true {use old cands function}}
+{set big_flag = false {use candsBIG}}
+{set new_flag = false {use candsNEW}}
 
 set make_Lvd_Perm2_mapAct_table() = Lvd_Perm2_mapAct_table:
 (   let inner_class_hash = make_InnerClass_hash()
@@ -916,7 +918,7 @@ set make_Lvd_Perm2_mapAct_table() = Lvd_Perm2_mapAct_table:
     then vertex_datas = [VertexData]: [] {one for each inner class}
     then FELs = [(vec->int)]: [] {one for each inner class}
     then FPP_local_verts = [[ratvec]]: [] {one list for each inner class}
-    then cands = [[[vec]]]: [] {one [vec] for each inner class and involution}
+{    then cands = [[[vec]]]: [] {one [vec] for each inner class and involution}}
     then lamthlam_hashess = [[vec_hash]]: [] {one for each inner class and involution}
     	 {entries are vecs of size ic.rank: lamba+theta*lambda, for a
 	 	  certain choice of lambda (defined up to twist and equivalence}
@@ -928,7 +930,7 @@ set make_Lvd_Perm2_mapAct_table() = Lvd_Perm2_mapAct_table:
 	 then () = vertex_datas := []
 	 then () = FELs := []
 	 then () = FPP_local_verts := []
-	 then () = cands := []
+{	 then () = cands := []}
 	 then () = lamthlam_hashess := []
 	 then () = Perm2s := []
 	 then () = entries := []
@@ -941,7 +943,7 @@ set make_Lvd_Perm2_mapAct_table() = Lvd_Perm2_mapAct_table:
 	    	   	vertex_datas := (vertex_datas next vertex_datas := [])#FPP_vertex_data(ic);
 			FELs #:= FPP_flippable_edge_lookup(ic);
 	    	   	FPP_local_verts #:= FPP_local_vertices(ic, vertex_datas[i].list, FELs[i]);
-			cands #:= [];
+{			cands #:= [];}
 	    	   	lamthlam_hashess #:= [];
 			Perm2s #:= [];
 	    	   	entries #:= []
@@ -952,7 +954,7 @@ set make_Lvd_Perm2_mapAct_table() = Lvd_Perm2_mapAct_table:
 	 then J = inv_hashes[i].size()
       	 then j = inv_hashes[i].match(theta)
      	 then () = if j = J {haven't seen this involution before}
-      	      	   then cands[i] #:= [];
+      	      	   then {cands[i] #:= [];}
 			lamthlam_hashess[i] #:= make_vec_hash();
 			Perm2s[i] #:= [];
 		   	entries[i] #:= []
@@ -960,19 +962,19 @@ set make_Lvd_Perm2_mapAct_table() = Lvd_Perm2_mapAct_table:
 	 in (i, j)
     then add_cands(InnerClass ic, mat theta) = (int, int):
     	 let (i,j) = add_involution(ic,theta)
-	 then tempcandsi = cands[i]
+	 {then tempcandsi = cands[i]}
 	 then tempPerm2si = Perm2s[i]
 	 then entriesi = entries[i]
-	 then () = if #cands[i][j] > 0
+	 then () = if {#cands[i][j] > 0} lamthlam_hashess[i][j].size() > 0
 	 	   then return (i,j)
 	 	   else let Perm2cands = cands_hash(ic,theta, lamthlam_hashess[i][j])
-		   	then () = tempcandsi[j] := lamthlam_hashess[i][j].list()
+		   	{then () = tempcandsi[j] := lamthlam_hashess[i][j].list()}
 			then () = tempPerm2si[j] := Perm2cands
 			then () = entriesi[j] := for lamthlam@k in lamthlam_hashess[i][j].list()
 			     	       	    do let Perm2 = Perm2cands[k]
 				     	       in Perm2_to_LPm(ic,Perm2)
 					    od
-			then () = cands[i] := tempcandsi
+			{then () = cands[i] := tempcandsi}
 			then () = Perm2s[i] :=tempPerm2si
 			then () = entries[i] := entriesi
 			{() = tempcandsi[j] := if old_flag
@@ -1002,6 +1004,12 @@ set make_Lvd_Perm2_mapAct_table() = Lvd_Perm2_mapAct_table:
       	 do lamthlam_hash.size()
 	 od
       od
+{    , ( -> [vec]): {cands_size} @[vec]:
+      for candlist in cands
+      do for cand in candlist
+      	 do #cand
+	 od
+      od}
     , ( -> [[vec]]): {Lvd_list_size} @[[vec]]:
       for i: #entries
       do for j: #entries[i]
@@ -1019,9 +1027,9 @@ set make_Lvd_Perm2_mapAct_table() = Lvd_Perm2_mapAct_table:
     , (InnerClass -> [ratvec]): {FPP_local_vertices} (InnerClass ic)  [ratvec]:
       let i = add_inner_class(ic)
        in FPP_local_verts[i]
-    , ((InnerClass, mat) -> [vec]): {cands} (InnerClass ic, mat theta) [vec]:
+{    , ((InnerClass, mat) -> [vec]): {cands} (InnerClass ic, mat theta) [vec]:
       let (i,j) = add_cands(ic,theta)
-      in cands[i][j]
+      in cands[i][j]}
     , ((InnerClass, mat) -> [vec]): {lamthlams} (InnerClass ic, mat theta) [vec]:
       let (i,j) = add_cands(ic,theta)
       in lamthlam_hashess[i][j].list()
@@ -1179,33 +1187,37 @@ set FPP_lambdas([KGBElt] xs) = [[ratvec]]:
     do FPP_lambdas(x)
     od
 
-
+{decide NOT to hash nonunitary}
 set_type
 [big_unitary_hash_table =
 ( ( -> int) real_form_size {number of real forms included}
   , ( -> vec) uhash_sizes {for every real form, the number of unitary reps}
   , (RealForm -> int) uhash_size {for one real form, number of unitary reps}
-  , ( -> vec) nuhash_sizes {for every real form, the number of nonunitary reps}
-  , (RealForm -> int) nuhash_size {for one real form, number of nonunitary reps}
+  {, ( -> vec) nuhash_sizes {for every real form, the number of nonunitary reps}}
+  {, (RealForm -> int) nuhash_size {for one real form, number of nonunitary reps}}
   , ( -> ) clear
   , (RealForm -> int) rf_number {number of real form in list}
   , (int -> RealForm) rf_index {jth real form in list}
   , (RealForm -> [int]) xl_known {for each x, bitmap of lambda for which FPP unitary dual is known}
+  , (RealForm -> int) x_known {bitmap of x for which entire FPP dual is known}
+  , (RealForm -> int) x_partial {bitmap of x for which some lambda have FPP dual known}
   , ((KGBElt,int) -> ) finish {add bitmap of new known (x,lambda) to xl_known}
+  , (KGBElt -> ) finishx {add x to xl_known}
+  , (KGBElt -> ) partialx {add x to x_partial}
   , ((RealForm,[int]) -> ) finishall {add bitmaps of all new known (x,lambda) to xl_known}
   , (RealForm -> Param_hash) uhash {hash table of known unitary}
-  , (RealForm -> Param_hash) nuhash {hash table of known nonunitary}
-  , (RealForm -> ) nuhash_fill {put known nonunitary vertices in nuhash}
+{  , (RealForm -> Param_hash) nuhash {hash table of known nonunitary}}
+{  , (RealForm -> ) nuhash_fill {put known nonunitary vertices in nuhash}}
   , (Param -> (int,int)) long_lookup {(rf_index(p.real_form), location of p in its uhash)}
   , (Param -> int) lookup {(location of p in its uhash)}
   , (Param -> bool) check {check whether p is unitary, and if so add to its hash table}
   , (Param -> int) match {add p to its hash table}
   , ((Param,int) -> int) long_match {add p to ith hash table}
-  , (Param -> (int,int)) nulong_lookup {(rf_index(p.real_form), location of p in its nuhash)}
-  , (Param -> int) nulookup {(location of p in its nuhash)}
-  , (Param -> bool) nucheck {check whether p is nonunitary, and if so add to its hash table}
-  , (Param -> int) numatch {add p to its nuhash table}
-  , ((Param,int) -> int) long_numatch {add p to ith nuhash table}
+{  , (Param -> (int,int)) nulong_lookup {(rf_index(p.real_form), location of p in its nuhash)}}
+{  , (Param -> int) nulookup {(location of p in its nuhash)}}
+{  , (Param -> bool) nucheck {check whether p is nonunitary}}
+{  , (Param -> int) numatch {add p to its nuhash table}}
+{  , ((Param,int) -> int) long_numatch {add p to ith nuhash table}}
   , ( -> ) write {output unitary data for file}
   , (RealForm -> ) writeG {output data for one group to file}
   , ((RealForm, int, int) -> ) writeGrange {output data for KGB(G)[low,high]}
@@ -1218,13 +1230,17 @@ set is_finished_time = int:0
 set make_big_unitary_hash() = big_unitary_hash_table:
 (   let real_form_hash = make_RealForm_hash()
     then uhashes = [Param_hash]: [] {one for each real form}
-    then nuhashes = [Param_hash]: [] {one for each real form}
+    {then nuhashes = [Param_hash]: [] {one for each real form}}
     then xl_known = [[int]]: [] {one bitmap of known (x,lambda) for each real form and x}
+    then x_known = [int]: [] {one bitmap of known x for each real form}
+    then x_partial = [int]: [] {one bitmap of partially known x for each real form}
     then clear() = void:
     	 let () = real_form_hash.clear()
 	 then () = uhashes := []
-	 then () = nuhashes := []
+	 {then () = nuhashes := []}
 	 then () = xl_known := []
+	 then () = x_known := []
+	 then () = x_partial := []
 	 in ()
     then add_real_form(RealForm rf) = int:
     	 let I = real_form_hash.size()
@@ -1232,21 +1248,24 @@ set make_big_unitary_hash() = big_unitary_hash_table:
     	 then () = if i = I {haven't seen this real form before}
 	      	   then	let empty = [int]: null(#KGB(rf))
 		   	then () = xl_known #:= empty {null(#KGB(rf))}
-			then () = uhashes #:= make_Param_hash()
-			in nuhashes #:= make_Param_hash()
+			then () = x_known #:= 0
+			then () = x_partial #:= 0
+			{then () = uhashes #:= make_Param_hash()}
+			in {n}uhashes #:= make_Param_hash()
 	    	   fi
 	  {then () = if i=I then prints((real_form_hash.size(), #uhashes, #xl_known)) fi}
 	  then () = assert(real_form_hash.size() = #uhashes and #uhashes = #xl_known
-	       	    				 and #nuhashes = #uhashes, "big_unitarity_hash damaged")
+	       	    				 {and #nuhashes = #uhashes} and #uhashes = #x_known
+						 and #x_partial = #x_known, "big_unitarity_hash damaged")
 	  in i
     in
     ( (->int): {real_form_size} @int: real_form_hash.size()
     , ( -> vec): {uhash_sizes} @vec: for uhash in uhashes do uhash.size() od
     , (RealForm -> int): {uhash_size} (RealForm rf) int:
       uhashes[add_real_form(rf)].size()
-    , ( -> vec): {nuhash_sizes} @vec: for nuhash in nuhashes do nuhash.size() od
-    , (RealForm -> int): {nuhash_size} (RealForm rf) int:
-      nuhashes[add_real_form(rf)].size()
+    {, ( -> vec): {nuhash_sizes} @vec: for nuhash in nuhashes do nuhash.size() od}
+    {, (RealForm -> int): {nuhash_size} (RealForm rf) int:
+      nuhashes[add_real_form(rf)].size()}
     , ( -> ): {clear} clear
     , (RealForm -> int): {rf_number} (RealForm rf) int:
       add_real_form(rf)
@@ -1255,13 +1274,31 @@ set make_big_unitary_hash() = big_unitary_hash_table:
     , (RealForm -> [int]): {xl_known} (RealForm rf) [int]:
       let i = add_real_form(rf)
       in xl_known[i]
+    , (RealForm -> int): {x_known} (RealForm rf) int:
+      let i = add_real_form(rf)
+      in x_known[i]
+    , (RealForm -> int): {x_partial} (RealForm rf) int:
+      let i = add_real_form(rf)
+      in x_partial[i]
     , ((KGBElt,int) -> ): {finish} (KGBElt x, int M):
       let start = elapsed_ms()
       then i = add_real_form(x.real_form)
       then xl_knowni = [int]: xl_known[i]
       then () = xl_knowni[x.number] := OR(M,xl_knowni[x.number])
       then () = xl_known[i] := xl_knowni
+      then () = x_partial[i] := OR(to_bitset([x.number]),x_partial[i])
       then () = finish_time+:= elapsed_ms() - start
+      in ()
+    , (KGBElt -> ): {finishx} (KGBElt x):
+      let i = add_real_form(x.real_form)
+      then M = to_bitset([x.number])
+      then () = x_known[i] := OR(M,x_known[i])
+      then () = x_partial[i] := OR(M,x_partial[i])
+      in ()
+    , (KGBElt -> ): {partialx}  (KGBElt x):
+      let i = add_real_form(x.real_form)
+      then M = to_bitset([x.number])
+      then () = x_partial[i] := OR(M,x_partial[i])
       in ()
     , ((RealForm,[int]) -> ): {finishall} (RealForm rf, [int] Ms):
       let start = elapsed_ms()
@@ -1271,12 +1308,14 @@ set make_big_unitary_hash() = big_unitary_hash_table:
       	      	do xl_knowni[n] := OR(Ms[n],xl_knowni[n])
 		od
       then () = xl_known[i] := xl_knowni
+      then v = vec: for M@j in Ms do if M.= then [] else [j] fi od.##
+      then () = x_partial[i] := OR(x_partial[i], to_bitset(v))
       in finish_time+:= elapsed_ms() - start
     , (RealForm -> Param_hash): {uhash} (RealForm rf) Param_hash:
       uhashes[add_real_form(rf)]
-    , (RealForm -> Param_hash): {nuhash} (RealForm rf) Param_hash:
-      nuhashes[add_real_form(rf)]
-    , (RealForm -> ): {nuhash_fill} (RealForm rf):
+    {, (RealForm -> Param_hash): {nuhash} (RealForm rf) Param_hash:
+      nuhashes[add_real_form(rf)]}
+    {, (RealForm -> ): {nuhash_fill} (RealForm rf):
       let i = add_real_form(rf)
       in for x@n in KGB(rf)
       	 do let lambdas = FPP_lambdas(x), theta = x.involution
@@ -1291,7 +1330,7 @@ set make_big_unitary_hash() = big_unitary_hash_table:
 			    fi
 		     od {gamma}
 	       od {lambda}
-	  od {x}
+	  od {x}}
     , (Param -> (int,int)): {long_lookup} (Param p) (int,int):
       let i = add_real_form(p.real_form)
       in (i, uhashes[i].lookup(p))
@@ -1305,48 +1344,53 @@ set make_big_unitary_hash() = big_unitary_hash_table:
       then j = uhashes[i].lookup(p)
       in if j.>=
       	 then true
-      	 elif is_member_bitset (position(p.x, p.lambda), xl_known[i][p.x.number])
+      	 elif {now p was not found} is_member_bitset(p.x.number, x_known[i])
 	 then false
-	 else let chk = is_unitary(p)
-	      then () = if chk
-		     	then uhashes[i].match(p)
-			else nuhashes[i].match(p)
-		     	fi
-	      in chk
-	 fi
+	 elif {now x not completely known} is_member_bitset(position(p.x, p.lambda), xl_known[i][p.x.number])	 then false
+	 else {now nothing complete} let chk = is_unitary(p)
+	      	   then () = if chk
+	      		     then uhashes[i].match(p)
+	      		     {else nuhashes[i].match(p)}
+			     fi
+		   then () = unitary_test_counter.use()
+	      	   in chk
+	  fi
     , (Param -> int): {match} (Param p):
       let i = add_real_form(p.real_form)
       in uhashes[i].match(p)
     , ((Param,int) -> int): {long_match} (Param p, int i):
       uhashes[i].match(p)
-    , (Param -> (int,int)): {nulong_lookup} (Param p) (int,int):
+    {, (Param -> (int,int)): {nulong_lookup} (Param p) (int,int):
       let i = add_real_form(p.real_form)
-      in (i, nuhashes[i].lookup(p))
-    , (Param -> int): {nulookup} (Param p) int:
+      in (i, nuhashes[i].lookup(p))}
+    {, (Param -> int): {nulookup} (Param p) int:
       let i = add_real_form(p.real_form)
-      in nuhashes[i].lookup(p)
-    , (Param -> bool): {nucheck} (Param p) bool:
+      in nuhashes[i].lookup(p)}
+    {, (Param -> bool): {nucheck} (Param p) bool:
       let i = add_real_form(p.real_form)
       {then () = prints("bitmap for ",p.x.number," is ",xl_known[i][p.x.number])}
       then () = p := herm_center(p)
-      then j = nuhashes[i].lookup(p)
+      then j = uhashes[i].lookup(p)
       in if j.>=
       	 then false
-      	 elif is_member_bitset (position(p.x, p.lambda), xl_known[i][p.x.number])
+      	 elif {now p was not found} is_member_bitset(p.x.number, x_known[i])
 	 then true
-	 else let () = unitary_test_counter.use()
-	      then chk = is_unitary(p)
-	      then () = if chk
-		     	then uhashes[i].match(p)
-			else nuhashes[i].match(p)
-		     	fi
+	 elif {now x not completely known} is_member_bitset(p.x.number, x_partial[i])
+	 then if is_member_bitset (position(p.x, p.lambda), xl_known[i][p.x.number])
+	      then true
+	      else {now nothing is complete} let () = unitary_test_counter.use()
+	      	   then chk = is_unitary(p)
+	      	   then () = if chk
+		     	     then uhashes[i].match(p)
+			     else nuhashes[i].match(p)
+		     	     fi
 	      in not chk
-	 fi
-    , (Param -> int): {numatch} (Param p):
+	 fi}
+    {, (Param -> int): {numatch} (Param p):
       let i = add_real_form(p.real_form)
-      in nuhashes[i].match(p)
-    , ((Param,int) -> int): {nulong_match} (Param p, int i):
-      nuhashes[i].match(p)
+      in nuhashes[i].match(p)}
+    {, ((Param,int) -> int): {nulong_match} (Param p, int i):
+      nuhashes[i].match(p)}
     , ( -> ): {write} @void:
     let rf_list = real_form_hash.list()
     in for rf@i in rf_list
@@ -1422,15 +1466,22 @@ set finish(KGBElt x, ratvec lambda) = void:
     big_unitary_hash.finish(x, two_to_position(x,lambda))
 
 set finish(KGBElt x) = void:
-    let lambdas = FPP_lambdas(x)
+    {let lambdas = FPP_lambdas(x)
     then m = #lambdas
     then M = (to_bitset([m]) - 1)
-    in big_unitary_hash.finish(x, M)
+    in} big_unitary_hash.finishx(x)
 
 {check whether a bit in xl_known is set}
 set is_finished(KGBElt x, ratvec lambda) = bool:
-    let start = elapsed_ms(), M = big_unitary_hash.xl_known(x.real_form)[x.number]
-    then answer = is_member_bitset(position(x,lambda),M)
+    let start = elapsed_ms(), Mx_known = big_unitary_hash.x_known(x.real_form),
+    	Mx_partial = big_unitary_hash.x_partial(x.real_form), M = big_unitary_hash.xl_known(x.real_form)[x.number]
+    {then () = prints("Mx_known = ",Mx_known,", Mx_partial = ",Mx_partial,", M = ",M)}
+    then answer = if is_member_bitset(x.number,Mx_known)
+    	 	  then true
+		  elif is_member_bitset(x.number,Mx_partial)
+		  then is_member_bitset(position(x,lambda),M)
+		  else false
+		  fi
     then () = is_finished_time +:= elapsed_ms() - start
     in answer
 
@@ -1456,7 +1507,10 @@ set is_unitary_hash_big_SIMPLE(Param p) = bool:
     	      then return is_unitary(p) {prints("FPP DANGER at ",p)}
 	      fi
     then () = p := herm_center(p)
-    then () = if is_finished(p.x, p.lambda) then return big_unitary_hash.lookup(p).>= fi
+    then L = big_unitary_hash.lookup(p)
+    {then () = prints("p = ", p, ". L = ",L, ", is_finished = ",is_finished(p.x, p.lambda))}
+    then () = if L.>= then return true fi
+    then () = if is_finished(p.x, p.lambda) then return L.>= fi
     then (,pL) = wkgood_Q(p)
     then derpLs = derived_factor_params2(pL)
     then () = if #derpLs = 0 then return true fi
@@ -1509,9 +1563,8 @@ set is_unitary_to_ht_big_SIMPLE(Param p,int N) = bool:
     	    then return is_unitary_to_ht(p,N) {prints("FPP DANGER TO HT at ",p)}
 	    fi
   then () = p := herm_center(p)
-  then () = if is_finished(p.x, p.lambda) and big_unitary_hash.lookup(p).>=
-       	    then return true
-  	    fi
+  then L = big_unitary_hash.lookup(p)
+  then () = if L.>= then return true fi
   then () = unitary_test_counter.use()
   then (LAM,NU) = low(p)
   in if NU > LAM*low_frac
@@ -1536,6 +1589,8 @@ set is_unitary_to_hts_big_SIMPLE(Param p,[int] Ns) = bool:
 	    fi
   then () = p := herm_center(p)
   then () =  if #Ns = 0 then return is_unitary_hash_big_SIMPLE(p) fi
+  then L = big_unitary_hash.lookup(p)
+  then () = if L.>= then return true fi
   then () = for N in Ns
        	    do if is_pure(hermitian_form_irreducible_to_ht(p,N))
      	       then  unitary_test_counter.use()
@@ -1554,7 +1609,7 @@ set is_unitary_to_hts_big (Param p,[int] Ns) = bool:
 {ONLY for G simple}
 { compute Hermitian form to height N; if it's positive, then compute full form }
 set is_unitary_test_big_SIMPLE(Param p, int N) = bool:
-    unitary_test_counter.use();
+    unitary_test_counter.use(); {prints("N = ",N,", p = ",p);}
     if (not is_hermitian(p)) or (not is_pos_on_LKTs(p)) then return false fi;
     let G = p.real_form
     then FPP_flag = is_FPP(G,p.infinitesimal_character)
@@ -1566,6 +1621,9 @@ set is_unitary_test_big_SIMPLE(Param p, int N) = bool:
     	      then return true
     	      fi
     then (LAM,NU) = low(p)
+    {then () = prints("LAM = ",LAM, ", NU = ", NU)}
+    {then () = prints("is_unitary_hash = ",is_unitary_hash_big_SIMPLE(p), ", hform to ht = ",
+    	 hermitian_form_irreducible_to_ht(p,N))}
     in if NU > LAM*low_frac
        then is_pure(hermitian_form_irreducible_to_ht(p,N)) and
        	    is_unitary_hash_big_SIMPLE(p)
@@ -1582,9 +1640,8 @@ set is_unitary_test_big_SIMPLE (Param p, [int] Ns) = bool:
     	    then  return is_unitary_test(p,Ns) {prints("FPP DANGER TEST at ",p)}
 	    fi
   then () = p := herm_center(p)
-  then () = if is_finished(p.x, p.lambda) and big_unitary_hash.lookup(p).>=
-       	    then return true
-  	    fi
+  then L = big_unitary_hash.lookup(p)
+  then () = if L.>= then return true fi
   then () = if #Ns = 0
        	    then return is_unitary_hash_big_SIMPLE(p)
 	    fi
@@ -1619,6 +1676,8 @@ set is_unitary_def_test_big_SIMPLE(Param p,int m) = bool:
     	      then return is_unitary_def_test(p,m) {prints("FPP DANGER DEF TEST at ",p)}
 	      fi
     then () = p := herm_center(p)
+    then L = big_unitary_hash.lookup(p)
+    then () = if L.>= then return true fi
     then (LAM,NU) = low(p)
     in if NU > LAM*low_frac
        then let (def,flag)= deform_hts(p,m)

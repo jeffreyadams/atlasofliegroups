@@ -161,6 +161,7 @@ set FPP_unitary_hash_general([(KGBElt,ratvec)] xlambdas, Param_hash Uhash,
 			       test_verbose :=old_test_verbose; test_slightly_verbose := old_test_slightly_verbose
 			  fi;
 			  let answer = local(x, lambda, LPm_table.FPP_vertex_data(G) , Lvd, LF, pol_hash, Uhash)
+			  then () = finish(x,lambda)
 			  then () = answerCards[k] := #answer
 			  {then () = for p in answer do Uparamhash.match(p) od}
    		    	  then () = current := elapsed_ms(); currentUhash := Uhash.size();
@@ -257,6 +258,7 @@ set FPP_unitary_hash_general([KGBElt] xs, Param_hash Uhash, {Param_hash Uparamha
 	    then answerCards[j]:= answerCards[twnum];
 	    	 {prints("skipping x = ",x.number," for xtwist = ",xtwist.number);}
 		 big_unitary_hash.finish(x, full_M); {mark as done all lambdas for x}
+		 big_unitary_hash.finishx(x);
 		 for ell:Uhash.size()
 	      	 do let p = Uhash.index(ell)
 		    in if p.x = xtwist
@@ -271,6 +273,7 @@ set FPP_unitary_hash_general([KGBElt] xs, Param_hash Uhash, {Param_hash Uparamha
 	    	 in if contnum.>= and contnum < j {now xcont is xs[contnum]}
 	    	    then answerCards[j]:= answerCards[contnum];
 		         big_unitary_hash.finish(x,full_M); {mark as done all lambdas for x}
+			 big_unitary_hash.finishx(x);
 		       for ell:Uhash.size()
 	      	       do let p = Uhash.index(ell)
 		       	  in if p.x = xcont
@@ -340,6 +343,7 @@ set FPP_unitary_hash_general([KGBElt] xs, Param_hash Uhash, {Param_hash Uparamha
 		     	     deformCalcCounter.use_count())
                      fi
 	   then () = big_unitary_hash.finish(x, full_M) {mark as done all lambdas for x}
+	   then () = big_unitary_hash.finishx(x) {mark as done all lambdas for x}
            in ()
 	   fi {contnum.>= and contnum < j}
 	   fi {twnum.>=  and twnum < j}
@@ -732,6 +736,7 @@ set FPP_unitary_hash_bottom_layer([KGBElt] xs, Param_hash UhashG{, Param_hash Up
 	 in if twnum.>= and twnum < j {now xtwist is xs[twnum]}
 	    then answerCards[j]:= answerCards[twnum];
 		 big_unitary_hash.finish(x, full_N1); {mark as done all lambdas for x}
+		 big_unitary_hash.finishx(x);
 		 for ell:UhashG.size()
 	      	 do let p = UhashG.index(ell)
 		    in if p.x = xtwist
@@ -752,6 +757,7 @@ set FPP_unitary_hash_bottom_layer([KGBElt] xs, Param_hash UhashG{, Param_hash Up
 	    	 in if contnum.>= and contnum < j
 	    	    then answerCards[j]:= answerCards[contnum];
 		    big_unitary_hash.finish(x, full_N1);
+		    big_unitary_hash.finishx(x);
 		    for ell:UhashG.size()
 	      	    do let p = UhashG.index(ell)
 		       in if p.x = xcont
@@ -870,6 +876,7 @@ set FPP_unitary_hash_bottom_layer([KGBElt] xs, Param_hash UhashG{, Param_hash Up
 		     	     deformCalcCounter.use_count())
                      fi
 	   then () = big_unitary_hash.finish(x, full_N1) {mark as done all lambdas for x}
+	   then () = big_unitary_hash.finishx(x)
            in ()
 	 fi {contnum.>= and contnum < j}
 	 fi {twnum.>= and twnum < j}
@@ -935,21 +942,6 @@ set unitary_nus(RealForm G) = [[[ratvec]]]:
       in answer
 
 
-{all nu so parameter(x,lambda,nu) is in nonunitary hash for G. To be applied only to G simple mod center.}
-set non_unitary_nus(RealForm G, KGBElt x, ratvec lambda) = [ratvec]:
-    let () = big_unitary_hash.nuhash_fill(G)
-    then NUhash = big_unitary_hash.nuhash(G)
-    in for p in NUhash.list()
-       do if is_unitary(p)
-       	  then prints("line 950 OOPS! ",p," at ",G)
-	  fi;
-	  if p.x = x and p.lambda = lambda and is_hermitian(p)
-	  then [p.nu]
-	  else []
-	  fi
-       od.##
-
-
 {all local vertex nu for (x,lambda). To be applied only to G simple mod center.}
 set all_vertex_nus(RealForm G, KGBElt x, ratvec lambda) = [ratvec]:
     let (Lvd,Perm2, mapAct) = LPm_table.LPm_entry(G,x.involution,((1+x.involution)*lambda).numer)
@@ -967,6 +959,19 @@ set all_vertex_nus(RealForm G, KGBElt x, ratvec lambda) = [ratvec]:
 	  fi
        od.##
 
+{all nu so parameter(x,lambda,nu) is final nonunitary vertex or edge for G. To be applied only to
+G simple mod center. Best applied after FPP unitary dual of G is computed.}
+set non_unitary_nus(RealForm G, KGBElt x, ratvec lambda) = [ratvec]:
+    let params = for nu in all_vertex_nus(G, x, lambda)
+    	 	  do parameter(x,lambda,nu)
+		  od
+    in for p in params
+       do if is_final(p) and is_hermitian(p) 
+       	     and not big_unitary_hash.check(p)
+	  then [p.nu]
+	  else []
+	  fi
+	od.##
 
 {assume precompute has been done, so that all FPP unitary are known
 for all derived simple factors of theta-stable Levis of G. For maximal LRi run
@@ -1340,8 +1345,9 @@ set real_induced(RealForm G) = void:
      in ()
 
 set NUR_verbose = true
-set non_unitary_real_induced(RealForm G) = void:
-    let maxLRis = max_LRs(G)
+
+set non_unitary_real_induced(RealForm G) = Param_hash:
+    let maxLRis = max_LRs(G), NUhash = make_Param_hash()
     then maxLRidatas = [[(RealForm, RealForm, mat)]]: {one list for each maxLRi, with
     	 	     an entry (Sik, derLik, Mik) for each derived simple factor derLik}
        	 for maxLRi in maxLRis
@@ -1510,7 +1516,7 @@ make a rep non-unitary on maxLRi. If induction to G is irreducible, add it.}
 		      od.##
 		   od.##), " quadruples (Li, xin, lambdainm, nuinmj).")
 	       fi
-     then IG = big_unitary_hash.rf_number(G)
+     {then IG = big_unitary_hash.rf_number(G)}
      then () = for maxLRi@i in maxLRis
 	  do for xin@n in KGBEltLis[i]
 	     do for lambdainm@m in lambdainms[i][n]
@@ -1525,14 +1531,14 @@ make a rep non-unitary on maxLRi. If induction to G is irreducible, add it.}
 		      	    then let P = real_induce_irreducible(pL,G)
 			    	 {then () = prints("pL = ", pL)}
 		      	    	 in if #P = 1
-				    then big_unitary_hash.long_numatch(herm_center(first_param(P)),IG)
+				    then NUhash.match(herm_center(first_param(P)))
 				    fi
 			    fi
 		      od {nu}
 		od {m}
 	     od {n}
 	  od {i}
-     in ()
+     in NUhash
 
 {get complete FPP dual for each derived simple factor of a theta-stable Levi; and then cohom ind
 all those things in weakly good range to G}
@@ -1575,8 +1581,8 @@ set precomputeR(RealForm G) = void:
     then () = FPP_report_flag:=true
     in real_induced(G)
 
-set precomputeNUR(RealForm G) = void:
-    let rflist = SDLRF(G), start = elapsed_ms(), nustart = big_unitary_hash.nuhash(G).size()
+{ set precomputeNUR(RealForm G) = Param_hash:
+    let rflist = SDLRF(G), start = elapsed_ms()
     then () = coh_ind_flag:=false
     then temp_report_flag = FPP_report_flag
     then () = FPP_report_flag :=false
@@ -1593,9 +1599,9 @@ set precomputeNUR(RealForm G) = void:
 		 prints("found ",big_unitary_hash.nuhash(rf).size(), " nonunitary reps")
 	      od
     then () = FPP_report_flag:=true
-    then () = non_unitary_real_induced(G)
-    in prints("In time ",print_time_string(elapsed_ms() - start)," found ", big_unitary_hash.nuhash(G).size() -
-       		  nustart, " nonunitary reps.")
+    then NUhash = non_unitary_real_induced(G)
+    in prints("In time ",print_time_string(elapsed_ms() - start)," found ", NUhash.size(),
+       	      " nonunitary reps.")}
 
 set precomputeALL(RealForm G) = void:
     let start = elapsed_ms(), rflist = SDLALL(G)
