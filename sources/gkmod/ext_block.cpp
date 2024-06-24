@@ -619,7 +619,8 @@ ext_block::ext_block
 (const blocks::common_block& block, const repr::block_modifier& bm,
    const WeightInvolution& delta, ext_KL_hash_Table* pol_hash)
   : parent(block)
-  , orbits(block.fold_orbits(delta,bm)) // permuted below by |bm.simple_pi|
+  , orbits(block.fold_orbits(delta,bm)) // permuted and modified below
+    // now: partition |block.simply_integrals| by |delta| acting after |bm.w|
   , info()
   , data(orbits.size()) // create that many empty vectors
   , l_start(parent.length(parent.size()-1)+2,0)
@@ -638,13 +639,13 @@ ext_block::ext_block
 
   // now prepare a |block_modifier| with cofolded |simple_pi|
   repr::block_modifier cofolded_bm = bm;
-  cofolded_bm.simple_pi = induced(bm.simple_pi);
+  cofolded_bm.simple_pi = induced(bm.simple_pi); // map def'd on current |orbits|
 
   // permute generators as induced by |bm.simple_pi| in our |ext_block|
   {
-    const auto& opi = cofolded_bm.simple_pi; // mapping permutation of orbits
+    const auto& opi = cofolded_bm.simple_pi; // to-|bm.w|-image orbit reordering
     permute(opi,diagram);
-    opi.permute(orbits);
+    opi.permute(orbits); // prepare to partition |bm.w|-image of diagram
     for (auto& orbit : orbits) // we also need to adapt each individual orbit
       if (orbit.type==ext_gen::one)
 	orbit = ext_gen(static_cast<weyl::Generator>(bm.simple_pi[orbit.s0]));
@@ -1981,7 +1982,7 @@ ext_block::first_descent_among(RankFlags singular_orbits, BlockElt y) const
 }
 
 const ext_kl::KL_table& ext_block::kl_table
-  (BlockElt limit, ext_KL_hash_Table* pol_hash)
+  (ext_KL_hash_Table* pol_hash, BlockElt limit)
 {
   if (KL_ptr==nullptr)
     KL_ptr.reset(new ext_kl::KL_table(*this,pol_hash));

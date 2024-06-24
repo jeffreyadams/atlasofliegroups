@@ -155,8 +155,7 @@ class ext_block
 // manipulators
   void flip_edge(weyl::Generator s, BlockElt x, BlockElt y);
 
-  const ext_kl::KL_table& kl_table
-    (BlockElt limit, ext_KL_hash_Table* pool=nullptr);
+  const ext_kl::KL_table& kl_table(ext_KL_hash_Table* pool,BlockElt limit);
 
   void swallow // integrate an older partial block, with mapping of elements
   (ext_block&& sub, const BlockEltList& embed, const Permutation& simple_pi);

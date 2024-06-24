@@ -285,7 +285,7 @@ namespace atlas {
   using lietype::SimpleLieType;
   using lietype::LieType;
   using lietype::InnerClassType;
-  using lietype::ext_gen;
+  using lietype::ext_gen; // generator of extended Weyl group
   typedef std::vector<ext_gen> ext_gens;
 
   namespace prerootdata { class PreRootDatum; }
