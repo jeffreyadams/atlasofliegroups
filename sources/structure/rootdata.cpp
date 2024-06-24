@@ -1529,6 +1529,7 @@ RatNumList integrality_points(const RootDatum& rd, const RatWeight& gamma)
 weyl::Twist twist (const RootDatum& rd, const WeightInvolution& delta)
 { return weyl::Twist(fold_orbits(rd,delta)); }
 
+// list folded orbits of simple roots under distinguished involution |delta|
 ext_gens fold_orbits (const RootDatum& rd, const WeightInvolution& delta)
 {
   ext_gens result;
@@ -1550,9 +1551,12 @@ ext_gens fold_orbits (const RootDatum& rd, const WeightInvolution& delta)
   return result;
 }
 
+// list |delta|-orbits on |roots|, which is a simple subsystem of root system
+// in output |ext_gen|, each field |s0|, |s1| indicates a position in |roots|
 ext_gens fold_orbits
   (const RootDatum& rd, const RootNbrList& roots, const WeightInvolution& delta)
 {
+  assert(roots.size()<=rd.semisimple_rank()); // whence |weyl::Generator| below
   Permutation pi(roots.size());
   {
     WeightList alphas; alphas.reserve(roots.size());
@@ -1562,7 +1566,7 @@ ext_gens fold_orbits
     {
       auto it = std::find(alphas.begin(),alphas.end(),delta * alphas[s]);
       if (it==alphas.end()) // that is: root was not found
-	throw std::runtime_error("Not a distinguished involution");
+	throw std::runtime_error("Not a subsystem-distinguished involution");
       pi[s] = it-alphas.begin();
     }
   }

@@ -2424,7 +2424,7 @@ SR_poly Rep_table::twisted_KL_column_at_s(StandardRepr sr)
     if (not contrib[z].empty() and contrib[z].front().first==z)
       finals.push_front(z); // accumulate in reverse order
 
-  const auto& kl_tab = eblock.kl_table(y+1,&poly_hash);
+  const auto& kl_tab = eblock.kl_table(&poly_hash,y+1);
 
   SR_poly result;
   const auto& gamma=sr.gamma();
@@ -2468,7 +2468,7 @@ Rep_table::twisted_deformation_terms
     if (not contrib[z].empty() and contrib[z].front().first==z)
       finals.push_front(z); // accumulate in reverse order
 
-  const auto& kl_tab = eblock.kl_table(y_index+1,&poly_hash);
+  const auto& kl_tab = eblock.kl_table(&poly_hash,y_index+1);
 
   std::vector<int> pool_at_minus_1; // evaluations at $q=-1$ of KL polynomials
   {
@@ -2673,7 +2673,7 @@ K_repr::K_type_pol export_K_type_pol(const Rep_table& rt,const K_type_poly& P)
 
 common_context::common_context (const Rep_context& rc, const RatWeight& gamma)
 : rep_con(rc)
-, simply_int(integrality_simples(rc.root_datum(),gamma))
+, simply_int(rootdata::integrality_simples(rc.root_datum(),gamma))
 , sub(rc.root_datum(),simply_int)
 {} // |common_context::common_context|
 

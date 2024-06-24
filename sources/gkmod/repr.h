@@ -655,11 +655,14 @@ class Rep_table : public Rep_context
 class common_context
 {
   const Rep_context& rep_con;
-  sl_list<RootNbr> simply_int; // simply integral roots in increasing order
+  sl_list<RootNbr> simply_int; // root datum simply integral (via bm) roots, increasing
   const SubSystem sub; // embeds |id_it|s |bm.w| image into full root datum
 public:
+  // constructor for all normal uses:
   common_context (const Rep_context& rc, const RatWeight& gamma);
-  common_context (const Rep_context& rc, const block_modifier& bm);
+
+  // special constructor for |add_block| and |add_block_below| only:
+  common_context (const Rep_context& rc, const block_modifier& loc);
 
   // accessors
   const Rep_context& rc() const { return rep_con; }

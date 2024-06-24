@@ -707,7 +707,8 @@ RankFlags common_block::singular (const RatWeight& gamma) const
   return result;
 }
 
-// Here the |block_modifier| records actual singular coroots, and the mapping
+// Flag among |this->simply_integrals| those that under |bm.w| map to a coroot
+// singular for |gamma| (equivalently those singular for $w^{-1}(\gamma)$)
 RankFlags common_block::singular
   (const repr::block_modifier& bm, const RatWeight& gamma) const
 {
@@ -1270,8 +1271,8 @@ repr::StandardRepr common_block::sr
   return rc.sr(representative(z),bm,gamma);
 }
 
-// unlike |bm.simp_int| get simply integrals in mapped order using |bm.w|
-// This is used by |common_block::singular| above only.
+// Unlike |bm.simp_int|, get simply integrals in mapped order using |bm.w|
+// This is used by |common_block::singular| and |common_block::fold_orbits| only.
 RootNbrList common_block::simply_ints(const repr::block_modifier& bm) const
 {
 #if 1 // original implementation
