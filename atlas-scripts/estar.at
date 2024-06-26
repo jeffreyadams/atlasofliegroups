@@ -1,0 +1,43 @@
+set estar_verbose=true
+{put this in induction.at:}
+
+set Aq_reducible (RealForm G,ratvec lambda, ratvec lambda_q) = ParamPol:
+  Aq_reducible(KGB(G)[0],lambda,lambda_q)
+
+set iota(RealForm L,RealForm G)=(KGBElt->KGBElt):(KGBElt x_L):
+embed_KGB(x_L,G) 
+
+
+set estar_std(Param p_L,RealForm G,(KGBElt->KGBElt) iota)=ParamPol:
+let x_L=p_L.x then
+lambda_L=p_L.lambda then
+nu_L=p_L.nu then
+x_G=iota(x_L) then
+gamma_L=p_L.infinitesimal_character then
+(,gamma_G)=from_dominant(G,gamma_L) then
+shift = gamma_G-gamma_L then
+lambda_G=lambda_L+shift then
+nu_G=nu_L+shift then
+p_G_0=parameter(x_G,lambda_G,nu_G) then 
+p_G=parameter(cross(w,x_G),w*lambda_G,w*nu_G) in 
+if estar_verbose then
+ prints("p_L: ", p_L, new_line,"gamma_L: ", gamma_L, new_line,"gamma_G: ", gamma_G, new_line, "shift: ", shift,
+ new_line, "lambda_G: ", lambda_G, new_line, "nu_G: ", nu_G,new_line,"p_G_0: ", p_G_0,new_line, "p_G: ", p_G,new_line);p_G else p_G fi 
+
+
+set estar_std(Param p_L,RealForm G)=ParamPol:
+let iota=iota(p_L.real_form,G) in estar_std(p_L,G,iota)
+
+set estar_std(RealForm G)=(Param->ParamPol):(Param p_L):
+estar_std(p_L,G)
+
+set estar_std(ParamPol P_L,RealForm G)=ParamPol:
+let estar_std_map=estar_std(G) in map(estar_std_map,P_L)
+
+set estar_irr(Param p_L,RealForm G)=ParamPol:
+if estar_verbose then prints("character formula: ", character_formula(p_L)) fi;
+let p_G_std=estar_std(character_formula(p_L),G) in
+if estar_verbose then prints("lift of character formula: ", p_G_std) fi;
+composition_series(p_G_std)
+
+

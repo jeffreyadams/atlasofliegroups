@@ -1,0 +1,60 @@
+<estar.at
+
+set G=Sp(4,R)
+set L=theta_stable_Levi_by_wt([1,0],KGB(G,0))
+set pl=parameter(KGB(L,2),[0,1],[0,1])
+set cfpl=character_formula(pl)
+set m=monomials(cfpl)
+set answer=Aq_reducible(G,[0,0],[1,0])
+set answer2=Aq_reducible(G,[0,0],[-1,0])
+set cfanswer=character_formula(answer)
+set bad=parameter(KGB(G,5),[0,1],[0,1])
+set shift=[1,-1]
+set shiftbad=parameter(KGB(G,5),[1,0],[1,0])
+set wp=weak_packets(G)
+set w=G.W[1]
+set fix=parameter(cross(0,bad.x),w*bad.lambda, w*bad.nu)
+
+set guess=composition_series(fix -estar_std (m[1],G) - estar_std(m[2],G))
+
+{
+atlas> pl
+Value: final parameter(x=2,lambda=[0,1]/1,nu=[0,1]/1)
+atlas> estar_irr (pl,G)  (Value: Empty sum of standard modules)
+character formula:
+1*parameter(x=2,lambda=[0,1]/1,nu=[0,1]/1) [0]
+-1*parameter(x=1,lambda=[0,1]/1,nu=[0,0]/1) [1]
+-1*parameter(x=0,lambda=[0,1]/1,nu=[0,0]/1) [1]
+p_L: final parameter(x=0,lambda=[0,1]/1,nu=[0,0]/1)
+gamma_L: [ 0, 1 ]/1
+gamma_G: [ 1, 0 ]/1
+shift: [  1, -1 ]/1
+lambda_G: [ 1, 0 ]/1
+nu_G: [  1, -1 ]/1
+p_G_0: final parameter(x=0,lambda=[1,0]/1,nu=[0,0]/1)
+p_G: 
+1*parameter(x=0,lambda=[1,0]/1,nu=[0,0]/1) [3]
+
+p_L: final parameter(x=1,lambda=[0,1]/1,nu=[0,0]/1)
+gamma_L: [ 0, 1 ]/1
+gamma_G: [ 1, 0 ]/1
+shift: [  1, -1 ]/1
+lambda_G: [ 1, 0 ]/1
+nu_G: [  1, -1 ]/1
+p_G_0: final parameter(x=2,lambda=[1,0]/1,nu=[0,0]/1)
+p_G: 
+1*parameter(x=2,lambda=[1,0]/1,nu=[0,0]/1) [3]
+
+p_L: final parameter(x=2,lambda=[0,1]/1,nu=[0,1]/1)
+gamma_L: [ 0, 1 ]/1
+gamma_G: [ 1, 0 ]/1
+shift: [  1, -1 ]/1
+lambda_G: [ 1, 0 ]/1
+nu_G: [ 1, 0 ]/1
+p_G_0: non-final parameter(x=5,lambda=[1,2]/1,nu=[0,0]/1)
+p_G: 
+1*parameter(x=2,lambda=[1,0]/1,nu=[0,0]/1) [3]
+1*parameter(x=0,lambda=[1,0]/1,nu=[0,0]/1) [3]
+
+lift of character formula: Empty sum of standard modules
+Value: Empty sum of standard modules

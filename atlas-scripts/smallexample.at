@@ -19,6 +19,8 @@ set icHR=inner_class(HR)
 set rm=root_map(Gd,dd)
 
 set ph=HR.trivial
+set w=W_elt(G,[3]) {reflection in 3rd simple root (0,0,0,1,-1,0,0,0}
+
 {set (,pg,,)=abv_mixed(ph,M,GR,dd)}
 
 

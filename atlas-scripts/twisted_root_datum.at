@@ -7,6 +7,8 @@ all(for alpha in rd.simple_roots do find(rd.simple_roots,delta*alpha) !=-1 od)
 
 set_type TwistedRootDatum= (RootDatum rd, mat delta)
 
+set twisted_root_datum(RootDatum rd,mat delta)=TwistedRootDatum:(rd,delta)
+
 set *(TwistedRootDatum (rd1,delta1),TwistedRootDatum (rd2,delta2))=TwistedRootDatum:(rd1*rd2,block_matrix(delta1,delta2))
 {order of twist: not just the order of delta
 reason: given (rd,delta) we consider (factor,delta)
@@ -132,3 +134,8 @@ let rd=simply_connected(lt) in
 affine_datum(rd,highest_short_root(rd))
 
 set dual(AffineDatum (alpha_ch,rd,alpha))=AffineDatum:(alpha,rd,alpha_ch)
+
+set operator(TwistedRootDatum (rd,delta),WeylElt w)=mat:
+assert(w.root_datum=rd,"mismatch of root data");w*delta
+
+{set operator(RootDatum rd,mat delta,WeylElt w)=mat:operator(twisted_root_datum(rd,delta),w)}

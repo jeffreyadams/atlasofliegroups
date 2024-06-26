@@ -1,0 +1,29 @@
+set G=Sp(4,R)
+set all=theta_stable_parabolics(G)
+set L0=all[0].Levi
+set L1=all[1].Levi
+set L2=all[2].Levi
+set L3=all[3].Levi
+set t0=L0.trivial
+set t1=L1.trivial
+set t2=L2.trivial
+set t3=L3.trivial
+set z0=parameter(KGB(L0,0),[-2,-1],[0,0])
+set z1=parameter(KGB(L1,0),[-2,-1],[0,0])
+set z2=parameter(KGB(L2,0),[-2,-1],[0,0])
+set z3=parameter(KGB(L3,0),[-2,-1],[0,0])
+set D0=theta_induce_irreducible(z0,G)
+set D1=theta_induce_irreducible(z1,G)
+set D2=theta_induce_irreducible(z2,G)
+set D3=theta_induce_irreducible(z3,G)
+
+
+set L=all[7].Levi
+set tl=L.trivial
+set pl=parameter(KGB(L,2),[2,1],[0,1])
+set zl=parameter(KGB(L,2),[-2,1],[0,1])
+set zg=theta_induce_irreducible(zl,G)
+set pg=first_param(theta_induce_irreducible(pl,G))
+set ql=parameter(KGB(L,2),[2,2],[0,1])
+set qg=first_param(theta_induce_irreducible(ql,G))
+

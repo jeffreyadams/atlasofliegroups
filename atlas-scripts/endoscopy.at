@@ -1,15 +1,16 @@
-set is_orthogonal (RootDatum rd, vec alpha, vec beta) = bool: =alpha*coroot(rd,beta)
+{endoscopy (regular and twisted)}
 
-{this is not used}
-set alpha_term_of_s(RootDatum rd,mat delta, ratvec v, vec alpha)=rat:
-if is_orthogonal(rd,alpha,delta*alpha)
- then 2*alpha*v   {alpha(s)^2=1}
-elif alpha=delta*alpha
- then alpha*v
-else
-{type A_2n}
- 0 {to do}
-fi
+set is_orthogonal (RootDatum rd, vec alpha, vec beta) = bool: =alpha*coroot(rd,beta)
+set to_dominant(RootDatum rd, vec wt)=(WeylElt,vec):
+ let (w,wt_dom)=from_dominant(rd,wt) in (inverse(w),wt_dom)  {w*wt=wt_dom}
+
+set to_dominant( vec cowt,RootDatum rd)=(vec,WeylElt):
+ let (cowt_dom,w)=from_dominant(cowt,rd) in (cowt_dom,inverse(w))  {w*wt=wt_dom}
+
+set to_dominant (RootDatum rd, ratvec wt) = (WeylElt,ratvec):
+  let (n,d)=%wt then (w,v)=to_dominant(rd,n) in (w,v/d)
+set to_dominant (ratvec cowt,RootDatum rd) = (ratvec,WeylElt):
+  let (n,d)=%cowt then (v,w)=to_dominant(n,rd) in (v/d,w)
 
 {algorithm to compute H=identity component of fixecd points of int(s)*delta
  where delta is distinguished, delta(s)=s, s=exp(2\pi i v)
@@ -90,7 +91,8 @@ od;
 
 set fixed(RootDatum rd,mat delta,ratvec v)=(RootDatum,mat):fixed(TwistedRootDatum:(rd,delta),v)
 set fixed(RootDatum rd,mat delta)=(RootDatum,mat):fixed(TwistedRootDatum:(rd,delta),null(rd.rank))
-set fixed(RootDatum rd)=(RootDatum,mat):fixed(G,G.distinguished_involution)
+set fixed(RealForm G)=(RootDatum,mat):fixed(G,G.distinguished_involution)
+
 
 
 set orbit_size(mat delta, vec alpha)=
@@ -116,12 +118,41 @@ set fixed_by_nodes(RealForm G,[int] S)=(RootDatum,mat):fixed_by_nodes(G,G.distin
 set fixed_by_nodes(RootDatum rd,mat delta,int j)=(RootDatum,mat):fixed_by_nodes(TwistedRootDatum:(rd,delta),[j])
 set fixed_by_nodes(RealForm G,int j)=(RootDatum,mat):fixed_by_nodes(G,G.distinguished_involution,j)
 
+{in the case of ordinary endoscopy the matrix M is the identity}
+set fixed(RootDatum rd,ratvec v)=RootDatum:centralizer(rd,v)  {defined in weyl_character_formula.at}
+
 set list_twisted_groups(RealForm G)=void:
 let all=for i:ss_rank(G) do fixed_by_nodes(G,G.distinguished_involution,i) od
 in
 let (H,)=fixed(G,G.distinguished_involution) in 
 prints(H);for (H,)@i in all do prints(i, " ", H) od
 
+set weak_endoscopic_group(RootDatum G_vee,mat delta_vee, ratvec s)=(RootDatum,mat,RootDatum):
+let (H_vee,M)=fixed(G_vee,delta_vee,s) in (dual(H_vee),M,H_vee)
 
+set weak_endoscopic_group(RootDatum G_vee, ratvec s)=(RootDatum,mat,RootDatum):
+let H_vee=fixed(G_vee,s) in (dual(H_vee),id_mat(rank(G_vee)),H_vee)
 
+set twisted_action(WeylElt w, mat delta, ratvec v)=ratvec:
+w.matrix*(delta*v)
+
+{twisted Weyl group element w\delta fixes group element s
+ s is given by a ratvec, condition is w\delta(s)-s in X_*}
+set is_fixed(WeylElt w,mat delta, ratvec v)=bool:is_integer(w*delta*v-v)
+
+set endoscopic_group(RootDatum G_vee, mat delta_vee,ratvec s,WeylElt w_G_vee)=
+let (H,M,H_vee)=weak_endoscopic_group(G_vee,delta_vee,s) then
+L_M=left_inverse(M) then
+restrict=L_M*w_G_vee.matrix*M then
+{()=prints( "restrict: ", restrict) then}
+(w_H,)=to_dominant(H,restrict*H.rho) then
+{()=prints("wh:", w_H.matrix) then}
+dual_inner_class=inner_class(H_vee,w_H.matrix) in 
+(dual(dual_inner_class),dual_inner_class,restrict,^restrict)
+
+set endoscopic_group(RootDatum G_vee, mat delta_vee,ratvec s)=endoscopic_group(G_vee,delta_vee,s,id_W(G_vee))
+set endoscopic_group(RootDatum G_vee, mat delta_vee,WeylElt w_G_vee)=endoscopic_group(G_vee,delta_vee,null(rank(G_vee)),w_G_vee)
+set endoscopic_group(RootDatum G_vee, mat delta_vee)=endoscopic_group(G_vee,delta_vee,null(rank(G_vee)), id_W(G_vee))
+set endoscopic_group(RootDatum G_vee, ratvec s, WeylElt w_G_vee)=endoscopic_group(G_vee,id_mat(rank(G_vee)),s,w_G_vee)
+set endoscopic_group(RootDatum G_vee, ratvec s)=endoscopic_group(G_vee,id_mat(rank(G_vee)),s,id_W(G_vee))
 
