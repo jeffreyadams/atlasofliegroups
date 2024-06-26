@@ -9,3 +9,6 @@ set make_counter () = Counter:
        ,( -> ): {clear} @: let () = ticker:=0 in ())
 
 set unitary_test_counter = make_counter()
+
+{meant to count invocations of KL_sum_at_s and KL_sum_at_s_to_height}
+set char_counter = make_counter()

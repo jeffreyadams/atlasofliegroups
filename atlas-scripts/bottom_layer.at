@@ -10,12 +10,14 @@ of the 810 it's supposed to.}
 <derived_cover.at
 <K.at {for projection_to_K_matrix}
 <FPP_facets_herm.at {for is_unitary_hash_big}
+<count.at {for char_counter}
+
 { <sub_cells.at {for is_complex}}
 {trying to get at bottom layer K-types. Use D for bound on height, d
 for bound on number of terms. The "min" refers to the theta-stable
 parabolic built by theta_stable_quasi_data. Parabolics _containing_
 that one should certainly be supported; there's a chance also of
-getting useful information from parabolics _not_ containing it.}
+getting useful information from parabolics _not_ containing that.}
 {"pairs" is...}
 
 {INVESTIGATE parabolic_LKT function in K_highest_weights.at}
@@ -682,7 +684,11 @@ set min_bottom_elim_factors(Param p, {[KGPElt] maxQs,} KTypePol P) = bool:
 	    then Lbranches = for derpLj@j in derpLjs
 	    	       	 do let sigLj =
 		            	if big_unitary_hash.uhash(derLjs[j]).lookup(derpLj).>=
-				then K_type_pol(character_formula(derpLj))
+				then let startCF = elapsed_ms()
+				     then Q = character_formula(derpLj)
+				     then () = charTime +:= elapsed_ms() - startCF
+				     then () = char_counter.use()
+				     in K_type_pol(Q)
 				elif RF_code
 	    	      		then rf_sig_tables.sig_entry(derpLj)
 				else hermitian_form_irreducible(derpLj){, DLs[j])}
@@ -712,8 +718,11 @@ set min_bottom_elim_factors(Param p, {[KGPElt] maxQs,} KTypePol P) = bool:
         in answer
 
 set min_bottom_elim_factors(Param p{, [KGPElt] maxQs}) = bool:
-    min_bottom_elim_factors(p, K_type_pol(character_formula(p)))
-
+    let startCF = elapsed_ms()
+    then Q = character_formula(p)
+    then () = charTime +:= elapsed_ms() - startCF
+    then () = char_counter.use()
+    in min_bottom_elim_factors(p, K_type_pol(Q))
 
 set min_bottom_test_factors(Param p) = bool:
     if not min_bottom_elim_factors(p)
@@ -1231,7 +1240,12 @@ set bottom_elim_factors_more(Param p, [KGPElt] maxQs, [KType, [QKL_bottom_data]]
 		       do max(for (tau,) in LKdata do height(tau) od#h)
 		       od#h)
 		od#h)
-    then P = to_ht(K_type_pol(character_formula(p)),D)
+    then startCF = elapsed_ms()
+    then Q = character_formula_to_height(p,D)
+    then () = charTime +:= elapsed_ms() - startCF
+    then () = char_counter.use()
+    then P = K_type_pol(Q)
+    {then P = to_ht(K_type_pol(character_formula(p)),D)}
     in  bottom_elim_factors_more(p, maxQs, mudatas, P)
 
 {D is meant to be max(height(tau) for tau in BKT. nQs are the parabolics where bottom layer might help.}
@@ -1279,7 +1293,12 @@ set bottom_elim_factors_more(Param p, int D, KTypePol P)= bool:
      in true
 
 set bottom_elim_factors_more(Param p, int D) = bool:
-    let P = to_ht(K_type_pol(character_formula(p)),D)
+    let startCF = elapsed_ms()
+    then Q = character_formula_to_height(p,D)
+    then () = charTime +:= elapsed_ms() - startCF
+    then () = char_counter.use()
+    then P = K_type_pol(Q)
+    {let P = to_ht(K_type_pol(character_formula(p)),D)}
     in  bottom_elim_factors_more(p, D, P)
 
 
@@ -1378,8 +1397,12 @@ set bottom_test_factors_more(Param p, int D, KTypePol P) = bool:
 set bottom_test_factors_more(Param p, int D) = bool:
     if not more_flag
     then is_unitary_hash_big(p) {min_bottom_test_factors(p)}
-    else
-    let P = K_type_pol(character_formula(p))
-    in bottom_test_factors_more(p, D, P)
+    else let startCF = elapsed_ms()
+    	 then Q = character_formula(p)
+    	 then () = charTime +:= elapsed_ms() - startCF
+    	 then () = char_counter.use()
+    	 then P = K_type_pol(Q)
+    	 {let P = K_type_pol(character_formula(p))}
+    	 in bottom_test_factors_more(p, D, P)
     fi
 
