@@ -365,10 +365,7 @@ class common_block : public Block_base
 
   // constructor and destructor
   common_block // full block
-    (const common_context& ctxt,
-     const StandardReprMod& srm, // not modified, no "making dominant"
-     BlockElt& entry_element	// set to block element matching input
-    );
+    (const common_context& ctxt, const StandardReprMod& srm);
   common_block // partial block
     (const common_context& ctxt, sl_list<StandardReprMod>& elements);
   ~common_block(); // cleans up |extended|, so inline definition is not possible

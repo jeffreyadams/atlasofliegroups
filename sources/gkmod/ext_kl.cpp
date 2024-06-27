@@ -941,15 +941,14 @@ void ext_KL_matrix (const StandardRepr p, const int_Matrix& delta,
 		    std::vector<StandardRepr>& block_list,
 		    int_Matrix& P_index_mat,
 		    IntPolEntry::Pooltype& polys)
-{ BlockElt entry_element;
-  if (not ((delta-1)*p.gamma().numerator()).is_zero())
+{ if (not ((delta-1)*p.gamma().numerator()).is_zero())
   {
     std::cout << "Delta does not fix gamma=" << p.gamma() << "." << std::endl;
     throw std::runtime_error("No valid extended block");
   }
   auto srm = repr::StandardReprMod::mod_reduce(rc,p); // modular |z|
   common_context ctxt(rc,srm.gamma_lambda());
-  blocks::common_block B(ctxt,srm,entry_element); // build custom full block
+  blocks::common_block B(ctxt,srm); // build custom full block
   const auto& gamma = p.gamma();
   assert(is_dominant_ratweight(rc.root_datum(),gamma)); // from |common_block|
   const RankFlags singular = B.singular(gamma);
@@ -957,7 +956,7 @@ void ext_KL_matrix (const StandardRepr p, const int_Matrix& delta,
   ext_block::ext_block eblock(B,bm,delta,nullptr);
 
   BlockElt size= // size of extended block we shall use; before compression
-    eblock.element(entry_element+1);
+    eblock.element(B.lookup(srm)+1);
 
   IntPolEntry::Pooltype pool; // keep a separate pool, |polys| is for later
   ext_KL_hash_Table hash(pool,4);
