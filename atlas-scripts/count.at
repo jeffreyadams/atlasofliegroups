@@ -9,3 +9,7 @@ set make_counter () = Counter:
        ,( -> ): {clear} @: let () = ticker:=0 in ())
 
 set unitary_test_counter = make_counter()
+set is_unitary_standard_counter = make_counter()
+set is_unitary_to_ht_counter = make_counter()
+
+set is_unitary_report()=string:"(" + is_unitary_standard_counter.use_count() + "," + is_unitary_to_ht_counter.use_count() + ")"

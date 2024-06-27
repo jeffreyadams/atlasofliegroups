@@ -7,6 +7,7 @@
 <unity.at {for deform_hts}
 {BREAK HERE?}
 
+set low_frac=1/1
 
 {takes the known unitaries from unitary_hash having the given x and lambda,
  and returns their locations in LFDKH}
@@ -1537,7 +1538,7 @@ set is_unitary_hash_big(Param p) = bool:
     in all(for pd in pds do @bool: is_unitary_hash_big_SIMPLE(pd) od)
 
 {If NU (nu part) > LAM (lambda part) *low_frac, then figure to_ht could work better}
-set low_frac = 1/1
+{set low_frac = 1/1}
 
 {"true" should mean nu is small, and is_unitary is fast.
 "false" should mean  nu is large, so these elts are near the
@@ -1568,8 +1569,8 @@ set is_unitary_to_ht_big_SIMPLE(Param p,int N) = bool:
   then () = unitary_test_counter.use()
   then (LAM,NU) = low(p)
   in if NU > LAM*low_frac
-     then is_pure(hermitian_form_irreducible_to_ht(p,N))
-     else is_pure(to_ht(hermitian_form_irreducible(p),N))
+     then is_unitary_to_ht_counter.use();is_pure(hermitian_form_irreducible_to_ht(p,N))
+     else is_unitary_standard_counter.use();is_pure(to_ht(hermitian_form_irreducible(p),N))
      fi
 
 { compute Hermitian form to ht on p, report if it is unitary}
@@ -1625,9 +1626,9 @@ set is_unitary_test_big_SIMPLE(Param p, int N) = bool:
     {then () = prints("is_unitary_hash = ",is_unitary_hash_big_SIMPLE(p), ", hform to ht = ",
     	 hermitian_form_irreducible_to_ht(p,N))}
     in if NU > LAM*low_frac
-       then is_pure(hermitian_form_irreducible_to_ht(p,N)) and
-       	    is_unitary_hash_big_SIMPLE(p)
-       else is_unitary_hash_big_SIMPLE(p)
+       then is_unitary_to_ht_counter.use();is_pure(hermitian_form_irreducible_to_ht(p,N)) and
+       	    is_unitary_standard_counter.use();is_unitary_hash_big_SIMPLE(p)
+       else is_unitary_standard_counter.use();is_unitary_hash_big_SIMPLE(p)
        fi
 
 {ONLY for G simple}
@@ -1648,12 +1649,12 @@ set is_unitary_test_big_SIMPLE (Param p, [int] Ns) = bool:
   then (LAM,NU) = low(p)
   in if NU > LAM*low_frac
      then for N in Ns
-     	  do if is_pure(hermitian_form_irreducible_to_ht(p,N))
+     	  do if is_unitary_to_ht_counter.use();is_pure(hermitian_form_irreducible_to_ht(p,N))
 	     then unitary_test_counter.use()
 	     else return false fi
 	  od;
-  	  is_unitary_hash_big_SIMPLE(p)
-     else is_unitary_hash_big_SIMPLE(p)
+  	  is_unitary_standard_counter.use();is_unitary_hash_big_SIMPLE(p)
+     else is_unitary_standard_counter.use();is_unitary_hash_big_SIMPLE(p)
      fi
 
 set is_unitary_test_big(Param p, int N) = bool:
@@ -1682,10 +1683,10 @@ set is_unitary_def_test_big_SIMPLE(Param p,int m) = bool:
     in if NU > LAM*low_frac
        then let (def,flag)= deform_hts(p,m)
        	    in if flag
-       	       then is_pos_on_LKTs(p) and is_unitary_to_hts_big_SIMPLE(p,def)
-       	       else is_unitary_test_big_SIMPLE(p,def)
+       	       then is_pos_on_LKTs(p) and is_unitary_to_ht_counter.use();is_unitary_to_hts_big_SIMPLE(p,def)
+       	       else is_unitary_standard_counter.use();is_unitary_test_big_SIMPLE(p,def)
        	       fi
-       else is_unitary_hash_big_SIMPLE(p)
+       else is_unitary_standard_counter.use();is_unitary_hash_big_SIMPLE(p)
        fi
 
 set is_unitary_def_test_big(Param p,int m) = bool:
@@ -1712,11 +1713,11 @@ set is_unitary_next_big_SIMPLE(Param p) = bool:
        	      	   then let n=next_heightB(p)
     	    	   	in if (n+1).=
 	      		   then return true
-	      		   elif is_unitary_to_ht_big(p,n)
-	      		   then return is_unitary_hash_big_SIMPLE(p)
+	      		   elif is_unitary_to_ht_counter.use();is_unitary_to_ht_big(p,n)
+	      		   then return is_unitary_standard_counter.use();is_unitary_hash_big_SIMPLE(p)
 			   else return false {NOT unitary_to_ht}
 			   fi {n=-1}
-		   else return is_unitary_hash_big_SIMPLE(p)
+		   else return is_unitary_standard_counter.use();is_unitary_hash_big_SIMPLE(p)
 		   fi {NU > LAM}
 	       fi {not FPP_flag}
     then () = p := herm_center(p)
@@ -1724,11 +1725,11 @@ set is_unitary_next_big_SIMPLE(Param p) = bool:
        then let n=next_heightB(p)
     	    in  if (n+1).=
 	      	then true
-	      	elif is_unitary_to_ht_big_SIMPLE(p,n)
-	      	then is_unitary_hash_big_SIMPLE(p)
+	      	elif is_unitary_to_ht_counter.use();is_unitary_to_ht_big_SIMPLE(p,n)
+	      	then is_unitary_standard_counter.use();is_unitary_hash_big_SIMPLE(p)
 		else false {NOT unitary_to_ht}
 		fi {n=-1}
-	else is_unitary_hash_big_SIMPLE(p)
+	else is_unitary_standard_counter.use();is_unitary_hash_big_SIMPLE(p)
 	fi {NU > LAM}
 
 set is_unitary_next_big(Param p) = bool:
