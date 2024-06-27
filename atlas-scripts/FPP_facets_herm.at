@@ -185,6 +185,8 @@ set localFD_Lvd2 \
   (KGBElt x, ratvec lambda, VertexData vd, (vec->int) FlippedEdgeLookup) = (VertexData, PermOrderTwo, vec):
   localFD_Lvd2(x.involution, lambda, vd, FlippedEdgeLookup)
 
+set FD12Time = int: 0
+
 {takes local data and low global facets and computes vertices and edges, imposing
 hermitian, pos on LKTs, and Dirac. Subspace is fixed points of affine involution of
 h*. Perm records involution action on FPP verts. mapAct records local vertex to which an FPP
@@ -275,14 +277,15 @@ set localFD_1Dirac2\
 	 od.##
     { then () = prints("after LF1, time is ",print_time_string(elapsed_ms() - start))}
     then answer = sort(G, Lvd, [LF0]##[LF1], 0)
-    in {if(facet_verbose) then prints("After localFD_1Dirac2, facet counts are [",#LF0,
+    then () = FD12Time +:= elapsed_ms() - start
+    in if facet_verbose then prints("After localFD_1Dirac2, facet counts are [",#LF0,
     		      	   	  ",",#LF1,"]") fi;
-       if(time_verbose) then prints("     ",print_time_string(elapsed_ms() - start),
-       			     		  " for localFD_1Dirac2") fi;}
+       if time_verbose then prints("     ",print_time_string(elapsed_ms() - start),
+       			     		  " for localFD_1Dirac2") fi;
        answer
 )
 
-
+set FD12bzTime = int:0
 
 {takes local data and low global facets and computes vertices and edges, imposing
 hermitian, pos on LKTs, and Dirac. Subspace is fixed points of affine involution of
@@ -297,8 +300,7 @@ vertex "belongs" (either "is" or "is vertex of the edge")}
 #globalFacets[d-1] of d-facets, the jth list being all global facets that
 begin with the jth global (d-1)-facet.}
 set localFD_1Dirac2_by_zero\
-  ( KGBElt x, ratvec lambda, VertexData Lvd, PermOrderTwo Perm2, vec mapAct{,
-    [[[FacetVertsIndex]]] globalFacetsBYZERO}) = [[FacetVertsIndex]]:
+  ( KGBElt x, ratvec lambda, VertexData Lvd, PermOrderTwo Perm2, vec mapAct) = [[FacetVertsIndex]]:
 (   {if facet_verbose
     then prints(new_line,"start localFD_1DiracBYZERO")
     fi;}
@@ -380,10 +382,11 @@ set localFD_1Dirac2_by_zero\
 	 od.##
     { then () = prints("after LF1, time is ",print_time_string(elapsed_ms() - start))}
     then answer = sort(G, Lvd, [LF0]##[LF1], 0)
-    in {if(facet_verbose) then prints("After localFD_1Dirac2, facet counts are [",#LF0,
+    then () = FD12bzTime +:= elapsed_ms() - start
+    in if(facet_verbose) then prints("After localFD_1Dirac2_by_zero, facet counts are [",#LF0,
     		      	   	  ",",#LF1,"]") fi;
        if(time_verbose) then prints("     ",print_time_string(elapsed_ms() - start),
-       			     		  " for localFD_1Dirac2") fi;}
+       			     		  " for localFD_1Dirac2_by_zero") fi;
        answer
 )
 
@@ -404,14 +407,17 @@ set localFD_KHash_01 (KGBElt x, ratvec lambda, VertexData Lvd, KTypePol_hash ktp
 		let nu = facet_bary(Lvd.list, v)
        	      	then p0 = parameter(x, lambda, nu)
 	      	then P = finalize(p0)
+		then () = char_counter.use()
+		then startCF = elapsed_ms()
 	      	then Q = K_type_pol(character_formula(P))
+		then () = charTime +:= elapsed_ms() - startCF
 	      	in v##[ktp_hash.match(Q), #monomials(P)]
        	     od
     	od
    {then () = answer:= sort(x.real_form, Lvd, answer, 2)} {ARGUMENT ALREADY SORTED}
    then time = elapsed_ms() - start
    then () = if time_verbose then prints("     ", print_time_string(time),
-   	     		     " for localFD_KHash_01") fi
+   	     		     " for localFD_KHash_01 (vertex/edge K-chars)") fi
    in answer
 
 {takes 0 and 1-diml local facets and adds K-char index to height HT}
@@ -430,14 +436,17 @@ set localFD_KHash_01 (KGBElt x, ratvec lambda, VertexData Lvd, int HT, KTypePol_
 	      let nu = facet_bary(Lvd.list, v)
        	      then p0 = parameter(x, lambda, nu)
 	      then P = finalize(p0)
+	      then () = char_counter.use()
+	      then startCF = elapsed_ms()
 	      then Q = K_type_pol(character_formula_to_height(P,HT))
+	      then () = charTime +:= elapsed_ms() - startCF	      
 	      in v##[ktp_hash.match(Q), #monomials(P)]
        	    od
     	  od
    {then () = answer:= sort(x.real_form, Lvd, answer, 2)} {argument already sorted}
    then time = elapsed_ms() - start
    then () = if time_verbose then prints("     ", print_time_string(time),
-   	     		     " for localFD_KHash_01 to height ", HT) fi
+   	     		     " for localFD_KHash_01 (vertex/edge K chars) to height ", HT) fi
    in answer
 
 {takes list of 0- and d-diml facets, with d \ge 1, and builds all
@@ -490,8 +499,12 @@ set localFD_KHashbt_lookDownGEO \
 				      then P = finalize(p0)
 				      then ms = monomials(P)
 				      in if all(for p in ms do is_pos_on_LKTs(p) od)
-				      	 then [actual##[ktp_hash.match(
-				              K_type_pol(character_formula(P))), #ms]]
+				      	 then let () = char_counter.use()
+					      then startCF = elapsed_ms()
+					      then Q = character_formula(P)
+					      then () = charTime +:= elapsed_ms() - startCF
+					      in [actual##[ktp_hash.match(
+				              K_type_pol(Q)), #ms]]
 		       		    	 else []
 				    	 fi
 		    	      	   od.## {[FacetVertsKHash]})
@@ -530,8 +543,12 @@ set localFD_KHashbt_lookDownGEO \
 				      then P = finalize(p0)
 				      then ms = monomials(P)
 				      in if all(for p in ms do is_pos_on_LKTs(p) od)
-				      	 then [actual##[ktp_hash.match(
-				              K_type_pol(character_formula_to_height(P, HT))), #ms]]
+				      	 then let startCF = elapsed_ms()
+					      then () = char_counter.use()
+					      then Q = character_formula_to_height(P,HT)
+					      then () = charTime +:= elapsed_ms() - startCF
+					      in [actual##[ktp_hash.match(
+				              K_type_pol(Q)), #ms]]
 		       		    	 else []
 				    	 fi
 		    	      	   od.## {[FacetVertsKHash]})
@@ -566,7 +583,10 @@ set extend_K_characters(KGBElt x, ratvec lambda, VertexData Lvd,
 	  	 let nu = facet_bary(Lvd.list, v[:d+1]), w=v
        	  	 then p0 = parameter(x, lambda, nu)
 	  	 then P = finalize(p0)
+		 then () = char_counter.use()
+		 then startCF = elapsed_ms()
 	  	 then Q = K_type_pol(character_formula(P))
+		 then () = charTime +:= elapsed_ms() - startCF
 	  	 then () = w[d+1] := ktp_hash.match(Q)
 		 in w
               od
@@ -596,7 +616,10 @@ set extend_K_characters(KGBElt x, ratvec lambda, VertexData Lvd,
 	  	 let nu = facet_bary(Lvd.list, v[:d+1]), w=v
        	  	 then p0 = parameter(x, lambda, nu)
 	  	 then P = finalize(p0)
+		 then () = char_counter.use()
+		 then startCF = elapsed_ms()
 	  	 then Q = K_type_pol(character_formula_to_height(P,ht))
+		 then () = charTime +:= elapsed_ms() - startCF
 	  	 then () = w[d+1] := ktp_hash.match(Q)
 		 in w
               od

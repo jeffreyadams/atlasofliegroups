@@ -13,3 +13,6 @@ set is_unitary_standard_counter = make_counter()
 set is_unitary_to_ht_counter = make_counter()
 
 set is_unitary_report()=string:"(" + is_unitary_standard_counter.use_count() + "," + is_unitary_to_ht_counter.use_count() + ")"
+{meant to count invocations of KL_sum_at_s and KL_sum_at_s_to_height}
+set char_counter = make_counter()
+
