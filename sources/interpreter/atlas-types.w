@@ -6655,9 +6655,8 @@ void print_param_block_wrapper(expression_base::level l)
   test_standard(*p,"Cannot generate block");
   auto srm = StandardReprMod::mod_reduce(p->rc(),p->val);
   common_context ctxt(p->rc(),srm.gamma_lambda());
-  BlockElt init_index; // will hold index in the block of the initial element
-  blocks::common_block block (ctxt,srm,init_index);
-  *output_stream << "Parameter defines element " << init_index
+  blocks::common_block block (ctxt,srm);
+  *output_stream << "Parameter defines element " << block.lookup(srm)
                @|<< " of the following block:" << std::endl;
   block.print_to(*output_stream,block.singular(p->val.gamma()));
     // print block using involution expressions
@@ -7374,10 +7373,9 @@ void extended_block_wrapper(expression_base::level l)
   if (l==expression_base::no_value)
     return;
 @)
-  BlockElt start;
   auto zm = repr::StandardReprMod::mod_reduce(rc,p->val);
   common_context ctxt(rc,zm.gamma_lambda());
-  blocks::common_block block(ctxt,zm,start); // build full block
+  blocks::common_block block(ctxt,zm); // build full block
   @< Construct the extended block, then the return value components,
      calling |push_value| for each of them @>
 @)
@@ -8608,9 +8606,8 @@ void raw_ext_KL_wrapper (expression_base::level l)
   rc.make_dominant(p->val);
   const auto gamma = p->val.gamma();
   const auto srm = repr::StandardReprMod::mod_reduce(rc,p->val);
-  BlockElt start;
   common_context ctxt(rc,srm.gamma_lambda());
-  blocks::common_block block(ctxt,srm,start); // build full block
+  blocks::common_block block(ctxt,srm); // build full block
   if (not((delta->val-1)*gamma.numerator()).is_zero())
   { // block not globally stable, so return empty values;
     push_value(std::make_shared<matrix_value>(int_Matrix()));

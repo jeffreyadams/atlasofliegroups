@@ -728,13 +728,11 @@ common_block::~common_block() = default;
 bool y_less (const StandardReprMod& a,const StandardReprMod& b)
 { return a.gamma_lambda() < b.gamma_lambda(); };
 
-// the full block constructor is only called on explicit user demand
-// it is long because of the need to find elements in all corners
+// the full block constructor is usually only called on explicit user demand
+// it is long because of the need to find elements "in all corners" of the block
 
 common_block::common_block // full block constructor
-  (const common_context& ctxt, const StandardReprMod& srm,
-   BlockElt& entry_element	// set to block element matching input
-  )
+  (const common_context& ctxt, const StandardReprMod& srm)
   : Block_base(ctxt.subsys().rank())
   , rc(ctxt.rc())
   , simply_integrals(ctxt.simply_integrals())
@@ -1076,8 +1074,6 @@ common_block::common_block // full block constructor
   }
 
   sort(); // by |length| then |x|, then |y| (which remains increasing)
-
-  entry_element = lookup(srm); // look up element matching the original input
 
 } // |common_block::common_block|, full block version
 
