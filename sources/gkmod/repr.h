@@ -322,7 +322,8 @@ class Rep_context
 
   StandardReprMod inner_twisted(const StandardReprMod& z) const;
 
-  void shift(const RatWeight& diff, StandardReprMod& srm) const;
+  // shift continuous component of |srm| by |diff| and then renormalise it
+  void shift (const RatWeight& diff, StandardReprMod& srm) const;
   StandardReprMod shifted(const RatWeight& diff, StandardReprMod srm) const
   { shift(diff,srm); return srm; } // perform |shift| on a copy and return it
 
@@ -392,9 +393,11 @@ class Rep_context
   // |gamlam-srm.gamma_lambda()|, adapted by equivalence to be orth to integrals
   RatWeight make_diff_integral_orthogonal
     (const RatWeight& gamlam, const StandardReprMod& srm) const;
-  void make_relative_to // modify |bm| to record being relative to |loc|, |srm0|
-    (const locator& loc, const StandardReprMod& srm0,
-     block_modifier& bm, StandardReprMod srm1) const;
+
+  // set |loc1| for |srm1 relative to |loc0|, and return shift for |srm1|
+  RatWeight make_relative_to
+    (const StandardReprMod& srm0, const locator& loc0,
+     StandardReprMod srm1, locator& loc1) const;
 
  private:
   // compute $\check\alpha\dot(1+\theta_x)\lambda$, with $(x,\lambda)$ from $t$
@@ -503,6 +506,8 @@ struct block_modifier : public locator
 {
   RatWeight shift; // add this one field
   block_modifier () = default;
+  block_modifier(locator&& loc, RatWeight&& shift)
+    : locator(std::move(loc)), shift(std::move(shift)) {}
   block_modifier (const common_block& b); // construct trivial modifier
   void clear (unsigned int block_rank, unsigned int datum_rank);
 };
@@ -632,7 +637,7 @@ class Rep_table : public Rep_context
   (const common_context& ctxt, const StandardReprMod& init) const;
 
   blocks::common_block& add_block_below // partial; defined in common_blocks.cpp
-    (const StandardReprMod& srm, BitMap* subset, const block_modifier& bm);
+    (const StandardReprMod& srm, BitMap* subset, const locator& loc);
 
   // full twisted deformation, with |flip| telling whether to multiply by |s|
   const K_type_poly& twisted_deformation(StandardRepr z, bool& flip); // by value
@@ -641,28 +646,29 @@ class Rep_table : public Rep_context
   class Bruhat_generator; // helper class: internal |add_block_below| recursion
   void block_erase (bl_it pos); // erase from |block_list| in safe manner
   // add a full block, assuming has trivial attitude
-  void add_block (const StandardReprMod& srm, const block_modifier& bm);
-  void append_block_containing // appending is to final argument
-    (const StandardReprMod& elt, size_t place_limit, const locator& block_loc,
+  void add_block (const StandardReprMod& srm, const locator& loc);
+  void append_block_containing // maybe appends an item to |sub_blocks|
+    (const StandardReprMod& elt, size_t place_limit, locator block_loc,
      sl_list<sub_triple>& sub_blocks);
-  void swallow_blocks_and_append // swallow |subs| into |block|
-    (const sl_list<sub_triple>& subs, const block_modifier& bm,
-     common_block& block, sl_list<located_block>&& temp);
+  void swallow_then_append_singleton // import and erase |subs|, then add |tail|
+    (const sl_list<sub_triple>& subs, const locator& loc,
+     sl_list<located_block>&& tail);
 }; // |Rep_table|
 
 
-// another extension of |Rep_context|, fix integral system for common block
+// another extension of |Rep_context|, used by both |common_block| constructors
+// given |gamma| or just its facet, pre-compute integral system for common block
 class common_context
 {
   const Rep_context& rep_con;
-  sl_list<RootNbr> simply_int; // root datum simply integral (via bm) roots, increasing
-  const SubSystem sub; // embeds |id_it|s |bm.w| image into full root datum
+  sl_list<RootNbr> simply_int; // simply integral roots for facet, increasing
+  const SubSystem sub; // embeds |simply_int| subsystem into full root datum
 public:
   // constructor for all normal uses:
   common_context (const Rep_context& rc, const RatWeight& gamma);
 
   // special constructor for |add_block| and |add_block_below| only:
-  common_context (const Rep_context& rc, const block_modifier& loc);
+  common_context (const Rep_context& rc, const locator& loc);
 
   // accessors
   const Rep_context& rc() const { return rep_con; }

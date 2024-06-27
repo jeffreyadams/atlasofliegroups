@@ -329,24 +329,23 @@ RatWeight Rep_context::make_diff_integral_orthogonal
 } // |make_diff_integral_orthogonal|
 
 /*
-   The purpose of |Rep_context::make_relative_to| is to adapt |bm.w| so that
-   applying that to the facet of |srm0| (which has attitude |loc|) returns
-   (up to root translation) the facet of |srm1|, and to set |bm.shift| so that
-   in addition if we shift |srm0.gamlam| first by |bm.shift| and then multiply
-   by |bm.w| we end up in |srm1.gamlam|; see second |Rep_context::sr| where
-   this procedure is applied.
+   The purpose of |Rep_context::make_relative_to| is to adapt |loc1.w| so that
+   applying that to the facet of |srm0| (which has attitude |loc0|) returns
+   (up to root translation) the facet of |srm1|, and to return the necessary
+   initial shift to |srm0.gamlam| so that after multiplying by |loc1.w| we end up in
+   |srm1.gamlam|; see second |Rep_context::sr| where this procedure is applied.
  */
-void Rep_context::make_relative_to // adapt information in |bm| relative to rest
-(const locator& loc, const StandardReprMod& srm0,
- block_modifier& bm, StandardReprMod srm1) const
+RatWeight Rep_context::make_relative_to // adapt information in |bm| relative to rest
+  (const StandardReprMod& srm0, const locator& loc0,
+         StandardReprMod srm1,        locator& loc1) const
 {
   const auto& W = Weyl_group();
-  W.mult(bm.w, W.inverse(loc.w));
+  W.mult(loc1.w, W.inverse(loc0.w));
 
-  compose(bm.simple_pi,Permutation(loc.simple_pi,-1));
+  compose(loc1.simple_pi,Permutation(loc0.simple_pi,-1));
 
-  transform<true>(bm.w,srm1); // move back to base
-  bm.shift = // amount to shift |srm0| by before transforming by |ww| to |srm1|
+  transform<true>(loc1.w,srm1); // move back to base
+  return // amount to shift |srm0| by before transforming by |loc1.w| to |srm1|
     make_diff_integral_orthogonal(srm1.gamma_lambda(),srm0);
 } // |make_relative_to|
 
@@ -1599,9 +1598,9 @@ struct sub_triple {
 };
 
 blocks::common_block& Rep_table::add_block_below
-  (const StandardReprMod& srm, BitMap* subset, const block_modifier& bm)
+  (const StandardReprMod& srm, BitMap* subset, const locator& loc)
 {
-  common_context ctxt(*this,bm);
+  common_context ctxt(*this,loc);
   StandardReprMod::Pooltype pool;
   Mod_hash_tp hash(pool);
   Bruhat_generator gen(hash,ctxt); // object to help generating Bruhat interval
@@ -1611,7 +1610,7 @@ blocks::common_block& Rep_table::add_block_below
   const size_t place_limit = place.size(); // record this before the loop runs
   sl_list<sub_triple> sub_blocks;
   for (const StandardReprMod& elt : pool) // run over interval just generated
-    append_block_containing(elt,place_limit,bm, sub_blocks); // defined below
+    append_block_containing(elt,place_limit,loc, sub_blocks); // defined below
 
   // adapt elements for all |sub_blocks|, and extend |pool| if necessary
   size_t limit = pool.size(); // limit of generated Bruhat interval
@@ -1632,7 +1631,7 @@ blocks::common_block& Rep_table::add_block_below
     (std::piecewise_construct,
      std::tuple<const common_context&,sl_list<StandardReprMod>&>
      (ctxt,elements), // arguments of partial |common_block| constructor
-     std::tuple<const locator&>(bm) // |locator| copy constructor
+     std::tuple<const locator&>(loc) // |locator| copy constructor
     ) .first;
 
   *subset=BitMap(block.size()); // this bitmap will be exported via |subset|
@@ -1657,39 +1656,47 @@ blocks::common_block& Rep_table::add_block_below
   block.set_Bruhat(std::move(partial_Hasse_diagram));
   // remainder of Hasse diagram will be imported from swallowed sub-blocks
 
-  swallow_blocks_and_append // defined below
-    (sub_blocks,bm, block,std::move(temp));
+  swallow_then_append_singleton // defined below
+    (sub_blocks,loc, std::move(temp));
   return block;
 } // |Rep_table::add_block_below|
 
-// add a full block, still taking take to absorb any existing partial blocks
-void Rep_table::add_block (const StandardReprMod& srm, const block_modifier& bm)
+// add a full block, while taking care to absorb any existing contained partial blocks
+void Rep_table::add_block (const StandardReprMod& srm, const locator& loc)
 {
-  BlockElt srm_in_block; // will hold position of |srm| within that block
-  sl_list<located_block> temp; // must use temporary singleton
-  common_context ctxt(*this,bm);
-  auto& block = temp.emplace_back // build full block in place and take reference
-    (std::piecewise_construct,
-     std::tuple<const common_context&,const StandardReprMod&,BlockElt&>
-     (ctxt,srm,srm_in_block), // arguments of full |common_block| constructor
-     std::tuple<const locator&>(bm) // |locator| copy constructor
+  sl_list<located_block> singleton; // must use temporary singleton
+#if 0
+  { // this code shows our intention but will not compile (disabled |std::pair| ctor)
+    common_context ctxt(*this,loc);
+    common_block B(ctxt,srm,srm_in_block); // this block needs to be moved into place
+    singleton.emplace_back(std::move(B),loc); // no |std::pair| constructor matches this
+  }
+  auto& block = singleton.front().first; // pick up reference to moved block
+#else // so instead we shall construct the block directly into the pair
+  auto& block = singleton.emplace_back // build full block in place and take reference
+    (std::piecewise_construct, // indicates we are constructing, not passing, two args
+     std::tuple<const common_context&,const StandardReprMod&>
+     (common_context(*this,loc),srm), // arguments of full |common_block| ctor
+     std::tuple<const locator&>(loc) // single |locator&| argument
     ) .first;
+#endif
 
   const size_t place_limit = place.size();
 
   sl_list<sub_triple> sub_blocks;
   for (BlockElt z=0; z<block.size(); ++z)
     append_block_containing // defined below
-      (block.representative(z),place_limit,bm, sub_blocks);
+      (block.representative(z),place_limit,loc, sub_blocks);
 
-  swallow_blocks_and_append // defined below
-    (sub_blocks,bm, block,std::move(temp));
+  swallow_then_append_singleton // defined below
+    (sub_blocks,loc, std::move(singleton));
 }// |Rep_table::add_block|
 
 
-// append block of |elt| to |sub_blocks|, unless it is already there
+// ensure the reduced hash code of |elt| is known in |place|, but if that was already
+// the case, append block of |elt| to |sub_blocks| (unless it is already on the list)
 void Rep_table::append_block_containing
-  (const StandardReprMod& elt, size_t place_limit, const locator& block_loc,
+  (const StandardReprMod& elt, size_t place_limit, locator block_loc,
    sl_list<sub_triple>& sub_blocks)
 {
   auto h = reduced_hash.match(Reduced_param::co_reduce(*this,elt,block_loc));
@@ -1700,22 +1707,26 @@ void Rep_table::append_block_containing
     common_block* sub = &place[h].first->first;
     auto hit = [sub] (const sub_triple& tri)->bool { return tri.bp==sub; };
     if (std::none_of(sub_blocks.begin(),sub_blocks.end(),hit))
-    {
-      block_modifier sub_to_new;
-      static_cast<locator&>(sub_to_new) = block_loc; // copy locator
+    { // now we must actually add a block to |sub_blocks|
       const locator& sub_loc = place[h].first->second; // attitude of |sub|
-      make_relative_to(sub_loc,sub->representative(place[h].second),
-		       sub_to_new,elt); // sets |sub_to_new.shift|
-      assert(sub->is_integral_orthogonal(sub_to_new.shift));
-      sub_blocks.emplace_back(sub,h,sub_to_new);
+      RatWeight to_new_shift =
+	make_relative_to(sub->representative(place[h].second),sub_loc,
+			 elt,block_loc); // also modifies |block_loc|
+      assert(sub->is_integral_orthogonal(to_new_shift));
+      sub_blocks.emplace_back
+	(sub,h,block_modifier(std::move(block_loc),std::move(to_new_shift)));
     }
   }
 } // |Rep_table::append_block_containing|
 
-void Rep_table::swallow_blocks_and_append
-  (const sl_list<sub_triple>& subs, const block_modifier& bm,
-   common_block& block, sl_list<located_block>&& temp)
+// after incorporating data from |subs|, append |tail| singleton to |this->block_list|
+void Rep_table::swallow_then_append_singleton
+  (const sl_list<sub_triple>& subs, const locator& loc,
+   sl_list<located_block>&& tail)
 {
+  assert(tail.size()==1);
+  common_block& block = tail.front().first;
+
   // swallow |subs|, and remove them from |block_list| array using |block_erase|
   for (const auto& sub : subs) // swallow sub-blocks
   {
@@ -1724,22 +1735,22 @@ void Rep_table::swallow_blocks_and_append
     for (BlockElt z=0; z<sub_block.size(); ++z)
     {
       StandardReprMod rep = sub.bp->representative(z);
-      shift(sub.bm.shift,rep);
+      shift(sub.bm.shift,rep); // apply initial shift to |rep|
       transform<false>(sub.bm.w,rep); // transform towards our new block
       const BlockElt z_rel = block.lookup(rep);
       assert(z_rel!=UndefBlock); // our block is full, lookup should work
-      embed.push_back(z_rel);
+      embed.push_back(z_rel); // record the number of the block element found
     }
 
-    block.swallow(std::move(sub_block), sub.bm,embed,
-		  &KL_poly_hash,&poly_hash);
+    block.swallow // incorporate the stored information for |sub_block|
+      (std::move(sub_block), sub.bm,embed, &KL_poly_hash,&poly_hash);
     block_erase(place[sub.h].first); // remove |sub| while correcting iterators
   }
 
-  // only after the |block_erase| upheavals is it safe to link in the new block
+  // only after the |block_erase| upheavals are past is linking in the new block safe
   // also, it can only go to the end of the list, to not invalidate any iterators
-  const auto new_block_it=block_list.end(); // iterator for new block elements
-  block_list.splice(new_block_it,temp,temp.begin()); // link in |block| at end
+  const auto new_block_it=block_list.end(); // iterator that will point to new block
+  block_list.splice(new_block_it,tail,tail.begin()); // link in |block| at end
 
   // now make sure for all |elements| that |place| fields are set for new block
   for (BlockElt z=block.size(); z-->0; )
@@ -1751,7 +1762,7 @@ void Rep_table::swallow_blocks_and_append
     }
 #endif
     auto rp =
-      Reduced_param::co_reduce(*this,block.representative(z),bm);
+      Reduced_param::co_reduce(*this,block.representative(z),loc);
     auto h = reduced_hash.find(rp);
     assert(h!=reduced_hash.empty);
     place[h] = std::make_pair(new_block_it,z);
@@ -1803,7 +1814,7 @@ blocks::common_block& Rep_table::lookup_full_block
     auto& block = block_loc.first;
     assert(block.is_full());
     auto stored_srm = block.representative(which = place[h].second);
-    make_relative_to(block_loc.second,stored_srm, bm,srm); // sets |bm.shift|
+    bm.shift = make_relative_to(stored_srm,block_loc.second, srm,bm);
     return block; // use block of related |StandardReprMod| as ours
   }
 
@@ -1836,7 +1847,7 @@ blocks::common_block& Rep_table::lookup
     auto& block_loc = *place[h].first;
     auto& block = block_loc.first;
     auto stored_srm = block.representative(which = place[h].second);
-    make_relative_to(block_loc.second,stored_srm, bm,srm); // sets |bm.shift|
+    bm.shift = make_relative_to(stored_srm,block_loc.second, srm,bm);
     return block; // use block of related |StandardReprMod| as ours
   }
 
@@ -2386,11 +2397,10 @@ SR_poly twisted_KL_column_at_s
   if (not rc.is_final(z))
     throw std::runtime_error("Parameter is not final");
   auto zm = StandardReprMod::mod_reduce(rc,z);
-  BlockElt entry;
   common_context ctxt(rc,z.gamma());
-  blocks::common_block block(ctxt,zm,entry); // build full block
+  blocks::common_block block(ctxt,zm); // build full block
   auto eblock = block.extended_block(delta);
-  return twisted_KL_sum(eblock,eblock.element(entry),block,z.gamma());
+  return twisted_KL_sum(eblock,eblock.element(block.lookup(zm)),block,z.gamma());
 } // |twisted_KL_column_at_s|
 
 // look up or compute and return the alternating sum of twisted KL polynomials
@@ -2677,10 +2687,11 @@ common_context::common_context (const Rep_context& rc, const RatWeight& gamma)
 , sub(rc.root_datum(),simply_int)
 {} // |common_context::common_context|
 
+// constructor for block defined by |loc| that was set by |Reduced_param::reduce|
 common_context::common_context
-  (const Rep_context& rc, const block_modifier& bm)
+  (const Rep_context& rc, const locator& loc)
 : rep_con(rc)
-, simply_int(rc.inner_class().int_item(bm.int_syst_nr).image_simples(bm.w))
+, simply_int(rc.inner_class().int_item(loc.int_syst_nr).image_simples(loc.w))
 , sub(rc.root_datum(),simply_int) // construct and store image subsystem
 {} // |common_context::common_context|
 
