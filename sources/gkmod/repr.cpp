@@ -1457,6 +1457,38 @@ unsigned short Rep_table::length(StandardRepr sr)
 }
 
 
+// add a full block, while taking care to absorb any existing contained partial blocks
+// a more complicated "partial block" function |add_block_below| is defined below
+void Rep_table::add_block (const StandardReprMod& srm, const locator& loc)
+{
+  sl_list<located_block> singleton; // we must use this temporary singleton
+#if 0
+  { // this code shows our intention but will not compile (disabled |std::pair| ctor)
+    common_context ctxt(*this,loc);
+    singleton.emplace_back(common_block(ctxt,srm),loc); // no |std::pair| ctor matches
+  }
+  auto& block = singleton.front().first; // pick up reference to moved block
+#else // so instead we shall construct the block directly into the pair
+  auto& block = singleton.emplace_back // build full block in place and take reference
+    (std::piecewise_construct, // indicates we are constructing, not passing, two args
+     std::tuple<const common_context&,const StandardReprMod&>
+     (common_context(*this,loc),srm), // arguments of full |common_block| ctor
+     std::tuple<const locator&>(loc) // single |locator&| argument
+    ) .first;
+#endif
+
+  const size_t place_limit = place.size(); // fix boundary of "old" |place| values
+
+  sl_list<sub_triple> sub_blocks;
+  for (BlockElt z=0; z<block.size(); ++z)
+    append_block_containing // defined below
+      (block.representative(z),place_limit,loc, sub_blocks);
+
+  swallow_then_append_singleton // defined below
+    (sub_blocks,loc, std::move(singleton));
+}// |Rep_table::add_block|
+
+
 using Mod_hash_tp = HashTable<StandardReprMod,BlockElt>;
 
 // an auxialry structure needed to hash |unsigned long| to shorter |BlockElt|
@@ -1484,7 +1516,7 @@ public:
   { return mod_hash.find(srm)!=mod_hash.empty; }
   const simple_list<BlockElt>& covered(BlockElt n) const
   { return predecessors.at(n); }
-  void block_below(const StandardReprMod& srm);
+  void block_below(const StandardReprMod& srm); // compute |predecessors| up to |srm|
 }; // |class Rep_table::Bruhat_generator|
 
 
@@ -1660,37 +1692,6 @@ blocks::common_block& Rep_table::add_block_below
     (sub_blocks,loc, std::move(temp));
   return block;
 } // |Rep_table::add_block_below|
-
-// add a full block, while taking care to absorb any existing contained partial blocks
-void Rep_table::add_block (const StandardReprMod& srm, const locator& loc)
-{
-  sl_list<located_block> singleton; // must use temporary singleton
-#if 0
-  { // this code shows our intention but will not compile (disabled |std::pair| ctor)
-    common_context ctxt(*this,loc);
-    common_block B(ctxt,srm,srm_in_block); // this block needs to be moved into place
-    singleton.emplace_back(std::move(B),loc); // no |std::pair| constructor matches this
-  }
-  auto& block = singleton.front().first; // pick up reference to moved block
-#else // so instead we shall construct the block directly into the pair
-  auto& block = singleton.emplace_back // build full block in place and take reference
-    (std::piecewise_construct, // indicates we are constructing, not passing, two args
-     std::tuple<const common_context&,const StandardReprMod&>
-     (common_context(*this,loc),srm), // arguments of full |common_block| ctor
-     std::tuple<const locator&>(loc) // single |locator&| argument
-    ) .first;
-#endif
-
-  const size_t place_limit = place.size();
-
-  sl_list<sub_triple> sub_blocks;
-  for (BlockElt z=0; z<block.size(); ++z)
-    append_block_containing // defined below
-      (block.representative(z),place_limit,loc, sub_blocks);
-
-  swallow_then_append_singleton // defined below
-    (sub_blocks,loc, std::move(singleton));
-}// |Rep_table::add_block|
 
 
 // ensure the reduced hash code of |elt| is known in |place|, but if that was already
