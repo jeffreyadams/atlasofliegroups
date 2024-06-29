@@ -78,8 +78,10 @@ codec::codec
     , diagonal(), in(), out()
 {
   const auto image_basis = ic.involution_table().theta_1_image_basis(inv);
-  // get image of $-1$ eigenlattice in int-orth quotient, in coroot coordinates
+
+  // image in int-orth quotient of $-1$ eigenlattice, using coroot coordinates
   int_Matrix A = coroots_matrix * image_basis, row,col;
+
   diagonal=matreduc::diagonalise(A,row,col); // now |diagonal| gives |row*A*col|
   // ensure |diagonal| entries positive, since we shall be reducing modulo them
   if (diagonal.size()>0 and diagonal[0]<0) // only this entry might be negative
@@ -96,10 +98,10 @@ codec::codec
 
 int_Vector codec::internalise (const RatWeight& gamma) const
 {
-  auto eval = coroots_matrix * gamma.numerator(); // mat * vec
+  auto eval = coroots_matrix * gamma.numerator(); // mat * vec -> vec (long)
   if (eval.is_zero())
     return int_Vector(in.n_rows(),0); // maybe save some work here
-  for (auto& entry : eval) // now take into account so far igenored denominator
+  for (auto& entry : eval) // denominator was ignored so far; divide by it now
   {
     assert(entry%gamma.denominator()==0);
     entry /= gamma.denominator();
@@ -107,6 +109,7 @@ int_Vector codec::internalise (const RatWeight& gamma) const
   return in * int_Vector(eval.begin(),eval.end());
 }
 
+// here |gamma| determines alcove |loc|; result set from |srm| at fund. alcove
 Reduced_param Reduced_param::reduce
   (const Rep_context& rc, StandardReprMod srm, const RatWeight& gamma,
    locator& loc)
@@ -124,6 +127,7 @@ Reduced_param Reduced_param::reduce
   return Reduced_param{ srm.x(), loc.int_syst_nr, reduction };
 }
 
+// here |loc| determines alcove, and is unchanged; otherwise like |reduce|
 Reduced_param Reduced_param::co_reduce
   (const Rep_context& rc, StandardReprMod srm, const locator& loc)
 { rc.transform<true>(loc.w,srm);
@@ -330,12 +334,15 @@ RatWeight Rep_context::make_diff_integral_orthogonal
 
 /*
    The purpose of |Rep_context::make_relative_to| is to adapt |loc1.w| so that
-   applying that to the facet of |srm0| (which has attitude |loc0|) returns
-   (up to root translation) the facet of |srm1|, and to return the necessary
-   initial shift to |srm0.gamlam| so that after multiplying by |loc1.w| we end up in
+   applying that to the facet of |srm0| (which has attitude |loc0|) returns (up
+   to root translation) the facet of |srm1|, and to return the necessary initial
+   shift to |srm0.gamlam| so that after multiplying by |loc1.w| we end up in
    |srm1.gamlam|; see second |Rep_context::sr| where this procedure is applied.
+
+   The permutation |loc1.simple_pi| of simply imaginary roots (due to sorting
+   them after applying |w|) is also made relative to |srm0|.
  */
-RatWeight Rep_context::make_relative_to // adapt information in |bm| relative to rest
+RatWeight Rep_context::make_relative_to // make |loc1| relative to |srm0,loc0|
   (const StandardReprMod& srm0, const locator& loc0,
          StandardReprMod srm1,        locator& loc1) const
 {
@@ -1411,7 +1418,7 @@ size_t deformation_unit::hashCode(size_t modulus) const
 //			  |block_modifier| methods
 
 /* When |b| was custom built for a parameter (no looking up), the modifications
-   due to our storing blocks as fundamental alcove only are not needed. So that
+   due to our storing blocks at fundamental alcove only are not needed. So that
    we can nonetheless use functions that want to apply such transformations,
    this constructor sets the modifier so that they will be no-ops.
 */
@@ -1426,9 +1433,8 @@ block_modifier::block_modifier (const common_block& b)
 // reset all fields, as if |make_relative_to| relative to a parameter itself
 void block_modifier::clear (unsigned int block_rank, unsigned int rd_rank)
 {
-  // |int_sys_nr| not changed, maybe remains undefined
+  // |int_sys_nr| and |simp_int| remain unchanged from original |locator|
   w = WeylElt();
-  // |simp_int| is not relative; it remains
   simple_pi = Permutation(block_rank,1); // reset to identity
   shift = RatWeight(rd_rank);
 }
@@ -1457,20 +1463,23 @@ unsigned short Rep_table::length(StandardRepr sr)
 }
 
 
-// add a full block, while taking care to absorb any existing contained partial blocks
-// a more complicated "partial block" function |add_block_below| is defined below
+/* Add a full block, while taking care to absorb any existing contained partial
+   blocks.
+   A more complicated "partial block" function |add_block_below| is defined below
+*/
 void Rep_table::add_block (const StandardReprMod& srm, const locator& loc)
 {
   sl_list<located_block> singleton; // we must use this temporary singleton
 #if 0
-  { // this code shows our intention but will not compile (disabled |std::pair| ctor)
+  { // this code shows our intention but will not compile:
     common_context ctxt(*this,loc);
-    singleton.emplace_back(common_block(ctxt,srm),loc); // no |std::pair| ctor matches
+    singleton.emplace_back(common_block(ctxt,srm),loc);
+    // that fails because no |std::pair| constructor matches
   }
   auto& block = singleton.front().first; // pick up reference to moved block
 #else // so instead we shall construct the block directly into the pair
-  auto& block = singleton.emplace_back // build full block in place and take reference
-    (std::piecewise_construct, // indicates we are constructing, not passing, two args
+  auto& block = singleton.emplace_back // build full block in place, take its ref
+    (std::piecewise_construct, // indicates constructiion, not passing, of args
      std::tuple<const common_context&,const StandardReprMod&>
      (common_context(*this,loc),srm), // arguments of full |common_block| ctor
      std::tuple<const locator&>(loc) // single |locator&| argument
@@ -1516,7 +1525,9 @@ public:
   { return mod_hash.find(srm)!=mod_hash.empty; }
   const simple_list<BlockElt>& covered(BlockElt n) const
   { return predecessors.at(n); }
-  void block_below(const StandardReprMod& srm); // compute |predecessors| up to |srm|
+
+  // compute |predecessors| up to |srm|
+  void block_below(const StandardReprMod& srm);
 }; // |class Rep_table::Bruhat_generator|
 
 
@@ -1694,8 +1705,10 @@ blocks::common_block& Rep_table::add_block_below
 } // |Rep_table::add_block_below|
 
 
-// ensure the reduced hash code of |elt| is known in |place|, but if that was already
-// the case, append block of |elt| to |sub_blocks| (unless it is already on the list)
+/* Ensure the reduced hash code of |elt| is known in |place|, but if that was
+   already the case, append block of |elt| to |sub_blocks| (unless it is already
+   on the list).
+*/
 void Rep_table::append_block_containing
   (const StandardReprMod& elt, size_t place_limit, locator block_loc,
    sl_list<sub_triple>& sub_blocks)
@@ -1750,7 +1763,7 @@ void Rep_table::swallow_then_append_singleton
 
   // only after the |block_erase| upheavals are past is linking in the new block safe
   // also, it can only go to the end of the list, to not invalidate any iterators
-  const auto new_block_it=block_list.end(); // iterator that will point to new block
+  const auto new_block_it=block_list.end(); // this will point to new block
   block_list.splice(new_block_it,tail,tail.begin()); // link in |block| at end
 
   // now make sure for all |elements| that |place| fields are set for new block
@@ -2271,15 +2284,15 @@ SR_poly Rep_table::KL_column_at_s_to_height (StandardRepr p, level height_bound)
 
 // maybe compute, and in any case return column of KL table for block element |z|
 simple_list<std::pair<BlockElt,kl::KLPol> >
-  Rep_table::KL_column(common_block& block, BlockElt z)
+  Rep_table::KL_column(common_block& block, BlockElt y)
 {
   const kl::KL_table& kl_tab =
-    block.kl_tab(&KL_poly_hash,z+1); // fill silently up to |z|
+    block.kl_tab(&KL_poly_hash,y+1); // fill silently up to |z|
 
   simple_list<std::pair<BlockElt,kl::KLPol> > result;
-  for (BlockElt x=z+1; x-->0; )
+  for (BlockElt x=y+1; x-->0; )
   {
-    const kl::KLPol& pol = kl_tab.KL_pol(x,z); // regular KL polynomial
+    const kl::KLPol& pol = kl_tab.KL_pol(x,y); // regular KL polynomial
     if (not pol.is_zero())
       result.emplace_front(x,pol);
   }
@@ -2388,8 +2401,8 @@ SR_poly twisted_KL_sum
   return result;
 } // |twisted_KL_sum|
 
-// compute and return sum of KL polynomials at $s$ for final parameter |z|
-// since |delta| need not be the inner class involution, no storage is done
+// Compute and return sum of KL polynomials at $s$ for final parameter |z|
+// (since |delta| need not be the inner class involution, no storage is done).
 SR_poly twisted_KL_column_at_s
   (const Rep_context& rc, StandardRepr z, const WeightInvolution& delta)
   // |z| must be delta-fixed, nonzero and final
@@ -2404,7 +2417,7 @@ SR_poly twisted_KL_column_at_s
   return twisted_KL_sum(eblock,eblock.element(block.lookup(zm)),block,z.gamma());
 } // |twisted_KL_column_at_s|
 
-// look up or compute and return the alternating sum of twisted KL polynomials
+// Look up or compute and return the alternating sum of twisted KL polynomials
 // at the inner class involution for final parameter |z|, evaluated at $q=s$
 SR_poly Rep_table::twisted_KL_column_at_s(StandardRepr sr)
   // |z| must be inner-class-twist-fixed, nonzero and final
@@ -2414,7 +2427,9 @@ SR_poly Rep_table::twisted_KL_column_at_s(StandardRepr sr)
   BlockElt y0; block_modifier bm;
   auto& block = lookup(sr,y0,bm);
   auto& eblock = block.extended_block(bm,&poly_hash);
-
+/* At this point integral roots for |block| through |bm| are in |bm.simp_int|,
+   ordered; the |eblock.folded_generators()| are orbits in |bm.simp_int|
+*/
   RankFlags singular_orbits; // flag singulars among orbits for |eblock|
   { // the components |s0|, |s1| in said orbits index transformed simply int set
     RankFlags simple_is_singular; // so using |block.singular| is wrong here
