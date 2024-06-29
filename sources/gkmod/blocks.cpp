@@ -1100,7 +1100,8 @@ common_block::common_block // partial block constructor
   Block_base::dd = // integral Dynkin diagram, converted from dual side
     DynkinDiagram(int_sys.Cartan_matrix().transposed());
 
-  using y_list = containers::sl_list<RatWeight>; // |rgl| values, increasing
+  // a type to represent |rho+gamma-lambda| values, increasing
+  using y_list = containers::sl_list<RatWeight>;
   struct inv_y_data
   {
     y_list list; unsigned long offset;    inv_y_data() : list(), offset(-1) {}
