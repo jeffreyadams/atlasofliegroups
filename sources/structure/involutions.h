@@ -100,13 +100,13 @@ class InvolutionTable
   struct record
   {
     InvolutionData id; // stuff that does not involve weight coordinates
-    WeightInvolution theta;
-    int_Matrix M_real; // $1-\theta$; then expression in a basis of its image
+    WeightInvolution theta; // the involution of $x$, a square matrix
+    int_Matrix M_real; // $(1-\theta)*$; then expression in a basis of its image
     int_Matrix lift_mat; // image basis $1-\theta$: |lift_mat*M_real==1-theta|
-    Weight th1_rho;
-    SmallSubspace mod_space; // for |x|
-    unsigned int length;
-    unsigned int W_length;
+    Weight th1_rho; // $(\theta+1)*\rho$
+    SmallSubspace mod_space; // kernel of $lambda$-equivalence for $x$
+    unsigned int length; // length of involution in $K\backslash G/B$
+    unsigned int W_length; // length of twisted involution for $x$ in $W$
 
   record(WeightInvolution&& inv,
 	 InvolutionData&& inv_d,
@@ -202,10 +202,11 @@ class InvolutionTable
   // uniquely chosen representative modulo $(1-\theta)X^*$ of $(1-\theta)/2*y$
   void real_unique(InvolutionNbr inv, RatWeight& y) const;
 
-  const int_Matrix& to_1_theta_image_coordinates(InvolutionNbr inv) const
+  const int_Matrix& // basis of image of $\theta-1$
+  theta_1_image_basis (InvolutionNbr inv) const { return data[inv].lift_mat; }
+  const int_Matrix& // mult. by $\theta-1$ made, surjective (using image basis)
+  theta_1_in_image_basis (InvolutionNbr inv) const // not actually used anywhere
   { return data[inv].M_real; }
-  const int_Matrix& theta_1_image_basis(InvolutionNbr inv) const
-  { return data[inv].lift_mat; }
 
   // pack $(1-\theta)\lambda_rho$ into |TorusPart|: |lift_mat| coordinates mod 2
   TorusPart y_pack(InvolutionNbr inv, const Weight& lambda_rho) const
