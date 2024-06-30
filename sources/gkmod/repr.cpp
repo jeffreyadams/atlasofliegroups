@@ -2639,12 +2639,6 @@ const K_type_poly& Rep_table::twisted_deformation(StandardRepr z, bool& flip)
       singular_orbits = // fold singularity information to |eblock| generators
 	ext_block::reduce_to(eblock.folded_generators(),simple_is_singular);
     }
-    { RankFlags simple_is_singular = block.singular(bm,zi.gamma());
-      // which simply integrals of |block| are integral at |inv(bm.w)*zui.gamma|
-      Permutation inv(bm.simple_pi,-1);
-      for (weyl::Generator s=0; s<eblock.rank(); ++s)
-	singular_orbits.set(s,simple_is_singular[inv[eblock.orbit(s).s0]]);
-    }
 
     auto terms = twisted_deformation_terms(block,eblock,index,
 					   singular_orbits,bm,zi.gamma());
