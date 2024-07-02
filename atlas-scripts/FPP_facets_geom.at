@@ -311,8 +311,12 @@ set_type
 , LocalFacetVertsKHash = vec {next to last entry is index of KChar in some hash, last is #LQ'a}
 ]
 
+{in LocalVertexData, the first pair_start terms in list are meant to
+be global vertices, and the rest midpoints of flipped pairs of global
+vertices.}
 set_type
 [ VertexData = ([ratvec] list, (ratvec->int) lookup)
+, LocalVertexData = ([ratvec] list, (ratvec->int) lookup, int pair_start)
 , FacetDataKHash = (VertexData v_data
 ,   [[FacetVertsKHash]] Fverts)
 , LocalFacetDataKHash = (VertexData v_data_local, KGBElt x,
@@ -327,6 +331,22 @@ consists of all d-facets beginning with k}
 set global_facets_by_zero = [[[FacetVertsIndex]]]: []
 
 set to_vertex_data ([ratvec] vlist) = VertexData: (vlist,index_in(vlist))
+set to_vertex_data ([ratvec] vlist, int pair_start) = LocalVertexData: (vlist, index_in(vlist), pair_start)
+
+set hermCenterOldFlag = false
+
+{ computes barycenter from a facet as a vertex list }
+set facet_bary([ratvec] vert_list, FacetVertsIndex facet) = FacetBary:
+    sum(#vert_list[0], for v in facet do vert_list[v] od)/(#facet)
+
+{assume that v is a sorted index into Lvd.list; indices beginning in
+pair_start need to be counted twice.}
+set facet_bary(LocalVertexData Lvd, vec v) = ratvec:
+    if hermCenterOldFlag then return facet_bary(Lvd.list, v) fi;
+    let list = Lvd.list, d = Lvd.pair_start
+    then last = last(for j in v do j< d od)
+    in (sum(#Lvd.list[0], (for j in v do list[j] od)## (for j in
+    v[last+1:] do list[j] od))/(#v + #v[last+1:]))
 
 set facet_indices((ratvec->int) lookup, FacetVerts facet) = FacetVertsIndex:
     for gammav in facet do lookup(gammav) od.sort
@@ -556,10 +576,6 @@ set facet (SimpleAffine Affd, ratvec gamma) = Facet:
    then (F0pos,F0zero) = facet0(Affd,gamma0)
    in (for betav in F0pos do wtilde*betav od
       ,for betav in F0zero do wtilde*betav od)
-
-{ computes barycenter from a facet as a vertex list }
-set facet_bary([ratvec] vert_list, FacetVertsIndex facet) = FacetBary:
-    sum(#vert_list[0], for v in facet do vert_list[v] od)/(#facet)
 
 { computes the FacetVerts (vertex set) of any barycenter of a facet of them }
 set facet_verts(SimpleAffine Affd, ratvec gamma) = FacetVerts:
@@ -1385,50 +1401,40 @@ set thetaAct2 (mat theta, ratvec lambda, VertexData vd,  (vec->int) FlippedEdgeL
     then () = thetaAct2_time +:= elapsed_ms() - start
     in answer
 
-set thetaAct2 (KGBElt x, ratvec lambda, VertexData vd,  (vec->int) FlippedEdgeLookup) = PermOrderTwo:
-    thetaAct2(x.involution, lambda, vd, FlippedEdgeLookup)
-
-set local_vertices2(Param p, VertexData vd, VertexData Lvd, PermOrderTwo Perm) = FacetVerts:
-    let G = p.real_form, gamma = p.infinitesimal_character
-    then list = [ratvec]: {these are "global" vertices in vd}
-    	 if is_equal_rank(G) then facet_verts(G, gamma)
-    	 else let (Affd,M,j0) = cofolded(G)
-    	      then gamma0 = solve(M,gamma).requisition
-    	      in M*facet_verts(Affd, gamma0)
-	 fi
-    then nums = for v in list do vd.lookup(v) od
-    then () = assert(nums.>=,"p appears not to be an FPP parameter")
-    then firsts = for (n,) in Perm.trans do n od
-    then perm = PermOrderTwo: ([],[])
-    then () = for n@j in nums
-	      do if is_member_sorted(Perm.fixed)(n)
-	      	 then perm.fixed := (perm.fixed next perm.fixed:=[])#n {perm.fixed #:=n}
-	    	 else if is_member_sorted(firsts)(n)
-		      then let j = first(for (x,y) in Perm.trans
-		      	       	   	 do x = n
-					 od)
-		      	   then (,m) = Perm.trans[j]
-	              	   then () = assert(is_member(nums)(m),"p appears not to be a hermitian parameter")
-			   in perm.trans := (perm.trans next perm.trans:=[])#(n,m) {perm.trans #:=(n,m)}
-		      fi
-	    	 fi
-	      od
-     in for n in perm.fixed do list[n] od ##
-        for (n,m) in perm.trans do (vd.list[n] + vd.list[m])/2 od
+{only keep the transpositions (v,w) where [v,w] is an edge}
+set thetaAct2 (KGBElt x, ratvec lambda) = PermOrderTwo:
+    let ic = x.inner_class
+    then FEL = FPP_flippable_edge_lookup(ic), vd = FPP_vertex_data(ic)
+    in thetaAct2(x.involution, lambda, vd, FEL)
 
 {computes the full vertices of the facet containing a delta-fixed dom
- ratl weight gamma}
-set local_vertices(RealForm G, ratvec gamma) = FacetVerts:
-    if is_equal_rank(G) then facet_verts(G, gamma)
-    else let (Affd,M,j0) = cofolded(G)
+ ratl weight gamma. Ordinary alcove in cofolded(G) (reduce root datum by delta)}
+set global_vertices(InnerClass ic, ratvec gamma) = FacetVerts:
+    if is_equal_rank(ic) then facet_verts(ic, gamma)
+    else let (Affd,M,j0) = cofolded(ic)
     	 then gamma0 = solve(M,gamma).requisition
+	 {M is related to delta; this requires gamma to be delta-fixed}
     	 in M*facet_verts(Affd, gamma0)
     fi
 
-{compute the vertices of the local facet containing the HERMITIAN FPP parameter p}
+{this is useful for going to actual barycenter? Now not used? The int
+d says that the first d are global vertices.}
+set local_vertices2(Param p) = (FacetVerts,int):
+    let G = p.real_form, gamma = p.infinitesimal_character
+    then vd = FPP_vertex_data(G)
+    then list = global_vertices(G,gamma)
+    then nums = for v in list do vd.lookup(v) od
+    then () = assert(nums.>=,"p appears not to be an FPP parameter")
+    then (fixed,trans) = thetaAct2(p.x, p.lambda)
+    then () = assert(#fixed + 2*#trans = #list, "p appears not to be a hermitian parameter")
+    in (for n in fixed do list[n] od ##
+        for (n,m) in trans do (vd.list[n] + vd.list[m])/2 od, #fixed)
+
+{compute the vertices of the local facet containing the HERMITIAN FPP
+parameter p.}
 set local_vertices(Param p) = FacetVerts:
     let G = p.real_form, gamma = p.infinitesimal_character
-    then list = local_vertices(G, gamma)
+    then list = global_vertices(G, gamma)
 {    [ratvec]:
     	 if is_equal_rank(G) then facet_verts(G, gamma)
     	 else let (Affd,M,j0) = cofolded(G)
@@ -1440,10 +1446,39 @@ set local_vertices(Param p) = FacetVerts:
     then () = assert(Perm.>=,"p appears not to be a hermitian parameter")
     in for v@j in list do (v + list[Perm[j]])/2 od.no_reps
 
+set hermCenterOldTime = int:0
+
+{should be modified to be barycenter of affine facet on G?}
+set herm_centerOld(Param p) = Param:
+    let start = elapsed_ms()
+    then list = local_vertices(p)
+    then answer = parameter(p.x, p.lambda, sum(#list[0], list)/#list)
+    then () = hermCenterOldTime +:= elapsed_ms() - start
+    in answer
+
+set hermCenterNewTime = int:0
+
+set herm_centerNewDumb(Param p) = Param:
+    if hermCenterOldFlag
+    then return(herm_centerOld(p))
+    fi;
+    let start = elapsed_ms()
+    then (list,d) = local_vertices2(p)
+    then answer = parameter(p.x, p.lambda,
+    	 (sum(#list[0], list) + sum(#list[0], list[d:]))/(2*#list - d))
+    then () = hermCenterNewTime +:= elapsed_ms() - start
+    in answer
+
 set herm_center(Param p) = Param:
-    let list = local_vertices(p)
-    in parameter(p.x, p.lambda, sum(#list[0], list)/#list)
-    
+    if hermCenterOldFlag
+    then return(herm_centerOld(p))
+    fi;
+    let start = elapsed_ms()
+    then list = global_vertices(p.inner_class, p.infinitesimal_character)
+    then answer = parameter(p.x, p.lambda, sum(#list[0],list)/#list)
+    then () = hermCenterNewTime +:= elapsed_ms() - start
+    in answer
+
 {meant to record time in character_formula(p) and character_formula_to_height(p)}
 set charTime = int: 0
 
