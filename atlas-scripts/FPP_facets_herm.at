@@ -354,14 +354,18 @@ set localFD_1Dirac2_by_zero\
 		   od.## {all FixFix edges}
 	       else []
 	       fi
-	   then () = FD12bzFFTime +:=elapsed_ms() - startFF
+	    then () = FD12bzFFTime +:=elapsed_ms() - startFF
+	    {then () = if elapsed_ms() - startFF > 10 {FD12bzFFTime}
+    	      	      then prints(" EdgesFixFix = ", #EdgesFixFix, " took ",
+	      	   	   	    print_time_string(elapsed_ms() - startFF))
+	      	      fi}
 	   {then () = prints("after FixFix, time is ",print_time_string(elapsed_ms() - start))}
 	   then startFT = elapsed_ms()
       	   then EdgesFixTrans = [vec]:
 	   	if #Perm2.fixed > 0 and #Perm2.trans >0
 		then for j@k in Perm2.fixed
 		     do let mloc = mapAct[j] {this is k?}
-		     	then cands = FPP_flippable_triangles_by_zero(G)[j]
+		     	then cands = FPP_flippable_triangles_by_zero_unsorted(G)[j]
 			in if Llookup(mloc) and #cands > 0
 			   then for v in cands
 			      	do if trans_hash.lookup(v[1:]).>=
@@ -379,10 +383,14 @@ set localFD_1Dirac2_by_zero\
 		  else []
 		  fi
 	   then () = FD12bzFTTime +:= elapsed_ms() - startFT
+	   {then () = if elapsed_ms() - startFT > 10 {FD12bzFTTime}
+    	      	      then prints(" EdgesFixTrans = ", #EdgesFixTrans, " took ",
+	      	   	   	    print_time_string(elapsed_ms() - startFT))
+	      	      fi}
            {then () = prints("after FixTrans, time is ",print_time_string(elapsed_ms() - start))}
 	   then startTT = elapsed_ms()
 	   then EdgesTransTrans = [vec]: {this is the longest}
-	      for v in FPP_flippable_tetrahedra(G)
+	      {for v in FPP_flippable_tetrahedra(G)
 	      do if trans_hash.lookup([v[0],v[1]]).>= {for e:5 if e < 3 do e fi od}
 	      	    and trans_hash.lookup([v[2],v[3]]).>=
 		 then let xloc = mapAct[v[0]], yloc = mapAct[v[2]]
@@ -392,8 +400,44 @@ set localFD_1Dirac2_by_zero\
 			 fi
 		  else []
 	          fi
-	       od.##
+	       od.##}
+	      if #Perm2.trans > 1
+	      then let FEL = FPP_flippable_edge_lookup(G)
+	      	   in for (i,j)@m in Perm2.trans
+	      	      do let a = FEL([i,j]), mloc = mapAct[i] {this is m+#Perm2.fixed?}
+	      	      	 then cands = FPP_flippable_tetrahedra_by_zero_unsorted(G)[a]
+		      	 in if Llookup(mloc) and #cands > 0
+		      	    then for v in cands
+			      	 do if trans_hash.lookup(v[2:]).>=
+			      	    then let nloc = mapAct[v[2]] {equal to lookup?}
+				      	 in if Llookup(nloc)
+				      	    then [[mloc,nloc].sort]
+					    else []
+					    fi
+				    else []
+				    fi {trans_hash.lookup}
+			       	 od.## {[vec], all starting with mloc}
+			     else []
+			     fi {Llookup(mloc)}
+		       od.## {[vec], all mloc}
+		 else []
+		 fi
 	    then () = FD12bzTTTime +:= elapsed_ms() - startTT
+	    {then () = if elapsed_ms() - startTT > 10{FD12bzTTTime}
+    	      	      then prints(" EdgesTransTrans = ", #EdgesTransTrans, " took ",
+	      	   	   	    print_time_string(elapsed_ms() - startTT))
+	   	      fi}
+	      {for v in FPP_flippable_tetrahedra(G)
+	      do if trans_hash.lookup([v[0],v[1]]).>= {for e:5 if e < 3 do e fi od}
+	      	    and trans_hash.lookup([v[2],v[3]]).>=
+		 then let xloc = mapAct[v[0]], yloc = mapAct[v[2]]
+		      in if Llookup(xloc) and Llookup(yloc)
+			 then [[xloc,yloc].sort]
+			 else []
+			 fi
+		  else []
+	          fi
+	       od.##}
 	   in EdgesFixFix ## EdgesFixTrans ## EdgesTransTrans
      then LF1 = [FacetVertsIndex]:
     	 for v in Edges
@@ -407,6 +451,9 @@ set localFD_1Dirac2_by_zero\
     { then () = prints("after LF1, time is ",print_time_string(elapsed_ms() - start))}
     then answer = sort(G, Lvd, [LF0]##[LF1], 0)
     then () = FD12bzTime +:= elapsed_ms() - start
+    {then () = if elapsed_ms() - start > 10{FD12bzTime}
+    	      then prints("(fixed,trans) = (",#Perm2.fixed, ",",#Perm2.trans, "), facet counts (",#LF0,",",#LF1,") took ",print_time_string(elapsed_ms() - start))
+	      fi}
     in if(facet_verbose) then prints("After localFD_1Dirac2_by_zero, facet counts are [",#LF0,
     		      	   	  ",",#LF1,"]") fi;
        if(time_verbose) then prints("     ",print_time_string(elapsed_ms() - start),

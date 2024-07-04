@@ -1135,7 +1135,7 @@ set Fftet_time = int: 0
 related to G, exchanging (i,j) and (p,q).}
 set FPP_flippable_tetrahedra = (InnerClass -> [FacetVertsIndex]):
     let ichash = make_InnerClass_hash()
-    then Fftets = [[FacetVertsIndex]]: [] {one for each inner class}
+    then Fftetsu = [[FacetVertsIndex]]: [] {one for each inner class}
     in (InnerClass -> [FacetVertsIndex]): (InnerClass ic) [FacetVertsIndex]:
        let I = ichash.size()
        then i = ichash.match(ic)
@@ -1158,11 +1158,30 @@ set FPP_flippable_tetrahedra = (InnerClass -> [FacetVertsIndex]):
 		   		     od
 	     		     	  od { type is [FacetVertsIndex], remains for next line}
 	  		     od.##
-	      then () = Fftets := (Fftets next Fftets := [])#answer
+	      then () = Fftetsu #:= answer
     	      then () = Fftet_time +:= elapsed_ms() - start
 	      in ()
 	      fi
-    	 in Fftets[i]
+    	 in Fftetsu[i]
+
+{same, separated by lists indexed by [i,j] in flippable_edges}
+set FPP_flippable_tetrahedra_by_zero_unsorted = (InnerClass ->  [[FacetVertsIndex]]):
+    let ichash = make_InnerClass_hash()
+    then Fftetsbzu = [[[FacetVertsIndex]]]: [] {one list for each inner class}
+    in (InnerClass -> [[FacetVertsIndex]]): (InnerClass ic) [[FacetVertsIndex]]:
+       let I = ichash.size()
+       then i = ichash.match(ic)
+       then () = if i=I {haven't seen this inner class before}
+       	       then let FEdges = FPP_flippable_edges(ic)
+	       	    then FEL = FPP_flippable_edge_lookup(ic)
+		    then answer = [[FacetVertsIndex]]: for j:#FEdges do [] od
+		    then () = for v in FPP_flippable_tetrahedra(ic)
+		   	     do answer[FEL(v[:2])] #:= v
+			     od
+	       	    then () = Fftetsbzu #:= answer
+		    in ()
+		 fi
+       in Fftetsbzu[i]
 
 set FPP_facets (SimpleAffine Affd, [ratvec] vlist, int dim,
     int j) =
