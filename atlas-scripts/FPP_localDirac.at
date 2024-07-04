@@ -884,7 +884,7 @@ set local_test_hash(KGBElt x, ratvec lambda, LocalVertexData Lvd,
 			   then () = unitary_by_dim[e]+:=1
 			   then q = parameter(x,lambda, facet_bary(Lvd,moreverts))
 			   then () = for q1 in monomials(finalize(q))
-			   	     do Uhash.match(herm_center(q1));
+			   	     do Uhash.match({herm_center(}q1{)});
 				     if deform_flag
 				     then for q1d in face_deformed_new(q1)
 				     	  do Uhash.match({herm_center(}q1d{)})

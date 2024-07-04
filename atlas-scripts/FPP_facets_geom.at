@@ -333,21 +333,6 @@ set global_facets_by_zero = [[[FacetVertsIndex]]]: []
 set to_vertex_data ([ratvec] vlist) = VertexData: (vlist,index_in(vlist))
 set to_vertex_data ([ratvec] vlist, int pair_start) = LocalVertexData: (vlist, index_in(vlist), pair_start)
 
-set hermCenterOldFlag = false
-
-{ computes barycenter from a facet as a vertex list }
-set facet_bary([ratvec] vert_list, FacetVertsIndex facet) = FacetBary:
-    sum(#vert_list[0], for v in facet do vert_list[v] od)/(#facet)
-
-{assume that v is a sorted index into Lvd.list; indices beginning in
-pair_start need to be counted twice.}
-set facet_bary(LocalVertexData Lvd, vec v) = ratvec:
-    if hermCenterOldFlag then return facet_bary(Lvd.list, v) fi;
-    let list = Lvd.list, d = Lvd.pair_start
-    then last = last(for j in v do j< d od)
-    in (sum(#Lvd.list[0], (for j in v do list[j] od)## (for j in
-    v[last+1:] do list[j] od))/(#v + #v[last+1:]))
-
 set facet_indices((ratvec->int) lookup, FacetVerts facet) = FacetVertsIndex:
     for gammav in facet do lookup(gammav) od.sort
 
@@ -560,7 +545,7 @@ set edge_list_lookups(InnerClass ic) = [(ratvec->int)]:
 set is_edge(InnerClass ic, [(ratvec->int)] lookups, ratvec gamma0, ratvec gamma1) = bool:
     let (affd, M, j0) = cofolded(ic)
     then N = required_solution(M.^, id_mat(affd.rank)).^
-         {maps (preferably delta-fixed) ic-wts to affd-wts}
+         {Maps (preferably delta-fixed) ic-wts to affd-wts}
     then v0 = N*gamma0, v1 = N*gamma1
     then lookupFundVert = index_in(fundamental_vertices(affd))
     then ((,w),xi0) = from_fundamental_alcove(affd,v0)
@@ -607,7 +592,32 @@ set facet_bary(RootDatum rd, ratvec gamma) = FacetBary:
 		 in	wtilde*facet_bary0(Affd,gamma0)
 		 od)
 
-{.number of vertices in W*(fundamental alcove).}
+{ computes the FacetBary of any hermitian ratvec, for possibly nonsimple rd}
+set facet_bary_ic(InnerClass ic, ratvec gamma) = FacetBary:
+    sum(ic.rank, for Affd in simple_factors(quasisplit_form(ic))
+		 do
+		 let (Aff_fold,M,) = cofolded(inner_class(Affd, ic.distinguished_involution))
+		 then N = required_solution(M.^, id_mat(Aff_fold.rank)).^
+		 then (wtilde,gamma0) = from_fundamental_alcove(Aff_fold, N*gamma)
+		 in	M*(wtilde*facet_bary0(Aff_fold,gamma0))
+		 od)
+
+set hermCenterOldFlag = false
+
+{ computes barycenter from a facet as a vertex list }
+set facet_bary([ratvec] vert_list, FacetVertsIndex facet) = FacetBary:
+    sum(#vert_list[0], for v in facet do vert_list[v] od)/(#facet)
+
+{assume that v is a sorted index into Lvd.list; indices beginning in
+pair_start need to be counted twice.}
+set facet_bary(LocalVertexData Lvd, vec v) = ratvec:
+    if hermCenterOldFlag then return facet_bary(Lvd.list, v) fi;
+    let list = Lvd.list, d = Lvd.pair_start
+    then last = last(for j in v do j< d od)
+    in (sum(#Lvd.list[0], (for j in v do list[j] od)## (for j in
+    v[last+1:] do list[j] od))/(#v + #v[last+1:]))
+
+{.Number of vertices in W*(fundamental alcove).}
 set W_fund_vertices_card(SimpleAffine Affd) = int:
     let n=Affd.ss_rank, N=#W(Affd)
     then listn=for j:n do j od
@@ -830,16 +840,53 @@ set FPP_edges = (InnerClass ->  [FacetVertsIndex]):
        then () = if i=I {haven't seen this inner class before}
        	       then let (Affd,M,j0) = cofolded(ic)
 	       	    then answer = FPP_facets(Affd, FPP_vertex_data(Affd,j0), 1, j0)
-	       	    then () = FPPedgess := (FPPedgess next FPPedgess := [])#answer
+	       	    then () = FPPedgess #:= {(FPPedgess next FPPedgess := [])#}answer
     	      	    {then () = FPPedges_time +:= elapsed_ms() - start}
 	      	    in ()
 	      	 fi
       in FPPedgess[i]
 
-{edges in a list indexed by first vertex; size is number of FPP vertices}
-set FPP_edges_by_zero = (InnerClass ->  [[FacetVertsIndex]]):
+{set FPP_edges_sorted = (InnerClass -> [FacetVertsIndex]):
     let ichash = make_InnerClass_hash()
-    then FPPebz = [[[FacetVertsIndex]]]: [] {one list for each inner class}
+    then FPPedges_sorteds = [[FacetVertsIndex]]: [] {one list for each inner class}
+    in (InnerClass -> [FacetVertsIndex]): (InnerClass ic) [FacetVertsIndex]:
+       let I = ichash.size()
+       then i = ichash.match(ic)
+       then () = if i=I {haven't seen this inner class before}
+       	       then let answer = FPP_edges(ic).sort
+	       	    then () = FPPedges_sorteds #:= answer
+    	      	    {then () = FPPedges_time +:= elapsed_ms() - start}
+	      	    in ()
+	      	 fi
+      in FPPedges_sorteds[i]
+
+{The vec has size #FPP_vertices + 1. Entry j+1 is the first m where FPP_edges_sorted(ic)[m] > j}
+set FPP_edge_stops = (InnerClass -> vec):
+    let ichash = make_InnerClass_hash()
+    then FPP_edge_stopss = [vec]: [] {one vec for each inner class}
+    in (InnerClass -> vec): (InnerClass ic) vec:
+       let I = ichash.size()
+       then i = ichash.match(ic)
+       then () = if i=I {haven't seen this inner class before}
+       	       then let start = int:0, Esort = FPP_edges_sorted(ic)
+	       	    then answer = 0#for j:#FPP_vertices(ic)
+	       	    	     	  do let fj = binary_search_first((int -> bool):
+				     	 (int m): Esort[m][0] > j,start, #Esort)
+				     then () = start:=fj
+				     in fj
+				   od
+		    then () = FPP_edge_stopss #:= answer
+	            {then () = FPPedges_time +:= elapsed_ms() - start}
+	      	    in ()
+	      	 fi
+      in FPP_edge_stopss[i]
+
+}
+
+{edges in a list indexed by first vertex; size is number of FPP vertices}
+set FPP_edges_by_zero_unsorted = (InnerClass ->  [[FacetVertsIndex]]):
+    let ichash = make_InnerClass_hash()
+    then FPPebzu = [[[FacetVertsIndex]]]: [] {one list for each inner class}
     in (InnerClass -> [[FacetVertsIndex]]): (InnerClass ic) [[FacetVertsIndex]]:
        let I = ichash.size()
        then i = ichash.match(ic)
@@ -847,13 +894,30 @@ set FPP_edges_by_zero = (InnerClass ->  [[FacetVertsIndex]]):
        	       then let edges = FPP_edges(ic)
 	       	    then answer = [[FacetVertsIndex]]: for j:#FPP_vertices(ic) do [] od
 		    then () = for v in edges
-		    	      do answer[v[0]] := (answer[v[0]] next answer[v[0]]:=[])#v
+		    	      do answer[v[0]] #:= {(answer[v[0]] next answer[v[0]]:=[])#}v
 			      od
-	       	    then () = FPPebz := (FPPebz next FPPebz := [])#answer
+	       	    then () = FPPebzu #:= {(FPPebz next FPPebz := [])#}answer
+    	      	    {then () = FPPebz_time +:= elapsed_ms() - start}
+	      	    in ()
+	      	 fi
+in FPPebzu[i]
+
+{edges in a list indexed by first vertex; size is number of FPP vertices. Sort each sublist by second vertex.}
+set FPP_edges_by_zero= (InnerClass ->  [[FacetVertsIndex]]):
+    let ichash = make_InnerClass_hash()
+    then FPPebz = [[[FacetVertsIndex]]]: [] {one list for each inner class}
+    in (InnerClass -> [[FacetVertsIndex]]): (InnerClass ic) [[FacetVertsIndex]]:
+       let I = ichash.size()
+       then i = ichash.match(ic)
+       then () = if i=I {haven't seen this inner class before}
+       	       then let edges_u = FPP_edges_by_zero_unsorted(ic)
+	       	    then answer = [[FacetVertsIndex]]: for list in edges_u do list.sort od
+	       	    then () = FPPebz #:= answer
     	      	    {then () = FPPebz_time +:= elapsed_ms() - start}
 	      	    in ()
 	      	 fi
       in FPPebz[i]
+
 
 set_type PermOrderTwo = (vec fixed, [(int,int)] trans)
 
@@ -1031,6 +1095,40 @@ set FPP_flippable_triangles = (InnerClass -> [FacetVertsIndex]):
 	      in ()
 	      fi
     in Fftris[i]
+
+{same, separated into lists indexed by fixed vertex}
+set FPP_flippable_triangles_by_zero_unsorted = (InnerClass -> [[FacetVertsIndex]]):
+    let ichash = make_InnerClass_hash()
+    then Fftrisbzu = [[[FacetVertsIndex]]]: [] {one for each inner class}
+    in (InnerClass -> [[FacetVertsIndex]]): (InnerClass ic) [[FacetVertsIndex]]:
+       let I = ichash.size()
+       then i = ichash.match(ic)
+       then () = if i=I {haven't seen this inner class before}
+    	      then let FEdges = FPP_flippable_triangles(ic){, start = elapsed_ms()}
+	      	   then answer = [[FacetVertsIndex]]: for j:#FPP_vertices(ic) do [] od
+		   then () = for v in FEdges
+		   	     do answer[v[0]] #:= v
+			     od
+		   then () = Fftrisbzu #:= answer
+		   in ()
+               fi
+        in Fftrisbzu[i]
+
+{same, each sublist sorted lexicographically by flipped pair}
+set FPP_flippable_triangles_by_zero= (InnerClass ->  [[FacetVertsIndex]]):
+    let ichash = make_InnerClass_hash()
+    then Fftrisbz = [[[FacetVertsIndex]]]: [] {one list for each inner class}
+    in (InnerClass -> [[FacetVertsIndex]]): (InnerClass ic) [[FacetVertsIndex]]:
+       let I = ichash.size()
+       then i = ichash.match(ic)
+       then () = if i=I {haven't seen this inner class before}
+       	       then let FEdges_u = FPP_flippable_triangles_by_zero_unsorted(ic)
+	       	    then answer = [[FacetVertsIndex]]: for list in FEdges_u do list.sort od
+	       	    then () = Fftrisbz #:= answer
+    	      	    {then () = Fftrisbz_time +:= elapsed_ms() - start}
+	      	    in ()
+	      	 fi
+      in Fftrisbz[i]
 
 set Fftet_time = int: 0
 {these are quadruples [i,j,p,q] indexing FPP tetrahedra that can be flipped by an automorphism

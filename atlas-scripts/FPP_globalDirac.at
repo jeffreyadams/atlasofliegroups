@@ -149,7 +149,7 @@ set FPP_unitary_hash_general([(KGBElt,ratvec)] xlambdas, Param_hash Uhash,
 		 then (Lvd, Perm2, mapAct) = LPmss[k]
 		 then startLF = elapsed_ms()
 		 {then () = prints("time thru start [",k,"] = ",print_time_string(startLF - start))}
-		 then LF = if by_zero_flag and height(p0) > 0
+		 then LF = if by_zero_flag {and height(p0) > 0}
 		      	   then localFD_1Dirac2_by_zero(x, lambda, Lvd, Perm2, mapAct)
 			   else localFD_1Dirac2(x, lambda, Lvd, Perm2, mapAct)
 			   fi
@@ -172,7 +172,7 @@ set FPP_unitary_hash_general([(KGBElt,ratvec)] xlambdas, Param_hash Uhash,
     		 	  then () = xlambdatimes[k] := current - startxl
     			  in if every_lambda_flag
 	      		     then prints("  ",print_time_string(xlambdatimes[k]),
-			   	" = time for (x,lambda) = (", xnums[k], ",",k{lambdas[k]},")", test_string);
+			   	" = time for (x,lambda) #",k, " = (", xnums[k], ",",lambdas[k],")", test_string);
 			         prints("    #LF = ", for L in LF do #L od, "; #unitary params = ", answerCards[k],
 				 ", #new unitary = ", Uhash.size() - startUhash,
 				 ", #tests for lambda = ", unitary_test_counter.use_count() - startUcounter,
@@ -194,9 +194,9 @@ set FPP_unitary_hash_general([(KGBElt,ratvec)] xlambdas, Param_hash Uhash,
        	      ", number of unitarity tests = ", unitary_test_counter.use_count() - oldUcounter);
 	    prints(" time spent in char calcs = ",print_time_string(charTime),
 	      ", number of char calcs = ",char_counter.use_count() - oldCcounter);
-	    prints("Time in localFD1_Dirac2* = ", print_time_string(FD12Time + FD12bzTime),
+	    prints("Time in localFD_1Dirac2* = ", print_time_string(FD12Time + FD12bzTime),
 	      ", in localFD_1Dirac2 = ",print_time_string(FD12Time),
-	    	     ", in localFD1_Dirac2_by_zero = ",print_time_string(FD12bzTime));
+	    	     ", in localFD_1Dirac2_by_zero = ",print_time_string(FD12bzTime));
        	    if mix_flag
 	    then prints("Time in bottom_factors = ", print_time_string(bfTime), ", time in bottom_elim_factors_more = ",
        	  	    print_time_string(befmoreTime), ", more_shift = ", more_shift, ", #Params missed by more = ", more_bad_hash.size())
@@ -313,14 +313,14 @@ set FPP_unitary_hash_general([KGBElt] xs, Param_hash Uhash, {Param_hash Uparamha
 		      	    	      	    unitary_test_counter.use_count(), startUtime = unitaryTime,
 					    startCcounter = char_counter.use_count(), startCtime = charTime
 				      then startLF = elapsed_ms()
- 		      		      then LF = if by_zero_flag and dominant(G,lamthlam)*G.two_rho_check > 0
+ 		      		      then LF = if by_zero_flag {and dominant(G,lamthlam)*G.two_rho_check > 0}
 		      	      	      	      	then localFD_1Dirac2_by_zero(x, lambda, Lvd, Perm2, mapAct)
 			   			else localFD_1Dirac2(x, lambda, Lvd, Perm2, mapAct)
 			   			fi {by_zero_flag}
 				      then () = if every_lambda_deets_flag
     	      	      	              then prints("time for localFD_1Dirac2* = ",
 				      print_time_string(elapsed_ms() - startLF),
-			   " to find [",#LF[0],",",#LF[1],"] verts and edges.")				     
+			   " to find [",#LF[0],",",#LF[1],"] verts and edges.")
 	      		   fi
 			 in if #LF[0] = 0
 			    then []
@@ -339,7 +339,7 @@ set FPP_unitary_hash_general([KGBElt] xs, Param_hash Uhash, {Param_hash Uparamha
  			 	 then () = templambdatimes [index] := elapsed_ms() - startlambda
 			 	 in if every_lambda_flag
 				    then prints("  ",print_time_string(templambdatimes[index]),
-			   	    	 	" = time for (x,lambda) = (", x.number, ",",
+			   	    	 	" = time for (x,lambda) = (", x.number, ",",index," = ",
 						lambda, ")", test_string);
 				         prints("    #LF = ", for L in LF do #L od, ", #unitary params = ",
 					 	 tempanswerCards[index],
@@ -385,9 +385,9 @@ set FPP_unitary_hash_general([KGBElt] xs, Param_hash Uhash, {Param_hash Uparamha
        	      ", number of unitarity tests = ", unitary_test_counter.use_count() - oldUcounter);
        	    prints("Time spent in char calcs = ",print_time_string(charTime),
        	      ", number of char calcs = ", char_counter.use_count() - oldCcounter);
-	    prints("Time in localFD1_Dirac2* = ", print_time_string(FD12Time + FD12bzTime),
+	    prints("Time in localFD_1Dirac2* = ", print_time_string(FD12Time + FD12bzTime),
 	      ", in localFD_1Dirac2 = ",print_time_string(FD12Time),
-	    	     ", in localFD1_Dirac2_by_zero = ",print_time_string(FD12bzTime));
+	    	     ", in localFD_1Dirac2_by_zero = ",print_time_string(FD12bzTime));
 	    if mix_flag
 	    then prints("Time in bottom_factors = ", print_time_string(bfTime), ", time in bottom_elim_factors_more = ",
        	  	    print_time_string(befmoreTime), ", more_shift = ", more_shift, ", #Params missed by more = ",
@@ -618,7 +618,7 @@ set FPP_unitary_hash_bottom_layer([(KGBElt,ratvec)] xlambdas, Param_hash UhashG{
 				   {startUparamhash = Uparamhash.size(),} startmorebad = more_bad_hash.size()
 		 then (Lvd, Perm2, mapAct) = LPmss[k] {already lives on Gsc}
 		 then startLF = elapsed_ms()
-		 then LF = if by_zero_flag and height(parameter(x,lambda,0*lambda)) > 0
+		 then LF = if by_zero_flag {and height(parameter(x,lambda,0*lambda)) > 0}
 		      	   then localFD_1Dirac2_by_zero(x_sc, lambda_sc, Lvd, Perm2, mapAct{, global_facets_by_zero})
 			   else localFD_1Dirac2(x_sc, lambda_sc, Lvd, Perm2, mapAct{, global_facets})
 			   fi
@@ -647,7 +647,7 @@ set FPP_unitary_hash_bottom_layer([(KGBElt,ratvec)] xlambdas, Param_hash UhashG{
     		 	 then () = xlambdatimes[k] := current - start
     			 in if every_lambda_flag
 	      		    then prints("  ",print_time_string(xlambdatimes[k]),
-			   	" = time for (x,lambda) = (", xlambdas[k], {xnums[k], ",",k,}"), ht = ",
+			   	" = time for (x,lambda) #",k, " = (", xnums[k],",",xlambdas[k],"), ht = ",
 				  height(parameter(x,lambda,0*lambda)), ", L = ", let (Q,) =
 				  theta_stable_quasi_data(parameter(x,lambda,0*lambda)) in Q.Levi.Lie_type,
 				  ",",test_string);
@@ -680,9 +680,9 @@ set FPP_unitary_hash_bottom_layer([(KGBElt,ratvec)] xlambdas, Param_hash UhashG{
        	    prints("Time spent in is_unitary = ",print_time_string(unitaryTime), ", #unitarity tests = ",
        		unitary_test_counter.use_count() - oldUcounter, ", #K-types studied = ", minBottomData.size());
 	    prints("Time spent in char calcs = ",print_time_string(charTime), ", #char calcs = ", char_counter.use_count() - oldCcounter);
-	    prints("Time in localFD1_Dirac2* = ", print_time_string(FD12Time + FD12bzTime),
+	    prints("Time in localFD_1Dirac2* = ", print_time_string(FD12Time + FD12bzTime),
 	      ", in localFD_1Dirac2 = ",print_time_string(FD12Time),
-	    	     ", in localFD1_Dirac2_by_zero = ",print_time_string(FD12bzTime));
+	    	     ", in localFD_1Dirac2_by_zero = ",print_time_string(FD12bzTime));
        	    prints("Time in derived_factor_K_types_info = ", print_time_string(dfkiTime), ", time in natural KGB = ", print_time_string(nKeTime));
        	    prints("Time in min_bottom_factors = ",print_time_string(mbfTime), ", time in min_bottom_elim_factors = ",print_time_string(mbefTime));
        	    prints("Time in bottom layer branching = ",print_time_string(rf_sig_tables.bottom_branch_time()),
@@ -848,7 +848,7 @@ set FPP_unitary_hash_bottom_layer([KGBElt] xs, Param_hash UhashG{, Param_hash Up
 		      	    unitary_test_counter.use_count(), startUtime = unitaryTime,
 			    startmorebadlambda = more_bad_hash.size(), startLF = elapsed_ms(),
 			    startCcounter = char_counter.use_count(), startCtime = charTime
- 		      then LF = if by_zero_flag and dominant(G,lamthlam)*G.two_rho_check > 0
+ 		      then LF = if by_zero_flag {and dominant(G,lamthlam)*G.two_rho_check > 0}
 		      	      	then localFD_1Dirac2_by_zero(x_sc, M*lambda, Lvd, Perm2, mapAct)
 			   	else localFD_1Dirac2(x, lambda, Lvd, Perm2, mapAct)
 			   	fi
@@ -893,7 +893,7 @@ set FPP_unitary_hash_bottom_layer([KGBElt] xs, Param_hash UhashG{, Param_hash Up
  			 	 then () = templambdatimes [index] := elapsed_ms() - startlambda
 			 	 in if every_lambda_flag
 				    then prints("  ",print_time_string(templambdatimes[index]),
-			   	    " = time for (x,lambda) = (", x.number, ",", lambda, "), ht = ",
+			   	    " = time for (x,lambda) = (", x.number, ", #",index," = ",lambda, "), ht = ",
 				    height(parameter(x,lambda,0*lambda)),", L = ",
 				    let (Q,) = theta_stable_quasi_data(parameter(x,lambda,0*lambda))
 				    in Q.Levi.Lie_type, ",",test_string);
@@ -962,9 +962,9 @@ set FPP_unitary_hash_bottom_layer([KGBElt] xs, Param_hash UhashG{, Param_hash Up
        		unitary_test_counter.use_count() - oldUcounter, ", #K-types studied = ", minBottomData.size());
 	    prints("Time spent in char calcs = ", print_time_string(charTime), ", number of char calcs = ",
 	        char_counter.use_count() - oldCcounter);
-	    prints("Time in localFD1_Dirac2* = ", print_time_string(FD12Time + FD12bzTime),
+	    prints("Time in localFD_1Dirac2* = ", print_time_string(FD12Time + FD12bzTime),
 	      ", in localFD_1Dirac2 = ",print_time_string(FD12Time),
-	    	     ", in localFD1_Dirac2_by_zero = ",print_time_string(FD12bzTime));
+	    	     ", in localFD_1Dirac2_by_zero = ",print_time_string(FD12bzTime));
        	    prints("Time in derived_factor_K_types_info = ",print_time_string(dfkiTime),", time in natural KGB = ", print_time_string(nKeTime));
        	    prints("Time in min_bottom_factors = ",print_time_string(mbfTime), ", time in min_bottom_elim_factors = ", print_time_string(mbefTime));
        	    prints("Time in bottom layer branching = ",print_time_string(rf_sig_tables.bottom_branch_time()),
@@ -1019,7 +1019,7 @@ set unitary_nus(RealForm G) = [[[ratvec]]]:
 {all local vertex nu for (x,lambda). To be applied only to G simple mod center.}
 set all_vertex_nus(RealForm G, KGBElt x, ratvec lambda) = [ratvec]:
     let (Lvd,Perm2, mapAct) = LPm_table.LPm_entry(G,x.involution,((1+x.involution)*lambda).numer)
-    then LF = if by_zero_flag and height(parameter(x,lambda,0*lambda)) > 0
+    then LF = if by_zero_flag {and height(parameter(x,lambda,0*lambda)) > 0}
 	      then localFD_1Dirac2_by_zero(x, lambda, Lvd, Perm2, mapAct)
 	      else localFD_1Dirac2(x, lambda, Lvd, Perm2, mapAct)
 	      fi
