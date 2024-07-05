@@ -14,6 +14,26 @@ set *(TwistedRootDatum (rd1,delta1),TwistedRootDatum (rd2,delta2))=TwistedRootDa
 reason: given (rd,delta) we consider (factor,delta)
 where factor is delta-invariant
 }
+
+
+set orbit_size(mat delta, vec alpha)=
+let j=first(for i:10 from 1 do (delta^i)*alpha=alpha od)+1
+in assert(j!=0,"orbit_size failed");j
+
+set orbit_of_simple_root(RootDatum G,mat delta, int j)=[int]:  {list of indices}
+let alpha=G.simple_roots[j] in
+for j:orbit_size(delta,alpha) do simple_root_index(G,delta^j*alpha) od
+
+set summed_simple_root_orbit(RootDatum G,mat delta, int j)=vec:
+let orbit=orbit_of_simple_root(G,delta,j) in
+sum(for i in orbit do G.simple_roots[i] od)
+
+set summed_simple_roots(RootDatum G, mat delta)=[vec]:
+let rv=[vec]:[] in
+for j:G.ss_rank do
+ let v=summed_simple_root_orbit(G,delta,j) in
+ if find(rv,v)=-1 then rv#:=v fi od;rv
+
 set order_twist(TwistedRootDatum (rd,delta))=int:
 assert(is_distinguished(rd,delta),"automorphism is not distinguished");
 max(for alpha in rd.simple_roots do first(for i:order(delta) from 1 do delta^i*alpha=alpha od)+1 od)
@@ -40,7 +60,32 @@ T is nxr where n=rd.rank and r=dimension(T)
  T: matrix of map X_*(T)->X_*(H) \simeq Z^r -> Z^n: this is T.inject
  ^T: matrix of map X^*(H)->X^*(T) \simeq Z^n->Z^r:   this is T.project=T.restrict
 }
+
 set folded(TwistedRootDatum (rd,delta),string keep_short_or_long)=(RootDatum,mat):
+assert(is_distinguished(rd,delta),"delta is not distinguished");
+let T=SubTorus:summed_simple_roots(rd,delta) then    {T=(H^\delta)^0; columns are a basis of X_*(T)}
+roots_nonreduced=sort_u(for alpha in rd.posroots do T.restrict(alpha) od) then
+roots=mat:##(
+  for alpha in roots_nonreduced do 
+    if keep_short_or_long="short" then  
+        if alpha/2=alpha\2 and find(roots_nonreduced,alpha\2)!=-1 then {throw out long}[] else  [alpha] fi
+    elif keep_short_or_long="long" then
+        if find(roots_nonreduced,2*alpha)!=-1 then {throw out short} [] else  [alpha] fi 
+    else [] fi
+  od) 
+then coroots=[] in
+for alpha in roots do
+ let pullback_alpha=let j=first(for beta in rd.roots do T.restrict(beta)=alpha od) in rd.roots[j] then
+ v=sum(##(for beta in rd.roots do if T.restrict(beta)=alpha then  [coroot(rd,beta)]
+   else []
+  fi od)) then
+ w=2*v/(v*pullback_alpha) {element of X_*(H) which lives in X_*(T)} then
+ corestrict_w=solve(T,w).requisition {coordinates of w in the given basis of X_*(T)} in
+ coroots#:=ratvec_as_vec(corestrict_w)
+od;
+(root_datum_from_positive((roots,coroots),rd.prefers_coroots),T)
+
+set folded_old(TwistedRootDatum (rd,delta),string keep_short_or_long)=(RootDatum,mat):
 assert(is_distinguished(rd,delta),"delta is not distinguished");
 let T=SubTorus:eigen_lattice(^delta,1) then   {T=(H^\delta)^0; columns are a basis of X_*(T)}
 roots_nonreduced=sort_u(for alpha in rd.posroots do T.restrict(alpha) od) then

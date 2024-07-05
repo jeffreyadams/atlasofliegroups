@@ -93,16 +93,6 @@ set fixed(RootDatum rd,mat delta,ratvec v)=(RootDatum,mat):fixed(TwistedRootDatu
 set fixed(RootDatum rd,mat delta)=(RootDatum,mat):fixed(TwistedRootDatum:(rd,delta),null(rd.rank))
 set fixed(RealForm G)=(RootDatum,mat):fixed(G,G.distinguished_involution)
 
-
-
-set orbit_size(mat delta, vec alpha)=
-let j=first(for i:10 from 1 do (delta^i)*alpha=alpha od)+1
-in assert(j!=0,"orbit_size failed");j
-
-set orbit_of_simple_root(RootDatum G,mat delta, int j)=
-let alpha=G.simple_roots[j] in
-for j:orbit_size(delta,alpha) do simple_root_index(G,delta^j*alpha) od
-
 {computed fixed points of int(s)delta where s is specified by a set of nodes for G
  these are made delta-invariant, and then correspond to nodes for the folded diagram}
 set fixed_by_nodes(TwistedRootDatum (rd,delta),[int] list_of_nodes)=(RootDatum,mat):
