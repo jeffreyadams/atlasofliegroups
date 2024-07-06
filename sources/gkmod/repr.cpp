@@ -342,9 +342,9 @@ RatWeight Rep_context::make_diff_integral_orthogonal
    The permutation |loc1.simple_pi| of simply imaginary roots (due to sorting
    them after applying |w|) is also made relative to |srm0|.
  */
-RatWeight Rep_context::make_relative_to // make |loc1| relative to |srm0,loc0|
-  (const StandardReprMod& srm0, const locator& loc0,
-         StandardReprMod srm1,        locator& loc1) const
+block_modifier Rep_context::make_relative_to
+  (const StandardReprMod& srm0, const locator&  loc0,
+         StandardReprMod  srm1,       locator&& loc1) const
 {
   const auto& W = Weyl_group();
   W.mult(loc1.w, W.inverse(loc0.w));
@@ -352,8 +352,8 @@ RatWeight Rep_context::make_relative_to // make |loc1| relative to |srm0,loc0|
   compose(loc1.simple_pi,Permutation(loc0.simple_pi,-1));
 
   transform<true>(loc1.w,srm1); // move back to base
-  return // amount to shift |srm0| by before transforming by |loc1.w| to |srm1|
-    make_diff_integral_orthogonal(srm1.gamma_lambda(),srm0);
+  return block_modifier
+    (make_diff_integral_orthogonal(srm1.gamma_lambda(),srm0),std::move(loc1));
 } // |make_relative_to|
 
 void Rep_context::shift (const RatWeight& amount, StandardReprMod& srm) const
@@ -1423,21 +1423,13 @@ size_t deformation_unit::hashCode(size_t modulus) const
    this constructor sets the modifier so that they will be no-ops.
 */
 block_modifier::block_modifier (const common_block& b)
-  : locator {unsigned(-1),WeylElt(),sl_list<RootNbr>(), Permutation(b.rank(),1)}
-  , shift(RatWeight(b.root_datum().rank()))
+  : shift(RatWeight(b.root_datum().rank()))
+  , w()
+  , simp_int(b.simply_ints())
+  , simple_pi(b.rank(),1)
 {
-  const auto simply_ints = b.simply_ints();
-  simp_int.assign(simply_ints.begin(),simply_ints.end()); // convert to list
 }
 
-// reset all fields, as if |make_relative_to| relative to a parameter itself
-void block_modifier::clear (unsigned int block_rank, unsigned int rd_rank)
-{
-  // |int_sys_nr| and |simp_int| remain unchanged from original |locator|
-  w = WeylElt();
-  simple_pi = Permutation(block_rank,1); // reset to identity
-  shift = RatWeight(rd_rank);
-}
 
 //				|Rep_table| methods
 
@@ -1636,7 +1628,7 @@ sl_list<StandardReprMod> Rep_table::Bruhat_below
 // access of iterator to |bp| through |place[h]| will be checked and corrected
 struct sub_triple {
   common_block* bp; unsigned long h; block_modifier bm;
-  sub_triple(common_block* bp, unsigned long h, block_modifier bm)
+  sub_triple(common_block* bp, unsigned long h, block_modifier&& bm)
     : bp(bp),h(h),bm(std::move(bm)) {}
 };
 
@@ -1723,12 +1715,11 @@ void Rep_table::append_block_containing
     if (std::none_of(sub_blocks.begin(),sub_blocks.end(),hit))
     { // now we must actually add a block to |sub_blocks|
       const locator& sub_loc = place[h].first->second; // attitude of |sub|
-      RatWeight to_new_shift =
+      block_modifier bm =
 	make_relative_to(sub->representative(place[h].second),sub_loc,
-			 elt,block_loc); // also modifies |block_loc|
-      assert(sub->is_integral_orthogonal(to_new_shift));
-      sub_blocks.emplace_back
-	(sub,h,block_modifier(std::move(block_loc),std::move(to_new_shift)));
+			 elt,std::move(block_loc));
+      assert(sub->is_integral_orthogonal(bm.shift));
+      sub_blocks.emplace_back(sub,h,std::move(bm));
     }
   }
 } // |Rep_table::append_block_containing|
@@ -1819,7 +1810,8 @@ blocks::common_block& Rep_table::lookup_full_block
 {
   make_dominant(sr); // without this we would not be in any valid block
   auto srm = StandardReprMod::mod_reduce(*this,sr); // modulo $X^*$
-  auto rp = Reduced_param::reduce(*this,srm,sr.gamma(),bm); // sets |bm::locator|
+  locator loc;
+  auto rp = Reduced_param::reduce(*this,srm,sr.gamma(),loc); // sets |loc|
 
   auto h = reduced_hash.find(rp);
   if (h!=reduced_hash.empty and place[h].first->first.is_full()) // then
@@ -1828,12 +1820,12 @@ blocks::common_block& Rep_table::lookup_full_block
     auto& block = block_loc.first;
     assert(block.is_full());
     auto stored_srm = block.representative(which = place[h].second);
-    bm.shift = make_relative_to(stored_srm,block_loc.second, srm,bm);
+    bm = make_relative_to(stored_srm,block_loc.second, srm,std::move(loc));
     return block; // use block of related |StandardReprMod| as ours
   }
 
   // now we must first add the full block for |srm|
-  add_block(srm,bm);
+  add_block(srm,loc);
   h = reduced_hash.find(rp); // block containing |srm| is now present
   assert(h<place.size());
   which = place[h].second;
@@ -1841,7 +1833,7 @@ blocks::common_block& Rep_table::lookup_full_block
   auto& block = place[h].first->first;
   assert(block.is_full());
   assert(block.representative(which)==srm); // we should find |srm| here
-  bm.clear(block.rank(),root_datum().rank()); // we are relative to ourselves
+  bm = block_modifier(block); // we are relative to ourselves
   return block;
 } // |Rep_table::lookup_full_block|
 
@@ -1851,7 +1843,8 @@ blocks::common_block& Rep_table::lookup
   normalise(sr); // gives a valid block, and smallest partial block
 
   auto srm = StandardReprMod::mod_reduce(*this,sr); // modulo $X^*$
-  auto rp = Reduced_param::reduce(*this,srm,sr.gamma(),bm); // sets |bm::locator|
+  locator loc;
+  auto rp = Reduced_param::reduce(*this,srm,sr.gamma(),loc); // sets |loc|
 
   assert(reduced_hash.size()==place.size()); // should be in sync at this point
   auto h = reduced_hash.find(rp); // look up modulo $X^*+integral^\perp$
@@ -1861,15 +1854,15 @@ blocks::common_block& Rep_table::lookup
     auto& block_loc = *place[h].first;
     auto& block = block_loc.first;
     auto stored_srm = block.representative(which = place[h].second);
-    bm.shift = make_relative_to(stored_srm,block_loc.second, srm,bm);
+    bm = make_relative_to(stored_srm,block_loc.second, srm,std::move(loc));
     return block; // use block of related |StandardReprMod| as ours
   }
 
   BitMap subset;
-  auto& block = add_block_below(srm,&subset,bm);
+  auto& block = add_block_below(srm,&subset,loc);
   which = last(subset);
   assert(block.representative(which)==srm); // we should find |srm| here
-  bm.clear(block.rank(),root_datum().rank()); // we are relative to ourselves
+  bm = block_modifier(block); // we are relative to ourselves
   return block;
 } // |Rep_table::lookup|
 

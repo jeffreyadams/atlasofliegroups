@@ -1272,14 +1272,14 @@ repr::StandardRepr common_block::sr
 // This is used by |common_block::singular| and |common_block::fold_orbits| only.
 RootNbrList common_block::simply_ints(const repr::block_modifier& bm) const
 {
-#if 1 // original implementation
+#if 0 // original implementation
   auto ww = rc.Weyl_group().word(bm.w);
   RootNbrList result; result.reserve(simply_integrals.size());
   for (auto alpha : simply_integrals)
     result.push_back(root_datum().permuted_root(ww,alpha));
   return result;
 #else
-  return bm.simple_pi.pull_back(bm.simp_int.to_vector());
+  return bm.simple_pi.pull_back(bm.simp_int);
 #endif
 }
 
