@@ -405,7 +405,7 @@ class common_block : public Block_base
   WeightInvolution pull_back // of action by |delta| on block modified by |bm|
     ( const repr::block_modifier& bm, const WeightInvolution& delta) const;
 
-  RootNbrList simply_ints() const { return simply_integrals; }
+  const RootNbrList& simply_ints() const { return simply_integrals; }
   // list of |bm.w|-images of |simply_integrals|, no sorting done
   RootNbrList simply_ints(const repr::block_modifier& bm) const;
 

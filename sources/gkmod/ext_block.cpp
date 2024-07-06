@@ -639,11 +639,13 @@ ext_block::ext_block
 
   // now prepare a |block_modifier| with cofolded |simple_pi|
   repr::block_modifier cofolded_bm = bm;
-  cofolded_bm.simple_pi = induced(bm.simple_pi); // map def'd on current |orbits|
+  cofolded_bm.simple_pi = // map to be applied to positions in |orbits|
+     induced(bm.simple_pi);
 
   // permute generators as induced by |bm.simple_pi| in our |ext_block|
   {
-    const auto& opi = cofolded_bm.simple_pi; // to-|bm.w|-image orbit reordering
+    const Permutation& opi =  // to-image-by-|bm.w| reordering
+      cofolded_bm.simple_pi;
     permute(opi,diagram);
     opi.permute(orbits); // prepare to partition |bm.w|-image of diagram
     for (auto& orbit : orbits) // we also need to adapt each individual orbit
@@ -1710,15 +1712,13 @@ bool ext_block::tune_signs
    const WeightInvolution& delta)
 {
   repr::Ext_rep_context ctxt (block.context(),delta);
-  const RootNbrList simply_ints = // numbers of simply integral coroots,
-    bm.simp_int.to_vector(); // |simp_int| is always in increasing order
   containers::sl_list<ext_param> links;
   for (BlockElt n=0; n<size(); ++n)
   { BlockElt z=this->z(n); // element number in |block|
     const auto E = ext_param::def_ext(ctxt,bm,block.representative(z));
     for (weyl::Generator s : bm.simple_pi)
     { const ext_gen& p=orbit(s); links.clear(); // output arguments for |star|
-      RootNbr n_alpha = simply_ints[p.s0];
+      RootNbr n_alpha = bm.simp_int[p.s0];
       auto tp = star(ctxt,E,p.length(),n_alpha,links);
       if (might_be_uncertain(descent_type(s,n)) and
 	  data[s][n].links.first==UndefBlock) // then reset the uncertain type

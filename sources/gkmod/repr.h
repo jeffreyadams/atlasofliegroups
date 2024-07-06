@@ -154,7 +154,7 @@ class StandardReprMod
 }; // |class StandardReprMod|
 
 // hashable type for |StandardReprMod| up to shift orthogonal to integral system
-// THis is the most reduced for of a parameter for block computation purposes
+// This is the most reduced for of a parameter for block computation purposes
 class Reduced_param
 {
   KGBElt x;
@@ -413,10 +413,10 @@ class Rep_context
   RatWeight make_diff_integral_orthogonal
     (const RatWeight& gamlam, const StandardReprMod& srm) const;
 
-  // set |loc1| for |srm1 relative to |loc0|, and return shift for |srm1|
-  RatWeight make_relative_to
+  // modifier for block for |srm1, loc1| relative to stored one for |srm0, loc0|
+  block_modifier make_relative_to
     (const StandardReprMod& srm0, const locator& loc0,
-     StandardReprMod srm1, locator& loc1) const;
+     StandardReprMod srm1, locator&& loc1) const;
 
  private:
   // compute $\check\alpha\dot(1+\theta_x)\lambda$, with $(x,\lambda)$ from $t$
@@ -522,15 +522,28 @@ struct locator
   Permutation simple_pi; // to reorder FA integral system simple generators by
 };
 
-// to describe any block in terms of a stored one, also record a final |shift|
-struct block_modifier : public locator
+/*
+  A block is stored for only one alcove orientation, so the lookup methods
+  return a block reference with |block_modifier|. The stored parameter will
+  first be shifted by |shift| then transformed by |w|. The simply integral
+  roots for the modified blocks are the |w|-images of those in the stored block,
+  but they are reordered increasingly, as they would be if the transformed
+  block had been generated freshly; |simple_pi| is the permutation involved.
+*/
+struct block_modifier
 {
-  RatWeight shift; // add this one field
+  RatWeight shift; // initial change to the stored |gamlam| value
+  WeylElt w; // initially from fundamental alcove integral system
+  RootNbrList simp_int; // images of simply integral roots of block, sorted
+  Permutation simple_pi; // to reorder integral system simple generators by
   block_modifier () = default;
-  block_modifier(locator&& loc, RatWeight&& shift)
-    : locator(std::move(loc)), shift(std::move(shift)) {}
+  block_modifier(RatWeight&& shift,locator&& loc)
+    : shift(std::move(shift))
+    , w(std::move(loc.w))
+    , simp_int(loc.simp_int.begin(),loc.simp_int.end())
+    , simple_pi(std::move(loc.simple_pi))
+  {}
   block_modifier (const common_block& b); // construct trivial modifier
-  void clear (unsigned int block_rank, unsigned int datum_rank);
 };
 
 struct sub_triple; // implementation specific, needed in auxiliary method type
