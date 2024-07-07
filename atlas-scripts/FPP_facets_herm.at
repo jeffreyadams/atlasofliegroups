@@ -337,7 +337,7 @@ set localFD_1Dirac2_by_zero\
 	     then for j@k in Perm2.fixed
 	     	  do let mloc = mapAct[j] {this is k??}
 		     {then () = if k != mloc then prints("(k,mloc) = (",k,",",mloc,")") fi}
-		     then cands = FPP_edges_by_zero(G)[j]
+		     then cands = FPP_edges_by_zero_unsorted(G)[j]
 		     in if Llookup(mloc) and #cands > 0 and #Perm2.fixed>mloc+1
 		     	then for v in cands {global edges with v[0] = j}
 			     do if is_member_sorted(Perm2.fixed[k+1:])(v[1])

@@ -9,6 +9,7 @@
 <parabolics.at {for Levi}
 <kl.at {for character_formula}
 <count.at {for char_count}
+<writeFiles {to write hash tables}
 
 {functions for calculating FPP facet lists, both "globally" (from the
 root datum) and "local" (as relevant to parameters for a single LKT
@@ -831,12 +832,17 @@ set FPP_facets(SimpleAffine Affd, VertexData vd, int dim, int j0) =
 	     od { type is [FacetVertsIndex], remains for next line}
 	 od.##
 
-set FPP_edges = (InnerClass ->  [FacetVertsIndex]):
-    let ichash = make_InnerClass_hash()
+{next two variables can be preloaded by loading a file afterward.}
+set ichashedges = make_InnerClass_hash()
+set FPPedgess = [[FacetVertsIndex]]: []
+
+{laptop 330 sec, 1.57g; wave??}
+set FPP_edges = (InnerClass ic) [FacetVertsIndex]:
+    {let ichash = make_InnerClass_hash()
     then FPPedgess = [[FacetVertsIndex]]: [] {one list for each inner class}
-    in (InnerClass -> [FacetVertsIndex]): (InnerClass ic) [FacetVertsIndex]:
-       let I = ichash.size()
-       then i = ichash.match(ic)
+    in (InnerClass -> [FacetVertsIndex]): (InnerClass ic) [FacetVertsIndex]:}
+       let I = ichashedges.size()
+       then i = ichashedges.match(ic)
        then () = if i=I {haven't seen this inner class before}
        	       then let (Affd,M,j0) = cofolded(ic)
 	       	    then answer = FPP_facets(Affd, FPP_vertex_data(Affd,j0), 1, j0)
@@ -883,13 +889,16 @@ set FPP_edge_stops = (InnerClass -> vec):
 
 }
 
+{Following two variables could be preloaded by reading a file afterward.}
+set ichashezu = make_InnerClass_hash()
+set FPPebzu = [[[FacetVertsIndex]]]: []
+
 {edges in a list indexed by first vertex; size is number of FPP vertices}
-set FPP_edges_by_zero_unsorted = (InnerClass ->  [[FacetVertsIndex]]):
-    let ichash = make_InnerClass_hash()
-    then FPPebzu = [[[FacetVertsIndex]]]: [] {one list for each inner class}
-    in (InnerClass -> [[FacetVertsIndex]]): (InnerClass ic) [[FacetVertsIndex]]:
-       let I = ichash.size()
-       then i = ichash.match(ic)
+{this command takes 5 min/ 2.21g on laptop, 15 min/3.5 g on wave}
+{add file that has ichash, FPPebzu}
+set FPP_edges_by_zero_unsorted = (InnerClass ic) [[FacetVertsIndex]]:
+       let I = ichashezu.size()
+       then i = ichashezu.match(ic)
        then () = if i=I {haven't seen this inner class before}
        	       then let edges = FPP_edges(ic)
 	       	    then answer = [[FacetVertsIndex]]: for j:#FPP_vertices(ic) do [] od
@@ -902,7 +911,42 @@ set FPP_edges_by_zero_unsorted = (InnerClass ->  [[FacetVertsIndex]]):
 	      	 fi
 in FPPebzu[i]
 
+set append_to_febzu(InnerClass ic, [[FacetVertsIndex]] FVs) = void:
+    let I = ichashezu.size()
+    then i = ichashezu.match(ic)
+    in if i=I {haven't seen this inner class before}
+       then FPPebzu #:= FVs
+       fi
+
+set write_vecss([[vec]] listss, string listss_name) = void:
+    begin
+	prints("set ",listss_name," = [[vec]]: [], temp_lists = [vec]: []")
+	; for lists in listss
+	  do write_vecs(lists,"temp_lists");
+	     prints("void: ",listss_name,"#:= temp_lists")
+          od
+    end
+
+
+set write_vecsss([[[vec]]] listsss, string listsss_name) = void:
+    begin
+	prints("set ",listsss_name," = [[[vec]]]: [], temp_listss = [[vec]]: []")
+	; for listss in listsss
+	  do write_vecss(listss,"temp_listss");
+	     prints("void: ",listsss_name,"#:= temp_listss")
+          od
+    end
+
+set write_FPP_edges_hash() = void:
+   let list_ic = ichashezu.list()
+   then () = assert(#list_ic = #FPPebzu,"Sizes of ichashezu and FPPebzu don't match")
+   then () = write_ic_list(list_ic,"ebzu_ics")
+   then () = write_vecsss(FPPebzu, "ebzu_FVIs")
+   in prints("for ic@j in ebzu_ics do append_to_febzu(ic, ebzu_FVIs[j]) od")
+
 {edges in a list indexed by first vertex; size is number of FPP vertices. Sort each sublist by second vertex.}
+{this command takes 29 min/2.31g on laptop, 36 min, 3.9g on wave}
+{NOT USED as of 7/5/24}
 set FPP_edges_by_zero= (InnerClass ->  [[FacetVertsIndex]]):
     let ichash = make_InnerClass_hash()
     then FPPebz = [[[FacetVertsIndex]]]: [] {one list for each inner class}
@@ -1085,9 +1129,9 @@ set FPP_flippable_triangles = (InnerClass -> [FacetVertsIndex]):
 	       	 		       od.##
 	     		       in for wtilde in aff_list
 	     		       	  do FacetVertsIndex:
-		   		     for v in wtilde*FV
-		   		     do vdAff.lookup(v)
-		   		     od
+				     let verts = wtilde*FV
+		   		     in [vdAff.lookup(verts[0])]##
+				     	[vdAff.lookup(verts[1]), vdAff.lookup(verts[2])].sort
 	     			  od { type is [FacetVertsIndex], remains for next line}
 	  		     od.##
 	      then () = Fftris := (Fftris next Fftris := [])#answer
@@ -1115,6 +1159,7 @@ set FPP_flippable_triangles_by_zero_unsorted = (InnerClass -> [[FacetVertsIndex]
         in Fftrisbzu[i]
 
 {same, each sublist sorted lexicographically by flipped pair}
+{unused as of 7/5/24}
 set FPP_flippable_triangles_by_zero= (InnerClass ->  [[FacetVertsIndex]]):
     let ichash = make_InnerClass_hash()
     then Fftrisbz = [[[FacetVertsIndex]]]: [] {one list for each inner class}
@@ -1143,7 +1188,7 @@ set FPP_flippable_tetrahedra = (InnerClass -> [FacetVertsIndex]):
     	      then let (Affd,M,j0) = cofolded(ic), start = elapsed_ms()
     	      then vlist = FPP_vertices(Affd,j0), FVs = fundamental_vertices(Affd)
     	      then vdAff = to_vertex_data(vlist)
-    	      then answer = for FVind in fund_flippable_tetrahedra(Affd)
+    	      then answer = [FacetVertsIndex]: for FVind in fund_flippable_tetrahedra(Affd)
        	      	   	    do let bary_F=facet_bary(FVs,FVind)
 	    		       then FV = for j in FVind do FVs[j] od
 	    		       then aff_short_list = FPP_w_shifts(Affd,bary_F,j0)
@@ -1152,10 +1197,13 @@ set FPP_flippable_tetrahedra = (InnerClass -> [FacetVertsIndex]):
 	       	 		    do for tau in taus do (tau,w) od
 	       	 		    od.##
 	     		       in for wtilde in aff_list
-	     		       	  do FacetVertsIndex:
-		   		     for v in wtilde*FV
-		   		     do vdAff.lookup(v)
-		   		     od
+	     		       	  do let verts = wtilde*FV
+				     then coords = for v in verts do vdAff.lookup(v) od
+				     then first_try = coords[:2].sort ## coords[2:].sort
+				     in if first_try[0] < first_try[2]
+				     	then first_try
+					else first_try[2:] ## first_try[:2]
+					fi
 	     		     	  od { type is [FacetVertsIndex], remains for next line}
 	  		     od.##
 	      then () = Fftetsu #:= answer

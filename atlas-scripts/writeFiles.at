@@ -36,7 +36,38 @@ set write_append([int] list, string listname) = void:
     begin
 	 for M in list do prints("void:",listname,"#:=",M) od
     end
+
+set default_ic_name = string:"ic_saved"
 set default_group_name = string:"G_saved"
+
+set write_inner_class(InnerClass ic, string ICName) = void:
+    begin
+	prints("set rd_saved = RootDatum: root_datum(mat: ")
+	; prints( for alpha in ic.simple_roots do alpha od, ", mat:")
+	; prints( for betavee in ic.simple_coroots do betavee od)
+	; prints(",",ic.prefers_coroots,")")
+	; prints("set DI_saved = mat: ")
+    	; prints(for col in ic.distinguished_involution do col od)
+        ; prints( "set ",ICName, " = inner_class(rd_saved, DI_saved)")
+    end
+
+set write_inner_class(InnerClass ic) = void:
+    write_inner_class(ic,default_ic_name)
+
+set write_ic_list([InnerClass] ics, string list_name) = void:
+     begin
+	prints("set ",list_name, " = [InnerClass] : [], temp_ic = InnerClass:GL(1,R)")
+	; for ic in ics
+	  do write_inner_class(ic, "temp_ic");
+	     prints(list_name,"#:= temp_ic")
+	  od
+     end
+
+set append_inner_class(InnerClass ic, string list_name) = void:
+    begin
+    write_inner_class(ic,"ic_temp")
+    ; prints(list_name,"#:= ic_temp")
+    end
 
 set write_real_form(RealForm G, string GroupName) = void:
     begin
@@ -278,3 +309,36 @@ set write_append_cat_param_list([Param] list, string listName, string groupName)
 
 set write_append_cat_param_list([Param] list, string listName) = void:
     write_append_cat_param_list(list, listName,"G_temp")
+
+{How to write a list}
+{
+set write_Item(Item item, string temp_item) = void:
+    begin
+    prints(temp_item," := ",item)
+    end
+
+
+set write_list([Item] items, string list_name) = void:
+    begin
+	prints("set ",list_name, " = [Item] : [], temp_item = NullItem")
+	; for item@j in items
+	  do write_Item(item, "temp_item");
+	     prints(list_name,"#:= Item_saved")
+	  od
+}
+{
+set write_vec(vec v, string vec_name) = void:
+    begin
+    prints(vec_name," := ",v)
+    end
+
+
+set write_vec_list([vec] vecs, string list_name) = void:
+    begin
+	prints("set ",list_name, " = [vec] : [], vec_temp = vec: []")
+	; for v in vecs
+	  do write_vec(v, "vec_temp");
+	     prints("void:",list_name,"#:= vec_temp")
+	  od
+    end
+}
