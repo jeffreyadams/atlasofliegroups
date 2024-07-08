@@ -477,18 +477,19 @@ namespace atlas {
   using IntPolEntry = polynomials::PolEntry<ext_kl::Coeff>;
   using ext_KL_hash_Table = HashTable<IntPolEntry,ext_kl::KLIndex>;
 
+#if 0 // since standardrepk no longer is part of Atlas program, leave these out
   namespace standardrepk {
     class StandardRepK;	// standard representation restricted to K
-    typedef std::pair <Weight,RankFlags> HCParam; // free part wrt rho, torsion
-    typedef Free_Abelian<StandardRepK> Char;// linear combination
-    typedef std::pair<StandardRepK,Char> CharForm;
-    typedef std::pair<Weight,TitsElt> RawRep;
-    typedef Free_Abelian<RawRep> RawChar;
-    typedef Free_Abelian<StandardRepK,Polynomial<int> > q_Char;
-    typedef std::pair<StandardRepK,q_Char> q_CharForm;// $q$-$K$-type formula
-    typedef Free_Abelian<RawRep,Polynomial<int> >Raw_q_Char;
-    typedef unsigned int seq_no; // sequence number of stored standard rep|K
-    typedef unsigned int level; // unsigned LatticeCoeff
+    using HCParam = std::pair<Weight,RankFlags>; // free part wrt rho, torsion
+    using RawRep = std::pair<Weight,TitsElt>;
+    using RawChar = Free_Abelian<RawRep>;
+    using Char = Free_Abelian<StandardRepK>; // $\Z$-linear combination
+    using CharForm = std::pair<StandardRepK,Char>;
+    using q_Char = Free_Abelian<StandardRepK,Polynomial<int> >;
+    using q_CharForm = std::pair<StandardRepK,q_Char>;// $q$-$K$-type formula
+    using Raw_q_Char= Free_Abelian<RawRep,Polynomial<int> >;
+    using seq_no =  unsigned int; // sequence number of stored standard rep|K
+    using level = unsigned int; // unsigned version of |LatticeCoeff|
     struct Cartan_info;
     struct bitset_entry;
     class SRK_context;
@@ -500,6 +501,7 @@ namespace atlas {
   using standardrepk::StandardRepK;
   using standardrepk::SRK_context;
   using standardrepk::KhatContext;
+#endif
 
   namespace repr {
     using level = unsigned int; // for height statistic of K type and parameters

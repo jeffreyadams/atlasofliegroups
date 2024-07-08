@@ -82,6 +82,7 @@ public:
 
 using K_type_pol = Free_Abelian_light<K_type,Split_integer>;
 
+#if 0 // not in use yet
 class K_type_to_pol_table
 {
   K_type::Pooltype pool;
@@ -90,16 +91,18 @@ class K_type_to_pol_table
 
 public:
   K_type_to_pol_table() : pool(), hash(pool), poly() {}
-  template<typename F> const K_type_pol& put (K_type t, F f);
+
+  template<typename F>// |F| is a functor type from |K_type| to |K_type_pol|
+    const K_type_pol& put (K_type t, F f); // assosiate value |F(t)| with |t|
   bool is_present (const K_type& t) const { return hash.find(t)!=hash.empty; }
   const K_type_pol& lookup (const K_type& t) const;
 
 }; // |K_type_to_pol_table|
 
-
 const K_type_pol&
   branch(K_type t, repr::level cutoff,
 	 K_type_to_pol_table& table, const Rep_context& rc);
+#endif
 
 } // |namespace K_repr|
 

@@ -18,6 +18,7 @@
 
 #include "error.h"
 #include "tags.h"
+#include "standardrepk.h"
 
 namespace atlas {
 
