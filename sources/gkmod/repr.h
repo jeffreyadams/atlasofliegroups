@@ -312,7 +312,7 @@ class Rep_context
   level height_bound(RatWeight lambda) const; // "projecting to dominant cone"
   // apart from producing a result, these methods also make |t| theta-stable:
   sl_list<K_repr::K_type> KGP_set (K_repr::K_type& t) const;
-  K_type_poly K_type_formula (K_repr::K_type& t,level cutoff) const;
+  K_repr::KT_pol K_type_formula (K_repr::K_type& t,level cutoff) const;
 
   K_type_poly branch(K_type_poly P, level cutoff) const;
 
@@ -430,8 +430,8 @@ class Rep_context
   void to_singular_canonical(RankFlags gens, StandardRepr& z) const;
   level height(Weight theta_plus_1_gamma) const;
 
-  K_type_poly monomial_product // $P*X^e$; implemented in K_repr.cpp
-    (const K_type_poly& P, const Weight& e) const;
+  K_repr::KT_pol monomial_product // $P*X^e$; implemented in K_repr.cpp
+    (const K_repr::KT_pol& P, const Weight& e) const;
 }; // |Rep_context|
 
 /*

@@ -45,6 +45,10 @@ public:
   K_type(K_type&&) = default;
   K_type& operator=(K_type&&) = default;
 
+  // copy constructor and assignment are provided, though currently not used
+  K_type(const K_type&) = default;
+  K_type& operator=(const K_type&) = default;
+
   KGBElt x () const { return d_x;  }
   const Weight& lambda_rho () const { return lam_rho; }
   unsigned int height () const { return hght; }
