@@ -6038,7 +6038,8 @@ void K_type_formula_wrapper(expression_base::level l)
     return;
 @)
   repr::level h = bound<0 ? std::numeric_limits<repr::level>::max() : bound;
-  push_value(std::make_shared<K_type_pol_value>(p->rf,rc.K_type_formula(srk,h)));
+  auto f = K_type_poly::convert(rc.K_type_formula(srk,h));
+  push_value(std::make_shared<K_type_pol_value>(p->rf,std::move(f)));
 }
 
 @ Here is the function that implements branching. Because it is a long division
