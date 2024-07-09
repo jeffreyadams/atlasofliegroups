@@ -2433,7 +2433,7 @@ K_repr::K_type ext_param::restrict_K(Weight&& theta_plus_1_lambda) const
   the default choices for |sr|, and at the end comparing the transformed values
   to the default choices at the final parameter.
  */
-K_repr::K_type_pol extended_restrict_to_K
+K_type_poly extended_restrict_to_K
   (const Rep_context rc, const StandardRepr& sr, const WeightInvolution& delta)
 {
   assert(rc.is_standard(sr));
@@ -2457,7 +2457,7 @@ K_repr::K_type_pol extended_restrict_to_K
   // now finalise |restricted_sr|, making |gamma| dominant, while updating |E|
   // similar to |Rep_context::finals_for(K_repr::K_type)| defined in K_repr.cpp
   // but without many "imaginary" concerns, as we remain "imaginary dominant"
-  K_repr::K_type_pol result;
+  K_type_poly result;
 
   using q_element = std::pair<ext_param,Weight>;
   queue<q_element> to_do;

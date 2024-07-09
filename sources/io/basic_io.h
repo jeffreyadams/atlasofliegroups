@@ -88,7 +88,7 @@ std::ostream& print_K_type
   (std::ostream& out, const K_type& val, const Rep_context& rc);
 
 std::ostream& print_K_type_pol
-  (std::ostream& out, const K_type_pol& val, const Rep_context& rc);
+  (std::ostream& out, const K_type_poly& val, const Rep_context& rc);
 
 } // |namespace K_repr|
 

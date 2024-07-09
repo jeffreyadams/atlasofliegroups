@@ -80,8 +80,6 @@ public:
   }
 }; // |class K_type|
 
-using K_type_pol = Free_Abelian_light<K_type,Split_integer>;
-
 #if 0 // not in use yet
 class K_type_to_pol_table
 {
