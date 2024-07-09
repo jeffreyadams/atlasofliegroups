@@ -312,9 +312,9 @@ class Rep_context
   level height_bound(RatWeight lambda) const; // "projecting to dominant cone"
   // apart from producing a result, these methods also make |t| theta-stable:
   sl_list<K_repr::K_type> KGP_set (K_repr::K_type& t) const;
-  K_repr::K_type_pol K_type_formula (K_repr::K_type& t,level cutoff) const;
+  K_type_poly K_type_formula (K_repr::K_type& t,level cutoff) const;
 
-  K_repr::K_type_pol branch(K_repr::K_type_pol P, level cutoff) const;
+  K_type_poly branch(K_type_poly P, level cutoff) const;
 
   // parameter component extraction
   const WeightInvolution& theta (const StandardRepr& z) const;
@@ -396,14 +396,12 @@ class Rep_context
   StandardRepr cross(const Weight& alpha, StandardRepr z) const;
   StandardRepr any_Cayley(const Weight& alpha, StandardRepr z) const;
 
-  using poly = Free_Abelian<StandardRepr,Split_integer>;
-
-  poly scale(const poly& P, const RatNum& f) const;
-  K_repr::K_type_pol scale_0(const poly& P) const;
+  SR_poly scale(const SR_poly& P, const RatNum& f) const;
+  K_type_poly scale_0(const SR_poly& P) const;
 
   simple_list<std::pair<StandardRepr,int> >
     finals_for (StandardRepr z) const; // like |finals_for| K-type (by value)
-  poly expand_final(StandardRepr z) const; // the same, as |poly| (by value)
+  SR_poly expand_final(StandardRepr z) const; // the same, as |SR_poly| (by value)
 
   Weight to_simple_shift(InvolutionNbr theta, InvolutionNbr theta_p,
 			 RootNbrSet pos_to_neg) const; // |pos_to_neg| by value
@@ -432,8 +430,8 @@ class Rep_context
   void to_singular_canonical(RankFlags gens, StandardRepr& z) const;
   level height(Weight theta_plus_1_gamma) const;
 
-  K_repr::K_type_pol monomial_product // $P*X^e$; implemented in K_repr.cpp
-    (const K_repr::K_type_pol& P, const Weight& e) const;
+  K_type_poly monomial_product // $P*X^e$; implemented in K_repr.cpp
+    (const K_type_poly& P, const Weight& e) const;
 }; // |Rep_context|
 
 /*
@@ -450,7 +448,7 @@ class Rep_context
 */
 
 using K_type_nr = unsigned int; // hashed in |Rep_table| below
-using K_type_poly = Free_Abelian_light<K_type_nr,Split_integer>;
+using K_type_nr_poly = Free_Abelian_light<K_type_nr,Split_integer>;
 
 /*
   The class |deformation_unit| to serves to store both key and values for
@@ -479,7 +477,7 @@ class deformation_unit
   StandardRepr sample; // first parameter found in alcove, its reference point
   // the reference point aspect only serves to determine the default extension
 
-  K_type_poly untwisted, twisted;
+  K_type_nr_poly untwisted, twisted;
   const Rep_context& rc; // access coroots etc. necessary for alcove testing
 public:
   deformation_unit(const Rep_context& rc, const StandardRepr& sr)
@@ -495,16 +493,16 @@ public:
   size_t def_form_size () const { return untwisted.size(); }
   size_t twisted_def_form_size () const { return twisted.size(); }
 
-  const K_type_poly& def_formula() const       { return untwisted; }
-  const K_type_poly& twisted_def_formula() const { return twisted; }
+  const K_type_nr_poly& def_formula() const       { return untwisted; }
+  const K_type_nr_poly& twisted_def_formula() const { return twisted; }
 
-  const K_type_poly& set_deformation_formula (const K_type_poly& formula)
+  const K_type_nr_poly& set_deformation_formula (const K_type_nr_poly& formula)
   { return untwisted = formula.copy(); }
-  const K_type_poly& set_deformation_formula (K_type_poly&& formula)
+  const K_type_nr_poly& set_deformation_formula (K_type_nr_poly&& formula)
   { return untwisted = std::move(formula); }
-  const K_type_poly& set_twisted_deformation_formula (const K_type_poly& formula)
+  const K_type_nr_poly& set_twisted_deformation_formula (const K_type_nr_poly& formula)
   { return twisted = formula.copy(); }
-  const K_type_poly& set_twisted_deformation_formula (K_type_poly&& formula)
+  const K_type_nr_poly& set_twisted_deformation_formula (K_type_nr_poly&& formula)
   { return twisted = std::move(formula); }
 
 // special members required by HashTable
@@ -674,7 +672,7 @@ class Rep_table : public Rep_context
 
 
   // full deformation to $\nu=0$ of |z|
-  const K_type_poly& deformation(StandardRepr z); // by value
+  const K_type_nr_poly& deformation(StandardRepr z); // by value
 
   // like |deformation_terms|; caller multiplies returned coefficients by $1-s$
   sl_list<std::pair<StandardRepr,int> > twisted_deformation_terms
@@ -693,7 +691,7 @@ class Rep_table : public Rep_context
     (const StandardReprMod& srm, BitMap* subset, const locator& loc);
 
   // full twisted deformation, with |flip| telling whether to multiply by |s|
-  const K_type_poly& twisted_deformation(StandardRepr z, bool& flip); // by value
+  const K_type_nr_poly& twisted_deformation(StandardRepr z, bool& flip); // by value
 
  private:
   class Bruhat_generator; // helper class: internal |add_block_below| recursion
@@ -796,7 +794,7 @@ Weight Cayley_shift (const InnerClass& G,
 SR_poly twisted_KL_column_at_s
   (const Rep_context& rc, StandardRepr z, const WeightInvolution& delta);
 
-K_repr::K_type_pol export_K_type_pol(const Rep_table& rt,const K_type_poly& P);
+K_type_poly export_K_type_pol(const Rep_table& rt,const K_type_nr_poly& P);
 
 } // |namespace repr|
 

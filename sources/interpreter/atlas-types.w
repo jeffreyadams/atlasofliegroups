@@ -5468,9 +5468,9 @@ terms will not be a class invariant for |K_type_pol_value|.
 @< Type definitions @>=
 struct K_type_pol_value : public value_base
 { shared_real_form rf;
-  K_repr::K_type_pol val;
+  K_type_poly val;
 @)
-  K_type_pol_value(const shared_real_form& form, K_repr::K_type_pol&& v)
+  K_type_pol_value(const shared_real_form& form, K_type_poly&& v)
   : rf(form), val(std::move(v).flatten()) @+{}
   ~K_type_pol_value() @+{}
 @)
@@ -5505,19 +5505,19 @@ void K_type_pol_value::print(std::ostream& out) const
 has no copy constructor, providing instead a method |copy| that must be
 explicitly called (this was designed in order to better control the places where
 actual copies must be made). Since this is a component type buried inside the
-container |K_repr::K_type_pol| we copy the individual terms from the |val| field
+container |K_type_poly| we copy the individual terms from the |val| field
 first into a vector |accumulator|, and then move-construct a new
-|K_repr::K_type_pol| (which has a constructor for that purpose) from the vector.
+|K_type_poly| (which has a constructor for that purpose) from the vector.
 
 @< Function def...@>=
 K_type_pol_value::K_type_pol_value(const K_type_pol_value& v)
 : rf(v.rf), val()
 {
-  K_repr::K_type_pol::poly accumulator;
+  K_type_poly::poly accumulator;
   accumulator.reserve(v.val.size());
   for (const auto& term : v.val)
     accumulator.emplace_back(term.first.copy(),term.second);
-  val = K_repr::K_type_pol(std::move(accumulator),false,v.val.cmp());
+  val = K_type_poly(std::move(accumulator),false,v.val.cmp());
 }
 
 @*2 Functions for $K$-type polynomials.
@@ -5537,7 +5537,7 @@ is found.
 void K_type_pol_wrapper(expression_base::level l)
 { shared_real_form rf = get<real_form_value>();
   if (l!=expression_base::no_value)
-    push_value(std::make_shared<K_type_pol_value> @| (rf,K_repr::K_type_pol()));
+    push_value(std::make_shared<K_type_pol_value> @| (rf,K_type_poly()));
 }
 @)
 void real_form_of_K_type_pol_wrapper(expression_base::level l)
@@ -5609,7 +5609,7 @@ void K_type_to_poly()
 { shared_K_type p = get<K_type_value>();
   const auto& rf=p->rf;
   auto final_K_types = rf->rc().finals_for(p->val.copy());
-  K_repr::K_type_pol result;
+  K_type_poly result;
   for (auto it=final_K_types.begin(); not final_K_types.at_end(it); ++it)
     result.add_term(std::move(it->first),Split_integer(it->second));
   push_value(std::make_shared<K_type_pol_value>(p->rf,std::move(result)));
@@ -5829,7 +5829,7 @@ void int_mult_K_type_pol_wrapper(expression_base::level l)
     pop_value();
     if (l!=expression_base::no_value)
     @/push_value@|(std::make_shared<K_type_pol_value>
-        (m->rf,K_repr::K_type_pol()));
+        (m->rf,K_type_poly()));
   }
   else
   { own_K_type_pol m = get_own<K_type_pol_value>();
@@ -5873,7 +5873,7 @@ void split_mult_K_type_pol_wrapper(expression_base::level l)
   if (c.s_to_1()==0)
   // then coefficient is multiple of $1-s$; don't try to modify module in place
   { shared_K_type_pol m = get<K_type_pol_value>();
-    K_repr::K_type_pol result;
+    K_type_poly result;
     if (c.s_to_minus_1()!=0) // otherwise coefficient is $0$ and keep null module
       for (const auto& term: m->val)
         if (term.second.s_to_minus_1()!=0)
@@ -5886,7 +5886,7 @@ void split_mult_K_type_pol_wrapper(expression_base::level l)
   else if (c.s_to_minus_1()==0)
   // then coefficient is multiple of $1+s$; don't modify in place
   { shared_K_type_pol m = get<K_type_pol_value>();
-    K_repr::K_type_pol result;
+    K_type_poly result;
     for (const auto& term: m->val)
       if (term.second.s_to_1()!=0)
         result.add_term(term.first.copy(),term.second*c);
@@ -5948,7 +5948,7 @@ void truncate_K_type_poly_above_wrapper (expression_base::level l)
   if (l==expression_base::no_value)
     return;
 @)
-  sl_list<K_repr::K_type_pol::value_type> L;
+  sl_list<K_type_poly::value_type> L;
   if (arg>=0)
   { unsigned bound = arg; // use |unsigned| value for height comparison
     for (const auto& term : P->val)
@@ -5961,7 +5961,7 @@ void truncate_K_type_poly_above_wrapper (expression_base::level l)
   }
   wrap_up:
     push_value(std::make_shared<K_type_pol_value>@|
-      (P->rf,K_repr::K_type_pol(std::move(L).to_vector(),false)));
+      (P->rf,K_type_poly(std::move(L).to_vector(),false)));
       // no need to sort again
 }
 
@@ -7717,7 +7717,7 @@ void param_poly_to_K_type_poly_wrapper(expression_base::level l)
   if (l==expression_base::no_value)
     return;
   const auto& rf=p->rf;
-  K_repr::K_type_pol result;
+  K_type_poly result;
   for (const auto& term : p->val)
   { auto finals = rf->rc().finals_for(rf->rc().sr_K(term.first));
     for (auto it = finals.begin(); not finals.at_end(it); ++it)
@@ -8213,13 +8213,13 @@ void full_deform_wrapper(expression_base::level l)
   if (l==expression_base::no_value)
     return;
 @)
-  repr::K_type_poly result;
+  repr::K_type_nr_poly result;
     // this is the data type used by |Rep_table::deformation|
   auto finals = p->rc().finals_for(p->val);
   for (auto it=finals.begin(); not finals.at_end(it); ++it)
     for (auto&& term : p->rt().deformation(std::move(it->first)))
       result.add_term(std::move(term.first),term.second*it->second);
-@) // now convert from (tabled) |repr::K_type_poly| to |K_repr::K_type_pol|
+@) // now convert from (tabled) |repr::K_type_nr_poly| to |K_type_poly|
   push_value(std::make_shared<K_type_pol_value>@|
     (p->rf,export_K_type_pol(p->rt(),result)));
 }
@@ -8235,7 +8235,7 @@ void twisted_full_deform_wrapper(expression_base::level l)
 @)
   auto finals = @;ext_block::
     extended_finalise(rc,p->val,rc.inner_class().distinguished());
-  repr::K_type_poly result;
+  repr::K_type_nr_poly result;
     // this is the data type used by |Rep_table::deformation|
   for (auto it=finals.cbegin(); it!=finals.cend(); ++it)
   { bool flip;
@@ -8243,7 +8243,7 @@ void twisted_full_deform_wrapper(expression_base::level l)
     result.add_multiple(def,
 	flip!=it->second ? Split_integer(0,1) : Split_integer(1,0));
   }
-@) // now convert from (tabled) |repr::K_type_poly| to |K_repr::K_type_pol|
+@) // now convert from (tabled) |repr::K_type_nr_poly| to |K_type_poly|
   push_value(std::make_shared<K_type_pol_value>@|
     (p->rf,export_K_type_pol(p->rt(),result)));
 }

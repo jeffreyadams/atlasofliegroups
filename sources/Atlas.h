@@ -480,6 +480,14 @@ namespace atlas {
 // the standardrepk module no longer is part of Atlas program, leave it out
 // declarations exclusively for the Fokko program are in standardrepk.h
 
+  namespace K_repr {
+    class K_type;
+    using KT_pol = Free_Abelian_light<K_type,int>;
+    using K_type_poly = Free_Abelian_light<K_type,Split_integer>;
+  }
+  using K_repr::K_type;
+  using K_repr::K_type_poly;
+
   namespace repr {
     using level = unsigned int; // for height statistic of K type and parameters
 
