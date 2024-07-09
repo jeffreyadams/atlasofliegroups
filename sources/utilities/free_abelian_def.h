@@ -259,20 +259,22 @@ template<typename T, typename C, typename Compare>
 }
 
 template<typename T, typename C, typename Compare>
+template<typename B> // assuming conversion |B->C| is possible
   Free_Abelian_light<T,C,Compare>&
-    Free_Abelian_light<T,C,Compare>::add_multiple(const self& p, C m) &
+    Free_Abelian_light<T,C,Compare>::add_multiple
+      (const Free_Abelian_light<T,B,Compare>& p, C m) &
 {
   if (m==C(0))
     return *this;
   poly v; v.reserve(p.size());
   for (const auto& entry : p) // flatten |p| virtually by iteration over it
   {
-    C c = entry.second*m; // might be zero, even though both factors are nonzero
-    if (c != C(0))
+    C c = m*entry.second;
+    if (c != C(0)) // |c| might be zero, even though both factors are nonzero
     {
       C* ptr = find(entry.first);
       if (ptr!=nullptr)
-	*ptr += c; // update coefficient if one is found
+	*ptr += std::move(c); // update coefficient if one is found
       else
 	v.emplace_back(entry.first,c); // collect non matching terms in |v|
     }
@@ -282,22 +284,24 @@ template<typename T, typename C, typename Compare>
 }
 
 template<typename T, typename C, typename Compare>
+template<typename B> // assuming conversion |B->C| is possible
   Free_Abelian_light<T,C,Compare>&
-  Free_Abelian_light<T,C,Compare>::add_multiple(self&& p, C m) &
+    Free_Abelian_light<T,C,Compare>::add_multiple
+      (Free_Abelian_light<T,B,Compare>&& p, C m) &
 {
   if (m==C(0))
     return *this;
   poly v; v.reserve(p.size());
-  for (auto& entry : p)
+  for (auto&& entry : p)
   {
-    entry.second *= m; // make sure factor |m| is taken into account regardless
-    if (entry.second != C(0))
+    C c = m*entry.second;
+    if (c != C(0)) // |c| might be zero, even though both factors are nonzero
     {
       C* ptr = find(entry.first);
       if (ptr!=nullptr)
-	*ptr += entry.second; // update coefficient if one is found
-      else
-	v.push_back(std::move(entry)); // collect non matching terms in |v|
+	*ptr += std::move(c); // update coefficient if one is found
+      else // collect non matching terms in |v|
+	v.emplace_back(std::move(entry.first),std::move(c));
     }
   }
   insert(std::move(v));

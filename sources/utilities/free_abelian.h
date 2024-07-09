@@ -172,6 +172,15 @@ explicit
   Free_Abelian_light(Free_Abelian_light&&) = default; // move construct
   self& operator=(Free_Abelian_light&&) = default; // move assign
 
+  template<typename B>
+  static Free_Abelian_light convert(Free_Abelian_light<T,B,Compare>&& p)
+  {
+    poly v; v.reserve(p.size());
+    for (auto&& entry : p)
+      v.emplace_back(std::move(entry.first),static_cast<C>(entry.second));
+    return self(std::move(v),false, p.cmp());
+  }
+
   // in lieu of a copy constructor, use this more explicit method
   self copy() const { self result(cmp()); result.L=L; return result; }
 
@@ -185,11 +194,15 @@ explicit
   self& operator+=(T&& p) { return add_term(std::move(p),C(1)); }
   self& operator-=(T&& p) { return add_term(std::move(p),C(-1)); }
 
-  self& add_multiple(const self& p, C m) &;
-  self& add_multiple(self&& p, C m) &;
-  self&& add_multiple(const self& p, C m) &&
+  template<typename B>
+  self& add_multiple(const Free_Abelian_light<T,B,Compare>& p, C m) &;
+  template<typename B>
+  self&& add_multiple(const Free_Abelian_light<T,B,Compare>& p, C m) &&
   { add_multiple(p,m); return std::move(*this);}
-  self&& add_multiple(self&& p, C m) &&
+  template<typename B>
+  self& add_multiple(Free_Abelian_light<T,B,Compare>&& p, C m) &;
+  template<typename B>
+  self&& add_multiple(Free_Abelian_light<T,B,Compare>&& p, C m) &&
   { add_multiple(std::move(p),m); return std::move(*this);}
 
 #if 0 // there is no reason to keep using this once useful function

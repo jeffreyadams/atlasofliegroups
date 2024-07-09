@@ -14,16 +14,16 @@ namespace atlas {
   namespace K_repr {
 #if 0
 template<typename F>
-const K_type_pol& K_type_to_pol_table::put (K_type t, F f)
+const K_type_poly& K_type_to_pol_table::put (K_type t, F f)
 {
   auto i = hash.find(t);
   if (i!=hash.empty)
     return poly[i];
-  K_type_pol value = f(t.copy());
+  K_type_poly value = f(t.copy());
   return poly[hash.match(std::move(t))] = std::move(value);
 }
 
-const K_type_pol& K_type_to_pol_table::lookup (const K_type& t) const
+const K_type_poly& K_type_to_pol_table::lookup (const K_type& t) const
 {
   auto i = hash.find(t);
   if (i!=hash.empty)
@@ -490,11 +490,10 @@ sl_list<K_repr::K_type> Rep_context::KGP_set (K_repr::K_type& t) const
 
 } // |Rep_context::KGP_sum|
 
-K_type_poly Rep_context::monomial_product
-  (const K_type_poly& P, const Weight& e) const
+K_repr::KT_pol Rep_context::monomial_product (const K_repr::KT_pol& P, const Weight& e) const
 {
   const InvolutionTable& i_tab = involution_table();
-  K_type_poly::poly result;
+  K_repr::KT_pol::poly result; // a single |std::vector| of |(K_type,int)| pairs
   result.reserve(P.size());
   for (const auto& term : P)
   {
@@ -506,7 +505,7 @@ K_type_poly Rep_context::monomial_product
     auto ht = height(new_exp+theta*new_exp+i_tab.theta_plus_1_rho(i_x));
     result.emplace_back(K_repr::K_type{x,std::move(new_exp),ht},term.second);
   } // |for(term)|
-  return // convert to |K_type_poly|, sorting the shifted terms again
+  return // convert to |K_repr::KT_pol|, sorting the shifted terms again
     { std::move(result), true, P.cmp() };
 } // |Rep_context::monomial_product|
 
@@ -551,7 +550,7 @@ level Rep_context::height_bound (RatWeight lambda) const
     (lambda.numerator().dot(rd.dual_twoRho())+d-1)/d;
 }
 
-K_type_poly Rep_context::K_type_formula
+K_repr::KT_pol Rep_context::K_type_formula
   (K_repr::K_type& t,level max_level) const
 {
   const auto& rd = root_datum();
@@ -561,7 +560,7 @@ K_type_poly Rep_context::K_type_formula
   auto max_l = kgb().length(t.x());
   RootNbrSet radical_posroots = rd.posroot_set();
   radical_posroots.andnot(i_tab.real_roots(kgb().inv_nr(t.x())));
-  K_type_poly result;
+  K_repr::KT_pol result;
 
   for (auto&& term : terms)
   {
@@ -586,7 +585,7 @@ K_type_poly Rep_context::K_type_formula
     // |for(i : radical_posroots)|
 
     int sign = (max_l-kgb().length(x))%2==0 ? 1 : -1;
-    K_type_poly product (std::move(term),Split_integer(sign));
+    K_repr::KT_pol product (std::move(term),sign);
     for (const auto i : sum_set)
     { // multiply |product| by $(1-X^{\alpha_i})$
       auto mp = monomial_product(product,rd.root(i)); // $p*X^{\alpha_i}$
@@ -609,8 +608,7 @@ K_type_poly Rep_context::K_type_formula
   return result;
 } // |Rep_context::K_type_formula|
 
-K_type_poly
-  Rep_context::branch(K_type_poly remainder, repr::level cutoff) const
+K_type_poly Rep_context::branch(K_type_poly remainder, repr::level cutoff) const
 {
   K_type_poly result;
   auto it = remainder.begin();

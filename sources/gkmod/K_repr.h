@@ -45,6 +45,10 @@ public:
   K_type(K_type&&) = default;
   K_type& operator=(K_type&&) = default;
 
+  // copy constructor and assignment are provided, though currently not used
+  K_type(const K_type&) = default;
+  K_type& operator=(const K_type&) = default;
+
   KGBElt x () const { return d_x;  }
   const Weight& lambda_rho () const { return lam_rho; }
   unsigned int height () const { return hght; }
@@ -85,19 +89,19 @@ class K_type_to_pol_table
 {
   K_type::Pooltype pool;
   HashTable<K_type,unsigned long> hash;
-  std::vector<K_type_pol> poly;
+  std::vector<K_type_poly> poly;
 
 public:
   K_type_to_pol_table() : pool(), hash(pool), poly() {}
 
-  template<typename F>// |F| is a functor type from |K_type| to |K_type_pol|
-    const K_type_pol& put (K_type t, F f); // assosiate value |F(t)| with |t|
+  template<typename F>// |F| is a functor type from |K_type| to |K_type_poly|
+    const K_type_poly& put (K_type t, F f); // assosiate value |F(t)| with |t|
   bool is_present (const K_type& t) const { return hash.find(t)!=hash.empty; }
-  const K_type_pol& lookup (const K_type& t) const;
+  const K_type_poly& lookup (const K_type& t) const;
 
 }; // |K_type_to_pol_table|
 
-const K_type_pol&
+const K_type_poly&
   branch(K_type t, repr::level cutoff,
 	 K_type_to_pol_table& table, const Rep_context& rc);
 #endif
