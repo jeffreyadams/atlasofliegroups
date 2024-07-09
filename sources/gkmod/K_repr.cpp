@@ -469,11 +469,11 @@ sl_list<K_repr::K_type> Rep_context::KGP_set (K_repr::K_type& t) const
 
 } // |Rep_context::KGP_sum|
 
-K_repr::K_type_pol Rep_context::monomial_product
-  (const K_repr::K_type_pol& P, const Weight& e) const
+K_type_poly Rep_context::monomial_product
+  (const K_type_poly& P, const Weight& e) const
 {
   const InvolutionTable& i_tab = involution_table();
-  K_repr::K_type_pol::poly result;
+  K_type_poly::poly result;
   result.reserve(P.size());
   for (const auto& term : P)
   {
@@ -485,7 +485,7 @@ K_repr::K_type_pol Rep_context::monomial_product
     auto ht = height(new_exp+theta*new_exp+i_tab.theta_plus_1_rho(i_x));
     result.emplace_back(K_repr::K_type{x,std::move(new_exp),ht},term.second);
   } // |for(term)|
-  return // convert to |K_repr::K_type_pol|, sorting the shifted terms again
+  return // convert to |K_type_poly|, sorting the shifted terms again
     { std::move(result), true, P.cmp() };
 } // |Rep_context::monomial_product|
 
@@ -530,7 +530,7 @@ level Rep_context::height_bound (RatWeight lambda) const
     (lambda.numerator().dot(rd.dual_twoRho())+d-1)/d;
 }
 
-K_repr::K_type_pol Rep_context::K_type_formula
+K_type_poly Rep_context::K_type_formula
   (K_repr::K_type& t,level max_level) const
 {
   const auto& rd = root_datum();
@@ -540,7 +540,7 @@ K_repr::K_type_pol Rep_context::K_type_formula
   auto max_l = kgb().length(t.x());
   RootNbrSet radical_posroots = rd.posroot_set();
   radical_posroots.andnot(i_tab.real_roots(kgb().inv_nr(t.x())));
-  K_repr::K_type_pol result;
+  K_type_poly result;
 
   for (auto&& term : terms)
   {
@@ -565,7 +565,7 @@ K_repr::K_type_pol Rep_context::K_type_formula
     // |for(i : radical_posroots)|
 
     int sign = (max_l-kgb().length(x))%2==0 ? 1 : -1;
-    K_repr::K_type_pol product (std::move(term),Split_integer(sign));
+    K_type_poly product (std::move(term),Split_integer(sign));
     for (const auto i : sum_set)
     { // multiply |product| by $(1-X^{\alpha_i})$
       auto mp = monomial_product(product,rd.root(i)); // $p*X^{\alpha_i}$
@@ -588,10 +588,10 @@ K_repr::K_type_pol Rep_context::K_type_formula
   return result;
 } // |Rep_context::K_type_formula|
 
-K_repr::K_type_pol
-  Rep_context::branch(K_repr::K_type_pol remainder, repr::level cutoff) const
+K_type_poly
+  Rep_context::branch(K_type_poly remainder, repr::level cutoff) const
 {
-  K_repr::K_type_pol result;
+  K_type_poly result;
   auto it = remainder.begin();
   if (it==remainder.end())
     return result;

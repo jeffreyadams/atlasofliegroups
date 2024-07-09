@@ -1172,9 +1172,9 @@ bool StandardRepr::operator<(const StandardRepr& s) const
   return r_vec<s_vec;
 }
 
-SR_poly Rep_context::scale(const poly& P, const RatNum& f) const
+SR_poly Rep_context::scale(const SR_poly& P, const RatNum& f) const
 {
-  poly result;
+  SR_poly result;
   for (const auto& term : P)
   {
     auto finals_term = finals_for(scale(term.first,f));
@@ -1184,9 +1184,9 @@ SR_poly Rep_context::scale(const poly& P, const RatNum& f) const
   return result;
 }
 
-K_repr::K_type_pol Rep_context::scale_0(const poly& P) const
+K_type_poly Rep_context::scale_0(const SR_poly& P) const
 {
-  K_repr::K_type_pol result;
+  K_type_poly result;
   for (auto it=P.begin(); it!=P.end(); ++it)
   { auto z=it->first; // take a copy for modification
     auto finals = finals_for(scale_0(z)); // a |simple_list| of K-type terms
@@ -2291,7 +2291,7 @@ simple_list<std::pair<BlockElt,kl::KLPol> >
 } // |Rep_table::KL_column|
 
 
-const K_type_poly& Rep_table::deformation(StandardRepr z)
+const K_type_nr_poly& Rep_table::deformation(StandardRepr z)
 // that |z| is dominant and final is a precondition assured in the recursion
 // for more general |z|, do the preconditioning outside the recursion
 {
@@ -2309,15 +2309,15 @@ const K_type_poly& Rep_table::deformation(StandardRepr z)
 
   interpreter::check_interrupt(); // make this recursive function interruptible
 
-  K_type_poly result;
+  K_type_nr_poly result;
   {
     auto base_pol = finals_for(scale_0(z)); // a $\Z$-linear combin. of K-types
-    K_type_poly::poly p;
-    p.reserve(containers::length(base_pol)); // efficiency gain, though minute
+    K_type_nr_poly::poly p;
+    p.reserve(p.size());
     for (auto it=base_pol.begin(); not base_pol.at_end(it); ++it)
       p.emplace_back
 	(K_type_hash.match(std::move(it->first)),Split_integer(it->second));
-    result = K_type_poly(std::move(p),false);
+    result = K_type_nr_poly(std::move(p),false);
   }
 
   RatNumList rp=reducibility_points(z);
@@ -2595,7 +2595,7 @@ SR_poly Rep_table::twisted_deformation_terms (unsigned long sr_hash)
 } // |twisted_deformation_terms|, version without block
 #endif
 
-const K_type_poly& Rep_table::twisted_deformation(StandardRepr z, bool& flip)
+const K_type_nr_poly& Rep_table::twisted_deformation(StandardRepr z, bool& flip)
 {
   assert(is_final(z));
   assert(is_delta_fixed(z));
@@ -2619,11 +2619,11 @@ const K_type_poly& Rep_table::twisted_deformation(StandardRepr z, bool& flip)
 
   interpreter::check_interrupt(); // make this recursive function interruptible
 
-  K_type_poly result { std::less<K_type_nr>() };
+  K_type_nr_poly result { std::less<K_type_nr>() };
   { // initialise |result| to restriction of |z| expanded to finals
     auto z_K = ext_block::extended_restrict_to_K(*this,z,delta);
     // the following loop reorders terms by |std::less<K_type_nr>|
-    for (auto&& term : z_K) // convert |K_repr::K_type_pol| to |K_type_poly|
+    for (auto&& term : z_K) // convert |K_type_poly| to |K_type_poly|
       result.add_term(K_type_hash.match(std::move(term.first)),term.second);
   }
 
@@ -2681,13 +2681,13 @@ const K_type_poly& Rep_table::twisted_deformation(StandardRepr z, bool& flip)
 
 } // |Rep_table::twisted_deformation (StandardRepr z)|
 
-K_repr::K_type_pol export_K_type_pol(const Rep_table& rt,const K_type_poly& P)
+K_type_poly export_K_type_pol(const Rep_table& rt,const K_type_nr_poly& P)
 {
-  K_repr::K_type_pol::poly result; // an instance of |std::vector|
+  K_type_poly::poly result; // an instance of |std::vector|
   result.reserve(P.size());
   for (const auto& term : P)
     result.emplace_back(rt.stored_K_type(term.first),term.second);
-  return { std::move(result), true }; // sort, convert to |K_repr::K_type_poly|
+  return { std::move(result), true }; // sort, convert to |K_type_poly|
 }
 
 //			|common_context| methods

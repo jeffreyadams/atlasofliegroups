@@ -363,7 +363,7 @@ inline bool is_default (const ext_param& E)
 { return same_sign(E,default_extend(E.ctxt,E.restrict_mod())); }
 
 // restrict to K expanding to final K types, taking into account extended flips
-K_repr::K_type_pol extended_restrict_to_K
+K_type_poly extended_restrict_to_K
   (const Rep_context rc, const StandardRepr& sr, const WeightInvolution& delta);
 
 // similar operation for scaling of $\nu$ by strictly positive |factor|
