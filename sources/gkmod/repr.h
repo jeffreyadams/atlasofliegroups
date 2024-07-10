@@ -493,17 +493,14 @@ public:
   size_t def_form_size () const { return untwisted.size(); }
   size_t twisted_def_form_size () const { return twisted.size(); }
 
-  const K_type_nr_poly& def_formula() const       { return untwisted; }
-  const K_type_nr_poly& twisted_def_formula() const { return twisted; }
+  K_type_nr_poly def_formula() const       { return untwisted.copy(); }
+  K_type_nr_poly twisted_def_formula() const { return twisted.copy(); }
 
-  const K_type_nr_poly& set_deformation_formula (const K_type_nr_poly& formula)
-  { return untwisted = formula.copy(); }
-  const K_type_nr_poly& set_deformation_formula (K_type_nr_poly&& formula)
-  { return untwisted = std::move(formula); }
-  const K_type_nr_poly& set_twisted_deformation_formula (const K_type_nr_poly& formula)
-  { return twisted = formula.copy(); }
-  const K_type_nr_poly& set_twisted_deformation_formula (K_type_nr_poly&& formula)
-  { return twisted = std::move(formula); }
+  K_type_nr_poly set_deformation_formula (K_type_nr_poly formula)
+  { untwisted = formula.copy(); return std::move(formula); }
+
+  K_type_nr_poly set_twisted_deformation_formula (K_type_nr_poly formula)
+  { twisted = formula.copy(); return std::move(formula); }
 
 // special members required by HashTable
   using Pooltype = std::vector<deformation_unit>;
@@ -672,7 +669,7 @@ class Rep_table : public Rep_context
 
 
   // full deformation to $\nu=0$ of |z|
-  const K_type_nr_poly& deformation(StandardRepr z); // by value
+  K_type_nr_poly deformation(StandardRepr z); // by value
 
   // like |deformation_terms|; caller multiplies returned coefficients by $1-s$
   sl_list<std::pair<StandardRepr,int> > twisted_deformation_terms
@@ -691,7 +688,7 @@ class Rep_table : public Rep_context
     (const StandardReprMod& srm, BitMap* subset, const locator& loc);
 
   // full twisted deformation, with |flip| telling whether to multiply by |s|
-  const K_type_nr_poly& twisted_deformation(StandardRepr z, bool& flip); // by value
+  K_type_nr_poly twisted_deformation(StandardRepr z, bool& flip); // by value
 
  private:
   class Bruhat_generator; // helper class: internal |add_block_below| recursion
