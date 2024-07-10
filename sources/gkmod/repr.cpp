@@ -2291,7 +2291,7 @@ simple_list<std::pair<BlockElt,kl::KLPol> >
 } // |Rep_table::KL_column|
 
 
-const K_type_nr_poly& Rep_table::deformation(StandardRepr z)
+K_type_nr_poly Rep_table::deformation(StandardRepr z)
 // that |z| is dominant and final is a precondition assured in the recursion
 // for more general |z|, do the preconditioning outside the recursion
 {
@@ -2595,7 +2595,7 @@ SR_poly Rep_table::twisted_deformation_terms (unsigned long sr_hash)
 } // |twisted_deformation_terms|, version without block
 #endif
 
-const K_type_nr_poly& Rep_table::twisted_deformation(StandardRepr z, bool& flip)
+K_type_nr_poly Rep_table::twisted_deformation(StandardRepr z, bool& flip)
 {
   assert(is_final(z));
   assert(is_delta_fixed(z));
