@@ -147,7 +147,7 @@ private:
 public:
   Free_Abelian_light() // default |Compare| value for base
   : Compare(), L() {}
-  Free_Abelian_light(Compare c) // here a specific |Compare| is used
+  explicit Free_Abelian_light(Compare c) // here a specific |Compare| is used
   : Compare(c), L() {}
 
 explicit
