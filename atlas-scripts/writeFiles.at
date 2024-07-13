@@ -38,6 +38,7 @@ set write_append([int] list, string listname) = void:
     ";" else "" fi) od
     end
 
+{assume that [int] listname exists, add to it by concatenation}
 set write_cat_int_list([int] list, string listname) = void:
     begin
 	 for M@j in list do prints("then () = ",listname,"#:=",M) od
@@ -127,6 +128,16 @@ set write_K_type_pols(RealForm G, [KTypePol] KPols, string KPolsName) = void:
 			[[int]]: d,")")
 	   od
    end
+
+{assume the [KTypePol] listName has already been created, and add to it}
+set write_cat_K_type_pols(string Gname, [KTypePol] list, string listName) = void:
+    begin
+         for P in list
+	 do let d = K_data(P)
+	    in prints("then () = ",listName,"#:=K_pol(", Gname,", [vec]:",[[int]]: d,")")
+	 od
+    end
+
 
 set write_K_type_pols(RealForm G, [KTypePol] KPols) = void:
     write_K_type_pols(G,KPols,default_K_type_pols_name)
