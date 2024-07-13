@@ -8132,13 +8132,7 @@ void twisted_deform_wrapper(eval_level l)
     // though by reference, does not change |p->val|
   auto& eblock = block.extended_block(bm,rt.shared_poly_table());
 @)
-  RankFlags singular = block.singular(bm,p->val.gamma());
-  RankFlags singular_orbits;
-  for (weyl::Generator s=0; s<eblock.rank(); ++s)
-    singular_orbits.set(s,singular[eblock.orbit(s).s0]);
-@)
   auto terms = rt.twisted_deformation_terms@|(block,eblock,entry_elem,
-					     singular_orbits,
                                              bm,p->val.gamma());
   SR_poly result;
   for (auto&& term : terms)
