@@ -478,7 +478,8 @@ class deformation_unit
   StandardRepr sample; // first parameter found in alcove, its reference point
   // the reference point aspect only serves to determine the default extension
 
-  KT_nr_pol lowest_K_types, def_contrib, twdef_contrib;
+  KT_nr_pol lowest_K_types, def_contrib,
+    LKTs_twisted, def_contrib_twisted; // twisted versions at $q = -1$
   K_type_nr_poly untwisted, twisted;
   const Rep_context& rc; // access coroots etc. necessary for alcove testing
 
@@ -486,20 +487,20 @@ class deformation_unit
 public:
   deformation_unit(const Rep_context& rc, const StandardRepr& sr)
     : sample(sr)
-    , lowest_K_types(), def_contrib(), twdef_contrib()
+    , lowest_K_types(), def_contrib(), LKTs_twisted(), def_contrib_twisted()
     , untwisted(), twisted()
     , rc(rc), status(0)
   {}
   deformation_unit(const Rep_context& rc, StandardRepr&& sr)
   : sample(std::move(sr))
-  , lowest_K_types(), def_contrib(), twdef_contrib()
+  , lowest_K_types(), def_contrib(), LKTs_twisted(), def_contrib_twisted()
   , untwisted(), twisted()
   , rc(rc), status(0)
   {}
 
   deformation_unit(deformation_unit&&) = default; // type is only movable
 
-
+  bool has_LKTs() const { return not lowest_K_types.is_zero(); }
   bool has_def_contrib() const { return status.test(0); }
   bool has_twdef_contrib() const { return status.test(1); }
   bool has_deformation_formula() const  { return status.test(2); }
@@ -509,21 +510,21 @@ public:
   const KT_nr_pol& deformation_contribution() const
   { return def_contrib; }
   const KT_nr_pol& twisted_deformation_contribution() const
-  { return twdef_contrib; }
+  { return def_contrib_twisted; }
 
   void set_LKTs
     (Rep_table& rt, simple_list<std::pair<K_repr::K_type,int> >&& finals);
   void set_def_contrib(KT_nr_pol&& p)
   { status.set(0); def_contrib=std::move(p); }
-  void set_twdef_contrib(KT_nr_pol&& p)
-  { status.set(1); twdef_contrib=std::move(p); }
+  void set_LKTs_at_minus_1(KT_nr_pol&& p) { LKTs_twisted = std::move(p); }
+  void set_twisted_contribution(KT_nr_pol&& p)
+  { status.set(1); def_contrib_twisted=std::move(p); }
 
   size_t def_form_size () const { return untwisted.size(); }
   size_t twisted_def_form_size () const { return twisted.size(); }
 
   K_type_nr_poly def_formula() const       { return untwisted.copy(); }
   K_type_nr_poly twisted_def_formula() const { return twisted.copy(); }
-
 
   K_type_nr_poly set_deformation_formula (K_type_nr_poly formula)
   { untwisted = formula.copy(); status.set(2); return std::move(formula); }
@@ -698,14 +699,15 @@ class Rep_table : public Rep_context
 
 
   // full deformation to $\nu=0$ of |z|
-  const deformation_unit&  deformation(StandardRepr z); // by value
+  const deformation_unit& // warning: transient reference (into |pool| vector)
+    deformation(const StandardRepr& z);
   K_type_nr_poly full_deformation(StandardRepr z); // by value
 
   // like |deformation_terms|; caller multiplies returned coefficients by $1-s$
   sl_list<std::pair<StandardRepr,int> > twisted_deformation_terms
     (blocks::common_block& block, ext_block::ext_block& eblock,
      BlockElt y, // in numbering of |block|, not |eblock|
-     RankFlags singular, const block_modifier& bm, const RatWeight& gamma);
+     const block_modifier& bm, const RatWeight& gamma);
 #if 0
   SR_poly twisted_deformation_terms (unsigned long sr_hash) const;
   // once a parameter has been entered, we can compute this without a block
@@ -718,7 +720,8 @@ class Rep_table : public Rep_context
     (const StandardReprMod& srm, BitMap* subset, const locator& loc);
 
   // full twisted deformation, with |flip| telling whether to multiply by |s|
-  const deformation_unit& twisted_deformation(StandardRepr z); // by value
+  const deformation_unit& // warning: transient reference (into |pool| vector)
+  twisted_deformation(const StandardRepr& z, bool& flip);
   K_type_nr_poly
   twisted_full_deformation(StandardRepr z, bool& flip); // by value
 

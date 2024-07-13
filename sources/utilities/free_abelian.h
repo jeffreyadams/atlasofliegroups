@@ -173,16 +173,18 @@ explicit
   self& operator=(Free_Abelian_light&&) = default; // move assign
 
   template<typename B>
-  static Free_Abelian_light convert(Free_Abelian_light<T,B,Compare>&& p)
+  static Free_Abelian_light convert(const Free_Abelian_light<T,B,Compare>& p)
   {
     poly v; v.reserve(p.size());
-    for (auto&& entry : p)
-      v.emplace_back(std::move(entry.first),static_cast<C>(entry.second));
+    for (const auto& entry : p)
+      v.emplace_back(entry.first,static_cast<C>(entry.second));
     return self(std::move(v),false, p.cmp());
   }
 
   // in lieu of a copy constructor, use this more explicit method
   self copy() const { self result(cmp()); result.L=L; return result; }
+
+  void clear () { L.clear(); }
 
   Compare cmp() const { return Compare(*this); } // get |Compare| "member"
 
