@@ -34,7 +34,13 @@ set write_vecs([vec] list) = void:
 
 set write_append([int] list, string listname) = void:
     begin
-	 for M in list do prints("void:",listname,"#:=",M) od
+	 for M@j in list do prints(listname,"#:=",M, if j<#list-1 then
+    ";" else "" fi) od
+    end
+
+set write_cat_int_list([int] list, string listname) = void:
+    begin
+	 for M@j in list do prints("then () = ",listname,"#:=",M) od
     end
 
 set default_ic_name = string:"ic_saved"
@@ -231,7 +237,7 @@ set write_param_list([Param] list, string listName) = void:
 	fi
 	; write_real_form(G_temp, "G_temp")
 	; prints("set Nullp = U(1,0).trivial")
-	; prints("set ",listName,"=[Param]: for i:",#list,
+	; prints("then ",listName,"=[Param]: for i:",#list,
 	  	      " do Nullp od")
         in for p@i in list
 	  do let (,x) = %p.x
@@ -267,9 +273,9 @@ set write_append_param_list([Param] list, string listName) = void:
 	prints("set Nullp = U(1,0).trivial")
 	; prints("set ",listName,"=[Param]: for i:",#list,
 	  	      " do Nullp od")
-        ; for p@i in list
+        ;for p@i in list
 	  do let (,x) = %p.x
-	     in prints("void:",listName,"[",i,"]:=parameter(KGB(G_temp,",
+	     in prints("then () = ", listName,"[",i,"]:=parameter(KGB(G_temp,",
 	     	x,"),",p.lambda,",",p.nu,")")
 	  od
     end
@@ -287,14 +293,14 @@ Only requirement is that all the Param's are for the same group.
 }
 set write_cat_param_list([Param] list, string listName) = void:
     begin
-    	let G_temp = GL(1,R)
+    	{let G_temp = GL(1,R)
 	then () = if #list > 0 then G_temp := list[0].real_form
 	fi
 	; write_real_form(G_temp, "G_temp")
 	; prints("set ",listName,"=[Param]:[]")
-	in for p@i in list
+	in} for p@i in list
 	   do let (,x) = %p.x
-	      in prints("void:",listName,"#:=parameter(KGB(G_temp,",
+	      in prints("then () = ",listName,"#:=parameter(KGB(G_temp,",
 	     	x,"),",p.lambda,",",p.nu,")")
 	   od
     end

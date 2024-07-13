@@ -1395,7 +1395,8 @@ set_type
   , (RealForm -> int) x_known {bitmap of x for which entire FPP dual is known}
   , (RealForm -> int) x_partial {bitmap of x for which some lambda have FPP dual known}
   , ((KGBElt,int) -> ) finish {add bitmap of new known (x,lambda) to xl_known}
-  , (KGBElt -> ) finishx {add x to xl_known}
+  , (KGBElt -> ) finishx {add x to x_known}
+  , ((RealForm,int) ->) finishxmap {OR int with x_known(RealForm)}
   , (KGBElt -> ) partialx {add x to x_partial}
   , ((RealForm,[int]) -> ) finishall {add bitmaps of all new known (x,lambda) to xl_known}
   , (RealForm -> Param_hash) uhash {hash table of known unitary}
@@ -1487,6 +1488,10 @@ set make_big_unitary_hash() = big_unitary_hash_table:
       then M = to_bitset([x.number])
       then () = x_known[i] := OR(M,x_known[i])
       then () = x_partial[i] := OR(M,x_partial[i])
+      in ()
+    , ((RealForm,int) ->): {finishxmap} (RealForm G, int M):
+      let i = add_real_form(G)
+      then () = x_known[i] := OR(M,x_known[i])
       in ()
     , (KGBElt -> ): {partialx}  (KGBElt x):
       let i = add_real_form(x.real_form)
@@ -1603,22 +1608,24 @@ set make_big_unitary_hash() = big_unitary_hash_table:
 	od
     , (RealForm -> ): {writeG} (RealForm G):
       let i = add_real_form(G)
-      then Gname = "Gtemp"
+      then Gname = "G_temp"
       then listname = Gname+"_list"
       then intlistname = Gname+"_XLK"
       then plist = uhashes[i].list()
       then bitmapintlist = xl_known[i]
-      in write_real_form(G,Gname);
-	 prints("set j = big_unitary_hash.rf_number(",Gname,")");
-	 prints("set ",listname,"=[Param]:[]");
-	 write_append_cat_param_list(plist,listname,Gname);
-	 prints("set ",intlistname,"=[int]:[]");
-	 write_append(bitmapintlist,intlistname);
-	 prints("void: for p in ",listname," do big_unitary_hash.long_match(p,j) od");
-	 prints("big_unitary_hash.finishall(",Gname,",",intlistname,")")
+      then donemap = x_known[i]
+      then () = write_real_form(G,Gname)
+      then () = prints("let j = big_unitary_hash.rf_number(",Gname,")")
+      then () = prints("then ",intlistname,"=[int]:[]")
+      then () = prints("then ",listname,"=[Param]:[]")
+      then () =	write_cat_param_list(plist,listname)
+      then () = write_cat_int_list(bitmapintlist,intlistname)
+      in prints("in (void: for p in ",listname," do big_unitary_hash.long_match(p,j) od;");
+      	 prints("big_unitary_hash.finishall(",Gname,",",intlistname,");");
+	 prints("big_unitary_hash.finishxmap(",Gname,",",to_string(donemap),")")
     , ((RealForm, int, int) -> ): {writeGrange} (RealForm G, int low, int high):
       let i = add_real_form(G)
-      then Gname = "Gtemp"
+      then Gname = "G_temp"
       then listname = Gname+"_list_"+to_string(low)+"_"+to_string(high)
       then intlistname = Gname+"_XLK_"+to_string(low)+"_"+to_string(high)
       then longlist = uhashes[i].list()
@@ -1630,15 +1637,25 @@ set make_big_unitary_hash() = big_unitary_hash_table:
 		   od.##
       then longbitmapintlist = xl_known[i]
       then bitmapintlist = longbitmapintlist[low:high]
-      in write_real_form(G,Gname);
-	 prints("set j = big_unitary_hash.rf_number(",Gname,")");
-	 prints("set X = KGB(",Gname,")[",low,":",high,"]");
-	 prints("set ",listname,"=[Param]:[]");
-	 write_append_cat_param_list(plist,listname,Gname);
-	 prints("set ",intlistname,"=[int]:[]");
-	 write_append(bitmapintlist,intlistname);
-	 prints("void: for p in ",listname," do big_unitary_hash.long_match(p,j) od");
-	 prints("for N@m in ",intlistname," do big_unitary_hash.finish(X[m],N) od")
+      then donemap = x_known[i]
+      then done_list = for x in KGB(G)[low:high]
+      	   	       do if is_member_bitset(x.number, donemap)
+		       	     or longbitmapintlist[x.number] + 1 = to_bitset([#FPP_lambdas(x)])
+			  then [x]
+			  else []
+			  fi
+		       od.##
+      then donerangemap = to_bitset(for x in done_list do x.number od)
+      	   {these are the x's being written for which list is complete}
+      then () = write_real_form(G,Gname)
+      then () = prints("let j = big_unitary_hash.rf_number(",Gname,")")
+      then () = prints("then Xlist = KGB(",Gname,")[",low,":",high,"]")
+      then () = prints("then ",listname,"=[Param]:[]")
+      then () = prints("then ",intlistname,"=[int]:[]")
+      then () = write_cat_param_list(plist,listname)
+      then () = write_cat_int_list(bitmapintlist,intlistname)
+      in prints("in (void: for p in ",listname," do big_unitary_hash.long_match(p,j) od;");
+	 prints("big_unitary_hash.finishxmap(",Gname,",",to_string(donerangemap),"))")
     )
 )
 
