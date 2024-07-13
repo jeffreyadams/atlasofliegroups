@@ -1620,7 +1620,7 @@ set make_big_unitary_hash() = big_unitary_hash_table:
       then () = prints("then ",listname,"=[Param]:[]")
       then () =	write_cat_param_list(plist,listname)
       then () = write_cat_int_list(bitmapintlist,intlistname)
-      in prints("in (void: for p in ",listname," do big_unitary_hash.long_match(p,j) od;");
+      in prints("in void: for p in ",listname," do big_unitary_hash.long_match(p,j) od;");
       	 prints("big_unitary_hash.finishall(",Gname,",",intlistname,");");
 	 prints("big_unitary_hash.finishxmap(",Gname,",",to_string(donemap),")")
     , ((RealForm, int, int) -> ): {writeGrange} (RealForm G, int low, int high):
