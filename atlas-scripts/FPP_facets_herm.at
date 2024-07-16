@@ -1606,7 +1606,9 @@ set make_big_unitary_hash() = big_unitary_hash_table:
 	     prints("void: for p in ",listname," do big_unitary_hash.long_match(p,j) od");
 	     prints("big_unitary_hash.finishall(",Gname,",",intlistname,")")
 	od
-    , (RealForm -> ): {writeG} (RealForm G):
+    {following version produces a file that can't be read if it's more
+    than 5000 lines long}
+    {, (RealForm -> ): {writeG} (RealForm G):
       let i = add_real_form(G)
       then Gname = "G_temp"
       then listname = Gname+"_list"
@@ -1622,7 +1624,45 @@ set make_big_unitary_hash() = big_unitary_hash_table:
       then () = write_cat_int_list(bitmapintlist,intlistname)
       in prints("in void: for p in ",listname," do big_unitary_hash.long_match(p,j) od;");
       	 prints("big_unitary_hash.finishall(",Gname,",",intlistname,");");
-	 prints("big_unitary_hash.finishxmap(",Gname,",",to_string(donemap),")")
+	 prints("big_unitary_hash.finishxmap(",Gname,",",to_string(donemap),")")}
+    {same problem}
+    {, (RealForm -> ): {writeG} (RealForm G):
+      let i = add_real_form(G)
+      then Gname = "G_temp"
+      then listname = Gname+"_list"
+      then intlistname = Gname+"_XLK"
+      then plist = uhashes[i].list()
+      then bitmapintlist = xl_known[i]
+      then donemap = x_known[i]
+      in write_real_form(G,Gname);
+      	 prints("let j = big_unitary_hash.rf_number(",Gname,"), ptemp = GL(1,R).trivial");
+	 for p@k in plist
+	 do let x = p.x.number
+	    in prints("then () =ptemp:=parameter(G_temp,",x,",",p.lambda,",",p.nu,")");
+	       prints("then () = big_unitary_hash.long_match(ptemp,j)")
+	 od;
+	 prints(" in big_unitary_hash.finishall(",Gname,",",xl_known[i],");");
+	 prints("big_unitary_hash.finishxmap(",Gname,",",to_string(donemap),")")}
+
+    , (RealForm -> ): {writeG} (RealForm G):
+      let i = add_real_form(G)
+      then Gname = "G_temp"
+      then listname = Gname+"_list"
+      then intlistname = Gname+"_XLK"
+      then plist = uhashes[i].list()
+      then bitmapintlist = xl_known[i]
+      then donemap = x_known[i]
+      in write_real_form(G,Gname);
+      	 prints("set j = big_unitary_hash.rf_number(",Gname,"), ptemp = GL(1,R).trivial");
+	 for p@k in plist
+	 do let x = p.x.number
+	    in prints("void: ptemp:=parameter(G_temp,",x,",",p.lambda,",",p.nu,")");
+	       prints("void: big_unitary_hash.long_match(ptemp,j)")
+	 od;
+	 prints("void: big_unitary_hash.finishall(",Gname,",",xl_known[i],")");
+	 prints("void: big_unitary_hash.finishxmap(",Gname,",",to_string(donemap),")")
+
+
     , ((RealForm, int, int) -> ): {writeGrange} (RealForm G, int low, int high):
       let i = add_real_form(G)
       then Gname = "G_temp"

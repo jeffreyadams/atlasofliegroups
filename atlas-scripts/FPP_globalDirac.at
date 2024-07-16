@@ -71,8 +71,11 @@ set spherical_xs(RealForm G) = [KGBElt]:
 {meant to hold barycenters of unitary facets}
 set unitary_hash = make_Param_hash()
 
-{meant to hold all unitary parameters found (maybe not final}
-{set uparam_hash = make_Param_hash()}
+{meant to hold all unitary parameters found (maybe not final)}
+set Uparamhash = make_Param_hash()
+
+{whether to record unitary parameters in Uparamhash}
+set Uparamhash_flag = false
 
 {load a bunch of Param_hash's into one}
 set transfer([Param_hash] Us, Param_hash target) = void:
@@ -107,7 +110,7 @@ set FPP_unitary_hash_general([(KGBElt,ratvec)] xlambdas, Param_hash Uhash,
     then () = prepDirac(G)
     then () = FD12Time:=0
     then () = FD12bzTime:=0
-    then xnums = for (x,) in xlambdas do let (,m) = %x in m od
+    then xnums = for (x,) in xlambdas do x.number od
     then lambdas = for (,lambda) in xlambdas do lambda od, pol_hash = make_KTypePol_hash()
     then old_facet_verbose = facet_verbose, old_time_verbose = time_verbose,
     	 old_test_verbose = test_verbose, old_test_slightly_verbose = test_slightly_verbose
@@ -165,7 +168,9 @@ set FPP_unitary_hash_general([(KGBElt,ratvec)] xlambdas, Param_hash Uhash,
 			  let answer = local(x, lambda, LPm_table.FPP_vertex_data(G) , Lvd, LF, pol_hash, Uhash)
 			  then () = finish(x,lambda)
 			  then () = answerCards[k] := #answer
-			  {then () = for p in answer do Uparamhash.match(p) od}
+			  then () = if Uparamhash_flag
+			       	    then for p in answer do Uparamhash.match(p) od
+				    fi
    		    	  then () = current := elapsed_ms(); currentUhash := Uhash.size();
 			       	    currentUcounter := unitary_test_counter.use_count();
 				    currentCcounter := char_counter.use_count()
@@ -231,7 +236,7 @@ set FPP_unitary_hash_general([KGBElt] xs, Param_hash Uhash, {Param_hash Uparamha
     then () = prepDirac(G)
     then () = FD12Time :=0
     then () = FD12bzTime :=0
-    then {xnums = for x in xs do let (,m) = %x in m od, xtimes = null(#xs),} pol_hash = make_KTypePol_hash()
+    then {xnums = for x in xs do x.number od, xtimes = null(#xs),} pol_hash = make_KTypePol_hash()
     then old_facet_verbose = facet_verbose, old_time_verbose = time_verbose,
     	 old_test_verbose = test_verbose, old_test_slightly_verbose = test_slightly_verbose
     then () = facet_verbose:=false
@@ -265,12 +270,19 @@ set FPP_unitary_hash_general([KGBElt] xs, Param_hash Uhash, {Param_hash Uparamha
 	      	       then {prints("skipping x = ",x.number," for xtwist = ",xtwists[tw].number);} xtwists[tw]
 		       else x
 		       fi
-	 then twnum = if xtwist != x
+	 then twnum = last(for y in xs[:j] do y=xtwist od) {if xtwist != x
 	      	      then first(for y in xs do xtwist = y od)
 		      else -1
-		      fi
-	 in if twnum.>=  and twnum < j {now xtwist is xs[twnum]}
-	    then answerCards[j]:= answerCards[twnum];
+		      fi}
+	 in if twnum.>=  {and twnum < j} {now xtwist is xs[twnum]}
+	    then answerCards[j]:= answerCards[twnum]; {this is too low if xtwist wasn't calculated here}
+	    if Uparamhash_flag
+	    then for p in Uparamhash.list()
+	         do if p.x = xtwists[tw]
+		    then Uparamhash.match(parameter(x,p.lambda,p.nu))
+		    fi
+		 od
+	    fi;
 	    	 {prints("skipping x = ",x.number," for xtwist = ",xtwist.number);}
 		 big_unitary_hash.finish(x, full_M); {mark as done all lambdas for x}
 		 big_unitary_hash.finishx(x);
@@ -281,19 +293,25 @@ set FPP_unitary_hash_general([KGBElt] xs, Param_hash Uhash, {Param_hash Uparamha
 		       fi
 		 od
 	    else let xcont = contragredient(x)
-	    	 then contnum = if xcont != x
+	    	 then contnum = last(for y in xs[:j] do y = xcont od) {if xcont != x
 		      	      	then first(for y in xs do xcont = y od)
 				else -1
-				fi
-	    	 in if contnum.>= and contnum < j {now xcont is xs[contnum]}
+				fi}
+	    	 in if contnum.>= {now xcont is xs[contnum]}
 	    	    then answerCards[j]:= answerCards[contnum];
-		         big_unitary_hash.finish(x,full_M); {mark as done all lambdas for x}
+		    if Uparamhash_flag
+		    then for p in Uparamhash.list()
+			 do if p.x = xcont
+			    then Uparamhash.match(contragredient(p))
+			    fi
+			 od
+		     fi;
+		    	 big_unitary_hash.finish(x,full_M); {mark as done all lambdas for x}
 			 big_unitary_hash.finishx(x);
-		       for ell:Uhash.size()
-	      	       do let p = Uhash.index(ell)
-		       	  in if p.x = xcont
-		       	     then Uhash.match(contragredient(p))
-		    	     fi
+		       for p in Uhash.list()
+	      	       do if p.x = xcont
+		       	  then Uhash.match(contragredient(p))
+		    	  fi
 		       od
 	     	    else let lambdas = FPP_lambdas(x)
     	 	    	 then Ncases = #lambdas
@@ -307,51 +325,80 @@ set FPP_unitary_hash_general([KGBElt] xs, Param_hash Uhash, {Param_hash Uparamha
 		   		   prints("  ------------------")
         	   		   fi {every_KGB_flag}
 	 		 then () = for lambda@index in lambdas
-	      	   	      	   do let lamthlam = ((1+x.involution)*lambda).numer
-		      		      then (Lvd, Perm2, mapAct) = LPm_table.LPm_entry(G,x.involution,lamthlam)
-		      		      then  startlambda = elapsed_ms(), startUhash = Uhash.size(), startUcounter =
-		      	    	      	    unitary_test_counter.use_count(), startUtime = unitaryTime,
-					    startCcounter = char_counter.use_count(), startCtime = charTime
-				      then startLF = elapsed_ms()
- 		      		      then LF = if by_zero_flag {and dominant(G,lamthlam)*G.two_rho_check > 0}
-		      	      	      	      	then localFD_1Dirac2_by_zero(x, lambda, Lvd, Perm2, mapAct)
-			   			else localFD_1Dirac2(x, lambda, Lvd, Perm2, mapAct)
-			   			fi {by_zero_flag}
-				      then () = if every_lambda_deets_flag
-    	      	      	              then prints("time for localFD_1Dirac2* = ",
-				      print_time_string(elapsed_ms() - startLF),
-			   " to find [",#LF[0],",",#LF[1],"] verts and edges.")
-	      		   fi
-			 in if #LF[0] = 0
-			    then []
-			    else if every_lambda_deets_flag
-			       	 then facet_verbose := old_facet_verbose; time_verbose := old_time_verbose;
-				    	 test_verbose :=old_test_verbose; test_slightly_verbose :=
-					 	      old_test_slightly_verbose
-				 fi;
-				 let answer = local(x, lambda, LPm_table.FPP_vertex_data(G), Lvd, LF, pol_hash, Uhash)
-			  	 then () = tempanswerCards[index] := #answer
-			  	 {then () = for p in answer do Uparamhash.match(p) od}
-				 then () = if every_lambda_deets_flag
-			    	      	   then facet_verbose := false; time_verbose := false;
-				 	   	test_verbose := false; test_slightly_verbose := false
-				 	   fi
- 			 	 then () = templambdatimes [index] := elapsed_ms() - startlambda
-			 	 in if every_lambda_flag
-				    then prints("  ",print_time_string(templambdatimes[index]),
-			   	    	 	" = time for (x,lambda) = (", x.number, ",",index," = ",
-						lambda, ")", test_string);
-				         prints("    #LF = ", for L in LF do #L od, ", #unitary params = ",
-					 	 tempanswerCards[index],
-			     	                ", #new unitary = ", Uhash.size() - startUhash,
-						", #tests for this lambda = ", unitary_test_counter.use_count() - startUcounter,
-						", unitary time for lambda = ", print_time_string(unitaryTime -startUtime));
-					 prints("  char calcs for lambda = ", char_counter.use_count() - startCcounter,
-					 	 " char time = ", print_time_string(charTime - startCtime));
-					 prints("  ------------------")
-				    fi{every_lambda_flag}
-			      fi{#LF[0] = 0}
-                   od{lambda} {would be easy enough to get [Param] for each (x,lambda), but for now just put unitary reps in Uhash}
+	      	   	      	   do let lambdacont = parameter(x,lambda,0*lambda).lambda
+				      then lcontnum = if lambdacont != lambda
+				      	   	     then last(for kappa in lambdas[:index] do kappa = lambdacont od)
+						     else -1
+						     fi
+				      in if lcontnum.>=
+				      	 then tempanswerCards[index]:= tempanswerCards[lcontnum];
+		    	 		      for p in Uparamhash.list()
+			 		      do if p.x = x and p.lambda = lambdacont
+					      	 then Uparamhash.match(contragredient(p))
+			    		    	 fi
+			 		       od;
+		    	 	               big_unitary_hash.finish(x,to_bitset([index]));
+					       {mark as done this lambda for x}
+			            	       for p in Uhash.list()
+	      	       		    	       do if p.x = x and p.lambda = lambdacont
+		       	  	       	       	  then Uhash.match(contragredient(p))
+		    	  	       		  fi
+		       		    	       od
+					  else let lamthlam = ((1+x.involution)*lambda).numer
+		      		      	       then (Lvd, Perm2, mapAct) = LPm_table.LPm_entry(G,x.involution,lamthlam)
+		      		      	       then  startlambda = elapsed_ms(), startUhash = Uhash.size(),
+					       	     startUcounter = unitary_test_counter.use_count(),
+						     startUtime = unitaryTime, startCcounter =
+						     char_counter.use_count(), startCtime = charTime
+				      	       then startLF = elapsed_ms()
+ 		      		      	       then LF = if by_zero_flag {and dominant(G,lamthlam)*G.two_rho_check > 0}
+		      	      	      	      	       	 then localFD_1Dirac2_by_zero(x, lambda, Lvd, Perm2, mapAct)
+			   				 else localFD_1Dirac2(x, lambda, Lvd, Perm2, mapAct)
+			   				 fi {by_zero_flag}
+				      	       then () = if every_lambda_deets_flag
+    	      	      	              	       	       	 then prints("time for localFD_1Dirac2* = ",
+				      	       	    	      print_time_string(elapsed_ms() - startLF),
+			   			    	      " to find [",#LF[0],",",#LF[1],"] verts and edges.")
+	      		   			    	 fi
+			 		   in if #LF[0] = 0
+			    		      then []
+			    		      else if every_lambda_deets_flag
+			       	 	      	   then facet_verbose := old_facet_verbose;
+						   time_verbose := old_time_verbose;
+				    	 	   test_verbose :=old_test_verbose;
+						   test_slightly_verbose := old_test_slightly_verbose
+				 		   fi;
+				 		   let answer = local(x, lambda, LPm_table.FPP_vertex_data(G),
+						       Lvd, LF, pol_hash, Uhash)
+				 		   then () = for p in answer do Uparamhash.match(p) od
+			  	 		   then () = tempanswerCards[index] := #answer
+			  	 		   then () = for p in answer do Uparamhash.match(p) od
+				 		   then () = if every_lambda_deets_flag
+			    	      	   	   	     then facet_verbose := false; time_verbose := false;
+				 	   		     	  test_verbose := false; test_slightly_verbose := false
+				 	   		     fi
+ 			 	 		   then () = templambdatimes [index] := elapsed_ms() - startlambda
+			 	 		   in if every_lambda_flag
+				    		      then prints("  ",print_time_string(templambdatimes[index]),
+			   	    	 	      	   " = time for (x,lambda) = (", x.number, ",",index," = ",
+							   lambda, ")", test_string);
+				         		   prints("    #LF = ", for L in LF do #L od,
+							   ", #unitary params = ", tempanswerCards[index],
+			     	                	   ", #new unitary = ", Uhash.size() - startUhash,
+							   ", #tests for this lambda = ",
+							   unitary_test_counter.use_count() - startUcounter,
+							   ", unitary time for lambda = ",
+							   print_time_string(unitaryTime -startUtime));
+					 		   prints("  char calcs for lambda = ",
+						   	   char_counter.use_count() - startCcounter,
+					 	 	   " char time = ", print_time_string(charTime - startCtime));
+					 		   prints("  ------------------")
+				    		       fi{every_lambda_flag}
+			      			 fi{#LF[0] = 0}
+					    fi{lcontnum.>=}
+                   		od{lambda}
+				{would be easy enough to get [Param] for each (x,lambda), but for now just
+				put unitary reps in Uhash}
            then () = current := elapsed_ms(); currentUhash := Uhash.size();  times[j] := current -former_time;
 	   	     lambdatimes[j] := templambdatimes; currentUcounter := unitary_test_counter.use_count();
 		     answerCards[j]:= tempanswerCards
@@ -638,7 +685,7 @@ set FPP_unitary_hash_bottom_layer([(KGBElt,ratvec)] xlambdas, Param_hash UhashG{
 			      	   then finish(x,lambda)
 				   fi
 			 then () = answerCards[k] := #answer
-			 {then () = for p in answer do Uparamhash.match(p) od}
+			 then () = for p in answer do Uparamhash.match(p) od
    		    	 then () = current := elapsed_ms(); currentUhash := Uhash.size();
 			       	   currentUcounter := unitary_test_counter.use_count();
 				   currentUtime := unitaryTime;
@@ -722,14 +769,14 @@ set FPP_unitary_hash_bottom_layer([KGBElt] xs, Param_hash UhashG{, Param_hash Up
     	       	 then for x in xs do inverse_embed_KGB2(x, Gsc, M) od
 	      	 else xs
 	      	 fi
-    then Uhash = if disconn_flag {this will hold the unitary reps on Gsc}
+    then Uhash = if disconn_flag {this will hold the unitary irrs on Gsc}
     	       	 then big_unitary_hash.uhash(Gsc) {make_Param_hash()}
 		 else UhashG
 		 fi
-    {then Uparamhash = if disconn_flag {this will hold the unitary reps on Gsc}
-    	       	 then make_Param_hash() {make_Param_hash()}
-		 else UparamhashG
-		 fi}
+    then UparamhashTilde = if disconn_flag {this will hold the unitary standard Params on Gsc}
+    	       	 	   then make_Param_hash()
+		 	   else Uparamhash
+		 	   fi
     then start = elapsed_ms(), zeroPol = null_module(G), zeroNu = null(G.rank)/1
     then () = unitaryTime := 0
     then () = charTime :=0
@@ -786,45 +833,54 @@ set FPP_unitary_hash_bottom_layer([KGBElt] xs, Param_hash UhashG{, Param_hash Up
 		       else x
 		       fi
 	 then twnum = if xtwist != x
-                      then first(for y in xs do xtwist = y od)
+                      then last(for y in xs[:j] do xtwist = y od)
                       else -1
                       fi
-	 in if twnum.>= and twnum < j {now xtwist is xs[twnum]}
-	    then answerCards[j]:= answerCards[twnum];
+	 in if twnum.>=  {now xtwist is xs[twnum]}
+	    then answerCards[j]:= answerCards[twnum]; {this is too small if xtwist wasn't computed here}
+	    	 for p in Uparamhash.list()
+		 do if p.x = xtwist
+		    then let ptwist = parameter(x,p.lambda,p.nu)
+		    	 in Uparamhash.match(ptwist)
+		    fi
+		 od;
 		 big_unitary_hash.finish(x, full_N1); {mark as done all lambdas for x}
 		 big_unitary_hash.finishx(x);
-		 for ell:UhashG.size()
-	      	 do let p = UhashG.index(ell)
-		    in if p.x = xtwist
-		       then let ptwist = parameter(x, p.lambda, p.nu)
-		       	    then () = UhashG.match(ptwist)
-		       	    in if disconn_flag
-			       then for psc in sc_lifts2(ptwist,Gsc,M)
-				    do  Uhash.match(psc)
-				    od
+		 for p in UhashG.list()
+	      	 do if p.x = xtwist
+		    then let ptwist = parameter(x, p.lambda, p.nu)
+		       	 then () = UhashG.match(ptwist)
+		       	 in if disconn_flag
+			    then for psc in sc_lifts2(ptwist,Gsc,M)
+				 do  Uhash.match(psc)
+				 od
 			       fi
 		       fi
 		 od
 	    else let xcont = contragredient(x)
 	    	 then contnum = if xcont != x
-		      	      	then first(for y in xs do xcont = y od)
+		      	      	then last(for y in xs[:j] do xcont = y od)
 				else -1
 				fi
-	    	 in if contnum.>= and contnum < j
+	    	 in if contnum.>= {and contnum < j}
 	    	    then answerCards[j]:= answerCards[contnum];
+		    for p in Uparamhash.list()
+		    do if p.x = xcont
+		       then Uparamhash.match(contragredient(p))
+		       fi
+		    od;
 		    big_unitary_hash.finish(x, full_N1);
 		    big_unitary_hash.finishx(x);
-		    for ell:UhashG.size()
-	      	    do let p = UhashG.index(ell)
-		       in if p.x = xcont
-		       	  then let pcont = contragredient(p)
-			       then () = UhashG.match(pcont)
-			       in if disconn_flag
-				  then for psc in sc_lifts2(pcont,Gsc,M)
-				       do Uhash.match(psc)
-				       od
-				  fi
-		    	  fi
+		    for p in UhashG.list()
+	      	    do if p.x = xcont
+		       then let pcont = contragredient(p)
+		       	    then () = UhashG.match(contragredient(p))
+			    in if disconn_flag
+			       then for psc in sc_lifts2(pcont,Gsc,M)
+				    do Uhash.match(psc)
+				    od
+			       fi
+		    	fi
 		    od
 	     	    else let twists = all_lambda_differential_0(x)
     	 then Ncases = #lambdas
@@ -874,12 +930,12 @@ set FPP_unitary_hash_bottom_layer([KGBElt] xs, Param_hash UhashG{, Param_hash Up
 			       then () = for qsc in answer
 				       	 do for y_sc in y_scs
 				     	    do let rsc = parameter(y_sc, qsc.lambda, qsc.nu)
-				     	       {then () = Uparamhash.match(rsc)
+				     	       then () = Uparamhash.match(rsc)
 			             	       then () = if disconn_flag
 					       	       	 then for r in sc_descends(rsc,G,M)
-						    	      do UparamhashG.match(r)
+						    	      do Uparamhash.match(r)
 						    	      od
-					       	  	 fi}
+					       	  	 fi
 					        in for tsc in monomials(finalize(rsc))
 				           	   do Uhash.match(tsc);
 					      	      if disconn_flag
