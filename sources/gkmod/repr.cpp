@@ -1330,8 +1330,8 @@ bool deformation_unit::operator!=(const deformation_unit& another) const
       sample.y().data()!=another.sample.y().data())
     return true; // easy tests for difference
 
-  auto& i_tab = rc.involution_table();
-  const auto& kgb = rc.kgb();
+  auto& i_tab = rt.involution_table();
+  const auto& kgb = rt.kgb();
   InvolutionNbr inv_nr = kgb.inv_nr(sample.x());
 
   {
@@ -1342,7 +1342,7 @@ bool deformation_unit::operator!=(const deformation_unit& another) const
       return true; // difference in the free part of $\lambda$ spotted
   }
 
-  const auto& rd = rc.root_datum();
+  const auto& rd = rt.root_datum();
   const auto& g0=sample.gamma();
   const auto& g1=another.sample.gamma();
   const auto& num0 = g0.numerator();
@@ -1359,7 +1359,7 @@ bool deformation_unit::operator!=(const deformation_unit& another) const
   {
     const RootNbrSet real_posroots = rd.posroot_set() & i_tab.real_roots(inv_nr);
     auto lambda_rho_real2 =
-      rc.lambda_rho(sample)*2-rd.twoRho(rd.posroot_set()^real_posroots);
+      rt.lambda_rho(sample)*2-rd.twoRho(rd.posroot_set()^real_posroots);
     for (auto it=real_posroots.begin(); it(); ++it)
     {
       const auto& alpha_v= rd.coroot(*it);
@@ -1381,8 +1381,8 @@ bool deformation_unit::operator!=(const deformation_unit& another) const
 
 size_t deformation_unit::hashCode(size_t modulus) const
 {
-  auto& i_tab = rc.involution_table();
-  const auto& kgb = rc.kgb();
+  auto& i_tab = rt.involution_table();
+  const auto& kgb = rt.kgb();
   InvolutionNbr inv_nr = kgb.inv_nr(sample.x());
 
   size_t hash = 17*sample.x() + 89*sample.y().data().to_ulong();
@@ -1394,7 +1394,7 @@ size_t deformation_unit::hashCode(size_t modulus) const
   for (auto c : (theta*num+num)/denom) // over temporary |arithmetic::Numer_t|
     hash = 21*hash + c;
 
-  const auto& rd = rc.root_datum();
+  const auto& rd = rt.root_datum();
   { RootNbrSet complex_posroots = rd.posroot_set() & i_tab.complex_roots(inv_nr);
     for (auto it=complex_posroots.begin(); it(); ++it)
       if (i_tab.complex_is_descent(inv_nr,*it))
@@ -1403,7 +1403,7 @@ size_t deformation_unit::hashCode(size_t modulus) const
   {
     const RootNbrSet real_posroots = rd.posroot_set() & i_tab.real_roots(inv_nr);
     auto lambda_rho_real2 =
-      rc.lambda_rho(sample)*2-rd.twoRho(rd.posroot_set()^real_posroots);
+      rt.lambda_rho(sample)*2-rd.twoRho(rd.posroot_set()^real_posroots);
     for (auto it=real_posroots.begin(); it(); ++it)
     {
       const auto& alpha_v= rd.coroot(*it);
@@ -1415,9 +1415,10 @@ size_t deformation_unit::hashCode(size_t modulus) const
   return hash&(modulus-1);
 } // |deformation_unit::hashCode|
 
-void deformation_unit::set_LKTs
-  (Rep_table& rt, simple_list<std::pair<K_repr::K_type,int> >&& finals)
+void deformation_unit::set_LKTs()
 {
+  const Rep_context& rc = rt;
+  auto finals = rc.finals_for(rc.scale_0(sample));
   KT_nr_pol::poly LKTs; LKTs.reserve(length(finals));
   for (auto it=finals.begin(); not finals.at_end(it); ++it)
     LKTs.emplace_back(rt.match(std::move(it->first)),it->second);
@@ -2313,8 +2314,6 @@ const deformation_unit& Rep_table::deformation(const StandardRepr& z)
   auto h=alcove_hash.match(deformation_unit(*this,z));
   {
     deformation_unit& result = pool[h];
-    if (not result.has_LKTs())
-      result.set_LKTs(*this,finals_for(scale_0(z)));
     if (result.has_def_contrib())
       return result;
   }
