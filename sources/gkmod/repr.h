@@ -481,7 +481,7 @@ class deformation_unit
   KT_nr_pol lowest_K_types, def_contrib,
     LKTs_twisted, def_contrib_twisted; // twisted versions at $q = -1$
   K_type_nr_poly untwisted, twisted;
-  const Rep_context& rc; // access coroots etc. necessary for alcove testing
+  Rep_table& rt; // access $K$-type table, coroots (for alcove testing) etc.
 
   RankFlags status; // set bits when defined: |0->defcontrib| up to |3->twisted| 
 public:
@@ -507,6 +507,7 @@ public:
   bool has_twisted_deformation_formula() const  { return status.test(3); }
 
   const KT_nr_pol& LKTs() const { return lowest_K_types; }
+  const KT_nr_pol& LKTs_at_minus_1() const { return LKTs_twisted; }
   const KT_nr_pol& deformation_contribution() const
   { return def_contrib; }
   const KT_nr_pol& twisted_deformation_contribution() const

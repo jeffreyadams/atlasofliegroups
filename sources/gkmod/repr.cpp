@@ -2370,10 +2370,12 @@ K_type_nr_poly Rep_table::full_deformation(StandardRepr z)
     result = K_type_nr_poly(std::move(p),false);
   }
 #ifndef NDEBUG
-  auto& du = deformation(z);
-  auto sum = K_type_nr_poly::convert(du.LKTs());
-  sum -= result;
-  assert(sum.is_zero());
+  K_type_nr_poly sum;
+  {
+    auto& du = deformation(z);
+    sum = K_type_nr_poly::convert(du.LKTs());
+    assert(sum == result);
+  }
 #endif
 
   RatNumList rp=reducibility_points(z);
@@ -2397,11 +2399,11 @@ K_type_nr_poly Rep_table::full_deformation(StandardRepr z)
 
   const auto h = alcove_hash.match(std::move(zn)); // allocate a slot in |pool|
 #ifndef NDEBUG
-  assert(&du==&pool[h]);
-  sum = K_type_nr_poly::convert(du.LKTs());
-  sum.add_multiple(du.deformation_contribution(),Split_integer(1,-1));
-  sum -= result;
-  assert(sum.is_zero());
+  {
+    auto& du = pool[h];
+    sum.add_multiple(du.deformation_contribution(),Split_integer(1,-1));
+    assert(sum == result);
+  }
 #endif
   return pool[h].set_deformation_formula(std::move(result).flatten());
 } // |Rep_table::full_deformation|
