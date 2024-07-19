@@ -235,6 +235,17 @@ explicit
 
   bool is_zero () const { return begin()==end(); } // this ignores zeros
   const term_type& front() const { return *begin(); } // undefined if |is_zero|
+  bool operator==(const self& y) const
+  {
+    for (auto it=begin(); it!=end(); ++it)
+      if (y[it->first]!=it->second)
+	return false;
+    for (const auto& term : y)
+      if ((*this)[term.first]!=term.second)
+	return false;
+    return true;
+  }
+
 
   size_type size() const // only gives upper bound: zero terms are not ignored
   { size_t s=0;
@@ -257,6 +268,22 @@ explicit
       result.push_back(std::move(*it));
     return { std::move(result), false, cmp() }; // transform |poly| into |self|
   }
+
+  self& operator *= (C c)
+  {
+    for (auto it=begin(); not it.has_ended(); ++it)
+      it->second *= c;
+    return *this;
+  }
+
+  template<typename F>
+    self& map_coefficents (F f)
+  {
+    for (auto it=begin(); not it.has_ended(); ++it)
+      it->second = f(it->second);
+    return *this;
+  }
+
 
   // for each |poly| in |L|, keep current and end iterators
   // also maintain iterator |min| to minimum term in this and further |poly|s
