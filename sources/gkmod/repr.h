@@ -481,21 +481,22 @@ class deformation_unit
   KT_nr_pol lowest_K_types, def_contrib,
     LKTs_twisted, def_contrib_twisted; // twisted versions at $q = -1$
   K_type_nr_poly untwisted, twisted;
-  const Rep_context& rc; // access coroots etc. necessary for alcove testing
+  Rep_table& rt; // access $K$-type table, coroots (for alcove testing) etc.
 
-  RankFlags status; // set bits (0-3) when |defcontrib|-|twisted| are defined
+  RankFlags status; // set bits (0-3) when |def_contrib|,|def_contrib_twisted|,
+    // |untwisted|, |twisted| are defined
 public:
-  deformation_unit(const Rep_context& rc, const StandardRepr& sr)
+  deformation_unit(Rep_table& rt, const StandardRepr& sr)
     : sample(sr)
     , lowest_K_types(), def_contrib(), LKTs_twisted(), def_contrib_twisted()
     , untwisted(), twisted()
-    , rc(rc), status(0)
+    , rt(rt), status(0)
   {}
-  deformation_unit(const Rep_context& rc, StandardRepr&& sr)
+  deformation_unit(Rep_table& rt, StandardRepr&& sr)
   : sample(std::move(sr))
   , lowest_K_types(), def_contrib(), LKTs_twisted(), def_contrib_twisted()
   , untwisted(), twisted()
-  , rc(rc), status(0)
+  , rt(rt), status(0)
   {}
 
   deformation_unit(deformation_unit&&) = default; // type is only movable
