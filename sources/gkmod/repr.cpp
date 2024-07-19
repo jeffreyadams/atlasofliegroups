@@ -2670,7 +2670,6 @@ SR_poly Rep_table::twisted_deformation_terms (unsigned long sr_hash)
 } // |twisted_deformation_terms|, version without block
 #endif
 
-#if 1
 const deformation_unit&
   Rep_table::twisted_deformation(const StandardRepr& z, bool& flip)
 {
@@ -2741,7 +2740,7 @@ const deformation_unit&
   return pool[h];
 
 } // |Rep_table::twisted_deformation (StandardRepr z)|
-#endif
+
 
 K_type_nr_poly Rep_table::twisted_full_deformation(StandardRepr z, bool& flip)
 {
@@ -2772,6 +2771,22 @@ K_type_nr_poly Rep_table::twisted_full_deformation(StandardRepr z, bool& flip)
     for (auto&& term : z_K) // convert |K_type_poly| to |K_type_poly|
       result.add_term(K_type_hash.match(std::move(term.first)),term.second);
   }
+#ifndef NDEBUG
+  K_type_nr_poly sum;
+  {
+    bool flipper=false;
+    auto& du = twisted_deformation(z,flipper);
+    sum.add_multiple(du.LKTs(),Split_integer(1,1));
+    auto m = flipper ? Split_integer(-1,1) : Split_integer(1,-1);
+    sum.add_multiple(du.LKTs_at_minus_1(),m);
+    auto halve = [](Split_integer c) -> Split_integer
+      { assert(c.e()%2==0 and c.s()%2==0);
+	return Split_integer(c.e()/2,c.s()/2);
+      };
+    sum.map_coefficents(halve);
+    assert(sum == result);
+  }
+#endif
 
   RatNumList rp=reducibility_points(z);
 
@@ -2809,6 +2824,12 @@ K_type_nr_poly Rep_table::twisted_full_deformation(StandardRepr z, bool& flip)
   }
 
   const auto h = alcove_hash.match(std::move(zu));  // find or allocate a slot
+#ifndef NDEBUG
+  sum.add_multiple(pool[h].twisted_deformation_contribution(),
+		   Split_integer(1,-1));
+  assert(sum == result);
+#endif
+  return pool[h].set_deformation_formula(std::move(result).flatten());
 
   return pool[h].set_twisted_deformation_formula(std::move(result).flatten());
 
