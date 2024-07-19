@@ -1415,9 +1415,10 @@ size_t deformation_unit::hashCode(size_t modulus) const
   return hash&(modulus-1);
 } // |deformation_unit::hashCode|
 
-void deformation_unit::set_LKTs
-  (Rep_table& rt, simple_list<std::pair<K_repr::K_type,int> >&& finals)
+void deformation_unit::set_LKTs()
 {
+  const Rep_context& rc = rt;
+  auto finals = rc.finals_for(rc.scale_0(sample));
   KT_nr_pol::poly LKTs; LKTs.reserve(length(finals));
   for (auto it=finals.begin(); not finals.at_end(it); ++it)
     LKTs.emplace_back(rt.match(std::move(it->first)),it->second);
@@ -2310,8 +2311,6 @@ const deformation_unit& Rep_table::deformation(const StandardRepr& z)
   auto h=alcove_hash.match(deformation_unit(*this,z));
   {
     deformation_unit& result = pool[h];
-    if (not result.has_LKTs())
-      result.set_LKTs(*this,finals_for(scale_0(z)));
     if (result.has_def_contrib())
       return result;
   }
