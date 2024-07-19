@@ -483,20 +483,26 @@ class deformation_unit
   K_type_nr_poly untwisted, twisted;
   Rep_table& rt; // access $K$-type table, coroots (for alcove testing) etc.
 
-  RankFlags status; // set bits when defined: |0->defcontrib| up to |3->twisted| 
+  RankFlags status; // set bits when defined: |0->defcontrib| up to |3->twisted|
+
+  void set_LKTs();
 public:
-  deformation_unit(const Rep_context& rc, const StandardRepr& sr)
+  deformation_unit(Rep_table& rt, const StandardRepr& sr)
     : sample(sr)
     , lowest_K_types(), def_contrib(), LKTs_twisted(), def_contrib_twisted()
     , untwisted(), twisted()
-    , rc(rc), status(0)
-  {}
-  deformation_unit(const Rep_context& rc, StandardRepr&& sr)
+    , rt(rt), status(0)
+  {
+    set_LKTs();
+  }
+  deformation_unit(Rep_table& rt, StandardRepr&& sr)
   : sample(std::move(sr))
   , lowest_K_types(), def_contrib(), LKTs_twisted(), def_contrib_twisted()
   , untwisted(), twisted()
-  , rc(rc), status(0)
-  {}
+  , rt(rt), status(0)
+  {
+    set_LKTs();
+  }
 
   deformation_unit(deformation_unit&&) = default; // type is only movable
 
@@ -513,8 +519,6 @@ public:
   const KT_nr_pol& twisted_deformation_contribution() const
   { return def_contrib_twisted; }
 
-  void set_LKTs
-    (Rep_table& rt, simple_list<std::pair<K_repr::K_type,int> >&& finals);
   void set_def_contrib(KT_nr_pol&& p)
   { status.set(0); def_contrib=std::move(p); }
   void set_LKTs_at_minus_1(KT_nr_pol&& p) { LKTs_twisted = std::move(p); }
