@@ -21,16 +21,23 @@ set torus(CartanClass C) = RealForm:
 
 {a few constructions involving a subtorus T of our fixed Cartan subgroup H}
 
-{matrix gives X_*(T)\subset X_*(H)}
+{Subtorus T of a given torus H}
+
+{matrix gives X_*(T)\subset X_*(H)
+X_*(H)=Z^n, and X_*(T) is a sublattice of this:
+
+T is given by mat:A, A is n\times r, of rank r
+the r columns of A are a basis of X_*(T)=Z^r \subset X_*(H)=Z^n}
+
 set_type SubTorus=mat
+
+{restriction from X^*(H) to X^*(T)}
 
 {Given T, defined determined by X_*(T)\subset X_*(H)
  X^*(T) is naturally a quotient: $X^*(H)/X^*(T/H)
  but this isn't useful, instead we define X^*(T)=Hom(X_*(T),Z)
 
-suppose T is given by mat:A, A is n\times c, of rank c
-the rows of ^A are a basis of X_*(T) {v_1,...,v_c}
-this gives an isomorphism X_*(T)\simeq Z^r
+
 suppose lambda\in X^*(H), then lambda restricted to T
 is in X^*(T)\simeq Z^r. The map is:
 

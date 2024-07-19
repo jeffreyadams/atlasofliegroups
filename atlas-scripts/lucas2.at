@@ -2,15 +2,27 @@
 
 set G=Sp(4,R)
 set L=theta_stable_Levi_by_wt([1,0],KGB(G,0))
-set pl=parameter(KGB(L,2),[0,1],[0,1])
-set cfpl=character_formula(pl)
-set m=monomials(cfpl)
-set answer=Aq_reducible(G,[0,0],[1,0])
-set answer2=Aq_reducible(G,[0,0],[-1,0])
-set cfanswer=character_formula(answer)
-set bad=parameter(KGB(G,5),[0,1],[0,1])
-set shift=[1,-1]
-set shiftbad=parameter(KGB(G,5),[1,0],[1,0])
+set pl2=parameter(KGB(L,2),[2,1],[0,1])
+set pl1=parameter(KGB(L,2),[1,1],[0,1])
+set pl0=parameter(KGB(L,2),[0,1],[0,1])
+
+
+set pg2=estar_irr(pl2,G)
+set pg1=estar_irr(pl1,G)
+set pg0=estar_irr(pl0,G)
+
+set cf2=character_formula(pl2)
+set cf1=character_formula(pl1)
+set cf0=character_formula(pl0)
+
+set mf2=monomials(cf2)
+set mf1=monomials(cf1)
+set mf0=monomials(cf0)
+
+set answer2=Aq(G,[2,0],[1,0])
+set answer1=Aq(G,[1,0],[1,0])
+set answer0=Aq_reducible(G,[0,0],[1,0])
+
 set wp=weak_packets(G)
 set w=G.W[1]
 set fix=parameter(cross(0,bad.x),w*bad.lambda, w*bad.nu)

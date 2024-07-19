@@ -117,11 +117,68 @@ in
 let (H,)=fixed(G,G.distinguished_involution) in 
 prints(H);for (H,)@i in all do prints(i, " ", H) od
 
-set weak_endoscopic_group(RootDatum G_vee,mat delta_vee, ratvec s)=(RootDatum,mat,RootDatum):
+
+{given (G_v,delta_v,s) return (H,M,H_vee)
+recall T_G_vee maps onto T_H_vee, and T_H maps into T_G
+in other words
+ M: X_*(T_H_vee) -> X_*(T_G_vee)   and this is exactly the same as saying
+ M: X^*(T_H) -> X^*(T_G)
+ so M*H_vee.simple_coroots and M*H.simple_roots make sense
+On the other hand
+ ^M: X^*(T_G_vee) -> X^*(T_H_vee) and
+ ^M: X_*(T_H) -> X^*(T_G) and
+ 
+I think:
+
+M:  each simple root for H to a sum of simple roots for G
+M:  each simple coroot for H_vee to a sum of simple roots for G_vee
+^M: each simple coroot for G to a single simple coroot for H
+^M: each simple root for G_vee to a single simple root for H_vee
+
+Example:
+
+atlas> set G_vee=GL(4,R)
+atlas> set delta_vee=G_vee.distinguished_involution
+atlas> set G=dual(G_vee)
+atlas> set (H,M,H_vee)=weak_endoscopic_group (G_vee,delta_vee)
+atlas> H
+Value: adjoint root datum of Lie type 'B2'
+atlas> H_vee
+Value: simply connected root datum of Lie type 'C2'
+atlas> ^M*G.simple_coroots
+| -1,  0, -1 |
+|  1, -2,  1 |
+atlas> H.simple_coroots
+| -1,  0 |
+|  1, -2 |
+atlas> ^M*G_vee.simple_roots
+| -1,  0, -1 |
+|  1, -2,  1 |
+atlas> H_vee.simple_roots
+| -1,  0 |
+|  1, -2 |
+
+atlas> M*H.simple_roots
+|  1,  0 |
+| -1,  1 |
+|  1, -1 |
+| -1,  0 | {each column is a sum of roots}
+
+atlas> M*H_vee.simple_coroots
+|  1,  0 |
+| -1,  1 |
+|  1, -1 |
+| -1,  0 | {each column is a sum of coroots}
+ }
+set complex_endoscopic_group(RootDatum G_vee,mat delta_vee, ratvec s)=(RootDatum,mat,RootDatum):
 let (H_vee,M)=fixed(G_vee,delta_vee,s) in (dual(H_vee),M,H_vee)
 
-set weak_endoscopic_group(RootDatum G_vee, ratvec s)=(RootDatum,mat,RootDatum):
-let H_vee=fixed(G_vee,s) in (dual(H_vee),id_mat(rank(G_vee)),H_vee)
+set complex_endoscopic_group(RootDatum G_vee, ratvec s)=(RootDatum,mat,RootDatum):
+complex_endoscopic_group(G_vee,id_mat(rank(G_vee)),s)
+
+set complex_endoscopic_group(RootDatum G_vee, mat delta)=(RootDatum,mat,RootDatum):
+complex_endoscopic_group(G_vee,delta,null(rank(G_vee)))
+
 
 set twisted_action(WeylElt w, mat delta, ratvec v)=ratvec:
 w.matrix*(delta*v)
@@ -130,19 +187,26 @@ w.matrix*(delta*v)
  s is given by a ratvec, condition is w\delta(s)-s in X_*}
 set is_fixed(WeylElt w,mat delta, ratvec v)=bool:is_integer(w*delta*v-v)
 
-set endoscopic_group(RootDatum G_vee, mat delta_vee,ratvec s,WeylElt w_G_vee)=
-let (H,M,H_vee)=weak_endoscopic_group(G_vee,delta_vee,s) then
-L_M=left_inverse(M) then
-restrict=L_M*w_G_vee.matrix*M then
-{()=prints( "restrict: ", restrict) then}
+set restrict_co_action(mat M, mat A)=mat:left_inverse(M)*A*M
+
+set weak_endoscopic_group(RootDatum G_vee, mat delta_vee,mat xi_vee,ratvec s,WeylElt w_G_vee)=
+assert(delta_vee*matrix(w_G_vee)=matrix(w_G_vee)*delta_vee,"w_G_vee doesn't commute with delta_vee");
+{assert(is_fixed(w_G_vee,xi_vee,s), "w_G_vee*xi_vee doesn't fix s");}
+let (H,M,H_vee)=complex_endoscopic_group(G_vee,delta_vee,s) then
+()=prints("complex H: ", H) then
+()=prints("complex H_vee: ", H_vee) then
+restrict=restrict_co_action(M,w_G_vee.matrix) then
 (w_H,)=to_dominant(H,restrict*H.rho) then
+()=prints("w_H: ", w_H, new_line, w_H.matrix) then
+{()=prints( "restrict: ", restrict) then}
 {()=prints("wh:", w_H.matrix) then}
 dual_inner_class=inner_class(H_vee,w_H.matrix) in 
-(dual(dual_inner_class),dual_inner_class,restrict,^restrict)
-
+(dual(dual_inner_class),M,dual_inner_class)
+{
 set endoscopic_group(RootDatum G_vee, mat delta_vee,ratvec s)=endoscopic_group(G_vee,delta_vee,s,id_W(G_vee))
 set endoscopic_group(RootDatum G_vee, mat delta_vee,WeylElt w_G_vee)=endoscopic_group(G_vee,delta_vee,null(rank(G_vee)),w_G_vee)
 set endoscopic_group(RootDatum G_vee, mat delta_vee)=endoscopic_group(G_vee,delta_vee,null(rank(G_vee)), id_W(G_vee))
 set endoscopic_group(RootDatum G_vee, ratvec s, WeylElt w_G_vee)=endoscopic_group(G_vee,id_mat(rank(G_vee)),s,w_G_vee)
 set endoscopic_group(RootDatum G_vee, ratvec s)=endoscopic_group(G_vee,id_mat(rank(G_vee)),s,id_W(G_vee))
 
+}
