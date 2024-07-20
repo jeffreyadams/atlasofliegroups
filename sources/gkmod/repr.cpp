@@ -2824,6 +2824,12 @@ K_type_nr_poly Rep_table::twisted_full_deformation(StandardRepr z, bool& flip)
   }
 
   const auto h = alcove_hash.match(std::move(zu));  // find or allocate a slot
+#ifndef NDEBUG
+  sum.add_multiple(pool[h].twisted_deformation_contribution(),
+		   Split_integer(1,-1));
+  assert(sum == result);
+#endif
+  return pool[h].set_deformation_formula(std::move(result).flatten());
 
   return pool[h].set_twisted_deformation_formula(std::move(result).flatten());
 
