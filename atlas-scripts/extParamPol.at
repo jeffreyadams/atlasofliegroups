@@ -33,16 +33,28 @@ set_type [ ZParamPol = ParamPol]   {Z-coefficients}
 set_type [ ZExtParamPol = (ZParamPol P_plus, ZParamPol P_minus, ZParamPol P_ind,mat delta)]       {each term has Z coeffs}
 set_type [ ExtParamPol = (mat xi, ParamPol P_plus, ParamPol P_minus, ParamPol P_ind,mat delta)]  {each term has Z[s] coeffs}
 
+set real_form(ZExtParamPol (P,Q,R,))=RealForm:
+ if #P!=0 then P.real_form 
+ elif #Q!=0 then Q.real_form
+ elif #R!=0 then R.real_form else torus(0,0,0) fi
+
+set real_form(ExtParamPol (,P,Q,R,))=RealForm:
+ if #P!=0 then P.real_form 
+ elif #Q!=0 then Q.real_form
+ elif #R!=0 then R.real_form else torus(0,0,0) fi
+
 set param_pol(ZParamPol P)=ParamPol:P
 set ext_param_pol(ZExtParamPol (P,Q,R,delta))=ExtParamPol:(P.real_form.distinguished_involution,P,Q,R,delta)
 
 {list of params occuring in three terms}
 {param_pol(monmials(P)) = terms from P with all +1 coefficients, add these, and take monomials of the result}
-set monomials(ZExtParamPol (P,Q,R,))=[Param]:
-monomials(param_pol(monomials(P))+param_pol(monomials(Q))+param_pol(monomials(R)))
+set monomials(ZExtParamPol X)=[Param]:
+let G=real_form(X) in 
+monomials(param_pol(monomials(X.P_plus),G)+param_pol(monomials(X.P_minus),G)+param_pol(monomials(X.P_ind),G))
 
-set monomials(ExtParamPol (,P,Q,R,))=[Param]:
-monomials(param_pol(monomials(P))+param_pol(monomials(Q))+param_pol(monomials(R)))
+set monomials(ExtParamPol X)=[Param]:
+let G=real_form(X) in 
+monomials(param_pol(monomials(X.P_plus),G)+param_pol(monomials(X.P_minus),G)+param_pol(monomials(X.P_ind),G))
 
 
 

@@ -224,9 +224,10 @@ set big_partial_KL_P_polynomials(Param p,mat delta) = i_poly_mat:
   ; P
   fi
 }
+
 set endoscopic(RootDatum G,mat delta)=(RootDatum,mat):
 let Gd=G.dual then
-trd=twisted_root_datum(Gd,^delta) then
+trd=TwistedRootDatum:(Gd,^delta) then
 {the old version of folded @(TwistedRootDatum in root_datum.at should work}
 (Hd,M)=folded(Gd,^delta) then
 H=Hd.dual in
