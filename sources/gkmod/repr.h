@@ -480,7 +480,6 @@ class deformation_unit
 
   KT_nr_pol lowest_K_types, def_contrib,
     LKTs_twisted, def_contrib_twisted; // twisted versions at $q = -1$
-  K_type_nr_poly untwisted, twisted;
   Rep_table& rt; // access $K$-type table, coroots (for alcove testing) etc.
 
   RankFlags status; // set bits when defined: |0->defcontrib| up to |3->twisted|
@@ -490,7 +489,6 @@ public:
   deformation_unit(Rep_table& rt, const StandardRepr& sr)
     : sample(sr)
     , lowest_K_types(), def_contrib(), LKTs_twisted(), def_contrib_twisted()
-    , untwisted(), twisted()
     , rt(rt), status(0)
   {
     set_LKTs();
@@ -498,7 +496,6 @@ public:
   deformation_unit(Rep_table& rt, StandardRepr&& sr)
   : sample(std::move(sr))
   , lowest_K_types(), def_contrib(), LKTs_twisted(), def_contrib_twisted()
-  , untwisted(), twisted()
   , rt(rt), status(0)
   {
     set_LKTs();
@@ -506,11 +503,9 @@ public:
 
   deformation_unit(deformation_unit&&) = default; // type is only movable
 
-  bool has_LKTs() const { return not lowest_K_types.is_zero(); }
   bool has_def_contrib() const { return status.test(0); }
   bool has_twdef_contrib() const { return status.test(1); }
-  bool has_deformation_formula() const  { return status.test(2); }
-  bool has_twisted_deformation_formula() const  { return status.test(3); }
+  // no separate test for |LKTs_twisted|: it is set whenever |has_twdef_contrib|
 
   const KT_nr_pol& LKTs() const { return lowest_K_types; }
   const KT_nr_pol& LKTs_at_minus_1() const { return LKTs_twisted; }
@@ -524,18 +519,6 @@ public:
   void set_LKTs_at_minus_1(KT_nr_pol&& p) { LKTs_twisted = std::move(p); }
   void set_twisted_contribution(KT_nr_pol&& p)
   { status.set(1); def_contrib_twisted=std::move(p); }
-
-  size_t def_form_size () const { return untwisted.size(); }
-  size_t twisted_def_form_size () const { return twisted.size(); }
-
-  K_type_nr_poly def_formula() const       { return untwisted.copy(); }
-  K_type_nr_poly twisted_def_formula() const { return twisted.copy(); }
-
-  K_type_nr_poly set_deformation_formula (K_type_nr_poly formula)
-  { untwisted = formula.copy(); status.set(2); return std::move(formula); }
-
-  K_type_nr_poly set_twisted_deformation_formula (K_type_nr_poly formula)
-  { twisted = formula.copy(); status.set(3); return std::move(formula); }
 
 // special members required by HashTable
   using Pooltype = std::vector<deformation_unit>;
@@ -728,7 +711,7 @@ class Rep_table : public Rep_context
   const deformation_unit& // warning: transient reference (into |pool| vector)
   twisted_deformation(const StandardRepr& z, bool& flip);
   K_type_nr_poly
-  twisted_full_deformation(StandardRepr z, bool& flip); // by value
+  twisted_full_deformation(StandardRepr z); // by value
 
  private:
   class Bruhat_generator; // helper class: internal |add_block_below| recursion
