@@ -2349,62 +2349,13 @@ K_type_nr_poly Rep_table::full_deformation(StandardRepr z)
   if (z.gamma().denominator() > (1LL<<rank()))
     z = weyl::alcove_center(*this,z);
 
-  deformation_unit zn(*this,z);
-  { // look up if deformation formula for |z| is already known and stored
-    unsigned long h=alcove_hash.find(zn);
-    if (h!=alcove_hash.empty and pool[h].has_deformation_formula())
-      return pool[h].def_formula();
-  }
-
   interpreter::check_interrupt(); // make this recursive function interruptible
 
   K_type_nr_poly result;
-  {
-    auto base_pol = finals_for(scale_0(z)); // a $\Z$-linear combin. of K-types
-    K_type_nr_poly::poly p;
-    p.reserve(containers::length(base_pol));
-    for (auto it=base_pol.begin(); not base_pol.at_end(it); ++it)
-      p.emplace_back
-	(K_type_hash.match(std::move(it->first)),Split_integer(it->second));
-    result = K_type_nr_poly(std::move(p),false);
-  }
-#ifndef NDEBUG
-  K_type_nr_poly sum;
-  {
-    auto& du = deformation(z);
-    sum = K_type_nr_poly::convert(du.LKTs());
-    assert(sum == result);
-  }
-#endif
-
-  RatNumList rp=reducibility_points(z);
-  // working towards $\nu=0$ might improve chances for reusage of early results:
-  for (unsigned i=rp.size(); i-->0; )
-  {
-    StandardRepr zi = scale(z,rp[i]);
-    deform_readjust(zi); // necessary to ensure the following |assert| will hold
-    assert(is_final(zi)); // ensures that |deformation_terms| won't refuse
-    BlockElt new_z; block_modifier bm;
-    auto& block = lookup(zi,new_z,bm);
-    assert((involution_table().matrix(kgb().inv_nr(block.x(new_z)))*bm.shift
-	    +bm.shift).is_zero());
-    for (auto& term : deformation_terms(block,new_z,bm,zi.gamma()))
-    {
-      const auto& def = full_deformation(term.first); // recursion
-      result.add_multiple
-	(def,Split_integer(term.second,-term.second)); // $(1-s)*c$
-    }
-  }
-
-  const auto h = alcove_hash.match(std::move(zn)); // allocate a slot in |pool|
-#ifndef NDEBUG
-  {
-    auto& du = pool[h];
-    sum.add_multiple(du.deformation_contribution(),Split_integer(1,-1));
-    assert(sum == result);
-  }
-#endif
-  return pool[h].set_deformation_formula(std::move(result).flatten());
+  auto& du = deformation(z);
+  result = K_type_nr_poly::convert(du.LKTs());
+  result.add_multiple(du.deformation_contribution(),Split_integer(1,-1));
+  return result;
 } // |Rep_table::full_deformation|
 
 
@@ -2678,26 +2629,21 @@ const deformation_unit&
   const auto& delta = inner_class().distinguished();
 
   auto h = alcove_hash.match(deformation_unit(*this,z));
+  if (pool[h].has_twdef_contrib())
   {
-    deformation_unit& result=pool[h];
-    if (result.has_twdef_contrib())
-    {
-      Ext_rep_context ctxt(*this,delta);
-      auto E =
-	ext_block::shifted_default_extension(ctxt,z,result.sample.gamma());
-      flip ^= not ext_block::is_default(E); // switch |flip| if not default
-      return result;
-    }
+    Ext_rep_context ctxt(*this,delta);
+    auto E =
+      ext_block::shifted_default_extension(ctxt,z,pool[h].sample.gamma());
+    flip ^= not ext_block::is_default(E); // switch |flip| if not default
+    return pool[h];
   }
 
   interpreter::check_interrupt(); // make this recursive function interruptible
 
-  KT_nr_pol P { std::less<K_type_nr>() };
-  {
-    // initialise |P| to restriction of |z| expanded to finals
+  KT_nr_pol P { std::less<K_type_nr>() }; // order terms using |K_type_hash|
+  { // compute the LKTs with possible sign flips, using |extended_restrict_to_K|
     auto z_K = ext_block::extended_restrict_to_K(*this,z,delta);
-    // the following loop reorders terms by |std::less<K_type_nr>|
-    for (auto&& term : z_K) // convert |K_type_poly| to |KT_nr_pol|
+    for (auto&& term : z_K) // look up K-types, map coefs to |int|, and reorder
       P.add_term(K_type_hash.match(std::move(term.first)),
 		 term.second.s_to_minus_1());
     pool[h].set_LKTs_at_minus_1(std::move(P));
@@ -2712,7 +2658,6 @@ const deformation_unit&
     std::pair<StandardRepr,bool> p =
       ext_block::scaled_extended_finalise(*this,z,delta,rp[i]);
     StandardRepr zi = std::move(p.first);
-    const bool flip_p = p.second;
     BlockElt index; block_modifier bm;
     auto& block = lookup(zi,index, bm);
 
@@ -2729,7 +2674,7 @@ const deformation_unit&
     for (auto&& term :
 	   twisted_deformation_terms(block,eblock,index,bm,zi.gamma()))
     {
-      bool flip_def=flip_p;
+      bool flip_def=p.second; // initialise to flip from scaling |z| by |rp[i]|
       const auto& def =
 	twisted_deformation(std::move(term.first),flip_def); // recursion
       if (flip_def) term.second = -term.second;
@@ -2744,97 +2689,30 @@ const deformation_unit&
 } // |Rep_table::twisted_deformation (StandardRepr z)|
 
 
-K_type_nr_poly Rep_table::twisted_full_deformation(StandardRepr z, bool& flip)
+K_type_nr_poly Rep_table::twisted_full_deformation(StandardRepr z)
 {
   assert(is_final(z));
   assert(is_delta_fixed(z));
   if (z.gamma().denominator() > (1LL<<rank()))
     z = weyl::alcove_center(*this,z);
-  const auto& delta = inner_class().distinguished();
-
-  deformation_unit zu(*this,z);
-  { // if formula for |z| is stored, return it; caller multiplies by |s^flip|
-    const auto h=alcove_hash.find(zu);
-    if (h!=alcove_hash.empty and pool[h].has_twisted_deformation_formula())
-    {
-      Ext_rep_context ctxt(*this,delta);
-      auto E =
-	ext_block::shifted_default_extension(ctxt,z,pool[h].sample.gamma());
-      flip = not ext_block::is_default(E); // set |flip| if not default
-      return pool[h].twisted_def_formula();
-    }
-  }
-  flip = false; // no flip will be exported in other cases
 
   K_type_nr_poly result { std::less<K_type_nr>() };
-  { // initialise |result| to restriction of |z| expanded to finals
-    auto z_K = ext_block::extended_restrict_to_K(*this,z,delta);
-    // the following loop reorders terms by |std::less<K_type_nr>|
-    for (auto&& term : z_K) // convert |K_type_poly| to |K_type_poly|
-      result.add_term(K_type_hash.match(std::move(term.first)),term.second);
-  }
-#ifndef NDEBUG
-  K_type_nr_poly sum;
+  bool flipper=false;
+  auto& du = twisted_deformation(z,flipper);
+  result.add_multiple(du.LKTs(),Split_integer(1,1));
+  result.add_multiple(du.LKTs_at_minus_1(),
+		      flipper ? Split_integer(-1,1) : Split_integer(1,-1));
   {
-    bool flipper=false;
-    auto& du = twisted_deformation(z,flipper);
-    sum.add_multiple(du.LKTs(),Split_integer(1,1));
-    auto m = flipper ? Split_integer(-1,1) : Split_integer(1,-1);
-    sum.add_multiple(du.LKTs_at_minus_1(),m);
     auto halve = [](Split_integer c) -> Split_integer
       { assert(c.e()%2==0 and c.s()%2==0);
 	return Split_integer(c.e()/2,c.s()/2);
       };
-    sum.map_coefficents(halve);
-    assert(sum == result);
-  }
-#endif
-
-  RatNumList rp=reducibility_points(z);
-
-  // compute the deformation terms at all reducibility points
-  for (unsigned i=rp.size(); i-->0; )
-  {
-    std::pair<StandardRepr,bool> p =
-      ext_block::scaled_extended_finalise(*this,z,delta,rp[i]);
-    StandardRepr zi = std::move(p.first);
-    const bool flip_p = p.second;
-    BlockElt index; block_modifier bm;
-    auto& block = lookup(zi,index, bm);
-
-#ifndef NDEBUG
-    {
-      auto rep = block.representative(index);
-      shift(bm.shift,rep);
-      transform<false>(bm.w,rep);
-      assert(rep==StandardReprMod::mod_reduce(*this,zi));
-    }
-#endif
-    auto& eblock = block.extended_block(bm,&poly_hash);
-
-    for (auto&& term :
-	   twisted_deformation_terms(block,eblock,index,bm,zi.gamma()))
-    { bool flip_def;
-      const auto& def =
-	twisted_full_deformation(std::move(term.first),flip_def); // recursion
-      result.add_multiple
-	(def,
-	 flip_p!=flip_def ? Split_integer(-term.second,term.second)
-			  : Split_integer(term.second,-term.second)
-	 );
-    }
+    result.map_coefficents(halve);
   }
 
-  const auto h = alcove_hash.match(std::move(zu));  // find or allocate a slot
-#ifndef NDEBUG
-  sum.add_multiple(pool[h].twisted_deformation_contribution(),
-		   Split_integer(1,-1));
-  assert(sum == result);
-#endif
-  return pool[h].set_deformation_formula(std::move(result).flatten());
-
-  return pool[h].set_twisted_deformation_formula(std::move(result).flatten());
-
+  result.add_multiple(du.twisted_deformation_contribution(),
+		      Split_integer(1,-1));
+  return result;
 } // |Rep_table::twisted_full_deformation (StandardRepr z)|
 
 K_type_poly export_K_type_pol(const Rep_table& rt,const K_type_nr_poly& P)
