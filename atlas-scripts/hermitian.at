@@ -4,7 +4,7 @@
 <count.at {for unitary_test_counter}
 <time.at {for print_time_string}
 <cohom_reductionND {for derived_factor_params}
-<FPP_facets_geom {for herm_center}
+<FPP_faces_geom {for herm_center}
 <writeFiles {for write commands}
 set deformLookupCounter = make_counter()
 set deformCalcCounter = make_counter()
@@ -214,7 +214,8 @@ set write_deformation_frac = 100
 {write the part of deformation_hash referring to G}
 set write_deformation_hash(RealForm G) = void:
     let param_list = deform_param_hash.list()
-    then M = max((for P@j in deformed_data do deform_use_count[j]*#deformed_data[j] od)#0)
+    then M = max((for P@j in deformed_data do
+    deform_use_count[j]*#deformed_data[j] od)#0)
     then good_j = for p@j in param_list
     	 	   do if p.real_form = G and deform_use_count[j]* #deformed_data[j] *write_deformation_frac > M
 		      then [j]
