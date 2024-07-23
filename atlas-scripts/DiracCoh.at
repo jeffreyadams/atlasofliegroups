@@ -15,6 +15,37 @@ set gammaKs(RealForm G, RealForm K0, ratvec gamma) = [ratvec]:
 	  fi
        od.##.sort_u
 
+set gammaK_G_hash = make_RealForm_hash()
+set gammaK_gamma_hashes = [ratvec_hash]: [] {one for each real form K}
+set gammaK_gammas_data = [[[ratvec]]]:[] {one for each real form K, and ratvec gamma}
+
+set gammaKs(RealForm G, ratvec gamma) = [ratvec]:
+    let () = assert(is_equal_rank(G),"gammaKs works only for G equal rank")
+    then I = gammaK_G_hash.size()
+    then i = gammaK_G_hash.match(G)
+    then () = if i = I {new group}
+	      then gammaK_gamma_hashes #:= make_ratvec_hash()
+	      fi
+    then K0 = K_0(G)
+    then () = gamma := dominant(G,gamma)
+    then J = gammaK_gamma_hashes[i].size()
+    then j = gammaK_gamma_hashes[i].match(gamma)
+    in if j=J {new gamma}
+       then let datai = gammaK_gammas_data[i] {type [[ratvec]]}
+       	    {then () = gammaK_gammas_data[i] := datai}
+       	    then () = datai #:= for w in W(G)
+       	    	       		do if not (is_dominant(K0, w*gamma - K0.rho))
+       	       	       	  	   then []
+	       		  	   else [w*gamma - K0.rho]
+	  		  	   fi
+       		       		od.##.sort_u
+	    {then test = [[ratvec]]: datai}
+	    then () = gammaK_gammas_data[i] := datai
+	    in datai[j]
+	else gammaK_gammas_data[i][j]
+        fi
+
+
 {list of all KType's (representations of K) contributing to a
 given infinitesimal character. The KGBElt has to be in the fundamental
 fiber; it fixes the coords used for K0. (So for human coords on Sp(2n,R),

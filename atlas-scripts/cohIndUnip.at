@@ -196,7 +196,7 @@ set coh_ind_unip(RealForm G, Param_hash Uhash) = void:
     let startTime = elapsed_ms(), oldSize = Uhash.size(), Qs = Qs(G)
     then () = for Q@j in Qs
     	      do coh_ind_unip(Q,Uhash);
-	         if time_verbose and j%(#Qs\20) = 0
+	         if time_verbose and j%(max(#Qs\20,2)) = 0
 		 then prints("finished parabolic #", j,
 		    " after ",print_time_string(elapsed_ms() - startTime),
 		    "; found ",Uhash.size() - oldSize, " reps.") fi
