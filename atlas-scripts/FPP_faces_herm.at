@@ -1250,6 +1250,7 @@ set make_Lvd_Perm2_mapAct_table() = Lvd_Perm2_mapAct_table:
       let (i,j) = add_cands{lamthlam_hash}(ic,theta), th1 = theta+1
       then k = lamthlam_hashess[i][j].lookup(lamthlam)
       in entries[i][j][k].Lvd
+      {the next function FAILS in U(3,3), called inside FPP_unitary_hash(U(3,3))}
     , ((InnerClass, mat, vec) -> Lvd_Perm2_mapAct): {LPm_entry} (InnerClass ic, mat theta, vec lamthlam)
     Lvd_Perm2_mapAct:
       let (i,j) = add_cands(ic,theta), th1 = theta+1
@@ -1389,6 +1390,10 @@ set_type
   {, ( -> vec) nuhash_sizes {for every real form, the number of nonunitary reps}}
   {, (RealForm -> int) nuhash_size {for one real form, number of nonunitary reps}}
   , ( -> ) clear
+  {, (RealForm -> ) clearG
+  , ( -> [[int]]) xl_known_now
+  , ( -> [int]) x_partial_now
+  , ( -> [int]) x_known_now}
   , (RealForm -> int) rf_number {number of real form in list}
   , (int -> RealForm) rf_index {jth real form in list}
   , (RealForm -> [int]) xl_known {for each x, bitmap of lambda for which FPP unitary dual is known}
@@ -1447,11 +1452,22 @@ set make_big_unitary_hash() = big_unitary_hash_table:
 			{then () = uhashes #:= make_Param_hash()}
 			in {n}uhashes #:= make_Param_hash()
 	    	   fi
+	  {then () = prints("x_known = ",x_known,", x_partial = ",x_partial)}
 	  {then () = if i=I then prints((real_form_hash.size(), #uhashes, #xl_known)) fi}
 	  then () = assert(real_form_hash.size() = #uhashes and #uhashes = #xl_known
 	       	    				 {and #nuhashes = #uhashes} and #uhashes = #x_known
 						 and #x_partial = #x_known, "big_unitarity_hash damaged")
 	  in i
+    {then clearG(RealForm rf) = void:
+    	 let i = real_form_hash.lookup(rf)
+	 in if i >= 0
+	    then {prints(i);}
+	    	 uhashes[i].clear;
+	    	 {prints("i = ",i, ", x_partial = ",x_partial);}
+	    	 x_partial[i] := 0;
+		 xl_known[i] := [];
+		 x_known[i] := 0
+	    fi}
     in
     ( (->int): {real_form_size} @int: real_form_hash.size()
     , ( -> vec): {uhash_sizes} @vec: for uhash in uhashes do uhash.size() od
@@ -1461,6 +1477,11 @@ set make_big_unitary_hash() = big_unitary_hash_table:
     {, (RealForm -> int): {nuhash_size} (RealForm rf) int:
       nuhashes[add_real_form(rf)].size()}
     , ( -> ): {clear} clear
+    {, (RealForm -> ): {clearG} (RealForm rf):
+      clearG(rf)}
+    {, ( -> [[int]]): {xl_known_now} @[[int]]: xl_known
+    , ( -> [int]): {x_partial_now} @[int]: x_partial
+    , ( -> [int]): {x_known_now} @[int]: x_known}
     , (RealForm -> int): {rf_number} (RealForm rf) int:
       add_real_form(rf)
     , (int -> RealForm): {rf_index} (int i) RealForm:

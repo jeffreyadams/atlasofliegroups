@@ -98,10 +98,11 @@ fair induction for G}
 set shifts(KGPElt Q) = [vec]:
     shifts(Q, null(Q.real_form.rank)/1)
 
-{to be used as shift in unipotent_representations(Levi, shift)}
+{Each is to be used as a shift in unipotent_representations(Levi, shift)}
 set offsets(KGPElt Q) = [ratvec]:
     let G = Q.real_form, tworhou = two_rho_u(Q)
-    then ks = [int]:
+    then ks = [int]: {these are the simple coroots positive on rhou,
+    up to distinguished involution delta}
     	 for j@k in (imag_simple(G)##complex_simple(G))
 	 do if tworhou*G.simple_coroots[j] > 0 then [k]
 	    else []
@@ -161,15 +162,19 @@ set coh_ind_unip(KGPElt Q, Param_hash Uhash, ratvec v) = void:
 set coh_ind_unip(KGPElt Q, Param_hash Uhash) = void:
     coh_ind_unip(Q, Uhash, null(Q.real_form.rank)/1)
 
-set coh_ind_unip_long(RealForm G, Param_hash Uhash) = void:
-    let startTime = elapsed_ms(), oldSize = Uhash.size(), Qs = Qs(G)
+set coh_ind_unip_verbose = false
+set coh_ind_unip_long(RealForm G, [KGPElt] Qs, Param_hash Uhash) = void:
+    let startTime = elapsed_ms(), oldSize = Uhash.size()
     then () = for Q@j in Qs
     	      do for v in offsets(Q)
     	      	 do coh_ind_unip(Q,Uhash,v)
-		 od{;
-		 if j%(#Qs\20) = 0 then prints("finished parabolic #", j,
+		 od;
+		 if coh_ind_unip_verbose and
+		    j%(max(#Qs\20,2)) = 0
+		 then prints("finished parabolic #", j,
 		    " after ",print_time_string(elapsed_ms() - startTime),
-		    "; found ",Uhash.size() - oldSize, " reps.") fi}
+		    "; found ",Uhash.size() - oldSize, " reps.")
+		 fi
 	      od
     then () = if time_verbose
     	 then prints("Found ",Uhash.size() - oldSize, " new unitary reps.");
@@ -178,12 +183,20 @@ set coh_ind_unip_long(RealForm G, Param_hash Uhash) = void:
          fi
     in ()
 
+{just induced from proper Q}
+set coh_ind_unip_long(RealForm G, Param_hash Uhash) = void:
+    coh_ind_unip_long(G,Qs(G),Uhash)
+
+{include unip reps of G}
+set coh_ind_unip_long_G(RealForm G, Param_hash Uhash) = void:
+    coh_ind_unip_long(G,Qs(G)#parabolic_by_wt(null(G.rank),KGB(G,0)),Uhash)
+
 {broken because of dependence on unipotent_representations2}
 {set coh_ind_unip_long2(RealForm G, Param_hash Uhash) = void:
     let startTime = elapsed_ms(), oldSize = Uhash.size(), Qs = Qs(G)
     then () = for Q@j in Qs
               do coh_ind_unip2(Q,Uhash);
-	      	 if j%(#Qs\20) = 0 then prints("finished parabolic #", j,
+	      	 if j%(max(#Qs\20,2)) = 0 then prints("finished parabolic #", j,
 		    " after ",print_time_string(elapsed_ms() - startTime),
 		    "; found ",Uhash.size() - oldSize, " reps.") fi
 	      od
@@ -196,10 +209,13 @@ set coh_ind_unip(RealForm G, Param_hash Uhash) = void:
     let startTime = elapsed_ms(), oldSize = Uhash.size(), Qs = Qs(G)
     then () = for Q@j in Qs
     	      do coh_ind_unip(Q,Uhash);
-	         if time_verbose and j%(max(#Qs\20,2)) = 0
+	         if coh_ind_unip_verbose
+		    and j%(max(#Qs\20,2)) = 0
 		 then prints("finished parabolic #", j,
 		    " after ",print_time_string(elapsed_ms() - startTime),
-		    "; found ",Uhash.size() - oldSize, " reps.") fi
+		    "; found ",Uhash.size() - oldSize, " reps.");
+		 oldSize := Uhash.size()
+		 fi
     	      od
     then () = if time_verbose
     	 then prints("Found ",Uhash.size() - oldSize, " new unitary reps.");
