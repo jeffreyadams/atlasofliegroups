@@ -8188,6 +8188,32 @@ void twisted_full_deform_wrapper(expression_base::level l)
     (p->rf,export_K_type_pol(p->rt(),result)));
 }
 
+@ As an experiment, we provide a variant of the |full_deform| function with a
+time-out argument; currently it simply means that if the computation does not
+finish in the allotted time, we return to the interpreter (because the code will
+throw an exception that we do not attempt to catch here).
+
+@< Local function def...@>=
+void timed_full_deform_wrapper(expression_base::level l)
+{ auto period = get<int_value>()->long_val();
+  own_module_parameter p = get_own<module_parameter_value>();
+  if (l==expression_base::no_value)
+    return;
+@)
+  repr::K_type_poly result;
+    // this is the data type used by |Rep_table::deformation|
+  auto finals = p->rc().finals_for(p->val);
+@)
+  set_timer(period);
+  for (auto it=finals.begin(); not finals.at_end(it); ++it)
+    for (auto&& term : p->rt().deformation(std::move(it->first)))
+      result.add_term(std::move(term.first),term.second*it->second);
+  clear_timer();
+@) // now convert from (tabled) |repr::K_type_poly| to |K_repr::K_type_pol|
+  push_value(std::make_shared<K_type_pol_value>@|
+    (p->rf,export_K_type_pol(p->rt(),result)));
+}
+
 @ And here is another way to invoke the Kazhdan-Lusztig computations, which
 given a parameter corresponding to $y$ will obtain the formal sum over $x$ in
 the block of $y$ (or the Bruhat interval below $y$, where all those giving a
@@ -8435,6 +8461,8 @@ install_function(block_deform_wrapper,@|"block_deform"
 install_function(full_deform_wrapper,@|"full_deform","(Param->KTypePol)");
 install_function(twisted_full_deform_wrapper,@|"twisted_full_deform"
                 ,"(Param->KTypePol)");
+install_function(timed_full_deform_wrapper,@|"full_deform"
+                ,"(Param,int->KTypePol)");
 install_function(KL_sum_at_s_wrapper,@|"KL_sum_at_s","(Param->ParamPol)");
 install_function(KL_sum_at_s_to_ht_wrapper,@|"KL_sum_at_s_to_height"
 		,"(Param,int->ParamPol)");
