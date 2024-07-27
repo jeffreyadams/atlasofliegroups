@@ -605,7 +605,7 @@ set localFD_KHash_01 (KGBElt x, ratvec lambda, LocalVertexData Lvd, int HT, KTyp
 	      then () = char_counter.use()
 	      then startCF = elapsed_ms()
 	      then Q = K_type_pol(character_formula_to_height(P,HT))
-	      then () = charTime +:= elapsed_ms() - startCF	      
+	      then () = charTime +:= elapsed_ms() - startCF
 	      in v##[ktp_hash.match(Q), #monomials(P)]
        	    od
     	  od
@@ -1390,8 +1390,8 @@ set_type
   {, ( -> vec) nuhash_sizes {for every real form, the number of nonunitary reps}}
   {, (RealForm -> int) nuhash_size {for one real form, number of nonunitary reps}}
   , ( -> ) clear
-  {, (RealForm -> ) clearG
-  , ( -> [[int]]) xl_known_now
+  , (RealForm -> ) clearG
+  {, ( -> [[int]]) xl_known_now
   , ( -> [int]) x_partial_now
   , ( -> [int]) x_known_now}
   , (RealForm -> int) rf_number {number of real form in list}
@@ -1420,6 +1420,7 @@ set_type
   , ( -> ) write {output unitary data for file}
   , (RealForm -> ) writeG {output data for one group to file}
   , ((RealForm, int, int) -> ) writeGrange {output data for KGB(G)[low,high]}
+  , ((KGBElt, ratvec) -> ) writexlam {output data for one x,lambda}
 )
 ]
 
@@ -1433,7 +1434,7 @@ set make_big_unitary_hash() = big_unitary_hash_table:
     then xl_known = [[int]]: [] {one bitmap of known (x,lambda) for each real form and x}
     then x_known = [int]: [] {one bitmap of known x for each real form}
     then x_partial = [int]: [] {one bitmap of partially known x for each real form}
-    then clear() = void:
+    then clearBUH() = void:
     	 let () = real_form_hash.clear()
 	 then () = uhashes := []
 	 {then () = nuhashes := []}
@@ -1458,16 +1459,16 @@ set make_big_unitary_hash() = big_unitary_hash_table:
 	       	    				 {and #nuhashes = #uhashes} and #uhashes = #x_known
 						 and #x_partial = #x_known, "big_unitarity_hash damaged")
 	  in i
-    {then clearG(RealForm rf) = void:
+    then clearG(RealForm rf) =
     	 let i = real_form_hash.lookup(rf)
 	 in if i >= 0
 	    then {prints(i);}
-	    	 uhashes[i].clear;
+	    	 uhashes[i].clear();
 	    	 {prints("i = ",i, ", x_partial = ",x_partial);}
 	    	 x_partial[i] := 0;
 		 xl_known[i] := [];
 		 x_known[i] := 0
-	    fi}
+	    fi
     in
     ( (->int): {real_form_size} @int: real_form_hash.size()
     , ( -> vec): {uhash_sizes} @vec: for uhash in uhashes do uhash.size() od
@@ -1476,9 +1477,9 @@ set make_big_unitary_hash() = big_unitary_hash_table:
     {, ( -> vec): {nuhash_sizes} @vec: for nuhash in nuhashes do nuhash.size() od}
     {, (RealForm -> int): {nuhash_size} (RealForm rf) int:
       nuhashes[add_real_form(rf)].size()}
-    , ( -> ): {clear} clear
-    {, (RealForm -> ): {clearG} (RealForm rf):
-      clearG(rf)}
+    , ( -> ): {clear} clearBUH
+    , (RealForm -> ): {clearG} (RealForm rf):
+      clearG(rf)
     {, ( -> [[int]]): {xl_known_now} @[[int]]: xl_known
     , ( -> [int]): {x_partial_now} @[int]: x_partial
     , ( -> [int]): {x_known_now} @[int]: x_known}
@@ -1502,6 +1503,9 @@ set make_big_unitary_hash() = big_unitary_hash_table:
       then () = xl_knowni[x.number] := OR(M,xl_knowni[x.number])
       then () = xl_known[i] := xl_knowni
       then () = x_partial[i] := OR(to_bitset([x.number]),x_partial[i])
+      then () = if xl_known[i][x.number] + 1 = to_bitset([#FPP_lambdas(x)])
+      	      	then x_known[i] := OR(to_bitset([x.number]),x_known[i])
+		fi
       then () = finish_time+:= elapsed_ms() - start
       in ()
     , (KGBElt -> ): {finishx} (KGBElt x):
@@ -1682,8 +1686,6 @@ set make_big_unitary_hash() = big_unitary_hash_table:
 	 od;
 	 prints("void: big_unitary_hash.finishall(",Gname,",",xl_known[i],")");
 	 prints("void: big_unitary_hash.finishxmap(",Gname,",",to_string(donemap),")")
-
-
     , ((RealForm, int, int) -> ): {writeGrange} (RealForm G, int low, int high):
       let i = add_real_form(G)
       then Gname = "G_temp"
@@ -1717,6 +1719,29 @@ set make_big_unitary_hash() = big_unitary_hash_table:
       then () = write_cat_int_list(bitmapintlist,intlistname)
       in prints("in (void: for p in ",listname," do big_unitary_hash.long_match(p,j) od;");
 	 prints("big_unitary_hash.finishxmap(",Gname,",",to_string(donerangemap),"))")
+    , ((KGBElt,ratvec) -> ): {writexlam} (KGBElt x, ratvec lambda):
+      let G = x.real_form
+      then i = add_real_form(G)
+      then Gname = "G_temp"
+      then listname = Gname+"_list"
+      then longlist = uhashes[i].list()
+      then plist = for p in longlist
+      	   	   do if p.x = x and p.lambda = lambda
+		      then [p]
+		      else []
+		      fi
+		   od.##
+      then N = to_bitset([position(x,lambda)])
+      then () = write_real_form(G,Gname)
+      then () = prints("let j = big_unitary_hash.rf_number(",Gname,")")
+      then () = prints("then x = KGB(",Gname,",",to_string(x.number),")")
+      then () = prints("then ",listname,"=[Param]:[]")
+      then () = write_cat_param_list(plist,listname)
+      in prints("in (void: for p in ",listname," do big_unitary_hash.long_match(p,j) od;");
+      	 if is_member_bitset(N, xl_known[i][x.number])
+	 then prints("big_unitary_hash.finish(x,",to_string(N),");")
+	 fi;
+	 prints("())")
     )
 )
 

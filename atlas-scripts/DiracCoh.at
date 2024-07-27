@@ -3,66 +3,72 @@
 <finite_dimensional
 <basic {for is_equal_rank}
 
-{Aim in equal rank case to tell whether a unitary rep has
-nonzero Dirac cohomology, and what it is??}
-
-set gammaKs(RealForm G, RealForm K0, ratvec gamma) = [ratvec]:
-    let () = assert(is_equal_rank(G),"gammaKs works only for G equal rank")
-    in for w in W(G)
-       do if not (is_dominant(K0, w*gamma - K0.rho))
-       	  then []
-	  else [w*gamma - K0.rho]
-	  fi
-       od.##.sort_u
+{Aim to tell whether a unitary rep has nonzero Dirac cohomology, and
+what it is. For UNITARY reps, this is close to correct. For
+nonunitary, probably overestimates K types?}
 
 set gammaK_G_hash = make_RealForm_hash()
+set gammaK_Ks = [[(RealForm,WeylElt)]]: [] {list of all K_0's for ith real form, WeylElt's relating to K_0(KGB(G,0))}
 set gammaK_gamma_hashes = [ratvec_hash]: [] {one for each real form K}
 set gammaK_gammas_data = [[[ratvec]]]:[] {one for each real form K, and ratvec gamma}
 
 set gammaKs(RealForm G, ratvec gamma) = [ratvec]:
-    let () = assert(is_equal_rank(G),"gammaKs works only for G equal rank")
+    let () = gamma :=dominant(G,gamma)
+    then () = if (gamma - (G.distinguished_involution)*gamma).!=
+    	      then return [] {if gamma doesn't live on compact torus, no Dirac}
+	      fi
     then I = gammaK_G_hash.size()
     then i = gammaK_G_hash.match(G)
     then () = if i = I {new group}
-	      then gammaK_gamma_hashes #:= make_ratvec_hash()
+	      then gammaK_gamma_hashes #:= make_ratvec_hash();
+	      	   gammaK_Ks #:= for x in thetaStable(G)
+		   	       do (K_0(x),cross_divide(KGB(G,0),x))
+			       od;
+		   gammaK_gammas_data #:= []
 	      fi
-    then K0 = K_0(G)
-    then () = gamma := dominant(G,gamma)
     then J = gammaK_gamma_hashes[i].size()
     then j = gammaK_gamma_hashes[i].match(gamma)
     in if j=J {new gamma}
        then let datai = gammaK_gammas_data[i] {type [[ratvec]]}
-       	    {then () = gammaK_gammas_data[i] := datai}
-       	    then () = datai #:= for w in W(G)
-       	    	       		do if not (is_dominant(K0, w*gamma - K0.rho))
-       	       	       	  	   then []
-	       		  	   else [w*gamma - K0.rho]
+       	    then A = projection_to_K_matrix(G)
+       	    then mu = A*gamma
+       	    then () = datai #:= for (K,w) in gammaK_Ks[i]
+       	    	       		do if (is_dominant(K, mu - K.rho))
+				      and (mu - A*(G.rho)).denom = 1
+       	       	       	  	   then [w*gamma - rho_c(KGB(G,0))]
+				   else []
 	  		  	   fi
        		       		od.##.sort_u
-	    {then test = [[ratvec]]: datai}
 	    then () = gammaK_gammas_data[i] := datai
 	    in datai[j]
 	else gammaK_gammas_data[i][j]
         fi
 
+{Here y defines the "nice coordinates" K you prefer}
+set gammaKs(KGBElt y, ratvec gamma) = [ratvec]:
+    let G = y.real_form
+    then wy = cross_divide(y,KGB(G,0))
+    in for mu in gammaKs(G,gamma)
+       do wy*mu
+       od
 
 {list of all KType's (representations of K) contributing to a
 given infinitesimal character. The KGBElt has to be in the fundamental
 fiber; it fixes the coords used for K0. (So for human coords on Sp(2n,R),
 use KGB(G, 2^n - 1).)}
 {WRONG FOR PGL(2,R): omits sign char of K}
-set DiracCohContributions(ratvec gamma, KGBElt x) = [[(int,KType)]]:
+set DiracCohContributions(KGBElt x, ratvec gamma) = [[(int,KType)]]:
     let K0 = K_0(x) {identity component of K}, G = x.real_form
     then () = assert(is_equal_rank(G),
     	"DiracCohContributions works only for G equal rank")
-    then () = if not is_integer(gamma - G.rho)
+    {then () = if not is_integer(gamma - G.rho)
     	      then return []
-	      fi
-    then gammaKs = gammaKs(G,K0,gamma)
+	      fi}
+    then gammaKs = gammaKs(x,gamma) {these are highes weights of K_0-tilde types}
     then () = if #gammaKs = 0
     	      then return []
 	      fi
-    then rho_ns = gammaKs(G,K0,G.rho)
+    then rho_ns = gammaKs(x,G.rho)
     {Need to tensor each gammaK with each rho_n}
     {need cover of K_0 where rho_n is integral}
      then (K0tilde,M) = cover(K0,rho_ns[0])
@@ -81,9 +87,7 @@ set DiracCohContributions(ratvec gamma, KGBElt x) = [[(int,KType)]]:
      	  	      	do for (m,mutilde) in mutildes
      	  	      	   do (m, ratvec_as_vec(Minv*mutilde))
 			   od {highest weights for K-types that can lead to a gammaKtilde in Dirac} 
-			od 
-
-     {this is all relevant K-types, made into KTypePol on K. Each appears too often, by a factor of # conn comps?}
+			od
      then K_types = [KTypePol]: {one for each gammaKtilde}
      	  for list in down_on_K_0
 	  do sum(G, for (m,mu) in list
@@ -96,27 +100,101 @@ set DiracCohContributions(ratvec gamma, KGBElt x) = [[(int,KType)]]:
 	   od
 	od
 
-set DiracCohContributions(ratvec gamma, RealForm G) = [[(int,KType)]]:
-    DiracCohContributions(gamma, KGB(G,0))
+set DiracCohContributions(RealForm G, ratvec gamma) = [[(int,KType)]]:
+    DiracCohContributions(KGB(G,0),gamma)
 
 {ratvec's are highest weights of K0tilde types; ints are multiplicities}
-set dirac_cohomology(Param p, KGBElt x) = [(int, ratvec)]:
+set dirac_cohomology(KGBElt x, Param p) = [(int, ratvec)]:
     let gamma = p.infinitesimal_character, G = p.real_form
-    then () = assert(is_equal_rank(G),"dirac_cohomology works only for G equal rank")
-    then K0 = K_0(x)
-    then gammaKtildes = gammaKs(G,K0,gamma)
-    then mulists = DiracCohContributions(gamma,x) {one list for each gammaKtilde}
+    then gammaKs = gammaKs(x,gamma)
+    then mulists = DiracCohContributions(x,gamma) {one list for each gammaK}
     then () = if #mulists = 0
     	      then return []
 	      fi
-    then M = max(for (,mu) in mulists.## do height(mu) od)
+    then M = max(for (,mu) in mulists.## do height(mu) od # 0)
             {biggest height of a K-type we'll look for}
     then P = branch_irr(p,M) {all K-types of p to height M}
     then longanswer = {this version includes the terms with multiplicity zero}
-       for gammatilde@j in gammaKtildes
-       do (sum(for (m,mu) in  mulists[j] do m*split_as_int(P[mu]) od), gammatilde)
+       for gammaK@j in gammaKs
+       do (sum(for (,mu) in  mulists[j] do split_as_int(P[mu]) od), gammaK)
        od
-    in for (m,gammatilde) in longanswer do if m = 0 then [] else [(m,gammatilde)] fi od.##
+    in for (m,gammaK) in longanswer do if m = 0 then [] else [(m,gammaK)] fi od.##
 
 set dirac_cohomology(Param p) = [(int, ratvec)]:
-    dirac_cohomology(p, KGB(p.real_form,0))
+    dirac_cohomology(KGB(p.real_form,0), p)
+
+{list of all KType's (representations of K) contributing to Dirac coh of a
+UNITARY rep of a given infinitesimal character. The KGBElt has to be in the fundamental
+fiber; it fixes the coords used for K0. (So for human coords on Sp(2n,R),
+use KGB(G, 2^n - 1).)}
+{The list is indexed by gammaKs(x,gamma), the possible highest wts of dirac cohomology}
+{WRONG FOR PGL(2,R): omits sign char of K}
+set DiracCohContributionsUnitary(KGBElt x, ratvec gamma) = [[KType]]:
+    let K0 = K_0(x) {identity component of K}, G = x.real_form
+    then gammaKs = gammaKs(x,gamma) {these are highes weights of K_0-tilde types}
+    then () = if #gammaKs = 0
+    	      then return []
+	      fi
+    then rho_ns = gammaKs(x,G.rho)
+    {Need to tensor each gammaK with each rho_n. In a factor mu of gamma \otimes rho_n, REQUIRE
+    that gamma is PRV component of \mu \otimes (-rho_n)}
+    {need cover of K_0 where rho_n is integral}
+     then (K0tilde,M) = cover(K0,rho_ns[0])
+     then K0tilde = compact_form(K0tilde)
+     then wK0tilde = w0(K0tilde)
+     then Minv = inverse ((1/1)*M)
+     then rho_ntildes = for rho_n in rho_ns do ratvec_as_vec(M*rho_n) od
+     then gammaKtildes = for gammaK in gammaKs
+     	  	       	 do ratvec_as_vec(M*gammaK)
+			 od
+     then tensortildes = for gammaKtilde in gammaKtildes {weights of K~-types}
+     	  	       	 do for rho_ntilde in rho_ntildes
+			    do let list = tensor_product_weights(K0tilde, gammaKtilde, rho_ntilde)
+			       in for (,mu) in list
+			       	  do for rho_nprime in rho_ntildes
+				     do if dominant(K0tilde, mu - rho_nprime) = gammaKtilde
+				     	{so gammaKtilde is the prv-component}
+				     	then [mu]
+				     	else []
+				     	fi
+				     od.## {[vec]}
+				  od.##
+			    od.## {[vec]; these are terms hitting one K0tilde type gammaKtilde}
+			 od
+     {tensortildes is [[vec]] list of lists of K0-highest weights, indexed by set of gammaKs}
+     then down_on_K_0 = for mutildes in tensortildes
+     	  	      	do for mutilde in mutildes
+     	  	      	   do ratvec_as_vec(Minv*mutilde)
+			   od {highest weights for K-types that can lead to a gammaKtilde in Dirac} 
+			od
+     {then K_types = [[KType]]: {one list for each gammaKtilde}}
+     in for list in down_on_K_0
+	do for mu in list
+     	   do K_types(K_highest_weight_from_K0_weight(x,mu))
+	   od.##
+	od
+
+set DiracCohContributionsUnitary(RealForm G, ratvec gamma) = [[KType]]:
+    DiracCohContributionsUnitary(KGB(G,0), gamma)
+
+{ratvec's are highest weights of K0tilde types; ints are multiplicities}
+set dirac_cohomology_unitary(KGBElt x, Param p) = [(int, ratvec)]:
+    let gamma = p.infinitesimal_character, G = p.real_form
+    {then () = assert(is_equal_rank(G),"dirac_cohomology works only for G equal rank")}
+    {then K0 = K_0(x)}
+    then gammaKs = gammaKs(x,gamma)
+    then mulists = DiracCohContributionsUnitary(x,gamma) {one list for each gammaK}
+    then () = if #mulists = 0
+    	      then return []
+	      fi
+    then M = max(for mu in mulists.## do height(mu) od # 0)
+            {biggest height of a K-type we'll look for}
+    then P = branch_irr(p,M) {all K-types of p to height M}
+    then longanswer = {this version includes the terms with multiplicity zero}
+       for gammaK@j in gammaKs
+       do (sum(for mu in  mulists[j] do split_as_int(P[mu]) od), gammaK)
+       od
+    in for (m,gammaK) in longanswer do if m = 0 then [] else [(m,gammaK)] fi od.##
+
+set dirac_cohomology_unitary(Param p) = [(int, ratvec)]:
+    dirac_cohomology_unitary(KGB(p.real_form,0), p)

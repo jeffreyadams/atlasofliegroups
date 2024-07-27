@@ -22,6 +22,7 @@ set chop_bound = int: 6
 
 {if true, compute reps weakly fair cohom induced from Arthur unipotent}
 set coh_ind_flag = false
+{true costs extra 260 sec over 1000 for E6_q}
 
 {if true, load Arthur unipotent reps into unitary hash before starting FPP.
 Computing Arthur unipotents takes a long time for high rank (e.g. rank 4
@@ -1837,4 +1838,12 @@ set descents(Param p) = [Param]:
     then DSF = for S in SF do derived(S) od
     then DSFinfos = for S in SF do derived_infos(S) od
     }
-}
+----------------
+Total time = 43.704sec; max time = 5.985sec for KGBElt 228
+Time spent in is_unitary = 11.168sec, number of unitarity tests = 2259
+Time spent in char calcs = 3.317sec, number of char calcs = 58681
+Time in localFD_1Dirac2* = 9.356sec, in localFD_1Dirac2 = 0.000sec, in localFD_1Dirac2_by_zero = 9.356sec
+  #hash_real_dumb =325, #hash_dumb =0, #hash_def_dumb =1362
+  #hash =0, #hash2 =85, #hash_one_level =0, #hash_bottom_layer =0
+Number of unitary params = 4921, time for is_finished = 0.281sec, time for position = 0.061sec
+Number of known FPP-unitary faces = 1864, number found on this run = 1352}
