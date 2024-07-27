@@ -1080,6 +1080,26 @@ twisted_full_deform: (Param->KTypePol): inner class twisted deformation to nu=0
   and preparations may cause a flip in that choice. If needed use scale_extended
   and finalize_extended to do these preparations while keeping track of flips.
 
+full_deform: (Param,int->(void|KTypePol)),
+twisted_full_deform: (Param,int->(void|KTypePol)): time-limited versions
+  These two functions perform the same computation as their counterparts without
+  int argument, but if the computation has run for the number of milliseconds
+  indicated in that int argument without returning a result, the computation
+  aborts and returns no result instead. A union type is used to combine these
+  possible outcomes into a single value, which will be of the first (void)
+  variant in case no result is found in time, and of the second (KTypePol)
+  variant in case a result is found in time. When simply printing the result,
+  the first variant will be tagged ".timed_out" and the second ".done"; this is
+  consistent with the user having set
+    set_type [ . = (void timed_out|KTypePol done)]
+  with any chosen type name at the place of "." (but the initial state of Atlas
+  does not include this definition). In order to use the return value in a more
+  elaborate way, the caller must provide instructions for what to do in both
+  scenarios, by using a "case | | esac" clause, for which it is most practical
+  to in fact state a type definition as indicated; then one can do something like
+    case full_deform(p,1968) | time_out: "too hard" | P.done: to_string(P) esac
+
+
 KL_column: (Param->[int,Param,vec]): column of Kazhdan-Lusztig table
   Returns a list of nonzero Kazhdan-Lusztig polynomials P(x,y) with the given
   parameter as y, each as a triple (n,x,P(x,y)) where x is the parameter for
