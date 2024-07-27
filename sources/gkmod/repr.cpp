@@ -2578,6 +2578,8 @@ const K_type_poly& Rep_table::twisted_deformation(StandardRepr z, bool& flip)
       return pool[h].twisted_def_formula();
   }
 
+  interpreter::check_interrupt(); // make this recursive function interruptible
+
   K_type_poly result { std::less<K_type_nr>() };
   { // initialise |result| to restriction of |z| expanded to finals
     auto z_K = ext_block::extended_restrict_to_K(*this,z,delta);

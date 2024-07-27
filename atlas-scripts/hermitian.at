@@ -72,6 +72,56 @@ set hermitian_form_irreducible (Param p) = KTypePol:
 set is_unitary (Param p) = bool:
   p.is_hermitian and hermitian_form_irreducible(p).is_pure
 
+
+{ some time-limited functions, using new built-in |full_deform@(Param,int)| }
+set_type [ maybe_KTP = (void timed_out | KTypePol done) ]
+
+set map ((Param->maybe_KTP)f, ParamPol P) = maybe_KTP:
+  sum(P.real_form
+     ,for c@p in P
+     ~do case f(p) | timed_out: return timed_out() | done(r): c*r esac
+      od
+     ).done
+
+set c_form_irreducible (Param p,int time) = maybe_KTP:
+   let ori_nr_p = orientation_nr(p), expiration = elapsed_ms() + time
+   then oriented_KL_sum = ParamPol: null_module(p) +
+      for c@q in KL_sum_at_s(p) do (c*orientation_nr_term(ori_nr_p,q),q) od
+in map( (Param p) maybe_KTP: full_deform(p,expiration-elapsed_ms())
+      , oriented_KL_sum
+      )
+
+set twisted_c_form_irreducible (Param p,int time) = maybe_KTP:
+( let (fixed,unfixed)=twisted_c_form_irreducible_contributions(p)
+  , expiration = elapsed_ms() + time
+{ |1+s| divides |unfixed|, no need for |scale_extended|; take half at |nu=0| }
+  in case
+        map( (Param p) maybe_KTP: twisted_full_deform(p,expiration-elapsed_ms())
+	   , fixed
+	   )
+     | timed_out: timed_out()
+     | done(r): done(r + half(unfixed.K_type_pol))
+     esac
+)
+
+set hermitian_form_irreducible (Param p, int time) = maybe_KTP:
+   case if is_equal_rank(real_form(p))
+         then c_form_irreducible(p,time)
+	 else check_hermitian(p,true); twisted_c_form_irreducible(p,time)
+	 fi
+   | timed_out: return timed_out()
+   | done(r): r.convert_cform_hermitian.done
+   esac
+
+set is_unitary (Param p, int time) = int: { -1: no, 0:timed out, 1: yes }
+  if p.is_hermitian
+  else -1
+  then case hermitian_form_irreducible(p,time)
+       | timed_out: 0
+       | done(result): if result.is_pure then 1 else -1 fi
+       esac
+  fi
+
 { end of core unitarity functionality, remaining variations for user comfort }
 
 { same as |c_form_irreducible|, but also return a second component that
