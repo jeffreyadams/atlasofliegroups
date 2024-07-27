@@ -601,12 +601,14 @@ for (auto it=prelude_filenames.begin(); it!=prelude_filenames.end(); ++it )
       catch (error_base& err)
       { std::cerr << err.message << "\nEvaluation aborted.\n";
       @/clean=false;
+        clear_timer();
         reset_evaluator(); main_input_buffer->close_includes();
       }
       catch (std::exception& err)
       {
         std::cerr << err.what() << "\nEvaluation aborted.\n";
       @/clean=false;
+        clear_timer();
         reset_evaluator(); main_input_buffer->close_includes();
       }
     }
@@ -650,11 +652,13 @@ catch (error_base& err)
 @)
   std::cerr << "Evaluation aborted.\n";
 @/clean=false;
+  clear_timer();
   reset_evaluator(); main_input_buffer->close_includes();
 }
 catch (std::exception& err)
 { std::cerr << err.what() << "\nEvaluation aborted.\n";
 @/clean=false;
+  clear_timer();
   reset_evaluator(); main_input_buffer->close_includes();
 }
 
