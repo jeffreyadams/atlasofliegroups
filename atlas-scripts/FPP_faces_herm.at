@@ -1,5 +1,5 @@
 {this file concerns (local) facets of parameters, in preparation of analysis of their unitarity.}
-<FPP_facets_geom.at
+<FPP_faces_geom.at
 <goodroots.at { for is_pos_on_LKTs }
 <Dirac.at
 <hermitian.at
@@ -12,11 +12,11 @@ set low_frac=1/1
 {takes the known unitaries from unitary_hash having the given x and lambda,
  and returns their locations in LFDKH}
 set known_unitaries(Param_hash Uhash, KGBElt x, ratvec lambda, LocalVertexData Lvd,
-    [[FacetVertsKHash]] LFDKH) = [vec]:
+    [[FaceVertsKHash]] LFDKH) = [vec]:
     let ps = for d:#LFDKH
     	     do for v in LFDKH[d]
-	     	do parameter(x,lambda,facet_bary(Lvd, v[:d+1]))
-		{facet_bary_ic(x.inner_class, facet_bary(Lvd.list, v[:d+1])))}
+	     	do parameter(x,lambda,face_bary(Lvd, v[:d+1]))
+		{face_bary_ic(x.inner_class, face_bary(Lvd.list, v[:d+1])))}
 		od
 	     od
     in for d:#LFDKH
@@ -33,7 +33,7 @@ set known_unitaries(Param_hash Uhash, KGBElt x, ratvec lambda, LocalVertexData L
 {this misses (in local_testK_level) unitary Param's that finalize to different x;
 those are caught by local_testK_hash}
 set known_unitaries(Param_hash UhashLocal, LocalVertexData Lvd,
-    [[FacetVertsKHash]] LFDKH) = [vec]:
+    [[FaceVertsKHash]] LFDKH) = [vec]:
     let lookups = for list@d in LFDKH do index_in(if #list = 0 then [vec]:[]
     	      	  	    	     	      else for v in list do v[:d+1] od
 					      fi)
@@ -55,11 +55,11 @@ set known_unitaries(Param_hash UhashLocal, LocalVertexData Lvd,
 {takes the known non-unitaries from non-unitary_hash having the given x and lambda,
  and returns their locations in LFDKH}
 {set known_non_unitaries(Param_hash NUhash, KGBElt x, ratvec lambda, VertexData Lvd,
-    [[FacetVertsKHash]] LFDKH) = [vec]:
+    [[FaceVertsKHash]] LFDKH) = [vec]:
     let ps = for d:#LFDKH
     	     do for v in LFDKH[d]
-	     	do parameter(x,lambda,facet_bary(Lvd, v[:d+1]))
-		{facet_bary_ic(x.inner_class, facet_bary(Lvd.list, v[:d+1]))}
+	     	do parameter(x,lambda,face_bary(Lvd, v[:d+1]))
+		{face_bary_ic(x.inner_class, face_bary(Lvd.list, v[:d+1]))}
 		od
 	     od
     in for d:#LFDKH
@@ -94,12 +94,12 @@ set localize(Param_hash Uhash, ratvec lambda) = Param_hash:
 		    fi
 	      od
     in UhashLoc
-{collection of lookup functions for facets of various dimensions}
+{collection of lookup functions for faces of various dimensions}
 set lookups([[vec]] LFD) = [(vec->int)]:
     for L@d in LFD do index_in(for v in L do v[:d+1] od) od
 
 {assume LFDKH has tail coords referring to K-char}
-set sort(RealForm G, LocalVertexData Lvd, [[FacetVertsKHash]] LFDKH, int tail) = [[FacetVertsKHash]]:
+set sort(RealForm G, LocalVertexData Lvd, [[FaceVertsKHash]] LFDKH, int tail) = [[FaceVertsKHash]]:
     if sort_LFD_flag
     then let tworhocheck = G.two_rho_check
     	 then f(vec v) = int:
@@ -189,7 +189,7 @@ set localFD_Lvd2 \
 
 set FD12Time = int: 0
 
-{takes local data and low global facets and computes vertices and edges, imposing
+{takes local data and low global faces and computes vertices and edges, imposing
 hermitian, pos on LKTs, and Dirac. Subspace is fixed points of affine involution of
 h*. Perm records involution action on FPP verts. mapAct records local vertex to which an FPP
 vertex "belongs" (either "is" or "is vertex of the edge")}
@@ -200,8 +200,8 @@ vertex "belongs" (either "is" or "is vertex of the edge")}
 3) tetrahedron in FPP, two pairs of verts exchanged by involution}
 set localFD_1Dirac2\
   ( KGBElt x, ratvec lambda, LocalVertexData Lvd, PermOrderTwo Perm2, vec mapAct{,
-    [[FacetVertsIndex]] globalFacets}) = [[FacetVertsIndex]]:
-(   {if facet_verbose
+    [[FaceVertsIndex]] globalFaces}) = [[FaceVertsIndex]]:
+(   {if face_verbose
     then prints(new_line,"start localFD_1Dirac")
     fi;}
     let G = x.real_form, start = elapsed_ms(), trans_hash = make_vec_hash()
@@ -213,7 +213,7 @@ set localFD_1Dirac2\
 	      	   then () = Q:=invariant_form(G)
 	      	   in ()
 	      fi
-    then LF0 = [FacetVertsIndex]:
+    then LF0 = [FaceVertsIndex]:
     	 for v@j in Lvd.list
 	 do let p = parameter(x,lambda,v)
 	    in if any(for q in monomials(finalize(p)) do not is_pos_on_LKTs(q) od) or
@@ -227,7 +227,7 @@ set localFD_1Dirac2\
     then Edges = [vec]:
     	 let EdgesFixFix = [vec]:
 	     if #Perm2.fixed > 1
- 	     then for v in FPP_edges(G){globalFacets[1]}
+ 	     then for v in FPP_edges(G){globalFaces[1]}
 	       	  do if is_member_sorted(Perm2.fixed)(v[0]) and #Perm2.fixed > mapAct[v[0]]+1
 		       	      and is_member_sorted(Perm2.fixed[mapAct[v[0]]+1:])(v[1])
 		     then let mloc = mapAct[v[0]], nloc = mapAct[v[1]]
@@ -269,10 +269,10 @@ set localFD_1Dirac2\
 	  {then () = prints("after TransTrans, time is ",print_time_string(elapsed_ms() - start))}
 	   in EdgesFixFix ## EdgesFixTrans ## EdgesTransTrans
      { then () = prints("after Edges, time is ",print_time_string(elapsed_ms() - start))}
-     then LF1 = [FacetVertsIndex]:
+     then LF1 = [FaceVertsIndex]:
     	 for v in Edges
-	 do let p = parameter(x,lambda,facet_bary(Lvd, v))
-	 {facet_bary_ic(x.inner_class, facet_bary(Lvd.list, v))}
+	 do let p = parameter(x,lambda,face_bary(Lvd, v))
+	 {face_bary_ic(x.inner_class, face_bary(Lvd.list, v))}
 	    in  if all(for q in monomials(p) do is_pos_on_LKTs(q) od)
 	    then [v]
 	    else []
@@ -281,7 +281,7 @@ set localFD_1Dirac2\
     { then () = prints("after LF1, time is ",print_time_string(elapsed_ms() - start))}
     then answer = sort(G, Lvd, [LF0]##[LF1], 0)
     then () = FD12Time +:= elapsed_ms() - start
-    in if facet_verbose then prints("After localFD_1Dirac2, facet counts are [",#LF0,
+    in if face_verbose then prints("After localFD_1Dirac2, face counts are [",#LF0,
     		      	   	  ",",#LF1,"]") fi;
        if time_verbose then prints("     ",print_time_string(elapsed_ms() - start),
        			     		  " for localFD_1Dirac2") fi;
@@ -293,7 +293,7 @@ set FD12bzFFTime = int:0
 set FD12bzFTTime = int:0
 set FD12bzTTTime = int:0
 
-{takes local data and low global facets and computes vertices and edges, imposing
+{takes local data and low global faces and computes vertices and edges, imposing
 hermitian, pos on LKTs, and Dirac. Subspace is fixed points of affine involution of
 h*. Perm records involution action on FPP verts. mapAct records local vertex to which an FPP
 vertex "belongs" (either "is" or "is vertex of the edge")}
@@ -302,13 +302,13 @@ vertex "belongs" (either "is" or "is vertex of the edge")}
 2) triangle in FPP meeting subspace in line (one vertex of tri in subspace, other
    two flipped by involution, OR
 3) tetrahedron in FPP, two pairs of verts exchanged by involution}
-{This time assume that globalFacets[d] is list of size
-#globalFacets[d-1] of d-facets, the jth list being all global facets that
-begin with the jth global (d-1)-facet.}
+{This time assume that globalFaces[d] is list of size
+#globalFaces[d-1] of d-faces, the jth list being all global faces that
+begin with the jth global (d-1)-face.}
 set localFD_1Dirac2_by_zero\
   ( KGBElt x, ratvec lambda, LocalVertexData Lvd, PermOrderTwo Perm2, vec mapAct) =
-    [[FacetVertsIndex]]:
-(   {if facet_verbose
+    [[FaceVertsIndex]]:
+(   {if face_verbose
     then prints(new_line,"start localFD_1DiracBYZERO")
     fi;}
     let G = x.real_form, start = elapsed_ms(), trans_hash = make_vec_hash()
@@ -320,7 +320,7 @@ set localFD_1Dirac2_by_zero\
 	      	   then () = Q:=invariant_form(G)
 	      	   in ()
 	      fi
-    then LF0 = [FacetVertsIndex]:
+    then LF0 = [FaceVertsIndex]:
     	 for v@j in Lvd.list
 	 do let p = parameter(x,lambda,v)
 	    in if any(for q in monomials(finalize(p)) do not is_pos_on_LKTs(q) od) or
@@ -440,10 +440,10 @@ set localFD_1Dirac2_by_zero\
 	          fi
 	       od.##}
 	   in EdgesFixFix ## EdgesFixTrans ## EdgesTransTrans
-     then LF1 = [FacetVertsIndex]:
+     then LF1 = [FaceVertsIndex]:
     	 for v in Edges
-	 do let p = parameter(x,lambda,facet_bary(Lvd, v))
-	 {facet_bary_ic(x.inner_class, facet_bary(Lvd.list, v)))}
+	 do let p = parameter(x,lambda,face_bary(Lvd, v))
+	 {face_bary_ic(x.inner_class, face_bary(Lvd.list, v)))}
 	    in  if all(for q in monomials(p) do is_pos_on_LKTs(q) od)
 	    then [v]
 	    else []
@@ -453,9 +453,9 @@ set localFD_1Dirac2_by_zero\
     then answer = sort(G, Lvd, [LF0]##[LF1], 0)
     then () = FD12bzTime +:= elapsed_ms() - start
     {then () = if elapsed_ms() - start > 10{FD12bzTime}
-    	      then prints("(fixed,trans) = (",#Perm2.fixed, ",",#Perm2.trans, "), facet counts (",#LF0,",",#LF1,") took ",print_time_string(elapsed_ms() - start))
+    	      then prints("(fixed,trans) = (",#Perm2.fixed, ",",#Perm2.trans, "), face counts (",#LF0,",",#LF1,") took ",print_time_string(elapsed_ms() - start))
 	      fi}
-    in if(facet_verbose) then prints("After localFD_1Dirac2_by_zero, facet counts are [",#LF0,
+    in if(face_verbose) then prints("After localFD_1Dirac2_by_zero, face counts are [",#LF0,
     		      	   	  ",",#LF1,"]") fi;
        if(time_verbose) then prints("     ",print_time_string(elapsed_ms() - start),
        			     		  " for localFD_1Dirac2_by_zero") fi;
@@ -465,8 +465,8 @@ set localFD_1Dirac2_by_zero\
 
 set localFD_1Dirac2_by_zero_old\
   ( KGBElt x, ratvec lambda, LocalVertexData Lvd, PermOrderTwo Perm2, vec mapAct) =
-    [[FacetVertsIndex]]:
-(   {if facet_verbose
+    [[FaceVertsIndex]]:
+(   {if face_verbose
     then prints(new_line,"start localFD_1DiracBYZERO")
     fi;}
     let G = x.real_form, start = elapsed_ms(), trans_hash = make_vec_hash()
@@ -478,7 +478,7 @@ set localFD_1Dirac2_by_zero_old\
 	      	   then () = Q:=invariant_form(G)
 	      	   in ()
 	      fi
-    then LF0 = [FacetVertsIndex]:
+    then LF0 = [FaceVertsIndex]:
     	 for v@j in Lvd.list
 	 do let p = parameter(x,lambda,v)
 	    in if any(for q in monomials(finalize(p)) do not is_pos_on_LKTs(q) od) or
@@ -537,10 +537,10 @@ set localFD_1Dirac2_by_zero_old\
 	          fi
 	       od.##
 	   in EdgesFixFix ## EdgesFixTrans ## EdgesTransTrans
-     then LF1 = [FacetVertsIndex]:
+     then LF1 = [FaceVertsIndex]:
     	 for v in Edges
-	 do let p = parameter(x,lambda,facet_bary(Lvd, v))
-	 {facet_bary_ic(x.inner_class, facet_bary(Lvd.list, v)))}
+	 do let p = parameter(x,lambda,face_bary(Lvd, v))
+	 {face_bary_ic(x.inner_class, face_bary(Lvd.list, v)))}
 	    in  if all(for q in monomials(p) do is_pos_on_LKTs(q) od)
 	    then [v]
 	    else []
@@ -549,29 +549,29 @@ set localFD_1Dirac2_by_zero_old\
     { then () = prints("after LF1, time is ",print_time_string(elapsed_ms() - start))}
     then answer = sort(G, Lvd, [LF0]##[LF1], 0)
     then () = FD12bzTime +:= elapsed_ms() - start
-    in if(facet_verbose) then prints("After localFD_1Dirac2_by_zero, facet counts are [",#LF0,
+    in if(face_verbose) then prints("After localFD_1Dirac2_by_zero, face counts are [",#LF0,
     		      	   	  ",",#LF1,"]") fi;
        if(time_verbose) then prints("     ",print_time_string(elapsed_ms() - start),
        			     		  " for localFD_1Dirac2_by_zero") fi;
        answer
 )
 
-{takes 0 and 1-diml local facets and adds K-char index}
+{takes 0 and 1-diml local faces and adds K-char index}
 set localFD_KHash_01 (KGBElt x, ratvec lambda, LocalVertexData Lvd, KTypePol_hash ktp_hash,
-[[FacetVertsIndex]] LF) = [[FacetVertsKHash]]:
+[[FaceVertsIndex]] LF) = [[FaceVertsKHash]]:
     let start = elapsed_ms()
     then answer = for d:#LF
-    	 do if fund_facet_verbose then prints(new_line, "start to compute ",#LF[d],
+    	 do if fund_face_verbose then prints(new_line, "start to compute ",#LF[d],
        	  		     " K-characters in dimension ",d,
 			     " in localFD_KHash_01")
        	     fi;
 	     for v@k in LF[d]
-       	     do if k%(max(#LF[d]\10,2))=0 and fund_facet_verbose
-	      	then prints("examining facet ",k,
+       	     do if k%(max(#LF[d]\10,2))=0 and fund_face_verbose
+	      	then prints("examining face ",k,
 	      	   "; #ktp_hash = ",ktp_hash.size())
 	      	fi;
-		let nu = facet_bary(Lvd, v)
-		{facet_bary_ic(x.inner_class, facet_bary(Lvd.list, v))}
+		let nu = face_bary(Lvd, v)
+		{face_bary_ic(x.inner_class, face_bary(Lvd.list, v))}
        	      	then p0 = parameter(x, lambda, nu)
 	      	then P = finalize(p0)
 		then () = char_counter.use()
@@ -587,26 +587,26 @@ set localFD_KHash_01 (KGBElt x, ratvec lambda, LocalVertexData Lvd, KTypePol_has
    	     		     " for localFD_KHash_01 (vertex/edge K-chars)") fi
    in answer
 
-{takes 0 and 1-diml local facets and adds K-char index to height HT}
+{takes 0 and 1-diml local faces and adds K-char index to height HT}
 set localFD_KHash_01 (KGBElt x, ratvec lambda, LocalVertexData Lvd, int HT, KTypePol_hash ktp_hash,
-[[FacetVertsIndex]] LF) = [[FacetVertsKHash]]:
+[[FaceVertsIndex]] LF) = [[FaceVertsKHash]]:
     let start = elapsed_ms()
     then answer = for d:#LF
-    	 do if fund_facet_verbose then prints(new_line, "start to compute ",#LF[d],
+    	 do if fund_face_verbose then prints(new_line, "start to compute ",#LF[d],
        	  		     " K-characters to height ",HT, " in dimension ",d,
 			     " in localFD_KHash_01")
        	    fi; for v@k in LF[d]
-       	   do if k%(max(#LF[d]\10,2))=0 and fund_facet_verbose
-	      then prints("examining facet ",k,
+       	   do if k%(max(#LF[d]\10,2))=0 and fund_face_verbose
+	      then prints("examining face ",k,
 	      	   "; #ktp_hash = ",ktp_hash.size())
 	      fi;
-	      let nu = {facet_bary_ic(x.inner_class, facet_bary(Lvd.list, v))}facet_bary(Lvd, v)
+	      let nu = {face_bary_ic(x.inner_class, face_bary(Lvd.list, v))}face_bary(Lvd, v)
        	      then p0 = parameter(x, lambda, nu)
 	      then P = finalize(p0)
 	      then () = char_counter.use()
 	      then startCF = elapsed_ms()
 	      then Q = K_type_pol(character_formula_to_height(P,HT))
-	      then () = charTime +:= elapsed_ms() - startCF	      
+	      then () = charTime +:= elapsed_ms() - startCF
 	      in v##[ktp_hash.match(Q), #monomials(P)]
        	    od
     	  od
@@ -616,10 +616,10 @@ set localFD_KHash_01 (KGBElt x, ratvec lambda, LocalVertexData Lvd, int HT, KTyp
    	     		     " for localFD_KHash_01 (vertex/edge K chars) to height ", HT) fi
    in answer
 
-{takes list of 0- and d-diml facets, with d \ge 1, and builds all
-d+1-diml facets having all faces in the d-diml list. The int e is the
-number of extra coords in each facet.}
-set superFacets([vec] L0, [vec] Ld, int e) =
+{takes list of 0- and d-diml faces, with d \ge 1, and builds all
+d+1-diml faces having all faces in the d-diml list. The int e is the
+number of extra coords in each face.}
+set superFaces([vec] L0, [vec] Ld, int e) =
     [vec]:
 if #Ld = 0 then []
 else
@@ -627,38 +627,38 @@ let d = #Ld[0] - e-1 {, start = elapsed_ms()}
 then lookupsd = index_in(for v in Ld do v[:d+1] od)
 then answer = [vec]:
    for v in L0
-   do let m0 = v[0] {first vertex in new facet}
+   do let m0 = v[0] {first vertex in new face}
       in [vec]:
       	 for small in Ld
       	 do if small[0] <= m0
 	    then [] {require m0 to be FIRST}
 	    elif any(for k:d+1 do lookupsd( m0#(small[:k]##small[k+1:d+1])) = -1 od)
 	    then [] {require all d-faces to be in Ld}
-	    else [m0#small[:d+1]] {now m0##small is a candidate facet}
+	    else [m0#small[:d+1]] {now m0##small is a candidate face}
 	    fi
 	 od.## {now have a list of candidates starting m0}
    od.##
 { then () = if time_verbose
-	  then prints("time for superFacets was ",
+	  then prints("time for superFaces was ",
 		      	print_time_string(elapsed_ms() - start))
           fi}
 in answer
 fi
 
-{takes local data to height level, dimension \le b-1, and adds facets from
-b to (t-1)-dimensional FPP-facets; make sure subfacets are also in list
+{takes local data to height level, dimension \le b-1, and adds faces from
+b to (t-1)-dimensional FPP-faces; make sure subfaces are also in list
 Roughly input goes from 0 to b-1 (size b), output 0 to t-1 (size t).
 
-Need to assume b \ge 2, so have a list of potentially unitary facets and edges.}
+Need to assume b \ge 2, so have a list of potentially unitary faces and edges.}
 set localFD_KHashbt_lookDownGEO \
-  ( KGBElt x, ratvec lambda, LocalVertexData Lvd, [[FacetVertsKHash]] LFKH,
-    int b, int t, KTypePol_hash ktp_hash) = [[FacetVertsKHash]]:
-(   {if facet_verbose
+  ( KGBElt x, ratvec lambda, LocalVertexData Lvd, [[FaceVertsKHash]] LFKH,
+    int b, int t, KTypePol_hash ktp_hash) = [[FaceVertsKHash]]:
+(   {if face_verbose
     then prints(new_line,"start localFD_Khashbt_lookDownGEO, b = ",b,", t = ",t)
     fi;}
     let G = x.real_form, start=elapsed_ms()
     then () = for dim:t-#LFKH from #LFKH {b has to be at least 2}
-    	      do LFKH := LFKH# (let acts = superFacets(LFKH[0],LFKH[dim-1],2)
+    	      do LFKH := LFKH# (let acts = superFaces(LFKH[0],LFKH[dim-1],2)
 	      	    	       	in for actual in acts
 	       	    	      	   do let bary =
 				      sum(G.rank, for j in actual do Lvd.list[j] od)/(dim+1)
@@ -674,35 +674,35 @@ set localFD_KHashbt_lookDownGEO \
 				              K_type_pol(Q)), #ms]]
 		       		    	 else []
 				    	 fi
-		    	      	   od.## {[FacetVertsKHash]})
+		    	      	   od.## {[FaceVertsKHash]})
 	 od
     then () = LFKH := sort(G, Lvd, LFKH, 2)
     then time = elapsed_ms() - start
     then () = if time_verbose
 	      then prints("     ", print_time_string(time),
 	      	   		" for localFD_Khashbt to dim ",t-1) fi
-    in if(facet_verbose)
-       then prints("After localFD_KHashbt_lookDownGEO, facet counts are ",
+    in if(face_verbose)
+       then prints("After localFD_KHashbt_lookDownGEO, face counts are ",
        			      for list in LFKH do #list od) fi;
        LFKH
 )
 
 
-{takes local data to height level, dimension \le b-1, and adds facets from
-b to (t-1)-dimensional FPP-facets; make sure subfacets are also in list
+{takes local data to height level, dimension \le b-1, and adds faces from
+b to (t-1)-dimensional FPP-faces; make sure subfaces are also in list
 Roughly input goes from 0 to b-1 (size b), output 0 to t-1 (size t). This time
 just calculate K characters to HT
 
-Need to assume b \ge 2, so have a list of potentially unitary facets and edges.}
+Need to assume b \ge 2, so have a list of potentially unitary faces and edges.}
 set localFD_KHashbt_lookDownGEO \
-  ( KGBElt x, ratvec lambda, LocalVertexData Lvd, [[FacetVertsKHash]] LFKH,
-    int b, int t, int HT, KTypePol_hash ktp_hash) = [[FacetVertsKHash]]:
-(   if facet_verbose
+  ( KGBElt x, ratvec lambda, LocalVertexData Lvd, [[FaceVertsKHash]] LFKH,
+    int b, int t, int HT, KTypePol_hash ktp_hash) = [[FaceVertsKHash]]:
+(   if face_verbose
     then prints(new_line,"start localFD_Khashbt_lookDownGEO, b = ",b,", t = ",t)
     fi;
     let G = x.real_form, start=elapsed_ms()
     then () = for dim:t-#LFKH from #LFKH {b has to be at least 2}
-    	      do LFKH := LFKH# (let acts = superFacets(LFKH[0],LFKH[dim-1],2)
+    	      do LFKH := LFKH# (let acts = superFaces(LFKH[0],LFKH[dim-1],2)
 	      	    	       	in for actual in acts
 	       	    	      	   do let bary =
 				      sum(G.rank, for j in actual do Lvd.list[j] od)/(dim+1)
@@ -718,37 +718,37 @@ set localFD_KHashbt_lookDownGEO \
 				              K_type_pol(Q)), #ms]]
 		       		    	 else []
 				    	 fi
-		    	      	   od.## {[FacetVertsKHash]})
+		    	      	   od.## {[FaceVertsKHash]})
 	 od
     then () = LFKH := sort(G, Lvd, LFKH, 2)
     {then time = elapsed_ms() - start
     then () = if time_verbose
 	      then prints("     ", print_time_string(time),
 	       " for localFD_Khashbt to height ", HT, " and dim ",t-1) fi}
-    in if(facet_verbose)
-       then prints("After localFD_KHashbt_lookDownGEO, facet counts are ",
+    in if(face_verbose)
+       then prints("After localFD_KHashbt_lookDownGEO, face counts are ",
        			      for list in LFKH do #list od) fi;
        LFKH
 )
 
 set extend_K_characters(KGBElt x, ratvec lambda, LocalVertexData Lvd,
-    [[FacetVertsKHash]] LFKH, KTypePol_hash ktp_hash) = [[FacetVertsKHash]]:
-    {if facet_verbose
+    [[FaceVertsKHash]] LFKH, KTypePol_hash ktp_hash) = [[FaceVertsKHash]]:
+    {if face_verbose
     then prints(new_line,"start extend_K_characters")
     fi;}
     let G = x.real_form, start = elapsed_ms()
     then answer =
        for d:#LFKH
-       do if fund_facet_verbose then prints(new_line, "start to extend ",#LFKH[d],
+       do if fund_face_verbose then prints(new_line, "start to extend ",#LFKH[d],
        	  		     " K-characters in dimension ",d,
 			     " in extend_K_characters")
        	  fi; for v@k in LFKH[d]
-       	      do if k%(max(#LFKH[d]\10,2))=0 and fund_facet_verbose
-	      	 then prints("examining facet ",k,
+       	      do if k%(max(#LFKH[d]\10,2))=0 and fund_face_verbose
+	      	 then prints("examining face ",k,
 	    	      "; #ktp_hash = ",ktp_hash.size())
 	  	 fi;
-	  	 let nu = facet_bary(Lvd, v[:d+1]), w=v
-		 {facet_bary_ic(x.inner_class, facet_bary(Lvd.list, v[:d+1]))}
+	  	 let nu = face_bary(Lvd, v[:d+1]), w=v
+		 {face_bary_ic(x.inner_class, face_bary(Lvd.list, v[:d+1]))}
        	  	 then p0 = parameter(x, lambda, nu)
 	  	 then P = finalize(p0)
 		 then () = char_counter.use()
@@ -765,24 +765,24 @@ set extend_K_characters(KGBElt x, ratvec lambda, LocalVertexData Lvd,
      in answer
 
 set extend_K_characters(KGBElt x, ratvec lambda, LocalVertexData Lvd,
-    [[FacetVertsKHash]] LFKH, int ht, KTypePol_hash ktp_hash) =
-    	[[FacetVertsKHash]]:
-    if facet_verbose
+    [[FaceVertsKHash]] LFKH, int ht, KTypePol_hash ktp_hash) =
+    	[[FaceVertsKHash]]:
+    if face_verbose
     then prints(new_line,"start extend_K_characters to height ",ht)
     fi;
     let G = x.real_form, start = elapsed_ms()
     then answer =
        for d:#LFKH
-       do if fund_facet_verbose then prints(new_line, "start to extend ",#LFKH[d],
+       do if fund_face_verbose then prints(new_line, "start to extend ",#LFKH[d],
        	  		     " K-characters in dimension ",d,
 			     " in extend_K_characters")
        	  fi; for v@k in LFKH[d]
-       	      do if k%(max(#LFKH[d]\10,2))=0 and fund_facet_verbose
-	      	 then prints("examining facet ",k,
+       	      do if k%(max(#LFKH[d]\10,2))=0 and fund_face_verbose
+	      	 then prints("examining face ",k,
 	    	      "; #ktp_hash = ",ktp_hash.size())
 	  	 fi;
-	  	 let nu = facet_bary(Lvd, v[:d+1]), w=v
-		 {facet_bary_ic(x.inner_class, facet_bary(Lvd.list, v[:d+1]))}
+	  	 let nu = face_bary(Lvd, v[:d+1]), w=v
+		 {face_bary_ic(x.inner_class, face_bary(Lvd.list, v[:d+1]))}
        	  	 then p0 = parameter(x, lambda, nu)
 	  	 then P = finalize(p0)
 		 then () = char_counter.use()
@@ -1058,7 +1058,7 @@ set_type Lvd_Perm2_mapAct = (LocalVertexData Lvd, PermOrderTwo Perm2, vec mapAct
 set Perm2_to_LPm(InnerClass ic, PermOrderTwo Perm2) = Lvd_Perm2_mapAct:
     let verts = FPP_vertices(ic)
     then FEs = FPP_flippable_edges(ic)
-    then vlist = (for f in Perm2.fixed do verts[f] od)## (for (p,q) in Perm2.trans do facet_bary(verts,[p,q]) od)
+    then vlist = (for f in Perm2.fixed do verts[f] od)## (for (p,q) in Perm2.trans do face_bary(verts,[p,q]) od)
     then Lvd = to_vertex_data(vlist,#Perm2.fixed)
     then mapAct = vec: for j:#verts do minus_1 od
     {maps FPP vertex indices from vd to local indices from Lvd}
@@ -1083,7 +1083,7 @@ set_type
   , ( -> [[vec]]) Lvd_list_size {for each inner class and involution and d_lambda, size of Lvd.list}
   , (InnerClass -> VertexData) FPP_vertex_data {one for each inner class}
   , (InnerClass -> (vec -> int)) flippable_edge_lookup
-  {, (InnerClass -> [FacetVertsIndex]) FPP_flip_tet}
+  {, (InnerClass -> [FaceVertsIndex]) FPP_flip_tet}
   , (InnerClass -> [ratvec]) FPP_local_vertices {one for each inner class}
 {  , ((InnerClass, mat) -> [vec]) cands {for each involution, a list of candidates for lambda+theta_lambda}}
   , ((InnerClass, mat) -> [vec]) lamthlams {for each involution, list of allowed lambda+theta_lambda}
@@ -1251,6 +1251,7 @@ set make_Lvd_Perm2_mapAct_table() = Lvd_Perm2_mapAct_table:
       let (i,j) = add_cands{lamthlam_hash}(ic,theta), th1 = theta+1
       then k = lamthlam_hashess[i][j].lookup(lamthlam)
       in entries[i][j][k].Lvd
+      {the next function FAILS in U(3,3), called inside FPP_unitary_hash(U(3,3))}
     , ((InnerClass, mat, vec) -> Lvd_Perm2_mapAct): {LPm_entry} (InnerClass ic, mat theta, vec lamthlam)
     Lvd_Perm2_mapAct:
       let (i,j) = add_cands(ic,theta), th1 = theta+1
@@ -1390,13 +1391,18 @@ set_type
   {, ( -> vec) nuhash_sizes {for every real form, the number of nonunitary reps}}
   {, (RealForm -> int) nuhash_size {for one real form, number of nonunitary reps}}
   , ( -> ) clear
+  , (RealForm -> ) clearG
+  {, ( -> [[int]]) xl_known_now
+  , ( -> [int]) x_partial_now
+  , ( -> [int]) x_known_now}
   , (RealForm -> int) rf_number {number of real form in list}
   , (int -> RealForm) rf_index {jth real form in list}
   , (RealForm -> [int]) xl_known {for each x, bitmap of lambda for which FPP unitary dual is known}
   , (RealForm -> int) x_known {bitmap of x for which entire FPP dual is known}
   , (RealForm -> int) x_partial {bitmap of x for which some lambda have FPP dual known}
   , ((KGBElt,int) -> ) finish {add bitmap of new known (x,lambda) to xl_known}
-  , (KGBElt -> ) finishx {add x to xl_known}
+  , (KGBElt -> ) finishx {add x to x_known}
+  , ((RealForm,int) ->) finishxmap {OR int with x_known(RealForm)}
   , (KGBElt -> ) partialx {add x to x_partial}
   , ((RealForm,[int]) -> ) finishall {add bitmaps of all new known (x,lambda) to xl_known}
   , (RealForm -> Param_hash) uhash {hash table of known unitary}
@@ -1415,6 +1421,7 @@ set_type
   , ( -> ) write {output unitary data for file}
   , (RealForm -> ) writeG {output data for one group to file}
   , ((RealForm, int, int) -> ) writeGrange {output data for KGB(G)[low,high]}
+  , ((KGBElt, ratvec) -> ) writexlam {output data for one x,lambda}
 )
 ]
 
@@ -1428,7 +1435,7 @@ set make_big_unitary_hash() = big_unitary_hash_table:
     then xl_known = [[int]]: [] {one bitmap of known (x,lambda) for each real form and x}
     then x_known = [int]: [] {one bitmap of known x for each real form}
     then x_partial = [int]: [] {one bitmap of partially known x for each real form}
-    then clear() = void:
+    then clearBUH() = void:
     	 let () = real_form_hash.clear()
 	 then () = uhashes := []
 	 {then () = nuhashes := []}
@@ -1447,11 +1454,22 @@ set make_big_unitary_hash() = big_unitary_hash_table:
 			{then () = uhashes #:= make_Param_hash()}
 			in {n}uhashes #:= make_Param_hash()
 	    	   fi
+	  {then () = prints("x_known = ",x_known,", x_partial = ",x_partial)}
 	  {then () = if i=I then prints((real_form_hash.size(), #uhashes, #xl_known)) fi}
 	  then () = assert(real_form_hash.size() = #uhashes and #uhashes = #xl_known
 	       	    				 {and #nuhashes = #uhashes} and #uhashes = #x_known
 						 and #x_partial = #x_known, "big_unitarity_hash damaged")
 	  in i
+    then clearG(RealForm rf) =
+    	 let i = real_form_hash.lookup(rf)
+	 in if i >= 0
+	    then {prints(i);}
+	    	 uhashes[i].clear();
+	    	 {prints("i = ",i, ", x_partial = ",x_partial);}
+	    	 x_partial[i] := 0;
+		 xl_known[i] := [];
+		 x_known[i] := 0
+	    fi
     in
     ( (->int): {real_form_size} @int: real_form_hash.size()
     , ( -> vec): {uhash_sizes} @vec: for uhash in uhashes do uhash.size() od
@@ -1460,7 +1478,12 @@ set make_big_unitary_hash() = big_unitary_hash_table:
     {, ( -> vec): {nuhash_sizes} @vec: for nuhash in nuhashes do nuhash.size() od}
     {, (RealForm -> int): {nuhash_size} (RealForm rf) int:
       nuhashes[add_real_form(rf)].size()}
-    , ( -> ): {clear} clear
+    , ( -> ): {clear} clearBUH
+    , (RealForm -> ): {clearG} (RealForm rf):
+      clearG(rf)
+    {, ( -> [[int]]): {xl_known_now} @[[int]]: xl_known
+    , ( -> [int]): {x_partial_now} @[int]: x_partial
+    , ( -> [int]): {x_known_now} @[int]: x_known}
     , (RealForm -> int): {rf_number} (RealForm rf) int:
       add_real_form(rf)
     , (int -> RealForm): {rf_index} (int i) RealForm:
@@ -1481,6 +1504,9 @@ set make_big_unitary_hash() = big_unitary_hash_table:
       then () = xl_knowni[x.number] := OR(M,xl_knowni[x.number])
       then () = xl_known[i] := xl_knowni
       then () = x_partial[i] := OR(to_bitset([x.number]),x_partial[i])
+      then () = if xl_known[i][x.number] + 1 = to_bitset([#FPP_lambdas(x)])
+      	      	then x_known[i] := OR(to_bitset([x.number]),x_known[i])
+		fi
       then () = finish_time+:= elapsed_ms() - start
       in ()
     , (KGBElt -> ): {finishx} (KGBElt x):
@@ -1488,6 +1514,10 @@ set make_big_unitary_hash() = big_unitary_hash_table:
       then M = to_bitset([x.number])
       then () = x_known[i] := OR(M,x_known[i])
       then () = x_partial[i] := OR(M,x_partial[i])
+      in ()
+    , ((RealForm,int) ->): {finishxmap} (RealForm G, int M):
+      let i = add_real_form(G)
+      then () = x_known[i] := OR(M,x_known[i])
       in ()
     , (KGBElt -> ): {partialx}  (KGBElt x):
       let i = add_real_form(x.real_form)
@@ -1602,24 +1632,64 @@ set make_big_unitary_hash() = big_unitary_hash_table:
 	     prints("void: for p in ",listname," do big_unitary_hash.long_match(p,j) od");
 	     prints("big_unitary_hash.finishall(",Gname,",",intlistname,")")
 	od
-    , (RealForm -> ): {writeG} (RealForm G):
+    {following version produces a file that can't be read if it's more
+    than 5000 lines long}
+    {, (RealForm -> ): {writeG} (RealForm G):
       let i = add_real_form(G)
-      then Gname = "Gtemp"
+      then Gname = "G_temp"
       then listname = Gname+"_list"
       then intlistname = Gname+"_XLK"
       then plist = uhashes[i].list()
       then bitmapintlist = xl_known[i]
+      then donemap = x_known[i]
+      then () = write_real_form(G,Gname)
+      then () = prints("let j = big_unitary_hash.rf_number(",Gname,")")
+      then () = prints("then ",intlistname,"=[int]:[]")
+      then () = prints("then ",listname,"=[Param]:[]")
+      then () =	write_cat_param_list(plist,listname)
+      then () = write_cat_int_list(bitmapintlist,intlistname)
+      in prints("in void: for p in ",listname," do big_unitary_hash.long_match(p,j) od;");
+      	 prints("big_unitary_hash.finishall(",Gname,",",intlistname,");");
+	 prints("big_unitary_hash.finishxmap(",Gname,",",to_string(donemap),")")}
+    {same problem}
+    {, (RealForm -> ): {writeG} (RealForm G):
+      let i = add_real_form(G)
+      then Gname = "G_temp"
+      then listname = Gname+"_list"
+      then intlistname = Gname+"_XLK"
+      then plist = uhashes[i].list()
+      then bitmapintlist = xl_known[i]
+      then donemap = x_known[i]
       in write_real_form(G,Gname);
-	 prints("set j = big_unitary_hash.rf_number(",Gname,")");
-	 prints("set ",listname,"=[Param]:[]");
-	 write_append_cat_param_list(plist,listname,Gname);
-	 prints("set ",intlistname,"=[int]:[]");
-	 write_append(bitmapintlist,intlistname);
-	 prints("void: for p in ",listname," do big_unitary_hash.long_match(p,j) od");
-	 prints("big_unitary_hash.finishall(",Gname,",",intlistname,")")
+      	 prints("let j = big_unitary_hash.rf_number(",Gname,"), ptemp = GL(1,R).trivial");
+	 for p@k in plist
+	 do let x = p.x.number
+	    in prints("then () =ptemp:=parameter(G_temp,",x,",",p.lambda,",",p.nu,")");
+	       prints("then () = big_unitary_hash.long_match(ptemp,j)")
+	 od;
+	 prints(" in big_unitary_hash.finishall(",Gname,",",xl_known[i],");");
+	 prints("big_unitary_hash.finishxmap(",Gname,",",to_string(donemap),")")}
+
+    , (RealForm -> ): {writeG} (RealForm G):
+      let i = add_real_form(G)
+      then Gname = "G_temp"
+      then listname = Gname+"_list"
+      then intlistname = Gname+"_XLK"
+      then plist = uhashes[i].list()
+      then bitmapintlist = xl_known[i]
+      then donemap = x_known[i]
+      in write_real_form(G,Gname);
+      	 prints("set j = big_unitary_hash.rf_number(",Gname,"), ptemp = GL(1,R).trivial");
+	 for p@k in plist
+	 do let x = p.x.number
+	    in prints("void: ptemp:=parameter(G_temp,",x,",",p.lambda,",",p.nu,")");
+	       prints("void: big_unitary_hash.long_match(ptemp,j)")
+	 od;
+	 prints("void: big_unitary_hash.finishall(",Gname,",",xl_known[i],")");
+	 prints("void: big_unitary_hash.finishxmap(",Gname,",",to_string(donemap),")")
     , ((RealForm, int, int) -> ): {writeGrange} (RealForm G, int low, int high):
       let i = add_real_form(G)
-      then Gname = "Gtemp"
+      then Gname = "G_temp"
       then listname = Gname+"_list_"+to_string(low)+"_"+to_string(high)
       then intlistname = Gname+"_XLK_"+to_string(low)+"_"+to_string(high)
       then longlist = uhashes[i].list()
@@ -1631,15 +1701,48 @@ set make_big_unitary_hash() = big_unitary_hash_table:
 		   od.##
       then longbitmapintlist = xl_known[i]
       then bitmapintlist = longbitmapintlist[low:high]
-      in write_real_form(G,Gname);
-	 prints("set j = big_unitary_hash.rf_number(",Gname,")");
-	 prints("set X = KGB(",Gname,")[",low,":",high,"]");
-	 prints("set ",listname,"=[Param]:[]");
-	 write_append_cat_param_list(plist,listname,Gname);
-	 prints("set ",intlistname,"=[int]:[]");
-	 write_append(bitmapintlist,intlistname);
-	 prints("void: for p in ",listname," do big_unitary_hash.long_match(p,j) od");
-	 prints("for N@m in ",intlistname," do big_unitary_hash.finish(X[m],N) od")
+      then donemap = x_known[i]
+      then done_list = for x in KGB(G)[low:high]
+      	   	       do if is_member_bitset(x.number, donemap)
+		       	     or longbitmapintlist[x.number] + 1 = to_bitset([#FPP_lambdas(x)])
+			  then [x]
+			  else []
+			  fi
+		       od.##
+      then donerangemap = to_bitset(for x in done_list do x.number od)
+      	   {these are the x's being written for which list is complete}
+      then () = write_real_form(G,Gname)
+      then () = prints("let j = big_unitary_hash.rf_number(",Gname,")")
+      then () = prints("then Xlist = KGB(",Gname,")[",low,":",high,"]")
+      then () = prints("then ",listname,"=[Param]:[]")
+      then () = prints("then ",intlistname,"=[int]:[]")
+      then () = write_cat_param_list(plist,listname)
+      then () = write_cat_int_list(bitmapintlist,intlistname)
+      in prints("in (void: for p in ",listname," do big_unitary_hash.long_match(p,j) od;");
+	 prints("big_unitary_hash.finishxmap(",Gname,",",to_string(donerangemap),"))")
+    , ((KGBElt,ratvec) -> ): {writexlam} (KGBElt x, ratvec lambda):
+      let G = x.real_form
+      then i = add_real_form(G)
+      then Gname = "G_temp"
+      then listname = Gname+"_list"
+      then longlist = uhashes[i].list()
+      then plist = for p in longlist
+      	   	   do if p.x = x and p.lambda = lambda
+		      then [p]
+		      else []
+		      fi
+		   od.##
+      then N = to_bitset([position(x,lambda)])
+      then () = write_real_form(G,Gname)
+      then () = prints("let j = big_unitary_hash.rf_number(",Gname,")")
+      then () = prints("then x = KGB(",Gname,",",to_string(x.number),")")
+      then () = prints("then ",listname,"=[Param]:[]")
+      then () = write_cat_param_list(plist,listname)
+      in prints("in (void: for p in ",listname," do big_unitary_hash.long_match(p,j) od;");
+      	 if is_member_bitset(N, xl_known[i][x.number])
+	 then prints("big_unitary_hash.finish(x,",to_string(N),");")
+	 fi;
+	 prints("())")
     )
 )
 
@@ -1648,7 +1751,7 @@ set big_unitary_hash = make_big_unitary_hash()
 {. The next family of functions all need simple derived group. Always
 |vd.list| should be ALL vertices in the FPP; Lvd.list will be all infl
 chars in the FPP for a parameter (x,lambda,*), with x and lambda
-fixed. The facet lists carried by [[FacetBary]] or [[FacetVertsIndex]]
+fixed. The face lists carried by [[FaceBary]] or [[FaceVertsIndex]]
 may be pruned of reps not interesting for unitarity, but the indices
 will always refer to a constant vlist.}
 

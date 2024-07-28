@@ -34,7 +34,14 @@ set write_vecs([vec] list) = void:
 
 set write_append([int] list, string listname) = void:
     begin
-	 for M in list do prints("void:",listname,"#:=",M) od
+	 for M@j in list do prints(listname,"#:=",M, if j<#list-1 then
+    ";" else "" fi) od
+    end
+
+{assume that [int] listname exists, add to it by concatenation}
+set write_cat_int_list([int] list, string listname) = void:
+    begin
+	 for M@j in list do prints("then () = ",listname,"#:=",M) od
     end
 
 set default_ic_name = string:"ic_saved"
@@ -90,13 +97,13 @@ set data(KType mu) = (int, vec):
     (mu.x.#, mu.lambda_rho)
 
 {first coord is coefficient, second is KGBElt, rest are lambda-rho}
-set_type KPolTermDatum = vec
+set_type KPolTermDatum = [int]
 
 set K_data(KTypePol P) = [KPolTermDatum]:
-    for c@mu in P do [int_part(c)]##[mu.x.#]##mu.lambda_rho od
+    for c@mu in P do [int_part(c)]##[s_part(c)]##[mu.x.#]##mu.lambda_rho od
 
 set K_pol(RealForm G, [KPolTermDatum] KData) = KTypePol:
-    sum(G, for d in KData do d[0]*K_type(KGB(G,d[1]),d[2:]) od)
+    sum(G, for d in KData do (d[0]+s*d[1])*K_type(KGB(G,d[2]),d[3:]) od)
 
 set default_K_type_pols_name = string:"KPols_saved"
 { If you say
@@ -121,6 +128,16 @@ set write_K_type_pols(RealForm G, [KTypePol] KPols, string KPolsName) = void:
 			[[int]]: d,")")
 	   od
    end
+
+{assume the [KTypePol] listName has already been created, and add to it}
+set write_cat_K_type_pols(string Gname, [KTypePol] list, string listName) = void:
+    begin
+         for P in list
+	 do let d = K_data(P)
+	    in prints("then () = ",listName,"#:=K_pol(", Gname,", [vec]:",[[int]]: d,")")
+	 od
+    end
+
 
 set write_K_type_pols(RealForm G, [KTypePol] KPols) = void:
     write_K_type_pols(G,KPols,default_K_type_pols_name)
@@ -163,6 +180,14 @@ set write_K_type_pols_data(RealForm G, [KTypePol] KPols,
 			[[int]]: K_data(KPols[i]))
 	   od
      end
+
+{assume the [[KPolTermDatum]] = [[vec]] listName has already been created, and add to it}
+set write_cat_K_type_pols_data([KTypePol] list, string listName) = void:
+    begin
+         for P in list
+	 do prints("then () = ",listName,"#:=", K_data(P))
+	 od
+    end
 
 set write_K_type_pols_data(RealForm G, [KTypePol] KPols) = void:
      write_K_type_pols(G, KPols, default_K_type_pols_name)
@@ -231,7 +256,7 @@ set write_param_list([Param] list, string listName) = void:
 	fi
 	; write_real_form(G_temp, "G_temp")
 	; prints("set Nullp = U(1,0).trivial")
-	; prints("set ",listName,"=[Param]: for i:",#list,
+	; prints("then ",listName,"=[Param]: for i:",#list,
 	  	      " do Nullp od")
         in for p@i in list
 	  do let (,x) = %p.x
@@ -267,9 +292,9 @@ set write_append_param_list([Param] list, string listName) = void:
 	prints("set Nullp = U(1,0).trivial")
 	; prints("set ",listName,"=[Param]: for i:",#list,
 	  	      " do Nullp od")
-        ; for p@i in list
+        ;for p@i in list
 	  do let (,x) = %p.x
-	     in prints("void:",listName,"[",i,"]:=parameter(KGB(G_temp,",
+	     in prints("then () = ", listName,"[",i,"]:=parameter(KGB(G_temp,",
 	     	x,"),",p.lambda,",",p.nu,")")
 	  od
     end
@@ -287,14 +312,14 @@ Only requirement is that all the Param's are for the same group.
 }
 set write_cat_param_list([Param] list, string listName) = void:
     begin
-    	let G_temp = GL(1,R)
+    	{let G_temp = GL(1,R)
 	then () = if #list > 0 then G_temp := list[0].real_form
 	fi
 	; write_real_form(G_temp, "G_temp")
 	; prints("set ",listName,"=[Param]:[]")
-	in for p@i in list
+	in} for p@i in list
 	   do let (,x) = %p.x
-	      in prints("void:",listName,"#:=parameter(KGB(G_temp,",
+	      in prints("then () = ",listName,"#:=parameter(KGB(G_temp,",
 	     	x,"),",p.lambda,",",p.nu,")")
 	   od
     end

@@ -7,6 +7,14 @@ the FPP}
 
 {delta-fixed wts for G}
 
+set imag_simple(InnerClass ic) = [int]:
+    for j:ic.semisimple_rank
+    do if =(distinguished_involution(ic)-1)*ic.simple_roots[j]
+       then [j]
+       else []
+       fi
+    od.##
+
 set complex_simple(InnerClass ic) = [int]:
     for j:ic.semisimple_rank
     do if  simple_root_index(ic,
@@ -16,21 +24,14 @@ set complex_simple(InnerClass ic) = [int]:
        fi
     od.##
 
-set imag_simple(InnerClass ic) = [int]:
-    for j:ic.semisimple_rank
-    do if =(distinguished_involution(ic)-1)*ic.simple_roots[j]
-       then [j]
-       else []
-       fi
-    od.##
+set delta_fixed(InnerClass ic) = [int]:
+    imag_simple(ic)##complex_simple(ic)
 
 {either fundamental weight xi or sum of a pair (xi, delta*xi)}
 set delta_fixed_fund_wts(InnerClass ic) = [ratvec]:
     let delta = distinguished_involution(ic)
-    then listcplx = complex_simple(ic)
-    then listimag = imag_simple(ic)
-    in for j in listimag do ic.fundamental_weights[j] od ##
-       for j in listcplx do (1+delta)*ic.fundamental_weights[j] od
+    in for j in imag_simple(ic) do ic.fundamental_weights[j] od ##
+       for j in complex_simple(ic) do (1+delta)*ic.fundamental_weights[j] od
 
 set delta_fixed_sums(InnerClass ic) = [ratvec]:
     let list = delta_fixed_fund_wts(ic)
@@ -63,10 +64,52 @@ set Ls(RealForm G) = [RealForm]:
 {all the central-for-L weights that can be subtracted from a
 unipotent on L = Q.Levi, shifted by a [not nec dominant?] central for
 L ratvec v, to get a weakly fair induction for G, with a chance to be FPP}
-
 set shifts(KGPElt Q,ratvec v) = [vec]:
     let G = Q.real_form, tworhou = two_rho_u(Q) {, S = Q.S}
     {then T = complement(G.semisimple_rank, Q.S)}
+    then mups = for j:G.semisimple_rank
+    	 do ((tworhou + 2*v)*(G.simple_coroots[j]))\2 +1
+	 {upper bound is the weakly fair condition}
+	 od
+    {then () = prints("mups = ",mups)}
+    then mdowns = for j:G.semisimple_rank
+    	 	  do v*(G.simple_coroots[j])\1
+	 	  {lower bound is the chance of FPP condition}
+	 	  od
+    {then () = prints("mdowns = ",mdowns)}
+    then ms = mups - mdowns
+   { then () = prints("ms = ",ms)}
+    then terms = delta_fixed_fund_wts(G)
+    {then mcplxups = for j in complex_simple(G) do mups[j] od
+    then mimagups = for k in imag_simple(G) do mups[k] od
+    then mcplxdowns = for j in complex_simple(G) do mdowns[j] od
+    then mimagdowns = for k in imag_simple(G) do mdowns[k] od
+    then mcplx = mcplxups - mcplxdowns
+    then mimag = mimagups - mimagdowns}
+    then Qbox = box(ms) {Qbox = box(mimag##mcplx)}
+    then Qboxshifted = for b in Qbox do b + mdowns {mimagdowns##mcplxdowns} od
+    in for b in Qboxshifted
+       do let ell = sum(G.rank, for k@j in b
+       	  	      		do k*terms[j]
+		      		od)
+	  in if ell.denom = 1
+	     then [ratvec_as_vec(ell)]
+	     else []
+	     fi
+       od.##
+
+{This time gammaL is the infl char of a weakly unipotent rep on L. Cohomological induction
+from that gives gammaG = gammaL + rho_u(Q).}
+{set more_shifts(KGPElt Q,ratvec gammaL) = [vec]:
+    let G = Q.real_form, tworhou = two_rho_u(Q) {S = Q.S}
+    {then T = complement(G.semisimple_rank, Q.S)}
+    then mups = for k in delta_fixed(G)
+    	 	do ((G.rho - gammaL)*G.two_rho_check)/
+		   (delta_fixed_fundamental_weights[k]*G.two_rho_check)
+		od
+
+((tworhou + 2*v)*(G.simple_coroots[j]))\2 +1;
+    	      	do 
     then mups = null(G.semisimple_rank), mdowns = null(G.semisimple_rank)
     then () = for j:G.semisimple_rank
     	 do mups[j] := ((tworhou + 2*v)*(G.simple_coroots[j]))\2 +1;
@@ -91,17 +134,20 @@ set shifts(KGPElt Q,ratvec v) = [vec]:
 	     then [ratvec_as_vec(ell)]
 	     else []
 	     fi
-       od.##
+       od.##}
+
 
 {all the weights that can be subtracted from a unipotent on L to get a weakly
 fair induction for G}
 set shifts(KGPElt Q) = [vec]:
     shifts(Q, null(Q.real_form.rank)/1)
 
-{to be used as shift in unipotent_representations(Levi, shift)}
+{Each is to be used as a shift in unipotent_representations(Levi, offset). Each is central in L.}
 set offsets(KGPElt Q) = [ratvec]:
     let G = Q.real_form, tworhou = two_rho_u(Q)
-    then ks = [int]:
+    then terms = delta_fixed_fund_wts(G)
+    then ks = [int]: {these are the simple coroots positive on rhou,
+    up to distinguished involution delta}
     	 for j@k in (imag_simple(G)##complex_simple(G))
 	 do if tworhou*G.simple_coroots[j] > 0 then [k]
 	    else []
@@ -115,10 +161,13 @@ set offsets(KGPElt Q) = [ratvec]:
 		      od)/2
        od
 
-set is_FPP(RootDatum rd, ratvec gamma) = bool:
+set is_dom_FPP(RootDatum rd, ratvec gamma) = bool:
     all(for alphavee in rd.simple_coroots
     	do gamma*alphavee <= 1 and gamma*alphavee >= 0
 	od)
+
+set is_FPP(RootDatum rd, ratvec gamma) = bool:
+    is_dom_FPP(rd,dominant(rd,gamma))
 
 {this is broken because of unipotent_representations2}
 {set coh_ind_unip2(KGPElt Q, Param_hash Uhash) = void:
@@ -161,15 +210,19 @@ set coh_ind_unip(KGPElt Q, Param_hash Uhash, ratvec v) = void:
 set coh_ind_unip(KGPElt Q, Param_hash Uhash) = void:
     coh_ind_unip(Q, Uhash, null(Q.real_form.rank)/1)
 
-set coh_ind_unip_long(RealForm G, Param_hash Uhash) = void:
-    let startTime = elapsed_ms(), oldSize = Uhash.size(), Qs = Qs(G)
+set coh_ind_unip_verbose = false
+set coh_ind_unip_long(RealForm G, [KGPElt] Qs, Param_hash Uhash) = void:
+    let startTime = elapsed_ms(), oldSize = Uhash.size()
     then () = for Q@j in Qs
     	      do for v in offsets(Q)
     	      	 do coh_ind_unip(Q,Uhash,v)
-		 od{;
-		 if j%(#Qs\20) = 0 then prints("finished parabolic #", j,
+		 od;
+		 if coh_ind_unip_verbose and
+		    j%(max(#Qs\20,2)) = 0
+		 then prints("finished parabolic #", j,
 		    " after ",print_time_string(elapsed_ms() - startTime),
-		    "; found ",Uhash.size() - oldSize, " reps.") fi}
+		    "; found ",Uhash.size() - oldSize, " reps.")
+		 fi
 	      od
     then () = if time_verbose
     	 then prints("Found ",Uhash.size() - oldSize, " new unitary reps.");
@@ -178,12 +231,20 @@ set coh_ind_unip_long(RealForm G, Param_hash Uhash) = void:
          fi
     in ()
 
+{just induced from proper Q}
+set coh_ind_unip_long(RealForm G, Param_hash Uhash) = void:
+    coh_ind_unip_long(G,Qs(G),Uhash)
+
+{include unip reps of G}
+set coh_ind_unip_long_G(RealForm G, Param_hash Uhash) = void:
+    coh_ind_unip_long(G,Qs(G)#parabolic_by_wt(null(G.rank),KGB(G,0)),Uhash)
+
 {broken because of dependence on unipotent_representations2}
 {set coh_ind_unip_long2(RealForm G, Param_hash Uhash) = void:
     let startTime = elapsed_ms(), oldSize = Uhash.size(), Qs = Qs(G)
     then () = for Q@j in Qs
               do coh_ind_unip2(Q,Uhash);
-	      	 if j%(#Qs\20) = 0 then prints("finished parabolic #", j,
+	      	 if j%(max(#Qs\20,2)) = 0 then prints("finished parabolic #", j,
 		    " after ",print_time_string(elapsed_ms() - startTime),
 		    "; found ",Uhash.size() - oldSize, " reps.") fi
 	      od
@@ -196,10 +257,13 @@ set coh_ind_unip(RealForm G, Param_hash Uhash) = void:
     let startTime = elapsed_ms(), oldSize = Uhash.size(), Qs = Qs(G)
     then () = for Q@j in Qs
     	      do coh_ind_unip(Q,Uhash);
-	         if time_verbose and j%(#Qs\20) = 0
+	         if coh_ind_unip_verbose
+		    and j%(max(#Qs\20,2)) = 0
 		 then prints("finished parabolic #", j,
 		    " after ",print_time_string(elapsed_ms() - startTime),
-		    "; found ",Uhash.size() - oldSize, " reps.") fi
+		    "; found ",Uhash.size() - oldSize, " reps.");
+		 oldSize := Uhash.size()
+		 fi
     	      od
     then () = if time_verbose
     	 then prints("Found ",Uhash.size() - oldSize, " new unitary reps.");

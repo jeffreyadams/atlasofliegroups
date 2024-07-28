@@ -74,9 +74,13 @@ set dirac_index_ds(Param p,KGBElt x_1)=ParamPol:
    {then () = prints(A)}
    then w =cross_divide(x_1,p.x)
    {then pwK = K0_params(p,x_1)[0]} {K_0 infl char gamma +rho_n(x_1)}
-   in sgn(w)*parameter(K_cover.compact_form, 0,
+   in if is_dominant(K_0(p.x),
+		projection_to_K_matrix(p.x)*(gamma - rho_c(p.x)))
+      then sgn(w)*parameter(K_cover.compact_form, 0,
       		       A*(gamma - B*(G.rho - rho_c(x_1)) ),
       					     null(K_cover.rank))
+      else null_module(K_cover.compact_form)
+      fi
 
 {meant to be infinitesimal character in G coords of Dirac index}
 set dirac_index_ds_test(Param p,KGBElt x_1)=(int, ratvec):
@@ -94,10 +98,15 @@ set dirac_index_ds_test(Param p,KGBElt x_1)=(int, ratvec):
    {then () = prints("rho_n(x_1) = ",G.rho-rho_c(x_1))}
    then (K_cover,A)=cover(K,B*(G.rho - rho_c(x_1)))
    {then () = prints(A)}
-   then w =cross_divide(x_1,p.x)
+   then x = p.x
+   then w =cross_divide(x_1,x)
    {then pwK = K0_params(parameter(x_1, gamma, null(G.rank)),x_1)[0]} {K_0 infl char gamma +rho_n(x_1)}
    {then () = prints("pwK has infl char ",pwK.infinitesimal_character)}
-   in (sgn(w), w*(1+x_1.involution)*gamma/2 + split_central_character(p)) 
+   in if is_dominant(K_0(x),
+		projection_to_K_matrix(x)*(gamma - rho_c(x)))
+      then (sgn(w), w*(1+x_1.involution)*gamma/2 {- split_central_character(p)})
+      else (0,null(K.rank))
+      fi
 
 {default x_1=KGB(G,0)}
 set dirac_index_ds(Param p)=ParamPol:dirac_index_ds(p,KGB(p.real_form,0))
@@ -115,16 +124,23 @@ set dirac_index_std(ParamPol P,KGBElt x_1)=ParamPol:
     then K=K_0(x_1)
     then (K_cover,A)=cover(K,{G.rho} (qK.infinitesimal_character -
    	K.rho)/2)
+    then B = projection_to_K_matrix(x_1)
     then K_cover_compact=K_cover.compact_form
     then () = if P.= then return null_module(K_cover_compact) fi
     in null_module(K_cover_compact)+
        for c@p in P
        do c*if is_fundamental_Cartan(p.x)
-       	    then let gamma = p.infinitesimal_character - p.split_central_character
-		 then w =cross_divide(x_1,p.x)
+       	    then let gamma = p.infinitesimal_character -
+	    	     p.split_central_character
+		 then x = p.x
+		 then w =cross_divide(x_1,x)
 	    	 then pwK = K0_params(parameter(x_1, w*gamma, null(G.rank)))[0]
-	         in sgn(w)*parameter(K_cover_compact,0, A*pwK.infinitesimal_character,
-		 null(K_cover.rank))
+	         in if is_dominant(K_0(x),
+		       projection_to_K_matrix(x)*(gamma - rho_c(x)))
+		    then sgn(w)*parameter(K_cover_compact,0,
+		    A*pwK.infinitesimal_character, null(K_cover.rank))
+		    else null_module(K_cover_compact)
+		    fi
   	    else null_module(K_cover_compact)
   	    fi
        od
@@ -132,6 +148,7 @@ set dirac_index_std(ParamPol P,KGBElt x_1)=ParamPol:
 {Dirac index of ParamPol of standards is a linear function}
 {ratvec is meant to be infl char of Dirac index in G coords}
 set dirac_index_std_test(ParamPol P,KGBElt x_1)=[(int,ratvec)]:
+{PROBABLY NEEDS THE TEST "is_dominant..." above}
     assert(P.real_form.is_equal_rank_mod_center,
     "group not equal rank mod center");
     let G=P.real_form

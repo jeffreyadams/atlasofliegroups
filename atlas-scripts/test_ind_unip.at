@@ -1,0 +1,147 @@
+{It has been conjectured that unitary reps of integral infinitesimal
+character must be weakly-fair induced from special unipotent. This
+script tests, assuming FPP (which means it's enough to test for FPP
+reps). Works only for G simple.}
+
+<FPP_globalDirac.at
+<cohIndUnip.at {for coh_ind_unip}
+set test_ind_unip(RealForm G) = bool:
+    let start = elapsed_ms()
+    then () = prints("Starting to compute cohomological/parabolic/unipotent reps")
+    {then () = big_unitary_hash.clearG(G)}
+    then uhash_ind = make_Param_hash()
+    then () = coh_ind_unip_long_G(G,uhash_ind)
+    then int_ind_list = for p in uhash_ind.list()
+    	 	      	do big_unitary_hash.uhash(G).match(p);
+			if is_integral(G,p.infinitesimal_character)
+			   then [p]
+			   else []
+			   fi
+			od.##
+    then int_ind_hash = make_Param_hash()
+    then () = for p in int_ind_list
+    	      do int_ind_hash.match(p)
+	      od
+    then step1 = elapsed_ms()
+    then () = prints("computed reps coh ind from Arthur in ",
+    	      	     print_time_string(step1 - start))
+    then () = prints(#int_ind_list," of ",big_unitary_hash.uhash(G).size(), " are integral",new_line)
+    then FPP_report_flag_temp = FPP_report_flag
+    then () = FPP_report_flag:=false
+    then () = FPP_unitary_hash2(G)
+    then step2 = elapsed_ms()
+    then () = prints("Computed FPP unitary dual in ",
+    	      	     print_time_string(step2 - step1))
+    then ulist = big_unitary_hash.uhash(G).list()
+    then int_FPP_list = for p in ulist
+    	 	      	do if is_integral(G,p.infinitesimal_character)
+			   then [p]
+			   else []
+			   fi
+			od.##
+    then () = prints(#int_FPP_list," of ",#ulist, " are integral",new_line)
+    then () = if #int_FPP_list = #int_ind_list
+       	      then prints("All are weakly fair cohomologically induced from Arthur")
+       	      else prints("Here are the non-induced ones:");
+       	      	   for p in int_FPP_list
+    	    	   do if int_ind_hash.lookup(p) < 0
+	       	      then prints(p)
+	       	      fi
+            	   od
+	       fi
+    then () = FPP_report_flag:=FPP_report_flag_temp
+    in #int_FPP_list = #int_ind_list
+
+{This is meant to be a list of all unitary reps in the FPP with
+integral infl character, which are NOT or weakly fair
+cohomologically-induced from Arthur special unipotents.}
+
+set test_ind_unip_list(RealForm G) = [Param]:
+    let start = elapsed_ms()
+    then () = prints("Starting to compute cohomological/parabolic/unipotent reps")
+    then uhash_ind = make_Param_hash()
+    {then () = big_unitary_hash.clearG(G)}
+    then () = coh_ind_unip_long_G(G,uhash_ind)
+    then int_ind_list = for p in uhash_ind.list()
+    	 	      	do big_unitary_hash.uhash(G).match(p);
+			   if is_integral(G,p.infinitesimal_character)
+			   then [p]
+			   else []
+			   fi
+			od.##
+    then int_ind_hash = make_Param_hash()
+    then () = for p in int_ind_list
+    	      do int_ind_hash.match(p)
+	      od
+    then step1 = elapsed_ms()
+    then () = prints("computed reps coh ind from Arthur in ",
+    	      	     print_time_string(step1 - start))
+    then () = prints(#int_ind_list," of ",big_unitary_hash.uhash(G).size(), " are integral",new_line)
+    then FPP_report_flag_temp = FPP_report_flag
+    then () = FPP_report_flag:=false
+    then () = FPP_unitary_hash2(G)
+    then step2 = elapsed_ms()
+    then () = prints("Computed FPP unitary dual in ",
+    	      	     print_time_string(step2 - step1))
+    then ulist = big_unitary_hash.uhash(G).list()
+    then int_FPP_list = for p in ulist
+    	 	      	do if is_integral(G,p.infinitesimal_character)
+			   then [p]
+			   else []
+			   fi
+			od.##
+    then () = prints(#int_FPP_list," of ",#ulist, " are integral",new_line)
+    {then () = prints("Here are the non-induced ones:")}
+    then () = FPP_report_flag:=FPP_report_flag_temp
+    then () = if #int_FPP_list = #int_ind_list
+       	      then prints("All are weakly fair cohomologically induced from Arthur")
+	      else prints(#int_FPP_list - #int_ind_list,
+	      	   " are not weakly fair cohomologically induced from Arthur")
+	      fi
+    in for p in int_FPP_list
+       do if int_ind_hash.lookup(p) < 0
+	  then [p]
+	  else []
+	  fi
+       od.##
+
+
+{
+
+test_ind_unip(SU(4,2))
+
+Here are the non-induced ones:
+final parameter(x=89,lambda=[5,5,3,3,2]/1,nu=[3,6,3,3,3]/2)
+final parameter(x=92,lambda=[5,3,2,2,0]/1,nu=[3,0,0,0,-3]/2)
+final parameter(x=97,lambda=[5,5,3,3,2]/1,nu=[3,6,3,4,2]/2)
+final parameter(x=104,lambda=[5,3,2,2,0]/1,nu=[3,1,-1,0,-3]/2)
+Value: false
+
+test_ind_unip(F4_s)
+
+Here are the non-induced ones:
+final parameter(x=56,lambda=[2,-1,3,-1]/1,nu=[1,-1,2,-2]/1)
+final parameter(x=58,lambda=[2,-1,3,-1]/1,nu=[1,-1,2,-2]/1)
+final parameter(x=83,lambda=[2,-1,1,3]/1,nu=[3,-3,0,6]/2)
+final parameter(x=106,lambda=[0,2,-2,3]/1,nu=[0,3,-6,6]/2)
+Value: false
+
+test_ind_unip(E6_s)
+
+Here are the non-induced ones:
+final parameter(x=462,lambda=[3,0,-5,8,-4,3]/1,nu=[1,0,-2,3,-2,1]/1)
+final parameter(x=638,lambda=[-3,0,6,-2,5,-2]/1,nu=[-1,0,2,-1,2,-1]/1)
+Value: false
+
+test_ind_unip(E6_q)
+
+Here are the non-induced ones:
+final parameter(x=1476,lambda=[4,2,-2,0,2,1]/1,nu=[7,2,-5,0,2,2]/2)
+final parameter(x=1486,lambda=[-1,2,2,0,-1,3]/1,nu=[2,2,2,0,-5,7]/2)
+final parameter(x=1645,lambda=[-1,-1,0,3,0,2]/1,nu=[2,-3,-3,5,0,2]/2)
+final parameter(x=1649,lambda=[2,-2,0,4,-1,1]/1,nu=[2,-3,0,5,-3,2]/2)
+final parameter(x=1742,lambda=[-1,3,2,0,0,2]/1,nu=[-1,3,3,-1,0,2]/2)
+final parameter(x=1752,lambda=[1,4,0,0,1,0]/1,nu=[2,3,0,-1,3,-1]/2)
+Value: false
+
+}

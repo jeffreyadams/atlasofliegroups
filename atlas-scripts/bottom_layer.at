@@ -9,7 +9,7 @@ of the 810 it's supposed to.}
 <cohom_reductionND {for factor_params, factor_K_types}
 <derived_cover.at
 <K.at {for projection_to_K_matrix}
-<FPP_facets_herm.at {for is_unitary_hash_big}
+<FPP_faces_herm.at {for is_unitary_hash_big}
 <count.at {for char_counter}
 
 { <sub_cells.at {for is_complex}}

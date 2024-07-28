@@ -4,7 +4,8 @@
 <count.at {for unitary_test_counter}
 <time.at {for print_time_string}
 <cohom_reductionND {for derived_factor_params}
-<FPP_facets_geom {for herm_center}
+<FPP_faces_geom {for herm_center}
+<writeFiles {for write commands}
 set deformLookupCounter = make_counter()
 set deformCalcCounter = make_counter()
 
@@ -102,18 +103,24 @@ set_type
   )
 ]
 
+
+set deform_param_hash = make_Param_hash() {used as index into...}
+set deformed_data = [KTypePol] : []
+set deform_max_heights = [int] : []
+set deform_use_count = [int] : []
 set make_deformation_hash_to_ht () = deformation_hash_to_ht:
-(  let param_hash = make_Param_hash()
+(  {let param_hash = make_Param_hash()
    then max_heights = [int] : []
-   then deformed_data = [KTypePol] : []
-   then clear() = void:
-       let () = param_hash.clear()
-       then () = max_heights :=[]
+   then deformed_data = [KTypePol] : []}
+   let clear() = void:
+       let () = deform_param_hash.clear()
+       then () = deform_max_heights :=[]
        then () = deformed_data :=[]
+       then () = deform_use_count := []
        in ()
    then add_param(Param p, int h) = int:
-       	let I = param_hash.size()
-	then i = param_hash.lookup(p)
+       	let I = deform_param_hash.size()
+	then i = deform_param_hash.lookup(p)
 	then P = null_K_module(SL(1,R))
 	then () = if i.< {haven't seen this p before}
 	     then deformCalcCounter.use();
@@ -121,38 +128,112 @@ set make_deformation_hash_to_ht () = deformation_hash_to_ht:
 	     	      then full_deform(p)
 		      else deform_to_height(p,h)
 		      fi;
-		   param_hash.match(p);
+		   deform_param_hash.match(p);
 		   i:=I;
-		   max_heights #:= h;
-		   deformed_data#:=P
-	      elif {i>0; p seen} h=0 and max_heights[i].>
+		   deform_max_heights #:= h;
+		   deformed_data#:=P;
+		   deform_use_count#:=0
+	      elif {i>0; p seen} h=0 and deform_max_heights[i].>
 	      then deformCalcCounter.use();
 	      	   P := full_deform(p);
-		   max_heights[i]:=0;
+		   deform_max_heights[i]:=0;
 		   deformed_data[i]:=P
-	      elif {i >0, h>0 or } max_heights[i] > 0 and h > max_heights[i]
+	      elif {i >0, h>0 or } deform_max_heights[i] > 0 and h > deform_max_heights[i]
 	      then deformCalcCounter.use();
 	      	   P := deform_to_height(p,h);
-		   max_heights[i]:=h;
+		   deform_max_heights[i]:=h;
 		   deformed_data[i]:=P
 	      else deformLookupCounter.use()
 	      fi
+	  then () = deform_use_count[i] +:=1
 	  in i
    in
-   ( ( -> int): {size} @int: param_hash.size()
+   ( ( -> int): {size} @int: deform_param_hash.size()
   , ( -> ): {clear} clear
-  , (Param -> int): {height} (Param p): max_heights[param_hash.lookup(p)]
+  , (Param -> int): {height} (Param p): deform_max_heights[deform_param_hash.lookup(p)]
   , ((Param, int)->KTypePol): {entry} (Param p, int h):
     let i = add_param(p, h)
     in if h > 0
        then to_ht(deformed_data[i],h)
        else deformed_data[i]
        fi
-  , (int -> Param): {param_index} (int j): param_hash.index(j)
-  , (int -> int): {height_index} (int j): max_heights[j]
+  , (int -> Param): {param_index} (int j): deform_param_hash.index(j)
+  , (int -> int): {height_index} (int j): deform_max_heights[j]
   , (int -> KTypePol): {data_index} (int j): deformed_data[j]
   )
 )
+
+set append_to_deformation_hash(RealForm G, Param p, [KPolTermDatum] data, int ht, int use) = void:
+    let I = deform_param_hash.size()
+    then i = deform_param_hash.lookup(p)
+    in if i.< {haven't seen this p}
+       then deform_param_hash.match(p);
+	    i:=I;
+	    deform_max_heights #:=ht;
+	    deformed_data #:= K_pol(G,data);
+	    deform_use_count #:= use
+       elif (deform_max_heights[i] < ht) or
+	    (ht = 0 and deform_max_heights[i] > 0)
+       then deform_param_hash.match(p);
+       	    deform_max_heights[i] := ht;
+	    deformed_data[i] := K_pol(G, data);
+	    deform_use_count[i] +:=use
+       fi
+
+set append_to_deformation_hash(RealForm G, [Param] p_list, [[KPolTermDatum]] data_list,
+    [int] ht_list, [int] use_list) = void:
+    for p@j in p_list
+    do append_to_deformation_hash(G,p,data_list[j],ht_list[j],use_list[j])
+    od
+
+{write the part of deformation_hash referring to G}
+{Reading these files fails with "memory exhausted" when the files exceed 5000 lines}
+{set write_deformation_hashBAD(RealForm G) = void:
+    let param_list = deform_param_hash.list()
+    then good_j = for p@j in param_list
+    	 	  do if p.real_form = G then [j]
+		     else []
+		     fi
+		  od.##
+    then good_param_list = for j in good_j do param_list[j] od
+    then good_deformed_pols = for j in good_j do deformed_data[j] od
+    then good_deform_max_heights = for j in good_j do deform_max_heights[j] od
+    then () = write_real_form(G,"G_temp")
+    then () = prints("let temp_param_list = [Param]: []")
+    then () = prints("then temp_def_pols_data = [[KPolTermDatum]]: []") {[KTypePol]:[]")}
+    then () = prints("then temp_max_hts = [int]:[]")
+    then () = write_cat_param_list(good_param_list,"temp_param_list")
+    then () = write_cat_K_type_pols_data(good_deformed_pols, "temp_def_pols_data")
+    then () = write_cat_int_list(good_deform_max_heights,"temp_max_hts")
+    in prints("in append_to_deformation_hash(G_temp, temp_param_list, temp_def_pols_data, temp_max_hts)")}
+
+{Value of a deformation formula P is #P (how hard it was to compute) times number of uses).
+ If Value is at least (max Value)/write_deformation_frac, then record the formula}
+set write_deformation_frac = 100
+
+{write the part of deformation_hash referring to G}
+set write_deformation_hash(RealForm G) = void:
+    let param_list = deform_param_hash.list()
+    then M = max((for P@j in deformed_data do
+    deform_use_count[j]*#deformed_data[j] od)#0)
+    then good_j = for p@j in param_list
+    	 	   do if p.real_form = G and deform_use_count[j]* #deformed_data[j] *write_deformation_frac > M
+		      then [j]
+		      else []
+		      fi
+		   od.##
+    then good_param_list = for j in good_j do param_list[j] od
+    then good_deformed_data = for j in good_j do K_data(deformed_data[j]) od
+    then good_deform_max_heights = for j in good_j do deform_max_heights[j] od
+    then good_deform_use_count = for j in good_j do deform_use_count[j] od
+    in write_real_form(G,"G_temp");
+       for p@k in good_param_list
+       do let (,x) = %p.x
+       	  in prints("let p_temp = parameter(G_temp,",x,",",p.lambda,",",p.nu,")");
+	     prints("then temp_def_data = ",good_deformed_data[k]);
+       	     prints("in append_to_deformation_hash(G_temp, p_temp,",good_deformed_data[k],",",
+       		  good_deform_max_heights[k],",", good_deform_use_count[k],")")
+       od
 
 set_type
 [ twisted_deformation_hash =
@@ -165,51 +246,82 @@ set_type
   )
 ]
 
+set twisted_deform_param_hash = make_Param_hash() {used as index into...}
+set twisted_deformed_data = [KTypePol] : []
+
 set make_twisted_deformation_hash() = twisted_deformation_hash:
-(  let param_hash = make_Param_hash()
-   then deformed_data = [KTypePol] : []
-   then clear() = void:
-       let () = param_hash.clear()
-       then () = deformed_data :=[]
+(  {let param_hash = make_Param_hash()
+   then deformed_data = [KTypePol] : []}
+   let clear() = void:
+       let () =  twisted_deform_param_hash.clear()
+       then () = twisted_deformed_data :=[]
        in ()
    then add_param(Param p) = int:
-       	let I = param_hash.size()
-	then i = param_hash.lookup(p)
+       	let I =  twisted_deform_param_hash.size()
+	then i =  twisted_deform_param_hash.match(p)
 	then P = null_K_module(SL(1,R))
-	then () = if i.< {haven't seen this p before}
+	then () = if i=I {haven't seen this p before}
 	     then deformCalcCounter.use();
 	     	  P := twisted_full_deform(p);
-		  param_hash.match(p);
-		  i:=I;
-		  deformed_data#:=P
+		  twisted_deformed_data#:=P
 	      else deformLookupCounter.use()
 	      fi
 	  in i
    in
-   ( ( -> int): {size} @int: param_hash.size()
+   ( ( -> int): {size} @int:  twisted_deform_param_hash.size()
   , ( -> ): {clear} clear
   , (Param->KTypePol): {entry} (Param p):
     let i = add_param(p)
-    in deformed_data[i]
+    in twisted_deformed_data[i]
   , ((Param, int)->KTypePol): {entry_to_ht} (Param p, int h):
     let i = add_param(p)
     in if h > 0
-       then to_ht(deformed_data[i],h)
-       else deformed_data[i]
+       then to_ht(twisted_deformed_data[i],h)
+       else twisted_deformed_data[i]
        fi
-  , (int -> Param): {param_index} (int j): param_hash.index(j)
-  , (int -> KTypePol): {data_index} (int j): deformed_data[j]
+  , (int -> Param): {param_index} (int j):  twisted_deform_param_hash.index(j)
+  , (int -> KTypePol): {data_index} (int j): twisted_deformed_data[j]
   )
 )
+
+set append_to_twisted_deformation_hash(RealForm G, Param p, [KPolTermDatum] data) = void:
+    let I = twisted_deform_param_hash.size()
+    then i = twisted_deform_param_hash.match(p)
+    in if i=I {haven't seen this p}
+       then twisted_deformed_data #:= K_pol(G,data)
+       fi
+
+set append_to_twisted_deformation_hash(RealForm G, [Param] p_list, [[KPolTermDatum]] data_list) = void:
+    for p@j in p_list
+    do append_to_twisted_deformation_hash(G,p,data_list[j])
+    od
+
+{write the part of deformation_hash referring to G}
+set write_twisted_deformation_hash(RealForm G) = void:
+    let param_list = twisted_deform_param_hash.list()
+    then good_j = for p@j in param_list
+    	 	   do if p.real_form = G then [j]
+		      else []
+		      fi
+		   od.##
+    then good_param_list = for j in good_j do param_list[j] od
+    then good_twisted_deformed_data = for j in good_j do K_data(twisted_deformed_data[j]) od
+    in write_real_form(G,"G_temp");
+       for p@k in good_param_list
+       do let (,x) = %p.x
+       	  in prints("let p_temp = parameter(G_temp,",x,",",p.lambda,",",p.nu,")");
+       	     prints("in append_to_twisted_deformation_hash(G_temp,p_temp,",good_twisted_deformed_data[k],
+	     ")")
+       od
+
 
 set deformedHash = make_deformation_hash_to_ht()
 set twistedDeformedHash = make_twisted_deformation_hash()
 
-set deformedParams = for m:1500 do make_deformation_hash(m,false) od
-{NEED TO MODIFY TWISTED HASH}
+{set deformedParams = for m:1500 do make_deformation_hash(m,false) od
 set twistedDeformedParams = for m:1500 do make_deformation_hash(m,true) od
 {set deformations = [[KTypePol]]: for m:1500 do [] od
-set twistedDeformations = [[KTypePol]]: for m:1500 do [] od}
+set twistedDeformations = [[KTypePol]]: for m:1500 do [] od}}
 
 {take a KTypePol _apparently_ attached to G and make it _actually_ attached
 to G. Need this to use looked-up deformations.}
