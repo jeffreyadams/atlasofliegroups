@@ -2318,6 +2318,8 @@ const deformation_unit& Rep_table::deformation(const StandardRepr& z)
       return result;
   }
 
+  interpreter::check_interrupt(); // make this recursive function interruptible
+
   KT_nr_pol P;
   // now we must compute and set |result.def_contrib| before returning
   RatNumList rp=reducibility_points(z);
@@ -2647,6 +2649,7 @@ const deformation_unit&
     pool[h].set_LKTs_at_minus_1(std::move(P));
   }
 
+  interpreter::check_interrupt(); // make this recursive function interruptible
   P.clear(); // ensure we restart correctly at 0
   RatNumList rp=reducibility_points(z);
 

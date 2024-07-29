@@ -530,6 +530,9 @@ namespace atlas {
 #endif
   }
 
+  // here is one actual (non-type) declaration, which allows ever including
+  // an interpreter header into Atlas library files
+  namespace interpreter { void check_interrupt(); }
 
 } // |namespace atlas|
 

@@ -23,7 +23,7 @@ namespace time {
 
 class Timer
 {
-  std::chrono::time_point<std::chrono::steady_clock> start;
+  std::chrono::steady_clock::time_point start;
 public:
   Timer() : start(std::chrono::steady_clock::now()) {}
   long long int elapsed_ms() const // number of milliseconds since construction
