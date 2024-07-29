@@ -131,10 +131,15 @@ Value: false
 
 test_ind_unip(E6_s)
 
-Here are the non-induced ones:
-final parameter(x=462,lambda=[3,0,-5,8,-4,3]/1,nu=[1,0,-2,3,-2,1]/1)
-final parameter(x=638,lambda=[-3,0,6,-2,5,-2]/1,nu=[-1,0,2,-1,2,-1]/1)
-Value: false
+Total time for coh_ind_unip_more = 92.346sec
+computed reps coh ind from Arthur in 92.409sec
+248 of 559 are integral
+
+Computed FPP unitary dual in 605.911sec
+248 of 2217 are integral
+
+All are weakly fair cohomologically induced from Arthur
+Variable E6s_list: [Param]
 
 test_ind_unip(E6_q)
 
