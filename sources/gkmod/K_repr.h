@@ -82,25 +82,6 @@ public:
 
 using K_type_pol = Free_Abelian_light<K_type,Split_integer>;
 
-class K_type_to_pol_table
-{
-  K_type::Pooltype pool;
-  HashTable<K_type,unsigned long> hash;
-  std::vector<K_type_pol> poly;
-
-public:
-  K_type_to_pol_table() : pool(), hash(pool), poly() {}
-  template<typename F> const K_type_pol& put (K_type t, F f);
-  bool is_present (const K_type& t) const { return hash.find(t)!=hash.empty; }
-  const K_type_pol& lookup (const K_type& t) const;
-
-}; // |K_type_to_pol_table|
-
-
-const K_type_pol&
-  branch(K_type t, repr::level cutoff,
-	 K_type_to_pol_table& table, const Rep_context& rc);
-
 } // |namespace K_repr|
 
 } // |namespace atlas|

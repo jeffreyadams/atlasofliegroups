@@ -8250,6 +8250,85 @@ void twisted_full_deform_wrapper(expression_base::level l)
     (p->rf,export_K_type_pol(p->rt(),result)));
 }
 
+@ As an experiment, we provide variants of the |full_deform| function, and of
+its twisted counterpart, each with a time-out argument. These function return a
+value of (the same) union type: if the computation does not finish in the
+allotted time, the return the first (void) variant of the union, and otherwise
+they wrap their result in the second (ordinary) variant of the union.
+
+@h "lexer.h" // for |main_hash_table|
+
+@< Local function def...@>=
+void timed_full_deform_wrapper(expression_base::level l)
+{ auto period = get<int_value>()->long_val();
+  auto p = get<module_parameter_value>();
+  if (l==expression_base::no_value)
+    return;
+@)
+  repr::K_type_poly pol;
+    // this is the data type used by |Rep_table::deformation|
+  auto finals = p->rc().finals_for(p->val);
+@)
+  set_timer(period);
+  try
+  { for (auto it=finals.begin(); not finals.at_end(it); ++it)
+      for (auto&& term : p->rt().deformation(std::move(it->first)))
+        pol.add_term(std::move(term.first),term.second*it->second);
+  }
+  catch (const time_out& e)
+  { auto result = std::make_shared<tuple_value>(0); // the void
+    push_value(std::make_shared<union_value>(0,std::move(result),
+               main_hash_table->match_literal("timed_out")));
+    return;
+  }
+  clear_timer();
+@)
+  auto result = std::make_shared<K_type_pol_value>@|
+    (p->rf,export_K_type_pol(p->rt(),pol)); // convert to |K_repr::K_type_pol|
+  push_value(std::make_shared<union_value>(1,std::move(result),
+               main_hash_table->match_literal("done")));
+  // and inject into a union
+}
+@)
+void timed_twisted_full_deform_wrapper(expression_base::level l)
+{ auto period = get<int_value>()->long_val();
+  shared_module_parameter p = get<module_parameter_value>();
+  const auto& rc=p->rc(); auto& rt=p->rt();
+  test_standard(*p,"Cannot compute full twisted deformation");
+  if (not rc.is_delta_fixed(p->val))
+    throw runtime_error@|("Parameter not fixed by inner class involution");
+  if (l==expression_base::no_value)
+    return;
+@)
+  auto finals = @;ext_block::
+    extended_finalise(rc,p->val,rc.inner_class().distinguished());
+  repr::K_type_poly pol;
+    // this is the data type used by |Rep_table::deformation|
+@)
+  set_timer(period);
+  try
+  { for (auto it=finals.cbegin(); it!=finals.cend(); ++it)
+    { bool flip;
+      const auto& def = rt.twisted_deformation(std::move(it->first),flip);
+      pol.add_multiple(def,
+	     flip!=it->second ? Split_integer(0,1) : Split_integer(1,0));
+    }
+  }
+  catch (const time_out& e)
+  { auto result = std::make_shared<tuple_value>(0); // the void
+    push_value(std::make_shared<union_value>(0,std::move(result),
+               main_hash_table->match_literal("timed_out")));
+    return;
+  }
+  clear_timer();
+@)
+  auto result = std::make_shared<K_type_pol_value>@|
+    (p->rf,export_K_type_pol(p->rt(),pol)); // convert to |K_repr::K_type_pol|
+  push_value(std::make_shared<union_value>(1,std::move(result),
+               main_hash_table->match_literal("done")));
+  // and inject into a union
+}
+
 @ And here is another way to invoke the Kazhdan-Lusztig computations, which
 given a parameter corresponding to $y$ will obtain the formal sum over $x$ in
 the block of $y$ (or the Bruhat interval below $y$, where all those giving a
@@ -8497,6 +8576,10 @@ install_function(block_deform_wrapper,@|"block_deform"
 install_function(full_deform_wrapper,@|"full_deform","(Param->KTypePol)");
 install_function(twisted_full_deform_wrapper,@|"twisted_full_deform"
                 ,"(Param->KTypePol)");
+install_function(timed_full_deform_wrapper,@|"full_deform"
+                ,"(Param,int->|KTypePol)");
+install_function(timed_twisted_full_deform_wrapper,@|"twisted_full_deform"
+                ,"(Param,int->|KTypePol)");
 install_function(KL_sum_at_s_wrapper,@|"KL_sum_at_s","(Param->ParamPol)");
 install_function(KL_sum_at_s_to_ht_wrapper,@|"KL_sum_at_s_to_height"
 		,"(Param,int->ParamPol)");

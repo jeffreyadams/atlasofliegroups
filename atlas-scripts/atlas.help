@@ -183,41 +183,47 @@ program interprets, and its remaining aspects other than primitive functions.
 
 3 Design principles of the 'axis' language, and current limitations
 
-The axis language is expression based, which means that the text entered
-serves most often to designate values to be computed rather than actions to be
-performed. Its design is close to that of functional programming languages:
-function values are first class citizens, binding is static with no
-restrictions on lifetime, semantics is value-based for all types (no
-distinction between object and value, or between mutable and unmutable
-values). The language does provide assignable variables and loops. All control
-structures including loops are oriented towards construction of values rather
-than towards sequencing of side-effects, although they do provide the latter.
+The axis language is expression based, which means that the text entered serves
+most often to designate values to be computed rather than actions to be
+performed, and user defined functions, while they do perform actions, are mostly
+oriented toward computing some mapping between values. The design of the
+language is close to that of functional programming languages: function values
+are first class citizens, we use lexical identifier binding (meaning that for
+every use of a name it can be determined from the source text alone which
+defining occurrence of that name is being identified) without lifetime
+limitation (meaning there is never any worry that the variable created in the
+defining occurrence no longer exists when the name is used); semantics is
+value-based for all data types (there is no distinction between a value and an
+object holding it, nor between mutable and unmutable values). The language does
+provide assignable names, sequencing, and loops. Control structures, including
+loops, are oriented towards construction or deconstruction of values rather than
+towards sequencing of side-effects, although they do provide the latter.
 Somewhat curiously for a language close to functional languages, ordinary
-definitions cannot be recursive, which is a consequence of strict scoping
-rules derived from the lambda-calculus. Nonetheless recursive function
-definitions are supported through use of the rec_fun keyword.
+definitions cannot be recursive, which is a consequence of strict scoping rules
+derived from the lambda-calculus. Nonetheless recursive function definitions are
+supported through use of the rec_fun keyword.
 
 For beginning users it is important to stress the fundamental distinction
 between creating names (variables) and assigning to them. The interpreter will
 never create a variable just because it appears to be used, and therefore
-refuses expressions with unknown names in them: it neither creates new
-variables that are being assigned to (as Python does), nor assumes new names
-to be meaningful but undefined (as do many symbolic algebra packages, which
-take unknown names to stand for indeterminates). Names are introduced using
-the keyword 'set' (for permanent names) or using the keyword 'let' (for local
-names, whose scope is limited to the current expression, or even to part of
-it); in both cases the name is immediately bound to a value. Once a name is
-introduced, its value can be altered by assignment, which is written ':=' (in
-the tradition of Algol and Pascal, and unlike FORTRAN and C). Such assignments
-are fairly rare (they are used almost exclusively for programming purposes),
-and cannot alter the type of the value bound to the name. Both 'set' and 'let'
-follow the name(s) being introduced by '=' (not ':='). Apart from that, '='
-also serves as equality testing operator (defined for most types).
+refuses expressions with unknown names in them: it neither creates new variables
+that are being assigned to (as Python does), nor assumes new names to be
+meaningful but undefined (as do many symbolic algebra packages, which take
+unknown names to stand for indeterminates). Names are introduced using the
+keyword 'set' (for permanent names) or using the keyword 'let' (for local names,
+whose scope is limited to the current expression, or even to part of it); in
+both cases the name is immediately bound to a value. Once a name is introduced,
+its value can be altered by assignment, which is written ':=' (in the tradition
+of Algol and Pascal, and unlike FORTRAN, C, java, Python). Such assignments are
+fairly rare, and are used mostly for programming purposes; they cannot alter the
+type of the value bound to the name. Both 'set' and 'let' follow the name(s)
+being introduced by '=' (not ':='). Apart from that, '=' also serves as equality
+testing operator (defined for many types, available for further overloading).
 
 The language is strictly typed, so that type-correctness of expressions must
 be established before their evaluation is attempted. This means that most
 common errors are caught before execution starts, and these error messages are
-usually more specific about their cause than runtime errors (which mention any
+usually more specific about their cause than runtime errors (which mention the
 offending value, but cannot trace where that value originated). As a
 consequence it can be tough to write a script in such a way that will load
 without any error message, but the correction cycle is fast: atlas just stops
@@ -242,17 +248,29 @@ using the Atlas functionality, though for advanced programming the set of
 possible types might need to be enlarged in the future.
 
 The primitive data types currently available for values cover almost all those
-that the Atlas library can handle (root data, inner classes, real forms,
-Cartan classes, KGB elements, parameters for (standard) modules and formal
-sums of those; a notable exception is twisted involutions or Weyl group
-elements but working with representing matrices suffices). For the types
-available not all library functionality is available in atlas, but this can
-sometimes be circumvented using a script. Some data types used internally
-(such as Weyl groups, polynomials) may appear in printed output but cannot be
-further manipulated. The programming language itself is fairly complete in
-functionality, with constructions like variables, loops and conditionals, as
-well as functions and operators (both built-in and user-defined); what is
-currently the most annoying limitation is the absence of second order typing.
+that the Atlas library can handle (root data, Weyl group elements, inner
+classes, real forms, Cartan classes, KGB elements, parameters for (standard)
+modules and formal sums of those). Other non-primitive data types can be (and
+are) added by user definitions in scripts. The programming language itself is
+fairly complete in functionality, with constructions like variables, loops and
+conditionals, as well as functions and operators (both built-in and
+user-defined); what is currently the most annoying limitation is the absence of
+second order typing, and the impossiblity of introducing new types and type
+consturctors that are "sealed off" so a to become equivalent to primitive ones.
+
+Like for most languages there is a set of keywords that cannot be used for any
+other purpose than their assigned syntactic roles; these are:
+
+quit, set, let, in, begin, end, if, then, else, elif, fi, and, or, not, next,
+do, dont, from, downto, while, for, od, case, esac, rec_fun,true, false,
+die, break, return, set_type, whattype, showall, forget.
+
+Furthermore there are names that refer to primitive types, and that cannot be
+repurposed in any manner, so that they are effectivel also reserved words:
+
+void, int, rat, string, bool, vec, mat, ratvec,
+LieType, RootDatum, WeylElt, InnerClass, RealForm, CartanClass, KGBElt, Block,
+Split, KType, KTypePol, Param, ParamPol.
 
 4 Types
 
