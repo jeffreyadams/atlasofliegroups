@@ -5,12 +5,29 @@ reps). Works only for G simple.}
 
 <FPP_globalDirac.at
 <cohIndUnip.at {for coh_ind_unip}
+
+{if true, use the fast-but-incomplete coh_ind_unip}
+set test_ind_unip_few_flag = false
+
+{if true, use pretty fast/possibly incomplete coh_ind_unip_more}
+set test_ind_unip_most_flag = true
+
+{if true, use slow/complete coh_ind_unip_all}
+set test_ind_unip_all_flag = false
+
+
 set test_ind_unip(RealForm G) = bool:
     let start = elapsed_ms()
     then () = prints("Starting to compute cohomological/parabolic/unipotent reps")
     {then () = big_unitary_hash.clearG(G)}
     then uhash_ind = make_Param_hash()
-    then () = coh_ind_unip_more_G(G,uhash_ind)
+    then () = if test_ind_unip_all_flag
+    	      then coh_ind_unip_all_G(G,uhash_ind)
+	      elif test_ind_unip_most_flag
+	      then coh_ind_unip_most_G(G,uhash_ind)
+	      elif test_ind_unip_few_flag
+	      then coh_ind_unip_few_G(G,uhash_ind)
+	      fi
     then int_ind_list = for p in uhash_ind.list()
     	 	      	do big_unitary_hash.uhash(G).match(p);
 			if is_integral(G,p.infinitesimal_character)
@@ -61,7 +78,13 @@ set test_ind_unip_list(RealForm G) = [Param]:
     then () = prints("Starting to compute cohomological/parabolic/unipotent reps")
     then uhash_ind = make_Param_hash()
     {then () = big_unitary_hash.clearG(G)}
-    then () = coh_ind_unip_more_G(G,uhash_ind)
+    then () = if test_ind_unip_all_flag
+    	      then coh_ind_unip_all_G(G,uhash_ind)
+	      elif test_ind_unip_most_flag
+	      then coh_ind_unip_most_G(G,uhash_ind)
+	      elif test_ind_unip_few_flag
+	      then coh_ind_unip_few_G(G,uhash_ind)
+	      fi
     then int_ind_list = for p in uhash_ind.list()
     	 	      	do big_unitary_hash.uhash(G).match(p);
 			   if is_integral(G,p.infinitesimal_character)
@@ -107,7 +130,6 @@ set test_ind_unip_list(RealForm G) = [Param]:
 
 
 {
-
 test_ind_unip(SU(4,2))
 
 All are weakly fair cohomologically induced from Arthur
@@ -152,4 +174,45 @@ final parameter(x=1742,lambda=[-1,3,2,0,0,2]/1,nu=[-1,3,3,-1,0,2]/2)
 final parameter(x=1752,lambda=[1,4,0,0,1,0]/1,nu=[2,3,0,-1,3,-1]/2)
 Value: false
 
+WITH shift_all:
+
+atlas> coh_ind_unip_verbose :=true
+Value: true
+atlas> set listE6q = test_ind_unip_list (E6_q)
+Starting to compute cohomological/parabolic/unipotent reps
+finished parabolic #0 after 11.156sec; found 175 reps.
+finished parabolic #41 after 43.650sec; found 686 reps.
+finished parabolic #82 after 74.446sec; found 1428 reps.
+finished parabolic #123 after 222.814sec; found 1991 reps.
+finished parabolic #164 after 301.040sec; found 2479 reps.
+finished parabolic #205 after 382.089sec; found 2572 reps.
+finished parabolic #246 after 527.716sec; found 3246 reps.
+finished parabolic #287 after 742.093sec; found 3366 reps.
+finished parabolic #328 after 2467.152sec; found 3408 reps.
+finished parabolic #369 after 2884.031sec; found 4475 reps.
+finished parabolic #410 after 3059.123sec; found 4721 reps.
+finished parabolic #451 after 3157.074sec; found 4900 reps.
+finished parabolic #492 after 3702.266sec; found 5002 reps.
+finished parabolic #533 after 5683.685sec; found 5061 reps.
+finished parabolic #574 after 5790.507sec; found 5520 reps.
+finished parabolic #615 after 6078.869sec; found 5682 reps.
+finished parabolic #656 after 8128.648sec; found 5771 reps.
+finished parabolic #697 after 8783.361sec; found 5901 reps.
+finished parabolic #738 after 14945.758sec; found 5929 reps.
+finished parabolic #779 after 29404.817sec; found 5936 reps.
+finished parabolic #820 after 81164.930sec; found 5937 reps.
+Found 5946 new unitary reps.
+Total time for coh_ind_unip_more = 83777.574sec
+computed reps coh ind from Arthur in 83778.769sec
+4381 of 5946 are integral
+
+Computed FPP unitary dual in 898.126sec
+4381 of 19623 are integral
+
+All are weakly fair cohomologically induced from Arthur
+Variable listE6q: [Param]
+{666 mb}
+
+With most: miss 8 reps
+{1.02 g}
 }

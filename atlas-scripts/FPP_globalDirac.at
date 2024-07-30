@@ -21,11 +21,13 @@ answers, but only to running more is_unitary tests .}
 set chop_bound = int: 6
 
 {if true, compute reps weakly fair cohom induced from Arthur unipotent}
-set coh_ind_flag = false
-{true costs extra 260 sec over 1000 for E6_q}
+{set coh_ind_few_flag = false}
 
-{if true, use much slower but more complete coh_ind_more}
-set coh_ind_more_flag = false
+{if true, use coh_ind_most; gets everything at least to rank about 6??}
+set coh_ind_most_flag = false
+
+{if true, use (much) slower but complete coh_ind_all}
+set coh_ind_all_flag = false
 
 {if true, load Arthur unipotent reps into unitary hash before starting FPP.
 Computing Arthur unipotents takes a long time for high rank (e.g. rank 4
@@ -129,10 +131,12 @@ set FPP_unitary_hash_general([(KGBElt,ratvec)] xlambdas, Param_hash Uhash,
     then () = if unip_flag
     	      then unipotents_to_hash(G,Uhash)
 	      fi
-    then () = if coh_ind_flag 
-    	      then coh_ind_unip_long(G,Uhash) {this takes several seconds for F4_s}
-	      elif coh_ind_more_flag
-	      then coh_ind_unip_more(G,Uhash)
+    then () = if coh_ind_all_flag 
+    	      then coh_ind_unip_all(G,Uhash) {this takes several seconds for F4_s}
+	      elif coh_ind_most_flag
+	      then coh_ind_unip_most(G,Uhash)
+	      {elif coh_ind_few_flag
+	      then coh_ind_unip_few(G,Uhash)}
 	      fi
     then xlambdatimes = [int]: null(#xlambdas)
     then answerCards = [int]: null(#xlambdas) {number of unitary parameters found}
@@ -252,10 +256,12 @@ set FPP_unitary_hash_general([KGBElt] xs, Param_hash Uhash, {Param_hash Uparamha
     then () = if unip_flag
     	      then unipotents_to_hash(G,Uhash)
 	      fi
-    then () = if coh_ind_flag
-    	      then coh_ind_unip_long(G,Uhash)
-	      elif coh_ind_more_flag
-	      then coh_ind_unip_more(G,Uhash)
+    then () = if coh_ind_all_flag 
+    	      then coh_ind_unip_all(G,Uhash) {this takes several seconds for F4_s}
+	      elif coh_ind_most_flag
+	      then coh_ind_unip_most(G,Uhash)
+	      {elif coh_ind_few_flag
+	      then coh_ind_unip_few(G,Uhash)}
 	      fi
     then times = [int]: null(#xs)
     then lambdatimes = [[int]]: for j:#xs do [] od
@@ -642,10 +648,12 @@ set FPP_unitary_hash_bottom_layer([(KGBElt,ratvec)] xlambdas, Param_hash UhashG{
     then () = if unip_flag
     	      then unipotents_to_hash(G,UhashG)
 	      fi
-    then () = if coh_ind_flag
-    	      then coh_ind_unip_long(G,UhashG)
-	      elif coh_ind_more_flag
-	      then coh_ind_unip_more(G,Uhash)
+    then () = if coh_ind_all_flag
+    	      then coh_ind_unip_all(G,UhashG)
+	      elif coh_ind_most_flag
+	      then coh_ind_unip_most(G,Uhash)
+	      {elif coh_ind_few_flag
+	      then coh_ind_unip_few(G,Uhash)}
 	      fi
     then () = if disconn_flag
     	      then for j:UhashG.size()
@@ -805,10 +813,12 @@ set FPP_unitary_hash_bottom_layer([KGBElt] xs, Param_hash UhashG{, Param_hash Up
     then () = if unip_flag
     	      then unipotents_to_hash(G,UhashG)
 	      fi
-    then () = if coh_ind_flag
-    	      then coh_ind_unip_long(G,UhashG)
-	      elif coh_ind_more_flag
-    	      then coh_ind_unip_more(G,UhashG)
+    then () = if coh_ind_all_flag
+    	      then coh_ind_unip_all(G,UhashG)
+	      elif coh_ind_most_flag
+    	      then coh_ind_unip_most(G,UhashG)
+	      {elif coh_ind_few_flag
+	      then coh_ind_unip_few(G,UhashG)}
 	      fi
     then () = if disconn_flag
     	      then for j:UhashG.size()
@@ -1688,7 +1698,9 @@ set pre_bottom_flag = false
 set pre_def_dumb_flag = false
 set precomputeTheta(RealForm G) = void:
     let rflist = SDLF(G)
-    then () = coh_ind_flag:=false
+    then () = coh_ind_all_flag:=false
+    then () = coh_ind_most_flag:=false
+    {then () = coh_ind_few_flag:=false}
     then temp_report_flag = FPP_report_flag
     then () = FPP_report_flag :=false
     then () = for rf@k in rflist
@@ -1707,7 +1719,9 @@ set precomputeTheta(RealForm G) = void:
 
 set precomputeR(RealForm G) = void:
     let rflist = SDLRF(G)
-    then () = coh_ind_flag:=false
+    then () = coh_ind_all_flag:=false
+    then () = coh_ind_most_flag:=false
+    {then () = coh_ind_few_flag:=false}
     then temp_report_flag = FPP_report_flag
     then () = FPP_report_flag :=false
     then () = for rf@k in rflist
@@ -1725,7 +1739,9 @@ set precomputeR(RealForm G) = void:
 
 { set precomputeNUR(RealForm G) = Param_hash:
     let rflist = SDLRF(G), start = elapsed_ms()
-    then () = coh_ind_flag:=false
+    then () = coh_ind_all_flag:=false
+    then () = coh_ind_most_flag:=false
+    {then () = coh_ind_few_flag:=false}
     then temp_report_flag = FPP_report_flag
     then () = FPP_report_flag :=false
     then () = for rf@k in rflist
@@ -1747,7 +1763,9 @@ set precomputeR(RealForm G) = void:
 
 set precomputeALL(RealForm G) = void:
     let start = elapsed_ms(), rflist = SDLALL(G)
-    then () = coh_ind_flag:=false
+    then () = coh_ind_all_flag:=false
+    then () = coh_ind_most_flag:=false
+    {then () = coh_ind_few_flag:=false}
     then temp_report_flag = FPP_report_flag
     then () = FPP_report_flag :=false
     then () = for rf@k in rflist
