@@ -6,10 +6,10 @@ reps). Works only for G simple.}
 <FPP_globalDirac.at
 <cohIndUnip.at {for coh_ind_unip}
 
-{if true, use the fast-but-incomplete coh_ind_unip}
-set test_ind_unip_few_flag = false
+{if true, use the fast-but-incomplete coh_ind_unip_few}
+{set test_ind_unip_few_flag = false}
 
-{if true, use pretty fast/possibly incomplete coh_ind_unip_more}
+{if true, use pretty fast/possibly incomplete coh_ind_unip_most}
 set test_ind_unip_most_flag = true
 
 {if true, use slow/complete coh_ind_unip_all}
@@ -25,8 +25,8 @@ set test_ind_unip(RealForm G) = bool:
     	      then coh_ind_unip_all_G(G,uhash_ind)
 	      elif test_ind_unip_most_flag
 	      then coh_ind_unip_most_G(G,uhash_ind)
-	      elif test_ind_unip_few_flag
-	      then coh_ind_unip_few_G(G,uhash_ind)
+	      {elif test_ind_unip_few_flag
+	      then coh_ind_unip_few_G(G,uhash_ind)}
 	      fi
     then int_ind_list = for p in uhash_ind.list()
     	 	      	do big_unitary_hash.uhash(G).match(p);
@@ -82,8 +82,8 @@ set test_ind_unip_list(RealForm G) = [Param]:
     	      then coh_ind_unip_all_G(G,uhash_ind)
 	      elif test_ind_unip_most_flag
 	      then coh_ind_unip_most_G(G,uhash_ind)
-	      elif test_ind_unip_few_flag
-	      then coh_ind_unip_few_G(G,uhash_ind)
+	      {elif test_ind_unip_few_flag
+	      then coh_ind_unip_few_G(G,uhash_ind)}
 	      fi
     then int_ind_list = for p in uhash_ind.list()
     	 	      	do big_unitary_hash.uhash(G).match(p);
