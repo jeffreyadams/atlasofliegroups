@@ -5282,7 +5282,7 @@ case union_case_expr:
 @)
   std::vector<expression_ptr> branches;
 
-  auto variant_type_p = switch_type.tuple();
+  raw_type_list variant_type_p = switch_type.tuple();
   for (auto branch_p=&exp.branches; branch_p!=nullptr;
        branch_p=branch_p->next.get(), variant_type_p=variant_type_p->next.get())
   {
@@ -5325,11 +5325,11 @@ variants.
 @ Type checking of discrimination expressions is rather different from that of
 union case expressions, because we use the tags associated to the variants of
 the union type to identify and possibly reorder branches, and allow for some
-branches to be handled together in a default branch (thus refraining from
-using any information from the condition expression, other than that it
-selects none of the explicitly treated branches). So we insist here that the
-union type used be present in |type_expr::type_map| (presumably specifying
-tags).
+branches to be handled together in a default branch (in which case no
+information from the evaluated condition expression, other than the fact that it
+selects none of the explicitly treated branches, is passed to the selected
+default branch). So we insist here that the union type used be present in
+|type_expr::type_map| (presumably specifying tags).
 
 @< Cases for type-checking and converting... @>=
 case discrimination_expr:

@@ -2065,7 +2065,7 @@ integral case expressions, so all we need is a trivial variation of
 expr_p make_union_case_node(expr_p s, raw_expr_list i, const YYLTYPE& loc)
 {@; return make_case_node(union_case_expr,s,i,loc); }
 
-@ Printing an union case expression at parser level is a very slight variation
+@ Printing a union case expression at parser level is a very slight variation
 of the same for an integer case expression.
 
 @< Cases for printing... @>=
@@ -2097,29 +2097,26 @@ struct case_variant
   expr branch;
 };
 using case_list = containers::simple_list<case_variant>;
-using raw_case_list = containers::sl_node<case_variant>*;
+using case_node = containers::sl_node<case_variant>;
+typedef case_node *raw_case_list; // for use in parser |union|
 @)
 struct discrimination_node
-{ expr subject; containers::sl_node<case_variant> branches;
+{ expr subject; case_node branches;
 @)
-  discrimination_node(expr&& subject, raw_case_list branches);
+  discrimination_node(expr&& subject, case_list&& branches);
 };
 
-@ The |discrimination_node| constructor is less straightforward than usual,
-since we want to move from the head node of the |branches| argument. Doing so
-requires passing a raw pointer to the constructor (whereas we usually pass
-smart pointers at such occasions), which can be used for this purpose. But we
-also want to clean up the old node using a smart pointer; as the lifetime of a
-temporary inside the initialiser expression equals (the containing
-full-expression which is) that initialiser expression, the code
-below achieves the desired effect using a comma operator (destroying the smart
-pointer of its left hand side takes place only after the construction of
-|subject| has moved the data out of the node pointed to).
+@ The |discrimination_node| constructor is somewhat special in that the
+|branches| field is not a |case_list| but a |case_node|, so that there is always
+at least one node. We nevertheless pass the |branches| argument to the
+constructor as a |case_list|, assumed non-empty, from which we can move the
+initial node by using the |release| method and dereferencing the resulting
+pointer to the node.
 
 @< Definitions of functions for the parser @>=
-discrimination_node::discrimination_node(expr&& subject, raw_case_list branches)
+discrimination_node::discrimination_node(expr&& subject, case_list&& branches)
 @/: subject(std::move(subject))
-  , branches((case_list(branches),std::move(*branches)))
+  , branches(std::move(*branches.release()))
   @+{}
 
 @ The variant of |expr| values with |disc| as parsing value is tagged
@@ -2173,12 +2170,12 @@ raw_case_list make_case_node(id_type sel, raw_id_pat& pattern, expr_p val)
 
 @)
 expr_p make_discrimination_node
-  (expr_p s, containers::sl_node<case_variant>* b, const YYLTYPE& loc)
+  (expr_p s, raw_case_list b, const YYLTYPE& loc)
 {
   expr_ptr subj(s); case_list branches(b);
   branches.reverse(); // undo effect of left-recursive grammar rules
 @/return new @| expr(new @|
-      discrimination_node { std::move(*subj), branches.release() },loc);
+      discrimination_node { std::move(*subj), std::move(branches) },loc);
 }
 
 @ We follow the usual coding pattern for copying raw pointers.
