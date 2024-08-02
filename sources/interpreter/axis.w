@@ -5273,8 +5273,8 @@ case union_case_expr:
 @)
   expression_ptr c  =  convert_expr(exp.condition,switch_type);
   if (switch_type.kind()!=union_type)
-    throw type_error(e,std::move(switch_type),
-                       std::move(*unknown_union_type(n_branches)));
+    throw type_error(exp.condition,std::move(switch_type),
+                     std::move(*unknown_union_type(n_branches)));
 @)
   size_t n_variants=length(switch_type.tuple());
   if (n_variants!=n_branches)
@@ -5340,8 +5340,8 @@ case discrimination_expr:
 @)
   expression_ptr c  =  convert_expr(exp.subject,subject_type);
   if (subject_type.kind()!=union_type)
-    throw type_error(e,std::move(subject_type),
-                       std::move(*unknown_union_type(n_branches)));
+    throw type_error(exp.subject,std::move(subject_type),
+                     std::move(*unknown_union_type(n_branches)));
   const wtl_const_iterator types_start(subject_type.tuple());
 @)
   const auto type_number = type_expr::find(subject_type);
