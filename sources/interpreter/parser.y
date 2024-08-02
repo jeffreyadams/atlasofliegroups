@@ -121,8 +121,8 @@
             typedef_struct_specs typedef_union_specs
 %destructor { destroy_type_list($$.typel);destroy_pattern($$.patl); }
 	    id_specs id_specs_opt
-%type <case_l> caselist do_caselist
-%destructor { destroy_case_list($$); } caselist do_caselist
+%type <case_l> tagged_caselist tagged_do_caselist
+%destructor { destroy_case_list($$); } tagged_caselist tagged_do_caselist
 %type <typedef_l> type_equation type_equations
 %destructor { destroy_typedef_list($$); } type_equation type_equations
 
@@ -364,7 +364,7 @@ unit    : INT { $$ = make_int_denotation($1,@$); }
 	  { $$=make_int_case_node($2,reverse_expr_list($8),$4,$6,@$); }
 	| CASE expr IN barlist ESAC
 	  { $$=make_union_case_node($2,reverse_expr_list($4),@$); }
-	| CASE expr '|' caselist ESAC
+	| CASE expr '|' tagged_caselist ESAC
 	  { $$=make_discrimination_node($2,$4,@$); }
 
 	| WHILE do_expr tilde_opt OD { $$=make_while_node($2,2*$3,@$); }
@@ -421,21 +421,22 @@ iftail	: expr THEN expr ELSE expr FI { $$=make_conditional_node($1,$3,$5,@$); }
 	  { $$=make_conditional_node($1,$3,wrap_tuple_display(nullptr,@$),@$); }
 ;
 
-caselist: IDENT closed_pattern  ':' expr { $$=make_case_node($1,$2,$4); }
+tagged_caselist:
+	  IDENT closed_pattern  ':' expr { $$=make_case_node($1,$2,$4); }
 	| pattern '.' IDENT ':' expr     { $$=make_case_node($3,$1,$5); }
 	| IDENT ':' expr
 	  { struct raw_id_pat id; id.kind=0x0; $$=make_case_node($1,id,$3); }
 	| ELSE expr
 	  { struct raw_id_pat id; id.kind=0x0; $$=make_case_node(-1,id,$2); }
-	| caselist '|' IDENT closed_pattern ':' expr
+	| tagged_caselist '|' IDENT closed_pattern ':' expr
 	  { $$=append_case_node($1,$3,$4,$6); }
-	| caselist '|' pattern '.' IDENT ':' expr
+	| tagged_caselist '|' pattern '.' IDENT ':' expr
 	  { $$=append_case_node($1,$5,$3,$7); }
-	| caselist '|' IDENT ':'  expr
+	| tagged_caselist '|' IDENT ':'  expr
 	  { struct raw_id_pat id; id.kind=0x0;
 	    $$=append_case_node($1,$3,id,$5);
 	  }
-	| caselist '|' ELSE expr
+	| tagged_caselist '|' ELSE expr
 	  { struct raw_id_pat id; id.kind=0x0;
 	    $$=append_case_node($1,-1,id,$4);
 	  }
@@ -464,7 +465,7 @@ do_expr : LET do_lettail { $$=$2; }
 	  { $$=make_int_case_node($2,reverse_expr_list($8),$4,$6,@$); }
 	| CASE expr IN do_barlist ESAC
 	  { $$=make_union_case_node($2,reverse_expr_list($4),@$); }
-	| CASE expr '|' do_caselist ESAC
+	| CASE expr '|' tagged_do_caselist ESAC
 	  { $$=make_discrimination_node($2,$4,@$); }
         | '(' do_expr ')' { $$=$2; }
 ;
@@ -489,21 +490,22 @@ do_barlist: do_expr  '|' do_expr
 	| do_barlist '|' do_expr { $$=make_exprlist_node($3,$1); }
 ;
 
-do_caselist: IDENT closed_pattern  ':' do_expr { $$=make_case_node($1,$2,$4); }
+tagged_do_caselist:
+	  IDENT closed_pattern  ':' do_expr { $$=make_case_node($1,$2,$4); }
 	| pattern '.' IDENT ':' do_expr     { $$=make_case_node($3,$1,$5); }
 	| IDENT ':' do_expr
 	  { struct raw_id_pat id; id.kind=0x0; $$=make_case_node($1,id,$3); }
 	| ELSE do_expr
 	  { struct raw_id_pat id; id.kind=0x0; $$=make_case_node(-1,id,$2); }
-	| do_caselist '|' IDENT closed_pattern ':' do_expr
+	| tagged_do_caselist '|' IDENT closed_pattern ':' do_expr
 	  { $$=append_case_node($1,$3,$4,$6); }
-	| do_caselist '|' pattern '.' IDENT ':' do_expr
+	| tagged_do_caselist '|' pattern '.' IDENT ':' do_expr
 	  { $$=append_case_node($1,$5,$3,$7); }
-	| do_caselist '|' IDENT ':'  do_expr
+	| tagged_do_caselist '|' IDENT ':'  do_expr
 	  { struct raw_id_pat id; id.kind=0x0;
 	    $$=append_case_node($1,$3,id,$5);
 	  }
-	| do_caselist '|' ELSE do_expr
+	| tagged_do_caselist '|' ELSE do_expr
 	  { struct raw_id_pat id; id.kind=0x0;
 	    $$=append_case_node($1,-1,id,$4);
 	  }
@@ -714,10 +716,8 @@ slice   : IDENT '[' expr_opt tilde_opt ':' expr_opt tilde_opt ']'
 pattern : IDENT		    { $$.kind=0x1; $$.name=$1; }
 	| '!' IDENT         { $$.kind=0x5; $$.name=$2; } // IDENT declared const
 	| closed_pattern
-	| '(' pat_list ')' ':' IDENT
-	    { $$.kind=0x3; $$.name=$5; $$.sublist=reverse_patlist($2);}
-	| '(' pat_list ')' ':' '!' IDENT
-	    { $$.kind=0x7; $$.name=$6; $$.sublist=reverse_patlist($2);}
+	| closed_pattern ':' IDENT      { $$=$1; $$.kind=0x3; $$.name=$3; }
+	| closed_pattern ':' '!' IDENT	{ $$=$1; $$.kind=0x7; $$.name=$4; }
 ;
 
 closed_pattern: '(' pattern ')' { $$=$2; }
