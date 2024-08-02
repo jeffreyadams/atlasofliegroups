@@ -422,8 +422,8 @@ iftail	: expr THEN expr ELSE expr FI { $$=make_conditional_node($1,$3,$5,@$); }
 ;
 
 tagged_caselist:
-	  IDENT closed_pattern  ':' expr { $$=make_case_node($1,$2,$4); }
-	| pattern '.' IDENT ':' expr     { $$=make_case_node($3,$1,$5); }
+	  IDENT closed_pattern  ':' expr    { $$=make_case_node($1,$2,$4); }
+	| closed_pattern '.' IDENT ':' expr { $$=make_case_node($3,$1,$5); }
 	| IDENT ':' expr
 	  { struct raw_id_pat id; id.kind=0x0; $$=make_case_node($1,id,$3); }
 	| ELSE expr
@@ -491,8 +491,8 @@ do_barlist: do_expr  '|' do_expr
 ;
 
 tagged_do_caselist:
-	  IDENT closed_pattern  ':' do_expr { $$=make_case_node($1,$2,$4); }
-	| pattern '.' IDENT ':' do_expr     { $$=make_case_node($3,$1,$5); }
+	  IDENT closed_pattern  ':' do_expr    { $$=make_case_node($1,$2,$4); }
+	| closed_pattern '.' IDENT ':' do_expr { $$=make_case_node($3,$1,$5); }
 	| IDENT ':' do_expr
 	  { struct raw_id_pat id; id.kind=0x0; $$=make_case_node($1,id,$3); }
 	| ELSE do_expr

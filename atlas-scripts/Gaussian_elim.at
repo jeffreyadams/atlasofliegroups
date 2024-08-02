@@ -108,10 +108,10 @@ set split_data ([Pivot_info] data) = ([int,[rat]] , [[rat]] , ([rat]->[rat]) ):
    in
    for d@j in data
    do case d
-      | piv.pivot:
+      | (piv).pivot:
          let !f=spread, !k=#pivots { freeze these values } in
          pivots #:= piv; spread := (([rat] c): let v=f(c) in v[j] := c[k]; v)
-      | col.no_pivot: let kc = spread(col) in kc[j]:=-1; kernel #:= kc
+      | (col).no_pivot: let kc = spread(col) in kc[j]:=-1; kernel #:= kc
       esac
    od; (pivots,kernel,spread)
 
