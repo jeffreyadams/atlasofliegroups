@@ -37,12 +37,29 @@ interpreter used to represent user types and other fundamental notions.
 #ifndef AXIS_TYPES_H
 #define AXIS_TYPES_H
 
+#include "axis-types-fwd.h"
+
 @< Includes needed in \.{axis-types.h} @>@;
 namespace atlas { namespace interpreter {
 @< Type definitions @>@;
 @< Declarations of global variables @>@;
 @< Declarations of exported functions @>@;
 @< Template and inline function definitions @>@;
+}}
+#endif
+
+@ Some header files need to know about classes and class templates defined here,
+but do not want to include \.{axis-types.h} to avoid mutual dependence problems.
+For those uses we write a separate header file \.{axis-types-fwd.h} which
+introduces the relevant names as declared but not defined (incomplete types).
+
+@( axis-types-fwd.h @>=
+#ifndef AXIS_TYPES_FWD_H
+#define AXIS_TYPES_FWD_H
+
+@< Includes needed in \.{axis-types-fwd.h} @>@;
+namespace atlas { namespace interpreter {
+@< Type declarations @>@;
 }}
 #endif
 
@@ -110,9 +127,10 @@ duplication during manipulation. Altogether this part of the program will be
 of a quite different nature than that of the main mathematical library.
 
 
-@< Includes needed in \.{axis-types.h} @>=
+@< Includes needed in \.{axis-types-fwd.h} @>=
 #include <memory> // for |std::unique_ptr|, |std::shared_ptr|
-#include "Atlas.h" // for utilities (like |sl_list|); this include must come first
+#include "Atlas.h"
+  // for utilities (like |sl_list|); this include must come first
 #include "buffer.h" // for |id_type|
 
 
@@ -173,11 +191,11 @@ better adapted to the syntactic facilities. The structure also uses ordinary
 pointers of type~|type_p| in places where ownership is managed by the containing
 structure rather than by the pointer itself.
 
-@< Type definitions @>=
+@< Type declarations @>=
 class type_expr;
-typedef type_expr* type_p;
-typedef const type_expr* const_type_p;
-typedef std::unique_ptr<type_expr> type_ptr;
+using type_p = type_expr*;
+using const_type_p = const type_expr*;
+using type_ptr = std::unique_ptr<type_expr>;
 
 @*2 Type lists.
 %
@@ -187,10 +205,7 @@ types themselves, but since an STL-compatible singly-linked list container
 class templates |simple_list| and |sl_list| was added to the Atlas utilities
 library, these were used to replace the implementation of type lists.
 
-@< Includes needed in \.{axis-types.h} @>=
-#include "sl_list.h" // for internals of the |sl_list| class template
-
-@ When incorporating type lists into the |type_expr| structure, the class
+When incorporating type lists into the |type_expr| structure, the class
 template |simple_list| will be used; the more flexible but less compact
 |sl_list| template will be occasionally used for temporary variables, whose type
 is then |dressed_type_list|. This usage provides a good test for the usability
@@ -205,15 +220,15 @@ occasions where instead of normal iterators over type lists we use weak
 iterators (ones that cannot be used to insert or delete nodes), and the types
 |wtl_iterator| and |wtl_const_iterator| are defined for that purpose.
 
-@< Type definitions @>=
-typedef containers::simple_list<type_expr> type_list;
-typedef containers::sl_list<type_expr> dressed_type_list;
+@< Type declarations @>=
+using type_list = containers::simple_list<type_expr>;
+using dressed_type_list = containers::sl_list<type_expr>;
 @)
-typedef atlas::containers::sl_node<type_expr>* raw_type_list;
-typedef atlas::containers::sl_node<type_expr>const * const_raw_type_list;
-typedef containers::weak_sl_list_iterator<type_expr> wtl_iterator;
+using raw_type_list = atlas::containers::sl_node<type_expr>*;
+using const_raw_type_list = atlas::containers::sl_node<type_expr>const *;
+using wtl_iterator = containers::weak_sl_list_iterator<type_expr>;
   // wtl = weak type list
-typedef containers::weak_sl_list_const_iterator<type_expr> wtl_const_iterator;
+using wtl_const_iterator = containers::weak_sl_list_const_iterator<type_expr>;
 
 @ Since types and type lists own their trees, their copy constructors must
 make a deep copy. The class |type_expr| will provide no copy constructor but
@@ -357,8 +372,7 @@ expression) is identified with its unique component.
 
 @< Type definitions @>=
 
-@< Predeclare types that |type_expr| needs to know about @>
-typedef unsigned int type_nr_type;
+using type_nr_type = unsigned int;
 class type_expr
 { type_tag tag;
   union
@@ -475,7 +489,7 @@ as a structure before the definition of |type_expr| is seen. For type lists
 this kind of difficulty is taken care of because |simple_list<type_expr>|
 could be used in a |typedef| before |type_expr| was a complete type.
 
-@< Predeclare types that |type_expr| needs to know about @>=
+@< Type declarations @>=
 
 struct func_type;
 
@@ -2080,8 +2094,11 @@ reality we have dynamic type information stored within the values, even though
 that information had already been determined during type analysis. We shall in
 fact use this information to double-check our type analysis at run time.
 
-@< Includes needed in \.{axis-types.h} @>=
-#include <iostream> // needed for specification of |print| method below
+@< Type declarations @>=
+struct value_base;
+using value = const value_base*;
+using shared_value = std::shared_ptr<const value_base>;
+using  own_value = std::shared_ptr<value_base>;
 
 @~We start with a base class for values. For it to be an abstract class, there
 must be at least one pure virtual function in the class; the destructor having
@@ -2094,7 +2111,10 @@ implementation (in the base class). This |print| method will demonstrate the
 ease of using dynamic typing via inheritance; it will not do any dynamic
 casting, but other operations on values will.
 
-Apart from virtual methods, we define other methods that will be redefined in
+@< Includes needed in \.{axis-types.h} @>=
+#include <iostream> // needed for specification of |print| method below
+
+@~Apart from virtual methods, we define other methods that will be redefined in
 all or some derived classes, and which are selected based on the static type at
 hand in the calling code rather than on the dynamic type, as the former will be
 known to match the latter due to our type system. The method |name| is used in
@@ -2135,10 +2155,6 @@ struct value_base
   value_base& operator=(const value_base& x) = delete;
 };
 inline value_base::~value_base() @+{} // necessary but empty implementation
-@)
-typedef const value_base* value;
-typedef std::shared_ptr<const value_base> shared_value;
-typedef std::shared_ptr<value_base> own_value;
 
 @ We can already make sure that the operator~`|<<|' will do the right thing
 for any of our values.
@@ -2232,9 +2248,9 @@ struct tuple_value : public row_value
     // we use |uniquify<tuple_value>|
 };
 @)
-typedef std::unique_ptr<tuple_value> tuple_ptr;
-typedef std::shared_ptr<const tuple_value> shared_tuple;
-typedef std::shared_ptr<tuple_value> own_tuple;
+using tuple_ptr = std::unique_ptr<tuple_value>;
+using shared_tuple = std::shared_ptr<const tuple_value>;
+using own_tuple = std::shared_ptr<tuple_value>;
 
 @ We just need to redefine the |print| method.
 @< Function definitions @>=
@@ -2354,7 +2370,7 @@ values.
 One of the methods for our frame type will produce a back insert iterator, so
 we need the following include in order to declare it.
 
-@< Includes needed... @>=
+@< Includes needed in \.{axis-types.h} @>=
 #include <iterator>
 
 @~Frames are actually allocated on the heap, and their lifetimes do not follow
@@ -2411,7 +2427,27 @@ from |value_base|), which classes have a virtual method |evaluate| that
 performs the operation described by the expression. We shall now define the
 base class.
 
-A fundamental choice is whether to make the result type of the |evaluate| type
+Most of the time, executable subexpressions will not be shared in any way, so
+they will be passed around and linked together via unique-pointer values. We
+choose to make |expressions_ptr| a pointer-to-constant type, because evaluating
+an expression (in some provided context) will never change that expression.
+During the building of the expression tree, it will sometimes happen that we
+want to modify it after the fact to achieve some kind of optimisation, and in
+such cases it will happen that we need to const-cast away the |const| that is
+introduced here (usually after also having applied a |dynamic_cast| to a derived
+type). When handling user defined functions, we shall have values that refer to
+(derived from) |expression| objects, and in doing so share them. So in those
+cases, |shared_expression| values will be used.
+
+@< Type declarations @>=
+struct expr; // abstract syntax tree representation, see \.{parsetree.w}
+struct expression_base; // executable expression
+enum class eval_level : unsigned;
+using expression = expression_base*;
+using expression_ptr = std::unique_ptr<const expression_base>;
+using shared_expression = std::shared_ptr<const expression_base>;
+
+@ A fundamental choice is whether to make the result type of the |evaluate| type
 equal to |value|. Although this would seem the natural choice, we prefer
 to make its result |void|, and to handle all value-passing via an execution
 stack; thus we hope to be able to avoid packing and unpacking of tuple values
@@ -2421,8 +2457,9 @@ result is expected to be ``expanded'' on the runtime stack in case it is of a
 tuple type.
 
 @< Type definitions @>=
+enum class eval_level : unsigned @+{ no_value, single_value, multi_value };
 struct expression_base
-{ enum level @+{ no_value, single_value, multi_value };
+{ using level = eval_level;
 @)
   expression_base() @+ {}
   expression_base(const expression_base&) = delete; // they are never copied
@@ -2434,14 +2471,10 @@ struct expression_base
   virtual void evaluate(level l) const =0;
   virtual void print(std::ostream& out) const =0;
 @)// non-virtuals that call the virtual |evaluate|
-  void void_eval() const @+{@; evaluate(no_value); }
-  void eval() const @+{@; evaluate(single_value); }
-  void multi_eval() const @+{@; evaluate(multi_value); }
+  void void_eval() const @+{@; evaluate(eval_level::no_value); }
+  void eval() const @+{@; evaluate(eval_level::single_value); }
+  void multi_eval() const @+{@; evaluate(eval_level::multi_value); }
 };
-@)
-typedef expression_base* expression;
-typedef std::unique_ptr<const expression_base> expression_ptr;
-typedef std::shared_ptr<const expression_base> shared_expression;
 
 @ Like for values, we can assure right away that printing converted
 expressions will work.
@@ -2450,11 +2483,10 @@ expressions will work.
 inline std::ostream& operator<< (std::ostream& out, const expression_base& e)
 {@; e.print(out); return out; }
 
-
-@ Since our |evaluate| methods will put values on the execution stack, let us
-declare it right away. We decide that values on the execution stack can be
-shared with other values (for instance when the user subscripts a row, vector
-or matrix bound to an identifier, it would be wasteful to duplicate that
+@*1 The execution stack. Our |evaluate| methods will put values on the execution
+stack, which we shall now declare. We decide that values on the execution stack
+can be shared with other values (for instance when the user subscripts a row,
+vector or matrix bound to an identifier, it would be wasteful to duplicate that
 entire structure just so that it can briefly reside on the execution stack),
 whence we use |shared_value| smart pointers in the stack.
 
@@ -2493,8 +2525,8 @@ to explicitly let it give up its ``share'' of an existing shared pointer in
 passing it to |push_expanded|, by invoking |std::move| on the argument.
 
 @< Declarations of exported functions @>=
-void push_expanded(expression_base::level l, const shared_value& v);
-void push_expanded(expression_base::level l, shared_value&& v);
+void push_expanded(eval_level l, const shared_value& v);
+void push_expanded(eval_level l, shared_value&& v);
 
 @~Type information is not retained in compiled expression values, so
 |push_expanded| cannot know which type had been found for |v| (moreover,
@@ -2503,10 +2535,10 @@ determined at \.{atlas} compile time). But it can use a dynamic
 cast do determine whether |v| actually is a tuple value or not.
 
 @< Function definitions @>=
-void push_expanded(expression_base::level l, const shared_value& v)
-{ if (l==expression_base::single_value)
+void push_expanded(eval_level l, const shared_value& v)
+{ if (l==eval_level::single_value)
     push_value(v);
-  else if (l==expression_base::multi_value)
+  else if (l==eval_level::multi_value)
   { shared_tuple p = std::dynamic_pointer_cast<const tuple_value>(v);
     if (p==nullptr)
       push_value(v);
@@ -2514,11 +2546,12 @@ void push_expanded(expression_base::level l, const shared_value& v)
       for (size_t i=0; i<p->length(); ++i)
         push_value(p->val[i]); // push components, copying shared pointers
   }
-} // if |l==expression_base::no_value| then do nothing
-void push_expanded(expression_base::level l, shared_value&& v)
-{ if (l==expression_base::single_value)
+} // if |l==eval_level::no_value| then do nothing
+@)
+void push_expanded(eval_level l, shared_value&& v)
+{ if (l==eval_level::single_value)
     push_value(std::move(v));
-  else if (l==expression_base::multi_value)
+  else if (l==eval_level::multi_value)
   { shared_tuple p = std::dynamic_pointer_cast<const tuple_value>(v);
     if (p==nullptr)
       push_value(std::move(v));
@@ -2531,9 +2564,9 @@ void push_expanded(expression_base::level l, shared_value&& v)
       for (size_t i=0; i<p->length(); ++i)
         push_value(p->val[i]); // push components, copying shared pointers
   }
-} // if |l==expression_base::no_value| then do nothing
+} // if |l==eval_level::no_value| then do nothing
 
-@* Some useful function templates.
+@*1 Some useful function templates.
 %
 We now define some inline functions to facilitate manipulating the stack. The
 function |push_value| does what its name suggests. For exception safety it
@@ -2789,16 +2822,36 @@ template<unsigned int n>
      do_wrap<n>(result->val.end());
      push_value(std::move(result));
    }
+@*1 Built-in functions.
+%
+Ultimately, the evaluation process leads to the evaluation of built-in
+operations or functions, which will be accessed though function pointers called
+wrapper functions; these will call library functions after checking
+preconditions that the latter assume without checking them on each call. The
+keeps the library independent of the interpreter, while providing the user of
+the interpreter with a level of safety from accidental crashes that is not (for
+efficiency reasons) provided systematically in the library.
 
+@< Type declarations @>=
+using wrapper_function = void (* )(eval_level);
+struct function_base; // a type derived from |value_base|, defined in \.{axis.w}
+using shared_function = std::shared_ptr<const function_base>;
+// specialises |shared_value|
+template <bool variadic> struct builtin_value;
+// derived from |function_base|, defined in \.{axis.w}
+using builtin = builtin_value<false>;
+using shared_builtin = std::shared_ptr<const builtin>;
+using shared_variadic_builtin = std::shared_ptr<const builtin_value<true> >;
+struct special_builtin; // derived from |builtin|, defined in \.{axis.w}
 
 @* Implicit conversion of values between types.
 %
 When interfacing this generic interpreter with a concrete library such as that
-of the Atlas of Lie Groups and Representations, a mechanism must be provided
-to convert data in the interpreter (represented essentially as nested lists)
-into the internal format of the library. For transparency of this mechanism we
-have chosen to provide the conversion through implicit operations that are
-accompanied by type changes; thus when the user enters a list of lists of
+of the Atlas of Lie Groups and Representations, a mechanism must be provided to
+convert data in the interpreter (represented essentially as nested lists) into
+the internal format of the library. For this mechanism to be transparent to the
+user, we have chosen to provide the conversion through implicit operations that
+are accompanied by type changes; thus when the user enters a list of lists of
 integers in a position where an integral matrix is required, the necessary
 conversions are automatically inserted during type analysis. In fact we shall
 put in place a general mechanism of automatic type conversions, which will for
@@ -2817,15 +2870,19 @@ was found. The function |conform_types| first tries to specialise the type
 applied conversion function; if both fail an error mentioning the
 expression~|e| is thrown.
 
-The function |row_coercion| specialises if possible |row_variant| in such a
-way that the corresponding row type can be coerced to |final_type|, and
-returns a pointer to the |conversion_record| for the coercion in question. The
-function |coercion| serves for filling the coercion table.
+The function |row_coercion| specialises, if possible, |component_type| in such a
+way that the type ``row-of |component_type|'' can be coerced to |final_type|,
+and returns a pointer to the |conversion_record| for the coercion in question.
+The function |coercion| serves for filling the coercion table.
 
 @< Declarations of exported functions @>=
 
+struct source_location; // defined in \.{parsetree.w}, remains incomplete here
+
 bool coerce(const type_expr& from_type, const type_expr& to_type,
-            expression_ptr& e);
+            expression_ptr& e, const source_location& loc);
+bool coercible(const type_expr& from_type, const type_expr& to_type);
+
 expression_ptr conform_types
   (const type_expr& found, type_expr& required
   , expression_ptr&& d, const expr& e);
@@ -2901,7 +2958,7 @@ void conversion::evaluate(level l) const
 { exp->eval();
   try {@; (*conversion_type.convert)(); }
   @< Catch block for failing implicit conversion @>
-  if (l==no_value)
+  if (l==level::no_value)
     execution_stack.pop_back();
 }
 @)
@@ -2912,11 +2969,11 @@ void conversion::print(std::ostream& out) const
 vector/matrix related conversions (problems while converting big integer or
 rational values to bounded size internal representation, or shape problems for
 matrices), though the Atlas specific implicit conversion from string to Lie type
-can also fail; in all case however the error is detected outside the library, so
-there is no need to catch |std::exception| here. Contrary to function calls, an
-implicit conversion stores no information about the source location for the
-place where it is invoked, so in case of an error we can only report the kind of
-conversion that was attempted.
+can also fail; in all cases however, the error is detected outside the library,
+so there is no need to catch |std::exception| (which is what library functions
+would throw) here. Contrary to function calls, an implicit conversion stores no
+information about the source location for the place where it is invoked, so in
+case of an error we can only report the kind of conversion that was attempted.
 
 @< Catch block for failing implicit conversion @>=
 catch (error_base& e)
@@ -2990,7 +3047,7 @@ entire conditional.
 At runtime, voiding is mostly taken care of by the |level| argument~|l| passed
 around in the evaluation mechanism. Any subexpressions with imposed void type,
 like the expression before the semicolon in a sequence expression, will get
-their |evaluate| method called with |l==no_value|, which suppresses the
+their |evaluate| method called with |l==level::no_value|, which suppresses the
 production of any value on the |execution_stack|. This setting will be
 inherited down to for instance the branches, if the subexpression was a
 conditional, so nothing special needs to be done to ensure that branches which
@@ -3003,7 +3060,7 @@ be produced (and in the example, assigned) where none was intended.
 
 The |voiding| expression type serves that purpose. It distinguishes itself
 from instances of |conversion|, in that |voiding::evaluate| calls |evaluate|
-for the contained expression with |l==no_value|, rather than with
+for the contained expression with |l==level::no_value|, rather than with
 |l==single_value| as |conversion::evaluate| does. If fact that is about all
 that |voiding| is about.
 
@@ -3027,7 +3084,7 @@ production of a value to be voided being avoided upstream, it is a no-op.
 @< Function definitions @>=
 void voiding::evaluate(level l) const
 @+{@; exp->void_eval();
-  if (l==single_value)
+  if (l==level::single_value)
     wrap_tuple<0>();
 }
 @)
@@ -3037,55 +3094,71 @@ void voiding::print(std::ostream& out) const
 
 @ The function |coerce| simply traverses the |coerce_table| looking for an
 appropriate entry, and wraps |e| into a corresponding |conversion| if it finds
-one. Ownership of the expression pointed to by |e| is handled implicitly: it
-is released during the construction of the |conversion|, and immediately
-afterwards |reset| reclaims ownership of the pointer to that |conversion|.
-Note that the |conversion| constructor uses |*it| only for its
-|conversion_info| base type; the types |from| and |to| are not retained at run
-time.
+one by calling the |do_conversion| function. The call of this function defined
+in the unit~\.{axis.w} that deals with actual compilation and execution is
+justified by the fact that when applied to a constant argument value, the value
+conversion will actually be performed on the value rather than wrapped in a
+|conversion| structure. We also define a variant function |coercible| that
+just evaluates the condition, omitting any action.
 
 When |to_type==void_type|, the conversion always succeeds, as the syntactic
-voiding coercion is allowed in all places where |coerce| is called. We used to
-do |e.reset(new voiding(std::move(e)));| in that case as well, which is a safe
-way to ensure that voiding will take place dynamically whenever present
-syntactically. However as argued above, in most cases no runtime action is
-necessary, since the context will have already set |l==no_value| for
-subexpressions with void type. In removing that statement from the code below,
-we have moved responsibility to type analysis, which must now ensure that any
-subexpression with void type will have |l==no_value| when evaluated. This
-means that in some cases a |voiding| has to be constructed explicitly. This
-crops up in many places (for instance a component in a tuple display just
-might happen to have void type), but almost all such cases are far-fetched; so
-we trade some economy of code for efficiency in execution.
+voiding coercion is allowed in all places where |coerce| is called. We now
+perform no action in that case, although it would seem safer to, ans we used to
+do, wrap the result in a |voiding| in this case to ensure no value will be left
+on the runtime stack during evaluation. However as argued above, in most such
+cases no runtime action is actually needed, since the context will have already
+set |l==level::no_value| for subexpressions with void type. In not providing any
+|voiding| here, we have moved responsibility to type analysis, which must now
+ensure that any subexpression with void type will have |l==level::no_value| when
+evaluated. This means that in some cases a |voiding| will have to be inserted
+explicitly. This crops up in many places (for instance a component in a tuple
+display just might happen to have void type), but almost all such cases are
+far-fetched. So we gain in efficiency of execution by only applying a |voiding|
+in such rare cases, but the price to pay is quite a bit of code in our
+interpreter to ensure we do in fact find and properly handle all those
+exceptional cases.
+
+@h "parse_types.h" // for |source_location|
+@h "axis.h" // for |do_conversion|
 
 @< Function definitions @>=
 bool coerce(const type_expr& from_type, const type_expr& to_type,
-	    expression_ptr& e)
+	    expression_ptr& e, const source_location& loc)
 { if (to_type==void_type)
   {@;
      return true;
   } // syntactically voided here, |e| is unchanged
   for (auto it=coerce_table.begin(); it!=coerce_table.end(); ++it)
     if (from_type==*it->from and to_type==*it->to)
-    @/{@; e.reset(new conversion(*it,std::move(e)));
+    {@;
+      do_conversion(e,*it,loc);
       return true;
     }
   return false;
 }
+@)
+bool coercible(const type_expr& from_type, const type_expr& to_type)
+{ auto match = @[ [&from_type,&to_type]
+     (const conversion_record& cr)
+     {@; return from_type==*cr.from and to_type==*cr.to; } @];
+  return to_type==void_type or
+    std::any_of(coerce_table.begin(), coerce_table.end(), match);
+}
 
 @ Often we first try to specialise a required type to the available type of a
-subexpression, or else (if the first fails) coerce the available type to the
-one required. The function |conform_types| will facilitate this. The argument
-|d| is a possibly already partially converted expression, which should be
-further wrapped in a conversion call if appropriate, while |e| is the original
-expression that should be mentioned in an error message if both attempts fail.
-A call to |conform_types| will be invariably followed (upon success) by
-returning the expression now held in the argument~|d| from the calling
-function; we can avoid having to repeat that argument in a return statement by
-returning the value in question already from |conform_types|. To indicate that
-the expression~|d| is incorporated into to return value, we choose to get |d|
-passed by rvalue reference, even though the argument will usually be held in a
-variable.
+subexpression, or else (if the first fails) coerce the available type to the one
+required. The function |conform_types| will facilitate this. The argument |d| is
+a possibly already partially converted expression, which should be further
+wrapped in a conversion call if appropriate, while |e| is the original
+expression that should be mentioned in an error message if both attempts fail. A
+call to |conform_types| will be invariably followed (upon success) by returning
+the expression that was passed as argument~|d|, possibly modified by
+|conform_types|, from that calling function. By returning the modified~|d| from
+|conform_types|, we can allow the caller to combine the two by writing |return
+conform_types(...)| (knowing that the action of returning might be aborted by an
+error thrown from |conform_types|). To indicate that the expression~|d| is
+incorporated into to return value, we choose to get |d| passed by rvalue
+reference, even though the argument will usually be held in a variable.
 
 If both attempts to conform the types fail we throw a |type_error|; doing so
 we must take a copy of |found| (since it a qualified |const|), but we can move
@@ -3094,7 +3167,7 @@ from |required|, whose owner will be destructed before the error is caught.
 @< Function def... @>=
 expression_ptr conform_types
 (const type_expr& found, type_expr& required, expression_ptr&& d, const expr& e)
-{ if (not required.specialise(found) and not coerce(found,required,d))
+{ if (not required.specialise(found) and not coerce(found,required,d,e.loc))
     throw type_error(e,found.copy(),required.copy());
   return std::move(d); // invoking |std::move| is necessary here
 }
@@ -3234,14 +3307,14 @@ containing \.*, that expression will not select any overload with a concrete
 type in its place (overloading does not perform type specialisation).
 
 
-@ So here is the (recursive) definition of the relation |is_close|. Equal
-types are always close, while undetermined types are not convertible to any
-other type. A primitive type is in the relation |is_close| to another type
-only if it is identical or if there is a direct conversion between the types,
-as decided by~|coerce|. Two row types are in the relation |is_close| if their
-component types are, and two tuple types are so if they have the same number
-of component types, and if each pair of corresponding component types is
-(recursively) in the relation |is_close|.
+@ So here is the (recursive) definition of the relation |is_close|. Equal types
+are always close, while undetermined types are not convertible to any other
+type. A primitive type is in the relation |is_close| to another type only if it
+is identical or if there is a direct conversion between the types, as decided
+by~|coerce|. Two row types are in the relation |is_close| if their component
+types are, and two tuple types are so if they have the same number of component
+types, and if each pair of corresponding component types is (recursively) in the
+relation |is_close|.
 
 The above applies to the most significant of the three bits used in the result
 of the function |is_close|. The two other bits indicate whether, by applying
@@ -3250,13 +3323,9 @@ tuple types, one of the types can be converted to the other. If the |is_close|
 relation is false all bits will be zero, but in the contrary case any of the 4
 possible combinations of the remaining bits could be set.
 
-The expression |dummy| may be prepended to by |coerce|, but is then abandoned
-(and cleaned up).
-
 @< Function definitions @>=
 unsigned int is_close (const type_expr& x, const type_expr& y)
-{ expression_ptr dummy(nullptr);
-  if (x==y)
+{ if (x==y)
     return 0x7; // this also makes recursive types equal to themselves
   auto xk=x.kind(), yk=y.kind();
   if (xk==undetermined_type or yk==undetermined_type)
@@ -3266,8 +3335,8 @@ unsigned int is_close (const type_expr& x, const type_expr& y)
     return 0x0; // |void| does not allow coercion for overload, and is not close
   if (xk==primitive_type or yk==primitive_type)
   { unsigned int flags=0x0;
-    if (coerce(x,y,dummy)) flags |= 0x1;
-    if (coerce(y,x,dummy)) flags |= 0x2;
+    if (coercible(x,y)) flags |= 0x1;
+    if (coercible(y,x)) flags |= 0x2;
     return flags==0 ? flags : flags|0x4;
   }
   if (xk!=yk)
@@ -3468,7 +3537,6 @@ message |s| for storage in the |program_error| base class, and the offending
 expression. There is no need to override either of the virtual methods here.
 
 @< Type definitions @>=
-struct expr; // predeclare
 struct expr_error : public program_error
 { const expr& offender; // the subexpression causing a problem
 @)

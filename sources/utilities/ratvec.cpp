@@ -99,7 +99,7 @@ template<typename C>
   return normalize();
 }
 
-// rational vectors are not guaranteed on lowest terms
+// rational vectors are allowed to be nonreduced, and the result here can be
 // however if multiplication can be done by cancellation, it is done that way
 template<typename C>
 RationalVector<C>& RationalVector<C>::operator*=(C n)
@@ -145,7 +145,8 @@ RationalVector<C>& RationalVector<C>::operator%=(C n)
 }
 
 template<typename C>
-RationalVector<C>& RationalVector<C>::operator*=(const arithmetic::Rational<C>& r)
+RationalVector<C>& RationalVector<C>::operator*=
+  (const arithmetic::Rational<C>& r)
 { return (*this /= r.denominator()) *= r.numerator(); }
 
 template<typename C>

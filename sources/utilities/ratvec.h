@@ -35,6 +35,7 @@ class RationalVector
 {
   typedef matrix::Vector<C> V; // local abbreviation
 
+  // unlike |big_rat|, being reduced is not a class invariant (in the library)
   V d_num;  // vector of integers, representing the numerators
   arithmetic::Denom_t d_denom; // a positive common denominator
 
@@ -70,7 +71,7 @@ class RationalVector
 // pseudo accessor
   // this method although classified |const| modifies members, but in a manner
   // that is mathematically neutral, so having this done should never harm
-  const RationalVector& normalize() const;
+  const RationalVector& normalize() const; // get smallest common denominator
 
 // accessors
   // unsigned denominator requires care: plain % or / taboo; so export signed

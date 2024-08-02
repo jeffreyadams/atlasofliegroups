@@ -137,7 +137,7 @@ struct expr {
   @< Methods of |expr| @>@;
 };
 @)
-@< Structure and typedef declarations for types built upon |expr| @>@;
+@< Structure and typedef definitions for types built upon |expr| @>@;
 
 @ To represent identifiers efficiently, and also file names, we shall use the
 type |id_type| (a small integer type) of indices into the table of identifier or
@@ -854,7 +854,7 @@ display.
 The moving constructor does what the braced initialiser-list syntax would do
 by default; it is present only for backward compatibility \.{gcc}~4.6.
 
-@< Structure and typedef declarations for types built upon |expr| @>=
+@< Structure and typedef definitions for types built upon |expr| @>=
 struct application_node
 { expr fun; @+ expr arg;
 @)
@@ -1186,7 +1186,7 @@ importantly seem to invariably have infinite priority, so they could be
 handled in the parser without dynamic priority comparisons. So here is that
 structure:
 
-@< Structure and typedef declarations... @>=
+@< Structure and typedef definitions... @>=
 struct formula_node
 @/{ expr left_subtree; @+ expr op_exp; @+ int prio;
 @/  formula_node(expr&& l,expr&& o, int prio)
@@ -1467,7 +1467,7 @@ only one binding, and containing in addition a body.
 The moving constructor does what the braced initialiser-list syntax would do
 by default; it is present only for backward compatibility \.{gcc}~4.6.
 
-@< Structure and typedef declarations for types built upon |expr| @>=
+@< Structure and typedef definitions for types built upon |expr| @>=
 struct let_pair { id_pat pattern; expr val; };
 typedef containers::simple_list<let_pair> let_list;
 typedef containers::sl_node<let_pair>* raw_let_list;
@@ -1836,7 +1836,7 @@ requires as initial argument a deleter object for the |std::unique_ptr| is
 stores (even though the type is stateless, so there is not much choice), this is
 mode tedious than usual.
 
-@< Structure and typedef declarations for types built upon |expr| @>=
+@< Structure and typedef definitions for types built upon |expr| @>=
 struct conditional_node
 { expr condition; containers::sl_node<expr> branches;
 @)
@@ -2038,34 +2038,37 @@ to the body of the union value being discriminated upon, if it has the
 appropriate variant, with argument type matching the type of that variant.
 
 In fact we define two forms of discrimination case statements. A first, more
-primitive form, provides exactly what we just described, a separate function
-for each branch; it has the same syntactic form as an integer case statement,
-except that we write vertical bars instead of commas to make the distinction.
+primitive form, provides what looks like a $\lambda$-expression for the function
+defining each branch, except that no type for the parameter has to be provided
+because it is implicitly the type of the corresponding variant of the union. In
+fact the branches are semantically more like |let| expressions in that the
+binding to the parameter happens without an actual function call.
 A second form provides more flexibility to the user, but can only be used if
 the union type has occurred in a type definition where the different variants
 have been given names (tags); these can then be used to identify branches, and
 frees the user from the obligation of writing the branches in the same order
-as the corresponding variants are listed in the union, and also of explicitly
-specifying types (since they can be deduced from the context) for the
-identifiers (function arguments) that are introduced at the beginning of each
-branch.
+as the corresponding variants are listed in the union, as well as of explicitly
+specifying types for the parameters introduced.
 
-The tag used for the first form is |union_case_expr|, that for the second form
-|discrimination_expr|.
+The label used for the first form is |union_case_expr|, that for the second form
+|discrimination_expr|. Both will use the same structure in the parser,
+distinguished only be which of these label values is used, although in the
+former case the per-branch tags are will remain unused.
 
 @< Enumeration tags for |expr_kind| @>=
 union_case_expr, discrimination_expr, @[@]
 
-@~The first case can reuse the |conditional_node| structure, just like the
-integral case expressions, so all we need is a trivial variation of
-|make_int_case_node|.
+@~An older form of the case can reused the |conditional_node| structure, just
+like the integral case expressions, in which the branches are arbitrary
+function-valued expressions. All that is needed to be able to build this form is
+a trivial variation of |make_int_case_node|.
 
 @< Definitions of functions for the parser @>=
 
 expr_p make_union_case_node(expr_p s, raw_expr_list i, const YYLTYPE& loc)
 {@; return make_case_node(union_case_expr,s,i,loc); }
 
-@ Printing an union case expression at parser level is a very slight variation
+@ Printing a union case expression at parser level is a very slight variation
 of the same for an integer case expression.
 
 @< Cases for printing... @>=
@@ -2079,47 +2082,47 @@ case union_case_expr:
 }
 break;
 
-@ But for the second kind we need a more elaborate
-parsing structure.
+@ For the new version of the first, and for the second kind, we use a same new,
+more elaborate, parsing structure.
 
 @< Type declarations needed in definition of |struct expr@;| @>=
 typedef struct discrimination_node* disc;
 
-@ Concretely branches have an identifier that indicates the
-case, and then a pattern and a body as in a \&{let} statement. In a
+@ Concretely, branches have an identifier that indicates the case, used only for
+the second form, and then a pattern and a body as in a \&{let} statement. In a
 |discrimination_node|, the expression being discriminated is called its
 |subject|, which is followed by a non-empty list of |branches|.
 
-@< Structure and typedef declarations for types built upon |expr| @>=
+@< Structure and typedef definitions for types built upon |expr| @>=
 struct case_variant
 { id_type label;
   id_pat pattern;
   expr branch;
 };
-typedef containers::simple_list<case_variant> case_list;
-typedef containers::sl_node<case_variant>* raw_case_list;
+using case_list = containers::simple_list<case_variant>;
+using case_node = containers::sl_node<case_variant>;
+typedef case_node *raw_case_list; // for use in parser |union|
 @)
 struct discrimination_node
-{ expr subject; containers::sl_node<case_variant> branches;
+{ expr subject; case_node branches;
+  bool has_tags;
 @)
-  discrimination_node(expr&& subject, raw_case_list branches);
+  discrimination_node(expr&& subject, case_list&& branches, bool tags);
 };
 
-@ The |discrimination_node| constructor is less straightforward than usual,
-since we want to move from the head node of the |branches| argument. Doing so
-requires passing a raw pointer to the constructor (whereas we usually pass
-smart pointers at such occasions), which can be used for this purpose. But we
-also want to clean up the old node using a smart pointer; as the lifetime of a
-temporary inside the initialiser expression equals (the containing
-full-expression which is) that initialiser expression, the code
-below achieves the desired effect using a comma operator (destroying the smart
-pointer of its left hand side takes place only after the construction of
-|subject| has moved the data out of the node pointed to).
+@ The |discrimination_node| constructor is somewhat special in that the
+|branches| field is not a |case_list| but a |case_node|, so that there is always
+at least one node. We nevertheless pass the |branches| argument to the
+constructor as a |case_list|, assumed non-empty, from which we can move the
+initial node by using the |release| method and dereferencing the resulting
+pointer to the node.
 
 @< Definitions of functions for the parser @>=
-discrimination_node::discrimination_node(expr&& subject, raw_case_list branches)
+discrimination_node::discrimination_node
+  (expr&& subject, case_list&& branches, bool tags)
 @/: subject(std::move(subject))
-  , branches((case_list(branches),std::move(*branches)))
+  , branches(std::move(*branches.release()))
+  , has_tags(tags)
   @+{}
 
 @ The variant of |expr| values with |disc| as parsing value is tagged
@@ -2149,7 +2152,8 @@ raw_case_list append_case_node
 expr_p make_union_case_node
   (expr_p selector, raw_expr_list ins, const YYLTYPE& loc);
 expr_p make_discrimination_node
-  (expr_p s, containers::sl_node<case_variant>* branches, const YYLTYPE& loc);
+  (expr_p s, containers::sl_node<case_variant>* branches, bool tags,
+   const YYLTYPE& loc);
 
 @~The implementation is basic list handling. The first two functions build
 individual nodes, which the prepend to the list being constructed using
@@ -2173,12 +2177,12 @@ raw_case_list make_case_node(id_type sel, raw_id_pat& pattern, expr_p val)
 
 @)
 expr_p make_discrimination_node
-  (expr_p s, containers::sl_node<case_variant>* b, const YYLTYPE& loc)
+  (expr_p s, raw_case_list b, bool tags, const YYLTYPE& loc)
 {
   expr_ptr subj(s); case_list branches(b);
   branches.reverse(); // undo effect of left-recursive grammar rules
 @/return new @| expr(new @|
-      discrimination_node { std::move(*subj), branches.release() },loc);
+      discrimination_node { std::move(*subj), std::move(branches), tags },loc);
 }
 
 @ We follow the usual coding pattern for copying raw pointers.
@@ -2259,7 +2263,7 @@ bits, the first tow having the same meaning as for |for| loops (the ``object
 traversed'' being a sequence of consecutive integers) and a third bit telling
 whether the loop index is absent.
 
-@< Structure and typedef declarations for types built upon |expr| @>=
+@< Structure and typedef definitions for types built upon |expr| @>=
 struct while_node
 { expr body; // contains a |do|-expression producing condition and body
   BitSet<2> flags;
@@ -2427,7 +2431,7 @@ typedef struct slice_node* slc;
 expressions (although the latter should have as type integer, or a tuple of
 integers).
 
-@< Structure and typedef declarations for types built upon |expr| @>=
+@< Structure and typedef definitions for types built upon |expr| @>=
 struct subscription_node
 { expr array; expr index; bool reversed;
 @)
@@ -2552,7 +2556,7 @@ typedef struct cast_node* cast;
 
 @~The corresponding node type stores both type and expression.
 
-@< Structure and typedef declarations for types built upon |expr| @>=
+@< Structure and typedef definitions for types built upon |expr| @>=
 struct cast_node
 { type_expr type; expr exp;
 @)
@@ -2621,7 +2625,7 @@ typedef struct op_cast_node* op_cast;
 @~We store an (operator) identifier and a type, as before represented by a
 void pointer.
 
-@< Structure and typedef declarations for types built upon |expr| @>=
+@< Structure and typedef definitions for types built upon |expr| @>=
 struct op_cast_node
 { id_type oper; type_expr type;
 @)
@@ -2691,7 +2695,7 @@ typedef struct assignment_node* assignment;
 now also cater for general identifier patterns as left hand side, but keep
 having a special constructor for the single identifier case.
 
-@< Structure and typedef declarations for types built upon |expr| @>=
+@< Structure and typedef definitions for types built upon |expr| @>=
 struct assignment_node
 { id_pat lhs; expr rhs;
 @)
@@ -2794,7 +2798,7 @@ In a field assignment, the the left hand side records two identifiers, one
 for the identifier holding the tuple, and one for the selection function
 indicating the field to modify.
 
-@< Structure and typedef declarations for types built upon |expr| @>=
+@< Structure and typedef definitions for types built upon |expr| @>=
 struct comp_assignment_node
 { id_type aggr; expr index; expr rhs; bool reversed;
 @)
@@ -2824,7 +2828,7 @@ identifier in the aggregate position, and the application case the also in the
 function position (the grammar ensures these structures, and the expression tag
 will indicate which of the two applies).
 
-@< Structure and typedef declarations for types built upon |expr| @>=
+@< Structure and typedef definitions for types built upon |expr| @>=
 struct comp_transform_node
 { expr dest; id_type op; expr arg; source_location op_loc;
 @)
@@ -3034,7 +3038,7 @@ sequences by chaining pairs, instead of storing a vector of expressions: at
 three pointers overhead per vector, a chained representation is more compact
 as long as the average length of a sequence is less than~$5$ expressions.
 
-@< Structure and typedef declarations for types built upon |expr| @>=
+@< Structure and typedef definitions for types built upon |expr| @>=
 struct sequence_node
 { expr first; expr last;
 @)
@@ -3130,11 +3134,10 @@ types. For ordinary type expressions we could do with the types |type_p| and
 |raw_type_list| defined in the \.{axis-types} module, but in type definitions
 we need a list of pairs of a type identifier and its defining type expression.
 
-@< Structure and typedef declarations for types built upon |expr| @>=
-typedef struct {@; id_type id; type_p type; patlist fields; } typedef_struct;
-   // sic
-typedef containers::simple_list<typedef_struct> typedef_list;
-typedef atlas::containers::sl_node<typedef_struct>* raw_typedef_list;
+@< Structure and typedef definitions for types built upon |expr| @>=
+struct typedef_struct {@; id_type id; type_p type; patlist fields; };
+using typedef_list = containers::simple_list<typedef_struct>;
+using raw_typedef_list = atlas::containers::sl_node<typedef_struct>*;
 
 @ Here are the functions defined for those types.
 
