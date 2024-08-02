@@ -352,7 +352,7 @@ void Ktypeform_f()
 
   standardrepk::KhatContext khc(G);
 
-  StandardRepK sr=interactive::get_standardrep(khc);
+  standardrepk::StandardRepK sr=interactive::get_standardrep(khc);
 
   {
     if (not khc.isFinal(sr))
@@ -415,7 +415,7 @@ void qKtypeform_f()
 
   standardrepk::qKhatContext khc(G);
 
-  StandardRepK sr=interactive::get_standardrep(khc);
+  standardrepk::StandardRepK sr=interactive::get_standardrep(khc);
 
   {
     if (not khc.isFinal(sr))
@@ -473,7 +473,7 @@ void Ktypemat_f()
 
   standardrepk::KhatContext khc(G);
 
-  StandardRepK sr=interactive::get_standardrep(khc);
+  standardrepk::StandardRepK sr=interactive::get_standardrep(khc);
   khc.normalize(sr);
 
   {
@@ -557,7 +557,7 @@ void qKtypemat_f()
 
   standardrepk::qKhatContext khc(G);
 
-  StandardRepK sr=interactive::get_standardrep(khc);
+  standardrepk::StandardRepK sr=interactive::get_standardrep(khc);
 
   {
     if (not khc.isNormal(sr))
@@ -708,7 +708,7 @@ void branch_f()
 
   standardrepk::KhatContext khc(G);
 
-  StandardRepK srk=interactive::get_standardrep(khc);
+  standardrepk::StandardRepK srk=interactive::get_standardrep(khc);
 
   {
     if (not khc.isStandard(srk))
@@ -763,7 +763,7 @@ void qbranch_f()
 
   standardrepk::qKhatContext khc(G);
 
-  StandardRepK srk=interactive::get_standardrep(khc);
+  standardrepk::StandardRepK srk=interactive::get_standardrep(khc);
 
   {
     if (not khc.isStandard(srk))
@@ -833,7 +833,7 @@ void srtest_f()
 			    G.rank());
   standardrepk::KhatContext khc(G);
 
-  StandardRepK sr=khc.std_rep_rho_plus(lambda,kgb.titsElt(x));
+  standardrepk::StandardRepK sr=khc.std_rep_rho_plus(lambda,kgb.titsElt(x));
 
   (lambda *= 2) += G.root_datum().twoRho();
   prettyprint::printVector(std::cout << "Weight (1/2)",lambda);

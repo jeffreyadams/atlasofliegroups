@@ -291,14 +291,11 @@ class Rep_context
 
   // conservative estimate for lowest height that can be obtained from |lambda|
   level height_bound(RatWeight lambda) const; // "projecting to dominant cone"
-  // apart from producing a result, these two methods also make |t| theta-stable
+  // apart from producing a result, these methods also make |t| theta-stable:
   sl_list<K_repr::K_type> KGP_set (K_repr::K_type& t) const;
   K_repr::K_type_pol K_type_formula (K_repr::K_type& t,level cutoff) const;
-  K_repr::K_type_pol K_type_formula (SRK_context& srk, // for pruning
-				     K_repr::K_type& t,level cutoff) const;
+
   K_repr::K_type_pol branch(K_repr::K_type_pol P, level cutoff) const;
-  K_repr::K_type_pol branch(SRK_context& srk, // use projections for pruning
-			    K_repr::K_type_pol P, level cutoff) const;
 
   // parameter component extraction
   const WeightInvolution& theta (const StandardRepr& z) const;
@@ -413,7 +410,7 @@ class Rep_context
   void to_singular_canonical(RankFlags gens, StandardRepr& z) const;
   level height(Weight theta_plus_1_gamma) const;
 
-  K_repr::K_type_pol monomial_product
+  K_repr::K_type_pol monomial_product // $P*X^e$; implemented in K_repr.cpp
     (const K_repr::K_type_pol& P, const Weight& e) const;
 }; // |Rep_context|
 

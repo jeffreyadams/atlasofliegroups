@@ -2253,6 +2253,7 @@ const K_type_poly& Rep_table::deformation(StandardRepr z)
 // for more general |z|, do the preconditioning outside the recursion
 {
   assert(is_final(z));
+
   if (z.gamma().denominator() > (1LL<<rank()))
     z = weyl::alcove_center(*this,z);
   RatNumList rp=reducibility_points(z);
@@ -2263,6 +2264,8 @@ const K_type_poly& Rep_table::deformation(StandardRepr z)
     if (h!=alcove_hash.empty and pool[h].has_deformation_formula())
       return pool[h].def_formula();
   }
+
+  interpreter::check_interrupt(); // make this recursive function interruptible
 
   K_type_poly result {std::less<K_type_nr>()};
   {
@@ -2580,6 +2583,8 @@ const K_type_poly& Rep_table::twisted_deformation(StandardRepr z, bool& flip)
       return pool[h].twisted_def_formula();
     }
   }
+
+  interpreter::check_interrupt(); // make this recursive function interruptible
 
   K_type_poly result { std::less<K_type_nr>() };
   { // initialise |result| to restriction of |z| expanded to finals
