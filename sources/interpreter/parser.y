@@ -121,8 +121,9 @@
             typedef_struct_specs typedef_union_specs
 %destructor { destroy_type_list($$.typel);destroy_pattern($$.patl); }
 	    id_specs id_specs_opt
-%type <case_l> tagged_caselist tagged_do_caselist
-%destructor { destroy_case_list($$); } tagged_caselist tagged_do_caselist
+%type <case_l> caselist tagged_caselist do_caselist tagged_do_caselist
+%destructor { destroy_case_list($$); }
+	    caselist do_caselist tagged_caselist tagged_do_caselist
 %type <typedef_l> type_equation type_equations
 %destructor { destroy_typedef_list($$); } type_equation type_equations
 
@@ -364,8 +365,10 @@ unit    : INT { $$ = make_int_denotation($1,@$); }
 	  { $$=make_int_case_node($2,reverse_expr_list($8),$4,$6,@$); }
 	| CASE expr IN barlist ESAC
 	  { $$=make_union_case_node($2,reverse_expr_list($4),@$); }
+	| CASE expr '|' caselist ESAC
+	  { $$=make_discrimination_node($2,$4,false,@$); }
 	| CASE expr '|' tagged_caselist ESAC
-	  { $$=make_discrimination_node($2,$4,@$); }
+	  { $$=make_discrimination_node($2,$4,true,@$); }
 
 	| WHILE do_expr tilde_opt OD { $$=make_while_node($2,2*$3,@$); }
 	| iffor_loop
@@ -421,6 +424,11 @@ iftail	: expr THEN expr ELSE expr FI { $$=make_conditional_node($1,$3,$5,@$); }
 	  { $$=make_conditional_node($1,$3,wrap_tuple_display(nullptr,@$),@$); }
 ;
 
+caselist: closed_pattern ':' expr     { $$=make_case_node(-1,$1,$3); }
+	| caselist '|' closed_pattern ':' expr
+	  { $$=append_case_node($1,-1,$3,$5); }
+;
+
 tagged_caselist:
 	  IDENT closed_pattern  ':' expr    { $$=make_case_node($1,$2,$4); }
 	| closed_pattern '.' IDENT ':' expr { $$=make_case_node($3,$1,$5); }
@@ -465,8 +473,10 @@ do_expr : LET do_lettail { $$=$2; }
 	  { $$=make_int_case_node($2,reverse_expr_list($8),$4,$6,@$); }
 	| CASE expr IN do_barlist ESAC
 	  { $$=make_union_case_node($2,reverse_expr_list($4),@$); }
+	| CASE expr '|' do_caselist ESAC
+	  { $$=make_discrimination_node($2,$4,false,@$); }
 	| CASE expr '|' tagged_do_caselist ESAC
-	  { $$=make_discrimination_node($2,$4,@$); }
+	  { $$=make_discrimination_node($2,$4,true,@$); }
         | '(' do_expr ')' { $$=$2; }
 ;
 
@@ -488,6 +498,11 @@ do_barlist: do_expr  '|' do_expr
            { $$=make_exprlist_node($3,
 			   make_exprlist_node($1,raw_expr_list(nullptr))); }
 	| do_barlist '|' do_expr { $$=make_exprlist_node($3,$1); }
+;
+
+do_caselist: closed_pattern ':' do_expr     { $$=make_case_node(-1,$1,$3); }
+	| do_caselist '|' closed_pattern ':' do_expr
+	  { $$=append_case_node($1,-1,$3,$5); }
 ;
 
 tagged_do_caselist:

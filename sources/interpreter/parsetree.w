@@ -2038,27 +2038,30 @@ to the body of the union value being discriminated upon, if it has the
 appropriate variant, with argument type matching the type of that variant.
 
 In fact we define two forms of discrimination case statements. A first, more
-primitive form, provides exactly what we just described, a separate function
-for each branch; it has the same syntactic form as an integer case statement,
-except that we write vertical bars instead of commas to make the distinction.
+primitive form, provides what looks like a $\lambda$-expression for the function
+defining each branch, except that no type for the parameter has to be provided
+because it is implicitly the type of the corresponding variant of the union. In
+fact the branches are semantically more like |let| expressions in that the
+binding to the parameter happens without an actual function call.
 A second form provides more flexibility to the user, but can only be used if
 the union type has occurred in a type definition where the different variants
 have been given names (tags); these can then be used to identify branches, and
 frees the user from the obligation of writing the branches in the same order
-as the corresponding variants are listed in the union, and also of explicitly
-specifying types (since they can be deduced from the context) for the
-identifiers (function arguments) that are introduced at the beginning of each
-branch.
+as the corresponding variants are listed in the union, as well as of explicitly
+specifying types for the parameters introduced.
 
-The tag used for the first form is |union_case_expr|, that for the second form
-|discrimination_expr|.
+The label used for the first form is |union_case_expr|, that for the second form
+|discrimination_expr|. Both will use the same structure in the parser,
+distinguished only be which of these label values is used, although in the
+former case the per-branch tags are will remain unused.
 
 @< Enumeration tags for |expr_kind| @>=
 union_case_expr, discrimination_expr, @[@]
 
-@~The first case can reuse the |conditional_node| structure, just like the
-integral case expressions, so all we need is a trivial variation of
-|make_int_case_node|.
+@~An older form of the case can reused the |conditional_node| structure, just
+like the integral case expressions, in which the branches are arbitrary
+function-valued expressions. All that is needed to be able to build this form is
+a trivial variation of |make_int_case_node|.
 
 @< Definitions of functions for the parser @>=
 
@@ -2079,14 +2082,14 @@ case union_case_expr:
 }
 break;
 
-@ But for the second kind we need a more elaborate
-parsing structure.
+@ For the new version of the first, and for the second kind, we use a same new,
+more elaborate, parsing structure.
 
 @< Type declarations needed in definition of |struct expr@;| @>=
 typedef struct discrimination_node* disc;
 
-@ Concretely branches have an identifier that indicates the
-case, and then a pattern and a body as in a \&{let} statement. In a
+@ Concretely, branches have an identifier that indicates the case, used only for
+the second form, and then a pattern and a body as in a \&{let} statement. In a
 |discrimination_node|, the expression being discriminated is called its
 |subject|, which is followed by a non-empty list of |branches|.
 
@@ -2102,8 +2105,9 @@ typedef case_node *raw_case_list; // for use in parser |union|
 @)
 struct discrimination_node
 { expr subject; case_node branches;
+  bool has_tags;
 @)
-  discrimination_node(expr&& subject, case_list&& branches);
+  discrimination_node(expr&& subject, case_list&& branches, bool tags);
 };
 
 @ The |discrimination_node| constructor is somewhat special in that the
@@ -2114,9 +2118,11 @@ initial node by using the |release| method and dereferencing the resulting
 pointer to the node.
 
 @< Definitions of functions for the parser @>=
-discrimination_node::discrimination_node(expr&& subject, case_list&& branches)
+discrimination_node::discrimination_node
+  (expr&& subject, case_list&& branches, bool tags)
 @/: subject(std::move(subject))
   , branches(std::move(*branches.release()))
+  , has_tags(tags)
   @+{}
 
 @ The variant of |expr| values with |disc| as parsing value is tagged
@@ -2146,7 +2152,8 @@ raw_case_list append_case_node
 expr_p make_union_case_node
   (expr_p selector, raw_expr_list ins, const YYLTYPE& loc);
 expr_p make_discrimination_node
-  (expr_p s, containers::sl_node<case_variant>* branches, const YYLTYPE& loc);
+  (expr_p s, containers::sl_node<case_variant>* branches, bool tags,
+   const YYLTYPE& loc);
 
 @~The implementation is basic list handling. The first two functions build
 individual nodes, which the prepend to the list being constructed using
@@ -2170,12 +2177,12 @@ raw_case_list make_case_node(id_type sel, raw_id_pat& pattern, expr_p val)
 
 @)
 expr_p make_discrimination_node
-  (expr_p s, raw_case_list b, const YYLTYPE& loc)
+  (expr_p s, raw_case_list b, bool tags, const YYLTYPE& loc)
 {
   expr_ptr subj(s); case_list branches(b);
   branches.reverse(); // undo effect of left-recursive grammar rules
 @/return new @| expr(new @|
-      discrimination_node { std::move(*subj), std::move(branches) },loc);
+      discrimination_node { std::move(*subj), std::move(branches), tags },loc);
 }
 
 @ We follow the usual coding pattern for copying raw pointers.

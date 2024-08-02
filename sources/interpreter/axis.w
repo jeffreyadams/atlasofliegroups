@@ -5322,14 +5322,14 @@ variants.
   throw expr_error(e,o.str());
 }
 
-@ Type checking of discrimination expressions is rather different from that of
-union case expressions, because we use the tags associated to the variants of
-the union type to identify and possibly reorder branches, and allow for some
+@ When type checking discrimination expressions, the case where |has_tags| holds
+is the more complicated one: we use the tags associated to the variants of the
+union type to identify and possibly reorder branches, and allow for some
 branches to be handled together in a default branch (in which case no
 information from the evaluated condition expression, other than the fact that it
 selects none of the explicitly treated branches, is passed to the selected
-default branch). So we insist here that the union type used be present in
-|type_expr::type_map| (presumably specifying tags).
+default branch). So we insist in that case that the union type used be present
+in |type_expr::type_map| (presumably specifying tags).
 
 @< Cases for type-checking and converting... @>=
 case discrimination_expr:
@@ -5342,26 +5342,52 @@ case discrimination_expr:
   if (subject_type.kind()!=union_type)
     throw type_error(exp.subject,std::move(subject_type),
                      std::move(*unknown_union_type(n_branches)));
-  const wtl_const_iterator types_start(subject_type.tuple());
-@)
-  const auto type_number = type_expr::find(subject_type);
-  if (type_number>=type_expr::table_size())
-    @< Report that union type |subject_type| cannot be used in a discrimination
-       expression without having been defined @>
-  const auto& field_names = type_expr::fields(type_number);
-  if (field_names.empty())
-    @< Report that union type |subject_type| needs named injectors to be
-       used in a discrimination expression @>
-@)
-  size_t n_variants=length(subject_type.tuple());
-
+  const auto& variants = subject_type.tuple();
+  size_t n_variants=length(variants);
   std::vector<choice_part> choices(n_variants);
 @)
-  @< Process |branches| and assign them to |choices|, possibly reordering them
-    according to the specified variant names and taking into account a
-    possible default branch @>
+  if (exp.has_tags)
+  {
+    const wtl_const_iterator types_start(variants); // fix base
+    const auto type_number = type_expr::find(subject_type);
+    if (type_number>=type_expr::table_size())
+      @< Report that union type |subject_type| cannot be used in a discrimination
+         expression without having been defined @>
+    const auto& field_names = type_expr::fields(type_number);
+    if (field_names.empty())
+      @< Report that union type |subject_type| needs named injectors to be
+         used in a discrimination expression @>
+  @)
+    @< Process |branches| and assign them to |choices|, possibly reordering them
+      according to the specified variant names and taking into account a
+      possible default branch @>
+  }
+  else
+    @< Process |branches| in order @>
 @/return expression_ptr(new @|
     discrimination_expression(std::move(c),std::move(choices)));
+}
+
+@ Without tags, branch processing proceeds simply by sequentially following
+variants of |subject_type| which should match the branches. We do set up this
+code (notably using an index $k$ rather than yet another iterator) in such a way
+that the actual branch processing can be shared with the case with tags.
+
+@< Process |branches| in order @>=
+{ if (n_branches!=n_variants)
+  { o << "Number of branches (" <<  n_branches @|
+      << ") does not match number of variants (" << n_variants @|
+      << ") of type " << subject_type;
+    throw expr_error(e,o.str());
+  }
+  auto branch_p=&exp.branches; wtl_const_iterator type_it(variants);
+  for (size_t k=0; k<n_branches; ++k,branch_p=branch_p->next.get(),++type_it)
+  { const auto& branch = branch_p->contents;
+    const auto& variant_type = *type_it; // type of variant for this branch
+    @/@< Type-check branch |branch.branch|, with |branch.pattern| bound to
+         |variant_type|, against result type |type|,  and insert the
+         |choice_part| resulting from the conversion into |choices[k]| @>
+  }
 }
 
 @ In order to be able to share the default branch expression among multiple
