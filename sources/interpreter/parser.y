@@ -363,9 +363,9 @@ unit    : INT { $$ = make_int_denotation($1,@$); }
 	| CASE expr THEN expr ELSE expr IN commalist ESAC
 	  { $$=make_int_case_node($2,reverse_expr_list($8),$4,$6,@$); }
 	| CASE expr '|' caselist ESAC
-	  { $$=make_discrimination_node($2,$4,false,@$); }
+	  { $$=make_discrimination_node($2,$4,@$); }
 	| CASE expr '|' tagged_caselist ESAC
-	  { $$=make_discrimination_node($2,$4,true,@$); }
+	  { $$=make_discrimination_node($2,$4,@$); }
 
 	| WHILE do_expr tilde_opt OD { $$=make_while_node($2,2*$3,@$); }
 	| iffor_loop
@@ -415,9 +415,9 @@ iftail	: expr THEN expr ELSE expr FI { $$=make_conditional_node($1,$3,$5,@$); }
 	  { $$=make_conditional_node($1,$3,wrap_tuple_display(nullptr,@$),@$); }
 ;
 
-caselist: closed_pattern ':' expr     { $$=make_case_node(-1,$1,$3); }
+caselist: closed_pattern ':' expr     { $$=make_case_node(0,$1,$3); }
 	| caselist '|' closed_pattern ':' expr
-	  { $$=append_case_node($1,-1,$3,$5); }
+	  { $$=append_case_node($1,0,$3,$5); }
 ;
 
 tagged_caselist:
@@ -426,7 +426,7 @@ tagged_caselist:
 	| IDENT ':' expr
 	  { struct raw_id_pat id; id.kind=0x0; $$=make_case_node($1,id,$3); }
 	| ELSE expr
-	  { struct raw_id_pat id; id.kind=0x0; $$=make_case_node(-1,id,$2); }
+	  { struct raw_id_pat id; id.kind=0x0; $$=make_case_node(1,id,$2); }
 	| tagged_caselist '|' IDENT closed_pattern ':' expr
 	  { $$=append_case_node($1,$3,$4,$6); }
 	| tagged_caselist '|' pattern '.' IDENT ':' expr
@@ -437,7 +437,7 @@ tagged_caselist:
 	  }
 	| tagged_caselist '|' ELSE expr
 	  { struct raw_id_pat id; id.kind=0x0;
-	    $$=append_case_node($1,-1,id,$4);
+	    $$=append_case_node($1,1,id,$4);
 	  }
 ;
 
@@ -463,9 +463,9 @@ do_expr : LET do_lettail { $$=$2; }
 	| CASE expr THEN do_expr ELSE do_expr IN do_commalist ESAC
 	  { $$=make_int_case_node($2,reverse_expr_list($8),$4,$6,@$); }
 	| CASE expr '|' do_caselist ESAC
-	  { $$=make_discrimination_node($2,$4,false,@$); }
+	  { $$=make_discrimination_node($2,$4,@$); }
 	| CASE expr '|' tagged_do_caselist ESAC
-	  { $$=make_discrimination_node($2,$4,true,@$); }
+	  { $$=make_discrimination_node($2,$4,@$); }
         | '(' do_expr ')' { $$=$2; }
 ;
 

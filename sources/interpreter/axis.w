@@ -5230,7 +5230,7 @@ case discrimination_expr:
   size_t n_variants=length(variants);
   std::vector<choice_part> choices(n_variants);
 @)
-  if (exp.has_tags)
+  if (exp.has_tags())
   {
     const wtl_const_iterator types_start(variants); // fix base
     const auto type_number = type_expr::find(subject_type);
@@ -5316,7 +5316,7 @@ conversion of previous branches.
   for (auto branch_p=&exp.branches; branch_p!=nullptr;
        branch_p=branch_p->next.get())
   { const auto& branch = branch_p->contents;
-    if (branch.label==type_binding::no_id)
+    if (branch.is_default())
       @< Use |branch| to set |default_choice| @>
     else
     { size_t k = std::find(field_names.begin(), field_names.end(),branch.label)
@@ -5410,13 +5410,9 @@ branch was already defined.
 @ A default branch should be present if and only if the number of other
 branches specified is strictly less than the number of variants, which means
 that the number |n_branches| (which includes a possible default) should never
-exceed |n_branches|. And if on the other |n_branches<n_variants|, then a
-default should be among the branches. However, when this fails our error
-message reports a variant of the union for which a branch is actually missing,
-using the tag if it has one, or if it is an anonymous variant just mentioning
-its position among the variants.
+exceed |n_branches|. We also test for possible a missing default branch.
 
-when no errors are signalled, we need to implement the default branch
+When no errors are signalled, we need to implement the default branch
 mechanism, which is easy thanks to our use of |shared_expression|. By having
 the identifier pattern of defaulted branches be empty, the value from the
 |discriminant| expression will not be bound to anything for such branches.
@@ -5426,26 +5422,34 @@ the identifier pattern of defaulted branches be empty, the value from the
 {
   if (n_branches>n_variants)
     throw expr_error(e,"Spurious default branch present");
-  else if (n_branches<n_variants and default_choice.get()==nullptr)
-  {
-    auto it=choices.begin();
-    while(it->second.get()!=nullptr) ++it;
-    auto variant=field_names[it-choices.begin()];
-    if (variant==type_binding::no_id)
-      o << "Missing branch for anonymous variant " << it-choices.begin();
-    else
-      o << "Missing branch for variant " << main_hash_table->name_of(variant);
-    o << " of type " << subject_type << " in discrimination clause";
-    throw expr_error(e,o.str());
-  }
-@)
   if (default_choice.get()!=nullptr)
   // if a default was given, insert for omitted branches
     for (auto it=choices.begin(); it!=choices.end(); ++it)
       if (it->second.get()==nullptr)
         *it = choice_part(id_pat(),default_choice);
               // share |default_choice| here
+  else if (n_branches<n_variants)
+    @< Report a missing branch @>
 }
+
+@ If |n_branches<n_variants| and no default branch was seen, we give an error
+message that reports a variant of the union for which a branch is actually
+missing. We mention its tag if it has one, and otherwise mention its position
+among the variants.
+
+@< Report a missing branch @>=
+{
+  auto it=choices.begin();
+  while(it->second.get()!=nullptr) ++it;
+  auto variant=field_names[it-choices.begin()];
+  if (variant==type_binding::no_id)
+    o << "Missing branch for anonymous variant " << it-choices.begin();
+  else
+    o << "Missing branch for variant " << main_hash_table->name_of(variant);
+  o << " of type " << subject_type << " in discrimination clause";
+  throw expr_error(e,o.str());
+}
+
 
 @*1 While loops.
 %
