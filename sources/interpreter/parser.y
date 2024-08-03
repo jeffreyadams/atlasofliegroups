@@ -78,20 +78,19 @@
 %token END_OF_FILE
 
 %type <expression> expr expr_opt tertiary cast lettail or_expr and_expr
-%type <expression> not_expr formula operand secondary primary unit selector
-%type <expression> subscription slice comprim assignable_subsn ident_expr
-%type <expression> do_expr do_lettail do_iftail iftail
+%type <expression> not_expr formula operand secondary primary unit
+%type <expression> selector subscription slice comprim assignable_subsn
+%type <expression> ident_expr do_expr do_lettail do_iftail iftail
 %type <expression> iffor_loop if_loop for_loop
 %type <ini_form> formula_start
 %type <oper> operator
 %type <id_code> id_op
-%type <code> tilde_opt
-%destructor { destroy_expr ($$); } expr expr_opt tertiary cast lettail or_expr
-%destructor { destroy_expr ($$); } and_expr not_expr formula operand secondary
-%destructor { destroy_expr ($$); } primary comprim unit selector subscription
-%destructor { destroy_expr ($$); } slice assignable_subsn ident_expr
-%destructor { destroy_expr ($$); } iffor_loop if_loop for_loop
-%destructor { destroy_expr ($$); } do_expr do_lettail do_iftail iftail
+%type <code> tilde_opt breaker
+%destructor { destroy_expr ($$); }
+            expr expr_opt tertiary cast lettail or_expr and_expr not_expr
+	    formula operand secondary primary comprim unit selector
+	    slice assignable_subsn ident_expr iffor_loop if_loop for_loop
+	    do_expr do_lettail do_iftail iftail
 %destructor { destroy_formula($$); } formula_start
 %destructor { delete $$; } INT STRING
 %type <expression_list> commalist do_commalist commalist_opt commabarlist
@@ -387,8 +386,11 @@ unit    : INT { $$ = make_int_denotation($1,@$); }
 	| operator '@' type { $$=make_op_cast($1.id,$3,@$); }
 	| IDENT '@' type    { $$=make_op_cast($1,$3,@$); }
 	| DIE { $$= make_die(@$); }
-	| BREAK { $$= make_break(0,@$); }
-	| BREAK INT { $$= make_break(std::stoi(*$2),@$); }
+        | breaker{ $$= make_break($1,@$); }
+;
+
+breaker:  BREAK { $$ = 0; }
+        | breaker BREAK { $$ = $1+1; }
 ;
 
 commalist_opt: /* empty */	 { $$=raw_expr_list(nullptr); }

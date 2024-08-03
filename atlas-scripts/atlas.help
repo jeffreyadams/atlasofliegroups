@@ -183,41 +183,47 @@ program interprets, and its remaining aspects other than primitive functions.
 
 3 Design principles of the 'axis' language, and current limitations
 
-The axis language is expression based, which means that the text entered
-serves most often to designate values to be computed rather than actions to be
-performed. Its design is close to that of functional programming languages:
-function values are first class citizens, binding is static with no
-restrictions on lifetime, semantics is value-based for all types (no
-distinction between object and value, or between mutable and unmutable
-values). The language does provide assignable variables and loops. All control
-structures including loops are oriented towards construction of values rather
-than towards sequencing of side-effects, although they do provide the latter.
+The axis language is expression based, which means that the text entered serves
+most often to designate values to be computed rather than actions to be
+performed, and user defined functions, while they do perform actions, are mostly
+oriented toward computing some mapping between values. The design of the
+language is close to that of functional programming languages: function values
+are first class citizens, we use lexical identifier binding (meaning that for
+every use of a name it can be determined from the source text alone which
+defining occurrence of that name is being identified) without lifetime
+limitation (meaning there is never any worry that the variable created in the
+defining occurrence no longer exists when the name is used); semantics is
+value-based for all data types (there is no distinction between a value and an
+object holding it, nor between mutable and unmutable values). The language does
+provide assignable names, sequencing, and loops. Control structures, including
+loops, are oriented towards construction or deconstruction of values rather than
+towards sequencing of side-effects, although they do provide the latter.
 Somewhat curiously for a language close to functional languages, ordinary
-definitions cannot be recursive, which is a consequence of strict scoping
-rules derived from the lambda-calculus. Nonetheless recursive function
-definitions are supported through use of the rec_fun keyword.
+definitions cannot be recursive, which is a consequence of strict scoping rules
+derived from the lambda-calculus. Nonetheless recursive function definitions are
+supported through use of the 'rec_fun' keyword.
 
 For beginning users it is important to stress the fundamental distinction
 between creating names (variables) and assigning to them. The interpreter will
 never create a variable just because it appears to be used, and therefore
-refuses expressions with unknown names in them: it neither creates new
-variables that are being assigned to (as Python does), nor assumes new names
-to be meaningful but undefined (as do many symbolic algebra packages, which
-take unknown names to stand for indeterminates). Names are introduced using
-the keyword 'set' (for permanent names) or using the keyword 'let' (for local
-names, whose scope is limited to the current expression, or even to part of
-it); in both cases the name is immediately bound to a value. Once a name is
-introduced, its value can be altered by assignment, which is written ':=' (in
-the tradition of Algol and Pascal, and unlike FORTRAN and C). Such assignments
-are fairly rare (they are used almost exclusively for programming purposes),
-and cannot alter the type of the value bound to the name. Both 'set' and 'let'
-follow the name(s) being introduced by '=' (not ':='). Apart from that, '='
-also serves as equality testing operator (defined for most types).
+refuses expressions with unknown names in them: it neither creates new variables
+that are being assigned to (as Python does), nor assumes new names to be
+meaningful but undefined (as do many symbolic algebra packages, which take
+unknown names to stand for indeterminates). Names are introduced using the
+keyword 'set' (for permanent names) or using the keyword 'let' (for local names,
+whose scope is limited to the current expression, or even to part of it); in
+both cases the name is immediately bound to a value. Once a name is introduced,
+its value can be altered by assignment, which is written ':=' (in the tradition
+of Algol and Pascal, and unlike FORTRAN, C, java, Python). Such assignments are
+fairly rare, and are used mostly for programming purposes; they cannot alter the
+type of the value bound to the name. Both 'set' and 'let' follow the name(s)
+being introduced by '=' (not ':='). Apart from that, '=' also serves as equality
+testing operator (defined for many types, available for further overloading).
 
 The language is strictly typed, so that type-correctness of expressions must
 be established before their evaluation is attempted. This means that most
 common errors are caught before execution starts, and these error messages are
-usually more specific about their cause than runtime errors (which mention any
+usually more specific about their cause than runtime errors (which mention the
 offending value, but cannot trace where that value originated). As a
 consequence it can be tough to write a script in such a way that will load
 without any error message, but the correction cycle is fast: atlas just stops
@@ -242,17 +248,29 @@ using the Atlas functionality, though for advanced programming the set of
 possible types might need to be enlarged in the future.
 
 The primitive data types currently available for values cover almost all those
-that the Atlas library can handle (root data, inner classes, real forms,
-Cartan classes, KGB elements, parameters for (standard) modules and formal
-sums of those; a notable exception is twisted involutions or Weyl group
-elements but working with representing matrices suffices). For the types
-available not all library functionality is available in atlas, but this can
-sometimes be circumvented using a script. Some data types used internally
-(such as Weyl groups, polynomials) may appear in printed output but cannot be
-further manipulated. The programming language itself is fairly complete in
-functionality, with constructions like variables, loops and conditionals, as
-well as functions and operators (both built-in and user-defined); what is
-currently the most annoying limitation is the absence of second order typing.
+that the Atlas library can handle (root data, Weyl group elements, inner
+classes, real forms, Cartan classes, KGB elements, parameters for (standard)
+modules and formal sums of those). Other non-primitive data types can be (and
+are) added by user definitions in scripts. The programming language itself is
+fairly complete in functionality, with constructions like variables, loops and
+conditionals, as well as functions and operators (both built-in and
+user-defined); what is currently the most annoying limitation is the absence of
+second order typing, and the impossiblity of introducing new types and type
+consturctors that are "sealed off" so a to become equivalent to primitive ones.
+
+Like for most languages there is a set of keywords that cannot be used for any
+other purpose than their assigned syntactic roles; these are:
+
+quit, set, let, in, begin, end, if, then, else, elif, fi, and, or, not, next,
+do, dont, from, downto, while, for, od, case, esac, rec_fun,true, false,
+die, break, return, set_type, whattype, showall, forget.
+
+Furthermore there are names that refer to primitive types, and that cannot be
+repurposed in any manner, so that they are effectivel also reserved words:
+
+void, int, rat, string, bool, vec, mat, ratvec,
+LieType, RootDatum, WeylElt, InnerClass, RealForm, CartanClass, KGBElt, Block,
+Split, KType, KTypePol, Param, ParamPol.
 
 4 Types
 
@@ -2054,53 +2072,60 @@ jump is supported by the axis language when that evaluation is that of a loop or
 of a function.
 
 In the case of a loop, this is achieved by executing a "break", and the value
-returned from the loop is as if the final (interrupted) iteration had never
-started; when this happens in a 'for' loop, the size of the list of values
-returned will strictly smaller than the number of iterations that was computed
-when the loop evaluation started. As no value is contributed, the expression
-whose evaluation leads to this interruption is usually just the keyword 'break',
-which for the purpose of type checking has undetermined type (just like for the
-keyword 'die'). The 'break' expression is syntactically bound to the loop
-expression that its execution will terminate; this is normally the innermost
-loop in whose body the 'break' occurs. It can however be specified to be a more
-outward loop by writing a positive integer number after 'break' (separated by
-whitespace to avoid being combined into an identifier), which number counts the
-number of extra levels to move outward (so 'break 1' breaks from the
-innermost-but-one loop). If there are insufficient nested levels of loops that
-contain a 'break' expression, it will be rejected upon parsing. The outwards
-search for an enclosing loop body stops (with an error) in case the body of a
-function is found instead (which makes a difference only in the unlikely case of
-a local function definition contained in a loop). As a consequence executing a
-'break' never interrupts an active function call (although of course it can
-cause a function to terminate immediately after a loop in contains finishes).
+returned from the loop is as if its final (interrupted) iteration had never
+started. When this happens in a 'for' loop, the size of the list of values
+returned will then be strictly smaller than the number of iterations that was
+computed when the loop evaluation started. This interruption is signaled by the
+keyword 'break', which syntactically is an expression; when this expression is
+executed, this terminates the loop (and any evaluation that might be in progress
+inside that loop body). Since no value is returned to its context from
+evaluating 'break', it has undetermined type the purpose of type checking (just
+like the keyword 'die'). The 'break' expression is syntactically bound to the
+loop expression that its execution will terminate; this is normally the
+innermost loop in whose body the 'break' occurs. It can however be specified to
+be a more outward loop by repeating the keyword 'break' as many times as the are
+loop bodies to be broken out of, so 'break break' breaks from both current loop
+and the loop body that it occurs in. If there are insufficient nested levels of
+loops within the current command or function body to identify the loop to be
+terminated, the parser will reject the 'break' expression. Therefore, executing
+a (repeated) 'break' expression never directly interrupts an active function
+call (although of course a function call might terminate immediately after a
+loop contained in its body is interrupted).
 
-The evaluation of the body of a user defined function can be terminated without
-completing that of the whole body by executing a 'return' expression nested
-within. It is composed of the keyword 'return' followed by an expression that
-will be evaluated to produce the value returned from the function in case the
-'return' expression it executed. Similarly to 'break', the 'return' expression
-is syntactically bound to the function body that its execution will terminate,
-which is the innermost function that contains the 'return' expression (and in
-this case there is no way to specify any other function body). When the 'return'
+Similarly, there is a 'return' expression that can be used to prematurely
+terminate the call of a user defined function. A 'return' expression composed of
+the keyword 'return', followed by an expression that will be evaluated to
+produce the value returned from that function in case the 'return' expression it
+executed. Similarly to 'break', the 'return' expression is syntactically bound
+to the function body that its execution will terminate, which is the innermost
+function whose body contains the 'return' expression. (Contrary to break
+expressions, there is no way to specify a more outward function body to be
+terminated, as it is uncertain whether such functions are even still being
+evaluated by the time the 'return' expression is executed.) When the 'return'
 expression is executed, this interrupts the evaluations of any subexpressions of
 the function body that are in progress, which may include loop expressions.
 Since a function should always return a value of the same type, the type of any
 and all expressions following a 'return' (directly) contained in a function body
 and the function body itself should have the same type, in the same way as all
-branches in a choice expression should have the same type. In the syntactic
-context where the 'return' expression occurs, it has undetermined type (like a
-'break' expression), since it never provides a value for that context.
+branches in a choice expression should have the same type. Just like a 'break'
+expression, a 'return' expression has undetermined type for the purpose of type
+checking, since evaluating it never provides a value to its immediate context.
 
 For completeness we mention two other expressions whose evaluation will
 interrupt the containing evaluation, this time leading to a runtime error rather
 than resuming execution at a different point: the already mentioned expression
 consisting of the keyword 'die', and a call of the built-in function 'error'.
 The latter allows providing a message to be printed after the runtime error is
-signalled, by way of the argument expression for 'error'; this is usually a
+signaled, by way of the argument expression for 'error'; this is usually a
 string but could be any value, which will be formatted as the 'prints' built-in
 function would. (Also, as for any function, the argument is evaluated before the
 function is called, so it the argument expression manages to produce an error
-itself, it is that error that will be reported instead of calling 'error'.)
+itself, it is that error that will be reported instead of calling 'error'.) The
+keyword 'die' is intended to provide an expression in places where one is
+syntactically required, but which provably cannot be reached for evaluation; it
+is introduced in some automatic program transformations, but users should
+probably prefer calling 'error', to help indicating where something went wrong.
+
 
 9 Recursion
 
