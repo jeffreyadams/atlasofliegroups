@@ -635,8 +635,10 @@ case break_expr:
     throw expr_error(e,"Using 'break' not in the reach of any loop");
   else
   { std::ostringstream o;
-    o << "Using 'break " << e.break_variant << "' requires " << e.break_variant+1
-    @|<< " nested levels of loops";
+    o << "Using 'break";
+    for (unsigned i=0 ; i<e.break_variant; ++i)
+      o << " break";
+    o << "' requires " << e.break_variant+1 << " nested levels of loops";
     throw expr_error(e,o.str());
   }
 }

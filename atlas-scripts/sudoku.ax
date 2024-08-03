@@ -235,7 +235,7 @@ set dead_ends ( game_interface game ) = [int]: { options ruled out linearly }
        ; let group=-1, constraint=-1 in
          for (c,m)@g in for g:4 do game.best(g) od
          do if m<=1 then constraint:=c; group:=g
-	            ; if =m then fail:=true; break 1 fi
+	            ; if =m then fail:=true; break break fi
 	    fi
 	 od
        ; group.>= { some minimum was 1, and none were 0 }
@@ -243,7 +243,7 @@ set dead_ends ( game_interface game ) = [int]: { options ruled out linearly }
          let choice_of=ch_of_co[group] in
 	 for k:9
 	 do let choice=choice_of(constraint,k) in
-	   if game.available(choice) then game.choose(choice); break 0 fi
+	   if game.available(choice) then game.choose(choice); break fi
 	 od
        od
      ; if fail then [trial] else { either solution or branching found } [] fi

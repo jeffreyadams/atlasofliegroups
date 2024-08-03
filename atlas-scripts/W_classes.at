@@ -101,7 +101,7 @@ in while { loop with embedded |do| instances near end }
 	    do let sws=s*w*s in
 	       case length(sws)-lw
 	       then { less }
-		  stack:=[[],[(sws,s*witness)]]; shorter:=true; break 1
+		  stack:=[[],[(sws,s*witness)]]; shorter:=true; break break
 	       in { equal }
 		 if absent(stack~[1]##stack~[0],sws) do (sws,s*witness) fi
 	       else { greater } []
