@@ -5130,117 +5130,73 @@ case int_case_expr2:
                                  std::move(conv)));
 }
 
-@*1 Union-controlled case expressions (discrimination expressions).
+@*1 Discrimination clauses.
 %
-The union-case expression (a multi-way branch controlled by a union value),
-also called discrimination expression, is syntactically similar to the integer
-case expression, but semantically a bit more complicated. The main difference
-is that each branch can bind independently to the value whose tag (variant of
-the union) is being discriminated upon. We define two forms of such
-expressions, a simple one where each branch is a function that (must have
-an argument type matching the variant and) will be applied to the variant
-value, and an elaborated form where each branch introduces an identifier
-pattern that will bind to the variant expression, as in a \&{let} expression
-(and as for those expressions the identifiers types will be deduced from the
-context). The latter form has several other features like allowing a default
-branch, and requires the use of explicitly declared tags for the variants.
+The discrimination clause (a multi-way branch controlled by a union value) is
+syntactically similar to the integer case expression, but semantically a bit
+more complicated. The main difference is that each branch can bind, depending on
+its actual variant, to the value of union type being discriminated upon. We
+define two syntactic forms of discrimination clauses, a simple one where each
+branch is like a \&{let}-expression and they bind to the variants in order, and
+a more elaborated form where the branches identify their corresponding variant
+by a tag associated to. The latter form allows stating the branches in any
+order, and a default branch to replace one or more branches; its usage
+presupposes the user having given a (general) type definition for the union
+type, which associates tags to each of the variants.
 
-The simple form will reuse the |int_case_expression| structure, overriding
-only its evaluation and printing virtual methods. For the elaborated
-discrimination expressions we define a different structure, the
-|discrimination_expression|.
-
-Note that exceptionally we use shared pointers to access the branch
-expressions. This is because the user can define a default branch expression
-(which cannot use the variant of the union value) that will be chosen for all
-variants (tags, though variants with an absent tag are also eligible here) for
-which the user did not otherwise specify a branch; this expression can
-therefore be shared between different branches.
+The difference between the two forms is merely syntactic; after conversion, both
+forms will give rise to a |discrimination_expression|. Unless default branches
+are present (which cannot be used in the first form), the converted form in no
+way witnesses the form was used to produce it. Note that exceptionally this
+structure uses shared pointers for the branches. This is because a default
+branch expression can stand for multiple branches, in which case several copies
+of the pointer to it will be present in |branches|.
 
 @< Type def... @>=
-struct union_case_expression : public int_case_expression
-{ union_case_expression
-   (expression_ptr&& c,std::vector<expression_ptr>&& b)
-   : int_case_expression(std::move(c),std::move(b))
-  @+{}
-  virtual ~union_case_expression() = default;
-  virtual void evaluate(level l) const;
-  virtual void print(std::ostream& out) const;
-};
-
-@)
-typedef std::pair<id_pat,shared_expression> choice_part;
+using choice_part = std::pair<id_pat,shared_expression>;
 
 struct discrimination_expression : public expression_base
-{ expression_ptr condition; std::vector<choice_part> branches;
+{ expression_ptr subject; std::vector<choice_part> branches;
 @)
   discrimination_expression
-   (expression_ptr&& c,std::vector<choice_part>&& b)
-   : condition(c.release()),branches(std::move(b))
+   (expression_ptr&& sub,std::vector<choice_part>&& br)
+   : subject(sub.release()),branches(std::move(br))
   @+{}
   virtual ~discrimination_expression() = default;
   virtual void evaluate(level l) const;
   virtual void print(std::ostream& out) const;
 };
 
-@ To print a case expression is straightforward.
+@ To print a discrimination clause is straightforward.
 
 @< Function definitions @>=
-void union_case_expression::print(std::ostream& out) const
-{ auto it = branches.cbegin();
-  assert(it!=branches.cend());
-  out << " case " << *condition << " in " << **it;
-  while (++it!=branches.cend())
-    out << " | " << **it;
-  out << " esac ";
-}
-@)
 void discrimination_expression::print(std::ostream& out) const
 { auto it = branches.cbegin();
   assert(it!=branches.cend());
-  out << " case " << *condition;
+  out << " case " << *subject;
   do out << " | (" << it->first << "):" << *it->second;
   while (++it!=branches.cend());
   out << " esac ";
 }
 
-@ Evaluating a union-case or discrimination expression proceeds largely in the
-same manner. We start by evaluating the |condition| (the expression upon which
-to discriminate), pop that value from the stack into |discriminant|, and then
-select a |branch| depending on its |variant()| attribute (the numeric value of
-its tag). Then for the union case expression we evaluate the branch, which
-should return a function, and then |apply| that function to the |contents()|
-attribute of |discriminant| (the value that was tagged). For a discrimination
-expression, each branch is like a $\lambda$~expression and introduces an
-identifier pattern; the evaluation is the same as what a union case expression
-would do for a branch that is a $\lambda$~expression:
-|discriminant->contents()| is bound to the pattern |branch.first|, and in the
-context so established the body |branch.second| is evaluated to produce the
-result of the discrimination expression. However we be aware that some
-branches bind no identifiers (for instance this is always the case for a
-defaulted branch); we shall make sure that such branches have as their |first|
-field an empty |id_pat|, and test for that before creating a |frame| for
+@ Evaluating a discrimination clause begins by evaluating the |subject| (the
+expression upon which one discriminates), pops that value from the stack into
+|discriminant|, and then selects a |branch| depending on its (numeric)
+|variant()| attribute. Then that branch is evaluated like a \&{let}-expression
+introducing an identifier pattern |branch.first|, which is bound to the value of
+|subject| within its variant, in which context the body |branch.second| is
+evaluated to produce the result of the discrimination clause. However we must be
+aware that some branches bind no identifiers (for instance this is always the
+case for a defaulted branch); we test for that before creating a |frame| for
 |branch.first|.
 
 @< Function definitions @>=
-void union_case_expression::evaluate(level l) const
-{ condition->eval();
-  shared_union discriminant = get<union_value>();
-  const auto& branch = branches[discriminant->variant()]; // make selection
-  branch->evaluate(l); // evaluate function value
-  shared_function f = get<function_base>();
-  push_expanded(f->argument_policy(),discriminant->contents());
-  f->apply(l);
-}
-
-@)
-
 void discrimination_expression::evaluate(level l) const
-{ condition->eval();
+{ subject->eval();
   shared_union discriminant = get<union_value>();
   const auto& branch = branches[discriminant->variant()]; // make selection
-  if (branch.first.kind==0x0)
-    branch.second->evaluate(l); // avoid creating an empty |frame|
+  if (count_identifiers(branch.first)==0)
+    branch.second->evaluate(l); // avoid any empty |frame|
   else
   { frame fr(branch.first);
     fr.bind(discriminant->contents());
@@ -5250,83 +5206,11 @@ void discrimination_expression::evaluate(level l) const
 }
 
 
-@ To convert a union case expression, we first convert the |condition|
-expression (checking its type |switch_type| to be a union type); then for each
-branch build a function type from the appropriate variant of the union to the
-expected |type| of the whole expression, and convert the branch with that
-expected type (the vector |choices| collects the resulting expressions);
-finally we build a |case_union_expression| from these pieces.
-
-Thus the branches do not have equal types, but are all function types sharing
-|type| as result type. Balancing as currently realised is not up to the task
-of choosing (based on their \foreign{a priori} types) a branch that determines
-|type| and allowing the result types of the other branches be coerced to it.
-Instead we use the asymmetric method of repeatedly specialising |type| as we
-traverse the branches from left to right.
-
-@< Cases for type-checking and converting... @>=
-case union_case_expr:
-{ auto& exp = *e.if_variant;
-  size_t n_branches=length(&exp.branches);
-  type_expr switch_type;
-  std::ostringstream o; // for use in various error messages
-@)
-  expression_ptr c  =  convert_expr(exp.condition,switch_type);
-  if (switch_type.kind()!=union_type)
-    throw type_error(exp.condition,std::move(switch_type),
-                     std::move(*unknown_union_type(n_branches)));
-@)
-  size_t n_variants=length(switch_type.tuple());
-  if (n_variants!=n_branches)
-    @< Report mismatching number of branches @>
-@)
-  std::vector<expression_ptr> branches;
-
-  raw_type_list variant_type_p = switch_type.tuple();
-  for (auto branch_p=&exp.branches; branch_p!=nullptr;
-       branch_p=branch_p->next.get(), variant_type_p=variant_type_p->next.get())
-  {
-    auto f_type_p =
-      mk_function_type(std::move(variant_type_p->contents),type.copy());
-    auto branch_f = convert_expr(branch_p->contents,*f_type_p);
-    branches.push_back(std::move(branch_f));
-    type.specialise(f_type_p->func()->result_type);
-  }
-@/return expression_ptr(new @|
-    union_case_expression(std::move(c),std::move(branches)));
-}
-
-@ Here we produce a union type for use in an error message when a non-union
-type was found. The provided |length| is obtained by counting branches, which
-is not always reliable (in the presence of a default); in any case we ensure
-that at least two unspecified variants are listed so that it will at least be
-clear that some union type was called for.
-
-@< Local fun... @>=
-type_ptr unknown_union_type(size_t length)
-{ type_list l; auto n = std::max<size_t>(2,length);
-  while (n-->0)
-    l.push_front(unknown_type.copy());
-  return mk_union_type(std::move(l));
-}
-
-@ The error message for a wrong number of branches just uses the branch count,
-but does report the full union type for clarity rather than just its number of
-variants.
-
-@< Report mismatching number of branches @>=
-{ std::ostringstream o;
-  o << "Union case expression has " << n_branches @|
-    << "branches,\nwhile the union type " << switch_type @|
-    << " has " << n_variants << " variants";
-  throw expr_error(e,o.str());
-}
-
-@ When type checking discrimination expressions, the case where |has_tags| holds
+@ When type checking discrimination clauses, the case where |has_tags| holds
 is the more complicated one: we use the tags associated to the variants of the
 union type to identify and possibly reorder branches, and allow for some
 branches to be handled together in a default branch (in which case no
-information from the evaluated condition expression, other than the fact that it
+information from the evaluated subject expression, other than the fact that it
 selects none of the explicitly treated branches, is passed to the selected
 default branch). So we insist in that case that the union type used be present
 in |type_expr::type_map| (presumably specifying tags).
@@ -5352,11 +5236,11 @@ case discrimination_expr:
     const auto type_number = type_expr::find(subject_type);
     if (type_number>=type_expr::table_size())
       @< Report that union type |subject_type| cannot be used in a discrimination
-         expression without having been defined @>
+         clause without having been defined @>
     const auto& field_names = type_expr::fields(type_number);
     if (field_names.empty())
       @< Report that union type |subject_type| needs named injectors to be
-         used in a discrimination expression @>
+         used in a discrimination clause @>
   @)
     @< Process |branches| and assign them to |choices|, possibly reordering them
       according to the specified variant names and taking into account a
@@ -5368,6 +5252,20 @@ case discrimination_expr:
     discrimination_expression(std::move(c),std::move(choices)));
 }
 
+@ Here we produce a union type for use in an error message when a non-union
+type was found. The provided |length| is obtained by counting branches, which
+is not always reliable (in the presence of a default); in any case we ensure
+that at least two unspecified variants are listed so that it will at least be
+clear that some union type was called for.
+
+@< Local fun... @>=
+type_ptr unknown_union_type(size_t length)
+{ type_list l; auto n = std::max<size_t>(2,length);
+  while (n-->0)
+    l.push_front(unknown_type.copy());
+  return mk_union_type(std::move(l));
+}
+
 @ Without tags, branch processing proceeds simply by sequentially following
 variants of |subject_type| which should match the branches. We do set up this
 code (notably using an index $k$ rather than yet another iterator) in such a way
@@ -5375,11 +5273,7 @@ that the actual branch processing can be shared with the case with tags.
 
 @< Process |branches| in order @>=
 { if (n_branches!=n_variants)
-  { o << "Number of branches (" <<  n_branches @|
-      << ") does not match number of variants (" << n_variants @|
-      << ") of type " << subject_type;
-    throw expr_error(e,o.str());
-  }
+    @< Report mismatching number of branches @>
   auto branch_p=&exp.branches; wtl_const_iterator type_it(variants);
   for (size_t k=0; k<n_branches; ++k,branch_p=branch_p->next.get(),++type_it)
   { const auto& branch = branch_p->contents;
@@ -5390,20 +5284,32 @@ that the actual branch processing can be shared with the case with tags.
   }
 }
 
+@ The error message for a wrong number of branches just uses the branch count,
+but does report the full union type for clarity rather than just its number of
+variants.
+
+@< Report mismatching number of branches @>=
+{ std::ostringstream o;
+  o << "Discrimination clause has " << n_branches @|
+    << "branches, which does not match\nthe number of variants ("
+    << n_variants @| << ") of the type " << subject_type
+    << " discriminated upon";
+  throw expr_error(e,o.str());
+}
+
 @ In order to be able to share the default branch expression among multiple
 branches, we define a shared expression |default_choice| that a default branch
 if present will set.
 
-Contrary to a union case expression, the branches of a discrimination
-expression should have equal types. It would then seem natural to balance
-these types like for an integer case expression, but again our current
-implementation of balancing is not up to the task. This is because it will
-convert, and occasionally re-convert, all expressions to be balanced in the
-same (lexical) context, while the branches of a discrimination clause set up
-different local bindings for each of them. So like union case expressions we
-implement conversion of discrimination expressions without balancing, simply
-using for each branch the type provided by the context as possibly modified by
-the conversion of previous branches.
+The branches of a discrimination clause should have bodies of equal types. It
+would then seem natural to balance these types like for an integer case
+expression, but our current implementation of balancing is not up to the task.
+This is because it will convert, and occasionally re-convert, all expressions to
+be balanced in the same (lexical) context, while the branches of a
+discrimination clause set up different local bindings for each of them. So we
+implement conversion of discrimination clauses without balancing, simply using
+for each branch the type provided by the context as possibly modified by the
+conversion of previous branches.
 
 @< Process |branches| and assign them to |choices|... @>=
 { shared_expression default_choice;
@@ -5445,14 +5351,11 @@ this branch is chosen, and suppress creating a |frame| for the branch.
     throw expr_error(e,o.str());
   }
 @)
-  auto n=count_identifiers(branch.pattern);
   expression_ptr result;
-  layer branch_layer(n);
+  layer branch_layer(count_identifiers(branch.pattern));
   thread_bindings(branch.pattern,variant_type,branch_layer,false);
   result=convert_expr(branch.branch,type);
-@/choices[k] = choice_part @|
-     (n==0 ? id_pat() : copy_id_pat(branch.pattern)
-     ,std::move(result));
+@/choices[k] = choice_part (copy_id_pat(branch.pattern),std::move(result));
 }
 
 @ When reporting a mismatched branch or when a pair of identical branch labels
@@ -5472,21 +5375,23 @@ is found, we print the whole discrimination expression.
   }
 }
 
-@ Here we just observe that using a discrimination expression requires using a
+@ Here we just observe that using a discrimination clause requires using a
 \emph{named} union type.
 
 @< Report that union type |subject_type| cannot be used in a discrimination
-   expression without having been defined @>=
+   clause without having been defined @>=
 
 { std::ostringstream o;
   o << "Discrimination on expression of type " << subject_type @|
-    << " requires using 'set_type' for this type,\n" @|
-       "  and naming injectors for it";
+    << " requires using 'set_type [ ... ]' for this type";
   throw expr_error(e,o.str());
 }
-@
+
+@ In case a matching definition is found in the type table but without injector
+functions, the message is a bit different.
+
 @< Report that union type |subject_type| needs named injectors to be
-   used in a discrimination expression @>=
+   used in a discrimination clause @>=
 { std::ostringstream o;
   o << "Discrimination on expression of type " << subject_type @|
     << " requires naming injectors for it";
@@ -5530,7 +5435,7 @@ the identifier pattern of defaulted branches be empty, the value from the
       o << "Missing branch for anonymous variant " << it-choices.begin();
     else
       o << "Missing branch for variant " << main_hash_table->name_of(variant);
-    o << " of type " << subject_type << " in discrimination expression";
+    o << " of type " << subject_type << " in discrimination clause";
     throw expr_error(e,o.str());
   }
 @)

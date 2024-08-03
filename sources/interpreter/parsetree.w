@@ -1896,7 +1896,6 @@ case conditional_expr:
 case int_case_expr0:
 case int_case_expr1:
 case int_case_expr2:
-case union_case_expr:
   if_variant=other.if_variant;
 break;
 
@@ -1908,7 +1907,6 @@ case conditional_expr:
 case int_case_expr0:
 case int_case_expr1:
 case int_case_expr2:
-case union_case_expr:
    delete if_variant; break;
 
 @ To print a conditional expression at parser level, we shall not
@@ -2029,7 +2027,7 @@ case int_case_expr2:
 break;
 
 
-@*2 Discrimination case statements.
+@*2 Discrimination clauses.
 %
 Union values can be tested for their actual variant using a multi-way switch
 similar to the case statement. However here branches are not simply
@@ -2050,48 +2048,22 @@ frees the user from the obligation of writing the branches in the same order
 as the corresponding variants are listed in the union, as well as of explicitly
 specifying types for the parameters introduced.
 
-The label used for the first form is |union_case_expr|, that for the second form
-|discrimination_expr|. Both will use the same structure in the parser,
-distinguished only be which of these label values is used, although in the
-former case the per-branch tags are will remain unused.
+The label used for both form is |discrimination_expr|, a distinguishing Boolean
+value will be placed inside the structure.
 
 @< Enumeration tags for |expr_kind| @>=
-union_case_expr, discrimination_expr, @[@]
+discrimination_expr, @[@]
 
-@~An older form of the case can reused the |conditional_node| structure, just
-like the integral case expressions, in which the branches are arbitrary
-function-valued expressions. All that is needed to be able to build this form is
-a trivial variation of |make_int_case_node|.
-
-@< Definitions of functions for the parser @>=
-
-expr_p make_union_case_node(expr_p s, raw_expr_list i, const YYLTYPE& loc)
-{@; return make_case_node(union_case_expr,s,i,loc); }
-
-@ Printing a union case expression at parser level is a very slight variation
-of the same for an integer case expression.
-
-@< Cases for printing... @>=
-case union_case_expr:
-{ auto& c=*e.if_variant;
-  wel_const_iterator it(&c.branches);
-  out << " case " << c.condition << " in " << *it;
-  for (++it; not it.at_end(); ++it)
-    out  << " | " << *it;
-  out << " esac ";
-}
-break;
-
-@ For the new version of the first, and for the second kind, we use a same new,
-more elaborate, parsing structure.
+@ The pointer type to this structure is called |disc|.
 
 @< Type declarations needed in definition of |struct expr@;| @>=
 typedef struct discrimination_node* disc;
 
-@ Concretely, branches have an identifier that indicates the case, used only for
-the second form, and then a pattern and a body as in a \&{let} statement. In a
-|discrimination_node|, the expression being discriminated is called its
-|subject|, which is followed by a non-empty list of |branches|.
+@ Concretely, branches have an identifier that indicates the case, used only in
+the elaborate form, and then a pattern and a body as in a \&{let} statement. In
+a |discrimination_node|, the expression being discriminated is called its
+|subject|, which is followed by a non-empty list of |branches|, and a flag
+indicating whether tags are being used.
 
 @< Structure and typedef definitions for types built upon |expr| @>=
 struct case_variant

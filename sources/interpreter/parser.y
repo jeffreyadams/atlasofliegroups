@@ -94,10 +94,9 @@
 %destructor { destroy_expr ($$); } do_expr do_lettail do_iftail iftail
 %destructor { destroy_formula($$); } formula_start
 %destructor { delete $$; } INT STRING
-%type <expression_list> commalist do_commalist commalist_opt
-%type <expression_list> barlist do_barlist commabarlist
-%destructor { destroy_exprlist($$); } commalist do_commalist commalist_opt
-%destructor { destroy_exprlist($$); } barlist do_barlist commabarlist
+%type <expression_list> commalist do_commalist commalist_opt commabarlist
+%destructor { destroy_exprlist($$); }
+            commalist do_commalist commalist_opt commabarlist
 %type <decls> declarations declaration
 %destructor { destroy_letlist($$); } declarations declaration
 
@@ -363,8 +362,6 @@ unit    : INT { $$ = make_int_denotation($1,@$); }
 	  { $$=make_int_case_node($2,reverse_expr_list($6),$4,$8,@$); }
 	| CASE expr THEN expr ELSE expr IN commalist ESAC
 	  { $$=make_int_case_node($2,reverse_expr_list($8),$4,$6,@$); }
-	| CASE expr IN barlist ESAC
-	  { $$=make_union_case_node($2,reverse_expr_list($4),@$); }
 	| CASE expr '|' caselist ESAC
 	  { $$=make_discrimination_node($2,$4,false,@$); }
 	| CASE expr '|' tagged_caselist ESAC
@@ -400,12 +397,6 @@ commalist_opt: /* empty */	 { $$=raw_expr_list(nullptr); }
 
 commalist: expr  { $$=make_exprlist_node($1,raw_expr_list(nullptr)); }
 	| commalist ',' expr { $$=make_exprlist_node($3,$1); }
-;
-
-barlist: expr  '|' expr
-           { $$=make_exprlist_node($3,
-			   make_exprlist_node($1,raw_expr_list(nullptr))); }
-	| barlist '|' expr { $$=make_exprlist_node($3,$1); }
 ;
 
 commabarlist: commalist '|' commalist
@@ -471,8 +462,6 @@ do_expr : LET do_lettail { $$=$2; }
 	  { $$=make_int_case_node($2,reverse_expr_list($6),$4,$8,@$); }
 	| CASE expr THEN do_expr ELSE do_expr IN do_commalist ESAC
 	  { $$=make_int_case_node($2,reverse_expr_list($8),$4,$6,@$); }
-	| CASE expr IN do_barlist ESAC
-	  { $$=make_union_case_node($2,reverse_expr_list($4),@$); }
 	| CASE expr '|' do_caselist ESAC
 	  { $$=make_discrimination_node($2,$4,false,@$); }
 	| CASE expr '|' tagged_do_caselist ESAC
@@ -492,12 +481,6 @@ do_iftail : expr THEN do_expr ELSE do_expr FI
 
 do_commalist: do_expr { $$=make_exprlist_node($1,raw_expr_list(nullptr)); }
 	| do_commalist ',' do_expr { $$=make_exprlist_node($3,$1); }
-;
-
-do_barlist: do_expr  '|' do_expr
-           { $$=make_exprlist_node($3,
-			   make_exprlist_node($1,raw_expr_list(nullptr))); }
-	| do_barlist '|' do_expr { $$=make_exprlist_node($3,$1); }
 ;
 
 do_caselist: closed_pattern ':' do_expr     { $$=make_case_node(-1,$1,$3); }

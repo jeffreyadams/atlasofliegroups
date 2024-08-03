@@ -1591,43 +1591,24 @@ to type T is equivalent to casting each branch to T.
 ** Case expressions for discriminating on union values
 
 While case clauses using an integer to make the choice obtains a result that
-could also be obtained (less efficiently) using nested conditional clauses.,
+could also be obtained (less efficiently) using nested conditional clauses,
 there is another form of case clause that is indispensable when working with
 union values. How to produce values of a union type will be described elsewhere,
 so here we focus just on how to process such values.
 
-The idea is that since a value of a given union type assumes one and only one
-of the variants of the union, but it is not known which, the only type-safe
-way to inspect the value is to do a case distinction on the variants, and to
-provide for each a function to handle the case; these functions must all
-return values of the same type (if any), but each can take an argument whose
-type is that of the variant in question. There are three forms of case
-expressions for union values, a basic one that realises exactly this idea
-without frills, and two others that are more geared to practical use. We call
-the first form "union-case clauses", the others "discrimination clauses".
+The idea is that since a value of a given union type assumes one and only one of
+the variants of the union, but it is not known which, the only type-safe way to
+inspect the value is to do a case distinction on the variants, and to provide
+for each a branch to handle the case; these functions must all return values of
+the same type (if any), but each can bind an identifier of pattern specific to
+the variant in question. There are two forms of such expressions for union
+values, a simpler and more elaborated one; both are "discrimination clauses".
 
-Union case clauses resemble integer case clauses syntactically, only differing
-by the use of vertical bars instead of a commas. So they read
-
-  case U
-  in F_0
-  |  F_1
-  |  ...
-  |  F_{n-1}
-  esac
-
-where U is an expression whose type is a union with n variants, and each F_i
-specifies a function to apply for variant i. It can be any expression yielding
-an appropriate function value: if evaluation of U yields a component C for
-variant i of the union, then the expression F_i is evaluated to yield a
-function, and the evaluation of the whole clause then becomes that of F_i(C).
-
-The first form of a discrimination clause is a variation of a union-case clause,
-corresponding to the common situation where each of the branches F_i is given by
-an anonymous function, introducing a formal parameter (or pattern) to stand for
-the component C and a function body that can use C. Because the type of that
-parameter is implied by the context (it must be that of component i of the
-union type of U), it can be omitted; the discrimination clause then has form
+In the first form of a discrimination clause, each branch starts by introducing
+a formal parameter (or pattern) to stand for the component C, followed by a body
+that can use C. Because the type of that parameter is implied by the context (it
+must be that of component i of the union type of U), it can (and must) be
+omitted; the discrimination clause then has form
 
   case U
   | (p_0): body_0
@@ -1635,10 +1616,6 @@ union type of U), it can be omitted; the discrimination clause then has form
   |  ...
   |  (p_{n-1}): body_{n-1}
   esac
-
-Note that here the keyword 'IN' has been replaced by the symbol '|' (the same
-that separated the branches) which helps the parser to not get confused between
-the two forms.
 
 The more elaborate discrimination expressions use tags that are associated to
 the variants of the union. These tags must be introduced in a general type
