@@ -83,7 +83,7 @@ set image_projector(mat M)= mat:
 set projector_mod_image (mat M) = mat:
   let (c,R)=adapted_direct_sum(M) in R[ : ,c: ] * R.inverse[c: , : ]
 
-{alternate form: an mx(m-c) matrix, giving projection to the complement of Im(M), 
+{alternate form: an mx(m-c) matrix, giving projection to the complement of Im(M),
  in the basis image_complement_basis(M)}
 set mod_image_projector(mat M)= mat:
   let (c,R)=adapted_direct_sum(M) in R.inverse[c: , : ]
@@ -104,13 +104,13 @@ set decompose (mat M, ratvec w) = (ratvec,ratvec):
   which is action of A restricted to that sublattice $\Z^m$, embedded via M
 }
 set restrict_action (mat A, mat M) = mat: { shapes A: n by n, M: n by m }
-   case solve(M,A*M) | B.solution: B
+   case solve(M,A*M) | solution(B): B
    | else error("Image lattice M is not fixed by A")
    esac
 
 { assuming M full row rank and ker(M) is A-stable, find unique B with M*A=B*M }
 set corestrict_action (mat M,mat A) = mat:  { shapes M: m by n, A: n by n }
-   case solve(^M,^(M*A)) | tB.solution: ^tB
+   case solve(^M,^(M*A)) | solution(tB): ^tB
    | else error("Kernel of M is not fixed by A")
    esac
 
@@ -188,16 +188,16 @@ A: (r,n) matrix
  M: (r,c) matrix, C (n,n) invertible  (s: pivot rows, eps is a sign)
  c=#columns of M
  n-c=dimension(kernel(A))
- Then AC=E=M##Z 
- Furthermore M -> (mat N,mat R) 
+ Then AC=E=M##Z
+ Furthermore M -> (mat N,mat R)
  E: (r,c)  N:(r,c)  R: (r,r) invertible
  (RN)##Z=E##Z=AC
  AC=RN##Z
  Note: image_complement_basis is the last n-c columns of R
 }
 set adapted_direct_sum_plus (mat A) = (int,mat,mat,mat,mat,mat):
-   let (M,C,pivot,)=echelon(A) then (r,c)=shape(M), N=M 
-   then Z=null(r,n_columns(A)-c) 
+   let (M,C,pivot,)=echelon(A) then (r,c)=shape(M), N=M
+   then Z=null(r,n_columns(A)-c)
    then R=id_mat(r) { record row operations, held in inversed form }
 in for j:c { loop over columns of N while it is being modified in the loop }
    do let col=N[j] then (d,C)=Bezout(col[j:pivot[j]+1]), tN=^N
@@ -218,8 +218,6 @@ for col@i in A do (col,v[i]) od
 }
 set in_lattice (ratmat A, ratvec v) = bool:
 let (A_int,,d)=A then
-(M,C,pivots,)=echelon(A_int) in 
+(M,C,pivots,)=echelon(A_int) in
 assert(#M>=#A_int,"columns of matrix are not linearly independent");
-   case solve(A,v) | w.solution: is_integer(w)
-   | else false
-   esac
+   case solve(A,v) | solution(w): is_integer(w) | else false esac

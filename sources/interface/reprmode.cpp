@@ -129,9 +129,9 @@ blocks::common_block& current_common_block()
     auto srm = repr::StandardReprMod::mod_reduce(rc,*sr);
     common_context ctxt(currentRepTable(),srm.gamma_lambda());
     common_block_pointer = // generate full block and set |entry_z|
-      new blocks::common_block(ctxt,srm,entry_z);
+      new blocks::common_block(ctxt,srm);
     state=full_block;
-    entry_z = common_block_pointer->size()-1;
+    entry_z = common_block_pointer->lookup(srm);
   }
   return *common_block_pointer;
 }

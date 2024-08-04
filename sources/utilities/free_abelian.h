@@ -147,7 +147,7 @@ private:
 public:
   Free_Abelian_light() // default |Compare| value for base
   : Compare(), L() {}
-  Free_Abelian_light(Compare c) // here a specific |Compare| is used
+  explicit Free_Abelian_light(Compare c) // here a specific |Compare| is used
   : Compare(c), L() {}
 
 explicit
@@ -172,8 +172,19 @@ explicit
   Free_Abelian_light(Free_Abelian_light&&) = default; // move construct
   self& operator=(Free_Abelian_light&&) = default; // move assign
 
+  template<typename B>
+  static Free_Abelian_light convert(const Free_Abelian_light<T,B,Compare>& p)
+  {
+    poly v; v.reserve(p.size());
+    for (const auto& entry : p)
+      v.emplace_back(entry.first,static_cast<C>(entry.second));
+    return self(std::move(v),false, p.cmp());
+  }
+
   // in lieu of a copy constructor, use this more explicit method
   self copy() const { self result(cmp()); result.L=L; return result; }
+
+  void clear () { L.clear(); }
 
   Compare cmp() const { return Compare(*this); } // get |Compare| "member"
 
@@ -185,11 +196,15 @@ explicit
   self& operator+=(T&& p) { return add_term(std::move(p),C(1)); }
   self& operator-=(T&& p) { return add_term(std::move(p),C(-1)); }
 
-  self& add_multiple(const self& p, C m) &;
-  self& add_multiple(self&& p, C m) &;
-  self&& add_multiple(const self& p, C m) &&
+  template<typename B>
+  self& add_multiple(const Free_Abelian_light<T,B,Compare>& p, C m) &;
+  template<typename B>
+  self&& add_multiple(const Free_Abelian_light<T,B,Compare>& p, C m) &&
   { add_multiple(p,m); return std::move(*this);}
-  self&& add_multiple(self&& p, C m) &&
+  template<typename B>
+  self& add_multiple(Free_Abelian_light<T,B,Compare>&& p, C m) &;
+  template<typename B>
+  self&& add_multiple(Free_Abelian_light<T,B,Compare>&& p, C m) &&
   { add_multiple(std::move(p),m); return std::move(*this);}
 
 #if 0 // there is no reason to keep using this once useful function
@@ -220,6 +235,17 @@ explicit
 
   bool is_zero () const { return begin()==end(); } // this ignores zeros
   const term_type& front() const { return *begin(); } // undefined if |is_zero|
+  bool operator==(const self& y) const
+  {
+    for (auto it=begin(); it!=end(); ++it)
+      if (y[it->first]!=it->second)
+	return false;
+    for (const auto& term : y)
+      if ((*this)[term.first]!=term.second)
+	return false;
+    return true;
+  }
+
 
   size_type size() const // only gives upper bound: zero terms are not ignored
   { size_t s=0;
@@ -242,6 +268,22 @@ explicit
       result.push_back(std::move(*it));
     return { std::move(result), false, cmp() }; // transform |poly| into |self|
   }
+
+  self& operator *= (C c)
+  {
+    for (auto it=begin(); not it.has_ended(); ++it)
+      it->second *= c;
+    return *this;
+  }
+
+  template<typename F>
+    self& map_coefficents (F f)
+  {
+    for (auto it=begin(); not it.has_ended(); ++it)
+      it->second = f(it->second);
+    return *this;
+  }
+
 
   // for each |poly| in |L|, keep current and end iterators
   // also maintain iterator |min| to minimum term in this and further |poly|s

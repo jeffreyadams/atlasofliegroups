@@ -76,6 +76,7 @@ public:
   big_int& operator*= (long long n) { return (*this)*=from_signed(n); }
   big_int& operator*= (unsigned long long n)
   { return (*this)*=from_unsigned(n); }
+
   big_int operator* (const big_int&) const;
   big_int operator/ (const big_int& div) const { return big_int(*this)/=div; }
   big_int operator% (const big_int& div) const { return big_int(*this)%=div; }
@@ -83,14 +84,11 @@ public:
   digit shift_modulo(digit base); // divide by |base|, return remainder
   big_int reduce_mod (const big_int& divisor); // return value is the quotient!
 
-  big_int operator- () const &
-    { big_int result(*this); return result.negate(); }
-  big_int operator- () && { return this->negate(); }
+  big_int operator- () const & { return big_int(*this).negate(); }
+  big_int operator- () &&      { return this->negate(); }
 
-  big_int operator+ (const big_int& x) const &
-    { big_int result(*this); return result+=x; }
-  big_int operator- (const big_int& x) const &
-    { big_int result(*this); return result-=x; }
+  big_int operator+ (const big_int& x) const & { return big_int(*this)+=x; }
+  big_int operator- (const big_int& x) const & { return big_int(*this)-=x; }
   big_int operator+ (big_int&& x) const & { return x += *this; }
   big_int operator- (big_int&& x) const & { return x.subtract_from(*this); }
   big_int operator+ (const big_int& x) && { return *this += x; }
@@ -208,6 +206,8 @@ inline big_int abs(big_int a) { return a.is_negative() ? a.negate() : a; }
 big_int gcd(big_int a,big_int b);
 big_int lcm(const big_int& a,const big_int& b);
 
+
+
 class big_rat
 { big_int num, den;
 public:
@@ -262,12 +262,17 @@ public:
     { big_int d = gcd(r.den,x);
       return d==1 ? big_rat(r.num*x,r.den) : big_rat(r.num*(x/d),r.den/d);
     }
+  big_rat& operator*= (const big_int& x)
+    { big_int d = gcd(den,x);
+      if (d==1)	num *= x; else { num *= x/d; den /= d; }
+      return *this;
+    }
   big_rat operator/ (const big_int& x) const
     { if (x.is_zero())
         throw std::runtime_error("Division of rational by integer zero");
       big_int d = gcd(num,x);
       if (x.is_negative())
-	d.negate(); // so that |x/d| will be positive
+	return d==1 ? big_rat(-num,den*-x) : big_rat(-num/=d, den*(-x/=d));
       return d==1 ? big_rat(num,den*x) : big_rat(num/d, den*(x/d));
     };
   friend big_rat operator/ (const big_int& x, const big_rat& r)
@@ -275,8 +280,17 @@ public:
 	throw std::runtime_error("Division by rational zero");
       big_int d = gcd(r.num,x);
       if (r.num.is_negative())
-	d.negate(); // so that |r.num/d| will be positive
+	return d==1 ? big_rat(-x*r.den,-r.num)
+	            : big_rat((-x/=d)*r.den,-r.num/=d);
       return d==1 ? big_rat(x*r.den,r.num) : big_rat(x/d*r.den,r.num/d);
+    };
+  big_rat& operator/= (const big_int& x)
+    { if (x.is_zero())
+        throw std::runtime_error("Division of rational by integer zero");
+      big_int d = gcd(num,x);
+      if (d==1) den *= x; else num /= d, den *= x/d;
+      if (den.is_negative()) { num.negate(); den.negate(); }
+      return *this;
     };
 
   big_rat& operator+= (const big_int& x) { num+=x*den; return *this; }
@@ -291,8 +305,15 @@ public:
   big_rat operator* (const big_rat& x) const
   { big_int d0 = gcd(num,x.den), d1=gcd(den,x.num);
     return big_rat((num/d0)*(x.num/d1),(den/d1)*(x.den/d0));
+  } // no common factors and |denom>0|, we can use the private constructor
+
+  big_rat& operator*= (const big_rat& x)
+  { big_int d0 = gcd(num,x.den), d1=gcd(den,x.num);
+    num/=d0; den/=d1; num *= x.num/d1; den *= x.den/d0;
+    return *this; // there are no common factors, no need to |normalise|
   }
 
+  big_rat& negate() { num.negate(); return *this; }
   big_rat& invert ()
   { if (is_zero())
       throw std::runtime_error("Inverse of zero");
@@ -310,19 +331,28 @@ public:
   big_rat operator/ (big_rat x) const
     { if (x.is_zero())
 	throw std::runtime_error("Division by zero");
+      big_int d0 = gcd(num,x.num), d1=gcd(den,x.den);
       if (x.num.is_negative())
       { x.num.negate();
 	x.den.negate(); // it is OK to give moribund |x| negative denominator
       }
-      big_int d0 = gcd(num,x.num), d1=gcd(den,x.den);
       return big_rat((num/d0)*(x.den/=d1),(den/d1)*(x.num/=d0));
+    } // no common factors and |denom>0|, we can use the private constructor
+  big_rat& operator/= (big_rat x)
+    { if (x.is_zero())
+	throw std::runtime_error("Division by zero");
+      big_int d0 = gcd(num,x.num), d1=gcd(den,x.den);
+      if (x.num.is_negative()) { x.num.negate(); num.negate(); }
+      num/=d0; den/=d1; x.num/=d0; x.den/=d1; num *= x.den; den *= x.num;
+      return *this; // there are no common factors, no need to |normalise|
     }
 
   big_int floor () const; // integer part
   big_int ceil () const; // rounded up integer part
-  big_rat frac () const; // fractional part (in $[0,1)$)
+  big_rat& take_frac () { num%=den; return *this; } // reduce to fractional part
+  big_rat frac () const { return big_rat(*this).take_frac(); } // fractional part
   big_int quotient (const big_int&) const; // Euclidean quotient (cf. |floor|)
-  big_rat& operator%= (const big_int& n); // replace by remainder modulo |n|
+  big_rat& operator%= (const big_int& n) { num %= n*den; return *this; }
   big_rat operator% (const big_int& n) const { return big_rat(*this)%=n; }
   big_int quotient (const big_rat& r) const; // quotient of integer division
   big_rat operator% (const big_rat& r) const; // remainder modulo |r|

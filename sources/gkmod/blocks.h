@@ -346,7 +346,7 @@ class common_block : public Block_base
 {
   const Rep_context& rc; // accesses many things, including KGB set for x
 
-  const RootNbrList simply_integrals;
+  const RootNbrList simply_integrals; // simply integral coroot numbers, sorted
 
   // hash structure to facilitate lookup of elements in |StandardReprMod| form
   using repr_hash = HashTable<StandardReprMod,BlockElt>;
@@ -365,13 +365,10 @@ class common_block : public Block_base
 
   // constructor and destructor
   common_block // full block
-    (const common_context& ctxt,
-     const StandardReprMod& srm, // not modified, no "making dominant"
-     BlockElt& entry_element	// set to block element matching input
-    );
+    (const common_context& ctxt, const StandardReprMod& srm);
   common_block // partial block
     (const common_context& ctxt, sl_list<StandardReprMod>& elements);
-  ~common_block(); // cleans up |extended|, so inline definition impossible
+  ~common_block(); // cleans up |extended|, so inline definition is not possible
 
   common_block(const common_block&) = delete; // no copying
   common_block operator=(const common_block&) = delete; // no assigning
@@ -385,9 +382,9 @@ class common_block : public Block_base
 
   bool is_full () const { return generated_as_full_block; }
 
-  // simple coroots of |sub| singular for |gamma|
+  // flag among |simply_integrals| those that are actually singular for |gamma|
   RankFlags singular (const RatWeight& gamma) const;
-  RankFlags singular
+  RankFlags singular // flag among |simply_ints(bm)| ones that are singular for |gamma|
     (const repr::block_modifier& bm, const RatWeight& gamma) const;
 
   // with |gamma| unknown, only the difference |gamma-lambda| is meaningful
@@ -407,8 +404,11 @@ class common_block : public Block_base
 
   WeightInvolution pull_back // of action by |delta| on block modified by |bm|
     ( const repr::block_modifier& bm, const WeightInvolution& delta) const;
-  RootNbrList simply_ints() const { return simply_integrals; }
+
+  const RootNbrList& simply_ints() const { return simply_integrals; }
+  // list of |bm.w|-images of |simply_integrals|, no sorting done
   RootNbrList simply_ints(const repr::block_modifier& bm) const;
+
   ext_gens fold_orbits
     (const WeightInvolution& delta, const repr::block_modifier& bm) const;
 
