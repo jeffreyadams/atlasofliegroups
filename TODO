@@ -22,8 +22,6 @@
 - Check whether using |break| or |return| could leave the runtime stack in a
   bad state in certain cases, and if so provide catch blocks to clean up.
 
-- Change |break 3| syntax to |break break break| (more intutive reading)
-
 - Change 'case e in (T x): e1 | (S y): e2 esac' semantics so no function calls
   are involved; this make it possible for e1 and e2 to contain |return|s.
 

@@ -5361,7 +5361,7 @@ void elapsed_wrapper(eval_level l)
 install_function(elapsed_wrapper,"elapsed_ms","(->int)");
 
 @* Index.
-v
+
 % Local IspellDict: british
 
 % LocalWords:  introw

@@ -78,26 +78,24 @@
 %token END_OF_FILE
 
 %type <expression> expr expr_opt tertiary cast lettail or_expr and_expr
-%type <expression> not_expr formula operand secondary primary unit selector
-%type <expression> subscription slice comprim assignable_subsn ident_expr
-%type <expression> do_expr do_lettail do_iftail iftail
+%type <expression> not_expr formula operand secondary primary unit
+%type <expression> selector subscription slice comprim assignable_subsn
+%type <expression> ident_expr do_expr do_lettail do_iftail iftail
 %type <expression> iffor_loop if_loop for_loop
 %type <ini_form> formula_start
 %type <oper> operator
 %type <id_code> id_op
-%type <code> tilde_opt
-%destructor { destroy_expr ($$); } expr expr_opt tertiary cast lettail or_expr
-%destructor { destroy_expr ($$); } and_expr not_expr formula operand secondary
-%destructor { destroy_expr ($$); } primary comprim unit selector subscription
-%destructor { destroy_expr ($$); } slice assignable_subsn ident_expr
-%destructor { destroy_expr ($$); } iffor_loop if_loop for_loop
-%destructor { destroy_expr ($$); } do_expr do_lettail do_iftail iftail
+%type <code> tilde_opt breaker
+%destructor { destroy_expr ($$); }
+            expr expr_opt tertiary cast lettail or_expr and_expr not_expr
+	    formula operand secondary primary comprim unit selector
+	    slice assignable_subsn ident_expr iffor_loop if_loop for_loop
+	    do_expr do_lettail do_iftail iftail
 %destructor { destroy_formula($$); } formula_start
 %destructor { delete $$; } INT STRING
-%type <expression_list> commalist do_commalist commalist_opt
-%type <expression_list> barlist do_barlist commabarlist
-%destructor { destroy_exprlist($$); } commalist do_commalist commalist_opt
-%destructor { destroy_exprlist($$); } barlist do_barlist commabarlist
+%type <expression_list> commalist do_commalist commalist_opt commabarlist
+%destructor { destroy_exprlist($$); }
+            commalist do_commalist commalist_opt commabarlist
 %type <decls> declarations declaration
 %destructor { destroy_letlist($$); } declarations declaration
 
@@ -363,12 +361,10 @@ unit    : INT { $$ = make_int_denotation($1,@$); }
 	  { $$=make_int_case_node($2,reverse_expr_list($6),$4,$8,@$); }
 	| CASE expr THEN expr ELSE expr IN commalist ESAC
 	  { $$=make_int_case_node($2,reverse_expr_list($8),$4,$6,@$); }
-	| CASE expr IN barlist ESAC
-	  { $$=make_union_case_node($2,reverse_expr_list($4),@$); }
 	| CASE expr '|' caselist ESAC
-	  { $$=make_discrimination_node($2,$4,false,@$); }
+	  { $$=make_discrimination_node($2,$4,@$); }
 	| CASE expr '|' tagged_caselist ESAC
-	  { $$=make_discrimination_node($2,$4,true,@$); }
+	  { $$=make_discrimination_node($2,$4,@$); }
 
 	| WHILE do_expr tilde_opt OD { $$=make_while_node($2,2*$3,@$); }
 	| iffor_loop
@@ -390,8 +386,11 @@ unit    : INT { $$ = make_int_denotation($1,@$); }
 	| operator '@' type { $$=make_op_cast($1.id,$3,@$); }
 	| IDENT '@' type    { $$=make_op_cast($1,$3,@$); }
 	| DIE { $$= make_die(@$); }
-	| BREAK { $$= make_break(0,@$); }
-	| BREAK INT { $$= make_break(std::stoi(*$2),@$); }
+        | breaker{ $$= make_break($1,@$); }
+;
+
+breaker:  BREAK { $$ = 0; }
+        | breaker BREAK { $$ = $1+1; }
 ;
 
 commalist_opt: /* empty */	 { $$=raw_expr_list(nullptr); }
@@ -400,12 +399,6 @@ commalist_opt: /* empty */	 { $$=raw_expr_list(nullptr); }
 
 commalist: expr  { $$=make_exprlist_node($1,raw_expr_list(nullptr)); }
 	| commalist ',' expr { $$=make_exprlist_node($3,$1); }
-;
-
-barlist: expr  '|' expr
-           { $$=make_exprlist_node($3,
-			   make_exprlist_node($1,raw_expr_list(nullptr))); }
-	| barlist '|' expr { $$=make_exprlist_node($3,$1); }
 ;
 
 commabarlist: commalist '|' commalist
@@ -424,9 +417,9 @@ iftail	: expr THEN expr ELSE expr FI { $$=make_conditional_node($1,$3,$5,@$); }
 	  { $$=make_conditional_node($1,$3,wrap_tuple_display(nullptr,@$),@$); }
 ;
 
-caselist: closed_pattern ':' expr     { $$=make_case_node(-1,$1,$3); }
+caselist: closed_pattern ':' expr     { $$=make_case_node(0,$1,$3); }
 	| caselist '|' closed_pattern ':' expr
-	  { $$=append_case_node($1,-1,$3,$5); }
+	  { $$=append_case_node($1,0,$3,$5); }
 ;
 
 tagged_caselist:
@@ -435,7 +428,7 @@ tagged_caselist:
 	| IDENT ':' expr
 	  { struct raw_id_pat id; id.kind=0x0; $$=make_case_node($1,id,$3); }
 	| ELSE expr
-	  { struct raw_id_pat id; id.kind=0x0; $$=make_case_node(-1,id,$2); }
+	  { struct raw_id_pat id; id.kind=0x0; $$=make_case_node(1,id,$2); }
 	| tagged_caselist '|' IDENT closed_pattern ':' expr
 	  { $$=append_case_node($1,$3,$4,$6); }
 	| tagged_caselist '|' pattern '.' IDENT ':' expr
@@ -446,7 +439,7 @@ tagged_caselist:
 	  }
 	| tagged_caselist '|' ELSE expr
 	  { struct raw_id_pat id; id.kind=0x0;
-	    $$=append_case_node($1,-1,id,$4);
+	    $$=append_case_node($1,1,id,$4);
 	  }
 ;
 
@@ -471,12 +464,10 @@ do_expr : LET do_lettail { $$=$2; }
 	  { $$=make_int_case_node($2,reverse_expr_list($6),$4,$8,@$); }
 	| CASE expr THEN do_expr ELSE do_expr IN do_commalist ESAC
 	  { $$=make_int_case_node($2,reverse_expr_list($8),$4,$6,@$); }
-	| CASE expr IN do_barlist ESAC
-	  { $$=make_union_case_node($2,reverse_expr_list($4),@$); }
 	| CASE expr '|' do_caselist ESAC
-	  { $$=make_discrimination_node($2,$4,false,@$); }
+	  { $$=make_discrimination_node($2,$4,@$); }
 	| CASE expr '|' tagged_do_caselist ESAC
-	  { $$=make_discrimination_node($2,$4,true,@$); }
+	  { $$=make_discrimination_node($2,$4,@$); }
         | '(' do_expr ')' { $$=$2; }
 ;
 
@@ -492,12 +483,6 @@ do_iftail : expr THEN do_expr ELSE do_expr FI
 
 do_commalist: do_expr { $$=make_exprlist_node($1,raw_expr_list(nullptr)); }
 	| do_commalist ',' do_expr { $$=make_exprlist_node($3,$1); }
-;
-
-do_barlist: do_expr  '|' do_expr
-           { $$=make_exprlist_node($3,
-			   make_exprlist_node($1,raw_expr_list(nullptr))); }
-	| do_barlist '|' do_expr { $$=make_exprlist_node($3,$1); }
 ;
 
 do_caselist: closed_pattern ':' do_expr     { $$=make_case_node(-1,$1,$3); }
