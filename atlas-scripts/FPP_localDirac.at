@@ -1692,9 +1692,6 @@ set local_test_GEO_hash_def_dumb(KGBElt x, ratvec lambda, VertexData vd, LocalVe
 					   	      for j:#verts
 						      do wiggle(CF, face_bary(Lvd, verts[:j]##verts[j+1:]))
 						      od))))
-						      {for v in ratverts
-						      do wiggle(CF, (sigma - v)/(D+1))
-						      od}
 							  {proper_facet_deformed(pC)}
 				      	        in if any(for q in pCdef
 						      	  do @bool: ( is_finished(q.x,q.lambda) and
