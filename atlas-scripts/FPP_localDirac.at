@@ -1310,13 +1310,13 @@ set local_test_GEO_hash_real_dumb(KGBElt x, ratvec lambda, VertexData vd, LocalV
     	 	       	       do G.two_rho_check*(dominant(G,thetaMinus*v))
 			       od)
     then pmax = first_param(finalize(parameter(x, lambda, Lvd.list[maxDiffLoc]))),
-    	 r = rank(x.involution - 1)
+    	 r = rank(x.involution - 1), rk = rank(x_open(G).involution - 1)
     then test_hts = [int]:
-    	 if low(x,lambda) {number(pmax.x) < NK*low_KGB_frac} {defaults to 1/4 of #KGB; so most of time, use to_ht}
+    	 {if low(x,lambda) {number(pmax.x) < NK*low_KGB_frac} {defaults to 1/4 of #KGB; so most of time, use to_ht}
 	 then []
-	 else let (answer,) = deform_hts(pmax,r\2)  {!!this r\2 is a parameter to fiddle}
+	 else} let (answer,) = deform_hts(pmax,(rk+1)\2) {!!this r\2 is a parameter to fiddle}
 	      in answer
-	 fi
+	 {fi}
    { then test_ht = if x.number < NK*low_KGB_frac
     	 	   then -1
 		   else next_height(pmin)
@@ -1511,7 +1511,7 @@ set local_test_GEO_hash_dumb(KGBElt x, ratvec lambda, VertexData vd, LocalVertex
                        	  	LFDKH, D+1,D+2,pol_hash)
 		 then ((eq,gr),IUCL,CLBF) = localGraphK(LFDKH)
        	      	 {compute graph on faces to dim D+1}
-		 then lowUs = sum(for d:D+1 do #LFDKH[d] od)
+		 {then lowUs = sum(for d:D+1 do #LFDKH[d] od)}
 			   { write statuses more simply: all unitary except
 			     singleton classes of dim D+1 }
 		 then newDplus1 = [vec]: for j@m in CLBF[D+1]
@@ -1616,7 +1616,14 @@ set local_test_GEO_hash_def_dumb(KGBElt x, ratvec lambda, VertexData vd, LocalVe
     	 		  then (r+G.rank)\5
 			  else def_steps
 			  fi
+   {for testing!}
+   {then test_ht = if low(x,lambda){x.number < NK*low_KGB_frac}
+    	 	   then -1
+		   else next_height(pmin)
+		   fi}
+   {end for testing}
     then tester = (Param->bool): (Param p) bool: is_unitary_def_test_big_SIMPLE(p,def_steps_temp)
+    {is_unitary_def_test_big_SIMPLE(p,def_steps_temp)}
     	 {if low(x,lambda) {x.number < NK*low_KGB_frac}
 	 then is_unitary_hash_big_SIMPLE(p)
 	 else is_unitary_def_test{_big}(p,def_steps_temp) {(G.rank+1)\2)}  {comment out _big???}
@@ -1657,8 +1664,8 @@ set local_test_GEO_hash_def_dumb(KGBElt x, ratvec lambda, VertexData vd, LocalVe
 		      	 then [LFDKH[D+1][m]]
 		         else let verts = vec: LFDKH[D+1][m][:D+2]
 			      then ratverts = [ratvec]: for m in verts do Lvd.list[m] od
-			      then sigma = sum(#lambda, ratverts)
-			      then pC = parameter(x, lambda, sigma/(D+2))
+			      then sigma = sum(#lambda, ratverts) {THIS IS WRONG BARYCENTER}
+			      then pC = parameter(x, lambda, face_bary(Lvd, verts))
 			      then ps = monomials(finalize(pC))
 			      {should insert Uhash.lookup(p).>=
 			      Actually this has no effect in SO(4,4)}
@@ -1682,9 +1689,12 @@ set local_test_GEO_hash_def_dumb(KGBElt x, ratvec lambda, VertexData vd, LocalVe
 				   	   then CF = character_formula(pC)
 					   then () = charTime +:= elapsed_ms() - startCF
 					   then pCdef =  monomials(composition_series((sum(x.real_form,
-					   	      for v in ratverts
-						      do wiggle(CF, (sigma - v)/(D+1))
+					   	      for j:#verts
+						      do wiggle(CF, face_bary(Lvd, verts[:j]##verts[j+1:]))
 						      od))))
+						      {for v in ratverts
+						      do wiggle(CF, (sigma - v)/(D+1))
+						      od}
 							  {proper_facet_deformed(pC)}
 				      	        in if any(for q in pCdef
 						      	  do @bool: ( is_finished(q.x,q.lambda) and

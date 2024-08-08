@@ -270,6 +270,7 @@ set FPP_unitary_hash_general([KGBElt] xs, Param_hash Uhash, {Param_hash Uparamha
     then oldUhash = Uhash.size(), currentUhash = Uhash.size(), formerUhash = Uhash.size(),
     	 oldUcounter = unitary_test_counter.use_count(), currentUcounter = unitary_test_counter.use_count(),
 	 oldCcounter = char_counter.use_count(), currentCcounter = char_counter.use_count()
+    then skipx = false
     then () = for x@j in xs
     	      do {xs}
 	 let former_time = current, formerUhash = currentUhash, formerUcounter = currentUcounter,
@@ -277,60 +278,68 @@ set FPP_unitary_hash_general([KGBElt] xs, Param_hash Uhash, {Param_hash Uparamha
 	 then xtwists = isotwistKGBs(x), twists = all_lambda_differential_0(x)
 	 then M = #FPP_lambdas(x)
 	 then full_M = to_bitset([M])-1
-	 then tw = first(for y in xtwists[1:]
-	      	   	 do full_M = big_unitary_hash.xl_known(G)[y.number]
-			 od)
-	 then xtwist = if tw.>=
-	      	       then {prints("skipping x = ",x.number," for xtwist = ",xtwists[tw].number);} xtwists[tw]
+	 then known_x = big_unitary_hash.x_known(G)
+	 then () = skipx:= is_member_bitset(x.number,known_x)
+	 then tw = first(for y in xtwists[1:] do is_member_bitset(y.number, known_x) od) {there's a twist of x which is known}
+			 {full_M = big_unitary_hash.xl_known(G)[y.number]}
+	 then xtwist = if tw.>= and not skipx
+	      	       then skipx := true;
+		       	    xtwists[tw+1]
 		       else x
 		       fi
-	 then twnum = last(for y in xs[:j] do y=xtwist od) {if xtwist != x
-	      	      then first(for y in xs do xtwist = y od)
-		      else -1
-		      fi}
-	 in if twnum.>=  {and twnum < j} {now xtwist is xs[twnum]}
-	    then answerCards[j]:= answerCards[twnum]; {this is too low if xtwist wasn't calculated here}
-	    if Uparamhash_flag
-	    then for p in Uparamhash.list()
-	         do if p.x = xtwists[tw]
-		    then Uparamhash.match(parameter(x,p.lambda,p.nu))
-		    fi
-		 od
-	    fi;
-	    	 {prints("skipping x = ",x.number," for xtwist = ",xtwist.number);}
-		 big_unitary_hash.finish(x, full_M); {mark as done all lambdas for x}
-		 big_unitary_hash.finishx(x);
-		 for ell:Uhash.size()
-	      	 do let p = Uhash.index(ell)
-		    in if p.x = xtwist
-		       then Uhash.match(parameter(x, p.lambda, p.nu))
-		       fi
-		 od
-	    else let xcont = contragredient(x)
-	    	 then contnum = last(for y in xs[:j] do y = xcont od) {if xcont != x
-		      	      	then first(for y in xs do xcont = y od)
-				else -1
-				fi}
-	    	 in if contnum.>= {now xcont is xs[contnum]}
-	    	    then answerCards[j]:= answerCards[contnum];
-		    if Uparamhash_flag
-		    then for p in Uparamhash.list()
-			 do if p.x = xcont
-			    then Uparamhash.match(contragredient(p))
-			    fi
-			 od
-		     fi;
-		    	 big_unitary_hash.finish(x,full_M); {mark as done all lambdas for x}
-			 big_unitary_hash.finishx(x);
-		       for p in Uhash.list()
-	      	       do if p.x = xcont
-		       	  then Uhash.match(contragredient(p))
-		    	  fi
-		       od
-	     	    else let lambdas = FPP_lambdas(x)
+	 then twnum = last(for y in xs[:j] do y=xtwist od) 
+	 then () = if{A} twnum.>=  {now xtwist is xs[twnum]}
+	      	   then answerCards[j]:= answerCards[twnum]; {this is too low if xtwist wasn't calculated here}
+	    	   	if Uparamhash_flag
+	    	 	then for p in Uparamhash.list()
+	              	     do if p.x = xtwists[tw]
+		      	     	then Uparamhash.match(parameter(x,p.lambda,p.nu))
+		    	 	fi
+		      	     od
+	    	 	 fi
+		    fi{A}
+	then () = if xtwist != x
+	     	  then {prints("skipping x = ",x.number," for xtwist = ",xtwist.number);}
+	    	       for p in Uhash.list()
+	    	       do if p.x = xtwist
+	       	       	  then Uhash.match(parameter(x, p.lambda, p.nu))
+	       	    	  fi
+	    	       od;
+	    	       big_unitary_hash.finish(x, full_M); {mark as done all lambdas for x}
+	   	       big_unitary_hash.finishx(x)
+		   fi
+	 then xcont_cand = contragredient(x)
+	 then xcont = if xcont_cand != x and is_member_bitset(xcont_cand.number, known_x) and not skipx
+	      	      then skipx := true;
+		      	   xcont_cand
+		      else x
+		      fi
+	 then contnum = last(for y in xs[:j] do y = xcont od)
+	 then () = if{B} contnum.>= {now xcont is xs[contnum]}
+	    	   then answerCards[j]:= answerCards[contnum];
+		    	if Uparamhash_flag
+		    	then for p in Uparamhash.list()
+			     do if p.x = xcont
+			    	then Uparamhash.match(contragredient(p))
+			    	fi
+			      od
+			fi
+		     fi{B}
+	  then () = if xcont != x
+		    then {prints("skipping x = ",x.number," for xcont = ",xcont.number);}
+		       	 for p in Uhash.list()
+	      	       	 do if p.x = xcont
+		       	    then Uhash.match(contragredient(p))
+		    	    fi
+		       	 od;
+		         big_unitary_hash.finish(x,full_M); {mark as done all lambdas for x}
+		       	 big_unitary_hash.finishx(x)
+		     fi
+	  then () = if {C} skipx = false
+	       	    then let lambdas = FPP_lambdas(x)
     	 	    	 then Ncases = #lambdas
-	 		 then tempanswerCards = null(Ncases)
-	 		 then templambdatimes = null(Ncases)
+	          	 then tempanswerCards = null(Ncases)
+	 	  	 then templambdatimes = null(Ncases)
 	 		 then () = if every_KGB_flag
       	      	   	      then prints("     start KGBElt #", x.number, ", #lambdas = ",#lambdas,
 		   	       " Uhash.size() = ", Uhash.size(), ", runtime = ",
@@ -429,10 +438,9 @@ set FPP_unitary_hash_general([KGBElt] xs, Param_hash Uhash, {Param_hash Uparamha
 		     	     deformCalcCounter.use_count())
                      fi
 	   then () = big_unitary_hash.finish(x, full_M) {mark as done all lambdas for x}
-	   then () = big_unitary_hash.finishx(x) {mark as done all lambdas for x}
-           in ()
-	   fi {contnum.>= and contnum < j}
-	   fi {twnum.>=  and twnum < j}
+	   in big_unitary_hash.finishx(x) {mark as done all lambdas for x}
+	   fi {C}
+	   in ()
          od {xs}
     then () = face_verbose:=old_face_verbose; time_verbose:=old_time_verbose; test_verbose:=old_test_verbose;
     	      test_slightly_verbose:=old_test_slightly_verbose
