@@ -1245,8 +1245,8 @@ set theta_induced(RealForm G) = void:
 	     do for lambdainm@m in lambdainms[i][n]
 		do for nuinmj in nuinms[i][n][m]
 		   do let pL = parameter(xin, lambdainm, nuinmj)
-		      then gamma = pL.infinitesimal_character + rhois[i]
-		      in if is_FPP(G,gamma)
+		      then gamma = pL.infinitesimal_character + rhois[i] {need weakly good!}
+		      in if is_dominant(G,gamma) and is_dom_FPP(G,gamma)
 		      	 then [pL]
 			 else {prints("parameter ",pL," failed to be FPP");}
 			      []
@@ -1255,6 +1255,12 @@ set theta_induced(RealForm G) = void:
 		od.## {put all lambda together}
 	     od.## {put all x together}
 	  od {but keep a separate list for each max Levi maxLthi}
+     {then bads = for list in cands
+     	      	 do first (for pL in list do not is_unitary(pL) od)
+		 od
+     then () = if not bads.>=
+     	       then badi = first (for f in bads do f.>= od)
+	       else badi = -1}
      then () = for maxLthi@i in maxLthis
 	     	  do for pL in cands[i]
 	     	     do for q in monomials(theta_induce_irreducible(pL,G))

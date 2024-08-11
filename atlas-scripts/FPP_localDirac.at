@@ -216,6 +216,9 @@ set approxDiffA(Param p) = int:
     let q = difficultyA(p)
     in (q.numer *100)\q.denom
 
+{rational for increasing (stretcher > 1) or decreasing (stretcher < 1) the number of to_ht tests}
+set stretcher = rat: 1/1
+
 { Block of p, including zero parameters. Relevant because that's where
 KL calculations need to happen }
 set full_block(Param p) = [Param]:
@@ -1314,7 +1317,7 @@ set local_test_GEO_hash_real_dumb(KGBElt x, ratvec lambda, VertexData vd, LocalV
     then test_hts = [int]:
     	 {if low(x,lambda) {number(pmax.x) < NK*low_KGB_frac} {defaults to 1/4 of #KGB; so most of time, use to_ht}
 	 then []
-	 else} let (answer,) = deform_hts(pmax,(rk+1)\2) {!!this r\2 is a parameter to fiddle}
+	 else} let (answer,) = deform_hts(pmax,((rk+1)*stretcher)\2) {!!this r\2 is a parameter to fiddle}
 	      in answer
 	 {fi}
    { then test_ht = if x.number < NK*low_KGB_frac
@@ -1499,7 +1502,10 @@ set local_test_GEO_hash_dumb(KGBElt x, ratvec lambda, VertexData vd, LocalVertex
     then () =  LFDKH := local_testK_hash_know_lower(x,lambda,Lvd, LFDKH, eq, gr, CLBF, tester, Uhash)
     then () = if test_verbose then prints("unitary face counts to dim 1: ",
     for list in LFDKH do #list od) fi
-    then D = int:1
+    then () = if quick_flag
+    	      then LFDKH := localFD_KHashbt_lookDownGEO(x,lambda, Lvd, LFDKH, 2,
+                                r + 1, pol_hash{_one_ht})
+	      else let D = int:1
     then () = while (D <= rank(x.involution-1) - 1  ) and
     	      	    (#LFDKH = D + 1) and
 		    (#(LFDKH~[0]) > D+1)
@@ -1549,6 +1555,8 @@ set local_test_GEO_hash_dumb(KGBElt x, ratvec lambda, VertexData vd, LocalVertex
                  then ()= D:=D+1
                  in ()
      	     od
+	     in ()
+	     fi {quick_flag}
     then unitary_by_dim = for L in LFDKH do #L od
     {now have unitary faces of all dims}
      {then () = if test_verbose then prints("total number of tests = ",
@@ -1643,8 +1651,11 @@ set local_test_GEO_hash_def_dumb(KGBElt x, ratvec lambda, VertexData vd, LocalVe
     	      	       				   CLBF, tester, Uhash)
     then () = if test_verbose then prints("unitary face counts to dim 1: ",
     for list in LFDKH do #list od) fi
-    then D = int:1
-    then () = while (D <= rank(x.involution-1) - 1  ) and
+    then () = if quick_flag
+    	      then LFDKH := localFD_KHashbt_lookDownGEO(x,lambda, Lvd, LFDKH, 2,
+                                r + 1, pol_hash{_one_ht})
+	      else let D = int:1
+    then () = while (D <= r - 1  ) and
     	      	    (#LFDKH = D + 1) and
 		    (#(LFDKH~[0]) > D+1)
     {can't omit middle because LFDKH is truncated!}
@@ -1718,6 +1729,8 @@ set local_test_GEO_hash_def_dumb(KGBElt x, ratvec lambda, VertexData vd, LocalVe
                  then ()= D:=D+1
                  in ()
      	     od
+	     in ()
+	     fi {quick_flag}
     {now have unitary faces of all dims}
      then unitary_by_dim = for L in LFDKH do #L od
      then () = if test_verbose or test_slightly_verbose
@@ -1862,8 +1875,8 @@ set local_test_GEO_hash_no_dumb(KGBElt x, ratvec lambda, VertexData vd, LocalVer
     then () = if edge_offset = -1
     	      then edge_offset_temp := r\2 {3 seems best for F4}
 	      fi
-    then test_levels = for d:max(r,2) do d*edge_skip + edge_offset_temp od
-    then test_hts = for d:max(r,2) do hts[test_levels[d]] od
+    then test_levels = for d:max(r,2) do (d*edge_skip*stretcher)\1 + edge_offset_temp od
+    then test_hts = for d:max(r,2) do hts[test_levels[d]] od {need to increase #hts?}
     then pol_hash0 = if temp_K_char_flag
     	 	     then make_KTypePol_hash() {to hold chars to height hts[0]}
 		     else pol_hash
@@ -1998,7 +2011,7 @@ set local_test_GEO_hash(KGBElt x, ratvec lambda, VertexData vd, LocalVertexData 
     	      then edge_offset_temp := r\2 {3 seems best for F4}
 	      fi
     {then depth= max(r,2)}
-    then depth= max((r-1)*edge_skip + edge_offset_temp + 1, edge_skip + edge_offset_temp + 1)
+    then depth= max(((r-1)*edge_skip*stretcher)\1 + edge_offset_temp + 1, edge_skip + edge_offset_temp + 1)
     in [Param]: let maxDiffLoc = max_loc(for v in Lvd.list
     	 	       		    do G.two_rho_check*(dominant(G,thetaMinus*v))
 		       		    od)
@@ -2091,7 +2104,7 @@ KTypePol_hash pol_hash, Param_hash Uhash) = [Param]:
     	      then return local_test_GEO_hash_dumb(x, lambda, vd, Lvd,
 	      	   	  	   LF, pol_hash, Uhash) {use def_dumb if def_flag}
 	      fi
-    then depth= max((r+1)*edge_skip + edge_offset_temp + 1, edge_skip + edge_offset_temp + 1)
+    then depth= max(((r+1)*edge_skip*stretcher)\1 + edge_offset_temp + 2, edge_skip + edge_offset_temp + 2)
     then maxDiffLoc = max_loc(for v in Lvd.list
     	 	             do G.two_rho_check*(dominant(G,thetaMinus*v))
 		             od)
@@ -2112,8 +2125,8 @@ KTypePol_hash pol_hash, Param_hash Uhash) = [Param]:
 		     in Shorthts[:d0] ## for j:depth-d0 do -1 od
     then () = test_string:= " using local_test_GEO_hash2"
     then  () = hash2Counter.use()
-    then test_levels = for d:max(r+1,3) do d*edge_skip + edge_offset_temp od
-    then test_hts = for d:max(r+1,3) do hts[test_levels[d]] od, Dlast = max(r,2)
+    then test_levels = for d:max(r+2,4) do (d*edge_skip*stretcher)\1 + edge_offset_temp od
+    then test_hts = for d:max(r+2,4) do hts[test_levels[d]] od, Dlast = max(r,2)
     then () = if(test_verbose) then prints("heights = ", hts, " , test levels = ",
     	 test_levels, ", test heights = ",test_hts) fi
     {get K-type formulas for all vertices and edges}
@@ -2325,7 +2338,7 @@ set local_test_GEO_hash_one_level(KGBElt x, ratvec lambda, VertexData vd,
     then () = if edge_offset = -1
     	      then edge_offset_temp := r\2 {3 seems best for F4}
 	      fi
-    then depth= max((r-1)*edge_skip + edge_offset_temp + 1, edge_skip + edge_offset_temp + 1)
+    then depth= max(((r-1)*edge_skip*stretcher)\1 + edge_offset_temp + 1, edge_skip + edge_offset_temp + 1)
     then maxDiffLoc = max_loc(for v in Lvd.list
     	 	       	      do G.two_rho_check*(dominant(G,thetaMinus*v))
 		       	      od)
@@ -2334,7 +2347,6 @@ set local_test_GEO_hash_one_level(KGBElt x, ratvec lambda, VertexData vd,
     	 	    then short_hts(pmax)
 		    else next_heights(pmax,max(depth, LAST+1))
 		    fi
-    then depth= max((r-1)*edge_skip + edge_offset_temp + 1, edge_skip + edge_offset_temp + 1)
     then hts =[int]: let () = if #Shorthts < max(max(r,2), LAST+1) and revert_flag
     	      		       then return local_test_GEO_hash_dumb(x, lambda, vd, Lvd, LF,
 			       	    Shorthts[:min(1,#Shorthts)], pol_hash, Uhash)
