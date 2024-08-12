@@ -1245,8 +1245,8 @@ set theta_induced(RealForm G) = void:
 	     do for lambdainm@m in lambdainms[i][n]
 		do for nuinmj in nuinms[i][n][m]
 		   do let pL = parameter(xin, lambdainm, nuinmj)
-		      then gamma = pL.infinitesimal_character + rhois[i] {need weakly good!}
-		      in if is_dominant(G,gamma) and is_dom_FPP(G,gamma)
+		      then gamma = pL.infinitesimal_character + rhois[i]
+		      in if is_dominant(G,gamma) and is_dom_FPP(G,gamma) {need weakly good!}
 		      	 then [pL]
 			 else {prints("parameter ",pL," failed to be FPP");}
 			      []
