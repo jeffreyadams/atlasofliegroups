@@ -1810,6 +1810,82 @@ raw_type_list make_type_list(raw_type_list l,type_p t)
   return prefix(std::move(*type_ptr(t)),tmp).release();
 }
 
+@*1 Second order types and type unification.
+%
+In this section we make a start towards allowing type expressions to be
+universally quantified over types, so that we can write for instance
+$([[T]]\to[T])$ for arbitrary type $T$, as type of the row-of-rows concatenation
+function. When we started writing this section, that built-in function and some
+similar ones were already in the language, and were handled by special code when
+it comes to type checking (overloaded) function calls. What we shall do here
+therefore generalises and will replace that code, making such higher order
+functions a general feature of the language that is also available for user
+defined functions. At the same time, it gives us a new perspective on the type
+of the empty list expression $[\,]$, which can now given the type $[T]$ for
+arbitrary type $T$, and should provide a better solution to using many related
+union types, like $(\&{void}\mid T)$ for different types~$T$, where previously
+the injector functions had to be specific for every type $T$ in use, and for the
+first variant they cannot be overloaded because $T$ does not occur in their
+argument. In passing, we mention that our new type system much resembles (and is
+inspired by) the flavour of the Hindley-Milner type system used for instance in
+the Haskell language, but with important differences, stemming mostly from the
+fact that we don't care much about deducing types of \emph{all} expressions
+without any help from the user; we have always required function parameters to
+be given explicit types. This in fact might well not be possible in the presence
+of features that we already introduced prior to second order types (such as ``ad
+hoc'' function overloading).
+
+To be able to write down second order types, one needs to introduce type
+variables (this can be generalised to variables standing for unknown
+type \emph{constructors} and even more general things, but we shall not consider
+that for now). They might be introduced explicitly by the user (for instance
+when writing explicit second order functions), in which case their names will be
+provided; it is also possible that type variables need to be introduced just to
+be able to record second order types that arise during type checking, so we
+shall be prepared for that as well. When explicitly introduced by the user, type
+variables remain ``fixed by the context'' within their scope, meaning that
+nothing can be assumed about them and no substitution can be made for them.
+However, when (generic function) values emerge from such a scope, their types
+may contain such type variables as type subexpressions, and these variables then
+become universally quantified at the outer level in such types. Since no other
+quantification than universal quantification at the outermost level ever occurs
+(and their order does not matter in case there is more than one), there is no
+need to incorporate these quantifiers in type expressions. In all situation it
+should however be clear at each point which type variables are (still) fixed by
+the context, as these variables are not quantified over at all.
+
+The main new algorithm associated to higher order types will be unification,
+which in its simplest form answers the question whether for two given type
+expressions involving type variables, there exists a substitution for the type
+variables they contain that makes the type expressions (structurally) identical,
+and if so to give a most general such substitution. For instance, with $f,g,h$
+denoting distinct type constructors of one argument and with $S,T$ type
+variables, the expressions $f(S)$ and $f(g(T))$ can be made equal by the
+substitution $S:=g(T)$, and this is the most general such substitution (with
+less general solutions being those which in addition substitute some specific
+type for $T$). On the other hand, if the second expression had instead been just
+$g(T)$, the substitution problem would have had no solutions, as we cannot make
+the difference between the top level $f$ and $g$ go away. The initial problem
+could arise in the context of trying to match a function with type (for all~$S$)
+$(f(S)\to{h(S)})$ when called with an argument expression of type (for all~$T$)
+$f(g(T))$; here the match succeeds, and the function application so formed then
+has type (for all~$T$) $h(g(T))$. Here the type of the function call reuses the
+type variable $T$ from the type of the argument; in general it could involve
+type variables coming both from the function and the argument types.
+
+We should note that, although we allow recursive user-defined types, which
+effectively represent infinite (but regularly structured) type expressions, we
+shall not allow the unification procedure to invent such types in order to
+produce a solution when none exists among finite type expressions. For instance,
+if one tries to apply a function of type (for all $S$)
+$((S\to[S])\to([S]\to[S]))$ to the identity function that has type (for all~$T$)
+$(T\to{T})$, then this will fail because we cannot make $T$ equal both to $S$
+and to $[S]$ as required in the argument type of the function; the idea to
+invent a recursive type to force a solution to the type equation $S=[S]$ is
+rejected. One reason for this is, that we do not want unification to have as
+side effect to extend the global type tables in order to represent the
+substitution needed.
+
 @*1 Specifying types by strings.
 %
 In practice we shall rarely call functions like |mk_prim_type| and
