@@ -108,10 +108,13 @@ void reset_evaluator()
 @ When a user interrupts the computation, we wish to return to the main
 interpreter loop. To that end we shall at certain points in the program check
 the status of a flag that the signal handler sets, and if it is raised call an
-error.
+error. We also want to provide a mechanism to have functions time-out when their
+computation is taking too long. These things require some system header files to
+be included before our header file is read.
 
 @< Includes needed... @>=
 #include <csignal>
+#include <chrono>
 
 @~The flag must be a global variable, and we choose the traditional type
 for it (even though our program currently does not use threads).
@@ -134,20 +137,61 @@ data is associated.
 @< Type definitions @>=
 
 struct user_interrupt : public error_base {
-  user_interrupt() : error_base("User interrupt") @+{}
+  user_interrupt() : error_base("\nUser interrupt") @+{}
+};
+struct time_out : public error_base {
+  time_out() : error_base("\nTimed out") @+{}
 };
 
 @ At several points in the interpreter we shall check whether a user interrupt
-has raised |interrupt_flag|. When this happens we clear the flag and throw an
-exception. We define a local function to do this, which helps us to never
-forget to clear the flag.
+has raised |interrupt_flag|. Since we want to also be able to interrupt certain
+built-in functions, we need to export this function.
 
-@< Local function definitions @>=
+@< Declarations of exported functions @>=
+void set_timer(long long int milliseconds);
+void clear_timer();
+void check_interrupt();
+
+@ We want to potentially use the user interrupt check also to test for time-out
+of some functions that were called with a restriction on the time they are
+allowed to spend on their computation.
+
+@< Declarations of global variables @>=
+
+static constexpr auto eternity = std::chrono::steady_clock::time_point::max();
+static auto timer_out = eternity;
+
+@ We provide simple functions to set and reset a time-out interval.
+
+@< Function definitions @>=
+
+void set_timer(long long int period)
+{
+  using namespace std::literals::chrono_literals;
+  timer_out = std::chrono::steady_clock::now() + period * 1ms;
+}
+void clear_timer()
+{@; timer_out = eternity;
+}
+
+@ When a user interrupt is handled, we clear the flag and throw an exception.
+For time-out purposes the value |eternity| will supposedly never be surpassed,
+so we could test |std::chrono::steady_clock::now()>timer_out| directly
+regardless of what value was set in |timer_out|. Nonetheless we still test that
+value against |eternity| first, since this avoids making a system call to fetch
+the current time each time in the common cases where no time-out period has been
+set in the first place.
+
+@< Function definitions @>=
 void check_interrupt()
 {@;
   if (interrupt_flag!=0)
   {@; interrupt_flag=0;
     throw user_interrupt();
+  }
+  if (timer_out!=eternity and std::chrono::steady_clock::now()>timer_out)
+  {@; clear_timer();
+    throw time_out();
   }
 }
 

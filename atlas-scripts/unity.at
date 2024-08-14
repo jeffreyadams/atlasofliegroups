@@ -208,8 +208,6 @@ set rec_fun deform_hts(Param p, int N) = ([int],bool):
       	     fi
 )
 
-
-
 { To test a bunch of parameters attached to one KGB element x, and one
 lambda, a good idea might be to compute N = next_to_lowest((x,lambda));
 then on each parameter p run is_unitarity_test(p,N). Maybe even better:
