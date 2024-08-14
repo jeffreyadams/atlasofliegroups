@@ -1190,6 +1190,10 @@ set FPP_lambdas([KGBElt] xs) = [[ratvec]]:
     do FPP_lambdas(x)
     od
 
+set nullint(int N) = [int]:
+    for n:N do 0 od
+
+
 {decide NOT to hash nonunitary}
 set_type
 [big_unitary_hash_table =
@@ -1243,7 +1247,7 @@ set make_big_unitary_hash() = big_unitary_hash_table:
     	 let I = real_form_hash.size()
 	 then i = real_form_hash.match(rf)
     	 then () = if i = I {haven't seen this real form before}
-	      	   then	let empty = [int]: null(#KGB(rf))
+	      	   then	let empty = [int]: nullint(#KGB(rf))
 		   	then () = xl_known #:= empty {null(#KGB(rf))}
 			then () = x_known #:= 0
 			then () = x_partial #:= 0
@@ -1260,7 +1264,7 @@ set make_big_unitary_hash() = big_unitary_hash_table:
 	    	 uhashes[i].clear();
 	    	 {prints("i = ",i, ", x_partial = ",x_partial);}
 	    	 x_partial[i] := 0;
-		 xl_known[i] := null(#KGB(rf));
+		 xl_known[i] := nullint(#KGB(rf));
 		 x_known[i] := 0
 	    fi
     in
@@ -1400,7 +1404,7 @@ set make_big_unitary_hash() = big_unitary_hash_table:
 		      fi
 		   od.##
       then longbitmapintlist = xl_known[i]
-      then bitmapintlist = null(low)##longbitmapintlist[low:high] ##null(#KGB(G) - high)
+      then bitmapintlist = nullint(low)##longbitmapintlist[low:high] ##nullint(#KGB(G) - high)
       then donemap = x_known[i]
       then done_list = for x in KGB(G)[low:high]
       	   	       do if is_member_bitset(x.number, donemap)
@@ -1674,6 +1678,50 @@ set is_unitary_test_big_SIMPLE (Param p, [int] Ns) = bool:
      else is_unitary_hash_big_SIMPLE(p)
      fi
 
+set interrupt_factor = rat: 1
+{ONLY for G simple}
+{ like previous, with list of heights; use interrupted is_unitary}
+set is_unitary_test_big_SIMPLE_interrupt (Param p, [int] Ns) = bool:
+  if (not is_hermitian(p)) or (not is_pos_on_LKTs(p)) then return false fi;
+  let G = p.real_form
+  then FPP_flag = is_FPP(G,p.infinitesimal_character)
+  then () = if not FPP_flag
+    	    then  return is_unitary_test(p,Ns) {prints("FPP DANGER TEST at ",p)}
+	    fi
+  {then () = p := herm_center(p)}
+  then () = test_count[#Ns] +:= 1
+  then L = big_unitary_hash.lookup(p)
+  then () = if L.>= then return true fi
+  then () = if #Ns = 0
+       	    then test_count_mat[0,0] +:= 1;
+	    return is_unitary_hash_big_SIMPLE(p)
+	    fi
+  then (LAM,NU) = low(p)
+  {then () = prints("list is ",Ns)}
+  in if NU > LAM*low_frac
+     then for N@i in Ns
+     	  do let start_time = elapsed_ms()
+	     then step_answer = is_pure(hermitian_form_irreducible_to_ht(p,N))
+	     then () = if not step_answer
+	     	       then test_count_mat[i,#Ns] +:= 1;
+		       return false
+		       fi
+	     {now to_ht N has returned true}
+	     then step_time = elapsed_ms() - start_time
+	     {then () = prints("At ",N,", step_time = ",step_time)}
+	     then final_answer = is_unitary(p, (interrupt_factor*step_time)\1)
+	     then () = unitary_test_counter.use()
+	     then () = if final_answer.!=
+	     	       then return final_answer.>
+		       fi
+	     {now is_unitary has failed}
+	     in ()
+	  od;
+  	  test_count_mat[#Ns,#Ns] +:= 1;
+	  is_unitary_hash_big_SIMPLE(p)
+     else is_unitary_hash_big_SIMPLE(p)
+     fi
+
 set is_unitary_test_big(Param p, int N) = bool:
     if (not is_hermitian(p)) or (not is_pos_on_LKTs(p)) then return false fi;
     let pds = derived_factor_params2(p)
@@ -1706,10 +1754,38 @@ set is_unitary_def_test_big_SIMPLE(Param p,int m) = bool:
        else is_unitary_hash_big_SIMPLE(p)
        fi
 
+{ONLY for G simple}
+{use the first m heights from deform_heights to test}
+set is_unitary_def_test_big_SIMPLE_interrupt(Param p,int m) = bool:
+    if (not is_hermitian(p)) or (not is_pos_on_LKTs(p)) then return false fi;
+    let G = p.real_form
+    then FPP_flag = is_FPP(G,p.infinitesimal_character)
+    then () = if not FPP_flag
+    	      then return is_unitary_def_test(p,m) {prints("FPP DANGER DEF TEST at ",p)}
+	      fi
+    {then () = p := herm_center(p)}
+    then L = big_unitary_hash.lookup(p)
+    then () = if L.>= then return true fi
+    then (LAM,NU) = low(p)
+    in if NU > LAM*low_frac
+       then let (def,flag)= deform_hts(p,m)
+       	    in if flag
+	       then is_pos_on_LKTs(p) and is_unitary_to_hts_big_SIMPLE(p,def)
+       	       else is_unitary_test_big_SIMPLE_interrupt(p,def)
+       	       fi
+       else is_unitary_hash_big_SIMPLE(p)
+       fi
+
+
 set is_unitary_def_test_big(Param p,int m) = bool:
     if (not is_hermitian(p)) or (not is_pos_on_LKTs(p)) then return false fi;
     let pds = derived_factor_params2(p)
     in all(for pd in pds do @bool: is_unitary_def_test_big_SIMPLE(pd,m) od)
+
+{ONLY for G simple}
+{use the first height from deform_heights to test}
+set is_unitary_def_test_big_SIMPLE(Param p) = bool:
+    is_unitary_def_test_big_SIMPLE(p,1)
 
 {ONLY for G simple}
 {use the first height from deform_heights to test}

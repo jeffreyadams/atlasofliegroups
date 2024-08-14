@@ -186,6 +186,9 @@ set short_hts_flag = false
 
 set long_out_flag = false
 
+{If true, use interrupted "is_unitary" in conjunction with is_unitary_test}
+set interrupt_flag = false
+
 {almost always it makes sense to preload the Arthur unipotent
 reps. But not in a few test situations.}
 set load_unipotents_flag = true
@@ -1632,7 +1635,11 @@ set local_test_GEO_hash_def_dumb(KGBElt x, ratvec lambda, VertexData vd, LocalVe
 		   else next_height(pmin)
 		   fi}
    {end for testing}
-    then tester = (Param->bool): (Param p) bool: is_unitary_def_test_big_SIMPLE(p,def_steps_temp)
+    then tester = (Param->bool): (Param p) bool:
+    if interrupt_flag
+    then is_unitary_def_test_big_SIMPLE_interrupt(p,def_steps_temp)
+    else is_unitary_def_test_big_SIMPLE(p,def_steps_temp)
+    fi
     {is_unitary_def_test_big_SIMPLE(p,def_steps_temp)}
     	 {if low(x,lambda) {x.number < NK*low_KGB_frac}
 	 then is_unitary_hash_big_SIMPLE(p)
@@ -2390,7 +2397,7 @@ set local_test_GEO_hash_one_level(KGBElt x, ratvec lambda, VertexData vd,
    then () = KNU_flag:=false
    then () = ICPNU_flag:=false
    then tester1 = (Param->bool): (Param p) bool:
-     	     	  if prefer_to_hts then is_unitary_to_hts_big_SIMPLE(p, hts[:ONE+1].sort_u)
+     	     	  if prefer_to_hts then is_unitary_to_hts_big_SIMPLE(p, hts[:ONE+1])
 	 	  else is_unitary_to_ht_big_SIMPLE(p,one_ht)
 	 	  {to_ht is definitely 2% slower for F4 spherical, 10% slower for Sp(10) spherical}
 	 	  fi
@@ -2424,7 +2431,7 @@ set local_test_GEO_hash_one_level(KGBElt x, ratvec lambda, VertexData vd,
 					fi
 	     { then () = prints("at one_ht, #eq = ", #eq) }
 	     {then tester1 = (Param->bool): (Param p) bool:
-     	     	  if prefer_to_hts then is_unitary_to_hts_big_SIMPLE(p, hts[1:ONE+1].sort_u)
+     	     	  if prefer_to_hts then is_unitary_to_hts_big_SIMPLE(p, hts[1:ONE+1])
 	 	  else is_unitary_to_ht_big_SIMPLE(p,one_ht)
 	 {to_ht is definitely 2% slower for F4 spherical, 10% slower for Sp(10) spherical}
 	 	  fi}
@@ -2438,7 +2445,7 @@ set local_test_GEO_hash_one_level(KGBElt x, ratvec lambda, VertexData vd,
     	     {now have all local faces of dims 0 and 1.}
  	     {compute graph on faces to dim 1, to one_ht}
     	     then tester1 = (Param->bool): (Param p) bool:
-     	     	  if prefer_to_hts then is_unitary_to_hts_big_SIMPLE(p, hts[:ONE+1].sort_u)
+     	     	  if prefer_to_hts then is_unitary_to_hts_big_SIMPLE(p, hts[:ONE+1])
 	 	  else is_unitary_to_ht_big_SIMPLE(p,one_ht)
 	 	  {to_ht is definitely 2% slower for F4 spherical, 10% slower for Sp(10) spherical}
 	 	  fi
@@ -2534,7 +2541,10 @@ set local_test_GEO_hash_one_level(KGBElt x, ratvec lambda, VertexData vd,
               in local_test_hash(x, lambda, Lvd, LFDKH, eq, gr, CLBF, Uhash, (Param->bool):(Param p):
 		      		    if prefer_to_hts
 		      		    then {Uhash.lookup(p).>= or}
-				    	 is_unitary_test_big_SIMPLE(p,hts[ONE+1:].sort_u)
+				      if interrupt_flag
+				      then is_unitary_test_big_SIMPLE_interrupt(p,hts[ONE+1:])
+				      else is_unitary_test_big_SIMPLE(p,hts[ONE+1:])
+				      fi
 		      		    else {Uhash.lookup(p).>= or} is_unitary_test_big_SIMPLE(p,hts[LAST])
 		      		    fi)
 		       {NEED PERHAPS TO PUT BOTTOM LAYER BACK}
