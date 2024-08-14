@@ -313,7 +313,8 @@ set write_twisted_deformation_hash(RealForm G) = void:
        	     prints("in append_to_twisted_deformation_hash(G_temp,p_temp,",good_twisted_deformed_data[k],
 	     ")")
        od
-
+{whether to use these hash tables}
+set deformed_hash_flag = false
 
 set deformedHash = make_deformation_hash_to_ht()
 set twistedDeformedHash = make_twisted_deformation_hash()
@@ -419,12 +420,19 @@ set is_pure_cert_hash(KTypePol P, KTypePol_hash cert_hash) = bool:
 set c_form_std(Param p) = KTypePol:
     let pc = alcove_center(p)
     in {regroup(pc.real_form, deformedParams[0].entry(pc))}
-       regroup(pc.real_form, deformedHash.entry(pc,0))
+       if deformed_hash_flag
+       then regroup(pc.real_form, deformedHash.entry(pc,0))
+       else full_deform(pc)
+       fi
 
 set twisted_c_form_std(Param p) = KTypePol: { c-form on extended group}
     let pc = alcove_center(p)
     in {regroup(pc.real_form, twistedDeformedParams[0].entry(pc))}
-       regroup(pc.real_form, twistedDeformedHash.entry(pc))
+       if deformed_hash_flag
+       then regroup(pc.real_form, twistedDeformedHash.entry(pc))
+       else twisted_full_deform(pc)
+       fi
+
 {    c_form on irreducible representations   }
 
 { untwisted |c_form_irreducible|, for efficiency; only used in equal rank case }

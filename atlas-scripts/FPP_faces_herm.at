@@ -1766,15 +1766,15 @@ set is_unitary_def_test_big_SIMPLE_interrupt(Param p,int m) = bool:
     {then () = p := herm_center(p)}
     then L = big_unitary_hash.lookup(p)
     then () = if L.>= then return true fi
-    then (LAM,NU) = low(p)
-    in if NU > LAM*low_frac
-       then let (def,flag)= deform_hts(p,m)
+    {then (LAM,NU) = low(p)}
+    in {if NU > LAM*low_frac
+       then} let (def,flag)= deform_hts(p,m)
        	    in if flag
 	       then is_pos_on_LKTs(p) and is_unitary_to_hts_big_SIMPLE(p,def)
        	       else is_unitary_test_big_SIMPLE_interrupt(p,def)
        	       fi
-       else is_unitary_hash_big_SIMPLE(p)
-       fi
+       {else is_unitary_hash_big_SIMPLE(p)
+       fi}
 
 
 set is_unitary_def_test_big(Param p,int m) = bool:
