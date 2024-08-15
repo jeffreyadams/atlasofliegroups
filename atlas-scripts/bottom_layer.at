@@ -1,6 +1,3 @@
-{This version fails for U(3,3): finds only 804 unitary facets, instead
-of the 810 it's supposed to.}
-
 < induction.at {for theta_stable_quasi_data}
 < unity.at {for deform_support}
 < hermitian.at {for to_ht}
@@ -40,7 +37,7 @@ set theta_induce_signature(Param pL, RealForm G) = KTypePol:
     theta_induce_K(hermitian_form_irreducible(pL),G)
 
 {meant to be applied to quasisplit simple L}
-set next_heights(RealForm L) = int:
+{set next_heights(RealForm L) = int:
     let N = if not is_quasisplit(L) then 0
     	    elif is_abelian(L) then 0
     	    else max(for p in all_parameters_gamma(L, null(L.rank))
@@ -50,7 +47,26 @@ set next_heights(RealForm L) = int:
      in N {if not is_simple(L)
      	then (N+1)\2
 	else N
-	fi}
+	fi}}
+
+{meant to be applied to quasisplit simple L}
+set next_heights = (RealForm -> int):
+    let ichash = make_InnerClass_hash()
+    then nhs = [int]: []
+    in (RealForm -> int): (RealForm L) int:
+       if not is_quasisplit(L)
+       then 0
+       elif is_abelian(L)
+       then 0
+       else let I = ichash.size()
+       	    then i = ichash.match(L)
+	    then ()= if i = I {haven't yet seen L}
+		     then nhs#:=max(for p in all_parameters_gamma(L, null(L.rank))
+    	     	      	       	    do next_heights(p, (semisimple_rank(L) + 3)\2)
+	     	     	       	    od.##)
+    	    	     fi
+	    in nhs[i]
+       fi
 
 set_type LK_data = [(KType,[KType])] {for each bottom layer tau, list [dertauLj] of corr derLKj-types}
 set_type QK_bottom_data = (KGPElt Q, [KType] list) {intent is that list consists of K-types tau that are Q-bottom layer}
