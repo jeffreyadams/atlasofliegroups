@@ -1342,9 +1342,9 @@ set bottom_elim_factors_more(Param p, [KGPElt] maxQs, [KType, [QKL_bottom_data]]
     then startCF = elapsed_ms()
     then Q = character_formula_to_height(p,D)
     then () = charTime +:= elapsed_ms() - startCF
+    {then () = prints("in befm, use ",elapsed_ms() - startCF)}
     then () = char_counter.use()
     then P = K_type_pol(Q)
-    {then P = to_ht(K_type_pol(character_formula(p)),D)}
     in  bottom_elim_factors_more(p, maxQs, mudatas, P)
 
 {D is meant to be max(height(tau) for tau in BKT. nQs are the parabolics where bottom layer might help.}
@@ -1397,7 +1397,6 @@ set bottom_elim_factors_more(Param p, int D) = bool:
     then () = charTime +:= elapsed_ms() - startCF
     then () = char_counter.use()
     then P = K_type_pol(Q)
-    {let P = to_ht(K_type_pol(character_formula(p)),D)}
     in  bottom_elim_factors_more(p, D, P)
 
 
