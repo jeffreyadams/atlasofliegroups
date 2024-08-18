@@ -1143,7 +1143,10 @@ c) are bottom layer for (smallest possible) theta-stable parabolic Q;
 
 list is indexed by Q.}
 
-set bottom_K_type_Qs(KType mu, int D) = [QK_bottom_data] {[KGPElt, [KType]]}:
+set bottom_K_type_Qs(KType mu, int D) = [QK_bottom_data]:
+    bottom_K_type_Qs(mu, height(mu), D)
+
+{set bottom_K_type_Qs(KType mu, int D) = [QK_bottom_data] {[KGPElt, [KType]]}:
     let q = param(mu), Proj = projection_to_K_matrix(mu.real_form), start = elapsed_ms()
     then (Q0,) = theta_stable_quasi_data(q), G = mu.real_form, ProjInv = right_inverse(Proj)
     then L0 = Q0.Levi, (S0,) = Q0, Krk = #ProjInv
@@ -1208,7 +1211,7 @@ set bottom_K_type_Qs(KType mu, int D) = [QK_bottom_data] {[KGPElt, [KType]]}:
 	 	     od.## {this is all tau's attached to S}
 	   {then shifts = for }
 	   in ((S, xcG0),list)
-       od
+       od}
 
 set card([QK_bottom_data] data) = int:
     sum(for (,list) in data do #list od)
@@ -1219,8 +1222,8 @@ set card([(KType, [(KGPElt,[(KType,[KType])])])] datass) = int:
 
 {For the irreducible p, lists the K-types to height D which are bottom layer for some proper parabolic;
 the smallest such parabolic is defined by the simple coroots in S. S always contains the coroots S0
-vanishing on p.d_lambda.}
-set bottom_K_types(Param p, int D) = [(KType,[int])]:
+vanishing on p.d_lambda.} {NOT USED?}
+{set bottom_K_types(Param p, int D) = [(KType,[int])]:
     let q = first_param(finalize(p)), start = elapsed_ms()
     then (Q0,) = theta_stable_quasi_data(q), {x = p.x, lambda = p.lambda}
     	G = p.real_form
@@ -1277,7 +1280,7 @@ set bottom_K_types(Param p, int D) = [(KType,[int])]:
        do if #too_many_Ss[k]= G.semisimple_rank then []
 	  else [(tau, too_many_Ss[k])]
 	  fi
-       od.##
+       od.##}
 
 {returns is_good, is_weakly_good, is_weakly_fair}
 set goodness(Param p, KGPElt Q) = (bool, bool, bool):
@@ -1289,8 +1292,8 @@ set goodness(Param p, KGPElt Q) = (bool, bool, bool):
 				      od)
     in (is_dominant(G,gamma) and is_regular(G,gamma), is_dominant(G,gamma), is_dominant(G,gamma0))
 
-{D is meant to be max(height(tau) for tau in BKT. nQs are the parabolics where bottom layer might help.}
-{nQs is meant to be new_Qs(), P the K-character of p}
+
+{P is the K-character of p}
 {need to be sure nQs does not include a Borel}
 set bottom_elim_factors_more(Param p, [KGPElt] maxQs, [KType, [QKL_bottom_data]] datas, KTypePol P)= bool:
     let start =  elapsed_ms(), G=p.real_form
@@ -1350,7 +1353,7 @@ set bottom_elim_factors_more(Param p, [KGPElt] maxQs, [KType, [QKL_bottom_data]]
 {D is meant to be max(height(tau) for tau in BKT. nQs are the parabolics where bottom layer might help.}
 {nQs is meant to be new_Qs(), P the K-character of p}
 {need to be sure nQs does not include a Borel}
-set bottom_elim_factors_more(Param p, int D, KTypePol P)= bool:
+set bottom_elim_factors_more(Param p, int D_low, int D, KTypePol P)= bool:
     let start =  elapsed_ms(), G=p.real_form, (Q0,pL0) = theta_stable_quasi_data(p)
     then maxQs = max_Qs(Q0), R = more_good_hash.size()
     then maxQps = max_Qps(p,maxQs)
@@ -1375,7 +1378,7 @@ set bottom_elim_factors_more(Param p, int D, KTypePol P)= bool:
 	        fi
      then () = befmoreTime +:= elapsed_ms() - start
      then () = if not all(for mu in LKTs(p)
-			 do @bool: all(for (Q,list) in bottom_K_type_Qs(mu,D)
+			 do @bool: all(for (Q,list) in bottom_K_type_Qs(mu,D_low,D)
 				       do  @bool: bottom_elim_factors(p, mu, bottom_factors(mu, (Q, list)), P)
 			      	       od)
 		         od) {this seems to be quite rare??}
@@ -1391,18 +1394,20 @@ set bottom_elim_factors_more(Param p, int D, KTypePol P)= bool:
      then () = if bottom_verbose then prints("sorry, don't know") fi
      in true
 
-set bottom_elim_factors_more(Param p, int D) = bool:
+set bottom_elim_factors_more(Param p, int D, KTypePol P)= bool:
+    bottom_elim_factors_more(p, height(p), D, P)
+
+set bottom_elim_factors_more(Param p, int D_low, int D) = bool:
     let startCF = elapsed_ms()
     then Q = character_formula_to_height(p,D)
     then () = charTime +:= elapsed_ms() - startCF
     then () = char_counter.use()
     then P = K_type_pol(Q)
-    in  bottom_elim_factors_more(p, D, P)
+    in  bottom_elim_factors_more(p, D_low, D, P)
 
+set bottom_elim_factors_more(Param p, int D) = bool:
+    bottom_elim_factors_more(p, height(p), D)
 
-{D is meant to be max(height(tau) for tau in BKT. nQs are the parabolics where bottom layer might help.}
-{nQs is meant to be new_Qs(), P the K-character of p}
-{need to be sure nQs does not include a Borel}
 set bottom_test_factors_more(Param p, [KGPElt] maxQs, [KType, [QKL_bottom_data]] datas, KTypePol P)= bool:
     if not more_flag
     then is_unitary_hash_big(p) {min_bottom_test_factors(p,P)}
