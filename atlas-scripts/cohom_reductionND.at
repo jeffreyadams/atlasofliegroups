@@ -154,8 +154,8 @@ set derived_factor_KGBs(KGBElt x) = [KGBElt]:
 
 set old_derived_flag = false
 {x is a KGBElt for G; want to pass to a KGBElt for each derived simple factor}
-{
-set derived_factor_KGBs3(KGBElt x) = [KGBElt]:
+
+{set derived_factor_KGBs3(KGBElt x) = [KGBElt]:
 if old_derived_flag then return derived_factor_KGBs(x) fi;
     let G = x.real_form
     then derSF = derived_simple_factors_info(G), P = projection_to_K_matrix(G)

@@ -193,7 +193,10 @@ set interrupt_flag = false
 set bl_interrupt_flag = false
 
 {number of different shifts to try in bl_interrupt}
-set bl_steps = 2
+set bl_step_count = 4
+
+{how much to increase the shift at each step}
+set bl_step_size = 4
 
 {almost always it makes sense to preload the Arthur unipotent
 reps. But not in a few test situations.}
@@ -1403,10 +1406,6 @@ set one_param_test_bottom(Param p, [int] Ds, Param_hash Uhash) = [Param]:
          	            fi
 		     else let () = one_false_counter.use() {if elim_more is false}
 	    	    	  then () = one_param_time +:= elapsed_ms() - start
-			  {then (,pL) = theta_stable_quasi_data(p)
-			  then () = if surprise_flag and is_final(pL) and is_unitary_def_test_big{_hash_big_simple}(pL)
-			      	     then surprise_hash.match(p)
-				     fi}
 		    	  in []
 		     fi
 	    else {more_flag and mix_flag are both false} let test =  all( [(->bool)]:
@@ -1422,9 +1421,6 @@ set one_param_test_bottom(Param p, [int] Ds, Param_hash Uhash) = [Param]:
 		    	   else let () = one_false_counter.use()
 	    	    	   	then ()= one_param_time +:= elapsed_ms() - start
 			 	then (,pL) = theta_stable_quasi_data(p)
-			 	{then () = if surprise_flag and is_final(pL) and is_unitary_hash_big_SIMPLE(pL)
-			      	     	  then surprise_hash.match(p)
-				   	  fi}
 		    	 	in []
 		    	   fi
 	      fi
@@ -2766,7 +2762,7 @@ set one_level_revert_flag = false
 on LKTs. This version uses min_bottom_elim instead of
 unitary_to_ht. Because of incorporation of good range nonunitarity proofs in min_bottom_elim,
 MUST use full K-chars to compute graphs.}
-{this version assumes more_flag, more_shift>0}
+{this version assumes more_flag, sets more_shift to bl_step_count*bl_step_size}
 set local_test_GEO_hash_bottom_layer_interrupt(KGBElt x, ratvec lambda, VertexData vd,
     			LocalVertexData Lvd, [[FaceVertsIndex]] LF, KTypePol_hash pol_hash,
     			Param_hash Uhash) = [Param]:
@@ -2803,7 +2799,7 @@ set local_test_GEO_hash_bottom_layer_interrupt(KGBElt x, ratvec lambda, VertexDa
     then DG0 = max(for mu in LKTs(pmin)
     	       	   do minBottomData.G_min_height(mu)
 		   od)
-    then Ds = for j:bl_steps+1 do height(pmin) + j*more_shift  od
+    then Ds = for j:bl_step_count+1 do height(pmin) + j*bl_step_size  od
     then D = Ds[0]
  	{these are the greatest heights at which we'll be looking at bottom layer K-types;
 	 so we can compute K-chars just to this height} {NOT TRUE for good range arguments!}
@@ -2831,7 +2827,7 @@ set local_test_GEO_hash_bottom_layer_interrupt(KGBElt x, ratvec lambda, VertexDa
     	{next remove from LFDKH all faces failing bottom_factors_elim_factors_more}
    then start_datas = elapsed_ms()
    then newDs = [int]:[]
-   then datass =  for j:bl_steps from 1
+   then datass =  for j:bl_step_count from 1
    	       	  do let datas = for mu in LKTs(pmin) {type [KType, [QK_bottom_data]]}
    	      	     	       	 do (mu, bottom_factors(mu, bottom_K_type_Qs(mu,Ds[j-1], Ds[j])))
 		     		 od
@@ -2935,9 +2931,7 @@ set local_test_GEO_hash_bottom_layer(KGBElt x, ratvec lambda, VertexData vd,
     fi;
     if bl_interrupt_flag
     then more_flag:=true;
-    	 if more_shift = 0
-	 then more_shift(5)
-	 fi;
+    	 {more_shift:=bl_step_count*bl_step_size}
 	 return local_test_GEO_hash_bottom_layer_interrupt(x, lambda, vd, Lvd, LF, pol_hash, Uhash)
     fi;
     let G = x.real_form, thetaMinus = x.involution - 1, start = elapsed_ms(),

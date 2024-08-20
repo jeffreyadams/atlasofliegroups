@@ -461,7 +461,6 @@ set_type
   , (KType->LK_data) entry
   , (KType->int) G_min_height {largest height of a G K-type in entry; at least height(mu)}
   , (KType->vec) L_min_heights {bounds (not nec achieved) of derLj\cap K-types in entry}
-{  , (KType->KGBElt) natural_KGB} {result of natural_KGB_elt(mu)}
   , (int -> KType) K_type_index
   , (int -> LK_data) data_index
   )
@@ -472,13 +471,11 @@ set make_min_bottom_data () = min_bottom_data:
    then bottom_data = [LK_data]:[] {one entry for each K-type}
    then heights = vec: [] {one for each K-type}
    then Lheights = [vec]: [] {one for each K-type; size #simple factors of L}
-   {then natural_KGBs = [KGBElt]: []} {one for each K-type; value of natural_KGB_elt}
    then clear() = void:
        let () = K_type_hash.clear()
        then () = bottom_data:=[]
        then  () = heights := []
        then () = Lheights :=[]
-       {then () = natural_KGBs := []}
        in ()
    then enter(KType mu) = int:
        let M = K_type_hash.size()
@@ -495,12 +492,10 @@ set make_min_bottom_data () = min_bottom_data:
 		      in Lheights#:= for dertauL in list
 				     	     do next_heights(dertauL.real_form)
 				     	     od
-		      {in natural_KGBs#:= xcG}
 		 fi
         then () = assert(#bottom_data = K_type_hash.size(),"min_bottom_data damaged")
 	then () = assert(#heights = #bottom_data,"min_bottom_data damaged")
 	then () = assert(#Lheights = #bottom_data,"min_bottom_data damaged")
-	{then () = assert(#natural_KGBs = #bottom_data,"min_bottom_data damaged")}
 	in m
    in
    ( ( -> int): { size } @int: K_type_hash.size()
@@ -520,11 +515,6 @@ set make_min_bottom_data () = min_bottom_data:
 	let m = enter(mu)
 	in Lheights[m]
      end
-{   , (KType->KGBElt): {natural_KGB} (KType mu) KGBElt:
-     begin
-	let m = enter(mu)
-	in natural_KGBs[m]
-     end}
    , (int -> KType): {K_type_index} (int j): K_type_hash.index(j)
    , (int -> LK_data): {data_index} (int j): bottom_data[j]
   )
@@ -701,10 +691,10 @@ set min_bottom_elim_factors(Param p, {[KGPElt] maxQs,} KTypePol P) = bool:
 	    	       	 do let sigLj =
 		            	if big_unitary_hash.uhash(derLjs[j]).lookup(derpLj).>=
 				then let startCF = elapsed_ms()
-				     then Q = character_formula(derpLj)
+				     then QLj = character_formula(derpLj)
 				     then () = charTime +:= elapsed_ms() - startCF
 				     then () = char_counter.use()
-				     in K_type_pol(Q)
+				     in K_type_pol(QLj)
 				elif RF_code
 	    	      		then rf_sig_tables.sig_entry(derpLj)
 				else hermitian_form_irreducible(derpLj){, DLs[j])}
