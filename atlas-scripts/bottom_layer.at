@@ -260,14 +260,14 @@ set min_bottom_factors_old(KType mu) = ([[(KType, KType)]], [int]):
     then (Q,pL) = theta_stable_quasi_data(p), G = p.real_form, ProjK = projection_to_K_matrix(mu.inner_class)
     then SFRP = simple_factor_root_partition(Q)
     then muL = LKT(pL), L = Q.Levi
-    then dermuLs = derived_factor_K_types2(muL) {each dermuLj is on a simple derived derLj}
+    then dermuLs = derived_factor_K_types0(muL) {each dermuLj is on a simple derived derLj}
     then derLs = derived_simple_factors(L)
     then DLjs = for derLj in derLs do next_heights(derLj) od
     {then xcG = {embed_KGB(xcL,G)} natural_KGB_elt(mu){this is needed to make shifts for L equal to shifts for G}
     then xcL = {KGB(L,0)} {natural_KGB_elt(muL)} inverse_embed_KGB(xcG,L)}
     then xcL = natural_KGB_elt(muL){ KGB(L,0)}
     then xcG = embed_KGB(xcL,G)
-    then derxcLs = derived_factor_KGBs2(xcL)
+    then derxcLs = derived_factor_KGBs0(xcL)
     then muwt=K0_param(mu,xcG).lambda_minus_rho {size is rank(K)}
     then K0 = K_0(xcG)
     then dertauLs = [[KType]]: {jth list on derived simple factor derLj}
@@ -407,13 +407,13 @@ set min_bottom_factors(KType mu) = QKL_bottom_data:
     then (Q,pL) = theta_stable_quasi_data(p), G = p.real_form, ProjK = projection_to_K_matrix(mu.inner_class)
     then SFRP = simple_factor_root_partition(Q)
     then muL = LKT(pL), L = Q.Levi
-    then dermuLs = derived_factor_K_types2(muL) {each dermuLj is on a simple derived derLj}
+    then dermuLs = derived_factor_K_types0(muL) {each dermuLj is on a simple derived derLj}
     then derLs = derived_simple_factors(L)
     then derProjKinvs = for derL in derLs do right_inverse(projection_to_K_matrix(derL)) od
     then DLjs = for derLj in derLs do next_heights(derLj) od
     then xcL = {KGB(L,0)} natural_KGB_elt(muL) {inverse_embed_KGB(xcG,L)}
     then xcG = embed_KGB(xcL,G) {natural_KGB_elt(mu)} {this is needed to make shifts for L equal to shifts for G}
-    then derxcLs = derived_factor_KGBs2(xcL)
+    then derxcLs = derived_factor_KGBs0(xcL)
     then muwt=K0_param(mu,xcG).lambda_minus_rho {size is rank(K)}
     then K0 = K_0(xcG)
     then dertauLs = [[KType]]: {jth list on derived simple factor derLj}
@@ -629,7 +629,7 @@ set more_good_hash = make_Param_hash()
     then () = if not (is_dominant(G,gamma))
     	      then return is_unitary_hash(p)
 	      fi {now induction is at least weakly good}
-    then derpLjs = derived_factor_params2(pL) {one for each derived simple factor derLj}
+    then derpLjs = derived_factor_params0(pL) {one for each derived simple factor derLj}
     then test = all(for derpLj in derpLjs do is_unitary_hash(derpLj) od)
     then () = if all(for j in Q.S do gamma*G.simple_coroots[j] > 0 od) {is_good(pL,G)}
     	      then return test
@@ -650,7 +650,7 @@ set min_bottom_elim_factors(Param p, {[KGPElt] maxQs,} KTypePol P) = bool:
      	  	    then () = if good>=0
     	       	    	      then let (,pL) =  maxQps[good]
 	      	    	      	   then () = if bottom_verbose then prints("p = ",p," is a good one!") fi
-				   then derpLs = derived_factor_params2(pL)
+				   then derpLs = derived_factor_params0(pL)
 				   then answer = all(for derpL in derpLs
 				   	       	     do @bool: is_unitary_hash_big_SIMPLE(derpL)
 						     od)
@@ -662,7 +662,7 @@ set min_bottom_elim_factors(Param p, {[KGPElt] maxQs,} KTypePol P) = bool:
 		    {then () = prints("wk_good = ",wk_good)}
      	  	    in if wk_good >= 0 {form on p is induced from form on L}
     	     	       then let (,pwk) = maxQps[wk_good]
-		       	    then derpLwks = derived_factor_params2(pwk)
+		       	    then derpLwks = derived_factor_params0(pwk)
 			    then answer = if all(for derpLwk in derpLwks
 				   	       	 do @bool: is_unitary_hash_big_SIMPLE(derpLwk)
 						 od)
@@ -674,7 +674,7 @@ set min_bottom_elim_factors(Param p, {[KGPElt] maxQs,} KTypePol P) = bool:
 			     in return answer
 	     	       fi
     	        fi
-    then derpLjs = derived_factor_params2(pL)
+    then derpLjs = derived_factor_params0(pL)
     then () = mbefTime +:= elapsed_ms()-start
     then answers = [(->bool)]: {one function for each LKT mu of p}
     	 for mu in LKTs(p)
@@ -684,7 +684,7 @@ set min_bottom_elim_factors(Param p, {[KGPElt] maxQs,} KTypePol P) = bool:
 	    then () = start:= elapsed_ms()
     	    then derxLjs = for derpLj in derpLjs do derpLj.x od
             then derLjs = for derpLj in derpLjs do derpLj.real_form od
- 	    then dermuLjs = derived_factor_K_types2(muL)
+ 	    then dermuLjs = derived_factor_K_types0(muL)
 	    then  multG = branch_std(P,DG)
 	    {then () = prints(multG)}
 	    then Lbranches = for derpLj@j in derpLjs
@@ -754,12 +754,12 @@ set bottom_factors(KType mu, QK_bottom_data (Q,taus)) = QKL_bottom_data: {(KGPEl
     then xcG = embed_KGB(xcL0,G)
     then pL = first_param(theta_induce_standard(pL0,L)), SFRP = simple_factor_root_partition(Q)
     then muL = LKT(pL)
-    then dermuLs = derived_factor_K_types2(muL) {each dermuLj is on a simple derived derLj}
+    then dermuLs = derived_factor_K_types0(muL) {each dermuLj is on a simple derived derLj}
     {then DLjs = for dermuLj in dermuLs do height(dermuLj) + Dshift
     od}
     then xcL = embed_KGB(xcL0,L)
     then derLsInfo = derived_simple_factors_info(L) {DERIVED simple factors}
-    then derxjs = derived_factor_KGBs2(xcL)
+    then derxjs = derived_factor_KGBs0(xcL)
     {then K0 = K_0(xcG), ProjK = projection_to_K_matrix(mu.inner_class)}
     then muwt = {highest_weight(mu,xcG).mu} K0_param(mu,xcG).lambda_minus_rho,
     	      	muLwt = K0_param(muL,xcL).lambda_minus_rho
@@ -767,7 +767,7 @@ set bottom_factors(KType mu, QK_bottom_data (Q,taus)) = QKL_bottom_data: {(KGPEl
     then tauLs = for shift in tau_shifts do K_type(K_highest_weight_from_K0_weight(xcL,muLwt+shift)) od
     then () = bfTime+:= elapsed_ms() - start
     in (Q, for tau@k in taus
-       	   do (tau, derived_factor_K_types2(tauLs[k]))
+       	   do (tau, derived_factor_K_types0(tauLs[k]))
        	   od)
 
 set bottom_factors(KType mu, [QK_bottom_data] data) = [QKL_bottom_data]: {[(KGPElt,[(KType, [KType])])]}
@@ -787,8 +787,8 @@ set bottom_elim_factors(Param p, KType mu, QKL_bottom_data (Q,LKdata)) = bool:
     then pL = first_param(theta_induce_standard(pL0,L)), (,pmuL0) = theta_stable_quasi_data(pmu)
     then pmuL = first_param(theta_induce_standard(pmuL0,L))
     {then () = if is_unitary_hash(pL) then return true fi}{seems to slow things}
-    then derpLjs = derived_factor_params2(pL){one for each derived simple factor derLj}, muL = LKT(pmuL)
-    then dermuLjs = derived_factor_K_types2(muL)
+    then derpLjs = derived_factor_params0(pL){one for each derived simple factor derLj}, muL = LKT(pmuL)
+    then dermuLjs = derived_factor_K_types0(muL)
     {then badjs = {#(#derpLjs)}
     	       	 for derpLj@j in derpLjs
     	       	 do if is_unitary_hash(derpLj)
@@ -877,7 +877,7 @@ set bottom_elim_factors(Param p, KType mu, int D, KGPElt Q, [(KType,[KType])] LK
     then pL = first_param(theta_induce_standard(pL0,L))
     then muL = LKT(pL)
     {then () = if is_unitary_hash(pL) then return true fi}{seems to slow things}
-    then derpLjs = derived_factor_params2(pL) {one for each derived simple factor derLj}
+    then derpLjs = derived_factor_params0(pL) {one for each derived simple factor derLj}
     {then badjs = {#(#derpLjs)}
     	       	 for derpLj@j in derpLjs
     	       	 do if is_unitary_hash(derpLj)
@@ -890,7 +890,7 @@ set bottom_elim_factors(Param p, KType mu, int D, KGPElt Q, [(KType,[KType])] LK
     then derxLjs = for derpLj in derpLjs do derpLj.x od
     then derLjs = for derpLj in derpLjs do derpLj.real_form od
     {we wish these dermuLjs were LKTs of derpLj; need to twist derpLj to make this true.}
-    then dermuLjs = derived_factor_K_types2(muL)
+    then dermuLjs = derived_factor_K_types0(muL)
     then DLs = for j:#derLjs
        	       do max(for (tau, list) in LKdata {one for each j}
        	    	      do height(list[j])
@@ -935,7 +935,7 @@ set bottom_elim_factors(Param p, KType mu, (KGPElt Q, [(KType,[KType])] LKdata),
     then muLs = LKTs(pL)
     then muL = muLs[first(for muL in muLs do mu = LKT(first_param(theta_induce_standard(parameter(muL),p.real_form))) od)]
     {then () = if is_unitary_hash(pL) then return true fi}{seems to slow things}
-    then derpLjs = derived_factor_params2(pL) {one for each derived simple factor derLj}
+    then derpLjs = derived_factor_params0(pL) {one for each derived simple factor derLj}
 {    then badjs = {#(#derpLjs)}
     	       	 for derpLj@j in derpLjs
     	       	 do if is_unitary_hash(derpLj)
@@ -948,7 +948,7 @@ set bottom_elim_factors(Param p, KType mu, (KGPElt Q, [(KType,[KType])] LKdata),
     then derxLjs = for derpLj in derpLjs do derpLj.x od
     then derLjs = for derpLj in derpLjs do derpLj.real_form od
     {we wish these dermuLjs were LKTs of derpLj; hope we don't need to twist derpLj to make this true.}
-    then dermuLjs = derived_factor_K_types2(muL)
+    then dermuLjs = derived_factor_K_types0(muL)
     then DLs = for j:#derpLjs
        	       do max(for (, list) in LKdata {one for each j}
        	    	      do height(list[j])

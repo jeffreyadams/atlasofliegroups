@@ -3,10 +3,51 @@
 < induction {for theta-stable parabolics}
 < derived_cover {to pass simple factors to derived simple factors}
 <K_highest_weights {for K_highest_weight_from_K0_weight}
+<cross_W_orbit.at {for cross_divide}
 {< hash.at }{needed if the KGB-related hash tables are restored}
 {placed in hermitian.at, where it belongs.}
 {all root data live on same Z^n}
 {The jth [int] sigmaj is the map of simple roots for the jth little_rd into simple roots for G.}
+
+{chain of cross/Cayley to go from x to KGB(G,0). If the bool is true, then cross; else Cayley.
+If G is connected, the inverse Cayleys are all single-valued, and the reverse path goes from
+KGB(G,0) to x.}
+set path (KGBElt x) = [(int,bool)]:
+    let G = x.real_form
+    then p = parameter(x, G.rho,G.rho)
+    then answer = [(int,bool)]: []
+    then y = KGBElt: x
+    then () = while length(y) > 0
+    	      do let jC = first(for j:G.semisimple_rank
+	      	       	       do length(cross(j,y)) < length(y)
+			       od)
+       	      	 in if jC.>=
+		    then let () = y:= cross(jC,y)
+       		      	 then () = answer #:= (jC,true)
+       		 	 in p := parameter(y,G.rho,G.rho)
+	            else let jr = first(for j:G.semisimple_rank
+			      	       	     do length(Cayley(j,y)) < length(y)
+					     od)
+			 then () = y:= Cayley(jr,y)
+			 then () = answer #:= (jr,false)
+			 in p := parameter(y,G.rho,G.rho)
+		    fi
+    	      od
+    {now y is fundamental}
+    {then () = prints(y)}
+    then word = word(cross_divide(y,KGB(G,0)))
+    then () = answer ##:= for j in word do (j,true) od
+    in answer
+
+set KGB_by_path(RealForm G, [int,bool] path) = KGBElt:
+    let answer = KGB(G,0)
+    then () = for (j,flag) in path
+    	      ~do answer := if flag then cross(j,answer)
+	      	 	    else Cayley(j,answer)
+			    fi
+	      od
+    in answer
+
 set resorted([RootDatum] little_rds, RootDatum rd) = [[int]]:
     for little_rd in little_rds
     do for alpha@j in little_rd.simple_roots
@@ -103,9 +144,9 @@ set derived_info(RealForm G) = (RealForm, mat):
     let (,M) = derived_info(G.root_datum)
     in (derived(G),M)
 
-{ lists derived groups DS ofreal and/or complex simple factors S.
+{ lists derived groups DS of real and/or complex simple factors S.
   Matrix M maps weights for S to weights for DS. Result is (S,DS,M)}
-  {because of simple_factors, roots in S and DS can be ordered differently}
+  {because of simple_factors, roots in S and DS can be ordered differently}{NO??}
 set derived_simple_factors_info(RealForm G) = [(RealForm,RealForm, mat)]:
     for S in simple_factors(G)
     do let (derS,M) = {derived_cover_real_form_info(S)} derived_info(S)
@@ -115,8 +156,47 @@ set derived_simple_factors_info(RealForm G) = [(RealForm,RealForm, mat)]:
 
 set derived_simple_factors(RealForm G) = [RealForm]:
     for S in simple_factors(G)
-    do derived(S)
+    do derived(S) 
     od
+
+{ith [int] is the numbers of the G-simple roots corresponding to simple roots of ith simple factor}
+set derived_simple_factor_root_labels(RealForm G) = [[int]]:
+    for S in simple_factors(G)
+    do for alpha in S.simple_roots
+       do let j = simple_root_index(G)(alpha)
+       	  in if j.>= then [j] else [] fi
+       od.##
+    od
+
+{if the kth entry is (i,j), then G-simple root k belongs to ith simple factor and is #j there}
+set G_root_labels(RealForm G) = [(int,int)]:
+    let Sindexers = for S in simple_factors(G)
+    	      	    do simple_root_index(S)
+		    od
+    in for alpha in G.simple_roots
+       do let inds = for f in Sindexers
+       	   	     do f(alpha)
+		     od
+       	  then i = first(for j in inds do j.>= od)
+       	  in (i, inds[i])
+       od
+
+set derived_paths(RealForm G, [int,bool] path) = [[int,bool]]:
+    let labels = G_root_labels(G)
+    then der_paths = [[int,bool]]: for S in simple_factors(G) do [] od
+    then () = for (k,flag) in path
+       	      do let (i,j) = labels[k]
+       	      	 in der_paths[i] #:= (j,flag)
+       	      od
+    in der_paths
+
+set derived_factor_KGBs0(KGBElt x) = [KGBElt]:
+    let G = x.real_form
+    then path = path(x)
+    then der_paths = derived_paths(G,path)
+    in for derS@i in derived_simple_factors(G)
+       do KGB_by_path(derS,der_paths[i])
+       od
 
 {projection from ratl coweight of G to coweight of DS, respecting
 values on roots of S}
@@ -153,28 +233,6 @@ set derived_factor_KGBs(KGBElt x) = [KGBElt]:
        od
 
 set old_derived_flag = false
-{x is a KGBElt for G; want to pass to a KGBElt for each derived simple factor}
-
-{set derived_factor_KGBs3(KGBElt x) = [KGBElt]:
-if old_derived_flag then return derived_factor_KGBs(x) fi;
-    let G = x.real_form
-    then derSF = derived_simple_factors_info(G), P = projection_to_K_matrix(G)
-    then () = if #derSF = 1 and G.components_rank.=
-    	      then let (,derS,) = derSF[0]
-	      	   in return [KGB(derS,x.number)]
-	      fi
-    then Pinv = right_inverse(P)
-    then derPs = for (S,derS,) in derSF do projection_to_K_matrix(derS) od
-    in for (S,derS,M)@j in derSF {this is automatically a theta-stable Levi}
-       do let mus = LKTs(parameter(x, G.rho, G.rho))
-       	  then muwts = for mu in mus do K0_param(mu).lambda_minus_rho od {on K-torus for G}
-	  then DderS = det(derS.simple_roots)
-	  then Minv = required_solution(derS.simple_roots.^, DderS*S.simple_roots.^).^/DderS
-	  then dermuwt = for muwt in muwts do derPs[j]*M*Pinv*muwt od.sort[0],  {worry about numbering of LKTs}
-	       dertheta = ratmat_as_mat(M*x.involution*Minv)
-	  in KGBIndex.KGB_index(derS, dertheta, dermuwt)
-        od
-}
 
 {x is a KGBElt for G; want to pass to a KGBElt for each derived simple factor}
 set derived_factor_KGBs2(KGBElt x) = [KGBElt]:
@@ -194,6 +252,8 @@ set derived_factor_KGBs2(KGBElt x) = [KGBElt]:
 	  in KGB(derS)[KGB_elt(derS.root_datum, dertheta, tf*Minv).number]
        od
 
+{does construction KGB_elt(stuff).real_form produce SAME real form of derS for all x in KGB(G)}
+
 set derived_factor_params(Param p) = [Param]:
     let DSFinfo = derived_simple_factors_info(p.real_form)
     in for xj@j in derived_factor_KGBs(p.x)
@@ -210,6 +270,14 @@ if old_derived_flag then return derived_factor_params(p) fi;
        do let (,DS,M) = DSFinfo[j]
        	  in parameter(xj, M*(p.lambda_minus_rho) + DS.rho, M*p.nu)
        od
+
+set derived_factor_params0(Param p) = [Param]:
+    let DSFinfo = derived_simple_factors_info(p.real_form)
+    in for xj@j in derived_factor_KGBs0(p.x)
+       do let (,DS,M) = DSFinfo[j]
+       	  in parameter(xj, M*(p.lambda_minus_rho) + DS.rho, M*p.nu)
+       od
+
 
 set dfkiTime = int: 0
 
@@ -267,6 +335,18 @@ if old_derived_flag then return derived_factor_K_types_info(mu) fi;
     in answer
 
 {these comologically induce to mu (on K), I think}
+set derived_factor_K_types_info0(KType mu) = [(KType,mat)]:
+    let start = elapsed_ms(), L = mu.real_form
+    then DSFinfo = derived_simple_factors_info(L), P = projection_to_K_matrix(L)
+    then Pinv = right_inverse(P)
+    then derPs = for (,derS,) in DSFinfo do projection_to_K_matrix(derS) od
+    then answer = for (,derS,M)@j in DSFinfo {this is automatically a theta-stable Levi}
+       	 	  do (K_type(derived_factor_KGBs0(mu.x)[j], M*(mu.lambda_minus_rho)), M)
+       		  od
+    then () = dfkiTime +:= elapsed_ms() - start
+    in answer
+
+{these comologically induce to mu (on K), I think}
 set derived_factor_K_types(KType mu) = [KType]:
     for (muj,) in derived_factor_K_types_info(mu)
     do muj
@@ -278,6 +358,13 @@ if old_derived_flag then return derived_factor_K_types(mu) fi;
     for (muj,) in derived_factor_K_types_info2(mu)
     do muj
     od
+
+{these comologically induce to mu (on K), I think}
+set derived_factor_K_types0(KType mu) = [KType]:
+    for (muj,) in derived_factor_K_types_info0(mu)
+    do muj
+    od
+
 
 {
 {all dfqs are meant to be in block of derived_factor_params(p). So their lambdas are lambdas
