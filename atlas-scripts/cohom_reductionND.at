@@ -9,6 +9,54 @@
 {all root data live on same Z^n}
 {The jth [int] sigmaj is the map of simple roots for the jth little_rd into simple roots for G.}
 
+set direct_path (KGBElt x) = [(int,bool)]:
+    let G = x.real_form
+    then p = parameter(x, G.rho,G.rho)
+    then answer = [(int,bool)]: []
+    then y = KGBElt: x
+    then () = while length(y) > 0
+    	      do let jC = first(for j:G.semisimple_rank
+	      	       	       do length(cross(j,y)) < length(y)
+			       od)
+       	      	 in if jC.>=
+		    then let () = y:= cross(jC,y)
+       		      	 then () = answer #:= (jC,true)
+       		 	 in p := parameter(y,G.rho,G.rho)
+	            else let jr = first(for j:G.semisimple_rank
+			      	       	     do length(Cayley(j,y)) < length(y)
+					     od)
+			 then () = y:= Cayley(jr,y)
+			 then () = answer #:= (jr,false)
+			 in p := parameter(y,G.rho,G.rho)
+		    fi
+    	      od
+    {now y is fundamental}
+    {then () = prints(y)}
+    then word = word(cross_divide(y,KGB(G,0)))
+    then () = answer ##:= for j in word do (j,true) od
+    in answer
+
+
+set rf_path_hash = make_RealForm_hash()
+
+{one list for each rf in rf_path_hash; size #KGB(rf). Entry #x is path(x).} 
+set path_lists = [[[(int,bool)]]]: []
+
+set path(KGBElt x) = [(int,bool)]:
+    let G = x.real_form
+    then I = rf_path_hash.size()
+    then i = rf_path_hash.match(G)
+    then () = if i = I {haven't seen this real form}
+    	      then path_lists#:= for j:#KGB(G) do [(int,bool)]: [] od
+	      fi
+    then num = x.number, pathlistsi = path_lists[i]
+    then () = if num > 0 and (#pathlistsi[num]).=
+    	      then pathlistsi[num] := direct_path(x);
+	      	   path_lists[i]:=pathlistsi
+	      fi
+    in path_lists[i][num]
+
+
 {chain of cross/Cayley to go from x to KGB(G,0). If the bool is true, then cross; else Cayley.
 If G is connected, the inverse Cayleys are all single-valued, and the reverse path goes from
 KGB(G,0) to x.}
@@ -190,13 +238,17 @@ set derived_paths(RealForm G, [int,bool] path) = [[int,bool]]:
        	      od
     in der_paths
 
+set DFK_time = int: 0
+
 set derived_factor_KGBs0(KGBElt x) = [KGBElt]:
-    let G = x.real_form
+    let G = x.real_form, start = elapsed_ms()
     then path = path(x)
     then der_paths = derived_paths(G,path)
-    in for derS@i in derived_simple_factors(G)
-       do KGB_by_path(derS,der_paths[i])
-       od
+    then answer = for derS@i in derived_simple_factors(G)
+       	 	  do KGB_by_path(derS,der_paths[i])
+       		  od
+    then () = DFK_time +:= elapsed_ms() - start
+    in answer
 
 {projection from ratl coweight of G to coweight of DS, respecting
 values on roots of S}
