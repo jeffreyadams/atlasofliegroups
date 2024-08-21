@@ -627,10 +627,10 @@ set more_good_hash = make_Param_hash()
     then (Q,pL) = theta_stable_quasi_data(p)
     then gamma = pL.infinitesimal_character + G.rho - pL.real_form.rho
     then () = if not (is_dominant(G,gamma))
-    	      then return is_unitary_hash(p)
+    	      then return is_unitary_hash_big(p)
 	      fi {now induction is at least weakly good}
     then derpLjs = derived_factor_params0(pL) {one for each derived simple factor derLj}
-    then test = all(for derpLj in derpLjs do is_unitary_hash(derpLj) od)
+    then test = all(for derpLj in derpLjs do is_unitary_hash_big_SIMPLE(derpLj) od)
     then () = if all(for j in Q.S do gamma*G.simple_coroots[j] > 0 od) {is_good(pL,G)}
     	      then return test
 	      fi
@@ -641,7 +641,7 @@ set more_good_hash = make_Param_hash()
 
 set min_bottom_elim_factors(Param p, {[KGPElt] maxQs,} KTypePol P) = bool:
     let start = elapsed_ms(), (,pL) = theta_stable_quasi_data(p), G = p.real_form
-    {then () = if is_unitary_hash(pL) then return true fi} {seems to slow things down}
+    {then () = if is_unitary_hash_big(pL) then return true fi} {seems to slow things down}
      then () = if more_flag {do good range stuff}
      	       then let maxQps = max_Qps(p{,maxQs})
      	       	    then three_bools = max_goodness(p, maxQps), R = more_good_hash.size()
@@ -786,12 +786,12 @@ set bottom_elim_factors(Param p, KType mu, QKL_bottom_data (Q,LKdata)) = bool:
 	      fi}
     then pL = first_param(theta_induce_standard(pL0,L)), (,pmuL0) = theta_stable_quasi_data(pmu)
     then pmuL = first_param(theta_induce_standard(pmuL0,L))
-    {then () = if is_unitary_hash(pL) then return true fi}{seems to slow things}
+    {then () = if is_unitary_hash_big(pL) then return true fi}{seems to slow things}
     then derpLjs = derived_factor_params0(pL){one for each derived simple factor derLj}, muL = LKT(pmuL)
     then dermuLjs = derived_factor_K_types0(muL)
     {then badjs = {#(#derpLjs)}
     	       	 for derpLj@j in derpLjs
-    	       	 do if is_unitary_hash(derpLj)
+    	       	 do if is_unitary_hash_big_simple(derpLj)
 		    then []
 		    else [j]
 		    fi
@@ -876,11 +876,11 @@ set bottom_elim_factors(Param p, KType mu, int D, KGPElt Q, [(KType,[KType])] LK
        	      fi
     then pL = first_param(theta_induce_standard(pL0,L))
     then muL = LKT(pL)
-    {then () = if is_unitary_hash(pL) then return true fi}{seems to slow things}
+    {then () = if is_unitary_hash_big(pL) then return true fi}{seems to slow things}
     then derpLjs = derived_factor_params0(pL) {one for each derived simple factor derLj}
     {then badjs = {#(#derpLjs)}
     	       	 for derpLj@j in derpLjs
-    	       	 do if is_unitary_hash(derpLj)
+    	       	 do if is_unitary_hash_big_simple(derpLj)
 		    then []
 		    else [j]
 		    fi
@@ -934,11 +934,11 @@ set bottom_elim_factors(Param p, KType mu, (KGPElt Q, [(KType,[KType])] LKdata),
     {then pmu = parameter(mu)}
     then muLs = LKTs(pL)
     then muL = muLs[first(for muL in muLs do mu = LKT(first_param(theta_induce_standard(parameter(muL),p.real_form))) od)]
-    {then () = if is_unitary_hash(pL) then return true fi}{seems to slow things}
+    {then () = if is_unitary_hash_big(pL) then return true fi}{seems to slow things}
     then derpLjs = derived_factor_params0(pL) {one for each derived simple factor derLj}
 {    then badjs = {#(#derpLjs)}
     	       	 for derpLj@j in derpLjs
-    	       	 do if is_unitary_hash(derpLj)
+    	       	 do if is_unitary_hash_big_SIMPLE(derpLj)
 		    then []
 		    else [j]
 		    fi
