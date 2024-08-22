@@ -46,7 +46,8 @@ set character_formula_to_height(Param p, int N) = ParamPol:
     then () = if R.= then R:=1 fi}
     {so we're going to height N}
     {so should compare NU to 2N}
-    in if NU > 2*N
+    in if NU > 4*N {4 is how much to prefer trunctating character
+    formula; increase to truncate more often}
        then s_to_1(KL_sum_at_s_to_height(p,N))
        else let (below,) = height_split(KL_sum_at_s(p),N)
        	    in s_to_1(below)
