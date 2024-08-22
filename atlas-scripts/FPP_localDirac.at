@@ -193,10 +193,10 @@ set interrupt_flag = true
 set bl_interrupt_flag = false
 
 {number of different shifts to try in bl_interrupt}
-set bl_step_count = 4
+set bl_step_count = 1
 
 {how much to increase the shift at each step}
-set bl_step_size = 4
+set bl_step_size = 2
 
 {almost always it makes sense to preload the Arthur unipotent
 reps. But not in a few test situations.}
@@ -1327,7 +1327,7 @@ set one_param_test(Param p, Param_hash Uhash) = [Param]:
 		    od)}
     then  () = hash_real_dumbCounter.use()
     then DEFHTS = [int]:
-    	 if low(Q[0].x,Q[0].lambda) {number(Q[0].x) < NK*low_KGB_frac}
+    	 if low(p, height(p)) {low(Q[0].x,Q[0].lambda)} {number(Q[0].x) < NK*low_KGB_frac}
 	 then []
 	 else let (answer,) = deform_hts(Q[0],(r*stretcher)\2)
 	 in answer {could record boolean, use it to replace _test by _to_hts}
@@ -1375,7 +1375,7 @@ set one_param_test_bottom(Param p, [int] Ds, Param_hash Uhash) = [Param]:
 	    in []
        else if more_flag or mix_flag
        	    then let () = if more_verbose then prints("start more with p = ",p, ", Ds = ",Ds) fi
-	    	 then Ps = for q in QG do K_type_pol(character_formula(q)) od
+	    	 then Ps = for q in QG do K_type_pol(character_formula_to_height(q, Ds~[0]+height(q))) od
        	    	 then elim_more = all(for q@i in QG
 	    	 	     	      do @bool:
 				      	 bottom_elim_factors_more(q,Ds[0],Ps[i]) and
@@ -1632,9 +1632,9 @@ set local_test_GEO_hash_dumb(KGBElt x, ratvec lambda, VertexData vd, LocalVertex
 		   else return one_param_test(parameter(x,lambda,Lvd.list[LF[0][0][0]]), Uhash)
 		   fi
 	      fi
-    then test_ht = if low(x,lambda){x.number < NK*low_KGB_frac}
-    	 	   then -1
-		   else next_height(pmin)
+    then test_ht = if low(pmin, height(pmin)) {low(x,lambda)}{x.number < NK*low_KGB_frac}
+    	 	   then next_height(pmin)
+		   else -1
 		   fi
     {then test_hts = hts[:min(#hts,1{r})]  {??? who knows about r!}}
     then tester = (Param->bool): (Param p) bool:

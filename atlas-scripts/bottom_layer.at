@@ -640,7 +640,7 @@ set more_good_hash = make_Param_hash()
     in is_unitary_hash(p)}
 
 set min_bottom_elim_factors(Param p, {[KGPElt] maxQs,} KTypePol P) = bool:
-    let start = elapsed_ms(), (,pL) = theta_stable_quasi_data(p), G = p.real_form
+    let start = elapsed_ms(), (,pL) = theta_stable_quasi_data(p), G = p.real_form {pL is height 0 on quasisplit L}
     {then () = if is_unitary_hash_big(pL) then return true fi} {seems to slow things down}
      then () = if more_flag {do good range stuff}
      	       then let maxQps = max_Qps(p{,maxQs})
@@ -672,9 +672,9 @@ set min_bottom_elim_factors(Param p, {[KGPElt] maxQs,} KTypePol P) = bool:
 					  fi
 		  	     then () = befmoreTime +:= elapsed_ms() - start
 			     in return answer
-	     	       fi
-    	        fi
-    then derpLjs = derived_factor_params0(pL)
+	     	       fi {wk_good}
+    	        fi {more_flag}
+    then derpLjs = derived_factor_params0(pL) {all height 0}
     then () = mbefTime +:= elapsed_ms()-start
     then answers = [(->bool)]: {one function for each LKT mu of p}
     	 for mu in LKTs(p)
@@ -691,13 +691,13 @@ set min_bottom_elim_factors(Param p, {[KGPElt] maxQs,} KTypePol P) = bool:
 	    	       	 do let sigLj =
 		            	if big_unitary_hash.uhash(derLjs[j]).lookup(derpLj).>=
 				then let startCF = elapsed_ms()
-				     then QLj = character_formula(derpLj)
+				     then QLj = character_formula_to_height(derpLj,DLs[j])
 				     then () = charTime +:= elapsed_ms() - startCF
 				     then () = char_counter.use()
 				     in K_type_pol(QLj)
 				elif RF_code
 	    	      		then rf_sig_tables.sig_entry(derpLj)
-				else hermitian_form_irreducible(derpLj){, DLs[j])}
+				else hermitian_form_irreducible_to_ht(derpLj,DLs[j])
 		        	fi
 	              	     in if int_part(sigLj[dermuLjs[j]]) = 0
 		       	        then branch_std(s*sigLj, DLs[j])
@@ -725,7 +725,7 @@ set min_bottom_elim_factors(Param p, {[KGPElt] maxQs,} KTypePol P) = bool:
 
 set min_bottom_elim_factors(Param p{, [KGPElt] maxQs}) = bool:
     let startCF = elapsed_ms()
-    then Q = character_formula(p)
+    then Q = character_formula(p) {could figure out max ht needed?}
     then () = charTime +:= elapsed_ms() - startCF
     then () = char_counter.use()
     in min_bottom_elim_factors(p, K_type_pol(Q))
@@ -1092,7 +1092,6 @@ set bottom_K_type_Qs(KType mu, int D_low, int D) = [QK_bottom_data] {[KGPElt, [K
     then xcG0 = embed_KGB(xcL0, G)
     then br_std_qD = branch_std(q,D)
     then too_many_taus = monomials(br_std_qD - to_ht(br_std_qD,D_low))[1:] {OK since mu is always term 0?}
-    {then () = if #too_many_taus > 1 then too_many_taus:=too_many_taus[1:]{omit mu}}
     then hwt0 = K0_param(mu,xcG0).lambda_minus_rho
     then too_many_shifts = for tau in too_many_taus
     	 	       	 do K0_param(tau,xcG0).lambda_minus_rho - hwt0
@@ -1389,7 +1388,7 @@ set bottom_elim_factors_more(Param p, int D, KTypePol P)= bool:
 
 set bottom_elim_factors_more(Param p, int D_low, int D) = bool:
     let startCF = elapsed_ms()
-    then Q = character_formula_to_height(p,D)
+    then Q = character_formula_to_height(p,D+height(p))
     then () = charTime +:= elapsed_ms() - startCF
     then () = char_counter.use()
     then P = K_type_pol(Q)
@@ -1491,7 +1490,7 @@ set bottom_test_factors_more(Param p, int D) = bool:
     if not more_flag
     then is_unitary_hash_big(p) {min_bottom_test_factors(p)}
     else let startCF = elapsed_ms()
-    	 then Q = character_formula(p)
+    	 then Q = character_formula_to_height(p, D+height(p))
     	 then () = charTime +:= elapsed_ms() - startCF
     	 then () = char_counter.use()
     	 then P = K_type_pol(Q)

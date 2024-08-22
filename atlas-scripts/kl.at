@@ -29,20 +29,27 @@ set character_formula (Param p) = ParamPol: s_to_1(KL_sum_at_s(p))
 set character_formula (ParamPol P) = ParamPol: map(character_formula@Param,P)
 
 {for predicting whether to_ht or is_unitary is faster}
-set low(Param p) = (rat,rat):
+set low(Param p) = (rat,rat,int):
     let ic = p.inner_class, theta = p.x.involution, gamma = p.infinitesimal_character
-    then L = dominant(ic,(1+theta)*gamma)*ic.two_rho_check
-    then N = dominant(ic, (1-theta)*gamma) *ic.two_rho_check
-    then R = ic.two_rho * ic.two_rho_check
+    then LAM = dominant(ic,(1+theta)*gamma)*ic.two_rho_check {this is
+    twice height(p); size of lambda}
+    then NU = dominant(ic, (1-theta)*gamma) *ic.two_rho_check {size of nu}
+    then R = ic.two_rho * ic.two_rho_check {this is twice max height
+    at rho}
     then () = if R.= then R:=1 fi
-    in (L/R,N/R)
+    in (LAM,NU,R)
 
 set character_formula_to_height(Param p, int N) = ParamPol:
-    let (LAM,NU) = low(p)
-    in if NU > LAM
+    let (,NU,R) = low(p), ic = p.inner_class
+    {so height is LAM/2}
+    {then R = ic.two_rho *ic.two_rho_check
+    then () = if R.= then R:=1 fi}
+    {so we're going to height N}
+    {so should compare NU to 2N}
+    in if NU > 2*N
        then s_to_1(KL_sum_at_s_to_height(p,N))
        else let (below,) = height_split(KL_sum_at_s(p),N)
-       	    in below
+       	    in s_to_1(below)
        fi
 
 set character_formula_to_height (ParamPol P, int N) = ParamPol:
