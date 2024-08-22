@@ -875,7 +875,7 @@ set ind_cand_params = (Param -> [Param]):
 		       	  		      in if is_hermitian(p1L)
 		      	     		     	    {and is_FPP(L, p1L.infinitesimal_character)}
 		     	    			    and real_induce_irreducible(p1L,G) = p
-	       	     	     		          then list := for q in derived_factor_params2((p1L))										  do herm_center(q)
+	       	     	     		          then list := for q in derived_factor_params0((p1L))										  do herm_center(q)
 						       	       od
 	       		    			  fi
 	 	        		    od
@@ -1513,7 +1513,7 @@ set is_unitary_hash_big_SIMPLE(Param p) = bool:
     then () = if L.>= then return true fi
     then () = if is_finished(p.x, p.lambda) then return L.>= fi
     then (,pL) = wkgood_Q(p)
-    then derpLs = derived_factor_params2(pL)
+    then derpLs = derived_factor_params0(pL)
     then () = if #derpLs = 0 then return true fi
     {then () = for derpL in derpLs do big_unitary_hash.rf_index(derpL.real_form) od}
     then statuses = for derpL in derpLs
@@ -1534,26 +1534,30 @@ set is_unitary_hash_big_SIMPLE(Param p) = bool:
 
 set is_unitary_hash_big(Param p) = bool:
     if not is_hermitian(p) then return false fi;
-    let pds = derived_factor_params2(p)
+    let pds = derived_factor_params0(p)
     in all(for pd in pds do @bool: is_unitary_hash_big_SIMPLE(pd) od)
 
 {If NU (nu part) > LAM (lambda part) *low_frac, then figure to_ht could work better}
 set low_frac = 1/1
 
-{"true" should mean nu is small, and is_unitary is fast.
-"false" should mean  nu is large, so these elts are near the
+{low refers to small lambda}
+{"true" should mean nu is large, so these elts are near the
 "top" of their blocks, and is_unitary_to_ht is fast.
-LAM/R is in [0,1], a measure of the size of dlambda.
-NU/R is in [0,1], a measure of the size of nu.}
-set low(KGBElt x, ratvec lambda) = bool:
+"false" should mean  nu is small, and is_unitary is fast.}
+{N is meant to be a height bound (bigger than height(parameter)}
+{set low(KGBElt x, ratvec lambda, int N) = bool:
     let G = x.inner_class
     then theta = x.involution
     then Lvd = LPm_table.Lvd(G, theta, (1+theta)*lambda.numer)
-    then LAM = dominant(G, (1+theta)*lambda)*G.two_rho_check
+    then LAM = dominant(G, (1+theta)*lambda)*G.two_rho_check + 2*N
     then NU = max(for gamma in Lvd.list do dominant(G, (1-theta)*gamma) *G.two_rho_check od)
     {then R = G.two_rho * G.two_rho_check}
-    in NU < low_frac*LAM
+    in NU > low_frac*LAM}
 
+{whether to use to_height in computing to height N}
+set low(Param p, int N) = bool:
+    let (,NU,) = low(p)
+    in NU > 2*N*low_frac
 { meant to be used for G simple }
 { compute Hermitian form to ht on p, report if it is unitary}
 set is_unitary_to_ht_big_SIMPLE(Param p,int N) = bool:
@@ -1567,8 +1571,8 @@ set is_unitary_to_ht_big_SIMPLE(Param p,int N) = bool:
   then L = big_unitary_hash.lookup(p)
   then () = if L.>= then return true fi
   then () = unitary_test_counter.use()
-  then (LAM,NU) = low(p)
-  in if NU > LAM*low_frac
+  {then (,NU,) = low(p)}
+  in if low(p,N) {low(p.x,p.lambda,N)}
      then is_pure(hermitian_form_irreducible_to_ht(p,N))
      else is_pure(to_ht(hermitian_form_irreducible(p),N))
      fi
@@ -1576,7 +1580,7 @@ set is_unitary_to_ht_big_SIMPLE(Param p,int N) = bool:
 { compute Hermitian form to ht on p, report if it is unitary}
 set is_unitary_to_ht_big(Param p,int N) = bool:
   if (not is_hermitian(p)) or (not is_pos_on_LKTs(p)) then return false fi;
-  let pds = derived_factor_params2(p)
+  let pds = derived_factor_params0(p)
   in all(for pd in pds do @bool: is_unitary_to_ht_big_SIMPLE(pd,N) od)
 
 set to_hts_count_mat = null(10,10)
@@ -1598,21 +1602,20 @@ set is_unitary_to_hts_big_SIMPLE(Param p,[int] Ns) = bool:
 	     fi
   then L = big_unitary_hash.lookup(p)
   then () = if L.>= then return true fi
-  then () = for N@i in Ns
-       	    do if is_pure(hermitian_form_irreducible_to_ht(p,N))
-     	       then  unitary_test_counter.use()
-     	       else to_hts_count_mat[i,#Ns] +:= 1;
-	       return false
-     	       fi
-  	    od
-  then () = to_hts_count_mat[#Ns,#Ns] +:= 1
-  in true
+  in for N@i in Ns
+     do if not is_unitary_to_ht_big_SIMPLE(p,N)
+     	then to_hts_count_mat[i,#Ns] +:= 1;
+	return false
+	fi
+     od;
+     to_hts_count_mat[#Ns,#Ns] +:= 1;
+     true
 
 { compute Hermitian form to hts on p, report if it is unitary}
 set is_unitary_to_hts_big (Param p,[int] Ns) = bool:
   if (not is_hermitian(p)) or (not is_pos_on_LKTs(p)) then return false fi;
   if #Ns = 0 then return is_unitary_hash_big(p) fi;
-  let pds = derived_factor_params2(p)
+  let pds = derived_factor_params0(p)
   in all(for pd in pds do @bool: is_unitary_to_hts_big_SIMPLE(pd,Ns) od)
 
 set test_count_mat = null(10,10)
@@ -1633,11 +1636,11 @@ set is_unitary_test_big_SIMPLE(Param p, int N) = bool:
     then () = if is_finished(p.x, p.lambda) and big_unitary_hash.lookup(p).>=
     	      then return true
     	      fi
-    then (LAM,NU) = low(p)
+    {then (LAM,NU) = low(p)}
     {then () = prints("LAM = ",LAM, ", NU = ", NU)}
     {then () = prints("is_unitary_hash = ",is_unitary_hash_big_SIMPLE(p), ", hform to ht = ",
     	 hermitian_form_irreducible_to_ht(p,N))}
-    in if NU > LAM*low_frac
+    in if low(p,N) {NU > LAM*low_frac}
        then if not is_pure(hermitian_form_irreducible_to_ht(p,N))
        	    then test_count_mat[0,1] +:= 1;
 	    	 false
@@ -1665,8 +1668,8 @@ set is_unitary_test_big_SIMPLE (Param p, [int] Ns) = bool:
        	    then test_count_mat[0,0] +:= 1;
 	    return is_unitary_hash_big_SIMPLE(p)
 	    fi
-  then (LAM,NU) = low(p)
-  in if NU > LAM*low_frac
+  {then (LAM,NU) = low(p)}
+  in if low(p, Ns~[0]) {NU > LAM*low_frac}
      then for N@i in Ns
      	  do if is_pure(hermitian_form_irreducible_to_ht(p,N))
 	     then unitary_test_counter.use()
@@ -1696,9 +1699,9 @@ set is_unitary_test_big_SIMPLE_interrupt (Param p, [int] Ns) = bool:
        	    then test_count_mat[0,0] +:= 1;
 	    return is_unitary_hash_big_SIMPLE(p)
 	    fi
-  then (LAM,NU) = low(p)
+  {then (LAM,NU) = low(p)}
   {then () = prints("list is ",Ns)}
-  in if NU > LAM*low_frac
+  in if low(p, Ns~[0]) {NU > LAM*low_frac}
      then for N@i in Ns
      	  do let start_time = elapsed_ms()
 	     then step_answer = is_pure(hermitian_form_irreducible_to_ht(p,N))
@@ -1724,12 +1727,12 @@ set is_unitary_test_big_SIMPLE_interrupt (Param p, [int] Ns) = bool:
 
 set is_unitary_test_big(Param p, int N) = bool:
     if (not is_hermitian(p)) or (not is_pos_on_LKTs(p)) then return false fi;
-    let pds = derived_factor_params2(p)
+    let pds = derived_factor_params0(p)
     in all(for pd in pds do @bool: is_unitary_test_big_SIMPLE(pd,N) od)
 
 set is_unitary_test_big(Param p, [int] Ns) = bool:
     if (not is_hermitian(p)) or (not is_pos_on_LKTs(p)) then return false fi;
-    let pds = derived_factor_params2(p)
+    let pds = derived_factor_params0(p)
     in all(for pd in pds do @bool: is_unitary_test_big_SIMPLE(pd,Ns) od)
 
 {ONLY for G simple}
@@ -1744,8 +1747,8 @@ set is_unitary_def_test_big_SIMPLE(Param p,int m) = bool:
     {then () = p := herm_center(p)}
     then L = big_unitary_hash.lookup(p)
     then () = if L.>= then return true fi
-    then (LAM,NU) = low(p)
-    in if NU > LAM*low_frac
+    {then (LAM,NU) = low(p)}
+    in if low(p, height(p) + 4*m) {NU > LAM*low_frac}
        then let (def,flag)= deform_hts(p,m)
        	    in if flag
        	       then is_pos_on_LKTs(p) and is_unitary_to_hts_big_SIMPLE(p,def)
@@ -1779,7 +1782,7 @@ set is_unitary_def_test_big_SIMPLE_interrupt(Param p,int m) = bool:
 
 set is_unitary_def_test_big(Param p,int m) = bool:
     if (not is_hermitian(p)) or (not is_pos_on_LKTs(p)) then return false fi;
-    let pds = derived_factor_params2(p)
+    let pds = derived_factor_params0(p)
     in all(for pd in pds do @bool: is_unitary_def_test_big_SIMPLE(pd,m) od)
 
 {ONLY for G simple}
@@ -1799,7 +1802,7 @@ set is_unitary_def_test_big(Param p) = bool:
 set is_unitary_next_big_SIMPLE(Param p) = bool:
     if (not is_hermitian(p)) or (not is_pos_on_LKTs(p)) then return false fi;
     let G = p.real_form
-    then (LAM,NU) = low(p)
+    then (LAM,NU,) = low(p)
     then FPP_flag = is_FPP(G,p.infinitesimal_character)
     then () = if not FPP_flag
     	      then if NU > LAM*low_frac
@@ -1827,5 +1830,5 @@ set is_unitary_next_big_SIMPLE(Param p) = bool:
 
 set is_unitary_next_big(Param p) = bool:
     if (not is_hermitian(p)) or (not is_pos_on_LKTs(p)) then return false fi;
-    let pds = derived_factor_params2(p)
+    let pds = derived_factor_params0(p)
     in all(for pd in pds do @bool: is_unitary_next_big_SIMPLE(pd) od)

@@ -214,7 +214,9 @@ set FPP_unitary_hash_general([(KGBElt,ratvec)] xlambdas, Param_hash Uhash,
 	    	     ", in localFD_1Dirac2_by_zero = ",print_time_string(FD12bzTime));
        	    if mix_flag
 	    then prints("Time in bottom_factors = ", print_time_string(bfTime), ", time in bottom_elim_factors_more = ",
-       	  	    print_time_string(befmoreTime), ", more_shift = ", more_shift, ", #Params missed by more = ", more_bad_hash.size())
+       	  	    print_time_string(befmoreTime), ", more_shift = ", if bl_interrupt_flag then
+		    bl_step_count*bl_step_size else more_shift fi, ", #Params missed by more = ",
+		    more_bad_hash.size())
 	    fi;
        	    prints("  #hash_real_dumb =",hash_real_dumbCounter.use_count(), ", #hash_dumb calls=", hash_dumbCounter.use_count(),
        	      	 	   ", #hash_def_dumb =", hash_def_dumbCounter.use_count());
@@ -459,7 +461,8 @@ set FPP_unitary_hash_general([KGBElt] xs, Param_hash Uhash, {Param_hash Uparamha
 	    	     ", in localFD_1Dirac2_by_zero = ",print_time_string(FD12bzTime));
 	    if mix_flag
 	    then prints("Time in bottom_factors = ", print_time_string(bfTime), ", time in bottom_elim_factors_more = ",
-       	  	    print_time_string(befmoreTime), ", more_shift = ", more_shift, ", #Params missed by more = ",
+       	  	    print_time_string(befmoreTime), ", more_shift = ", if bl_interrupt_flag then
+		    bl_step_count*bl_step_size else more_shift fi, ", #Params missed by more = ",
 		    more_bad_hash.size())
 	    fi;
        	    prints("  #hash_real_dumb =",hash_real_dumbCounter.use_count(),
@@ -762,8 +765,9 @@ set FPP_unitary_hash_bottom_layer([(KGBElt,ratvec)] xlambdas, Param_hash UhashG{
        		    ", time in bottom layer sig = ", print_time_string(rf_sig_tables.bottom_sig_time()));
        	    if more_flag
 	    then prints("Time in bottom_factors = ", print_time_string(bfTime), ", time in bottom_elim_factors_more = ",
-       	  	    print_time_string(befmoreTime), ", more_shift = ", more_shift);
-      		 prints("     more_shift = ",more_shift,", #Params missed by more = ", more_bad_hash.size())
+       	  	    print_time_string(befmoreTime), ", more_shift = ", if bl_interrupt_flag then
+		    bl_step_count*bl_step_size else more_shift fi);
+      		 prints("     #Params missed by more = ", more_bad_hash.size())
 	    fi;
        	    prints("  #hash_def_dumb =", hash_def_dumbCounter.use_count(),
 	      ", #hash2 =", hash2Counter.use_count(), ", #hash_one_level = ", hash_one_levelCounter.use_count(),
@@ -990,7 +994,8 @@ set FPP_unitary_hash_bottom_layer([KGBElt] xs, Param_hash UhashG{, Param_hash Up
 						", time = ",print_time_string(unitaryTime - startUtime));
 					      prints("     #char calcs for lambda = ", char_counter.use_count() - startCcounter,
 					        ", char time = ", print_time_string(charTime - startCtime));
-					      prints("     more_shift = ",more_shift,", #Params missed by more = ",
+					      prints("     more_shift = ",if bl_interrupt_flag then
+		    bl_step_count*bl_step_size else more_shift fi, ", #Params missed by more = ",
 					     	more_bad_hash.size() - startmorebadlambda)
 					 else prints("    #LF = ", for L in LF do #L od, ", #unitary params = ",
 					      	tempanswerCards[index],
@@ -1022,7 +1027,8 @@ set FPP_unitary_hash_bottom_layer([KGBElt] xs, Param_hash UhashG{, Param_hash Up
                           print_time_string(times[j]), "; longest lambda = ",
 			  print_time_string(templambdatimes[longLambdaLoc]),
 			  " for ", longLambdaLoc, " = ",lambdas[longLambdaLoc]);
-			  if more_flag then prints("       more_shift = ", more_shift, ", #Params missed by more for this x = ",
+			  if more_flag then prints("       more_shift = ", if bl_interrupt_flag then
+		    bl_step_count*bl_step_size else more_shift fi, ", #Params missed by more for this x = ",
 			     	       more_bad_hash.size() - startmorebadx) fi; 
 			  prints("     #unitary params = ", sum(tempanswerCards), ", #new unitary faces = ",
 			     currentUhash - formerUhash, ", #tests for this x = ",
@@ -1058,7 +1064,8 @@ set FPP_unitary_hash_bottom_layer([KGBElt] xs, Param_hash UhashG{, Param_hash Up
        	    if more_flag
 	    then prints("Time in bottom_factors = ", print_time_string(bfTime), ", time in bottom_elim_factors_more = ",
        	  	   	      print_time_string(befmoreTime));
-		 prints("     more_shift = ", more_shift, ", #Params missed by more = ", more_bad_hash.size())
+		 prints("     more_shift = ", if bl_interrupt_flag then
+		    bl_step_count*bl_step_size else more_shift fi, ", #Params missed by more = ", more_bad_hash.size())
 	    fi;
        	    prints("  #hash_def_dumb =", hash_def_dumbCounter.use_count(), ", #hash2 = ", hash2Counter.use_count(),
 	      ", #hash_one_level = ", hash_one_levelCounter.use_count(), ", #hash_bottom_layer = ", hash_bottom_layerCounter.use_count());
