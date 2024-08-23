@@ -1388,7 +1388,8 @@ set bottom_elim_factors_more(Param p, int D, KTypePol P)= bool:
 
 set bottom_elim_factors_more(Param p, int D_low, int D) = bool:
     let startCF = elapsed_ms()
-    then Q = character_formula_to_height(p,D+height(p))
+    then Q = character_formula_to_height(p,D)
+    then () = prints("yeah, we used line 1391")
     then () = charTime +:= elapsed_ms() - startCF
     then () = char_counter.use()
     then P = K_type_pol(Q)
@@ -1490,7 +1491,7 @@ set bottom_test_factors_more(Param p, int D) = bool:
     if not more_flag
     then is_unitary_hash_big(p) {min_bottom_test_factors(p)}
     else let startCF = elapsed_ms()
-    	 then Q = character_formula_to_height(p, D+height(p))
+    	 then Q = character_formula_to_height(p, D)
     	 then () = charTime +:= elapsed_ms() - startCF
     	 then () = char_counter.use()
     	 then P = K_type_pol(Q)

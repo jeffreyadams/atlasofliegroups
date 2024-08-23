@@ -778,18 +778,14 @@ set local_testK_hash_min_bottom_layer(KGBElt x, ratvec lambda, LocalVertexData L
 			       unitary_test_counter.use_count() - start_count) fi
      in  FVKHnew
 
-
-{whether to use non-minimal parabolics for bottom layer}
-set more_flag = false
-
 {when the non-minimal parabolics are used at the end, how much above
 height(p) to look at K-types.  A larger number finds more nonunitary,
 takes longer}
 set more_shift = 0
 
 set more_shift(int n) = void:
-    more_flag:=true;
-    more_shift:=n
+    let () = more_flag:=true
+    in more_shift:=n
 
 {if true, then test for unitarity from beginning of bottom_layer}
 {turns out to slow things down a bit: better to construct more
