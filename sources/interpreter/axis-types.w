@@ -146,27 +146,39 @@ of an overloaded function to use), but once that is done, types will no longer
 be represented at all: the internal code executes without being ``aware'' of the
 types of the values it manipulates. This is only possible because those values
 are then accessed via generic pointers (i.e., pointers that, as far as \Cpp\ is
-concerned, could point to any kind of value). Currently runtime values also
-contain an indication of their type, which will allow us to do some dynamic
-testing to trap possible errors in the logic of our interpreter, but the user
-should never notice this; in an optimised version of the \.{atlas} program, this
-runtime type information and corresponding tests could be dropped altogether.
+concerned, could point to any kind of value). Run time values have different
+representations according to their top level structure (for instance an integer
+value and a row value have different structures), which are realised by using
+classes derived from a common base class for run time values; by using dynamic
+casts the program can check whether the dynamic value of expressions match their
+static type, and trap errors in the logic of our interpreter. The user should
+never notice these tests, and in the optimised version of the \.{atlas} program,
+no run time checking is done at all (dynamic casts are replaced by static ones).
 
 In the simplest case, types are represented by small tree structures, with nodes
-of types |type_expr| that will be detailed later. For now we provide no
-user-defined encapsulation (as \Cpp~classes do), so a type expression basically
-describes the structure of the corresponding values, and allows all operations
+of types |type_expr| that will be detailed later. Unlike \Cpp~classes, we never
+have types that gives some visibility of the structure of values but which limit
+access to handling that structure to privileged methods: whenever we do
+encapsulate representation structure, like for primitive types, the type of
+expressions for such values is completely opaque (only functions coming with the
+type can be applied to them). So a type expression basically describes the
+accessible structure of the corresponding values, and allows all operations
 compatible with that structure to be performed. For instance the type printed
 as \.{(int->[(bool,mat)])} specifies a function mapping integers to lists of
-pairs of a Boolean value and a matrix; it allows operations compatible with that
-such as calling it with an integer argument and then subscripting it with an
-integer index, and finally selecting the second component of the result.
-However, classes defined in the Atlas software library itself will be presented
-to the user as (opaque) primitive types; only built-in operations declared for
-that primitive type can be applied to such values, so we do provide abstraction
-from internal representation there. One important kind of type is a function
-type, which specifies the types of the individual function arguments and of the
-values it returns; there are also array-, tuple-, and discriminated union types.
+pairs of a Boolean value and a matrix; it allows operations compatible with
+that, for instance calling it with an integer argument, then subscripting it
+with an integer index, and finally selecting the second component of the result
+to obtain a matrix. As mentioned, classes defined in the Atlas software library
+itself will be presented to the user as (opaque) primitive types; only built-in
+operations declared for that primitive type can be applied to such values. In a
+development beyond the original type structure, some expressions can have an
+abstract type meaning the corresponding value can be of any kind whatsoever, but
+that type will be represented by a type variable that is treated as a distinct
+primitive type, so that no usage of the expression that makes any assumption
+about the value structure will be allowed. More generally types can be ``second
+order types'', namely type expressions that can contain type variables. Then
+there are the main kinds of non-primitive non-abstract types: function types,
+row-, tuple-, and discriminated union types.
 
 Trees representing different type expressions will not share any sub-trees
 among each other, so they have strict (unshared) ownership of their parts,
@@ -176,23 +188,24 @@ handling is negligible with respect to other factors in the interpreter) we
 avoid doing so more than absolutely necessary.
 
 Usually types are built from the bottom up (from leaves to the root), although
-during type checking the reverse also occurs. This means that nodes of the
-structure are held in local variables before being moved to dynamically managed
-storage; it is important to be able to do this while transferring ownership of
-the data linked to, which requires resetting the original node so that it can be
-cleaned up without destroying dependent data. This is called move semantics, and
-was originally realised using auto-pointers for individual pointers, and by a
-special method on the level of complete nodes. With the advent of \Cpp11,
-special syntactic support for move semantics was added, so that one can
-distinguish calls that should be realised with shallow copies and ownership
-transfer from the occasionally needed deep copy. At the same time auto-pointers
+during type checking the reverse also occurs; also type variables can be
+substituted for in certain circumstances which also leads to top-down growth of
+type expressions. During bottom-up construction, new nodes are held in local
+variables before being moved to dynamically managed storage when becoming
+subexpressions of newer nodes. This means move semantics is needed for type
+expressions (transferring ownership of descendants when moving a node), which
+was originally realised using auto-pointers to descendants. With the advent
+of \Cpp11, special syntactic support for move semantics was added, so that one
+can distinguish calls that should be realised with shallow copies and ownership
+transfer, from the occasionally needed deep copy. At the same time auto-pointers
 were replaced by unique-pointers, with essentially the same functionality, but
 better adapted to the syntactic facilities. The structure also uses ordinary
-pointers of type~|type_p| in places where ownership is managed by the containing
-structure rather than by the pointer itself.
+pointers of type~|type_p| in places where ownership is managed by some
+containing structure rather than by the pointer itself.
 
 @< Type declarations @>=
 class type_expr;
+@/
 using type_p = type_expr*;
 using const_type_p = const type_expr*;
 using type_ptr = std::unique_ptr<type_expr>;
@@ -205,11 +218,11 @@ types themselves, but since an STL-compatible singly-linked list container
 class templates |simple_list| and |sl_list| was added to the Atlas utilities
 library, these were used to replace the implementation of type lists.
 
-When incorporating type lists into the |type_expr| structure, the class
-template |simple_list| will be used; the more flexible but less compact
-|sl_list| template will be occasionally used for temporary variables, whose type
-is then |dressed_type_list|. This usage provides a good test for the usability
-of our new container types; so far they have passed them gracefully, though
+When incorporating type lists into the |type_expr| structure, the class template
+|simple_list| will be used; the more flexible but less compact |sl_list|
+template will be occasionally used for temporary variables, whose type is then
+|dressed_type_list|. This usage provides a good practical test for the usability
+of these new container types; so far they have passed them gracefully, though
 occasionally after enriching the repertoire of methods of the container type.
 Also, it turns out to be useful to sometimes not use the provided container
 types directly; for instance, for a component of a \Cpp\ |union| type, there is
@@ -225,7 +238,7 @@ using type_list = containers::simple_list<type_expr>;
 using dressed_type_list = containers::sl_list<type_expr>;
 @)
 using raw_type_list = atlas::containers::sl_node<type_expr>*;
-using const_raw_type_list = atlas::containers::sl_node<type_expr>const *;
+@/using const_raw_type_list = atlas::containers::sl_node<type_expr>const *;
 using wtl_iterator = containers::weak_sl_list_iterator<type_expr>;
   // wtl = weak type list
 using wtl_const_iterator = containers::weak_sl_list_const_iterator<type_expr>;
@@ -240,23 +253,25 @@ needs an owning |type_ptr| instead. The function |acquire| will achieve this.
 @< Declarations of exported functions @>=
 type_ptr acquire(const type_expr* t);
 
-@~The function |acquire| simply creates a unique-pointer from the call of
-|new| whose constructor invokes the |copy| method of |type_expr| pointed to.
-The latter, has a recursive definition that performs a deep copy, but the
-details (given in section @#type expression copy@>) don't concern us here.
+@~The function |acquire| simply creates a unique-pointer from the call of |new|
+(using the |std::make_unique| function template), whose constructing expressions
+invokes the |copy| method of |type_expr| pointed to. That will recursively
+perform a deep copy, as detailed in section @#type expression copy@>.
 
 @< Function definitions @>=
 type_ptr acquire(const type_expr* t) @+
-{@; return type_ptr(new type_expr(t->copy())); }
+{@; return std::make_unique<type_expr>(t->copy()); }
 
 
 @ Type lists are usually built by starting with a default-constructed
-|type_list| (which is equivalent to initialising it with |empty_tuple()|
-defined below, and which function can help avoid a Most Vexing Parse
-situation), and repeatedly calling |prefix| to add nodes in front. This
-function is efficient, due its use of move-semantics, both for the node, and
-for the list itself. Nonetheless, the latter is passed as a modifiable lvalue
-reference |dst|, as it will continue to hold the extended list.
+|type_list| (or equivalently initialising it with |empty_tuple()| defined below,
+which can avoid a Most Vexing Parse situation if |type_list()| were used
+instead), and repeatedly calling |prefix| to add nodes in front. The function
+|prefix| is efficient both in handling the node and the list itself, due to its
+use of move-semantics. Nonetheless, the list is passed as a modifiable lvalue
+reference |dst| that will be made to hold the extended list, which is also the
+result of |prefix| call, for convenience. A dressed variation of |prefix| is
+also defined below.
 
 @< Declarations of exported functions @>=
 type_list empty_tuple();
@@ -278,15 +293,16 @@ dressed_type_list& prefix(type_expr&& t, dressed_type_list& dst)
   return dst;
 }
 
-@*2 Primitive types.
+@*2 Kinds of type; primitive types.
 %
 We have a simple but flexible type model. There is a finite number of
 ``primitive'' types, many of which are abstractions of complicated classes
-defined in the Atlas library, such as root data or reductive groups.
-Furthermore one has function types that map one type to another, types that
-are ``row of'' some other type, tuples (Cartesian products) of some given
-sequence of types, and disjoint unions (co-products in the category of sets)
-of some sequence of types.
+defined in the Atlas library, such as root data or reductive groups. We also
+have type variables, which as mentioned are treated similarly to primitive
+types. Then one has function types that map one type to another, types that are
+``row of'' some other type, tuples (Cartesian products) of some given sequence
+of types, and disjoint unions (co-products in the category of sets) of some
+sequence of types.
 
 In addition to these, we allow for two more possibilities, that do not
 correspond to the way in which values can be built up. The final possibility
@@ -302,7 +318,7 @@ introduced later).
 
 @< Type definitions @>=
 enum type_tag
- { undetermined_type, primitive_type,
+ { undetermined_type, primitive_type, variable_type,
    function_type, row_type, tuple_type, union_type,
    tabled
  };
@@ -331,44 +347,51 @@ const char* prim_names[]=@/
 
 @*1 Type expressions.
 %
-Type expressions are defined by a tagged union. We intend to always only access
-the variant corresponding to the current tag value, but this is not something
-that can be statically ascertained in \Cpp; therefore the tag and the
+Type expressions are defined by a tagged union, where the tags indicate the kind
+of type denoted (primitive, function, row, etc.). We intend to always only
+access the variant corresponding to the current tag value, but this is not
+something that can be statically ascertained in \Cpp; therefore the tag and the
 corresponding variants originally had public access. The fields were however
 made private, with public accessor methods, at the introduction of |tabled|
 types, a kind of type necessary to represent types with a recursive structure.
-This is not to ensure access according to the tag, but rather to automatically
-insert a test for |tag==tabled| possibly followed by expansion. This makes the
-handling of tabled types transparent in most places, but there is a subtlety to
-be mentioned. The type definitions in the table should of course not be
-overwritten, but while |expansion| returns a reference to constant so that the
-|type_expr| values in the table are protected, the methods |func|,
-|component_type| and |tuple| return pointers to non-|const|; this exposes nodes
+This is not so much to ensure access only according to the current tag, but
+rather to be able to automatically insert a test for |tag==tabled| possibly
+followed by expansion. This makes the handling of tabled types transparent in
+most places, but there is a subtlety to be mentioned. The type definitions in
+the table should of course not be overwritten, and |expansion| returns a
+reference to constant to protect the |type_expr| values in the table against
+overwriting. This only works at the top level however: the methods |func|,
+|component_type| and |tuple| return pointers to non-|const|, which expose nodes
 one level down to modifications that effectively also alter the defined types.
-This is dangerous, and indeed has been a source of a bug in the past. However it
-is fundamental to the implementation of our type checker that it can specialise
-initially undetermined parts of a type expressions, which requires such pointers
-to be returned by those methods. The protection of the values of tabled types
-lies in the convention that the only way type expressions should be modified is
-by specialisation; as the type table contains only types without any
-undetermined parts, it cannot be altered.
+This is dangerous, and indeed has been a source of a bug in the past. However,
+this is not an oversight in the specification of those methods: it is
+fundamental to the implementation of our type checker that it can specialise
+initially undetermined parts of a type expressions obtained through these
+methods. The protection of the values of tabled types lies in the fact that two
+kinds of use of type expressions are disjoint: they can be used as a pattern to
+represent a required top-level structure of a type in a certain context (which
+can be viewed as implicitly polymorphic types with an implicit distinct type
+variable for each undetermined subtype) and as types of actual expressions
+(which is always the case when |tabled| types are encountered) which never have
+undetermined components. Ideally we should be using distinct types for the two
+use cases, but that is not (yet) the case.
 
-Although variant members of a |union| with nontrivial special member functions
-is allowed in \Cpp11, it then remains the programmer's responsibility to
-explicitly call constructors and destructors as those variants come and go.
-Using smart pointers there would hardly have any advantages, and require using
-placement |new| rather than assignment for setting their values. So here we use
-raw pointers instead, and in particular |raw_type_list| rather than
-|type_list| for the |tuple_variant|. One drawback of that is that we will not be
-able to create a |type_list::iterator| for traversal of the list, but in
-practice weak iterators will always suffice.
+Although variant members of a |union| with nontrivial special member functions,
+as is the case for smart pointer types, are allowed in \Cpp11, it then remains
+the programmer's responsibility to explicitly call constructors and destructors
+as those variants come and go, which effectively ruins the advantages of smart
+pointers. For this reason we use raw pointers here instead, and in particular
+|raw_type_list| rather than |type_list| for the |tuple_variant|. One drawback of
+that is that we will not be able to create a |type_list::iterator| for traversal
+of the list, but in practice weak iterators will always suffice.
 
 There is one restriction on types that is not visible in the definition below,
 namely that the list of types referred to by the |tuple_variant| field cannot
 have length~$1$ (nor can it have length~$0$ when |tag==union_type|, but a
-$0$-tuple defines the |void| type, as we saw above). This is because anything
-that would suggest a $1$-tuple or $1$-union (for instance a parenthesised
-expression) is identified with its unique component.
+$0$-tuple is valid and defines the |void| type, as we saw above). This is
+because syntactically anything that would suggest a $1$-tuple or $1$-union (for
+instance a parenthesised expression) in fact designates what would be the unique
+component of such a tuple or union.
 
 @< Type definitions @>=
 
@@ -377,6 +400,7 @@ class type_expr
 { type_tag tag;
   union
   { primitive_tag prim_variant; // when |tag==primitive|
+    unsigned int typevar_variant; // when |tag==variable_type|
     func_type* func_variant; // when |kind==function_type|
     type_p row_variant; // when |kind==row_type|
     raw_type_list tuple_variant; // when |kind==tuple_type| or |kind==union_type|
@@ -546,6 +570,7 @@ type_expr type_expr::copy() const
   switch (result.tag=tag)
   { case undetermined_type: break;
     case primitive_type: result.prim_variant=prim_variant; break;
+    case variable_type: result.typevar_variant=typevar_variant; break;
     case function_type: result.func_variant=new
       func_type(func_variant->copy());
     break;
@@ -596,7 +621,7 @@ call |delete| directly.
 @< Function definitions @>=
 void type_expr::clear() noexcept
 { switch (tag)
-  { case undetermined_type: case primitive_type: break;
+  { case undetermined_type: case primitive_type: case variable_type: break;
     case function_type: delete func_variant; break;
     case row_type: delete row_variant; break;
     case tuple_type: case union_type: delete tuple_variant; break;
@@ -625,6 +650,7 @@ void type_expr::set_from(type_expr&& p) noexcept
   switch(tag=p.tag) // copy top node
   { case undetermined_type: break;
     case primitive_type: prim_variant=p.prim_variant; break;
+    case variable_type: typevar_variant=p.typevar_variant; break;
     case function_type: func_variant=p.func_variant; break;
     case row_type: row_variant=p.row_variant; break;
     case tuple_type: case union_type: tuple_variant = p.tuple_variant; break;
@@ -639,6 +665,7 @@ type_expr::type_expr(type_expr&& x) noexcept // move constructor
 { switch(tag) // move top node
   { case undetermined_type: break;
     case primitive_type: prim_variant=x.prim_variant; break;
+    case variable_type: typevar_variant=x.typevar_variant; break;
     case function_type: func_variant=x.func_variant; break;
     case row_type: row_variant=x.row_variant; break;
     case tuple_type: case union_type: tuple_variant = x.tuple_variant; break;
@@ -667,6 +694,8 @@ void type_expr::swap(type_expr& other) noexcept
     switch(tag)
     { case undetermined_type: break; // no need to swap |nothing| fields
       case primitive_type: std::swap(prim_variant,other.prim_variant); break;
+      case variable_type:
+        std::swap(typevar_variant,other.typevar_variant); break;
       case function_type: std::swap(func_variant,other.func_variant); break;
       case row_type: std::swap(row_variant,other.row_variant); break;
       case tuple_type: case union_type:
@@ -683,15 +712,17 @@ void type_expr::swap(type_expr& other) noexcept
 
 @ The |specialise| method is mostly used to either set a completely undetermined
 type to a given pattern, or to test if it already matches that pattern;
-sometimes however, we do know which of the two will be the apply, nor exclude
-the possibility that that the type was in part more specific then the pattern
-while another part must be modified by specialisation to match it. Matching a
-pattern means being at least as specific, and specialising means replacing by
-something more specific, so we are (upon success) replacing the type for which
-the method is called by the most general unifier (i.e., common specialisation)
-of its previous value and |pattern|. Therefore the name of this method is
-somewhat misleading, in that the specialisation is not necessarily to the
-|pattern| value itself, but to something matching |pattern|.
+sometimes however, we do know which of the two will be the case, nor exclude the
+possibility that that the type was in part already more specific then the
+pattern, while another part needs actual specialisation to match the pattern.
+Here ``a type matching a pattern'' means the type is at least as specific as the
+pattern (allowing the pattern to be transformed into the type by substitution
+for undetermined components), and specialising means replacing by something more
+specific. So upon success we are replacing the type for which the method is
+called by the most general common specialisation (called unifier) of its
+previous value and |pattern|. So the name of this method is somewhat misleading:
+specialisation is not necessarily to the |pattern| value itself, but to
+something matching |pattern|.
 
 In the case of an |undetermined_type|, |specialise| uses the |set_from| method
 to make |*this| a copy of |pattern|. In the other cases we only continue if
@@ -725,6 +756,8 @@ bool type_expr::specialise(const type_expr& pattern)
   if (tag==undetermined_type) // specialising \.* also always succeeds,
     {@; set_from(pattern.copy()); return true; }
      // by setting |*this| to a copy of  |pattern|
+  if (tag==variable_type)
+    return true; // we should emit a substitution for type variable here as well
   if (pattern.tag==tabled)
   { if (tag==tabled) // both are defined type; see if they are the same
       return type_number==pattern.type_number;
@@ -770,7 +803,8 @@ similar.
 
 @< Function definitions @>=
 bool type_expr::can_specialise(const type_expr& pattern) const
-{ if (pattern.tag==undetermined_type or tag==undetermined_type)
+{ if (pattern.tag==undetermined_type or tag==undetermined_type
+      or tag==variable_type)
     return true;
   if (pattern.tag==tabled)
   { if (tag==tabled) // both are defined type; see if they are the same
@@ -814,8 +848,9 @@ component by component.
   // whether both lists terminated
 }
 
-@ The equality test is quite similar to the |specialise| method; in fact one could
-often use that method in its place, but here we want both operands to be |const|.
+@ The equality test is quite similar to the |specialise| method; in fact one
+could often use that method in its place, but here we want both operands to be
+|const|.
 
 @< Function definitions @>=
 bool type_expr::operator== (const type_expr& y) const
@@ -826,6 +861,7 @@ bool type_expr::operator== (const type_expr& y) const
   switch (tag)
   { case undetermined_type: return true;
     case primitive_type: return prim_variant==y.prim_variant;
+    case variable_type: return typevar_variant==y.typevar_variant;
     case function_type:
       return func_variant->arg_type==y.func_variant->arg_type @|
 	 and func_variant->result_type==y.func_variant->result_type;
@@ -865,6 +901,7 @@ bool type_expr::is_unstable() const
     case undetermined_type: return true;
     case tabled:  return false; // syntax excludes \.* in tabled types
     case primitive_type: return false;
+    case variable_type: return true; // but should depend on substitutions
     case function_type:
       return func_variant->arg_type.is_unstable()
           or func_variant->result_type.is_unstable();
@@ -1246,6 +1283,7 @@ type_expr
     switch(t.tag)
     {
     case primitive_type: dst = &prim_types[t.prim()]; break;
+    break;
     case function_type: dst = &func_types; break;
     case row_type: dst = &row_types; break;
     case tuple_type:
@@ -1263,6 +1301,8 @@ type_expr
         }
         break;
       }
+    case variable_type:
+      // we must still figure out how to handle polytypes in sorting
     default: assert(false); dst=nullptr; // avoid ``uninitialized'' warning
     }
     dst->splice(dst->end(),type_perm,type_perm.begin());
@@ -1659,6 +1699,7 @@ void type_expr::print(std::ostream& out) const
 { switch(tag)
   { case undetermined_type: out << '*'; break;
     case primitive_type: out << prim_names[prim()]; break;
+    case variable_type: out << static_cast<char>('A' + typevar_variant); break;
     case function_type: out << *func_variant; break;
     case row_type: out << '[' << *row_variant << ']'; break;
     case tuple_type:
