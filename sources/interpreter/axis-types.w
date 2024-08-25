@@ -209,6 +209,7 @@ class type_expr;
 using type_p = type_expr*;
 using const_type_p = const type_expr*;
 using type_ptr = std::unique_ptr<type_expr>;
+using const_type_ptr = std::unique_ptr<const type_expr>;
 
 @*2 Type lists.
 %
@@ -1917,8 +1918,8 @@ raw_type_list make_type_list(raw_type_list l,type_p t)
 In this section we make a start towards allowing type expressions to be
 universally quantified over types, so that we can write for instance
 $([[T]]\to[T])$ for arbitrary type $T$, as type of the row-of-rows concatenation
-function. When we started writing this section, that built-in function and some
-similar ones were already in the language, and were handled by special code when
+function. When we started writing this section, that built-in function, and some
+similar ones, were already in the language, and were handled by special code when
 it comes to type checking (overloaded) function calls. What we shall do here
 therefore generalises and will replace that code, making such higher order
 functions a general feature of the language that is also available for user
@@ -1987,6 +1988,327 @@ invent a recursive type to force a solution to the type equation $S=[S]$ is
 rejected. One reason for this is, that we do not want unification to have as
 side effect to extend the global type tables in order to represent the
 substitution needed.
+
+@ Apart from a Boolean result, we want unification to return a list of
+substitutions. We define a simple structure with a vector of pointers that can
+be set (once) to an equivalent expression for each variable, and which also
+stores the first number of a variable that can so be substituted for (variable
+below this threshold behave just like primitive types). Some methods are
+provided to easily assign a type expression to a type variable, test whether
+this has been done, and as help in performing substitutions, to renumber type
+variables taking into account that those that have been assigned to will
+disappear from the type by the substitution.
+
+@< Type definitions @>=
+struct type_assignment
+{ unsigned int var_start; // first |variable_type| number that may vary
+  std::vector<const_type_ptr> equiv; // variable substitutions go here
+@)
+  type_assignment(unsigned int fix_nr, unsigned int var_nr)
+  : var_start(fix_nr)
+  , equiv(var_nr)
+    // default initialises |equiv| entries, we cannot say ``to |nullptr|''
+  {}
+@)
+  unsigned int size() const @+{@; return equiv.size(); }
+  void append(const type_assignment& a);
+  const_type_p equivalent (unsigned int i) const
+  {@; return i<var_start ? nullptr : equiv[i-var_start].get(); }
+  void set_equivalent(unsigned int i, const_type_p p)
+  {@; assert (i>=var_start);
+    equiv[i-var_start]=std::make_unique<type_expr>(p->copy());
+  }
+  unsigned int renumber(unsigned int i) const
+  // reflect removal of variables assigned here
+  { for (unsigned int j=i; j-->var_start; )
+      if (equiv[j-var_start]!=nullptr)
+        --i; // take into account removal of |j|
+    return i;
+  }
+};
+
+@ When we append to the |equiv| list, we must make fresh copies of the
+pointed-to |type_expr| values that we are going to own.
+
+@< Function definitions @>=
+void type_assignment::append(const type_assignment& a)
+{ equiv.reserve(equiv.size()+a.equiv.size());
+  for (const auto& entry : a.equiv)
+    if (entry==nullptr)
+      equiv.push_back(nullptr);
+    else
+      equiv.push_back(std::make_unique<type_expr>(entry->copy()));
+}
+
+
+@ We can now declare the unification function, and also a function
+|substitution| that performs a substitution according to a |type_assignment|
+into a |type_expr| value. The latter produces a freshly built |type_expr|, while
+neither of them takes ownership of (parts of) their argument types, which are
+therefore passed by (non owning) constant reference. The final argument to
+|can_unify| serves a technical purpose: initially |false|, setting it to |true|
+in certain recursive calls allows ensuring termination. The |type_expr|
+arguments here should not contain any undetermined subexpressions; to achieve
+this, a caller may need to replace each such occurrence by a fresh (only used
+here) type variable, and add a slot for it in the |type_assignment|.
+
+@< Declarations of exported functions @>=
+bool can_unify(const type_expr& P, const type_expr& Q, type_assignment& assign,
+               bool freeze=false);
+type_expr substitution(const type_expr& M, const type_assignment& assign);
+
+@ We start with giving the easier |substitution| function. It copies the type
+with recursive propagation of the substitution, which kicks in when an active
+type variable is encountered. This is essentially a variation of the recursive
+method |type_expr::copy|, but not having access to private members of
+|type_expr| the implementation must be modified. The result is constructed on
+the way back in a recursive traversal of the type, mostly using the |mk| family
+type-building functions which return a |type_ptr|, in which case we move from
+the pointed to |type_expr| to the result (if the compiler manages to optimise
+the move on returning by moving directly to a final destination, then it must
+ensure this move takes place before the |type_ptr| destructor is run, so this is
+safe). In most cases we just call such a function matching the kind of type we
+are at, using recursion in its arguments to transform the type components before
+it gets called.
+
+For |tabled| types we just return a copy of the type, without expansion, which
+avoids the non-termination of the recursion. This is a valid possibility,
+because tabled types cannot currently involve type variables. It does however
+point to difficulty that should be dealt with in the future: one often would
+like recursive types (like search trees) to be seen as instances of user defined
+type constructors, whose application to a concrete type would result in such a
+recursive type; when that becomes possible, one needs to find a solution to
+dealing with that here (ideally it would suffice to keep the recursive
+constructor and continue the substitution into its arguments, like for other
+kinds of types).
+
+The case of a |variable_type| is the only one where something more interesting
+happens; we shall deal with this in a separate section.
+
+@< Function definitions @>=
+
+type_expr substitution(const type_expr& M, const type_assignment& assign)
+{ type_ptr result;
+  switch (M.raw_kind())
+  { case primitive_type: return type_expr::primitive(M.prim());
+    case function_type: result =
+      mk_function_type(substitution(M.func()->arg_type,assign),
+                       substitution(M.func()->result_type,assign));
+    break;
+    case row_type:
+      result = mk_row_type(substitution(M.component_type(),assign));
+    break;
+    case tuple_type:
+    case union_type:
+    { dressed_type_list aux;
+      for (wtl_const_iterator it(M.tuple()); not it.at_end(); ++it)
+        aux.push_back(substitution(*it,assign));
+      if (M.raw_kind()==tuple_type)
+        return type_expr::tuple(aux.undress());
+      return type_expr::onion(aux.undress());
+    }
+    case tabled: return type_expr::tabled_nr(M.type_nr());
+    case variable_type:
+      @< If a type is associated in |assign| to type variable
+         |M.typevar_count()|, return a copy of that type into which
+         substitution was recursively applied; otherwise return a copy of the
+         type variable itself @>
+    default: assert(false);
+  }
+  return std::move(*result);
+}
+
+@ When setting values for type variables in |assign|, we shall refuse type
+expressions that directly or indirectly refer back to the variable in question
+itself, which should ensure that the code below steers clear of an endless
+recursion.
+
+The |equivalent| method looks up any substitution recorded for a type
+variable, with a null pointer signalling a negative result. This makes
+performing the substitution, if called for, quite easy.
+
+@< If a type is associated in |assign|... @>=
+{ auto c = M.typevar_count();
+  auto p = assign.equivalent(c);
+  return p==nullptr
+    ? type_expr::variable(assign.renumber(c)) : substitution(*p,assign);
+}
+
+@ Next we define the unification procedure, which is called |can_unify| since
+returns a Boolean value indicating whether unification succeeded. In case of
+success the substitutions made to achieve unification are recorded in |assign|;
+the actual unified type could be obtained by a subsequent call to |substitute|,
+but in practice that is often not necessary. In case of failure, the caller
+should ignore (or wipe out) any substitutions that might be recorded in
+|assign|.
+
+The procedure is in principle quite straightforward: recursively traverse both
+types, comparing their tags; fail whenever a difference not involving a type
+variable is found; treat type variables already substituted for as their
+equivalent; for other cases involving a type variable record the unification
+requested as a substitution for that variable and (locally) succeed.
+
+Some modifications to this simple scheme are necessary. When we produce a
+substitution for some (previously unassigned) type variable, we must verify that
+the substituted type does not directly or indirectly (via established
+substitutions for other variables) contain the same type variable, since that
+would imply a recursive relation for the substituted type that we do not want to
+introduce. There is also a difficulty with tabled types: they should normally be
+interpreted as the type their expansion (the type they were equated to), but if
+one freely performs expansions in |P| end |Q|, there is no guarantee of
+termination if some of the tabled types are recursively defined. Our solution to
+this difficulty is to use the fact that such expansions should not contain any
+type variables at all, so once a tabled type is encountered, we know that any
+future substitutions can only come from the other type (the one the expansion is
+to be unified with). We record this information by ensuring that the expanded
+type is in the second position (argument |Q|) and set |freeze=true| in the
+recursive call. Then if in the recursion we encounter another tabled type in
+|P|, we know that we are just asking for type equality and can stop the
+recursive process; in this way we know the traversal of |P|, and therefore the
+unification process, will necessarily terminate.
+
+@< Function definitions @>=
+
+bool can_unify(const type_expr& P_orig, const type_expr& Q_orig,
+     type_assignment& assign, bool freeze)
+{ const_type_p P=&P_orig, Q=&Q_orig;
+  auto P_kind = P_orig.raw_kind(), Q_kind = Q_orig.raw_kind();
+  @< Handle cases where |P_kind| or |Q_kind| is |tabled|: depending on |freeze|
+     and which one is |tabled|, maybe swap, expand |Q| and set |freeze|,
+     or |return| the result of testing |P==Q| as tabled names @>
+  @< If |P| or |Q| is a type variable, expand any existing substitution
+     in |assign| for them, or record a new one and return |true|, or if
+     one of them fixed in the context |return| whether |P==Q| @>
+  if (P_kind!=Q_kind)
+    return false;
+    // with name expansions behind us, the type tags must match to succeed
+  switch(P_kind)
+  {
+  case primitive_type: return P->prim()==Q->prim();
+  case function_type: return
+    can_unify(P->func()->arg_type,Q->func()->arg_type,assign,freeze) @|
+    and
+    can_unify(P->func()->result_type,Q->func()->result_type,assign,freeze);
+  case row_type: return
+    can_unify(P->component_type(),Q->component_type(),assign,freeze);
+  case tuple_type: case union_type:
+    {
+      for(raw_type_list p = P->tuple(), q=Q->tuple();
+          p!=nullptr or q!=nullptr;
+          p = p->next.get(), q=q->next.get())
+      { if (p==nullptr or q==nullptr)
+          return false; // unequal length lists
+        if (not can_unify(p->contents,q->contents,assign,freeze))
+          return false; // some subtype fails unification
+      }
+      return true;
+    }
+  default: assert(false); // other cases were eliminated before the |switch|
+    return false; // keep compiler happy
+  }
+}
+
+@ We use the |freeze| argument as follows: when it is set, it indicates that |Q|
+is a monotype considered during construction of the tabled types
+(because it is, or descends from, the right hand side of a tabled
+type definition). If so, expanding any tabled |P| can be avoided, as unification
+is possible only if |Q| is the same tabled type (since table construction
+ensures that equivalent types are identified).
+
+@< Handle cases where |P_kind| or |Q_kind| is |tabled|... @>=
+{
+  if (P_kind==tabled)
+  { if (Q_kind==tabled)
+      return P->type_nr()==Q->type_nr();
+      // tabled types were processed, only identical is equal
+    else if (freeze)
+      return false; // $P$ is tabled and frozen, $Q$ not tabled: they differ
+    std::swap(P,Q);
+    std::swap(P_kind,Q_kind); // and fall through
+  }
+  if (Q_kind==tabled)
+@/{@; Q=&Q->expansion();
+    freeze=true;
+    Q_kind=Q->raw_kind();
+    assert(Q_kind!=tabled);
+  }
+}
+
+@ The code below is basically symmetric in |P| and |Q|, but we cannot swap them
+here due to the asymmetric interpretation of |freeze|; therefore we write out
+the two cases considered. What we do with type variables is somewhat similar to
+what was done with tabled type names in case an assignment was already recorded
+for them in~|assign| (using |assign.equivalent| instead of |expansion|), but we
+also have to treat the cases where the type variable is introduced as abstract
+in the context, so that we cannot substitute for it, and the case where
+unification really comes into play, where the type name is variable and not yet
+substituted for. In the latter case we just record in |assign| the other type
+expression as the equivalent of this type variable, and return (local) success
+of the unification. we do however test that we are not substituting an
+expression that involves the type variable itself, which as mentioned is
+considered a failure of unification.
+
+@< If |P| or |Q| is a type variable... @>=
+{ const_type_p p; // we first substitute already assigned type variables
+  while (P_kind==variable_type and
+         (p=assign.equivalent(P->typevar_count()))!=nullptr)
+    P_kind=(P=p)->raw_kind(); // replace |P| by type previously assigned to it
+  while (Q_kind==variable_type and
+         (p=assign.equivalent(Q->typevar_count()))!=nullptr)
+    Q_kind=(Q=p)->raw_kind(); // replace |Q| by type previously assigned to it
+@)
+  if (P_kind==variable_type)
+  { auto c = P->typevar_count();
+    if (c>=assign.var_start)
+      // then (due to substitutions above) we can assign to |P|
+    {
+      if (is_free_in(*Q,c,assign))
+        return false;
+      assign.set_equivalent(c,Q);
+      return true;
+    }
+    else // now |P| is abstract type fixed in the context; return whether |P==Q|
+      return Q_kind==variable_type and Q->typevar_count()==c;
+  }
+  if (Q_kind==variable_type)
+  { auto c = Q->typevar_count();
+    if (c>=assign.var_start)
+      // then (due to substitutions above) we can assign to |Q|
+    {
+      if (is_free_in(*P,c,assign))
+        return false;
+      assign.set_equivalent(c,P);
+      return true;
+    }
+    else return false; // since we know that |P| is not a type variable
+  }
+}
+
+@ The test for non-containment of a type variable is best done by a local
+recursive function:
+@< Local function def... @>=
+bool is_free_in(const type_expr& tp, unsigned int nr,
+                const type_assignment& assign)
+{ switch(tp.raw_kind())
+  {
+  case variable_type:
+    if (@[auto p=assign.equivalent(tp.typevar_count())@;@])
+      return is_free_in(*p,nr,assign);
+      // unpack assigned type variable, and retry
+    return tp.typevar_count()==nr;
+  case row_type: return is_free_in(tp.component_type(),nr,assign);
+  case function_type: return
+    is_free_in(tp.func()->arg_type,nr,assign) or
+    is_free_in(tp.func()->result_type,nr,assign);
+  case tuple_type: case union_type:
+    for(raw_type_list p = tp.tuple(); p!=nullptr; p = p->next.get())
+      if (is_free_in(p->contents,nr,assign))
+        return true;
+    return false;
+  default: // |undetermined| (shouldn't happen), |primitive_type|, |tabled|
+    return false;
+  }
+}
 
 @*1 Specifying types by strings.
 %
