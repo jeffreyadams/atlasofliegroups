@@ -1080,9 +1080,8 @@ for (wel_const_iterator it(elist); not it.at_end(); ++it)
       throw; // any deeper error is propagated to be reported
     else if (err.offender.kind==list_display)
       // then wrap variants in row-of
-      for (auto it=err.variants.wbegin(); not err.variants.at_end(it); ++it)
-        it->set_from(type_expr(type_ptr(new type_expr(std::move(*it)))));
-        // row-of |*it|
+      for (auto jt=err.variants.wbegin(); not err.variants.at_end(jt); ++jt)
+        jt->set_from(type_expr::row(std::move(*jt))); // row-of |*it|
     conflicts.append(std::move(err.variants)); // then join to our |conflicts|
   }
 }
@@ -2879,7 +2878,7 @@ type_list pattern_list_types(const patlist& p)
 type_expr pattern_type(const id_pat& pat)
 {@; return (pat.kind&0x2)==0
   ? unknown_type.copy()
-  : type_expr(pattern_list_types(pat.sublist));
+  : type_expr::tuple(pattern_list_types(pat.sublist));
 }
 
 @ Here we count the number or list the identifiers in a pattern. The latter
@@ -3291,7 +3290,7 @@ case lambda_expr:
     rt=&dummy; // in void context there is no return type to set
   else
     @/throw type_error(e,
-                       type_expr(arg_type.copy(),unknown_type.copy()),
+                       type_expr::function(arg_type.copy(),unknown_type.copy()),
                        type.copy());
 @/layer new_layer(count_identifiers(pat),rt);
   thread_bindings(pat,arg_type,new_layer,false);
@@ -3327,7 +3326,7 @@ case rec_lambda_expr:
   if (not pattern_type(pat).specialise(arg_type))
     // do |pat| structure and |arg_type| conflict?
     throw expr_error(e,"Function argument pattern does not match its type");
-  type_expr f_type(arg_type.copy(),fun.result_type.copy());
+  type_expr f_type=type_expr::function(arg_type.copy(),fun.result_type.copy());
     // not |const| though it cannot change
   if (not type.specialise(f_type) and type!=void_type)
       @/throw type_error(e, std::move(f_type), type.copy());
@@ -6059,7 +6058,7 @@ from such a subscription. We also make |tp| point to the index type used.
   type_list it_comps; // type of ``iterator'' value (pattern) named in the loop
   it_comps.push_front(std::move(comp_type));
   it_comps.push_front(type_expr(inx_type->copy()));
-  type_expr it_type(std::move(it_comps));
+  type_expr it_type = type_expr::tuple(std::move(it_comps));
     // build tuple type from index and component types
   if (not it_type.specialise(pattern_type(f.id)))
     throw expr_error(e,"Improper structure of loop variable pattern");
@@ -6880,7 +6879,8 @@ case op_cast_expr:
     const type_expr& res_t = entry->type().result_type;
     if (functype_specialise(type,ctype,res_t) or type==void_type)
       return p;
-    throw type_error(e,type_expr(ctype.copy(),res_t.copy()),type.copy());
+    throw type_error
+      (e,type_expr::function(ctype.copy(),res_t.copy()),type.copy());
   }
 @)// now we have no match from the overload table, try generic operations
   if (is_special_operator(c->oper))
