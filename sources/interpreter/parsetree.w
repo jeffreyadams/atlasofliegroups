@@ -1740,7 +1740,7 @@ expr_p make_lambda_node(raw_patlist p, raw_type_list tl, expr_p b,
   }
   else
 @/{ pat_l.reverse(); pattern=id_pat(std::move(pat_l));
-  @/type_l.reverse(); parameter_type=type_expr(std::move(type_l));
+  @/type_l.reverse(); parameter_type=type_expr::tuple(std::move(type_l));
   // make tuple type
   }
   return new expr(lambda_p(new@| lambda_node
@@ -1763,7 +1763,7 @@ expr_p make_rec_lambda_node(id_type self,
   }
   else
 @/{ pat_l.reverse(); pattern=id_pat(std::move(pat_l));
-  @/type_l.reverse(); parameter_type=type_expr(std::move(type_l));
+  @/type_l.reverse(); parameter_type=type_expr::tuple(std::move(type_l));
   // make tuple type
   }
   return new expr(rec_lambda_p(new@| rec_lambda_node
