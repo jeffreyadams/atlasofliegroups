@@ -32,11 +32,11 @@
 %}
 %union {
   unsigned short code; // for various kinds of detailing of tokes or options
-  short id_code;    // for identifier codes, or defined types
+  unsigned short id_code;  // for identifier codes, a |Hash_table| index
   std::string* str;  // for integer or string denotations
   struct { short id, priority; } oper; /* for operator symbols */
   atlas::interpreter::raw_form_stack ini_form;
-  unsigned short type_code; /* For type names */
+  unsigned short type_code; /* For primiitve type names */
   atlas::interpreter::expr_p    expression; /* For generic expressions */
   atlas::interpreter::raw_expr_list expression_list; /* list of expressions */
   atlas::interpreter::raw_let_list decls; /* declarations in a LET expression */
@@ -880,7 +880,7 @@ typedef_units :
 	| typedef_units ',' typedef_unit { $$=make_type_list($1,$3); }
 ;
 
-typedef_unit : TYPE_ID { $$=new type_expr($1); }
+typedef_unit : TYPE_ID { $$=make_tabled_type($1); }
 	| typedef_type {$$=$1.type_pt;}
 	| '(' typedef_unit ')' { $$=$2; }
 ;

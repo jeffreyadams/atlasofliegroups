@@ -357,33 +357,16 @@ types, a kind of type necessary to represent types with a recursive structure.
 This is not so much to ensure access only according to the current tag, but
 rather to be able to automatically insert a test for |tag==tabled| possibly
 followed by expansion. This makes the handling of tabled types transparent in
-most places, but there is a subtlety to be mentioned. The type definitions in
-the table should of course not be overwritten, and |expansion| returns a
-reference to constant to protect the |type_expr| values in the table against
-overwriting. This only works at the top level however: the methods |func|,
-|component_type| and |tuple| return pointers to non-|const|, which expose nodes
-one level down to modifications that effectively also alter the defined types.
-This is dangerous, and indeed has been a source of a bug in the past. However,
-this is not an oversight in the specification of those methods: it is
-fundamental to the implementation of our type checker that it can specialise
-initially undetermined parts of a type expressions obtained through these
-methods. The protection of the values of tabled types lies in the fact that two
-kinds of use of type expressions are disjoint: they can be used as a pattern to
-represent a required top-level structure of a type in a certain context (which
-can be viewed as implicitly polymorphic types with an implicit distinct type
-variable for each undetermined subtype) and as types of actual expressions
-(which is always the case when |tabled| types are encountered) which never have
-undetermined components. Ideally we should be using distinct types for the two
-use cases, but that is not (yet) the case.
+most places.
 
 Although variant members of a |union| with nontrivial special member functions,
 as is the case for smart pointer types, are allowed in \Cpp11, it then remains
 the programmer's responsibility to explicitly call constructors and destructors
-as those variants come and go, which effectively ruins the advantages of smart
-pointers. For this reason we use raw pointers here instead, and in particular
-|raw_type_list| rather than |type_list| for the |tuple_variant|. One drawback of
-that is that we will not be able to create a |type_list::iterator| for traversal
-of the list, but in practice weak iterators will always suffice.
+as those variants come and go, which effectively ruins most of the advantages of
+using smart pointers. For this reason we use raw pointers here instead, and in
+particular |raw_type_list| rather than |type_list| for the |tuple_variant|. One
+drawback of that is that we will not be able to create a |type_list::iterator|
+for traversal of the list, but in practice weak iterators will always suffice.
 
 There is one restriction on types that is not visible in the definition below,
 namely that the list of types referred to by the |tuple_variant| field cannot
@@ -404,36 +387,78 @@ class type_expr
     func_type* func_variant; // when |kind==function_type|
     type_p row_variant; // when |kind==row_type|
     raw_type_list tuple_variant; // when |kind==tuple_type| or |kind==union_type|
-    type_nr_type type_number; // when |kind==tabled_type|
+    type_nr_type tabled_variant; // when |kind==tabled_type|
   };
+@)
   class defined_type_mapping;
   static defined_type_mapping type_map;
 @)
 public:
-  type_tag raw_kind () const @+{@; return tag; } // don't translate |tabled|
-  const type_expr& untabled () const
-    @+{@; return tag==tabled ? expansion() : *this; }
-  type_tag kind () const @+{@; return untabled().tag; }
-  primitive_tag prim () const     @+{@; return untabled().prim_variant; }
-  func_type* func() const        @+{@; return untabled().func_variant; }
-  type_p component_type () const @+{@; return untabled().row_variant; }
-  raw_type_list tuple () const   @+{@; return untabled().tuple_variant; }
-  type_nr_type type_nr () const @+{@; assert(tag==tabled); return type_number; }
-  id_type type_name () const; // identifier corresponding to |type_number|
-  const type_expr& expansion () const; // type corresponding to |type_number|
+  @< Ordinary methods of the |type_expr| class @>@;
 @)
-  @< Methods of the |type_expr| class @>@;
- };
+public:
+  @< Static methods of |type_expr| that will access |type_map| @>@;
+};
 
-@ Every variant of the union gets its own constructor that directly constructs
-the |type_expr| structure under this variant of the structure, and in addition
-there is a default constructor that sets |kind==undetermined_type| and
+@ We start with a number of public methods that allow testing the actual variant
+of a |type_expr|, and after that the data specific to that variant. We can
+distinguish |tabled| types using the |raw_kind| method. But often we want to
+transparently treat them as the type they are equated to, in which case one can
+call |untabled| to automatically expand when needed; since the expanded type is
+already present in storage, this is a cheap transformation. Most commonly one
+uses the |kind| method that does this expansion rather than |raw_kind|, and the
+access methods for the variant-specific data all do this expansion implicitly.
+Since tabled types cannot be equated to type variables, the method
+|typevar_count| is an exception and skips the expansion.
+
+There is a subtlety to be mentioned here. The type definitions in the table
+should of course not be overwritten, and |expansion| returns a reference to
+constant to protect the |type_expr| values in the table against overwriting.
+This only works at the top level however: the methods |func|, |component_type|
+and |tuple| return pointers to non-|const|, which expose nodes one level down to
+modifications that would effectively also alter the defined types. This is
+dangerous, and indeed has been a source of a bug in the past. However, this is
+not an oversight in the specification of those methods: it is fundamental to the
+implementation of our type checker that it can specialise initially undetermined
+parts of a type expressions obtained through these methods. It might be argued
+that the mentioned methods should be given in pairs (|const| from |const| and
+non-|const| from non-|const|) but currently that does not compile either; it
+could be worth while figuring out exactly what is the problem.
+
+Given this situation, the actual protection of the values of tabled types
+against accidental modification lies in the fact that two kinds of use of type
+expressions are disjoint: they can be used either as a pattern to represent a
+required or deduced top-level structure of a type in a certain context (which
+can be viewed as implicitly polymorphic types with an implicit distinct type
+variable for each undetermined subtype) or as types (completely) specified by
+the user; the latter is always the case with |tabled| types, and these never
+have undetermined components. Ideally we should be using distinct classes to
+represent the two use cases, but that is not (yet) the case.
+
+@< Ordinary methods of the |type_expr| class @>=
+type_tag raw_kind () const @+{@; return tag; } // don't translate |tabled|
+const type_expr& untabled () const
+  @+{@; return tag==tabled ? expansion() : *this; }
+type_tag kind () const @+{@; return untabled().tag; }
+primitive_tag prim () const     @+{@; return untabled().prim_variant; }
+unsigned int typevar_count () const @+{@; return typevar_variant; }
+func_type* func() const        @+{@; return untabled().func_variant; }
+type_p component_type () const @+{@; return untabled().row_variant; }
+raw_type_list tuple () const   @+{@; return untabled().tuple_variant; }
+type_nr_type type_nr () const @+{@; assert(tag==tabled); return tabled_variant; }
+id_type type_name () const; // identifier corresponding to |tabled_variant|
+const type_expr& expansion () const; // type corresponding to |tabled_variant|
+
+
+@ There is a default constructor that sets |kind==undetermined_type| and
 constructs no variant at all (in \Cpp\ \emph{at most} one variant of a union is
-active). Since all variants of the |union| are POD types (such as raw pointers)
-it may be convenient to first default-construct a |type_expr| and then change
-its variant while assigning to the corresponding field. The destructor for
-|type_expr| must take care to explicitly call |delete| if the active field is a
-pointer.
+active). For every variant of the union there is a factory method, which first
+default-constructs a |type_expr result@;|, and then changes its variant while
+assigning to the corresponding field. This is possible because all variants of
+the |union| are POD types (such as raw pointers): no assignment will involve
+(incorrectly) destructing the ``previous value'' of the field. The destructor
+for |type_expr| does (by calling |clear|) take care to destruct the active
+field, explicitly calling |delete| if that field is a pointer.
 
 A move constructor for |type_expr| is provided, but no copy constructor;
 instead of the latter we provide a |copy| method explicitly creating a deep
@@ -456,31 +481,45 @@ indicating whether this was possible, and if so makes the necessary
 specialisations to our type. That is done by copying, so the caller does not
 require, acquire, or lose ownership of the pattern for/by this method.
 
-The constructors for the different variants all take rvalue reference arguments
-to the information to be incorporated, and start by setting |tag| appropriately.
-For the row, tuple, and union types the references are to smart pointers
-(|unique_ptr| instances) that are thus ``passed by check'', whose cashing takes
-place inside the constructor by calling the |unique_ptr::release| method while
-initialising an appropriate raw pointer field. For function types there are two
-rvalue references to |type_expr| fields, for argument and result types, whose
-contents will be move assigned inside the constructor.
+The various factory methods all take rvalue reference arguments to the
+information to be incorporated, which is moved into the appropriate field after
+setting |tag| appropriately. For the row, tuple, and union types the references
+are to smart pointers (|unique_ptr| instances) that are thus ``passed by
+check''; cashing these checks takes place inside the constructor by calling the
+|unique_ptr::release| method when initialising an appropriate raw pointer field.
+For function types there are two rvalue references to |type_expr| fields, for
+argument and result types, whose contents will be move assigned inside the
+factory function.
 
-@< Methods of the |type_expr| class @>=
+@< Ordinary methods of the |type_expr| class @>=
 
 type_expr() noexcept : tag(undetermined_type) @+{}
-explicit type_expr(primitive_tag p)
-  : tag(primitive_type), prim_variant(p) @+{}
-inline type_expr(type_expr&& arg, type_expr&& result);
- // for function types
-explicit type_expr(type_ptr&& c)
-  : tag(row_type), row_variant(c.release()) @+{}
-explicit type_expr(type_list&& l,bool is_union=false)
-  // tuple and union types
-  : tag(is_union ? union_type: tuple_type)
-  , tuple_variant(l.release())
-  @+{}
-explicit type_expr(type_nr_type type_nr)
-  : tag(tabled), type_number(type_nr) @+{}
+static type_expr primitive(primitive_tag p)
+@/{@; type_expr result; result.tag=primitive_type, result.prim_variant=p;
+    return result;
+  }
+static type_expr variable(unsigned int nr)
+@/{@; type_expr result; result.tag=variable_type, result.typevar_variant=nr;
+    return result;
+  }
+static type_expr function(type_expr&& arg, type_expr&& result);
+static type_expr row(type_expr&& t)
+@/{@; type_expr result;
+    result.tag=row_type, result.row_variant=new type_expr(std::move(t));
+    return result;
+  }
+static type_expr tuple(type_list&& l)
+@/{@; type_expr result; result.tag=tuple_type, result.tuple_variant=l.release();
+    return result;
+  }
+static type_expr onion(type_list&& l)
+@/{@; type_expr result; result.tag=union_type, result.tuple_variant=l.release();
+    return result;
+  }
+static type_expr tabled_nr(type_nr_type type_nr)
+@/{@; type_expr result; result.tag=tabled, result.tabled_variant=type_nr;
+    return result;
+  }
 @)
 type_expr(type_expr&& t) noexcept; // move constructor
 type_expr& operator=(type_expr&& t) noexcept; // do move assignment only
@@ -495,15 +534,17 @@ void set_from(type_expr&& p) noexcept; // shallow copy
 bool specialise(const type_expr& pattern);
   // try to match pattern, possibly modifying |*this|
 bool can_specialise(const type_expr& pattern) const;
-  // tell whether |specialise| would succeed
-@)
+ // tell whether |specialise| would succeed
+
+@ Here are some more mundane public methods of |type_expr|.
+
+@< Ordinary methods of the |type_expr| class @>=
   bool operator== (const type_expr& y) const;
   bool operator!= (const type_expr& y) const @+{@; return not((*this)==y); }
-  bool is_unstable() const; // whether |undetermined| components elements are present
+  bool is_unstable() const;
+    // whether |undetermined| components elements are present
 @)
 void print(std::ostream& out) const;
-@)
-@< Static methods of |type_expr| that will access |type_map| @>
 
 @ For that definition to be processed properly, we must pay some attention to
 ordering of type definitions, because of the recursions present. The structure
@@ -537,17 +578,19 @@ struct func_type
   {@; return func_type(arg_type.copy(),result_type.copy()); }
 };
 
-@ The constructor for function types could be defined inside the structure
-definition, since |func_type| is not (and cannot be) a complete type there. The
-code below is put in the header file after the type definitions, so the
-|func_type| definition we just saw, and in particular its constructor used here,
-will be fully known at that point.
+@ The factory method for function types could not be defined inside the
+definition of |type_expr|, since |func_type| is not (and cannot be) a complete
+type there. The code below is put in the header file after the type definitions,
+so the |func_type| definition we just saw, and in particular its constructor
+used here, will be fully known at that point.
 
 @< Template and inline function definitions @>=
-type_expr::type_expr(type_expr&& arg, type_expr&& result)
-@/ : tag(function_type)
-   , func_variant(new func_type(std::move(arg),std::move(result)))
-   @+{}
+inline type_expr type_expr::function(type_expr&& arg_tp, type_expr&& res_tp)
+{ type_expr result;
+  result.tag=function_type;
+  result.func_variant=new func_type(std::move(arg_tp),std::move(res_tp));
+  return result;
+}
 
 @ Instead of a regular copy constructor, which would have to make a deep copy
 (because these descendants are owned by the object), |type_expr| provides a
@@ -580,43 +623,44 @@ type_expr type_expr::copy() const
     case tuple_type: case union_type:
       @< Assign a deep copy of |tuple_variant| to |result.tuple_variant| @>
     break;
-    case tabled: result.type_number=type_number; break;
+    case tabled: result.tabled_variant=tabled_variant; break;
   }
   return result;
 }
 
 @ We create a duplicate list by applying the |copy| method for all members of
 the list accessed from |tuple_variant|. The code below originally
-placement-constructed that list into the |result.tuple_variant| field,
-initially default constructing the list, and then adding the components using
-|insert| through an output iterator |oit| pointing at the end of the list.
-This had to be modified when |tuple_variant| was made to by a raw pointer,
-from which we cannot create an |type_list::iterator| (this is one of the rare
-places in the code where that matters). So now we instead create an initially
-empty |type_list dst@;| and make an iterator for it; then after creating the
-nodes of the list, the |type_list| is demoted to |raw_type_list| by calling
-its |release| method, which raw pointer is assigned to |result.tuple_variant|.
+placement-constructed that list into the |result.tuple_variant| field, which at
+that time was a |simple_list| instance; it initially default constructed the
+list, and then added the components using |insert| through an output iterator
+|oit| pointing at the end of the list. This had to be modified when
+|tuple_variant| was made to be a raw pointer, from which we cannot create a
+|type_list::iterator| (this is one of the rare places in the code where that
+matters). Nonetheless this code is straightforward: we use a local
+|dressed_type_list| (a |sl_list| instance) for which we can repeatedly call
+|push_back|, and for the input |raw_type_list tuple_variant@;| from which we
+want to copy, we can do instead of a |type_list::iterator| with a weak iterator.
+Once constructed we must |undress| to demote to a |simple_list|, and then
+|release| to get the raw pointer to be assigned to |result.tuple_variant|.
 
 @< Assign a deep copy of |tuple_variant| to |result.tuple_variant| @>=
 {
-  wtl_const_iterator it(tuple_variant);
-  type_list dst;
-  for (type_list::iterator oit = dst.begin(); not it.at_end(); ++it,++oit)
-    dst.insert(oit,it->copy());
-  result.tuple_variant = dst.release(); // incorporate and transfer ownership
+  dressed_type_list dst;
+  for (wtl_const_iterator it(tuple_variant); not it.at_end(); ++it)
+    dst.push_back(it->copy());
+  result.tuple_variant = dst.undress().release();
+  // incorporate and transfer ownership
 }
 
-@ The method |clear|, doing the work for the destructor, must similarly clean
-up afterwards, with the recursion again being implicit. We set |tag =
-undetermined_type| to indicate that no variant is active; this condition is
-tested in the |set_from| method (and also in by the destructor, though if
-|clear| is \emph{called by} the destructor, that test is already behind us).
+@ The method |clear| does the work for the |type_expr| destructor, cleaning up
+the nodes accessible from here before setting |tag=undetermined_type|. The
+reason for separating this out from the destructor is that it allows variables
+to be made ready for reuse. The recursion of this method is implicit, as the
+|delete| calls will may run destructors that call |clear| again.
 
-There is no reason to use a smart pointers as variant of a union, since one
-must still explicitly propagate destruction to the active variant, as happens
-here for the |tuple_variant| field. If it were done here, then all that would
-change is that the code below would have to call their destructors rather than
-call |delete| directly.
+If some variants of the |union| had been smart pointers, then we would have
+needed to explicitly call their destructors, rather than |delete|. This would
+not really have made the code simpler or more transparent.
 
 @< Function definitions @>=
 void type_expr::clear() noexcept
@@ -640,7 +684,10 @@ previously had |tag==undetermined_type|. We test this condition using an
 |assert| statement (rather than throwing |logic_error|) to honour the
 |noexcept| specification.
 
-The moving copy constructor is nearly identical to the |set_from| method.
+Using assignments (rather than placement-|new|) in |set_from| is possible since
+all variants are POD types. The moving copy constructor is nearly identical to
+|set_from| method, so we call the default constructor first, and then |set_from|
+to move the top-level value.
 
 @h <stdexcept>
 @< Function definitions @>=
@@ -654,26 +701,15 @@ void type_expr::set_from(type_expr&& p) noexcept
     case function_type: func_variant=p.func_variant; break;
     case row_type: row_variant=p.row_variant; break;
     case tuple_type: case union_type: tuple_variant = p.tuple_variant; break;
-    case tabled: type_number=p.type_number;
+    case tabled: tabled_variant=p.tabled_variant;
   }
   p.tag=undetermined_type;
   // detach descendants, so |p.clear()| will destroy top-level only
 }
 @)
 type_expr::type_expr(type_expr&& x) noexcept // move constructor
-: tag(x.tag)
-{ switch(tag) // move top node
-  { case undetermined_type: break;
-    case primitive_type: prim_variant=x.prim_variant; break;
-    case variable_type: typevar_variant=x.typevar_variant; break;
-    case function_type: func_variant=x.func_variant; break;
-    case row_type: row_variant=x.row_variant; break;
-    case tuple_type: case union_type: tuple_variant = x.tuple_variant; break;
-    case tabled: type_number=x.type_number; break;
-  }
-  x.tag=undetermined_type;
-  // detach descendants, so destructor of |x| will do nothing
-}
+: type_expr()
+{@; set_from(std::move(x)); }
 
 @ For move assignment we reuse the |set_from| method, and for |swap| we do a
 move construction and two |set_from| calls, unless the |tag| fields match, in
@@ -700,7 +736,7 @@ void type_expr::swap(type_expr& other) noexcept
       case row_type: std::swap(row_variant,other.row_variant); break;
       case tuple_type: case union_type:
         std::swap(tuple_variant,other.tuple_variant); break;
-      case tabled: std::swap(type_number,other.type_number); break;
+      case tabled: std::swap(tabled_variant,other.tabled_variant); break;
     }
   else
   @/{@;
@@ -712,17 +748,17 @@ void type_expr::swap(type_expr& other) noexcept
 
 @ The |specialise| method is mostly used to either set a completely undetermined
 type to a given pattern, or to test if it already matches that pattern;
-sometimes however, we do know which of the two will be the case, nor exclude the
-possibility that that the type was in part already more specific then the
-pattern, while another part needs actual specialisation to match the pattern.
-Here ``a type matching a pattern'' means the type is at least as specific as the
-pattern (allowing the pattern to be transformed into the type by substitution
-for undetermined components), and specialising means replacing by something more
-specific. So upon success we are replacing the type for which the method is
-called by the most general common specialisation (called unifier) of its
-previous value and |pattern|. So the name of this method is somewhat misleading:
-specialisation is not necessarily to the |pattern| value itself, but to
-something matching |pattern|.
+sometimes however, we do not know which of the two will be the case, nor do we
+exclude the possibility that that the type was in part already more specific
+than the pattern, while another part needs actual specialisation to match the
+pattern. Here ``a type matching a pattern'' means the type is at least as
+specific as the pattern (allowing the pattern to be transformed into the type by
+substitution for undetermined components), and specialising means replacing by
+something more specific. So upon success we are replacing the type for which the
+method is called by the most general common specialisation (called unifier) of
+its previous value and |pattern|. So the name of this method is somewhat
+misleading: one specialises necessarily to the |pattern| value itself, but to
+something that matches |pattern|.
 
 In the case of an |undetermined_type|, |specialise| uses the |set_from| method
 to make |*this| a copy of |pattern|. In the other cases we only continue if
@@ -757,16 +793,16 @@ bool type_expr::specialise(const type_expr& pattern)
     {@; set_from(pattern.copy()); return true; }
      // by setting |*this| to a copy of  |pattern|
   if (tag==variable_type)
-    return true; // we should emit a substitution for type variable here as well
+    return true;
+    // we should emit a substitution for the type variable here as well
   if (pattern.tag==tabled)
   { if (tag==tabled) // both are defined type; see if they are the same
-      return type_number==pattern.type_number;
+      return tabled_variant==pattern.tabled_variant;
       // there are no accidental equalities
     return specialise(pattern.expansion());
   }
   if (tag==tabled)
-    return expansion().can_specialise(pattern);
-    // call |const| method here
+    return can_specialise(pattern); // call |const| method here
 @)
   if (pattern.tag!=tag) return false;
     // now it is impossible to refine if tags mismatch
@@ -808,7 +844,7 @@ bool type_expr::can_specialise(const type_expr& pattern) const
     return true;
   if (pattern.tag==tabled)
   { if (tag==tabled) // both are defined type; see if they are the same
-      return type_number==pattern.type_number;
+      return tabled_variant==pattern.tabled_variant;
       // there are no accidental equalities
     return can_specialise(pattern.expansion());
   }
@@ -858,7 +894,7 @@ bool type_expr::operator== (const type_expr& y) const
   { if (tag!=tabled and y.tag!=tabled) return false; // different structures
     return tag==tabled ? expansion()==y  : (*this)==y.expansion();
   }
-  switch (tag)
+  switch (tag) // we know that tags are equal, branch on which they are
   { case undetermined_type: return true;
     case primitive_type: return prim_variant==y.prim_variant;
     case variable_type: return typevar_variant==y.typevar_variant;
@@ -870,7 +906,7 @@ bool type_expr::operator== (const type_expr& y) const
        @< Find out and |return| whether all types in |tuple_variant|
           are equal to those in |y.tuple_variant| @>
     case tabled:
-      return type_number==y.type_number;
+      return tabled_variant==y.tabled_variant;
       // only equal type numbers give equal types here
   }
   assert(false); return true; // cannot be reached, but compilers don't trust it
@@ -926,20 +962,21 @@ having been input.
 
 The sub-class |type_expr::defined_type_mapping| is basically a vector of type
 expressions possibly paired to a type identifier and maybe a list of field names
-(for tuples or unions, mostly useful for the latter). The variant |type_number|
-of |type_expr| will record an \emph{index} into this vector (not the value of
-the possibly associated identifier). We provide a selection operation
-|defined_type| that returns a non owned reference the such a type expression.
-This class does not hide its data (though it does have one private method
-|dissect_type_to|), but the unique object of this class is a private member
-of |type_expr|, so access is mostly controlled by static methods of that class.
+(for tuples or unions, mostly useful for the latter). The variant
+|tabled_variant| of |type_expr| will record an \emph{index} into this vector
+(not the value of the possibly associated identifier). We provide a selection
+operation |defined_type| that returns a non owned reference the such a type
+expression. This class does not hide its data (though it does have one private
+method |dissect_type_to|), but the unique object of this class is a private
+member of |type_expr|, so access is mostly controlled by static methods of that
+class.
 
 The possibility to have unnamed types in the mapping will turn out to be useful
 in implementation, since by adding such entries we can ensure that all sub-types
 of types in the table are also present. For such unnamed types the type
 identifier will have the value $-1$, but their index can still be used as
-|type_number|. The |fields| component can also be unused (and empty); when set
-it records field names that usually are also bound to injector or projector
+|tabled_variant|. The |fields| component can also be unused (and empty); when
+set it records field names that usually are also bound to injector or projector
 functions in the overload table, but their presence here serves mostly for
 correctly interpreting |union|-controlled |case| expressions, which need to
 associate tags identifying the variants of a given |union| type.
@@ -968,7 +1005,7 @@ pass on information, the method |add_typedefs| used to enter a list of newly
 defined (potentially recursive) types into |type_map| is quite elaborate. Its
 argument is a list |defs| of pairings of a type identifier to a type expression.
 The potentially recursive nature of these definitions lies in that they can not
-only refer, using the |type_number| variant, to type already defined in the
+only refer, using the |tabled_variant| variant, to type already defined in the
 mapping, but also to the types they define themselves. For this purpose, those
 recursive type numbers start to count from |type_expr::table_size()| as it is
 before |add_typedefs| method is called. The return value is a list of the same
@@ -1019,10 +1056,10 @@ const std::vector<id_type>& type_expr::fields(type_nr_type type_number)
 
 @< Function definitions @>=
 id_type type_expr::type_name() const @+
-{@; return type_map[type_number].name; }
+{@; return type_map[tabled_variant].name; }
 
 const type_expr& type_expr::expansion() const @+
-{@; return type_map.defined_type(type_number); }
+{@; return type_map.defined_type(tabled_variant); }
 
 @ The definition of |type_expr::add_typedefs| is subtle and requires quite a bit
 of work, due to our requirement that all cases of type equivalence be
@@ -1218,7 +1255,7 @@ one receiving the root call, but instead of calling itself it calls |to_table|
 that in addition to recursive expansion takes care of extending |dst| and
 replacing the returned |type_expr| by one with |tag==tabled|.
 
-@< Methods of the |type_expr| class @>=
+@< Ordinary methods of the |type_expr| class @>=
 private:
   type_expr dissect_type_to (dressed_type_list& dst, type_nr_type& count) const;
   type_expr to_table (dressed_type_list& dst, type_nr_type& count) const;
@@ -1239,7 +1276,8 @@ type_expr type_expr::to_table (dressed_type_list& dst, type_nr_type& count) cons
 { if (tag==tabled)
     return copy(); // the buck stops here
   dst.push_back(dissect_type_to(dst,count));
-  return type_expr(count++); // type number that will refer to |dst.back()|
+  return type_expr::tabled_nr(count++);
+    // type number that will refer to |dst.back()|
 }
 @)
 type_expr
@@ -1247,16 +1285,22 @@ type_expr
 { switch(tag)
   {
   case function_type:
-    return type_expr(func_variant->arg_type.to_table(dst,count),
-                     func_variant->result_type.to_table(dst,count));
+    return type_expr::function
+      (func_variant->arg_type.to_table(dst,count),
+       func_variant->result_type.to_table(dst,count));
   case row_type:
-      return type_expr(type_ptr(new @|
-               type_expr(row_variant->to_table(dst,count))));
-  case tuple_type: case union_type:
+      return type_expr::row(row_variant->to_table(dst,count));
+  case tuple_type:
     { dressed_type_list l;
       for (wtl_const_iterator it(tuple_variant); not it.at_end(); ++it)
         l.push_back(it->to_table(dst,count));
-      return type_expr(l.undress(),tag==union_type);
+      return type_expr::tuple(l.undress());
+    }
+  case union_type:
+    { dressed_type_list l;
+      for (wtl_const_iterator it(tuple_variant); not it.at_end(); ++it)
+        l.push_back(it->to_table(dst,count));
+      return type_expr::onion(l.undress());
     }
   case tabled: assert(false);
 // we don't allow $\&{set\_type}~\&a=\&a$ or $\&{set\_type}~\&a=\&b,\&b=\ldots$
@@ -1568,12 +1612,12 @@ type) which was left behind (by |dissect_type_to|) in the argument |defs| to the
 no problem in accessing |defs|.
 
 The act of moving only the first representative of each equivalence class of
-types can cause a renumbering of |type_number| values to be necessary to
+types can cause a renumbering of |tabled_variant| values to be necessary to
 preserve meaning; this should only be the case for newly defined types, and they
 can only be referred to from other new types. We keep track of the
 correspondence between the |rank| value characterising the equivalence class and
-its new |type_number| value in the array |renumber|, which also serves to record
-which |rank| values have already been seen.
+its new |tabled_variant| value in the array |renumber|, which also serves to
+record which |rank| values have already been seen.
 
 @< For each equivalence class that has no representatives among the types
    already present, add a corresponding entry to |type_map|, and push to
@@ -1617,7 +1661,8 @@ renumbering just loops over the relevant part of |type_map|, does case
 distinction by |tag|, and invokes |renumber_type_nr_from_rank| wherever
 applicable.
 
-@d renumber_type_nr_from_rank(t) t=type_expr(renumber[type_array[(t).type_nr()].rank])
+@d renumber_type_nr_from_rank(t)
+   t=type_expr::tabled_nr(renumber[type_array[(t).type_nr()].rank])
 @< Update, for types beyond position |old_size|, their descendent types
    according to |renumber| @>=
 { for (auto it=type_map.begin()+old_size; it!=type_map.end(); ++it)
@@ -1682,7 +1727,8 @@ std::ostream& operator<<(std::ostream& out, const func_type& f)
   out << "->";
   if (f.result_type.raw_kind()==tuple_type or @|
       f.result_type.raw_kind()==union_type and f.result_type.tuple()!=nullptr)
-     print(out,f.result_type.tuple(),f.result_type.raw_kind()==tuple_type?',':'|');
+     print(out,f.result_type.tuple(),
+           f.result_type.raw_kind()==tuple_type?',':'|');
      // tuple, union
   else out << f.result_type; // other component type
   return out << ')';
@@ -1721,7 +1767,7 @@ void type_expr::print(std::ostream& out) const
       }
     break;
     case tabled:
-      if (type_map[type_number].name!=type_binding::no_id)
+      if (type_map[tabled_variant].name!=type_binding::no_id)
         out << main_hash_table->name_of(type_name());
       else out << expansion();
         // expand out when no identifier is attached
@@ -1763,6 +1809,7 @@ type_p make_function_type(type_p a,type_p r);
 type_p make_row_type(type_p c);
 type_p make_tuple_type(raw_type_list l);
 type_p make_union_type(raw_type_list l);
+type_p make_tabled_type(id_type nr);
 @)
 raw_type_list make_type_singleton(type_p raw);
 raw_type_list make_type_list(raw_type_list l,type_p t);
@@ -1800,24 +1847,31 @@ order.
 @< Function definitions @>=
 type_ptr mk_prim_type(primitive_tag p)
 { return p<nr_of_primitive_types ?
-    type_ptr(new type_expr(p)) :
+    std::make_unique<type_expr>(type_expr::primitive(p)) :
     type_ptr(mk_tuple_type(empty_tuple()));
 }
 
+type_ptr mk_type_variable(unsigned int i)
+{ return std::make_unique<type_expr>(type_expr::variable(i)); }
+
 type_ptr mk_function_type (type_expr&& a, type_expr&& r)
-{@; return type_ptr(new type_expr(std::move(a),std::move(r))); }
+{@; return std::make_unique<type_expr>
+        (type_expr::function(std::move(a),std::move(r))); }
 
 type_ptr mk_row_type(type_ptr&& c)
-{@; return type_ptr (new type_expr(std::move(c))); }
+{@; return std::make_unique<type_expr>(type_expr::row(std::move(*c))); }
 
 type_ptr mk_tuple_type (type_list&& l)
-{@; return type_ptr(new type_expr(std::move(l),false)); }
+{@; return std::make_unique<type_expr>(type_expr::tuple(std::move(l))); }
 
 type_ptr mk_union_type (type_list&& l)
-{ return type_ptr(l.singleton() ? new type_expr(std::move(l.front()))
-                  : new type_expr(std::move(l),true));
+{ if (l.singleton())
+    return std::make_unique<type_expr>(std::move(l.front()));
+  return std::make_unique<type_expr>(type_expr::onion(std::move(l)));
 }
 
+type_ptr mk_tabled_type(type_nr_type nr)
+{ return std::make_unique<type_expr>(type_expr::tabled_nr(nr)); }
 @)
 type_p make_prim_type(unsigned int p)
 {@; return mk_prim_type(static_cast<primitive_tag>(p)).release(); }
@@ -1839,7 +1893,13 @@ type_p make_union_type(raw_type_list l)
     return mk_union_type(std::move(result)).release();
 }
 @)
+type_p make_tabled_type(id_type nr)
+@/{
+// for now store identifier |nr| in |tabled_variant| field, until type equivalencing
+  return new type_expr(type_expr::tabled_nr(nr));
+  }
 
+@)
 raw_type_list make_type_singleton(type_p t)
 {@; type_list result;
   result.push_front(std::move(*type_ptr(t)));
@@ -1977,7 +2037,7 @@ type_expr scan_type(const char*& s)
     type_ptr p(new type_expr(scan_in_parens(++s)));
     if (*s++!=']')
       throw logic_error("Missing ']' in type");
-    return type_expr(std::move(p));
+    return type_expr::row(std::move(*p));
   }
   else if (*s=='*') return ++s,type_expr(); // undetermined type
   else @< Scan and |return| a primitive type, or |throw| a |logic_error| @>
@@ -2018,8 +2078,9 @@ into the former list to an element of that enumeration.
     { s+=l;
       primitive_tag tag = static_cast<primitive_tag>(i);
       if (tag == nr_of_primitive_types) // then name scanned was |"void"|
-        return type_expr(empty_tuple()); // which is equivalent to |"()"|
-      return type_expr(tag); // otherwise this is a true primitive type
+        return type_expr::tuple(empty_tuple()); // which is equivalent to |"()"|
+      return type_expr::primitive(tag);
+        // otherwise this is a true primitive type
     }
   }
   throw logic_error("Type unrecognised");
@@ -2050,8 +2111,7 @@ type_expr scan_in_parens(const char*& s)
 { type_expr a=scan_union_list(s);
   if (*s!='-' or s[1]!='>')
     return a;
-  return type_expr(std::move(a),scan_union_list(s+=2));
-    // construct function type
+  return type_expr::function(std::move(a),scan_union_list(s+=2));
 }
 @)
 type_expr scan_union_list(const char*& s)
@@ -2060,7 +2120,7 @@ type_expr scan_union_list(const char*& s)
     ++s;
   return variants.size()==1
     ? std::move(variants.front())
-    : type_expr(variants.undress(),true);
+    : type_expr::onion(variants.undress());
 }
 @)
 type_expr scan_tuple_list(const char*& s)
@@ -2072,7 +2132,7 @@ type_expr scan_tuple_list(const char*& s)
       ++s;
   return members.size()==1
     ? std::move(members.front())
-    : type_expr(members.undress(),false);
+    : type_expr::tuple(members.undress());
 }
 
 @*1 Predefined type expressions.
@@ -2109,9 +2169,9 @@ structure.
 @: first types section @>
 
 const type_expr unknown_type; // uses default constructor
-const type_expr void_type(empty_tuple());
-const type_expr int_type(integral_type);
-const type_expr bool_type(boolean_type);
+const type_expr void_type = type_expr::tuple(empty_tuple());
+const type_expr int_type = type_expr::primitive(integral_type);
+const type_expr bool_type = type_expr::primitive(boolean_type);
 const type_expr row_of_type(mk_type_expr("[*]"));
 const type_expr gen_func_type(mk_type_expr("(*->*)"));
 
@@ -2160,11 +2220,11 @@ compilation units, where they might even be just local constants.
 @: second types section @>
 
 @< Global variable definitions @>=
-const type_expr rat_type(rational_type);
-const type_expr str_type(string_type);
-const type_expr vec_type(vector_type);
-const type_expr ratvec_type(rational_vector_type);
-const type_expr mat_type(matrix_type);
+const type_expr rat_type = type_expr::primitive(rational_type);
+const type_expr str_type = type_expr::primitive(string_type);
+const type_expr vec_type = type_expr::primitive(vector_type);
+const type_expr ratvec_type = type_expr::primitive(rational_vector_type);
+const type_expr mat_type = type_expr::primitive(matrix_type);
 const type_expr row_of_int_type(mk_type_expr("[int]"));
 const type_expr row_of_rat_type(mk_type_expr("[rat]"));
 const type_expr row_of_vec_type(mk_type_expr("[vec]"));
@@ -2173,15 +2233,15 @@ const type_expr row_row_of_int_type(mk_type_expr("[[int]]"));
 const type_expr row_row_of_rat_type(mk_type_expr("[[rat]]"));
 const type_expr pair_type(mk_type_expr("(*,*)"));
 const type_expr int_int_type(mk_type_expr("(int,int)"));
-const type_expr Lie_type_type(complex_lie_type_type);
-const type_expr rd_type(root_datum_type);
-const type_expr ic_type(inner_class_type);
-const type_expr rf_type(real_form_type);
-const type_expr split_type(split_integer_type);
-const type_expr KType_type(K_type_type);
-const type_expr KTypePol_type(K_type_pol_type);
-const type_expr param_type(module_parameter_type);
-const type_expr param_pol_type(virtual_module_type);
+const type_expr Lie_type_type = type_expr::primitive(complex_lie_type_type);
+const type_expr rd_type = type_expr::primitive(root_datum_type);
+const type_expr ic_type = type_expr::primitive(inner_class_type);
+const type_expr rf_type = type_expr::primitive(real_form_type);
+const type_expr split_type = type_expr::primitive(split_integer_type);
+const type_expr KType_type = type_expr::primitive(K_type_type);
+const type_expr KTypePol_type = type_expr::primitive(K_type_pol_type);
+const type_expr param_type = type_expr::primitive(module_parameter_type);
+const type_expr param_pol_type = type_expr::primitive(virtual_module_type);
 
 @ We shall also need a tuple pattern with any number of unknown components;
 such a type is built by calling |unknown_tuple|.
@@ -2196,7 +2256,7 @@ type_expr unknown_tuple(size_t n)
 { type_list tl;
   while (n-->0)
     prefix(type_expr(),tl);
-  return type_expr(std::move(tl));
+  return type_expr::tuple(std::move(tl));
 }
 
 @* Run-time values.
