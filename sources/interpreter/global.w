@@ -1337,7 +1337,7 @@ themselves and store them in |jectors|.
       { names[i]=id_it->name;
         jectors.push_back
           (std::make_shared<projector_value>(type,i,names[i],loc));
-        group.add(names[i],type_expr(type.copy(),tp_it->copy()));
+        group.add(names[i],type_expr::function(type.copy(),tp_it->copy()));
           // projector type
       }
   }
@@ -1347,7 +1347,7 @@ themselves and store them in |jectors|.
       { names[i]=id_it->name;
         jectors.push_back
           (std::make_shared<injector_value>(type,i,names[i],loc));
-        group.add(names[i],type_expr(tp_it->copy(),type.copy()));
+        group.add(names[i],type_expr::function(tp_it->copy(),type.copy()));
           // injector type
       }
   }
@@ -1570,7 +1570,8 @@ iteratively, manually maintaining a stack of types remaining to be visited.
       { id_type id = t.type_nr();
  // narrows the integer, but it was really an identifier code
         if (translate[id]!=absent)
-          t = type_expr(translate[id]); // replace by future tabled reference
+          t = type_expr::tabled_nr(translate[id]);
+            // replace by future tabled reference
         else if (global_id_table->is_defined_type(id))
           t = global_id_table->type_of(id)->copy();
         else
@@ -1616,7 +1617,7 @@ index~|i| into the vector.
   for (auto it=defs.begin(); not defs.at_end(it); ++it,++i)
     if (not it->fields.empty())
     { const auto& fields = it->fields;
-      const auto& type = type_expr(type_nrs[i]);
+      const auto& type = type_expr::tabled_nr(type_nrs[i]);
       @/@< Append to |store| bindings for the identifiers in |fields| as
          injector or projector function for |type| @>
     }
@@ -1626,12 +1627,12 @@ index~|i| into the vector.
   {
     const auto& fields = it->fields;
     const auto type_nr = type_nrs[i];
-    const auto& type = type_expr(type_nr);
+    const auto& type = type_expr::tabled_nr(type_nr);
     if (it->id!=type_binding::no_id)
     {
       if (global_id_table->is_defined_type(it->id))
         clean_out_type_identifier(it->id);
-      global_id_table->add_type_def(it->id,type_expr(type_nr));
+      global_id_table->add_type_def(it->id,type_expr::tabled_nr(type_nr));
     }
     @< Emit... @>
     if (it->id==type_binding::no_id)
@@ -1669,7 +1670,7 @@ through |definition_group::add|.
     for (auto id_it=fields.wcbegin(); not fields.at_end(id_it);
          ++id_it,++tp_it)
       if (id_it->kind==0x1) // field selector present
-        record->add(id_it->name,type_expr(type.copy(),tp_it->copy()));
+        record->add(id_it->name,type_expr::function(type.copy(),tp_it->copy()));
           // projector type
   }
   else
@@ -1677,7 +1678,7 @@ through |definition_group::add|.
     for (auto id_it=fields.wcbegin(); not fields.at_end(id_it);
          ++id_it,++tp_it)
       if (id_it->kind==0x1) // field selector present
-        record->add(id_it->name,type_expr(tp_it->copy(),type.copy()));
+        record->add(id_it->name,type_expr::function(tp_it->copy(),type.copy()));
           // injector type
   }
 }
