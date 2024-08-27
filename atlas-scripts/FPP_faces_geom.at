@@ -309,7 +309,13 @@ set_type FaceVertsIndex = vec { of length k+1 for k-dimensional face }
 
 set_type
 [ FaceVertsKHash = vec {next to last entry is index of KChar in some hash, last is #LQ's}
-, LocalFaceVertsKHash = vec {next to last entry is index of KChar in some hash, last is #LQ'a}
+, LocalFaceVertsKHash = vec {next to last entry is index of KChar in some hash, last is #LQ's}
+]
+
+set_type
+[ LocalFaceVertsKHashStatus = vec {two from last entry is index of
+KChar in some hash, next to last is #LQ's, last is -1 if nonunitary, 0
+if unknown, 1 if unitary}
 ]
 
 {in LocalVertexData, the first pair_start terms in list are meant to

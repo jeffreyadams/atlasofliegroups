@@ -1558,6 +1558,35 @@ set low_frac = 1/1
 set low(Param p, int N) = bool:
     let (,NU,) = low(p)
     in NU > 2*N*low_frac
+
+{if true, then try is_unitary during is_unitary_to_ht}
+set interrupt2_flag = true
+
+{initial time to give interruptible command}
+set interrupt2_base_time = int:50
+
+{ meant to be used for G simple }
+{ compute Hermitian form to ht on p, report if it is unitary}
+set is_unitary_to_ht_big_SIMPLE_interrupt2(Param p,int N, int time) = bool:
+  let which_flag = true, result = 0
+  then () = while result.=
+       	    do result := if which_flag
+     	       	      	 then is_unitary_to_ht_MvL(p,N,time)
+	      		 else case hermitian_form_irreducible(p,time)
+	      	   	      | timed_out: 0
+		   	      | done(result): if is_pure(to_ht(result,N))
+		     		   	      then 1
+				   	      else -1
+					      fi
+		   	      esac
+	      		 fi;
+      		time := 2*time;
+	        which_flag := not which_flag;
+      		unitary_test_counter.use()
+  	     od
+  in result.>
+
+
 { meant to be used for G simple }
 { compute Hermitian form to ht on p, report if it is unitary}
 set is_unitary_to_ht_big_SIMPLE(Param p,int N) = bool:
@@ -1570,11 +1599,13 @@ set is_unitary_to_ht_big_SIMPLE(Param p,int N) = bool:
   {then () = p := herm_center(p)}
   then L = big_unitary_hash.lookup(p)
   then () = if L.>= then return true fi
-  then () = unitary_test_counter.use()
-  {then (,NU,) = low(p)}
-  in if low(p,N) {low(p.x,p.lambda,N)}
+  in if interrupt2_flag
+     then is_unitary_to_ht_big_SIMPLE_interrupt2(p,N, interrupt2_base_time)
+     else unitary_test_counter.use();
+     if low(p,N) {low(p.x,p.lambda,N)}
      then is_pure(hermitian_form_irreducible_to_ht(p,N))
      else is_pure(to_ht(hermitian_form_irreducible(p),N))
+     fi
      fi
 
 { compute Hermitian form to ht on p, report if it is unitary}
@@ -1585,6 +1616,31 @@ set is_unitary_to_ht_big(Param p,int N) = bool:
 
 set to_hts_count_mat = null(10,10)
 set to_hts_count = null(10)
+
+set is_unitary_to_hts_big_SIMPLE_interrupt2(Param p,[int] Ns, int time) = bool:
+    let () = for N@i in Ns
+       	     do let result = 0, which_flag = true
+     	        then () = while result = 0
+	     	       	  do result:= if which_flag
+		     	      	     then is_unitary_to_ht_MvL(p,N,time)
+			      	     else case hermitian_form_irreducible(p,time)
+	     	      	      	     	  | timed_out: 0
+		      		   	  | done(result):
+					    if is_pure((to_ht(result,Ns~[0])))
+					    then 1
+					    else -1
+					    fi
+		      	      	   	  esac
+			      	     fi;
+                	     unitary_test_counter.use();
+			     if not which_flag and not result.= then break fi;
+		       	     time:=2*time;
+		       	     which_flag := not which_flag
+     	      		  od {while result}
+		in if result.< then return false fi
+	     od
+     in true
+
 {meant to be used for G simple}
 { compute Hermitian form to hts on p, report if it is unitary}
 set is_unitary_to_hts_big_SIMPLE(Param p,[int] Ns) = bool:
@@ -1595,21 +1651,24 @@ set is_unitary_to_hts_big_SIMPLE(Param p,[int] Ns) = bool:
     	    then return is_unitary_to_hts(p,Ns) {prints("FPP DANGER TO HT at ",p)}
 	    fi
   {then () = p := herm_center(p)}
-  then () = to_hts_count[#Ns] +:= 1
-  then () =  if #Ns = 0
-       	     then to_hts_count_mat[0,0]+:=1;
-	     	  return is_unitary_hash_big_SIMPLE(p)
-	     fi
   then L = big_unitary_hash.lookup(p)
   then () = if L.>= then return true fi
-  in for N@i in Ns
-     do if not is_unitary_to_ht_big_SIMPLE(p,N)
-     	then to_hts_count_mat[i,#Ns] +:= 1;
-	return false
-	fi
-     od;
+  in if interrupt2_flag
+     then return is_unitary_to_hts_big_SIMPLE_interrupt2(p, Ns, interrupt2_base_time)
+     else to_hts_count[#Ns] +:= 1;
+     	  if #Ns = 0
+       	  then to_hts_count_mat[0,0]+:=1;
+	       return is_unitary_hash_big_SIMPLE(p)
+	  fi;
+  	  for N@i in Ns
+     	  do if not is_unitary_to_ht_big_SIMPLE(p,N)
+     	     then to_hts_count_mat[i,#Ns] +:= 1;
+	     	  return false
+	     fi
+     	  od;
      to_hts_count_mat[#Ns,#Ns] +:= 1;
      true
+     fi
 
 { compute Hermitian form to hts on p, report if it is unitary}
 set is_unitary_to_hts_big (Param p,[int] Ns) = bool:
@@ -1623,6 +1682,30 @@ set test_count = null(10)
 
 {ONLY for G simple}
 { compute Hermitian form to height N; if it's positive, then compute full form }
+set is_unitary_test_big_SIMPLE_interrupt2(Param p, int N, int time) = bool:
+    let which_flag = true, result = 0
+    then () = while result.=
+    	      do result := if which_flag
+	      	 	   then is_unitary_to_ht_MvL(p,N,time)
+			   else case hermitian_form_irreducible(p,time)
+	      	   	      	| timed_out: 0
+		   	      	| done(r): if is_pure(r) then return true fi;
+					   if is_pure(to_ht(r,N))
+		     		   	      then 1
+				   	      else -1
+					      fi
+		   	        esac
+	      		   fi;
+			   if result = -1 then return false fi;
+      			   time := 2*time;
+	        	   which_flag := not which_flag;
+			   unitary_test_counter.use()
+	       od
+    {now result = +1}
+    in is_unitary_hash_big_SIMPLE(p)
+
+{ONLY for G simple}
+{ compute Hermitian form to height N; if it's positive, then compute full form }
 set is_unitary_test_big_SIMPLE(Param p, int N) = bool:
     unitary_test_counter.use(); {prints("N = ",N,", p = ",p);}
     if (not is_hermitian(p)) or (not is_pos_on_LKTs(p)) then return false fi;
@@ -1632,7 +1715,6 @@ set is_unitary_test_big_SIMPLE(Param p, int N) = bool:
     	      then return is_unitary_test(p,N) {prints("FPP DANGER TO HT at ",p)}
 	      fi
     {then () = p := herm_center(p)}
-    then () = test_count[1] +:= 1
     then () = if is_finished(p.x, p.lambda) and big_unitary_hash.lookup(p).>=
     	      then return true
     	      fi
@@ -1640,7 +1722,10 @@ set is_unitary_test_big_SIMPLE(Param p, int N) = bool:
     {then () = prints("LAM = ",LAM, ", NU = ", NU)}
     {then () = prints("is_unitary_hash = ",is_unitary_hash_big_SIMPLE(p), ", hform to ht = ",
     	 hermitian_form_irreducible_to_ht(p,N))}
-    in if low(p,N) {NU > LAM*low_frac}
+    in test_count[1] +:= 1;
+       if interrupt2_flag
+       then is_unitary_test_big_SIMPLE_interrupt2(p,N,interrupt2_base_time)
+       elif low(p,N) {NU > LAM*low_frac}
        then if not is_pure(hermitian_form_irreducible_to_ht(p,N))
        	    then test_count_mat[0,1] +:= 1;
 	    	 false
@@ -1650,6 +1735,34 @@ set is_unitary_test_big_SIMPLE(Param p, int N) = bool:
        else test_count_mat[1,1] +:= 1;
        	    is_unitary_hash_big_SIMPLE(p)
        fi
+
+{ONLY for G simple}
+{ like previous, with list of heights; use interrupted is_unitary}
+set is_unitary_test_big_SIMPLE_interrupt2 (Param p, [int] Ns, int time) = bool:
+   let () = for N@i in Ns
+       	    do let result=0, which_flag=true
+	       then () =  while result = 0
+	     	       	  do result:= if which_flag
+		     	      	      then is_unitary_to_ht_MvL(p,N,time)
+			      	      else case hermitian_form_irreducible(p,time)
+	     	      	      	     	   | timed_out: 0
+		      		   	   | done(result):
+					     if is_pure(result)
+					     then 1
+					     else -1
+					     fi
+		      	      	   	   esac
+			      	       fi;
+               	    	    unitary_test_counter.use();
+			    if result = -1 then return false fi;
+ 			    if not which_flag and result = 1 then return true fi;
+		       	    time:=2*time;
+		       	    which_flag := not which_flag
+     	      		 od {while result}
+	      {at this point result =1, indicating unitarity to ht N is true}
+	      in ()
+	   od
+    in is_unitary_hash_big_SIMPLE(p)
 
 {ONLY for G simple}
 { like previous, with list of heights }
@@ -1669,8 +1782,8 @@ set is_unitary_test_big_SIMPLE (Param p, [int] Ns) = bool:
 	    return is_unitary_hash_big_SIMPLE(p)
 	    fi
   {then (LAM,NU) = low(p)}
-  in if low(p, Ns~[0]) {NU > LAM*low_frac}
-     then for N@i in Ns
+  in if interrupt2_flag then is_unitary_test_big_SIMPLE_interrupt2(p, Ns,interrupt2_base_time)
+     else for N@i in Ns
      	  do if is_pure(hermitian_form_irreducible_to_ht(p,N))
 	     then unitary_test_counter.use()
 	     else test_count_mat[i,#Ns] +:= 1;
@@ -1678,53 +1791,7 @@ set is_unitary_test_big_SIMPLE (Param p, [int] Ns) = bool:
 	  od;
   	  test_count_mat[#Ns,#Ns] +:= 1;
 	  is_unitary_hash_big_SIMPLE(p)
-     else is_unitary_hash_big_SIMPLE(p)
-     fi
-
-set interrupt_factor = rat: 1
-{ONLY for G simple}
-{ like previous, with list of heights; use interrupted is_unitary}
-set is_unitary_test_big_SIMPLE_interrupt (Param p, [int] Ns) = bool:
-  if (not is_hermitian(p)) or (not is_pos_on_LKTs(p)) then return false fi;
-  let G = p.real_form
-  then FPP_flag = is_FPP(G,p.infinitesimal_character)
-  then () = if not FPP_flag
-    	    then  return is_unitary_test(p,Ns) {prints("FPP DANGER TEST at ",p)}
-	    fi
-  {then () = p := herm_center(p)}
-  then () = test_count[#Ns] +:= 1
-  then L = big_unitary_hash.lookup(p)
-  then () = if L.>= then return true fi
-  then () = if #Ns = 0
-       	    then test_count_mat[0,0] +:= 1;
-	    return is_unitary_hash_big_SIMPLE(p)
-	    fi
-  {then (LAM,NU) = low(p)}
-  {then () = prints("list is ",Ns)}
-  in if low(p, Ns~[0]) {NU > LAM*low_frac}
-     then for N@i in Ns
-     	  do let start_time = elapsed_ms()
-	     then step_answer = is_pure(hermitian_form_irreducible_to_ht(p,N))
-	     then () = if not step_answer
-	     	       then test_count_mat[i,#Ns] +:= 1;
-		       return false
-		       fi
-	     {now to_ht N has returned true}
-	     then step_time = elapsed_ms() - start_time
-	     {then () = prints("At ",N,", step_time = ",step_time)}
-	     then final_answer = is_unitary(p, (interrupt_factor*step_time)\1)
-	     then () = unitary_test_counter.use()
-	     then () = if final_answer.!=
-	     	       then return final_answer.>
-		       fi
-	     {now is_unitary has failed}
-	     in ()
-	  od;
-  	  test_count_mat[#Ns,#Ns] +:= 1;
-	  is_unitary_hash_big_SIMPLE(p)
-     else is_unitary_hash_big_SIMPLE(p)
-     fi
-
+      fi
 set is_unitary_test_big(Param p, int N) = bool:
     if (not is_hermitian(p)) or (not is_pos_on_LKTs(p)) then return false fi;
     let pds = derived_factor_params0(p)
@@ -1734,6 +1801,16 @@ set is_unitary_test_big(Param p, [int] Ns) = bool:
     if (not is_hermitian(p)) or (not is_pos_on_LKTs(p)) then return false fi;
     let pds = derived_factor_params0(p)
     in all(for pd in pds do @bool: is_unitary_test_big_SIMPLE(pd,Ns) od)
+
+
+{ONLY for G simple}
+{use the first m heights from deform_heights to test}
+set is_unitary_def_test_big_SIMPLE_interrupt2(Param p,int m, int time) = bool:
+    let (def,flag)= deform_hts(p,m)
+    in if flag
+       then is_pos_on_LKTs(p) and is_unitary_to_hts_big_SIMPLE(p,def)
+       else is_unitary_test_big_SIMPLE_interrupt2(p,def,interrupt2_base_time)
+       fi
 
 {ONLY for G simple}
 {use the first m heights from deform_heights to test}
@@ -1748,6 +1825,9 @@ set is_unitary_def_test_big_SIMPLE(Param p,int m) = bool:
     then L = big_unitary_hash.lookup(p)
     then () = if L.>= then return true fi
     {then (LAM,NU) = low(p)}
+    then () = if interrupt2_flag
+    	      then return is_unitary_def_test_big_SIMPLE_interrupt2(p, m, interrupt2_base_time)
+	      fi
     in if low(p, height(p) + 4*m) {NU > LAM*low_frac}
        then let (def,flag)= deform_hts(p,m)
        	    in if flag
@@ -1756,29 +1836,6 @@ set is_unitary_def_test_big_SIMPLE(Param p,int m) = bool:
        	       fi
        else is_unitary_hash_big_SIMPLE(p)
        fi
-
-{ONLY for G simple}
-{use the first m heights from deform_heights to test}
-set is_unitary_def_test_big_SIMPLE_interrupt(Param p,int m) = bool:
-    if (not is_hermitian(p)) or (not is_pos_on_LKTs(p)) then return false fi;
-    let G = p.real_form
-    then FPP_flag = is_FPP(G,p.infinitesimal_character)
-    then () = if not FPP_flag
-    	      then return is_unitary_def_test(p,m) {prints("FPP DANGER DEF TEST at ",p)}
-	      fi
-    {then () = p := herm_center(p)}
-    then L = big_unitary_hash.lookup(p)
-    then () = if L.>= then return true fi
-    {then (LAM,NU) = low(p)}
-    in {if NU > LAM*low_frac
-       then} let (def,flag)= deform_hts(p,m)
-       	    in if flag
-	       then is_pos_on_LKTs(p) and is_unitary_to_hts_big_SIMPLE(p,def)
-       	       else is_unitary_test_big_SIMPLE_interrupt(p,def)
-       	       fi
-       {else is_unitary_hash_big_SIMPLE(p)
-       fi}
-
 
 set is_unitary_def_test_big(Param p,int m) = bool:
     if (not is_hermitian(p)) or (not is_pos_on_LKTs(p)) then return false fi;
