@@ -443,7 +443,7 @@ type_tag kind () const @+{@; return untabled().tag; }
 primitive_tag prim () const     @+{@; return untabled().prim_variant; }
 unsigned int typevar_count () const @+{@; return typevar_variant; }
 func_type* func() const        @+{@; return untabled().func_variant; }
-type_p component_type () const @+{@; return untabled().row_variant; }
+type_expr& component_type () const @+{@; return *untabled().row_variant; }
 raw_type_list tuple () const   @+{@; return untabled().tuple_variant; }
 type_nr_type type_nr () const @+{@; assert(tag==tabled); return tabled_variant; }
 id_type type_name () const; // identifier corresponding to |tabled_variant|
@@ -1450,7 +1450,7 @@ int cmp_row_types
   (const type_data* p, const type_data* q,const std::vector<type_data>& a)
 { assert(p->type.raw_kind()==row_type and q->type.raw_kind()==row_type);
   return
-    rank_of(*p->type.component_type(),a)-rank_of(*q->type.component_type(),a);
+    rank_of(p->type.component_type(),a)-rank_of(q->type.component_type(),a);
 }
 template<bool is_union>
   int cmp_tu_types
@@ -3371,7 +3371,7 @@ const conversion_record* row_coercion(const type_expr& final_type,
                                             type_expr& component_type)
 { for (auto it=coerce_table.begin(); it!=coerce_table.end(); ++it)
     if (final_type==*it->to and it->from->kind()==row_type)
-      return component_type.specialise(*it->from->component_type())
+      return component_type.specialise(it->from->component_type())
         ? &*it
         : nullptr;
   return nullptr;
@@ -3519,7 +3519,7 @@ unsigned int is_close (const type_expr& x, const type_expr& y)
   if (xk!=yk)
     return 0x0;
   if (xk==row_type)
-    return is_close(*x.component_type(),*y.component_type());
+    return is_close(x.component_type(),y.component_type());
   if (xk!=tuple_type)
     return 0x0; // non-aggregate types are only close if equal
   unsigned int flags=0x7; // now we have two tuple types; compare components
@@ -3598,7 +3598,7 @@ bool broader_eq (const type_expr& a, const type_expr& b)
     return false;
     // and different kinds on non-primitive types are incomparable
   if (ak==row_type)
-    return broader_eq(*a.component_type(),*b.component_type());
+    return broader_eq(a.component_type(),b.component_type());
   if (ak==function_type)
     return a.func()->arg_type==b.func()->arg_type and @|
     broader_eq(a.func()->result_type,b.func()->result_type);

@@ -1157,8 +1157,8 @@ case list_display:
 @/static const char* const str = "components of list expression";
   if (type.specialise(row_of_type))
   {
-    balance(*type.component_type(),e.sublist,e,str,comps);
-    if (*type.component_type()==void_type)
+    balance(type.component_type(),e.sublist,e,str,comps);
+    if (type.component_type()==void_type)
       @< Insert voiding coercions into members of |comps| that need it @>
     if (std::all_of(comps.begin(),comps.end(),is_const))
       make_row_denotation<true>(result);
@@ -2604,7 +2604,7 @@ $[[[2]]]$.
     const type_expr& ap_tp0 = a_priori_type.tuple()->contents;
     const type_expr& ap_tp1 = a_priori_type.tuple()->next->contents;
     if (ap_tp0.kind()==row_type and
-        ap_tp0.component_type()->specialise(ap_tp1)) // suffix case
+        ap_tp0.component_type().specialise(ap_tp1)) // suffix case
     { expression_ptr arg =
         n_args==1 ? std::move(arg_vector[0]) : expression_ptr(std::move(tup_exp));
       expression_ptr call(new @| builtin_call
@@ -2612,7 +2612,7 @@ $[[[2]]]$.
       return conform_types(ap_tp0,type,std::move(call),e);
     }
     if (ap_tp1.kind()==row_type and
-        ap_tp1.component_type()->specialise(ap_tp0)) // prefix case
+        ap_tp1.component_type().specialise(ap_tp0)) // prefix case
     { expression_ptr arg =
         n_args==1 ? std::move(arg_vector[0]) : expression_ptr(std::move(tup_exp));
       expression_ptr call(new @| builtin_call
@@ -2627,10 +2627,10 @@ and another concatenating two rows of the same type.
 
 @< Recognise and return instances of `\#\#'... @>=
 { if (a_priori_type.kind()==row_type and
-      a_priori_type.component_type()->kind()==row_type)
+      a_priori_type.component_type().kind()==row_type)
   { expression_ptr call(new @|
       builtin_call(join_rows_row_builtin,std::move(arg_vector[0]),e.loc));
-    return conform_types(*a_priori_type.component_type(),type,std::move(call),e);
+    return conform_types(a_priori_type.component_type(),type,std::move(call),e);
   }
   if (is_pair_type(a_priori_type) and
     @|a_priori_type.tuple()->contents==a_priori_type.tuple()->next->contents and
@@ -4151,7 +4151,7 @@ subscr_base::sub_type subscr_base::index_kind
         return mod_poly_term;
     }
   else if (aggr.kind()==row_type and index==int_type and
-           subscr.specialise(*aggr.component_type()))
+           subscr.specialise(aggr.component_type()))
          return row_entry;
   return not_so;
 }
@@ -5546,7 +5546,7 @@ case while_expr:
     return expression_ptr(make_while_loop @| (0x8,
        convert_expr(w.body, as_lvalue(void_type.copy()))));
   else if (type.specialise(row_of_type))
-  { auto& comp_type = *type.component_type();
+  { auto& comp_type = type.component_type();
     expression_ptr b = convert_expr(w.body,comp_type);
     if (comp_type==void_type and not is_empty(w.body))
       b.reset(new voiding(std::move(b)));
@@ -6016,7 +6016,7 @@ case for_expr:
   if (type==void_type)
     btp=&type; // we can reuse this type; no risk of specialisation
   else if (type.specialise(row_of_type))
-    btp=type.component_type();
+    btp=&type.component_type();
   else if ((conv=row_coercion(type,body_type))!=nullptr)
     btp=&body_type;
   else throw type_error(e,row_of_type.copy(),type.copy());
@@ -6580,7 +6580,7 @@ case cfor_expr:
   if (type==void_type)
     btp=&type; // we can reuse this type; no risk of specialisation
   else if (type.specialise(row_of_type))
-    btp=type.component_type();
+    btp=&type.component_type();
   else if ((conv=row_coercion(type,body_type))==nullptr)
     throw type_error(e,row_of_type.copy(),type.copy());
 @)
@@ -6938,13 +6938,13 @@ table.
   {
     type_expr& arg_tp0 = ctype.tuple()->contents;
     type_expr& arg_tp1 = ctype.tuple()->next->contents;
-    if (arg_tp0.kind()==row_type and *arg_tp0.component_type()==arg_tp1)
+    if (arg_tp0.kind()==row_type and arg_tp0.component_type()==arg_tp1)
     { if (functype_specialise(type,ctype,arg_tp0))
         return expression_ptr(new @|
           capture_expression(suffix_elt_builtin,o.str()));
       throw type_error(e,ctype.copy(),type.copy());
     }
-    if (arg_tp1.kind()==row_type and *arg_tp1.component_type()==arg_tp0)
+    if (arg_tp1.kind()==row_type and arg_tp1.component_type()==arg_tp0)
     { if (functype_specialise(type,ctype,arg_tp1))
       return expression_ptr(new @|
         capture_expression (prefix_elt_builtin,o.str()));
@@ -6957,8 +6957,8 @@ table.
 different wrapper functions.
 
 @< Select the proper instance of the \.{\#\#} operator,... @>=
-{ if (ctype.kind()==row_type and ctype.component_type()->kind()==row_type)
-  { if (functype_specialise(type,ctype,*ctype.component_type()))
+{ if (ctype.kind()==row_type and ctype.component_type().kind()==row_type)
+  { if (functype_specialise(type,ctype,ctype.component_type()))
   @/return expression_ptr(new @|
       capture_expression (join_rows_row_builtin,o.str()));
     throw type_error(e,ctype.copy(),type.copy());
@@ -8290,7 +8290,7 @@ case comp_ass_stat:
   }
   expression_ptr r = convert_expr(rhs,comp_t);
   if (kind==subscr_base::row_entry)
-    aggr_t->component_type()->specialise(comp_t); // record type
+    aggr_t->component_type().specialise(comp_t); // record type
   if (comp_t==void_type and not is_empty(rhs))
     r.reset(new voiding(std::move(r)));
   expression_ptr p;
