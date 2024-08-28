@@ -1560,7 +1560,7 @@ iteratively, manually maintaining a stack of types remaining to be visited.
         work.push(&f->arg_type);
       }
     break;
-    case row_type: work.push(t.component_type());
+    case row_type: work.push(&t.component_type());
     break;
     case tuple_type: case union_type:
       for (wtl_iterator it(t.tuple()); not it.at_end(); ++it)
