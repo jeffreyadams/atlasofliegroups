@@ -190,7 +190,7 @@ set long_out_flag = false
 set bl_interrupt_flag = false
 
 {number of different shifts to try in bl_interrupt}
-set bl_step_count = 1
+set bl_step_count = 2
 
 {how much to increase the shift at each step}
 set bl_step_size = 2
@@ -1060,6 +1060,92 @@ set local_testK_hash_bottom_layer_more(KGBElt x, ratvec lambda, LocalVertexData 
 			       unitary_test_counter.use_count() - start_count) fi
      in  FVKHnew
 
+{Delete from LFVKH faces established to be nonunitary using
+known_lower, bottom layer, and deformation. Output is new shorter list
+of candidate faces. Lvd is LOCAL VertexData.  Use of good range
+induction requires using FULL K-chars to define graph. If U_flag = true, then test
+for unitarity. Should be applied only to OUTPUT of local_testK_hash_min_bottom_layer}
+set local_testK_hash_bottom_layer_more(KGBElt x, ratvec lambda, LocalVertexData Lvd,
+    [[FaceVertsKHash]] FVKH, [[int]] eq, [[int]] gr, [vec] classListByFace,
+     [KGPElt] maxQs, [[KType,[QKL_bottom_data]]] datass, KTypePol_hash pol_hash, Param_hash Uhash) =
+    			    [[FaceVertsKHash]]:
+    let newStatuses = for j:#eq do "?" od,  NumClasses = #eq
+    	, printInterval = int: 1{, NUhash = big_unitary_hash.nuhash(x.real_form)}
+    {use Uhash to mark some classes at known? (those that hit a unitary Param)}
+    {Find all Param's in Uhash with (x,lambda). For each, compute corresponding Face.
+     Use function known_unitaries from FPP_faces
+     Look up class in classListByFace, and mark "T"}
+    then start = elapsed_ms(), start_count = unitary_test_counter.use_count()
+    then () = if fund_face_verbose and NumClasses > 100
+    then prints(); prints("start local_testK_hash_bottom_layer ", NumClasses,
+		   " equiv classes of faces to dim ",#FVKH-1)
+	      ; prints()
+	      fi
+	      ; for k:NumClasses
+    	        ~do if fund_face_verbose and NumClasses > 100 and
+	      	   ((NumClasses-k-1)%printInterval = 0)
+	      	   then prints("examining undet equiv class #"
+	      	   ,NumClasses-k -1, "; so far ",unitary_test_counter.use_count()
+	      	   ," 'is_unitary' tests.")
+	      	   ; printInterval := 2*printInterval
+	      	   fi
+	      ; if newStatuses[k] = "?"
+	      	then let C=eq[k]
+		  then (d,j) = coords(FVKH,C[0]) {a lowest-diml face in C; least likely to be final}
+	      	  then verts = vec: FVKH[d][j][:d+1]
+		  then pC = parameter(x, lambda, face_bary(Lvd, verts))
+	      	  then ps = monomials(finalize(pC))
+                  then test = if all(for p in ps do @bool:Uhash.lookup(p).>= od)
+		       	      then true
+			      {elif not all(for p in ps
+		     	  	     	   do @bool: if #ps = 1 then min_bottom_elim_factors(p, pol_hash.index(FVKH[d][j][d+1]))
+					      	     else min_bottom_elim_factors(p)
+						     fi
+					   od)
+				then false}
+			      elif #ps = 1 {otherwise the K-char is wrong!}{)}
+				then let still_here = true
+				     then () = for datas@m in datass
+				     	       do still_here :=
+					       	  bottom_elim_factors_more(ps[0], maxQs, datas , pol_hash.index(FVKH[d][j][d+1]));
+						  {if test_verbose then prints("working on ",pC," at datass[",m,
+						  "], still_here = ", still_here) fi;}
+				     		  if not still_here then break fi
+				     	        od
+				      in still_here
+			      else all(for p in ps
+				       do @bool: let still_here = true
+				       	  then () = for datas@m in datass
+					       	    do still_here := bottom_elim_factors_more(p, maxQs, datas);
+						       {if test_verbose then prints("working on ",pC," at datass[",m,
+						       "], still_here = ", still_here) fi;}
+						       if not still_here then break fi
+						    od
+					   in still_here
+					 od)
+			      fi
+     		  in if not test
+		     then newStatuses:= updateNUclassesB(newStatuses, gr, k,"F"); newStatuses[k] := "F"
+		     else newStatuses[k] := "T"
+		     fi
+		  fi {newStatuses[k] = "?"}
+		  od {NumClasses}
+     {make new local face list using only faces not already proven nonunitary}
+     then FVKHnew = for @m in FVKH do [FaceVertsKHash]: [] od
+          then () = for C@m in eq do if not newStatuses[m][0] = "F"
+     	     	     	      	     then for k in C
+			      	     	  do let (d,j) = coords(FVKH,k)
+				      	     in FVKHnew[d] #:= FVKH[d][j]
+				   	  od
+			             fi
+			      	  od
+     then time = elapsed_ms() - start
+     then () = if time_verbose then prints("     ", print_time_string(time),
+     	       	  	       " for local_testK_hash_bottom_layer; number of tests = ",
+			       unitary_test_counter.use_count() - start_count) fi
+     in  FVKHnew
+
+
 set ParamsByDim = [[Param]]: for d:16 do [] od
 set LFDKHByDim = [[FaceVertsKHash]]: for d:16 do [] od
 
@@ -1276,13 +1362,7 @@ set local_test_hash_bottom(KGBElt x, ratvec lambda, LocalVertexData Lvd,
 			        fi
 		      in if not elim_more
 		      	 then false {we got rid of p by bottom layer}
-			 else {let p_time = elapsed_ms() - p_start_time
-			      then test = for p1 in ps do is_unitary(p1,(interrupt_factor*p_time)\1) od
-			      in if any(for j in test do j = -1 od)
-			      	 then false
-				 elif all(for j in test do j = 1 od)
-				 then true}
-			 all(for p1 in ps do @bool: is_unitary_def_test_big_SIMPLE(p1) od)
+			 else all(for p1 in ps do @bool: is_unitary_def_test_big_SIMPLE(p1) od)
 		     	 fi
 		  fi {newStatuses[m]}
 	      then () = if more_verbose then prints("your final answer was ",test) fi
@@ -1309,10 +1389,6 @@ set local_test_hash_bottom(KGBElt x, ratvec lambda, LocalVertexData Lvd,
 		       od
 		  else let () = if (more_flag or mix_flag) and elim_more then more_bad_hash.match(p) fi
 		      	       	    {in this case p passed elim_more but is not unitary}
-			   	{then (,pL) = theta_stable_quasi_data(p)
-			   	then () = if surprise_flag and is_final(pL) and is_unitary_hash_big_SIMPLE(pL)
-			      	     	  then surprise_hash.match(p)
-				     	  fi}
 		       in []
 		  fi{test}
 	     od.## {list of unitary Params}
@@ -1495,16 +1571,25 @@ set one_param_test_bottom(Param p, [int] Ds, Param_hash Uhash) = [Param]:
        then let () = one_false_counter.use()
 	    then () = one_param_time +:= elapsed_ms() - start
 	    in []
-       else if more_flag or mix_flag
+       else if (more_flag or mix_flag) and #Ds > 0
        	    then let () = if more_verbose then prints("start more with p = ",p, ", Ds = ",Ds) fi
 	    	 then Ps = for q in QG do K_type_pol(character_formula_to_height(q, Ds~[0]+height(q))) od
-       	    	 then elim_more = all(for q@i in QG
-	    	 	     	      do @bool:
-				      	 bottom_elim_factors_more(q,Ds[0],Ps[i]) and
-					 all(for D@j in Ds[1:]
-					     do @bool: bottom_elim_factors_more(q, Ds[j],D, Ps[i])
-					     od)
-				      od)
+       	    	 then elim_more = bool:
+		      let still_here = true
+		      then () = still_here:= all(for q@i in QG
+		      	      		     	 do @bool: bottom_elim_factors_more(q,Ds[0],Ps[i])
+						 od)
+		      in if not still_here then false
+		      	 else for D in Ds[:1]
+		      	      do still_here := all(for D@j in Ds[1:]
+					       	   do all(for q@i in QG
+						      	  do @bool: bottom_elim_factors_more(q, Ds[j],D, Ps[i])
+						   	  od)
+					           od);
+				 if not still_here then break fi
+			      od;
+			      still_here
+			  fi
 		 then () = if more_verbose then prints("result of elim_more was ",elim_more) fi
 		 then steps = max(rank(p.x.involution-1),1)
     		 then test_heights = next_heights(p, steps)
@@ -2915,8 +3000,7 @@ set local_test_GEO_hash_bottom_layer_interrupt(KGBElt x, ratvec lambda, VertexDa
     	       	   do minBottomData.G_min_height(mu)
 		   od)
     then Ds = for j:bl_step_count+1 do height(pmin) + j*bl_step_size  od
-    then D = Ds[0]
- 	{these are the greatest heights at which we'll be looking at bottom layer K-types;
+     	{these are the greatest heights at which we'll be looking at bottom layer K-types;
 	 so we can compute K-chars just to this height} {NOT TRUE for good range arguments!}
     then start_more_datas = elapsed_ms()
     then () = if time_verbose then prints("time for more datas/BKT was ",
@@ -2939,55 +3023,49 @@ set local_test_GEO_hash_bottom_layer_interrupt(KGBElt x, ratvec lambda, VertexDa
 	       fi
    then LFDKH = [[FaceVertsKHash]]: localFD_KHash_01(x,lambda, Lvd, pol_hash, LF)
    then ((eq,gr),IUCL,CLBF) = localGraphK(LFDKH)
-    	{next remove from LFDKH all faces failing bottom_factors_elim_factors_more}
-   then start_datas = elapsed_ms()
-   then newDs = [int]:[]
+   {remove all faces failing min_bottom_elim}
+   then LFDKH = local_testK_hash_min_bottom_layer(x,lambda, Lvd, LFDKH, eq,
+		      gr, CLBF, pol_hash,  Uhash)
+   then () = if #LFDKH[0] = 0 then return [] fi
+   then () = if #LFDKH[0] = 1
+   	     then return one_param_test_bottom(parameter(x,lambda, Lvd.list[LFDKH[0][0][0]]), Ds, Uhash)
+	     fi
+   then start_datas = elapsed_ms(), newDs = [int]:[]
+   then MUs = for mu in LKTs(pmin)
+   	      do branch_std(mu, Ds~[0])
+	      od
    then datass =  for j:bl_step_count from 1
-   	       	  do let datas = for mu in LKTs(pmin) {type [KType, [QK_bottom_data]]}
-   	      	     	       	 do (mu, bottom_factors(mu, bottom_K_type_Qs(mu,Ds[j-1], Ds[j])))
+   	       	  do let datas = for mu@m in LKTs(pmin) {type [KType, [QK_bottom_data]]}
+   	      	     	       	 do (mu, bottom_factors(mu, bottom_K_type_Qs(mu,Ds[j-1], Ds[j], MUs[m])))
 		     		 od
-		     in if card(datas) > 0 
+		     {then () = prints("j = ",j,", card(datas) = ", card(datas),", datas = ",datas, new_line)}
+		     in if card(datas) > 0
 		     	then newDs #:= Ds[j];
 			     [datas]
 		     	else []
 			fi
 		   od.##
-   {then more_flag_temp = more_flag
-   then () = more_flag:=false}
-   then LFDKH = local_testK_hash_min_bottom_layer(x,lambda, Lvd, LFDKH, eq,
-		      gr, CLBF, pol_hash,  Uhash)
-   {then () = more_flag:=more_flag_temp}
-   then LFDKH_size = sum (for list in LFDKH do #list od)
+   then () = if test_verbose then prints("#datass = ",#datass, " cards = ",for datas in datass do card(datas) od) fi
    then  maxQs = max_Qs(Q0)
+   {next remove from LFDKH all faces failing bottom_factors_elim_factors_more}
    then () = if time_verbose then prints("time for more datass/maxQs was ",
     	      	 print_time_string(elapsed_ms() - start_datas), " at lambda = ",lambda)
 	      fi
-   then m = 0, last = 0
-   then () = while m < #datass
-   	     do let ((eq,gr),IUCL,CLBF) = localGraphK(LFDKH)
-	     	then LFDKH_new = local_testK_hash_bottom_layer_more(x,lambda, Lvd, LFDKH, eq,
-		      gr, CLBF, maxQs, datass[m], pol_hash,  Uhash)
- 	   	then new_size = sum(for list in LFDKH_new do #list od)
-	   	then () = LFDKH := LFDKH_new
-		then () = if test_verbose
-		     	  then prints("at height ", height(pmin), ", and D = ",Ds[m], " in bl_int.")
-			  fi
-		then () = last:=m
-	   	in if new_size = 0 {not improveable}
-	      	   then m := #datass
-	      	   else {prints("at m = ",m,", LFDKH old size = ",LFDKH_size, ", new size = ",new_size);
-		   	LFDKH_size:=new_size;}
-			m+:=1
-	      	   fi
-	     od {so we've gotten LFDKH as small as possible}
-   {then () = if {test_verbose} last < #newDs then prints("unitary on bottom layer to ",newDs[last],
+   {then m = 0, last = 0}
+   then () = if #newDs > 0
+   	     then let ((eq,gr),IUCL,CLBF) = localGraphK(LFDKH)
+   	     	  then () = LFDKH := local_testK_hash_bottom_layer_more(x,lambda, Lvd, LFDKH, eq,
+		      gr, CLBF, maxQs, datass, pol_hash, Uhash)
+   		  then () = if test_verbose then prints("unitary on bottom layer to ",newDs~[0],
 		   	   " face counts to dim 1: ",for list in LFDKH do
 			     #list od)
-		    	   fi}
-   then () = if #LFDKH[0] = 0 then return [] fi
-   then () = if #LFDKH[0] = 1
-   	     then return one_param_test_bottom(parameter(x,lambda, Lvd.list[LFDKH[0][0][0]]), [D], Uhash)
-	     fi
+		    	    fi
+   	          then () = if #LFDKH[0] = 0 then return [] fi
+   		  then () = if #LFDKH[0] = 1
+   	     	       	    then return one_param_test_bottom(parameter(x,lambda, Lvd.list[LFDKH[0][0][0]]), newDs, Uhash)
+	     		    fi
+		  in ()
+	      fi
    then DiffList = for v in LFDKH[0]
     	 	      do G.two_rho_check*(dominant(G,thetaMinus*Lvd.list[v[0]]))
 		      od
@@ -3003,7 +3081,7 @@ set local_test_GEO_hash_bottom_layer_interrupt(KGBElt x, ratvec lambda, VertexDa
     then test_heights = next_heights(pmin, steps)
     then j0 = if #newDs = 0
     	      then 0
-	      else max(0,first(for m in test_heights do newDs[last] < m od))
+	      else max(0,first(for m in test_heights do newDs~[0] < m od))
 	      fi
     	 {so that we test above the height bottom layer has examined}
     then UParams = [Param]:
@@ -3067,10 +3145,6 @@ set local_test_GEO_hash_bottom_layer(KGBElt x, ratvec lambda, VertexData vd,
     	      then let () = Uhash.match({herm_center(}first_param(finalize(pmin{pmax}{)})))
 	      	   in return [pmin]
 	      fi
-    {then DG0 = max(for mu in LKTs(pmin)
-    	       	   do minBottomData.G_min_height(mu)
-		   od)
-    then D = max(height(pmin)+more_shift_level, DG0)}
     then D = height(pmin) + more_shift_level
 	{this is the greatest height at which we'll be looking at bottom layer K-types; during the first pass;
 	 so we can compute K-chars just to this height} {NOT TRUE for good range arguments!}
@@ -3095,7 +3169,7 @@ set local_test_GEO_hash_bottom_layer(KGBElt x, ratvec lambda, VertexData vd,
 	       fi
    then LFDKH = [[FaceVertsKHash]]: localFD_KHash_01(x,lambda, Lvd, pol_hash, LF)
    then ((eq,gr),IUCL,CLBF) = localGraphK(LFDKH)
-    	{next remove from LFDKH all faces failing min_bottom_factors_elim(one_ht)}
+    	{next remove from LFDKH all faces failing min_bottom_factors_elim}
    then () = LFDKH:= local_testK_hash_min_bottom_layer(x,lambda, Lvd, LFDKH, eq,
 		      gr, CLBF, pol_hash,  Uhash)
    then () = if #LFDKH[0] = 0
@@ -3109,8 +3183,10 @@ set local_test_GEO_hash_bottom_layer(KGBElt x, ratvec lambda, VertexData vd,
    	     	  then start_datas = elapsed_ms()
 		  then D = height(pmin)+more_shift_level
    		  then datas = for mu in LKTs(pmin)
-   	      	       	       do (mu, bottom_factors(mu, bottom_K_type_Qs(mu,D)))
+   	      	       	       do {prints("D = ",D,", bf term = ",bottom_K_type_Qs(mu,D));}
+			       (mu, bottom_factors(mu, bottom_K_type_Qs(mu,D)))
 		     	       od
+		  {then () = prints("datas = ",datas)}
 		  then  maxQs = max_Qs(Q0)
    		  then () = if time_verbose then prints("time for more datas/maxQs was ",
     	      	      	      print_time_string(elapsed_ms() - start_datas), " at lambda = ",lambda)

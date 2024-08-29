@@ -642,7 +642,7 @@ set more_good_hash = make_Param_hash()
 set min_bottom_elim_factors(Param p, {[KGPElt] maxQs,} KTypePol P) = bool:
     let start = elapsed_ms(), (,pL) = theta_stable_quasi_data(p), G = p.real_form {pL is height 0 on quasisplit L}
     {then () = if is_unitary_hash_big(pL) then return true fi} {seems to slow things down}
-     then () = if more_flag {do good range stuff}
+    {then () = if more_flag {do good range stuff}
      	       then let maxQps = max_Qps(p{,maxQs})
      	       	    then three_bools = max_goodness(p, maxQps), R = more_good_hash.size()
      	  	    then good = first(for (g,,) in three_bools do g od)
@@ -673,7 +673,7 @@ set min_bottom_elim_factors(Param p, {[KGPElt] maxQs,} KTypePol P) = bool:
 		  	     then () = befmoreTime +:= elapsed_ms() - start
 			     in return answer
 	     	       fi {wk_good}
-    	        fi {more_flag}
+    	        fi {more_flag}}
     then derpLjs = derived_factor_params0(pL) {all height 0}
     then () = mbefTime +:= elapsed_ms()-start
     then answers = [(->bool)]: {one function for each LKT mu of p}
@@ -1049,14 +1049,15 @@ set bottom_K_types(KType mu, int D) = [(KType,[int])]:
 	  fi
        od.##
 
+
 {For the K-type mu, lists the K-types tau in height range (D_low,D) which
 
 a) occur in standard(mu)
 b) are not mu
 c) are bottom layer for (smallest possible) theta-stable parabolic Q;
 
-list is indexed by Q.}
-set bottom_K_type_Qs(KType mu, int D_low, int D) = [QK_bottom_data] {[KGPElt, [KType]]}:
+list is indexed by Q. KTypePol argument is branch_std(Q) at least to height D.}
+set bottom_K_type_Qs(KType mu, int D_low, int D, KTypePol M) = [QK_bottom_data] {[KGPElt, [KType]]}:
     let q = param(mu), Proj = projection_to_K_matrix(mu.real_form), start = elapsed_ms()
     then (Q0,) = theta_stable_quasi_data(q), G = mu.real_form, ProjInv = right_inverse(Proj)
     then L0 = Q0.Levi, (S0,) = Q0, Krk = #ProjInv
@@ -1090,8 +1091,88 @@ set bottom_K_type_Qs(KType mu, int D_low, int D) = [QK_bottom_data] {[KGPElt, [K
 	 fi
     then xcL0 = KGB(L0,0)
     then xcG0 = embed_KGB(xcL0, G)
+    then br_std_qD = to_ht(M,D)
+    then too_many_taus = monomials(br_std_qD - to_ht(M,D_low))
+    {then () = prints("D = ",D,", D_low = ",D_low," TMT = ",too_many_taus)}
+    then hwt0 = K0_param(mu,xcG0).lambda_minus_rho
+    then too_many_shifts = for tau in too_many_taus
+    	 	       	 do K0_param(tau,xcG0).lambda_minus_rho - hwt0
+			 od {what to add to highest weight of mu to get to tau}
+    then too_many_Ss = [[int]]:
+    	 for shift in too_many_shifts
+	 do (S0## (for col@i in fixc_cowts
+		  do if (shift*col).= then [] else [fixc[i]] fi
+		  od.##)
+	      ## (for col@j in pairsc_cowts
+		  do if (shift*col).= then [] else pairsc[j] fi
+		  od.##)).sort_u
+         od  {these are the coroots needed to make a parabolic
+		       	    for which tau is bottom layer}
+    then candSs = too_many_Ss.sort_u
+    then proper_candSs = for S in candSs
+    	 	       	 do if #S = G.semisimple_rank
+			    then []
+			    else [S]
+			    fi
+			 od.##
+    then () = bfTime:=elapsed_ms() - start
+    in for S in proper_candSs
+       do let list = for tau@j in too_many_taus
+       	      	     do if too_many_Ss[j] = S
+	     	     	then [tau]
+	     		else []
+	     		fi
+	 	     od.## {this is all tau's attached to S}
+	   {then shifts = for }
+	   in ((S, xcG0),list)
+       od
+
+
+{For the K-type mu, lists the K-types tau in height range (D_low,D) which
+
+a) occur in standard(mu)
+b) are not mu
+c) are bottom layer for (smallest possible) theta-stable parabolic Q;
+
+list is indexed by Q.}
+set bottom_K_type_Qs(KType mu, int D_low, int D) = [QK_bottom_data] {[KGPElt, [KType]]}:
+    bottom_K_type_Qs(mu, D_low, D, branch_std(mu,D))
+{    let q = param(mu), Proj = projection_to_K_matrix(mu.real_form), start = elapsed_ms()
+    then (Q0,) = theta_stable_quasi_data(q), G = mu.real_form, ProjInv = right_inverse(Proj)
+    then L0 = Q0.Levi, (S0,) = Q0, Krk = #ProjInv
+    then S0c = complement(G.semisimple_rank,S0), DOS = delta_on_simple(G),
+    	 delta = G.distinguished_involution
+    then fixc = for a in S0c {type [int]}
+    	      	do if DOS[a] = a
+		   then [a]
+		   else []
+		   fi
+		od.##
+    then pairsc = for a in S0c {type [[int]]}
+    	 	  do if DOS[a] > a
+		     then [[a,DOS[a]]]
+		     else []
+		     fi
+		  od.##
+    then fixc_cowts = mat:
+    	 if #fixc = 0
+	 then null(rank(G),0)
+    	 else for a in fixc
+    	      do (G.fundamental_coweights[a].numer)*ProjInv
+	      od
+	 fi
+    then pairsc_cowts = mat:
+    	 if #pairsc = 0
+	 then null(rank(G),0)
+    	 else for pair in pairsc
+    	      do sum(G.rank, for a in pair do G.fundamental_coweights[a].numer od)*ProjInv
+              od
+	 fi
+    then xcL0 = KGB(L0,0)
+    then xcG0 = embed_KGB(xcL0, G)
     then br_std_qD = branch_std(q,D)
-    then too_many_taus = monomials(br_std_qD - to_ht(br_std_qD,D_low))[1:] {OK since mu is always term 0?}
+    then too_many_taus = monomials(br_std_qD - to_ht(br_std_qD,D_low))
+    then () = prints("D = ",D,", D_low = ",D_low," TMT = ",too_many_taus)
     then hwt0 = K0_param(mu,xcG0).lambda_minus_rho
     then too_many_shifts = for tau in too_many_taus
     	 	       	 do K0_param(tau,xcG0).lambda_minus_rho - hwt0
@@ -1121,7 +1202,7 @@ set bottom_K_type_Qs(KType mu, int D_low, int D) = [QK_bottom_data] {[KGPElt, [K
 	 	     od.## {this is all tau's attached to S}
 	   {then shifts = for }
 	   in ((S, xcG0),list)
-       od
+       od}
 
 
 {For the K-type mu, lists the K-types tau to height D which
@@ -1202,6 +1283,8 @@ set bottom_K_type_Qs(KType mu, int D) = [QK_bottom_data]:
 	   in ((S, xcG0),list)
        od}
 
+
+{argument is [(KGPElt,[KType])]}
 set card([QK_bottom_data] data) = int:
     sum(for (,list) in data do #list od)
 
@@ -1389,7 +1472,6 @@ set bottom_elim_factors_more(Param p, int D, KTypePol P)= bool:
 set bottom_elim_factors_more(Param p, int D_low, int D) = bool:
     let startCF = elapsed_ms()
     then Q = character_formula_to_height(p,D)
-    then () = prints("yeah, we used line 1391")
     then () = charTime +:= elapsed_ms() - startCF
     then () = char_counter.use()
     then P = K_type_pol(Q)
