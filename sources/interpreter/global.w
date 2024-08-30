@@ -2556,23 +2556,35 @@ coercion(row_row_of_int_type,row_row_of_rat_type, "[[Q]][[I]]",
 
 @* Wrapper functions.
 %
-We now come to defining wrapper functions. The arguments and results of wrapper
-functions will be transferred from and to stack as a |shared_value|, so a
-wrapper function has neither arguments nor a result type. Variables that refer
-to a wrapper function have the function pointer type |wrapper_function| defined
-in \.{axis-types.w}; they do take a the |eval_level| parameter that serves the
-same function as for |evaluate| methods of classes derived from
-|expression_base|, as described in \.{axis.w}: to inform whether a result value
-should be produced at all, and if so whether it should be expanded on the
-|execution_stack| in case it is a tuple.
+We now come to defining handling of wrapper functions, the functions that
+provide the interface between the user programming language (which can invoke
+calls to them) and the library of \Cpp\ functions that provide their basic
+functionality; they adapt the calling convention (transfer of values) and
+perform checks to ensure the preconditions of the library functions are met.
 
-The following function will greatly facilitate the later repetitive task of
-installing wrapper functions. The basic |install_function| returns a shared
-pointer to constant |builtin|, since we don't need to change anything there
-after installation, but |install_special_builtin| does give non-|const| access
-to the object just created. The function |install_folding_function| will be a
-version of |install_special_builtin| that already installs a constant-folding
-compile time adaptation.
+Handling of wrapper functions themselves, which are accessed through a table, is
+done through values of the function pointer type |wrapper_function| defined
+in \.{axis-types.w}. Arguments and results of wrapper functions are passed as
+|shared_value| on the runtime stack, and are not mentioned in the type
+|wrapper_function|. Functions accessed through these pointers do however take a
+|eval_level| parameter, which serves the same function as for the |evaluate|
+method of (classes derived from |expression_base|, as described in \.{axis.w},
+namely to inform the wrapper whether in the run time situation a result value is
+needed at all, and if so whether it should be expanded on the |execution_stack|
+in case it is a tuple.
+
+The following functions will greatly facilitate the later repetitive task of
+installing wrapper functions into the |global_overload_table|. The basic form
+|install_function| returns a shared pointer to constant |builtin| after
+installing it; while usually ignored, this return value can be used by the
+caller to associate this built-in to other ones; a typical example of this is
+the successor function that can be called in certain cases where the function
+found in the |global_overload_table| is actually integer addition. The form
+|install_special_builtin| does give non-|const| access to the object just
+created, which allows subsequently associating one or more other built-in
+functions in this manner. The function |install_folding_function| is a variation
+of |install_special_builtin| that already installs a constant-folding compile
+time adaptation.
 
 @< Declarations of exported functions @>=
 shared_builtin install_function
@@ -2597,15 +2609,15 @@ added to |global_id_table| instead.
 shared_builtin install_function
  (wrapper_function f,const char*name, const char* type_string,
   unsigned char hunger)
-{ type_ptr type = mk_type(type_string);
+{ type_expr type = mk_type_expr(type_string);
   std::ostringstream print_name; print_name<<name;
-  if (type->kind()!=function_type)
+  if (type.kind()!=function_type)
     throw logic_error
      ("Built-in with non-function type: "+print_name.str());
-  print_name << '@@' << type->func()->arg_type;
+  print_name << '@@' << type.func()->arg_type;
   auto val = std::make_shared<builtin>(f,print_name.str(),hunger);
   global_overload_table->add
-    (main_hash_table->match_literal(name),val,std::move(*type));
+    (main_hash_table->match_literal(name),val,std::move(type));
   return val;
 }
 
@@ -2622,15 +2634,15 @@ time behaviour of the (already installed) built-in function.
 std::shared_ptr<special_builtin> install_special_function
  (wrapper_function f,const char*name, const char* type_string,
   unsigned char hunger)
-{ type_ptr type = mk_type(type_string);
+{ type_expr type = mk_type_expr(type_string);
   std::ostringstream print_name; print_name<<name;
-  if (type->kind()!=function_type)
+  if (type.kind()!=function_type)
     throw logic_error
      ("Built-in with non-function type: "+print_name.str());
-  print_name << '@@' << type->func()->arg_type;
+  print_name << '@@' << type.func()->arg_type;
   auto val = std::make_shared<special_builtin>(f,print_name.str(),hunger);
   global_overload_table->add
-    (main_hash_table->match_literal(name),val,std::move(*type));
+    (main_hash_table->match_literal(name),val,std::move(type));
   return val;
 }
 
