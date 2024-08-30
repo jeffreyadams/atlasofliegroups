@@ -58,8 +58,7 @@ set path(KGBElt x) = [(int,bool)]:
 
 
 {chain of cross/Cayley to go from x to KGB(G,0). If the bool is true, then cross; else Cayley.
-If G is connected, the inverse Cayleys are all single-valued, and the reverse path goes from
-KGB(G,0) to x.}
+The reverse path goes from KGB(G,0) to x.}
 set path (KGBElt x) = [(int,bool)]:
     let G = x.real_form
     then p = parameter(x, G.rho,G.rho)
