@@ -2292,14 +2292,12 @@ bool is_free_in(const type_expr& tp, unsigned int nr,
 %
 In practice we shall rarely call functions like |mk_prim_type| and
 |mk_row_type| directly to make explicit types, since this is rather laborious.
-Instead, such explicit types will be constructed by the function |mk_type|
+Instead, such explicit types will be constructed by the function |mk_type_expr|
 that parses a (\Cee~type) string, and correspondingly calls the appropriate
 type constructing functions.
 
 @< Declarations of exported functions @>=
-type_ptr mk_type(const char* s);
 type_expr mk_type_expr(const char* s);
-  // ``exported'' for our global variable initialisation
 
 @ The task of converting a properly formatted string into a type is one of
 parsing a simple kind of expressions. The strings used here come from string
@@ -2313,13 +2311,12 @@ allow the recursive calls to advance the index within the string read.
 The function |scan_type| does the real parsing, |mk_type_expr| calls it,
 providing a local modifiable pointer to bind to its reference parameter (which
 is important because |scan_type| cannot directly accept a \Cee-string constant
-as argument) while also doing error reporting, and |mk_type| is just a wrapper
-around |mk_type_expr| that converts the result from a |type_expr| to a smart
-pointer to (a freshly allocated instance of) such. Currently the function
-|mk_type_expr| is called only during the start-up phase of \.{atlas}, and if an
-error is encountered (of type |logic_error|, since this must be an error in
-the \.{atlas} program itself), printing of the error message will be followed
-by termination of the program.
+as argument) while also doing error reporting. The function |mk_type_expr| is
+called only during the start-up phase of \.{atlas} (but after the table
+|prim_names| of primitive type names is installed), and if an error is
+encountered (of type |logic_error|, since this must be an error in the \.{atlas}
+program itself), printing of the error message will be followed by termination
+of the program.
 
 @< Function definitions @>=
 type_expr scan_in_parens(const char*& s);
@@ -2335,10 +2332,10 @@ type_expr scan_type(const char*& s)
   }
   else if (*s=='[')
   {
-    type_ptr p(new type_expr(scan_in_parens(++s)));
+    type_expr t = scan_in_parens(++s);
     if (*s++!=']')
       throw logic_error("Missing ']' in type");
-    return type_expr::row(std::move(*p));
+    return type_expr::row(std::move(t));
   }
   else if (*s=='*') return ++s,type_expr(); // undetermined type
   else @< Scan and |return| a primitive type, or |throw| a |logic_error| @>
@@ -2355,11 +2352,6 @@ type_expr mk_type_expr(const char* s)
   // make the error hard to ignore; if thrown probably aborts the program
   }
 }
-@)
-type_ptr mk_type(const char* s)
-{@; return type_ptr(new type_expr(mk_type_expr(s))); }
-  // wrap up |type_expr| in |type_ptr|
-
 
 @ For primitive types we use the same strings as for printing them. We test as
 many characters as the type name has, and the fact that no alphanumeric
@@ -2369,21 +2361,15 @@ In this module we use the fact that the order in the list |prim_names| matches
 that in the enumeration type |primitive_tag|, by casting the integer index
 into the former list to an element of that enumeration.
 
-@h <cstring> // |strlen|, |strncmp|
 @h <cctype> // |isalpha|
 @< Scan and |return| a primitive type, or |throw| a |logic_error| @>=
-{ for (size_t i=0; i<nr_of_primitive_types; ++i)
-  { const char* name=prim_names[i];
-    size_t l= std::strlen(name);
-    if (std::strncmp(s,name,l)==0 and not isalpha(s[l]))
-    { s+=l;
-      primitive_tag tag = static_cast<primitive_tag>(i);
-      if (tag == nr_of_primitive_types) // then name scanned was |"void"|
-        return type_expr::tuple(empty_tuple()); // which is equivalent to |"()"|
-      return type_expr::primitive(tag);
-        // otherwise this is a true primitive type
-    }
-  }
+{ std::string str;
+  while (isalpha(*s))
+    str.push_back(*s++);
+  if (str.length()>0)
+    for (size_t i=0; i<nr_of_primitive_types; ++i)
+      if (str==prim_names[i])
+        return type_expr::primitive(static_cast<primitive_tag>(i));
   throw logic_error("Type unrecognised");
 }
 
