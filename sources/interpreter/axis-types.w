@@ -2290,14 +2290,22 @@ bool is_free_in(const type_expr& tp, unsigned int nr,
 
 @*1 Specifying types by strings.
 %
-In practice we shall rarely call functions like |mk_prim_type| and
-|mk_row_type| directly to make explicit types, since this is rather laborious.
-Instead, such explicit types will be constructed by the function |mk_type_expr|
-that parses a (\Cee~type) string, and correspondingly calls the appropriate
-type constructing functions.
+In practice we shall rarely call functions like |mk_prim_type| and |mk_row_type|
+directly to make explicit types, since this is rather laborious. Instead, such
+explicit types will be constructed by the function |mk_type_expr| that parses a
+(\Cee~type) string |s|, and correspondingly calls the appropriate type
+constructing functions to build its return value. Now that we extended this
+function, allowing it to scan and return polymorphic types, we add an output
+parameter |var_count| that signals how many distinct type variables were found.
+
+In some cases, as in section @# first types section @>, we are interested in
+type patterns that allow `\.*' to be used to designate an |undetermined_type|,
+but which are not intended to be in other ways polymorphic. For those occasions
+we use |mk_type_pattern|, which lacks the |var_count| parameter.
 
 @< Declarations of exported functions @>=
-type_expr mk_type_expr(const char* s);
+type_expr mk_type_expr(const char* s,unsigned int& var_count);
+type_expr mk_type_pattern(const char* s);
 
 @ The task of converting a properly formatted string into a type is one of
 parsing a simple kind of expressions. The strings used here come from string
@@ -2308,7 +2316,13 @@ crude here. The simplest way of parsing ``by hand'' is recursive descent, so
 that is what we shall use. By passing a character pointer by reference, we
 allow the recursive calls to advance the index within the string read.
 
-The function |scan_type| does the real parsing, |mk_type_expr| calls it,
+@< Local function definitions @>=
+type_expr scan_type(const char*& s, std::string& vars);
+type_expr scan_in_parens(const char*& s, std::string& vars);
+type_expr scan_union_list(const char*& s, std::string& vars);
+type_expr scan_tuple_list(const char*& s, std::string& vars);
+
+@ The function |scan_type| does the real parsing, |mk_type_expr| calls it,
 providing a local modifiable pointer to bind to its reference parameter (which
 is important because |scan_type| cannot directly accept a \Cee-string constant
 as argument) while also doing error reporting. The function |mk_type_expr| is
@@ -2316,23 +2330,45 @@ called only during the start-up phase of \.{atlas} (but after the table
 |prim_names| of primitive type names is installed), and if an error is
 encountered (of type |logic_error|, since this must be an error in the \.{atlas}
 program itself), printing of the error message will be followed by termination
-of the program.
+of the program. Although the function |mk_type_pattern| should not produce
+polymorphic types and |mk_type_expr| should produce a type without undefined
+type subexpressions, it not really worth the hassle to ensure this by writing
+two separate implementations, so we implement |mk_type_pattern| by calling
+|mk_type_expr| and ignoring the number of type variables it finds.
 
 @< Function definitions @>=
-type_expr scan_in_parens(const char*& s);
-type_expr scan_union_list(const char*& s);
-type_expr scan_tuple_list(const char*& s);
-@)
-type_expr scan_type(const char*& s)
+type_expr mk_type_expr(const char* s,unsigned int& var_count)
+{ const char* orig=s; std::string vars;
+  try
+  { auto result=scan_type(s,vars);
+    var_count = vars.length();
+    return result;
+  }
+  catch (logic_error& e)
+  { std::cerr << e.what() << "; original string: '" << orig @|
+              << "' text remaining: '" << s << "'\n";
+    throw;
+  // make the error hard to ignore; if thrown probably aborts the program
+  }
+}
+type_expr mk_type_pattern(const char* s)
+{@; unsigned int dummy; return mk_type_expr(s,dummy);
+}
+
+@ The part of |scan_type| dealing with enclosed or atomic type expressions is
+quite simple.
+
+@< Local function definitions @>=
+type_expr scan_type(const char*& s, std::string& vars)
 { if (*s=='(')
-  { type_expr result=scan_in_parens(++s);
+  { type_expr result=scan_in_parens(++s,vars);
     if (*s++!=')')
       throw logic_error("Missing ')' in type");
     return result;
   }
   else if (*s=='[')
   {
-    type_expr t = scan_in_parens(++s);
+    type_expr t = scan_in_parens(++s,vars);
     if (*s++!=']')
       throw logic_error("Missing ']' in type");
     return type_expr::row(std::move(t));
@@ -2341,21 +2377,13 @@ type_expr scan_type(const char*& s)
   else @< Scan and |return| a primitive type, or |throw| a |logic_error| @>
 }
 @)
-type_expr mk_type_expr(const char* s)
-{ const char* orig=s;
-  try
-  {@; return scan_type(s); }
-  catch (logic_error& e)
-  { std::cerr << e.what() << "; original string: '" << orig @|
-              << "' text remaining: '" << s << "'\n";
-    throw;
-  // make the error hard to ignore; if thrown probably aborts the program
-  }
-}
 
-@ For primitive types we use the same strings as for printing them. We test as
-many characters as the type name has, and the fact that no alphanumeric
-character follows, so that a longer type name will not match a prefix of it.
+
+@ For primitive types we use the same strings as for printing them. Since none
+of them consists of a single character, and single letter names will suffice as
+type variables for built-in functions; we only retainin |vars| the collection of
+type variables seen within the current expression and the position of each type
+variable in it.
 
 In this module we use the fact that the order in the list |prim_names| matches
 that in the enumeration type |primitive_tag|, by casting the integer index
@@ -2366,10 +2394,22 @@ into the former list to an element of that enumeration.
 { std::string str;
   while (isalpha(*s))
     str.push_back(*s++);
-  if (str.length()>0)
-    for (size_t i=0; i<nr_of_primitive_types; ++i)
+  auto l = str.length();
+  if (l==1)
+  { auto pos = vars.find(str[0]);
+    if (pos==vars.npos)
+    {@; pos=vars.length();
+      vars+=str[0];
+    }
+    return type_expr::variable(pos);
+  }
+  if (l>1)
+  { for (size_t i=0; i<nr_of_primitive_types; ++i)
       if (str==prim_names[i])
         return type_expr::primitive(static_cast<primitive_tag>(i));
+    std::cerr << str << ": ";
+    throw logic_error("Primitive type unrecognised");
+  }
   throw logic_error("Type unrecognised");
 }
 
@@ -2393,29 +2433,29 @@ give an empty tuple.
 
 @h <string>
 
-@< Function definitions @>=
-type_expr scan_in_parens(const char*& s)
-{ type_expr a=scan_union_list(s);
+@< Local function definitions @>=
+type_expr scan_in_parens(const char*& s, std::string& vars)
+{ type_expr a=scan_union_list(s,vars);
   if (*s!='-' or s[1]!='>')
     return a;
-  return type_expr::function(std::move(a),scan_union_list(s+=2));
+  return type_expr::function(std::move(a),scan_union_list(s+=2,vars));
 }
 @)
-type_expr scan_union_list(const char*& s)
+type_expr scan_union_list(const char*& s, std::string& vars)
 { dressed_type_list variants;
-  while (variants.emplace_back(scan_tuple_list(s)),*s=='|')
+  while (variants.emplace_back(scan_tuple_list(s,vars)),*s=='|')
     ++s;
   return variants.size()==1
     ? std::move(variants.front())
     : type_expr::onion(variants.undress());
 }
 @)
-type_expr scan_tuple_list(const char*& s)
+type_expr scan_tuple_list(const char*& s, std::string& vars)
 { static const std::string term("|-)]");
   dressed_type_list members;
   if (term.find(*s)==std::string::npos)
     // only act on non-terminating characters
-    while (members.emplace_back(scan_type(s)),*s==',')
+    while (members.emplace_back(scan_type(s,vars)),*s==',')
       ++s;
   return members.size()==1
     ? std::move(members.front())
@@ -2459,8 +2499,8 @@ const type_expr unknown_type; // uses default constructor
 const type_expr void_type = type_expr::tuple(empty_tuple());
 const type_expr int_type = type_expr::primitive(integral_type);
 const type_expr bool_type = type_expr::primitive(boolean_type);
-const type_expr row_of_type(mk_type_expr("[*]"));
-const type_expr gen_func_type(mk_type_expr("(*->*)"));
+const type_expr row_of_type(mk_type_pattern("[*]"));
+const type_expr gen_func_type(mk_type_pattern("(*->*)"));
 
 @ There are more such statically allocated type expressions, which are used in
 the evaluator. They are less fundamental, as they are not actually used in any
@@ -2512,14 +2552,14 @@ const type_expr str_type = type_expr::primitive(string_type);
 const type_expr vec_type = type_expr::primitive(vector_type);
 const type_expr ratvec_type = type_expr::primitive(rational_vector_type);
 const type_expr mat_type = type_expr::primitive(matrix_type);
-const type_expr row_of_int_type(mk_type_expr("[int]"));
-const type_expr row_of_rat_type(mk_type_expr("[rat]"));
-const type_expr row_of_vec_type(mk_type_expr("[vec]"));
-const type_expr row_of_ratvec_type(mk_type_expr("[ratvec]"));
-const type_expr row_row_of_int_type(mk_type_expr("[[int]]"));
-const type_expr row_row_of_rat_type(mk_type_expr("[[rat]]"));
-const type_expr pair_type(mk_type_expr("(*,*)"));
-const type_expr int_int_type(mk_type_expr("(int,int)"));
+const type_expr row_of_int_type(mk_type_pattern("[int]"));
+const type_expr row_of_rat_type(mk_type_pattern("[rat]"));
+const type_expr row_of_vec_type(mk_type_pattern("[vec]"));
+const type_expr row_of_ratvec_type(mk_type_pattern("[ratvec]"));
+const type_expr row_row_of_int_type(mk_type_pattern("[[int]]"));
+const type_expr row_row_of_rat_type(mk_type_pattern("[[rat]]"));
+const type_expr pair_type(mk_type_pattern("(*,*)"));
+const type_expr int_int_type(mk_type_pattern("(int,int)"));
 const type_expr Lie_type_type = type_expr::primitive(complex_lie_type_type);
 const type_expr rd_type = type_expr::primitive(root_datum_type);
 const type_expr ic_type = type_expr::primitive(inner_class_type);
