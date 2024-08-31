@@ -2609,7 +2609,8 @@ added to |global_id_table| instead.
 shared_builtin install_function
  (wrapper_function f,const char*name, const char* type_string,
   unsigned char hunger)
-{ type_expr type = mk_type_expr(type_string);
+{ unsigned int var_count;
+  type_expr type = mk_type_expr(type_string,var_count);
   std::ostringstream print_name; print_name<<name;
   if (type.kind()!=function_type)
     throw logic_error
@@ -2634,7 +2635,8 @@ time behaviour of the (already installed) built-in function.
 std::shared_ptr<special_builtin> install_special_function
  (wrapper_function f,const char*name, const char* type_string,
   unsigned char hunger)
-{ type_expr type = mk_type_expr(type_string);
+{ unsigned int var_count;
+  type_expr type = mk_type_expr(type_string,var_count);
   std::ostringstream print_name; print_name<<name;
   if (type.kind()!=function_type)
     throw logic_error
