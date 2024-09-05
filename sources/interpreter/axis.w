@@ -1557,13 +1557,15 @@ expression_ptr resolve_overload
   id_type id =  e.call_variant->fun.identifier_variant;
   expression_ptr arg; // will hold the final converted argument expression
   for (const auto& variant : variants)
-    if (a_priori_type==variant.type().arg_type) // exact match
+  { type_assignment assign(0,variant.poly_degree());
+    if (can_unify(a_priori_type,variant.type().arg_type,assign)) // exact match
     {
       arg =
         n_args==1 ? std::move(arg_vector[0]) : expression_ptr(std::move(tup_exp));
        @< Construct and |return| a call of the function value |variant.value()|
          with argument |arg| @>
     }
+  }
 
   @< If |id| is a special operator like \# and it matches
      |a_priori_type|, |return| a call |id(args)| @>
