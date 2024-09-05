@@ -19,11 +19,37 @@ set to_ht(maybe_KTP P,int N) = maybe_KTP:
     | done(r): done(to_ht(r,N))
     esac
 
+
 set full_deform_to_ht_MvL(ParamPol P, int N) = KTypePol:
     deform_to_height(P,N)
 
-{set full_deform_to_ht_MvL(ParamPol P, int N, int time) = (KTypePol,bool):
-    deform_to_height(P,N,time)}
+set full_deform_to_ht_MvL (Param p, int height, int time) = maybe_KTP:
+( if deformed_hash_flag
+  then let j = deformedHash.lookup(p)
+       in if j.>= and (deformedHash.height_index(j).= or deformedHash.height_index(j) >= height)
+       	  then return to_ht(deformedHash.data_index(j),height).done
+	  fi
+  fi;
+let !empty_K=null_K_module(p.real_form), !empty=null_module(p)
+  then output = empty_K, def = empty, expiration = elapsed_ms()
+  then P = empty +
+  { snap p down to a reducibility point, or tempered parameter }
+     (let rp = reducibility_points(p)
+       in
+        if =#rp then output +:= p.K_type; [] else [p*rp~[0]] fi)
+  then () = while >#P
+       	    do set (def,P) :=
+               (let p=first_param(P) in block_deform(p,P next P:=empty,height))
+  	       ; if elapsed_ms() > expiration then return timed_out() fi
+  	       ;  let kt = for c@q in def if  =nu(q) do (c,q.K_type) fi od
+     	       	  ,   pp = for c@q in def if !=nu(q) do (c,q) fi od
+  	      in output := (output next output:=empty_K) + kt; P := (P next P:=empty) + pp
+  	    od
+  then () = if deformed_hash_flag
+       	    then deformedHash.append(p,height,output)
+	    fi
+  in done(output)
+)
 
 set full_deform_to_ht_old(Param p, int N) = KTypePol:
 if height(p) > N then null_K_module(p.real_form)
@@ -52,6 +78,11 @@ set twisted_full_deform_to_ht_MvL(Param p, int N) = KTypePol:
     let pc = alcove_center(p)
     in to_ht(twisted_full_deform(pc), N)
 
+set twisted_full_deform_to_ht_MvL(Param p, int N, int time) = maybe_KTP:
+    if N < 0 then return twisted_full_deform(p,time) fi;
+    let pc = alcove_center(p)
+    in to_ht(twisted_full_deform(pc,time), N)
+
 set twisted_full_deform_to_ht(Param p,int N) = KTypePol:
     if N < 0 then return twisted_full_deform(p) fi;
     let pc = alcove_center(p)
@@ -74,12 +105,20 @@ set c_form_std_to_ht_MvL(int N) = (Param->KTypePol):(Param p):
 { never involves |twisted_full_deform| }
    full_deform_to_ht_MvL(p,N)
 
+set c_form_std_to_ht_MvL(int N, int time) = (Param->maybe_KTP):(Param p):
+{ never involves |twisted_full_deform| }
+   full_deform_to_ht_MvL(p,N,time)
+
+
 set c_form_std_to_ht(int N) = (Param->KTypePol):(Param p):
 { never involves |twisted_full_deform| }
    full_deform_to_ht(p,N)
 
 set twisted_c_form_std_to_ht_MvL(int N) = (Param->KTypePol):(Param p):
    twisted_full_deform_to_ht_MvL(p,N)
+
+set twisted_c_form_std_to_ht_MvL(int N, int time) = (Param->maybe_KTP):(Param p):
+   twisted_full_deform_to_ht_MvL(p,N,time)
 
 set twisted_c_form_std_to_ht(int N) = (Param p)KTypePol:
    twisted_full_deform_to_ht(p,N)
@@ -108,18 +147,23 @@ set c_form_irreducible_to_ht_MvL (Param p,int N) = KTypePol:
 {.c-invariant form on irreducible module of p as ParamPol of standardrepKs.}
 
 set c_form_irreducible_to_ht_MvL (Param p,int N, int time ) = maybe_KTP:
-  let P=oriented_KL_sum_to_ht(N)(p), count=0 then nP=#P, start =
-  elapsed_ms(), !empty_K = null_K_module(p.real_form), flag = true
+  let P=oriented_KL_sum_to_ht(N)(p), count=0 then nP=#P, expiration =
+  elapsed_ms()+time, !empty_K = null_K_module(p.real_form)
   then list = for c@q in P
-       	      ~do let Q = c*full_deform_to_ht(q, N)
+       	      ~do let Q = full_deform_to_ht_MvL(q, N, expiration - elapsed_ms())
+	      	  in case Q
+		     | timed_out: return timed_out()
+		     | done(r): c*r
+		     esac
+	       od
+       	     { ~do let Q = c*full_deform_to_ht(q, N)
 	      	  then () = if elapsed_ms() - start > time
 		       	    then flag:= false; break
 			    fi
 		  in Q
-	       od
-  in if flag then sum(p.real_form, list).done else timed_out()
-  fi
- 
+	       od}
+  in sum(p.real_form, list).done
+
 { untwisted |c_form_irreducible|, for efficiency; only used in equal rank case }
 {.c-invariant form on irreducible module of p as ParamPol of standardrepKs.}
 set c_form_irreducible_to_ht (Param p,int N) = KTypePol:
@@ -135,7 +179,36 @@ set c_form_irreducible_to_ht (Param p,int N) = KTypePol:
   in prints("Fully deforming ",nP," terms"); map(f, P)
   fi
 
+{ untwisted |c_form_irreducible|, for efficiency; only used in equal rank case }
+{.c-invariant form on irreducible module of p as ParamPol of standardrepKs.}
+set c_form_irreducible_to_ht (Param p,int N, int time) = maybe_KTP:
+  let G = p.real_form in
+  map(c_form_std_to_ht_MvL(N,time), oriented_KL_sum_to_ht(N)(p) )
+
 {    twisted_c_form_irreducible_to_ht   }
+
+{ utility: compute fixed and unfixed contributions to c-form on irreducible(p)
+  no deformation is done, but orientation numbers are included;
+  fixed contributions are already halved; for unfixed ones this needs to wait
+}
+set twisted_c_form_irreducible_contributions_to_ht(Param p,int N) =
+    (ParamPol,ParamPol): { (fixed part, 2*unfixed part) }
+  let G=p.real_form, ori_nr_p = orientation_nr(p)
+  then formula = (1+s)*KL_sum_at_s_to_height(p,N) + (1-s)*twisted_KL_sum_at_s_to_ht(N)(p)
+  in { two value-producing loops can be a lot more efficient than one: }
+  ( G.null_module +
+      for c@q in formula
+      do if twist(q)=q then [(half(c)*orientation_nr_term(ori_nr_p,q),q)]
+         else []
+	 fi
+      od.##
+   , G.null_module +
+      for c@q in formula
+      do if twist(q)=q then []
+         else [(c*orientation_nr_term(ori_nr_p,q),q)]
+	 fi
+      od.##
+  )
 
 { utility: compute fixed and unfixed contributions to c-form on irreducible(p)
   no deformation is done, but orientation numbers are included;
@@ -191,7 +264,13 @@ set twisted_c_form_irreducible_to_ht (Param p,int N, int time) = maybe_KTP:
   !empty_K = null_K_module(p.real_form), flag = true
 { |1+s| divides |unfixed|, no need for |scale_extended|; take half at |nu=0| }
 {fixed has the role of P in c_form_irreducible_to_ht_MvL}
-   then list = for c@q in fixed
+   then Q = map(twisted_c_form_std_to_ht_MvL(N,time),fixed)
+   in case Q
+      | timed_out: timed_out()
+      | done(r): (r + half(unfixed.K_type_pol)).done
+      esac
+)
+   {then list = for c@q in fixed
    	       ~do let Q = c*twisted_c_form_std_to_ht(N)(q)
 	       	   then () = if elapsed_ms() - start > time
 		       	     then flag:= false; break
@@ -200,8 +279,7 @@ set twisted_c_form_irreducible_to_ht (Param p,int N, int time) = maybe_KTP:
 		od
    in if flag then (sum(p.real_form, list)+ half(unfixed.K_type_pol)).done
       else timed_out()
-      fi
-)
+      fi}
 
 set twisted_c_form_irreducible_to_ht_MvL (Param p,int N) = KTypePol:
     twisted_c_form_irreducible_to_ht (p,N)

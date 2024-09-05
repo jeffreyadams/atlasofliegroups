@@ -20,11 +20,14 @@ set known_unitaries(Param_hash Uhash, KGBElt x, ratvec lambda, LocalVertexData L
 	     od
     in for d:#LFDKH
        do for p@j in ps[d]
-       	  do let qs = monomials(finalize(p))
-	     in if all(for q in qs do @bool: Uhash.lookup(q).>= od)
-	     	then [j]
-		else []
-		fi
+       	  do if p.nu.=
+	     then [j]
+	     else let qs = monomials(finalize(p))
+	     	  in if all(for q in qs do @bool: Uhash.lookup(q).>= od)
+	     	     then [j]
+		     else []
+		     fi
+	     fi
 	  od.##
        od
 
@@ -1555,20 +1558,29 @@ set low_frac = 1/1
     in NU > low_frac*LAM}
 
 {whether to use to_height in computing to height N}
+{true means large nu, so to_ht could be better}
 set low(Param p, int N) = bool:
     let (,NU,) = low(p)
     in NU > 2*N*low_frac
 
 {if true, then try is_unitary during is_unitary_to_ht}
 set interrupt_flag = true
+set print_int_flag = false
 
 {initial time to give interruptible command}
-set interrupt_base_time = int:50
+set interrupt_base_time = int:200
 
+{START with full is_unitary tests, because those are actually interruptable}
 { meant to be used for G simple }
 { compute Hermitian form to ht on p, report if it is unitary}
 set is_unitary_to_ht_big_SIMPLE_interrupt(Param p,int N, int time) = bool:
-  let which_flag = true, result = 0
+  let which_flag = low(p,N), result = 0, start = elapsed_ms(), (LAM,NU,) = low(p)
+  then () = if print_int_flag then prints("N = ",N, ", p = ",p) fi
+  {then () = if NU > 8*N*low_frac
+       	    then return is_pure(hermitian_form_irreducible_to_ht(p,N))
+      	    elif NU < N*low_frac/2
+      	    then return is_pure(to_ht(hermitian_form_irreducible(p),N))
+      	    else}
   then () = while result.=
        	    do result := if which_flag
      	       	      	 then is_unitary_to_ht_MvL(p,N,time)
@@ -1580,12 +1592,13 @@ set is_unitary_to_ht_big_SIMPLE_interrupt(Param p,int N, int time) = bool:
 					      fi
 		   	      esac
 	      		 fi;
-      		time := 2*time;
+      		if which_flag then time := 2*time fi;
 	        which_flag := not which_flag;
-      		unitary_test_counter.use()
+		if print_int_flag then prints("in to_ht, time = ", time, ", which_flag = ", which_flag,
+		", elapsed = ",elapsed_ms() - start) fi
+      		{unitary_test_counter.use() done in calls above}
   	     od
   in result.>
-
 
 { meant to be used for G simple }
 { compute Hermitian form to ht on p, report if it is unitary}
@@ -1601,11 +1614,11 @@ set is_unitary_to_ht_big_SIMPLE(Param p,int N) = bool:
   then () = if L.>= then return true fi
   in if interrupt_flag
      then is_unitary_to_ht_big_SIMPLE_interrupt(p,N, interrupt_base_time)
-     else unitary_test_counter.use();
-     if low(p,N) {low(p.x,p.lambda,N)}
-     then is_pure(hermitian_form_irreducible_to_ht(p,N))
-     else is_pure(to_ht(hermitian_form_irreducible(p),N))
-     fi
+     else {unitary_test_counter.use(); done in calls below}
+     	  if low(p,N) {low(p.x,p.lambda,N)}
+     	  then is_pure(hermitian_form_irreducible_to_ht(p,N))
+     	  else is_pure(to_ht(hermitian_form_irreducible(p),N))
+     	  fi
      fi
 
 { compute Hermitian form to ht on p, report if it is unitary}
@@ -1618,8 +1631,9 @@ set to_hts_count_mat = null(10,10)
 set to_hts_count = null(10)
 
 set is_unitary_to_hts_big_SIMPLE_interrupt(Param p,[int] Ns, int time) = bool:
+    if print_int_flag then prints("N = ",Ns, " p = ",p) fi;
     let () = for N@i in Ns
-       	     do let result = 0, which_flag = true
+       	     do let result = 0, which_flag = low(p,N), start = elapsed_ms()
      	        then () = while result = 0
 	     	       	  do result:= if which_flag
 		     	      	     then is_unitary_to_ht_MvL(p,N,time)
@@ -1632,9 +1646,11 @@ set is_unitary_to_hts_big_SIMPLE_interrupt(Param p,[int] Ns, int time) = bool:
 					    fi
 		      	      	   	  esac
 			      	     fi;
-                	     unitary_test_counter.use();
+			     	if print_int_flag then prints("in to_hts, time = ", time, ", which_flag = ",
+				which_flag, ", elapsed = ", elapsed_ms() - start) fi;
+                	     {unitary_test_counter.use(); this is done in the calls above}
 			     if not which_flag and not result.= then break fi;
-		       	     time:=2*time;
+		       	     if which_flag then time := 2*time fi;
 		       	     which_flag := not which_flag
      	      		  od {while result}
 		in if result.< then return false fi
@@ -1653,6 +1669,12 @@ set is_unitary_to_hts_big_SIMPLE(Param p,[int] Ns) = bool:
   {then () = p := herm_center(p)}
   then L = big_unitary_hash.lookup(p)
   then () = if L.>= then return true fi
+  {then (LAM,NU,) = low(p)}
+  {then () = if #Ns > 0 and NU > 8*Ns~[0]*low_frac
+       	    then return is_unitary_to_hts(p,Ns)
+	    elif #Ns > 0 and NU < Ns~[0]*low_frac/2
+	    then return is_pure(to_ht(hermitian_form_irreducible(p),Ns~[0]))
+	    fi}
   in if interrupt_flag
      then return is_unitary_to_hts_big_SIMPLE_interrupt(p, Ns, interrupt_base_time)
      else to_hts_count[#Ns] +:= 1;
@@ -1683,7 +1705,12 @@ set test_count = null(10)
 {ONLY for G simple}
 { compute Hermitian form to height N; if it's positive, then compute full form }
 set is_unitary_test_big_SIMPLE_interrupt(Param p, int N, int time) = bool:
-    let which_flag = true, result = 0
+    let which_flag = low(p,N), result = 0, start = elapsed_ms(), (LAM,NU,) = low(p)
+    {then () = if NU > 8*N*low_frac
+       	      then return is_pure(hermitian_form_irreducible_to_ht(p,N))
+      	      elif NU < N*low_frac/2
+      	      then return is_pure(to_ht(hermitian_form_irreducible(p),N))
+    	      else}
     then () = while result.=
     	      do result := if which_flag
 	      	 	   then is_unitary_to_ht_MvL(p,N,time)
@@ -1697,8 +1724,10 @@ set is_unitary_test_big_SIMPLE_interrupt(Param p, int N, int time) = bool:
 		   	        esac
 	      		   fi;
 			   if result = -1 then return false fi;
-      			   time := 2*time;
+      			   if which_flag then time := 2*time fi;
 	        	   which_flag := not which_flag;
+			   if print_int_flag then prints("in test, time = ", time, ", which_flag = ",
+			      		     which_flag, ", elapsed = ",elapsed_ms() - start) fi;
 			   unitary_test_counter.use()
 	       od
     {now result = +1}
@@ -1707,7 +1736,7 @@ set is_unitary_test_big_SIMPLE_interrupt(Param p, int N, int time) = bool:
 {ONLY for G simple}
 { compute Hermitian form to height N; if it's positive, then compute full form }
 set is_unitary_test_big_SIMPLE(Param p, int N) = bool:
-    unitary_test_counter.use(); {prints("N = ",N,", p = ",p);}
+    unitary_test_counter.use(); {{prints("N = ",N,", p = ",p);}}
     if (not is_hermitian(p)) or (not is_pos_on_LKTs(p)) then return false fi;
     let G = p.real_form
     then FPP_flag = is_FPP(G,p.infinitesimal_character)
@@ -1740,7 +1769,7 @@ set is_unitary_test_big_SIMPLE(Param p, int N) = bool:
 { like previous, with list of heights; use interrupted is_unitary}
 set is_unitary_test_big_SIMPLE_interrupt (Param p, [int] Ns, int time) = bool:
    let () = for N@i in Ns
-       	    do let result=0, which_flag=true
+       	    do let result=0, which_flag=low(p,N), start = elapsed_ms()
 	       then () =  while result = 0
 	     	       	  do result:= if which_flag
 		     	      	      then is_unitary_to_ht_MvL(p,N,time)
@@ -1753,10 +1782,12 @@ set is_unitary_test_big_SIMPLE_interrupt (Param p, [int] Ns, int time) = bool:
 					     fi
 		      	      	   	   esac
 			      	       fi;
+			    if print_int_flag then prints("in tests, time = ", time, "which_flag = ",
+			       		      which_flag, ", elapsed = ",elapsed_ms() - start) fi;
                	    	    unitary_test_counter.use();
 			    if result = -1 then return false fi;
  			    if not which_flag and result = 1 then return true fi;
-		       	    time:=2*time;
+		       	    if which_flag then time := 2*time fi;
 		       	    which_flag := not which_flag
      	      		 od {while result}
 	      {at this point result =1, indicating unitarity to ht N is true}
@@ -1781,7 +1812,13 @@ set is_unitary_test_big_SIMPLE (Param p, [int] Ns) = bool:
        	    then test_count_mat[0,0] +:= 1;
 	    return is_unitary_hash_big_SIMPLE(p)
 	    fi
-  {then (LAM,NU) = low(p)}
+  then (LAM,NU,) = low(p)
+  then () = if #Ns > 0 and NU > 8*Ns~[0]*low_frac
+       	    then return is_unitary_test(p,Ns)
+	    elif #Ns > 0 and NU < Ns~[0]*low_frac/2
+	    then return is_unitary(p)
+	    {is_pure(to_ht(hermitian_form_irreducible(p),Ns~[0]))}
+	    fi
   in if interrupt_flag then is_unitary_test_big_SIMPLE_interrupt(p, Ns,interrupt_base_time)
      else for N@i in Ns
      	  do if is_pure(hermitian_form_irreducible_to_ht(p,N))
@@ -1792,6 +1829,7 @@ set is_unitary_test_big_SIMPLE (Param p, [int] Ns) = bool:
   	  test_count_mat[#Ns,#Ns] +:= 1;
 	  is_unitary_hash_big_SIMPLE(p)
       fi
+
 set is_unitary_test_big(Param p, int N) = bool:
     if (not is_hermitian(p)) or (not is_pos_on_LKTs(p)) then return false fi;
     let pds = derived_factor_params0(p)
@@ -1824,11 +1862,20 @@ set is_unitary_def_test_big_SIMPLE(Param p,int m) = bool:
     {then () = p := herm_center(p)}
     then L = big_unitary_hash.lookup(p)
     then () = if L.>= then return true fi
-    {then (LAM,NU) = low(p)}
+    {then N = height(p) + 4*m
+    then (LAM,NU,) = low(p)
+    then () = if NU > 8*low_frac
+       	      then let (def,flag) = deform_hts(p,m)
+	      	   in is_unitary_test(p,def)
+		   {if flag then return is_unitary_test(p,deform_hts(p,m))...}
+	     	   { elif #def > 0 and NU < *low_frac/2
+	      	   then return is_unitary(p)}
+	    {is_pure(to_ht(hermitian_form_irreducible(p),Ns~[0]))}
+	    fi}
     then () = if interrupt_flag
     	      then return is_unitary_def_test_big_SIMPLE_interrupt(p, m, interrupt_base_time)
 	      fi
-    in if low(p, height(p) + 4*m) {NU > LAM*low_frac}
+    in if low(p, height(p) + 4*m) {2*NU > N*low_frac}
        then let (def,flag)= deform_hts(p,m)
        	    in if flag
        	       then is_pos_on_LKTs(p) and is_unitary_to_hts_big_SIMPLE(p,def)

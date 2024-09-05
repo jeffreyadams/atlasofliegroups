@@ -13,6 +13,7 @@ set to_ht (KTypePol P,int N) = KTypePol:
   let (below,)=height_split(P,N) in below
 
 {tables of full_deform to ht, indexed by Param; one for each height}
+{********Should put these in to_ht.at, allow time-limited entry********}
 set_type 
 [ deformation_hash =
 ( ( -> int) size
@@ -21,6 +22,7 @@ set_type
   , ( -> int) height
   , (int -> ) adjust_height
   , (Param->KTypePol) entry
+  , (Param->int) lookup
   , (Param->) append
   , (int -> Param) param_index
   , (int -> KTypePol) data_index
@@ -68,6 +70,7 @@ set make_deformation_hash (int h, bool twisted) = deformation_hash:
 		  fi
 	in deformed_data[m]
      end
+   , (Param->int): {lookup} (Param p): param_hash.lookup(p)
    , (Param->): {append } (Param p):
      begin
 	let M = param_hash.size()
@@ -97,6 +100,8 @@ set_type
   , ( -> ) clear
   , (Param -> int) height {maximum height to which p is deformed}
   , ((Param,int)->KTypePol) entry
+  , (Param->int) lookup
+  , ((Param,int,KTypePol)->) append
   , (int -> Param) param_index {parameter #j}
   , (int -> int) height_index {height to which parameter #j is deformed}
   , (int -> KTypePol) data_index {deformation of parameter #j to its ht}
@@ -156,6 +161,19 @@ set make_deformation_hash_to_ht () = deformation_hash_to_ht:
     in if h > 0
        then to_ht(deformed_data[i],h)
        else deformed_data[i]
+       fi
+  , (Param->int): {lookup} (Param p): deform_param_hash.lookup(p)
+  , ((Param,int,KTypePol)->): {append} (Param p, int h, KTypePol P):
+    let I = deform_param_hash.size()
+    then i = deform_param_hash.match(p)
+    in if i=I {haven't seen p before}
+       then deform_max_heights #:=h;
+	    deformed_data#:=P;
+	    deform_use_count#:=0
+       elif {i < I} (h=0 and deform_max_heights[i].>) 
+	    or h>deform_max_heights[i] {seen p, but not to h}
+       then deform_max_heights[i]:=h;
+	    deformed_data[i]:=P
        fi
   , (int -> Param): {param_index} (int j): deform_param_hash.index(j)
   , (int -> int): {height_index} (int j): deform_max_heights[j]
@@ -314,7 +332,7 @@ set write_twisted_deformation_hash(RealForm G) = void:
 	     ")")
        od
 {whether to use these hash tables}
-set deformed_hash_flag = false
+set deformed_hash_flag = true
 
 set deformedHash = make_deformation_hash_to_ht()
 set twistedDeformedHash = make_twisted_deformation_hash()
