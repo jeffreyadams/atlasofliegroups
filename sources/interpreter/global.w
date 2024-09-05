@@ -341,11 +341,13 @@ level of sharing less, since the function that is bound to an identifier for
 given argument types cannot be changed by assignment, which allows us to refer
 directly to the value stored rather than to its location. We also take into
 account that the stored types are always function types, so that we can store
-a |func_type| structure without tag or pointer to it. This saves space,
+a |func_type| structure |tp| without tag or pointer to it. This saves space,
 although it makes access the full function type as a |type_expr| rather
 difficult; however the latter is seldom needed in normal use. Remarks about
 ownership of the type apply without change from the non-overloaded case
-however.
+however. Finally, now that types can be polymorphic, we add a field |degree| to
+indicate the number of polymorphic type variables that |tp| contains (in
+argument and result type combined).
 
 @h "axis.h"
 // implementation needs definition of |function_base|; also and many uses
@@ -353,16 +355,19 @@ however.
 @< Type definitions @>=
 
 class overload_data
-{ shared_function val; @+ func_type tp;
+{ shared_function val;
+@+func_type tp;
+@+unsigned int degree;
 public:
-  overload_data(shared_function&& val,func_type&& t)
-  : val(std::move(val)), tp(std::move(t)) @+{}
+  overload_data(shared_function&& val,func_type&& t, unsigned int deg)
+  : val(std::move(val)), tp(std::move(t)), degree(deg) @+{}
   overload_data (overload_data&& x) = default;
   overload_data& operator=(overload_data&& x) = default;
    // no copy-and-swap needed
 @)
   const shared_function& @;value() const @+{@; return val; }
   const func_type& type() const @+{@; return tp; }
+  unsigned int poly_degree() const@+{@; return degree; }
 };
 
 @ Looking up an overloaded identifier should be done using an ordered list of
@@ -399,7 +404,7 @@ public:
    // number of distinct identifiers
   void print(std::ostream&) const;
 @) // manipulators
-  void add(id_type id, shared_function v, type_expr&& t);
+  void add(id_type id, shared_function v, type_expr&& t, unsigned int deg);
    // insertion
   bool remove(id_type id, const type_expr& arg_t); //deletion
 };
@@ -517,19 +522,20 @@ overloaded instances.
 
 @< Global function def... @>=
 void overload_table::add
-  (id_type id, shared_function val, type_expr&& t)
+  (id_type id, shared_function val, type_expr&& t, unsigned int deg)
 { assert (t.kind()==function_type);
   func_type ftype(t.func()->copy()); // locally copy the function type
   auto its = table.equal_range(id);
   if (its.first==its.second) // a fresh overloaded identifier
   {
     auto pos=table.emplace_hint(its.first,id,variant_list());
-    pos->second.emplace_back(std::move(val), std::move(ftype) );
+    pos->second.emplace_back(std::move(val), std::move(ftype), deg);
   }
   else
-    @< Insert an overload for function |val| with function type |ftype| into
-     the list of variants at |its->first.second|, or throw an error if
-     there is an incompatibility with a previously existing variant @>
+    @< Insert an overload for function |val| with function type |ftype| and
+       degree |deg| into the list of variants at |its->first.second|,
+       or throw an error if there is an incompatibility with a
+       previously existing variant @>
 }
 
 @ By calling |locate_overload|, we find out where to insert our new entry, and
@@ -546,9 +552,9 @@ any entry, allows us to avoid testing any types again here.
   auto pos=locate_overload(id,slot,ftype.arg_type); // may |throw|
   if (pos<slot.size() and slot[pos].type().arg_type==ftype.arg_type)
      // equality found
-    slot[pos] = overload_data(std::move(val),std::move(ftype)); // overwrite
+    slot[pos] = overload_data(std::move(val),std::move(ftype),deg); // overwrite
   else
-    slot.emplace(slot.begin()+pos,std::move(val),std::move(ftype));
+    slot.emplace(slot.begin()+pos,std::move(val),std::move(ftype),deg);
 }
 
 @ The |remove| method allows removing an entry from the overload table, for
@@ -996,13 +1002,14 @@ needs to be done in all cases.
 
 
 @< Define auxiliary functions for |do_global_set| @>=
-void add_overload(id_type id, shared_function&& f, type_expr&& type)
+void add_overload(id_type id,
+  shared_function&& f, type_expr&& type, unsigned int deg)
 {
   auto old_n=global_overload_table->variants(id).size();
 @/std::ostringstream type_string;
   type_string << type;
     // save type |type| as string before moving from it
-  global_overload_table->add(id,std::move(f),std::move(type));
+  global_overload_table->add(id,std::move(f),std::move(type),deg);
     // insert or replace table entry
   auto n=global_overload_table->variants(id).size();
   if (n==old_n)
@@ -1024,7 +1031,7 @@ the dynamic cast below should always succeed, if our type system is correct.
 { shared_function f = std::dynamic_pointer_cast<const function_base>(*v_it);
   if (f.get()==nullptr)
     throw logic_error("Non-function value found with function type");
-  add_overload(it->first,std::move(f),std::move(it->second));
+  add_overload(it->first,std::move(f),std::move(it->second),0);
 }
 
 @ For readability of the output produced during input from auxiliary files, we
@@ -1395,7 +1402,7 @@ projector or injector functions from |jectors| to the global overload table.
 @/*output_stream << "  with " << (type.kind()==tuple_type ? "pro" : "in");
   for (auto it=group.begin(); it!=group.end(); ++it)
   { global_overload_table->add
-      (it->first,std::move(jectors[it-group.begin()]),std::move(it->second));
+      (it->first,std::move(jectors[it-group.begin()]),std::move(it->second),0);
     *output_stream << (it==group.begin() ? "jectors: " : ", ")
                 @| << main_hash_table->name_of(it->first);
   }
@@ -1718,7 +1725,7 @@ instead); this avoids needing to allocate an actual static variable.
       else
         tor = std::make_shared<injector_value>(type,j,name,loc);
       global_overload_table->add @|
-        (name,std::move(tor),std::move(group_it->second));
+        (name,std::move(tor),std::move(group_it->second),0);
       *output_stream << main_hash_table->name_of(name);
       ++group_it; // advance only here
     }
@@ -2618,7 +2625,7 @@ shared_builtin install_function
   print_name << '@@' << type.func()->arg_type;
   auto val = std::make_shared<builtin>(f,print_name.str(),hunger);
   global_overload_table->add
-    (main_hash_table->match_literal(name),val,std::move(type));
+    (main_hash_table->match_literal(name),val,std::move(type),var_count);
   return val;
 }
 
@@ -2644,7 +2651,7 @@ std::shared_ptr<special_builtin> install_special_function
   print_name << '@@' << type.func()->arg_type;
   auto val = std::make_shared<special_builtin>(f,print_name.str(),hunger);
   global_overload_table->add
-    (main_hash_table->match_literal(name),val,std::move(type));
+    (main_hash_table->match_literal(name),val,std::move(type),var_count);
   return val;
 }
 
