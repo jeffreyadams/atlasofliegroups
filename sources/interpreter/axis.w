@@ -1486,9 +1486,9 @@ quite be the actual type for the intended variant. Overload resolution will then
 try to find a variant whose expected type is close enough to the
 found \foreign{a priori} type to expect that zero or more coercions will allow
 making the match. The necessary coercions might however need to ``creep inside''
-the argument expression (most obviously so in the common cases of an operand
-pair or argument tuple) on order to apply, so that it might not be possible to
-use the expression as initially converted; if this appears to be the case, the
+the argument expression in order to apply (most obviously so in the common cases
+of an operand pair or argument tuple), so that it might not be possible to use
+the expression as initially converted; if this appears to be the case, the
 conversion will be attempted as second time, this time in the strong context of
 the type expected by the matched variant. The second attempt may still fail (for
 instance if the expression structure does not allow for creeping inside), which
@@ -1504,36 +1504,40 @@ adaptations, we avoid useless re-conversions in most cases, ensuring that such
 growth is exceedingly unlikely to happen in practice, although it can still be
 provoked in artificial examples.
 
-@ The function |resolve_overload| must deal with a variety of possible
-situations. After an initial conversion has found an |a_priory_type|, we search
-for a match in |variants|, which match can be either exact or an indication by
-|is_close| that one or more coercions could help make the match. In the former
-case we immediately build the call with the variant found, but in the latter
-case we do stop the search, but then, and also if no match was found at all, we
-try if maybe the function name is one that (also) has a generic definition that
-matches (there are for operations like the operator~`\#' that represents several
-generic operations related to general row types; such operations should have a
-second order type, but our language does not have such types yet). Such a
-generic match has to be exact, and if one is found, it is given preference over
-an inexact match from |variants|. If no generic match is found, we either use a
-previously found inexact match or report failure to find any matching instance
-of the function.
+@ The function |resolve_overload| must decide which of the |variants| best
+matches the argument expression. It starts by converting the latter without any
+imposed type, finding an |a_priory_type|. Then when matching a variant, we can
+get an exact match with |a_priori_type|, in which case the variant is selected
+and an application of its function is returned. When, lacking an exact match, a
+possible match after coercions is suspected, a second conversion must be
+attempted. It may be that more than one variant can produce a match, in which
+case we always prefer an exact match if there is one, and in case there is more
+than one, we prefer one that provides the most specific (least generic) type.
+Inexact matches are only considered for variants with a completely specific
+type, and when left with a choice among several inexact matches, we prefer one
+that invokes the fewest coercions. These priority rules are implemented by
+ordering our tests so that the first match is also the best; for this purpose
+the variants have been partially sorted to ensure this.
 
-Whether in instance expecting |arg_type| in |variants| has an inexact match with
-|arg_type| is determined by calling |is_close(a_priori_type,arg_type)| and
-inspecting the relevant bit of the result. This call does not consider voiding
-coercions, so that when |arg_type==void_type| (for an instance of the function
-taking no arguments), the match will fail if an argument is present (unless it
-has void type); this is intended behaviour. It is for this reason that the call
-to |is_close| should not be replaced by one of |coercible|, which would return
-|true| whenever |arg_type==void_type|, regardless of the argument expression.
+We perform (at most) two passes over the variants, first looking for an exact
+match only; then if none is found, a second pass tests |is_close| between
+|a_priori_type| and the expected type of a variant. Currently all |variants|
+involve specific argument types, while some generic definitions, which exist for
+a small number of names like the operator~`\#', are tested for applicability
+after completing the first pass, which provides the proper priority in case of
+multiple matches. However, matching generic operators should really be done
+during the first pass using variants with polymorphic types, their matching
+against |a_priori_type| being done by unification. When, during the second pass,
+|is_close| signals a potential match, and a second conversion of the argument
+with the expected type for the variant is done, which in spite of |is_close| may
+still fail. In the latter case we give up without testing any more variants. If
+the second pass completes without finding any potential match, we report a
+``failed to match'' error.
 
-In case an inexact match is found, it is important that the final call to
-|conform_types| be postponed until after testing for generic instances, as it
-might irreversibly specialise |type| according to the tentative match.
-
-The parts of this function that actually construct a function call are
-postponed to be detailed later.
+Using |is_close| rather than |coercible| means that the possibility of voiding
+coercions is not taken into account: when |arg_type==void_type|, the only match
+accepted is when no arguments are present (though pedantically speaking, an
+argument with a priori type void also matches); this is intended behaviour.
 
 @:resolve_overload@>
 
@@ -1545,47 +1549,50 @@ expression_ptr resolve_overload
 {
   const expr& args = e.call_variant->arg;
   auto n_args = args.kind==tuple_display ? length(args.sublist) : 1;
-  std::unique_ptr<tuple_expression> tup_exp(new tuple_expression(n_args));
+  auto tup_exp = std::make_unique<tuple_expression>(n_args);
   std::vector<expression_ptr>& arg_vector = tup_exp->component;
   @< Fill |arg_vector| with expressions converted from the components of |args|,
      and set |type_expr a_priori_type| to be the type found @>
 @)
   id_type id =  e.call_variant->fun.identifier_variant;
   expression_ptr arg; // will hold the final converted argument expression
-  auto var_it = variants.begin(); // iterator will be saved when inexact match
-  for (; var_it!=variants.end(); ++var_it)
-  { if (a_priori_type==var_it->type().arg_type) // exact match
+  for (const auto& variant : variants)
+    if (a_priori_type==variant.type().arg_type) // exact match
     {
       arg =
         n_args==1 ? std::move(arg_vector[0]) : expression_ptr(std::move(tup_exp));
-       @< Construct and |return| a call of the function value |var_it->value()|
+       @< Construct and |return| a call of the function value |variant.value()|
          with argument |arg| @>
     }
-    else if ((is_close(a_priori_type,var_it->type().arg_type)&0x1)!=0)
-      // inexact match
-      break; // now |var_it| records the inexact match
-  }
+
   @< If |id| is a special operator like \# and it matches
      |a_priori_type|, |return| a call |id(args)| @>
-  if (var_it==variants.end())
-    @< Complain about failing overload resolution @>
+@) // no exact match; retry all cases for an inexact match
+  for (const auto& variant : variants)
+    if ((is_close(a_priori_type,variant.type().arg_type)&0x1)!=0)
+      // inexact match
+    { @< Apply an implicit conversion for every argument whose type in
+         |a_priori_type| differs from that required in |arg_type|, then assign
+         converted expression to |arg| @>
+      @< Construct and |return| a call of the function value
+         |variant.value()|... @>
+    }
+@)
+  @< Complain about failing overload resolution @>
 
-  @< Apply an implicit conversion for every argument whose type in
-     |a_priori_type| differs from that required in |arg_type|, then assign
-     converted expression to |arg| @>
-  @< Construct and |return| a call of the function value |var_it->value()|... @>
 }
 
 @ The following code rather uncharacteristically treats all argument lists as
 tuples, even if |n_args==1| indicates that no tuple expression is actually
 present. The reason that we do not simply call |convert_expr| for the entire
-argument expression is that we want to be able to easily reconvert one argument
-expression at a time, and it is hard to get such an access from a single
-|expression_ptr| to a converted tuple. Since we are bypassing the normal
-conversion of tuple expressions, we also get the responsibility for doing
-constant folding across them (which is otherwise done as a part of converting
-tuple expressions), and this allows us to postpone it until the correct types
-have been found, and any needed coercions inserted.
+argument tuple, is that we later want to be able to easily reconvert one
+argument expression at a time, and it would be hard to get access to these
+individual arguments if the argument tuple had been converted to a single
+|expression_ptr|. Since we are thus bypassing the normal conversion of tuple
+expressions, we also get the responsibility for doing constant folding across
+them (which is otherwise done as a part of converting tuple expressions). This
+in fact allows us to postpone constant folding until the correct types have been
+found, and any required coercions are inserted.
 
 There should be no braces around this code, since certainly the declaration of
 |a_priori_type| needs to be exported. The variable |is_constant| is also
@@ -1594,8 +1601,9 @@ should convert an argument that is a tuple of constants (represented as
 denotations) into a constant tuple; since this question does not arise in case
 of a single argument (and the conversion should not be attempted) we initialise
 the variable to |false| in that case. We use |apt| as a temporary non-|const|
-version of its later alias |a_priory_type|, that will not be used outside this
-code (although we cannot enforce that restriction).
+version of its later alias |a_priory_type|; even though the scope of the
+identifier |apt| is not limited to this module, we shall refrain from using it
+elsewhere.
 
 @< Fill |arg_vector| with expressions converted from... @>=
 bool is_constant = n_args>1;
@@ -1620,30 +1628,30 @@ else
 const type_expr& a_priori_type = apt;
 
 @ Having found a match (exact or inexact; the code below is included twice), and
-converted the argument expression to |arg|, we need to construct a function call
-object. The overload table contains an already evaluated function
-value~|var_it->value()|, which is has type |shared_function|, more specific than
+having converted the argument expression to |arg|, we need to construct a
+function call object. The overload table contains an already evaluated function
+value~|variant.value()|, which is has type |shared_function|, more specific than
 |shared_value| as it points to a value that represents a function object. Such
 values can either hold a built-in function, or a user-defined function together
 with its evaluation context, and we shall add to the list of possibilities
 later. Each type has a corresponding specialised function call type, and we
 shall provide a virtual method |function_base::build_call| that binds an
-argument expression to form a complete call; this renders the
-expression-building part of code below particularly simple. One noteworthy point
-is that |build_call| may need to store a shared pointer back to the
+argument expression to the function object to form a complete call; this renders
+the expression-building part of code below particularly simple. One noteworthy
+point is that |build_call| may need to store a shared pointer back to the
 |function_base| derived object that created it, and we therefore pass the shared
-pointer |var_it->value()| that gave us access to the |function_base| as first
+pointer |variant.value()| that gave us access to the |function_base| as first
 argument to its |build_call| virtual method. The underlying raw pointer equals
 |this| of that object, but we need a |std::shared_ptr| so that we also transfer
 shared ownership.
 
 This is one of the places where we might have to insert a |voiding|, in the rare
 case that a function with void argument type is called with a nonempty argument
-expression (of void type). An alternative would be to replace such a call by a
-sequence expression, evaluating the argument expression separately and then the
-function call with an empty argument expression. In any case the test \emph{can}
-be made here, since we have the argument type in the variable |arg_type|, and
-the argument expression in |args|.
+expression of void type. An alternative solution would be to replace such a call
+by a sequence expression, evaluating the argument expression separately and then
+the function call with an empty argument expression. In any case the
+test \emph{can} be made here, since we have the argument type in the variable
+|arg_type|, and the argument expression in |args|.
 
 As a special safety measure against the easily made error of writing `\.='
 instead of an assignment operator~`\.{:=}', we forbid converting to void the
@@ -1652,31 +1660,35 @@ case as a type error instead. In the unlikely case that the user defines an
 overloaded instance of `\.=' with void result type, calls to this operator
 will still be accepted.
 
-@< Construct and |return| a call of the function value |var_it->value()|... @>=
+Whenever an argument matches, with or without coercions, |conform_types| is
+called for the variant result type and the expected |type|; this may throw an
+error, also aborting the matching process.
+
+@< Construct and |return| a call of the function value |variant.value()|... @>=
 { if (type==void_type and
       id==equals_name() and
-      var_it->type().result_type!=void_type)
+      variant.type().result_type!=void_type)
   { std::ostringstream o;
     o << "Use of equality operator '=' in void context; " @|
       << "did you mean ':=' instead?\n  If you really want " @|
       << "the result of '=' to be voided, use a cast to " @|
-      << var_it->type().result_type << '.';
+      << variant.type().result_type << '.';
     throw expr_error(e,o.str());
   }
 @) // now select unique component or consolidate tuple
-  const auto& arg_type = var_it->type().arg_type;
+  const auto& arg_type = variant.type().arg_type;
   std::ostringstream name;
   name << main_hash_table->name_of(id) << '@@' << arg_type;
 @)
   if (arg_type==void_type)
-  { if (not is_empty(args))
+@/{@; if (not is_empty(args))
       arg.reset(new voiding(std::move(arg)));
   }
   else if (is_constant)
     make_row_denotation<false>(arg); // wrap tuple inside a denotation
-  auto call = var_it->value()->build_call
-           (var_it->value(),name.str(),std::move(arg),e.loc);
-  return conform_types(var_it->type().result_type,type,std::move(call),e);
+  auto call = variant.value()->build_call
+           (variant.value(),name.str(),std::move(arg),e.loc);
+  return conform_types(variant.type().result_type,type,std::move(call),e);
 }
 
 @ When we come here, an inexact match is found; we traverse the arguments (maybe
@@ -1685,10 +1697,10 @@ match the type expected for that argument of the match. By treating arguments
 independently, we mostly avoid a potential inefficiency of our approach that had
 previously been present for years. When multiple arguments were treated as a
 single tuple-display argument, it would require being entirely converted anew if
-any component did not produce the exact type required: this could lead to
-repeated conversion of another argument whose type does not need conversion; in
-nested formulae (like and explicit repeated vector addition where all argument
-vectors need conversion from integer lists) this could lead to processing time
+\emph{any} component did not produce the exact type required: this could lead to
+repeated conversion of another argument whose type does not need conversion. In
+nested formulae, like an explicit repeated vector addition where all argument
+vectors need conversion from integer lists, this could lead to processing time
 increasing exponentially with the formula size.
 
 The code below avoids a new call of |convert_expr| in two circumstances, namely
@@ -1697,20 +1709,22 @@ corresponding position of |arg_type| (which can only happen if |n_args>1|), and
 when the form of the argument is such (for instance a formula or function call)
 that implicit conversion is only possible on the outside of the expression
 (contrary to for instance list display or conditional expressions where the
-conversion can ``creep into'' the expression itself). This avoidance makes a
-scenario with exponential increase of processing time, thought theoretically
-still possible, exceedingly unlikely.
+conversion can ``creep into'' the expression itself). The condition on the form
+of the expression that allows avoiding a call of |convert_expr| is detailed in a
+separate module called |@< The form of |cur_arg| shields... @>|. The fact that
+we do these tests makes a scenario with exponential increase of processing time,
+thought theoretically still possible, exceedingly unlikely.
 
 In the case of a single argument there is no tuple expression for the arguments.
 Nonetheless |arg_vector| will be a vector of length~$1$ in this case, but
 (probably) none of |a_priori_type|, |arg_type| and |args| hold vectors or lists
 at all, so we could not define the iterators used below in the case of more than
 one argument. We therefore separate the two cases, even though the actions are
-the same; we do share one module.
+the same.
 
 @< Apply an implicit conversion for every argument... @>=
 {
-  const auto& arg_type=var_it->type().arg_type;
+  const auto& arg_type=variant.type().arg_type;
   if (n_args==1)
   { const expr& cur_arg = args; // rename to allow sharing the following module:
     if (@< The form of |cur_arg| shields out the context type @>@;@;)
@@ -1737,7 +1751,8 @@ the same; we do share one module.
           *res_it = convert_expr(cur_arg,as_lvalue(argt_it->copy()));
           // redo conversion
       }
-    arg = expression_ptr(std::move(tup_exp)); // wrap up modified tuple expression
+    arg = expression_ptr(std::move(tup_exp));
+    // wrap up modified tuple expression
   }
 }
 
@@ -1751,7 +1766,8 @@ statements and casts. Some cases mentioned here are only for conceptual
 completeness, as they can only apply in erroneous situations: for instance no
 implicit conversion can apply to expressions of type |bool|, so no
 |boolean_denotation| or |negation_expression| can ever come here (with an
-inexact match).
+inexact match). A clever compiler could transform the test below into testing a
+bit at position |cur_arg.kind| in a fixed bitset.
 
 @< The form of |cur_arg| shields out the context type @>=
 cur_arg.kind==function_call @| or
@@ -1772,11 +1788,13 @@ cur_arg.kind==last_value_computed @| or
 cur_arg.kind==negation_expr
 
 @ Here is the final part of |resolve_overload|, reached when no valid match
-could be found. In that case we |throw| a |expr_error| explaining the is
-matching identifier and type. As most function definitions will be in the
-overload table even if only one definition is present, we produce a more
-specific |type_error| in that case, whose message will mention the unique
-expected argument type.
+could be found. In that case we |throw| a |expr_error| explaining the operator
+or function identifier, and the a priori type of the operand. Most function
+definitions will be in the overload table even if just one definition is
+present; in the latter case the ``Failed to match'' error might seem
+unnecessarily vague, so we produce instead a more specific |type_error|, whose
+message will also mention that the type that was expected by the unique
+instance.
 
 @< Complain about failing overload resolution @>=
 if (variants.size()==1)
@@ -1791,12 +1809,12 @@ else
 }
 
 @ Here we define |is_special_operator|, a function called when a function or
-operator name is absent from the overload, so see if |resolve_overload| should
-be called anyway. It must compare against the numeric codes of these
-identifiers, which are not known explicitly at compile time, but which will
-not change once the tables are initialised. To avoid having to look up these
-codes in |main_hash_table| each time, we store each one in a static variable
-inside a dedicated local function. While the equality operator is not a
+operator name is absent from the overload table, in order to see if
+|resolve_overload| should be called anyway. It must compare against the numeric
+codes of these identifiers, which are not known explicitly at compile time, but
+which will not change once the tables are initialised. To avoid having to look
+up these codes in |main_hash_table| each time, we store each one in a static
+variable inside a dedicated local function. While the equality operator is not a
 generic one, it is tested for elsewhere, so we also give it its local function
 with static variable.
 
@@ -1833,7 +1851,7 @@ id_type error_name()
 }
 @)
 inline bool is_special_operator(id_type id)
-{@; return id==size_of_name()
+{ return id==size_of_name()
     @|  or id==concatenate_name()
     @|  or id==protected_concatenate_name()
     @|  or id==print_name()
