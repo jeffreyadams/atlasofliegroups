@@ -27,7 +27,7 @@ set full_deform_to_ht_MvL (Param p, int height, int time) = maybe_KTP:
 ( if deformed_hash_flag
   then let j = deformedHash.lookup(p)
        in if j.>= and (deformedHash.height_index(j).= or deformedHash.height_index(j) >= height)
-       	  then return to_ht(deformedHash.data_index(j),height).done
+       	  then return to_ht(regroup(p.real_form, deformedHash.data_index(j)),height).done
 	  fi
   fi;
 let !empty_K=null_K_module(p.real_form), !empty=null_module(p)
@@ -55,9 +55,8 @@ set full_deform_to_ht_old(Param p, int N) = KTypePol:
 if height(p) > N then null_K_module(p.real_form)
 elif height(p) = N then K_type_pol(p)
 else let pc = alcove_center(p)
-     in {regroup(p.real_form, deformedParams[N].entry(pc))}
-     	if deformed_hash_flag
-	then regroup(p.real_form, deformedHash.entry(pc,N))
+     in if deformed_hash_flag
+	then deformedHash.entry(pc,N)
 	else deform_to_height(pc,N)
 	fi
 fi
@@ -66,9 +65,8 @@ fi
 set full_deform_to_ht(Param p, int N) = KTypePol:
     if N < 0 then return full_deform(p) fi;
     let pc = alcove_center(p)
-    in {regroup(p.real_form,deformedParams[N].entry(pc))}
-       if deformed_hash_flag
-       then regroup(p.real_form,deformedHash.entry(pc,N))
+    in if deformed_hash_flag
+       then deformedHash.entry(pc,N)
        else  deform_to_height(pc,N)
        fi
 {deform_to_height(p,N)}
@@ -86,9 +84,8 @@ set twisted_full_deform_to_ht_MvL(Param p, int N, int time) = maybe_KTP:
 set twisted_full_deform_to_ht(Param p,int N) = KTypePol:
     if N < 0 then return twisted_full_deform(p) fi;
     let pc = alcove_center(p)
-    in {regroup(p.real_form, twistedDeformedParams[N].entry(pc))}
-       if deformed_hash_flag
-       then regroup(p.real_form, twistedDeformedHash.entry_to_ht(pc,N))
+    in if deformed_hash_flag
+       then twistedDeformedHash.entry_to_ht(pc,N)
        else to_ht(twisted_full_deform(pc),N)
        fi
 
@@ -343,13 +340,16 @@ set is_unitary_to_ht_MvL (Param p,int N) = bool:
 { compute Hermitian form to ht on p, and report if it is unitary }
 set is_unitary_to_ht_MvL (Param p,int N, int time) = int: { -1: no, 0:timed out, 1: yes }
   unitary_test_counter.use();
-  if p.is_hermitian
-     else -1
-     then case hermitian_form_irreducible_to_ht_MvL(p, N, time)
-     	  | timed_out: 0
-	  | done(result): if result.is_pure then 1 else -1 fi
-	  esac
-  fi
+  let start_time = elapsed_ms(), answer =
+      if p.is_hermitian
+      else -1
+      then case hermitian_form_irreducible_to_ht_MvL(p, N, time)
+     	   | timed_out: 0
+	   | done(result): if result.is_pure then 1 else -1 fi
+	   esac
+      fi
+  then () = unitaryTime+:=elapsed_ms() - start_time
+  in answer
 
 { compute Hermitian form to ht on p, report if it is unitary,
   and record certificate }

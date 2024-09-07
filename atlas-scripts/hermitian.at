@@ -14,7 +14,14 @@ set to_ht (KTypePol P,int N) = KTypePol:
 
 {tables of full_deform to ht, indexed by Param; one for each height}
 {********Should put these in to_ht.at, allow time-limited entry********}
-set_type 
+
+{take a KTypePol _apparently_ attached to G and make it _actually_ attached
+to G. Need this to use looked-up deformations.}
+set regroup(RealForm G, KTypePol P) = KTypePol:
+    sum(G, for c@q in P do let (,m) = %q.x
+    	   in c*K_type(KGB(G,m), q.lambda_minus_rho) od)
+
+{set_type 
 [ deformation_hash =
 ( ( -> int) size
   , ( -> bool) is_twisted
@@ -68,7 +75,7 @@ set make_deformation_hash (int h, bool twisted) = deformation_hash:
 		  	fi
 		  else deformLookupCounter.use()
 		  fi
-	in deformed_data[m]
+	in regroup(p.real_form, deformed_data[m])
      end
    , (Param->int): {lookup} (Param p): param_hash.lookup(p)
    , (Param->): {append } (Param p):
@@ -90,6 +97,7 @@ set make_deformation_hash (int h, bool twisted) = deformation_hash:
    , (int -> KTypePol): {data_index} (int j): deformed_data[j]
   )
 )
+}
 
 { table of full_deform to ht, indexed by Param. Height zero means no cutoff.}
 {Twisted always stored with no cutoff, since we don't now have a good twisted
@@ -159,7 +167,7 @@ set make_deformation_hash_to_ht () = deformation_hash_to_ht:
   , ((Param, int)->KTypePol): {entry} (Param p, int h):
     let i = add_param(p, h)
     in if h > 0
-       then to_ht(deformed_data[i],h)
+       then regroup(p.real_form,to_ht(deformed_data[i],h))
        else deformed_data[i]
        fi
   , (Param->int): {lookup} (Param p): deform_param_hash.lookup(p)
@@ -290,11 +298,11 @@ set make_twisted_deformation_hash() = twisted_deformation_hash:
   , ( -> ): {clear} clear
   , (Param->KTypePol): {entry} (Param p):
     let i = add_param(p)
-    in twisted_deformed_data[i]
+    in regroup(p.real_form,twisted_deformed_data[i])
   , ((Param, int)->KTypePol): {entry_to_ht} (Param p, int h):
     let i = add_param(p)
     in if h > 0
-       then to_ht(twisted_deformed_data[i],h)
+       then regroup(p.real_form,to_ht(twisted_deformed_data[i],h))
        else twisted_deformed_data[i]
        fi
   , (int -> Param): {param_index} (int j):  twisted_deform_param_hash.index(j)
@@ -341,12 +349,6 @@ set twistedDeformedHash = make_twisted_deformation_hash()
 set twistedDeformedParams = for m:1500 do make_deformation_hash(m,true) od
 {set deformations = [[KTypePol]]: for m:1500 do [] od
 set twistedDeformations = [[KTypePol]]: for m:1500 do [] od}}
-
-{take a KTypePol _apparently_ attached to G and make it _actually_ attached
-to G. Need this to use looked-up deformations.}
-set regroup(RealForm G, KTypePol P) = KTypePol:
-    sum(G, for c@q in P do let (,m) = %q.x
-    	   in c*K_type(KGB(G,m), q.lambda_minus_rho) od)
 
 {like is_pure, but in case of false, second value is the lowest K-type where the KTypePol
  changes sign. Better to put the guilty K-type in a hash table.}
@@ -437,17 +439,15 @@ set is_pure_cert_hash(KTypePol P, KTypePol_hash cert_hash) = bool:
 
 set c_form_std(Param p) = KTypePol:
     let pc = alcove_center(p)
-    in {regroup(pc.real_form, deformedParams[0].entry(pc))}
-       if deformed_hash_flag
-       then regroup(pc.real_form, deformedHash.entry(pc,0))
+    in if deformed_hash_flag
+       then regroup(pc.real_form,deformedHash.entry(pc,0))
        else full_deform(pc)
        fi
 
 set twisted_c_form_std(Param p) = KTypePol: { c-form on extended group}
     let pc = alcove_center(p)
-    in {regroup(pc.real_form, twistedDeformedParams[0].entry(pc))}
-       if deformed_hash_flag
-       then regroup(pc.real_form, twistedDeformedHash.entry(pc))
+    in if deformed_hash_flag
+       then regroup(p.real_form,twistedDeformedHash.entry(pc))
        else twisted_full_deform(pc)
        fi
 
@@ -584,13 +584,17 @@ set hermitian_form_irreducible (Param p, int time) = maybe_KTP:
    esac
 
 set is_unitary (Param p, int time) = int: { -1: no, 0:timed out, 1: yes }
-  if p.is_hermitian
-  else -1
-  then case hermitian_form_irreducible(p,time)
-       | timed_out: 0
-       | done(result): if result.is_pure then 1 else -1 fi
-       esac
-  fi
+  unitary_test_counter.use();
+  let start_time = elapsed_ms(), answer = 
+      if p.is_hermitian
+      else -1
+      then case hermitian_form_irreducible(p,time)
+       	   | timed_out: 0
+       	   | done(result): if result.is_pure then 1 else -1 fi
+       	   esac
+      fi
+  then () = unitaryTime+:=elapsed_ms() - start_time
+  in answer
 
 { end of core unitarity functionality, remaining variations for user comfort }
 

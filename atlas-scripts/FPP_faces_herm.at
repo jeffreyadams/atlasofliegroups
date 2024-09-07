@@ -1425,8 +1425,11 @@ set make_big_unitary_hash() = big_unitary_hash_table:
 	    in prints("void: ptemp:=parameter(G_temp,",xnum,",",p.lambda,",",p.nu,")");
 	       prints("void: big_unitary_hash.long_match(ptemp,j)")
 	 od;
-	 prints("void: big_unitary_hash.finishall(",Gname,",",bitmapintlist,")");
-	 prints("void: big_unitary_hash.finishxmap(",Gname,",",to_string(donerangemap),")")
+	 {prints("void: big_unitary_hash.finishall(",Gname,",",bitmapintlist,")");}
+	 for x in done_list
+	 do prints("void: big_unitary_hash.finishx(KGB(G_temp)[",x.number,"])")
+	 od
+	 {prints("void: big_unitary_hash.finishxmap(",Gname,",",to_string(donerangemap),")")}
     , ((KGBElt,ratvec) -> ): {writexlam} (KGBElt x, ratvec lambda):
       let G = x.real_form
       then xnum = x.number

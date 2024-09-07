@@ -500,7 +500,7 @@ set local_testK_hash(KGBElt x, ratvec lambda, LocalVertexData Lvd,
 		       		fi
 		     {then () = prints("before NEWU, newStatuses = ",newStatuses)}
 	             in if{NEWU} newStatuses[k] = "?"
-		     	then if all(for p in ps do Uhash.lookup(p).>= or tester(p) od)
+		     	then if ps[0].nu.= or all(for p in ps do Uhash.lookup(p).>= or tester(p) od)
 		     	     then newStatuses[k]:= "T"
 		     	     else newStatuses:= updateNUclassesB(newStatuses, gr, k, "F")
 		     	     	; newStatuses[k] := "F"
@@ -3026,6 +3026,8 @@ set local_test_GEO_hash_bottom_layer_interrupt(KGBElt x, ratvec lambda, VertexDa
    {remove all faces failing min_bottom_elim}
    then LFDKH = local_testK_hash_min_bottom_layer(x,lambda, Lvd, LFDKH, eq,
 		      gr, CLBF, pol_hash,  Uhash)
+   then () = if test_verbose then prints("unitary on min_bottom layer face counts to dim 1: ",
+   	for list in LFDKH do #list od) fi
    then () = if #LFDKH[0] = 0 then return [] fi
    then () = if #LFDKH[0] = 1
    	     then return one_param_test_bottom(parameter(x,lambda, Lvd.list[LFDKH[0][0][0]]), Ds, Uhash)
@@ -3080,11 +3082,15 @@ set local_test_GEO_hash_bottom_layer_interrupt(KGBElt x, ratvec lambda, VertexDa
     then start=elapsed_ms()
     then test_heights = next_heights(pmin, steps)
     then j0 = if #newDs = 0
-    	      then 0
-	      else max(0,first(for m in test_heights do newDs~[0] < m od))
+    	      then -1
+	      else first(for m in test_heights do newDs~[0] < m od)
 	      fi
     	 {so that we test above the height bottom layer has examined}
-    then () = prints("testing to ",test_heights[j0:])
+    then HT = if j0 = -1
+    	      then test_heights~[0]
+	      else test_heights[j0]
+	      fi
+    {then () = prints("testing to ",HT)}
     then UParams = [Param]:
          let ((eq,gr),IUCL,CLBF) = localGraphK(LFDKH)
 	 {these have had know_lower, min_bottom, and bottom_elim
@@ -3093,11 +3099,10 @@ set local_test_GEO_hash_bottom_layer_interrupt(KGBElt x, ratvec lambda, VertexDa
     	      	   then prints(for list in LFDKH do #list od, " = ",sum(for list in LFDKH do #list od),
 	      	      	" unitary candidates in ",#eq," equivalence classes.");
 		   	prints("number of tests so far = ",unitary_test_counter.use_count() - UTCstart);
-		   	prints("testing to height ",next_heights(pmin,steps))
+		   	prints("testing to height ", HT)
 	           fi
     	 in local_test_hash(x, lambda, Lvd, LFDKH, eq, gr, CLBF, Uhash, (Param->bool): (Param p) bool:
-			       is_unitary_test_big_SIMPLE(p,test_heights[j0:])
-			       )
+			       is_unitary_test_big_SIMPLE(p,HT))
     then time = elapsed_ms() - start
     then () = if time_verbose
 	      then prints("     ", print_time_string(time),
@@ -3168,6 +3173,8 @@ set local_test_GEO_hash_bottom_layer(KGBElt x, ratvec lambda, VertexData vd,
     	{next remove from LFDKH all faces failing min_bottom_factors_elim}
    then () = LFDKH:= local_testK_hash_min_bottom_layer(x,lambda, Lvd, LFDKH, eq,
 		      gr, CLBF, pol_hash,  Uhash)
+   then () = if test_verbose then prints("unitary on min_bottom layer face counts to dim 1: ",
+   	for list in LFDKH do #list od) fi
    then () = if #LFDKH[0] = 0
    	     then return []
 	     fi
@@ -3213,8 +3220,12 @@ set local_test_GEO_hash_bottom_layer(KGBElt x, ratvec lambda, VertexData vd,
     then steps = max(r-1,1)
     then start=elapsed_ms()
     then test_heights = next_heights(pmin, steps)
-    then j0 = max(0,first(for x in test_heights do D < x od))
+    then j0 = first(for x in test_heights do D < x od)
     	 {so that we test above the height bottom layer has examined}
+    then HT = if j0 = -1
+    	      then test_heights~[0]
+	      else test_heights[j0]
+	      fi
     then UParams = [Param]:
          let ((eq,gr),IUCL,CLBF) = localGraphK(LFDKH)
 	 {these have had know_lower, min_bottom, and bottom_elim
@@ -3223,10 +3234,10 @@ set local_test_GEO_hash_bottom_layer(KGBElt x, ratvec lambda, VertexData vd,
     	      	   then prints(for list in LFDKH do #list od, " = ",sum(for list in LFDKH do #list od),
 	      	      	" unitary candidates in ",#eq," equivalence classes.");
 		   	prints("number of tests so far = ",unitary_test_counter.use_count() - UTCstart);
-		   	prints("testing to height ",next_heights(pmin,steps))
+		   	prints("testing to height ",HT)
 	           fi
     	 in local_test_hash(x, lambda, Lvd, LFDKH, eq, gr, CLBF, Uhash, (Param->bool): (Param p) bool:
-			       is_unitary_test_big_SIMPLE(p,test_heights~[0]))
+			       is_unitary_test_big_SIMPLE(p,HT))
     then time = elapsed_ms() - start
     then () = if time_verbose
 	      then prints("     ", print_time_string(time),
