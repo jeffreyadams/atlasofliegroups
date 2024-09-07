@@ -12,92 +12,11 @@ set deformCalcCounter = make_counter()
 set to_ht (KTypePol P,int N) = KTypePol:
   let (below,)=height_split(P,N) in below
 
-{tables of full_deform to ht, indexed by Param; one for each height}
-{********Should put these in to_ht.at, allow time-limited entry********}
-
 {take a KTypePol _apparently_ attached to G and make it _actually_ attached
 to G. Need this to use looked-up deformations.}
 set regroup(RealForm G, KTypePol P) = KTypePol:
     sum(G, for c@q in P do let (,m) = %q.x
     	   in c*K_type(KGB(G,m), q.lambda_minus_rho) od)
-
-{set_type 
-[ deformation_hash =
-( ( -> int) size
-  , ( -> bool) is_twisted
-  , ( -> ) clear
-  , ( -> int) height
-  , (int -> ) adjust_height
-  , (Param->KTypePol) entry
-  , (Param->int) lookup
-  , (Param->) append
-  , (int -> Param) param_index
-  , (int -> KTypePol) data_index
-  )
-]
-
-{h = 0 means full_deform}
-set make_deformation_hash (int h, bool twisted) = deformation_hash:
-(  let param_hash = make_Param_hash()
-   then deformed_data = [KTypePol] : []
-   then height = int:h
-   then twisted = bool: twisted
-   then clear() = void:
-       let () = param_hash.clear()
-       then () = deformed_data:=[]
-       in ()
-   in 
-   ( ( -> int): { size } @int: param_hash.size()
-   , ( -> bool): {is_twisted} @bool: twisted
-   , ( -> ): {clear} clear
-   , ( -> int): {height} @int: height
-   , (int -> ): {adjust_height} (int h): height:= h
-   , (Param -> KTypePol): {entry} (Param p)
-     KTypePol:
-     begin
-	let M = param_hash.size()
-	then m = param_hash.match(p)
-	then () = if m = M
-	     	  then deformCalcCounter.use();
-		       if twisted
-		       then deformed_data:= (deformed_data next deformed_data:= [])
-		       	    #if height > 0
-		             then to_ht(twisted_full_deform(p), height)
-		  {might use to_ht(twisted_full_deform(p),height)?}
-			     else twisted_full_deform(p)
-			     fi
-			else deformed_data:= (deformed_data next deformed_data:= [])
-		       	     #if height > 0
-		              then deform_to_height(p, height)
-		  {might use to_ht(full_deform(p),height)?}
-			      else full_deform(p)
-			      fi
-		  	fi
-		  else deformLookupCounter.use()
-		  fi
-	in regroup(p.real_form, deformed_data[m])
-     end
-   , (Param->int): {lookup} (Param p): param_hash.lookup(p)
-   , (Param->): {append } (Param p):
-     begin
-	let M = param_hash.size()
-	then m = param_hash.match(p)
-	then () = if m = M
-	     	  then deformCalcCounter.use();
-		       deformed_data:= (deformed_data next deformed_data:= [])
-		       #if height > 0
-		       	then deform_to_height(p, height)
-			else full_deform(p)
-			fi
-		  else deformLookupCounter.use()
-		  fi
-	in ()
-     end
-   , (int -> Param): {param_index} (int j): param_hash.index(j)
-   , (int -> KTypePol): {data_index} (int j): deformed_data[j]
-  )
-)
-}
 
 { table of full_deform to ht, indexed by Param. Height zero means no cutoff.}
 {Twisted always stored with no cutoff, since we don't now have a good twisted
@@ -168,7 +87,7 @@ set make_deformation_hash_to_ht () = deformation_hash_to_ht:
     let i = add_param(p, h)
     in if h > 0
        then regroup(p.real_form,to_ht(deformed_data[i],h))
-       else deformed_data[i]
+       else regroup(p.real_form,deformed_data[i])
        fi
   , (Param->int): {lookup} (Param p): deform_param_hash.lookup(p)
   , ((Param,int,KTypePol)->): {append} (Param p, int h, KTypePol P):
@@ -211,30 +130,6 @@ set append_to_deformation_hash(RealForm G, [Param] p_list, [[KPolTermDatum]] dat
     for p@j in p_list
     do append_to_deformation_hash(G,p,data_list[j],ht_list[j],use_list[j])
     od
-
-{write the part of deformation_hash referring to G}
-{Reading these files fails with "memory exhausted" when the files exceed 5000 lines}
-{set write_deformation_hashBAD(RealForm G) = void:
-    let param_list = deform_param_hash.list()
-    then good_j = for p@j in param_list
-    	 	  do if p.real_form = G then [j]
-		     else []
-		     fi
-		  od.##
-    then good_param_list = for j in good_j do param_list[j] od
-    then good_deformed_pols = for j in good_j do deformed_data[j] od
-    then good_deform_max_heights = for j in good_j do deform_max_heights[j] od
-    then () = write_real_form(G,"G_temp")
-    then () = prints("let temp_param_list = [Param]: []")
-    then () = prints("then temp_def_pols_data = [[KPolTermDatum]]: []") {[KTypePol]:[]")}
-    then () = prints("then temp_max_hts = [int]:[]")
-    then () = write_cat_param_list(good_param_list,"temp_param_list")
-    then () = write_cat_K_type_pols_data(good_deformed_pols, "temp_def_pols_data")
-    then () = write_cat_int_list(good_deform_max_heights,"temp_max_hts")
-    in prints("in append_to_deformation_hash(G_temp, temp_param_list, temp_def_pols_data, temp_max_hts)")}
-
-{Value of a deformation formula P is #P (how hard it was to compute) times number of uses).
- If Value is at least (max Value)/write_deformation_frac, then record the formula}
 set write_deformation_frac = 100
 
 {write the part of deformation_hash referring to G}
@@ -303,7 +198,7 @@ set make_twisted_deformation_hash() = twisted_deformation_hash:
     let i = add_param(p)
     in if h > 0
        then regroup(p.real_form,to_ht(twisted_deformed_data[i],h))
-       else twisted_deformed_data[i]
+       else regroup(p.real_form,twisted_deformed_data[i])
        fi
   , (int -> Param): {param_index} (int j):  twisted_deform_param_hash.index(j)
   , (int -> KTypePol): {data_index} (int j): twisted_deformed_data[j]
@@ -339,19 +234,15 @@ set write_twisted_deformation_hash(RealForm G) = void:
        	     prints("in append_to_twisted_deformation_hash(G_temp,p_temp,",good_twisted_deformed_data[k],
 	     ")")
        od
-{whether to use these hash tables}
-set deformed_hash_flag = true
+{whether to use these hash tables. "False" saves quite a bit of memory
+(about 10% in F4_s) with very little speed cost (less than 1% in F4_s)}
+set deformed_hash_flag = false
 
 set deformedHash = make_deformation_hash_to_ht()
 set twistedDeformedHash = make_twisted_deformation_hash()
 
-{set deformedParams = for m:1500 do make_deformation_hash(m,false) od
-set twistedDeformedParams = for m:1500 do make_deformation_hash(m,true) od
-{set deformations = [[KTypePol]]: for m:1500 do [] od
-set twistedDeformations = [[KTypePol]]: for m:1500 do [] od}}
-
-{like is_pure, but in case of false, second value is the lowest K-type where the KTypePol
- changes sign. Better to put the guilty K-type in a hash table.}
+{like is_pure, but in case of false, second value is the lowest K-type where
+the KTypePol changes sign. Better to put the guilty K-type in a hash table.}
 set is_pure_cert(KTypePol P) = [KType]:
     if is_pure(P) then [KType]: []
     else let terms = for c@p in P
@@ -378,7 +269,8 @@ set is_pure_cert(KTypePol P) = [KType]:
 	  in [pj]
     fi
 
-{like is_pure_cert, but in case of false, writing the guilty K-types in a hash table.}
+{like is_pure_cert, but in case of false, writing the guilty K-types in a
+hash table.}
 set is_pure_cert_hash_old(KTypePol P, KTypePol_hash cert_hash) = bool:
     if not is_pure(P)
     then let terms = for c@p in P
@@ -407,7 +299,8 @@ set is_pure_cert_hash_old(KTypePol P, KTypePol_hash cert_hash) = bool:
     else true
     fi
 
-{like is_pure_cert, but in case of false, writing the guilty K-types in a hash table.}
+{like is_pure_cert, but in case of false, writing the guilty K-types in a
+hash table.}
 { want this version to record SUM of lowest impurity }
 set is_pure_cert_hash(KTypePol P, KTypePol_hash cert_hash) = bool:
     if not is_pure(P)
@@ -434,20 +327,18 @@ set is_pure_cert_hash(KTypePol P, KTypePol_hash cert_hash) = bool:
     fi
 
 {.write c-invariant form on standard module as a KTypePol }
-{set c_form_std = (Param->KTypePol): { never involves |twisted_full_deform| }
-  full_deform@Param { built-in }}
-
+{ never involves |twisted_full_deform| }
 set c_form_std(Param p) = KTypePol:
     let pc = alcove_center(p)
     in if deformed_hash_flag
-       then regroup(pc.real_form,deformedHash.entry(pc,0))
+       then deformedHash.entry(pc,0)
        else full_deform(pc)
        fi
 
 set twisted_c_form_std(Param p) = KTypePol: { c-form on extended group}
     let pc = alcove_center(p)
     in if deformed_hash_flag
-       then regroup(p.real_form,twistedDeformedHash.entry(pc))
+       then twistedDeformedHash.entry(pc)
        else twisted_full_deform(pc)
        fi
 

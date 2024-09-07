@@ -210,12 +210,12 @@ set make_RF_sig_tables () = RF_sig_tables:
    , ((KType,int) -> KTypePol): {branch_entry} (KType mu, int D) KTypePol:
      begin
      	let (rf, ktypenum,m) = add_K_type(mu,D)
-	in to_ht(K_type_pol_hashes[rf].index(m), D)
+	in regroup(mu.real_form, to_ht(K_type_pol_hashes[rf].index(m), D))
      end
    , (Param -> KTypePol): {sig_entry} (Param p) KTypePol:
      begin
 	let (rf,pnum,sig_ind) = add_param(p)
-	in K_type_pol_hashes[rf].index(sig_ind)
+	in regroup(p.real_form, K_type_pol_hashes[rf].index(sig_ind))
      end
     , (int -> RealForm): {real_form_index} (int j): real_form_hash.index(j)
    , ((int, int) -> int): {branch_height} (int rf, int ktypenum): branch_heights[rf][ktypenum]
