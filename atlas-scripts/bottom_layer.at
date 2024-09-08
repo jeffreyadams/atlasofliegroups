@@ -249,7 +249,7 @@ set natural_KGB_elt(KType mu) = KGBElt:
 the derived simple factors derLj of L have simple roots Sj partitioning S. Answer is [Sj]}
 set simple_factor_root_partition(KGPElt Q) = [[int]]:
     let L = Q.Levi, G = Q.real_form
-    in for Lj in simple_factors(L)
+    in for Lj in simple_factorsRF(L)
        do for alpha in Lj.simple_roots do root_index(G,alpha) od
        od
 

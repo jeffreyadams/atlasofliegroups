@@ -1192,26 +1192,41 @@ set theta_induced(RealForm G) = void:
 	    od
 	 od
     then rhois = [ratvec]: for maxLthi in maxLthis do G.rho - maxLthi.rho od
-    then lambdainms = [[[ratvec]]]: {one list of Lthi lambdas for each xin}
-    	 for maxLthi@i in maxLthis
-	 do for n:#KGB(maxLthi)
-	    do for lambdaG in lambdainmGs[i][n]
-	       do lambdaG - rhois[i]
-	       od
-	    od
-	 od
     then KGBEltinks = [[[KGBElt]]]: {one KGBElt for each xin and derived simple factor derLik}
      	 for list in KGBEltLis
      	     do for xin in list
-	     	do derived_factor_KGBs2(xin)
+	     	do derived_factor_KGBs0(xin)
 	     od
 	 od
+    then lambdainms = [[[ratvec]]]: {one list of Lthi lambdas for each xin}
+    	 for maxLthi@i in maxLthis
+	 do for xin@n in KGB(maxLthi)
+	    do for lambdaG in lambdainmGs[i][n]
+	       do let lambda_testi = lambdaG - rhois[i]
+	       	  then pintest = parameter(xin, lambda_testi, 0*lambda_testi)
+		  then pintests = derived_factor_params0(pintest)
+		  then lamtests = for pintest@k in pintests do pintest.lambda od
+		   in if all(for lam@k in lamtests do position(KGBEltinks[i][n][k],lam).>= od)
+		      then [pintest.lambda] {[ratvec]}
+		      else []
+		      fi
+		od.## {m, but just keep some [ratvec]}
+	   od {n}
+	 od {i}
      then lambdainmks = [[[[ratvec]]]]: {one ratvec for each xin, corr lambdain, and derLik}
      	  for maxLthi@i in maxLthis
 	  do for xin@n in KGBEltLis[i]
 	     do for lambdainm in lambdainms[i][n]
 		do let pinm = parameter(xin, lambdainm, 0*lambdainm)
-		   then pinmks = derived_factor_params2(pinm)
+		   then pinmks = derived_factor_params0(pinm)
+		   then lambdas = for pinmk in pinmks do pinmk.lambda od
+		   then xinms = for pinmk in pinmks do pinmk.x od
+		   {then finalPinmks = for pinmk@k in pinmks
+		   	     	      do if position(xinms[k], lambdas[k]) = -1
+		   	     	      then []
+				      else [pinmk]
+				      fi
+			     	      od.##}
 		   in for pinmk in pinmks do pinmk.lambda od
 		od
 	     od
@@ -1434,7 +1449,7 @@ set real_induced(RealForm G) = void:
     then KGBEltinks = [[[KGBElt]]]: {one KGBElt for each xin and derived simple factor derLik}
      	 for list in KGBEltLis {indexed by i}
      	     do for xin in list {indexed by n}
-	     	do derived_factor_KGBs2(xin) {indexed by k}
+	     	do derived_factor_KGBs0(xin) {indexed by k}
 	     od
 	 od
      then lambdainmks = [[[[ratvec]]]]: {one ratvec for each xin, corr lambdain, and derLik}
@@ -1442,7 +1457,7 @@ set real_induced(RealForm G) = void:
 	  do for xin@n in KGBEltLis[i]
 	     do for lambdainm in lambdainms[i][n]
 		do let pinm = parameter(xin, lambdainm, 0*lambdainm)
-		   then pinmks = derived_factor_params2(pinm)
+		   then pinmks = derived_factor_params0(pinm)
 		   in for pinmk@k in pinmks
 		      do {if position(pinmk.x,pinmk.lambda).>=
 		      {is_FPP(derLiks[i][k], pinmk.infinitesimal_character)}
@@ -1551,7 +1566,7 @@ set non_unitary_real_induced(RealForm G) = Param_hash:
     then KGBEltinks = [[[KGBElt]]]: {one KGBElt for each xin and derived simple factor derLik}
      	 for list in KGBEltLis
      	     do for xin in list
-	     	do derived_factor_KGBs2(xin)
+	     	do derived_factor_KGBs0(xin)
 	     od
 	 od
     then KGBEltGs = [[KGBElt]]: {one list for each maxLRi}
@@ -1574,7 +1589,7 @@ set non_unitary_real_induced(RealForm G) = Param_hash:
 	       do for lambdaG in lambdainmGs[i][n]
 	       	  do let lambda_testi = lambdaG - rhoi
 		     then pintest = parameter(xin, lambda_testi, 0*lambda_testi)
-		     then pintests = derived_factor_params2(pintest)
+		     then pintests = derived_factor_params0(pintest)
 		     then lamtests = for pintest@k in pintests do pintest.lambda od
 		     in if all(for lam@k in lamtests do position(KGBEltinks[i][n][k],lam).>= od)
 		     	then [pintest.lambda] {[ratvec]}
@@ -1599,7 +1614,7 @@ set non_unitary_real_induced(RealForm G) = Param_hash:
 	  do for xin@n in KGBEltLis[i]
 	     do for lambdainm@m in lambdainms[i][n]
 		do let pinm = parameter(xin, lambdainm, 0*lambdainm)
-		   then pinmks = derived_factor_params2(pinm)
+		   then pinmks = derived_factor_params0(pinm)
 		   in for pinmk in pinmks do pinmk.lambda od {[ratvec]}
 		od
 	     od
@@ -1834,66 +1849,3 @@ set FPPpre(RealForm G) = void:
        	      else FPP_unitary_hash2(G)
        	      fi
     in prints("Total time required was ",print_time_string(elapsed_ms() - start))
-
-{ lists real and/or complex simple factors }
-{moved to cohom_reductionND.at}{
-set simple_factors(RealForm G) = [RealForm]:
-    let delta=G.distinguished_involution, tf=KGB(G,0).torus_factor,
-	simpleFactors = simple_factors(RootDatum: G),
-	Factors = [RealForm]:[]
-    in
-    for rd@i in simpleFactors
-    do
-    let root = simple_roots(rd)[0]
-    then newRoot = delta*root
-    then simpleRootIndex = simple_root_index(G,root),
-	 newSimpleRootIndex = simple_root_index(G,newRoot)
-    then diagram = diagram_component(G,simpleRootIndex),
-	 newDiagram = diagram_component(G,newSimpleRootIndex)
-    in  if diagram=newDiagram then Factors##:=
-	 [real_form(inner_class(rd,delta), delta, tf)]
-	 else if diagram[0] < newDiagram[0] then Factors##:=
-	 [real_form(inner_class(sub_datum(G,diagram##newDiagram),
-		delta), delta, tf)]
-	      fi
-	fi
-    od; Factors
-}
-{moved to cohom_reduction.at}
-{
-set derived_simple_factors(RealForm G) = [RealForm]:
-    for S in simple_factors(G) do derived(S) od
-}
-
-{(M,N): M is natural restriction from X^*(G) onto X^*(D).
- N is right inverse of M.}
-{ set derived_info(RealForm G) = (mat,mat):
-    let (,M) = derived_info(G) in (M,required_solution(M, id_mat(G.semisimple_rank)))
-}
-
-{descend a parameter for G to all simple factors of theta-stable Levi support(x)}
-
-{elsewhere}
-{
-set descents(Param p) = [Param]:
-    let  x = p.x, G = p.real_form, lambda = p.lambda, nu = p.nu
-    then P = Parabolic: (support(x), x) {, theta = x.involution}
-    then L = P.Levi
-    then lambdaL = lambda - G.rho + L.rho, nuL = nu, xL = inverse_embed_KGB(x,L)
-    then SF = simple_factors(L)
-    then xSs = for S in SF do inverse_embed_KGB(xL,S) od
-    then nuSs = for xS in xSs do (nu - xS.involution*nu)/2 od
-    in for S@j in SF do parameter(xSs[j], lambda - G.rho + S.rho, nuSs[j]) od
-    {
-    then DSF = for S in SF do derived(S) od
-    then DSFinfos = for S in SF do derived_infos(S) od
-    }
-----------------
-Total time = 43.704sec; max time = 5.985sec for KGBElt 228
-Time spent in is_unitary = 11.168sec, number of unitarity tests = 2259
-Time spent in char calcs = 3.317sec, number of char calcs = 58681
-Time in localFD_1Dirac2* = 9.356sec, in localFD_1Dirac2 = 0.000sec, in localFD_1Dirac2_by_zero = 9.356sec
-  #hash_real_dumb =325, #hash_dumb =0, #hash_def_dumb =1362
-  #hash =0, #hash2 =85, #hash_one_level =0, #hash_bottom_layer =0
-Number of unitary params = 4921, time for is_finished = 0.281sec, time for position = 0.061sec
-Number of known FPP-unitary faces = 1864, number found on this run = 1352}

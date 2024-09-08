@@ -104,9 +104,9 @@ set resorted([RootDatum] little_rds, RootDatum rd) = [[int]]:
 
 {ND stands for non-derived: just use simple factors as Levis in G}
 { lists real and/or complex simple factors }
-{warning: simple roots may be ordered differently in simple_factors than in G. Example
-is G = SO(2) x SO(6): simple roots (0,1,2) for G become (1,0,2) in simple_factors(G)[0]}
-set simple_factors(RealForm G) = [RealForm]:
+{warning: simple roots may be ordered differently in simple_factorsRF than in G. Example
+is G = SO(2) x SO(6): simple roots (0,1,2) for G become (1,0,2) in simple_factorsRF(G)[0]}
+set simple_factorsRF(RealForm G) = [RealForm]:
     let delta=G.distinguished_involution, tf=KGB(G,0).torus_factor,
 	simpleFactors = simple_factors(RootDatum: G), {these have simple roots reordered}
 	Factors = [RealForm]:[]
@@ -135,7 +135,7 @@ set simple_factors(RealForm G) = [RealForm]:
 {projection from ratl coweight of G to coweight of S, respecting
 values on roots of S}
 set cowt_inclusions(RealForm G) = [(ratvec->ratvec)]:
-    for S in simple_factors(G)
+    for S in simple_factorsRF(G)
     do (ratvec->ratvec):
     (ratvec v) : sum(G.rank,
       for xi@j in fundamental_coweights(S) do (v*S.simple_roots[j])*xi od)
@@ -144,7 +144,7 @@ set cowt_inclusions(RealForm G) = [(ratvec->ratvec)]:
 {projection from ratl weight of G to ratl weight of S, respecting
 values on roots of S}
 set wt_projections(RealForm G) = [(ratvec->ratvec)]:
-    for S in simple_factors(G)
+    for S in simple_factorsRF(G)
     do (ratvec->ratvec):
     (ratvec gamma) : sum(G.rank,
       for xi@j in fundamental_weights(S) do (gamma*S.simple_coroots[j])*xi od)
@@ -152,7 +152,7 @@ set wt_projections(RealForm G) = [(ratvec->ratvec)]:
 
 set factor_KGBs(KGBElt x) = [KGBElt]:
     let G = x.real_form
-    then SF = simple_factors(G)
+    then SF = simple_factorsRF(G)
     in for S in SF {this is automatically a theta-stable Levi}
        do {inverse_embed_KGB(x, S) doesn't work}
        	  let (w,) = from_dominant(S, x.involution *S.two_rho)
@@ -193,22 +193,22 @@ set derived_info(RealForm G) = (RealForm, mat):
 
 { lists derived groups DS of real and/or complex simple factors S.
   Matrix M maps weights for S to weights for DS. Result is (S,DS,M)}
-  {because of simple_factors, roots in S and DS can be ordered differently}{NO??}
+  {because of simple_factorsRF, roots in S and DS can be ordered differently}{NO??}
 set derived_simple_factors_info(RealForm G) = [(RealForm,RealForm, mat)]:
-    for S in simple_factors(G)
+    for S in simple_factorsRF(G)
     do let (derS,M) = {derived_cover_real_form_info(S)} derived_info(S)
     then () = if Cartan_matrix(derS) != Cartan_matrix(S) then prints("S and derS permuted!") fi 
     in (S,derS,M)
     od
 
 set derived_simple_factors(RealForm G) = [RealForm]:
-    for S in simple_factors(G)
+    for S in simple_factorsRF(G)
     do derived(S) 
     od
 
 {ith [int] is the numbers of the G-simple roots corresponding to simple roots of ith simple factor}
 set derived_simple_factor_root_labels(RealForm G) = [[int]]:
-    for S in simple_factors(G)
+    for S in simple_factorsRF(G)
     do for alpha in S.simple_roots
        do let j = simple_root_index(G)(alpha)
        	  in if j.>= then [j] else [] fi
@@ -217,7 +217,7 @@ set derived_simple_factor_root_labels(RealForm G) = [[int]]:
 
 {if the kth entry is (i,j), then G-simple root k belongs to ith simple factor and is #j there}
 set G_root_labels(RealForm G) = [(int,int)]:
-    let Sindexers = for S in simple_factors(G)
+    let Sindexers = for S in simple_factorsRF(G)
     	      	    do simple_root_index(S)
 		    od
     in for alpha in G.simple_roots
@@ -230,7 +230,7 @@ set G_root_labels(RealForm G) = [(int,int)]:
 
 set derived_paths(RealForm G, [int,bool] path) = [[int,bool]]:
     let labels = G_root_labels(G)
-    then der_paths = [[int,bool]]: for S in simple_factors(G) do [] od
+    then der_paths = [[int,bool]]: for S in simple_factorsRF(G) do [] od
     then () = for (k,flag) in path
        	      do let (i,j) = labels[k]
        	      	 in der_paths[i] #:= (j,flag)

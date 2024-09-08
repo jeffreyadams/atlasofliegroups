@@ -955,7 +955,7 @@ set unitarity_hash = make_unitarity_bool_hash()
 set is_unitary_hash(Param p) = bool:
     if not is_hermitian(p) then return false fi;
     let (,pL) = wkgood_Q(p), G=p.real_form
-    then derpLs = derived_factor_params2(pL)
+    then derpLs = derived_factor_params0(pL)
     then answer = all([(->bool)] : for derpL in derpLs do @bool:
        			unitarity_hash.entry(derpL) od)
     {then formL = hermitian_form_irreducible(pL)}
