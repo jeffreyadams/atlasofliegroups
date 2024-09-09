@@ -261,7 +261,7 @@ set min_bottom_factors_old(KType mu) = ([[(KType, KType)]], [int]):
     then SFRP = simple_factor_root_partition(Q)
     then muL = LKT(pL), L = Q.Levi
     then dermuLs = derived_factor_K_types0(muL) {each dermuLj is on a simple derived derLj}
-    then derLs = derived_simple_factors(L)
+    then derLs = derived_simple_factorsRF(L)
     then DLjs = for derLj in derLs do next_heights(derLj) od
     {then xcG = {embed_KGB(xcL,G)} natural_KGB_elt(mu){this is needed to make shifts for L equal to shifts for G}
     then xcL = {KGB(L,0)} {natural_KGB_elt(muL)} inverse_embed_KGB(xcG,L)}
@@ -408,7 +408,7 @@ set min_bottom_factors(KType mu) = QKL_bottom_data:
     then SFRP = simple_factor_root_partition(Q)
     then muL = LKT(pL), L = Q.Levi
     then dermuLs = derived_factor_K_types0(muL) {each dermuLj is on a simple derived derLj}
-    then derLs = derived_simple_factors(L)
+    then derLs = derived_simple_factorsRF(L)
     then derProjKinvs = for derL in derLs do right_inverse(projection_to_K_matrix(derL)) od
     then DLjs = for derLj in derLs do next_heights(derLj) od
     then xcL = {KGB(L,0)} natural_KGB_elt(muL) {inverse_embed_KGB(xcG,L)}

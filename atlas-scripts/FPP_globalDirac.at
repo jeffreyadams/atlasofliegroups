@@ -94,7 +94,7 @@ set transfer([Param_hash] Us, Param_hash target) = void:
 {derived simple factors of all Levis of theta-stable P, omitting P=G}
 set DSFLevis(RealForm G) = [RealForm]:
     for P in theta_stable_parabolics(G)~[1:]
-    do derived_simple_factors(P.Levi) od.##
+    do derived_simple_factorsRF(P.Levi) od.##
 
 set DSFLevi_hash(RealForm G) = RealForm_hash:
     make_RealForm_hash(DSFLevis(G), hash_code@(RealForm,int))
@@ -1296,7 +1296,7 @@ set theta_induced(RealForm G) = void:
 set SDLF(RealForm G) = [RealForm]:
     let answer = make_RealForm_hash()
     then () = for L in Ls(G) {these are PROPER Levis of theta-stable parabolics}
-    	      ~do for Lj in derived_simple_factors(L) {~ to put the small L first}
+    	      ~do for Lj in derived_simple_factorsRF(L) {~ to put the small L first}
 	      	  do answer.match(Lj)
 	    	  od
 	      	od
@@ -1358,7 +1358,7 @@ set LRs(RealForm G) = [RealForm]:
 set SDLRF(RealForm G) = [RealForm]:
     let answer = make_RealForm_hash()
     then () = for LR in LRs(G) {these are PROPER Levis of real parabolics}
-    	      ~do for LRk in derived_simple_factors(LR) {tilde to put small LR first}
+    	      ~do for LRk in derived_simple_factorsRF(LR) {tilde to put small LR first}
 	      	  do answer.match(LRk)
 	    	  od
 	       od
@@ -1370,12 +1370,12 @@ set SDLRF(RealForm G) = [RealForm]:
 set SDLALL(RealForm G) = [RealForm]:
     let answer = make_RealForm_hash()
     then () = for L in Ls(G) {these are PROPER Levis of theta-stable parabolics}
-    	      ~do for Lj in derived_simple_factors(L) {~ to put the small L first}
+    	      ~do for Lj in derived_simple_factorsRF(L) {~ to put the small L first}
 	      	  do answer.match(Lj)
 	    	  od
 	      	od
     then () = for LR in LRs(G) {these are PROPER Levis of real parabolics}
-    	      ~do for LRk in derived_simple_factors(LR) {tilde to put small LR first}
+    	      ~do for LRk in derived_simple_factorsRF(LR) {tilde to put small LR first}
 	      	  do answer.match(LRk)
 	    	  od
 	       od
