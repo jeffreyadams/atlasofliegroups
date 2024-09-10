@@ -210,12 +210,12 @@ set make_RF_sig_tables () = RF_sig_tables:
    , ((KType,int) -> KTypePol): {branch_entry} (KType mu, int D) KTypePol:
      begin
      	let (rf, ktypenum,m) = add_K_type(mu,D)
-	in to_ht(K_type_pol_hashes[rf].index(m), D)
+	in regroup(mu.real_form, to_ht(K_type_pol_hashes[rf].index(m), D))
      end
    , (Param -> KTypePol): {sig_entry} (Param p) KTypePol:
      begin
 	let (rf,pnum,sig_ind) = add_param(p)
-	in K_type_pol_hashes[rf].index(sig_ind)
+	in regroup(p.real_form, K_type_pol_hashes[rf].index(sig_ind))
      end
     , (int -> RealForm): {real_form_index} (int j): real_form_hash.index(j)
    , ((int, int) -> int): {branch_height} (int rf, int ktypenum): branch_heights[rf][ktypenum]
@@ -249,7 +249,7 @@ set natural_KGB_elt(KType mu) = KGBElt:
 the derived simple factors derLj of L have simple roots Sj partitioning S. Answer is [Sj]}
 set simple_factor_root_partition(KGPElt Q) = [[int]]:
     let L = Q.Levi, G = Q.real_form
-    in for Lj in simple_factors(L)
+    in for Lj in simple_factorsRF(L)
        do for alpha in Lj.simple_roots do root_index(G,alpha) od
        od
 
@@ -261,7 +261,7 @@ set min_bottom_factors_old(KType mu) = ([[(KType, KType)]], [int]):
     then SFRP = simple_factor_root_partition(Q)
     then muL = LKT(pL), L = Q.Levi
     then dermuLs = derived_factor_K_types0(muL) {each dermuLj is on a simple derived derLj}
-    then derLs = derived_simple_factors(L)
+    then derLs = derived_simple_factorsRF(L)
     then DLjs = for derLj in derLs do next_heights(derLj) od
     {then xcG = {embed_KGB(xcL,G)} natural_KGB_elt(mu){this is needed to make shifts for L equal to shifts for G}
     then xcL = {KGB(L,0)} {natural_KGB_elt(muL)} inverse_embed_KGB(xcG,L)}
@@ -408,7 +408,7 @@ set min_bottom_factors(KType mu) = QKL_bottom_data:
     then SFRP = simple_factor_root_partition(Q)
     then muL = LKT(pL), L = Q.Levi
     then dermuLs = derived_factor_K_types0(muL) {each dermuLj is on a simple derived derLj}
-    then derLs = derived_simple_factors(L)
+    then derLs = derived_simple_factorsRF(L)
     then derProjKinvs = for derL in derLs do right_inverse(projection_to_K_matrix(derL)) od
     then DLjs = for derLj in derLs do next_heights(derLj) od
     then xcL = {KGB(L,0)} natural_KGB_elt(muL) {inverse_embed_KGB(xcG,L)}
