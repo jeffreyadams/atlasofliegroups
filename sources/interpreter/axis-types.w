@@ -985,14 +985,14 @@ associate tags identifying the variants of a given |union| type.
 @< Type definitions @>=
 struct type_binding
 { static constexpr id_type no_id = -1;
-  id_type name; type_expr type; std::vector<id_type> fields;
-  type_binding(type_expr&& t) : name(no_id), type(std::move(t)), fields() @+{}
+  id_type name; type_expr tp; std::vector<id_type> fields;
+  type_binding(type_expr&& t) : name(no_id), tp(std::move(t)), fields() @+{}
 };
 class type_expr::defined_type_mapping : public std::vector<type_binding>
 { public:
   defined_type_mapping () : std::vector<type_binding>() @+{}
   const type_expr& defined_type(type_nr_type i) const @+
-    {@; return (*this)[i].type; }
+    {@; return (*this)[i].tp; }
 };
 
 @~We need to define that declared static class member; it starts out empty.
@@ -1006,13 +1006,13 @@ pass on information, the method |add_typedefs| used to enter a list of newly
 defined (potentially recursive) types into |type_map| is quite elaborate. Its
 argument is a list |defs| of pairings of a type identifier to a type expression.
 The potentially recursive nature of these definitions lies in that they can not
-only refer, using the |tabled_variant| variant, to type already defined in the
-mapping, but also to the types they define themselves. For this purpose, those
-recursive type numbers start to count from |type_expr::table_size()| as it is
-before |add_typedefs| method is called. The return value is a list of the same
-length giving their type numbers after applying type equivalencing~; usually
-these will be the same numbers used initially, but some may have mapped to
-equivalent previously known types.
+only refer, using the |tabled_variant|, to types already defined in the mapping,
+but also to the types they define themselves. For this purpose, those recursive
+type numbers start to count from |type_expr::table_size()| as it is before
+|add_typedefs| method is called. The return value is a list of the same length
+giving their type numbers after applying type equivalencing~; usually these will
+be the same numbers used initially, but some may have mapped to equivalent
+previously known types.
 
 @< Static methods of |type_expr| that will access |type_map| @>=
 static std::vector<type_nr_type>
@@ -1036,9 +1036,9 @@ type_nr_type type_expr::table_size() @+{@; return type_map.size(); }
 void type_expr::reset_table_size(type_nr_type old_size)
 {@; type_map.erase(std::next(type_map.begin(),old_size),type_map.end()); }
 @)
-type_nr_type type_expr::find (const type_expr& type)
+type_nr_type type_expr::find (const type_expr& tp)
 { for (auto it=type_map.begin(); it!=type_map.end(); ++it)
-    if (it->type==type)
+    if (it->tp==tp)
       return it-type_map.begin();
   return -1;
 }
@@ -1226,7 +1226,7 @@ and |count| to keep track of their future numbering.
 {
   dressed_type_list types;
   for (auto it=type_map.begin(); it!=type_map.end(); ++it)
-    types.push_back(it->type.copy());
+    types.push_back(it->tp.copy());
   type_nr_type count=types.size()+defs.size();
     // start numbering auxiliary types here
   auto insert_pt = types.end();
@@ -1644,7 +1644,7 @@ record which |rank| values have already been seen.
       // record new type number, to be converted by caller to a |tabled| type
     if (type_map[nr].name==type_binding::no_id
         // don't overwrite an existing type name
-       @+and type_map[nr].type.tag!=primitive_type) // nor name a primitive type
+       @+and type_map[nr].tp.tag!=primitive_type) // nor name a primitive type
       type_map[nr].name=defs[i].first;
       // but otherwise insert type name into |type_map|
   }
@@ -1667,18 +1667,18 @@ applicable.
 @< Update, for types beyond position |old_size|, their descendent types
    according to |renumber| @>=
 { for (auto it=type_map.begin()+old_size; it!=type_map.end(); ++it)
-    switch (it->type.tag)
+    switch (it->tp.tag)
     { default: break; // nothing for types without descendents
     case function_type:
-    { auto f = it->type.func_variant;
+    { auto f = it->tp.func_variant;
     @/renumber_type_nr_from_rank(f->arg_type);
       renumber_type_nr_from_rank(f->result_type);
     }
       break;
-    case row_type: renumber_type_nr_from_rank(*it->type.row_variant);
+    case row_type: renumber_type_nr_from_rank(*it->tp.row_variant);
       break;
     case tuple_type: case union_type:
-      for (wtl_iterator jt(it->type.tuple_variant); not jt.at_end(); ++jt)
+      for (wtl_iterator jt(it->tp.tuple_variant); not jt.at_end(); ++jt)
         renumber_type_nr_from_rank(*jt);
       break;
     }
@@ -2287,6 +2287,55 @@ bool is_free_in(const type_expr& tp, unsigned int nr,
     return false;
   }
 }
+
+@*1 Wrapped up polymorphic types.
+
+For a long type the recursive class |type_expr| served directly in the type
+analysis routines, as something that can be used either the represent the actual
+type of an expression or a pattern that we want such types to conform to at some
+point in the processing; for instance when processing a function call we want
+the function part to have a type matching the pattern \.{(*->*)}, but at that
+point this is not the type of an expression. With the advent of second order
+types, we want to make a distinction between patterns and polymorphic types,
+where the latter may not contain undetermined subexpressions but it may contain
+type variables, they can be used as the type of concrete expressions, and they
+carry some information about their own degree of polymorphism. To delineate the
+distinction between the two uses more clearly, we define a new class that wraps
+around |type_expr|, and provides data and methods to help administrate
+polymorphic types. For instance, a local variable that gets initialised to an
+empty list initially will have a polymorphic list type, but uses of that
+variable can lead it to be unified with types associated to uses of the
+variable, which should be done by methods specialising the type explicitly,
+rather than as a side effect of passing certain type subexpressions to certain
+functions like |conform_types|.
+
+Introducing this type will shake up a lot of the code of type analysis, whose
+logic is currently dependent (it seems) on the possibility to modify types
+indirectly by modifying (by specialisation) objects that were extracted from
+them as sub-types. By wrapping |type_expr| into a new class |type|, this will be
+harder to realise; maybe this provokes a cleaner set-up where the flow of
+information is more explicit.
+
+The best definition of this new class |type| will depend much upon its actual
+usage. We need at least an indication of the number of free type variables bound
+in the current type, but to make substitution easier to handle, we can instead
+store a |type_assignment| structure, in which the free variables are the ones
+with a null equivalent (the other ones will have been substituted for by some
+previous operation). We shall add methods as convenient for making the change
+from |type_expr| to |type|.
+
+@< Type definitions @>=
+class type
+{
+  type_expr te;
+  type_assignment a;
+public:
+  type(type_expr te);
+  type(type&& tp);
+  unsigned int degree() const;
+  type_expr expr() const;
+  type& substitute(unsigned int i, const type_expr& tp) const;
+};
 
 @*1 Specifying types by strings.
 %
