@@ -2532,10 +2532,10 @@ typedef struct cast_node* cast;
 
 @< Structure and typedef definitions for types built upon |expr| @>=
 struct cast_node
-{ type_expr type; expr exp;
+{ type_expr dst_tp; expr exp;
 @)
-  cast_node(type_expr&& type, expr&& exp)
-@/: type(std::move(type))
+  cast_node(type_expr&& tp, expr&& exp)
+@/: dst_tp(std::move(tp))
   , exp(std::move(exp))@+{}
   // backward compatibility for gcc 4.6
 };
@@ -2586,7 +2586,7 @@ case cast_expr: delete cast_variant; break;
 @< Cases for printing... @>=
 case cast_expr:
 {@; const auto& c = *e.cast_variant;
-  out << c.type << ':' << c.exp ;
+  out << c.dst_tp << ':' << c.exp ;
 }
 break;
 
