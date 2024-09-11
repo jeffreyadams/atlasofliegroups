@@ -366,7 +366,7 @@ public:
    // no copy-and-swap needed
 @)
   const shared_function& @;value() const @+{@; return val; }
-  const func_type& type() const @+{@; return tp; }
+  const func_type& f_tp() const @+{@; return tp; }
   unsigned int poly_degree() const@+{@; return degree; }
 };
 
@@ -436,7 +436,7 @@ const overload_data* overload_table::entry
   (id_type id, const type_expr& arg_t) const
 { const variant_list& vars = variants(id);
   for (auto it=vars.begin(); it!=vars.end(); ++it)
-    if (it->type().arg_type==arg_t)
+    if (it->f_tp().arg_type==arg_t)
       return &*it;
   return nullptr; // indicate not found
 }
@@ -467,7 +467,7 @@ std::size_t locate_overload
   (id_type id,const overload_table::variant_list& slot,const type_expr& arg_type)
 { std::size_t lwb=0; std::size_t upb=slot.size();
   for (std::size_t i=0; i<slot.size(); ++i)
-  { unsigned int cmp= is_close(arg_type,slot[i].type().arg_type);
+  { unsigned int cmp= is_close(arg_type,slot[i].f_tp().arg_type);
     switch (cmp)
     {
       case 0x6: lwb=i+1; break;
@@ -475,7 +475,7 @@ std::size_t locate_overload
       case 0x5: @+ if (upb>i) upb=i; @+ break;
         // |type| converts to type |i|, so it must come before
       case 0x7: // mutually convertible types, maybe identical ones
-        if (slot[i].type().arg_type==arg_type)
+        if (slot[i].f_tp().arg_type==arg_type)
           // identical ones: overload redefinition case
             return i;
       @/// |else| {\bf fall through}
@@ -501,7 +501,7 @@ encountered so that the user will hopefully be able to understand.
 @< Throw a |program_error| reporting a conflict... @>=
 { std::ostringstream o;
   o << "Cannot overload `" << main_hash_table->name_of(id) << "':\n" @|
-       "already overloaded type '" << slot[i].type().arg_type
+       "already overloaded type '" << slot[i].f_tp().arg_type
  @| << "' is too close to new argument type '"@| << arg_type
  @| << "',\nwhich would make overloading ambiguous for certain arguments. " @|
        "Simultaneous\noverloading for these types is not possible, " @|
@@ -550,7 +550,7 @@ any entry, allows us to avoid testing any types again here.
 @< Insert an overload for function |val| with function type |ftype|... @>=
 { variant_list& slot=its.first->second; // vector of all variants
   auto pos=locate_overload(id,slot,ftype.arg_type); // may |throw|
-  if (pos<slot.size() and slot[pos].type().arg_type==ftype.arg_type)
+  if (pos<slot.size() and slot[pos].f_tp().arg_type==ftype.arg_type)
      // equality found
     slot[pos] = overload_data(std::move(val),std::move(ftype),deg); // overwrite
   else
@@ -568,7 +568,7 @@ bool overload_table::remove(id_type id, const type_expr& arg_t)
   if (p==table.end()) return false; // |id| was not known at all
   variant_list& variants=p->second;
   for (std::size_t i=0; i<variants.size(); ++i)
-    if (variants[i].type().arg_type==arg_t)
+    if (variants[i].f_tp().arg_type==arg_t)
     @/{@;
       variants.erase(variants.begin()+i);
       return true;
@@ -586,7 +586,7 @@ void overload_table::print(std::ostream& out) const
 { for (auto p=table.begin(); p!=table.end(); ++p)
     for (auto it=p->second.begin(); it!=p->second.end(); ++it)
       out << main_hash_table->name_of(p->first) << ": " @|
-        << it->type() << ": " << *it->value() << std::endl;
+        << it->f_tp() << ": " << *it->value() << std::endl;
 }
 
 std::ostream& operator<< (std::ostream& out, const overload_table& p)
@@ -1798,7 +1798,7 @@ void show_overloads(id_type id,std::ostream& out)
 @| << main_hash_table->name_of(id) << '\'' << std::endl;
  for (std::size_t i=0; i<variants.size(); ++i)
    out << "  "
-    << variants[i].type().arg_type << "->" << variants[i].type().result_type @|
+    << variants[i].f_tp().arg_type << "->" << variants[i].f_tp().result_type @|
     << std::endl;
 }
 
