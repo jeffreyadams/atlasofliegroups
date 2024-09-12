@@ -177,7 +177,7 @@ set classify_standard_Levis (RootDatum rd) =  Std_Levi_table:
          then i = first(#result,(int i)bool: result[i].rho2=rho2_dom)
       in if i.< { is this a previously unseen |rho2_dom| value }
          then orbs #:= rho_stabiliser_orbit(rd,Levi) { sorted }
-         ;  result #:= (rho2_dom,combination_encode(Levi),[])
+         ;  result #:= (rho2_dom,combination_encode(Levi),orbit_data:[])
          else { |rho2_dom| value already seen, and tabulated in |orbs[i]| }
             let cur=result[i], orbit=orbs[i], L = int: right_act(Levi,w0)
             then (,w) =

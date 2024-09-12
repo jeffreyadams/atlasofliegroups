@@ -788,14 +788,11 @@ reduced to just a test of the type names.
 
 @< Function definitions @>=
 bool type_expr::specialise(const type_expr& pattern)
-{ if (pattern.tag==undetermined_type)
-    return true; // specialisation to \.* trivially succeeds.
+{ if ( pattern.tag==variable_type or pattern.tag==undetermined_type)
+    return true; // specialisation to \.{A} (or \.*) trivially succeeds.
   if (tag==undetermined_type) // specialising \.* also always succeeds,
     {@; set_from(pattern.copy()); return true; }
      // by setting |*this| to a copy of  |pattern|
-  if (tag==variable_type)
-    return true;
-    // we should emit a substitution for the type variable here as well
   if (pattern.tag==tabled)
   { if (tag==tabled) // both are defined type; see if they are the same
       return tabled_variant==pattern.tabled_variant;
@@ -1859,7 +1856,7 @@ type_ptr mk_prim_type(primitive_tag p)
 }
 
 type_ptr mk_type_variable(unsigned int i)
-{ return std::make_unique<type_expr>(type_expr::variable(i)); }
+{@; return std::make_unique<type_expr>(type_expr::variable(i)); }
 
 type_ptr mk_function_type (type_expr&& a, type_expr&& r)
 {@; return std::make_unique<type_expr>
@@ -2023,13 +2020,20 @@ struct type_assignment
     // default initialises |equiv| entries, we cannot say ``to |nullptr|''
   {}
 @)
+  type_assignment copy() const;
   unsigned int size() const @+{@; return equiv.size(); }
+  void grow(unsigned int n) @+{@; equiv.resize(size()+n); }
   void append(const type_assignment& a);
   const_type_p equivalent (unsigned int i) const
-  {@; return i<var_start ? nullptr : equiv[i-var_start].get(); }
+  {@; return i<var_start ? nullptr :
+      (assert(i<var_start+equiv.size()),equiv[i-var_start].get()); }
   void set_equivalent(unsigned int i, const_type_p p)
-  {@; assert (i>=var_start);
+  {@; assert (i>=var_start and i<var_start+equiv.size());
     equiv[i-var_start]=std::make_unique<type_expr>(p->copy());
+  }
+  void set_equivalent(unsigned int i, type_ptr&& p)
+  {@; assert (i>=var_start);
+    equiv[i-var_start]=std::move(p);
   }
   unsigned int renumber(unsigned int i) const
   // reflect removal of variables assigned here
@@ -2039,6 +2043,18 @@ struct type_assignment
     return i;
   }
 };
+
+@ Sometimes we want to make a copy of a |type_assignment|, and since the |equiv|
+filed holds unique pointers, we need to clone the type they point to.
+
+@< Function definitions @>=
+type_assignment type_assignment::copy() const
+{ type_assignment result(var_start,size());
+  result.equiv.reserve(size());
+  for (const auto& tp : equiv)
+    result.equiv.emplace_back(tp==nullptr ? nullptr : new type_expr(tp->copy()));
+  return result;
+}
 
 @ When we append to the |equiv| list, we must make fresh copies of the
 pointed-to |type_expr| values that we are going to own.
@@ -2123,7 +2139,7 @@ type_expr substitution(const type_expr& M, const type_assignment& assign)
          |M.typevar_count()|, return a copy of that type into which
          substitution was recursively applied; otherwise return a copy of the
          type variable itself @>
-    default: assert(false);
+    default: assert(false); // there should be no undetermined type components
   }
   return std::move(*result);
 }
@@ -2232,28 +2248,30 @@ considered a failure of unification.
 @)
   if (P_kind==variable_type)
   { auto c = P->typevar_count();
+    if (Q_kind==variable_type and Q->typevar_count()==c)
+      return true; // identical variables, nothing to do
     if (c>=assign.var_start)
-      // then (due to substitutions above) we can assign to |P|
+      // then (due to |while| loop above) we can assign to |P|
     {
       if (is_free_in(*Q,c,assign))
-        return false;
+        return false; // avoid recursive assignment
       assign.set_equivalent(c,Q);
       return true;
     }
-    else // now |P| is abstract type fixed in the context; return whether |P==Q|
-      return Q_kind==variable_type and Q->typevar_count()==c;
+    else
+      return false; // |P| is non-assignable type variable, and |P!=Q|
   }
   if (Q_kind==variable_type)
   { auto c = Q->typevar_count();
     if (c>=assign.var_start)
-      // then (due to substitutions above) we can assign to |Q|
+      // then (due to |while| loop above) we can assign to |Q|
     {
       if (is_free_in(*P,c,assign))
-        return false;
+        return false; // avoid recursive assignment
       assign.set_equivalent(c,P);
       return true;
     }
-    else return false; // since we know that |P| is not a type variable
+    else return false;
   }
 }
 
@@ -2302,7 +2320,7 @@ bool is_free_in(const type_expr& tp, unsigned int nr,
 }
 
 @*1 Wrapped up polymorphic types.
-
+%
 For a long type the recursive class |type_expr| served directly in the type
 analysis routines, as something that can be used either the represent the actual
 type of an expression or a pattern that we want such types to conform to at some
@@ -2343,14 +2361,372 @@ class type
   type_expr te;
   type_assignment a;
 @)
+  type() : te(), a(0,0) @+{}
   type(unsigned int fix_nr,unsigned int var_nr) : te(), a(fix_nr,var_nr) @+{}
 public:
-  type(type_expr te);
-  type(type&& tp);
-  unsigned int degree() const;
-  type_expr expr() const;
-  type& substitute(unsigned int i, const type_expr& tp) const;
+  static type wrap(const type_expr& te, unsigned int fix_count=0);
+  static type bottom(unsigned int fix_count=0)
+  {@; return wrap(type_expr(),fix_count); } // free type variable
+  type(type&& tp) = default;
+  type& operator=(type&& tp) = default;
+@)
+  type_tag kind () const @+{@; return te.kind(); }
+  primitive_tag prim () const     @+{@; return te.prim(); }
+  unsigned int typevar_count () const @+{@; return te.typevar_count(); }
+  func_type* func() const        @+{@; return te.func(); }
+  type_expr& component_type () const @+{@; return te.component_type(); }
+  raw_type_list tuple () const   @+{@; return te.tuple(); }
+  type_nr_type type_nr () const @+{@; return te.type_nr(); }
+@)
+  bool operator ==(const type& other) @+{@; return bake()==other.bake(); }
+  bool operator !=(const type& other) @+{@; return not operator==(other); }
+  const type_assignment& assign () const @+{@; return a; }
+  unsigned int floor () const @+{@; return a.var_start; }
+  unsigned int degree() const @+{@; return a.equiv.size(); }
+  const type_expr& unwrap() const @+{@; return te ; }
+  type copy() const
+    {@; type result;
+      result.te=te.copy();
+      result.a=a.copy();
+      return result;
+    }
+@)
+  bool is_void() const @+
+  {@; return te.kind()==tuple_type and length(te.tuple())==0; }
+  bool specialise(const type_expr& t) @+
+  { auto tp = wrap(t);
+    bool result = specialise(tp);
+    return result;
+  }
+  type& expunge(); // eliminate assigned type variables, by substitution
+  type& clear(unsigned int d); // remove any type assignments, reserve |d| new ones
+  type_expr bake() const; // extract |type_expr| after substitution
+  type_expr bake_off(); // extract |type_expr|, sacrificing self if needed
+  bool unify(type_expr& pattern) // adapt to pattern while specialising pattern
+    {@; return unify(te,pattern); } // recursive helper method does the work
+  bool specialise(const type& t); // like for |type_expr|
+  bool matches (const type_expr& formal, unsigned int n);
+    // non-|const|; assignment is left in |a|
+  bool record_match (const type_expr& sub_t, type& other); // likewise
+  bool record_match (const type_expr& sub_t, const type_expr& other)
+    {@; type t=wrap(other); return record_match(sub_t,t); }
+  type_expr skeleton (const type_expr& sub_t) const;
+  void wrap_row () @+{@; te.set_from(type_expr::row(std::move(te))); }
+private:
+  bool unify(const type_expr& sub_tp, type_expr& pattern);
 };
+
+@ First some simple methods. One uses |expunge| to incorporate any pending type
+assignments, and |clear| to forget any and reset the number of type variables
+to~|d| (presumably the number it had before some unification method might have
+extended the set). Finally |bake| and |bake_off| provide the type expression
+taking into account pending type assignments, the latter leaving the type itself
+in an unusable state (since it was possibly moved from).
+
+@< Function definitions @>=
+type& type::expunge()
+{
+  if (std::none_of(a.equiv.begin(),a.equiv.end(),
+                 @[ [](const const_type_ptr& p){@; return p!=nullptr; } @]))
+    return *this; // nothing to expunge
+  return *this = wrap(substitution(te,a));
+}
+@)
+type& type::clear(unsigned int d)
+{
+  a = type_assignment(floor(),d);
+  return *this;
+}
+@)
+type_expr type::bake() const @+{@; return substitution(te,a) ; }
+type_expr type::bake_off() // variant available if |*this| is no longer needed
+{
+  if (std::none_of(a.equiv.begin(),a.equiv.end(),
+                 @[ [](const const_type_ptr& p){@; return p!=nullptr; } @]))
+    return std::move(te);
+  return substitution(te,a);
+}
+
+@ We shall need a local recursive function to traverse and copy a |type_expr|,
+eliminating undetermined components by replacing them by fresh type variables.
+It is much like the function |substitution| for |type_expr| above, but returns a
+|type_expr| rather than a (smart) pointer to it. The |translate| argument is a
+lookup list, mapping new (position) to old (value) type variable numbers, which
+initially just maps frozen type variables to themselves, and is updated with
+entries for type variables encountered or created during the recursive
+traversal.
+
+@< Local function definitions @>=
+type_expr fixate(const type_expr& te, sl_list<unsigned int>& translate)
+{ switch (te.raw_kind())
+  { case primitive_type: return type_expr::primitive(te.prim());
+    case function_type:
+    { auto arg_fix = fixate(te.func()->arg_type,translate); // this one first
+      auto res_fix = fixate(te.func()->result_type,translate); // then this one
+      return type_expr::function(std::move(arg_fix),std::move(res_fix));
+    }
+    case row_type: return type_expr::row(fixate(te.component_type(),translate));
+    case tuple_type:
+    case union_type:
+    { dressed_type_list aux;
+      for (wtl_const_iterator it(te.tuple()); not it.at_end(); ++it)
+        aux.push_back(fixate(*it,translate));
+      if (te.raw_kind()==tuple_type)
+        return type_expr::tuple(aux.undress());
+      return  type_expr::onion(aux.undress());
+    }
+    case tabled: return type_expr::tabled_nr(te.type_nr());
+    case undetermined_type:
+    { unsigned int k=translate.size(); translate.push_back(-1);
+      return type_expr::variable(k);
+    }
+    case variable_type:
+    { unsigned int k=0;
+      for (auto it=translate.begin(); not translate.at_end(it); ++it, ++k)
+        if (*it==te.typevar_count()) // then we found a known type variable
+          return type_expr::variable(k);
+      translate.push_back(te.typevar_count()); // new variable; record it
+      return type_expr::variable(k); // return new number for variable
+    }
+   default: assert(false); return type_expr();
+  }
+}
+
+
+
+@ Given this helper, wrapping a |type_expr| into a |type| is straightforward.
+@< Function definitions @>=
+type type::wrap (const type_expr& t, unsigned int fix_count)
+{
+  sl_list<unsigned int> translate;
+  for (unsigned int k=0; k<fix_count; ++k)
+    translate.push_back(k); // ensure that variable |k| remains unchanged
+@)
+  auto e=fixate(t,translate);
+  type result(fix_count,translate.size()-fix_count);
+  result.te = std::move(e);
+  return result;
+}
+
+@ Now that types are polymorphic, we need a function to replace the method
+|type_expr::specialise|, which is too limited in just replacing undetermined
+type components. The function |can_specialise| in fact supposes that its
+|type_expr| arguments have no undetermined elements. Its two |type_expr|
+parameters are each accompanied by an integer parameter indicating their number
+of active type variables, and a final input-output argument |assign| used both
+for its |var_start| field (whose value is preserved) and to record the type
+assignment for the specialisation.
+
+@< Declarations of exported functions @>=
+bool can_specialise
+( const type_expr& s, unsigned int s_count
+, const type_expr& t, unsigned int t_count
+, type_assignment& assign
+);
+
+@ The function |can_specialise| may need to renumber the active type variables
+in the second type, for which it uses an auxiliary recursive function |shift|
+that is modelled after |substitute| but simpler.
+
+@< Function definitions @>=
+type_expr shift
+  (const type_expr& t, unsigned int fix, unsigned int amount)
+{ type_ptr result;
+  switch (t.raw_kind())
+  { case primitive_type: return type_expr::primitive(t.prim());
+    case function_type: result =
+      mk_function_type(shift(t.func()->arg_type,fix,amount),
+                       shift(t.func()->result_type,fix,amount));
+    break;
+    case row_type:
+      result = mk_row_type(shift(t.component_type(),fix,amount));
+    break;
+    case tuple_type:
+    case union_type:
+    { dressed_type_list aux;
+      for (wtl_const_iterator it(t.tuple()); not it.at_end(); ++it)
+        aux.push_back(shift(*it,fix,amount));
+      if (t.raw_kind()==tuple_type)
+        return type_expr::tuple(aux.undress());
+      return type_expr::onion(aux.undress());
+    }
+    case tabled: return type_expr::tabled_nr(t.type_nr());
+    case variable_type:
+    { auto c = t.typevar_count();
+      return type_expr::variable(c<fix ? c : c+amount);
+    }
+    default: assert(false);
+  }
+  return std::move(*result);
+}
+
+bool can_specialise
+( const type_expr& s, unsigned int s_count
+, const type_expr& t, unsigned int t_count
+, type_assignment& assign
+)
+{ assign = // resize while forgetting any previous assignments
+    type_assignment(assign.var_start,s_count+t_count);
+  if (s_count==0 or t_count==0) // then no need to renumber |t|
+    return can_unify(s,t,assign);
+  const type_expr t_shifted = shift(t,assign.var_start,s_count);
+  return can_unify(s,t_shifted,assign);
+}
+
+@ The method |type::specialise| is easily implemented using |can_specialise|.
+
+@< Function definitions @>=
+
+bool type::specialise(const type& t)
+{
+  bool result = can_specialise(te,degree(),t.te,t.degree(),a);
+  expunge(); // use types assigned into |a| by call, and remove them
+  return result;
+}
+
+@ The method |type::unify| is like the function |can_unify|, but on the side of
+the pattern the only changes are specialisations of undefined subexpressions.
+
+@< Function definitions @>=
+
+bool type::unify(const type_expr& sub_tp, type_expr& pattern)
+{ if (sub_tp.raw_kind()==tabled and pattern.raw_kind()==tabled)
+    return sub_tp.type_nr()==pattern.type_nr();
+    // avoid non-termination by bilateral expansion
+  auto P_kind = sub_tp.kind(), Q_kind = pattern.kind();
+  if (Q_kind==undetermined_type)
+    {@; pattern.set_from(sub_tp.copy()); return true; }
+  if (P_kind!=Q_kind and P_kind!=variable_type)
+    return false;
+  switch(P_kind)
+  {
+  case variable_type:
+    { auto c = sub_tp.typevar_count();
+      if (c<floor())
+        return sub_tp.type_nr()==pattern.type_nr();
+      auto eq=a.equivalent(c);
+      if (eq!=nullptr)
+        return unify(*eq,pattern);
+      type plug = type::wrap(pattern,floor()+degree());
+        // plug any undefined pattern elements
+      a.set_equivalent(c,std::make_unique<type_expr>(plug.bake_off()));
+      return true;
+    }
+  case primitive_type: return sub_tp.prim()==pattern.prim();
+  case function_type: return
+    unify(sub_tp.func()->arg_type,pattern.func()->arg_type) and @|
+    unify(sub_tp.func()->result_type,pattern.func()->result_type);
+  case row_type: return unify(sub_tp.component_type(),pattern.component_type());
+  case tuple_type: case union_type:
+    {
+      for(raw_type_list p = sub_tp.tuple(), q=pattern.tuple();
+          p!=nullptr or q!=nullptr;
+          p = p->next.get(), q=q->next.get())
+      { if (p==nullptr or q==nullptr)
+          return false; // unequal length lists
+        if (not unify(p->contents,q->contents))
+          return false; // some subtype fails unification
+      }
+      return true;
+    }
+  default: assert(false);
+  // |tabled| impossible, and |undetermined_type| should not happen
+  }
+  return false; // keep compiler happy
+}
+
+@ The method |matches| is typically called with as our type the type of an
+(argument) expression, and as |formal| a type specification using |n| type
+variables. Any type variables of |formal| must start at our |floor()|, so it is
+the caller's responsibility to do any necessary renumbering. The task of this
+method is similar to that of |formal.specialise|, but instead of filling
+undetermined slots, we are deducing assignments to the free type variables in
+|formal|, which are then (opportunistically) stored in the |type_assignment|
+field of |*this|. We assume the caller has cleared all our previous type
+assignments, so we have a clean slate of |degree()| type variables. Since we are
+calling |can_unify| we must first make the sets of type variables disjoint,
+which we do by shifting up our own type variables (into a separate |type_expr|);
+it is important that we do not renumber the free variables of |formal|, since
+the caller will probably use are type assignment to substitute into it and
+related types.
+
+The method |record_match| has a different purpose: here the unification of our
+sub-expression |sub_t| against a type |other| is done, with any necessary type
+assignments being recorded in the our (polymorphic) type. This is useful for
+instance when called for a polymorphic function type, when matching its
+parameter type against that of some argument, where the resulting type
+assignments can then serve to correspondingly substitute into the return type.
+
+@< Function definitions @>=
+
+bool type::matches (const type_expr& formal, unsigned int n)
+{
+  const auto d = degree(), start=floor();
+  a.grow(n); // create space for new type variables
+  if (d==0 or n==0) // then no need to renumber |other|
+    return can_unify(formal,te,a);
+  return can_unify(formal,shift(te,start,n),a);
+}
+@)
+bool type::record_match (const type_expr& sub_t, type& other)
+{
+  const auto d = degree(), od=other.expunge().degree(), start=floor();
+  a.grow(od); // create space for new type variables
+  if (d==0 or od==0) // then no need to renumber |other|
+    return can_unify(sub_t,other.unwrap(),a);
+  return can_unify(sub_t,shift(other.unwrap(),start,d),a);
+}
+
+@ Before converting the argument for a polymorphic function, we can extract
+from its polymorphic type a type pattern that may aid the conversion, namely by
+simply replacing all type variables bound in the polymorphic type by
+undetermined types. The method |skeleton| achieves this; it could have been
+implemented by calling |substitution| with an assignment of undetermined types,
+but it can be done just as easily by a direct recursion.
+
+@< Function definitions @>=
+type_expr type::skeleton (const type_expr& sub_t) const
+{ type_ptr result;
+  switch (sub_t.raw_kind())
+  { case primitive_type: return type_expr::primitive(sub_t.prim());
+    case function_type: result =
+      mk_function_type(skeleton(sub_t.func()->arg_type),
+                       skeleton(sub_t.func()->result_type));
+    break;
+    case row_type:
+      result = mk_row_type(skeleton(sub_t.component_type()));
+    break;
+    case tuple_type:
+    case union_type:
+    { dressed_type_list aux;
+      for (wtl_const_iterator it(sub_t.tuple()); not it.at_end(); ++it)
+        aux.push_back(skeleton(*it));
+      if (sub_t.raw_kind()==tuple_type)
+        return type_expr::tuple(aux.undress());
+      return type_expr::onion(aux.undress());
+    }
+    case tabled: return type_expr::tabled_nr(sub_t.type_nr());
+    case variable_type:
+    { auto c = sub_t.typevar_count();
+      return c>=a.var_start ? type_expr() : type_expr::variable(c);
+    }
+    default: assert(false);
+  }
+  return std::move(*result);
+}
+
+
+@ We also provide an overload for printing |type| values without having to call
+|expr| explicitly each time.
+
+@< Function definitions @>=
+std::ostream& operator<<(std::ostream& strm, const type& t)
+{@; return strm << t.bake(); }
+
+@ We need to export the declaration of that last output operator instance.
+
+@< Declarations of exported functions @>=
+std::ostream& operator<<(std::ostream& strm, const type& t);
 
 @*1 Specifying types by strings.
 %
@@ -2365,11 +2741,15 @@ parameter |var_count| that signals how many distinct type variables were found.
 In some cases, as in section @# first types section @>, we are interested in
 type patterns that allow `\.*' to be used to designate an |undetermined_type|,
 but which are not intended to be in other ways polymorphic. For those occasions
-we use |mk_type_pattern|, which lacks the |var_count| parameter.
+we use |mk_type_pattern|, which lacks the |var_count| parameter. It can also be
+used when an explicit non polymorphic type string is given, to avoid the need to
+supply a |var_count| variable that serves no purpose. Finally |mk_type| scans a
+type string and produces a (wrapped) |type| value.
 
 @< Declarations of exported functions @>=
 type_expr mk_type_expr(const char* s,unsigned int& var_count);
 type_expr mk_type_pattern(const char* s);
+type mk_type(const char* s);
 
 @ The task of converting a properly formatted string into a type is one of
 parsing a simple kind of expressions. The strings used here come from string
@@ -2415,8 +2795,16 @@ type_expr mk_type_expr(const char* s,unsigned int& var_count)
   // make the error hard to ignore; if thrown probably aborts the program
   }
 }
+@)
 type_expr mk_type_pattern(const char* s)
 {@; unsigned int dummy; return mk_type_expr(s,dummy);
+}
+@)
+type mk_type(const char* s)
+{ unsigned int dummy;
+  auto result = type::wrap(mk_type_expr(s,dummy));
+  assert (result.degree()==dummy);
+  return result;
 }
 
 @ The part of |scan_type| dealing with enclosed or atomic type expressions is
@@ -3926,10 +4314,19 @@ unsigned int is_close (const type_expr& x, const type_expr& y)
 types. The function |broader_eq| tells whether an expression of \foreign{a
 priori} type |b| might also valid (with possible coercions inserted) in a
 context that requires an expression of type~|a|; if so we call type |a| broader
-than~|b|.
+than~|b|. Now |broader_eq| also deals with polymorphic types, in a fairly crude
+way, namely by testing for unification rather than convertibility in case |b| is
+polymorphic. The balancing code does no type unification, and although
+|broader_eq| does call |can_unify|, this does not result in any assignments
+being recorded for the type variables in our types; we can therefore use
+constant |type| references, and assume that no type assignments are stored in
+|a| or |b| (so using |unwrap| is safe). One can use a free type variable
+|type::bottom()| here as an ``infinitely narrow'' type that broadens to
+anything, and can be used as initial value in the search of the broadest common
+type.
 
 @< Declarations of exported functions @>=
-bool broader_eq (const type_expr& a, const type_expr& b);
+bool broader_eq (const type& a, const type& b);
 
 @~The relation |broader_eq(a,b)| does not imply that values of type~|b| can be
 converted to type~|a|; what is indicated is a possible conversion of
@@ -3957,7 +4354,7 @@ than \.*, making that type a neutral value for balancing. At the other extreme,
 the type \.{void} is the broadest of all, since all values can be converted to
 it.
 
-The implementation of |braoder_eq| is by structural recursion, like |is_close|,
+The implementation of |broader_eq| is by structural recursion, like |is_close|,
 but some details are different. We do take |void_type| into consideration here,
 as well as the (rare) type |unknown_type|. Since we want to define a partial
 ordering, we must forbid one direction of all two-way coercions; since those
@@ -3973,7 +4370,7 @@ this is a fairly hypothetical possibility, but as we can cater for it in the
 definition of |broader_eq| at little cost, we might as well do it).
 
 @< Function definitions @>=
-bool broader_eq (const type_expr& a, const type_expr& b)
+bool br_eq (const type_expr& a, const type_expr& b)
 {
   if (a.raw_kind()==tabled and b.raw_kind()==tabled and a.type_nr()==b.type_nr())
     return true; // prevent infinite recursion
@@ -3989,15 +4386,28 @@ bool broader_eq (const type_expr& a, const type_expr& b)
     return false;
     // and different kinds on non-primitive types are incomparable
   if (ak==row_type)
-    return broader_eq(a.component_type(),b.component_type());
+    return br_eq(a.component_type(),b.component_type());
   if (ak==function_type)
     return a.func()->arg_type==b.func()->arg_type and @|
-    broader_eq(a.func()->result_type,b.func()->result_type);
+    br_eq(a.func()->result_type,b.func()->result_type);
   wtl_const_iterator itb(b.tuple());
   for (wtl_const_iterator ita(a.tuple());
        not ita.at_end(); ++ita,++itb)
-    if (itb.at_end() or not broader_eq(*ita,*itb)) return false;
+    if (itb.at_end() or not br_eq(*ita,*itb)) return false;
   return itb.at_end(); // if list of |a| has ended, that of |b| must as well
+}
+@)
+bool broader_eq (const type& a, const type& b)
+{
+  assert(a.floor()==b.floor()); // not ready for general case
+  if (b.degree()==0)
+    return br_eq(a.unwrap(),b.unwrap());
+  unsigned int start=b.floor(), new_start = a.floor()+a.degree();
+  type_assignment assign(start,b.degree());
+  if (start>=new_start) // so that |b|'s variables already avoid those of |a|
+    return can_unify(b.unwrap(),a.unwrap(),assign);
+  assign.var_start = new_start; // shifted |b|'s variables will start here
+  return can_unify(shift(b.unwrap(),start,new_start-start),a.unwrap(),assign);
 }
 
 @* Error values.
@@ -4146,7 +4556,7 @@ construction, but will be filled before actually throwing the |balance_error|.
 
 @< Type definitions @>=
 struct balance_error : public expr_error
-{ containers::sl_list<type_expr> variants;
+{ containers::sl_list<type> variants;
   balance_error(const expr& e, const char* items_name)
   : expr_error(e,"No common type found between "), variants()
   @/{@; message+=items_name; }
