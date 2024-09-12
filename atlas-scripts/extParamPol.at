@@ -348,7 +348,8 @@ set c_form_irreducible_big_long (Param p,mat delta, int type) =
       ):
 (   let ori_nr_p = orientation_nr(p), P = null_ext_module(real_form(p))
     , (plus,minus,induced)=character_formula(p,delta,type)
-    , (plus_terms,minus_terms,induced_terms)=([],[],[])
+    , (plus_terms,minus_terms,induced_terms) =
+      let e=[(Split,Param),ExtParamPol]:[] in (e,e,e)
 in for coeff@q in plus
    do let new_term =
       coeff*orientation_nr_term(ori_nr_p,q)*recursive_deform(q,delta,1)
