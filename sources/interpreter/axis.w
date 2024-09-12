@@ -183,7 +183,7 @@ fact the only way the user can construct such vector values. However, both cases
 (with known or unknown result type), and some intermediate cases (where the
 result type is partially known) are handled by a single function |convert_expr|.
 In addition to doing types analysis, it builds (upon success) an |expression|
-value. As arguments |convert_expr| takes an |const expr& e@;| referring to a
+value. As arguments, |convert_expr| takes an |const expr& e@;| referring to a
 value produced by the parser, and a type in the form of a modifiable reference
 |type_expr& tp@;|. If |tp| is undefined initially, then it will be set to
 the type derived for the expression; if it is defined then it may guide the
@@ -320,8 +320,6 @@ layer::layer(size_t n,type_p return_type) // function or loop layer
              : lexical_context.empty() ? nullptr
              : lexical_context.front()->return_type)
 {@; variable.reserve(n); lexical_context.push_front(this); }
-@q layer (size_t n,type_p rt) : layer(n) // delegating constructor @>
-@q @@+{@@; if (rt==nullptr) ++loop_depth; else loop_depth=0,return_type=rt; } @>
 
 @ A statement \&{break}~$n$ breaks out of $n+1$ levels of loops at one, and for
 it to be legal the current |layer|, which must be present, should therefore have
@@ -1004,7 +1002,7 @@ new conversion (it was left unset by the failed initial conversion).
 
 @< Local function definitions @>=
 
-void balance
+type balance
    ( type_expr& target // component type required from context
    , raw_expr_list elist // list of expression to be balanced
    , const expr& e // containing expression, for error reporting
@@ -1013,23 +1011,25 @@ void balance
    )
 {
   unsigned n = length(elist); components.reserve(n);
-  std::vector<type_expr> comp_type; comp_type.reserve(n);
-  type_expr common;
-    // greatest common denominator that branch types convert to\dots
-  containers::sl_list<type_expr> conflicts;
+  std::vector<type> comp_type; comp_type.reserve(n);
+  type common = type::bottom();
+    // will become broadest common type for branch types
+  containers::sl_list<type> conflicts;
     // except those branch types that are put aside here
   @< Convert each expression in |elist| in the context of a copy of |target|,
      pushing the results to |components|; maintain |common| as balancing type,
      record in |conflicts| non conforming component types @>
-  @< Prune from |conflicts| any types that now test narrower than |common|
-     and if nothing is left specialise |target| to |common|;
-     otherwise |throw| a |balance_error| mentioning |common| and |conflicts| @>
+  @< Prune from |conflicts| any types that now test narrower than |common|, and
+     if any conflicts remain |throw| a |balance_error| mentioning |common| and
+     |conflicts|; otherwise set an undetermined |target| to |common|, or
+     specialise |common| to |target| @>
 
   wel_const_iterator it(elist);
   for (unsigned i=0; i<n; ++i,++it)
-    if (comp_type[i]!=target)
+    if (comp_type[i]!=common)
       components[i] = convert_expr(*it,target);
-      // redo conversion with broader |common| type
+      // redo conversion with broader |target| type
+  return common;
 }
 
 @ We try to maintain |common| as the maximal (broadest) type between the
@@ -1061,19 +1061,21 @@ purpose of pruning.
 @< Convert each expression in |elist| in the context... @>=
 for (wel_const_iterator it(elist); not it.at_end(); ++it)
 { try
-  { comp_type.push_back(target.copy());
-        // start each with a copy of original |target| type
-    type_expr& ctype =comp_type.back(); // call that copy |ctype|
+  { type_expr te = target.copy();
+      // start each with a copy of original |target| pattern
     components.push_back(expression_ptr());
        // push, whether or not |convert_expr| succeeds
-    components.back()=convert_expr(*it,ctype);
+    components.back()=convert_expr(*it,te);
+    type ctype = type::wrap(te);
+    comp_type.push_back(ctype.copy());
+        // start each with a copy of original |target| type
     if (not broader_eq(common,ctype))
-      { if (broader_eq(ctype,common))
-          common = ctype.copy();
-        else
-          conflicts.push_back(ctype.copy());
-          // record type not convertible to |common|
-      }
+    { if (broader_eq(ctype,common))
+        common = std::move(ctype);
+      else
+        conflicts.push_back(std::move(ctype));
+        // record type not convertible to |common|
+    }
   }
   catch (balance_error& err)
   { if (&err.offender!=&*it) // only incorporate top-level balancing errors
@@ -1081,7 +1083,7 @@ for (wel_const_iterator it(elist); not it.at_end(); ++it)
     else if (err.offender.kind==list_display)
       // then wrap variants in row-of
       for (auto jt=err.variants.wbegin(); not err.variants.at_end(jt); ++jt)
-        jt->set_from(type_expr::row(std::move(*jt))); // row-of |*it|
+        jt->wrap_row(); // row-of |*it|
     conflicts.append(std::move(err.variants)); // then join to our |conflicts|
   }
 }
@@ -1094,29 +1096,28 @@ Only if at least one conflicting type remains do we report an error; if so, the
 type |common| is added as first type to the error object, unless it is unchanged
 from the |undetermined_type| value it was initialised to (which may happen if
 every branch threw a |balance_error| that was caught), so that one has a
-complete list of types that caused to balancing to fail.
+complete list of types that caused to balancing to fail. Upon success, we set
+|target| to |common| if it was undetermined. If it was not, we assume it was
+completely determined, and we specialise |common| (which might be polymorphic,
+or even |type::bottom()| in the case of an empty list display) to match |target|.
 
 
 @< Prune from |conflicts| any types... @>=
-{ for (auto it=conflicts.cbegin(); not conflicts.at_end(it); )
+{ for (auto it=conflicts.begin(); not conflicts.at_end(it); )
       // no increment here!
     if (broader_eq(common,*it))
       conflicts.erase(it);
     else
       ++it;
-  if (conflicts.empty())
-     // then balancing succeeded, so set |target| to |common|
-  { bool success = target.specialise(common); ndebug_use(success);
-    assert(success);
-    // since |common| was obtained by |convert_expr| from some copy of |target|
-  }
-  else
+  if (not conflicts.empty())
   { balance_error err(e,description);
     if (common.kind()!=undetermined_type)
       err.variants.push_back(std::move(common));
     err.variants.append(std::move(conflicts));
     throw std::move(err);
   }
+  if (not common.unify(target))
+    throw type_error(e,common.bake_off(),target.copy());
 }
 
 @ With balancing implemented, converting a list display becomes fairly easy.
@@ -1157,8 +1158,8 @@ case list_display:
 @/static const char* const str = "components of list expression";
   if (tp.specialise(row_of_type))
   {
-    balance(tp.component_type(),e.sublist,e,str,comps);
-    if (tp.component_type()==void_type)
+    type comp_type = balance(tp.component_type(),e.sublist,e,str,comps);
+    if (comp_type.is_void())
       @< Insert voiding coercions into members of |comps| that need it @>
     if (std::all_of(comps.begin(),comps.end(),is_const))
       make_row_denotation<true>(result);
@@ -1168,7 +1169,7 @@ case list_display:
   type_expr comp_type;
   if (tp==void_type) // in void context leave undetermined target type
   { balance(comp_type,e.sublist,e,str,comps);
-    return result; // and forget |comp_type|
+    return result; // and forget |comp_type| and result of |balance|
   }
 @)
   const conversion_record* conv = row_coercion(tp,comp_type);
@@ -1552,24 +1553,28 @@ expression_ptr resolve_overload
   auto tup_exp = std::make_unique<tuple_expression>(n_args);
   std::vector<expression_ptr>& arg_vector = tup_exp->component;
   @< Fill |arg_vector| with expressions converted from the components of |args|,
-     and set |type_expr a_priori_type| to be the type found @>
+     and set |type a_priori_type| to be the type found @>
 @)
   id_type id =  e.call_variant->fun.identifier_variant;
   expression_ptr arg; // will hold the final converted argument expression
+  unsigned int d = a_priori_type.expunge().degree();
   for (const auto& variant : variants)
-    if (a_priori_type==variant.f_tp().arg_type) // exact match
+    if (a_priori_type.matches
+         (variant.f_tp().arg_type,variant.poly_degree())) // exact match
     {
       arg =
         n_args==1 ? std::move(arg_vector[0]) : expression_ptr(std::move(tup_exp));
        @< Construct and |return| a call of the function value |variant.value()|
          with argument |arg| @>
     }
+    else
+      a_priori_type.clear(d);
 
   @< If |id| is a special operator like \# and it matches
      |a_priori_type|, |return| a call |id(args)| @>
 @) // no exact match; retry all cases for an inexact match
   for (const auto& variant : variants)
-    if ((is_close(a_priori_type,variant.f_tp().arg_type)&0x1)!=0)
+    if ((is_close(a_priori_type.unwrap(),variant.f_tp().arg_type)&0x1)!=0)
       // inexact match
     { @< Apply an implicit conversion for every argument whose type in
          |a_priori_type| differs from that required in |arg_type|, then assign
@@ -1625,7 +1630,7 @@ else
        dynamic_cast<const denotation*>(arg_vector_it->get()) != nullptr;
   }
 }
-const type_expr& a_priori_type = apt;
+type a_priori_type = type::wrap(apt); // needs to be modifiable
 
 @ Having found a match (exact or inexact; the code below is included twice), and
 having converted the argument expression to |arg|, we need to construct a
@@ -1729,7 +1734,7 @@ the same.
   { const expr& cur_arg = args; // rename to allow sharing the following module:
     if (@< The form of |cur_arg| shields out the context type @>@;@;)
     { arg = std::move(arg_vector[0]);
-      if (not coerce(a_priori_type,arg_type,arg,e.loc))
+      if (not coerce(a_priori_type.unwrap(),arg_type,arg,e.loc))
         throw type_error(e,std::move(apt),arg_type.copy());
       }
     else arg = convert_expr(cur_arg,as_lvalue(arg_type.copy()));
@@ -1798,7 +1803,8 @@ instance.
 
 @< Complain about failing overload resolution @>=
 if (variants.size()==1)
-  throw type_error(args,a_priori_type.copy(),variants[0].f_tp().arg_type.copy());
+  throw type_error(args,a_priori_type.unwrap().copy(),
+                   variants[0].f_tp().arg_type.copy());
 else
 { std::ostringstream o;
   o << "Failed to match '"
@@ -2449,9 +2455,9 @@ case function_call:
   expression_ptr arg = convert_expr(call.arg,f_type.func()->arg_type);
   if (f_type.func()->arg_type==void_type and not is_empty(call.arg))
     arg.reset(new voiding(std::move(arg)));
-  expression_ptr result(new @|
+  expression_ptr re(new @|
      call_expression(std::move(fun),std::move(arg),e.loc));
-  return conform_types(f_type.func()->result_type,tp,std::move(result),e);
+  return conform_types(f_type.func()->result_type,tp,std::move(re),e);
 }
 
 @ When a call expression has an identifier in the place of the function (as is
@@ -2510,10 +2516,10 @@ of the context type, like in the case of \&{die}.
   else if (id==concatenate_name() or id==protected_concatenate_name())
     @< Recognise and return instances of `\#\#', or fall through @>
   else // remaining cases always match
-  { const bool needs_voiding = a_priori_type==void_type and not is_empty(args);
+  { const bool needs_voiding = a_priori_type.is_void() and not is_empty(args);
     if (id==print_name())
-    { auto arg =
-        n_args==1 ? std::move(arg_vector[0]) : expression_ptr(std::move(tup_exp));
+    { auto arg = n_args==1 ? std::move(arg_vector[0])
+                           : expression_ptr(std::move(tup_exp));
       @< Ensure any non-voiding coercion is applied before rather than after
          |print| @>
       return make_variadic_call
@@ -2577,8 +2583,9 @@ unlikely scenarios here, and it might be preferable to simplify the rules around
 |print| rather than to use the current system for the sake of the principle of
 least astonishment.
 
-@< Ensure any non-voiding coercion is applied before rather than after |print| @>=
-if (tp!=void_type and not tp.specialise(a_priori_type))
+@< Ensure any non-voiding coercion is applied before rather than
+   after |print| @>=
+if (tp!=void_type and not tp.specialise(a_priori_type.unwrap()))
 {
   arg = convert_expr(args,tp); // redo conversion, now in |tp| context
   name.str(); name << "print@@" << tp; // correct |tp| in |name|
@@ -2613,26 +2620,26 @@ $[[[2]]]$.
 
 @< Recognise and return versions of `\#'... @>=
 { if (a_priori_type.kind()==row_type)
-  { expression_ptr call(new @|
-      builtin_call(sizeof_row_builtin,name.str(),std::move(arg_vector[0]),e.loc));
+  { expression_ptr call(new builtin_call @|
+      (sizeof_row_builtin,name.str(),std::move(arg_vector[0]),e.loc));
     return conform_types(int_type,tp,std::move(call),e);
   }
-  else if (is_pair_type(a_priori_type))
+  else if (is_pair_type(a_priori_type.unwrap()))
   {
     const type_expr& ap_tp0 = a_priori_type.tuple()->contents;
     const type_expr& ap_tp1 = a_priori_type.tuple()->next->contents;
     if (ap_tp0.kind()==row_type and
         ap_tp0.component_type().specialise(ap_tp1)) // suffix case
-    { expression_ptr arg =
-        n_args==1 ? std::move(arg_vector[0]) : expression_ptr(std::move(tup_exp));
+    { expression_ptr arg = n_args==1 ? std::move(arg_vector[0])
+                                     : expression_ptr(std::move(tup_exp));
       expression_ptr call(new @| builtin_call
         (suffix_elt_builtin,std::move(arg),e.loc));
       return conform_types(ap_tp0,tp,std::move(call),e);
     }
     if (ap_tp1.kind()==row_type and
         ap_tp1.component_type().specialise(ap_tp0)) // prefix case
-    { expression_ptr arg =
-        n_args==1 ? std::move(arg_vector[0]) : expression_ptr(std::move(tup_exp));
+    { expression_ptr arg =  n_args==1 ? std::move(arg_vector[0])
+                                      : expression_ptr(std::move(tup_exp));
       expression_ptr call(new @| builtin_call
         (prefix_elt_builtin,std::move(arg),e.loc));
       return conform_types(ap_tp1,tp,std::move(call),e);
@@ -2650,7 +2657,7 @@ and another concatenating two rows of the same type.
       builtin_call(join_rows_row_builtin,std::move(arg_vector[0]),e.loc));
     return conform_types(a_priori_type.component_type(),tp,std::move(call),e);
   }
-  if (is_pair_type(a_priori_type) and
+  if (is_pair_type(a_priori_type.unwrap()) and
     @|a_priori_type.tuple()->contents==a_priori_type.tuple()->next->contents and
     @|a_priori_type.tuple()->contents.kind()==row_type)
   { expression_ptr arg =
@@ -5156,15 +5163,15 @@ its actual variant, to the value of union type being discriminated upon. We
 define two syntactic forms of discrimination clauses, a simple one where each
 branch is like a \&{let}-expression and they bind to the variants in order, and
 a more elaborated form where the branches identify their corresponding variant
-by a tag associated to. The latter form allows stating the branches in any
-order, and a default branch to replace one or more branches; its usage
-presupposes the user having given a (general) type definition for the union
-type, which associates tags to each of the variants.
+of the union type by a tag associated to it. The latter form allows stating the
+branches in any order, and using a default branch to replace one or more
+branches; its usage presupposes the user having given a (general) type
+definition for the union type, which associates tags to each of the variants.
 
 The difference between the two forms is merely syntactic; after conversion, both
-forms will give rise to a |discrimination_expression|. Unless default branches
-are present (which cannot be used in the first form), the converted form in no
-way witnesses the form was used to produce it. Note that exceptionally this
+forms will give rise to a |discrimination_expression|. Unless a default branch
+is present (which cannot be used in the first form), the converted form in no
+way witnesses the form that was used to produce it. Note that exceptionally this
 structure uses shared pointers for the branches. This is because a default
 branch expression can stand for multiple branches, in which case several copies
 of the pointer to it will be present in |branches|.
@@ -5176,8 +5183,8 @@ struct discrimination_expression : public expression_base
 { expression_ptr subject; std::vector<choice_part> branches;
 @)
   discrimination_expression
-   (expression_ptr&& sub,std::vector<choice_part>&& br)
-   : subject(sub.release()),branches(std::move(br))
+   (expression_ptr&& subj,std::vector<choice_part>&& br)
+   : subject(subj.release()),branches(std::move(br))
   @+{}
   virtual ~discrimination_expression() = default;
   virtual void evaluate(level l) const;
@@ -5229,8 +5236,8 @@ union type to identify and possibly reorder branches, and allow for some
 branches to be handled together in a default branch (in which case no
 information from the evaluated subject expression, other than the fact that it
 selects none of the explicitly treated branches, is passed to the selected
-default branch). So we insist in that case that the union type used be present
-in |type_expr::type_map| (presumably specifying tags).
+default branch). So we insist that the union type used be present
+in |type_expr::type_map| (presumably specifying tags) in that case.
 
 @< Cases for type-checking and converting... @>=
 case discrimination_expr:
@@ -8432,14 +8439,15 @@ ordinary function call of the operator.
 @< Cases for type-checking and converting... @>=
 case field_trans_stat:
 { expr& lhs = e.comp_trans_variant->dest;
-  expr& rhs=e.comp_trans_variant->arg;
-  assert(lhs.kind == function_call);
-  app dot = lhs.call_variant;
-  assert(dot->arg.kind==applied_identifier); // grammar ensures this
-  assert(dot->fun.kind==applied_identifier); // grammar ensures this
-  id_type tuple = dot->arg.identifier_variant;
-  id_type selector = dot->fun.identifier_variant;
   id_type op = e.comp_trans_variant->op;
+  expr& rhs=e.comp_trans_variant->arg;
+@/
+  assert(lhs.kind == function_call);
+  app dot = lhs.call_variant; // call of the field selector
+  assert(dot->arg.kind==applied_identifier);
+  id_type tuple = dot->arg.identifier_variant; // name of tuple selected from
+@/assert(dot->fun.kind==applied_identifier);
+  id_type selector = dot->fun.identifier_variant; // field name
 @)const_type_p tuple_t; size_t d,o; bool is_const;
   bool is_local = (tuple_t=layer::lookup(tuple,d,o,is_const))!=nullptr;
   if (not is_local and
@@ -8573,27 +8581,27 @@ a whole.
       arg = tup->component[0].get();
   }
 @)
-  expression_ptr result;
+  expression_ptr re;
   if (dynamic_cast<const projector_call*>(arg)!=nullptr)
   {
     expression_ptr nil(nullptr);
     auto& rhe =
       tup==nullptr ? nil : const_cast<expression_ptr&>(tup->component[1]);
     if (is_local)
-      result.reset (new local_field_transform@|
+      re.reset (new local_field_transform@|
         (tuple,pos,selector,d,o,std::move(rhe),c->f,c->name,e.loc));
     else
-      result.reset (new global_field_transform@|
+      re.reset (new global_field_transform@|
         (tuple,pos,selector,std::move(rhe),c->f,c->name,e.loc));
   }
   else
   { if (is_local)
-      result.reset(new local_field_assignment
+      re.reset(new local_field_assignment
         (tuple,pos,selector,d,o,std::move(call)));
     else
-      result.reset(new global_field_assignment(tuple,selector,pos,std::move(call)));
+      re.reset(new global_field_assignment(tuple,selector,pos,std::move(call)));
   }
-  return conform_types(*comp_loc,tp,std::move(result),e);
+  return conform_types(*comp_loc,tp,std::move(re),e);
 }
 
 @ All that was done for the case of field transformations in a tuple must also
