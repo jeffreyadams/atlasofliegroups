@@ -1004,15 +1004,15 @@ to regulate access to the static class member |type_map|. While most of them
 simply serve as a hatch (dutch: ``doorgeefluik'', no good English equivalent) to
 pass on information, the method |add_typedefs| used to enter a list of newly
 defined (potentially recursive) types into |type_map| is quite elaborate. Its
-argument is a list |defs| of pairings of a type identifier to a type expression.
-The potentially recursive nature of these definitions lies in that they can not
-only refer, using the |tabled_variant|, to types already defined in the mapping,
-but also to the types they define themselves. For this purpose, those recursive
-type numbers start to count from |type_expr::table_size()| as it is before
-|add_typedefs| method is called. The return value is a list of the same length
-giving their type numbers after applying type equivalencing~; usually these will
-be the same numbers used initially, but some may have mapped to equivalent
-previously known types.
+argument is a list |defs| of pairings of a type identifier to a type expression,
+the latter passed by non-owned pointer. The potentially recursive nature of
+these definitions lies in that they can not only refer, using the
+|tabled_variant|, to types already defined in the mapping, but also to the types
+they define themselves. For this purpose, those recursive type numbers start to
+count from |type_expr::table_size()| as it is before |add_typedefs| method is
+called. The return value is a list of the same length giving their type numbers
+after applying type equivalencing~; usually these will be the same numbers used
+initially, but some may have mapped to equivalent previously known types.
 
 @< Static methods of |type_expr| that will access |type_map| @>=
 static std::vector<type_nr_type>
@@ -1024,12 +1024,17 @@ static void set_fields (id_type type_number, std::vector<id_type>&& fields);
 static const std::vector<id_type>& fields(type_nr_type type_number);
 
 @ Here are the easy ones among those methods: |table_size| just returns the
-current |size| of |type_map|; the method |add| linearly searches for tabled
-types having been given the passed |type_name| (one should have been created by
-a previous call to |add_typedefs|, and sets is its |fields| list; |find| locates
-a type given by an expression and returns is associated identifier. There is no
-method to remove the name of a tabled type, as doing so might lead to
-non-termination of printing recursive types.
+current |size| of |type_map| while |reset_table_size| shrinks the table back to
+a previous size; the method |find| locates a type given by an expression and
+returns is associated identifier; |fields| and |set_fields| provide access to
+the list of field names that can be associated to tuple and union types (note
+that being a |static| member, we cannot |const| qualify |fields|, or any other
+of these methods, to indicate that they leave |type_map| unchanged). There should
+be no method to remove the name of a tabled type, as doing so might lead to
+non-termination of printing recursive types, but |reset_table_size| provides a
+way to undo extensions of the table size; it must however be used only in
+situations where no type expression outside the table can have captured the
+names that are removed.
 
 @< Function definitions @>=
 type_nr_type type_expr::table_size() @+{@; return type_map.size(); }
@@ -1072,10 +1077,11 @@ recursive type gives rise by repeated expansion of the defining relations to a
 unique, possibly infinite, type tree; we use structural equivalence of those
 trees. As the trees are obtained by unfolding a finite set of type equations,
 they can only be infinite due to periodicity. The problem at hand is like one of
-testing (directed) graph isomorphism for the finite descriptions, but it might
-be (though highly unlikely in practice) that the given description is already
+testing (oriented) graph isomorphism for the finite graphs, but it might be
+(though highly unlikely in practice) that the given description is already
 repetitive (has a non-trivial automorphism) in which case we must compare
-minimal quotients, where any such symmetry has been ``folded away''.
+minimal quotients, where any such symmetry has been ``folded up'' and thereby
+disappeared.
 
 This however still does not give a practical algorithm for testing equivalence,
 so instead we use the following ``bottom-up'' technique. We gather all types
@@ -1099,15 +1105,16 @@ embarrassment by keeping our |defined_type_mapping| in a form that makes
 restarting the equivalencing relatively easy, namely by ensuring (as mentioned
 above) that all sub-types of types in the table have their own entries.
 
-Our way to proceed it outlined below. The |type_array| collects definitions of
-all the types under consideration, in order by the |type_nr| that refers to them
-in tabled types, with attached to them a ``rank'' that will be computed during
-our algorithm. The list |type_perm| has same size, holds pointers
-to the |type_array| elements, and will be permuted. This setup with
-ranks stored in |type_array| rather than directly in |type_perm| is needed
-because they will later be looked up for a |type_nr| inside a |type_expr|
-rather than for a pointer found in |type_perm|. The list |groups| will describe
-equivalence classes so far that need further refinement.
+Our way to proceed it outlined below (the description uses some locally defined
+types, like |type_data|, detailed below). The |type_array| collects definitions
+of all the types under consideration, in order by the |type_nr| that refers to
+them in tabled types, with attached to them a ``rank'' that will be computed
+during our algorithm. The list |type_perm| has same size, holds pointers to the
+|type_array| elements, and will be permuted. This setup with ranks stored in
+|type_array| rather than directly in |type_perm| is needed because they will
+later be looked up for a |type_nr| inside a |type_expr| rather than for a
+pointer found in |type_perm|. The list |groups| will describe equivalence
+classes so far that need further refinement.
 
 @< Function definitions @>=
 std::vector<type_nr_type> type_expr::add_typedefs
@@ -1118,7 +1125,7 @@ std::vector<type_nr_type> type_expr::add_typedefs
 @)
   @< Copy types from |type_map| to |type_array|, then add entries for the types
      defined by |defs| and all their anonymous sub-types; also build |type_perm|
-     to hold pointer each of the |type_array| elements @>
+     to hold a pointer for each of the |type_array| elements @>
 @)
   containers::sl_list<type_range> groups;
   @< Bucket-sort the pointers in |type_perm| according to the top level
@@ -1141,8 +1148,8 @@ std::vector<type_nr_type> type_expr::add_typedefs
 |type_expr| values temporarily with a |rank| field. The provided constructor
 initially leaves that |rank| unset, as it will be explicitly set later.
 
-List of type |p_list| like |type_perm| will be used for to get a permuted view
-of the elements in |type_array|.
+Values of type |p_list|, like |type_perm|, are lists that will be used for to
+get a permuted view of the elements in |type_array|.
 
 We shall delimit ranges (after sorting) in |type_perm| by pairs of iterators
 into it; we name the type of such iterators |tracker|. There is a subtlety
@@ -1815,30 +1822,29 @@ type_p make_tabled_type(id_type nr);
 raw_type_list make_type_singleton(type_p raw);
 raw_type_list make_type_list(raw_type_list l,type_p t);
 
-@ The functions like |mk_prim| below simply call the constructor in the
-context of the operator |new|, and then capture of the resulting (raw) pointer
-into a |type_ptr| result. The functions like |make_prim| wrap them for the
-parser interface, undressing the pointers to raw again. Using this setup it is
-ensured that all pointers are considered owning their target, implicitly so
-while being manipulated by the parser (which guarantees that every pointer
-placed on the parsing stack will be argument of an interface function exactly
-once, possibly some |destroy| function in case it pops symbols during error
-recovery).
+@ The functions like |mk_prim| below simply call the corresponding factory
+method in the context of the function |std::make_unique|, which invokes |new|
+and captures the resulting pointer, transforming it into a |type_ptr| result.
+The functions like |make_prim| wrap them for the parser interface, undressing
+the pointers to raw again. Using this setup it is ensured that all pointers are
+considered owning their target, implicitly so while being manipulated by the
+parser (which guarantees that every pointer placed on the parsing stack will be
+argument of an interface function exactly once, possibly some |destroy| function
+in case it pops symbols during error recovery).
 
-The first group of functions makes some provisions to facilitate special
-relations between types, so that the parser does not have to deal with them.
-Thus |mk_prim_type| will return an empty tuple type when called with the type
-name for |"void"|, although this is not a primitive type (indeed |"void"|
-should probably better be handled just like user-defined type abbreviations).
-The function |mk_union_type| will not encapsulate a list of length one into an
-invalid |type_expr|, but rather return its unique list element, unpacked. The
-reason for this is that having a syntactic category for a list of at least one
-component separated by vertical bars simplifies the grammar considerably; when
-the list has one component (and no bars) a union of one variant is temporarily
-created, but upon incorporation into an encompassing type, the union is then
-removed again. For tuples a similar provision is not necessary, as a somewhat
-more involved set of grammar rules is used that avoids making type lists of
-length~$1$.
+These functions make some provisions to facilitate special relations between
+types, so that the parser does not have to deal with them. Thus |mk_prim_type|
+will return an empty tuple type when called with the type name for |"void"|,
+although this is not a primitive type (indeed |"void"| should probably better be
+handled just like user-defined type abbreviations). The function |mk_union_type|
+will not encapsulate a list of length one into an invalid |type_expr|, but
+rather return its unique list element, unpacked. The reason for this is that
+having a syntactic category for a list of at least one component separated by
+vertical bars simplifies the grammar considerably; when the list has one
+component (and no bars) a union of one variant is temporarily created, but upon
+incorporation into an encompassing type, the union is then removed again. For
+tuples a similar provision is not necessary, as a somewhat more involved set of
+grammar rules is used that avoids making type lists of length~$1$.
 
 The functions |make_tuple_type| and |make_union_type| reverse the list of
 types they handle, to compensate for the fact that the left-recursive grammar
@@ -1872,8 +1878,15 @@ type_ptr mk_union_type (type_list&& l)
 }
 
 type_ptr mk_tabled_type(type_nr_type nr)
-{ return std::make_unique<type_expr>(type_expr::tabled_nr(nr)); }
-@)
+{@; return std::make_unique<type_expr>(type_expr::tabled_nr(nr)); }
+
+@ A second group of functions similarly constructs type bottom-up, but since they
+are intended for use by the parser, they return raw pointers (which the parser
+treats as owning their referent). Because of this intended use, they use the raw
+|type_p| rather than the smart |type_ptr|, both in results and in arguments.
+
+@< Function definitions @>=
+
 type_p make_prim_type(unsigned int p)
 {@; return mk_prim_type(static_cast<primitive_tag>(p)).release(); }
 
@@ -2329,6 +2342,8 @@ class type
 {
   type_expr te;
   type_assignment a;
+@)
+  type(unsigned int fix_nr,unsigned int var_nr) : te(), a(fix_nr,var_nr) @+{}
 public:
   type(type_expr te);
   type(type&& tp);
