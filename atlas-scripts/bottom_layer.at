@@ -494,7 +494,7 @@ set min_bottom_elim_factors(Param p, KTypePol P) = bool:
 				     in K_type_pol(QLj)
 				elif RF_code
 	    	      		then rf_sig_tables.sig_entry(derpLj)
-				else hermitian_form_irreducible_to_ht(derpLj,DLs[j])
+				else hermitian_form_irreducible_to_ht_big_SIMPLE(derpLj,DLs[j])
 		        	fi
 	              	     in if int_part(sigLj[dermuLjs[j]]) = 0
 		       	        then branch_std(s*sigLj, DLs[j])
@@ -598,7 +598,7 @@ set bottom_elim_factors(Param p, KType mu, QKL_bottom_data (Q,LKdata)) = bool:
 	       	      	do let sigLj =
 	       	   	       if RF_code
 		   	       then rf_sig_tables.sig_entry(derpLj){, DLs[k])}
-		   	       else hermitian_form_irreducible(derpLj)
+		   	       else hermitian_form_irreducible_big_SIMPLE(derpLj)
 		   	       fi
 			   then () = if int_part(sigLj[dermuLjs[j]]) = 0
 		       	   	     then sigLj := s*sigLj
@@ -643,7 +643,7 @@ set bottom_elim_factors(Param p, KType mu, int D, KGPElt Q, [(KType,[KType])] LK
 	       	     do let sigLj =
 	       	   	    if RF_code
 		   	    then rf_sig_tables.sig_entry(derpLj){, DLs[k])}
-		   	    else hermitian_form_irreducible(derpLj)
+		   	    else hermitian_form_irreducible_big_SIMPLE(derpLj)
 		   	    fi
 			then () = if int_part(sigLj[dermuLjs[j]]) = 0
 		       	   	  then sigLj := s*sigLj
@@ -688,7 +688,7 @@ set bottom_elim_factors(Param p, KType mu, (KGPElt Q, [(KType,[KType])] LKdata),
 	       	     do let sigLj =
 	       	   	    if RF_code
 		   	    then rf_sig_tables.sig_entry(derpLj){, DLs[k])}
-		   	    else hermitian_form_irreducible(derpLj)
+		   	    else hermitian_form_irreducible_big_SIMPLE(derpLj)
 		   	    fi
 			then () = if int_part(sigLj[dermuLjs[j]]) = 0
 		       	   	  then sigLj := s*sigLj

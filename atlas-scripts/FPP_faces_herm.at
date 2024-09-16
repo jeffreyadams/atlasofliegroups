@@ -1506,6 +1506,13 @@ set all_finished(RealForm G) = [(KGBElt,ratvec)]:
 
 set UHBS_time = int: 0
 
+{assume p is hermitian}
+set hermitian_form_irreducible_big_SIMPLE(Param p) = KTypePol:
+    let L = big_unitary_hash.lookup(p)
+    in if L.>= then K_type_pol(character_formula(p))
+       else hermitian_form_irreducible(p)
+       fi
+
 {this version is only for G simple and hermitian FPP params}
 set is_unitary_hash_big_SIMPLE(Param p) = bool:
     if not is_hermitian(p) then return false fi;
@@ -1570,11 +1577,60 @@ set low(Param p, int N) = bool:
     in NU > 2*N*low_frac
 
 {if true, then try is_unitary during is_unitary_to_ht}
-set interrupt_flag = true
+set interrupt_flag = false {KGB(E7_s,20895), lambda = rho is HORRIBLE with "true"}
 set print_int_flag = false
 
 {initial time to give interruptible command}
 set interrupt_base_time = int:200
+
+{START with full is_unitary tests, because those are actually interruptable}
+{ meant to be used for G simple }
+{ compute Hermitian form to ht on p, report if it is unitary}
+set hermitian_form_irreducible_to_ht_big_SIMPLE_interrupt(Param p,int N, int time) = KTypePol:
+  let which_flag = low(p,N), start = elapsed_ms(), (LAM,NU,) = low(p), empty = p.real_form.null_K_module
+  then () = if print_int_flag then prints("N = ",N, ", p = ",p) fi
+  then result = empty
+  then () = while result.=
+       	    do let maybe = if which_flag
+     	       	       	   then hermitian_form_irreducible_to_ht_MvL(p,N,time)
+	      	       	   else hermitian_form_irreducible(p,time)
+	      	       	   fi
+	       then () = result := case maybe
+	      	       	 	   | timed_out: empty
+		  		   | done(ans): to_ht(ans,N)
+		  		   esac
+      	        then () = if which_flag then time := 2*time fi
+	        then () = which_flag := not which_flag;
+		if print_int_flag then prints("in form_to_ht, time = ", time, ", which_flag = ", which_flag,
+		", elapsed = ",elapsed_ms() - start) fi
+		in ()
+  	     od
+  in result
+
+{assume p is hermitian}
+set hermitian_form_irreducible_to_ht_big_SIMPLE(Param p,int N) = KTypePol:
+  let G = p.real_form
+  then FPP_flag = is_FPP(G,p.infinitesimal_character)
+  then () = if not FPP_flag
+    	    then return hermitian_form_irreducible_to_ht(p,N) {prints("FPP DANGER TO HT at ",p)}
+	    fi
+  {then () = p := herm_center(p)}
+  then L = big_unitary_hash.lookup(p)
+  then () = if L.>= then return K_type_pol(character_formula_to_height(p,N)) fi
+  in if interrupt_flag
+     then hermitian_form_irreducible_to_ht_big_SIMPLE_interrupt(p,N, interrupt_base_time)
+     else if low(p,N) {low(p.x,p.lambda,N)}
+     	  then hermitian_form_irreducible_to_ht(p,N)
+     	  else to_ht(hermitian_form_irreducible(p),N)
+     	  fi
+     fi
+{assume p is hermitian}
+{ compute Hermitian form to ht on p, report if it is unitary}
+set hermitian_form_irreducible_to_ht_big(Param p,int N) = KTypePol:
+    if low(p,N) {low(p.x,p.lambda,N)}
+    then hermitian_form_irreducible_to_ht(p,N)
+    else to_ht(hermitian_form_irreducible(p),N)
+    fi
 
 {START with full is_unitary tests, because those are actually interruptable}
 { meant to be used for G simple }
