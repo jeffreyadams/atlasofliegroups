@@ -1386,11 +1386,10 @@ set make_big_unitary_hash() = big_unitary_hash_table:
       then bitmapintlist = xl_known[i]
       then donemap = x_known[i]
       in write_real_form(G,Gname);
-      	 prints("set j = big_unitary_hash.rf_number(",Gname,"), ptemp = GL(1,R).trivial");
-	 for p@k in plist
-	 do let x = p.x.number
-	    in prints("void: ptemp:=parameter(G_temp,",x,",",p.lambda,",",p.nu,")");
-	       prints("void: big_unitary_hash.long_match(ptemp,j)")
+      	 prints("set j = big_unitary_hash.rf_number(",Gname,")"); 
+	 for p in plist
+	 do let xnum = p.x.number
+	    in prints("void:  big_unitary_hash.long_match(parameter(G_temp,",xnum,",",p.lambda,",",p.nu,"),j)")
 	 od;
 	 prints("void: big_unitary_hash.finishall(",Gname,",",xl_known[i],")");
 	 prints("void: big_unitary_hash.finishxmap(",Gname,",",to_string(donemap),")")
@@ -1406,12 +1405,9 @@ set make_big_unitary_hash() = big_unitary_hash_table:
 		      else []
 		      fi
 		   od.##
-      then longbitmapintlist = xl_known[i]
-      then bitmapintlist = nullint(low)##longbitmapintlist[low:high] ##nullint(#KGB(G) - high)
       then donemap = x_known[i]
       then done_list = for x in KGB(G)[low:high]
       	   	       do if is_member_bitset(x.number, donemap)
-		       	     or longbitmapintlist[x.number] + 1 = to_bitset([#FPP_lambdas(x)])
 			  then [x]
 			  else []
 			  fi
@@ -1419,17 +1415,14 @@ set make_big_unitary_hash() = big_unitary_hash_table:
       then donerangemap = to_bitset(for x in done_list do x.number od)
       	   {these are the x's being written for which list is complete}
       in write_real_form(G,Gname);
-      	 prints("set j = big_unitary_hash.rf_number(",Gname,"), ptemp = GL(1,R).trivial");
+      	 prints("set j = big_unitary_hash.rf_number(",Gname,")"); {, ptemp = GL(1,R).trivial");}
 	 for p in plist
 	 do let xnum = p.x.number
-	    in prints("void: ptemp:=parameter(G_temp,",xnum,",",p.lambda,",",p.nu,")");
-	       prints("void: big_unitary_hash.long_match(ptemp,j)")
+	    in prints("void: big_unitary_hash.long_match(parameter(G_temp,",xnum,",",p.lambda,",",p.nu,"),j)")
 	 od;
-	 {prints("void: big_unitary_hash.finishall(",Gname,",",bitmapintlist,")");}
 	 for x in done_list
 	 do prints("void: big_unitary_hash.finishx(KGB(G_temp)[",x.number,"])")
 	 od
-	 {prints("void: big_unitary_hash.finishxmap(",Gname,",",to_string(donerangemap),")")}
     , ((KGBElt,ratvec) -> ): {writexlam} (KGBElt x, ratvec lambda):
       let G = x.real_form
       then xnum = x.number
@@ -1445,10 +1438,9 @@ set make_big_unitary_hash() = big_unitary_hash_table:
 		   od.##
       then N = to_bitset([position(x,lambda)])
       in write_real_form(G,Gname);
-         prints("set j = big_unitary_hash.rf_number(",Gname,"), ptemp = GL(1,R).trivial");
+         prints("set j = big_unitary_hash.rf_number(",Gname,")");
 	 for p in plist
-	 do prints("void: ptemp:=parameter(G_temp,",xnum,",",lambda,",",p.nu,")");
-	    prints("void: big_unitary_hash.long_match(ptemp,j)")
+	 do prints("void: big_unitary_hash.long_match(parameter(G_temp,",xnum,",",lambda,",",p.nu,"),j)")
 	 od;
 	 if is_member_bitset(position(x,lambda), xl_known[i][xnum])
 	 then prints("big_unitary_hash.finish(KGB(G_temp)[",xnum,"],",to_string(N),")")
@@ -1789,8 +1781,8 @@ set is_unitary_test_big_SIMPLE_interrupt(Param p, int N, int time) = bool:
       			   if which_flag then time := 2*time fi;
 	        	   which_flag := not which_flag;
 			   if print_int_flag then prints("in test, time = ", time, ", which_flag = ",
-			      		     which_flag, ", elapsed = ",elapsed_ms() - start) fi;
-			   unitary_test_counter.use()
+			      		     which_flag, ", elapsed = ",elapsed_ms() - start) fi
+			   {unitary_test_counter.use()}
 	       od
     {now result = +1}
     in is_unitary_hash_big_SIMPLE(p)
@@ -1798,7 +1790,7 @@ set is_unitary_test_big_SIMPLE_interrupt(Param p, int N, int time) = bool:
 {ONLY for G simple}
 { compute Hermitian form to height N; if it's positive, then compute full form }
 set is_unitary_test_big_SIMPLE(Param p, int N) = bool:
-    unitary_test_counter.use(); {{prints("N = ",N,", p = ",p);}}
+    {unitary_test_counter.use();} {{prints("N = ",N,", p = ",p);}}
     if (not is_hermitian(p)) or (not is_pos_on_LKTs(p)) then return false fi;
     let G = p.real_form
     then FPP_flag = is_FPP(G,p.infinitesimal_character)
@@ -1846,7 +1838,7 @@ set is_unitary_test_big_SIMPLE_interrupt (Param p, [int] Ns, int time) = bool:
 			      	       fi;
 			    if print_int_flag then prints("in tests, time = ", time, "which_flag = ",
 			       		      which_flag, ", elapsed = ",elapsed_ms() - start) fi;
-               	    	    unitary_test_counter.use();
+               	    	    {unitary_test_counter.use();}
 			    if result = -1 then return false fi;
  			    if not which_flag and result = 1 then return true fi;
 		       	    if which_flag then time := 2*time fi;
@@ -1883,9 +1875,9 @@ set is_unitary_test_big_SIMPLE (Param p, [int] Ns) = bool:
 	    fi
   in if interrupt_flag then is_unitary_test_big_SIMPLE_interrupt(p, Ns,interrupt_base_time)
      else for N@i in Ns
-     	  do if is_pure(hermitian_form_irreducible_to_ht(p,N))
-	     then unitary_test_counter.use()
-	     else test_count_mat[i,#Ns] +:= 1;
+     	  do if not is_pure(hermitian_form_irreducible_to_ht(p,N))
+	     {then unitary_test_counter.use()}
+	     then test_count_mat[i,#Ns] +:= 1;
 	     return false fi
 	  od;
   	  test_count_mat[#Ns,#Ns] +:= 1;
