@@ -1195,8 +1195,8 @@ set FPP_lambdas([KGBElt] xs) = [[ratvec]]:
 
 set nullint(int N) = [int]:
     for n:N do 0 od
-
-
+{whether to include KGB numbers in output files. True makes them more human-readable, sometimes longer}
+set write_x_flag = false
 {decide NOT to hash nonunitary}
 set_type
 [big_unitary_hash_table =
@@ -1372,10 +1372,10 @@ set make_big_unitary_hash() = big_unitary_hash_table:
 	     prints("set j = big_unitary_hash.rf_number(",Gname,")");
 	     prints("set ",listname,"=[Param]:[]");
 	     write_append_cat_param_list(plist,listname,Gname);
-	     prints("set ",intlistname,"=[int]:[]");
+	     {prints("set ",intlistname,"=[int]:[]");}
 	     write_append(bitmapintlist,intlistname);
-	     prints("void: for p in ",listname," do big_unitary_hash.long_match(p,j) od");
-	     prints("big_unitary_hash.finishall(",Gname,",",intlistname,")")
+	     prints("void: for p in ",listname," do big_unitary_hash.long_match(p,j) od")
+	     {prints("big_unitary_hash.finishall(",Gname,",",intlistname,")")}
 	od
     , (RealForm -> ): {writeG} (RealForm G):
       let i = add_real_form(G)
@@ -1385,14 +1385,28 @@ set make_big_unitary_hash() = big_unitary_hash_table:
       then plist = uhashes[i].list()
       then bitmapintlist = xl_known[i]
       then donemap = x_known[i]
+      then done_list = [int]:[]
+      then () = if write_x_flag then done_list :=
+      	      	       for x in KGB(G)
+      	   	       do if is_member_bitset(x.number, donemap)
+			  then [x.number]
+			  else []
+			  fi
+		       od.##
+		 fi
       in write_real_form(G,Gname);
       	 prints("set j = big_unitary_hash.rf_number(",Gname,")"); 
 	 for p in plist
 	 do let xnum = p.x.number
 	    in prints("void:  big_unitary_hash.long_match(parameter(G_temp,",xnum,",",p.lambda,",",p.nu,"),j)")
 	 od;
-	 prints("void: big_unitary_hash.finishall(",Gname,",",xl_known[i],")");
-	 prints("void: big_unitary_hash.finishxmap(",Gname,",",to_string(donemap),")")
+	 {prints("void: big_unitary_hash.finishall(",Gname,",",xl_known[i],")");} {this has length #KGB(G), which is a lot; not worth including}
+	 if write_x_flag
+	 then for xnum in done_list
+	      do prints("void: big_unitary_hash.finishx(KGB(G_temp)[",xnum,"])")
+	      od
+	 else prints("void: big_unitary_hash.finishxmap(G_temp,",donemap,")")
+	 fi
     , ((RealForm, int, int) -> ): {writeGrange} (RealForm G, int low, int high):
       let i = add_real_form(G)
       then Gname = "G_temp"
@@ -1406,13 +1420,16 @@ set make_big_unitary_hash() = big_unitary_hash_table:
 		      fi
 		   od.##
       then donemap = x_known[i]
-      then done_list = for x in KGB(G)[low:high]
+      then donerangemap = AND(donemap, 2^high - 2^low)
+      then done_list = [int]: []
+      then () = if write_x_flag then done_list :=
+      	      	       for x in KGB(G)[low:high]
       	   	       do if is_member_bitset(x.number, donemap)
-			  then [x]
+			  then [x.number]
 			  else []
 			  fi
 		       od.##
-      then donerangemap = to_bitset(for x in done_list do x.number od)
+		fi
       	   {these are the x's being written for which list is complete}
       in write_real_form(G,Gname);
       	 prints("set j = big_unitary_hash.rf_number(",Gname,")"); {, ptemp = GL(1,R).trivial");}
@@ -1420,9 +1437,12 @@ set make_big_unitary_hash() = big_unitary_hash_table:
 	 do let xnum = p.x.number
 	    in prints("void: big_unitary_hash.long_match(parameter(G_temp,",xnum,",",p.lambda,",",p.nu,"),j)")
 	 od;
-	 for x in done_list
-	 do prints("void: big_unitary_hash.finishx(KGB(G_temp)[",x.number,"])")
-	 od
+	 if write_x_flag
+	 then for xnum in done_list
+	      do prints("void: big_unitary_hash.finishx(KGB(G_temp)[",xnum,"])")
+	      od
+	 else prints("void: big_unitary_hash.finishxmap(G_temp,",donerangemap,")")
+	 fi
     , ((KGBElt,ratvec) -> ): {writexlam} (KGBElt x, ratvec lambda):
       let G = x.real_form
       then xnum = x.number
@@ -1792,6 +1812,7 @@ set is_unitary_test_big_SIMPLE_interrupt(Param p, int N, int time) = bool:
 set is_unitary_test_big_SIMPLE(Param p, int N) = bool:
     {unitary_test_counter.use();} {{prints("N = ",N,", p = ",p);}}
     if (not is_hermitian(p)) or (not is_pos_on_LKTs(p)) then return false fi;
+    if N < height(p) then return is_unitary_hash_big_SIMPLE(p) fi;
     let G = p.real_form
     then FPP_flag = is_FPP(G,p.infinitesimal_character)
     then () = if not FPP_flag

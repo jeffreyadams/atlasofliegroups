@@ -83,6 +83,7 @@ set_type
 )
 ]
 
+{at the moment this is only used for simple G, so herm_form_irr calls reflect that. Easy to change.}
 set make_RF_sig_tables () = RF_sig_tables:
 (  let real_form_hash = make_RealForm_hash()
    then deltas = [mat]: [] {distinguished involution for each form}
@@ -182,7 +183,7 @@ set make_RF_sig_tables () = RF_sig_tables:
 	then pnum = param_hashes[rfnum].match(p)
 	then () = if pnum = PNUM {haven't computed with p before}
 	     	  then let start_sig = elapsed_ms()
-		       then sig = hermitian_form_irreducible(p)
+		       then sig = hermitian_form_irreducible_big_SIMPLE(p)
 		       then () = bottom_sig_time +:= elapsed_ms() - start_sig
 		       then sig_ind = K_type_pol_hashes[rfnum].match(sig)
 		       then () = sigs[rfnum] := if #sigs[rfnum] = 0 then [sig_ind]
@@ -203,7 +204,7 @@ set make_RF_sig_tables () = RF_sig_tables:
         then pnum = param_hashes[rfnum].match(p)
         then () = if pnum = PNUM {haven't computed with p before}
                   then let start_sig = elapsed_ms()
-                       then sigD = hermitian_form_irreducible_to_ht_big(p, D)
+                       then sigD = hermitian_form_irreducible_to_ht_big_SIMPLE(p, D)
                        then () = bottom_sig_time +:= elapsed_ms() - start_sig
                        then sigD_ind = K_type_pol_hashes[rfnum].match(sigD)
                        then () = sigs[rfnum] := if #sigs[rfnum] = 0 then [sigD_ind]
@@ -221,7 +222,7 @@ set make_RF_sig_tables () = RF_sig_tables:
                        then let tempsigs = sigs[rfnum]
                             then tempsights = sig_heights[rfnum]
                             then start_sig = elapsed_ms()
-                            then sigD = hermitian_form_irreducible_to_ht_big(p, D)
+                            then sigD = hermitian_form_irreducible_to_ht_big_SIMPLE(p, D)
 			    then () = bottom_sig_time +:= elapsed_ms() - start_sig
 			    then sigD_ind = K_type_pol_hashes[rfnum].match(sigD)
                        	    then () = sigs[rfnum] := if #sigs[rfnum] = 0 then [sigD_ind]
@@ -688,7 +689,7 @@ set bottom_elim_factors(Param p, KType mu, int D, KGPElt Q, [(KType,[KType])] LK
 	       	     do let sigLj =
 	       	   	    if RF_code
 		   	    then rf_sig_tables.sig_entry(derpLj, DLs[j])
-		   	    else hermitian_form_irreducible_big_SIMPLE(derpLj)
+		   	    else hermitian_form_irreducible_to_ht_big_SIMPLE(derpLj, DLs[j])
 		   	    fi
 			then () = if int_part(sigLj[dermuLjs[j]]) = 0
 		       	   	  then sigLj := s*sigLj
@@ -733,7 +734,7 @@ set bottom_elim_factors(Param p, KType mu, (KGPElt Q, [(KType,[KType])] LKdata),
 	       	     do let sigLj =
 	       	   	    if RF_code
 		   	    then rf_sig_tables.sig_entry(derpLj, DLs[j])
-		   	    else hermitian_form_irreducible_big_SIMPLE(derpLj)
+		   	    else hermitian_form_irreducible_to_ht_big_SIMPLE(derpLj,DLs[j])
 		   	    fi
 			then () = if int_part(sigLj[dermuLjs[j]]) = 0
 		       	   	  then sigLj := s*sigLj

@@ -3222,7 +3222,7 @@ set local_test_GEO_hash_bottom_layer(KGBElt x, ratvec lambda, VertexData vd,
     then j0 = first(for x in test_heights do D < x od)
     	 {so that we test above the height bottom layer has examined}
     then HT = if j0 = -1
-    	      then test_heights~[0]
+    	      then -1
 	      else test_heights[j0]
 	      fi
     then UParams = [Param]:
