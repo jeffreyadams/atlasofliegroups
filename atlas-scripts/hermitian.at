@@ -404,24 +404,24 @@ set check_hermitian (Param p, bool irreducible) = void:
             ," module does not admit any invariant Hermitian form")
   fi
 
-{.Hermitian form on a irreducible module, normalization from its initial term.}
-set hermitian_form_irreducible (Param p) = KTypePol:
-  if is_equal_rank(real_form(p))
-  then c_form_irreducible(p) { not twisted, in equal rank case this is faster }
-  else check_hermitian(p,true); twisted_c_form_irreducible(p)
-  fi.convert_cform_hermitian
-
 set unitaryTime = int: 0
 set show_unitary_time() = void: prints("Time so far for is_unitary = ",
     		      print_time_string(unitaryTime))
 
-{ compute Hermitian form on p, and report if it is unitary }
-set is_unitary (Param p) = bool:
+{.Hermitian form on a irreducible module, normalization from its initial term.}
+set hermitian_form_irreducible (Param p) = KTypePol:
   unitary_test_counter.use();
-  let start_time = elapsed_ms(), answer =
-      p.is_hermitian and hermitian_form_irreducible(p).is_pure
+  let start_time = elapsed_ms()
+  then answer = if is_equal_rank(real_form(p))
+       	      	then c_form_irreducible(p) { not twisted, in equal rank case this is faster }
+ 		else check_hermitian(p,true); twisted_c_form_irreducible(p)
+  		fi.convert_cform_hermitian
   then () = unitaryTime+:=elapsed_ms() - start_time
   in answer
+
+{ compute Hermitian form on p, and report if it is unitary }
+set is_unitary (Param p) = bool:
+  p.is_hermitian and hermitian_form_irreducible(p).is_pure
 
 { compute Hermitian form on p, and report
 certificate; unitary means empty certificate }
@@ -430,7 +430,6 @@ set is_unitary_cert (Param p) = [KType]:
 
 { compute Hermitian form on p, report if it is unitary, and otherwise record certificate }
 set is_unitary(Param p,KTypePol_hash cert_hash) = bool:
-  unitary_test_counter.use();
   p.is_hermitian and is_pure_cert_hash(hermitian_form_irreducible(p),cert_hash)
 
 
@@ -448,7 +447,7 @@ set c_form_irreducible (Param p,int time) = maybe_KTP:
    let ori_nr_p = orientation_nr(p), expiration = elapsed_ms() + time
    then oriented_KL_sum = ParamPol: null_module(p) +
       for c@q in KL_sum_at_s(p) do (c*orientation_nr_term(ori_nr_p,q),q) od
-in map( (Param p) maybe_KTP: full_deform(p,expiration-elapsed_ms())
+   in map( (Param p) maybe_KTP: full_deform(p,expiration-elapsed_ms())
       , oriented_KL_sum
       )
 
@@ -466,26 +465,26 @@ set twisted_c_form_irreducible (Param p,int time) = maybe_KTP:
 )
 
 set hermitian_form_irreducible (Param p, int time) = maybe_KTP:
-   case if is_equal_rank(real_form(p))
-         then c_form_irreducible(p,time)
-	 else check_hermitian(p,true); twisted_c_form_irreducible(p,time)
-	 fi
-   | timed_out: return timed_out()
-   | done(r): r.convert_cform_hermitian.done
-   esac
-
-set is_unitary (Param p, int time) = int: { -1: no, 0:timed out, 1: yes }
-  unitary_test_counter.use();
-  let start_time = elapsed_ms(), answer = 
-      if p.is_hermitian
-      else -1
-      then case hermitian_form_irreducible(p,time)
-       	   | timed_out: 0
-       	   | done(result): if result.is_pure then 1 else -1 fi
-       	   esac
-      fi
+   unitary_test_counter.use();
+   let start_time = elapsed_ms()
+   then answer = case if is_equal_rank(real_form(p))
+               	      then c_form_irreducible(p,time)
+	 	      else check_hermitian(p,true); twisted_c_form_irreducible(p,time)
+	 	      fi
+   		 | timed_out: return timed_out()
+   		 | done(r): r.convert_cform_hermitian.done
+   		 esac
   then () = unitaryTime+:=elapsed_ms() - start_time
   in answer
+
+set is_unitary (Param p, int time) = int: { -1: no, 0:timed out, 1: yes }
+    if p.is_hermitian
+    else -1
+    then case hermitian_form_irreducible(p,time)
+       	 | timed_out: 0
+       	 | done(result): if result.is_pure then 1 else -1 fi
+       	 esac
+    fi
 
 { end of core unitarity functionality, remaining variations for user comfort }
 

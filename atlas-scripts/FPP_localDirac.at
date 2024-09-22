@@ -794,8 +794,7 @@ induction requires using FULL K-chars to define graph. If U_flag = true, then te
 for unitarity.}
 set local_testK_hash_min_bottom_layer(KGBElt x, ratvec lambda, LocalVertexData Lvd,
     [[FaceVertsKHash]] FVKH, [[int]] eq, [[int]] gr, [vec] classListByFace,
-     {[KGPElt] maxQs, [KType,[QKL_bottom_data]] datas,} KTypePol_hash pol_hash, Param_hash Uhash) =
-    			    [[FaceVertsKHash]]:
+    KTypePol_hash pol_hash, Param_hash Uhash) = [[FaceVertsKHash]]:
     let newStatuses = for j:#eq do "?" od,  NumClasses = #eq
     	, printInterval = int: 1
     {Find all Param's in Uhash with (x,lambda). For each, compute corresponding Face.
@@ -3223,7 +3222,7 @@ set local_test_GEO_hash_bottom_layer(KGBElt x, ratvec lambda, VertexData vd,
     then j0 = first(for x in test_heights do D < x od)
     	 {so that we test above the height bottom layer has examined}
     then HT = if j0 = -1
-    	      then test_heights~[0]
+    	      then -1
 	      else test_heights[j0]
 	      fi
     then UParams = [Param]:

@@ -39,10 +39,10 @@ let !empty_K=null_K_module(p.real_form), !empty=null_module(p)
         if =#rp then output +:= p.K_type; [] else [p*rp~[0]] fi)
   then () = while >#P
        	    do set (def,P) :=
-               (let p=first_param(P) in block_deform(p,P next P:=empty,height))
+               (let q=first_param(P) in block_deform(q,P next P:=empty,height))
   	       ; if elapsed_ms() > expiration then return timed_out() fi
-  	       ;  let kt = for c@q in def if  =nu(q) do (c,q.K_type) fi od
-     	       	  ,   pp = for c@q in def if !=nu(q) do (c,q) fi od
+  	       ;  let kt = for c@m in def if  =nu(m) do (c,m.K_type) fi od
+     	       	  ,   pp = for c@m in def if !=nu(m) do (c,m) fi od
   	      in output := (output next output:=empty_K) + kt; P := (P next P:=empty) + pp
   	    od
   then () = if deformed_hash_flag
@@ -287,14 +287,21 @@ set twisted_c_form_irreducible_to_ht_MvL (Param p,int N, int time) = maybe_KTP:
 {.Hermitian form to ht on a irreducible module, normalization from its
 initial term.}
 set hermitian_form_irreducible_to_ht_MvL (Param p,int N) = KTypePol:
+  unitary_test_counter.use();
+  let start_time = elapsed_ms(), answer =
   if is_equal_rank(real_form(p))
   then c_form_irreducible_to_ht_MvL(p,N) { not twisted, in equal rank case this is faster }
   else  check_hermitian(p,true); twisted_c_form_irreducible_to_ht_MvL(p,N)
   fi.convert_cform_hermitian
+  then () = unitaryTime+:=elapsed_ms() - start_time
+  in answer
+
 
 {.Hermitian form to ht on a irreducible module, normalization from its
 initial term.}
 set hermitian_form_irreducible_to_ht_MvL (Param p,int N,int time) = maybe_KTP:
+  unitary_test_counter.use();
+  let start_time = elapsed_ms(), answer =
   case if is_equal_rank(real_form(p))
        then c_form_irreducible_to_ht_MvL(p,N,time) { not twisted, in equal rank case this is faster }
        else  check_hermitian(p,true); twisted_c_form_irreducible_to_ht_MvL(p,N,time)
@@ -302,13 +309,18 @@ set hermitian_form_irreducible_to_ht_MvL (Param p,int N,int time) = maybe_KTP:
   | timed_out: return timed_out()
   | done(r): r.convert_cform_hermitian.done
   esac
-
+  then () = unitaryTime+:=elapsed_ms() - start_time
+  in answer
 
 set hermitian_form_irreducible_to_ht (Param p,int N) = KTypePol:
+  unitary_test_counter.use();
+  let start_time = elapsed_ms(), answer =
   if is_equal_rank(real_form(p))
   then c_form_irreducible_to_ht(p,N) { not twisted, in equal rank case this is faster }
   else  check_hermitian(p,true); twisted_c_form_irreducible_to_ht(p,N)
   fi.convert_cform_hermitian
+  then () = unitaryTime+:=elapsed_ms() - start_time
+  in answer
 
 {for predicting whether to_ht or is_unitary is faster}
 set low(Param p) = (rat,rat,int):
@@ -321,13 +333,9 @@ set low(Param p) = (rat,rat,int):
 
 { compute Hermitian form to ht on p, and report if it is unitary }
 set is_unitary_to_ht_base (Param p,int N) = bool:
-  unitary_test_counter.use();
-  let start_time = elapsed_ms(), answer =
-      if N < 0 then is_unitary(p)
-      else p.is_hermitian and hermitian_form_irreducible_to_ht(p,N).is_pure
-      fi
-  then () = unitaryTime+:=elapsed_ms() - start_time
-  in answer
+   if N < 0 then is_unitary(p)
+   else p.is_hermitian and hermitian_form_irreducible_to_ht(p,N).is_pure
+   fi
 
 { compute Hermitian form to ht on p, and report if it is unitary }
 set is_unitary_to_ht_MvL (Param p,int N) = bool:
