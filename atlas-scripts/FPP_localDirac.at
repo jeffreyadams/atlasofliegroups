@@ -1944,7 +1944,7 @@ set local_test_GEO_hash_real_dumb(KGBElt x, ratvec lambda, VertexData vd, LocalV
 
 {Assume we have local vertices and edges LF, herm and pos on LKTs.
 Called when there are not enough heights; presumably small KGBElts??}
-set local_test_GEO_hash_dumb(KGBElt x, ratvec lambda, VertexData vd, LocalVertexData Lvd,
+set local_test_GEO_hash_else_dumb(KGBElt x, ratvec lambda, VertexData vd, LocalVertexData Lvd,
     [[FaceVertsIndex]] LF, [int] hts, KTypePol_hash pol_hash,
     Param_hash Uhash) = [Param]:
     if {zero case} #LF[0] = 0 then return [] fi;
@@ -1967,10 +1967,12 @@ set local_test_GEO_hash_dumb(KGBElt x, ratvec lambda, VertexData vd, LocalVertex
 		   else return one_param_test(parameter(x,lambda,Lvd.list[LF[0][0][0]]), Uhash)
 		   fi
 	      fi
-    then test_ht = if low(pmin, height(pmin)) {low(x,lambda)}{x.number < NK*low_KGB_frac}
-    	 	   then next_height(pmin)
-		   else -1
-		   fi
+    then test_ht = {if low(pmin, height(pmin)) {low(x,lambda)}{x.number < NK*low_KGB_frac}  {this gives false whenever height(pmin) = 0}
+    	 	   then} next_height(pmin)
+		   {else -1
+		   fi}
+   {then () = prints("in else_dumb, low(pmin,height(pmin)) = ", low(pmin, height(pmin)),
+   	     	    ", next_height(pmin) = ", next_height(pmin),", test_ht = ",test_ht)}
     {then test_hts = hts[:min(#hts,1{r})]  {??? who knows about r!}}
     then tester = (Param->bool): (Param p) bool:
     	 is_unitary_test_big_SIMPLE(p,test_ht) {this settles unitarity absolutely}
@@ -1988,9 +1990,19 @@ set local_test_GEO_hash_dumb(KGBElt x, ratvec lambda, VertexData vd, LocalVertex
     (Param p) bool: is_unitary_test_big_SIMPLE(p,test_ht), Uhash)
     then () = if test_verbose then prints("unitary face counts to dim 1: ",
     for list in LFDKH do #list od) fi
+    then () = prints("set LFDKH01 = ",LFDKH)
     then () = if quick_flag
-    	      then LFDKH := localFD_KHashbt_lookDownGEO(x,lambda, Lvd, LFDKH, 2,
-                                r + 1, pol_hash{_one_ht})
+    	      then let () = LFDKH := localFD_KHashbt_lookDownGEO(x,lambda, Lvd, LFDKH, 2,
+                                r + 1, pol_hash)
+              	   then ((eq,gr),IUCL,CLBF) = localGraphK(LFDKH)
+		   then () = LFDKH := local_testK_hash(x,lambda,Lvd,
+                      LFDKH, eq, gr, CLBF, (Param->bool): (Param p):
+		      is_unitary_test_big_SIMPLE(p,test_ht)
+		      ,Uhash)
+                   in if test_verbose
+		      then prints("unitary face counts to dim ", #LFDKH - 1,
+				": ", for list in LFDKH do #list od)
+		      fi
 	      else let D = int:1
     then () = while (D <= rank(x.involution-1) - 1  ) and
     	      	    (#LFDKH = D + 1) and
@@ -2135,8 +2147,17 @@ set local_test_GEO_hash_def_dumb(KGBElt x, ratvec lambda, VertexData vd, LocalVe
     then () = if test_verbose then prints("unitary face counts to dim 1: ",
     for list in LFDKH do #list od) fi
     then () = if quick_flag
-    	      then LFDKH := localFD_KHashbt_lookDownGEO(x,lambda, Lvd, LFDKH, 2,
-                                r + 1, pol_hash{_one_ht})
+    	      then let () = LFDKH := localFD_KHashbt_lookDownGEO(x,lambda, Lvd, LFDKH, 2,
+                                r + 1, pol_hash)
+	      	   then ((eq,gr),IUCL,CLBF) = localGraphK(LFDKH)
+		   then () = LFDKH := local_testK_hash(x,lambda,Lvd,
+                      LFDKH, eq, gr, CLBF, (Param->bool): (Param p):
+		      is_unitary_def_test_big_SIMPLE(p,def_steps_temp)
+		      ,Uhash)
+                   in if test_verbose
+		      then prints("unitary face counts to dim ", #LFDKH - 1,
+				": ", for list in LFDKH do #list od)
+		      fi
 	      else let D = int:1
     then () = while (D <= r - 1  ) and
     	      	    (#LFDKH = D + 1) and
@@ -2259,7 +2280,7 @@ set local_test_GEO_hash_dumb(KGBElt x, ratvec lambda, VertexData vd, LocalVertex
 		      else next_heights(parameter(x,lambda, Lvd.list[0]), 1)
 		      fi
     	 then hts = shorts[:min(1,#shorts)]
-    	 in local_test_GEO_hash_dumb(x, lambda, vd, Lvd, LF, hts, pol_hash, Uhash)
+    	 in local_test_GEO_hash_else_dumb(x, lambda, vd, Lvd, LF, hts, pol_hash, Uhash)
     fi
 
 {if true, uses the (faster?) function localFD_1Dirac2_by_zero to compute local vertices and edges}
@@ -2503,7 +2524,7 @@ set local_test_GEO_hash(KGBElt x, ratvec lambda, VertexData vd, LocalVertexData 
 		     	      	else next_heights(pmax,depth)
 				fi
     	      	then () = if #Shorthts < depth and revert_flag
-		     	  then return local_test_GEO_hash_dumb(x, lambda, vd,
+		     	  then return local_test_GEO_hash_else_dumb(x, lambda, vd,
     	      	 	     	   	       Lvd, LF, Shorthts[:min(1,#Shorthts)],
 					       pol_hash, Uhash)
 	      		  fi
@@ -2601,7 +2622,7 @@ KTypePol_hash pol_hash, Param_hash Uhash) = [Param]:
 		     	      	    else next_heights(pmax,depth)
 				    fi
     		     then () = if #Shorthts < depth and revert_flag
-			       then return local_test_GEO_hash_dumb(x, lambda, vd,
+			       then return local_test_GEO_hash_else_dumb(x, lambda, vd,
     	      	 	     	   	   Lvd, LF, Shorthts[:min(#Shorthts,1)], pol_hash, Uhash)
 			       fi
     		     then d0 = min(#Shorthts, depth)
@@ -2838,7 +2859,7 @@ set local_test_GEO_hash_one_level(KGBElt x, ratvec lambda, VertexData vd,
 		    else next_heights(pmax,max(depth, LAST+1))
 		    fi
     then hts =[int]: let () = if #Shorthts < max(max(r,2), LAST+1) and revert_flag
-    	      		       then return local_test_GEO_hash_dumb(x, lambda, vd, Lvd, LF,
+    	      		       then return local_test_GEO_hash_else_dumb(x, lambda, vd, Lvd, LF,
 			       	    Shorthts[:min(1,#Shorthts)], pol_hash, Uhash)
 	      		       fi
 		      then d0 = min(max(LAST+1,depth+1),#Shorthts)

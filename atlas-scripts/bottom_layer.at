@@ -294,6 +294,11 @@ set simple_factor_root_partition(KGPElt Q) = [[int]]:
 set mbfTime = int: 0 {time spent in min_bottom_factors}
 {4 seconds in this for Sp(6,R) out of 10 seconds total}
 
+set print_big_B_flag = false
+set use_test_coroots_flag = false
+
+set mu_level(vec mu) = (vec -> int):
+    (vec coroot): coroot*mu
 {this time the results are a list of (Qmin,[tau, [dertauLj]).}
 set min_bottom_factors(KType mu) = QKL_bottom_data:
     let p = parameter(mu), start = elapsed_ms()
@@ -309,6 +314,19 @@ set min_bottom_factors(KType mu) = QKL_bottom_data:
     then derxcLs = derived_factor_KGBs0(xcL)
     then muwt=K0_param(mu,xcG).lambda_minus_rho {size is rank(K)}
     then K0 = K_0(xcG)
+    then test_coroots = [vec]:[]
+    then dlambda = ProjK*(d_lambda(p).numer)
+    then () = if use_test_coroots_flag
+    	      then test_coroots := for alpha_vee in K0.simple_coroots
+    	 	      		   do if (alpha_vee*dlambda).=
+			   	      then []
+			   	      else [alpha_vee]
+			   	      fi
+				   od.## {simple coroots for K0 NOT in any Lj\cap K}
+	      fi
+    {then () = if #test_coroots > 2
+    	      then test_coroots := sort_by((vec->int): (vec coroot): coroot*muwt)(test_coroots)
+	      fi} {this term slows Spin(4,4) by about 1.5 sec, almost 10%; Spin(5,5) by 3 sec, again almost 10% }
     then dertauLs = [[KType]]: {jth list on derived simple factor derLj}
     	 for dermuLj@j in dermuLs
 	 do if RF_code {should use bottom_data}
@@ -332,19 +350,28 @@ set min_bottom_factors(KType mu) = QKL_bottom_data:
 							    od))
 		       od
 		  od
+    then mid_time = int: 0
     then B = box(for list in dertauLs do #list od) {going to look at all tensor products over j of dertauLj}
+    then () = if print_big_B_flag and #B > 20 then mid_time := elapsed_ms()-start fi
     then tauwts = for b in B
     	 	  do ratvec_as_vec(sum(rank(K0), for m@j in b do taushifts[j][b[j]] od) + muwt)
 		  od
     {then () = for k:#tauwts do prints(tauwts[k]) od}
     then LKData = for tauwt@k in tauwts
-       	 	  do if is_dominant(K0,tauwt)
+       	 	  do if if use_test_coroots_flag
+		     	then all( [(->bool)]:for alpha_vee in test_coroots
+			     	  	     do @bool:(alpha_vee * tauwt).>= od)
+		     	else is_dominant(K0,tauwt)
+			fi
 		     then [(K_type(K_highest_weight_from_K0_weight(xcG, tauwt)), for m@j in B[k] do dertauLs[j][m] od)]
 		     else []
 		     fi
 		  od.##
     then () = mbfTime +:= elapsed_ms() - start
-    in (Q,LKData) 
+    then () = if print_big_B_flag and #B >20
+    	      then prints("p =",p,", #B = ",#B, ", mid_time = ",mid_time,", total_time = ",elapsed_ms() - start)
+	      fi
+    in (Q,LKData)
 
 {table of bottom layer data indexed by KType}
 set_type
