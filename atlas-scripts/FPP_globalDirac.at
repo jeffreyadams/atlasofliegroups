@@ -218,10 +218,10 @@ set FPP_unitary_hash_general([(KGBElt,ratvec)] xlambdas, Param_hash Uhash,
 		    bl_step_count*bl_step_size else more_shift_level fi, ", #Params missed by more = ",
 		    more_bad_hash.size())
 	    fi;
-       	    prints("  #hash_real_dumb =",hash_real_dumbCounter.use_count(), ", #hash_dumb calls=", hash_dumbCounter.use_count(),
-       	      	 	   ", #hash_def_dumb =", hash_def_dumbCounter.use_count());
-       	    prints("  #hash =", hashCounter.use_count(), ", #hash2 =", hash2Counter.use_count(),
-	      	 	", #hash_one_level =", hash_one_levelCounter.use_count(), ", #hash_bottom_layer = ",
+       	    prints("  #hash_real_dumb = ",hash_real_dumbCounter.use_count(), ", #hash_dumb = ", hash_dumbCounter.use_count(),
+       	      	 	   ", #hash_def_dumb = ", hash_def_dumbCounter.use_count());
+       	    prints("  #hash = ", hashCounter.use_count(), ", #hash2 = ", hash2Counter.use_count(),
+	      	 	", #hash_one_level = ", hash_one_levelCounter.use_count(), ", #hash_bottom_layer = ",
 			hash_bottom_layerCounter.use_count());
        	    prints("Number of unitary params = ", sum(answerCards), ", time for is_finished = ",
 	    print_time_string(is_finished_time), ", time for position = ",
@@ -465,13 +465,13 @@ set FPP_unitary_hash_general([KGBElt] xs, Param_hash Uhash, {Param_hash Uparamha
 		    bl_step_count*bl_step_size else more_shift_level fi, ", #Params missed by more = ",
 		    more_bad_hash.size())
 	    fi;
-       	    prints("  #hash_real_dumb =",hash_real_dumbCounter.use_count(),
-	      ", #hash_dumb =", hash_dumbCounter.use_count(),
-       	      ", #hash_def_dumb =", hash_def_dumbCounter.use_count());
-       	    prints("  #hash =", hashCounter.use_count(),
-	      ", #hash2 =", hash2Counter.use_count(),
-	      ", #hash_one_level =", hash_one_levelCounter.use_count(),
-              ", #hash_bottom_layer =", hash_bottom_layerCounter.use_count());
+       	    prints("  #hash_real_dumb = ",hash_real_dumbCounter.use_count(),
+	      ", #hash_dumb = ", hash_dumbCounter.use_count(),
+       	      ", #hash_def_dumb = ", hash_def_dumbCounter.use_count());
+       	    prints("  #hash = ", hashCounter.use_count(),
+	      ", #hash2 = ", hash2Counter.use_count(),
+	      ", #hash_one_level = ", hash_one_levelCounter.use_count(),
+              ", #hash_bottom_layer = ", hash_bottom_layerCounter.use_count());
        	    prints("Number of unitary params = ", sum((for list in answerCards do sum(list) od)),
 	    		   ", time for is_finished = ", print_time_string(is_finished_time),
 			   ", time for position = ", print_time_string(position_time));
@@ -492,7 +492,7 @@ set FPP_unitary_hash_general(RealForm G,Param_hash Uhash, {Param_hash Uparamhash
     fi
 
 set FPP_unitary_hash_real_dumb([(KGBElt,ratvec)] xlambdas, Param_hash Uhash{, Param_hash Uparamhash}) = void:
-    let () = real_flag:=true in
+    {let () = real_flag:=true in}
     FPP_unitary_hash_general(xlambdas, Uhash, {Uparamhash,} local_test_GEO_hash_dumb@(
     KGBElt,ratvec,VertexData,LocalVertexData,{vec,vec,}[[FaceVertsIndex]],
     KTypePol_hash, Param_hash))
@@ -501,7 +501,7 @@ set FPP_unitary_hash_real_dumb([(KGBElt,ratvec)] xlambdas) = void:
     FPP_unitary_hash_real_dumb(xlambdas, let (x,) = xlambdas[0] in big_unitary_hash.uhash(x.real_form) {unitary_hash}{, uparam_hash})
 
 set FPP_unitary_hash_real_dumb([KGBElt] xs, Param_hash Uhash{, Param_hash Uparamhash}) = void:
-    let () = def_flag:=true in
+    {let () = real_flag:=true in}
     FPP_unitary_hash_general(xs, Uhash, {Uparamhash,} local_test_GEO_hash_real_dumb@(
     KGBElt,ratvec,VertexData, LocalVertexData,{vec,vec,}[[FaceVertsIndex]],
     KTypePol_hash, Param_hash))
@@ -513,7 +513,7 @@ set FPP_unitary_hash_real_dumb(RealForm G) = void:
     FPP_unitary_hash_real_dumb(KGB(G))
 
 set FPP_unitary_hash_def_dumb([(KGBElt,ratvec)] xlambdas, Param_hash Uhash{, Param_hash Uparamhash}) = void:
-    let () = def_flag:=true in
+    {let () = def_flag:=true then () = real_flag:=false in}
     FPP_unitary_hash_general(xlambdas, Uhash, {Uparamhash,} local_test_GEO_hash_def_dumb@(
     KGBElt,ratvec,VertexData, LocalVertexData,[[FaceVertsIndex]],
     KTypePol_hash, Param_hash))
@@ -522,7 +522,7 @@ set FPP_unitary_hash_def_dumb([(KGBElt,ratvec)] xlambdas) = void:
     FPP_unitary_hash_def_dumb(xlambdas, let (x,) = xlambdas[0] in big_unitary_hash.uhash(x.real_form) {unitary_hash}{, uparam_hash})
 
 set FPP_unitary_hash_def_dumb([KGBElt] xs, Param_hash Uhash{, Param_hash Uparamhash}) = void:
-    let () = def_flag:=true in
+    let () = def_flag:=true then () = real_flag:=false in
     FPP_unitary_hash_general(xs, Uhash, {Uparamhash,} local_test_GEO_hash_def_dumb@(
     KGBElt,ratvec,VertexData, LocalVertexData,{vec,vec,}[[FaceVertsIndex]],
     KTypePol_hash, Param_hash))
@@ -534,7 +534,7 @@ set FPP_unitary_hash_def_dumb(RealForm G) = void:
     FPP_unitary_hash_def_dumb(KGB(G))
 
 set FPP_unitary_hash_dumb([(KGBElt,ratvec)] xlambdas, Param_hash Uhash{, Param_hash Uparamhash}) = void:
-    let () = def_flag:=false in
+    let () = def_flag:=false then () = real_flag:=false in
     FPP_unitary_hash_general(xlambdas, Uhash{, Uparamhash}, local_test_GEO_hash_dumb@(
     KGBElt,ratvec,VertexData, LocalVertexData,[[FaceVertsIndex]],
     KTypePol_hash, Param_hash))
@@ -543,7 +543,7 @@ set FPP_unitary_hash_dumb([(KGBElt,ratvec)] xlambdas) = void:
     FPP_unitary_hash_dumb(xlambdas, let (x,) = xlambdas[0] in big_unitary_hash.uhash(x.real_form) {unitary_hash}{, uparam_hash})
 
 set FPP_unitary_hash_dumb([KGBElt] xs, Param_hash Uhash{, Param_hash Uparamhash}) = void:
-    let () = def_flag:=false in
+    let () = def_flag:=false then () = real_flag:=false in
     FPP_unitary_hash_general(xs, Uhash, {Uparamhash,} local_test_GEO_hash_dumb@(
     KGBElt,ratvec,VertexData, LocalVertexData,[[FaceVertsIndex]],
     KTypePol_hash, Param_hash))
@@ -769,9 +769,10 @@ set FPP_unitary_hash_bottom_layer([(KGBElt,ratvec)] xlambdas, Param_hash UhashG{
 		    bl_step_count*bl_step_size else more_shift_level fi);
       		 prints("     #Params missed by more = ", more_bad_hash.size())
 	    fi;
-       	    prints("  #hash_def_dumb =", hash_def_dumbCounter.use_count(),
-	      ", #hash2 =", hash2Counter.use_count(), ", #hash_one_level = ", hash_one_levelCounter.use_count(),
-	      ", #hash_bottom_layer =", hash_bottom_layerCounter.use_count());
+       	    prints("  #hash_real_dumb = ",hash_real_dumbCounter.use_count(),",  #hash_dumb = ", hash_dumbCounter.use_count(),
+	      ", #hash_def_dumb = ", hash_def_dumbCounter.use_count(),
+	      ", #hash2 = ", hash2Counter.use_count(), ", #hash_one_level = ", hash_one_levelCounter.use_count(),
+	      ", #hash_bottom_layer = ", hash_bottom_layerCounter.use_count());
        	    prints("Number of unitary params = ", sum(answerCards), ", time for is_finished = ",
 	    		   print_time_string(is_finished_time), ", time for position = ",
 	    		   print_time_string(position_time));
@@ -1067,8 +1068,10 @@ set FPP_unitary_hash_bottom_layer([KGBElt] xs, Param_hash UhashG{, Param_hash Up
 		 prints("     more_shift_level = ", if bl_interrupt_flag then
 		    bl_step_count*bl_step_size else more_shift_level fi, ", #Params missed by more = ", more_bad_hash.size())
 	    fi;
-       	    prints("  #hash_def_dumb =", hash_def_dumbCounter.use_count(), ", #hash2 = ", hash2Counter.use_count(),
-	      ", #hash_one_level = ", hash_one_levelCounter.use_count(), ", #hash_bottom_layer = ", hash_bottom_layerCounter.use_count());
+       	    prints("  #hash_real_dumb = ",hash_real_dumbCounter.use_count(),",  #hash_dumb = ", hash_dumbCounter.use_count(),
+	    	   ", #hash_def_dumb = ", hash_def_dumbCounter.use_count(),
+	    	   ", #hash2 = ",hash2Counter.use_count(), ", #hash_one_level = ", hash_one_levelCounter.use_count(), ", #hash_bottom_layer = ",
+	    hash_bottom_layerCounter.use_count());
        	    prints("Number of unitary params = ", sum(for list in answerCards do sum(list) od),
 	    		   ", time for is_finished = ", print_time_string(is_finished_time),
 			   ", time for position = ", print_time_string(position_time));
