@@ -1457,10 +1457,14 @@ set make_big_unitary_hash() = big_unitary_hash_table:
 		      fi
 		   od.##
       then N = to_bitset([position(x,lambda)])
-      in write_real_form(G,Gname);
+      {modified for my purposes (jda): do not print the real form, and put back ptemp: lines}
+      in {write_real_form(G,Gname);}
          prints("set j = big_unitary_hash.rf_number(",Gname,")");
 	 for p in plist
-	 do prints("void: big_unitary_hash.long_match(parameter(G_temp,",xnum,",",lambda,",",p.nu,"),j)")
+{	 do prints("void: big_unitary_hash.long_match(parameter(G_temp,",xnum,",",lambda,",",p.nu,"),j)")}
+         do 
+	     prints("void: ptemp:=parameter(G_temp,",p.x.number,",",p.lambda,",",p.nu,")");
+	     prints("void: big_unitary_hash.long_match(ptemp,j)")
 	 od;
 	 if is_member_bitset(position(x,lambda), xl_known[i][xnum])
 	 then prints("big_unitary_hash.finish(KGB(G_temp)[",xnum,"],",to_string(N),")")
