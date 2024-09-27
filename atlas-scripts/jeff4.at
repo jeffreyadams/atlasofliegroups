@@ -1,0 +1,130 @@
+set Cartan_info(Param p)=Cartan_info(Cartan_class(p))
+set Cartan_info_short(Param p)=let ((a,b,c),,,)=Cartan_info(Cartan_class(p)) in "[" + to_string(a) + "," + to_string(b) + "," + to_string(c) + "](" +to_string(b+c) + ")"
+
+
+set pr_long([Param] list)=void:
+prints("Cartan: [compact, complex,split](split rank)");
+tabulate(["i","parameter","inf. char.","Cartan","heightt","length"]#
+for p@i in list do [to_string(i), to_string(p), to_string(p.infinitesimal_character), Cartan_info_short(p),to_string(p.height), to_string(p.length)] od)
+
+set pr([[Param]] list)=void:
+for params@i in list do
+prints("i=",i);pr(params) od
+
+set pr_long([[Param]] list)=void:
+for params@i in list do
+prints("i=",i);pr_long(params) od
+
+
+set langlands_terms([Param] list, Param p)=
+if #list=0 then "" else
+let min=min(for p in list do height(p) od) in if  height(p)=min then "L" else "no" fi fi
+
+set show([(Param,[Param])] arg)=void:
+prints("n: number of terms in induced parameter, showing only the first one");
+prints("Cartan: [compact, complex,split](split rank)");
+tabulate(["parameter_L", "parameter_G", "n","Cartan","height","length"]#
+for (pl,list) in arg do
+if #list=0 then [to_string(pl),"*","*","*","*","*"] else
+[to_string(pl),to_string(list[0]),to_string(#list),Cartan_info_short(list[0]),to_string(list[0].height), to_string(list[0].length)]  fi od)
+
+set min_height([Param] params)=[Param]:
+if #params=0 then [] else
+let min=min(for p in params do height(p) od) in for p in params do if height(p)=min then [p] else [] fi od.## fi
+
+
+set y([Param] params)=[KGBElt]:for p in params do dual(p).x od
+
+
+set Q_roots(RootDatum G,ratvec lambda)=[vec]:for a in G.roots do if a*lambda>=0 then [a] else [] fi od.##
+set M_roots(RootDatum G,ratvec lambda)=[vec]:for a in G.posroots do if a*lambda=0 then [a] else [] fi od.##
+set N_roots(RootDatum G,ratvec lambda)=[vec]:for a in G.roots do if a*lambda>0 then [a] else [] fi od.##
+
+set show_roots(KGBElt x,[vec] list_of_roots)=void:
+tabulate(for v in list_of_roots do [v.compact_string,status_text(v,x)] od)
+
+set show_dual_roots(KGBElt y,ratvec lambda)=void:
+prints("lambda; ", lambda,new_line,"y: ", y, "  (", y.real_form, ")");
+prints("N:");
+show_roots(y,N_roots(y.root_datum,lambda));
+prints("M:");
+show_roots(y,M_roots(y.root_datum,lambda))
+
+set contragredient([Param] params)=[Param]:remove_duplicates(for p in params do [p,contragredient(p)] od .##)
+
+set gamma(Param p)=let theta=involution(p.x) in (1+theta)*p.lambda/2 + (1-theta)*p.nu/2
+
+set show_packets([Param] list)=void:for p in list do prints(p, " ", for a in L_packet(p) do find(list,a) od) od
+
+set report([Param] params)=void:for p@j in params do let y=dual(p).x in prints(new_line,"j:", j, new_line, "p: ", p);show_dual_roots(y, p.gamma) od
+
+set report([Param] params,ratvec lambda)=void:for p@j in params do let y=dual(p).x in prints(new_line,"j:", j, new_line, "p: ", p);show_dual_roots(y, lambda) od
+
+set group_by_dual_real_form([Param] params)=
+let rv=[[Param]]:[[params[0]]] in
+for i:#params-1 from 1 do
+ let p=params[i] then
+ dual_form=dual(p).real_form then
+ j=first(for i:#rv do dual_form=dual(rv[i][0]).real_form od) then
+ junk=if j>=0
+  then
+   rv[j]#:=p
+  else
+   rv#:=[p]
+ fi;1
+in ()
+od;rv
+
+
+
+
+set coherent_std_sing(Param p,int s)=T_std(coherent_std(make_regular_param(p),s),p.infinitesimal_character)
+set coherent_std_sing(ParamPol P,int s)=sum(P.real_form,for coeff@p in P do coeff*coherent_std_sing(p,s) od)
+set coherent_irr_sing(Param p,int s)=composition_series(T_std(coherent_std(character_formula(make_regular_param(p)),s),p.infinitesimal_character))
+
+set coherent_std_sing (ParamPol P,[int] w) = ParamPol:  for s in w do P:=coherent_std_sing(P,s) od; P
+set coherent_std_sing (ParamPol P,WeylElt w) = ParamPol:  coherent_std_sing(P,w.word) 
+
+set coherent_irr_sing(Param p,[int] w)=composition_series(T_std(coherent_std(character_formula(make_regular_param(p)),w),p.infinitesimal_character))
+{set coherent_irr_sing(Param P, WeylElt w)=composition_series(T_std(coherent_std(character_formula(make_regular_param(p)),w.word),p.infinitesimal_character))
+}
+
+set coherent_irr_sing(Param P, WeylElt w)=coherent_irr_sing(P,w.word)
+
+
+
+set other_coherent_std(Param p, int s)=
+let gamma=p.infinitesimal_character then
+gamma_new=reflection(p.root_datum,s)*gamma then
+shift=gamma_new-gamma in
+{finalize(parameter(p.x, p.lambda+shift,p.nu+shift))}
+parameter(p.x, p.lambda+shift,p.nu+shift)
+
+set other_coherent_std(ParamPol P,int s)=sum(P.real_form,for coeff@p in P do coeff*other_coherent_std(p,s) od)
+
+set other_coherent_std(Param p, ratvec v)=
+let shift=v-p.infinitesimal_character in 
+{finalize(parameter(p.x, p.lambda+shift, p.nu+shift))}
+parameter(p.x, p.lambda+shift, p.nu+shift)
+
+set other_coherent_std(ParamPol P,ratvec v)=sum(P.real_form,for coeff@p in P do coeff*other_coherent_std(p,v) od)
+
+
+
+
+set other_coherent_stdf(Param p, int s)=
+let gamma=p.infinitesimal_character then
+gamma_new=reflection(p.root_datum,s)*gamma then
+shift=gamma_new-gamma in
+finalize(parameter(p.x, p.lambda+shift,p.nu+shift))
+
+
+set other_coherent_stdf(ParamPol P,int s)=sum(P.real_form,for coeff@p in P do coeff*other_coherent_stdf(p,s) od)
+
+set other_coherent_stdf(Param p, ratvec v)=
+let shift=v-p.infinitesimal_character in 
+finalize(parameter(p.x, p.lambda+shift, p.nu+shift))
+
+
+set other_coherent_stdf(ParamPol P,ratvec v)=sum(P.real_form,for coeff@p in P do coeff*other_coherent_stdf(p,v) od)
+

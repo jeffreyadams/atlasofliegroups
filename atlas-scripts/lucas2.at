@@ -7,7 +7,17 @@ set pl1=parameter(KGB(L,2),[1,1],[0,1])
 set pl0=parameter(KGB(L,2),[0,1],[0,1])
 
 
+set ql2=parameter(KGB(L,2),[0,1],[0,1])
+set ql1=parameter(KGB(L,2),[-1,1],[0,1])
+set ql0=parameter(KGB(L,2),[-2,1],[0,1])
+set qG2=theta_induce_irreducible(ql2,G)
+set qG1=theta_induce_irreducible(ql1,G)
+set qG0=theta_induce_irreducible(ql0,G)
+
+
+
 set pg2=estar_irr(pl2,G)
+set preg=pg2.first_param
 set pg1=estar_irr(pl1,G)
 set pg0=estar_irr(pl0,G)
 
@@ -25,9 +35,30 @@ set answer0=Aq_reducible(G,[0,0],[1,0])
 
 set wp=weak_packets(G)
 set w=G.W[1]
-set fix=parameter(cross(0,bad.x),w*bad.lambda, w*bad.nu)
 
-set guess=composition_series(fix -estar_std (m[1],G) - estar_std(m[2],G))
+set preg=pg2.first_param
+set pregcross=coherent_irr(preg,0)
+set cfpregcross=character_formula(pregcross)
+set mfpc=monomials(cfpregcross)
+set psing=T_irr(pregcross,[1,0])
+set cfirrpreg=coherent_family_irr(preg,[0,1])
+
+set Lreps=all_parameters_gamma(L,[1,0]) ##all_parameters_gamma(L,[0,1])##all_parameters_gamma(L,[-1,0])
+set Lreps_naive_lifted=for p in Lreps do naive_std(p,G) od
+set Lreps_estar_lifted=for p in Lreps do estar_std(p,G) od
+
+set p20=naive_std(mf2[0],G)
+set p21=naive_std(mf2[1],G)
+set p22=naive_std(mf2[2],G)
+
+set p00=naive_std(mf0[0],G)
+set p01=naive_std(mf0[1],G)
+set p02=naive_std(mf0[2],G)
+
+
+
+{set fix=parameter(cross(0,bad.x),w*bad.lambda, w*bad.nu)}
+{set guess=composition_series(fix -estar_std (m[1],G) - estar_std(m[2],G))}
 
 {
 atlas> pl

@@ -44,3 +44,7 @@ set tabulate ([[string]] data,
  pad_char: " "
  }
 set tabulate ([[string]] data)=void: tabulate(data, "l"*#data[0], 2, " ")
+
+set pr_long([Param] list)=void:tabulate(["i","parameter","infchar","ht","length"]#
+for p@i in list do [to_string(i), to_string(p), to_string(p.infinitesimal_character), to_string(p.height), to_string(p.length)] od)
+

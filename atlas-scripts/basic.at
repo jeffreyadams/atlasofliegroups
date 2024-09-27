@@ -2278,3 +2278,7 @@ set monomials([ParamPol] list) = [Param]:
 	  for P in list for @p in P do (split_1,p) od od
    in monomials(sum)
    fi
+
+set min_height([Param] params)=[Param]:
+if #params=0 then [] else
+let min=min(for p in params do height(p) od) in for p in params do if height(p)=min then [p] else [] fi od.## fi

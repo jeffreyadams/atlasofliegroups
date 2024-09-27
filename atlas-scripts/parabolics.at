@@ -134,6 +134,7 @@ set equivalence_class_of (KGPElt(S,x):S_x) = [KGBElt]:
   in
   while seen < #todo
   do
+    prints("todo[seen]: ", todo[seen], new_line, "neighbors: ", down_neighbors(S,todo[seen]));
     for x in down_neighbors(S,todo[seen]) next seen +:= 1
     do if not in_class[#x] then in_class[#x] := true; todo #:= x fi od
   od; { return |todo.(sort_by(#@KGBElt))|, but maybe more efficiently: }

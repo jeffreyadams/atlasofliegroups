@@ -189,7 +189,7 @@ od
 {given set of irreducibles, find the stable subspace of their span, expressed in the basis of standards
 do this by block
 }
-set stable_sums_irr_in_basis_of_standards_as_matrices([Param] list)={([Param],mat):}
+set stable_sums_irr_in_basis_of_standards_as_matrices([Param] list)=[([Param],mat)]:
 let matrices_of_irreducibles=irreducibles_as_sums_of_standards(list)  then
 stable_sums_std=stable_sums_std_matrices(list) in
 {let ()=prints("stable_sums_std: ", #stable_sums_std, new_line,"#matrices_if_irreducibles: ", #matrices_of_irreducibles) in }
@@ -199,7 +199,7 @@ for (B,M)@i in matrices_of_irreducibles do
  (B,intersection (M,S))
 od
 
-set stable_sums_irr_in_basis_of_standards([Param] list)={([Param],mat):}
+set stable_sums_irr_in_basis_of_standards([Param] list)=[([Param],[ParamPol])]:
 let ss=stable_sums_irr_in_basis_of_standards_as_matrices(list) in
 for (B,M) in ss do
   (B,for col in M do
@@ -211,11 +211,14 @@ for (B,M) in ss do
       )
 od
 
-set stable_sums_irr([Param] list)={([Param],mat):}
+set stable_sums_irr([Param] list)=[ParamPol]:
 let ss=stable_sums_irr_in_basis_of_standards(list) in
 ##for (B,M) in ss do
  for P in M do composition_series(P) od
 od
+
+
+
 
 set stable_sums_irr_mat([Param] list)=([Param],mat):
 let ssi=stable_sums_irr(list) then

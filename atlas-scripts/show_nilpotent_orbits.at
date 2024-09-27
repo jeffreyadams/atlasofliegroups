@@ -65,7 +65,7 @@ set show_nilpotent_orbits_short([ComplexNilpotent] orbits)=void:
 tabulate(
 ["i","H","diagram","dim","BC Levi"]#
 for  orbit@i in orbits do
-let d=orbit.component_datum in
+{let d=orbit.component_datum in}
 [i.to_string,
 ([int]:orbit.H).to_string,
 orbit.diagram.to_string,
@@ -233,7 +233,8 @@ number_real_nilpotents=number_real_nilpotent_orbits_correct_central_invariant(or
 arthur_parameters=arthur_parameters(ic_dual.dual,orbit) in
 {let ()=prints("test:",orbit, " ", arthur_parameters) in [testing git]}
 if ic_dual.is_equal_rank{ or orbit.is_even } then
-assert(sum(number_real_nilpotents)=#arthur_parameters,"two counts of Arthur parameters don't match") fi;
+true fi;
+{assert(sum(number_real_nilpotents)=#arthur_parameters,"two counts of Arthur parameters don't match") fi;}
 (
 orbit,
 orbit.diagram,

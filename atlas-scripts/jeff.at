@@ -1,0 +1,146 @@
+set Cartan_info(Param p)=Cartan_info(Cartan_class(p))
+set Cartan_info_short(Param p)=let ((a,b,c),,,)=Cartan_info(Cartan_class(p)) in "[" + to_string(a) + "," + to_string(b) + "," + to_string(c) + "](" +to_string(b+c) + ")"
+
+set coherent_averaged_verbose=false
+
+set pr_long([Param] list)=void:
+prints("Cartan: [compact, complex,split](split rank)");
+tabulate(["i","parameter","inf. char.","Cartan","heightt","length"]#
+for p@i in list do [to_string(i), to_string(p), to_string(p.infinitesimal_character), Cartan_info_short(p),to_string(p.height), to_string(p.length)] od)
+
+set pr([[Param]] list)=void:
+for params@i in list do
+prints("i=",i);pr(params) od
+
+set pr_long([[Param]] list)=void:
+for params@i in list do
+prints("i=",i);pr_long(params) od
+
+
+set langlands_terms([Param] list, Param p)=
+if #list=0 then "" else
+let min=min(for p in list do height(p) od) in if  height(p)=min then "L" else "no" fi fi
+
+set show([(Param,[Param])] arg)=void:
+prints("n: number of terms in induced parameter, showing only the first one");
+prints("Cartan: [compact, complex,split](split rank)");
+tabulate(["parameter_L", "parameter_G", "n","Cartan","height","length"]#
+for (pl,list) in arg do
+if #list=0 then [to_string(pl),"*","*","*","*","*"] else
+[to_string(pl),to_string(list[0]),to_string(#list),Cartan_info_short(list[0]),to_string(list[0].height), to_string(list[0].length)]  fi od)
+
+set min_height([Param] params)=[Param]:
+if #params=0 then [] else
+let min=min(for p in params do height(p) od) in for p in params do if height(p)=min then [p] else [] fi od.## fi
+
+
+set y([Param] params)=[KGBElt]:for p in params do dual(p).x od
+
+
+set Q_roots(RootDatum G,ratvec lambda)=[vec]:for a in G.roots do if a*lambda>=0 then [a] else [] fi od.##
+set M_roots(RootDatum G,ratvec lambda)=[vec]:for a in G.posroots do if a*lambda=0 then [a] else [] fi od.##
+set N_roots(RootDatum G,ratvec lambda)=[vec]:for a in G.roots do if a*lambda>0 then [a] else [] fi od.##
+
+set show_roots(KGBElt x,[vec] list_of_roots)=void:
+tabulate(for v in list_of_roots do [v.compact_string,status_text(v,x)] od)
+
+set show_dual_roots(KGBElt y,ratvec lambda)=void:
+prints("lambda; ", lambda,new_line,"y: ", y, "  (", y.real_form, ")");
+prints("N:");
+show_roots(y,N_roots(y.root_datum,lambda));
+prints("M:");
+show_roots(y,M_roots(y.root_datum,lambda))
+
+set contragredient([Param] params)=[Param]:remove_duplicates(for p in params do [p,contragredient(p)] od .##)
+
+set gamma(Param p)=let theta=involution(p.x) in (1+theta)*p.lambda/2 + (1-theta)*p.nu/2
+
+set show_packets([Param] list)=void:for p in list do prints(p, " ", for a in L_packet(p) do find(list,a) od) od
+
+set report([Param] params)=void:for p@j in params do let y=dual(p).x in prints(new_line,"j:", j, new_line, "p: ", p);show_dual_roots(y, p.gamma) od
+
+set report([Param] params,ratvec lambda)=void:for p@j in params do let y=dual(p).x in prints(new_line,"j:", j, new_line, "p: ", p);show_dual_roots(y, lambda) od
+
+set group_by_dual_real_form([Param] params)=
+let rv=[[Param]]:[[params[0]]] in
+for i:#params-1 from 1 do
+ let p=params[i] then
+ dual_form=dual(p).real_form then
+ j=first(for i:#rv do dual_form=dual(rv[i][0]).real_form od) then
+ junk=if j>=0
+  then
+   rv[j]#:=p
+  else
+   rv#:=[p]
+ fi;1
+in ()
+od;rv
+
+set make_regular(ParamPol P)=ParamPol:
+sum(P.real_form,for coeff@p in P do coeff*make_regular_param(p) od)
+
+set double_cosets(RootDatum G, [int] simple_roots)=[[WeylElt]]:
+let GC=complexification(G) then
+real_rank=ss_rank(G) then
+simple_roots_GC=simple_roots ##for j in simple_roots do j+real_rank od then
+kgp=KGP(GC,simple_roots_GC) then
+delta=GC.distinguished_involution then
+cosets= for x in kgp do
+ for y in equivalence_class_of(x) do
+ let w= W_elt(GC,y.involution*delta) then
+ word=w.word in W_elt(G,word[:#word\2])
+od od in cosets
+
+set find ([WeylElt] S,WeylElt x) = int: first(#S,(int i)bool:S[i]=x)
+
+set double_coset_of([[WeylElt]] double_cosets, WeylElt w)=[WeylElt]:
+let j=first(for coset in double_cosets do find(coset,w) !=-1 od) in double_cosets[j]
+
+set coherent_irr_averaged(WeylElt w, Param p, [[WeylElt]] double_cosets, string std_or_irr)=
+let coset = double_coset_of(double_cosets,w) then
+cf_reg=
+if std_or_irr[0]="i" then
+  {p is irreducible; move p to irreducible at regular}
+  let p_reg=make_regular_param(p) in
+  if coherent_averaged_verbose=true then prints("p irreducible -> p_reg irreducible:", p_reg) fi;
+  character_formula(p_reg)
+else
+ {p is irreducible; first convert to sum of standards and move this to regular}
+ let cf_reg=make_regular(character_formula(p)) in 
+  if coherent_averaged_verbose=true
+   then
+    let ()=prints("p irreducible -> character_formula cf -> cf_reg =sum of standards:") then
+    ()= prints(cf_reg) then
+    ()= prints("cf_reg converted to sum of irreducibles:") then
+    cs=composition_series(cf_reg) then
+    ()=prints(cs) in
+    prints("translated back to singular = p:", T_irr(cs,p.infinitesimal_character)=p)
+  fi;make_regular(character_formula(p))
+fi then
+cf_reg_new=null_module(p.real_form) then
+()=for y in coset do cf_reg_new+:= coherent_std(y,cf_reg) od then
+cf_new=T_std(cf_reg_new,p.infinitesimal_character) in
+composition_series(cf_new)
+
+set coherent_irr_averaged_sgn(WeylElt w, Param p, [[WeylElt]] double_cosets)=
+let preg=make_regular_param(p) then
+coset = double_coset_of(double_cosets,w) then
+rv= null_module(p.real_form) in
+for y in coset do rv+:= sgn(y)*coherent_irr(preg,y) od;
+T_irr(rv,p.infinitesimal_character)
+
+set coherent_irr_averaged(WeylElt w, Param p, [[WeylElt]] double_cosets)=
+let preg=make_regular_param(p) then
+coset = double_coset_of(double_cosets,w) then
+rv= null_module(p.real_form) in
+for y in coset do rv+:= coherent_irr(preg,y) od;
+{print(rv);}
+T_irr(rv,p.infinitesimal_character)
+
+set test(WeylElt w,[Param] packet,[[WeylElt]] double_cosets,string irr_or_std)=
+for p in packet do let c=coherent_irr_averaged(w,p,double_cosets,irr_or_std) in (c,for q in monomials(c) do find(packet,q) od ) od
+
+set test([Param] packet,[[WeylElt]] double_cosets, string irr_or_std)=
+for i:10 do let coset= double_cosets[i] in
+ let w=coset[0] in
+for p in packet do prints(w," ", p);let c=coherent_irr_averaged(w,p,double_cosets,irr_or_std) in (c,for q in monomials(c) do find(packet,q).print od ) od od

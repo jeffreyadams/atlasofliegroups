@@ -1,0 +1,17 @@
+set find_relations([(int,int,Param)] data)=
+let rv=[[int]]:[] then
+n=#data {number of columnsn of matrix} in
+for i:n-1 do
+ let (bi,ci,)=data[i] then
+ v=null(n) in 
+ for j:n-i-1 from i+1 do
+  let (bj,cj,)=data[j] in
+   if bi=bj and ci=cj
+   then
+    v[i]:=1; v[j]:=-1;
+    rv#:=v
+   fi
+  od
+od;
+if #rv=0 then null(0,0) else mat:^rv fi
+    

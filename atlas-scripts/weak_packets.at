@@ -8,6 +8,8 @@
 <cells.at { for |parameters_given_AV_infinitesimal_character|, |cells_verbose| }
 <Vogan-dual.at { for |is_dual_Aq| }
 <L_packet.at {for stable_sums_irr_mat}
+<jeff.at
+<arthur_parameters_refined.at
 <F4_s_unipdata
 <E6_sc_s_unipdata
 <E6_sc_q_unipdata
@@ -322,6 +324,11 @@ tabulate(
      #["Total","",(#parameters(##for (,b) in blocks_and_cells_and_packets do b od)).to_string,""]
   );prints()
 
+set apply_relations([(int,int,Param)] packet, mat M)=
+let m=find_relations(packet) in
+if =m then M else
+let K=kernel(m*M) then
+L=M*K in L fi
 
 set show_long(([([Param],[WCell])],[(int,int,Param)]) blocks_and_cells_and_packet)=void:
 let (bc,packet)=blocks_and_cells_and_packet then
@@ -345,7 +352,11 @@ tabulate(
  od
      #["Total","",(#parameters(packet)).to_string,""]
   );
-   let (params,M)=stable_sums_irr_mat(parameters(packet)) in show(params,M);
+   let (params,M)=stable_sums_irr_mat(parameters(packet))
+   then M_reduced=apply_relations(packet,M) in show(params,M);
+   if M=M_reduced then prints("M_reduced=M") else 
+   prints("rank of reduced matrix: ", rank(M_reduced));
+   prints("reduced  matrix: ", new_line, M_reduced)  fi;
 prints()
 
 set show_long([([([Param],[WCell])],[(int,int,Param)])] blocks_and_cells_and_packets)=void:
@@ -372,8 +383,10 @@ tabulate(
 od
      #["Total","","",(#parameters(##for (,b) in blocks_and_cells_and_packets do b od)).to_string,""]
   );
-  for(,packet) in blocks_and_cells_and_packets do 
+{  for(,packet) in blocks_and_cells_and_packets do 
      let (params,M)=stable_sums_irr_mat(parameters(packet)) in show(params,M) od;
+     let m=find_relations(packet) then
+     K=m*M in prints(K)}
 prints()
 
 set export([Param] parameters)=void:
