@@ -22,12 +22,41 @@ H=Dn_in_Bn(H_Bn) in
 (H,M)
 
 
+
+
+set endoscopy_type_BC(RealForm G,mat delta)=(RootDatum,mat):
+let roots=posroots(G) then
+M=mat:## for i:#roots do if delta*roots~[i]=roots~[i] then [roots~[i]] else [] fi od then
+rr= for alpha in roots do M.restrict(alpha) od then
+nrhroots= mat:## for i:#rr do if find(rr,rr[i])=i then [rr[i]] else [] fi od then
+hroots= mat:##(for alpha in nrhroots do if find(2*nrhroots,alpha)=-1 then [alpha] else [] fi od) then
+hcoroots=mat: for alpha in hroots do 2*alpha/(alpha*alpha)\1 od in
+(root_datum_from_positive((hcoroots,hroots),G.prefers_coroots),M)
+
+
+
+
+
+set endoscopy_type_D(RealForm G,mat delta)=(RootDatum,mat):
+let roots=posroots(G) then
+M=mat:## for i:#roots do if delta*roots~[i]=roots~[i] then [roots~[i]] else [] fi od then
+non_fixed_roots= ## for alpha in roots do if delta*alpha=alpha then [] else [alpha] fi od then
+rr= for alpha in non_fixed_roots do M.restrict(alpha) od then
+nrhroots= mat:## for i:#rr do if find(rr,rr[i])=i then [rr[i]] else [] fi od then
+hroots= mat:##(for alpha in nrhroots do if find(2*nrhroots,alpha)=-1 then [alpha] else [] fi od) then
+hcoroots=mat: for alpha in hroots do 2*alpha/(alpha*alpha)\1 od in
+(root_datum_from_positive((hroots,hcoroots),G.prefers_coroots),M)
+
+
+
+
+
 set endoscopic_matrix(int n)=mat:
 let (H,M)=endoscopy_Dn(n) in
 M
 
 
-{As written, the next sctipt only works for SO(n,n)}
+{As written, the next sctipt only works for SO(n,n). It is useless}
 set ordinary_endoscopic_group(RealForm G, ratvec s)=RootDatum:
 let n=#(## for i:#s do if s[i]=1 then [1] else [] fi od) then
 m=#(## for i:#s do if s[i]=-1 then [-1] else [] fi od) then
@@ -544,6 +573,19 @@ q=monomials(inverse_lift_std(p,H,-M))[0] in
 A_packet_distribution_ABC(q,-M,G,delta)
 
 
+
+set test_abv([Param] params,Param p, mat M, RealForm G, mat delta)=
+let abv=monomials(A_packet_distribution_ABC(p,M,G,delta)) in
+for q in abv do find(params,q) od
+
+set test_abv([Param] params, mat M, RealForm G, mat delta)=
+let result=for p@i in params do (i,test_abv(params,p,M,G,delta)) od in
+prints(new_line, "Result:");tabulate(for (i,v) in result do [to_string(i), to_string(params[i]), to_string(v)] od)
+
+
+
+
+
 {set unipotent_A_packets_SO_odd(int n, ComplexNilpotent N)=void:
 let H=SO(n,n+1) then
 G=GL(2*n,R) then
@@ -589,4 +631,15 @@ let ecf=extended_character_formula(Finalize(lift_std(p_H,M,G)),delta) in
 let P=twisted_character(ecf) in
 let Pw=twisted_character_whittaker(P,delta) in
 composition_series(inverse_lift_std(Pw,p_H.real_form,M,p_H.infinitesimal_character)) }
+
+
+
+
+
+
+
+
+
+
+
 
