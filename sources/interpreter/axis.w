@@ -185,43 +185,34 @@ result type is partially known) are handled by a single function |convert_expr|.
 In addition to doing types analysis, it builds (upon success) an |expression|
 value. As arguments, |convert_expr| takes an |const expr& e@;| referring to a
 value produced by the parser, and a type in the form of a modifiable reference
-|type_expr& tp@;|. If |tp| is undefined initially, then it will be set to
-the type derived for the expression; if it is defined then it may guide the
-conversion process, and the type eventually found will have to match it. It
-could also be that |tp| is initially partially defined (such as `\.{(int,*)}',
-meaning ``pair on an integer and something''), in which case derivation and
-testing functionality are combined; this gives flexibility to |convert_expr|.
-However, |convert_expr| must only use its modifiable reference to |tp| for
-calling |specialise| on it, or on its contained type expressions, not for other
-kinds of alteration (notably it should not |std::move| from |tp| or its
-components).
+|type_expr& tp@;|. If there are no restriction on the final type, then it will
+be undetermined initially; if a precise type is required then |tp| is set to
+that. It could also be that there are partial requirements; then |tp| is a
+partially determined type expression reflecting those. Then during the call to
+|convert_expr|, the value of |tp| can be changed by calling |specialise| on it
+or on its subexpressions. If these calls would contradict the initially given;
+however, |convert_expr| must only use its modifiable reference to |tp| for
+calling |specialise| on it or on its subexpressions. It should notably not
+|std::move| from such type expressions. Also |tp| should not be a reference to a
+table entry or other permanent value, to avoid changes to the |tp| argument
+causing permanent changes to them (but after returning from |convert_expr|,
+|tp| can be used in a permanent manner).
 
-Upon successful completion, |tp| will usually have become completely
-determined. The object |tp| should be owned by the caller, who will
-automatically gain ownership of any new nodes added in the process, and
-accessible from |tp|. The latter, if it happens, will be caused by calls of
-the |specialise| method for |tp|, or for its descendants, within
-|convert_expr|. It is a modifiable lvalue reference argument in which normally
-the result of the type analysis is returned. It should not be a reference to a
-table entry or other permanent value: any changes to the |tp| argument made by
-|convert_expr| should remain locally confined until successful completion, so
-that in case the function should instead terminate by throwing an exception, no
-permanent traces of the call will be left (so any permanent use of |tp| should
-be made after return from |convert_expr|).
-
-In some cases |tp| will remain partly undefined, like for an empty list
-display with an unknown type, which gets specialised only to~`\.{[*]}'. However
-if |tp| remains completely undefined `\.*' (as will happen for an expression
-that selects a value from an empty list, or that calls |error|), then this means
-that evaluation cannot possibly complete without error (since no resulting value
+In some cases |tp| will remain partly undefined, like for an empty list display
+with an unknown type, which gets specialised only to~`\.{[*]}'. That type
+expression can be converted to a polymorphic type `\.{[A]}' by calling
+|type::wrap|. If |tp| remains completely undefined (as will happen for an
+expression that selects a value from an empty list, or that calls |error|) this
+will produce the type `\.A'; an expression having that type means that its
+evaluation cannot possibly complete without error (since no resulting value
 could have all possible types at once). (If one would try to deduce the return
 type of a recursive function from its body, this situation would also happen if
 such a function were to have no terminating case; in reality, the syntax insists
 that recursive functions declare their return type explicitly, avoiding this
 situation.) Therefore we might treat the case where |convert_expr| leaves |tp|
 completely undetermined as a type error; currently this is not signalled as
-such, but occasionally we do choose to ignore certain scenarios in which the
-type derived for a subexpression is `\.*', if this allows us to simplify our
+such, but occasionally we might choose to not handle certain scenarios in which
+the type derived for a subexpression is `\.*', if this allows us to simplify our
 code.
 
 @< Declarations of exported functions @>=
@@ -258,9 +249,13 @@ change.
 @< Type def... @>=
 class layer
 {
-  typedef containers::simple_list<layer*> list;
+  using list = containers::simple_list<layer*>;
 public:
-  typedef std::vector<std::pair<id_type,type_expr> > vec;
+  struct id_data
+  { id_type id; type tp;
+    id_data(id_type id, type&& tp) : id(id), tp(std::move(tp)) @+{}
+  };
+  using vec = std::vector<id_data>;
   static list lexical_context; // the unique |layer::list| in existence
 private:
   vec variable;
@@ -276,16 +271,15 @@ public:
     // function or (with |return_type==nullptr|) loop layer
   ~layer () @+{@; lexical_context.pop_front(); }
 @)
-  void add(id_type id,type_expr&& t, bool is_const);
-  static const_type_p lookup
+  void add(id_type id,type&& t, bool is_const);
+  static const type* lookup
     (id_type id, size_t& depth, size_t& offset, bool& is_const);
-  static const_type_p lookup (id_type id, size_t& depth, size_t& offset);
+  static const type* lookup (id_type id, size_t& depth, size_t& offset);
     // if |const| doesn't matter
   static void specialise (size_t depth, size_t offset,const type_expr& t);
 @)
   bool empty() const @+{@; return variable.empty(); }
-  std::pair<id_type,type_expr>& operator[] (size_t i)
-  @+{@; return variable[i]; }
+  id_data& operator[] (size_t i) @+{@; return variable[i]; }
   vec::iterator begin() @+{@; return variable.begin(); }
   vec::iterator end() @+{@; return variable.end(); }
   vec::const_iterator cbegin() const @+{@; return variable.begin(); }
@@ -343,16 +337,16 @@ of identical identifiers.
 @h <string>
 
 @< Function def... @>=
-void layer::add(id_type id,type_expr&& t,bool is_const)
+void layer::add(id_type id,type&& tp,bool is_const)
 { for (auto it=variable.begin(); it!=variable.end(); ++it)
   // traverse |variable| vector
-    if (it->first==id)
+    if (it->id==id)
       throw program_error @/
        (std::string("Multiple binding of '")
                     +main_hash_table->name_of(id)
                     +"' in same scope");
   constness.set_to(variable.size(),is_const);
-  variable.emplace_back( id, std::move(t) );
+  variable.emplace_back( id, std::move(tp) );
 }
 
 @ During conversion of expressions, we keep a stack |layer::lexical_context|
@@ -375,20 +369,20 @@ a runtime cost for no good at all). The method |lookup| will skip such layers
 without increasing the |depth| it reports.
 
 @< Function def... @>=
-const_type_p layer::lookup (id_type id, size_t& depth, size_t& offset)
+const type* layer::lookup (id_type id, size_t& depth, size_t& offset)
 {@; bool dummy; return lookup(id,depth,offset,dummy); }
-const_type_p layer::lookup
+const type* layer::lookup
   (id_type id, size_t& depth, size_t& offset, bool& is_const)
 { size_t i=0;
   for (auto range=lexical_context.cbegin(); not lexical_context.at_end(range);
        ++range)
     if (not (*range)->variable.empty())
     { for (auto it=(*range)->cbegin(); it!=(*range)->cend(); ++it)
-        if (it->first==id) // then found; now set output values
+        if (it->id==id) // then found; now set output values
           { depth=i;
             offset=it-(*range)->begin();
             is_const = (*range)->is_const(it);
-            return &it->second;
+            return &it->tp;
           }
       ++i; // increment depth for non-empty layers only
     }
@@ -413,11 +407,12 @@ from~$0$.
 
 @< Function def... @>=
 
-void layer::specialise (size_t depth, size_t offset,const type_expr& t)
+void layer::specialise (size_t depth, size_t offset,const type_expr& tp)
 { auto range=lexical_context.cbegin();
   while ((*range)->variable.empty() or depth-->0)
     ++range;
-  (**range)[offset].second.specialise(t);
+  id_data& record = (**range)[offset];
+  record.tp.specialise(tp);
 }
 
 @ The function |convert_expr| returns a owning pointer |expression_ptr| to the
@@ -438,6 +433,22 @@ expression_ptr convert_expr(const expr& e, type_expr& tp)
   }
   assert(false);
   return expression_ptr(nullptr); // keep compiler happy
+}
+
+@ Sometimes we need to convert an expression in the context of a fixed fully
+determined type, which will therefore not change in the call to |convert_expr|.
+Nonetheless it requires a non-|const| argument that cannot be provided by an
+rvalue as would result from calling the |copy| method in the argument
+expression. So to cater for that, we define a local function
+|convert_expr_strongly| that will provide the required variable, and |assert|
+that it is being used correctly.
+
+@< Local function definitions @>=
+expression_ptr convert_expr_strongly(const expr& e, const type_expr& te)
+{
+  assert(te.kind()!=undetermined_type and type::wrap(te).degree()==0);
+  type_expr context_type = te.copy();
+  return convert_expr(e,context_type);
 }
 
 @* Denotations, capturing values in a program.
@@ -507,14 +518,14 @@ case boolean_denotation:
 the symbol `\.\$'.
 
 @< Declarations of global variables @>=
-extern type_expr last_type;
+extern type last_type;
 extern shared_value last_value;
 
 @~We set the pointers to |nullptr| here, but the |main| function will give them
 more appropriate starting values.
 
 @< Global variable definitions @>=
-type_expr last_type;
+type last_type = type::bottom();
 shared_value last_value;
 
 @ In some occasions, a previously computed value can be captured in an
@@ -551,7 +562,7 @@ case last_value_computed:
 { std::ostringstream o;
   o << '(' << last_type << ":$)"; @q$@>
 @/return conform_types
-    (last_type
+    (last_type.unwrap()
     ,tp
     ,expression_ptr(new capture_expression(last_value,o.str()))
     ,e);
@@ -670,8 +681,9 @@ which will provide the type context for the expression after~\&{return}.
 @< Cases for type-checking and converting... @>=
 case return_expr:
 { if (layer::may_return())
-    return expression_ptr(new @|
-      returner(convert_expr(*e.return_variant,layer::current_return_type())));
+  { type_expr& rt = layer::current_return_type();
+    return expression_ptr(new returner(convert_expr(*e.return_variant,rt)));
+  }
   throw expr_error(e,"One can only use 'return' within a function body");
 }
 
@@ -750,9 +762,10 @@ case tuple_display:
   type_expr tup=unknown_tuple(n);
   bool n_tuple_expected = tp.specialise(tup);
   // whether |tp| is a tuple of size~|n|
+  type_expr& tup_tp = n_tuple_expected ? tp : tup; // a tuple type in both cases
   bool is_constant = true; // whether all components are denotations
 @)
-  wtl_iterator tl_it (n_tuple_expected ? tp.tuple() : tup.tuple());
+  wtl_iterator tl_it (tup_tp.tuple());
   // traverse either |tp| or |tup|
   std::unique_ptr<tuple_expression> tup_exp(new tuple_expression(0));
   std::vector<expression_ptr>& comp = tup_exp->component;
@@ -769,7 +782,8 @@ case tuple_display:
   expression_ptr result(std::move(tup_exp));
     // convert |tup_exp| to a more generic pointer
   if (is_constant)
-     make_row_denotation<false>(result); // wrap tuple inside a denotation, see below
+     make_row_denotation<false>(result);
+     // wrap tuple inside a denotation, see below
   if (n_tuple_expected or coerce(tup,tp,result,e.loc))
     return result;
   throw type_error(e,std::move(tup),tp.copy());
@@ -1111,7 +1125,7 @@ or even |type::bottom()| in the case of an empty list display) to match |target|
       ++it;
   if (not conflicts.empty())
   { balance_error err(e,description);
-    if (common.kind()!=undetermined_type)
+    if (common.kind()!=variable_type)
       err.variants.push_back(std::move(common));
     err.variants.append(std::move(conflicts));
     throw std::move(err);
@@ -1419,7 +1433,7 @@ get false type predictions.
 @< Cases for type-checking and converting... @>=
 case applied_identifier:
 { const id_type id=e.identifier_variant;
-  const_type_p id_t; size_t i,j;
+  const type* id_t; size_t i,j;
   const bool is_local=(id_t=layer::lookup(id,i,j))!=nullptr;
   if (not is_local and (id_t=global_id_table->type_of(id))==nullptr)
   {
@@ -1433,8 +1447,9 @@ case applied_identifier:
   expression_ptr id_expr = @| is_local
   ? expression_ptr(new local_identifier<false>(id,i,j))
   : expression_ptr(new global_identifier<false>(id));
-  if (tp.specialise(*id_t)) // then required type admits known identifier type
-    { if (tp!=*id_t)
+  if (tp.specialise(id_t->unwrap()))
+    { // then required type admits known identifier type
+      if (tp!=id_t->unwrap())
       // usage has made type of identifier more specialised
       { if (is_local)
           layer::specialise(i,j,tp);
@@ -1444,9 +1459,9 @@ case applied_identifier:
       }
       return id_expr;
     }
-  else if (coerce(*id_t,tp,id_expr,e.loc))
+  else if (coerce(id_t->unwrap(),tp,id_expr,e.loc))
     return id_expr;
-  throw type_error(e,id_t->copy(),tp.copy());
+  throw type_error(e,id_t->bake(),tp.copy());
 }
 
 @*1 Resolution of operator and function overloading.
@@ -1486,16 +1501,17 @@ isolation, giving rise to an \foreign{a priori} type, which might however not
 quite be the actual type for the intended variant. Overload resolution will then
 try to find a variant whose expected type is close enough to the
 found \foreign{a priori} type to expect that zero or more coercions will allow
-making the match. The necessary coercions might however need to ``creep inside''
-the argument expression in order to apply (most obviously so in the common cases
-of an operand pair or argument tuple), so that it might not be possible to use
-the expression as initially converted; if this appears to be the case, the
-conversion will be attempted as second time, this time in the strong context of
-the type expected by the matched variant. The second attempt may still fail (for
-instance if the expression structure does not allow for creeping inside), which
-will then be considered to be an error rather than just a failed match.
-Additional language restrictions are imposed to ensure that such an error cannot
-mask a possible successful match of a later variant.
+making the match. If any coercions are necessary to do so, they might need to
+``creep inside'' the argument expression in order to apply (most obviously so in
+the common cases of an operand pair or argument tuple), so that it might not be
+possible to use the expression as initially converted; if this appears to be the
+case, the conversion will be attempted as second time, this time in the strong
+context of the type expected by the matched variant. The second attempt is only
+made once all variants fail to make an exact match, and if may still fail (if
+the expression structure of the argument does not allow for inserting the
+coercion), which will then be considered to be an error rather than just a
+failed match. Additional language restrictions are imposed to ensure that such
+an error cannot mask a possible successful match of a later variant.
 
 If we do decide to redo the initially converted argument expression, this again
 gives a potential exponential growth of the search tree, albeit with base$~2$
@@ -1510,35 +1526,22 @@ matches the argument expression. It starts by converting the latter without any
 imposed type, finding an |a_priory_type|. Then when matching a variant, we can
 get an exact match with |a_priori_type|, in which case the variant is selected
 and an application of its function is returned. When, lacking an exact match, a
-possible match after coercions is suspected, a second conversion must be
-attempted. It may be that more than one variant can produce a match, in which
-case we always prefer an exact match if there is one, and in case there is more
-than one, we prefer one that provides the most specific (least generic) type.
-Inexact matches are only considered for variants with a completely specific
-type, and when left with a choice among several inexact matches, we prefer one
-that invokes the fewest coercions. These priority rules are implemented by
-ordering our tests so that the first match is also the best; for this purpose
-the variants have been partially sorted to ensure this.
+possible match after coercions is suspected, a second conversion is attempted.
 
-We perform (at most) two passes over the variants, first looking for an exact
-match only; then if none is found, a second pass tests |is_close| between
-|a_priori_type| and the expected type of a variant. Currently all |variants|
-involve specific argument types, while some generic definitions, which exist for
-a small number of names like the operator~`\#', are tested for applicability
-after completing the first pass, which provides the proper priority in case of
-multiple matches. However, matching generic operators should really be done
-during the first pass using variants with polymorphic types, their matching
-against |a_priori_type| being done by unification. When, during the second pass,
-|is_close| signals a potential match, and a second conversion of the argument
-with the expected type for the variant is done, which in spite of |is_close| may
-still fail. In the latter case we give up without testing any more variants. If
-the second pass completes without finding any potential match, we report a
-``failed to match'' error.
+We perform (at most) two passes over the variants, first looking for exact
+match, then for an inexact match. Currently all |variants| involve specific
+argument types, while some generic definitions, which exist for a small number
+of names like the operator~`\#', are tested for applicability after completing
+the first pass. However, matching generic operators should really be done during
+the first pass using variants with polymorphic types, their matching against
+|a_priori_type| being done by unification. When, during the second pass
+sufficient type proximity is detected for a potential inexact match, the second
+conversion of the argument with the expected type for the variant is done. This
+may however still fail when the structure of the argument expression does not
+allow for insertion of the coercions; in that case we give up without testing
+any more variants. If the second pass completes without finding any potential
+match, we report a ``failed to match'' error.
 
-Using |is_close| rather than |coercible| means that the possibility of voiding
-coercions is not taken into account: when |arg_type==void_type|, the only match
-accepted is when no arguments are present (though pedantically speaking, an
-argument with a priori type void also matches); this is intended behaviour.
 
 @:resolve_overload@>
 
@@ -1552,43 +1555,30 @@ expression_ptr resolve_overload
   auto n_args = args.kind==tuple_display ? length(args.sublist) : 1;
   auto tup_exp = std::make_unique<tuple_expression>(n_args);
   std::vector<expression_ptr>& arg_vector = tup_exp->component;
+  type a_priori_type = type::bottom(); bool is_constant=false;
   @< Fill |arg_vector| with expressions converted from the components of |args|,
-     and set |type a_priori_type| to be the type found @>
+     and set |a_priori_type| to the type found; also set |is_constant=true|
+     if more than one arguments are all constant expressions @>
 @)
   id_type id =  e.call_variant->fun.identifier_variant;
   expression_ptr arg; // will hold the final converted argument expression
-  unsigned int d = a_priori_type.expunge().degree();
-  for (const auto& variant : variants)
-    if (a_priori_type.matches
-         (variant.f_tp().arg_type,variant.poly_degree())) // exact match
-    {
-      arg =
-        n_args==1 ? std::move(arg_vector[0]) : expression_ptr(std::move(tup_exp));
-       @< Construct and |return| a call of the function value |variant.value()|
-         with argument |arg| @>
-    }
-    else
-      a_priori_type.clear(d);
-
+  a_priori_type.expunge(); // make sure any type assignments are baked in
+  @< Try to find an element of |variants| whose |arg_type| exactly matches
+     |a_priori_type|, and for it |return| a corresponding call with argument
+     from |tup_exp| @>
   @< If |id| is a special operator like \# and it matches
      |a_priori_type|, |return| a call |id(args)| @>
 @) // no exact match; retry all cases for an inexact match
-  for (const auto& variant : variants)
-    if ((is_close(a_priori_type.unwrap(),variant.f_tp().arg_type)&0x1)!=0)
-      // inexact match
-    { @< Apply an implicit conversion for every argument whose type in
-         |a_priori_type| differs from that required in |arg_type|, then assign
-         converted expression to |arg| @>
-      @< Construct and |return| a call of the function value
-         |variant.value()|... @>
-    }
+  @< Try to find an element of |variants| whose |arg_type| matches
+     |a_priori_type| after inserting implicit type conversions, and for
+     it |return| a corresponding call with argument from |tup_exp| @>
 @)
   @< Complain about failing overload resolution @>
 
 }
 
 @ The following code rather uncharacteristically treats all argument lists as
-tuples, even if |n_args==1| indicates that no tuple expression is actually
+tuples, even when |n_args==1| indicates that no tuple expression is actually
 present. The reason that we do not simply call |convert_expr| for the entire
 argument tuple, is that we later want to be able to easily reconvert one
 argument expression at a time, and it would be hard to get access to these
@@ -1599,38 +1589,90 @@ them (which is otherwise done as a part of converting tuple expressions). This
 in fact allows us to postpone constant folding until the correct types have been
 found, and any required coercions are inserted.
 
-There should be no braces around this code, since certainly the declaration of
-|a_priori_type| needs to be exported. The variable |is_constant| is also
-introduced for later use, namely to decide whether before building the call we
-should convert an argument that is a tuple of constants (represented as
-denotations) into a constant tuple; since this question does not arise in case
-of a single argument (and the conversion should not be attempted) we initialise
-the variable to |false| in that case. We use |apt| as a temporary non-|const|
-version of its later alias |a_priory_type|; even though the scope of the
-identifier |apt| is not limited to this module, we shall refrain from using it
-elsewhere.
+The variable |is_constant| is set for later use, namely to decide whether before
+building the call we should convert an argument that is a tuple of constants
+(represented as denotations) into a constant tuple; since this question does not
+arise in case of a single argument (and the conversion should not be attempted)
+we set the variable to |false| in that case.
 
 @< Fill |arg_vector| with expressions converted from... @>=
-bool is_constant = n_args>1;
+{ is_constant = n_args>1;
   // will record whether all |n_args>1| arguments are denotations
-type_expr apt; // modifiable temporary
-if (n_args==1)
-  arg_vector[0] = convert_expr(args,apt);
-  // get \foreign{a priori} type for argument
-else
-{
-  apt = unknown_tuple(n_args);
-  wtl_iterator apt_it(apt.tuple());
-  auto arg_vector_it = arg_vector.begin();
-  for (wel_const_iterator it(args.sublist); not it.at_end();
-       ++it,++apt_it,++arg_vector_it)
+  type_expr apt; // modifiable temporary
+  if (n_args==1)
+    arg_vector[0] = convert_expr(args,apt);
+    // get \foreign{a priori} type for argument
+  else
   {
-    *arg_vector_it = convert_expr(*it,*apt_it);
-    is_constant = is_constant and
-       dynamic_cast<const denotation*>(arg_vector_it->get()) != nullptr;
+    apt = unknown_tuple(n_args);
+    wtl_iterator apt_it(apt.tuple());
+    auto arg_vector_it = arg_vector.begin();
+    for (wel_const_iterator it(args.sublist); not it.at_end();
+         ++it,++apt_it,++arg_vector_it)
+    {
+      *arg_vector_it = convert_expr(*it,*apt_it);
+      is_constant = is_constant and
+         dynamic_cast<const denotation*>(arg_vector_it->get()) != nullptr;
+    }
   }
+  a_priori_type = type::wrap(apt); // combine arguments types into one
 }
-type a_priori_type = type::wrap(apt); // needs to be modifiable
+
+@ It may be that more than one variant can produce a match, in which case we
+always prefer an exact match if there is one. Also, an exact match should be the
+unique such match, but that policy is not yet enforced in the code below.
+
+@< Try to find an element of |variants| whose |arg_type| exactly matches...@>=
+{
+  const unsigned int apt_deg = a_priori_type.degree();
+  for (const auto& variant : variants)
+    if (a_priori_type.matches
+         (variant.f_tp().arg_type,variant.poly_degree())) // exact match
+    {
+      type_expr arg_type =
+        substitution(variant.f_tp().arg_type,a_priori_type.assign());
+      const type_expr res_type =
+        substitution(variant.f_tp().result_type,a_priori_type.assign());
+      arg = n_args==1 ? std::move(arg_vector[0])
+		      : expression_ptr(std::move(tup_exp));
+       @< Construct and |return| a call of the function value |variant.value()|
+         with argument |arg| @>
+@/// |res_type| is recorded in |tp|, and |arg_type| has served and is forgotten
+    }
+    else
+      a_priori_type.clear(apt_deg); // remove type variable introduced by |match|
+}
+
+
+@ Inexact matches are only considered for variants with a completely specific
+type; moreover, when left with a choice among several inexact matches, we prefer
+one that invokes the fewest coercions. These priority rules are implemented by
+ordering our tests so that the first match is also the best; for this purpose
+the variants have been partially sorted to ensure this. To test for an inexact
+type match, we call |is_close| with |a_priori_type| and the expected type of a
+variant.
+
+Using |is_close| here, rather than |coercible|, means that the possibility of
+voiding coercions is not taken into account: when |arg_type==void_type|, the
+only match accepted is when no arguments are present (though pedantically
+speaking, an argument with a priori type void also matches); this is intended
+behaviour.
+
+
+@< Try to find an element of |variants| whose |arg_type| matches... @>=
+for (const auto& variant : variants)
+  if (not variant.is_polymorphic() and
+      (is_close(a_priori_type.unwrap(),variant.f_tp().arg_type)&0x1)!=0)
+    // inexact match
+  { const type_expr& arg_type = variant.f_tp().arg_type;
+    @< Apply an implicit conversion for every argument whose type in
+       |a_priori_type| differs from that required in |arg_type|, then assign
+       converted expression to |arg| @>
+    const type_expr& res_type = variant.f_tp().result_type;
+    @< Construct and |return| a call of the function value
+       |variant.value()|... @>
+  }
+
 
 @ Having found a match (exact or inexact; the code below is included twice), and
 having converted the argument expression to |arg|, we need to construct a
@@ -1658,30 +1700,13 @@ the function call with an empty argument expression. In any case the
 test \emph{can} be made here, since we have the argument type in the variable
 |arg_type|, and the argument expression in |args|.
 
-As a special safety measure against the easily made error of writing `\.='
-instead of an assignment operator~`\.{:=}', we forbid converting to void the
-result of an (always overloaded) call to the equality operator, treating this
-case as a type error instead. In the unlikely case that the user defines an
-overloaded instance of `\.=' with void result type, calls to this operator
-will still be accepted.
-
 Whenever an argument matches, with or without coercions, |conform_types| is
 called for the variant result type and the expected |tp|; this may throw an
 error, also aborting the matching process.
 
 @< Construct and |return| a call of the function value |variant.value()|... @>=
-{ if (tp==void_type and
-      id==equals_name() and
-      variant.f_tp().result_type!=void_type)
-  { std::ostringstream o;
-    o << "Use of equality operator '=' in void context; " @|
-      << "did you mean ':=' instead?\n  If you really want " @|
-      << "the result of '=' to be voided, use a cast to " @|
-      << variant.f_tp().result_type << '.';
-    throw expr_error(e,o.str());
-  }
+{ @< Refuse to compile an equality test whose result is then voided @>
 @) // now select unique component or consolidate tuple
-  const auto& arg_type = variant.f_tp().arg_type;
   std::ostringstream name;
   name << main_hash_table->name_of(id) << '@@' << arg_type;
 @)
@@ -1693,7 +1718,27 @@ error, also aborting the matching process.
     make_row_denotation<false>(arg); // wrap tuple inside a denotation
   auto call = variant.value()->build_call
            (variant.value(),name.str(),std::move(arg),e.loc);
-  return conform_types(variant.f_tp().result_type,tp,std::move(call),e);
+  return conform_types(res_type,tp,std::move(call),e);
+}
+
+@ As a special safety measure against the easily made error of writing `\.='
+instead of an assignment operator~`\.{:=}', we forbid converting to void the
+result of an (always overloaded) call to the equality operator, treating this
+case as a type error instead. In the unlikely case that the user defines an
+overloaded instance of `\.=' with void result type, calls to this operator
+will still be accepted.
+
+@< Refuse to compile an equality test whose result is then voided @>=
+{ if (tp==void_type and
+      id==equals_name() and
+      res_type!=void_type)
+  { std::ostringstream o;
+    o << "Use of equality operator '=' in void context; " @|
+      << "did you mean ':=' instead?\n  If you really want " @|
+      << "the result of '=' to be voided, use a cast to " @|
+      << variant.f_tp().result_type << '.';
+    throw expr_error(e,o.str());
+  }
 }
 
 @ When we come here, an inexact match is found; we traverse the arguments (maybe
@@ -1729,16 +1774,14 @@ the same.
 
 @< Apply an implicit conversion for every argument... @>=
 {
-  const auto& arg_type=variant.f_tp().arg_type;
   if (n_args==1)
   { const expr& cur_arg = args; // rename to allow sharing the following module:
     if (@< The form of |cur_arg| shields out the context type @>@;@;)
     { arg = std::move(arg_vector[0]);
       if (not coerce(a_priori_type.unwrap(),arg_type,arg,e.loc))
-        throw type_error(e,std::move(apt),arg_type.copy());
+        throw type_error(e,a_priori_type.unwrap().copy(),arg_type.copy());
       }
-    else arg = convert_expr(cur_arg,as_lvalue(arg_type.copy()));
-    // redo conversion
+    else arg = convert_expr_strongly(cur_arg,arg_type); // redo conversion
   }
   else
   { wtl_const_iterator apt_it(a_priori_type.tuple())
@@ -1753,7 +1796,7 @@ the same.
             throw type_error(e,apt_it->copy(),argt_it->copy());
         }
         else
-          *res_it = convert_expr(cur_arg,as_lvalue(argt_it->copy()));
+          *res_it = convert_expr_strongly(cur_arg,*argt_it);
           // redo conversion
       }
     arg = expression_ptr(std::move(tup_exp));
@@ -2450,14 +2493,21 @@ case function_call:
     @< Convert and |return| an overloaded function call
     if |call.fun| is known in |global_overload_table|,
     unless it is a local function identifier @>
-  type_expr f_type=gen_func_type.copy(); // start with generic function type
-  expression_ptr fun = convert_expr(call.fun,f_type);
-  expression_ptr arg = convert_expr(call.arg,f_type.func()->arg_type);
-  if (f_type.func()->arg_type==void_type and not is_empty(call.arg))
+  type_expr f_pat=gen_func_type.copy(); // start with generic function type
+  expression_ptr fun = convert_expr(call.fun,f_pat);
+  type f_type=type::wrap(f_pat); // consolidate to a (maybe polymorphic) |type|
+  type_expr arg_pat = f_type.skeleton(f_pat.func()->arg_type);
+  expression_ptr arg = convert_expr(call.arg,arg_pat);
+  type arg_type = type::wrap(arg_pat,f_type.floor());
+  if (arg_type.is_void() and not is_empty(call.arg))
     arg.reset(new voiding(std::move(arg)));
+  if (not arg_type.matches(f_type.func()->arg_type,f_type.degree()))
+    throw type_error(e,std::move(arg_pat),std::move(f_pat.func()->arg_type));
+  const type_expr result_type =
+    substitution(f_type.func()->result_type,arg_type.assign());
   expression_ptr re(new @|
      call_expression(std::move(fun),std::move(arg),e.loc));
-  return conform_types(f_type.func()->result_type,tp,std::move(re),e);
+  return conform_types(result_type,tp,std::move(re),e);
 }
 
 @ When a call expression has an identifier in the place of the function (as is
@@ -2484,7 +2534,7 @@ table.
   { const overload_table::variant_list& variants
       = global_overload_table->variants(id);
     if (variants.size()>0 or is_special_operator(id))
-    @/return resolve_overload(e,tp,variants);
+      return resolve_overload(e,tp,variants);
   }
 }
 
@@ -2507,6 +2557,11 @@ accept a |void| type, which is the condition that the call
 similarly either expect or accept a |string| type. The case of |error| is like
 |prints| for its arguments, but will not return, so nothing at all is demanded
 of the context type, like in the case of \&{die}.
+
+Most, if not all, of this special code should disappear once second order types
+are fully in place. For the moment the code is just adapted to the fact that
+|a_priori_type| is now a |type| where undetermined subexpressions have been
+replaced by fresh type variables.
 
 @< If |id| is a special operator like \#... @>=
 { std::ostringstream name;
@@ -2573,7 +2628,7 @@ way back in section@#resolve_overload@>. Since, having recognised a call of
 print, we are basically throwing away the work done before and redoing it as if
 that call were absent, it might seem wasteful to not have made this decision at
 the start of |resolve_overload| instead, which would avoid having to redo
-anything here. But we cannot do, so because we allow defining non-generic
+anything here. But we cannot do so, because we allow defining non-generic
 instances of |print|, which if they match the argument type, without coercion,
 should be used in priority to the generic instance; if an externally required
 conversion crept into the argument before attempting to match the correct
@@ -2588,7 +2643,7 @@ least astonishment.
 if (tp!=void_type and not tp.specialise(a_priori_type.unwrap()))
 {
   arg = convert_expr(args,tp); // redo conversion, now in |tp| context
-  name.str(); name << "print@@" << tp; // correct |tp| in |name|
+  name.str(""); name << "print@@" << tp; // correct type in |name|
 }
 
 @ We shall use the following simple type predicate above. Contrary to
@@ -2937,12 +2992,12 @@ const; otherwise a bit from |pat.kind| determines constness of
 
 @< Function definitions @>=
 void thread_bindings
-(const id_pat& pat,const type_expr& type, layer& dst, bool is_const)
+(const id_pat& pat,const type_expr& tp, layer& dst, bool is_const)
 { if ((pat.kind & 0x1)!=0)
-    dst.add(pat.name,type.copy(),is_const or (pat.kind & 0x4)!=0);
+    dst.add(pat.name,type::wrap(tp),is_const or (pat.kind & 0x4)!=0);
   if ((pat.kind & 0x2)!=0)
-  { assert(type.kind()==tuple_type);
-    wtl_const_iterator t_it(type.tuple());
+  { assert(tp.kind()==tuple_type);
+    wtl_const_iterator t_it(tp.tuple());
     for (auto p_it=pat.sublist.begin(); not pat.sublist.at_end(p_it);
          ++p_it,++t_it)
       thread_bindings(*p_it,*t_it,dst,is_const);
@@ -3352,18 +3407,17 @@ case rec_lambda_expr:
     // do |pat| structure and |arg_type| conflict?
     throw expr_error(e,"Function argument pattern does not match its type");
   type_expr f_type=type_expr::function(arg_type.copy(),fun.result_type.copy());
-    // not |const| though it cannot change
-  if (not tp.specialise(f_type) and tp!=void_type)
+  if ( tp!=void_type and not tp.specialise(f_type))
       @/throw type_error(e, std::move(f_type), tp.copy());
 @)
-  type_expr& r_type=f_type.func()->result_type;
+  type_expr& res_type=f_type.func()->result_type;
     // non |const| though it cannot change
-  layer new_layer(1+count_identifiers(pat),&r_type);
+  layer new_layer(1+count_identifiers(pat),&res_type);
 @/thread_bindings(id_pat(fun.self_id),f_type,new_layer,true);
   thread_bindings(pat,arg_type,new_layer,false);
 @/return expression_ptr(new @| recursive_lambda
    (fun.self_id,copy_id_pat(pat),
-    convert_expr(fun.body,r_type), std::move(e.loc)));
+    convert_expr(fun.body,res_type), std::move(e.loc)));
 }
 
 @* Closures.
@@ -3897,7 +3951,7 @@ void next_expression::evaluate(level l) const
 @< Cases for type-checking and converting... @>=
 case seq_expr:
 { const sequence_node& seq=*e.sequence_variant;
-  expression_ptr first = convert_expr(seq.first,as_lvalue(void_type.copy()));
+  expression_ptr first = convert_expr_strongly(seq.first,void_type);
   expression_ptr last  = convert_expr(seq.last,tp);
   return expression_ptr(new seq_expression(std::move(first),std::move(last)));
 }
@@ -3905,7 +3959,7 @@ break;
 case next_expr:
 { const sequence_node& seq=*e.sequence_variant;
   expression_ptr first = convert_expr(seq.first,tp);
-  expression_ptr last  = convert_expr(seq.last,as_lvalue(void_type.copy()));
+  expression_ptr last  = convert_expr_strongly(seq.last,void_type);
   return expression_ptr(new next_expression(std::move(first),std::move(last)));
 }
 break;
@@ -4351,10 +4405,8 @@ if array type is one that can be sliced at all, throwing an error if it cannot.
 case slice:
 { type_expr array_type; // initialised to |undetermined_type|
   expression_ptr array = convert_expr(e.slice_variant->array,array_type);
-  expression_ptr lower =
-    convert_expr(e.slice_variant->lower,as_lvalue(int_type.copy()));
-  expression_ptr upper =
-    convert_expr(e.slice_variant->upper,as_lvalue(int_type.copy()));
+  expression_ptr lower = convert_expr_strongly(e.slice_variant->lower,int_type);
+  expression_ptr upper = convert_expr_strongly(e.slice_variant->upper,int_type);
   expression_ptr subscr; const unsigned fl = e.slice_variant->flags.to_ulong();
   switch (subscr_base::slice_kind(array_type))
     { case subscr_base::row_entry: subscr.reset(
@@ -4994,7 +5046,7 @@ case conditional_expr:
 { auto& exp = *e.if_variant;
   if (was_negated(exp.condition)) // eliminate negated conditions
     exp.branches.contents.swap(exp.branches.next->contents);
-  expression_ptr c  =  convert_expr(exp.condition,as_lvalue(bool_type.copy()));
+  expression_ptr c = convert_expr_strongly(exp.condition,bool_type);
   std::vector<expression_ptr> conv;
   balance(tp,&exp.branches,e,"branches of conditional",conv);
 @/return expression_ptr(new @|
@@ -5136,7 +5188,7 @@ case int_case_expr0:
 case int_case_expr1:
 case int_case_expr2:
 { auto& exp = *e.if_variant;
-  expression_ptr c  =  convert_expr(exp.condition,as_lvalue(int_type.copy()));
+  expression_ptr c = convert_expr_strongly (exp.condition,int_type);
   std::vector<expression_ptr> conv;
   balance(tp,&exp.branches,e,"branches of case",conv);
   if (e.kind==int_case_expr0)
@@ -5566,10 +5618,10 @@ case while_expr:
 @)
   if (tp==void_type)
     return expression_ptr@|(make_while_loop (w.flags.to_ulong(),
-       convert_expr(w.body, as_lvalue(void_type.copy()))));
+       convert_expr_strongly(w.body, void_type)));
   else if (tp==int_type)
     return expression_ptr(make_while_loop @| (0x8,
-       convert_expr(w.body, as_lvalue(void_type.copy()))));
+       convert_expr_strongly(w.body, void_type)));
   else if (tp.specialise(row_of_type))
   { auto& comp_type = tp.component_type();
     expression_ptr b = convert_expr(w.body,comp_type);
@@ -5684,7 +5736,7 @@ case do_expr:
     else
       return expression_ptr(new forever_expression(std::move(body)));
   }
-  expression_ptr condition = convert_expr(seq.first,as_lvalue(bool_type.copy()));
+  expression_ptr condition = convert_expr_strongly(seq.first,bool_type);
   if (neg)
     return expression_ptr(new @|
       do_expression<true>(std::move(condition),std::move(body)));
@@ -6594,10 +6646,10 @@ body.
 @< Cases for type-checking and converting... @>=
 case cfor_expr:
 { const cfor_node& c=*e.cfor_variant;
-  expression_ptr count_expr = convert_expr(c.count,as_lvalue(int_type.copy()));
+  expression_ptr count_expr = convert_expr_strongly(c.count,int_type);
   expression_ptr bound_expr = is_empty(c.bound)
     ? expression_ptr(nullptr)
-    : convert_expr(c.bound,as_lvalue(int_type.copy())) ;
+    : convert_expr_strongly(c.bound,int_type) ;
 @)
   type_expr body_type;
   type_expr *btp=&body_type; // point to place to record body type
@@ -6622,7 +6674,7 @@ case cfor_expr:
   }
   else // case of a present loop variable
   { layer bind(1,nullptr);
-    bind.add(c.id,int_type.copy(),true); // add |id| as constant
+    bind.add(c.id,type::wrap(int_type),true); // add |id| as constant
     expression_ptr body(convert_expr (c.body,*btp));
     if (tp!=void_type and *btp==void_type and not is_empty(c.body))
       body.reset(new voiding(std::move(body)));
@@ -6893,19 +6945,19 @@ return the value again.
 @< Cases for type-checking and converting... @>=
 case op_cast_expr:
 { const op_cast& c=e.op_cast_variant;
-  const type_expr& ctype=c->type;
+  const type_expr& c_type = c->type;
   std::ostringstream o;
-  o << main_hash_table->name_of(c->oper) << '@@' << ctype;
-  const auto* entry = global_overload_table->entry(c->oper,ctype);
+  o << main_hash_table->name_of(c->oper) << '@@' << c_type;
+  const auto* entry = global_overload_table->entry(c->oper,c_type);
 @)
   if (entry!=nullptr) // something was found
   {
     expression_ptr p(new capture_expression(entry->value(),o.str()));
     const type_expr& res_t = entry->f_tp().result_type;
-    if (functype_specialise(tp,ctype,res_t) or tp==void_type)
+    if (functype_specialise(tp,c_type,res_t) or tp==void_type)
       return p;
     throw type_error
-      (e,type_expr::function(ctype.copy(),res_t.copy()),tp.copy());
+      (e,type_expr::function(c_type.copy(),res_t.copy()),tp.copy());
   }
 @)// now we have no match from the overload table, try generic operations
   if (is_special_operator(c->oper))
@@ -6923,19 +6975,19 @@ slightly more complicated.
 
 @< Test special argument patterns... @>=
 { if (c->oper==print_name())
-  { if (functype_specialise(tp,ctype,ctype))
+  { if (functype_specialise(tp,c_type,c_type))
     return expression_ptr(new @| capture_expression (print_builtin,o.str()));
   }
   else if (c->oper==prints_name())
-  { if (functype_specialise(tp,ctype,void_type))
+  { if (functype_specialise(tp,c_type,void_type))
     return expression_ptr(new @| capture_expression (prints_builtin,o.str()));
   }
   else if (c->oper==to_string_name())
-  { if (functype_specialise(tp,ctype,str_type))
+  { if (functype_specialise(tp,c_type,str_type))
     return expression_ptr(new @| capture_expression (to_string_builtin,o.str()));
   }
   else if (c->oper==error_name())
-  { if (functype_specialise(tp,ctype,unknown_type))
+  { if (functype_specialise(tp,c_type,unknown_type))
     return expression_ptr(new @| capture_expression (error_builtin,o.str()));
   }
   else if (c->oper==size_of_name())
@@ -6953,27 +7005,27 @@ context. If no match is found here, there can still be one in the overload
 table.
 
 @< Select the proper instance of the \.\# operator,... @>=
-{ if (ctype.kind()==row_type)
-  { if (functype_specialise(tp,ctype,int_type))
+{ if (c_type.kind()==row_type)
+  { if (functype_specialise(tp,c_type,int_type))
   @/return expression_ptr(new @|
       capture_expression (sizeof_row_builtin,o.str()));
-    throw type_error(e,ctype.copy(),tp.copy());
+    throw type_error(e,c_type.copy(),tp.copy());
   }
-  else if (is_pair_type(ctype))
+  else if (is_pair_type(c_type))
   {
-    type_expr& arg_tp0 = ctype.tuple()->contents;
-    type_expr& arg_tp1 = ctype.tuple()->next->contents;
+    type_expr& arg_tp0 = c_type.tuple()->contents;
+    type_expr& arg_tp1 = c_type.tuple()->next->contents;
     if (arg_tp0.kind()==row_type and arg_tp0.component_type()==arg_tp1)
-    { if (functype_specialise(tp,ctype,arg_tp0))
+    { if (functype_specialise(tp,c_type,arg_tp0))
         return expression_ptr(new @|
           capture_expression(suffix_elt_builtin,o.str()));
-      throw type_error(e,ctype.copy(),tp.copy());
+      throw type_error(e,c_type.copy(),tp.copy());
     }
     if (arg_tp1.kind()==row_type and arg_tp1.component_type()==arg_tp0)
-    { if (functype_specialise(tp,ctype,arg_tp1))
+    { if (functype_specialise(tp,c_type,arg_tp1))
       return expression_ptr(new @|
         capture_expression (prefix_elt_builtin,o.str()));
-      throw type_error(e,ctype.copy(),tp.copy());
+      throw type_error(e,c_type.copy(),tp.copy());
     }
   }
 }
@@ -6982,21 +7034,21 @@ table.
 different wrapper functions.
 
 @< Select the proper instance of the \.{\#\#} operator,... @>=
-{ if (ctype.kind()==row_type and ctype.component_type().kind()==row_type)
-  { if (functype_specialise(tp,ctype,ctype.component_type()))
+{ if (c_type.kind()==row_type and c_type.component_type().kind()==row_type)
+  { if (functype_specialise(tp,c_type,c_type.component_type()))
   @/return expression_ptr(new @|
       capture_expression (join_rows_row_builtin,o.str()));
-    throw type_error(e,ctype.copy(),tp.copy());
+    throw type_error(e,c_type.copy(),tp.copy());
   }
-  else if (is_pair_type(ctype))
+  else if (is_pair_type(c_type))
   {
-    type_expr& arg_tp0 = ctype.tuple()->contents;
-    type_expr& arg_tp1 = ctype.tuple()->next->contents;
+    type_expr& arg_tp0 = c_type.tuple()->contents;
+    type_expr& arg_tp1 = c_type.tuple()->next->contents;
     if (arg_tp0.kind()==row_type and arg_tp1==arg_tp0)
-    { if (functype_specialise(tp,ctype,arg_tp0))
+    { if (functype_specialise(tp,c_type,arg_tp0))
         return expression_ptr(new @|
           capture_expression (join_rows_builtin,o.str()));
-      throw type_error(e,ctype.copy(),tp.copy());
+      throw type_error(e,c_type.copy(),tp.copy());
     }
   }
 }
@@ -7288,7 +7340,7 @@ case ass_stat:
 if ( e.assign_variant->lhs.kind==0x1) // single identifier, do simple assign
 {
   id_type lhs=e.assign_variant->lhs.name;
-  const_type_p id_t; size_t depth,offset; bool is_const;
+  const type* id_t; size_t depth,offset; bool is_const;
   const bool is_local = (id_t=layer::lookup(lhs,depth,offset,is_const))!=nullptr;
   if (not is_local and (id_t=global_id_table->type_of(lhs,is_const))==nullptr)
     report_undefined(lhs,e,"assignment");
@@ -7297,9 +7349,9 @@ if ( e.assign_variant->lhs.kind==0x1) // single identifier, do simple assign
     report_constant_modified(lhs,e,"assignment");
 @.Name is constant @>
 @)
-  type_expr rhs_type = id_t->copy(); // provide a modifiable copy
+  type_expr rhs_type = id_t->bake(); // provide a modifiable copy
   expression_ptr r(convert_expr(e.assign_variant->rhs,rhs_type));
-  if (rhs_type!=*id_t)
+  if (rhs_type!=id_t->bake())
     // assignment will specialise identifier, record to which type it does
   { if (is_local)
       layer::specialise(depth,offset,rhs_type);
@@ -7516,7 +7568,7 @@ recording the localisation of the identifiers in our various fields.
 
 @< Look up type associated to |pat.name|, and after making some checks... @>=
 { id_type id = pat.name;
-  const_type_p id_t; // will point to type of local or global |id|
+  const type* id_t; // will point to type of local or global |id|
   @< Check that |id| did not occur previously in this left hand side @>
   size_t i,j; bool is_const;
   const bool is_local = (id_t=layer::lookup(id,i,j,is_const))!=nullptr;
@@ -7526,7 +7578,7 @@ recording the localisation of the identifiers in our various fields.
     report_constant_modified(id,e,"multiple assignment");
   is_global.extend_capacity(not is_local); // push one bit onto the |BitMap|
 @)
-  if (not tp.specialise(*id_t))
+  if (not tp.specialise(id_t->unwrap()))
   // incorporate type found for |id| into |tp|
     @< Throw an error to signal type incompatibility for |id| @>
   assoc.push_back(std::make_pair(id,&tp));
@@ -8294,7 +8346,7 @@ case comp_ass_stat:
 { id_type aggr=e.comp_assign_variant->aggr;
   const expr& index=e.comp_assign_variant->index;
   const expr& rhs=e.comp_assign_variant->rhs;
-@/const_type_p aggr_t; size_t d,o; bool is_const;
+@/const type* aggr_t; size_t d,o; bool is_const;
   bool is_local = (aggr_t=layer::lookup(aggr,d,o,is_const))!=nullptr;
   if (not is_local and (aggr_t=global_id_table->type_of(aggr,is_const))==nullptr)
     report_undefined(aggr,e,"component assignment");
@@ -8306,7 +8358,8 @@ case comp_ass_stat:
   type_expr ind_t;
   expression_ptr i = convert_expr(index,ind_t);
 @/type_expr comp_t;
-  subscr_base::sub_type kind=subscr_base::index_kind(*aggr_t,ind_t,comp_t);
+  subscr_base::sub_type kind =
+    subscr_base::index_kind(aggr_t->unwrap(),ind_t,comp_t);
   if (not subscr_base::assignable(kind))
   { std::ostringstream o;
     o << "Cannot subscript value of type " << *aggr_t @|
@@ -8360,29 +8413,29 @@ that can be specialised at all.
 
 @< Cases for type-checking and converting... @>=
 case field_ass_stat:
-{ id_type tupple=e.field_assign_variant->aggr;
+{ id_type tuple=e.field_assign_variant->aggr;
   id_type selector =e.field_assign_variant->selector;
   const expr& rhs=e.field_assign_variant->rhs;
-@/const_type_p tuple_t; size_t d,o; bool is_const;
-  bool is_local = (tuple_t=layer::lookup(tupple,d,o,is_const))!=nullptr;
+@/const type* tuple_t; size_t d,o; bool is_const;
+  bool is_local = (tuple_t=layer::lookup(tuple,d,o,is_const))!=nullptr;
   if (not is_local
-      and (tuple_t=global_id_table->type_of(tupple,is_const))==nullptr)
-    report_undefined(tupple,e,"field assignment");
+      and (tuple_t=global_id_table->type_of(tuple,is_const))==nullptr)
+    report_undefined(tuple,e,"field assignment");
 @.Undefined identifier@>
   if (is_const)
-    report_constant_modified(tupple,e,"field assignment");
+    report_constant_modified(tuple,e,"field assignment");
 @.Name is constant @>
 @)
   unsigned pos; type_p comp_loc;
   @< Look up a projector for |*tuple_t| named |selector|, and if found assign
      its |position| to |pos| and make |comp_loc| point to the corresponding
      component |type_expr| of |*tuple_t|; on failure |throw expr_error| @>
-  expression_ptr r = convert_expr(rhs,*comp_loc);
+  expression_ptr r = convert_expr_strongly(rhs,*comp_loc);
   expression_ptr p;
   if (is_local)
-    p.reset(new local_field_assignment(tupple,pos,selector,d,o,std::move(r)));
+    p.reset(new local_field_assignment(tuple,pos,selector,d,o,std::move(r)));
   else
-    p.reset(new global_field_assignment(tupple,pos,selector,std::move(r)));
+    p.reset(new global_field_assignment(tuple,pos,selector,std::move(r)));
   return conform_types(*comp_loc,tp,std::move(p),e);
 }
 
@@ -8392,7 +8445,7 @@ well, the type list in |tuple_t| is not actually a |simple_list<expr>| but a raw
 node pointer, and we are forced to do a but of traditional node chasing.
 
 @< Look up a projector for |*tuple_t| named |selector|... @>=
-{ const auto* entry=global_overload_table->entry(selector,*tuple_t);
+{ const auto* entry=global_overload_table->entry(selector,tuple_t->unwrap());
   if (entry==nullptr)
     throw expr_error (e,"Improper selection in field assignment");
   const projector_value* proj=
@@ -8448,7 +8501,7 @@ case field_trans_stat:
   id_type tuple = dot->arg.identifier_variant; // name of tuple selected from
 @/assert(dot->fun.kind==applied_identifier);
   id_type selector = dot->fun.identifier_variant; // field name
-@)const_type_p tuple_t; size_t d,o; bool is_const;
+@)const type* tuple_t; size_t d,o; bool is_const;
   bool is_local = (tuple_t=layer::lookup(tuple,d,o,is_const))!=nullptr;
   if (not is_local and
       (tuple_t=global_id_table->type_of(tuple,is_const))==nullptr)
@@ -8648,7 +8701,7 @@ case comp_trans_stat:
   expr& index=s->index;
   bool reversed=s->reversed;
   id_type op = e.comp_trans_variant->op;
-@/const_type_p aggr_t; size_t d,o; bool is_const;
+@/const type* aggr_t; size_t d,o; bool is_const;
   bool is_local = (aggr_t=layer::lookup(aggr,d,o,is_const))!=nullptr;
   if (not is_local and (aggr_t=global_id_table->type_of(aggr,is_const))==nullptr)
     report_undefined(aggr,e,"component transform");
@@ -8682,7 +8735,7 @@ be used in subsequent modules.
    subscription does not allow assignment @>=
 {
   ind = convert_expr(index,ind_t);
-@/kind=subscr_base::index_kind(*aggr_t,ind_t,comp_t);
+@/kind=subscr_base::index_kind(aggr_t->unwrap(),ind_t,comp_t);
   if (not subscr_base::assignable(kind))
   { std::ostringstream o;
     o << "Cannot assign to component of value of type " << *aggr_t @|
@@ -8690,7 +8743,6 @@ be used in subsequent modules.
       << " in transforming assignment";
     throw expr_error(e,o.str());
   }
-@)
 }
 
 @ As said above, we can only construct a |component_transform| under certain
