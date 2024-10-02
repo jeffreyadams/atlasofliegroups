@@ -415,22 +415,19 @@ until other initialisations have been done), but we defer the details.
   auto oit = force<row_value>(input_path.get())->val.begin();
   for (auto it=paths.begin(); it!=paths.end(); ++it)
     *oit++ = std::make_shared<string_value>(std::string(*it)+'/');
-@/global_id_table->add@|(ip_id
-                       ,input_path, mk_type_pattern("[string]"), false);
+@/global_id_table->add@|(ip_id, input_path, mk_type("[string]"), false);
   input_path_pointer = global_id_table->address_of(ip_id);
 @)
   own_value prelude_log = std::make_shared<row_value>(0); // start out empty
   id_type pl_id = main_hash_table->match_literal("prelude_log");
   auto& logs = force<row_value>(input_path.get())->val;
   logs.reserve(prelude_filenames.size());
-@/global_id_table->add@|(pl_id
-                       ,prelude_log, mk_type_pattern("[string]"), true);
+@/global_id_table->add@|(pl_id, prelude_log, mk_type("[string]"), true);
   prelude_log_pointer = global_id_table->address_of(pl_id);
 @)
   own_value back_trace = std::make_shared<row_value>(0); // start out empty
   id_type bt_id = main_hash_table->match_literal("back_trace");
-@/global_id_table->add@|(bt_id
-                       ,back_trace, mk_type_pattern("[string]"), false);
+@/global_id_table->add@|(bt_id, back_trace, mk_type("[string]"), false);
   back_trace_pointer = global_id_table->address_of(bt_id);
 }
 
@@ -484,7 +481,7 @@ new line of input, or abandons the program in case none can be obtained.
 
 @< Enter the main command loop @>=
 last_value = shared_value (new tuple_value(0));
-last_type = void_type.copy();
+last_type = type::wrap(void_type);
  // |last_type| is a |type_ptr| defined in \.{axis.w}
 elapsed_wrapper(eval_level::no_value); // start the stopwatch
 @)
@@ -530,11 +527,11 @@ printing of the uninteresting value.
 
 @< Analyse types, and then evaluate and print... @>=
 { expression_ptr e;
-  type_expr found_type=analyse_types(*parse_tree,e);
+  type found_type=analyse_types(*parse_tree,e);
   if (verbosity>0)
     std::cout << "Type found: " << found_type << std::endl @|
               << "Converted expression: " << *e << std::endl;
-  if (found_type==void_type)
+  if (found_type.is_void())
     e->void_eval();
   else
   { e->eval();
@@ -591,9 +588,10 @@ for (auto it=prelude_filenames.begin(); it!=prelude_filenames.end(); ++it )
     }
     else
     { try
-      { expression_ptr e; type_expr found_type=analyse_types(*parse_tree,e);
+      { expression_ptr e;
+        type found_type=analyse_types(*parse_tree,e);
         e->evaluate(eval_level::single_value);
-        if (found_type!=void_type)
+        if (not found_type.is_void())
           log_stream << "Value: " << *pop_value() << '\n';
         else
           pop_value(); // don't forget to cast away that void value
