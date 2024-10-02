@@ -800,7 +800,8 @@ type_field : type IDENT { $$.type_pt=$1; $$.ip.kind=0x1; $$.ip.name=$2; }
 
 type	: PRIMTYPE	{ $$=make_prim_type($1); }
 	| TYPE_ID
-	  { bool c; $$=acquire(global_id_table->type_of($1,c)).release(); }
+	  { bool c; // dummy for reporting "constness"
+	    $$=acquire(&global_id_table->type_of($1,c)->unwrap()).release(); }
 	| '(' union_list ')'	{ $$=make_union_type($2); }
 	| '(' union_list_opt ARROW union_list_opt ')'
 	  { $$=make_function_type(make_union_type($2),make_union_type($4)); }
