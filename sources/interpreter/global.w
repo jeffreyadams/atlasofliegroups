@@ -2617,16 +2617,48 @@ shared_builtin install_function
  (wrapper_function f,const char*name, const char* type_string,
   unsigned char hunger)
 { unsigned int var_count;
-  type_expr type = mk_type_expr(type_string,var_count);
+  type_expr tp = mk_type_expr(type_string,var_count);
   std::ostringstream print_name; print_name<<name;
-  if (type.kind()!=function_type)
+  if (tp.kind()!=function_type)
     throw logic_error
      ("Built-in with non-function type: "+print_name.str());
-  print_name << '@@' << type.func()->arg_type;
+  print_name << '@@' << tp.func()->arg_type;
+@/
+  @< If the function type |tp| matches arguments of any type,
+     install a |shared_variadic_builtin| and return a null pointer @>
   auto val = std::make_shared<builtin>(f,print_name.str(),hunger);
   global_overload_table->add
-    (main_hash_table->match_literal(name),val,std::move(type),var_count);
+    (main_hash_table->match_literal(name),val,std::move(tp),var_count);
   return val;
+}
+
+@ A few functions like |print| take arguments of any type (whence they are
+called variadic), and therefore are stored in values of type
+|builtin_value<true>|, which is distinct from |builtin| which abbreviates
+|builtin_value<false>|; the difference in type leads to slightly different
+evaluation methods when calls of these function values are built. Both types
+derive from |function_base| so that (shared) pointers to them can be stored in
+|overload_data| inside an |overload_table|. We can recognise these few functions
+by the fact that in their type the argument part is just a type variable.
+
+However |install_function| returns |shared_builtin|, not the corresponding type
+|shared_variadic_builtin|, so that we cannot handle the variadic functions in
+the same way as the ordinary ones. But we take advantage of the fact that the
+return value of |install_function| is only rarely needed, and never for variadic
+functions: we simply return a null pointer of the required type in case of
+variadic functions. The code below therefore tests the mentioned condition, and
+in case of variadic functions, installs a pointer of type
+|variadic_builtin_call| in the overload table, followed by then returning such a
+null pointer.
+
+@< If the function type |tp| matches arguments of any type... @>=
+if (tp.func()->arg_type.kind()==variable_type)
+{
+  shared_variadic_builtin val =
+    std::make_shared<builtin_value<true> >(f,print_name.str(),hunger);
+  global_overload_table->add
+    (main_hash_table->match_literal(name),val,std::move(tp),var_count);
+  return { nullptr };
 }
 
 @ Here is a variation that installs a function whose |builtin_value| stored is
