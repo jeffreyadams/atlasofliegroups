@@ -621,7 +621,9 @@ set Aq_packet (RealForm G,ComplexParabolic P) = [Param]:
   with Q a theta-stable parabolic of type S (list of simple roots). .}
 set Aq_packet(RealForm G,[int] S)=[Param]:Aq_packet(G,ComplexParabolic:(G,S))
 
+{ This axis version does not allow declaring universal list type argument
 set Aq_packet(RealForm G,[*] S)=[Param]:Aq_packet(G,[int]:S)
+}
 
 {. List all good Aq(0) (inf. char. rho) of G; this is more or less
   blocku (there may be duplications). .}
