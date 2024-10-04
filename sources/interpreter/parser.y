@@ -803,7 +803,6 @@ type	: PRIMTYPE	{ $$=make_prim_type($1); }
 	| '(' union_list_opt ARROW union_list_opt ')'
 	  { $$=make_function_type(make_union_type($2),make_union_type($4)); }
 	| '[' union_list ']'	{ $$=make_row_type(make_union_type($2)); }
-	| '[' '*' ']'	        { $$=make_row_type(new type_expr{}); }
 ;
 
 union_list_opt :   { $$=make_type_singleton(make_tuple_type(nullptr)); }
