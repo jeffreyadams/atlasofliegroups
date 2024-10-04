@@ -3782,6 +3782,7 @@ install_function(string_less_wrapper,"<","(string,string->bool)");
 install_function(string_leq_wrapper,"<=","(string,string->bool)");
 install_function(string_greater_wrapper,">","(string,string->bool)");
 install_function(string_geq_wrapper,">=","(string,string->bool)");
+@)
 install_folding_function(string_concatenate_wrapper,@|"##",
   "(string,string->string)",1);
 install_folding_function(concatenate_strings_wrapper,"##","([string]->string)");
@@ -3797,11 +3798,15 @@ by the operators `\#' and `\#\#', the main forms of which are generic (they have
 polymorphic types), but which also have special bindings for strings, rational
 vectors, vectors, matrices and virtual modules, with a similar effect.
 
-@ We start with size functions. These functions are also used for implementing
-certain loops over the corresponding types of values, so they are defined as
-exported functions (not local to our \.{global.w} module).
+@ We start with printing and size functions. These functions are also used for
+implementing certain loops over the corresponding types of values, so they are
+defined as exported functions (not local to our \.{global.w} module).
 
 @< Declarations of exported functions @>=
+void print_wrapper(eval_level l);
+void prints_wrapper(eval_level l);
+void to_string_wrapper(eval_level l);
+void error_wrapper(eval_level l);
 void sizeof_wrapper(eval_level l);
 void sizeof_vector_wrapper(eval_level l);
 void sizeof_ratvec_wrapper(eval_level l);
@@ -3810,9 +3815,88 @@ void matrix_ncols_wrapper(eval_level l);
 void K_type_pol_size_wrapper(eval_level l);
 void virtual_module_size_wrapper(eval_level l);
 
-@ The definitions are straightforward. The generic size-of wrapper is used to
-find the length of any ``row-of'' value, and the others are adapted to types
-that are primitive but which contain a value of arbitrary size.
+@ Here is an auxiliary used for several generic functions; it basically reduces
+any argument value to a string by printing it, but suppressing some elements
+like quotes and parentheses at the outer level (which normal value output would
+produce) in order to give the user full control of the string produced.
+
+@< Local function definitions @>=
+std::ostream& to_string_aux(std::ostream& o, eval_level l)
+{ shared_value v=pop_value();
+@)
+  const string_value* s=dynamic_cast<const string_value*>(v.get());
+  if (s!=nullptr)
+    o << s->val; // single string without quotes
+  else
+  { const tuple_value* t=dynamic_cast<const tuple_value*>(v.get());
+    if (t!=nullptr)
+    { for (auto it=t->val.begin(); it!=t->val.end(); ++it)
+      { s=dynamic_cast<const string_value*>(it->get());
+        if (s!=nullptr)
+	  o << s->val; // string components without quotes
+        else
+           o << *it->get(); // treat non-string tuple components as |print|
+      }
+    }
+    else
+      o << *v; // output like |print| unless string or tuple
+  }
+  return o;
+}
+
+@ The function |print| outputs any value in the format used by the interpreter
+itself. This function has an argument of unknown type; we just pass the popped
+value to the |operator<<|. The function returns its argument unchanged as
+result, which facilitates inserting |print| statements for debugging purposes.
+
+This is the first place in this file where we produce user output to a file.
+In general, rather than writing directly to |std::cout|, we shall pass via a
+pointer whose |output_stream| value is maintained in the main program, so that
+redirecting output to a different stream can be easily implemented. Since this
+is a wrapper function there is no other way to convey the output stream to be
+used than via a dedicated global variable.
+
+Sometimes the user may want to use a stripped version of the |print| output:
+no quotes in case of a string value, or no parentheses or commas in case of a
+tuple value (so that a single statement can chain several texts on the same
+line). The |prints_wrapper| does this down to the level of omitting quotes in
+individual argument strings, using dynamic casts to determine the case that
+applies. The function |to_string| provides the same functionality, but produces
+its output as a string, while |error| does so as well but then throws this
+string as message in a |runtime_error|.
+
+
+@< Global function definitions @>=
+void print_wrapper(eval_level l)
+{
+  *output_stream << *execution_stack.back() << std::endl;
+  if (l!=eval_level::single_value) // in |single_value| case we are done
+    push_expanded(l,pop_value()); // otherwise remove and possibly expand value
+}
+@)
+void prints_wrapper(eval_level l)
+{ to_string_aux(*output_stream,l) << std::endl;
+  if (l==eval_level::single_value)
+    wrap_tuple<0>(); // don't forget to return a value if asked for
+}
+@)
+void to_string_wrapper(eval_level l)
+{ std::ostringstream o;
+  to_string_aux(o,l);
+  if (l!=eval_level::no_value)
+    push_value(std::make_shared<string_value>(o.str()));
+}
+@)
+void error_wrapper(eval_level l)
+@/{@; std::ostringstream o;
+  to_string_aux(o,l);
+  throw runtime_error(o.str());
+}
+
+
+@ The other definitions are equally straightforward. The generic size-of wrapper
+is used to find the length of any ``row-of'' value, and the others are adapted
+to types that are primitive but which contain a value of arbitrary size.
 
 @< Global function definitions @>=
 void sizeof_wrapper(eval_level l)
@@ -4034,6 +4118,10 @@ void join_vector_row_wrapper(eval_level l)
 @ We must not forget to install what we have defined.
 
 @< Initialise... @>=
+install_function(print_wrapper,"print","(T->T)");
+install_function(prints_wrapper,"prints","(T->)");
+install_function(to_string_wrapper,"to_string","(T->string)");
+install_function(error_wrapper,"error","(T->X)");
 install_function(sizeof_wrapper,"#","([T]->int)");
 install_function(sizeof_string_wrapper,"#","(string->int)");
 install_function(sizeof_vector_wrapper,"#","(vec->int)");
