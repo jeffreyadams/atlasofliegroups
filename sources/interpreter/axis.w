@@ -2566,9 +2566,7 @@ replaced by fresh type variables.
 @< If |id| is a special operator like \#... @>=
 { std::ostringstream name;
   name << main_hash_table->name_of(id) << '@@' << a_priori_type;
-  if (id==size_of_name())
-    @< Recognise and return versions of `\#', or fall through @>
-  else if (id==concatenate_name() or id==protected_concatenate_name())
+  if (id==concatenate_name() or id==protected_concatenate_name())
     @< Recognise and return instances of `\#\#', or fall through @>
   else // remaining cases always match
   { const bool needs_voiding = a_priori_type.is_void() and not is_empty(args);
@@ -2652,55 +2650,6 @@ specialising to |pair_type|, this function cannot alter its argument.
 @< Local function definitions @>=
 bool is_pair_type(const type_expr& t)
 @+{@; return t.kind()==tuple_type and length(t.tuple())==2; }
-
-@ The operator `\#' can also be used as infix operator, to extend row value on
-either end by a single element. The corresponding wrapper functions will be
-defined in
-%
-section@#hash wrappers@>.
-%
-We require that one operand has row-of type, with component type equal to the
-type of the other operand (we allow no coercion of operands, as for almost all
-generic operators). We do however make an exception to the rule that operands
-with type \.{[*]} (from the expression $[\,]$, or from identifiers
-that have been initialised with that expression) will not match in overloading:
-for the operator `\#', we allow such an operand if a valid match can be found
-using the type of the other operand.
-
-This allow for a few ambiguous cases, when both operands have row type,
-but these are quite rare. We resolve the ambiguity by stipulating that suffix
-is preferred over prefix when both can apply. This implies that for instance
-$[[2]]\#[\,]$ will give as result $[[2],[\,]]$, while $[\,]\#[[2]]$ will give
-$[[[2]]]$.
-
-@< Recognise and return versions of `\#'... @>=
-{ if (a_priori_type.kind()==row_type)
-  { expression_ptr call(new builtin_call @|
-      (sizeof_row_builtin,name.str(),std::move(arg_vector[0]),e.loc));
-    return conform_types(int_type,tp,std::move(call),e);
-  }
-  else if (is_pair_type(a_priori_type.unwrap()))
-  {
-    const type_expr& ap_tp0 = a_priori_type.tuple()->contents;
-    const type_expr& ap_tp1 = a_priori_type.tuple()->next->contents;
-    if (ap_tp0.kind()==row_type and
-        ap_tp0.component_type().specialise(ap_tp1)) // suffix case
-    { expression_ptr arg = n_args==1 ? std::move(arg_vector[0])
-                                     : expression_ptr(std::move(tup_exp));
-      expression_ptr call(new @| builtin_call
-        (suffix_elt_builtin,std::move(arg),e.loc));
-      return conform_types(ap_tp0,tp,std::move(call),e);
-    }
-    if (ap_tp1.kind()==row_type and
-        ap_tp1.component_type().specialise(ap_tp0)) // prefix case
-    { expression_ptr arg =  n_args==1 ? std::move(arg_vector[0])
-                                      : expression_ptr(std::move(tup_exp));
-      expression_ptr call(new @| builtin_call
-        (prefix_elt_builtin,std::move(arg),e.loc));
-      return conform_types(ap_tp1,tp,std::move(call),e);
-    }
-  }
-}
 
 @ For `\#\#' we have instances concatenating all elements of a row of rows,
 and another concatenating two rows of the same type.
@@ -9058,54 +9007,10 @@ void error_wrapper(eval_level l)
 }
 
 
-@ The generic size-of wrapper is used to find the length of any ``row-of''
-value. Finding sizes of other objects like vectors, matrices, polynomials,
-will require more specialised unary overloads of the `\#' operator.
+@ The |join_rows_wrapper| function does not attempt to gain any ownership and
+just builds a fresh value.
 
 @< Local function definitions @>=
-void sizeof_wrapper(eval_level l)
-{ size_t s=get<row_value>()->val.size();
-  if (l!=eval_level::no_value)
-    push_value(std::make_shared<int_value>(s));
-}
-
-
-@ Here are functions for adding individual elements to a row value, and for
-joining two such values. The function |suffix_element_wrapper| can run in
-amortised constant time if obtaining ownership of the argument can be done
-without copying (the |push_back| method of |std::vector| only needs to
-reallocate occasionally), which allows repeated extension of a row-value
-variable using the \.{\#:=} combined operator to be relatively efficient (this is
-true only because of the optimisation that now allows the variable to be emptied
-when its old value is fetched; it used to be that sharing of the pointer with
-that variable meant that obtaining ownership required copying. By contrast,
-while |prefix_element_wrapper| also modifies its argument (in this case the
-second) in-place, it still requires time linear in the size of that argument
-since the |insert| method of |std::vector| needs to move all old entries, so the
-gain in efficiency is limited here, if positive at all. The |join_rows_wrapper|
-function does not attempt to gain any ownership and just builds a fresh value.
-
-@:hash wrappers@>
-
-@< Local function definitions @>=
-void suffix_element_wrapper(eval_level l)
-{ shared_value e=pop_value();
-  own_row r=get_own<row_value>();
-  if (l!=eval_level::no_value)
-  {@; r->val.push_back(std::move(e));
-    push_value(std::move(r));
-  }
-}
-@)
-void prefix_element_wrapper(eval_level l)
-{ own_row r=get_own<row_value>();
-  shared_value e=pop_value();
-  if (l!=eval_level::no_value)
-  {@; r->val.insert(r->val.begin(),e);
-    push_value(std::move(r));
-  }
-}
-@)
 void join_rows_wrapper(eval_level l)
 { shared_row second=get<row_value>();
   shared_row first=get<row_value>();

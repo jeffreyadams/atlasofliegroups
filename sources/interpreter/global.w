@@ -3770,6 +3770,7 @@ certain loops over the corresponding types of values, so they are defined as
 exported functions (not local to our \.{global.w} module).
 
 @< Declarations of exported functions @>=
+void sizeof_wrapper(eval_level l);
 void sizeof_vector_wrapper(eval_level l);
 void sizeof_ratvec_wrapper(eval_level l);
 void sizeof_string_wrapper(eval_level l);
@@ -3782,6 +3783,12 @@ find the length of any ``row-of'' value, and the others are adapted to types
 that are primitive but which contain a value of arbitrary size.
 
 @< Global function definitions @>=
+void sizeof_wrapper(eval_level l)
+{ size_t s=get<row_value>()->val.size();
+  if (l!=eval_level::no_value)
+    push_value(std::make_shared<int_value>(s));
+}
+@)
 void sizeof_string_wrapper(eval_level l)
 { auto s=get<string_value>()->val.size();
   if (l!=eval_level::no_value)
@@ -3854,6 +3861,47 @@ void matrix_column_wrapper(eval_level l)
     push_value(std::make_shared<vector_value>(m->val.column(j)));
 }
 
+
+@ Now come functions for adding individual elements to a row value, and for
+joining two such values. Some of them are accessed directly in the \.{axis}
+module, so must be declared and defined globally.
+
+@< Declarations of exported functions @>=
+void suffix_element_wrapper(eval_level l);
+void prefix_element_wrapper(eval_level l);
+
+@ The function |suffix_element_wrapper| can run in amortised constant time if
+obtaining ownership of the argument can be done without copying (the |push_back|
+method of |std::vector| only needs to reallocate occasionally), which allows
+repeated extension of a row-value variable using the \.{\#:=} combined operator
+to be relatively efficient (this is true only because of the optimisation that
+now allows the variable to be emptied when its old value is fetched; it used to
+be that sharing of the pointer with that variable meant that obtaining ownership
+required copying. By contrast, while |prefix_element_wrapper| also modifies its
+argument (in this case the second) in-place, it still requires time linear in
+the size of that argument since the |insert| method of |std::vector| needs to
+move all old entries, so the gain in efficiency is limited here, if positive at
+all.
+
+@< Global function definitions @>=
+void suffix_element_wrapper(eval_level l)
+{ shared_value e=pop_value();
+  own_row r=get_own<row_value>();
+  if (l!=eval_level::no_value)
+  {@; r->val.push_back(std::move(e));
+    push_value(std::move(r));
+  }
+}
+@)
+void prefix_element_wrapper(eval_level l)
+{ own_row r=get_own<row_value>();
+  shared_value e=pop_value();
+  if (l!=eval_level::no_value)
+  {@; r->val.insert(r->val.begin(),e);
+    push_value(std::move(r));
+  }
+}
+
 @ Here are functions for extending vectors one or many elements at a time. Like
 their generic counterparts for row values, the suffix and prefix wrappers get
 ownership of they argument, which they modify in place. The effect of this on
@@ -3910,6 +3958,21 @@ void join_vector_row_wrapper(eval_level l)
   push_value(std::make_shared<vector_value>(std::move(result)));
 }
 
+@ We must not forget to install what we have defined.
+
+@< Initialise... @>=
+install_function(sizeof_wrapper,"#","([T]->int)");
+install_function(sizeof_string_wrapper,"#","(string->int)");
+install_function(sizeof_vector_wrapper,"#","(vec->int)");
+install_function(sizeof_ratvec_wrapper,"#","(ratvec->int)");
+install_function(matrix_ncols_wrapper,"#","(mat->int)");
+install_function(suffix_element_wrapper,"#","([T],T->[T])",1);
+install_function(prefix_element_wrapper,"#","(T,[T]->[T])",2);
+install_function(vector_suffix_wrapper,"#","(vec,int->vec)",1);
+install_function(vector_prefix_wrapper,"#","(int,vec->vec)",2);
+install_folding_function(join_vectors_wrapper,"##","(vec,vec->vec)",1);
+install_folding_function(join_vector_row_wrapper,"##","([vec]->vec)");
+install_function(matrix_shape_wrapper,"shape","(mat->int,int)");
 
 @*1 Vectors and matrices.
 %
@@ -4533,15 +4596,6 @@ void rvm_prod_wrapper(eval_level l)
 @ We must not forget to install what we have defined.
 
 @< Initialise... @>=
-install_function(sizeof_string_wrapper,"#","(string->int)");
-install_function(sizeof_vector_wrapper,"#","(vec->int)");
-install_function(sizeof_ratvec_wrapper,"#","(ratvec->int)");
-install_function(matrix_ncols_wrapper,"#","(mat->int)");
-install_function(vector_suffix_wrapper,"#","(vec,int->vec)",1);
-install_function(vector_prefix_wrapper,"#","(int,vec->vec)",2);
-install_folding_function(join_vectors_wrapper,"##","(vec,vec->vec)",1);
-install_folding_function(join_vector_row_wrapper,"##","([vec]->vec)");
-install_function(matrix_shape_wrapper,"shape","(mat->int,int)");
 install_function(matrix_row_wrapper,"row","(mat,int->vec)");
 install_function(matrix_column_wrapper,"column","(mat,int->vec)");
 install_function(rows_wrapper,"rows","(mat->[vec])");
