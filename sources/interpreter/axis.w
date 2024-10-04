@@ -1566,8 +1566,6 @@ expression_ptr resolve_overload
   @< Try to find an element of |variants| whose |arg_type| exactly matches
      |a_priori_type|, and for it |return| a corresponding call with argument
      from |tup_exp| @>
-  @< If |id| is a special operator like \# and it matches
-     |a_priori_type|, |return| a call |id(args)| @>
 @) // no exact match; retry all cases for an inexact match
   @< Try to find an element of |variants| whose |arg_type| matches
      |a_priori_type| after inserting implicit type conversions, and for
@@ -1898,7 +1896,6 @@ id_type error_name()
 inline bool is_special_operator(id_type id)
 { return id==size_of_name()
     @|  or id==concatenate_name()
-    @|  or id==print_name()
     @|  or id==to_string_name()
     @|  or id==prints_name()
     @|  or id==error_name(); }
@@ -2178,22 +2175,6 @@ template <bool variadic>
 @)
 typedef overloaded_builtin_call<false> builtin_call;
 typedef overloaded_builtin_call<true> variadic_builtin_call;
-
-@ The following function builds a |variadic_builtin_call|, ensuring that the
-argument is wrapped up in a |voiding| if |needs_voiding| holds. This Boolean
-will be set to hold in the (rare) case that the argument type is |void| but
-the argument expression is not just ``()''.
-
-@< Local fun... @>=
-expression_ptr make_variadic_call
-  (const shared_variadic_builtin& f
-  ,const std::string& name
-  ,expression_ptr&& a, bool needs_voiding
-  ,const source_location& loc)
-{ if (needs_voiding)
-    a.reset(new voiding(std::move(a))); // wrap argument in voiding
-  return expression_ptr(new variadic_builtin_call(f,name,std::move(a),loc));
-}
 
 @ A |builtin_value| can turn itself into an |overloaded_builtin_call| when
 provided with a shared pointer |master| to itself, an argument expression, a
@@ -2532,117 +2513,6 @@ table.
       return resolve_overload(e,tp,variants);
   }
 }
-
-@ Here is how, inside |resolve_overload|, we match special operators with generic
-argument type patterns; they have an identifier~|id| that satisfies the
-predicate |is_special_operator|, which leads to reaching the current code.
-Rather than from the |global_overload_table|, the built-in function objects that
-are inserted into the calls come from a collection of static variables whose
-name ends with |_builtin|, and which are initialised in a module given later,
-using calls to |std::make_shared| so that they refer to unique shared instances.
-
-Since these functions accept arguments of all types (or in some cases many
-different ones), no implicit conversions are applied to their argument(s), with
-the exception of |print| which (unlike |prints|) returns it argument unchanged,
-and for which any non-voiding conversion imposed by the context will be applied
-(exceptionally, and for practical reasons explained below) to the argument
-before |print| acts. In the case of |prints|, the context must either expect or
-accept a |void| type, which is the condition that the call
-|tp.specialise(void_type)| below tests. For |to_string| the context must
-similarly either expect or accept a |string| type. The case of |error| is like
-|prints| for its arguments, but will not return, so nothing at all is demanded
-of the context type, like in the case of \&{die}.
-
-Most, if not all, of this special code should disappear once second order types
-are fully in place. For the moment the code is just adapted to the fact that
-|a_priori_type| is now a |type| where undetermined subexpressions have been
-replaced by fresh type variables.
-
-@< If |id| is a special operator like \#... @>=
-{ std::ostringstream name;
-  name << main_hash_table->name_of(id) << '@@' << a_priori_type;
-  { // cases that always match
-    const bool needs_voiding = a_priori_type.is_void() and not is_empty(args);
-    if (id==print_name())
-    { auto arg = n_args==1 ? std::move(arg_vector[0])
-                           : expression_ptr(std::move(tup_exp));
-      @< Ensure any non-voiding coercion is applied before rather than after
-         |print| @>
-      return make_variadic_call
-        (print_builtin,name.str(),std::move(arg),needs_voiding,e.loc);
-    }
-    else if(id==to_string_name())
-    { auto arg =
-        n_args==1 ? std::move(arg_vector[0]) : expression_ptr(std::move(tup_exp));
-      expression_ptr call = make_variadic_call
-        (to_string_builtin,name.str(),std::move(arg),needs_voiding,e.loc);
-      return conform_types(str_type,tp,std::move(call),e);
-    }
-    else if(id==prints_name())
-    { auto arg =
-        n_args==1 ? std::move(arg_vector[0]) : expression_ptr(std::move(tup_exp));
-      expression_ptr call = make_variadic_call
-       (prints_builtin,name.str(),std::move(arg),needs_voiding,e.loc);
-      return conform_types(void_type,tp,std::move(call),e);
-      // check that |type==void_type|
-    }
-    else if(id==error_name()) // this always matches as well
-    { auto arg =
-        n_args==1 ? std::move(arg_vector[0]) : expression_ptr(std::move(tup_exp));
-      return make_variadic_call
-        (error_builtin,name.str(),std::move(arg),needs_voiding,e.loc);
-    }
-  }
-}
-
-@ As mentioned above, any non-voiding implicit conversions the context of a call
-of |print| requires will by applied in the argument before |print| acts. Having
-|print| return its argument unchanged This is done to facilitate inserting
-|print| calls at subexpressions into a program for debugging purposes, and the
-value printed will be that of the subexpression seen in the program, with any
-implicit conversions applied. So we treat the argument of |print| as if it we
-directly in the context of the call to |print| (unless that is a void context).
-If that type differs from the |a_priori_type| we deduced for the argument, we
-must therefor re-convert the argument in a |tp| context; it is because this
-re-conversion is sometimes necessary when |print| is absent, that we wish to not
-have the presence of |print| block this possibility. It is still theoretically
-possible that inserting a call to print into valid code results in an error,
-namely for argument expressions that fail to produce an \foreign{a priori} type
-at all in the initial conversion (done without the |tp| context); in such
-cases an error will have been reported even before we even get to the code
-below, so there is little we can do about it here. These cases are quite rare
-though, and can be overcome by inserting a cast inside the |print|.
-
-In the code below, |args| refers to the |expr| that holds the unconverted
-argument expression, introduced at the beginning of |resolve_overload| all the
-way back in section@#resolve_overload@>. Since, having recognised a call of
-print, we are basically throwing away the work done before and redoing it as if
-that call were absent, it might seem wasteful to not have made this decision at
-the start of |resolve_overload| instead, which would avoid having to redo
-anything here. But we cannot do so, because we allow defining non-generic
-instances of |print|, which if they match the argument type, without coercion,
-should be used in priority to the generic instance; if an externally required
-conversion crept into the argument before attempting to match the correct
-instance of |print|, it could prevent such in instance from being found when it
-should. It must be admitted though that we are dealing with quite subtle and
-unlikely scenarios here, and it might be preferable to simplify the rules around
-|print| rather than to use the current system for the sake of the principle of
-least astonishment.
-
-@< Ensure any non-voiding coercion is applied before rather than
-   after |print| @>=
-if (tp!=void_type and not tp.specialise(a_priori_type.unwrap()))
-{
-  arg = convert_expr(args,tp); // redo conversion, now in |tp| context
-  name.str(""); name << "print@@" << tp; // correct type in |name|
-}
-
-@ We shall use the following simple type predicate above. Contrary to
-specialising to |pair_type|, this function cannot alter its argument.
-
-@< Local function definitions @>=
-bool is_pair_type(const type_expr& t)
-@+{@; return t.kind()==tuple_type and length(t.tuple())==2; }
 
 @*1 Support for constant folding.
 %
@@ -6918,6 +6788,13 @@ slightly more complicated.
        or fall through if none applies @>
 }
 
+@ We shall use the following simple type predicate below. Contrary to
+specialising to |pair_type|, this function cannot alter its argument.
+
+@< Local function definitions @>=
+bool is_pair_type(const type_expr& t)
+@+{@; return t.kind()==tuple_type and length(t.tuple())==2; }
+
 @ For the \.\# operator, we select from four possible variants that deliver
 different wrapper functions. We signal an error if we found a match but the
 type of the resulting operator does not match the type required by the
@@ -8905,78 +8782,6 @@ static shared_builtin join_rows_row_builtin =
     (join_rows_row_wrapper,"##@@([[T]])",0);
 static shared_builtin boolean_negate_builtin =
   std::make_shared<const builtin>(bool_not_wrapper,"not@@bool",0);
-
-@ The function |print| outputs any value in the format used by the interpreter
-itself. This function has an argument of unknown type; we just pass the popped
-value to the |operator<<|. The function returns its argument unchanged as
-result, which facilitates inserting |print| statements for debugging purposes.
-
-This is the first place in this file where we produce user output to a file.
-In general, rather than writing directly to |std::cout|, we shall pass via a
-pointer whose |output_stream| value is maintained in the main program, so that
-redirecting output to a different stream can be easily implemented. Since this
-is a wrapper function there is no other way to convey the output stream to be
-used than via a dedicated global variable.
-
-@< Local function definitions @>=
-void print_wrapper(eval_level l)
-{
-  *output_stream << *execution_stack.back() << std::endl;
-  if (l!=eval_level::single_value) // in |single_value| case we are done
-    push_expanded(l,pop_value()); // otherwise remove and possibly expand value
-}
-
-@ Sometimes the user may want to use a stripped version of the |print| output:
-no quotes in case of a string value, or no parentheses or commas in case of a
-tuple value (so that a single statement can chain several texts on the same
-line). The |prints_wrapper| does this down to the level of omitting quotes in
-individual argument strings, using dynamic casts to determine the case that
-applies. The function |error| does the same, but collects the output into a
-string which it then throws as |runtime_error|.
-
-@< Local function definitions @>=
-std::ostream& to_string_aux(std::ostream& o, eval_level l)
-{ shared_value v=pop_value();
-@)
-  const string_value* s=dynamic_cast<const string_value*>(v.get());
-  if (s!=nullptr)
-    o << s->val; // single string without quotes
-  else
-  { const tuple_value* t=dynamic_cast<const tuple_value*>(v.get());
-    if (t!=nullptr)
-    { for (auto it=t->val.begin(); it!=t->val.end(); ++it)
-      { s=dynamic_cast<const string_value*>(it->get());
-        if (s!=nullptr)
-	  o << s->val; // string components without quotes
-        else
-           o << *it->get(); // treat non-string tuple components as |print|
-      }
-    }
-    else
-      o << *v; // output like |print| unless string or tuple
-  }
-  return o;
-}
-
-void to_string_wrapper(eval_level l)
-{ std::ostringstream o;
-  to_string_aux(o,l);
-  if (l!=eval_level::no_value)
-    push_value(std::make_shared<string_value>(o.str()));
-}
-
-void prints_wrapper(eval_level l)
-{ to_string_aux(*output_stream,l) << std::endl;
-  if (l==eval_level::single_value)
-    wrap_tuple<0>(); // don't forget to return a value if asked for
-}
-
-void error_wrapper(eval_level l)
-@/{@; std::ostringstream o;
-  to_string_aux(o,l);
-  throw runtime_error(o.str());
-}
-
 
 @ Finally we define the Boolean negation wrapper function.
 @< Local function definitions @>=
