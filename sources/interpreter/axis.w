@@ -1882,10 +1882,6 @@ id_type concatenate_name()
 {@; static id_type name=main_hash_table->match_literal("##");
   return name;
 }
-id_type protected_concatenate_name()
-{@; static id_type name=main_hash_table->match_literal("## ");
-  return name;
-}
 id_type print_name()
 {@; static id_type name=main_hash_table->match_literal("print");
   return name;
@@ -1906,7 +1902,6 @@ id_type error_name()
 inline bool is_special_operator(id_type id)
 { return id==size_of_name()
     @|  or id==concatenate_name()
-    @|  or id==protected_concatenate_name()
     @|  or id==print_name()
     @|  or id==to_string_name()
     @|  or id==prints_name()
@@ -2570,10 +2565,8 @@ replaced by fresh type variables.
 @< If |id| is a special operator like \#... @>=
 { std::ostringstream name;
   name << main_hash_table->name_of(id) << '@@' << a_priori_type;
-  if (id==concatenate_name() or id==protected_concatenate_name())
-    @< Recognise and return instances of `\#\#', or fall through @>
-  else // remaining cases always match
-  { const bool needs_voiding = a_priori_type.is_void() and not is_empty(args);
+  { // cases that always match
+    const bool needs_voiding = a_priori_type.is_void() and not is_empty(args);
     if (id==print_name())
     { auto arg = n_args==1 ? std::move(arg_vector[0])
                            : expression_ptr(std::move(tup_exp));
@@ -2654,28 +2647,6 @@ specialising to |pair_type|, this function cannot alter its argument.
 @< Local function definitions @>=
 bool is_pair_type(const type_expr& t)
 @+{@; return t.kind()==tuple_type and length(t.tuple())==2; }
-
-@ For `\#\#' we have instances concatenating all elements of a row of rows,
-and another concatenating two rows of the same type.
-
-@< Recognise and return instances of `\#\#'... @>=
-{ if (a_priori_type.kind()==row_type and
-      a_priori_type.component_type().kind()==row_type)
-  { expression_ptr call(new @|
-      builtin_call(join_rows_row_builtin,std::move(arg_vector[0]),e.loc));
-    return conform_types(a_priori_type.component_type(),tp,std::move(call),e);
-  }
-  if (is_pair_type(a_priori_type.unwrap()) and
-    @|a_priori_type.tuple()->contents==a_priori_type.tuple()->next->contents and
-    @|a_priori_type.tuple()->contents.kind()==row_type)
-  { expression_ptr arg =
-        n_args==1 ? std::move(arg_vector[0]) : expression_ptr(std::move(tup_exp));
-    expression_ptr call(new @| builtin_call
-        (join_rows_builtin,std::move(arg),e.loc));
-    return conform_types
-         (a_priori_type.tuple()->contents,tp,std::move(call),e);
-  }
-}
 
 @*1 Support for constant folding.
 %
@@ -9010,43 +8981,6 @@ void error_wrapper(eval_level l)
   throw runtime_error(o.str());
 }
 
-
-@ The |join_rows_wrapper| function does not attempt to gain any ownership and
-just builds a fresh value.
-
-@< Local function definitions @>=
-void join_rows_wrapper(eval_level l)
-{ shared_row second=get<row_value>();
-  shared_row first=get<row_value>();
-  if (l==eval_level::no_value)
-    return;
-  const auto& x=first->val;
-  const auto& y=second->val;
-  own_row result = std::make_shared<row_value>(x.size()+y.size());
-@/std::copy(y.begin(),y.end(),
-      @+ std::copy(x.begin(),x.end(),result->val.begin()) @+ );
-@/push_value(std::move(result));
-}
-
-@)
-void join_rows_row_wrapper(eval_level l)
-{ shared_row arg=get<row_value>();
-  if (l==eval_level::no_value)
-    return;
-  const std::vector<shared_value>& x=arg->val;
-  std::vector< const std::vector<shared_value>*> p; p.reserve(x.size());
-  for (auto it=x.cbegin(); it!=x.cend(); ++it)
-    p.push_back(&force<row_value>(it->get())->val);
-  size_t s=0;
-  for (auto it=p.cbegin(); it!=p.cend(); ++it)
-    s+=(*it)->size();
-  own_row result = std::make_shared<row_value>(s);
-  auto dst=result->val.begin();
-  for (auto it=p.cbegin(); it!=p.cend(); ++it)
-    dst=std::copy((*it)->cbegin(),(*it)->cend(),dst);
-  assert(dst==result->val.end());
-@/push_value(std::move(result));
-}
 
 @ Finally we define the Boolean negation wrapper function.
 @< Local function definitions @>=

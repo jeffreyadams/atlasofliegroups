@@ -3869,6 +3869,8 @@ module, so must be declared and defined globally.
 @< Declarations of exported functions @>=
 void suffix_element_wrapper(eval_level l);
 void prefix_element_wrapper(eval_level l);
+void join_rows_wrapper(eval_level l);
+void join_rows_row_wrapper(eval_level l);
 
 @ The function |suffix_element_wrapper| can run in amortised constant time if
 obtaining ownership of the argument can be done without copying (the |push_back|
@@ -3901,6 +3903,45 @@ void prefix_element_wrapper(eval_level l)
     push_value(std::move(r));
   }
 }
+
+@ The |join_rows_wrapper| function does not attempt to gain any ownership and
+just builds a fresh value.
+
+@< Global function definitions @>=
+
+void join_rows_wrapper(eval_level l)
+{ shared_row second=get<row_value>();
+  shared_row first=get<row_value>();
+  if (l==eval_level::no_value)
+    return;
+  const auto& x=first->val;
+  const auto& y=second->val;
+  own_row result = std::make_shared<row_value>(x.size()+y.size());
+@/std::copy(y.begin(),y.end(),
+      @+ std::copy(x.begin(),x.end(),result->val.begin()) @+ );
+@/push_value(std::move(result));
+}
+
+@)
+void join_rows_row_wrapper(eval_level l)
+{ shared_row arg=get<row_value>();
+  if (l==eval_level::no_value)
+    return;
+  const std::vector<shared_value>& x=arg->val;
+  std::vector< const std::vector<shared_value>*> p; p.reserve(x.size());
+  for (auto it=x.cbegin(); it!=x.cend(); ++it)
+    p.push_back(&force<row_value>(it->get())->val);
+  size_t s=0;
+  for (auto it=p.cbegin(); it!=p.cend(); ++it)
+    s+=(*it)->size();
+  own_row result = std::make_shared<row_value>(s);
+  auto dst=result->val.begin();
+  for (auto it=p.cbegin(); it!=p.cend(); ++it)
+    dst=std::copy((*it)->cbegin(),(*it)->cend(),dst);
+  assert(dst==result->val.end());
+@/push_value(std::move(result));
+}
+
 
 @ Here are functions for extending vectors one or many elements at a time. Like
 their generic counterparts for row values, the suffix and prefix wrappers get
@@ -3970,6 +4011,10 @@ install_function(suffix_element_wrapper,"#","([T],T->[T])",1);
 install_function(prefix_element_wrapper,"#","(T,[T]->[T])",2);
 install_function(vector_suffix_wrapper,"#","(vec,int->vec)",1);
 install_function(vector_prefix_wrapper,"#","(int,vec->vec)",2);
+
+install_function(join_rows_wrapper,"##","([T],[T]->[T])");
+install_function(join_rows_row_wrapper,"##","([[T]]->[T])");
+install_function(join_rows_row_wrapper,"## ","([[T]]->[T])");
 install_folding_function(join_vectors_wrapper,"##","(vec,vec->vec)",1);
 install_folding_function(join_vector_row_wrapper,"##","([vec]->vec)");
 install_function(matrix_shape_wrapper,"shape","(mat->int,int)");
