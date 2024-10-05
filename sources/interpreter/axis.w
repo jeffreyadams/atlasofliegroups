@@ -1565,7 +1565,6 @@ expression_ptr resolve_overload
      if more than one arguments are all constant expressions @>
 @)
   id_type id =  e.call_variant->fun.identifier_variant;
-  expression_ptr arg; // will hold the final converted argument expression
   a_priori_type.expunge(); // make sure any type assignments are baked in
   @< Try to find an element of |variants| whose |arg_type| exactly matches
      |a_priori_type|, and for it |return| a corresponding call with argument
@@ -1622,7 +1621,12 @@ we set the variable to |false| in that case.
 
 @ It may be that more than one variant can produce a match, in which case we
 always prefer an exact match if there is one. Also, an exact match should be the
-unique such match, but that policy is not yet enforced in the code below.
+unique such match, which the code below detects and refuses at the second exact
+match.
+
+Whenever an argument matches, be it exact of inexact, |conform_types| will be
+called for the variant result type and the expected |tp|; this may throw an
+error, also aborting the matching process.
 
 @< Try to find an element of |variants| whose |arg_type| exactly matches...@>=
 {
@@ -1633,30 +1637,18 @@ unique such match, but that policy is not yet enforced in the code below.
     if (a_priori_type.matches
          (variant.f_tp().arg_type,variant.poly_degree())) // exact match
     {
-      type_expr arg_type =
-        substitution(variant.f_tp().arg_type,a_priori_type.assign());
+      const type_expr& arg_type = a_priori_type.unwrap();
+        // actual argument type
       const type_expr res_type =
         substitution(variant.f_tp().result_type,a_priori_type.assign());
-      arg = n_args==1 ? std::move(arg_vector[0])
-		      : expression_ptr(std::move(tup_exp));
-     {
-       if (result!=nullptr)
-         @< Throw error reporting ambiguous exact match @>
-       @< Refuse to compile an equality test whose result is then voided @>
-     @) // now select unique component or consolidate tuple
-       std::ostringstream name;
-       name << main_hash_table->name_of(id) << '@@' << arg_type;
-     @)
-       if (arg_type==void_type)
-     @/{@; if (not is_empty(args))
-           arg.reset(new voiding(std::move(arg)));
-       }
-       else if (is_constant)
-         make_row_denotation<false>(arg); // wrap tuple inside a denotation
-       auto call = variant.value()->build_call
-                (variant.value(),name.str(),std::move(arg),e.loc);
-       result = conform_types(res_type,tp,std::move(call),e);
-     }
+     if (result!=nullptr)
+       @< Throw error reporting ambiguous exact match @>
+     expression_ptr arg = n_args==1 ? std::move(arg_vector[0])
+			: expression_ptr(std::move(tup_exp));
+     expression_ptr call;
+@/   @< Assign to |call| a converted call expression of the function value
+       |variant.value()| with argument |arg| @>
+     result = conform_types(res_type,tp,std::move(call),e);
 @/// |res_type| is recorded in |tp|, and |arg_type| has served and is forgotten
     }
     a_priori_type.clear(apt_deg);
@@ -1670,6 +1662,77 @@ unique such match, but that policy is not yet enforced in the code below.
 @ It would be better here to list the matching types.
 @< Throw error reporting ambiguous exact match @>=
   throw expr_error(e,"Ambiguous argument in function call");
+
+@ We shall compare frequently for the `\.=' operator name, so it pays to look up
+its identifier code once and for all.
+
+@h "lexer.h" // for |main_hash_table|
+
+@< Local function definitions @>=
+id_type equals_name()
+{@; static id_type name=main_hash_table->match_literal("=");
+  return name;
+}
+
+@ Having found a match (exact or inexact; the code below is included twice), and
+having converted the argument expression to |arg|, we need to construct a
+function call object. The overload table contains an already evaluated function
+value~|variant.value()|, which is has type |shared_function|, more specific than
+|shared_value| as it points to a value that represents a function object. Such
+values can either hold a built-in function, or a user-defined function together
+with its evaluation context, and we shall add to the list of possibilities
+later. Each type has a corresponding specialised function call type, and we
+shall provide a virtual method |function_base::build_call| that binds an
+argument expression to the function object to form a complete call; this renders
+the expression-building part of code below particularly simple. One noteworthy
+point is that |build_call| may need to store a shared pointer back to the
+|function_base| derived object that created it, and we therefore pass the shared
+pointer |variant.value()| that gave us access to the |function_base| as first
+argument to its |build_call| virtual method. The underlying raw pointer equals
+|this| of that object, but we need a |std::shared_ptr| so that we also transfer
+shared ownership.
+
+As a special safety measure against the easily made error of writing `\.='
+instead of an assignment operator~`\.{:=}', we forbid converting to void the
+result of an (always overloaded) call to the equality operator, treating this
+case as a type error instead. In the unlikely case that the user defines an
+overloaded instance of `\.=' with void result type, calls to this operator
+will still be accepted.
+
+This is one of the places where we might have to insert a |voiding|, in the rare
+case that a function with void argument type is called with a nonempty argument
+expression of void type. An alternative solution would be to replace such a call
+by a sequence expression, evaluating the argument expression separately and then
+the function call with an empty argument expression. In any case the
+test \emph{can} be made here, since we have the argument type in the variable
+|arg_type|, and the argument expression in |args|.
+
+@< Assign to |call| a converted call expression of the function value
+   |variant.value()|... @>=
+{ if (tp==void_type and
+      id==equals_name() and
+      res_type!=void_type)
+  { std::ostringstream o;
+    o << "Use of equality operator '=' in void context; " @|
+      << "did you mean ':=' instead?\n  If you really want " @|
+      << "the result of '=' to be voided, use a cast to " @|
+      << variant.f_tp().result_type << '.';
+    throw expr_error(e,o.str());
+  }
+@)
+  // now select unique component or consolidate tuple
+  std::ostringstream name;
+  name << main_hash_table->name_of(id) << '@@' << arg_type;
+@)
+  if (arg_type==void_type)
+@/{@; if (not is_empty(args))
+      arg.reset(new voiding(std::move(arg)));
+  }
+  else if (is_constant)
+    make_row_denotation<false>(arg); // wrap tuple inside a denotation
+  call = variant.value()->build_call
+           (variant.value(),name.str(),std::move(arg),e.loc);
+}
 
 @ Inexact matches are only considered for variants with a completely specific
 type; moreover, when left with a choice among several inexact matches, we prefer
@@ -1692,92 +1755,17 @@ for (const auto& variant : variants)
       (is_close(a_priori_type.unwrap(),variant.f_tp().arg_type)&0x1)!=0)
     // inexact match
   { const type_expr& arg_type = variant.f_tp().arg_type;
+    expression_ptr arg; // will hold the final converted argument expression
     @< Apply an implicit conversion for every argument whose type in
        |a_priori_type| differs from that required in |arg_type|, then assign
        converted expression to |arg| @>
     const type_expr& res_type = variant.f_tp().result_type;
-    @< Construct and |return| a call of the function value
-       |variant.value()|... @>
+    expression_ptr call;
+@/  @< Assign to |call| a converted call expression of the function value
+       |variant.value()| with argument |arg| @>
+    return conform_types(res_type,tp,std::move(call),e);
   }
 
-
-@ Having found a match (exact or inexact; the code below is included twice), and
-having converted the argument expression to |arg|, we need to construct a
-function call object. The overload table contains an already evaluated function
-value~|variant.value()|, which is has type |shared_function|, more specific than
-|shared_value| as it points to a value that represents a function object. Such
-values can either hold a built-in function, or a user-defined function together
-with its evaluation context, and we shall add to the list of possibilities
-later. Each type has a corresponding specialised function call type, and we
-shall provide a virtual method |function_base::build_call| that binds an
-argument expression to the function object to form a complete call; this renders
-the expression-building part of code below particularly simple. One noteworthy
-point is that |build_call| may need to store a shared pointer back to the
-|function_base| derived object that created it, and we therefore pass the shared
-pointer |variant.value()| that gave us access to the |function_base| as first
-argument to its |build_call| virtual method. The underlying raw pointer equals
-|this| of that object, but we need a |std::shared_ptr| so that we also transfer
-shared ownership.
-
-This is one of the places where we might have to insert a |voiding|, in the rare
-case that a function with void argument type is called with a nonempty argument
-expression of void type. An alternative solution would be to replace such a call
-by a sequence expression, evaluating the argument expression separately and then
-the function call with an empty argument expression. In any case the
-test \emph{can} be made here, since we have the argument type in the variable
-|arg_type|, and the argument expression in |args|.
-
-Whenever an argument matches, with or without coercions, |conform_types| is
-called for the variant result type and the expected |tp|; this may throw an
-error, also aborting the matching process.
-
-@< Construct and |return| a call of the function value |variant.value()|... @>=
-{ @< Refuse to compile an equality test whose result is then voided @>
-@) // now select unique component or consolidate tuple
-  std::ostringstream name;
-  name << main_hash_table->name_of(id) << '@@' << arg_type;
-@)
-  if (arg_type==void_type)
-@/{@; if (not is_empty(args))
-      arg.reset(new voiding(std::move(arg)));
-  }
-  else if (is_constant)
-    make_row_denotation<false>(arg); // wrap tuple inside a denotation
-  auto call = variant.value()->build_call
-           (variant.value(),name.str(),std::move(arg),e.loc);
-  return conform_types(res_type,tp,std::move(call),e);
-}
-
-@ We shall compare frequently for the `\.=' operator name, so it pays to look up
-its identifier code once and for all.
-
-@h "lexer.h" // for |main_hash_table|
-
-@< Local function definitions @>=
-id_type equals_name()
-{@; static id_type name=main_hash_table->match_literal("=");
-  return name;
-}
-
-@ As a special safety measure against the easily made error of writing `\.='
-instead of an assignment operator~`\.{:=}', we forbid converting to void the
-result of an (always overloaded) call to the equality operator, treating this
-case as a type error instead. In the unlikely case that the user defines an
-overloaded instance of `\.=' with void result type, calls to this operator
-will still be accepted.
-
-@< Refuse to compile an equality test whose result is then voided @>=
-{ if (tp==void_type and
-      id==equals_name() and
-      res_type!=void_type)
-  { std::ostringstream o;
-    o << "Use of equality operator '=' in void context; " @|
-      << "did you mean ':=' instead?\n  If you really want " @|
-      << "the result of '=' to be voided, use a cast to " @|
-      << variant.f_tp().result_type << '.';
-    throw expr_error(e,o.str());
-  }
-}
 
 @ When we come here, an inexact match is found; we traverse the arguments (maybe
 a single one) of the call, and modify only those whose a priori type does not
