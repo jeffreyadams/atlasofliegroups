@@ -6671,15 +6671,12 @@ catch (error_base& e)
 Casts are very simple to process. They do not need any |expression| type to
 represent them, so type-checking is all there is to it. Nonetheless there is a
 subtlety in the code below, which starts with |tp.specialise(c.dst_tp)| even
-though the final |conform_types| will attempt the same specialisation. One
-consequence is that if the cast should (rather sillily) specify a less
-specific type than |tp| from the context, as the second cast
-in \.{[rat]:[*]:[0]}, then the stronger context will be used in the
-conversion. More importantly though, the specialisation now takes
-place \emph{before} the conversion, which in case our cast is a function body
-means that the result type of that function gets specialised before the rest
-of the body is analysed, and any \&{return} expressions in the body will profit
-from the cast's strong type context.
+though the final |conform_types| will attempt the same specialisation. As a
+consequence, the specialisation now takes place \emph{before} the conversion,
+which in case our cast forms a function body means that the result type of that
+function body expression gets specialised before the body is actually analysed.
+Therefore any \&{return} expressions in the body will profit from the cast's
+strong type context.
 
 @< Cases for type-checking and converting... @>=
 case cast_expr:
@@ -6702,9 +6699,8 @@ simulates specialisation to a function type |from|$\to$|to|.
 @< Local function definitions @>=
 inline bool functype_specialise
   (type_expr& t, const type_expr& from, const type_expr& to)
-{ return t.specialise(gen_func_type) @|
-  and t.func()->arg_type.specialise(from) @|
-  and t.func()->result_type.specialise(to);
+{ return t.specialise(gen_func_type) and
+@|t.func()->arg_type.specialise(from) and t.func()->result_type.specialise(to);
 }
 
 @ Here we define |is_special_operator|, a function called when a function or
@@ -8264,9 +8260,9 @@ case field_ass_stat:
 }
 
 @ If either no function at all doing the requested projection is found, or if
-the function found is not a projector, then we signal failure. If things go
-well, the type list in |tuple_t| is not actually a |simple_list<expr>| but a raw
-node pointer, and we are forced to do a but of traditional node chasing.
+the function found is not a projector, then we signal failure. Moving |pos|
+places forward in the linked list can be done by calling |std::next| after
+converting the raw node pointer |tuple_t->tuple()| to a weak type list iterator.
 
 @< Look up a projector for |*tuple_t| named |selector|... @>=
 { const auto* entry=global_overload_table->entry(selector,tuple_t->unwrap());
@@ -8281,10 +8277,8 @@ node pointer, and we are forced to do a but of traditional node chasing.
   assert(tuple_t->kind() == tuple_type and pos < length(tuple_t->tuple()));
 @)
 // |comp_loc| needs to point to a modifiable |type_expr|; point it into |tuple_t|
-  raw_type_list p=tuple_t->tuple(); // using |type_list| would take possession
-  for (auto count=pos; count-->0; )
-    p=p->next.get();
-  comp_loc=&p->contents;
+
+  comp_loc = &*std::next(wtl_iterator(tuple_t->tuple()),pos);
 }
 
 @ Type-checking and converting component and field transform statements is quite
