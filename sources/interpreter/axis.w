@@ -1623,7 +1623,9 @@ unique such match, but that policy is not yet enforced in the code below.
 @< Try to find an element of |variants| whose |arg_type| exactly matches...@>=
 {
   const unsigned int apt_deg = a_priori_type.degree();
+  expression_ptr result; // buffer for storage of result
   for (const auto& variant : variants)
+  {
     if (a_priori_type.matches
          (variant.f_tp().arg_type,variant.poly_degree())) // exact match
     {
@@ -1633,14 +1635,37 @@ unique such match, but that policy is not yet enforced in the code below.
         substitution(variant.f_tp().result_type,a_priori_type.assign());
       arg = n_args==1 ? std::move(arg_vector[0])
 		      : expression_ptr(std::move(tup_exp));
-       @< Construct and |return| a call of the function value |variant.value()|
-         with argument |arg| @>
+     {
+       if (result!=nullptr)
+         @< Throw error reporting ambiguous exact match @>
+       @< Refuse to compile an equality test whose result is then voided @>
+     @) // now select unique component or consolidate tuple
+       std::ostringstream name;
+       name << main_hash_table->name_of(id) << '@@' << arg_type;
+     @)
+       if (arg_type==void_type)
+     @/{@; if (not is_empty(args))
+           arg.reset(new voiding(std::move(arg)));
+       }
+       else if (is_constant)
+         make_row_denotation<false>(arg); // wrap tuple inside a denotation
+       auto call = variant.value()->build_call
+                (variant.value(),name.str(),std::move(arg),e.loc);
+       result = conform_types(res_type,tp,std::move(call),e);
+     }
 @/// |res_type| is recorded in |tp|, and |arg_type| has served and is forgotten
     }
-    else
-      a_priori_type.clear(apt_deg); // remove type variable introduced by |match|
+    a_priori_type.clear(apt_deg);
+      // remove type variable introduced by |match|
+   }
+@)
+   if (result!=nullptr) // then a unique match was found
+     return result;
 }
 
+@ It would be better here to list the matching types.
+@< Throw error reporting ambiguous exact match @>=
+  throw expr_error(e,"Ambiguous argument in function call");
 
 @ Inexact matches are only considered for variants with a completely specific
 type; moreover, when left with a choice among several inexact matches, we prefer
