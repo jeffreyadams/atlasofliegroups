@@ -1723,6 +1723,17 @@ error, also aborting the matching process.
   return conform_types(res_type,tp,std::move(call),e);
 }
 
+@ We shall compare frequently for the `\.=' operator name, so it pays to look up
+its identifier code once and for all.
+
+@h "lexer.h" // for |main_hash_table|
+
+@< Local function definitions @>=
+id_type equals_name()
+{@; static id_type name=main_hash_table->match_literal("=");
+  return name;
+}
+
 @ As a special safety measure against the easily made error of writing `\.='
 instead of an assignment operator~`\.{:=}', we forbid converting to void the
 result of an (always overloaded) call to the equality operator, treating this
@@ -1857,56 +1868,6 @@ else
     << "' with argument type "
     << a_priori_type;
   throw expr_error(e,o.str());
-}
-
-@ Here we define |is_special_operator|, a function called when a function or
-operator name is absent from the overload table, in order to see if
-|resolve_overload| should be called anyway. It must compare against the numeric
-codes of these identifiers, which are not known explicitly at compile time, but
-which will not change once the tables are initialised. To avoid having to look
-up these codes in |main_hash_table| each time, we store each one in a static
-variable inside a dedicated local function. While the equality operator is not a
-generic one, it is tested for elsewhere, so we also give it its local function
-with static variable.
-
-@h "lexer.h" // for |main_hash_table|
-
-@< Local function definitions @>=
-id_type size_of_name()
-{@; static id_type name=main_hash_table->match_literal("#");
-  return name;
-}
-id_type concatenate_name()
-{@; static id_type name=main_hash_table->match_literal("##");
-  return name;
-}
-id_type print_name()
-{@; static id_type name=main_hash_table->match_literal("print");
-  return name;
-}
-id_type to_string_name()
-{@; static id_type name=main_hash_table->match_literal("to_string");
-  return name;
-}
-id_type prints_name()
-{@; static id_type name=main_hash_table->match_literal("prints");
-  return name;
-}
-id_type error_name()
-{@; static id_type name=main_hash_table->match_literal("error");
-  return name;
-}
-@)
-inline bool is_special_operator(id_type id)
-{ return id==size_of_name()
-    @|  or id==concatenate_name()
-    @|  or id==to_string_name()
-    @|  or id==prints_name()
-    @|  or id==error_name(); }
-@)
-id_type equals_name()
-{@; static id_type name=main_hash_table->match_literal("=");
-  return name;
 }
 
 @* Function calls.
@@ -2500,11 +2461,6 @@ call is also omitted when the identifier is absent from the overload table
 altogether; in that case it might still be a global identifier with function
 type.
 
-The cases relegated to |resolve_overload| include, due to the call to
-|is_special_operator| below, calls of special operators like the size-of
-operator~`\#', even if such an operator should be absent from the overload
-table.
-
 @< Convert and |return| an overloaded function call... @>=
 { const id_type id =call.fun.identifier_variant;
   size_t i,j; // dummies; local binding not used here
@@ -2513,7 +2469,7 @@ table.
  // not calling by local identifier
   { const overload_table::variant_list& variants
       = global_overload_table->variants(id);
-    if (variants.size()>0 or is_special_operator(id))
+    if (variants.size()>0)
       return resolve_overload(e,tp,variants);
   }
 }
@@ -6729,6 +6685,52 @@ inline bool functype_specialise
   and t.func()->arg_type.specialise(from) @|
   and t.func()->result_type.specialise(to);
 }
+
+@ Here we define |is_special_operator|, a function called when a function or
+operator name used to be absent from the overload table but was matched in
+|resolve_overload| anyway, by special purpose code. That is no longer the case;
+the functions in question are now handled by general polymorphic matching. But a
+remnant of |is_special_operator| for handling operator casts. It must compare
+against the numeric codes of these identifiers, which are not known explicitly
+at compile time, but which will not change once the tables are initialised. To
+avoid having to look up these codes in |main_hash_table| each time, we store
+each one in a static variable inside a dedicated local function.
+
+@h "lexer.h" // for |main_hash_table|
+
+@< Local function definitions @>=
+id_type size_of_name()
+{@; static id_type name=main_hash_table->match_literal("#");
+  return name;
+}
+id_type concatenate_name()
+{@; static id_type name=main_hash_table->match_literal("##");
+  return name;
+}
+id_type print_name()
+{@; static id_type name=main_hash_table->match_literal("print");
+  return name;
+}
+id_type to_string_name()
+{@; static id_type name=main_hash_table->match_literal("to_string");
+  return name;
+}
+id_type prints_name()
+{@; static id_type name=main_hash_table->match_literal("prints");
+  return name;
+}
+id_type error_name()
+{@; static id_type name=main_hash_table->match_literal("error");
+  return name;
+}
+@)
+inline bool is_special_operator(id_type id)
+{ return id==size_of_name()
+    @|  or id==concatenate_name()
+    @|  or id==print_name()
+    @|  or id==to_string_name()
+    @|  or id==prints_name()
+    @|  or id==error_name(); }
 
 @ Operator casts only access already existing values. In most cases we must
 access the global overload table to find the value. Since upon success we find
