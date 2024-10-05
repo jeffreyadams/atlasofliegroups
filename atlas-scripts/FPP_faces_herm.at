@@ -804,7 +804,7 @@ set cands_hash(InnerClass ic, mat theta, vec_hash lamthlam_hash) = [PermOrderTwo
 			    then () = Perm2s[m] := Perm2sm
 			    in ()
 		       fi
-	                                                                                                                     	    fi
+	            fi
                od
     then () = for pair in FEs
     	      do  let a = verts[pair[0]], b = verts[pair[1]]
@@ -971,7 +971,7 @@ set make_Lvd_Perm2_mapAct_table() = Lvd_Perm2_mapAct_table:
 	 then i = inner_class_hash.match(ic)
     	 then () = if i = I {haven't seen this inner class before}
 	      	   then inv_hashes #:= make_mat_hash();
-	    	   	vertex_datas := (vertex_datas next vertex_datas := [])#FPP_vertex_data(ic);
+	    	   	vertex_datas #:= FPP_vertex_data(ic);
 			FELs #:= FPP_flippable_edge_lookup(ic);
 	    	   	FPP_local_verts #:= FPP_local_vertices(ic, vertex_datas[i].list, FELs[i]);
 {			cands #:= [];}
@@ -997,7 +997,7 @@ set make_Lvd_Perm2_mapAct_table() = Lvd_Perm2_mapAct_table:
 	 then entriesi = entries[i]
 	 then () = if {#cands[i][j] > 0} lamthlam_hashess[i][j].size() > 0
 	 	   then return (i,j)
-	 	   else let Perm2cands = cands_hash(ic,theta, lamthlam_hashess[i][j])
+	 	   else let Perm2cands = cands_hash(ic,theta, lamthlam_hashess[i][j]) {this  writes to the hash table the possible lamthlam}
 			then () = tempPerm2si[j] := Perm2cands
 			then () = entriesi[j] := for lamthlam@k in lamthlam_hashess[i][j].list()
 			     	       	    do let Perm2 = Perm2cands[k]
@@ -1023,12 +1023,6 @@ set make_Lvd_Perm2_mapAct_table() = Lvd_Perm2_mapAct_table:
       	 do lamthlam_hash.size()
 	 od
       od
-{    , ( -> [vec]): {cands_size} @[vec]:
-      for candlist in cands
-      do for cand in candlist
-      	 do #cand
-	 od
-      od}
     , ( -> [[vec]]): {Lvd_list_size} @[[vec]]:
       for i: #entries
       do for j: #entries[i]
@@ -1062,7 +1056,7 @@ set make_Lvd_Perm2_mapAct_table() = Lvd_Perm2_mapAct_table:
       	    in lr+ic.rho
 	 od
     , ((InnerClass, mat,vec) -> PermOrderTwo): {Perm2} (InnerClass ic, mat theta, vec lamthlam):
-      let (i,j) = add_cands{lamthlam_hash}(ic,theta)
+      let (i,j) = add_cands(ic,theta)
       then k = lamthlam_hashess[i][j].lookup(lamthlam)
       in Perm2s[i][j][k]
     , ((InnerClass, mat) -> [(ratvec, Lvd_Perm2_mapAct)]): {LPm_entries} (InnerClass ic, mat theta)
@@ -1133,8 +1127,9 @@ set make_FPP_lambda_table() = FPP_lambda_table:
 		   	then longlist = LPm_table.lambda0s(x.inner_class, x.involution),
 			     twists = all_lambda_differential_0(x.involution)
 			then list0 = for lambda0 in longlist
-			     	     do if 1*parameter(x, lambda0, zeroNu) != zeroPol
-				     	then [lambda0]
+			     	     do let q = parameter(x, lambda0, zeroNu)
+				     	in if q!= zeroPol
+				     	then [q.lambda]
 					else []
 					fi
 				     od.##
@@ -1173,8 +1168,20 @@ set FPP_lambda0s(KGBElt x) = [ratvec]:
 	  fi
        od.##
 
+set FPP_lambda_table_flag = true
+
 set FPP_lambdas(KGBElt x) = [ratvec]:
-    FPP_lam_table.FPP_lambdas(x)
+    if FPP_lambda_table_flag
+    then FPP_lam_table.FPP_lambdas(x)
+    else let list0 = FPP_lambda0s(x), G=x.real_form
+    	 then twists = all_lambda_differential_0(x.involution)
+	 then zeroNu = null(G.rank)/1
+	 in for ell0 in list0
+	    do for tau in twists
+	       do parameter(x,ell0+tau,zeroNu).lambda
+	       od
+       	     od.##
+    fi
 
 set position_time = int:0
 
@@ -1297,10 +1304,10 @@ set make_big_unitary_hash() = big_unitary_hash_table:
       then xl_knowni = [int]: xl_known[i]
       then () = xl_knowni[x.number] := OR(M,xl_knowni[x.number])
       then () = xl_known[i] := xl_knowni
-      then () = x_partial[i] := OR(to_bitset([x.number]),x_partial[i])
+      {then () = x_partial[i] := OR(to_bitset([x.number]),x_partial[i])
       then () = if xl_known[i][x.number] + 1 = to_bitset([#FPP_lambdas(x)])
       	      	then x_known[i] := OR(to_bitset([x.number]),x_known[i])
-		fi
+		fi}
       then () = finish_time+:= elapsed_ms() - start
       in ()
     , (KGBElt -> ): {finishx} (KGBElt x):
@@ -1367,15 +1374,32 @@ set make_big_unitary_hash() = big_unitary_hash_table:
 	  then listname = Gname+"_list"
 	  then intlistname = Gname+"_XLK"
 	  then plist = uhashes[i].list()
-	  then bitmapintlist = xl_known[i]
+	  {then bitmapintlist = xl_known[i]}
+	  then donemap = x_known[i]
+	  then done_list = [int]:[]
+	  then () = if write_x_flag then done_list :=
+	        for x in KGB(rf)
+      	   	       do if is_member_bitset(x.number, donemap)
+			  then [x.number]
+			  else []
+			  fi
+		       od.##
+		 fi
 	  in write_real_form(rf,Gname);
 	     prints("set j = big_unitary_hash.rf_number(",Gname,")");
-	     prints("set ",listname,"=[Param]:[]");
-	     write_append_cat_param_list(plist,listname,Gname);
-	     {prints("set ",intlistname,"=[int]:[]");}
+	     for p in plist
+	     do let xnum = p.x.number
+	     	in prints("void: big_unitary_hash.long_match(parameter(Gname,",xnum,",",p.lambda,",",p.nu,"),j)")
+	     od;
+	     if write_x_flag
+	     then for xnum in done_list
+	      	  do prints("void: big_unitary_hash.finishx(KGB(Gname)[",xnum,"])")
+	      	  od
+	     else prints("void: big_unitary_hash.finishxmap(Gname,",donemap,")")
+	     fi
+	     {prints("set ",intlistname,"=[int]:[]");
 	     write_append(bitmapintlist,intlistname);
-	     prints("void: for p in ",listname," do big_unitary_hash.long_match(p,j) od")
-	     {prints("big_unitary_hash.finishall(",Gname,",",intlistname,")")}
+	     prints("big_unitary_hash.finishall(",Gname,",",intlistname,")")}
 	od
     , (RealForm -> ): {writeG} (RealForm G):
       let i = add_real_form(G)
@@ -1383,7 +1407,7 @@ set make_big_unitary_hash() = big_unitary_hash_table:
       then listname = Gname+"_list"
       then intlistname = Gname+"_XLK"
       then plist = uhashes[i].list()
-      then bitmapintlist = xl_known[i]
+      {then bitmapintlist = xl_known[i]}
       then donemap = x_known[i]
       then done_list = [int]:[]
       then () = if write_x_flag then done_list :=

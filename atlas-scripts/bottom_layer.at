@@ -299,7 +299,9 @@ set use_test_coroots_flag = false
 
 set mu_level(vec mu) = (vec -> int):
     (vec coroot): coroot*mu
+
 {this time the results are a list of (Qmin,[tau, [dertauLj]).}
+{used only to create entry in minBottomData}
 set min_bottom_factors(KType mu) = QKL_bottom_data:
     let p = parameter(mu), start = elapsed_ms()
     then (Q,pL) = theta_stable_quasi_data(p), G = p.real_form, ProjK = projection_to_K_matrix(mu.inner_class)
@@ -542,6 +544,7 @@ set more_flag = false
 {meant to hold nonunitary reps identified first by more}
 set more_good_hash = make_Param_hash()
 
+{P is KTypePol of char formula to height of p}
 set min_bottom_elim_factors(Param p, KTypePol P) = bool:
     let start = elapsed_ms(), (,pL) = theta_stable_quasi_data(p), G = p.real_form {pL is height 0 on quasisplit L}
     then derpLjs = derived_factor_params0(pL) {all height 0}
@@ -556,7 +559,7 @@ set min_bottom_elim_factors(Param p, KTypePol P) = bool:
             then derLjs = for derpLj in derpLjs do derpLj.real_form od
  	    then dermuLjs = derived_factor_K_types0(muL)
 	    then  multG = branch_std(P,DG)
-	    {then () = prints(multG)}
+	       {then () = prints(multG)}
 	    then Lbranches = for derpLj@j in derpLjs
 	    	       	 do let sigLj =
 		            	if big_unitary_hash.uhash(derLjs[j]).lookup(derpLj).>=
@@ -593,9 +596,11 @@ set min_bottom_elim_factors(Param p, KTypePol P) = bool:
 	{then () = mbefTime +:= elapsed_ms()-start}
         in answer
 
+{These min_bottom functions are used only on simple G}
 set min_bottom_elim_factors(Param p{, [KGPElt] maxQs}) = bool:
     let startCF = elapsed_ms()
-    then Q = character_formula(p) {could figure out max ht needed?}
+    then Q = character_formula_to_height(p, max(for mu in LKTs(p) do minBottomData.G_min_height(mu) od))
+    {could figure out max ht needed?}
     then () = charTime +:= elapsed_ms() - startCF
     then () = char_counter.use()
     in min_bottom_elim_factors(p, K_type_pol(Q))
@@ -603,13 +608,13 @@ set min_bottom_elim_factors(Param p{, [KGPElt] maxQs}) = bool:
 set min_bottom_test_factors(Param p) = bool:
     if not min_bottom_elim_factors(p)
     then false
-    else is_unitary_hash_big(p)
+    else is_unitary_hash_big_SIMPLE(p)
     fi
 
 set min_bottom_test_factors(Param p, KTypePol P) = bool:
     if not min_bottom_elim_factors(p, P)
     then return false
-    else is_unitary_hash_big(p)
+    else is_unitary_hash_big_SIMPLE(p)
     fi
 
 set bfTime = int: 0
@@ -734,6 +739,7 @@ set bottom_elim_factors(Param p, KType mu, int D, KGPElt Q, [(KType,[KType])] LK
 	then () = {mbefTime} befmoreTime +:= elapsed_ms()-start
 	in result
 
+{P is meant to be K-char(p) at least to max ht of taus}
 set bottom_elim_factors(Param p, KType mu, (KGPElt Q, [(KType,[KType])] LKdata), KTypePol P) = bool:
     let start = elapsed_ms(), {answers = for k:#LKdata do false od,}
     	(,pL0) = theta_stable_quasi_data(p), L = Q.Levi
