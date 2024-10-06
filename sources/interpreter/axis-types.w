@@ -1804,6 +1804,7 @@ so that the parser only sees POD, types which it can put into a |union|.
 
 @< Declarations of exported functions @>=
 type_ptr mk_prim_type(primitive_tag p);
+type_ptr mk_type_variable(unsigned int i);
 type_ptr mk_function_type(type_expr&& a, type_expr&& r);
 type_ptr mk_row_type(type_ptr&& c);
 type_ptr mk_tuple_type (type_list&& l);
@@ -1886,6 +1887,9 @@ treats as owning their referent). Because of this intended use, they use the raw
 
 type_p make_prim_type(unsigned int p)
 {@; return mk_prim_type(static_cast<primitive_tag>(p)).release(); }
+
+type_p make_type_variable(unsigned int i)
+{@; return mk_type_variable(i).release(); }
 
 type_p make_function_type(type_p a,type_p r)
 {@; return
@@ -2399,7 +2403,9 @@ public:
     return result;
   }
   type& expunge(); // eliminate assigned type variables, by substitution
-  type& clear(unsigned int d); // remove any type assignments, reserve |d| new ones
+  type& clear(unsigned int d);
+  // remove any type assignments, reserve |d| new ones
+  type& clear() @+{@; return clear(degree()); }
   type_expr bake() const; // extract |type_expr| after substitution
   type_expr bake_off(); // extract |type_expr|, sacrificing self if needed
   bool unify(type_expr& pattern) // adapt to pattern while specialising pattern
