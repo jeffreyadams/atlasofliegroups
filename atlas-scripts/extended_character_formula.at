@@ -1,5 +1,6 @@
 <extParamPol.at
 
+set ecf_verbose=true
 {when translating an extended module:
 suppose
 1) p has regular infinitesimal character
@@ -36,6 +37,7 @@ set T_std(ZExtParamPol (P,Q,R,delta),ratvec gamma)=
 
 set extended_character_formula_reg (Param p,mat delta, bool strictly_regular) =ZExtParamPol:
 assert(not strictly_regular or is_regular(p.root_datum,p.infinitesimal_character),"infinitesimal character is not regular");
+let start_time=elapsed_ms() in
 let G=p.real_form in
 if not is_fixed(p,delta) then
 { extended rep = ind(\pi) = ind(\delta(pi))
@@ -48,41 +50,34 @@ else
   {calculated using big_KL_P_signed_polynomials}
   let (,plus,minus,ind,)=null_ext_module(G) then
 {  B=block_of(p) then}
+  ()=if ecf_verbose then let end_time=elapsed_ms() then ()=prints("ecf time 1: ", end_time-start_time) then start_time=end_time in () fi  then
   B=partial_block(p) then
-{  ()=prints("OK") then}
-{  (B_delta,P_delta)=KL_P_signed_polynomials(p,delta) then
-    ()=prints("NEXT") then}
-  (I_delta,g,complete_indices,delta_action)=tabulate_indices(B,delta) then
-{      ()=prints("third, p=",p) then}
-  P=big_KL_P_signed_polynomials(p,delta) then
-{  ()=prints("computed P");printPolyMatrix(P) then}
-index=find(complete_indices,(find(B,p),1)) in
-{  let ()=prints("index=",index) in}
+  ()=if ecf_verbose then let end_time=elapsed_ms() then ()=prints("ecf time 2: ", end_time-start_time) then start_time=end_time in () fi  then
+  partial_KL_block=partial_KL_block(p) then
+  ()=if ecf_verbose then let end_time=elapsed_ms() then ()=prints("ecf time 3: ", end_time-start_time) then start_time=end_time in () fi  then
+  partial_extended_KL_block=partial_extended_KL_block(p,delta) then
+  ()=if ecf_verbose then let end_time=elapsed_ms() then ()=prints("ecf time 4: ", end_time-start_time) then start_time=end_time in () fi  then
+  (B_delta,P_delta_matrix,polys_delta)=partial_extended_KL_block then
+  ()=if ecf_verbose then let end_time=elapsed_ms() then ()=prints("ecf time 5: ", end_time-start_time) then start_time=end_time in () fi  then
+  map_B_Bdelta=map(B,B_delta) then
+  ()=if ecf_verbose then let end_time=elapsed_ms() then ()=prints("ecf time 6: ", end_time-start_time) then start_time=end_time in () fi  then
+   (B,P_matrix,polys)=partial_KL_block then
+   tabulated_indices=tabulate_indices(B,delta) then
+   (I_delta,g,complete_indices,delta_action)=tabulated_indices then
+  ()=if ecf_verbose then let end_time=elapsed_ms() then ()=prints("ecf time 7: ", end_time-start_time) then start_time=end_time in () fi  then
+  index=find(complete_indices,(find(B,p),1)) then
+  ()=if ecf_verbose then prints("#complete indices: ", #complete_indices) fi in
   for (j,type)@i in complete_indices do
-{   let ()=prints("j,type,i=", j ," ", type, " ", i) in}
-{   let c=eval(P[i][index],s) in {key point here: evaluate at q=1}}
-
-   let c=eval(P[i][index],1) in
-    if !=c then
+  let ()=if ecf_verbose then
+     let end_time=elapsed_ms() then ()=prints("ecf time in loop: ",i, "  ", end_time-start_time) then start_time=end_time in () fi  in
+    let c=eval(big_KL_P_signed_polynomial(p,partial_KL_block,partial_extended_KL_block,tabulated_indices,map_B_Bdelta,delta,i,index),1) in
+     if !=c then
      if type=1 then {prints("plus "," index=",index, " i=",i, " j=",j," c=",c," B[j]=",B[j]);}plus+:=c*B[j]
        elif type=-1 then {prints("minus, i=", i, " j=",j, " index=",index," c=",c);}minus+:= c*B[j]
        elif type=0 then  {prints("ind", "j=",j, "c=",c);} ind+:=c*B[j]
        else error("c\ne 0,\pm 1")
      fi
     fi
-
-{   NO SIGNS: they are already there
-    let (a,b)=%eval(P[i][index],s) in
-    if !=c then
-     if type=1 then
-       plus+:=a*B[j]; minus+:=b*B[j]
-     elif type=-1 then
-       plus+:=b*B[j]; minus+:=a*B[j]
-     elif type=0 then
-       ind+:=(a+b)*B[j]
-     fi
-    fi
-}
   od;
   let rv=(plus,minus,ind,delta) in
   assert(is_ZExtParamPol(rv),"Not a ZExtParamPol");rv

@@ -1,5 +1,16 @@
 <twisted_endoscopy.at
 
+set *(rat a, ParamPol P)=ParamPol:
+let rv=0*P then
+(num,denom)=%a in
+for (c,p) in %P do 
+  let (x,y)=%c
+  then (a,b)=(num*x/denom, num*y/denom) then
+  coeff=assert(is_integer(a) and is_integer(b),"not all coefficents are divisible by the denominator");
+   Split:(rat_as_int(a),rat_as_int(b)) in
+   prints(coeff, " ", p);
+  rv+:=coeff*p
+ od;rv
 
 {SO(2n) in SO(2n+1)}
 set Dn_in_Bn(int n)=
@@ -351,33 +362,31 @@ for (c,p) in %P do let P=sign_difference(p,delta)*p in rv+:=c*P  od;
 rv
 
 {Gives the distribution defining the A-packet for a classical group of type A, B and C. In this case ABV=Arthur.}
-set A_packet_distribution_ABC(Param p_H,mat M,RealForm G,mat delta)=ParamPol:
+set Arthur_packet_distribution_ABC(Param p_H,mat M,RealForm G,mat delta)=ParamPol:
 let ecf=extended_character_formula(Finalize(lift_std(p_H,M,G)),delta) in
 let P=twisted_character(ecf) in
 let Pw=twisted_character_whittaker(P,delta) in
-composition_series(inverse_lift_std(Pw,p_H.real_form,M,p_H.infinitesimal_character)) 
+composition_series(inverse_lift_std(Pw,p_H.real_form,M,p_H.infinitesimal_character))
 
-
-{Gives the distribution defining the A-packet for a classical group of type B, C and D. For type B and C same answer as before, for type D 
-it gives the O_n orbit expressed as 1/2*eta^ABV_psi + 1/2*eta^ABV_\psi\circ O.}
-set A_packet_distribution_BCD(Param p_H,mat M,RealForm G,mat delta)=void:
-let ecf=extended_character_formula(Finalize(lift_std(p_H,M,G)),delta) in
-let P=twisted_character(ecf) in
-let Pw=twisted_character_whittaker(P,delta) in
-let A_sum=composition_series(inverse_lift_std_orbit(Pw,p_H.real_form,M,p_H.infinitesimal_character)) in
-void:for (c,p) in %A_sum do prints(1/2*c.s_to_1,"*",p) od {I need to do this since I don't know how to multiply a param_pol by 1/2}
-
-
-{Gives the A-packet in the case of a classical group of type A, B and C}
-set A_packet_ABC(Param p_H,mat M,RealForm G,mat delta)=[Param]:
+{Gives the A-packet as a set of Params in the case of a classical group of type A, B and C}
+set Arthur_packet_ABC(Param p_H,mat M,RealForm G,mat delta)=[Param]:
 let ecf=extended_character_formula(Finalize(lift_std(p_H,M,G)),delta) in
 let P=twisted_character(ecf) in
 let Pw=twisted_character_whittaker(P,delta) in
 let A_sum=composition_series(inverse_lift_std(Pw,p_H.real_form,M,p_H.infinitesimal_character)) in
 monomials(A_sum)
 
+{Gives the distribution defining the A-packet for a classical group of type B, C and D. For type B and C same answer as before, for type D 
+it gives the O_n orbit expressed as 1/2*eta^ABV_psi + 1/2*eta^ABV_\psi\circ O.}
+set print_Arthur_packet_distribution_BCD(Param p_H,mat M,RealForm G,mat delta)=void:
+let ecf=extended_character_formula(Finalize(lift_std(p_H,M,G)),delta) in
+let P=twisted_character(ecf) in
+let Pw=twisted_character_whittaker(P,delta) in
+let A_sum=composition_series(inverse_lift_std_orbit(Pw,p_H.real_form,M,p_H.infinitesimal_character)) in
+void:for (c,p) in %A_sum do prints(1/2*c.s_to_1,"*",p) od {I need to do this since I don't know how to multiply a param_pol by 1/2}
+
 {Gives the A-packet in the case of a classical group of type B, C and D. For D it gives the O(N) orbit}
-set A_packet_BCD(Param p_H,mat M,RealForm G,mat delta)=[Param]:
+set Arthur_packet_BCD(Param p_H,mat M,RealForm G,mat delta)=[Param]:
 let ecf=extended_character_formula(Finalize(lift_std(p_H,M,G)),delta) in
 let P=twisted_character(ecf) in
 let Pw=twisted_character_whittaker(P,delta) in
@@ -385,16 +394,21 @@ let A_sum=composition_series(inverse_lift_std_orbit(Pw,p_H.real_form,M,p_H.infin
 monomials(A_sum)
 
 
-set unipotent_A_packets(ComplexNilpotent N,RealForm H,mat M,RealForm G,mat delta)=void:
+set unipotent_Arthur_packets_BCD(ComplexNilpotent N,RealForm H,mat M,RealForm G,mat delta)=
 let wpp=parameters(weak_packet(N,H)) then
 (,,l)=N in
 let all=all_parameters_x_gamma(KGB(H)~[0],l/2) in
 let wpp_in_all= ## for p in all do if first(for x in wpp do  x=p od)=-1 then [] else [p] fi od in
-for p in wpp_in_all do print(A_packet_distribution_BCD(p,M,G,delta)) od
+for p in wpp_in_all do Arthur_packet_BCD(p,M,G,delta) od
 
+set unipotent_Arthur_packets_ABC(ComplexNilpotent N,RealForm H,mat M,RealForm G,mat delta)=
+let wpp=parameters(weak_packet(N,H)) then
+(,,l)=N in
+let all=all_parameters_x_gamma(KGB(H)~[0],l/2) in
+let wpp_in_all= ## for p in all do if first(for x in wpp do  x=p od)=-1 then [] else [p] fi od in
+for p in wpp_in_all do Arthur_packet_ABC(p,M,G,delta) od
 
-{Given a nilpotent orbit of ^H, H a classical group of type B, C or D, it returns the corresponding unipotent A-packets}
-set unipotent_A_packets_BCD(RealForm H, ComplexNilpotent N)=void:
+set unipotent_packets_ABC(RealForm H, ComplexNilpotent N)=[[Param]]:
 let n=rank(H) in
 {let n=#columns(simple_roots(H)) in}
 let G= if H=Sp(2*n,R) then GL(2*n+1,R) else GL(2*n,R) fi then
@@ -406,7 +420,24 @@ let wpp=parameters(weak_packet(N,H)) then
 let all=all_parameters_x_gamma(KGB(H)~[0],l/2) in
 let wpp_in_all= ## for p in all do if first(for x in wpp do  x=p od)=-1 then [] else [p] fi od in
 let wpp_in_all_torusfactor0 = ## for p in wpp_in_all do if p.x.torus_factor=0*rho(H) then [p] else [] fi od in
-for p in wpp_in_all_torusfactor0 do prints(A_packet_distribution_BCD(p,M,G,delta)) od
+for p in wpp_in_all_torusfactor0 do Arthur_packet_ABC(p,M,G,delta) od
+
+set unipotent_packets_ABC(RealForm G)=[[[Param]]]:for O_v in dual_orbits(G) do unipotent_packets_ABC(G,O_v) od
+
+{Given a nilpotent orbit of ^H, H a classical group of type B, C or D, it returns the corresponding unipotent A-packets}
+set print_unipotent_packets_BCD(RealForm H, ComplexNilpotent N)=
+let n=rank(H) in
+{let n=#columns(simple_roots(H)) in}
+let G= if H=Sp(2*n,R) then GL(2*n+1,R) else GL(2*n,R) fi then
+delta=distinguished_involution(G) then
+(,M0)=endoscopic(G,delta) in
+let M=-M0 in
+let wpp=parameters(weak_packet(N,H)) then
+(,,l)=N in
+let all=all_parameters_x_gamma(KGB(H)~[0],l/2) in
+let wpp_in_all= ## for p in all do if first(for x in wpp do  x=p od)=-1 then [] else [p] fi od in
+let wpp_in_all_torusfactor0 = ## for p in wpp_in_all do if p.x.torus_factor=0*rho(H) then [p] else [] fi od in
+for p in wpp_in_all_torusfactor0 do print_Arthur_packet_distribution_BCD(p,M,G,delta) od
 
 
 
@@ -472,7 +503,7 @@ delta=distinguished_involution(G) then
 (,M)=endoscopic(G,delta) then
 H=if is_even(n) then SO(n/2\1,n/2\1+1) else Sp(n-1,R) fi then
 q=monomials(inverse_lift_std(p,H,-M))[0] in
-A_packet_distribution_ABC(q,-M,G,delta)
+Arthur_packet_distribution_ABC(q,-M,G,delta)
 
 
 set sgn_representation(int n)=Param:
@@ -528,7 +559,7 @@ delta=distinguished_involution(G) then
 (,M)=endoscopic(G,delta) then
 H = if is_even(n) then SO(n/2\1,n/2\1+1) else Sp(n-1,R) fi then
 q=monomials(inverse_lift_std(p,H,-M))[0] in
-A_packet_distribution_ABC(q,-M,G,delta)
+Arthur_packet_distribution_ABC(q,-M,G,delta)
 
 
 {Let u=[u_1,...,u_n], u_k a positive even integer. Let v=[v_1,...,v_n], v_k in Z.
@@ -562,7 +593,7 @@ The following script gives the A-packet of the classical group G, whose A-parame
 factors through psi. Atlas will give an error when the parity condition on the v_k is not verified. This needs to be made more clear.
 For the moment it only works for G a symplectic or odd orthogonal group.}
 
-set A_packet_distribution([int] u, [int] v, [int] s, [int] t)=ParamPol:
+set Arthur_packet_distribution([int] u, [int] v, [int] s, [int] t)=ParamPol:
 let n=sum(u)+sum(s) then
 p=monomials(A_parameter(u, v, s,t))[0] then
 G=real_form(p) then
@@ -570,12 +601,12 @@ delta=distinguished_involution(G) then
 (,M)=endoscopic(G,delta) then
 H = if is_even(n) then SO(n/2\1,n/2\1+1) else Sp(n-1,R) fi then
 q=monomials(inverse_lift_std(p,H,-M))[0] in
-A_packet_distribution_ABC(q,-M,G,delta)
+Arthur_packet_distribution_ABC(q,-M,G,delta)
 
 
 
 set test_abv([Param] params,Param p, mat M, RealForm G, mat delta)=
-let abv=monomials(A_packet_distribution_ABC(p,M,G,delta)) in
+let abv=monomials(Arthur_packet_distribution_ABC(p,M,G,delta)) in
 for q in abv do find(params,q) od
 
 set test_abv([Param] params, mat M, RealForm G, mat delta)=

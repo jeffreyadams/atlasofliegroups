@@ -31,6 +31,11 @@ set KL_P_signed_polynomials (Param p) = ([Param],i_poly_mat):
   (block,for row@i in rows(P) do for entry@j in row
   do minus_1^(block[j].length-block[i].length)*polys[entry] od od)
 
+{just a single entry of a matrix of  KL_P_signed_polynomials(p) (which is a matrix of ipolys)}
+{to use this do: set (block,P,polys)=partial_KL_block(p)}
+set entry([Param] block,mat P, [vec] polys, int i, int j)=vec:
+    minus_1^(block[j].length-block[i].length)*polys[P[j][i]]
+
 {full versions}
 set KL_P_polynomials_full (Param p) = i_poly_mat:
   let (,,P,polys)=KL_block(p) in
@@ -107,6 +112,14 @@ set KL_P_signed_polynomials (Param p, mat delta) = ([Param],i_poly_mat):
    in (params,for row in rows(P) { mat to i_pol_mat convention flip }
    do for index in row do if index.< then -polys[-index] else polys[index] fi od
    od)
+
+{just a single entry of a matrix of KL_P_signed_polynomials(p,delta) (which is a matrix of ipolys)}
+{to use this do: set (P,polys)=partial_extended_KL_block(p,delta)}
+set entry_extended(mat P, [vec] polys, int i, int j)=vec:
+   let index=rows(P)[i][j] in 
+   if index.< then -polys[-index] else polys[index] fi
+
+
 
 {these are signed}
 set KL_P_signed_polynomials_at_minus_one (Param p, mat delta) = ([Param],mat):
