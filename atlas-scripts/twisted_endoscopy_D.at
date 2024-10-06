@@ -8,9 +8,21 @@ for (c,p) in %P do
   then (a,b)=(num*x/denom, num*y/denom) then
   coeff=assert(is_integer(a) and is_integer(b),"not all coefficents are divisible by the denominator");
    Split:(rat_as_int(a),rat_as_int(b)) in
-   prints(coeff, " ", p);
   rv+:=coeff*p
  od;rv
+
+set times_s_to_1(rat a,ParamPol P)=ParamPol:
+let rv=0*P then
+(num,denom)=%a in
+for (c,p) in %P do 
+  let (x,y)=%c
+  then (a,b)=(num*x/denom, num*y/denom) then
+  coeff=assert(is_integer(a+b),"not all coefficents are divisible by the denominator");
+  rat_as_int(a+b) in
+  rv+:=coeff*p
+ od;rv
+
+
 
 {SO(2n) in SO(2n+1)}
 set Dn_in_Bn(int n)=
