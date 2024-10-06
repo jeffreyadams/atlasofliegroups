@@ -1,0 +1,16 @@
+<twisted_endoscopy_D.at
+set G=GL(5,R)
+set delta=G.distinguished_involution
+set (H,M)=endoscopy_type_BC(G,delta)
+set H=split_form(H)
+set p=H.trivial
+print("H=", H, " p=", p)
+set pG=lift_std(p,M,G,delta)
+prints("pG=", pG) 
+{set   partial_kl_block=partial_KL_block(pG) 
+set   partial_extended_KL_block=partial_extended_KL_block(pG,delta) }
+
+set z=Arthur_packet_ABC(p,M,G,delta)
+prints(z)
+
+{set inverse=inverse_lift_std(pG,H,M,p.infinitesimal_character)}
