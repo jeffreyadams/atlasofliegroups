@@ -1555,8 +1555,9 @@ expression_ptr resolve_overload
   auto n_args = args.kind==tuple_display ? length(args.sublist) : 1;
   auto tup_exp = std::make_unique<tuple_expression>(n_args);
   std::vector<expression_ptr>& arg_vector = tup_exp->component;
+@)
   type a_priori_type = type::bottom(); bool is_constant=false;
-  @< Fill |arg_vector| with expressions converted from the components of |args|,
+@/@< Fill |arg_vector| with expressions converted from the components of |args|,
      and set |a_priori_type| to the type found; also set |is_constant=true|
      if more than one arguments are all constant expressions @>
 @)
@@ -1618,7 +1619,10 @@ we set the variable to |false| in that case.
 @ It may be that more than one variant can produce a match, in which case we
 always prefer an exact match if there is one. Also, an exact match should be the
 unique such match, which the code below detects and refuses at the second exact
-match.
+match. Before going on to look for a possible second match, we convert and set
+aside a call for the first match, and leave a pointer |prev_match| to the
+current variant, which will be used for error reporting in case an ambiguity is
+found.
 
 Whenever an argument matches, be it exact of inexact, |conform_types| will be
 called for the variant result type and the expected |tp|; this may throw an
@@ -1628,6 +1632,7 @@ error, also aborting the matching process.
 {
   const unsigned int apt_deg = a_priori_type.degree();
   expression_ptr result; // buffer for storage of result
+  const overload_data* prev_match=nullptr;
   for (const auto& variant : variants)
   {
     if (a_priori_type.matches
@@ -1637,7 +1642,7 @@ error, also aborting the matching process.
         // actual argument type
       const type_expr res_type =
         substitution(variant.f_tp().result_type,a_priori_type.assign());
-     if (result!=nullptr)
+     if (prev_match!=nullptr)
        @< Throw error reporting ambiguous exact match @>
      expression_ptr arg = n_args==1 ? std::move(arg_vector[0])
 			: expression_ptr(std::move(tup_exp));
@@ -1645,6 +1650,7 @@ error, also aborting the matching process.
 @/   @< Assign to |call| a converted call expression of the function value
        |variant.value()| with argument |arg| @>
      result = conform_types(res_type,tp,std::move(call),e);
+     prev_match = &variant;
 @/// |res_type| is recorded in |tp|, and |arg_type| has served and is forgotten
     }
     a_priori_type.clear(apt_deg);
@@ -1655,9 +1661,17 @@ error, also aborting the matching process.
      return result;
 }
 
-@ It would be better here to list the matching types.
+@ Here we list the matching types, which is easy due to the |prev_match|
+pointer.
 @< Throw error reporting ambiguous exact match @>=
-  throw expr_error(e,"Ambiguous argument in function call");
+{
+  a_priori_type.clear(); // forget the type assignment matching current variant
+  std::ostringstream o;
+  o << "Ambiguous argument in function call, argument type " << a_priori_type
+  @|<< " matches both " << prev_match->f_tp().arg_type
+  @|<< " and " << variant.f_tp().arg_type;
+  throw expr_error(e,o.str());
+}
 
 @ We shall compare frequently for the `\.=' operator name, so it pays to look up
 its identifier code once and for all.
@@ -1731,12 +1745,12 @@ test \emph{can} be made here, since we have the argument type in the variable
 }
 
 @ Inexact matches are only considered for variants with a completely specific
-type; moreover, when left with a choice among several inexact matches, we prefer
-one that invokes the fewest coercions. These priority rules are implemented by
-ordering our tests so that the first match is also the best; for this purpose
-the variants have been partially sorted to ensure this. To test for an inexact
-type match, we call |is_close| with |a_priori_type| and the expected type of a
-variant.
+(i.e., monomorphic) type; moreover, when left with a choice among several
+inexact matches, we prefer one that invokes the fewest coercions. These priority
+rules are implemented by ordering our tests so that the first match is also the
+best; for this purpose the variants have been partially sorted to ensure this.
+To test for an inexact type match, we call |is_close| with |a_priori_type| and
+the expected type of a variant.
 
 Using |is_close| here, rather than |coercible|, means that the possibility of
 voiding coercions is not taken into account: when |arg_type==void_type|, the
@@ -6691,52 +6705,6 @@ inline bool functype_specialise
 @|t.func()->arg_type.specialise(from) and t.func()->result_type.specialise(to);
 }
 
-@ Here we define |is_special_operator|, a function called when a function or
-operator name used to be absent from the overload table but was matched in
-|resolve_overload| anyway, by special purpose code. That is no longer the case;
-the functions in question are now handled by general polymorphic matching. But a
-remnant of |is_special_operator| for handling operator casts. It must compare
-against the numeric codes of these identifiers, which are not known explicitly
-at compile time, but which will not change once the tables are initialised. To
-avoid having to look up these codes in |main_hash_table| each time, we store
-each one in a static variable inside a dedicated local function.
-
-@h "lexer.h" // for |main_hash_table|
-
-@< Local function definitions @>=
-id_type size_of_name()
-{@; static id_type name=main_hash_table->match_literal("#");
-  return name;
-}
-id_type concatenate_name()
-{@; static id_type name=main_hash_table->match_literal("##");
-  return name;
-}
-id_type print_name()
-{@; static id_type name=main_hash_table->match_literal("print");
-  return name;
-}
-id_type to_string_name()
-{@; static id_type name=main_hash_table->match_literal("to_string");
-  return name;
-}
-id_type prints_name()
-{@; static id_type name=main_hash_table->match_literal("prints");
-  return name;
-}
-id_type error_name()
-{@; static id_type name=main_hash_table->match_literal("error");
-  return name;
-}
-@)
-inline bool is_special_operator(id_type id)
-{ return id==size_of_name()
-    @|  or id==concatenate_name()
-    @|  or id==print_name()
-    @|  or id==to_string_name()
-    @|  or id==prints_name()
-    @|  or id==error_name(); }
-
 @ Operator casts only access already existing values. In most cases we must
 access the global overload table to find the value. Since upon success we find
 a bare |shared_function|, we must (as we did for~`\.\$') use the
@@ -6748,11 +6716,10 @@ case op_cast_expr:
 { const op_cast& c=e.op_cast_variant;
   const type_expr& c_type = c->type;
   std::ostringstream o;
-  o << main_hash_table->name_of(c->oper) << '@@' << c_type;
-  const auto* entry = global_overload_table->entry(c->oper,c_type);
 @)
-  if (entry!=nullptr) // something was found
-  {
+  if (@[const auto* entry = global_overload_table->entry(c->oper,c_type)@])
+  { // something was found
+    o << main_hash_table->name_of(c->oper) << '@@' << c_type;
     expression_ptr p(new capture_expression(entry->value(),o.str()));
     const type_expr& res_t = entry->f_tp().result_type;
     if (functype_specialise(tp,c_type,res_t) or tp==void_type)
@@ -6760,106 +6727,92 @@ case op_cast_expr:
     throw type_error
       (e,type_expr::function(c_type.copy(),res_t.copy()),tp.copy());
   }
-@)// now we have no match from the overload table, try generic operations
-  if (is_special_operator(c->oper))
-    @< Test special argument patterns, and on match |return| an appropriate
-       denotation @>
+@)
+  @< See if |c_type| matches a unique variant; if so build and |return| a
+     |capture_expression| around its value in which the substitutions used
+     are detailed @>
 @/throw program_error("No instance for "+o.str()+" found");
 }
 break;
 
-@ For our special operators, |print|, |prints|, |to_string|, |error|, we
-select their wrapper function here always, since they accept any argument
-type. We signal an error only if the context requires a type that cannot be
-specialised to the type of operator found. For $\#$ the situation will be
-slightly more complicated.
+@ In case the user wants to select a polymorphic variant of an operator or
+function, they can specify the exact polymorphic type, in which case they will
+get the variant unchanged by the code above, or they can specify an instance of
+that type, and we come to the code below. We need to find the variant using the
+|type::match| method, as in case of overload resolution; here too we insist of
+having a unique variant match the specified parameter type. Our logic follows
+that overload resolution closely, including the fact that a match is stored away
+temporarily to see if a second matching variant exists, in which case we throw
+an error for ambiguity instead of returning the initial match. If nothing is
+found we fall through this code, leading to a ``no instance found'' error.
 
-@< Test special argument patterns... @>=
-{ if (c->oper==print_name())
-  { if (functype_specialise(tp,c_type,c_type))
-    return expression_ptr(new @| capture_expression (print_builtin,o.str()));
-  }
-  else if (c->oper==prints_name())
-  { if (functype_specialise(tp,c_type,void_type))
-    return expression_ptr(new @| capture_expression (prints_builtin,o.str()));
-  }
-  else if (c->oper==to_string_name())
-  { if (functype_specialise(tp,c_type,str_type))
-    return expression_ptr(new @| capture_expression (to_string_builtin,o.str()));
-  }
-  else if (c->oper==error_name())
-  { if (functype_specialise(tp,c_type,unknown_type))
-    return expression_ptr(new @| capture_expression (error_builtin,o.str()));
-  }
-  else if (c->oper==size_of_name())
-    @< Select the proper instance of the \.\# operator,
-       or fall through if none applies @>
-  else if (c->oper==concatenate_name())
-    @< Select the proper instance of the \.{\#\#} operator,
-       or fall through if none applies @>
-}
-
-@ We shall use the following simple type predicate below. Contrary to
-specialising to |pair_type|, this function cannot alter its argument.
-
-@< Local function definitions @>=
-bool is_pair_type(const type_expr& t)
-@+{@; return t.kind()==tuple_type and length(t.tuple())==2; }
-
-@ For the \.\# operator, we select from four possible variants that deliver
-different wrapper functions. We signal an error if we found a match but the
-type of the resulting operator does not match the type required by the
-context. If no match is found here, there can still be one in the overload
-table.
-
-@< Select the proper instance of the \.\# operator,... @>=
-{ if (c_type.kind()==row_type)
-  { if (functype_specialise(tp,c_type,int_type))
-  @/return expression_ptr(new @|
-      capture_expression (sizeof_row_builtin,o.str()));
-    throw type_error(e,c_type.copy(),tp.copy());
-  }
-  else if (is_pair_type(c_type))
+@< See if |c_type| matches a unique variant... @>=
+{
+  type target = type::wrap(c_type);
+  const unsigned target_deg=target.degree(), start = target.floor();
+  expression_ptr result;
+  type_expr deduced_type;
+  const overload_data* prev_match=nullptr;
+  for (const auto& variant : global_overload_table->variants(c->oper))
   {
-    type_expr& arg_tp0 = c_type.tuple()->contents;
-    type_expr& arg_tp1 = c_type.tuple()->next->contents;
-    if (arg_tp0.kind()==row_type and arg_tp0.component_type()==arg_tp1)
-    { if (functype_specialise(tp,c_type,arg_tp0))
-        return expression_ptr(new @|
-          capture_expression(suffix_elt_builtin,o.str()));
-      throw type_error(e,c_type.copy(),tp.copy());
+    unsigned op_deg = variant.poly_degree();
+    if (target.matches(variant.f_tp().arg_type,op_deg))
+      // exact match after substitution
+    {
+      if (prev_match!=nullptr)
+        @< Throw error reporting ambiguous match in operator cast @>
+      @< Write to |o| operator|c->oper| with the argument type of |variant| and
+         with substitutions in |target| @>
+      result.reset(new capture_expression(variant.value(),o.str()));
+      deduced_type = type_expr::function @|
+        (substitution(variant.f_tp().arg_type,target.assign())
+        ,substitution(variant.f_tp().result_type,target.assign())
+        );
+     prev_match = &variant;
     }
-    if (arg_tp1.kind()==row_type and arg_tp1.component_type()==arg_tp0)
-    { if (functype_specialise(tp,c_type,arg_tp1))
-      return expression_ptr(new @|
-        capture_expression (prefix_elt_builtin,o.str()));
-      throw type_error(e,c_type.copy(),tp.copy());
-    }
+    target.clear(target_deg);
   }
-}
-
-@ Like for \.\#, we select for the \.{\#\#} operator the variants that deliver
-different wrapper functions.
-
-@< Select the proper instance of the \.{\#\#} operator,... @>=
-{ if (c_type.kind()==row_type and c_type.component_type().kind()==row_type)
-  { if (functype_specialise(tp,c_type,c_type.component_type()))
-  @/return expression_ptr(new @|
-      capture_expression (join_rows_row_builtin,o.str()));
-    throw type_error(e,c_type.copy(),tp.copy());
-  }
-  else if (is_pair_type(c_type))
+  if (result!=nullptr)
   {
-    type_expr& arg_tp0 = c_type.tuple()->contents;
-    type_expr& arg_tp1 = c_type.tuple()->next->contents;
-    if (arg_tp0.kind()==row_type and arg_tp1==arg_tp0)
-    { if (functype_specialise(tp,c_type,arg_tp0))
-        return expression_ptr(new @|
-          capture_expression (join_rows_builtin,o.str()));
-      throw type_error(e,c_type.copy(),tp.copy());
-    }
+    if (functype_specialise(tp,c_type,deduced_type.func()->result_type)
+        or tp==void_type)
+      return result;
+    throw type_error (e,std::move(deduced_type),tp.copy());
   }
 }
+
+@ Similarly to what we do for ambiguous exact overload matches, we use the
+|prev_match| pointer to build an error report.
+
+@< Throw error reporting ambiguous match in operator cast @>=
+{
+  std::ostringstream o;
+  o << "Ambiguous argument in function call, specified type " << c_type
+  @|<< " matches both " << prev_match->f_tp().arg_type
+  @|<< " and " << variant.f_tp().arg_type;
+  throw expr_error(e,o.str());
+}
+
+@ We store with the value returned a string that specifies both the polymorphic
+argument type of the identified variant, and the substitutions that we made to
+match the specified type.
+
+@< Write to |o| operator|c->oper| with the argument type of |variant| and
+   with substitutions in |target| @>=
+{
+  o << main_hash_table->name_of(c->oper) << '@@' << variant.f_tp().arg_type;
+  bool first=true;
+  for (unsigned int i=start; i<start+op_deg; ++i)
+    if (target.assign().equivalent(i)!=nullptr)
+    {
+      const_type_ptr var = mk_type_variable(i);
+      o << (first ? (first=false, '[') : ',')
+        << *var << '='
+        << substitution(*var,target.assign());
+    }
+  o << ']';
+}
+
 
 @* Assignments.
 %
