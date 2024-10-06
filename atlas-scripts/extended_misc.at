@@ -13,6 +13,8 @@ set_type
   )
 ]
 
+set distinguished_involution(ExtParam E)=mat:E.ic.distinguished_involution
+
 { canonical_g(x) returns a dominant regular element g such that e(g)=x^2
   This only depends on the real_form(x), in fact only on its square class
   the implementation depends on base_grading_vector(G) being dominant.
@@ -59,24 +61,53 @@ set Cayley_set ([int] kappa, Param p) = [Param]:
 { action of delta on KGB for general distinguished delta
   if delta=distinguished_involution(real_form(x)) then twist(delta,x)=twist(x)
 }
-set twist (mat delta,KGBElt x) = KGBElt:
-  KGB_elt(real_form(x),delta*involution(x)*delta,torus_factor(x)*delta)
 
-set twist (mat delta,Param p)=
+{twist@(KGBElt,mat) is built-in}
+{set twist (mat delta,KGBElt x) = KGBElt:
+  KGB_elt(real_form(x),delta*involution(x)*delta,torus_factor(x)*delta)}
+
+{twist@(Param,mat) is built-in}
+{set twist (mat delta,Param p)=
   let (x,lambda_rho,gamma) = %p
-  in parameter(twist(delta,x),delta*(lambda_rho+rho(real_form(x))),delta*gamma)
+  in parameter(twist(delta,x),delta*(lambda_rho+rho(real_form(x))),delta*gamma)}
 
-set is_fixed (mat delta, Param p) = bool:
-{ let ()=prints("is_fixed p:", p) in } p=twist(delta,p)
+set twist(ParamPol P, mat delta)=ParamPol:
+null_module(P.real_form) + for c@p in P do c*twist(p,delta) od
 
-set is_fixed (ratvec gamma, mat delta, KGBElt x,KGBElt y) = bool:
-  is_fixed(delta,parameter(x,y,gamma))
+set *(Param p,mat delta)=Param:twist(p,delta)
+set *(ParamPol P,mat delta)=ParamPol:twist(P,delta)
+
+{more typical to write mat*Param}
+set *(mat delta,Param p)=Param:twist(p,delta)
+set *(mat delta,ParamPol P)=ParamPol:twist(P,delta)
+
+set is_fixed (Param p,mat delta) = bool:p=twist(p,delta)
+set is_fixed (ParamPol P,mat delta) = bool:P=twist(P,delta)
+{for dyslexics:}
+set is_fixed(mat delta,Param p)=is_fixed(p,delta)
+set is_fixed (mat delta,ParamPol P) = bool:is_fixed(P,delta)
+
+set is_fixed (ratvec gamma, KGBElt x,KGBElt y,mat delta) = bool:
+  is_fixed(parameter(x,y,gamma),delta)
 
 { whether KGBElt (pair) is fixed by twist by matrix delta }
-set is_fixed (mat delta, KGBElt x) = bool: x=twist(delta,x)
-set is_fixed (mat delta, KGBElt x, KGBElt y) = bool:
-  is_fixed(delta,x) and is_fixed(^delta,y)
+set is_fixed (KGBElt x,mat delta) = bool: x=twist(x,delta)
+set is_fixed (KGBElt x, KGBElt y,mat delta) = bool:
+  is_fixed(x,delta) and is_fixed(y,^delta)
 
+{p->p if fixed, (1+delta)p otherwise}
+set symmetrize(Param p,mat delta)=ParamPol:
+if delta*p=p then p else p+delta*p fi
+
+set one_plus_twist(Param p,mat delta)=ParamPol:p+delta*p
+
+{Note:
+ symmetrize(p,delta)=one_plus_twist(p,delta)/2 if delta*p=p
+                    =one_plus_twist(p,delta)   if delta*p\ne p}
+
+set one_plus_twist(ParamPol P, mat delta)=ParamPol:P+delta*P
+set symmetrize(ParamPol P, mat delta)=ParamPol:
+null_module(P.real_form) + for (c,p) in %P do c*symmetrize(p,delta) od
 
 { Stuff related to KGB }
 { |x_rep = (ratvec v, mat theta)| is used to represent a KGB element $x$ by
@@ -99,10 +130,6 @@ set in_A (x_rep(v,theta)) = bool: let M=1+theta in in_lattice(M,M*v)
 }
 set is_equivalent (x_rep r1, x_rep r2) = bool:
   r1.theta=r2.theta and in_A(r1.v-r2.v,r1.theta)
-
-set square_is_central (InnerClass ic,x_rep(v,theta)) = bool:
-  square_is_central(ic,theta,v) { use the function defined in parameters.at }
-
 
 set root_datum (ExtParam E) = RootDatum: root_datum(E.ic)
 set rho        (ExtParam E) = ratvec: rho(E.root_datum)
@@ -157,9 +184,9 @@ set translate_to_dominant (ExtParam
   in
    ((ic,delta, gamma+shift,lambda_rho+shift,theta, g,l,omega, tau,t) , shift)
 
-{ for debugging:
-  test that an extended parameter satisfies the defining conditions
-}
+set square_is_central(InnerClass ic,mat theta, ratvec v)=bool:true
+{is_integer((v*(1+theta) + ic.rho_check*(1-theta)/2)*ic.simple_roots)}
+
 set valid (
     ExtParam(ic,delta,gamma,lambda_rho,theta,g,l,omega,tau,t)) = bool:
 begin let OK=false { pessimist: avoids having to set this in many branches } in
@@ -171,7 +198,7 @@ begin let OK=false { pessimist: avoids having to set this in many branches } in
   elif omega!=-^theta then prints("Cartan involutions are not compatible")
   elif !=(g-l-rho_check(ic))*(1-theta)
   then prints("(1-^theta)g\ne (1-^theta)(l+rho^v)")
-  elif !=(gamma-lambda_rho-rho(ic))*(1-omega)
+  elif  !=(gamma-lambda_rho-rho(ic))*(1-omega)
   then prints("(1-^omega)gamma\ne (1-^omega)(lambda_rho+rho)")
   elif -l*(1-delta)!=t*(1+theta) then prints("(^delta-1)l\ne (1+^theta)t")
   elif -(1-delta)*lambda_rho!=(1-theta)*tau { recall that -theta=^omega }
@@ -183,7 +210,23 @@ end
 
 { select delta-fixed elements from B }
 set fixed (mat delta, [Param] B) = [Param]: { filter delta-fixed elements }
-  ## for p in B do if is_fixed(delta,p) then [p] else [] fi od
+  ## for p in B do if is_fixed(p,delta) then [p] else [] fi od
+set non_fixed (mat delta, [Param] B) = [Param]: { filter delta-fixed elements }
+  ## for p in B do if not is_fixed(p,delta) then [p] else [] fi od
+
+{P=sum a_i p_i, keep just the delta-fixed p_i
+ note: if P = a(1+delta)p do not keep p or delta(p)}
+set fixed_terms (mat delta, ParamPol P)=ParamPol:
+null_module(P.real_form) + for c@p in P do if is_fixed(p,delta) then c*p else 0*p fi od
+
+set non_fixed_terms (mat delta, ParamPol P)=ParamPol:P-fixed_terms(delta,P)
+
+{P=sum a_i p_i, keep just the delta-fixed p_i
+ note: if P = a(1+delta)p do not keep p or delta(p)}
+set fixed_terms (mat delta, ParamPol P)=ParamPol:
+null_module(P.real_form) + for c@p in P do if is_fixed(p,delta) then c*p else 0*p fi od
+
+set non_fixed_terms (mat delta, ParamPol P)=ParamPol:P-fixed_terms(delta,P)
 
 { select delta-fixed elements from block_of(p) }
 set fixed_block_of (mat delta, Param p) = [Param]: fixed(delta,block_of(p))

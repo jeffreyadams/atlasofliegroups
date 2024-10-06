@@ -52,12 +52,9 @@
 <four.at {four_inner_products BXYI}
 <special_rep.at
 <families.at
-<FPP_globalDirac.at
 <L_packet.at
 <G2_unitary_dual.at
 <adams_johnson.at
 <speh.at
-<polsParallel.at
-{<facetious_jeff.at}
-<FPP.at
-<xlambdalists.at
+<twisted_endoscopy.at
+<twisted_endoscopy_D.at
