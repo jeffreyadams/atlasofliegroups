@@ -1,0 +1,9 @@
+<groups.at
+set rd_saved = RootDatum: root_datum(mat:
+[[  1, -1 ],[ 0, 2 ]], mat:
+[[  1, -1 ],[ 0, 1 ]]
+,false)
+set DI_saved = mat:
+[[ 1, 0 ],[ 0, 1 ]]
+set IC_saved = inner_class(rd_saved, DI_saved)
+set G= real_form(IC_saved, DI_saved,[ 0, 0 ]/1)

@@ -1,0 +1,30 @@
+set G=Sp(4,R)
+set Gd=dual_quasisplit_form(G)
+set v=[1,1]/2
+set (H,M,Hd)=endoscopic_group(Gd,v)
+set H=split_form(H)
+set p=H.trivial
+set delta=G.distinguished_involution
+set xH=KGB(H,0)
+set xG=KGB(G,0)
+set rm=root_map(H,G)
+set pH=large_discrete_series(H)
+set pG=parameter(KGB(G,0),[1,0],[0,0])
+set BH=block_of(pH)
+set BG=block_of(pG)
+set rm=root_map(H,G)
+set lifts=embed_parameters(pH,pG,rm)
+
+{for example do:
+endoscopic_lift_irr(pH,M,G,lifts)
+endoscopic_lift_irr(BH[j],M,G,lifts)
+}
+set trivial_H=H.trivial
+set block_trivial=block_of(trivial_H)
+set lift_trivial_H=parameter(KGB(G,8), [3,0], [1,0])
+set lifts_trivial=embed_parameters(trivial_H,lift_trivial_H,rm)
+
+{example:
+endoscopic_lift_irr(trivial_H,M,G,lifts_trivial)
+for p_H in  block_trivial do endoscopic_lift_irr(p_H,M,G,lifts)
+}

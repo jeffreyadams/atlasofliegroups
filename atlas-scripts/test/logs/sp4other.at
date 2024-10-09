@@ -1,0 +1,6 @@
+set functions = [FPP_unitary_hash_bottom_layer@([(KGBElt,ratvec)],Param_hash,Param_hash,int,int),
+                 FPP_unitary_hash_bottom_layer@([(KGBElt,ratvec)],Param_hash,Param_hash,int,int),
+                 FPP_unitary_hash2@([(KGBElt,ratvec)],Param_hash,Param_hash,int,int)]
+
+set function_params=[(5,10),(15,20),(-1,30)]
+

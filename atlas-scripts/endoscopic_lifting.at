@@ -16,4 +16,4 @@ let lift_std(Param p_H)=ParamPol:endoscopic_lift_std(p_H,M,G,lifts) in
 map(lift_std,P_H)
 
 set endoscopic_lift_irr(Param p_H,mat M, RealForm G,[(Param,Param)] lifts)=
-endoscopic_lift_std(character_formula(p_H),M,G,lifts)
+composition_series(endoscopic_lift_std(character_formula(p_H),M,G,lifts))       

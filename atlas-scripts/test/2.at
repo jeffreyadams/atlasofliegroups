@@ -1,0 +1,17 @@
+set p2=[Param]: for i:19 do Nullp od
+void:p2[0]:=parameter(KGB(G,10),[ 2, 1 ]/1,[ 0, 0 ]/1)
+void:p2[1]:=parameter(KGB(G,0),[ 0, 0 ]/1,[ 0, 0 ]/1)
+void:p2[1]:=parameter(KGB(G,1),[ 0, 0 ]/1,[ 0, 0 ]/1)  {dual}
+void:p2[3]:=parameter(KGB(G,5),[ 0, 1 ]/1,[ 0, 0 ]/1)
+void:p2[3]:=parameter(KGB(G,6),[ 0, 1 ]/1,[ 0, 0 ]/1)  {dual}
+void:p2[5]:=parameter(KGB(G,10),[ 2, 1 ]/1,[ 1, 1 ]/2)
+void:p2[6]:=parameter(KGB(G,10),[ 3, 2 ]/1,[ 1, 1 ]/2)
+void:p2[7]:=parameter(KGB(G,2),[ 1, 0 ]/1,[ 0, 0 ]/1)
+void:p2[7]:=parameter(KGB(G,3),[ 1, 0 ]/1,[ 0, 0 ]/1)  {dual}
+void:p2[8]:=parameter(KGB(G,7),[ 3, 0 ]/1,[ 1, 0 ]/1)
+void:p2[8]:=parameter(KGB(G,8),[ 3, 0 ]/1,[ 1, 0 ]/1)  {dual}
+void:p2[11]:=parameter(KGB(G,4),[ 1, 0 ]/1,[  1, -1 ]/2)
+void:p2[12]:=parameter(KGB(G,10),[ 2, 1 ]/1,[ 1, 0 ]/1)
+void:p2[13]:=parameter(KGB(G,7),[ 2, 0 ]/1,[ 1, 0 ]/1)
+void:p2[13]:=parameter(KGB(G,8),[ 2, 0 ]/1,[ 1, 0 ]/1)  {dual}
+void:p2[15]:=parameter(KGB(G,10),[ 2, 1 ]/1,[ 2, 1 ]/1)
