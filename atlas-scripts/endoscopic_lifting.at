@@ -1,0 +1,19 @@
+{ordinary endoscopic lifting}
+<endoscopic_groups.at
+
+set find([(Param,Param)] lifts, Param pH)=int:first(for (p,) in lifts do p=pH od)
+
+set find_lift([(Param,Param)] lifts, Param p_H)=Param:
+let index=find(lifts,p_H) in
+assert(index>-1, "parameter p_H  not found in lifts");
+let (,p_G)=lifts[index]  in p_G
+
+set endoscopic_lift_std(Param p_H,mat M,RealForm G, [(Param,Param)] lifts)=ParamPol:
+param_pol(L_packet(find_lift(lifts,p_H)))
+
+set endoscopic_lift_std(ParamPol P_H,mat M,RealForm G, [(Param,Param)] lifts)=
+let lift_std(Param p_H)=ParamPol:endoscopic_lift_std(p_H,M,G,lifts) in
+map(lift_std,P_H)
+
+set endoscopic_lift_irr(Param p_H,mat M, RealForm G,[(Param,Param)] lifts)=
+endoscopic_lift_std(character_formula(p_H),M,G,lifts)

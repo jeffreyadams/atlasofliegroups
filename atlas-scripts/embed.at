@@ -1,5 +1,9 @@
 {embed_KGB and embed_param}
-<twisted_endoscopy.at
+
+set te_verbose=true
+
+set root_map(RootDatum H, RootDatum G)= {ordinary endoscopy case}
+for i:ss_rank(H) do [root_index(G,H.simple_roots[i])] od
 
 {lift_KGB_cross(j_H,root_map,x_G):
  lift simple root #j_H to set of simple roots for G, then apply
@@ -91,7 +95,8 @@ od{while #map};prints("KGB size of H: ", KGB_size(H),new_line, "#map: ", #map);m
 set in_list([Param] params,Param p)=bool:>=find(params,p)
 
 set *(mat M,Param p)=
-parameter(M*(p.x),M*(p.lambda),M*(p.nu))
+assert(M=id_mat(#M),"*@(mat M,Param p) only implement for M=identity");p
+{parameter(M*(p.x),M*(p.lambda),M*(p.nu))}
 
 {see lift_KGB_cross above}
 set lift_parameter_cross(int j_H,[[int]] root_map,Param p_G)=Param:
@@ -110,7 +115,8 @@ y=p_G then
 {? this should also have a different formula in case of 2 non-orthogonal roots}
 set lift_parameter_Cayley(int j_H,[[int]] root_map,Param p_G)=Param:
 let y=p_G in
- for i in root_map[j_H] do y:=Cayley(i,y) od;y
+{ for i in root_map[j_H] do y:=Cayley(i,y) od;y}
+ for i in root_map[j_H] do y:=Cayley(posroots(p_G.real_form)[i],y) od;y
 
 {assuming p_H maps to p_G, extend as far as possible by Cayleys and crosses}
 set embed_parameters(Param p_H, Param p_G, [[int]] root_map)=
@@ -156,7 +162,7 @@ let index_in_map= first(for (p_H,) in map do done_H[p_H]=0 od) then
   in
   if is_noncompact(i,p_H.x) or is_real(i,p_H.x) then
        let q_H=Cayley(i,p_H) in
-       let ()=if te_verbose then prints("i=",i,"(Cayley)q_H=", q_H) fi in
+       let ()=if te_verbose then prints("i=",i,"(Cayley)q_H=", q_H,new_line,"p_G=", p_G) fi in
        if not is_known_H(q_H) then
                let q_G=lift_parameter_Cayley(i, root_map,p_G) in
                if not is_known_G(q_G) then
@@ -168,3 +174,8 @@ let index_in_map= first(for (p_H,) in map do done_H[p_H]=0 od) then
      fi
   od{for i}
 od{while #map};map
+
+set pr([(Param,Param)] pairs)=void:
+let (ph,pg)=pairs[0] then
+()=prints("H=", ph.real_form, new_line, "G=", pg.real_form) in
+tabulate(for (ph,pg) in pairs do [ph.to_string,pg.to_string] od)

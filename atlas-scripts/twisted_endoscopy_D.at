@@ -1,4 +1,8 @@
+{this file is deprecated: moved to twisted_endoscopic_lifting.at}
+
 <twisted_endoscopy.at
+<endoscopy.at
+
 
 set *(rat a, ParamPol P)=ParamPol:
 let rv=0*P then
@@ -153,7 +157,8 @@ A*distinguished_involution(G)}
 
 set lift( KGBElt_gen x_H_gen,mat M, RealForm G)=KGBElt_gen:
 let tf_H_raw=x_H_gen.unnormalized_torus_factor then
-theta_G=lift_involution(x_H_gen.involution,M,G) then
+{theta_G=lift_involution(x_H_gen.involution,M,G) then}
+theta_G=lift(x_H_gen.involution,M,G) then  {as advised by NA on 10/7/24}
 tf_G_raw=M*tf_H_raw then
 {tf_G=(2*tf_G_raw-G.rho_check)*(1+theta_G)/2 in}
 tf_G=M*(-2*tf_H_raw+rho_check(x_H_gen.real_form)) {-M*(-2*tf_H_raw+rho_check(x_H_gen.real_form))} in 

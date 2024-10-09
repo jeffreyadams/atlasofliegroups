@@ -1,5 +1,3 @@
-{this file is deprecated: replaced by twisted_endoscopic_lifting.at}
-
 <endoscopic_groups.at
 <galois.at
 <L_packet.at
@@ -8,7 +6,6 @@
 <extParamPol.at
 <extended_character_formula.at
 
-set te_verbose=true
 {move nice_format elsewhere}
 set nice_format(Param p)=string:
  "p=(" + p.x.number.to_string + "," + p.lambda.compact_string + "," + p.nu.compact_string + ")"
@@ -228,14 +225,13 @@ set big_partial_KL_P_polynomials(Param p,mat delta) = i_poly_mat:
   ; P
   fi
 }
-{set endoscopic(RootDatum G,mat delta)=(RootDatum,mat):
+set endoscopic(RootDatum G,mat delta)=(RootDatum,mat):
 let Gd=G.dual then
 trd=twisted_root_datum(Gd,^delta) then
 {the old version of folded @(TwistedRootDatum in root_datum.at should work}
 (Hd,M)=folded(Gd,^delta) then
 H=Hd.dual in
 (H,M)
-}
 
 {atlas> set G=GL(5,R)
 Variable G: RealForm (overriding previous instance, which had type RealForm)

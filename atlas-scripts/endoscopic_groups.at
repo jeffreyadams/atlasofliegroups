@@ -1,7 +1,6 @@
-{This file is deprecated: replaced by endoscopic_groups.at}
+{endoscopic group, regular and twisted, structure theory}
+{see endoscopic_lifting.at for lifting (also twisted_endoscopy_D.at)}
 <embed.at
-
-{endoscopy (regular and twisted)}
 
 set is_orthogonal (RootDatum rd, vec alpha, vec beta) = bool: =alpha*coroot(rd,beta)
 set to_dominant(RootDatum rd, vec wt)=(WeylElt,vec):
