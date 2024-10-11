@@ -1,0 +1,22 @@
+set kappa(Param p, ratvec s, int simple_root)=
+assert(is_imaginary(simple_root,p.x),"root is not imaginary");
+if is_compact_imaginary(simple_root,p) then 1
+else let z=rat_as_int(2*p.root_datum.simple_coroots[simple_root]*s) in 
+(-1)^z fi
+
+set kappa(Param p, ratvec s, WeylElt w)=
+let rec_fun f(Param p, ratvec s, WeylElt w)=int:
+if length(w)=1 then kappa(p,s,w.word[0]) else
+let last=w.word~[0] then
+ reflection=W_elt(G,[last]) then
+ y=w*reflection in 
+ kappa(p,s,last) * f(cross(last,p),s,y)  fi
+  in f(p,s,w)
+
+{
+  atlas> set fac (int n) = { no return type needed here }
+    if n<0 then error("factorial of negative number ",n," is not defined") fi;
+    let rec_fun f(int n) = int: { return type required here }
+                if n<=0 then 1 else n*f(n-1) fi
+    in f(n)
+    }
