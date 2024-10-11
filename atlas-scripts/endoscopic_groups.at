@@ -224,5 +224,5 @@ set endoscopic_group(RealForm G, mat delta_vee,ratvec s)=weak_endoscopic_group(G
 set endoscopic_group(RealForm G, mat delta_vee,mat xi_vee,WeylElt w_G_vee)=weak_endoscopic_group(G,delta_vee,null(rank(G)),w_G_vee)
 set endoscopic_group(RealForm G, mat delta_vee)=weak_endoscopic_group(G,delta_vee,null(rank(G)), id_W(dual(G)))
 
-set endoscopic_group(RealForm G,ratvec s)=weak_endoscopic_group(G,id_mat(rank(G)),s,id_W(dual(G)))
+set endoscopic_group(RealForm G,ratvec s)=weak_endoscopic_group(dual_quasisplit_form(G),id_mat(rank(G)),s,id_W(dual(G)))
 
