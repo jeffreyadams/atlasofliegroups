@@ -29,7 +29,8 @@ in
 for terms in lists do sum(raw_lifts[0].real_form,terms) od
 
 set endoscopic_lift_irr_tries(ParamPol P_H_of_irreducibles, mat M, RealForm G, [(Param,Param)] lifts, ratvec v)=
-try_all(endoscopic_lift_std_raw(character_formula(P_H_of_irreducibles), M,G,lifts,v))
+for P_G in try_all(endoscopic_lift_std_raw(character_formula(P_H_of_irreducibles), M,G,lifts,v))
+do composition_series(P_G) od
 
 set endoscopic_lift_irr_tries(Param single_stable_irreducible, mat M, RealForm G, [(Param,Param)] lifts, ratvec v)=
 endoscopic_lift_irr_tries(1*single_stable_irreducible,M,G,lifts,v)
