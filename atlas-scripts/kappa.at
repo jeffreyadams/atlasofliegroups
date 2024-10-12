@@ -1,22 +1,49 @@
-set kappa(Param p, ratvec s, int simple_root)=
-assert(is_imaginary(simple_root,p.x),"root is not imaginary");
-if is_compact_imaginary(simple_root,p) then 1
-else let z=rat_as_int(2*p.root_datum.simple_coroots[simple_root]*s) in 
+set simple_reflections(RootDatum G)=[WeylElt]:
+for alpha in G.simple_roots do root_reflection(G,alpha) od
+
+{cross_sub_orbit[[WeylElt] list,KGBElt x) returns [(KGBElt,WeylElt)]
+where each w is in the Weyl group of x.root_datum
+sometimes you want: list is simple roots of a sub_root_system,
+and the Weyl group elements returned to be for this root system}
+set cross_sub_orbitx (RootDatum rd_sub, KGBElt x) = [KGBElt,WeylElt]:
+cross_sub_orbit(simple_reflections(rd_sub),x)
+
+
+set imaginary_root_system(KGBElt x)=RootDatum:
+let (roots,coroots)=simple_imaginary_subsystem(x) in root_datum(roots,coroots,true)
+
+{imaginary simple root: index of simple root in the imaginary subsystem of p.x}
+set kappa(Param p, ratvec s, int imaginary_simple_root_index)=int:
+let G=p.root_datum then
+x=p.x then
+alpha=imaginary_root_system(x).simple_roots[imaginary_simple_root_index] then
+alpha_check=coroot(G,alpha) in 
+if is_compact_imaginary(alpha,x) then 1
+else let z=rat_as_int(alpha*s) in 
 (-1)^z fi
 
-set kappa(Param p, ratvec s, WeylElt w)=
-let rec_fun f(Param p, ratvec s, WeylElt w)=int:
-if length(w)=1 then kappa(p,s,w.word[0]) else
-let last=w.word~[0] then
- reflection=W_elt(G,[last]) then
- y=w*reflection in 
- kappa(p,s,last) * f(cross(last,p),s,y)  fi
+{dangerous bend:
+ w: Weyl element of imaginary_root_system(x)
+ but when acting by cross action it is viewed in G}
+set kappa(Param p, ratvec s, WeylElt w)=int:
+let rd_i=root_datum(w) then
+()=assert(rd_i=imaginary_root_system(p.x),"root system of w\ne imaginary roots of p.x") then
+rec_fun f(Param p, ratvec s, WeylElt w)=int:
+if length(w)=0 then 1 
+elif length(w)=1 then kappa(p,s,w.word[0]) else
+let last=w.word~[0] {index of root in rd_i} then
+reflection_i=W_elt(rd_i,[last]) {in W(rd_i)} then
+y=w*reflection_i  {in W(rd_i)}  then
+alpha=rd_i.simple_roots[last] then
+w_times_p=cross(alpha,p) {alpha is the vec of root of rd_i, viewed as root of G} in
+kappa(p,s,last) * f(cross(last,p),s,y)  fi
   in f(p,s,w)
 
-{
-  atlas> set fac (int n) = { no return type needed here }
-    if n<0 then error("factorial of negative number ",n," is not defined") fi;
-    let rec_fun f(int n) = int: { return type required here }
-                if n<=0 then 1 else n*f(n-1) fi
-    in f(n)
-    }
+set kappa_packet(Param p,ratvec s)=
+let rd_i=imaginary_root_system(p.x) then 
+orbit=cross_sub_orbit(simple_imaginary_reflections(p.x),p.x)  in {list of pairs (w*x,w) where w is in G.W}
+{but want them in W(rd_i)}
+sum(p.real_form, for (x,w) in orbit do
+  let w_i=W_elt(rd_i, w.matrix) in 
+  kappa(p,s,w_i)*parameter(x,p.lambda,p.nu) od)
+
