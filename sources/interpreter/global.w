@@ -631,7 +631,7 @@ point to really resume after an error.
 type analyse_types(const expr& e,expression_ptr& p)
 { try
   { type_expr tp; // this starts out as an |undetermined_type|
-    p = convert_expr(e,tp);
+    p = convert_expr(e,0,tp);
     return type::wrap(tp);
   }
   catch (const type_error& err)

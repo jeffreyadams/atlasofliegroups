@@ -2521,7 +2521,7 @@ case slice:
 break;
 
 @*1 Cast expressions.
-%S
+%
 These are a way to force an expression to get a specified type (provided that
 type analysis succeeds with that target type).
 
@@ -2655,6 +2655,76 @@ case op_cast_expr: delete op_cast_variant; break;
 case op_cast_expr:
 { const auto& c = *e.op_cast_variant;
   out << main_hash_table->name_of(c.oper) << '@@' << c.type;
+}
+break;
+
+@*1 Type abstraction expressions.
+%
+There is a simple kind of expression whose purpose is to signal that in its
+unique subexpression, a number of new type variables is introduced. This has no
+semantic significance, but the type checking process takes this into account.
+
+@< Type declarations needed in definition of |struct expr@;| @>=
+using abstractor = struct abstr_node*;
+
+@~The corresponding node type stores a number of variables and an expression.
+
+@< Structure and typedef definitions for types built upon |expr| @>=
+struct abstr_node
+{ unsigned int count; expr exp;
+@)
+  abstr_node(unsigned int count, expr&& exp)
+@/: count(count)
+  , exp(std::move(exp))@+{}
+};
+
+@ The tag used for casts is |type_abstraction_expr|.
+
+@< Enumeration tags for |expr_kind| @>=
+type_abstraction_expr, @[@]
+
+@ And there is of course a variant of |expr_union| for casts.
+@< Variants of ... @>=
+abstractor abstr_variant;
+
+@ There is a constructor for building the new variant.
+@< Methods of |expr| @>=
+expr(abstractor a, source_location loc)
+ : kind(type_abstraction_expr)
+ , abstr_variant(a)
+ , loc(loc)
+@+{}
+
+@ Abstractors are built by |make_abstr|.
+
+@< Declarations of functions for the parser @>=
+expr_p make_abstr(unsigned int count, expr_p exp, const YYLTYPE& loc);
+
+@~No surprises here.
+
+@< Definitions of functions for the parser@>=
+expr_p make_abstr(unsigned int count, expr_p e, const YYLTYPE& loc)
+{
+  expr_ptr ee(e); expr& exp=*ee;
+  return new expr(new abstr_node { count, std::move(exp) },loc);
+}
+
+@ Nor here.
+@< Cases for copying... @>=
+case type_abstraction_expr: abstr_variant=other.abstr_variant;
+break;
+
+@ Eventually we want to rid ourselves from the cast.
+
+@< Cases for destroying... @>=
+case type_abstraction_expr: delete abstr_variant; break;
+
+@ Printing cast expressions follows their input syntax.
+
+@< Cases for printing... @>=
+case type_abstraction_expr:
+{@; const auto& a = *e.abstr_variant;
+  out << '&' << a.count << a.exp ;
 }
 break;
 
