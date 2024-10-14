@@ -184,23 +184,25 @@ fact the only way the user can construct such vector values. However, both cases
 result type is partially known) are handled by a single function |convert_expr|.
 In addition to doing types analysis, it builds (upon success) an |expression|
 value. As arguments, |convert_expr| takes an |const expr& e@;| referring to a
-value produced by the parser, and a type in the form of a modifiable reference
-|type_expr& tp@;|. If there are no restriction on the final type, then it will
-be undetermined initially; if a precise type is required then |tp| is set to
-that. It could also be that there are partial requirements; then |tp| is a
-partially determined type expression reflecting those. Then during the call to
-|convert_expr|, the value of |tp| can be changed by calling |specialise| on it
-or on its subexpressions. If these calls would contradict the initially given;
-however, |convert_expr| must only use its modifiable reference to |tp| for
-calling |specialise| on it or on its subexpressions. It should notably not
-|std::move| from such type expressions. Also |tp| should not be a reference to a
-table entry or other permanent value, to avoid changes to the |tp| argument
-causing permanent changes to them (but after returning from |convert_expr|,
-|tp| can be used in a permanent manner).
+value produced by the parser, a number |fix_count| indicating the level up to
+which type variables are to be considered fixed but opaque (because they could
+represent any type), and a type in the form of a modifiable reference
+|type_expr& tp@;|.
+
+If there are no restrictions on the final type, then |tp| will be undetermined
+initially; if a precise type is required then it is set to that. It could also
+be that there are partial requirements; then |tp| is a partially determined type
+expression reflecting those. Then during the call to |convert_expr|, the value
+of |tp| can be changed by calling |specialise| on it or on its subexpressions.
+However, |convert_expr| should not use its modifiable reference to |tp| for any
+other purpose. It should notably not |std::move| from such type expressions.
+Also |tp| should not be a reference to a table entry or other permanent value,
+to avoid changes to the |tp| argument causing permanent changes to them. (But
+after returning from |convert_expr|, |tp| can be used in a permanent manner.)
 
 In some cases |tp| will remain partly undefined, like for an empty list display
 with an unknown type, which gets specialised only to~`\.{[*]}'. That type
-expression can be converted to a polymorphic type `\.{[A]}' by calling
+expression will then be converted to a polymorphic type `\.{[A]}' upon calling
 |type::wrap|. If |tp| remains completely undefined (as will happen for an
 expression that selects a value from an empty list, or that calls |error|) this
 will produce the type `\.A'; an expression having that type means that its
@@ -216,7 +218,7 @@ the type derived for a subexpression is `\.*', if this allows us to simplify our
 code.
 
 @< Declarations of exported functions @>=
-expression_ptr convert_expr(const expr& e, type_expr& tp);
+expression_ptr convert_expr(const expr& e, unsigned int fix_count, type_expr& tp);
 
 @*1 Layers of lexical context.
 %
@@ -406,7 +408,7 @@ considerable amount of work to be done. It is therefore convenient to postpone
 these cases and treat them one syntactic construction at the time.
 
 @< Function definitions @>=
-expression_ptr convert_expr(const expr& e, type_expr& tp)
+expression_ptr convert_expr(const expr& e, unsigned int fc, type_expr& tp)
 { switch(e.kind)
   {
    @\@< Cases for type-checking and converting expression~|e| against
@@ -426,11 +428,12 @@ expression. So to cater for that, we define a local function
 that it is being used correctly.
 
 @< Local function definitions @>=
-expression_ptr convert_expr_strongly(const expr& e, const type_expr& te)
+expression_ptr convert_expr_strongly
+  (const expr& e, unsigned int fc, const type_expr& te)
 {
   assert(te.kind()!=undetermined_type and type::wrap(te).degree()==0);
   type_expr context_type = te.copy();
-  return convert_expr(e,context_type);
+  return convert_expr(e,fc,context_type);
 }
 
 @* Denotations, capturing values in a program.
@@ -693,7 +696,7 @@ fact that the function body and all |return| expressions share a same
 case return_expr:
 { if (layer::may_return())
   { type_expr& rt = layer::current_return_type();
-    return expression_ptr(new returner(convert_expr(*e.return_variant,rt)));
+    return expression_ptr(new returner(convert_expr(*e.return_variant,fc,rt)));
   }
   throw expr_error(e,"One can only use 'return' within a function body");
 }
@@ -782,7 +785,7 @@ case tuple_display:
   std::vector<expression_ptr>& comp = tup_exp->component;
   comp.reserve(n);
   for (wel_const_iterator it(e.sublist); not it.at_end(); ++it,++tl_it)
-  { comp.push_back(convert_expr(*it,*tl_it));
+  { comp.push_back(convert_expr(*it,fc,*tl_it));
     is_constant = is_constant and
       dynamic_cast<const denotation*>(comp.back().get()) != nullptr;
     if (*tl_it==void_type and not is_empty(*it))
@@ -1037,6 +1040,7 @@ type balance
    ( type_expr& target // component type required from context
    , raw_expr_list elist // list of expression to be balanced
    , const expr& e // containing expression, for error reporting
+   , unsigned int fc // ``fixed count'' level from and for |convert_expr|
    , const char* description // what kind of components, for error message
    , std::vector<expression_ptr>& components // output, converted expressions
    )
@@ -1058,7 +1062,7 @@ type balance
   wel_const_iterator it(elist);
   for (unsigned i=0; i<n; ++i,++it)
     if (comp_type[i]!=common)
-      components[i] = convert_expr(*it,target);
+      components[i] = convert_expr(*it,fc,target);
       // redo conversion with broader |target| type
   return common;
 }
@@ -1096,8 +1100,8 @@ for (wel_const_iterator it(elist); not it.at_end(); ++it)
       // start each with a copy of original |target| pattern
     components.push_back(expression_ptr());
        // push, whether or not |convert_expr| succeeds
-    components.back()=convert_expr(*it,te);
-    type ctype = type::wrap(te);
+    components.back()=convert_expr(*it,fc,te);
+    type ctype = type::wrap(te,fc);
     comp_type.push_back(ctype.copy());
     if (not broader_eq(common,ctype))
     { if (broader_eq(ctype,common))
@@ -1188,7 +1192,7 @@ case list_display:
 @/static const char* const str = "components of list expression";
   if (tp.specialise(row_of_type))
   {
-    type comp_type = balance(tp.component_type(),e.sublist,e,str,comps);
+    type comp_type = balance(tp.component_type(),e.sublist,e,fc,str,comps);
     if (comp_type.is_void())
       @< Insert voiding coercions into members of |comps| that need it @>
     if (std::all_of(comps.begin(),comps.end(),is_const))
@@ -1198,13 +1202,13 @@ case list_display:
 @)
   type_expr comp_type;
   if (tp==void_type) // in void context leave undetermined target type
-  { balance(comp_type,e.sublist,e,str,comps);
+  { balance(comp_type,e.sublist,e,fc,str,comps);
     return result; // and forget |comp_type| and result of |balance|
   }
 @)
   const conversion_record* conv = row_coercion(tp,comp_type);
   if (conv!=nullptr)
-  { balance(comp_type,e.sublist,e,str,comps);
+  { balance(comp_type,e.sublist,e,fc,str,comps);
     if (std::all_of(comps.begin(),comps.end(),is_const))
     {
       make_row_denotation<true>(result);
@@ -1485,9 +1489,11 @@ Therefore the caller can pass the relevant list of |variants| as a parameter.
 
 @< Declarations of exported functions @>=
 expression_ptr resolve_overload
-  (const expr& e,
-   type_expr& tp,
-   const overload_table::variant_list& variants);
+  ( const expr& e
+  , unsigned int fc
+  , type_expr& tp
+  , const overload_table::variant_list& variants
+  );
 
 @ To resolve overloading, we used to try each variant, each time recursively
 calling |convert_expr| to convert the arguments under the hypothesis that they
@@ -1549,9 +1555,11 @@ match, we report a ``failed to match'' error.
 
 @< Function definitions @>=
 expression_ptr resolve_overload
-  (const expr& e,
-   type_expr& tp,
-   const overload_table::variant_list& variants)
+  ( const expr& e
+  , unsigned int fc
+  , type_expr& tp
+  , const overload_table::variant_list& variants
+  )
 {
   const expr& args = e.call_variant->arg;
   auto n_args = args.kind==tuple_display ? length(args.sublist) : 1;
@@ -1600,7 +1608,7 @@ we set the variable to |false| in that case.
   // will record whether all |n_args>1| arguments are denotations
   type_expr apt; // modifiable temporary
   if (n_args==1)
-    arg_vector[0] = convert_expr(args,apt);
+    arg_vector[0] = convert_expr(args,fc,apt);
     // get \foreign{a priori} type for argument
   else
   {
@@ -1610,12 +1618,12 @@ we set the variable to |false| in that case.
     for (wel_const_iterator it(args.sublist); not it.at_end();
          ++it,++apt_it,++arg_vector_it)
     {
-      *arg_vector_it = convert_expr(*it,*apt_it);
+      *arg_vector_it = convert_expr(*it,fc,*apt_it);
       is_constant = is_constant and
          dynamic_cast<const denotation*>(arg_vector_it->get()) != nullptr;
     }
   }
-  a_priori_type = type::wrap(apt); // combine arguments types into one
+  a_priori_type = type::wrap(apt,fc); // combine arguments types into one
 }
 
 @ It may be that more than one variant can produce a match, in which case we
@@ -1819,7 +1827,7 @@ the same.
       if (not coerce(a_priori_type.unwrap(),arg_type,arg,e.loc))
         throw type_error(e,a_priori_type.unwrap().copy(),arg_type.copy());
       }
-    else arg = convert_expr_strongly(cur_arg,arg_type); // redo conversion
+    else arg = convert_expr_strongly(cur_arg,fc,arg_type); // redo conversion
   }
   else
   { wtl_const_iterator apt_it(a_priori_type.tuple())
@@ -1834,7 +1842,7 @@ the same.
             throw type_error(e,apt_it->copy(),argt_it->copy());
         }
         else
-          *res_it = convert_expr_strongly(cur_arg,*argt_it);
+          *res_it = convert_expr_strongly(cur_arg,fc,*argt_it);
           // redo conversion
       }
     arg = expression_ptr(std::move(tup_exp));
@@ -2460,10 +2468,10 @@ case function_call:
     if |call.fun| is known in |global_overload_table|,
     unless it is a local function identifier @>
   type_expr f_pat=gen_func_type.copy(); // start with generic function type
-  expression_ptr fun = convert_expr(call.fun,f_pat);
+  expression_ptr fun = convert_expr(call.fun,fc,f_pat);
   type f_type=type::wrap(f_pat); // consolidate to a (maybe polymorphic) |type|
   type_expr arg_pat = f_type.skeleton(f_pat.func()->arg_type);
-  expression_ptr arg = convert_expr(call.arg,arg_pat);
+  expression_ptr arg = convert_expr(call.arg,fc,arg_pat);
   type arg_type = type::wrap(arg_pat,f_type.floor());
   if (arg_type.is_void() and not is_empty(call.arg))
     arg.reset(new voiding(std::move(arg)));
@@ -2495,7 +2503,7 @@ type.
   { const overload_table::variant_list& variants
       = global_overload_table->variants(id);
     if (variants.size()>0)
-      return resolve_overload(e,tp,variants);
+      return resolve_overload(e,fc,tp,variants);
   }
 }
 
@@ -2838,19 +2846,19 @@ case let_expr:
   const id_pat& pat=lexp.pattern;
   const auto& rhs = lexp.val;
   type_expr decl_type=pattern_type(pat);
-  expression_ptr arg = convert_expr(rhs,decl_type);
+  expression_ptr arg = convert_expr(rhs,fc,decl_type);
 @/auto n=count_identifiers(pat);
   if (n==0)
   // then avoid frame without identifiers, so compile as sequence expression
     return expression_ptr(new @|
-      seq_expression(std::move(arg),convert_expr(lexp.body,tp)));
+      seq_expression(std::move(arg),convert_expr(lexp.body,fc,tp)));
   if (decl_type==void_type and not is_empty(rhs))
     // rare case, introducing void identifier
     arg.reset(new voiding(std::move(arg)));
   layer new_layer(n);
   thread_bindings(pat,decl_type,new_layer,false);
   return expression_ptr(new @|
-    let_expression(pat,std::move(arg),convert_expr(lexp.body,tp)));
+    let_expression(pat,std::move(arg),convert_expr(lexp.body,fc,tp)));
 }
 
 @ Here is a class whose main purpose, like that of |layer| before, is to have
@@ -3177,7 +3185,7 @@ case lambda_expr:
 @/layer new_layer(count_identifiers(pat),rt);
   thread_bindings(pat,arg_type,new_layer,false);
 @/return expression_ptr(new @| lambda_expression
-   (copy_id_pat(pat), convert_expr(fun.body,*rt), std::move(e.loc)));
+   (copy_id_pat(pat), convert_expr(fun.body,fc,*rt), std::move(e.loc)));
 }
 
 @ Type checking recursive lambda expressions is slightly different. We must, in
@@ -3219,7 +3227,7 @@ case rec_lambda_expr:
   thread_bindings(pat,arg_type,new_layer,false);
 @/return expression_ptr(new @| recursive_lambda
    (fun.self_id,copy_id_pat(pat),
-    convert_expr(fun.body,res_type), std::move(e.loc)));
+    convert_expr(fun.body,fc,res_type), std::move(e.loc)));
 }
 
 @* Closures.
@@ -3683,6 +3691,40 @@ void closure_call<kind>::evaluate(level l) const
   @< Catch block for exceptions thrown within call of |f|... @>
 }
 
+@* Type abstraction expressions.
+%
+The extension of the axis language with second order types was made remarkably
+late, in view of the fact the execution mechanism always has been able to handle
+expressions that can evaluate to value of unknown type. The main difficulty was
+adapting the originally monomorphic type system, and related code like resolving
+overloaded function calls, to allowing polymorphic types throughout. Once this
+is done, it is easy to allow users to create values of polymorphic types using
+type variables that stand for arbitrary types. Given that types occur in certain
+expressions, notably to declare types for function parameters, it does not
+suffice to allow polymorphic types when declaring new identifiers; this is what
+happens in many (pure or not quite pure) functional languages like \.{Haskell}
+and \.{OCaml} where after possibly making such declarations, types are inferred
+in an equation-solving style from the expressions themselves.
+
+Rather, we use the fairly simple mechanism of having the user introduce one or
+more identifiers as local type variables in a given expression; then, in that
+expression those identifiers designate types as if they were primitive ones, but
+without any given functions that relate to them. If properly type checked, the
+type of such an expression then may involve those type variables, and when used
+in the context these type variable change status to become universally
+quantified type variables of a polymorphic type.
+
+@< Cases for type-checking and converting... @>=
+case type_abstraction_expr:
+{ const abstr_node& a = *e.abstr_variant;
+  type_expr result_type; // initially undetermined
+  expression_ptr result  = convert_expr(a.exp,fc+a.count,result_type);
+  if (tp.specialise(result_type))
+    return result;
+  throw type_error(e,std::move(result_type),tp.copy());
+}
+
+
 @* Sequence expressions.
 %
 Sequence expressions are used to evaluate two expressions one after the other,
@@ -3753,15 +3795,15 @@ void next_expression::evaluate(level l) const
 @< Cases for type-checking and converting... @>=
 case seq_expr:
 { const sequence_node& seq=*e.sequence_variant;
-  expression_ptr first = convert_expr_strongly(seq.first,void_type);
-  expression_ptr last  = convert_expr(seq.last,tp);
+  expression_ptr first = convert_expr_strongly(seq.first,fc,void_type);
+  expression_ptr last  = convert_expr(seq.last,fc,tp);
   return expression_ptr(new seq_expression(std::move(first),std::move(last)));
 }
 break;
 case next_expr:
 { const sequence_node& seq=*e.sequence_variant;
-  expression_ptr first = convert_expr(seq.first,tp);
-  expression_ptr last  = convert_expr_strongly(seq.last,void_type);
+  expression_ptr first = convert_expr(seq.first,fc,tp);
+  expression_ptr last  = convert_expr_strongly(seq.last,fc,void_type);
   return expression_ptr(new next_expression(std::move(first),std::move(last)));
 }
 break;
@@ -4087,8 +4129,8 @@ case subscription:
     // all initialised to |undetermined_type|
   auto& subsn = *e.subscription_variant;
     // alias |struct| pointed to by the |unique_ptr|
-  expression_ptr array = convert_expr(subsn.array,array_type);
-  expression_ptr index = convert_expr(subsn.index,index_type);
+  expression_ptr array = convert_expr(subsn.array,fc,array_type);
+  expression_ptr index = convert_expr(subsn.index,fc,index_type);
   expression_ptr subscr;
   @< Set |subscr| to a pointer to a subscription of a kind determined by
      |array_type|, |index_type| while setting |subscr_type|, and holding
@@ -4206,9 +4248,9 @@ if array type is one that can be sliced at all, throwing an error if it cannot.
 @< Cases for type-checking and converting... @>=
 case slice:
 { type_expr array_type; // initialised to |undetermined_type|
-  expression_ptr array = convert_expr(e.slice_variant->array,array_type);
-  expression_ptr lower = convert_expr_strongly(e.slice_variant->lower,int_type);
-  expression_ptr upper = convert_expr_strongly(e.slice_variant->upper,int_type);
+  expression_ptr array = convert_expr(e.slice_variant->array,fc,array_type);
+  expression_ptr lower = convert_expr_strongly(e.slice_variant->lower,fc,int_type);
+  expression_ptr upper = convert_expr_strongly(e.slice_variant->upper,fc,int_type);
   expression_ptr subscr; const unsigned fl = e.slice_variant->flags.to_ulong();
   switch (subscr_base::slice_kind(array_type))
     { case subscr_base::row_entry: subscr.reset(
@@ -4731,7 +4773,7 @@ to it, but nothing else is so) and so must (become) the required |tp|.
 @< Cases for type-checking and converting... @>=
 case negation_expr:
 { type_expr b=bool_type.copy();
-   expression_ptr arg = convert_expr(*e.negation_variant,b);
+   expression_ptr arg = convert_expr(*e.negation_variant,fc,b);
   if (not tp.specialise(b)) // |not| preserves the |bool| type
     throw type_error(e,std::move(b),tp.copy());
   return expression_ptr(new @| builtin_call
@@ -4848,9 +4890,9 @@ case conditional_expr:
 { auto& exp = *e.if_variant;
   if (was_negated(exp.condition)) // eliminate negated conditions
     exp.branches.contents.swap(exp.branches.next->contents);
-  expression_ptr c = convert_expr_strongly(exp.condition,bool_type);
+  expression_ptr c = convert_expr_strongly(exp.condition,fc,bool_type);
   std::vector<expression_ptr> conv;
-  balance(tp,&exp.branches,e,"branches of conditional",conv);
+  balance(tp,&exp.branches,e,fc,"branches of conditional",conv);
 @/return expression_ptr(new @|
     conditional_expression(std::move(c),std::move(conv[0]),std::move(conv[1])));
 }
@@ -4990,9 +5032,9 @@ case int_case_expr0:
 case int_case_expr1:
 case int_case_expr2:
 { auto& exp = *e.if_variant;
-  expression_ptr c = convert_expr_strongly (exp.condition,int_type);
+  expression_ptr c = convert_expr_strongly (exp.condition,fc,int_type);
   std::vector<expression_ptr> conv;
-  balance(tp,&exp.branches,e,"branches of case",conv);
+  balance(tp,&exp.branches,e,fc,"branches of case",conv);
   if (e.kind==int_case_expr0)
     return expression_ptr(new @|
       int_case_expression(std::move(c),std::move(conv)));
@@ -5100,7 +5142,7 @@ case discrimination_expr:
   type_expr subject_type;
   std::ostringstream o; // for use in various error messages
 @)
-  expression_ptr c  =  convert_expr(exp.subject,subject_type);
+  expression_ptr c  =  convert_expr(exp.subject,fc,subject_type);
   if (subject_type.kind()!=union_type)
     throw type_error(exp.subject,std::move(subject_type),
                      std::move(*unknown_union_type(n_branches)));
@@ -5232,7 +5274,7 @@ this branch is chosen, and suppress creating a |frame| for the branch.
   expression_ptr result;
   layer branch_layer(count_identifiers(branch.pattern));
   thread_bindings(branch.pattern,variant_type,branch_layer,false);
-  result=convert_expr(branch.branch,tp);
+  result=convert_expr(branch.branch,fc,tp);
 @/choices[k] = choice_part (copy_id_pat(branch.pattern),std::move(result));
 }
 
@@ -5282,7 +5324,7 @@ branch was already defined.
 @< Use |branch| to set |default_choice| @>=
 { if (default_choice.get()!=nullptr)
     throw expr_error(e,"Multiple default branches present");
-  default_choice = convert_expr(branch.branch,tp);
+  default_choice = convert_expr(branch.branch,fc,tp);
 }
 
 @ A default branch should be present if and only if the number of other
@@ -5420,13 +5462,13 @@ case while_expr:
 @)
   if (tp==void_type)
     return expression_ptr@|(make_while_loop (w.flags.to_ulong(),
-       convert_expr_strongly(w.body, void_type)));
+       convert_expr_strongly(w.body,fc,void_type)));
   else if (tp==int_type)
     return expression_ptr(make_while_loop @| (0x8,
-       convert_expr_strongly(w.body, void_type)));
+       convert_expr_strongly(w.body,fc,void_type)));
   else if (tp.specialise(row_of_type))
   { auto& comp_type = tp.component_type();
-    expression_ptr b = convert_expr(w.body,comp_type);
+    expression_ptr b = convert_expr(w.body,fc,comp_type);
     if (comp_type==void_type and not is_empty(w.body))
       b.reset(new voiding(std::move(b)));
     return expression_ptr (make_while_loop @|
@@ -5451,7 +5493,7 @@ component type as for list displays, in section@#list display conversion@>.
     throw type_error(e,row_of_type.copy(),tp.copy());
 @)
   return expression_ptr(new conversion(*conv, expression_ptr(make_while_loop @|
-       (w.flags.to_ulong(),convert_expr(w.body,comp_type)))));
+       (w.flags.to_ulong(),convert_expr(w.body,fc,comp_type)))));
 }
 
 @ Of course evaluating is what most distinguishes loops from conditionals. The
@@ -5530,7 +5572,7 @@ negated, we generate the negated template instance of |do_expression|.
 case do_expr:
 { sequence_node& seq=*e.sequence_variant;
   bool neg = was_negated(seq.first);
-  expression_ptr body = convert_expr(seq.last,tp);
+  expression_ptr body = convert_expr(seq.last,fc,tp);
     // body needs type-checking in all cases
   if (seq.first.kind==boolean_denotation)
   { if (seq.first.bool_denotation_variant==neg)
@@ -5538,7 +5580,7 @@ case do_expr:
     else
       return expression_ptr(new forever_expression(std::move(body)));
   }
-  expression_ptr condition = convert_expr_strongly(seq.first,bool_type);
+  expression_ptr condition = convert_expr_strongly(seq.first,fc,bool_type);
   if (neg)
     return expression_ptr(new @|
       do_expression<true>(std::move(condition),std::move(body)));
@@ -5882,7 +5924,7 @@ substitute a counted loop for such loops.
 case for_expr:
 { const for_node& f=*e.for_variant;
   type_expr in_type;
-  expression_ptr in_expr = convert_expr(f.in_part,in_type);  // \&{in} part
+  expression_ptr in_expr = convert_expr(f.in_part,fc,in_type);  // \&{in} part
   subscr_base::sub_type which; // the kind of aggregate iterated over
   layer bind(count_identifiers(f.id),nullptr);
    // for identifier(s) introduced in this loop
@@ -5900,7 +5942,7 @@ case for_expr:
     btp=&body_type;
   else throw type_error(e,row_of_type.copy(),tp.copy());
 @)
-  expression_ptr body(convert_expr (f.body,*btp));
+  expression_ptr body(convert_expr(f.body,fc,*btp));
   if (tp!=void_type and *btp==void_type and not is_empty(f.body))
     body.reset(new voiding(std::move(body)));
 @/expression_ptr loop;
@@ -6448,10 +6490,10 @@ body.
 @< Cases for type-checking and converting... @>=
 case cfor_expr:
 { const cfor_node& c=*e.cfor_variant;
-  expression_ptr count_expr = convert_expr_strongly(c.count,int_type);
+  expression_ptr count_expr = convert_expr_strongly(c.count,fc,int_type);
   expression_ptr bound_expr = is_empty(c.bound)
     ? expression_ptr(nullptr)
-    : convert_expr_strongly(c.bound,int_type) ;
+    : convert_expr_strongly(c.bound,fc,int_type) ;
 @)
   type_expr body_type;
   type_expr *btp=&body_type; // point to place to record body type
@@ -6465,7 +6507,7 @@ case cfor_expr:
 @)
   if (c.flags[2]) // case of absent loop variable
   { layer bind(0,nullptr);  // no local variables for loop, but allow \&{break}
-    expression_ptr body(convert_expr (c.body,*btp));
+    expression_ptr body(convert_expr(c.body,fc,*btp));
     if (tp!=void_type and *btp==void_type and not is_empty(c.body))
       body.reset(new voiding(std::move(body)));
   @/expression_ptr loop(make_counted_loop(c.flags.to_ulong(), @|
@@ -6476,8 +6518,8 @@ case cfor_expr:
   }
   else // case of a present loop variable
   { layer bind(1,nullptr);
-    bind.add(c.id,type::wrap(int_type),true); // add |id| as constant
-    expression_ptr body(convert_expr (c.body,*btp));
+    bind.add(c.id,type::wrap(int_type,fc),true); // add |id| as constant
+    expression_ptr body(convert_expr(c.body,fc,*btp));
     if (tp!=void_type and *btp==void_type and not is_empty(c.body))
       body.reset(new voiding(std::move(body)));
   @/expression_ptr loop(make_counted_loop(c.flags.to_ulong(), @|
@@ -6713,8 +6755,8 @@ strong type context.
 case cast_expr:
 { cast_node& c=*e.cast_variant;
   if (tp.specialise(c.dst_tp)) // see if we can do without conversion
-    return convert_expr(c.exp,tp); // in which case use now specialised |tp|
-  expression_ptr p = convert_expr(c.exp,c.dst_tp); // otherwise use |c.dst_tp|
+    return convert_expr(c.exp,fc,tp); // in which case use now specialised |tp|
+  expression_ptr p = convert_expr(c.exp,fc,c.dst_tp); // otherwise use |c.dst_tp|
   return conform_types(c.dst_tp,tp,std::move(p),e);
 }
 
@@ -6777,7 +6819,7 @@ found we fall through this code, leading to a ``no instance found'' error.
 
 @< See if |c_type| matches a unique variant... @>=
 {
-  type target = type::wrap(c_type);
+  type target = type::wrap(c_type,fc);
   const unsigned target_deg=target.degree(), start = target.floor();
   expression_ptr result;
   type_expr deduced_type;
@@ -7141,7 +7183,7 @@ if ( e.assign_variant->lhs.kind==0x1) // single identifier, do simple assign
   assert(not id_t->is_polymorphic()); // polymorphic variables are made constant
 @)
   type_expr rhs_type = id_t->bake(); // provide a modifiable copy
-  expression_ptr r = convert_expr(e.assign_variant->rhs,rhs_type);
+  expression_ptr r = convert_expr(e.assign_variant->rhs,fc,rhs_type);
   if (rhs_type!=id_t->bake()) // call should not have specialised |rhs_type|
     throw type_error(e,id_t->bake(),std::move(rhs_type));
   @< Check whether |r| refers to an |builtin_call| of a function with nonzero
@@ -7438,7 +7480,7 @@ stored in |thr|.
   type_expr rhs_type;
   threader thr(e);
   thr.thread(pat,rhs_type);
-  expression_ptr r = convert_expr(e.assign_variant->rhs,rhs_type);
+  expression_ptr r = convert_expr(e.assign_variant->rhs,fc,rhs_type);
   if (rhs_type==void_type and not is_empty(e.assign_variant->rhs))
     r.reset(new voiding(std::move(r)));
   expression_ptr m_ass (
@@ -8106,7 +8148,7 @@ case comp_ass_stat:
   // polymorphic variables are made constant
 @)
   type_expr ind_t;
-  expression_ptr i = convert_expr(index,ind_t);
+  expression_ptr i = convert_expr(index,fc,ind_t);
 @/type_expr comp_t;
   subscr_base::sub_type kind =
     subscr_base::index_kind(aggr_t->unwrap(),ind_t,comp_t);
@@ -8116,7 +8158,7 @@ case comp_ass_stat:
       << " with index of type " << ind_t << " in assignment";
     throw expr_error(e,o.str());
   }
-  expression_ptr r = convert_expr(rhs,comp_t);
+  expression_ptr r = convert_expr(rhs,fc,comp_t);
   if (comp_t==void_type and not is_empty(rhs))
     r.reset(new voiding(std::move(r)));
   expression_ptr p;
@@ -8163,7 +8205,7 @@ case field_ass_stat:
   @< Look up a projector for |*tuple_t| named |selector|, and if found assign
      its |position| to |pos| and make |comp_loc| point to the corresponding
      component |type_expr| of |*tuple_t|; on failure |throw expr_error| @>
-  expression_ptr r = convert_expr_strongly(rhs,*comp_loc);
+  expression_ptr r = convert_expr_strongly(rhs,fc,*comp_loc);
   expression_ptr p;
   if (is_local)
     p.reset(new local_field_assignment(tuple,pos,selector,d,o,std::move(r)));
@@ -8266,7 +8308,7 @@ reporting, as explained below.
   @< Set |appl| to the application of |op| to |lhs| and |rhs|... @>
   type_expr comp_t = comp_loc->copy();
   // |resolve_overload| needs modifiable reference
-  call = resolve_overload(*appl,comp_t,global_overload_table->variants(op));
+  call = resolve_overload(*appl,fc,comp_t,global_overload_table->variants(op));
   @< Restore initial state of |*e.comp_trans_variant| and of |appl| @>
 }
 
@@ -8456,7 +8498,7 @@ case comp_trans_stat:
   @< Convert |index| to |ind|...
   @>
   expression_ptr call =
-    resolve_overload(*appl,comp_t,global_overload_table->variants(op));
+    resolve_overload(*appl,fc,comp_t,global_overload_table->variants(op));
 
   expression_ptr result;
   @< If the conditions for an optimised in-place component transformation... @>
@@ -8471,7 +8513,7 @@ be used in subsequent modules.
    type of subscription of |*aggr_t| by it; throw an exception if the |kind| of
    subscription does not allow assignment @>=
 {
-  ind = convert_expr(index,ind_t);
+  ind = convert_expr(index,fc,ind_t);
 @/kind=subscr_base::index_kind(aggr_t->unwrap(),ind_t,comp_t);
   if (not subscr_base::assignable(kind))
   { std::ostringstream o;
@@ -8666,7 +8708,7 @@ completion,
   layer let_layer(1);
   thread_bindings(dollar,ind_t,let_layer,true);
   result.reset(new let_expression @|
-    (dollar,std::move(ind),convert_expr(*ca,tp)));
+    (dollar,std::move(ind),convert_expr(*ca,fc,tp)));
   *appl = std::move(ca->comp_assign_variant->rhs);
     // restore |appl| for further restoration
   index.swap(temp); // restore our original expression for outer error reporting

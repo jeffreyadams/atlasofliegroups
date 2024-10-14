@@ -2372,7 +2372,7 @@ class type
   type(unsigned int fix_nr,unsigned int var_nr) : te(), a(fix_nr,var_nr) @+{}
 public:
   static type wrap(const type_expr& te,
-		   unsigned int fix_count=0, unsigned int gap=0);
+		   unsigned int fix_count, unsigned int gap=0);
   static type bottom(unsigned int fix_count=0)
   {@; return wrap(type_expr(),fix_count); } // free type variable
   type(type&& tp) = default;
@@ -2447,7 +2447,7 @@ bool matches (const type_expr& formal, unsigned int n);
   // non-|const|; assignment is left in |a|
 bool record_match (const type_expr& sub_t, type& other); // likewise
 bool record_match (const type_expr& sub_t, const type_expr& other)
-  {@; type t=wrap(other); return record_match(sub_t,t); }
+  {@; type t=wrap(other,floor()); return record_match(sub_t,t); }
 @)
 type_expr skeleton (const type_expr& sub_t) const;
 void wrap_row () @+{@; te.set_from(type_expr::row(std::move(te))); }
@@ -2467,7 +2467,7 @@ type& type::expunge()
   if (std::none_of(a.equiv.begin(),a.equiv.end(),
                  @[ [](const const_type_ptr& p){@; return p!=nullptr; } @]))
     return *this; // nothing to expunge
-  return *this = wrap(substitution(te,a));
+  return *this = wrap(substitution(te,a),floor());
 }
 @)
 type& type::clear(unsigned int d)
@@ -2834,7 +2834,7 @@ type_expr mk_type_pattern(const char* s)
 @)
 type mk_type(const char* s)
 { unsigned int dummy;
-  auto result = type::wrap(mk_type_expr(s,dummy));
+  auto result = type::wrap(mk_type_expr(s,dummy),0);
   assert (result.degree()==dummy);
   return result;
 }
