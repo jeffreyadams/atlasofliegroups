@@ -631,8 +631,8 @@ point to really resume after an error.
 type analyse_types(const expr& e,expression_ptr& p)
 { try
   { type_expr tp; // this starts out as an |undetermined_type|
-    p = convert_expr(e,tp);
-    return type::wrap(tp);
+    p = convert_expr(e,0,tp);
+    return type::wrap(tp,0);
   }
   catch (const type_error& err)
   { std::cerr << "Error during analysis of expression " << e.loc << std::endl;
@@ -983,7 +983,7 @@ can pilfer the type |it->second|, which points to a component of the local
   }
   *output_stream << std::endl;
   global_id_table->add
-    (it->first,std::move(*v_it),type::wrap(it->second),b.is_const(it));
+    (it->first,std::move(*v_it),type::wrap(it->second,0),b.is_const(it));
 }
 
 @ For installing overloaded definitions, the main difference with the code above
@@ -1164,7 +1164,7 @@ void global_declare_identifier(id_type id, type_p t)
   *output_stream << "Declaring identifier '" << main_hash_table->name_of(id) @|
             << "': " << type << std::endl;
   static const shared_value undefined_value; // holds a null pointer
-  global_id_table->add(id,undefined_value,type::wrap(type),false);
+  global_id_table->add(id,undefined_value,type::wrap(type,0),false);
 }
 
 @ Here is a utility function called whenever a type identifier is forgotten or
@@ -1290,7 +1290,7 @@ for this constant.
 void type_define_identifier
   (id_type id, type_p t, raw_id_pat ip, const source_location& loc)
 { type_ptr saf(t); id_pat field_pat(ip); // ensure clean-up
-  type tp= type::wrap(*t);
+  type tp= type::wrap(*t,0);
   const auto& fields = field_pat.sublist;
   const auto n=length(fields);
   definition_group group(n);
@@ -1639,7 +1639,7 @@ index~|i| into the vector.
       if (global_id_table->is_defined_type(it->id))
         clean_out_type_identifier(it->id);
       global_id_table->add_type_def
-        (it->id,type::wrap(type_expr::tabled_nr(type_nr)));
+        (it->id,type::wrap(type_expr::tabled_nr(type_nr),0));
     }
     @< Emit... @>
     if (it->id==type_binding::no_id)

@@ -481,7 +481,7 @@ new line of input, or abandons the program in case none can be obtained.
 
 @< Enter the main command loop @>=
 last_value = shared_value (new tuple_value(0));
-last_type = type::wrap(void_type);
+last_type = type::wrap(void_type,0);
  // |last_type| is a |type_ptr| defined in \.{axis.w}
 elapsed_wrapper(eval_level::no_value); // start the stopwatch
 @)

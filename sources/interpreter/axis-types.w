@@ -2372,8 +2372,8 @@ class type
   type(unsigned int fix_nr,unsigned int var_nr) : te(), a(fix_nr,var_nr) @+{}
 public:
   static type wrap(const type_expr& te,
-		   unsigned int fix_count=0, unsigned int gap=0);
-  static type bottom(unsigned int fix_count=0)
+		   unsigned int fix_count, unsigned int gap=0);
+  static type bottom(unsigned int fix_count)
   {@; return wrap(type_expr(),fix_count); } // free type variable
   type(type&& tp) = default;
   type& operator=(type&& tp) = default;
@@ -2430,7 +2430,7 @@ supposing it is no longer needed, and is faster in the absence of any pending
 type assignments). The |const| method |has_unifier| tests whether our type can
 unify to what the |type_expr| expects. The method |unify| also preforms the
 unification, but also records the substitution required in our
-|type_assignment|. The |matches| methods is similar, but specific for use in
+|type_assignment|. The |matches| methods are similar, but specific for use in
 overload resolution, where our type is that of the argument, and |formal| is the
 specification of one overloaded instance; in case of success, |assign()| can be
 used to perform substitutions for that overloaded instance, while in case of
@@ -2464,7 +2464,7 @@ type& type::expunge()
   if (std::none_of(a.equiv.begin(),a.equiv.end(),
                  @[ [](const const_type_ptr& p){@; return p!=nullptr; } @]))
     return *this; // nothing to expunge
-  return *this = wrap(substitution(te,a));
+  return *this = wrap(substitution(te,a),floor());
 }
 @)
 type& type::clear(unsigned int d)
@@ -2690,12 +2690,13 @@ bool type::matches (const type_expr& f_par_tp, unsigned int f_deg)
   return can_unify(f_par_tp,shift(te,start,f_deg),a);
 }
 
-@ Before converting the argument for a polymorphic function, we can extract
-from its polymorphic type a type pattern that may aid the conversion, namely by
+@ Before converting the argument for a polymorphic function, we can extract from
+its polymorphic type a type pattern that may aid the conversion, namely by
 simply replacing all type variables bound in the polymorphic type by
-undetermined types. The method |skeleton| achieves this; it could have been
-implemented by calling |substitution| with an assignment of undetermined types,
-but it can be done just as easily by a direct recursion.
+undetermined types; the type variables up to |floor()| are unchanged. The method
+|skeleton| achieves this; it could have been implemented by calling
+|substitution| with an assignment of undetermined types, but it can be done just
+as easily by a direct recursion.
 
 @< Function definitions @>=
 type_expr type::skeleton (const type_expr& sub_t) const
@@ -2815,7 +2816,7 @@ type_expr mk_type_pattern(const char* s)
 @)
 type mk_type(const char* s)
 { unsigned int dummy;
-  auto result = type::wrap(mk_type_expr(s,dummy));
+  auto result = type::wrap(mk_type_expr(s,dummy),0);
   assert (result.degree()==dummy);
   return result;
 }
