@@ -989,13 +989,13 @@ needs to be done in all cases.
 
 @< Define auxiliary functions for |do_global_set| @>=
 void add_overload(id_type id,
-  shared_function&& f, type_expr&& type, unsigned int deg)
+  shared_function&& f, type_expr&& te, unsigned int deg)
 {
   auto old_n=global_overload_table->variants(id).size();
 @/std::ostringstream type_string;
-  type_string << type;
-    // save type |type| as string before moving from it
-  global_overload_table->add(id,std::move(f),std::move(type),deg);
+  type_string << te;
+    // save type |te| as string before moving from it
+  global_overload_table->add(id,std::move(f),std::move(te),deg);
     // insert or replace table entry
   auto n=global_overload_table->variants(id).size();
   if (n==old_n)
@@ -1610,9 +1610,9 @@ index~|i| into the vector.
   for (auto it=defs.begin(); not defs.at_end(it); ++it,++i)
     if (not it->fields.empty())
     { const auto& fields = it->fields;
-      const auto& type = type_expr::tabled_nr(type_nrs[i]);
+      const auto& tp = type_expr::tabled_nr(type_nrs[i]);
       @/@< Append to |store| bindings for the identifiers in |fields| as
-         injector or projector function for |type| @>
+         injector or projector function for |tp| @>
     }
 @)
   auto store_it = store.wbegin(); // rewind the list of field lists
@@ -1620,7 +1620,7 @@ index~|i| into the vector.
   {
     const auto& fields = it->fields;
     const auto type_nr = type_nrs[i];
-    const auto& type = type_expr::tabled_nr(type_nr);
+    const auto& tp = type_expr::tabled_nr(type_nr);
     if (it->id!=type_binding::no_id)
     {
       if (global_id_table->is_defined_type(it->id))
@@ -1631,10 +1631,10 @@ index~|i| into the vector.
     @< Emit... @>
     if (it->id==type_binding::no_id)
       *output_stream << "Anonymous type "
-                     << type << std::endl;
+                     << tp << std::endl;
     else
       *output_stream << "Type name '" << main_hash_table->name_of(it->id) @|
-        << "' defined as " << type.untabled() << std::endl;
+        << "' defined as " << tp.untabled() << std::endl;
     if (not fields.empty())
     { auto& group = *store_it;
       @< Add functions for |fields| with types taken from |group| to
@@ -1654,17 +1654,17 @@ code below tests by passing declaration of each field and its function type
 through |definition_group::add|.
 
 @< Append to |store| bindings for the identifiers in |fields|... @>=
-{ assert(type.kind()==tuple_type or type.kind()==union_type);
+{ assert(tp.kind()==tuple_type or tp.kind()==union_type);
   auto record = store.end(); // iterator that will point to next pushed item
   store.emplace_back(definition_group(length(fields)));
 @/
-  auto tp_it =wtl_const_iterator(type.tuple());
-  if (type.kind()==tuple_type)
+  auto tp_it =wtl_const_iterator(tp.tuple());
+  if (tp.kind()==tuple_type)
   {
     for (auto id_it=fields.wcbegin(); not fields.at_end(id_it);
          ++id_it,++tp_it)
       if (id_it->kind==0x1) // field selector present
-        record->add(id_it->name,type_expr::function(type.copy(),tp_it->copy()));
+        record->add(id_it->name,type_expr::function(tp.copy(),tp_it->copy()));
           // projector type
   }
   else
@@ -1672,7 +1672,7 @@ through |definition_group::add|.
     for (auto id_it=fields.wcbegin(); not fields.at_end(id_it);
          ++id_it,++tp_it)
       if (id_it->kind==0x1) // field selector present
-        record->add(id_it->name,type_expr::function(tp_it->copy(),type.copy()));
+        record->add(id_it->name,type_expr::function(tp_it->copy(),tp.copy()));
           // injector type
   }
 }
@@ -1695,7 +1695,7 @@ instead); this avoids needing to allocate an actual static variable.
    |global_overload_table|,... @>=
 
 {
-  bool tup = type.kind()==tuple_type;
+  bool tup = tp.kind()==tuple_type;
   @< Emit indentation corresponding to the input level to |*output_stream| @>
 @/*output_stream << "  with " @|
    << (tup ? "pro" : "in");
@@ -1708,9 +1708,9 @@ instead); this avoids needing to allocate an actual static variable.
     { auto name = names[j] = id_it->name; assert(name==group_it->first);
       shared_function tor; // function object to store
       if (tup)
-        tor = std::make_shared<projector_value>(type,j,name,loc);
+        tor = std::make_shared<projector_value>(tp,j,name,loc);
       else
-        tor = std::make_shared<injector_value>(type,j,name,loc);
+        tor = std::make_shared<injector_value>(tp,j,name,loc);
       global_overload_table->add @|
         (name,std::move(tor),std::move(group_it->second),0);
       *output_stream << main_hash_table->name_of(name);
@@ -2662,15 +2662,15 @@ std::shared_ptr<special_builtin> install_special_function
  (wrapper_function f,const char*name, const char* type_string,
   unsigned char hunger)
 { unsigned int var_count;
-  type_expr type = mk_type_expr(type_string,var_count);
+  type_expr tp = mk_type_expr(type_string,var_count);
   std::ostringstream print_name; print_name<<name;
-  if (type.kind()!=function_type)
+  if (tp.kind()!=function_type)
     throw logic_error
      ("Built-in with non-function type: "+print_name.str());
-  print_name << '@@' << type.func()->arg_type;
+  print_name << '@@' << tp.func()->arg_type;
   auto val = std::make_shared<special_builtin>(f,print_name.str(),hunger);
   global_overload_table->add
-    (main_hash_table->match_literal(name),val,std::move(type),var_count);
+    (main_hash_table->match_literal(name),val,std::move(tp),var_count);
   return val;
 }
 
