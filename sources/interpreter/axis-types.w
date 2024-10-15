@@ -409,8 +409,9 @@ call |untabled| to automatically expand when needed; since the expanded type is
 already present in storage, this is a cheap transformation. Most commonly one
 uses the |kind| method that does this expansion rather than |raw_kind|, and the
 access methods for the variant-specific data all do this expansion implicitly.
-Since tabled types cannot be equated to type variables, the method
-|typevar_count| is an exception and skips the expansion.
+Since tabled types cannot be equated to type variables, or to any polymorphic
+type for that matter, the method |typevar_count| is an exception and skips the
+expansion.
 
 @< Ordinary methods of the |type_expr| class @>=
 type_tag raw_kind () const @+{@; return tag; } // don't translate |tabled|
@@ -767,11 +768,13 @@ reduced to just a test of the type names.
 
 @< Function definitions @>=
 bool type_expr::specialise(const type_expr& pattern)
-{ if ( pattern.tag==variable_type or pattern.tag==undetermined_type)
-    return true; // specialisation to \.{A} (or \.*) trivially succeeds.
+{ if (pattern.tag==undetermined_type)
+    return true; // specialisation to \.* trivially succeeds.
   if (tag==undetermined_type) // specialising \.* also always succeeds,
     {@; set_from(pattern.copy()); return true; }
      // by setting |*this| to a copy of  |pattern|
+  if (pattern.tag==variable_type) // we assume it is non-fixed for now
+    return true;  // since impossible type \.{A} narrower than whatever
   if (pattern.tag==tabled)
   { if (tag==tabled) // both are defined type; see if they are the same
       return tabled_variant==pattern.tabled_variant;
@@ -785,6 +788,8 @@ bool type_expr::specialise(const type_expr& pattern)
     // now it is impossible to refine if tags mismatch
   switch(tag)
   { case primitive_type: return prim_variant==pattern.prim_variant;
+    case variable_type: return typevar_variant==pattern.typevar_variant;
+      // (fixed) type variable is like primitive
     case function_type:
       return func_variant->arg_type.specialise(pattern.func_variant->arg_type) @|
          and func_variant->result_type.specialise
@@ -812,7 +817,8 @@ bool type_expr::specialise(const type_expr& pattern)
 }
 
 @ Here is the definition of the accessor |can_specialise|, which is quite
-similar.
+similar. Besides the fact that we omit the call to |set_from|, a difference is
+that we now simply expand our type if it is tabled (and not identical to |pattern|).
 
 @< Function definitions @>=
 bool type_expr::can_specialise(const type_expr& pattern) const
@@ -831,6 +837,8 @@ bool type_expr::can_specialise(const type_expr& pattern) const
   if (pattern.tag!=tag) return false; // impossible to refine
   switch(tag)
   { case primitive_type: return prim_variant==pattern.prim_variant;
+    case variable_type: return typevar_variant==pattern.typevar_variant;
+      // (fixed) type variable is like primitive
     case function_type:
       return func_variant->arg_type.can_specialise
                                     (pattern.func_variant->arg_type) @|
@@ -1785,11 +1793,12 @@ so that the parser only sees POD, types which it can put into a |union|.
 type_ptr mk_prim_type(primitive_tag p);
 type_ptr mk_type_variable(unsigned int i);
 type_ptr mk_function_type(type_expr&& a, type_expr&& r);
-type_ptr mk_row_type(type_ptr&& c);
+type_ptr mk_row_type(type_expr&& c);
 type_ptr mk_tuple_type (type_list&& l);
 type_ptr mk_union_type (type_list&& l);
 @)
 type_p make_prim_type(unsigned int p);
+type_p make_type_variable(unsigned int i);
 type_p make_function_type(type_p a,type_p r);
 type_p make_row_type(type_p c);
 type_p make_tuple_type(raw_type_list l);
@@ -2490,25 +2499,18 @@ type type::wrap (const type_expr& t, unsigned int fix_count)
 
 @ Now that types are polymorphic, we need a function to replace the method
 |type_expr::specialise|, which is too limited in just replacing undetermined
-type components. The function |can_specialise| in fact supposes that its
+type components. The function |can_unify| in fact supposes that its
 |type_expr| arguments have no undetermined elements. Its two |type_expr|
 parameters are each accompanied by an integer parameter indicating their number
 of active type variables, and a final input-output argument |assign| used both
 for its |var_start| field (whose value is preserved) and to record the type
 assignment for the specialisation.
 
-@< Declarations of exported functions @>=
-bool can_unify
-( const type_expr& s, unsigned int s_count
-, const type_expr& t, unsigned int t_count
-, type_assignment& assign
-);
-
-@ The function |can_unify| may need to renumber the active type variables
+This function may need to renumber the active type variables
 in the second type, for which it uses an auxiliary recursive function |shift|
 that is modelled after |substitute| but simpler.
 
-@< Function definitions @>=
+@< Local function definitions @>=
 type_expr shift
   (const type_expr& t, unsigned int fix, unsigned int amount)
 { type_ptr result;
@@ -3803,7 +3805,7 @@ bool coerce(const type_expr& from_type, const type_expr& to_type,
 bool coercible(const type_expr& from_type, const type_expr& to_type);
 
 expression_ptr conform_types
-  (const type_expr& found, type_expr& required
+  ( const type_expr& found, type_expr& required
   , expression_ptr&& d, const expr& e);
 const conversion_record* row_coercion(const type_expr& final_type,
 				     type_expr& component_type);
