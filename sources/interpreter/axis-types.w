@@ -2376,14 +2376,10 @@ public:
       result.a=a.copy();
       return result;
     }
-@)
   bool is_void() const @+
   {@; return te.kind()==tuple_type and length(te.tuple())==0; }
-  bool specialise(const type_expr& t) @+
-  { auto tp = wrap(t);
-    bool result = specialise(tp);
-    return result;
-  }
+  bool has_unifier(const type_expr& t) const;
+@)
   type& expunge(); // eliminate assigned type variables, by substitution
   type& clear(unsigned int d);
   // remove any type assignments, reserve |d| new ones
@@ -2392,7 +2388,6 @@ public:
   type_expr bake_off(); // extract |type_expr|, sacrificing self if needed
   bool unify(type_expr& pattern) // adapt to pattern while specialising pattern
     {@; return unify(te,pattern); } // recursive helper method does the work
-  bool specialise(const type& t); // like for |type_expr|
   bool matches (const type_expr& formal, unsigned int n);
     // non-|const|; assignment is left in |a|
   type_expr skeleton (const type_expr& sub_t) const;
@@ -2503,13 +2498,13 @@ for its |var_start| field (whose value is preserved) and to record the type
 assignment for the specialisation.
 
 @< Declarations of exported functions @>=
-bool can_specialise
+bool can_unify
 ( const type_expr& s, unsigned int s_count
 , const type_expr& t, unsigned int t_count
 , type_assignment& assign
 );
 
-@ The function |can_specialise| may need to renumber the active type variables
+@ The function |can_unify| may need to renumber the active type variables
 in the second type, for which it uses an auxiliary recursive function |shift|
 that is modelled after |substitute| but simpler.
 
@@ -2545,7 +2540,7 @@ type_expr shift
   return std::move(*result);
 }
 
-bool can_specialise
+bool can_unify
 ( const type_expr& s, unsigned int s_count
 , const type_expr& t, unsigned int t_count
 , type_assignment& assign
@@ -2558,15 +2553,14 @@ bool can_specialise
   return can_unify(s,t_shifted,assign);
 }
 
-@ The method |type::specialise| is easily implemented using |can_specialise|.
+@ The method |type::has_unifier| is easily implemented using |can_unify|.
 
 @< Function definitions @>=
 
-bool type::specialise(const type& t)
+bool type::has_unifier(const type_expr& t) const
 {
-  bool result = can_specialise(te,degree(),t.te,t.degree(),a);
-  expunge(); // use types assigned into |a| by call, and remove them
-  return result;
+  type tp = type::wrap(t);
+  return can_unify(te,degree(),tp.te,tp.degree(),tp.a);
 }
 
 @ The method |type::unify| is like the function |can_unify|, but on the side of
