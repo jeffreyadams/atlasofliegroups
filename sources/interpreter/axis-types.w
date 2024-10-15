@@ -412,30 +412,6 @@ access methods for the variant-specific data all do this expansion implicitly.
 Since tabled types cannot be equated to type variables, the method
 |typevar_count| is an exception and skips the expansion.
 
-There is a subtlety to be mentioned here. The type definitions in the table
-should of course not be overwritten, and |expansion| returns a reference to
-constant to protect the |type_expr| values in the table against overwriting.
-This only works at the top level however: the methods |func|, |component_type|
-and |tuple| return pointers to non-|const|, which expose nodes one level down to
-modifications that would effectively also alter the defined types. This is
-dangerous, and indeed has been a source of a bug in the past. However, this is
-not an oversight in the specification of those methods: it is fundamental to the
-implementation of our type checker that it can specialise initially undetermined
-parts of a type expressions obtained through these methods. It might be argued
-that the mentioned methods should be given in pairs (|const| from |const| and
-non-|const| from non-|const|) but currently that does not compile either; it
-could be worth while figuring out exactly what is the problem.
-
-Given this situation, the actual protection of the values of tabled types
-against accidental modification lies in the fact that two kinds of use of type
-expressions are disjoint: they can be used either as a pattern to represent a
-required or deduced top-level structure of a type in a certain context (which
-can be viewed as implicitly polymorphic types with an implicit distinct type
-variable for each undetermined subtype) or as types (completely) specified by
-the user; the latter is always the case with |tabled| types, and these never
-have undetermined components. Ideally we should be using distinct classes to
-represent the two use cases, but that is not (yet) the case.
-
 @< Ordinary methods of the |type_expr| class @>=
 type_tag raw_kind () const @+{@; return tag; } // don't translate |tabled|
 const type_expr& untabled () const
@@ -443,9 +419,12 @@ const type_expr& untabled () const
 type_tag kind () const @+{@; return untabled().tag; }
 primitive_tag prim () const     @+{@; return untabled().prim_variant; }
 unsigned int typevar_count () const @+{@; return typevar_variant; }
-func_type* func() const        @+{@; return untabled().func_variant; }
-type_expr& component_type () const @+{@; return *untabled().row_variant; }
-raw_type_list tuple () const   @+{@; return untabled().tuple_variant; }
+const func_type* func() const  @+{@; return untabled().func_variant; }
+      func_type* func()        @+{@; return untabled().func_variant; }
+const type_expr& component_type () const @+{@; return *untabled().row_variant; }
+      type_expr& component_type ()       @+{@; return *untabled().row_variant; }
+const_raw_type_list tuple () const @+{@; return untabled().tuple_variant; }
+      raw_type_list tuple ()       @+{@; return untabled().tuple_variant; }
 type_nr_type type_nr () const @+{@; assert(tag==tabled); return tabled_variant; }
 id_type type_name () const; // identifier corresponding to |tabled_variant|
 const type_expr& expansion () const; // type corresponding to |tabled_variant|
@@ -2213,7 +2192,7 @@ bool can_unify
     can_unify(P->component_type(),Q->component_type(),assign);
   case tuple_type: case union_type:
     {
-      for(raw_type_list p = P->tuple(), q=Q->tuple();
+      for(const_raw_type_list p = P->tuple(), q=Q->tuple();
           p!=nullptr or q!=nullptr;
           p = p->next.get(), q=q->next.get())
       { if (p==nullptr or q==nullptr)
@@ -2314,7 +2293,7 @@ bool is_free_in(const type_expr& tp, unsigned int nr,
     is_free_in(tp.func()->arg_type,nr,assign) or
     is_free_in(tp.func()->result_type,nr,assign);
   case tuple_type: case union_type:
-    for(raw_type_list p = tp.tuple(); p!=nullptr; p = p->next.get())
+    for(const_raw_type_list p = tp.tuple(); p!=nullptr; p = p->next.get())
       if (is_free_in(p->contents,nr,assign))
         return true;
     return false;
@@ -2377,9 +2356,12 @@ public:
   type_tag kind () const @+{@; return te.kind(); }
   primitive_tag prim () const     @+{@; return te.prim(); }
   unsigned int typevar_count () const @+{@; return te.typevar_count(); }
-  func_type* func() const        @+{@; return te.func(); }
-  type_expr& component_type () const @+{@; return te.component_type(); }
-  raw_type_list tuple () const   @+{@; return te.tuple(); }
+  const func_type* func() const  @+{@; return te.func(); }
+        func_type* func()        @+{@; return te.func(); }
+  const type_expr& component_type () const @+{@; return te.component_type(); }
+        type_expr& component_type ()       @+{@; return te.component_type(); }
+  const_raw_type_list tuple () const @+{@; return te.tuple(); }
+        raw_type_list tuple ()       @+{@; return te.tuple(); }
   type_nr_type type_nr () const @+{@; return te.type_nr(); }
 @)
   bool operator ==(const type& other) @+{@; return bake()==other.bake(); }
@@ -2624,8 +2606,8 @@ bool type::unify(const type_expr& sub_tp, type_expr& pattern)
     unify(sub_tp.func()->result_type,pattern.func()->result_type);
   case row_type: return unify(sub_tp.component_type(),pattern.component_type());
   case tuple_type: case union_type:
-    {
-      for(raw_type_list p = sub_tp.tuple(), q=pattern.tuple();
+    { const_raw_type_list p; raw_type_list q; // need two different types here
+      for(p = sub_tp.tuple(), q=pattern.tuple();
           p!=nullptr or q!=nullptr;
           p = p->next.get(), q=q->next.get())
       { if (p==nullptr or q==nullptr)
