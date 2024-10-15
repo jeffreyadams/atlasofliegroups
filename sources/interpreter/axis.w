@@ -276,7 +276,6 @@ public:
     (id_type id, size_t& depth, size_t& offset, bool& is_const);
   static const type* lookup (id_type id, size_t& depth, size_t& offset);
     // if |const| doesn't matter
-  static void specialise (size_t depth, size_t offset,const type_expr& t);
 @)
   bool empty() const @+{@; return variable.empty(); }
   id_data& operator[] (size_t i) @+{@; return variable[i]; }
@@ -387,32 +386,6 @@ const type* layer::lookup
       ++i; // increment depth for non-empty layers only
     }
   return nullptr;
-}
-
-@ The method |specialise| serves a specific detail that could have been (and
-used to be) handled by having |lookup| return |type_p| rather than
-|const_type_p|. This is the possibility that a caller will afterwards need to
-specialise the type found for an identifier from its uses, if the type
-initially had an unknown component as in `\.{[*]}'. Rather than modifying the
-looked-up type (which is now forbidden), one achieves this by calling
-|layer::specialise| with the |depth| and |offset| returned by |lookup|.
-
-This method must find non-empty layer number |depth|, so it must skip |depth|
-non-empty layers, and any empty layers separated by them, until reaching the
-non-empty layer that is not to be skipped. The fact that we previously found
-an identifier at |depth| ensures that we do not run off our |lexical_context|.
-The |while| loop below achieves this, decrementing |depth| only when |range|
-points to a non-empty layer, and stopping when |depth| is decremented
-from~$0$.
-
-@< Function def... @>=
-
-void layer::specialise (size_t depth, size_t offset,const type_expr& tp)
-{ auto range=lexical_context.cbegin();
-  while ((*range)->variable.empty() or depth-->0)
-    ++range;
-  id_data& record = (**range)[offset];
-  record.tp.specialise(tp);
 }
 
 @ The function |convert_expr| returns a owning pointer |expression_ptr| to the
@@ -1449,14 +1422,8 @@ case applied_identifier:
   : expression_ptr(new global_identifier<false>(id));
   if (tp.specialise(id_t->unwrap()))
     { // then required type admits known identifier type
-      if (tp!=id_t->unwrap())
-      // usage has made type of identifier more specialised
-      { if (is_local)
-          layer::specialise(i,j,tp);
-          // then refine its type in the local context
-        else
-          global_id_table->specialise(id,tp); // or in |global_id_table|
-      }
+      if (tp!=id_t->unwrap()) // we no longer allow |id_t| to specialise by usage
+        throw type_error(e,id_t->bake(),tp.copy()); // so report type error
       return id_expr;
     }
   else if (coerce(id_t->unwrap(),tp,id_expr,e.loc))
@@ -7111,14 +7078,9 @@ if ( e.assign_variant->lhs.kind==0x1) // single identifier, do simple assign
 @.Name is constant @>
 @)
   type_expr rhs_type = id_t->bake(); // provide a modifiable copy
-  expression_ptr r(convert_expr(e.assign_variant->rhs,rhs_type));
-  if (rhs_type!=id_t->bake())
-    // assignment will specialise identifier, record to which type it does
-  { if (is_local)
-      layer::specialise(depth,offset,rhs_type);
-      else
-      global_id_table->specialise(lhs,rhs_type);
-  }
+  expression_ptr r = convert_expr(e.assign_variant->rhs,rhs_type);
+  if (rhs_type!=id_t->bake()) // call should not have specialised |rhs_type|
+    throw type_error(e,id_t->bake(),std::move(rhs_type));
   @< Check whether |r| refers to an |builtin_call| of a function with nonzero
   |hunger|, and with the identifier |lhs| as its corresponding argument;
   if so modify that argument, and possibly the application, accordingly @>
@@ -7290,7 +7252,6 @@ struct threader
 @)
   threader (const expr& e) : e(e), locs(), globs(), is_global(), assoc() @+{}
   void thread (const id_pat& pat,type_expr& type); // recursively analyse |pat|
-  void refine () const; // maybe specialise some stored identifiers
 };
 
 @ The left hand side pattern is traversed in post-order: when there is both an
@@ -7392,34 +7353,6 @@ assembling the data to identify the error.
   throw expr_error(e,o.str());
 }
 
-@ Just like for simple assignments, there is a remote possibility that the
-type of the right hand side specialises types of one or more variables used in
-the left hand side pattern. This means that after converting, the type that
-was found for that identifier will have been specialised. The method |refine|
-traverses all identifiers and specialises their type, as stored either in
-|global_id_table| or in |layer::lexical_context|; most of the time this will
-do nothing, but when there is need, this will do what is required.
-
-The implementation traverses the |assoc| list, and in parallel the bits in
-|is_global| to determine whether a global or local identifier type has to be
-specialised. In the case of global identifiers the identifier stored in
-|assoc| is used, but for local identifiers the |depth| and |offset| stored in
-|locs| are used instead, which requires a separate iterator |loc_it|.
-
-@< Function definitions @>=
-void threader::refine() const
-{ unsigned long n=0;
-  auto loc_it = locs.cbegin();
-  for (auto it = assoc.cbegin(); not assoc.at_end(it); ++it)
-    if (is_global.isMember(n++))
-      global_id_table->specialise(it->first,*it->second);
-    else
-    {@;
-      layer::specialise(loc_it->depth,loc_it->offset,*it->second);
-      ++loc_it;
-    }
-}
-
 @ For a multiple assignment, we first get information about type |rhs_type| of
 the assignment from a call to |threader::thread| with the pattern~|pat| of the
 left hand side (this may leave some slots undefined for components of the
@@ -7441,7 +7374,6 @@ stored in |thr|.
   threader thr(e);
   thr.thread(pat,rhs_type);
   expression_ptr r = convert_expr(e.assign_variant->rhs,rhs_type);
-  thr.refine();
   if (rhs_type==void_type and not is_empty(e.assign_variant->rhs))
     r.reset(new voiding(std::move(r)));
   expression_ptr m_ass (
@@ -8088,17 +8020,7 @@ one are hidden in the respective |assign_coef| methods.
 
 @ Type-checking and converting component assignment statements follows the
 same lines as that of ordinary assignment statements, but must also
-distinguish different aggregate types. Most of the code is straightforward,
-but there is a subtle point that in case of a component assignment to a
-variable of previously undetermined row type, the component type must be
-recorded with the variable. This is achieved by the call to the |specialise|
-for the pointer found at |aggr_t->component_type()|, which is part of the type
-for the variable in the local or global table. Here for one time we abuse of
-the fact that, although |aggr_t| is a pointer-to-constant, we are still
-allowed to call a non-|const| method for the |type_expr| that
-|aggr_t->component_type()| points to; otherwise we would have to call a
-|specialise| method for the local or global variable table that holds the
-identifier |aggr|, as was done in the case of ordinary assignments.
+distinguish different aggregate types.
 
 @:comp_ass_type_check@>
 
@@ -8128,8 +8050,6 @@ case comp_ass_stat:
     throw expr_error(e,o.str());
   }
   expression_ptr r = convert_expr(rhs,comp_t);
-  if (kind==subscr_base::row_entry)
-    aggr_t->component_type().specialise(comp_t); // record type
   if (comp_t==void_type and not is_empty(rhs))
     r.reset(new voiding(std::move(r)));
   expression_ptr p;
@@ -8155,23 +8075,6 @@ find the field selector in the overload table with the exact (tuple) type, and
 it must be bound to a |projector_value| (so some user defined function that
 selects the proper field will not work here).
 
-As with other kinds of assignment, we must deal with the possibility that the
-assignment specialises the type of the variable being assigned to (by
-specialising the selected component of the tuple type). We do not (as we did
-for simple assignments) use a local variable for the assigned type, writing it
-back afterwards, but rather pass a modifiable reference to the component type
-to |type_expr| so that any specialisation will be done in place. This solution
-is simpler than the |specialise| method (and while there were complications in
-adopting it in other places, those don't apply here). It should be noted that
-the case is particularly strange here, since the change to the type of the
-variable being assigned to will cause the very selector being used here to no
-longer be applicable to that variable afterwards (since we
-require \emph{exact} match of the tuple type and the argument type of the
-selector function). Probably the principle of least astonishment would mandate
-simply forbidding to define field selectors in the first place for tuple types
-that can be specialised at all.
-
-
 @< Cases for type-checking and converting... @>=
 case field_ass_stat:
 { id_type tuple=e.field_assign_variant->aggr;
@@ -8187,7 +8090,7 @@ case field_ass_stat:
     report_constant_modified(tuple,e,"field assignment");
 @.Name is constant @>
 @)
-  unsigned pos; type_p comp_loc;
+  unsigned pos; const type_expr* comp_loc;
   @< Look up a projector for |*tuple_t| named |selector|, and if found assign
      its |position| to |pos| and make |comp_loc| point to the corresponding
      component |type_expr| of |*tuple_t|; on failure |throw expr_error| @>
@@ -8219,7 +8122,7 @@ converting the raw node pointer |tuple_t->tuple()| to a weak type list iterator.
 @)
 // |comp_loc| needs to point to a modifiable |type_expr|; point it into |tuple_t|
 
-  comp_loc = &*std::next(wtl_iterator(tuple_t->tuple()),pos);
+  comp_loc = &*std::next(wtl_const_iterator(tuple_t->tuple()),pos);
 }
 
 @ Type-checking and converting component and field transform statements is quite
@@ -8238,7 +8141,7 @@ overload table, as we cannot determine the actual value in local bindings) is
 rather restrictive, and we would have like to not impose it, but the in-place
 field transformation semantics we want to apply mean that the tuple has a hole
 in it at the moment the operation is applied, and for user defined functions we
-cannot ensure that it cannot notice this circumstance.
+cannot ensure that they cannot notice this circumstance.
 
 Concretely, we type check the call of the operator ignoring field-transforming
 context (but supplying the required return type) and then test whether we can
@@ -8270,7 +8173,7 @@ case field_trans_stat:
     report_constant_modified(tuple,e,"field transform");
 @.Name is constant @>
 @)
-  unsigned pos; type_p comp_loc;
+  unsigned pos; const_type_p comp_loc;
   @< Look up a projector for |*tuple_t| named |selector|... @>
   expression_ptr call;
   @< Assign to |call| the |resolve_overload| of the application of |op| to
@@ -8290,7 +8193,9 @@ reporting, as explained below.
 {
   static expr_ptr appl; expr_ptr saved_appl;
   @< Set |appl| to the application of |op| to |lhs| and |rhs|... @>
-  call = resolve_overload(*appl,*comp_loc,global_overload_table->variants(op));
+  type_expr comp_t = comp_loc->copy();
+  // |resolve_overload| needs modifiable reference
+  call = resolve_overload(*appl,comp_t,global_overload_table->variants(op));
   @< Restore initial state of |*e.comp_trans_variant| and of |appl| @>
 }
 
