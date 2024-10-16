@@ -3153,6 +3153,7 @@ wrapper functions that used to enable the parser to call \Cpp~functions.
 @< Declarations of functions for the parser @>=
 id_type lookup_identifier(const char*);
 void include_file(int skip_seen);
+void prepare_type_variables(const raw_patlist& L);
 
 @~The parser will only call this with string constants, so we can use the
 |match_literal| method.
@@ -3172,6 +3173,29 @@ void include_file(int skip_seen)
           (lex->scanned_file_name(),skip_seen!=0))
     main_input_buffer->close_includes();
      // nested include failure aborts all includes
+}
+
+@ Here is a function invoked by a parsing reduction that does not produce any
+value, but which serves to prepare the lexical analyser to treat one or more
+identifiers as type variables in the following closed expression (when the
+closing symbol is recognised in the lexical analyser, it will pop these type
+variables from its |nest|.
+
+The timing of this call is quite subtle, although that is not reflected in the
+code below, but rather in the interaction between the parsing rules and the
+lexical analyser. When this function is called from the parser to perform a
+reduction, it has already seen the look-ahead symbol for this rule, which is the
+opening symbol of the closed expression that follows; therefore the lexical
+analyser has already pushed an empty set of eggs (clutch) to its |nest|. We call
+the lexer method that lays a new type variable into this clutch, and which will
+take care of installing these identifiers to be (temporarily) rendered as type
+variable tokens.
+
+@< Definitions of functions for the parser @>=
+void prepare_type_variables(const raw_patlist& L)
+{
+  for (auto p = L; p!=nullptr; p=p->next.get())
+    lex->put_type_variable(p->contents.name);
 }
 
 @* Index.
