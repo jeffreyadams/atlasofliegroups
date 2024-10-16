@@ -68,7 +68,7 @@
 
 %token <oper> OPERATOR OPERATOR_BECOMES '=' '*'
 %token <str> INT STRING
-%token <id_code> IDENT TYPE_ID
+%token <id_code> IDENT TYPE_ID TYPE_VAR
 %token TOFILE ADDTOFILE FROMFILE FORCEFROMFILE
 
 %token <type_code> PRIMTYPE
@@ -85,7 +85,7 @@
 %type <ini_form> formula_start
 %type <oper> operator
 %type <id_code> id_op
-%type <code> tilde_opt breaker
+%type <code> tilde_opt breaker typevar_list
 %destructor { destroy_expr ($$); }
             expr expr_opt tertiary cast lettail or_expr and_expr not_expr
 	    formula operand secondary primary comprim unit selector
@@ -103,10 +103,10 @@
 
 %type <ip> pattern pattern_opt closed_pattern
 %destructor { destroy_id_pat($$); } pattern pattern_opt closed_pattern
-%type <pl> pat_list
-%destructor { destroy_pattern($$); } pat_list
-%type <type_pt> type typedef_unit
-%destructor { destroy_type($$); } type typedef_unit
+%type <pl> pat_list id_list
+%destructor { destroy_pattern($$); } pat_list id_list
+%type <type_pt> type closed_type typedef_unit
+%destructor { destroy_type($$); } type closed_type typedef_unit
 %type <type_l> union_list_opt types union_list
                typedef_list_opt typedef_list typedef_composite typedef_units
 %destructor { destroy_type_list($$); }
@@ -388,6 +388,11 @@ unit    : INT { $$ = make_int_denotation($1,@$); }
 	}
 	| operator '@' type { $$=make_op_cast($1.id,$3,@$); }
 	| IDENT '@' type    { $$=make_op_cast($1,$3,@$); }
+	| operator '@' typevar_list closed_type
+	  { $$=make_op_cast($1.id,$4,@$); }
+	  // reducing |typevar_list| prepares type variables in |closed_type|
+	| IDENT '@' typevar_list closed_type
+	  { $$=make_op_cast($1,$4,@$); } // likewise
 	| DIE { $$= make_die(@$); }
         | breaker{ $$= make_break($1,@$); }
 ;
@@ -802,10 +807,32 @@ type	: PRIMTYPE	{ $$=make_prim_type($1); }
 	| TYPE_ID
 	  { bool c; // dummy for reporting "constness"
 	    $$=acquire(&global_id_table->type_of($1,c)->unwrap()).release(); }
-	| '(' union_list ')'	{ $$=make_union_type($2); }
+	| closed_type
+	| TYPE_VAR { $$=make_type_variable($1); }
+;
+
+closed_type: '(' union_list ')'	{ $$=make_union_type($2); }
 	| '(' union_list_opt ARROW union_list_opt ')'
 	  { $$=make_function_type(make_union_type($2),make_union_type($4)); }
 	| '[' union_list ']'	{ $$=make_row_type(make_union_type($2)); }
+;
+
+typevar_list : id_list
+	  { $$=length($1); // compute before |reverse_patlist| makes $1 useless
+	    prepare_type_variables(reverse_patlist($1));
+	  }
+;
+
+id_list : IDENT
+	  { atlas::interpreter::raw_id_pat aux;
+	    aux.kind=0x1; aux.name=$1;
+	    $$=make_pattern_node(nullptr,aux);
+	  }
+	| id_list ',' IDENT
+	  { atlas::interpreter::raw_id_pat aux;
+	    aux.kind=0x1; aux.name=$3;
+	    $$=make_pattern_node($1,aux);
+	  }
 ;
 
 union_list_opt :   { $$=make_type_singleton(make_tuple_type(nullptr)); }
