@@ -97,7 +97,7 @@ class Lexical_analyser
   id_type keyword_limit; // first non-keyword identifier
   id_type type_limit; // first non-type identifier
   sl_list<eggs> nest;
-  BitMap type_identifiers; // flag identifiers used as type name or type variable
+  BitMap type_vars; // flag identifiers used as a type variable
   char prevent_termination, previous_termination;
     // either |'\0'| or character requiring more input
   int comment_start, comment_end; // characters that start/end a comment
@@ -115,11 +115,12 @@ public:
   const char* scanned_file_name() const @+{@; return file_name.c_str(); }
   id_type first_identifier() const @+{@; return type_limit; }
   bool is_initial () const @+{@; return state==initial; }
+  void put_type_variable(id_type v);
 private:
   void skip_space() const;
-  void put_type_variable(id_type v) @+{@; nest.front().push_back(v); }
-  void push_nest();
-  void pop_nest();
+  void push_nest() @+
+  {@; nest.push_front(eggs{}); }
+  void pop_nest(); // pop and decommission a clutch of type variables
   bool becomes_follows();
   void operator_termination (char c);
   std::string scan_quoted_string() const;
@@ -158,9 +159,9 @@ since using the type |(unsigned char*)| is unwieldy, we use another value.
 Lexical_analyser::Lexical_analyser
   (BufferedInput& source, Hash_table& hash,
    const char** keywords, const char** type_names)
-: input(source),id_table(hash),nest@[{eggs{}}@], type_identifiers()
+: input(source),id_table(hash),nest(), type_vars()
  ,prevent_termination('\0'),previous_termination('\0'),state(initial)
-{ @< Install |keywords| and |type_names| into |id_table| and set |type_identifiers| @>
+{ @< Install |keywords| and |type_names| into |id_table| and set |type_vars| @>
   comment_start=comment_end=0x100; // a non-|char| value
 }
 
@@ -172,7 +173,7 @@ adding the constant |QUIT| to the value returned from the hash table look-up.
 Type names are next in |id_table|, but they all will return the token |TYPE|,
 while recording which names was entered in the semantic value of the token.
 
-@< Install |keywords| and |type_names| into |id_table| and set |type_identifiers| @>=
+@< Install |keywords| and |type_names| into |id_table| and set |type_vars| @>=
 { for (size_t i=0; keywords[i]!=0; ++i)
     id_table.match_literal(keywords[i]);
   keyword_limit=id_table.nr_entries();
@@ -192,8 +193,8 @@ can be handled graciously).
 @< Definitions of class members @>=
 void Lexical_analyser::reset()
 {@;
-  nest.assign(@[{eggs{}}@]);
-  type_identifiers.reset();
+  nest.clear();
+  type_vars.reset();
   state=initial;
   input.reset();
 }
@@ -230,7 +231,7 @@ void Lexical_analyser::skip_space() const
     if (std::isspace(c))
      // ignore unless file ends, or a newline where a command could end
   @/{@; if (c=='\f' or
-            c=='\n' and prevent_termination=='\0' and nest.singleton())
+            c=='\n' and prevent_termination=='\0' and nest.empty())
         break;
     }
     else if (c==comment_start) @< Skip comment, possibly nested @>
@@ -450,16 +451,20 @@ a type definition, including injector or projector names, will be scanned as
   while(std::isalnum(c) || c=='_');
   input.unshift();
   id_type id_code=id_table.match(p,input.point()-p);
-  if (id_code>=type_limit+type_identifiers.capacity())
-    type_identifiers.set_capacity(id_code-type_limit+1);
+  if (id_code>=type_limit+type_vars.capacity())
+    type_vars.set_capacity(id_code-type_limit+1);
   if (id_code>=type_limit)
-  { valp->id_code=id_code;
-    if (global_id_table->is_defined_type(id_code) or
-        type_identifiers.isMember(id_code-type_limit) or
-        state==type_defining)
-      code=TYPE_ID;
+  { if (type_vars.isMember(id_code-type_limit))
+    { code = TYPE_VAR; // a name temporarily used to designate an arbitrary type
+      @< Set |valp->id_code| to the sequence number of |id_code| in the |nest| @>
+    }
     else
-      code=IDENT;
+    { valp->id_code=id_code;
+      if (global_id_table->is_defined_type(id_code) or state==type_defining)
+        code=TYPE_ID;
+      else
+        code=IDENT;
+    }
   }
   else if (id_code>=keyword_limit)
   @/{@; valp->type_code=id_code-keyword_limit; code=PRIMTYPE; }
@@ -494,6 +499,34 @@ a type definition, including injector or projector names, will be scanned as
   }
 }
 
+@ Type variables are immediately renamed to a small number to be used as the
+|typevar_variant| field of a |type_expr|, which is its sequence number in the
+list of currently active type variables. These variables are recorded in |nest|,
+with newer clutches being pushed at the front of the list. This means that, if
+we want to avoid reversing the list, we must record the position of the
+identifier within its clutch and add to that sizes of all later clutches. We
+skip |nest.front()|, which serves only as a place to prepare type variables to
+be added soon (it should be empty when we reach this code, since
+addition of new type variables will only be triggered by the parser when a list
+of ordinary identifiers is found).
+
+@< Set |valp->id_code| to the sequence number of |id_code| in the |nest| @>=
+{
+  unsigned int count=0; bool seen=false;
+  for (const auto& clutch : nest)
+    if (seen)
+      count += clutch.size();
+    else
+    { unsigned int pos=0;
+      for (auto egg : clutch)
+      { if (egg==id_code)
+        {@; seen=true; count=pos; break; }
+        ++pos;
+      }
+    }
+  valp->id_code = count;
+}
+
 @ Number denotations get as parsing value the string of characters
 (representing digits) that forms the denotation; no conversion is done here.
 This is in order to allow writing arbitrarily large integers without the
@@ -510,23 +543,29 @@ pointer to a |std::string|, again to minimise complications for the parser.
   valp->str = new std::string(p,input.point()); code=INT;
 }
 
-@ The list |nest_front()| serves as a a holding area for identifiers that should
-be declared a type variable at the next call of |push_nest|, and then revert to
-their previous status at the matching call of |pop_nest|.
+@ The method |put_type_variables| is repeatedly called from the parser when a
+list of fresh type variables is announced. The reduction that performs this
+action is triggered by an opening symbol occurring as look-ahead token, so that
+the lexer has already performed the corresponding call of |push_nest|. Therefore
+it is ready to receive those type variables, even though the identifiers are
+textually outside the closed expression that is their scope. These type
+variables will revert to their previous status at the matching call of
+|pop_nest|. We could test in |put_type_variable| that all identifiers in the
+clutch be distinct, but there is no obvious action to take if it should fail;
+all that would result from such an error is that any repeated occurrence of a
+same type variable in the list cannot be referred to, and so will remain unused.
+This is no catastrophe, so for once we'll let slip this kind of error.
 
 @< Definitions of class members @>=
-void Lexical_analyser::push_nest()
-{ for (id_type v : nest.front())
-    type_identifiers.insert(v);
-  nest.push_front(eggs{});
+void Lexical_analyser::put_type_variable(id_type v)
+{ assert(not nest.empty()); // because |push_nest| was just called
+  type_vars.insert(v-type_limit);
+  nest.front().push_back(v);
 }
 void Lexical_analyser::pop_nest()
-{ assert(nest.front().empty());
-  //  calling |put_type_variable| must be followed by calling |push_nest|
+{ for (id_type v : nest.front())
+    type_vars.remove(v-type_limit);
   nest.pop_front();
-  for (id_type v : nest.front())
-    type_identifiers.remove(v);
-  nest.front().clear();
 }
 
 @ For reasons of limited look-ahead in the parser, certain operator symbols
@@ -705,9 +744,9 @@ break; case '*': operator_termination(c);
        valp->oper.id = id_table.match_literal("*");
        valp->oper.priority = 6;
        code = becomes_follows() ? OPERATOR_BECOMES : c;
-break; case '%': case '/': case '&': operator_termination(c);
+break; case '%': case '/': operator_termination(c);
        valp->oper.id =
-          id_table.match_literal(c=='%' ? "%" : c=='/' ? "/" : "&");
+          id_table.match_literal(c=='%' ? "%" : "/");
        valp->oper.priority = 6;
        code = becomes_follows() ? OPERATOR_BECOMES : OPERATOR;
 break; case '\\':
