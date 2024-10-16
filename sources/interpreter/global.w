@@ -916,7 +916,7 @@ void do_global_set(id_pat&& pat, const expr& rhs, int overload,
     expression_ptr e;
     {
       type tp=analyse_types(rhs,e);
-      if (not type::wrap(pattern_type(pat)).specialise(tp))
+      if (not tp.has_unifier(pattern_type(pat)))
         @< Report that type |t| of |rhs| does not have required structure,
            and |throw| @>
       @< Check that we are not setting an operator to a non-function value @>
