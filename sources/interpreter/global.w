@@ -161,8 +161,6 @@ public:
   // pure lookup, may return |nullptr|
   const type* type_of(id_type id) const; // same without asking for |const|
 
-  void specialise(id_type id,const type_expr& type);
-  // specialise type stored for identifier
   shared_value value_of(id_type id) const; // look up
 @)
   std::size_t size() const @+{@; return table.size(); }
@@ -232,16 +230,10 @@ bool Id_table::remove(id_type id)
 
 @ In order to have a |const| look-up method for types, we must refrain from
 inserting into the table if the key is not found; we return a null pointer in
-that case. In addition we provide a manipulator |specialise| that allows to
-specialise the type associated globally to the identifier. This somewhat
-strange behaviour (global identifiers getting a more specific type by using
-them) is rare (it basically happens for values containing an empty list) but
-does not seem to endanger type-safety: the change is irreversible, and code
-referring to the identifier that type-checked without needing specialisation
-should not be affected by a later specialisation. The method |address_of| that
-is used to access the slot for the value associated to a global identifier is
-also morally a manipulator of the table, since the pointer returned will in
-many cases be used to modify that value (but not its type).
+that case. The method |address_of| that is used to access the slot for the value
+associated to a global identifier is also morally a manipulator of the table,
+since the pointer returned will in many cases be used to modify that value (but
+not its type).
 
 @h "lexer.h" // for |main_hash_table|
 
@@ -258,11 +250,6 @@ const type* Id_table::type_of(id_type id) const
   if (p==table.end())
     return nullptr;
   return &p->second.get_type();
-}
-@)
-void Id_table::specialise(id_type id,const type_expr& type)
-{@; map_type::iterator p=table.find(id);
-  p->second.hold_type().specialise(type);
 }
 @)
 shared_value Id_table::value_of(id_type id) const
@@ -916,7 +903,7 @@ void do_global_set(id_pat&& pat, const expr& rhs, int overload,
     expression_ptr e;
     {
       type tp=analyse_types(rhs,e);
-      if (not type::wrap(pattern_type(pat)).specialise(tp))
+      if (not tp.has_unifier(pattern_type(pat)))
         @< Report that type |t| of |rhs| does not have required structure,
            and |throw| @>
       @< Check that we are not setting an operator to a non-function value @>
