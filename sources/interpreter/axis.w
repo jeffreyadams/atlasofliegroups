@@ -3136,7 +3136,7 @@ case lambda_expr:
   const id_pat& pat=fun.pattern;
   const type_expr& arg_type=fun.parameter_type;
     // argument type specified in |fun|
-  if (not pattern_type(pat).specialise(arg_type))
+  if (not arg_type.can_specialise(pattern_type(pat)))
     // do |pat| structure and |arg_type| conflict?
     throw expr_error(e,"Function argument pattern does not match its type");
   type_expr* rt; type_expr dummy;
@@ -3180,7 +3180,7 @@ case rec_lambda_expr:
   const id_pat& pat=fun.pattern;
   const type_expr& arg_type=fun.parameter_type;
     // argument type specified in |fun|
-  if (not pattern_type(pat).specialise(arg_type))
+  if (not arg_type.can_specialise(pattern_type(pat)))
     // do |pat| structure and |arg_type| conflict?
     throw expr_error(e,"Function argument pattern does not match its type");
   type_expr f_type=type_expr::function(arg_type.copy(),fun.result_type.copy());
@@ -5197,7 +5197,7 @@ any identifiers at all, which the |evaluate| method then will recognise if
 this branch is chosen, and suppress creating a |frame| for the branch.
 
 @< Type-check branch |branch.branch|, with |branch.pattern|... @>=
-{ if (not pattern_type(branch.pattern).specialise(variant_type))
+{ if (not variant_type.can_specialise(pattern_type(branch.pattern)))
   { o << "Pattern " << branch.pattern @|
       << " does not match type " << variant_type @|
       << " for variant " <<  main_hash_table->name_of(branch.label);
@@ -5912,9 +5912,9 @@ from such a subscription. We also make |tp| point to the index type used.
   type_list it_comps; // type of ``iterator'' value (pattern) named in the loop
   it_comps.push_front(std::move(comp_type));
   it_comps.push_front(type_expr(inx_type->copy()));
-  type_expr it_type = type_expr::tuple(std::move(it_comps));
+  const type_expr it_type = type_expr::tuple(std::move(it_comps));
     // build tuple type from index and component types
-  if (not it_type.specialise(pattern_type(f.id)))
+  if (not it_type.can_specialise(pattern_type(f.id)))
     throw expr_error(e,"Improper structure of loop variable pattern");
   thread_bindings(f.id,it_type,bind,true); // force all identifiers constant
 }
