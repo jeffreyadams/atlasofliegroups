@@ -1059,7 +1059,6 @@ for (wel_const_iterator it(elist); not it.at_end(); ++it)
     components.back()=convert_expr(*it,te);
     type ctype = type::wrap(te);
     comp_type.push_back(ctype.copy());
-        // start each with a copy of original |target| type
     if (not broader_eq(common,ctype))
     { if (broader_eq(ctype,common))
         common = std::move(ctype);
