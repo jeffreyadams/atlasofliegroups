@@ -732,6 +732,19 @@ whether or not the list should be reversed can only be understood when the
 grammar rules involved are known, and this is the case only at the point these
 functions are called.
 
+Calling the function |reverse_expr_list| has as side effect to actually
+reverse the nodes in the list (rather than producing a separate reversed list),
+and as a consequence the argument raw pointer will no longer point to the whole
+list after the call, but only to the last node of the reversed list. This is
+usually no problem, as this function is called near the end of a parser action
+and the variable in that action holding the |raw| pointer will no longer be used
+after the call. Nonetheless this is something callers should be aware of. We
+could have decreased the surprise by passing the pointer be reference and
+assigning the reversed list to it before returning; in this way the caller can
+would still be able access the whole list through the variable after the call,
+but would still need to be aware of the reversal. We prefer not to do this
+modification for so little gain, and simply state: caller beware!
+
 @< Definitions of functions for the parser @>=
 raw_expr_list make_exprlist_node(expr_p e, raw_expr_list raw)
   {@; expr_ptr saf(e); expr_list l(raw);
@@ -1392,6 +1405,13 @@ raw_patlist reverse_patlist(raw_patlist p);
 
 @ The function |destroy_pattern| just converts to a smart pointer, and
 |destroy_id_pat| calls it whenever there is a sub-list in a pattern.
+
+The function |reverse_patlist| is subject to the same caveat as was given for
+|reverse_expr_list|: after the call the list has been reversed, and |raw|
+pointer no longer accesses its totality, but just the final node. We did have a
+bug at some point where the length of the list was needed separately, and was
+computed incorrectly after the call in a parser action; this should be done
+before the call.
 
 @< Definitions of functions for the parser @>=
 void destroy_pattern(raw_patlist p)
@@ -3152,6 +3172,7 @@ wrapper functions that used to enable the parser to call \Cpp~functions.
 @< Declarations of functions for the parser @>=
 id_type lookup_identifier(const char*);
 void include_file(int skip_seen);
+void prepare_type_variables(const raw_patlist& L);
 
 @~The parser will only call this with string constants, so we can use the
 |match_literal| method.
@@ -3171,6 +3192,29 @@ void include_file(int skip_seen)
           (lex->scanned_file_name(),skip_seen!=0))
     main_input_buffer->close_includes();
      // nested include failure aborts all includes
+}
+
+@ Here is a function invoked by a parsing reduction that does not produce any
+value, but which serves to prepare the lexical analyser to treat one or more
+identifiers as type variables in the following closed expression (when the
+closing symbol is recognised in the lexical analyser, it will pop these type
+variables from its |nest|.
+
+The timing of this call is quite subtle, although that is not reflected in the
+code below, but rather in the interaction between the parsing rules and the
+lexical analyser. When this function is called from the parser to perform a
+reduction, it has already seen the look-ahead symbol for this rule, which is the
+opening symbol of the closed expression that follows; therefore the lexical
+analyser has already pushed an empty set of eggs (clutch) to its |nest|. We call
+the lexer method that lays a new type variable into this clutch, and which will
+take care of installing these identifiers to be (temporarily) rendered as type
+variable tokens.
+
+@< Definitions of functions for the parser @>=
+void prepare_type_variables(const raw_patlist& L)
+{
+  for (auto p = L; p!=nullptr; p=p->next.get())
+    lex->put_type_variable(p->contents.name);
 }
 
 @* Index.
