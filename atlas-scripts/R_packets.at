@@ -1,0 +1,293 @@
+{make a list of (x,lambda) pairs sorted by R-packet: overlapping LKTs}
+
+<hash.at {for hash tables}
+<goodroots.at {for anti_finalize}
+<FPP_faces_herm.at {for FPP_lambdas}
+< K_highest_weights.at {for all_lambda_differential_0}
+
+{this computes the R-packet of a single K-type.}
+set R_packet(KType mu) = [KType]: LKTs(anti_finalize(parameter(mu)))
+
+{meant to hold all FPP LKTs for G}
+set K_hat_hash = make_KType_hash()
+
+{each vec is a list of indices into K_hat_hash}
+set R_packet_hash = make_vec_hash()
+
+{one list of (x,lambda) for each R-packet of FPP LKTs}
+set xlams(RealForm G) = [[(KGBElt, ratvec)]]:
+    K_hat_hash.clear();
+    R_packet_hash.clear();
+    let lams = for x in KGB(G) do FPP_lambdas(x) od
+{Run over all (x,lambda); puts the LKTs in the hash K_types; and
+puts the corresponding R-packet of K-types in R_packet_hash}
+     then xlambdas = [[(KGBElt, ratvec)]] : []
+     then () = for list@n in lams
+     	do let x = KGB(G,n)
+   	   in for lambda in list
+   	      do let p = parameter(x,lambda,0*lambda)
+      	     	 then mu0 = LKTs(p)[0]
+      		 then Rmu0 = R_packet(mu0), J = R_packet_hash.size()
+      		 then j = R_packet_hash.match(for mu in Rmu0
+				    	      do K_hat_hash.match(mu)
+					      od.sort)
+		{inside the match is the vector indexing the K-types in the R-packet}
+      		 then xlambda = (x,lambda)
+      		 in if j=J {we have a new R_packet}
+      	 	    then xlambdas #:= [xlambda]
+	 	    else xlambdas[j] #:= xlambda
+	 	    fi
+	      od
+   	 od
+     in xlambdas
+
+set singular_imaginary(KGBElt x, ratvec lambda) = [vec]:
+   let G = x.real_form
+   in for alpha in simple_imaginary_roots(x)
+      do let alpha_v = coroot(G,alpha)
+	       in if (lambda*alpha_v).=
+	       	  then [alpha]
+	       	  else []
+		  fi
+      od.##
+
+set singular_imaginary(Param p) = [vec]:
+    singular_imaginary(p.x, p.lambda)
+
+{perform to_more_split Cayley transforms through singular imaginary roots as long as possible}
+set up_Cayley (KGBElt x, ratvec lambda) = (KGBElt, ratvec):
+    let p0 = parameter(x,lambda,0*lambda)
+    then S = singular_imaginary(x,lambda), mu0 = LKTs(p0)[0]
+    then () = while (#S).>
+    	      do let () = p0:= parameter(Cayley(S[0],p0.x), p0.lambda, p0.nu)
+	      {Cayley(S[0],p) built-in fails for G=Sp(6,R), p = parameter(G,30,[4,1,0],[0,0,0])}
+	      	 in S :=singular_imaginary(p0)
+	      od
+    then twists = all_lambda_differential_0(p0.x)
+    then j = first(for tau in twists
+    	     	   do any(for mu in LKTs(parameter(p0.x, p0.lambda + tau,p0.nu)) do mu = mu0 od)
+		   od)
+    in (p0.x, parameter(p0.x, p0.lambda + twists[j], p0.nu).lambda)
+
+{perform to_more_split Cayley transforms through singular imaginary roots as long as possible}
+set up_Cayley (Param p) = Param:
+    let (y,tau) = up_Cayley(p.x, p.lambda)
+    in parameter(y,tau,p.nu)
+
+set move(WeylElt w) = ((KGBElt,ratvec) -> (KGBElt,ratvec)):
+ (KGBElt x, ratvec lambda) (KGBElt,ratvec):
+ let G = w.root_datum
+ then rhow = G.rho - w*(G.rho)
+ then p1 = parameter(cross(w,x), w*lambda, 0*lambda)
+ in (p1.x, p1.lambda)
+
+set up_complex(KGBElt x, ratvec lambda) = (KGBElt, ratvec):
+    let (w1, x1) = from_no_Cminus(x) {w1 carries x1 to x}
+    then w2 = w1.inverse
+    then lambda1 = w2*lambda
+    in (x1,parameter(x1,lambda1,0*lambda1).lambda)
+
+set *(WeylElt w, LocalVertexData (list,lookup,prstart)) = LocalVertexData:
+    let new_list = for v in list do w*v od
+    in (new_list, index_in(new_list), prstart)
+
+set simple_complex(KGBElt x) = [int]:
+    let G = x.real_form
+    then r = G.semisimple_rank
+    in for i:r do if is_complex(i,x) then [i] else [] fi od.##
+
+set blobwx(KGBElt x) = [WeylElt,KGBElt]:
+(   let G = x.real_form
+   then index = for :KGB_size(G) do minus_1 od
+   , orbit = [(id_W(x.root_datum),x)]
+   , i=0
+in index[#x]:=0 { mark |x| as seen, and present in |orbit[0]| }
+;  while
+      let k=#orbit { variable future position of first new element to be found }
+      then news = [WeylElt,KGBElt]:
+         while i<#orbit
+         do let (witness,y) = orbit[i] next i+:=1
+         in for s in simple_complex(y)
+	    do let z=cross(s,y)
+	    in if index[#z].< then index[#z]:=k; k+:=1
+	    ; [(W_elt(G,[s])*witness,z)]
+	       else [] { already seen, ignore }
+	       fi
+	    od.##
+	 od.##
+   in {while} >#news
+   do orbit ##:= news
+   od
+; for k@i in index do if k.>= then [orbit[k]] else [] fi od.##
+)
+
+set blobx(KGBElt x) = [KGBElt]:
+(   let G = x.real_form
+   then index = for :KGB_size(G) do minus_1 od
+   , orbit = [x]
+   , i=0
+in index[#x]:=0 { mark |x| as seen, and present in |orbit[0]| }
+;  while
+      let k=#orbit { variable future position of first new element to be found }
+      then news = [KGBElt]:
+         while i<#orbit
+         do let y = orbit[i] next i+:=1
+         in for s in simple_complex(y)
+	    do let z=cross(s,y)
+	    in if index[#z].< then index[#z]:=k; k+:=1; [z]
+	       else [] { already seen, ignore }
+	       fi
+	    od.##
+	 od.##
+   in {while} >#news
+   do orbit ##:= news
+   od
+; for k@i in index do if k.>= then [orbit[k]] else [] fi od.##
+)
+
+{list of all KGBElts reachable from x by simple complex cross actions}
+set DVblobx(KGBElt x) = [KGBElt]:
+    if #simple_complex(x) = 0 then return [x] fi;
+    let G = x.real_form
+    then y_hash = 1*parameter(x,G.rho,G.rho) {one param with lambda=nu
+    	 = rho for each KGBElt}
+    then done_hash = null_module(G) {always subset of y_hash}
+    then to_do_hash =  y_hash - done_hash {always subset of y_hash, complementary to done_hash}
+    then () = while (#to_do_hash).>
+    	      do let (c,p) = first_term(to_do_hash)
+	      	 then z = p.x
+	    	 then try = [Param]: for j in simple_complex(z) do parameter(cross(j,z),G.rho,G.rho) od
+	    	 then () = y_hash+:= sum(G, for q in try do if y_hash[q].= then [1*q] else [] fi od.##) {add new q's}
+	    	 then () = done_hash+:= c*p
+	    	 in to_do_hash:= y_hash - done_hash
+	      od
+    in for p in monomials(y_hash) do p.x od
+
+{include Weyl elt crossing y to x}
+{set blobwx(KGBElt x) = [WeylElt, KGBElt]:
+    for y in blobx(x) do (cross_divide(y,x), y) od {w carries x to y}}
+
+{all (y,tau) reachable from (x,lambda) by complex cross; assume blob is the list of x}
+set blobwxl(KGBElt x, ratvec lambda, [(WeylElt,KGBElt)] blobwx) = [(WeylElt, KGBElt, ratvec)]:
+    for (w,y) in blobwx
+    do let tau = parameter(y, w*lambda, 0*lambda).lambda
+       in if position(y,tau).>=
+	  then [(w,y,tau)]
+	  else []
+	  fi
+    od.##
+
+{all (y,tau) reachable from (x,lambda) by complex cross}
+set blobwxl(KGBElt x, ratvec lambda) = [(WeylElt, KGBElt,ratvec)]:
+    let blobwx = blobwx(x)
+    in blobwxl(x,lambda,blobwx)
+
+{local vertices and relation to FPP_vertices for each (x,lambda) in blob}
+set wLPms([(WeylElt, KGBElt,ratvec)] blobwxl) = [WeylElt, (LocalVertexData, PermOrderTwo, vec)]:
+    if #blobwxl = 0 then return [] fi;
+    let (,x,lambda) = blobwxl[0]
+    then G = x.real_form
+    in
+    for (w, y, tau) in blobwxl
+    do let theta = y.involution
+       in (w, LPm_table.LPm_entry(G,theta, ratvec_as_vec((1+theta)*tau)))
+    od
+
+set wLPms(KGBElt x,ratvec lambda) = [WeylElt, (LocalVertexData, PermOrderTwo, vec)]:
+    let blobwxl = blobwxl(x,lambda)
+    in wLPms(blobwxl)
+
+{list of vertices and edges for each (x,lambda) in blob}
+set wLFs([(WeylElt, KGBElt,ratvec)] blobwxl, [WeylElt, (LocalVertexData, PermOrderTwo, vec)] wLPms) = [(WeylElt, (LocalVertexData,[[vec]]))]:
+    if #blobwxl = 0 then return [] fi;
+    for  (w,y,tau)@j in blobwxl
+    do let (,(Lvd, Perm2, mapAct))= wLPms[j]
+       in (w, (Lvd,localFD_1Dirac2(y,tau,Lvd, Perm2, mapAct)))
+    od
+
+set wLFs(KGBElt x, ratvec lambda) = [(WeylElt,(LocalVertexData,[[vec]]))]:
+    let blobwxl = blobwxl(x,lambda)
+    then wLPms = wLPms(blobwxl)
+    in wLFs(blobwxl, wLPms)
+
+
+{Stick together local vertices and edges at a bunch of different w^*{-1}*(x0,lambda0)} 
+set concatenate([(WeylElt, (LocalVertexData, [[vec]]))] local01) = (LocalVertexData, [[vec]]):
+    let wLvds = for (w, (Lvd,)) in local01
+    	      	do w*Lvd
+		od
+    then vert_hash = make_ratvec_hash()
+    then perms = for wLvd in wLvds {wth entry give map from wLvd.list to big_list}
+    	      	 do for v in wLvd.list
+	      	    do vert_hash.match(v)
+		    od
+		 od
+    then () = prints(perms)
+    then big_list = vert_hash.list()
+    then () = prints(big_list)
+    then big_Lvd = to_vertex_data(big_list,#big_list)
+    then big_LF = for d:2
+    	 	  do for (,(,LF))@i in local01
+		     do for v in LF[d]
+		     	do for j in v
+			   do perms[i][j]
+			   od.sort {now a list of indices into big_list}
+			od {now a list of d-faces for ith LF}
+		     od.##.sort_u {sort_u eliminates repetitions}
+		   od {d = 0, 1}
+    in (big_Lvd, big_LF)
+
+{
+> xlambdaE8q40000.at write_vecs(xlambdas, "xlambdas")
+
+>> xlambdaE8q40000.at prints("set G=E8_q, r = E8_q.rank + 1")
+>> xlambdaE8q40000.at prints("set xlambdalists = [[(KGBElt, ratvec)]]:")
+>> xlambdaE8q40000.at prints("for v in xlambdas do for i:#v\r  do (KGB(G,v[r*(i+1)-1]), v[r*i:r*(i+1)-1]/2) od od")}
+
+
+{atlas> <<xlambdaE8q40000.at 
+Starting to read from file 'xlambdaE8q40000.at'.
+  Variable xlambdas: [vec]
+  Variable G: RealForm
+  Variable r: int
+  Variable xlambdalists: [[(KGBElt,ratvec)]]
+Completely read file 'xlambdaE8q40000.at'.
+atlas> #xlambdalists 
+Value: 113015
+atlas> sum(for list in xlambdalists do #list od)
+Value: 3816916}
+
+
+{FPP_unitary_hash_bottom_layer(xlambdalists.##)}
+
+{ELIMINATE DUAL DUPLICATES}
+
+
+{
+atlas> set Rhash = make_KTypePol_hash ()
+Variable Rhash: KTypePol_hash
+
+atlas> set Rlist = for list in xlambdalists do let (x,lambda) = list[0] in Rhash.match(R_packet(LKTs(parameter(x,lambda,lambda))[0] )) od
+Variable Rlist: [int]
+atlas> #Rlist
+Value: 36568
+
+atlas> set dualRlist = for list in xlambdalists do let (x,lambda) = list[0] in Rhash.match(R_packet(LKTs(contragredient(parameter(x,lambda,lambda)))[0])) od
+
+atlas> set neededlist = for r@j in Rlist do if dualRlist[j] < r then [] else [j] fi od.##
+Variable neededlist: [int]
+atlas> #neededlist
+Value: 19836
+atlas> #xtwolambdas
+Value: 36568
+
+atlas> set needed_xtwolambdas = for j in neededlist do xtwolambdas[j] od
+Variable needed_xtwolambdas: [vec]
+atlas> #needed_xtwolambdas
+Value: 19836
+
+> needed_xlambdaE7.at write_vecs(needed_xtwolambdas, "needed_xtwolambdas")
+>> needed_xlambdaE7.at prints("set G=E7_s, r = E7_s.rank + 1")
+>> needed_xlambdaE7.at prints("set needed_xlambdalists = [[(KGBElt, ratvec)]]:")
+>> needed_xlambdaE7.at prints("for v in needed_xtwolambdas do for i:#v\r  do (KGB(G,v[r*(i+1)-1]), v[r*i:r*(i+1)-1]/2) od od")
+}
