@@ -16,6 +16,9 @@
 <E7_sc_s_unipdata
 <E8_s_unipdata
 <E8_q_unipdata
+<cohom_reductionND.at {to calculate unipotents one derived factor at a time}
+<FPP_faces_herm.at {for big_unitary_hash}
+
 {extract just the parameters from [(int,int,Param)]}
 set parameters([(int,int,Param)] triples)=[Param]:for (,,p) in triples do p od
 
@@ -249,6 +252,31 @@ set unipotent_representations(RealForm G)=[Param]: {G.weak_packets.parameters}
     fi
 
 set unipotents(RealForm G)=[Param]:unipotent_representations(G)
+
+{if big_unitary_hash has trivial(G), assume it has all unipotents of G}
+set big_unitary_hash_flag = true
+
+{calculate one derived simple factor at a time}
+
+set factor_unipotent_representations(RealForm G) = [Param]:
+    let dLs = derived_simple_factorsRF(G)
+    then unip_lists = for dL in dLs
+    	 	      do if big_unitary_hash_flag and big_unitary_hash.uhash(dL).lookup(dL.trivial).>=
+			 then big_unitary_hash.uhash(dL).list()
+			 else unipotent_representations(dL)
+			 fi
+		      od
+    in glue_params(G,unip_lists)
+
+set factor_unipotent_representations(RealForm G, ratvec v) = [Param]:
+    let dLs = derived_simple_factorsRF(G)
+    then unip_lists = for dL in dLs
+    	 	      do if big_unitary_hash_flag and big_unitary_hash.uhash(dL).lookup(dL.trivial).>=
+		      	 then big_unitary_hash.uhash(dL).list()
+			 else unipotent_representations(dL)
+			 fi
+		      od
+    in glue_params(G,unip_lists,v)
 
 set mult([[(int,int,Param)]] packet)=((int,int,int)->int):(int orbit,int block,int cell):
 let rv=0 in

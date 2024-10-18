@@ -7,6 +7,8 @@
 <FPP_localDirac
 <cohIndUnip {for weakly fair cohom ind}
 <derived_cover {for simply connected cover of derived group}
+<R_packets.at {for trying to combine x's with same LKT}
+
 {functions for computing the entire FPP_unitary dual}
 {typically functions take a Param_hash Uhash and fill it with all
 unitary reps having infinitesimal character in the FPP. Each p is
@@ -102,13 +104,27 @@ set DSFLevi_hash(RealForm G) = RealForm_hash:
 {if false, suppress printing of report after an FPP_unitary_hash* job}
 set FPP_report_flag = true
 
+{if true, move computation to most split Cartan in R-packet}
+set R_packet_flag = false
+{as presently implemented, this misses unitary representations in
+R-packets containing also nonunitary representations. Reason is that
+these parameters are studied only on most split Cartan; software finds
+that a parameter there has a nonunitary (reducible) LQ, and fails to
+to record unitary factors.}
+
 {uses LPm_table to keep track of local face info}
 set FPP_unitary_hash_general([(KGBElt,ratvec)] xlambdas, Param_hash Uhash,
     {Param_hash Uparamhash,} (KGBElt, ratvec,VertexData, LocalVertexData,[[FaceVertsIndex]],
     KTypePol_hash, Param_hash->[Param])
     local) = void:
-    if #xlambdas = 0 then return ()
-    else let (x,) = xlambdas[0]
+    let xlambdasW = if R_packet_flag
+    	      	    then for (x,lambda) in xlambdas
+	      	         do up_Cayley(x,lambda)
+		   	 od
+		    else xlambdas
+	      	    fi
+    then () = if #xlambdasW = 0 then return ()
+    	      else let (x,) = xlambdasW[0]
     then G = x.real_form
     then {vd = FPP_vertex_data(G),} start = elapsed_ms(),  zeroNu = null(G.rank)/1
     then () = unitaryTime := 0
@@ -116,12 +132,12 @@ set FPP_unitary_hash_general([(KGBElt,ratvec)] xlambdas, Param_hash Uhash,
     then () = prepDirac(G)
     then () = FD12Time:=0
     then () = FD12bzTime:=0
-    then xnums = for (x,) in xlambdas do x.number od
-    then lambdas = for (,lambda) in xlambdas do lambda od, pol_hash = make_KTypePol_hash()
+    then xnums = for (x,) in xlambdasW do x.number od
+    then lambdas = for (,lambda) in xlambdasW do lambda od, pol_hash = make_KTypePol_hash()
     then old_face_verbose = face_verbose, old_time_verbose = time_verbose,
     	 old_test_verbose = test_verbose, old_test_slightly_verbose = test_slightly_verbose
     then startLPmss = elapsed_ms()
-    then LPmss = for (x,lambda) in xlambdas
+    then LPmss = for (x,lambda) in xlambdasW
     	       	 do LPm_table.LPm_entry(G,x.involution, ratvec_as_vec(lambda+x.involution*lambda))
               	 od
     then () = if every_lambda_deets_flag
@@ -138,8 +154,8 @@ set FPP_unitary_hash_general([(KGBElt,ratvec)] xlambdas, Param_hash Uhash,
 	      {elif coh_ind_few_flag
 	      then coh_ind_unip_few(G,Uhash)}
 	      fi
-    then xlambdatimes = [int]: null(#xlambdas)
-    then answerCards = [int]: null(#xlambdas) {number of unitary parameters found}
+    then xlambdatimes = [int]: null(#xlambdasW)
+    then answerCards = [int]: null(#xlambdasW) {number of unitary parameters found}
     then oldUhash = Uhash.size()
     {then () = adjust_global_top(G)}
     {then () = prints("time thru global_faces = ",print_time_string(elapsed_ms() - start))}
@@ -151,8 +167,8 @@ set FPP_unitary_hash_general([(KGBElt,ratvec)] xlambdas, Param_hash Uhash,
     {then () = if every_lambda_deets_flag
     	      then prints("time up to main loop = ",print_time_string(elapsed_ms() - start))
 	      fi}
-    then () = for (x,lambda)@k in xlambdas
-    	      do {xlambdas} 
+    then () = for (x,lambda)@k in xlambdasW
+    	      do {xlambdasW} 
 	 	 let startxl = elapsed_ms(), startUhash = Uhash.size(),
 		     		   startUcounter = unitary_test_counter.use_count(),
 				   startCcounter = char_counter.use_count(),
@@ -196,7 +212,7 @@ set FPP_unitary_hash_general([(KGBElt,ratvec)] xlambdas, Param_hash Uhash,
 				 prints("  ------------------")
 			     fi
 		    fi
-		 od{xlambdas}
+		 od{xlambdasW}
     then () = face_verbose:=old_face_verbose; time_verbose:=old_time_verbose;
     	      test_verbose:=old_test_verbose; test_slightly_verbose:=old_test_slightly_verbose
     then longest = max_loc(xlambdatimes)
@@ -228,7 +244,8 @@ set FPP_unitary_hash_general([(KGBElt,ratvec)] xlambdas, Param_hash Uhash,
 	    print_time_string(position_time));
        	    prints("Number of FPP-unitary faces = ",Uhash.size(), ", number found on this run = ", Uhash.size() - oldUhash)
        fi {FPP_report_flag}
-       fi {#xlambdas = 0}
+       fi {#xlambdasW = 0}
+     in ()
 
 set FPP_unitary_hash_general([KGBElt] xs, Param_hash Uhash, {Param_hash Uparamhash,}
     (KGBElt, ratvec,VertexData,LocalVertexData,[[FaceVertsIndex]],
@@ -349,36 +366,44 @@ set FPP_unitary_hash_general([KGBElt] xs, Param_hash Uhash, {Param_hash Uparamha
 			       sum(for list in answerCards do sum(list) od));
 		   		   prints("  ------------------")
         	   		   fi {every_KGB_flag}
+			 then xW = x
 	 		 then () = for lambda@index in lambdas
-	      	   	      	   do let lambdacont = parameter(x,lambda,0*lambda).lambda
-				      then lcontnum = if lambdacont != lambda
+	      	   	      	   do let lambdaW = lambda
+				      then () = if R_packet_flag
+				      	      	then let (xprime,lambdaprime) = up_Cayley(x,lambda)
+				      		then () = xW:=xprime
+				      		then () = lambdaW:=lambdaprime
+				     		in ()
+				      		fi
+				      then lambdacont = parameter(xW,lambdaW,0*lambdaW).lambda
+				      then lcontnum = if lambdacont != lambdaW
 				      	   	     then last(for kappa in lambdas[:index] do kappa = lambdacont od)
 						     else -1
 						     fi
 				      in if lcontnum.>=
 				      	 then tempanswerCards[index]:= tempanswerCards[lcontnum];
 		    	 		      for p in Uparamhash.list()
-			 		      do if p.x = x and p.lambda = lambdacont
+			 		      do if p.x = xW and p.lambda = lambdacont
 					      	 then Uparamhash.match(contragredient(p))
 			    		    	 fi
 			 		       od;
-		    	 	               big_unitary_hash.finish(x,to_bitset([index]));
-					       {mark as done this lambda for x}
+		    	 	               big_unitary_hash.finish(xW,to_bitset([index]));
+					       {mark as done this lambda for xW}
 			            	       for p in Uhash.list()
-	      	       		    	       do if p.x = x and p.lambda = lambdacont
+	      	       		    	       do if p.x = xW and p.lambda = lambdacont
 		       	  	       	       	  then Uhash.match(contragredient(p))
 		    	  	       		  fi
 		       		    	       od
-					  else let lamthlam = ((1+x.involution)*lambda).numer
-		      		      	       then (Lvd, Perm2, mapAct) = LPm_table.LPm_entry(G,x.involution,lamthlam)
+					  else let lamthlam = ((1+xW.involution)*lambdaW).numer
+		      		      	       then (Lvd, Perm2, mapAct) = LPm_table.LPm_entry(G,xW.involution,lamthlam)
 		      		      	       then  startlambda = elapsed_ms(), startUhash = Uhash.size(),
 					       	     startUcounter = unitary_test_counter.use_count(),
 						     startUtime = unitaryTime, startCcounter =
 						     char_counter.use_count(), startCtime = charTime
 				      	       then startLF = elapsed_ms()
  		      		      	       then LF = if by_zero_flag {and dominant(G,lamthlam)*G.two_rho_check > 0}
-		      	      	      	      	       	 then localFD_1Dirac2_by_zero(x, lambda, Lvd, Perm2, mapAct)
-			   				 else localFD_1Dirac2(x, lambda, Lvd, Perm2, mapAct)
+		      	      	      	      	       	 then localFD_1Dirac2_by_zero(xW, lambdaW, Lvd, Perm2, mapAct)
+			   				 else localFD_1Dirac2(xW, lambdaW, Lvd, Perm2, mapAct)
 			   				 fi {by_zero_flag}
 				      	       then () = if every_lambda_deets_flag
     	      	      	              	       	       	 then prints("time for localFD_1Dirac2* = ",
@@ -393,7 +418,7 @@ set FPP_unitary_hash_general([KGBElt] xs, Param_hash Uhash, {Param_hash Uparamha
 				    	 	   test_verbose :=old_test_verbose;
 						   test_slightly_verbose := old_test_slightly_verbose
 				 		   fi;
-				 		   let answer = local(x, lambda, LPm_table.FPP_vertex_data(G),
+				 		   let answer = local(xW, lambdaW, LPm_table.FPP_vertex_data(G),
 						       Lvd, LF, pol_hash, Uhash)
 				 		   then () = for p in answer do Uparamhash.match(p) od
 			  	 		   then () = tempanswerCards[index] := #answer
@@ -405,8 +430,8 @@ set FPP_unitary_hash_general([KGBElt] xs, Param_hash Uhash, {Param_hash Uparamha
  			 	 		   then () = templambdatimes [index] := elapsed_ms() - startlambda
 			 	 		   in if every_lambda_flag
 				    		      then prints("  ",print_time_string(templambdatimes[index]),
-			   	    	 	      	   " = time for (x,lambda) = (", x.number, ",",index," = ",
-							   lambda, ")", test_string);
+			   	    	 	      	   " = time for (x,lambda) = (", xW.number, ",",index," = ",
+							   lambdaW, ")", test_string);
 				         		   prints("    #LF = ", for L in LF do #L od,
 							   ", #unitary params = ", tempanswerCards[index],
 			     	                	   ", #new unitary = ", Uhash.size() - startUhash,
@@ -480,7 +505,7 @@ set FPP_unitary_hash_general([KGBElt] xs, Param_hash Uhash, {Param_hash Uparamha
       fi {FPP_report_flag}
    fi {#xlambdas = 0}
 
-set FPP_unitary_hash_general(RealForm G,Param_hash Uhash, {Param_hash Uparamhash,}
+set FPP_unitary_hash_general(RealForm G,Param_hash Uhash,
     (KGBElt,ratvec,VertexData,LocalVertexData, [[FaceVertsIndex]],
     KTypePol_hash, Param_hash->[Param])
     local) = void:
@@ -488,7 +513,7 @@ set FPP_unitary_hash_general(RealForm G,Param_hash Uhash, {Param_hash Uparamhash
     then for p in all_parameters_gamma(G,G.rho)
     do Uhash.match(p) od
     else
-    FPP_unitary_hash_general(KGB(G), Uhash, {Uparamhash,} local)
+    FPP_unitary_hash_general(KGB(G), Uhash, local)
     fi
 
 set FPP_unitary_hash_real_dumb([(KGBElt,ratvec)] xlambdas, Param_hash Uhash{, Param_hash Uparamhash}) = void:

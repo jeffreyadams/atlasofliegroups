@@ -2,8 +2,10 @@
 < Dirac.at {for thetaStable}
 < weak_packets.at {for unipotent_representations}
 < time.at {for print_time_string}
+< FPP_faces_herm.at {for big_unitary_hash}
 {enumerate weakly fair cohomologically induced from unipotent reps in
 the FPP}
+{MAYBE MISSES E8 rep wkly fair ind from min of E6_q??}
 
 {delta-fixed wts for G}
 
@@ -213,10 +215,16 @@ set offsets(KGPElt Q) = [ratvec]:
 		      od)/2
        od
 
+{if true, use factor_unipotents instead of unipotents}
+set unip_factor_flag = true
+
 {assume v is {G-dominant and?} central for L}
 set coh_ind_unip_few(KGPElt Q, Param_hash Uhash, ratvec v) = void:
     let L = Q.Levi, G = Q.real_form
-    then uLs = unipotent_representations(L,v)
+    then uLs = if unip_factor_flag
+    	       then factor_unipotent_representations(L,v)
+	       else unipotent_representations(L,v)
+	       fi
     then Qshifts = few_shifts(Q,v)
     in void: for pL in uLs
        	     do for tau in Qshifts
@@ -232,10 +240,17 @@ set coh_ind_unip_few(KGPElt Q, Param_hash Uhash, ratvec v) = void:
 		 od
 	     od
 
+set coh_ind_unip_few(KGPElt Q, ratvec v) = void:
+    coh_ind_unip_few(Q, big_unitary_hash.uhash(Q.real_form),v)
+
 {assume v is {G-dominant and?} central for L}
 set coh_ind_unip_most(KGPElt Q, Param_hash Uhash,ratvec v) = void:
     let L = Q.Levi, G = Q.real_form
-    then uLs = unipotent_representations(L,v), rhou = rho_u(Q)
+    then uLs = if unip_factor_flag
+    	       then factor_unipotent_representations(L,v)
+	       else unipotent_representations(L,v)
+	       fi
+    then rhou = rho_u(Q)
     then Qshifts = most_shifts(Q,v)
     in void: for pL in uLs
        	     do for tau in Qshifts
@@ -250,10 +265,17 @@ set coh_ind_unip_most(KGPElt Q, Param_hash Uhash,ratvec v) = void:
 		 od
 	     od
 
+set coh_ind_unip_most(KGPElt Q, ratvec v) = void:
+    coh_ind_unip_most(Q, big_unitary_hash.uhash(Q.real_form),v)
+
 {assume v is {G-dominant and?} central for L}
 set coh_ind_unip_all(KGPElt Q, Param_hash Uhash,ratvec v) = void:
     let L = Q.Levi, G = Q.real_form
-    then uLs = unipotent_representations(L,v), rhou = rho_u(Q)
+    then uLs = if unip_factor_flag
+    	       then factor_unipotent_representations(L,v)
+	       else unipotent_representations(L,v)
+	       fi
+    then rhou = rho_u(Q)
     then Qshifts = all_shifts(Q,v)
     in void: for pL in uLs
        	     do for tau in Qshifts
@@ -267,6 +289,9 @@ set coh_ind_unip_all(KGPElt Q, Param_hash Uhash,ratvec v) = void:
 		      fi
 		 od
 	     od
+
+set coh_ind_unip_all(KGPElt Q, ratvec v) = void:
+    coh_ind_unip_all(Q, big_unitary_hash.uhash(Q.real_form),v)
 
 set coh_ind_unip_verbose = false
 
@@ -290,6 +315,9 @@ set coh_ind_unip_few(RealForm G, [KGPElt] Qs, Param_hash Uhash) = void:
          fi
     in ()
 
+set coh_ind_unip_few(RealForm G, [KGPElt] Qs) = void:
+    coh_ind_unip_few(G, Qs, big_unitary_hash.uhash(G))
+
 {"most" means all Qshifts AND version of shifts sllowing some negstive weights}
 set coh_ind_unip_most(RealForm G, [KGPElt] Qs, Param_hash Uhash) = void:
     let startTime = elapsed_ms(), oldSize = Uhash.size()
@@ -311,7 +339,10 @@ set coh_ind_unip_most(RealForm G, [KGPElt] Qs, Param_hash Uhash) = void:
          fi
     in ()
 
-{"all" means all Qshifts AND version of shifts sllowing some negstive weights}
+set coh_ind_unip_most(RealForm G, [KGPElt] Qs) = void:
+    coh_ind_unip_most(G, Qs, big_unitary_hash.uhash(G))
+
+{"all" means all Qshifts AND version of shifts sllowing all possible negstive weights}
 set coh_ind_unip_all(RealForm G, [KGPElt] Qs, Param_hash Uhash) = void:
     let startTime = elapsed_ms(), oldSize = Uhash.size()
     then () = for Q@j in Qs
@@ -332,26 +363,46 @@ set coh_ind_unip_all(RealForm G, [KGPElt] Qs, Param_hash Uhash) = void:
          fi
     in ()
 
-
+set coh_ind_unip_all(RealForm G, [KGPElt] Qs) = void:
+    coh_ind_unip_all(G, Qs, big_unitary_hash.uhash(G))
 
 {just induced from proper Q}
 
 set coh_ind_unip_few(RealForm G, Param_hash Uhash) = void:
     coh_ind_unip_few(G,Qs(G),Uhash)
 
+set coh_ind_unip_few(RealForm G) = void:
+    coh_ind_unip_few(G,big_unitary_hash.uhash(G))
+
 set coh_ind_unip_most(RealForm G, Param_hash Uhash) = void:
     coh_ind_unip_most(G,Qs(G),Uhash)
 
+set coh_ind_unip_most(RealForm G) = void:
+    coh_ind_unip_most(G,big_unitary_hash.uhash(G))
+
 set coh_ind_unip_all(RealForm G, Param_hash Uhash) = void:
     coh_ind_unip_all(G,Qs(G),Uhash)
+
+set coh_ind_unip_all(RealForm G) = void:
+    coh_ind_unip_all(G,big_unitary_hash.uhash(G))
 
 {include unip reps of G}
 set coh_ind_unip_few_G(RealForm G, Param_hash Uhash) = void:
     coh_ind_unip_few(G,Qs(G)#parabolic_by_wt(null(G.rank),KGB(G,0)),Uhash)
 
+set coh_ind_unip_few_G(RealForm G) = void:
+    coh_ind_unip_few_G(G,big_unitary_hash.uhash(G))
+
 set coh_ind_unip_most_G(RealForm G, Param_hash Uhash) = void:
     coh_ind_unip_most(G,Qs(G)#parabolic_by_wt(null(G.rank),KGB(G,0)),Uhash)
 
+set coh_ind_unip_most_G(RealForm G) = void:
+    coh_ind_unip_most_G(G,big_unitary_hash.uhash(G))
+
 set coh_ind_unip_all_G(RealForm G, Param_hash Uhash) = void:
     coh_ind_unip_all(G,Qs(G)#parabolic_by_wt(null(G.rank),KGB(G,0)),Uhash)
+
+set coh_ind_unip_all_G(RealForm G) = void:
+    coh_ind_unip_all_G(G,big_unitary_hash.uhash(G))
+
 

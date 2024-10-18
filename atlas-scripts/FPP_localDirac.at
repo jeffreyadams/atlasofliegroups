@@ -1749,7 +1749,7 @@ set one_param_test_bottom(Param p, [int] Ds, Param_hash Uhash) = [Param]:
     then () = if more_verbose then prints("result of elim_more was ",elim_more) fi
     then steps = max(rank(p.x.involution-1),1)
     {then test_heights = next_heights(p, steps)
-    then (def_heights,) = deform_hts(p,steps)
+    then (def_heights,) = deform_hts(QG[0],steps)
     then j0 = max(0,first(for m in test_heights do Ds~[0] < m od))}
 		 {so that we test above the height bottom layer has examined}
     in if elim_more
@@ -2071,7 +2071,7 @@ set local_test_GEO_hash_else_dumb(KGBElt x, ratvec lambda, VertexData vd, LocalV
     (Param p) bool: is_unitary_def_test_big_SIMPLE(p{,test_ht}), Uhash)
     then () = if test_verbose then prints("unitary face counts to dim 1: ",
     for list in LFDKH do #list od) fi
-    then () = prints("set LFDKH01 = ",LFDKH)
+    {then () = prints("set LFDKH01 = ",LFDKH)}
     then () = if quick_flag
     	      then let () = LFDKH := localFD_KHashbt_lookDownGEO(x,lambda, Lvd, LFDKH, 2,
                                 r + 1, pol_hash)
@@ -2592,9 +2592,9 @@ set local_test_GEO_hash(KGBElt x, ratvec lambda, VertexData vd, LocalVertexData 
     {then depth= max(r,2)}
     then depth= max(((r-1)*edge_skip*stretcher)\1 + edge_offset_temp + 3, edge_skip + edge_offset_temp + 3)
     in [Param]: let maxDiffLoc = max_loc(for v in Lvd.list
-    	 	       		    do G.two_rho_check*(dominant(G,thetaMinus*v))
+    	       		    do G.two_rho_check*(dominant(G,thetaMinus*v))
 		       		    od)
-    	      	then pmax = parameter(x, lambda, Lvd.list[maxDiffLoc])
+    	      	then pmax = first_param(finalize(parameter(x, lambda, Lvd.list[maxDiffLoc])))
 		then Shorthts = if short_hts_flag then short_hts(pmax)
 		     	      	else let (answer,) = deform_hts(pmax,depth) {next_heights(pmax,depth)}
 				     in answer
@@ -3558,7 +3558,7 @@ set local_test_GEO_hash_bottom_layer(KGBElt x, ratvec lambda, VertexData vd,
    then () = LFDKH:= local_testK_hash_min_bottom_layer(x,lambda, Lvd, LFDKH, eq,
 		      gr, CLBF, pol_hash,  Uhash)
    then () = if test_verbose then prints("unitary on min_bottom layer face counts to dim 1: ",
-   	for list in LFDKH do #list od) fi
+   	for list in LFDKH do #list od){; prints(parameter(x,lambda,Lvd.list[LFDKH[0][0][0]]))} fi
    then () = if #LFDKH[0] = 0
    	     then return []
 	     fi
