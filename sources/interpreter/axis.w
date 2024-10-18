@@ -2685,7 +2685,7 @@ type_expr pattern_type(const id_pat& pat);
 size_t count_identifiers(const id_pat& pat);
 void list_identifiers(const id_pat& pat, std::vector<id_type>& d);
 void thread_bindings
-  (const id_pat& pat,const type_expr& type, layer& dst, bool is_const);
+  (const id_pat& pat,const type& type, layer& dst, bool is_const);
 void thread_components
   (const id_pat& pat,const shared_value& val,
    std::back_insert_iterator<std::vector<shared_value> > dst);
@@ -2732,24 +2732,31 @@ void list_identifiers(const id_pat& pat, std::vector<id_type>& d)
       list_identifiers(*it,d);
 }
 
-@ Here we do a similar traversal, using a type with structure matching |pat|;
-we push pairs onto a |layer|. If |is_const| holds, all identifiers will be
-const; otherwise a bit from |pat.kind| determines constness of
-|pat.name|.
+@ Here we do a similar traversal, using a type with structure matching |pat|; we
+push a pair onto a |layer| for every identifier in |pat|. All types created will
+have the same number |lvl| of fixed type variables. This number is passed
+unchanged in the basic recursive definition; the externally callable version of
+|thread_bindings| sets this function from its argument |type|. If |is_const| holds,
+all identifiers will be const; otherwise a bit from |pat.kind| determines
+constness of |pat.name|.
 
 @< Function definitions @>=
 void thread_bindings
-(const id_pat& pat,const type_expr& tp, layer& dst, bool is_const)
+  (const id_pat& pat,const type_expr& tp, unsigned int lvl, layer& dst, bool is_const)
 { if ((pat.kind & 0x1)!=0)
-    dst.add(pat.name,type::wrap(tp),is_const or (pat.kind & 0x4)!=0);
+    dst.add(pat.name,type::wrap(tp,lvl),is_const or (pat.kind & 0x4)!=0);
   if ((pat.kind & 0x2)!=0)
   { assert(tp.kind()==tuple_type);
     wtl_const_iterator t_it(tp.tuple());
     for (auto p_it=pat.sublist.begin(); not pat.sublist.at_end(p_it);
          ++p_it,++t_it)
-      thread_bindings(*p_it,*t_it,dst,is_const);
+      thread_bindings(*p_it,*t_it,lvl,dst,is_const);
   }
 }
+@)
+void thread_bindings
+ (const id_pat& pat,const type& tp, layer& dst, bool is_const)
+{@; return thread_bindings(pat,tp.bake(),tp.floor(),dst,is_const); }
 
 @ Finally, there is similar processing of an appropriate |shared_value| at
 runtime. This time we do use an output iterator. We could have written |*dst++
@@ -2803,7 +2810,7 @@ case let_expr:
     // rare case, introducing void identifier
     arg.reset(new voiding(std::move(arg)));
   layer new_layer(n);
-  thread_bindings(pat,decl_type,new_layer,false);
+  thread_bindings(pat,type::wrap(decl_type,fc),new_layer,false);
   return expression_ptr(new @|
     let_expression(pat,std::move(arg),convert_expr(lexp.body,fc,tp)));
 }
@@ -3104,21 +3111,22 @@ checking), and ignore the return type.
 case lambda_expr:
 { const lambda_node& fun=*e.lambda_variant;
   const id_pat& pat=fun.pattern;
-  const type_expr& arg_type=fun.parameter_type;
+  const type_expr& par_tp = fun.parameter_type;
     // argument type specified in |fun|
-  if (not arg_type.can_specialise(pattern_type(pat)))
-    // do |pat| structure and |arg_type| conflict?
-    throw expr_error(e,"Function argument pattern does not match its type");
+  type arg_type = type::wrap(par_tp,fc);
+  if (not par_tp.can_specialise(pattern_type(pat)))
+    throw expr_error(e,"Given parameter type does not match identifier pattern");
   type_expr* rt; type_expr dummy;
-  if (tp.specialise(gen_func_type)
-             and tp.func()->arg_type.specialise(arg_type))
+  if (tp.specialise(gen_func_type) and
+      arg_type.unify_to(tp.func()->arg_type,fc))
     rt = &tp.func()->result_type; // we can now safely access this
   else if (tp==void_type)
     rt=&dummy; // in void context there is no return type to set
-  else
-    @/throw type_error(e,
-                       type_expr::function(arg_type.copy(),unknown_type.copy()),
-                       tp.copy());
+  else // context requires a non-void type that expression cannot accommodate
+    throw type_error(e,
+                     type_expr::function(std::move(arg_type).bake_off()
+                                        ,unknown_type.copy()),
+                     tp.copy());
 @/layer new_layer(count_identifiers(pat),rt);
   thread_bindings(pat,arg_type,new_layer,false);
 @/return expression_ptr(new @| lambda_expression
@@ -3148,15 +3156,16 @@ should be no such changes since |fun.result_type| is already fully specialised.
 case rec_lambda_expr:
 { const rec_lambda_node& fun=*e.rec_lambda_variant;
   const id_pat& pat=fun.pattern;
-  const type_expr& arg_type=fun.parameter_type;
+  const type_expr& par_tp = fun.parameter_type;
     // argument type specified in |fun|
-  if (not arg_type.can_specialise(pattern_type(pat)))
-    // do |pat| structure and |arg_type| conflict?
-    throw expr_error(e,"Function argument pattern does not match its type");
-  type_expr f_type=type_expr::function(arg_type.copy(),fun.result_type.copy());
-  if ( tp!=void_type and not tp.specialise(f_type))
-      @/throw type_error(e, std::move(f_type), tp.copy());
+  if (not par_tp.can_specialise(pattern_type(pat)))
+    throw expr_error(e,"Given parameter type does not match identifier pattern");
+  type f_type = type::wrap
+    (type_expr::function(fun.parameter_type.copy(),fun.result_type.copy()),fc);
+  if (tp!=void_type and not f_type.unify_to(tp,fc))
+  @/throw type_error(e, f_type.bake_off(), tp.copy());
 @)
+  const type arg_type = type::wrap(par_tp,fc);
   type_expr& res_type=f_type.func()->result_type;
     // non |const| though it cannot change
   layer new_layer(1+count_identifiers(pat),&res_type);
@@ -5134,7 +5143,8 @@ that the actual branch processing can be shared with the case with tags.
   auto branch_p=&exp.branches; wtl_const_iterator type_it(variants);
   for (size_t k=0; k<n_branches; ++k,branch_p=branch_p->next.get(),++type_it)
   { const auto& branch = branch_p->contents;
-    const auto& variant_type = *type_it; // type of variant for this branch
+    const type variant_type = type::wrap(*type_it,fc);
+    // type of variant for this branch
     @/@< Type-check branch |branch.branch|, with |branch.pattern| bound to
          |variant_type|, against result type |tp|,  and insert the
          |choice_part| resulting from the conversion into |choices[k]| @>
@@ -5180,7 +5190,7 @@ conversion of previous branches.
                  -field_names.begin();
       @< Check that |k| is a valid index into |choices|, and that the slot
          |choices[k]| has not been filled before @>
-      const auto& variant_type = *std::next(types_start,k);
+      const type variant_type = type::wrap(*std::next(types_start,k),fc);
       // type of variant for this branch
     @/@< Type-check branch |branch.branch|, with |branch.pattern| bound to
          |variant_type|, against result type |tp|,  and insert the
@@ -5201,7 +5211,7 @@ any identifiers at all, which the |evaluate| method then will recognise if
 this branch is chosen, and suppress creating a |frame| for the branch.
 
 @< Type-check branch |branch.branch|, with |branch.pattern|... @>=
-{ if (not variant_type.can_specialise(pattern_type(branch.pattern)))
+{ if (not variant_type.unwrap().can_specialise(pattern_type(branch.pattern)))
   { o << "Pattern " << branch.pattern @|
       << " does not match type " << variant_type @|
       << " for variant " <<  main_hash_table->name_of(branch.label);
@@ -5913,14 +5923,15 @@ from such a subscription. We also make |tp| point to the index type used.
     o << "Cannot iterate over value of type " << in_type;
     throw expr_error(e,o.str());
   }
-  type_list it_comps; // type of ``iterator'' value (pattern) named in the loop
+  type_list it_comps; // type of "iterator" value (pattern) named in the loop
   it_comps.push_front(std::move(comp_type));
   it_comps.push_front(type_expr(inx_type->copy()));
   const type_expr it_type = type_expr::tuple(std::move(it_comps));
     // build tuple type from index and component types
   if (not it_type.can_specialise(pattern_type(f.id)))
     throw expr_error(e,"Improper structure of loop variable pattern");
-  thread_bindings(f.id,it_type,bind,true); // force all identifiers constant
+  thread_bindings(f.id,type::wrap(it_type,fc),bind,true);
+  // force all identifiers constant
 }
 
 @ Now follows the code that actually implements various kinds of loops. It is
@@ -8632,7 +8643,7 @@ completion,
      ,std::move(*appl)
      ,reversed},e.loc));
   layer let_layer(1);
-  thread_bindings(dollar,ind_t,let_layer,true);
+  thread_bindings(dollar,type::wrap(ind_t,fc),let_layer,true);
   result.reset(new let_expression @|
     (dollar,std::move(ind),convert_expr(*ca,fc,tp)));
   *appl = std::move(ca->comp_assign_variant->rhs);

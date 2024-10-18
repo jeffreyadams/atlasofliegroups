@@ -2414,14 +2414,14 @@ supposing it is no longer needed, and is faster in the absence of any pending
 type assignments). The |const| methods |has_unifier| and |unify_to| test whether
 our type can unify to what the |type_expr| expects; the latter also modifies
 that |type_expr| to reflect the unifying type. It is typically used to record
-what our (polymorphic) type becomes when used in some expected type context. The
-method |unify| also preforms the unification, but also records the substitution
-required in our |type_assignment|. The |matches| methods is similar, but
-specific for use in overload resolution, where our type is that of the argument,
-and |formal| is the specification of one overloaded instance; in case of
-success, |assign()| can be used to perform substitutions for that overloaded
-instance, while in case of failure, any partial assignment done can be erased by
-calling |clear|.
+what our (polymorphic) type becomes when used in some expected type context. A
+third form |unify| differs from |unify_to| in that the substitution is not only
+applied into |pattern|, but also recorded in our |type_assignment|. The
+|matches| methods is similar, but specific for use in overload resolution, where
+our type is that of the argument, and |formal| is the specification of one
+overloaded instance; in case of success, |assign()| can be used to perform
+substitutions for that overloaded instance, while in case of failure, any
+partial assignment done can be erased by calling |clear|.
 
 @< Utility methods of |type| @>=
 type_expr bake() const; // extract |type_expr| after substitution
