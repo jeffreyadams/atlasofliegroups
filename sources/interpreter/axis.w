@@ -2469,7 +2469,8 @@ case function_call:
     unless it is a local function identifier @>
   type_expr f_pat=gen_func_type.copy(); // start with generic function type
   expression_ptr fun = convert_expr(call.fun,fc,f_pat);
-  type f_type=type::wrap(f_pat); // consolidate to a (maybe polymorphic) |type|
+  type f_type=type::wrap(f_pat,fc);
+  // consolidate to a (maybe polymorphic) |type|
   type_expr arg_pat = f_type.skeleton(f_pat.func()->arg_type);
   expression_ptr arg = convert_expr(call.arg,fc,arg_pat);
   type arg_type = type::wrap(arg_pat,f_type.floor());
@@ -2724,7 +2725,8 @@ type_expr pattern_type(const id_pat& pat);
 size_t count_identifiers(const id_pat& pat);
 void list_identifiers(const id_pat& pat, std::vector<id_type>& d);
 void thread_bindings
-  (const id_pat& pat,const type_expr& type, layer& dst, bool is_const);
+  (const id_pat& pat,const type_expr& type, unsigned int lvl,
+   layer& dst, bool is_const);
 void thread_components
   (const id_pat& pat,const shared_value& val,
    std::back_insert_iterator<std::vector<shared_value> > dst);
@@ -2774,22 +2776,26 @@ void list_identifiers(const id_pat& pat, std::vector<id_type>& d)
       list_identifiers(*it,d);
 }
 
-@ Here we do a similar traversal, using a type with structure matching |pat|;
-we push pairs onto a |layer|. If |is_const| holds, all identifiers will be
-immutable; otherwise any identifier that is either flagged as such by the user
-(which is recorded in a bit from |pat.kind|) or has polymorphic type will be
-made immutable. The reason that having polymorphic type implies immutability is
-explained in the introduction to polymorphic types in \.{axis-types.w};
-essentially, we wish to avoid ever \emph{requiring} values to have
-(sufficiently) polymorphic type, as would be the case when assigning a new value
-to such an identifier.
+@ Here we do a similar traversal, using a type with structure matching |pat|; we
+push a pair onto a |layer| for every identifier in |pat|. All types created will
+have the same number |lvl| of fixed type variables, which is passed
+unchanged in recursive calls.
+
+If |is_const| holds, all identifiers will be immutable; otherwise any identifier
+that is either flagged as such by the user (which is recorded in a bit from
+|pat.kind|) or has polymorphic type will be made immutable. The reason that
+having polymorphic type implies immutability is explained in the introduction to
+polymorphic types in \.{axis-types.w}; essentially, we wish to avoid
+ever \emph{requiring} values to have (sufficiently) polymorphic type, as would
+be the case when assigning a new value to such an identifier.
 
 @< Function definitions @>=
 void thread_bindings
-(const id_pat& pat,const type_expr& te, layer& dst, bool is_const)
+  (const id_pat& pat,const type_expr& te, unsigned int lvl,
+   layer& dst, bool is_const)
 { if ((pat.kind & 0x1)!=0)
   {
-    type tp = type::wrap(te);
+    type tp = type::wrap(te,lvl);
     bool constant = is_const or tp.is_polymorphic() or (pat.kind & 0x4)!=0;
     dst.add(pat.name,std::move(tp),constant);
   }
@@ -2799,7 +2805,7 @@ void thread_bindings
     wtl_const_iterator t_it(te.tuple());
     for (auto p_it=pat.sublist.begin(); not pat.sublist.at_end(p_it);
          ++p_it,++t_it)
-      thread_bindings(*p_it,*t_it,dst,is_const);
+      thread_bindings(*p_it,*t_it,lvl,dst,is_const);
   }
 }
 
@@ -2856,7 +2862,7 @@ case let_expr:
     // rare case, introducing void identifier
     arg.reset(new voiding(std::move(arg)));
   layer new_layer(n);
-  thread_bindings(pat,decl_type,new_layer,false);
+  thread_bindings(pat,decl_type,fc,new_layer,false);
   return expression_ptr(new @|
     let_expression(pat,std::move(arg),convert_expr(lexp.body,fc,tp)));
 }
@@ -3167,23 +3173,23 @@ checking), and ignore the return type.
 case lambda_expr:
 { const lambda_node& fun=*e.lambda_variant;
   const id_pat& pat=fun.pattern;
-  const type_expr& arg_type=fun.parameter_type;
+  const type_expr& par_tp = fun.parameter_type;
     // argument type specified in |fun|
-  if (not arg_type.can_specialise(pattern_type(pat)))
-    // do |pat| structure and |arg_type| conflict?
-    throw expr_error(e,"Function argument pattern does not match its type");
+  if (not par_tp.can_specialise(pattern_type(pat)))
+    throw expr_error
+      (e,"Specified parameter type does not match identifier pattern");
   type_expr* rt; type_expr dummy;
   if (tp.specialise(gen_func_type)
-             and tp.func()->arg_type.specialise(arg_type))
+             and tp.func()->arg_type.specialise(par_tp))
     rt = &tp.func()->result_type; // we can now safely access this
   else if (tp==void_type)
     rt=&dummy; // in void context there is no return type to set
-  else
-    @/throw type_error(e,
-                       type_expr::function(arg_type.copy(),unknown_type.copy()),
-                       tp.copy());
+  else // context requires a non-void type that expression cannot accommodate
+    throw type_error(e,
+                     type_expr::function(par_tp.copy(),unknown_type.copy()),
+                     tp.copy());
 @/layer new_layer(count_identifiers(pat),rt);
-  thread_bindings(pat,arg_type,new_layer,false);
+  thread_bindings(pat,par_tp,fc,new_layer,false);
 @/return expression_ptr(new @| lambda_expression
    (copy_id_pat(pat), convert_expr(fun.body,fc,*rt), std::move(e.loc)));
 }
@@ -3211,20 +3217,20 @@ should be no such changes since |fun.result_type| is already fully specialised.
 case rec_lambda_expr:
 { const rec_lambda_node& fun=*e.rec_lambda_variant;
   const id_pat& pat=fun.pattern;
-  const type_expr& arg_type=fun.parameter_type;
+  const type_expr& par_tp = fun.parameter_type;
     // argument type specified in |fun|
-  if (not arg_type.can_specialise(pattern_type(pat)))
-    // do |pat| structure and |arg_type| conflict?
-    throw expr_error(e,"Function argument pattern does not match its type");
-  type_expr f_type=type_expr::function(arg_type.copy(),fun.result_type.copy());
+  if (not par_tp.can_specialise(pattern_type(pat)))
+    throw expr_error
+      (e,"Specified parameter type does not match identifier pattern");
+  type_expr f_type=type_expr::function(par_tp.copy(),fun.result_type.copy());
   if ( tp!=void_type and not tp.specialise(f_type))
       @/throw type_error(e, std::move(f_type), tp.copy());
 @)
   type_expr& res_type=f_type.func()->result_type;
     // non |const| though it cannot change
   layer new_layer(1+count_identifiers(pat),&res_type);
-@/thread_bindings(id_pat(fun.self_id),f_type,new_layer,true);
-  thread_bindings(pat,arg_type,new_layer,false);
+@/thread_bindings(id_pat(fun.self_id),f_type,fc,new_layer,true);
+  thread_bindings(pat,par_tp,fc,new_layer,false);
 @/return expression_ptr(new @| recursive_lambda
    (fun.self_id,copy_id_pat(pat),
     convert_expr(fun.body,fc,res_type), std::move(e.loc)));
@@ -5273,7 +5279,7 @@ this branch is chosen, and suppress creating a |frame| for the branch.
 @)
   expression_ptr result;
   layer branch_layer(count_identifiers(branch.pattern));
-  thread_bindings(branch.pattern,variant_type,branch_layer,false);
+  thread_bindings(branch.pattern,variant_type,fc,branch_layer,false);
   result=convert_expr(branch.branch,fc,tp);
 @/choices[k] = choice_part (copy_id_pat(branch.pattern),std::move(result));
 }
@@ -5976,14 +5982,14 @@ from such a subscription. We also make |tp| point to the index type used.
     o << "Cannot iterate over value of type " << in_type;
     throw expr_error(e,o.str());
   }
-  type_list it_comps; // type of ``iterator'' value (pattern) named in the loop
+  type_list it_comps; // type of "iterator" value (pattern) named in the loop
   it_comps.push_front(std::move(comp_type));
   it_comps.push_front(type_expr(inx_type->copy()));
   const type_expr it_type = type_expr::tuple(std::move(it_comps));
     // build tuple type from index and component types
   if (not it_type.can_specialise(pattern_type(f.id)))
     throw expr_error(e,"Improper structure of loop variable pattern");
-  thread_bindings(f.id,it_type,bind,true); // force all identifiers constant
+  thread_bindings(f.id,it_type,fc,bind,true); // force all identifiers constant
 }
 
 @ Now follows the code that actually implements various kinds of loops. It is
@@ -8706,7 +8712,7 @@ completion,
      ,std::move(*appl)
      ,reversed},e.loc));
   layer let_layer(1);
-  thread_bindings(dollar,ind_t,let_layer,true);
+  thread_bindings(dollar,ind_t,fc,let_layer,true);
   result.reset(new let_expression @|
     (dollar,std::move(ind),convert_expr(*ca,fc,tp)));
   *appl = std::move(ca->comp_assign_variant->rhs);

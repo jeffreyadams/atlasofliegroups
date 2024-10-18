@@ -2430,7 +2430,7 @@ supposing it is no longer needed, and is faster in the absence of any pending
 type assignments). The |const| method |has_unifier| tests whether our type can
 unify to what the |type_expr| expects. The method |unify| also preforms the
 unification, but also records the substitution required in our
-|type_assignment|. The |matches| methods is similar, but specific for use in
+|type_assignment|. The |matches| methods are similar, but specific for use in
 overload resolution, where our type is that of the argument, and |formal| is the
 specification of one overloaded instance; in case of success, |assign()| can be
 used to perform substitutions for that overloaded instance, while in case of
@@ -2709,12 +2709,13 @@ bool type::record_match (const type_expr& sub_t, type& other)
   return can_unify(sub_t,shift(other.unwrap(),start,d),a);
 }
 
-@ Before converting the argument for a polymorphic function, we can extract
-from its polymorphic type a type pattern that may aid the conversion, namely by
+@ Before converting the argument for a polymorphic function, we can extract from
+its polymorphic type a type pattern that may aid the conversion, namely by
 simply replacing all type variables bound in the polymorphic type by
-undetermined types. The method |skeleton| achieves this; it could have been
-implemented by calling |substitution| with an assignment of undetermined types,
-but it can be done just as easily by a direct recursion.
+undetermined types; the type variables up to |floor()| are unchanged. The method
+|skeleton| achieves this; it could have been implemented by calling
+|substitution| with an assignment of undetermined types, but it can be done just
+as easily by a direct recursion.
 
 @< Function definitions @>=
 type_expr type::skeleton (const type_expr& sub_t) const
