@@ -2361,49 +2361,76 @@ public:
   {@; return wrap(type_expr(),fix_count); } // free type variable
   type(type&& tp) = default;
   type& operator=(type&& tp) = default;
-@)
-  type_tag kind () const @+{@; return te.kind(); }
-  primitive_tag prim () const     @+{@; return te.prim(); }
-  unsigned int typevar_count () const @+{@; return te.typevar_count(); }
-  const func_type* func() const  @+{@; return te.func(); }
-        func_type* func()        @+{@; return te.func(); }
-  const type_expr& component_type () const @+{@; return te.component_type(); }
-        type_expr& component_type ()       @+{@; return te.component_type(); }
-  const_raw_type_list tuple () const @+{@; return te.tuple(); }
-        raw_type_list tuple ()       @+{@; return te.tuple(); }
-  type_nr_type type_nr () const @+{@; return te.type_nr(); }
-@)
-  bool operator ==(const type& other) @+{@; return bake()==other.bake(); }
-  bool operator !=(const type& other) @+{@; return not operator==(other); }
-  const type_assignment& assign () const @+{@; return a; }
-  unsigned int floor () const @+{@; return a.var_start; }
-  unsigned int degree() const @+{@; return a.equiv.size(); }
-  const type_expr& unwrap() const @+{@; return te ; }
   type copy() const
     {@; type result;
       result.te=te.copy();
       result.a=a.copy();
       return result;
     }
-  bool is_void() const @+
-  {@; return te.kind()==tuple_type and length(te.tuple())==0; }
-  bool has_unifier(const type_expr& t) const;
-@)
   type& expunge(); // eliminate assigned type variables, by substitution
   type& clear(unsigned int d);
   // remove any type assignments, reserve |d| new ones
   type& clear() @+{@; return clear(degree()); }
-  type_expr bake() const; // extract |type_expr| after substitution
-  type_expr bake_off(); // extract |type_expr|, sacrificing self if needed
-  bool unify(type_expr& pattern) // adapt to pattern while specialising pattern
-    {@; return unify(te,pattern); } // recursive helper method does the work
-  bool matches (const type_expr& formal, unsigned int n);
-    // non-|const|; assignment is left in |a|
-  type_expr skeleton (const type_expr& sub_t) const;
-  void wrap_row () @+{@; te.set_from(type_expr::row(std::move(te))); }
-private:
-  bool unify(const type_expr& sub_tp, type_expr& pattern);
+@)
+  @< Methods of |type| to access component types @>@;
+@)
+  @< Utility methods of |type| @>@;
 };
+
+@ We access the component |type_expr| elements of a |type| using methods of the
+same name of those of |type_expr|; we do not attempt to recreate |type| values
+for them, so they have the same return types as their counterparts. We include
+here also a few methods that access the |type_assignment| field, and some simple
+tests.
+
+@< Methods of |type| to access component types @>=
+type_tag kind () const @+{@; return te.kind(); }
+primitive_tag prim () const     @+{@; return te.prim(); }
+unsigned int typevar_count () const @+{@; return te.typevar_count(); }
+const func_type* func() const  @+{@; return te.func(); }
+      func_type* func()        @+{@; return te.func(); }
+const type_expr& component_type () const @+{@; return te.component_type(); }
+      type_expr& component_type ()       @+{@; return te.component_type(); }
+const_raw_type_list tuple () const @+{@; return te.tuple(); }
+      raw_type_list tuple ()       @+{@; return te.tuple(); }
+type_nr_type type_nr () const @+{@; return te.type_nr(); }
+@)
+const type_assignment& assign () const @+{@; return a; }
+unsigned int floor () const @+{@; return a.var_start; }
+unsigned int degree() const @+{@; return a.equiv.size(); }
+const type_expr& unwrap() const @+{@; return te ; }
+bool operator ==(const type& other) @+{@; return bake()==other.bake(); }
+bool operator !=(const type& other) @+{@; return not operator==(other); }
+bool is_void() const @+
+{@; return te.kind()==tuple_type and length(te.tuple())==0; }
+
+@ The method |unwrap| above gives access to the stored |type_expr|, but ignores
+any type assignments that were made; in order to take those into account, there
+are the methods |bake| and |bake_off| (the latter may destroy our |type|,
+supposing it is no longer needed, and is faster in the absence of any pending
+type assignments). The |const| method |has_unifier| tests whether our type can
+unify to what the |type_expr| expects. The non-|const| method |unify| records
+the type unifying assignments, and also modifies that |type_expr| to reflect the
+unifying type. The |matches| methods is similar, but specific for use in
+overload resolution, where our type is that of the argument, and |formal| is the
+specification of one overloaded instance; in case of success, |assign()| can be
+used to perform substitutions for that overloaded instance, while in case of
+failure, any partial assignment done can be erased by calling |clear|.
+
+@< Utility methods of |type| @>=
+type_expr bake() const; // extract |type_expr| after substitution
+type_expr bake_off(); // extract |type_expr|, sacrificing self if needed
+@)
+bool has_unifier(const type_expr& t) const;
+bool unify(type_expr& pattern) // adapt to pattern while specialising pattern
+  {@; return unify(te,pattern); } // recursive helper method does the work
+bool matches (const type_expr& formal, unsigned int n);
+  // non-|const|; assignment is left in |a|
+@)
+type_expr skeleton (const type_expr& sub_t) const;
+void wrap_row () @+{@; te.set_from(type_expr::row(std::move(te))); }
+private:
+bool unify(const type_expr& sub_tp, type_expr& pattern);
 
 @ First some simple methods. One uses |expunge| to incorporate any pending type
 assignments, and |clear| to forget any and reset the number of type variables
@@ -2422,7 +2449,7 @@ type& type::expunge()
 }
 @)
 type& type::clear(unsigned int d)
-{
+@+{@;
   a = type_assignment(floor(),d);
   return *this;
 }
@@ -2482,8 +2509,8 @@ type_expr fixate(const type_expr& te, sl_list<unsigned int>& translate)
 }
 
 
-
 @ Given this helper, wrapping a |type_expr| into a |type| is straightforward.
+
 @< Function definitions @>=
 type type::wrap (const type_expr& t, unsigned int fix_count)
 {
@@ -2560,7 +2587,7 @@ bool can_unify
 @< Function definitions @>=
 
 bool type::has_unifier(const type_expr& t) const
-{
+@/{@;
   type tp = type::wrap(t);
   return can_unify(te,degree(),tp.te,tp.degree(),tp.a);
 }
