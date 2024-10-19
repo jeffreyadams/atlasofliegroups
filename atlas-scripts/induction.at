@@ -473,6 +473,41 @@ set theta_induce_irreducible (ParamPol P,RealForm G) = ParamPol:
    for coeff@p in P do result+:=coeff*theta_induce_irreducible_final(p,G) od;
    result
 
+set delta_on_simple(InnerClass ic) = [int]:
+    let (r,SR,delta) = (ic.semisimple_rank, ic.simple_roots, ic.distinguished_involution)
+    in for i:r do root_index(ic, delta*SR[i]) od
+
+{Enlarge Q until it's Qgood weakly good; then use the difficult induction to go from Q to Qgood,
+followed by easy to go from Qgood to Q}
+set theta_induce_irreducible2(ParamPol P, RealForm G) = ParamPol:
+    let result = null_module(G)
+    then () = if P.= then return result fi
+    then L = P.real_form, gammaL = P.infinitesimal_character
+        then rhou = G.rho - L.rho, scr = G.simple_coroots
+    then S = for avee@j in G.simple_coroots
+    	     do if (avee*rhou).= then [j] else [] fi
+	     od.##
+    then x0_from_L = inverse_embed_KGB(KGB(L,0),G)
+    then dos = delta_on_simple(G)
+    then Q = KGPElt:(S,x0_from_L)
+    then gamma = gammaL + rhou
+    then Sgood = S, Lgood = L, gammagood = gamma, Qgood = Q
+    then T = for avee@j in scr
+    	     do if (avee*gamma).< then [j] else [] fi
+	     od.## {always excludes S}
+    then () = while #T > 0
+    	      do let ()= Sgood := (Sgood##T##for t in T do dos[t] od).sort_u
+	      	 then () = Qgood := (Sgood,x0_from_L)
+		 then () = Lgood := Qgood.Levi
+		 then () = gammagood :=dominant(Lgood,gammagood) {now nonneg on Sgood}
+	      	 in T := for avee@j in scr
+    	     	      	 do if (avee*gammagood).< then [j] else [] fi
+	     		 od.## {excludes Sgood}
+	      od {now induction from Qgood is weakly good}
+    then Pgood = theta_induce_irreducible(P,Lgood)
+    {then () = prints("start with ",S," end with ",Sgood)}
+    in theta_induce_parampol(Pgood,G)
+
 { |theta_induce_irreducible@(Param,RealForm)| not defined, as the |ParamPol|
   version suffices: implicit conversion |Param->ParamPol| will apply }
 

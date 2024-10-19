@@ -218,6 +218,9 @@ set offsets(KGPElt Q) = [ratvec]:
 {if true, use factor_unipotents instead of unipotents}
 set unip_factor_flag = true
 
+{if true, use theta_induce_irreducible2}
+set two_flag = true
+
 {assume v is {G-dominant and?} central for L}
 set coh_ind_unip_few(KGPElt Q, Param_hash Uhash, ratvec v) = void:
     let L = Q.Levi, G = Q.real_form
@@ -228,8 +231,12 @@ set coh_ind_unip_few(KGPElt Q, Param_hash Uhash, ratvec v) = void:
     then Qshifts = few_shifts(Q,v)
     in void: for pL in uLs
        	     do for tau in Qshifts
-       	     	do let P = theta_induce_irreducible(parameter(pL.x,
+       	     	do let P = if two_flag
+		       	   then theta_induce_irreducible2(parameter(pL.x,
 				pL.lambda - tau, pL.nu), G)
+			   else theta_induce_irreducible(parameter(pL.x,
+				pL.lambda - tau, pL.nu), G)
+			   fi
 	     	   in void:
 		      for @q in P
 		      do if is_FPP(G,q.infinitesimal_character)
@@ -256,8 +263,12 @@ set coh_ind_unip_most(KGPElt Q, Param_hash Uhash,ratvec v) = void:
        	     do for tau in Qshifts
        	     	do let gamma = pL.infinitesimal_character + rhou -tau
 		   in if is_FPP(G,gamma)
-		      then let P = theta_induce_irreducible(parameter(pL.x,
+		      then let P = if two_flag
+		       	   then theta_induce_irreducible2(parameter(pL.x,
 				pL.lambda - tau, pL.nu), G)
+			   else theta_induce_irreducible(parameter(pL.x,
+				pL.lambda - tau, pL.nu), G)
+			   fi 
 	     	   	   in void: for @q in P
 		      	     	    do Uhash.match(q)
 		      		    od
@@ -281,8 +292,12 @@ set coh_ind_unip_all(KGPElt Q, Param_hash Uhash,ratvec v) = void:
        	     do for tau in Qshifts
        	     	do let gamma = pL.infinitesimal_character + rhou -tau
 		   in if is_FPP(G,gamma)
-		      then let P = theta_induce_irreducible(parameter(pL.x,
-				pL.lambda - tau, pL.nu), G)
+		      then let P = if two_flag
+		      	       	   then theta_induce_irreducible2(parameter(pL.x,
+				   	pL.lambda - tau, pL.nu), G)
+			   	   else theta_induce_irreducible(parameter(pL.x,
+				   	pL.lambda - tau, pL.nu), G)
+			   	   fi
 	     	   	   in void: for @q in P
 		      	     	    do Uhash.match(q)
 		      		    od
@@ -302,7 +317,7 @@ set coh_ind_unip_few(RealForm G, [KGPElt] Qs, Param_hash Uhash) = void:
     	      	 do coh_ind_unip_few(Q,Uhash,v)
 		 od;
 		 if coh_ind_unip_verbose and
-		    j%(max(#Qs\20,2)) = 0
+		    j%(max(#Qs\40,2)) = 0
 		 then prints("finished parabolic #", j,
 		    " after ",print_time_string(elapsed_ms() - startTime),
 		    "; found ",Uhash.size() - oldSize, " reps.")
@@ -326,7 +341,7 @@ set coh_ind_unip_most(RealForm G, [KGPElt] Qs, Param_hash Uhash) = void:
     	      	 do coh_ind_unip_most(Q,Uhash,v)
 		 od;
 		 if coh_ind_unip_verbose and
-		    j%(max(#Qs\20,2)) = 0
+		    j%(max(#Qs\40,2)) = 0
 		 then prints("finished parabolic #", j,
 		    " after ",print_time_string(elapsed_ms() - startTime),
 		    "; found ",Uhash.size() - oldSize, " reps.")
@@ -350,7 +365,7 @@ set coh_ind_unip_all(RealForm G, [KGPElt] Qs, Param_hash Uhash) = void:
     	      	 do coh_ind_unip_all(Q,Uhash,v)
 		 od;
 		 if coh_ind_unip_verbose and
-		    j%(max(#Qs\20,2)) = 0
+		    j%(max(#Qs\40,2)) = 0
 		 then prints("finished parabolic #", j,
 		    " after ",print_time_string(elapsed_ms() - startTime),
 		    "; found ",Uhash.size() - oldSize, " reps.")

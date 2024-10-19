@@ -332,13 +332,36 @@ set glue_params(RealForm G, [[Param]] drfs, ratvec shift) = [Param]:
     then Ms = derived_factor_weight_inclusions(G)
     then gamma_factors_lists = for gamma_hash in gamma_hashes do gamma_hash.list() od
     then sizes = for list in gamma_factors_lists do #list od
-    then gammas = for b in box(sizes) do shift + sum(G.rank, for list@j in gamma_factors_lists do Ms[j](list[b[j]])
-    	 od) od
+    then gammas = for b in box(sizes)
+    	 	  do shift + sum(G.rank,
+		     for list@j in gamma_factors_lists
+		     do Ms[j](list[b[j]])
+    	 	     od)
+		  od
     	 {one gamma_j from each list, move to G, sum}
-    then pGs = for gamma in gammas do all_parameters_gamma(G,gamma) od.##
+    then pGs = for gamma@j in gammas
+    	       do let rdgamma = integrality_datum(G,gamma)
+	       	  then tau = [int]:
+	       	       for avee@k in rdgamma.simple_coroots
+		       do if (avee*gamma).=
+		       	  then []
+			  else [k]
+			  fi
+		       od.##
+	       	  in for p in all_parameters_gamma(G,gamma)
+		     do if tau(p) = tau
+		     	then [p]
+			else []
+			fi
+		     od.## {these are the ones at gamma with correct tau}
+	      od.##
     in for p in pGs
        do let derps = derived_factor_params0(p)
-       	  in if all(for derpj@j in derps do p_hashes[j].lookup(derpj).>= od) then [p] else [] fi
+       	  in if all(for derpj@j in derps
+	     	    do p_hashes[j].lookup(derpj).>= od)
+	     then [p]
+	     else []
+	     fi
        od.##
 
 {take a family of parameters on each derived simple factor of G and glue them into parameters on G}
