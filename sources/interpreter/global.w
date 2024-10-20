@@ -141,7 +141,7 @@ the identifier as key is used.
 
 @< Type definitions @>=
 class Id_table
-{ typedef std::map<id_type,id_data> map_type;
+{ using map_type = std::map<id_type,id_data>;
   map_type table;
 public:
   Id_table(const Id_table&) = delete;
@@ -383,7 +383,7 @@ public:
    // number of distinct identifiers
   void print(std::ostream&) const;
 @) // manipulators
-  void add(id_type id, shared_function v, type_expr&& t, unsigned int deg);
+  void add(id_type id, shared_function v, type&& t);
    // insertion
   bool remove(id_type id, const type_expr& arg_t); //deletion
 };
@@ -500,15 +500,14 @@ and otherwise make sure it is inserted before any strictly less specific
 overloaded instances.
 
 @< Global function def... @>=
-void overload_table::add
-  (id_type id, shared_function val, type_expr&& t, unsigned int deg)
-{ assert (t.kind()==function_type);
-  func_type ftype(t.func()->copy()); // locally copy the function type
+void overload_table::add (id_type id, shared_function val, type&& tp)
+{ assert (tp.kind()==function_type);
+  func_type ftype(tp.func()->copy()); // locally copy the function type
   auto its = table.equal_range(id);
   if (its.first==its.second) // a fresh overloaded identifier
   {
     auto pos=table.emplace_hint(its.first,id,variant_list());
-    pos->second.emplace_back(std::move(val), std::move(ftype), deg);
+    pos->second.emplace_back(std::move(val), std::move(ftype), tp.degree());
   }
   else
     @< Insert an overload for function |val| with function type |ftype| and
@@ -531,9 +530,10 @@ any entry, allows us to avoid testing any types again here.
   auto pos=locate_overload(id,slot,ftype.arg_type); // may |throw|
   if (pos<slot.size() and slot[pos].f_tp().arg_type==ftype.arg_type)
      // equality found
-    slot[pos] = overload_data(std::move(val),std::move(ftype),deg); // overwrite
+    slot[pos] = overload_data(std::move(val),std::move(ftype),tp.degree());
+    // overwrite
   else
-    slot.emplace(slot.begin()+pos,std::move(val),std::move(ftype),deg);
+    slot.emplace(slot.begin()+pos,std::move(val),std::move(ftype),tp.degree());
 }
 
 @ The |remove| method allows removing an entry from the overload table, for
@@ -632,7 +632,7 @@ type analyse_types(const expr& e,expression_ptr& p)
 { try
   { type_expr tp; // this starts out as an |undetermined_type|
     p = convert_expr(e,0,tp);
-    return type::wrap(tp);
+    return type::wrap(tp,0); // no fixed type variables at this outer scope
   }
   catch (const type_error& err)
   { std::cerr << "Error during analysis of expression " << e.loc << std::endl;
@@ -791,14 +791,14 @@ effect on the global state would be undesirable.
 
 @< Type def... @>=
 class definition_group
-{ typedef std::vector<std::pair<id_type,type_expr> > association;
+{ using association = std::vector<std::pair<id_type,type> >;
   association bindings;
   BitMap constness;
 public:
   definition_group(unsigned int n_ids);
 @) // manipulators
-  void add(id_type id,type_expr&& t, bool is_const);
-  void thread_bindings (const id_pat& pat,const type_expr& type);
+  void add(id_type id,type&& t, bool is_const);
+  void thread_bindings (const id_pat& pat,const type_expr& tp);
   association::iterator begin() @+{@; return bindings.begin(); }
   association::iterator end() @+{@; return bindings.end(); }
 @) // accessors
@@ -812,7 +812,9 @@ particular there is no need for a user-defined destructor). We also include
 |thread_bindings| now as a method rather than a free function as it was in the
 \.{axis.w} module; compared to that function we can dispense of the destination
 argument in (recursive) calls, and it also lacks the constness-overriding
-argument for which there is no use in global definitions.
+argument for which there is no use in global definitions. The |lvl| parameter is
+also omitted, as the global definition groups do not occur within the scope of
+any locally introduced type variables, so the level is always~|0|.
 
 @< Global function definitions @>=
 definition_group::definition_group(unsigned int n_ids)
@@ -822,9 +824,9 @@ definition_group::definition_group(unsigned int n_ids)
 void definition_group::thread_bindings(const id_pat& pat,const type_expr& te)
 { if ((pat.kind & 0x1)!=0)
   {
-    type tp = type::wrap(te,0,0);
+    type tp = type::wrap(te,0); // no fixed type variables at outer level
     bool constant = tp.is_polymorphic() or (pat.kind & 0x4)!=0;
-    add(pat.name,tp.bake_off(),constant);
+    add(pat.name,std::move(tp),constant);
   }
   if ((pat.kind & 0x2)!=0)
     // recursively traverse sub-list for a tuple of identifiers
@@ -846,7 +848,7 @@ type can be validly added to the overload table.
 
 @< Global function definitions @>=
 
-void definition_group::add(id_type id,type_expr&& t, bool is_const=false)
+void definition_group::add(id_type id,type&& tp, bool is_const=false)
 { for (auto it=bindings.cbegin(); it!=bindings.cend(); ++it)
   // check repeated identifiers
     if (it->first==id)
@@ -857,14 +859,14 @@ void definition_group::add(id_type id,type_expr&& t, bool is_const=false)
       throw program_error(o.str());
     }
 @)
-  if (t.kind()==function_type)
+  if (tp.kind()==function_type)
   { const auto& var=global_overload_table->variants(id);
-    locate_overload(id,var,t.func()->arg_type);
+    locate_overload(id,var,tp.func()->arg_type);
     // may |throw|; otherwise ignore result
   }
 @)
   constness.set_to(bindings.size(),is_const);
-  bindings.emplace_back(id,std::move(t));
+@/bindings.emplace_back(id,std::move(tp));
 }
 
 
@@ -916,12 +918,12 @@ void do_global_set(id_pat&& pat, const expr& rhs, int overload,
     expression_ptr e;
     {
       type tp=analyse_types(rhs,e);
-      if (not tp.has_unifier(pattern_type(pat)))
-        @< Report that type |t| of |rhs| does not have required structure,
+      if (not tp.bake().can_specialise(pattern_type(pat)))
+        @< Report that type |tp| of |rhs| does not have required structure,
            and |throw| @>
       @< Check that we are not setting an operator to a non-function value @>
-      b.thread_bindings(pat,tp.bake_off());
-        // match identifiers and their future types
+      b.thread_bindings(pat,tp.unwrap());
+      // match identifiers and their future types
     }
 @)
     phase=1; // evaluation of right hand side
@@ -983,7 +985,7 @@ can pilfer the type |it->second|, which points to a component of the local
   }
   *output_stream << std::endl;
   global_id_table->add
-    (it->first,std::move(*v_it),type::wrap(it->second),b.is_const(it));
+    (it->first,std::move(*v_it),std::move(it->second),b.is_const(it));
 }
 
 @ For installing overloaded definitions, the main difference with the code above
@@ -1001,14 +1003,12 @@ needs to be done in all cases.
 
 
 @< Define auxiliary functions for |do_global_set| @>=
-void add_overload(id_type id,
-  shared_function&& f, type_expr&& te, unsigned int deg)
+void add_overload(id_type id, shared_function&& f, type&& tp)
 {
   auto old_n=global_overload_table->variants(id).size();
 @/std::ostringstream type_string;
-  type_string << te;
-    // save type |te| as string before moving from it
-  global_overload_table->add(id,std::move(f),std::move(te),deg);
+  type_string << tp; // save type |tp| as string before moving from it
+  global_overload_table->add(id,std::move(f),std::move(tp));
     // insert or replace table entry
   auto n=global_overload_table->variants(id).size();
   if (n==old_n)
@@ -1030,7 +1030,7 @@ the dynamic cast below should always succeed, if our type system is correct.
 { shared_function f = std::dynamic_pointer_cast<const function_base>(*v_it);
   if (f.get()==nullptr)
     throw logic_error("Non-function value found with function type");
-  add_overload(it->first,std::move(f),std::move(it->second),0);
+  add_overload(it->first,std::move(f),std::move(it->second));
 }
 
 @ For readability of the output produced during input from auxiliary files, we
@@ -1046,7 +1046,7 @@ available from the |main_input_buffer|.
 a |program_error| signalling this fact; we have to re-generate the required
 pattern using |pattern_type| to do this.
 
-@< Report that type |t| of |rhs| does not have required structure,
+@< Report that type |tp| of |rhs| does not have required structure,
    and |throw| @>=
 { std::ostringstream o;
   o << "Type " << tp @|
@@ -1290,7 +1290,7 @@ for this constant.
 void type_define_identifier
   (id_type id, type_p t, raw_id_pat ip, const source_location& loc)
 { type_ptr saf(t); id_pat field_pat(ip); // ensure clean-up
-  type tp= type::wrap(*t);
+  type tp= type::wrap(*t,0); // global identifiers have no fixed type variables
   const auto& fields = field_pat.sublist;
   const auto n=length(fields);
   definition_group group(n);
@@ -1343,7 +1343,8 @@ themselves and store them in |jectors|.
       { names[i]=id_it->name;
         jectors.push_back
           (std::make_shared<projector_value>(tp.bake(),i,names[i],loc));
-        group.add(names[i],type_expr::function(tp.bake(),tp_it->copy()));
+        type_expr fte = type_expr::function(tp.bake(),tp_it->copy());
+        group.add(names[i],type::wrap(std::move(fte),0));
           // projector type
       }
   }
@@ -1353,7 +1354,8 @@ themselves and store them in |jectors|.
       { names[i]=id_it->name;
         jectors.push_back
           (std::make_shared<injector_value>(tp.bake(),i,names[i],loc));
-        group.add(names[i],type_expr::function(tp_it->copy(),tp.bake()));
+        type_expr fte = type_expr::function(tp_it->copy(),tp.bake());
+        group.add(names[i],type::wrap(std::move(fte),0));
           // injector type
       }
   }
@@ -1401,7 +1403,7 @@ projector or injector functions from |jectors| to the global overload table.
 @/*output_stream << "  with " << (tp.kind()==tuple_type ? "pro" : "in");
   for (auto it=group.begin(); it!=group.end(); ++it)
   { global_overload_table->add
-      (it->first,std::move(jectors[it-group.begin()]),std::move(it->second),0);
+      (it->first,std::move(jectors[it-group.begin()]),std::move(it->second));
     *output_stream << (it==group.begin() ? "jectors: " : ", ")
                 @| << main_hash_table->name_of(it->first);
   }
@@ -1677,16 +1679,22 @@ through |definition_group::add|.
     for (auto id_it=fields.wcbegin(); not fields.at_end(id_it);
          ++id_it,++tp_it)
       if (id_it->kind==0x1) // field selector present
-        record->add(id_it->name,type_expr::function(tp.copy(),tp_it->copy()));
+      {
+        type_expr fte = type_expr::function(tp.copy(),tp_it->copy());
+        record->add(id_it->name,type::wrap(std::move(fte),0));
           // projector type
+      }
   }
   else
   {
     for (auto id_it=fields.wcbegin(); not fields.at_end(id_it);
          ++id_it,++tp_it)
       if (id_it->kind==0x1) // field selector present
-        record->add(id_it->name,type_expr::function(tp_it->copy(),tp.copy()));
+      {
+        type_expr fte = type_expr::function(tp_it->copy(),tp.copy());
+        record->add(id_it->name,type::wrap(std::move(fte),0));
           // injector type
+      }
   }
 }
 
@@ -1725,7 +1733,7 @@ instead); this avoids needing to allocate an actual static variable.
       else
         tor = std::make_shared<injector_value>(tp,j,name,loc);
       global_overload_table->add @|
-        (name,std::move(tor),std::move(group_it->second),0);
+        (name,std::move(tor),std::move(group_it->second));
       *output_stream << main_hash_table->name_of(name);
       ++group_it; // advance only here
     }
@@ -2617,7 +2625,9 @@ shared_builtin install_function
  (wrapper_function f,const char*name, const char* type_string,
   unsigned char hunger)
 { unsigned int var_count;
-  type_expr tp = mk_type_expr(type_string,var_count);
+  type_expr te = mk_type_expr(type_string,var_count);
+  type tp = type::wrap(te,0); // no fixed type variables at outer scope
+  assert(tp.degree()==var_count);
   std::ostringstream print_name; print_name<<name;
   if (tp.kind()!=function_type)
     throw logic_error
@@ -2628,7 +2638,7 @@ shared_builtin install_function
      install a |shared_variadic_builtin| and return a null pointer @>
   auto val = std::make_shared<builtin>(f,print_name.str(),hunger);
   global_overload_table->add
-    (main_hash_table->match_literal(name),val,std::move(tp),var_count);
+    (main_hash_table->match_literal(name),val,std::move(tp));
   return val;
 }
 
@@ -2657,7 +2667,7 @@ if (tp.func()->arg_type.kind()==variable_type)
   shared_variadic_builtin val =
     std::make_shared<builtin_value<true> >(f,print_name.str(),hunger);
   global_overload_table->add
-    (main_hash_table->match_literal(name),val,std::move(tp),var_count);
+    (main_hash_table->match_literal(name),val,std::move(tp));
   return { nullptr };
 }
 
@@ -2675,7 +2685,9 @@ std::shared_ptr<special_builtin> install_special_function
  (wrapper_function f,const char*name, const char* type_string,
   unsigned char hunger)
 { unsigned int var_count;
-  type_expr tp = mk_type_expr(type_string,var_count);
+  type_expr te = mk_type_expr(type_string,var_count);
+  type tp = type::wrap(te,0); // no fixed type variables at outer scope
+  assert(tp.degree()==var_count);
   std::ostringstream print_name; print_name<<name;
   if (tp.kind()!=function_type)
     throw logic_error
@@ -2683,7 +2695,7 @@ std::shared_ptr<special_builtin> install_special_function
   print_name << '@@' << tp.func()->arg_type;
   auto val = std::make_shared<special_builtin>(f,print_name.str(),hunger);
   global_overload_table->add
-    (main_hash_table->match_literal(name),val,std::move(tp),var_count);
+    (main_hash_table->match_literal(name),val,std::move(tp));
   return val;
 }
 

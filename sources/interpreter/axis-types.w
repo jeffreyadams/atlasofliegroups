@@ -2015,6 +2015,10 @@ struct type_assignment
 @)
   type_assignment copy() const;
   unsigned int size() const @+{@; return equiv.size(); }
+  bool empty() const
+  { auto null = @[ [](const const_type_ptr& p){@; return p==nullptr; } @];
+    return all_of(equiv.begin(),equiv.end(),null);
+  }
   void grow(unsigned int n) @+{@; equiv.resize(size()+n); }
   void append(const type_assignment& a);
   const_type_p equivalent (unsigned int i) const
@@ -2476,11 +2480,14 @@ type& type::clear(unsigned int d)
   return *this;
 }
 @)
-type_expr type::bake() const @+{@; return substitution(te,a) ; }
+type_expr type::bake() const
+{ if (a.empty())
+    return te.copy();
+  return substitution(te,a) ;
+}
 type_expr type::bake_off() // variant available if |*this| is no longer needed
 {
-  if (std::none_of(a.equiv.begin(),a.equiv.end(),
-                 @[ [](const const_type_ptr& p){@; return p!=nullptr; } @]))
+  if (a.empty())
     return std::move(te);
   return substitution(te,a);
 }
@@ -2551,7 +2558,7 @@ type type::wrap (const type_expr& t, unsigned int fix_count, unsigned int gap)
   for (unsigned int k=0; k<gap; ++k)
     translate.push_back(-1); // reserve |gap| values as ``to remain unused''
 @)
-  auto e=fixate(t,translate);
+  type_expr e=fixate(t,translate);
   fix_count += gap; // the new starting value
   type result(fix_count,translate.size()-fix_count);
   result.te = std::move(e);
