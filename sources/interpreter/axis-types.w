@@ -2578,19 +2578,21 @@ bool type::has_unifier(const type_expr& t) const
 
 @ The method |type::unify| is like the function |can_unify|, but on the side of
 the pattern the only changes are specialisations of undefined subexpressions.
-The necessary substitutions are recorded in our |a| field, which is convenient
-for our implementation: any occurrence of a type variable after the first will
-get the value that was substituted for it the first time. Any type variables of
-|pattern| will be treated as primitive if less than our |floor()|, and otherwise
-as universally quantified (not to be specialised); it is the caller's
-responsibility to do any necessary renumbering to get this interpretation.
+Any type variables present in |pattern| are not substituted for: unless they
+match up with the same type variable on out side they cause unification to fail.
+The necessary substitutions on our |type| side are recorded in our |a| field,
+which is convenient for our implementation: any occurrence of a type variable
+after the first will get the value that was substituted for it the first time.
+Once the unification succeeds, the caller can decide whether to preserve these
+type assignments for further unification, or use them to perform substitutions,
+or forget them by calling |clear|.
 
 @< Function definitions @>=
 
 bool type::unify(const type_expr& sub_tp, type_expr& pattern)
 { if (sub_tp.raw_kind()==tabled and pattern.raw_kind()==tabled)
     return sub_tp.type_nr()==pattern.type_nr();
-    // avoid non-termination by bilateral expansion
+    // avoid non-termination, test for identity
   auto P_kind = sub_tp.kind(), Q_kind = pattern.kind();
   if (Q_kind==undetermined_type)
     {@; pattern.set_from(sub_tp.copy()); return true; }
@@ -2600,14 +2602,13 @@ bool type::unify(const type_expr& sub_tp, type_expr& pattern)
   {
   case variable_type:
     { auto c = sub_tp.typevar_count();
-      if (c<floor())
-        return sub_tp.type_nr()==pattern.type_nr();
+      if (c<floor()) // fixed type; |Q| must match
+        return Q_kind==variable_type and pattern.typevar_count()==c;
       auto eq=a.equivalent(c);
       if (eq!=nullptr)
         return unify(*eq,pattern);
-      type plug = type::wrap(pattern,floor()+degree());
-        // plug any undefined pattern elements
-      a.set_equivalent(c,std::make_unique<type_expr>(plug.bake_off()));
+      @< If |pattern| has |undetermined| entries, throw an error @>
+      a.set_equivalent(c,std::make_unique<type_expr>(pattern.copy()));
       return true;
     }
   case primitive_type: return sub_tp.prim()==pattern.prim();
@@ -2631,6 +2632,21 @@ bool type::unify(const type_expr& sub_tp, type_expr& pattern)
   // |tabled| impossible, and |undetermined_type| should not happen
   }
   return false; // keep compiler happy
+}
+
+@ The scenario in which we are asked to unify a type variable with a pattern
+that has undetermined parts without being completely undetermined is extremely
+unlikely if at all possible. Rather than finding the ``right thing'' to do here,
+like inventing new type variables to plug the undetermined parts, we prefer to
+signal an error in such cases. It is awkward that we need to throw an error from
+a method of |type|, with no expression to attach this type to, but a caller may
+catch and repackage the error to provide more detail.
+
+@< If |pattern| has |undetermined| entries, throw an error @>=
+if (pattern.is_unstable())
+{ std::ostringstream o;
+  o << "Cannot unify a type variable and an incomplete type " << pattern;
+  throw program_error(o.str());
 }
 
 @ Now that types are polymorphic, we need a function to replace the method
