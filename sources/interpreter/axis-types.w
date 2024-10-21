@@ -2356,7 +2356,8 @@ class type
   type() : te(), a(0,0) @+{}
   type(unsigned int fix_nr,unsigned int var_nr) : te(), a(fix_nr,var_nr) @+{}
 public:
-  static type wrap(const type_expr& te, unsigned int fix_count=0);
+  static type wrap(const type_expr& te,
+		   unsigned int fix_count=0, unsigned int gap=0);
   static type bottom(unsigned int fix_count=0)
   {@; return wrap(type_expr(),fix_count); } // free type variable
   type(type&& tp) = default;
@@ -2398,6 +2399,8 @@ type_nr_type type_nr () const @+{@; return te.type_nr(); }
 const type_assignment& assign () const @+{@; return a; }
 unsigned int floor () const @+{@; return a.var_start; }
 unsigned int degree() const @+{@; return a.equiv.size(); }
+unsigned int ceil() const @+{@; return floor()+degree(); }
+  // start disjoint type variables here
 const type_expr& unwrap() const @+{@; return te ; }
 bool operator ==(const type& other) @+{@; return bake()==other.bake(); }
 bool operator !=(const type& other) @+{@; return not operator==(other); }
@@ -2409,9 +2412,9 @@ any type assignments that were made; in order to take those into account, there
 are the methods |bake| and |bake_off| (the latter may destroy our |type|,
 supposing it is no longer needed, and is faster in the absence of any pending
 type assignments). The |const| method |has_unifier| tests whether our type can
-unify to what the |type_expr| expects. The non-|const| method |unify| records
-the type unifying assignments, and also modifies that |type_expr| to reflect the
-unifying type. The |matches| methods is similar, but specific for use in
+unify to what the |type_expr| expects. The method |unify| also preforms the
+unification, but also records the substitution required in our
+|type_assignment|. The |matches| methods is similar, but specific for use in
 overload resolution, where our type is that of the argument, and |formal| is the
 specification of one overloaded instance; in case of success, |assign()| can be
 used to perform substitutions for that overloaded instance, while in case of
@@ -2509,77 +2512,31 @@ type_expr fixate(const type_expr& te, sl_list<unsigned int>& translate)
 }
 
 
-@ Given this helper, wrapping a |type_expr| into a |type| is straightforward.
+@ Given this helper, wrapping a |type_expr| into a |type| is straightforward. We
+do provide two integer parameters: |fix_count| is the level below which the type
+variables in |t| are fixed, while |gap| is the number of subsequent type
+variable numbers to be freed, intended to avoid collisions with any remaining
+type variables in some other type. The existing type variables in |t| from the
+level |fix_count| on, and any undetermined subexpressions of |t|, will give
+fresh type variables numbering from |fix_count+gap|. This is realised by
+preparing a local list |translate| to map type variables to themselves up to
+|fix_count|, and pad it out with |gap| dummy entries.
 
 @< Function definitions @>=
-type type::wrap (const type_expr& t, unsigned int fix_count)
+type type::wrap (const type_expr& t, unsigned int fix_count, unsigned int gap)
 {
   sl_list<unsigned int> translate;
   for (unsigned int k=0; k<fix_count; ++k)
-    translate.push_back(k); // ensure that variable |k| remains unchanged
+    translate.push_back(k);
+     // up to |fix_count|, type variables are unchanged,
+  for (unsigned int k=0; k<gap; ++k)
+    translate.push_back(-1); // reserve |gap| values as ``to remain unused''
 @)
   auto e=fixate(t,translate);
+  fix_count += gap; // the new starting value
   type result(fix_count,translate.size()-fix_count);
   result.te = std::move(e);
   return result;
-}
-
-@ Now that types are polymorphic, we need a function to replace the method
-|type_expr::specialise|, which is too limited in just replacing undetermined
-type components. The function |can_unify| in fact supposes that its
-|type_expr| arguments have no undetermined elements. Its two |type_expr|
-parameters are each accompanied by an integer parameter indicating their number
-of active type variables, and a final input-output argument |assign| used both
-for its |var_start| field (whose value is preserved) and to record the type
-assignment for the specialisation.
-
-This function may need to renumber the active type variables
-in the second type, for which it uses an auxiliary recursive function |shift|
-that is modelled after |substitute| but simpler.
-
-@< Local function definitions @>=
-type_expr shift
-  (const type_expr& t, unsigned int fix, unsigned int amount)
-{ type_ptr result;
-  switch (t.raw_kind())
-  { case primitive_type: return type_expr::primitive(t.prim());
-    case function_type: result =
-      mk_function_type(shift(t.func()->arg_type,fix,amount),
-                       shift(t.func()->result_type,fix,amount));
-    break;
-    case row_type:
-      result = mk_row_type(shift(t.component_type(),fix,amount));
-    break;
-    case tuple_type:
-    case union_type:
-    { dressed_type_list aux;
-      for (wtl_const_iterator it(t.tuple()); not it.at_end(); ++it)
-        aux.push_back(shift(*it,fix,amount));
-      if (t.raw_kind()==tuple_type)
-        return type_expr::tuple(aux.undress());
-      return type_expr::onion(aux.undress());
-    }
-    case tabled: return type_expr::tabled_nr(t.type_nr());
-    case variable_type:
-    { auto c = t.typevar_count();
-      return type_expr::variable(c<fix ? c : c+amount);
-    }
-    default: assert(false);
-  }
-  return std::move(*result);
-}
-
-bool can_unify
-( const type_expr& s, unsigned int s_count
-, const type_expr& t, unsigned int t_count
-, type_assignment& assign
-)
-{ assign = // resize while forgetting any previous assignments
-    type_assignment(assign.var_start,s_count+t_count);
-  if (s_count==0 or t_count==0) // then no need to renumber |t|
-    return can_unify(s,t,assign);
-  const type_expr t_shifted = shift(t,assign.var_start,s_count);
-  return can_unify(s,t_shifted,assign);
 }
 
 @ The method |type::has_unifier| is easily implemented using |can_unify|.
@@ -2588,12 +2545,19 @@ bool can_unify
 
 bool type::has_unifier(const type_expr& t) const
 @/{@;
-  type tp = type::wrap(t);
-  return can_unify(te,degree(),tp.te,tp.degree(),tp.a);
+  type tp = type::wrap(t,floor(),degree());
+  tp.a = type_assignment(a.var_start,degree()+tp.degree());
+  return can_unify(te,tp.te,tp.a);
 }
 
 @ The method |type::unify| is like the function |can_unify|, but on the side of
 the pattern the only changes are specialisations of undefined subexpressions.
+The necessary substitutions are recorded in our |a| field, which is convenient
+for our implementation: any occurrence of a type variable after the first will
+get the value that was substituted for it the first time. Any type variables of
+|pattern| will be treated as primitive if less than our |floor()|, and otherwise
+as universally quantified (not to be specialised); it is the caller's
+responsibility to do any necessary renumbering to get this interpretation.
 
 @< Function definitions @>=
 
@@ -2641,6 +2605,45 @@ bool type::unify(const type_expr& sub_tp, type_expr& pattern)
   // |tabled| impossible, and |undetermined_type| should not happen
   }
   return false; // keep compiler happy
+}
+
+@ Now that types are polymorphic, we need a function to replace the method
+|type_expr::specialise|, which is too limited in just replacing undetermined
+type components. We may need to renumber the active type variables in one type
+to avoid collision with variables bound in another type, for which we define an
+auxiliary recursive function |shift|; it is modelled after |substitute| but
+simpler.
+
+@< Local function definitions @>=
+type_expr shift
+  (const type_expr& t, unsigned int fix, unsigned int amount)
+{ type_ptr result;
+  switch (t.raw_kind())
+  { case primitive_type: return type_expr::primitive(t.prim());
+    case function_type: result =
+      mk_function_type(shift(t.func()->arg_type,fix,amount),
+                       shift(t.func()->result_type,fix,amount));
+    break;
+    case row_type:
+      result = mk_row_type(shift(t.component_type(),fix,amount));
+    break;
+    case tuple_type:
+    case union_type:
+    { dressed_type_list aux;
+      for (wtl_const_iterator it(t.tuple()); not it.at_end(); ++it)
+        aux.push_back(shift(*it,fix,amount));
+      if (t.raw_kind()==tuple_type)
+        return type_expr::tuple(aux.undress());
+      return type_expr::onion(aux.undress());
+    }
+    case tabled: return type_expr::tabled_nr(t.type_nr());
+    case variable_type:
+  @/{@; auto c = t.typevar_count();
+      return type_expr::variable(c<fix ? c : c+amount);
+    }
+    default: assert(false);
+  }
+  return std::move(*result);
 }
 
 @ The method |matches| is typically called with as our type the type of an
@@ -3801,22 +3804,23 @@ the internal format of the library. For this mechanism to be transparent to the
 user, we have chosen to provide the conversion through implicit operations that
 are accompanied by type changes; thus when the user enters a list of lists of
 integers in a position where an integral matrix is required, the necessary
-conversions are automatically inserted during type analysis. In fact we shall
-put in place a general mechanism of automatic type conversions, which will for
-instance also provide the inverse conversions where appropriate, and on some
-occasions merely provides convenience to the user, for instance by allowing
-integers in positions where rational numbers are required.
+conversions are automatically inserted during type analysis. In fact we install
+a general mechanism of automatic type conversions. This will for instance also
+provide the inverse conversions of those just mentioned, and in some instances
+merely provide convenience to the user; the latter is the case for instance when
+we allow integers in positions where rational numbers are required.
 
-The function |coerce| requires two fully determined types |from_type| and
-|to_type|, and its final argument~|e| is a reference to the previously
-converted expression. If a conversion of value of |from_type| to |to_type| is
-available, then |coerce| will modify |e| by insertion of a conversion around
-it; the return value of |coerce| indicates whether an applicable conversion
-was found. The function |conform_types| first tries to specialise the type
-|required| to the one |found|, and if this fails tries to coerce |found| to
-|required|, in the latter case enveloping the translated expression |d| in the
-applied conversion function; if both fail an error mentioning the
-expression~|e| is thrown.
+To this end, the function |coerce| requires two fully determined types
+|from_type| and |to_type|, and its final argument~|e| is a reference to the
+previously converted expression. If a conversion of value of |from_type| to
+|to_type| is available, then |coerce| will modify |e| by insertion of a
+conversion around it; the return value of |coerce| indicates whether an
+applicable conversion was found. The function |conform_types|, available in two
+forms, first tries to specialise the type |required| by the context to the one
+|found| for the expression itself; if this fails it then tries to
+coerce |found| to |required|. If the latter is the case, it wraps the translated
+expression |d| in a call of the conversion function found. Should both attempts
+fail an, then it trows an error mentioning the expression~|e|.
 
 The function |row_coercion| specialises, if possible, |component_type| in such a
 way that the type ``row-of |component_type|'' can be coerced to |final_type|,
@@ -4394,7 +4398,7 @@ bool broader_eq (const type& a, const type& b)
   assert(a.floor()==b.floor()); // not ready for general case
   if (b.degree()==0)
     return br_eq(a.unwrap(),b.unwrap());
-  unsigned int start=b.floor(), new_start = a.floor()+a.degree();
+  unsigned int start=b.floor(), new_start = a.ceil();
   type_assignment assign(start,b.degree());
   if (start>=new_start) // so that |b|'s variables already avoid those of |a|
     return can_unify(b.unwrap(),a.unwrap(),assign);
