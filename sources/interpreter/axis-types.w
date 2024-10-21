@@ -2527,64 +2527,6 @@ type type::wrap (const type_expr& t, unsigned int fix_count)
   return result;
 }
 
-@ Now that types are polymorphic, we need a function to replace the method
-|type_expr::specialise|, which is too limited in just replacing undetermined
-type components. The function |can_unify| in fact supposes that its
-|type_expr| arguments have no undetermined elements. Its two |type_expr|
-parameters are each accompanied by an integer parameter indicating their number
-of active type variables, and a final input-output argument |assign| used both
-for its |var_start| field (whose value is preserved) and to record the type
-assignment for the specialisation.
-
-This function may need to renumber the active type variables
-in the second type, for which it uses an auxiliary recursive function |shift|
-that is modelled after |substitute| but simpler.
-
-@< Local function definitions @>=
-type_expr shift
-  (const type_expr& t, unsigned int fix, unsigned int amount)
-{ type_ptr result;
-  switch (t.raw_kind())
-  { case primitive_type: return type_expr::primitive(t.prim());
-    case function_type: result =
-      mk_function_type(shift(t.func()->arg_type,fix,amount),
-                       shift(t.func()->result_type,fix,amount));
-    break;
-    case row_type:
-      result = mk_row_type(shift(t.component_type(),fix,amount));
-    break;
-    case tuple_type:
-    case union_type:
-    { dressed_type_list aux;
-      for (wtl_const_iterator it(t.tuple()); not it.at_end(); ++it)
-        aux.push_back(shift(*it,fix,amount));
-      if (t.raw_kind()==tuple_type)
-        return type_expr::tuple(aux.undress());
-      return type_expr::onion(aux.undress());
-    }
-    case tabled: return type_expr::tabled_nr(t.type_nr());
-    case variable_type:
-    { auto c = t.typevar_count();
-      return type_expr::variable(c<fix ? c : c+amount);
-    }
-    default: assert(false);
-  }
-  return std::move(*result);
-}
-
-bool can_unify
-( const type_expr& s, unsigned int s_count
-, const type_expr& t, unsigned int t_count
-, type_assignment& assign
-)
-{ assign = // resize while forgetting any previous assignments
-    type_assignment(assign.var_start,s_count+t_count);
-  if (s_count==0 or t_count==0) // then no need to renumber |t|
-    return can_unify(s,t,assign);
-  const type_expr t_shifted = shift(t,assign.var_start,s_count);
-  return can_unify(s,t_shifted,assign);
-}
-
 @ The method |type::has_unifier| is easily implemented using |can_unify|.
 
 @< Function definitions @>=
@@ -2644,6 +2586,64 @@ bool type::unify(const type_expr& sub_tp, type_expr& pattern)
   // |tabled| impossible, and |undetermined_type| should not happen
   }
   return false; // keep compiler happy
+}
+
+@ Now that types are polymorphic, we need a function to replace the method
+|type_expr::specialise|, which is too limited in just replacing undetermined
+type components. The function |can_unify| in fact supposes that its
+|type_expr| arguments have no undetermined elements. Its two |type_expr|
+parameters are each accompanied by an integer parameter indicating their number
+of active type variables, and a final input-output argument |assign| used both
+for its |var_start| field (whose value is preserved) and to record the type
+assignment for the specialisation.
+
+This function may need to renumber the active type variables
+in the second type, for which it uses an auxiliary recursive function |shift|
+that is modelled after |substitute| but simpler.
+
+@< Local function definitions @>=
+type_expr shift
+  (const type_expr& t, unsigned int fix, unsigned int amount)
+{ type_ptr result;
+  switch (t.raw_kind())
+  { case primitive_type: return type_expr::primitive(t.prim());
+    case function_type: result =
+      mk_function_type(shift(t.func()->arg_type,fix,amount),
+                       shift(t.func()->result_type,fix,amount));
+    break;
+    case row_type:
+      result = mk_row_type(shift(t.component_type(),fix,amount));
+    break;
+    case tuple_type:
+    case union_type:
+    { dressed_type_list aux;
+      for (wtl_const_iterator it(t.tuple()); not it.at_end(); ++it)
+        aux.push_back(shift(*it,fix,amount));
+      if (t.raw_kind()==tuple_type)
+        return type_expr::tuple(aux.undress());
+      return type_expr::onion(aux.undress());
+    }
+    case tabled: return type_expr::tabled_nr(t.type_nr());
+    case variable_type:
+    { auto c = t.typevar_count();
+      return type_expr::variable(c<fix ? c : c+amount);
+    }
+    default: assert(false);
+  }
+  return std::move(*result);
+}
+
+bool can_unify
+( const type_expr& s, unsigned int s_count
+, const type_expr& t, unsigned int t_count
+, type_assignment& assign
+)
+{ assign = // resize while forgetting any previous assignments
+    type_assignment(assign.var_start,s_count+t_count);
+  if (s_count==0 or t_count==0) // then no need to renumber |t|
+    return can_unify(s,t,assign);
+  const type_expr t_shifted = shift(t,assign.var_start,s_count);
+  return can_unify(s,t_shifted,assign);
 }
 
 @ The method |matches| is typically called with as our type the type of an
