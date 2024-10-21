@@ -2430,6 +2430,7 @@ type_expr bake_off(); // extract |type_expr|, sacrificing self if needed
 bool has_unifier(const type_expr& t) const;
 bool unify(type_expr& pattern) // adapt to pattern while specialising pattern
   {@; return unify(te,pattern); } // recursive helper method does the work
+bool unify_to(type_expr& pattern, unsigned int level) const;
 bool matches (const type_expr& formal, unsigned int n);
   // non-|const|; assignment is left in |a|
 bool record_match (const type_expr& sub_t, type& other); // likewise
@@ -2614,6 +2615,20 @@ bool type::unify(const type_expr& sub_tp, type_expr& pattern)
   // |tabled| impossible, and |undetermined_type| should not happen
   }
   return false; // keep compiler happy
+}
+
+@ The method |unify_to| is basically the same as |unify|, but is a |const|
+method so that in particular the |type_assignment| field |a| is unchanged. This
+is achieved by copying out type before calling |unify| on the copy. We use the
+occasion of copying to also renumber our bound variables starting from a new
+|level|, which is useful to make place for variables in |pattern| that should be
+considered bound there, and disjoint from our bound variables.
+
+@< Function definitions @>=
+
+bool type::unify_to(type_expr& pattern, unsigned int lvl) const
+{ assert(lvl>=floor()); // we cannot start numbering below our |floor()|
+  return wrap(te,floor(),lvl-floor()).unify(pattern);
 }
 
 @ Now that types are polymorphic, we need a function to replace the method
