@@ -2596,9 +2596,8 @@ bool type::unify(const type_expr& sub_tp, type_expr& pattern)
       auto eq=a.equivalent(c);
       if (eq!=nullptr)
         return unify(*eq,pattern);
-      type plug = type::wrap(pattern,floor()+degree());
-        // plug any undefined pattern elements
-      a.set_equivalent(c,std::make_unique<type_expr>(plug.bake_off()));
+      @< If |pattern| has |undetermined| entries, throw an error @>
+      a.set_equivalent(c,std::make_unique<type_expr>(pattern.copy()));
       return true;
     }
   case primitive_type: return sub_tp.prim()==pattern.prim();
@@ -2622,6 +2621,21 @@ bool type::unify(const type_expr& sub_tp, type_expr& pattern)
   // |tabled| impossible, and |undetermined_type| should not happen
   }
   return false; // keep compiler happy
+}
+
+@ It can happen in unlikely cases that we need to unify a type variable with an
+incomplete type pattern, as would happen for instance with the ``bottom'' type
+of \&{die} in ``$\&{let}~(a,)=\&{die}~\&{in}~a$''. This seems so obviously
+useless that, rather than inventing new type variables to plug the undetermined
+parts, we simply signal an error in such cases. It is awkward that we need to
+throw an error from a method of |type|, with no expression to attach this type
+to, but a caller may catch and repackage the error to provide more detail.
+
+@< If |pattern| has |undetermined| entries, throw an error @>=
+if (pattern.is_unstable())
+{ std::ostringstream o;
+  o << "Cannot unify a type variable and an incomplete type " << pattern;
+  throw program_error(o.str());
 }
 
 @ The method |unify_to| is basically the same as |unify|, but is a |const|
