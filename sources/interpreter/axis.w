@@ -184,7 +184,7 @@ fact the only way the user can construct such vector values. However, both cases
 result type is partially known) are handled by a single function |convert_expr|.
 In addition to doing types analysis, it builds (upon success) an |expression|
 value. As arguments, |convert_expr| takes an |const expr& e@;| referring to a
-value produced by the parser, a number |fix_count| indicating the level up to
+value produced by the parser, av number |fix_count| indicating the level up to
 which type variables are to be considered fixed but opaque (because they could
 represent any type), and a type in the form of a modifiable reference
 |type_expr& tp@;|.
@@ -1106,7 +1106,7 @@ or even |type::bottom()| in the case of an empty list display) to match |target|
     err.variants.append(std::move(conflicts));
     throw std::move(err);
   }
-  if (not common.unify(target))
+  if (not common.unify_to(target,fc))
     throw type_error(e,common.bake_off(),target.copy());
 }
 
@@ -1386,25 +1386,10 @@ template<bool pilfer>
 @ When type-checking an applied identifier, we first look in
 |layer::lexical_context| for a binding of the identifier; if found it will be
 a local identifier, and otherwise we look in |global_id_table|. If found in
-either way, the associated type must equal the expected type (if any), or be
-convertible to it using |coerce|.
-
-There is a subtlety in that the identifier may have a more general type than
-|tp| required by the context (for instance if it was \&{let} equal to an
-empty list, and a concrete type of list is required). In this case the first
-call of |specialise| below succeeds without making |tp| equal to the
-identifier type |*id_t|, and if this happens we specialise the latter instead
-to |tp|, using the |specialise| method either of the |layer| class (a static
-method) or of |global_id_table|. This ensures that the same local identifier
-cannot be subsequently used with an incompatible specialisation (notably any
-further assignments to the variable must respect the more specific type). It
-remains a rare circumstance that an applied occurrence (rather than an
-assignment) of a local identifier specialises its type; it could happen if the
-identifier is used in a cast. However type safety requires that we always
-record the type to which the identifier value was specialised, since if one
-allows different specialisations of the same identifier type to be made in
-different subexpressions, then a devious program can manage to exploit this to
-get false type predictions.
+either way, the associated type must be more general or equal to the expected
+type (if any), or be coercible to it, and the call to |conform_types| does the
+appropriate tests and processing (and will throw an error in case nothing can be
+found to conform the types).
 
 @< Cases for type-checking and converting... @>=
 case applied_identifier:
@@ -1423,15 +1408,7 @@ case applied_identifier:
   expression_ptr id_expr = @| is_local
   ? expression_ptr(new local_identifier<false>(id,i,j))
   : expression_ptr(new global_identifier<false>(id));
-  if (tp.specialise(id_t->unwrap()))
-    { // then required type admits known identifier type
-      if (tp!=id_t->unwrap()) // we no longer allow |id_t| to specialise by usage
-        throw type_error(e,id_t->bake(),tp.copy()); // so report type error
-      return id_expr;
-    }
-  else if (coerce(id_t->unwrap(),tp,id_expr,e.loc))
-    return id_expr;
-  throw type_error(e,id_t->bake(),tp.copy());
+  return conform_types(*id_t,fc,tp,std::move(id_expr),e);
 }
 
 @*1 Resolution of operator and function overloading.
@@ -7292,8 +7269,8 @@ surprisingly, both methods return |void|.
 
 @< Local class definitions @>=
 struct threader
-{ typedef containers::sl_list<multiple_assignment::local_dest> loc_list;
-  typedef containers::sl_list<shared_share> glob_list;
+{ using loc_list  = containers::sl_list<multiple_assignment::local_dest>;
+  using glob_list = containers::sl_list<shared_share>;
 @)
   const expr& e; // the multiple assignment expression we are working on
   loc_list locs; // local variables occurring, in order
@@ -7302,8 +7279,11 @@ struct threader
   containers::sl_list<std::pair<id_type,const_type_p> > assoc;
   // types found for them
 @)
-  threader (const expr& e) : e(e), locs(), globs(), is_global(), assoc() @+{}
-  void thread (const id_pat& pat,type_expr& type); // recursively analyse |pat|
+  const unsigned int abstr_level, degree;
+@)
+  threader (const expr& e, unsigned int level)
+  : e(e), locs(), globs(), is_global(), assoc(), abstr_level(level), degree(0) @+{}
+  void thread (const id_pat& pat,type_expr& tp);
 };
 
 @ The left hand side pattern is traversed in post-order: when there is both an
@@ -7352,8 +7332,8 @@ recording the localisation of the identifiers in our various fields.
     report_constant_modified(id,e,"multiple assignment");
   is_global.extend_capacity(not is_local); // push one bit onto the |BitMap|
 @)
-  if (not tp.specialise(id_t->unwrap()))
-  // incorporate type found for |id| into |tp|
+  if (not id_t->unify_to(tp,abstr_level+degree))
+    // incorporate type found for |id| into |tp|
     @< Throw an error to signal type incompatibility for |id| @>
   assoc.push_back(std::make_pair(id,&tp));
     // record pointer to |tp| for later refinement of |id|
@@ -7400,8 +7380,8 @@ assembling the data to identify the error.
 @< Throw an error to signal type incompatibility for |id| @>=
 { std::ostringstream o;
   o << "Incompatible type for '" << main_hash_table->name_of(id)
-  @|<< "' in multi-assignment: type " << *id_t
-  @|<< " does no match pattern " << tp;
+  @|<< "' in multi-assignment:\n  it's type " << *id_t
+  @|<< " does no match type (pattern) " << tp;
   throw expr_error(e,o.str());
 }
 
@@ -7423,7 +7403,7 @@ stored in |thr|.
 @< Generate and |return| a |multiple_assignment| @>=
 { const id_pat& pat=e.assign_variant->lhs;
   type_expr rhs_type;
-  threader thr(e);
+  threader thr(e,fc);
   thr.thread(pat,rhs_type);
   expression_ptr r = convert_expr(e.assign_variant->rhs,fc,rhs_type);
   if (rhs_type==void_type and not is_empty(e.assign_variant->rhs))
