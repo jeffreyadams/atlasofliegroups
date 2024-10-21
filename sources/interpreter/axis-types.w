@@ -2045,16 +2045,13 @@ void type_assignment::append(const type_assignment& a)
 |substitution| that performs a substitution according to a |type_assignment|
 into a |type_expr| value. The latter produces a freshly built |type_expr|, while
 neither of them takes ownership of (parts of) their argument types, which are
-therefore passed by (non owning) constant reference. The final argument to
-|can_unify| serves a technical purpose: initially |false|, setting it to |true|
-in certain recursive calls allows ensuring termination. The |type_expr|
-arguments here should not contain any undetermined subexpressions; to achieve
-this, a caller may need to replace each such occurrence by a fresh (only used
-here) type variable, and add a slot for it in the |type_assignment|.
+therefore passed by (non owning) constant reference. The |type_expr| arguments
+here should not contain any undetermined subexpressions; to achieve this, a
+caller may need to replace each such occurrence by a fresh (only used here) type
+variable, and add a slot for it in the |type_assignment|.
 
 @< Declarations of exported functions @>=
-bool can_unify(const type_expr& P, const type_expr& Q, type_assignment& assign,
-               bool freeze=false);
+bool can_unify(const type_expr& P, const type_expr& Q, type_assignment& assign);
 type_expr substitution(const type_expr& M, const type_assignment& assign);
 
 @ We start with giving the easier |substitution| function. It copies the type
@@ -2153,32 +2150,22 @@ substitution for some (previously unassigned) type variable, we must verify that
 the substituted type does not directly or indirectly (via established
 substitutions for other variables) contain the same type variable, since that
 would imply a recursive relation for the substituted type that we do not want to
-introduce. There is also a difficulty with tabled types: they should normally be
-interpreted as the type their expansion (the type they were equated to), but if
-one freely performs expansions in |P| end |Q|, there is no guarantee of
-termination if some of the tabled types are recursively defined. Our solution to
-this difficulty is to use the fact that such expansions should not contain any
-type variables at all, so once a tabled type is encountered, we know that any
-future substitutions can only come from the other type (the one the expansion is
-to be unified with). We record this information by ensuring that the expanded
-type is in the second position (argument |Q|) and set |freeze=true| in the
-recursive call. Then if in the recursion we encounter another tabled type in
-|P|, we know that we are just asking for type equality and can stop the
-recursive process; in this way we know the traversal of |P|, and therefore the
-unification process, will necessarily terminate.
+introduce.
 
 @< Function definitions @>=
 
-bool can_unify(const type_expr& P_orig, const type_expr& Q_orig,
-     type_assignment& assign, bool freeze)
-{ const_type_p P=&P_orig, Q=&Q_orig;
-  auto P_kind = P_orig.raw_kind(), Q_kind = Q_orig.raw_kind();
-  @< Handle cases where |P_kind| or |Q_kind| is |tabled|: depending on |freeze|
-     and which one is |tabled|, maybe swap, expand |Q| and set |freeze|,
-     or |return| the result of testing |P==Q| as tabled names @>
+bool can_unify
+  (const type_expr& P_orig, const type_expr& Q_orig, type_assignment& assign)
+{ const_type_p P=&P_orig, Q=&Q_orig; // we need assignable pointers internally
+  auto P_kind = P->kind(), Q_kind = Q->kind();
   @< If |P| or |Q| is a type variable, expand any existing substitution
      in |assign| for them, or record a new one and return |true|, or if
-     one of them fixed in the context |return| whether |P==Q| @>
+     one of them fixed in the context |return| whether |P==Q|.
+     In fall through cases, |P|, |Q|, |P_kind| and |Q_kind| are updated @>
+  assert(P_kind!=undetermined_type and Q_kind!=undetermined_type);
+  // no patterns here
+  @< If both types are tabled, |return| a Boolean telling whether they are
+     the same tabled type @>
   if (P_kind!=Q_kind)
     return false;
     // with name expansions behind us, the type tags must match to succeed
@@ -2186,11 +2173,11 @@ bool can_unify(const type_expr& P_orig, const type_expr& Q_orig,
   {
   case primitive_type: return P->prim()==Q->prim();
   case function_type: return
-    can_unify(P->func()->arg_type,Q->func()->arg_type,assign,freeze) @|
+    can_unify(P->func()->arg_type,Q->func()->arg_type,assign) @|
     and
-    can_unify(P->func()->result_type,Q->func()->result_type,assign,freeze);
+    can_unify(P->func()->result_type,Q->func()->result_type,assign);
   case row_type: return
-    can_unify(P->component_type(),Q->component_type(),assign,freeze);
+    can_unify(P->component_type(),Q->component_type(),assign);
   case tuple_type: case union_type:
     {
       for(raw_type_list p = P->tuple(), q=Q->tuple();
@@ -2198,7 +2185,7 @@ bool can_unify(const type_expr& P_orig, const type_expr& Q_orig,
           p = p->next.get(), q=q->next.get())
       { if (p==nullptr or q==nullptr)
           return false; // unequal length lists
-        if (not can_unify(p->contents,q->contents,assign,freeze))
+        if (not can_unify(p->contents,q->contents,assign))
           return false; // some subtype fails unification
       }
       return true;
@@ -2208,43 +2195,16 @@ bool can_unify(const type_expr& P_orig, const type_expr& Q_orig,
   }
 }
 
-@ We use the |freeze| argument as follows: when it is set, it indicates that |Q|
-is a monotype considered during construction of the tabled types
-(because it is, or descends from, the right hand side of a tabled
-type definition). If so, expanding any tabled |P| can be avoided, as unification
-is possible only if |Q| is the same tabled type (since table construction
-ensures that equivalent types are identified).
-
-@< Handle cases where |P_kind| or |Q_kind| is |tabled|... @>=
-{
-  if (P_kind==tabled)
-  { if (Q_kind==tabled)
-      return P->type_nr()==Q->type_nr();
-      // tabled types were processed, only identical is equal
-    else if (freeze)
-      return false; // $P$ is tabled and frozen, $Q$ not tabled: they differ
-    std::swap(P,Q);
-    std::swap(P_kind,Q_kind); // and fall through
-  }
-  if (Q_kind==tabled)
-@/{@; Q=&Q->expansion();
-    freeze=true;
-    Q_kind=Q->raw_kind();
-    assert(Q_kind!=tabled);
-  }
-}
-
-@ The code below is basically symmetric in |P| and |Q|, but we cannot swap them
-here due to the asymmetric interpretation of |freeze|; therefore we write out
-the two cases considered. What we do with type variables is somewhat similar to
-what was done with tabled type names in case an assignment was already recorded
-for them in~|assign| (using |assign.equivalent| instead of |expansion|), but we
-also have to treat the cases where the type variable is introduced as abstract
-in the context, so that we cannot substitute for it, and the case where
-unification really comes into play, where the type name is variable and not yet
-substituted for. In the latter case we just record in |assign| the other type
-expression as the equivalent of this type variable, and return (local) success
-of the unification. we do however test that we are not substituting an
+@ The code below is basically symmetric in |P| and |Q|, but we need to write out
+the two cases anyway. What we do with type variables is somewhat similar to what
+was done with tabled type names in case an assignment was already recorded for
+them in~|assign| (using |assign.equivalent| instead of |expansion|). But we also
+have to treat the cases where the type variable is introduced as abstract in the
+context, so that we cannot substitute for it, as well as the case where
+unification really comes into play, namely where the type name is variable and
+not yet substituted for. In the latter case we just record in |assign| the other
+type expression as the equivalent of this type variable, and return (local)
+success of the unification. we do however test that we are not substituting an
 expression that involves the type variable itself, which as mentioned is
 considered a failure of unification.
 
@@ -2252,10 +2212,10 @@ considered a failure of unification.
 { const_type_p p; // we first substitute already assigned type variables
   while (P_kind==variable_type and
          (p=assign.equivalent(P->typevar_count()))!=nullptr)
-    P_kind=(P=p)->raw_kind(); // replace |P| by type previously assigned to it
+    P_kind=(P=p)->kind(); // replace |P| by type previously assigned to it
   while (Q_kind==variable_type and
          (p=assign.equivalent(Q->typevar_count()))!=nullptr)
-    Q_kind=(Q=p)->raw_kind(); // replace |Q| by type previously assigned to it
+    Q_kind=(Q=p)->kind(); // replace |Q| by type previously assigned to it
 @)
   if (P_kind==variable_type)
   { auto c = P->typevar_count();
@@ -2282,6 +2242,24 @@ considered a failure of unification.
     }
     else return false; // since we know that |P| is not a type variable
   }
+}
+
+@ The presence of recursive types creates the risk of an infinite recursion if
+we simply expand type definitions as we usually do. To avoid that scenario, we
+perform a test near the entry of the recursive function |can_unify|, but after
+assigned type variables have been substituted. (The order is important here: an
+assignment can equate a type variable to a tabled type, but a tabled type cannot
+be defined as a type variable.) Since types descended from tabled types are also
+tabled, it suffices to catch the case where both types are now simultaneously
+tabled, as any non-termination would have to run via such a case. So, as the
+module title says, we always |return| when a pair of tabled types is
+encountered, the return value telling whether they are identical.
+
+@< If both types are tabled, |return| a Boolean telling whether they are
+     the same tabled type @>=
+{
+  if (P->raw_kind()==tabled and Q->raw_kind()==tabled)
+    return P->type_nr()==Q->type_nr();
 }
 
 @ The test for non-containment of a type variable is best done by a local
