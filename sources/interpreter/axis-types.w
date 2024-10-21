@@ -4207,10 +4207,11 @@ will return |component_type| equal to \.{vec} rather than to \.{[int]}.
 @< Function def... @>=
 const conversion_record* row_coercion(const type_expr& final_type,
                                             type_expr& component_type)
-{ for (auto it=coerce_table.begin(); it!=coerce_table.end(); ++it)
-    if (final_type==*it->to and it->from->kind()==row_type)
-      return component_type.specialise(it->from->component_type())
-        ? &*it
+{ assert(component_type==type_expr());
+  for (const auto& entry : coerce_table)
+    if (final_type==*entry.to and entry.from->kind()==row_type)
+      return component_type.specialise(entry.from->component_type())
+        ? &entry
         : nullptr;
   return nullptr;
 }
