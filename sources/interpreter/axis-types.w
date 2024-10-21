@@ -2591,8 +2591,8 @@ bool type::unify(const type_expr& sub_tp, type_expr& pattern)
   {
   case variable_type:
     { auto c = sub_tp.typevar_count();
-      if (c<floor())
-        return sub_tp.type_nr()==pattern.type_nr();
+      if (c<floor()) // fixed type; |Q| must match
+        return Q_kind==variable_type and pattern.typevar_count()==c;
       auto eq=a.equivalent(c);
       if (eq!=nullptr)
         return unify(*eq,pattern);
