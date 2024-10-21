@@ -3899,6 +3899,9 @@ bool coercible(const type_expr& from_type, const type_expr& to_type);
 expression_ptr conform_types
   ( const type_expr& found, type_expr& required
   , expression_ptr&& d, const expr& e);
+expression_ptr conform_types
+  ( const type& found, unsigned int fix_count, type_expr& required
+  , expression_ptr&& d, const expr& e);
 const conversion_record* row_coercion(const type_expr& final_type,
 				     type_expr& component_type);
 void coercion(const type_expr& from,
@@ -4184,6 +4187,15 @@ expression_ptr conform_types
     throw type_error(e,found.copy(),required.copy());
   return std::move(d); // invoking |std::move| is necessary here
 }
+expression_ptr conform_types
+  (const type& found, unsigned int fix_count, type_expr& required,
+   expression_ptr&& d, const expr& e)
+{ type req = type::wrap(required,fix_count);
+  if (not found.unify_to(required,req.ceil()) and @|
+      not coerce(found.unwrap(),required,d,e.loc))
+    throw type_error(e,found.bake(),required.copy());
+  return std::move(d); // invoking |std::move| is necessary here
+}
 
 @ List displays and loops produce a row of values of arbitrary (but identical)
 type; when they occur in a context requiring a non-row type, we may be able to
@@ -4463,7 +4475,7 @@ bool broader_eq (const type& a, const type& b)
   assert(a.floor()==b.floor()); // not ready for general case
   if (b.degree()==0)
     return br_eq(a.unwrap(),b.unwrap());
-  unsigned int start=b.floor(), new_start = a.floor()+a.degree();
+  unsigned int start=b.floor(), new_start = a.ceil();
   type_assignment assign(start,b.degree());
   if (start>=new_start) // so that |b|'s variables already avoid those of |a|
     return can_unify(b.unwrap(),a.unwrap(),assign);
