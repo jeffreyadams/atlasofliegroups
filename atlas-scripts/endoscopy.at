@@ -1,5 +1,5 @@
 {This file is deprecated: replaced by endoscopic_groups.at}
-<embed.at
+{<embed.at
 
 {endoscopy (regular and twisted)}
 
@@ -227,3 +227,4 @@ set endoscopic_group(RealForm G, mat delta_vee)=weak_endoscopic_group(G,delta_ve
 
 set endoscopic_group(RealForm G,ratvec s)=weak_endoscopic_group(G,id_mat(rank(G)),s,id_W(dual(G)))
 
+}

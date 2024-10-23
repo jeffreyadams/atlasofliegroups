@@ -224,7 +224,9 @@ in prints("number of parameters at singular inf char:", #subset)
 set stable_at_singular ([*] S,[Param] B,[Param] subset) = (mat,[Param]):
   stable_at_singular([int]:S,B,subset)
 
-set stable_sums([Param] singular_parameters)=[(mat,[Param])]:
+{this function is no longer used, and has been renamed so it won't be. Instead
+use stable_sums@[Param] in L_packet.at, which returns [ParamPol]}
+set stable_sums_pairs([Param] singular_parameters)=[(mat,[Param])]:
 let G=singular_parameters[0].real_form {assuming all have same infinitesimal character} then
 gamma_singular=singular_parameters[0].infinitesimal_character then
 gamma_regular=gamma_singular+two_rho(G) then
@@ -342,10 +344,10 @@ for (M,params)@i in list do
 { printParamPol(M*params)}
 od
 
-set print_stable_sums([(int,int,Param)] list)=void:
-print(stable_sums(parameters(list)))
+set print_stable_sums_pairs([(int,int,Param)] list)=void:
+print(stable_sums_pairs(parameters(list)))
 
-set print_stable_sums([[(int,int,Param)]] lists)=void:
+set print_stable_sums_pairs([[(int,int,Param)]] lists)=void:
 prints("Stable sums for ",#lists," packets:");
-for list@i in lists do prints("-----------------------------------",new_line,"Packet #",i);print(stable_sums(parameters(list))) od
+for list@i in lists do prints("-----------------------------------",new_line,"Packet #",i);print(stable_sums_pairs(parameters(list))) od
 

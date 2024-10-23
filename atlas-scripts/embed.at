@@ -144,7 +144,7 @@ let index_in_map= first(for (p_H,) in map do done_H[p_H]=0 od) then
     done_H+:=p_H;
  for i:ss_rank(H) do
     let q_H=cross(i,p_H) in
-    let ()=if te_verbose then prints("i=",i,"(cross)p_H=", q_H) fi in
+    let ()=if te_verbose then prints("i=",i," cross:p_H->", q_H) fi in
       let ()=if not is_known_H(q_H) then
                 let ()=if te_verbose then prints(i, " ", root_map, " p_G=", p_G) fi in
               let q_G=lift_parameter_cross(i, root_map,p_G) in
@@ -162,7 +162,7 @@ let index_in_map= first(for (p_H,) in map do done_H[p_H]=0 od) then
   in
   if is_noncompact(i,p_H.x) or is_real(i,p_H.x) then
        let q_H=Cayley(i,p_H) in
-       let ()=if te_verbose then prints("i=",i,"(Cayley)q_H=", q_H,new_line,"p_G=", p_G) fi in
+       let ()=if te_verbose then prints("i=",i," Cayley:p_H->", q_H,new_line,"p_G=", p_G) fi in
        if not is_known_H(q_H) then
                let q_G=lift_parameter_Cayley(i, root_map,p_G) in
                if not is_known_G(q_G) then

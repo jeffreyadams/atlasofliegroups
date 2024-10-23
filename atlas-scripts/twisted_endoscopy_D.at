@@ -3,6 +3,9 @@
 <twisted_endoscopy.at
 <endoscopy.at
 
+{this is a temporary fix for the function endoscopic@(RealForm,mat) in this file}
+set endoscopic(RealForm G,mat delta)=
+let (H,M,Hd)=endoscopic_group(G,delta) in (H,M)
 
 set *(rat a, ParamPol P)=ParamPol:
 let rv=0*P then

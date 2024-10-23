@@ -3,15 +3,41 @@ set v=[1,1]/2
 set (H,M,Hd)=endoscopic_group(G,v)
 set H=split_form(H)
 set rm=root_map(H,G)
+
+set ss=unipotent_stable_sums(H)
+set P0=ss[2]
+set (a0,b0)=pick_basepoint_lift(last_param(P0),M,G)
+set P1=ss[1]
+set (a1,b1)=pick_basepoint_lift(last_param(P1),M,G)
+set P2=ss[2]
+set (a2,b2)=pick_basepoint_lift(last_param(P2),M,G)
+set lifts2=embed_parameters(a2,b2,rm)
+set P3=ss[3]
+set (a3,b3)=pick_basepoint_lift(last_param(P3),M,G)
+set lifts3=embed_parameters(a3,b3,rm)
+
+
+
+{set p_H=block_H[4]
+set P_H=L_packet_stable_sum(p_H)
+
+set rv=for p_H@i in block_H do
+let ()=prints(i) in
+let P_H=L_packet_stable_sum(p_H) in
+ endoscopic_lift_irr_tries_smallest(P_H,M,G,lifts,v) od
+}
+{set G=SL(2,R)
+set v=[1]/4
+set (H,M,Hd)=endoscopic_group(G,v)
+set H=split_form(H)
+set rm=root_map(H,G)
 set p_H=large_discrete_series(H)
 set block_H=block_of(p_H)
-set p_G=parameter(KGB(G,0),[1,0],[0,0])
+set p_G=parameter(KGB(G,0),[0],[0])
 set lifts=embed_parameters(p_H,p_G,rm)
 set t_H=H.trivial
 set t_G=first_param(finalize(find_lift(lifts,t_H)))
 
 set et_raw=endoscopic_lift_std_raw(composition_series(t_H),M,G,lifts,v)
-set et_tries=endoscopic_lift_irr_tries(t_H,M,G,lifts,v)
-
-
-
+set et=endoscopic_lift_irr_tries_smallest(t_H,M,G,lifts,v)
+}

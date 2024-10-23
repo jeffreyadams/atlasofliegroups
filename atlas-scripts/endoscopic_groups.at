@@ -74,8 +74,11 @@ for alpha in restricted_roots do
    fi
  fi
 od)
-then
-coroots=[] in
+in
+if =#roots
+ then (complex_torus(rank(rd)),T)
+else 
+ let coroots=[] in
 for alpha in roots do
   let pullback_alpha=
     let j=first(for beta in rd.roots do T.restrict(beta)=alpha od) in rd.roots[j] then
@@ -89,7 +92,7 @@ for alpha in roots do
    corestrict_w=solve(T,w).requisition {coordinates of w in the given basis of X_*(T)} in
    coroots#:=ratvec_as_vec(corestrict_w)
 od;
-(root_datum_from_positive((roots,coroots),rd.prefers_coroots),T)
+(root_datum_from_positive((roots,coroots),rd.prefers_coroots),T) fi
 
 set fixed(RootDatum rd,mat delta,ratvec v)=(RootDatum,mat):fixed(TwistedRootDatum:(rd,delta),v)
 set fixed(RootDatum rd,mat delta)=(RootDatum,mat):fixed(TwistedRootDatum:(rd,delta),null(rd.rank))
@@ -172,14 +175,18 @@ atlas> M*H_vee.simple_coroots
 |  1, -1 |
 | -1,  0 | {each column is a sum of coroots}
  }
-set complex_endoscopic_group(RootDatum G_vee,mat delta_vee, ratvec s)=(RootDatum,mat,RootDatum):
-let (H_vee,M)=fixed(G_vee,delta_vee,s) in (dual(H_vee),M,H_vee)
 
-set complex_endoscopic_group(RootDatum G_vee, ratvec s)=(RootDatum,mat,RootDatum):
-complex_endoscopic_group(G_vee,id_mat(rank(G_vee)),s)
+{complex_endoscopic_group(G,delta_vee,s_vee): G is on the group side,
+G_vee=dual(G), delta_vee, s on dual side}
+set complex_endoscopic_group(RootDatum G,mat delta_vee, ratvec s)=(RootDatum,mat,RootDatum):
+let G_vee=dual(G) then
+(H_vee,M)=fixed(G_vee,delta_vee,s) in (dual(H_vee),M,H_vee)
 
-set complex_endoscopic_group(RootDatum G_vee, mat delta)=(RootDatum,mat,RootDatum):
-complex_endoscopic_group(G_vee,delta,null(rank(G_vee)))
+set complex_endoscopic_group(RootDatum G, ratvec s)=(RootDatum,mat,RootDatum):
+complex_endoscopic_group(G,id_mat(rank(G)),s)
+
+set complex_endoscopic_group(RootDatum G, mat delta)=(RootDatum,mat,RootDatum):
+complex_endoscopic_group(G,delta,null(rank(G)))
 
 
 set twisted_action(WeylElt w, mat delta, ratvec v)=ratvec:
@@ -192,7 +199,7 @@ set is_fixed(WeylElt w,mat delta, ratvec v)=bool:is_integer(w*delta*v-v)
 set restrict_co_action(mat M, mat A)=mat:left_inverse(M)*A*M
 
 set weak_endoscopic_group(
-RootDatum G_vee, 
+RootDatum G, {G not G_vee}
 mat delta_vee,   {dual twist}
 mat xi_vee,     {dual involution defining the L-group of G}
 ratvec s,        {take centralizer(exp(2\pi is)}
@@ -200,7 +207,7 @@ WeylElt w_G_vee)=   {an additional twist; the identity gives the default inner c
                       w_G_vee is only needed to get other inner classes of H}
 assert(delta_vee*matrix(w_G_vee)=matrix(w_G_vee)*delta_vee,"w_G_vee doesn't commute with delta_vee");
 {assert(is_fixed(w_G_vee,xi_vee,s), "w_G_vee*xi_vee doesn't fix s");}
-let (H,M,H_vee)=complex_endoscopic_group(G_vee,delta_vee,s) then
+let (H,M,H_vee)=complex_endoscopic_group(G,delta_vee,s) then
 ()=prints("complex H: ", H) then
 ()=prints("complex H_vee: ", H_vee) then
 restrict=restrict_co_action(M,w_G_vee.matrix) then
@@ -212,17 +219,15 @@ dual_inner_class=inner_class(H_vee,w_H.matrix) in
 (dual(dual_inner_class),M,dual_inner_class)
 
 set weak_endoscopic_group(RealForm G, mat delta_vee,ratvec s,WeylElt w_G_vee)=
-let G_vee=dual_quasisplit_form(G) in 
 weak_endoscopic_group(G,delta_vee,G.distinguished_involution,s,w_G_vee)
 
-
-set endoscopic_group(RootDatum G_vee, mat delta_vee,mat xi_vee,ratvec s)=weak_endoscopic_group(G_vee,delta_vee,xi_vee,s,id_W(G_vee))
-set endoscopic_group(RootDatum G_vee, mat delta_vee,mat xi_vee,WeylElt w_G_vee)=weak_endoscopic_group(G_vee,delta_vee,xi_vee,null(rank(G_vee)),w_G_vee)
-set endoscopic_group(RootDatum G_vee, mat delta_vee,mat xi_vee)=weak_endoscopic_group(G_vee,delta_vee,xi_vee,null(rank(G_vee)), id_W(G_vee))
+set endoscopic_group(RootDatum G, mat delta_vee,mat xi_vee,ratvec s)=weak_endoscopic_group(G,delta_vee,xi_vee,s,id_W(dual(G)))
+set endoscopic_group(RootDatum G, mat delta_vee,mat xi_vee,WeylElt w_G_vee)=weak_endoscopic_group(G,delta_vee,xi_vee,null(rank(G)),w_G_vee)
+set endoscopic_group(RootDatum G, mat delta_vee,mat xi_vee)=weak_endoscopic_group(G,delta_vee,xi_vee,null(rank(G)), id_W(dual(G)))
 
 set endoscopic_group(RealForm G, mat delta_vee,ratvec s)=weak_endoscopic_group(G,delta_vee,s,id_W(dual(G)))
 set endoscopic_group(RealForm G, mat delta_vee,mat xi_vee,WeylElt w_G_vee)=weak_endoscopic_group(G,delta_vee,null(rank(G)),w_G_vee)
 set endoscopic_group(RealForm G, mat delta_vee)=weak_endoscopic_group(G,delta_vee,null(rank(G)), id_W(dual(G)))
 
-set endoscopic_group(RealForm G,ratvec s)=weak_endoscopic_group(dual_quasisplit_form(G),id_mat(rank(G)),s,id_W(dual(G)))
+set endoscopic_group(RealForm G,ratvec s)=weak_endoscopic_group(G,id_mat(rank(G)),s,id_W(dual(G)))
 

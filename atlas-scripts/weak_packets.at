@@ -8,7 +8,6 @@
 <cells.at { for |parameters_given_AV_infinitesimal_character|, |cells_verbose| }
 <Vogan-dual.at { for |is_dual_Aq| }
 <L_packet.at {for stable_sums_irr_mat}
-<jeff.at
 <arthur_parameters_refined.at
 <F4_s_unipdata
 <E6_sc_s_unipdata

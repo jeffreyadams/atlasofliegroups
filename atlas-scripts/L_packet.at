@@ -217,8 +217,8 @@ let ss=stable_sums_irr_in_basis_of_standards(list) in
  for P in M do composition_series(P) od
 od
 
-
-
+{default: stable_sums = stable_sums_irr}
+set stable_sums([Param] list)=[ParamPol]:stable_sums_irr(list)
 
 set stable_sums_irr_mat([Param] list)=([Param],mat):
 let ssi=stable_sums_irr(list) then
