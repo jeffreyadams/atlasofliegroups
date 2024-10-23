@@ -79,4 +79,4 @@ endoscopic_lift_irr_tries_smallest(P_H_of_irreducibles,M,G,rm,v)
 
 set endoscopic_lift_unipotents(RealForm H, mat M, RealForm G, [[int]] rm, ratvec v)=
 let stable_sums=unipotent_stable_sums(H) in
-for P in stable_sums do endoscopic_lift(P,M,G,rm,v) odb
+for P in stable_sums do endoscopic_lift(P,M,G,rm,v) od
