@@ -17,4 +17,12 @@ set (a3,b3)=pick_basepoint_lift(last_param(P3),M,G)
 set lifts3=embed_parameters(a3,b3,rm)
 
 {this function fails: }
-set z=endoscopic_lift_unipotents(H,M,G,rm,v)
+{set z=endoscopic_lift_unipotents(H,M,G,rm,v)}
+
+set m=[[2],[0]]
+set z=endoscopic_lift(P3,M,G,m,v)
+
+set root_maps=[rm,rm,rm,m,m,rm,rm,rm,rm]
+void:for i:9 do
+prints(new_line,"lift #", i, ":",new_line, "P_H=", ss[i], new_line, "lift: ");
+for (a,b) in endoscopic_lift(ss[i],M,G,root_maps[i],v)  do prints("coefficient matrix=",a, new_line,"lift: ",b) od od

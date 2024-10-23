@@ -1,6 +1,6 @@
 {embed_KGB and embed_param}
 
-set te_verbose=true
+set te_verbose=false
 
 set root_map(RootDatum H, RootDatum G)= {ordinary endoscopy case}
 for i:ss_rank(H) do [root_index(G,H.simple_roots[i])] od
@@ -104,12 +104,13 @@ let G=p_G.real_form then
 y=p_G then
  roots=root_map[j_H] in
  if #roots<2 then
-    cross(roots[0],y)
+{    cross(roots[0],y)}
+    cross(G.posroots[roots[0]],y)
  elif is_orthogonal(G,roots[0],roots[1]) then
-    for i in roots do y:=cross(i,y) od;y
+    for i in roots do y:=cross(G.posroots[i],y) od;y
  else
     let j=root_index(G,root(G,roots[0])+root(G,roots[1])) in
-    for i in roots#j do y:=cross(i,y) od;y
+    for i in roots#j do y:=cross(G.posroots[i],y) od;y
  fi
 
 {? this should also have a different formula in case of 2 non-orthogonal roots}

@@ -36,7 +36,7 @@ set endoscopic_lift_std_raw(ParamPol P_H,mat M,RealForm G, [(Param,Param)] lifts
 assert(is_stable_irr(P_H), "P_H is not stable");
 let rv=[ParamPol]:[] in
 for (c,p) in %P_H do
- if p.print=L_packet_representative(p) then
+ if p=L_packet_representative(p) then
   rv#:=c*endoscopic_lift_std(p,M,G,lifts,v) fi
  od;
 rv
