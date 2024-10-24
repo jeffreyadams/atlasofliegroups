@@ -250,21 +250,19 @@ change.
 
 @< Type def... @>=
 class layer
-{
-  using list = containers::simple_list<layer*>;
+{ static simple_list<layer*> lexical_context;
 public:
   struct id_data
-  { id_type id; type tp;
+  { id_type id; @+ type tp;
     id_data(id_type id, type&& tp) : id(id), tp(std::move(tp)) @+{}
   };
   using vec = std::vector<id_data>;
-  static list lexical_context; // the unique |layer::list| in existence
 private:
   vec variable;
   BitMap constness;
   const unsigned loop_depth; // number of nested loops we are in
   const type_p return_type;
-    // return type of current function, if any (non owned)
+    // address of return type of current function, if any (non owned)
 public:
   layer(const layer&) = delete; // no ordinary copy constructor
   layer& operator= (const layer&) = delete; // nor assignment operator
@@ -274,11 +272,6 @@ public:
   ~layer () @+{@; lexical_context.pop_front(); }
 @)
   void add(id_type id,type&& t, bool is_const);
-  static const type* lookup
-    (id_type id, size_t& depth, size_t& offset, bool& is_const);
-  static const type* lookup (id_type id, size_t& depth, size_t& offset);
-    // if |const| doesn't matter
-@)
   bool empty() const @+{@; return variable.empty(); }
   id_data& operator[] (size_t i) @+{@; return variable[i]; }
   vec::iterator begin() @+{@; return variable.begin(); }
@@ -287,6 +280,10 @@ public:
   vec::const_iterator cend() const @+{@; return variable.end(); }
   bool is_const (vec::const_iterator it) const
   @+{@; return constness.isMember(it-cbegin()); }
+@)
+  static const type* lookup
+    (id_type id, size_t& depth, size_t& offset, bool& is_const);
+  static const type* lookup (id_type id, size_t& depth, size_t& offset);
   static bool may_break(unsigned depth);
     // whether \&{break}~|depth| is legal here
   static bool may_return(); // whether \&{return} is legal here
@@ -361,7 +358,7 @@ empty. The actual |layer|s are all local to the recursive function
 will be empty again.
 
 @< Global var... @>=
-layer::list layer::lexical_context;
+simple_list<layer*> layer::lexical_context;
 
 @ The method |layer::lookup| runs through the linked list of layers, and if a
 match for the identifier |id| was found it returns a pointer to its type, while
@@ -383,7 +380,8 @@ const type* layer::lookup (id_type id, size_t& depth, size_t& offset)
 const type* layer::lookup
   (id_type id, size_t& depth, size_t& offset, bool& is_const)
 { size_t i=0;
-  for (auto range=lexical_context.cbegin(); not lexical_context.at_end(range);
+  for (auto range=lexical_context.cbegin();
+       not lexical_context.at_end(range);
        ++range)
     if (not (*range)->variable.empty())
     { for (auto it=(*range)->cbegin(); it!=(*range)->cend(); ++it)
@@ -431,7 +429,7 @@ that it is being used correctly.
 expression_ptr convert_expr_strongly
   (const expr& e, unsigned int fc, const type_expr& te)
 {
-  assert(te.kind()!=undetermined_type and type::wrap(te).degree()==0);
+  assert(te.kind()!=undetermined_type and type::wrap(te,fc).degree()==0);
   type_expr context_type = te.copy();
   return convert_expr(e,fc,context_type);
 }
@@ -472,7 +470,7 @@ struct denotation : public expression_base
 @ Here are the first examples of the conversions done in |convert_expr|. Each
 time we extract a \Cpp\ value from the |expr| produced by the parser,
 construct and |new|-allocate an \.{axis} value (for instance |int_value|)
-from it making the pointer shared using |std::make_shared|, pass that
+from it, making the pointer shared using |std::make_shared|, pass that
 pointer to the |denotation| constructor, and convert the resulting pointer to
 a unique pointer.
 
@@ -485,18 +483,18 @@ latter case.
 
 @< Cases for type-checking and converting... @>=
 case integer_denotation:
-  { expression_ptr d@|(new denotation
-      (std::make_shared<int_value>(@|
+  { expression_ptr d(new denotation @|
+      (std::make_shared<int_value>(
          big_int(e.str_denotation_variant->c_str(),10))));
     return conform_types(int_type,tp,std::move(d),e);
   }
 case string_denotation:
-  { expression_ptr d@|(new denotation
+  { expression_ptr d(new denotation @|
       (std::make_shared<string_value>(*e.str_denotation_variant)));
     return conform_types(str_type,tp,std::move(d),e);
   }
 case boolean_denotation:
-  { expression_ptr d@|(new denotation
+  { expression_ptr d(new denotation @|
         (whether(e.bool_denotation_variant)));
     return conform_types(bool_type,tp,std::move(d),e);
   }
@@ -566,7 +564,7 @@ reason the expression is written \&{die}. One could require that a call to
 function~$f$ returns |true| by writing ``$f(...)$~\&{or die}''.
 
 These expressions must be representable at run time, so we define an empty
-shell for them.
+|shell| for them.
 
 @< Type definitions @>=
 struct shell : public expression_base
@@ -575,7 +573,7 @@ virtual void evaluate (level l) const;
 virtual void print(std::ostream& out) const @+{@; out << " die "; }
 };
 
-@ As said above, attempting to evaluate a |shell| is suicidal.
+@ As said above, attempting to evaluate a |shell| is lethal.
 
 @< Function definitions @>=
 void shell::evaluate (level l) const
@@ -698,7 +696,7 @@ case return_expr:
   { type_expr& rt = layer::current_return_type();
     return expression_ptr(new returner(convert_expr(*e.return_variant,fc,rt)));
   }
-  throw expr_error(e,"One can only use 'return' within a function body");
+  throw expr_error(e,"One can only use 'return' inside a function body");
 }
 
 @* Tuple displays.
@@ -1487,15 +1485,7 @@ We shall call |resolve_overload| from the case for function applications in
 |convert_expr|, after testing that a non empty set of overloads exists.
 Therefore the caller can pass the relevant list of |variants| as a parameter.
 
-@< Declarations of exported functions @>=
-expression_ptr resolve_overload
-  ( const expr& e
-  , unsigned int fc
-  , type_expr& tp
-  , const overload_table::variant_list& variants
-  );
-
-@ To resolve overloading, we used to try each variant, each time recursively
+To resolve overloading, we used to try each variant, each time recursively
 calling |convert_expr| to convert the arguments under the hypothesis that they
 were in the strong type context of the type expected by that variant; this while
 catching (type) errors, interpreting them simply as an indication that this
@@ -1553,7 +1543,9 @@ match, we report a ``failed to match'' error.
 
 @:resolve_overload@>
 
-@< Function definitions @>=
+@< Local function definitions @>=
+
+@< Define the function |equals_name| @>
 expression_ptr resolve_overload
   ( const expr& e
   , unsigned int fc
@@ -1688,7 +1680,7 @@ its identifier code once and for all.
 
 @h "lexer.h" // for |main_hash_table|
 
-@< Local function definitions @>=
+@< Define the function |equals_name| @>=
 id_type equals_name()
 {@; static id_type name=main_hash_table->match_literal("=");
   return name;
@@ -1891,9 +1883,9 @@ message will also mention that the type that was expected by the unique
 instance.
 
 @< Complain about failing overload resolution @>=
-if (variants.size()==1)
+if (variants.singleton())
   throw type_error(args,a_priori_type.unwrap().copy(),
-                   variants[0].f_tp().arg_type.copy());
+                   variants.front().f_tp().arg_type.copy());
 else
 { std::ostringstream o;
   o << "Failed to match '"
@@ -2500,12 +2492,10 @@ type.
   size_t i,j; // dummies; local binding not used here
   auto local_type_p=layer::lookup(id,i,j);
   if (local_type_p==nullptr or local_type_p->kind()!=function_type)
- // not calling by local identifier
-  { const overload_table::variant_list& variants
-      = global_overload_table->variants(id);
-    if (variants.size()>0)
-      return resolve_overload(e,fc,tp,variants);
-  }
+     // not calling by local identifier
+  { if (@[const auto* variants = global_overload_table->variants(id)@;@])
+      return resolve_overload(e,fc,tp,*variants);
+  } // |else| fall through to try non-overloaded call
 }
 
 @*1 Support for constant folding.
@@ -2533,9 +2523,10 @@ transform errors that might occur at compile time into expressions that postpone
 the error until run time, reproducing the error message.
 
 @< Declarations of exported functions @> =
-void do_conversion(expression_ptr& e, const conversion_info& ci,
-  const source_location& loc);
-bool do_builtin(expression_ptr& e, wrapper_function f, const source_location& loc);
+void do_conversion
+  (expression_ptr& e, const conversion_info& ci, const source_location& loc);
+bool do_builtin
+  (expression_ptr& e, wrapper_function f, const source_location& loc);
 expression_ptr frozen_error(std::string message, const source_location& loc);
 
 @ Implementing |do_conversion| is not hard, but does imply some mixing of stages
@@ -2571,7 +2562,7 @@ happens, rather than silently compiling a time bomb.
 void do_conversion(expression_ptr& e, const conversion_info& ci,
   const source_location& loc)
 {
-  if (@[auto* den_ptr = dynamic_cast<const denotation*>(e.get())@])
+  if (@[auto* den_ptr = dynamic_cast<const denotation*>(e.get())@;@])
   { try
     {
       auto& den_val = const_cast<denotation*>(den_ptr)->denoted_value;
@@ -2603,7 +2594,7 @@ location |den_val| where the arguments used to be.
 bool do_builtin(expression_ptr& e, wrapper_function f,
   const source_location& loc)
 {
-  if (@[auto* den_ptr = dynamic_cast<const denotation*>(e.get())@])
+  if (@[auto* den_ptr = dynamic_cast<const denotation*>(e.get())@;@])
   { try
     {
       auto& den_val = const_cast<denotation*>(den_ptr)->denoted_value;
@@ -4255,8 +4246,10 @@ if array type is one that can be sliced at all, throwing an error if it cannot.
 case slice:
 { type_expr array_type; // initialised to |undetermined_type|
   expression_ptr array = convert_expr(e.slice_variant->array,fc,array_type);
-  expression_ptr lower = convert_expr_strongly(e.slice_variant->lower,fc,int_type);
-  expression_ptr upper = convert_expr_strongly(e.slice_variant->upper,fc,int_type);
+  expression_ptr lower =
+    convert_expr_strongly(e.slice_variant->lower,fc,int_type);
+  expression_ptr upper =
+    convert_expr_strongly(e.slice_variant->upper,fc,int_type);
   expression_ptr subscr; const unsigned fl = e.slice_variant->flags.to_ulong();
   switch (subscr_base::slice_kind(array_type))
     { case subscr_base::row_entry: subscr.reset(
@@ -6794,7 +6787,7 @@ case op_cast_expr:
   const type_expr& c_type = c->type;
   std::ostringstream o;
 @)
-  if (@[const auto* entry = global_overload_table->entry(c->oper,c_type)@])
+  if (@[const auto* entry = global_overload_table->entry(c->oper,c_type)@;@])
   { // something was found
     o << main_hash_table->name_of(c->oper) << '@@' << c_type;
     expression_ptr p(new capture_expression(entry->value(),o.str()));
@@ -6830,25 +6823,26 @@ found we fall through this code, leading to a ``no instance found'' error.
   expression_ptr result;
   type_expr deduced_type;
   const overload_data* prev_match=nullptr;
-  for (const auto& variant : global_overload_table->variants(c->oper))
-  {
-    unsigned op_deg = variant.poly_degree();
-    if (target.matches(variant.f_tp().arg_type,op_deg))
-      // exact match after substitution
+  if (auto* vars = global_overload_table->variants(c->oper))
+    for (const auto& variant : *vars)
     {
-      if (prev_match!=nullptr)
-        @< Throw error reporting ambiguous match in operator cast @>
-      @< Write to |o| operator|c->oper| with the argument type of |variant| and
-         with substitutions in |target| @>
-      result.reset(new capture_expression(variant.value(),o.str()));
-      deduced_type = type_expr::function @|
-        (substitution(variant.f_tp().arg_type,target.assign())
-        ,substitution(variant.f_tp().result_type,target.assign())
-        );
-     prev_match = &variant;
+      unsigned op_deg = variant.poly_degree();
+      if (target.matches(variant.f_tp().arg_type,op_deg))
+        // exact match after substitution
+      {
+        if (prev_match!=nullptr)
+          @< Throw error reporting ambiguous match in operator cast @>
+        @< Write to |o| operator|c->oper| with the argument type of |variant| and
+           with substitutions in |target| @>
+        result.reset(new capture_expression(variant.value(),o.str()));
+        deduced_type = type_expr::function @|
+          (substitution(variant.f_tp().arg_type,target.assign())
+          ,substitution(variant.f_tp().result_type,target.assign())
+          );
+       prev_match = &variant;
+      }
+      target.clear(target_deg);
     }
-    target.clear(target_deg);
-  }
   if (result!=nullptr)
   {
     if (functype_specialise(tp,c_type,deduced_type.func()->result_type)
@@ -8295,26 +8289,26 @@ case field_trans_stat:
   unsigned pos; const_type_p comp_loc;
   @< Look up a projector for |*tuple_t| named |selector|... @>
   expression_ptr call;
-  @< Assign to |call| the |resolve_overload| of the application of |op| to
+  @< Assign to |call| the |convert_expr| of the application of |op| to
      an argument pair formed of |lhs|... @>
   @< Construct, from |tuple|, |pos| and |*call|... @>
 }
 
 @ Here we build the application |appl| of the symbol |op| mentioned in the title
-as an |expr| structure, and pass it to |resolve_overload|. This mainly serves to
-find the relevant instance of |op|, but the converted expression |call| or part
-of it will also be used. The reason |appl| is |static| is for correct error
-reporting, as explained below.
+as an |expr| structure, and pass it to |convert_expr| that most probably will
+call |resolve_overload|. This mainly serves to find the relevant instance of
+|op|, but the converted expression |call| or part of it will also be used. The
+reason |appl| is |static| is for correct error reporting, as explained below.
 
-@< Assign to |call| the |resolve_overload| of the application of |op| to
+@< Assign to |call| the |convert_expr| of the application of |op| to
      an argument pair formed of |lhs| and |rhs|,
      converted to type |*comp_loc| @>=
 {
   static expr_ptr appl; expr_ptr saved_appl;
   @< Set |appl| to the application of |op| to |lhs| and |rhs|... @>
   type_expr comp_t = comp_loc->copy();
-  // |resolve_overload| needs modifiable reference
-  call = resolve_overload(*appl,fc,comp_t,global_overload_table->variants(op));
+  // |convert_expr| needs modifiable reference
+  call = convert_expr(*appl,fc,comp_t);
   @< Restore initial state of |*e.comp_trans_variant| and of |appl| @>
 }
 
@@ -8353,7 +8347,7 @@ saved in a local variable |save|; this will also clean up the parts of the
 could have been avoided if |expr| were copy constructible, but writing a
 (recursive, deep) copy constructor would be even more work.
 
-The reason |appl| is a static variable is that in case the |resolve_overload|
+The reason |appl| is a static variable is that in case the |convert_expr|
 call above should throw an error, a reference to |*appl| will be stored in the
 |expr_error| object, and it will be caught only after stack unwinding has
 destroyed all local variables of our (recursive) function |convert_expr|; if
@@ -8501,10 +8495,8 @@ case comp_trans_stat:
   expression_ptr ind;
   type_expr ind_t, comp_t;
   subscr_base::sub_type kind;
-  @< Convert |index| to |ind|...
-  @>
-  expression_ptr call =
-    resolve_overload(*appl,fc,comp_t,global_overload_table->variants(op));
+  @< Convert |index| to |ind|... @>
+  expression_ptr call = convert_expr(*appl,fc,comp_t);
 
   expression_ptr result;
   @< If the conditions for an optimised in-place component transformation... @>

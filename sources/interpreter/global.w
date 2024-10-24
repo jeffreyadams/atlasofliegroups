@@ -368,8 +368,8 @@ this condition is provided.
 class overload_table
 {
 public:
-  typedef std::vector<overload_data> variant_list;
-  typedef std::map<id_type,variant_list> map_type;
+  using variant_list = sl_list<overload_data>;
+  using map_type = std::map<id_type,variant_list>;
 private:
   map_type table;
 public:
@@ -377,12 +377,19 @@ public:
   overload_table& operator=(const Id_table&) = delete;
   overload_table() : table() @+{} // the default and only constructor
 @) // accessors
-  const variant_list& variants(id_type id) const;
+  const variant_list* variants(id_type id) const
+  {@; auto p=table.find(id);
+    return p==table.end() ? nullptr : &p->second;
+  }
   const overload_data* entry (id_type id, const type_expr& arg_t) const;
   std::size_t size() const @+{@; return table.size(); }
    // number of distinct identifiers
   void print(std::ostream&) const;
 @) // manipulators
+  variant_list* variants(id_type id)
+  {@; auto p=table.find(id);
+    return p==table.end() ? nullptr : &p->second;
+  }
   void add(id_type id, shared_function v, type&& t);
    // insertion
   bool remove(id_type id, const type_expr& arg_t); //deletion
@@ -400,24 +407,18 @@ create the table.
 @< Global variable definitions @>=
 overload_table* global_overload_table=nullptr;
 
-@ The |variants| method just returns a reference to the found vector of
-overload instances, or else an empty vector. Since it is returned as
-reference, a static empty vector is used to ensure sufficient lifetime.
+@ The |entry| method returns a pointer to the overload instance if |id| for
+arguments of type |arg_t|, or a null pointer if none exists.
 
 @< Global function definitions @>=
-const overload_table::variant_list& overload_table::variants
-  (id_type id) const
-{ static const variant_list empty;
-  auto p=table.find(id);
-  return p==table.end() ? empty : p->second;
-}
 const overload_data* overload_table::entry
   (id_type id, const type_expr& arg_t) const
-{ const variant_list& vars = variants(id);
-  for (auto it=vars.begin(); it!=vars.end(); ++it)
-    if (it->f_tp().arg_type==arg_t)
-      return &*it;
-  return nullptr; // indicate not found
+{ const variant_list* vars = variants(id);
+  if (vars!=nullptr)
+    for (const auto& entry : *vars)
+      if (entry.f_tp().arg_type==arg_t)
+        return &entry;
+  return nullptr; // indicate that |(id,arg_t)| was not found
 }
 
 
@@ -427,47 +428,47 @@ inserted. It may also throw a |program_error| when a conflict is encountered;
 there will be some occasions where testing for conflicts is the only reason we
 call |locate_overload|.
 
-We call |is_close| to do the comparisons; if it returns a nonzero value it
-must be either |0x6|, in which case insertion must be after that entry, or
-|0x5|, in which case insertion must be not before that entry (insertion at
-that spot would push the entry ahead of it). Any place that satisfies these
-restrictions is fine for insertion; we |assert| that such a place is left, and
-in case none of the comparisons came close, we indicate to insert at the end.
+We call |is_close| to do the comparisons. If it returns a nonzero value it must
+be either |0x6|, in which case insertion must be after that entry, or |0x5|, in
+which case insertion must be not after that entry; in that case we opt for
+insertion at the current iterator, which will push the entry ahead of it. In
+case none of the comparisons came close, we indicate to insert at the end.
 
-Mutually convertible types or close but mutually non convertible types are a
-problem, unless the types are actually equal. The problem cases are reported by
-setting the Boolean return component to |true|, while equality of types found
-is indicated by returning the current index with |false|. In either case the
-return is immediate (in the latter case the presence of an identical type in
-the list shows that the remainder of the scan will return no errors).
+Mutually convertible but unequal types, or close but mutually non convertible
+types, are a problem because some (third) actual argument type might be
+convertible to both, and we have no way to prefer one over the other. In such
+cases we refuse to find a place to add the new overload, and |throw| a
+|program_error| instead. The case of an argument type being equal to an existing
+argument type is legal, and will lead to replacing the old definition by the new
+one.
 
 @< Local function... @>=
-std::size_t locate_overload
-  (id_type id,const overload_table::variant_list& slot,const type_expr& arg_type)
-{ std::size_t lwb=0; std::size_t upb=slot.size();
-  for (std::size_t i=0; i<slot.size(); ++i)
-  { unsigned int cmp= is_close(arg_type,slot[i].f_tp().arg_type);
+overload_table::variant_list::iterator locate_overload
+  (id_type id,
+   overload_table::variant_list& slot,
+   const type_expr& arg_type,
+   bool& equal)
+{ equal=false;
+  for (auto it = slot.begin(); not slot.at_end(it); ++it)
+  { unsigned int cmp= is_close(arg_type,it->f_tp().arg_type);
     switch (cmp)
     {
-      case 0x6: lwb=i+1; break;
-        // existent type |i| converts to |type|, which must come later
-      case 0x5: @+ if (upb>i) upb=i; @+ break;
-        // |type| converts to type |i|, so it must come before
+      case 0x6: break;
+        // type at |it| converts to |arg_type| so skip over |it|
+      case 0x5: return it;
+        // |arg_type| can convert to type at |it|, so insert before |it|
       case 0x7: // mutually convertible types, maybe identical ones
-        if (slot[i].f_tp().arg_type==arg_type)
+        if (it->f_tp().arg_type==arg_type)
           // identical ones: overload redefinition case
-            return i;
+          {@; equal=true; return it; }
       @/// |else| {\bf fall through}
       case 0x4:
        @< Throw a |program_error| reporting a conflict of attempted overload
-          for |id| with previous one in |slot[i]| @>
+          for |id| with previous one in |*it| @>
       default: @+{} // nothing for unrelated argument types
     }
   }
-  if (lwb>upb)
-    throw logic_error("Conflicting order of related overload types");
-
-  return upb;
+  return slot.end(); // nothing forcing early insertion was found, so append
 }
 
 @ When we get here the argument types to be added are either mutually
@@ -480,7 +481,7 @@ encountered so that the user will hopefully be able to understand.
 @< Throw a |program_error| reporting a conflict... @>=
 { std::ostringstream o;
   o << "Cannot overload `" << main_hash_table->name_of(id) << "':\n" @|
-       "already overloaded type '" << slot[i].f_tp().arg_type
+       "already overloaded type '" << it->f_tp().arg_type
  @| << "' is too close to new argument type '"@| << arg_type
  @| << "',\nwhich would make overloading ambiguous for certain arguments. " @|
        "Simultaneous\noverloading for these types is not possible, " @|
@@ -516,24 +517,20 @@ void overload_table::add (id_type id, shared_function val, type&& tp)
        previously existing variant @>
 }
 
-@ By calling |locate_overload|, we find out where to insert our new entry, and
-whether that is forbidden due to a conflict with a previously existing entry.
-The case where it is not forbidden actually covers two cases, the usual one
-where the overload is added to the existing ones, and the case where it will
-replace an overload with the same argument type; although the distinction was
-clear inside |locate_overload|, that information was not passed to us. However
-in most cases the fact that |pos| is at the end of |slot|, so does not point at
-any entry, allows us to avoid testing any types again here.
+@ By calling |locate_overload|, we find out where to insert our new entry, while
+throwing an error in cases where there is a conflict with a previously existing
+entry. The call also sets a Boolean value (here call |overwrite|) that tells
+whether an exact match of identifier and argument type was found; if that is the
+case, the iterator returned points at the node to overwrite.
 
 @< Insert an overload for function |val| with function type |ftype|... @>=
 { variant_list& slot=its.first->second; // vector of all variants
-  auto pos=locate_overload(id,slot,ftype.arg_type); // may |throw|
-  if (pos<slot.size() and slot[pos].f_tp().arg_type==ftype.arg_type)
-     // equality found
-    slot[pos] = overload_data(std::move(val),std::move(ftype),tp.degree());
-    // overwrite
+  bool overwrite;
+  auto it=locate_overload(id,slot,ftype.arg_type,overwrite); // may |throw|
+  if (overwrite)     // equality found
+    *it = overload_data(std::move(val),std::move(ftype),tp.degree());
   else
-    slot.emplace(slot.begin()+pos,std::move(val),std::move(ftype),tp.degree());
+    slot.emplace(it,std::move(val),std::move(ftype),tp.degree());
 }
 
 @ The |remove| method allows removing an entry from the overload table, for
@@ -541,17 +538,22 @@ instance to make place for another one. It returns a Boolean telling whether
 any such binding was found (and removed). The |variants| array might become
 empty, but remains present and will be reused upon future additions.
 
+It might be tempting to call |locate_overload| here, but we cannot: that would
+throw an error if |arg_t| were absent but close (in the sense of |is_close|) to
+a type that was present in the table, which would be wrong.
+
 @< Global function def... @>=
 bool overload_table::remove(id_type id, const type_expr& arg_t)
 { map_type::iterator p=table.find(id);
-  if (p==table.end()) return false; // |id| was not known at all
-  variant_list& variants=p->second;
-  for (std::size_t i=0; i<variants.size(); ++i)
-    if (variants[i].f_tp().arg_type==arg_t)
-    @/{@;
-      variants.erase(variants.begin()+i);
-      return true;
-    }
+  if (p==table.end())
+    return false; // |id| was not known at all
+  if (@[variant_list* variants = &p->second@;@])
+    for (auto it = variants->begin(); it!=variants->end(); ++it)
+      if (it->f_tp().arg_type==arg_t)
+      @/{@;
+        variants->erase(it);
+        return true;
+      }
   return false; // |id| was known, but no such overload is present
 }
 
@@ -563,9 +565,9 @@ multiple entries per identifier.
 
 void overload_table::print(std::ostream& out) const
 { for (auto p=table.begin(); p!=table.end(); ++p)
-    for (auto it=p->second.begin(); it!=p->second.end(); ++it)
+    for (const auto& entry : p->second)
       out << main_hash_table->name_of(p->first) << ": " @|
-        << it->f_tp() << ": " << *it->value() << std::endl;
+        << entry.f_tp() << ": " << *entry.value() << std::endl;
 }
 
 std::ostream& operator<< (std::ostream& out, const overload_table& p)
@@ -860,9 +862,11 @@ void definition_group::add(id_type id,type&& tp, bool is_const=false)
     }
 @)
   if (tp.kind()==function_type)
-  { const auto& var=global_overload_table->variants(id);
-    locate_overload(id,var,tp.func()->arg_type);
-    // may |throw|; otherwise ignore result
+  { if (@[auto* var=global_overload_table->variants(id)@;@])
+    { bool dummy;
+      locate_overload(id,*var,tp.func()->arg_type, dummy);
+      // may |throw|; otherwise ignore result
+    }
   }
 @)
   constness.set_to(bindings.size(),is_const);
@@ -1005,12 +1009,13 @@ needs to be done in all cases.
 @< Define auxiliary functions for |do_global_set| @>=
 void add_overload(id_type id, shared_function&& f, type&& tp)
 {
-  auto old_n=global_overload_table->variants(id).size();
+  auto p = global_overload_table->variants(id);
+  auto old_n= p==nullptr ? 0 : p->size();
 @/std::ostringstream type_string;
   type_string << tp; // save type |tp| as string before moving from it
   global_overload_table->add(id,std::move(f),std::move(tp));
     // insert or replace table entry
-  auto n=global_overload_table->variants(id).size();
+  auto n=global_overload_table->variants(id)->size();
   if (n==old_n)
     *output_stream << "Redefined ";
   else if (n==1)
@@ -1511,13 +1516,14 @@ time (with modification) without provoking an error for code that was previously
 accepted.
 
 @< Protest if |id| is currently used as ordinary identifier @>=
-{ const bool p = global_id_table->present(id) and
-                 not global_id_table->is_defined_type(id);
-  if (p or not global_overload_table->variants(id).empty())
+{ const bool pres = global_id_table->present(id) and
+                    not global_id_table->is_defined_type(id);
+  auto q = global_overload_table->variants(id);
+  if (pres or (q!=nullptr and not q->empty()))
   { std::ostringstream o;
     o  << "Cannot define '" << main_hash_table->name_of(id) @|
        << "' as a type; it is in use as " @|
-       << (p? "global variable" : "function");
+       << (pres? "global variable" : "function");
     throw program_error(o.str());
   }
 }
@@ -1799,15 +1805,17 @@ extract the types stored there.
 
 @< Global function definitions @>=
 void show_overloads(id_type id,std::ostream& out)
-{ const overload_table::variant_list& variants =
+{ const overload_table::variant_list* variants =
    global_overload_table->variants(id);
    out
-   << (variants.empty() ? "No overloads for '" : "Overloaded instances of '")
+   << (variants!=nullptr or variants->empty()
+      ? "No overloads for '" : "Overloaded instances of '")
 @| << main_hash_table->name_of(id) << '\'' << std::endl;
- for (std::size_t i=0; i<variants.size(); ++i)
-   out << "  "
-    << variants[i].f_tp().arg_type << "->" << variants[i].f_tp().result_type @|
-    << std::endl;
+  if (variants!=nullptr)
+    for (auto it = variants->begin(); it!=variants->end(); ++it)
+      out << "  "
+          << it->f_tp().arg_type << "->" << it->f_tp().result_type @|
+          << std::endl;
 }
 
 @ The function |show_ids| prints a table of all known identifiers, their
