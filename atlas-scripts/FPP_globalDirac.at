@@ -114,7 +114,7 @@ to record unitary factors.}
 
 {uses LPm_table to keep track of local face info}
 set FPP_unitary_hash_general([(KGBElt,ratvec)] xlambdas, Param_hash Uhash,
-    {Param_hash Uparamhash,} (KGBElt, ratvec,VertexData, LocalVertexData,[[FaceVertsIndex]],
+    {Param_hash Uparamhash,} (KGBElt, ratvec,{VertexData,} LocalVertexData,[[FaceVertsIndex]],
     KTypePol_hash, Param_hash->[Param])
     local) = void:
     let xlambdasW = if R_packet_flag
@@ -191,7 +191,7 @@ set FPP_unitary_hash_general([(KGBElt,ratvec)] xlambdas, Param_hash Uhash,
 			  then face_verbose := old_face_verbose; time_verbose := old_time_verbose;
 			       test_verbose :=old_test_verbose; test_slightly_verbose := old_test_slightly_verbose
 			  fi;
-			  let answer = local(x, lambda, LPm_table.FPP_vertex_data(G) , Lvd, LF, pol_hash, Uhash)
+			  let answer = local(x, lambda, {LPm_table.FPP_vertex_data(G) ,} Lvd, LF, pol_hash, Uhash)
 			  then () = finish(x,lambda)
 			  then () = answerCards[k] := #answer
 			  then () = if Uparamhash_flag
@@ -248,7 +248,7 @@ set FPP_unitary_hash_general([(KGBElt,ratvec)] xlambdas, Param_hash Uhash,
      in ()
 
 set FPP_unitary_hash_general([KGBElt] xs, Param_hash Uhash, {Param_hash Uparamhash,}
-    (KGBElt, ratvec,VertexData,LocalVertexData,[[FaceVertsIndex]],
+    (KGBElt, ratvec,{VertexData,}LocalVertexData,[[FaceVertsIndex]],
     KTypePol_hash, Param_hash->[Param])
     local) = void:
     if #xs = 0
@@ -418,7 +418,7 @@ set FPP_unitary_hash_general([KGBElt] xs, Param_hash Uhash, {Param_hash Uparamha
 				    	 	   test_verbose :=old_test_verbose;
 						   test_slightly_verbose := old_test_slightly_verbose
 				 		   fi;
-				 		   let answer = local(xW, lambdaW, LPm_table.FPP_vertex_data(G),
+				 		   let answer = local(xW, lambdaW, {LPm_table.FPP_vertex_data(G),}
 						       Lvd, LF, pol_hash, Uhash)
 				 		   then () = for p in answer do Uparamhash.match(p) od
 			  	 		   then () = tempanswerCards[index] := #answer
@@ -506,7 +506,7 @@ set FPP_unitary_hash_general([KGBElt] xs, Param_hash Uhash, {Param_hash Uparamha
    fi {#xlambdas = 0}
 
 set FPP_unitary_hash_general(RealForm G,Param_hash Uhash,
-    (KGBElt,ratvec,VertexData,LocalVertexData, [[FaceVertsIndex]],
+    (KGBElt,ratvec,{VertexData,}LocalVertexData, [[FaceVertsIndex]],
     KTypePol_hash, Param_hash->[Param])
     local) = void:
     if is_compact(G)
@@ -519,7 +519,7 @@ set FPP_unitary_hash_general(RealForm G,Param_hash Uhash,
 set FPP_unitary_hash_real_dumb([(KGBElt,ratvec)] xlambdas, Param_hash Uhash{, Param_hash Uparamhash}) = void:
     {let () = real_flag:=true in}
     FPP_unitary_hash_general(xlambdas, Uhash, {Uparamhash,} local_test_GEO_hash_dumb@(
-    KGBElt,ratvec,VertexData,LocalVertexData,{vec,vec,}[[FaceVertsIndex]],
+    KGBElt,ratvec,{VertexData,}LocalVertexData,{vec,vec,}[[FaceVertsIndex]],
     KTypePol_hash, Param_hash))
 
 set FPP_unitary_hash_real_dumb([(KGBElt,ratvec)] xlambdas) = void:
@@ -528,7 +528,7 @@ set FPP_unitary_hash_real_dumb([(KGBElt,ratvec)] xlambdas) = void:
 set FPP_unitary_hash_real_dumb([KGBElt] xs, Param_hash Uhash{, Param_hash Uparamhash}) = void:
     {let () = real_flag:=true in}
     FPP_unitary_hash_general(xs, Uhash, {Uparamhash,} local_test_GEO_hash_real_dumb@(
-    KGBElt,ratvec,VertexData, LocalVertexData,{vec,vec,}[[FaceVertsIndex]],
+    KGBElt,ratvec,{VertexData,} LocalVertexData,{vec,vec,}[[FaceVertsIndex]],
     KTypePol_hash, Param_hash))
 
 set FPP_unitary_hash_real_dumb([KGBElt] xs) = void:
@@ -540,7 +540,7 @@ set FPP_unitary_hash_real_dumb(RealForm G) = void:
 set FPP_unitary_hash_def_dumb([(KGBElt,ratvec)] xlambdas, Param_hash Uhash{, Param_hash Uparamhash}) = void:
     {let () = def_flag:=true then () = real_flag:=false in}
     FPP_unitary_hash_general(xlambdas, Uhash, {Uparamhash,} local_test_GEO_hash_def_dumb@(
-    KGBElt,ratvec,VertexData, LocalVertexData,[[FaceVertsIndex]],
+    KGBElt,ratvec,{VertexData,} LocalVertexData,[[FaceVertsIndex]],
     KTypePol_hash, Param_hash))
 
 set FPP_unitary_hash_def_dumb([(KGBElt,ratvec)] xlambdas) = void:
@@ -549,7 +549,7 @@ set FPP_unitary_hash_def_dumb([(KGBElt,ratvec)] xlambdas) = void:
 set FPP_unitary_hash_def_dumb([KGBElt] xs, Param_hash Uhash{, Param_hash Uparamhash}) = void:
     let () = def_flag:=true then () = real_flag:=false in
     FPP_unitary_hash_general(xs, Uhash, {Uparamhash,} local_test_GEO_hash_def_dumb@(
-    KGBElt,ratvec,VertexData, LocalVertexData,{vec,vec,}[[FaceVertsIndex]],
+    KGBElt,ratvec,{VertexData,} LocalVertexData,{vec,vec,}[[FaceVertsIndex]],
     KTypePol_hash, Param_hash))
 
 set FPP_unitary_hash_def_dumb([KGBElt] xs) = void:
@@ -561,7 +561,7 @@ set FPP_unitary_hash_def_dumb(RealForm G) = void:
 set FPP_unitary_hash_dumb([(KGBElt,ratvec)] xlambdas, Param_hash Uhash{, Param_hash Uparamhash}) = void:
     let () = def_flag:=false then () = real_flag:=false in
     FPP_unitary_hash_general(xlambdas, Uhash{, Uparamhash}, local_test_GEO_hash_dumb@(
-    KGBElt,ratvec,VertexData, LocalVertexData,[[FaceVertsIndex]],
+    KGBElt,ratvec,{VertexData,} LocalVertexData,[[FaceVertsIndex]],
     KTypePol_hash, Param_hash))
 
 set FPP_unitary_hash_dumb([(KGBElt,ratvec)] xlambdas) = void:
@@ -570,7 +570,7 @@ set FPP_unitary_hash_dumb([(KGBElt,ratvec)] xlambdas) = void:
 set FPP_unitary_hash_dumb([KGBElt] xs, Param_hash Uhash{, Param_hash Uparamhash}) = void:
     let () = def_flag:=false then () = real_flag:=false in
     FPP_unitary_hash_general(xs, Uhash, {Uparamhash,} local_test_GEO_hash_dumb@(
-    KGBElt,ratvec,VertexData, LocalVertexData,[[FaceVertsIndex]],
+    KGBElt,ratvec,{VertexData,} LocalVertexData,[[FaceVertsIndex]],
     KTypePol_hash, Param_hash))
 
 set FPP_unitary_hash_dumb([KGBElt] xs) = void:
@@ -581,7 +581,7 @@ set FPP_unitary_hash_dumb(RealForm G) = void:
 
 set FPP_unitary_hash([(KGBElt,ratvec)] xlambdas, Param_hash Uhash{, Param_hash Uparamhash}) = void:
     FPP_unitary_hash_general(xlambdas, Uhash, {Uparamhash,} local_test_GEO_hash@(
-    KGBElt,ratvec,VertexData, LocalVertexData,{vec,vec,}[[FaceVertsIndex]],
+    KGBElt,ratvec,{VertexData,} LocalVertexData,{vec,vec,}[[FaceVertsIndex]],
     KTypePol_hash, Param_hash))
 
 set FPP_unitary_hash([(KGBElt,ratvec)] xlambdas) = void:
@@ -589,7 +589,7 @@ set FPP_unitary_hash([(KGBElt,ratvec)] xlambdas) = void:
 
 set FPP_unitary_hash([KGBElt] xs, Param_hash Uhash{, Param_hash Uparamhash}) = void:
     FPP_unitary_hash_general(xs, Uhash, {Uparamhash,} local_test_GEO_hash@(
-    KGBElt,ratvec,VertexData, LocalVertexData,[[FaceVertsIndex]],
+    KGBElt,ratvec,{VertexData,} LocalVertexData,[[FaceVertsIndex]],
     KTypePol_hash, Param_hash))
 
 set FPP_unitary_hash([KGBElt] xs) = void:
@@ -600,7 +600,7 @@ set FPP_unitary_hash(RealForm G) = void:
 
 set FPP_unitary_hash2([(KGBElt,ratvec)] xlambdas, Param_hash Uhash{, Param_hash Uparamhash}) = void:
     FPP_unitary_hash_general(xlambdas, Uhash, {Uparamhash,} local_test_GEO_hash2@(
-    KGBElt,ratvec,VertexData, LocalVertexData,[[FaceVertsIndex]],
+    KGBElt,ratvec,{VertexData,} LocalVertexData,[[FaceVertsIndex]],
     KTypePol_hash, Param_hash))
 
 set FPP_unitary_hash2([(KGBElt,ratvec)] xlambdas) = void:
@@ -608,7 +608,7 @@ set FPP_unitary_hash2([(KGBElt,ratvec)] xlambdas) = void:
 
 set FPP_unitary_hash2([KGBElt] xs, Param_hash Uhash{, Param_hash Uparamhash}) = void:
     FPP_unitary_hash_general(xs, Uhash, {Uparamhash,} local_test_GEO_hash2@(
-    KGBElt,ratvec,VertexData,LocalVertexData,[[FaceVertsIndex]],
+    KGBElt,ratvec,{VertexData,}LocalVertexData,[[FaceVertsIndex]],
     KTypePol_hash, Param_hash))
 
 set FPP_unitary_hash2([KGBElt] xs) = void:
@@ -619,7 +619,7 @@ set FPP_unitary_hash2(RealForm G) = void:
 
 set FPP_unitary_hash_one_level([(KGBElt,ratvec)] xlambdas, Param_hash Uhash{, Param_hash Uparamhash}) = void:
     FPP_unitary_hash_general(xlambdas, Uhash, {Uparamhash,} local_test_GEO_hash_one_level@(
-    KGBElt,ratvec,VertexData,LocalVertexData,[[FaceVertsIndex]],
+    KGBElt,ratvec,{VertexData,}LocalVertexData,[[FaceVertsIndex]],
     KTypePol_hash, Param_hash))
 
 set FPP_unitary_hash_one_level([(KGBElt,ratvec)] xlambdas) = void:
@@ -627,7 +627,7 @@ set FPP_unitary_hash_one_level([(KGBElt,ratvec)] xlambdas) = void:
 
 set FPP_unitary_hash_one_level([KGBElt] xs, Param_hash Uhash{, Param_hash Uparamhash}) = void:
     FPP_unitary_hash_general(xs, Uhash, {Uparamhash,} local_test_GEO_hash_one_level@(
-    KGBElt,ratvec,VertexData, LocalVertexData,[[FaceVertsIndex]],
+    KGBElt,ratvec,{VertexData,} LocalVertexData,[[FaceVertsIndex]],
     KTypePol_hash, Param_hash))
 
 set FPP_unitary_hash_one_level([KGBElt] xs) = void:
@@ -733,7 +733,7 @@ set FPP_unitary_hash_bottom_layer([(KGBElt,ratvec)] xlambdas, Param_hash UhashG{
 			      test_verbose :=old_test_verbose; test_slightly_verbose := old_test_slightly_verbose
 			 fi;
 			 let answer = local_test_GEO_hash_bottom_layer(x_sc, lambda_sc,
-			     LPm_table.FPP_vertex_data(Gsc), Lvd, LF, pol_hash, Uhash)
+			     {LPm_table.FPP_vertex_data(Gsc),} Lvd, LF, pol_hash, Uhash)
 			 then () = finish(x_sc, lambda_sc)
 			 then () = if disconn_flag
 			      	   then finish(x,lambda)
@@ -981,7 +981,7 @@ set FPP_unitary_hash_bottom_layer([KGBElt] xs, Param_hash UhashG{, Param_hash Up
 					 	      old_test_slightly_verbose
 			       fi;
 			       let answer = local_test_GEO_hash_bottom_layer(x_sc, M*lambda,
-			       	   	    LPm_table.FPP_vertex_data(Gsc), Lvd, LF, pol_hash, Uhash)
+			       	   	    {LPm_table.FPP_vertex_data(Gsc),} Lvd, LF, pol_hash, Uhash)
 			       then y_scs = isotwistKGBs(x_sc)
 			       then () = for y_sc in y_scs
 					 do finish(y_sc,M*lambda)

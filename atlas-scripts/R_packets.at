@@ -88,7 +88,7 @@ set up_complex(KGBElt x, ratvec lambda) = (KGBElt, ratvec):
     in (x1,parameter(x1,lambda1,0*lambda1).lambda)
 
 set *(WeylElt w, LocalVertexData (list,lookup,prstart)) = LocalVertexData:
-    let new_list = for v in list do w*v od
+    let new_list = for v in list do (w.inverse)*v od
     in (new_list, index_in(new_list), prstart)
 
 set simple_complex(KGBElt x) = [int]:
@@ -222,9 +222,9 @@ set concatenate([(WeylElt, (LocalVertexData, [[vec]]))] local01) = (LocalVertexD
 	      	    do vert_hash.match(v)
 		    od
 		 od
-    then () = prints(perms)
+    {then () = prints(perms)}
     then big_list = vert_hash.list()
-    then () = prints(big_list)
+    {then () = prints(big_list)}
     then big_Lvd = to_vertex_data(big_list,#big_list)
     then big_LF = for d:2
     	 	  do for (,(,LF))@i in local01
@@ -237,6 +237,42 @@ set concatenate([(WeylElt, (LocalVertexData, [[vec]]))] local01) = (LocalVertexD
 		   od {d = 0, 1}
     in (big_Lvd, big_LF)
 
+set blob_data(KGBElt x, ratvec lambda) = (LocalVertexData, [[vec]]):
+    concatenate(wLFs(x,lambda))
+
+set pol_hash = make_KTypePol_hash()
+
+set FPP_unitary_hash_blob(KGBElt x, ratvec lambda) = void:
+    if is_finished(x,lambda) then return () fi;
+    let xls = for (,y,tau) in blobwxl(x,lambda) do (y,tau) od
+    {then () = if all(for (y,tau) in xls do is_finished(y,tau) od)
+    	      then return ()
+	      fi}
+    then  (catLvd, catLFs) = blob_data(x,lambda)
+    then Ps = local_test_GEO_hash2(x,lambda,catLvd,catLFs,pol_hash,
+    	      big_unitary_hash.uhash(x.real_form))
+    in for (y,tau) in xls do finish(y,tau) od
+
+set FPP_unitary_hash_blob(RealForm G) = void:
+    let start = elapsed_ms()
+    then () = test_verbose:=false
+    then () = test_slightly_verbose:=false
+    then () = time_verbose:=false
+    then oldUcounter = unitary_test_counter.use_count()
+    then () = unitaryTime:=0
+    then () = unipotents_to_hash(G,big_unitary_hash.uhash(G))
+    then () = for x in KGB(G)
+    	      do if (x.number)%100 = 0 then prints("starting KGBElt ",x.number) fi;
+	      	 for lambda in FPP_lambdas(x)
+       	      	 do FPP_unitary_hash_blob(x, lambda)
+       		 od
+     	      od
+    in prints("number of unitary faces = ", big_unitary_hash.uhash(G).size(), ", in time ",
+              print_time_string(elapsed_ms() - start));
+       prints(" time spent in is_unitary = ",print_time_string(unitaryTime),
+              ", number of unitarity tests = ", unitary_test_counter.use_count() - oldUcounter)
+
+{set FPP_blob(KGBElt x, ratvec lambda)) =   }
 {
 > xlambdaE8q40000.at write_vecs(xlambdas, "xlambdas")
 

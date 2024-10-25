@@ -140,10 +140,10 @@ gives only 3 elts of vlistAct: need to get rid of 3 repetitions.
 parameter(x,lambda,v) (v in Lvd.list) may NOT be hermitian in unequal rank.}
 
 set localFD_Lvd2 \
-  (InnerClass ic, mat theta, ratvec lambda, VertexData vd, [(ratvec->int)] edge_lookups) =
+  (InnerClass ic, mat theta, ratvec lambda, {VertexData vd,} [(ratvec->int)] edge_lookups) =
   (LocalVertexData, PermOrderTwo, vec):
-(   let Perm2 = thetaAct2(ic, theta, lambda, vd, edge_lookups)
-    then vlist = vd.list
+(   let Perm2 = thetaAct2(ic, theta, lambda, {vd,} edge_lookups)
+    then vlist = {vd.list}FPP_vertices(ic)
     then vlistAct = [ratvec]:
     	 for i in Perm2.fixed do vlist[i] od ##
 	 for (i,j) in Perm2.trans do (vlist[i] + vlist[j])/2 od
@@ -159,14 +159,14 @@ set localFD_Lvd2 \
 )
 
 set localFD_Lvd2 \
-  ( KGBElt x, ratvec lambda, VertexData vd, [(ratvec->int)] edge_lookups) =
-  localFD_Lvd2(x.inner_class, x.involution, lambda, vd, edge_lookups)
+  ( KGBElt x, ratvec lambda, {VertexData vd,} [(ratvec->int)] edge_lookups) =
+  localFD_Lvd2(x.inner_class, x.involution, lambda, {vd,} edge_lookups)
 
 set localFD_Lvd2 \
-  ( mat theta, ratvec lambda, VertexData vd, (vec->int) FlippedEdgeLookup) =
+  ( InnerClass ic, mat theta, ratvec lambda, {VertexData vd,} (vec->int) FlippedEdgeLookup) =
   (LocalVertexData, PermOrderTwo, vec):
-(   let start = elapsed_ms(), Perm2 = thetaAct2(theta, lambda, vd, FlippedEdgeLookup)
-    then vlist = vd.list
+(   let start = elapsed_ms(), Perm2 = thetaAct2(ic, theta, lambda, {vd,} FlippedEdgeLookup)
+    then vlist = {vd.list} FPP_vertices(ic)
     then vlistAct = [ratvec]:
     	 for i in Perm2.fixed do vlist[i] od ##
 	 for (i,j) in Perm2.trans
@@ -186,8 +186,8 @@ set localFD_Lvd2 \
 )
 
 set localFD_Lvd2 \
-  (KGBElt x, ratvec lambda, VertexData vd, (vec->int) FlippedEdgeLookup) = (LocalVertexData, PermOrderTwo, vec):
-  localFD_Lvd2(x.involution, lambda, vd, FlippedEdgeLookup)
+  (KGBElt x, ratvec lambda, {VertexData vd,} (vec->int) FlippedEdgeLookup) = (LocalVertexData, PermOrderTwo, vec):
+  localFD_Lvd2(x.inner_class, x.involution, lambda, {vd,} FlippedEdgeLookup)
 
 set FD12Time = int: 0
 
@@ -1521,8 +1521,9 @@ set is_finished(KGBElt x, ratvec lambda) = bool:
     {then () = prints("Mx_known = ",Mx_known,", Mx_partial = ",Mx_partial,", M = ",M)}
     then answer = if is_member_bitset(x.number,Mx_known)
     	 	  then true
-		  elif is_member_bitset(x.number,Mx_partial)
-		  then is_member_bitset(position(x,lambda),M)
+		  elif {is_member_bitset(x.number,Mx_partial)
+		  then} is_member_bitset(position(x,lambda),M)
+		  then true
 		  else false
 		  fi
     then () = is_finished_time +:= elapsed_ms() - start
