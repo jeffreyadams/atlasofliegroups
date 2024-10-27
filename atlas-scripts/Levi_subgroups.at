@@ -93,7 +93,7 @@ set right_act([int] Levi,WeylElt w) = int: { encode |w^-1*Levi| as a number }
 
 { the following function facilitates identifying all Levi subgroups conjugate to
   |standard_Levi|, by providing a full list of those (non standard) Levi
-  subgroups whose $2]rho$-value is dominant, with witnesses conjugating them
+  subgroups whose $2\rho$-value is dominant, with witnesses conjugating them
   back to |standard_Levi|; in other words it returns a list of |(L,w)| where
   |two_rho(L)=dominant(two_rho(standard_Levi)) and |L=w*standard_Levi| (but with
   |L| encoded as an integer, so these are not actually valid expressions).
