@@ -21,6 +21,7 @@
 
 \def\emph#1{{\it#1\/}}
 \def\foreign#1{{\sl#1\/}}
+\def\axis.{\.{axis}}
 
 @* Outline.
 %
@@ -85,7 +86,7 @@ namespace {@;
 
 @ The parser produces a parse tree, in the form of a value of type |expr|
 defined in the unit \.{parsetree}. The task of the evaluator (defined largely in
-the \.{axis} compilation unit) is to take such an expression, analyse it and
+the \.{axis.w} compilation unit) is to take such an expression, analyse it and
 then evaluate it to obtain a value. At various points errors can occur, which we
 shall have to handle gracefully: during the analysis static ``type'' errors may
 prevent us from undertaking any meaningful action, and in absence of such errors
@@ -2313,39 +2314,53 @@ bool is_free_in(const type_expr& tp, unsigned int nr,
 
 @*1 Wrapped up polymorphic types.
 %
-For a long type the recursive class |type_expr| served directly in the type
-analysis routines, as something that can be used either the represent the actual
-type of an expression or a pattern that we want such types to conform to at some
-point in the processing; for instance when processing a function call we want
-the function part to have a type matching the pattern \.{(*->*)}, but at that
-point this is not the type of an expression. With the advent of second order
-types, we want to make a distinction between patterns and polymorphic types,
-where the latter may not contain undetermined subexpressions but it may contain
-type variables, they can be used as the type of concrete expressions, and they
-carry some information about their own degree of polymorphism. To delineate the
-distinction between the two uses more clearly, we define a new class that wraps
-around |type_expr|, and provides data and methods to help administrate
-polymorphic types. For instance, a local variable that gets initialised to an
-empty list initially will have a polymorphic list type, but uses of that
-variable can lead it to be unified with types associated to uses of the
-variable, which should be done by methods specialising the type explicitly,
-rather than as a side effect of passing certain type subexpressions to certain
-functions like |conform_types|.
+For a long type the recursive class |type_expr| was used both to represent a
+pattern that the context expects for the type of an expression (for
+instance \.{(*->*)} for the function part in a call expression), filled in
+during type analysis, and the final type of an expression or ascribed to a
+variable. With the advent of second order types, we make a distinction between
+patterns and polymorphic types: the latter may not contain undetermined
+subexpressions but it may contain free type variables. To mark the distinction,
+we define a new class |type| that wraps around |type_expr|, and provides data
+and methods to help administrate polymorphic types. Polymorphic types serve
+mainly for generic functions, but also clarify the situation of empty list
+displays, whose type is analysed as \.{[*]} and when consolidated become the
+polymorphic type \.{[A]}.
 
-Introducing this type will shake up a lot of the code of type analysis, whose
-logic is currently dependent (it seems) on the possibility to modify types
-indirectly by modifying (by specialisation) objects that were extracted from
-them as sub-types. By wrapping |type_expr| into a new class |type|, this will be
-harder to realise; maybe this provokes a cleaner set-up where the flow of
-information is more explicit.
+If a |type_expr| contains any type variables, these must be type indeterminates
+introduced in the context and should not be substituted for at this point. By
+contrast, the |type| of an expression once consolidated, or of an identifier,
+can be polymorphic. It can still have ``fixed'' type variables, introduced as
+indeterminate in the context, but type variables numbered beyond a limit
+recorded in the type are considered ``free'': they are implicitly universally
+quantified, and they can be substituted for in a process called unification.
+When exiting a type abstraction expression, in which indeterminate type names
+were locally introduced, any such variables occurring in the type of the
+expression become free type variables.
 
-The best definition of this new class |type| will depend much upon its actual
-usage. We need at least an indication of the number of free type variables bound
-in the current type, but to make substitution easier to handle, we can instead
-store a |type_assignment| structure, in which the free variables are the ones
-with a null equivalent (the other ones will have been substituted for by some
-previous operation). We shall add methods as convenient for making the change
-from |type_expr| to |type|.
+To make a clear separation between |type_expr| and |type|, were arrange that no
+context can ever require a polymorphic type. One cannot write a polymorphic type
+in a cast (but one can use any indeterminate types that are in scope), and
+whenever an identifier gets a polymorphic type, the identifier implicitly gets
+the constant attribute, thus forbidding the possibility of any assignment to
+them: that would for its right hand side create a context requiring value of
+(sufficiently) polymorphic type to replace the initial value.
+
+Using the recursive type |type_expr| to represent type requirements from the
+context has the advantage that we can easily pass component types to the type
+checking of subexpressions. Polymorphic types arise in type checking in recorded
+types of identifiers and functions. As they are most often function types, the
+main \emph{use} of polymorphism and unification occurs in resolving function
+overloading, but it may also occur whenever a previously determined type is
+used, unifying it to the type actually used in the instance.
+
+The main information added by a |type| to the |type_expr| it contains, is the
+range of free type variable numbers. This is contained in a |type_assignment|
+field, which provides |var_start| as the lower bound of the range, of its
+|equiv| table for the size of the range. At the same time that table allows
+(optionally and temporarily) recording assignments to the variables in the
+range, which simplifies the unification process (the type variables with a type
+assigned to them are then neither indeterminate nor free in the type).
 
 @< Type definitions @>=
 class type
@@ -2401,6 +2416,7 @@ unsigned int floor () const @+{@; return a.var_start; }
 unsigned int degree() const @+{@; return a.equiv.size(); }
 unsigned int ceil() const @+{@; return floor()+degree(); }
   // start disjoint type variables here
+bool is_polymorphic() const @+{ return degree()>0; }
 const type_expr& unwrap() const @+{@; return te ; }
 bool operator ==(const type& other) @+{@; return bake()==other.bake(); }
 bool operator !=(const type& other) @+{@; return not operator==(other); }
@@ -2650,19 +2666,21 @@ type_expr shift
 }
 
 @ The method |matches| is typically called with as our type the type of an
-(argument) expression, and as |formal| a type specification using |n| type
-variables. Any type variables of |formal| must start at our |floor()|, so it is
-the caller's responsibility to do any necessary renumbering. The task of this
-method is similar to that of |formal.specialise|, but instead of filling
-undetermined slots, we are deducing assignments to the free type variables in
-|formal|, which are then (opportunistically) stored in the |type_assignment|
-field of |*this|. We assume the caller has cleared all our previous type
-assignments, so we have a clean slate of |degree()| type variables. Since we are
-calling |can_unify| we must first make the sets of type variables disjoint,
-which we do by shifting up our own type variables (into a separate |type_expr|);
-it is important that we do not renumber the free variables of |formal|, since
-the caller will probably use are type assignment to substitute into it and
-related types.
+(argument) expression, and as |f_par_tp| the parameter part of a function type.
+Both our (actual argument) type and the function type can be polymorphic; our
+type stores its own polymorphic |degree()|, while for the function type the
+degree is passed as a separate argument |f_deg|. Any type variables of
+|f_par_tp| must start at our |floor()|, so it is the caller's responsibility to
+do any necessary renumbering. The task of this method is similar to that of
+|f_par_tp.specialise|, but instead of filling undetermined slots, we are
+deducing assignments to the free type variables in |f_par_tp|, which are then
+(opportunistically) stored in the |type_assignment| field of |*this|. We assume
+the caller has cleared all our previous type assignments, so we have a clean
+slate of |degree()| type variables. Since we are calling |can_unify| we must
+first make the sets of type variables disjoint, which we do by shifting up our
+own type variables (into a separate |type_expr|); it is important that we do not
+renumber the free variables of |f_par_tp|, since the caller will probably use
+are type assignment to substitute into it and the function result type.
 
 The method |record_match| has a different purpose: here the unification of our
 sub-expression |sub_t| against a type |other| is done, with any necessary type
@@ -2673,13 +2691,13 @@ assignments can then serve to correspondingly substitute into the return type.
 
 @< Function definitions @>=
 
-bool type::matches (const type_expr& formal, unsigned int n)
+bool type::matches (const type_expr& f_par_tp, unsigned int f_deg)
 {
   const auto d = degree(), start=floor();
-  a.grow(n); // create space for new type variables
-  if (d==0 or n==0) // then no need to renumber |other|
-    return can_unify(formal,te,a);
-  return can_unify(formal,shift(te,start,n),a);
+  a.grow(f_deg); // create space for new type variables
+  if (d==0 or f_deg==0) // then no need to renumber our |te|
+    return can_unify(f_par_tp,te,a);
+  return can_unify(f_par_tp,shift(te,start,f_deg),a);
 }
 @)
 bool type::record_match (const type_expr& sub_t, type& other)
@@ -2768,7 +2786,7 @@ type mk_type(const char* s);
 @ The task of converting a properly formatted string into a type is one of
 parsing a simple kind of expressions. The strings used here come from string
 denotations in the source code (mostly in calls installing built-in functions
-into \.{axis}) rather than from user input, and we are not going to write
+into \axis.) rather than from user input, and we are not going to write
 incorrect strings (we hope). Therefore we don't care if the error handling is
 crude here. The simplest way of parsing ``by hand'' is recursive descent, so
 that is what we shall use. By passing a character pointer by reference, we
@@ -3353,7 +3371,7 @@ destruction of frames once inaccessible is automatic.
 @s back_insert_iterator vector
 
 @< Type definitions @>=
-typedef std::shared_ptr<class evaluation_context> shared_context;
+using shared_context = std::shared_ptr<class evaluation_context>;
 class evaluation_context
 { shared_context next;
   std::vector<shared_value> frame;
@@ -3672,7 +3690,7 @@ template <typename D> // |D| is a type derived from |value_base|
 #endif
 }
 
-@ The \.{axis} language allows assignment operations to components of aggregates
+@ The \axis. language allows assignment operations to components of aggregates
 (such as rows, matrices, strings, tuples), which in fact assign a new value to
 the name bound to the aggregate. Since we implement copy-on-write, this should
 in principle make a copy of the aggregate before modifying the component, but
@@ -3919,7 +3937,7 @@ signalled as an error in such cases.
 
 At runtime an implicit conversion is essentially a function call, so we catch an
 re-throw errors after adding a line of back-tracing information, similarly to
-what we shall do for function calls (as implemented in the \.{axis} module).
+what we shall do for function calls (as implemented in the \.{axis.w} module).
 This only applies to errors that occur during attempted conversion, not those
 that might occur during the evaluation of |exp|, so the |try| block below
 limited to the conversion call itself.
@@ -3958,17 +3976,17 @@ catch (error_base& e)
 @*1 Coercion of types.
 %
 An important aspect of automatic conversions is that they can be applied in
-situations where the result type and only part of the source type is known:
-for instance one can be inserted when a list display occurs in a context
-requiring a vector, because no row type equals the (primitive) vector type.
-While this use requires particular consideration according to the syntactic
-form of the expression (list display), there is also a simpler form of
-automatic conversion that can be applied to a large variety of expressions
-(identifiers, function calls, \dots) whenever they are found to have a
-different type from what the context requires. The function |coerce| will
-try to insert an automatic conversion in such situations, if this can resolve
-the type conflict. We present this mechanism first, since the table it employs
-can then be re-used to handle the more subtle cases of automatic conversions.
+situations where the result type and only part of the source type is known: for
+instance one can be inserted when a list display occurs in a context requiring a
+vector, because no row type equals the (primitive) vector type. While this use
+requires particular consideration according to the syntactic form of the
+expression (here a list display), there is also a simpler form of automatic
+conversion that can be applied to a large variety of expressions (identifiers,
+function calls, \dots) whenever they are found to have a different type from
+what the context requires. The function |coerce| will try to insert an automatic
+conversion in such situations, if this can resolve the type conflict. We present
+this mechanism first, since the table it employs can then be re-used to handle
+the more subtle cases of automatic conversions.
 
 @ The implementation of |coerce| will be determined by a simple table lookup.
 The records in this table contain a |conversion_info| structure (in fact they
@@ -4008,12 +4026,11 @@ void coercion(const type_expr& from,
 
 @ There is one coercion that is not stored in the lookup table, since it can
 operate on any input type: the ``voiding'' coercion. It can be applied during
-type analysis to for instance to allow a conditional expression in a void
-context to have branches that evaluate to different types (including the
-possibility of absent branches which will be taken to deliver an empty tuple):
-those branches which do not already have void type will get their resulting
-value voided, so that in the end all branches share the void type of the
-entire conditional.
+type analysis, for instance to allow a conditional expression in a void context
+to have branches that evaluate to different types (including the possibility of
+absent branches which will be taken to deliver an empty tuple): those branches
+which do not already have void type will get their resulting value voided, so
+that in the end all branches share the void type of the entire conditional.
 
 At runtime, voiding is mostly taken care of by the |level| argument~|l| passed
 around in the evaluation mechanism. Any subexpressions with imposed void type,
@@ -4025,14 +4042,14 @@ conditional, so nothing special needs to be done to ensure that branches which
 originally had non-void type get voided. However, there are some rare cases
 where the void type does not derive from the syntactic nature of the context,
 such as in the right hand side of an assignment to a variable that happens to
-have |void| type (a quite useless but valid operation). In these cases the
+have |void| type (a quite useless possibility, but valid). In these cases the
 type analysis will have to explicitly insert a mechanism to avoid a value to
 be produced (and in the example, assigned) where none was intended.
 
 The |voiding| expression type serves that purpose. It distinguishes itself
 from instances of |conversion|, in that |voiding::evaluate| calls |evaluate|
 for the contained expression with |l==level::no_value|, rather than with
-|l==single_value| as |conversion::evaluate| does. If fact that is about all
+|l==single_value| as |conversion::evaluate| does. In fact, that is about all
 that |voiding| is about.
 
 @< Type definitions @>=
@@ -4044,17 +4061,18 @@ public:
   virtual void print(std::ostream& out) const;
 };
 
-@ The |voiding::evaluate| method should not ignore its own |level| argument
-completely: when called with |l==single_value|, an actual empty tuple should
-be produced on the stack, which |wrap_tuple<0>()| does. There is no need
-contribute back-tracing information about the voiding in case of an error at
-runtime, since the voiding conversion itself cannot fail; indeed, with
-production of a value to be voided being avoided upstream, it is a no-op.
+@ As mentioned, the main point of the |voiding::evaluate| method is that is
+calls |void_eval|, which passes |level::no_value| regardless of the |level|
+argument it was itself called with. Nonetheless it should not ignore that
+argument completely: when called with |l==single_value|, an actual empty tuple
+should be produced on the stack, which |wrap_tuple<0>()| does. There is no need
+to contribute back-tracing information about the voiding in case of an error at
+runtime, since the voiding conversion itself cannot fail.
 
 
 @< Function definitions @>=
 void voiding::evaluate(level l) const
-@+{@; exp->void_eval();
+{@; exp->void_eval();
   if (l==level::single_value)
     wrap_tuple<0>();
 }
@@ -4065,12 +4083,14 @@ void voiding::print(std::ostream& out) const
 
 @ The function |coerce| simply traverses the |coerce_table| looking for an
 appropriate entry, and wraps |e| into a corresponding |conversion| if it finds
-one by calling the |do_conversion| function. The call of this function defined
-in the unit~\.{axis.w} that deals with actual compilation and execution is
-justified by the fact that when applied to a constant argument value, the value
-conversion will actually be performed on the value rather than wrapped in a
-|conversion| structure. We also define a variant function |coercible| that
-just evaluates the condition, omitting any action.
+one by calling the |do_conversion| function. Relegating this to a function
+defined in the compilation unit~\.{axis.w} (which deals with actual compilation
+and execution) is justified by the fact that when applied to a constant argument
+value, the value conversion will actually be performed on the value rather than
+wrapped in a |conversion| structure (constant folding); therefore this
+functionality is not as expression-unaware as the |coerce| function used to be.
+We also define a variant function |coercible| that just evaluates the condition,
+omitting any action.
 
 When |to_type==void_type|, the conversion always succeeds, as the syntactic
 voiding coercion is allowed in all places where |coerce| is called. We now
@@ -4099,10 +4119,10 @@ bool coerce(const type_expr& from_type, const type_expr& to_type,
   {@;
      return true;
   } // syntactically voided here, |e| is unchanged
-  for (auto it=coerce_table.begin(); it!=coerce_table.end(); ++it)
-    if (from_type==*it->from and to_type==*it->to)
-    {@;
-      do_conversion(e,*it,loc);
+  for (const auto& entry : coerce_table)
+    if (from_type==*entry.from and to_type==*entry.to)
+    @/{@;
+      do_conversion(e,entry,loc);
       return true;
     }
   return false;
@@ -4110,7 +4130,7 @@ bool coerce(const type_expr& from_type, const type_expr& to_type,
 @)
 bool coercible(const type_expr& from_type, const type_expr& to_type)
 { auto match = @[ [&from_type,&to_type]
-     (const conversion_record& cr)
+    @/(const conversion_record& cr)
      {@; return from_type==*cr.from and to_type==*cr.to; } @];
   return to_type==void_type or
     std::any_of(coerce_table.begin(), coerce_table.end(), match);
@@ -4205,13 +4225,36 @@ possibly a second time with a selected overload in the context of the required
 operand type (if different from the \foreign{a priori} type), with the
 occasion to insert coercions as needed.
 
-Our rules for coercions and overloading will be governed by a single relation
-|is_close| between pairs of (argument) types: its resulting value (a small
-integer) will tell both whether for a given \foreign{a priori} type another
-(operand) type provides a viable candidate, and whether two types can coexist
-as operand types for a same overloaded operator or function. (Multiple
-operands or arguments are considered as one argument with the tuple type
-formed from their individual types.)
+Our rules for coercions and overloading will be governed by a function
+|is_close| computing several relations between pairs of (argument) types; its
+resulting value, a small integer, encodes these in separate bits. These tell
+whether for a given \foreign{a priori} type another (operand) type provides a
+viable candidate, and whether two types can coexist as operand types for a same
+overloaded operator or function. (Multiple operands or arguments are considered
+as one argument with the tuple type formed from their individual types.)
+
+It may be noted that this function was not changed by the introduction of second
+order types into the \axis. language. Making a substitution for a free type
+variable, thus producing a less general type, is similar to coercion in that it
+changes the type of an expression, and is a conversion that, amongst other uses,
+can be applied to the operand/argument expression in a formula or call. It does
+not involve any run-time action though, and the reason that this kind of
+conversion is not taken into account in |is_close| is that in operator
+overloading they are treated as producing exact matches, unlike actual type
+coercions. The rules for exact matches are that in concrete instances there must
+be one exact match among all overloaded variants, which means that while
+introducing those variants we do not have to worry about the \emph{potential}
+for such ambiguities, where we do for coercions.
+
+There are only two uses of |is_close| from outside this \.{axis-types.w} module:
+in the interpreter it is used to identify overloaded variants that might provide
+an inexact match if no exact matches were found, and when adding overloads to
+the table it is used to order overloaded definitions so that the more
+restrictive ones are tested before ones that would accept a superset of
+potential arguments; in the latter use it also helps to detect (and reject)
+conflicting overloads that could otherwise allow ambiguous inexact call
+expressions. However, |is_close| is also used below in the definition of the
+|broader_eq| relation.
 
 @< Declarations of exported functions @>=
 unsigned int is_close (const type_expr& x, const type_expr& y);
@@ -4257,26 +4300,21 @@ required argument type; this provides us with an opportunity to adjust rules
 for possible type conversions of arguments at the same time as defining the
 exclusion rules.
 
-Empty row displays, or more precisely arguments of type~\.{[*]}, pose a
-difficulty: they would be valid in any context requiring a specific row type,
-so if we stipulated that one may write \.{[]} to designate an empty row
-operand of any row type, then |is_close| would have to consider all row types
-close to each other (and therefore mutually exclusive for overloading). This
-used to be the convention adopted, but it was found to be rather restrictive
-in use, so the rules were changed to state that an un-cast expression \.{[]}
-will not match overload instances of specific row types; it might match an
-parameter of specified type \.{[*]} (we allow that as type specification for
-function parameters), and such a parameter can \emph{only} take an empty
-list corresponding argument (this is very limiting of course, but it allows
-being explicit about which overloaded instance should be selected by an
-argument \.{[]}, by defining an overload for \.{[*]} that explicitly calls
-the one for say \.{[vec]}).
+We used to worry here about arguments written as empty row display \.{[]}, as it
+would be convertible to any row type and therefore make any two concrete row
+types incompatible as argument types of same overloaded function, because their
+presence allows an ambiguous call. However, now that we use polymorphic types
+the empty row display gets the polymorphic type~\.{[A]}, which (like any
+polymorphic type) never plays a role in type coercion; it can therefore only
+ever give an exact type match, and if in a concrete call it gives more than one
+match, that call will be forbidden by the rule that exact matches must be
+unique.
 
-These considerations are not limited to empty lists (although it is the most
-common case): whenever an expression has an \foreign{a priori} type
-containing \.*, that expression will not select any overload with a concrete
-type in its place (overloading does not perform type specialisation).
-
+In short, there is nothing involving polymorphic types for |is_close| to
+worry about. In fact in all cases the arguments types will both be extracted
+from a |type| values (which means |is_unstable| cannot hold for them: one does
+not need to worry about undetermined components either), which types
+moreover have been tested to be monomorphic.
 
 @ So here is the (recursive) definition of the relation |is_close|. Equal types
 are always close, while undetermined types are not convertible to any other

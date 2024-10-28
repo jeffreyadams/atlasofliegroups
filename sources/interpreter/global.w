@@ -669,14 +669,20 @@ This section will be devoted to some interactions between user and program
 that do not consist just of evaluating expressions.
 
 The function |global_set_identifier| handles introducing identifiers, either
-normal ones or overloaded instances of functions, using the \&{set} syntax. It
-has a variant for multiple declarations |global_set_identifiers|. The function
-|global_declare_identifier| just introduces an identifier into the global
-(non-overloaded) table with a definite type, but does not provide a value (it
-will then have to be assigned to before it can be validly used). Conversely
-|global_forget_identifier| removes an identifier from the global table. The
-function |type_define_identifier| will define an identifier as an abbreviation
-of a type expression. The last three functions serve to provide the user with
+normal ones (for non-functions) or overloaded instances of functions, using
+the \&{set} syntax. It has a variant for multiple, grouped, declarations
+|global_set_identifiers|. The function |global_declare_identifier| just
+introduces an identifier into the global (non-overloaded) table with a definite
+type, but does not provide a value (it will then have to be assigned to before
+it can be validly used). Conversely |global_forget_identifier| removes an
+identifier from the global table. The function |type_define_identifier| will
+define an identifier as an abbreviation of a type expression, while
+|process_type_definition| handles the more heavy-weight introduction of new type
+identifiers in a group, which may introduce recursive types that could not
+otherwise be written, and projector and injector functions with a special status
+relative to the types they relate to. The function |set_back_trace| is used in
+error handlers to transmit to the user information of the context in which the
+error occurred. The last four functions serve to provide the user with
 information about the state of the global tables (but invoking |type_of_expr|
 will actually go through the full type analysis and conversion process).
 
@@ -741,12 +747,14 @@ sometimes forbids or requires a definition to the overload table; the argument
 |overload| specifies the options permitted ($0$ means no overloading, $2$
 requires overloading, and $1$ allows both).
 
-The local function |do_global_set| defined below does most of the work for the
-``global set'' twins, for all the syntactic variations allowed. All that happens
-here is preparing an |id_pat| and an |expr|, either by wrapping the given
-arguments in non-raw types, or by calling |zip_decls| (defined in the
-module \.{parsetree.w}) to split a list of declarations into a pattern part and
-an expression part, the same work that it does for \&{let} expressions.
+The local function |do_global_set| (to be defined below) does most of the work
+for the ``global set'' twins, for all the syntactic variations allowed. The
+first argument of |do_global_set| is passed by rvalue reference, and we pass
+ownership of the identifier pattern to it in the call. All that happens here is
+preparing an |id_pat| and an |expr|, either by wrapping the given arguments in
+non-raw types, or by calling |zip_decls| (defined in the module \.{parsetree.w})
+to split a list of declarations into a pattern part and an expression part, the
+same work that it does for \&{let} expressions.
 
 @< Global function definitions @>=
 void global_set_identifier(const raw_id_pat &raw_pat, expr_p raw, int overload,
@@ -762,17 +770,17 @@ void global_set_identifiers(raw_let_list d,const source_location& loc)
 
 @*2 Grouping identifiers for simultaneous definition.
 %
-While local identifier definitions proceed in nested lexical groupings that
-are implemented using the |layer| class defined in the \.{axis} module, global
+While local identifier definitions proceed in nested lexical groupings that are
+implemented using the |layer| class defined in the \.{axis.w} module, global
 definitions do not occur in a nested fashion. Nevertheless there can be
-definitions of multiple identifiers in the same command, which we want to
-treat as a whole (for instance rejecting the whole command if any of the
-definitions it contains was going to cause a problem). It used to be the case
-that the |layer| class was used to group definitions in some cases, but while
-it worked, this was contrary to the spirit of that class, whose main purpose
-remained unused, namely temporarily altering the context in which
-|convert_expr| takes place. We shall now define an alternative class to use in
-its place, geared directly to the situation of global definitions.
+definitions of multiple identifiers in the same command, which we want to treat
+as a whole (for instance rejecting the whole command if any of the definitions
+it contains was going to cause a problem). It used to be the case that the
+|layer| class was used to group definitions in some cases, but while it worked,
+this was contrary to the spirit of that class, whose main purpose remained
+unused, namely temporarily altering the context in which |convert_expr| takes
+place. We shall now define an alternative class |definition_group| to use in its
+place, geared directly to the situation of global definitions.
 
 Contrary to |layer|, the class |definition_group| does not have a
 constructor-destructor pair with special side effects, and there is no reason
@@ -801,9 +809,10 @@ public:
 @ The methods of |definition_group| are closely related those of |layer|, but
 simplified because they do not need to maintain |lexical_context| in any way (in
 particular there is no need for a user-defined destructor). We also include
-|thread_bindings| now as a method rather than a free function (which ``saves''
-the destination argument in (recursive) calls), and it also lacks the
-constness-overriding argument that has no use for global definitions.
+|thread_bindings| now as a method rather than a free function as it was in the
+\.{axis.w} module; compared to that function we can dispense of the destination
+argument in (recursive) calls, and it also lacks the constness-overriding
+argument for which there is no use in global definitions.
 
 @< Global function definitions @>=
 definition_group::definition_group(unsigned int n_ids)
@@ -823,13 +832,13 @@ void definition_group::thread_bindings(const id_pat& pat,const type_expr& type)
   }
 }
 
-@ For the method |add| we do have some actions absent from or different than
-in |layer::add|, since we have somewhat different conditions to check for
-validity of the definitions. Although there might be cases where several
-overloads for the same identifiers could be validly added in a single group,
-we forbid this as it would complicate the necessary testing considerably for
-little practical gain. Besides this test we check that each identifier of
-function type can be validly added to the overload table.
+@ For the method |add| we do have some actions absent from or different than in
+|layer::add|, since we have somewhat different conditions to check for validity
+of the definitions. Although there might be cases where several overloads for
+the same identifiers could be validly added in a single group, this is forbidden
+here: it would complicate the necessary testing considerably for little
+practical gain. Besides this test, we check that each identifier of function
+type can be validly added to the overload table.
 
 @< Global function definitions @>=
 
@@ -861,7 +870,7 @@ The function |do_global_set| is called when a user issues a \&{set} command to
 add one or more identifier or operator definitions to the tables (or possibly
 override an existing definition). The arguments indicate identifier name(s) in
 |pat|, defining expression(s) in |rhs|, the nature of the defining command in
-|overload|, and a location |loc| for error reporting.
+|overload|, and a location |loc| used for error reporting.
 
 In a change from our initial implementation, the parameter |overload| (which
 is set by the parser) can allow overloading without forcing it. Allowing the
@@ -935,13 +944,12 @@ void do_global_set(id_pat&& pat, const expr& rhs, int overload,
   @< Catch block for errors thrown during a global identifier definition @>
 }
 
-@ When |overload>0|, choosing whether the definition enters into the overload
+@ When |overload==1|, choosing whether the definition enters into the overload
 table or into the global identifier table is determined by the type of the
-defining expression (in particular this allows operators to be defined by an
-arbitrary expression). However, when |overload==2| we are defining an
-operator symbol, which can only be meaningfully added to the overload table.
-Therefore we insist for that case that a value of function type is being
-ascribed to the operator symbol, so that it will go to the overload table.
+defining expression. However, when |overload==2| we are defining an operator
+symbol, which can only be meaningfully added to the overload table. Therefore we
+insist for that case that a value of function type is being ascribed to the
+operator symbol, so that it will go to the overload table.
 
 @< Check that we are not setting an operator... @>=
 { if (overload==2 and tp.kind()!=function_type)
@@ -953,8 +961,9 @@ ascribed to the operator symbol, so that it will go to the overload table.
 }
 
 @ For identifier definitions we print their name and type, one line for each
-identifier. Doing this before calling |global_id_table->add|, that call can
-pilfer the type |it->second|.
+identifier. Doing this before calling |global_id_table->add|, the latter call
+can pilfer the type |it->second|, which points to a component of the local
+|definition_group| variable~|b|.
 
 @< Add instance of identifier |it->first| with value... @>=
 { *output_stream << (b.is_const(it) ? "Constant " : "Variable ") @|
@@ -974,7 +983,7 @@ pilfer the type |it->second|.
 }
 
 @ For installing overloaded definitions, the main difference with the code above
-is that we shall calling the |add| method of |global_overload_table| instead of
+is that we shall call the |add| method of |global_overload_table| instead of
 that of |global_id_table|, and the different wording of the report to the user.
 Another difference is that here the |add| method may throw because of a conflict
 of a new definition with an existing one; we therefore do not print anything
@@ -1009,7 +1018,7 @@ void add_overload(id_type id,
   *output_stream << std::endl;
 }
 
-@ Since |type| being a function type is a condition for coming to this code,
+@ Since |*v_it| being a function type is a condition for coming to this code,
 the dynamic cast below should always succeed, if our type system is correct.
 
 @< Add instance of identifier |it->first| with function value |*v_it| to

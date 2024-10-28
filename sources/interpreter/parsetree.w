@@ -1304,20 +1304,20 @@ void destroy_formula(raw_form_stack s)
 
 @*1 Identifier patterns.
 %
-For each case where local identifiers will be introduced (like let-expressions
+For each case where local identifiers will be introduced (like \&{let}-expressions
 of function headings) we shall in fact allow more general patterns. A defining
 occurrence of an identifier \\{ident} may be replaced by some tuple, say
-$(x,y,z)$ (which assumes the value to be bound will be a $3$-tuple), or it
-could be both, as in $(x,y,z)$:\\{ident} for the nested identifiers the same
-options apply recursively, and in addition the identifier may be suppressed
-altogether, to allow such partial tagging of components as \\{ident}:$(,,z)$.
-To accommodate such possibilities we introduce the following recursive types.
-Our grammar allows for a pattern $()$ (but not $()$:\\{ident}), in which case
-|sublist.empty()| holds, even though |kind ==0x2|; it turned out that the
-possibility to bind no identifiers at all (while providing a void value) has
-its uses. However patterns of the form $(x)$, which would give a sublist of
-length~$1$, will be forbidden: they would be confusing since $1$-tuples do not
-exist.
+$(x,y,z)$ (which assumes the value to be bound will be a $3$-tuple), or it could
+be both, as in $(x,y,z)$:\\{ident} for the nested identifiers the same options
+apply recursively, and in addition the identifier may be suppressed altogether,
+to allow such partial tagging of components as $(,,z)$:\\{ident}. To accommodate
+such possibilities we introduce the following recursive types. Our grammar
+allows for a pattern $()$, in which case |sublist.empty()| holds, even though
+|kind ==0x2| (we do however forbid $()$:\\{ident} as pointless); it turns out
+that the possibility to use \&{let} to bind no identifiers at all, after
+evaluating an expression that produces a void value, has its uses. However
+patterns of the form $(x)$, which would give a sublist of length~$1$, will be
+forbidden: they would be confusing since $1$-tuples do not exist.
 
 The structure |raw_id_pat| cannot have a constructor, since it figures in a
 bare |union|, where this is not allowed. However the value from them will be
@@ -1331,8 +1331,8 @@ constructors are from a |raw_id_pat| reference and from individual components.
    // so complete type definitions will be known in \.{parsetree.cpp}
 
 @< Type declarations needed in definition of |struct expr@;| @>=
-typedef containers::simple_list<struct id_pat> patlist;
-typedef containers::sl_node<struct id_pat>* raw_patlist;
+using patlist = containers::simple_list<struct id_pat>;
+using raw_patlist = @[containers::sl_node<struct id_pat>*@];
 @)
 struct raw_id_pat
 { id_type name;
@@ -1366,21 +1366,20 @@ struct id_pat
   @+{@; return { name, kind, sublist.release() }; }
 };
 
-@ The function |make_pattern_node| to build a node takes a modifiable
-reference to a structure |pattern| with the contents of the current node; in
-practice this is a local variable in the parser. The argument names and order
-reflects the fact that patterns are often recognised by left-recursive rules,
-so that a new pattern is tacked onto an existing pattern list (the resulting
-list will need reversal when further integrated).
+@ The function |make_pattern_node| adds a new identifier |pattern| to an
+existing (though possibly empty) list |prev| while building an |id_pat|. The
+argument names and order reflects the fact that patterns are often recognised by
+left-recursive rules, so that a new pattern is tacked onto an existing pattern
+list (the resulting list will need reversal when further integrated).
 
 @< Declarations of functions for the parser @>=
-raw_patlist make_pattern_node(raw_patlist prev,raw_id_pat& pattern);
+raw_patlist make_pattern_node(raw_patlist prev,const raw_id_pat& pattern);
 
 @ With the mentioned proviso about order, the function implementation just
 assembles the pieces.
 
 @< Definitions of functions for the parser @>=
-raw_patlist make_pattern_node(raw_patlist prev,raw_id_pat& pattern)
+raw_patlist make_pattern_node(raw_patlist prev,const raw_id_pat& pattern)
 {@; patlist l(prev); l.push_front(id_pat(pattern)); return l.release(); }
 
 @ Patterns also need cleaning up, which is what |destroy_pattern| and
@@ -1442,27 +1441,27 @@ std::ostream& operator<< (std::ostream& out, const id_pat& p)
 
 @*1 Let expressions.
 %
-We now consider let-expressions, which introduce and bind local identifiers,
+We now consider \&{let}-expressions, which introduce and bind local identifiers,
 which historically were a first step towards having user defined functions.
-Indeed a let-expression used to be implemented as a user-defined function that
-were immediately called with the (tuple of) values bound in the
-let-expression (the implementation of let-expressions has been somewhat
+Indeed a \&{let}-expression used to be implemented as a user-defined function
+that were immediately called with the (tuple of) values bound in the
+\&{let}-expression (the implementation of \&{let}-expressions has been somewhat
 optimised since). The reason to have had let expressions before user-defined
-functions was that it could be done before user-specified types were
-introduced in the language; in a let expression types of variables are deduced
-from the values provided, whereas function parameters need to have explicitly
-specified types.
+functions was that it could be done before user-specified types were introduced
+in the language; in a let expression types of variables are deduced from the
+values provided, whereas function parameters need to have explicitly specified
+types.
 
 @< Type declarations needed in definition of |struct expr@;| @>=
 typedef struct let_expr_node* let;
 
-@~After parsing, let-expression will have a single let-binding followed by a
+@~After parsing, \&{let}-expression will have a single let-binding followed by a
 body giving the value to be returned. During parsing however, we may form
 intermediate values containing lists of let-bindings, that will later be
-converted into a single one with a tuple as left hand side. We therefore
-define a list type |let_list| for a list of bindings, and a structure
-|let_expr_node| for a complete let-expression, containing (the components of)
-only one binding, and containing in addition a body.
+converted into a single one with a tuple as left hand side. We therefore define
+a list type |let_list| for a list of bindings, and a structure |let_expr_node|
+for a complete \&{let}-expression, containing (the components of) only one
+binding, and containing in addition a body.
 
 The moving constructor does what the braced initialiser-list syntax would do
 by default; it is present only for backward compatibility \.{gcc}~4.6.
@@ -1479,7 +1478,7 @@ struct let_expr_node
 @/: pattern(std::move(pattern)), val(std::move(val)), body(std::move(body))@+{}
 };
 
-@ The tag used for let-expressions is |let_expr|.
+@ The tag used for \&{let}-expressions is |let_expr|.
 
 @< Enumeration tags for |expr_kind| @>= let_expr, @[@]
 
@@ -1497,11 +1496,11 @@ expr(let declaration, source_location loc)
  , loc(loc)
  @+{}
 
-@ For building let-expressions, four functions will be defined. The function
-|make_let_node| makes a list of one declaration, while |append_let_node|
-appends such a list |cur| (assured to be of length~$1$) to a previously
-constructed list |prev| of declarations; finally |make_let_expr_node| wraps up
-an entire let-expression. The latter will uses an auxiliary |zip_decls| to do
+@ For building \&{let}-expressions, four functions will be defined. The function
+|make_let_node| makes a list of one declaration, while |append_let_node| appends
+such a list |cur| (assured to be of length~$1$) to a previously constructed list
+|prev| of declarations; finally |make_let_expr_node| wraps up an
+entire \&{let}-expression. The latter will uses an auxiliary |zip_decls| to do
 the main work, which function can then also be used when processing
 (global) \&{set} definitions, which do not have any |body|.
 
@@ -1596,7 +1595,7 @@ list, and anything accessed from them.
 void destroy_letlist(raw_let_list l)
 @+{@; (let_list(l)); }
 
-@ To print a let-expression we just do the obvious things, for now without
+@ To print a \&{let}-expression we just do the obvious things, for now without
 worrying about parentheses.
 
 @< Cases for printing... @>=
@@ -1608,10 +1607,10 @@ break;
 
 @*1 Types and user-defined functions.
 %
-As was indicated above, let-expressions were introduced before user-defined
+As was indicated above, \&{let}-expressions were introduced before user-defined
 functions because it avoids to problem of having to specify types in the user
-program. When defining function one does have to specify parameter types,
-since in this case there is no way to know those types with certainty: in an
+program. When defining function one does have to specify parameter types, since
+in this case there is no way to know those types with certainty: in an
 interactive program we cannot wait for \emph{usage} of the function to deduce
 the types of its parameters, and such things as type coercion and function
 overloading would make such type deduction doubtful even if it could be done.
@@ -1714,16 +1713,16 @@ expr_p make_rec_lambda_node(id_type self,
 @| const YYLTYPE& loc);
 
 @ There is a twist in building a lambda node, similar to what we saw for
-building let-expressions, in that for syntactic reasons the parser passes
+building \&{let}-expressions, in that for syntactic reasons the parser passes
 lists of patterns and their types, rather than passing single ones. We must
 distinguish the case of a singleton, in which case the head node must be
-unpacked, and the multiple case, where a tuple pattern and type must be
-wrapped up from the lists. In the former case, |fun->parameter_type| wants to
-have a pointer to an isolated |type_expr|, but the head of |type_l| is a
-|type_node| that contains a |type_expr| as its |t| field; making a (shallow)
-copy of that field is the easiest way to obtain an isolated |type_expr|. After
-the copy, destruction of |type_l| deletes the original |type_node|. In the
-latter case we apply list reversal here to both pattern list and type list.
+unpacked, and the multiple case, where a tuple pattern and type must be wrapped
+up from the lists. In the former case, |fun->parameter_type| wants to have a
+pointer to an isolated |type_expr|, but the head of |type_l| is a |type_node|
+that contains a |type_expr| as its |t| field; making a (shallow) copy of that
+field is the easiest way to obtain an isolated |type_expr|. After the copy,
+destruction of |type_l| deletes the original |type_node|. In the latter case we
+apply list reversal here to both pattern list and type list.
 
 @< Definitions of functions for the parser @>=
 expr_p make_lambda_node(raw_patlist p, raw_type_list tl, expr_p b,
@@ -3006,7 +3005,7 @@ expressions (statements) as well, retaining the value only of the final one.
 @< Type declarations needed in definition of |struct expr@;| @>=
 typedef struct sequence_node* sequence;
 
-@~Since control structures and let-expressions tend to break up long chains,
+@~Since control structures and \&{let}-expressions tend to break up long chains,
 we do not expect their average length to be very great. So we build up
 sequences by chaining pairs, instead of storing a vector of expressions: at
 three pointers overhead per vector, a chained representation is more compact
