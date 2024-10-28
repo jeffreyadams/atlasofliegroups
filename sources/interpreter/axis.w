@@ -221,21 +221,21 @@ expression_ptr convert_expr(const expr& e, type_expr& tp);
 @*1 Layers of lexical context.
 %
 In the function |convert_expr| we shall need a type for storing bindings between
-identifiers and types, and this will be the |layer| class. It stores a vector of
-type |layer::vec| of individual bindings, while it automatically pushes (a
-pointer to) itself on a stack |layer::lexical_context| of such vectors.
-Instances of |layer| shall always be stored in ordinary (stack-allocated)
-variables; since their unique constructor pushes the new object, and their
-destructor pops it, |layer::lexical_context| is guaranteed to hold at all times
-a list of pointers to all current |layer| objects, from newest to oldest. This
-invariant is maintained even in the presence of exceptions that may be thrown
-during type analysis, as the destructors called when the stack unwinds pop the
-pointers to them from the list. The alternative of managing a list of vectors
-directly, as used to be done, would require clearing the list every time program
-analysis has found an error, signalled by throwing an exception. The current
-approach, besides being cute, makes correct handling dependent only on the
-discipline of placing all |layer| instances on the runtime stack (and having
-only one such stack, which means threads cannot be used in program analysis).
+identifiers and types, and this will be the |layer| class. It stores a
+|layer::vec| of identifier bindings, while it automatically pushes (a pointer
+to) itself onto a stack |layer::lexical_context| of such vectors. Instances of
+|layer| shall always be stored in ordinary (stack-allocated) variables; since
+their unique constructor pushes the new object, and their destructor pops it,
+|layer::lexical_context| is guaranteed to hold at all times a list of pointers
+to all current |layer| objects, from newest to oldest. Besides being cute, this
+approach is exception safe: as long as all |layer| objects are held in automatic
+variables their destructors will be called as the \Cpp\ stack unwinds, popping
+them from the context. We do commit to not using threads during type analysis,
+as this would break the strict stack discipline.
+
+Ordinary methods are used to prepare the |layer| object inside the block where
+it is constructed, while generally accessible lookup methods are implemented as
+|static| methods, which use |lexical_context| to access the stack of layers.
 
 We also use this structure to maintain additional attributes telling
 whether we are inside a function and how deeply nested inside loops we are.
@@ -295,7 +295,10 @@ public:
 @ Here are the constructors, which are used on three kinds of occasions: the
 first one for \&{let} expressions, and the second one for loops (in which case
 |return_type==nullptr|) and for user-defined functions (in which case
-|return_type!=nullptr|).
+|return_type!=nullptr|). Effectively we have a loop counter starting at~$0$,
+incremented for every loop and reset to~$0$ for every function body entered, and
+a pointer to a return type that set for every function body, and otherwise
+remains constant in newer layers.
 
 @< Function def... @>=
 layer::layer(size_t n) // non-function non-loop layer
@@ -314,11 +317,12 @@ layer::layer(size_t n,type_p return_type) // function or loop layer
              : lexical_context.front()->return_type)
 {@; variable.reserve(n); lexical_context.push_front(this); }
 
-@ A statement \&{break}~$n$ breaks out of $n+1$ levels of loops at one, and for
-it to be legal the current |layer|, which must be present, should therefore have
-|loop_depth>n|. For \&{return} to be legal it suffices to be anywhere inside a
-function body, and the above constructors ensure that |return_type!=nullptr| in
-the current layer gives this condition.
+@ A statement of $n$ successive \&{break} keywords breaks out of $n$ levels of
+loops at once, and will call |layer::may_break| with |depth==n-1| to see if it
+is used legally. This means that a current |layer| must be present with
+|loop_depth>depth|. For \&{return} to be legal it suffices to be anywhere inside
+a function body, and the above constructors ensure that |return_type!=nullptr|
+in the current layer gives this condition.
 
 @< Function def... @>=
 bool layer::may_break(unsigned depth)
@@ -348,24 +352,28 @@ void layer::add(id_type id,type&& tp,bool is_const)
   variable.emplace_back( id, std::move(tp) );
 }
 
-@ During conversion of expressions, we keep a stack |layer::lexical_context|
-of identifier bindings in order to determine their (lexical) binding and type.
-Making this a static member if the |layer| class means we cannot start an
-independent call of |convert_expr| (one that does not build upon the current
-lexical context) while some instance of |convert_expr| is still active. Since
-we do not intend to do that, this is not a problem.
+@ We need to define the |static| variable |layer::lexical_context| outside the
+class definition; the default |sl_list| constructor ensures that it is initially
+empty. The actual |layer|s are all local to the recursive function
+|convert_expr|, and when the root call of that function terminates, the list
+will be empty again.
 
 @< Global var... @>=
 layer::list layer::lexical_context;
 
-@ The method |lookup| runs through the linked list of layers and returns a
-pointer to the type if a match for the identifier |id| was found, also
-assigning its static binding coordinates to output arguments |depth| and
-|offset|. If no match is found a null pointer is returned and the output
-parameters are unchanged. We allow having a |layer| with no variables
-at all for which no stack frame will correspond at all (as a frame would incur
-a runtime cost for no good at all). The method |lookup| will skip such layers
-without increasing the |depth| it reports.
+@ The method |layer::lookup| runs through the linked list of layers, and if a
+match for the identifier |id| was found it returns a pointer to its type, while
+also assigning its static binding coordinates to output arguments |depth| and
+|offset|. If no match is found, a null pointer is returned and the output
+parameters are unchanged. We allow having a |layer| with no variables, for which
+no run time stack frame will correspond at all (as such a frame would incur a
+runtime cost for no good at all). The method |lookup| skips such layers without
+increasing the |depth| it reports.
+
+The loop variable |range| below is a const-iterator over a |simple_list|, where
+|*range| is a list item which is a pointer to |layer|. We therefore access
+|layer| members using a double dereference of |range| (the second one hidden in
+the arrow symbol).
 
 @< Function def... @>=
 const type* layer::lookup (id_type id, size_t& depth, size_t& offset)
@@ -388,8 +396,9 @@ const type* layer::lookup
   return nullptr;
 }
 
-@ The function |convert_expr| returns a owning pointer |expression_ptr| to the
-result of converting the |expr| to an |expression|.
+@ We come to our highly recursive main type analysis function |convert_expr|. It
+returns a owning pointer |expression_ptr| to the result of converting the |expr|
+to an |expression|.
 
 Altogether this is a quite extensive function, with as many cases in the
 switch as there are variants of |expr|, and for many of those branches a
@@ -442,7 +451,9 @@ denotations may need to be expanded as a tuple (as long as there are no such
 things as denotations for complex numbers), and indeed this was not done until
 the possibility to refer to the last value computed was added to the language
 (see just below); that value is wrapped into a denotation, and it could well
-be a tuple.
+be a tuple. Since then we also added constant folding to the interpreter, so
+that denotations for values of any type can also come into existence in other
+ways.
 
 @< Type definitions @>=
 struct denotation : public expression_base
@@ -568,8 +579,10 @@ void shell::evaluate (level l) const
 {@; throw runtime_error("I die"); } // our |shell| explodes
 
 
-@ The main point of \&{die} is not trying to evaluate, but allowing it to
-pass type checking successfully. It does so trivially.
+@ The main point of \&{die} is not trying to evaluate, but allowing it to pass
+type checking successfully. It does so trivially. Leaving |tp| an undetermined
+type will cause, due to how |type::wrap| functions, the type deduced for this
+expression to be the impossible ``bottom'' (or ``any type'') type.
 
 @< Cases for type-checking and converting... @>=
 case die_expr:
@@ -652,8 +665,29 @@ void returner::evaluate (level l) const
 
 @ For a \&{return} expression we check that it occurs in a function body. From
 the |layer| structure we get a (modifiable) reference
-|layer::current_return_type()| to the return type of the current function,
-which will provide the type context for the expression after~\&{return}.
+|layer::current_return_type()| to the return type of the current function. It
+provides both the type context for the expression after~\&{return}, and in case
+that was undetermined initially, a place where the type determined here by
+|convert_expr| can be transmitted to later places where a return value for the
+same function is produced (either by another |return| expression, or by one
+directly producing the value of the function body).
+
+When a function has multiple expressions that (in different circumstances) will
+produce its value, the |return| expressions do not participate in any
+``balancing'' (a notion to be described later) to determine the result type of
+the function. Indeed, it would be difficult to do that (with our implementation
+of balancing) since it may require converting the expressions a second time in a
+more strict type context, but at the time this is discovered the
+|layer::lexical_context| may have changed from the initial conversion, and would
+be hard to reestablish. Instead it will be the first explicit type found (in the
+order of type checking, which is generally from left to right) that determines
+the result type. If the function body is a cast, that gives the type, otherwise
+the first |return| expression gives the type, and if there are none, any further
+expressions occurring in branches of conditionals or integer case expressions
+are balanced to determine the result type. This rule results implicitly from the
+fact that the function body and all |return| expressions share a same
+|type_expr| variable to record their type, which is the one
+|layer::current_return_type()| refers to.
 
 @< Cases for type-checking and converting... @>=
 case return_expr:
@@ -963,11 +997,17 @@ coercions). This process is called type balancing (the mental image is
 comparing the ``weights'' of the component expression types, to see which one
 is the firmest in determining the result type).
 
-@ Here is the general set-up for balancing. We try to find in |common| a type
-to which all branches can conform. Branch types incomparable with the current
-value of |common| are put aside in |conflicts|. At the end, |common| may have
-become broad enough to accommodate them (for instance |void| can accommodate
-every possible type). So we prune |conflict| before possibly reporting an
+The general situation where balancing can be applied is that we have a list of
+expressions that can all be type checked successively, producing a common type
+and a list of converted expressions. This means that for nested conditional
+expressions, we only balance two subexpressions each time; if one or both of
+these are themselves balanced, that involves a separate call of |balance|.
+
+@ Here is the set-up for balancing. We try to find in |common| a type to which
+all branches can conform. Branch types incomparable with the current value of
+|common| are put aside in |conflicts|. At the end, |common| may have become
+broad enough to accommodate them (for instance |void| can accommodate every
+possible type). So at the end we prune |conflict| before possibly reporting an
 error.
 
 In case of success, the context type |target| that was used as initial goal
@@ -1389,22 +1429,17 @@ a local identifier, and otherwise we look in |global_id_table|. If found in
 either way, the associated type must equal the expected type (if any), or be
 convertible to it using |coerce|.
 
-There is a subtlety in that the identifier may have a more general type than
-|tp| required by the context (for instance if it was \&{let} equal to an
-empty list, and a concrete type of list is required). In this case the first
-call of |specialise| below succeeds without making |tp| equal to the
-identifier type |*id_t|, and if this happens we specialise the latter instead
-to |tp|, using the |specialise| method either of the |layer| class (a static
-method) or of |global_id_table|. This ensures that the same local identifier
-cannot be subsequently used with an incompatible specialisation (notably any
-further assignments to the variable must respect the more specific type). It
-remains a rare circumstance that an applied occurrence (rather than an
-assignment) of a local identifier specialises its type; it could happen if the
-identifier is used in a cast. However type safety requires that we always
-record the type to which the identifier value was specialised, since if one
-allows different specialisations of the same identifier type to be made in
-different subexpressions, then a devious program can manage to exploit this to
-get false type predictions.
+The code below rejects using an identifier having a more general polymorphic
+type in a context requiring an monomorphic (or less general polymorphic)
+instance of that type. For instance if |id_t| is \.{[A]} while |tp|
+is \.{[int]}, the |tp.specialise| call will succeed, but not make |tp| equal
+|id_t|. The reason for having this code was the risk that an assignment to the
+identifier would make the run time value be a different instance of the
+polymorphic type than required at this usage, and allowing that would break the
+security of the type system. A different approach has now been decided, where
+identifiers with a polymorphic type are automatically made constant, so the
+scenario is impossible and mentioned usage becomes legal; the code below can
+then be simplified.
 
 @< Cases for type-checking and converting... @>=
 case applied_identifier:
@@ -2469,13 +2504,13 @@ type.
 
 @*1 Support for constant folding.
 %
-While our interpreter is based on the conversion, by the function
-|convert_expr|, of the abstract syntax tree represented in an |expr| into an
-executable form accessed by an |expression_ptr|, which is then executed, there
-are some points where we want to perform parts of the evaluation during the
-conversion process itself, so that constant subexpressions can be produced from
-a |denotation| even in cases where the value is not one of the basic cases
-provided by the grammar (an explicit natural number, Boolean value, or string).
+Our interpreter is based on the conversion by |convert_expr| of an |expr|
+representing the abstract syntax tree into an executable form as an
+|expression_ptr|, which is then executed. But there are some points where we
+want to perform parts of the evaluation during the conversion process itself, so
+that constant subexpressions can be produced from a |denotation| even if not
+written as one in the input (which is possible only for natural numbers, Boolean
+values, and strings).
 
 As a small intermezzo, we define a function that implements constant folding
 across implicit conversions, in other words that ensures that if an implicit
@@ -2487,12 +2522,9 @@ whether their arguments are constant; unlike |do_conversion| which builds an
 expression in all cases, |do_builtin| does nothing if the arguments are not
 constant, so it returns a Boolean telling whether it did transform a denotation.
 
-In the implementation of these function we use a function |frozen_error|, in
-order to make a call of |error_builtin| with a fixed error message; the idea is
-that if during compile-time evaluation an error occurs, the expression is
-replaced by a call to |error_builtin| with the error message that was reported
-(this will produce that error if and only if the converted expression ends up
-being actually evaluated).
+The function |frozen_error| is an auxiliary for these transformations, to
+transform errors that might occur at compile time into expressions that postpone
+the error until run time, reproducing the error message.
 
 @< Declarations of exported functions @> =
 void do_conversion(expression_ptr& e, const conversion_info& ci,
@@ -2500,44 +2532,50 @@ void do_conversion(expression_ptr& e, const conversion_info& ci,
 bool do_builtin(expression_ptr& e, wrapper_function f, const source_location& loc);
 expression_ptr frozen_error(std::string message, const source_location& loc);
 
-@ Implementing |do_conversion| is not very hard, but does imply some mixing of
-stages in the evaluation process. First we need to look into the expression that
-the |e| points to using a |dynamic_cast|, to see whether its actual type is
+@ Implementing |do_conversion| is not hard, but does imply some mixing of stages
+in the evaluation process. First we need to look into the expression that the
+|e| points to using a |dynamic_cast|, to see whether its actual type is
 |denotation|. If so, we apply the conversion to the value held inside, for which
 that value is temporarily placed on the execution stack. Placing the converted
 value back into the |denotation| requires casting away the |const| in the type
 of |den_ptr|, inherited from that of |e|. This could have been avoided by
-wrapping a fresh |denotation| around the new value and assigning that to |e|,
-but the current solution is both simpler and more efficient, and is really an
-indication that the old decision to make |expression_ptr| a pointer-to-const
-results in resistance against the evolution of the language: while it reflects
-the fact that the evaluation process never needs to modify the tree of
-executable expressions, such changes now are becoming common as compile-time
-restructuring of the expression tree is being implemented.
+wrapping a fresh |denotation| around the new value and assigning that to |e|; it
+is a non-|const| reference, so that would have been possible without trickery.
 
-Since we are here performing some evaluation during compile time, we must
+However, the current solution is both simpler and more efficient, and is really
+an indication that the old decision to make |expression_ptr| a pointer-to-const
+results in resistance against the evolution of the language. That choice
+reflects the fact that the \emph{evaluation process} never needs to modify the
+tree of executable expressions, but as the implementation involves, it is now
+becoming more and more common to restructure the expression tree after its
+initial construction, at compile time. Apart from needing non-|const| access to
+the |denotation| structure, the code below also uses the fact that its
+|denoted_value| field is not declared |const|; if it were not for the presence
+of the functions here, that would have been a reasonable thing to do.
+
+Since we are performing some evaluation during compile time here, we must
 consider the possibility that this produces a ``runtime'' error. Our solution is
 (for the moment) to not throw a |runtime_error| during the type analysis, but to
 compile in, using |frozen_error|, a call to |error_builtin| reproducing the
 error upon evaluation. Maybe at some future point we shall decide that it is
-actually preferable to already signal a problem at compile time when this
-happens.
+actually preferable to already emit a warning at compile time when this
+happens, rather than silently compiling a time bomb.
 
 @< Function def... @> =
 void do_conversion(expression_ptr& e, const conversion_info& ci,
-  const source_location& locator)
+  const source_location& loc)
 {
   if (@[auto* den_ptr = dynamic_cast<const denotation*>(e.get())@])
   { try
     {
-      auto& loc = const_cast<denotation*>(den_ptr)->denoted_value;
-      push_value(std::move(loc));
+      auto& den_val = const_cast<denotation*>(den_ptr)->denoted_value;
+      push_value(std::move(den_val));
       ci.convert();
-      loc=pop_value();
+      den_val=pop_value();
     }
     catch(std::exception& err)
     {@;
-      e = frozen_error(err.what(),locator);
+      e = frozen_error(err.what(),loc);
     }
   }
   else
@@ -2546,24 +2584,30 @@ void do_conversion(expression_ptr& e, const conversion_info& ci,
 
 @ The implementation of |do_builtin| is very similar, including the fact that it
 replaces |e| by a call to |error_builtin| if a runtime error if one was thrown
-by calling~|f|, but if |e| was not a constant expression, it simply returns
-|false|.
+by calling~|f|. A difference is the if |e| was not a constant expression, we
+simply return |false|. We also need to take into account the fact that builtin
+functions with multiple arguments expect them to be present as separate values
+on the execution stack, while the |denotation| holds them as a single tuple;
+therefore we need to apply |push_expanded| with |multi_value| to it to prepare
+to calling the wrapper function~|*f| of the built-in. The latter call should in
+all cases produce a single value, since it needs to be reinserted at the
+location |den_val| where the arguments used to be.
 
 @< Function def... @> =
 bool do_builtin(expression_ptr& e, wrapper_function f,
-  const source_location& locator)
+  const source_location& loc)
 {
   if (@[auto* den_ptr = dynamic_cast<const denotation*>(e.get())@])
   { try
     {
-      auto& loc = const_cast<denotation*>(den_ptr)->denoted_value;
-      push_expanded(eval_level::multi_value,std::move(loc));
-      (*f)(eval_level::single_value);
-      loc=pop_value();
+      auto& den_val = const_cast<denotation*>(den_ptr)->denoted_value;
+      push_expanded(eval_level::multi_value,std::move(den_val));
+@/    (*f)(eval_level::single_value);
+@/    den_val=pop_value();
     }
     catch(std::exception& err)
     {@;
-      e = frozen_error(err.what(),locator);
+      e = frozen_error(err.what(),loc);
     }
     return true;
   }
@@ -2581,7 +2625,7 @@ expression_ptr frozen_error(std::string message, const source_location& loc)
   auto mess_val = std::make_shared<string_value>(std::move(message));
   expression_ptr arg(new denotation(std::move(mess_val)));
   return expression_ptr (new variadic_builtin_call
-    (error_builtin,"error@@string",std::move(arg),loc) );
+@|  (error_builtin,"error@@string",std::move(arg),loc) );
 }
 
 
@@ -2589,38 +2633,46 @@ expression_ptr frozen_error(std::string message, const source_location& loc)
 @* Let-expressions, and identifier patterns.
 %
 We shall now consider a simple type of expression in which local variables
-occur, the let-expression. It is equivalent to an anonymous function
-($\lambda$-expression) applied to the initialiser expression(s) in the
-let-declarations, but no types need to be declared for the variable(s)
-introduced, since the types of the corresponding expressions can be used for
-this. Nevertheless, let-expressions could be represented internally, and
-indeed were for a very long time, as a call in which the function is given by
-a $\lambda$-expression, thus hiding the syntactic origin of the expression.
-Currently they instead use a separate internal representation as
-|let_expression|, whose evaluation is somewhat more efficient than that of the
-equivalent call form. In our presentation we shall discuss let-expressions
-before $\lambda$-expressions, which given an opportunity to compare them.
+occur, the \&{let}-expression. It is equivalent to an anonymous function (or
+$\lambda$-expression) applied to the explicitly given initialiser expression(s).
+But the presence of these expressions makes it unnecessary to declare types
+explicitly for the variable(s) introduced, since they can be taken to be the
+types of the corresponding initialiser expressions. Nevertheless,
+let-expressions could be represented internally as a call in which the function
+is a $\lambda$-expression, thus hiding the syntactic origin of the expression;
+indeed this was our implementation for a long time. Currently we instead use a
+separate internal representation as |let_expression|, whose evaluation is
+somewhat more efficient than that of the equivalent $\lambda$-expression call.
+In our presentation here we discuss \&{let}-expressions before
+$\lambda$-expressions, doing the simpler things first.
 
-@ We prepare the definition of let-expressions with the introduction of
-auxiliary types, needed to deal with the general patterns by which new
-variables (and later formal function parameters) can be introduced. The parser
-produces values of type |id_pat| to describe such patterns, and they are
-needed at runtime to guide the decomposition of the corresponding values (in
-fact the names used in the pattern are not needed for this, but they are
-useful for printing the let-expression). The |id_pat| structure can be
-used directly in a let-expression, but ownership must be properly
-handled. The value produced by the parser will be destroyed after the command
-is processed, at which time the let-expression could still exist (if held in a
-function body), so we cannot simply use a non-owned pointer.
+@ The parser produces values of type |id_pat| to describe such patterns, and
+they are needed at run time to guide the decomposition of the corresponding
+values (in fact the names used in the pattern are not needed for this, but they
+are useful for printing the \&{let}-expression). The |id_pat| structure can be
+used directly in a \&{let}-expression, and will handle ownership properly if we
+place it inside the |let_expression| structure (rather than using |raw_id_pat|
+as the parser often does, which contains a raw pointer at the top level).
+The initialiser expression and body are owned, and held in unique-pointers.
 
-The top-level |id_pat| structure for the bound variable(s) will be stored in
-the |let_expression| itself. We might move it there from the |id_pat| produced
-by the parser and thereby steal a possible |sublist| field and further nodes
-accessible from it. However this would amputate that expression (which would
-be weird if the expression were printed in an error message), so instead doing
-a deep copy is a cleaner solution, and patterns are rarely very deep. The
-function |copy_id_pat| accomplishes making the copy. The implicit recursion of
-|copy_id_pat| is achieved by passing itself as final argument to
+@< Type def... @>=
+struct let_expression : public expression_base
+{ const id_pat variable;
+  expression_ptr initialiser, body;
+@)
+  let_expression(const id_pat& v, expression_ptr&& ini, expression_ptr&& b);
+  virtual ~let_expression() = default; // subobjects do all the work
+  virtual void evaluate(level l) const;
+  virtual void print(std::ostream& out) const;
+};
+
+@ When constructing a |let_expression|, we might place |id_pat| produced by the
+parser there using move semantics. Thereby we would steal a possible |sublist|
+field and further nodes accessible from it, amputating the expression; that
+would produce a weird effect if the expression were then printed in an error
+message. So instead we make a deep copy (and patterns are rarely very deep)
+using the function~|copy_id_pat|. The implicit recursion of |copy_id_pat| is
+achieved by passing (a pointer to) the function itself as final argument to
 |std::transform|; recursion terminates when |sublist.empty()| holds. This is
 certainly a relative high on the coolness scale in implicit \Cpp\ programming.
 
@@ -2634,37 +2686,23 @@ id_pat copy_id_pat(const id_pat& p)
   return id_pat (p.name, p.kind, rl.undress());
 }
 
-@ Now we can define our let-expression to use a |shared_pattern|. Initialiser
-and body are owned, and held in unique-pointers.
-
-@< Type def... @>=
-struct let_expression : public expression_base
-{ const id_pat variable;
-  expression_ptr initialiser, body;
-@)
-  let_expression(const id_pat& v, expression_ptr&& ini, expression_ptr&& b);
-  virtual ~let_expression() = default; // subobjects do all the work
-  virtual void evaluate(level l) const;
-  virtual void print(std::ostream& out) const;
-};
-
-@ The main constructor cannot be inside the class definition, as it requires
-the local function |copy_id_pat|. The variable (pattern) is copied into the
-|let_expression| node, while for the two expression components ownership is
-transferred from the passed unique-pointer values.
+@ The main |let_expression| constructor could not be inside its class
+definition, as it uses the local function |copy_id_pat|. The variable (pattern)
+is copied into the |let_expression| node, while for the two expression
+components ownership is transferred from the passed unique-pointer values.
 
 @< Function def... @>=
 inline
 let_expression::let_expression @|
   (const id_pat& v, expression_ptr&& ini, expression_ptr&& b)
 : variable(copy_id_pat(v))
-, initialiser(ini.release())
-, body(b.release())
+, initialiser(std::move(ini))
+, body(std::move(b))
 @+{}
 
-@ To print a let expression, we reproduce the input syntax, as far as
-possible; restructuring done during parsing makes it impossible to know the
-exact form used at input.
+@ To print a \&{let}-expression, we reproduce the input syntax, as far as
+possible: any restructuring that was done during parsing cannot be undone.
+So we just print a basic form that could have been the input.
 
 @< Function definitions @>=
 void let_expression::print(std::ostream& out) const
@@ -2688,7 +2726,8 @@ void thread_components
 
 @ For handling declarations with patterns as left hand side, we need a
 corresponding type pattern; for instance $(x,,(f,):z)$:\\{whole} requires the
-type \.{(*,*,(*,*))}. These recursive functions construct such types.
+type pattern \.{(*,*,(*,*))}. The following two mutually recursive functions
+construct such type patterns.
 
 @< Function definitions @>=
 type_list pattern_list_types(const patlist& p)
@@ -2699,8 +2738,9 @@ type_list pattern_list_types(const patlist& p)
 }
 @)
 type_expr pattern_type(const id_pat& pat)
-{@; return (pat.kind&0x2)==0
-  ? unknown_type.copy()
+{@;
+  return (pat.kind&0x2)==0
+  ? type_expr()
   : type_expr::tuple(pattern_list_types(pat.sublist));
 }
 
@@ -2713,7 +2753,8 @@ collect the results in a vector, and this avoids having to call
 
 @< Function definitions @>=
 size_t count_identifiers(const id_pat& pat)
-{ size_t result= pat.kind & 0x1; // 1 if |pat.name| is defined, 0 otherwise
+{ size_t result= (pat.kind & 0x1)==0 ? 0 : 1;
+                 // or we might assign |pat.kind & 0x1| directly
   if ((pat.kind & 0x2)!=0) // then a list of subpatterns is present
     for (auto it=pat.sublist.begin(); not pat.sublist.at_end(it); ++it)
       result+=count_identifiers(*it);
@@ -2769,7 +2810,7 @@ void thread_components
   }
 }
 
-@ To convert a let-expression, we first deduce the type of the declared
+@ To convert a \&{let}-expression, we first deduce the type of the declared
 identifiers from the right hand side of its declaration, then set up new
 bindings for those identifiers with the type found, and finally convert the
 body to the required type in the extended context. Note that the constructed
@@ -2788,14 +2829,15 @@ is needed in this case.
 case let_expr:
 { const auto& lexp=*e.let_variant;
   const id_pat& pat=lexp.pattern;
+  const auto& rhs = lexp.val;
   type_expr decl_type=pattern_type(pat);
-  expression_ptr arg = convert_expr(lexp.val,decl_type);
+  expression_ptr arg = convert_expr(rhs,decl_type);
 @/auto n=count_identifiers(pat);
   if (n==0)
   // then avoid frame without identifiers, so compile as sequence expression
     return expression_ptr(new @|
       seq_expression(std::move(arg),convert_expr(lexp.body,tp)));
-  if (decl_type==void_type and not is_empty(lexp.val))
+  if (decl_type==void_type and not is_empty(rhs))
     // rare case, introducing void identifier
     arg.reset(new voiding(std::move(arg)));
   layer new_layer(n);
@@ -2809,14 +2851,20 @@ a constructor-destructor pair, in this case one that temporarily suspends the
 current execution context, replacing it by a new one determined by an
 identifier pattern and an execution context for the enclosing lexical layers.
 All instances of this class should be automatic (local) variables, to ensure
-that they have nested lifetimes.
+that they have nested lifetimes. The actual execution context controlled by this
+class is a linked structure entirely stored on the heap, with the exception of
+the initial |static| pointer |frame::current| that gives access to it. The
+|evaluation_context| class is defined in \.{axis-types.w}; each node contains a
+|next| link to the next node, and a vector of values for all identifiers
+introduced in the pattern corresponding to this node (but that pattern is not
+itself recorded in the code).
 
 We take care when pushing a new |evaluation_context| to avoid changing the
-reference count of the pointer in |frame::current| as would happen when
-copying it, by \emph{moving} the pointer to the tail of the new node. When
-popping on destruction however we need to copy, since the node being popped
-could have become accessed independently (through a |closure|, to be discussed
-later), so we are not free to move from the tail of this node.
+reference count of the pointer in |frame::current| as would happen when copying
+it, by \emph{moving} the pointer to the tail of the new node. When popping on
+destruction however we need to copy, since the node being popped could have
+become accessed independently (through a |closure|, to be discussed later), so
+we are not free to move from the tail (or any other part) of this node.
 
 @:frame class@>
 
@@ -2829,7 +2877,7 @@ public:
 @)
   frame (const id_pat& pattern)
   : pattern(pattern)
-  { assert(count_identifiers(pattern)>0); // avoid frames without identifiers
+  { assert(count_identifiers(pattern)>0); // we avoid frames without identifiers
     current = std::make_shared<evaluation_context>(std::move(current));
   }
   ~frame() @+{@; current = current->tail(); } // don't use |std::move| here!
@@ -2841,9 +2889,10 @@ public:
   std::vector<id_type> id_list() const; // list identifiers, for back-tracing
 };
 
-@ This method is only called during exception handling, so a simple access to
-the identifiers is more important than an efficient one. Therefore we convert
-the pattern to a vector, using a  call to |list_identifiers|.
+@ The method |id_list| is only called during exception handling, so a simple
+access to the identifiers is more important than an efficient one. Therefore we
+convert the pattern to a vector, following the same order as used in a
+corresponding |shared_context| node, using a call to |list_identifiers|.
 
 @< Local function definitions @>=
 std::vector<id_type> frame::id_list() const
@@ -2852,10 +2901,10 @@ std::vector<id_type> frame::id_list() const
   return names;
 }
 
-@ Evaluating a let expression is now straightforward: evaluate the initialiser
-to produce a value on the stack; then create a new |frame| in which this value
-is bound to the pattern |variable|, and in this extended context evaluate
-the~|body|.
+@ Evaluating a \&{let}-expression is now straightforward: evaluate the
+initialiser to produce a value on the stack; then create a new |frame| in which
+this value is bound to the pattern |variable|, and in this extended context
+evaluate the~|body|.
 
 The stack will be automatically popped when the lifetime of the |frame| ends.
 Usually this happens when we return from the |let_expression::evaluate|, but
@@ -2894,7 +2943,8 @@ a new value (quite likely that modified value) gets assigned to the variable. It
 can happen however that the function computing the new value throws a runtime
 error, and if this happens the code below will find the variable with its pants
 down. Therefore we are careful to handle the case where |*it==nullptr|, and
-print an indication of absence of any value at this point.
+print an indication of absence of any value at this point, rather than crash
+the \.{atlas} program.
 
 @< Catch block for providing a trace-back of local variables @>=
 catch (error_base& e)
@@ -2919,22 +2969,22 @@ catch (error_base& e)
 @*1 Lambda-expressions (user-defined functions).
 %
 When a user defines a function, either globally with \&{set} or inside an
-expression (possibly another user defined function) using \&{let}, this creates
-just like for and definition a binding between a name and a value, which are (as
-usual) treated as separate entities. The value created is a called a
-$\lambda$-expression (in honour of the $\lambda$ calculus, but using the Greek
-letter $\lambda$ is actually a dreadful choice of notation, which we avoid) and
-it represents the function, with its argument pattern and body (the definiens),
-but without the name given (the definiendum). In fact one can write a
-$\lambda$-expression without giving it a name at all, creating an anonymous user
-defined function; this can be quite practical, for instance to pass the function
-to another function. A $\lambda$-expression is basically a denotation for a
-piece of code, whose evaluation involves no action and returns that code.
+expression (possibly another user defined function) using \&{let}, this creates,
+just like for a variable definition, a binding between a name and a value, the
+two being (as usual) treated as separate entities. The value created is a called
+a $\lambda$-expression (in honour of the $\lambda$ calculus; however using the
+Greek letter $\lambda$ would be a dreadful choice of notation, which we avoid)
+and it represents the function, with its argument pattern and body (the
+definiens), but without the name given (the definiendum). In fact one can write
+a $\lambda$-expression without giving it a name at all, creating an anonymous
+user defined function; this can be quite practical, for instance to pass the
+function to another function. A $\lambda$-expression is basically a denotation
+for a piece of code, whose evaluation involves no action and returns that code.
 However a $\lambda$-expression may refer to identifiers known in the context in
 which it is written, so evaluating it captures the bindings of those identifiers
 at the time of evaluation into a runtime value know as a closure.
 
-So in contrast to let-expressions which just extend the context with new
+So in contrast to \&{let}-expressions which just extend the context with new
 bindings, a closure captures the current context inside a value, which after
 possibly being passed around, can later be combined with argument values to
 provide an extended context in which its body is evaluated. A closure might
@@ -2946,20 +2996,22 @@ We wish to create closures without copying the $\lambda$-expression into them,
 rather by storing a reference, yet memory for the $\lambda$-expression should be
 freed when the last reference to it disappears, so we must use a
 |std::shared_ptr| based mechanism for sharing the $\lambda$-expression among its
-closures. Now the $\lambda$ is already referred to by an |expression_ptr| shared
-pointer from its containing expression, but we choose to not use that general
-pointer for sharing among closures, but a more specific
-pointer-to-$\lambda$-expression. We in fact make a distinction between the
-$\lambda$-expression object itself that is executable, yielding a closure, and
-the object that it shares with its closures. The former is of type
-|lambda_expression| derived from |expression_base| and accessed through unique
-pointers (of type |expression_ptr|), the latter of type
-|lambda_struct| which is not so derived, and will be accessed via shared
-pointers (of type |shared_lambda|). Upon construction of a
-|lambda_expression|, it dynamically creates a second object of class
-|lambda_struct| where it stores all its information (argument pattern, body,
-source location) and to which it holds a shared pointer. The stored
-|shared_lambda| pointer is what will be shared with the closures it spawns.
+closures. Now the $\lambda$-expression is already referred to by an
+|expression_ptr| smart pointer from its containing expression, but that is a
+unique pointer that cannot be used for sharing among closures. So instead we
+define |shared_lambda| as shared pointer to a |lambda_struct| that contains the
+data of a $\lambda$-expression, and |lambda_expression| as a class derived from
+|expression_base| that contains a |shared_lambda| as unique data member.
+
+We thus make a distinction between the $\lambda$-expression object (class
+|lambda_expression|) that is executable, yielding a closure upon evaluation, and
+the |lambda_struct| object that it shares with its closures. The former is of
+type |lambda_expression|, accessed through unique pointers of type
+|expression_ptr|, while |lambda_struct| will be accessed via shared pointers of
+type |shared_lambda|. Upon construction of a |lambda_expression|, it dynamically
+creates a subsidiary object of class |lambda_struct| where it stores all its
+information (argument pattern, body, source location), and which will be shared
+with the closures it spawns.
 
 @< Type def... @>=
 struct lambda_struct
@@ -4637,7 +4689,7 @@ void injector_call::print(std::ostream& out) const
 We shall now introduce conventional control structures, which must of course
 be part of any serious programming language; yet they were implemented only
 after plenty of other language elements were in place, such as
-let-expressions, functions, rows and selection form them, implicit
+\&{let}-expressions, functions, rows and selection form them, implicit
 conversions.
 
 In fact, the power of functions is such that certain control structures can be
