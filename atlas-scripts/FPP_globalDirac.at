@@ -119,7 +119,7 @@ set FPP_unitary_hash_general([(KGBElt,ratvec)] xlambdas, Param_hash Uhash,
     local) = void:
     let xlambdasW = if R_packet_flag
     	      	    then for (x,lambda) in xlambdas
-	      	         do up_Cayley(x,lambda)
+	      	         do up_Cayley_match_LKTs(x,lambda)
 		   	 od
 		    else xlambdas
 	      	    fi
@@ -370,7 +370,7 @@ set FPP_unitary_hash_general([KGBElt] xs, Param_hash Uhash, {Param_hash Uparamha
 	 		 then () = for lambda@index in lambdas
 	      	   	      	   do let lambdaW = lambda
 				      then () = if R_packet_flag
-				      	      	then let (xprime,lambdaprime) = up_Cayley(x,lambda)
+				      	      	then let (xprime,lambdaprime) = up_Cayley_match_LKTs(x,lambda)
 				      		then () = xW:=xprime
 				      		then () = lambdaW:=lambdaprime
 				     		in ()

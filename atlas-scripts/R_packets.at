@@ -74,6 +74,51 @@ set up_Cayley (Param p) = Param:
     let (y,tau) = up_Cayley(p.x, p.lambda)
     in parameter(y,tau,p.nu)
 
+{perform to_more_split Cayley transforms through singular imaginary roots as long as possible
+without adding LKTs}
+set up_Cayley_match_LKTs (KGBElt x, ratvec lambda) = (KGBElt, ratvec):
+    let p0 = parameter(x,lambda,0*lambda)
+    then S = singular_imaginary(x,lambda), mu0 = LKTs(p0)[0], N = #LKTs(p0)
+    {then () = if #S=0 then return (x,lambda) fi}
+    then i = #S-1, j=0, twists = [vec]: []
+    then () = while i >= 0
+    	      do let () = i:= first(for s in S
+    	     	     	        do let p1 = parameter(Cayley(s,p0.x),p0.lambda,0*lambda)
+    	     	     		   then () = twists := all_lambda_differential_0(p1.x)
+		     		   then () = j:= first(for tau in twists
+    	     	    	             do any(for mu in LKTs(parameter(p1.x, p1.lambda + tau,0*lambda))
+				       	    do mu = mu0 od)
+		   		     od) {must have j >= 0}
+		      		   then p2 = parameter(p1.x, p1.lambda+ twists[j], 0*lambda)
+				   {then () = prints(p2)}
+		      		   in #LKTs(p2) = N
+		   		od) {locates a Cayley not changing #LKTs if one exists}
+		   {then () = prints("i = ",i)}
+		   then () = if i=-1 then return (p0.x,p0.lambda)
+		       	    else p0:=parameter(Cayley(S[i],p0.x), p0.lambda+twists[j], 0*lambda)
+			    fi
+		  in S := singular_imaginary(p0)
+	       od
+    in (p0.x, p0.lambda)
+
+{
+then () = while (#S).>
+    	      do let () = p0:= parameter(Cayley(S[0],p0.x), p0.lambda, p0.nu)
+	      {Cayley(S[0],p) built-in fails for G=Sp(6,R), p = parameter(G,30,[4,1,0],[0,0,0])}
+	      	 in S :=singular_imaginary(p0)
+	      od
+    then twists = all_lambda_differential_0(p0.x)
+    then j = first(for tau in twists
+    	     	   do any(for mu in LKTs(parameter(p0.x, p0.lambda + tau,p0.nu)) do mu = mu0 od)
+		   od)
+    in (p0.x, parameter(p0.x, p0.lambda + twists[j], p0.nu).lambda)
+}
+
+{perform to_more_split Cayley transforms through singular imaginary roots as long as possible}
+set up_Cayley (Param p) = Param:
+    let (y,tau) = up_Cayley(p.x, p.lambda)
+    in parameter(y,tau,p.nu)
+
 set move(WeylElt w) = ((KGBElt,ratvec) -> (KGBElt,ratvec)):
  (KGBElt x, ratvec lambda) (KGBElt,ratvec):
  let G = w.root_datum
@@ -182,6 +227,9 @@ set blobwxl(KGBElt x, ratvec lambda) = [(WeylElt, KGBElt,ratvec)]:
     let blobwx = blobwx(x)
     in blobwxl(x,lambda,blobwx)
 
+set blobxl(KGBElt x, ratvec lambda) = [(KGBElt, ratvec)]:
+    for (,y,tau) in blobwxl(x,lambda) do (y,tau) od
+
 {local vertices and relation to FPP_vertices for each (x,lambda) in blob}
 set wLPms([(WeylElt, KGBElt,ratvec)] blobwxl) = [WeylElt, (LocalVertexData, PermOrderTwo, vec)]:
     if #blobwxl = 0 then return [] fi;
@@ -202,7 +250,7 @@ set wLFs([(WeylElt, KGBElt,ratvec)] blobwxl, [WeylElt, (LocalVertexData, PermOrd
     if #blobwxl = 0 then return [] fi;
     for  (w,y,tau)@j in blobwxl
     do let (,(Lvd, Perm2, mapAct))= wLPms[j]
-       in (w, (Lvd,localFD_1Dirac2(y,tau,Lvd, Perm2, mapAct)))
+       in (w, (Lvd,localFD_1Dirac2_by_zero(y,tau,Lvd, Perm2, mapAct)))
     od
 
 set wLFs(KGBElt x, ratvec lambda) = [(WeylElt,(LocalVertexData,[[vec]]))]:
@@ -210,6 +258,22 @@ set wLFs(KGBElt x, ratvec lambda) = [(WeylElt,(LocalVertexData,[[vec]]))]:
     then wLPms = wLPms(blobwxl)
     in wLFs(blobwxl, wLPms)
 
+{all lambda1with same differential giving same LKTs}
+set real_blob(KGBElt x, ratvec lambda) = [ratvec]:
+    let taus = all_lambda_differential_0(x), p = parameter(x,lambda,0*lambda)
+    in for tau in taus
+       do let q = parameter(x,lambda+tau,0*lambda)
+          in if (1*p - 1*q).= then [q.lambda] else [] fi
+       od.##
+
+{all lambda1with same differential giving same LKTs, plus (real?) w1 carrying lambda1 to lambda}
+{set wreal_blob(KGBElt x, ratvec lambda) = [WeylElt, ratvec]:
+    let taus = all_lambda_differential_0(x), p = parameter(x,lambda,0*lambda)
+    in for tau in taus
+       do let q = parameter(x,lambda+tau,0*lambda)
+          in if (1*p - 1*q).= then [q.lambda] else [] fi
+       od.##
+}
 
 {Stick together local vertices and edges at a bunch of different w^*{-1}*(x0,lambda0)} 
 set concatenate([(WeylElt, (LocalVertexData, [[vec]]))] local01) = (LocalVertexData, [[vec]]):
@@ -242,15 +306,27 @@ set blob_data(KGBElt x, ratvec lambda) = (LocalVertexData, [[vec]]):
 
 set pol_hash = make_KTypePol_hash()
 
+set blobCounter = int: 0
+
+{0 means bottom_layer, 1 means hash_one_level, 2 means hash2}
+set algorithm_flag = int: 0
+
 set FPP_unitary_hash_blob(KGBElt x, ratvec lambda) = void:
     if is_finished(x,lambda) then return () fi;
-    let xls = for (,y,tau) in blobwxl(x,lambda) do (y,tau) od
+    let () = blobCounter +:= 1
+    then xls = for (,y,tau) in blobwxl(x,lambda) do (y,tau) od
     {then () = if all(for (y,tau) in xls do is_finished(y,tau) od)
     	      then return ()
 	      fi}
     then  (catLvd, catLFs) = blob_data(x,lambda)
-    then Ps = local_test_GEO_hash2(x,lambda,catLvd,catLFs,pol_hash,
+    then Ps = case algorithm_flag
+    	      in local_test_GEO_hash_bottom_layer(x,lambda,catLvd,catLFs,pol_hash,
     	      big_unitary_hash.uhash(x.real_form))
+	      , local_test_GEO_hash_one_level(x,lambda,catLvd,catLFs,pol_hash,
+    	      big_unitary_hash.uhash(x.real_form))
+	      , local_test_GEO_hash2(x,lambda,catLvd,catLFs,pol_hash,
+    	      big_unitary_hash.uhash(x.real_form))
+	      esac
     in for (y,tau) in xls do finish(y,tau) od
 
 set FPP_unitary_hash_blob(RealForm G) = void:
@@ -259,6 +335,7 @@ set FPP_unitary_hash_blob(RealForm G) = void:
     then () = test_slightly_verbose:=false
     then () = time_verbose:=false
     then oldUcounter = unitary_test_counter.use_count()
+    then () = blobCounter := 0
     then () = unitaryTime:=0
     then () = unipotents_to_hash(G,big_unitary_hash.uhash(G))
     then () = for x in KGB(G)
@@ -268,9 +345,16 @@ set FPP_unitary_hash_blob(RealForm G) = void:
        		 od
      	      od
     in prints("number of unitary faces = ", big_unitary_hash.uhash(G).size(), ", in time ",
-              print_time_string(elapsed_ms() - start));
+              print_time_string(elapsed_ms() - start), " for ",blobCounter, " blobs");
        prints(" time spent in is_unitary = ",print_time_string(unitaryTime),
-              ", number of unitarity tests = ", unitary_test_counter.use_count() - oldUcounter)
+              ", number of unitarity tests = ", unitary_test_counter.use_count() - oldUcounter);
+       prints("Time spent in char calcs = ",print_time_string(charTime), ", #char calcs = ", char_counter.use_count());
+       prints("Time in localFD_1Dirac2* = ", print_time_string(FD12Time), ", in localFD_1Dirac2 = ",print_time_string(FD12Time),
+       	      ", in localFD_1Dirac2_by_zero = ",print_time_string(FD12bzTime));
+       prints("  #hash_real_dumb = ",hash_real_dumbCounter.use_count(),",  #hash_dumb = ", hash_dumbCounter.use_count(),
+       	      ", #hash_def_dumb = ", hash_def_dumbCounter.use_count(),
+	      ", #hash2 = ", hash2Counter.use_count(), ", #hash_one_level = ", hash_one_levelCounter.use_count(),
+	      ", #hash_bottom_layer = ", hash_bottom_layerCounter.use_count())
 
 {set FPP_blob(KGBElt x, ratvec lambda)) =   }
 {
