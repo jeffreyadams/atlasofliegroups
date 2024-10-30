@@ -261,7 +261,7 @@ set derived_factor_KGBs0(KGBElt x) = [KGBElt]:
 {projection from ratl coweight of G to coweight of DS, respecting
 values on roots of S}
 set derived_cowt_inclusions(RealForm G) = [(ratvec->ratvec)]:
-    for (S,derS,M) in derived_simple_factors_info(G)
+    for (S,derS,) in derived_simple_factors_info(G)
     do (ratvec->ratvec):
     (ratvec v) : sum(G.rank,
       for xi@j in fundamental_coweights(derS) do (v*S.simple_roots[j])*xi od)
@@ -303,3 +303,68 @@ set derived_factor_K_types0(KType mu) = [KType]:
     for (muj,) in derived_factor_K_types_info0(mu)
     do muj
     od
+
+{if jth derived_simple_factorRF(G) =dLj has rank d, then jth entry is rk G x d
+matrix carrying wts on dLj to wts on G}
+set derived_factor_weight_inclusions(RealForm G) = [(ratvec->ratvec)]:
+    let dLs = derived_simple_factorsRF(G), Ls = simple_factorsRF(G)
+    in for dL@j in dLs
+       do (ratvec->ratvec): (ratvec vj):
+       	  sum(G.rank, for avee@i in dL.simple_coroots
+       	      	      do (avee*vj)*G.fundamental_weights[resorted(for L in Ls
+				       	  			  do L.root_datum
+								  od, G.root_datum)[j][i]]
+		      od)
+       od
+
+{take a family of parameters on each derived simple factor of G and glue them into parameters on G,
+restricting to central weight v on z(g)}
+set glue_params(RealForm G, [[Param]] drfs, ratvec shift) = [Param]:
+    if any(for list in drfs do (#list).= od) then return [] fi;
+    let gamma_hashes = for list in drfs do make_ratvec_hash() od
+    then p_hashes = for list in drfs do make_Param_hash() od
+    then () = for list@j in drfs
+    	      do for p in list
+    	      	 do gamma_hashes[j].match(p.infinitesimal_character)
+    	      	  ; p_hashes[j].match(p)
+		 od
+	      od
+    then Ms = derived_factor_weight_inclusions(G)
+    then gamma_factors_lists = for gamma_hash in gamma_hashes do gamma_hash.list() od
+    then sizes = for list in gamma_factors_lists do #list od
+    then gammas = for b in box(sizes)
+    	 	  do shift + sum(G.rank,
+		     for list@j in gamma_factors_lists
+		     do Ms[j](list[b[j]])
+    	 	     od)
+		  od
+    	 {one gamma_j from each list, move to G, sum}
+    then pGs = for gamma@j in gammas
+    	       do let rdgamma = integrality_datum(G,gamma)
+	       	  then tau = [int]:
+	       	       for avee@k in rdgamma.simple_coroots
+		       do if (avee*gamma).=
+		       	  then []
+			  else [k]
+			  fi
+		       od.##
+	       	  in for p in all_parameters_gamma(G,gamma)
+		     do if tau(p) = tau
+		     	then [p]
+			else []
+			fi
+		     od.## {these are the ones at gamma with correct tau}
+	      od.##
+    in for p in pGs
+       do let derps = derived_factor_params0(p)
+       	  in if all(for derpj@j in derps
+	     	    do p_hashes[j].lookup(derpj).>= od)
+	     then [p]
+	     else []
+	     fi
+       od.##
+
+{take a family of parameters on each derived simple factor of G and glue them into parameters on G}
+set glue_params(RealForm G, [[Param]] drfs) = [Param]:
+    glue_params(G, drfs, null(G.rank))
+

@@ -34,8 +34,10 @@ set write_vecs([vec] list) = void:
 
 set write_append([int] list, string listname) = void:
     begin
-	 for M@j in list do prints(listname,"#:=",M, if j<#list-1 then
-    ";" else "" fi) od
+	 for M@j in list do prints(listname,"#:=",M) od
+{	 , if j<#list-1 then  
+    ";" else "" fi) od}  {This creates a single long expression with
+    #list pieces: interpreter can't read if it's more than a few thousand}
     end
 
 {assume that [int] listname exists, add to it by concatenation}
@@ -256,7 +258,7 @@ set write_param_list([Param] list, string listName) = void:
 	fi
 	; write_real_form(G_temp, "G_temp")
 	; prints("set Nullp = U(1,0).trivial")
-	; prints("then ",listName,"=[Param]: for i:",#list,
+	; prints("set ",listName,"=[Param]: for i:",#list,
 	  	      " do Nullp od")
         in for p@i in list
 	  do let (,x) = %p.x
