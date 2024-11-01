@@ -218,15 +218,15 @@ set blobwxl(KGBElt x, ratvec lambda, [(WeylElt,KGBElt)] blobwx) = [(WeylElt, KGB
     for (w,y)@j in blobwx
     do	{if j%20 = 0 then prints("starting #",j) fi;}
     	{if twist(y) != y then []}
-	if hermitian_dual(parameter(x,lambda,0*lambda)) != parameter(x,lambda,0*lambda)
+	{if hermitian_dual(parameter(x,lambda,0*lambda)) != parameter(x,lambda,0*lambda)
 	then []
-	else let tau = parameter(y, w*lambda, 0*lambda).lambda
+	else} let tau = parameter(y, w*lambda, 0*lambda).lambda
        	     then A = 1+y.involution
        	     in if {position(y,tau).>=} (#local_FPP_extrema(y, tau)).>
 	     	then [(w,y,tau)]
 	     	else []
 	  	fi
-	fi
+	{fi}
     od.##
 
 {all (y,tau) reachable from (x,lambda) by complex cross}
