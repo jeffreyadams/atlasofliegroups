@@ -1,0 +1,143 @@
+{given m by n integer matrix A and integer vec b of size m, consider
+affine space
+
+H = {v in Q^n | Av = b}
+
+of dimension (m-rank(A)) (if b is in im(A); empty otherwise). Set
+
+F = {v in Q^n | 0 \le v_i \le 1, all i}
+
+unit cube. Goal is to describe explicitly the compact convex polytope
+H\cap F by describing its extreme points. A d-dimensional FACE of F is
+given by a subset S of {0,...,n-1} of cardinality n-d, and a fixed value
+epsilon_i in {0,1} for each coordinate not in S; then
+
+F(S,epsilon) = {v \in Q^n | v_i = epsilon_i (i in S), v_j \in [0,1] (j
+not in S)}
+
+A GOOD EXTREME POINT of F\cap H is a v in the interior of a face
+F(S,epsilon), such that H\cap F(S,epsilon) = {v}
+
+Claim/conjecture: H\cap F is the convex hull of its good extreme
+points.}
+
+{A size m by n, b size m}
+set good_interior_point(mat A, vec b) = [ratvec]:
+if rank(A) < #A then return [] fi;
+let Ainv = (A/1).left_inverse {size n by m}
+then x = Ainv*b
+in if all(for xi in x do xi.> and (1-xi).> od) then [x] else [] fi
+
+{each term in result is subset of {0,..,n-1} of card n-d, and vec of
+size n-d with all entries 0 or 1}
+set cube_faces(int n) = [([int],vec)]:
+    for S in power_set(n)
+    do let n_minus_d = #S
+       in for beta in box(2,n_minus_d)
+       	  do (S,vec:beta)
+	  od
+    od.##
+
+{S is meant to be n-d coordinates; on i in S, require v[i] = epsilon[i]}
+{Ares as [(X Y) above (Z Ares)], with first n-d coords in S,
+last d outside} 
+set face_restrict(mat A, vec b, [int] S, vec epsilon) = (mat,vec):
+    let m = #b, n=#A
+    then T = complement(n,S)
+    then Ares = mat:
+    	 if #T = 0
+    	 then null(m,0)
+    	 else for j in T do A[j] od
+    	 fi
+    then bres = vec: b - sum(#b, for i@m in S do epsilon[m]*A[i] od)
+    in (Ares, bres)
+
+{A size m by n, b size m}
+set aff_cube_extrema(mat A, vec b) = [ratvec, [int], vec]:
+    let n = #A
+    then v = [rat]: for j:n do 0/1 od
+    in for (S,epsilon) in cube_faces(n)
+       do let this = good_interior_point(face_restrict(A,b,S,epsilon))
+       	  then T = complement(n,S)
+       	  then () = if #this = 1
+	     	    then {prints(this, " ",T);}
+		    	 for k@m in T do v[k]:=this[0][m] od;
+		  	 for j@n in S do v[j]:=epsilon[n] od
+		    fi
+	  in if #this = 1 and A*v = b
+       	     then {prints(this, "  ", A*v-b," ");}
+	     [(ratvec:v, S, epsilon)]
+	     else []
+	     fi
+       od.##
+
+{NEED to compute entirely in delta-fixed cone; test delta_min_1*ans misses
+pairs exchanged by delta}
+set local_FPP_extrema(KGBElt x, ratvec lambda) = [ratvec]:
+    let G = x.real_form
+    then delta = G.distinguished_involution
+    then Aold = 1+x.involution
+    then lamthlam = (Aold*lambda).numer
+    then () = if ((delta-1)*lamthlam).!= then return [] fi
+    {then () = prints(Aold)}
+    then A = mat: for xi@j in G.fundamental_weights
+    	     	  do for av in G.simple_coroots
+		     do (av*(Aold*xi)).numer
+		     od
+		  od
+    {then () = prints(A)}
+    then b = for av in G.simple_coroots do av*lamthlam od
+    {then () = prints(lamthlam," ",b)}
+    then first_try = for (u,,) in aff_cube_extrema(A,b)
+       	 	     do (G.fundamental_weights)*u
+       		     od
+    {then () = prints(first_try)}
+    in if (delta-1).= then first_try
+       else let try_hash = make_ratvec_hash(),
+	       	ans_hash = make_ratvec_hash()
+	     then () = for v in first_try do try_hash.match(v) od
+	     then () = for v in first_try
+		       do let w = delta*v
+		       	  then p = parameter(x,lambda,v),
+			       q = parameter(x,lambda,w)
+			  in if hermitian_dual(p) = p
+			     then ans_hash.match(v)
+			     else if try_hash.match(w).>=
+			     	     and hermitian_dual(p) = q
+				  then ans_hash.match((v+w)/2)
+			       	  fi
+			     fi
+		       od
+	     in ans_hash.list()
+	fi
+
+set trial(RealForm G) = void:
+    for x in KGB(G)
+    do prints("starting KGBElt ",x.number);
+       let lambdas = FPP_lambdas(x), theta =x.involution
+       then () = for lambda in lambdas
+     	       	 do prints(new_line);
+	      	    let b = ((1+x.involution)*lambda).numer
+	     	    then Lvd = LPm_table.Lvd(G,theta,b)
+	     	    then () = prints("Lvd.list = ",Lvd.list)
+	     	    then long_answer = local_FPP_extrema (x,b)
+	     	    then () = prints("extrema = ", long_answer)
+	     	    then () = assert(all(for v in long_answer
+	     	       		  	 do Lvd.lookup(v).>=
+				  	 od),
+				"trouble at x = " + to_string(x.number))
+	     	     in ()
+	         od
+       in ()
+   od
+
+set trial_sizes(RealForm G) = [[int]]:
+    for x in KGB(G)
+    do let lambdas = FPP_lambdas(x), theta =x.involution
+       then A = 1+theta
+       in for lambda in lambdas
+     	  do let b = (A*lambda).numer
+	     then long_answer = local_FPP_extrema (x,b)
+	     in #long_answer
+	  od {list of ints for x}
+    od
