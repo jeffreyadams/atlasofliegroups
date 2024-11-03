@@ -175,12 +175,12 @@ set FPP_unitary_hash_general([(KGBElt,ratvec)] xlambdas, Param_hash Uhash,
 				   startUTime = unitaryTime, startCTime = charTime, theta = x.involution
 		 then p0 = parameter(x,lambda,zeroNu)
 		 {then () = prints("time before LPmss[",k,"] = ",print_time_string(elapsed_ms() - start))}
-		 then (Lvd, Perm2, mapAct) = LPmss[k]
+		 then (Lvd, Perm2{, mapAct}) = LPmss[k]
 		 then startLF = elapsed_ms()
 		 {then () = prints("time thru start [",k,"] = ",print_time_string(startLF - start))}
 		 then LF = if by_zero_flag {and height(p0) > 0}
-		      	   then localFD_1Dirac2_by_zero(x, lambda, Lvd, Perm2, mapAct)
-			   else localFD_1Dirac2(x, lambda, Lvd, Perm2, mapAct)
+		      	   then localFD_1Dirac2_by_zero(x, lambda, Lvd, Perm2{, mapAct})
+			   else localFD_1Dirac2(x, lambda, Lvd, Perm2{, mapAct})
 			   fi
 		 then () = if every_lambda_deets_flag
     	      	      	   then prints("time for localFD_1Dirac2* = ",print_time_string(elapsed_ms() - startLF),
@@ -395,15 +395,15 @@ set FPP_unitary_hash_general([KGBElt] xs, Param_hash Uhash, {Param_hash Uparamha
 		    	  	       		  fi
 		       		    	       od
 					  else let lamthlam = ((1+xW.involution)*lambdaW).numer
-		      		      	       then (Lvd, Perm2, mapAct) = LPm_table.LPm_entry(G,xW.involution,lamthlam)
+		      		      	       then (Lvd, Perm2{, mapAct}) = LPm_table.LPm_entry(G,xW.involution,lamthlam)
 		      		      	       then  startlambda = elapsed_ms(), startUhash = Uhash.size(),
 					       	     startUcounter = unitary_test_counter.use_count(),
 						     startUtime = unitaryTime, startCcounter =
 						     char_counter.use_count(), startCtime = charTime
 				      	       then startLF = elapsed_ms()
  		      		      	       then LF = if by_zero_flag {and dominant(G,lamthlam)*G.two_rho_check > 0}
-		      	      	      	      	       	 then localFD_1Dirac2_by_zero(xW, lambdaW, Lvd, Perm2, mapAct)
-			   				 else localFD_1Dirac2(xW, lambdaW, Lvd, Perm2, mapAct)
+		      	      	      	      	       	 then localFD_1Dirac2_by_zero(xW, lambdaW, Lvd, Perm2{, mapAct})
+			   				 else localFD_1Dirac2(xW, lambdaW, Lvd, Perm2{, mapAct})
 			   				 fi {by_zero_flag}
 				      	       then () = if every_lambda_deets_flag
     	      	      	              	       	       	 then prints("time for localFD_1Dirac2* = ",
@@ -717,11 +717,11 @@ set FPP_unitary_hash_bottom_layer([(KGBElt,ratvec)] xlambdas, Param_hash UhashG{
 				   startUtime = unitaryTime, theta = x.involution,
 				   startCcounter = char_counter.use_count(), startCtime = charTime,
 				   {startUparamhash = Uparamhash.size(),} startmorebad = more_bad_hash.size()
-		 then (Lvd, Perm2, mapAct) = LPmss[k] {already lives on Gsc}
+		 then (Lvd, Perm2{, mapAct}) = LPmss[k] {already lives on Gsc}
 		 then startLF = elapsed_ms()
 		 then LF = if by_zero_flag {and height(parameter(x,lambda,0*lambda)) > 0}
-		      	   then localFD_1Dirac2_by_zero(x_sc, lambda_sc, Lvd, Perm2, mapAct{, global_faces_by_zero})
-			   else localFD_1Dirac2(x_sc, lambda_sc, Lvd, Perm2, mapAct{, global_faces})
+		      	   then localFD_1Dirac2_by_zero(x_sc, lambda_sc, Lvd, Perm2{, mapAct}{, global_faces_by_zero})
+			   else localFD_1Dirac2(x_sc, lambda_sc, Lvd, Perm2{, mapAct}{, global_faces})
 			   fi
 		 then () = if every_lambda_deets_flag
     	      	      	   then prints("time for localFD_1Dirac2* = ", print_time_string(elapsed_ms() - startLF),
@@ -955,7 +955,7 @@ set FPP_unitary_hash_bottom_layer([KGBElt] xs, Param_hash UhashG{, Param_hash Up
         	   fi
 	 then () = for lambda@index in lambdas
 	      	   do let lamthlam = ((1+x.involution)*lambda).numer
-		      then (Lvd1, Perm2, mapAct) = LPm_table.LPm_entry(G,x.involution,lamthlam)
+		      then (Lvd1, Perm2{, mapAct}) = LPm_table.LPm_entry(G,x.involution,lamthlam)
 		      then Lvd = if disconn_flag
 		      	       	 then to_vertex_data(for v in Lvd1.list do M*v od, Lvd1.pair_start)
 			   	 else Lvd1
@@ -965,8 +965,8 @@ set FPP_unitary_hash_bottom_layer([KGBElt] xs, Param_hash UhashG{, Param_hash Up
 			    startmorebadlambda = more_bad_hash.size(), startLF = elapsed_ms(),
 			    startCcounter = char_counter.use_count(), startCtime = charTime
  		      then LF = if by_zero_flag {and dominant(G,lamthlam)*G.two_rho_check > 0}
-		      	      	then localFD_1Dirac2_by_zero(x_sc, M*lambda, Lvd, Perm2, mapAct)
-			   	else localFD_1Dirac2(x, lambda, Lvd, Perm2, mapAct)
+		      	      	then localFD_1Dirac2_by_zero(x_sc, M*lambda, Lvd, Perm2{, mapAct})
+			   	else localFD_1Dirac2(x, lambda, Lvd, Perm2{, mapAct})
 			   	fi
 		      then () = if every_lambda_deets_flag
     	      	      	      	then prints("time for localFD_1Dirac2* = ",
@@ -1139,10 +1139,10 @@ set unitary_nus(RealForm G) = [[[ratvec]]]:
 
 {all local vertex nu for (x,lambda). To be applied only to G simple mod center.}
 set all_vertex_nus(RealForm G, KGBElt x, ratvec lambda) = [ratvec]:
-    let (Lvd,Perm2, mapAct) = LPm_table.LPm_entry(G,x.involution,((1+x.involution)*lambda).numer)
+    let (Lvd,Perm2{, mapAct}) = LPm_table.LPm_entry(G,x.involution,((1+x.involution)*lambda).numer)
     then LF = if by_zero_flag {and height(parameter(x,lambda,0*lambda)) > 0}
-	      then localFD_1Dirac2_by_zero(x, lambda, Lvd, Perm2, mapAct)
-	      else localFD_1Dirac2(x, lambda, Lvd, Perm2, mapAct)
+	      then localFD_1Dirac2_by_zero(x, lambda, Lvd, Perm2{, mapAct})
+	      else localFD_1Dirac2(x, lambda, Lvd, Perm2{, mapAct})
 	      fi
     then gammas = for v in LF[0] do Lvd.list[v[0]] od ##
     	 	  for w in LF[1] do face_bary(Lvd,w) od

@@ -134,14 +134,14 @@ set DiracTest(Param p) = bool:
 	    in Q(gamma, gamma) <= bound
        fi
 
-{creates LVD, map Perm on FPPverts at (x,lambda), mapAct from FPPverts to local verts}
+{creates LVD, map Perm on FPPverts at (x,lambda), {mapAct from FPPverts to local verts}}
 {in U(3,2), x_open, #vlist = 16: 4 fixed, 6 pairs flipped by Perm. The set of 6 pairs
 gives only 3 elts of vlistAct: need to get rid of 3 repetitions.
 parameter(x,lambda,v) (v in Lvd.list) may NOT be hermitian in unequal rank.}
 
 set localFD_Lvd2 \
   (InnerClass ic, mat theta, ratvec lambda, {VertexData vd,} [(ratvec->int)] edge_lookups) =
-  (LocalVertexData, PermOrderTwo, vec):
+  (LocalVertexData, PermOrderTwo{, vec}):
 (   let Perm2 = thetaAct2(ic, theta, lambda, {vd,} edge_lookups)
     then vlist = {vd.list}FPP_vertices(ic)
     then vlistAct = [ratvec]:
@@ -150,12 +150,12 @@ set localFD_Lvd2 \
 	 {def of Perm2 forces this to be an actual edge?}
     then Lvd = (vlistAct,#Perm2.fixed).to_vertex_data
     then Llookup = Lvd.lookup
-    then mapAct = vec: for j:#vlist do minus_1 od
+    {then mapAct = vec: for j:#vlist do minus_1 od}
     {maps FPP vertex indices from vd to local indices from Lvd}
-    then () = for i@k in Perm2.fixed do mapAct[i]:= k od
-    then () = for (i,j)@ell in Perm2.trans do mapAct[i]:=#Perm2.fixed + ell;
-    	      	  	       		      mapAct[j]:=#Perm2.fixed + ell od
-    in (Lvd, Perm2, mapAct)
+    {then () = for i@k in Perm2.fixed do mapAct[i]:= k od}
+    {then () = for (i,j)@ell in Perm2.trans do mapAct[i]:=#Perm2.fixed + ell;
+    	      	  	       		      mapAct[j]:=#Perm2.fixed + ell od}
+    in (Lvd, Perm2{, mapAct})
 )
 
 set localFD_Lvd2 \
@@ -164,7 +164,7 @@ set localFD_Lvd2 \
 
 set localFD_Lvd2 \
   ( InnerClass ic, mat theta, ratvec lambda, {VertexData vd,} (vec->int) FlippedEdgeLookup) =
-  (LocalVertexData, PermOrderTwo, vec):
+  (LocalVertexData, PermOrderTwo{, vec}):
 (   let start = elapsed_ms(), Perm2 = thetaAct2(ic, theta, lambda, {vd,} FlippedEdgeLookup)
     then vlist = {vd.list} FPP_vertices(ic)
     then vlistAct = [ratvec]:
@@ -177,16 +177,16 @@ set localFD_Lvd2 \
 	 od.##
     then Lvd = (vlistAct,#Perm2.fixed).to_vertex_data
     then Llookup = Lvd.lookup
-    then mapAct = vec: for j:#vlist do minus_1 od
+    {then mapAct = vec: for j:#vlist do minus_1 od
     {maps FPP vertex indices from vd to local indices from Lvd}
     then () = for i@k in Perm2.fixed do mapAct[i]:= k od
     then () = for (i,j)@ell in Perm2.trans do mapAct[i]:=#Perm2.fixed + ell;
-    	      	  	       		      mapAct[j]:=#Perm2.fixed + ell od
-    in (Lvd, Perm2, mapAct)
+    	      	  	       		      mapAct[j]:=#Perm2.fixed + ell od}
+    in (Lvd, Perm2{, mapAct})
 )
 
 set localFD_Lvd2 \
-  (KGBElt x, ratvec lambda, {VertexData vd,} (vec->int) FlippedEdgeLookup) = (LocalVertexData, PermOrderTwo, vec):
+  (KGBElt x, ratvec lambda, {VertexData vd,} (vec->int) FlippedEdgeLookup) = (LocalVertexData, PermOrderTwo{, vec}):
   localFD_Lvd2(x.inner_class, x.involution, lambda, {vd,} FlippedEdgeLookup)
 
 set FD12Time = int: 0
@@ -201,7 +201,7 @@ vertex "belongs" (either "is" or "is vertex of the edge")}
    two flipped by involution, OR
 3) tetrahedron in FPP, two pairs of verts exchanged by involution}
 set localFD_1Dirac2\
-  ( KGBElt x, ratvec lambda, LocalVertexData Lvd, PermOrderTwo Perm2, vec mapAct{,
+  ( KGBElt x, ratvec lambda, LocalVertexData Lvd, PermOrderTwo Perm2{, vec mapAct}{,
     [[FaceVertsIndex]] globalFaces}) = [[FaceVertsIndex]]:
 (   {if face_verbose
     then prints(new_line,"start localFD_1Dirac")
@@ -230,7 +230,14 @@ set localFD_1Dirac2\
     	 let EdgesFixFix = [vec]:
 	     if #Perm2.fixed > 1
  	     then for v in FPP_edges(G){globalFaces[1]}
-	       	  do if is_member_sorted(Perm2.fixed)(v[0]) and #Perm2.fixed > mapAct[v[0]]+1
+	     	  do let m = locate_sorted(Perm2.fixed, v[0]), n = locate_sorted(Perm2.fixed, v[1])
+		     in if m< #Perm2.fixed and n < #Perm2.fixed and Perm2.fixed[m] = v[0] and Perm2.fixed[n] = v[1]
+		     	then [[m,n].sort]
+			else []
+			fi
+		  od.##
+	     	  {
+	     	  do if is_member_sorted(Perm2.fixed)(v[0]) and #Perm2.fixed > mapAct[v[0]]+1
 		       	      and is_member_sorted(Perm2.fixed[mapAct[v[0]]+1:])(v[1])
 		     then let mloc = mapAct[v[0]], nloc = mapAct[v[1]]
 		       	  in if Llookup(mloc) and Llookup(nloc)
@@ -240,25 +247,41 @@ set localFD_1Dirac2\
 		      else []
 		      fi
 		   od.##
+		   }
 	       else []
 	       fi
 	   {then () = prints("after FixFix, time is ",print_time_string(elapsed_ms() - start))}
       	   then EdgesFixTrans = [vec]:
-	      for v in FPP_flippable_triangles(G)
-	      do if is_member_sorted(Perm2.fixed)(v[0])
+	      if #Perm2.fixed > 0 and #Perm2.trans > 0
+	      then for v in FPP_flippable_triangles(G)
+	      	   do let m = locate_sorted(Perm2.fixed, v[0]), n = trans_hash.lookup([v[1],v[2]])
+	      	   in if m < #Perm2.fixed and Perm2.fixed[m]=v[0] and n.>=
+		      then [[m,#Perm2.fixed+n]]
+		      else []
+		      fi
+		   od.##
+		{
+	         if is_member_sorted(Perm2.fixed)(v[0])
 	      	    and trans_hash.lookup([v[1],v[2]]).>=
 		 then let xloc = mapAct[v[0]], yloc = mapAct[v[1]]
 		      in if Llookup(xloc) and Llookup(yloc)
 			 then [[xloc,yloc].sort]
 			 else []
 			 fi
-		  else []
-		  fi
-	       od.##
+		}
+		else []
+		fi
            {then () = prints("after FixTrans, time is ",print_time_string(elapsed_ms() - start))}
 	   then EdgesTransTrans = ([vec]:
-	      for v in FPP_flippable_tetrahedra(G)
-	      do if trans_hash.lookup([v[0],v[1]]).>= {for e:5 if e < 3 do e fi od}
+	      if #Perm2.trans > 1
+	      then for v in FPP_flippable_tetrahedra(G)
+	      	   do let m = trans_hash.lookup([v[0],v[1]]), n = trans_hash.lookup([v[2],v[3]])
+	      	      in if m.>= and n.>=
+		      	 then [[#Perm2.fixed + m, #Perm2.fixed + n].sort]
+			 else []
+		    	 fi
+		{
+		if trans_hash.lookup([v[0],v[1]]).>= {for e:5 if e < 3 do e fi od}
 	      	    and trans_hash.lookup([v[2],v[3]]).>=
 		 then let xloc = mapAct[v[0]], yloc = mapAct[v[2]]
 		      in if Llookup(xloc) and Llookup(yloc)
@@ -266,8 +289,10 @@ set localFD_1Dirac2\
 			 else []
 			 fi
 		  else []
-	          fi
-	       od.##)
+		  }
+	            od.##
+	       else []
+	       fi)
 	  {then () = prints("after TransTrans, time is ",print_time_string(elapsed_ms() - start))}
 	   in EdgesFixFix ## EdgesFixTrans ## EdgesTransTrans
      { then () = prints("after Edges, time is ",print_time_string(elapsed_ms() - start))}
@@ -295,7 +320,7 @@ set FD12bzFFTime = int:0
 set FD12bzFTTime = int:0
 set FD12bzTTTime = int:0
 
-{takes local data and low global faces and computes vertices and edges, imposing
+{takes local data and low global faces and computes local vertices and edges, imposing
 hermitian, pos on LKTs, and Dirac. Subspace is fixed points of affine involution of
 h*. Perm records involution action on FPP verts. mapAct records local vertex to which an FPP
 vertex "belongs" (either "is" or "is vertex of the edge")}
@@ -308,7 +333,7 @@ vertex "belongs" (either "is" or "is vertex of the edge")}
 #globalFaces[d-1] of d-faces, the jth list being all global faces that
 begin with the jth global (d-1)-face.}
 set localFD_1Dirac2_by_zero\
-  ( KGBElt x, ratvec lambda, LocalVertexData Lvd, PermOrderTwo Perm2, vec mapAct) =
+  ( KGBElt x, ratvec lambda, LocalVertexData Lvd, PermOrderTwo Perm2{, vec mapAct}) =
     [[FaceVertsIndex]]:
 (   {if face_verbose
     then prints(new_line,"start localFD_1DiracBYZERO")
@@ -337,13 +362,19 @@ set localFD_1Dirac2_by_zero\
     	 let startFF = elapsed_ms()
     	 then EdgesFixFix = [vec]:
              if #Perm2.fixed > 1
-	     then for j@k in Perm2.fixed
-	     	  do let mloc = mapAct[j] {this is k??}
+	     then for j@m in Perm2.fixed
+	     	  do {let mloc = mapAct[j]} {this is k??}
 		     {then () = if k != mloc then prints("(k,mloc) = (",k,",",mloc,")") fi}
-		     then cands = FPP_edges_by_zero_unsorted(G)[j]
-		     in if Llookup(mloc) and #cands > 0 and #Perm2.fixed>mloc+1
+		     let cands = FPP_edges_by_zero_unsorted(G)[j] {list of edges beginning j}
+		     in if Llookup(m{mloc}) and #cands > 0
 		     	then for v in cands {global edges with v[0] = j}
-			     do if is_member_sorted(Perm2.fixed[k+1:])(v[1])
+			     do let n = locate_sorted(Perm2.fixed, v[1])
+			     	in if n< #Perm2.fixed and Perm2.fixed[n] = v[1] and Llookup(n)
+				   then [[m,n].sort]
+				   else []
+				   fi
+				{
+				if is_member_sorted(Perm2.fixed[k+1:])(v[1])
 			     	then let nloc =  mapAct[v[1]]
 				     in if {nloc > mloc and} Llookup(nloc)
 				     	then [[mloc,nloc]]
@@ -351,7 +382,8 @@ set localFD_1Dirac2_by_zero\
 					fi
 				else []
 				fi
-			     od.## {this is the list of edges starting with j}
+				}
+			     od.## {this is the list of edges starting with m}
 	     		 else []
 			 fi
 		   od.## {all FixFix edges}
@@ -362,12 +394,18 @@ set localFD_1Dirac2_by_zero\
 	   then startFT = elapsed_ms()
       	   then EdgesFixTrans = [vec]:
 	   	if #Perm2.fixed > 0 and #Perm2.trans >0
-		then for j@k in Perm2.fixed
-		     do let mloc = mapAct[j] {this is k?}
-		     	then cands = FPP_flippable_triangles_by_zero_unsorted(G)[j]
-			in if Llookup(mloc) and #cands > 0
+		then for j@m in Perm2.fixed
+		     do {let mloc = mapAct[j]} {this is m?}
+		     	let cands = FPP_flippable_triangles_by_zero_unsorted(G)[j]
+			in if Llookup(m) and #cands > 0
 			   then for v in cands
-			      	do if trans_hash.lookup(v[1:]).>=
+			      	do let n = #Perm2.fixed + trans_hash.lookup(v[1:])
+				   in if n >= #Perm2.fixed and Llookup(n)
+				      then [[m,n]]
+				      else []
+				      fi
+				   {
+				   if trans_hash.lookup(v[1:]).>=
 			      	   then let nloc = mapAct[v[1]] {= mapAct[v[2]]}
 				      	in if Llookup(nloc)
 				      	   then [[mloc,nloc].sort]
@@ -375,10 +413,11 @@ set localFD_1Dirac2_by_zero\
 					   fi
 				    else []
 				    fi {trans_hash.lookup}
-			       	od.## {[vec], all starting with j}
+				    }
+			       	od.## {[vec], all starting with m}
 			    else []
-			    fi {Llookup(mloc)}
-		      od.## {[vec], all j}
+			    fi {Llookup(m)}
+		      od.## {[vec], all m}
 		  else []
 		  fi
 	   then () = FD12bzFTTime +:= elapsed_ms() - startFT
@@ -387,11 +426,17 @@ set localFD_1Dirac2_by_zero\
 	      if #Perm2.trans > 1
 	      then let FEL = FPP_flippable_edge_lookup(G)
 	      	   in for (i,j)@m in Perm2.trans
-	      	      do let a = FEL([i,j]), mloc = mapAct[i] {this is m+#Perm2.fixed?}
+	      	      do let a = FEL([i,j]) {, mloc = mapAct[i]} {this is m+#Perm2.fixed?}
 	      	      	 then cands = FPP_flippable_tetrahedra_by_zero_unsorted(G)[a]
-		      	 in if Llookup(mloc) and #cands > 0
+		      	 in if Llookup(m{loc}) and #Perm2.trans > m+1 and #cands > 0
 		      	    then for v in cands
-			      	 do if trans_hash.lookup(v[2:]).>=
+			      	 do let n = #Perm2.fixed + trans_hash.lookup(v[2:])
+				    in if n >= #Perm2.fixed and Llookup(n)
+				       then [[m,n].sort]
+				       else []
+				       fi
+				    {
+				    if trans_hash.lookup(v[2:]).>=
 			      	    then let nloc = mapAct[v[2]] {equal to lookup?}
 				      	 in if Llookup(nloc)
 				      	    then [[mloc,nloc].sort]
@@ -399,6 +444,7 @@ set localFD_1Dirac2_by_zero\
 					    fi
 				    else []
 				    fi {trans_hash.lookup}
+				    }
 			       	 od.## {[vec], all starting with mloc}
 			     else []
 			     fi {Llookup(mloc)}
@@ -406,6 +452,7 @@ set localFD_1Dirac2_by_zero\
 		 else []
 		 fi
 	    then () = FD12bzTTTime +:= elapsed_ms() - startTT
+     	    {then () = prints("EFF = ", EdgesFixFix, ", EFT = ",EdgesFixTrans,", ETT = ",EdgesTransTrans)}
 	   in EdgesFixFix ## EdgesFixTrans ## EdgesTransTrans
      then LF1 = [FaceVertsIndex]:
     	 for v in Edges
@@ -894,24 +941,24 @@ set ind_cand_params = (Param -> [Param]):
 	then ()= assert(#answers = param_hash.size(),"ind_cand_params hash damaged")
 	in answers[i]
 
-set_type Lvd_Perm2_mapAct = (LocalVertexData Lvd, PermOrderTwo Perm2, vec mapAct)
+set_type Lvd_Perm2{_mapAct} = (LocalVertexData Lvd, PermOrderTwo Perm2{, vec mapAct})
 
-set Perm2_to_LPm(InnerClass ic, PermOrderTwo Perm2) = Lvd_Perm2_mapAct:
+set Perm2_to_LPm(InnerClass ic, PermOrderTwo Perm2) = Lvd_Perm2{_mapAct}:
     let verts = FPP_vertices(ic)
     then FEs = FPP_flippable_edges(ic)
     then vlist = (for f in Perm2.fixed do verts[f] od)## (for (p,q) in Perm2.trans do face_bary(verts,[p,q]) od)
     then Lvd = to_vertex_data(vlist,#Perm2.fixed)
-    then mapAct = vec: for j:#verts do minus_1 od
+    {then mapAct = vec: for j:#verts do minus_1 od
     {maps FPP vertex indices from vd to local indices from Lvd}
     then () = for f@k in Perm2.fixed do mapAct[f]:= k od
     then () = for (p,q)@ell in Perm2.trans do mapAct[p]:=#Perm2.fixed + ell;
-    	      	  	       		      mapAct[q]:=#Perm2.fixed + ell od
-    in (Lvd, Perm2, mapAct)
+    	      	  	       		      mapAct[q]:=#Perm2.fixed + ell od}
+    in (Lvd, Perm2{, mapAct})
 
 {Record for each inner class a list of some involutions in inner class; and for each such involution,
  some possible lambdas; and for each such lambda, a list of (local vertex data, Perm2, mapAct)}
 set_type
-[Lvd_Perm2_mapAct_table =
+[Lvd_Perm2_table =
 
 ( (->int) inner_class_size {number of inner classes included}
   , ( -> vec) ic_vlist_size {for each inner class, the number of FPP-vertices}
@@ -931,19 +978,19 @@ set_type
   , ((InnerClass, mat, vec) -> int) lamthlam_number {for each involution, number of lambda+theta_lambda in list}
   , ((InnerClass, mat) -> [ratvec]) lambda0s {for each involution, list of allowed lambda mod twists}
   , ((InnerClass, mat,vec) -> PermOrderTwo) Perm2 {for each involution and lamthlam, corresponding Perm2}
-  , ((InnerClass, mat) -> [(ratvec, Lvd_Perm2_mapAct)]) LPm_entries {allowed lambda mod twists, corr entry}
+  , ((InnerClass, mat) -> [(ratvec, Lvd_Perm2{_mapAct})]) LPm_entries {allowed lambda mod twists, corr entry}
     		       	  	    {like output of old FPP_lambdas_big_new}
   , ((InnerClass, mat, vec) -> LocalVertexData) Lvd {local vertex data, one for each theta and lambda+theta*lambda}
-  , ((InnerClass, mat, vec) -> Lvd_Perm2_mapAct) LPm_entry {one for each theta and lambda+theta*lambda}
+  , ((InnerClass, mat, vec) -> Lvd_Perm2{_mapAct}) LPm_entry {one for each theta and lambda+theta*lambda}
 {  , ((InnerClass, mat, vec) -> ) append {just compute, don't report LPm entry}}
   , (int -> InnerClass) inner_class_index
   , (int -> VertexData) vd_index {vertex data for inner class}
-  , ((int,int,int) -> Lvd_Perm2_mapAct) Lvd_Perm2_mapAct_index {one for each inner class, involution,
+  , ((int,int,int) -> Lvd_Perm2{_mapAct}) Lvd_Perm2_index {one for each inner class, involution,
     		      					       lambda + theta*lambda}
 )
 ]
 
-set make_Lvd_Perm2_mapAct_table() = Lvd_Perm2_mapAct_table:
+set make_Lvd_Perm2_table() = Lvd_Perm2_table:
 (   let inner_class_hash = make_InnerClass_hash()
     then inv_hashes = [mat_hash]: [] {one for each inner class}
     then vertex_datas = [VertexData]: [] {one for each inner class}
@@ -954,7 +1001,7 @@ set make_Lvd_Perm2_mapAct_table() = Lvd_Perm2_mapAct_table:
     	 {entries are vecs of size ic.rank: lamba+theta*lambda, for a
 	 	  certain choice of lambda (defined up to twist and equivalence}
     then Perm2s = [[[PermOrderTwo]]]: [] {one for each involution and cand lamthlam}
-    then entries = [[[Lvd_Perm2_mapAct]]]: [] {one list for each involution and cand lamthlam}
+    then entries = [[[Lvd_Perm2]]]: [] {one list for each involution and cand lamthlam}
     then clear() = void:
     	 let () = inner_class_hash.clear()
 	 then () = inv_hashes := []
@@ -1059,8 +1106,8 @@ set make_Lvd_Perm2_mapAct_table() = Lvd_Perm2_mapAct_table:
       let (i,j) = add_cands(ic,theta)
       then k = lamthlam_hashess[i][j].lookup(lamthlam)
       in Perm2s[i][j][k]
-    , ((InnerClass, mat) -> [(ratvec, Lvd_Perm2_mapAct)]): {LPm_entries} (InnerClass ic, mat theta)
-      [(ratvec, Lvd_Perm2_mapAct)]:
+    , ((InnerClass, mat) -> [(ratvec, Lvd_Perm2{_mapAct})]): {LPm_entries} (InnerClass ic, mat theta)
+      [(ratvec, Lvd_Perm2{_mapAct})]:
       let (i,j) = add_cands{lamthlam_hash}(ic,theta), th1 = theta+1
       in for lamthlam@k in lamthlam_hashess[i][j].list()
 	 do let lr = required_solution(th1,lamthlam - ratvec_as_vec(th1*ic.rho))
@@ -1072,19 +1119,19 @@ set make_Lvd_Perm2_mapAct_table() = Lvd_Perm2_mapAct_table:
       then k = lamthlam_hashess[i][j].lookup(lamthlam)
       in entries[i][j][k].Lvd
       {the next function FAILS in U(3,3), called inside FPP_unitary_hash(U(3,3))}
-    , ((InnerClass, mat, vec) -> Lvd_Perm2_mapAct): {LPm_entry} (InnerClass ic, mat theta, vec lamthlam)
-    Lvd_Perm2_mapAct:
+    , ((InnerClass, mat, vec) -> Lvd_Perm2{_mapAct}): {LPm_entry} (InnerClass ic, mat theta, vec lamthlam)
+    Lvd_Perm2{_mapAct}:
       let (i,j) = add_cands(ic,theta), th1 = theta+1
       then k = lamthlam_hashess[i][j].lookup(lamthlam)
       in entries[i][j][k]
     , (int -> InnerClass): {inner_class_index} (int i) InnerClass: inner_class_hash.index(i)
     , (int -> VertexData): {vd_index} (int i) VertexData: vertex_datas[i]
-    , ((int,int,int) -> Lvd_Perm2_mapAct): {Lvd_Perm2_mapAct_index} (int i, int j, int k): Lvd_Perm2_mapAct:
+    , ((int,int,int) -> Lvd_Perm2{_mapAct}): {Lvd_Perm2_index} (int i, int j, int k): Lvd_Perm2{_mapAct}:
       entries[i][j][k]
 )
 )
 
-set LPm_table = make_Lvd_Perm2_mapAct_table()
+set LPm_table = make_Lvd_Perm2_table()
 
 {this is the list of all possible lambda + theta*lambda for ic and theta}
 set FPP_lamthlams(InnerClass ic, mat theta) = [vec]:

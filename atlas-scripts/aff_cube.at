@@ -24,9 +24,27 @@ points.}
 {A size m by n, b size m}
 set good_interior_point(mat A, vec b) = [ratvec]:
 if rank(A) < #A then return [] fi;
-let Ainv = (A/1).left_inverse {size n by m}
-then x = Ainv*b
-in if all(for xi in x do xi.> and (1-xi).> od) then [x] else [] fi
+let trial = [ratvec]: case solve(A,b/1) | no_ratvec: [] | solution(x): [x] esac
+{let Ainv = (A/1).left_inverse {size n by m}}
+in if #trial = 0
+   then return []
+   else let x = trial[0]
+   	in if all(for xi in x do xi.> and (1-xi).> od) then [x] else [] fi
+   fi
+
+{Faces of dim at most r. Each term in result is subset of {0,..,n-1} of
+card n-d \ge n-r, and vec of size n-d with all entries 0 or 1}
+set cube_faces(int n, int r) = [([int],vec)]:
+    for m:r+1 from n-r
+    do let N = binom(n,m) {number of subsets of n of size m}
+       then betas = box(2,m)
+       in for j:N
+       	  do let S = combination_decode(m)(j)
+       	     in for beta in betas
+	     	do (S,vec:beta)
+	     	od {everything attached to subset S}
+       	  od.## {everything attached to all subsets of size m}
+    od.##
 
 {each term in result is subset of {0,..,n-1} of card n-d, and vec of
 size n-d with all entries 0 or 1}
@@ -39,8 +57,6 @@ set cube_faces(int n) = [([int],vec)]:
     od.##
 
 {S is meant to be n-d coordinates; on i in S, require v[i] = epsilon[i]}
-{Ares as [(X Y) above (Z Ares)], with first n-d coords in S,
-last d outside} 
 set face_restrict(mat A, vec b, [int] S, vec epsilon) = (mat,vec):
     let m = #b, n=#A
     then T = complement(n,S)
@@ -53,10 +69,12 @@ set face_restrict(mat A, vec b, [int] S, vec epsilon) = (mat,vec):
     in (Ares, bres)
 
 {A size m by n, b size m}
+{should only look at subsets of size up to rank(A)}
 set aff_cube_extrema(mat A, vec b) = [ratvec, [int], vec]:
     let n = #A
     then v = [rat]: for j:n do 0/1 od
-    in for (S,epsilon) in cube_faces(n)
+    then r = rank(A) {replace by tr(A) - #A??}
+    in for (S,epsilon) in cube_faces(n,r)
        do let this = good_interior_point(face_restrict(A,b,S,epsilon))
        	  then T = complement(n,S)
        	  then () = if #this = 1
@@ -71,45 +89,122 @@ set aff_cube_extrema(mat A, vec b) = [ratvec, [int], vec]:
 	     fi
        od.##
 
+{just see if there's at least one soln}
+set aff_cube_extrema_short(mat A, vec b) = bool:
+    let n = #A, answer = false
+    then r = rank(A) {replace by tr(A) - #A??}
+    then () = for (S,epsilon) in cube_faces(n,r)
+       	      do if #good_interior_point(face_restrict(A,b,S,epsilon)) = 1
+       	      	 then answer:=true; break
+		 fi
+	      od
+    in answer
+
+
+{A size m by n, b size m}
+{Now V is size n by q, the q edges of the parallelepiped we wish to investigate.}
+{should only look at subsets of size up to rank(A)}
+set aff_cube_extrema(mat C, [ratvec] V, vec b) = [{(}ratvec{,[int],ratvec)}]:
+    let d = lcm(for v in V do v.denom od)
+    then A = mat: for v in V do C*ratvec_as_vec(d*v) od
+    in for (x,{S},{epsilon}) in aff_cube_extrema(A,d*b)
+       do {(}V*x {, S, V*epsilon)}
+       od
+
+set aff_cube_extrema_short(mat C, [ratvec] V, vec b) = bool:
+    let d = lcm(for v in V do v.denom od)
+    then A = mat: for v in V do C*ratvec_as_vec(d*v) od
+    in aff_cube_extrema_short(A,d*b)
+
+set aff_cube_extrema_old(mat A, vec b) = [ratvec, [int], vec]:
+    let n = #A
+    then v = [rat]: for j:n do 0/1 od
+    {then r = rank(A)} {replace by tr(A) - #A??}
+    in for (S,epsilon) in cube_faces(n{,r})
+       do let this = good_interior_point(face_restrict(A,b,S,epsilon))
+       	  then T = complement(n,S)
+       	  then () = if #this = 1
+	     	    then {prints(this, " ",T);}
+		    	 for k@m in T do v[k]:=this[0][m] od;
+		  	 for j@n in S do v[j]:=epsilon[n] od
+		    fi
+	  in if #this = 1 and A*v = b
+       	     then {prints(this, "  ", A*v-b," ");}
+	     [(ratvec:v, S, epsilon)]
+	     else []
+	     fi
+       od.##
+
+
+set twist(KGBElt x, ratvec lambda) = ratvec:
+    parameter(twist(x),x.real_form.distinguished_involution *lambda,
+    	      0*lambda).lambda
+
+set lFeCounter = int: 0
+set lFeTimer = int: 0
+
+{set aff_old_flag = false}
+
 {NEED to compute entirely in delta-fixed cone; test delta_min_1*ans misses
 pairs exchanged by delta}
 set local_FPP_extrema(KGBElt x, ratvec lambda) = [ratvec]:
-    let G = x.real_form
-    then delta = G.distinguished_involution
+    let () = lFeCounter +:=1
+    then start = elapsed_ms()
+    then () = if twist(x) != x or twist(x,lambda) != lambda then return [] fi
+    then G = x.real_form
+    then Afflines = [ratvec]: FPP_lines(G) {edges of FPP}
+    then Affcoroots = mat: FPP_coroots(G).^
     then Aold = 1+x.involution
     then lamthlam = (Aold*lambda).numer
-    then () = if ((delta-1)*lamthlam).!= then return [] fi
     {then () = prints(Aold)}
-    then A = mat: for xi@j in G.fundamental_weights
-    	     	  do for av in G.simple_coroots
-		     do (av*(Aold*xi)).numer
-		     od
-		  od
+    then A = mat: for xi@j in Afflines
+    	     	  do ratvec_as_vec(Affcoroots*Aold*xi) od
     {then () = prints(A)}
-    then b = for av in G.simple_coroots do av*lamthlam od
+    then b = Affcoroots*lamthlam
     {then () = prints(lamthlam," ",b)}
-    then first_try = for (u,,) in aff_cube_extrema(A,b)
-       	 	     do (G.fundamental_weights)*u
-       		     od
-    {then () = prints(first_try)}
-    in if (delta-1).= then first_try
-       else let try_hash = make_ratvec_hash(),
-	       	ans_hash = make_ratvec_hash()
-	     then () = for v in first_try do try_hash.match(v) od
-	     then () = for v in first_try
-		       do let w = delta*v
-		       	  then p = parameter(x,lambda,v),
-			       q = parameter(x,lambda,w)
-			  in if hermitian_dual(p) = p
-			     then ans_hash.match(v)
-			     else if try_hash.match(w).>=
-			     	     and hermitian_dual(p) = q
-				  then ans_hash.match((v+w)/2)
-			       	  fi
-			     fi
-		       od
-	     in ans_hash.list()
-	fi
+    then answer = for (u,,) in aff_cube_extrema(A,b)
+       	 	  do Afflines*u
+       		  od
+    then () = lFeTimer +:= elapsed_ms() - start
+    in answer
+
+set local_FPP_extrema_short(KGBElt x, ratvec lambda) = bool:
+    let () = lFeCounter +:=1
+    then start = elapsed_ms()
+    then () = if twist(x) != x or twist(x,lambda) != lambda then return false fi
+    then G = x.real_form
+    then Afflines = [ratvec]: FPP_lines(G) {edges of FPP}
+    then Affcoroots = mat: FPP_coroots(G).^
+    then Aold = 1+x.involution
+    then lamthlam = (Aold*lambda).numer
+    {then () = prints(Aold)}
+    then A = mat: for xi@j in Afflines
+    	     	  do ratvec_as_vec(Affcoroots*Aold*xi) od
+    {then () = prints(A)}
+    then b = Affcoroots*lamthlam
+    {then () = prints(lamthlam," ",b)}
+    then answer = aff_cube_extrema_short(A,b)
+    then () = lFeTimer +:= elapsed_ms() - start
+    in answer
+
+
+set local_FPP_extrema_new(KGBElt x, ratvec lambda) = [ratvec]:
+    let () = lFeCounter +:=1
+    then start = elapsed_ms()
+    then th1 = 1+x.involution, G = x.real_form
+    then lamthlam = (th1*lambda).numer
+    then ans = aff_cube_extrema(th1, FPP_lines(G), lamthlam)
+    then () = lFeTimer +:= elapsed_ms() - start
+    in ans
+
+set local_FPP_extrema_new_short(KGBElt x, ratvec lambda) = bool:
+    let () = lFeCounter +:=1
+    then start = elapsed_ms()
+    then th1 = 1+x.involution, G = x.real_form
+    then lamthlam = (th1*lambda).numer
+    then answer = aff_cube_extrema_short(th1, FPP_lines(G), lamthlam)
+    then () = lFeTimer +:= elapsed_ms() - start
+    in answer
 
 set trial(RealForm G) = void:
     for x in KGB(G)

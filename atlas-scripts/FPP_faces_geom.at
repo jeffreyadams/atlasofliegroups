@@ -222,6 +222,20 @@ set cofolded(InnerClass ic) = (RootDatum, mat, int):
 	 )
     in (rdB,M,j0)
 
+{these are the edges of the fundamental parallelepiped}
+set FPP_lines(InnerClass ic) = [ratvec]:
+    let (Affd, M, j0) = cofolded(ic)
+    then V1 = for v in Affd.fundamental_weights do M*v od
+    then () = if j0.>= then V1[j0] :=2*V1[j0] fi
+    in V1
+
+set FPP_coroots(InnerClass ic) = [vec]:
+   let (Affd, M, j0) = cofolded(ic)
+   then Minv = left_inverse(M)
+   then avs = for avAff in Affd.simple_coroots do avAff*Minv od
+   then () = if j0.>= then avs[j0] := ratvec_as_vec(avs[j0]/2) fi
+   in avs
+
 { An affine root datum is a root datum rd (which in atlas means with
 chosen pos_roots), and a list of the lowest coroots betav[j] in each
 rd[j] in simple_factors(rd). Since I want to use this to look for
