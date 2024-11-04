@@ -415,6 +415,7 @@ set coh_ind_unip_all(RealForm G) = void:
 {Divide job into n portions and do #d}
 set coh_ind_unip_all(RealForm G, int n, int d) = void:
     let Qs = Qs(G)
+    then () = coh_ind_unip_verbose:=true
     then N = #Qs
     then Ni = N\n
     in if d < n-1
