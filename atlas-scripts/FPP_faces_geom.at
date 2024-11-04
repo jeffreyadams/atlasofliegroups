@@ -791,7 +791,12 @@ set FPP_vertices = (InnerClass -> [ratvec]):
 	       in ()
 	       fi
         in FPPvertss[i]
-
+{vertices of the FPP in FPP_lines coords. Entries are #FPP_lines rationals in [0,1]}
+set FPP_vertices_cube(InnerClass ic) = [ratvec]:
+    let Aff_coroots = FPP_coroots(ic), verts = FPP_vertices(ic)
+    in for v in verts
+       do for av in Aff_coroots do av*v od
+       od
 
 set FPP_barycenters(SimpleAffine Affd, int dim, int j0) = [FaceBary]:
     if face_verbose then prints("start dim ",dim,
@@ -1123,6 +1128,13 @@ set FPP_local_vertices(InnerClass ic) = [ratvec]:
     let vlist = FPP_vertices(ic)
     then FEL = FPP_flippable_edge_lookup(ic)
     in FPP_local_vertices(ic, vlist, FEL)
+
+{same in FPP_line coords; entries in [0,1]}
+set FPP_local_vertices_cube(InnerClass ic) = [ratvec]:
+    let Aff_coroots = FPP_coroots(ic), local_verts = FPP_local_vertices(ic)
+    in for v in local_verts
+       do for av in Aff_coroots do av*v od
+       od
 
 {to record time computing flippable triangles}
 set Fftri_time = int: 0

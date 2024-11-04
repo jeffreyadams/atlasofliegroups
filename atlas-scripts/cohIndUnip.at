@@ -412,6 +412,16 @@ set coh_ind_unip_all(RealForm G, Param_hash Uhash) = void:
 set coh_ind_unip_all(RealForm G) = void:
     coh_ind_unip_all(G,big_unitary_hash.uhash(G))
 
+{Divide job into n portions and do #d}
+set coh_ind_unip_all(RealForm G, int n, int d) = void:
+    let Qs = Qs(G)
+    then N = #Qs
+    then Ni = N\n
+    in if d < n-1
+       then coh_ind_unip_all(G,Qs[d*Ni:(d+1)*Ni], big_unitary_hash.uhash(G))
+       else coh_ind_unip_all(G,Qs[(n-1)*Ni:], big_unitary_hash.uhash(G))
+       fi
+
 {include unip reps of G}
 set coh_ind_unip_few_G(RealForm G, Param_hash Uhash) = void:
     coh_ind_unip_few(G,Qs(G)#parabolic_by_wt(null(G.rank),KGB(G,0)),Uhash)
