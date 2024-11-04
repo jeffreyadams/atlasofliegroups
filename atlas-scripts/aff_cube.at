@@ -94,7 +94,7 @@ set aff_cube_extrema_short(mat A, vec b) = bool:
     let n = #A, answer = false
     then r = rank(A) {replace by tr(A) - #A??}
     then () = for (S,epsilon) in cube_faces(n,r)
-       	      do if #good_interior_point(face_restrict(A,b,S,epsilon)) = 1
+       	      ~do if #good_interior_point(face_restrict(A,b,S,epsilon)) = 1
        	      	 then answer:=true; break
 		 fi
 	      od
