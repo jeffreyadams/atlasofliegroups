@@ -1,0 +1,352 @@
+<partitions.at
+<basic.at
+<sort.at { for |sort_u@(int,int->bool)| and |merge@(int,int->bool)| }
+<Weylgroup.at
+<translate.at
+<W_orbit.at {for W@RootDatum}
+
+
+
+{given a RootDatum G and an infl char lambda, produces a pair (RootDatum, [int]) consisting of the integrality datum M of lambda
+(an endoscopic group) and the special W_M-rep corresponding to V(I_{max}(lambda))}
+
+set special_data(RootDatum G, ratvec lambda) = (RootDatum, vec):
+let M=integrality_datum(G,lambda) then
+SpM=Springer_table(M) then
+OM=av_maximal_ideal(M,lambda) in
+(M,springer_character(SpM)(OM))
+
+
+
+{given a special rep E of a Weyl group W_M and a Levi subgroup L of M, determines whether trivial rep of standard Levi W_L
+corresponding to S appears in the restriction of E to W_L}
+
+set appears_in(RootDatum M, vec E, RootDatum L) = bool:
+let ctL=character_table(L) then
+ctM=character_table(M) then
+trivL=trivial(ctL) then
+ind=induce_character(ctL,ctM,trivL) in
+ctM.inner(E,ind)>0
+
+
+set appears_in(RootDatum M, CharacterTable ctM, vec E, RootDatum L) = bool:
+let ctL=character_table(L) then
+trivL=trivial(ctL) then
+ind=induce_character(ctL,ctM,trivL) in
+ctM.inner(E,ind)>0  
+
+
+
+{given a RootDatum G and an infl char lambda, produces a list of all subsets S of simple lambda-integral 
+roots such that appears_in(M,E,Levi_datum(M,S))=true, where E is the special W_M-rep associated to 
+(G,lambda)}
+
+set prohibited_singular_data(RootDatum G, ratvec lambda) = [vec]:
+let (M,E)=special_data(G,lambda) then
+ctM=character_table(M) in
+##(for S in power_set(M.all_simples) do if appears_in(M,ctM,E,Levi_datum(M,S)) then [S] else [] 
+fi od)
+
+
+
+
+{given RootDatum G and a ratvec gamma, determines whether gamma is in root lattice of G} 
+
+set in_root_lattice(RootDatum G, ratvec gamma) = bool:
+let F=fundamental_coweights(G) then   
+X=for f in F do f*gamma od in
+sum(for x in X do #(x=floor(x)) od)=#X
+
+
+{given a positive rational number x, and a positive integer n, this function lists all n-tuples [a_1,...,a_n] of nonnegative integers such that \sum a_i < x}
+
+set tuples(rat x, int n) = [vec]:
+let N=ceil(x)-1 in
+compositions_le(N,n)
+
+
+{given a positive rational number x and a ratvec weights, this function lists all #weights-tuples [a_1,...,a_n] of nonnegative
+integers such that \sum a_i weights_i < x}
+
+set tuples_weighted(rat x, ratvec weights) = [vec]:
+let t=min(weights) then
+n=#weights then 
+tuples=tuples(x/t,n) in
+##(for X in tuples do if X*weights<x then [X] else [] fi od)
+   
+   
+{given a ratvec X with nonnegative entries, a ratvec weights with positive entries, and a ratvec Y with arbitrary entries, lists all ratvecs Z such that
+1) sum Z_i weights_i < sum X_i weights_i
+2) Y_i - Z_i is an integer for each i}
+
+set tuples_weighted(ratvec X, ratvec weights, ratvec Y) = [ratvec]:
+let remainders=for y in Y do y-floor(y) od then
+total=X*weights then
+tuples=tuples_weighted(total,weights) in
+##(for Z in tuples do if (Z+remainders)*weights<X*weights then [Z+remainders] else [] fi od)
+
+
+{given a dominant weight lambda and an arbitrary weight gamma, lists all dominant weights such that
+1) <mu, rho^v> < <lambda, rho^v>
+2) gamma-mu is in the weight lattice}
+
+set candidates_dominant(RootDatum G, ratvec lambda, ratvec gamma) = [ratvec]:
+let F=fundamental_weights(G) then
+C=simple_coroots(G) then
+X=for c in C do lambda*c od then
+Y=for c in C do gamma*c od then
+weights=for f in F do f*G.rho_check od then
+tuples=tuples_weighted(X,weights,Y) in
+for Z in tuples do sum(#F[0],for z@i in Z do z*F[i] od) od
+
+
+{next few functions compute coset representatives for W/(integral Weyl group for infl char lambda)}
+
+
+set W_orbit(RootDatum G,[int] S,((int,ratvec)->ratvec) action, ratvec gamma)=
+let orbit=[([int],ratvec)]:[([],gamma)] then
+todo=[([int],ratvec)]:[([],gamma)] in
+while #todo>0 do
+   let (w,v)=todo[0] in
+   for s in S do
+   let sv=action(s,v) then
+   j=first(for (,y) in orbit do y=sv od) in
+   if j=-1 then orbit#:=([s]##w,sv); todo#:=([s]##w,sv) fi
+   od;
+   todo:=todo[1:]
+od;orbit
+
+set W_orbit(RootDatum G,((int,ratvec)->ratvec) action, ratvec gamma)=
+W_orbit(G,for i:ss_rank(G) do i od,action,gamma)
+
+set star_action(RootDatum G,int i, ratvec v)=
+let w=reflect(G,i,v)
+in dominant(integrality_datum(G,w),w)
+
+set star_W_orbit(RootDatum G,ratvec v)=
+let f(int i,ratvec v)=star_action(G,i,v) in W_orbit(G,f,v)
+
+set W_mod_W_int(RootDatum G,ratvec v)=for (w,) in star_W_orbit(G,v) do W_elt(G,w) od
+
+
+
+{given a RootDatum G and a dominant weight lambda, lists all integrally dominant weights mu such that
+1) <mu_dom, rho^v> < <lambda, rho^v>, where mu_dom is dominant conjugate of mu
+2) gamma-mu is in the weight lattice}
+
+set candidates_integrally_dominant(RootDatum G, ratvec lambda) = [ratvec]:
+let ws=W_mod_W_int(G,lambda) in
+##(for w in ws do let list=candidates_dominant(G,lambda,w*lambda) in
+for x in list do w.inverse*x od od)
+
+
+
+{given a RootDatum G and a dominant weight lambda, lists all integrally dominant weights mu such that
+1) |mu| < |lambda|
+2) lambda-mu is in the weight lattice}
+
+set candidates_shorter(RootDatum G, ratvec lambda) = [ratvec]:
+let C=candidates_integrally_dominant(G,lambda) then
+I=invariant_form(G) then
+l=I(lambda,lambda) in
+##(for x in C do if I(x,x)<l then [x] else [] fi od)
+
+
+{given a RootDatum G and a dominant weight lambda, lists all integrally dominant weights mu such that
+1) <mu_dom, rho^v> < <lambda, rho^v>, where mu_dom is dominant conjugate of mu
+2) gamma-mu is in the root lattice}
+
+set candidates_integrally_dominant_root_lattice(RootDatum G, ratvec lambda) = [ratvec]:
+let C=candidates_integrally_dominant(G,lambda) in
+##(for x in C do if in_root_lattice(G,x-lambda) then [x] else [] fi od)
+
+{given a RootDatum G and a dominant weight lambda, lists all integrally dominant weights mu such that
+1) |mu| < |lambda|
+2) lambda-mu is in the root lattice}
+
+set candidates_shorter_root_lattice(RootDatum G, ratvec lambda) = [ratvec]:
+let C=candidates_integrally_dominant_root_lattice(G,lambda) then
+I=invariant_form(G) then
+l=I(lambda,lambda) in
+##(for x in C do if I(x,x)<l then [x] else [] fi od)
+
+
+{given a RootDatum G, a dominant weight lambda, and an arbitrary weight mu, determines whether
+the singular datum of mu is NOT on the list prohibited_singular_data(G,lambda). I_{max}(lambda) is weakly unipotent
+(resp. very weakly unipotent) if and only if the answer is "true" for every mu in candidates_integrally_dominant(G,lambda) 
+(resp. candidates_integrally_dominant_root_lattice(G,lambda)}
+
+set check_mu(RootDatum G, ratvec lambda, ratvec mu) = bool:
+let sings=prohibited_singular_data(G,lambda) then
+M=integrality_datum(G,lambda) then
+S=##(for rv@i in simple_coroots(M) do if rv*mu=0 then [i] else [] fi od) in
+find(sings,S)=-1
+
+set check_mu(RootDatum M, ratvec lambda, ratvec mu, [vec] sings)=bool:
+let S=##(for rv@i in simple_coroots(M) do if rv*mu=0 then [i] else [] fi od) in
+find(sings,S)=-1
+
+{given a RootDatum G and a dominant weight lambda, determines whether the maximal ideal I_{max}(lambda) is weakly unipotent}
+
+set is_weakly_unipotent(RootDatum G, ratvec lambda)=bool:
+let list=candidates_shorter(G,lambda) in
+if #list=0 then true else let sings=prohibited_singular_data(G,lambda) then M=integrality_datum(G,lambda) in
+0=sum(for mu in list do #(check_mu(M,lambda,mu,sings)=false) od) fi
+
+
+{given a RootDatum G and a dominant weight lambda, determines whether the maximal ideal I_{max}(lambda) is very weakly unipotent}
+
+set is_very_weakly_unipotent(RootDatum G, ratvec lambda)=bool: 
+let list=candidates_shorter_root_lattice(G,lambda) in
+if #list=0 then true else let sings=prohibited_singular_data(G,lambda) then M=integrality_datum(G,lambda) in
+0=sum(for mu in list do #(check_mu(M,lambda,mu,sings)=false) od) fi
+
+
+
+
+{list of all pseudo-unipotent infl chars in E8, minus all special unipotent ones}
+
+set pseudo_unipotent_E8 = 
+[[0,0,0,0,0,0,0,1]/4,[0,1,0,0,0,0,0,0]/4,[1,0,0,0,0,0,0,2]/8,
+ [1,0,0,0,1,0,0,0]/8,[1,0,0,0,0,0,3,0]/12,[0,0,1,0,0,1,1,0]/12,
+ [0,0,0,0,0,0,0,1]/3,[1,0,0,0,0,0,0,0]/4,[1,0,0,0,0,0,0,1]/5,
+ [0,0,1,0,0,0,1,0]/8,[2,0,0,0,0,1,0,1]/12,[3,0,0,0,0,0,0,1]/12,
+ [0,0,0,0,0,1,2,0]/12,[1,0,0,0,0,0,0,0]/3,[0,0,0,0,0,0,1,0]/4,
+ [1,0,0,0,0,1,0,0]/7,[1,0,0,0,0,1,0,0]/8,[0,2,0,0,1,0,0,0]/12,
+ [0,2,1,0,0,0,0,0]/12,[2,0,0,0,0,1,2,0]/15,[1,0,0,1,0,1,1,0]/16,
+ [5,0,0,0,0,1,2,0]/24,[2,0,0,1,4,0,3,0]/40,[1,0,0,0,0,0,0,1]/4,
+ [2,0,0,0,0,0,0,1]/6,[2,0,0,0,0,1,0,0]/8,[0,0,2,0,1,0,0,0]/12,
+ [0,0,0,1,1,0,2,0]/14,[0,1,3,0,2,0,4,0]/30,[0,0,1,0,0,0,0,1]/4,
+ [0,0,1,0,0,0,0,1]/4,[0,0,0,0,1,0,2,0]/8,[0,1,0,0,2,0,1,0]/12,
+ [0,0,1,3,0,1,0,2]/20,[1,0,0,0,0,0,0,2]/3,[1,0,0,0,0,1,0,0]/4,
+ [0,0,0,0,0,1,0,2]/4,[0,2,0,0,0,0,1,0]/6,[0,0,0,1,0,1,0,3]/8,
+ [0,0,3,0,0,1,0,4]/12,[0,0,1,2,0,0,1,0]/12,[0,0,0,1,0,0,0,1]/4,
+ [1,0,0,0,0,1,1,3]/6,[0,0,0,1,0,2,0,1]/8,[0,0,1,2,0,1,0,2]/12,
+ [1,0,0,1,0,0,0,0]/4,[0,0,1,2,0,1,0,5]/12,[2,0,0,0,1,0,0,0]/4,
+ [1,0,0,0,0,0,2,2]/4,[1,0,0,1,0,0,0,1]/4,[1,0,0,0,0,2,0,4]/6,
+ [0,0,1,2,0,1,0,8]/12,[0,1,0,0,0,0,2,0]/3,[0,1,0,0,0,0,3,0]/4,
+ [1,0,0,0,0,1,2,0]/4,[0,0,0,1,0,1,0,1]/4,[0,0,0,1,0,1,0,1]/4,
+ [0,1,3,0,0,0,1,0]/20,[0,0,1,0,2,0,3,0]/24,[0,3,4,0,5,0,3,0]/60,
+ [0,0,1,0,0,0,0,0]/4,[0,0,0,0,0,1,1,0]/6,[2,0,0,0,0,1,1,0]/10,
+ [1,0,0,1,0,0,2,0]/12,[0,0,1,1,2,0,1,0]/20,[0,0,0,0,0,1,0,1]/4,
+ [1,0,0,0,0,0,2,0]/6,[0,0,0,1,0,1,0,1]/8,[1,0,0,0,0,3,0,2]/12,
+ [0,0,0,0,0,1,0,1]/3,[0,0,1,0,0,0,0,2]/4,[0,1,0,0,0,0,1,0]/4,
+ [2,0,0,0,0,1,0,1]/6,[0,0,2,1,0,0,0,5]/12,[1,0,0,2,0,1,0,1]/12,
+ [0,0,1,3,0,1,0,7]/20,[0,0,0,0,0,0,1,1]/2,[0,0,1,0,0,0,1,0]/4,
+ [0,2,0,0,0,0,1,3]/6,[1,0,0,0,0,2,0,1]/6,[1,0,0,1,0,1,1,0]/8,
+ [0,0,1,1,1,0,1,6]/12,[1,0,0,0,0,1,0,2]/4,[0,0,0,1,0,0,0,2]/4,
+ [0,0,2,0,0,1,0,0]/6,[0,0,0,1,0,0,1,0]/4,[1,0,0,0,0,1,0,3]/4,
+ [0,0,0,1,0,0,0,3]/4,[3,0,0,0,0,0,1,0]/4,[0,0,0,1,0,2,0,5]/8,
+ [0,1,0,0,3,0,2,6]/12,[1,1,0,0,0,0,0,0]/2,[0,0,1,0,0,1,0,2]/4,
+ [0,0,0,1,0,0,2,0]/4,[0,0,2,0,0,1,0,3]/6,[1,0,0,0,0,0,1,1]/2,
+ [1,0,0,1,0,0,1,0]/4,[1,0,0,0,2,0,1,3]/6,[1,0,0,0,0,3,1,0]/20,
+ [0,0,3,1,0,0,3,0]/28,[0,0,0,0,0,1,0,0]/4,[0,0,0,1,0,0,1,0]/8,
+ [1,0,0,0,0,2,1,0]/12,[0,1,2,0,0,0,1,0]/12,[0,0,2,1,0,0,5,0]/24,
+ [1,0,0,0,0,0,0,2]/4,[0,1,0,0,1,0,0,0]/6,[0,1,0,0,1,0,2,0]/10,
+ [0,0,2,1,0,0,0,2]/12,[1,0,0,0,0,0,0,3]/4,[0,0,0,1,0,0,0,0]/4,
+ [1,0,0,0,0,1,0,2]/5,[2,0,0,0,0,1,0,4]/8,[1,0,0,0,0,3,0,5]/12,
+ [0,0,2,1,0,0,0,5]/12,[1,0,0,0,0,1,0,1]/4,[0,1,0,0,0,0,1,2]/4,
+ [0,0,1,0,0,1,1,0]/6,[0,0,1,1,0,0,0,1]/6,[0,0,1,1,0,2,0,1]/10,
+ [0,1,0,0,0,0,0,1]/2,[0,0,1,0,0,1,0,0]/4,[2,0,0,0,0,1,0,0]/4,
+ [0,1,1,0,0,1,0,2]/6,[0,0,1,0,0,1,0,1]/4,[0,0,0,0,1,0,1,2]/4,
+ [0,0,1,0,0,1,0,1]/4,[0,0,0,0,1,0,1,2]/4,[2,0,0,0,0,1,0,1]/4,
+ [0,1,1,0,0,0,1,0]/4,[0,0,1,1,0,2,0,6]/10,[1,0,0,0,1,0,1,0]/4,
+ [0,0,0,1,0,1,0,0]/4,[1,0,0,0,1,0,1,2]/4,[0,1,0,0,0,0,2,3]/3,
+ [0,0,0,1,0,2,0,1]/4,[1,0,0,0,0,1,2,4]/4,[0,0,1,0,1,0,1,4]/4,
+ [1,0,0,1,0,1,0,4]/4,[0,0,1,1,1,0,1,6]/6,[1,1,0,0,0,0,1,1]/2,
+ [3,0,0,1,0,1,0,2]/4,[0,1,1,0,0,0,1,0]/2,[0,1,1,0,1,0,2,2]/4,
+ [1,1,0,0,0,1,0,1]/2,[0,1,1,0,1,0,1,1]/3,[1,1,1,0,1,1,1,1]/4,
+ [2,0,0,0,1,0,2,3]/3,[2,0,0,1,0,1,2,4]/4,[1,0,0,1,0,0,1,1]/2,
+ [0,1,1,0,0,0,1,2]/2,[3,0,0,1,0,3,0,4]/4,[1,0,0,1,0,1,1,1]/2,
+ [4,1,1,0,2,0,1,4]/4,[1,1,1,1,1,1,1,1]/3,[1,1,0,1,0,1,1,2]/2,
+ [1,0,0,0,0,1,1,1]/3,[0,0,0,1,0,1,0,2]/4,[2,1,1,0,1,2,4,4]/12,
+ [1,0,0,1,0,1,0,1]/4,[0,0,1,1,1,0,1,2]/6,[0,0,1,1,1,0,1,2]/6,
+ [1,0,0,2,0,1,0,3]/6,[2,1,1,0,0,0,1,2]/4,[0,1,0,0,0,0,3,4]/4,
+ [0,0,1,2,1,0,5,12]/12,[0,0,1,0,0,3,0,0]/4,[1,2,0,0,0,1,0,4]/4,
+ [2,0,0,1,0,1,2,0]/4,[3,0,0,0,1,0,3,0]/4,[1,0,0,1,0,1,2,2]/4,
+ [0,0,0,1,0,0,1,1]/2,[2,1,1,0,1,1,0,1]/4,[2,2,1,1,1,1,1,1]/6,
+ [3,0,0,0,1,0,3,4]/4,[1,1,1,1,1,1,1,1]/5,[2,1,1,0,1,0,2,2]/4,
+ [1,1,1,0,1,0,1,1]/2,[3,0,0,1,0,3,4,4]/4,[1,1,1,1,1,1,1,3]/3,
+ [1,1,1,0,1,1,1,1]/2,[1,0,0,1,0,1,0,0]/4,[0,1,1,0,0,0,1,2]/4,
+ [2,0,0,0,0,1,0,2]/3,[2,0,0,1,0,0,0,3]/4,[4,0,0,1,0,2,0,5]/8,
+ [0,1,0,0,0,1,0,0]/2,[1,0,0,0,0,1,1,3]/3,[1,0,0,1,0,1,1,0]/4,
+ [0,0,0,1,0,0,2,4]/4,[1,0,0,3,0,1,4,12]/12,[2,0,0,1,0,1,0,2]/4,
+ [1,0,0,2,0,1,0,6]/6,[0,2,1,0,0,1,0,3]/4,[1,0,0,1,1,0,1,2]/4,
+ [1,0,0,0,0,1,1,1]/2,[0,0,1,0,1,0,0,1]/2,[1,0,0,1,0,0,1,0]/2,
+ [2,1,1,0,1,2,2,2]/6,[2,1,1,0,0,0,3,4]/4,[3,0,0,1,0,3,0,0]/4,
+ [1,1,0,0,1,0,0,2]/2,[1,1,1,1,1,1,1,1]/4,[2,1,1,0,1,2,4,4]/4,
+ [1,1,1,0,0,1,1,1]/2,[2,1,1,0,1,2,4,4]/4,[1,1,1,1,1,1,1,1]/2,
+ [1,1,1,1,1,1,2,2]/2]
+
+{like list above, but with some evidently non-unipotent infl chars removed. Method for removing infl 
+chars from pseudo_unipotent_E8:
+
+Call a nilpotent cover "relevant" if it is birationally induced from a (rigid) nilpotent orbit, and
+call an infl char "relevant" if it is the infl char of the unipotent ideal attached to a relevant 
+nilpotent cover.  It is easy to determine all relevant covers of a given nilpotent orbit, and the 
+associated infl chars, by examining the induction tables in de Graaf-Elashvili. On the other hand,
+it is possible to get an upper bound on the number of equivalence classes of covers of a given nilpotent 
+orbit by counting the conjugacy classes in pi_1(O). Suppose this upper bound coincides with the number of 
+relevant covers of O, for a particular orbit O. Then all unipotent infl chars associated to O are 
+relevant. In such cases, all pseudounipotent infl chars associated to O which are not relevant can be 
+removed from the list. This happens quite often.}
+
+set pseudo_unipotent_E8_shorter = 
+[[0,0,0,0,0,0,1,1]/2,
+[0,1,0,0,0,0,0,1]/2,
+
+[1,1,0,0,0,0,0,0]/2,
+
+[1,0,0,0,0,0,1,1]/2,[0,0,0,1,0,1,0,1]/4,[1,0,0,1,0,0,1,0]/4,
+[1,0,0,0,1,0,1,2]/4,[0,0,0,1,0,1,0,1]/4,[1,0,0,0,2,0,1,3]/6,
+[0,0,0,0,1,0,0,1]/2,[1,0,0,0,0,1,1,1]/3,[1,0,0,1,0,1,0,0]/4,
+[1,2,0,0,0,1,0,0]/4,[0,0,0,1,0,1,0,2]/4,[0,1,1,0,0,0,1,2]/4,
+[1,0,0,3,0,1,4,4]/12,[2,1,1,0,1,2,4,4]/12,
+[2,0,0,0,0,1,0,2]/3,[1,1,0,0,0,1,0,1]/3,[1,0,0,1,0,1,0,1]/4,
+[2,0,0,1,0,0,0,3]/4,[3,0,0,0,0,1,0,3]/4,[0,0,1,1,1,0,1,2]/6,
+[4,0,0,1,0,2,0,5]/8,[5,0,0,3,0,1,0,8]/12,
+[0,1,0,0,0,1,0,0]/2,[1,0,0,1,0,1,0,2]/4,[1,0,0,2,0,1,0,3]/6,
+[2,1,1,0,0,0,1,2]/4,
+[2,1,1,0,1,1,0,1]/4,
+[1,1,0,0,0,0,1,1]/2,
+[1,0,0,0,0,1,1,1]/2,[0,1,1,0,0,0,1,0]/2,[0,1,1,0,1,0,2,2]/4,
+[1,0,0,1,0,1,2,2]/4,
+[0,0,1,0,1,0,0,1]/2,[1,1,0,0,0,1,0,1]/2,[0,0,0,1,0,0,1,1]/2,
+[1,0,0,1,0,0,1,0]/2,[0,1,1,0,1,0,1,1]/3,[2,1,1,0,1,1,0,1]/4,
+[2,1,1,0,1,2,2,2]/6,[1,1,1,0,1,1,1,1]/4,[2,2,1,1,1,1,1,1]/6,
+[1,1,1,1,1,1,1,1]/5,
+[1,0,0,1,0,0,1,1]/2,[0,1,1,0,0,0,1,2]/2,[2,1,1,0,1,0,2,2]/4,
+[3,0,0,1,0,3,0,0]/4,
+[1,1,0,0,1,0,0,2]/2,
+[1,1,1,1,1,1,1,1]/4,
+
+[2,1,1,0,1,2,2,2]/4,
+
+[1,0,0,1,0,1,1,1]/2,
+
+[1,1,1,0,0,1,1,1]/2,
+
+[1,1,1,0,1,0,1,1]/2,
+[1,1,1,1,1,1,1,1]/3,
+[1,1,1,1,1,1,1,3]/3,
+[1,1,1,0,1,1,1,1]/2,
+[1,1,1,1,1,1,1,1]/2,
+[1,1,1,1,1,1,2,2]/2]
+
+
+
+{list above has 60 elements. List below tracks which of these have been verified to be very weakly 
+unipotent}
+
+set wps=[0,1,2,3,4,5,6,7,8,9,10,11,13,17,18,19,20,21,23,25,26,27,28,29,30,31,32,35,36,37,38,39,42,43,44,45,46,48,49,
+50,52,53,54,55,56,57,58,59]
+
+
+set nwps=[22,41]
+
+set delete_from_pseudo = [12,14,15,16,23,24,33,34,40,47,51]
+
+
+
+
+
