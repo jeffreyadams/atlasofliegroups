@@ -222,6 +222,20 @@ set cofolded(InnerClass ic) = (RootDatum, mat, int):
 	 )
     in (rdB,M,j0)
 
+{these are the edges of the fundamental parallelepiped}
+set FPP_lines(InnerClass ic) = [ratvec]:
+    let (Affd, M, j0) = cofolded(ic)
+    then V1 = for v in Affd.fundamental_weights do M*v od
+    then () = if j0.>= then V1[j0] :=2*V1[j0] fi
+    in V1
+
+set FPP_coroots(InnerClass ic) = [vec]:
+   let (Affd, M, j0) = cofolded(ic)
+   then Minv = left_inverse(M)
+   then avs = for avAff in Affd.simple_coroots do avAff*Minv od
+   then () = if j0.>= then avs[j0] := ratvec_as_vec(avs[j0]/2) fi
+   in avs
+
 { An affine root datum is a root datum rd (which in atlas means with
 chosen pos_roots), and a list of the lowest coroots betav[j] in each
 rd[j] in simple_factors(rd). Since I want to use this to look for
@@ -777,7 +791,12 @@ set FPP_vertices = (InnerClass -> [ratvec]):
 	       in ()
 	       fi
         in FPPvertss[i]
-
+{vertices of the FPP in FPP_lines coords. Entries are #FPP_lines rationals in [0,1]}
+set FPP_vertices_cube(InnerClass ic) = [ratvec]:
+    let Aff_coroots = FPP_coroots(ic), verts = FPP_vertices(ic)
+    in for v in verts
+       do for av in Aff_coroots do av*v od
+       od
 
 set FPP_barycenters(SimpleAffine Affd, int dim, int j0) = [FaceBary]:
     if face_verbose then prints("start dim ",dim,
@@ -1109,6 +1128,13 @@ set FPP_local_vertices(InnerClass ic) = [ratvec]:
     let vlist = FPP_vertices(ic)
     then FEL = FPP_flippable_edge_lookup(ic)
     in FPP_local_vertices(ic, vlist, FEL)
+
+{same in FPP_line coords; entries in [0,1]}
+set FPP_local_vertices_cube(InnerClass ic) = [ratvec]:
+    let Aff_coroots = FPP_coroots(ic), local_verts = FPP_local_vertices(ic)
+    in for v in local_verts
+       do for av in Aff_coroots do av*v od
+       od
 
 {to record time computing flippable triangles}
 set Fftri_time = int: 0
@@ -1522,20 +1548,28 @@ parameters, which are indeed simplices.  In the non-equal rank case,
 one should apply this function to cofolded vertices, to be sure that
 everything in sight is hermitian.}
 {ONLY DEPENDS ON dlambda}
-set thetaAct (KGBElt x, ratvec lambda, VertexData vd) = vec:
+
+set thetaAct (KGBElt x, ratvec lambda, VertexData LLvd) = vec:
+    let theta = x.involution
+    then thetaPlus = (1+theta)*lambda
+    in for v in LLvd.list do LLvd.lookup(-theta*v + thetaPlus) od
+
+set thetaAct (KGBElt x, ratvec lambda{, VertexData vd}) = vec:
 {
 for v in vd.list
     do vd.lookup(parameter(x,(x.involution)*lambda,-v).normal.infinitesimal_character)
     od
 }
-    let theta = x.involution then thetaPlus = (1+theta)*lambda
+    let theta = x.involution, vd = FPP_vertex_data(x.inner_class)
+    then thetaPlus = (1+theta)*lambda
     in for v in vd.list do vd.lookup(-theta*v + thetaPlus) od
 
 set thetaAct2_time = int:0
 
 {only keep the transpositions (v,w) where [v,w] is an edge}
-set thetaAct2 (InnerClass ic, mat theta, ratvec lambda, VertexData vd,  [(ratvec->int)] edge_lookups) = PermOrderTwo:
-    let vlist = vd.list
+set thetaAct2 (InnerClass ic, mat theta, ratvec lambda, {VertexData vd,}  [(ratvec->int)] edge_lookups) = PermOrderTwo:
+    let vd = FPP_vertex_data(ic)
+    then vlist = vd.list
     then thetaPlus = (1+theta)*lambda
     then answer = PermOrderTwo: ([],[])
     then () = for v@i in vlist
@@ -1549,16 +1583,16 @@ set thetaAct2 (InnerClass ic, mat theta, ratvec lambda, VertexData vd,  [(ratvec
 	      od
     in answer
 
-set thetaAct2 (KGBElt x, ratvec lambda, VertexData vd, [(ratvec->int)] edge_lookups) = PermOrderTwo:
-    thetaAct2(x.inner_class, x.involution, lambda, vd, edge_lookups)
+set thetaAct2 (KGBElt x, ratvec lambda, {VertexData vd,} [(ratvec->int)] edge_lookups) = PermOrderTwo:
+    thetaAct2(x.inner_class, x.involution, lambda, {vd,} edge_lookups)
 
-set thetaAct2 (KGBElt x, ratvec lambda, VertexData vd,  [(ratvec->int)] edge_lookups) = PermOrderTwo:
-    thetaAct2(x.real_form, x.involution, lambda, vd, edge_lookups)
+set thetaAct2 (KGBElt x, ratvec lambda, {VertexData vd,}  [(ratvec->int)] edge_lookups) = PermOrderTwo:
+    thetaAct2(x.real_form, x.involution, lambda, {vd,} edge_lookups)
 
 {only keep the transpositions (v,w) where [v,w] is an edge}
-set thetaAct2 (mat theta, ratvec lambda, VertexData vd,  (vec->int) FlippedEdgeLookup) = PermOrderTwo:
-    let start = elapsed_ms(), vlist = vd.list
-    then thetaPlus = (1+theta)*lambda
+set thetaAct2 (InnerClass ic, mat theta, ratvec lambda, {VertexData vd,}  (vec->int) FlippedEdgeLookup) = PermOrderTwo:
+    let start = elapsed_ms(), vd = FPP_vertex_data(ic){vd.list}
+    then thetaPlus = (1+theta)*lambda, vlist = vd.list
     then answer = PermOrderTwo: ([],[])
     then () = for v@i in vlist
     	      do let j = vd.lookup(-theta*v + thetaPlus)
@@ -1575,8 +1609,8 @@ set thetaAct2 (mat theta, ratvec lambda, VertexData vd,  (vec->int) FlippedEdgeL
 {only keep the transpositions (v,w) where [v,w] is an edge}
 set thetaAct2 (KGBElt x, ratvec lambda) = PermOrderTwo:
     let ic = x.inner_class
-    then FEL = FPP_flippable_edge_lookup(ic), vd = FPP_vertex_data(ic)
-    in thetaAct2(x.involution, lambda, vd, FEL)
+    then FEL = FPP_flippable_edge_lookup(ic){, vd = FPP_vertex_data(ic)}
+    in thetaAct2(ic, x.involution, lambda, {vd,} FEL)
 
 {computes the full vertices of the face containing a delta-fixed dom
  ratl weight gamma. Ordinary alcove in cofolded(G) (reduce root datum by delta)}
@@ -1612,8 +1646,8 @@ set local_vertices(Param p) = FaceVerts:
     	      then gamma0 = solve(M,gamma).requisition
     	      in M*face_verts(Affd, gamma0)
 	 fi}
-    then vd = to_vertex_data(list), x = p.x, lambda = p.lambda
-    then Perm = thetaAct(x,lambda,vd)
+    then LLvd = to_vertex_data(list), x = p.x, lambda = p.lambda
+    then Perm = thetaAct(x,lambda,LLvd)
     then () = assert(Perm.>=,"p appears not to be a hermitian parameter")
     in for v@j in list do (v + list[Perm[j]])/2 od.no_reps
 

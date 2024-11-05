@@ -146,11 +146,16 @@ set most_shifts(KGPElt Q, ratvec v) = [vec]:
 	     fi
        od.##
 
+{if true, throw out too-long shifts}
+set short_shifts_flag = true
 
+set shift_count = int:0
 {Weakly good range allows some NEGATIVE shifts from rho_u. Include ALL
 those as well.}
 set all_shifts(KGPElt Q, ratvec v) = [vec]:
     let G = Q.real_form, rhou = rho_u(Q), S = Q.S
+    then B(ratvec wt) = invariant_form(G)(wt,wt)
+    then BG = B(G.rho)
     then T = complement(G.semisimple_rank, Q.S)
     then Qdeltafixed = set_bit_positions(AND(to_bitset(T),to_bitset(delta_fixed(G))))
     then mups = for j in Qdeltafixed
@@ -169,16 +174,22 @@ set all_shifts(KGPElt Q, ratvec v) = [vec]:
 		 od
     then Qbox = box(ms)
     then Qboxshifted = for b in Qbox do b + mdowns od
-    in for b in Qboxshifted
-       do let ell = sum(G.rank, for j@k in Qdeltafixed
-       	  	      		do b[k]*terms[k]
-		      		od)
-	  in if ell.denom = 1
-	     	{and is_FPP(G,ell)}
-	     then [ratvec_as_vec(ell)]
-	     else []
-	     fi
-       od.##
+    then answer = for b in Qboxshifted
+       	 	  do let ell = sum(G.rank, for j@k in Qdeltafixed
+       	  	      			   do b[k]*terms[k]
+		      			   od)
+	  	     in if ell.denom = 1
+	     	     	and if short_shifts_flag
+		    	then B(v + rhou - ell) <= BG
+		    	else true
+		    	fi
+	     		{and is_FPP(G,ell)}
+	     		then [ratvec_as_vec(ell)]
+	     		else []
+	     		fi
+       		  od.##
+    then () = shift_count +:= #answer
+    in answer
 
 
 {most of the weights that can be subtracted from a unipotent on L to get a weakly
@@ -317,7 +328,7 @@ set coh_ind_unip_few(RealForm G, [KGPElt] Qs, Param_hash Uhash) = void:
     	      	 do coh_ind_unip_few(Q,Uhash,v)
 		 od;
 		 if coh_ind_unip_verbose and
-		    j%(max(#Qs\40,2)) = 0
+		    j%(max(#Qs\40,1)) = 0
 		 then prints("finished parabolic #", j,
 		    " after ",print_time_string(elapsed_ms() - startTime),
 		    "; found ",Uhash.size() - oldSize, " reps.")
@@ -341,7 +352,7 @@ set coh_ind_unip_most(RealForm G, [KGPElt] Qs, Param_hash Uhash) = void:
     	      	 do coh_ind_unip_most(Q,Uhash,v)
 		 od;
 		 if coh_ind_unip_verbose and
-		    j%(max(#Qs\40,2)) = 0
+		    j%(max(#Qs\40,1)) = 0
 		 then prints("finished parabolic #", j,
 		    " after ",print_time_string(elapsed_ms() - startTime),
 		    "; found ",Uhash.size() - oldSize, " reps.")
@@ -365,7 +376,7 @@ set coh_ind_unip_all(RealForm G, [KGPElt] Qs, Param_hash Uhash) = void:
     	      	 do coh_ind_unip_all(Q,Uhash,v)
 		 od;
 		 if coh_ind_unip_verbose and
-		    j%(max(#Qs\40,2)) = 0
+		    j%(max(#Qs\40,1)) = 0
 		 then prints("finished parabolic #", j,
 		    " after ",print_time_string(elapsed_ms() - startTime),
 		    "; found ",Uhash.size() - oldSize, " reps.")
@@ -400,6 +411,17 @@ set coh_ind_unip_all(RealForm G, Param_hash Uhash) = void:
 
 set coh_ind_unip_all(RealForm G) = void:
     coh_ind_unip_all(G,big_unitary_hash.uhash(G))
+
+{Divide job into n portions and do #d}
+set coh_ind_unip_all(RealForm G, int n, int d) = void:
+    let Qs = Qs(G)
+    then () = coh_ind_unip_verbose:=true
+    then N = #Qs
+    then Ni = N\n
+    in if d < n-1
+       then coh_ind_unip_all(G,Qs[d*Ni:(d+1)*Ni], big_unitary_hash.uhash(G))
+       else coh_ind_unip_all(G,Qs[(n-1)*Ni:], big_unitary_hash.uhash(G))
+       fi
 
 {include unip reps of G}
 set coh_ind_unip_few_G(RealForm G, Param_hash Uhash) = void:

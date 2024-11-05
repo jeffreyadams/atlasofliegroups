@@ -338,11 +338,11 @@ set pseudo_unipotent_E8_shorter =
 {list above has 60 elements. List below tracks which of these have been verified to be very weakly 
 unipotent}
 
-set wps=[0,1,2,3,4,5,6,7,8,9,10,11,13,17,18,19,20,21,23,25,26,27,28,29,30,31,32,35,36,37,38,39,42,43,44,45,46,48,49,
+set wps=[0,1,2,3,4,5,6,7,8,9,10,11,13,17,18,19,20,21,22,23,25,26,27,28,29,30,31,32,35,36,37,38,39,42,43,44,45,46,48,49,
 50,52,53,54,55,56,57,58,59]
 
 
-set nwps=[22,41]
+set nwps=[41]
 
 set delete_from_pseudo = [12,14,15,16,23,24,33,34,40,47,51]
 
