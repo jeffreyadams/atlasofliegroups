@@ -922,7 +922,7 @@ bool type_expr::is_unstable() const
     case undetermined_type: return true;
     case tabled:  return false; // syntax excludes \.* in tabled types
     case primitive_type: return false;
-    case variable_type: return true; // but should depend on substitutions
+    case variable_type: return false;
     case function_type:
       return func_variant->arg_type.is_unstable()
           or func_variant->result_type.is_unstable();
