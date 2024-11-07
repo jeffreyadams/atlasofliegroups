@@ -168,8 +168,7 @@ set all_shifts_old(KGPElt Q, ratvec v) = [vec]:
 		  od
  	 {lower bound is the chance of FPP condition}
 	 {maybe mdowns should depend on v??}
-    {then () = prints("mdowns = ",mdowns, ", mups = ",mups)}
-    then ms = mups - mdowns
+     then ms = mups - mdowns
     then terms = for t in Qdeltafixed
     	       	 do delta_fixed_fund_wts_long(G)[t]
 		 od
@@ -193,10 +192,13 @@ set all_shifts_old(KGPElt Q, ratvec v) = [vec]:
     then () = shift_count +:= #answer
     in answer.sort_u
 
+set all_shifts_old_flag=false
+
 {Weakly good range allows some NEGATIVE shifts from rho_u. Include ALL
 those as well. Each will be an infl char in FPP on the center of L, so must
 be shorter than rho}
 set all_shifts(KGPElt Q, ratvec v) = [vec]:
+    if all_shifts_old_flag then return all_shifts_old(Q,v) fi;
     let G = Q.real_form, rhou = rho_u(Q), S = Q.S
     then B(ratvec wt) = invariant_form(G)(wt,wt)
     then BG = B(G.rho)
@@ -208,11 +210,11 @@ set all_shifts(KGPElt Q, ratvec v) = [vec]:
 		od
 	 {upper bound is the weakly fair condition}
     then mdowns = for j in Qdeltafixed
-    	 	  do 1- ((dominant(G.simple_coroots[j],G))*G.rho)\1
+    	 	  do 1- ((dominant(G.simple_coroots[j],G))*G.rho {+ G.simple_coroots[j]*v})\1
 		  od
  	 {lower bound is the chance of FPP condition}
 	 {maybe mdowns should depend on v??}
-    then ms = mups - mdowns
+    {then ms = mups - mdowns}
     {then () = prints("mdowns = ",mdowns, ", mups = ",mups)}
     then Qupbox = box(mups)
     then terms = for t in Qdeltafixed
@@ -228,7 +230,7 @@ set all_shifts(KGPElt Q, ratvec v) = [vec]:
     	       	 do delta_fixed_fund_wts_long(G)[t]
 		 od
     	  then answers = [[ratvec]]: for j: #smalldeltafixed+1 do [] od
-    	  then () = answers[0] :=[up]
+    	  then () = answers[0] :=[up-v]
     	  {answers[j] is meant to be coords of answers up to j-1}
     	  then () = for j:#smalldeltafixed {start with answers up to j-1, add mults of jth fund wt}
 	       	    do answers[j+1] :=
@@ -242,7 +244,7 @@ set all_shifts(KGPElt Q, ratvec v) = [vec]:
 		    	  then first = first(for length in lengths do length <= BG +Bup od)
 		    	  then last = #lengths - first(for length in lengths ~do length <=BG+Bup od)
 		    	  in {prints("first = ", first,", last = ",last);}
-			     for m:last-first from first {same as m's above?}
+			     for m:last-first+1 from first {same as m's above?}
 		       	     do {prints("cand = ",ell0 - m*smallterms[j]);}
 			        ell0 - m*smallterms[j]
 		       	     od
@@ -256,8 +258,8 @@ set all_shifts(KGPElt Q, ratvec v) = [vec]:
 	     	     else []
 	     	     fi
        		  od.##)
-	  {then () = prints(answer)}
 	  then answer = answer.sort_u
+	  {then () = prints(answer)}
     	  in ()
         od
       then () = shift_count +:= #answer
