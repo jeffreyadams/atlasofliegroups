@@ -582,6 +582,18 @@ set coh_ind_unip_most(RealForm G, Param_hash Uhash) = void:
 set coh_ind_unip_most(RealForm G) = void:
     coh_ind_unip_most(G,big_unitary_hash.uhash(G))
 
+{Divide job into n portions and do #d}
+set coh_ind_unip_most(RealForm G, int n, int d) = void:
+    let Qs = Qs(G)
+    then () = coh_ind_unip_verbose:=true
+    then N = #Qs
+    then Ni = N\n
+    in if d < n-1
+       then coh_ind_unip_most(G,Qs[d*Ni:(d+1)*Ni], big_unitary_hash.uhash(G))
+       else coh_ind_unip_most(G,Qs[(n-1)*Ni:], big_unitary_hash.uhash(G))
+       fi
+
+
 set coh_ind_unip_all(RealForm G, Param_hash Uhash) = void:
     coh_ind_unip_all(G,Qs(G),Uhash)
 
