@@ -3,24 +3,22 @@
 <kappa.at
 <jeff.at
 
+set endo_verbose=true
+
+
 set endoscopic_lift_param_lambda(Param p_H,mat M,RealForm G)=ratvec:
 let x=KGB_elt(lift(p_H.x,M,G)) in
 rho(G)+(M*(p_H.lambda-rho(p_H.real_form)))+solve(1+x.involution,(1+x.involution)*(M*(rho(p_H.real_form))-rho(G))).requisition {vec}
 
-set endoscopic_lift_param_nu(Param p_H,mat M,RealForm G)=ratvec:
-M*p_H.nu
+set endoscopic_lift_param_nu(Param p_H,mat M,RealForm G)=ratvec:M*p_H.nu
 
-set endoscopic_lift_param_raw(Param p_H,mat M,RealForm G)=Param:
-let x=KGB_elt(lift(p_H.x,M,G)) then
-lambda_G=rho(G)+(M*(p_H.lambda-rho(p_H.real_form)))+solve(1+x.involution,(1+x.involution)*(M*(rho(p_H.real_form))-rho(G))).requisition {vec}  then
-nu_G=M*p_H.nu in
-parameter(x,lambda_G,nu_G)
 
 set endoscopic_lift_param(Param p_H,mat M,RealForm G)=Param:
 let x=KGB_elt(lift(p_H.x,M,G)) then
 lambda_G=rho(G)+(M*(p_H.lambda-rho(p_H.real_form)))+solve(1+x.involution,(1+x.involution)*(M*(rho(p_H.real_form))-rho(G))).requisition {vec}  then
-nu_G=M*p_H.nu in
-first_param(finalize(parameter(x,lambda_G,nu_G)))
+nu_G=M*p_H.nu then
+p_G_0=parameter(x,lambda_G,nu_G) then
+p_G=first_param(finalize(p_G_0)) in p_G
 
 set find([(Param,Param)] lifts, Param pH)=int:first(for (p,) in lifts do p=pH od)
 
@@ -32,8 +30,8 @@ let (,p_G)=lifts[index]  in p_G
 set endoscopic_lift_std(Param p_H,mat M,RealForm G, [(Param,Param)] lifts,ratvec v)=ParamPol:
 param_pol(kappa_packet(find_lift(lifts,p_H),v))
 
-set endoscopic_lift_std_raw(ParamPol P_H,mat M,RealForm G, [(Param,Param)] lifts, ratvec v)=
-assert(is_stable_irr(P_H), "P_H is not stable");
+set endoscopic_lift_std_long(ParamPol P_H,mat M,RealForm G, [(Param,Param)] lifts, ratvec v)=[ParamPol]:
+assert(is_stable_std(P_H), "P_H is not stable");
 let rv=[ParamPol]:[] in
 for (c,p) in %P_H do
  if p=L_packet_representative(p) then
@@ -41,42 +39,100 @@ for (c,p) in %P_H do
  od;
 rv
 
-set try_all([ParamPol] raw_lifts)=[([int],ParamPol)]:
-let signs=box(2,#raw_lifts-1) then
-lists=
- for v@i in signs do
-  let w=1#v in
-  for j:#w do (-1)^w[j]*raw_lifts[j] od od
-in
-for terms@i in lists do (1#signs[i],sum(raw_lifts[0].real_form,terms)) od
+set endoscopic_lift_stable_sum_irr(ParamPol P_H_of_irreducibles, mat M, RealForm G, [(Param,Param)] lifts, ratvec v)=ParamPol:
+let P_G_std=sum(G,endoscopic_lift_std_long(character_formula(P_H_of_irreducibles), M,G,lifts,v)) in
+composition_series(P_G_std)
 
-set endoscopic_lift_irr_tries(ParamPol P_H_of_irreducibles, mat M, RealForm G, [(Param,Param)] lifts, ratvec v)=
-let lift_terms=try_all(endoscopic_lift_std_raw(character_formula(P_H_of_irreducibles), M,G,lifts,v)) in
-for (w,P_G) in lift_terms
-do (w,composition_series(P_G)) od
 
-set endoscopic_lift_irr_tries_smallest(ParamPol P_H_of_irreducibles, mat M, RealForm G, [(Param,Param)] lifts, ratvec v)=
-let all=endoscopic_lift_irr_tries(P_H_of_irreducibles,M,G,lifts,v) then
-min=min(for (,P) in all do #P od) in
-for (w,P) in all do if #P=min then [(w,P)] else [] fi od.##
+set pick_basepoint(Param p_H)=Param:block_of(p_H)~[0]
+set pick_basepoint_lift(Param p_H,mat M,RealForm G)=(Param,Param):
+ let p_H_basepoint=pick_basepoint(p_H) then
+ (p_G)=endoscopic_lift_param(p_H_basepoint,M,G) in
+ (p_H_basepoint,p_G)
 
-set pick_basepoint(Param p_H)=block_of(p_H)~[0]
-set pick_basepoint_lift(Param p_H,mat M,RealForm G)=
- let p_H_basepoint=pick_basepoint(p_H) in 
- (p_H_basepoint,endoscopic_lift_param(p_H_basepoint,M,G))
+{need to modify the root map by a WeylElt w
+this happens when:
+ endoscopic_lift_param goes from
+ p_H -> p_G_0 --finalize--> p_G
+ *** indicates p_G_0 is not final (normal, dominant?), and there is an extra Weyl group element w coming
+ from the finalization step
+ we need to use this element w to modify the root map accordingly}
+
+{Note: G is the target group, w_G_int is an element of the integrality datum of a parameter of G}
+set modify_root_map([[int]] root_map,RootDatum G,WeylElt w_G_int)=[[int]]:
+let G_int=w_G_int.root_datum in
+let ()=if endo_verbose then prints("G: ", G, " ", G.simple_roots, new_line,"G_int: ", G_int, " ", G_int.simple_roots) fi in 
+for list_of_roots  in root_map do
+ for root_index in list_of_roots do
+   let ()=if endo_verbose then prints("root_index: ", root_index) fi in
+   root_index(G_int,w_G_int*posroots(G)[root_index])
+  od
+od
+
+set embed_parameters(Param p_H_basepoint,Param p_G_basepoint,[[int]] root_map, WeylElt w)=[(Param,Param)]:
+let new_root_map=modify_root_map(root_map,p_G_basepoint.root_datum,w) then
+()=if endo_verbose then prints("root_map: ", root_map, new_line, "new_root_map: ", new_root_map) fi in
+embed_parameters(p_H_basepoint,p_G_basepoint,new_root_map)
 
 {need root_map here to define lifts}
-set endoscopic_lift_irr_tries_smallest(ParamPol P_H_of_irreducibles, mat M, RealForm G, [[int]] rm,ratvec v)=
-let (p_H,p_G)=pick_basepoint_lift(last_param(P_H_of_irreducibles),M,G) then
-lifts=embed_parameters(p_H,p_G,rm) in
-endoscopic_lift_irr_tries_smallest(P_H_of_irreducibles, M, G,lifts,v)
+{signs: assuming target group is quasisplit; each (pseudo) L-packet has a unique term with normalized
+torus factor 0, which has positive sign in the endoscopic lift
+the other signs within each packet are obtained via kappa (see kappa.at)}
+set endoscopic_lift_stable_sum_irr(ParamPol P_H_of_irreducibles, mat M, RealForm G,ratvec v)=ParamPol:
+let gt=generic_terms(P_H_of_irreducibles)[0] then
+(p_H,p_G)=pick_basepoint_lift(gt,M,G) then
+()=if endo_verbose then prints("basepoints:", new_line,"p_H=", p_H, new_line,"p_G=", p_G) fi then
+lifts=embed_parameters(p_H,p_G,M) then
+{lifts=embed_parameters(p_H,p_G) then}
+()=if endo_verbose then prints("lifts:");pr(lifts) fi in
+endoscopic_lift_stable_sum_irr(P_H_of_irreducibles, M, G,lifts,v)
 
-set endoscopic_lift_DS(Param p_H,mat M, RealForm G, [[int]] rm,ratvec v)=
-endoscopic_lift_irr_tries_smallest(L_packet_stable_sum(p_H),M,G,rm,v)
 
-set endoscopic_lift(ParamPol P_H_of_irreducibles, mat M, RealForm G, [[int]] rm,ratvec v)=
-endoscopic_lift_irr_tries_smallest(P_H_of_irreducibles,M,G,rm,v)
-
+{
 set endoscopic_lift_unipotents(RealForm H, mat M, RealForm G, [[int]] rm, ratvec v)=
 let stable_sums=unipotent_stable_sums(H) in
-for P in stable_sums do endoscopic_lift(P,M,G,rm,v) od
+for P in stable_sums do endoscopic_lift_stable_sum_irr(P,M,G,rm,v) od
+}
+{default: stable sum of irreducibles}
+set endoscopic_lift(ParamPol P_H_of_irreducibles, mat M, RealForm G, [(Param,Param)] lifts,ratvec v)=ParamPol:
+ endoscopic_lift_stable_sum_irr(P_H_of_irreducibles,M,G,lifts,v)
+
+{
+set endoscopic_lift(ParamPol P_H_of_irreducibles, mat M, RealForm G, [[int]] rm,ratvec v)=ParamPol:
+ endoscopic_lift_stable_sum_irr(P_H_of_irreducibles,M,G,rm,v)
+}
+
+
+{raw versions}
+set endoscopic_lift_param_raw(Param p_H,mat M,RealForm G)=Param:
+let x=KGB_elt(lift(p_H.x,M,G)) then
+lambda_G=rho(G)+(M*(p_H.lambda-rho(p_H.real_form)))+solve(1+x.involution,(1+x.involution)*(M*(rho(p_H.real_form))-rho(G))).requisition {vec}  then
+nu_G=M*p_H.nu in
+parameter(x,lambda_G,nu_G)
+
+set pick_basepoint_lift_raw(Param p_H,mat M,RealForm G)=(Param,Param):
+ let p_H_basepoint=pick_basepoint(p_H) in 
+{ (p_H_basepoint,endoscopic_lift_param(p_H_basepoint,M,G))}
+ (p_H_basepoint,endoscopic_lift_param_raw(p_H_basepoint,M,G))
+{
+set embed_parameters_long(Param p_H, [[int]] root_map)=(bool,[(Param,Param)]):
+let (ph,pg)=embed_parameters_long(p_H,basepoint_lift(ph,M,G,lifts)
+}
+
+set endoscopic_lift_stable_sum_irr_raw(ParamPol P_H_of_irreducibles, mat M, RealForm G,ratvec v)=ParamPol:
+let gt=generic_terms(P_H_of_irreducibles)[0] then
+()=prints("gt=", gt) then 
+(p_H,p_G)=pick_basepoint_lift_raw(gt,M,G) then
+()=prints("p_H=", p_H, new_line, "p_G=", p_G) then
+lifts_raw=embed_parameters(p_H,p_G,M) in
+{careful: embed_parameters has non-final terms for the purposes of the inductive calculation of embed_parameters
+however, at the end, need to replace each non-final term with 1 final one
+for example when lifting }
+let ()=prints("lifts_raw: ");pr(lifts_raw) then
+{lifts=for (pH,pG) in lifts_raw do (pH,finalize(pG).first_param) od in}
+lifts=lifts_raw in
+let ()=prints("lifts: ");pr(lifts) in
+endoscopic_lift_stable_sum_irr(P_H_of_irreducibles, M, G,lifts,v)
+
+set endoscopic_lift_raw(ParamPol P_H_of_irreducibles, mat M, RealForm G,ratvec v)=ParamPol:
+endoscopic_lift_stable_sum_irr_raw(P_H_of_irreducibles,M,G,v)

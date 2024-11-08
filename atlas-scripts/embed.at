@@ -1,9 +1,26 @@
 {embed_KGB and embed_param}
 
-set te_verbose=false
+set pr([(Param,Param)] pairs)=void:
+let (ph,pg)=pairs[0] then
+()=prints("H=", ph.real_form, new_line, "G=", pg.real_form) in
+tabulate(for (ph,pg) in pairs do [ph.to_string,pg.to_string] od)
 
-set root_map(RootDatum H, RootDatum G)= {ordinary endoscopy case}
+set te_verbose=true
+
+set root_map_old(RootDatum H, RootDatum G)=[[int]]: {ordinary endoscopy case: each entry has length 1}
 for i:ss_rank(H) do [root_index(G,H.simple_roots[i])] od
+
+set embed_root(RootDatum H, vec alpha, mat M, RootDatum G)=[vec]:[M*alpha]  {ordinary endoscopy case: each entry has length 1}
+                                                                       {silly: in this case M=1, but will generalize to twisted case}
+
+set root_map(RootDatum H, mat M, RootDatum G)=[[vec]]: {ordinary endoscopy case: each entry has length 1}
+for alpha in H.simple_roots do [M*alpha] od
+
+{need root_map for integrality data for H,G}
+set root_map_old(Param p_H, Param p_G)=[[int]]:
+ let H_int=integrality_datum(p_H) then
+ G_int=integrality_datum(p_G) in
+ root_map_old(H_int,G_int)
 
 {lift_KGB_cross(j_H,root_map,x_G):
  lift simple root #j_H to set of simple roots for G, then apply
@@ -12,85 +29,83 @@ for i:ss_rank(H) do [root_index(G,H.simple_roots[i])] od
  alpha -0> beta_1,beta_2 orthogonal: product of these 2 cross actions
  alpha -0> beta_1,beta_2 not orthogonal: product of these 2 cross actions and reflection in root beta_1+beta_2
 }
-set lift_KGB_cross(int j_H,[[int]] root_map,KGBElt x_G)=KGBElt:
+set lift_KGB_cross(RootDatum H,vec alpha_H,mat M,KGBElt x_G)=KGBElt:
 let G=x_G.real_form then
 y=x_G then
- roots=root_map[j_H] in
+ roots=embed_root(H,alpha_H,M,G)  in
  if #roots<2 then
     cross(roots[0],y)
  elif is_orthogonal(G,roots[0],roots[1]) then
-    for i in roots do y:=cross(i,y) od;y
+    for alpha in roots do y:=cross(alpha,y) od;y
  else
-    let j=root_index(G,root(G,roots[0])+root(G,roots[1])) in
-    for i in roots#j do y:=cross(i,y) od;y
+    for alpha in roots##[roots[0]+roots[1]] do y:=cross(alpha,y) od;y
  fi
 
 {? this should also have a different formula in case of 2 non-orthogonal roots}
-set lift_KGB_Cayley(int j_H,[[int]] root_map,KGBElt x_G)=KGBElt:
+set lift_KGB_Cayley(RootDatum H,vec alpha_H,mat M,KGBElt x_G)=KGBElt:
 let y=x_G in
- for i in root_map[j_H] do y:=Cayley(i,y) od;y
+ for alpha in embed_root(H,alpha_H,M,G) do y:=Cayley(alpha,y) od;y
 
 {use Cayleys and crosses to compute map on KGB, given a single x_H->x_G}
-set embed_KGB(KGBElt x_H,KGBElt x_G,[[int]] root_map)=[(int,int)]:
+set embed_KGB(KGBElt x_H,KGBElt x_G,mat M)=[(int,int)]:
 let H=x_H.real_form then
 G=x_G.real_form then
 known_H=[x_H.number] then
 known_G=[x_G.number] then
-map=[(x_H.number,x_G.number)] then
+KGB_map=[(x_H.number,x_G.number)] then
 done_H=[int]:[]  {x_H's for which we've computed all crosses and Cayleys} then
 is_known_H(int i)=bool:in_list(known_H,i) then
 is_known_G(int i)=bool:in_list(known_G,i) then
 is_known_H(KGBElt x_H)=bool:in_list(known_H,x_H.number) then
 is_known_G(KGBElt x_G)=bool:in_list(known_G,x_G.number) then
-lookup(int i_G)=  {given i_G find i_H which we've already computed which maps to it}
-  let index=first(for (,j) in map do j=i_G od) then (i_H,)=map[i_G] in i_H in
-while #map<KGB_size(H) do
+lookup_G(int i_G)=  {given i_G find i_H which we've already computed which maps to it}
+  let index=first(for (,j) in KGB_map do j=i_G od) then (i_H,)=KGB_map[i_G] in i_H in
+while #KGB_map<KGB_size(H) do
 let ()=if te_verbose then prints("known_H: ", known_H, new_line, "known_G: ", known_G) fi in
-let ()=if te_verbose then prints("map: ", map) fi in
+let ()=if te_verbose then prints("KGB_map: ", KGB_map) fi in
 let ()=if te_verbose then prints("done_H: ", done_H) fi in 
- {find (i,j)  so that (i,j) occurs in map, but i is NOT in done_H}
- let index_in_map= first(for (i,) in map do not in_list(done_H,i) od) then
-    ()=if index_in_map=-1 then 
-       prints("failed to compute complete map");prints("KGB size of H: ", KGB_size(H),new_line, "#map: ", #map);return(map) 
+ {find (i,j)  so that (i,j) occurs in KGB_map, but i is NOT in done_H}
+ let index_in_KGB_map= first(for (i,) in KGB_map do not in_list(done_H,i) od) then
+    ()=if index_in_KGB_map=-1 then
+       prints("failed to compute complete KGB_map");prints("KGB size of H: ", KGB_size(H),new_line, "#KGB_map: ", #KGB_map);return(KGB_map) 
     fi then
-    (i_H,i_G)=map[index_in_map] then
+    (i_H,i_G)=KGB_map[index_in_KGB_map] then
     x_H=KGB(H,i_H) then
     x_G=KGB(G,i_G) in
     let    ()=if te_verbose then prints(new_line,"x_H: ", x_H) fi  then
     ()=if te_verbose then prints("x_G: ", x_G) fi in
     done_H#:=i_H;
- for i:ss_rank(H) do
-    let y_H=cross(i,x_H) in
-    let ()=if te_verbose then prints("i=",i,"(cross)y_H=", y_H) fi in
+ for alpha@i in H.simple_roots do
+    let y_H=cross(alpha,x_H) in
+    let ()=if te_verbose then prints("i=",i," alpha=",alpha," (cross)y_H=", y_H) fi in
       let ()=if not is_known_H(y_H) then
-                let ()=if te_verbose then prints(i, " ", root_map, " ", x_G, " ", x_G.real_form) fi in
-              let y_G=lift_KGB_cross(i, root_map,x_G) in
+              let y_G=lift_KGB_cross(H,alpha,M,x_G) in
               let ()=if te_verbose then prints("y_G=",y_G) fi in
               {map may not be injectived: (i,j) and (k,j) could both occur
                for example on group side: G=GL(4,R), H=SO(3,2)->GL(4,R)}
                 if  true then
 {               if not is_known_G(y_G) then}
                if te_verbose then prints("adding: ", y_H.number, " ", y_G.number) fi; 
-               map#:=(y_H.number, y_G.number);
+               KGB_map#:=(y_H.number, y_G.number);
                known_G#:=y_G.number;
                known_H#:=y_H.number
               fi
              fi
   in
-  if is_noncompact(i,x_H) or is_real(i, x_H) then
-       let y_H=Cayley(i,x_H) in
-       let ()=if te_verbose then prints("i=",i,"(Cayley)y_H=", y_H) fi in
+  if is_noncompact(x_H)(alpha) or is_real(alpha, x_H) then
+       let y_H=Cayley(alpha,x_H) in
+       let ()=if te_verbose then prints("i=",i," alpha=",alpha," (Cayley)y_H=", y_H) fi in
        if not is_known_H(y_H) then
-               let y_G=lift_KGB_Cayley(i, root_map,x_G) in
+               let y_G=lift_KGB_Cayley(H,alpha,M,x_G) in
                if not is_known_G(y_G) then
-                 map#:=(y_H.number, y_G.number);
+                 KGB_map#:=(y_H.number, y_G.number);
                  known_G#:=y_G.number;
                  known_H#:=y_H.number
                fi
               fi
      fi
   od{for i}
-od{while #map};prints("KGB size of H: ", KGB_size(H),new_line, "#map: ", #map);map
+od{while #KGB_map};prints("KGB size of H: ", KGB_size(H),new_line, "#KGB_map: ", #KGB_map);KGB_map
 
 set in_list([Param] params,Param p)=bool:>=find(params,p)
 
@@ -99,28 +114,189 @@ assert(M=id_mat(#M),"*@(mat M,Param p) only implement for M=identity");p
 {parameter(M*(p.x),M*(p.lambda),M*(p.nu))}
 
 {see lift_KGB_cross above}
+{root map must be for the integrality data of H and G}
 set lift_parameter_cross(int j_H,[[int]] root_map,Param p_G)=Param:
 let G=p_G.real_form then
+G_int=integrality_datum(p_G) then 
 y=p_G then
  roots=root_map[j_H] in
  if #roots<2 then
 {    cross(roots[0],y)}
-    cross(G.posroots[roots[0]],y)
- elif is_orthogonal(G,roots[0],roots[1]) then
-    for i in roots do y:=cross(G.posroots[i],y) od;y
+    cross(G_int.posroots[roots[0]],y)
+ elif is_orthogonal(G_int,roots[0],roots[1]) then
+    for i in roots do y:=cross(G_int.posroots[i],y) od;y
  else
-    let j=root_index(G,root(G,roots[0])+root(G,roots[1])) in
-    for i in roots#j do y:=cross(G.posroots[i],y) od;y
+    let j=root_index(G_int,root(G_int,roots[0])+root(G_int,roots[1])) in
+    for i in roots#j do y:=cross(G_int.posroots[i],y) od;y
+ fi
+
+set lift_parameter_cross(RootDatum H,vec alpha_H,mat M,Param p_G)=Param:
+let G=p_G.real_form then
+G_int=integrality_datum(p_G) then 
+y=p_G then
+ roots=embed_root(H,alpha_H,M,G) in
+ if #roots<2 then
+    cross(roots[0],y)
+ elif is_orthogonal(G_int,roots[0],roots[1]) then
+    for alpha in roots do y:=cross(alpha,y) od;y
+ else
+    for alpha in roots##[roots[0]+roots[1]] do y:=cross(alpha,y) od;y
  fi
 
 {? this should also have a different formula in case of 2 non-orthogonal roots}
-set lift_parameter_Cayley(int j_H,[[int]] root_map,Param p_G)=Param:
-let y=p_G in
-{ for i in root_map[j_H] do y:=Cayley(i,y) od;y}
- for i in root_map[j_H] do y:=Cayley(posroots(p_G.real_form)[i],y) od;y
+set lift_parameter_Cayley(RootDatum H,vec alpha_H,mat M,Param p_G)=Param:
+let G=p_G.real_form then
+G_int=integrality_datum(p_G) then 
+y=p_G then
+roots=embed_root(H,alpha_H,M,G) in
+for alpha in roots do  y:=Cayley(alpha,y) od; y
 
 {assuming p_H maps to p_G, extend as far as possible by Cayleys and crosses}
-set embed_parameters(Param p_H, Param p_G, [[int]] root_map)=
+{modifying to use integrality datum AND M instead of root_map}
+set embed_parameters(Param p_H, Param p_G,mat M)=
+let H=p_H.real_form then
+G=p_G.real_form then
+H_int=integrality_datum(p_H) then
+G_int=integrality_datum(p_G) then 
+map=[(p_H,p_G)] then
+known_H=1*p_H then  {parameters for which we know lift p_G, the same as all of the first terms of map finalized}
+known_G=1*p_G then
+done_H=ParamPol:null_module(H) {p_H's for which we've computed all crosses and Cayleys} then
+{()=prints("known_H: ", known_H[p_H], " known_G: ", known_G[p_G]) then}
+{is_known_H(Param p)=bool:known_H[p]!=0 then
+is_known_G(Param p)=bool:known_G[p]!=0 in}
+is_known_H(Param p)=bool:known_H[Finalize(p)]!=0 then  {assumes finalize(p) has 1 term}
+is_known_G(Param p)=bool:known_G[Finalize(p)]!=0 then
+is_done_H(Param p)=bool:done_H[Finalize(p)]!=0 in
+while #map<#block_of(p_H) do
+let ()=if te_verbose then prints("----------------------------------------------------------------------",new_line) fi in
+let ()=if te_verbose then prints("known_H: ", known_H, new_line, "known_G: ", known_G) fi in
+let ()=if te_verbose then prints(new_line,"map: ");pr(map) fi in
+let ()=if te_verbose then prints("done_H: ", done_H) fi in
+let ()=if te_verbose then prints("p_H: ", p_H) fi in
+let ()=if te_verbose then prints("Finalize(p_H): ", Finalize(p_H)) fi in
+let ()=if te_verbose then prints("map: ");pr(map) fi in
+{run over params in map, look for the first one for which is_done_H is false}
+let index_in_map= first(for (q_H,) in map do let ()=prints("q_H: ", q_H, " done_H:", is_done_H(q_H)) in  not is_done_H(q_H) od) then
+()=prints("index_in_map: ", index_in_map) then
+    ()=if index_in_map=-1 then
+       for (ph,) in map do prints(ph, " ", Finalize(ph)) od;
+       prints("failed to compute complete map!");assert(false,"quitting")
+    fi then
+    (p_H,p_G)=map[index_in_map] then
+    ()=if te_verbose then prints(new_line,"NEW p_H: ", p_H) fi  then
+    ()=if te_verbose then prints("p_G: ", p_G) fi in
+{    done_H+:=p_H;}void:();
+ for alpha@i in p_H.integrality_datum.simple_roots do
+    let q_H=cross(alpha,p_H) in
+    let ()=if te_verbose then prints("i=",i,new_line,"alpha=",alpha, "cross:p_H->", q_H) fi in
+    let ()=prints("debugging: here is known_H: ", known_H) in
+    let ()=prints("debugging: check is_known_H of ", " ", q_H, " :", is_known_H(q_H)) in 
+      let ()=if not is_known_H(q_H) then
+              let ()=prints("in not is_known case") in
+              let ()=if te_verbose then prints("p_G=", p_G) fi in
+              let q_G=lift_parameter_cross(H,alpha,M,p_G) in
+              let ()=if te_verbose then prints("q_G=",q_G) fi in
+              {map may not be injective: (i,j) and (k,j) could both occur
+               for example on group side: G=GL(4,R), H=SO(3,2)->GL(4,R)
+                but skip if (ph,pg) is in the table}
+                if  true then
+{               if not is_known_G(y_G) then}
+               if te_verbose then prints("addding: ", q_H, " ", q_G) fi; 
+               map#:=(q_H,q_G);
+               known_G+:=q_G;
+               known_H+:=q_H;
+               if te_verbose then prints("DEBUG 1", new_line, "map=");pr(map);prints("known_H:");prints(known_H) fi
+               
+              fi
+             fi
+  in
+  if is_noncompact(i,p_H.x) or is_real(i,p_H.x) then
+       let q_H=Cayley(i,p_H) in
+       let ()=if te_verbose then prints("Cayley i=",i," Cayley:p_H->", q_H,new_line,"p_G=", p_G) fi in
+       let ()= if te_verbose then prints("is_known?: q_H=", q_H, "  ", is_known_H(q_H)) fi in
+       let ()=if te_verbose then prints("now p_G=", p_G) fi in
+       if not is_known_H(q_H) then
+               let ()=prints("going to compute Cayley for G:") in
+               let q_G=lift_parameter_Cayley(H,alpha,M,p_G) in
+               let ()=if te_verbose then prints("not is_known_H; alpha=",alpha,"q_G: ", q_G) fi in
+               let ()=if te_verbose then prints("known_G?: q_G=", q_G, " ", is_known_G(q_G)) fi in
+{               if not is_known_G(q_G) then} if true then
+                if te_verbose then prints("adding (nci): ", q_H, " ", q_G) fi; 
+                 map#:=(q_H,q_G);
+                 known_G+:=q_G;
+                 known_H+:=q_H;
+                 if te_verbose then prints("DEBUG 2", new_line, "map=");pr(map);prints("known_H:");prints(known_H) fi
+               fi
+              fi
+     fi;
+       if te_verbose then prints("adding (1) to done_H: ", p_H) fi;
+       done_H+:=p_H
+  od{for i}
+
+od{while #map};map
+
+{assuming p_H maps to p_G, extend as far as possible by Cayleys and crosses}
+{modifying to use integrality datum}
+{set embed_parameters_slightly_old(Param p_H, Param p_G, [[int]] root_map)=
+let H=p_H.real_form then
+G=p_G.real_form then
+H_int=integrality_datum(p_H) then
+G_int=integrality_datum(p_G) then 
+known_H=1*p_H then
+known_G=1*p_G then
+map=[(p_H,p_G)] then
+done_H=ParamPol:null_module(H) {p_H's for which we've computed all crosses and Cayleys} then
+{()=prints("known_H: ", known_H[p_H], " known_G: ", known_G[p_G]) then}
+is_known_H(Param p)=bool:known_H[p]!=0 then
+is_known_G(Param p)=bool:known_G[p]!=0 in
+while #map<#block_of(p_H) do
+let ()=if te_verbose then prints("known_H: ", known_H, new_line, "known_G: ", known_G) fi in
+let ()=if te_verbose then prints(new_line,"map: ", map,new_line) fi in
+let ()=if te_verbose then prints("done_H: ", done_H) fi in
+let index_in_map= first(for (p_H,) in map do done_H[p_H]=0 od) then
+{()=prints("index_in_map: ", index_in_map) then}
+    ()=if index_in_map=-1 then
+       prints("failed to compute complete map");return(map)
+    fi then
+    (p_H,p_G)=map[index_in_map] then
+    ()=if te_verbose then prints(new_line,"p_H: ", p_H) fi  then
+    ()=if te_verbose then prints("p_G: ", p_G) fi in
+    done_H+:=p_H;
+ for i:ss_rank(H_int) do
+    let q_H=cross(i,p_H) in
+    let ()=if te_verbose then prints("i=",i," cross:p_H->", q_H) fi in
+      let ()=if not is_known_H(q_H) then
+                let ()=if te_verbose then prints(i, " ", root_map, " p_G=", p_G) fi in
+              let q_G=lift_parameter_cross(i, root_map,p_G) in
+              let ()=if te_verbose then prints("q_G=",q_G) fi in
+              {map may not be injectived: (i,j) and (k,j) could both occur
+               for example on group side: G=GL(4,R), H=SO(3,2)->GL(4,R)}
+                if  true then
+{               if not is_known_G(y_G) then}
+               if te_verbose then prints("adding: ", p_H, " ", p_G) fi; 
+               map#:=(q_H,q_G);
+               known_G+:=q_G;
+               known_H+:=q_H
+              fi
+             fi
+  in
+  if is_noncompact(i,p_H.x) or is_real(i,p_H.x) then
+       let q_H=Cayley(i,p_H) in
+       let ()=if te_verbose then prints("Cayley i=",i," Cayley:p_H->", q_H,new_line,"p_G=", p_G) fi in
+       if not is_known_H(q_H) then
+               let q_G=lift_parameter_Cayley(i, root_map,p_G) in
+               if not is_known_G(q_G) then
+                 map#:=(q_H,q_G);
+                 known_G+:=q_G;
+                 known_H+:=q_H
+               fi
+              fi
+     fi
+  od{for i}
+od{while #map};map
+
+set embed_parameters_old(Param p_H, Param p_G, [[int]] root_map)=
 let H=p_H.real_form then
 G=p_G.real_form then
 known_H=1*p_H then
@@ -175,8 +351,65 @@ let index_in_map= first(for (p_H,) in map do done_H[p_H]=0 od) then
      fi
   od{for i}
 od{while #map};map
+}
 
-set pr([(Param,Param)] pairs)=void:
-let (ph,pg)=pairs[0] then
-()=prints("H=", ph.real_form, new_line, "G=", pg.real_form) in
-tabulate(for (ph,pg) in pairs do [ph.to_string,pg.to_string] od)
+{
+set embed_parameters_long(Param p_H, Param p_G, [[int]] root_map)=(bool,[(Param,Param)]):
+let H=p_H.real_form then
+G=p_G.real_form then
+known_H=1*p_H then
+known_G=1*p_G then
+map=[(p_H,p_G)] then
+done_H=ParamPol:null_module(H) {p_H's for which we've computed all crosses and Cayleys} then
+{()=prints("known_H: ", known_H[p_H], " known_G: ", known_G[p_G]) then}
+is_known_H(Param p)=bool:known_H[p]!=0 then
+is_known_G(Param p)=bool:known_G[p]!=0 in
+while #map<#block_of(p_H) do
+let ()=if te_verbose then prints("known_H: ", known_H, new_line, "known_G: ", known_G) fi in
+let ()=if te_verbose then prints(new_line,"map: ", map,new_line) fi in
+let ()=if te_verbose then prints("done_H: ", done_H) fi in
+let index_in_map= first(for (p_H,) in map do done_H[p_H]=0 od) then
+{()=prints("index_in_map: ", index_in_map) then}
+    ()=if index_in_map=-1 then
+       prints("failed to compute complete map");return(false,map)
+    fi then
+    (p_H,p_G)=map[index_in_map] then
+    ()=if te_verbose then prints(new_line,"p_H: ", p_H) fi  then
+    ()=if te_verbose then prints("p_G: ", p_G) fi in
+    done_H+:=p_H;
+ for i:ss_rank(H) do
+    let q_H=cross(i,p_H) in
+    let ()=if te_verbose then prints("i=",i," cross:p_H->", q_H) fi in
+      let ()=if not is_known_H(q_H) then
+                let ()=if te_verbose then prints(i, " ", root_map, " p_G=", p_G) fi in
+              let q_G=lift_parameter_cross(i, root_map,p_G) in
+              let ()=if te_verbose then prints("q_G=",q_G) fi in
+              {map may not be injectived: (i,j) and (k,j) could both occur
+               for example on group side: G=GL(4,R), H=SO(3,2)->GL(4,R)}
+                if  true then
+{               if not is_known_G(y_G) then}
+               if te_verbose then prints("adding: ", p_H, " ", p_G) fi; 
+               map#:=(q_H,q_G);
+               known_G+:=q_G;
+               known_H+:=q_H
+              fi
+             fi
+  in
+  if is_noncompact(i,p_H.x) or is_real(i,p_H.x) then
+       let q_H=Cayley(i,p_H) in
+       let ()=if te_verbose then prints("i=",i," Cayley:p_H->", q_H,new_line,"p_G=", p_G) fi in
+       if not is_known_H(q_H) then
+               let q_G=lift_parameter_Cayley(i, root_map,p_G) in
+               if not is_known_G(q_G) then
+                 map#:=(q_H,q_G);
+                 known_G+:=q_G;
+                 known_H+:=q_H
+               fi
+              fi
+     fi
+  od{for i}
+od{while #map};(true,map)
+
+set embed_parameters((Param p_H, Param p_G), [[int]] root_map)=[(Param,Param)]:embed_parameters(p_H,p_G,root_map)
+
+}

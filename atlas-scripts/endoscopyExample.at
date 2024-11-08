@@ -1,11 +1,33 @@
 set G=Sp(4,R)
 set v=[1,1]/2
 set (H,M,Hd)=endoscopic_group(G,v)
-set H=split_form(H)
+set H=quasisplit_form(H)
 set rm=root_map(H,G)
-
+set m=[[2],[0]]
 set ss=unipotent_stable_sums(H)
-set P0=ss[2]
+set P=ss[3]
+set ph=first_param(P)
+set pH=pick_basepoint(ph)
+set pG=endoscopic_lift_param(pH,M,G)
+
+
+set P7=ss[7]
+set p7=first_param(P7)
+set pb7=pick_basepoint(p7)
+
+set (a7,b7,)=pick_basepoint_lift(last_param(P7),M,G)
+set c7=endoscopic_lift_param(a7,M,G)
+set lifts7=embed_parameters(a7,b7)
+
+
+void:for i:9 do prints("------------------",new_line,"i:", i, " P_H:", ss[i]);
+prints("lift: ",endoscopic_lift(ss[i],M,G,rm,v)) od
+
+void:for i:9 do prints("------RAWRAWRAW------------",new_line,"i:", i, " P_H:", ss[i]);
+prints("lift: ",endoscopic_lift_raw(ss[i],M,G,rm,v)) od
+
+
+{set P0=ss[2]
 set (a0,b0)=pick_basepoint_lift(last_param(P0),M,G)
 set P1=ss[1]
 set (a1,b1)=pick_basepoint_lift(last_param(P1),M,G)
@@ -13,16 +35,37 @@ set P2=ss[2]
 set (a2,b2)=pick_basepoint_lift(last_param(P2),M,G)
 set lifts2=embed_parameters(a2,b2,rm)
 set P3=ss[3]
-set (a3,b3)=pick_basepoint_lift(last_param(P3),M,G)
-set lifts3=embed_parameters(a3,b3,rm)
+set p3=first_param(P3)
+set b3=endoscopic_lift_param(p3,M,G)}
+{set b3raw=endoscopic_lift_param_raw(p3,M,G)}
+
+{set (a3,b3)=pick_basepoint_lift(last_param(P3),M,G)}
+
+
+{set lifts3=embed_parameters(p3,b3,rm)}
+{
+
+set gt=generic_terms(ss[7])[0]
+set (p_H,p_G)=pick_basepoint_lift_raw(gt,M,G)
+set lifts=embed_parameters(p_H,p_G,rm)
+set lifts2=embed_parameters(pb7,M,G,rm)
+set cf=character_formula(ss[7])
+
+set (a,b)=pick_basepoint_lift(pb7,M,G)
+set (x,y)=pick_basepoint_lift_raw(pb7,M,G)
+set embedab=embed_parameters(a,b,rm)
+set embedxy=embed_parameters(x,y,rm)
+}
+
 
 {this function fails: }
 {set z=endoscopic_lift_unipotents(H,M,G,rm,v)}
 
-set m=[[2],[0]]
+
 
 {need to use different root maps for i=4,5}
-set root_maps=[rm,rm,rm,m,m,rm,rm,rm,rm]
-void:for i:9 do
-prints(new_line,"lift #", i, ":",new_line, "P_H=", ss[i], new_line, "lift: ");
-for (a,b) in endoscopic_lift(ss[i],M,G,root_maps[i],v)  do prints("coefficient matrix=",a, new_line,"lift: ",b) od od
+{set root_maps=[rm,rm,rm,rm,rm,rm,rm,rm,rm]}
+set root_maps=[rm,rm,rm,rm,rm,rm,rm,rm,rm]
+{void:for i:9 do prints("------------------",new_line,"i:", i, " P_H:", ss[i]);
+prints("lift: ",endoscopic_lift(ss[i],M,G,root_maps[i],v)) od
+}

@@ -283,14 +283,16 @@ KGB(G,i).involution
  involution is straightforward
  unnormalize torus factor: M*unnormalized_torus_factor for H
  this requires a computation to get the normalized torus factor for G}
-set lift(KGBElt_gen x_H_gen,mat M, RealForm G)=KGBElt_gen:
+{THIS FUNCTION APPEARS TO BE WRONG
+ see lift@(KGBELt_gen,mat,RealForm) in twisted_endoscopy_D.at}
+set lift_my(KGBElt_gen x_H_gen,mat M, RealForm G)=KGBElt_gen:
 let tf_H_raw=x_H_gen.unnormalized_torus_factor then
 theta_G=lift(x_H_gen.involution,M,G) then
 tf_G_raw=M*tf_H_raw then
 tf_G=(2*tf_G_raw-G.rho_check)*(1+theta_G)/2 in
 KGB_elt_gen(G.inner_class,theta_G,tf_G)
 
-set lift(KGBElt x_H,mat M, RealForm G)=KGBElt_gen:
+set lift_my(KGBElt x_H,mat M, RealForm G)=KGBElt_gen:
 lift(KGB_elt_gen(x_H),M,G)
 
 {list standard module: (x,lambda,nu)

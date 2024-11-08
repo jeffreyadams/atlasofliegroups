@@ -39,11 +39,31 @@ w_times_p=cross(alpha,p) {alpha is the vec of root of rd_i, viewed as root of G}
 kappa(p,s,last) * f(cross(last,p),s,y)  fi
   in f(p,s,w)
 
-set kappa_packet(Param p,ratvec s)=
+set kappa_packet_unnormalized(Param p,ratvec s)=ParamPol:
 let rd_i=imaginary_root_system(p.x) then 
 orbit=cross_sub_orbit(simple_imaginary_reflections(p.x),p.x)  in {list of pairs (w*x,w) where w is in G.W}
 {but want them in W(rd_i)}
 sum(p.real_form, for (x,w) in orbit do
   let w_i=W_elt(rd_i, w.matrix) in 
   kappa(p,s,w_i)*parameter(x,p.lambda,p.nu) od)
+
+set generic_terms([Param] params)=[Param]:
+for p in params do if =p.x.torus_factor then [p] else [] fi od.##
+
+set generic_terms(ParamPol P)=[Param]: generic_terms(monomials(P))
+
+set kappa_packet(Param p,ratvec s)=ParamPol:
+let P=kappa_packet_unnormalized(p,s) then
+gt=generic_terms(P) in
+if =#gt then
+ prints("no generic terms");P
+else
+ let p=generic_terms(P)[0] then
+ coeff=P[p] in
+ assert(is_int(coeff),"coefficient not an integer");
+ sign(split_as_int(coeff))*P
+fi
+
+
+
 

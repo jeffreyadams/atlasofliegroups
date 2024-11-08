@@ -1,6 +1,6 @@
 <extParamPol.at
 
-set ecf_verbose=true
+set ecf_verbose=false
 {when translating an extended module:
 suppose
 1) p has regular infinitesimal character

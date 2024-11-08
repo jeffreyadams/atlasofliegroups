@@ -1019,6 +1019,7 @@ set root (RootDatum rd, vec alpha_v) = vec: root(rd,coroot_index(rd,alpha_v))
 set coroot (RootDatum rd, vec alpha) = vec: coroot(rd,root_index(rd,alpha))
 
 set is_orthogonal (RootDatum rd, int i, int j) = bool: =coroot(rd,i)*root(rd,j)
+set is_orthogonal (RootDatum rd, vec alpha, vec beta) = bool: is_orthogonal(rd,root_index(rd,alpha),root_index(rd,beta))
 set is_orthogonal (RootDatum rd, [int] S, int j) = bool:
    for i in S do is_orthogonal(rd,i,j) od.all
 

@@ -198,12 +198,12 @@ set is_fixed(WeylElt w,mat delta, ratvec v)=bool:is_integer(w*delta*v-v)
 
 set restrict_co_action(mat M, mat A)=mat:left_inverse(M)*A*M
 
-set weak_endoscopic_group(
+set endoscopic_group(
 RootDatum G, {G not G_vee}
 mat delta_vee,   {dual twist}
 mat xi_vee,     {dual involution defining the L-group of G}
-ratvec s,        {take centralizer(exp(2\pi is)}
-WeylElt w_G_vee)=   {an additional twist; the identity gives the default inner class of the endoscopic group
+ratvec s,        {take centralizer(exp(2i\pi s)}
+WeylElt w_G_vee)=(RealForm,mat,RealForm):   {an additional twist; the identity gives the default inner class of the endoscopic group
                       w_G_vee is only needed to get other inner classes of H}
 assert(delta_vee*matrix(w_G_vee)=matrix(w_G_vee)*delta_vee,"w_G_vee doesn't commute with delta_vee");
 {assert(is_fixed(w_G_vee,xi_vee,s), "w_G_vee*xi_vee doesn't fix s");}
@@ -215,19 +215,29 @@ restrict=restrict_co_action(M,w_G_vee.matrix) then
 ()=prints("w_H: ", w_H, new_line, w_H.matrix) then
 {()=prints( "restrict: ", restrict) then}
 {()=prints("wh:", w_H.matrix) then}
-dual_inner_class=inner_class(H_vee,w_H.matrix) in 
-(dual(dual_inner_class),M,dual_inner_class)
+{dual_inner_class=inner_class(H_vee,w_H.matrix) in }
+inner_class_H_vee=inner_class(H_vee,w_H.matrix*restrict) then
+inner_class_H=dual(inner_class_H_vee) in
+(quasisplit_form(inner_class_H), M, quasisplit_form(inner_class_H_vee))
 
-set weak_endoscopic_group(RealForm G, mat delta_vee,ratvec s,WeylElt w_G_vee)=
-weak_endoscopic_group(G,delta_vee,G.distinguished_involution,s,w_G_vee)
+{many special cases}
+{if G is given as a real form, this determines delta_G and its dual xi_vee}
+set endoscopic_group(RealForm G, mat delta_vee,ratvec s,WeylElt w_G_vee)=(RealForm,mat,RealForm): 
+endoscopic_group(G,delta_vee,dual_quasisplit_form(G).distinguished_involution,s,w_G_vee)
 
-set endoscopic_group(RootDatum G, mat delta_vee,mat xi_vee,ratvec s)=weak_endoscopic_group(G,delta_vee,xi_vee,s,id_W(dual(G)))
-set endoscopic_group(RootDatum G, mat delta_vee,mat xi_vee,WeylElt w_G_vee)=weak_endoscopic_group(G,delta_vee,xi_vee,null(rank(G)),w_G_vee)
-set endoscopic_group(RootDatum G, mat delta_vee,mat xi_vee)=weak_endoscopic_group(G,delta_vee,xi_vee,null(rank(G)), id_W(dual(G)))
+set endoscopic_group(RootDatum G, mat delta_vee,mat xi_vee,ratvec s)=(RealForm,mat,RealForm): endoscopic_group(G,delta_vee,xi_vee,s,id_W(dual(G)))
+set endoscopic_group(RootDatum G, mat delta_vee,mat xi_vee,WeylElt w_G_vee)=(RealForm,mat,RealForm): endoscopic_group(G,delta_vee,xi_vee,null(rank(G)),w_G_vee)
+set endoscopic_group(RootDatum G, mat delta_vee,mat xi_vee)=(RealForm,mat,RealForm): endoscopic_group(G,delta_vee,xi_vee,null(rank(G)), id_W(dual(G)))
 
-set endoscopic_group(RealForm G, mat delta_vee,ratvec s)=weak_endoscopic_group(G,delta_vee,s,id_W(dual(G)))
-set endoscopic_group(RealForm G, mat delta_vee,mat xi_vee,WeylElt w_G_vee)=weak_endoscopic_group(G,delta_vee,null(rank(G)),w_G_vee)
-set endoscopic_group(RealForm G, mat delta_vee)=weak_endoscopic_group(G,delta_vee,null(rank(G)), id_W(dual(G)))
+set endoscopic_group(RealForm G, mat delta_vee,ratvec s)=(RealForm,mat,RealForm): endoscopic_group(G,delta_vee,s,id_W(dual(G)))
+set endoscopic_group(RealForm G, mat delta_vee,mat xi_vee,WeylElt w_G_vee)=(RealForm,mat,RealForm): endoscopic_group(G,delta_vee,null(rank(G)),w_G_vee)
 
-set endoscopic_group(RealForm G,ratvec s)=weak_endoscopic_group(G,id_mat(rank(G)),s,id_W(dual(G)))
+{basic twisted case:}
+set endoscopic_group(RealForm G, mat delta_vee)=(RealForm,mat,RealForm): endoscopic_group(G,delta_vee,null(rank(G)), id_W(dual(G)))
+
+set endoscopic_group(RootDatum G, mat delta_vee,mat xi_vee,ratvec s,WeylElt w_G_vee)=(RealForm,mat,RealForm): endoscopic_group(G,delta_vee,xi_vee,s,w_G_vee)
+
+{basic untwisted case}
+set endoscopic_group(RealForm G,ratvec s)=(RealForm,mat,RealForm):endoscopic_group(G,id_mat(rank(G)),s,id_W(dual(G)))
+set endoscopic_group(RealForm G,ratvec s,WeylElt w_G_vee)=(RealForm,mat,RealForm):endoscopic_group(G,id_mat(rank(G)),s,w_G_vee)
 
