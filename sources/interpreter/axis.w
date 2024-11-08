@@ -1459,11 +1459,8 @@ case applied_identifier:
   ? expression_ptr(new local_identifier<false>(id,i,j))
   : expression_ptr(new global_identifier<false>(id));
   if (tp.specialise(id_t->unwrap()))
-    { // then required type admits known identifier type
-      if (tp!=id_t->unwrap()) // we no longer allow |id_t| to specialise by usage
-        throw type_error(e,id_t->bake(),tp.copy()); // so report type error
-      return id_expr;
-    }
+    // then required type admits known identifier type
+    return id_expr;
   else if (coerce(id_t->unwrap(),tp,id_expr,e.loc))
     return id_expr;
   throw type_error(e,id_t->bake(),tp.copy());
@@ -2771,17 +2768,27 @@ void list_identifiers(const id_pat& pat, std::vector<id_type>& d)
 
 @ Here we do a similar traversal, using a type with structure matching |pat|;
 we push pairs onto a |layer|. If |is_const| holds, all identifiers will be
-const; otherwise a bit from |pat.kind| determines constness of
-|pat.name|.
+immutable; otherwise any identifier that is either flagged as such by the user
+(which is recorded in a bit from |pat.kind|) or has polymorphic type will be
+made immutable. The reason that having polymorphic type implies immutability is
+explained in the introduction to polymorphic types in \.{axis-types.w};
+essentially, we wish to avoid ever \emph{requiring} values to have
+(sufficiently) polymorphic type, as would be the case when assigning a new value
+to such an identifier.
 
 @< Function definitions @>=
 void thread_bindings
-(const id_pat& pat,const type_expr& tp, layer& dst, bool is_const)
+(const id_pat& pat,const type_expr& te, layer& dst, bool is_const)
 { if ((pat.kind & 0x1)!=0)
-    dst.add(pat.name,type::wrap(tp),is_const or (pat.kind & 0x4)!=0);
+  {
+    type tp = type::wrap(te);
+    bool constant = is_const or tp.is_polymorphic() or (pat.kind & 0x4)!=0;
+    dst.add(pat.name,std::move(tp),constant);
+  }
   if ((pat.kind & 0x2)!=0)
-  { assert(tp.kind()==tuple_type);
-    wtl_const_iterator t_it(tp.tuple());
+    // recursively traverse sub-list for a tuple of identifiers
+  { assert(te.kind()==tuple_type);
+    wtl_const_iterator t_it(te.tuple());
     for (auto p_it=pat.sublist.begin(); not pat.sublist.at_end(p_it);
          ++p_it,++t_it)
       thread_bindings(*p_it,*t_it,dst,is_const);
@@ -7142,6 +7149,7 @@ if ( e.assign_variant->lhs.kind==0x1) // single identifier, do simple assign
   if (is_const)
     report_constant_modified(lhs,e,"assignment");
 @.Name is constant @>
+  assert(not id_t->is_polymorphic()); // polymorphic variables are made constant
 @)
   type_expr rhs_type = id_t->bake(); // provide a modifiable copy
   expression_ptr r = convert_expr(e.assign_variant->rhs,rhs_type);
@@ -7364,6 +7372,8 @@ recording the localisation of the identifiers in our various fields.
     report_undefined(id,e,"multiple assignment");
   if (is_const)
     report_constant_modified(id,e,"multiple assignment");
+  assert(not id_t->is_polymorphic()); // polymorphic variables are made constant
+
   is_global.extend_capacity(not is_local); // push one bit onto the |BitMap|
 @)
   if (not tp.specialise(id_t->unwrap()))
@@ -8103,6 +8113,8 @@ case comp_ass_stat:
   if (is_const)
     report_constant_modified(aggr,e,"component assignment");
 @.Name is constant @>
+  assert(not aggr_t->is_polymorphic());
+  // polymorphic variables are made constant
 @)
   type_expr ind_t;
   expression_ptr i = convert_expr(index,ind_t);
@@ -8155,6 +8167,8 @@ case field_ass_stat:
   if (is_const)
     report_constant_modified(tuple,e,"field assignment");
 @.Name is constant @>
+  assert(not tuple_t->is_polymorphic());
+  // polymorphic variables are made constant
 @)
   unsigned pos; const type_expr* comp_loc;
   @< Look up a projector for |*tuple_t| named |selector|, and if found assign
@@ -8238,6 +8252,8 @@ case field_trans_stat:
   if (is_const)
     report_constant_modified(tuple,e,"field transform");
 @.Name is constant @>
+  assert(not tuple_t->is_polymorphic());
+  // polymorphic variables are made constant
 @)
   unsigned pos; const_type_p comp_loc;
   @< Look up a projector for |*tuple_t| named |selector|... @>
@@ -8439,6 +8455,8 @@ case comp_trans_stat:
   if (is_const)
     report_constant_modified(aggr,e,"component transform");
 @.Name is constant @>
+  assert(not aggr_t->is_polymorphic());
+  // polymorphic variables are made constant
 @)
   static expr_ptr appl; expr_ptr saved_appl;
   @< Set |appl| to the application of |op| to |lhs| and |rhs| while saving the
