@@ -19,7 +19,7 @@
 #include <vector>
 #include <iostream>
 
-#include "../Atlas.h"
+#include "Atlas.h"
 
 #include "innerclass.h"// inlines
 #include "realredgp.h"	// numerous inline methods
@@ -33,24 +33,42 @@ namespace atlas {
 
 namespace standardrepk {
 
+  class StandardRepK;	// standard representation restricted to K
+  using HCParam = std::pair<Weight,RankFlags>; // free part wrt rho, torsion
+  using RawRep = std::pair<Weight,TitsElt>;
+  using RawChar = Free_Abelian<RawRep>;
+  using Raw_q_Char= Free_Abelian<RawRep,Polynomial<int> >;
+
+  using Char =  Free_Abelian<StandardRepK>; // $\Z$-linear combination
+  using q_Char = Free_Abelian<StandardRepK,Polynomial<int> >;
+  using CharForm = std::pair<StandardRepK,Char>;
+  using q_CharForm = std::pair<StandardRepK,q_Char>;// $q$-$K$-type formula
+
 
 // type |HCParam|: image of a weight of the $\rho$-cover mod $(1-\theta)X^*$
 // |typedef std::pair<Weight,RankFlags> HCParam;|: free part wrt rho, torsion
 
-// |typedef Free_Abelian<StandardRepK> Char;| $\Z$-lin. comb. of |StandardRepK|
-// |typedef Free_Abelian<StandardRepK,Polynomial<int> > q_Char;|
+  using CharCoeff  = Char::coef_t;   // i.e., |long int|
+  using q_CharCoeff= q_Char::coef_t; // i.e., |Polynomial<int>|
 
-// the following cannot be in ../Atlas.h: they need free_abelian.h
-typedef Char::coef_t CharCoeff;
-typedef q_Char::coef_t q_CharCoeff; // i.e., |Polynomial<int>|
+  class graded_compare;// utility class for comparing by degree first
+  using seq_no =  unsigned int; // sequence number of stored standard rep|K
+  using combination = Free_Abelian<seq_no,long int,graded_compare>;
 
-// remaining definitions could be in ../Atlas.h, but seem module-specific
+  using equation = std::pair<seq_no,combination>;
 
-typedef Free_Abelian<seq_no,long int,graded_compare> combination;
-typedef std::pair<seq_no,combination> equation;
+  class graded_compare;// utility class for comparing by degree first
 
-typedef Free_Abelian<seq_no,q_CharCoeff,graded_compare> q_combin;
-typedef std::pair<seq_no,q_combin> q_equation;
+  using q_combin = Free_Abelian<seq_no,q_CharCoeff,graded_compare>;
+  using q_equation = std::pair<seq_no,q_combin>;
+
+  using level = unsigned int; // unsigned version of |LatticeCoeff|
+  struct Cartan_info;
+  struct bitset_entry;
+  class SRK_context;
+  class KhatContext;
+  class HechtSchmid;	// Hecht-Schmid identity
+  class PSalgebra;    // parabolic subalgebra
 
 
 /******** function declarations *********************************************/

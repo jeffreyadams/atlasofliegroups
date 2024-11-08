@@ -11,7 +11,7 @@
 #ifndef BITVECTOR_H  /* guard against multiple inclusions */
 #define BITVECTOR_H
 
-#include "../Atlas.h"
+#include "Atlas.h"
 
 #include <vector>
 #include <cassert>

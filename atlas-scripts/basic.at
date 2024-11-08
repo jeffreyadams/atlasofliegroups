@@ -134,7 +134,7 @@ set gcd = (int,int->int): { greatest common divisor; no size limit }
       while let r=a%b in r.!= do a:=b; b:=r od; b
    fi
 
-{ the following cannot be called |gcd|: too cloase to built-in |gcd@vec| }
+{ the following cannot be called |gcd|: too close to built-in |gcd@vec| }
 set gcd_big([int] v) = int:
    let d=0 in for x in v do if (d:=gcd(d,x))=1 then break fi od; d
 
@@ -1239,6 +1239,39 @@ in root_datum_from_positive((columns_with(pred,posroots(rd))
 			   ,rd.prefers_coroots
 			   )
 
+set project_to_dominant_cone (RootDatum rd, ratvec gamma) =
+  (ratvec,int): { (nearest dominant vector to |gamma|, facet identification nr }
+(  let candidates = [rd.semisimple_rank].to_bitset-1 { simple roots to start }
+   then !simples = candidates { to use as universe for complementation }
+in while let new_indices = int:
+	 for i in set_bit_positions(candidates) if (coroot(rd,i)*gamma).<=
+	 do i
+	 fi od.to_bitset
+   in new_indices.> { |while|-condition: whether new roots were found }
+   do candidates := AND_NOT(candidates,new_indices) { clear bits }
+   ;  let (M,d)=wall_projector(rd,(simples-candidates).set_bit_positions)
+      in gamma := M*gamma/d
+   od
+;  ( gamma, candidates )
+)
+
+set project_to_dominant_cone (RootDatum rd, ratvec gamma, [(mat,int)]
+    wall_projs) =
+  (ratvec,int): { (nearest dominant vector to |gamma|, facet identification nr }
+(  let candidates = [rd.semisimple_rank].to_bitset-1 { simple roots to start }
+   then !simples = candidates { to use as universe for complementation }
+in while let new_indices = int:
+         for i in set_bit_positions(candidates) if (coroot(rd,i)*gamma).<=
+         do i
+         fi od.to_bitset
+   in new_indices.> { |while|-condition: whether new roots were found }
+   do candidates := AND_NOT(candidates,new_indices) { clear bits }
+   ;  let (M,d)=wall_projs[simples-candidates]
+      in gamma := M*gamma/d
+   od
+;  ( gamma, candidates )
+)
+
 set (highest_root_indices,highest_coroot_indices) =
     ((RootDatum->[int]),(RootDatum->[int])):
    let work((RootDatum,int->[int])bottom_f) = (RootDatum rd)[int]:
@@ -1945,25 +1978,29 @@ set print_extended_block = (Param,mat->):
   , has_defect(int n) =
     if n<14 then n>=12 else n>=26 and n<30 fi { 2Ci, 2Cr, 3Ci, 3r, 3i, 3Cr }
   in (Param p, mat delta) void:
-  let (block,types,L0,L1) = extended_block(p,delta)
-  , G=p.real_form, parent_block=block_of(p)
+  let G = p.real_form
+  then tr = G.two_rho
+  then preg = parameter(p.x, p.lambda+tr, p.nu+tr)
+  then (block,types,L0,L1) = extended_block(preg,delta), parent_block=block_of(preg)
   then (l,r)=shape(types), pbs=#parent_block
   then indices =
       let i=0 in
-      for p in block
-      do for j:pbs from 1
-         do if parent_block[(i+j)%pbs]=p then i:=(i+j)%pbs; break fi
+      for q in block
+      do for j:pbs from 0
+         do if parent_block[(i+j)%pbs]= q then i:=(i+j)%pbs; break fi
 	 od
       ; i
       od
-  then wx=width(G.KGB_size-1), wp=width(#parent_block-1)
+  then wx=width(G.KGB_size-1), wp=width(#parent_block-1), wh= width(length(KGB(G)~[0]))
   , with_sign(int n) = string:
     if n<0 then "-"+(indices[~n]) else "+"+indices[n] fi
   in
   for q@i in block
-  do prints
-  (r_adjust(wp,int_format(indices[i]))
-  ,": ["
+  do let qsing = parameter(q.x, q.lambda-tr, q.nu - tr)
+  in prints(r_adjust(wp,int_format(indices[i]))
+  ,": "
+  ,r_adjust(1+wh,int_format(length(q.x)))
+  ," ["
   , { statuses }
     for j:r
     do if j=0 then "" else "," fi
@@ -1989,7 +2026,8 @@ set print_extended_block = (Param,mat->):
        else "." { compact, nonparity or complex: no Cayley }
        fi)
     od.##
-  , "  x=" , r_adjust(wx,to_string(#x(q))) , ", " , lambda_minus_rho(q)
+  , if is_final(qsing) then " *x=" else "  x=" fi, r_adjust(wx,to_string(#x(q))) ,
+    ", " , lambda_minus_rho(qsing)
   )
   od
 

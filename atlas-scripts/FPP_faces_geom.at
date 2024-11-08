@@ -1,0 +1,1790 @@
+<simple_factors.at { for simple_factors }
+<basic.at { for power_set, choices_from, sum@(int,[ratvec]), no_reps}
+<lattice.at {for vec_solve}
+<hash.at { for KTypePol_hash }
+<sort.at { for no_reps }
+<time.at { for print_time_string }
+<lietypes.at { for Lie_type_matrix }
+<twisted_root_datum.at {for is_distinguished}
+<parabolics.at {for Levi}
+<kl.at {for character_formula}
+<count.at {for char_count}
+<writeFiles {to write hash tables}
+
+{functions for calculating FPP face lists, both "globally" (from the
+root datum) and "local" (as relevant to parameters for a single LKT
+(x,lambda)}
+
+{current version incorporates storage of KTypePol's in a hash table
+KPolHash, and MvL's code FPP_w_shifts for quickly finding FPP
+faces. The functions that use neither of these are generally
+suffixed "_old"}
+{ Goal is to write representatives of all affine faces in the
+fundamental parallelepiped
+  gamma in X*_Q,  0 \le betav[i]*gamma \le 1 (all simple coroots betav[i])}
+
+{ Just do this for root datum rd with simple derived datum.}
+
+{ One problem is that there are TWO affine Weyl groups. The one
+considered here uses translation by ROOTS and acts on X^*. In this
+group the "simple affine root" involves the highest COROOT. The other
+possibility, which I'll try not to use in this file, uses translation
+by COROOTS and acts on X_*. That is the one considered in DV notes
+alcoves.pdf, and useful for understanding elements of finite order in
+G. I think it's the primary topic in affine.at.
+
+Write simple coroots as betav[1]...betav[ell-1], lowest coroot as
+
+   betav[0] = -(rd.dual).highest_root
+   betav[j] = rd.simple_coroots[j-1] (1 \le j \le ell) }
+
+{ There are four notions of "face":
+1) a ([AffineCoroot],[AffineCoroot]) Face of affine inequalities and
+equalities defining it (NOT UNIQUE);
+2) the [ratvec] FaceVerts of vertices;
+3) the ratvec FaceBary, the barycenter of the face; and
+4) the [vec] FaceVertsIndex of indices of the vertices in a fixed list of vertices
+
+I like FaceVerts the best: you can take the
+closure of F just by looking at subsets of the vertices; and the
+"opening" (all faces having F in their closure) by looking at all
+enlargements of the vertex set. Passage from FaceVerts to FaceBary is
+trivial (average the vertices) There are functions face, faceVerts and
+faceBary which compute each of these three representations of
+the face containing a given ratvec gamma in X^*_Q. }
+
+{Here is a brief outline. Following Barbasch and Steve
+Miller, calculate things related to the FUNDAMENTAL PARALLELEPIPED
+FPP, which lies in the R-span of the roots, where all simple coroots
+take values in [0,1]. The FPP is partitioned into faces of various
+dimensions from 0 to the semisimple rank. Each d-dimensional face is
+determined by its barycenter (a ratvec) or by its vertices (a list of
+d+1 ratvecs). The idea for computing all faces in the FPP is to
+compute a list vlist of all vertices in the FPP (done by
+FPP_vertices@RootDatum); then for each d-dimensional face to store a
+rank d+1 vec giving the indices of the vertices in vlist (done by
+FPP_vertex_sets_indices).
+What's needed to get going is a list of all barycenters of faces in
+the FPP. These are calculated by
+
+Theorem. Every [barycenter of a face] gamma (not just in FPP) can be
+written as w*gamma0 + tau, with gamma0 unique [barycenter of a face]
+in the fundamental alcove, w in W (finite Weyl group), and tau in the
+root lattice. If we require
+
+   w*gamma0 is integrally dominant
+
+then w*gamma0 is unique, and so tau is unique.
+
+There are 2^(semisimple rank - 1) face barycenters gamma0 in the
+fundamental alcove.; not too many. Marc kindly provided a very fast
+listing of the W-orbits W*gamma0. Picking out the integrally dominant
+ones is now done stupidly in functions with names like
+W_fund_barycentersID: stupid in the sense that it would have been
+cleverer to sort out the integrally dominant terms in the library.
+
+Addenda 7/23/22. In unequal rank (and harmless in general) better to
+work with the cofolded root datum, and the corresponding (smaller) set
+of weights fixed by the distinguished involution. (Every unitary infl
+character must be of this form.) The main functions for working this
+way now have "Fold" in their names, and the plan is that these should
+be ultimately be the only ones used. In particular, the special
+scripts like sphericalC for dealing with complex groups can and should
+now be replaced by sphericalFold.}
+
+{if true, unitary candidates are checked for Dirac inequality before
+anything else. This seems not to help significantly: checking Dirac
+takes significant time, (maybe 4% of total for F4) and the resulting
+savings in the rest of the computation seems tiny (maybe 1% for F4).}
+set Dirac_flag = false
+
+{ useful to assign this to 'true" to get information about the
+  progress of long calculations }
+set face_verbose = false
+
+{ if true, reports progress at each of 2^{rank+1} fundamental faces
+  during FPP calculation }
+
+set fund_face_verbose = false
+
+{ if true, local face data is sorted by increasing height}
+set sort_LFD_flag = false
+
+{ for faces of codim > face_codim, use shifted char formula to
+improve memory use. Setting equal to folded semisimple rank means no
+use of shifted char formula.}
+set face_codim = int: 3
+
+{ This is the largest dimension of an FPP face that can yield a local
+edge. The action of theta is related to an order two outer
+automorphism of the fundamental alcove in the group generated by Z(G)
+and -1, in the coset of -1.
+
+If such an element can include two vertex transpositions, then
+global_top is 3. This can happens in type An (n >= 3), Dn (n >= 4),
+E6, and E7.
+
+If such an element can include just one vertex transposition, then
+global_top is 2. This can happens in types A2, Bn and Cn.
+
+If such an element must be trivial, then global_top is 1. This happens
+in types G2, F4, and E8.
+
+The constant is reassigned to fit G in [adjust_global_top] below.  The
+reason that a smaller value helps is that all FPP faces of dimension
+up to global_top are stored in global_faces.}
+set global_top = int: 3
+
+{If the distinguished involution delta of G is nontrivial, then all
+UNITARY infinitesimal characters must be delta-fixed, and so lie in
+(h*)^\delta. They are most efficiently calculated not using the affine
+Weyl group of G, but rather the "cofolded" affine Weyl group explained
+in the notes alcoves.pdf ("Affine Weyl group alcoves") around 3.4. The
+character lattice for this cofolded datum is (X^*)^\delta. The script
+twisted_root_datum calculates the DUAL folded root datum; so what we
+need here is the dual of folded(dual of G.root_datum)). I think...}
+
+set cofoldedBOTH(RootDatum rd, mat delta) = (RootDatum, RootDatum, mat):
+    assert(is_distinguished(rd,delta),"delta is not distinguished");
+    let Tstar = SubTorus:eigen_lattice(delta,1)
+{Tstar =(X^*)^\delta; columns are a basis of (X^*)^\delta}
+{Tstar is nxr where n=rd.rank and r=dimension(Tstar)}
+{ Tstar: matrix of map Tstar->X^*(H) \simeq Z^r -> Z^n: this is Tstar.inject
+ ^Tstar: matrix of map X_*(H)->X_*(Tstar) \simeq Z^n->Z^r:   this is
+ Tstar.project=Tstar.restrict}
+    then coroots_nonreduced=sort_u(
+	 for alphavee in rd.poscoroots do Tstar.restrict(alphavee) od
+	 )
+    then {DISCARDS COROOTS FOR WHICH ALPHAVEE/2 IS COROOT}
+	corootsC =mat:##(for alphavee in coroots_nonreduced
+	 do if all (for x in alphavee/2 do is_integer(x) od)
+	    and find(coroots_nonreduced,ratvec_as_vec(alphavee/2))!=-1
+	    then [] else [alphavee] fi
+	 od),
+	 {THIS DISCARDS COROOTS FOR WHICH 2*ALPHAVEE IS COROOT}
+	  corootsB=mat:##(for alphavee in coroots_nonreduced
+	 do if find(coroots_nonreduced,2*alphavee)!=-1
+	    then [] else [alphavee] fi
+	 od)
+    then rootsC = [] in
+	 for alphavee in corootsC do
+	     let pullback_alphavee = let j = first(
+		 for betavee in rd.poscoroots do Tstar.restrict(betavee) =
+		 alphavee od
+	     )
+	      in rd.poscoroots[j] {ONE coroot restricting to alphavee}
+	 then v = sum(##( for betavee in rd.poscoroots do
+		 if Tstar.restrict(betavee) = alphavee
+		 then [root(rd,betavee)]
+		 else []
+		 fi od)) {sum of ALL roots for ALL coroots restr to alphavee}
+	  then w = 2*v/(v*pullback_alphavee)
+	  then corestrict_w = solve(Tstar,w).requisition
+	  in
+	  rootsC#:=ratvec_as_vec(corestrict_w)
+	  od;
+	  let rootsB = [] in
+	  for alphavee in corootsB do
+	     let pullback_alphavee = let j = first(
+		 for betavee in rd.poscoroots do Tstar.restrict(betavee) =
+		 alphavee od
+	     )
+	      in rd.poscoroots[j] {ONE coroot restricting to alphavee}
+	 then v = sum(##( for betavee in rd.poscoroots do
+		 if Tstar.restrict(betavee) = alphavee
+		 then [root(rd,betavee)]
+		 else []
+		 fi od)) {sum of ALL roots for ALL coroots restr to alphavee}
+	  then w = 2*v/(v*pullback_alphavee)
+	  then corestrict_w = solve(Tstar,w).requisition
+	  in rootsB#:=ratvec_as_vec(corestrict_w)
+	  od;
+	  (root_datum_from_positive((rootsB,corootsB),rd.prefers_coroots),
+	  root_datum_from_positive((rootsC,corootsC),rd.prefers_coroots),Tstar)
+
+{The cofolded RootDatum has character lattice (X^*)^\delta, coroots
+the restrictions to (X^*)^\delta of the coroots of rd. The matrix is a
+map from the character lattice of the cofolded datum to the character
+lattice of G.}
+
+{set cofolded(TwistedRootDatum (rd,delta)) = (RootDatum, mat):
+    let (rd1,M1) = folded(rd.dual,^delta) in (rd1.dual,M1)}
+
+{returns the cofolded root system, needed to construct the correct
+affine Weyl group to act on delta-fixed weights; and the unique label
+j0 (or -1) for a simple coroot needing to be divided by two to get
+full FPP}
+set cofolded(InnerClass ic) = (RootDatum, mat, int):
+    let (rdB,rdC,M) = cofoldedBOTH(ic.root_datum, ic.distinguished_involution)
+    then j0=
+	 first(
+	 for alpha@j in rdB.simple_roots do alpha != rdC.simple_roots[j] od
+	 )
+    in (rdB,M,j0)
+
+{these are the edges of the fundamental parallelepiped}
+set FPP_lines(InnerClass ic) = [ratvec]:
+    let (Affd, M, j0) = cofolded(ic)
+    then V1 = for v in Affd.fundamental_weights do M*v od
+    then () = if j0.>= then V1[j0] :=2*V1[j0] fi
+    in V1
+
+set FPP_coroots(InnerClass ic) = [vec]:
+   let (Affd, M, j0) = cofolded(ic)
+   then Minv = left_inverse(M)
+   then avs = for avAff in Affd.simple_coroots do avAff*Minv od
+   then () = if j0.>= then avs[j0] := ratvec_as_vec(avs[j0]/2) fi
+   in avs
+
+{ An affine root datum is a root datum rd (which in atlas means with
+chosen pos_roots), and a list of the lowest coroots betav[j] in each
+rd[j] in simple_factors(rd). Since I want to use this to look for
+unitary reps, simple rd is the most important case }
+set_type SimpleAffine = RootDatum
+set_type
+[ AffineCoroot = (vec linear_coroot, int shift)
+, AffineCoWeylElt = (vec tau, WeylElt w) { apply |w|, then translate by |tau| }
+]
+{This is meant to record K-characters of different faces}
+set Kpol_hash = make_KTypePol_hash()
+
+set aff_rank (SimpleAffine Affd) = semisimple_rank(Affd) + 1
+
+{.evaluate AffineCoroot at weight.}
+set * (AffineCoroot (linear_coroot,shift), vec gamma) = int:
+  linear_coroot*gamma + shift
+
+{.evaluate AffineCoroot at rational weight.}
+set * (AffineCoroot (linear_coroot,shift), ratvec gamma) = rat:
+  linear_coroot*gamma + shift
+
+{.apply AffineCoWeylElt to weight.}
+set *(AffineCoWeylElt (tau,w) , vec gamma)    = vec:    tau + w*gamma
+set *(AffineCoWeylElt (tau,w) , ratvec gamma) = ratvec: tau + w*gamma
+
+{.compose AffineCoWeylElts.}
+set *(AffineCoWeylElt(tau1,w1) , AffineCoWeylElt(tau2,w2)) = AffineCoWeylElt:
+    (tau1 + w1*tau2, w1*w2)
+set inverse(AffineCoWeylElt(tau,w)) = AffineCoWeylElt:
+    let w1=inverse(w) in (-w1*tau,w1)
+
+{. act by AffineCoWeylElt on an AffineCoroot .}
+set *(AffineCoWeylElt(tau,w) , AffineCoroot(betav,m)) = AffineCoroot:
+    let bvw1=betav*inverse(w) in (bvw1, m-bvw1*tau)
+
+{.simple affine coroots: number 0 is affine, rest are simple for RootDatum.}
+set aff_simple_coroots (SimpleAffine affd) = [AffineCoroot]:
+    (-highest_root(dual(affd)),1) #
+    for alpha_v in simple_coroots(affd) do (alpha_v,0) od
+
+{.sum of simple affine coroots times their labels is (null(rank),1).}
+set labels(SimpleAffine affd) = [int]:
+    let a = coroot_index(affd,highest_root(dual(affd))) in
+    1 # coroot_expression(affd,a)
+
+{.root attached to an AffineCoroot.}
+set root (AffineCoroot (betav,m),SimpleAffine affd) = root(affd,betav)
+
+{.affine reflection through Affine coroot, applied to weight.}
+set reflection(AffineCoroot Betav, SimpleAffine affd, vec v) = vec:
+    v - root(Betav,affd)*(Betav*v)
+
+set reflection(AffineCoroot Betav, SimpleAffine affd, ratvec v) = ratvec:
+    reflection(Betav, affd, v.numer)/v.denom
+
+{ a k-diml face in n-diml simplex is cut out by a collection of
+(k+1) AffineCoroot strict inequalities and (n-k) AffineCoRoot equalities.
+The total collection of affine coroots appearing must be a set of simple coroots
+for the affine datum. IF THE FACE IS NOT AN ALCOVE, THIS
+REPRESENTATION IS NOT UNIQUE. This representation is therefore not often used,
+but see |face0| (way) below }
+
+set_type [Face = ([AffineCoroot] pos,[AffineCoroot] zero)]
+
+{ a UNIQUE characterization of a k-diml face is as a set of k+1 vertices }
+
+set_type FaceVerts = [ratvec]
+
+set *(WeylElt w, FaceVerts FV) = FaceVerts:
+    for v in FV do w*v od
+
+set *(mat M, FaceVerts FV) = FaceVerts:
+    for v in FV do M*v od
+
+set *(AffineCoWeylElt wtilde, FaceVerts FV) = FaceVerts:
+    for v in FV do wtilde*v od
+
+{ Maybe the smallest UNIQUE characterization of a face is the barycenter }
+set_type FaceBary = ratvec
+
+{represents a k-diml face as k+1 indices into a list of vertices
+(held elsewhere)}
+set_type FaceVertsIndex = vec { of length k+1 for k-dimensional face }
+
+set_type
+[ FaceVertsKHash = vec {next to last entry is index of KChar in some hash, last is #LQ's}
+, LocalFaceVertsKHash = vec {next to last entry is index of KChar in some hash, last is #LQ's}
+]
+
+set_type
+[ LocalFaceVertsKHashStatus = vec {two from last entry is index of
+KChar in some hash, next to last is #LQ's, last is -1 if nonunitary, 0
+if unknown, 1 if unitary}
+]
+
+{in LocalVertexData, the first pair_start terms in list are meant to
+be global vertices, and the rest midpoints of flipped pairs of global
+vertices.}
+set_type
+[ VertexData = ([ratvec] list, (ratvec->int) lookup)
+, LocalVertexData = ([ratvec] list, (ratvec->int) lookup, int pair_start)
+, FaceDataKHash = (VertexData v_data
+,   [[FaceVertsKHash]] Fverts)
+, LocalFaceDataKHash = (VertexData v_data_local, KGBElt x,
+  ratvec lambda, [[LocalFaceVertsKHash]] LFverts)
+]
+
+{meant to hold FPP_faces up to dimension global_top}
+set global_faces = [[FaceVertsIndex]]: []
+
+{in this version, the dth list consists of #global_faces[0] lists; list k
+consists of all d-faces beginning with k}
+set global_faces_by_zero = [[[FaceVertsIndex]]]: []
+
+set to_vertex_data ([ratvec] vlist) = VertexData: (vlist,index_in(vlist))
+set to_vertex_data ([ratvec] vlist, int pair_start) = LocalVertexData: (vlist, index_in(vlist), pair_start)
+
+set face_indices((ratvec->int) lookup, FaceVerts face) = FaceVertsIndex:
+    for gammav in face do lookup(gammav) od.sort
+
+set sorted_is_subset([int] a, [int] b) = bool:
+   let i=0, l=#b in
+   for x in a
+   do while if i<l then b[i]<x else return false fi do i+:=1 od
+   ;  if x<b[i] then return false fi
+   od; true
+
+set sorted_is_disjoint([int] a, [int] b) = bool:
+   let i=0, l=#b in
+   for x in a
+   do while if i<l then b[i]<x else return true fi do i+:=1 od
+   ;  if x=b[i] then return false fi
+   od; true
+
+set is_FPP(RootDatum rd, ratvec gamma) = bool:
+    all(for alphavee in rd.simple_coroots
+    	do gamma*alphavee <= 1 and gamma*alphavee >= 0
+	od)
+
+set index_in_face_list([LocalFaceVertsKHash] L) = (vec->int):
+    let m = #L[0]-4 
+    in index_in(for v in L do v[:m] od)
+
+{.compute the |Face| of a barycenter (or any point) in the fundamental alcove.}
+set face0(SimpleAffine Affd, FaceBary gamma) = Face:
+    let S = [AffineCoroot]: { the simple system for the fundamental alcove }
+       Affd.aff_simple_coroots
+in ( for av in S do if =av*gamma then [] else [av] fi od.## { positives }
+   , for av in S do if =av*gamma then [av] else [] fi od.## { zeros }
+   )
+
+{.simple roots corresponding to simple affine coroots: number 0 is
+affine,  rest are simple for RootDatum.}
+set aff_simple_roots(SimpleAffine affd) = mat:
+    (-highest_root(dual(affd))) # affd.simple_roots
+
+{.vertices of the fundamental alcove, ordered by |affd.affine_simple_coroots|.}
+{ the vertex corresponding to an affine simple coroot is the one nonzero on it }
+set fundamental_vertices (SimpleAffine affd) = [ratvec]:
+    (ratvec:null(affd.rank)) { origin is vertex for the truly affine s.c.r. } #
+    (let labs=affd.labels[1:] in
+     for lab@j in labs do fundamental_weight(affd,j)/lab od)
+
+
+
+{. select vertices of fund. alcove for aff. simple coroots nonzero on |gamma0|.}
+set face_verts0(SimpleAffine affd, FaceBary gamma0) = FaceVerts:
+    let vert=fundamental_vertices(affd) in
+    for coroot@d in [AffineCoroot]: affd.aff_simple_coroots
+    do if =coroot*gamma0 then [] else [vert[d]] fi
+    od.##
+
+set barycenter ([ratvec] verts) = ratvec: { |verts| should be nonempty }
+    sum(#verts[0],verts) / #verts
+
+{. barycenter of face of fundamental alcove that contains |gamma0|.}
+set face_bary0(SimpleAffine affd, ratvec gamma0) = FaceBary:
+    barycenter(face_verts0(affd,gamma0))
+
+{. produces all k-element subsets of verts. The term "# #verts" is
+[0,1,...,#verts - 1]
+ .}
+set choices_from( [ratvec]verts, int k) = [[ratvec]]:
+    for S in choices_from(# #verts,k) do for s in S do verts[s] od od
+
+set faces_fundamental(SimpleAffine affd, int d) = [FaceVerts]:
+    choices_from(fundamental_vertices(affd),d+1)
+
+{ vertex sets for faces in the fundamental alcove, organized by dimension }
+set faces_fundamental(SimpleAffine affd) = [[FaceVerts]]:
+    let fund_vertices = fundamental_vertices(affd) in
+    for d: affd.aff_rank do choices_from(fund_vertices,d+1) od
+
+{.barycenters of d-dimensional faces in the fundamental alcove.}
+set fund_barycenters(SimpleAffine affd, int d) = [FaceBary]:
+    for face in faces_fundamental(affd,d) do barycenter(face) od
+
+{.barycenters of faces in fundamental alcove, organized by dimension.}
+set fund_barycenters(SimpleAffine affd) = [[FaceBary]]:
+    for L in faces_fundamental(affd)
+    do for face in L do barycenter(face) od
+    od
+
+{ enumerate sums of roots to be added to gamma to land in FPP }
+set FPPtauRoots(SimpleAffine Affd, ratvec gamma) = [vec]:
+    let g=for av in Affd.simple_coroots do av*gamma od,
+    	FW = Affd.fundamental_weights,
+	FCW = Affd.fundamental_coweights
+    then INT = [int]: for j:#Affd.simple_coroots
+	 do
+	 if is_integer(g[j]) then [j] else []
+	 fi
+	 od.##
+    in
+    for S in power_set(INT)
+    do
+	let tau = ratvec: sum(Affd.rank,
+	    	for xi@j in FW
+	      	do -floor(g[j])*xi
+		od) +
+	   	    sum(Affd.rank,for k in S do FW[k] od)
+    	then (w,d) = %(ratvec: (for xiv in FCW do xiv*tau od))
+    	in if d=1 then [w] else [] fi
+     od.##
+
+{ same thing, with (perhaps) one simple root j0 for which FPP takes values in
+[0,2] on coroot j0. So need to use values -floor(g[j0]),
+-floor(g([j0]) + 1 for that root always, and also -floor(g[j0]) + 2 if
+g[j0] is an integer. }
+{If j0 is in INT, then this counts 1*fundamental_weights[j0] WITH MULT 2}
+set FPPtauRoots(SimpleAffine Affd, ratvec gamma, int j0) = [vec]:
+    let g=^(Affd.simple_coroots)*gamma, flr = null(Affd.semisimple_rank)
+    then INT = ##for j:#Affd.simple_coroots
+	 do
+	 if (flr[j]:= floor(g[j]))=g[j] then [j] else []
+	 fi
+	 od
+    in
+    let tau0 = -Affd.fundamental_weights*flr
+    then taus = for S in power_set(INT)
+	 do tau0+ sum(
+	    Affd.rank,for j in S do Affd.fundamental_weights[j] od
+		     )
+	 od
+    then () = if j0 >=0
+    	      then taus:=taus## for tau in taus do tau+Affd.fundamental_weights[j0] od
+	      fi
+    in
+    for tau in taus do
+	if(all(
+	for xiv in Affd.fundamental_coweights do is_integer(xiv*tau) od))
+	then [ratvec_as_vec(tau)]
+	else []
+    fi
+    od.##.no_reps
+
+{ same thing, with (perhaps) one simple root j0 for which FPP takes
+values in [0,2] on coroot j0. So need to use values -floor(g[j0]),
+-floor(g([j0]) + 1 for that root always, and also -floor(g[j0]) + 2 if
+g[j0] is an integer. This Fast version gives too many tau (finds
+integral weights, not just root sums) unless G is adjoint and simply
+connected, but it's up to 40% faster; when possible, just take the
+extra tau and do a no_reps}
+
+set FPPtauRootsFast(SimpleAffine Affd, ratvec gamma, int j0) = [vec]:
+    let g=^(Affd.simple_coroots)*gamma, flr = null(Affd.semisimple_rank)
+    then INT = ##for j:#Affd.simple_coroots
+	 do
+	 if (flr[j]:= floor(g[j]))=g[j] then [j] else []
+	 fi
+	 od
+    in
+    let tau0 = -Affd.fundamental_weights*flr
+    then taus = for S in power_set(INT)
+	 do tau0 + sum(
+	    Affd.rank,for j in S do Affd.fundamental_weights[j] od
+		     )
+	 od
+    then () = if j0 >=0
+    	      then taus:=taus## for tau in taus do tau+Affd.fundamental_weights[j0] od
+	      fi
+     in for tau in taus
+     	do let (tau0,d) = %tau
+       	   in if d=1 then [tau0] else [] fi
+	od.##
+
+{ Computes INVERSE OF a (nonunique) aff Weyl gp elt wtilde moving
+gamma to the fundamental alcove, and the (unique) image of gamma in that
+fundamental alcove, trying to do integer arithmetic. }
+set from_fundamental_alcove(RootDatum rd, ratvec gamma) =
+    (AffineCoWeylElt,ratvec):
+    let tau = alcove_root_vertex(rd,gamma)
+    then (w,gamma0TIMESDEN) = from_dominant(rd,gamma.numer - gamma.denom*tau)
+    in
+    {assert (gamma=w*gamma0 + tau,"Bad affine!");}
+    ((tau,w),gamma0TIMESDEN/gamma.denom)
+
+{. for each vertex v of the fundamental alcove, a list of all w-v with [w,v] an edge of the (cofolded)
+affine faces ENDING at v. For use in deciding whether a random [y,x] is an edge of the affine faces. }
+set edge_lists_folded(SimpleAffine affd) = [[ratvec]]:
+    let FVs = fundamental_vertices(affd)
+    in for v in FVs
+       do for w in FVs
+       	  do if v =w then [ratvec]: []
+       	     else let (num,den) = %(v-w)
+	       	  in [ratvec]:
+	       	     for x in Weyl_orbit(integrality_datum(affd,v), num) do x/den od
+	     fi
+          od.##
+       od
+
+{lists of rational weights for affd}
+set edge_lists(InnerClass ic) = [[ratvec]]:
+    let (affd, ,) = cofolded(ic)
+{    then N = required_solution(M.^, id_mat(affd.rank)).^} {maps (preferably delta-fixed) ic-wts to affd-wts}
+    in edge_lists_folded(affd)
+
+{. the jth function here looks up its argument in the list of edges originating at fundamental vertex #j. }
+set edge_list_lookups([[ratvec]] edgeLists) = [(ratvec->int)]:
+    for list in edgeLists do index_in(list) od
+
+{. the jth function here looks up its argument in the list of edges originating at fundamental vertex #j. }
+set edge_list_lookups(InnerClass ic) = [(ratvec->int)]:
+    edge_list_lookups(edge_lists(ic))
+
+{. tests whether [v0, v1] is an edge of the affine face decomposition. }
+set is_edge(InnerClass ic, [(ratvec->int)] lookups, ratvec gamma0, ratvec gamma1) = bool:
+    let (affd, M, j0) = cofolded(ic)
+    then N = required_solution(M.^, id_mat(affd.rank)).^
+         {Maps (preferably delta-fixed) ic-wts to affd-wts}
+    then v0 = N*gamma0, v1 = N*gamma1
+    then lookupFundVert = index_in(fundamental_vertices(affd))
+    then ((,w),xi0) = from_fundamental_alcove(affd,v0)
+    then n1 = lookupFundVert(xi0)
+    in if n1 <0 then false
+       else lookups[n1]((w.inverse)*(v1-v0))>=0
+       fi
+
+{.restored from 3/30/22 version for use in computing bigger faces with
+same unitarity status.}
+set face (SimpleAffine Affd, ratvec gamma) = Face:
+   let (wtilde,gamma0) = from_fundamental_alcove(Affd, gamma)
+   then (F0pos,F0zero) = face0(Affd,gamma0)
+   in (for betav in F0pos do wtilde*betav od
+      ,for betav in F0zero do wtilde*betav od)
+
+{ computes the FaceVerts (vertex set) of any barycenter of a face of them }
+set face_verts(SimpleAffine Affd, ratvec gamma) = FaceVerts:
+    let (wtilde,gamma0) = from_fundamental_alcove(Affd, gamma)
+    in wtilde*face_verts0(Affd,gamma0)
+
+set lookup_vertices_for_barycenters \
+    (SimpleAffine Affd, VertexData vd, [FaceBary] centers) \
+    = [FaceVertsIndex]:
+    for gamma in centers
+    do for vertex in face_verts(Affd, gamma)
+       do vd.lookup(vertex)
+       od.sort
+    od
+
+{ computes the (that is, a non-unique representation of the) face of
+any ratvec }
+set face(SimpleAffine Affd, ratvec gamma) = Face:
+    let (wtilde,gamma0) = from_fundamental_alcove(Affd, gamma)
+    then (F0pos,F0zero) = face0(Affd,gamma0)
+    in (for betav in F0pos do wtilde*betav od ,
+       for betav in F0zero do wtilde*betav od)
+
+{ computes the FaceBary of any ratvec, for possibly nonsimple rd}
+set face_bary(RootDatum rd, ratvec gamma) = FaceBary:
+    sum(rd.rank, for Affd in simple_factors(rd)
+		 do
+		 let (wtilde,gamma0) = from_fundamental_alcove(Affd, gamma)
+		 in	wtilde*face_bary0(Affd,gamma0)
+		 od)
+
+{ computes the FaceBary of any hermitian ratvec, for possibly nonsimple rd}
+set face_bary_ic(InnerClass ic, ratvec gamma) = FaceBary:
+    sum(ic.rank, for Affd in simple_factors(quasisplit_form(ic))
+		 do
+		 let (Aff_fold,M,) = cofolded(inner_class(Affd, ic.distinguished_involution))
+		 then N = required_solution(M.^, id_mat(Aff_fold.rank)).^
+		 then (wtilde,gamma0) = from_fundamental_alcove(Aff_fold, N*gamma)
+		 in	M*(wtilde*face_bary0(Aff_fold,gamma0))
+		 od)
+
+set hermCenterOldFlag = false
+
+{ computes barycenter from a face as a vertex list }
+set face_bary([ratvec] vert_list, FaceVertsIndex face) = FaceBary:
+    sum(#vert_list[0], for v in face do vert_list[v] od)/(#face)
+
+{assume that v is a sorted index into Lvd.list; indices beginning in
+pair_start need to be counted twice.}
+set face_bary(LocalVertexData Lvd, vec v) = ratvec:
+    if hermCenterOldFlag then return face_bary(Lvd.list, v) fi;
+    let list = Lvd.list, d = Lvd.pair_start
+    then last = last(for j in v do j< d od)
+    in (sum(#Lvd.list[0], (for j in v do list[j] od)## (for j in
+    v[last+1:] do list[j] od))/(#v + #v[last+1:]))
+
+{.Number of vertices in W*(fundamental alcove).}
+set W_fund_vertices_card(SimpleAffine Affd) = int:
+    let n=Affd.ss_rank, N=#W(Affd)
+    then listn=for j:n do j od
+    in
+    1+sum(for S in choices_from(listn,n-2) do rat_as_int(N/#W(Levi(Affd,S))) od )
+
+{.number of d-diml faces in W*(fundamental alcove).}
+set W_fund_d_faces_card(SimpleAffine Affd,int d) = int:
+    let n=Affd.ss_rank, N=#W(Affd)
+    then listn=for j:n do j od
+    in
+    if d=n
+    then N
+    else sum(for T in choices_from(listn,n-d) do rat_as_int(N/#W(Levi(Affd,T))) od) +
+	 sum(for S in choices_from(listn,n-d-1) do rat_as_int(N/#W(Levi(Affd,S))) od)
+    fi
+
+{.number of faces in W*(fundamental alcove).}
+set W_fund_faces_card(SimpleAffine Affd) = [int]:
+    for d:Affd.aff_rank
+	do W_fund_d_faces_card(Affd,d)
+	od
+{.integrally dominant weights W-conjugate to a fundamental alcove vertex .}
+set W_fund_verticesID(SimpleAffine Affd) = [ratvec]:
+    for gamma in fundamental_vertices(Affd)
+    do  for gammawn in Weyl_orbit(Affd,gamma.numer)
+    	do if is_integrally_dominant(Affd,gammawn/gamma.denom)
+	   then [gammawn/gamma.denom]
+	   else []
+	   fi
+	od.##
+    od.##
+
+{.one rep of each translations-by-roots coset in each W orbit of a
+fundamental alcove vertex.}
+set W_fund_vertices_mod_R(SimpleAffine Affd) = [ratvec]:
+    for gamma in fundamental_vertices(Affd)
+    do  for w in affine_orbit_ws(Affd, gamma)
+    	do w*gamma
+	od
+    od.##
+
+set W_fund_barycentersID(SimpleAffine Affd) = [[FaceBary]]:
+    for d:Affd.aff_rank
+    do
+    if face_verbose
+    then prints("start dim ",d," in W_fund_barycentersID.")
+    fi;
+		for gamma0 in fund_barycenters(Affd)[d]
+		do for gammawn in Weyl_orbit(Affd,gamma0.numer)
+		   do if is_integrally_dominant(Affd,gammawn/gamma0.denom)
+		   then [gammawn/gamma0.denom]
+		   else[]
+		   fi
+		   od.##
+		od.##
+     od
+
+set W_fund_barycenters_mod_R(SimpleAffine Affd) = [[FaceBary]]:
+    for d:Affd.aff_rank
+    do
+    if face_verbose
+    then prints("start dim ",d," in W_fund_barycenters_mod_R.")
+    fi;
+		for gamma0 in fund_barycenters(Affd)[d]
+		do for w in affine_orbit_ws(Affd, gamma0)
+		   do w*gamma0
+		   od
+		od.##
+    od
+
+{ to get everything in the FPP, should use only _integrally dominant_ gammaw in WA0.}
+set W_fund_barycentersID(SimpleAffine Affd, int d) = [FaceBary]:
+	if face_verbose
+	then prints("start W_fund_barycenters_mod_R(Affd, ",d,").")
+	fi;
+	for gamma0 in fund_barycenters(Affd)[d]
+	do for gammawn in Weyl_orbit(Affd,gamma0.numer)
+	    do
+	    if is_integrally_dominant(Affd,gammawn/gamma0.denom)
+	    then [gammawn/gamma0.denom]
+	    else []
+	    fi
+	    od.##
+	od.##
+
+{.to get everything in the FPP, need just reps mod root lattice.}
+set W_fund_barycenters_mod_R(SimpleAffine Affd, int d) = [FaceBary]:
+	if face_verbose
+	then prints("start W_fund_barycenters_mod_R(Affd, ",d,").")
+	fi;
+	for gamma0 in fund_barycenters(Affd)[d]
+	do for w in affine_orbit_ws(Affd, gamma0)
+	   do (w*gamma0.numer)/gamma0.denom
+	   od
+	od.##
+
+{translate that preserves integral dominance, lands in WFA; and
+corresponding translation back down. This version avoids constructing the
+integrality datum for gamma, which is one of the many in "random position."}
+set beta2(RootDatum rd, ratvec gamma) = (vec,vec):
+    let (wtilde,gamma2) = from_fundamental_alcove(rd,gamma)
+    then (b,w) = wtilde {w*gamma2 + b = gamma}
+    then iw = inverse(w)
+    then irdw = integrality_datum(rd,gamma2)
+    {this integrality datum is the nice restricted type!}
+    then (x3,) = from_dominant(irdw, iw*rd.two_rho)
+{means x3 w^{-1} * rho is dominant for irdw.}
+{x3 is w^-1 x^{-1} w}
+    then bup = w*b + ratvec_as_vec(w*(x3*(iw*gamma2))-gamma2)
+{so gamma + bup is x^{-1}(gamma+w*b), in x^{-1}w(fund alcove + 2rho)}
+    in (bup, -inverse(x3)*(iw*bup) )
+
+{imitates library FPP_w_shifts, allowing a single root #j0 that can be up to 2 on FPP}
+set FPP_w_shifts(RootDatum Affd, ratvec gamma, int j0) = [(WeylElt,[vec])]:
+    if j0=-1
+    then FPP_w_shifts(Affd,gamma)
+    else for w in affine_orbit_ws(Affd,gamma)
+    	 do (w, FPPtauRoots{Fast}(Affd,w*gamma,j0))
+	 od{.no_reps}
+    fi
+
+{.this includes all vertices of faces in the fundamental
+parallelepiped, each exactly once. j0 is possible label of a simple
+coroot that can be up to 2 on FPP}
+set FPP_vertices(SimpleAffine Affd, int j0) = [ratvec]:
+    { if face_verbose then prints("start FPP_vertices.")
+    fi;}
+    for gamma in fundamental_vertices(Affd)
+    do let aff_short_list = FPP_w_shifts(Affd,gamma,j0)
+	  then aff_list = [AffineCoWeylElt]:
+	       for (w,taus) in aff_short_list
+	       do for tau in taus do (tau,w) od
+	       od.##
+	  in for wtilde in aff_list do wtilde*gamma od
+       od.##
+
+set FPP_vertices = (InnerClass -> [ratvec]):
+    { if face_verbose then prints("start FPP_vertices of real form, ",G)
+    fi; }
+    let ichash = make_InnerClass_hash()
+    then FPPvertss = [[ratvec]]: [] {one list for each inner class}
+    in (InnerClass -> [ratvec]): (InnerClass ic) [ratvec]:
+       let I = ichash.size()
+       then i = ichash.match(ic)
+       then () = if i=I {haven't seen this inner class before}
+       	       then let (Affd,M,j0) = cofolded(ic)
+	       then list = for v in FPP_vertices(Affd,j0) do M*v od
+	       then () = FPPvertss := (FPPvertss next FPPvertss := [])#list
+	       in ()
+	       fi
+        in FPPvertss[i]
+{vertices of the FPP in FPP_lines coords. Entries are #FPP_lines rationals in [0,1]}
+set FPP_vertices_cube(InnerClass ic) = [ratvec]:
+    let Aff_coroots = FPP_coroots(ic), verts = FPP_vertices(ic)
+    in for v in verts
+       do for av in Aff_coroots do av*v od
+       od
+
+set FPP_barycenters(SimpleAffine Affd, int dim, int j0) = [FaceBary]:
+    if face_verbose then prints("start dim ",dim,
+       		     " in FPP_barycenters(Affd,",dim,").")
+    fi;
+    let faces = [FaceVerts]: faces_fundamental(Affd,dim)
+    in for FV@k in faces
+       do { if face_verbose
+       	  then prints("start fund face ",k," of ", #faces)
+	  fi; }
+       	  let bary_F=FaceBary: sum(Affd.rank,FV)/(dim+1)
+	  then aff_short_list = FPP_w_shifts(Affd,bary_F,j0)
+	  then aff_list = [AffineCoWeylElt]:
+	       for (w,taus) in aff_short_list
+	       do for tau in taus do (tau,w) od
+	       od.##
+	  in for wtilde in aff_list do wtilde*bary_F od
+       od.##
+
+set FPP_barycenters(SimpleAffine Affd, int j) = [[FaceBary]]:
+    if face_verbose then prints("start FPP_barycenters.")
+    fi;
+    for d:Affd.aff_rank
+    do
+    FPP_barycenters(Affd,d,j)
+    od
+
+set FPP_vertex_data (SimpleAffine Affd, int j) = VertexData:
+   FPP_vertices(Affd,j).to_vertex_data
+
+set FPP_vertex_data(InnerClass ic) = VertexData:
+    FPP_vertices(ic).to_vertex_data
+
+{ using FPP_w_shift }
+set FPP_faces(SimpleAffine Affd, VertexData vd, int dim, int j0) =
+    [FaceVertsIndex]:
+    let faces = [FaceVerts]: faces_fundamental(Affd,dim)
+    then ()= if face_verbose
+    	     then prints("start dim ",dim, " in FPP_faces")
+	     fi
+    in for FV@k in faces
+       do if fund_face_verbose or (face_verbose and k=0)
+       	  then prints("start fund face ",k," of ", #faces, " in dim = ",dim,
+	       " in FPP_faces")
+	  fi;
+	  let bary_F=FaceBary: sum(Affd.rank,FV)/(dim+1)
+	  then aff_short_list = FPP_w_shifts(Affd,bary_F,j0)
+	  then aff_list = [AffineCoWeylElt]:
+	       for (w,taus) in aff_short_list
+	       do for tau in taus do (tau,w) od
+	       od.##
+	  in [FaceVertsIndex]:
+	     for wtilde in aff_list
+	     do FaceVertsIndex:
+		      for v in wtilde*FV
+		      do vd.lookup(v)
+		      od.sort
+	     od { type is [FaceVertsIndex], remains for next line}
+	 od.##
+
+{next two variables can be preloaded by loading a file afterward.}
+set ichashedges = make_InnerClass_hash()
+set FPPedgess = [[FaceVertsIndex]]: []
+
+{laptop 330 sec, 1.57g; wave??}
+set FPP_edges = (InnerClass ic) [FaceVertsIndex]:
+    {let ichash = make_InnerClass_hash()
+    then FPPedgess = [[FaceVertsIndex]]: [] {one list for each inner class}
+    in (InnerClass -> [FaceVertsIndex]): (InnerClass ic) [FaceVertsIndex]:}
+       let I = ichashedges.size()
+       then i = ichashedges.match(ic)
+       then () = if i=I {haven't seen this inner class before}
+       	       then let (Affd,M,j0) = cofolded(ic)
+	       	    then answer = FPP_faces(Affd, FPP_vertex_data(Affd,j0), 1, j0)
+	       	    then () = FPPedgess #:= {(FPPedgess next FPPedgess := [])#}answer
+    	      	    {then () = FPPedges_time +:= elapsed_ms() - start}
+	      	    in ()
+	      	 fi
+      in FPPedgess[i]
+
+{set FPP_edges_sorted = (InnerClass -> [FaceVertsIndex]):
+    let ichash = make_InnerClass_hash()
+    then FPPedges_sorteds = [[FaceVertsIndex]]: [] {one list for each inner class}
+    in (InnerClass -> [FaceVertsIndex]): (InnerClass ic) [FaceVertsIndex]:
+       let I = ichash.size()
+       then i = ichash.match(ic)
+       then () = if i=I {haven't seen this inner class before}
+       	       then let answer = FPP_edges(ic).sort
+	       	    then () = FPPedges_sorteds #:= answer
+    	      	    {then () = FPPedges_time +:= elapsed_ms() - start}
+	      	    in ()
+	      	 fi
+      in FPPedges_sorteds[i]
+
+{The vec has size #FPP_vertices + 1. Entry j+1 is the first m where FPP_edges_sorted(ic)[m] > j}
+set FPP_edge_stops = (InnerClass -> vec):
+    let ichash = make_InnerClass_hash()
+    then FPP_edge_stopss = [vec]: [] {one vec for each inner class}
+    in (InnerClass -> vec): (InnerClass ic) vec:
+       let I = ichash.size()
+       then i = ichash.match(ic)
+       then () = if i=I {haven't seen this inner class before}
+       	       then let start = int:0, Esort = FPP_edges_sorted(ic)
+	       	    then answer = 0#for j:#FPP_vertices(ic)
+	       	    	     	  do let fj = binary_search_first((int -> bool):
+				     	 (int m): Esort[m][0] > j,start, #Esort)
+				     then () = start:=fj
+				     in fj
+				   od
+		    then () = FPP_edge_stopss #:= answer
+	            {then () = FPPedges_time +:= elapsed_ms() - start}
+	      	    in ()
+	      	 fi
+      in FPP_edge_stopss[i]
+
+}
+
+{Following two variables could be preloaded by reading a file afterward.}
+set ichashezu = make_InnerClass_hash()
+set FPPebzu = [[[FaceVertsIndex]]]: []
+
+{edges in a list indexed by first vertex; size is number of FPP vertices}
+{this command takes 5 min/ 2.21g on laptop, 15 min/3.5 g on wave}
+{add file that has ichash, FPPebzu}
+set FPP_edges_by_zero_unsorted = (InnerClass ic) [[FaceVertsIndex]]:
+       let I = ichashezu.size()
+       then i = ichashezu.match(ic)
+       then () = if i=I {haven't seen this inner class before}
+       	       then let edges = FPP_edges(ic)
+	       	    then answer = [[FaceVertsIndex]]: for j:#FPP_vertices(ic) do [] od
+		    then () = for v in edges
+		    	      do answer[v[0]] #:= {(answer[v[0]] next answer[v[0]]:=[])#}v
+			      od
+	       	    then () = FPPebzu #:= {(FPPebz next FPPebz := [])#}answer
+    	      	    {then () = FPPebz_time +:= elapsed_ms() - start}
+	      	    in ()
+	      	 fi
+in FPPebzu[i]
+
+set append_to_febzu(InnerClass ic, [[FaceVertsIndex]] FVs) = void:
+    let I = ichashezu.size()
+    then i = ichashezu.match(ic)
+    in if i=I {haven't seen this inner class before}
+       then FPPebzu #:= FVs
+       fi
+
+set write_vecss([[vec]] listss, string listss_name) = void:
+    begin
+	prints("set ",listss_name," = [[vec]]: [], temp_lists = [vec]: []")
+	; for lists in listss
+	  do write_vecs(lists,"temp_lists");
+	     prints("void: ",listss_name,"#:= temp_lists")
+          od
+    end
+
+
+set write_vecsss([[[vec]]] listsss, string listsss_name) = void:
+    begin
+	prints("set ",listsss_name," = [[[vec]]]: [], temp_listss = [[vec]]: []")
+	; for listss in listsss
+	  do write_vecss(listss,"temp_listss");
+	     prints("void: ",listsss_name,"#:= temp_listss")
+          od
+    end
+
+set write_FPP_edges_hash() = void:
+   let list_ic = ichashezu.list()
+   then () = assert(#list_ic = #FPPebzu,"Sizes of ichashezu and FPPebzu don't match")
+   then () = write_ic_list(list_ic,"ebzu_ics")
+   then () = write_vecsss(FPPebzu, "ebzu_FVIs")
+   in prints("for ic@j in ebzu_ics do append_to_febzu(ic, ebzu_FVIs[j]) od")
+
+{edges in a list indexed by first vertex; size is number of FPP vertices. Sort each sublist by second vertex.}
+{this command takes 29 min/2.31g on laptop, 36 min, 3.9g on wave}
+{NOT USED as of 7/5/24}
+set FPP_edges_by_zero= (InnerClass ->  [[FaceVertsIndex]]):
+    let ichash = make_InnerClass_hash()
+    then FPPebz = [[[FaceVertsIndex]]]: [] {one list for each inner class}
+    in (InnerClass -> [[FaceVertsIndex]]): (InnerClass ic) [[FaceVertsIndex]]:
+       let I = ichash.size()
+       then i = ichash.match(ic)
+       then () = if i=I {haven't seen this inner class before}
+       	       then let edges_u = FPP_edges_by_zero_unsorted(ic)
+	       	    then answer = [[FaceVertsIndex]]: for list in edges_u do list.sort od
+	       	    then () = FPPebz #:= answer
+    	      	    {then () = FPPebz_time +:= elapsed_ms() - start}
+	      	    in ()
+	      	 fi
+      in FPPebz[i]
+
+
+set_type PermOrderTwo = (vec fixed, [(int,int)] trans)
+
+{these are elements of order two in the coset of -1 in Out(fundamental alcove) generated by X^*/roots}
+set order_two_perms_FA(SimpleAffine Affd) = [PermOrderTwo]:
+    let FVs = fundamental_vertices(Affd)
+    then FVlookup = index_in(FVs)
+    then ((ZM,Zorder),) = Z_hat(Affd) {(mat, vec) cols of mat are reps of X^*/roots, entries of
+    	 	       		     vec give orders of reps}
+    then boxZ = box(Zorder)
+    then Zshifts = for b in boxZ do ZM*b od
+    then Perms = [[int]]:
+    	 for shift in Zshifts
+    	 do for v@i in FVs
+	    do let (,vshift) = from_fundamental_alcove(Affd,-v+shift)
+	       in FVlookup(vshift)
+	    od
+	 od
+    in for Perm in Perms
+       do if all(for j@i in Perm do Perm[j]=i od)
+       	  then let answer = PermOrderTwo: ([],[])
+	       then () = for j@i in Perm
+	       	       	 do if j=i
+			    then answer.fixed:=(answer.fixed next answer.fixed:=[])#i
+			    else if j>i then answer.trans := (answer.trans next answer.trans:=[])#(i,j) fi
+			    fi
+			 od
+		in [answer]
+	   else []
+	   fi
+	od.##
+
+{these are pairs [i,j] of fundamental face vertices that can be flipped by an automorphism
+related to G; condition is that adding tau in X^* to v[i] is Waff-conjugate to -v[j].
+
+The minus sign is an important correction 5/3/24.}
+set fund_flippable_edges(SimpleAffine Affd) = [vec]:
+    let OTPs = order_two_perms_FA(Affd)
+    in for perm2 in OTPs
+       do for (i,j) in perm2.trans
+       	  do [i,j]
+	  od
+       od.##.no_reps
+{    let FVs = fundamental_vertices(Affd)
+    then FVlookup = index_in(FVs)
+    then ((ZM,Zorder),) = Z_hat(Affd) {(mat, vec) cols of mat are reps of X^*/roots, entries of
+    	 	       		     vec give orders of reps}
+    then boxZ = box(Zorder)
+    then Zshifts = for b in boxZ do ZM*b od
+    in for v@i in FVs
+       do let ilist = for shift in Zshifts
+       	      	      do let (,vshift) = from_fundamental_alcove(Affd,-v+shift)
+       	     	      	 then j = FVlookup(vshift)
+	     		 in if j>i
+			    then [j]
+	     		    else []
+			    fi
+		      od.##.sort_u
+	   in for j in ilist
+	      do [i,j]
+	      od
+	od.##}
+{triples [i,j,k] of fund verts so that for some automorphism as above, i is fixed and (j,k) flip}
+set fund_flippable_triangles(SimpleAffine Affd) = [vec]:
+    let OTPs = order_two_perms_FA(Affd)
+    in for perm2 in OTPs
+       do for i in perm2.fixed
+       	  do for (j,k) in perm2.trans
+	     do [i,j,k]
+       	     od{list of vec's}
+	  od.## 
+       od.##.no_reps
+
+{tetrahedra [i,j,k,ell] so that for some aut as above, [i,j] and [k,ell] flip}
+set fund_flippable_tetrahedra(SimpleAffine Affd) = [vec]:
+    let OTPs = order_two_perms_FA(Affd)
+    in for perm2 in OTPs
+       do for (i,j)@m in perm2.trans
+       	  do for (k,ell) in perm2.trans[m+1:]
+	     do [i,j,k,ell]
+       	     od {list of vec's of size 4}
+	  od.##
+       od.##.no_reps
+
+{to record time computing flippable edges}
+set Ffe_time = int: 0
+
+{these are pairs [p,q] indexing FPP vertices that can be flipped by an automorphism
+related to G; condition is that the vertices differ by the extended affine Weyl group.}
+set FPP_flippable_edges = (InnerClass -> [FaceVertsIndex]):
+    let ichash = make_InnerClass_hash()
+    then Ffes = [[FaceVertsIndex]]: [] {one for each inner class}
+    in (InnerClass -> [FaceVertsIndex]): (InnerClass ic) [FaceVertsIndex]:
+       let I = ichash.size() {how many inner classes do I know?}
+       then i = ichash.match(ic) {"match" means look up the new inner class in the list
+       	      			 ichash, and add it if it's new. "i" is the number of the
+				 new inner class in the list}
+       then () = if i=I {haven't seen this inner class before}
+    	      then let (Affd,M,j0) = cofolded(ic), start = elapsed_ms()
+    	      then vlist = FPP_vertices(Affd,j0), FVs = fundamental_vertices(Affd)
+    	      then vdAff = to_vertex_data(vlist)
+    	      then answer = 
+    	      	   for FVind in fund_flippable_edges(Affd)
+       	 	   do let bary_F=face_bary(FVs,FVind)
+	    	      then FV = for i in FVind do FVs[i] od
+	    	      then aff_short_list = FPP_w_shifts(Affd,bary_F,j0)
+	    	      then aff_list = [AffineCoWeylElt]:
+	       	      	   for (w,taus) in aff_short_list
+	       	 	   do for tau in taus
+			      do (tau,w)
+			      od
+	       	 	   od.##
+	     	      in for wtilde in aff_list
+	     	      	 do FaceVertsIndex:
+		   	    for v in wtilde*FV
+		   	    do vdAff.lookup(v)
+		   	    od.sort
+	     		 od { type is [FaceVertsIndex], remains for next line}
+	  	    od.##
+	      then () = Ffes #:= answer
+    	      then () = Ffe_time +:= elapsed_ms() - start
+	      in ()
+	      fi
+    in Ffes[i]
+
+
+{these are pairs [p,q] index FPP vertices that can be flipped by an automorphism
+related to G; condition is that the ratvec connecting the vertices is in X^*.}
+set FPP_flippable_edge_lookup(InnerClass ic) = (vec -> int):
+    index_in(FPP_flippable_edges(ic))
+
+{this is everything that can be a local vertex: the global vertices,
+plus the barycenters of edges that are flipped by an automorphism that
+can be realized in G. This means that the edge must be in X^*.}
+set FPP_local_vertices(InnerClass ic, [ratvec] vlist, (vec -> int) FEL) = [ratvec]:
+    vlist ## for w in FPP_flippable_edges(ic) do face_bary(vlist,w) od
+
+set FPP_local_vertices(InnerClass ic) = [ratvec]:
+    let vlist = FPP_vertices(ic)
+    then FEL = FPP_flippable_edge_lookup(ic)
+    in FPP_local_vertices(ic, vlist, FEL)
+
+{same in FPP_line coords; entries in [0,1]}
+set FPP_local_vertices_cube(InnerClass ic) = [ratvec]:
+    let Aff_coroots = FPP_coroots(ic), local_verts = FPP_local_vertices(ic)
+    in for v in local_verts
+       do for av in Aff_coroots do av*v od
+       od
+
+{to record time computing flippable triangles}
+set Fftri_time = int: 0
+
+{these are triples [f,p,q] indexing FPP triangle that can be flipped by an automorphism
+related to G, fixing f and exchanging (p,q).}
+set FPP_flippable_triangles = (InnerClass -> [FaceVertsIndex]):
+    let ichash = make_InnerClass_hash()
+    then Fftris = [[FaceVertsIndex]]: [] {one for each inner class}
+    in (InnerClass -> [FaceVertsIndex]): (InnerClass ic) [FaceVertsIndex]:
+       let I = ichash.size()
+       then i = ichash.match(ic)
+       then () = if i=I {haven't seen this inner class before}
+    	      then let (Affd,M,j0) = cofolded(ic), start = elapsed_ms()
+    	      then vlist = FPP_vertices(Affd,j0), FVs = fundamental_vertices(Affd)
+    	      then vdAff = to_vertex_data(vlist)
+    	      then answer = for FVind in fund_flippable_triangles(Affd)
+       	      	   	    do let bary_F=face_bary(FVs,FVind)
+	    		       then FV = for i in FVind do FVs[i] od
+	    		       then aff_short_list = FPP_w_shifts(Affd,bary_F,j0)
+	    		       then aff_list = [AffineCoWeylElt]:
+	       	 	       	    for (w,taus) in aff_short_list
+	       	 		    do for tau in taus do (tau,w) od
+	       	 		       od.##
+	     		       in for wtilde in aff_list
+	     		       	  do FaceVertsIndex:
+				     let verts = wtilde*FV
+		   		     in [vdAff.lookup(verts[0])]##
+				     	[vdAff.lookup(verts[1]), vdAff.lookup(verts[2])].sort
+	     			  od { type is [FaceVertsIndex], remains for next line}
+	  		     od.##
+	      then () = Fftris := (Fftris next Fftris := [])#answer
+    	      then () = Fftri_time +:= elapsed_ms() - start
+	      in ()
+	      fi
+    in Fftris[i]
+
+{same, separated into lists indexed by fixed vertex}
+set FPP_flippable_triangles_by_zero_unsorted = (InnerClass -> [[FaceVertsIndex]]):
+    let ichash = make_InnerClass_hash()
+    then Fftrisbzu = [[[FaceVertsIndex]]]: [] {one for each inner class}
+    in (InnerClass -> [[FaceVertsIndex]]): (InnerClass ic) [[FaceVertsIndex]]:
+       let I = ichash.size()
+       then i = ichash.match(ic)
+       then () = if i=I {haven't seen this inner class before}
+    	      then let FEdges = FPP_flippable_triangles(ic){, start = elapsed_ms()}
+	      	   then answer = [[FaceVertsIndex]]: for j:#FPP_vertices(ic) do [] od
+		   then () = for v in FEdges
+		   	     do answer[v[0]] #:= v
+			     od
+		   then () = Fftrisbzu #:= answer
+		   in ()
+               fi
+        in Fftrisbzu[i]
+
+{same, each sublist sorted lexicographically by flipped pair}
+{unused as of 7/5/24}
+set FPP_flippable_triangles_by_zero= (InnerClass ->  [[FaceVertsIndex]]):
+    let ichash = make_InnerClass_hash()
+    then Fftrisbz = [[[FaceVertsIndex]]]: [] {one list for each inner class}
+    in (InnerClass -> [[FaceVertsIndex]]): (InnerClass ic) [[FaceVertsIndex]]:
+       let I = ichash.size()
+       then i = ichash.match(ic)
+       then () = if i=I {haven't seen this inner class before}
+       	       then let FEdges_u = FPP_flippable_triangles_by_zero_unsorted(ic)
+	       	    then answer = [[FaceVertsIndex]]: for list in FEdges_u do list.sort od
+	       	    then () = Fftrisbz #:= answer
+    	      	    {then () = Fftrisbz_time +:= elapsed_ms() - start}
+	      	    in ()
+	      	 fi
+      in Fftrisbz[i]
+
+set Fftet_time = int: 0
+{these are quadruples [i,j,p,q] indexing FPP tetrahedra that can be flipped by an automorphism
+related to G, exchanging (i,j) and (p,q).}
+set FPP_flippable_tetrahedra = (InnerClass -> [FaceVertsIndex]):
+    let ichash = make_InnerClass_hash()
+    then Fftetsu = [[FaceVertsIndex]]: [] {one for each inner class}
+    in (InnerClass -> [FaceVertsIndex]): (InnerClass ic) [FaceVertsIndex]:
+       let I = ichash.size()
+       then i = ichash.match(ic)
+       then () = if i=I {haven't seen this inner class before}
+    	      then let (Affd,M,j0) = cofolded(ic), start = elapsed_ms()
+    	      then vlist = FPP_vertices(Affd,j0), FVs = fundamental_vertices(Affd)
+    	      then vdAff = to_vertex_data(vlist)
+    	      then answer = [FaceVertsIndex]: for FVind in fund_flippable_tetrahedra(Affd)
+       	      	   	    do let bary_F=face_bary(FVs,FVind)
+	    		       then FV = for j in FVind do FVs[j] od
+	    		       then aff_short_list = FPP_w_shifts(Affd,bary_F,j0)
+	    		       then aff_list = [AffineCoWeylElt]:
+	       	 	       	    for (w,taus) in aff_short_list
+	       	 		    do for tau in taus do (tau,w) od
+	       	 		    od.##
+	     		       in for wtilde in aff_list
+	     		       	  do let verts = wtilde*FV
+				     then coords = for v in verts do vdAff.lookup(v) od
+				     then first_try = coords[:2].sort ## coords[2:].sort
+				     in if first_try[0] < first_try[2]
+				     	then first_try
+					else first_try[2:] ## first_try[:2]
+					fi
+	     		     	  od { type is [FaceVertsIndex], remains for next line}
+	  		     od.##
+	      then () = Fftetsu #:= answer
+    	      then () = Fftet_time +:= elapsed_ms() - start
+	      in ()
+	      fi
+    	 in Fftetsu[i]
+
+{same, separated by lists indexed by [i,j] in flippable_edges}
+set FPP_flippable_tetrahedra_by_zero_unsorted = (InnerClass ->  [[FaceVertsIndex]]):
+    let ichash = make_InnerClass_hash()
+    then Fftetsbzu = [[[FaceVertsIndex]]]: [] {one list for each inner class}
+    in (InnerClass -> [[FaceVertsIndex]]): (InnerClass ic) [[FaceVertsIndex]]:
+       let I = ichash.size()
+       then i = ichash.match(ic)
+       then () = if i=I {haven't seen this inner class before}
+       	       then let FEdges = FPP_flippable_edges(ic)
+	       	    then FEL = FPP_flippable_edge_lookup(ic)
+		    then answer = [[FaceVertsIndex]]: for j:#FEdges do [] od
+		    then () = for v in FPP_flippable_tetrahedra(ic)
+		   	     do answer[FEL(v[:2])] #:= v
+			     od
+	       	    then () = Fftetsbzu #:= answer
+		    in ()
+		 fi
+       in Fftetsbzu[i]
+
+set FPP_faces (SimpleAffine Affd, [ratvec] vlist, int dim,
+    int j) =
+    [FaceVertsIndex]:
+    FPP_faces(Affd, to_vertex_data(vlist), dim, j)
+
+{global faces of dimensions zero to global_top, that can contribute
+to local vertices and edges. This means vertices, edges, triangles
+with one flipped edge and one fixed, and tetrahedra with both opposite
+vertices exchanged.}
+{hope never to call this?}
+set low_FPP_faces(InnerClass ic) = [[FaceVertsIndex]]:
+    if ic.semisimple_rank = 0 then []
+    else let start = elapsed_ms(), (Affd, M, j0) = cofolded(ic)
+    	 then Avlist = FPP_vertices(Affd, j0)
+    	 then Avd = Avlist.to_vertex_data
+	 then () = if face_verbose
+	      	   then prints("start low_FPP_faces")
+	           fi
+    	 then answer = [[vec]]: [[vec]: for k:#Avlist do [k] od] ##
+	       [FPP_faces(Affd, Avd, 1, j0)] ##
+	       [FPP_flippable_triangles(ic)] ##
+	       [FPP_flippable_tetrahedra(ic)]
+{for d:global_top from 1
+       	    do if d < Affd.semisimple_rank+1 then FPP_faces(Affd, Avd, d, j0)
+	       else []
+	       fi
+	    od}
+	 then () = if time_verbose
+	    	   then prints("time for low_FPP_faces was ",
+		      	       print_time_string(elapsed_ms() - start),
+			       "; counts = ", for L in answer do #L od)
+		   fi
+	 in answer
+    fi
+
+{replace each list by a collection of lists indexed by first entries (assumed
+to take all values from 0 to #lowFPP[0]-1) }
+set low_FPP_faces_by_zero([[FaceVertsIndex]] lowFPP) = [[[FaceVertsIndex]]]:
+    let start = elapsed_ms(), answer = [[[FaceVertsIndex]]]:
+    	for list in lowFPP
+    	do [[]]
+	od
+    then () = for list@d in lowFPP
+    	      do let answerd = [[FaceVertsIndex]]:
+	      	     for w in lowFPP[0]
+		     do []
+		     od
+		 then () = for w in list
+		      	   do let v = w.sort
+			      in answerd[v[0]]:= (answerd[v[0]] next answerd[v[0]]:=[])#v
+			   od
+	      	      	   {do answerd[v[0]]#:=v
+	         	   od}
+		 then () = answer[d]:=answerd
+		 in ()
+	      od
+    then () = if time_verbose
+	      then prints("time for low_FPP_faces_by_zero was ",
+		      	       print_time_string(elapsed_ms() - start),
+			       "; counts = ", for L in answer do #L od)
+		   fi
+    in answer
+
+{3 is possible only for Spin(4k) FALSE! 5/2/24}
+{THIS SCRIPT WAS WRONG FOR SU(2,1), when global_top should be 2. I can't swear to this
+quick fix. I think that should make the code correct, but slower}
+
+{For non-simply connected ic, the value of global top may be smaller;
+I haven't trie to calculate it.}
+
+set adjust_time = int:0
+set adjust_global_top(InnerClass ic) = void:
+    let (rd,,) = cofolded(ic), start = elapsed_ms()
+    then CFLT = Lie_type_matrix(rd)
+    {then CTQ = center_torsion_quotient(rd)}
+    then () = if (not CFLT[5].=) or (not CFLT[6].=) or (not CFLT[4][7].=) {F4, G2, E8}
+    	      then global_top:=1;
+	      	   global_faces := low_FPP_faces(ic); adjust_time +:= elapsed_ms() - start; return ()
+	      elif (not CFLT[1].=) or (not CFLT[2].=)
+    	      then global_top:=2;
+	      	   global_faces := low_FPP_faces(ic); adjust_time +:= elapsed_ms() - start; return ()
+	      else global_top:=3
+	      fi
+    then ()= global_faces := low_FPP_faces(ic); adjust_time +:= elapsed_ms() - start
+    in ()
+ {   then () = if any(for j:7 do CFLT[3][2*j + 1] > 0 od) and
+    	      	 #CTQ = 2
+    	      then global_top :=3 ; return ()
+	      fi}
+    {then () = if any( for v in CTQ do is_even(v.denom) od)
+    	      then global_top :=2; return ()
+	      fi
+    then () = global_top :=1
+    in ()}
+
+{Need low_faces to be size dim  \ge 2, so it includes edges and
+faces dim - 1; then find faces of dim by starting with any dim-1
+simplex, a vertex outside it, and checking whether the new edges are
+allowed edges}
+set FPP_add_dim (SimpleAffine Affd, int dim, [[FaceVertsIndex]] low_faces) =
+    [[FaceVertsIndex]]:
+
+(   let dim = #low_faces, num_verts = #low_faces[0]
+    then () = assert(#low_faces > 1,"In FPP_add_dim, low_faces must include edges")
+    then () = if face_verbose
+    	      then prints(new_line,"start FPP_add_dim, adding faces of dim ", dim)
+    	      fi
+    then lookup = index_in(low_faces[1])
+    then Ldim = [FaceVertsIndex]:
+    	 for f in low_faces[dim - 1]
+	 do for v: #low_faces[0]-f~[0]-1 from f~[0]+1
+	    do if all(for x in f do lookup([x,v]) >= 0 od)
+	       then [f#v]
+	       else []
+	       fi
+	    od.##{all faces starting with face f}
+	 od.##{all faces in dim}
+    in low_faces#Ldim
+)
+
+{global faces of dimensions zero to global_top, for use in local edge calculations
+This version is more than ten times slower than low_FPP_faces for F4.}
+{try instead to use super_faces?}
+set low_FPP_faces_B(RealForm G) = [[FaceVertsIndex]]:
+    let start = elapsed_ms()
+    in if G.semisimple_rank = 0 then []
+       else let (Affd, M, j0) = cofolded(G)
+    	    then Avlist = FPP_vertices(Affd, j0)
+	    then () = if face_verbose
+	      	      then prints("start low_FPP_facesB")
+	              fi
+	    then low_faces = [[vec]]: [for k:#Avlist do [k] od]
+    	    then () = low_faces:= low_faces # FPP_faces(Affd, Avlist, 1, j0)
+	    then () = for d:global_top-1 from 2
+	      	      do low_faces:= FPP_add_dim(Affd, d, low_faces)
+	      	      od
+	    then () = if time_verbose
+	    	      then prints("time for low_FPP_faces_B was ",
+		      	   		print_time_string(elapsed_ms() - start),
+			       "; counts = ", for L in low_faces do #L od)
+		      fi
+ 	    in low_faces
+    fi
+
+
+{Need low_faces to be size dim  \ge 2, so it includes edges and
+faces dim - 1; then find faces of dim by starting with any dim-1
+simplex, a vertex outside it, and checking whether the new edges are
+allowed edges. superFaces is a bit faster}
+set FPP_add_dim_B (SimpleAffine Affd, int dim, [[FaceVertsIndex]] low_faces) =
+    [[FaceVertsIndex]]:
+
+(   let dim = #low_faces, num_verts = #low_faces[0]
+    then () = assert(#low_faces > 1,"In FPP_add_dim, low_faces must include edges")
+    then () = if face_verbose
+    	      then prints(new_line,"start FPP_add_dim_B, adding faces of dim ", dim)
+    	      fi
+    then lookup = index_in(low_faces[dim - 1])
+    then Ldim = [FaceVertsIndex]:
+    	 for v in low_faces[0]
+	 do for f in low_faces[dim - 1]
+	    do if f[0] <= v[0]
+	       then []
+	       elif all(for k: dim do lookup(v[0]#delete(f,k)) >= 0 od)
+	       then [v[0]#f]
+	       else []
+	       fi
+	    od.##{all faces starting with vertex v}
+	 od.##{all faces in dim}
+    in low_faces#Ldim
+)
+
+{global faces of dimensions zero to global_top, for use in local edge calculations
+This version is more than ten times slower than low_FPP_faces for F4.}
+{try instead to use super_faces?}
+set low_FPP_faces_BB(RealForm G) = [[FaceVertsIndex]]:
+    let start = elapsed_ms()
+    in if G.semisimple_rank = 0 then []
+       else let (Affd, M, j0) = cofolded(G)
+    	    then Avlist = FPP_vertices(Affd, j0)
+	    then () = if face_verbose
+	      	      then prints("start low_FPP_facesB")
+	              fi
+	    then low_faces = [[vec]]: [for k:#Avlist do [k] od]
+    	    then () = low_faces:= low_faces # FPP_faces(Affd, Avlist, 1, j0)
+	    then () = for d:global_top-1 from 2
+	      	      do low_faces:= FPP_add_dim_B(Affd, d, low_faces)
+	      	      od
+	    then () = if time_verbose
+	    	      then prints("time for low_FPP_faces_BB was ",
+		      	   		print_time_string(elapsed_ms() - start),
+			       "; counts = ", for L in low_faces do #L od)
+		      fi
+ 	    in low_faces
+    fi
+
+{ m is a class known to be nonunitary; update classes above using
+graph; label as "Ffrom"##tail}
+{ first list in toDo all n covering m; then what covers those...
+These get larger and larger.}
+{Should make this function put nonunitary statuses into unitarity_hash?}
+set updateNUclassesB([string] statuses, [[int]] covers, int m,
+string tail) = [string]:
+    let G1 = inner_class(root_datum(null(1,0),null(1,0))
+    	,id_mat(1)).quasicompact_form {CALLER SHOULD HANDLE NEXT LINE}
+    then x0 = KGB(G1,0)
+    then toDo = sum(G1, for n in covers[m] do 1*K_type(x0,[n]) od) {+
+    	 (if statuses[m] = "?" then 1 else 0 fi)*K_type(x0,[m])}
+    then () = while #toDo != 0
+    	      do
+	      let list = vec:
+	      	  for p in monomials(toDo)
+		  do lambda_rho(p)[0]
+		  od
+	      then () = toDo := sum(G1, for n in list
+	      	   	  	  do sum(G1,
+					for q in covers[n]
+					do 1*K_type(x0,[q]) od)
+				  od)
+	      in for k in list
+	      	 do  if statuses[k] = "?"
+    	     	     then statuses[k] := "Ffrom"##tail
+		     fi
+		 od
+	      od
+    in statuses
+
+{ m is a class known to be nonunitary; update classes above using
+graph; label as "Ffrom"m}
+set updateNUclassesB([string] statuses, [[int]] covers, int m) = [string]:
+    updateNUclassesB(statuses, covers, m, to_string(m))
+
+
+{m is a class known to be unitary; update classes below using graph}
+{first list in toDo everything covered by m: the n so m appears in covers[n].
+Then what those cover... These n get SMALLER.}
+set downdateUclassesB([string] statuses, [[int]] covers, int m,
+string tail) = [string]:
+    let G1 = inner_class(root_datum(null(1,0),null(1,0))
+        ,id_mat(1)).quasicompact_form
+    then x0 = KGB(G1,0)
+    then toDo = (if statuses[m] = "?" then 1 else 0 fi)*K_type(x0,[m])
+    then () = toDo +:= sum(G1, for C@n in covers[:m]
+                          ~do (if is_member_sorted(C)(m) then 1
+                              else 0 fi)*K_type(x0,[n])
+         {(if statuses[n] = "?" then 1 else 0 fi)}
+                           od)
+    then () = while #toDo != 0
+              do
+              let list = vec:
+                  for p in monomials(toDo)
+                  do lambda_rho(p)[0]
+                  od
+              then () = toDo :=
+                   sum(G1, for n in list
+                           do sum(G1, for C@q in covers[:n]
+                                      ~do (if is_member_sorted(C)(n)
+                                          then 1 else 0 fi)*K_type(x0,[q])
+                                      od)
+                           od)
+              in for k in list
+                 do  if statuses[k] = "?"
+                     then statuses[k] := "Ffrom"##tail{to_string(m)}
+                     fi
+                 od
+              od
+    in statuses
+
+set downdateUclassesB([string] statuses, [[int]] covers, int m) = [string]:
+    downdateUclassesB(statuses, covers, m, to_string(m))
+
+{vlist is a collection of possible infinitesimal characters for reps
+(x,lambda,?), typically vertices from FPP. If vlist[i] shows up as
+a vertex of a unitary face, then there is another vertex vlist[j] so that
+
+theta(vlist[i]) = -vlist[j] + (1+theta)lambda
+
+The sequence [int] records the permutation i |--> j. The actual
+vertices of the unitary face are (vlist[i] + vlist[j])/2.
+
+So this can be used to compute the actual faces of unitary
+parameters, which are indeed simplices.  In the non-equal rank case,
+one should apply this function to cofolded vertices, to be sure that
+everything in sight is hermitian.}
+{ONLY DEPENDS ON dlambda}
+
+set thetaAct (KGBElt x, ratvec lambda, VertexData LLvd) = vec:
+    let theta = x.involution
+    then thetaPlus = (1+theta)*lambda
+    in for v in LLvd.list do LLvd.lookup(-theta*v + thetaPlus) od
+
+set thetaAct (KGBElt x, ratvec lambda{, VertexData vd}) = vec:
+{
+for v in vd.list
+    do vd.lookup(parameter(x,(x.involution)*lambda,-v).normal.infinitesimal_character)
+    od
+}
+    let theta = x.involution, vd = FPP_vertex_data(x.inner_class)
+    then thetaPlus = (1+theta)*lambda
+    in for v in vd.list do vd.lookup(-theta*v + thetaPlus) od
+
+set thetaAct2_time = int:0
+
+{only keep the transpositions (v,w) where [v,w] is an edge}
+set thetaAct2 (InnerClass ic, mat theta, ratvec lambda, {VertexData vd,}  [(ratvec->int)] edge_lookups) = PermOrderTwo:
+    let vd = FPP_vertex_data(ic)
+    then vlist = vd.list
+    then thetaPlus = (1+theta)*lambda
+    then answer = PermOrderTwo: ([],[])
+    then () = for v@i in vlist
+    	      do let j = vd.lookup(-theta*v + thetaPlus)
+    	      	 in if j = i
+		    then answer.fixed #:= i {answer.fixed#:= i}
+		    else if j > i and is_edge(ic, edge_lookups, v, vlist[j])
+		    	 then answer.trans #:= (i,j) {answer.trans#:= (i,j)}
+		    	 fi
+		    fi
+	      od
+    in answer
+
+set thetaAct2 (KGBElt x, ratvec lambda, {VertexData vd,} [(ratvec->int)] edge_lookups) = PermOrderTwo:
+    thetaAct2(x.inner_class, x.involution, lambda, {vd,} edge_lookups)
+
+set thetaAct2 (KGBElt x, ratvec lambda, {VertexData vd,}  [(ratvec->int)] edge_lookups) = PermOrderTwo:
+    thetaAct2(x.real_form, x.involution, lambda, {vd,} edge_lookups)
+
+{only keep the transpositions (v,w) where [v,w] is an edge}
+set thetaAct2 (InnerClass ic, mat theta, ratvec lambda, {VertexData vd,}  (vec->int) FlippedEdgeLookup) = PermOrderTwo:
+    let start = elapsed_ms(), vd = FPP_vertex_data(ic){vd.list}
+    then thetaPlus = (1+theta)*lambda, vlist = vd.list
+    then answer = PermOrderTwo: ([],[])
+    then () = for v@i in vlist
+    	      do let j = vd.lookup(-theta*v + thetaPlus)
+    	      	 in if j = i
+		    then answer.fixed:= (answer.fixed next answer.fixed:=[])#i {answer.fixed#:= i}
+		    else if j > i and FlippedEdgeLookup([i,j])>=0
+		    	 then answer.trans #:= (i,j)
+		    	 fi
+		    fi
+	      od
+    then () = thetaAct2_time +:= elapsed_ms() - start
+    in answer
+
+{only keep the transpositions (v,w) where [v,w] is an edge}
+set thetaAct2 (KGBElt x, ratvec lambda) = PermOrderTwo:
+    let ic = x.inner_class
+    then FEL = FPP_flippable_edge_lookup(ic){, vd = FPP_vertex_data(ic)}
+    in thetaAct2(ic, x.involution, lambda, {vd,} FEL)
+
+{computes the full vertices of the face containing a delta-fixed dom
+ ratl weight gamma. Ordinary alcove in cofolded(G) (reduce root datum by delta)}
+set global_vertices(InnerClass ic, ratvec gamma) = FaceVerts:
+    if is_equal_rank(ic) then face_verts(ic, gamma)
+    else let (Affd,M,j0) = cofolded(ic)
+    	 then gamma0 = solve(M,gamma).requisition
+	 {M is related to delta; this requires gamma to be delta-fixed}
+    	 in M*face_verts(Affd, gamma0)
+    fi
+
+{this is useful for going to actual barycenter? Now not used? The int
+d says that the first d are global vertices.}
+set local_vertices2(Param p) = (FaceVerts,int):
+    let G = p.real_form, gamma = p.infinitesimal_character
+    then vd = FPP_vertex_data(G)
+    then list = global_vertices(G,gamma)
+    then nums = for v in list do vd.lookup(v) od
+    then () = assert(nums.>=,"p appears not to be an FPP parameter")
+    then (fixed,trans) = thetaAct2(p.x, p.lambda)
+    then () = assert(#fixed + 2*#trans = #list, "p appears not to be a hermitian parameter")
+    in (for n in fixed do list[n] od ##
+        for (n,m) in trans do (vd.list[n] + vd.list[m])/2 od, #fixed)
+
+{compute the vertices of the local face containing the HERMITIAN FPP
+parameter p.}
+set local_vertices(Param p) = FaceVerts:
+    let G = p.real_form, gamma = p.infinitesimal_character
+    then list = global_vertices(G, gamma)
+{    [ratvec]:
+    	 if is_equal_rank(G) then face_verts(G, gamma)
+    	 else let (Affd,M,j0) = cofolded(G)
+    	      then gamma0 = solve(M,gamma).requisition
+    	      in M*face_verts(Affd, gamma0)
+	 fi}
+    then LLvd = to_vertex_data(list), x = p.x, lambda = p.lambda
+    then Perm = thetaAct(x,lambda,LLvd)
+    then () = assert(Perm.>=,"p appears not to be a hermitian parameter")
+    in for v@j in list do (v + list[Perm[j]])/2 od.no_reps
+
+set hermCenterOldTime = int:0
+
+{should be modified to be barycenter of affine face on G?}
+set herm_centerOld(Param p) = Param:
+    let start = elapsed_ms()
+    then list = local_vertices(p)
+    then answer = parameter(p.x, p.lambda, sum(#list[0], list)/#list)
+    then () = hermCenterOldTime +:= elapsed_ms() - start
+    in answer
+
+set hermCenterNewTime = int:0
+
+set herm_centerNewDumb(Param p) = Param:
+    if hermCenterOldFlag
+    then return(herm_centerOld(p))
+    fi;
+    let start = elapsed_ms()
+    then (list,d) = local_vertices2(p)
+    then answer = parameter(p.x, p.lambda,
+    	 (sum(#list[0], list) + sum(#list[0], list[d:]))/(2*#list - d))
+    then () = hermCenterNewTime +:= elapsed_ms() - start
+    in answer
+
+set herm_center(Param p) = Param:
+    if hermCenterOldFlag
+    then return(herm_centerOld(p))
+    fi;
+    let start = elapsed_ms()
+    then list = global_vertices(p.inner_class, p.infinitesimal_character)
+    then answer = parameter(p.x, p.lambda, sum(#list[0],list)/#list)
+    then () = hermCenterNewTime +:= elapsed_ms() - start
+    in answer
+
+{meant to record time in character_formula(p) and character_formula_to_height(p)}
+set charTime = int: 0
+
+{Take character_formula(p), and move each term to infl char gamma0. This works (give
+honest deformed rep) if gamma0 is in the local face of infl_char(p)}
+set wiggle(Param p, ratvec gamma0) = ParamPol:
+let start = elapsed_ms()
+then () = char_counter.use()
+then P = character_formula(p)
+then () = charTime +:= elapsed_ms() -start
+in  sum(p.real_form, for c@q in P do c*parameter(q.x, q.lambda, gamma0) od)
+
+set wiggle(ParamPol P, ratvec gamma0) = ParamPol:
+sum(P.real_form, for c@q in P do c*parameter(q.x, q.lambda, gamma0) od)
+
+{compute the deformations of irrep p to boundary faces of its face. This is
+a list of 2^{#local_vertices} - 1 ParamPol's, the character formulas
+on the boundary faces. If p is unitary, this is a sum with positive coeffs of
+characters of unitary reps} {OOPS! these may not be hermitian ?? what??}
+set local_defs(Param p) = [ParamPol]:
+ let start = elapsed_ms()
+ then () = char_counter.use()
+ then CF = character_formula(p)
+ then () = charTime +:= elapsed_ms() -start
+ then list = local_vertices(p)
+ then () = if #list = 1 then return [] fi
+ then d = #list {dim of local face plus 1; between 2 and dim A+1}
+ in for j:d-2 from 2
+    do for S in choices_from(list,j)
+       do let gamma0 = sum(#list[0],S)/j
+       in wiggle(CF,gamma0)
+       od
+    od.##
+
+{compute the deformations of irrep p to boundary facets (codim 1) of
+its face. This is a list of #local_vertices ParamPol's, the character
+formulas on the facets. If p is unitary, each is a sum with positive
+coeffs of characters of unitary reps}
+set local_facet_defs(Param p) = [ParamPol]:
+    let list = local_vertices(p)
+    in if #list = 1 then [ParamPol]: []
+       else let start = elapsed_ms()
+       	    then () = char_counter.use()
+ 	    then CF = character_formula(p)
+ 	    then () = charTime +:= elapsed_ms() -start
+       	    then sum = sum(#list[0], list), d=#list
+       	    in for v in list
+       	       do wiggle(CF, (sum - v)/(d-1))
+       	       od
+       fi
+{
+{compute the deformations of parameter p to boundary faces of its
+face. This begins with a list of 2^{#local_vertices} - 1 Param's
+(which may not be final), and finalizes.}
+set local_param_defs(Param p) =[Param]:
+let list = local_vertices(p)
+then d = #list {dim of local face plus 1}
+in for j:d from 1
+   do for S in choices_from(list,j)
+      do let gamma0 = sum(#list[0],S)/j
+      in monomials(1*parameter(p.x,p.lambda,gamma0))
+      od.##
+   od.##
+}
+
+{this is all the irrs arising by deformation to boundary faces of one irr p}
+set deformed_pol(Param p) = ParamPol:
+sum(p.real_form, local_defs(p))
+
+{this is all the irrs arising by deformation to boundary facets of one irr p}
+set facet_deformed_pol(Param p) = ParamPol:
+sum(p.real_form, local_facet_defs(p))
+
+set deformed(Param p) = [Param]:
+    monomials(composition_series(deformed_pol(p)))
+
+set proper_deformed(Param p) = [Param]:
+    let x = p.x
+    in for q in deformed(p)
+       do if q.x != x
+       	  then [q]
+	  else []
+	  fi
+       od.##
+
+set facet_deformed(Param p) = [Param]:
+    monomials(composition_series(facet_deformed_pol(p)))
+
+set proper_facet_deformed(Param p) = [Param]:
+    let x = p.x
+    in for q in facet_deformed(p)
+       do if q.x != x
+       	  then [q]
+	  else []
+	  fi
+       od.##
+
+set facet_deformed_new(Param p) = [Param]:
+    for q in facet_deformed(p)
+    do if q.x != p.x
+       then [herm_center(q)]
+       else []
+       fi
+    od.##

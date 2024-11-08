@@ -3,7 +3,7 @@
 <induction.at { for |theta_stable_data| }
 <representations.at { for |finite_dimensional| }
 <W_K.at { |R_K_dom|, |R_K_dom_mu| }
-
+<hash.at {for make_KType_hash}
 <center.at { for |Z_2@RealForm| }
 
 {! Functions involving K-types (final tempered limit parameters) and
@@ -357,7 +357,7 @@ in (cross(x_1,y),mu_3, inverse(y)*mu_3). { initial data; apply recursive functio
 
 {this fails in function min_bottom_factors(mu) for G=Spin(5,7),
 mu = K_type(170,[0,-1,-3,0,0,0] - [1,1,1,1,1,1])}
-set project_on_dominant_cone(KGBElt x, ratvec mu) = (KGBElt,ratvec,ratvec):
+set project_on_dominant_cone_DV(KGBElt x, ratvec mu) = (KGBElt,ratvec,ratvec):
     if old_proj_flag
     then  project_on_dominant_cone_old(x, mu)
     else
@@ -405,10 +405,89 @@ in (cross(x_1,y),mu_3, inverse(y)*mu_3). { initial data; apply recursive functio
        )
     fi
 
-{. Vogan algorithm; previous function in case mu is given as a vec,
+{for each root_datum rd, holds list of size 2^{rd.semisimple_rank} of projection-on-walls
+numerators, and a vec of size 2^{rd.semisimple_rank}  of their denominators.}
+set_type
+[ proj_hash =
+  ( ( -> int) size {# root data held}
+  , ( -> ) clear
+  , (int -> [(mat,int)]) index
+  , (RootDatum -> [(mat,int)]) full_entry {all wall projectors for rd}
+  , ((RootDatum, int)->(mat,int)) entry {projector for set bit positions of int}
+  )
+]
+
+set make_proj_hash () = proj_hash:
+(  let rd_hash = make_RootDatum_hash()
+   then data_list = [[(mat,int)]]: []
+   then clear() = void:
+   	let () = rd_hash.clear()
+	then () = data_list:=[]
+	in ()
+   then full_entry(RootDatum rd) = [(mat,int)]:  
+	let N = rd_hash.size()
+     	then n = rd_hash.match(rd)
+	then () = if n = N {haven't seen this rd before}
+	     	  then data_list := (data_list next data_list:=[]) #
+		       for j:2^(rd.semisimple_rank)
+		       do wall_projector(rd, set_bit_positions(j))
+		       od
+		  fi
+	in data_list[n]
+   in  ( ( -> int): { size } @int: #data_list
+   , ( -> ): {clear} clear
+   , (int->[(mat,int)]): { index } (int n) [(mat,int)]: data_list[n]
+   , (RootDatum->[(mat,int)]): { full_entry } full_entry
+   , ((RootDatum,int)-> (mat,int)): {entry} (RootDatum rd, int j) (mat,int):
+     full_entry(rd)[j])
+)
+
+set ProjHash = make_proj_hash()
+set proj_hash_flag = true
+set MvL_flag=true
+
+{. MvL algorithm to project k_highest_weight(x,mu) on dominant cone; returns
+   (x',mu+2rho_K(x)-rho,tau) with tau dominant and x' corresponding to the new
+   Weyl chamber. .}
+set project_on_dominant_cone (KGBElt x, ratvec mu) =
+   (KGBElt,ratvec,ratvec):
+   if MvL_flag = false then return(project_on_dominant_cone_DV(x,mu)) fi;
+  let rd=root_datum(x)
+  then (w,mu_1) = from_dominant
+      (rd,mu:=(1+involution(x))*mu/2) { make |mu| zero on the split part of |h| }
+  then x_1=cross(x,w)
+  then mu_2=mu_1+tworho_K (x_1)
+  then y=chamber(rd,mu_2)
+  then mu_3=mu_2-y*rho(rd)
+in if proj_hash_flag
+   then (cross(x_1,y), inverse(y)*mu_3, let (gamma,) = project_to_dominant_cone(rd,
+   	inverse(y)*mu_3, ProjHash.full_entry(rd)) in gamma)
+   else (cross(x_1,y), inverse(y)*mu_3, let (gamma,) = project_to_dominant_cone(rd,
+   	inverse(y)*mu_3) in gamma)
+   fi
+
+set project_on_dominant_cone_pre (KGBElt x, ratvec mu, [(mat,int)] wall_projs) =
+   (KGBElt,ratvec,ratvec):
+   if MvL_flag = false then return(project_on_dominant_cone_DV(x,mu)) fi;
+  let rd=root_datum(x)
+  then (w,mu_1) = from_dominant
+      (rd,mu:=(1+involution(x))*mu/2) { make |mu| zero on the split part of |h| }
+  then x_1=cross(x,w)
+  then mu_2=mu_1+tworho_K (x_1)
+  then y=chamber(rd,mu_2)
+  then mu_3=mu_2-y*rho(rd)
+in (cross(x_1,y), inverse(y)*mu_3, let (gamma,) = project_to_dominant_cone(rd,
+   inverse(y)*mu_3, wall_projs) in gamma)
+
+{. Previous function in case mu is given as a vec,
   rather than ratvec. .}
 set project_on_dominant_cone (KGBElt x, vec mu) = (KGBElt,ratvec,ratvec):
   project_on_dominant_cone(x,ratvec:mu)
+
+{. Previous function in case mu is given as a vec,
+  rather than ratvec. .}
+set project_on_dominant_cone_pre (KGBElt x, vec mu, [(mat,int)] wall_projs) = (KGBElt,ratvec,ratvec):
+  project_on_dominant_cone_pre(x,ratvec:mu, wall_projs)
 
 { possibly multivalued, coming from G-spherical case }
 
@@ -471,22 +550,29 @@ it includes functions for constructing both Kparameters and parameters}
   let (A,v) = adapted_basis(1-involution(x))
   then (B,)=filter_units(A[:,:#v],v) in B
 }
-set basis_lambda_differential_0 (KGBElt x) = mat: { columns are weights }
-  let theta=involution(x) then E=eigen_lattice(theta,-1)
+set basis_lambda_differential_0 (mat theta) = mat: { columns are weights }
+  let E=eigen_lattice(theta,-1)
   then { express im(1-theta) in basis E, and find E-basis adapted to it }
     (A,v)=adapted_basis(in_lattice_basis(E,1-theta))
   in { prints("K=",E); prints("A=",A); prints("v=",v); prints ("B=",E*A); }
   E * { transform to original coordinates } columns_with((int j):v[j]=2,A)
 { }
+set basis_lambda_differential_0 (KGBElt x) = mat: { columns are weights }
+  basis_lambda_differential_0(x.involution)
+
+
 
 { all 2^k vectors in X^* representing the characters of H^theta with
   differential 0
   k= number of R^* factors in H
   if H^theta is connected, returns [[0,...,0]]
 }
-set all_lambda_differential_0 (KGBElt x) = [vec]:
-  let basis=basis_lambda_differential_0(x) in
+set all_lambda_differential_0 (mat theta) = [vec]:
+  let basis=basis_lambda_differential_0(theta) in
   for v in all_0_1_vecs(n_columns(basis)) do basis*v od
+
+set all_lambda_differential_0 (KGBElt x) = [vec]:
+    all_lambda_differential_0 (x.involution)
 
 { all K parameters with same d_lambda as (x,lambda) }
 set all_equal_dlambda_K_parameters (KType t) = [KType]:
@@ -566,6 +652,21 @@ set quasi_parabolic_LKT (KHighestWeight(,x,mu)) = (Parabolic,KGBElt,ratvec):
   let rd=root_datum(x), (y,mu_3_orig,lambda) = project_on_dominant_cone(x,mu)
   in (parabolic_by_wt(lambda,y),y,lambda)
 
+ {. small split Levi parabolic attached to KHighestWeight by Adams-Paul algorithm. .}
+set AP_parabolic_LKT (KHighestWeight(,x,mu)) = (Parabolic,KGBElt,ratvec):
+  let rd=root_datum(x), (y,mu_3_orig,lambda) = project_on_dominant_cone(x,mu)
+  then diff=lambda-mu_3_orig
+  then S= list(semisimple_rank(rd), (int i): fundamental_coweight(rd,i)*diff>0)
+  in (Parabolic:(S,y),y,lambda)
+
+set AP_parabolic_LKT_pre (KHighestWeight(,x,mu), [(mat,int)] wall_projs) =
+    (Parabolic,KGBElt,ratvec):
+  let rd=root_datum(x), (y,mu_3_orig,lambda) = project_on_dominant_cone_pre(x,mu,wall_projs)
+  then diff=lambda-mu_3_orig
+  then S= list(semisimple_rank(rd), (int i): fundamental_coweight(rd,i)*diff>0)
+  in (Parabolic:(S,y),y,lambda)
+
+
 { go from KHighestWeight mu to K_types [KType]  mu -> [t_1,...,t_r]
   multivalued: highest_weight(t_i)=mu
  algorithm:
@@ -622,7 +723,7 @@ set choose_irred_inds ([[[Param]]] list)=[[[Param]]]:
       if all(for params in item do #params=1 od) and #item>0 do item fi
    od
 
-set old_K_type_flag = true
+set old_K_type_flag = false
 {. This function takes KHighestWeight mu -> |R(K,mu)| K_types,
   see top of this file. .}
 set K_types_old (KHighestWeight(,x,v):mu_in)= [KType]:
@@ -645,41 +746,69 @@ in assert (k>0,"There is no suitable weight in the R-group orbit.");
       fi
    od
 
+
+set DV_K_type_flag = false
 {. This function takes KHighestWeight mu -> |R(K,mu)| K_types,
-  see top of this file. .}
-set K_types(KHighestWeight(,x,v):mu_in)= [KType]:
-    if old_K_type_flag then return K_types_old(mu_in) fi;
+  see top of this file. . Uses the parabolic in theta_stable_quasi_data.}
+set K_types_DV(KHighestWeight(,x,v):mu_in)= [KType]:
    let G=real_form(x), nullNu = null(#v)/1
    then (Q,y,lambda)=quasi_parabolic_LKT(mu_in)
-   {I think that next commented out 14 lines work, but they are slower}
-   {then L=Q.Levi
-   then xL = KGB(L)~[0]
-   then xG = embed_KGB(xL,G), T=1+xL.involution
-   then lamthlam = T*lambda
-   then lambda = required_solution(T,ratvec_as_vec(lamthlam - T*G.rho)) + G.rho
-   then twists = all_lambda_differential_0(xL)
-   in for tw in twists
-      do for tau in LKTs(parameter(xG,lambda+tw,nullNu))
-      	 do let mucand = highest_weight(tau,x)
-	    in if mucand = mu_in
-	    then [tau]
-	    else []
-	    fi
-      	 od.##
-       od.##}
+   then answer = make_KType_hash()
    then lambdaL = lambda -rho_u(Q)
    {then () = prints("lambda = ",lambda,", lambdaL = ",lambdaL)}
    then L = Q.Levi
    then xL1 = KGB(L)~[0]
-   in for pL in all_parameters_x_gamma(xL1,lambdaL)
+   then () = for pL in all_parameters_x_gamma(xL1,lambdaL)
    {this does finalizing, so pL has unique LKT}
-      do let tau = K_type(embed_KGB(pL.x,G), pL.lambda_minus_rho)
-      	 then mucand = highest_weight(tau,x)
-	 in if mucand = mu_in
-	    then [tau]
-	    else []
-	    fi
-      od.##
+      	     do let tau = K_type(embed_KGB(pL.x,G), pL.lambda_minus_rho)
+      	     	then mucand = highest_weight(tau,x)
+	 	in if mucand = mu_in
+	   	   then answer.match(tau)
+	    	   fi
+	     od
+   in for j:answer.size() do answer.index(j) od
+
+set K_types(KHighestWeight(,x,v):mu_in)= [KType]:
+   if old_K_type_flag then return K_types_old(mu_in) fi;
+   if DV_K_type_flag then return K_types_DV(mu_in) fi;
+   let G=real_form(x), nullNu = null(#v)/1
+   then (Q,y,lambda)=AP_parabolic_LKT(mu_in)
+   then answer = make_KType_hash(), lambdaL = lambda -rho_u(Q), L = Q.Levi
+   {then () = prints("lambda = ",lambda,", lambdaL = ",lambdaL)}
+   then xL1 = KGB(L)~[0]
+   then () = for pL in all_parameters_x_gamma(xL1,lambdaL)
+   {this does finalizing, so pL has unique LKT}
+      	     do let tau = K_type(embed_KGB(pL.x,G), pL.lambda_minus_rho)
+	     	then mucand = highest_weight(tau,x)
+	 	in {if is_semifinal(tau)
+		   then 
+			in} if mucand = mu_in
+			   then answer.match(tau)
+			   fi
+	    	   {fi}
+	     od
+   in for j:answer.size() do answer.index(j) od
+
+set K_types_pre(KHighestWeight(,x,v):mu_in, [(mat,int)] wall_projs)= [KType]:
+   if old_K_type_flag then return K_types_old(mu_in) fi;
+   if DV_K_type_flag then return K_types_DV(mu_in) fi;
+   let G=real_form(x), nullNu = null(#v)/1
+   then (Q,y,lambda)=AP_parabolic_LKT_pre(mu_in, wall_projs)
+   then answer = make_KType_hash(), lambdaL = lambda -rho_u(Q), L = Q.Levi
+   {then () = prints("lambda = ",lambda,", lambdaL = ",lambdaL)}
+   then xL1 = KGB(L)~[0]
+   then () = for pL in all_parameters_x_gamma(xL1,lambdaL)
+   {this does finalizing, so pL has unique LKT}
+      	     do let tau = K_type(embed_KGB(pL.x,G), pL.lambda_minus_rho)
+	     	then mucand = highest_weight(tau,x)
+      	     	in {if is_semifinal(tau)
+		   then let mucand = highest_weight(tau,x)
+	 	   	in} if mucand = mu_in
+	   	   	   then answer.match(tau)
+	    	   	   fi
+		   {fi}
+	     od
+   in for j:answer.size() do answer.index(j) od
 
 {. K_type with given KHighestWeight if unique (otherwise error). .}
 set K_type (KHighestWeight khwt) = KType:

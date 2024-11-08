@@ -40,11 +40,20 @@ set ext_cross_1( int j
       , new_omega = s_alpha_check*omega*s_alpha_check
       , new_t = s_alpha*t
       , new_tau= tau*s_alpha
+      then () = if not valid(ExtParam: (ic,delta,gamma,new_lambda,new_theta,g,new_l,new_omega,new_tau,new_t))
+      	      	then prints("extended_cross line 43")
+		fi
       in (ic,delta,gamma,new_lambda,new_theta,g,new_l,new_omega,new_tau,new_t)
     elif (type="1i1")
-    then (ic,delta,gamma,lambda,theta,g, l+alpha_check ,omega,tau,t)
+    then if not valid(ExtParam: (ic,delta,gamma,lambda,theta,g,l+alpha_check,omega,tau,t))
+    	 then prints("extended_cross line 48")
+	 fi;
+    	 (ic,delta,gamma,lambda,theta,g, l+alpha_check ,omega,tau,t)
     elif (type="1r2")
-    then (ic,delta,gamma, lambda+alpha ,theta,g,l,omega,tau,t)
+    then if not valid(ExtParam: (ic,delta,gamma,lambda+alpha,theta,g,l,omega,tau,t))
+    	 then prints("extended_cross line 53")
+	 fi;
+    (ic,delta,gamma, lambda+alpha ,theta,g,l,omega,tau,t)
     else E { trivial cross action for types 1i2f,1i2s,1ic,1r1f,1r1s,1rn }
     fi
   in { test_ext_cross(p,[j],xq); } xq
@@ -78,6 +87,9 @@ set ext_cross_2( int j
     , new_omega = s_ab_check*omega*s_ab_check
     , new_tau = s_ab*tau
     , new_t = t*s_ab
+    then () = if not valid(ExtParam:(ic,delta,gamma,new_lambda,new_theta,g,new_l,new_omega,new_tau,new_t))
+    	      then prints("extended_cross line 90")
+	      fi
     then xq =
       (ic,delta,gamma,new_lambda,new_theta,g,new_l,new_omega,new_tau,new_t)
     in test_ext_cross(p,[j,k],xq); xq
@@ -90,8 +102,10 @@ set ext_cross_2( int j
     , new_omega = s_alpha_check*omega*s_alpha_check
     , new_tau = ratvec_as_vec(s_alpha*tau+alpha*(alpha_check*(lambda-gamma)+1))
     , new_t   = ratvec_as_vec(t-(t*alpha+t*beta)/2*alpha_check)
-    then xq =
-      (ic,delta,gamma,new_lambda,new_theta,g,new_l,new_omega,new_tau,new_t)
+    then () =  if not valid(ExtParam:(ic,delta,gamma,new_lambda,new_theta,g,new_l,new_omega,new_tau,new_t))
+    	       then prints("extended_cross line 105")
+	       fi
+    then xq = (ic,delta,gamma,new_lambda,new_theta,g,new_l,new_omega,new_tau,new_t)
     in test_ext_cross(p,[j],xq); xq
   elif (type="2i11") then
 {   prints("type 2i11"); }
@@ -99,8 +113,10 @@ set ext_cross_2( int j
     , new_theta = s_ab*theta*s_beta*s_alpha
     , new_omega = s_ab_check*omega*s_ab_check
     , new_tau = tau, new_t = t
-    then xq =
-      (ic,delta,gamma,new_lambda,new_theta,g,new_l,new_omega,new_t,new_tau)
+    then () = if not valid(ExtParam:(ic,delta,gamma,new_lambda,new_theta,g,new_l,new_omega,new_t,new_tau))
+    	      then prints("extended_cross line 116")
+	      fi
+    then xq =(ic,delta,gamma,new_lambda,new_theta,g,new_l,new_omega,new_t,new_tau)
     in test_ext_cross(p,[j],xq); xq
   elif (type="2i12") then
 {   prints("TYPE 2i12"); }
@@ -115,8 +131,10 @@ set ext_cross_2( int j
     , new_t = t -
        requisition("failure in cross action of type 2i12, solving for s")
        (solve(1+^theta,alpha_check-beta_check))
-    then xq=
-      (ic,delta,gamma,new_lambda,new_theta,g,new_l,new_omega,new_tau,new_t)
+    then () = if not valid(ExtParam:(ic,delta,gamma,new_lambda,new_theta,g,new_l,new_omega,new_tau,new_t))
+    	      then prints("extended_cross line 134")
+	      fi
+    then xq=(ic,delta,gamma,new_lambda,new_theta,g,new_l,new_omega,new_tau,new_t)
     in { test_ext_cross(p,[j],xq); } xq
   elif (type="2r22") then
     let new_lambda=vec:lambda+alpha+beta
@@ -125,8 +143,10 @@ set ext_cross_2( int j
     , new_omega = s_ab_check*omega*s_ab_check
     , new_tau = tau
     , new_t = t
-    then xq =
-      (ic,delta,gamma,new_lambda,new_theta,g,new_l,new_omega,new_tau,new_t)
+    then () = if not valid(ExtParam:(ic,delta,gamma,new_lambda,new_theta,g,new_l,new_omega,new_tau,new_t))
+    	      then prints("extended_cross line 146")
+	      fi
+    then xq = (ic,delta,gamma,new_lambda,new_theta,g,new_l,new_omega,new_tau,new_t)
     in test_ext_cross(p,[j,k],xq); xq
   elif (type="2r21") then
     let new_lambda = lambda+alpha
@@ -137,16 +157,18 @@ set ext_cross_2( int j
 { see Table 2 in twisted paper, case 2r21crx }
     , new_tau = tau -
        requisition("failure in cross action of type 2r21, solving for zeta")
-       (solve(1+omega,alpha-beta))
+       (solve(1{+omega}-theta,alpha-beta))
     , new_t = t
-    then xq =
-      (ic,delta,gamma,new_lambda,new_theta,g,new_l,new_omega,new_tau,new_t)
+    then () = if not valid(ExtParam:(ic,delta,gamma,new_lambda,new_theta,g,new_l,new_omega,new_tau,new_t))
+    	      then prints("extended_cross line 162")
+	      fi
+    then xq =(ic,delta,gamma,new_lambda,new_theta,g,new_l,new_omega,new_tau,new_t)
     in test_ext_cross(p,[j],xq); xq
   else E
   fi
 
 
-{ extenteded cross action not yet defined for length 3 cases }
+{ extended cross action not yet defined for length 3 cases }
 set ext_cross_3(int j,ExtParam E) = ExtParam:
   let p=parameter(E) then type=ext_type_3(delta(E),j,p)
   in prints("ext_cross_3"); E { should be defined properly here! FIXME }

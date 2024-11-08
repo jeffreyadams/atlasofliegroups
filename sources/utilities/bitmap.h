@@ -42,7 +42,7 @@ namespace bitmap {
   one if there is a remainder in the division).
 
   We provide bit-addressed access to this map, in other words given a value it
-  is fast to test or change its membership staturs. Also we wish to define an
+  is fast to test or change its membership status. Also we wish to define an
   iterator class, which traverses the _set_ bits of the bitmap; so that for
   instance, b.begin() would access the first set bit. Dereferencing the iterator
   yields its bit-address, a |size_t| value.
@@ -95,7 +95,7 @@ class BitMap
       insert(*it);
   }
 
-  //g an easier version for a full vector
+  // an easier version for a full vector
   template <typename U> // unsigned integral type
   BitMap(size_t n,const std::vector<U>& v)
     : d_capacity(n), d_map((n+posBits)>>baseShift)
@@ -138,7 +138,7 @@ class BitMap
   {
     if (n >= d_capacity)
       return false;
-    return (d_map[n >> baseShift] & constants::bitMask[n&posBits])!=0;
+    return (d_map[n >> baseShift] & constants::eq_mask[n&posBits])!=0;
   }
 
   // Whether all elements of |b| satisfy |isMember|
@@ -206,7 +206,7 @@ class BitMap
   void insert(size_t n)
   {
     assert(n<d_capacity);
-    d_map[n >> baseShift] |= constants::bitMask[n & posBits];
+    d_map[n >> baseShift] |= constants::eq_mask[n & posBits];
   }
 
   /*
@@ -216,7 +216,7 @@ class BitMap
   void remove(size_t n)
   {
     assert(n<d_capacity);
-    d_map[n >> baseShift] &= ~constants::bitMask[n & posBits];
+    d_map[n >> baseShift] &= ~constants::eq_mask[n & posBits];
   }
 
   bool set_to(size_t n,bool b)
@@ -227,7 +227,7 @@ class BitMap
   void flip(size_t n)
   {
     assert(n<d_capacity);
-    d_map[n >> baseShift] ^= constants::bitMask[n & posBits];
+    d_map[n >> baseShift] ^= constants::eq_mask[n & posBits];
   }
 
 

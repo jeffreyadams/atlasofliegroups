@@ -1334,7 +1334,7 @@ bool deformation_unit::operator!=(const deformation_unit& another) const
 
   { RootNbrSet complex_posroots = rd.posroot_set() & i_tab.complex_roots(inv_nr);
     for (auto it=complex_posroots.begin(); it(); ++it)
-      if (i_tab.complex_is_descent(inv_nr,*it))
+      // if (i_tab.complex_is_descent(inv_nr,*it))
 	if (arithmetic::divide(rd.coroot(*it).dot(num0),d0) !=
 	    arithmetic::divide(rd.coroot(*it).dot(num1),d1))
 	  return true; // distinct integer part of evaluation poscoroot found
@@ -2253,6 +2253,7 @@ const K_type_poly& Rep_table::deformation(StandardRepr z)
 // for more general |z|, do the preconditioning outside the recursion
 {
   assert(is_final(z));
+
   if (z.gamma().denominator() > (1LL<<rank()))
     z = weyl::alcove_center(*this,z);
   RatNumList rp=reducibility_points(z);
@@ -2263,6 +2264,8 @@ const K_type_poly& Rep_table::deformation(StandardRepr z)
     if (h!=alcove_hash.empty and pool[h].has_deformation_formula())
       return pool[h].def_formula();
   }
+
+  interpreter::check_interrupt(); // make this recursive function interruptible
 
   K_type_poly result {std::less<K_type_nr>()};
   {
@@ -2572,8 +2575,16 @@ const K_type_poly& Rep_table::twisted_deformation(StandardRepr z, bool& flip)
   { // if formula for |z| is stored, return it; caller multiplies by |s^flip|
     const auto h=alcove_hash.find(zu);
     if (h!=alcove_hash.empty and pool[h].has_twisted_deformation_formula())
+    {
+      Ext_rep_context ctxt(*this,delta);
+      auto E =
+	ext_block::shifted_default_extension(ctxt,z,pool[h].sample.gamma());
+      flip = flip==ext_block::is_default(E); // flip |flip| if not default
       return pool[h].twisted_def_formula();
+    }
   }
+
+  interpreter::check_interrupt(); // make this recursive function interruptible
 
   K_type_poly result { std::less<K_type_nr>() };
   { // initialise |result| to restriction of |z| expanded to finals

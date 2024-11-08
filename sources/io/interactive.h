@@ -11,13 +11,14 @@
 #ifndef INTERACTIVE_H  /* guard against multiple inclusions */
 #define INTERACTIVE_H
 
-#include "../Atlas.h"
+#include "Atlas.h"
 
 #include <string>
 #include <ios>
 
 #include "error.h"
 #include "tags.h"
+#include "standardrepk.h"
 
 namespace atlas {
 

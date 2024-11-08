@@ -11,27 +11,6 @@
 #include "repr.h"
 
 namespace atlas {
-  namespace K_repr {
-
-template<typename F>
-const K_type_pol& K_type_to_pol_table::put (K_type t, F f)
-{
-  auto i = hash.find(t);
-  if (i!=hash.empty)
-    return poly[i];
-  K_type_pol value = f(t.copy());
-  return poly[hash.match(std::move(t))] = std::move(value);
-}
-
-const K_type_pol& K_type_to_pol_table::lookup (const K_type& t) const
-{
-  auto i = hash.find(t);
-  if (i!=hash.empty)
-    throw std::runtime_error("Looking up polynomial not stored in table");
-  return poly[i];
-}
-
-  } // |namespace K_repr|
 
   namespace repr {
 
@@ -512,10 +491,13 @@ K_repr::K_type_pol Rep_context::monomial_product
 
 // compute height of "orthogonal projection to dominant cone" (closest point)
 level Rep_context::height_bound (RatWeight lambda) const
-/* this projection is dominant, and obtained by orthogonal projection onto the
-   intersection of kernels of some set of simple coroots, say indexed by $S$,
-   which is moreover such that the projection equals |lambda| plus a positive
-   linear combination of the simple roots for $S$
+/*
+  The mentioned projection is dominant, and obtained by orthogonal projection
+  onto the intersection of kernels of some set of simple coroots, say indexed by
+  $S$, which is moreover such that the projection equals |lambda| plus a
+  positive linear combination of the simple roots for $S$. With this condition
+  $S$ is unique, and can be found incrementally by adding root indexes for which
+  it is certain that they must be in $S$, and then recomputing the projection.
 */
 {
   const RootDatum& rd=root_datum();
@@ -585,18 +567,18 @@ K_repr::K_type_pol Rep_context::K_type_formula
     int sign = (max_l-kgb().length(x))%2==0 ? 1 : -1;
     K_repr::K_type_pol product (std::move(term),Split_integer(sign));
     for (const auto i : sum_set)
-    {
-      auto mp = monomial_product(product,rd.root(i));
+    { // multiply |product| by $(1-X^{\alpha_i})$
+      auto mp = monomial_product(product,rd.root(i)); // $p*X^{\alpha_i}$
       for (auto&& t : mp)
       {
 	const auto& lr = t.first.lambda_rho();
-	RatWeight lambda_0
+	RatWeight lambda_0 // test weight for height of new term
 	  ( lr + i_tab.matrix(i_x)*lr + i_tab.theta_plus_1_rho(i_x), 2);
 	if (height_bound(lambda_0)<=max_level)
 	  product.add_term(std::move(t.first),-t.second);
       }
     }
-    for (auto&& t : product)
+    for (auto&& t : product) // expand into final $K$-types for |result|
     { auto finals = finals_for(std::move(t.first));
       for (auto it=finals.begin(); not finals.at_end(it); ++it)
 	if (it->first.height()<=max_level)

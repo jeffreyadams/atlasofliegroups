@@ -15,7 +15,7 @@
 #include <utility> // for |std::pair|
 #include <vector>
 
-#include "../Atlas.h"
+#include "Atlas.h"
 
 #include "bitset.h"
 #include "lietype.h"

@@ -53,7 +53,7 @@ this file.
 #ifndef ATLAS_TYPES_H
 #define ATLAS_TYPES_H
 
-#include "../Atlas.h" // must be very first \.{atlas} include
+#include "Atlas.h" // must be very first \.{atlas} include
 
 @< Includes needed in the header file @>@;
 namespace atlas { namespace interpreter {
@@ -7301,6 +7301,64 @@ void strong_components_wrapper(expression_base::level l)
     wrap_tuple<2>();
 }
 
+@ The computations with parameters for the extended group, like done by the
+built-in function |twisted_deform| to be defined below, depend on a choice, for
+each parameter, of one of the two extensions of it to the extended group (each
+one corresponding to an equivalence classes of extended parameters, which is
+made by the internal method |Rep_context::default_extend|. In order
+that the user have explicit knowledge of this choice, we also define a user
+function |default_extend| that returns a tuple of the essential components of
+this extended parameter.
+
+@< Local function def...@>=
+void default_extend_wrapper(expression_base::level l)
+{
+  auto M =get<matrix_value>();
+  shared_module_parameter p = get<module_parameter_value>();
+  const auto& rc = p->rc();
+  const auto& delta = M->val;
+  test_compatible(rc.inner_class(),M);
+  if (not ((1-delta)*p->val.gamma().numerator()).is_zero())
+    throw runtime_error@|("Involution does not fix infinitesimal character");
+  if (l==expression_base::no_value)
+    return;
+@)
+  repr::Ext_rep_context ctxt(rc,delta);
+  auto E = ext_block::default_extend(ctxt,p->val);
+  auto lambda = -E.gamma_lambda.integer_diff<int>(p->val.gamma());
+@)
+  push_value(std::make_shared<vector_value>(std::move(lambda)));
+  push_value(std::make_shared<vector_value>(std::move(E.tau)));
+  push_value(std::make_shared<vector_value>(std::move(E.l)));
+  push_value(std::make_shared<vector_value>(std::move(E.t)));
+  wrap_tuple<4>();
+}
+
+@ The function |shift_flip| tells whether the default extension of a parameter
+when shifted to a different infinitesimal character |gamma| produces an extended
+parameter opposite to the default extensions at |gamma|.
+
+@< Local function def...@>=
+void shift_flip_wrapper(expression_base::level l)
+{
+  shared_rational_vector gamma = get<rational_vector_value>();
+  auto M =get<matrix_value>();
+  shared_module_parameter p = get<module_parameter_value>();
+  const auto& rc = p->rc();
+  const auto& delta = M->val;
+  test_compatible(rc.inner_class(),M);
+  if (not ((1-delta)*gamma->val.numerator()).is_zero())
+    throw runtime_error@|("Involution does not fix rational weight");
+  if (not ((1-delta)*p->val.gamma().numerator()).is_zero())
+    throw runtime_error@|("Involution does not fix infinitesimal character");
+  if (l==expression_base::no_value)
+    return;
+@)
+  repr::Ext_rep_context ctxt(rc,delta);
+  auto E = ext_block::shifted_default_extension(ctxt,p->val,gamma->val);
+  push_value(whether(not ext_block::is_default(E)));
+}
+
 
 @ The function |extended_block| makes computation of extended blocks available
 directly in \.{atlas}.
@@ -7309,14 +7367,14 @@ directly in \.{atlas}.
 void extended_block_wrapper(expression_base::level l)
 { auto delta =get<matrix_value>();
   shared_module_parameter p = get<module_parameter_value>();
+  const auto& rc = p->rc();
   test_standard(*p,"Cannot generate block");
-  test_compatible(p->rc().inner_class(),delta);
-  if (not ((delta->val-1)*p->val.gamma().numerator()).is_zero())
+  test_compatible(rc.inner_class(),delta);
+  if (not ((1-delta->val)*p->val.gamma().numerator()).is_zero())
     throw runtime_error@|("Involution does not fix infinitesimal character");
   if (l==expression_base::no_value)
     return;
 @)
-  const auto& rc = p->rc();
   BlockElt start;
   auto zm = repr::StandardReprMod::mod_reduce(rc,p->val);
   common_context ctxt(rc,zm.gamma_lambda());
@@ -7467,6 +7525,10 @@ install_function(param_W_cells_wrapper,@|"W_cells"
                 ,"(Param->int,[[int],[[int],[int,int]]])");
 install_function(strong_components_wrapper,@|"strong_components"
                 ,"([[int]]->[[int]],[[int]])");
+@)
+install_function(default_extend_wrapper,@|"default_extended"
+                ,"(Param,mat->vec,vec,vec,vec)");
+install_function(shift_flip_wrapper,@|"shift_flip","(Param,mat,ratvec->bool)");
 install_function(extended_block_wrapper,@|"extended_block"
                 ,"(Param,mat->[Param],mat,mat,mat)");
 install_function(extended_KL_block_wrapper,@|"partial_extended_KL_block"
@@ -8189,6 +8251,85 @@ void twisted_full_deform_wrapper(expression_base::level l)
     (p->rf,export_K_type_pol(p->rt(),result)));
 }
 
+@ As an experiment, we provide variants of the |full_deform| function, and of
+its twisted counterpart, each with a time-out argument. These function return a
+value of (the same) union type: if the computation does not finish in the
+allotted time, the return the first (void) variant of the union, and otherwise
+they wrap their result in the second (ordinary) variant of the union.
+
+@h "lexer.h" // for |main_hash_table|
+
+@< Local function def...@>=
+void timed_full_deform_wrapper(expression_base::level l)
+{ auto period = get<int_value>()->long_val();
+  auto p = get<module_parameter_value>();
+  if (l==expression_base::no_value)
+    return;
+@)
+  repr::K_type_poly pol;
+    // this is the data type used by |Rep_table::deformation|
+  auto finals = p->rc().finals_for(p->val);
+@)
+  set_timer(period);
+  try
+  { for (auto it=finals.begin(); not finals.at_end(it); ++it)
+      for (auto&& term : p->rt().deformation(std::move(it->first)))
+        pol.add_term(std::move(term.first),term.second*it->second);
+  }
+  catch (const time_out& e)
+  { auto result = std::make_shared<tuple_value>(0); // the void
+    push_value(std::make_shared<union_value>(0,std::move(result),
+               main_hash_table->match_literal("timed_out")));
+    return;
+  }
+  clear_timer();
+@)
+  auto result = std::make_shared<K_type_pol_value>@|
+    (p->rf,export_K_type_pol(p->rt(),pol)); // convert to |K_repr::K_type_pol|
+  push_value(std::make_shared<union_value>(1,std::move(result),
+               main_hash_table->match_literal("done")));
+  // and inject into a union
+}
+@)
+void timed_twisted_full_deform_wrapper(expression_base::level l)
+{ auto period = get<int_value>()->long_val();
+  shared_module_parameter p = get<module_parameter_value>();
+  const auto& rc=p->rc(); auto& rt=p->rt();
+  test_standard(*p,"Cannot compute full twisted deformation");
+  if (not rc.is_delta_fixed(p->val))
+    throw runtime_error@|("Parameter not fixed by inner class involution");
+  if (l==expression_base::no_value)
+    return;
+@)
+  auto finals = @;ext_block::
+    extended_finalise(rc,p->val,rc.inner_class().distinguished());
+  repr::K_type_poly pol;
+    // this is the data type used by |Rep_table::deformation|
+@)
+  set_timer(period);
+  try
+  { for (auto it=finals.cbegin(); it!=finals.cend(); ++it)
+    { bool flip;
+      const auto& def = rt.twisted_deformation(std::move(it->first),flip);
+      pol.add_multiple(def,
+	     flip!=it->second ? Split_integer(0,1) : Split_integer(1,0));
+    }
+  }
+  catch (const time_out& e)
+  { auto result = std::make_shared<tuple_value>(0); // the void
+    push_value(std::make_shared<union_value>(0,std::move(result),
+               main_hash_table->match_literal("timed_out")));
+    return;
+  }
+  clear_timer();
+@)
+  auto result = std::make_shared<K_type_pol_value>@|
+    (p->rf,export_K_type_pol(p->rt(),pol)); // convert to |K_repr::K_type_pol|
+  push_value(std::make_shared<union_value>(1,std::move(result),
+               main_hash_table->match_literal("done")));
+  // and inject into a union
+}
+
 @ And here is another way to invoke the Kazhdan-Lusztig computations, which
 given a parameter corresponding to $y$ will obtain the formal sum over $x$ in
 the block of $y$ (or the Bruhat interval below $y$, where all those giving a
@@ -8436,6 +8577,10 @@ install_function(block_deform_wrapper,@|"block_deform"
 install_function(full_deform_wrapper,@|"full_deform","(Param->KTypePol)");
 install_function(twisted_full_deform_wrapper,@|"twisted_full_deform"
                 ,"(Param->KTypePol)");
+install_function(timed_full_deform_wrapper,@|"full_deform"
+                ,"(Param,int->|KTypePol)");
+install_function(timed_twisted_full_deform_wrapper,@|"twisted_full_deform"
+                ,"(Param,int->|KTypePol)");
 install_function(KL_sum_at_s_wrapper,@|"KL_sum_at_s","(Param->ParamPol)");
 install_function(KL_sum_at_s_to_ht_wrapper,@|"KL_sum_at_s_to_height"
 		,"(Param,int->ParamPol)");

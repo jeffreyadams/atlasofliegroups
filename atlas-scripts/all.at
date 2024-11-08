@@ -46,14 +46,14 @@
 {this is slow to load:
 <unipotent_representations_exceptional.at
 }
-<certificate.at
+{<certificate.at}
 <geck_generic.at
 <lusztig_cells.at
 <four.at {four_inner_products BXYI}
 <special_rep.at
 <families.at
 <L_packet.at
-<G2_unitary_dual.at
+{<G2_unitary_dual.at}
 <adams_johnson.at
 <speh.at
 <twisted_endoscopy_D.at

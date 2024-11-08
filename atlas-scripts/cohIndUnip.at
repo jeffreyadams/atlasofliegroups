@@ -2,10 +2,29 @@
 < Dirac.at {for thetaStable}
 < weak_packets.at {for unipotent_representations}
 < time.at {for print_time_string}
+< FPP_faces_herm.at {for big_unitary_hash}
 {enumerate weakly fair cohomologically induced from unipotent reps in
 the FPP}
+{MAYBE MISSES E8 rep wkly fair ind from min of E6_q??}
 
 {delta-fixed wts for G}
+
+
+set is_dom_FPP(RootDatum rd, ratvec gamma) = bool:
+    all(for alphavee in rd.simple_coroots
+    	do gamma*alphavee <= 1 and gamma*alphavee >= 0
+	od)
+
+set is_FPP(RootDatum rd, ratvec gamma) = bool:
+    is_dom_FPP(rd,dominant(rd,gamma))
+
+set imag_simple(InnerClass ic) = [int]:
+    for j:ic.semisimple_rank
+    do if =(distinguished_involution(ic)-1)*ic.simple_roots[j]
+       then [j]
+       else []
+       fi
+    od.##
 
 set complex_simple(InnerClass ic) = [int]:
     for j:ic.semisimple_rank
@@ -16,21 +35,21 @@ set complex_simple(InnerClass ic) = [int]:
        fi
     od.##
 
-set imag_simple(InnerClass ic) = [int]:
-    for j:ic.semisimple_rank
-    do if =(distinguished_involution(ic)-1)*ic.simple_roots[j]
-       then [j]
-       else []
-       fi
-    od.##
+set delta_fixed(InnerClass ic) = [int]:
+    imag_simple(ic)##complex_simple(ic)
 
 {either fundamental weight xi or sum of a pair (xi, delta*xi)}
 set delta_fixed_fund_wts(InnerClass ic) = [ratvec]:
     let delta = distinguished_involution(ic)
-    then listcplx = complex_simple(ic)
-    then listimag = imag_simple(ic)
-    in for j in listimag do ic.fundamental_weights[j] od ##
-       for j in listcplx do (1+delta)*ic.fundamental_weights[j] od
+    in for j in imag_simple(ic) do ic.fundamental_weights[j] od ##
+       for j in complex_simple(ic) do (1+delta)*ic.fundamental_weights[j] od
+
+{here list one for each simple root}
+set delta_fixed_fund_wts_long(InnerClass ic) = [ratvec]:
+    let delta = distinguished_involution(ic)
+    in for xi in ic.fundamental_weights
+       do if delta*xi = xi then xi else xi + delta*xi fi
+       od
 
 set delta_fixed_sums(InnerClass ic) = [ratvec]:
     let list = delta_fixed_fund_wts(ic)
@@ -60,32 +79,33 @@ set Qs(RealForm G) = [KGPElt]:
 set Ls(RealForm G) = [RealForm]:
     for Q in Qs(G) do Q.Levi od
 
-{all the central-for-L weights that can be subtracted from a
+{some of the central-for-L weights that can be subtracted from a
 unipotent on L = Q.Levi, shifted by a [not nec dominant?] central for
 L ratvec v, to get a weakly fair induction for G, with a chance to be FPP}
-
-set shifts(KGPElt Q,ratvec v) = [vec]:
-    let G = Q.real_form, tworhou = two_rho_u(Q) {, S = Q.S}
-    {then T = complement(G.semisimple_rank, Q.S)}
-    then mups = null(G.semisimple_rank), mdowns = null(G.semisimple_rank)
-    then () = for j:G.semisimple_rank
-    	 do mups[j] := ((tworhou + 2*v)*(G.simple_coroots[j]))\2 +1;
+set few_shifts(KGPElt Q,ratvec v) = [vec]:
+    let G = Q.real_form, rhou = rho_u(Q) , S = Q.S
+    then T = complement(G.semisimple_rank, Q.S)
+    then Qdeltafixed = set_bit_positions(AND(to_bitset(T),to_bitset(delta_fixed(G))))
+    then mups = for j in Qdeltafixed
+    	 do ((rhou + v)*(G.simple_coroots[j]))\1 +1
 	 {upper bound is the weakly fair condition}
-	    mdowns[j] := v*(G.simple_coroots[j])\1
-	 {lower bound is the chance of FPP condition}
 	 od
-    then terms = delta_fixed_fund_wts(G)
-    then mcplxups = for j in complex_simple(G) do mups[j] od
-    then mimagups = for k in imag_simple(G) do mups[k] od
-    then mcplxdowns = for j in complex_simple(G) do mdowns[j] od
-    then mimagdowns = for k in imag_simple(G) do mdowns[k] od
-    then mcplx = mcplxups - mcplxdowns
-    then mimag = mimagups - mimagdowns
-    then Qbox = box(mimag##mcplx)
-    then Qboxshifted = for b in Qbox do b + mimagdowns##mcplxdowns od
+    {then () = prints("mups = ",mups)}
+    then mdowns = for j in Qdeltafixed
+    	 	  do v*(G.simple_coroots[j])\1
+	 	  {lower bound is the chance of FPP condition}
+	 	  od
+    {then () = prints("mdowns = ",mdowns)}
+    then ms = mups - mdowns
+   { then () = prints("ms = ",ms)}
+    then terms = for t in Qdeltafixed
+    	       	 do delta_fixed_fund_wts_long(G)[t]
+		 od
+    then Qbox = box(ms) {Qbox = box(mimag##mcplx)}
+    then Qboxshifted = for b in Qbox do b + mdowns {mimagdowns##mcplxdowns} od
     in for b in Qboxshifted
-       do let ell = sum(G.rank, for k@j in b
-       	  	      		do k*terms[j]
+       do let ell = sum(G.rank, for j@k in Qdeltafixed
+       	  	      		do b[k]*terms[k]
 		      		od)
 	  in if ell.denom = 1
 	     then [ratvec_as_vec(ell)]
@@ -93,15 +113,282 @@ set shifts(KGPElt Q,ratvec v) = [vec]:
 	     fi
        od.##
 
-{all the weights that can be subtracted from a unipotent on L to get a weakly
-fair induction for G}
-set shifts(KGPElt Q) = [vec]:
-    shifts(Q, null(Q.real_form.rank)/1)
+{Weakly good range allows some NEGATIVE shifts from rho_u. Include
+most of those as well.}
+set most_shifts(KGPElt Q, ratvec v) = [vec]:
+    let G = Q.real_form, rhou = rho_u(Q), S = Q.S
+    then T = complement(G.semisimple_rank, Q.S)
+    then Qdeltafixed = set_bit_positions(AND(to_bitset(T),to_bitset(delta_fixed(G))))
+    then mups = for j in Qdeltafixed
+    	      	do ((rhou+v)*(G.simple_coroots[j]))\1 +1
+		od
+	 {upper bound is the weakly fair condition}
+    then mdowns = for j@k in Qdeltafixed
+    	 	  do - mups[k] {((dominant(G.simple_coroots[j],G))*G.rho)\1}
+		  od
+ 	 {lower bound is the chance of FPP condition}
+	 {maybe mdowns should depend on v??}
+    {then () = prints(mdowns)}
+    then ms = mups - mdowns
+    then terms = for t in Qdeltafixed
+    	       	 do delta_fixed_fund_wts_long(G)[t]
+		 od
+    then Qbox = box(ms)
+    then Qboxshifted = for b in Qbox do b + mdowns od
+    in for b in Qboxshifted
+       do let ell = sum(G.rank, for j@k in Qdeltafixed
+       	  	      		do b[k]*terms[k]
+		      		od)
+	  in if ell.denom = 1
+	     	{and is_FPP(G,ell)}
+	     then [ratvec_as_vec(ell)]
+	     else []
+	     fi
+       od.##
 
-{to be used as shift in unipotent_representations(Levi, shift)}
+{if true, throw out too-long shifts}
+set short_shifts_flag = true
+
+set shift_count = int:0
+{Weakly good range allows some NEGATIVE shifts from rho_u. Include ALL
+those as well. Each will be an infl char in FPP on the center of L, so must
+be shorter than rho}
+set all_shifts_old(KGPElt Q, ratvec v) = [vec]:
+    let G = Q.real_form, rhou = rho_u(Q), S = Q.S
+    then B(ratvec wt) = invariant_form(G)(wt,wt)
+    then BG = B(G.rho)
+    then T = complement(G.semisimple_rank, Q.S)
+    then Qdeltafixed = set_bit_positions(AND(to_bitset(T),to_bitset(delta_fixed(G))))
+    then mups = for j in Qdeltafixed
+    	      	do ((rhou+v)*(G.simple_coroots[j]))\1 +1
+		od
+	 {upper bound is the weakly fair condition}
+    then mdowns = for j in Qdeltafixed
+    	 	  do -((dominant(G.simple_coroots[j],G))*G.rho)\1
+		  od
+ 	 {lower bound is the chance of FPP condition}
+	 {maybe mdowns should depend on v??}
+     then ms = mups - mdowns
+    then terms = for t in Qdeltafixed
+    	       	 do delta_fixed_fund_wts_long(G)[t]
+		 od
+    then Qbox = box(ms)
+    then Qboxshifted = for b in Qbox do b + mdowns od
+    then answer = for b in Qboxshifted
+       	 	  do let ell = sum(G.rank, for j@k in Qdeltafixed
+       	  	      			   do b[k]*terms[k]
+		      			   od)
+		     {then () = if b = [1,1,-1] then prints(ell) fi}
+	  	     in if ell.denom = 1
+	     	     	and if short_shifts_flag
+		    	    then B(v + rhou - ell) <= BG
+		    	    else true
+		    	    fi
+	     		{and is_FPP(G,ell)}
+	     		then [ratvec_as_vec(ell)]
+	     		else []
+	     		fi
+       		  od.##
+    then () = shift_count +:= #answer
+    in answer.sort_u
+
+set all_shifts_old_flag=false
+
+{Weakly good range allows some NEGATIVE shifts from rho_u. Include ALL
+those as well. Each will be an infl char in FPP on the center of L, so must
+be shorter than rho}
+set all_shifts(KGPElt Q, ratvec v) = [vec]:
+    if all_shifts_old_flag then return all_shifts_old(Q,v) fi;
+    let G = Q.real_form, rhou = rho_u(Q), S = Q.S
+    then B(ratvec wt) = invariant_form(G)(wt,wt)
+    then BG = B(G.rho){, BL = B(Q.Levi.rho)}
+    {then tworhoch = two_rho_check(G)} {- two_rho_check(Q.Levi)}
+    {then () = prints("BG = ",BG)}
+    then T = complement(G.semisimple_rank, Q.S)
+    then Qdeltafixed = set_bit_positions(AND(to_bitset(T),to_bitset(delta_fixed(G))))
+    then terms = for t in Qdeltafixed
+    	       	 do delta_fixed_fund_wts_long(G)[t]
+		 od
+    then dom_coroots = for t:G.semisimple_rank do dominant(G.simple_coroots[t], G) od
+    then mups = for j in Qdeltafixed
+    	      	do ((rhou+v)*(G.simple_coroots[j]))\1 +1
+		od
+	 {upper bound is the weakly fair condition}
+    {then mdowns = for j in Qdeltafixed
+    	 	  do {-1 - ((dominant(G.simple_coroots[j],G))*G.rho + G.simple_coroots[j]*(v+rhou))\1}
+		  -1 -(tworhoch*G.rho + tworhoch*(rhou - ell + v))\(tworhoch*terms(j))
+		  od}
+ 	 {lower bound is the chance of FPP condition}
+	 {maybe mdowns should depend on v??}
+    {then ms = mups - mdowns}
+    {then () = prints("mdowns = ",mdowns, ", mups = ",mups)}
+    then Qupbox = box(mups)
+    then answer = [vec]:[], have_some = true
+    then () = for b in Qupbox
+       do let up = v + sum(G.rank, for j@k in Qdeltafixed do b[k]*terms[k] od)
+       	  {then () = prints(new_line,"up = ",up)}
+       	  then Bup = B(up)
+	  then smalldeltafixed = for j@k in Qdeltafixed do if b[k]=0 then [j] else [] fi od.##
+	  then smallterms = for t in smalldeltafixed
+    	       	 do delta_fixed_fund_wts_long(G)[t]
+		 od
+    	  then answers = [[ratvec]]: for j: #smalldeltafixed+1 do [] od
+    	  then () = answers[0] :=[up-v]
+    	  {answers[k] is meant to be parts of answers using first j-1 fund wts}
+    	  then () = for j:#smalldeltafixed {start with answers up to j-1, add mults of jth fund wt}
+	       	    do answers[j+1] :=
+	      	       for ell0 in answers[j]
+	      	       do let mid_m = 1 + (dom_coroots[smalldeltafixed[j]]*G.rho +
+			       	     G.simple_coroots[smalldeltafixed[j]]*(v+rhou-ell0))\1
+			  {then () = prints("new_m = ",new_m, ", mid m = ",mid_m,", old m = ",old_m)}
+			  then () = have_some := true
+			  then lengths= for m: mid_m
+		       	      	       {-mdowns[j]} {this m is positive}
+		    		       do B(v+rhou -ell0 +m*smallterms[j])
+				       od
+			  {then () = prints(new_line,"ell0 = ",ell0, ", smallterms[j] = ",smallterms[j])
+		    	  then () = prints("lengths = ",lengths)
+			  then () = prints("ells = ",for m:-mdowns[j] do ell0 - m*smallterms[j] od)}
+		    	  then first = first(for length in lengths do length <= BG {+Bup} od)
+			  then () = if first = -1 then have_some := false fi
+		    	  then last = #lengths - first(for length in lengths ~do length <=BG{+Bup} od)
+		    	  in {prints("first = ", first,", last = ",last);}
+			     if have_some
+			     then for m:last-first+1 from first {same as m's above?}
+		       	     	  do {prints("cand = ",ell0 - m*smallterms[j]);}
+			          {if B(v+rhou - ell0 + m*smallterms[j]) > BG then prints(first," ",m,"  ",last) fi;}
+			              ell0 - m*smallterms[j]
+		       	     	  od
+			     else []
+			     fi
+		       od.##
+	       	     od
+    	  {then ()= prints(answers[#smalldeltafixed])}
+    	  then () = answer ##:= (for ell in answers[#smalldeltafixed]
+       	 	  do if ell.denom = 1 and B(v+rhou -ell) <= BG {"and" has already been tested}
+	     	     then {prints(ell);}
+		     	  [ratvec_as_vec(ell)]
+	     	     else []
+	     	     fi
+       		  od.##)
+	  {then () = prints(answer)}
+    	  in ()
+        od {b in Qupbox}
+      then answer = answer.sort_u
+      then () = shift_count +:= #answer
+      in answer
+
+{
+set all_shifts = (InnerClass, [int], ratvec) -> [vec]):
+    let ichash = make_InnerClass_hash()
+    then shift_lists = [vec_hash] {one hash table of all possible shifts for each inner class}
+    then offset_lists = [ratvec_hash] {one hash table  of all possible offsets for each inner class}
+    then answers = [[[int]]] {one list of indices into shift_lists[i] for inner class i, each offset #j,
+    	 	   	     power_set(G.semisimple_rank)[j] and offset # k}
+    in (InnerClass, [int], ratvec) -> [vec]): (InnerClass ic, [int S], ratvec v) [vec]:
+       let G  = ic.split_form
+       then Q = KGPElt: (S,KGB(G,0))
+       then () = if all_shifts_old_flag then return all_shifts_old(Q,v) fi
+       then j = to_bitset(S)
+       let I = ichash.size()
+       then i = ichash.match(ic)
+       then () = if i = I {haven't seen ic before}
+               	 then let () = shift_lists #:= make_vec_hash()
+		      then () = offset_lists #:= make_ratvec_hash()
+		      then () = answers #: for j:2^(G.semisimple_rank) do [] od
+		      then k = offset_lists[i].match(v)
+		      then answer = all_shifts(Q,v)
+		      then int_answer = for ell in answer do shift_lists[i].match(ell) od
+
+    let G = Q.real_form, rhou = rho_u(Q), S = Q.S
+    then B(ratvec wt) = invariant_form(G)(wt,wt)
+    then BG = B(G.rho)
+    {then () = prints("BG = ",BG)}
+    then T = complement(G.semisimple_rank, Q.S)
+    then Qdeltafixed = set_bit_positions(AND(to_bitset(T),to_bitset(delta_fixed(G))))
+    then mups = for j in Qdeltafixed
+    	      	do ((rhou+v)*(G.simple_coroots[j]))\1 +1
+		od
+	 {upper bound is the weakly fair condition}
+    then mdowns = for j in Qdeltafixed
+    	 	  do 1- ((dominant(G.simple_coroots[j],G))*G.rho {+ G.simple_coroots[j]*v})\1
+		  od
+ 	 {lower bound is the chance of FPP condition}
+	 {maybe mdowns should depend on v??}
+    {then ms = mups - mdowns}
+    {then () = prints("mdowns = ",mdowns, ", mups = ",mups)}
+    then Qupbox = box(mups)
+    then terms = for t in Qdeltafixed
+    	       	 do delta_fixed_fund_wts_long(G)[t]
+		 od
+    then answer = [vec]:[]
+    then () = for b in Qupbox
+       do let up = v + sum(G.rank, for j@k in Qdeltafixed do b[k]*terms[k] od)
+       	  {then () = prints(new_line,"up = ",up)}
+       	  then Bup = B(up)
+	  then smalldeltafixed = for j@k in Qdeltafixed do if b[k]=0 then [j] else [] fi od.##
+	  then smallterms = for t in smalldeltafixed
+    	       	 do delta_fixed_fund_wts_long(G)[t]
+		 od
+    	  then answers = [[ratvec]]: for j: #smalldeltafixed+1 do [] od
+    	  then () = answers[0] :=[up-v]
+    	  {answers[j] is meant to be coords of answers up to j-1}
+    	  then () = for j:#smalldeltafixed {start with answers up to j-1, add mults of jth fund wt}
+	       	    do answers[j+1] :=
+	      	       for ell0 in answers[j]
+	      	       do let lengths= for m: -mdowns[j] {this m is positive}
+		    		       do B(v+rhou -ell0 +m*smallterms[j])
+				       od
+			  {then () = prints(new_line,"ell0 = ",ell0, ", smallterms[j] = ",smallterms[j])
+		    	  then () = prints("lengths = ",lengths)
+			  then () = prints("ells = ",for m:-mdowns[j] do ell0 - m*smallterms[j] od)}
+		    	  then first = first(for length in lengths do length <= BG +Bup od)
+		    	  then last = #lengths - first(for length in lengths ~do length <=BG+Bup od)
+		    	  in {prints("first = ", first,", last = ",last);}
+			     for m:last-first+1 from first {same as m's above?}
+		       	     do {prints("cand = ",ell0 - m*smallterms[j]);}
+			        ell0 - m*smallterms[j]
+		       	     od
+		       od.##
+	       	     od
+    	  {then ()= prints(answers[#smalldeltafixed])}
+    	  then () = answer ##:= (for ell in answers[#smalldeltafixed]
+       	 	  do if ell.denom = 1 and B(v+rhou -ell) <= BG
+	     	     then {prints(ell);}
+		     	  [ratvec_as_vec(ell)]
+	     	     else []
+	     	     fi
+       		  od.##)
+	  then answer = answer.sort_u
+	  {then () = prints(answer)}
+    	  in ()
+        od
+      then () = shift_count +:= #answer
+      in answer
+}
+
+
+{most of the weights that can be subtracted from a unipotent on L to get a weakly
+fair induction for G}
+set few_shifts(KGPElt Q) = [vec]:
+    few_shifts(Q, null(Q.real_form.rank)/1)
+
+{Include most of the negative weights that can be subtracted from a
+unipotent on L to get a weakly fair induction for G}
+set most_shifts(KGPElt Q) = [vec]:
+    most_shifts(Q, null(Q.real_form.rank)/1)
+
+{guaranteed ALL of the weights that can be subtracted from a unipotent on L to get a weakly
+fair induction for G}
+set all_shifts(KGPElt Q) = [vec]:
+    all_shifts(Q, null(Q.real_form.rank)/1)
+
+{Each is to be used as a shift in unipotent_representations(Levi, offset). Each is central in L.}
 set offsets(KGPElt Q) = [ratvec]:
     let G = Q.real_form, tworhou = two_rho_u(Q)
-    then ks = [int]:
+    then terms = delta_fixed_fund_wts(G)
+    then ks = [int]: {these are the simple coroots positive on rhou,
+    up to distinguished involution delta}
     	 for j@k in (imag_simple(G)##complex_simple(G))
 	 do if tworhou*G.simple_coroots[j] > 0 then [k]
 	    else []
@@ -115,39 +402,28 @@ set offsets(KGPElt Q) = [ratvec]:
 		      od)/2
        od
 
-set is_FPP(RootDatum rd, ratvec gamma) = bool:
-    all(for alphavee in rd.simple_coroots
-    	do gamma*alphavee <= 1 and gamma*alphavee >= 0
-	od)
+{if true, use factor_unipotents instead of unipotents}
+set unip_factor_flag = true
 
-{this is broken because of unipotent_representations2}
-{set coh_ind_unip2(KGPElt Q, Param_hash Uhash) = void:
-    let L = Q.Levi, G = Q.real_form
-    then uLs = unipotent_representations2(L)
-    then radRat = radical_rat(L)
-    in void: for pL in uLs
-       	     do for tau in shifts(Q, radRat*(pL.lambda))
-       	     	do let P = theta_induce_irreducible(parameter(pL.x,
-				pL.lambda - tau, pL.nu), G)
-	     	   in void:
-		      for @q in P
-		      do if is_FPP(G,q.infinitesimal_character)
-	     	       	       then Uhash.match(q)
-			       else -1
-			       fi
-		      od
-		 od
-	     od}
+{if true, use theta_induce_irreducible2}
+set two_flag = true
 
 {assume v is {G-dominant and?} central for L}
-set coh_ind_unip(KGPElt Q, Param_hash Uhash, ratvec v) = void:
+set coh_ind_unip_few(KGPElt Q, Param_hash Uhash, ratvec v) = void:
     let L = Q.Levi, G = Q.real_form
-    then uLs = unipotent_representations(L,v)
-    then Qshifts = shifts(Q,v)
+    then uLs = if unip_factor_flag
+    	       then factor_unipotent_representations(L,v)
+	       else unipotent_representations(L,v)
+	       fi
+    then Qshifts = few_shifts(Q,v)
     in void: for pL in uLs
        	     do for tau in Qshifts
-       	     	do let P = theta_induce_irreducible(parameter(pL.x,
+       	     	do let P = if two_flag
+		       	   then theta_induce_irreducible2(parameter(pL.x,
 				pL.lambda - tau, pL.nu), G)
+			   else theta_induce_irreducible(parameter(pL.x,
+				pL.lambda - tau, pL.nu), G)
+			   fi
 	     	   in void:
 		      for @q in P
 		      do if is_FPP(G,q.infinitesimal_character)
@@ -158,52 +434,200 @@ set coh_ind_unip(KGPElt Q, Param_hash Uhash, ratvec v) = void:
 		 od
 	     od
 
-set coh_ind_unip(KGPElt Q, Param_hash Uhash) = void:
-    coh_ind_unip(Q, Uhash, null(Q.real_form.rank)/1)
+set coh_ind_unip_few(KGPElt Q, ratvec v) = void:
+    coh_ind_unip_few(Q, big_unitary_hash.uhash(Q.real_form),v)
 
-set coh_ind_unip_long(RealForm G, Param_hash Uhash) = void:
-    let startTime = elapsed_ms(), oldSize = Uhash.size(), Qs = Qs(G)
+{assume v is {G-dominant and?} central for L}
+set coh_ind_unip_most(KGPElt Q, Param_hash Uhash,ratvec v) = void:
+    let L = Q.Levi, G = Q.real_form
+    then uLs = if unip_factor_flag
+    	       then factor_unipotent_representations(L,v)
+	       else unipotent_representations(L,v)
+	       fi
+    then rhou = rho_u(Q)
+    then Qshifts = most_shifts(Q,v)
+    in void: for pL in uLs
+       	     do for tau in Qshifts
+       	     	do let gamma = pL.infinitesimal_character + rhou -tau
+		   in if is_FPP(G,gamma)
+		      then let P = if two_flag
+		       	   then theta_induce_irreducible2(parameter(pL.x,
+				pL.lambda - tau, pL.nu), G)
+			   else theta_induce_irreducible(parameter(pL.x,
+				pL.lambda - tau, pL.nu), G)
+			   fi 
+	     	   	   in void: for @q in P
+		      	     	    do Uhash.match(q)
+		      		    od
+		      fi
+		 od
+	     od
+
+set coh_ind_unip_most(KGPElt Q, ratvec v) = void:
+    coh_ind_unip_most(Q, big_unitary_hash.uhash(Q.real_form),v)
+
+{assume v is {G-dominant and?} central for L}
+set coh_ind_unip_all(KGPElt Q, Param_hash Uhash,ratvec v) = void:
+    let L = Q.Levi, G = Q.real_form
+    then uLs = if unip_factor_flag
+    	       then factor_unipotent_representations(L,v)
+	       else unipotent_representations(L,v)
+	       fi
+    then rhou = rho_u(Q)
+    then Qshifts = all_shifts(Q,v)
+    in void: for pL in uLs
+       	     do for tau in Qshifts
+       	     	do let gamma = pL.infinitesimal_character + rhou -tau
+		   in if is_FPP(G,gamma)
+		      then let P = if two_flag
+		      	       	   then theta_induce_irreducible2(parameter(pL.x,
+				   	pL.lambda - tau, pL.nu), G)
+			   	   else theta_induce_irreducible(parameter(pL.x,
+				   	pL.lambda - tau, pL.nu), G)
+			   	   fi
+	     	   	   in void: for @q in P
+		      	     	    do Uhash.match(q)
+		      		    od
+		      fi
+		 od
+	     od
+
+set coh_ind_unip_all(KGPElt Q, ratvec v) = void:
+    coh_ind_unip_all(Q, big_unitary_hash.uhash(Q.real_form),v)
+
+set coh_ind_unip_verbose = false
+
+set coh_ind_unip_few(RealForm G, [KGPElt] Qs, Param_hash Uhash) = void:
+    let startTime = elapsed_ms(), oldSize = Uhash.size()
     then () = for Q@j in Qs
     	      do for v in offsets(Q)
-    	      	 do coh_ind_unip(Q,Uhash,v)
-		 od{;
-		 if j%(#Qs\20) = 0 then prints("finished parabolic #", j,
+    	      	 do coh_ind_unip_few(Q,Uhash,v)
+		 od;
+		 if coh_ind_unip_verbose and
+		    j%(max(#Qs\40,1)) = 0
+		 then prints("finished parabolic #", j,
 		    " after ",print_time_string(elapsed_ms() - startTime),
-		    "; found ",Uhash.size() - oldSize, " reps.") fi}
+		    "; found ",Uhash.size() - oldSize, " reps.")
+		 fi
 	      od
     then () = if time_verbose
     	 then prints("Found ",Uhash.size() - oldSize, " new unitary reps.");
-    	      prints("Total time for coh_ind_unip_long = ",
+    	      prints("Total time for coh_ind_unip_few = ",
     	      	  print_time_string(elapsed_ms() - startTime))
          fi
     in ()
 
-{broken because of dependence on unipotent_representations2}
-{set coh_ind_unip_long2(RealForm G, Param_hash Uhash) = void:
-    let startTime = elapsed_ms(), oldSize = Uhash.size(), Qs = Qs(G)
-    then () = for Q@j in Qs
-              do coh_ind_unip2(Q,Uhash);
-	      	 if j%(#Qs\20) = 0 then prints("finished parabolic #", j,
-		    " after ",print_time_string(elapsed_ms() - startTime),
-		    "; found ",Uhash.size() - oldSize, " reps.") fi
-	      od
-    then () = prints("Found ",Uhash.size() - oldSize, " new unitary reps.")
-    then () = prints("Total time for coh_ind_unip_long2 = ",
-    	      	  print_time_string(elapsed_ms() - startTime))
-    in ()}
+set coh_ind_unip_few(RealForm G, [KGPElt] Qs) = void:
+    coh_ind_unip_few(G, Qs, big_unitary_hash.uhash(G))
 
-set coh_ind_unip(RealForm G, Param_hash Uhash) = void:
-    let startTime = elapsed_ms(), oldSize = Uhash.size(), Qs = Qs(G)
+{"most" means all Qshifts AND version of shifts sllowing some negstive weights}
+set coh_ind_unip_most(RealForm G, [KGPElt] Qs, Param_hash Uhash) = void:
+    let startTime = elapsed_ms(), oldSize = Uhash.size()
     then () = for Q@j in Qs
-    	      do coh_ind_unip(Q,Uhash);
-	         if time_verbose and j%(#Qs\20) = 0
+    	      do for v in offsets(Q)
+    	      	 do coh_ind_unip_most(Q,Uhash,v)
+		 od;
+		 if coh_ind_unip_verbose and
+		    j%(max(#Qs\40,1)) = 0
 		 then prints("finished parabolic #", j,
 		    " after ",print_time_string(elapsed_ms() - startTime),
-		    "; found ",Uhash.size() - oldSize, " reps.") fi
-    	      od
+		    "; found ",Uhash.size() - oldSize, " reps.")
+		 fi
+	      od
     then () = if time_verbose
     	 then prints("Found ",Uhash.size() - oldSize, " new unitary reps.");
-    	      prints("Total time for coh_ind_unip = ",
+    	      prints("Total time for coh_ind_unip_most = ",
     	      	  print_time_string(elapsed_ms() - startTime))
-	      fi
+         fi
     in ()
+
+set coh_ind_unip_most(RealForm G, [KGPElt] Qs) = void:
+    coh_ind_unip_most(G, Qs, big_unitary_hash.uhash(G))
+
+{"all" means all Qshifts AND version of shifts sllowing all possible negstive weights}
+set coh_ind_unip_all(RealForm G, [KGPElt] Qs, Param_hash Uhash) = void:
+    let startTime = elapsed_ms(), oldSize = Uhash.size()
+    then () = for Q@j in Qs
+    	      do for v in offsets(Q)
+    	      	 do coh_ind_unip_all(Q,Uhash,v)
+		 od;
+		 if coh_ind_unip_verbose and
+		    j%(max(#Qs\40,1)) = 0
+		 then prints("finished parabolic #", j,
+		    " after ",print_time_string(elapsed_ms() - startTime),
+		    "; found ",Uhash.size() - oldSize, " reps.")
+		 fi
+	      od
+    then () = if time_verbose
+    	 then prints("Found ",Uhash.size() - oldSize, " new unitary reps.");
+    	      prints("Total time for coh_ind_unip_all = ",
+    	      	  print_time_string(elapsed_ms() - startTime))
+         fi
+    in ()
+
+set coh_ind_unip_all(RealForm G, [KGPElt] Qs) = void:
+    coh_ind_unip_all(G, Qs, big_unitary_hash.uhash(G))
+
+{just induced from proper Q}
+
+set coh_ind_unip_few(RealForm G, Param_hash Uhash) = void:
+    coh_ind_unip_few(G,Qs(G),Uhash)
+
+set coh_ind_unip_few(RealForm G) = void:
+    coh_ind_unip_few(G,big_unitary_hash.uhash(G))
+
+set coh_ind_unip_most(RealForm G, Param_hash Uhash) = void:
+    coh_ind_unip_most(G,Qs(G),Uhash)
+
+set coh_ind_unip_most(RealForm G) = void:
+    coh_ind_unip_most(G,big_unitary_hash.uhash(G))
+
+{Divide job into n portions and do #d}
+set coh_ind_unip_most(RealForm G, int n, int d) = void:
+    let Qs = Qs(G)
+    then () = coh_ind_unip_verbose:=true
+    then N = #Qs
+    then Ni = N\n
+    in if d < n-1
+       then coh_ind_unip_most(G,Qs[d*Ni:(d+1)*Ni], big_unitary_hash.uhash(G))
+       else coh_ind_unip_most(G,Qs[(n-1)*Ni:], big_unitary_hash.uhash(G))
+       fi
+
+
+set coh_ind_unip_all(RealForm G, Param_hash Uhash) = void:
+    coh_ind_unip_all(G,Qs(G),Uhash)
+
+set coh_ind_unip_all(RealForm G) = void:
+    coh_ind_unip_all(G,big_unitary_hash.uhash(G))
+
+{Divide job into n portions and do #d}
+set coh_ind_unip_all(RealForm G, int n, int d) = void:
+    let Qs = Qs(G)
+    then () = coh_ind_unip_verbose:=true
+    then N = #Qs
+    then Ni = N\n
+    in if d < n-1
+       then coh_ind_unip_all(G,Qs[d*Ni:(d+1)*Ni], big_unitary_hash.uhash(G))
+       else coh_ind_unip_all(G,Qs[(n-1)*Ni:], big_unitary_hash.uhash(G))
+       fi
+
+{include unip reps of G}
+set coh_ind_unip_few_G(RealForm G, Param_hash Uhash) = void:
+    coh_ind_unip_few(G,Qs(G)#parabolic_by_wt(null(G.rank),KGB(G,0)),Uhash)
+
+set coh_ind_unip_few_G(RealForm G) = void:
+    coh_ind_unip_few_G(G,big_unitary_hash.uhash(G))
+
+set coh_ind_unip_most_G(RealForm G, Param_hash Uhash) = void:
+    coh_ind_unip_most(G,Qs(G)#parabolic_by_wt(null(G.rank),KGB(G,0)),Uhash)
+
+set coh_ind_unip_most_G(RealForm G) = void:
+    coh_ind_unip_most_G(G,big_unitary_hash.uhash(G))
+
+set coh_ind_unip_all_G(RealForm G, Param_hash Uhash) = void:
+    coh_ind_unip_all(G,Qs(G)#parabolic_by_wt(null(G.rank),KGB(G,0)),Uhash)
+
+set coh_ind_unip_all_G(RealForm G) = void:
+    coh_ind_unip_all_G(G,big_unitary_hash.uhash(G))
+
+

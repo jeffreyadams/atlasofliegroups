@@ -10,7 +10,7 @@
 #ifndef TOPOLOGY_H  /* guard against multiple inclusions */
 #define TOPOLOGY_H
 
-#include "../Atlas.h"
+#include "Atlas.h"
 
 namespace atlas {
 namespace topology {

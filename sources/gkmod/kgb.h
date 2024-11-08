@@ -16,7 +16,7 @@
 #ifndef KGB_H  /* guard against multiple inclusions */
 #define KGB_H
 
-#include "../Atlas.h"
+#include "Atlas.h"
 
 #include "gradings.h"	// containment in |KGBEltInfo|
 #include "hashtable.h"	// containment in |KGB_base|

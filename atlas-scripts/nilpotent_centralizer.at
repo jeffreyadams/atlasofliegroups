@@ -78,7 +78,7 @@ for alpha in roots_C do
   fi od)) then
  w=2*v/(v*pullback_alpha) {element of X_*(H) which lives in X_*(T)} then
  corestrict_w=solve(T,w).requisition {coordinates of w in the given basis of X_*(T)} in
- coroots_G#:=v;
+ coroots_G#:=w.numer; {should be w, not v!}
  coroots_C#:=ratvec_as_vec(corestrict_w)
 od;
 (roots_G,coroots_G,roots_C,coroots_C)

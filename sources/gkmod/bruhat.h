@@ -11,7 +11,7 @@
 #ifndef BRUHAT_H  /* guard against multiple inclusions */
 #define BRUHAT_H
 
-#include "../Atlas.h"
+#include "Atlas.h"
 #include "poset.h"	// containment
 
 namespace atlas {

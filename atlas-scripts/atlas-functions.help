@@ -998,6 +998,15 @@ W_cells: (Param->int,[[int],[[int],[int,int]]]): W-cells for parameter block
   Generate block and decompose into W-cells; return the number of the parameter
   in the block, and the cell data in the format used for W_cells@Block below
   The block itself is the same as in W_graph@Param.
+
+default_extend: (Param,mat->ratvec,vec,vec,vec): default extension choice data
+  Applied to (p,delta), this returns the data that identifies the default choice
+  to extend p to a parameter for the group extension by the involution delta, in
+  the form of a 5-tuple (lambda,tau,l,t) (two weights and then two coweights).
+shift_flip: (Param,mat,ratvec->bool): whether shifting flips default extension
+  Called for (p,delta,gamma) this tests whether the default extension at p,
+  after shifting the infinitesimal character to gamma is flipped with respect
+  to the default extension of the ordinary parameter that it extends
 extended_block: (Param,mat->[Param],mat,mat,mat): extended block with graph data
   The arguments are a parameter p and an external distinguished involution delta
   (which should commute with the inner class distinguished involution). The
@@ -1079,6 +1088,26 @@ twisted_full_deform: (Param->KTypePol): inner class twisted deformation to nu=0
   result depends (by a sign) on the chosen default extension for the parameter,
   and preparations may cause a flip in that choice. If needed use scale_extended
   and finalize_extended to do these preparations while keeping track of flips.
+
+full_deform: (Param,int->(void|KTypePol)),
+twisted_full_deform: (Param,int->(void|KTypePol)): time-limited versions
+  These two functions perform the same computation as their counterparts without
+  int argument, but if the computation has run for the number of milliseconds
+  indicated in that int argument without returning a result, the computation
+  aborts and returns no result instead. A union type is used to combine these
+  possible outcomes into a single value, which will be of the first (void)
+  variant in case no result is found in time, and of the second (KTypePol)
+  variant in case a result is found in time. When simply printing the result,
+  the first variant will be tagged ".timed_out" and the second ".done"; this is
+  consistent with the user having set
+    set_type [ . = (void timed_out|KTypePol done)]
+  with any chosen type name at the place of "." (but the initial state of Atlas
+  does not include this definition). In order to use the return value in a more
+  elaborate way, the caller must provide instructions for what to do in both
+  scenarios, by using a "case | | esac" clause, for which it is most practical
+  to in fact state a type definition as indicated; then one can do something like
+    case full_deform(p,1968) | time_out: "too hard" | P.done: to_string(P) esac
+
 
 KL_column: (Param->[int,Param,vec]): column of Kazhdan-Lusztig table
   Returns a list of nonzero Kazhdan-Lusztig polynomials P(x,y) with the given

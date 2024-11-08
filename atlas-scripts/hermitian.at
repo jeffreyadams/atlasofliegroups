@@ -4,100 +4,13 @@
 <count.at {for unitary_test_counter}
 <time.at {for print_time_string}
 <cohom_reductionND {for derived_factor_params}
-<FPP_facets_geom {for herm_center}
+<FPP_faces_geom {for herm_center}
+<writeFiles {for write commands}
 set deformLookupCounter = make_counter()
 set deformCalcCounter = make_counter()
 
-set sleep(int n)=void:
-prints("sleeping: ", n);
-let start=elapsed_ms() then
-sum=0 in
-for i:n*100000 do sum:=sum+1 od;
-prints(elapsed_ms()-start)
-
 set to_ht (KTypePol P,int N) = KTypePol:
   let (below,)=height_split(P,N) in below
-
-{tables of full_deform to ht, indexed by Param; one for each height}
-set_type 
-[ deformation_hash =
-( ( -> int) size
-  , ( -> bool) is_twisted
-  , ( -> ) clear
-  , ( -> int) height
-  , (int -> ) adjust_height
-  , (Param->KTypePol) entry
-  , (Param->) append
-  , (int -> Param) param_index
-  , (int -> KTypePol) data_index
-  )
-]
-
-set make_deformation_hash (int h, bool twisted) = deformation_hash:
-(  let param_hash = make_Param_hash()
-   then deformed_data = [KTypePol] : []
-   then height = int:h
-   then twisted = bool: twisted
-   then clear() = void:
-       let () = param_hash.clear()
-       then () = deformed_data:=[]
-       in ()
-   in 
-   ( ( -> int): { size } @int: param_hash.size()
-   , ( -> bool): {is_twisted} @bool: twisted
-   , ( -> ): {clear} clear
-   , ( -> int): {height} @int: height
-   , (int -> ): {adjust_height} (int h): height:= h
-   , (Param -> KTypePol): {entry} (Param p)
-     KTypePol:
-     begin
-	let M = param_hash.size()
-	then m = param_hash.match(p)
-	then () = if m = M
-	     	  then deformCalcCounter.use();
-		       if twisted
-		       then deformed_data:= (deformed_data next deformed_data:= [])
-		       	    #if height > 0
-		             then to_ht(twisted_full_deform(p), height)
-		  {might use to_ht(twisted_full_deform(p),height)?}
-			     else twisted_full_deform(p)
-			     fi
-			else deformed_data:= (deformed_data next deformed_data:= [])
-		       	     #if height > 0
-		              then deform_to_height(p, height)
-		  {might use to_ht(full_deform(p),height)?}
-			      else full_deform(p)
-			      fi
-		  	fi
-		  else deformLookupCounter.use()
-		  fi
-	in deformed_data[m]
-     end
-   , (Param->): {append } (Param p):
-     begin
-	let M = param_hash.size()
-	then m = param_hash.match(p)
-	then () = if m = M
-	     	  then deformCalcCounter.use();
-		       deformed_data:= (deformed_data next deformed_data:= [])
-		       #if height > 0
-		       	then deform_to_height(p, height)
-			else full_deform(p)
-			fi
-		  else deformLookupCounter.use()
-		  fi
-	in ()
-     end
-   , (int -> Param): {param_index} (int j): param_hash.index(j)
-   , (int -> KTypePol): {data_index} (int j): deformed_data[j]
-  )
-)
-
-set deformedParams = for m:1500 do make_deformation_hash(m,false) od
-{NEED TO MODIFY TWISTED HASH}
-set twistedDeformedParams = for m:1500 do make_deformation_hash(m,true) od
-{set deformations = [[KTypePol]]: for m:1500 do [] od
-set twistedDeformations = [[KTypePol]]: for m:1500 do [] od}
 
 {take a KTypePol _apparently_ attached to G and make it _actually_ attached
 to G. Need this to use looked-up deformations.}
@@ -105,8 +18,231 @@ set regroup(RealForm G, KTypePol P) = KTypePol:
     sum(G, for c@q in P do let (,m) = %q.x
     	   in c*K_type(KGB(G,m), q.lambda_minus_rho) od)
 
-{like is_pure, but in case of false, second value is the lowest K-type where the KTypePol
- changes sign. Better to put the guilty K-type in a hash table.}
+{ table of full_deform to ht, indexed by Param. Height zero means no cutoff.}
+{Twisted always stored with no cutoff, since we don't now have a good twisted
+to_ht, so make that a separate type.}
+set_type
+[ deformation_hash_to_ht =
+( ( -> int) size {number of parameters stored}
+  , ( -> ) clear
+  , (Param -> int) height {maximum height to which p is deformed}
+  , ((Param,int)->KTypePol) entry
+  , (Param->int) lookup
+  , ((Param,int,KTypePol)->) append
+  , (int -> Param) param_index {parameter #j}
+  , (int -> int) height_index {height to which parameter #j is deformed}
+  , (int -> KTypePol) data_index {deformation of parameter #j to its ht}
+  )
+]
+
+
+set deform_param_hash = make_Param_hash() {used as index into...}
+set deformed_data = [KTypePol] : []
+set deform_max_heights = [int] : []
+set deform_use_count = [int] : []
+set make_deformation_hash_to_ht () = deformation_hash_to_ht:
+(  {let param_hash = make_Param_hash()
+   then max_heights = [int] : []
+   then deformed_data = [KTypePol] : []}
+   let clear() = void:
+       let () = deform_param_hash.clear()
+       then () = deform_max_heights :=[]
+       then () = deformed_data :=[]
+       then () = deform_use_count := []
+       in ()
+   then add_param(Param p, int h) = int:
+       	let I = deform_param_hash.size()
+	then i = deform_param_hash.lookup(p)
+	then P = null_K_module(SL(1,R))
+	then () = if i.< {haven't seen this p before}
+	     then deformCalcCounter.use();
+	     	  P := if h=0
+	     	      then full_deform(p)
+		      else deform_to_height(p,h)
+		      fi;
+		   deform_param_hash.match(p);
+		   i:=I;
+		   deform_max_heights #:= h;
+		   deformed_data#:=P;
+		   deform_use_count#:=0
+	      elif {i>0; p seen} h=0 and deform_max_heights[i].>
+	      then deformCalcCounter.use();
+	      	   P := full_deform(p);
+		   deform_max_heights[i]:=0;
+		   deformed_data[i]:=P
+	      elif {i >0, h>0 or } deform_max_heights[i] > 0 and h > deform_max_heights[i]
+	      then deformCalcCounter.use();
+	      	   P := deform_to_height(p,h);
+		   deform_max_heights[i]:=h;
+		   deformed_data[i]:=P
+	      else deformLookupCounter.use()
+	      fi
+	  then () = deform_use_count[i] +:=1
+	  in i
+   in
+   ( ( -> int): {size} @int: deform_param_hash.size()
+  , ( -> ): {clear} clear
+  , (Param -> int): {height} (Param p): deform_max_heights[deform_param_hash.lookup(p)]
+  , ((Param, int)->KTypePol): {entry} (Param p, int h):
+    let i = add_param(p, h)
+    in if h > 0
+       then regroup(p.real_form,to_ht(deformed_data[i],h))
+       else regroup(p.real_form,deformed_data[i])
+       fi
+  , (Param->int): {lookup} (Param p): deform_param_hash.lookup(p)
+  , ((Param,int,KTypePol)->): {append} (Param p, int h, KTypePol P):
+    let I = deform_param_hash.size()
+    then i = deform_param_hash.match(p)
+    in if i=I {haven't seen p before}
+       then deform_max_heights #:=h;
+	    deformed_data#:=P;
+	    deform_use_count#:=0
+       elif {i < I} (h=0 and deform_max_heights[i].>) 
+	    or h>deform_max_heights[i] {seen p, but not to h}
+       then deform_max_heights[i]:=h;
+	    deformed_data[i]:=P
+       fi
+  , (int -> Param): {param_index} (int j): deform_param_hash.index(j)
+  , (int -> int): {height_index} (int j): deform_max_heights[j]
+  , (int -> KTypePol): {data_index} (int j): deformed_data[j]
+  )
+)
+
+set append_to_deformation_hash(RealForm G, Param p, [KPolTermDatum] data, int ht, int use) = void:
+    let I = deform_param_hash.size()
+    then i = deform_param_hash.lookup(p)
+    in if i.< {haven't seen this p}
+       then deform_param_hash.match(p);
+	    i:=I;
+	    deform_max_heights #:=ht;
+	    deformed_data #:= K_pol(G,data);
+	    deform_use_count #:= use
+       elif (deform_max_heights[i] < ht) or
+	    (ht = 0 and deform_max_heights[i] > 0)
+       then deform_param_hash.match(p);
+       	    deform_max_heights[i] := ht;
+	    deformed_data[i] := K_pol(G, data);
+	    deform_use_count[i] +:=use
+       fi
+
+set append_to_deformation_hash(RealForm G, [Param] p_list, [[KPolTermDatum]] data_list,
+    [int] ht_list, [int] use_list) = void:
+    for p@j in p_list
+    do append_to_deformation_hash(G,p,data_list[j],ht_list[j],use_list[j])
+    od
+set write_deformation_frac = 100
+
+{write the part of deformation_hash referring to G}
+set write_deformation_hash(RealForm G) = void:
+    let param_list = deform_param_hash.list()
+    then M = max((for P@j in deformed_data do
+    deform_use_count[j]*#deformed_data[j] od)#0)
+    then good_j = for p@j in param_list
+    	 	   do if p.real_form = G and deform_use_count[j]* #deformed_data[j] *write_deformation_frac > M
+		      then [j]
+		      else []
+		      fi
+		   od.##
+    then good_param_list = for j in good_j do param_list[j] od
+    then good_deformed_data = for j in good_j do K_data(deformed_data[j]) od
+    then good_deform_max_heights = for j in good_j do deform_max_heights[j] od
+    then good_deform_use_count = for j in good_j do deform_use_count[j] od
+    in write_real_form(G,"G_temp");
+       for p@k in good_param_list
+       do let (,x) = %p.x
+       	  in prints("let p_temp = parameter(G_temp,",x,",",p.lambda,",",p.nu,")");
+	     prints("then temp_def_data = ",good_deformed_data[k]);
+       	     prints("in append_to_deformation_hash(G_temp, p_temp,",good_deformed_data[k],",",
+       		  good_deform_max_heights[k],",", good_deform_use_count[k],")")
+       od
+
+set_type
+[ twisted_deformation_hash =
+( ( -> int) size {number of parameters stored}
+  , ( -> ) clear
+  , (Param->KTypePol) entry
+  , ((Param, int)->KTypePol) entry_to_ht
+  , (int -> Param) param_index {parameter #j}
+  , (int -> KTypePol) data_index {deformation of parameter #j}
+  )
+]
+
+set twisted_deform_param_hash = make_Param_hash() {used as index into...}
+set twisted_deformed_data = [KTypePol] : []
+
+set make_twisted_deformation_hash() = twisted_deformation_hash:
+(  {let param_hash = make_Param_hash()
+   then deformed_data = [KTypePol] : []}
+   let clear() = void:
+       let () =  twisted_deform_param_hash.clear()
+       then () = twisted_deformed_data :=[]
+       in ()
+   then add_param(Param p) = int:
+       	let I =  twisted_deform_param_hash.size()
+	then i =  twisted_deform_param_hash.match(p)
+	then P = null_K_module(SL(1,R))
+	then () = if i=I {haven't seen this p before}
+	     then deformCalcCounter.use();
+	     	  P := twisted_full_deform(p);
+		  twisted_deformed_data#:=P
+	      else deformLookupCounter.use()
+	      fi
+	  in i
+   in
+   ( ( -> int): {size} @int:  twisted_deform_param_hash.size()
+  , ( -> ): {clear} clear
+  , (Param->KTypePol): {entry} (Param p):
+    let i = add_param(p)
+    in regroup(p.real_form,twisted_deformed_data[i])
+  , ((Param, int)->KTypePol): {entry_to_ht} (Param p, int h):
+    let i = add_param(p)
+    in if h > 0
+       then regroup(p.real_form,to_ht(twisted_deformed_data[i],h))
+       else regroup(p.real_form,twisted_deformed_data[i])
+       fi
+  , (int -> Param): {param_index} (int j):  twisted_deform_param_hash.index(j)
+  , (int -> KTypePol): {data_index} (int j): twisted_deformed_data[j]
+  )
+)
+
+set append_to_twisted_deformation_hash(RealForm G, Param p, [KPolTermDatum] data) = void:
+    let I = twisted_deform_param_hash.size()
+    then i = twisted_deform_param_hash.match(p)
+    in if i=I {haven't seen this p}
+       then twisted_deformed_data #:= K_pol(G,data)
+       fi
+
+set append_to_twisted_deformation_hash(RealForm G, [Param] p_list, [[KPolTermDatum]] data_list) = void:
+    for p@j in p_list
+    do append_to_twisted_deformation_hash(G,p,data_list[j])
+    od
+
+{write the part of deformation_hash referring to G}
+set write_twisted_deformation_hash(RealForm G) = void:
+    let param_list = twisted_deform_param_hash.list()
+    then good_j = for p@j in param_list
+    	 	   do if p.real_form = G then [j]
+		      else []
+		      fi
+		   od.##
+    then good_param_list = for j in good_j do param_list[j] od
+    then good_twisted_deformed_data = for j in good_j do K_data(twisted_deformed_data[j]) od
+    in write_real_form(G,"G_temp");
+       for p@k in good_param_list
+       do let (,x) = %p.x
+       	  in prints("let p_temp = parameter(G_temp,",x,",",p.lambda,",",p.nu,")");
+       	     prints("in append_to_twisted_deformation_hash(G_temp,p_temp,",good_twisted_deformed_data[k],
+	     ")")
+       od
+{whether to use these hash tables. "False" saves quite a bit of memory
+(about 10% in F4_s) with very little speed cost (less than 1% in F4_s)}
+set deformed_hash_flag = false
+
+set deformedHash = make_deformation_hash_to_ht()
+set twistedDeformedHash = make_twisted_deformation_hash()
+
+{like is_pure, but in case of false, second value is the lowest K-type where
+the KTypePol changes sign. Better to put the guilty K-type in a hash table.}
 set is_pure_cert(KTypePol P) = [KType]:
     if is_pure(P) then [KType]: []
     else let terms = for c@p in P
@@ -133,7 +269,8 @@ set is_pure_cert(KTypePol P) = [KType]:
 	  in [pj]
     fi
 
-{like is_pure_cert, but in case of false, writing the guilty K-types in a hash table.}
+{like is_pure_cert, but in case of false, writing the guilty K-types in a
+hash table.}
 set is_pure_cert_hash_old(KTypePol P, KTypePol_hash cert_hash) = bool:
     if not is_pure(P)
     then let terms = for c@p in P
@@ -162,7 +299,8 @@ set is_pure_cert_hash_old(KTypePol P, KTypePol_hash cert_hash) = bool:
     else true
     fi
 
-{like is_pure_cert, but in case of false, writing the guilty K-types in a hash table.}
+{like is_pure_cert, but in case of false, writing the guilty K-types in a
+hash table.}
 { want this version to record SUM of lowest impurity }
 set is_pure_cert_hash(KTypePol P, KTypePol_hash cert_hash) = bool:
     if not is_pure(P)
@@ -189,16 +327,20 @@ set is_pure_cert_hash(KTypePol P, KTypePol_hash cert_hash) = bool:
     fi
 
 {.write c-invariant form on standard module as a KTypePol }
-{set c_form_std = (Param->KTypePol): { never involves |twisted_full_deform| }
-  full_deform@Param { built-in }}
-
+{ never involves |twisted_full_deform| }
 set c_form_std(Param p) = KTypePol:
     let pc = alcove_center(p)
-    in regroup(pc.real_form, deformedParams[0].entry(pc))
+    in if deformed_hash_flag
+       then deformedHash.entry(pc,0)
+       else full_deform(pc)
+       fi
 
 set twisted_c_form_std(Param p) = KTypePol: { c-form on extended group}
     let pc = alcove_center(p)
-    in regroup(pc.real_form, twistedDeformedParams[0].entry(pc))
+    in if deformed_hash_flag
+       then twistedDeformedHash.entry(pc)
+       else twisted_full_deform(pc)
+       fi
 
 {    c_form on irreducible representations   }
 
@@ -262,145 +404,24 @@ set check_hermitian (Param p, bool irreducible) = void:
             ," module does not admit any invariant Hermitian form")
   fi
 
-{.Hermitian form on a irreducible module, normalization from its initial term.}
-set hermitian_form_irreducible (Param p) = KTypePol:
-  if is_equal_rank(real_form(p))
-  then c_form_irreducible(p) { not twisted, in equal rank case this is faster }
-  else check_hermitian(p,true); twisted_c_form_irreducible(p)
-  fi.convert_cform_hermitian
-
 set unitaryTime = int: 0
 set show_unitary_time() = void: prints("Time so far for is_unitary = ",
     		      print_time_string(unitaryTime))
 
-{ compute Hermitian form on p, and report if it is unitary }
-set is_unitary (Param p) = bool:
+{.Hermitian form on a irreducible module, normalization from its initial term.}
+set hermitian_form_irreducible (Param p) = KTypePol:
   unitary_test_counter.use();
-  let start_time = elapsed_ms(), answer =
-      p.is_hermitian and hermitian_form_irreducible(p).is_pure
+  let start_time = elapsed_ms()
+  then answer = if is_equal_rank(real_form(p))
+       	      	then c_form_irreducible(p) { not twisted, in equal rank case this is faster }
+ 		else check_hermitian(p,true); twisted_c_form_irreducible(p)
+  		fi.convert_cform_hermitian
   then () = unitaryTime+:=elapsed_ms() - start_time
   in answer
 
-
-{------------------------ timeout versions----------------------}
-
-set c_form_irreducible (Param p,int max_time) =(KTypePol,int):
-let ()=prints("in c_form_irreducible with p=", p, "max_time=", max_time)  then
-P=KL_sum_at_s(p), count=0 then
-()=prints("computed KL_sum_t_s") then
-ori_nr_p = orientation_nr(p) then
-()=prints("computed orientation number") then
-nP=#P then
-start_time=elapsed_ms() then
-timedout=-1 then  {-1: calculation succeeded; >=1: calculation timed out (never returns 0)}
-rv=null_K_module(p.real_form) then
-()=for c@q in P do
-{  let stall=sleep(100) in}
-  let ()=prints("term q=",q) in
-  let t=elapsed_ms()-start_time in
-  let ()=prints("t=",t)  in 
-  if t>max_time then
-      let ()=prints("TIMED OUT (c_form_irreducible), time=",t) in
-      rv:=K_type_pol(0*p); timedout:=t;break
-  else
-      rv+:=c*orientation_nr_term(ori_nr_p,q)*c_form_std(q)
-  fi
-od in
-(rv,timedout)
-
-set hermitian_form_irreducible (Param p,int max_time) = (KTypePol,int):
-  if is_equal_rank(real_form(p))
-   then let (cfi,timedout)= c_form_irreducible(p,max_time) { not twisted, in equal rank case this is faster }
-    in if timedout=-1 then
-     (cfi.convert_cform_hermitian,timedout)
-    else
-      prints("TIMED OUT (hermitian_form_irreducible), time=", timedout);(K_type_pol(p*0),timedout)
-    fi
-  else
-   check_hermitian(p,true); (twisted_c_form_irreducible(p).convert_cform_hermitian,-1)
-  fi
-
-set c_form_irreducible_long (Param p, int max_time) =
-      (ParamPol,[(Param,Split,KTypePol)],KTypePol):
-   let ori_nr_p = orientation_nr(p), formula=KL_sum_at_s(p) then
-   start_time=elapsed_ms() then
-   timedout=-1 then
-   standards = { list of contributions }
-      for c@q in formula 
-      do
-       let t=elapsed_ms()-start_time in
-       if t>max_time then
-            timedout:=t;prints("--------------------------------------------------------");break fi;
-       let form_on_standard = c_form_std(q)
-         ,   factor= c*orientation_nr_term(ori_nr_p,q)
-      in (q,factor,form_on_standard)
-      od
-in 
-if timedout>0 then
- (1*p,[],K_type_pol(p)) else
-( formula, standards
-   , null_K_module(p.real_form)+for(,c,f) in standards do c*f od
-   )
-fi
-
-
-
-{smallest easy theta-stable Q from which p is weakly good range cohomologically
-induced, and the inducing parameter}
-set wkgood_Q(Param p) = (KGPElt, Param):
-    let G = p.real_form, x = p.x, gamma = p.infinitesimal_character
-    then theta = x.involution, suppS = support(x), SCR = G.simple_coroots
-    then wkgoodQ = KGPElt:(suppS, x)
-    then wkgoodL = wkgoodQ.Levi
-    then xL = inverse_embed_KGB(x,wkgoodL)
-    then wkgoodpL = parameter(xL, p.lambda_minus_rho+wkgoodL.rho, p.nu)
-    in (wkgoodQ,wkgoodpL)
-
-{smallest theta-stable Q from which p is good range cohomologically induced, and the inducing parameter}
-set good_Q(Param p) = (KGPElt, Param):
-    let G = p.real_form, x = p.x, gamma = p.infinitesimal_character
-    then theta = x.involution, suppS = support(x), SCR = G.simple_coroots
-    then goodS = ((for j in complement(G.semisimple_rank,suppS)
-		     do if (gamma*SCR[j]).=
-		        then [j]
-		       	else []
-		       	fi
-		     od.##)##suppS).sort_u
-    then goodQ = KGPElt:(goodS, x)
-    then goodL = goodQ.Levi
-    then xL = inverse_embed_KGB(x,goodL)
-    then goodpL = parameter(xL, p.lambda_minus_rho+goodL.rho, p.nu)
-    in (goodQ,goodpL)
-
-set good_L(Param p) = RealForm:
-    let G = p.real_form, x = p.x, gamma = p.infinitesimal_character
-    then theta = x.involution, suppS = support(x), SCR = G.simple_coroots
-    then goodS = ((for j in complement(G.semisimple_rank,suppS)
-		     do if (gamma*SCR[j]).=
-		        then [j]
-		       	else []
-		       	fi
-		     od.##)##suppS).sort_u
-    in (goodS,x).Levi
-
-
-
-
-
 { compute Hermitian form on p, and report if it is unitary }
-set is_unitary (Param p,int max_time) = (bool,int):
-if not p.is_hermitian
-   then (false,-1)  {2nd false: did not timeout}
-else
-   let (hf,timedout)=hermitian_form_irreducible(p,max_time) in
-   let ()=prints("timdeout value in is_unitary: ", timedout) in
-   if timedout=-1
-       then (hf.is_pure,-1)    {succeeded}
-   else
-       prints("TIMED OUT (is_unitary), time=",timedout);
-       (false,timedout)  {failed}
-   fi
-fi
+set is_unitary (Param p) = bool:
+  p.is_hermitian and hermitian_form_irreducible(p).is_pure
 
 { compute Hermitian form on p, and report
 certificate; unitary means empty certificate }
@@ -409,8 +430,61 @@ set is_unitary_cert (Param p) = [KType]:
 
 { compute Hermitian form on p, report if it is unitary, and otherwise record certificate }
 set is_unitary(Param p,KTypePol_hash cert_hash) = bool:
-  unitary_test_counter.use();
   p.is_hermitian and is_pure_cert_hash(hermitian_form_irreducible(p),cert_hash)
+
+
+{ some time-limited functions, using new built-in |full_deform@(Param,int)| }
+set_type [ maybe_KTP = (void timed_out | KTypePol done) ]
+
+set map ((Param->maybe_KTP)f, ParamPol P) = maybe_KTP:
+  sum(P.real_form
+     ,for c@p in P
+     ~do case f(p) | timed_out: return timed_out() | done(r): c*r esac
+      od
+     ).done
+
+set c_form_irreducible (Param p,int time) = maybe_KTP:
+   let ori_nr_p = orientation_nr(p), expiration = elapsed_ms() + time
+   then oriented_KL_sum = ParamPol: null_module(p) +
+      for c@q in KL_sum_at_s(p) do (c*orientation_nr_term(ori_nr_p,q),q) od
+   in map( (Param p) maybe_KTP: full_deform(p,expiration-elapsed_ms())
+      , oriented_KL_sum
+      )
+
+set twisted_c_form_irreducible (Param p,int time) = maybe_KTP:
+( let (fixed,unfixed)=twisted_c_form_irreducible_contributions(p)
+  , expiration = elapsed_ms() + time
+{ |1+s| divides |unfixed|, no need for |scale_extended|; take half at |nu=0| }
+  in case
+        map( (Param p) maybe_KTP: twisted_full_deform(p,expiration-elapsed_ms())
+	   , fixed
+	   )
+     | timed_out: timed_out()
+     | done(r): done(r + half(unfixed.K_type_pol))
+     esac
+)
+
+set hermitian_form_irreducible (Param p, int time) = maybe_KTP:
+   unitary_test_counter.use();
+   let start_time = elapsed_ms()
+   then answer = case if is_equal_rank(real_form(p))
+               	      then c_form_irreducible(p,time)
+	 	      else check_hermitian(p,true); twisted_c_form_irreducible(p,time)
+	 	      fi
+   		 | timed_out: return timed_out()
+   		 | done(r): r.convert_cform_hermitian.done
+   		 esac
+  then () = unitaryTime+:=elapsed_ms() - start_time
+  in answer
+
+set is_unitary (Param p, int time) = int: { -1: no, 0:timed out, 1: yes }
+    if p.is_hermitian
+    else -1
+    then case hermitian_form_irreducible(p,time)
+       	 | timed_out: 0
+       	 | done(result): if result.is_pure then 1 else -1 fi
+       	 esac
+    fi
 
 { end of core unitarity functionality, remaining variations for user comfort }
 
@@ -447,7 +521,7 @@ in ( formula, standards
 set twisted_c_form_irreducible_as_sum_of_standards (Param p) = ParamPol:
   +twisted_c_form_irreducible_contributions(p) { add twisted and untwisted }
 
-{.c_form_irrecible with extra information.}
+{.c_form_irreducible with extra information.}
 set twisted_c_form_irreducible_long (Param p) =
     (ParamPol,[(Param,Split,KTypePol)],[Param,Split,KType],KTypePol):
 ( assert(twist(p)=p,"parameter is not fixed by inner class involution");
@@ -766,7 +840,6 @@ set_type
   , ( -> int) count
   , ( -> ) clear
   , (Param->bool) entry
-  , ((Param,int)->(bool,int)) entry_timeout
   , (Param->bool) do_you_know {asks if the answer is tabulated}
   , (Param->) append
   , ((Param,bool)->) attest {attest to unitarity of Param}
@@ -801,40 +874,6 @@ set make_unitarity_bool_hash () = unitarity_bool_hash:
 		       			 "unitarity_bool_hash is damaged")
 		  fi
 	in bool_data[m]
-     end
-     , ((Param,int) -> (bool,int)): {entry_timeout} (Param p, int max_time) (bool,int):
-     begin
-	if #simple_factors(p.real_form) = 1
-	then p:=herm_center(p)
-	fi;
-	let M = param_hash.size()
-	then m = param_hash.lookup(p) {just lookup, don't add if not present}
-        then timedout=-1
-	then () = if m = -1   {not in table, try is_unitary}
-	     	  then prints("m=-1");unitary_test_counter.use();
-                     let (is_unitary_result,timedout_result)=is_unitary(p,max_time) in
-                     timedout:=timedout_result;
-                     prints("timed_out_result: ", timedout_result);
-                     if timedout_result=-1
-                         then
-                              param_hash.match(p); {add it}
-                              prints("added parameter to unitary hash");
-                              bool_data#:=is_unitary_result;
-                              prints("bool_data size: ", #bool_data);
-                              prints("param_hash size: ", param_hash.size());
-                              assert(#bool_data = param_hash.size(),"unitarity_bool_hash is damaged")
-                         fi
-		  fi
-        in
-          prints("timedout in make_unitarity_bool_hash: ", timedout);
-          if timedout>0
-             then (false,timedout)
-          else
-             prints("PROBLEM HERE=---------------------------------------------------------------");prints("timedout: ", timedout, "  m=",m);
-             prints("conclusion: param_hash size: ", param_hash.size(), new_line,"bool_data size: ", #bool_data);
-             assert(#bool_data = param_hash.size(),"unitarity_bool_hash is damaged (second test)");
-             (bool_data~[0],-1)
-          fi
      end
    , (Param -> bool): {do_you_know} (Param p) bool:
      if #simple_factors(p.real_form) = 1
@@ -872,43 +911,50 @@ set make_unitarity_bool_hash () = unitarity_bool_hash:
   )
 )
 
+{smallest theta-stable Q from which p is good range cohomologically induced, and the inducing parameter}
+set good_Q(Param p) = (KGPElt, Param):
+    let G = p.real_form, x = p.x, gamma = p.infinitesimal_character
+    then theta = x.involution, suppS = support(x), SCR = G.simple_coroots
+    then goodS = ((for j in complement(G.semisimple_rank,suppS)
+		     do if (gamma*SCR[j]).=
+		        then [j]
+		       	else []
+		       	fi
+		     od.##)##suppS).sort_u
+    then goodQ = KGPElt:(goodS, x)
+    then goodL = goodQ.Levi
+    then xL = inverse_embed_KGB(x,goodL)
+    then goodpL = parameter(xL, p.lambda_minus_rho+goodL.rho, p.nu)
+    in (goodQ,goodpL)
+
+set good_L(Param p) = RealForm:
+    let G = p.real_form, x = p.x, gamma = p.infinitesimal_character
+    then theta = x.involution, suppS = support(x), SCR = G.simple_coroots
+    then goodS = ((for j in complement(G.semisimple_rank,suppS)
+		     do if (gamma*SCR[j]).=
+		        then [j]
+		       	else []
+		       	fi
+		     od.##)##suppS).sort_u
+    in (goodS,x).Levi
+
+{smallest easy theta-stable Q from which p is weakly good range cohomologically
+induced, and the inducing parameter}
+set wkgood_Q(Param p) = (KGPElt, Param):
+    let G = p.real_form, x = p.x, gamma = p.infinitesimal_character
+    then theta = x.involution, suppS = support(x) {, SCR = G.simple_coroots}
+    then wkgoodQ = KGPElt:(suppS, x)
+    then wkgoodL = wkgoodQ.Levi
+    then xL = inverse_embed_KGB(x,wkgoodL)
+    then wkgoodpL = parameter(xL, p.lambda_minus_rho+wkgoodL.rho, p.nu)
+    in (wkgoodQ,wkgoodpL)
+
 set unitarity_hash = make_unitarity_bool_hash()
-
-
-set is_unitary_hash(Param p,int max_time) = ([bool],int):
-    let ()=prints("In is_unitary_hash, max_time=", max_time) in 
-    if not is_hermitian(p) then return ([],-1) fi;
-    let ()=prints("is hermitian") in
-    let (,pL) = wkgood_Q(p), G=p.real_form
-    then derpLs = derived_factor_params2(pL)
-    in if pL=p 
-        then let ()=prints("pL=p") in let (answer,timedout)=unitarity_hash.entry_timeout(p,max_time) in
-        let ()=prints("timedout=", timedout) in
-        if
-           timedout=-1 then ([answer],-1)
-        else
-           prints("TIMED OUT: ", timedout);
-           ([],timedout)
-        fi
-    else
-       let ()=prints("is_unitary_hash, other case") in     let answer = all([(->bool)] : for derpL in derpLs do @bool: unitarity_hash.entry(derpL) od)
-    in if
-       answer then ([answer],-1)
-    else
-       let goodL = good_L(p) in 
-            ([is_pure(sum(G, for c@qL in hermitian_form_irreducible(pL)
-			      do c*theta_induce_standard(param(qL),
-			           goodL)
-			      od))],-1)
-       fi
-    fi
-
-
 
 set is_unitary_hash(Param p) = bool:
     if not is_hermitian(p) then return false fi;
     let (,pL) = wkgood_Q(p), G=p.real_form
-    then derpLs = derived_factor_params2(pL)
+    then derpLs = derived_factor_params0(pL)
     then answer = all([(->bool)] : for derpL in derpLs do @bool:
        			unitarity_hash.entry(derpL) od)
     {then formL = hermitian_form_irreducible(pL)}
@@ -929,5 +975,3 @@ set do_you_know_is_unitary(Param p) = bool:
 
 set attest_is_unitary(Param p, bool answer) = void:
     unitarity_hash.attest(p,answer)
-
-

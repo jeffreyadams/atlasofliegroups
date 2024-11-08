@@ -750,7 +750,7 @@ RatWeight get_ratweight(input::InputBuffer& ib,
   return RatWeight(num,denom);
 }
 
-StandardRepK get_standardrep(const SRK_context& c)
+standardrepk::StandardRepK get_standardrep(const standardrepk::SRK_context& c)
 {
   unsigned long x=get_bounded_int
     (sr_input_buffer,"Choose KGB element: ",c.kgb().size());

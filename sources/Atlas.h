@@ -477,29 +477,8 @@ namespace atlas {
   using IntPolEntry = polynomials::PolEntry<ext_kl::Coeff>;
   using ext_KL_hash_Table = HashTable<IntPolEntry,ext_kl::KLIndex>;
 
-  namespace standardrepk {
-    class StandardRepK;	// standard representation restricted to K
-    typedef std::pair <Weight,RankFlags> HCParam; // free part wrt rho, torsion
-    typedef Free_Abelian<StandardRepK> Char;// linear combination
-    typedef std::pair<StandardRepK,Char> CharForm;
-    typedef std::pair<Weight,TitsElt> RawRep;
-    typedef Free_Abelian<RawRep> RawChar;
-    typedef Free_Abelian<StandardRepK,Polynomial<int> > q_Char;
-    typedef std::pair<StandardRepK,q_Char> q_CharForm;// $q$-$K$-type formula
-    typedef Free_Abelian<RawRep,Polynomial<int> >Raw_q_Char;
-    typedef unsigned long int seq_no; // sequence number of stored standard rep|K
-    typedef unsigned int level; // unsigned LatticeCoeff
-    struct Cartan_info;
-    struct bitset_entry;
-    class SRK_context;
-    class graded_compare;// utility class for comparing by degree first
-    class KhatContext;
-    class HechtSchmid;	// Hecht-Schmid identity
-    class PSalgebra;    // parabolic subalgebra
-  }
-  using standardrepk::StandardRepK;
-  using standardrepk::SRK_context;
-  using standardrepk::KhatContext;
+// the standardrepk module no longer is part of Atlas program, leave it out
+// declarations exclusively for the Fokko program are in standardrepk.h
 
   namespace repr {
     using level = unsigned int; // for height statistic of K type and parameters
@@ -543,6 +522,9 @@ namespace atlas {
 #endif
   }
 
+  // here is one actual (non-type) declaration, which allows ever including
+  // an interpreter header into Atlas library files
+  namespace interpreter { void check_interrupt(); }
 
 } // |namespace atlas|
 

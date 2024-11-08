@@ -83,6 +83,8 @@ set print_mu (KType tp) = void:
      let (lt,tt,dt)=mu_terms(tp,tp.real_form.distinguished_involution) in
      prints(tp, "    ", 1 , "     ", "  ", lt, "  ", tt, "     ", dt, lt+tt+dt )
 
+{SEEMS TO GIVE SAME ANSWER IF mu(*,delta) is replaced by mu(*)??? Checked Spin(5,5),
+E6_s, SL(5,R)}
 {.convert (twisted) c-form to hermitian form, using p0 for normalization.}
 set convert_cform_hermitian (KTypePol P,mat delta, KType p0)= KTypePol:
   if =#P then P { since we cannot select a term from a null polynomial }
