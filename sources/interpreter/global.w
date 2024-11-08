@@ -819,13 +819,17 @@ definition_group::definition_group(unsigned int n_ids)
 : bindings(), constness(n_ids)
 {@; bindings.reserve(n_ids); }
 @)
-void definition_group::thread_bindings(const id_pat& pat,const type_expr& type)
+void definition_group::thread_bindings(const id_pat& pat,const type_expr& te)
 { if ((pat.kind & 0x1)!=0)
-    add(pat.name,type.copy(),(pat.kind & 0x4)!=0);
+  {
+    type tp = type::wrap(te,0,0);
+    bool constant = tp.is_polymorphic() or (pat.kind & 0x4)!=0;
+    add(pat.name,tp.bake_off(),constant);
+  }
   if ((pat.kind & 0x2)!=0)
     // recursively traverse sub-list for a tuple of identifiers
-  { assert(type.kind()==tuple_type);
-    wtl_const_iterator t_it(type.tuple());
+  { assert(te.kind()==tuple_type);
+    wtl_const_iterator t_it(te.tuple());
     for (auto p_it=pat.sublist.begin(); not pat.sublist.at_end(p_it);
          ++p_it,++t_it)
       thread_bindings(*p_it,*t_it);
@@ -916,7 +920,7 @@ void do_global_set(id_pat&& pat, const expr& rhs, int overload,
         @< Report that type |t| of |rhs| does not have required structure,
            and |throw| @>
       @< Check that we are not setting an operator to a non-function value @>
-      b.thread_bindings(pat,std::move(tp).bake_off());
+      b.thread_bindings(pat,tp.bake_off());
         // match identifiers and their future types
     }
 @)
