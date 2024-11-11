@@ -1148,7 +1148,7 @@ or even |type::bottom()| in the case of an empty list display) to match |target|
     err.variants.append(std::move(conflicts));
     throw std::move(err);
   }
-  if (not common.unify(target))
+  if (not common.unify_specialise(target))
     throw type_error(e,common.bake_off(),target.copy());
 }
 
@@ -1460,12 +1460,7 @@ case applied_identifier:
   expression_ptr id_expr = @| is_local
   ? expression_ptr(new local_identifier<false>(id,i,j))
   : expression_ptr(new global_identifier<false>(id));
-  if (tp.specialise(id_t->unwrap()))
-    // then required type admits known identifier type
-    return id_expr;
-  else if (coerce(id_t->unwrap(),tp,id_expr,e.loc))
-    return id_expr;
-  throw type_error(e,id_t->bake(),tp.copy());
+  return conform_types(*id_t,tp,fc,std::move(id_expr),e);
 }
 
 @*1 Resolution of operator and function overloading.
@@ -1640,20 +1635,22 @@ error, also aborting the matching process.
     if (a_priori_type.matches
          (variant.f_tp().arg_type,variant.poly_degree())) // exact match
     {
+      if (prev_match!=nullptr)
+        @< Throw error reporting ambiguous exact match @>
+      expression_ptr call;
+      expression_ptr arg = n_args==1 ? std::move(arg_vector[0])
+			 : expression_ptr(std::move(tup_exp));
       const type_expr& arg_type = a_priori_type.unwrap();
         // actual argument type
-      const type_expr res_type =
-        substitution(variant.f_tp().result_type,a_priori_type.assign());
-     if (prev_match!=nullptr)
-       @< Throw error reporting ambiguous exact match @>
-     expression_ptr arg = n_args==1 ? std::move(arg_vector[0])
-			: expression_ptr(std::move(tup_exp));
-     expression_ptr call;
-@/   @< Assign to |call| a converted call expression of the function value
-       |variant.value()| with argument |arg| @>
-     result = conform_types(res_type,tp,std::move(call),e);
-     prev_match = &variant;
-@/// |res_type| is recorded in |tp|, and |arg_type| has served and is forgotten
+@/    @< Assign to |call| a converted call expression of the function value
+        |variant.value()|... @>
+      const type res_type = type::wrap
+        ( substitution(variant.f_tp().result_type,a_priori_type.assign())
+        , fc
+        );
+      result = conform_types(res_type,tp,fc,std::move(call),e);
+@/    prev_match = &variant;
+@/ // |res_type| is recorded in |tp|, and |arg_type| has served and is forgotten
     }
     a_priori_type.clear(apt_deg);
       // remove type variable introduced by |match|
@@ -1723,7 +1720,7 @@ test \emph{can} be made here, since we have the argument type in the variable
    |variant.value()|... @>=
 { if (tp==void_type and
       id==equals_name() and
-      res_type!=void_type)
+      variant.f_tp().result_type!=void_type)
   { std::ostringstream o;
     o << "Use of equality operator '=' in void context; " @|
       << "did you mean ':=' instead?\n  If you really want " @|
@@ -1771,11 +1768,11 @@ for (const auto& variant : variants)
     @< Apply an implicit conversion for every argument whose type in
        |a_priori_type| differs from that required in |arg_type|, then assign
        converted expression to |arg| @>
-    const type_expr& res_type = variant.f_tp().result_type;
     expression_ptr call;
 @/  @< Assign to |call| a converted call expression of the function value
-       |variant.value()| with argument |arg| @>
-    return conform_types(res_type,tp,std::move(call),e);
+       |variant.value()| with argument |arg|, which is of type |arg_type| @>
+    const type res_type = type::wrap(variant.f_tp().result_type,fc);
+    return conform_types(res_type,tp,fc,std::move(call),e);
   }
 
 
@@ -2465,16 +2462,16 @@ case function_call:
   // consolidate to a (maybe polymorphic) |type|
   type_expr arg_pat = f_type.skeleton(f_pat.func()->arg_type);
   expression_ptr arg = convert_expr(call.arg,fc,arg_pat);
-  type arg_type = type::wrap(arg_pat,f_type.floor());
+  type arg_type = type::wrap(arg_pat,fc);
   if (arg_type.is_void() and not is_empty(call.arg))
     arg.reset(new voiding(std::move(arg)));
   if (not arg_type.matches(f_type.func()->arg_type,f_type.degree()))
     throw type_error(e,std::move(arg_pat),std::move(f_pat.func()->arg_type));
-  const type_expr result_type =
-    substitution(f_type.func()->result_type,arg_type.assign());
   expression_ptr re(new @|
      call_expression(std::move(fun),std::move(arg),e.loc));
-  return conform_types(result_type,tp,std::move(re),e);
+  const type result_type =
+    type::wrap(substitution(f_type.func()->result_type,arg_type.assign()),fc);
+  return conform_types(result_type,tp,fc,std::move(re),e);
 }
 
 @ When a call expression has an identifier in the place of the function (as is
@@ -4132,7 +4129,8 @@ case subscription:
   @< Set |subscr| to a pointer to a subscription of a kind determined by
      |array_type|, |index_type| while setting |subscr_type|, and holding
      pointers moved from |array| and |index|, or |throw| an error @>
-  return conform_types(subscr_type,tp,std::move(subscr),e);
+  type result_type = type::wrap(subscr_type,fc);
+  return conform_types(result_type,tp,fc,std::move(subscr),e);
 }
 
 @ This is a large |switch| statement (the first of several) that is required to
@@ -4277,7 +4275,8 @@ case slice:
       throw expr_error(e,o.str());
     }
 @)
-  return conform_types(array_type,tp,std::move(subscr),e);
+  type result_type = type::wrap(array_type,fc); // slicing does not change type
+  return conform_types(result_type,tp,fc,std::move(subscr),e);
 }
 
 
@@ -6742,20 +6741,40 @@ catch (error_base& e)
 %
 Casts are very simple to process. They do not need any |expression| type to
 represent them, so type-checking is all there is to it. Nonetheless there is a
-subtlety in the code below, which starts with |tp.specialise(c.dst_tp)| even
-though the final |conform_types| will attempt the same specialisation. As a
-consequence, the specialisation now takes place \emph{before} the conversion,
-which in case our cast forms a function body means that the result type of that
-function body expression gets specialised before the body is actually analysed.
-Therefore any \&{return} expressions in the body will profit from the cast's
-strong type context.
+subtlety in the code below, in that |tp.specialise(c.dst_tp)| is called and used
+to make (just) a separate call of |convert_expr| for the common case that |tp|
+allows itself to be specialised to the cast type |c.dst_pt|, and therefore no
+coercion will be need to be applied to the result of the cast. It would be
+possible to leave this separation of paths out entirely, since the call to
+|convert_expr_strongly| followed by |conform_types| (which starts trying to
+|tp.specialise(c.dst_tp)|) can handle this no-coercion case as well. There is
+however an advantage to our current approach, namely that if our cast is a
+function body (as will often be the case), the specialisation of |tp| will
+immediately set the return type variable of the function, which not only affects
+ordinary type expected for the function body (which is our cast), but also of
+any \&{return} expressions in that body.
+
+Instead of a coercion, one might imagine that a discrepancy between the required
+|tp| and the type |c.dst_pt| of the cast could be resolved by unification,
+namely by assigning certain concrete types for certain polymorphic type
+variables in the latter to obtain the former; that could be achieved by wrapping
+|c.dst_tp| in a |type| variable, and using the alternative form of
+|conform_types|, as we do for instance in the case of applied identifiers. The
+reason we do not do so here is that we deliberately no allow a cast to specify a
+polymorphic type (since allowing contexts that \emph{require} a polymorphic type
+causes headaches we wish to avoid, and there is no obvious advantage of allowing
+such casts); the situation allowing such unification following a cast therefore
+simply cannot arise. A cast can of course require a type using abstract type
+variables that are in scope, and the resulting type will then become polymorphic
+if it is exported from that scope.
 
 @< Cases for type-checking and converting... @>=
 case cast_expr:
 { cast_node& c=*e.cast_variant;
-  if (tp.specialise(c.dst_tp)) // see if we can do without conversion
+  if (tp.specialise(c.dst_tp)) // see if we can do without coercion
     return convert_expr(c.exp,fc,tp); // in which case use now specialised |tp|
-  expression_ptr p = convert_expr(c.exp,fc,c.dst_tp); // otherwise use |c.dst_tp|
+  expression_ptr p = convert_expr_strongly(c.exp,fc,c.dst_tp);
+  // otherwise use |c.dst_tp|
   return conform_types(c.dst_tp,tp,std::move(p),e);
 }
 
@@ -7177,6 +7196,17 @@ sections. Since identification of operations depends on types of their
 arguments, this code needs to come after types have been checked, and must
 operate on the converted expression |r| rather than on~|e|, even though this is
 more difficult.
+
+We could have written |conform_types(*id_t,tp,fc,std::move(assign),e)| as final
+statement of the |if| branch, suggesting that the type |*id_t| of the variable
+might be unified (reduced in polymorphic generality) to lead to the type |tp|
+required in the context. But we leave out this possibility, for a similar reason
+to why we omitted it for casts: the language will not allow assigning to
+variables of polymorphic type (since this would give a strong polymorphic
+context for the left hand side of the assignment). So |*id_t| is necessarily
+monomorphic, and the case where unification would be useful cannot arise. By the
+same token, we need not bother with unification of the results of other forms of
+assignment, like multiple assignments or component assignments.
 
 @< Cases for type-checking and converting... @>=
 case ass_stat:

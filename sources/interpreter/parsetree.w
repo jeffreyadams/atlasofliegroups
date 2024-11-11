@@ -2551,7 +2551,7 @@ typedef struct cast_node* cast;
 
 @< Structure and typedef definitions for types built upon |expr| @>=
 struct cast_node
-{ type_expr dst_tp; expr exp;
+{ const type_expr dst_tp; expr exp;
 @)
   cast_node(type_expr&& tp, expr&& exp)
 @/: dst_tp(std::move(tp))

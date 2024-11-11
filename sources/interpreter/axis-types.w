@@ -774,8 +774,6 @@ bool type_expr::specialise(const type_expr& pattern)
   if (tag==undetermined_type) // specialising \.* also always succeeds,
     {@; set_from(pattern.copy()); return true; }
      // by setting |*this| to a copy of  |pattern|
-  if (pattern.tag==variable_type) // we assume it is non-fixed for now
-    return true;  // since impossible type \.{A} narrower than whatever
   if (pattern.tag==tabled)
   { if (tag==tabled) // both are defined type; see if they are the same
       return tabled_variant==pattern.tabled_variant;
@@ -2445,8 +2443,10 @@ type_expr bake() const; // extract |type_expr| after substitution
 type_expr bake_off(); // extract |type_expr|, sacrificing self if needed
 @)
 bool has_unifier(const type_expr& t) const;
-bool unify(type_expr& pattern) // adapt to pattern while specialising pattern
+bool unify_specialise(type_expr& pattern)
+  // adapt to pattern while specialising pattern
   {@; return unify(te,pattern); } // recursive helper method does the work
+bool unify_specialise(type_expr& pattern, unsigned int fix_count) const;
 bool matches (const type_expr& formal, unsigned int n);
   // non-|const|; assignment is left in |a|
 @)
@@ -2576,13 +2576,13 @@ bool type::has_unifier(const type_expr& t) const
 @ The method |type::unify| is like the function |can_unify|, but on the side of
 the pattern the only changes are specialisations of undefined subexpressions.
 Any type variables present in |pattern| are not substituted for: unless they
-match up with the same type variable on out side they cause unification to fail.
-The necessary substitutions on our |type| side are recorded in our |a| field,
-which is convenient for our implementation: any occurrence of a type variable
-after the first will get the value that was substituted for it the first time.
-Once the unification succeeds, the caller can decide whether to preserve these
-type assignments for further unification, or use them to perform substitutions,
-or forget them by calling |clear|.
+match up with the same type variable on our side, they cause unification to
+fail. The necessary substitutions on our |type| side are recorded in our |a|
+field, which is convenient for our implementation: any occurrence of a type
+variable after the first will get the value that was substituted for it the
+first time. Once the unification succeeds, the caller can decide whether to
+preserve these type assignments for further unification, or use them to perform
+substitutions, or forget them by calling |clear|.
 
 @< Function definitions @>=
 
@@ -2644,6 +2644,21 @@ if (pattern.is_unstable())
 { std::ostringstream o;
   o << "Cannot unify a type variable and an incomplete type " << pattern;
   throw program_error(o.str());
+}
+
+@ The second method |type::unify_specialise| is basically the same as the first
+(which calls the auxiliary |type::unify| we just defined), but is a |const|
+method so that in particular the |type_assignment| field |a| is unchanged. This
+is achieved by copying our type before calling |unify| on the copy. We use the
+occasion of copying to also renumber our bound variables starting from a new
+level |lvl|, which is useful to make place for variables in |pattern| that
+should be considered fixed there, and disjoint from our bound variables.
+
+@< Function definitions @>=
+
+bool type::unify_specialise(type_expr& pattern, unsigned int lvl) const
+{ assert(lvl>=floor()); // we cannot start numbering below our |floor()|
+  return wrap(te,floor(),lvl-floor()).unify_specialise(pattern);
 }
 
 @ Now that types are polymorphic, we need a function to replace the method
@@ -3880,6 +3895,9 @@ bool coercible(const type_expr& from_type, const type_expr& to_type);
 expression_ptr conform_types
   ( const type_expr& found, type_expr& required
   , expression_ptr&& d, const expr& e);
+expression_ptr conform_types
+  ( const type& found, type_expr& required, unsigned int fix_count
+  , expression_ptr&& d, const expr& e);
 const conversion_record* row_coercion(const type_expr& final_type,
 				     type_expr& component_type);
 void coercion(const type_expr& from,
@@ -4160,11 +4178,30 @@ If both attempts to conform the types fail we throw a |type_error|; doing so
 we must take a copy of |found| (since it a qualified |const|), but we can move
 from |required|, whose owner will be destructed before the error is caught.
 
+A second form of |conform_types| is used when a wrapped up, possibly
+polymorphic, |found| type needs to be compared against a |required| type. It is
+currently used only for applied identifiers, but should be used in other
+occasion where |found| was determined previously, independently of the
+|required| type. Extra care is needed here since polymorphic type variables from
+the stored type |found| might conflict with those present in |required| as
+abstract (fixed) type variables currently in scope. For this reason the current
+limit |fix_count| is passed as argument, and our polymorphic type variables will
+be renumbered to start at that limit. The actual renumbering takes place in the
+method |type::unify_specialise| that is called here.
+
 @< Function def... @>=
 expression_ptr conform_types
 (const type_expr& found, type_expr& required, expression_ptr&& d, const expr& e)
 { if (not required.specialise(found) and not coerce(found,required,d,e.loc))
     throw type_error(e,found.copy(),required.copy());
+  return std::move(d); // invoking |std::move| is necessary here
+}
+expression_ptr conform_types
+  (const type& found, type_expr& required, unsigned int fix_count,
+   expression_ptr&& d, const expr& e)
+{ if (not found.unify_specialise(required,fix_count) and @|
+      not coerce(found.unwrap(),required,d,e.loc))
+    throw type_error(e,found.bake(),required.copy());
   return std::move(d); // invoking |std::move| is necessary here
 }
 
