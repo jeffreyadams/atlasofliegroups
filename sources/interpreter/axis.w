@@ -6823,7 +6823,7 @@ found we fall through this code, leading to a ``no instance found'' error.
   expression_ptr result;
   type_expr deduced_type;
   const overload_data* prev_match=nullptr;
-  if (auto* vars = global_overload_table->variants(c->oper))
+  if (@[auto* vars = global_overload_table->variants(c->oper)@;@])
     for (const auto& variant : *vars)
     {
       unsigned op_deg = variant.poly_degree();
