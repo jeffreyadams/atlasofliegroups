@@ -1,3 +1,9 @@
+{dimension of the convex hull of the vertices}
+set cvx_hull_dim([ratvec] verts) = int:
+    if #verts = 0 then return(-1) fi;
+    let norms = mat: for v in verts[1:] do (v-verts[0]).numer od
+    in rank(norms)
+
 {given m by n integer matrix A and integer vec b of size m, consider
 affine space
 
@@ -20,7 +26,6 @@ F(S,epsilon), such that H\cap F(S,epsilon) = {v}
 
 Claim/conjecture: H\cap F is the convex hull of its good extreme
 points.}
-
 {A size m by n, b size m}
 set good_interior_point(mat A, vec b) = [ratvec]:
 if rank(A) < #A then return [] fi;

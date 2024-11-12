@@ -1088,7 +1088,7 @@ set FPP_flippable_edges = (InnerClass -> [FaceVertsIndex]):
     	      then let (Affd,M,j0) = cofolded(ic), start = elapsed_ms()
     	      then vlist = FPP_vertices(Affd,j0), FVs = fundamental_vertices(Affd)
     	      then vdAff = to_vertex_data(vlist)
-    	      then answer = 
+    	      then answer =
     	      	   for FVind in fund_flippable_edges(Affd)
        	 	   do let bary_F=face_bary(FVs,FVind)
 	    	      then FV = for i in FVind do FVs[i] od
@@ -1111,12 +1111,52 @@ set FPP_flippable_edges = (InnerClass -> [FaceVertsIndex]):
 	      in ()
 	      fi
     in Ffes[i]
-
-
+{
+set FPP_flippable_edges_bary = (InnerClass -> [ratvec]):
+    let ichash = make_InnerClass_hash()
+    then Ffebs = [[ratvec]]: [] {one for each inner class}
+    in (InnerClass -> [ratvec]): (InnerClass ic) [ratvec]:
+       let I = ichash.size() {how many inner classes do I know?}
+       then i = ichash.match(ic) {"match" means look up the new inner class in the list
+       	      			 ichash, and add it if it's new. "i" is the number of the
+				 new inner class in the list}
+       then () = if i=I {haven't seen this inner class before}
+    	      then let (Affd,M,j0) = cofolded(ic), start = elapsed_ms()
+    	      then vlist = FPP_vertices(Affd,j0), FVs = fundamental_vertices(Affd)
+    	      then vdAff = to_vertex_data(vlist)
+    	      then answer =
+    	      	   for FVind in fund_flippable_edges(Affd)
+       	 	   do let bary_F=face_bary(FVs,FVind)
+	    	      then FV = for i in FVind do FVs[i] od
+	    	      then aff_short_list = FPP_w_shifts(Affd,bary_F,j0)
+	    	      then aff_list = [AffineCoWeylElt]:
+	       	      	   for (w,taus) in aff_short_list
+	       	 	   do for tau in taus
+			      do (tau,w)
+			      od
+	       	 	   od.##
+	     	      in for wtilde in aff_list
+	     	      	 do FaceVertsIndex:
+		   	    for v in wtilde*FV
+		   	    do vdAff.lookup(v)
+		   	    od.sort
+	     		 od { type is [ratvec], remains for next line}
+	  	    od.##
+	      then () = Ffes #:= answer
+    	      then () = Ffe_time +:= elapsed_ms() - start
+	      in ()
+	      fi
+    in Ffes[i]
+}
 {these are pairs [p,q] index FPP vertices that can be flipped by an automorphism
 related to G; condition is that the ratvec connecting the vertices is in X^*.}
 set FPP_flippable_edge_lookup(InnerClass ic) = (vec -> int):
     index_in(FPP_flippable_edges(ic))
+
+set FPP_flippable_edge_bary_lookup(InnerClass ic) = (ratvec -> int):
+    let vlist = FPP_vertices(ic)
+    then barys = for w in FPP_flippable_edges(ic) do face_bary(vlist,w) od
+    in index_in(barys)
 
 {this is everything that can be a local vertex: the global vertices,
 plus the barycenters of edges that are flipped by an automorphism that
@@ -1135,6 +1175,11 @@ set FPP_local_vertices_cube(InnerClass ic) = [ratvec]:
     in for v in local_verts
        do for av in Aff_coroots do av*v od
        od
+
+set FPP_local_vertices_typed_sorted(InnerClass ic) = ([ratvec],[ratvec]):
+    let vlist = FPP_vertices(ic)
+    then FEL = FPP_flippable_edge_lookup(ic)
+    in (vlist.sort, for w in FPP_flippable_edges(ic) do face_bary(vlist,w) od)
 
 {to record time computing flippable triangles}
 set Fftri_time = int: 0
@@ -1206,6 +1251,9 @@ set FPP_flippable_triangles_by_zero= (InnerClass ->  [[FaceVertsIndex]]):
 	      	    in ()
 	      	 fi
       in Fftrisbz[i]
+
+{parts are FF, FT, TT}
+{set FPP_local_edges_typed(InnerClass ic) = ([[FacetVertsIndex]}
 
 set Fftet_time = int: 0
 {these are quadruples [i,j,p,q] indexing FPP tetrahedra that can be flipped by an automorphism
