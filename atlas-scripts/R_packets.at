@@ -4,7 +4,7 @@
 <goodroots.at {for anti_finalize}
 <FPP_faces_herm.at {for FPP_lambdas}
 < K_highest_weights.at {for all_lambda_differential_0}
-
+< aff_cube.at
 {this computes the R-packet of a single K-type.}
 set R_packet(KType mu) = [KType]: LKTs(anti_finalize(parameter(mu)))
 
@@ -168,7 +168,7 @@ in index[#x]:=0 { mark |x| as seen, and present in |orbit[0]| }
 
 set blobx(KGBElt x) = [KGBElt]:
 (   let G = x.real_form
-   then index = for :KGB_size(G) do minus_1 od
+    then index = for :KGB_size(G) do minus_1 od
    , orbit = [x]
    , i=0
 in index[#x]:=0 { mark |x| as seen, and present in |orbit[0]| }
@@ -212,14 +212,22 @@ set DVblobx(KGBElt x) = [KGBElt]:
 {set blobwx(KGBElt x) = [WeylElt, KGBElt]:
     for y in blobx(x) do (cross_divide(y,x), y) od {w carries x to y}}
 
+{Takes 65 g to do less than 200 w in x KGB(E8_s,10000), lambda = rho}
 {all (y,tau) reachable from (x,lambda) by complex cross; assume blob is the list of x}
 set blobwxl(KGBElt x, ratvec lambda, [(WeylElt,KGBElt)] blobwx) = [(WeylElt, KGBElt, ratvec)]:
-    for (w,y) in blobwx
-    do let tau = parameter(y, w*lambda, 0*lambda).lambda
-       in if position(y,tau).>=
-	  then [(w,y,tau)]
-	  else []
-	  fi
+    for (w,y)@j in blobwx
+    do	{if j%20 = 0 then prints("starting #",j) fi;}
+    	{if twist(y) != y then []}
+	{if hermitian_dual(parameter(x,lambda,0*lambda)) != parameter(x,lambda,0*lambda)
+	then []
+	else} let tau = parameter(y, w*lambda, 0*lambda).lambda
+       	     then A = 1+y.involution
+       	     in if {position(y,tau).>=} {(#local_FPP_extrema_new(y, tau)).>}
+	     	   local_FPP_extrema_short(y,tau)
+	     	then [(w,y,tau)]
+	     	else []
+	  	fi
+	{fi}
     od.##
 
 {all (y,tau) reachable from (x,lambda) by complex cross}
@@ -231,7 +239,7 @@ set blobxl(KGBElt x, ratvec lambda) = [(KGBElt, ratvec)]:
     for (,y,tau) in blobwxl(x,lambda) do (y,tau) od
 
 {local vertices and relation to FPP_vertices for each (x,lambda) in blob}
-set wLPms([(WeylElt, KGBElt,ratvec)] blobwxl) = [WeylElt, (LocalVertexData, PermOrderTwo, vec)]:
+set wLPms([(WeylElt, KGBElt,ratvec)] blobwxl) = [WeylElt, (LocalVertexData, PermOrderTwo{, vec})]:
     if #blobwxl = 0 then return [] fi;
     let (,x,lambda) = blobwxl[0]
     then G = x.real_form
@@ -241,16 +249,16 @@ set wLPms([(WeylElt, KGBElt,ratvec)] blobwxl) = [WeylElt, (LocalVertexData, Perm
        in (w, LPm_table.LPm_entry(G,theta, ratvec_as_vec((1+theta)*tau)))
     od
 
-set wLPms(KGBElt x,ratvec lambda) = [WeylElt, (LocalVertexData, PermOrderTwo, vec)]:
+set wLPms(KGBElt x,ratvec lambda) = [WeylElt, (LocalVertexData, PermOrderTwo{, vec})]:
     let blobwxl = blobwxl(x,lambda)
     in wLPms(blobwxl)
 
 {list of vertices and edges for each (x,lambda) in blob}
-set wLFs([(WeylElt, KGBElt,ratvec)] blobwxl, [WeylElt, (LocalVertexData, PermOrderTwo, vec)] wLPms) = [(WeylElt, (LocalVertexData,[[vec]]))]:
+set wLFs([(WeylElt, KGBElt,ratvec)] blobwxl, [WeylElt, (LocalVertexData, PermOrderTwo{, vec})] wLPms) = [(WeylElt, (LocalVertexData,[[vec]]))]:
     if #blobwxl = 0 then return [] fi;
     for  (w,y,tau)@j in blobwxl
-    do let (,(Lvd, Perm2, mapAct))= wLPms[j]
-       in (w, (Lvd,localFD_1Dirac2_by_zero(y,tau,Lvd, Perm2, mapAct)))
+    do let (,(Lvd, Perm2{, mapAct}))= wLPms[j]
+       in (w, (Lvd,localFD_1Dirac2_by_zero(y,tau,Lvd, Perm2{, mapAct})))
     od
 
 set wLFs(KGBElt x, ratvec lambda) = [(WeylElt,(LocalVertexData,[[vec]]))]:
@@ -328,22 +336,32 @@ set concatenate([(WeylElt, (LocalVertexData, [[vec]]))] local01) = (LocalVertexD
 	      	     do vert_hash1.match(v) 
 		     od
 		  od
+    {then () = prints("perms1 = ",perms1)}
     then vert_hash2 = make_ratvec_hash()
+    {then perms2 = for wLvd@j in wLvds
+    	 	  do for v in wLvd.list[wLvd.pair_start:]
+		     do vert_hash2.match(v)
+		     od
+		  od}
+    {then () = prints("perms2 = ",perms2)}
+    {then perms = for j:#wLvds do perms1[j] ## perms2[j] od}
     then perms = for wLvd@j in wLvds {wth entry give map from wLvd.list to big_list}
     	      	 do perms1[j]##for v in wLvd.list[wLvd.pair_start:]
-	      	    do wLvd.pair_start + vert_hash2.match(v)
+	      	    do vert_hash1.size() + vert_hash2.match(v)
 		    od
 		 od
-    {then () = prints(perms)}
+    {then () = prints("perms = ",perms)
+    then () = prints("lists = ",for wLvd in wLvds do wLvd.list od)
+    then () = prints("pair_starts = ",  for wLvd in wLvds do wLvd.pair_start od)}
     then big_list = vert_hash1.list()##vert_hash2.list()
-    {then () = prints(big_list)}
-    then big_Lvd = to_vertex_data(big_list,#vert_hash1.list())
+    {then () = prints(big_list, ", start = ",vert_hash1.size())}
+    then big_Lvd = to_vertex_data(big_list,vert_hash1.size())
     then big_LF = for d:2
     	 	  do for (,(,LF))@i in local01
 		     do for v in LF[d]
 		     	do for j in v
 			   do perms[i][j]
-			   od.sort {now a list of indices into big_list}
+			   od.sort {now a sorted list of indices into big_list}
 			od {now a list of d-faces for ith LF}
 		     od.##.sort_u {sort_u eliminates repetitions}
 		   od {d = 0, 1}
@@ -388,16 +406,21 @@ set FPP_unitary_hash_blob(RealForm G) = void:
     then () = unipotents_to_hash(G,big_unitary_hash.uhash(G))
     then () = for x in KGB(G)
     	      do if (x.number)%100 = 0 then prints("starting KGBElt ",x.number, "; so far ",
-	      print_time_string(elapsed_ms() - start)) fi;
-	      	 for lambda in FPP_lambdas(x)
-       	      	 do FPP_unitary_hash_blob(x, lambda)
-       		 od
+	      	    print_time_string(elapsed_ms() - start), " for ",big_unitary_hash.uhash(G).size(),
+		    " unitary faces") fi;
+		 if twist(x) != x
+		 then ()
+	      	 else for lambda in FPP_lambdas(x)
+       	      	      do FPP_unitary_hash_blob(x, lambda)
+       		      od
+		 fi
      	      od
     in prints("number of unitary faces = ", big_unitary_hash.uhash(G).size(), ", in time ",
               print_time_string(elapsed_ms() - start), " for ",blobCounter, " blobs");
        prints(" time spent in is_unitary = ",print_time_string(unitaryTime),
               ", number of unitarity tests = ", unitary_test_counter.use_count() - oldUcounter);
        prints("Time spent in char calcs = ",print_time_string(charTime), ", #char calcs = ", char_counter.use_count());
+       prints("Time in local_FPP_extrema = ",print_time_string(lFeTimer), ", # fLe calcs = ", lFeCounter);
        prints("Time in localFD_1Dirac2 = ",print_time_string(FD12Time),
        	      ", in localFD_1Dirac2_by_zero = ",print_time_string(FD12bzTime));
        prints("  #hash_real_dumb = ",hash_real_dumbCounter.use_count(),",  #hash_dumb = ", hash_dumbCounter.use_count(),
