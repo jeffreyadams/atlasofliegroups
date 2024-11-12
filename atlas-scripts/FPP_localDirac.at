@@ -3270,8 +3270,12 @@ set local_test_GEO_hash_bottom_layer_interrupt(KGBElt x, ratvec lambda, {VertexD
    	for list in LFDKH do #list od) fi
    then () = if #LFDKH[0] = 0 then return [] fi
    then () = if #LFDKH[0] = 1 {not clear whether Ds help here; already passed min_bottom}
-   	     then return one_param_test_bottom(parameter(x,lambda, Lvd.list[LFDKH[0][0][0]]), Ds, Uhash)
+   	     then return if more_flag then one_param_test_bottom(parameter(x,lambda,
+	     	  	    	      Lvd.list[LFDKH[0][0][0]]), Ds, Uhash)
+	     	  	 else one_param_test(parameter(x,lambda, Lvd.list[LFDKH[0][0][0]]),Uhash)
+			 fi
 	     fi
+
    then start_datas = elapsed_ms(), newDs = [int]:[]
    then MUs = for mu in LKTs(pmin)
    	      do branch_std(mu, Ds~[0])
@@ -3572,7 +3576,9 @@ set local_test_GEO_hash_bottom_layer(KGBElt x, ratvec lambda, {VertexData vd,}
    	     then return []
 	     fi
    then () = if #LFDKH[0] = 1
-   	     then return one_param_test_bottom(parameter(x,lambda, Lvd.list[LFDKH[0][0][0]]), [D], Uhash)
+   	     then return if more_flag then one_param_test_bottom(parameter(x,lambda, Lvd.list[LFDKH[0][0][0]]), [D], Uhash)
+	     	  	 else one_param_test(parameter(x,lambda, Lvd.list[LFDKH[0][0][0]]),Uhash)
+			 fi
 	     fi
    then () = if more_flag {want to use non-minimal theta-stable q}
    	     then let ((eq,gr),IUCL,CLBF) = localGraphK(LFDKH)
@@ -3594,8 +3600,8 @@ set local_test_GEO_hash_bottom_layer(KGBElt x, ratvec lambda, {VertexData vd,}
 		    	    fi
    		  then () = if #LFDKH[0] = 0 then return [] fi
 		  then () = if #LFDKH[0] = 1 {already passed D}
-   	     	       	    then return one_param_test_bottom(parameter(x,lambda,
-			    Lvd.list[LFDKH[0][0][0]]), [D], Uhash)
+   	     	       	    then return one_param_test{_bottom}(parameter(x,lambda,
+			    Lvd.list[LFDKH[0][0][0]]),{ [D],} Uhash)
 	     		    fi
 		  in ()
 	      fi

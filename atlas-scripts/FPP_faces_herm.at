@@ -362,7 +362,7 @@ set localFD_1Dirac2_by_zero\
     	 let startFF = elapsed_ms()
     	 then EdgesFixFix = [vec]:
              if #Perm2.fixed > 1
-	     then for j@m in Perm2.fixed
+	     then for j@m in Perm2.fixed[:#Perm2.fixed - 1]
 	     	  do {let mloc = mapAct[j]} {this is k??}
 		     {then () = if k != mloc then prints("(k,mloc) = (",k,",",mloc,")") fi}
 		     let cands = FPP_edges_by_zero_unsorted(G)[j] {list of edges beginning j}
@@ -428,11 +428,11 @@ set localFD_1Dirac2_by_zero\
 	      	   in for (i,j)@m in Perm2.trans
 	      	      do let a = FEL([i,j]) {, mloc = mapAct[i]} {this is m+#Perm2.fixed?}
 	      	      	 then cands = FPP_flippable_tetrahedra_by_zero_unsorted(G)[a]
-		      	 in if Llookup(m{loc}) and #Perm2.trans > m+1 and #cands > 0
+		      	 in if Llookup(m+#Perm2.fixed) and #Perm2.trans > m+1 and #cands > 0
 		      	    then for v in cands
 			      	 do let n = #Perm2.fixed + trans_hash.lookup(v[2:])
 				    in if n >= #Perm2.fixed and Llookup(n)
-				       then [[m,n].sort]
+				       then [[m+#Perm2.fixed,n].sort]
 				       else []
 				       fi
 				    {
@@ -475,7 +475,6 @@ set localFD_1Dirac2_by_zero\
        			     		  " for localFD_1Dirac2_by_zero") fi;
        answer
 )
-
 
 set localFD_1Dirac2_by_zero_old\
   ( KGBElt x, ratvec lambda, LocalVertexData Lvd, PermOrderTwo Perm2, vec mapAct) =
@@ -1132,6 +1131,12 @@ set make_Lvd_Perm2_table() = Lvd_Perm2_table:
 )
 
 set LPm_table = make_Lvd_Perm2_table()
+
+set localFD_1Dirac2_by_zero(KGBElt x, ratvec lambda) = [[FaceVertsIndex]]:
+    let theta = x.involution, ic = x.inner_class
+    then lamthlam = ((1+theta)*lambda).numer
+    then (Lvd,Perm2) = LPm_table.LPm_entry(ic,theta,lamthlam)
+    in localFD_1Dirac2_by_zero(x,lambda,Lvd,Perm2)
 
 {this is the list of all possible lambda + theta*lambda for ic and theta}
 set FPP_lamthlams(InnerClass ic, mat theta) = [vec]:
