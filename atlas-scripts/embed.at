@@ -1,5 +1,5 @@
 {embed_KGB and embed_param}
-
+<param_pair_hash.at
 set pr([(Param,Param)] pairs)=void:
 let (ph,pg)=pairs[0] then
 ()=prints("H=", ph.real_form, new_line, "G=", pg.real_form) in
@@ -44,7 +44,7 @@ y=x_G then
 {? this should also have a different formula in case of 2 non-orthogonal roots}
 set lift_KGB_Cayley(RootDatum H,vec alpha_H,mat M,KGBElt x_G)=KGBElt:
 let y=x_G in
- for alpha in embed_root(H,alpha_H,M,G) do y:=Cayley(alpha,y) od;y
+ for alpha in embed_root(H,alpha_H,M,x_G.real_form) do y:=Cayley(alpha,y) od;y
 
 {use Cayleys and crosses to compute map on KGB, given a single x_H->x_G}
 set embed_KGB(KGBElt x_H,KGBElt x_G,mat M)=[(int,int)]:
@@ -154,87 +154,64 @@ for alpha in roots do  y:=Cayley(alpha,y) od; y
 {assuming p_H maps to p_G, extend as far as possible by Cayleys and crosses}
 {modifying to use integrality datum AND M instead of root_map}
 set embed_parameters(Param p_H, Param p_G,mat M)=
-let H=p_H.real_form then
+let max=100 then  {cutoff loop after max tries}
+H=p_H.real_form then
 G=p_G.real_form then
 H_int=integrality_datum(p_H) then
-G_int=integrality_datum(p_G) then 
-map=[(p_H,p_G)] then
-known_H=1*p_H then  {parameters for which we know lift p_G, the same as all of the first terms of map finalized}
-known_G=1*p_G then
-done_H=ParamPol:null_module(H) {p_H's for which we've computed all crosses and Cayleys} then
-{()=prints("known_H: ", known_H[p_H], " known_G: ", known_G[p_G]) then}
-{is_known_H(Param p)=bool:known_H[p]!=0 then
-is_known_G(Param p)=bool:known_G[p]!=0 in}
-is_known_H(Param p)=bool:known_H[Finalize(p)]!=0 then  {assumes finalize(p) has 1 term}
-is_known_G(Param p)=bool:known_G[Finalize(p)]!=0 then
-is_done_H(Param p)=bool:done_H[Finalize(p)]!=0 in
-while #map<#block_of(p_H) do
-let ()=if te_verbose then prints("----------------------------------------------------------------------",new_line) fi in
-let ()=if te_verbose then prints("known_H: ", known_H, new_line, "known_G: ", known_G) fi in
-let ()=if te_verbose then prints(new_line,"map: ");pr(map) fi in
-let ()=if te_verbose then prints("done_H: ", done_H) fi in
-let ()=if te_verbose then prints("p_H: ", p_H) fi in
-let ()=if te_verbose then prints("Finalize(p_H): ", Finalize(p_H)) fi in
-let ()=if te_verbose then prints("map: ");pr(map) fi in
-{run over params in map, look for the first one for which is_done_H is false}
-let index_in_map= first(for (q_H,) in map do let ()=prints("q_H: ", q_H, " done_H:", is_done_H(q_H)) in  not is_done_H(q_H) od) then
-()=prints("index_in_map: ", index_in_map) then
-    ()=if index_in_map=-1 then
-       for (ph,) in map do prints(ph, " ", Finalize(ph)) od;
-       prints("failed to compute complete map!");assert(false,"quitting")
-    fi then
-    (p_H,p_G)=map[index_in_map] then
-    ()=if te_verbose then prints(new_line,"NEW p_H: ", p_H) fi  then
-    ()=if te_verbose then prints("p_G: ", p_G) fi in
-{    done_H+:=p_H;}void:();
- for alpha@i in p_H.integrality_datum.simple_roots do
-    let q_H=cross(alpha,p_H) in
-    let ()=if te_verbose then prints("i=",i,new_line,"alpha=",alpha, "cross:p_H->", q_H) fi in
-    let ()=prints("debugging: here is known_H: ", known_H) in
-    let ()=prints("debugging: check is_known_H of ", " ", q_H, " :", is_known_H(q_H)) in 
-      let ()=if not is_known_H(q_H) then
-              let ()=prints("in not is_known case") in
-              let ()=if te_verbose then prints("p_G=", p_G) fi in
-              let q_G=lift_parameter_cross(H,alpha,M,p_G) in
-              let ()=if te_verbose then prints("q_G=",q_G) fi in
-              {map may not be injective: (i,j) and (k,j) could both occur
-               for example on group side: G=GL(4,R), H=SO(3,2)->GL(4,R)
-                but skip if (ph,pg) is in the table}
-                if  true then
-{               if not is_known_G(y_G) then}
-               if te_verbose then prints("addding: ", q_H, " ", q_G) fi; 
-               map#:=(q_H,q_G);
-               known_G+:=q_G;
-               known_H+:=q_H;
-               if te_verbose then prints("DEBUG 1", new_line, "map=");pr(map);prints("known_H:");prints(known_H) fi
-               
-              fi
-             fi
-  in
-  if is_noncompact(i,p_H.x) or is_real(i,p_H.x) then
-       let q_H=Cayley(i,p_H) in
-       let ()=if te_verbose then prints("Cayley i=",i," Cayley:p_H->", q_H,new_line,"p_G=", p_G) fi in
-       let ()= if te_verbose then prints("is_known?: q_H=", q_H, "  ", is_known_H(q_H)) fi in
-       let ()=if te_verbose then prints("now p_G=", p_G) fi in
-       if not is_known_H(q_H) then
-               let ()=prints("going to compute Cayley for G:") in
-               let q_G=lift_parameter_Cayley(H,alpha,M,p_G) in
-               let ()=if te_verbose then prints("not is_known_H; alpha=",alpha,"q_G: ", q_G) fi in
-               let ()=if te_verbose then prints("known_G?: q_G=", q_G, " ", is_known_G(q_G)) fi in
-{               if not is_known_G(q_G) then} if true then
-                if te_verbose then prints("adding (nci): ", q_H, " ", q_G) fi; 
-                 map#:=(q_H,q_G);
-                 known_G+:=q_G;
-                 known_H+:=q_H;
-                 if te_verbose then prints("DEBUG 2", new_line, "map=");pr(map);prints("known_H:");prints(known_H) fi
-               fi
-              fi
-     fi;
-       if te_verbose then prints("adding (1) to done_H: ", p_H) fi;
-       done_H+:=p_H
-  od{for i}
-
-od{while #map};map
+G_int=integrality_datum(p_G) then
+pair_hash=make_Param_pair_hash([(p_H,p_G)]) then
+finished_hash=make_Param_hash() then {hash of parameters for which we've computed all Cayleys and crosses}
+is_known(Param p_H)=bool:pair_hash.in_hash(p_H) then
+is_finished(Param p_H)=bool:finished_hash.lookup(p_H)!=-1 then
+target=#block_of(p_H)  {number of final parameters of H we need to hit} then
+()=if te_verbose then prints("target: ", target) fi then
+counter=1 in
+while counter < max and #pair_hash.finalized()<target do let
+()=if te_verbose then prints("----------------------------------------------------------------------",new_line) fi then
+()=if te_verbose then prints("counter: ", counter) fi then
+()=if te_verbose then prints("target: ", target, "  found: ", #pair_hash.finalized()) fi then
+()=if te_verbose then prints("pair_hash: ");pr(pair_hash) fi then
+()=if te_verbose then prints("finished: ");pr(finished_hash) fi then
+()=if te_verbose then prints("finalized terms: ");pr(pair_hash.finalized()) fi then
+()=if te_verbose then prints("target block: ");pr(block_of(p_H)) fi then
+()=if te_verbose then prints("target block: ");print_block(p_H) fi then
+to_do=first(for i:pair_hash.size() do let (p_H,)=pair_hash.index(i) in not is_finished(p_H) od) then
+xx=1;counter+:=1 then
+()=if to_do=-1 then
+   prints("nothing left to do");break
+else
+  let (p_H,p_G)=pair_hash.index(to_do) then
+  ()=if te_verbose then prints("got pair: ", p_H, " ", p_G) fi then
+  ()=if te_verbose then prints("running over all simple roots") fi in
+  for alpha@i in p_H.integrality_datum.simple_roots do
+    let ()=if te_verbose then prints("root number: ", i, " =", alpha) fi then
+    ()=if te_verbose then prints("trying cross") fi then
+    q_H=cross(alpha,p_H) then
+    ()=if te_verbose then prints("cross result: ", q_H) fi then
+    () =if not is_known(q_H) then
+       let ()=if te_verbose then prints("computing lifted cross of p_G=",p_G) fi then
+       q_G=lift_parameter_cross(H,alpha,M,p_G) then
+       ()=if te_verbose then prints("cross value: q_G=",q_G) fi then
+       ()=if te_verbose then prints("addding: ", q_H, " ", q_G) fi in
+       pair_hash.match(q_H,q_G)
+    fi{end not is_known, done with cross, go to Cayley} then
+    ()=if is_noncompact(i,p_H.x) or is_real(i,p_H.x) then
+        let q_H=Cayley(i,p_H) in
+        let ()=if te_verbose then prints("Cayley i=",i," Cayley:p_H->", q_H,new_line,"p_G=", p_G) fi in
+        if not is_known(q_H) then
+          let ()=if te_verbose then prints("going to compute Cayley for G:") fi in
+          let q_G=lift_parameter_Cayley(H,alpha,M,p_G) in
+          let ()=if te_verbose then prints("not is_known; alpha=",alpha,"q_G: ", q_G) fi in
+          pair_hash.match(q_H,q_G)
+        fi{not is_known}
+    fi{is nci or real}  in 1
+  od{for i};
+  finished_hash.match(p_H)
+fi{if to_do=-1} in 1
+od{while #map};
+if te_verbose then prints("finished embed_parameters", new_line, "counter = ", counter, new_line,
+"target = ", target,new_line, "found: ", #pair_hash.finalized()) fi;
+pair_hash
 
 {assuming p_H maps to p_G, extend as far as possible by Cayleys and crosses}
 {modifying to use integrality datum}
