@@ -4461,67 +4461,77 @@ unsigned int is_close (const type_expr& x, const type_expr& y)
   return it0.at_end() and it1.at_end() ? flags : 0x0;
 }
 
-@ For balancing we need a related but slightly different partial ordering on
-types. The function |broader_eq| tells whether an expression of \foreign{a
-priori} type |b| might also valid (with possible coercions inserted) in a
-context that requires an expression of type~|a|; if so we call type |a| broader
-than~|b|. Now |broader_eq| also deals with polymorphic types, in a fairly crude
-way, namely by testing for unification rather than convertibility in case |b| is
-polymorphic. The balancing code does no type unification, and although
-|broader_eq| does call |can_unify|, this does not result in any assignments
-being recorded for the type variables in our types; we can therefore use
-constant |type| references, and assume that no type assignments are stored in
-|a| or |b| (so using |unwrap| is safe). One can use a free type variable
-|type::bottom()| here as an ``infinitely narrow'' type that broadens to
-anything, and can be used as initial value in the search of the broadest common
-type.
+@ For balancing we need a related but slightly different relation on types. The
+function call |join_to(a,b)| will change |a| if possible to a type that also
+accepts expressions of type |b| (possibly no change at all is necessary), and
+return whether it could do so. This ``accepting'' may involve a type coercion
+when |is_close| indicates this might be possible, or if a polymorphic type is
+involved change |a| into a unifying type for |a| and |b|. In fact
+|type::bottom()| which unifies to any type can be used as initial value in this
+joining.
+
+We pass |b| by rvalue reference so that we can move this type into |a| in the
+case where |b| is the more accepting (monomorphic) type.
 
 @< Declarations of exported functions @>=
-bool broader_eq (const type& a, const type& b);
+bool join_to (type& a, type&& b);
 
-@~The relation |broader_eq(a,b)| does not imply that values of type~|b| can be
-converted to type~|a|; what is indicated is a possible conversion of
-expressions, but the might depend on the form of the expressions, and only be
-achieved by coercions applied inside more or less deeply nested subexpressions.
-For instance, while \.{[int]} cannot be coerced to \.{[Split]}, the latter type
-is still considered broader than the former, and indeed a list display of
-expressions of a priori type \.{int} would be valid in a context that
-requires \.{[Split]}, with each component of the list display individually
-coerced to \.{Split}. It is not the responsibility of |broader_eq| to decide
-whether such a case exists or is at hand, but just to define a partial ordering
-that holds at least in those cases where some expression of a priori type
-|b| \emph{can} be accepted in a context that requires an expression of type~|a|.
-If |broader_eq(a,b)| returns true, then the expression that gave type~|b| will
-be reconsidered in a context requiring type~|a|, and this second tentative might
-succeed (with inserted conversions) or still fail, with an error being reported
-at that time.
-
-Since the type being compared types were types found for concrete expressions
-(rather than type patterns imposed by the context), an occurrence of \.* is
-rare, and when it occurs stands for the type of a fictitious value that can be
-assumed to become any type one wishes (an expression like \.{die}, or the absent
-element of an empty list display); therefore all type compare |broader_eq|
-than \.*, making that type a neutral value for balancing. At the other extreme,
-the type \.{void} is the broadest of all, since all values can be converted to
-it.
-
-The implementation of |broader_eq| is by structural recursion, like |is_close|,
-but some details are different. We do take |void_type| into consideration here,
-as well as the (rare) type |unknown_type|. Since we want to define a partial
-ordering, we must forbid one direction of all two-way coercions; since those
-always involve exactly one primitive types, we do this by only allowing the
-conversion in the direction of the primitive type. For the rest we just do the
-recursion in the usual way with just one twist: function types can only be
-comparable if they have equal argument types (as there is no way inserted
-conversions can change the argument type of a lambda expression), but there
-might be a recursive |broader_eq| relation between the result types (since an
-externally imposed function type might be honoured by inserting a conversion
-into the body of an anonymous function, causing it to return the required type;
-this is a fairly hypothetical possibility, but as we can cater for it in the
-definition of |broader_eq| at little cost, we might as well do it).
+@~The implementation of |join_to| mainly dispatches between unification methods
+in the case of polymorphic types, and a local function |accepts| that handles
+detection of possible coercions in the monomorphic case.
 
 @< Function definitions @>=
-bool br_eq (const type_expr& a, const type_expr& b)
+bool join_to (type& a, type&& b)
+{
+  assert (a.is_clean() and b.is_clean()); // caller should ensure this
+  assert(a.floor()==b.floor()); // caller ensures both match the current scope
+  if (not a.is_polymorphic())
+  { if (b.is_polymorphic())
+      return b.has_unifier(a.unwrap());
+    if (accepts(a.unwrap(),b.unwrap()))
+      return true; // nothing to do
+    if (accepts(b.unwrap(),a.unwrap()))
+    {@; a = std::move(b); return true; }
+    return false;
+  }
+  return a.unify(b);
+#if 0
+  unsigned int start=b.floor(), new_start = a.ceil();
+  type_assignment assign(start,b.degree());
+  if (start>=new_start) // so that |b|'s variables already avoid those of |a|
+    return can_unify(b.unwrap(),a.unwrap(),assign);
+  assign.var_start = new_start; // shifted |b|'s variables will start here
+  return can_unify(shift(b.unwrap(),start,new_start-start),a.unwrap(),assign);
+#endif
+}
+
+@ For locating possible coercions, we define a partial order |accepts| on
+monomorphic types. This relation holds whenever there is a coercion from |b| to
+|a|, but also when certain expressions of type |b| can be converted into one of
+type |a| by inserting coercions inside the expression. For instance
+$\\{accepts}(\.{[Split]},\.{[int]})$ holds because a list display of \.{int}
+expressions become of type \.{[Split]} after coercing each entry .individually
+to \.{Split}. If |accepts(a,b)| holds, then an expression that gave type~|b|
+can be reconsidered in a context requiring type~|a|, and this second tentative
+might succeed (with inserted conversions) or still fail, with an error being
+reported at that time.
+
+The implementation of |accepts| is by structural recursion; for this reason it
+uses |type_expr| arguments rather than |type|. It is like |is_close|, but some
+details are different. We do take |void_type| into consideration here, as type
+that will accept type. Being a partial ordering, we forbid one direction of all
+two-way coercions; such cases always involve exactly one primitive types, and we
+make that one accept the other type, which does not accept the primitive one.
+For the rest we just do structural recursion (accepting only if top-level
+structure matches and all components accept), but with one twist: for a pair
+function types, the parameter types must be equal rather than just accepting.
+The reason is that the is no way any expression with \foreign{a priori} type a
+function type can be modified by inserting coercions to one with a different
+argument type, whereas a change in return type is possible, even though it is a
+fairly hypothetical possibility.
+
+@< Local function definitions @>=
+bool accepts (const type_expr& a, const type_expr& b)
 {
   if (a.raw_kind()==tabled and b.raw_kind()==tabled and a.type_nr()==b.type_nr())
     return true; // prevent infinite recursion
@@ -4537,29 +4547,17 @@ bool br_eq (const type_expr& a, const type_expr& b)
     return false;
     // and different kinds on non-primitive types are incomparable
   if (ak==row_type)
-    return br_eq(a.component_type(),b.component_type());
+    return accepts(a.component_type(),b.component_type());
   if (ak==function_type)
     return a.func()->arg_type==b.func()->arg_type and @|
-    br_eq(a.func()->result_type,b.func()->result_type);
+    accepts(a.func()->result_type,b.func()->result_type);
   wtl_const_iterator itb(b.tuple());
   for (wtl_const_iterator ita(a.tuple());
        not ita.at_end(); ++ita,++itb)
-    if (itb.at_end() or not br_eq(*ita,*itb)) return false;
+    if (itb.at_end() or not accepts(*ita,*itb)) return false;
   return itb.at_end(); // if list of |a| has ended, that of |b| must as well
 }
 @)
-bool broader_eq (const type& a, const type& b)
-{
-  assert(a.floor()==b.floor()); // not ready for general case
-  if (b.degree()==0)
-    return br_eq(a.unwrap(),b.unwrap());
-  unsigned int start=b.floor(), new_start = a.ceil();
-  type_assignment assign(start,b.degree());
-  if (start>=new_start) // so that |b|'s variables already avoid those of |a|
-    return can_unify(b.unwrap(),a.unwrap(),assign);
-  assign.var_start = new_start; // shifted |b|'s variables will start here
-  return can_unify(shift(b.unwrap(),start,new_start-start),a.unwrap(),assign);
-}
 
 @* Error values.
 %
