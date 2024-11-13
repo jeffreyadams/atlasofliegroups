@@ -2386,9 +2386,6 @@ public:
       return result;
     }
   type& expunge(); // eliminate assigned type variables, by substitution
-  type& clear(unsigned int d);
-  // remove any type assignments, reserve |d| new ones
-  type& clear() @+{@; return clear(degree()); }
 @)
   @< Methods of |type| to access component types @>@;
 @)
@@ -2419,6 +2416,7 @@ unsigned int degree() const @+{@; return a.equiv.size(); }
 unsigned int ceil() const @+{@; return floor()+degree(); }
   // start disjoint type variables here
 bool is_polymorphic() const @+{ return degree()>0; }
+bool is_clean() const; // absence of pending type assignments
 const type_expr& unwrap() const @+{@; return te ; }
 bool operator ==(const type& other) @+{@; return bake()==other.bake(); }
 bool operator !=(const type& other) @+{@; return not operator==(other); }
@@ -2429,23 +2427,30 @@ bool is_void() const @+
 any type assignments that were made; in order to take those into account, there
 are the methods |bake| and |bake_off| (the latter may destroy our |type|,
 supposing it is no longer needed, and is faster in the absence of any pending
-type assignments). The |const| method |has_unifier| tests whether our type can
-unify to what the |type_expr| expects. The method |unify| also preforms the
-unification, but also records the substitution required in our
-|type_assignment|. The |matches| methods are similar, but specific for use in
-overload resolution, where our type is that of the argument, and |formal| is the
-specification of one overloaded instance; in case of success, |assign()| can be
-used to perform substitutions for that overloaded instance, while in case of
+type assignments). Unification with another type is done by the |unify| method.
+This can both decrease the degree or increase it (by capturing type variables
+from the other type); there is no fixed relationship between type variables
+before and after. The |const| method |has_unifier| tests whether our type can
+unify to what the |type_expr| expects. The method |unify_specialise| also
+preforms one-sided unification, but also records the substitution required in
+our |type_assignment|. The |matches| methods are similar, but specific for use
+in overload resolution, where our type is that of the argument, and |formal| is
+the specification of one overloaded instance; in case of success, |assign()| can
+be used to perform substitutions for that overloaded instance, while in case of
 failure, any partial assignment done can be erased by calling |clear|.
 
 @< Utility methods of |type| @>=
 type_expr bake() const; // extract |type_expr| after substitution
 type_expr bake_off(); // extract |type_expr|, sacrificing self if needed
+type& clear(unsigned int d); // remove any type assignments, reserve |d| new ones
+type& clear() @+{@; return clear(degree()); }
 @)
+bool unify(const type& other);
 bool has_unifier(const type_expr& t) const;
 bool unify_specialise(type_expr& pattern)
   // adapt to pattern while specialising pattern
-  {@; return unify(te,pattern); } // recursive helper method does the work
+  {@; return unify_specialise(te,pattern); }
+  // recursive helper method does the work
 bool unify_specialise(type_expr& pattern, unsigned int fix_count) const;
 bool matches (const type_expr& formal, unsigned int n);
   // non-|const|; assignment is left in |a|
@@ -2456,7 +2461,7 @@ bool record_match (const type_expr& sub_t, const type_expr& other)
 type_expr skeleton (const type_expr& sub_t) const;
 void wrap_row () @+{@; te.set_from(type_expr::row(std::move(te))); }
 private:
-bool unify(const type_expr& sub_tp, type_expr& pattern);
+bool unify_specialise(const type_expr& sub_tp, type_expr& pattern);
 
 @ First some simple methods. One uses |expunge| to incorporate any pending type
 assignments, and |clear| to forget any and reset the number of type variables
@@ -2466,10 +2471,13 @@ taking into account pending type assignments, the latter leaving the type itself
 in an unusable state (since it was possibly moved from).
 
 @< Function definitions @>=
+bool type::is_clean() const
+{ return std::none_of(a.equiv.begin(),a.equiv.end(),
+                 @[ [](const const_type_ptr& p){@; return p!=nullptr; } @]);
+}
 type& type::expunge()
 {
-  if (std::none_of(a.equiv.begin(),a.equiv.end(),
-                 @[ [](const const_type_ptr& p){@; return p!=nullptr; } @]))
+  if (is_clean())
     return *this; // nothing to expunge
   return *this = wrap(substitution(te,a),floor());
 }
@@ -2565,10 +2573,38 @@ type type::wrap (const type_expr& t, unsigned int fix_count, unsigned int gap)
   return result;
 }
 
-@ The method |type::has_unifier| is easily implemented using |can_unify|.
+@ The methods |type::unify| and |type::has_unifier| are easily implemented using
+|can_unify|.
 
 @< Function definitions @>=
-
+bool type::unify(const type& other)
+{ assert(floor()==other.floor());
+  const auto d = degree();
+  if (other.is_polymorphic())
+  {
+    a.grow(other.degree()); // make place for other type variables
+    if (can_unify(te,shift(other.te,floor(),d),a))
+    {
+      expunge(); // apply the substitutions that we needed to unify
+      return true;
+    }
+    else
+    {
+      clear(d);
+      return false;
+    }
+  }
+  if (can_unify(te, other.te, a))
+  {
+    expunge(); // apply the substitutions that we needed to unify
+    return true;
+  }
+  else
+  {
+    clear(d);
+    return false;
+  }
+}
 bool type::has_unifier(const type_expr& t) const
 @/{@;
   type tp = type::wrap(t,floor(),degree());
@@ -2576,20 +2612,20 @@ bool type::has_unifier(const type_expr& t) const
   return can_unify(te,tp.te,tp.a);
 }
 
-@ The method |type::unify| is like the function |can_unify|, but on the side of
-the pattern the only changes are specialisations of undefined subexpressions.
-Any type variables present in |pattern| are not substituted for: unless they
-match up with the same type variable on our side, they cause unification to
-fail. The necessary substitutions on our |type| side are recorded in our |a|
-field, which is convenient for our implementation: any occurrence of a type
-variable after the first will get the value that was substituted for it the
-first time. Once the unification succeeds, the caller can decide whether to
+@ The method |type::unify_specialise| is like the function |can_unify|, but on
+the side of the pattern the only changes are specialisations of undefined
+subexpressions. Any type variables present in |pattern| are not substituted for:
+unless they match up with the same type variable on our side, they cause
+unification to fail. The necessary substitutions on our |type| side are recorded
+in our |a| field, which is convenient for our implementation: any occurrence of
+a type variable after the first will get the value that was substituted for it
+the first time. Once the unification succeeds, the caller can decide whether to
 preserve these type assignments for further unification, or use them to perform
 substitutions, or forget them by calling |clear|.
 
 @< Function definitions @>=
 
-bool type::unify(const type_expr& sub_tp, type_expr& pattern)
+bool type::unify_specialise(const type_expr& sub_tp, type_expr& pattern)
 { if (sub_tp.raw_kind()==tabled and pattern.raw_kind()==tabled)
     return sub_tp.type_nr()==pattern.type_nr();
     // avoid non-termination, test for identity
@@ -2606,16 +2642,16 @@ bool type::unify(const type_expr& sub_tp, type_expr& pattern)
         return Q_kind==variable_type and pattern.typevar_count()==c;
       auto eq=a.equivalent(c);
       if (eq!=nullptr)
-        return unify(*eq,pattern);
+        return unify_specialise(*eq,pattern);
       @< If |pattern| has |undetermined| entries, throw an error @>
       a.set_equivalent(c,std::make_unique<type_expr>(pattern.copy()));
       return true;
     }
   case primitive_type: return sub_tp.prim()==pattern.prim();
   case function_type: return
-    unify(sub_tp.func()->arg_type,pattern.func()->arg_type) and @|
-    unify(sub_tp.func()->result_type,pattern.func()->result_type);
-  case row_type: return unify(sub_tp.component_type(),pattern.component_type());
+    unify_specialise(sub_tp.func()->arg_type,pattern.func()->arg_type) and @|
+    unify_specialise(sub_tp.func()->result_type,pattern.func()->result_type);
+  case row_type: return unify_specialise(sub_tp.component_type(),pattern.component_type());
   case tuple_type: case union_type:
     { const_raw_type_list p; raw_type_list q; // need two different types here
       for(p = sub_tp.tuple(), q=pattern.tuple();
@@ -2623,7 +2659,7 @@ bool type::unify(const type_expr& sub_tp, type_expr& pattern)
           p = p->next.get(), q=q->next.get())
       { if (p==nullptr or q==nullptr)
           return false; // unequal length lists
-        if (not unify(p->contents,q->contents))
+        if (not unify_specialise(p->contents,q->contents))
           return false; // some subtype fails unification
       }
       return true;
@@ -2649,13 +2685,13 @@ if (pattern.is_unstable())
   throw program_error(o.str());
 }
 
-@ The second method |type::unify_specialise| is basically the same as the first
-(which calls the auxiliary |type::unify| we just defined), but is a |const|
-method so that in particular the |type_assignment| field |a| is unchanged. This
-is achieved by copying our type before calling |unify| on the copy. We use the
-occasion of copying to also renumber our bound variables starting from a new
-level |lvl|, which is useful to make place for variables in |pattern| that
-should be considered fixed there, and disjoint from our bound variables.
+@ The second method |type::unify_specialise| is basically the same as the first,
+but is a |const| method so that in particular the |type_assignment| field |a| is
+unchanged. This is achieved by copying our type before calling |unify_specialise| on the
+copy. We use the occasion of copying to also renumber our bound variables
+starting from a new level |lvl|, which is useful to make place for variables in
+|pattern| that should be considered fixed there, and disjoint from our bound
+variables.
 
 @< Function definitions @>=
 
