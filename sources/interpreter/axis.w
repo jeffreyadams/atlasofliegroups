@@ -1069,7 +1069,7 @@ type balance
 
   wel_const_iterator it(elist);
   for (unsigned i=0; i<n; ++i,++it)
-    if (comp_type[i]!=common)
+    if (not comp_type[i].is_polymorphic() and comp_type[i]!=common)
       components[i] = convert_expr(*it,fc,target);
       // redo conversion with unifying |target| type
   return common;
