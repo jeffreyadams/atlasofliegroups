@@ -4,7 +4,13 @@ set cvx_hull_dim([ratvec] verts) = int:
     let norms = mat: for v in verts[1:] do (v-verts[0]).numer od
     in rank(norms)
 
-{given m by n integer matrix A and integer vec b of size m, consider
+set make_ratmat([ratvec] cols) = ratmat:
+    if #cols = 0 then return null(0,0)/1 fi;
+    let D = lcm(for v in cols do v.denom od)
+    then M = mat: for v in cols do ratvec_as_vec(D*v) od
+    in M/D
+
+{Given m by n integer matrix A and integer vec b of size m, consider
 affine space
 
 H = {v in Q^n | Av = b}
