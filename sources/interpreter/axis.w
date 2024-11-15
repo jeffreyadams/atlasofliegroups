@@ -782,13 +782,16 @@ case tuple_display:
   std::unique_ptr<tuple_expression> tup_exp(new tuple_expression(0));
   std::vector<expression_ptr>& comp = tup_exp->component;
   comp.reserve(n);
+  auto lvl = fc; // level may increase from one component to the next
   for (wel_const_iterator it(e.sublist); not it.at_end(); ++it,++tl_it)
-  { comp.push_back(convert_expr(*it,fc,*tl_it));
+  { comp.push_back(convert_expr(*it,lvl,*tl_it));
     is_constant = is_constant and
       dynamic_cast<const denotation*>(comp.back().get()) != nullptr;
     if (*tl_it==void_type and not is_empty(*it))
       // though weird, we allow voiding a component
       comp.back().reset(new voiding(std::move(comp.back())));
+    lvl = type::wrap(*tl_it,lvl).ceil();
+    // increment when passing a polymorphic component
   }
 @)
   expression_ptr result(std::move(tup_exp));
