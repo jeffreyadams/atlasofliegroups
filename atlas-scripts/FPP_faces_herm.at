@@ -831,7 +831,7 @@ set solve(vec b, mat M, mat C, [int] s) = maybe_a_vec:
 )
 
 {these are the possible lambda+theta*lambda for x.involution = theta. First
-vec hash includes all candidate lamthlam (for which a lambda in X* + rho exists).
+vec_hash will be filled with candidate lamthlam (for which a lambda in X* + rho exists).
 For each lamthlam there is a Perm2 in the second list.}
 set cands_hash(InnerClass ic, mat theta, vec_hash lamthlam_hash) = [PermOrderTwo]:
     let th1 = 1+theta, verts = FPP_vertices(ic), FEs = FPP_flippable_edges(ic),
