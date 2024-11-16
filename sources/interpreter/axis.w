@@ -3705,16 +3705,16 @@ void closure_call<kind>::evaluate(level l) const
 %
 The extension of the axis language with second order types was made remarkably
 late, in view of the fact the execution mechanism always has been able to handle
-expressions that can evaluate to value of unknown type. The main difficulty was
-adapting the originally monomorphic type system, and related code like resolving
-overloaded function calls, to allowing polymorphic types throughout. Once this
-is done, it is easy to allow users to create values of polymorphic types using
-type variables that stand for arbitrary types. Given that types occur in certain
-expressions, notably to declare types for function parameters, it does not
-suffice to allow polymorphic types when declaring new identifiers; this is what
-happens in many (pure or not quite pure) functional languages like \.{Haskell}
-and \.{OCaml} where after possibly making such declarations, types are inferred
-in an equation-solving style from the expressions themselves.
+expressions that can evaluate to a value of unknown type. The main difficulty
+was adapting the originally monomorphic type system, and related code like
+resolving overloaded function calls, to allowing polymorphic types throughout.
+Once this is done, it is easy to allow users to create values of polymorphic
+types using type variables that stand for arbitrary types. Given that types
+occur in certain expressions, notably to declare types for function parameters,
+it does not suffice to allow polymorphic types when declaring new identifiers;
+this is what happens in many (pure or not quite pure) functional languages
+like \.{Haskell} and \.{OCaml} where after possibly making such declarations,
+types are inferred in an equation-solving style from the expressions themselves.
 
 Rather, we use the fairly simple mechanism of having the user introduce one or
 more identifiers as local type variables in a given expression; then, in that
