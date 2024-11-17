@@ -3708,21 +3708,47 @@ late, in view of the fact the execution mechanism always has been able to handle
 expressions that can evaluate to a value of unknown type. The main difficulty
 was adapting the originally monomorphic type system, and related code like
 resolving overloaded function calls, to allowing polymorphic types throughout.
-Once this is done, it is easy to allow users to create values of polymorphic
-types using type variables that stand for arbitrary types. Given that types
-occur in certain expressions, notably to declare types for function parameters,
-it does not suffice to allow polymorphic types when declaring new identifiers;
-this is what happens in many (pure or not quite pure) functional languages
-like \.{Haskell} and \.{OCaml} where after possibly making such declarations,
-types are inferred in an equation-solving style from the expressions themselves.
 
-Rather, we use the fairly simple mechanism of having the user introduce one or
-more identifiers as local type variables in a given expression; then, in that
-expression those identifiers designate types as if they were primitive ones, but
-without any given functions that relate to them. If properly type checked, the
-type of such an expression then may involve those type variables, and when used
-in the context these type variable change status to become universally
-quantified type variables of a polymorphic type.
+Once this is done, a number of built-in polymorphic functions (like those doing
+row concatenation) that used to be given special treatment during type checking,
+can be handled like any other functions. Similarly the empty list display and
+expressions that never return like calls of |error| naturally get a polymorphic
+type. But a mechanism is still needed to allow users to define polymorphic
+functions. In many (pure or not quite pure) functional languages
+like \.{Haskell} and \.{OCaml} this is done by in general \emph{inferring} types
+of identifiers and expressions from the way they are used in an equation-solving
+style. But this method is incompatible with our style of overloading in function
+calls, since the same symbol can represent functions of many unrelated types;
+this makes it impossible to associate an equation (which would need to be in
+terms of unknown argument types) with such calls. Instead we rely on identifiers
+receiving a type directly at their definition, which in particular requires
+explicitly declaring types for function parameters.
+
+To allow defining polymorphic functions, we then use the simple mechanism of
+allowing local type variables to be introduced whose scope is a given
+expression. In that scope, these type variables designate types that are treated
+as primitive types, but without any names or values that relate to them. This
+makes it impossible to in any way ``look inside'' values of such types (not even
+to test equality), but they can be moved around and stored in data structures
+and so on. If the expression that forms the scope of the type variables is
+properly type checked, its type may involve those type variables; when
+interpreted in its context, the type variable changes status to become
+universally quantified in a polymorphic type.
+
+The expression type that introduces type variables is |type_abstraction_expr|.
+The only information it receives about the type variables is their number
+|a.count|, since the lexical analyser has been set up to recognise the
+introduced identifiers within their scope as type variables, and to number them
+successively from $0$ upwards. All that remains to be done in type checking is
+then to raise the level |fc| of fixed type variables by this number when going
+in. When coming back out, the type variables are implicitly ``unfixed'',
+becoming free variables of a polymorphic type, which is exported to the context
+type~|tp| as usual by calling |tp.specialise|. It should be  noted that |tp| was
+not passed inwards in the call of |convert_expr|, which instead passes an
+initially undetermined type |result_type|. This reflects our decision to not
+allow context to \emph{require} polymorphic types, so nothing would be gained
+from passing |tp| in; also we don't have to worry about any change of
+interpretation of type variables when going in.
 
 @< Cases for type-checking and converting... @>=
 case type_abstraction_expr:
