@@ -263,7 +263,7 @@ const char* keywords[] =
  ,"next","do","dont","from","downto","while","for","od"
  ,"case","esac", "rec_fun"
  ,"true","false", "die", "break", "return"
- ,"set_type"
+ ,"set_type", "any_type"
  ,"whattype","showall","forget"
  ,nullptr};
 
