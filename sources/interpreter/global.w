@@ -637,7 +637,7 @@ done via |analyse_types|, which takes care of catching any exceptions thrown,
 and printing error messages.
 
 @< Declarations of exported functions @>=
-type analyse_types(const expr& e,expression_ptr& p);
+type analyse_types(const expr& e,expression_ptr& p, unsigned int fc);
 
 @~The function |analyse_types| switches the roles of the output parameter
 |type| of |convert_expr| and its return value: the former becomes the return
@@ -650,7 +650,7 @@ provide a handler anyway, and which handler will serve as a more practical
 point to really resume after an error.
 
 @< Global function definitions @>=
-type analyse_types(const expr& e,expression_ptr& p)
+type analyse_types(const expr& e,expression_ptr& p, unsigned int fc)
 { try
   { type_expr tp; // this starts out as an |undetermined_type|
     p = convert_expr(e,0,tp);
@@ -716,9 +716,9 @@ which is why it is not currently passed to functions like
 |global_declare_identifier| that never can cause error message.
 
 @< Declarations of exported functions @>=
-void global_set_identifier (const struct raw_id_pat& id, expr_p e, int overload,
-                           const source_location& loc);
-void global_set_identifiers(raw_let_list d,const source_location& loc);
+void global_set_identifier (const struct raw_id_pat& id, expr_p e,
+			    int overload, const source_location& loc);
+void global_set_identifiers(raw_let_list d, const source_location& loc);
 void global_declare_identifier(id_type id, type_p type);
 void global_forget_identifier(id_type id);
 void global_forget_overload(id_type id, type_p type);
@@ -779,12 +779,12 @@ to split a list of declarations into a pattern part and an expression part, the
 same work that it does for \&{let} expressions.
 
 @< Global function definitions @>=
-void global_set_identifier(const raw_id_pat &raw_pat, expr_p raw, int overload,
-                          const source_location& loc)
+void global_set_identifier(const raw_id_pat &raw_pat, expr_p raw,
+			   int overload, const source_location& loc)
 {@; do_global_set(id_pat(raw_pat),*expr_ptr(raw),overload,loc); }
   // ensure clean-up
 @)
-void global_set_identifiers(raw_let_list d,const source_location& loc)
+void global_set_identifiers(raw_let_list d, const source_location& loc)
 { std::pair<id_pat,expr> pat_expr = zip_decls(d);
   do_global_set(std::move(pat_expr.first),pat_expr.second,1,loc);
 }
@@ -941,7 +941,7 @@ void do_global_set(id_pat&& pat, const expr& rhs, int overload,
   { phase=0; // type check
     expression_ptr e;
     {
-      type tp=analyse_types(rhs,e);
+      type tp=analyse_types(rhs,e,0);
       if (not tp.bake().can_specialise(pattern_type(pat)))
         @< Report that type |tp| of |rhs| does not have required structure,
            and |throw| @>
@@ -1789,7 +1789,7 @@ void type_of_expr(expr_p raw)
 { expr_ptr saf(raw); const expr& e=*raw;
   try
   {@; expression_ptr p;
-    *output_stream << "Type: " << analyse_types(e,p) << std::endl;
+    *output_stream << "Type: " << analyse_types(e,p,0) << std::endl;
   }
   catch (std::exception& err) {@; std::cerr<<err.what()<<std::endl; }
 }

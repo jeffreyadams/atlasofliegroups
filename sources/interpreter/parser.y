@@ -34,7 +34,7 @@
   unsigned short code; // for various kinds of detailing of tokes or options
   unsigned short id_code;  // for identifier codes, a |Hash_table| index
   std::string* str;  // for integer or string denotations
-  struct { short id, priority; } oper; /* for operator symbols */
+  struct { unsigned short id, priority; } oper; /* for operator symbols */
   atlas::interpreter::raw_form_stack ini_form;
   unsigned short type_code; /* For primiitve type names */
   atlas::interpreter::expr_p    expression; /* For generic expressions */
@@ -137,28 +137,16 @@ input:	'\n'			{ YYABORT; } /* null input, skip evaluator */
           { YYABORT; } /* ignore end-of-file seen at command level too */
 	| expr '\n'		{ *parsed_expr=$1; }
 	| SET declarations '\n' { global_set_identifiers($2,@$); YYABORT; }
-	| FORGET IDENT '\n'	{ global_forget_identifier($2); YYABORT; }
-	| FORGET TYPE_ID '\n'	{ global_forget_identifier($2); YYABORT; }
-	| SET operator '(' id_specs ')' '=' expr '\n'
-	  { struct raw_id_pat id; id.kind=0x1; id.name=$2.id;
-	    global_set_identifier(id,
-				  make_lambda_node($4.patl,$4.typel,$7,@$),
-				  2,
-				  @$);
-	    YYABORT;
-	  }
-	| SET operator '=' expr '\n'
-	  { struct raw_id_pat id; id.kind=0x1; id.name=$2.id;
-	    global_set_identifier(id,$4,2,@$); YYABORT;
-	  }
-	| FORGET IDENT '@' type '\n'
-	  { global_forget_overload($2,$4); YYABORT;  }
-	| FORGET operator '@' type '\n'
-	  { global_forget_overload($2.id,$4); YYABORT; }
 	| IDENT ':' expr '\n'
 		{ struct raw_id_pat id; id.kind=0x1; id.name=$1;
 		  global_set_identifier(id,$3,0,@$); YYABORT; }
 	| IDENT ':' type '\n'	{ global_declare_identifier($1,$3); YYABORT; }
+	| FORGET IDENT '\n'	{ global_forget_identifier($2); YYABORT; }
+	| FORGET TYPE_ID '\n'	{ global_forget_identifier($2); YYABORT; }
+	| FORGET IDENT '@' type '\n'
+	  { global_forget_overload($2,$4); YYABORT;  }
+	| FORGET operator '@' type '\n'
+	  { global_forget_overload($2.id,$4); YYABORT; }
 	| SET_TYPE IDENT '=' type_spec '\n'
 	  { type_define_identifier($2,$4.type_pt,$4.ip,@$); YYABORT; }
 	| SET_TYPE TYPE_ID '=' type_spec '\n'
@@ -246,8 +234,16 @@ declarations: declarations ',' declaration { $$ = append_let_node($1,$3); }
 ;
 
 declaration: pattern '=' expr { $$ = make_let_node($1,$3); }
+	| operator '=' expr
+	  { struct raw_id_pat p; p.kind=0x1; p.name=$1.id;
+	    $$ = make_let_node(p,$3);
+	  }
 	| IDENT '(' param_list ')' '=' expr
 	  { struct raw_id_pat p; p.kind=0x1; p.name=$1;
+	    $$ = make_let_node(p,make_lambda_node($3.patl,$3.typel,$6,@$));
+	  }
+	| operator '(' param_list ')' '=' expr
+	  { struct raw_id_pat p; p.kind=0x1; p.name=$1.id;
 	    $$ = make_let_node(p,make_lambda_node($3.patl,$3.typel,$6,@$));
 	  }
 	| REC_FUN IDENT '(' param_list ')' '=' type ':' expr

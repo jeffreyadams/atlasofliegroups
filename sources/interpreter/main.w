@@ -527,7 +527,7 @@ printing of the uninteresting value.
 
 @< Analyse types, and then evaluate and print... @>=
 { expression_ptr e;
-  type found_type=analyse_types(*parse_tree,e);
+  type found_type=analyse_types(*parse_tree,e,0);
   if (verbosity>0)
     std::cout << "Type found: " << found_type << std::endl @|
               << "Converted expression: " << *e << std::endl;
@@ -589,7 +589,7 @@ for (auto it=prelude_filenames.begin(); it!=prelude_filenames.end(); ++it )
     else
     { try
       { expression_ptr e;
-        type found_type=analyse_types(*parse_tree,e);
+        type found_type=analyse_types(*parse_tree,e,0);
         e->evaluate(eval_level::single_value);
         if (not found_type.is_void())
           log_stream << "Value: " << *pop_value() << '\n';
