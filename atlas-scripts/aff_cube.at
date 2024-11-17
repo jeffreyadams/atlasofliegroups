@@ -10,6 +10,21 @@ set make_ratmat([ratvec] cols) = ratmat:
     then M = mat: for v in cols do ratvec_as_vec(D*v) od
     in M/D
 
+{list of all representatives of conjugacy classes of Cartan involutions of greatest length,
+indexed by CartanClass number}
+set longest_invs(InnerClass ic) = [[mat]]:
+    let G = quasisplit_form(ic)
+    then CC = Cartan_classes(ic)
+    then inv_hash = make_mat_hash()
+    in for C in CC
+       do let KGBlist = KGB(C,G)
+       	  then max_lgth = length(KGBlist~[0])
+	  then first_long = locate_sorted(for x in KGBlist do length(x) od, max_lgth)
+	  then () = inv_hash.clear()
+	  then () = for x in KGBlist[first_long:] do inv_hash.match(x.involution) od
+	  in inv_hash.list()
+       od
+
 {Given m by n integer matrix A and integer vec b of size m, consider
 affine space
 
