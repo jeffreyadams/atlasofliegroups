@@ -201,8 +201,7 @@ vertex "belongs" (either "is" or "is vertex of the edge")}
    two flipped by involution, OR
 3) tetrahedron in FPP, two pairs of verts exchanged by involution}
 set localFD_1Dirac2\
-  ( KGBElt x, ratvec lambda, LocalVertexData Lvd, PermOrderTwo Perm2{, vec mapAct}{,
-    [[FaceVertsIndex]] globalFaces}) = [[FaceVertsIndex]]:
+  ( KGBElt x, ratvec lambda, LocalVertexData Lvd, PermOrderTwo Perm2) = [[FaceVertsIndex]]:
 (   {if face_verbose
     then prints(new_line,"start localFD_1Dirac")
     fi;}
@@ -333,7 +332,7 @@ vertex "belongs" (either "is" or "is vertex of the edge")}
 #globalFaces[d-1] of d-faces, the jth list being all global faces that
 begin with the jth global (d-1)-face.}
 set localFD_1Dirac2_by_zero\
-  ( KGBElt x, ratvec lambda, LocalVertexData Lvd, PermOrderTwo Perm2{, vec mapAct}) =
+  ( KGBElt x, ratvec lambda, LocalVertexData Lvd, PermOrderTwo Perm2) =
     [[FaceVertsIndex]]:
 (   {if face_verbose
     then prints(new_line,"start localFD_1DiracBYZERO")
