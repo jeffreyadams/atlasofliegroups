@@ -2072,11 +2072,18 @@ neither of them takes ownership of (parts of) their argument types, which are
 therefore passed by (non owning) constant reference. The |type_expr| arguments
 here should not contain any undetermined subexpressions; to achieve this, a
 caller may need to replace each such occurrence by a fresh (only used here) type
-variable, and add a slot for it in the |type_assignment|.
+variable, and add a slot for it in the |type_assignment|. The |substitution|
+function has final parameter |shift| by which all type variables in |M| are
+shifted up before being looked up in |assign|; this accommodates a situation in
+which a shift was applied to type expression to obtain fresh type variables when
+computing a |type_assignment|, and avoid having to again compute this shift when
+using the assignment for a related type expression.
 
 @< Declarations of exported functions @>=
 bool can_unify(const type_expr& P, const type_expr& Q, type_assignment& assign);
-type_expr substitution(const type_expr& M, const type_assignment& assign);
+type_expr substitution
+  (const type_expr& M, const type_assignment& assign, unsigned int shift=0);
+type_expr shift (const type_expr& t, unsigned int fix, unsigned int amount);
 
 @ We start with giving the easier |substitution| function. It copies the type
 with recursive propagation of the substitution, which kicks in when an active
@@ -2108,22 +2115,23 @@ happens; we shall deal with this in a separate section.
 
 @< Function definitions @>=
 
-type_expr substitution(const type_expr& M, const type_assignment& assign)
+type_expr substitution
+  (const type_expr& M, const type_assignment& assign, unsigned int shift)
 { type_ptr result;
   switch (M.raw_kind())
   { case primitive_type: return type_expr::primitive(M.prim());
     case function_type: result =
-      mk_function_type(substitution(M.func()->arg_type,assign),
-                       substitution(M.func()->result_type,assign));
+      mk_function_type(substitution(M.func()->arg_type,assign,shift),
+                       substitution(M.func()->result_type,assign,shift));
     break;
     case row_type:
-      result = mk_row_type(substitution(M.component_type(),assign));
+      result = mk_row_type(substitution(M.component_type(),assign,shift));
     break;
     case tuple_type:
     case union_type:
     { dressed_type_list aux;
       for (wtl_const_iterator it(M.tuple()); not it.at_end(); ++it)
-        aux.push_back(substitution(*it,assign));
+        aux.push_back(substitution(*it,assign,shift));
       if (M.raw_kind()==tuple_type)
         return type_expr::tuple(aux.undress());
       return type_expr::onion(aux.undress());
@@ -2139,20 +2147,63 @@ type_expr substitution(const type_expr& M, const type_assignment& assign)
   return std::move(*result);
 }
 
-@ When setting values for type variables in |assign|, we shall refuse type
-expressions that directly or indirectly refer back to the variable in question
-itself, which should ensure that the code below steers clear of an endless
-recursion.
-
-The |equivalent| method looks up any substitution recorded for a type
+@ The |equivalent| method looks up any substitution recorded for a type
 variable, with a null pointer signalling a negative result. This makes
-performing the substitution, if called for, quite easy.
+performing the substitution, if called for, quite easy. If a substitution is
+done, we must go on applying other substitutions into the type expression found
+by |equivalent|, but since we are no longer dealing with a subexpression of~|M|,
+the |shift| argument is set to~|0| here.
+
+There is a potential for non-terminating recursion here, but that possibility is
+avoided by ensuring |assign| has no direct or indirect self-references. To that
+end we shall refuse, when setting a value for type variable in any
+|type_assignment|, values (type expressions) that directly or indirectly refer
+back to the variable in question itself.
 
 @< If a type is associated in |assign|... @>=
-{ auto c = M.typevar_count();
+{ auto c = M.typevar_count()+shift;
   auto p = assign.equivalent(c);
   return p==nullptr
-    ? type_expr::variable(assign.renumber(c)) : substitution(*p,assign);
+    ? type_expr::variable(assign.renumber(c)) : substitution(*p,assign,0);
+}
+
+@ Now that types are polymorphic, we need a function to replace the method
+|type_expr::specialise|, which is too limited in just replacing undetermined
+type components. We may need to renumber the active type variables in one type
+to avoid collision with variables bound in another type, for which we define an
+auxiliary recursive function |shift|; it is modelled after |substitute| but
+simpler.
+
+@< Function definitions @>=
+type_expr shift
+  (const type_expr& t, unsigned int fix, unsigned int amount)
+{ type_ptr result;
+  switch (t.raw_kind())
+  { case primitive_type: return type_expr::primitive(t.prim());
+    case function_type: result =
+      mk_function_type(shift(t.func()->arg_type,fix,amount),
+                       shift(t.func()->result_type,fix,amount));
+    break;
+    case row_type:
+      result = mk_row_type(shift(t.component_type(),fix,amount));
+    break;
+    case tuple_type:
+    case union_type:
+    { dressed_type_list aux;
+      for (wtl_const_iterator it(t.tuple()); not it.at_end(); ++it)
+        aux.push_back(shift(*it,fix,amount));
+      if (t.raw_kind()==tuple_type)
+        return type_expr::tuple(aux.undress());
+      return type_expr::onion(aux.undress());
+    }
+    case tabled: return type_expr::tabled_nr(t.type_nr());
+    case variable_type:
+  @/{@; auto c = t.typevar_count();
+      return type_expr::variable(c<fix ? c : c+amount);
+    }
+    default: assert(false);
+  }
+  return std::move(*result);
 }
 
 @ Next we define the unification procedure, which is called |can_unify| since
@@ -2452,8 +2503,10 @@ bool unify_specialise(type_expr& pattern)
   {@; return unify_specialise(te,pattern); }
   // recursive helper method does the work
 bool unify_specialise(type_expr& pattern, unsigned int fix_count) const;
-bool matches (const type_expr& formal, unsigned int n);
-  // non-|const|; assignment is left in |a|
+bool matches
+  (const type_expr& formal, unsigned int poly_degree,
+   unsigned int& shift_amount);
+bool matches_argument(const type& arg_type);
 @)
 type_expr skeleton (const type_expr& sub_t) const;
 void wrap_row () @+{@; te.set_from(type_expr::row(std::move(te))); }
@@ -2581,29 +2634,30 @@ bool type::unify(const type& other)
   {
     a.grow(other.degree()); // make place for other type variables
     if (can_unify(te,shift(other.te,floor(),d),a))
-    {
-      expunge(); // apply the substitutions that we needed to unify
+    {@;
+      expunge();
       return true;
     }
     else
-    {
+    {@;
       clear(d);
       return false;
     }
   }
   if (can_unify(te, other.te, a))
-  {
-    expunge(); // apply the substitutions that we needed to unify
+  {@;
+    expunge();
     return true;
   }
   else
-  {
+  {@;
     clear(d);
     return false;
   }
 }
+@)
 bool type::has_unifier(const type_expr& t) const
-@/{@;
+{
   type tp = type::wrap(t,floor(),degree());
   tp.a = type_assignment(a.var_start,degree()+tp.degree());
   return can_unify(te,tp.te,tp.a);
@@ -2648,7 +2702,8 @@ bool type::unify_specialise(const type_expr& sub_tp, type_expr& pattern)
   case function_type: return
     unify_specialise(sub_tp.func()->arg_type,pattern.func()->arg_type) and @|
     unify_specialise(sub_tp.func()->result_type,pattern.func()->result_type);
-  case row_type: return unify_specialise(sub_tp.component_type(),pattern.component_type());
+  case row_type: return
+    unify_specialise(sub_tp.component_type(),pattern.component_type());
   case tuple_type: case union_type:
     { const_raw_type_list p; raw_type_list q; // need two different types here
       for(p = sub_tp.tuple(), q=pattern.tuple();
@@ -2697,71 +2752,68 @@ bool type::unify_specialise(type_expr& pattern, unsigned int lvl) const
   return wrap(te,floor(),lvl-floor()).unify_specialise(pattern);
 }
 
-@ Now that types are polymorphic, we need a function to replace the method
-|type_expr::specialise|, which is too limited in just replacing undetermined
-type components. We may need to renumber the active type variables in one type
-to avoid collision with variables bound in another type, for which we define an
-auxiliary recursive function |shift|; it is modelled after |substitute| but
-simpler.
-
-@< Local function definitions @>=
-type_expr shift
-  (const type_expr& t, unsigned int fix, unsigned int amount)
-{ type_ptr result;
-  switch (t.raw_kind())
-  { case primitive_type: return type_expr::primitive(t.prim());
-    case function_type: result =
-      mk_function_type(shift(t.func()->arg_type,fix,amount),
-                       shift(t.func()->result_type,fix,amount));
-    break;
-    case row_type:
-      result = mk_row_type(shift(t.component_type(),fix,amount));
-    break;
-    case tuple_type:
-    case union_type:
-    { dressed_type_list aux;
-      for (wtl_const_iterator it(t.tuple()); not it.at_end(); ++it)
-        aux.push_back(shift(*it,fix,amount));
-      if (t.raw_kind()==tuple_type)
-        return type_expr::tuple(aux.undress());
-      return type_expr::onion(aux.undress());
-    }
-    case tabled: return type_expr::tabled_nr(t.type_nr());
-    case variable_type:
-  @/{@; auto c = t.typevar_count();
-      return type_expr::variable(c<fix ? c : c+amount);
-    }
-    default: assert(false);
-  }
-  return std::move(*result);
-}
-
 @ The method |matches| is typically called with as our type the type of an
-(argument) expression, and as |f_par_tp| the parameter part of a function type.
-Both our (actual argument) type and the function type can be polymorphic; our
-type stores its own polymorphic |degree()|, while for the function type the
-degree is passed as a separate argument |f_deg|. Any type variables of
-|f_par_tp| must start at our |floor()|, so it is the caller's responsibility to
-do any necessary renumbering. The task of this method is similar to that of
-|f_par_tp.specialise|, but instead of filling undetermined slots, we are
+(argument) expression, and as |f_par_tp| the parameter part of a function type
+from the overload table. Both our (actual argument) type and the function type
+can be polymorphic. Our type stores its own polymorphic |floor()| and
+|degree()|, while for the function type the degree is passed as a separate
+argument |f_deg|; coming from a global table, its type variables are all
+polymorphic, starting from number~|0|. The task of this method is similar to
+that of |f_par_tp.specialise|, but instead of filling undetermined slots, we are
 deducing assignments to the free type variables in |f_par_tp|, which are then
 (opportunistically) stored in the |type_assignment| field of |*this|. We assume
 the caller has cleared all our previous type assignments, so we have a clean
-slate of |degree()| type variables. Since we are calling |can_unify| we must
-first make the sets of type variables disjoint, which we do by shifting up our
-own type variables (into a separate |type_expr|); it is important that we do not
-renumber the free variables of |f_par_tp|, since the caller will probably use
-are type assignment to substitute into it and the function result type.
+slate of |degree()| type variables.
+
+Since we are calling |can_unify|, we must first make the sets of type variables
+disjoint, which we do by shifting any type variables of |f_par_tp| to start at
+|ceil()|. The caller of |matches| should be aware that, when afterwards using
+the |type_assignment| of the |type| object, the same shift should be applied to
+any type expression related to |f_par_tp| substituted into; the optional final
+argument of |substitution| can be used for this. We store the amount that our
+method shifted by in its output parameter |shift_amount| for the convenience of
+the caller (the value of |ceil()| from which it was copied will have been raised
+after the call). Typically the above is used by the caller for performing
+substitution into the result type of the function type that |f_par_tp| was taken
+from.
 
 @< Function definitions @>=
 
-bool type::matches (const type_expr& f_par_tp, unsigned int f_deg)
+bool type::matches
+  (const type_expr& f_par_tp, unsigned int f_deg, unsigned int& shift_amount)
 {
-  const auto d = degree(), start=floor();
+  shift_amount = ceil(); // record where our type assignments used to end
   a.grow(f_deg); // create space for new type variables
-  if (d==0 or f_deg==0) // then no need to renumber our |te|
+  if (shift_amount==0 or f_deg==0) // then no need to renumber |f_par_tp|
     return can_unify(f_par_tp,te,a);
-  return can_unify(f_par_tp,shift(te,start,f_deg),a);
+  return can_unify(shift(f_par_tp,0,shift_amount),te,a);
+}
+
+@ The method |matches_argument| is a variation on |matches| to be used in
+function calls in which the function does not come from the overload table. Here
+the preconditions are different: both function and argument have a |type| (which
+was not the case for a function type in the overload table), which can be
+polymorphic and in addition have fixed type variables; their |floor()| values
+that separate the two regimes are the same. We choose |matches_argument| to be a
+method called for the full function type, passing the actual argument type to it
+as (constant) argument (this is the opposite order from what |matches| does); in
+case of success, the substitution is recorded in the |type_assignment| of the
+function type. As in the case of |matches|, we need to make the polymorphic
+variable sets disjoint, so if both sets are non empty, we shift the argument
+polymorphic variables to follow those of the function type. In this manner the
+type assignment can be applied, after a successful match, to the result type
+without any shift.
+
+@< Function definitions @>=
+
+bool type::matches_argument(const type& actual_arg_type)
+{
+  assert(floor()==actual_arg_type.floor());
+  unsigned int fd=degree(), ad=actual_arg_type.degree();
+  a.grow(ad);
+  if (fd==0 or ad==0) // then no need to renumber |actual_arg_type|
+    return can_unify(func()->arg_type,actual_arg_type.te,a);
+  return can_unify(func()->arg_type,shift(actual_arg_type.te,floor(),fd),a);
 }
 
 @ Before converting the argument for a polymorphic function, we can extract from

@@ -1646,9 +1646,10 @@ error, also aborting the matching process.
   const overload_data* prev_match=nullptr;
   for (const auto& variant : variants)
   {
+    unsigned int shift_amount;
     if (a_priori_type.matches
-         (variant.f_tp().arg_type,variant.poly_degree())) // exact match
-    {
+         (variant.f_tp().arg_type,variant.poly_degree(),shift_amount))
+    { // exact match
       if (prev_match!=nullptr)
         @< Throw error reporting ambiguous exact match @>
       expression_ptr call;
@@ -1658,8 +1659,9 @@ error, also aborting the matching process.
         // actual argument type
 @/    @< Assign to |call| a converted call expression of the function value
         |variant.value()|... @>
-      const type res_type = type::wrap
-        ( substitution(variant.f_tp().result_type,a_priori_type.assign())
+      const type res_type = type::wrap @|
+        ( substitution(variant.f_tp().result_type
+                      ,a_priori_type.assign(),shift_amount)
         , fc
         );
       result = conform_types(res_type,tp,fc,std::move(call),e);
@@ -2479,12 +2481,12 @@ case function_call:
   type arg_type = type::wrap(arg_pat,fc);
   if (arg_type.is_void() and not is_empty(call.arg))
     arg.reset(new voiding(std::move(arg)));
-  if (not arg_type.matches(f_type.func()->arg_type,f_type.degree()))
+  if (not f_type.matches_argument(arg_type))
     throw type_error(e,std::move(arg_pat),std::move(f_pat.func()->arg_type));
   expression_ptr re(new @|
      call_expression(std::move(fun),std::move(arg),e.loc));
-  const type result_type =
-    type::wrap(substitution(f_type.func()->result_type,arg_type.assign()),fc);
+  const type result_type = type::wrap
+    (substitution(f_type.func()->result_type,f_type.assign()) ,fc);
   return conform_types(result_type,tp,fc,std::move(re),e);
 }
 
@@ -6826,7 +6828,7 @@ case op_cast_expr:
   std::ostringstream o; // prepare name for value, and for error message
   o << main_hash_table->name_of(c->oper) << '@@' << c_type;
 @)
-  if (@[const auto* entry = global_overload_table->entry(c->oper,c_type)@;@])
+  if (@[const auto* entry = global_overload_table->entry(c->oper,c_type,fc)@;@])
   { // something was found
     expression_ptr p(new capture_expression(entry->value(),o.str()));
     const type_expr& res_t = entry->f_tp().result_type;
@@ -6861,15 +6863,15 @@ through this code, leading to a ``no instance found'' error.
 @< See if |c_type| matches a unique variant... @>=
 {
   type target = type::wrap(c_type,fc);
-  const unsigned target_deg=target.degree(), start = target.floor();
+  const unsigned target_deg=target.degree();
   expression_ptr result;
   type_expr deduced_type;
   const overload_data* prev_match=nullptr;
   if (@[auto* vars = global_overload_table->variants(c->oper)@;@])
     for (const auto& variant : *vars)
     {
-      unsigned op_deg = variant.poly_degree();
-      if (target.matches(variant.f_tp().arg_type,op_deg))
+      unsigned int op_deg = variant.poly_degree(), shift_amount;
+      if (target.matches(variant.f_tp().arg_type,op_deg,shift_amount))
         // exact match after substitution
       {
         if (prev_match!=nullptr)
@@ -6879,8 +6881,8 @@ through this code, leading to a ``no instance found'' error.
            applied @>
         result.reset(new capture_expression(variant.value(),o.str()));
         deduced_type = type_expr::function @|
-          (substitution(variant.f_tp().arg_type,target.assign())
-          ,substitution(variant.f_tp().result_type,target.assign())
+          (substitution(variant.f_tp().arg_type,target.assign(),shift_amount)
+          ,substitution(variant.f_tp().result_type,target.assign(),shift_amount)
           );
        prev_match = &variant;
       }
@@ -6917,13 +6919,12 @@ match the specified type.
   o.str(std::string()); // clear previous string prepared in |o|
   o << main_hash_table->name_of(c->oper) << '@@' << variant.f_tp().arg_type;
   bool first=true;
-  for (unsigned int i=start; i<start+op_deg; ++i)
-    if (target.assign().equivalent(i)!=nullptr)
+  for (unsigned int i=0; i<op_deg; ++i)
+    if (@[auto* p=target.assign().equivalent(i+shift_amount)@;@])
     {
-      const_type_ptr var = mk_type_variable(i);
       o << (first ? (first=false, '[') : ',')
-        << *var << '='
-        << substitution(*var,target.assign());
+        << *mk_type_variable(i) << '='
+        << substitution(*p,target.assign());
     }
   o << ']';
 }

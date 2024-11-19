@@ -381,7 +381,8 @@ public:
   {@; auto p=table.find(id);
     return p==table.end() ? nullptr : &p->second;
   }
-  const overload_data* entry (id_type id, const type_expr& arg_t) const;
+  const overload_data* entry
+    (id_type id, const type_expr& arg_t, unsigned int shift_amount=0) const;
   std::size_t size() const @+{@; return table.size(); }
    // number of distinct identifiers
   void print(std::ostream&) const;
@@ -408,15 +409,35 @@ create the table.
 overload_table* global_overload_table=nullptr;
 
 @ The |entry| method returns a pointer to the overload instance if |id| for
-arguments of type |arg_t|, or a null pointer if none exists.
+arguments of type |arg_t|, or a null pointer if none exists. It can be called
+from a context where there are fixed type variables, which could be included in
+|arg_t|; in this case the method should find nothing (since such fixed variables
+cannot occur in the types of the overload table), but we must still take care to
+not accidentally match this with type variables in a polymorphic types in the
+table entry. Therefore we pass a non-zero |shift_amount| in such cases, and in
+those cases we shift any polymorphic types by it before testing against |arg_t|.
 
 @< Global function definitions @>=
 const overload_data* overload_table::entry
-  (id_type id, const type_expr& arg_t) const
+  (id_type id, const type_expr& arg_t, unsigned int shift_amount) const
 { if (@[const variant_list* vars = variants(id)@;@])
-    for (const auto& entry : *vars)
-      if (entry.f_tp().arg_type==arg_t)
-        return &entry;
+  {
+    if (shift_amount==0)
+      for (const auto& entry : *vars)
+      @/{@;
+        if (entry.f_tp().arg_type==arg_t)
+          return &entry;
+      }
+    else
+      for (const auto& entry : *vars)
+        if (entry.is_polymorphic())
+        @/{@;
+          if (shift(entry.f_tp().arg_type,0,shift_amount)==arg_t)
+          return &entry;
+        }
+        else if (entry.f_tp().arg_type==arg_t)
+          return &entry;
+  }
   return nullptr; // indicate that |(id,arg_t)| was not found
 }
 
