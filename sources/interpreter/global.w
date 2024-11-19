@@ -2625,10 +2625,10 @@ installing it; while usually ignored, this return value can be used by the
 caller to associate this built-in to other ones; a typical example of this is
 the successor function that can be called in certain cases where the function
 found in the |global_overload_table| is actually integer addition. The form
-|install_special_builtin| does give non-|const| access to the object just
+|install_special_function| does give non-|const| access to the object just
 created, which allows subsequently associating one or more other built-in
 functions in this manner. The function |install_folding_function| is a variation
-of |install_special_builtin| that already installs a constant-folding compile
+of |install_special_function| that already installs a constant-folding compile
 time adaptation.
 
 @< Declarations of exported functions @>=
@@ -3591,7 +3591,7 @@ expression_ptr rhs_is_0
   q->tests.emplace_back(rhs_is_0,p);
 @/p = install_function(int_unary_neq_wrapper,"!=","(int->bool)");
   q = install_special_function(int_neq_wrapper,"!=","(int,int->bool)");
-  q->tests.emplace_back(rhs_is_0,q);
+  q->tests.emplace_back(rhs_is_0,p);
 @/p = install_function(int_non_negative_wrapper,">=","(int->bool)");
   q = install_special_function(int_greatereq_wrapper,">=","(int,int->bool)");
   q->tests.emplace_back(rhs_is_0,p);
