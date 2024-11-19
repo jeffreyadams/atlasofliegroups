@@ -228,25 +228,13 @@ set localFD_1Dirac2\
     then Edges = [vec]:
     	 let EdgesFixFix = [vec]:
 	     if #Perm2.fixed > 1
- 	     then for v in FPP_edges(G){globalFaces[1]}
+ 	     then for v in FPP_edges(G)
 	     	  do let m = locate_sorted(Perm2.fixed, v[0]), n = locate_sorted(Perm2.fixed, v[1])
 		     in if m< #Perm2.fixed and n < #Perm2.fixed and Perm2.fixed[m] = v[0] and Perm2.fixed[n] = v[1]
 		     	then [[m,n].sort]
 			else []
 			fi
 		  od.##
-	     	  {
-	     	  do if is_member_sorted(Perm2.fixed)(v[0]) and #Perm2.fixed > mapAct[v[0]]+1
-		       	      and is_member_sorted(Perm2.fixed[mapAct[v[0]]+1:])(v[1])
-		     then let mloc = mapAct[v[0]], nloc = mapAct[v[1]]
-		       	  in if Llookup(mloc) and Llookup(nloc)
-			     then [[mloc,nloc]{.sort}]
-			     else []
-			     fi
-		      else []
-		      fi
-		   od.##
-		   }
 	       else []
 	       fi
 	   {then () = prints("after FixFix, time is ",print_time_string(elapsed_ms() - start))}
@@ -259,15 +247,6 @@ set localFD_1Dirac2\
 		      else []
 		      fi
 		   od.##
-		{
-	         if is_member_sorted(Perm2.fixed)(v[0])
-	      	    and trans_hash.lookup([v[1],v[2]]).>=
-		 then let xloc = mapAct[v[0]], yloc = mapAct[v[1]]
-		      in if Llookup(xloc) and Llookup(yloc)
-			 then [[xloc,yloc].sort]
-			 else []
-			 fi
-		}
 		else []
 		fi
            {then () = prints("after FixTrans, time is ",print_time_string(elapsed_ms() - start))}
@@ -279,16 +258,6 @@ set localFD_1Dirac2\
 		      	 then [[#Perm2.fixed + m, #Perm2.fixed + n].sort]
 			 else []
 		    	 fi
-		{
-		if trans_hash.lookup([v[0],v[1]]).>= {for e:5 if e < 3 do e fi od}
-	      	    and trans_hash.lookup([v[2],v[3]]).>=
-		 then let xloc = mapAct[v[0]], yloc = mapAct[v[2]]
-		      in if Llookup(xloc) and Llookup(yloc)
-			 then [[xloc,yloc].sort]
-			 else []
-			 fi
-		  else []
-		  }
 	            od.##
 	       else []
 	       fi)

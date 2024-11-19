@@ -2,40 +2,60 @@
 < K_highest_weights.at {for all_parameters_gamma@(RealForm,ratvec}
 < associated_variety_annihilator.at {for GK_dim}
 
-{Let G be a complex reductive algebraic group and let tilde{O} be a (finite, connected, G-equivariant) cover of a nilpotent co-adjoint G-orbit. In "Unipotent Ideals and
-Harish-Chandra Bimodules" (LMBM), the authors define a maximal primitive ideal I(tilde{O}) in U(g) called the `unipotent ideal' attached to tilde{O}. Denote by gamma(tilde{O})
-the infinitesimal character of I(tilde{O}). The purpose of this file is to compute gamma(tilde{O}) for various `rigid' tilde{O}. 
+{Let G be a complex reductive algebraic group and let tilde{O} be a
+(finite, connected, G-equivariant) cover of a nilpotent co-adjoint
+G-orbit. In "Unipotent Ideals and Harish-Chandra Bimodules" (LMBM),
+the authors define a maximal primitive ideal I(tilde{O}) in U(g)
+called the `unipotent ideal' attached to tilde{O}. Denote by
+gamma(tilde{O}) the infinitesimal character of I(tilde{O}). The
+purpose of this file is to compute gamma(tilde{O}) for various `rigid'
+tilde{O}.
 
-An orbit O is `rigid' if it cannot be obtained by Lusztig-Spaltenstein induction from a proper Levi subgroup. An orbit or cover is `birationally rigid' if it cannot be obtained
-by birational induction from a proper Levi subgroup. A nilpotent orbit is (birationally) semirigid if it admits a G-equivariant cover which is birationally rigid. For any G,
-rigid implies birationally rigid implies birationally semirigid. For an orbit O, the notions of `rigid' and `birationally rigid' are independent of isogeny (i.e. depend only
-on the Lie algebra g). For a cover tilde{O}, the notion of `birationally rigid' is also independent of isogeny, in the following sense. If G'\to G is an isogeny,
-and tilde{O} is a birationally rigid G-equivariant cover, then tilde{O} can be regarded as a G'-equivariant cover (by means of the isogeny) and is birationally rigid as such. However, if tilde{O}
-is a G'-equivariant cover, the G'-action of tilde{O} may not descend to a G-action. Thus, the notion of `birationally semirigid' *is* sensitive to isogeny. This is a subtle issue, which is not
-addressed in this file. Below, we regard a nilpotent orbit as birationally semirigid if it is birationally semirigid with respect to the *simply connected* cover of G. It may be useful in a future
-iteration to address this subtlety.
+An orbit O is `rigid' if it cannot be obtained by Lusztig-Spaltenstein
+induction from a proper Levi subgroup. An orbit or cover is
+`birationally rigid' if it cannot be obtained by birational induction
+from a proper Levi subgroup. A nilpotent orbit is (birationally)
+semirigid if it admits a G-equivariant cover which is birationally
+rigid. For any G, rigid implies birationally rigid implies
+birationally semirigid. For an orbit O, the notions of `rigid' and
+`birationally rigid' are independent of isogeny (i.e. depend only on
+the Lie algebra g). For a cover tilde{O}, the notion of `birationally
+rigid' is also independent of isogeny, in the following sense. If
+G'\to G is an isogeny, and tilde{O} is a birationally rigid
+G-equivariant cover, then tilde{O} can be regarded as a G'-equivariant
+cover (by means of the isogeny) and is birationally rigid as
+such. However, if tilde{O} is a G'-equivariant cover, the G'-action of
+tilde{O} may not descend to a G-action. Thus, the notion of
+`birationally semirigid' *is* sensitive to isogeny. This is a subtle
+issue, which is not addressed in this file. Below, we regard a
+nilpotent orbit as birationally semirigid if it is birationally
+semirigid with respect to the *simply connected* cover of G. It may be
+useful in a future iteration to address this subtlety.
 
-The `unipotent datum' associated to a rigid or birationally rigid nilpotent orbit O is the pair (O,gamma) where gamma is the infinitesimal character of the associated unipotent ideal. The
-`unipotent datum' associated to a birationally semirigid nilpotenty orbit O is the pair (O,gamma) where gamma is the infinitesimal character of the unipotent ideal attached to a birationally
-rigid cover of O. Note: it may be the case that O admits several distinct birationally rigid covers, but it is shown in LMBM that the associated ideals coincide (with one another, and with the
-ideal attached to the universal cover of O, which may or may not be birationally rigid). This file contains three main functions: rigid_data, birigid_data, and semirigid_data.
-All three functions take a root datum G and produce a list of unipotent data. The function `rigid_data' generates a list of unipotent data corresponding
-to rigid nilpotent G-orbits. The function `birigid_data' generates a list of unipotent data corresponding to birationally rigid nilpotent G-orbits. And the function `semirigid_data' generates a list
-of unipotent data attached to semirigid orbits.  }
-
-
-
-
-
-
-
+The `unipotent datum' associated to a rigid or birationally rigid
+nilpotent orbit O is the pair (O,gamma) where gamma is the
+infinitesimal character of the associated unipotent ideal. The
+`unipotent datum' associated to a birationally semirigid nilpotenty
+orbit O is the pair (O,gamma) where gamma is the infinitesimal
+character of the unipotent ideal attached to a birationally rigid
+cover of O. Note: it may be the case that O admits several distinct
+birationally rigid covers, but it is shown in LMBM that the associated
+ideals coincide (with one another, and with the ideal attached to the
+universal cover of O, which may or may not be birationally
+rigid). This file contains three main functions: rigid_data,
+birigid_data, and semirigid_data.  All three functions take a root
+datum G and produce a list of unipotent data. The function
+`rigid_data' generates a list of unipotent data corresponding to rigid
+nilpotent G-orbits. The function `birigid_data' generates a list of
+unipotent data corresponding to birationally rigid nilpotent
+G-orbits. And the function `semirigid_data' generates a list of
+unipotent data attached to semirigid orbits.  }
 
 
 <basic.at
 <partitions.at {for paritions(n) and some related functions}
 <ratmat.at {for rational_inverse}
 <simple_factors.at
-
 
 {Create new data type for pairs rigid data}
 
@@ -77,7 +97,6 @@ set inflchar_spin(Partition p)=ratvec:
 let n=floor(sum(p)/4), lambda=inflchar_no_padding_spin(p) in
 ##(lambda,null(n-#lambda))
 
-
 {determine whether partition is rather odd, i.e. every odd part occurs with mult 1}
 
 set is_rather_odd(Partition p)=bool:
@@ -88,7 +107,6 @@ sum(for i:#p-1 do if is_odd(p[i]) and p[i]=p[i+1] then 1 else 0 fi od)>0
 set two_jumps(Partition p)=int:
 let q=#(p,0) in
 sum(for j:#p do #(q[j]>q[j+1]+1) od)
-
 
 { Count indices i such that p[i]>p[i+1]+2 }
 
@@ -109,27 +127,21 @@ let q=#(p,0) in
 sum(for j:#p do #(q[j]=q[j+1]+4) od)
 
 { Count indices i such that p[i]>p[i+1]+4 }
-
 set five_jumps(Partition p)=int:
 let q=#(p,0) in
 sum(for j:#p do #(q[j]>q[j+1]+4) od)
 
-
 { Count indices i such that p[i]>p[i+1]+1 and p[i] even }
-
 set two_jumps_from_even(Partition p)=int:
 let q=#(p,0) in
 sum(for j:#p do #(q[j]>q[j+1]+1 and is_even(q[j])) od)
 
 { Count indices i such that p[i]>p[i+1]+1 and p[i] odd }
-
 set two_jumps_from_odd(Partition p)=int:
 let q=#(p,0) in
 sum(for j:#p do #(q[j]>q[j+1]+1 and is_odd(q[j])) od)  
 
-
 { Count even parts of p which occur with multiplicity exactly 2 }
-
 set even_mult_two(Partition p)=int:
 let q=transpose(p) then
  r=#(q,0) in
@@ -143,60 +155,50 @@ r=#(q,0) in
 sum(for j:#r-1 do #(r[j]=r[j+1]+2 and is_even(j)) od)
 
 { Count all odd parts of p }
-
 set odd_parts(Partition p)=int:
 sum(for j in p do #(is_odd(j)) od)
 
 { Sum of squares of parts of a partition }
-
 set sum_of_squares(Partition p)=int:
 sum(for j in p do j*j od)
 
 
 { Multiplicity of integer in partition }
-
 set multiplicity(int n, Partition p)=int:
 sum(for j in p do #(j=n) od)
 
 
 {check whether partition p is of the form (2,2,...,2,1,1)}
-
 set is_bad_D(Partition p)=bool:
 p[0]=2 and multiplicity(1,p)=2
 
 
 
 { Extract subpartition of multiplicity 1 parts }
-
 set x(Partition p) = Partition:
 let output=Partition:[] in
 for j in p do if multiplicity(j,p)=1 then output:=#(output,j) else output:=output fi od; output
 
 { Extract subpartition of multiplicity 2 parts }
-
 set y(Partition p) = Partition:
 let output=Partition:[] in
 for j in p do if multiplicity(j,p)=2 then output:=#(output,j) else output:=output fi od; output
  
 { Extract subpartition of multiplicity 4 parts }
-
 set z(Partition p) = Partition:
 let output=Partition:[] in
 for j in p do if multiplicity(j,p)=4 then output:=#(output,j) else output:=output fi od; output
 
 { Union of two partitions. Parts in output are not in usual non-decreasing order }
-
 set union(Partition p, Partition q) = Partition:
 ##(p,q)
 
 
 { Given partition p with all parts of mult 2, form new partition by replacing each pair (x,x) with (x+1,x-1)}
-
 set g(Partition p) = Partition:
 for j@i in p do if is_even(i) then j+1 else j-1 fi od
 
 { Given partition p all parts of mult 4, form new partition by replacing each quadruple (x,x,x,x) with (x+2,x+1,x-1,x-2)}
-
 set h(Partition p) = Partition:
 for j@i in p do if is_integer(i/4) then j+2
                 elif is_integer((i-1)/4) then j+1
@@ -205,7 +207,6 @@ for j@i in p do if is_integer(i/4) then j+2
 
 
 {~~Type A functions~~}
-
 set rigid_data_A(RootDatum rd) = [unipotent_datum]:
 let n=rank(rd) in
 [(complex_nilpotent(rd,null(n)),rd.rho)]
@@ -224,38 +225,32 @@ M=simple_roots(rd)*permutation_matrix(order)*rational_inverse(simple_roots(SL(n)
 N=simple_coroots(rd)*permutation_matrix(order)*rational_inverse(simple_coroots(SL(n))) in
 for (O,gamma) in semirigid_data_A_std(n) do (complex_nilpotent(rd,numer(N*H(O))),M*gamma) od
 
-
-
-
-
-
 {~~Type C functions~~}
 
 {Dimension of nilpotent orbit corresponding to an arbitrary C-partition}
-
 set dim_C(Partition p) = int:
 let q=transpose(p), n=floor(sum(p)/2) in
 floor(2*n*n+n-(1/2)*(sum_of_squares(q)+odd_parts(p)))
 
-{Decide whether a given C-partition corresponds to a rigid nilpotent orbit. Condition is given in
-Collingwood-McGovern, Cor 7.3.5: no two-jumps and no even parts with multiplicity exactly two}
-
+{Decide whether a given C-partition corresponds to a rigid nilpotent
+orbit. Condition is given in Collingwood-McGovern, Cor 7.3.5: no
+two-jumps and no even parts with multiplicity exactly two}
 set is_rigid_C(Partition p) = bool:
 if two_jumps(p)=0 and even_mult_two(p)=0 then true else false fi
 
-{Decide whether a given C-partition corresponds to a birationally rigid nilpotent orbit. Condition is given in LMBM: no two jumps}
-
+{Decide whether a given C-partition corresponds to a birationally
+rigid nilpotent orbit. Condition is given in LMBM: no two jumps}
 set is_birigid_C(Partition p) = bool:
 if two_jumps(p)=0 then true else false fi
 
-{Decide whether a given C-partition corresponds to a birationally semi-rigid nilpotent orbit. Condition is given in MBM: no three jumps and no two jumps from odd parts}
-
+{Decide whether a given C-partition corresponds to a birationally
+semi-rigid nilpotent orbit. Condition is given in MBM: no three jumps
+and no two jumps from odd parts}
 set is_semirigid_C(Partition p) = bool:
 if three_jumps(p)=0 and two_jumps_from_odd(p)=0 then true else false fi
 
 
 { Generate list of rigid C-partitions of 2n}
-
 set rigid_partitions_C(int n) = [Partition]:
 let all_p = partitions(2*n), output=[[int]]:[] in
 for p in all_p do if is_valid("C",p) and is_rigid_C(p) then output:=#(output,p)
@@ -263,14 +258,12 @@ else output:=output fi od; output
 
 
 { Generate list of birationally rigid C-partitions of 2n}
-
 set birigid_partitions_C(int n) = [Partition]:
 let all_p = partitions(2*n), output=[[int]]:[] in
 for p in all_p do if is_valid("C",p) and is_birigid_C(p) then output:=#(output,p)
 else output:=output fi od; output
 
 { Generate list of birationally semirigid C-partitions of 2n}
-
 set semirigid_partitions_C(int n) = [Partition]:
 let all_p = partitions(2*n), output=[[int]]:[] in
 for p in all_p do if is_valid("C",p) and is_semirigid_C(p) then output:=#(output,p)
@@ -278,7 +271,6 @@ else output:=output fi od; output
 
 { Define operation f_C from "Unipotent Ideals and HC Bimodules", Def 8.2.2: for every even i with 
 q_i \geq q_{i+1}+2, move one box from q_i to q_{i+1} and then add a single box to q_1 }
-
 set f_C(Partition p) = Partition:
 let q=#(p,0), output=[] in
 for i:#q do if i=0 then output:=#(output,q[0]+1) else 
@@ -286,45 +278,42 @@ if is_odd(i) and i<#q-1 and q[i]>q[i+1]+1 then output:=#(output,q[i]-1) else
 if is_even(i) and q[i-1]>q[i]+1 then output:=#(output,q[i]+1) else
 output:=#(output,q[i]) fi fi fi od; output 
 
-{ Produce unipotent infinitesimal character attached to nilpotent orbit corresponding to a rigid or birationally rigid C-partition p,
+{ Produce unipotent infinitesimal character attached to nilpotent
+orbit corresponding to a rigid or birationally rigid C-partition p,
 see Prop 8.2.3 in LMBM}
-
 set rigid_infl_char_C(Partition p) = ratvec:
 inflchar(f_C(transpose(p)))
 
 set birigid_infl_char_C(Partition p) = ratvec:
 inflchar(f_C(transpose(p)))
 
-{ Produce unipotent infinitesimal character attached to universal cover of nilpotent orbit corresponding to a birationally semirigid C-partition p,
-see Prop 8.2.8 in LMBM} 
-
+{ Produce unipotent infinitesimal character attached to universal
+cover of nilpotent orbit corresponding to a birationally semirigid
+C-partition p, see Prop 8.2.8 in LMBM}
 set semirigid_infl_char_C(Partition p) = ratvec:
 inflchar(union(f_C(x(transpose(p))),g(y(transpose(p)))))
 
-
-{ Produce a list of all rigid data for Sp(2n). Infl chars are expressed in standard Sp(2n) coordinates}
-
+{ Produce a list of all rigid data for Sp(2n). Infl chars are
+expressed in standard Sp(2n) coordinates}
 set rigid_data_C_std(int n) = [unipotent_datum]:
 let all_rigid=rigid_partitions_C(n) in
 for p in all_rigid do (complex_nilpotent(Sp(2*n),Dynkin(p)),rigid_infl_char_C(p)) od
 
-
-{ Produce a list of all birationally rigid data for Sp(2n). Infl chars are expressed in standard Sp(2n) coordinates}
-
+{ Produce a list of all birationally rigid data for Sp(2n). Infl chars
+are expressed in standard Sp(2n) coordinates}
 set birigid_data_C_std(int n) = [unipotent_datum]:
 let all_birigid=birigid_partitions_C(n) in
 for p in all_birigid do (complex_nilpotent(Sp(2*n),Dynkin(p)),birigid_infl_char_C(p)) od
 
-{ Produce a list of all birationally semirigid data for Sp(2n). Infl chars are expressed in standard Sp(2n) coordinates}
-
+{ Produce a list of all birationally semirigid data for Sp(2n). Infl
+chars are expressed in standard Sp(2n) coordinates}
 set semirigid_data_C_std(int n) = [unipotent_datum]:
 let all_semirigid=semirigid_partitions_C(n) in
 for p in all_semirigid do (complex_nilpotent(Sp(2*n),Dynkin(p)),semirigid_infl_char_C(p)) od
 
 
-{Produce a list of all rigid data for a group G with simple derived group of type C. Infl chars are expressed
-in atlas coordinates for G}
-
+{Produce a list of all rigid data for a group G with simple derived
+group of type C. Infl chars are expressed in atlas coordinates for G}
 set rigid_data_C(RootDatum rd)=[unipotent_datum]:
 let n=semisimple_rank(rd) then
 order=test_simple_type("C",rd) then
@@ -332,9 +321,9 @@ M=simple_roots(rd)*permutation_matrix(order)*rational_inverse(simple_roots(Sp(2*
 N=simple_coroots(rd)*permutation_matrix(order)*rational_inverse(simple_coroots(Sp(2*n))) in
 for (O,gamma) in rigid_data_C_std(n) do (complex_nilpotent(rd,numer(N*H(O))),M*gamma) od
 
-
-{Produce a list of all birationally rigid data for a group G with simple derived group of type C. Infl chars are expressed
-in atlas coordinates for G}
+{Produce a list of all birationally rigid data for a group G with
+simple derived group of type C. Infl chars are expressed in atlas
+coordinates for G}
 
 set birigid_data_C(RootDatum rd)=[unipotent_datum]:
 let n=semisimple_rank(rd) then
@@ -343,9 +332,9 @@ M=simple_roots(rd)*permutation_matrix(order)*rational_inverse(simple_roots(Sp(2*
 N=simple_coroots(rd)*permutation_matrix(order)*rational_inverse(simple_coroots(Sp(2*n))) in
 for (O,gamma) in birigid_data_C_std(n) do (complex_nilpotent(rd,numer(N*H(O))),M*gamma) od
 
-{Produce a list of all birationally semirigid data for a group G with simple derived group of type C. Infl chars are expressed
-in atlas coordinates for G}
-
+{Produce a list of all birationally semirigid data for a group G with
+simple derived group of type C. Infl chars are expressed in atlas
+coordinates for G}
 set semirigid_data_C(RootDatum rd)=[unipotent_datum]:
 let n=semisimple_rank(rd) then
 order=test_simple_type("C",rd) then
@@ -355,7 +344,6 @@ for (O,gamma) in semirigid_data_C_std(n) do (complex_nilpotent(rd,numer(N*H(O)))
 
 
 {~~Type B/D functions~~}
-
 set dim_B(Partition p) = int:
 let q=transpose(p), n=floor(sum(p)/2) in
 floor(2*n*n+n-(1/2)*(sum_of_squares(q)-odd_parts(p)))
@@ -364,168 +352,156 @@ set dim_D(Partition p) = int:
 let q=transpose(p), n=floor(sum(p)/2) in
 floor(2*n*n-n-(1/2)*(sum_of_squares(q)-odd_parts(p)))
 
-{Decide whether a given B/D-partition corresponds to a rigid nilpotent orbit. Condition is given in
-Collingwood-McGovern, Cor 7.3.5: no two-jumps and no odd parts with multiplicity exactly two}
-
+{Decide whether a given B/D-partition corresponds to a rigid nilpotent
+orbit. Condition is given in Collingwood-McGovern, Cor 7.3.5: no
+two-jumps and no odd parts with multiplicity exactly two}
 set is_rigid_BD(Partition p) = bool:
 two_jumps(p)=0 and odd_mult_two(p)=0
 
-{Decide whether a given B/D-partition corresponds to a birationally rigid nilpotent orbit. Condition is given in LMBMB/MBM: no two jumps and (in type D case) partition is
-not of the form (2,2,...,2,2,1,1)}
-
+{Decide whether a given B/D-partition corresponds to a birationally
+rigid nilpotent orbit. Condition is given in LMBMB/MBM: no two jumps
+and (in type D case) partition is not of the form (2,2,...,2,2,1,1)}
 set is_birigid_BD(Partition p) = bool:
 two_jumps(p)=0 and not(is_bad_D(p)) 
 
-{Decide whether a given B/D-partition corresponds to a spin-semirigid orbit (i.e. nilpotent orbit which admits a Spin-equivariant birationally rigid cover, which is not 
-SO-equivariant). Condition is given in MB, Prop 4.2.1}
-
+{Decide whether a given B/D-partition corresponds to a spin-semirigid
+orbit (i.e. nilpotent orbit which admits a Spin-equivariant
+birationally rigid cover, which is not SO-equivariant). Condition is
+given in MB, Prop 4.2.1}
 set is_semirigid_spin(Partition p) = bool:
 is_rather_odd(p) and five_jumps(p)=0 and two_jumps_from_even(p)=0 and three_jumps_exact(p)=0 and four_jumps_exact(p)>0
 
-{Decide whether a given B/D-partition corresponds to an so-semirigid orbit (i.e. nilpotent orbit which admits an SO-equivariant birationally rigid cover)}
-
+{Decide whether a given B/D-partition corresponds to an so-semirigid
+orbit (i.e. nilpotent orbit which admits an SO-equivariant
+birationally rigid cover)}
 set is_semirigid_so(Partition p) = bool:
 three_jumps(p)=0 and two_jumps_from_even(p)=0
 
-{Decie whether a given B/D-partition corresponds to a birationally semirigid nilpotent orbit}
+{Decide whether a given B/D-partition corresponds to a birationally semirigid nilpotent orbit}
 set is_semirigid_BD(Partition p) = bool:
 is_semirigid_spin(p) or is_semirigid_so(p)
 
 
 { Generate list of rigid B-partitions of 2n+1}
-
 set rigid_partitions_B(int n) = [Partition]:
 let all_p = partitions(2*n+1), output=[[int]]:[] in
 for p in all_p do if is_valid("B",p) and is_rigid_BD(p) then output:=#(output,p)
 else output:=output fi od; output
 
 { Generate list of rigid D-partitions of 2n}
-
 set rigid_partitions_D(int n) = [Partition]:
 let all_p = partitions(2*n), output=[[int]]:[] in
 for p in all_p do if is_valid("D",p) and is_rigid_BD(p) then output:=#(output,p)
 else output:=output fi od; output
 
-
 { Generate list of birationally rigid B-partitions of 2n+1}
-
 set birigid_partitions_B(int n) = [Partition]:
 let all_p = partitions(2*n+1), output=[[int]]:[] in
 for p in all_p do if is_valid("B",p) and is_birigid_BD(p) then output:=#(output,p)
 else output:=output fi od; output
 
 { Generate list of birationally rigid D-partitions of 2n}
-
 set birigid_partitions_D(int n) = [Partition]:
 let all_p = partitions(2*n), output=[[int]]:[] in
 for p in all_p do if is_valid("D",p) and is_birigid_BD(p) then output:=#(output,p)
 else output:=output fi od; output
 
 { Generate list of B-partitions p of 2n+1 such that is_semirigid_spin(p)}
-
 set semirigid_partitions_spin_B(int n) = [Partition]:
 let all_p = partitions(2*n+1), output=[[int]]:[] in
 for p in all_p do if is_valid("B",p) and is_semirigid_spin(p) then output:=#(output,p)
 else output:=output fi od; output
 
 { Generate list of B-partitions p of 2n+1 such that is_semirigid_so(p)}
-
 set semirigid_partitions_so_B(int n) = [Partition]:
 let all_p = partitions(2*n+1), output=[[int]]:[] in
 for p in all_p do if is_valid("B",p) and is_semirigid_so(p) then output:=#(output,p)
 else output:=output fi od; output
 
 { Generate list of birationally semirigid B-partitions of 2n+1}
-
 set semirigid_partitions_B(int n) = [Partition]:
 ##(semirigid_partitions_so_B(n),semirigid_partitions_spin_B(n))
 
 { Generate list of D-partitions p of 2n such that is_semirigid_spin(p)}
-
 set semirigid_partitions_spin_D(int n) = [Partition]:
 let all_p = partitions(2*n), output=[[int]]:[] in
 for p in all_p do if is_valid("D",p) and is_semirigid_spin(p) then output:=#(output,p)
 else output:=output fi od; output
 
 { Generate list of D-partitions p of 2n such that is_semirigid_so(p)}
-
 set semirigid_partitions_so_D(int n) = [Partition]:
 let all_p = partitions(2*n), output=[[int]]:[] in
 for p in all_p do if is_valid("D",p) and is_semirigid_so(p) then output:=#(output,p)
 else output:=output fi od; output
 
 { Generate list of birationally semirigid D-partitions of 2n}
-
 set semirigid_partitions_D(int n) = [Partition]:
 ##(semirigid_partitions_so_D(n),semirigid_partitions_spin_D(n))
 
 
-{ Define operation f_BD from "Unipotent Ideals and HC Bimodules", Def 8.2.2: for every odd i with
-q_i \geq q_{i+1}+2, move one box from q_i to q_{i+1}}
-
+{ Define operation f_BD from "Unipotent Ideals and HC Bimodules", Def
+8.2.2: for every odd i with q_i \geq q_{i+1}+2, move one box from q_i
+to q_{i+1}}
 set f_BD(Partition p) = Partition:
 let q=#(p,0), output=[] in
 for i:#q do if is_even(i) and i<#q-1 and q[i]>q[i+1]+1 then output:=#(output,q[i]-1) else
 if is_odd(i) and q[i-1]>q[i]+1 then output:=#(output,q[i]+1) else
 output:=#(output,q[i]) fi fi od; output
 
-{ Produce unipotent infinitesimal character attached to birationally rigid nilpotent orbit corresponding to a B/D-partition p,
-see Prop 8.2.3 in LMBM}
-
+{ Produce unipotent infinitesimal character attached to birationally
+rigid nilpotent orbit corresponding to a B/D-partition p, see Prop
+8.2.3 in LMBM}
 set rigid_infl_char_BD(Partition p) = ratvec:
 inflchar(f_BD(transpose(p)))
 
 set birigid_infl_char_BD(Partition p) = ratvec:
 inflchar(f_BD(transpose(p)))
 
-
-{ Produce unipotent infinitesimal character attached to birationally rigid SO-equivariant cover of nilpotent orbit corresponding to a B/D-partition p}
-
+{ Produce unipotent infinitesimal character attached to birationally
+rigid SO-equivariant cover of nilpotent orbit corresponding to a
+B/D-partition p}
 set semirigid_infl_char_so(Partition p) = ratvec:
 inflchar(union(f_BD(x(transpose(p))),g(y(transpose(p)))))
 
-
-{ Produce unipotent infinitesimal character attached to birationally rigid Spin-equivariant cover of nilpotent orbit corresponding to a B/D-partition p}
-
+{ Produce unipotent infinitesimal character attached to birationally
+rigid Spin-equivariant cover of nilpotent orbit corresponding to a
+B/D-partition p}
 set semirigid_infl_char_spin(Partition p) = ratvec:
 inflchar_spin(union(union(2*f_BD(x(transpose(p))),2*g(y(transpose(p)))),h(2*z(transpose(p)))))
 
-
-
-{ Produce a list of all rigid data for SO(2n+1). Infl chars are expressed in standard SO(2n+1) coordinates}
-
+{ Produce a list of all rigid data for SO(2n+1). Infl chars are
+expressed in standard SO(2n+1) coordinates}
 set rigid_data_B_std(int n) = [unipotent_datum]:
 let all_rigid=rigid_partitions_B(n) in
 for p in all_rigid do (complex_nilpotent(SO(2*n+1),Dynkin(p)),rigid_infl_char_BD(p)) od
 
-{ Produce a list of all birationally rigid data for SO(2n+1). Infl chars are expressed in standard SO(2n+1) coordinates}
-
+{ Produce a list of all birationally rigid data for SO(2n+1). Infl
+chars are expressed in standard SO(2n+1) coordinates}
 set birigid_data_B_std(int n) = [unipotent_datum]:
 let all_birigid=birigid_partitions_B(n) in
 for p in all_birigid do (complex_nilpotent(SO(2*n+1),Dynkin(p)),birigid_infl_char_BD(p)) od
 
-{ Produce a list of all SO semirigid data for SO(2n+1). Infl chars are expressed in standard SO(2n+1) coordinates}
-
+{ Produce a list of all SO semirigid data for SO(2n+1). Infl chars are
+expressed in standard SO(2n+1) coordinates}
 set semirigid_data_so_B_std(int n) = [unipotent_datum]:
 let all_semirigid=semirigid_partitions_so_B(n) in
 for p in all_semirigid do (complex_nilpotent(SO(2*n+1),Dynkin(p)),semirigid_infl_char_so(p)) od
 
 
-{ Produce a list of all Spin semirigid data for SO(2n+1). Infl chars are expressed in standard SO(2n+1) coordinates}
-
+{ Produce a list of all Spin semirigid data for SO(2n+1). Infl chars
+are expressed in standard SO(2n+1) coordinates}
 set semirigid_data_spin_B_std(int n) = [unipotent_datum]:
 let all_semirigid=semirigid_partitions_spin_B(n) in
 for p in all_semirigid do (complex_nilpotent(SO(2*n+1),Dynkin(p)),semirigid_infl_char_spin(p)) od
 
 
-{ Produce a list of all semirigid data for SO(2n+1). Infl chars are expressed in standard SO(2n+1) coordinates}
-
+{ Produce a list of all semirigid data for SO(2n+1). Infl chars are
+expressed in standard SO(2n+1) coordinates}
 set semirigid_data_B_std(int n) = [unipotent_datum]:
 ##(semirigid_data_so_B_std(n),semirigid_data_spin_B_std(n))
 
-{ Produce a list of all rigid data for a group G with simple derived group of type B. Infl chars are expressed
-in atlas coordinates for G}
-
+{ Produce a list of all rigid data for a group G with simple derived
+group of type B. Infl chars are expressed in atlas coordinates for G}
 set rigid_data_B(RootDatum rd)=[unipotent_datum]:
 let n=semisimple_rank(rd) then
 order=test_simple_type("B",rd) then
@@ -533,10 +509,9 @@ M=simple_roots(rd)*permutation_matrix(order)*rational_inverse(simple_roots(SO(2*
 N=simple_coroots(rd)*permutation_matrix(order)*rational_inverse(simple_coroots(SO(2*n+1))) in
 for (O,gamma) in rigid_data_B_std(n) do (complex_nilpotent(rd,numer(N*H(O))),M*gamma) od
 
-
-{ Produce a list of all birationally rigid data for a group G with simple derived group of type B. Infl chars are expressed
-in atlas coordinates for G}
-
+{ Produce a list of all birationally rigid data for a group G with
+simple derived group of type B. Infl chars are expressed in atlas
+coordinates for G}
 set birigid_data_B(RootDatum rd)=[unipotent_datum]:
 let n=semisimple_rank(rd) then
 order=test_simple_type("B",rd) then
@@ -544,10 +519,9 @@ M=simple_roots(rd)*permutation_matrix(order)*rational_inverse(simple_roots(SO(2*
 N=simple_coroots(rd)*permutation_matrix(order)*rational_inverse(simple_coroots(SO(2*n+1))) in
 for (O,gamma) in birigid_data_B_std(n) do (complex_nilpotent(rd,numer(N*H(O))),M*gamma) od
 
-
-{ Produce a list of all SO semirigid data for a group G with simple derived group of type B. Infl chars are expressed
-in atlas coordinates for G}
-
+{ Produce a list of all SO semirigid data for a group G with simple
+derived group of type B. Infl chars are expressed in atlas coordinates
+for G}
 set semirigid_data_so_B(RootDatum rd)=[unipotent_datum]:
 let n=semisimple_rank(rd) then
 order=test_simple_type("B",rd) then
@@ -555,10 +529,9 @@ M=simple_roots(rd)*permutation_matrix(order)*rational_inverse(simple_roots(SO(2*
 N=simple_coroots(rd)*permutation_matrix(order)*rational_inverse(simple_coroots(SO(2*n+1))) in
 for (O,gamma) in semirigid_data_so_B_std(n) do (complex_nilpotent(rd,numer(N*H(O))),M*gamma) od
 
-
-{ Produce a list of all Spin semirigid data for a group G with simple derived group of type B. Infl chars are expressed
-in atlas coordinates for G}
-
+{ Produce a list of all Spin semirigid data for a group G with simple
+derived group of type B. Infl chars are expressed in atlas coordinates
+for G}
 set semirigid_data_spin_B(RootDatum rd)=[unipotent_datum]:
 let n=semisimple_rank(rd) then
 order=test_simple_type("B",rd) then
@@ -566,10 +539,9 @@ M=simple_roots(rd)*permutation_matrix(order)*rational_inverse(simple_roots(SO(2*
 N=simple_coroots(rd)*permutation_matrix(order)*rational_inverse(simple_coroots(SO(2*n+1))) in
 for (O,gamma) in semirigid_data_spin_B_std(n) do (complex_nilpotent(rd,numer(N*H(O))),M*gamma) od
 
-
-{ Produce a list of all semirigid data for a group G with simple derived group of type B. Infl chars are expressed
-in atlas coordinates for G}
-
+{ Produce a list of all semirigid data for a group G with simple
+derived group of type B. Infl chars are expressed in atlas coordinates
+for G}
 set semirigid_data_B(RootDatum rd)=[unipotent_datum]:
 let n=semisimple_rank(rd) then
 order=test_simple_type("B",rd) then
@@ -577,41 +549,38 @@ M=simple_roots(rd)*permutation_matrix(order)*rational_inverse(simple_roots(SO(2*
 N=simple_coroots(rd)*permutation_matrix(order)*rational_inverse(simple_coroots(SO(2*n+1))) in
 for (O,gamma) in semirigid_data_B_std(n) do (complex_nilpotent(rd,numer(N*H(O))),M*gamma) od
 
-
-
-{ Produce a list of all rigid data for SO(2n). Infl chars are expressed in standard SO(2n) coordinates}
+{ Produce a list of all rigid data for SO(2n). Infl chars are
+expressed in standard SO(2n) coordinates}
 
 set rigid_data_D_std(int n) = [unipotent_datum]:
 let all_rigid=rigid_partitions_D(n) in
 for p in all_rigid do (complex_nilpotent(SO(2*n),Dynkin(p)),rigid_infl_char_BD(p)) od
 
-{ Produce a list of all birationally rigid data for SO(2n). Infl chars are expressed in standard SO(2n) coordinates}
-
+{ Produce a list of all birationally rigid data for SO(2n). Infl chars
+are expressed in standard SO(2n) coordinates}
 set birigid_data_D_std(int n) = [unipotent_datum]:
 let all_birigid=birigid_partitions_D(n) in
 for p in all_birigid do (complex_nilpotent(SO(2*n),Dynkin(p)),birigid_infl_char_BD(p)) od
 
-{ Produce a list of all SO semirigid data for SO(2n). Infl chars are expressed in standard SO(2n) coordinates}
-
+{ Produce a list of all SO semirigid data for SO(2n). Infl chars are
+expressed in standard SO(2n) coordinates}
 set semirigid_data_so_D_std(int n) = [unipotent_datum]:
 let all_semirigid=semirigid_partitions_so_D(n) in
 for p in all_semirigid do (complex_nilpotent(SO(2*n),Dynkin(p)),semirigid_infl_char_so(p)) od
 
-{ Produce a list of all Spin semirigid data for SO(2n). Infl chars are expressed in standard SO(2n) coordinates}
-
+{ Produce a list of all Spin semirigid data for SO(2n). Infl chars are
+expressed in standard SO(2n) coordinates}
 set semirigid_data_spin_D_std(int n) = [unipotent_datum]:
 let all_semirigid=semirigid_partitions_spin_D(n) in
 for p in all_semirigid do (complex_nilpotent(SO(2*n),Dynkin(p)),semirigid_infl_char_spin(p)) od
 
-
-{ Produce a list of all semirigid data for SO(2n). Infl chars are expressed in standard SO(2n) coordinates}
-
+{ Produce a list of all semirigid data for SO(2n). Infl chars are
+expressed in standard SO(2n) coordinates}
 set semirigid_data_D_std(int n) = [unipotent_datum]:
 ##(semirigid_data_so_D_std(n),semirigid_data_spin_D_std(n))
 
-{ Produce a list of all rigid data for a group G with simple derived group of type D. Infl chars are expressed
-in atlas coordinates for G}
-
+{ Produce a list of all rigid data for a group G with simple derived
+group of type D. Infl chars are expressed in atlas coordinates for G}
 set rigid_data_D(RootDatum rd)=[unipotent_datum]:
 let n=semisimple_rank(rd) then
 order=test_simple_type("D",rd) then
@@ -619,9 +588,9 @@ M=simple_roots(rd)*permutation_matrix(order)*rational_inverse(simple_roots(SO(2*
 N=simple_coroots(rd)*permutation_matrix(order)*rational_inverse(simple_coroots(SO(2*n))) in
 for (O,gamma) in rigid_data_D_std(n) do (complex_nilpotent(rd,numer(N*H(O))),M*gamma) od
 
-{ Produce a list of all birationally rigid data for a group G with simple derived group of type D. Infl chars are expressed
-in atlas coordinates for G}
-
+{ Produce a list of all birationally rigid data for a group G with
+simple derived group of type D. Infl chars are expressed in atlas
+coordinates for G}
 set birigid_data_D(RootDatum rd)=[unipotent_datum]:
 let n=semisimple_rank(rd) then
 order=test_simple_type("D",rd) then
@@ -629,9 +598,9 @@ M=simple_roots(rd)*permutation_matrix(order)*rational_inverse(simple_roots(SO(2*
 N=simple_coroots(rd)*permutation_matrix(order)*rational_inverse(simple_coroots(SO(2*n))) in
 for (O,gamma) in birigid_data_D_std(n) do (complex_nilpotent(rd,numer(N*H(O))),M*gamma) od
 
-{ Produce a list of all SO semirigid data for a group G with simple derived group of type D. Infl chars are expressed
-in atlas coordinates for G}
-
+{ Produce a list of all SO semirigid data for a group G with simple
+derived group of type D. Infl chars are expressed in atlas coordinates
+for G}
 set semirigid_data_so_D(RootDatum rd)=[unipotent_datum]:
 let n=semisimple_rank(rd) then
 order=test_simple_type("D",rd) then
@@ -639,10 +608,9 @@ M=simple_roots(rd)*permutation_matrix(order)*rational_inverse(simple_roots(SO(2*
 N=simple_coroots(rd)*permutation_matrix(order)*rational_inverse(simple_coroots(SO(2*n))) in
 for (O,gamma) in semirigid_data_so_D_std(n) do (complex_nilpotent(rd,numer(N*H(O))),M*gamma) od
 
-
-{ Produce a list of all Spin semirigid data for a group G with simple derived group of type D. Infl chars are expressed
-in atlas coordinates for G}
-
+{ Produce a list of all Spin semirigid data for a group G with simple
+derived group of type D. Infl chars are expressed in atlas coordinates
+for G}
 set semirigid_data_spin_D(RootDatum rd)=[unipotent_datum]:
 let n=semisimple_rank(rd) then
 order=test_simple_type("D",rd) then
@@ -651,9 +619,9 @@ N=simple_coroots(rd)*permutation_matrix(order)*rational_inverse(simple_coroots(S
 for (O,gamma) in semirigid_data_spin_D_std(n) do (complex_nilpotent(rd,numer(N*H(O))),M*gamma) od
 
 
-{ Produce a list of all semirigid data for a group G with simple derived group of type D. Infl chars are expressed
-in atlas coordinates for G}
-
+{ Produce a list of all semirigid data for a group G with simple
+derived group of type D. Infl chars are expressed in atlas coordinates
+for G}
 set semirigid_data_D(RootDatum rd)=[unipotent_datum]:
 let n=semisimple_rank(rd) then
 order=test_simple_type("D",rd) then
@@ -661,129 +629,186 @@ M=simple_roots(rd)*permutation_matrix(order)*rational_inverse(simple_roots(SO(2*
 N=simple_coroots(rd)*permutation_matrix(order)*rational_inverse(simple_coroots(SO(2*n))) in
 for (O,gamma) in semirigid_data_D_std(n) do (complex_nilpotent(rd,numer(N*H(O))),M*gamma) od
 
-
 {~~Exceptional types~~}
 
-{ Create lists of unipotent data for all simple exceptional groups. Here, infl chars are expressed in fundamental weight coordinates}
+{ Create lists of unipotent data for all simple exceptional
+groups. Here, infl chars are expressed in fundamental weight
+coordinates}
 
-set rigid_data_G2_fund = [(complex_nilpotent(root_datum(G2_s),[0,0]),[1,1]),(complex_nilpotent(root_datum(G2_s),[1,2]),[3,1]/3),
-(complex_nilpotent(root_datum(G2_s),[2,3]),[1,1]/2)]
+set rigid_data_G2_fund = [(complex_nilpotent(root_datum(G2_s),[0,0]),[1,1]),
+    (complex_nilpotent(root_datum(G2_s),[1,2]),[3,1]/3),
+    (complex_nilpotent(root_datum(G2_s),[2,3]),[1,1]/2)]
 
-set birigid_data_G2_fund = [(complex_nilpotent(root_datum(G2_s),[0,0]),[1,1]),(complex_nilpotent(root_datum(G2_s),[1,2]),[3,1]/3),
-(complex_nilpotent(root_datum(G2_s),[2,3]),[1,1]/2)]
+set birigid_data_G2_fund = [(complex_nilpotent(root_datum(G2_s),[0,0]),[1,1]),
+    (complex_nilpotent(root_datum(G2_s),[1,2]),[3,1]/3),	
+    (complex_nilpotent(root_datum(G2_s),[2,3]),[1,1]/2)]
 
-set semirigid_data_G2_fund = [(complex_nilpotent(root_datum(G2_s),[0,0]),[1,1]),(complex_nilpotent(root_datum(G2_s),[1,2]),[3,1]/3),
-(complex_nilpotent(root_datum(G2_s),[2,3]),[1,1]/2),(complex_nilpotent(root_datum(G2_s),[2,4]),[1,0])]
-
-
-
-
-set rigid_data_F4_fund = [(complex_nilpotent(root_datum(F4_s),[0,0,0,0]),[1,1,1,1]),(complex_nilpotent(root_datum(F4_s),[2,3,2,1]),[1,1,2,2]/2),
-(complex_nilpotent(root_datum(F4_s),[2,4,3,2]),[1,0,1,1]),(complex_nilpotent(root_datum(F4_s),[3,6,4,2]),[1,0,1,0]),(complex_nilpotent(root_datum(F4_s),[4,8,6,3]),[1,1,2,2]/4),
-(complex_nilpotent(root_datum(F4_s),[5,10,7,4]),[1,1,1,1]/3)]
-
-set birigid_data_F4_fund = [(complex_nilpotent(root_datum(F4_s),[0,0,0,0]),[1,1,1,1]),(complex_nilpotent(root_datum(F4_s),[2,3,2,1]),[1,1,2,2]/2),
-(complex_nilpotent(root_datum(F4_s),[2,4,3,2]),[1,0,1,1]),(complex_nilpotent(root_datum(F4_s),[3,6,4,2]),[1,0,1,0]),(complex_nilpotent(root_datum(F4_s),[4,8,6,3]),[1,1,2,2]/4),
-(complex_nilpotent(root_datum(F4_s),[5,10,7,4]),[1,1,1,1]/3)]
-
-set semirigid_data_F4_fund = [(complex_nilpotent(root_datum(F4_s),[0,0,0,0]),[1,1,1,1]),(complex_nilpotent(root_datum(F4_s),[2,3,2,1]),[1,1,2,2]/2),
-(complex_nilpotent(root_datum(F4_s),[2,4,3,2]),[1,0,1,1]),(complex_nilpotent(root_datum(F4_s),[3,6,4,2]),[1,0,1,0]),(complex_nilpotent(root_datum(F4_s),[4,8,6,3]),[1,1,2,2]/4),
-(complex_nilpotent(root_datum(F4_s),[5,10,7,4]),[1,1,1,1]/3),
-(complex_nilpotent(root_datum(F4_s),[4,6,4,2]),[1,1,0,2]/2), 
-(complex_nilpotent(root_datum(F4_s),[6,10,7,4]),[0,1,0,2]/2), (complex_nilpotent(root_datum(F4_s),[6,11,8,4]),[1,0,1,1]/2),
-(complex_nilpotent(root_datum(F4_s),[6,12,8,4]),[0,0,1,0])]
+set semirigid_data_G2_fund = [(complex_nilpotent(root_datum(G2_s),[0,0]),[1,1]),
+    (complex_nilpotent(root_datum(G2_s),[1,2]),[3,1]/3),
+    (complex_nilpotent(root_datum(G2_s),[2,3]),[1,1]/2),
+    (complex_nilpotent(root_datum(G2_s),[2,4]),[1,0])]
 
 
+set rigid_data_F4_fund = [(complex_nilpotent(root_datum(F4_s),[0,0,0,0]),[1,1,1,1]),
+    (complex_nilpotent(root_datum(F4_s),[2,3,2,1]),[1,1,2,2]/2),
+    (complex_nilpotent(root_datum(F4_s),[2,4,3,2]),[1,0,1,1]),
+    (complex_nilpotent(root_datum(F4_s),[3,6,4,2]),[1,0,1,0]),
+    (complex_nilpotent(root_datum(F4_s),[4,8,6,3]),[1,1,2,2]/4),
+    (complex_nilpotent(root_datum(F4_s),[5,10,7,4]),[1,1,1,1]/3)]
+
+set birigid_data_F4_fund = [(complex_nilpotent(root_datum(F4_s),[0,0,0,0]),[1,1,1,1]),
+    (complex_nilpotent(root_datum(F4_s),[2,3,2,1]),[1,1,2,2]/2),
+    (complex_nilpotent(root_datum(F4_s),[2,4,3,2]),[1,0,1,1]),
+    (complex_nilpotent(root_datum(F4_s),[3,6,4,2]),[1,0,1,0]),
+    (complex_nilpotent(root_datum(F4_s),[4,8,6,3]),[1,1,2,2]/4),
+    (complex_nilpotent(root_datum(F4_s),[5,10,7,4]),[1,1,1,1]/3)]
+
+set semirigid_data_F4_fund = [(complex_nilpotent(root_datum(F4_s),[0,0,0,0]),[1,1,1,1]),
+    (complex_nilpotent(root_datum(F4_s),[2,3,2,1]),[1,1,2,2]/2),
+    (complex_nilpotent(root_datum(F4_s),[2,4,3,2]),[1,0,1,1]),
+    (complex_nilpotent(root_datum(F4_s),[3,6,4,2]),[1,0,1,0]),
+    (complex_nilpotent(root_datum(F4_s),[4,8,6,3]),[1,1,2,2]/4),
+    (complex_nilpotent(root_datum(F4_s),[5,10,7,4]),[1,1,1,1]/3),
+    (complex_nilpotent(root_datum(F4_s),[4,6,4,2]),[1,1,0,2]/2), 
+    (complex_nilpotent(root_datum(F4_s),[6,10,7,4]),[0,1,0,2]/2),
+    (complex_nilpotent(root_datum(F4_s),[6,11,8,4]),[1,0,1,1]/2),
+    (complex_nilpotent(root_datum(F4_s),[6,12,8,4]),[0,0,1,0])]
 
 
-set rigid_data_E6_fund = [(complex_nilpotent(root_datum(E6_s),[0,0,0,0,0,0]),[1,1,1,1,1,1]), (complex_nilpotent(root_datum(E6_s),[1,2,2,3,2,1]),[1,1,1,0,1,1]),
-(complex_nilpotent(root_datum(E6_s),[2,3,4,6,4,2]),[1,1,1,1,1,1]/2), (complex_nilpotent(root_datum(E6_s),[4,5,7,10,7,4]),[1,1,1,1,1,1]/3)]
+set rigid_data_E6_fund = [(complex_nilpotent(root_datum(E6_s),[0,0,0,0,0,0]),[1,1,1,1,1,1]),
+    (complex_nilpotent(root_datum(E6_s),[1,2,2,3,2,1]),[1,1,1,0,1,1]),
+    (complex_nilpotent(root_datum(E6_s),[2,3,4,6,4,2]),[1,1,1,1,1,1]/2),
+    (complex_nilpotent(root_datum(E6_s),[4,5,7,10,7,4]),[1,1,1,1,1,1]/3)]
 
-set birigid_data_E6_fund = [(complex_nilpotent(root_datum(E6_s),[0,0,0,0,0,0]),[1,1,1,1,1,1]), (complex_nilpotent(root_datum(E6_s),[1,2,2,3,2,1]),[1,1,1,0,1,1]),
-(complex_nilpotent(root_datum(E6_s),[2,3,4,6,4,2]),[1,1,1,1,1,1]/2), (complex_nilpotent(root_datum(E6_s),[4,5,7,10,7,4]),[1,1,1,1,1,1]/3)]
+set birigid_data_E6_fund = [(complex_nilpotent(root_datum(E6_s),[0,0,0,0,0,0]),[1,1,1,1,1,1]),
+    (complex_nilpotent(root_datum(E6_s),[1,2,2,3,2,1]),[1,1,1,0,1,1]),
+    (complex_nilpotent(root_datum(E6_s),[2,3,4,6,4,2]),[1,1,1,1,1,1]/2),
+    (complex_nilpotent(root_datum(E6_s),[4,5,7,10,7,4]),[1,1,1,1,1,1]/3)]
 
-set semirigid_data_E6_fund = [(complex_nilpotent(root_datum(E6_s),[0,0,0,0,0,0]),[1,1,1,1,1,1]), (complex_nilpotent(root_datum(E6_s),[1,2,2,3,2,1]),[1,1,1,0,1,1]),
-(complex_nilpotent(root_datum(E6_s),[2,3,4,6,4,2]),[1,1,1,1,1,1]/2), (complex_nilpotent(root_datum(E6_s),[4,5,7,10,7,4]),[1,1,1,1,1,1]/3),
-(complex_nilpotent(root_datum(E6_s),[2,4,4,6,4,2]),[1,0,0,1,0,1]), (complex_nilpotent(root_datum(E6_s),[4,4,6,8,6,4]),[1,3,1,1,1,1]/3),
-(complex_nilpotent(root_datum(E6_s),[4,6,8,12,8,4]),[0,0,0,1,0,0]), (complex_nilpotent(root_datum(E6_s),[8,10,14,19,14,8]),[1,3,1,1,1,1]/6),
-(complex_nilpotent(root_datum(E6_s),[8,10,14,20,14,8]),[0,1,1,0,1,0]/3)]
-
-
-
-
-set rigid_data_E7_fund = [(complex_nilpotent(root_datum(E7_s),[0,0,0,0,0,0,0]),[1,1,1,1,1,1,1]),(complex_nilpotent(root_datum(E7_s),[2,2,3,4,3,2,1]),[1,1,1,0,1,1,1]),
-(complex_nilpotent(root_datum(E7_s),[2,3,4,6,5,4,2]),[1,1,1,0,1,0,1]),(complex_nilpotent(root_datum(E7_s),[3,4,6,8,6,4,2]),[1,1,1,1,1,1,2]/2),
-(complex_nilpotent(root_datum(E7_s),[3,5,6,9,7,5,3]),[1,1,1,1,1,1,1]/2),(complex_nilpotent(root_datum(E7_s),[4,6,8,12,9,6,3]),[1,0,0,1,0,0,1]),
-(complex_nilpotent(root_datum(E7_s),[5,7,10,14,11,8,4]),[1,1,1,1,1,1,1]/3),(complex_nilpotent(root_datum(E7_s),[6,8,11,16,12,8,4]),[1,1,0,1,0,1,1]/2)]
-
-
-set birigid_data_E7_fund = [(complex_nilpotent(root_datum(E7_s),[0,0,0,0,0,0,0]),[1,1,1,1,1,1,1]),(complex_nilpotent(root_datum(E7_s),[2,2,3,4,3,2,1]),[1,1,1,0,1,1,1]),
-(complex_nilpotent(root_datum(E7_s),[2,3,4,6,5,4,2]),[1,1,1,0,1,0,1]),(complex_nilpotent(root_datum(E7_s),[3,4,6,8,6,4,2]),[1,1,1,1,1,1,2]/2),
-(complex_nilpotent(root_datum(E7_s),[3,5,6,9,7,5,3]),[1,1,1,1,1,1,1]/2),(complex_nilpotent(root_datum(E7_s),[4,6,8,12,9,6,3]),[1,0,0,1,0,0,1]),
-(complex_nilpotent(root_datum(E7_s),[5,7,10,14,11,8,4]),[1,1,1,1,1,1,1]/3),(complex_nilpotent(root_datum(E7_s),[6,8,11,16,12,8,4]),[1,1,0,1,0,1,1]/2),
-(complex_nilpotent(root_datum(E7_s),[4,5,7,10,8,6,3]),[1,0,0,1,0,1,0]),(complex_nilpotent(root_datum(E7_s),[8,11,15,22,17,12,6]),[1,0,0,1,0,1,0]/2)]
-
-set semirigid_data_E7_fund = [(complex_nilpotent(root_datum(E7_s),[0,0,0,0,0,0,0]),[1,1,1,1,1,1,1]),(complex_nilpotent(root_datum(E7_s),[2,2,3,4,3,2,1]),[1,1,1,0,1,1,1]),
-(complex_nilpotent(root_datum(E7_s),[2,3,4,6,5,4,2]),[1,1,1,0,1,0,1]),(complex_nilpotent(root_datum(E7_s),[3,4,6,8,6,4,2]),[1,1,1,1,1,1,2]/2),
-(complex_nilpotent(root_datum(E7_s),[3,5,6,9,7,5,3]),[1,1,1,1,1,1,1]/2),(complex_nilpotent(root_datum(E7_s),[4,6,8,12,9,6,3]),[1,0,0,1,0,0,1]),
-(complex_nilpotent(root_datum(E7_s),[5,7,10,14,11,8,4]),[1,1,1,1,1,1,1]/3),(complex_nilpotent(root_datum(E7_s),[6,8,11,16,12,8,4]),[1,1,0,1,0,1,1]/2),
-(complex_nilpotent(root_datum(E7_s),[4,5,7,10,8,6,3]),[1,0,0,1,0,1,0]),(complex_nilpotent(root_datum(E7_s),[8,11,15,22,17,12,6]),[1,0,0,1,0,1,0]/2),
-(complex_nilpotent(root_datum(E7_s),[2,3,4,6,5,4,3]),[2,1,2,1,1,1,1]/2),(complex_nilpotent(root_datum(E7_s),[4,4,6,8,6,4,2]),[1,0,0,1,0,1,1]),
-(complex_nilpotent(root_datum(E7_s),[4,7,8,12,9,6,3]),[1,1,1,0,1,1,1]/2),(complex_nilpotent(root_datum(E7_s),[6,7,10,14,11,8,5]),[2,0,1,1,0,1,1]/2),
-(complex_nilpotent(root_datum(E7_s),[6,8,12,16,12,8,4]),[0,0,0,1,0,0,1]), (complex_nilpotent(root_datum(E7_s),[6,8,11,16,13,9,5]),[1,1,1,0,1,0,1]/2),
-(complex_nilpotent(root_datum(E7_s),[6,9,12,17,13,9,5]),[0,0,1,1,0,1,1]/2), (complex_nilpotent(root_datum(E7_s),[6,9,12,18,15,10,5]),[1,0,0,1,0,1,1]/2),
-(complex_nilpotent(root_datum(E7_s),[10,14,19,28,22,16,9]),[2,1,2,1,1,1,1]/6), (complex_nilpotent(root_datum(E7_s),[10,13,18,26,21,14,7]),[1,0,0,1,0,0,1]/2),
-(complex_nilpotent(root_datum(E7_s),[10,15,20,30,23,16,9]),[0,0,1,0,1,0,0]/2), (complex_nilpotent(root_datum(E7_s),[14,19,26,38,29,20,11]),[1,1,1,0,0,1,1]/4)]
+set semirigid_data_E6_fund = [(complex_nilpotent(root_datum(E6_s),[0,0,0,0,0,0]),[1,1,1,1,1,1]),
+    (complex_nilpotent(root_datum(E6_s),[1,2,2,3,2,1]),[1,1,1,0,1,1]),
+    (complex_nilpotent(root_datum(E6_s),[2,3,4,6,4,2]),[1,1,1,1,1,1]/2),
+    (complex_nilpotent(root_datum(E6_s),[4,5,7,10,7,4]),[1,1,1,1,1,1]/3),
+    (complex_nilpotent(root_datum(E6_s),[2,4,4,6,4,2]),[1,0,0,1,0,1]),
+    (complex_nilpotent(root_datum(E6_s),[4,4,6,8,6,4]),[1,3,1,1,1,1]/3),
+    (complex_nilpotent(root_datum(E6_s),[4,6,8,12,8,4]),[0,0,0,1,0,0]),
+    (complex_nilpotent(root_datum(E6_s),[8,10,14,19,14,8]),[1,3,1,1,1,1]/6),
+    (complex_nilpotent(root_datum(E6_s),[8,10,14,20,14,8]),[0,1,1,0,1,0]/3)]
 
 
+set rigid_data_E7_fund = [(complex_nilpotent(root_datum(E7_s),[0,0,0,0,0,0,0]),[1,1,1,1,1,1,1]),
+    (complex_nilpotent(root_datum(E7_s),[2,2,3,4,3,2,1]),[1,1,1,0,1,1,1]),
+    (complex_nilpotent(root_datum(E7_s),[2,3,4,6,5,4,2]),[1,1,1,0,1,0,1]),
+    (complex_nilpotent(root_datum(E7_s),[3,4,6,8,6,4,2]),[1,1,1,1,1,1,2]/2),
+    (complex_nilpotent(root_datum(E7_s),[3,5,6,9,7,5,3]),[1,1,1,1,1,1,1]/2),
+    (complex_nilpotent(root_datum(E7_s),[4,6,8,12,9,6,3]),[1,0,0,1,0,0,1]),
+    (complex_nilpotent(root_datum(E7_s),[5,7,10,14,11,8,4]),[1,1,1,1,1,1,1]/3),
+    (complex_nilpotent(root_datum(E7_s),[6,8,11,16,12,8,4]),[1,1,0,1,0,1,1]/2)]
 
 
-set rigid_data_E8_fund = [(complex_nilpotent(root_datum(E8_s),[0,0,0,0,0,0,0,0]),[1,1,1,1,1,1,1,1]),(complex_nilpotent(root_datum(E8_s),[ 2, 3, 4, 6, 5, 4, 3, 2 ]),[1,1,1,0,1,1,1,1]),
-(complex_nilpotent(root_datum(E8_s),[  4,  5,  7, 10,  8,  6,  4,  2 ]),[1,1,1,0,1,0,1,1]),(complex_nilpotent(root_datum(E8_s),[  4,  6,  8, 12, 10,  8,  6,  3 ]),[1,1,1,1,1,1,2,2]/2),
-(complex_nilpotent(root_datum(E8_s),[  5,  8, 10, 15, 12,  9,  6,  3 ]),[1,1,1,1,1,1,1,1]/2),(complex_nilpotent(root_datum(E8_s),[  6,  8, 11, 16, 13, 10,  7,  4 ]),[1,0,0,1,0,1,0,1]),
-(complex_nilpotent(root_datum(E8_s),[  6,  9, 12, 18, 15, 12,  8,  4 ]),[1,0,0,1,0,0,1,1]),(complex_nilpotent(root_datum(E8_s),[  7, 10, 14, 20, 16, 12,  8,  4 ]),[1,1,1,0,1,1,1,1]/2),
-(complex_nilpotent(root_datum(E8_s),[  8, 11, 15, 22, 18, 14, 10,  5 ]),[1,1,1,1,1,1,1,3]/3),(complex_nilpotent(root_datum(E8_s),[  8, 12, 16, 24, 20, 16, 11,  6 ]),[1,1,0,1,0,1,1,2]/2),
-(complex_nilpotent(root_datum(E8_s),[  8, 12, 16, 24, 20, 15, 10,  5 ]),[1,1,1,1,1,1,1,1]/3),(complex_nilpotent(root_datum(E8_s),[  9, 13, 18, 26, 21, 16, 11,  6 ]),[1,1,1,0,1,0,1,1]/2),
-(complex_nilpotent(root_datum(E8_s),[  9, 14, 18, 27, 22, 17, 12,  6 ]),[0,0,0,1,0,0,1,0]),(complex_nilpotent(root_datum(E8_s),[ 10, 15, 20, 30, 24, 18, 12,  6 ]),[1,0,0,1,0,1,1,1]/2),
-(complex_nilpotent(root_datum(E8_s),[ 12, 17, 23, 34, 28, 21, 14,  7 ]),[1,1,1,1,1,1,1,1]/4),(complex_nilpotent(root_datum(E8_s),[ 14, 21, 28, 42, 34, 26, 18,  9 ]),[1,1,1,1,1,1,1,1]/5),
-(complex_nilpotent(root_datum(E8_s),[ 16, 23, 31, 46, 37, 28, 19, 10 ]),[2,2,1,1,1,1,1,1]/6),(complex_nilpotent(root_datum(E8_s),[ 15, 22, 30, 44, 36, 28, 19, 10 ]),[1,1,1,0,1,1,1,1]/4)]
+set birigid_data_E7_fund = [(complex_nilpotent(root_datum(E7_s),[0,0,0,0,0,0,0]),[1,1,1,1,1,1,1]),
+    (complex_nilpotent(root_datum(E7_s),[2,2,3,4,3,2,1]),[1,1,1,0,1,1,1]),
+    (complex_nilpotent(root_datum(E7_s),[2,3,4,6,5,4,2]),[1,1,1,0,1,0,1]),
+    (complex_nilpotent(root_datum(E7_s),[3,4,6,8,6,4,2]),[1,1,1,1,1,1,2]/2),
+    (complex_nilpotent(root_datum(E7_s),[3,5,6,9,7,5,3]),[1,1,1,1,1,1,1]/2),
+    (complex_nilpotent(root_datum(E7_s),[4,6,8,12,9,6,3]),[1,0,0,1,0,0,1]),
+    (complex_nilpotent(root_datum(E7_s),[5,7,10,14,11,8,4]),[1,1,1,1,1,1,1]/3),
+    (complex_nilpotent(root_datum(E7_s),[6,8,11,16,12,8,4]),[1,1,0,1,0,1,1]/2),
+    (complex_nilpotent(root_datum(E7_s),[4,5,7,10,8,6,3]),[1,0,0,1,0,1,0]),
+    (complex_nilpotent(root_datum(E7_s),[8,11,15,22,17,12,6]),[1,0,0,1,0,1,0]/2)]
 
-set birigid_data_E8_fund =  [(complex_nilpotent(root_datum(E8_s),[0,0,0,0,0,0,0,0]),[1,1,1,1,1,1,1,1]),(complex_nilpotent(root_datum(E8_s),[ 2, 3, 4, 6, 5, 4, 3, 2 ]),[1,1,1,0,1,1,1,1]),
-(complex_nilpotent(root_datum(E8_s),[  4,  5,  7, 10,  8,  6,  4,  2 ]),[1,1,1,0,1,0,1,1]),(complex_nilpotent(root_datum(E8_s),[  4,  6,  8, 12, 10,  8,  6,  3 ]),[1,1,1,1,1,1,2,2]/2),
-(complex_nilpotent(root_datum(E8_s),[  5,  8, 10, 15, 12,  9,  6,  3 ]),[1,1,1,1,1,1,1,1]/2),(complex_nilpotent(root_datum(E8_s),[  6,  8, 11, 16, 13, 10,  7,  4 ]),[1,0,0,1,0,1,0,1]),
-(complex_nilpotent(root_datum(E8_s),[  6,  9, 12, 18, 15, 12,  8,  4 ]),[1,0,0,1,0,0,1,1]),(complex_nilpotent(root_datum(E8_s),[  7, 10, 14, 20, 16, 12,  8,  4 ]),[1,1,1,0,1,1,1,1]/2),
-(complex_nilpotent(root_datum(E8_s),[  8, 11, 15, 22, 18, 14, 10,  5 ]),[1,1,1,1,1,1,1,3]/3),(complex_nilpotent(root_datum(E8_s),[  8, 12, 16, 24, 20, 16, 11,  6 ]),[1,1,0,1,0,1,1,2]/2),
-(complex_nilpotent(root_datum(E8_s),[  8, 12, 16, 24, 20, 15, 10,  5 ]),[1,1,1,1,1,1,1,1]/3),(complex_nilpotent(root_datum(E8_s),[  9, 13, 18, 26, 21, 16, 11,  6 ]),[1,1,1,0,1,0,1,1]/2),
-(complex_nilpotent(root_datum(E8_s),[  9, 14, 18, 27, 22, 17, 12,  6 ]),[0,0,0,1,0,0,1,0]),(complex_nilpotent(root_datum(E8_s),[ 10, 15, 20, 30, 24, 18, 12,  6 ]),[1,0,0,1,0,1,1,1]/2),
-(complex_nilpotent(root_datum(E8_s),[ 12, 17, 23, 34, 28, 21, 14,  7 ]),[1,1,1,1,1,1,1,1]/4),(complex_nilpotent(root_datum(E8_s),[ 14, 21, 28, 42, 34, 26, 18,  9 ]),[1,1,1,1,1,1,1,1]/5),
-(complex_nilpotent(root_datum(E8_s),[ 16, 23, 31, 46, 37, 28, 19, 10 ]),[2,2,1,1,1,1,1,1]/6),(complex_nilpotent(root_datum(E8_s),[ 15, 22, 30, 44, 36, 28, 19, 10 ]),[1,1,1,0,1,1,1,1]/4),
-(complex_nilpotent(root_datum(E8_s),[ 12, 17, 23, 34, 28, 22, 15,  8 ]),[1,0,0,1,0,1,0,2]/2)]
-
-
-
-
-set semirigid_data_E8_fund = [(complex_nilpotent(root_datum(E8_s),[0,0,0,0,0,0,0,0]),[1,1,1,1,1,1,1,1]),(complex_nilpotent(root_datum(E8_s),[ 2, 3, 4, 6, 5, 4, 3, 2 ]),[1,1,1,0,1,1,1,1]),
-(complex_nilpotent(root_datum(E8_s),[  4,  5,  7, 10,  8,  6,  4,  2 ]),[1,1,1,0,1,0,1,1]),(complex_nilpotent(root_datum(E8_s),[  4,  6,  8, 12, 10,  8,  6,  3 ]),[1,1,1,1,1,1,2,2]/2),
-(complex_nilpotent(root_datum(E8_s),[  5,  8, 10, 15, 12,  9,  6,  3 ]),[1,1,1,1,1,1,1,1]/2),(complex_nilpotent(root_datum(E8_s),[  6,  8, 11, 16, 13, 10,  7,  4 ]),[1,0,0,1,0,1,0,1]),
-(complex_nilpotent(root_datum(E8_s),[  6,  9, 12, 18, 15, 12,  8,  4 ]),[1,0,0,1,0,0,1,1]),(complex_nilpotent(root_datum(E8_s),[  7, 10, 14, 20, 16, 12,  8,  4 ]),[1,1,1,0,1,1,1,1]/2),
-(complex_nilpotent(root_datum(E8_s),[  8, 11, 15, 22, 18, 14, 10,  5 ]),[1,1,1,1,1,1,1,3]/3),(complex_nilpotent(root_datum(E8_s),[  8, 12, 16, 24, 20, 16, 11,  6 ]),[1,1,0,1,0,1,1,2]/2),
-(complex_nilpotent(root_datum(E8_s),[  8, 12, 16, 24, 20, 15, 10,  5 ]),[1,1,1,1,1,1,1,1]/3),(complex_nilpotent(root_datum(E8_s),[  9, 13, 18, 26, 21, 16, 11,  6 ]),[1,1,1,0,1,0,1,1]/2),
-(complex_nilpotent(root_datum(E8_s),[  9, 14, 18, 27, 22, 17, 12,  6 ]),[0,0,0,1,0,0,1,0]),(complex_nilpotent(root_datum(E8_s),[ 10, 15, 20, 30, 24, 18, 12,  6 ]),[1,0,0,1,0,1,1,1]/2),
-(complex_nilpotent(root_datum(E8_s),[ 12, 17, 23, 34, 28, 21, 14,  7 ]),[1,1,1,1,1,1,1,1]/4),(complex_nilpotent(root_datum(E8_s),[ 14, 21, 28, 42, 34, 26, 18,  9 ]),[1,1,1,1,1,1,1,1]/5),
-(complex_nilpotent(root_datum(E8_s),[ 16, 23, 31, 46, 37, 28, 19, 10 ]),[2,2,1,1,1,1,1,1]/6),(complex_nilpotent(root_datum(E8_s),[ 15, 22, 30, 44, 36, 28, 19, 10 ]),[1,1,1,0,1,1,1,1]/4),
-(complex_nilpotent(root_datum(E8_s),[ 12, 17, 23, 34, 28, 22, 15,  8 ]),[1,0,0,1,0,1,0,2]/2),
-
-(complex_nilpotent(root_datum(E8_s),[  4,  6,  8, 12, 10,  8,  6,  4 ]),[1,0,0,1,0,1,1,1]),(complex_nilpotent(root_datum(E8_s),[  8, 10, 14, 20, 16, 12,  8,  4 ]),[1,0,0,1,0,0,1,0]),
-(complex_nilpotent(root_datum(E8_s),[  8, 12, 16, 24, 20, 16, 12,  6 ]),[0,0,0,1,0,0,1,1]),(complex_nilpotent(root_datum(E8_s),[ 10, 16, 20, 30, 24, 18, 12,  6 ]),[0,0,0,1,0,0,0,1]),
-(complex_nilpotent(root_datum(E8_s),[ 14, 22, 28, 42, 34, 26, 18, 10 ]),[1,0,0,1,0,0,1,1]/2),(complex_nilpotent(root_datum(E8_s),[ 16, 24, 32, 47, 38, 29, 20, 10 ]),[1,0,0,1,0,0,1,0]/2),
-(complex_nilpotent(root_datum(E8_s),[ 16, 23, 31, 46, 38, 29, 20, 10 ]),[0,1,1,0,1,0,1,1]/3),(complex_nilpotent(root_datum(E8_s),[ 16, 24, 32, 48, 39, 30, 20, 10 ]),[0,0,1,0,1,0,0,1]/2),
-(complex_nilpotent(root_datum(E8_s),[ 16, 24, 32, 48, 40, 30, 20, 10 ]),[0,0,0,0,1,0,0,0]),(complex_nilpotent(root_datum(E8_s),[ 24, 36, 48, 72, 58, 44, 30, 16 ]),[1,1,0,0,0,1,0,1]/3)]
+set semirigid_data_E7_fund = [(complex_nilpotent(root_datum(E7_s),[0,0,0,0,0,0,0]),[1,1,1,1,1,1,1]),
+    (complex_nilpotent(root_datum(E7_s),[2,2,3,4,3,2,1]),[1,1,1,0,1,1,1]),
+    (complex_nilpotent(root_datum(E7_s),[2,3,4,6,5,4,2]),[1,1,1,0,1,0,1]),
+    (complex_nilpotent(root_datum(E7_s),[3,4,6,8,6,4,2]),[1,1,1,1,1,1,2]/2),
+    (complex_nilpotent(root_datum(E7_s),[3,5,6,9,7,5,3]),[1,1,1,1,1,1,1]/2),
+    (complex_nilpotent(root_datum(E7_s),[4,6,8,12,9,6,3]),[1,0,0,1,0,0,1]),
+    (complex_nilpotent(root_datum(E7_s),[5,7,10,14,11,8,4]),[1,1,1,1,1,1,1]/3),
+    (complex_nilpotent(root_datum(E7_s),[6,8,11,16,12,8,4]),[1,1,0,1,0,1,1]/2),
+    (complex_nilpotent(root_datum(E7_s),[4,5,7,10,8,6,3]),[1,0,0,1,0,1,0]),
+    (complex_nilpotent(root_datum(E7_s),[8,11,15,22,17,12,6]),[1,0,0,1,0,1,0]/2),
+    (complex_nilpotent(root_datum(E7_s),[2,3,4,6,5,4,3]),[2,1,2,1,1,1,1]/2),
+    (complex_nilpotent(root_datum(E7_s),[4,4,6,8,6,4,2]),[1,0,0,1,0,1,1]),
+    (complex_nilpotent(root_datum(E7_s),[4,7,8,12,9,6,3]),[1,1,1,0,1,1,1]/2),
+    (complex_nilpotent(root_datum(E7_s),[6,7,10,14,11,8,5]),[2,0,1,1,0,1,1]/2),
+    (complex_nilpotent(root_datum(E7_s),[6,8,12,16,12,8,4]),[0,0,0,1,0,0,1]),
+    (complex_nilpotent(root_datum(E7_s),[6,8,11,16,13,9,5]),[1,1,1,0,1,0,1]/2),
+    (complex_nilpotent(root_datum(E7_s),[6,9,12,17,13,9,5]),[0,0,1,1,0,1,1]/2),
+    (complex_nilpotent(root_datum(E7_s),[6,9,12,18,15,10,5]),[1,0,0,1,0,1,1]/2),
+    (complex_nilpotent(root_datum(E7_s),[10,14,19,28,22,16,9]),[2,1,2,1,1,1,1]/6),
+    (complex_nilpotent(root_datum(E7_s),[10,13,18,26,21,14,7]),[1,0,0,1,0,0,1]/2),
+    (complex_nilpotent(root_datum(E7_s),[10,15,20,30,23,16,9]),[0,0,1,0,1,0,0]/2),
+    (complex_nilpotent(root_datum(E7_s),[14,19,26,38,29,20,11]),[1,1,1,0,0,1,1]/4)]
 
 
+set rigid_data_E8_fund = [(complex_nilpotent(root_datum(E8_s),[0,0,0,0,0,0,0,0]),[1,1,1,1,1,1,1,1]),
+    (complex_nilpotent(root_datum(E8_s),[ 2, 3, 4, 6, 5, 4, 3, 2 ]),[1,1,1,0,1,1,1,1]),
+    (complex_nilpotent(root_datum(E8_s),[  4,  5,  7, 10,  8,  6,  4,  2 ]),[1,1,1,0,1,0,1,1]),
+    (complex_nilpotent(root_datum(E8_s),[  4,  6,  8, 12, 10,  8,  6,  3 ]),[1,1,1,1,1,1,2,2]/2),
+    (complex_nilpotent(root_datum(E8_s),[  5,  8, 10, 15, 12,  9,  6,  3 ]),[1,1,1,1,1,1,1,1]/2),
+    (complex_nilpotent(root_datum(E8_s),[  6,  8, 11, 16, 13, 10,  7,  4 ]),[1,0,0,1,0,1,0,1]),
+    (complex_nilpotent(root_datum(E8_s),[  6,  9, 12, 18, 15, 12,  8,  4 ]),[1,0,0,1,0,0,1,1]),
+    (complex_nilpotent(root_datum(E8_s),[  7, 10, 14, 20, 16, 12,  8,  4 ]),[1,1,1,0,1,1,1,1]/2),
+    (complex_nilpotent(root_datum(E8_s),[  8, 11, 15, 22, 18, 14, 10,  5 ]),[1,1,1,1,1,1,1,3]/3),
+    (complex_nilpotent(root_datum(E8_s),[  8, 12, 16, 24, 20, 16, 11,  6 ]),[1,1,0,1,0,1,1,2]/2),
+    (complex_nilpotent(root_datum(E8_s),[  8, 12, 16, 24, 20, 15, 10,  5 ]),[1,1,1,1,1,1,1,1]/3),
+    (complex_nilpotent(root_datum(E8_s),[  9, 13, 18, 26, 21, 16, 11,  6 ]),[1,1,1,0,1,0,1,1]/2),
+    (complex_nilpotent(root_datum(E8_s),[  9, 14, 18, 27, 22, 17, 12,  6 ]),[0,0,0,1,0,0,1,0]),
+    (complex_nilpotent(root_datum(E8_s),[ 10, 15, 20, 30, 24, 18, 12,  6 ]),[1,0,0,1,0,1,1,1]/2),
+    (complex_nilpotent(root_datum(E8_s),[ 12, 17, 23, 34, 28, 21, 14,  7 ]),[1,1,1,1,1,1,1,1]/4),
+    (complex_nilpotent(root_datum(E8_s),[ 14, 21, 28, 42, 34, 26, 18,  9 ]),[1,1,1,1,1,1,1,1]/5),
+    (complex_nilpotent(root_datum(E8_s),[ 16, 23, 31, 46, 37, 28, 19, 10 ]),[2,2,1,1,1,1,1,1]/6),
+    (complex_nilpotent(root_datum(E8_s),[ 15, 22, 30, 44, 36, 28, 19, 10 ]),[1,1,1,0,1,1,1,1]/4)]
 
+set birigid_data_E8_fund =  [(complex_nilpotent(root_datum(E8_s),[0,0,0,0,0,0,0,0]),[1,1,1,1,1,1,1,1]),
+    (complex_nilpotent(root_datum(E8_s),[ 2, 3, 4, 6, 5, 4, 3, 2 ]),[1,1,1,0,1,1,1,1]),
+    (complex_nilpotent(root_datum(E8_s),[  4,  5,  7, 10,  8,  6,  4,  2 ]),[1,1,1,0,1,0,1,1]),
+    (complex_nilpotent(root_datum(E8_s),[  4,  6,  8, 12, 10,  8,  6,  3 ]),[1,1,1,1,1,1,2,2]/2),
+    (complex_nilpotent(root_datum(E8_s),[  5,  8, 10, 15, 12,  9,  6,  3 ]),[1,1,1,1,1,1,1,1]/2),
+    (complex_nilpotent(root_datum(E8_s),[  6,  8, 11, 16, 13, 10,  7,  4 ]),[1,0,0,1,0,1,0,1]),
+    (complex_nilpotent(root_datum(E8_s),[  6,  9, 12, 18, 15, 12,  8,  4 ]),[1,0,0,1,0,0,1,1]),
+    (complex_nilpotent(root_datum(E8_s),[  7, 10, 14, 20, 16, 12,  8,  4 ]),[1,1,1,0,1,1,1,1]/2),
+    (complex_nilpotent(root_datum(E8_s),[  8, 11, 15, 22, 18, 14, 10,  5 ]),[1,1,1,1,1,1,1,3]/3),
+    (complex_nilpotent(root_datum(E8_s),[  8, 12, 16, 24, 20, 16, 11,  6 ]),[1,1,0,1,0,1,1,2]/2),
+    (complex_nilpotent(root_datum(E8_s),[  8, 12, 16, 24, 20, 15, 10,  5 ]),[1,1,1,1,1,1,1,1]/3),
+    (complex_nilpotent(root_datum(E8_s),[  9, 13, 18, 26, 21, 16, 11,  6 ]),[1,1,1,0,1,0,1,1]/2),
+    (complex_nilpotent(root_datum(E8_s),[  9, 14, 18, 27, 22, 17, 12,  6 ]),[0,0,0,1,0,0,1,0]),
+    (complex_nilpotent(root_datum(E8_s),[ 10, 15, 20, 30, 24, 18, 12,  6 ]),[1,0,0,1,0,1,1,1]/2),
+    (complex_nilpotent(root_datum(E8_s),[ 12, 17, 23, 34, 28, 21, 14,  7 ]),[1,1,1,1,1,1,1,1]/4),
+    (complex_nilpotent(root_datum(E8_s),[ 14, 21, 28, 42, 34, 26, 18,  9 ]),[1,1,1,1,1,1,1,1]/5),
+    (complex_nilpotent(root_datum(E8_s),[ 16, 23, 31, 46, 37, 28, 19, 10 ]),[2,2,1,1,1,1,1,1]/6),
+    (complex_nilpotent(root_datum(E8_s),[ 15, 22, 30, 44, 36, 28, 19, 10 ]),[1,1,1,0,1,1,1,1]/4),
+    (complex_nilpotent(root_datum(E8_s),[ 12, 17, 23, 34, 28, 22, 15,  8 ]),[1,0,0,1,0,1,0,2]/2)]
 
-
-
+set semirigid_data_E8_fund = [(complex_nilpotent(root_datum(E8_s),[0,0,0,0,0,0,0,0]),[1,1,1,1,1,1,1,1]),
+    (complex_nilpotent(root_datum(E8_s),[ 2, 3, 4, 6, 5, 4, 3, 2 ]),[1,1,1,0,1,1,1,1]),
+    (complex_nilpotent(root_datum(E8_s),[  4,  5,  7, 10,  8,  6,  4,  2 ]),[1,1,1,0,1,0,1,1]),
+    (complex_nilpotent(root_datum(E8_s),[  4,  6,  8, 12, 10,  8,  6,  3 ]),[1,1,1,1,1,1,2,2]/2),
+    (complex_nilpotent(root_datum(E8_s),[  5,  8, 10, 15, 12,  9,  6,  3 ]),[1,1,1,1,1,1,1,1]/2),
+    (complex_nilpotent(root_datum(E8_s),[  6,  8, 11, 16, 13, 10,  7,  4 ]),[1,0,0,1,0,1,0,1]),
+    (complex_nilpotent(root_datum(E8_s),[  6,  9, 12, 18, 15, 12,  8,  4 ]),[1,0,0,1,0,0,1,1]),
+    (complex_nilpotent(root_datum(E8_s),[  7, 10, 14, 20, 16, 12,  8,  4 ]),[1,1,1,0,1,1,1,1]/2),
+    (complex_nilpotent(root_datum(E8_s),[  8, 11, 15, 22, 18, 14, 10,  5 ]),[1,1,1,1,1,1,1,3]/3),
+    (complex_nilpotent(root_datum(E8_s),[  8, 12, 16, 24, 20, 16, 11,  6 ]),[1,1,0,1,0,1,1,2]/2),
+    (complex_nilpotent(root_datum(E8_s),[  8, 12, 16, 24, 20, 15, 10,  5 ]),[1,1,1,1,1,1,1,1]/3),
+    (complex_nilpotent(root_datum(E8_s),[  9, 13, 18, 26, 21, 16, 11,  6 ]),[1,1,1,0,1,0,1,1]/2),
+    (complex_nilpotent(root_datum(E8_s),[  9, 14, 18, 27, 22, 17, 12,  6 ]),[0,0,0,1,0,0,1,0]),
+    (complex_nilpotent(root_datum(E8_s),[ 10, 15, 20, 30, 24, 18, 12,  6 ]),[1,0,0,1,0,1,1,1]/2),
+    (complex_nilpotent(root_datum(E8_s),[ 12, 17, 23, 34, 28, 21, 14,  7 ]),[1,1,1,1,1,1,1,1]/4),
+    (complex_nilpotent(root_datum(E8_s),[ 14, 21, 28, 42, 34, 26, 18,  9 ]),[1,1,1,1,1,1,1,1]/5),
+    (complex_nilpotent(root_datum(E8_s),[ 16, 23, 31, 46, 37, 28, 19, 10 ]),[2,2,1,1,1,1,1,1]/6),
+    (complex_nilpotent(root_datum(E8_s),[ 15, 22, 30, 44, 36, 28, 19, 10 ]),[1,1,1,0,1,1,1,1]/4),
+    (complex_nilpotent(root_datum(E8_s),[ 12, 17, 23, 34, 28, 22, 15,  8 ]),[1,0,0,1,0,1,0,2]/2),
+    (complex_nilpotent(root_datum(E8_s),[  4,  6,  8, 12, 10,  8,  6,  4 ]),[1,0,0,1,0,1,1,1]),
+    (complex_nilpotent(root_datum(E8_s),[  8, 10, 14, 20, 16, 12,  8,  4 ]),[1,0,0,1,0,0,1,0]),
+    (complex_nilpotent(root_datum(E8_s),[  8, 12, 16, 24, 20, 16, 12,  6 ]),[0,0,0,1,0,0,1,1]),
+    (complex_nilpotent(root_datum(E8_s),[ 10, 16, 20, 30, 24, 18, 12,  6 ]),[0,0,0,1,0,0,0,1]),
+    (complex_nilpotent(root_datum(E8_s),[ 14, 22, 28, 42, 34, 26, 18, 10 ]),[1,0,0,1,0,0,1,1]/2),
+    (complex_nilpotent(root_datum(E8_s),[ 16, 24, 32, 47, 38, 29, 20, 10 ]),[1,0,0,1,0,0,1,0]/2),
+    (complex_nilpotent(root_datum(E8_s),[ 16, 23, 31, 46, 38, 29, 20, 10 ]),[0,1,1,0,1,0,1,1]/3),
+    (complex_nilpotent(root_datum(E8_s),[ 16, 24, 32, 48, 39, 30, 20, 10 ]),[0,0,1,0,1,0,0,1]/2),
+    (complex_nilpotent(root_datum(E8_s),[ 16, 24, 32, 48, 40, 30, 20, 10 ]),[0,0,0,0,1,0,0,0]),
+    (complex_nilpotent(root_datum(E8_s),[ 24, 36, 48, 72, 58, 44, 30, 16 ]),[1,1,0,0,0,1,0,1]/3)]
 
 
 set rigid_data_G2(RootDatum rd) = [unipotent_datum]:
@@ -791,7 +816,6 @@ let order=test_simple_type("G",rd) then
 M=simple_roots(rd)*permutation_matrix(order)*rational_inverse(simple_roots(root_datum(G2_s))),
 N=simple_coroots(rd)*permutation_matrix(order)*rational_inverse(simple_coroots(root_datum(G2_s))) in
 for (O,gamma) in rigid_data_G2_fund do (complex_nilpotent(rd,numer(N*H(O))),M*gamma) od
-
 
 set birigid_data_G2(RootDatum rd) = [unipotent_datum]:
 let order=test_simple_type("G",rd) then
@@ -804,10 +828,6 @@ let order=test_simple_type("G",rd) then
 M=simple_roots(rd)*permutation_matrix(order)*rational_inverse(simple_roots(root_datum(G2_s))),
 N=simple_coroots(rd)*permutation_matrix(order)*rational_inverse(simple_coroots(root_datum(G2_s))) in
 for (O,gamma) in semirigid_data_G2_fund do (complex_nilpotent(rd,numer(N*H(O))),M*gamma) od
-
-
-
-
 
 
 set rigid_data_F4(RootDatum rd) = [unipotent_datum]:
@@ -829,7 +849,6 @@ N=simple_coroots(rd)*permutation_matrix(order)*rational_inverse(simple_coroots(r
 for (O,gamma) in semirigid_data_F4_fund do (complex_nilpotent(rd,numer(N*H(O))),M*gamma) od
 
 
-
 set rigid_data_E6(RootDatum rd) = [unipotent_datum]:
 let order=test_simple_type("E",rd) then
 M=simple_roots(rd)*permutation_matrix(order)*rational_inverse(simple_roots(root_datum(E6_s))),
@@ -847,7 +866,6 @@ let order=test_simple_type("E",rd) then
 M=simple_roots(rd)*permutation_matrix(order)*rational_inverse(simple_roots(root_datum(E6_s))),
 N=simple_coroots(rd)*permutation_matrix(order)*rational_inverse(simple_coroots(root_datum(E6_s))) in
 for (O,gamma) in semirigid_data_E6_fund do (complex_nilpotent(rd,numer(N*H(O))),M*gamma) od
-
 
 
 set rigid_data_E7(RootDatum rd) = [unipotent_datum]:
@@ -869,7 +887,6 @@ N=simple_coroots(rd)*permutation_matrix(order)*rational_inverse(simple_coroots(r
 for (O,gamma) in semirigid_data_E7_fund do (complex_nilpotent(rd,numer(N*H(O))),M*gamma) od
 
 
-
 set rigid_data_E8(RootDatum rd) = [unipotent_datum]:
 let order=test_simple_type("E",rd) then
 M=simple_roots(rd)*permutation_matrix(order)*rational_inverse(simple_roots(root_datum(E8_s))),
@@ -888,12 +905,7 @@ M=simple_roots(rd)*permutation_matrix(order)*rational_inverse(simple_roots(root_
 N=simple_coroots(rd)*permutation_matrix(order)*rational_inverse(simple_coroots(root_datum(E8_s))) in
 for (O,gamma) in semirigid_data_E8_fund do (complex_nilpotent(rd,numer(N*H(O))),M*gamma) od
 
-
-
-
-
 {~~General case~~}
-
 
 { Generate list of unipotent data for an arbitrary group G with simple derived group}
 
@@ -926,7 +938,6 @@ birigid_data_F4(rd),
 birigid_data_G2(rd)
 esac
 
-
 set semirigid_data_simple(RootDatum rd) = [unipotent_datum]:
 let type=Lie_type(rd) then
 (letter,n)=simple_factors(type)[0] in
@@ -941,13 +952,9 @@ semirigid_data_F4(rd),
 semirigid_data_G2(rd)
 esac
 
-
-
 { Sum a list of unipotent data }
 
-
 { Generate list of rigid data for an arbitrary group G}
-
 set rigid_data(RootDatum rd) = [unipotent_datum]:
 let sf=simple_factors(rd) in
 if #sf=0 then [(complex_nilpotent(rd,vec:null(rank(rd))),ratvec:null(rank(rd)))] else
@@ -970,10 +977,9 @@ for X in I do (complex_nilpotent(rd,sum(for x@i in X do H(O(semirigid_data_simpl
 infl_char(semirigid_data_simple(sf[i])[x]) od)) od fi
 
 { Prints rigid data for an arbitraray group G}
-
 set print_rigid_data(RootDatum rd) = void:
 let rig=rigid_data(rd) in
-for x in rig do prints("Dimension = ", dim(O(x)), " H = ", H(O(x)), " Infl char attached to O = ", infl_char(x)) od 
+for x in rig do prints("Dimension = ", dim(O(x)), " H = ", H(O(x)), " Infl char attached to O = ", infl_char(x)) od
 
 set print_birigid_data(RootDatum rd) = void:
 let rig=birigid_data(rd) in
@@ -981,40 +987,62 @@ for x in rig do prints("Dimension = ", dim(O(x)), " H = ", H(O(x)), " Infl char 
 
 set print_semirigid_data(RootDatum rd) = void:
 let rig=semirigid_data(rd) in
-for x in rig do prints("Dimension = ", dim(O(x)), " Diagram = ", O(x).diagram, " Infl char attached to birigid cover = ", infl_char(x)) od
-
-
-
+for x in rig do prints("Dimension = ", dim(O(x)), " Diagram = ", O(x).diagram,
+      	     	       " Infl char attached to birigid cover = ", infl_char(x)) od
 
 {Tests unitarity}
-
 set test_spherical_unipotent(RealForm G) = void:
 let rig=semirigid_data(G) in
 for x in rig do 
 prints("orbit = ", O(x), " infl char = ", infl_char(x));
-let list=##(for p in all_parameters_gamma(G,infl_char(x)) do if 2*GK_dim(p)=dim(O(x)) then [p] else [] fi od) in
-prints("number of unipotents = ", #list);
+let list=##(for p in all_parameters_gamma(G,infl_char(x))
+    	    do if 2*GK_dim(p)=dim(O(x)) then [p] else [] fi
+	    od)
+in prints("number of unipotents = ", #list);
 for p in list do prints(p, "  unitary = ", is_unitary(p)) od od
 
+{enumerates unipotents for complexification}
+set unipotentsC(unipotent_datum (O,gamma)) = [Param]:
+let G=O.root_datum, d=O.dim
+then GC=G.complexification
+then list=all_parameters_gamma(GC,gamma##gamma)
+then id = integrality_datum(G,gamma)
+then non_sing = for alphavee@j in id.simple_coroots
+     	      	do if alphavee*gamma > 0 then [j]
+		   else []
+		   fi
+		od.##
+then non_singC = non_sing##for j in non_sing do j+id.ss_rank od
+in if is_regular(G,gamma)
+   then ##(for p in list do if #tau(p)=2*ss_rank(id) then [p] else [] fi od)
+   else ##(for p in list do if tau(p) = non_singC and GK_dim(p)=d then [p] else [] fi od)
+   fi
 
+{enumerates unipotents for complexification}
+set unipotentsR(RealForm G, unipotent_datum (O,gamma)) = [Param]:
+let list=all_parameters_gamma(G,gamma), d = O.dim\2
+then id = integrality_datum(G,gamma)
+then non_sing = for alphavee@j in id.simple_coroots
+     	      	do if alphavee*gamma > 0 then [j]
+		   else []
+		   fi
+		od.##
+in if is_regular(G,gamma)
+   then ##(for p in list do if #tau(p)= ss_rank(id) then [p] else [] fi od)
+   else ##(for p in list do if tau(p) = non_sing and GK_dim(p)=d then [p] else [] fi od)
+   fi
 
+set count_unipotentsC(unipotent_datum UD) = int:
+#unipotentsC(UD)
 
-{counts unipotents}
+set count_unipotentsR(RealForm G, unipotent_datum UD) = int:
+#unipotentsR(G, UD)
 
-set unipotents(unipotent_datum (O,gamma)) = [Param]:
-let G=O.root_datum, d=O.dim then
-GC=G.complexification then
-list=all_parameters_gamma(GC,gamma##gamma) in
-if is_regular(G,gamma) then ##(for p in list do if #tau(p)=ss_rank(GC) then [p] else [] fi od)
-else ##(for p in list do if GK_dim(p)=d then [p] else [] fi od) fi
-
-set count_unipotents(unipotent_datum UD) = int:
-#unipotents(UD)
-
-
-set count_unipotents_verbose(RootDatum G) = void:
+set count_unipotentsC_verbose(RootDatum G) = void:
 let all=semirigid_data(G) in
-for UD in all do prints("Dimension: ", UD.O.dim, "  Dynkin diagram: ", UD.O.diagram, "  infl char: ", dominant(G,UD.infl_char), "  # of unipotents: ", 
-count_unipotents(UD))od
+for UD in all do prints("Dimension: ", UD.O.dim, "  Dynkin diagram: ", UD.O.diagram,
+       	      	 	"  infl char: ", dominant(G,UD.infl_char), "  # of unipotents: ",
+			count_unipotentsC(UD))
+	      od
 
 
