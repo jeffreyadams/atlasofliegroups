@@ -2568,9 +2568,9 @@ should be produced at all, and if so whether it should be expanded on the
 The following function will greatly facilitate the later repetitive task of
 installing wrapper functions. The basic |install_function| returns a shared
 pointer to constant |builtin|, since we don't need to change anything there
-after installation, but |install_special_builtin| does give non-|const| access
+after installation, but |install_special_function| does give non-|const| access
 to the object just created. The function |install_folding_function| will be a
-version of |install_special_builtin| that already installs a constant-folding
+version of |install_special_function| that already installs a constant-folding
 compile time adaptation.
 
 @< Declarations of exported functions @>=
@@ -3495,7 +3495,7 @@ expression_ptr rhs_is_0
   q->tests.emplace_back(rhs_is_0,p);
 @/p = install_function(int_unary_neq_wrapper,"!=","(int->bool)");
   q = install_special_function(int_neq_wrapper,"!=","(int,int->bool)");
-  q->tests.emplace_back(rhs_is_0,q);
+  q->tests.emplace_back(rhs_is_0,p);
 @/p = install_function(int_non_negative_wrapper,">=","(int->bool)");
   q = install_special_function(int_greatereq_wrapper,">=","(int,int->bool)");
   q->tests.emplace_back(rhs_is_0,p);
