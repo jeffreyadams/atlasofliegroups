@@ -1045,4 +1045,25 @@ for UD in all do prints("Dimension: ", UD.O.dim, "  Dynkin diagram: ", UD.O.diag
 			count_unipotentsC(UD))
 	      od
 
+{non-Arthur birigid unipotents for E8_s:
+[[],
+ [],
+ [],
+ [final parameter(x=320205,lambda=[2,2,2,1,2,2,1,1]/1,nu=[1,1,1,1,1,1,1,3]/3)],
+ [],
+ [final parameter(x=320205,lambda=[2,2,2,1,2,2,1,2]/1,nu=[1,1,1,1,1,1,1,1]/3)],
+ [],
+ [],
+ [],
+ [final parameter(x=320205,lambda=[2,2,2,2,1,2,2,2]/1,nu=[1,1,1,1,1,1,1,1]/5)],
+ [],
+ []]
 
+for E7_s:
+
+[[],
+ [],
+ [final parameter(x=20925,lambda=[2,2,2,1,2,2,1]/1,nu=[1,1,1,1,1,1,1]/3)],
+ []]
+
+}

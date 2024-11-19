@@ -40,7 +40,8 @@ set fund_edges(InnerClass ic) = [[ratvec]]:
 	  od
        od
 
-{(i,j)th list is ALL edges starting at fundamental vertex i of type (i,j)}
+{(i,j)th list is ALL edges starting at fundamental vertex i of type (i,j). "Half fundamental"
+means that one endpoint of the edge is in the fundamental alcove.}
 set half_fund_edges(InnerClass ic) = [[[ratvec]]]:
     let fverts = fundamental_vertices(ic)
     in for e@i in fverts

@@ -821,25 +821,10 @@ set FPP_vertices_long = (InnerClass -> [[(ratvec, AffineCoWeylElt)]]):
 		  fi
 	 in FPP_verts_long[i]
 
-{set FPP_vertices(InnerClass ic)  = [ratvec]:
+set FPP_vertices_bad(InnerClass ic)  = [ratvec]:
     for (gamma,) in FPP_vertices_long(ic).##
     do gamma
-    od}
-
-    { if face_verbose then prints("start FPP_vertices of real form, ",G)
-    fi; }
-{    let ichash = make_InnerClass_hash()
-    then FPPvertss = [[ratvec]]: [] {one list for each inner class}
-    in (InnerClass -> [ratvec]): (InnerClass ic) [ratvec]:
-       let I = ichash.size()
-       then i = ichash.match(ic)
-       then () = if i=I {haven't seen this inner class before}
-       	       then let (Affd,M,j0) = cofolded(ic)
-	       then list = for v in FPP_vertices(Affd,j0) do M*v od
-	       then () = FPPvertss #:= list
-	       in ()
-	       fi
-        in FPPvertss[i]}
+    od
 
 {vertices of the FPP in FPP_lines coords. Entries are #FPP_lines rationals in [0,1]}
 set FPP_vertices_cube(InnerClass ic) = [ratvec]:
