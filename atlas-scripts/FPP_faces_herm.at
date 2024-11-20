@@ -537,42 +537,115 @@ set localFD_1Dirac2_by_zero_old\
        answer
 )
 
+set red_count_flag = false
+<red_count.at
+{set left_good = int:0, left_bad = int:0, right_good = int:0, right_bad = int:0, LR_no_info = int:0}
 {takes 0 and 1-diml local faces and adds K-char index}
 set localFD_KHash_01 (KGBElt x, ratvec lambda, LocalVertexData Lvd, KTypePol_hash ktp_hash,
 [[FaceVertsIndex]] LF) = [[FaceVertsKHash]]:
     let start = elapsed_ms()
-    then answer = for d:#LF
-    	 do if fund_face_verbose then prints(new_line, "start to compute ",#LF[d],
-       	  		     " K-characters in dimension ",d,
-			     " in localFD_KHash_01")
-       	     fi;
-	     for v@k in LF[d]
-       	     do if k%(max(#LF[d]\10,2))=0 and fund_face_verbose
-	      	then prints("examining face ",k,
-	      	   "; #ktp_hash = ",ktp_hash.size())
-	      	fi;
-		let nu = face_bary(Lvd, v)
-		{face_bary_ic(x.inner_class, face_bary(Lvd.list, v))}
-       	      	then p0 = parameter(x, lambda, nu)
-	      	then P = finalize(p0)
-		then () = char_counter.use()
-		then startCF = elapsed_ms()
-	      	then Q = K_type_pol(character_formula(P))
-		then () = charTime +:= elapsed_ms() - startCF
-	      	in v##[ktp_hash.match(Q), #monomials(P)]
-       	     od
-    	od
-   {then () = answer:= sort(x.real_form, Lvd, answer, 2)} {ARGUMENT ALREADY SORTED}
-   then time = elapsed_ms() - start
-   then () = if time_verbose then prints("     ", print_time_string(time),
+    then lookup0 = if red_count_flag
+    	 	   then index_in(LF[0])
+	 	   else index_in([vec]:[])
+		   fi
+    then answer0 = for v@k in LF[0]
+       	     	   do if k%(max(#LF[0]\10,2))=0 and fund_face_verbose
+	      	      then prints("examining face ",k,
+	      	      "; #ktp_hash = ",ktp_hash.size())
+	      	      fi;
+		      let nu = Lvd.list[v[0]]
+       	      	      then p0 = parameter(x, lambda, nu)
+	      	      then P = finalize(p0)
+		      then startCF = elapsed_ms()
+	      	      then m = char_counter.use(); ktp_hash.match(K_type_pol(character_formula(P)))
+		      then () = charTime +:= elapsed_ms() - startCF
+		      in v##[m,#monomials(P)]
+		   od
+    then answer1 = for v@k in LF[1]
+    	 	   do if k%(max(#LF[1]\10,2))=0 and fund_face_verbose
+	      	      then prints("examining face ",k,
+	      	      	   "; #ktp_hash = ",ktp_hash.size())
+	      	      fi;
+		      let nu = face_bary(Lvd,v)
+		      then p0 = parameter(x, lambda, nu)
+		      then P = finalize(p0)
+		      then pends = if red_count_flag
+		      	   	   then for k in v do parameter(x,lambda,Lvd.list[k]) od
+				   else []
+				   fi
+		      then midreds = if red_count_flag
+		      	   	     then red_count(p0)
+				     else 0
+				     fi
+		      in if red_count_flag and midreds = red_count(pends[0])
+			 then v##[answer0[lookup0([v[0]])][1], #monomials(P)]
+			 elif red_count_flag and midreds = red_count(pends[1])
+			 then v##[answer0[lookup0([v[1]])][1], #monomials(P)]
+			 else char_counter.use(); v##
+			      [ktp_hash.match(K_type_pol(character_formula(P))), #monomials(P)]
+			 fi
+       	     	   od
+    then time = elapsed_ms() - start
+    then () = if time_verbose then prints("     ", print_time_string(time),
    	     		     " for localFD_KHash_01 (vertex/edge K-chars)") fi
-   in answer
+    in [answer0,answer1]
 
 {takes 0 and 1-diml local faces and adds K-char index to height HT}
 set localFD_KHash_01 (KGBElt x, ratvec lambda, LocalVertexData Lvd, int HT, KTypePol_hash ktp_hash,
 [[FaceVertsIndex]] LF) = [[FaceVertsKHash]]:
     let start = elapsed_ms()
-    then answer = for d:#LF
+    then lookup0 = if red_count_flag
+    	 	   then index_in(LF[0])
+		   else index_in([vec]:[])
+		   fi
+    then answer0 = for v@k in LF[0]
+       	     	   do if k%(max(#LF[0]\10,2))=0 and fund_face_verbose
+	      	      then prints("examining face ",k,
+	      	      "; #ktp_hash = ",ktp_hash.size())
+	      	      fi;
+		      let nu = Lvd.list[v[0]]
+       	      	      then p0 = parameter(x, lambda, nu)
+	      	      then P = finalize(p0)
+		      then startCF = elapsed_ms()
+	      	      then m = char_counter.use(); ktp_hash.match(
+		      	   K_type_pol(character_formula_to_height(P,HT)))
+		      then () = charTime +:= elapsed_ms() - startCF
+		      in v##[m,#monomials(P)]
+		   od
+    then answer1 = for v@k in LF[1]
+    	 	   do if k%(max(#LF[1]\10,2))=0 and fund_face_verbose
+	      	      then prints("examining face ",k,
+	      	      	   "; #ktp_hash = ",ktp_hash.size())
+	      	      fi;
+		      let nu = face_bary(Lvd,v)
+		      then p0 = parameter(x, lambda, nu)
+		      then P = finalize(p0)
+		      then pends = if red_count_flag
+		      	   	   then for k in v do parameter(x,lambda,Lvd.list[k]) od
+				   else []
+				   fi
+		      then midreds = if red_count_flag
+		      	   	     then red_count(p0)
+				     else 0
+				     fi
+		      in if red_count_flag and midreds = red_count(pends[0])
+			 then v##[answer0[lookup0([v[0]])][1], #monomials(P)]
+			 elif red_count_flag and midreds = red_count(pends[1])
+			 then v##[answer0[lookup0([v[1]])][1], #monomials(P)]
+			 else let startCF = elapsed_ms()
+			      then () = char_counter.use()
+			      then ans = v##[ktp_hash.match(K_type_pol(character_formula_to_height(P,HT))),
+					#monomials(P)]
+			      then () = charTime +:= elapsed_ms() - startCF
+			      in ans
+			 fi
+       	     	   od
+    then time = elapsed_ms() - start
+    then () = if time_verbose then prints("     ", print_time_string(time),
+   	     		     " for localFD_KHash_01 (vertex/edge K-chars)") fi
+    in [answer0,answer1]
+{
+then answer = for d:#LF
     	 do if fund_face_verbose then prints(new_line, "start to compute ",#LF[d],
        	  		     " K-characters to height ",HT, " in dimension ",d,
 			     " in localFD_KHash_01")
@@ -596,6 +669,7 @@ set localFD_KHash_01 (KGBElt x, ratvec lambda, LocalVertexData Lvd, int HT, KTyp
    then () = if time_verbose then prints("     ", print_time_string(time),
    	     		     " for localFD_KHash_01 (vertex/edge K chars) to height ", HT) fi
    in answer
+}
 
 {takes list of 0- and d-diml faces, with d \ge 1, and builds all
 d+1-diml faces having all faces in the d-diml list. The int e is the
@@ -639,22 +713,51 @@ set localFD_KHashbt_lookDownGEO \
     fi;}
     let G = x.real_form, start=elapsed_ms()
     then () = for dim:t-#LFKH from #LFKH {b has to be at least 2}
-    	      do LFKH := LFKH# (let acts = superFaces(LFKH[0],LFKH[dim-1],2)
-	      	    	       	in for actual in acts
-	       	    	      	   do let bary =
-				      sum(G.rank, for j in actual do Lvd.list[j] od)/(dim+1)
-		       	      	      then p0 = parameter(x,lambda, bary)
-				      then P = finalize(p0)
-				      then ms = monomials(P)
-				      in if all(for p in ms do is_pos_on_LKTs(p) od)
-				      	 then let () = char_counter.use()
-					      then startCF = elapsed_ms()
-					      then Q = character_formula(P)
-					      then () = charTime +:= elapsed_ms() - startCF
-					      in [actual##[ktp_hash.match(
-				              K_type_pol(Q)), #ms]]
-		       		    	 else []
-				    	 fi
+    	      do let lookup = if red_count_flag
+	      	     	      then index_in(for v in LFKH[dim-1] do v[:dim] od)
+			      else index_in([vec]:[])
+			      fi
+	      	 in LFKH := LFKH# (let acts = superFaces(LFKH[0],LFKH[dim-1],2)
+	      	    	       	   in for actual in acts {vec of size dim+1}
+	       	    	      	      do let bary =
+				      	     sum(G.rank, for j in actual do Lvd.list[j] od)/(dim+1)
+		       	      	      	 then p0 = parameter(x,lambda, bary)
+				      	 then P = finalize(p0)
+				      	 then midreds = if red_count_flag
+					      	      	then red_count(p0)
+							else 0
+							fi
+					 then subs = if red_count_flag
+					      	     then for k:dim+1
+					      	     	  do actual[:k]##actual[k+1:] {vec of size dim}
+						     	  od
+						     else []
+						     fi
+				      	 then corner_nus = if red_count_flag
+					      		   then for vsub in subs
+				      	   	      	   	do face_bary(Lvd,vsub)
+							   	od
+							   else []
+							   fi
+				      	 then k = if red_count_flag
+					      	  then first(for nu in corner_nus
+				      	       	     	do red_count(parameter(x,lambda,nu)) = midreds
+						     	od)
+						  else -1
+						  fi
+				         then ms = monomials(P)
+				      	 in if all(for p in ms do is_pos_on_LKTs(p) od)
+				      	    then if k.>=
+					      	 then [actual##[LFKH[dim-1][lookup(subs[k])][dim], #ms]]
+					 	 else let () = char_counter.use()
+					      	      then startCF = elapsed_ms()
+					      	      then Q = character_formula(P)
+					      	      then () = charTime +:= elapsed_ms() - startCF
+					      	      in [actual##[ktp_hash.match(
+				              	      	 K_type_pol(Q)), #ms]]
+						 fi {K-char matches a face}
+		       		    	     else []
+				    	     fi {pos on LKTs}
 		    	      	   od.## {[FaceVertsKHash]})
 	 od
     then () = LFKH := sort(G, Lvd, LFKH, 2)
@@ -683,22 +786,51 @@ set localFD_KHashbt_lookDownGEO \
     fi;
     let G = x.real_form, start=elapsed_ms()
     then () = for dim:t-#LFKH from #LFKH {b has to be at least 2}
-    	      do LFKH := LFKH# (let acts = superFaces(LFKH[0],LFKH[dim-1],2)
+    	      do let lookup = if red_count_flag
+	      	     	      then index_in(for v in LFKH[dim-1] do v[:dim] od)
+			      else index_in([vec]:[])
+			      fi
+	      in LFKH := LFKH# (let acts = superFaces(LFKH[0],LFKH[dim-1],2)
 	      	    	       	in for actual in acts
 	       	    	      	   do let bary =
 				      sum(G.rank, for j in actual do Lvd.list[j] od)/(dim+1)
 		       	      	      then p0 = parameter(x,lambda, bary)
 				      then P = finalize(p0)
+				      then midreds = if red_count_flag
+					      	      	then red_count(p0)
+							else 0
+							fi
+				      then subs = if red_count_flag
+					      	  then for k:dim+1
+					      	       do actual[:k]##actual[k+1:] {vec of size dim}
+						       od
+						   else []
+						   fi
+				      then corner_nus = if red_count_flag
+					      		then for vsub in subs
+				      	   	      	     do face_bary(Lvd,vsub)
+							     od
+							else []
+							fi
+				      	 then k = if red_count_flag
+					      	  then first(for nu in corner_nus
+				      	       	     	do red_count(parameter(x,lambda,nu)) = midreds
+						     	od)
+						  else -1
+						  fi
 				      then ms = monomials(P)
 				      in if all(for p in ms do is_pos_on_LKTs(p) od)
-				      	 then let startCF = elapsed_ms()
-					      then () = char_counter.use()
-					      then Q = character_formula_to_height(P,HT)
-					      then () = charTime +:= elapsed_ms() - startCF
-					      in [actual##[ktp_hash.match(
-				              K_type_pol(Q)), #ms]]
-		       		    	 else []
-				    	 fi
+				      	 then if k.>=
+					      then [actual##[LFKH[dim-1][lookup(subs[k])][dim], #ms]]
+					      else let startCF = elapsed_ms()
+					      	   then () = char_counter.use()
+					     	   then Q = character_formula_to_height(P,HT)
+					      	   then () = charTime +:= elapsed_ms() - startCF
+					      	   in [actual##[ktp_hash.match(
+				              	      K_type_pol(Q)), #ms]]
+					      fi {K-char matches a face}
+		       		    	  else []
+				    	  fi {pos on LKTs}
 		    	      	   od.## {[FaceVertsKHash]})
 	 od
     then () = LFKH := sort(G, Lvd, LFKH, 2)

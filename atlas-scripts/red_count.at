@@ -1,0 +1,57 @@
+< basic {for infinitesimal character}
+
+{counts integral roots perhaps contributing to reducibility of Param p
+(more or less assumed to be weakly normal}
+set red_roots_old(Param p) = [vec]:
+    let G = p.real_form, gamma = p.infinitesimal_character
+    then id = integrality_datum(G,gamma)
+    then pos_int = id.posroots, pos_int_co = id.poscoroots
+    then theta = p.x.involution
+    in for alpha@j in pos_int
+       do if gamma*pos_int_co[j] = 0
+       	  then []
+       	  elif theta*alpha = -alpha
+	  then if Cayley(alpha,p) != p then [alpha]
+	       else []
+	       fi
+	  elif (theta*gamma)*pos_int_co[j] < 0
+	  then [alpha]
+	  else []
+	  fi
+	  od.##
+
+set red_roots(Param p) = [vec]:
+    let G = p.real_form, gamma = p.infinitesimal_character
+    then pos = G.posroots, pos_co = G.poscoroots
+    then theta = p.x.involution
+    in for alpha@j in pos
+       do let alphav = pos_co[j]
+       	  then gammaj = gamma*alphav
+       	  in if (not is_integer(gammaj)) or gammaj = 0
+       	  then []
+       	  elif theta*alpha = -alpha
+	  then if Cayley(alpha,p) != p then [alpha]
+	       else []
+	       fi
+	  elif (theta*gamma)*alphav < 0
+	  then [alpha]
+	  else []
+	  fi
+	  od.##
+
+
+set red_count_old(Param p) = int: #red_roots(p)
+
+set red_count(Param p) = int:
+    let G = p.real_form, gamma = p.infinitesimal_character
+    then pos_co = G.poscoroots
+    then theta = p.x.involution
+    in count( for alphav@j in pos_co
+       	      do let gammaj = gamma*alphav
+       	      in is_integer(gammaj) and
+	      	 (gammaj.numer).> and
+       	  	 if alphav*theta = -alphav
+	  	 then Cayley((G.posroots)[j],p) != p
+	  	 else (theta*gamma)*alphav < 0
+		 fi
+	      od)
