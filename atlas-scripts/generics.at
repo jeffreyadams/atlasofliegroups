@@ -1,0 +1,51 @@
+<basic.at
+
+set I = & T begin (T x)T: x end
+set K = & S,T begin (T x): (S .): x end
+set compose = & R,S,T begin ((S->R) g): ((T->S)f): (T x): x.f.g end
+
+set fst = & S,T begin (S x,T y): x end
+set snd = & S,T begin (S x,T y): y end
+
+set swap = &S,T begin (S x,T y) (T,S): (y,x) end
+
+set swapargs = &S,T,R begin ((S,T->R) f)(T,S->R): (T y,S x)R: f(x,y) end
+set curry  = &S,T,R begin ((S,T->R) f)(S->(T->R)): (S x):(T y)R: f(x,y) end
+set uncurry  = &S,T,R begin ((S->(T->R)) f) (S,T->R): (S x,T y)R: f(x)(y) end
+
+set curried_swapargs = &S,T,R begin { uncurry then swapargs then curry }
+  ((S->(T->R)) f)(T->(S->R)): (T y):(S x) R: f(x)(y)
+end
+
+set filter = & T begin
+  ((T->bool) pred) ([T]->[T]): ([T] r): for x in r if pred(x) do x fi od
+end
+
+set map = & S,T begin
+  ((S->T) f) ([S]->[T]): ([S] a): for x in a do f(x) od
+end
+
+set split  = & S,T begin
+  ([S,T] l) ([S],[T]): ( for(s,)in l do s od, for(,t)in l do t od )
+end
+
+set zip  = & S,T begin
+  ([S] a,[T] b) [S,T]:
+  if #a<=#b then for x@i in a do (x,b[i]) od else for y@i in b do (a[i],y) od fi
+end
+
+set transpose = & T begin
+  ([[T]] rr)[[T]]: for i: min(map(#@t([t]))(rr)) do for r in rr do r[i] od od
+end
+
+set foldl = & S,T begin
+  (S !start,(S,T->S) op) ([T]->S):
+  ([T] a) S: let v=start in for x in a do v:=op(v,x) od; v
+  { rec_fun f ([T] a) S: if #a=0 then start else op(f(a[:1~]),a~[0]) fi }
+end
+
+set foldr = & S,T begin
+  ((S,T->T) op, T !start) ([S]->T):
+  ([S] a) T: let v=start in for x in a ~do v:=op(x,v) od; v
+  { rec_fun f ([S] a) T: if #a=0 then start else op(a[0],f(a[1:])) fi }
+end
