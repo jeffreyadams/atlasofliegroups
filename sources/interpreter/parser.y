@@ -115,10 +115,10 @@
 %type <id_sp1> id_spec type_spec typedef_type type_field typedef_type_field
 %destructor { destroy_type($$.type_pt);destroy_id_pat($$.ip); }
 	    id_spec type_spec typedef_type type_field typedef_type_field
-%type <id_sp> id_specs id_specs_opt struct_specs union_specs
+%type <id_sp> param_list id_specs struct_specs union_specs
             typedef_struct_specs typedef_union_specs
 %destructor { destroy_type_list($$.typel);destroy_pattern($$.patl); }
-	    id_specs id_specs_opt
+	    param_list id_specs
 %type <case_l> caselist tagged_caselist do_caselist tagged_do_caselist
 %destructor { destroy_case_list($$); }
 	    caselist do_caselist tagged_caselist tagged_do_caselist
@@ -227,7 +227,7 @@ expr    : LET lettail { $$=$2; }
 	  { $$=make_lambda_node($2.patl,$2.typel,$5,@$); }
 	| '(' id_specs ')' cast
 	  { $$=make_lambda_node($2.patl,$2.typel,$4,@$); }
-	| REC_FUN IDENT '(' id_specs_opt ')' type ':' expr
+	| REC_FUN IDENT '(' param_list ')' type ':' expr
 	  { $$ = make_rec_lambda_node($2,$4.patl,$4.typel,$8,$6,@$); }
 	| cast
 	| tertiary ';' expr { $$=make_sequence($1,$3,0,@$); }
@@ -246,11 +246,11 @@ declarations: declarations ',' declaration { $$ = append_let_node($1,$3); }
 ;
 
 declaration: pattern '=' expr { $$ = make_let_node($1,$3); }
-	| IDENT '(' id_specs_opt ')' '=' expr
+	| IDENT '(' param_list ')' '=' expr
 	  { struct raw_id_pat p; p.kind=0x1; p.name=$1;
 	    $$ = make_let_node(p,make_lambda_node($3.patl,$3.typel,$6,@$));
 	  }
-	| REC_FUN IDENT '(' id_specs_opt ')' '=' type ':' expr
+	| REC_FUN IDENT '(' param_list ')' '=' type ':' expr
 	  {
 	    auto f = make_rec_lambda_node($2,$4.patl,$4.typel,$9,$7,@$);
 	    struct raw_id_pat p; p.kind=0x1; p.name=$2; // use $2 again
@@ -745,23 +745,33 @@ pat_list: pattern_opt ',' pattern_opt
 
 id_spec: type pattern { $$.type_pt=$1; $$.ip=$2; }
 	| '(' id_specs ')'
-	{ $$.type_pt=make_tuple_type($2.typel);
-	  $$.ip.kind=0x2; $$.ip.sublist=reverse_patlist($2.patl);
-	}
+	  { // forbidding parenthesised singletons gives parser headaches
+	    if ($2.typel->next==nullptr) // so just remove the parentheses
+	    {
+	      $$.type_pt = unmake_type_singleton($2.typel);
+	      $$.ip = unmake_pattern_singleton($2.patl);
+	    }
+	    else
+	    {
+	      $$.type_pt=make_tuple_type($2.typel);
+	      $$.ip.kind=0x2; $$.ip.sublist=reverse_patlist($2.patl);
+	    }
+	  }
 	| type '.' { $$.type_pt=$1; $$.ip.kind=0x0; }
 ;
 
 id_specs: id_spec
-	{ $$.typel=make_type_singleton($1.type_pt);
-	  $$.patl=make_pattern_node(nullptr,$1.ip);
-	}
+	  { $$.typel=make_type_singleton($1.type_pt);
+	    $$.patl=make_pattern_node(nullptr,$1.ip);
+	  }
 	| id_specs ',' id_spec
-	{ $$.typel=make_type_list($1.typel,$3.type_pt);
-	  $$.patl=make_pattern_node($1.patl,$3.ip);
-	}
+	  { $$.typel=make_type_list($1.typel,$3.type_pt);
+	    $$.patl=make_pattern_node($1.patl,$3.ip);
+	  }
 ;
 
-id_specs_opt: id_specs
+param_list
+	: id_specs
 	| /* empty */ { $$.typel=nullptr; $$.patl=nullptr; }
 ;
 

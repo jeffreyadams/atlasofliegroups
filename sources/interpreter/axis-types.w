@@ -1806,6 +1806,7 @@ type_p make_tabled_type(id_type nr);
 @)
 raw_type_list make_type_singleton(type_p raw);
 raw_type_list make_type_list(raw_type_list l,type_p t);
+type_p unmake_type_singleton(raw_type_list l);
 
 @ The functions like |mk_prim| below simply call the corresponding factory
 method in the context of the function |std::make_unique|, which invokes |new|
@@ -1908,11 +1909,22 @@ raw_type_list make_type_singleton(type_p t)
   result.push_front(std::move(*type_ptr(t)));
   return result.release();
 }
-
 raw_type_list make_type_list(raw_type_list l,type_p t)
 { type_list tmp(l); // since |prefix| needs second argument an lvalue reference
   return prefix(std::move(*type_ptr(t)),tmp).release();
 }
+
+@ We define a function |unmake_type_singleton| to undo |make_type_singleton|
+above. It goes in tandem with |unmake_pattern_singleton| defined in the
+\.{parsetree.w} module, and the technical reason for needing them is explained
+there.
+
+@< Function definitions @>=
+type_p unmake_type_singleton(raw_type_list p)
+{@; type_list l(p); assert(l.singleton());
+  return new type_expr(std::move(l.front()));
+}
+
 
 @*1 Second order types and type unification.
 %

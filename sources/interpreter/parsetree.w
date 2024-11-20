@@ -1387,6 +1387,7 @@ list (the resulting list will need reversal when further integrated).
 
 @< Declarations of functions for the parser @>=
 raw_patlist make_pattern_node(raw_patlist prev,const raw_id_pat& pattern);
+raw_id_pat unmake_pattern_singleton(raw_patlist raw);
 
 @ With the mentioned proviso about order, the function implementation just
 assembles the pieces.
@@ -1394,6 +1395,28 @@ assembles the pieces.
 @< Definitions of functions for the parser @>=
 raw_patlist make_pattern_node(raw_patlist prev,const raw_id_pat& pattern)
 {@; patlist l(prev); l.push_front(id_pat(pattern)); return l.release(); }
+
+@ On one rare occasion we need to undo the effect of creating a pattern node for
+a singleton list of pattern, returning the single contained pattern. The reason
+that the function, and its companion |unmake_type_singleton| are needed is that
+when we allowed individual parameters of functions to be specified, in case they
+have tuple type, by a parenthesised list that looks like a parameter list, and
+so on recursively for components of that list, it was not possible to forbid
+lists of length~$1$: such lists \emph{are} allowed as parameter lists, and if we
+try to make the parser accept such lists in one case but not in another, we
+force it to make a decision that it cannot make with finite look-ahead. (This is
+related to our choice to start an anonymous function just with a left
+parenthesis, which cannot be distinguished from other uses of left parentheses.)
+Our solution to this conundrum is to allow singleton lists, but to undo the
+parentheses when building the parse tree, after detecting a list of length~$1$.
+Although for years we instead just allowed the singleton to exist, this is wrong
+since its type would be a $1$-tuple type, which the language does not allow.
+
+@< Definitions of functions for the parser @>=
+raw_id_pat unmake_pattern_singleton(raw_patlist raw)
+{@; patlist l(raw); assert(l.singleton());
+  return l.front().release();
+}
 
 @ Patterns also need cleaning up, which is what |destroy_pattern| and
 |destroy_id_pat| will handle, and reversal as handled by |reverse_patlist|.
