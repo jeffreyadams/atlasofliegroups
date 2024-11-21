@@ -5,6 +5,7 @@
 <hermitian.at
 <K_highest_weights.at {for all_lambda_differential_0}
 <unity.at {for deform_hts}
+<red_count.at {for red_count@Param}
 {BREAK HERE?}
 
 
@@ -538,7 +539,7 @@ set localFD_1Dirac2_by_zero_old\
 )
 
 set red_count_flag = false
-<red_count.at
+
 {set left_good = int:0, left_bad = int:0, right_good = int:0, right_bad = int:0, LR_no_info = int:0}
 {takes 0 and 1-diml local faces and adds K-char index}
 set localFD_KHash_01 (KGBElt x, ratvec lambda, LocalVertexData Lvd, KTypePol_hash ktp_hash,

@@ -20,33 +20,33 @@ set red_roots_old(Param p) = [vec]:
 	  fi
 	  od.##
 
-set red_roots(Param p) = [vec]:
+set red_coroots(Param p) = [vec]:
     let G = p.real_form, gamma = p.infinitesimal_character
-    then pos = G.posroots, pos_co = G.poscoroots
+    then pos_co = G.poscoroots
     then theta = p.x.involution
-    in for alpha@j in pos
-       do let alphav = pos_co[j]
-       	  then gammaj = gamma*alphav
+    in for alphav@j in pos_co
+       do let gammaj = gamma*alphav
        	  in if (not is_integer(gammaj)) or gammaj = 0
        	  then []
-       	  elif theta*alpha = -alpha
-	  then if Cayley(alpha,p) != p then [alpha]
+       	  elif alphav*theta = -alphav
+	  then if Cayley((G.posroots)[j],p) != p then [alphav]
 	       else []
 	       fi
 	  elif (theta*gamma)*alphav < 0
-	  then [alpha]
+	  then [alphav]
 	  else []
 	  fi
 	  od.##
 
+set red_count_old(Param p) = int: #red_roots_old(p)
 
-set red_count_old(Param p) = int: #red_roots(p)
+set red_count_time =int:0
 
 set red_count(Param p) = int:
-    let G = p.real_form, gamma = p.infinitesimal_character
-    then pos_co = G.poscoroots
+    let start = elapsed_ms(), G = p.real_form
+    then pos_co = G.poscoroots, gamma = p.infinitesimal_character
     then theta = p.x.involution
-    in count( for alphav@j in pos_co
+    then ans = count( for alphav@j in pos_co
        	      do let gammaj = gamma*alphav
        	      in is_integer(gammaj) and
 	      	 (gammaj.numer).> and
@@ -55,3 +55,5 @@ set red_count(Param p) = int:
 	  	 else (theta*gamma)*alphav < 0
 		 fi
 	      od)
+    then () = red_count_time +:= elapsed_ms() - start
+    in ans
