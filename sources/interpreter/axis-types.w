@@ -3726,11 +3726,16 @@ inline shared_value pop_value()
 }
 
 @ Most often the result of calling |pop_value| must be dynamically cast to the
-type it is known to have (by the type check that was passed); should such a
-cast fail, this reveals a flaw of our type system, so we throw a
-|logic_error|. The function template |get| with explicitly provided type
-serves for this purpose; it returns a shared pointer (because values on the
-stack are shared pointers) of the proper kind.
+type it is known to have (by the type check that was passed); should such a cast
+fail, this reveals a flaw of our type system, so we throw a |logic_error|. The
+function template |get| with explicitly provided type serves for this purpose;
+it returns a shared pointer to constant (because values on the stack are such
+pointers) of the proper kind. Since the dynamic cast should never fail in
+practice (and there is very extensive experience that it does not, although this
+of course not exclude the possibility that it will in very rare circumstances,
+or after further development of the program), we disable the test when compiling
+without debugging, by doing a static cast rather than a dynamic cast; this just
+pops and returns the pointer without inspecting it in any way.
 
 Sometimes defeating copy-on-write is desired (to allow changes like filling
 internal tables that will \emph{benefit} other shareholders), and
