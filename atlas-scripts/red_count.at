@@ -1,24 +1,28 @@
 < basic {for infinitesimal character}
 
+{whether to use these functions}
+set red_count_flag = false
+
 {counts integral roots perhaps contributing to reducibility of Param p
-(more or less assumed to be weakly normal}
+(more or less assumed to be weakly normal TRY TO DROP THAT for blob}
 set red_roots_old(Param p) = [vec]:
     let G = p.real_form, gamma = p.infinitesimal_character
     then id = integrality_datum(G,gamma)
     then pos_int = id.posroots, pos_int_co = id.poscoroots
     then theta = p.x.involution
     in for alpha@j in pos_int
-       do if gamma*pos_int_co[j] = 0
-       	  then []
-       	  elif theta*alpha = -alpha
-	  then if Cayley(alpha,p) != p then [alpha]
-	       else []
-	       fi
-	  elif (theta*gamma)*pos_int_co[j] < 0
-	  then [alpha]
-	  else []
-	  fi
-	  od.##
+       do let m = gamma*pos_int_co[j]\1
+       	  in if gamma*pos_int_co[j] = 0
+       	     then []
+       	     elif theta*alpha = -alpha
+	     then if Cayley(alpha,p) != p then [alpha]
+	       	  else []
+	       	  fi
+	     elif ((theta*gamma)*pos_int_co[j])*m < 0
+	     then [alpha]
+	     else []
+	     fi
+      od.##
 
 set red_coroots(Param p) = [vec]:
     let G = p.real_form, gamma = p.infinitesimal_character
@@ -32,7 +36,7 @@ set red_coroots(Param p) = [vec]:
 	  then if Cayley((G.posroots)[j],p) != p then [alphav]
 	       else []
 	       fi
-	  elif (theta*gamma)*alphav < 0
+	  elif ((theta*gamma)*alphav)*gammaj < 0
 	  then [alphav]
 	  else []
 	  fi
@@ -49,10 +53,10 @@ set red_count(Param p) = int:
     then ans = count( for alphav@j in pos_co
        	      do let gammaj = gamma*alphav
        	      in is_integer(gammaj) and
-	      	 (gammaj.numer).> and
+	      	 (gammaj.numer).!= and
        	  	 if alphav*theta = -alphav
 	  	 then Cayley((G.posroots)[j],p) != p
-	  	 else (theta*gamma)*alphav < 0
+	  	 else ((theta*gamma)*alphav)*gammaj < 0
 		 fi
 	      od)
     then () = red_count_time +:= elapsed_ms() - start
