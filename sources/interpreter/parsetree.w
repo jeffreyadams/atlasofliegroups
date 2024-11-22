@@ -1511,8 +1511,8 @@ by default; it is present only for backward compatibility \.{gcc}~4.6.
 
 @< Structure and typedef definitions for types built upon |expr| @>=
 struct let_pair { id_pat pattern; expr val; };
-typedef containers::simple_list<let_pair> let_list;
-typedef containers::sl_node<let_pair>* raw_let_list;
+using let_list = containers::simple_list<let_pair>;
+using raw_let_list = containers::sl_node<let_pair>*;
 @)
 struct let_expr_node
 { id_pat pattern; expr val; expr body;
@@ -2737,12 +2737,18 @@ expr(abstractor a, source_location loc)
  , loc(loc)
 @+{}
 
-@ Abstractors are built by |make_abstr|.
+@ Abstractors are built by |make_abstr|. In addition |insert_type_abstraction|
+will insert an abstractor into the right hand side of a |raw_let_list|
 
 @< Declarations of functions for the parser @>=
 expr_p make_abstr(unsigned int count, expr_p exp, const YYLTYPE& loc);
+raw_let_list insert_type_abstraction
+  (unsigned int count, raw_let_list p, const YYLTYPE& loc);
 
-@~No surprises here.
+@~No surprises for |make_abstr|. For |insert_type_abstraction| we can take
+advantage of the unique ownership we have of the list pointed to by the
+|raw_let_list| argument to keep the nodes of the list itself while inserting an
+|abstr_node| on top of the |expr| in the |val| field of each node.
 
 @< Definitions of functions for the parser@>=
 expr_p make_abstr(unsigned int count, expr_p e, const YYLTYPE& loc)
@@ -2751,7 +2757,17 @@ expr_p make_abstr(unsigned int count, expr_p e, const YYLTYPE& loc)
   return new expr(new abstr_node { count, std::move(exp) },loc);
 }
 
-@ Nor here.
+raw_let_list insert_type_abstraction
+  (unsigned int count, raw_let_list p, const YYLTYPE& loc)
+{
+  let_list L(p);
+  for (auto it=L.wbegin(); not L.at_end(it); ++it)
+    it->val = expr(new abstr_node{ count, std::move(it->val) },loc );
+  return L.release();
+}
+
+@ No surprises here either.
+
 @< Cases for copying... @>=
 case type_abstraction_expr: abstr_variant=other.abstr_variant;
 break;

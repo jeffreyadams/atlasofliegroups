@@ -96,8 +96,11 @@
 %type <expression_list> commalist do_commalist commalist_opt commabarlist
 %destructor { destroy_exprlist($$); }
             commalist do_commalist commalist_opt commabarlist
-%type <decls> declarations declaration
+%type <decls> declaration declarations
+	      polymorphic_declaration polymorphic_declarations
 %destructor { destroy_letlist($$); } declarations declaration
+	      polymorphic_declaration polymorphic_declarations
+
 
 %left OPERATOR
 
@@ -137,6 +140,11 @@ input:	'\n'			{ YYABORT; } /* null input, skip evaluator */
           { YYABORT; } /* ignore end-of-file seen at command level too */
 	| expr '\n'		{ *parsed_expr=$1; }
 	| SET declarations '\n' { global_set_identifiers($2,@$); YYABORT; }
+	| ANY_TYPE typevar_list BEGIN polymorphic_declarations END
+	  {
+	    auto decls = insert_type_abstraction($2,$4,@$);
+	    global_set_identifiers(decls,@$); YYABORT;
+	  }
 	| IDENT ':' expr '\n'
 		{ struct raw_id_pat id; id.kind=0x1; id.name=$1;
 		  global_set_identifier(id,$3,0,@$); YYABORT; }
@@ -253,6 +261,16 @@ declaration: pattern '=' expr { $$ = make_let_node($1,$3); }
 	    $$ = make_let_node(p,f);
 	  }
 ;
+
+polymorphic_declarations
+	: polymorphic_declaration
+	| polymorphic_declarations polymorphic_declaration
+	  { $$ = append_let_node($1,$2); }
+	;
+
+polymorphic_declaration
+	: SET declarations { $$=$2; }
+	;
 
 tertiary: IDENT BECOMES tertiary { $$ = make_assignment($1,$3,@$); }
 	| SET pattern BECOMES tertiary { $$ = make_multi_assignment($2,$4,@$); }
