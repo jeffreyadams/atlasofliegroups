@@ -325,7 +325,8 @@ set check_concatenate(KGBElt x, ratvec lambda, [(WeylElt, (LocalVertexData, [[ve
 		   od {d = 0, 1}
     in (big_Lvd, big_LF)
 
-{Stick together local vertices and edges at a bunch of different w^*{-1}*(x0,lambda0)} 
+{Stick together local vertices and edges at a bunch of different w^*{-1}*(x0,lambda0)}
+{if red_count_flag, then vec sizes are 2 and 3 instead of 1 and 2}
 set concatenate([(WeylElt, (LocalVertexData, [[vec]]))] local01) = (LocalVertexData, [[vec]]):
     let wLvds = for (w, (Lvd,)) in local01
     	      	do w*Lvd {apply w^{-1} to all vertices}
@@ -333,7 +334,7 @@ set concatenate([(WeylElt, (LocalVertexData, [[vec]]))] local01) = (LocalVertexD
     then vert_hash1 = make_ratvec_hash()
     then perms1 = for wLvd in wLvds {wth entry gives map from 1st half of wLvd.list to big_list}
     	      	  do for v in wLvd.list[:wLvd.pair_start]
-	      	     do vert_hash1.match(v) 
+	      	     do vert_hash1.match(v)
 		     od
 		  od
     {then () = prints("perms1 = ",perms1)}
@@ -359,9 +360,13 @@ set concatenate([(WeylElt, (LocalVertexData, [[vec]]))] local01) = (LocalVertexD
     then big_LF = for d:2
     	 	  do for (,(,LF))@i in local01
 		     do for v in LF[d]
-		     	do for j in v
+		     	do (for j in v[:d+1]
+			       {:d+1 to account for long entries if red_count_flag}
 			   do perms[i][j]
-			   od.sort {now a sorted list of indices into big_list}
+			   od.sort)## if red_count_flag
+			   	      then [v[d+1]]
+				      else []
+				      fi {now a sorted list of indices into big_list}
 			od {now a list of d-faces for ith LF}
 		     od.##.sort_u {sort_u eliminates repetitions}
 		   od {d = 0, 1}
@@ -384,7 +389,7 @@ set FPP_unitary_hash_blob(KGBElt x, ratvec lambda) = void:
     {then () = if all(for (y,tau) in xls do is_finished(y,tau) od)
     	      then return ()
 	      fi}
-    then  (catLvd, catLFs) = blob_data(x,lambda)
+    then  (catLvd, catLFs) = blob_data(x,lambda) {these are JUST vertices!}
     then Ps = case algorithm_flag
     	      in local_test_GEO_hash_bottom_layer(x,lambda,catLvd,catLFs,pol_hash,
     	      big_unitary_hash.uhash(x.real_form))
