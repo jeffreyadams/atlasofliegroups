@@ -1651,7 +1651,7 @@ error, also aborting the matching process.
          (variant.f_tp().arg_type,variant.poly_degree(),shift_amount))
     { // exact match
       if (prev_match!=nullptr)
-        @< Throw error reporting ambiguous exact match @>
+        @< Throw an error reporting an ambiguous exact match @>
       expression_ptr call;
       expression_ptr arg = n_args==1 ? std::move(arg_vector[0])
 			 : expression_ptr(std::move(tup_exp));
@@ -1678,7 +1678,7 @@ error, also aborting the matching process.
 
 @ Here we list the matching types, which is easy due to the |prev_match|
 pointer.
-@< Throw error reporting ambiguous exact match @>=
+@< Throw an error reporting an ambiguous exact match @>=
 {
   a_priori_type.clear(); // forget the type assignment matching current variant
   std::ostringstream o;
@@ -2845,10 +2845,19 @@ body to the required type in the extended context. Note that the constructed
 If there are no identifiers at all, we should avoid that the execution of the
 |let_expression| push an empty frame on the evaluation context, as this would
 wreak havoc due to the fact that we made applied identifiers not count empty
-layers. Rather than have the |let_expression::evaluate| method handle
-this dynamically, we avoid generating such a |let_expression| altogether, and
-instead generate a |seq_expression| whose |evaluate| method does exactly what
-is needed in this case.
+layers. Rather than have the |let_expression::evaluate| method handle this
+dynamically, we avoid generating such a |let_expression| altogether, and instead
+generate a |seq_expression| whose |evaluate| method does exactly what is needed
+in this case. Note that the most likely scenario where this happens is when the
+identifier pattern is $(\,)$ specifying a $0$-tuple (something that happens
+quite frequently in actual user code, to effectively insert a statement into a
+sequence of \&{let}-declarations), in which case it is particularly important
+that we initialised |decl_type| to |pattern_type(pat)| before converting the
+right hand side, as the latter will then have |decl_type==void_type|, allowing
+expressions of arbitrary type to be accepted due to the voiding coercion. If
+instead a specialisation to |pattern_type(pat)| were attempted after the
+conversion, this would fail in cases where $(\,)={}$ is followed by an
+expression not spontaneously having void type.
 
 @< Cases for type-checking and converting... @>=
 case let_expr:
@@ -6901,7 +6910,7 @@ through this code, leading to a ``no instance found'' error.
         // exact match after substitution
       {
         if (prev_match!=nullptr)
-          @< Throw error reporting ambiguous match in operator cast @>
+          @< Throw an error reporting an ambiguous match in operator cast @>
         @< Write to |o| the name of operator |c->oper| with the argument type of
            |variant|, to which the substitutions in |target.assign()| have been
            applied @>
@@ -6925,7 +6934,7 @@ through this code, leading to a ``no instance found'' error.
 @ Similarly to what we do for ambiguous exact overload matches, we use the
 |prev_match| pointer to build an error report.
 
-@< Throw error reporting ambiguous match in operator cast @>=
+@< Throw an error reporting an ambiguous match in operator cast @>=
 {
   o.str(std::string()); // clear previous string prepared in |o|
   o << "Ambiguous argument in function call, specified type " << c_type
