@@ -218,7 +218,8 @@ the type derived for a subexpression is `\.*', if this allows us to simplify our
 code.
 
 @< Declarations of exported functions @>=
-expression_ptr convert_expr(const expr& e, unsigned int fix_count, type_expr& tp);
+expression_ptr convert_expr
+  (const expr& e, unsigned int fix_count, type_expr& tp);
 
 @*1 Layers of lexical context.
 %
@@ -743,55 +744,72 @@ template<bool r_to_l>
   out << (r_to_l ? "~)" : ")");
 }
 
-@ When converting a tuple expression, we first try to specialise |tp| to a
-tuple type with the right number of unknown components; unless |tp| was
-completely undetermined, this just amounts to a test that it is a tuple type
-with the right number of components. But even if this specialisation fails, it
-does not necessarily mean there is a type error: the tuple that the tuple
-expression produces might be convertible to the |tp| the context requires.
-(Currently the conversion from a pair of integers to a split integer is the
-unique conversion of this kind that is defined.) For this reason we continue to
-type-check components even when |tuple_expected| is false, using in this case
-the local variable |tup| to record the a priori (tuple) type of the expression,
-which then serves as starting point for a possible coercion; since we then
-already know that |tp| cannot be specialised to |*tup|, we call |coerce|
-directly rather than using |conform_types| as happens elsewhere.
+@ When converting a tuple expression, a difficulty to keep in mind is that there
+may be components that turn out to have a polymorphic type, in which case we
+must ensure that they are converted at an unchanged level of fixed type
+variables (because any new type variables introduced inside the component
+expression will be numbers by the lexical analyser at that level), but that in
+the resulting type the polymorphic variable may then need renumbering to make
+then disjoint form those of previous components. In a case where this might
+happen, we do not want to pass a component of |tp| to the recursive call of
+|convert_expr| for the component, as it will get specialised to the wrong type
+and do not want to then later assign a renumbered component type (maybe it would
+be acceptable since we are still assigning a specialised version of the original
+type pattern, but we do not want to break a convention this is adhered to
+everywhere else). So whenever this might happen we pass a |type_expr| disjoint
+from |tp| to |convert_expr|, and specialise |tp| only after possibly creating a
+renumbered polymorphic type.
+
+One property that we do exploit here is that any determined components of |tp|
+will be so to a monomorphic type. (We used to think that |tp| is either
+completely undetermined or completely determined and monomorphic, after tweaking
+the processing of \&{let} expressions to make it hold there, but we forgot about
+multiple assignments: when the left hand side fails to specify a destination
+for some part of the value, the right hand side has no type for that
+part, while it has for other parts.) So we choose to provide a disjoint type
+when calling |convert_expr| for a component whenever the corresponding
+component of |tp| is unstable (as long as |gap==0| we could avoid the
+renumbering of a polymorphic type but we still would need to update |gap|, so
+we choose not to treat this case separately).
+
+We also need to keep in mind the case where the required type can only be
+obtained using |coerce| (currently the only possible coercion is the
+Atlas-specific conversion from a pair of integers to a |Split_integer|). This
+sets |n_tuple_expected==false| at the beginning, and uses a separate $n$-tuple
+type |ntt| in place of |tp| to record the tuple type before coercion.
 
 If any type error is reported here (and not from a nested call of
-|convert_expr|), then it must be that |n_tuple_expected| was false, and the call
-to |coerce| did not succeed either. In that case |tup| now holds the a priori
-type of the expression, and |tp| is unmodified since entering this case, since
-the only type that changes when specialising to |unknown_tuple(n)| is a
-completely |undetermined_type|, but then |n_tuple_expected| would be true and no
-error would be reported. Therefore the error message given by |type_error|
-describes faithfully the actual and expected type patterns.
+|convert_expr|), then it must be because |coerce| was attempted and failed. In
+that case |ntt| now holds the a priori $n$-tuple type of the expression, and
+|tp| is unmodified since entering this case. Therefore the error message given
+by |type_error| describes faithfully the actual and expected type patterns.
 
 @h <memory> // for |std::unique_ptr|
 @< Cases for type-checking and converting... @>=
 case tuple_display:
 {
   auto n=length(e.sublist);
-  type_expr tup=unknown_tuple(n);
-  bool n_tuple_expected = tp.specialise(tup);
+  type_expr ntt=unknown_tuple(n); // an $n$-tuple type
+  bool n_tuple_expected = tp.specialise(ntt);
   // whether |tp| is a tuple of size~|n|
-  type_expr& tup_tp = n_tuple_expected ? tp : tup; // a tuple type in both cases
+  type_expr& tup_tp = n_tuple_expected ? tp : ntt; // a tuple type in both cases
   bool is_constant = true; // whether all components are denotations
 @)
-  wtl_iterator tl_it (tup_tp.tuple());
-  // traverse either |tp| or |tup|
+  auto gap = 0; // number of polymorphic type variables to avoid
   std::unique_ptr<tuple_expression> tup_exp(new tuple_expression(0));
   std::vector<expression_ptr>& comp = tup_exp->component;
   comp.reserve(n);
-  auto lvl = fc; // level may increase from one component to the next
+@)
+  wtl_iterator tl_it (tup_tp.tuple()); // traverse either |tp| or |ntt|
   for (wel_const_iterator it(e.sublist); not it.at_end(); ++it,++tl_it)
-  { comp.push_back(convert_expr(*it,lvl,*tl_it));
-    is_constant = is_constant and
-      dynamic_cast<const denotation*>(comp.back().get()) != nullptr;
-    if (*tl_it==void_type and not is_empty(*it))
-      // though weird, we allow voiding a component
-      comp.back().reset(new voiding(std::move(comp.back())));
-    lvl = type::wrap(*tl_it,lvl).ceil();
-    // increment when passing a polymorphic component
+  {
+    if (tl_it->is_unstable())
+      @< Call |convert_expr| for |*it| with a copy of |*tl_it|, renumber any
+      polymorphic type variables in the resulting type with a |gap|,
+      then specialise |*tl_it| and update |gap| @>
+    else
+      comp.push_back(convert_expr(*it,fc,*tl_it));
+    @< Handle |is_constant| maintenance and possible need for voiding @>
   }
 @)
   expression_ptr result(std::move(tup_exp));
@@ -799,26 +817,65 @@ case tuple_display:
   if (is_constant)
      make_row_denotation<false>(result);
      // wrap tuple inside a denotation, see below
-  if (n_tuple_expected or coerce(tup,tp,result,e.loc))
+  if (n_tuple_expected or coerce(ntt,tp,result,e.loc))
     return result;
-  throw type_error(e,std::move(tup),tp.copy());
+  throw type_error(e,std::move(ntt),tp.copy());
+}
+
+@ When the type required by the context is not entirely determined, we must
+cater for the possibility of finding a polymorphic type for the tuple component.
+As the module title says, we make a copy of |tp| (so that any determined parts
+of it will be enforced), call |convert_expr| for the component expression with
+that type, then |wrap| the resulting type expression to a |type| while reserving
+|gap| type variables to remain unused. Finally we increase |gap| by the number
+of polymorphic variables in the wrapped type, and call |specialise| to export
+this type into the tuple type under construction.
+
+@< Call |convert_expr| for |*it| with a copy of |*tl_it|, renumber any
+      polymorphic type variables in the resulting type with a |gap|,
+      then specialise |*tl_it| and update |gap| @>=
+{
+  type_expr ct=tl_it->copy(); // import any partial type requirements
+  comp.push_back(convert_expr(*it,fc,ct)); // always convert at level |fc|
+  type t = type::wrap(ct,fc,gap); // renumber leaving a |gap|
+  gap += t.degree(); // protect polymorphic variables the |t| introduces
+  tl_it->specialise(t.unwrap()); // finally export |t| into |tp| or |ntt|
+}
+
+@ After processing a tuple component in whichever way, we perform two small
+auxiliary tasks. We record in |is_constant| whether we remain on track for
+constant-folding the tuple expression into a constant tuple value, and we test
+tot see whether a |voiding| needs to be inserted. The latter applies only in the
+rare case that a void type is found (possibly because to was required by |tp|)
+but the component expression is not an empty tuple display; when it does, the
+inserted |voiding| invalidates any |in_constant| that we might still be hoping
+for.
+
+@< Handle |is_constant| maintenance and possible need for voiding @>=
+{
+  is_constant = is_constant and
+    dynamic_cast<const denotation*>(comp.back().get()) != nullptr;
+  if (*tl_it==void_type and not is_empty(*it))
+    is_constant=false,comp.back().reset(new voiding(std::move(comp.back())));
 }
 
 @ When all components of a tuple expression are denotations, we make the tuple
 expression into a a denotation with a tuple value. Since a very similar
 operation will be needed for row displays, we implement this by a function
-template with a Boolean argument.
+template with a Boolean argument, which when |true| will produce a |denotation|
+holding a |row_value|, rather than a |tuple_value| as it does in the call from
+the code above.
 
 @< Local function definitions @> =
 template<bool is_row>
   void make_row_denotation(expression_ptr& p)
 {
-  const std::vector<expression_ptr>& comp =
-  is_row
-  ? static_cast<const list_expression*>(p.get())->component
+  const std::vector<expression_ptr>& comp = is_row @|
+  ? static_cast<const list_expression*>(p.get())->component @|
   : static_cast<const tuple_expression*>(p.get())->component;
   tuple_value tup(comp.size());
   for (size_t i=0; i<comp.size(); ++i)
+    // transfer denotation contents into |tup|
     tup.val[i] = static_cast<const denotation*>(comp[i].get())->denoted_value;
   shared_value val;
   if (is_row)
