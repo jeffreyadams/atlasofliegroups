@@ -222,10 +222,11 @@ set FPP_unitary_hash_general([(KGBElt,ratvec)] xlambdas, Param_hash Uhash,
        	      "; max time = ",print_time_string(xlambdatimes[longest]),
 	      " for (x,lambda) = (",  xnums[longest], ",",
 	      lambdas[longest],")");
-       	    prints(" time spent in is_unitary = ",print_time_string(unitaryTime),
+       	    prints(" Time spent in is_unitary = ",print_time_string(unitaryTime),
        	      ", number of unitarity tests = ", unitary_test_counter.use_count() - oldUcounter);
-	    prints(" time spent in char calcs = ",print_time_string(charTime),
-	      ", number of char calcs = ",char_counter.use_count() - oldCcounter);
+	    prints(" Time spent in char calcs = ",print_time_string(charTime),
+	      ", number of char calcs = ",char_counter.use_count() - oldCcounter,
+	      ", time spent in red_count = ",  print_time_string(red_count_time));
 	    prints("Time in localFD_1Dirac2* = ", print_time_string(FD12Time + FD12bzTime),
 	      ", in localFD_1Dirac2 = ",print_time_string(FD12Time),
 	    	     ", in localFD_1Dirac2_by_zero = ",print_time_string(FD12bzTime));

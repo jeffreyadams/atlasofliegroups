@@ -631,7 +631,8 @@ set localFD_KHash_01_graph (KGBElt x, ratvec lambda, LocalVertexData Lvd, KTypeP
     let startCF = elapsed_ms(), NumClasses = #eq
     then polNums = [int]:
     	 for C in eq
-    	 do let (d,j) = coords(LF,C[0])
+    	 do let (d,j) = coords(LF,C~[0]) {the tilde chooses a
+	 representative on largest possible face, so least integral}
 	    then () = char_counter.use()
 	    then verts = vec: LF[d][j][:d+1]
 	    then pC = parameter(x,lambda,face_bary(Lvd,verts))
@@ -659,7 +660,8 @@ set localFD_KHash_01_graph (KGBElt x, ratvec lambda, LocalVertexData Lvd, int HT
     let startCF = elapsed_ms(), NumClasses = #eq
     then polNums = [int]:
     	 for C in eq
-    	 do let (d,j) = coords(LF,C[0])
+    	 do let (d,j) = coords(LF,C~[0]) {the tilde chooses a
+	 representative on largest possible face, so least integral}
 	    then () = char_counter.use()
 	    then verts = vec: LF[d][j][:d+1]
 	    then pC = parameter(x,lambda,face_bary(Lvd,verts))

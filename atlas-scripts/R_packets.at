@@ -410,9 +410,13 @@ set FPP_unitary_hash_blob(RealForm G) = void:
     then () = unitaryTime:=0
     then () = unipotents_to_hash(G,big_unitary_hash.uhash(G))
     then () = for x in KGB(G)
-    	      do if (x.number)%100 = 0 then prints("starting KGBElt ",x.number, "; so far ",
-	      	    print_time_string(elapsed_ms() - start), " for ",big_unitary_hash.uhash(G).size(),
-		    " unitary faces") fi;
+    	      do if (x.number)%100 = 0
+	      	 then prints("starting KGBElt ",x.number, "; so far ", print_time_string(elapsed_ms() - start),
+		      	     " for ",big_unitary_hash.uhash(G).size(), " unitary faces");
+		      prints("Time spent in char calcs = ",print_time_string(charTime),
+       	      	      	     ", number of char calcs = ", char_counter.use_count(),
+	      		     ", time spent in red_count = ",  print_time_string(red_count_time))
+		    fi;
 		 if twist(x) != x
 		 then ()
 	      	 else for lambda in FPP_lambdas(x)
@@ -420,11 +424,15 @@ set FPP_unitary_hash_blob(RealForm G) = void:
        		      od
 		 fi
      	      od
-    in prints("number of unitary faces = ", big_unitary_hash.uhash(G).size(), ", in time ",
+    in prints("----------------");
+       prints("Total time = ", print_time_string(elapsed_ms()-start));
+       prints("number of unitary faces = ", big_unitary_hash.uhash(G).size(), ", in time ",
               print_time_string(elapsed_ms() - start), " for ",blobCounter, " blobs");
        prints(" time spent in is_unitary = ",print_time_string(unitaryTime),
               ", number of unitarity tests = ", unitary_test_counter.use_count() - oldUcounter);
-       prints("Time spent in char calcs = ",print_time_string(charTime), ", #char calcs = ", char_counter.use_count());
+       prints("Time spent in char calcs = ",print_time_string(charTime),
+       	      ", #char calcs = ", char_counter.use_count(),
+	      ", time spent in red_count = ",  print_time_string(red_count_time));
        prints("Time in local_FPP_extrema = ",print_time_string(lFeTimer), ", # fLe calcs = ", lFeCounter);
        prints("Time in localFD_1Dirac2 = ",print_time_string(FD12Time),
        	      ", in localFD_1Dirac2_by_zero = ",print_time_string(FD12bzTime));
