@@ -5,7 +5,7 @@ set red_count_flag = false
 
 {counts integral roots perhaps contributing to reducibility of Param p
 (more or less assumed to be weakly normal TRY TO DROP THAT for blob}
-set red_roots_old(Param p) = [vec]:
+set red_roots_oldest(Param p) = [vec]:
     let G = p.real_form, gamma = p.infinitesimal_character
     then id = integrality_datum(G,gamma)
     then pos_int = id.posroots, pos_int_co = id.poscoroots
@@ -24,7 +24,7 @@ set red_roots_old(Param p) = [vec]:
 	     fi
       od.##
 
-set red_coroots(Param p) = [vec]:
+set red_coroots_old(Param p) = [vec]:
     let G = p.real_form, gamma = p.infinitesimal_character
     then pos_co = G.poscoroots
     then theta = p.x.involution
@@ -42,11 +42,28 @@ set red_coroots(Param p) = [vec]:
 	  fi
 	  od.##
 
-set red_count_old(Param p) = int: #red_roots_old(p)
+set red_coroots(Param p) = [vec]:
+    let G = p.real_form, gamma = p.infinitesimal_character
+    then pos_co = G.poscoroots
+    then theta = p.x.involution
+    in for alphav@j in pos_co
+       do let gammaj = gamma*alphav
+       	  in if is_integer(gammaj) and gammaj.>
+       	     then if alphav*theta = -alphav and Cayley((G.posroots)[j],p) != p
+   	     	  then [alphav]
+	       	  else []
+	       	  fi
+	     elif ((theta*(gamma.numer))*alphav).<
+	     then [alphav]
+	     else []
+	     fi
+       od.##
+
+set red_count_oldest(Param p) = int: #red_roots_oldest(p)
 
 set red_count_time =int:0
 
-set red_count(Param p) = int:
+set red_count_old(Param p) = int:
     let start = elapsed_ms(), G = p.real_form
     then pos_co = G.poscoroots, gamma = p.infinitesimal_character
     then theta = p.x.involution
@@ -61,3 +78,74 @@ set red_count(Param p) = int:
 	      od)
     then () = red_count_time +:= elapsed_ms() - start
     in ans
+
+set red_count_Cayley(Param p) = int:
+    let start = elapsed_ms(), G = p.real_form
+    then pos_co = G.poscoroots, gamma = p.infinitesimal_character
+    then theta = p.x.involution
+    then ans = count( for alphav@j in pos_co
+       	       	      do let (gammajn,gammajd) = %(gamma*alphav)
+       	      	      	 in gammajd=1 and
+	      	 	    gammajn.!= and
+       	  	 	    if alphav*theta = -alphav
+	  	 	    then Cayley((G.posroots)[j],p) != p
+	  	 	    else gammajn.> and
+				 ((theta*(gamma.numer))*alphav).<
+		 	    fi
+	      	     od)
+    then () = red_count_time +:= elapsed_ms() - start
+    in ans
+
+{real parity: gamma+ lambda + rho_real EVEN on alphavee}
+set red_count(Param p) = int:
+    let start = elapsed_ms(), G = p.real_form
+    then gamma = p.infinitesimal_character
+    then lambdatw = p.lambda +rho_r(p.x) +gamma
+    then theta = p.x.involution
+    then ans = count( for alphav in G.poscoroots
+       	       	      do let (gammajn,gammajd) = %(gamma*alphav)
+       	      	      	 in gammajd=1 and
+	      	 	    gammajn.!= and
+       	  	 	    if alphav*theta = -alphav
+	  	 	    then (lambdatw*alphav)%2 = 1
+			    {Cayley((G.posroots)[j],p) != p}
+	  	 	    else gammajn.> and
+				 ((theta*(gamma.numer))*alphav).<
+		 	    fi
+	      	     od)
+    then () = red_count_time +:= elapsed_ms() - start
+    in ans
+
+
+
+{label integral non-parity real as 1}
+set test_nonpar(Param p) = vec:
+    let G = p.real_form
+    then theta = p.x.involution
+    then gamma = p.infinitesimal_character
+    in for alphav@j in G.poscoroots
+       do let (gammajn,gammajd) = %(gamma*alphav)
+       	  in if gammajd>1 or alphav*theta != -alphav
+	     then [] {just leaves integral real}
+	     elif Cayley(G.posroots[j],p) = p
+	     then [1]
+	     else [0]
+	     fi
+       od.##
+
+set lambda_test_nonpar(Param p) = vec:
+    let G = p.real_form, x = p.x
+    then theta = x.involution
+    then gamma = p.infinitesimal_character
+    then lambdatw = p.lambda +rho_r(x) +gamma
+    in for alphav@j in G.poscoroots
+       do let (gammajn,gammajd) = %(gamma*alphav)
+       	  in if gammajd>1 or alphav*theta != -alphav
+	     then [] {just leaves integral real}
+	     else let testj = (lambdatw*alphav).numer%2
+	     	  in if testj = 0
+	     	     then [1]
+	    	     else [0]
+	     	     fi
+	     fi
+       od.##
