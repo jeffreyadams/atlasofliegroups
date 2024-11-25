@@ -143,7 +143,7 @@ input:	'\n'			{ YYABORT; } /* null input, skip evaluator */
 	| ANY_TYPE typevar_list BEGIN polymorphic_declarations END
 	  {
 	    auto decls = insert_type_abstraction($2,$4,@$);
-	    global_set_identifiers(decls,@$); YYABORT;
+	    sequentially_set_identifiers(decls,@$); YYABORT;
 	  }
 	| IDENT ':' expr '\n'
 		{ struct raw_id_pat id; id.kind=0x1; id.name=$1;

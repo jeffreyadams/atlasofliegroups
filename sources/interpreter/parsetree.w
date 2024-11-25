@@ -1589,7 +1589,7 @@ std::pair<id_pat,expr> zip_decls(raw_let_list d)
   }
   else
   { patlist patl; expr_list expl;
-    for (auto it=decls.begin(); not decls.at_end(it); ++it)
+    for (auto it=decls.wbegin(); not decls.at_end(it); ++it)
       // zip open |decls|, reversing
     {@; patl.push_front(std::move(it->pattern));
       expl.push_front(std::move(it->val));

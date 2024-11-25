@@ -719,6 +719,7 @@ which is why it is not currently passed to functions like
 void global_set_identifier (const struct raw_id_pat& id, expr_p e,
 			    int overload, const source_location& loc);
 void global_set_identifiers(raw_let_list d, const source_location& loc);
+void sequentially_set_identifiers(raw_let_list d, const source_location& loc);
 void global_declare_identifier(id_type id, type_p type);
 void global_forget_identifier(id_type id);
 void global_forget_overload(id_type id, type_p type);
@@ -787,6 +788,21 @@ void global_set_identifier(const raw_id_pat &raw_pat, expr_p raw,
 void global_set_identifiers(raw_let_list d, const source_location& loc)
 { std::pair<id_pat,expr> pat_expr = zip_decls(d);
   do_global_set(std::move(pat_expr.first),pat_expr.second,1,loc);
+}
+
+@ The function |sequentially_set_identifiers| does not perform |zip_decls|, but
+instead passes each pair in the list |d| in order to |do_global_set|, so that
+previous definitions can be used in successive ones. As the list was constructed
+in the parser in reverse order (which |zip_decls| reverses back on the fly when
+doing its zipping), we must here reverse manually.
+
+
+@< Global function definitions @>=
+void sequentially_set_identifiers(raw_let_list d, const source_location& loc)
+{ let_list decls(d);
+  decls.reverse();
+  for (auto it=decls.wbegin(); not decls.at_end(it); ++it)
+    do_global_set(std::move(it->pattern),it->val,1,loc);
 }
 
 
