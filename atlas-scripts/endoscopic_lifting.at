@@ -44,14 +44,17 @@ assert(is_stable_std(P_H), "P_H is not stable");
 let ()=prints("lifts: ");pr(lifts) in 
 let rv=[ParamPol]:[] in
 for (c,p)@i in %P_H do
- let ()=prints(new_line,"i=",i,new_line,"c,p=", c, " ", p) in
+ let ()=prints(new_line,"I=",i,new_line,"c,p=", c, " ", p) in
  let lp=L_packet_representative(p)  then
- ()=prints("lp: ", lp, " ", lp.real_form) in 
+ ()=prints("lp: ", lp, " ", lp.real_form) then
+ ()=prints("p=",p, " ", p.real_form) in 
  if p=L_packet_representative(p) then
+let  ()=prints("yes p=rep", "M=",M,new_line,"G=",G,new_line,"#lifts=",#lifts,new_line);pr(lifts);prints("v=",v) in
 let els=endoscopic_lift_std(p,M,G,lifts,v) then
  ()=prints("els: ", els, " ", els.real_form) in
- let ()=prints("rv=", rv, "#rv=", #rv) in 
-{  rv#:=c*endoscopic_lift_std(p,M,G,lifts,v) fi} {rv#:=els fi} rv fi
+ let ()=prints("rv=", rv, "#rv=", #rv, " c=", c) in 
+{  rv#:=c*endoscopic_lift_std(p,M,G,lifts,v)    fi}
+  rv#:=c*els    fi
  od;
 rv
 
@@ -139,6 +142,19 @@ set embed_parameters_long(Param p_H, [[int]] root_map)=(bool,[(Param,Param)]):
 let (ph,pg)=embed_parameters_long(p_H,basepoint_lift(ph,M,G,lifts)
 }
 
+{utility function}
+set get_data_raw(ParamPol P,mat M,RealForm G)=(Param,Param,[(Param,Param)]):
+let gt=generic_terms(P)[0] then
+(p_H,p_G)=pick_basepoint_lift_raw(gt,M,G) then
+lifts=params(embed_parameters(p_H,p_G,M)) in
+(p_H,p_G,lifts)
+
+set get_data(ParamPol P,mat M,RealForm G)=(Param,Param,[(Param,Param)]):
+let gt=generic_terms(P)[0] then
+(p_H,p_G)=pick_basepoint_lift(gt,M,G) then
+lifts=params(embed_parameters(p_H,p_G,M)) in
+(p_H,p_G,lifts)
+
 set endoscopic_lift_stable_sum_irr_raw(ParamPol P_H_of_irreducibles, mat M, RealForm G,ratvec v)=ParamPol:
 let gt=generic_terms(P_H_of_irreducibles)[0] then
 ()=prints("gt=", gt) then 
@@ -155,5 +171,36 @@ let ()=prints("lifts: ");pr(lifts) in
 let ()=prints("P_H_of_irrs:", P_H_of_irreducibles) in
 endoscopic_lift_stable_sum_irr(P_H_of_irreducibles, M, G,lifts,v)
 
+set endoscopic_lift_stable_sum_irr(ParamPol P_H_of_irreducibles, mat M, RealForm G,ratvec v)=ParamPol:
+let gt=generic_terms(P_H_of_irreducibles)[0] then
+()=prints("gt=", gt) then 
+(p_H,p_G)=pick_basepoint_lift(gt,M,G) then
+()=prints("p_H=", p_H, new_line, "p_G=", p_G) then
+lifts=params(embed_parameters(p_H,p_G,M)) in
+{careful: embed_parameters has non-final terms for the purposes of the inductive calculation of embed_parameters
+however, at the end, need to replace each non-final term with 1 final one
+for example when lifting }
+let ()=prints("lifts: ");pr(lifts) in
+let ()=prints("P_H_of_irrs:", P_H_of_irreducibles) in
+endoscopic_lift_stable_sum_irr(P_H_of_irreducibles, M, G,lifts,v)
+
 set endoscopic_lift_raw(ParamPol P_H_of_irreducibles, mat M, RealForm G,ratvec v)=ParamPol:
 endoscopic_lift_stable_sum_irr_raw(P_H_of_irreducibles,M,G,v)
+
+set endoscopic_lift(ParamPol P_H_of_irreducibles, mat M, RealForm G,ratvec v)=ParamPol:
+endoscopic_lift_stable_sum_irr(P_H_of_irreducibles,M,G,v)
+
+set test_endoscopy(ParamPol P,mat M, RealForm G, ratvec v)=void:
+let lift=endoscopic_lift(P,M,G,v) in 
+prints("P=", P, new_line,"lift=",lift)
+
+set test_endoscopy([ParamPol] parampols,mat M, RealForm G, ratvec v)=void:
+prints();for P@i in parampols do prints("=====================================",new_line,"i=",i, new_line, "P=", P, new_line,endoscopic_lift(P,M,G,v)) od
+
+set test_endoscopy_raw(ParamPol P,mat M, RealForm G, ratvec v)=void:
+let lift=endoscopic_lift_raw(P,M,G,v) in 
+prints("P=", P, new_line,"lift=",lift)
+
+set test_endoscopy_raw([ParamPol] parampols,mat M, RealForm G, ratvec v)=void:
+prints();for P@i in parampols do prints("=====================================",new_line,"i=",i, new_line, "P=", P, new_line,endoscopic_lift_raw(P,M,G,v)) od 
+

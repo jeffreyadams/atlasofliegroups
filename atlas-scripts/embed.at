@@ -189,7 +189,8 @@ else
     q_H=cross(alpha,p_H) then
     ()=if te_verbose then prints("cross result: ", q_H) fi then
     () =if not is_known(q_H) then
-       let ()=if te_verbose then prints("computing lifted cross of p_G=",p_G) fi then
+       let ()=if te_verbose then prints("computing lifted cross of p_G=",p_G) fi in
+       let ()=if te_verbose then prints("alpha=", alpha) fi then
        q_G=lift_parameter_cross(H,alpha,M,p_G) then
        ()=if te_verbose then prints("cross value: q_G=",q_G) fi then
        ()=if te_verbose then prints("addding: ", q_H, " ", q_G) fi in

@@ -1,9 +1,5 @@
-<weak_packets.at
-
-set stable_sums(([([Param],[WCell])],[(int,int,Param)]) weak_packet)=[ParamPol]:
-stable_sums(parameters(weak_packet))
-
-set stable_sums([([([Param],[WCell])],[(int,int,Param)])] weak_packets)=
-for wp in weak_packets do stable_sums(wp) od.##
-
-set unipotent_stable_sums(RealForm G)=stable_sums(weak_packets(G))
+set P=ss[69]
+set gt=generic_terms(P)[0]
+set (p_H,p_G)=pick_basepoint_lift_raw(gt,M,G) 
+set lifts=params(embed_parameters(p_H,p_G,M)) 
+set elift=endoscopic_lift_stable_sum_irr(P, M, G,lifts,v)

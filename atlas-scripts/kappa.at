@@ -13,31 +13,39 @@ set imaginary_root_system(KGBElt x)=RootDatum:
 let (roots,coroots)=simple_imaginary_subsystem(x) in root_datum(roots,coroots,true)
 
 {imaginary simple root: index of simple root in the imaginary subsystem of p.x}
-set kappa(Param p, ratvec s, int imaginary_simple_root_index)=int:
-let G=p.root_datum then
-x=p.x then
+{caution: what matters is the coroot in X^*(T^vee) since this gets evaluated
+on exp(2\pi is)\in T^vee}
+set kappa(Param p_G, ratvec s, int imaginary_simple_root_index)=int:
+let G=p_G.root_datum then
+x=p_G.x then
 alpha=imaginary_root_system(x).simple_roots[imaginary_simple_root_index] then
 alpha_check=coroot(G,alpha) in 
 if is_compact_imaginary(alpha,x) then 1
-else let z=rat_as_int(alpha*s) in 
+else let
+()=prints("alpha_check: ", alpha_check, " s", s) then
+z=rat_as_int(alpha_check*s) in
 (-1)^z fi
 
 {dangerous bend:
  w: Weyl element of imaginary_root_system(x)
  but when acting by cross action it is viewed in G}
 set kappa(Param p, ratvec s, WeylElt w)=int:
+let ()=prints("p=", p, "  ",p.real_form, " s: ", s, new_line, "w: ", w, " ", w.root_datum) in 
 let rd_i=root_datum(w) then
 ()=assert(rd_i=imaginary_root_system(p.x),"root system of w\ne imaginary roots of p.x") then
 rec_fun f(Param p, ratvec s, WeylElt w)=int:
+let ()=prints("in rec_fun, ", p, " ", s, " ", w, " ", w.matrix) in
 if length(w)=0 then 1 
 elif length(w)=1 then kappa(p,s,w.word[0]) else
 let last=w.word~[0] {index of root in rd_i} then
+()=prints("last: ", last) then
 reflection_i=W_elt(rd_i,[last]) {in W(rd_i)} then
 y=w*reflection_i  {in W(rd_i)}  then
 alpha=rd_i.simple_roots[last] then
+()=prints("alpha=",alpha) then
 w_times_p=cross(alpha,p) {alpha is the vec of root of rd_i, viewed as root of G} in
 kappa(p,s,last) * f(cross(last,p),s,y)  fi
-  in f(p,s,w)
+  in prints("OK", p, " ", s, " ", w);f(p,s,w)
 
 set kappa_packet_unnormalized(Param p,ratvec s)=ParamPol:
 let rd_i=imaginary_root_system(p.x) then 
@@ -64,6 +72,4 @@ else
  sign(split_as_int(coeff))*P
 fi
 
-
-
-
+set coefficient(Param p_G,ratvec v)=rat:p_G.x.unnormalized_torus_factor*v
