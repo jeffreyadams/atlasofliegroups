@@ -4,8 +4,8 @@
 <Weylgroup.at
 <translate.at
 <W_orbit.at {for W@RootDatum}
-
-
+<springer_tables_reductive.at {for Springer_table}
+<associated_variety_annihilator.at {for av_maximal_ideal}
 
 {given a RootDatum G and an infl char lambda, produces a pair (RootDatum, [int]) consisting of the integrality datum M of lambda
 (an endoscopic group) and the special W_M-rep corresponding to V(I_{max}(lambda))}

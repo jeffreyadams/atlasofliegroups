@@ -4,7 +4,9 @@
 <nilpotent_orbits.at
 <truncated_induction.at {for induce_orbit}
 <restricted_roots.at {for remove_duplicates}
-<facetious.at {for fundamental_vertices}
+<FPP_faces_geom.at {for fundamental_vertices}
+<K_highest_weights.at {for all_parameters_gamma}
+<associated_variety_annihilator.at {for GK_dim}
 
 {Let G be a connected reductive algebraic group. To each x \in h^*, one can associate an integrality subgroup Lv(x) \subset Gv (integrality_datum(G,x).dual)
 and a singularity datum Mv(x) \subset Lv(x) (singular_root_datum(G,x).dual).  The former is a pseudo-levi subgroup of Gv and the latter is a Levi subgroup

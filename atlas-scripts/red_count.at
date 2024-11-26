@@ -81,9 +81,9 @@ set red_count_old(Param p) = int:
 
 set red_count_Cayley(Param p) = int:
     let start = elapsed_ms(), G = p.real_form
-    then pos_co = G.poscoroots, gamma = p.infinitesimal_character
+    then gamma = p.infinitesimal_character
     then theta = p.x.involution
-    then ans = count( for alphav@j in pos_co
+    then ans = count( for alphav@j in  G.poscoroots
        	       	      do let (gammajn,gammajd) = %(gamma*alphav)
        	      	      	 in gammajd=1 and
 	      	 	    gammajn.!= and
@@ -98,17 +98,16 @@ set red_count_Cayley(Param p) = int:
 
 {real parity: gamma+ lambda + rho_real EVEN on alphavee}
 set red_count(Param p) = int:
-    let start = elapsed_ms(), G = p.real_form
+    let start = elapsed_ms(), G = p.real_form, x = p.x
     then gamma = p.infinitesimal_character
-    then lambdatw = p.lambda +rho_r(p.x) +gamma
+    then lambdainttw = (2*p.lambda).numer + sum(x.real_posroots)
     then theta = p.x.involution
     then ans = count( for alphav in G.poscoroots
        	       	      do let (gammajn,gammajd) = %(gamma*alphav)
        	      	      	 in gammajd=1 and
 	      	 	    gammajn.!= and
        	  	 	    if alphav*theta = -alphav
-	  	 	    then (lambdatw*alphav)%2 = 1
-			    {Cayley((G.posroots)[j],p) != p}
+			    then (2*gammajn + lambdainttw*alphav)%4 = 2
 	  	 	    else gammajn.> and
 				 ((theta*(gamma.numer))*alphav).<
 		 	    fi

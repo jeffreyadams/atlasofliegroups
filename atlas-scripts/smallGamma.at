@@ -1,4 +1,4 @@
-< facetious.at {for from_fundamental_alcove and lots more}
+< FPP_faces_geom.at {for from_fundamental_alcove and lots more}
 < translate.at {for translate_param_by}
 {Functions small_translate and beta1 are supposed to be the same;
 first relies mostly on stuff from facetious, second uses MVL ideas and
