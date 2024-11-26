@@ -1122,7 +1122,7 @@ set FPP_flippable_edges_rat = (InnerClass -> [(ratvec,ratvec)]):
        then () = if i=I {haven't seen this inner class before}
     	       	 then let vlist = FPP_vertices(ic)
 	      	      then answer = [(ratvec,ratvec)]:
-		      	   for v in fund_flippable_edges(ic)
+		      	   for v in FPP_flippable_edges(ic)
 		      	   do (vlist[v[0]],vlist[v[1]])
 		      	   od
  	      	      then () = Fferats #:= answer
