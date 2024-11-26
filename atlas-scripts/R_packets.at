@@ -5,6 +5,9 @@
 <FPP_faces_herm.at {for FPP_lambdas}
 < K_highest_weights.at {for all_lambda_differential_0}
 < aff_cube.at
+<L_packet.at {for simple_imaginary_roots}
+<FPP_localDirac.at {for local_test functions}
+
 {this computes the R-packet of a single K-type.}
 set R_packet(KType mu) = [KType]: LKTs(anti_finalize(parameter(mu)))
 
@@ -212,23 +215,31 @@ set DVblobx(KGBElt x) = [KGBElt]:
 {set blobwx(KGBElt x) = [WeylElt, KGBElt]:
     for y in blobx(x) do (cross_divide(y,x), y) od {w carries x to y}}
 
+set position_flag = true
+
 {Takes 65 g to do less than 200 w in x KGB(E8_s,10000), lambda = rho}
 {all (y,tau) reachable from (x,lambda) by complex cross; assume blob is the list of x}
 set blobwxl(KGBElt x, ratvec lambda, [(WeylElt,KGBElt)] blobwx) = [(WeylElt, KGBElt, ratvec)]:
-    for (w,y)@j in blobwx
-    do	{if j%20 = 0 then prints("starting #",j) fi;}
-    	{if twist(y) != y then []}
-	{if hermitian_dual(parameter(x,lambda,0*lambda)) != parameter(x,lambda,0*lambda)
-	then []
-	else} let tau = parameter(y, w*lambda, 0*lambda).lambda
-       	     then A = 1+y.involution
-       	     in if {position(y,tau).>=} {(#local_FPP_extrema_new(y, tau)).>}
-	     	   local_FPP_extrema_short(y,tau)
-	     	then [(w,y,tau)]
-	     	else []
-	  	fi
-	{fi}
-    od.##
+    let ic = x.inner_class, theta = x.involution
+    then lamthlam = ((1+theta)*lambda).numer
+    in for (w,y)@j in blobwx
+       do let tauthtau = w*lamthlam
+       	  in if LPm_table.lamthlam_number(ic,y.involution,tauthtau).>=
+	     then [(w,y,w*lambda)]
+	     else []
+	     fi
+       od.##
+{tau = parameter(y, w*lambda, 0*lambda).lambda
+       then A = 1+y.involution
+       then ans = if position_flag
+	     	  then position(y,tau).>=
+		  else local_FPP_extrema_short(y,tau)
+		  fi
+       in if ans
+       	  then [(w,y,tau)]
+	  else []
+	  fi
+ od.##}
 
 {all (y,tau) reachable from (x,lambda) by complex cross}
 set blobwxl(KGBElt x, ratvec lambda) = [(WeylElt, KGBElt,ratvec)]:
@@ -382,14 +393,17 @@ set blobCounter = int: 0
 {0 means bottom_layer, 1 means hash_one_level, 2 means hash2}
 set algorithm_flag = int: 0
 
+set blob_time_flag = false
+
 set FPP_unitary_hash_blob(KGBElt x, ratvec lambda) = void:
     if is_finished(x,lambda) then return () fi;
-    let () = blobCounter +:= 1
+    let () = blobCounter +:= 1, start_blob_time = elapsed_ms()
     then xls = for (,y,tau) in blobwxl(x,lambda) do (y,tau) od
-    {then () = if all(for (y,tau) in xls do is_finished(y,tau) od)
-    	      then return ()
-	      fi}
-    then  (catLvd, catLFs) = blob_data(x,lambda) {these are JUST vertices!}
+    then () = if blob_time_flag
+    	      then prints("computed ",#xls," pairs (y,tau) in ",
+	      	   	  print_time_string(elapsed_ms() - start_blob_time))
+	      fi
+    then  (catLvd, catLFs) = blob_data(x,lambda) {these are vertices and edges}
     then Ps = case algorithm_flag
     	      in local_test_GEO_hash_bottom_layer(x,lambda,catLvd,catLFs,pol_hash,
     	      big_unitary_hash.uhash(x.real_form))
