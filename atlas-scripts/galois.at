@@ -34,7 +34,7 @@ set PSOstar (int n) = RealForm:
 { find(vecs,k) returns the (smallest) int j such that k in occurs in vecs[j]
   returns -1 otherwise
 }
-set find ([[int]] vecs, int k) = int:
+set find_class ([[int]] vecs, int k) = int:
   first(#vecs,(int i): is_member(vecs[i])(k))
 set part_containing (int k) = ([[int]] parts) [int]:
   let pred=contains(k),i=#parts-1 in { do program out the loop, just for fun }
@@ -52,9 +52,9 @@ set part_containing (int k) = ([[int]] parts) [int]:
   central_invariant(Sp(2,0))=central_invariant(Sp(1,1))=1
 }
 set central_invariant (InnerClass ic, int k) = int:
-  find(square_classes(ic),k)
+  find_class(square_classes(ic),k)
 set central_invariant (RealForm G) = int:
-  find(square_classes(G),form_number(G))
+  find_class(square_classes(G),form_number(G))
 
 {
   strong_real_forms_same_type(ic,k)

@@ -315,9 +315,6 @@ set sign_find ([ExtParam] list,ExtParam E) = (int,int):
   if <i then (0,-1) else (sign(E,list[i]),i) fi
 
 
-set find (ExtParam E,[ExtParam] list) = int: find(list,E)
-set sign_find (ExtParam E,[ExtParam] list) = (int,int): sign_find(list,E)
-
 { for convenience
   usage: set (delta,B,g) = ext_basic(G)
   then you can run, for example test_hecke(0,1,delta,B,g)
