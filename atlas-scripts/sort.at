@@ -1,60 +1,66 @@
 <basic.at
 
-{ sorting integers }
-set merge ([int] a, [int] b) = [int]: { merge weakly increasing lists }
-  let na=#a, nb=#b, i=0, j=0 in
-  while
-    if i<na
-    then do { certainly not finished here }
-      if j=nb or a[i]<=b[j] then a[i] next i+:=1 else b[j] next j+:=1 fi
-    else j<nb { condition to continue here }
-      do b[j] next j+:=1
-    fi
-  od
+any_type T begin
 
-set sort = ([int]->[int]): { merge sort }
-  let rec_fun ms ([int] v, int l) = [int]: { invariant includes l=#v }
-    if l<3 then if l=2 and v[0]>v[1] then v~[:] { swap } else v fi
-    else let half=l\2 in merge( ms(v[:half],half), ms(v[half:],l-half) )
-    fi
-  in { sort = } ([int] v) [int]: ms(v,#v)
-
-set reverse_sort ([int] v) = [int]: sort(v)~[:]
-
-
-{ sort unique of row of integers; first the merging function }
-
-set merge_u ([int] a, [int] b) = [int]: { merge unique weakly increasing lists }
+{ merge weakly increasing lists }
+set merge ((T,T->bool)leq) = ([T] a, [T] b) [T]:
   let na=#a in
-  if =na then b
-  else let i=0, j=0, nb=#b in
-    while { run until i=na and j=nb }
+  if na=0 then b
+  else let nb=#b, i=0, j=0 in b #:=a~[0] { place sentinel }
+  ; while
       if i<na
-      then do
-        if j<nb
-	then
-	  case a[i]-b[j] { three way test }
-	  then { a[i]<b[j]: } a[i] next i+:=1
-	  in   { a[i]=b[j]: } a[i] next i+:=1; j+:=1 { take one, skip both }
-	  else { a[i]>b[j]: } b[j] next j+:=1
-	  esac
-	else a[i] next i+:=1
+      then do { certainly not finished here; we always have |j<#b| }
+	if leq(a[i],b[j]) then a[i] next i+:=1 else b[j] next j+:=1 fi
+      else j<nb { condition to continue now } do b[j] next j+:=1
+      fi
+    od
+  fi
+
+{ merge sort }
+set sort ((T,T->bool)leq) = ([T]->[T]):
+  let rec_fun ms ([T] v, int l) = [T]: { invariant includes l=#v }
+    if l<3 then if l=2 and not leq(v[0],v[1]) then v~[:] { swap } else v fi
+    else let half=l\2 in leq.merge( ms(v[:half],half), ms(v[half:],l-half) )
+    fi
+  in { sort = } ([T] v) [T]: ms(v,#v)
+
+set reverse_sort ((T,T->bool)leq) = ([T]->[T]): sort((T x,T y)bool:leq(y,x))
+
+
+{ merge unique weakly increasing lists }
+set merge_u ((T,T->bool)leq) = ([T] a, [T] b) [T]:
+  let na=#a in
+  if na=0 then b
+  else let nb=#b, i=0, j=0 in b #:=a~[0] { place sentinel }
+  ; while { run until i=na and j=nb }
+      if i<na
+      then do { certainly not finished here; we always have |j<#b| }
+        if not leq(a[i],b[j]) then b[j] next j+:=1
+	elif not leq(b[j],a[i]) then a[i] next i+:=1
+	else a[i] next i+:=1; j+:=1 { equality: take one, skip both }
 	fi
       else j<nb do b[j] next j+:=1
       fi
     od
   fi
 
-set sort_u = ([int]->[int]): { sort, keeping unique copy of duplicates }
-  let rec_fun ms ([int] v, int l) = [int]: { invariant includes l=#v }
+{ sort, keeping unique copy of duplicates }
+set sort_u ((T,T->bool)leq) = ([T]->[T]):
+  let rec_fun ms ([T] v, int l) = [T]: { invariant includes l=#v }
     if l<2 then v { for l=2 let |merge_u| do the three way choice }
-    else let half=l\2 in merge_u( ms(v[:half],half), ms(v[half:],l-half) )
+    else let half=l\2 in leq.merge_u( ms(v[:half],half), ms(v[half:],l-half) )
     fi
-  in { sort_u = } ([int] v) [int]: ms(v,#v)
+  in { sort_u = } ([T] v) [T]: ms(v,#v)
 
+end
+
+set sort = sort(<=@(int,int))
+set merge = merge(<=@(int,int)) { used separately in combinatorics.at }
+set reverse_sort = sort(>=@(int,int))
+set sort_u = sort_u(<=@(int,int))
 
 { auxiliary for sorting of general types, using provided comparison }
-set merge ((int,int->bool) leq) = ([int] a,[int] b) [int]:
+set merge_indices ((int,int->bool) leq) = ([int] a,[int] b) [int]:
    let na=#a, nb=#b, i=0, j=0 in
    for :na + nb
    do if i<na and (j=nb or leq(a[i],b[j]))
@@ -68,8 +74,8 @@ set merge ((int,int->bool) leq) = ([int] a,[int] b) [int]:
   [string] (so <=@(string,string) is lexicographic comparison), sort it using:
   |a:=for i in sort(#a,(int i,int j)bool: a[i]<=a[j]) do a[i] od|
 }
-set sort((int,int->bool)leq) = (int->[int]):
-   let combine = merge(leq)
+set sort_indices((int,int->bool)leq) = (int->[int]):
+   let combine = merge_indices(leq)
 in (int n) [int]:
    (0,n). { describes range of consecutive numbers to sort via |leq| }
    (rec_fun ms(int b,int size) [int]:
@@ -82,10 +88,10 @@ in (int n) [int]:
    )
 
 { uncurried version for everyday use }
-set sort(int n,(int,int->bool)leq) = [int]: sort(leq)(n)
+set sort_indices(int n,(int,int->bool)leq) = [int]: sort_indices(leq)(n)
 
 { auxiliary for sort-unique of general types, using provided comparison }
-set merge_u ((int,int->bool) leq) = ([int] a,[int] b) [int]:
+set merge_u_indices ((int,int->bool) leq) = ([int] a,[int] b) [int]:
    let na=#a, nb=#b, i=0, j=0 in
    if =na then b elif=nb then a
    else
@@ -103,13 +109,13 @@ set merge_u ((int,int->bool) leq) = ([int] a,[int] b) [int]:
 
 { sort-unique for a general type: as for cooresponding |sort|, we have the
   caller pass just the array size and comparison function. For |a| of type
-  [(string,T)], select elements sorted by |string| component, keeping onlt the
+  [(string,T)], select elements sorted by |string| component, keeping only the
   first pair with a given string as
   |a:=for i in sort_u(#a,(int i,int j)bool: let(x,)=a[i],(y,)=a[j]) in x<=y)
       do a[i] od|
 }
-set sort_u ((int,int->bool)leq) = (int->[int]):
-   let merge = merge_u(leq)
+set sort_u_indices ((int,int->bool)leq) = (int->[int]):
+   let merge = merge_u_indices(leq)
 in (int n) [int]:
    (0,n). { describes range of consecutive numbers to sort via |leq| }
    (rec_fun ms(int b,int size) [int]: { range from |b| with |size| elements }
@@ -123,76 +129,55 @@ in (int n) [int]:
    )
 
 { uncurried version for everyday use }
-set sort_u (int n, (int,int->bool)leq) = [int]: sort_u(leq)(n)
+set sort_u_indices (int n, (int,int->bool)leq) = [int]: leq.sort_u_indices(n)
 
 
 { the following helps stable-sorting of anything according to a statistic }
 
+any_type T begin
+
 { Inverse (since used for permuting) of the permutation that stable-sorts a list
-  $v$ of (integer) values into increasing order: at $i$, it has the index of the
+  $a$ of values into increasing order: at $i$, it has the index of the
   value ranked $i$ in $v$, where equal values are ranked from left to right.
   That permutation itself is just the standardisation (stable ranking) of $v$.
 }
-set inv_standardisation ([int] a) = [int]:
+set inv_standardisation ((T,T->bool)leq) = ([T] a) [int]:
 { since |sort@(int,(int,int->bool)| is a stable sort, we can just use it: }
-  sort(#a,(int i,int j)bool: a[i]<=a[j]) { sort indices, comparing entries }
+  sort_indices(#a,(int i,int j)bool: leq(a[i],a[j]))
+
+set inv_standardisation = inv_standardisation(<=@(int,int))
+set inv_standardisation = inv_standardisation(<=@(rat,rat))
+
+set sort_by ((T->int)f) = ([T] v) [T]:
+  for index in inv_standardisation(for x in v do f(x) od) do v[index] od
+set sort_by ((T->rat)f) = ([T] v) [T]:
+  for index in inv_standardisation(for x in v do f(x) od) do v[index] od
+
+set lexicographic  ((T,T->bool)leq) = ([T] a,[T] b) bool:
+  for i:min(#a,#b)
+  do if not leq(a[i],b[i]) then return false
+     elif not leq(b[i],a[i]) then return true
+     fi
+  od
+; #a<=#b { let length difference decide if one is prefix ot the other }
+
+end
 
 { the same for a list of rationals; the result is still a list of integers }
-set inv_standardisation ([rat] a) = [int]:
-  sort(#a,(int i,int j)bool: a[i]<=a[j])
+set inv_standardisation = inv_standardisation(<=@(rat,rat))
 
-{ inv_standardisation -> order of indices to select from original for sorting }
-set sort_by ((KGBElt -> int) f)= ([KGBElt] v) [KGBElt]:
-  for index in inv_standardisation(for x in v do f(x) od) do v[index] od
-set sort_by ((Param->int) f) = ([Param] v) [Param]:
-  for index in inv_standardisation(for x in v do f(x) od) do v[index] od
-set sort_by( (WeylElt -> int) f)= ([WeylElt] v) [WeylElt]:
-    for index in inv_standardisation(for x in v do f(x) od) do v[index] od
-
-set sort_by (([int]->int) f) = ([[int]] v) [[int]]:
-  for index in inv_standardisation(for x in v do f(x) od) do v[index] od
-set sort_by ((vec->int) f) = ([vec] v) [vec]:
-  for index in inv_standardisation(for x in v do f(x) od) do v[index] od
-set sort_by ((ratvec->int) f) = ([vec] v) [ratvec]:
-  for index in inv_standardisation(for x in v do f(x) od) do v[index] od
 
 { also need sorting by rationals; take easily written but roundabout approach }
 set sort ([rat] v) = [rat]: for index in inv_standardisation(v) do v[index] od
 
-{ the following two are used in complex_nilpotent_orbits }
-set sort_by ((vec,rat-> rat) f) = ([vec,rat] v) [vec,rat]:
-  for index in inv_standardisation(for x in v do f(x) od) do v[index] od
-set sort_by ((ratvec,[vec]->int) f) = ([ratvec,[vec]] v) [ratvec,[vec]]:
-  for index in inv_standardisation(for x in v do f(x) od) do v[index] od
+{ Here are example calls of the model functions above. They can be defined here
+  because reducibility_points and height are built-in functions (those defined
+  in basic.at could also be used). If however you need to sort on a custom
+  attribute defined elsewhere, DON'T do so here (and don't include modules to
+  make that possible); rather call sort_by in the script where that custom
+  attribute is defined.
 
-
-
-{ for use in K.at: sorting of [KType] }
-set sort_by ( (KType->int) f ) = ([KType] v) [KType]:
-    for index in inv_standardisation(for x in v do f(x) od) do v[index] od
-
-set sort_by (((Param,bool)->int) f) = ([(Param,bool)] v) [(Param,bool)]:
-  for index in inv_standardisation(for x in v do f(x) od) do v[index] od
-
-set sort_by ( (Split,Param->int) f) = ([(Split,Param)] v) [(Split,Param)]:
-  for index in inv_standardisation(for x in v do f(x) od) do v[index] od
-
-{ one more, used in combinatorics.at }
-set sort_by ( (int,bool->int) f) =
-  ([int,bool] v) [int,bool]:
-    for index in inv_standardisation(for x in v do f(x) od) do v[index] od
-
-{ and so forth for any type; this really should be second-order typed }
-
-{ Here are example calls of the model functions above. They can be defined
-  here because reducibility_points and height are built-in functions (those
-  defined in basic.at could also be used). If however you need to sort on a
-  custom attribute defined elsewhere, DON'T do so here (and don't include
-  modules to make that possible); rather call sort_by in the script where that
-  custom attribute is defined. (You might need to extend the above list of
-  models if a new value type is involved; that is OK and in fact recommended.)
-
-  For instance LKT.at defines the attribute LKT_dimensions, and then defines
+  For instance LKT.at defines the |attribute LKT_dimensions|, and then defines
   sort_by_dimension in a call of sort_by, whose argument uses that attribute.
 }
 
@@ -212,101 +197,15 @@ set sort_by_height = ([(Split,Param)] -> [(Split,Param)]):
  sort_by( (Split s,Param p) int: height(p) )
 
 { sorting fixed size vectors lexicographically }
-set lex_lesseq (vec v,vec w) = bool: { assert(#v=#w); }
+set lex_leq (vec v,vec w) = bool: { assert(#v=#w); }
    for x@i in v do if x!=w[i] then return x<w[i] fi od; true
 
-set merge ([vec] a, [vec] b) = [vec]: { merge weakly increasing lists }
-  let na=#a in
-  if na=0 then b
-  else let i=0, j=0, nb=#b { original length of b }
-  in b #:= a~[0] { sentinel; when this elt becomes b[j], then a is emptied }
-  ; while { run until i=na and j=nb=#b-1 }
-      if i=na then j<nb do b[j] next j+:=1
-      else do
-        if lex_lesseq(a[i],b[j]) then a[i] next i+:=1 else b[j] next j+:=1 fi
-      fi
-    od
-  fi
-
-set sort = ([vec]->[vec]): { merge sort }
-  let rec_fun ms ([vec] v, int l) = [vec]: { invariant includes l=#v }
-    if l<3 then if l<2 or lex_lesseq(v[0],v[1]) then v else v~[:] { swap } fi
-    else let half=l\2 in merge( ms(v[:half],half), ms(v[half:],l-half) )
-    fi
-  in { sort = } ([vec] v) [vec]: ms(v,#v)
-
-set reverse_sort ([vec] v) = [vec]: sort(v)~[:]
-
-{ sort unique }
-set merge_u ([vec] a, [vec] b) = [vec]: { merge unique weakly increasing lists }
-  let na=#a in
-  if na=0 then b
-  else let i=0, j=0, nb=#b { original length of b }
-  in b #:= a~[0] { sentinel; when this elt becomes b[j], then a is emptied }
-  ; while { run until i=na and j=nb=#b-1 }
-      if i=na then j<nb do b[j] next j+:=1
-      else do
-        if lex_lesseq(a[i],b[j])
-        then a[i] next if a[i]=b[j] then j+:=1 fi; i+:=1
-        else b[j] next j+:=1
-        fi
-      fi
-    od
-  fi
-
-set sort_u = ([vec]->[vec]): { sort, keeping unique copy of duplicates }
-  let rec_fun ms ([vec] v, int l) = [vec]: { invariant includes l=#v }
-    if l<2 then v { for l=2 let |merge_u| do the three way choice }
-    else let half=l\2 in merge_u( ms(v[:half],half), ms(v[half:],l-half) )
-    fi
-  in { sort_u = } ([vec] v) [vec]: ms(v,#v)
+set sort_lex = sort(lex_leq@(vec,vec))
+set sort_u_lex = sort_u(lex_leq@(vec,vec))
 
 { sorting rational ratvectors lexicographically }
-set lex_lesseq (ratvec v,ratvec w) = bool: { assert(#v=#w); }
+set lex_leq (ratvec v,ratvec w) = bool: { assert(#v=#w); }
    for x@i in v do if x!=w[i] then return x<w[i] fi od; true
 
-set merge ([ratvec] a, [ratvec] b) = [ratvec]: { merge weakly increasing lists }
-  let na=#a in
-  if na=0 then b
-  else let i=0, j=0, nb=#b { original length of b }
-  in b #:= a~[0] { sentinel; when this elt becomes b[j], then a is emptied }
-  ; while { run until i=na and j=nb=#b-1 }
-      if i=na then j<nb do b[j] next j+:=1
-      else do
-        if lex_lesseq(a[i],b[j]) then a[i] next i+:=1 else b[j] next j+:=1 fi
-      fi
-    od
-  fi
-
-set sort = ([ratvec]->[ratvec]): { merge sort }
-  let rec_fun ms ([ratvec] v, int l) = [ratvec]: { invariant includes l=#v }
-    if l<3 then if l<2 or lex_lesseq(v[0],v[1]) then v else v~[:] { swap } fi
-    else let half=l\2 in merge( ms(v[:half],half), ms(v[half:],l-half) )
-    fi
-  in { sort = } ([ratvec] v) [ratvec]: ms(v,#v)
-
-set reverse_sort ([ratvec] v) = [ratvec]: sort(v)~[:]
-
-{ sort unique }
-set merge_u ([ratvec] a, [ratvec] b) = [ratvec]: { merge }
-  let na=#a in
-  if na=0 then b
-  else let i=0, j=0, nb=#b { original length of b }
-  in b #:= a~[0] { sentinel; when this elt becomes b[j], then a is emptied }
-  ; while { run until i=na and j=nb=#b-1 }
-      if i=na then j<nb do b[j] next j+:=1
-      else do
-        if lex_lesseq(a[i],b[j])
-        then a[i] next if a[i]=b[j] then j+:=1 fi; i+:=1
-        else b[j] next j+:=1
-        fi
-      fi
-    od
-  fi
-
-set sort_u = ([ratvec]->[ratvec]):  { sort, keeping unique copy of duplicates }
-  let rec_fun ms ([ratvec] v, int l) = [ratvec]: { invariant includes l=#v }
-    if l<2 then v { for l=2 let |merge_u| do the three way choice }
-    else let half=l\2 in merge_u( ms(v[:half],half), ms(v[half:],l-half) )
-    fi
-  in { sort_u = } ([ratvec] v) [ratvec]: ms(v,#v)
+set sort_lex = sort(lex_leq@(ratvec,ratvec))
+set sort_u_lex = sort_u(lex_leq@(ratvec,ratvec))

@@ -134,6 +134,8 @@ set rho_stabiliser_orbit (RootDatum rd, [int] standard_Levi) = orbit_data:
      	let l=#sorted
 	then i = binary_search_first((int i)bool: sorted[i].L_int>=code, 0,l)
 	in i<l and sorted[i].L_int=code
+   , sanitise = { process new level of Levis: sort and remove duplicates }
+       sort_u((orbit_entry x,orbit_entry y) bool: x.L_int<=y.L_int)
    in while { loop with |do| near end }
 	 let new_level = [orbit_entry]:
 	    for (code,w) in stack~[0]
@@ -146,10 +148,7 @@ set rho_stabiliser_orbit (RootDatum rd, [int] standard_Levi) = orbit_data:
 	       od.##
 	    od.##
       in >#new_level { whether any new elements were found for new level }
-      do stack := (stack next stack:=[]) #
-         (let cmp(int i,int j)=bool: new_level[i].L_int<=new_level[j].L_int in
-          for i in sort_u(#new_level,cmp) do new_level[i] od
-	 )
+      do stack #:= sanitise(new_level)
       od
    ; let sizes = for level in stack do #level od, orbit = ##stack
      then merge = merge((int i,int j)bool: orbit[i].L_int<=orbit[j].L_int)
