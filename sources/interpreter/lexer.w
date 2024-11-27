@@ -563,9 +563,12 @@ void Lexical_analyser::put_type_variable(id_type v)
   nest.front().push_back(v);
 }
 void Lexical_analyser::pop_nest()
-{ for (id_type v : nest.front())
-    type_vars.remove(v-type_limit);
-  nest.pop_front();
+{ if (not nest.empty()) // avoid crashing before parser detects an error
+  {
+    for (id_type v : nest.front())
+      type_vars.remove(v-type_limit);
+    nest.pop_front();
+  }
 }
 
 @ For reasons of limited look-ahead in the parser, certain operator symbols
