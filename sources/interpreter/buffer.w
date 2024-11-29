@@ -55,7 +55,7 @@ control to the file active at the point they were opened.
 #ifndef BUFFER_H
 #define BUFFER_H
 
-#include "../Atlas.h" // must be very first \.{atlas} include
+#include "Atlas.h" // must be very first \.{atlas} include
 
 @< Includes needed in the header file @>@;
 
@@ -659,7 +659,7 @@ successful completion to the user, and record the file name on
 
 When |close_includes| is called all auxiliary input files are closed.
 
-@h "global.h" // for |output_stream|
+@h "global.h" // for |output_stream|, |global_overload_table|, |global_id_table|
 
 @< Definitions of class members @>=
 void BufferedInput::reset() {@; pos=nullptr; temp_prompt=""; }
@@ -1170,7 +1170,6 @@ used somewhere as local identifiers or were accidentally typed by the user; such
 because it we cannot remove identifiers from |main_hash_table|.
 
 @h "lexer.h" // for |main_hash_table| end |lex|
-@h "global.h" // for |global_overload_table| and |global_id_table|
 @< Definitions of functions @>=
 sl_list<const char*> completions(const char* text)
 {

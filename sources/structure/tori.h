@@ -12,7 +12,7 @@
 
 #include <tuple>
 
-#include "../Atlas.h"
+#include "Atlas.h"
 
 #include "bits.h"
 #include "tags.h"

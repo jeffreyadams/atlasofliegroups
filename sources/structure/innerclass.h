@@ -16,7 +16,7 @@
 #ifndef INNERCLASS_H  /* guard against multiple inclusions */
 #define INNERCLASS_H
 
-#include "../Atlas.h"
+#include "Atlas.h"
 
 #include "tags.h"
 #include "bitmap.h"	// containment of bitmaps for real forms

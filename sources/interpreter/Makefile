@@ -21,7 +21,7 @@ cwebx_dir := $(Atlas_root)/cwebx
 sources_subdirs := utilities structure gkmod error io interface
 
 # this variable is used both by g++, and by cweavex needing the trailing slash
-INCLUDE_FLAGS := $(sources_subdirs:%=-I$(sources_dir)/%/)
+INCLUDE_FLAGS := -I$(sources_dir)/ $(sources_subdirs:%=-I$(sources_dir)/%/)
 
 CTANGLE := $(cwebx_dir)/ctanglex
 CWEAVE := $(cwebx_dir)/cweavex

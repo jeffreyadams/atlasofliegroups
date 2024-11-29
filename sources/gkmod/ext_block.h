@@ -12,7 +12,7 @@
 #ifndef EXT_BLOCK_H  /* guard against multiple inclusions */
 #define EXT_BLOCK_H
 
-#include "../Atlas.h"
+#include "Atlas.h"
 
 #include <cassert>
 #include <iostream>

@@ -5,7 +5,7 @@
 
 #include <iosfwd>
 
-#include "../Atlas.h"
+#include "Atlas.h"
 #include "kl.h"
 
 namespace atlas {

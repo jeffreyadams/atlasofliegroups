@@ -19,8 +19,6 @@
 
 #include "bitvector.h"
 
-#include "../Atlas.h"
-
 #include "comparison.h"
 #include "constants.h"
 #include "bitset.h"

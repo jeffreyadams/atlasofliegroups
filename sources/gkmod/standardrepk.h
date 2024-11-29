@@ -19,7 +19,7 @@
 #include <vector>
 #include <iostream>
 
-#include "../Atlas.h"
+#include "Atlas.h"
 
 #include "innerclass.h"// inlines
 #include "realredgp.h"	// numerous inline methods
@@ -40,11 +40,11 @@ namespace standardrepk {
 // |typedef Free_Abelian<StandardRepK> Char;| $\Z$-lin. comb. of |StandardRepK|
 // |typedef Free_Abelian<StandardRepK,Polynomial<int> > q_Char;|
 
-// the following cannot be in ../Atlas.h: they need free_abelian.h
+// the following cannot be in Atlas.h: they need free_abelian.h
 typedef Char::coef_t CharCoeff;
 typedef q_Char::coef_t q_CharCoeff; // i.e., |Polynomial<int>|
 
-// remaining definitions could be in ../Atlas.h, but seem module-specific
+// remaining definitions could be in Atlas.h, but seem module-specific
 
 typedef Free_Abelian<seq_no,long int,graded_compare> combination;
 typedef std::pair<seq_no,combination> equation;
