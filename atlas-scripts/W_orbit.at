@@ -19,37 +19,29 @@
   saying where the newest level (where duplicates must be avoided) starts.
 }
 set generate_from_dominant ([(vec->maybe_a_vec)] S,vec start) = [vec,[int]]:
-(  let stack = [[vec,[int]]]: { each level |lex_lesseq|-sorted by its |vec| }
+(  let stack = [[vec,[int]]]: { each level |lex_leq|-sorted by its |vec| }
                [ [], [(start,[])] ]
    , absent([vec,[int]] level, vec target) = bool:
       let size=#level
       then k = binary_search_first
-         ((int i)bool: let(v,)=level[i] in lex_lesseq(target,v), 0,size	)
+         ((int i)bool: let(v,)=level[i] in lex_leq(target,v), 0,size	)
       in k=size or (let (v,)=level[k] in target!=v)
 in while
       let new_level =
          for (a,word) in stack~[0]
 	 do for f@i in S
 	    do case f(a)
-	       | else [] { skip when no new vector is returned }
 	       | solution(b):
-	         if absent(stack~[1],b) and absent(stack~[0],b)
-		 then [(b,i#word)]
-		 else []
-		 fi
+	         if absent(stack~[1],b) and absent(stack~[0],b) do (b,i#word) fi
+	       | else [] { skip when no new vector is returned }
 	       esac
 	    od.##
 	 od.##
       then gain=#new_level
    in {while} >gain
-   do stack := (stack next stack:=[]) #
-   { sort |new_level| by number of |x|, removing duplicates }
-     (let sort_u = (int->[int]):
-         let leq(int i,int j)= bool:
-	    let (v,)=new_level[i],(w,)=new_level[j] in lex_lesseq(v,w)
-         in sort_u(leq)
-      in for i in sort_u(gain) do new_level[i] od
-     )
+   do stack #:=
+      { sort |new_level| by weight components (lexicogr.), removing duplicates }
+      sort_u(((vec v,[int].),(vec w,[int].))bool: lex_leq(v,w))(new_level)
    od
 ;  ##stack { concatenate generated levels, without merging the (sorted) lists }
 )
@@ -66,37 +58,32 @@ set generate_from_dominant_with_action \
    , int dim
    , [mat] gens_rep
    ) = [vec,[int],mat]:
-(  let stack = [[vec,[int],mat]]: { each level |lex_lesseq|-sorted by its |vec| }
+(  let stack = [[vec,[int],mat]]: { each level |lex_leq|-sorted by its |vec| }
                [ [], [(start,[],id_mat(dim))] ]
    , absent([vec,[int],mat] level, vec target) = bool:
       let size=#level
       then k = binary_search_first
-         ((int i)bool: let(v,,)=level[i] in lex_lesseq(target,v), 0,size	)
+         ((int i)bool: let(v,,)=level[i] in lex_leq(target,v), 0,size	)
       in k=size or (let (v,,)=level[k] in target!=v)
 in while
       let new_level =
          for (a,word,act) in stack~[0]
 	 do for f@i in S
 	    do case f(a)
-	       | else [] { skip when no new vector is returned }
 	       | solution(b):
 	         if absent(stack~[1],b) and absent(stack~[0],b)
-		 then [(b,i#word,gens_rep[i]*act)]
-		 else []
+		 do(b,i#word,gens_rep[i]*act)
 		 fi
+	       | else [] { skip when no new vector is returned }
 	       esac
 	    od.##
 	 od.##
       then gain=#new_level
    in {while} >gain
-   do stack := (stack next stack:=[]) #
-   { sort |new_level| by number of |x|, removing duplicates }
-     (let sort_u = (int->[int]):
-         let leq(int i,int j)= bool:
-	    let (v,,)=new_level[i],(w,,)=new_level[j] in lex_lesseq(v,w)
-         in sort_u(leq)
-      in for i in sort_u(gain) do new_level[i] od
-     )
+   do stack #:=
+      { sort |new_level| by weight components (lexicogr.), removing duplicates }
+      sort_u (((vec v,[int].,mat.),(vec w,[int].,mat.))bool: lex_leq(v,w))
+      (new_level)
    od
 ;  ##stack { concatenate generated levels, without merging the (sorted) lists }
 )
@@ -253,12 +240,12 @@ set bounded_generate_from_dominant_with_action \
    , [mat] gens_rep
    , int length_bound
    ) = [vec,[int],mat]:
-(  let stack = [[vec,[int],mat]]: { each level |lex_lesseq|-sorted by its |vec| }
+(  let stack = [[vec,[int],mat]]: { each level |lex_leq|-sorted by its |vec| }
                [ [], [(start,[],id_mat(dim))] ]
    , absent([vec,[int],mat] level, vec target) = bool:
       let size=#level
       then k = binary_search_first
-         ((int i)bool: let(v,,)=level[i] in lex_lesseq(target,v), 0,size	)
+         ((int i)bool: let(v,,)=level[i] in lex_leq(target,v), 0,size	)
       in k=size or (let (v,,)=level[k] in target!=v)
    , length=0
 in while
@@ -268,25 +255,20 @@ in while
          for (a,word,act) in stack~[0]
 	 do for f@i in S
 	    do case f(a)
-	       | else [] { skip when no new vector is returned }
 	       | solution(b):
 	         if absent(stack~[1],b) and absent(stack~[0],b)
-		 then [(b,i#word,gens_rep[i]*act)]
-		 else []
+		 do (b,i#word,gens_rep[i]*act)
 		 fi
+	       | else [] { skip when no new vector is returned }
 	       esac
 	    od.##
 	 od.##
       then gain=#new_level
    in {while} >gain
-   do stack := (stack next stack:=[]) #
-   { sort |new_level| by number of |x|, removing duplicates }
-     (let sort_u = (int->[int]):
-         let leq(int i,int j)= bool:
-	    let (v,,)=new_level[i],(w,,)=new_level[j] in lex_lesseq(v,w)
-         in sort_u(leq)
-      in for i in sort_u(gain) do new_level[i] od
-     )
+   do stack #:=
+      { sort |new_level| by weight components (lexicogr.), removing duplicates }
+      sort_u (((vec v,[int].,mat.),(vec w,[int].,mat.))bool: lex_leq(v,w))
+      (new_level)
    od
 ;  ##stack { concatenate generated levels, without merging the (sorted) lists }
 )

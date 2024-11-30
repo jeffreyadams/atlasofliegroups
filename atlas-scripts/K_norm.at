@@ -253,9 +253,6 @@ set K_parameters_norm_upto(RealForm G, int N)=[KType]:
 set number_K_parameters_norm_upto(RealForm G, int N, ratvec v)=int:#K_parameters_norm_upto(G,N,v)
 set number_K_parameters_norm_upt(RealForm G, int N)=int:#K_parameters_norm_upto(G,N)
 
-{sort by K-norm or height for printing}
-set sort_by((KType->int) f)=([KType] v) [KType]:
-  for index in inv_standardisation(for x in v do f(x) od) do v[index] od
 set sort_by_height = ([KType] -> [KType]): sort_by((KType mu) int: height(parameter(mu)))
 {set sort_by_K_norm = ([KType] -> [KType]): sort_by((KType mu) int: K_norm(mu))}
 set sort_by_K_norm = ([KType] -> [KType]): sort_by(K_norm@KType)

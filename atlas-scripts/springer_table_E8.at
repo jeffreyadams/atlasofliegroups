@@ -87,7 +87,8 @@ set E8_dual_names= [string]: for (,,,,d,) in E8_Springer_table_data do d od
 set name_to_diagram_E8 = (string->vec):
    let n=#E8_names
    then name_diagram = [string,vec]:
-      for k in sort(n,(int i,int j):E8_names[i]<=E8_names[j]) { ranked |k| }
+      for k in sort_indices(n,(int i,int j):E8_names[i]<=E8_names[j])
+          { ranked |k| }
       do let (name,diag,,,,)=E8_Springer_table_data[k] in (name,diag)
       od
 in (string key) vec:
@@ -101,7 +102,7 @@ set E8_nilpotent_orbit_dual_map = (vec->vec):
    let n=#E8_diagrams
    then dual_table = [vec,vec]:
       let sigma = [int]: { at index |r| the number of diagram ranked |r| }
-         sort(n,(int i,int j):lex_lesseq(E8_diagrams[i],E8_diagrams[j]))
+         sort_indices(n,(int i,int j):lex_leq(E8_diagrams[i],E8_diagrams[j]))
       then diagram_dual = [vec,string]:
 	 for i in sigma { traverse in order making diagrams sorted }
 	 do let (,diag,,,d,)=E8_Springer_table_data[i] in (diag,d)
@@ -110,7 +111,7 @@ set E8_nilpotent_orbit_dual_map = (vec->vec):
       for (source,dual) in diagram_dual do (source,name_to_diagram_E8(dual)) od
 in (vec v) vec:
    let  k = binary_search_first
-      ((int i)bool: let (diagram,)=dual_table[i] in lex_lesseq(v,diagram), 0, n)
+      ((int i)bool: let (diagram,)=dual_table[i] in lex_leq(v,diagram), 0, n)
    then (found,image) =
       assert(k<n,"Diagram " ## v.to_string ## " not found"); dual_table[k]
    in assert(v=found,"Diagram " ## v.to_string ## " not found"); image
@@ -225,11 +226,11 @@ set springer_by_name_table_E8 = [string,int]:
 set E8_Springer_map = (vec->int): { orbit diagrams as |vec| values }
 (  let tab = [vec,int]:
       for (str,x) in springer_by_name_table_E8 do (str.name_to_diagram_E8,x) od
-   then leq (int i,int j) = bool: let (a,)=tab[i],(b,)=tab[j] in lex_lesseq(a,b)
-in tab := for i in  sort(#tab, leq) do tab[i] od { adjust |tab| to sorted form }
+   then leq ((vec a,int.),(vec b,int.)) = bool: lex_leq(a,b)
+in tab := sort(leq)(tab) { adjust table to sorted form }
 ;  { E8_Springer_map = }
    (vec diagram) int:
-   let predicate(int i)= bool: let (key,)=tab[i] in lex_lesseq(diagram,key)
+   let predicate(int i)= bool: let (key,)=tab[i] in lex_leq(diagram,key)
    then k = binary_search_first(predicate,0,#tab)
    then (source,image) = assert(k<#tab,"Wrong E8 diagram"); tab[k]
    in assert(source=diagram,"Wrong E8 diagram"); image

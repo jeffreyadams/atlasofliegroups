@@ -50,9 +50,6 @@ set display (ExtParamPol(A,B,C)) = void:
   prints("plus:",A,new_line,"minus:",B,new_line,"induced:",C)
 set null_ext_module (RealForm G) = ExtParamPol: let N=null_module(G) in (N,N,N)
 
-set find ([(int,int)] complete_indices,(int,int)pair) =int:
-  first(#complete_indices,(int i)bool:complete_indices[i]=pair)
-
 { scale continuous part (|nu|) of extended parameter by rational factor |r| }
 set * (ExtParam(ic,,,lambda,theta,,,,,):E,rat r) = ExtParam:
   E.gamma := ((1+theta)*(lambda+rho(ic))+(1-theta)*(E.nu*r))/2 ; E
@@ -62,8 +59,8 @@ set deform_unreduced (Param p, mat delta, int type) = ExtParamPol:
 { if type=0 then we're getting sums of terms of the form
   (1-s)*(I(p,+)+I(p,-)); when passing to the Hermitian form this
   becomes (1-s)(1+s)I(p)_h=0, so can ignore these
-  but for completeness sake leave them in. So we don't do:
-  if type=0 then return null_ext_module(real_form(p));
+  but for completeness sake leave them in. So we avoid doing:
+  |if type=0 then return null_ext_module(real_form(p))|
 }
    let (B,index)=singular_block(p)
    then (I_delta,g,complete_indices,delta_action)=tabulate_indices(B,delta)
@@ -348,7 +345,8 @@ set c_form_irreducible_big_long (Param p,mat delta, int type) =
       ):
 (   let ori_nr_p = orientation_nr(p), P = null_ext_module(real_form(p))
     , (plus,minus,induced)=character_formula(p,delta,type)
-    , (plus_terms,minus_terms,induced_terms)=([],[],[])
+    , (plus_terms,minus_terms,induced_terms) =
+      let e=[(Split,Param),ExtParamPol]:[] in (e,e,e)
 in for coeff@q in plus
    do let new_term =
       coeff*orientation_nr_term(ori_nr_p,q)*recursive_deform(q,delta,1)

@@ -659,7 +659,7 @@ successful completion to the user, and record the file name on
 
 When |close_includes| is called all auxiliary input files are closed.
 
-@h "global.h" // for |output_stream|
+@h "global.h" // for |output_stream|, |global_overload_table|, |global_id_table|
 
 @< Definitions of class members @>=
 void BufferedInput::reset() {@; pos=nullptr; temp_prompt=""; }
@@ -1170,7 +1170,6 @@ used somewhere as local identifiers or were accidentally typed by the user; such
 because it we cannot remove identifiers from |main_hash_table|.
 
 @h "lexer.h" // for |main_hash_table| end |lex|
-@h "global.h" // for |global_overload_table| and |global_id_table|
 @< Definitions of functions @>=
 sl_list<const char*> completions(const char* text)
 {
@@ -1180,7 +1179,7 @@ sl_list<const char*> completions(const char* text)
   { const char* s = main_hash_table->name_of(i);
     if (std::strncmp(text,s,l) == 0 // is |text| a prefix of |s|?
         and (i<lex->first_identifier() @|
-             or not global_overload_table->variants(i).empty() @|
+             or global_overload_table->variants(i)!=nullptr @|
              or global_id_table->present(i)
             )
        )

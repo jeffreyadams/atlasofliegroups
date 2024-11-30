@@ -45,17 +45,21 @@ set show(LieAlgebraElement X)=void:
 prints(X.root_part,":",X.H)
 
 {nice string representation of LieAlgebraElement}
-set to_string(LieAlgebraElement X)=string:
-let rv="" then
-()=for i:#X.root_part do if !=X.root_part[i] then rv+:="+"+X.root_part[i].to_string+"*X_"+([int]:X.root_datum.roots[i]).to_string fi od then
-()=if !=X.H then rv+:=" "+(X.H).to_string fi in rv
+set format(LieAlgebraElement X)=string:
+let rv=""
+in for i:#X.root_part
+   do if !=X.root_part[i]
+      then rv+:="+"+X.root_part[i].to_string+"*X_"+
+                ([int]:X.root_datum.roots[i]).to_string
+      fi
+   od ; if !=X.H then rv+:=" "+(X.H).to_string fi; rv
 
 set root_part_array(LieAlgebraElement X)=[(rat,vec)]:
 ##(for i:#X.root_part do if !=X.root_part[i] then [(X.root_part[i],X.root_datum.roots[i])] else [] fi od)
 
-set show_long(LieAlgebraElement X)=void:prints(X.to_string)
+set show_long(LieAlgebraElement X)=void:prints(X.format)
 
-{coordinates of X_alpha: [0,...,1,..0] (N-tuple)} 
+{coordinates of X_alpha: [0,...,1,..0] (N-tuple)}
 set coordinates(RootDatum rd,vec alpha)=vec:
 let rv=null(#rd.roots) then
 k=find(rd.roots,alpha) in
@@ -222,22 +226,28 @@ JM_triple_signs(O.root_datum.structure_constant_table,O)
 
 {ALL Jacobson Morozov triples (with coefficient -1,1)}
 
-set JM_triples_signs(StructureConstantTable t,[vec] S,vec H)=[(LieAlgebraElement,LieAlgebraElement,LieAlgebraElement)]:
+set JM_triples_signs(StructureConstantTable t,[vec] S,vec H)=
+  [(LieAlgebraElement,LieAlgebraElement,LieAlgebraElement)]:
 let
 shift=for i:#S do 1 od then
-rv=[] then
+rv=[(LieAlgebraElement,LieAlgebraElement,LieAlgebraElement)]:[] then
 coeffs=for v in box(2,#S) do 2*v-shift od in
 let ()=prints("#coeffs:",#coeffs) in
- for A@i in coeffs do  let ()=prints("i=",i) in
- let v=null(#t.root_datum.roots) then
- ()= for i:#S do
- let ()=prints("A[i]:",A[i], new_line, "coords:", coordinates(t.root_datum)(S[i])) in
- v+:=A[i]*coordinates(t.root_datum)(S[i])  od then
- X=lie_algebra_element_root_vectors(t,v) then
- sol=solve_ad(X,H(t,H)) in
- let ()=prints("trying:", X.root_part) in
- if any(sol) then prints("solved"); rv#:=(lie_algebra_element_semisimple(t,H),X,lie_algebra_element(t,requisition(sol))) else prints("NOT solved") fi od;
-rv
+ for A@i in coeffs
+ do prints("i=",i)
+ ; let v=null(#t.root_datum.roots)
+ in for i:#S
+    do prints("A[i]:",A[i], new_line, "coords:", coordinates(t.root_datum)(S[i]))
+    ; v+:=A[i]*coordinates(t.root_datum)(S[i])
+    od
+ ; let X=lie_algebra_element_root_vectors(t,v)
+   then sol=solve_ad(X,H(t,H))
+ in prints("trying:", X.root_part)
+ ; if any(sol)
+   then prints("solved"); rv#:=(lie_algebra_element_semisimple(t,H),X,lie_algebra_element(t,requisition(sol)))
+   else prints("NOT solved")
+   fi
+od; rv
 
 set JM_triples_signs(StructureConstantTable t,vec H)=[(LieAlgebraElement,LieAlgebraElement,LieAlgebraElement)]:
 JM_triples_signs(t,two_eigenspace(t.root_datum,H){list of roots},H)
@@ -309,4 +319,3 @@ then v=
       od
      )
 in LieAlgebraElement:(t_rd,(v,X_L.H))
-

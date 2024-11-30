@@ -21,11 +21,12 @@
 
 \def\emph#1{{\it#1\/}}
 
-@* Introduction.
-This file describes a lexical scanner that provides a layer situated between
-the class |BufferedInput| that provides lines of input, and the parser that is
-to receive a sequence of tokens. The functionality provided is the recognition
-of tokens, in particular keywords and constants.
+@* Introduction. This file describes a lexical scanner class, which provides a
+layer situated between the class |BufferedInput| that provides lines of input,
+and the (\.{bison} generated) parser that is to receive a sequence of tokens.
+The functionality provided is the recognition of tokens, in particular keywords
+and constants. The lexer also manages the detection of which newlines can signal
+the end of a command, and which identifiers are interpreted as types.
 
 @ As usual the external interface is written to the header file associated to
 this file. In this module all include files are needed in the header file.
@@ -73,14 +74,14 @@ Hash_table* main_hash_table=nullptr;
 @* The lexical analyser class.
 %
 We now come to the lexical analyser proper. Although only one lexical analyser
-is envisaged, we shall define a class for it. The module \.{buffer} is used
-for the class |BufferedInput| as well as for the type |id_type| defined within
-that class. The file \.{parser.tab.h} contains definitions of |YYSTYPE| and
-|YYLTYPE| defined by the parser and used in the code below, but on its turn it
-uses (for other purposes) types defined in \.{parse\_types.h}, which therefore
-has to be loaded before it (we would like to have put an \&{\#include} of the
-file \.{parsetree.h} into \.{parser.tab.h} so that it need no be mentioned
-here, but we do not know if or how this could be arranged).
+is envisaged, we shall define a class for it. The module \.{buffer} is used for
+the class |BufferedInput| as well as for the integral type |id_type| defined
+within that class. The file \.{parser.tab.h} contains definitions of |YYSTYPE|
+and |YYLTYPE| defined by the parser and used in the code below, but on its turn
+it uses (for other purposes) types defined in \.{parse\_types.h}, which
+therefore has to be loaded before it (we would like to have put an \&{\#include}
+of the file \.{parse\_types.h} into \.{parser.tab.h} so that it need no be
+mentioned here, but we do not know if or how this could be arranged).
 
 @h <string>
 @h "buffer.h"
@@ -90,11 +91,13 @@ here, but we do not know if or how this could be arranged).
 @< Class declarations @>=
 class Lexical_analyser
 { enum states @+ { initial, normal, type_defining, ended };
+  using eggs = sl_list<id_type>; // contents of |nest|
 @)BufferedInput& input;
   Hash_table& id_table;
   id_type keyword_limit; // first non-keyword identifier
   id_type type_limit; // first non-type identifier
-  int nesting; // number of pending opening symbols
+  sl_list<eggs> nest;
+  BitMap type_vars; // flag identifiers used as a type variable
   char prevent_termination, previous_termination;
     // either |'\0'| or character requiring more input
   int comment_start, comment_end; // characters that start/end a comment
@@ -111,9 +114,13 @@ public:
           {@; assert(c!='\0' and d!='\0'); comment_start=c; comment_end=d; }
   const char* scanned_file_name() const @+{@; return file_name.c_str(); }
   id_type first_identifier() const @+{@; return type_limit; }
-  bool is_initial () const {@; return state==initial; }
+  bool is_initial () const @+{@; return state==initial; }
+  void put_type_variable(id_type v);
 private:
   void skip_space() const;
+  void push_nest() @+
+  {@; nest.push_front(eggs{}); }
+  void pop_nest(); // pop and decommission a clutch of type variables
   bool becomes_follows();
   void operator_termination (char c);
   std::string scan_quoted_string() const;
@@ -126,7 +133,7 @@ must have access to it, we define a static variable with a pointer to it.
 extern Lexical_analyser* lex;
 
 @~We initialise this variable to the null pointer; the main program will make
-it point to the main hash table once it is allocated.
+it point to our unique instance of |Lexical_analyser| once it is allocated.
 
 @< Definitions of static variables @>=
 Lexical_analyser* lex=nullptr;
@@ -134,29 +141,28 @@ Lexical_analyser* lex=nullptr;
 
 @ Here is the constructor for the lexical analyser, which assumes that a
 buffered input object and an empty hash table object have been previously
-constructed, and are passed by reference. Currently it is called with a list
-of keyword strings, and a list of predefined type names; both will be
-installed into the hash table and determine the values of |keyword_limit| and
-|type_limit|. There will probably be a need to further parametrise the lexical
-analyser, if we do not want to hard-code all lexical details into it (there is
-nothing wrong with that as long as there is only one object of this class, but
-the class concept invites us to envision some more flexible use). One such
-parametrisation is via the |comment_start| and |command_end| characters, that
-if set using |set_comment_delims| will automatically skip text enclosed
-between them (they may or may not be equal). In the unset state they are set
-to an integer that cannot match any |char| value; we would have like to use
-|EOF| defined in \.{ctype.h} here, but it is only guaranteed to be
-non-|(unsigned char)|, and since using the type |(unsigned char*)| is
-unwieldy, we use another value.
+constructed, and are passed by reference. It is called with a list of keyword
+strings, and a list of predefined type names; both will be installed into the
+hash table and determine the values of |keyword_limit| and |type_limit|. More
+parametrisation is done after construction by method calls, which avoids having
+to hard-code all lexical details into this class. (As long as there is only one
+object of this class there is nothing wrong with that, but the class concept
+invites us to envision some more flexible use.) One such parametrisation is via
+the |comment_start| and |command_end| characters, that if set using
+|set_comment_delims| will automatically skip text enclosed between them (they
+may or may not be equal). In the unset state they are set to an integer that
+cannot match any |char| value; we would have like to use |EOF| defined
+in \.{ctype.h} here, but it is only guaranteed to be non-|(unsigned char)|, and
+since using the type |(unsigned char*)| is unwieldy, we use another value.
 
 @< Definitions of class members @>=
 Lexical_analyser::Lexical_analyser
   (BufferedInput& source, Hash_table& hash,
    const char** keywords, const char** type_names)
-: input(source),id_table(hash),nesting(0)
+: input(source),id_table(hash),nest(), type_vars()
  ,prevent_termination('\0'),previous_termination('\0'),state(initial)
-{ @< Install |keywords| and |type_names| into |id_table| @>
-  comment_start=comment_end=256; // a non-|char| value
+{ @< Install |keywords| and |type_names| into |id_table| and set |type_vars| @>
+  comment_start=comment_end=0x100; // a non-|char| value
 }
 
 @ Keywords are identified by sequence number in the order by which they are
@@ -165,9 +171,9 @@ the constructor should match the numeric \.{\%token} values defined in
 \.{parser.y}. The actual code transmitted for keywords will be obtained by
 adding the constant |QUIT| to the value returned from the hash table look-up.
 Type names are next in |id_table|, but they all will return the token |TYPE|,
-while recording which names was entered in the semantic value.
+while recording which names was entered in the semantic value of the token.
 
-@< Install |keywords| and |type_names| into |id_table| @>=
+@< Install |keywords| and |type_names| into |id_table| and set |type_vars| @>=
 { for (size_t i=0; keywords[i]!=0; ++i)
     id_table.match_literal(keywords[i]);
   keyword_limit=id_table.nr_entries();
@@ -177,7 +183,7 @@ while recording which names was entered in the semantic value.
 }
 
 @ The member function |reset| can be called to reset the lexical analyser,
-discarding any remaining input on the current line and clearing the |nesting|
+discarding any remaining input on the current line and clearing the |nest|
 level. This is typically done after any error that makes it impossible to
 execute a command, to ensure the next attempt will be with a clean slate.
 The function |prime| serves to test whether any input can be obtained at all,
@@ -185,8 +191,14 @@ before trying to get any tokens (so that for instance the end of an input stream
 can be handled graciously).
 
 @< Definitions of class members @>=
-void Lexical_analyser::reset() {@; nesting=0; state=initial; input.reset(); }
-bool Lexical_analyser::prime() {@; return not input.eol() or input.getline(); }
+void Lexical_analyser::reset()
+{@;
+  nest.clear();
+  type_vars.reset();
+  state=initial;
+  input.reset();
+}
+bool Lexical_analyser::prime() @+{@; return not input.eol() or input.getline(); }
 
 @ Skipping spaces is a rather common activity during scanning; it is performed
 by |skip_space|, which also skips any comments that might be encountered. The
@@ -195,7 +207,7 @@ kicks in here, in that a newline is treated as space only if it cannot
 possibly be the end of a command. This is handled in the ``then'' branch after
 |std::isspace(c)| below, although the actual control of this decision is
 distributed in the various pieces of code that maintain of the fields
-|prevent_termination| and |nesting|.
+|prevent_termination| and |nest|.
 
 In case end of input occurs one obtains |shift()=='\0'| from the input buffer,
 and for the end of an included file it passes |shift()=='\f'|, a form-feed. If
@@ -219,7 +231,7 @@ void Lexical_analyser::skip_space() const
     if (std::isspace(c))
      // ignore unless file ends, or a newline where a command could end
   @/{@; if (c=='\f' or
-            c=='\n' and prevent_termination=='\0' and nesting==0)
+            c=='\n' and prevent_termination=='\0' and nest.empty())
         break;
     }
     else if (c==comment_start) @< Skip comment, possibly nested @>
@@ -340,7 +352,7 @@ end-of-input condition is signalled by a failure of the call of the |reset|
 method of the lexical analyser rather than by |input.shift()=='\0'| occurring
 in its |getline| method. The only way the latter can happen is if the
 preceding newline character was ignored by |skip_space|, due to
-|prevent_termination| or |nesting|.
+|prevent_termination| or |nest|.
 
 The way in which we arrange to signal the end of a command from |get_token| is
 by sending \emph{two} successive tokens, a |'\n'| followed by a null token.
@@ -439,12 +451,20 @@ a type definition, including injector or projector names, will be scanned as
   while(std::isalnum(c) || c=='_');
   input.unshift();
   id_type id_code=id_table.match(p,input.point()-p);
+  if (id_code>=type_limit+type_vars.capacity())
+    type_vars.set_capacity(id_code-type_limit+1);
   if (id_code>=type_limit)
-  { valp->id_code=id_code;
-    if (global_id_table->is_defined_type(id_code) or state==type_defining)
-      code=TYPE_ID;
+  { if (type_vars.isMember(id_code-type_limit))
+    { code = TYPE_VAR; // a name temporarily used to designate an arbitrary type
+      @< Set |valp->id_code| to the sequence number of |id_code| in the |nest| @>
+    }
     else
-      code=IDENT;
+    { valp->id_code=id_code;
+      if (global_id_table->is_defined_type(id_code) or state==type_defining)
+        code=TYPE_ID;
+      else
+        code=IDENT;
+    }
   }
   else if (id_code>=keyword_limit)
   @/{@; valp->type_code=id_code-keyword_limit; code=PRIMTYPE; }
@@ -452,21 +472,21 @@ a type definition, including injector or projector names, will be scanned as
   { code=QUIT+id_code;
     switch(code)
     {
-      case LET: ++nesting; input.push_prompt('L'); break;
+      case LET: push_nest(); input.push_prompt('L'); break;
       case BEGIN:
       case IF:
       case WHILE:
       case FOR:
       case CASE:
-        ++nesting; input.push_prompt('G'); break;
+        push_nest(); input.push_prompt('G'); break;
       case IN: if (input.top_prompt()=='L')
-      @/{@; --nesting; input.pop_prompt(); prevent_termination='I'; }
+      @/{@; pop_nest(); input.pop_prompt(); prevent_termination='I'; }
       break;
       case END:
       case FI:
       case OD:
       case ESAC:
-        --nesting; input.pop_prompt(); break;
+        pop_nest(); input.pop_prompt(); break;
       case AND: case OR: case NOT: prevent_termination='~'; break;
       case WHATTYPE: prevent_termination='W'; break;
       case SET: prevent_termination='S'; break;
@@ -477,6 +497,34 @@ a type definition, including injector or projector names, will be scanned as
       break;
     }
   }
+}
+
+@ Type variables are immediately renamed to a small number to be used as the
+|typevar_variant| field of a |type_expr|, which is its sequence number in the
+list of currently active type variables. These variables are recorded in |nest|,
+with newer clutches being pushed at the front of the list. This means that, if
+we want to avoid reversing the list, we must record the position of the
+identifier within its clutch and add to that sizes of all later clutches. We
+skip |nest.front()|, which serves only as a place to prepare type variables to
+be added soon (it should be empty when we reach this code, since
+addition of new type variables will only be triggered by the parser when a list
+of ordinary identifiers is found).
+
+@< Set |valp->id_code| to the sequence number of |id_code| in the |nest| @>=
+{
+  unsigned int count=0; bool seen=false;
+  for (const auto& clutch : nest)
+    if (seen)
+      count += clutch.size();
+    else
+    { unsigned int pos=0;
+      for (auto egg : clutch)
+      { if (egg==id_code)
+        {@; seen=true; count=pos; break; }
+        ++pos;
+      }
+    }
+  valp->id_code = count;
 }
 
 @ Number denotations get as parsing value the string of characters
@@ -493,6 +541,34 @@ pointer to a |std::string|, again to minimise complications for the parser.
   while(std::isdigit(c));
   input.unshift();
   valp->str = new std::string(p,input.point()); code=INT;
+}
+
+@ The method |put_type_variables| is repeatedly called from the parser when a
+list of fresh type variables is announced. The reduction that performs this
+action is triggered by an opening symbol occurring as look-ahead token, so that
+the lexer has already performed the corresponding call of |push_nest|. Therefore
+it is ready to receive those type variables, even though the identifiers are
+textually outside the closed expression that is their scope. These type
+variables will revert to their previous status at the matching call of
+|pop_nest|. We could test in |put_type_variable| that all identifiers in the
+clutch be distinct, but there is no obvious action to take if it should fail;
+all that would result from such an error is that any repeated occurrence of a
+same type variable in the list cannot be referred to, and so will remain unused.
+This is no catastrophe, so for once we'll let slip this kind of error.
+
+@< Definitions of class members @>=
+void Lexical_analyser::put_type_variable(id_type v)
+{ assert(not nest.empty()); // because |push_nest| was just called
+  type_vars.insert(v-type_limit);
+  nest.front().push_back(v);
+}
+void Lexical_analyser::pop_nest()
+{ if (not nest.empty()) // avoid crashing before parser detects an error
+  {
+    for (id_type v : nest.front())
+      type_vars.remove(v-type_limit);
+    nest.pop_front();
+  }
 }
 
 @ For reasons of limited look-ahead in the parser, certain operator symbols
@@ -543,10 +619,10 @@ included before) respectively appending output redirection.
   {      case '"': @< Scan a string denotation @> @+
   break; case '(':
          case '{':
-         case '[': ++nesting; input.push_prompt(c); code=c;
+         case '[': push_nest(); input.push_prompt(c); code=c;
   break; case ')':
          case '}':
-         case ']': --nesting; input.pop_prompt(); code=c;
+         case ']': pop_nest(); input.pop_prompt(); code=c;
   break; case ',':
          case ';':
          case '.':
@@ -628,7 +704,7 @@ question are not very long.
 
 @< Handle the |'~'| case, involving some look-ahead @>=
 if (input.shift()=='[') // recognise combination for parse reason
-{@; code = TLSUB; ++nesting; input.push_prompt('['); }
+{@; code = TLSUB; push_nest(); input.push_prompt('['); }
 else
  // now see if, skipping spaces and comments, next can follow |'~'|
 { input.unshift(); prevent_termination='~'; skip_space();
@@ -671,9 +747,9 @@ break; case '*': operator_termination(c);
        valp->oper.id = id_table.match_literal("*");
        valp->oper.priority = 6;
        code = becomes_follows() ? OPERATOR_BECOMES : c;
-break; case '%': case '/': case '&': operator_termination(c);
+break; case '%': case '/': operator_termination(c);
        valp->oper.id =
-          id_table.match_literal(c=='%' ? "%" : c=='/' ? "/" : "&");
+          id_table.match_literal(c=='%' ? "%" : "/");
        valp->oper.priority = 6;
        code = becomes_follows() ? OPERATOR_BECOMES : OPERATOR;
 break; case '\\':

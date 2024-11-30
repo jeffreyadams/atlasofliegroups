@@ -2350,6 +2350,7 @@ K_type_nr_poly Rep_table::full_deformation(StandardRepr z)
 // for more general |z|, do the preconditioning outside the recursion
 {
   assert(is_final(z));
+
   if (z.gamma().denominator() > (1LL<<rank()))
     z = weyl::alcove_center(*this,z);
 

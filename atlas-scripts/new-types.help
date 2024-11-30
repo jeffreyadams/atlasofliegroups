@@ -1,3 +1,12 @@
+Currently, the type system has several elements:
+  - primitive types and type constructors
+  - table of type abbreviations (just type constants)
+  - table of user-constructed types: extension by new type symbols and relations
+    (which may be recursive)
+  - a table of projector and injector names assosiated to user-constructed
+    (both have syntactic uses that go beyond their use as functions, but there
+    is lack of symmetry in that only projectors can be aliased in these uses)
+
 "Type" symbols can be used to designate not only types, but certain (continuous?)
 maps from types to types (one output), or to other such type maps, and so forth.
 
@@ -22,9 +31,115 @@ type constructors as one of their arguments) then the type structure must also
 cater for this. Probably the latter is useful, if one needs to define type
 constructors that work across a class of types (obtained from some other
 constructor) but not all types; it is not an urgent need though. Examples given
-for Haskell kind are quite unconvincing; before ever giving an example of code
+for Haskell 'kind' are quite unconvincing; before ever giving an example of code
 that could not be written without higher order kinds, they seem to need to talk
 about Haskell-specific (maybe non-orthogonal) details such as Constraints.
 Nonetheless it is conceivable that some code can be usefully parametrised over
 higher kind types, so when redoing the type system it might be an idea to leave
 the possibility of representing these in type values during type analysis.
+
+It appears that the following general principles should apply:
+
+- The contents of the table of type (constructor) abbreviations should have no
+  implications for the set of available types: every possible type can be
+  written without using any of the abbreviations. They are for convenience only.
+
+- Every type definition, abbreviation or not, is made in the context of zero or
+  more type abstractions: names are introduced that can stand for abitrary types
+  or type constructors (following Haskell, each name has a "kind", which is '*'
+  to stand for any (complete) type, but could be '(*->*)' for a type constructor
+  of one (type) parameter, and more generally any expression formed by combining
+  '*' atoms with (.->.) constructors; currying can maybe avoid the need for
+  multi-parameter type constructors). It seems that type abbreviations with
+  abstracted types could be used as arguments to instantiate type constructors,
+  so if multiple names are introduced by abstractions, the result is to be
+  interpreted and a curried type constructor (if multi-parameter was avoided).
+
+- An abbreviation definition essentially becomes a (possibly higher order)
+  type map defined by a type lambda-expression (so if we allow the latter
+  to be written explicitly, we can eliminate the use of type constructor
+  abbreviations as arguments to type constructors; e.g., `T->[T] as a
+  designation of the (otherwise unnamed) 'row-of' type constructor).
+
+- A new (non abbreviation, maybe parameterised) type definition introduced zero
+  or more type (constructor) names (of specified kind), then either a list of
+  new type names defined by mutually recursive definitions (basically the
+  existing 'set_type [ ... ]' style definition, but allowing parameters), or one
+  or more types are introduced as new primitives with a collection of related
+  identifiers (presumably at least one designating a function producing the type
+  so that values can actually be built). In the latter case one also needs to
+  specify a concrete implementation type expression for each new type name
+  introduced, as well as expressions giving the values for the related
+  identifiers (to go into a table of constant values, like the overload table).
+
+-------------------------------------------------------------------------------
+
+Come to think of it, there seem to be two mechanisms that could be treated
+separately. The first is a mechanism to write type-lambda-expressions (possibly
+with many-kinded arguments) and to introduce abbreviations for them. The second
+is a (curently inexistent) mechanis to introduce new (closed) types and type
+constructors, and their "specification" using provided value types, with
+implementation types given by type-lambda-expressions, and implementation values
+matching the specification types.
+
+A third related issue is to be able to define values with partically
+undetermined types, like generic empty lists but also functions with second or
+higher order types. In principle these are not first-class values, but objects
+that become actual values by specifying the missing types, which could be done
+partially by type automatic type deduction, and if needed by explicit
+specialisation by the user (as currently gcd@(int,int) somewhat does, but it
+would be more like #@[int] for the generic row-length operator #).
+
+Deployment plan:
+
+- Extend type system such that types of expressions can be defined as dependent
+  on a set of fresh (dummy) names, each of a specified kind, and then given by a
+  valid (kind-matched) type-valid expression using those names. (Maybe initially
+  just allow names for indeterminate types; it does not seem that allowing
+  indeterminate constructors and such will alter algotithms funadamentally, but
+  it gives some complications that one does not wish to tackle directly.)
+
+- Adapt type checking algorithm to handle such generic type values, and to a
+  certain extent provide automatic specialisation of them to match the type
+  constraints given by the expression being analysed. The analysis may enter
+  new type indeterminates into the context, remove them when specialised, and
+  if some are left at the end of the anaylysis, produce a generic type as
+  result. This procedure should in particular (and at the very least) handle
+  the calling of higher-order functions (those with a generic type).
+
+- Allow introducing type genericity in processing certain definitions and, why
+  not, in expressions to be evaluated. Introducing can be explicit (say
+  'let_type T') to introduce local names to the abstracted types (and type
+  constructors or whatever) but it could also occur implicitly when invoking
+  values with generic types.
+
+- With all that in place, define a mechanism (syntax and semantics) to introduce
+  new primitive types and constructors. (This could in fact be done _before_ all
+  the genericity stuff is introduced, but then it would probably have to be
+  redone afterwards. The chosen order also gives the occasion to clean up our
+  act for existing generic functions before introducing type abstraction.) This
+  mechanism should probably give some thought to projectors and injectors as
+  well. The mechanism essentially should say: New primitive types, and type
+  constructors and such, can be defined by (in the context of new dummy type
+  names) introducing a new name for the primitive (maybe allow more than one?),
+  and an initial (tuple) type, expressed in terms of the primitive (and of
+  course any existing types) that serves as specification for it; then an
+  implementation is provided that specifies a concrete type (or type lambda
+  expression?) to be used to implement the primitive, and a (tuple) value to
+  match to specification (with the concrete type substituted for the ne
+  primitive name). Once processed, the type system is extended with the new
+  primitive (much as it is currently extended when a new possibly recursive set
+  of type equations is processed, except that now we extend by new primitives,
+  not by new infinite types).
+
+
+Structure of new (polymorphic) types and operations to be implemented for them
+
+Besides primitive types, there will be primitive type constructors, of kind
+(*->*), as well as primitives of arbitrary kinds (the latter will have no
+predefined instances, but they can be introduced by abstraction to stand for
+non-primitive type-expressions of that kind, or they can stand for user-defined
+'new primitives'). Any fully-applied well-formed combination of primitives is a
+type that will be considered primitive, in the sense that it fails to match any
+specific type form (like being a function type, or a 3-tuple type), so that only
+exact type match can allow for a usage of subexpressions with such a type.

@@ -482,7 +482,7 @@ class deformation_unit
     LKTs_twisted, def_contrib_twisted; // twisted versions at $q = -1$
   Rep_table& rt; // access $K$-type table, coroots (for alcove testing) etc.
 
-  RankFlags status; // set bits when defined: |0->defcontrib| up to |3->twisted|
+  RankFlags status; // whether |def_contrib|,|def_contrib_twisted| are defined
 
   void set_LKTs();
 public:

@@ -52,6 +52,20 @@ set count ([bool] p) = int: { count (sum) number of truths in list }
 set XOR ([bool] p) = bool: { exclusive or (sum modulo 2) of all truths in list }
   let c=false in for b in p do c:=(c!=b) od; c
 
+{ if evaluating conditions is expensive, procedure them with '@:' and call: }
+set all ([(->bool)] p) = bool:
+  for x in p do if not x() then return false fi od; true
+set any ([(->bool)] p) = bool:
+  for x in p do if x() then return true fi od; false
+set none ([(->bool)] p) = bool:
+  for x in p do if x() then return false fi od; true
+set first ([(->bool)] p) = int:
+  for x@i in p do if x() then return i fi od; -1
+set last ([(->bool)] p) = int: { this is somewhat more efficient than first }
+  let i=#p-1 in while >=i and not p[i]() do i-:=1 od; i
+{ there are no lazy versions of |count| and |XOR| }
+
+{ if cases to test are produced as predicates of an integer, on can use: }
 set all (int limit,(int->bool) predicate) = bool:
   for i:limit do if not predicate(i) then return false fi od; true
 set any (int limit,(int->bool) predicate) = bool:
@@ -63,17 +77,58 @@ set first (int limit,(int->bool) predicate) = int:
 set last (int limit,(int->bool) predicate) = int:
   for i:limit ~do if predicate(i) then return i fi od; -1
 
-{ if evaluating conditions is expensive, one can procedure them with '@:'}
-set all ([(->bool)] p) = bool:
-  for x in p do if not x() then return false fi od; true
-set any ([(->bool)] p) = bool:
-  for x in p do if x() then return true fi od; false
-set none ([(->bool)] p) = bool:
-  for x in p do if x() then return false fi od; true
-set first ([(->bool)] p) = int:
-  for x@i in p do if x() then return i fi od; -1
-set last ([(->bool)] p) = int: { this is somewhat more efficient than first }
-  let i=#p-1 in while >=i and not p[i]() do i-:=1 od; i
+any_type T begin
+
+set all ([T] L,(T->bool) predicate) = bool:
+  all(#L,(int i)bool:L[i].predicate)
+set any ([T] L,(T->bool) predicate) = bool:
+  any(#L,(int i)bool:L[i].predicate)
+set none ([T] L,(T->bool) predicate) = bool:
+  none(#L,(int i)bool:L[i].predicate)
+set first ([T] L,(T->bool) predicate) = int:
+  first(#L,(int i)bool:L[i].predicate)
+set last ([T] L,(T->bool) predicate) = int:
+  last(#L,(int i)bool:L[i].predicate)
+
+set min ((T,T->bool)leq) = (T x, T y) T: if leq(x,y) then x else y fi
+set max ((T,T->bool)leq) = (T x, T y) T: if leq(x,y) then y else x fi
+
+set min_list ((T,T->bool)leq) = ([T] a) T:
+  let l=#a in assert(l.>,"Minimum of an empty list");
+  let m=a~[0] in for i:l-1 do if not leq(m,a[i]) then m:=a[i] fi od; m
+set max_list ((T,T->bool)leq) = ([T] a) T:
+  let l=#a in assert(l.>,"Maximum of an empty list");
+  let m=a~[0] in for i:l-1 do if not leq(a[i],m) then m:=a[i] fi od; m
+
+{ versions seeded with a "limit value" to use in case of an empty list }
+set min_init ((T,T->bool)leq) = (T !seed) ([T]->T):
+  ([T] l)T: let m=seed in for a in l do if not leq(m,a) then m:=a fi od; m
+set max_init ((T,T->bool)leq) = (T !seed) ([T]->T):
+  ([T] l)T: let m=seed in for a in l do if not leq(a,m) then m:=a fi od; m
+
+{ position of first occurrence of minimum, or -1 }
+set mindex ((T,T->bool)leq) = ([T] a) int:
+  let l=#a in
+  if =l then -1
+  else let p=0, m=a[0] in
+    for i:l-1 from 1 do if not leq(m,a[i]) then set (p,m):=(i,a[i]) fi od; p
+  fi
+
+set maxdex ((T,T->bool)leq) = ([T] a) int:
+  let l=#a in
+  if =l then -1
+  else let p=0, m=a[0] in
+    for i:l-1 from 1 do if not leq(a[i],m) then set (p,m):=(i,a[i]) fi od; p
+  fi
+
+set is_member   ((T,T->bool) eq) = ([T] v) (T->bool):
+  (T val)bool: any(#v,(int i)bool: eq(v[i],val))
+set isnt_member ((T,T->bool) eq) = ([T] v) (T->bool):
+  (T val)bool: none(#v,(int i)bool: eq(v[i],val))
+
+set reverse ([T] r) = [T]: for x in r do x ~od
+
+end
 
 { binary search first |i| in [low,high) with |pred(i)|, or |high| if none }
 { of course |pred| is assumed monotonic here: $pred(i)\implies pred(i+1)$ }
@@ -88,7 +143,7 @@ set locate_sorted ([int] v,int lwb) = int: { first index of entry >= |lwb| }
 { transform "stops" representation of weakly increasing function to function }
 set from_stops ([int] stops) = (int->int):
   { at |k| find last index |i| with |stops[i]<=k|; calculated via complement }
-  (int k): locate_sorted(stops,k+1)-1 { find first excess, then back up }
+  (int k): locate_sorted(stops,k+1)-1 { find first excess, then back up 1 }
 
 {                               Integers                                }
 
@@ -98,32 +153,14 @@ set sign (int k)= int: case k then -1 in 0 else 1 esac
 set is_odd  (int n) = bool: !=n%2
 set is_even (int n) = bool:  =n%2
 
-set min (int k, int l) = int: if k<l then k else l fi
-set max (int k, int l) = int: if k<l then l else k fi
-
-set min ([int] a) = int: let l=#a in assert(l.>,"Minimum of an empty list");
-  let m=a~[0] in for i:l-1 do if a[i]<m then m:=a[i] fi od; m
-set max ([int] a) = int: let l=#a in assert(l.>,"Maximum of an empty list");
-  let m=a~[0] in for i:l-1 do if a[i]>m then m:=a[i] fi od; m
-
-set min_loc ([int] a) = int: { position of first occurrence of minimum, or -1 }
-  let l=#a in
-  if =l then -1
-  else let p=0, m=a[0] in
-    for i:l-1 from 1 do if a[i]<m then set (p,m):=(i,a[i]) fi od; p
-  fi
-set max_loc ([int] a) = int: { position of first occurrence of maximum, or -1 }
-  let l=#a in
-  if =l then -1
-  else let p=0, m=a[0] in
-    for i:l-1 from 1 do if a[i]>m then set (p,m):=(i,a[i]) fi od; p
-  fi
-
-{ versions seeded with a "limit value" to use in case of an empty list }
-set min (int !seed) = ([int]->int):
-  ([int] l): let m=seed in for a in l do if a<m then m:=a fi od; m
-set max (int !seed) = ([int]->int):
-  ([int] l): let m=seed in for a in l do if a>m then m:=a fi od; m
+set min = min(<=@(int,int))
+set max = min(<=@(int,int))
+set min = min_list(<=@(int,int))
+set max = min_list(<=@(int,int))
+set min = min_init(<=@(int,int))
+set max = min_init(<=@(int,int))
+set min_loc = mindex(<=@(int,int))
+set max_loc = maxdex(<=@(int,int))
 
 set gcd = (int,int->int): { greatest common divisor; no size limit }
    let limit = 2^31 in
@@ -158,10 +195,8 @@ set exact_divide (int a, int b) = int:
 
 set int_format = to_string@int
 
-set is_member ([int] v) = (int->bool):
-  (int val)bool: any(#v,(int i)bool: v[i]=val)
-set isnt_member ([int] v) = (int->bool):
-  (int val)bool: all(#v,(int i)bool: v[i]!=val)
+set is_member = is_member(=@(int,int))
+set isnt_member = isnt_member(=@(int,int))
 
 { when |v| is known to be sorted (and long), this can be done faster }
 set is_member_sorted ([int] v) = (int->bool):
@@ -211,12 +246,13 @@ set bitwise_union ([int] ns) = int:
 set fac (int n) = int: let p=1 in for i:n-1 from 2 do p *:=i od; p
 
 { convert to base n as polynomial: small coef polynomial evaluating to k at n }
-set to_base_poly (int n) = (int->vec): (int k) vec: assert(k.>=);
-  let r=0{dummy for multi-assign} in while !=k do set (k,r):=k\%n; r od
+set to_base_poly (int n) = (int->vec):
+  (int k): assert(k.>=); let r=0{dummy for multi-assign} in
+  vec: while !=k do set (k,r):=k\%n; r od
 
 set to_base (int n, (int->string) digit) = (int->string):
   let tbp=to_base_poly(n) in
-  (int k) string: assert(k.>=); for c in tbp(k) ~do c.digit od.##
+  (int k) string: for c in tbp(k) ~do c.digit od.##
 
 set binary = (int->string):
   let f=to_base(2,to_string@int) in
@@ -233,9 +269,9 @@ set numer (rat a) = let (n,)=%a in n
 set denom (rat a) = let (,d)=%a in d
 
 set is_integer (rat r) = bool: denom(r)=1
-set sign (rat a)= int: sign(numer(a)) { denominator is always positive }
+set sign (rat a) = int: sign(numer(a)) { denominator is always positive }
 
-set abs(rat a)=rat: sign(a)*a
+set abs (rat a) = rat: sign(a)*a
 
 set \ ((rat,rat)p) = int: floor(/p)
 set \% ((rat,int)p) = (int,rat): (\p,%p) { shouldn't these two be built-in? }
@@ -245,10 +281,19 @@ set \% ((rat,rat)p) = (int,rat): (\p,%p)
 set floor ([rat] v) = vec: for a in v do floor(a) od
 set ceil  ([rat] v) = vec: for a in v do  ceil(a) od
 
+set min = min(<=@(rat,rat))
+set max = min(<=@(rat,rat))
+set min = min_list(<=@(rat,rat))
+set max = min_list(<=@(rat,rat))
+set min = min_init(<=@(rat,rat))
+set max = min_init(<=@(rat,rat))
+set min_loc = mindex(<=@(rat,rat))
+set max_loc = maxdex(<=@(rat,rat))
+
 set sum ([rat] r) = rat: let s=rat:0 in for a in r do s+:=a od; s
 set product ([rat] r) = rat: let p=rat:1 in for a in r do p*:=a od; p
 
-{ extend built-in scalar product of vectors to list of rational case }
+{ extend built-in scalar product of vectors to list of rationals case }
 set * ([rat] v, [rat] w) = rat:
    let s=rat:0 in for vi@i in v do s +:= vi*w[i] od; s
 
@@ -258,33 +303,6 @@ set * ([int] v, [rat] w) = rat:
 { make a rational into an integer if possible }
 set rat_as_int (rat r) = int:
   let (n,d)=%r in if d=1 then n else error("Not an integer") fi
-
-set min (rat k, rat l) = rat: if k<l then k else l fi
-set max (rat k, rat l) = rat: if k<l then l else k fi
-
-set min ([rat] a) = rat: let l=#a in assert(l.>,"Minimum of an empty list");
-  let m=a~[0] in for i:l-1 do if a[i]<m then m:=a[i] fi od; m
-set max ([rat] a) = rat: let l=#a in assert(l.>,"Maximum of an empty list");
-  let m=a~[0] in for i:l-1 do if a[i]>m then m:=a[i] fi od; m
-
-set min_loc ([rat] a) = int: { position of first occurrence of minimum, or -1 }
-  let l=#a in
-  if =l then -1
-  else let p=0, m=a[0] in
-    for i:l-1 from 1 do if a[i]<m then set (p,m):=(i,a[i]) fi od; p
-  fi
-set max_loc ([rat] a) = int: { position of first occurrence of maximum, or -1 }
-  let l=#a in
-  if =l then -1
-  else let p=0, m=a[0] in
-    for i:l-1 from 1 do if a[i]>m then set (p,m):=(i,a[i]) fi od; p
-  fi
-
-{ versions seeded with a "limit value" to use in case of an empty list }
-set min (rat !seed) = ([rat]->rat):
-  ([rat] l): let m=seed in for a in l do if a<m then m:=a fi od; m
-set max (rat !seed) = ([rat]->rat):
-  ([rat] l): let m=seed in for a in l do if a>m then m:=a fi od; m
 
 set with_decimals (int n) = (rat->string): (rat r) string:
 (  let sign=if >=r then "+" else r:=-r; "-" fi, i=floor(r), f=frac(r)
@@ -299,6 +317,9 @@ in sign
 set !new_line = ascii(10) { including this in a string passes to a new line }
 
 set char_index (string c, string s) = int: first(#s,(int i)bool: c=s[i])
+
+set is_member = is_member(=@(string,string))
+set isnt_member = isnt_member(=@(string,string))
 
 set + = ##@(string,string) { + aliases string concatenation "ax" ## "is" }
 set * = (string,int->string): { repeat string; use recursive doubling }
@@ -333,6 +354,8 @@ set c_adjust (int w, string s) = string:
 
 set width (int n) = int: #int_format(n)
 
+set split (string S) = [string]: for l in S do l od
+
 set split_lines (string text) = [string]:
 ( if text~[0]!=new_line then text := (text next text:="") ## new_line fi
 ; let last=0 in
@@ -358,8 +381,10 @@ set e(int n,int i) = vec: for j:n do #(i=j) od
 
 set ones (int n)= vec: for i:n do 1 od
 
+set is_member = is_member(=@(vec,vec))
+set isnt_member = isnt_member(=@(vec,vec))
+
 set ~ (vec v)= vec: v~[:]
-set reverse ([int] r) = [int]: for x in r do x ~od
 set lower (int k,vec v)= vec: v[:k]
 set upper (int k,vec v)= vec: v[k~:]
 set drop_lower (int k,vec v)= vec: v[k:]
@@ -390,14 +415,16 @@ set all_words ([int] limits) = mat:
 
 set all_0_1_vecs (int n) = [vec]: all_words(for :n do 2 od)
 
+any_type T begin
+
 set rec_fun power_set (int n) = [[int]]: { indices where 0_1_vecs have 1 }
   if =n then [[]] else let p=power_set(n-:=1) in p ## for S in p do S#n od fi
-set power_set ([int] S) = [[int]]:
+set power_set ([T] S) = [[T]]:
   for inx in power_set(#S) do for i in inx do S[i] od od
-set choices_from ([int] S, int k) = [[int]]: { all $k$-subsets of $S$ }
+set choices_from ([T] S, int k) = [[T]]: { all $k$-subsets of $S$ }
   if k>#S then []
   else { now we will assume $n\geq k$ }
-    let rec_fun from_first(int n,int k) = [[int]]: { $k$ from first $n$ of $S$ }
+    let rec_fun from_first(int n,int k) = [[T]]: { $k$ from first $n$ of $S$ }
       if k=0 then [[]] { unique choice of 0 }
       else { generate by final element, and concatenate }
         for i:n-k+1 from k-1
@@ -406,6 +433,11 @@ set choices_from ([int] S, int k) = [[int]]: { all $k$-subsets of $S$ }
       fi
     in from_first(#S,k)
   fi
+
+set multiplicity ((T,T->bool)eq) = (T,[T]->int):
+  (T n, [T] S) int: for x in S do eq(x,n) od.count
+
+end
 
 set all_0_1_vecs_with_sum (int n,int k) = [vec]:
    let !zero = null(n) in
@@ -422,7 +454,6 @@ set mixed_radix_word([int] radix) = (int->vec):
   (int N) vec: for rad@i in radix ~do let (q,r)= N\%rad in N:=q; r ~od
 
 {. number of times n occurs in [int] S .}
-set multiplicity (int n, [int] S) = int: for x in S do x=n od.count
 
 {add zeros to make total length =N}
 set pad ([int] v,int N) = vec: v##null(N-#v)
@@ -463,14 +494,12 @@ set main_diagonal (mat A) = vec:  for i:shape(A).min do A[i,i] od
 set = (mat m,int k) = bool: =(m-k)
 
 { add a column to a matrix, which is not predefined as operator # }
-{ this definition is better than defining #@(mat,vec), as it will allow the
-  generic version to be used with argument types |[vec]| and |[int]| }
-set # = #@([vec],vec) { implicit conversion wil handle |(mat,vec)| arguments }
-set # = #@(vec,[vec]) { implicit conversion wil handle |(vec,mat)| arguments }
+set # (mat m, vec v) = mat: n_rows(m) { require size match } # (columns(m)#v)
+set # (vec v, mat m) = mat: n_rows(m) { require size match } # (v#columns(m))
 
 { add row to a matrix, which is similar; use operator ^ for it }
-set ^ (mat m, vec v) = mat: #v ^ rows(m)#v
-set ^ (vec v, mat m) = mat: #v ^ v#rows(m)
+set ^ (mat m, vec v) = mat: n_columns(m) ^ (rows(m)#v)
+set ^ (vec v, mat m) = mat: n_columns(m) ^ (v#rows(m))
 
 set ## (mat A, mat B) = mat: { concatenate horizontally, must have same depth }
    n_rows(B) # (columns(A)##columns(B))
@@ -572,16 +601,13 @@ set saturated_span (mat M) = bool: { whether columns span saturated sublattice }
   =#inv_f or inv_f~[0]=1 { all invariant factors are 1? test last one, if any }
 
 { test all vectors in a list }
-set all ([vec] L,(vec->bool) predicate) = bool:
-  all(#L,(int i)bool:L[i].predicate)
-set any ([vec] L,(vec->bool) predicate) = bool:
-  any(#L,(int i)bool:L[i].predicate)
-set none ([vec] L,(vec->bool) predicate) = bool:
-  none(#L,(int i)bool:L[i].predicate)
-set first ([vec] L,(vec->bool) predicate) = int:
-  first(#L,(int i)bool:L[i].predicate)
-set last ([vec] L,(vec->bool) predicate) = int:
-  last(#L,(int i)bool:L[i].predicate)
+
+
+set all (mat m,(vec->bool) pred) = bool: all([vec]:m,pred)
+set any (mat m,(vec->bool) pred) = bool: any([vec]:m,pred)
+set none (mat m,(vec->bool) pred) = bool: none([vec]:m,pred)
+set first (mat m,(vec->bool) pred) = int: first([vec]:m,pred)
+set last (mat m,(vec->bool) pred) = int: last([vec]:m,pred)
 
 set columns_with ((int,vec->bool) p,mat m) = mat:
   n_rows(m)# for col@j in m if p(j,col) do col fi od
@@ -601,10 +627,10 @@ set rows_with ((int->bool) p,mat m) = mat:
 set a_row_with ((vec->bool) p,mat m) = maybe_a_vec:
   for row in rows(m) do if p(row) then return solution(row) fi od; no_vec()
 
-set >=(mat m) = bool: { non-negative (dominant) columns only } all(m,>=@vec)
-set >(mat m) = bool: { strictly positive (dominant) columns only } all(m,>@vec)
-set <=(mat m) = bool: all(m,<=@vec)
-set <(mat m) = bool: all(m,<@vec)
+set >=([vec] m) = bool: { non-negative (dominant) columns only } all(m,>=@vec)
+set >([vec] m) = bool: { strictly positive (dominant) columns only } all(m,>@vec)
+set <=([vec] m) = bool: all(m,<=@vec)
+set <([vec] m) = bool: all(m,<@vec)
 
 set lookup_column (vec v,mat m) = int: last(columns(m),(vec w)bool: w=v)
 set lookup_row (vec v,mat m) = int: last(rows(m),(vec w)bool: w=v)
@@ -709,7 +735,7 @@ set \ (ratvec v, int k) = vec: let (n,d)=%v in n\(k*d)
 set ratvec_as_vec (ratvec v) = vec:
   let (w,d)=%v in assert(d=1,"Not an integer vector"); w
 
-set reverse (ratvec v)= ratvec: v~[:]
+set ~ (ratvec v)= ratvec: v~[:]
 set lower (int k,ratvec v)= ratvec: v[:k]
 set upper (int k,ratvec v)= ratvec: v[k~:]
 set drop_lower (int k,ratvec v)= ratvec: v[k:]
@@ -2169,11 +2195,17 @@ set index_in ([Param] L) = (Param->int): { an efficiency hack: }
 
 { find index of item in list, or -1 if not found; |first| does this }
 
-set find ([int] v, int k) = int:      first(#v,(int i)bool:v[i]=k)
-set find ([Param] L,Param p) = int:   first(#L,(int i)bool:L[i]=p)
-set find ([KGBElt] S,KGBElt x) = int: first(#S,(int i)bool:S[i]=x)
-set find ([vec] S,vec v) = int:       first(#S,(int i)bool:S[i]=v)
-set find ([ratvec] S,ratvec v) = int: first(#S,(int i)bool:S[i]=v)
+any_type T begin
+set find ((T,T->bool)eq) = ([T] a, T x) int: first(a,(T y)bool:eq(y,x))
+set delete ([T] a, int i) = [T]: a[:i] ## a[i+1:]
+end
+
+set find = find(=@(int,int))
+set find = find(=@((int,int),(int,int)))
+set find = find(=@(vec,vec))
+set find = find(=@(ratvec,ratvec))
+set find = find(=@(KGBElt,KGBElt))
+set find = find(=@(Param,Param))
 
 { No version for finding [int] due to potential ambiguity with vec version.
   Note that |find(L,x)| has alternative |first(for y in L do x=y od)| which
@@ -2181,17 +2213,7 @@ set find ([ratvec] S,ratvec v) = int: first(#S,(int i)bool:S[i]=v)
 }
 
 set in_string_list (string s,[string] S) = bool:
-  >=first(for t in S do s=t od)
-
-set in_list([int] v,int k)=bool:>=find(v,k)
-
-{ delete one term from a list }
-set delete ([int] v, int k)     =[int]:     v[:k]##v[k+1:]
-set delete ([vec] v, int k)     =[vec]:     v[:k]##v[k+1:]
-set delete ([ratvec] v, int k)  =[ratvec]:  v[:k]##v[k+1:]
-set delete ([[ratvec]] v, int k)=[[ratvec]]:v[:k]##v[k+1:]
-set delete ([[vec]] v, int k)   =[[vec]]:   v[:k]##v[k+1:]
-set delete ([ParamPol] P, int k)=[ParamPol]:P[:k]##P[k+1:]
+  s.(is_member(=@(string,string))(S))
 
 set positive_imaginary_roots_and_coroots = imaginary_sys@(RootDatum,mat)
 set positive_imaginary_roots_and_coroots = imaginary_sys@KGBElt

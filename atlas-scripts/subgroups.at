@@ -259,11 +259,6 @@ find(rd,all_subs_rd_2,sub_rd_1) fi
 
 {  sorting and grouping of [RootData]  }
 
-{sorting by dimension, semisimple rank, #simple factors}
-set sort_by((RootDatum->int) f) =
-   ([RootDatum] v) [RootDatum]:
-      for index in inv_standardisation(for x in v do f(x) od) do v[index] od
-
 set sort_by_dimension = ([RootDatum] -> [RootDatum]):
    sort_by(dimension@RootDatum)
 
@@ -327,14 +322,12 @@ set weakly_maximal_pseudo_Levis_simple (RootDatum rd) = [RootDatum]:
   assert(rd.is_abelian or rd.derived_is_simple
         ,"Root Datum has more than one simple factor");
   if is_abelian(rd) then [rd]
-  else let sr=simple_roots(rd)
+  else let sr = [vec]: simple_roots(rd)
     , labels=simple_root_labels(rd), alpha=-highest_root(rd)
   in filter(rd,rd#
-    (for i:semisimple_rank(rd)
-     do if labels[i] != 1
-        then [subgroup_by_simple(rd, delete(sr,i)#alpha)] else []
-	fi
-     od.##
+    (for i:semisimple_rank(rd) if labels[i] != 1
+     do subgroup_by_simple(rd, delete(sr,i)#alpha)
+     fi od
     ))
   fi
 
@@ -342,7 +335,7 @@ set maximal_pseudo_Levis_simple (RootDatum rd) = [RootDatum]:
   assert(rd.is_abelian or rd.derived_is_simple
         ,"Root Datum has more than one simple factor");
   if is_abelian(rd) then [rd]
-  else let sr=simple_roots(rd)
+  else let sr=[vec]:simple_roots(rd)
     , labels=simple_root_labels(rd), alpha=-highest_root(rd)
   in filter(rd,rd#
     (for i:semisimple_rank(rd)
@@ -681,16 +674,17 @@ let values=
 
 
 set component_group_of_pseudo_Levi(RootDatum rd_L,RootDatum rd)=
-assert(is_pseudo_Levi(rd_L,rd),"Not a pseudo-Levi");
-if rd_L.is_abelian then [] else
-let (,M)=Levi_of_subspace(rd,radical_basis(rd_L)) {centralizer of L_rad} then
-norm=normalizer(rd_L,M) then
-center=elements_of_center(rd_L.derived) then
-center_lifted=for v in center do lift(rd_L,v) od then
-rv=[] in
- for (,w) in norm do
-  let m=w.matrix in
-  if all (for v in center_lifted do m*v=v od) then rv#:=(m,w) fi od;rv fi
+   assert(is_pseudo_Levi(rd_L,rd),"Not a pseudo-Levi");
+   if rd_L.is_abelian then []
+   else let (,M)=Levi_of_subspace(rd,radical_basis(rd_L)) {centralizer of L_rad}
+      then norm=normalizer(rd_L,M)
+      then center=elements_of_center(rd_L.derived)
+      then center_lifted = for v in center do lift(rd_L,v) od
+   in for (,w) in norm
+      do let m=w.matrix in
+         if for v in center_lifted do m*v=v od.all do (m,w) fi
+      od
+   fi
 
 
 set centralizer_pseudo_Levi(RootDatum rd_L,RootDatum rd)=[(mat,WeylElt)]:

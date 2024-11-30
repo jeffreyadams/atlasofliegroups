@@ -423,7 +423,7 @@ set poly_format (i_poly v, string q)= string:
 { we cannot reuse |poly_format| below, as it takes a |vec| of coefficients }
 
 { for |int_poly| and |rat_poly| that value names the indeterminate; use it }
-set to_string (int_poly(X,cs,)) = string:
+set format (int_poly(X,cs,)) = string:
    if =#cs then "0"
    else
       let pow(int k) = string: { print monomial X^k, possibly shortened }
@@ -437,7 +437,7 @@ set to_string (int_poly(X,cs,)) = string:
       od.##
    fi
 
-set to_string (rat_poly(X,cs,)) = string:
+set format (rat_poly(X,cs,)) = string:
    if =#cs then "0"
    else ##
       for c@k in cs

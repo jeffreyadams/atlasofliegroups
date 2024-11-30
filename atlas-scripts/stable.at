@@ -51,13 +51,15 @@ set in_tau (int s,Param p) = bool:  { whether s is in tau(p) }
    let (,b)= tau_bitset(p) in b(s)
 set in_tau ([int] S,Param p) = bool:  { whether $S\subset\tau(p)$ }
    all(#S, (int i)bool: in_tau(S[i],p))
+
+{ This axis version does not allow declaring universal list type argument
 set in_tau([*] S,Param p) = bool: true { whether $\emptyset\subset\tau(p)$ }
+}
 
 set in_tau_complement (int s,Param p) = bool: { whether s not in tau(p) }
    not in_tau(s,p)
 set in_tau_complement ([int] S,Param p) = bool: { whether $S\cap\tau(p)$ empty }
    all(#S, (int i)bool: in_tau_complement(S[i],p))
-set in_tau_complement([*] S,Param p) = bool: true
 
 { translate irreducibles to singular infinitesimal character,
   only keep those for which tau(p)\subset S-complement }
@@ -73,13 +75,10 @@ set Psi_irr ([Param] params,[int] S) = [Param]:
 { select indices of parameters whose |tau| contains |S| }
 set parameters_tau_containing ([int] S,[Param] params) = [int]:
    for p@i in params if in_tau(S,p) do i fi od
-set parameters_tau_containing([*] S,[Param] params) = [int]: # #params
 
 { select indices of parameters whose |tau| is disjoint from |S| }
 set parameters_tau_contained_in_complement ([int] S,[Param] params) = [int]:
    for p@i in params if in_tau_complement(S,p) do i fi od
-set parameters_tau_contained_in_complement ([*] S,[Param] params) = [int]:
-   # #params
 
 {recover permutation related to Vogan duality for given block}
 set duality_permutation ([Param] B) = [int]: let (,perm)=dual_block(B) in perm
@@ -87,7 +86,6 @@ set duality_permutation ([Param] B) = [int]: let (,perm)=dual_block(B) in perm
 {subset of parameters p^\vee on dual side satisfying: S^\vee\subset tau(p^\vee)}
 set dual_parameters ([int] S,[Param] B) = [int]:
   let (B_dual,perm)=dual_block(B) in parameters_tau_containing(S,B_dual)
-set dual_parameters ([*] S,[Param] B)=[int]: dual_parameters([int]:S,B)
 
 {parameters dual to the previous ones, i.e. satisfying
  tau(p)\subset S-complement in the order so that:
@@ -101,12 +99,8 @@ set parameters ([int] S,[Param] B) = [int]:
   then Q=permutation_inverse(P)
   in for j in dual_params do Q[j] od
 
-set parameters ([*] S,[Param] B) = [int]: parameters([int]:S,B)
-
 set parameters_singular ([int] S,[Param] B) = [Param]:
   for i in parameters(S,B) do Psi_irr(B[i],S).first_param od
-set parameters_singular ([*] S,[Param] B)=[Param]:
-  parameters_singular([int]: S,B)
 
 {vector of (-1)^{length(p)}, and corresponding diagonal matrix}
 set lengths_signs ([Param] params) = [int]:
@@ -115,17 +109,12 @@ set lengths_signs_matrix ([Param] params) = mat:
   diagonal(lengths_signs(params))
 set lengths_signs ([int] S,[Param] B) = [int]:
   lengths_signs(for i in parameters(S,B) do B[i] od)
-set lengths_signs ([*] S,[Param] B) = [int]: lengths_signs([int]:S,B)
 set lengths_signs_matrix ([int] S,[Param] B) = mat:
   lengths_signs_matrix(for i in parameters(S,B) do B[i] od)
-set lengths_signs_matrix ([*] S,[Param] B) = mat:
-  lengths_signs_matrix([int]:S,B)
 
 set dual_parameters_matrix ([int] S,[Param] B) = mat:
   let dual_parameters = dual_parameters(S,B), perm=duality_permutation(B) in
   matrix( (#dual_parameters,#B), (int i,int j)int: #(perm[i]=j) )
-set dual_parameters_matrix([*] S,[Param] B) = mat:
-  dual_parameters_matrix([int]:S,B)
 
 set dual_parameters_matrix ([Param] B) = mat: dual_parameters_matrix([int]:[],B)
 
@@ -143,8 +132,6 @@ set dual_parameters_standard_basis ([Param] B) = mat:
 set dual_parameters_standard_basis ([int] S,[Param] B) = mat:
   let M=dual_parameters_standard_basis(B) in
   ^(for i in dual_parameters(S,B) do row(M,i) od)
-set dual_parameters_standard_basis ([*] S,[Param] B) = mat:
-  dual_parameters_standard_basis([int]:S,B)
 
 set subspace_injection_matrix ([Param] B,[Param] subset) = mat:
   let rv=null(#subset,#B), indices=indices(B,subset) in
@@ -169,11 +156,9 @@ set vanishing ([int] S,[Param] B) = mat:
   dual_parameters_standard_basis(S,B)*
   ^dual_parameters_matrix(B)*stable_at_regular(B)
 {^(^dual_parameters_standard_basis(S,B)*^dual_parameters_matrix(B)*stable_at_regular(B))}
-set vanishing ([*] S,[Param] B) = mat: vanishing([int]:S,B)
 
 {r\times\ell  matrix, r=#parameters, \ell=dimension of (left) kernel of vanishing}
 set kernel_vanishing ([int] S,[Param] B) = mat: kernel(^vanishing(S,B))
-set kernel_vanishing ([*] S,[Param] B)   = mat: kernel_vanishing([int]:S,B)
 
 {t\times r matrix, t=dimension of kernel of kernel_vanishing}
 {unsorted version, shouldn't be used except for testing}
@@ -184,9 +169,6 @@ set stable_at_singular_unsorted ([int] S,[Param] B) = (mat,[Param]):
   in prints("signs:", signs); (Y*signs,parameters_singular(S,B))
 {(^kernel(^kernel_vanishing(S,B))*lengths_signs_matrix(S,B),parameters_singular(S,B))}
 
-{handle empty case where first argument is of type [*]}
-set stable_at_singular_unsorted ([*] S,[Param] B) = (mat,[Param]):
- stable_at_singular_unsorted([int]:S,B)
 
 {same as stable_at_singular_unsorted, except that it is sorted}
 {B is a set of parameters at regular infinitesimal character}
@@ -196,9 +178,6 @@ set stable_at_singular ([int] S,[Param] B) = (mat,[Param]):
   then P=permutation_matrix_sort(params)
   in (M*^P,for i in sort(params) do Psi_irr(B[i],S).first_param od)
 
-{handle empty case where first argument is of type [*]}
-set stable_at_singular ([*] S,[Param] B) = (mat,[Param]):
-  stable_at_singular([int]:S,B)
 
 {given block (or union of blocks) of parameters B at regular infinitesimal character,
 and a subset\subset B
@@ -219,10 +198,6 @@ in prints("number of parameters at singular inf char:", #subset)
    then signs=lengths_signs_matrix(subset_singular)
    in (Y*signs,subset_singular)
 )
-
-{handle empty case where first argument is of type [*]}
-set stable_at_singular ([*] S,[Param] B,[Param] subset) = (mat,[Param]):
-  stable_at_singular([int]:S,B,subset)
 
 set stable_sums([Param] singular_parameters)=[(mat,[Param])]:
 let G=singular_parameters[0].real_form {assuming all have same infinitesimal character} then
@@ -266,9 +241,6 @@ set print_stable_at_singular_unsorted ([int] S,[Param] B) = void:
             "parameters=", params, new_line,
             "dimension space of stable characters:", n_rows(M), new_line,M)
 
-set print_stable_at_singular_unsorted ([*] S,[Param] B) = void:
-  print_stable_at_singular_unsorted([int]:S,B)
-
 set print_stable_at_singular ([int] S,[Param] B) = void:
   let (M,)=stable_at_singular(S,B)
   then params=sort(parameters(S,B))
@@ -276,16 +248,12 @@ set print_stable_at_singular ([int] S,[Param] B) = void:
             "parameters=", params, new_line,
             "dimension space of stable characters:", n_rows(M), new_line,M)
 
-set print_stable_at_singular ([*] S,[Param] B) = void:
-  print_stable_at_singular([int]:S,B)
+set indices ([Param] B,[Param] subset) = [int]: for p in subset do find(B,p) od
 
 {#subset x #B matrix}
 
 set printParamPol(ParamPol P)=void:
   tabulate(for c@p in P do [split_format(c), " ", p.to_string] od)
-
-set printParamPol([ParamPol] list)=void:
-for P in list do printParamPol(P) od
 
 set print_stable_at_singular ([int] S,[Param] B,[Param] subset) = void:
   let (rv,params)=stable_at_singular(S,B,subset) in
@@ -293,9 +261,6 @@ set print_stable_at_singular ([int] S,[Param] B,[Param] subset) = void:
   prints("surviving parameters:",indices(B,params));
   prints("dimension space of stable characters: ", n_rows(rv), new_line,rv)
 
-set print_stable_at_singular ([*] S,[Param] B,[Param] subset) = void:
-
-print_stable_at_singular([int]:S,B,subset)
 
 set stable ([Param] params) = (mat,[Param]):
   assert(has_infinitesimal_character(params)
@@ -321,8 +286,6 @@ set stable_test_Aq_packet (RealForm G,ComplexParabolic P) = void:
 
 set stable_test_Aq_packet (RealForm G,[int] complex_parabolic) = void:
   stable_test_Aq_packet(G,ComplexParabolic:(G,complex_parabolic))
-set stable_test_Aq_packet (RealForm G,[*] complex_parabolic) = void:
-  stable_test_Aq_packet(G,[int]:complex_parabolic)
 
 
 set *(vec v,[Param] params)=
@@ -333,7 +296,7 @@ od;rv fi
 
 set *(mat M,[Param] params)=for v in M do v*params od
 
-set print ([(mat,[Param])] list)=void:
+set print_sums ([(mat,[Param])] list)=void:
 prints("Number of blocks: ", #list);
 for (M,params)@i in list do
  prints(new_line,"block #:", i);
@@ -343,7 +306,7 @@ for (M,params)@i in list do
 od
 
 set print_stable_sums([(int,int,Param)] list)=void:
-print(stable_sums(parameters(list)))
+  print_sums(stable_sums(parameters(list)))
 
 set print_stable_sums([[(int,int,Param)]] lists)=void:
 prints("Stable sums for ",#lists," packets:");

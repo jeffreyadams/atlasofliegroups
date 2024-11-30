@@ -514,12 +514,11 @@ set e8_gap_classes = [string]:
 
 set e8_gap_class_locate = (string->int):
    let L=e8_gap_classes
-   then ranked = sort(#L,(int i,int j)bool: L[i]<=L[j])
-   then sorted = for place in ranked do L[place] od
+   then ranked = sort_indices((int i,int j)bool: L[i]<=L[j])(#L)
 in (string label) int:
-   let rank = binary_search_first((int i)bool: label<=sorted[i], 0,#sorted)
-   in assert(rank<#sorted and sorted[rank]=label,"Label "+label+" not found");
-      ranked[rank]
+   let result =
+      ranked[binary_search_first((int i)bool: label<=L[ranked[i]], 0,#L)]
+   in assert(L[result]=label,"Label "+label+" not found"); result
 
 set e8_gap_class_digitize([string] labels) = [int]:
    for label in labels do e8_gap_class_locate(label) od

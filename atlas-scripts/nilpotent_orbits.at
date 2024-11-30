@@ -94,16 +94,10 @@ set complex_nilpotent_from_diagram(RootDatum rd,[int] diagram) =
    )
 )
 
-set sort_by((ComplexNilpotent->int) f) =
-   ([ComplexNilpotent] v) [ComplexNilpotent]:
-      for index in inv_standardisation(for x in v do f(x) od) do v[index] od
-
 set sort_by_dimension = ([ComplexNilpotent]->[ComplexNilpotent]):
    sort_by(dim_nilpotent@ComplexNilpotent)
 
-set find ([ComplexNilpotent] list,ComplexNilpotent O) = int:
-   first(#list,(int i)bool:list[i].root_datum=O.root_datum and
-                           list[i].H=O.H)
+set find = find(=@(ComplexNilpotent,ComplexNilpotent))
 
 set find ([RealNilpotent] list,RealNilpotent O) = int:
    first(#list,(int i)bool:list[i].x=O.x and
@@ -146,12 +140,20 @@ set blocku(RealForm G) = [Param]:
       fi
    od
 
+{. Auxiliary function: For a list of integers giving simple roots, compute
+  twice the sum of the corresponding fundamental coweights. .}
+set S_weight ([int] S, RootDatum rd) = ratvec:
+   sum(rd.rank, for k in S do 2*fundamental_coweight(rd,k) od)
+
+{. These are candidates H for the semisimple element of an SL(2) triple;
+   not necessarily a vec, for example in SL(3). .}
+set H_candidates (RootDatum rd) = [ratvec]:
+   for S in power_set(#rd.semisimple_rank) do S_weight (S,rd) od
+
 {. Choose the H among the candidates which correspond to distinguished
    nilpotent orbits. .}
 set distinguished_Hs_definition (RootDatum rd_L) = [vec]:
-   let S_weight([int] S) = ratvec: {twice sum of fundamental coweights for S}
-      sum(rd_L.rank, for k in S do fundamental_coweight(rd_L,k) od)*2
-in for H in  for S in power_set(#rd_L.semisimple_rank) do S_weight(S) od
+   for H in H_candidates(rd_L)
       if dim_eigenspace(rd_L,H,2) =
          dim_eigenspace(rd_L,H,0)+semisimple_rank(rd_L)-rank(rd_L)
       do ratvec_as_vec(H)
@@ -386,10 +388,6 @@ set =(RealNilpotent (H,x,):O1, RealNilpotent (K,y,):O2) = bool:
    real_form(x)=real_form(y) and
    dominant(H,x.root_datum)=dominant(K,y.root_datum) and
    parabolic_of_orbit(O1)=parabolic_of_orbit(O2)
-
-set sort_by ((RealNilpotent->int) f) =
-   ([RealNilpotent] v) [RealNilpotent]:
-      for index in inv_standardisation(for x in v do f(x) od) do v[index] od
 
 set root_datum (RealNilpotent O) = RootDatum: O.x.root_datum
 set real_form (RealNilpotent O) = RealForm: O.x.real_form

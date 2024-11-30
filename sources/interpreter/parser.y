@@ -32,11 +32,11 @@
 %}
 %union {
   unsigned short code; // for various kinds of detailing of tokes or options
-  short id_code;    // for identifier codes, or defined types
+  unsigned short id_code;  // for identifier codes, a |Hash_table| index
   std::string* str;  // for integer or string denotations
-  struct { short id, priority; } oper; /* for operator symbols */
+  struct { unsigned short id, priority; } oper; /* for operator symbols */
   atlas::interpreter::raw_form_stack ini_form;
-  unsigned short type_code; /* For type names */
+  unsigned short type_code; /* For primiitve type names */
   atlas::interpreter::expr_p    expression; /* For generic expressions */
   atlas::interpreter::raw_expr_list expression_list; /* list of expressions */
   atlas::interpreter::raw_let_list decls; /* declarations in a LET expression */
@@ -64,11 +64,11 @@
 
 %token QUIT SET LET IN BEGIN END IF THEN ELSE ELIF FI AND OR NOT
 %token NEXT DO DONT FROM DOWNTO WHILE FOR OD CASE ESAC REC_FUN
-%token TRUE FALSE DIE BREAK RETURN SET_TYPE WHATTYPE SHOWALL FORGET
+%token TRUE FALSE DIE BREAK RETURN SET_TYPE ANY_TYPE WHATTYPE SHOWALL FORGET
 
 %token <oper> OPERATOR OPERATOR_BECOMES '=' '*'
 %token <str> INT STRING
-%token <id_code> IDENT TYPE_ID
+%token <id_code> IDENT TYPE_ID TYPE_VAR
 %token TOFILE ADDTOFILE FROMFILE FORCEFROMFILE
 
 %token <type_code> PRIMTYPE
@@ -85,7 +85,7 @@
 %type <ini_form> formula_start
 %type <oper> operator
 %type <id_code> id_op
-%type <code> tilde_opt breaker
+%type <code> tilde_opt breaker typevar_list
 %destructor { destroy_expr ($$); }
             expr expr_opt tertiary cast lettail or_expr and_expr not_expr
 	    formula operand secondary primary comprim unit selector
@@ -96,29 +96,32 @@
 %type <expression_list> commalist do_commalist commalist_opt commabarlist
 %destructor { destroy_exprlist($$); }
             commalist do_commalist commalist_opt commabarlist
-%type <decls> declarations declaration
+%type <decls> declaration declarations
+	      polymorphic_declaration polymorphic_declarations
 %destructor { destroy_letlist($$); } declarations declaration
+	      polymorphic_declaration polymorphic_declarations
+
 
 %left OPERATOR
 
 %type <ip> pattern pattern_opt closed_pattern
 %destructor { destroy_id_pat($$); } pattern pattern_opt closed_pattern
-%type <pl> pat_list
-%destructor { destroy_pattern($$); } pat_list
-%type <type_pt> type typedef_unit
-%destructor { destroy_type($$); } type typedef_unit
-%type <type_l> union_list_opt types union_list
+%type <pl> pat_list id_list
+%destructor { destroy_pattern($$); } pat_list id_list
+%type <type_pt> type closed_type typedef_unit
+%destructor { destroy_type($$); } type closed_type typedef_unit
+%type <type_l> union_list_opt union_list type_list
                typedef_list_opt typedef_list typedef_composite typedef_units
 %destructor { destroy_type_list($$); }
-            types union_list_opt union_list typedef_list_opt
+            union_list_opt union_list type_list typedef_list_opt
             typedef_composite typedef_list typedef_units
 %type <id_sp1> id_spec type_spec typedef_type type_field typedef_type_field
 %destructor { destroy_type($$.type_pt);destroy_id_pat($$.ip); }
 	    id_spec type_spec typedef_type type_field typedef_type_field
-%type <id_sp> id_specs id_specs_opt struct_specs union_specs
+%type <id_sp> param_list id_specs struct_specs union_specs
             typedef_struct_specs typedef_union_specs
 %destructor { destroy_type_list($$.typel);destroy_pattern($$.patl); }
-	    id_specs id_specs_opt
+	    param_list id_specs
 %type <case_l> caselist tagged_caselist do_caselist tagged_do_caselist
 %destructor { destroy_case_list($$); }
 	    caselist do_caselist tagged_caselist tagged_do_caselist
@@ -137,28 +140,21 @@ input:	'\n'			{ YYABORT; } /* null input, skip evaluator */
           { YYABORT; } /* ignore end-of-file seen at command level too */
 	| expr '\n'		{ *parsed_expr=$1; }
 	| SET declarations '\n' { global_set_identifiers($2,@$); YYABORT; }
-	| FORGET IDENT '\n'	{ global_forget_identifier($2); YYABORT; }
-	| FORGET TYPE_ID '\n'	{ global_forget_identifier($2); YYABORT; }
-	| SET operator '(' id_specs ')' '=' expr '\n'
-	  { struct raw_id_pat id; id.kind=0x1; id.name=$2.id;
-	    global_set_identifier(id,
-				  make_lambda_node($4.patl,$4.typel,$7,@$),
-				  2,
-				  @$);
-	    YYABORT;
+	| ANY_TYPE typevar_list BEGIN polymorphic_declarations END
+	  {
+	    auto decls = insert_type_abstraction($2,$4,@$);
+	    sequentially_set_identifiers(decls,@$); YYABORT;
 	  }
-	| SET operator '=' expr '\n'
-	  { struct raw_id_pat id; id.kind=0x1; id.name=$2.id;
-	    global_set_identifier(id,$4,2,@$); YYABORT;
-	  }
-	| FORGET IDENT '@' type '\n'
-	  { global_forget_overload($2,$4); YYABORT;  }
-	| FORGET operator '@' type '\n'
-	  { global_forget_overload($2.id,$4); YYABORT; }
 	| IDENT ':' expr '\n'
 		{ struct raw_id_pat id; id.kind=0x1; id.name=$1;
 		  global_set_identifier(id,$3,0,@$); YYABORT; }
 	| IDENT ':' type '\n'	{ global_declare_identifier($1,$3); YYABORT; }
+	| FORGET IDENT '\n'	{ global_forget_identifier($2); YYABORT; }
+	| FORGET TYPE_ID '\n'	{ global_forget_identifier($2); YYABORT; }
+	| FORGET IDENT '@' type '\n'
+	  { global_forget_overload($2,$4); YYABORT;  }
+	| FORGET operator '@' type '\n'
+	  { global_forget_overload($2.id,$4); YYABORT; }
 	| SET_TYPE IDENT '=' type_spec '\n'
 	  { type_define_identifier($2,$4.type_pt,$4.ip,@$); YYABORT; }
 	| SET_TYPE TYPE_ID '=' type_spec '\n'
@@ -227,9 +223,8 @@ expr    : LET lettail { $$=$2; }
 	  { $$=make_lambda_node($2.patl,$2.typel,$5,@$); }
 	| '(' id_specs ')' cast
 	  { $$=make_lambda_node($2.patl,$2.typel,$4,@$); }
-	| REC_FUN IDENT '(' id_specs_opt ')' type ':' expr
+	| REC_FUN IDENT '(' param_list ')' type ':' expr
 	  { $$ = make_rec_lambda_node($2,$4.patl,$4.typel,$8,$6,@$); }
-	| RETURN expr { $$=make_return($2,@$); }
 	| cast
 	| tertiary ';' expr { $$=make_sequence($1,$3,0,@$); }
 	| tertiary NEXT expr { $$=make_sequence($1,$3,1,@$); }
@@ -247,17 +242,35 @@ declarations: declarations ',' declaration { $$ = append_let_node($1,$3); }
 ;
 
 declaration: pattern '=' expr { $$ = make_let_node($1,$3); }
-	| IDENT '(' id_specs_opt ')' '=' expr
+	| operator '=' expr
+	  { struct raw_id_pat p; p.kind=0x1; p.name=$1.id;
+	    $$ = make_let_node(p,$3);
+	  }
+	| IDENT '(' param_list ')' '=' expr
 	  { struct raw_id_pat p; p.kind=0x1; p.name=$1;
 	    $$ = make_let_node(p,make_lambda_node($3.patl,$3.typel,$6,@$));
 	  }
-	| REC_FUN IDENT '(' id_specs_opt ')' '=' type ':' expr
+	| operator '(' param_list ')' '=' expr
+	  { struct raw_id_pat p; p.kind=0x1; p.name=$1.id;
+	    $$ = make_let_node(p,make_lambda_node($3.patl,$3.typel,$6,@$));
+	  }
+	| REC_FUN IDENT '(' param_list ')' '=' type ':' expr
 	  {
 	    auto f = make_rec_lambda_node($2,$4.patl,$4.typel,$9,$7,@$);
 	    struct raw_id_pat p; p.kind=0x1; p.name=$2; // use $2 again
 	    $$ = make_let_node(p,f);
 	  }
 ;
+
+polymorphic_declarations
+	: polymorphic_declaration
+	| polymorphic_declarations polymorphic_declaration
+	  { $$ = append_let_node($1,$2); }
+	;
+
+polymorphic_declaration
+	: SET declarations { $$=$2; }
+	;
 
 tertiary: IDENT BECOMES tertiary { $$ = make_assignment($1,$3,@$); }
 	| SET pattern BECOMES tertiary { $$ = make_multi_assignment($2,$4,@$); }
@@ -277,8 +290,12 @@ tertiary: IDENT BECOMES tertiary { $$ = make_assignment($1,$3,@$); }
 	| assignable_subsn IDENT BECOMES tertiary
 	  { $$ = make_comp_upd_ass($1,$2,$4,@$,@2); }
 	| IDENT '.' ident_expr OPERATOR_BECOMES tertiary
-	{ $$ = make_field_upd_ass
+	  { $$ = make_field_upd_ass
 	        (make_applied_identifier($1,@1),$3,$4.id,$5,@$,@2); }
+	| IDENT '.' ident_expr IDENT BECOMES tertiary
+	  { $$ = make_field_upd_ass
+	        (make_applied_identifier($1,@1),$3,$4,$6,@$,@2); }
+	| RETURN tertiary { $$=make_return($2,@$); }
 	| or_expr
 ;
 
@@ -368,8 +385,9 @@ unit    : INT { $$ = make_int_denotation($1,@$); }
 
 	| WHILE do_expr tilde_opt OD { $$=make_while_node($2,2*$3,@$); }
 	| iffor_loop
-	| '(' expr ')'		       { $$=$2; }
-	| BEGIN expr END	       { $$=$2; }
+	| '(' expr ')'	 { $$=$2; }
+	| BEGIN expr END { $$=$2; }
+	| '&' typevar_list BEGIN expr END { $$=make_abstr($2,$4,@$); }
 	| '[' commalist_opt ']'
 		{ $$=wrap_list_display(reverse_expr_list($2),@$); }
 	| '[' commabarlist ']'
@@ -385,6 +403,11 @@ unit    : INT { $$ = make_int_denotation($1,@$); }
 	}
 	| operator '@' type { $$=make_op_cast($1.id,$3,@$); }
 	| IDENT '@' type    { $$=make_op_cast($1,$3,@$); }
+	| operator '@' typevar_list closed_type
+	  { $$=make_op_cast($1.id,$4,@$); }
+	  // reducing |typevar_list| prepares type variables in |closed_type|
+	| IDENT '@' typevar_list closed_type
+	  { $$=make_op_cast($1,$4,@$); } // likewise
 	| DIE { $$= make_die(@$); }
         | breaker{ $$= make_break($1,@$); }
 ;
@@ -736,23 +759,33 @@ pat_list: pattern_opt ',' pattern_opt
 
 id_spec: type pattern { $$.type_pt=$1; $$.ip=$2; }
 	| '(' id_specs ')'
-	{ $$.type_pt=make_tuple_type($2.typel);
-	  $$.ip.kind=0x2; $$.ip.sublist=reverse_patlist($2.patl);
-	}
+	  { // forbidding parenthesised singletons gives parser headaches
+	    if ($2.typel->next==nullptr) // so just remove the parentheses
+	    {
+	      $$.type_pt = unmake_type_singleton($2.typel);
+	      $$.ip = unmake_pattern_singleton($2.patl);
+	    }
+	    else
+	    {
+	      $$.type_pt=make_tuple_type($2.typel);
+	      $$.ip.kind=0x2; $$.ip.sublist=reverse_patlist($2.patl);
+	    }
+	  }
 	| type '.' { $$.type_pt=$1; $$.ip.kind=0x0; }
 ;
 
 id_specs: id_spec
-	{ $$.typel=make_type_singleton($1.type_pt);
-	  $$.patl=make_pattern_node(nullptr,$1.ip);
-	}
+	  { $$.typel=make_type_singleton($1.type_pt);
+	    $$.patl=make_pattern_node(nullptr,$1.ip);
+	  }
 	| id_specs ',' id_spec
-	{ $$.typel=make_type_list($1.typel,$3.type_pt);
-	  $$.patl=make_pattern_node($1.patl,$3.ip);
-	}
+	  { $$.typel=make_type_list($1.typel,$3.type_pt);
+	    $$.patl=make_pattern_node($1.patl,$3.ip);
+	  }
 ;
 
-id_specs_opt: id_specs
+param_list
+	: id_specs
 	| /* empty */ { $$.typel=nullptr; $$.patl=nullptr; }
 ;
 
@@ -797,12 +830,35 @@ type_field : type IDENT { $$.type_pt=$1; $$.ip.kind=0x1; $$.ip.name=$2; }
 
 type	: PRIMTYPE	{ $$=make_prim_type($1); }
 	| TYPE_ID
-	  { bool c; $$=acquire(global_id_table->type_of($1,c)).release(); }
-	| '(' union_list ')'	{ $$=make_union_type($2); }
+	  { bool c; // dummy for reporting "constness"
+	    $$=acquire(&global_id_table->type_of($1,c)->unwrap()).release(); }
+	| closed_type
+	| TYPE_VAR { $$=make_type_variable($1); }
+;
+
+typevar_list : id_list
+	  { $$=length($1); // compute before |reverse_patlist| makes $1 useless
+	    prepare_type_variables(reverse_patlist($1));
+	  }
+;
+
+id_list : IDENT
+	  { atlas::interpreter::raw_id_pat aux;
+	    aux.kind=0x1; aux.name=$1;
+	    $$=make_pattern_node(nullptr,aux);
+	  }
+	| id_list ',' IDENT
+	  { atlas::interpreter::raw_id_pat aux;
+	    aux.kind=0x1; aux.name=$3;
+	    $$=make_pattern_node($1,aux);
+	  }
+;
+
+closed_type:
+	  '(' union_list ')'	{ $$=make_union_type($2); }
 	| '(' union_list_opt ARROW union_list_opt ')'
 	  { $$=make_function_type(make_union_type($2),make_union_type($4)); }
 	| '[' union_list ']'	{ $$=make_row_type(make_union_type($2)); }
-	| '[' '*' ']'	        { $$=make_row_type(new type_expr{}); }
 ;
 
 union_list_opt :   { $$=make_type_singleton(make_tuple_type(nullptr)); }
@@ -810,17 +866,16 @@ union_list_opt :   { $$=make_type_singleton(make_tuple_type(nullptr)); }
 ;
 
 union_list : type { $$ = make_type_singleton($1); }
-	| types { $$ = make_type_singleton(make_tuple_type($1)); }
+	| type_list { $$ = make_type_singleton(make_tuple_type($1)); }
 	| union_list_opt '|'
 	  { $$ = make_type_list ($1, make_tuple_type(nullptr)); }
 	| union_list_opt '|' type { $$ = make_type_list($1,$3); }
-	| union_list_opt '|' types
+	| union_list_opt '|' type_list
 	  { $$ = make_type_list($1,make_tuple_type($3)); }
 ;
 
-types	: type ',' type
-	  { $$=make_type_list(make_type_singleton($1),$3); }
-	| types ',' type { $$=make_type_list($1,$3); }
+type_list: type ',' type  { $$=make_type_list(make_type_singleton($1),$3); }
+	| type_list ',' type { $$=make_type_list($1,$3); }
 ;
 
 type_equations : type_equation
@@ -877,7 +932,7 @@ typedef_units :
 	| typedef_units ',' typedef_unit { $$=make_type_list($1,$3); }
 ;
 
-typedef_unit : TYPE_ID { $$=new type_expr($1); }
+typedef_unit : TYPE_ID { $$=make_tabled_type($1); }
 	| typedef_type {$$=$1.type_pt;}
 	| '(' typedef_unit ')' { $$=$2; }
 ;

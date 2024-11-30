@@ -94,7 +94,7 @@ v_X=X.root_part then
 h=X.semisimple_part in
 for alpha@i in X.root_datum.roots do
 v_X[i]:=
-if =v_X[i] then v_X[i] else v_X[i]*root_of_unity(alpha*v,X.F) fi 
+if =v_X[i] then v_X[i] else v_X[i]*root_of_unity(alpha*v,X.F) fi
 od;
 lie_algebra_element(X.t,v_X##h)
 
@@ -328,13 +328,13 @@ N=#S {length of vectors} then
 coeffs=box(F.order,#S) in
 let ()=prints("box #coeffs: ",#coeffs) in
 for i:#coeffs downto 0 do
-let A=coeffs[i] in 
+let A=coeffs[i] in
 let ()=prints(new_line,"i:",i, " ", A) in
  let X_vec=null(t,F).root_part then
  ()= for i:#S do X_vec+:=zeta^A[i]*S[i].root_part   od then
  X=lie_algebra_element_root_vectors(t,X_vec) then
  v_X=X.root_part then
- v_X_short=for alpha in S_roots do let j=t.root_datum.all_root_index(alpha) in v_X[j] od 
+ v_X_short=for alpha in S_roots do let j=t.root_datum.all_root_index(alpha) in v_X[j] od
 then
  adx=ad(X) then
  sol=full_solve(ad(X),coordinates(H(t,H,F))) in
@@ -355,13 +355,13 @@ N=#S {length of vectors} then
 coeffs=[coeff] in
 let ()=prints("coeffs:",#coeffs) in
 for i:#coeffs downto 0 do
-let A=coeffs[i] in 
+let A=coeffs[i] in
 let ()=prints(new_line,"i:",i, " ", A) in
  let X_vec=null(t,F).root_part then
  ()= for i:#S do X_vec+:=zeta^A[i]*S[i].root_part   od then
  X=lie_algebra_element_root_vectors(t,X_vec) then
  v_X=X.root_part then
- v_X_short=for alpha in S_roots do let j=find(t.root_datum.roots,alpha) in v_X[j] od 
+ v_X_short=for alpha in S_roots do let j=find(t.root_datum.roots,alpha) in v_X[j] od
 then
  adx=ad(X) then
  sol=full_solve(ad(X),coordinates(H(t,H,F))) in
@@ -404,11 +404,11 @@ prints("failed to find X"); [] fi od
 
 {
 set JM_triple(StructureConstantTable t,vec H,CyclotomicField F)=
-let S=for X in two_eigenspace(t,H) do embed(X,F) od in 
+let S=for X in two_eigenspace(t,H) do embed(X,F) od in
 JM_triple(t,H,S,F)
 
 set JM_triples(StructureConstantTable t,vec H,CyclotomicField F,int number,int start)=
-let S=for X in two_eigenspace(t,H) do embed(X,F) od in 
+let S=for X in two_eigenspace(t,H) do embed(X,F) od in
 JM_triples(t,H,S,F,number,start)
 }
 
@@ -427,10 +427,10 @@ E=X.F then
 ()=if v_X.F.order.is_odd then
  v_X:=map_root_of_unity(v_X);
  v_Y:=map_root_of_unity(v_Y);
- E:=cyclotomic_field(2*X.F.order) 
+ E:=cyclotomic_field(2*X.F.order)
 fi
 then
-delta_coeffs=for i:#v_X do E.primitive_root^power_of_primitive_root(v_X[i]*inverse(v_Y[i])) od 
+delta_coeffs=for i:#v_X do E.primitive_root^power_of_primitive_root(v_X[i]*inverse(v_Y[i])) od
 then
 ()=prints("solving for torus element with w=",w) then
 ()=prints("delta_coeffs:");show(delta_coeffs);prints(delta_coeffs.F) then
@@ -459,7 +459,7 @@ start=inverse_make_coords(start_vec,F.order) in
 for i:tries  do let
  A=make_coords(start-i,F.order,N) then
  v=null(#t.root_datum.roots,F) then
- ()= for i:#S do v+:=zeta^A[i]*S[i]   od 
+ ()= for i:#S do v+:=zeta^A[i]*S[i]   od
 in
  let (M,,)=spanning_subset(S_roots) in
  if is_solvable_for_torus_element(M,v) then
@@ -481,7 +481,7 @@ od; (false,null(t,F),null(t,F),tits_identity(w.root_datum))
 set JM_triple_strong(StructureConstantTable t,ComplexNilpotent O,CyclotomicField F,WeylElt w,int tries)=
 let S=two_eigenspace(t.root_datum,O.H) then
 v=for i:#S do F.order-1 od in
-let ()=prints("v=",v) in 
+let ()=prints("v=",v) in
 JM_triple_strong(t,O.H,S,F,w,v,tries)
 
 
@@ -495,7 +495,7 @@ start=inverse_make_coords(start_vec,F.order) in
 for i:tries  do let
  A=make_coords(start-i,F.order,N) then
  v=null(#t.root_datum.roots,F) then
- ()= for i:#S do v+:=zeta^A[i]*S[i]   od 
+ ()= for i:#S do v+:=zeta^A[i]*S[i]   od
  in
  let (M,,)=spanning_subset(S_roots) in
  if is_solvable_for_torus_element(M,v) then
@@ -507,8 +507,8 @@ for i:tries  do let
   if (any(sol)) then
    let v_Y=a_solution(sol) then
    Y=lie_algebra_element(t,v_Y) then
-   bools=[], tits_elements=[Tits_elt]:[] then
-   ()=for w in ws do
+   bools=[bool]:[], tits_elements=[Tits_elt]:[] then
+   ()= void: for w in ws do
    let  (success,g)=solve_for_tits_element(w,X) in
      bools#:=success;
      tits_elements#:=g
@@ -533,7 +533,7 @@ or i:tries  do let
 A=make_coords(start-i,F.order,N) then
 ()=prints(new_line,"i:",i, " ",A) in
  let v=null(N,F) then
- ()= for i:#S do v+:=zeta^A[i]*S_coords[i]   od 
+ ()= for i:#S do v+:=zeta^A[i]*S_coords[i]   od
 then
  adx=ad(X) then
  sol=full_solve(ad(X),coordinates(H(t,H,F))) in
@@ -609,7 +609,7 @@ subgroup=[Tits_elt]:[tits_identity(rd)] then
 done=0 then
 ()=while done=0 do
 let new=false in
- for g in S do 
+ for g in S do
   for h in subgroup do
    let prod=g*h then
    k=find(subgroup,prod) in
@@ -681,7 +681,7 @@ else
  coeffs=for v in box(2,n) do 2*v-shift od in
  for c in coeffs do
    let w=null(N) in
-   for i:#c do 
+   for i:#c do
    w+:=c[i]*vectors[i] od;w
  od
 fi
@@ -703,7 +703,7 @@ let orbits=orbits(S,w) then
 rv=[] in
 for orbit in orbits do
  if #orbits=1
-  then rv#:=[orbit] 
+  then rv#:=[orbit]
  else
   let base_sign=sign(w,orbit[0]) in
   if  all(for i:#orbit do base_sign=sign(w,orbit[i]) od) then rv#:=[orbit] fi

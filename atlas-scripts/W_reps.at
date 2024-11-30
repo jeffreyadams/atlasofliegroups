@@ -53,11 +53,12 @@ set sort_u (WeylClassTable tab,[W_rep] list) = [W_rep]:
   case #list
   in [], list
   else let chars = for pi in list do character(tab,pi) od
-     then sorted = [[int]]: sort_u(chars)
-     then positions = for :#sorted do minus_1 od
+     , leq = lexicographic(<=@(int,int))
+     then sorted = [[int]]: sort_u(leq)(chars)
+     then positions = for :#sorted do -1 od
      in for char@i in chars
         do let j =
-           binary_search_first((int j):lex_lesseq(char,sorted[j]),0,#sorted)
+           binary_search_first((int j):leq(char,sorted[j]),0,#sorted)
            in assert(char=sorted[j]); if positions[j].< then positions[j]:=i fi
         od
      ; for pos in positions do list[pos] od

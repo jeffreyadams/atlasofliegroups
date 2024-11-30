@@ -1,9 +1,12 @@
+<basic.at
 <W_reps_type_BC.at
 <springer_table_D.at {for B_adjust}
 <nilpotent_centralizer.at
 
 set partition_sum(Partition P,Partition Q)=Partition:
 if #P<=#Q then pad(P,#Q) + Q else pad(Q,#P)+P fi
+
+set multiplicity = multiplicity(=@(int,int))
 
 set add_one(Partition P)=Partition:P[0]+:=1;P
 set subtract_one(Partition P)=Partition:P~[0]-:=1;P
@@ -423,7 +426,7 @@ set orbit_symbols(Partition P)=
 if P.sum.is_even then orbit_symbols_C(P) else orbit_symbols_B(P) fi
 
 set sort_by_dual_orbit = ([OrbitSymbol] symbols):
-for i in sort(#symbols, (int i,int j)bool: lex_lesseq(symbols[j].dual_orbit,symbols[i].dual_orbit)) do symbols[i] od
+for i in sort_indices(#symbols, (int i,int j)bool: lex_leq(symbols[j].dual_orbit,symbols[i].dual_orbit)) do symbols[i] od
 
 { Sort list of parameters by height }
 set sort_by_height = ([Param] -> [Param]): sort_by( height@Param )
@@ -437,10 +440,8 @@ rv=dual_orbit(cp) in
 rv
 
 set birational_induction(OrbitSymbol S)=
-let (gl,cp)=S then
-rv=Partition:[] then
-()=for (c,) in gl do rv:=partition_sum(rv,2*ones(c)) od in
-(rv,dual_orbit(cp))
+let (gl,cp)=S, rv=Partition:[]
+in for (c,) in gl do rv:=partition_sum(rv,2*ones(c)) od; (rv,dual_orbit(cp))
 
 set orbit_symbols(RootDatum rd)=[OrbitSymbol]:
 ##for P in rd.nilpotent_orbit_partitions do

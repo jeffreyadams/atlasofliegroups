@@ -17,12 +17,12 @@ set to_rational(CyclotomicVec v)=ratvec:
 assert(is_rational(v),"vector is not rational");for x in v do to_rational(x) od
 
 {redefine show more concisely}
-set to_string (CyclotomicFieldElement z) = string:
+set format (CyclotomicFieldElement z) = string:
    if z=z.F.zero then "0" else to_rat_poly(z.v,"x").to_string fi
 
 
 {.display cyclotomic field element as polynomial in x.}
-set show (CyclotomicFieldElement z) = void: prints(to_string(z))
+set show (CyclotomicFieldElement z) = void: prints(format(z))
 
 set show(CyclotomicVec v)=void:
 let rv="" in for a in v do  rv+:=a.to_string+" " od;prints(rv)
@@ -40,7 +40,7 @@ set !=(CyclotomicVec v)=bool:not =v
 
 set +(CyclotomicVec v,CyclotomicVec w)=CyclotomicVec:
 assert(#v=#w,"Cyclotomic vectors not the same length");
-for i:#v do v[i]+w[i] od 
+for i:#v do v[i]+w[i] od
 
 set *(CyclotomicFieldElement z,CyclotomicVec v)=CyclotomicVec:
 for a in v do z*a od

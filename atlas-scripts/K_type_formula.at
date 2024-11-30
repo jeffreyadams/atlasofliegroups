@@ -23,7 +23,7 @@ and atlas automatically standardizes/finalizes it.
 For application to Hodge filtrations, print a warning when this happens
 }
 
-set u_cap_s_roots(Parabolic P,KGBElt x)=[vec]: let S=[] in for alpha
+set u_cap_s_roots(Parabolic P,KGBElt x)=[vec]: let S=[vec]: [] in for alpha
 in nilrad_roots(P) do if is_noncompact_imaginary(alpha,x) then
 S#:=alpha elif is_complex(alpha,x) and find(S,involution(x)*alpha)=-1
 then S#:=alpha fi od;S

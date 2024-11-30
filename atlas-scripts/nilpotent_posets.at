@@ -14,11 +14,6 @@ set_type NilpotentPoset =
 set nilpotent_poset ((RootDatum, [ComplexNilpotent], Poset)triple) =
    NilpotentPoset: triple { identity, for now }
 
-{sorting}
-set sort_by((ComplexNilpotent->int) f)=
-   ([ComplexNilpotent] v) [ComplexNilpotent]:
-      for index in inv_standardisation(for x in v do f(x) od) do v[index] od
-
 {sort by dimension}
 set sort = ([ComplexNilpotent] -> [ComplexNilpotent]):
    sort_by(dim_nilpotent@ComplexNilpotent)
@@ -188,7 +183,7 @@ new_line + orbit.dim_nilpotent.to_string od)
 
 set special_elliptic(RootDatum rd)=
 let ad=affine_datum(rd) then
-ell=elliptic_conjugacy_class_reps(rd) then
+ell=[WeylElt]: elliptic_conjugacy_class_reps(rd) then
 good_info=for w in ell do good_info(w,ad) od then
 special=##for w@i in ell do let (,,levis,,,,,(,x))=good_info[i] then
  (a,)=%x then
@@ -209,24 +204,20 @@ let (num,)=%v then
 z=null(rd.rank)/1 in for i:#num do z+:=2*num[i]*fundamental_coweights(rd)[i] od;
 (rd,(),ratvec_as_vec(z))
 
-set sort_by((WeylElt->int) f) =
-   ([WeylElt] v) [WeylElt]:
-      for index in inv_standardisation(for x in v do f(x) od) do v[index] od
-
 set g(WeylElt w)=lusztig_of_special_elliptic(w).dim_nilpotent
 
 {sort [WeylElt] by dimension of Lusztig(w) (associated nilpotent),
  assuming each w is special elliptic so Lusztig(w) is known
  }
 set sort_by_dimension_of_nilpotent = ([WeylElt] -> [WeylElt]):
-sort_by(g@WeylElt)
+  sort_by(g@WeylElt)
 
 set special_elliptic_poset(RootDatum rd)=NilpotentPoset:
 let ad=affine_datum(rd) then
-ell=elliptic_conjugacy_class_reps(rd) then
+ell=[WeylElt]: elliptic_conjugacy_class_reps(rd) then
 good_info=for w in ell do good_info(w,ad) od then
-special_elliptic_elements=[] then
-orbits=[] in
+special_elliptic_elements=[WeylElt]:[] then
+orbits=[ComplexNilpotent]:[] in
 for w@i in ell do let (,,levis,,,,,(v,x))=good_info[i] then
  (a,)=%x then
  c=a[0] in
