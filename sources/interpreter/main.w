@@ -137,9 +137,11 @@ dependency on the readline library.
 @q axis_version "0.9.8" fully functional set_type command @>
 @q axis_version "0.9.9" integer 'case': optional out-of-bounds clause(s) @>
 @q axis_version "1.0" recursion implemented without creating memory leak @>
-@d axis_version "1.1" @q concatenating for and if loop syntax @>
+@q axis_version "1.1" concatenating for and if loop syntax 1/4/2022 @>
 
- // numbering from 0.5 (on 27/11/2010); last change April 1st, 2020
+@d axis_version "2.0" @q Major update to allow polymorphic types 1/12/2024 @>
+
+ // numbering from 0.5 (on 27/11/2010); last change December 1st, 2024
 
 @c
 
