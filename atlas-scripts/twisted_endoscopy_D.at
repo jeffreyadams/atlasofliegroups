@@ -1,4 +1,28 @@
+<endoscopy.at
 <twisted_endoscopy.at
+
+set *(rat a, ParamPol P)=ParamPol:
+let rv=0*P then
+(num,denom)=%a in
+for (c,p) in %P do 
+  let (x,y)=%c
+  then (a,b)=(num*x/denom, num*y/denom) then
+  coeff=assert(is_integer(a) and is_integer(b),"not all coefficents are divisible by the denominator");
+   Split:(rat_as_int(a),rat_as_int(b)) in
+  rv+:=coeff*p
+ od;rv
+
+set times_s_to_1(rat a,ParamPol P)=ParamPol:
+let rv=0*P then
+(num,denom)=%a in
+for (c,p) in %P do 
+  let (x,y)=%c
+  then (a,b)=(num*x/denom, num*y/denom) then
+  coeff=assert(is_integer(a+b),"not all coefficents are divisible by the denominator");
+  rat_as_int(a+b) in
+  rv+:=coeff*p
+ od;rv
+
 
 
 {SO(2n) in SO(2n+1)}
@@ -130,7 +154,8 @@ A*distinguished_involution(G)}
 
 set lift( KGBElt_gen x_H_gen,mat M, RealForm G)=KGBElt_gen:
 let tf_H_raw=x_H_gen.unnormalized_torus_factor then
-theta_G=lift_involution(x_H_gen.involution,M,G) then
+{theta_G=lift_involution(x_H_gen.involution,M,G) then}
+theta_G=lift(x_H_gen.involution,M,G) then
 tf_G_raw=M*tf_H_raw then
 {tf_G=(2*tf_G_raw-G.rho_check)*(1+theta_G)/2 in}
 tf_G=M*(-2*tf_H_raw+rho_check(x_H_gen.real_form)) {-M*(-2*tf_H_raw+rho_check(x_H_gen.real_form))} in 
@@ -255,7 +280,16 @@ let all=all_parameters_x_gamma(x, gamma_H) in
 first(for p@i in all do  finalize(lift_std(p,M,p_G.real_form))=p_G od)
 
 
-set inverse_lift_std_by_search(Param p_G,RealForm H,mat M,ratvec gamma_H)=ParamPol:
+set inverse_index(Param p_G,RealForm H,mat M,ratvec gamma_H)=int:
+let x=KGB_elt(KGB_elt_gen(H,restrict_action(p_G.involution,M),0*rho(H))) in
+let n_x=x.number in
+let index= for i:KGB_size(H)-n_x from n_x do 
+first(for p@i in all_parameters_x_gamma(KGB(H,i), gamma_H) do  finalize(lift_std(p,M,p_G.real_form))=p_G od) od in
+first(for k:#index do index[k]!=-1 od)
+
+
+
+set inverse_lift_std_by_searchV1(Param p_G,RealForm H,mat M,ratvec gamma_H)=ParamPol:
 let x=KGB_elt(KGB_elt_gen(H,restrict_action(p_G.involution,M),0*rho(H))) in
 let n_x=x.number in
 let index= for i:KGB_size(H)-n_x from n_x do 
@@ -265,7 +299,7 @@ let i= first(for k:#index do index[k]!=-1 od) in
 param_pol(L_packet(all_parameters_x_gamma(KGB(H,n_x+i),gamma_H)[index[i]]))
 
 
-set inverse_lift_std_by_search(Param p_G,RealForm H,mat M,mat delta,ratvec gamma_H)=ParamPol:
+set inverse_lift_std_by_search2(Param p_G,RealForm H,mat M,ratvec gamma_H)=ParamPol:
 let ()=prints("inverse lift of: ", p_G) then
 y_G=y_gen(p_G) then
 action_H=-^restrict_action(y_G.involution,M) then
@@ -292,9 +326,23 @@ let x=KGB_elt(KGB_elt_gen(H,restrict_action(p_G.involution,M),0*rho(H))) in
 let lambda=left_inverse(M)*(p_G.lambda-rho(p_G.real_form)) + solve(1+x.involution,(1+x.involution)*(gamma_H-rho(H)-(left_inverse(M)*(p_G.lambda-rho(p_G.real_form))))).requisition in
 {if #all_parameters_x_gamma(x,gamma_H)>0 then}	
 if is_integer(lambda) then
-inverse_lift_std_preliminary(p_G,H,M) else
-inverse_lift_std_by_search(p_G,H,M,gamma_H)
+inverse_lift_std_preliminary(p_G,H,M,gamma_H) else
+if inverse_index(p_G,H,M,gamma_H)=-1 then
+inverse_lift_std_by_search2(p_G,H,M,gamma_H)
+else
+inverse_lift_std_by_searchV1(p_G,H,M,gamma_H)
+fi fi
+
+
+set inverse_lift_std_V2(Param p_G,RealForm H,mat M, ratvec gamma_H)=ParamPol:
+let x=KGB_elt(KGB_elt_gen(H,restrict_action(p_G.involution,M),0*rho(H))) in
+let lambda=left_inverse(M)*(p_G.lambda-rho(p_G.real_form)) + solve(1+x.involution,(1+x.involution)*(gamma_H-rho(H)-(left_inverse(M)*(p_G.lambda-rho(p_G.real_form))))).requisition in
+{if #all_parameters_x_gamma(x,gamma_H)>0 then}	
+if is_integer(lambda) then
+inverse_lift_std_preliminary(p_G,H,M,gamma_H) else
+inverse_lift_std_by_searchV1(p_G,H,M,gamma_H)
 fi
+
 
 {same as before only that infinitesimal character gamma_H is given by left_inverse(M)*p_G.infinitesimal_character}
 set inverse_lift_std(Param p_G,RealForm H,mat M)=ParamPol:
@@ -303,7 +351,7 @@ let lambda=left_inverse(M)*(p_G.lambda-rho(p_G.real_form)) + solve(1+x.involutio
 {if #all_parameters_x_gamma(x,left_inverse(M)*p_G.infinitesimal_character)>0 then}	
 if is_integer(lambda) then
 inverse_lift_std_preliminary(p_G,H,M) else
-inverse_lift_std_by_search(p_G,H,M,left_inverse(M)*p_G.infinitesimal_character)
+inverse_lift_std_by_searchV1(p_G,H,M,left_inverse(M)*p_G.infinitesimal_character)
 fi
 
 
@@ -351,16 +399,38 @@ for (c,p) in %P do let P=sign_difference(p,delta)*p in rv+:=c*P  od;
 rv
 
 {Gives the distribution defining the A-packet for a classical group of type A, B and C. In this case ABV=Arthur.}
-set A_packet_distribution_ABC(Param p_H,mat M,RealForm G,mat delta)=ParamPol:
+set Arthur_packet_distribution_ABC(Param p_H,mat M,RealForm G,mat delta)=ParamPol:
 let ecf=extended_character_formula(Finalize(lift_std(p_H,M,G)),delta) in
 let P=twisted_character(ecf) in
 let Pw=twisted_character_whittaker(P,delta) in
-composition_series(inverse_lift_std(Pw,p_H.real_form,M,p_H.infinitesimal_character)) 
+composition_series(inverse_lift_std(Pw,p_H.real_form,M,p_H.infinitesimal_character))
 
+{Gives the A-packet as a set of Params in the case of a classical group of type A, B and C}
+set Arthur_packet_ABC(Param p_H,mat M,RealForm G,mat delta)=[Param]:
+let ecf=extended_character_formula(Finalize(lift_std(p_H,M,G)),delta) in
+let P=twisted_character(ecf) in
+let Pw=twisted_character_whittaker(P,delta) in
+let A_sum=composition_series(inverse_lift_std(Pw,p_H.real_form,M,p_H.infinitesimal_character)) in
+monomials(A_sum)
+
+set Arthur_packet_distribution_D(Param p_H,mat M,RealForm G,mat delta)=(ParamPol,string):
+let ecf=extended_character_formula(Finalize(lift_std(p_H,M,G)),delta) in
+let P=twisted_character(ecf) in
+let Pw=twisted_character_whittaker(P,delta) in 
+ (composition_series(inverse_lift_std_orbit(Pw,p_H.real_form,M,p_H.infinitesimal_character)), "result must be divided by 2") 
+
+{Gives the A-packet in the case of a classical group of type B, C and D. For D it gives the O(N) orbit}
+set Arthur_packet_D(Param p_H,mat M,RealForm G,mat delta)=([Param],string):
+let ecf=extended_character_formula(Finalize(lift_std(p_H,M,G)),delta) in
+let P=twisted_character(ecf) in
+let Pw=twisted_character_whittaker(P,delta) in
+{let A_sum=composition_series(inverse_lift_std_orbit(Pw,p_H.real_form,M,p_H.infinitesimal_character)) in
+monomials(A_sum)}
+(monomials(composition_series(inverse_lift_std_orbit(Pw,p_H.real_form,M,p_H.infinitesimal_character))), "Out(H)-orbit") 
 
 {Gives the distribution defining the A-packet for a classical group of type B, C and D. For type B and C same answer as before, for type D 
 it gives the O_n orbit expressed as 1/2*eta^ABV_psi + 1/2*eta^ABV_\psi\circ O.}
-set A_packet_distribution_BCD(Param p_H,mat M,RealForm G,mat delta)=void:
+set print_Arthur_packet_distribution_D(Param p_H,mat M,RealForm G,mat delta)=void:
 let ecf=extended_character_formula(Finalize(lift_std(p_H,M,G)),delta) in
 let P=twisted_character(ecf) in
 let Pw=twisted_character_whittaker(P,delta) in
@@ -368,45 +438,161 @@ let A_sum=composition_series(inverse_lift_std_orbit(Pw,p_H.real_form,M,p_H.infin
 void:for (c,p) in %A_sum do prints(1/2*c.s_to_1,"*",p) od {I need to do this since I don't know how to multiply a param_pol by 1/2}
 
 
-{Gives the A-packet in the case of a classical group of type A, B and C}
-set A_packet_ABC(Param p_H,mat M,RealForm G,mat delta)=[Param]:
+{set Arthur_packet_distribution(Param p_H,mat M,RealForm G,mat delta)=
+{let ecf=extended_character_formula(Finalize(lift_std(p_H,M,G)),delta) in
+let P=twisted_character(ecf) in
+let Pw=twisted_character_whittaker(P,delta) in} 
+if #outer_automorphism_group(p_H.real_form)=2 then 
+Arthur_packet_distribution_D(p_H,M,G,delta)
+else Arthur_packet_distribution_ABC(p_H,M,G,delta) fi}
+
+
+{set Arthur_packet(Param p_H,mat M,RealForm G,mat delta)=([Param],string):
 let ecf=extended_character_formula(Finalize(lift_std(p_H,M,G)),delta) in
 let P=twisted_character(ecf) in
-let Pw=twisted_character_whittaker(P,delta) in
-let A_sum=composition_series(inverse_lift_std(Pw,p_H.real_form,M,p_H.infinitesimal_character)) in
-monomials(A_sum)
-
-{Gives the A-packet in the case of a classical group of type B, C and D. For D it gives the O(N) orbit}
-set A_packet_BCD(Param p_H,mat M,RealForm G,mat delta)=[Param]:
-let ecf=extended_character_formula(Finalize(lift_std(p_H,M,G)),delta) in
-let P=twisted_character(ecf) in
-let Pw=twisted_character_whittaker(P,delta) in
-let A_sum=composition_series(inverse_lift_std_orbit(Pw,p_H.real_form,M,p_H.infinitesimal_character)) in
-monomials(A_sum)
+let Pw=twisted_character_whittaker(P,delta) in 
+if #outer_automorphism_group(p_H.real_form)=2 then 
+(monomials(composition_series(inverse_lift_std_orbit(Pw,p_H.real_form,M,p_H.infinitesimal_character))), "Out(H)-orbit") 
+else (monomials(composition_series(inverse_lift_std(Pw,p_H.real_form,M,p_H.infinitesimal_character))),"") fi}
 
 
-set unipotent_A_packets(ComplexNilpotent N,RealForm H,mat M,RealForm G,mat delta)=void:
+
+{Given a nilpotent orbit of ^H, H a classical group of type A, B, C or D, it returns the corresponding unipotent A-packets}
+
+set unipotent_Arthur_packets_distributions_ABC(ComplexNilpotent N, RealForm H,mat M,RealForm G,mat delta)=
 let wpp=parameters(weak_packet(N,H)) then
 (,,l)=N in
 let all=all_parameters_x_gamma(KGB(H)~[0],l/2) in
-let wpp_in_all= ## for p in all do if first(for x in wpp do  x=p od)=-1 then [] else [p] fi od in
-for p in wpp_in_all do print(A_packet_distribution_BCD(p,M,G,delta)) od
+let unip_in_all_with_repetition= ## for p in all do if first(for x in wpp do  x=p od)=-1 then [] else [p] fi od in
+let unip_in_all= ## for p in unip_in_all_with_repetition do if L_packet(p)[0]=p then [p] else [] fi od in
+for p in unip_in_all do Arthur_packet_distribution_ABC(p,M,G,delta) od
 
 
-{Given a nilpotent orbit of ^H, H a classical group of type B, C or D, it returns the corresponding unipotent A-packets}
-set unipotent_A_packets_BCD(RealForm H, ComplexNilpotent N)=void:
-let n=rank(H) in
+
+set unipotent_Arthur_packets_ABC(ComplexNilpotent N,RealForm H,mat M,RealForm G,mat delta)=
+let wpp=parameters(weak_packet(N,H)) then
+(,,l)=N in
+let all=all_parameters_x_gamma(KGB(H)~[0],l/2) in
+let unip_in_all_with_repetition= ## for p in all do if first(for x in wpp do  x=p od)=-1 then [] else [p] fi od in
+let unip_in_all= ## for p in unip_in_all_with_repetition do if L_packet(p)[0]=p then [p] else [] fi od in
+for p in unip_in_all do Arthur_packet_ABC(p,M,G,delta) od
+
+
+set unipotent_Arthur_packets_distributions_D(ComplexNilpotent N, RealForm H,mat M,RealForm G,mat delta)=
+let wpp=parameters(weak_packet(N,H)) then
+(,,l)=N in
+let all=all_parameters_x_gamma(KGB(H)~[0],l/2) in
+let unip_in_all_with_repetition= ## for p in all do if first(for x in wpp do  x=p od)=-1 then [] else [p] fi od in
+let unip_in_all= ## for p in unip_in_all_with_repetition do if L_packet(p)[0]=p then [p] else [] fi od in
+for p in unip_in_all do Arthur_packet_distribution_D(p,M,G,delta) od
+
+
+set print_unipotent_Arthur_packets_distributions_D(ComplexNilpotent N, RealForm H,mat M,RealForm G,mat delta)=
+let wpp=parameters(weak_packet(N,H)) then
+(,,l)=N in
+let all=all_parameters_x_gamma(KGB(H)~[0],l/2) in
+let unip_in_all_with_repetition= ## for p in all do if first(for x in wpp do  x=p od)=-1 then [] else [p] fi od in
+let unip_in_all= ## for p in unip_in_all_with_repetition do if L_packet(p)[0]=p then [p] else [] fi od in
+for p in unip_in_all do print_Arthur_packet_distribution_D(p,M,G,delta) od
+
+set unipotent_Arthur_packets_D(ComplexNilpotent N,RealForm H,mat M,RealForm G,mat delta)=
+let wpp=parameters(weak_packet(N,H)) then
+(,,l)=N in
+let all=all_parameters_x_gamma(KGB(H)~[0],l/2) in
+let unip_in_all_with_repetition= ## for p in all do if first(for x in wpp do  x=p od)=-1 then [] else [p] fi od in
+let unip_in_all= ## for p in unip_in_all_with_repetition do if L_packet(p)[0]=p then [p] else [] fi od in
+for p in unip_in_all do Arthur_packet_D(p,M,G,delta) od
+
+
+
+set unipotent_Arthur_packets_ABC(RealForm H, ComplexNilpotent N, RealForm G)=[[Param]]:
+{let n=rank(H) in}
 {let n=#columns(simple_roots(H)) in}
-let G= if H=Sp(2*n,R) then GL(2*n+1,R) else GL(2*n,R) fi then
-delta=distinguished_involution(G) then
-(,M0)=endoscopic(G,delta) in
-let M=-M0 in
-let wpp=parameters(weak_packet(N,H)) then
-(,,l)=N in
-let all=all_parameters_x_gamma(KGB(H)~[0],l/2) in
-let wpp_in_all= ## for p in all do if first(for x in wpp do  x=p od)=-1 then [] else [p] fi od in
-let wpp_in_all_torusfactor0 = ## for p in wpp_in_all do if p.x.torus_factor=0*rho(H) then [p] else [] fi od in
-for p in wpp_in_all_torusfactor0 do prints(A_packet_distribution_BCD(p,M,G,delta)) od
+{let G= if H=Sp(2*n,R) then GL(2*n+1,R) else GL(2*n,R) fi then}
+let delta=distinguished_involution(G) then
+(,M,)=complex_endoscopic_group1(G,delta) then
+{let M=-M0 in}
+wpp=parameters(weak_packet(N,H)) then
+(,,l)=N then
+all=all_parameters_x_gamma(KGB(H)~[0],l/2) then
+wpp_in_all= ## for p in all do if first(for x in wpp do  x=p od)=-1 then [] else [p] fi od then
+wpp_in_all_torusfactor0 = ## for p in wpp_in_all do if p.x.torus_factor=0*rho(H) then [p] else [] fi od in
+for p in wpp_in_all_torusfactor0 do Arthur_packet_ABC(p,M,G,delta) od
+
+set unipotent_Arthur_packets_distributions_ABC(RealForm H, ComplexNilpotent N, RealForm G)=[ParamPol]:
+{let n=rank(H) in}
+{let n=#columns(simple_roots(H)) in}
+{let G= if H=Sp(2*n,R) then GL(2*n+1,R) else GL(2*n,R) fi then}
+let delta=distinguished_involution(G) then
+(,M,)=complex_endoscopic_group1(G,delta) then
+{let M=-M0 in}
+wpp=parameters(weak_packet(N,H)) then
+(,,l)=N then
+all=all_parameters_x_gamma(KGB(H)~[0],l/2) then
+wpp_in_all= ## for p in all do if first(for x in wpp do  x=p od)=-1 then [] else [p] fi od then
+wpp_in_all_torusfactor0 = ## for p in wpp_in_all do if p.x.torus_factor=0*rho(H) then [p] else [] fi od in
+for p in wpp_in_all_torusfactor0 do Arthur_packet_distribution_ABC(p,M,G,delta) od
+
+
+set unipotent_Arthur_packets_D(RealForm H, ComplexNilpotent N, RealForm G)=
+{let n=rank(H) in}
+{let n=#columns(simple_roots(H)) in}
+{let G= if H=Sp(2*n,R) then GL(2*n+1,R) else GL(2*n,R) fi then}
+let delta=distinguished_involution(G) then
+(,M,)=complex_endoscopic_group1(G,delta) then
+{let M=-M0 in}
+wpp=parameters(weak_packet(N,H)) then
+(,,l)=N then
+all=all_parameters_x_gamma(KGB(H)~[0],l/2) then
+wpp_in_all= ## for p in all do if first(for x in wpp do  x=p od)=-1 then [] else [p] fi od then
+wpp_in_all_torusfactor0 = ## for p in wpp_in_all do if p.x.torus_factor=0*rho(H) then [p] else [] fi od in
+for p in wpp_in_all_torusfactor0 do Arthur_packet_D(p,M,G,delta) od
+
+set unipotent_Arthur_packets_distributions_D(RealForm H, ComplexNilpotent N, RealForm G)=
+{let n=rank(H) in}
+{let n=#columns(simple_roots(H)) in}
+{let G= if H=Sp(2*n,R) then GL(2*n+1,R) else GL(2*n,R) fi then}
+let delta=distinguished_involution(G) then
+(,M,)=complex_endoscopic_group1(G,delta) then
+{let M=-M0 in}
+wpp=parameters(weak_packet(N,H)) then
+(,,l)=N then
+all=all_parameters_x_gamma(KGB(H)~[0],l/2) then
+wpp_in_all= ## for p in all do if first(for x in wpp do  x=p od)=-1 then [] else [p] fi od then
+wpp_in_all_torusfactor0 = ## for p in wpp_in_all do if p.x.torus_factor=0*rho(H) then [p] else [] fi od in
+for p in wpp_in_all_torusfactor0 do Arthur_packet_distribution_D(p,M,G,delta) od
+
+set print_unipotent_Arthur_packets_distributions_D(RealForm H, ComplexNilpotent N,RealForm G)=
+{let n=rank(H) in}
+{let n=#columns(simple_roots(H)) in}
+{let G= if H=Sp(2*n,R) then GL(2*n+1,R) else GL(2*n,R) fi then}
+let delta=distinguished_involution(G) then
+(,M,)=complex_endoscopic_group1(G,delta) then
+{let M=-M0 in}
+wpp=parameters(weak_packet(N,H)) then
+(,,l)=N then
+all=all_parameters_x_gamma(KGB(H)~[0],l/2) then
+wpp_in_all= ## for p in all do if first(for x in wpp do  x=p od)=-1 then [] else [p] fi od then
+wpp_in_all_torusfactor0 = ## for p in wpp_in_all do if p.x.torus_factor=0*rho(H) then [p] else [] fi od in
+for p in wpp_in_all_torusfactor0 do print_Arthur_packet_distribution_D(p,M,G,delta) od
+
+
+set unipotent_packets_ABC(RealForm H,RealForm G)=[[[Param]]]:for O_v in dual_orbits(H) do unipotent_Arthur_packets_ABC(H,O_v,G) od
+
+set unipotent_Arthur_packets_distributions_ABC(RealForm H,RealForm G)=[[ParamPol]]:for O_v in dual_orbits(H) do unipotent_Arthur_packets_distributions_ABC(H,O_v,G) od
+
+set unipotent_packets_D(RealForm H,RealForm G)={[[[Param]]]:}
+for O_v in dual_orbits(H) do unipotent_Arthur_packets_D(H,O_v,G) od
+
+set unipotent_Arthur_packets_distributions_D(RealForm H,RealForm G)={[[ParamPol]]:}
+for O_v in dual_orbits(H) do unipotent_Arthur_packets_distributions_D(H,O_v,G) od
+
+
+set unipotent_Arthur_packets_distributions_D(RealForm H,RealForm G)={[[ParamPol]]:}
+for O_v in dual_orbits(H) do unipotent_Arthur_packets_distributions_D(H,O_v,G) od
+
+
+
 
 
 
@@ -464,15 +650,17 @@ factors through psi. These are the AJ-packets of G.
 Atlas will give an error when the parity condition on the v_k is not verified. This needs to be made more clear.
 For the moment it only works for G a symplectic or odd orthogonal group}
 
-set AJ_packet_distribution([int] u,[int] v)=ParamPol:
-let n=sum(u) then
-p=monomials(AJ_parameter(u,v))[0] then
-G=real_form(p) then
-delta=distinguished_involution(G) then
-(,M)=endoscopic(G,delta) then
-H=if is_even(n) then SO(n/2\1,n/2\1+1) else Sp(n-1,R) fi then
-q=monomials(inverse_lift_std(p,H,-M))[0] in
-A_packet_distribution_ABC(q,-M,G,delta)
+set AJ_packet_distribution_ABC([int] u,[int] v,RealForm G, mat delta)=ParamPol:
+let n=sum(u) in
+assert(n=rank(G), "the sum of the first and third family of integers must be equal to the rank of G");
+let p=monomials(AJ_parameter(u,v))[0] then
+{G=real_form(p) then}
+{delta=distinguished_involution(G) then}
+(H,M,dH)=complex_endoscopic_group1(dual(G),delta) then
+H=split_form(H) then
+{H=if is_even(n) then SO(n/2\1,n/2\1+1) else Sp(n-1,R) fi then}
+q=monomials(inverse_lift_std(p,H,M))[0] in
+Arthur_packet_distribution_ABC(q,M,G,delta)
 
 
 set sgn_representation(int n)=Param:
@@ -520,15 +708,17 @@ factors through psi. These are the unipotent A-packets of G.
 Atlas will give an error when the parity condition on the v_k is not verified. This needs to be made more clear.
 For the moment it only works for G a symplectic or odd orthogonal group}
 
-set unipotent_packet_distribution([int] u,[int] v)=ParamPol:
-let n=sum(u) then
-p=monomials(unipotent_parameter(u,v))[0] then
-G=real_form(p) then
-delta=distinguished_involution(G) then
-(,M)=endoscopic(G,delta) then
-H = if is_even(n) then SO(n/2\1,n/2\1+1) else Sp(n-1,R) fi then
-q=monomials(inverse_lift_std(p,H,-M))[0] in
-A_packet_distribution_ABC(q,-M,G,delta)
+set unipotent_packet_distribution_ABC([int] u,[int] v, RealForm G, mat delta)=ParamPol:
+let n=sum(u) in
+assert(n=rank(G), "the sum of the first and third family of integers must be equal to the rank of G");
+let p=monomials(unipotent_parameter(u,v))[0] then
+{G=real_form(p) then
+delta=distinguished_involution(G) then}
+(H,M,dH)=complex_endoscopic_group1(dual(G),delta) then
+H=split_form(H) then
+{H = if is_even(n) then SO(n/2\1,n/2\1+1) else Sp(n-1,R) fi then}
+q=monomials(inverse_lift_std(p,H,M))[0] in
+Arthur_packet_distribution_ABC(q,M,G,delta)
 
 
 {Let u=[u_1,...,u_n], u_k a positive even integer. Let v=[v_1,...,v_n], v_k in Z.
@@ -537,7 +727,7 @@ The following script gives the standard representation of GL(N,R), N = sum_k u_k
 Ind_LN(Speh(u_1,v_1) x ... x Speh(u_n,v_n) x principal_unipotent(s_1, t_1) x ... x principal_unipotent(s_l,t_l)) where
 L = GL(u_1,R) x GL(u_2,R) x ... x GL(u_n,R) x GL(s_1,R) x ... x GL(s_l,R).}
 
-set A_parameter([int] u, [int] v, [int] s,[int] t)=ParamPol:
+set A_parameter_preliminary([int] u, [int] v, [int] s,[int] t)=ParamPol:
 let n=sum(u) then
 m=sum(s) then
 L=GL(n,R)*GL(m,R) then
@@ -553,6 +743,11 @@ nu=p.nu##q.nu then
 r=parameter(x,lambda,nu) in
 finalize(real_induce_standard(r,GL(n+m,R)))
 
+set A_parameter([int] u, [int] v, [int] s,[int] t)=
+if sum(u)=0 then unipotent_parameter(s,t)
+else if sum(s)=0 then AJ_parameter(u,v)
+else A_parameter_preliminary(u,v,s,t) 
+fi fi
 
 {Let u=[u_1,...,u_n], u_k a positive even integer. Let v=[v_1,...,v_n], v_k in Z. Let u=[s_1,...,s_l], s_j a positive integer. 
 Let v=[t_1,...,t_l], t_j in {0,1}. Suppose psi is the A-parameter of GL(N,R), N=sum_k u_k + sum_j s_j, 
@@ -562,20 +757,78 @@ The following script gives the A-packet of the classical group G, whose A-parame
 factors through psi. Atlas will give an error when the parity condition on the v_k is not verified. This needs to be made more clear.
 For the moment it only works for G a symplectic or odd orthogonal group.}
 
-set A_packet_distribution([int] u, [int] v, [int] s, [int] t)=ParamPol:
-let n=sum(u)+sum(s) then
-p=monomials(A_parameter(u, v, s,t))[0] then
-G=real_form(p) then
-delta=distinguished_involution(G) then
-(,M)=endoscopic(G,delta) then
-H = if is_even(n) then SO(n/2\1,n/2\1+1) else Sp(n-1,R) fi then
-q=monomials(inverse_lift_std(p,H,-M))[0] in
-A_packet_distribution_ABC(q,-M,G,delta)
 
+set Arthur_packet_distribution_ABC([int] u, [int] v, [int] s, [int] t, RealForm H, RealForm G, mat delta)=ParamPol:
+let n=sum(u)+sum(s) in
+assert(n=rank(G), "the sum of the first and third family of integers must be equal to the rank of G");
+let p=monomials(A_parameter(u, v, s,t))[0] then
+{G=real_form(p) then
+delta=distinguished_involution(G) then}
+(,M,)=complex_endoscopic_group1(dual(G),delta) then
+{H=split_form(H) then}
+{H = if is_even(n) then SO(n/2\1,n/2\1+1) else Sp(n-1,R) fi then}
+i=inverse_index(p,H,M,left_inverse(M)*p.infinitesimal_character) in
+assert(i>=0, "bad parity condition"); 
+let q=monomials(inverse_lift_std_V2(p,H,M,left_inverse(M)*p.infinitesimal_character))[0] in
+Arthur_packet_distribution_ABC(q,M,G,delta)
+
+
+set Arthur_packet_distribution_ABC([int] u, [int] v, [int] s, [int] t, RealForm G, mat delta)=
+let (H,M,dH)=complex_endoscopic_group1(dual(G),delta) then
+H=split_form(H) in
+Arthur_packet_distribution_ABC( u, v,  s, t,  H,  G, delta)
+
+set Arthur_packet_distribution_ABC_V2([int] u, [int] v, [int] s, [int] t, RealForm H, RealForm G, mat delta)=ParamPol:
+let n=sum(u)+sum(s) in
+assert(n=rank(G), "the sum of the first and third family of integers must be equal to the rank of G");
+let p=monomials(A_parameter(u, v, s,t))[0] then
+{G=real_form(p) then
+delta=distinguished_involution(G) then}
+(H,M,dH)=complex_endoscopic_group1(dual(G),delta) then
+H=split_form(H) then
+{H = if is_even(n) then SO(n/2\1,n/2\1+1) else Sp(n-1,R) fi then}
+i=inverse_index(p,H,M,left_inverse(M)*p.infinitesimal_character) in
+assert(i>=0, "bad parity condition"); 
+let q=monomials(inverse_lift_std(p,H,M,left_inverse(M)*p.infinitesimal_character))[0] in
+Arthur_packet_distribution_ABC(q,M,G,delta)
+
+set Arthur_packet_distribution_ABC_V2([int] u, [int] v, [int] s, [int] t, RealForm G, mat delta)=
+let (H,M,dH)=complex_endoscopic_group1(dual(G),delta) then
+H=split_form(H) in
+Arthur_packet_distribution_ABC_V2( u, v,  s, t, H,  G, delta)
+
+
+set Arthur_packet_distribution_D([int] u, [int] v, [int] s, [int] t, RealForm H, RealForm G, mat delta)=
+let n=sum(u)+sum(s) in
+assert(n=rank(G), "the sum of the first and third family of integers must be equal to the rank of G");
+let p=monomials(A_parameter(u, v, s,t))[0] then
+{G=real_form(p) then
+delta=distinguished_involution(G) then}
+(,M,)=complex_endoscopic_group1(dual(G), delta) then
+{H=H.quasisplit_form  then}
+{H = if is_even(n) then SO(n/2\1,n/2\1+1) else Sp(n-1,R) fi then}
+i=inverse_index(p,H,M,left_inverse(M)*p.infinitesimal_character) in
+assert(i>=0, "bad parity condition"); 
+let q=monomials(inverse_lift_std(p,H,M))[0] in
+Arthur_packet_distribution_D(q,M,G,delta)
+
+set Arthur_packet_distribution_D([int] u, [int] v, [int] s, [int] t, RealForm G, mat delta, ratvec l, WeylElt w_G_vee)=
+let n=sum(u)+sum(s) in
+assert(n=rank(G), "the sum of the first and third family of integers must be equal to the rank of G");
+let p=monomials(A_parameter(u, v, s,t))[0] then
+{G=real_form(p) then
+delta=distinguished_involution(G) then}
+(H,M,dH)=endoscopic_group(dual(G), delta, l, w_G_vee) then
+H=H.quasisplit_form  then
+{H = if is_even(n) then SO(n/2\1,n/2\1+1) else Sp(n-1,R) fi then}
+{i=inverse_index(p,H,M,left_inverse(M)*p.infinitesimal_character) in
+assert(i>=0, "bad parity condition"); }
+{let} q=monomials(inverse_lift_std(p,H,M))[0] in
+Arthur_packet_distribution_D(q,M,G,delta)
 
 
 set test_abv([Param] params,Param p, mat M, RealForm G, mat delta)=
-let abv=monomials(A_packet_distribution_ABC(p,M,G,delta)) in
+let abv=monomials(Arthur_packet_distribution_ABC(p,M,G,delta)) in
 for q in abv do find(params,q) od
 
 set test_abv([Param] params, mat M, RealForm G, mat delta)=
@@ -631,6 +884,8 @@ let ecf=extended_character_formula(Finalize(lift_std(p_H,M,G)),delta) in
 let P=twisted_character(ecf) in
 let Pw=twisted_character_whittaker(P,delta) in
 composition_series(inverse_lift_std(Pw,p_H.real_form,M,p_H.infinitesimal_character)) }
+
+
 
 
 
