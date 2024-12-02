@@ -387,7 +387,8 @@ unit    : INT { $$ = make_int_denotation($1,@$); }
 	| iffor_loop
 	| '(' expr ')'	 { $$=$2; }
 	| BEGIN expr END { $$=$2; }
-	| '&' typevar_list BEGIN expr END { $$=make_abstr($2,$4,@$); }
+	| ANY_TYPE typevar_list BEGIN expr END { $$=make_abstr($2,$4,@$); }
+	| ANY_TYPE typevar_list '(' expr ')' { $$=make_abstr($2,$4,@$); }
 	| '[' commalist_opt ']'
 		{ $$=wrap_list_display(reverse_expr_list($2),@$); }
 	| '[' commabarlist ']'

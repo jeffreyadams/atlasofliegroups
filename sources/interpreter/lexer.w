@@ -743,6 +743,10 @@ break; case '-': operator_termination(c);
          valp->oper.priority = 4;
          code = becomes_follows() ? OPERATOR_BECOMES : OPERATOR;
        }
+break; case '&': operator_termination(c);
+       valp->oper.id = id_table.match_literal("&");
+       valp->oper.priority = 5;
+       code = becomes_follows() ? OPERATOR_BECOMES : OPERATOR;
 break; case '*': operator_termination(c);
        valp->oper.id = id_table.match_literal("*");
        valp->oper.priority = 6;
