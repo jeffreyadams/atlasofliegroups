@@ -329,23 +329,20 @@ set localFD_1Dirac2_by_zero\
 	    fi
 	 od.##{list of j for which vertex j is a candidate}
     {then () = prints("after LFO, time is ",print_time_string(elapsed_ms() - start))}
-    then Llookup = is_member_sorted((for v in LF0 do v[0] od))
+    {then Llookup = is_member_sorted((for v in LF0 do v[0] od))}
     then Edges = [vec]:
     	 let startFF = elapsed_ms()
     	 then EdgesFixFix = [vec]:
              if #Perm2.fixed > 1
 	     then for j@m in Perm2.fixed[:#Perm2.fixed - 1]
 	     	  do let cands = FPP_edges_by_zero_unsorted(G)[j] {list of edges beginning j}
-		     in if Llookup(m{mloc}) and #cands > 0
-		     	then for v in cands {global edges with v[0] = j}
-			     do let n = locate_sorted(Perm2.fixed, v[1])
-			     	in if n< #Perm2.fixed and Perm2.fixed[n] = v[1] and Llookup(n)
-				   then [[m,n].sort]
-				   else []
-				   fi
-			     od.## {this is the list of edges starting with m}
-	     		 else []
-			 fi
+		     in for v in cands {global edges with v[0] = j}
+			do let n = locate_sorted(Perm2.fixed, v[1])
+			   in if n< #Perm2.fixed and Perm2.fixed[n] = v[1] {and Llookup(n)}
+			      then [[m,n].sort]
+			      else []
+			      fi
+			od.## {this is the list of edges starting with m}
 		   od.## {all FixFix edges}
 	       else []
 	       fi
@@ -357,16 +354,16 @@ set localFD_1Dirac2_by_zero\
 		then for j@m in Perm2.fixed
 		     do {let mloc = mapAct[j]} {this is m?}
 		     	let cands = FPP_flippable_triangles_by_zero_unsorted(G)[j]
-			in if Llookup(m) and #cands > 0
+			in if {Llookup(m) and} #cands > 0
 			   then for v in cands
 			      	do let n = #Perm2.fixed + trans_hash.lookup(v[1:])
-				   in if n >= #Perm2.fixed and Llookup(n)
+				   in if n >= #Perm2.fixed {and Llookup(n)}
 				      then [[m,n]]
 				      else []
 				      fi
 			       	od.## {[vec], all starting with m}
 			    else []
-			    fi {Llookup(m)}
+			    fi {#cands > 0}
 		      od.## {[vec], all m}
 		  else []
 		  fi
@@ -378,16 +375,16 @@ set localFD_1Dirac2_by_zero\
 	      	   in for (i,j)@m in Perm2.trans
 	      	      do let a = FEL([i,j]) {, mloc = mapAct[i]} {this is m+#Perm2.fixed?}
 	      	      	 then cands = FPP_flippable_tetrahedra_by_zero_unsorted(G)[a]
-		      	 in if Llookup(m+#Perm2.fixed) and #Perm2.trans > m+1 and #cands > 0
+		      	 in if {Llookup(m+#Perm2.fixed) and} #Perm2.trans > m+1 and #cands > 0
 		      	    then for v in cands
 			      	 do let n = #Perm2.fixed + trans_hash.lookup(v[2:])
-				    in if n >= #Perm2.fixed and Llookup(n)
+				    in if n >= #Perm2.fixed {and Llookup(n)}
 				       then [[m+#Perm2.fixed,n].sort]
 				       else []
 				       fi
 			       	 od.## {[vec], all starting with mloc}
 			     else []
-			     fi {Llookup(mloc)}
+			     fi {#Perm2.trans > m+1}
 		       od.## {[vec], all mloc}
 		 else []
 		 fi
@@ -418,6 +415,136 @@ set localFD_1Dirac2_by_zero\
        			     		  " for localFD_1Dirac2_by_zero") fi;
        answer
 )
+
+
+{No extra coordinates and no Dirac; meant for use in blob, so red_count and Dirac
+are only done once for repeated parameters}
+set localFD_by_zero_short\
+  ( KGBElt x, ratvec lambda, LocalVertexData Lvd, PermOrderTwo Perm2) =
+    [[FaceVertsIndex]]:
+(   {if face_verbose
+    then prints(new_line,"start localFD_1DiracBYZERO")
+    fi;}
+    let G = x.real_form, start = elapsed_ms(), trans_hash = make_vec_hash()
+    then () = for (m,n) in Perm2.trans do trans_hash.match([m,n]) od
+    then LF0 = [FaceVertsIndex]:
+    	 for j:#Lvd.list
+	 do [j]
+	 od
+    {then () = prints("after LFO, time is ",print_time_string(elapsed_ms() - start))}
+    {then Llookup = is_member_sorted((for v in LF0 do v[0] od))}
+    then Edges = [vec]:
+    	 let startFF = elapsed_ms()
+    	 then EdgesFixFix = [vec]:
+             if #Perm2.fixed > 1
+	     then for j@m in Perm2.fixed[:#Perm2.fixed - 1]
+	     	  do let cands = FPP_edges_by_zero_unsorted(G)[j] {list of edges beginning j}
+		     in if {Llookup(m{mloc}) and} #cands > 0
+		     	then for v in cands {global edges with v[0] = j}
+			     do let n = locate_sorted(Perm2.fixed, v[1])
+			     	in if n< #Perm2.fixed and Perm2.fixed[n] = v[1] {and Llookup(n)}
+				   then [[m,n].sort]
+				   else []
+				   fi
+			     od.## {this is the list of edges starting with m}
+	     		 else []
+			 fi {#cands > 0}
+		   od.## {all FixFix edges}
+	       else []
+	       fi
+	    then () = FD12bzFFTime +:=elapsed_ms() - startFF
+	   {then () = prints("after FixFix, time is ",print_time_string(elapsed_ms() - start))}
+	   then startFT = elapsed_ms()
+      	   then EdgesFixTrans = [vec]:
+	   	if #Perm2.fixed > 0 and #Perm2.trans >0
+		then for j@m in Perm2.fixed
+		     do {let mloc = mapAct[j]} {this is m?}
+		     	let cands = FPP_flippable_triangles_by_zero_unsorted(G)[j]
+			in if {Llookup(m) and} #cands > 0
+			   then for v in cands
+			      	do let n = #Perm2.fixed + trans_hash.lookup(v[1:])
+				   in if n >= #Perm2.fixed {and Llookup(n)}
+				      then [[m,n]]
+				      else []
+				      fi
+			       	od.## {[vec], all starting with m}
+			    else []
+			    fi {#cands > 0}
+		      od.## {[vec], all m}
+		  else []
+		  fi
+	   then () = FD12bzFTTime +:= elapsed_ms() - startFT
+	   then startTT = elapsed_ms()
+	   then EdgesTransTrans = [vec]: {this is the longest}
+	      if #Perm2.trans > 1
+	      then let FEL = FPP_flippable_edge_lookup(G)
+	      	   in for (i,j)@m in Perm2.trans
+	      	      do let a = FEL([i,j]) {, mloc = mapAct[i]} {this is m+#Perm2.fixed?}
+	      	      	 then cands = FPP_flippable_tetrahedra_by_zero_unsorted(G)[a]
+		      	 in if {Llookup(m+#Perm2.fixed) and} #Perm2.trans > m+1 and #cands > 0
+		      	    then for v in cands
+			      	 do let n = #Perm2.fixed + trans_hash.lookup(v[2:])
+				    in if n >= #Perm2.fixed {and Llookup(n)}
+				       then [[m+#Perm2.fixed,n].sort]
+				       else []
+				       fi
+			       	 od.## {[vec], all starting with mloc}
+			     else []
+			     fi {#Perm2.trans > m+1}
+		       od.## {[vec], all mloc}
+		 else []
+		 fi
+	    then () = FD12bzTTTime +:= elapsed_ms() - startTT
+     	    {then () = prints("EFF = ", EdgesFixFix, ", EFT = ",EdgesFixTrans,", ETT = ",EdgesTransTrans)}
+	   in EdgesFixFix ## EdgesFixTrans ## EdgesTransTrans
+     then LF1 = [FaceVertsIndex]:
+    	 for v in Edges
+	 do let p = parameter(x,lambda,face_bary(Lvd, v))
+	 {face_bary_ic(x.inner_class, face_bary(Lvd.list, v)))}
+	    in  if all(for q in monomials(p) do is_pos_on_LKTs(q) od)
+	    	then [v]
+	   	else []
+	    	fi
+	 od.##
+    { then () = prints("after LF1, time is ",print_time_string(elapsed_ms() - start))}
+    then answer = sort(G, Lvd, [LF0]##[LF1], 0)
+    then () = FD12bzTime +:= elapsed_ms() - start
+    {then () = if elapsed_ms() - start > 10{FD12bzTime}
+    	      then prints("(fixed,trans) = (",#Perm2.fixed, ",",#Perm2.trans, "), face counts (",#LF0,",",Edges,") took ",print_time_string(elapsed_ms() - start))
+	      fi}
+    in if(face_verbose) then prints("After localFD_1Dirac2_by_zero_short, face counts are [",#LF0,
+    		      	   	  ",",#LF1,"]") fi;
+       if(time_verbose) then prints("     ",print_time_string(elapsed_ms() - start),
+       			     		  " for localFD_1Dirac2_by_zero") fi;
+       answer
+)
+
+{add red_count while checking pos on LKTs, Dirac}
+set localFD_1Dirac2_add_red(KGBElt x, ratvec lambda, LocalVertexData Lvd, [[FaceVertsIndex]] LF) =
+    [[FaceVertsIndex]]:
+    let G = x.real_form
+    then Q = (ratvec,ratvec->rat): (ratvec v, ratvec w) rat: 0/1
+    then DiracBD = 0/1
+    then () = if Dirac_flag
+    	      then let () = DiracBD := DiracBD(x,lambda)
+	      	   then () = Q:=invariant_form(G)
+	      	   in ()
+	      fi
+    in for d:#LF
+       do for v in LF[d]
+       	  do let nu = face_bary(Lvd,v)
+	     then p = parameter(x,lambda,nu)
+	     then qs = monomials(p)
+	     in if all(for q in qs do is_pos_on_LKTs(q) od)
+	     	   and ((not Dirac_flag) or (Q(nu,nu) <= DiracBD))
+		then if red_count_flag
+		     then [v#red_count(p)]
+		     else [v]
+		     fi
+		else []
+		fi
+	  od.##
+       od
 
 set localFD_1Dirac2_by_zero_old\
   ( KGBElt x, ratvec lambda, LocalVertexData Lvd, PermOrderTwo Perm2, vec mapAct) =
@@ -943,6 +1070,70 @@ set extend_K_characters(KGBElt x, ratvec lambda, LocalVertexData Lvd,
      then time = elapsed_ms() - start
      then () = if time_verbose then prints("     ", print_time_string(time),
      	       	  " for extend_K_characters to ht ", ht) fi
+     in answer
+
+
+
+
+set extend_K_characters_graph(KGBElt x, ratvec lambda, LocalVertexData Lvd,
+    [[FaceVertsKHash]] LFKH, KTypePol_hash ktp_hash, [[int]] eq, [vec] classListByFace) = [[FaceVertsKHash]]:
+    {if face_verbose
+    then prints(new_line,"start extend_K_characters")
+    fi;}
+    let G = x.real_form, start = elapsed_ms(), NumClasses = #eq
+    then polNums = [int]: {these are indices in ktp_hash of new K-characters}
+       for C in eq
+       do let (d,j) = coords(LFKH,C~[0]) {the tilde chooses a
+	  representative on largest possible face, so least integral}
+	  then verts = vec: LFKH[d][j][:d+1]
+	  then pC = parameter(x,lambda,face_bary(Lvd,verts))
+	  then PC = finalize(pC)
+	  then startCF = elapsed_ms()
+	  then m = char_counter.use(); ktp_hash.match(K_type_pol(character_formula(PC)))
+	  then () = charTime +:= elapsed_ms() - startCF
+	  in m
+       od {C in eq}
+     then answer = for LFd@d in LFKH
+       	  	   do for j:#LFd
+	  	      do let v = LFd[j]
+		      	 then () = v[d+2] := polNums[classListByFace[d][j]]
+		         in v
+		      od {fix d-diml faces}
+	  	   od {fix all faces}
+     then time = elapsed_ms() - start
+     then () = if time_verbose then prints("     ", print_time_string(time),
+     	       	  " for extend_K_characters_graph") fi
+     in answer
+
+set extend_K_characters_graph(KGBElt x, ratvec lambda, LocalVertexData Lvd,
+    [[FaceVertsKHash]] LFKH, int ht, KTypePol_hash ktp_hash, [[int]] eq, [vec] classListByFace) =
+    	[[FaceVertsKHash]]:
+    if face_verbose
+    then prints(new_line,"start extend_K_characters_graph to height ",ht)
+    fi;
+    let G = x.real_form, start = elapsed_ms(), NumClasses = #eq
+    then polNums = [int]: {these are indices in ktp_hash of new K-characters}
+       for C in eq
+       do let (d,j) = coords(LFKH,C~[0]) {the tilde chooses a
+	  representative on largest possible face, so least integral}
+	  then verts = vec: LFKH[d][j][:d+1]
+	  then pC = parameter(x,lambda,face_bary(Lvd,verts))
+	  then PC = finalize(pC)
+	  then startCF = elapsed_ms()
+	  then m = char_counter.use(); ktp_hash.match(K_type_pol(character_formula_to_height(PC,ht)))
+	  then () = charTime +:= elapsed_ms() - startCF
+	  in m
+       od {C in eq}
+     then answer = for LFd@d in LFKH
+       	  	   do for j:#LFd
+	  	      do let v = LFd[j]
+		      	 then () = v[d+2] := polNums[classListByFace[d][j]]
+		         in v
+		      od {fix d-diml faces}
+	  	   od {fix all faces}
+     then time = elapsed_ms() - start
+     then () = if time_verbose then prints("     ", print_time_string(time),
+     	       	  " for extend_K_characters_graph") fi
      in answer
 
 {version of solve from basic using precomputed echelon form, to speed repeated calcs}

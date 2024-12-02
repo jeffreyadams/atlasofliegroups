@@ -134,7 +134,8 @@ set FPP_unitary_hash_general([(KGBElt,ratvec)] xlambdas, Param_hash Uhash,
     then () = FD12bzTime:=0
     then () = red_count_time :=0
     then xnums = for (x,) in xlambdasW do x.number od
-    then lambdas = for (,lambda) in xlambdasW do lambda od, pol_hash = make_KTypePol_hash()
+    then lambdas = for (,lambda) in xlambdasW do lambda od
+    then () = pol_hash.clear()
     then old_face_verbose = face_verbose, old_time_verbose = time_verbose,
     	 old_test_verbose = test_verbose, old_test_slightly_verbose = test_slightly_verbose
     then startLPmss = elapsed_ms()
@@ -177,6 +178,12 @@ set FPP_unitary_hash_general([(KGBElt,ratvec)] xlambdas, Param_hash Uhash,
 		 then p0 = parameter(x,lambda,zeroNu)
 		 {then () = prints("time before LPmss[",k,"] = ",print_time_string(elapsed_ms() - start))}
 		 then (Lvd, Perm2{, mapAct}) = LPmss[k]
+		 then () = if every_lambda_flag
+      	      	   	      then prints("     start #", k, " = (",x,",",lambda,"), Uhash.size() = ",
+			      Uhash.size(), ", runtime = ", print_time_string(elapsed_ms() - start),
+			      ", #uparams so far = ",sum(answerCards));
+		   		   prints("  ------------------")
+        	   		   fi {every_lambda_flag}
 		 then startLF = elapsed_ms()
 		 {then () = prints("time thru start [",k,"] = ",print_time_string(startLF - start))}
 		 then LF = if by_zero_flag {and height(p0) > 0}
@@ -192,7 +199,8 @@ set FPP_unitary_hash_general([(KGBElt,ratvec)] xlambdas, Param_hash Uhash,
 			  then face_verbose := old_face_verbose; time_verbose := old_time_verbose;
 			       test_verbose :=old_test_verbose; test_slightly_verbose := old_test_slightly_verbose
 			  fi;
-			  let answer = local(x, lambda, {LPm_table.FPP_vertex_data(G) ,} Lvd, LF, pol_hash, Uhash)
+			  let answer = local(x, lambda, {LPm_table.FPP_vertex_data(G) ,} Lvd, LF,
+			      	     pol_hash, Uhash)
 			  then () = finish(x,lambda)
 			  then () = answerCards[k] := #answer
 			  then () = if Uparamhash_flag
@@ -268,7 +276,8 @@ set FPP_unitary_hash_general([KGBElt] xs, Param_hash Uhash, {Param_hash Uparamha
     then () = FD12Time :=0
     then () = FD12bzTime :=0
     then () = red_count_time :=0
-    then {xnums = for x in xs do x.number od, xtimes = null(#xs),} pol_hash = make_KTypePol_hash()
+    {then {xnums = for x in xs do x.number od, xtimes = null(#xs),}}
+    then () = pol_hash.clear()
     then old_face_verbose = face_verbose, old_time_verbose = time_verbose,
     	 old_test_verbose = test_verbose, old_test_slightly_verbose = test_slightly_verbose
     then () = face_verbose:=false
@@ -296,6 +305,9 @@ set FPP_unitary_hash_general([KGBElt] xs, Param_hash Uhash, {Param_hash Uparamha
     then skipx = false
     then () = for x@j in xs
     	      do {xs}
+	 if twist(x) != x
+	 then big_unitary_hash.finishx(x)
+	 else
 	 let former_time = current, formerUhash = currentUhash, formerUcounter = currentUcounter,
 	     formerCcounter = currentCcounter, formerCharTime = charTime, former_red_count_time = red_count_time
 	 then xtwists = isotwistKGBs(x), twists = all_lambda_differential_0(x)
@@ -478,6 +490,7 @@ set FPP_unitary_hash_general([KGBElt] xs, Param_hash Uhash, {Param_hash Uparamha
 	   in big_unitary_hash.finishx(x) {mark as done all lambdas for x}
 	   fi {C}
 	   in ()
+	 fi
          od {xs}
     then () = face_verbose:=old_face_verbose; time_verbose:=old_time_verbose; test_verbose:=old_test_verbose;
     	      test_slightly_verbose:=old_test_slightly_verbose
@@ -514,7 +527,7 @@ set FPP_unitary_hash_general([KGBElt] xs, Param_hash Uhash, {Param_hash Uparamha
       	    prints("Number of known FPP-unitary faces = ",Uhash.size(),
        	      ", number found on this run = ", Uhash.size() - oldUhash)
       fi {FPP_report_flag}
-   fi {#xlambdas = 0}
+   fi {#xs = 0}
 
 set FPP_unitary_hash_general(RealForm G,Param_hash Uhash,
     (KGBElt,ratvec,{VertexData,}LocalVertexData, [[FaceVertsIndex]],
@@ -649,7 +662,7 @@ set FPP_unitary_hash_one_level(RealForm G) = void:
 
 set FPP_unitary_hash_bottom_layer([(KGBElt,ratvec)] xlambdas, Param_hash UhashG{, Param_hash Uparamhash}) = void:
     if #xlambdas = 0 then return ()
-    else let (x,) = xlambdas[0], pol_hash = make_KTypePol_hash()
+    else let (x,) = xlambdas[0]
     then G = x.real_form
     then disconn_flag = components_rank(G) > 0
     then (Gsc,M) = if disconn_flag
@@ -677,6 +690,7 @@ set FPP_unitary_hash_bottom_layer([(KGBElt,ratvec)] xlambdas, Param_hash UhashG{
 		 {this is for unitary reps of Gsc that factor to G}
 		 else UhashG
 		 fi
+    then () = pol_hash.clear()
     then start = elapsed_ms()
     then () = unitaryTime := 0
     then () = charTime := 0
@@ -724,12 +738,18 @@ set FPP_unitary_hash_bottom_layer([(KGBElt,ratvec)] xlambdas, Param_hash UhashG{
 		   {start_min_L_bottom_factors = minBottomData.min_L_bottom_factors_time()}
     then () = for (x,lambda)@k in xlambdas
     	      do {xlambdas} 
-	 	 let start = elapsed_ms(), startUhash = Uhash.size(), (x_sc,lambda_sc) = xlambdas_sc[k],
+	 	 let startxl = elapsed_ms(), startUhash = Uhash.size(), (x_sc,lambda_sc) = xlambdas_sc[k],
 		     		   startUcounter = unitary_test_counter.use_count(),
 				   startUtime = unitaryTime, theta = x.involution,
 				   startCcounter = char_counter.use_count(), startCtime = charTime,
 				   {startUparamhash = Uparamhash.size(),} startmorebad = more_bad_hash.size()
 		 then (Lvd, Perm2{, mapAct}) = LPmss[k] {already lives on Gsc}
+		 then () = if every_lambda_flag
+      	      	   	      then prints("     start #", k, " = (",x,",",lambda,"), Uhash.size() = ",
+			      Uhash.size(), ", runtime = ", print_time_string(elapsed_ms() - start),
+			      ", #uparams so far = ",sum(answerCards));
+		   		   prints("  ------------------")
+        	   		   fi {every_lambda_flag}
 		 then startLF = elapsed_ms()
 		 then LF = if by_zero_flag {and height(parameter(x,lambda,0*lambda)) > 0}
 		      	   then localFD_1Dirac2_by_zero(x_sc, lambda_sc, Lvd, Perm2)
@@ -757,7 +777,7 @@ set FPP_unitary_hash_bottom_layer([(KGBElt,ratvec)] xlambdas, Param_hash UhashG{
 				   currentUtime := unitaryTime;
 				   currentCcounter := char_counter.use_count();
 				   currentCtime := charTime
-    		 	 then () = xlambdatimes[k] := current - start
+    		 	 then () = xlambdatimes[k] := current - startxl
     			 in if every_lambda_flag
 	      		    then prints("  ",print_time_string(xlambdatimes[k]),
 			   	" = time for (x,lambda) #",k, " = (", xnums[k],",",xlambdas[k],"), ht = ",
@@ -856,7 +876,7 @@ set FPP_unitary_hash_bottom_layer([KGBElt] xs, Param_hash UhashG{, Param_hash Up
     then () = red_count_time :=0
     then () = if Dirac_flag then prepDirac(Gsc) fi
     {then {xnums = for x in xs do let (,m) = %x in m od,} xtimes = null(#xs)}
-    then pol_hash = make_KTypePol_hash()
+    then () = pol_hash.clear()
     then old_face_verbose = face_verbose, old_time_verbose = time_verbose,
     	 old_test_verbose = test_verbose, old_test_slightly_verbose = test_slightly_verbose
     then () = face_verbose:=false
@@ -892,6 +912,9 @@ set FPP_unitary_hash_bottom_layer([KGBElt] xs, Param_hash UhashG{, Param_hash Up
 	 oldCcounter = char_counter.use_count(), currentCcounter = char_counter.use_count() 
     then () = for x@j in xs
     	      do {xs}
+	 if twist(x) != x
+	 then big_unitary_hash.finishx(x)
+	 else
 	 let former_time = current, formerUhash = currentUhash, formerUcounter = currentUcounter, x_sc = xs_sc[j],
 	     startmorebadx = more_bad_hash.size(), formerCharTime = charTime, formerCcounter = currentCcounter,
 	     former_red_count_time = red_count_time
@@ -1090,6 +1113,7 @@ set FPP_unitary_hash_bottom_layer([KGBElt] xs, Param_hash UhashG{, Param_hash Up
            in ()
 	 fi {contnum.>= and contnum < j}
 	 fi {twnum.>= and twnum < j}
+	 fi {twist(x) != x}
          od {xs}
     then () = face_verbose:=old_face_verbose; time_verbose:=old_time_verbose; test_verbose:=old_test_verbose;
     	      test_slightly_verbose:=old_test_slightly_verbose

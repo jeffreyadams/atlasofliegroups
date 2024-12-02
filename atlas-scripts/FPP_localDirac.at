@@ -2493,11 +2493,11 @@ set local_test_GEO_hash_no_dumb(KGBElt x, ratvec lambda, {VertexData vd,} LocalV
 		     fi
 {for E8_s, K-chars to height test_hts[0] = 68 is 2.5 days. So do just hts[0]!}
     then LFDKH = if red_count_flag and #LF[1] > 0
-    	       	 then let (eq,CLBF) = localGraphRed(LF)
+    	       	 then let (eq_red,CLBF_red) = localGraphRed(LF)
 		      in if temp_K_char_flag
 		      	 then localFD_KHash_01_graph(x,lambda,Lvd,test_hts[0],pol_hash0,
-			      LF, eq,CLBF)
-			 else localFD_KHash_01_graph(x,lambda,Lvd,pol_hash0,LF, eq,CLBF)
+			      LF, eq_red,CLBF_red)
+			 else localFD_KHash_01_graph(x,lambda,Lvd,pol_hash0,LF, eq_red,CLBF_red)
 			 fi
 		  elif temp_K_char_flag
     	       	  then localFD_KHash_01(x, lambda, Lvd, test_hts[0], pol_hash0, LF)
@@ -2524,8 +2524,11 @@ set local_test_GEO_hash_no_dumb(KGBElt x, ratvec lambda, {VertexData vd,} LocalV
     	      (Param->bool):(Param p): is_unitary_to_ht_big_SIMPLE(p, hts[0]), Uhash)
     then () = if test_verbose then prints("unitary to ht ",hts[0],
                         " face counts to dim 1: ",for list in LFDKH do #list od) fi
-    then () = LFDKH := if temp_K_char_flag
-    	      	       then extend_K_characters(x, lambda, Lvd, LFDKH, pol_hash)
+    then () = LFDKH := if temp_K_char_flag and red_count_flag and #LFDKH[1] > 0
+    	      	       then let (eq_red,CLBF_red) = localGraphRed(LFDKH)
+    	      	       	    in extend_K_characters_graph(x, lambda, Lvd, LFDKH, pol_hash, eq_red, CLBF_red)
+		       elif temp_K_char_flag
+		       then extend_K_characters(x,lambda,Lvd,LFDKH,pol_hash)
 		       else LFDKH
 		       fi
     then ((eq,gr),IUCL,CLBF) = if temp_K_char_flag
@@ -2694,6 +2697,7 @@ set local_test_GEO(KGBElt x, ratvec lambda) =
 set hash2Counter = make_counter()
 
 {This version assumes edges and vertices already computed, with herm and pos on LKTs; called by one_level}
+{Local data assumed to have red_count coords if red_count_flag = true}
 set local_test_GEO_hash2(KGBElt x, ratvec lambda, {VertexData vd,} LocalVertexData Lvd, [[FaceVertsIndex]] LF,
 KTypePol_hash pol_hash, Param_hash Uhash) = [Param]:
     if {zero case} #LF[0] = 0 then return [] fi;
@@ -2800,8 +2804,11 @@ KTypePol_hash pol_hash, Param_hash Uhash) = [Param]:
     {then () = prints("LFDKH before extend = ",LFDKH)}
     then () = if test_verbose then prints("unitary to ht ",test_hts[0],
                         " face counts to dim 1: ",for list in LFDKH do #list od) fi
-    then () = LFDKH:= if temp_K_char_flag
-    	      	      then extend_K_characters(x, lambda, Lvd, LFDKH, pol_hash)
+    then () = LFDKH:= if temp_K_char_flag and red_count_flag and #LFDKH[1] > 0
+    	      	      then let (eq_red,CLBF_red) = localGraphRed(LFDKH)
+		      	   in  extend_K_characters_graph(x, lambda, Lvd, LFDKH, pol_hash, eq_red, CLBF_red)
+    	      	      elif temp_K_char_flag
+		      then extend_K_characters(x, lambda, Lvd, LFDKH, pol_hash)
 		      else LFDKH
 		      fi
     {then () = prints("LFDKH after extend = ",LFDKH)}
@@ -3058,9 +3065,14 @@ set local_test_GEO_hash_one_level(KGBElt x, ratvec lambda, {VertexData vd,}
              {then () = prints("at hts[0], #eq = ", #eq)}
 	     then () = LFDKH := local_testK_hash(x,lambda, Lvd, LFDKH, eq,
 		      gr, CLBF, tester0, Uhash)
-   	     then () = if temp_K_char_flag
-	     	       then LFDKH := extend_K_characters(x, lambda, Lvd, LFDKH, one_ht, pol_hash_one_ht)
-		       fi
+   	     then () = LFDKH := if temp_K_char_flag and red_count_flag and #LFDKH[1] > 0
+	     	       	     	then let (eq_red,CLBF_red) = localGraphRed(LFDKH)
+    	      	       	    	     in extend_K_characters_graph(x, lambda, Lvd, LFDKH, one_ht,
+			       	     	pol_hash, eq_red, CLBF_red)
+		      		elif temp_K_char_flag
+		       		then extend_K_characters(x, lambda, Lvd, LFDKH, one_ht, pol_hash)
+	     	       		else LFDKH
+		       		fi
 	     then ((eq,gr),IUCL,CLBF) = if temp_K_char_flag
 	     	  		      	then localGraphK(LFDKH)
 					else localGraphK(LFDKH, pol_hash, one_ht)
@@ -3164,9 +3176,13 @@ set local_test_GEO_hash_one_level(KGBElt x, ratvec lambda, {VertexData vd,}
        	       	   		      		      unitary_by_dim);}
 		prints("number of tests so far = ",unitary_test_counter.use_count() - start_count)
 	      fi
-    then () = if temp_K_char_flag
-    	      then LFDKH:= extend_K_characters(x, lambda, Lvd, LFDKH, pol_hash)
-	      fi
+    then () = LFDKH := if temp_K_char_flag and red_count_flag and #LFDKH[1] > 0
+    	      	     then let (eq_red,CLBF_red) = localGraphRed(LFDKH)
+    	      	     	  in extend_K_characters_graph(x, lambda, Lvd, LFDKH, pol_hash, eq_red, CLBF_red)
+		      elif temp_K_char_flag
+		      then extend_K_characters(x, lambda, Lvd, LFDKH, pol_hash)
+    	      	      else LFDKH
+	      	      fi
     then start=elapsed_ms()
     then () = long_out_flag := long_out_temp_flag
     then UParams = [Param]:

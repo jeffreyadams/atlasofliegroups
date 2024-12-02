@@ -265,17 +265,35 @@ set wLPms(KGBElt x,ratvec lambda) = [WeylElt, (LocalVertexData, PermOrderTwo{, v
     in wLPms(blobwxl)
 
 {list of vertices and edges for each (x,lambda) in blob}
-set wLFs([(WeylElt, KGBElt,ratvec)] blobwxl, [WeylElt, (LocalVertexData, PermOrderTwo{, vec})] wLPms) = [(WeylElt, (LocalVertexData,[[vec]]))]:
+set wLFs([(WeylElt, KGBElt,ratvec)] blobwxl, [WeylElt, (LocalVertexData, PermOrderTwo{, vec})] wLPms) =
+    		[(WeylElt, (LocalVertexData,[[vec]]))]:
     if #blobwxl = 0 then return [] fi;
     for  (w,y,tau)@j in blobwxl
-    do let (,(Lvd, Perm2{, mapAct}))= wLPms[j]
-       in (w, (Lvd,localFD_1Dirac2_by_zero(y,tau,Lvd, Perm2{, mapAct})))
+    do let (,(Lvd, Perm2))= wLPms[j]
+       in (w, (Lvd,localFD_by_zero_short(y,tau,Lvd, Perm2)))
     od
 
 set wLFs(KGBElt x, ratvec lambda) = [(WeylElt,(LocalVertexData,[[vec]]))]:
     let blobwxl = blobwxl(x,lambda)
     then wLPms = wLPms(blobwxl)
     in wLFs(blobwxl, wLPms)
+
+{ in progress: label terms in real_blob with WeylElts moving to them }
+{
+set real_blob_wxl(KGBElt x, ratvec lambda) = [(WeylElt,ratvec)]:
+    let lambda_hash = make_ratvec_hash(), taus = all_lambda_differential_0(x)
+    then () = for tau in taus
+    	      do lambda_hash.match(parameter(x,lambda+tau,0*lambda).lambda)
+	      od
+    then index = for :#taus do minus_1 od, orbit=[(id_W(x.root_datum),lambda)], i=0
+    in index[0]:=0 { mark lambda as seen, and present in orbit[0] }
+    ; while
+	 let k = #orbit
+	 then news = [(WeylElt,ratvec)]
+	    while i<#orbit
+	    do let (witness,lambdaprime) = orbit[i] next i+:=1
+	    in for s in simple
+}
 
 {all lambda1with same differential giving same LKTs}
 set real_blob(KGBElt x, ratvec lambda) = [ratvec]:
@@ -338,7 +356,8 @@ set check_concatenate(KGBElt x, ratvec lambda, [(WeylElt, (LocalVertexData, [[ve
 
 {Stick together local vertices and edges at a bunch of different w^*{-1}*(x0,lambda0)}
 {if red_count_flag, then vec sizes are 2 and 3 instead of 1 and 2}
-set concatenate([(WeylElt, (LocalVertexData, [[vec]]))] local01) = (LocalVertexData, [[vec]]):
+set concatenate(KGBElt x, ratvec lambda, [(WeylElt, (LocalVertexData, [[vec]]))] local01) =
+    (LocalVertexData, [[vec]]):
     let wLvds = for (w, (Lvd,)) in local01
     	      	do w*Lvd {apply w^{-1} to all vertices}
 		od
@@ -371,20 +390,20 @@ set concatenate([(WeylElt, (LocalVertexData, [[vec]]))] local01) = (LocalVertexD
     then big_LF = for d:2
     	 	  do for (,(,LF))@i in local01
 		     do for v in LF[d]
-		     	do (for j in v[:d+1]
-			       {:d+1 to account for long entries if red_count_flag}
-			   do perms[i][j]
-			   od.sort)## if red_count_flag
-			   	      then [v[d+1]]
-				      else []
-				      fi {now a sorted list of indices into big_list}
+		     	do (for j in v
+			    do perms[i][j]
+			    od.sort)
 			od {now a list of d-faces for ith LF}
 		     od.##.sort_u {sort_u eliminates repetitions}
 		   od {d = 0, 1}
-    in (big_Lvd, big_LF)
+    {then () = prints("in concatenate, big_LF = ",big_LF)}
+    then answer = localFD_1Dirac2_add_red(x,lambda,big_Lvd,big_LF)
+    {then () = prints("in concatenate, answer = ",answer)}
+    {need to test pos on LKTs even if red_count_flag is false}
+    in (big_Lvd, answer)
 
 set blob_data(KGBElt x, ratvec lambda) = (LocalVertexData, [[vec]]):
-    concatenate(wLFs(x,lambda))
+    concatenate(x, lambda, wLFs(x,lambda))
 
 set pol_hash = make_KTypePol_hash()
 
@@ -423,16 +442,19 @@ set FPP_unitary_hash_blob(RealForm G) = void:
     then () = blobCounter := 0
     then () = unitaryTime:=0
     then () = unipotents_to_hash(G,big_unitary_hash.uhash(G))
+    then counter = #KGB(G)\60
     then () = for x in KGB(G)
-    	      do if (x.number)%100 = 0
-	      	 then prints("starting KGBElt ",x.number, "; so far ", print_time_string(elapsed_ms() - start),
+    	      do if (x.number)%counter = 0
+	      	 then prints(new_line,"starting KGBElt ",x.number, "; so far ",
+		      	     print_time_string(elapsed_ms() - start),
 		      	     " for ",big_unitary_hash.uhash(G).size(), " unitary faces");
 		      prints("Time spent in char calcs = ",print_time_string(charTime),
        	      	      	     ", number of char calcs = ", char_counter.use_count(),
-	      		     ", time spent in red_count = ",  print_time_string(red_count_time))
+	      		     ", time spent in red_count = ",  print_time_string(red_count_time));
+		      counter:=(3*counter)\2
 		    fi;
 		 if twist(x) != x
-		 then ()
+		 then big_unitary_hash.finishx(x)
 	      	 else for lambda in FPP_lambdas(x)
        	      	      do FPP_unitary_hash_blob(x, lambda)
        		      od
