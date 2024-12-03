@@ -3355,7 +3355,7 @@ set local_test_GEO_hash_bottom_layer_interrupt(KGBElt x, ratvec lambda, {VertexD
    then MUs = for mu in LKTs(pmin)
    	      do branch_std(mu, Ds~[0])
 	      od
-   then datass =  for j:bl_step_count from 1
+   then datass =  for j:{bl_step_count} #Ds - 1 from 1
    	       	  do let datas = for mu@m in LKTs(pmin) {type [KType, [QK_bottom_data]]}
    	      	     	       	 do (mu, bottom_factors(mu, bottom_K_type_Qs(mu,Ds[j-1], Ds[j], MUs[m])))
 		     		 od
