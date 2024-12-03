@@ -332,7 +332,7 @@ formula_start : operator       { $$=start_unary_formula($1.id,$1.priority,@1); }
 
 
 symbol  : operator | '!' ;
-operator : OPERATOR | '=' | '*' ;
+operator: OPERATOR | '=' | '*' ;
 
 operand : operator operand { $$=make_unary_call($1.id,$2,@$,@1); }
 	| primary
@@ -449,8 +449,8 @@ caselist: closed_pattern ':' expr     { $$=make_case_node(0,$1,$3); }
 	  { $$=append_case_node($1,0,$3,$5); }
 ;
 
-tagged_caselist:
-	  IDENT closed_pattern  ':' expr    { $$=make_case_node($1,$2,$4); }
+tagged_caselist
+	: IDENT closed_pattern ':' expr     { $$=make_case_node($1,$2,$4); }
 	| closed_pattern '.' IDENT ':' expr { $$=make_case_node($3,$1,$5); }
 	| IDENT ':' expr
 	  { struct raw_id_pat id; id.kind=0x0; $$=make_case_node($1,id,$3); }
@@ -743,8 +743,10 @@ slice   : IDENT '[' expr_opt tilde_opt ':' expr_opt tilde_opt ']'
 pattern : IDENT		    { $$.kind=0x1; $$.name=$1; }
 	| '!' IDENT         { $$.kind=0x5; $$.name=$2; } // IDENT declared const
 	| closed_pattern
-	| closed_pattern ':' IDENT      { $$=$1; $$.kind=0x3; $$.name=$3; }
-	| closed_pattern ':' '!' IDENT	{ $$=$1; $$.kind=0x7; $$.name=$4; }
+	| closed_pattern ':' IDENT
+	  { $$=$1; $$.kind=$1.kind|0x1; $$.name=$3; }
+	| closed_pattern ':' '!' IDENT
+	  { $$=$1; $$.kind=$1.kind|0x5; $$.name=$4; }
 ;
 
 closed_pattern: '(' pattern ')' { $$=$2; }
@@ -752,7 +754,8 @@ closed_pattern: '(' pattern ')' { $$=$2; }
 	| '(' ')' { $$.kind=0x2; $$.sublist=0; } /* allow throw-away value */
 ;
 
-pattern_opt :/* empty */ { $$.kind=0x0; }
+pattern_opt
+	:/* empty */ { $$.kind=0x0; }
 	| pattern
 ;
 
