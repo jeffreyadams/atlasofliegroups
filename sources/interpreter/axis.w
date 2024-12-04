@@ -316,7 +316,7 @@ public:
     // function or (with |return_type==nullptr|) loop layer
   ~layer () @+{@; lexical_context.pop_front(); }
 @)
-  void add(id_type id,type&& t, bool is_const);
+  void add(id_type id,type&& t, unsigned char flags);
   bool empty() const @+{@; return variable.empty(); }
   id_data& operator[] (size_t i) @+{@; return variable[i]; }
   vec::iterator begin() @+{@; return variable.begin(); }
@@ -378,22 +378,42 @@ bool layer::may_return()
 
 
 @ The method |add| adds a pair to the vector of bindings; the type is moved
-into the |layer| object. This is also a good place to check for the presence
-of identical identifiers.
+into the |layer| object.
 
 @h <string>
 
 @< Function def... @>=
-void layer::add(id_type id,type&& tp,bool is_const)
-{ for (auto it=variable.begin(); it!=variable.end(); ++it)
+void layer::add(id_type id,type&& tp, unsigned char flags)
+{ @< Check that |id| is not already bound in our |layer| @>
+  @< Check that we are not binding an operator to a non-function value @>
+   constness.set_to(variable.size(),(flags&0x4)!=0);
+  variable.emplace_back( id, std::move(tp) );
+}
+
+@ This is a good place to check for the presence of identical identifiers.
+
+@< Check that |id| is not already bound in our |layer| @>=
+{
+  for (auto it=variable.begin(); it!=variable.end(); ++it)
   // traverse |variable| vector
     if (it->id==id)
       throw program_error @/
        (std::string("Multiple binding of '")
                     +main_hash_table->name_of(id)
                     +"' in same scope");
-  constness.set_to(variable.size(),is_const);
-  variable.emplace_back( id, std::move(tp) );
+}
+
+@ Just like for global definitions, we forbid locally binding a operator symbol
+to an expression of non-function type.
+
+@< Check that we are not binding an operator to a non-function value @>=
+{
+  if ((flags&0x8)!=0 and tp.kind()!=function_type)
+    { std::ostringstream o;
+      o << "Cannot bind operator '" << main_hash_table->name_of(id) @|
+        << "' to an expression of non-function type " << tp;
+      throw program_error(o.str());
+    }
 }
 
 @ We need to define the |static| variable |layer::lexical_context| outside the
@@ -2901,8 +2921,10 @@ void thread_bindings
 { if ((pat.kind & 0x1)!=0)
   {
     type tp = type::wrap(te,lvl);
-    bool constant = is_const or tp.is_polymorphic() or (pat.kind & 0x4)!=0;
-    dst.add(pat.name,std::move(tp),constant);
+    unsigned char flags = pat.kind;
+    if (tp.is_polymorphic())
+      flags |= 0x4; // polymorphic type implies constant
+    dst.add(pat.name,std::move(tp),flags);
   }
   if ((pat.kind & 0x2)!=0)
     // recursively traverse sub-list for a tuple of identifiers

@@ -243,22 +243,24 @@ declarations: declarations ',' declaration { $$ = append_let_node($1,$3); }
 ;
 
 declaration: pattern '=' expr { $$ = make_let_node($1,$3); }
-	| symbol '=' expr
-	  { struct raw_id_pat p; p.kind=0x1; p.name=$1.id;
-	    $$ = make_let_node(p,$3);
-	  }
 	| IDENT '(' param_list ')' '=' expr
 	  { struct raw_id_pat p; p.kind=0x1; p.name=$1;
 	    $$ = make_let_node(p,make_lambda_node($3.patl,$3.typel,$6,@$));
 	  }
 	| symbol '(' param_list ')' '=' expr
-	  { struct raw_id_pat p; p.kind=0x1; p.name=$1.id;
+	  { struct raw_id_pat p; p.kind=0x9; p.name=$1.id;
 	    $$ = make_let_node(p,make_lambda_node($3.patl,$3.typel,$6,@$));
 	  }
 	| REC_FUN IDENT '(' param_list ')' '=' type ':' expr
 	  {
 	    auto f = make_rec_lambda_node($2,$4.patl,$4.typel,$9,$7,@$);
 	    struct raw_id_pat p; p.kind=0x1; p.name=$2; // use $2 again
+	    $$ = make_let_node(p,f);
+	  }
+	| REC_FUN symbol '(' param_list ')' '=' type ':' expr
+	  {
+	    auto f = make_rec_lambda_node($2.id,$4.patl,$4.typel,$9,$7,@$);
+	    struct raw_id_pat p; p.kind=0x9; p.name=$2.id; // use $2 again
 	    $$ = make_let_node(p,f);
 	  }
 ;
@@ -743,6 +745,7 @@ slice   : IDENT '[' expr_opt tilde_opt ':' expr_opt tilde_opt ']'
 
 pattern : IDENT		    { $$.kind=0x1; $$.name=$1; }
 	| '!' IDENT         { $$.kind=0x5; $$.name=$2; } // IDENT declared const
+	| symbol            { $$.kind=0x9; $$.name=$1.id; }
 	| closed_pattern
 	| closed_pattern ':' IDENT
 	  { $$=$1; $$.kind=$1.kind|0x1; $$.name=$3; }

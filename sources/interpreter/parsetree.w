@@ -1350,13 +1350,13 @@ using raw_patlist = @[containers::sl_node<struct id_pat>*@];
 struct raw_id_pat
 { id_type name;
   unsigned char kind;
-  // bits 0,1,2: whether pattern has a name, has sublist, is const
+  // bits 0,1,2,3: whether pattern has name, sublist, is const, is symbol
   raw_patlist sublist;
 };
 struct id_pat
 { id_type name;
   unsigned char kind;
-  // bits 0,1,2: whether pattern has a name, has sublist, is const
+  // bits 0,1,2,3: whether pattern has name, sublist, is const, is symbol
   patlist sublist;
 @)
   id_pat() :name(), kind(0x0), sublist() @+{}
