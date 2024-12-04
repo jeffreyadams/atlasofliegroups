@@ -104,8 +104,9 @@
 
 %left OPERATOR
 
-%type <ip> pattern pattern_opt closed_pattern
-%destructor { destroy_id_pat($$); } pattern pattern_opt closed_pattern
+%type <ip> pattern pattern_opt closed_pattern case_pattern
+%destructor { destroy_id_pat($$); }
+	   pattern pattern_opt closed_pattern case_pattern
 %type <pl> pat_list id_list
 %destructor { destroy_pattern($$); } pat_list id_list
 %type <type_pt> type closed_type typedef_unit
@@ -444,21 +445,21 @@ iftail	: expr THEN expr ELSE expr FI { $$=make_conditional_node($1,$3,$5,@$); }
 	  { $$=make_conditional_node($1,$3,wrap_tuple_display(nullptr,@$),@$); }
 ;
 
-caselist: closed_pattern ':' expr     { $$=make_case_node(0,$1,$3); }
-	| caselist '|' closed_pattern ':' expr
+caselist: case_pattern ':' expr     { $$=make_case_node(0,$1,$3); }
+	| caselist '|' case_pattern ':' expr
 	  { $$=append_case_node($1,0,$3,$5); }
 ;
 
 tagged_caselist
-	: IDENT closed_pattern ':' expr     { $$=make_case_node($1,$2,$4); }
-	| closed_pattern '.' IDENT ':' expr { $$=make_case_node($3,$1,$5); }
+	: IDENT case_pattern ':' expr     { $$=make_case_node($1,$2,$4); }
+	| case_pattern '.' IDENT ':' expr { $$=make_case_node($3,$1,$5); }
 	| IDENT ':' expr
 	  { struct raw_id_pat id; id.kind=0x0; $$=make_case_node($1,id,$3); }
 	| ELSE expr
 	  { struct raw_id_pat id; id.kind=0x0; $$=make_case_node(1,id,$2); }
-	| tagged_caselist '|' IDENT closed_pattern ':' expr
+	| tagged_caselist '|' IDENT case_pattern ':' expr
 	  { $$=append_case_node($1,$3,$4,$6); }
-	| tagged_caselist '|' pattern '.' IDENT ':' expr
+	| tagged_caselist '|' case_pattern '.' IDENT ':' expr
 	  { $$=append_case_node($1,$5,$3,$7); }
 	| tagged_caselist '|' IDENT ':'  expr
 	  { struct raw_id_pat id; id.kind=0x0;
@@ -512,21 +513,21 @@ do_commalist: do_expr { $$=make_exprlist_node($1,raw_expr_list(nullptr)); }
 	| do_commalist ',' do_expr { $$=make_exprlist_node($3,$1); }
 ;
 
-do_caselist: closed_pattern ':' do_expr     { $$=make_case_node(-1,$1,$3); }
-	| do_caselist '|' closed_pattern ':' do_expr
+do_caselist: case_pattern ':' do_expr     { $$=make_case_node(-1,$1,$3); }
+	| do_caselist '|' case_pattern ':' do_expr
 	  { $$=append_case_node($1,-1,$3,$5); }
 ;
 
 tagged_do_caselist:
-	  IDENT closed_pattern  ':' do_expr    { $$=make_case_node($1,$2,$4); }
-	| closed_pattern '.' IDENT ':' do_expr { $$=make_case_node($3,$1,$5); }
+	  IDENT case_pattern  ':' do_expr    { $$=make_case_node($1,$2,$4); }
+	| case_pattern '.' IDENT ':' do_expr { $$=make_case_node($3,$1,$5); }
 	| IDENT ':' do_expr
 	  { struct raw_id_pat id; id.kind=0x0; $$=make_case_node($1,id,$3); }
 	| ELSE do_expr
 	  { struct raw_id_pat id; id.kind=0x0; $$=make_case_node(-1,id,$2); }
-	| tagged_do_caselist '|' IDENT closed_pattern ':' do_expr
+	| tagged_do_caselist '|' IDENT case_pattern ':' do_expr
 	  { $$=append_case_node($1,$3,$4,$6); }
-	| tagged_do_caselist '|' pattern '.' IDENT ':' do_expr
+	| tagged_do_caselist '|' case_pattern '.' IDENT ':' do_expr
 	  { $$=append_case_node($1,$5,$3,$7); }
 	| tagged_do_caselist '|' IDENT ':'  do_expr
 	  { struct raw_id_pat id; id.kind=0x0;
@@ -749,8 +750,8 @@ pattern : IDENT		    { $$.kind=0x1; $$.name=$1; }
 	  { $$=$1; $$.kind=$1.kind|0x5; $$.name=$4; }
 ;
 
-closed_pattern: '(' pattern ')' { $$=$2; }
-	| '(' pat_list ')'  { $$.kind=0x2; $$.sublist=reverse_patlist($2); }
+closed_pattern
+	: '(' pat_list ')'  { $$.kind=0x2; $$.sublist=reverse_patlist($2); }
 	| '(' ')' { $$.kind=0x2; $$.sublist=0; } /* allow throw-away value */
 ;
 
@@ -763,6 +764,11 @@ pat_list: pattern_opt ',' pattern_opt
 	  { $$=make_pattern_node(make_pattern_node(nullptr,$1),$3); }
 	| pat_list ',' pattern_opt { $$=make_pattern_node($1,$3); }
 ;
+
+case_pattern
+	: '(' pattern ')' { $$=$2; }
+	| closed_pattern
+	;
 
 id_spec: type pattern { $$.type_pt=$1; $$.ip=$2; }
 	| '(' id_specs ')'
