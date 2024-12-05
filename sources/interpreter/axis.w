@@ -1583,19 +1583,127 @@ case applied_identifier:
 { const id_type id=e.identifier_variant;
   const type* id_t; size_t i,j;
   const bool is_local=(id_t=layer::lookup(id,i,j))!=nullptr;
-  if (not is_local and (id_t=global_id_table->type_of(id))==nullptr)
-  {
-    std::ostringstream o;
-    o << "Undefined identifier '" << main_hash_table->name_of(id) << '\'';
-    if (e.loc.file!=Hash_table::empty)
-      o << ' ' << e.loc;
-    throw program_error (o.str());
+  if (is_local or (id_t=global_id_table->type_of(id))!=nullptr)
+  { expression_ptr id_expr = @| is_local
+    ? expression_ptr(new local_identifier<false>(id,i,j))
+    : expression_ptr(new global_identifier<false>(id));
+    return conform_types(*id_t,tp,fc,std::move(id_expr),e);
   }
+  else if (@[auto* vars=global_overload_table->variants(id)@;@])
+  @< See if a unique member of |*vars| matches |tp|, and if so |return| a
+     |capture_expression| holding the value of that variant @>
+  std::ostringstream o;
+  o << "Undefined identifier '" << main_hash_table->name_of(id) << '\'';
+  if (e.loc.file!=Hash_table::empty)
+    o << ' ' << e.loc;
+  throw expr_error(e,o.str());
 @.Undefined identifier@>
-  expression_ptr id_expr = @| is_local
-  ? expression_ptr(new local_identifier<false>(id,i,j))
-  : expression_ptr(new global_identifier<false>(id));
-  return conform_types(*id_t,tp,fc,std::move(id_expr),e);
+}
+
+@ When an identifier is found neither in the current |lexical_context| nor in
+the |global_id_table|, we used to flag an error, but as a service to the user we
+now try instead to find something from the |global_overload_table| first,
+provided there is a unique instance of the identifier there that matches the
+type requirement |tp| from the context (which may be no requirement at all). We
+do not come to this code for an applied identifier that is in the function
+position of a call: in that case an overloaded call is tried unless the
+identifier is actually known as a local identifier with a function type, or
+there are no overloads at all, as we shall see below. Therefore the context type
+pattern |tp| cannot be a partially determined function type: it is either
+completely undetermined, in which case we return a variant if it is unique and
+otherwise complain about ambiguity, or it is a monomorphic function type, in
+which case we look for a unique overload whose type unifies with that type
+(there is still a possibility of ambiguity here, though that should be quite
+rare). If none of the variants is acceptable in the context, we fall through
+this code as if there were no overloads at all.
+
+@< See if a unique member of |*vars| matches |tp|, and if so |return| a
+   |capture_expression| holding the value of that variant @>=
+{ if (tp.specialise(gen_func_type))
+  { std::ostringstream o;
+    if (tp.func()->arg_type.kind()==undetermined_type)
+    @< If |*vars| has a unique variant, |return| its value wrapped in a
+       |capture_expression|, otherwise |throw| an error signalling ambiguity @>
+    else
+    @< If a unique variant among |*vars| unifies to the monomorphic type |tp|,
+       |return| its value wrapped in a |capture_expression|, if more than one
+       does, |throw| an error signalling ambiguity, and if none does
+       fall through @>
+  }
+}
+
+@ When the context poses no requirements, we basically look for a unique variant
+for the identifier and return it. However we must specialise |tp| to the
+possibly polymorphic function type stored, and we must avoid using type
+variables below |fc| as polymorphic variables in doing so, whence we need the
+calls of |shift| below. If there are multiple variants, we warn the user that
+one cannot simply use an overloaded symbol as an identifier with nothing to
+disambiguate the usage.
+
+@< If |*vars| has a unique variant, |return| its value wrapped...@>=
+{ if (vars->size()==1)
+  { const auto& variant = vars->front();
+    if (functype_specialise @| (tp,
+      shift(variant.f_tp().arg_type,0,fc),
+      shift(variant.f_tp().result_type,0,fc)))
+    { o << main_hash_table->name_of(id) << '@@' << tp.func()->arg_type; return
+       expression_ptr(new capture_expression(variant.value(),o.str()));
+    }
+    throw logic_error
+      ("Partially determined function type failed to specialise");
+  }
+  else
+  { o << "Use of overloaded '" << main_hash_table->name_of(id)
+    @| << "' is ambiguous, specify argument type to disambiguate";
+    throw expr_error(e,o.str());
+  }
+}
+
+@ In the case where the context requires a specific (monomorphic) type, we just
+need to find the variant that matches, if it is unique; the type |tp| need not
+be specialised. Nonetheless, it can contain type variables that are fixed in the
+context, and the possibly polymorphic function type from the overload table must
+be renumbered to avoid them. This is done below implicitly, in the call of the
+method |type::matches|.
+
+@< If a unique variant among |*vars| unifies to the monomorphic type |tp|... @>=
+{ type expected = type::wrap(tp,fc); // in |expected|, floor is at level |fc|
+  assert(not expected.is_polymorphic());
+  // since now |tp| is fully determined monomorphic
+  const overload_data* prev_match=nullptr;
+  expression_ptr result;
+  unsigned int dummy; // here we only care about whether or not a match exists
+  for (const auto& variant : *vars)
+  {
+    auto op_te = type_expr::function(variant.f_tp().arg_type.copy(),
+                                    variant.f_tp().result_type.copy());
+    if (expected.matches(op_te,variant.poly_degree(),dummy))
+    { if (result!=nullptr)
+        @< Throw an error reporting ambiguous overloaded symbol usage @>
+      o << main_hash_table->name_of(id) << '@@' << tp.func()->arg_type;
+      result.reset(new capture_expression(variant.value(),o.str()));
+      prev_match = &variant; // record for purpose of possible error message
+    }
+    expected.clear(0); // reset monomorphic type
+  }
+  if (result!=nullptr)
+    return result;
+}
+
+@ The code below resembles what we will later do to report an ambiguous
+overloaded function call, but here we report the full function types.
+
+@< Throw an error reporting ambiguous overloaded symbol usage @>=
+{
+  expected.clear(); // forget the type assignment matching current variant
+  std::ostringstream o;
+  o << "Ambiguous overloaded symbol " << main_hash_table->name_of(id)
+    <<  ", context type " << expected
+  @|<< " matches both (" << prev_match->f_tp().arg_type
+    << "->" << prev_match->f_tp().result_type
+  @|<< ") and (" << variant.f_tp().arg_type
+    << "->" << variant.f_tp().result_type << ')';
+  throw expr_error(e,o.str());
 }
 
 @*1 Resolution of operator and function overloading.
@@ -2592,7 +2700,7 @@ case function_call:
   if (call.fun.kind==applied_identifier)
     @< Convert and |return| an overloaded function call
     if |call.fun| is known in |global_overload_table|,
-    unless it is a local function identifier @>
+    unless it is a local identifier with function type @>
   type_expr f_pat=gen_func_type.copy(); // start with generic function type
   expression_ptr fun = convert_expr(call.fun,fc,f_pat);
   type f_type=type::wrap(f_pat,fc);
@@ -6999,7 +7107,7 @@ case op_cast_expr:
   @< See if |c_type| matches a unique variant; if so build and |return| a
      |capture_expression| around its value in which the substitutions used
      are detailed @>
-@/throw program_error("No instance for "+o.str()+" found");
+@/throw expr_error(e,"No instance for "+o.str()+" found");
 }
 break;
 

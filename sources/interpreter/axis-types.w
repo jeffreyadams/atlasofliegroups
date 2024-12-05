@@ -3537,7 +3537,7 @@ base class.
 
 Most of the time, executable subexpressions will not be shared in any way, so
 they will be passed around and linked together via unique-pointer values. We
-choose to make |expressions_ptr| a pointer-to-constant type, because evaluating
+choose to make |expression_ptr| a pointer-to-constant type, because evaluating
 an expression (in some provided context) will never change that expression.
 During the building of the expression tree, it will sometimes happen that we
 want to modify it after the fact to achieve some kind of optimisation, and in
