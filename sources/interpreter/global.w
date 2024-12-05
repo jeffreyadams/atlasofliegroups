@@ -202,14 +202,14 @@ Type definitions will be formally marked as constant (the final |true|
 argument) but this has no consequences, since types cannot be assigned anyway.
 
 @< Global function def... @>=
-void Id_table::add_type_def(id_type id, type&& type)
+void Id_table::add_type_def(id_type id, type&& tp)
 { auto its = table.equal_range(id);
 
   if (its.first==its.second) // no global identifier was previously known
     table.emplace_hint @|
-      (its.first,id,id_data(shared_share(),std::move(type),true));
+      (its.first,id,id_data(shared_share(),std::move(tp),true));
   else // a global identifier was previously known, replace it
-    its.first->second = id_data(shared_share(),std::move(type),true);
+    its.first->second = id_data(shared_share(),std::move(tp),true);
 }
 @)
 bool Id_table::is_defined_type(id_type id) const
@@ -554,9 +554,13 @@ case, the iterator returned points at the node to overwrite.
 }
 
 @ The |remove| method allows removing an entry from the overload table, for
-instance to make place for another one. It returns a Boolean telling whether
-any such binding was found (and removed). The |variants| array might become
-empty, but remains present and will be reused upon future additions.
+instance to make place for another one. It returns a Boolean telling whether any
+such binding was found (and removed). If the |variants| becomes empty, the entry
+is removed from the |overload_table|, so that absence of an identifier |id| from
+the table can be tested as |global_overload_table->variants(is)==nullptr|; this
+also ensures that code cannot accidentally introduce a difference of behaviour
+between an identifier that once was known in the table and one that was never
+overloaded.
 
 It might be tempting to call |locate_overload| here, but we cannot: that would
 throw an error if |arg_t| were absent but close (in the sense of |is_close|) to
@@ -572,6 +576,8 @@ bool overload_table::remove(id_type id, const type_expr& arg_t)
       if (it->f_tp().arg_type==arg_t)
       @/{@;
         variants->erase(it);
+        if (variants->size()==0)
+          table.erase(p);
         return true;
       }
   return false; // |id| was known, but no such overload is present
@@ -720,11 +726,11 @@ void global_set_identifier (const struct raw_id_pat& id, expr_p e,
 			    int overload, const source_location& loc);
 void global_set_identifiers(raw_let_list d, const source_location& loc);
 void sequentially_set_identifiers(raw_let_list d, const source_location& loc);
-void global_declare_identifier(id_type id, type_p type);
+void global_declare_identifier(id_type id, type_p tp);
 void global_forget_identifier(id_type id);
-void global_forget_overload(id_type id, type_p type);
+void global_forget_overload(id_type id, type_p tp);
 void type_define_identifier
-  (id_type id, type_p type, raw_id_pat ip, const source_location& loc);
+  (id_type id, type_p tp, raw_id_pat ip, const source_location& loc);
 void process_type_definitions (raw_typedef_list l, const source_location& loc);
 void set_back_trace(const simple_list<std::string>& back_trace);
 void show_ids(std::ostream& out);
@@ -1213,18 +1219,18 @@ void set_back_trace(const simple_list<std::string>& back_trace)
 The following function is called when an identifier is declared with type
 but undefined value. Note that we output a message \emph{before} actually
 entering the identifier into the table, since the latter moves the type value
-out of |type|, so it would be a bit more effort if we wanted to print the
+out of |tp|, so it would be a bit more effort if we wanted to print the
 message afterwards.
 
 @< Global function definitions @>=
 void global_declare_identifier(id_type id, type_p t)
 { type_ptr saf(t); // ensure clean-up
-  type_expr& type=*t;
+  type_expr& tp=*t;
   @< Emit indentation corresponding to the input level to |*output_stream| @>
   *output_stream << "Declaring identifier '" << main_hash_table->name_of(id) @|
-            << "': " << type << std::endl;
+            << "': " << tp << std::endl;
   static const shared_value undefined_value; // holds a null pointer
-  global_id_table->add(id,undefined_value,type::wrap(type,0),false);
+  global_id_table->add(id,undefined_value,type::wrap(tp,0),false);
 }
 
 @ Here is a utility function called whenever a type identifier is forgotten or
@@ -1314,10 +1320,10 @@ straightforward.
 @< Global function definitions @>=
 void global_forget_overload(id_type id, type_p t)
 { type_ptr saf(t); // ensure clean-up
-  const type_expr& type=*t;
-  const bool removed = global_overload_table->remove(id,type);
+  const type_expr& tp=*t;
+  const bool removed = global_overload_table->remove(id,tp);
   *output_stream << "Definition of '" << main_hash_table->name_of(id)
-            << '@@' << type @|
+            << '@@' << tp @|
             << ( removed ? "' forgotten" : "' not known") << std::endl;
 }
 
@@ -1504,7 +1510,7 @@ void process_type_definitions (raw_typedef_list l, const source_location& loc)
 @)
     std::vector<std::pair<id_type,const_type_p> > b; b.reserve(length(defs));
     for (auto it=defs.begin(); it!=end(defs); ++it)
-      b.emplace_back(it->id,it->type);
+      b.emplace_back(it->id,it->tp);
     auto type_nrs = type_expr::add_typedefs(b);
 @)
     @< Update |global_id_table| with types and values (injector and  projector
@@ -1575,7 +1581,7 @@ accepted.
 { const bool pres = global_id_table->present(id) and
                     not global_id_table->is_defined_type(id);
   auto q = global_overload_table->variants(id);
-  if (pres or (q!=nullptr and not q->empty()))
+  if (pres or (q!=nullptr))
   { std::ostringstream o;
     o  << "Cannot define '" << main_hash_table->name_of(id) @|
        << "' as a type; it is in use as " @|
@@ -1618,7 +1624,7 @@ iteratively, manually maintaining a stack of types remaining to be visited.
 @< Replace in type expressions for |defs|... @>=
 { containers::stack<type_p> work;
   for (auto it=defs.begin(); not defs.at_end(it); ++it)
-    work.push(it->type);
+    work.push(it->tp);
   while (not work.empty())
   { auto& t = *work.top();
     work.pop(); // copy pointer as non-owned reference, then drop pointer
@@ -1864,8 +1870,7 @@ void show_overloads(id_type id,std::ostream& out)
 { const overload_table::variant_list* variants =
    global_overload_table->variants(id);
    out
-   << (variants==nullptr or variants->empty()
-      ? "No overloads for '" : "Overloaded instances of '")
+   << (variants==nullptr ? "No overloads for '" : "Overloaded instances of '")
 @| << main_hash_table->name_of(id) << '\'' << std::endl;
   if (variants!=nullptr)
     for (auto it = variants->begin(); it!=variants->end(); ++it)
