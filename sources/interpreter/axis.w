@@ -7093,41 +7093,6 @@ case op_cast_expr:
   const type_expr& c_type = c->type;
   std::ostringstream o; // prepare name for value, and for error message
   o << main_hash_table->name_of(c->oper) << '@@' << c_type;
-@)
-  if (@[const auto* entry = global_overload_table->entry(c->oper,c_type,fc)@;@])
-  { // something was found
-    expression_ptr p(new capture_expression(entry->value(),o.str()));
-    const type_expr& res_t = entry->f_tp().result_type;
-    if (functype_specialise(tp,c_type,res_t) or tp==void_type)
-      return p;
-    throw type_error
-      (e,type_expr::function(c_type.copy(),res_t.copy()),tp.copy());
-  }
-@)
-  @< See if |c_type| matches a unique variant; if so build and |return| a
-     |capture_expression| around its value in which the substitutions used
-     are detailed @>
-@/throw expr_error(e,"No instance for "+o.str()+" found");
-}
-break;
-
-@ In case the user wants to select a polymorphic variant of an operator or
-function, they can specify the exact polymorphic type, in which case they will
-get the variant unchanged by the code above, or they can specify an instance of
-that type, and we come to the code below. We need to find the variant using the
-|type::match| method, as in case of overload resolution; here too we insist of
-having a unique variant match the specified parameter type. Our logic follows
-that overload resolution closely, including the fact that a match is stored away
-temporarily to see if a second matching variant exists, in which case we throw
-an error for ambiguity instead of returning the initial match. A difference is
-that here we need construct the entire function type |deduced_type| obtained by
-unification, rather than just the return type. The factory function
-|type_expr::function| will move from its argument types, so we perform two
-separate substitutions to provide those. If nothing is found here, we fall
-through this code, leading to a ``no instance found'' error.
-
-@< See if |c_type| matches a unique variant... @>=
-{
   type target = type::wrap(c_type,fc);
   const unsigned target_deg=target.degree();
   expression_ptr result;
@@ -7135,10 +7100,43 @@ through this code, leading to a ``no instance found'' error.
   const overload_data* prev_match=nullptr;
   if (@[auto* vars = global_overload_table->variants(c->oper)@;@])
     for (const auto& variant : *vars)
+  @< See if |target| matches the argument type of a unique variant; if so,
+     assign to |result| a |capture_expression| around its value, and to
+     |deduced_type| the type with any substitutions to polymorphic type
+     variables to match |target| applied to it @>
+  if (result!=nullptr)
+  {
+    if (tp.specialise(deduced_type) or tp==void_type)
+      return result;
+    throw type_error (e,std::move(deduced_type),tp.copy());
+  }
+@/throw expr_error(e,"No instance for "+o.str()+" found");
+}
+break;
+
+@ Contrary to ordinary casts, operator casts can specify a polymorphic
+(argument) type, and this is indeed a natural way to select a polymorphic
+variant; of course overloaded entries can have a polymorphic type as well.
+Finding the right variant then resembles overloading resolution in function
+calls, and can be done using the |type::matches| method; here too we insist of
+having a unique variant match the specified parameter type. Our logic follows
+that overload resolution closely, including the fact that a match is stored away
+temporarily to see if a second matching variant exists, in which case we throw
+an error for ambiguity instead of returning the initial match. Here too the call
+of |matches| sets a possibly nonzero |shift_amount| by which the polymorphic
+type variables from the overloaded binding are to be shifted upwards to steer
+clear of any type variables (fixed or not) in |target|; the need to do so arises
+even when |target| is monomorphic but involves type variables fixed in the
+context. A difference is that here we need construct the entire function type
+|deduced_type| obtained by unification, rather than just the return type. The
+factory function |type_expr::function| will move from its argument types, so we
+perform two separate substitutions to provide those. If nothing is found here,
+we fall through this code, leading to a ``no instance found'' error.
+
+@< See if |target| matches the argument type of a unique variant... @>=
     {
       unsigned int op_deg = variant.poly_degree(), shift_amount;
       if (target.matches(variant.f_tp().arg_type,op_deg,shift_amount))
-        // exact match after substitution
       {
         if (prev_match!=nullptr)
           @< Throw an error reporting an ambiguous match in operator cast @>
@@ -7154,13 +7152,6 @@ through this code, leading to a ``no instance found'' error.
       }
       target.clear(target_deg);
     }
-  if (result!=nullptr)
-  {
-    if (tp.specialise(deduced_type) or tp==void_type)
-      return result;
-    throw type_error (e,std::move(deduced_type),tp.copy());
-  }
-}
 
 @ Similarly to what we do for ambiguous exact overload matches, we use the
 |prev_match| pointer to build an error report.
@@ -7192,7 +7183,8 @@ match the specified type.
         << *mk_type_variable(i) << '='
         << substitution(*p,target.assign());
     }
-  o << ']';
+  if (not first)
+    o << ']';
 }
 
 
