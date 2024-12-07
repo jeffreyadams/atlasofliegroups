@@ -2751,11 +2751,11 @@ if (pattern.is_unstable())
 
 @ The second method |type::unify_specialise| is basically the same as the first,
 but is a |const| method so that in particular the |type_assignment| field |a| is
-unchanged. This is achieved by copying our type before calling |unify_specialise| on the
-copy. We use the occasion of copying to also renumber our bound variables
-starting from a new level |lvl|, which is useful to make place for variables in
-|pattern| that should be considered fixed there, and disjoint from our bound
-variables.
+unchanged. This is achieved by copying our type before calling
+|unify_specialise| on the copy. We use the occasion of copying to also renumber
+our bound variables starting from a new level |lvl|, which is useful to make
+place for variables in |pattern| that should be considered fixed there, and
+disjoint from our bound variables.
 
 @< Function definitions @>=
 
@@ -4285,14 +4285,17 @@ from |required|, whose owner will be destructed before the error is caught.
 
 A second form of |conform_types| is used when a wrapped up, possibly
 polymorphic, |found| type needs to be compared against a |required| type. It is
-currently used only for applied identifiers, but should be used in other
-occasion where |found| was determined previously, independently of the
-|required| type. Extra care is needed here since polymorphic type variables from
-the stored type |found| might conflict with those present in |required| as
-abstract (fixed) type variables currently in scope. For this reason the current
-limit |fix_count| is passed as argument, and our polymorphic type variables will
-be renumbered to start at that limit. The actual renumbering takes place in the
-method |type::unify_specialise| that is called here.
+used for applied identifiers, function calls, and on other occasions where
+|found| is a type determined independently of the current context and could be
+polymorphic. (All forms of assignment expressions use the first form of
+|conform_types| for returning there value, because we have forbidden assigning
+to identifiers with polymorphic type.) Extra care is needed here
+since polymorphic type variables from the stored type |found| might conflict
+with those present in |required| as abstract (fixed) type variables currently in
+scope. For this reason the current limit |fix_count| is passed as argument, and
+our polymorphic type variables will be renumbered to start at that limit. The
+actual renumbering takes place in the method |type::unify_specialise| that is
+called here.
 
 @< Function def... @>=
 expression_ptr conform_types

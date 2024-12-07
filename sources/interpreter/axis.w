@@ -612,8 +612,9 @@ case last_value_computed:
 { std::ostringstream o;
   o << '(' << last_type << ":$)"; @q$@>
 @/return conform_types
-    (last_type.unwrap()
+    (last_type
     ,tp
+    ,fc
     ,expression_ptr(new capture_expression(last_value,o.str()))
     ,e);
 }
@@ -1371,7 +1372,7 @@ does not need, nor would it benefit from, being evaluated with |l=no_value|.
       cit->reset(new voiding(std::move(*cit)));
 }
 
-@* Identifiers.
+@* Identifiers, global and local.
 %
 Identifiers are used to access values of all types, and also for designating
 overloaded functions. In the latter usage a single identifier can be used to
@@ -1381,7 +1382,7 @@ discussed later, so for the moment we stick to simple applied identifiers that
 identify the closest defining occurrence of that identifier in the current
 lexical context. This identification can result in two outcomes: it may be
 bound to a local or to a global name, which two cases are treated in fairly
-different way. In particular after type analysis the two cases are converted
+different ways. In particular after type analysis the two cases are converted
 into different kinds of |expression|. The most fundamental difference is that
 for global identifiers, the value (object) it refers to is already known at
 the time the identifier expression is type-checked; for local identifiers the
@@ -1420,7 +1421,7 @@ void identifier::print(std::ostream& out) const
 
 @*1 Global identifiers.
 %
-When during type checking an identifiers binds to a value in the global
+ When during type checking an identifiers binds to a value in the global
 identifier table, it will be converted into a |global_identifier| object.
 Since a value is already available at this time, we can record the location of
 the (pointer to the shared) value in the |global_identifier| object. Apart
@@ -1560,7 +1561,9 @@ template<bool pilfer>
     push_expanded(l,frame::current->elem(depth,offset));
 }
 
-@ When type-checking an applied identifier, we first look in
+@*1 Type checking applied identifiers.
+%
+When type-checking an applied identifier, we first look in
 |layer::lexical_context| for a binding of the identifier; if found it will be
 a local identifier, and otherwise we look in |global_id_table|. If found in
 either way, the associated type must equal the expected type (if any), or be
@@ -1582,6 +1585,8 @@ then be simplified.
 case applied_identifier:
 { const id_type id=e.identifier_variant;
   const type* id_t; size_t i,j;
+  std::ostringstream o;
+@/
   const bool is_local=(id_t=layer::lookup(id,i,j))!=nullptr;
   if (is_local or (id_t=global_id_table->type_of(id))!=nullptr)
   { expression_ptr id_expr = @| is_local
@@ -1592,8 +1597,7 @@ case applied_identifier:
   else if (@[auto* vars=global_overload_table->variants(id)@;@])
   @< See if a unique member of |*vars| matches |tp|, and if so |return| a
      |capture_expression| holding the value of that variant @>
-  std::ostringstream o;
-  o << "Undefined identifier '" << main_hash_table->name_of(id) << '\'';
+     o << "Undefined identifier '" << main_hash_table->name_of(id) << '\'';
   if (e.loc.file!=Hash_table::empty)
     o << ' ' << e.loc;
   throw expr_error(e,o.str());
@@ -1620,8 +1624,7 @@ this code as if there were no overloads at all.
 @< See if a unique member of |*vars| matches |tp|, and if so |return| a
    |capture_expression| holding the value of that variant @>=
 { if (tp.specialise(gen_func_type))
-  { std::ostringstream o;
-    if (tp.func()->arg_type.kind()==undetermined_type)
+  { if (tp.func()->arg_type.kind()==undetermined_type)
     @< If |*vars| has a unique variant, |return| its value wrapped in a
        |capture_expression|, otherwise |throw| an error signalling ambiguity @>
     else
@@ -1696,13 +1699,12 @@ overloaded function call, but here we report the full function types.
 @< Throw an error reporting ambiguous overloaded symbol usage @>=
 {
   expected.clear(); // forget the type assignment matching current variant
-  std::ostringstream o;
   o << "Ambiguous overloaded symbol " << main_hash_table->name_of(id)
     <<  ", context type " << expected
   @|<< " matches both (" << prev_match->f_tp().arg_type
-    << "->" << prev_match->f_tp().result_type
+  @|<< "->" << prev_match->f_tp().result_type
   @|<< ") and (" << variant.f_tp().arg_type
-    << "->" << variant.f_tp().result_type << ')';
+  @|<< "->" << variant.f_tp().result_type << ')';
   throw expr_error(e,o.str());
 }
 
@@ -7104,13 +7106,9 @@ case op_cast_expr:
      assign to |result| a |capture_expression| around its value, and to
      |deduced_type| the type with any substitutions to polymorphic type
      variables to match |target| applied to it @>
-  if (result!=nullptr)
-  {
-    if (tp.specialise(deduced_type) or tp==void_type)
-      return result;
-    throw type_error (e,std::move(deduced_type),tp.copy());
-  }
-@/throw expr_error(e,"No instance for "+o.str()+" found");
+  if (result==nullptr)
+    throw expr_error(e,"No instance for "+o.str()+" found");
+  return conform_types(type::wrap(deduced_type,fc),tp,fc,std::move(result),e);
 }
 break;
 
