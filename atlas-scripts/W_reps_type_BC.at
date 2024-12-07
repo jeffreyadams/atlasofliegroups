@@ -122,13 +122,13 @@ set orbit_B (Hn_rep pair) = Orbit:
   let orbit=from_core_quotient_2(1,pair) in
   if is_valid("B",orbit) then orbit else [] fi
 
-set orbit(string type,Hn_rep(pi)) = Orbit:
+set orbit(string type,Hn_rep pi) = Orbit:
   if type ="B" then orbit_B(pi)
   elif type="C" then orbit_C(pi)
   else error("wrong type")
   fi
 
-set orbit (RootDatum rd, Hn_rep(pi)) = Orbit:
+set orbit (RootDatum rd, Hn_rep pi) = Orbit:
   let sf=simple_factors(Lie_type(rd))
   then (letter,) = assert(#sf=1,"not a simple type"); sf[0]
   in orbit(letter,pi)

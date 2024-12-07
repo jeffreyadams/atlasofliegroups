@@ -154,11 +154,11 @@ set is_odd  (int n) = bool: !=n%2
 set is_even (int n) = bool:  =n%2
 
 set min = min(<=@(int,int))
-set max = min(<=@(int,int))
+set max = max(<=@(int,int))
 set min = min_list(<=@(int,int))
-set max = min_list(<=@(int,int))
+set max = max_list(<=@(int,int))
 set min = min_init(<=@(int,int))
-set max = min_init(<=@(int,int))
+set max = max_init(<=@(int,int))
 set min_loc = mindex(<=@(int,int))
 set max_loc = maxdex(<=@(int,int))
 
@@ -258,9 +258,12 @@ set binary = (int->string):
   let f=to_base(2,to_string@int) in
   (int n)string: if n.< then "-"##f(-n) else f(n) fi
 
-set hexadecimal = (int->string):
+set digits36 = (int->string): { map digits in base up to 36 to a letter }
   let !shift = "A".ascii-10
-  then f=to_base(16,(int k): if k<=9 then k.to_string else ascii(k+shift) fi)
+  in (int k)string: if k<=9 then k.to_string else ascii(k+shift) fi
+
+set hexadecimal = (int->string):
+  let !shift = "A".ascii-10 then f=to_base(16,digits36@int)
   in (int n)string: if n.< then "-"##f(-n) else f(n) fi
 
 {                           Rational numbers                            }

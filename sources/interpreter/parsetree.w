@@ -1350,13 +1350,13 @@ using raw_patlist = @[containers::sl_node<struct id_pat>*@];
 struct raw_id_pat
 { id_type name;
   unsigned char kind;
-  // bits 0,1,2: whether pattern has a name, has sublist, is const
+  // bits 0,1,2,3: whether pattern has name, sublist, is const, is symbol
   raw_patlist sublist;
 };
 struct id_pat
 { id_type name;
   unsigned char kind;
-  // bits 0,1,2: whether pattern has a name, has sublist, is const
+  // bits 0,1,2,3: whether pattern has name, sublist, is const, is symbol
   patlist sublist;
 @)
   id_pat() :name(), kind(0x0), sublist() @+{}
@@ -3237,7 +3237,7 @@ types. For ordinary type expressions we could do with the types |type_p| and
 we need a list of pairs of a type identifier and its defining type expression.
 
 @< Structure and typedef definitions for types built upon |expr| @>=
-struct typedef_struct {@; id_type id; type_p type; patlist fields; };
+struct typedef_struct {@; id_type id; type_p tp; patlist fields; };
 using typedef_list = containers::simple_list<typedef_struct>;
 using raw_typedef_list = atlas::containers::sl_node<typedef_struct>*;
 

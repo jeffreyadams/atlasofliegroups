@@ -66,7 +66,7 @@
 %token NEXT DO DONT FROM DOWNTO WHILE FOR OD CASE ESAC REC_FUN
 %token TRUE FALSE DIE BREAK RETURN SET_TYPE ANY_TYPE WHATTYPE SHOWALL FORGET
 
-%token <oper> OPERATOR OPERATOR_BECOMES '=' '*'
+%token <oper> OPERATOR OPERATOR_BECOMES '=' '*' '!'
 %token <str> INT STRING
 %token <id_code> IDENT TYPE_ID TYPE_VAR
 %token TOFILE ADDTOFILE FROMFILE FORCEFROMFILE
@@ -83,7 +83,7 @@
 %type <expression> ident_expr do_expr do_lettail do_iftail iftail
 %type <expression> iffor_loop if_loop for_loop
 %type <ini_form> formula_start
-%type <oper> operator
+%type <oper> operator symbol
 %type <id_code> id_op
 %type <code> tilde_opt breaker typevar_list
 %destructor { destroy_expr ($$); }
@@ -104,8 +104,9 @@
 
 %left OPERATOR
 
-%type <ip> pattern pattern_opt closed_pattern
-%destructor { destroy_id_pat($$); } pattern pattern_opt closed_pattern
+%type <ip> pattern pattern_opt closed_pattern case_pattern
+%destructor { destroy_id_pat($$); }
+	   pattern pattern_opt closed_pattern case_pattern
 %type <pl> pat_list id_list
 %destructor { destroy_pattern($$); } pat_list id_list
 %type <type_pt> type closed_type typedef_unit
@@ -153,7 +154,7 @@ input:	'\n'			{ YYABORT; } /* null input, skip evaluator */
 	| FORGET TYPE_ID '\n'	{ global_forget_identifier($2); YYABORT; }
 	| FORGET IDENT '@' type '\n'
 	  { global_forget_overload($2,$4); YYABORT;  }
-	| FORGET operator '@' type '\n'
+	| FORGET symbol '@' type '\n'
 	  { global_forget_overload($2.id,$4); YYABORT; }
 	| SET_TYPE IDENT '=' type_spec '\n'
 	  { type_define_identifier($2,$4.type_pt,$4.ip,@$); YYABORT; }
@@ -213,7 +214,7 @@ input:	'\n'			{ YYABORT; } /* null input, skip evaluator */
 ;
 
 id_op	: IDENT
-	| operator { $$=$1.id; }
+	| symbol { $$=$1.id; }
 ;
 
 expr    : LET lettail { $$=$2; }
@@ -242,22 +243,24 @@ declarations: declarations ',' declaration { $$ = append_let_node($1,$3); }
 ;
 
 declaration: pattern '=' expr { $$ = make_let_node($1,$3); }
-	| operator '=' expr
-	  { struct raw_id_pat p; p.kind=0x1; p.name=$1.id;
-	    $$ = make_let_node(p,$3);
-	  }
 	| IDENT '(' param_list ')' '=' expr
 	  { struct raw_id_pat p; p.kind=0x1; p.name=$1;
 	    $$ = make_let_node(p,make_lambda_node($3.patl,$3.typel,$6,@$));
 	  }
-	| operator '(' param_list ')' '=' expr
-	  { struct raw_id_pat p; p.kind=0x1; p.name=$1.id;
+	| symbol '(' param_list ')' '=' expr
+	  { struct raw_id_pat p; p.kind=0x9; p.name=$1.id;
 	    $$ = make_let_node(p,make_lambda_node($3.patl,$3.typel,$6,@$));
 	  }
 	| REC_FUN IDENT '(' param_list ')' '=' type ':' expr
 	  {
 	    auto f = make_rec_lambda_node($2,$4.patl,$4.typel,$9,$7,@$);
 	    struct raw_id_pat p; p.kind=0x1; p.name=$2; // use $2 again
+	    $$ = make_let_node(p,f);
+	  }
+	| REC_FUN symbol '(' param_list ')' '=' type ':' expr
+	  {
+	    auto f = make_rec_lambda_node($2.id,$4.patl,$4.typel,$9,$7,@$);
+	    struct raw_id_pat p; p.kind=0x9; p.name=$2.id; // use $2 again
 	    $$ = make_let_node(p,f);
 	  }
 ;
@@ -331,7 +334,8 @@ formula_start : operator       { $$=start_unary_formula($1.id,$1.priority,@1); }
 ;
 
 
-operator : OPERATOR | '=' | '*' ;
+symbol  : operator | '!' ;
+operator: OPERATOR | '=' | '*' ;
 
 operand : operator operand { $$=make_unary_call($1.id,$2,@$,@1); }
 	| primary
@@ -342,10 +346,12 @@ tilde_opt : '~' { $$ = 1; }
 	| { $$ = 0; }
 ;
 
-primary: comprim | ident_expr ;
+primary: comprim | ident_expr
+	| primary '!' { $$=make_unary_call($2.id,$1,@$,@2); }
+;
 ident_expr : IDENT { $$=make_applied_identifier($1,@1); } ;
 selector : unit	| ident_expr
-	 | operator { $$=make_applied_identifier($1.id,@1); }
+	 | symbol { $$=make_applied_identifier($1.id,@1); }
 ;
 
 
@@ -387,7 +393,8 @@ unit    : INT { $$ = make_int_denotation($1,@$); }
 	| iffor_loop
 	| '(' expr ')'	 { $$=$2; }
 	| BEGIN expr END { $$=$2; }
-	| '&' typevar_list BEGIN expr END { $$=make_abstr($2,$4,@$); }
+	| ANY_TYPE typevar_list BEGIN expr END { $$=make_abstr($2,$4,@$); }
+	| ANY_TYPE typevar_list '(' expr ')' { $$=make_abstr($2,$4,@$); }
 	| '[' commalist_opt ']'
 		{ $$=wrap_list_display(reverse_expr_list($2),@$); }
 	| '[' commabarlist ']'
@@ -401,9 +408,9 @@ unit    : INT { $$ = make_int_denotation($1,@$); }
 	{ $$=wrap_tuple_display
 	    (reverse_expr_list(make_exprlist_node($4,$2)),@$);
 	}
-	| operator '@' type { $$=make_op_cast($1.id,$3,@$); }
+	| symbol '@' type { $$=make_op_cast($1.id,$3,@$); }
 	| IDENT '@' type    { $$=make_op_cast($1,$3,@$); }
-	| operator '@' typevar_list closed_type
+	| symbol '@' typevar_list closed_type
 	  { $$=make_op_cast($1.id,$4,@$); }
 	  // reducing |typevar_list| prepares type variables in |closed_type|
 	| IDENT '@' typevar_list closed_type
@@ -440,21 +447,21 @@ iftail	: expr THEN expr ELSE expr FI { $$=make_conditional_node($1,$3,$5,@$); }
 	  { $$=make_conditional_node($1,$3,wrap_tuple_display(nullptr,@$),@$); }
 ;
 
-caselist: closed_pattern ':' expr     { $$=make_case_node(0,$1,$3); }
-	| caselist '|' closed_pattern ':' expr
+caselist: case_pattern ':' expr     { $$=make_case_node(0,$1,$3); }
+	| caselist '|' case_pattern ':' expr
 	  { $$=append_case_node($1,0,$3,$5); }
 ;
 
-tagged_caselist:
-	  IDENT closed_pattern  ':' expr    { $$=make_case_node($1,$2,$4); }
-	| closed_pattern '.' IDENT ':' expr { $$=make_case_node($3,$1,$5); }
+tagged_caselist
+	: IDENT case_pattern ':' expr     { $$=make_case_node($1,$2,$4); }
+	| case_pattern '.' IDENT ':' expr { $$=make_case_node($3,$1,$5); }
 	| IDENT ':' expr
 	  { struct raw_id_pat id; id.kind=0x0; $$=make_case_node($1,id,$3); }
 	| ELSE expr
 	  { struct raw_id_pat id; id.kind=0x0; $$=make_case_node(1,id,$2); }
-	| tagged_caselist '|' IDENT closed_pattern ':' expr
+	| tagged_caselist '|' IDENT case_pattern ':' expr
 	  { $$=append_case_node($1,$3,$4,$6); }
-	| tagged_caselist '|' pattern '.' IDENT ':' expr
+	| tagged_caselist '|' case_pattern '.' IDENT ':' expr
 	  { $$=append_case_node($1,$5,$3,$7); }
 	| tagged_caselist '|' IDENT ':'  expr
 	  { struct raw_id_pat id; id.kind=0x0;
@@ -508,21 +515,21 @@ do_commalist: do_expr { $$=make_exprlist_node($1,raw_expr_list(nullptr)); }
 	| do_commalist ',' do_expr { $$=make_exprlist_node($3,$1); }
 ;
 
-do_caselist: closed_pattern ':' do_expr     { $$=make_case_node(-1,$1,$3); }
-	| do_caselist '|' closed_pattern ':' do_expr
+do_caselist: case_pattern ':' do_expr     { $$=make_case_node(-1,$1,$3); }
+	| do_caselist '|' case_pattern ':' do_expr
 	  { $$=append_case_node($1,-1,$3,$5); }
 ;
 
 tagged_do_caselist:
-	  IDENT closed_pattern  ':' do_expr    { $$=make_case_node($1,$2,$4); }
-	| closed_pattern '.' IDENT ':' do_expr { $$=make_case_node($3,$1,$5); }
+	  IDENT case_pattern  ':' do_expr    { $$=make_case_node($1,$2,$4); }
+	| case_pattern '.' IDENT ':' do_expr { $$=make_case_node($3,$1,$5); }
 	| IDENT ':' do_expr
 	  { struct raw_id_pat id; id.kind=0x0; $$=make_case_node($1,id,$3); }
 	| ELSE do_expr
 	  { struct raw_id_pat id; id.kind=0x0; $$=make_case_node(-1,id,$2); }
-	| tagged_do_caselist '|' IDENT closed_pattern ':' do_expr
+	| tagged_do_caselist '|' IDENT case_pattern ':' do_expr
 	  { $$=append_case_node($1,$3,$4,$6); }
-	| tagged_do_caselist '|' pattern '.' IDENT ':' do_expr
+	| tagged_do_caselist '|' case_pattern '.' IDENT ':' do_expr
 	  { $$=append_case_node($1,$5,$3,$7); }
 	| tagged_do_caselist '|' IDENT ':'  do_expr
 	  { struct raw_id_pat id; id.kind=0x0;
@@ -738,17 +745,21 @@ slice   : IDENT '[' expr_opt tilde_opt ':' expr_opt tilde_opt ']'
 
 pattern : IDENT		    { $$.kind=0x1; $$.name=$1; }
 	| '!' IDENT         { $$.kind=0x5; $$.name=$2; } // IDENT declared const
+	| symbol            { $$.kind=0x9; $$.name=$1.id; }
 	| closed_pattern
-	| closed_pattern ':' IDENT      { $$=$1; $$.kind=0x3; $$.name=$3; }
-	| closed_pattern ':' '!' IDENT	{ $$=$1; $$.kind=0x7; $$.name=$4; }
+	| closed_pattern ':' IDENT
+	  { $$=$1; $$.kind=$1.kind|0x1; $$.name=$3; }
+	| closed_pattern ':' '!' IDENT
+	  { $$=$1; $$.kind=$1.kind|0x5; $$.name=$4; }
 ;
 
-closed_pattern: '(' pattern ')' { $$=$2; }
-	| '(' pat_list ')'  { $$.kind=0x2; $$.sublist=reverse_patlist($2); }
+closed_pattern
+	: '(' pat_list ')'  { $$.kind=0x2; $$.sublist=reverse_patlist($2); }
 	| '(' ')' { $$.kind=0x2; $$.sublist=0; } /* allow throw-away value */
 ;
 
-pattern_opt :/* empty */ { $$.kind=0x0; }
+pattern_opt
+	:/* empty */ { $$.kind=0x0; }
 	| pattern
 ;
 
@@ -756,6 +767,11 @@ pat_list: pattern_opt ',' pattern_opt
 	  { $$=make_pattern_node(make_pattern_node(nullptr,$1),$3); }
 	| pat_list ',' pattern_opt { $$=make_pattern_node($1,$3); }
 ;
+
+case_pattern
+	: '(' pattern ')' { $$=$2; }
+	| closed_pattern
+	;
 
 id_spec: type pattern { $$.type_pt=$1; $$.ip=$2; }
 	| '(' id_specs ')'
