@@ -202,14 +202,14 @@ Type definitions will be formally marked as constant (the final |true|
 argument) but this has no consequences, since types cannot be assigned anyway.
 
 @< Global function def... @>=
-void Id_table::add_type_def(id_type id, type&& type)
+void Id_table::add_type_def(id_type id, type&& tp)
 { auto its = table.equal_range(id);
 
   if (its.first==its.second) // no global identifier was previously known
     table.emplace_hint @|
-      (its.first,id,id_data(shared_share(),std::move(type),true));
+      (its.first,id,id_data(shared_share(),std::move(tp),true));
   else // a global identifier was previously known, replace it
-    its.first->second = id_data(shared_share(),std::move(type),true);
+    its.first->second = id_data(shared_share(),std::move(tp),true);
 }
 @)
 bool Id_table::is_defined_type(id_type id) const
@@ -554,9 +554,13 @@ case, the iterator returned points at the node to overwrite.
 }
 
 @ The |remove| method allows removing an entry from the overload table, for
-instance to make place for another one. It returns a Boolean telling whether
-any such binding was found (and removed). The |variants| array might become
-empty, but remains present and will be reused upon future additions.
+instance to make place for another one. It returns a Boolean telling whether any
+such binding was found (and removed). If the |variants| becomes empty, the entry
+is removed from the |overload_table|, so that absence of an identifier |id| from
+the table can be tested as |global_overload_table->variants(is)==nullptr|; this
+also ensures that code cannot accidentally introduce a difference of behaviour
+between an identifier that once was known in the table and one that was never
+overloaded.
 
 It might be tempting to call |locate_overload| here, but we cannot: that would
 throw an error if |arg_t| were absent but close (in the sense of |is_close|) to
@@ -572,6 +576,8 @@ bool overload_table::remove(id_type id, const type_expr& arg_t)
       if (it->f_tp().arg_type==arg_t)
       @/{@;
         variants->erase(it);
+        if (variants->size()==0)
+          table.erase(p);
         return true;
       }
   return false; // |id| was known, but no such overload is present
@@ -720,11 +726,11 @@ void global_set_identifier (const struct raw_id_pat& id, expr_p e,
 			    int overload, const source_location& loc);
 void global_set_identifiers(raw_let_list d, const source_location& loc);
 void sequentially_set_identifiers(raw_let_list d, const source_location& loc);
-void global_declare_identifier(id_type id, type_p type);
+void global_declare_identifier(id_type id, type_p tp);
 void global_forget_identifier(id_type id);
-void global_forget_overload(id_type id, type_p type);
+void global_forget_overload(id_type id, type_p tp);
 void type_define_identifier
-  (id_type id, type_p type, raw_id_pat ip, const source_location& loc);
+  (id_type id, type_p tp, raw_id_pat ip, const source_location& loc);
 void process_type_definitions (raw_typedef_list l, const source_location& loc);
 void set_back_trace(const simple_list<std::string>& back_trace);
 void show_ids(std::ostream& out);
@@ -835,7 +841,7 @@ class definition_group
 public:
   definition_group(unsigned int n_ids);
 @) // manipulators
-  void add(id_type id,type&& t, bool is_const);
+  void add(id_type id,type&& t, unsigned char flags);
   void thread_bindings (const id_pat& pat,const type_expr& tp);
   association::iterator begin() @+{@; return bindings.begin(); }
   association::iterator end() @+{@; return bindings.end(); }
@@ -863,8 +869,10 @@ void definition_group::thread_bindings(const id_pat& pat,const type_expr& te)
 { if ((pat.kind & 0x1)!=0)
   {
     type tp = type::wrap(te,0); // no fixed type variables at outer level
-    bool constant = tp.is_polymorphic() or (pat.kind & 0x4)!=0;
-    add(pat.name,std::move(tp),constant);
+    unsigned char flags = pat.kind;
+    if (tp.is_polymorphic())
+      flags |= 0x4; // polymorphic type implies constant
+    add(pat.name,std::move(tp),flags);
   }
   if ((pat.kind & 0x2)!=0)
     // recursively traverse sub-list for a tuple of identifiers
@@ -878,35 +886,67 @@ void definition_group::thread_bindings(const id_pat& pat,const type_expr& te)
 
 @ For the method |add| we do have some actions absent from or different than in
 |layer::add|, since we have somewhat different conditions to check for validity
-of the definitions. Although there might be cases where several overloads for
-the same identifiers could be validly added in a single group, this is forbidden
-here: it would complicate the necessary testing considerably for little
-practical gain. Besides this test, we check that each identifier of function
-type can be validly added to the overload table.
+of the definitions.
 
 @< Global function definitions @>=
 
-void definition_group::add(id_type id,type&& tp, bool is_const=false)
-{ for (auto it=bindings.cbegin(); it!=bindings.cend(); ++it)
-  // check repeated identifiers
-    if (it->first==id)
+void definition_group::add(id_type id,type&& tp, unsigned char flags)
+{ @< Check that this identifier is not already bound in the same group @>
+  @< Check that we are not setting an operator to a non-function value @>
+  @< When |tp| is a function type, test for conflicts in the overload table @>
+  constness.set_to(bindings.size(),(flags&0x4)!=0);
+@/bindings.emplace_back(id,std::move(tp));
+}
+
+@ Although there might be cases where several overloads for the same identifiers
+could be validly added in a single group, this is forbidden here. Making this
+test allow precisely valid cases of multiple definitions of the same name inside
+a group would complicate matters considerably for little practical gain.
+
+@< Check that this identifier is not already bound in the same group @>=
+{
+ for (auto it=bindings.cbegin(); it!=bindings.cend(); ++it)
+   // check repeated identifiers
+     if (it->first==id)
+     { std::ostringstream o;
+       o << "Multiple occurrences of '"
+         << main_hash_table->name_of(id) @|
+         << "' cannot be defined in same definition";
+       throw program_error(o.str());
+     }
+}
+
+@ Operator symbols can syntactically only be used in function calls and operator
+specialisations, so it makes no sense to bind them to a value of non-function
+type: any attempted use would result in a type error. Therefore we flag attempts
+to do so as errors. The parser has set bit 3 of the |kind| field in an |id_pat|
+when the |name| came from a token scanned as an operator symbol (rather than as
+an identifier), which makes it possible to perform the test here.
+
+@< Check that we are not setting an operator to a non-function value @>=
+{
+  if ((flags&0x8)!=0 and tp.kind()!=function_type)
     { std::ostringstream o;
-      o << "Multiple occurrences of '"
-        << main_hash_table->name_of(id) @|
-        << "' cannot be defined in same definition";
+      o << "Cannot set operator '" << main_hash_table->name_of(id) @|
+        << "' to a value of non-function type " << tp;
       throw program_error(o.str());
     }
-@)
-  if (tp.kind()==function_type)
+}
+
+@ Here we check that each identifier of function type can be validly added to
+the overload table without producing conflicts with existing entries for the
+same identifier. The call to |locate_overload| does this test and may throw,
+which is all that we need from it here.
+
+@< When |tp| is a function type, test for conflicts in the overload table @>=
+{
+  if (tp.kind()==function_type) // then test for conflicts with existing entries
   { if (@[auto* var=global_overload_table->variants(id)@;@])
     { bool dummy;
       locate_overload(id,*var,tp.func()->arg_type, dummy);
-      // may |throw|; otherwise ignore result
+      // ignore result
     }
   }
-@)
-  constness.set_to(bindings.size(),is_const);
-@/bindings.emplace_back(id,std::move(tp));
 }
 
 
@@ -961,7 +1001,6 @@ void do_global_set(id_pat&& pat, const expr& rhs, int overload,
       if (not tp.bake().can_specialise(pattern_type(pat)))
         @< Report that type |tp| of |rhs| does not have required structure,
            and |throw| @>
-      @< Check that we are not setting an operator to a non-function value @>
       b.thread_bindings(pat,tp.unwrap());
       // match identifiers and their future types
     }
@@ -988,22 +1027,6 @@ void do_global_set(id_pat&& pat, const expr& rhs, int overload,
     }
   }
   @< Catch block for errors thrown during a global identifier definition @>
-}
-
-@ When |overload==1|, choosing whether the definition enters into the overload
-table or into the global identifier table is determined by the type of the
-defining expression. However, when |overload==2| we are defining an operator
-symbol, which can only be meaningfully added to the overload table. Therefore we
-insist for that case that a value of function type is being ascribed to the
-operator symbol, so that it will go to the overload table.
-
-@< Check that we are not setting an operator... @>=
-{ if (overload==2 and tp.kind()!=function_type)
-    { std::ostringstream o;
-      o << "Cannot set operator '" << pat.name @|
-        << "' to a value of non-function type " << tp;
-      throw program_error(o.str());
-    }
 }
 
 @ For identifier definitions we print their name and type, one line for each
@@ -1196,18 +1219,18 @@ void set_back_trace(const simple_list<std::string>& back_trace)
 The following function is called when an identifier is declared with type
 but undefined value. Note that we output a message \emph{before} actually
 entering the identifier into the table, since the latter moves the type value
-out of |type|, so it would be a bit more effort if we wanted to print the
+out of |tp|, so it would be a bit more effort if we wanted to print the
 message afterwards.
 
 @< Global function definitions @>=
 void global_declare_identifier(id_type id, type_p t)
 { type_ptr saf(t); // ensure clean-up
-  type_expr& type=*t;
+  type_expr& tp=*t;
   @< Emit indentation corresponding to the input level to |*output_stream| @>
   *output_stream << "Declaring identifier '" << main_hash_table->name_of(id) @|
-            << "': " << type << std::endl;
+            << "': " << tp << std::endl;
   static const shared_value undefined_value; // holds a null pointer
-  global_id_table->add(id,undefined_value,type::wrap(type,0),false);
+  global_id_table->add(id,undefined_value,type::wrap(tp,0),false);
 }
 
 @ Here is a utility function called whenever a type identifier is forgotten or
@@ -1297,10 +1320,10 @@ straightforward.
 @< Global function definitions @>=
 void global_forget_overload(id_type id, type_p t)
 { type_ptr saf(t); // ensure clean-up
-  const type_expr& type=*t;
-  const bool removed = global_overload_table->remove(id,type);
+  const type_expr& tp=*t;
+  const bool removed = global_overload_table->remove(id,tp);
   *output_stream << "Definition of '" << main_hash_table->name_of(id)
-            << '@@' << type @|
+            << '@@' << tp @|
             << ( removed ? "' forgotten" : "' not known") << std::endl;
 }
 
@@ -1336,6 +1359,7 @@ void type_define_identifier
   type tp= type::wrap(*t,0); // global identifiers have no fixed type variables
   const auto& fields = field_pat.sublist;
   const auto n=length(fields);
+@)
   definition_group group(n);
   std::vector<shared_function> jectors; jectors.reserve(n);
   std::vector<id_type> names(n,id_type(type_binding::no_id));
@@ -1387,7 +1411,7 @@ themselves and store them in |jectors|.
         jectors.push_back
           (std::make_shared<projector_value>(tp.bake(),i,names[i],loc));
         type_expr fte = type_expr::function(tp.bake(),tp_it->copy());
-        group.add(names[i],type::wrap(std::move(fte),0));
+        group.add(names[i],type::wrap(std::move(fte),0),id_it->kind);
           // projector type
       }
   }
@@ -1398,7 +1422,7 @@ themselves and store them in |jectors|.
         jectors.push_back
           (std::make_shared<injector_value>(tp.bake(),i,names[i],loc));
         type_expr fte = type_expr::function(tp_it->copy(),tp.bake());
-        group.add(names[i],type::wrap(std::move(fte),0));
+        group.add(names[i],type::wrap(std::move(fte),0),id_it->kind);
           // injector type
       }
   }
@@ -1486,7 +1510,7 @@ void process_type_definitions (raw_typedef_list l, const source_location& loc)
 @)
     std::vector<std::pair<id_type,const_type_p> > b; b.reserve(length(defs));
     for (auto it=defs.begin(); it!=end(defs); ++it)
-      b.emplace_back(it->id,it->type);
+      b.emplace_back(it->id,it->tp);
     auto type_nrs = type_expr::add_typedefs(b);
 @)
     @< Update |global_id_table| with types and values (injector and  projector
@@ -1557,7 +1581,7 @@ accepted.
 { const bool pres = global_id_table->present(id) and
                     not global_id_table->is_defined_type(id);
   auto q = global_overload_table->variants(id);
-  if (pres or (q!=nullptr and not q->empty()))
+  if (pres or (q!=nullptr))
   { std::ostringstream o;
     o  << "Cannot define '" << main_hash_table->name_of(id) @|
        << "' as a type; it is in use as " @|
@@ -1600,7 +1624,7 @@ iteratively, manually maintaining a stack of types remaining to be visited.
 @< Replace in type expressions for |defs|... @>=
 { containers::stack<type_p> work;
   for (auto it=defs.begin(); not defs.at_end(it); ++it)
-    work.push(it->type);
+    work.push(it->tp);
   while (not work.empty())
   { auto& t = *work.top();
     work.pop(); // copy pointer as non-owned reference, then drop pointer
@@ -1725,7 +1749,7 @@ through |definition_group::add|.
       if (id_it->kind==0x1) // field selector present
       {
         type_expr fte = type_expr::function(tp.copy(),tp_it->copy());
-        record->add(id_it->name,type::wrap(std::move(fte),0));
+        record->add(id_it->name,type::wrap(std::move(fte),0),id_it->kind);
           // projector type
       }
   }
@@ -1736,7 +1760,7 @@ through |definition_group::add|.
       if (id_it->kind==0x1) // field selector present
       {
         type_expr fte = type_expr::function(tp_it->copy(),tp.copy());
-        record->add(id_it->name,type::wrap(std::move(fte),0));
+        record->add(id_it->name,type::wrap(std::move(fte),0),id_it->kind);
           // injector type
       }
   }
@@ -1846,8 +1870,7 @@ void show_overloads(id_type id,std::ostream& out)
 { const overload_table::variant_list* variants =
    global_overload_table->variants(id);
    out
-   << (variants==nullptr or variants->empty()
-      ? "No overloads for '" : "Overloaded instances of '")
+   << (variants==nullptr ? "No overloads for '" : "Overloaded instances of '")
 @| << main_hash_table->name_of(id) << '\'' << std::endl;
   if (variants!=nullptr)
     for (auto it = variants->begin(); it!=variants->end(); ++it)

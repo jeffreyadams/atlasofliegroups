@@ -660,8 +660,11 @@ included before) respectively appending output redirection.
            code = becomes_follows() ? OPERATOR_BECOMES : OPERATOR;
          }
          else
+         {
+           valp->oper.id = id_table.match_literal("!");
+           valp->oper.priority = 10; // not really relevant
            code= (input.unshift(),c);
-         // currently unused; might some day be factorial operator
+         }
   break; case '~': @< Handle the |'~'| case, involving some look-ahead @>
   break; case '\f': code=END_OF_FILE; // tell the parser a file ended
   break; @/@< Cases of arithmetic operators, ending with |break| @>
@@ -743,6 +746,10 @@ break; case '-': operator_termination(c);
          valp->oper.priority = 4;
          code = becomes_follows() ? OPERATOR_BECOMES : OPERATOR;
        }
+break; case '&': operator_termination(c);
+       valp->oper.id = id_table.match_literal("&");
+       valp->oper.priority = 5;
+       code = becomes_follows() ? OPERATOR_BECOMES : OPERATOR;
 break; case '*': operator_termination(c);
        valp->oper.id = id_table.match_literal("*");
        valp->oper.priority = 6;
