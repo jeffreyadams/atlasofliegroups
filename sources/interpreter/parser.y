@@ -66,7 +66,7 @@
 %token NEXT DO DONT FROM DOWNTO WHILE FOR OD CASE ESAC REC_FUN
 %token TRUE FALSE DIE BREAK RETURN SET_TYPE ANY_TYPE WHATTYPE SHOWALL FORGET
 
-%token <oper> OPERATOR OPERATOR_BECOMES '=' '*' '!'
+%token <oper> OPERATOR OPERATOR_BECOMES '!' '=' '*' '<' '>'
 %token <str> INT STRING
 %token <id_code> IDENT TYPE_ID TYPE_VAR
 %token TOFILE ADDTOFILE FROMFILE FORCEFROMFILE
@@ -335,7 +335,7 @@ formula_start : operator       { $$=start_unary_formula($1.id,$1.priority,@1); }
 
 
 symbol  : operator | '!' ;
-operator: OPERATOR | '=' | '*' ;
+operator: OPERATOR | '=' | '*' | '<' | '>' ;
 
 operand : operator operand { $$=make_unary_call($1.id,$2,@$,@1); }
 	| primary

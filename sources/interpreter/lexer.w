@@ -638,13 +638,17 @@ included before) respectively appending output redirection.
          }
          operator_termination(c);
          valp->oper.priority=2;
+         {} // don't try |OPERATOR_BECOMES| for operators staring '$<$' or '$>$'
          if (input.shift()=='=')
+       @/{@;
            valp->oper.id=id_table.match_literal(c=='<' ? "<=" : ">=");
-         else
-           {@; input.unshift();
-               valp->oper.id=id_table.match_literal(c=='<' ? "<" : ">");
-           }
-         code = becomes_follows() ? OPERATOR_BECOMES : OPERATOR;
+           code = OPERATOR;
+         }
+         else // scan as character token |c|, but also fetch identifier
+         {@; input.unshift();
+           valp->oper.id=id_table.match_literal(c=='<' ? "<" : ">");
+           code = c;
+         }
   break; case ':': prevent_termination=c;
     code = input.shift()=='=' ? BECOMES  : (input.unshift(),c);
   break; case '=':
