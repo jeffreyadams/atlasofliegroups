@@ -2438,11 +2438,12 @@ class type
 public:
   static type wrap(const type_expr& te,
 		   unsigned int fix_count, unsigned int gap=0);
+  static type constructor(type_expr&& te, unsigned int degree);
   static type bottom(unsigned int fix_count)
-  {@; return wrap(type_expr(),fix_count); } // free type variable
+  {@; return wrap(type_expr(),fix_count); } // single free type variable
   type(type&& tp) = default;
   type& operator=(type&& tp) = default;
-  type copy() const
+  type copy() const @+
     {@; type result;
       result.te=te.copy();
       result.a=a.copy();
@@ -2634,6 +2635,21 @@ type type::wrap (const type_expr& t, unsigned int fix_count, unsigned int gap)
   result.te = std::move(e);
   return result;
 }
+
+@ For user type definitions, we need to construct a type with a given degree,
+where the scanner is set up in a manner ensuring that all type variables, which
+now represent the arguments of the type constructor, are all numbered less than
+this degree. We can then use the scanned type as-is as body of the type
+constructor, and set the degree as requested (even if not all type variables are
+actually used, in contrast with how |type::wrap| works).
+
+@< Function definitions @>=
+type type::constructor(type_expr&& te, unsigned int degree)
+{ type result(0,degree);
+  result.te = std::move(te);
+  return result;
+}
+
 
 @ The methods |type::unify| and |type::has_unifier| are easily implemented using
 |can_unify|.
