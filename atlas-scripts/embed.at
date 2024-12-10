@@ -46,8 +46,33 @@ set lift_KGB_Cayley(RootDatum H,vec alpha_H,mat M,KGBElt x_G)=KGBElt:
 let y=x_G in
  for alpha in embed_root(H,alpha_H,M,x_G.real_form) do y:=Cayley(alpha,y) od;y
 
+{assuming H,G quasisplit; also rho_G-rho_H \in X^*}
+{x_H_0:torus factor 0 on H -> x_G_0: torus factor 0 on G}
+{then x_H=w*x_H_0 -> x_G=w*x_G_0}
+set embed_KGB(KGBElt x_H, RealForm G, mat M)=KGBElt:
+let theta_H=involution(x_H) then
+theta_G=left_inverse(M)*theta_H*M then
+x_G_0=KGB_elt(G,theta_G,null(rank(G))) {torus factor 0} then
+fiber_H=fiber(x_H) then
+fiber_G=cross_sub_orbit(simple_imaginary_reflections(x_G_0),x_G_0) then
+x_H_0=fiber_H[0] then 
+{assume fiber_G[0] has torus factor 0: from cross_sub_orbit it has
+ the smallest KGB number, so probably true, but this assumption
+ should be removed}
+w=cross_divide(x_H_0,x_H)  {w*x_H_0=x_H}
+in cross(w.matrix,x_G_0)
+
+set embed_KGB(RealForm H,RealForm G, mat M)=[(KGBElt,KGBElt)]:
+for x_H in KGB(H) do (x_H, embed_KGB(x_H,G,M)) od
+
+
+
+
+for (y,) in cross_sub_orbit(simple_imaginary_reflections(x),x) do y od
+
+
 {use Cayleys and crosses to compute map on KGB, given a single x_H->x_G}
-set embed_KGB(KGBElt x_H,KGBElt x_G,mat M)=[(int,int)]:
+set embed_KGB_old(KGBElt x_H,KGBElt x_G,mat M)=[(int,int)]:
 let H=x_H.real_form then
 G=x_G.real_form then
 known_H=[x_H.number] then
@@ -77,7 +102,7 @@ let ()=if te_verbose then prints("done_H: ", done_H) fi in
     done_H#:=i_H;
  for alpha@i in H.simple_roots do
     let y_H=cross(alpha,x_H) in
-    let ()=if te_verbose then prints("i=",i," alpha=",alpha," (cross)y_H=", y_H) fi in
+    let ()=if te_verbose then prints("i=",i," alpha=",alpha," (cross)y_H=", y_H,new_line,"is_known_H(y_H): ", is_known_H(y_H)) fi in
       let ()=if not is_known_H(y_H) then
               let y_G=lift_KGB_cross(H,alpha,M,x_G) in
               let ()=if te_verbose then prints("y_G=",y_G) fi in
@@ -91,8 +116,10 @@ let ()=if te_verbose then prints("done_H: ", done_H) fi in
                known_H#:=y_H.number
               fi
              fi
-  in
-  if is_noncompact(x_H)(alpha) or is_real(alpha, x_H) then
+  in  {now try Cayleys}
+  if te_verbose then prints("alpha=",alpha,"  x_H=", x_H, " " ,x_H.real_form, " status!: ", status_text(alpha,x_H)) fi;
+  if is_noncompact_imaginary(x_H)(alpha) or is_real(alpha, x_H) then
+       let ()=if te_verbose then prints("doing Cayley") fi in 
        let y_H=Cayley(alpha,x_H) in
        let ()=if te_verbose then prints("i=",i," alpha=",alpha," (Cayley)y_H=", y_H) fi in
        if not is_known_H(y_H) then
@@ -213,6 +240,9 @@ od{while #map};
 if te_verbose then prints("finished embed_parameters", new_line, "counter = ", counter, new_line,
 "target = ", target,new_line, "found: ", #pair_hash.finalized()) fi;
 pair_hash
+
+
+
 
 {assuming p_H maps to p_G, extend as far as possible by Cayleys and crosses}
 {modifying to use integrality datum}
