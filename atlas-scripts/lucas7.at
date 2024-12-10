@@ -12,7 +12,7 @@ set shift(Param p_L, int k)=Param:parameter(p_L.x, p_L.lambda -[k,0,0,0,0], p_L.
 set shift([Param] params_L, int k)=[Param]:for p_L in params_L do shift(p_L,k) od
 set shift([[Param]] list, int k)=[[Param]]:for params_L in list do shift(params_L,k) od
 
-set packet_L=parameters(wp_L[10])
+set packet_L=parameters(wp_L[10])x
 set packet_L_0=packet_L
 set packet_L_minus_4=for p in packet_L do shift(p,4) od
 set packet_L_minus_5=for p in packet_L do shift(p,5) od
