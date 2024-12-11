@@ -9,6 +9,8 @@ the FPP}
 
 {delta-fixed wts for G}
 
+set coh_ind_unip_verbose = true
+
 
 set is_dom_FPP(RootDatum rd, ratvec gamma) = bool:
     all(for alphavee in rd.simple_coroots
@@ -495,17 +497,17 @@ set coh_ind_unip_all(KGPElt Q, Param_hash Uhash,ratvec v) = void:
 set coh_ind_unip_all(KGPElt Q, ratvec v) = void:
     coh_ind_unip_all(Q, big_unitary_hash.uhash(Q.real_form),v)
 
-set coh_ind_unip_verbose = false
 
 set coh_ind_unip_few(RealForm G, [KGPElt] Qs, Param_hash Uhash) = void:
-    let startTime = elapsed_ms(), oldSize = Uhash.size()
+    let startTime = elapsed_ms(), oldSize = Uhash.size() then
+    ()=if coh_ind_unip_verbose then prints("number of Qs: ", #Qs) fi 
     then () = for Q@j in Qs
     	      do for v in offsets(Q)
     	      	 do coh_ind_unip_few(Q,Uhash,v)
 		 od;
 		 if coh_ind_unip_verbose and
 		    j%(max(#Qs\40,1)) = 0
-		 then prints("finished parabolic #", j,
+		 then prints("finished parabolic #", j," ", Q.Levi, 
 		    " after ",print_time_string(elapsed_ms() - startTime),
 		    "; found ",Uhash.size() - oldSize, " reps.")
 		 fi
@@ -546,14 +548,16 @@ set coh_ind_unip_most(RealForm G, [KGPElt] Qs) = void:
 
 {"all" means all Qshifts AND version of shifts sllowing all possible negstive weights}
 set coh_ind_unip_all(RealForm G, [KGPElt] Qs, Param_hash Uhash) = void:
-    let startTime = elapsed_ms(), oldSize = Uhash.size()
+    let ()=if coh_ind_unip_verbose then prints("number of Qs: ", #Qs) fi then
+    startTime = elapsed_ms(), oldSize = Uhash.size()
     then () = for Q@j in Qs
-    	      do for v in offsets(Q)
+    	      do
+                 for v in offsets(Q)
     	      	 do coh_ind_unip_all(Q,Uhash,v)
 		 od;
 		 if coh_ind_unip_verbose and
 		    j%(max(#Qs\40,1)) = 0
-		 then prints("finished parabolic #", j,
+		 then prints("finished parabolic #", j, " ", Q.Levi ,
 		    " after ",print_time_string(elapsed_ms() - startTime),
 		    "; found ",Uhash.size() - oldSize, " reps.")
 		 fi

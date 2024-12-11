@@ -100,7 +100,7 @@ set Dirac_flag = false
 
 { useful to assign this to 'true" to get information about the
   progress of long calculations }
-set face_verbose = false
+set face_verbose = true
 
 { if true, reports progress at each of 2^{rank+1} fundamental faces
   during FPP calculation }

@@ -200,7 +200,7 @@ set bl_step_size = 5
 
 {almost always it makes sense to preload the Arthur unipotent
 reps. But not in a few test situations.}
-set load_unipotents_flag = true
+set load_unipotents_flag = true {need to do this for non-unipotent representations}
 
 {if KGB number is below this times #KGB, use is_unitary rather than is_unitary_to_ht}
 set low_KGB_frac = rat: 1/2
@@ -353,8 +353,10 @@ set local_unipotent_classes(KGBElt x, ratvec lambda, VertexData (list,lookup)) =
 {inserts special unipotent reps in unitary_hash}
 set unipotents_to_hash(RealForm G, Param_hash Uhash) = void:
     if load_unipotents_flag
-    then for p in unipotent_representations(G) do Uhash.match(p) od
-    else ()
+    then let ()=prints("loading unipotents") in 
+{    for p in unipotent_representations(G) do Uhash.match(p) od;prints("done loading unipotents")}
+    prints("COMMENTED OUT unipotent_representations(G)") 
+    else (prints("not loading unipotents"))
     fi
 
 {add only those unipotent reps of Gsc factoring to a quotient G, with M: X*(G1) -->
@@ -3339,7 +3341,8 @@ set local_test_GEO_hash_bottom_layer_interrupt(KGBElt x, ratvec lambda, {VertexD
    then MUs = for mu in LKTs(pmin)
    	      do branch_std(mu, Ds~[0])
 	      od
-   then datass =  for j:bl_step_count from 1
+{   then datass =  for j:bl_step_count from 1}
+    then datass =  for j:#Ds-1 from 1  {fix in email from dav}
    	       	  do let datas = for mu@m in LKTs(pmin) {type [KType, [QK_bottom_data]]}
    	      	     	       	 do (mu, bottom_factors(mu, bottom_K_type_Qs(mu,Ds[j-1], Ds[j], MUs[m])))
 		     		 od

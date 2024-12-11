@@ -34,7 +34,7 @@ set coh_ind_all_flag = false
 {if true, load Arthur unipotent reps into unitary hash before starting FPP.
 Computing Arthur unipotents takes a long time for high rank (e.g. rank 4
 complex}
-set unip_flag = true
+set unip_flag = true   {need to do this for non-exceptional groups}
 
 {next functions aim to compute FULL spherical dual in non-split case,
 when several different x give spherical reps}
@@ -146,10 +146,14 @@ set FPP_unitary_hash_general([(KGBElt,ratvec)] xlambdas, Param_hash Uhash,
 	      fi
     then () = face_verbose:=false; time_verbose:=false; test_verbose:=false; test_slightly_verbose:=false
     then () = if unip_flag
-    	      then unipotents_to_hash(G,Uhash)
+    	      then
+                let ()=if face_verbose then prints("computing unipotents_to_hash(G,Uhash)") fi in
+                unipotents_to_hash(G,Uhash)
 	      fi
-    then () = if coh_ind_all_flag 
-    	      then coh_ind_unip_all(G,Uhash) {this takes several seconds for F4_s}
+    then () = if coh_ind_all_flag
+              then 
+                let ()=if face_verbose then prints("coh_ind_unip_all(G,Uhash)") fi in
+                coh_ind_unip_all(G,Uhash) {this takes several seconds for F4_s}
 	      elif coh_ind_most_flag
 	      then coh_ind_unip_most(G,Uhash)
 	      {elif coh_ind_few_flag
@@ -694,7 +698,8 @@ set FPP_unitary_hash_bottom_layer([(KGBElt,ratvec)] xlambdas, Param_hash UhashG{
     	 old_test_verbose = test_verbose, old_test_slightly_verbose = test_slightly_verbose
     then () = face_verbose:=false; time_verbose:=false; test_verbose:=false; test_slightly_verbose:=false
     then () = if unip_flag
-    	      then unipotents_to_hash(G,UhashG)
+    	      then
+                unipotents_to_hash(G,UhashG)
 	      fi
     then () = if coh_ind_all_flag
     	      then coh_ind_unip_all(G,UhashG)
