@@ -494,10 +494,11 @@ static type_expr tuple(type_list&& l)
 @/{@; type_expr result; result.tag=tuple_type, result.tuple_variant=l.release();
     return result;
   }
-static type_expr onion(type_list&& l)
-@/{@; type_expr result; result.tag=union_type, result.tuple_variant=l.release();
+static type_expr tuple_or_union(type_tag tag,type_list&& l)
+@/{@; type_expr result; result.tag=tag, result.tuple_variant=l.release();
     return result;
   }
+
 static type_expr tabled_nr(type_nr_type type_nr)
 @/{@; type_expr result; result.tag=tabled, result.tabled_variant=type_nr;
     return result;
@@ -638,7 +639,7 @@ Once constructed we must |undress| to demote to a |simple_list|, and then
 the nodes accessible from here before setting |tag=undetermined_type|. The
 reason for separating this out from the destructor is that it allows variables
 to be made ready for reuse. The recursion of this method is implicit, as the
-|delete| calls will may run destructors that call |clear| again.
+|delete| calls may run destructors that call |clear| again.
 
 If some variants of the |union| had been smart pointers, then we would have
 needed to explicitly call their destructors, rather than |delete|. This would
@@ -658,18 +659,20 @@ void type_expr::clear() noexcept
 
 @ The method |set_from| makes a shallow copy of the structure; it implements
 move semantics. Correspondingly it takes as argument another |type_expr| by
-modifiable rvalue reference. The contents of its top-level structure will be
-moved to the current |type_expr| using move assignment where applicable, and
-then set to a empty |undetermined_type| value, which effectively detaches any
-possible descendants from it. This operation requires that |type_expr|
-previously had |tag==undetermined_type|. We test this condition using an
-|assert| statement (rather than throwing |logic_error|) to honour the
-|noexcept| specification.
+modifiable rvalue reference. The contents of its top-level structure is moved to
+the current |type_expr|, and then set to a empty |undetermined_type| value,
+which effectively detaches any possible descendants from it. This operation
+requires that |type_expr| previously had |tag==undetermined_type|. We test this
+condition using an |assert| statement (rather than throwing |logic_error|) to
+honour the |noexcept| specification.
 
 Using assignments (rather than placement-|new|) in |set_from| is possible since
-all variants are POD types. The moving copy constructor is nearly identical to
-|set_from| method, so we call the default constructor first, and then |set_from|
-to move the top-level value.
+all variants are POD types. Also we do not use move-assignments (although
+morally they are) since the data consists of either raw pointers or of basic
+(integer) data.
+
+The moving copy constructor is nearly identical to |set_from| method, so we call
+the default constructor first, and then |set_from| to move the top-level value.
 
 @h <stdexcept>
 @< Function definitions @>=
@@ -695,7 +698,10 @@ type_expr::type_expr(type_expr&& x) noexcept // move constructor
 
 @ For move assignment we reuse the |set_from| method, and for |swap| we do a
 move construction and two |set_from| calls, unless the |tag| fields match, in
-which case we can call |std::swap| directly on the matching variant fields.
+which case we can call |std::swap| directly on the matching variant fields. The
+|swap| method is not actually used (so we exclude its implementation from
+compilation); it serves just as illustration of how it should be done if ever
+needed.
 
 @< Function definitions @>=
 type_expr& type_expr::operator=(type_expr&& x) noexcept // move assignment
@@ -706,6 +712,7 @@ type_expr& type_expr::operator=(type_expr&& x) noexcept // move assignment
   return *this;
 }
 @)
+#if 0
 void type_expr::swap(type_expr& other) noexcept
 {
   if (tag==other.tag) // an easy case
@@ -727,20 +734,20 @@ void type_expr::swap(type_expr& other) noexcept
     set_from(std::move(t));
   }
 }
+#endif
 
-@ The |specialise| method is mostly used to either set a completely undetermined
-type to a given pattern, or to test if it already matches that pattern;
-sometimes however, we do not know which of the two will be the case, nor do we
-exclude the possibility that that the type was in part already more specific
-than the pattern, while another part needs actual specialisation to match the
-pattern. Here ``a type matching a pattern'' means the type is at least as
-specific as the pattern (allowing the pattern to be transformed into the type by
-substitution for undetermined components), and specialising means replacing by
-something more specific. So upon success we are replacing the type for which the
-method is called by the most general common specialisation (called unifier) of
-its previous value and |pattern|. So the name of this method is somewhat
-misleading: one specialises necessarily to the |pattern| value itself, but to
-something that matches |pattern|.
+@ The |specialise| method is mostly used to either set (if initially
+undetermined) the |type_expr| it is called to a given |pattern| (which sometimes
+actually is a complete type), or to test if it already matches that pattern.
+This is done so that the same code can cater both for strong type contexts
+(where a value of a specific type must be produced) and for weak ones (where
+during type analysis any type found will do), as well as occasionally for
+intermediate requirements (like: we need a $3$-tuple type with |int| as second
+component). If possible, the initial value of our |type_expr| is replaced by a
+refinement (meaning that some undetermined parts are substituted for) that is
+also a refinement of |pattern|. This foreshadows the notion of unification in
+the context of second order types, but the purpose of the |specialise| method is
+mainly convenience of coding.
 
 In the case of an |undetermined_type|, |specialise| uses the |set_from| method
 to make |*this| a copy of |pattern|. In the other cases we only continue if
@@ -765,7 +772,7 @@ the method |can_specialise| instead, to determine the Boolean result. When both
 type expressions have |tag==tabled| we must avoid potentially infinite
 recursion when both are expanded; by ensuring (upon entering type definitions)
 that defined types are only equal if they have the same name, the code here is
-reduced to just a test of the type names.
+reduced to just a test of the type numbers |tabled_variant|.
 
 @< Function definitions @>=
 bool type_expr::specialise(const type_expr& pattern)
@@ -910,7 +917,7 @@ those in |y.tuple_variant| @>=
 }
 
 @ The predicate |is_unstable| checks for the presence of undefined components
-(\.*) in a type (such types are ``unstable'' since the might get modified by
+(\.*) in a type (such types are ``unstable'' since they might get modified by
 |specialise|, and in certain places their occurrence could undermine the
 consistency of the type system).
 
@@ -1282,16 +1289,11 @@ type_expr
   case row_type:
       return type_expr::row(row_variant->to_table(dst,count));
   case tuple_type:
-    { dressed_type_list l;
-      for (wtl_const_iterator it(tuple_variant); not it.at_end(); ++it)
-        l.push_back(it->to_table(dst,count));
-      return type_expr::tuple(l.undress());
-    }
   case union_type:
     { dressed_type_list l;
       for (wtl_const_iterator it(tuple_variant); not it.at_end(); ++it)
         l.push_back(it->to_table(dst,count));
-      return type_expr::onion(l.undress());
+      return type_expr::tuple_or_union(tag,l.undress());
     }
   case tabled: assert(false);
 // we don't allow $\&{set\_type}~\&a=\&a$ or $\&{set\_type}~\&a=\&b,\&b=\ldots$
@@ -1860,7 +1862,8 @@ type_ptr mk_tuple_type (type_list&& l)
 type_ptr mk_union_type (type_list&& l)
 { if (l.singleton())
     return std::make_unique<type_expr>(std::move(l.front()));
-  return std::make_unique<type_expr>(type_expr::onion(std::move(l)));
+  return std::make_unique<type_expr>
+    (type_expr::tuple_or_union(union_type,std::move(l)));
 }
 
 type_ptr mk_tabled_type(type_nr_type nr)
@@ -1928,89 +1931,232 @@ type_p unmake_type_singleton(raw_type_list p)
 
 @*1 Second order types and type unification.
 %
-In this section we make a start towards allowing type expressions to be
-universally quantified over types, so that we can write for instance
-$([[T]]\to[T])$ for arbitrary type $T$, as type of the row-of-rows concatenation
-function. When we started writing this section, that built-in function, and some
-similar ones, were already in the language, and were handled by special code when
-it comes to type checking (overloaded) function calls. What we shall do here
-therefore generalises and will replace that code, making such higher order
-functions a general feature of the language that is also available for user
-defined functions. At the same time, it gives us a new perspective on the type
-of the empty list expression $[\,]$, which can now given the type $[T]$ for
-arbitrary type $T$, and should provide a better solution to using many related
-union types, like $(\&{void}\mid T)$ for different types~$T$, where previously
-the injector functions had to be specific for every type $T$ in use, and for the
-first variant they cannot be overloaded because $T$ does not occur in their
-argument. In passing, we mention that our new type system much resembles (and is
-inspired by) the flavour of the Hindley-Milner type system used for instance in
-the Haskell language, but with important differences, stemming mostly from the
-fact that we don't care much about deducing types of \emph{all} expressions
-without any help from the user; we have always required function parameters to
-be given explicit types. This in fact might well not be possible in the presence
-of features that we already introduced prior to second order types (such as ``ad
-hoc'' function overloading).
+In this section we consider questions relating to universally quantified types
+and type constructors. Both notions are related to the possibility of describing
+families of types using a type with type variables, which can then be subject to
+substitution of concrete types for them. This is to be distinguished from the
+use of type patterns to represent incomplete type requirements (like ``a
+$3$-tuple is needed here'') during type checking, where undetermined positions
+are simply holes that can be arbitrarily and independently filled; type
+variables can, and typically do, occur more than once in a type and have to be
+systematically substituted for. We can write for instance $([[T]]\to[T])$ for
+arbitrary type $T$, as type of the row-of-rows concatenation function. Type
+constructors can also be represented by types using type variables taken from an
+ordered list of one or more ``parameter types'', and when a corresponding list
+of ``actual type arguments'' is given, substitution defines the resulting
+concrete type.
 
-To be able to write down second order types, one needs to introduce type
-variables (this can be generalised to variables standing for unknown
-type \emph{constructors} and even more general things, but we shall not consider
-that for now). They might be introduced explicitly by the user (for instance
-when writing explicit second order functions), in which case their names will be
-provided; it is also possible that type variables need to be introduced just to
-be able to record second order types that arise during type checking, so we
-shall be prepared for that as well. When explicitly introduced by the user, type
-variables remain ``fixed by the context'' within their scope, meaning that
-nothing can be assumed about them and no substitution can be made for them.
-However, when (generic function) values emerge from such a scope, their types
-may contain such type variables as type subexpressions, and these variables then
-become universally quantified at the outer level in such types. Since no other
-quantification than universal quantification at the outermost level ever occurs
-(and their order does not matter in case there is more than one), there is no
-need to incorporate these quantifiers in type expressions. In all situation it
-should however be clear at each point which type variables are (still) fixed by
-the context, as these variables are not quantified over at all.
+Having functions with polymorphic types generalises what was already done for
+certain general built-in functions, like the mentioned concatenation operation,
+in pre-2.0 versions of the \axis. language. Their type checking, notably in
+(overloaded) function calls, was handled by \foreign{ad hoc} code that is no
+longer necessary. There is also some polymorphism involved in certain
+non-function values like the empty list; this used to be handled in an
+unsatisfactory way, but now we can handle values of polymorphic types like $[T]$
+and $(\&{void}\mid T)$ normally, although we disallow assignable variables of
+such types.
 
-The main new algorithm associated to higher order types will be unification,
-which in its simplest form answers the question whether for two given type
-expressions involving type variables, there exists a substitution for the type
-variables they contain that makes the type expressions (structurally) identical,
-and if so to give a most general such substitution. For instance, with $f,g,h$
-denoting distinct type constructors of one argument and with $S,T$ type
-variables, the expressions $f(S)$ and $f(g(T))$ can be made equal by the
-substitution $S:=g(T)$, and this is the most general such substitution (with
-less general solutions being those which in addition substitute some specific
-type for $T$). On the other hand, if the second expression had instead been just
-$g(T)$, the substitution problem would have had no solutions, as we cannot make
-the difference between the top level $f$ and $g$ go away. The initial problem
-could arise in the context of trying to match a function with type (for all~$S$)
-$(f(S)\to{h(S)})$ when called with an argument expression of type (for all~$T$)
-$f(g(T))$; here the match succeeds, and the function application so formed then
-has type (for all~$T$) $h(g(T))$. Here the type of the function call reuses the
-type variable $T$ from the type of the argument; in general it could involve
-type variables coming both from the function and the argument types.
+Our new type system much resembles in flavour (and is inspired by) the
+Hindley-Milner type system used for instance in the Haskell language, but with
+important differences, stemming mostly from the fact that we don't care much
+about deducing types of \emph{all} expressions without any help from the user;
+we have always required function parameters to be given explicit types. Indeed
+such deduction might not be possible in the presence of certain features; it
+notably does not blend well with``ad hoc'' function overloading (where a same
+symbol or identifier can have multiple meanings to choose from) which was in use
+long before we had second order types. We also allow declaring recursive types,
+which Hindley-Milner typing does not allow (it gives a singular role to
+injection maps into a disjoint union type, called constructors of an algebraic
+data type, which provides a way around this restriction in cases that are
+important in practice).
 
-We should note that, although we allow recursive user-defined types, which
-effectively represent infinite (but regularly structured) type expressions, we
-shall not allow the unification procedure to invent such types in order to
-produce a solution when none exists among finite type expressions. For instance,
-if one tries to apply a function of type (for all $S$)
-$((S\to[S])\to([S]\to[S]))$ to the identity function that has type (for all~$T$)
-$(T\to{T})$, then this will fail because we cannot make $T$ equal both to $S$
-and to $[S]$ as required in the argument type of the function; the idea to
-invent a recursive type to force a solution to the type equation $S=[S]$ is
-rejected. One reason for this is, that we do not want unification to have as
-side effect to extend the global type tables in order to represent the
-substitution needed.
+We already introduced (numbered) type variables into the definition of
+|type_expr|. In type of expressions these arise either through explicit
+introduction by the user (abstraction clauses), or from using names with a
+polymorphic type. In the former case the type variables start out as
+``fixed by the context'' within their scope (nothing can be assumed about them
+and no substitution made) but when emerging from such a scope, the type
+variables in its type become polymorphic (implicitly universally quantified).
+We have chosen to use just one kind of type variables, with a frontier between
+fixed and polymorphic types determined by the lexical context. Polymorphic type
+variables have no distinct identity, and can be freely renumbered, for instance
+to avoid a clash with other type variables when moving to a different context.
 
-@ Apart from a Boolean result, we want unification to return a list of
-substitutions. We define a simple structure with a vector of pointers that can
-be set (once) to an equivalent expression for each variable, and which also
-stores the first number of a variable that can so be substituted for (variable
-below this threshold behave just like primitive types). Some methods are
-provided to easily assign a type expression to a type variable, test whether
-this has been done, and as help in performing substitutions, to renumber type
-variables taking into account that those that have been assigned to will
-disappear from the type by the substitution.
+Polymorphic types require various forms of substitution operations, and a new
+process called unification, which in its simplest form answers the question
+whether two given polymorphic types admit any types obtainable from both by
+substitution. If so, one usually also wants to know the simplest (most general)
+such substitution. For instance, with $f,g,h$ denoting distinct type
+constructors of one argument and with type variables $S,T$, the expressions
+$f(S)$ and $f(g(T))$ can be made equal by the substitution $S:=g(T)$, and this
+is the most general such substitution (with less general solutions being those
+which in addition substitute some specific type for $T$). On the other hand, if
+the second expression had instead been just $g(T)$, the substitution problem
+would have had no solutions, as we cannot make the difference between the top
+level $f$ and $g$ go away. The initial problem could arise in the context of
+trying to match a function with type (for all~$S$) $(f(S)\to{h(S)})$ when called
+with an argument expression of type (for all~$T$) $f(g(T))$; here the match
+succeeds, and the function application so formed then has type (for all~$T$)
+$h(g(T))$. Here the type of the function call reuses the type variable $T$ from
+the type of the argument; in general it could involve type variables coming both
+from the function and the argument types.
+
+Although we allow recursive user-defined types that represent infinitely
+repetitive type expressions, we do not allow unification to invent such types in
+order to produce a solution when none exists otherwise. For instance, applying a
+function of type $((S\to[S])\to([S]\to[S]))$ to the identity function, of type
+$(T\to{T})$, will fail because we cannot make the argument type of $T$ equal
+both to $S$ and to $[S]$; inventing a recursive type $L$ with $L=[L]$, and then
+substituting $T:=(L\to{L})$, is rejected. Allowing it would complicate
+unification immensely for no good purpose; if really needed, a user can
+explicitly demand such a type substitution.
+
+@ We shall need various forms of substitution for type variables, all of which
+are variations of the method |type_expr::copy| that do something special when
+encountering (certain) type variables. The argument~|tp| to these functions,
+while specified as |type_expr|, should not contain any |undetermined_type|
+subexpressions; to achieve this, a caller may need to first replace each such
+occurrence by a fresh (only used at that place) type variable; the factory
+function |type::wrap| given later does such a replacement.
+
+The function |simple_subst| is used to implement type constructors using a
+polymorphic |type_expr tp@;| with as parameters a number of type variables
+numbered from~$0$ upwards; the argument list |assign| contains as many
+monomorphic type expressions that are used to replace every occurrence of the
+corresponding type variable. The utility function |shift| renumbers type
+variables by adding |amount|, but (in order to respect variables that are fixed
+in the context) leaves those numbered less than |fix| unchanged.
+
+The other two functions declared here relate to the unification process of
+polymorphic types. They use an auxiliary structure |type_assignment|, defined
+below, which stores a bit more information than the |assign| parameter of
+|simple_subst|; it will be filled during the unification by |can_unify|, and can
+then later be used in |substitution| to obtain the unified type. It can however
+also be used with related type expressions. For instance in a function
+application we apply unification to the argument part of a function type and the
+type of a concrete argument, and once the match is made, the |type_assignment|
+can then be substituted into the result part of the function type to get the
+type of the call.
+
+Due to the nature of |can_unify|, the type it assigns in |assign| to a type
+variable may itself be polymorphic and subject to later substitutions;
+therefore, and in contrast to |simple_subst|, the |substitution| function
+continues to traverse any substituted type subexpression for further
+substitutions (with measures taken to ensure termination of the process). The
+final parameter |shift| of |substitution| indicates an amount by which all type
+variables in |tp| are shifted up before being looked up in |assign|. This is in
+order to accommodate situations in which a shift was applied to a type
+expression before computing the |type_assignment| (to avoid clashes with type
+variables in a type expression being unified with), in which case one can later
+pass the |amount| of shift that was applied to |substitution|, which avoids
+having to shift that (or a related) type expression again when using the
+assignment.
+
+@< Declarations of exported functions @>=
+type_expr simple_subst
+  (const type_expr& tp, const std::vector<const_type_ptr>& assign);
+type_expr shift (const type_expr& tp, unsigned int fix, unsigned int amount);
+
+@)
+type_expr substitution
+  (const type_expr& tp, const type_assignment& assign, unsigned int shift=0);
+bool can_unify(const type_expr& P, const type_expr& Q, type_assignment& assign);
+
+
+@ We start with the simplest functions |simple_subst|. While it is a variation
+of |type_expr::copy|, we cannot directly assign to  private members of
+|type_expr| here, so we instead use the |mk| family type-building functions,
+which return a |type_ptr|. On the way back in a recursive traversal
+of the type, we move from the |type_expr| these results point to. When
+encountering a type variable, which is always interpreted as an parameter of the
+type constructor (since we do not allow defining such constructors in the scope
+of any bound type variables), we simply copy the corresponding |type_expr| from
+|assign|.
+
+@< Function definitions @>=
+
+type_expr simple_subst
+  (const type_expr& tp, const std::vector<const_type_ptr>& assign)
+{ type_ptr result;
+  switch (tp.raw_kind())
+  { case primitive_type: return type_expr::primitive(tp.prim());
+    case function_type: result =
+      mk_function_type(simple_subst(tp.func()->arg_type,assign),
+                       simple_subst(tp.func()->result_type,assign));
+    break;
+    case row_type:
+      result = mk_row_type(simple_subst(tp.component_type(),assign));
+    break;
+    case tuple_type:
+    case union_type:
+    { dressed_type_list aux;
+      for (wtl_const_iterator it(tp.tuple()); not it.at_end(); ++it)
+        aux.push_back(simple_subst(*it,assign));
+      return type_expr::tuple_or_union(tp.raw_kind(),aux.undress());
+    }
+    case tabled: return type_expr::tabled_nr(tp.type_nr());
+    case variable_type:
+  @/{@; auto c = tp.typevar_count();
+      assert(c<assign.size());
+      return assign[c]->copy();
+    }
+    default: assert(false); // there should be no undetermined type components
+  }
+  return std::move(*result);
+}
+
+
+@ When we need to renumber the polymorphic type variables in one type
+to avoid collision with variables bound in another type, we can use the
+auxiliary recursive function |shift|, which is similar to |simple_subst|.
+Type variables below the threshold |fix| are unchanged.
+
+@< Function definitions @>=
+type_expr shift
+  (const type_expr& t, unsigned int fix, unsigned int amount)
+{ type_ptr result;
+  switch (t.raw_kind())
+  { case primitive_type: return type_expr::primitive(t.prim());
+    case function_type: result =
+      mk_function_type(shift(t.func()->arg_type,fix,amount),
+                       shift(t.func()->result_type,fix,amount));
+    break;
+    case row_type:
+      result = mk_row_type(shift(t.component_type(),fix,amount));
+    break;
+    case tuple_type:
+    case union_type:
+    { dressed_type_list aux;
+      for (wtl_const_iterator it(t.tuple()); not it.at_end(); ++it)
+        aux.push_back(shift(*it,fix,amount));
+      return type_expr::tuple_or_union(t.raw_kind(),aux.undress());
+    }
+    case tabled: return type_expr::tabled_nr(t.type_nr());
+    case variable_type:
+  @/{@; auto c = t.typevar_count();
+      return type_expr::variable(c<fix ? c : c+amount);
+    }
+    default: assert(false);
+  }
+  return std::move(*result);
+}
+
+@ Unification produces a set of substitutions for type variables, whose
+structure is a bit more complicated than the simple list of |type_expr| values
+that was used in |simple_subst|. We define a class |type_assignment| to hold the
+relevant information. In fact it still holds a list of |const_type_ptr| values,
+but we add a threshold |var_start| where the numbering of the corresponding type
+variables starts. Also, the default value for these pointers is |nullptr|,
+indicating that no substitution is to be made for the type variable. When a
+substitution is called for, the type expression substituted may contain other
+type variables, either below or above the threshold; in the latter case these
+type variables may need further substitution. The absence of cycles that would
+prevent termination of the substitution process is a class invariant.
+
+Some methods are provided to easily assign a type expression to a type variable,
+test whether this has been done, and as help in performing substitutions, to
+renumber type variables taking into account that those that have been assigned
+to will disappear from the type by the substitution.
 
 @< Type definitions @>=
 struct type_assignment
@@ -2031,20 +2177,23 @@ struct type_assignment
   }
   void grow(unsigned int n) @+{@; equiv.resize(size()+n); }
   void append(const type_assignment& a);
+@)
   const_type_p equivalent (unsigned int i) const
   {@; return i<var_start ? nullptr :
-      (assert(i<var_start+equiv.size()),equiv[i-var_start].get()); }
-  void set_equivalent(unsigned int i, const_type_p p)
-  {@; assert (i>=var_start and i<var_start+equiv.size());
-    equiv[i-var_start]=std::make_unique<type_expr>(p->copy());
-  }
+      (assert(i<var_start+size()),equiv[i-var_start].get()); }
   void set_equivalent(unsigned int i, type_ptr&& p)
-  {@; assert (i>=var_start);
+@/{@; assert (i>=var_start and i<var_start+size());
     equiv[i-var_start]=std::move(p);
   }
+  void set_equivalent(unsigned int i, const_type_p p)
+  { assert (i>=var_start and i<var_start+size());
+    equiv[i-var_start]=std::make_unique<type_expr>(p->copy());
+  }
+@)
   unsigned int renumber(unsigned int i) const
   // reflect removal of variables assigned here
   { for (unsigned int j=i; j-->var_start; )
+    // backwards to avoid using |i| after initialisation
       if (equiv[j-var_start]!=nullptr)
         --i; // take into account removal of |j|
     return i;
@@ -2077,39 +2226,10 @@ void type_assignment::append(const type_assignment& a)
 }
 
 
-@ We can now declare the unification function, and also a function
-|substitution| that performs a substitution according to a |type_assignment|
-into a |type_expr| value. The latter produces a freshly built |type_expr|, while
-neither of them takes ownership of (parts of) their argument types, which are
-therefore passed by (non owning) constant reference. The |type_expr| arguments
-here should not contain any undetermined subexpressions; to achieve this, a
-caller may need to replace each such occurrence by a fresh (only used here) type
-variable, and add a slot for it in the |type_assignment|. The |substitution|
-function has final parameter |shift| by which all type variables in |M| are
-shifted up before being looked up in |assign|; this accommodates a situation in
-which a shift was applied to type expression to obtain fresh type variables when
-computing a |type_assignment|, and avoid having to again compute this shift when
-using the assignment for a related type expression.
 
-@< Declarations of exported functions @>=
-bool can_unify(const type_expr& P, const type_expr& Q, type_assignment& assign);
-type_expr substitution
-  (const type_expr& M, const type_assignment& assign, unsigned int shift=0);
-type_expr shift (const type_expr& t, unsigned int fix, unsigned int amount);
-
-@ We start with giving the easier |substitution| function. It copies the type
+@ We next give the |substitution| function. It copies the type
 with recursive propagation of the substitution, which kicks in when an active
-type variable is encountered. This is essentially a variation of the recursive
-method |type_expr::copy|, but not having access to private members of
-|type_expr| the implementation must be modified. The result is constructed on
-the way back in a recursive traversal of the type, mostly using the |mk| family
-type-building functions which return a |type_ptr|, in which case we move from
-the pointed to |type_expr| to the result (if the compiler manages to optimise
-the move on returning by moving directly to a final destination, then it must
-ensure this move takes place before the |type_ptr| destructor is run, so this is
-safe). In most cases we just call such a function matching the kind of type we
-are at, using recursion in its arguments to transform the type components before
-it gets called.
+type variable is encountered.
 
 For |tabled| types we just return a copy of the type, without expansion, which
 avoids the non-termination of the recursion. This is a valid possibility,
@@ -2128,30 +2248,28 @@ happens; we shall deal with this in a separate section.
 @< Function definitions @>=
 
 type_expr substitution
-  (const type_expr& M, const type_assignment& assign, unsigned int shift)
+  (const type_expr& tp, const type_assignment& assign, unsigned int shift)
 { type_ptr result;
-  switch (M.raw_kind())
-  { case primitive_type: return type_expr::primitive(M.prim());
+  switch (tp.raw_kind())
+  { case primitive_type: return type_expr::primitive(tp.prim());
     case function_type: result =
-      mk_function_type(substitution(M.func()->arg_type,assign,shift),
-                       substitution(M.func()->result_type,assign,shift));
+      mk_function_type(substitution(tp.func()->arg_type,assign,shift),
+                       substitution(tp.func()->result_type,assign,shift));
     break;
     case row_type:
-      result = mk_row_type(substitution(M.component_type(),assign,shift));
+      result = mk_row_type(substitution(tp.component_type(),assign,shift));
     break;
     case tuple_type:
     case union_type:
     { dressed_type_list aux;
-      for (wtl_const_iterator it(M.tuple()); not it.at_end(); ++it)
+      for (wtl_const_iterator it(tp.tuple()); not it.at_end(); ++it)
         aux.push_back(substitution(*it,assign,shift));
-      if (M.raw_kind()==tuple_type)
-        return type_expr::tuple(aux.undress());
-      return type_expr::onion(aux.undress());
+      return type_expr::tuple_or_union(tp.raw_kind(),aux.undress());
     }
-    case tabled: return type_expr::tabled_nr(M.type_nr());
+    case tabled: return type_expr::tabled_nr(tp.type_nr());
     case variable_type:
       @< If a type is associated in |assign| to type variable
-         |M.typevar_count()|, return a copy of that type into which
+         |tp.typevar_count()|, return a copy of that type into which
          substitution was recursively applied; otherwise return a copy of the
          type variable itself @>
     default: assert(false); // there should be no undetermined type components
@@ -2163,7 +2281,7 @@ type_expr substitution
 variable, with a null pointer signalling a negative result. This makes
 performing the substitution, if called for, quite easy. If a substitution is
 done, we must go on applying other substitutions into the type expression found
-by |equivalent|, but since we are no longer dealing with a subexpression of~|M|,
+by |equivalent|, but since we are no longer dealing with a subexpression of~|tp|,
 the |shift| argument is set to~|0| here.
 
 There is a potential for non-terminating recursion here, but that possibility is
@@ -2173,49 +2291,10 @@ end we shall refuse, when setting a value for type variable in any
 back to the variable in question itself.
 
 @< If a type is associated in |assign|... @>=
-{ auto c = M.typevar_count()+shift;
+{ auto c = tp.typevar_count()+shift;
   auto p = assign.equivalent(c);
   return p==nullptr
     ? type_expr::variable(assign.renumber(c)) : substitution(*p,assign,0);
-}
-
-@ Now that types are polymorphic, we need a function to replace the method
-|type_expr::specialise|, which is too limited in just replacing undetermined
-type components. We may need to renumber the active type variables in one type
-to avoid collision with variables bound in another type, for which we define an
-auxiliary recursive function |shift|; it is modelled after |substitute| but
-simpler.
-
-@< Function definitions @>=
-type_expr shift
-  (const type_expr& t, unsigned int fix, unsigned int amount)
-{ type_ptr result;
-  switch (t.raw_kind())
-  { case primitive_type: return type_expr::primitive(t.prim());
-    case function_type: result =
-      mk_function_type(shift(t.func()->arg_type,fix,amount),
-                       shift(t.func()->result_type,fix,amount));
-    break;
-    case row_type:
-      result = mk_row_type(shift(t.component_type(),fix,amount));
-    break;
-    case tuple_type:
-    case union_type:
-    { dressed_type_list aux;
-      for (wtl_const_iterator it(t.tuple()); not it.at_end(); ++it)
-        aux.push_back(shift(*it,fix,amount));
-      if (t.raw_kind()==tuple_type)
-        return type_expr::tuple(aux.undress());
-      return type_expr::onion(aux.undress());
-    }
-    case tabled: return type_expr::tabled_nr(t.type_nr());
-    case variable_type:
-  @/{@; auto c = t.typevar_count();
-      return type_expr::variable(c<fix ? c : c+amount);
-    }
-    default: assert(false);
-  }
-  return std::move(*result);
 }
 
 @ Next we define the unification procedure, which is called |can_unify| since
@@ -2377,7 +2456,7 @@ bool is_free_in(const type_expr& tp, unsigned int nr,
   }
 }
 
-@*1 Wrapped up polymorphic types.
+@*2 Wrapped up polymorphic types.
 %
 For a long type the recursive class |type_expr| was used both to represent a
 pattern that the context expects for the type of an expression (for
@@ -2587,9 +2666,7 @@ type_expr fixate(const type_expr& te, sl_list<unsigned int>& translate)
     { dressed_type_list aux;
       for (wtl_const_iterator it(te.tuple()); not it.at_end(); ++it)
         aux.push_back(fixate(*it,translate));
-      if (te.raw_kind()==tuple_type)
-        return type_expr::tuple(aux.undress());
-      return  type_expr::onion(aux.undress());
+      return  type_expr::tuple_or_union(te.raw_kind(),aux.undress());
     }
     case tabled: return type_expr::tabled_nr(te.type_nr());
     case undetermined_type:
@@ -2869,9 +2946,7 @@ type_expr type::skeleton (const type_expr& sub_t) const
     { dressed_type_list aux;
       for (wtl_const_iterator it(sub_t.tuple()); not it.at_end(); ++it)
         aux.push_back(skeleton(*it));
-      if (sub_t.raw_kind()==tuple_type)
-        return type_expr::tuple(aux.undress());
-      return type_expr::onion(aux.undress());
+      return type_expr::tuple_or_union(sub_t.raw_kind(),aux.undress());
     }
     case tabled: return type_expr::tabled_nr(sub_t.type_nr());
     case variable_type:
@@ -3067,7 +3142,7 @@ type_expr scan_union_list(const char*& s, std::string& vars)
     ++s;
   return variants.size()==1
     ? std::move(variants.front())
-    : type_expr::onion(variants.undress());
+    : type_expr::tuple_or_union(union_type,variants.undress());
 }
 @)
 type_expr scan_tuple_list(const char*& s, std::string& vars)
