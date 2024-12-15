@@ -7132,24 +7132,24 @@ perform two separate substitutions to provide those. If nothing is found here,
 we fall through this code, leading to a ``no instance found'' error.
 
 @< See if |target| matches the argument type of a unique variant... @>=
-    {
-      unsigned int op_deg = variant.poly_degree(), shift_amount;
-      if (target.matches(variant.f_tp().arg_type,op_deg,shift_amount))
-      {
-        if (prev_match!=nullptr)
-          @< Throw an error reporting an ambiguous match in operator cast @>
-        @< Write to |o| the name of operator |c->oper| with the argument type of
-           |variant|, to which the substitutions in |target.assign()| have been
-           applied @>
-        result.reset(new capture_expression(variant.value(),o.str()));
-        deduced_type = type_expr::function @|
-          (substitution(variant.f_tp().arg_type,target.assign(),shift_amount)
-          ,substitution(variant.f_tp().result_type,target.assign(),shift_amount)
-          );
-       prev_match = &variant;
-      }
-      target.clear(target_deg);
-    }
+{
+  unsigned int op_deg = variant.poly_degree(), shift_amount;
+  if (target.matches(variant.f_tp().arg_type,op_deg,shift_amount))
+  {
+    if (prev_match!=nullptr)
+      @< Throw an error reporting an ambiguous match in operator cast @>
+    @< Write to |o| the name of operator |c->oper| with the argument type of
+       |variant|, to which the substitutions in |target.assign()| have been
+       applied @>
+    result.reset(new capture_expression(variant.value(),o.str()));
+    deduced_type = type_expr::function @|
+      (substitution(variant.f_tp().arg_type,target.assign(),shift_amount)
+      ,substitution(variant.f_tp().result_type,target.assign(),shift_amount)
+      );
+   prev_match = &variant;
+  }
+  target.clear(target_deg);
+}
 
 @ Similarly to what we do for ambiguous exact overload matches, we use the
 |prev_match| pointer to build an error report.

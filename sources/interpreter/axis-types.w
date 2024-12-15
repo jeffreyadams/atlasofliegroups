@@ -2054,7 +2054,7 @@ assignment.
 
 @< Declarations of exported functions @>=
 type_expr simple_subst
-  (const type_expr& tp, const std::vector<const_type_ptr>& assign);
+  (const type_expr& tp, const std::vector<type_expr>& assign);
 type_expr shift (const type_expr& tp, unsigned int fix, unsigned int amount);
 
 @)
@@ -2064,19 +2064,18 @@ bool can_unify(const type_expr& P, const type_expr& Q, type_assignment& assign);
 
 
 @ We start with the simplest functions |simple_subst|. While it is a variation
-of |type_expr::copy|, we cannot directly assign to  private members of
+of |type_expr::copy|, we cannot directly assign to private members of
 |type_expr| here, so we instead use the |mk| family type-building functions,
-which return a |type_ptr|. On the way back in a recursive traversal
-of the type, we move from the |type_expr| these results point to. When
-encountering a type variable, which is always interpreted as an parameter of the
-type constructor (since we do not allow defining such constructors in the scope
-of any bound type variables), we simply copy the corresponding |type_expr| from
-|assign|.
+which return a |type_ptr|. On the way back in a recursive traversal of the type,
+we move from the |type_expr| these results point to. When encountering a type
+variable, which is always interpreted as an parameter of the type constructor
+(since we do not allow defining such constructors in the scope of any bound type
+variables), we simply copy the corresponding |type_expr| from |assign|.
 
 @< Function definitions @>=
 
 type_expr simple_subst
-  (const type_expr& tp, const std::vector<const_type_ptr>& assign)
+  (const type_expr& tp, const std::vector<type_expr>& assign)
 { type_ptr result;
   switch (tp.raw_kind())
   { case primitive_type: return type_expr::primitive(tp.prim());
@@ -2098,7 +2097,7 @@ type_expr simple_subst
     case variable_type:
   @/{@; auto c = tp.typevar_count();
       assert(c<assign.size());
-      return assign[c]->copy();
+      return assign[c].copy();
     }
     default: assert(false); // there should be no undetermined type components
   }
@@ -2176,19 +2175,12 @@ struct type_assignment
     return all_of(equiv.begin(),equiv.end(),null);
   }
   void grow(unsigned int n) @+{@; equiv.resize(size()+n); }
-  void append(const type_assignment& a);
 @)
   const_type_p equivalent (unsigned int i) const
   {@; return i<var_start ? nullptr :
       (assert(i<var_start+size()),equiv[i-var_start].get()); }
-  void set_equivalent(unsigned int i, type_ptr&& p)
-@/{@; assert (i>=var_start and i<var_start+size());
-    equiv[i-var_start]=std::move(p);
-  }
-  void set_equivalent(unsigned int i, const_type_p p)
-  { assert (i>=var_start and i<var_start+size());
-    equiv[i-var_start]=std::make_unique<type_expr>(p->copy());
-  }
+  bool set_equivalent(unsigned int i, type_ptr&& p);
+  bool set_equivalent(unsigned int i, const_type_p p);
 @)
   unsigned int renumber(unsigned int i) const
   // reflect removal of variables assigned here
@@ -2198,6 +2190,9 @@ struct type_assignment
         --i; // take into account removal of |j|
     return i;
   }
+@)
+private:
+  bool is_free_in(const type_expr& tp, unsigned int nr) const;
 };
 
 @ Sometimes we want to make a copy of a |type_assignment|, and since the |equiv|
@@ -2212,24 +2207,55 @@ type_assignment type_assignment::copy() const
   return result;
 }
 
-@ When we append to the |equiv| list, we must make fresh copies of the
-pointed-to |type_expr| values that we are going to own.
+@  The test for non-containment of a type variable is done by a private
+recursive method |is_free_in|.
 
 @< Function definitions @>=
-void type_assignment::append(const type_assignment& a)
-{ equiv.reserve(equiv.size()+a.equiv.size());
-  for (const auto& entry : a.equiv)
-    if (entry==nullptr)
-      equiv.push_back(nullptr);
-    else
-      equiv.push_back(std::make_unique<type_expr>(entry->copy()));
+bool type_assignment::is_free_in(const type_expr& tp, unsigned int nr) const
+{ switch(tp.raw_kind())
+  {
+  case variable_type:
+    if (@[auto* p=equivalent(tp.typevar_count())@;@])
+      return is_free_in(*p,nr);
+      // unpack assigned type variable, and retry
+    return tp.typevar_count()==nr;
+  case row_type: return is_free_in(tp.component_type(),nr);
+  case function_type: return
+    is_free_in(tp.func()->arg_type,nr) or
+    is_free_in(tp.func()->result_type,nr);
+  case tuple_type: case union_type:
+    for(const_raw_type_list p = tp.tuple(); p!=nullptr; p = p->next.get())
+      if (is_free_in(p->contents,nr))
+        return true;
+    return false;
+  default: // |undetermined| (shouldn't happen), |primitive_type|, |tabled|
+    return false;
+  }
+}
+@)
+bool type_assignment::set_equivalent(unsigned int i, type_ptr&& p)
+@/{@; assert (i>=var_start and i<var_start+size());
+  if (is_free_in(*p,i))
+    return false;
+  equiv[i-var_start]=std::move(p);
+  return true;
+}
+bool type_assignment::set_equivalent(unsigned int i, const_type_p p)
+{ assert (i>=var_start and i<var_start+size());
+  if (is_free_in(*p,i))
+    return false;
+  equiv[i-var_start]=std::make_unique<type_expr>(p->copy());
+  return true;
 }
 
 
-
-@ We next give the |substitution| function. It copies the type
-with recursive propagation of the substitution, which kicks in when an active
-type variable is encountered.
+@ We next give the |substitution| function. It essentially copies |tp| with
+substitution according to |assign|, recursively propagated into the substituted
+type expressions. The final argument |shift_amount| effectively renumbers all
+the type variables in |tp| by adding |shift_amount| before looking up their
+equivalents in |assign| (we interpret all type variables of |tp| as polymorphic,
+since in calls with |shift_amount>0| we always have that |tp| is a subexpression
+of a type in the overload table, in which no fixed type variables can occur).
 
 For |tabled| types we just return a copy of the type, without expansion, which
 avoids the non-termination of the recursion. This is a valid possibility,
@@ -2248,22 +2274,22 @@ happens; we shall deal with this in a separate section.
 @< Function definitions @>=
 
 type_expr substitution
-  (const type_expr& tp, const type_assignment& assign, unsigned int shift)
+  (const type_expr& tp, const type_assignment& assign, unsigned int shift_amount)
 { type_ptr result;
   switch (tp.raw_kind())
   { case primitive_type: return type_expr::primitive(tp.prim());
     case function_type: result =
-      mk_function_type(substitution(tp.func()->arg_type,assign,shift),
-                       substitution(tp.func()->result_type,assign,shift));
+      mk_function_type(substitution(tp.func()->arg_type,assign,shift_amount),
+                       substitution(tp.func()->result_type,assign,shift_amount));
     break;
     case row_type:
-      result = mk_row_type(substitution(tp.component_type(),assign,shift));
+      result = mk_row_type(substitution(tp.component_type(),assign,shift_amount));
     break;
     case tuple_type:
     case union_type:
     { dressed_type_list aux;
       for (wtl_const_iterator it(tp.tuple()); not it.at_end(); ++it)
-        aux.push_back(substitution(*it,assign,shift));
+        aux.push_back(substitution(*it,assign,shift_amount));
       return type_expr::tuple_or_union(tp.raw_kind(),aux.undress());
     }
     case tabled: return type_expr::tabled_nr(tp.type_nr());
@@ -2281,8 +2307,15 @@ type_expr substitution
 variable, with a null pointer signalling a negative result. This makes
 performing the substitution, if called for, quite easy. If a substitution is
 done, we must go on applying other substitutions into the type expression found
-by |equivalent|, but since we are no longer dealing with a subexpression of~|tp|,
-the |shift| argument is set to~|0| here.
+by |equivalent|, but since we are no longer dealing with a subexpression
+of~|tp|, the |shift_amount| argument is set to~|0| here. Polymorphic type
+variables that are not being substituted for remain type variables, but we apply
+|assign.renumber| to fill in the gaps left by type variables that are being
+substituted for. This is possible since no context ever ascribes a meaning to
+particular polymorphic variables (unlike fixed type variables, which should
+never be renumbered), but it is probably not necessary: in places where
+polymorphic type variables need to fill a contiguous range, notably in the
+|type| class below, we shall apply a compacting renumbering of them anyway.
 
 There is a potential for non-terminating recursion here, but that possibility is
 avoided by ensuring |assign| has no direct or indirect self-references. To that
@@ -2291,7 +2324,7 @@ end we shall refuse, when setting a value for type variable in any
 back to the variable in question itself.
 
 @< If a type is associated in |assign|... @>=
-{ auto c = tp.typevar_count()+shift;
+{ auto c = tp.typevar_count()+shift_amount;
   auto p = assign.equivalent(c);
   return p==nullptr
     ? type_expr::variable(assign.renumber(c)) : substitution(*p,assign,0);
@@ -2362,15 +2395,15 @@ bool can_unify
 }
 
 @ The code below is basically symmetric in |P| and |Q|, but we need to write out
-the two cases anyway. What we do with type variables is somewhat similar to what
-was done with tabled type names in case an assignment was already recorded for
-them in~|assign| (using |assign.equivalent| instead of |expansion|). But we also
-have to treat the cases where the type variable is introduced as abstract in the
-context, so that we cannot substitute for it, as well as the case where
+the two cases anyway. What we do with type variables in case an assignment was
+already recorded for them in~|assign| is somewhat similar to what was done with
+tabled type names, but using |assign.equivalent| instead of |expansion|. But we
+also have to treat the cases where the type variable is fixed (as abstract)
+in the context, so that we cannot substitute for it, as well as the case where
 unification really comes into play, namely where the type name is variable and
 not yet substituted for. In the latter case we just record in |assign| the other
 type expression as the equivalent of this type variable, and return (local)
-success of the unification. we do however test that we are not substituting an
+success of the unification. We do however test that we are not substituting an
 expression that involves the type variable itself, which as mentioned is
 considered a failure of unification.
 
