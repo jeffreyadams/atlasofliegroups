@@ -1703,18 +1703,18 @@ type_p expand_type_symbol(id_type id)
 }
 type_p expand_type_constructor(id_type id,raw_type_list l)
 { bool dummy;
-  type_list args(l); args.reverse();
+  type_list args(l); // reversed below
   const type& poly_type = *global_id_table->type_of(id,dummy);
   unsigned int len=length(args), degree = poly_type.degree();
   if (len!=degree)
     @< Throw a |program_error| signalling an incorrectly applied type symbol
        or type constructor @>
-  unsigned int i = lex->typevar_level();
-  type_assignment assign (i,degree);
-  for (auto it = args.wbegin(); not args.at_end(it); ++it)
-    assign.set_equivalent(i++,&*it);
-  auto result=std::make_unique<type_expr>
-    (substitution(poly_type.unwrap(),assign,assign.var_start()));
+   std::vector<type_expr> arg_vec(len);
+   auto v_it=arg_vec.rbegin(); // reverse while copying to |arg_vec|
+   for (auto it=args.begin(); not args.at_end(it); ++it,++v_it)
+     v_it->set_from(std::move(*it));
+   auto result=std::make_unique<type_expr>
+    (simple_subst(poly_type.unwrap(),arg_vec));
   return result.release();
 }
 
