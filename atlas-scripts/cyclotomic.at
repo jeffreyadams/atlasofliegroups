@@ -213,7 +213,8 @@ set cyclotomic_factors (int_poly P) = [int]:
 ##while let l=#P.coefficients in l>0
     and n<7*l { condition to force termination, without missing out much cases }
   do let (Q,R)=monic_divide(P,cyclotomic_polynomial(n)) in
-     if =R then P:=Q; [n] else n+:=1; [] fi
+{     if =R then P:=Q; [n] else n+:=1; [] fi}{not correct test for empty polynomial}
+ if to_int_poly(0*ones(#R.coefficients),"x") = R then P:=Q; [n] else n+:=1; [] fi
   od
 
 { write a rational polynomial as a product of cyclotomic polynomials, assumed to
@@ -227,7 +228,8 @@ set product_of_cyclotomic (rat_poly(X,f,)) = [int]:
       else let Phi = cyclotomic_polynomial(cur_degree)
 	   then (g,R1)=monic_divide(f,Phi)
 	   in
-	if =R1
+      {if =R1}{not the correct test}
+      if to_int_poly(0*ones(#R1.coefficients),"X") = R1
 	then divide(g,cur_degree,degrees#(cur_degree))
 	else divide(f,cur_degree+1,degrees)
 	fi

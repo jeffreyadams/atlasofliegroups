@@ -134,7 +134,7 @@ set gcd = (int,int->int): { greatest common divisor; no size limit }
       while let r=a%b in r.!= do a:=b; b:=r od; b
    fi
 
-{ the following cannot be called |gcd|: too close to built-in |gcd@vec| }
+{ the following cannot be called |gcd|: too cloase to built-in |gcd@vec| }
 set gcd_big([int] v) = int:
    let d=0 in for x in v do if (d:=gcd(d,x))=1 then break fi od; d
 
@@ -202,6 +202,7 @@ set is_disjoint_from (vec L) = (vec->bool):
 set set_bit_positions (int n) = vec:
    assert(n.>=,"Infinite number of set bits for negative number");
    while let pow = AND_NOT(n,n-1) in !=pow do n-:=pow; bit_length(pow)-1 od
+
 
 set is_subset_of_sorted ([int] sorted) = ([int]->bool):
    let test = is_member_sorted(sorted) in
@@ -380,7 +381,7 @@ set sum (int l,[vec] list) = vec: { sum of vecs of constant length l }
 { for large sums |sum(l#list)|, using |sum@mat|, might be marginally faster }
 
 { all words with letter |i| running over elements of |alphabets[i]| }
-set all_words ([[int]] alphabets) = mat:
+set all_words ([[int]] alphabets) = [vec]: {mat:}
   let rec_fun generate(int final) = [vec]:
      if =final then [null(0)]
      else final-:=1; let alphabet=alphabets[final] in
@@ -389,10 +390,10 @@ set all_words ([[int]] alphabets) = mat:
 	od
      fi
   , size=#alphabets
-  in size # generate(size) { ensure column size |size|, even for empty set }
+  in generate(size) { ensure column size |size|, even for empty set }
 
 { all words of length |#limits|, with letter |i| running over |#limits[i]| }
-set all_words ([int] limits) = mat:
+set all_words ([int] limits) = [vec]: {mat:}
    for n in limits do #n od.all_words
 
 set all_0_1_vecs (int n) = [vec]: all_words(for :n do 2 od)
@@ -760,6 +761,7 @@ set rat_requisition (string message) = (maybe_a_ratvec->ratvec):
 set requisition = rat_requisition("No solution found; having one was required")
 
 set required_solution ((mat,ratvec) system) = ratvec: system.solve.requisition
+
 
 {                           Split integers                              }
 
@@ -1236,22 +1238,6 @@ in root_datum_from_positive((columns_with(pred,posroots(rd))
 			    )
 			   ,rd.prefers_coroots
 			   )
-
-set project_to_dominant_cone (RootDatum rd, ratvec gamma) =
-  (ratvec,int): { (nearest dominant vector to |gamma|, facet identification nr }
-(  let candidates = [rd.semisimple_rank].to_bitset-1 { simple roots to start }
-   then !simples = candidates { to use as universe for complementation }
-in while let new_indices = int:
-	 for i in set_bit_positions(candidates) if (coroot(rd,i)*gamma).<=
-	 do i
-	 fi od.to_bitset
-   in new_indices.> { |while|-condition: whether new roots were found }
-   do candidates := AND_NOT(candidates,new_indices) { clear bits }
-   ;  let (M,d)=wall_projector(rd,(simples-candidates).set_bit_positions)
-      in gamma := M*gamma/d
-   od
-;  ( gamma, candidates )
-)
 
 set (highest_root_indices,highest_coroot_indices) =
     ((RootDatum->[int]),(RootDatum->[int])):
@@ -2147,6 +2133,7 @@ set monomials (ParamPol P) = [Param]: for @p in P do p od
 set monomial  (KTypePol P,int i) = KType: monomials(P)[i]
 set monomial  (ParamPol P,int i) = Param: monomials(P)[i]
 
+
 {		Rapid look-up in certain fixed structures		}
 
 { remove repetitions from a list of vecs, assumed all same size }
@@ -2158,6 +2145,17 @@ set no_reps([vec] L) = [vec]:
        then x0 = KGB(G,0)
        then P = sum(G, for v in L do K_type(x0,v) od)
        in for p in monomials(P) do lambda_rho(p) od
+    fi
+
+{ remove repetitions from a list of ratvecs, assumed all same size }
+set no_reps([ratvec] L) = [ratvec]:
+    if =#L then []
+    else
+       let n = #L[0] then R=null(n,0)
+       then G = inner_class(root_datum(R,R),-id_mat(n)).quasisplit_form
+       then x0 = KGB(G,0), zero = null(n)
+       then P = sum(G, for v in L do param(x0,zero,v) od)
+       in for p in monomials(P) do p.nu od
     fi
 
 set index_in = ([vec]->(vec->int)):
@@ -2251,6 +2249,15 @@ set complex_posroots (KGBElt x) =  mat:
 { pad string with blanks (for lining up columns in tables) }
 set pad (string s,int width) = string: l_adjust(width,s)
 
+{ for user convenience; a ParamPol is an associative array ParamPol->Split
+  so selecting its monomials (Param values) by position is not reliable, but
+  allowing so is useful in user sessions to pick terms from a computed result
+}
+set monomials (KTypePol P) = [KType]: for @t in P do t od
+set monomials (ParamPol P) = [Param]: for @p in P do p od
+set monomial  (KTypePol P,int i) = KType: monomials(P)[i]
+set monomial  (ParamPol P,int i) = Param: monomials(P)[i]
+
 { height of a ParamPol is max of height of each term}
 set height (KTypePol P) = int: max(0)(for @t in P do height(t) od)
 set height (ParamPol P) = int: max(0)(for @p in P do height(p) od)
@@ -2272,3 +2279,7 @@ set monomials([ParamPol] list) = [Param]:
 	  for P in list for @p in P do (split_1,p) od od
    in monomials(sum)
    fi
+
+set min_height([Param] params)=[Param]:
+if #params=0 then [] else
+let min=min(for p in params do height(p) od) in for p in params do if height(p)=min then [p] else [] fi od.## fi
