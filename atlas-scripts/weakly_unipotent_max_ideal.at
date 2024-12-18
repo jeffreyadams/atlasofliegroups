@@ -57,6 +57,8 @@ let F=fundamental_coweights(G) then
 X=for f in F do f*gamma od in
 sum(for x in X do #(x=floor(x)) od)=#X
 
+set in_root_lattice_B(RootDatum G, ratvec gamma) = bool:
+(ratvec: for f in fundamental_coweights(G) do f*gamma od).denom = 1
 
 {given a positive rational number x, and a positive integer n, this function lists all n-tuples [a_1,...,a_n] of nonnegative integers such that \sum a_i < x}
 

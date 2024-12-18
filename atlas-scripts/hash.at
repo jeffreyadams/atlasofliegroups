@@ -549,15 +549,21 @@ set_type
   )
 ]
 
+set find_time = int:0
+
 set make_Param_hash ([Param] list, (Param,int->int) hash) = Param_hash:
 (  let capacity = max(2,2*#list), !empty=minus_1
    then seq_nbrs = for :capacity do empty od, maxfill = 2*capacity\3
    then find(Param p) = (int,bool):
-     let code = hash(p,capacity)
-     in while let v=seq_nbrs[code] in if v=empty then return (code,true) fi
+     let start = elapsed_ms(), code = hash(p,capacity)
+     in while let v=seq_nbrs[code]
+     	in if v=empty
+	   then find_time +:= elapsed_ms() - start; return (code,true)
+	   fi
         ; list[v] != p
         do if (code+:=1)=capacity then code:=0 fi
         od
+     ; find_time +:= elapsed_ms() - start
      ; (code,false) { slot in |seq_nbrs|, and whether it is new }
    then rehash(int new_capacity) = void:
      begin capacity := new_capacity

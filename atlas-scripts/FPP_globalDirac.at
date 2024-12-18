@@ -34,7 +34,8 @@ set coh_ind_all_flag = false
 {if true, load Arthur unipotent reps into unitary hash before starting FPP.
 Computing Arthur unipotents takes a long time for high rank (e.g. rank 4
 complex}
-set unip_flag = true
+{definition moved to FPP_localDirac.at}
+{set unip_flag = true}
 
 {next functions aim to compute FULL spherical dual in non-split case,
 when several different x give spherical reps}

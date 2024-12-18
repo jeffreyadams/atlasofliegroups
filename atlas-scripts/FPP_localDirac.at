@@ -200,7 +200,7 @@ set bl_step_size = 5
 
 {almost always it makes sense to preload the Arthur unipotent
 reps. But not in a few test situations.}
-set load_unipotents_flag = true
+set unip_flag = true
 
 {if KGB number is below this times #KGB, use is_unitary rather than is_unitary_to_ht}
 set low_KGB_frac = rat: 1/2
@@ -352,7 +352,7 @@ set local_unipotent_classes(KGBElt x, ratvec lambda, VertexData (list,lookup)) =
 
 {inserts special unipotent reps in unitary_hash}
 set unipotents_to_hash(RealForm G, Param_hash Uhash) = void:
-    if load_unipotents_flag
+    if unip_flag
     then for p in unipotent_representations(G) do Uhash.match(p) od
     else ()
     fi
@@ -360,13 +360,16 @@ set unipotents_to_hash(RealForm G, Param_hash Uhash) = void:
 {add only those unipotent reps of Gsc factoring to a quotient G, with M: X*(G1) -->
 X*(G) the corr wt inclusion}
 set unipotents_to_hash(RealForm G, RealForm Gsc, Param_hash Uhash, mat M) = void:
-    for psc in unipotent_representations(Gsc)
-    do if solve(M,psc.lambda_minus_rho).any
-       then for  p in sc_descends(psc, G, M)
-	    do Uhash.match(p)
-	    od
-       fi
-    od
+    if unip_flag
+    then for psc in unipotent_representations(Gsc)
+    	 do if solve(M,psc.lambda_minus_rho).any
+       	    then for  p in sc_descends(psc, G, M)
+	    	 do Uhash.match(p)
+	    	 od
+       	    fi
+         od
+    else ()
+    fi
 
 {assume Gsc --> G corrs to M: X*(G) --> X*(Gsc); assume Usc_hash is
 reps of Gsc; put in U_hash those descending to G}
@@ -383,7 +386,7 @@ set descend_to_quotient(RealForm G, Param_hash Usc_hash, Param_hash U_hash, mat 
 {inserts special unipotent reps in [unitary_hash]; assumed to have one
  for each KGBElt}
 set unipotents_to_hashes(RealForm G, [Param_hash] Uhashes) = void:
-    if load_unipotents_flag
+    if unip_flag
     then for p in unipotent_representations(G)
     	      do let (,xnum) = %p.x
 	         in Uhashes[xnum].match(p)

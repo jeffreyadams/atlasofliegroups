@@ -1,7 +1,7 @@
 <truncated_induction.at
 <sub_cells.at
 <K_types.at
-
+<special_rep.at {for to_special}
 set av_verbose=false
 
 {
@@ -292,7 +292,7 @@ in gamma :=
 		 , "target d: ", d
 		 )
       fi
-   then chars_int =
+   then chars_int_indices =
       for i:ct_int.n_irreps
       do if ct_int.degree(i)=d and
 	   (let res =
@@ -302,9 +302,13 @@ in gamma :=
 	 then [i] else []
 	 fi
       od.##
-   then ()=if av_verbose then prints("characters found: ", chars_int) fi
-   then char_int=ct_int.characters[chars_int[0]]
-   then char_int_sign=ct_int.tensor_sign(char_int)
+   then ()=if av_verbose then prints("characters found: ", chars_int_indices) fi
+   then char_int_index=chars_int_indices[0]
+   then char_int_sign_index=ct_int.tensor_sign_index(char_int_index)
+   then () = if dimension(ct_int, char_int_sign_index) % 512 = 0
+   	     then char_int_sign_index := to_special(rd_int)(char_int_sign_index)
+             fi
+   then char_int_sign = ct_int.characters[char_int_sign_index]
    then ()=
       if av_verbose
       then  prints( "char_int_sign: ", char_int_sign, new_line
