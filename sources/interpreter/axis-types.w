@@ -2561,8 +2561,6 @@ unsigned int ceil() const @+{@; return floor()+degree(); }
 bool is_polymorphic() const @+{ return degree()>0; }
 bool is_clean() const; // absence of pending type assignments
 const type_expr& unwrap() const @+{@; return te ; }
-bool operator ==(const type& other) @+{@; return bake()==other.bake(); }
-bool operator !=(const type& other) @+{@; return not operator==(other); }
 bool is_void() const @+
 {@; return te.kind()==tuple_type and length(te.tuple())==0; }
 

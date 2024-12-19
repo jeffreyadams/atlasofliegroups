@@ -1152,10 +1152,10 @@ can only involve specialisation (because the initial |target| can be partially
 or wholly undetermined, but it cannot be polymorphic). Then any branches that
 were originally found to have a different type than |common|, but apparently
 were saved by pruning (so the final value of |common| accepts them), are
-converted again in the context of that final |common| type (which by now is also
-held in |target|), and the result of that conversion replaces the previous
+converted again in the context of the |target| type (which by now is specialised
+to unify with |common|), and the result of that conversion replaces the previous
 result in the |components| vector. There is no guarantee the new conversion
-succeeds, but we do not catch any exceptions this second time.
+succeeds, but we won't catch any exceptions this second time.
 
 The same treatment is given to branches whose conversion threw a balancing error
 when initially converted (meaning they had internal balancing that failed in
@@ -1163,9 +1163,9 @@ their initial type context), but for which all types involved in the balancing
 were later pruned in the outer balancing. Such branches leave their |comp_type|
 at the value |target| had for the attempted initial conversion, which must
 differ from its final value if pruning removed the offending types. Therefore
-the test that |comp_type[i]!=target| applies to them, and |components[i]|, which
-was left unset by the failed initial conversion, gets set by the new conversion
-(if it is successful)).
+the test that |comp_type[i].unwrap()!=target| hold for them to them, and
+|components[i]|, which was left unset by the failed initial conversion, gets set
+by the new conversion (if it is successful)).
 
 @< Local function definitions @>=
 
@@ -1189,12 +1189,12 @@ type balance
      record in |conflicts| non conforming component types @>
   @< Prune from |conflicts| any types that are now accepted by |common|, and
      if any conflicts remain |throw| a |balance_error| mentioning |common| and
-     all |conflicts|; otherwise set an undetermined |target| to |common|, or
-     specialise |common| to |target| @>
+     all |conflicts|; otherwise specialise |target| a type that |common|
+     unifies to @>
 
   wel_const_iterator it(elist);
   for (unsigned i=0; i<n; ++i,++it)
-    if (not comp_type[i].is_polymorphic() and comp_type[i]!=common)
+    if (not comp_type[i].is_polymorphic() and comp_type[i].unwrap()!=target)
       components[i] = convert_expr(*it,fc,target);
       // redo conversion with unifying |target| type
   return common;
@@ -1267,7 +1267,7 @@ every branch threw a |balance_error| that was caught), so that one has a
 complete list of types that caused balancing to fail. Upon success, we
 specialise |target| to a type accepting |common| (which might be polymorphic, or
 even |type::bottom()|, as happens in an empty list display which has $0$
-branches); the method |type::unify_specialise| accomplished this.
+branches); the method |type::unify_specialise| accomplishes this.
 
 
 @< Prune from |conflicts| any types... @>=
