@@ -1714,7 +1714,7 @@ type_p expand_type_constructor(id_type id,raw_type_list l)
   for (auto it = args.wbegin(); not args.at_end(it); ++it)
     assign.set_equivalent(i++,&*it);
   auto result=std::make_unique<type_expr>
-    (substitution(poly_type.unwrap(),assign,assign.var_start));
+    (substitution(poly_type.unwrap(),assign,assign.var_start()));
   return result.release();
 }
 

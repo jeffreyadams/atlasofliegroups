@@ -2064,7 +2064,7 @@ bool can_unify(const type_expr& P, const type_expr& Q, type_assignment& assign);
 
 
 @ We start with the simplest functions |simple_subst|. While it is a variation
-of |type_expr::copy|, we cannot directly assign to  private members of
+of |type_expr::copy|, we cannot directly assign to private members of
 |type_expr| here, so we instead use the |mk| family type-building functions,
 which return a |type_ptr|. On the way back in a recursive traversal
 of the type, we move from the |type_expr| these results point to. When
@@ -2159,17 +2159,18 @@ renumber type variables taking into account that those that have been assigned
 to will disappear from the type by the substitution.
 
 @< Type definitions @>=
-struct type_assignment
-{ unsigned int var_start; // first |variable_type| number that may vary
+class type_assignment
+{ unsigned int threshold; // first |variable_type| number that may vary
   std::vector<const_type_ptr> equiv; // variable substitutions go here
-@)
+public:
   type_assignment(unsigned int fix_nr, unsigned int var_nr)
-  : var_start(fix_nr)
+  : threshold(fix_nr)
   , equiv(var_nr)
     // default initialises |equiv| entries, we cannot say ``to |nullptr|''
   {}
 @)
   type_assignment copy() const;
+  unsigned int var_start() const @+{@; return threshold; }
   unsigned int size() const @+{@; return equiv.size(); }
   bool empty() const
   { auto null = @[ [](const const_type_ptr& p){@; return p==nullptr; } @];
@@ -2179,25 +2180,22 @@ struct type_assignment
   void append(const type_assignment& a);
 @)
   const_type_p equivalent (unsigned int i) const
-  {@; return i<var_start ? nullptr :
-      (assert(i<var_start+size()),equiv[i-var_start].get()); }
-  void set_equivalent(unsigned int i, type_ptr&& p)
-@/{@; assert (i>=var_start and i<var_start+size());
-    equiv[i-var_start]=std::move(p);
-  }
-  void set_equivalent(unsigned int i, const_type_p p)
-  { assert (i>=var_start and i<var_start+size());
-    equiv[i-var_start]=std::make_unique<type_expr>(p->copy());
-  }
+  {@; return i<threshold ? nullptr :
+      (assert(i<threshold+size()),equiv[i-threshold].get()); }
+  bool set_equivalent(unsigned int i, type_ptr&& p);
+  bool set_equivalent(unsigned int i, const_type_p p);
 @)
   unsigned int renumber(unsigned int i) const
   // reflect removal of variables assigned here
-  { for (unsigned int j=i; j-->var_start; )
+  { for (unsigned int j=i; j-->threshold; )
     // backwards to avoid using |i| after initialisation
-      if (equiv[j-var_start]!=nullptr)
+      if (equiv[j-threshold]!=nullptr)
         --i; // take into account removal of |j|
     return i;
   }
+@)
+private:
+  bool is_free_in(const type_expr& tp, unsigned int nr) const;
 };
 
 @ Sometimes we want to make a copy of a |type_assignment|, and since the |equiv|
@@ -2205,24 +2203,64 @@ filed holds unique pointers, we need to clone the type they point to.
 
 @< Function definitions @>=
 type_assignment type_assignment::copy() const
-{ type_assignment result(var_start,size());
+{ type_assignment result(threshold,size());
   result.equiv.reserve(size());
   for (const auto& tp : equiv)
     result.equiv.emplace_back(tp==nullptr ? nullptr : new type_expr(tp->copy()));
   return result;
 }
 
-@ When we append to the |equiv| list, we must make fresh copies of the
-pointed-to |type_expr| values that we are going to own.
+@  The test for non-containment of a type variable is done by a private
+recursive method |is_free_in|. In case a type variable is encountered for which
+an equivalent is present in |equiv|, the recursion continues into the type
+expression it is equated to; since we avoid situations where that expression
+directly or indirectly references the same type variable, termination of this
+process is ensured.
 
 @< Function definitions @>=
-void type_assignment::append(const type_assignment& a)
-{ equiv.reserve(equiv.size()+a.equiv.size());
-  for (const auto& entry : a.equiv)
-    if (entry==nullptr)
-      equiv.push_back(nullptr);
-    else
-      equiv.push_back(std::make_unique<type_expr>(entry->copy()));
+bool type_assignment::is_free_in(const type_expr& tp, unsigned int nr) const
+{ switch(tp.raw_kind())
+  {
+  case variable_type:
+    if (@[auto* p=equivalent(tp.typevar_count())@;@])
+      return is_free_in(*p,nr);
+      // unpack assigned type variable, and retry
+    return tp.typevar_count()==nr;
+  case row_type: return is_free_in(tp.component_type(),nr);
+  case function_type: return
+    is_free_in(tp.func()->arg_type,nr) or
+    is_free_in(tp.func()->result_type,nr);
+  case tuple_type: case union_type:
+    for(const_raw_type_list p = tp.tuple(); p!=nullptr; p = p->next.get())
+      if (is_free_in(p->contents,nr))
+        return true;
+    return false;
+  default: // |undetermined| (shouldn't happen), |primitive_type|, |tabled|
+    return false;
+  }
+}
+
+@ There are two versions of |set_equivalent|, the first of which can move from
+its type argument, while the second makes a copy of it. Both use |is_free_in| to
+test for direct or indirect self-reference that would be introduced by the
+assignment; if it is found, the assignment is not done, so as to preserve the
+class invariant. These methods return a Boolean value telling whether setting
+the type variable succeeded.
+
+@< Function definitions @>=
+bool type_assignment::set_equivalent(unsigned int i, type_ptr&& p)
+{ assert (i>=threshold and i<threshold+size());
+@/if (is_free_in(*p,i))
+    return false;
+  equiv[i-threshold]=std::move(p);
+  return true;
+}
+bool type_assignment::set_equivalent(unsigned int i, const_type_p p)
+{ assert (i>=threshold and i<threshold+size());
+@/  if (is_free_in(*p,i))
+    return false;
+  equiv[i-threshold]=std::make_unique<type_expr>(p->copy());
+  return true;
 }
 
 
@@ -2384,31 +2422,17 @@ considered a failure of unification.
     Q_kind=(Q=p)->kind(); // replace |Q| by type previously assigned to it
 @)
   if (P_kind==variable_type)
+  // then |P| is either fixed in the context or unassigned in |assign|
   { auto c = P->typevar_count();
     if (Q_kind==variable_type and Q->typevar_count()==c)
       return true; // identical variables, nothing to do
-    if (c>=assign.var_start)
-      // then (due to |while| loop above) we can assign to |P|
-    {
-      if (is_free_in(*Q,c,assign))
-        return false; // avoid recursive assignment
-      assign.set_equivalent(c,Q);
-      return true;
-    }
-    else
-      return false; // |P| is non-assignable type variable, and |P!=Q|
+    return c>=assign.var_start() and
+       assign.set_equivalent(c,Q);
   }
   if (Q_kind==variable_type)
-  { auto c = Q->typevar_count();
-    if (c>=assign.var_start)
-      // then (due to |while| loop above) we can assign to |Q|
-    {
-      if (is_free_in(*P,c,assign))
-        return false; // avoid recursive assignment
+@/{@; auto c = Q->typevar_count();
+    return c>=assign.var_start() and
       assign.set_equivalent(c,P);
-      return true;
-    }
-    else return false;
   }
 }
 
@@ -2554,11 +2578,11 @@ const_raw_type_list tuple () const @+{@; return te.tuple(); }
 type_nr_type type_nr () const @+{@; return te.type_nr(); }
 @)
 const type_assignment& assign () const @+{@; return a; }
-unsigned int floor () const @+{@; return a.var_start; }
-unsigned int degree() const @+{@; return a.equiv.size(); }
+unsigned int floor () const @+{@; return a.var_start(); }
+unsigned int degree() const @+{@; return a.size(); }
 unsigned int ceil() const @+{@; return floor()+degree(); }
   // start disjoint type variables here
-bool is_polymorphic() const @+{ return degree()>0; }
+bool is_polymorphic() const @+{@; return degree()>0; }
 bool is_clean() const; // absence of pending type assignments
 const type_expr& unwrap() const @+{@; return te ; }
 bool is_void() const @+
@@ -2611,10 +2635,7 @@ taking into account pending type assignments, the latter leaving the type itself
 in an unusable state (since it was possibly moved from).
 
 @< Function definitions @>=
-bool type::is_clean() const
-{ return std::none_of(a.equiv.begin(),a.equiv.end(),
-                 @[ [](const const_type_ptr& p){@; return p!=nullptr; } @]);
-}
+bool type::is_clean() const @+{@; return a.empty(); }
 type& type::expunge()
 {
   if (is_clean())
@@ -2650,20 +2671,20 @@ entries for type variables encountered or created during the recursive
 traversal.
 
 @< Local function definitions @>=
-type_expr fixate(const type_expr& te, sl_list<unsigned int>& translate)
+type_expr pack(const type_expr& te, sl_list<unsigned int>& translate)
 { switch (te.raw_kind())
   { case primitive_type: return type_expr::primitive(te.prim());
     case function_type:
-    { auto arg_fix = fixate(te.func()->arg_type,translate); // this one first
-      auto res_fix = fixate(te.func()->result_type,translate); // then this one
+    { auto arg_fix = pack(te.func()->arg_type,translate); // this one first
+      auto res_fix = pack(te.func()->result_type,translate); // then this one
       return type_expr::function(std::move(arg_fix),std::move(res_fix));
     }
-    case row_type: return type_expr::row(fixate(te.component_type(),translate));
+    case row_type: return type_expr::row(pack(te.component_type(),translate));
     case tuple_type:
     case union_type:
     { dressed_type_list aux;
       for (wtl_const_iterator it(te.tuple()); not it.at_end(); ++it)
-        aux.push_back(fixate(*it,translate));
+        aux.push_back(pack(*it,translate));
       return  type_expr::tuple_or_union(te.raw_kind(),aux.undress());
     }
     case tabled: return type_expr::tabled_nr(te.type_nr());
@@ -2704,10 +2725,10 @@ type type::wrap (const type_expr& t, unsigned int fix_count, unsigned int gap)
   for (unsigned int k=0; k<gap; ++k)
     translate.push_back(-1); // reserve |gap| values as ``to remain unused''
 @)
-  type_expr e=fixate(t,translate);
+  type_expr te=pack(t,translate);
   fix_count += gap; // the new starting value
   type result(fix_count,translate.size()-fix_count);
-  result.te = std::move(e);
+  result.te = std::move(te);
   return result;
 }
 
@@ -2762,7 +2783,7 @@ bool type::unify(const type& other)
 bool type::has_unifier(const type_expr& t) const
 {
   type tp = type::wrap(t,floor(),degree());
-  tp.a = type_assignment(a.var_start,degree()+tp.degree());
+  tp.a = type_assignment(a.var_start(),degree()+tp.degree());
   return can_unify(te,tp.te,tp.a);
 }
 
@@ -2949,7 +2970,7 @@ type_expr type::skeleton (const type_expr& sub_t) const
     case tabled: return type_expr::tabled_nr(sub_t.type_nr());
     case variable_type:
     { auto c = sub_t.typevar_count();
-      return c>=a.var_start ? type_expr() : type_expr::variable(c);
+      return c>=a.var_start() ? type_expr() : type_expr::variable(c);
     }
     default: assert(false);
   }
