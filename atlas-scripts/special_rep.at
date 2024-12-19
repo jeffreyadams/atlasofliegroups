@@ -238,8 +238,8 @@ let (type,rank)=simple_type(G) in
  if type="G" and rank=2 then to_special_G2@int
  elif type="F" and rank=4 then to_special_F4@int
  elif type="E" and rank=6 then to_special_E6@int
- elif type="E" and rank=7 then to_special_E6@int
- elif type="E" and rank=8 then to_special_E6@int
+ elif type="E" and rank=7 then to_special_E7@int
+ elif type="E" and rank=8 then to_special_E8@int
  else error("something is terribly wrong")
 fi
 
