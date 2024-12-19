@@ -7,11 +7,34 @@ all(for alpha in rd.simple_roots do find(rd.simple_roots,delta*alpha) !=-1 od)
 
 set_type TwistedRootDatum= (RootDatum rd, mat delta)
 
+set twisted_root_datum(RootDatum rd,mat delta)=TwistedRootDatum:(rd,delta)
+
 set *(TwistedRootDatum (rd1,delta1),TwistedRootDatum (rd2,delta2))=TwistedRootDatum:(rd1*rd2,block_matrix(delta1,delta2))
 {order of twist: not just the order of delta
 reason: given (rd,delta) we consider (factor,delta)
 where factor is delta-invariant
 }
+
+
+
+set orbit_size(mat delta, vec alpha)=
+let j=first(for i:10 from 1 do (delta^i)*alpha=alpha od)+1
+in assert(j!=0,"orbit_size failed");j
+
+set orbit_of_simple_root(RootDatum G,mat delta, int j)=[int]:  {list of indices}
+let alpha=G.simple_roots[j] in
+for j:orbit_size(delta,alpha) do simple_root_index(G,delta^j*alpha) od
+
+set summed_simple_root_orbit(RootDatum G,mat delta, int j)=vec:
+let orbit=orbit_of_simple_root(G,delta,j) in
+sum(for i in orbit do G.simple_roots[i] od)
+
+set summed_simple_roots(RootDatum G, mat delta)=[vec]:
+let rv=[vec]:[] in
+for j:G.ss_rank do
+ let v=summed_simple_root_orbit(G,delta,j) in
+ if find(rv,v)=-1 then rv#:=v fi od;rv
+ 
 set order_twist(TwistedRootDatum (rd,delta))=int:
 assert(is_distinguished(rd,delta),"automorphism is not distinguished");
 max(for alpha in rd.simple_roots do first(for i:order(delta) from 1 do delta^i*alpha=alpha od)+1 od)
@@ -24,6 +47,11 @@ set roots_same_restriction(RootDatum rd,SubTorus T,vec alpha)=[vec]:
 set roots_restricting_to(RootDatum rd,SubTorus T,vec alpha)=[vec]:
 ##for beta in rd.roots do
  if T.restrict(beta)=alpha  then [beta] else [] fi od
+
+set roots_restricting_to_multiple(RootDatum rd,SubTorus T,vec alpha)=[vec]:
+##for beta in rd.roots do
+ let res=T.restrict(beta) in
+  if res=alpha or res=2*alpha or alpha=2*res then [beta] else [] fi od
 
 {rd is semsimple and delta is distinguished
 returns (RootDatum folded, mat T) where T is a matrix relating H and H^delta
