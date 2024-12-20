@@ -165,7 +165,8 @@ set FPP_unitary_hash_general([(KGBElt,ratvec)] xlambdas, Param_hash Uhash,
     {then () = global_faces_by_zero := low_FPP_faces_by_zero(global_faces)}
     {then () = prints("time thru global_faces_by_zero = ",print_time_string(elapsed_ms() - start))}
     then current = elapsed_ms(), oldUhash = Uhash.size(), currentUhash = Uhash.size(), formerUhash = Uhash.size(),
-    	 	   oldUcounter = unitary_test_counter.use_count(), currentUcounter = unitary_test_counter.use_count(),
+         oldUtime = unitaryTime, currentUtime = unitaryTime, oldCtime = charTime, currentCtime = charTime,
+    	 oldUcounter = unitary_test_counter.use_count(), currentUcounter = unitary_test_counter.use_count(),
 		   oldCcounter = char_counter.use_count(), currentCcounter = char_counter.use_count()
     {then () = if every_lambda_deets_flag
     	      then prints("time up to main loop = ",print_time_string(elapsed_ms() - start))
@@ -231,9 +232,9 @@ set FPP_unitary_hash_general([(KGBElt,ratvec)] xlambdas, Param_hash Uhash,
        	      "; max time = ",print_time_string(xlambdatimes[longest]),
 	      " for (x,lambda) = (",  xnums[longest], ",",
 	      lambdas[longest],")");
-       	    prints(" Time spent in is_unitary = ",print_time_string(unitaryTime),
+       	    prints(" Time spent in is_unitary = ",print_time_string(unitaryTime - oldUtime),
        	      ", number of unitarity tests = ", unitary_test_counter.use_count() - oldUcounter);
-	    prints(" Time spent in char calcs = ",print_time_string(charTime),
+	    prints(" Time spent in char calcs = ",print_time_string(charTime - oldCtime),
 	      ", number of char calcs = ",char_counter.use_count() - oldCcounter,
 	      ", time spent in red_count = ",  print_time_string(red_count_time));
 	    prints("Time in localFD_1Dirac2* = ", print_time_string(FD12Time + FD12bzTime),
@@ -302,7 +303,7 @@ set FPP_unitary_hash_general([KGBElt] xs, Param_hash Uhash, {Param_hash Uparamha
      then current = elapsed_ms()
     then oldUhash = Uhash.size(), currentUhash = Uhash.size(), formerUhash = Uhash.size(),
     	 oldUcounter = unitary_test_counter.use_count(), currentUcounter = unitary_test_counter.use_count(),
-	 oldCcounter = char_counter.use_count(), currentCcounter = char_counter.use_count()
+	 oldUtime = unitaryTime, oldCcounter = char_counter.use_count(), currentCcounter = char_counter.use_count()
     then skipx = false
     then () = for x@j in xs
     	      do {xs}
@@ -310,7 +311,8 @@ set FPP_unitary_hash_general([KGBElt] xs, Param_hash Uhash, {Param_hash Uparamha
 	 then big_unitary_hash.finishx(x)
 	 else
 	 let former_time = current, formerUhash = currentUhash, formerUcounter = currentUcounter,
-	     formerCcounter = currentCcounter, formerCharTime = charTime, former_red_count_time = red_count_time
+	     formerUtime = unitaryTime, formerCcounter = currentCcounter, formerCharTime = charTime,
+	     former_red_count_time = red_count_time
 	 then xtwists = isotwistKGBs(x), twists = all_lambda_differential_0(x)
 	 then M = #FPP_lambdas(x)
 	 then full_M = to_bitset([M])-1
@@ -478,13 +480,12 @@ set FPP_unitary_hash_general([KGBElt] xs, Param_hash Uhash, {Param_hash Uparamha
 			  " for #", longLambdaLoc, " = ",lambdas[longLambdaLoc]);
 			  prints("     #unitary params = ", sum(tempanswerCards), ", #new unitary faces = ",
 			     currentUhash - formerUhash, ", #tests for this x = ",
-		     	     currentUcounter - formerUcounter, ", #def lookups = ",
+		     	     currentUcounter-formerUcounter,", time = ", print_time_string(unitaryTime-formerUtime));
+			     {", #def lookups = ",
 		      	     deformLookupCounter.use_count(), ", #def calcs = ",
-		     	     deformCalcCounter.use_count());
-			  prints("Time spent in is_unitary = ",print_time_string(unitaryTime),
-       	      		  	 ", number of unitarity tests = ", unitary_test_counter.use_count() - oldUcounter);
-       	    		  prints("Time spent in char calcs = ",print_time_string(charTime),
-       	      		  	 ", number of char calcs = ", char_counter.use_count() - oldCcounter,
+		     	     deformCalcCounter.use_count());}
+       	    		  prints("Time spent in char calcs = ",print_time_string(charTime-formerCharTime),
+       	      		  	 ", number of char calcs = ", char_counter.use_count() - formerCcounter,
 				 " time spent in red_count = ",  print_time_string(red_count_times[j]))
                      fi
 	   then () = big_unitary_hash.finish(x, full_M) {mark as done all lambdas for x}
@@ -501,7 +502,7 @@ set FPP_unitary_hash_general([KGBElt] xs, Param_hash Uhash, {Param_hash Uparamha
        	    prints("Total time = ", print_time_string(current-start),
               "; max time = ",print_time_string(times[longest]),
               " for KGBElt ",xs[longest].number);
-       	    prints("Time spent in is_unitary = ",print_time_string(unitaryTime),
+       	    prints("Time spent in is_unitary = ",print_time_string(unitaryTime - oldUtime),
        	      ", number of unitarity tests = ", unitary_test_counter.use_count() - oldUcounter);
        	    prints("Time spent in char calcs = ",print_time_string(charTime),
        	      ", number of char calcs = ", char_counter.use_count() - oldCcounter,
@@ -733,9 +734,9 @@ set FPP_unitary_hash_bottom_layer([(KGBElt,ratvec)] xlambdas, Param_hash UhashG{
     	      then global_faces_by_zero := low_FPP_faces_by_zero(global_faces)
 	      fi}
     then current = elapsed_ms(), oldUhash = UhashG.size(), currentUhash = Uhash.size(), formerUhash = Uhash.size(),
-    	 	   oldUcounter = unitary_test_counter.use_count(), currentUcounter = unitary_test_counter.use_count(),
-		   currentUtime = unitaryTime, currentCtime = charTime,
-		   oldCcounter = char_counter.use_count(), currentCcounter = char_counter.use_count()
+    	 oldUcounter = unitary_test_counter.use_count(), currentUcounter = unitary_test_counter.use_count(),
+	 currentUtime = unitaryTime, currentCtime = charTime,
+	 oldCcounter = char_counter.use_count(), currentCcounter = char_counter.use_count()
 		   {start_min_L_bottom_factors = minBottomData.min_L_bottom_factors_time()}
     then () = for (x,lambda)@k in xlambdas
     	      do {xlambdas} 
@@ -743,7 +744,8 @@ set FPP_unitary_hash_bottom_layer([(KGBElt,ratvec)] xlambdas, Param_hash UhashG{
 		     		   startUcounter = unitary_test_counter.use_count(),
 				   startUtime = unitaryTime, theta = x.involution,
 				   startCcounter = char_counter.use_count(), startCtime = charTime,
-				   {startUparamhash = Uparamhash.size(),} startmorebad = more_bad_hash.size()
+				   startCTime = charTime, startmorebad = more_bad_hash.size()
+				   {startUparamhash = Uparamhash.size(),} 
 		 then (Lvd, Perm2{, mapAct}) = LPmss[k] {already lives on Gsc}
 		 then () = if every_lambda_flag
       	      	   	      then prints("     start #", k, " = (",x,",",lambda,"), Uhash.size() = ",
@@ -910,7 +912,8 @@ set FPP_unitary_hash_bottom_layer([KGBElt] xs, Param_hash UhashG{, Param_hash Up
     then current = elapsed_ms()
     then oldUhash = UhashG.size(), currentUhash = Uhash.size(), formerUhash = Uhash.size(),
     	 oldUcounter = unitary_test_counter.use_count(), currentUcounter = unitary_test_counter.use_count(),
-	 oldCcounter = char_counter.use_count(), currentCcounter = char_counter.use_count() 
+	 oldCcounter = char_counter.use_count(), currentCcounter = char_counter.use_count(), oldUtime = unitaryTime,
+	 oldcharTime = charTime, currentcharTime = charTime, currentUtime = unitaryTime
     then () = for x@j in xs
     	      do {xs}
 	 if twist(x) != x
@@ -918,7 +921,7 @@ set FPP_unitary_hash_bottom_layer([KGBElt] xs, Param_hash UhashG{, Param_hash Up
 	 else
 	 let former_time = current, formerUhash = currentUhash, formerUcounter = currentUcounter, x_sc = xs_sc[j],
 	     startmorebadx = more_bad_hash.size(), formerCharTime = charTime, formerCcounter = currentCcounter,
-	     former_red_count_time = red_count_time
+	     former_red_count_time = red_count_time, formerUtime = unitaryTime
 	 then xtwists = isotwistKGBs(x), lambdas = FPP_lambdas(x), twists = all_lambda_differential_0(x)
 	 then lambdas_sc = if disconn_flag
 	      		   then for lambda in lambdas do M*lambda od
@@ -1086,7 +1089,7 @@ set FPP_unitary_hash_bottom_layer([KGBElt] xs, Param_hash UhashG{, Param_hash Up
 			  od
 		     fi
             then () = current := elapsed_ms(); currentUhash := Uhash.size();  times[j] := current -former_time;
-	    	     red_count_times[j] := red_count_time - former_red_count_time;
+	    	     red_count_times[j] := red_count_time - former_red_count_time; currentUtime := unitaryTime;
 	   	     lambdatimes[j] := templambdatimes; currentUcounter := unitary_test_counter.use_count();
 		     answerCards[j] := tempanswerCards
 	   then longLambdaLoc = max_loc(templambdatimes)
@@ -1102,9 +1105,10 @@ set FPP_unitary_hash_bottom_layer([KGBElt] xs, Param_hash UhashG{, Param_hash Up
 			  fi;
 			  prints("     #unitary params = ", sum(tempanswerCards), ", #new unitary faces = ",
 			     currentUhash - formerUhash, ", #tests for this x = ",
-		     	     currentUcounter - formerUcounter, ", #def lookups = ",
+		     	     currentUcounter - formerUcounter, ", time in is_unitary = ", print_time_string(unitaryTime - formerUtime));
+			     {", #def lookups = ",
 		      	     deformLookupCounter.use_count(), ", #def calcs = ",
-		     	     deformCalcCounter.use_count());
+		     	     deformCalcCounter.use_count());}
 			   prints("     Time spent in char calcs = ", print_time_string(charTime - formerCharTime),
 			      	     ", number of char calcs = ", char_counter.use_count() - formerCcounter,
 				     ", time for red_count = ",print_time_string(red_count_times[j]))
@@ -1124,9 +1128,9 @@ set FPP_unitary_hash_bottom_layer([KGBElt] xs, Param_hash UhashG{, Param_hash Up
        	    prints("Total time = ", print_time_string(current-start),
               "; max time = ",print_time_string(times[longest]),
               " for KGBElt ",xs[longest].number);
-       	    prints("Time spent in is_unitary = ",print_time_string(unitaryTime), ", number of unitarity tests = ",
+       	    prints("Time spent in is_unitary = ",print_time_string(unitaryTime - oldUtime), ", number of unitarity tests = ",
        		unitary_test_counter.use_count() - oldUcounter, ", #K-types studied = ", minBottomData.size());
-	    prints("Time spent in char calcs = ", print_time_string(charTime), ", number of char calcs = ",
+	    prints("Time spent in char calcs = ", print_time_string(charTime-oldcharTime), ", number of char calcs = ",
 	        char_counter.use_count() - oldCcounter,
 	      ", time spent in red_count = ",  print_time_string(red_count_time));
 	    prints("Time in localFD_1Dirac2* = ", print_time_string(FD12Time + FD12bzTime),
