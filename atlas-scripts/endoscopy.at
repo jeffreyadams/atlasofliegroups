@@ -1,0 +1,230 @@
+{This file is deprecated: replaced by endoscopic_groups.at}
+{<embed.at
+
+{endoscopy (regular and twisted)}
+
+set is_orthogonal (RootDatum rd, vec alpha, vec beta) = bool: =alpha*coroot(rd,beta)
+set to_dominant(RootDatum rd, vec wt)=(WeylElt,vec):
+ let (w,wt_dom)=from_dominant(rd,wt) in (inverse(w),wt_dom)  {w*wt=wt_dom}
+
+set to_dominant( vec cowt,RootDatum rd)=(vec,WeylElt):
+ let (cowt_dom,w)=from_dominant(cowt,rd) in (cowt_dom,inverse(w))  {w*wt=wt_dom}
+
+set to_dominant (RootDatum rd, ratvec wt) = (WeylElt,ratvec):
+  let (n,d)=%wt then (w,v)=to_dominant(rd,n) in (w,v/d)
+set to_dominant (ratvec cowt,RootDatum rd) = (ratvec,WeylElt):
+  let (n,d)=%cowt then (v,w)=to_dominant(n,rd) in (v/d,w)
+
+{algorithm to compute H=identity component of fixecd points of int(s)*delta
+ where delta is distinguished, delta(s)=s, s=exp(2\pi i v)
+ see Kottwitz/Shelstad, Foundations of Twisted Endoscopy, 1.3.5-1.3.7
+1) make list of restricted_roots: {beta restricted to T^delta_0| beta positive root of G}
+2) for alpha in restricted_roots, decide whether to include alpha in root system of H by the following condition:
+ let lifts={beta restricting to alpha}
+ cases:
+  lifts = [beta]: alpha is restriction of single delta-fixed root: condition is:  beta(s)=1 i.e. is_integer(beta*v)
+        = [beta,delta(beta)]: two orthogonal roots: condition is                  beta(s)^2=1 i.e. is_integer(2*beta*v)
+        = [beta_1,beta_2,beta_3]: after renumbering, let beta=beta_1, 
+              [beta_1,beta_2,beta_3]=[beta,delta(beta),beta+delta(beta)]
+            these restricted give: [alpha,alpha,2*alpha] OR [alpha/2,alpha/2,alpha]
+            then condition is
+                 alpha short: beta(s)^2=1
+                 alpha long:  beta(s)^2=-1
+            let gamma=(beta_1+beta_2+beta_3) = 2(1+delta)beta => (gamma/2)=(1+delta)beta 
+                 => (gamma/2)(s)=(1+delta)(beta)(s)=beta(s)^2
+            then the condition is:
+                 alpha short: (gamma/2)*v\in Z      i.e. is_integer(v*gamma/2)
+                 alpha long:  (gamma/2)*v\not\in Z  i.e. not is_integer(v*gamma/2)
+
+}
+set fixed(TwistedRootDatum (rd,delta),ratvec v)=(RootDatum,mat):
+assert(is_distinguished(rd,delta),"delta is not distinguished");
+let T=SubTorus:eigen_lattice(^delta,1) then
+restricted_roots=sort_u(for alpha in rd.posroots do T.restrict(alpha) od) then
+roots=sort_u(##
+for alpha in restricted_roots do
+ let lifts=roots_restricting_to_multiple(rd,T,alpha) in
+ if #lifts=1 then
+{   let ()=prints("#lifts=1, alpha=",alpha) in}
+   let beta=lifts[0] in
+     if is_integer(beta*v) then [alpha] else [] fi
+ elif #lifts=2 then
+{    let ()=prints("#lifts=2,alpha=",alpha) in}
+    let beta=lifts[0] in 
+       if is_integer(2*beta*v) then {prints("adding alpha; ", alpha);}[alpha] else [] fi
+ else
+{  let ()=prints("#lifts=3,alpha=",alpha) in}
+  let gamma=sum(lifts) then
+  ()=assert(gamma\2=gamma/2,"something wrong") then
+  half_gamma=gamma\2 then
+{  ()=prints("gamma=",gamma) then}
+{  ()=prints("(gamma/2)*v: ", half_gamma*v) then}
+{  ()=prints("v=",v) then}
+  restrictions = for beta in lifts do T.restrict(beta) od in
+{  let ()=prints("alpha=",alpha,new_line,"lifts=", lifts, new_line, "restrictions=", restrictions) in }
+   if find(restrictions,2*alpha)!=-1 then  {alpha is short: condition isbeta(s)^2=1 i.e. (gamma/2)(s)=1 i.e. is_integer((gamma/2)*v)}
+{      let ()=prints("alpha is short, condition (gamma/2)*v is integer", new_line, "gamma/2=", half_gamma, new_line,"gamma*v/2=", half_gamma*v) in }
+      if is_integer(half_gamma*v)
+         then {let ()=prints("adding alpha", alpha) in} [alpha] else {let ()=prints("not adding alpha", alpha0)  in} [] fi
+   elif find(restrictions,alpha\2)!=-1 then  {alpha is long: condition isbeta(s)^2=\ne 11 i.e. (gamma/2)(s)\ne 1 i.e. not is_integer((gamma/2)*v)}
+      {let ()=prints("alpha is long, condition (gamma/2)*v is not integer", new_line, "gamma/2=", half_gamma, new_line,"gamma*v/2=", half_gamma*v) in }
+      if not is_integer(half_gamma*v)
+          then {let ()=prints("adding alpha", alpha) in} [alpha] else {let ()=prints("not adding alpha", alpha) in} [] fi 
+   else
+      assert(false,"failure in cases");[]
+   fi
+ fi
+od)
+then
+coroots=[] in
+for alpha in roots do
+  let pullback_alpha=
+    let j=first(for beta in rd.roots do T.restrict(beta)=alpha od) in rd.roots[j] then
+    v=sum(##(
+      for beta in rd.roots do
+        if T.restrict(beta)=alpha then  [coroot(rd,beta)]
+         else []
+        fi
+      od)) then
+   w=2*v/(v*pullback_alpha) {element of X_*(H) which lives in X_*(T)} then
+   corestrict_w=solve(T,w).requisition {coordinates of w in the given basis of X_*(T)} in
+   coroots#:=ratvec_as_vec(corestrict_w)
+od;
+(root_datum_from_positive((roots,coroots),rd.prefers_coroots),T)
+
+set fixed(RootDatum rd,mat delta,ratvec v)=(RootDatum,mat):fixed(TwistedRootDatum:(rd,delta),v)
+set fixed(RootDatum rd,mat delta)=(RootDatum,mat):fixed(TwistedRootDatum:(rd,delta),null(rd.rank))
+set fixed(RealForm G)=(RootDatum,mat):fixed(G,G.distinguished_involution)
+
+{computed fixed points of int(s)delta where s is specified by a set of nodes for G
+ these are made delta-invariant, and then correspond to nodes for the folded diagram}
+set fixed_by_nodes(TwistedRootDatum (rd,delta),[int] list_of_nodes)=(RootDatum,mat):
+{make the list of nodes invariant by delta}
+let list_of_nodes=sort_u(##for j in list_of_nodes do orbit_of_simple_root(rd,delta,j)  od) then
+v=sum(rank(rd),for j in list_of_nodes do
+  let denom=order(delta)*orbit_size(delta,rd.simple_roots[j]) in rd.fundamental_coweights[j]/denom od) in
+  fixed(rd,delta,v)
+
+set fixed_by_nodes(RootDatum rd,mat delta,[int] list_of_nodes)=(RootDatum,mat):fixed_by_nodes(TwistedRootDatum:(rd,delta),list_of_nodes)
+set fixed_by_nodes(TwistedRootDatum (rd,delta),int j)=(RootDatum,mat):fixed_by_nodes((rd,delta),[j])
+set fixed_by_nodes(RealForm G,[int] S)=(RootDatum,mat):fixed_by_nodes(G,G.distinguished_involution,S)
+set fixed_by_nodes(RootDatum rd,mat delta,int j)=(RootDatum,mat):fixed_by_nodes(TwistedRootDatum:(rd,delta),[j])
+set fixed_by_nodes(RealForm G,int j)=(RootDatum,mat):fixed_by_nodes(G,G.distinguished_involution,j)
+
+{in the case of ordinary endoscopy the matrix M is the identity}
+set fixed(RootDatum rd,ratvec v)=RootDatum:centralizer(rd,v)  {defined in weyl_character_formula.at}
+
+set list_twisted_groups(RealForm G)=void:
+let all=for i:ss_rank(G) do fixed_by_nodes(G,G.distinguished_involution,i) od
+in
+let (H,)=fixed(G,G.distinguished_involution) in 
+prints(H);for (H,)@i in all do prints(i, " ", H) od
+
+
+{given (G_v,delta_v,s) return (H,M,H_vee)
+recall T_G_vee maps onto T_H_vee, and T_H maps into T_G
+in other words
+ M: X_*(T_H_vee) -> X_*(T_G_vee)   and this is exactly the same as saying
+ M: X^*(T_H) -> X^*(T_G)
+ so M*H_vee.simple_coroots and M*H.simple_roots make sense
+On the other hand
+ ^M: X^*(T_G_vee) -> X^*(T_H_vee) and
+ ^M: X_*(T_H) -> X^*(T_G) and
+ 
+I think:
+
+M:  each simple root for H to a sum of simple roots for G
+M:  each simple coroot for H_vee to a sum of simple roots for G_vee
+^M: each simple coroot for G to a single simple coroot for H
+^M: each simple root for G_vee to a single simple root for H_vee
+
+Example:
+
+atlas> set G_vee=GL(4,R)
+atlas> set delta_vee=G_vee.distinguished_involution
+atlas> set G=dual(G_vee)
+atlas> set (H,M,H_vee)=weak_endoscopic_group (G_vee,delta_vee)
+atlas> H
+Value: adjoint root datum of Lie type 'B2'
+atlas> H_vee
+Value: simply connected root datum of Lie type 'C2'
+atlas> ^M*G.simple_coroots
+| -1,  0, -1 |
+|  1, -2,  1 |
+atlas> H.simple_coroots
+| -1,  0 |
+|  1, -2 |
+atlas> ^M*G_vee.simple_roots
+| -1,  0, -1 |
+|  1, -2,  1 |
+atlas> H_vee.simple_roots
+| -1,  0 |
+|  1, -2 |
+
+atlas> M*H.simple_roots
+|  1,  0 |
+| -1,  1 |
+|  1, -1 |
+| -1,  0 | {each column is a sum of roots}
+
+atlas> M*H_vee.simple_coroots
+|  1,  0 |
+| -1,  1 |
+|  1, -1 |
+| -1,  0 | {each column is a sum of coroots}
+ }
+set complex_endoscopic_group(RootDatum G_vee,mat delta_vee, ratvec s)=(RootDatum,mat,RootDatum):
+let (H_vee,M)=fixed(G_vee,delta_vee,s) in (dual(H_vee),M,H_vee)
+
+set complex_endoscopic_group(RootDatum G_vee, ratvec s)=(RootDatum,mat,RootDatum):
+complex_endoscopic_group(G_vee,id_mat(rank(G_vee)),s)
+
+set complex_endoscopic_group(RootDatum G_vee, mat delta)=(RootDatum,mat,RootDatum):
+complex_endoscopic_group(G_vee,delta,null(rank(G_vee)))
+
+
+set twisted_action(WeylElt w, mat delta, ratvec v)=ratvec:
+w.matrix*(delta*v)
+
+{twisted Weyl group element w\delta fixes group element s
+ s is given by a ratvec, condition is w\delta(s)-s in X_*}
+set is_fixed(WeylElt w,mat delta, ratvec v)=bool:is_integer(w*delta*v-v)
+
+set restrict_co_action(mat M, mat A)=mat:left_inverse(M)*A*M
+
+set weak_endoscopic_group(
+RootDatum G_vee, 
+mat delta_vee,   {dual twist}
+mat xi_vee,     {dual involution defining the L-group of G}
+ratvec s,        {take centralizer(exp(2\pi is)}
+WeylElt w_G_vee)=   {an additional twist; the identity gives the default inner class of the endoscopic group
+                      w_G_vee is only needed to get other inner classes of H}
+assert(delta_vee*matrix(w_G_vee)=matrix(w_G_vee)*delta_vee,"w_G_vee doesn't commute with delta_vee");
+{assert(is_fixed(w_G_vee,xi_vee,s), "w_G_vee*xi_vee doesn't fix s");}
+let (H,M,H_vee)=complex_endoscopic_group(G_vee,delta_vee,s) then
+()=prints("complex H: ", H) then
+()=prints("complex H_vee: ", H_vee) then
+restrict=restrict_co_action(M,w_G_vee.matrix) then
+(w_H,)=to_dominant(H,restrict*H.rho) then
+()=prints("w_H: ", w_H, new_line, w_H.matrix) then
+{()=prints( "restrict: ", restrict) then}
+{()=prints("wh:", w_H.matrix) then}
+dual_inner_class=inner_class(H_vee,w_H.matrix) in 
+(dual(dual_inner_class),M,dual_inner_class)
+
+set weak_endoscopic_group(RealForm G, mat delta_vee,ratvec s,WeylElt w_G_vee)=
+let G_vee=dual_quasisplit_form(G) in 
+weak_endoscopic_group(G,delta_vee,G.distinguished_involution,s,w_G_vee)
+
+
+set endoscopic_group(RootDatum G_vee, mat delta_vee,mat xi_vee,ratvec s)=weak_endoscopic_group(G_vee,delta_vee,xi_vee,s,id_W(G_vee))
+set endoscopic_group(RootDatum G_vee, mat delta_vee,mat xi_vee,WeylElt w_G_vee)=weak_endoscopic_group(G_vee,delta_vee,xi_vee,null(rank(G_vee)),w_G_vee)
+set endoscopic_group(RootDatum G_vee, mat delta_vee,mat xi_vee)=weak_endoscopic_group(G_vee,delta_vee,xi_vee,null(rank(G_vee)), id_W(G_vee))
+
+set endoscopic_group(RealForm G, mat delta_vee,ratvec s)=weak_endoscopic_group(G,delta_vee,s,id_W(dual(G)))
+set endoscopic_group(RealForm G, mat delta_vee,mat xi_vee,WeylElt w_G_vee)=weak_endoscopic_group(G,delta_vee,null(rank(G)),w_G_vee)
+set endoscopic_group(RealForm G, mat delta_vee)=weak_endoscopic_group(G,delta_vee,null(rank(G)), id_W(dual(G)))
+
+set endoscopic_group(RealForm G,ratvec s)=weak_endoscopic_group(G,id_mat(rank(G)),s,id_W(dual(G)))
+
+}

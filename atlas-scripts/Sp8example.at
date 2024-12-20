@@ -1,0 +1,69 @@
+set GL=GL(9,R)
+set delta=GL.distinguished_involution
+set (G,M,)=endoscopic_group(GL,delta)  {S=Sp(8,R), note the negative coordinates}
+set G=split_form(G)
+{G has funny negative roots:
+atlas> G.simple_roots
+Value: 
+| -1,  0,  0,  0 |
+|  1, -1,  0,  0 |
+|  0,  1, -1,  0 |
+|  0,  0,  1, -2 |
+but I'll ignore this and write in the usual positive coordinates
+}
+{4 theta-stable Levis with L=U(1)^2xSp(4,R):}
+set L0=Levi_by_wt([2,1,0,0],KGB(G,0))
+set L1=Levi_by_wt([2,-1,0,0],KGB(G,0))
+set L2=Levi_by_wt([1,2,0,0],KGB(G,0))
+set L3=Levi_by_wt([-2,1,0,0],KGB(G,0))
+
+{the approriate 1-dimensional of each L: trivial
+on Sp(4,R) and the appropriate [2,1] on the center}
+
+set pL0=parameter(x_open(L0),[2,2,-2,-1],[0,0,-2,-1])
+set pL1=parameter(x_open(L1),[2,2,-2,-1],[0,0,-2,-1])
+set pL2=parameter(x_open(L2),[2,2,-2,-1],[0,0,-2,-1])
+set pL3=parameter(x_open(L3),[2,2,-2,-1],[0,0,-2,-1])
+
+{cohomologically induce these to G}
+set p0=theta_induce_irreducible(pL0,G).first_param
+set p1=theta_induce_irreducible(pL1,G).first_param
+set p2=theta_induce_irreducible(pL2,G).first_param
+set p3=theta_induce_irreducible(pL3,G).first_param
+
+{this is the Adams/Johnson packet at infinitesimal character [2,1,2,1]=[2,2,1,1]}
+set AJ_packet=[p0,p1,p2,p3]
+
+{now consider the ABV packet containing p0, as defined using Adams/Arancibia/Mezo
+this means:
+there is an Arthur packet for GL(9,R) (a singleton, of course):
+
+atlas> lift_std(p0,M,GL)
+Value: final parameter(x=501,lambda=[2,4,1,1,0,-1,-1,-2,-2]/1,nu=[0,2,0,1,0,-1,0,-2,0]/1)
+
+this is the twisted endoscopic lift of a unique stable character on Sp(8,R), which is the
+ABV packet containing p0}
+
+set Arthur_packet_stable_sum=Arthur_packet_distribution_ABC(p0,M,GL,delta)
+set Arthur_packet=monomials(Arthur_packet_stable_sum)
+
+prints(new_line,"Confirming an Arthur packet for Sp(8,R) at [2,2,1,1] is cohomologically induced",new_line)
+prints("Here is the Adams-Johnson packet, obtained by inducing (4 variants of) [2,1]\otimes trivial on U(1)^2xSp(4,R) to Sp(8,R)")
+prints("There are 4 Levis L0,...,L3")
+prints("Here is L0 and its parameter pL0:")
+prints("L0=",L0)
+prints("pL0=",pL0)
+prints("rho(L0)=", L0.rho)
+prints("dimension(pL0)=", pL0.dimension)
+prints("infinitesimal character(pL0)=", pL0.infinitesimal_character)
+prints("Note: the coordinates are confusing...")
+prints("rho_G=", rho(G))
+prints("rho_L=[0,0,-2,-1], and rho_u=[-4,-3,0,0]")
+prints("lambda+rho_u=[2,2,0,0] + [-4,-3,-2,-1] = [-2,-1,-2,-1] conjugate to [-2,-2,-1,-1]")
+prints("Here is the Adams-Johnson packet for G")
+pr(AJ_packet)
+prints("Here is the Arthur packet defined using twisted endoscopic lifting to GL(9,R)")
+pr(Arthur_packet)
+prints("Here is the stable sum in this Arthur packet:")
+prints(Arthur_packet_stable_sum)
+prints("with infinitesimal character: ", Arthur_packet_stable_sum.infinitesimal_character)

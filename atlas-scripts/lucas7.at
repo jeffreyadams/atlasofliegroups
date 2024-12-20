@@ -1,0 +1,132 @@
+<jeff.at
+set G=Sp(10,R)
+set L=Levi_by_wt([1,0,0,0,0], KGB(G,0))
+set wp_L=weak_packets(L)
+set wp_G=weak_packets(G)
+set unip_G=parameters(wp_G[13])
+set unip_G_langlands=min_height(unip_G)
+set ugl_reps=for j in [5,9,13,23,27,31,34,37] do unip_G[j] od
+
+set unip_L=parameters(wp_L[10])
+set shift(Param p_L, int k)=Param:parameter(p_L.x, p_L.lambda -[k,0,0,0,0], p_L.nu)
+set shift([Param] params_L, int k)=[Param]:for p_L in params_L do shift(p_L,k) od
+set shift([[Param]] list, int k)=[[Param]]:for params_L in list do shift(params_L,k) od
+
+set packet_L=parameters(wp_L[10])
+set packet_L_0=packet_L
+set packet_L_minus_4=for p in packet_L do shift(p,4) od
+set packet_L_minus_5=for p in packet_L do shift(p,5) od
+
+set packet_L_0_langlands=min_height(packet_L_0)
+set packet_L_minus_4_langlands=min_height(packet_L_minus_4)
+set packet_L_minus_5_langlands=min_height(packet_L_minus_5)
+
+set langlands_terms_0=min_height(packet_L_0)
+
+set unip_packet_G=parameters(wp_G[15])
+set packet_G_5=contragredient(for pl in packet_L_0 do monomials(theta_induce_irreducible(pl,G))  od.##)
+set packet_G_1=contragredient(for pl in packet_L_minus_4 do monomials(theta_induce_irreducible(pl,G))  od.##)
+set packet_G_0=contragredient(for pl in packet_L_minus_5 do monomials(theta_induce_irreducible(pl,G))  od.##)
+{set packet_G_0_enlarged=for p in packet_G_0 do [p, contragredient(p)] od.##}
+
+set packet_G_5_langlands=min_height(packet_G_5)
+set packet_G_1_langlands=min_height(packet_G_1)
+set packet_G_0_langlands=min_height(packet_G_0)
+
+set packet_G_5_long=for pl in packet_L_0 do (pl,monomials(theta_induce_irreducible(pl,G)))  od
+set packet_G_1_long=for pl in packet_L_minus_4 do (pl,monomials(theta_induce_irreducible(pl,G)))  od
+set packet_G_0_long=for pl in packet_L_minus_5 do (pl,monomials(theta_induce_irreducible(pl,G)))  od
+
+set packet_G_5_langlands_long=for pl in packet_L_0_langlands do (pl, monomials(theta_induce_irreducible(pl,G))) od
+set packet_G_1_langlands_long=for pl in packet_L_minus_4_langlands do (pl, monomials(theta_induce_irreducible(pl,G))) od
+set packet_G_0_langlands_long=for pl in packet_L_minus_5_langlands do (pl, monomials(theta_induce_irreducible(pl,G))) od
+
+
+{----------------------------- all over again for Sp(3,2) ----------------}
+
+set H=Sp(3,2)
+set LH=Levi_by_wt([1,0,0,0,0], KGB(H,0))
+set wp_LH=weak_packets(LH)
+set wp_H=weak_packets(H)
+
+
+
+set packet_LH=parameters(wp_LH[10])
+set packet_LH_0=packet_LH
+set packet_LH_minus_4=for p in packet_LH do shift(p,4) od
+set packet_LH_minus_5=for p in packet_LH do shift(p,5) od
+
+set packet_LH_0_langlands=min_height(packet_LH_0)
+set packet_LH_minus_4_langlands=min_height(packet_LH_minus_4)
+set packet_LH_minus_5_langlands=min_height(packet_LH_minus_5)
+
+set langlands_terms_0=min_height(packet_LH_0)
+
+set unip_packet_H=parameters(wp_H[15])
+set packet_H_5=for pl in packet_LH_0 do monomials(theta_induce_irreducible(pl,H))  od.##
+set packet_H_1=for pl in packet_LH_minus_4 do monomials(theta_induce_irreducible(pl,H))  od.##
+set packet_H_0=for pl in packet_LH_minus_5 do monomials(theta_induce_irreducible(pl,H))  od.##
+
+set packet_H_5_langlands=min_height(packet_H_5)
+set packet_H_1_langlands=min_height(packet_H_1)
+set packet_H_0_langlands=min_height(packet_H_0)
+
+set packet_H_5_long=for pl in packet_LH_0 do (pl,monomials(theta_induce_irreducible(pl,H)))  od
+set packet_H_1_long=for pl in packet_LH_minus_4 do (pl,monomials(theta_induce_irreducible(pl,H)))  od
+set packet_H_0_long=for pl in packet_LH_minus_5 do (pl,monomials(theta_induce_irreducible(pl,H)))  od
+
+set M=all_real_parabolics(G)~[1].Levi
+set unip_M=for p in unip_L do parameter(KGB(M,p.x.number), p.lambda,p.nu) od
+set wp_M=weak_packets(M)
+set shift_nu(Param p_L, int k)=parameter(p_L.x, p_L.lambda, p_L.nu+[k,0,0,0,0])
+
+set packet_M=parameters(wp_M[10])
+set packet_M_0=packet_M
+set packet_M_4=for p in packet_M do shift_nu(p,4) od
+set packet_M_5=for p in packet_M do shift_nu(p,5) od
+
+set packet_M_0_langlands=min_height(packet_M_0)
+set packet_M_4_langlands=min_height(packet_M_4)
+set packet_M_5_langlands=min_height(packet_M_5)
+
+set packet_M_G_0=remove_duplicates(for pm in packet_M_0 do monomials(real_induce_irreducible(pm,G))  od.##)
+set packet_M_G_4=remove_duplicates(for pm in packet_M_4 do monomials(real_induce_irreducible(pm,G))  od.##)
+set packet_M_G_5=remove_duplicates(for pm in packet_M_5 do monomials(real_induce_irreducible(pm,G))  od.##)
+
+set packet_M_G_0_langlands=min_height(packet_M_G_0)
+set packet_M_G_4_langlands=min_height(packet_M_G_4)
+set packet_M_G_5_langlands=min_height(packet_M_G_5)
+
+set packet_M_G_0_long=for pm in packet_M_0 do (pm,monomials(real_induce_irreducible(pm,G)))  od
+set packet_M_G_4_long=for pm in packet_M_4 do (pm,monomials(real_induce_irreducible(pm,G)))  od
+set packet_M_G_5_long=for pm in packet_M_5 do (pm,monomials(real_induce_irreducible(pm,G)))  od
+
+set packet_M_G_0_langlands_long=for pm in packet_M_0_langlands do (pm, monomials(real_induce_irreducible(pm,G))) od
+set packet_M_G_4_langlands_long=for pm in packet_M_4_langlands do (pm, monomials(real_induce_irreducible(pm,G))) od
+set packet_M_G_5_langlands_long=for pm in packet_M_5_langlands do (pm, monomials(real_induce_irreducible(pm,G))) od
+
+set arthur_packet_L_a=[packet_L_0[4],packet_L_0[5],packet_L_0[6],packet_L_0[7]]
+set arthur_packet_L_b=[packet_L_0[0],packet_L_0[1],packet_L_0[2],packet_L_0[3],packet_L_0[8],packet_L_0[9]]
+set arthur_packet_L_c=[packet_L_0[0],packet_L_0[1],packet_L_0[2],packet_L_0[3],packet_L_0[10],packet_L_0[11]]
+set arthur_packet_L_d=[packet_L_0[12],packet_L_0[13],packet_L_0[14],packet_L_0[15]]
+
+set arthur_packets_L_0=[arthur_packet_L_a,arthur_packet_L_b,arthur_packet_L_c,arthur_packet_L_d]
+
+set arthur_packets_L=arthur_packets_L_0
+set arthur_packets_L_minus_4=shift(arthur_packets_L_0,4)
+set arthur_packets_L_minus_5=shift(arthur_packets_L_0,5)
+
+set induced_packets([[Param]] arthur_packets_L)=
+for packet_L in arthur_packets_L do
+ contragredient(for p in packet_L do
+  let ind=monomials(theta_induce_irreducible(p,G)) in
+   assert(#ind<2,"error");
+   if #ind=1 then [ind[0]]  else [] fi
+ od.##)
+od
+
+set arthur_packets_G_0=induced_packets(arthur_packets_L_minus_5)
+set arthur_packets_G_1=induced_packets(arthur_packets_L_minus_4)
+set arthur_packets_G_5=induced_packets(arthur_packets_L_0)
+
+

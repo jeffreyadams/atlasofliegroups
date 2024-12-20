@@ -1,0 +1,93 @@
+set_type
+[ Param_pair_hash =
+  ( ( -> int) size
+  , ( -> int) capacity
+  , ( -> ) clear
+  , ( -> [(Param,Param)]) list
+  , (int->(Param,Param)) index
+  , ((Param,Param)->int) match   {(p_H,p_G): if (p_H,p_G) in table return index, if (p_H,*) not in the table insert (p_H,p_G)
+                                  if (p_H,p'_G) in table report error}
+  , (Param->(int,Param)) lookup  {p_H -> (index,p_G) if in the table, otherwise (-1,p_H) in the latter case p_H is just needed for syntax reasons}
+  , (Param -> bool)      in_hash {true if (p_H,*) in hash}
+  , (-> [Param]) finalized       {list of distinct finalizations of all the p_H}
+  )
+]
+
+set make_Param_pair_hash ([(Param,Param)] list, (Param,int->int) hash) = Param_pair_hash:
+(  let capacity = max(2,2*#list), !empty=minus_1
+   then seq_nbrs = for :capacity do empty od, maxfill = 2*capacity\3
+   then find(Param p) = (int,bool):   
+     let code = hash(p,capacity)
+     in while let v=seq_nbrs[code] in if v=empty then return (code,true) fi
+        ; let (pH,pG)=list[v] in pH != p
+        do if (code+:=1)=capacity then code:=0 fi
+        od
+     ; (code,false) { slot in |seq_nbrs|, and whether it is new }
+   then rehash(int new_capacity) = void:
+     begin capacity := new_capacity
+     ;   seq_nbrs := for j:capacity do empty od { prepare new array }
+     ;   maxfill := 2*capacity\3
+     ;   for (pH,pG)@m in list
+	 do let (code,new) = find(pH) in assert(new,"duplicate while rehashing")
+	 ;  seq_nbrs[code] := m
+	 od
+     end
+   then clear() = void:
+   	let () = capacity := 2
+   	then () = seq_nbrs := for :capacity do empty od
+	then () = maxfill := 2*capacity\3
+	then () = list:=[]
+	in ()
+in for (p_H,p_G)@m in list
+   do let (code,new) = find(p_H) in if new then seq_nbrs[code] := m fi
+   od
+;  ( ( -> int): { size } @int: #list
+   , ( -> int): { capacity } @int: capacity
+   , ( -> ): {clear} clear
+   , ( -> [(Param,Param)]): {list} @[(Param,Param)]:list
+   , (int->(Param,Param)): { index } (int i) (Param,Param): list[i]
+   , ((Param,Param)->int): { match } (Param p_H,Param p_G) int:
+     begin
+       let (code,new) = find(p_H) in {(index,whether it is new)}
+       if new { an empty slot was found, fill it } then 
+       let val = seq_nbrs[code] := #list
+         in list #:= (p_H,p_G)
+         ; if #list >= maxfill then rehash(capacity+capacity) fi
+         ; val { don't use |seq_nbrs[code]| as |seq_nbrs| may have changed here}
+       else  {need to check if p_G = second value of stored pair; if not this is an error}
+         let index=seq_nbrs[code] then
+	 (,stored_p_G)=list[index] in
+	 assert(p_G=stored_p_G,"(p_H,q_G != p_G) found in table");index
+        fi
+     end
+   , (Param->(int,Param)): { lookup } (Param p_H) (int,Param):
+     let (code,new) = find(p_H) in if new then (minus_1,p_H) else  {p_H is needed for syntax reasons}
+      let index=seq_nbrs[code] then
+      (,p_G)=list[index] in
+      (index,p_G)
+      fi
+   , (Param->bool): {in_hash} (Param p_H) bool:
+     let (code,new) = find(p_H) in not new
+   , (->[Param]):  @[Param]:remove_duplicates(for (p_H,) in list do p_H od)  {this finalizes the Params, and keeps 1 of each}
+)
+)
+
+{given just H make empty Param_pair_hash}
+set make_Param_pair_hash (RealForm H) = Param_pair_hash:
+    make_Param_pair_hash([(Param,Param)]:[],hash_code@(Param,int))
+
+set make_Param_pair_hash ([(Param,Param)] list) = Param_pair_hash:
+    make_Param_pair_hash(list,hash_code@(Param,int))
+
+set params(Param_pair_hash hash)=[(Param,Param)]:
+ for i:hash.size() do hash.index(i) od
+
+set params(Param_hash unitary_hash)=[Param]:
+ for i:unitary_hash.size() do unitary_hash.index(i) od
+
+set pr(Param_pair_hash hash)=void:
+if =hash.size() then () else
+tabulate(for (p_H,p_G) in params(hash) do [p_H.to_string,p_G.to_string] od) fi
+
+set pr(Param_hash hash)=void:
+pr(params(hash))
