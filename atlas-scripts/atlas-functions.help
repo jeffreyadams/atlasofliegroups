@@ -1311,7 +1311,9 @@ affine_orbit_ws: (RootDatum,ratvec->[WeylElt]): W image of affine quotient
   be taken from the value returned by a call of 'walls' above, and indeed in
   affine_orbit_ws the values returned from 'walls' for the given rational weight
   are used in their place). The sequence of root numbers describes an increasing
-  chain of root systems, from the integral system to the full root system, the
+  chain of root
+  b
+  systems, from the integral system to the full root system, the
   steps of which determine subquotients (sets of representatives of left cosets
   by a smaller in a larger subgroup) by pseudo-Levi subgroups of the Weyl group.
   In basic_orbit_ws the first such subquotient is computed (the other ones can

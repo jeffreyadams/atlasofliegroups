@@ -797,7 +797,8 @@ for i:#P do rv+:=shift(hodge_branch_std(P[i],N),i) od;rv
 where {I_j} are at the same infinitesimal character (not necessarily nu=0)}
 set hodge_formula_irr(Param p)=hodgeParamPol:
 let (b,index)=singular_block(p) then {p=b[index]}
-polys=transpose(KL_P_signed_polynomials(p))[index] then
+(,P)=KL_P_signed_polynomials(p) then
+polys=transpose(P)[index] then
 on_p=orientation_nr(p) then
 rv=nullHodgeParamPol(p.real_form) in
 for i:#b do
