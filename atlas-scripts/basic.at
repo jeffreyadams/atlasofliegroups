@@ -375,6 +375,26 @@ set compact_string (ratvec v) = string:
    let (a,b)=%v in
    ([int]:a).to_string + if b=1 then "" else "/"+b.to_string fi
 
+{				Generics				}
+
+any_type S,T begin
+set filter ((T->bool) pred) = ([T]->[T]):
+  ([T] r): for x in r if pred(x) do x fi od
+
+set map ((S->T) f) = ([S] a) [T]: for x in a do f(x) od
+
+set split ([S,T] l) = ([S],[T]): ( for(s,)in l do s od, for(,t)in l do t od )
+
+set zip ([S] a,[T] b) = [S,T]:
+  if #a<=#b then for x@i in a do (x,b[i]) od else for y@i in b do (a[i],y) od fi
+
+set transpose ([[T]] rr) = [[T]]:
+{ only for rectangular array with at least one entry no information is lost }
+  if #rr=0 then rr { avoid error for minimum of empty list }
+  else for i: min(map(#@t([t]))(rr)) do for r in rr do r[i] od od
+  fi
+end
+
 {                               Vectors                                 }
 
 set vector (int n,(int->int)f) = vec: for i:n do f(i) od
