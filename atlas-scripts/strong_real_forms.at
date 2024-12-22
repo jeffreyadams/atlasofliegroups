@@ -1,0 +1,45 @@
+set torus_factor(RealForm G)=torus_factor(KGB(G,0))
+
+{utility function2}
+set find([RealForm] real_forms,RealForm G)=int:first(for H in real_forms do G=H od)
+set pr([RealForm] real_forms)=void:for G in real_forms do prints(G, " ", torus_factor(G)) od
+
+set torus_factor(RealForm G)=ratvec:torus_factor(KGB(G,0))
+
+{for each H in real_forms(G) create real_form(H,delta,torus_factor(H)+v)
+where v runs over all_lambda_differential_0(x_open(dual quasisplit form))
+these are all of the strong real forms of H, with repetitions
+e.g. if G is split this contains 2^rank groups (G,delta,torus_factor(G)+v)
+these are all equivalent (as strong real forms) to (G,delta,torus_factor(G))
+at the opposite extreme:
+G=compact_torus(n) -> 2^n distinct strong real forms}
+set strong_real_forms_with_duplicates(RealForm G)=[RealForm]:
+let x=x_open(dual_quasisplit_form(G)) then
+shifts = all_lambda_differential_0(x) then
+delta=G.distinguished_involution in
+for H in real_forms(G) do 
+ for v in shifts do real_form(H,delta,torus_factor(H)+v) od od.##
+
+{remove duplicates from list real_forms of real forms, based on
+real_forms[i]=real_forms[j]}
+set remove_duplicates([RealForm] real_forms)=
+let rv=[RealForm]:[] in
+for H in real_forms do
+ let j=find(rv,H) in
+ if j=-1 then rv#:=H fi
+ od;
+ rv
+
+{strong real forms(G): remove duplicates from strong_real_forms_with_duplicates(G)}
+set strong_real_forms(RealForm G)=[RealForm]:remove_duplicates(strong_real_forms_with_duplicates(G))
+
+{the number of strong_real_forms produced by strong_real_forms(G) should
+be the same as the sum of the sizes of the arrays in square_classes(G)
+These arrays are parametrized by RealForms of G, and the size of the vector is
+the number of strong real forms mapping to the given RealForm.}
+set test_strong_real_forms(RealForm  G)=void:
+let srf=strong_real_forms(G) in
+tabulate(for G in srf do  [G.to_string,  torus_factor(G).to_string] od);
+prints("number of computed strong real forms: ", #srf, new_line,
+"number computed by square_classes: ", #(##(square_classes(G))));
+prints("square_classes: ", square_classes(G))
