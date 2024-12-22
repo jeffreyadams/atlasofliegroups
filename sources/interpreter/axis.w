@@ -7083,11 +7083,26 @@ the global overload table to find the value. Since upon success we find a bare
 |shared_function|, we must (as we did for~`\.\$') use the |capture_expression|
 class to serve as wrapper that upon evaluation will return the value again.
 
-The method |overload_table::entry| finds an entry, if there exists one, whose
-argument type is \emph{equal} to the |type_expr| that method is called with,
-returning a pointer to it. When it returns a null pointer no exact match was
-found, but there could still be a polymorphic overload that accepts the given
-argument type; that case is handled in a separate section.
+We do two attempts to match the specified type |c_type| to an entry in the
+|global_overload_table|. In the first we deduce from |c_type| a type as it would
+be specified in a table entry for an exact match. Then as a second try, we try
+to find a unique polymorphic overload that accepts |c_type| as it would in a
+function call, and if one is found we use that. Although an exact match would
+also be found in the second try, the first one allows specifying any overload,
+even if the exact type of that overload also matches another, more general,
+polymorphic overload. (In that case it is not possible to call the intended
+overload through ordinary overload resolution, since no match to it would ever
+be unique; we do want to be able to specify it in an operator cast, if it were
+only to apply \.{forget} to get rid of the useless overload.)
+
+For the first try we use the method |overload_table::entry|, which in the call
+below finds an entry at symbol |c->oper|, if there exists one, whose argument
+type with any polymorphic variables shifted up by |fc| is |c_type|. That shift
+is what we want, because at the point where the operator cast is written, any
+polymorphic types introduced start at |fc|, while in the overload table there
+are no fixed type variables and they start at~$0$. that method is called with.
+When |overload_table::entry| returns a null pointer no exact match was found,
+and we pas to the second try, which uses |overload_table::variants|.
 
 @< Cases for type-checking and converting... @>=
 case op_cast_expr:
@@ -7095,17 +7110,25 @@ case op_cast_expr:
   const type_expr& c_type = c->type;
   std::ostringstream o; // prepare name for value, and for error message
   o << main_hash_table->name_of(c->oper) << '@@' << c_type;
-  type target = type::wrap(c_type,fc);
-  const unsigned target_deg=target.degree();
   expression_ptr result;
   type_expr deduced_type;
-  const overload_data* prev_match=nullptr;
-  if (@[auto* vars = global_overload_table->variants(c->oper)@;@])
-    for (const auto& variant : *vars)
-  @< See if |target| matches the argument type of a unique variant; if so,
-     assign to |result| a |capture_expression| around its value, and to
-     |deduced_type| the type with any substitutions to polymorphic type
-     variables to match |target| applied to it @>
+  if (const auto* entry = global_overload_table->entry(c->oper,c_type,fc))
+  {
+    result.reset(new capture_expression(entry->value(),o.str()));
+    functype_specialise(deduced_type,c_type,entry->f_tp().result_type);
+  }
+  else
+  {
+    type target = type::wrap(c_type,fc);
+    const unsigned int target_deg=target.degree();
+    const overload_data* prev_match=nullptr;
+    if (@[auto* vars = global_overload_table->variants(c->oper)@;@])
+      for (const auto& variant : *vars)
+    @< See if |target| matches the argument type of a unique variant; if so,
+       assign to |result| a |capture_expression| around its value, and to
+       |deduced_type| the type with any substitutions to polymorphic type
+       variables to match |target| applied to it @>
+  }
   if (result==nullptr)
     throw expr_error(e,"No instance for "+o.str()+" found");
   return conform_types(type::wrap(deduced_type,fc),tp,fc,std::move(result),e);
@@ -7132,24 +7155,24 @@ perform two separate substitutions to provide those. If nothing is found here,
 we fall through this code, leading to a ``no instance found'' error.
 
 @< See if |target| matches the argument type of a unique variant... @>=
-    {
-      unsigned int op_deg = variant.poly_degree(), shift_amount;
-      if (target.matches(variant.f_tp().arg_type,op_deg,shift_amount))
-      {
-        if (prev_match!=nullptr)
-          @< Throw an error reporting an ambiguous match in operator cast @>
-        @< Write to |o| the name of operator |c->oper| with the argument type of
-           |variant|, to which the substitutions in |target.assign()| have been
-           applied @>
-        result.reset(new capture_expression(variant.value(),o.str()));
-        deduced_type = type_expr::function @|
-          (substitution(variant.f_tp().arg_type,target.assign(),shift_amount)
-          ,substitution(variant.f_tp().result_type,target.assign(),shift_amount)
-          );
-       prev_match = &variant;
-      }
-      target.clear(target_deg);
-    }
+{
+  unsigned int op_deg = variant.poly_degree(), shift_amount;
+  if (target.matches(variant.f_tp().arg_type,op_deg,shift_amount))
+  {
+    if (prev_match!=nullptr)
+      @< Throw an error reporting an ambiguous match in operator cast @>
+    @< Write to |o| the name of operator |c->oper| with the argument type of
+       |variant|, to which the substitutions in |target.assign()| have been
+       applied @>
+    result.reset(new capture_expression(variant.value(),o.str()));
+    deduced_type = type_expr::function @|
+      (substitution(variant.f_tp().arg_type,target.assign(),shift_amount)
+      ,substitution(variant.f_tp().result_type,target.assign(),shift_amount)
+      );
+   prev_match = &variant;
+  }
+  target.clear(target_deg);
+}
 
 @ Similarly to what we do for ambiguous exact overload matches, we use the
 |prev_match| pointer to build an error report.

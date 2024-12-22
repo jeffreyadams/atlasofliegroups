@@ -442,8 +442,6 @@ const overload_data* overload_table::entry
           if (shift(entry.f_tp().arg_type,0,shift_amount)==arg_t)
           return &entry;
         }
-        else if (entry.f_tp().arg_type==arg_t)
-          return &entry;
   }
   return nullptr; // indicate that |(id,arg_t)| was not found
 }
