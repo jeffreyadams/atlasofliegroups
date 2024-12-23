@@ -412,7 +412,7 @@ set two_flag = true
 set coh_ind_unip_few(KGPElt Q, Param_hash Uhash, ratvec v) = void:
     let L = Q.Levi, G = Q.real_form
     then uLs = if unip_factor_flag
-    	       then factor_unipotent_representations(L,v)
+    	       then factor_my_representations(L,v) {was factor_unipotent_representations}
 	       else unipotent_representations(L,v)
 	       fi
     then Qshifts = few_shifts(Q,v)
@@ -441,7 +441,7 @@ set coh_ind_unip_few(KGPElt Q, ratvec v) = void:
 set coh_ind_unip_most(KGPElt Q, Param_hash Uhash,ratvec v) = void:
     let L = Q.Levi, G = Q.real_form
     then uLs = if unip_factor_flag
-    	       then factor_unipotent_representations(L,v)
+    	       then factor_my_representations(L,v) {was factor_unipotent}
 	       else unipotent_representations(L,v)
 	       fi
     then rhou = rho_u(Q)
@@ -470,7 +470,7 @@ set coh_ind_unip_most(KGPElt Q, ratvec v) = void:
 set coh_ind_unip_all(KGPElt Q, Param_hash Uhash,ratvec v) = void:
     let L = Q.Levi, G = Q.real_form
     then uLs = if unip_factor_flag
-    	       then factor_unipotent_representations(L,v)
+    	       then factor_my_representations(L,v)  {was factor_unipotent}
 	       else unipotent_representations(L,v)
 	       fi
     then rhou = rho_u(Q)
