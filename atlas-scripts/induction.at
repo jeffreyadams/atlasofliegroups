@@ -203,6 +203,21 @@ set cuspidal_data (Param p) = (Parabolic,Param):
    )
   )
 
+{. Tempered data associated to a parameter p: a real parabolic
+subgroup P = MN and tempered mod center parameter p_M so that
+Ind(I(p_M)) = I(p) This is the canonical real parabolic arising in the
+Langlands classification .}
+set tempered_data(Param p) = (Parabolic,Param):
+    let(,p1) = p.from_nu_dom
+    then nu1 = p1.nu, x1=p1.x
+    then theta1 = x1.involution
+    then P1 = parabolic_by_wt(nu1,x1)
+    then M1 = P1.Levi
+    then x1_M1=inverse_embed_KGB(x1,M1)
+    in
+    (P1, parameter(x1_M1, lambda(p1) - rho_r(p1.x) + rho_r(x1_M1)-(1-theta1)*
+    	 (rho_S(x1) - rho_S(x1_M1)), nu(p1)))
+
 {  ----------------------   theta-stable data   -----------------------------}
 
 {. Theta-stable data associated to a parameter p: a theta-stable parabolic P=LN
@@ -222,21 +237,41 @@ set theta_stable_data (Param p) = (Parabolic,Param):
    )
   )
 
-{. Theta-stable data associated to a parameter q: a theta-stable parabolic Q=LU
-   with L quasisplit, and parameter q_L for a fine principal series
-   representation 
-   so that is obtained by cohomological parabolic induction
-   from q_L.}
+{. Theta-stable data associated to a parameter q: a theta-stable
+parabolic Q=LU with L quasisplit, and parameter q_L for a fine
+principal series representation so that q is obtained by cohomological
+parabolic induction from q_L .}
 set theta_stable_quasi_data (Param q) = (Parabolic,Param):
-  {assert(is_final(q),"parameter is not final")}
-  let (,q1)=q.from_dlambda_dom
-  then dlambda1 = d_lambda(q1), x1=q1.x, lambda1=q1.lambda
-  then Q1 = parabolic_by_wt(dlambda1,x1)
-  then L1 = Q1.Levi
-  then x1_L1=inverse_embed_KGB(x1,L1)  
-  in
-  (Q1, parameter(x1_L1, lambda1-rho(real_form(q1))+rho(L1), q1.nu))
-  
+    {assert(is_final(q),"parameter is not final")}
+    let (,q1)=q.from_dlambda_dom
+    then dlambda1 = d_lambda(q1), x1=q1.x, lambda1=q1.lambda
+    then Q1 = parabolic_by_wt(dlambda1,x1)
+    then L1 = Q1.Levi
+    then x1_L1=inverse_embed_KGB(x1,L1)
+    in
+    (Q1, parameter(x1_L1, lambda1-rho(real_form(q1))+rho(L1), q1.nu))
+
+{. Theta-stable data associated to a parameter q: a theta-stable
+parabolic Q=LU with L quasisplit, and parameter q_L for a fine
+principal series representation so that q is obtained by cohomological
+parabolic induction from q_L. But now we shrink L so the Cartan is the
+maximally split one in L.}
+{DANGER: image parameter need not be fine! Example: G=SO(6,4),
+p = final parameter(x=206,lambda=[4,4,1,2,0]/1,nu=[2,2,0,1,0]/1)
+q_L = final parameter(x=29,lambda=[-2,-2,-4,2,0]/1,nu=[2,0,-2,1,0]/1)
+Can fix this by applying theta_stable_quasi_data and
+theta_stable_quasi_data_im in succession, either order.}
+set theta_stable_quasi_data_im (Param q) = (Parabolic,Param):
+    let qIm = parameter(q.x, q.lambda + 2*rho_i(q.x), q.nu)
+    {assert(is_final(q),"parameter is not final")}
+    then (,q2)=qIm.from_dlambda_dom {theta-stable defined by dlambda + 2rho_i}
+    then dlambda2 = d_lambda(q2), x2=q2.x, lambda2=q2.lambda
+    then Q2 = parabolic_by_wt(dlambda2,x2)
+    then L2 = Q2.Levi
+    then x2_L2=inverse_embed_KGB(x2,L2)
+    in
+    (Q2, parameter(x2_L2, lambda2 -2*rho_i(x2) -rho(real_form(q2))+rho(L2), q2.nu))
+
 {---------------------standardize-----------------------------------------}
 
 {on the compact Cartan, coherent continuation is well defined even
@@ -438,6 +473,41 @@ set theta_induce_irreducible (ParamPol P,RealForm G) = ParamPol:
    for coeff@p in P do result+:=coeff*theta_induce_irreducible_final(p,G) od;
    result
 
+set delta_on_simple(InnerClass ic) = [int]:
+    let (r,SR,delta) = (ic.semisimple_rank, ic.simple_roots, ic.distinguished_involution)
+    in for i:r do root_index(ic, delta*SR[i]) od
+
+{Enlarge Q until it's Qgood weakly good; then use the difficult induction to go from Q to Qgood,
+followed by easy to go from Qgood to Q}
+set theta_induce_irreducible2(ParamPol P, RealForm G) = ParamPol:
+    let result = null_module(G)
+    then () = if P.= then return result fi
+    then L = P.real_form, gammaL = P.infinitesimal_character
+        then rhou = G.rho - L.rho, scr = G.simple_coroots
+    then S = for avee@j in G.simple_coroots
+    	     do if (avee*rhou).= then [j] else [] fi
+	     od.##
+    then x0_from_L = inverse_embed_KGB(KGB(L,0),G)
+    then dos = delta_on_simple(G)
+    then Q = KGPElt:(S,x0_from_L)
+    then gamma = gammaL + rhou
+    then Sgood = S, Lgood = L, gammagood = gamma, Qgood = Q
+    then T = for avee@j in scr
+    	     do if (avee*gamma).< then [j] else [] fi
+	     od.## {always excludes S}
+    then () = while #T > 0
+    	      do let ()= Sgood := (Sgood##T##for t in T do dos[t] od).sort_u
+	      	 then () = Qgood := (Sgood,x0_from_L)
+		 then () = Lgood := Qgood.Levi
+		 then () = gammagood :=dominant(Lgood,gammagood) {now nonneg on Sgood}
+	      	 in T := for avee@j in scr
+    	     	      	 do if (avee*gammagood).< then [j] else [] fi
+	     		 od.## {excludes Sgood}
+	      od {now induction from Qgood is weakly good}
+    then Pgood = theta_induce_irreducible(P,Lgood)
+    {then () = prints("start with ",S," end with ",Sgood)}
+    in theta_induce_parampol(Pgood,G)
+
 { |theta_induce_irreducible@(Param,RealForm)| not defined, as the |ParamPol|
   version suffices: implicit conversion |Param->ParamPol| will apply }
 
@@ -488,15 +558,25 @@ set dim_u_cap_k(ratvec lambda,KGBElt x) =  int:
 {. Dimension of $\mathfrak u\cap\mathfrak p$ for theta-stable parabolic. .}
 set dim_u_cap_p (Parabolic (,x):P) = int:
   assert(is_parabolic_theta_stable(P),"Parabolic is not theta-stable");
-  let sum=0/1 in
+  let sum=0/1 then
+  {for efficiency: define is_complex and is_noncompact_imaginary as functions: root->bool
+   see basic.at}
+  is_complex=is_complex(x) then
+  is_noncompact_imaginary=is_noncompact_imaginary(x) in
   for alpha in nilrad_roots(P) do
-    if is_complex(alpha,x) then sum +:= 1/2
-    elif is_noncompact_imaginary(alpha,x) then sum+:=1
+    if is_complex(alpha) then sum +:= 1/2
+    elif is_noncompact_imaginary(alpha) then sum+:=1
     fi
   od; rat_as_int(sum)
 
+{alternate version - appears to be about the same speed}
+set dim_u_cap_p_alt (Parabolic (,x):P) = int:
+assert(is_parabolic_theta_stable(P),"Parabolic is not theta-stable");
+let L=P.Levi, G=x.real_form
+in length(x_open(G)) - length(x_open(L))
+
 {. Dimension of $\mathfrak u \cap\mathfrak p$ for theta-stable parabolic associated
-  to x. .}
+  to x .}
 set dim_u_cap_p (KGBElt x) = int: dim_u_cap_p(theta_stable_parabolic(x))
 
 {. Dimension of $\mathfrak u\cap\mathfrak p$ for theta-stable parabolic determined by
@@ -572,7 +652,7 @@ set find_N (Param p_L,RealForm G) = int:
   in let pcg=poscoroots(G) then
    list=##for alpha in pcg do {if alpha*two_rhou > 0 then}
    [-(alpha*v)/(alpha*two_rho(G))] {else [] fi} od
-   in {prints(list);} if #list=0 then prints("The parabolic is not proper."); 1
+   in if #list=0 then {prints("The parabolic is not proper.");} 1
    else floor(max(list)+1) fi
 
 {First version using coherent continuation of irreducibles:
@@ -678,15 +758,21 @@ set Aq(RealForm G,ratvec lambda)=Param:
 {----------------------Good/Fair conditions------------------}
 
 {. Decide whether a parameter defines a one-dimensional representation. .}
-set is_one_dimensional(Param p)=bool:
-  is_finite_dimensional(p) and dimension(p)=1
+{ set is_one_dimensional(Param p)=bool:
+  is_finite_dimensional(p) and dimension(p)=1}
+set is_one_dimensional(Param p) = bool:
+    let G = p.real_form, gamma = p.infinitesimal_character
+    in (#tau(p) = G.semisimple_rank) and
+        all(for av in G.simple_coroots do av*gamma = 1 od)
+
 
 {. Decide whether a parameter defines a unitary one-dimensional character. .}
 set is_unitary_character(Param p)=bool:
-  if is_one_dimensional(p) then let ic=infinitesimal_character(p) in
+  is_one_dimensional(p) and equivalent(twist(p),p)
+  {if is_one_dimensional(p) then let ic=infinitesimal_character(p) in
   let theta=involution(x(p)) in let lam=ic-rho(root_datum(p)) in
   theta*lam=lam
-  else false fi
+  else false fi}
 
 {. Decide whether A_q(lambda) is good. .}
 set is_good(KGBElt x_in,ratvec lambda_in,ratvec lambda_q_in)=bool:
@@ -954,8 +1040,9 @@ set find_N ([int] Levi, Param p)=int:
    gamma=((1+theta)*lam+(1-theta)*nu)/2 then
    list=##for alpha in poscoroots(rd) do if alpha*two_rhou > 0 then
    [-(alpha*gamma)/(alpha*two_rhou)] else [] fi od
-   in {prints(list);} if #list=0 then prints("The parabolic is not proper."); 1
-   else floor(max(list)+1) fi
+   in {prints(list);}
+      if #list=0 then 1
+      else floor(max(list)+1) fi
 
 set is_standard ([int] Levi, Param p) =
     is_standard (p_N (p,find_N (Levi,p),Levi))

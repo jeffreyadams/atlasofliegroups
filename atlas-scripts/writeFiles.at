@@ -1,5 +1,5 @@
 < basic.at {for x}
-
+<groups.at {for GL(1,R)}
 {These functions are meant for writing .at files that can later be
 read by atlas. For files of type [vec], such writing can be done ad
 hoc very easily; but the ad hoc files, which might look like
@@ -25,14 +25,58 @@ set write_vecs([vec] list, string VecsName) = void:
     begin
 	 prints("set ",VecsName," = [vec]: for i:",#list," do [] od")
 	 ; for i:#list
-	   do prints("void:",VecsName,"[",i,"]:=",list[i])
+	   do prints("void:",VecsName,"[",i,"]:=",[int]: list[i])
 	   od
     end
 
 set write_vecs([vec] list) = void:
     write_vecs(list, default_vecs_name)
 
+set write_append([int] list, string listname) = void:
+    begin
+	 for M@j in list do prints(listname,"#:=",M) od
+{	 , if j<#list-1 then  
+    ";" else "" fi) od}  {This creates a single long expression with
+    #list pieces: interpreter can't read if it's more than a few thousand}
+    end
+
+{assume that [int] listname exists, add to it by concatenation}
+set write_cat_int_list([int] list, string listname) = void:
+    begin
+	 for M@j in list do prints("then () = ",listname,"#:=",M) od
+    end
+
+set default_ic_name = string:"ic_saved"
 set default_group_name = string:"G_saved"
+
+set write_inner_class(InnerClass ic, string ICName) = void:
+    begin
+	prints("set rd_saved = RootDatum: root_datum(mat: ")
+	; prints( for alpha in ic.simple_roots do alpha od, ", mat:")
+	; prints( for betavee in ic.simple_coroots do betavee od)
+	; prints(",",ic.prefers_coroots,")")
+	; prints("set DI_saved = mat: ")
+    	; prints(for col in ic.distinguished_involution do col od)
+        ; prints( "set ",ICName, " = inner_class(rd_saved, DI_saved)")
+    end
+
+set write_inner_class(InnerClass ic) = void:
+    write_inner_class(ic,default_ic_name)
+
+set write_ic_list([InnerClass] ics, string list_name) = void:
+     begin
+	prints("set ",list_name, " = [InnerClass] : [], temp_ic = InnerClass:GL(1,R)")
+	; for ic in ics
+	  do write_inner_class(ic, "temp_ic");
+	     prints(list_name,"#:= temp_ic")
+	  od
+     end
+
+set append_inner_class(InnerClass ic, string list_name) = void:
+    begin
+    write_inner_class(ic,"ic_temp")
+    ; prints(list_name,"#:= ic_temp")
+    end
 
 set write_real_form(RealForm G, string GroupName) = void:
     begin
@@ -55,13 +99,13 @@ set data(KType mu) = (int, vec):
     (mu.x.#, mu.lambda_rho)
 
 {first coord is coefficient, second is KGBElt, rest are lambda-rho}
-set_type KPolTermDatum = vec
+set_type KPolTermDatum = [int]
 
 set K_data(KTypePol P) = [KPolTermDatum]:
-    for c@mu in P do [int_part(c)]##[mu.x.#]##mu.lambda_rho od
+    for c@mu in P do [int_part(c)]##[s_part(c)]##[mu.x.#]##mu.lambda_rho od
 
 set K_pol(RealForm G, [KPolTermDatum] KData) = KTypePol:
-    sum(G, for d in KData do d[0]*K_type(KGB(G,d[1]),d[2:]) od)
+    sum(G, for d in KData do (d[0]+s*d[1])*K_type(KGB(G,d[2]),d[3:]) od)
 
 set default_K_type_pols_name = string:"KPols_saved"
 { If you say
@@ -82,9 +126,20 @@ set write_K_type_pols(RealForm G, [KTypePol] KPols, string KPolsName) = void:
 	   	       " do Null od")
 	 ; for i:#KPols
 	   do let d = K_data(KPols[i])
-	      in prints("void:",KPolsName,"[",i,"]:=K_pol(G_temp,[vec]:",d,")")
+	      in prints("void:",KPolsName,"[",i,"]:=K_pol(G_temp,[vec]:",
+			[[int]]: d,")")
 	   od
    end
+
+{assume the [KTypePol] listName has already been created, and add to it}
+set write_cat_K_type_pols(string Gname, [KTypePol] list, string listName) = void:
+    begin
+         for P in list
+	 do let d = K_data(P)
+	    in prints("then () = ",listName,"#:=K_pol(", Gname,", [vec]:",[[int]]: d,")")
+	 od
+    end
+
 
 set write_K_type_pols(RealForm G, [KTypePol] KPols) = void:
     write_K_type_pols(G,KPols,default_K_type_pols_name)
@@ -100,7 +155,8 @@ set write_K_type_pols(RealForm G, [[KPolTermDatum]] KPolsData,
      	 ; prints("set ",KPolsName,"= [KTypePol]: for i:",#KPolsData,
 	   	       " do Null od")
 	 ; for d@i in KPolsData
-	   do prints("void:",KPolsName,"[",i,"]:=K_pol(G_temp,[vec]:",d,")")
+	   do prints("void:",KPolsName,"[",i,"]:=K_pol(G_temp,[vec]:",
+			[[int]]: d,")")
 	   od
    end
 
@@ -122,9 +178,18 @@ set write_K_type_pols_data(RealForm G, [KTypePol] KPols,
      	 ; prints("set ",KPolsDataName,"= [[vec]]: for i:",#KPols,
 	   	       " do [] od")
 	 ; for P@i in KPols
-	   do prints("void:",KPolsDataName,"[",i,"]:=",K_data(KPols[i]))
+	   do prints("void:",KPolsDataName,"[",i,"]:=",
+			[[int]]: K_data(KPols[i]))
 	   od
      end
+
+{assume the [[KPolTermDatum]] = [[vec]] listName has already been created, and add to it}
+set write_cat_K_type_pols_data([KTypePol] list, string listName) = void:
+    begin
+         for P in list
+	 do prints("then () = ",listName,"#:=", K_data(P))
+	 od
+    end
 
 set write_K_type_pols_data(RealForm G, [KTypePol] KPols) = void:
      write_K_type_pols(G, KPols, default_K_type_pols_name)
@@ -139,7 +204,8 @@ set write_K_type_pols_data(RealForm G, [[KPolTermDatum]] KPolsData,
      	 ; prints("set ",KPolsDataName,"= [[vec]]: for i:",#KPolsData,
 	   	       " do [] od")
 	 ; for d@i in KPolsData
-	   do prints("void:",KPolsDataName,"[",i,"]:=",d)
+	   do prints("void:",KPolsDataName,"[",i,"]:=",
+	   [[int]]: d)
 	   od
      end
 
@@ -183,3 +249,123 @@ set write_p_pols(RealForm G, [ParamPol] pPols, string pPolsName) = void:
 
 set write_p_pols(RealForm G, [ParamPol] pPols) = void:
     write_p_pols(G,pPols,default_p_pols_name)
+
+{to write a list of Param's for a single RealForm}
+set write_param_list([Param] list, string listName) = void:
+    begin
+	let G_temp = GL(1,R)
+	then () = if #list > 0 then G_temp := list[0].real_form
+	fi
+	; write_real_form(G_temp, "G_temp")
+	; prints("set Nullp = U(1,0).trivial")
+	; prints("set ",listName,"=[Param]: for i:",#list,
+	  	      " do Nullp od")
+        in for p@i in list
+	  do let (,x) = %p.x
+	     in prints("void:",listName,"[",i,"]:=parameter(KGB(G_temp,",
+	     	x,"),",p.lambda,",",p.nu,")")
+	  od
+    end
+
+{
+add an additional list of params to append to a previously written
+file of Param's for G_temp. REQUIRE all the lists to be for the same
+real form.
+
+If LIST1 and LIST2 are lists of Param's for G in atlas, you can type
+
+atlas> > file.at write_real_form (G,"G_temp")
+atlas> >> file.at write_append_param_list(LIST1,"LIST1")
+atlas> >> file.at write_append_param_list(LIST2,"LIST2")
+
+or alternatively (creates a functionally equivalent file.at)
+
+atlas> > file.at write_param_list(LIST1,"LIST1")
+atlas> >> file.at write_append_param_list(LIST2,"LIST2")
+
+When file.at is loaded into atlas, you'll recover LIST1 and LIST2. The
+lines above can be separated by other code.
+
+Wouldn't be so hard actually to append to LIST1, but I haven't done that.
+}
+
+set write_append_param_list([Param] list, string listName) = void:
+    begin
+	prints("set Nullp = U(1,0).trivial")
+	; prints("set ",listName,"=[Param]: for i:",#list,
+	  	      " do Nullp od")
+        ;for p@i in list
+	  do let (,x) = %p.x
+	     in prints("then () = ", listName,"[",i,"]:=parameter(KGB(G_temp,",
+	     	x,"),",p.lambda,",",p.nu,")")
+	  od
+    end
+
+{
+This is exactly like write_param_list, except that when the file is
+loaded it creates [Param] by successive concatenation rather than by
+creating a dummy list of the right size and modifying its entries. The
+advantage is that you can just add lines to this file to add more
+Param's. If you create the original file with
+> orig.at write_cat_param_list(MyFirstList,"listname")
+then you can add Params with
+>> orig.at write_append_cat_param_list(MySecondList,"listname")
+Only requirement is that all the Param's are for the same group.
+}
+set write_cat_param_list([Param] list, string listName) = void:
+    begin
+    	{let G_temp = GL(1,R)
+	then () = if #list > 0 then G_temp := list[0].real_form
+	fi
+	; write_real_form(G_temp, "G_temp")
+	; prints("set ",listName,"=[Param]:[]")
+	in} for p@i in list
+	   do let (,x) = %p.x
+	      in prints("then () = ",listName,"#:=parameter(KGB(G_temp,",
+	     	x,"),",p.lambda,",",p.nu,")")
+	   od
+    end
+
+set write_append_cat_param_list([Param] list, string listName, string groupName) = void:
+    begin
+	 for p@i in list
+	 do prints("void:",listName,"#:=parameter(KGB(",groupName,",",
+	     	p.x.number,"),",p.lambda,",",p.nu,")")
+	 od
+    end
+
+set write_append_cat_param_list([Param] list, string listName) = void:
+    write_append_cat_param_list(list, listName,"G_temp")
+
+{How to write a list}
+{
+set write_Item(Item item, string temp_item) = void:
+    begin
+    prints(temp_item," := ",item)
+    end
+
+
+set write_list([Item] items, string list_name) = void:
+    begin
+	prints("set ",list_name, " = [Item] : [], temp_item = NullItem")
+	; for item@j in items
+	  do write_Item(item, "temp_item");
+	     prints(list_name,"#:= Item_saved")
+	  od
+}
+{
+set write_vec(vec v, string vec_name) = void:
+    begin
+    prints(vec_name," := ",v)
+    end
+
+
+set write_vec_list([vec] vecs, string list_name) = void:
+    begin
+	prints("set ",list_name, " = [vec] : [], vec_temp = vec: []")
+	; for v in vecs
+	  do write_vec(v, "vec_temp");
+	     prints("void:",list_name,"#:= vec_temp")
+	  od
+    end
+}

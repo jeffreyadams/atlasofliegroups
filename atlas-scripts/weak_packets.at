@@ -8,6 +8,16 @@
 <cells.at { for |parameters_given_AV_infinitesimal_character|, |cells_verbose| }
 <Vogan-dual.at { for |is_dual_Aq| }
 <L_packet.at {for stable_sums_irr_mat}
+<F4_s_unipdata
+<E6_sc_s_unipdata
+<E6_sc_q_unipdata
+<E7_sc_q_unipdata
+<E7_sc_h_unipdata
+<E7_sc_s_unipdata
+<E8_s_unipdata
+<E8_q_unipdata
+<cohom_reductionND.at {to calculate unipotents one derived factor at a time}
+<FPP_faces_herm.at {for big_unitary_hash}
 
 {extract just the parameters from [(int,int,Param)]}
 set parameters([(int,int,Param)] triples)=[Param]:for (,,p) in triples do p od
@@ -128,7 +138,7 @@ in if not twist(delta_check,O_check)=O_check
    ;}  let O_check_int = integral_descent(O_check)
    in if cells_verbose then prints("computing packet for:", O_check_int) fi
    ;  let (bc,wp) = weak_packet_int(st_int,O_check_int,all,gamma_final)
-   in if {G.is_split and } =#wp then prints("ALERT: , empty packet") fi
+   in if {G.is_split and } cells_verbose and =#wp then prints("ALERT: , empty packet") fi
    ;  (bc,wp)
 fi
 
@@ -139,17 +149,17 @@ set weak_packet (ComplexNilpotent O_check,RealForm G) =
 { run over a set of dual orbits; check if dual(O_check) intersects \g^(-theta) }
 set weak_packets ([ComplexNilpotent] dual_orbits,RealForm G,ratvec shift) =
       [ [[Param],[WCell]] , [int,int,Param] ]:
-   prints("Computing weak packets for ", #dual_orbits," dual orbits of ",G);
+   if cells_verbose then prints("Computing weak packets for ", #dual_orbits," dual orbits of ",G) fi;
    let st = Springer_table(G)
    ,  delta_check= {distinguished involution of |G|, viewed on dual side}
             ^G.distinguished_involution {NOT |G.dual.distinguished_involution| }
 in for O_check in dual_orbits
    do if not twist(delta_check,O_check)=O_check
-      then prints("Skipping orbit: dual orbit is not delta_check fixed")
+      then if cells_verbose then prints("Skipping orbit: dual orbit is not delta_check fixed") fi
       ;  ([],[])
       elif =#real_nilpotent_orbits(st.dual_map_i(O_check),G)
-      then prints("Skipping dual orbit ", O_check
-		 ," (d(O_check) has no real forms for G)")
+      then if cells_verbose then prints("Skipping dual orbit ", O_check
+		 ," (d(O_check) has no real forms for G)") fi
       ;  ([],[])
       else if cells_verbose then prints
 	   ( new_line
@@ -221,8 +231,55 @@ set cells([(int,int,Param)] packet)=[int]:sort_u(for (,c,) in packet do c od )
 set cells([[(int,int,Param)]] packets) =[int]:sort_u(##for i:#packets do for (,c,) in packets[i] do c od od)
 set blocks([[(int,int,Param)]] packets) =[int]:sort_u(##for i:#packets do for (b,,) in packets[i] do b od od)
 
-set unipotent_representations(RealForm G)=[Param]:G.weak_packets.parameters
+set unipotent_representations(RealForm G)=[Param]: {G.weak_packets.parameters}
+    if G = F4_s
+    then for (x,lambda,nu) in F4_s_data do parameter(G,x,lambda,nu) od
+    elif G = E6_s
+    then for (x,lambda,nu) in E6_sc_s_data do parameter(G,x,lambda,nu) od
+    elif G = E6_q
+    then for (x,lambda,nu) in E6_sc_q_data do parameter(G,x,lambda,nu) od
+    elif G = E7_s
+    then for (x,lambda,nu) in E7_sc_s_data do parameter(G,x,lambda,nu) od
+    elif G = E7_q
+    then for (x,lambda,nu) in E7_sc_q_data do parameter(G,x,lambda,nu) od
+    elif G = E7_h
+    then for (x,lambda,nu) in E7_sc_h_data do parameter(G,x,lambda,nu) od
+    elif G = E8_s
+    then for (x,lambda,nu) in E8_s_data do parameter(G,x,lambda,nu) od
+    elif G = E8_q
+    then for (x,lambda,nu) in E8_q_data do parameter(G,x,lambda,nu) od
+    else G.weak_packets.parameters
+    fi
+
 set unipotents(RealForm G)=[Param]:unipotent_representations(G)
+
+{if big_unitary_hash has trivial(G), assume it has all unipotents of G}
+set big_unitary_hash_flag = true
+
+{calculate one derived simple factor at a time}
+
+set factor_unipotent_representations(RealForm G) = [Param]:
+    let dLs = derived_simple_factorsRF(G)
+    then unip_lists = for dL in dLs
+    	 	      do let dL_hash = big_unitary_hash.uhash(dL)
+		      	 in if big_unitary_hash_flag and dL_hash.lookup(dL.trivial).>=
+			    then dL_hash.list()
+			    else let list_dL = unipotent_representations(dL)
+			      	 then () = for p_dL in list_dL do dL_hash.match(p_dL) od
+    				 in list_dL
+			    fi
+		      od
+    in glue_params(G,unip_lists)
+
+set factor_unipotent_representations(RealForm G, ratvec v) = [Param]:
+    let dLs = derived_simple_factorsRF(G)
+    then unip_lists = for dL in dLs
+    	 	      do if big_unitary_hash_flag and big_unitary_hash.uhash(dL).lookup(dL.trivial).>=
+		      	 then big_unitary_hash.uhash(dL).list()
+			 else unipotent_representations(dL)
+			 fi
+		      od
+    in glue_params(G,unip_lists,v)
 
 set mult([[(int,int,Param)]] packet)=((int,int,int)->int):(int orbit,int block,int cell):
 let rv=0 in
@@ -705,8 +762,8 @@ for i:#wp do let (a,b)=wp[i] in for (,,p) in b do if =p.nu then prints(i, " ", p
 set show_unipotent_tempered(RealForm G)=void:
 show_tempered(weak_packets(G))
 
-set unipotent_representations(RealForm G)=[Param]:
-parameters(weak_packets(G))
+{set unipotent_representations(RealForm G)=[Param]:
+parameters(weak_packets(G))}
 
 set unipotent_representations_by_orbit(RealForm G)=[[Param]]:
 let wp=weak_packets(G) in for (,b) in wp do parameters(b) od

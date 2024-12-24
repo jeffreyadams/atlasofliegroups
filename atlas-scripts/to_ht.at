@@ -1,36 +1,96 @@
 <basic.at
 <hermitian.at
 <convert_c_form.at
+<count.at {for use counter}
 {preferred to_ht(ParamPol,int)}
-{ set to_ht0(int N) = (ParamPol->ParamPol): (ParamPol P):
-    let (below,)=height_split(P,N+1) in below }
-
-{following is better in is_unitary_to_ht(E6_q.trivial,24):
-took 60 seconds versus 80 for above}
-
-{set to_htA(int N) = (ParamPol->ParamPol):(ParamPol P):
-let result=0*P,zero=0*P,left=P in
-while (not(left=zero) and not(height(first_param(left))> N)) do result+:=(first_term(left));
-left-:=(first_term(left)) od; result}
-
-{following is better still...}
-{set to_htB(int N) = (ParamPol->ParamPol):(ParamPol P):
-let result=0*P, Mon = monomials(P), i=0 in
-while (i < #Mon and height(Mon[i])<N+1) do result+:=(P[Mon[i]],Mon[i]); i+:=1 od; result}
+{Turns out the "preferred" versions are significantly slower almost
+always; don't understand why. So switch to "old" versions as standard,
+labelling others as "new"}
+set herm_report = bool: false
 
 set to_ht (int N) = (ParamPol->ParamPol): (ParamPol P):
-  let (below,)=height_split(P,N) in below
+  if N < 0 then P
+  else let (below,)=height_split(P,N) in below
+  fi
 
-set to_ht (KTypePol P,int N) = KTypePol:
-  let (below,)=height_split(P,N) in below
+set to_ht(maybe_KTP P,int N) = maybe_KTP:
+    case P
+    | timed_out: timed_out()
+    | done(r): done(to_ht(r,N))
+    esac
 
-set full_deform_to_ht(Param p, int N) = to_ht(full_deform(p),N)
+
+set full_deform_to_ht_MvL(ParamPol P, int N) = KTypePol:
+    deform_to_height(P,N)
+
+set full_deform_to_ht_MvL (Param p, int height, int time) = maybe_KTP:
+( if deformed_hash_flag
+  then let j = deformedHash.lookup(p)
+       in if j.>= and (deformedHash.height_index(j).= or deformedHash.height_index(j) >= height)
+       	  then return to_ht(regroup(p.real_form, deformedHash.data_index(j)),height).done
+	  fi
+  fi;
+let !empty_K=null_K_module(p.real_form), !empty=null_module(p)
+  then output = empty_K, def = empty, expiration = elapsed_ms()
+  then P = empty +
+  { snap p down to a reducibility point, or tempered parameter }
+     (let rp = reducibility_points(p)
+       in
+        if =#rp then output +:= p.K_type; [] else [p*rp~[0]] fi)
+  then () = while >#P
+       	    do set (def,P) :=
+               (let q=first_param(P) in block_deform(q,P next P:=empty,height))
+  	       ; if elapsed_ms() > expiration then return timed_out() fi
+  	       ;  let kt = for c@m in def if  =nu(m) do (c,m.K_type) fi od
+     	       	  ,   pp = for c@m in def if !=nu(m) do (c,m) fi od
+  	      in output := (output next output:=empty_K) + kt; P := (P next P:=empty) + pp
+  	    od
+  then () = if deformed_hash_flag
+       	    then deformedHash.append(p,height,output)
+	    fi
+  in done(output)
+)
+
+set full_deform_to_ht_old(Param p, int N) = KTypePol:
+if height(p) > N then null_K_module(p.real_form)
+elif height(p) = N then K_type_pol(p)
+else let pc = alcove_center(p)
+     in if deformed_hash_flag
+	then deformedHash.entry(pc,N)
+	else deform_to_height(pc,N)
+	fi
+fi
+
+{This version seems NOT faster or smaller}
+set full_deform_to_ht(Param p, int N) = KTypePol:
+    if N < 0 then return full_deform(p) fi;
+    let pc = alcove_center(p)
+    in if deformed_hash_flag
+       then deformedHash.entry(pc,N)
+       else  deform_to_height(pc,N)
+       fi
+{deform_to_height(p,N)}
+
+set twisted_full_deform_to_ht_MvL(Param p, int N) = KTypePol:
+    if N < 0 then return twisted_full_deform(p) fi;
+    let pc = alcove_center(p)
+    in to_ht(twisted_full_deform(pc), N)
+
+set twisted_full_deform_to_ht_MvL(Param p, int N, int time) = maybe_KTP:
+    if N < 0 then return twisted_full_deform(p,time) fi;
+    let pc = alcove_center(p)
+    in to_ht(twisted_full_deform(pc,time), N)
 
 set twisted_full_deform_to_ht(Param p,int N) = KTypePol:
-  to_ht(twisted_full_deform(p),N)
+    if N < 0 then return twisted_full_deform(p) fi;
+    let pc = alcove_center(p)
+    in if deformed_hash_flag
+       then twistedDeformedHash.entry_to_ht(pc,N)
+       else to_ht(twisted_full_deform(pc),N)
+       fi
 
-set KL_sum_at_s_to_ht(int N) = (Param p)ParamPol:
-  to_ht(N)(KL_sum_at_s(p))
+set KL_sum_at_s_to_ht(int N) = (Param p) ParamPol:
+  KL_sum_at_s_to_height(p,N)
 
 set twisted_KL_sum_at_s_to_ht(int N) = (Param p) ParamPol:
   to_ht(N)(twisted_KL_sum_at_s(p))
@@ -38,9 +98,24 @@ set twisted_KL_sum_at_s_to_ht(int N) = (Param p) ParamPol:
 {.write c-invariant form on standard module as a ParamPol of
 standardrepKs to specified height.}
 
+set c_form_std_to_ht_MvL(int N) = (Param->KTypePol):(Param p):
+{ never involves |twisted_full_deform| }
+   full_deform_to_ht_MvL(p,N)
+
+set c_form_std_to_ht_MvL(int N, int time) = (Param->maybe_KTP):(Param p):
+{ never involves |twisted_full_deform| }
+   full_deform_to_ht_MvL(p,N,time)
+
+
 set c_form_std_to_ht(int N) = (Param->KTypePol):(Param p):
 { never involves |twisted_full_deform| }
    full_deform_to_ht(p,N)
+
+set twisted_c_form_std_to_ht_MvL(int N) = (Param->KTypePol):(Param p):
+   twisted_full_deform_to_ht_MvL(p,N)
+
+set twisted_c_form_std_to_ht_MvL(int N, int time) = (Param->maybe_KTP):(Param p):
+   twisted_full_deform_to_ht_MvL(p,N,time)
 
 set twisted_c_form_std_to_ht(int N) = (Param p)KTypePol:
    twisted_full_deform_to_ht(p,N)
@@ -49,12 +124,63 @@ set twisted_c_form_std_to_ht(int N) = (Param p)KTypePol:
 
 set oriented_KL_sum_to_ht  (int N) = (Param p)ParamPol:
    let ori_nr_p = orientation_nr(p) in  null_module(real_form(p)) +
-   for c@q in KL_sum_at_s_to_ht(N)(p) do (c*orientation_nr_term(ori_nr_p,q),q) od
+   for c@q in KL_sum_at_s_to_height(p,N) do (c*orientation_nr_term(ori_nr_p,q),q) od
+
+{ untwisted |c_form_irreducible|, for efficiency; only used in equal rank case }
+{.c-invariant form on irreducible module of p as ParamPol of standardrepKs.}
+set c_form_irreducible_to_ht_MvL (Param p,int N) = KTypePol:
+  if not(herm_report) then
+  map(c_form_std_to_ht_MvL(N), oriented_KL_sum_to_ht(N)(p) )
+  else
+  let P=oriented_KL_sum_to_ht(N)(p), count=0 then nP=#P
+  then
+    f(Param p) = if count<11 or count%10=0 or nP-count<=10
+                 then prints("Term ",count,": ",p)
+                 fi; count+:=1; full_deform_to_ht(p,N)
+  in prints("Fully deforming ",nP," terms"); map(f, P)
+  fi
+
+{ untwisted |c_form_irreducible|, for efficiency; only used in equal rank case }
+{.c-invariant form on irreducible module of p as ParamPol of standardrepKs.}
+
+set c_form_irreducible_to_ht_MvL (Param p,int N, int time ) = maybe_KTP:
+  let P=oriented_KL_sum_to_ht(N)(p), count=0 then nP=#P, expiration =
+  elapsed_ms()+time, !empty_K = null_K_module(p.real_form)
+  then list = for c@q in P
+       	      ~do let Q = full_deform_to_ht_MvL(q, N, expiration - elapsed_ms())
+	      	  in case Q
+		     | timed_out: return timed_out()
+		     | done(r): c*r
+		     esac
+	       od
+       	     { ~do let Q = c*full_deform_to_ht(q, N)
+	      	  then () = if elapsed_ms() - start > time
+		       	    then flag:= false; break
+			    fi
+		  in Q
+	       od}
+  in sum(p.real_form, list).done
 
 { untwisted |c_form_irreducible|, for efficiency; only used in equal rank case }
 {.c-invariant form on irreducible module of p as ParamPol of standardrepKs.}
 set c_form_irreducible_to_ht (Param p,int N) = KTypePol:
+  if not(herm_report) then
+  let G = p.real_form in
   map(c_form_std_to_ht(N), oriented_KL_sum_to_ht(N)(p) )
+  else
+  let P=oriented_KL_sum_to_ht(N)(p), count=0 then nP=#P
+  then
+    f(Param p) = if count<11 or count%10=0 or nP-count<=10
+                 then prints("Term ",count,": ",p)
+                 fi; count+:=1; full_deform_to_ht(p,N)
+  in prints("Fully deforming ",nP," terms"); map(f, P)
+  fi
+
+{ untwisted |c_form_irreducible|, for efficiency; only used in equal rank case }
+{.c-invariant form on irreducible module of p as ParamPol of standardrepKs.}
+set c_form_irreducible_to_ht (Param p,int N, int time) = maybe_KTP:
+  let G = p.real_form in
+  map(c_form_std_to_ht_MvL(N,time), oriented_KL_sum_to_ht(N)(p) )
 
 {    twisted_c_form_irreducible_to_ht   }
 
@@ -65,7 +191,30 @@ set c_form_irreducible_to_ht (Param p,int N) = KTypePol:
 set twisted_c_form_irreducible_contributions_to_ht(Param p,int N) =
     (ParamPol,ParamPol): { (fixed part, 2*unfixed part) }
   let G=p.real_form, ori_nr_p = orientation_nr(p)
-  then formula = (1+s)*KL_sum_at_s_to_ht(N)(p) + (1-s)*twisted_KL_sum_at_s_to_ht(N)(p)
+  then formula = (1+s)*KL_sum_at_s_to_height(p,N) + (1-s)*twisted_KL_sum_at_s_to_ht(N)(p)
+  in { two value-producing loops can be a lot more efficient than one: }
+  ( G.null_module +
+      for c@q in formula
+      do if twist(q)=q then [(half(c)*orientation_nr_term(ori_nr_p,q),q)]
+         else []
+	 fi
+      od.##
+   , G.null_module +
+      for c@q in formula
+      do if twist(q)=q then []
+         else [(c*orientation_nr_term(ori_nr_p,q),q)]
+	 fi
+      od.##
+  )
+
+{ utility: compute fixed and unfixed contributions to c-form on irreducible(p)
+  no deformation is done, but orientation numbers are included;
+  fixed contributions are already halved; for unfixed ones this needs to wait
+}
+set twisted_c_form_irreducible_contributions_to_ht(Param p,int N) =
+    (ParamPol,ParamPol): { (fixed part, 2*unfixed part) }
+  let G=p.real_form, ori_nr_p = orientation_nr(p)
+  then formula = (1+s)*KL_sum_at_s_to_height(p,N) + (1-s)*twisted_KL_sum_at_s_to_ht(N)(p)
   in { two value-producing loops can be a lot more efficient than one: }
   ( G.null_module +
       for c@q in formula
@@ -93,47 +242,274 @@ standardrepKs.}
 set twisted_c_form_irreducible_to_ht (Param p,int N) = KTypePol:
 ( let (fixed,unfixed)=twisted_c_form_irreducible_contributions_to_ht(p,N)
 { |1+s| divides |unfixed|, no need for |scale_extended|; take half at |nu=0| }
-  in map(twisted_c_form_std_to_ht(N),fixed)+half(unfixed.K_type_pol)
+  in
+  if not herm_report
+  then map(twisted_c_form_std_to_ht(N),fixed)+half(unfixed.K_type_pol)
+  else let nf = #fixed, count=0
+  then 
+    f(Param p) = if count<11 or count%10=0 or nf-count<=10
+                 then prints("Term ",count,": ",p)
+		 fi; count+:=1; twisted_full_deform_to_ht(p,N)
+    in prints("Fully twisted deforming ",nf," terms (",#unfixed,
+    " unfixed).");
+    map(f,fixed)+half(unfixed.K_type_pol)
+  fi
 )
+
+set twisted_c_form_irreducible_to_ht (Param p,int N, int time) = maybe_KTP:
+( let (fixed,unfixed)=twisted_c_form_irreducible_contributions_to_ht(p,N), start = elapsed_ms(),
+  !empty_K = null_K_module(p.real_form), flag = true
+{ |1+s| divides |unfixed|, no need for |scale_extended|; take half at |nu=0| }
+{fixed has the role of P in c_form_irreducible_to_ht_MvL}
+   then Q = map(twisted_c_form_std_to_ht_MvL(N,time),fixed)
+   in case Q
+      | timed_out: timed_out()
+      | done(r): (r + half(unfixed.K_type_pol)).done
+      esac
+)
+   {then list = for c@q in fixed
+   	       ~do let Q = c*twisted_c_form_std_to_ht(N)(q)
+	       	   then () = if elapsed_ms() - start > time
+		       	     then flag:= false; break
+			     fi
+		   in Q
+		od
+   in if flag then (sum(p.real_form, list)+ half(unfixed.K_type_pol)).done
+      else timed_out()
+      fi}
+
+set twisted_c_form_irreducible_to_ht_MvL (Param p,int N) = KTypePol:
+    twisted_c_form_irreducible_to_ht (p,N)
+
+set twisted_c_form_irreducible_to_ht_MvL (Param p,int N, int time) = maybe_KTP:
+    twisted_c_form_irreducible_to_ht (p,N,time)
 
 {.Hermitian form to ht on a irreducible module, normalization from its
 initial term.}
+set hermitian_form_irreducible_to_ht_MvL (Param p,int N) = KTypePol:
+  unitary_test_counter.use();
+  let start_time = elapsed_ms(), answer =
+  if is_equal_rank(real_form(p))
+  then c_form_irreducible_to_ht_MvL(p,N) { not twisted, in equal rank case this is faster }
+  else  check_hermitian(p,true); twisted_c_form_irreducible_to_ht_MvL(p,N)
+  fi.convert_cform_hermitian
+  then () = unitaryTime+:=elapsed_ms() - start_time
+  in answer
+
+
+{.Hermitian form to ht on a irreducible module, normalization from its
+initial term.}
+set hermitian_form_irreducible_to_ht_MvL (Param p,int N,int time) = maybe_KTP:
+  unitary_test_counter.use();
+  let start_time = elapsed_ms(), answer =
+  case if is_equal_rank(real_form(p))
+       then c_form_irreducible_to_ht_MvL(p,N,time) { not twisted, in equal rank case this is faster }
+       else  check_hermitian(p,true); twisted_c_form_irreducible_to_ht_MvL(p,N,time)
+       fi
+  | timed_out: return timed_out()
+  | done(r): r.convert_cform_hermitian.done
+  esac
+  then () = unitaryTime+:=elapsed_ms() - start_time
+  in answer
 
 set hermitian_form_irreducible_to_ht (Param p,int N) = KTypePol:
+  unitary_test_counter.use();
+  let start_time = elapsed_ms(), answer =
   if is_equal_rank(real_form(p))
   then c_form_irreducible_to_ht(p,N) { not twisted, in equal rank case this is faster }
   else  check_hermitian(p,true); twisted_c_form_irreducible_to_ht(p,N)
   fi.convert_cform_hermitian
+  then () = unitaryTime+:=elapsed_ms() - start_time
+  in answer
+
+{for predicting whether to_ht or is_unitary is faster}
+set low(Param p) = (rat,rat,int):
+    let ic = p.inner_class, theta = p.x.involution, gamma = p.infinitesimal_character
+    then LAM = dominant(ic,(1+theta)*gamma)*ic.two_rho_check
+    then NU = dominant(ic, (1-theta)*gamma) *ic.two_rho_check
+    then R = ic.two_rho * ic.two_rho_check
+    then () = if R.= then R:=1 fi
+    in (LAM,NU,R)
 
 { compute Hermitian form to ht on p, and report if it is unitary }
-set is_unitary_to_ht (Param p,int N) = bool:
-  p.is_hermitian and hermitian_form_irreducible_to_ht(p,N).is_pure
+set is_unitary_to_ht_base (Param p,int N) = bool:
+   if N < 0 then is_unitary(p)
+   else p.is_hermitian and hermitian_form_irreducible_to_ht(p,N).is_pure
+   fi
 
-{
-atlas> set N=13^4   (28561)
-Variable N: int (overriding previous instance, which had type int)
-atlas>  set sph(ratvec nu) = parameter(x_open(F4_s),F4_s.rho,nu)
-Defined sph: (ratvec->Param)
-atlas> set Q= for j:N do sph([j%13,(j\13)%13,(j\169)%13,(j\2197)%13]/12) od
-Variable Q: [Param]
+{ compute Hermitian form to ht on p, and report if it is unitary }
+set is_unitary_to_ht_MvL (Param p,int N) = bool:
+  unitary_test_counter.use();
+  let start_time = elapsed_ms(), answer =
+      p.is_hermitian and hermitian_form_irreducible_to_ht_MvL(p,N).is_pure
+  then () = unitaryTime+:=elapsed_ms() - start_time
+  in answer
 
-{ A list of the 28561 spherical reps of F4_s with continuous
-parameter nu in [0,1]^4 having denominators 12. }
+{ compute Hermitian form to ht on p, and report if it is unitary }
+set is_unitary_to_ht_MvL (Param p,int N, int time) = int: { -1: no, 0:timed out, 1: yes }
+  unitary_test_counter.use();
+  let start_time = elapsed_ms(), answer =
+      if p.is_hermitian
+      else -1
+      then case hermitian_form_irreducible_to_ht_MvL(p, N, time)
+     	   | timed_out: 0
+	   | done(result): if result.is_pure then 1 else -1 fi
+	   esac
+      fi
+  then () = unitaryTime+:=elapsed_ms() - start_time
+  in answer
 
-atlas> void:for q@j in Q do if(is_unitary_to_ht(q,11) and not is_unitary(q)) then prints(j,"  11  ",is_unitary_to_ht(q,11),"   15  ",is_unitary_to_ht(q,15),"    16  ",is_unitary_to_ht(q,16),"    22  ",is_unitary_to_ht(q,22),"   infty  ",is_unitary(q)) fi od
+{ compute Hermitian form to ht on p, report if it is unitary,
+  and record certificate }
+set is_unitary_to_ht (Param p,int N, KTypePol_hash cert_hash) = bool:
+  unitary_test_counter.use();
+  p.is_hermitian and is_pure_cert_hash(hermitian_form_irreducible_to_ht(
+  p,N), cert_hash)
 
-}
+{table of is_unitary results, indexed by Param}
+set_type
+[ unitarity_to_hts_bool_hash =
+( ( -> int) heights_size {number of heights stored}
+  , ( -> vec) heights_list
+  , ( -> vec) count {entry i is number of Param's at ith height}
+  , ( -> ) clear
+  , ((Param,int)->bool) entry
+  , ((Param,int)->) append
+  , ((int,int) -> Param) param_index {for (i,j), returns Param #j
+    	       	  	 	     from ith list}
+  , ((int,int) -> bool) data_index
+  )
+]
 
-{
-set to_htB(int N) = (ParamPol->ParamPol):(ParamPol P):
-let result=0*P, Mon = monomials(P), i=0 in
-while (i < #Mon and height(Mon[i])<N+1) do result+:=(P[Mon[i]],Mon[i]); i+:=1 od; result
-}
+{IS THERE A QUADRATIC CONCATENATION PROBLEM???}
+set make_unitarity_to_hts_bool_hash () = unitarity_to_hts_bool_hash:
+(  let heights_list = vec: []
+   then param_hashes = [Param_hash]: []
+   then bool_datas = [[bool]] : []
+   then clear() = void:
+   	let () = heights_list := []
+	then () = param_hashes := []
+ 	then () = bool_datas:=[]
+       	in ()
+   in
+   ( ( -> int): { heights_size } @int: #heights_list
+   , ( -> vec): {heights_list} @vec: for data in bool_datas
+       	  		       	     do #data
+				     od
+   , ( -> vec): { count } @vec: for data in bool_datas
+       	  	  	  	  do count(data)
+				  od
+   , ( -> ): {clear} clear
+   , ((Param,int)-> bool): {entry} (Param p, int h) bool:
+     begin
+	let M = #heights_list
+	then m = find(heights_list, h)
+	then () = if m = -1 {we haven't seen this height before}
+	     	  then bool_datas:= (bool_datas next bool_datas:= [])#[];
+		       param_hashes:=(param_hashes next param_hashes:=[])
+		       				   #make_Param_hash();
+		       heights_list:= (heights_list next heights_list := [])
+		       		      #h;
+		       m:=M
+		  fi
+	then N = param_hashes[m].size()
+	then n = param_hashes[m].match(p)
+	then () = if n = N {we haven't seen this p at this height}
+	     	  then bool_datas[m]:=(bool_datas[m] next bool_datas[m] :=[])
+		  		#is_unitary_to_ht_base(p,h)
+		  fi
+	then () =  assert(#bool_datas = #heights_list,
+		       	      "unitarity_to_hts_bool_hash is damaged")
+	then () = assert(#param_hashes = #heights_list,
+		       	      "unitarity_to_hts_bool_hash is damaged")
+	then () = assert(#bool_datas[m] = param_hashes[m].size(),
+	     	  	      "unitarity_to_hts_bool_hash is damaged")
+	in bool_datas[m][n]
+     end
+   , ((Param,int)->): {append } (Param p, int h):
+     begin
+	let M = #heights_list
+	then m = find(heights_list, h)
+	then () = if m = -1 {we haven't seen this height before}
+	     	  then bool_datas:= (bool_datas next bool_datas:= [])#[];
+		       param_hashes:=(param_hashes next param_hashes:=[])
+		       				   #make_Param_hash();
+		       heights_list:= (heights_list next heights_list := [])
+		       		      #h;
+		       m:=M
+		  fi
+	then N = param_hashes[m].size()
+	then n = param_hashes[m].match(p)
+	in if n = N {we haven't seen this p at this height}
+	   then bool_datas[m]:=(bool_datas[m] next bool_datas[m] :=[])
+		  		#is_unitary_to_ht_base(p,h)
+	   fi
+     end
+   , ((int,int) -> Param): {param_index} (int i, int j):
+     		param_hashes[i].index(j)
+   , ((int,int) -> bool): {data_index} (int i, int j): bool_datas[i][j]
+  )
+)
 
-{
+set unitarity_to_hts_hash = make_unitarity_to_hts_bool_hash ()
 
-set CF=character_formula(E7_s.trivial)
-set TR = for j:25 do prints(j); to_ht(5*j)(CF) od
-set TR = for j:25 do prints(j); to_htB(5*j)(CF) od
+set is_unitary_to_ht_hash(Param p, int h) =  unitarity_to_hts_hash.entry(p,h)
+set is_unitary_to_ht(Param p, int h) =  unitarity_to_hts_hash.entry(p,h)
 
-}
+{Think this is wrong, and fails in Sp(8,R): even if p is in weakly
+good range from pL, the height of failures for p and pL can be different.}
+{set is_unitary_to_ht_hashBAD(Param p, int h) = bool:
+    let (,pL) = wkgood_Q(p), G=p.real_form
+    in if pL = p then unitarity_to_hts_hash.entry(p,h)
+       else {now pL is on a proper Levi}
+       	    let derpLs = derived_factor_params2(pL)
+    	    then answer = all([(->bool)] : for derpL in derpLs do @bool:
+       			unitarity_to_hts_hash.entry(derpL,h) od)
+    	    in if answer or pL = p then answer
+       	       else {answer is false, and pL is on proper Levi}
+       	    	    let goodL = good_L(p)
+       	    	    in is_pure(to_ht(sum(G, for c@qL in
+		       			    hermitian_form_irreducible(pL)
+			     		    do K_type_pol(c*theta_induce_standard(param(qL), goodL))
+			      		    od),h))
+               fi
+	fi}
+
+
+{set is_unitary_hash(Param p) = bool:
+    if not is_hermitian(p) then return false fi;
+    let (,pL) = wkgood_Q(p), G=p.real_form
+    then derpLs = derived_factor_params2(pL)
+    then answer = all([(->bool)] : for derpL in derpLs do @bool:
+       			unitarity_hash.entry(derpL) od)
+    {then formL = hermitian_form_irreducible(pL)}
+    {then answer = is_pure(formL)}
+    in if answer or pL = p
+       then answer
+       else {answer is false, and pL is on proper Levi}
+       	    let goodL = good_L(p)
+       	    in is_pure(sum(G, for c@qL in hermitian_form_irreducible(pL)
+			      do c*theta_induce_standard(param(qL),
+			           goodL)
+			      od))
+       fi}
+
+set is_unitary_to_hts(Param p, [int] Ns) = bool:
+    { is_pos_on_LKTs(p) and }
+    {unitary_test_counter.use();}
+    for N in Ns
+    do if not is_unitary_to_ht(p,N)
+       then return false
+       fi
+    od;
+    true
+
+set is_unitary_to_hts_hash(Param p, [int] Ns) = bool:
+    { is_pos_on_LKTs(p) and }
+    {unitary_test_counter.use();}
+    for N in Ns
+    do if not is_unitary_to_ht_hash(p,N)
+       then return false
+       fi
+    od;
+    true

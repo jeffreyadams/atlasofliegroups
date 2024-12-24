@@ -1,0 +1,14 @@
+{meant to count invocations of a function. Do use() in the function.}
+set_type [Counter = ( (void -> int) use_count, (void -> void) use,
+(void -> void) clear) ]
+
+set make_counter () = Counter:
+    let ticker = int:0
+    in (( -> int): {use_count}@int: ticker
+       ,( -> ): {use} @: let () = ticker+:=1 in ()
+       ,( -> ): {clear} @: let () = ticker:=0 in ())
+
+set unitary_test_counter = make_counter()
+
+{meant to count invocations of KL_sum_at_s and KL_sum_at_s_to_height}
+set char_counter = make_counter()
