@@ -1,10 +1,13 @@
+{basic functions, should be moved elsewhere}
+set in_weight_lattice(RootDatum rd,ratvec v)=bool:is_integer(v*rd.simple_coroots)
+set in_coweight_lattice(RootDatum rd,ratvec v)=bool:is_integer(v*rd.simple_roots)
+
+{same as initial_torus_factor}
 set torus_factor(RealForm G)=torus_factor(KGB(G,0))
 
-{utility function2}
+{utility functions}
 set find([RealForm] real_forms,RealForm G)=int:first(for H in real_forms do G=H od)
 set pr([RealForm] real_forms)=void:for G in real_forms do prints(G, " ", torus_factor(G)) od
-
-set torus_factor(RealForm G)=ratvec:torus_factor(KGB(G,0))
 
 {for each H in real_forms(G) create real_form(H,delta,torus_factor(H)+v)
 where v runs over all_lambda_differential_0(x_open(dual quasisplit form))
@@ -20,8 +23,7 @@ delta=G.distinguished_involution in
 for H in real_forms(G) do 
  for v in shifts do real_form(H,delta,torus_factor(H)+v) od od.##
 
-{remove duplicates from list real_forms of real forms, based on
-real_forms[i]=real_forms[j]}
+{remove duplicates from list of real forms, based on real_forms[i]=real_forms[j]}
 set remove_duplicates([RealForm] real_forms)=
 let rv=[RealForm]:[] in
 for H in real_forms do
@@ -43,3 +45,13 @@ tabulate(for G in srf do  [G.to_string,  torus_factor(G).to_string] od);
 prints("number of computed strong real forms: ", #srf, new_line,
 "number computed by square_classes: ", #(##(square_classes(G))));
 prints("square_classes: ", square_classes(G))
+
+{transfer parameter between two real forms mapping to the same strong real form}
+set transfer(Param p,RealForm H)=Param:
+let G=real_form(p) in
+assert(G.simple_roots=H.simple_roots and
+G.distinguished_involution=H.distinguished_involution);
+parameter(KGB(H,number(p.x)),p.lambda,p.nu)
+
+set transfer([Param] parameters,RealForm H)=[Param]:
+for p in parameters do transfer(p,H) od
