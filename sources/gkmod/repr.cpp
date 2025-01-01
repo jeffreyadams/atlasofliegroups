@@ -1275,9 +1275,9 @@ sr_term_list Rep_context::finals_for(StandardRepr z) const
 	  lr -= rd.simpleRoot(s)*((eval_lr+1)/2); // project to wall for |s|
 	  assert( rd.simpleCoroot(s).dot(lr) == -1 );
 	  const KGBEltPair Cxs = kgb().inverseCayley(s,x);
-	  to_do.emplace(sr_gamma(Cxs.first,lr,std::move(gamma)),coef);
 	  if (Cxs.second!=UndefKGB)
 	    to_do.emplace(sr_gamma(Cxs.second,lr,gamma),coef);
+	  to_do.emplace(sr_gamma(Cxs.first,lr,std::move(gamma)),coef);
 	  goto drop; // we have rewritten |current|, don't contribute it
 	} // (singular real root)
 	// |x = kgb().cross(s,x)|; real roots act trivially on KGB elements
