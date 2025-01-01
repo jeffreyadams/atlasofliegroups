@@ -43,7 +43,7 @@ set matrix_of_inner_products (WeylClassTable tab,[[int]] characters) = mat:
   in matrix((n,n),(int i,int j): tab.inner(characters[i],characters[j]))
 
 { filter list of representations to a unique copy of any occurring character }
-set sort_u (WeylClassTable tab,[W_rep] list) = [W_rep]:
+set unique (WeylClassTable tab,[W_rep] list) = [W_rep]:
   case #list
   in [], list
   else let chars = for pi in list do character(tab,pi) od
