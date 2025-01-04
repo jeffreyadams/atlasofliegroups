@@ -813,8 +813,12 @@ set FPP_unitary_hash_bottom_layer([(KGBElt,ratvec)] xlambdas, Param_hash UhashG{
        then prints(new_line,"Total time = ", print_time_string(current-start),
        	      "; max time = ",print_time_string(xlambdatimes[longest]),
 	      " for (x,lambda) = (",  xlambdas[longest], {",", lambdas[longest],}")");
-       	    prints("Time spent in is_unitary = ",print_time_string(unitaryTime), ", #unitarity tests = ",
-       		unitary_test_counter.use_count() - oldUcounter, ", #K-types studied = ", minBottomData.size());
+       	    if small_test_flag
+	    then prints("Time spent in is_unitary = ",print_time_string(unitaryTime), ", #unitarity tests = ",
+       		unitary_test_counter.use_count() - oldUcounter, ", #(x,lambda) studied = ", minSmallBottomData.size())
+	    else prints("Time spent in is_unitary = ",print_time_string(unitaryTime), ", #unitarity tests = ",
+       		unitary_test_counter.use_count() - oldUcounter, ", #K-types studied = ", minBottomData.size())
+	    fi;
 	    prints("Time spent in char calcs = ",print_time_string(charTime),
 	           ", #char calcs = ", char_counter.use_count() - oldCcounter ,
 	      	   ", time spent in red_count = ",  print_time_string(red_count_time));
@@ -1128,8 +1132,12 @@ set FPP_unitary_hash_bottom_layer([KGBElt] xs, Param_hash UhashG{, Param_hash Up
        	    prints("Total time = ", print_time_string(current-start),
               "; max time = ",print_time_string(times[longest]),
               " for KGBElt ",xs[longest].number);
-       	    prints("Time spent in is_unitary = ",print_time_string(unitaryTime - oldUtime), ", number of unitarity tests = ",
-       		unitary_test_counter.use_count() - oldUcounter, ", #K-types studied = ", minBottomData.size());
+	    if small_test_flag
+	    then prints("Time spent in is_unitary = ",print_time_string(unitaryTime - oldUtime), ", #unitarity tests = ",
+       		unitary_test_counter.use_count() - oldUcounter, ", #(x,lambda) studied = ", minSmallBottomData.size())
+	    else prints("Time spent in is_unitary = ",print_time_string(unitaryTime - oldUtime), ", #unitarity tests = ",
+       		unitary_test_counter.use_count() - oldUcounter, ", #K-types studied = ", minBottomData.size())
+	    fi;
 	    prints("Time spent in char calcs = ", print_time_string(charTime-oldcharTime), ", number of char calcs = ",
 	        char_counter.use_count() - oldCcounter,
 	      ", time spent in red_count = ",  print_time_string(red_count_time));

@@ -251,6 +251,7 @@ set theta_stable_quasi_data (Param q) = (Parabolic,Param):
     in
     (Q1, parameter(x1_L1, lambda1-rho(real_form(q1))+rho(L1), q1.nu))
 
+
 {. Theta-stable data associated to a parameter q: a theta-stable
 parabolic Q=LU with L quasisplit, and parameter q_L for a fine
 principal series representation so that q is obtained by cohomological

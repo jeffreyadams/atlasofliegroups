@@ -30,6 +30,15 @@ probably no need to know about that anyway
 
 }
 
+set_type [KGBratvec = (KGBElt x, ratvec lambda)]
+
+
+set = (KGBratvec A, KGBratvec B) = bool:
+    A.x = B.x and A.lambda = B.lambda
+
+set != (KGBratvec A, KGBratvec B) = bool:
+    A.x != B.x or A.lambda != B.lambda
+
 {meant to hash a [vec] to int in [0,d_mod)}
 set hash_code(vec v, int d_mod) = int: let hash =
     int: 1 then () = for x in v do hash:=13*(hash + x) od in hash % d_mod
@@ -58,6 +67,12 @@ set hash_code(Param p, int d_mod) = int:
 {meant to hash KTypes for single group G}
 set hash_code(KType p, int d_mod) = int:
     let (,n) = %p.x, lam_min_rho = p.lambda_minus_rho
+    in hash_code(vec: (lam_min_rho)#n, d_mod)
+
+{meant to hash KGBratvec for single group G}
+set hash_code(KGBratvec p, int d_mod) = int:
+    let rho = p.x.real_form.rho
+    then (,n) = %p.x, lam_min_rho = (p.lambda - rho).numer
     in hash_code(vec: (lam_min_rho)#n, d_mod)
 
 {meant to hash Params for single group G}
@@ -607,8 +622,6 @@ in for p@m in list
 set make_Param_hash () = Param_hash:
     make_Param_hash([Param]:[],hash_code@(Param,int))
 
-
-
 set_type
 [ KType_hash =
   ( ( -> int) size
@@ -673,3 +686,66 @@ in for p@m in list
 set make_KType_hash () = KType_hash:
     make_KType_hash([KType]:[],hash_code@(KType,int))
 
+set_type
+[ xlambda_hash =
+  ( ( -> int) size
+  , ( -> int) capacity
+  , ( -> ) clear
+  , ( -> [KGBratvec]) list
+  , (int->KGBratvec) index
+  , (KGBratvec->int) match
+  , (KGBratvec->int) lookup
+  )
+]
+
+set make_xlambda_hash ([KGBratvec] list, (KGBratvec,int->int) hash) = xlambda_hash:
+(  let capacity = max(2,2*#list), !empty=minus_1
+   then seq_nbrs = for :capacity do empty od, maxfill = 2*capacity\3
+   then find(KGBratvec xl) = (int,bool):
+     let code = hash(xl,capacity)
+     in while let v=seq_nbrs[code] in if v=empty then return (code,true) fi
+        ; list[v] != xl
+        do if (code+:=1)=capacity then code:=0 fi
+        od
+     ; (code,false) { slot in |seq_nbrs|, and whether it is new }
+   then rehash(int new_capacity) = void:
+     begin capacity := new_capacity
+     ;   seq_nbrs := for j:capacity do empty od { prepare new array }
+     ;   maxfill := 2*capacity\3
+     ;   for p@m in list
+	 do let (code,new) = find(p) in assert(new,"duplicate while rehashing")
+	 ;  seq_nbrs[code] := m
+	 od
+     end
+   then clear() = void:
+   	let () = capacity := 2
+   	then () = seq_nbrs := for :capacity do empty od
+	then () = maxfill := 2*capacity\3
+	then () = list:=[]
+	in ()
+in for p@m in list
+   do let (code,new) = find(p) in if new then seq_nbrs[code] := m fi
+   od
+;  ( ( -> int): { size } @int: #list
+   , ( -> int): { capacity } @int: capacity
+   , ( -> ): {clear} clear
+   , ( -> [KGBratvec]): {list} @[KGBratvec]: list
+   , (int->KGBratvec): { index } (int i) KGBratvec: list[i]
+   , (KGBratvec->int): { match } (KGBratvec p) int:
+     begin
+        let (code,new) = find(p)
+     in if new { an empty slot was found, fill it }
+        then let val = seq_nbrs[code] := #list
+	in list #:= p
+        ; if #list >= maxfill then rehash(capacity+capacity) fi
+	; val { don't use |seq_nbrs[code]| as |seq_nbrs| may have changed here x}
+	else seq_nbrs[code]
+        fi
+     end
+   , (KGBratvec->int): { lookup } (KGBratvec p) int:
+     let (code,new) = find(p) in if new then minus_1 else seq_nbrs[code] fi
+   )
+)
+
+set make_xlambda_hash () = xlambda_hash:
+    make_xlambda_hash([KGBratvec]:[],hash_code@(KGBratvec,int))

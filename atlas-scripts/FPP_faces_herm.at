@@ -1575,8 +1575,8 @@ set position(KGBElt x, ratvec lambda) = int:
     let start = elapsed_ms()
     then lambdaNorm = parameter(x,lambda,0*lambda).lambda
     then N = FPP_lam_table.position(x,lambdaNorm)
-    {then () = if N=-1 then prints("WARNING: at G = ",x.real_form,", x = ",x.number,", lambda = ",
-    	 lambdaNorm," is not attached to x.") fi}
+    then () = if N=-1 then prints("WARNING: at G = ",x.real_form,", x = ",x.number,", lambda = ",
+    	 lambdaNorm," is not attached to x.") fi
     then () = position_time +:= elapsed_ms() - start
     in N
 
@@ -1887,11 +1887,18 @@ may be pruned of reps not interesting for unitarity, but the indices
 will always refer to a constant vlist.}
 
 set two_to_position(KGBElt x, ratvec lambda) = int:
-    to_bitset([position(x,lambda)])
+    let pos = position(x,lambda)
+    in if pos.>=
+       then to_bitset([position(x,lambda)])
+       else -1
+       fi
 
 {set a bit in xl_known}
 set finish(KGBElt x, ratvec lambda) = void:
-    big_unitary_hash.finish(x, two_to_position(x,lambda))
+    let pos = two_to_position(x,lambda)
+    in if pos.>=
+       then big_unitary_hash.finish(x, pos)
+       fi
 
 set finish(KGBElt x) = void:
     {let lambdas = FPP_lambdas(x)
@@ -1907,7 +1914,11 @@ set is_finished(KGBElt x, ratvec lambda) = bool:
     then answer = if is_member_bitset(x.number,Mx_known)
     	 	  then true
 		  elif {is_member_bitset(x.number,Mx_partial)
-		  then} is_member_bitset(position(x,lambda),M)
+		  then} let pos = position(x,lambda)
+		  	in if pos.>=
+			   then is_member_bitset(pos,M)
+			   else false
+			   fi
 		  then true
 		  else false
 		  fi

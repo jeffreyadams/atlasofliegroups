@@ -75,8 +75,8 @@ let t=min(weights) then
 n=#weights then 
 tuples=tuples(x/t,n) in
 ##(for X in tuples do if X*weights<x then [X] else [] fi od)
-   
-   
+
+
 {given a ratvec X with nonnegative entries, a ratvec weights with positive entries, and a ratvec Y with arbitrary entries, lists all ratvecs Z such that
 1) sum Z_i weights_i < sum X_i weights_i
 2) Y_i - Z_i is an integer for each i}
