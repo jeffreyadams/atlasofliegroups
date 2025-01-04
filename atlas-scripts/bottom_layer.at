@@ -31,44 +31,74 @@ set highest_LK(KType tau, KGPElt Q) = KType:
     then xG = embed_KGB(xL,Q.real_form)
     in K_type((), xL, highest_weight(tau,xG).mu - two_rho_u_cap_s(Q,xG))
 
+{permutation of the simple roots defined by delta}
+set delta_on_simple(InnerClass ic) = [int]:
+    let r = ic.semisimple_rank, SR = ic.simple_roots, delta = ic.distinguished_involution
+    in for i:r do first(for j:r do SR[i] = delta*SR[j] od) od
+
 {version of to_no_Cminus@Param that seeks to keep d_lambda as dominant as possible}
 set to_no_Cminus_small(Param p) = Param:
     let rd=p.root_datum then w=id_W(rd), pnew = p, xnew = p.x, r=rd.semisimple_rank
+    then DOS = delta_on_simple(p.real_form)
     then () = while let s = last(r, (int i)bool:
     	      	    	    status(i,xnew).= and
 			    ((pnew.d_lambda)*rd.simple_coroots[i]).<)
 		    {then () = prints("s = ",s)}
 		    in s.>=
- 	      do let () = w:=w#s
-	      	 then () = xnew:=cross(s,xnew)
-		 then () = pnew := parameter(xnew, reflection(rd,s)*pnew.lambda,
-		      	      	 		 reflection(rd,s)*pnew.nu)
-		 in () {prints("xnew = ", xnew, ", pnew = ",pnew)}
+ 	      do let s1 = DOS[s]
+	      	 then sword = [int]:
+		      if s1 = s
+		      then [s]
+		      elif W_elt(rd, [s,s1]) = W_elt(rd, [s1,s])
+		      then [s,s1]
+		      else [s,s1,s]
+		      fi
+		 then changer = W_elt(rd,sword)
+	      	 then () = w:=w*changer
+		 then () = xnew:=cross(s,cross(changer,xnew))
+		 in pnew:=parameter(xnew, changer*pnew.lambda, changer*pnew.nu)
 	      od {now pnew.lambda is weakly dominant}
     then () = while let s = last(r, (int i)bool:
     	      	    	    status(i,xnew).= and
 			    ((pnew.d_lambda)*rd.simple_coroots[i]).=)
 		    {then () = prints("s = ",s)}
 		    in s.>=
- 	      do let () = w:=w#s
-	      	 then () = xnew:=cross(s,xnew)
-		 then () = pnew := parameter(xnew, reflection(rd,s)*pnew.lambda,
-		      	      	 		 reflection(rd,s)*pnew.nu)
-		 in () {prints("xnew = ", xnew, ", pnew = ",pnew)}
+ 	      do let s1 = DOS[s]
+	      	 then sword = [int]:
+		      if s1 = s
+		      then [s]
+		      elif W_elt(rd, [s,s1]) = W_elt(rd, [s1,s])
+		      then [s,s1]
+		      else [s,s1,s]
+		      fi
+		 then changer = W_elt(rd,sword)
+	      	 then () = w:=w*changer
+		 then () = xnew:=cross(s,cross(changer,xnew))
+		 in pnew:=parameter(xnew, changer*pnew.lambda, changer*pnew.nu)
 	      od {now pnew.lambda is weakly dominant, no C-}
     in pnew
 
 {same for (x,lambda)}
 set to_no_Cminus_small(KGBElt x, ratvec lambda) = (KGBElt, ratvec):
     let rd=x.root_datum then w=id_W(rd), xnew = x, lambdanew = lambda, r=rd.semisimple_rank
+    then DOS = delta_on_simple(x.real_form)
     then () = while let s = last(r, (int i)bool:
     	      	    	    status(i,xnew).= and
 			    (((1+xnew.involution)*lambdanew)*rd.simple_coroots[i]).<)
 		    {then () = prints("s = ",s)}
 		    in s.>=
- 	      do let () = w:=w#s
-	      	 then () = xnew:=cross(s,xnew)
-		 then () = lambdanew:= reflection(rd,s)*lambdanew
+ 	      do let s1 = DOS[s]
+	      	 then sword = [int]:
+		      if s1 = s
+		      then [s]
+		      elif W_elt(rd, [s,s1]) = W_elt(rd, [s1,s])
+		      then [s,s1]
+		      else [s,s1,s]
+		      fi
+		 then changer = W_elt(rd,sword)
+	      	 then () = w:=w*changer
+		 then () = xnew:=cross(s,cross(changer,xnew))
+		 then () = lambdanew := reflection(rd,s)*lambdanew
 		 in () {prints("xnew = ", xnew, ", lambdanew = ",lambdanew)}
 	      od {now lambdanew is weakly dominant}
     then () = while let s = last(r, (int i)bool:
@@ -76,8 +106,17 @@ set to_no_Cminus_small(KGBElt x, ratvec lambda) = (KGBElt, ratvec):
 			    (((1+xnew.involution)*lambdanew)*rd.simple_coroots[i]).=)
 		    {then () = prints("s = ",s)}
 		    in s.>=
- 	      do let () = w:=w#s
-	      	 then () = xnew:=cross(s,xnew)
+ 	      do let s1 = DOS[s]
+	      	 then sword = [int]:
+		      if s1 = s
+		      then [s]
+		      elif W_elt(rd, [s,s1]) = W_elt(rd, [s1,s])
+		      then [s,s1]
+		      else [s,s1,s]
+		      fi
+		 then changer = W_elt(rd,sword)
+	      	 then () = w:=w*changer
+		 then () = xnew:=cross(s,cross(changer,xnew))
 		 then () = lambdanew := reflection(rd,s)*lambdanew
 		 in () {prints("xnew = ", xnew, ", lambdanew = ",lambdanew)}
 	      od {now lambdanew is weakly dominant, no C-}
@@ -745,11 +784,6 @@ set all_even_lambda_differential_0(RootDatum rd, mat theta) = [vec]:
 	     fi
 	od.##
 
-{permutation of the simple roots defined by delta}
-set delta_on_simple(InnerClass ic) = [int]:
-    let r = ic.semisimple_rank, SR = ic.simple_roots, delta = ic.distinguished_involution
-    in for i:r do first(for j:r do SR[i] = delta*SR[j] od) od
-
 {these are the maximal proper theta-stable parabolics containing Q}
 set max_Qs(KGPElt Q) = [KGPElt]:
     let S= Q.S, x = Q.x, L = Q.Levi
@@ -791,7 +825,7 @@ set max_Qps(Param p, [KGPElt] maxQs) = [(KGPElt,Param)]:
     		   then theta_stable_data_small(p)
 		   else theta_stable_quasi_data(p)
 		   fi
-    in for Q in maxQs
+    in for Q in max_Qs(Q0)
        do (Q,first_param(theta_induce_standard(pL0,Q.Levi)))
        od
 
