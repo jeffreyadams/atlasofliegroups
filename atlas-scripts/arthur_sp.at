@@ -1,8 +1,9 @@
 {testing conjectures about obtaining Arthur packets by cohomological induction
 from unipotent on L.derived, in case G=Sp(2n,R), L=U(1)^{n-m}x Sp(2m,R)}
-
 <twisted_endoscopy_D.at
 <strong_real_forms.at
+
+set arthur_sp_verbose=false
 
 set pr_long([Param] params)=
 prints("G=",params[0].real_form);
@@ -16,6 +17,7 @@ let wp=weak_packets(G) in
 {given n,m: G=Sp(2n,R), L=U(1)^{n-m}x Sp(2m,R), compute all Langlands unipotents of L_der}
 set initialize(int n, int m)=(RealForm, RealForm, [Param]):
 prints("constructing Levi U(1)^",n-m,"*Sp(",2*m,",R) in Sp(",2*n,",R) and Langlands unipotent parameters for L_der");
+prints("Cohomological induction shifts the infinitesimal character by ",for i:n-m do n-i od##null(m) );
 let G=Sp(2*n,R) then
 L_der=Sp(2*m,R) then 
 L=compact_torus(n-m) * L_der then
@@ -99,7 +101,7 @@ set induce_Arthur_packet_strong(vec central_char, Param p_der,RealForm G)=[Param
 let strong_packet_L=##Arthur_packet_strong(central_char,p_der) then
 strong_packet_L_split_only=for p in strong_packet_L do if is_quasisplit(p.real_form) then [p] else [] fi od.## then
 strong_packet=for p  in strong_packet_L_split_only do monomials(theta_induce_irreducible(p,G)) od.##
-in pr_long(strong_packet);strong_packet
+in if arthur_sp_verbose then pr_long(strong_packet) fi;strong_packet
 
 {test if [Param] params is an Arthur packet: Arthur_packet(p_min) =?= params
  where p_min is of minimal height in params}
