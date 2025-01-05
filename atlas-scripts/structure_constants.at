@@ -12,6 +12,8 @@ see structure_constants.pdf
 {m_\pm defined as in [Geck]}
 set m_plus(RootDatum rd,vec alpha, vec beta)=int:let (p,)=root_string(rd,alpha,beta) in p+1
 set m_minus(RootDatum rd,vec alpha, vec beta)=int:let (,q)=root_string(rd,alpha,beta) in q+1
+set m_plus(RootDatum rd,int i,vec beta)=int:m_plus(rd,rd.simple_roots[i],beta)
+set m_minus(RootDatum rd,int i,vec beta)=int:m_minus(rd,rd.simple_roots[i],beta)
 
 set m_plus(RootDatum rd)=((vec,vec)->int):(vec alpha,vec beta):m_plus(rd,alpha,beta)
 set m_minus(RootDatum rd)=((vec,vec)->int):(vec alpha,vec beta):m_minus(rd,alpha,beta)

@@ -339,7 +339,9 @@ fi
 {same as before only that infinitesimal character gamma_H is given by left_inverse(M)*p_G.infinitesimal_character}
 set inverse_lift_std(Param p_G,RealForm H,mat M)=ParamPol:
 let x=KGB_elt(KGB_elt_gen(H,restrict_action(p_G.involution,M),0*rho(H))) in
+let ()=prints("x=", x, " torus_factor: ", torus_factor(x)) in 
 let lambda=left_inverse(M)*(p_G.lambda-rho(p_G.real_form)) + solve(1+x.involution,(1+x.involution)*(left_inverse(M)*p_G.infinitesimal_character-rho(H)-(left_inverse(M)*(p_G.lambda-rho(p_G.real_form))))).requisition in
+let ()=prints("lambda: ", lambda) in 
 {if #all_parameters_x_gamma(x,left_inverse(M)*p_G.infinitesimal_character)>0 then}	
 if is_integer(lambda) then
 inverse_lift_std_preliminary(p_G,H,M) else

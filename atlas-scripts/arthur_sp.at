@@ -1,0 +1,119 @@
+{testing conjectures about obtaining Arthur packets by cohomological induction
+from unipotent on L.derived, in case G=Sp(2n,R), L=U(1)^{n-m}x Sp(2m,R)}
+
+<twisted_endoscopy_D.at
+<strong_real_forms.at
+
+set pr_long([Param] params)=
+prints("G=",params[0].real_form);
+tabulate(for p in params do [p.to_string,p.infinitesimal_character.to_string] od)
+
+{run over all weak packets, return the Langlands members: those of minimal height}
+set unipotent_langlands_parameters(RealForm G)=[Param]:
+let wp=weak_packets(G) in
+ ##for packet in wp do min_height(parameters(packet)) od
+
+{given n,m: G=Sp(2n,R), L=U(1)^{n-m}x Sp(2m,R), compute all Langlands unipotents of L_der}
+set initialize(int n, int m)=(RealForm, RealForm, [Param]):
+prints("constructing Levi U(1)^",n-m,"*Sp(",2*m,",R) in Sp(",2*n,",R) and Langlands unipotent parameters for L_der");
+let G=Sp(2*n,R) then
+L_der=Sp(2*m,R) then 
+L=compact_torus(n-m) * L_der then
+unipotents=unipotent_langlands_parameters(L_der) in
+(G,L,unipotents)
+
+{for Sp(2n,R) only}
+set endoscopic_data(RealForm G)=(mat,RealForm,mat):  {(M,GL(2n+1,R),delta): matrix M for twisted endoscopic transfer Sp(2n,R)-> GL(2n+1,R), with nice coordinates}
+let n=rank(G) in 
+assert(G=Sp(2*n,R),"G is not Sp(2n,R)");
+let GL=GL(2*n+1,R) then
+delta=GL.distinguished_involution then
+(rd_0,M_0,)=complex_endoscopic_group(GL,delta)  then {rd_0=Sp(2n) with the negative coordinates}
+{skip the next two steps:
+rd=root_datum(-rd_0.simple_roots,-rd_0.simple_coroots) then   {clumsy way to get nicer coordinates}
+G=split_form(rd) then {Sp(2n,R) with usual coordinates, just gives G}
+}
+M=-M_0 {M*simple_coroots(G) = first n columns of GL.simple_coroots}
+in (M,GL,delta)
+
+{Arthur packet for G=Sp(2n,R)}
+set Arthur_packet_character(Param p)=ParamPol:
+let (M,GL,delta)=endoscopic_data(p.real_form) in
+let ecf=extended_character_formula(Finalize(lift_std(p,M,GL)),delta) in
+let P=twisted_character(ecf) in
+let Pw=twisted_character_whittaker(P,delta) in
+composition_series(inverse_lift_std(Pw,p.real_form,M,p.infinitesimal_character))
+
+{Gives the A-packet as a set of Params in the case of a classical group of type A, B and C}
+set Arthur_packet(Param p)=[Param]:
+monomials(Arthur_packet_character(p))
+
+{L=compact torus * L_der
+ extended parameter from L_der to L with given character on compact torus
+ requires: L.simple_roots = (rows of zeros) followed by (simple roots of L_der)}
+
+set extend(vec central_char, Param p_L_der)=Param:
+let L=compact_torus(#central_char) * p_L_der.real_form then
+lambda=central_char##(p_L_der.lambda) then
+nu= null(#central_char) ##(p_L_der.nu) in
+parameter(KGB(L,p_L_der.x.number),lambda,nu)
+
+{Arthur packet character for L=T*L_der=(compact torus)*Sp(2m,R)
+requirement:  p_der.real_form=Sp(2m,R) with usual coordinates
+returns ParamPol: (fixed character on T)\otimes(Arthur virtual character on Sp(2m,R))}
+set Arthur_packet_character(vec central_char,Param p_der)=ParamPol:
+let character_der=Arthur_packet_character(p_der) then
+G=compact_torus(#central_char)*p_der.real_form in
+sum(G,for (c,p) in %character_der do c*extend(central_char,p) od)
+
+{Arthur packet character for T*Sp(2m,R) T=compact torus
+requirement:  p_der.real_form=Sp(2m,R) with usual coordinates
+returns: Arthur packet (fixed character of T)\otimes (Arthur packet of Sp(2m,R)}
+set Arthur_packet(vec central_char,Param p_der)=[Param]:
+monomials(Arthur_packet_character(central_char,p_der))
+
+{Arthur packet character for strong real forms of T*Sp(2m,R)
+requirement:  p_der.real_form=Sp(2m,R) with usual coordinates
+returns: [ParamPol]:  each ParamPol is an Arthur stable character for a strong real form of T*Sp(2m,R)
+note: T contributes 2^dim(T) strong real forms with x^2=1}
+set Arthur_packet_character_strong(vec central_char,Param p_der)=[ParamPol]:
+let a_packet=Arthur_packet_character(central_char,p_der) then
+srf=strong_real_forms(a_packet.real_form) in
+for H in srf do transfer(a_packet,H) od
+
+
+{Arthur packet character for strong real forms of T*Sp(2m,R)
+requirement:  p_der.real_form=Sp(2m,R) with usual coordinates
+same as previous, but replace each ParamPol with its monomials}
+set Arthur_packet_strong(vec central_char,Param p_der)=[[Param]]:
+for P in Arthur_packet_character_strong(central_char,p_der) do monomials(P) od
+
+{Given L=U(1)^{n-m}*Sp(2m,R)\subset G=Sp(2n,R)
+ fixed character of U(1), p_der on Sp(2m,R)
+ assuming: p_der is the Langlands term of a unipotent packet on L_der,
+ construct
+   the unipotent packet on L_der -> (fixed character of T)*(this packet on L_der)
+                                 -> (move this packet to all strong real forms of L)
+				 -> cohomologically induce these to G}
+set induce_Arthur_packet_strong(vec central_char, Param p_der,RealForm G)=[Param]:
+let strong_packet_L=##Arthur_packet_strong(central_char,p_der) then
+strong_packet_L_split_only=for p in strong_packet_L do if is_quasisplit(p.real_form) then [p] else [] fi od.## then
+strong_packet=for p  in strong_packet_L_split_only do monomials(theta_induce_irreducible(p,G)) od.##
+in pr_long(strong_packet);strong_packet
+
+{test if [Param] params is an Arthur packet: Arthur_packet(p_min) =?= params
+ where p_min is of minimal height in params}
+set is_Arthur_packet_long([Param] params)=([Param],[Param],bool):
+let min=min_height(params)  then
+a_packet=Arthur_packet(min[0]) in (params,a_packet,param_pol(params)=param_pol(a_packet))
+
+set is_Arthur_packet([Param] params)=bool:
+let (,,test)=is_Arthur_packet_long(params) in test
+
+
+
+
+
+
+
+

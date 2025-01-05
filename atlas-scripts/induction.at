@@ -279,7 +279,7 @@ set standardize (Param p) = ParamPol:
      let (pr,pcr) = p.x.simple_imaginary_subsystem in
      from_dominant(root_datum(pr,pcr,p.root_datum.prefers_coroots),p.lambda)
   then p_dom=parameter(x(p), lambda_dom, nu(p))
-  in {prints("p_dom: ", p_dom, "w: ", w);}coherent_std_imaginary(w,p_dom)
+  in  coherent_std_imaginary(w,p_dom)
   fi
 
 {. standardize a formal linear combination of possibly non-standard parameters .}

@@ -1,6 +1,6 @@
-{basic functions, should be moved elsewhere}
-set in_weight_lattice(RootDatum rd,ratvec v)=bool:is_integer(v*rd.simple_coroots)
-set in_coweight_lattice(RootDatum rd,ratvec v)=bool:is_integer(v*rd.simple_roots)
+<maybe_KGB.at
+
+
 
 {same as initial_torus_factor}
 set torus_factor(RealForm G)=torus_factor(KGB(G,0))
@@ -47,11 +47,25 @@ prints("number of computed strong real forms: ", #srf, new_line,
 prints("square_classes: ", square_classes(G))
 
 {transfer parameter between two real forms mapping to the same strong real form}
-set transfer(Param p,RealForm H)=Param:
+set transfer(Param p,RealForm H)=ParamPol:  {ParamPol to allow for null module}
 let G=real_form(p) in
 assert(G.simple_roots=H.simple_roots and
 G.distinguished_involution=H.distinguished_involution);
-parameter(KGB(H,number(p.x)),p.lambda,p.nu)
+let n_x=number(p.x) in
+if n_x<KGB_size(H) then parameter(KGB(H,number(p.x)),p.lambda,p.nu)
+else null_module(H) fi
 
-set transfer([Param] parameters,RealForm H)=[Param]:
+set transfer([Param] parameters,RealForm H)=[ParamPol]:
 for p in parameters do transfer(p,H) od
+
+set transfer(ParamPol P,RealForm H)=ParamPol:
+sum(H,for (c,p) in %P do c*transfer(p,H) od)
+
+{
+set transfer_KGB(KGBElt x, RealForm H)=
+let G=x.real_form in
+assert(quasisplit_form(H)=G,"x is not a KGB element for the quasisplit form of H");
+let theta=involution(x)
+}
+
+

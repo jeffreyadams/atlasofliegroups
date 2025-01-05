@@ -1,4 +1,4 @@
-<jeff.at
+{<jeff.at
 set G=Sp(10,R)
 set L=Levi_by_wt([1,0,0,0,0], KGB(G,0))
 set wp_L=weak_packets(L)
@@ -27,7 +27,7 @@ set unip_packet_G=parameters(wp_G[15])
 set packet_G_5=contragredient(for pl in packet_L_0 do monomials(theta_induce_irreducible(pl,G))  od.##)
 set packet_G_1=contragredient(for pl in packet_L_minus_4 do monomials(theta_induce_irreducible(pl,G))  od.##)
 set packet_G_0=contragredient(for pl in packet_L_minus_5 do monomials(theta_induce_irreducible(pl,G))  od.##)
-{set packet_G_0_enlarged=for p in packet_G_0 do [p, contragredient(p)] od.##}
+set packet_G_0_enlarged=for p in packet_G_0 do [p, contragredient(p)] od.##
 
 set packet_G_5_langlands=min_height(packet_G_5)
 set packet_G_1_langlands=min_height(packet_G_1)
@@ -74,9 +74,11 @@ set packet_H_0_langlands=min_height(packet_H_0)
 set packet_H_5_long=for pl in packet_LH_0 do (pl,monomials(theta_induce_irreducible(pl,H)))  od
 set packet_H_1_long=for pl in packet_LH_minus_4 do (pl,monomials(theta_induce_irreducible(pl,H)))  od
 set packet_H_0_long=for pl in packet_LH_minus_5 do (pl,monomials(theta_induce_irreducible(pl,H)))  od
+}
+
 
 set M=all_real_parabolics(G)~[1].Levi
-set unip_M=for p in unip_L do parameter(KGB(M,p.x.number), p.lambda,p.nu) od
+{set unip_M=for p in unip_L do parameter(KGB(M,p.x.number), p.lambda,p.nu) od}
 set wp_M=weak_packets(M)
 set shift_nu(Param p_L, int k)=parameter(p_L.x, p_L.lambda, p_L.nu+[k,0,0,0,0])
 
@@ -88,7 +90,7 @@ set packet_M_5=for p in packet_M do shift_nu(p,5) od
 set packet_M_0_langlands=min_height(packet_M_0)
 set packet_M_4_langlands=min_height(packet_M_4)
 set packet_M_5_langlands=min_height(packet_M_5)
-
+{
 set packet_M_G_0=remove_duplicates(for pm in packet_M_0 do monomials(real_induce_irreducible(pm,G))  od.##)
 set packet_M_G_4=remove_duplicates(for pm in packet_M_4 do monomials(real_induce_irreducible(pm,G))  od.##)
 set packet_M_G_5=remove_duplicates(for pm in packet_M_5 do monomials(real_induce_irreducible(pm,G))  od.##)
@@ -130,3 +132,4 @@ set arthur_packets_G_1=induced_packets(arthur_packets_L_minus_4)
 set arthur_packets_G_5=induced_packets(arthur_packets_L_0)
 
 
+}

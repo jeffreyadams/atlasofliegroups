@@ -1,3 +1,15 @@
+<misc.at { for |simple_imaginary_subsystem| }
+<parabolics.at
+<kl.at { for |character_formula| }
+<coherent.at
+{<coherent_irreducible.at}
+<synthetic.at { for |unnormalized_torus_factor| }
+<Weylgroup.at { for |to_no_Cminus@Param| }
+<K.at
+<W_K.at { for |cross_divide| }
+<finite_dimensional.at
+<W_reps.at
+
 {! Parabolic induction from real and $\theta$-stable parabolics; cuspidal and
 $\theta$-stable data of a parameter, and some functions related to $\theta$-stable parabolics.
 
@@ -74,16 +86,6 @@ ________________________
 | one-dimensional), hence "weakly fair" is only defined if pi_L is one-dimensional.
 |
 !}
-
-<misc.at { for |simple_imaginary_subsystem| }
-<parabolics.at
-<kl.at { for |character_formula| }
-<coherent.at
-<synthetic.at { for |unnormalized_torus_factor| }
-<Weylgroup.at { for |to_no_Cminus@Param| }
-<K.at
-<W_K.at { for |cross_divide| }
-<finite_dimensional.at
 
 set ind_verbose=false
 
@@ -162,6 +164,25 @@ set real_induce_irreducible (ParamPol P,RealForm G) = ParamPol:
   for coeff@p in P do result+:=coeff*real_induce_irreducible_final(p,G) od;
   result
 
+{print out partial information along the way
+the terms reported at length L are precisely those of length L in the final result
+set composition_series_verbose in kl.at}
+set real_induce_irreducible_final_verbose (Param p_L, RealForm G) = ParamPol:
+  let std=real_induce_irreducible_as_sum_of_standards(p_L,G) then
+  ()=prints("standards: ", for p in monomials(std) do length(p) od) in
+  std.composition_series_verbose
+
+{print out partial information along the way
+the terms reported at length L are precisely those of length L in the final result
+set composition_series_verbose in kl.at}
+set real_induce_irreducible_verbose (ParamPol P,RealForm G) = ParamPol:
+{ map |(Param p):real_induce_irreducible_final(p,G)| over terms of |P|, but we
+  cannot use |map@((Param->ParamPol),ParamPol)|, since the real group changes }
+  let result=null_module(G) in
+  for coeff@p in P do result+:=coeff*real_induce_irreducible_final_verbose(p,G) od;
+  result
+
+
 { |real_induce_irreducible@(Param,RealForm)| not defined, as the |ParamPol|
   version suffices: implicit conversion |Param->ParamPol| will apply }
 
@@ -201,38 +222,146 @@ set theta_stable_data (Param p) = (Parabolic,Param):
    )
   )
 
+{. Theta-stable data associated to a parameter q: a theta-stable parabolic Q=LU
+   with L quasisplit, and parameter q_L for a fine principal series
+   representation 
+   so that is obtained by cohomological parabolic induction
+   from q_L.}
+set theta_stable_quasi_data (Param q) = (Parabolic,Param):
+  {assert(is_final(q),"parameter is not final")}
+  let (,q1)=q.from_dlambda_dom
+  then dlambda1 = d_lambda(q1), x1=q1.x, lambda1=q1.lambda
+  then Q1 = parabolic_by_wt(dlambda1,x1)
+  then L1 = Q1.Levi
+  then x1_L1=inverse_embed_KGB(x1,L1)  
+  in
+  (Q1, parameter(x1_L1, lambda1-rho(real_form(q1))+rho(L1), q1.nu))
+  
 {---------------------standardize-----------------------------------------}
-{need real parabolic induction to define standardize (uses cuspidal_data)}
 
-{. Auxiliary function .}
-set coherent_std_imaginary (WeylElt w,Param p) = ParamPol:
-  let (,p_M)=cuspidal_data(p) in
-  real_induce_standard(coherent_std(w,p_M),real_form(p))
+{on the compact Cartan, coherent continuation is well defined even
+if the infinitesimal character is singular
+translate out -> coherently continue -> translate back
+p equivalent to p' => p=p' on the Compact Cartan so this is
+well defined}
+set coherent_std_compact_Cartan(WeylElt w,Param p)=ParamPol:
+let p_reg=T_param(p,p.infinitesimal_character+two_rho(p.root_datum))
+{use T_param to avoid error moving to less singular target}
+then p_reg_cont=coherent_std(w,p_reg) in
+T_std(p_reg_cont,p.infinitesimal_character)
 
-{
-set coherent_std_imaginary (ratvec lam, Param p) =  ParamPol:
-  let (P,p_M)=cuspidal_data(p) in
-  let M=Levi(P) in let rd_M=root_datum(M) in
-  let (lam_new,w)=make_dominant(rd_M,lam) in
-  if lam_new!=lambda(p) then prints("HERE IS A PROBLEM!!!!!!!") fi;
-  real_induce_standard(coherent_std(w,p_M),real_form(p))
+{coherent continuation using only imaginary roots
+ to avoid technical issues involving the fact that atlas automatically
+ finalizes terms in a ParamPol, pass to the cuspidal Levi,
+ on which all the roots are imaginary, apply coherent continuation
+ there, and induce back
+ example: Sp(4,R)
+   p=param(KGB(G,7),[3,-2],[1,0])
+   p_dom=param(KGB(G,7),[3,2],[1,0])  (lambda is dominant, but not gamma)
+   is not dominant, so atlas changes this to the equivalent parameter
+   param(KGB(G,5),[2,1],[0,1])
+   tricky to keep track of this
+   the cuspidal Levi is M=SL(2,R)xGL(1) with root [0,2]
+   coherent continuation is going on in M
 }
+set coherent_std_imaginary (WeylElt w,Param p) = ParamPol:
+  let (P,p_M)=cuspidal_data(p) then
+  w_M=W_elt(P.Levi,w.matrix) in
+  real_induce_standard(coherent_std_compact_Cartan(w_M,p_M),real_form(p))
 
-
-{. convert a possibly non-standard parameter into a linear combination of
-  standard ones .}
+{find w so that w*lambda_dom=lambda, this should be in the imaginary Weyl group
+ then compute coherent continuation by passing to the cuspidal Levi M
+}
 set standardize (Param p) = ParamPol:
   if is_standard(p) then ParamPol:p
-  else p:=p.to_no_Cplus
-  ; let i_root_system=root_datum(p.x.simple_imaginary_subsystem)
-    , lambda=lambda(p)
-    then (w,lambda_dom)=from_dominant(i_root_system,lambda)
-    then p_dom=parameter(x(p), lambda_dom, nu(p))
-    in coherent_std_imaginary(w,p_dom)
+{  else p:=p.to_no_Cplus;} else p:=p.to_no_Cplus;
+  let (w,lambda_dom) =
+     let (pr,pcr) = p.x.simple_imaginary_subsystem in
+     from_dominant(root_datum(pr,pcr,p.root_datum.prefers_coroots),p.lambda)
+  then p_dom=parameter(x(p), lambda_dom, nu(p))
+  in {prints("p_dom: ", p_dom, "w: ", w);}coherent_std_imaginary(w,p_dom)
   fi
 
 {. standardize a formal linear combination of possibly non-standard parameters .}
 set standardize (ParamPol P) = ParamPol: map (standardize@Param, P)
+
+{. Decide whether a parameter for L is in the good range for G; this only
+   makes sense if L is the Levi of a (standard) theta-stable parabolic. .}
+set is_good (Param p_L,RealForm G) = bool:
+  let L=real_form(p_L) in
+  assert(is_standard_Levi(L,G),"L is not standard");
+  assert(is_parabolic_theta_stable(make_parabolic(L,G)),
+  "L is not Levi of theta-stable parabolic");
+  let rho_u=rho(G)-rho(L)
+  in let v=infinitesimal_character(p_L)+rho_u
+  in let pcg=poscoroots(G)
+  in let rdl=root_datum(L)
+  in all(for alpha_check in pcg do v*alpha_check>0 or
+    is_positive_coroot(rdl)(alpha_check) od)
+
+{. Decide whether a parameter for L is in the weakly good range for G; this only
+   makes sense if L is the Levi of a theta-stable parabolic. .}
+set is_weakly_good (Param p_L,RealForm G) = bool:
+  let L=real_form(p_L) in
+  assert(is_standard_Levi(L,G),"L is not standard");
+  assert(is_parabolic_theta_stable(make_parabolic(L,G)),
+  "L is not Levi of theta-stable parabolic");
+  let rho_u=rho(G)-rho(L)
+  in is_dominant(G,infinitesimal_character(p_L)+rho_u)
+
+set project_on_center (ratvec v, RootDatum L)=ratvec:
+   let scr=simple_coroots(L) then fwts=fundamental_weights(L)
+   then w=v in for i:#scr do w-:=scr[i]*v*fwts[i] od;
+   w
+
+{. Decide whether a parameter for L is in the fair range for G; this only
+   makes sense if L is the Levi of a theta-stable parabolic. .}
+set is_fair (Param p_L,RealForm G) = bool:
+  let L=real_form(p_L) in
+  assert(is_standard_Levi(L,G),"L is not standard");
+  assert(is_parabolic_theta_stable(make_parabolic(L,G)),
+  "L is not Levi of theta-stable parabolic");
+  let rho_u=rho(G)-rho(L)
+  then rdl=root_datum(L)
+  then v=infinitesimal_character(p_L)+rho_u
+  then pcg=poscoroots(G)
+  then weight=project_on_center (v,rdl)
+  in all(for alpha_check in pcg do weight*alpha_check>0 or
+    is_positive_coroot(rdl)(alpha_check) od)
+
+{. Decide whether a parameter for L is in the weakly fair range for G; this only
+   makes sense if L is the Levi of a theta-stable parabolic. .}
+set is_weakly_fair (Param p_L,RealForm G) = bool:
+  let L=real_form(p_L) in
+  assert(is_standard_Levi(L,G),"L is not standard");
+  assert(is_parabolic_theta_stable(make_parabolic(L,G)),
+  "L is not Levi of theta-stable parabolic");
+  let rho_u=rho(G)-rho(L)
+  then rdl=root_datum(L)
+  then v=infinitesimal_character(p_L)+rho_u
+  then pcg=poscoroots(G)
+  then weight=project_on_center (v,rdl)
+  in all(for alpha_check in pcg do weight*alpha_check>=0 or
+    is_positive_coroot(rdl)(alpha_check) od)
+
+
+{. Determine the "goodness" of a parameter for L; returns "good", "weakly good",
+  "fair", "weakly fair", or "none"; only makes sense if L is Levi of theta-stable
+  parabolic. .}
+set goodness (Param p_L,RealForm G) = string:
+  let L=real_form(p_L) then rho_l=rho(L)
+  then rho_u=rho(G)-rho_l, infchar_l=infinitesimal_character(p_L)
+  in
+{ prints("infinitesimal character(l)=", infchar_l);
+  prints("infinitesimal character(l)+rho(u)=", infchar_l+rho_u);
+  prints("infinitesimal character(l)+rho(u)-rho(l)=", infchar_l+rho_u-rho_l); }
+  if is_good(p_L,G) then "Good"
+  elif is_weakly_good(p_L,G) then "Weakly good"
+  elif is_fair(p_L,G) then "Fair"
+  elif is_weakly_fair(p_L,G) then "Weakly fair"
+  else "None"
+  fi
+
 
 {--------------------- theta-stable parabolic induction -------------------}
 
@@ -270,9 +399,7 @@ set theta_induce_standard (Param p_L,RealForm G) = ParamPol:
 set theta_induce_parampol (ParamPol P, RealForm G)=ParamPol:
    assert(is_parabolic_theta_stable(make_parabolic(real_form(P),G)),
           "L is not Levi of theta_stable parabolic");
-   let result = null_module(G) in
-   for coeff@p in P do result+:=coeff*theta_induce_standard(p,G) od;
-   result
+   sum(G,for coeff@p in P do coeff*theta_induce_standard(p,G) od)
 
 {. Write the (theta-stable) induced of an irreducible J(p_L) of L as a formal
    sum of standards for G; uses the character formula to write J(p_L)
@@ -294,7 +421,10 @@ set theta_induce_irreducible_as_sum_of_standards (Param p_L, RealForm G) =
    p_L must be final. .}
 set theta_induce_irreducible_final (Param p_L, RealForm G) = ParamPol:
   let result =
+   if is_weakly_good(p_L,G) then theta_induce_standard(p_L,G)
+   else
     theta_induce_irreducible_as_sum_of_standards(p_L,G).composition_series
+   fi
   in
   if ind_verbose then prints("induced as sum of irreducibles: ", result) fi;
   result
@@ -311,45 +441,15 @@ set theta_induce_irreducible (ParamPol P,RealForm G) = ParamPol:
 { |theta_induce_irreducible@(Param,RealForm)| not defined, as the |ParamPol|
   version suffices: implicit conversion |Param->ParamPol| will apply }
 
-{ if all complex roots for x are of type C+, then conjecturally the torus
-  parts (torus_factor) of all elements in the fiber are a subset of those for
-  the distinguished fiber:
-  KGB_elt(G,theta(x),torus_bits(x))=KGB_elt(G,theta(x),torus_bits(x_f)) for
-  some x_f in the fundamental fiber
-
-  Mapping x to x_K in the distinguished fiber
-  gives the version of K=K_{x_K} appropriate to y
-  aborts with an error if the conjecture is false for x
-
-  Note: this is false, but may be true with torus_bits in place of
-  torus_factor:
-  KGB_elt(G,theta(x),torus_bits(x))=KGB_elt(G,theta(x),torus_bits(x_f)) for
-  some x_f in the fundamental fiber this differs from the same identity for
-  torus_factor because
-  torus_factor(x)=(1+^theta(x))(torus_bits(x)+base_grading_vector) the
-  (1+^theta(x)) terms messes this up. An example is G=SO(6,2), x=KGB(G,11),
-  which should map to KGB(G,5)
-}
-{. (Auxiliary function) .}
 set map_into_distinguished_fiber (KGBElt x)=KGBElt:
-begin assert(no_Cminus_roots(x),"Only defined if no C- roots")
-; let G=real_form(x), tb=torus_bits(x) in
-  for x0 in distinguished_fiber(G) do if torus_bits(x0)=tb then return x0 fi od
-; { if we get here, no suitable |x0| was found }
-   error("the torus parts for the fiber over ",x
-        ," do not embed in those for the distinguished fiber")
-end
+  begin assert(no_Cminus_roots(x),"Only defined if no C- roots")
+  ; let G=real_form(x), tb=torus_bits(x) in
+    for x0 in distinguished_fiber(G) do if torus_bits(x0)=tb then return x0 fi od
+  ; { if we get here, no suitable |x0| was found }
+     error("the torus parts for the fiber over ",x
+          ," do not embed in those for the distinguished fiber")
+  end
 
-{. Map KGB element x to x_K in the distinguished fiber; if necessary, use
-   complex cross actions first to move x to a fiber without C- roots. .}
-set strong_map_into_distinguished_fiber (KGBElt x) = KGBElt:
-  map_into_distinguished_fiber(x.to_no_Cminus)
-
-{. Another name for strong_map_into_distinguished_fiber .}
-set canonical_x_K = strong_map_into_distinguished_fiber@KGBElt
-
-{. canonical_x_K with input a parameter p; it is applied to x(p). .}
-set canonical_x_K (Param p)  = KGBElt: canonical_x_K(p.x)
 
 {. Positive coroots in the nilradical of the theta-stable parabolic determined
 by x. .}
@@ -460,16 +560,74 @@ set dim_u_cap_p_1(Parabolic P, ratvec H)=
     fi
   od; rat_as_int(sum)
 
+{---- alternative versions of theta_induce_irreducible ------}
 
+set find_N (Param p_L,RealForm G) = int:
+  let L=real_form(p_L) in
+  assert(is_standard_Levi(L,G),"L is not standard");
+  assert(is_parabolic_theta_stable(make_parabolic(L,G)),
+  "L is not Levi of theta-stable parabolic");
+  let rho_u=rho(G)-rho(L)
+  in let v=infinitesimal_character(p_L)+rho_u
+  in let pcg=poscoroots(G) then
+   list=##for alpha in pcg do {if alpha*two_rhou > 0 then}
+   [-(alpha*v)/(alpha*two_rho(G))] {else [] fi} od
+   in {prints(list);} if #list=0 then prints("The parabolic is not proper."); 1
+   else floor(max(list)+1) fi
 
+{First version using coherent continuation of irreducibles:
+coherent_irr(p,w) uses character_formula and composition_series
+}
+
+set theta_induce_irreducible_coherent (Param p, RealForm G)=ParamPol:
+   assert(is_final(p), "parameter is not final");
+   let rd=root_datum(G), N=find_N (p,G), rho_u=rho(G)-rho(real_form(p))
+   then q=translate_param_by (p,ratvec_as_vec(N*two_rho(G)))
+   then ind=parameter(embed_KGB(x(q),G),lambda(q)+rho_u,nu(q))
+   then (w,gamma_dom)=from_dominant(integrality_datum(ind),p.infinitesimal_character+rho_u)
+    {w*gamma_dom=p.infinitesimal_character+rho_u
+       according to the discussion DANGEROUS BEND in coherent.at, this means
+       coherent(ind,w) is what we want, not coherent(ind,w.inverse)}
+   then P=coherent_irr(ind,w)
+   in G.null_module + for c@q in P do c*T_irr(q,gamma_dom) od
+
+{moved to coherent_irreducible.at}
+{Second version using coherent continuation of irreducibles:
+ using W_graph version of coherent_continuation
+block: block for G of the induced representation
+graph: W_graph of the block
+}
+{
+set theta_induce_irreducible_wgraph ([Param] block, WGraph graph, Param p, RealForm G)=ParamPol:
+   let rd=root_datum(G), N=find_N (p,G), rho_u=rho(G)-rho(real_form(p))
+   then q=translate_param_by (p,ratvec_as_vec(N*two_rho(G))){.monomials[0]}
+   then ind=parameter(embed_KGB(x(q),G),lambda(q)+rho_u,nu(q))
+   then (w,gamma_dom)=from_dominant(rd,p.infinitesimal_character+rho_u)
+    {w:gamma_dom -> p.infinitesimal_character _rho_u}
+   then P=coherent_irr(block,graph,ind,w.inverse)
+   in G.null_module + for c@q in P do c*T_param(q,gamma_dom) od
+
+{this is slow and probably negates the possible speed advantage of theta_induce_irreducible_wgraph,
+but useful for testing
+}
+set theta_induce_irreducible_wgraph (Param p, RealForm G)=ParamPol:
+   let rd=root_datum(G), N=find_N (p,G), rho_u=rho(G)-rho(real_form(p))
+   then q=translate_param_by (p,ratvec_as_vec(N*two_rho(G))){.monomials[0]}
+   then ind=parameter(embed_KGB(x(q),G),lambda(q)+rho_u,nu(q))
+   then block=block_of(ind)
+   then graph=W_graph_of(ind)
+   then (w,gamma_dom)=from_dominant(rd,p.infinitesimal_character+rho_u)
+    {w:gamma_dom -> p.infinitesimal_character _rho_u}
+   then P=coherent_irr(block,graph,ind,w.inverse)
+   in G.null_module + for c@q in P do c*T_param(q,gamma_dom) od
+}
 { -----------------------some representations------------------------------- }
-
-
 
 {
 Aq(x,lambda,lambda_q)=Aq(wx,wlambda,wlambda_q) so we can assume
 lambda_q is dominant
 }
+
 {. Conjugate the triple (x,lambda, lambda_q) to make lambda_q weakly
   dominant (auxiliary function). .}
 set make_dominant (KGBElt x,ratvec lambda, ratvec lambda_q) =
@@ -566,74 +724,6 @@ set goodness(KGBElt x,ratvec lambda_in,ratvec lambda_q) = string:
   else "None"
   fi
 
-{. Decide whether a parameter for L is in the good range for G; this only
-   makes sense if L is the Levi of a (standard) theta-stable parabolic. .}
-set is_good (Param p_L,RealForm G) = bool:
-  let L=real_form(p_L) in
-  assert(is_standard_Levi(L,G),"L is not standard");
-  assert(is_parabolic_theta_stable(make_parabolic(L,G)),
-  "L is not Levi of theta-stable parabolic");
-  let rho_u=rho(G)-rho(L)
-  in let v=infinitesimal_character(p_L)+rho_u
-  in let pcg=poscoroots(G)
-  in let rdl=root_datum(L)
-  in all(for alpha_check in pcg do v*alpha_check>0 or
-    is_positive_coroot(rdl)(alpha_check) od)
-
-{. Decide whether a parameter for L is in the weakly good range for G; this only
-   makes sense if L is the Levi of a theta-stable parabolic. .}
-set is_weakly_good (Param p_L,RealForm G) = bool:
-  let L=real_form(p_L) in
-  assert(is_standard_Levi(L,G),"L is not standard");
-  assert(is_parabolic_theta_stable(make_parabolic(L,G)),
-  "L is not Levi of theta-stable parabolic");
-  let rho_u=rho(G)-rho(L)
-  in is_dominant(G,infinitesimal_character(p_L)+rho_u)
-
-{. Decide whether a parameter for L is in the fair range for G; this only
-   makes sense if L is the Levi of a theta-stable parabolic, and is only
-   defined if p_L is one_dimensional. .}
-set is_fair (Param p_L,RealForm G) = bool:
-  let L=real_form(p_L) in
-  assert(is_standard_Levi(L,G),"L is not standard");
-  assert(is_parabolic_theta_stable(make_parabolic(L,G)),
-  "L is not Levi of theta-stable parabolic");
-  let rho_u=rho(G)-rho(L)
-  in let v=infinitesimal_character(p_L)+rho_u-rho(L)
-  in let pcg=poscoroots(G)
-  in let rdl=root_datum(L)
-  in is_one_dimensional(p_L) and
-    all(for alpha_check in pcg do v*alpha_check>0 or
-    is_positive_coroot(rdl)(alpha_check) od)
-
-{. Decide whether a parameter for L is in the weakly fair range for G; this only
-   makes sense if L is the Levi of a theta-stable parabolic, and is only defined
-   if p_L is one-dimensional. .}
-set is_weakly_fair (Param p_L,RealForm G) = bool:
-  let L=real_form(p_L) in
-  assert(is_standard_Levi(L,G),"L is not standard");
-  assert(is_parabolic_theta_stable(make_parabolic(L,G)),
-  "L is not Levi of theta-stable parabolic");
-  let rho_u=rho(G)-rho(L)
-  in is_one_dimensional(p_L) and
-     is_dominant(G,infinitesimal_character(p_L)+rho_u-rho(L))
-
-{. Determine the "goodness" of a parameter for L; returns "good", "weakly good",
-  "fair", "weakly fair", or "none"; only makes sense if L is Levi of theta-stable
-  parabolic. .}
-set goodness (Param p_L,RealForm G) = string:
-  let L=real_form(p_L) then rho_l=rho(L)
-  then rho_u=rho(G)-rho_l, infchar_l=infinitesimal_character(p_L)
-  in
-{ prints("infinitesimal character(l)=", infchar_l);
-  prints("infinitesimal character(l)+rho(u)=", infchar_l+rho_u);
-  prints("infinitesimal character(l)+rho(u)-rho(l)=", infchar_l+rho_u-rho_l); }
-  if is_good(p_L,G) then "Good"
-  elif is_weakly_good(p_L,G) then "Weakly good"
-  elif is_fair(p_L,G) then "Fair"
-  elif is_weakly_fair(p_L,G) then "Weakly fair"
-  else "None"
-  fi
 
 {. List all A_q(0) (actually: R_q(trivial): infinitesimal character rho(G))
    modules with Q a theta-stable parabolic of type P. .}
@@ -683,6 +773,12 @@ set theta_stable_parabolics_with([Parabolic] tsp,KGBElt x)=[Parabolic]:
 {. Decide whether there is a theta-stable parabolic determined by x. .}
 set is_theta_x(KGBElt x)=bool: #theta_stable_parabolics_with(x)>0
 
+{ test if p is cohomologically induced from a finite dimensional in the good range }
+set is_coh_ind_from_finite_dimensional (Param p) = bool:
+   let G=real_form(p), ic=infinitesimal_character(p) in
+   is_regular(p) and is_integral(G,ic) and
+   all(for i in support(x(p)) do is_descent(i,p) od)
+
 {. List of parameters p_L in the (weakly) good range for G so that p is
   theta-induced from p_L; may be more than one. .}
 set is_good_range_induced_from (Param p) = [Param]:
@@ -709,10 +805,10 @@ set is_good_range_induced_from (Param p) = [Param]:
   in the (weakly) good range, from p_L, with L minimal (may be G). .}
 set reduce_good_range (Param p) = (Parabolic,Param):
   let G=real_form(p) in
-  if ind_verbose
+  {if ind_verbose
   then if not is_final(p) then prints("p is not final") fi
   ;    if is_zero(p) then prints("The module is zero.") fi
-  fi;
+  fi;}
   let x=x(p) in let P=Parabolic:(support(x),x) in
   let L=Levi(P) in
   (P,
@@ -722,7 +818,7 @@ set reduce_good_range (Param p) = (Parabolic,Param):
     else
       let x_L=inverse_embed_KGB (x,L) in
       let p_L=parameter(x_L,lambda(p)-rho(G)+rho(L),nu(p)) in
-      if ind_verbose then prints(goodness(p_L,G)) fi;
+      {if ind_verbose then prints(goodness(p_L,G)) fi;}
       p_L
     fi
   )
@@ -751,23 +847,26 @@ set all_real_induced_one_dimensional (RealForm G) = [Param]:
 {------------- some rho-shifts involving theta ----------------}
 
 {define "two" versions which are vecs}
+
 set two_rho_S(KGBElt x)=vec: sum(makeS(x))
+
 set two_rho_S ((mat,RootDatum) pair) = sum(makeS(pair))
+
 set two_rho_u(Parabolic P)=vec:ratvec_as_vec(2*rho_u(P))
 
 { recall rho_S(x)=sum \alpha,
    each {\pm alpha,\pm\theta\alpha} contributes \alpha
-  convenient to define two_rho_S(x) 
+  convenient to define two_rho_S(x)
  and a relative version two_rho_S(P,x)
  Note: two_rho_S(x,P) =\sum \alpha
    one \alpha for each complex pair {\alpha,\theta\alpha} of roots in u
 }
 set two_rho_S(Parabolic P,KGBElt x)=vec:
   assert(is_parabolic_theta_stable(P),"P is not theta-stable");
-  let rd=root_datum(x), rd_L=root_datum(Levi(P)), theta=involution(x) in 
+  let rd=root_datum(x), rd_L=root_datum(Levi(P)), theta=involution(x) in
   two_rho_S(theta,rd)-two_rho_S(theta,rd_L)
 
-{ two_rho_S(P)=\sum \alpha, one \alpha from each 
+{ two_rho_S(P)=\sum \alpha, one \alpha from each
   pair of complex roots {\alpha,\theta\alpha}
   where \theta=theta_{x_min(P)}}
 set two_rho_S(Parabolic P)=vec:two_rho_S(P,x_min(P))
@@ -802,7 +901,7 @@ set rho_u_ic (Parabolic P, KGBElt x) = ratvec:
  2*rho(u\cap k) is the sum of:
  all compact imaginary roots of u and
  for each {\alpha,\theta\alpha} in u, contribution of alpha
- => two_rho_u_cap_k(P,x)=2*rho_u_ic(P,x) + two_rho_S(P)
+ => two_rho_u_cap_k(P,x)=two_rho_u_ic(P,x) + two_rho_S(P)
 }
 {.Sum of compact roots of H in u for theta-stable parabolic P
   with respect to x on fundamental Cartan(L)=fundamental Cartan(G)
@@ -821,7 +920,7 @@ set two_rho_u_cap_k (Parabolic P,KGBElt x) = vec:
 }
 {. Sum of non-compact roots in $\mathfrak u$ (for theta-stable parabolic).}
 set two_rho_u_cap_s (Parabolic P,KGBElt x) = vec:
-  ratvec_as_vec(2*rho_u(P))-two_rho_u_cap_k(P,x)
+  ratvec_as_vec(two_rho_u(P))-two_rho_u_cap_k(P,x)
 
 { P is a theta-stable parabolic
   p_L is a STFL for L
@@ -830,8 +929,50 @@ set two_rho_u_cap_s (Parabolic P,KGBElt x) = vec:
   the resulting term might not be standard
 }
 set twist_by_minus_2rho_u_cap_s(Parabolic P,Param p_L)=Param:
-assert(nu(p_L)=null(rank(Levi(P))),"nu(p_L)\ne 0");
-let G=real_form(P.x) then
-x_L=x(p_L) then
-x_G=embed_KGB(x_L,G) in
-parameter(x_L,lambda(p_L)-two_rho_u_cap_s(P,x_G),null(rank(Levi(P))))
+  assert(nu(p_L)=null(rank(Levi(P))),"nu(p_L)\ne 0");
+  let G=real_form(P.x) then
+  x_L=x(p_L) then
+  x_G=embed_KGB(x_L,G) in
+  parameter(x_L,lambda(p_L)-two_rho_u_cap_s(P,x_G),null(rank(Levi(P))))
+
+set is_in_list (KGBElt x, [KGBElt] list) =bool: any(for y in list do x=y od)
+
+set select_class_terms_from_ParamPol ([KGBElt] class, ParamPol P)=ParamPol:
+  0*P+ for c@t in P do if is_in_list (x(t),class) then (c,t) else (0,t) fi od
+
+set p_N (Param p, int N, [int] S) = Param:
+   let x=x(p) then P=Parabolic:(S,x) then rhou=rho_u(P) in
+   parameter(x,lambda(p)+2*N*rhou,nu(p)+2*N*rhou)
+
+set move_P_down_by_N (ParamPol P, int N, [int] Levi)=[(Split,Param)]:
+   let rd=root_datum(P) then rhou=rho_u(rd,Levi) in
+   for c@t in P do (c,parameter(x(t),lambda(t)-2*N*rhou,nu(t)-2*N*rhou)) od
+
+set find_N ([int] Levi, Param p)=int:
+   let x=x(p),lam=lambda(p), nu=nu(p) then theta=involution(x),
+   rd=root_datum(x), P=Parabolic:(Levi,x) then two_rhou=two_rho_u(P) then
+   gamma=((1+theta)*lam+(1-theta)*nu)/2 then
+   list=##for alpha in poscoroots(rd) do if alpha*two_rhou > 0 then
+   [-(alpha*gamma)/(alpha*two_rhou)] else [] fi od
+   in {prints(list);} if #list=0 then prints("The parabolic is not proper."); 1
+   else floor(max(list)+1) fi
+
+set is_standard ([int] Levi, Param p) =
+    is_standard (p_N (p,find_N (Levi,p),Levi))
+
+set is_final ([int] Levi, Param p) = is_final (p_N (p,find_N (Levi,p),Levi))
+
+
+set induce_from_gen_parabolic_irr ([int] Levi, Param p)=ParamPol:
+   let G=real_form(p) then
+   N=find_N(Levi,p),x=x(p) then class=equivalence_class_of(Levi,x)
+   then cf=character_formula (p_N(p,N,Levi)) then
+   P_up=select_class_terms_from_ParamPol (class,cf) then
+   pairs=move_P_down_by_N(P_up,N,Levi) in let result=null_module(G) in
+   for (c,t) in pairs do result+:=c*standardize(t) od;
+   composition_series(result)
+
+set L_infinitesimal_character ([int] Levi, Param p)=ratvec:
+   let theta=involution(p.x) then P=Parabolic:(Levi,p.x) in
+   ((1+theta)*lambda(p)+(1-theta)*nu(p))/2-rho_u(P)
+

@@ -1,0 +1,30 @@
+{basic functions, should be moved elsewhere}
+set in_weight_lattice(RootDatum rd,ratvec v)=bool:is_integer(v*rd.simple_coroots)
+set in_coweight_lattice(RootDatum rd,ratvec v)=bool:is_integer(v*rd.simple_roots)
+
+set_type
+[ maybe_KGBElt_for_inner_class =     ( void no_KGB | KGBElt solution)]
+
+{given (ic,delta,v):
+ 1) check that v is in the weight lattice (necessary condition for KGB element of any real form)
+    if not - return no_KGB
+ 2) if so - this is a KGB for a (unique) real form G in the inner class:
+    G=inner_class(ic,delta,v) -> KGB_elt(G,delta,v)
+} 
+set maybe_KGB_for_inner_class(InnerClass ic,mat delta,ratvec v)=maybe_KGBElt_for_inner_class:
+  if not in_coweight_lattice(ic,v) then return ().no_KGB
+  else let rf=real_form(ic,delta,v) in
+  KGB_elt(rf,delta,v).solution fi
+
+set any (maybe_KGBElt_for_inner_class x) = bool: case x  | solution: true | no_KGB: false esac
+
+set requisition (string message) = (maybe_KGBElt_for_inner_class->KGBElt):
+   (maybe_KGBElt_for_inner_class x) KGBElt: case x  | solution(s): s | else error(message) esac
+set requisition = requisition("Error: no KGB for inner class element found")
+
+{to use this:
+
+set x_maybe=KGB_elt_maybe(ic,delta,v0
+if any(x_maybe) then x=requisition(x_maybe)
+else (handle the error) fi
+}

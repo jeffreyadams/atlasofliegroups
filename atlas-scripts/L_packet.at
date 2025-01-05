@@ -1,5 +1,6 @@
 <Vogan-dual.at
 <KL_polynomial_matrices.at
+<maybe_KGB.at
 
 {this is a convenient function, should be moved elsewhere
 group list of parameters by block;
@@ -35,10 +36,24 @@ for alpha in simple_imaginary_roots(x) do root_reflection(x.root_datum,alpha) od
 set fiber(KGBElt x)=[KGBElt]:
 for (y,) in cross_sub_orbit(simple_imaginary_reflections(x),x) do y od
 
-{if G is quasisplit this is guaranteed to work
+{this needs to be fixed
+ if G is quasisplit this is guaranteed to work
  if not, it will fail with an error if there is no x with x.involution=theta}
-set fiber(RealForm G,mat theta)=[KGBElt]:
+set fiber_old(RealForm G,mat theta)=[KGBElt]:
 fiber(KGB_elt(G,theta,G.base_grading_vector))
+{this is terrible but will do for now:}
+{assumes all x with same theta are consecutive}
+set fiber(RealForm G,mat theta)=[KGBElt]:
+let found=false, done=false then
+rv=[KGBElt]:[] in 
+for x in KGB(G) do
+ if x.involution=theta then
+  rv#:=x;
+  found:=true
+ else
+  if found=true then break fi
+ fi
+od;rv 
 
 {given G, gamma,y -> defines an L-homomorphism phi: W_R -> LG}
 

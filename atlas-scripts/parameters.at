@@ -142,6 +142,8 @@ set inverse(KGBElt x)=KGB_elt(x.tits.inverse)
 set contragredient(Param p)=Param:
 let w=p.root_datum.w0 in parameter(cross(w,p.x),-w*p.lambda,-w*p.nu)
 
+set contragredient([Param] params)=[Param]: for p in params do contragredient(p) od
+
 { gamma=infinitesimal character to combine with x, found from real_form(y) }
 set parameter (KGBElt x,KGBElt y,ratvec gamma)=Param:
   parameter(x,lambda(gamma,x,y),nu(gamma,x)) { final argument gamma would work }
