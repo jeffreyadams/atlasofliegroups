@@ -1,9 +1,24 @@
 {testing conjectures about obtaining Arthur packets by cohomological induction
 from unipotent on L.derived, in case G=Sp(2n,R), L=U(1)^{n-m}x Sp(2m,R)}
+
+{implement:
+compute all Langlands members of unipotent packets on L_der
+next: input central character and one of these p_der  -> p on L
+AAM: compute honest Arthur packet for L defined by p
+also: compute all strong real forms of L
+get "strong" Arthur packet on union of these strong real forms
+induce all of these up to G: conjecturally this is an Arthur packet for G
+Note: not really all: L=TxSp(2m,R) only use split strong real forms: ignore TxSp(p,q)
+since these are not Levis in Sp(2n,R)
+claim: the Langlands member of this ostensible Arthur packet is induced from the Langlands member on L
+assuming this: it is enough to check that
+strong packet on L containing p_L_Langlands -> p_G_Langlands -> Arthur packet(p_G_Langlands) (using AAM again)
+check these two sets are equal}
+
 <twisted_endoscopy_D.at
 <strong_real_forms.at
 
-set arthur_sp_verbose=false
+set arthur_sp_verbose=true
 
 set pr_long([Param] params)=
 prints("G=",params[0].real_form);
@@ -14,15 +29,30 @@ set unipotent_langlands_parameters(RealForm G)=[Param]:
 let wp=weak_packets(G) in
  ##for packet in wp do min_height(parameters(packet)) od
 
+{shift in infinitesimal character for U(1)^{n-m}xSp(2m) in Sp(2n)}
+set rho_shift_0(int n,int m)=for i:n-m do n-i od
+set rho_shift(int n,int m)=rho_shift_0(n,m)##null(m)
+
+set rho_shift_0(Param p_L,RealForm G)=rho_shift_0(rank(G),rank(p_L.root_datum))
+set rho_shift(Param p_L,RealForm G)=rho_shift(rank(G),rank(p_L.root_datum))
+
 {given n,m: G=Sp(2n,R), L=U(1)^{n-m}x Sp(2m,R), compute all Langlands unipotents of L_der}
-set initialize(int n, int m)=(RealForm, RealForm, [Param]):
+{computes all weak packets for L_der, then keeps the parameters of minimal height (these
+are the Langlands member of the honest packets}
+set init(int n, int m)=(RealForm, RealForm, [Param]):
 prints("constructing Levi U(1)^",n-m,"*Sp(",2*m,",R) in Sp(",2*n,",R) and Langlands unipotent parameters for L_der");
-prints("Cohomological induction shifts the infinitesimal character by ",for i:n-m do n-i od##null(m) );
+prints("Cohomological induction shifts the infinitesimal character by ",rho_shift(n,m));
 let G=Sp(2*n,R) then
 L_der=Sp(2*m,R) then 
 L=compact_torus(n-m) * L_der then
 unipotents=unipotent_langlands_parameters(L_der) in
 (G,L,unipotents)
+
+{returns (G,[(L_der,[params for G induced from L])])}
+set init_all(int n)=([(RealForm,[Param])],RealForm):
+let G=Sp(2*n,R) in
+(for m:n-1 from 1 do
+ let (,L_der,params)=init(n,m)  in (L_der,params) od,G)
 
 {for Sp(2n,R) only}
 set endoscopic_data(RealForm G)=(mat,RealForm,mat):  {(M,GL(2n+1,R),delta): matrix M for twisted endoscopic transfer Sp(2n,R)-> GL(2n+1,R), with nice coordinates}
@@ -101,7 +131,10 @@ set induce_Arthur_packet_strong(vec central_char, Param p_der,RealForm G)=[Param
 let strong_packet_L=##Arthur_packet_strong(central_char,p_der) then
 strong_packet_L_split_only=for p in strong_packet_L do if is_quasisplit(p.real_form) then [p] else [] fi od.## then
 strong_packet=for p  in strong_packet_L_split_only do monomials(theta_induce_irreducible(p,G)) od.##
-in if arthur_sp_verbose then pr_long(strong_packet) fi;strong_packet
+in if arthur_sp_verbose then
+prints("infinitesimal character on G: ", central_char##infinitesimal_character(p_der) + rho_shift(p_der,G));
+pr_long(strong_packet) fi;
+strong_packet
 
 {test if [Param] params is an Arthur packet: Arthur_packet(p_min) =?= params
  where p_min is of minimal height in params}
@@ -112,6 +145,54 @@ a_packet=Arthur_packet(min[0]) in (params,a_packet,param_pol(params)=param_pol(a
 set is_Arthur_packet([Param] params)=bool:
 let (,,test)=is_Arthur_packet_long(params) in test
 
+
+
+set is_decreasing([int] v)=bool:
+all(for i:#v-1 do v[i]>=v[i+1] od)
+
+{infinitesimal character p_der=[b_1,...,b_m]
+do all shifts so the *infinitesimal character* on G is
+[a_1,...,a_{n-m},b_1,...,b_m] with
+0<= a_i <= b_1
+ALSO a_1\ge a_2...\ge a_{n-m}
+the last condition is:  v-rho_shift_0 is (weakly) decreasing}
+{Note: these vectors have some minus signs in the first coordinates, but 
+after adding rho_shift_0 the entries are all >=0 and weakly decreasing}
+set all_shifts(Param p_der,RealForm G)=
+let rho_shift_0=rho_shift_0(p_der,G) then 
+b_max=ceil(max(infinitesimal_character(p_der))) then 
+box=box(b_max+1,rank(G)-rank(p_der.real_form)) then
+()=prints("box: ", box) then
+()=prints("rho_shift_0: ", rho_shift_0) then
+shifts_0=for v in box do prints("v, ", v, "  ", v-rho_shift_0);if is_decreasing(v{-rho_shift_0}) then [v-rho_shift_0] else [] fi od.## in
+shifts_0
+
+set induce_Arthur_packets_strong_all(Param p_der,RealForm G)=(Param,[(vec,[int],ratvec,Param,[Param])]):
+let rho_shift=rho_shift(rank(G),rank(p_der.real_form)) then
+shifts_0=all_shifts(p_der,G) then
+()=if arthur_sp_verbose then prints("all shifts: ", shifts_0) fi in
+(p_der,for v in shifts_0 do
+ let infchar=v##infinitesimal_character(p_der)+rho_shift in
+ (v, rho_shift_0(p_der,G),infchar,p_der,induce_Arthur_packet_strong(v,p_der,G)) od)
+
+set show((Param p_der,[(vec,[int],ratvec,Param,[Param])] data))=void:
+for (v,rho_shift,infchar,p,params) in data do
+prints("rho_shift: ", rho_shift, " shift (v): ", v,"  total shift: ", v+rho_shift,new_line,
+"inf.char. on L_der: ", infinitesimal_character(p),"  inf.char. on G: ", infchar);
+prints("L_der=", p.real_form);
+pr_long(params);
+prints("Arthur packet: ", is_Arthur_packet(params));
+prints("-----------------------") od
+
+set induce_Arthur_packets_strong_all([Param] reps,RealForm G)=
+for p in reps do induce_Arthur_packets_strong_all(p,G) od
+
+{call previous using output of init_all}
+set induce_Arthur_packets_strong_all([(RealForm,[Param])] data,RealForm G)=
+induce_Arthur_packets_strong_all(for (,params) in data do params od.##,G)
+
+set show([(Param,[(vec,[int],ratvec,Param,[Param])])] data)=void:
+for d@i in data do show(d);prints("==============================") od
 
 
 
