@@ -178,7 +178,7 @@ set step_flag = false
 set real_flag = false
 
 {If "true", then hash_dumb uses is_unitary_def_test, and hts are calculated with deform_hts}
-set def_flag = true
+set def_flag = {false} true
 
 {if "false" use next_heights instead of short_hts, to avoid calculating
 deform (KL calculations). So prefer false for rank \ge 7?}
@@ -1560,8 +1560,8 @@ set one_param_test(Param p, Param_hash Uhash) = [Param]:
     then DEFHTS = [int]:
     	 if low(p, height(p)) {low(Q[0].x,Q[0].lambda)} {number(Q[0].x) < NK*low_KGB_frac}
 	 then []
-	 else let (answer,) = deform_hts(Q[0],(r*stretcher)\2)
-	 in answer {could record boolean, use it to replace _test by _to_hts}
+	 else {let (answer,) =} next_heights(Q[0], (r*stretcher)\2) {deform_hts(Q[0],(r*stretcher)\2)}
+	 {in answer} {could record boolean, use it to replace _test by _to_hts}
 	 fi
     then  () = hash_def_dumbCounter.use()
     then test = all(for q in Q do {Uhash.lookup(q).>= or}
@@ -1609,8 +1609,8 @@ set one_param_test_min_bottom(Param p, Param_hash Uhash) = [Param]:
     then DEFHTS = [int]:
     	 if low(p, height(p))
 	 then []
-	 else let (answer,) = deform_hts(QG[0],(r*stretcher)\2)
-	 in answer {could record boolean, use it to replace _test by _to_hts}
+	 else  next_heights(QG[0], (r*stretcher)\2) {let (answer,) = deform_hts(QG[0],(r*stretcher)\2)}
+	 {in answer} {could record boolean, use it to replace _test by _to_hts}
 	 fi
     then test =  all( [(->bool)]:
 	    	     for q in QG
@@ -1798,8 +1798,9 @@ set local_test_GEO_hash_real_dumb(KGBElt x, ratvec lambda, {VertexData vd,} Loca
     then test_hts = [int]:
     	 {if low(x,lambda) {number(pmax.x) < NK*low_KGB_frac} {defaults to 1/4 of #KGB; so most of time, use to_ht}
 	 then []
-	 else} let (answer,) = deform_hts(pmax,((rk+1)*stretcher)\2) {!!this r\2 is a parameter to fiddle}
-	      in answer
+	 else}  next_heights(pmax, (r*stretcher)\2) {let (answer,) = deform_hts(pmax,((rk+1)*stretcher)\2)}
+	 	{!!this r\2 is a parameter to fiddle}
+	      {in answer}
 	 {fi}
    { then test_ht = if x.number < NK*low_KGB_frac
     	 	   then -1
@@ -2543,8 +2544,8 @@ set local_test_GEO_hash(KGBElt x, ratvec lambda, {VertexData vd,} LocalVertexDat
 		       		    od)
     	      	then pmax = first_param(finalize(parameter(x, lambda, Lvd.list[maxDiffLoc])))
 		then Shorthts = if short_hts_flag then short_hts(pmax)
-		     	      	else let (answer,) = deform_hts(pmax,depth) {next_heights(pmax,depth)}
-				     in answer
+		     	      	else {let (answer,) = deform_hts(pmax,depth)} next_heights(pmax,depth)
+				     {in answer} {deform_hts took 10 secs in Spin(4,4) spherical}
 				fi
     	      	then () = if #Shorthts < depth and revert_flag
 		     	  then return local_test_GEO_hash_else_dumb(x, lambda, {vd,}

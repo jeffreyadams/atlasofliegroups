@@ -420,9 +420,9 @@ set use_test_coroots_flag = false
 set mu_level(vec mu) = (vec -> int):
     (vec coroot): coroot*mu
 
-{this time the results are a list of (Qmin,[tau, [dertauLj]). First tau is always LKT}
+{this time the results are a list of [tau, [dertauLj]. First tau is always mu}
 {used only to create entry in minBottomData}
-set min_bottom_factors(KType mu) = QKL_bottom_data:
+set min_bottom_factors(KType mu) = LK_data:
     let p = parameter(mu), start = elapsed_ms()
     then (Q,pL) = theta_stable_quasi_data(p), G = p.real_form, ProjK = projection_to_K_matrix(mu.inner_class)
     then SFRP = simple_factor_root_partition(Q)
@@ -493,34 +493,18 @@ set min_bottom_factors(KType mu) = QKL_bottom_data:
     then () = if print_big_B_flag and #B >20
     	      then prints("p =",p,", #B = ",#B, ", mid_time = ",mid_time,", total_time = ",elapsed_ms() - start)
 	      fi
-    in (Q,LKData)
+    in LKData
 
-{this time the results are a list of (Qmin,[tau, [dertauLj]).}
-{used only to create entry in minBottomData}
-set min_small_bottom_factors(KGBElt x, ratvec lambda) = (KGPElt, [LK_data]):
+{this time the results are a list of [tau, [dertauLj] indexed by LKTs of p0.}
+{used only to create entry in minSmallBottomData}
+set min_small_bottom_factors(KGBElt x, ratvec lambda) = [LK_data]:
 {one LK_data for each LKT on G for p0}
-    let p0 = parameter(x,lambda,0*lambda), start = elapsed_ms()
-    then p = to_no_Cminus_small(p0) {don't need; use p0?}
+    let p = to_no_Cminus_small(parameter(x,lambda,0*lambda)), start = elapsed_ms()
     then (Q,pL) = theta_stable_data_small(p), G = p.real_form,
     	 	  ProjK = projection_to_K_matrix(x.inner_class)
-    then SFRP = simple_factor_root_partition(Q), rhou = Q.rho_u
-    then qLis = monomials(1*pL) {one for each LKT of pL}
-    then qis = for qLi in qLis
-    	       do {parameter(embed_KGB(qLi.x,G),qLi.lambda + rhou ,null(G.rank))}
-	       	  theta_induce_standard(qLi,G)  {???THIS IS WRONG???}
-	       {for G = SU(3,2), p1 = parameter(G,48,G.rho,[4,2,2,2]), x = p1.x, lambda = p1.lambda}
-	       od
-    then good_is = for i:#qis
-    	 	   do if qis[i].=
-		      then []
-		      else [i]
-		      fi
-	       	   od.##
-    then qLs = for i in good_is do qLis[i] od
-    then qs = for i in good_is do {qis[i]} first_param(qis[i]) od
-    then muLs = [KType]: for qL in qLs do LKT(qL) od {indexed by i}
-    then mus = [KType]: for q in qs do LKT(q) od, L = Q.Levi {indexed by i}
-    {now the qLs are tempiric inducing to tempiric qs in order}
+    then SFRP = simple_factor_root_partition(Q), L = Q.Levi
+    then mus = [KType]: LKTs(p)
+    then muLs = [KType]: for mu in mus do highest_LK(mu,Q) od
     then dermuLss = [[KType]]:
     	 	    for muL in muLs
     	 	    do derived_factor_K_types0(muL) {list indexed by j}
@@ -549,11 +533,11 @@ set min_small_bottom_factors(KGBElt x, ratvec lambda) = (KGPElt, [LK_data]):
     	       do K_0(xcG)
 	       od
     then test_corootss = [[vec]]:[]
-    then dlambda = ProjK*(d_lambda(p).numer) {???maybe need a list, one for each pj???}
+    then QKwt = ProjK*two_rho_u(Q)
     then () = if use_test_coroots_flag
     	      then test_corootss := for K0 in K0s
 	      	   		    do for alpha_vee in K0.simple_coroots
-    	 	      		       do if (alpha_vee*dlambda).=
+    	 	      		       do if (alpha_vee*QKwt).=
 			   	       	  then []
 			   	      	  else [alpha_vee]
 			   	      	  fi
@@ -617,7 +601,7 @@ set min_small_bottom_factors(KGBElt x, ratvec lambda) = (KGPElt, [LK_data]):
 		      od.##
 		   od
     then () = mbfTime +:= elapsed_ms() - start
-    in (Q,LKDatas)
+    in LKDatas
 
 {table of bottom layer data indexed by KType}
 set_type
@@ -650,8 +634,7 @@ set make_min_bottom_data () = min_bottom_data:
        then m = K_type_hash.match(mu)
        then () = if m = M
 	     	 then let start = elapsed_ms()
-		      {then xcG = natural_KGB_elt(mu)}
-		      then (,mbf) = min_bottom_factors(mu{,xcG})
+		      then mbf = min_bottom_factors(mu)
 		      then () = bottom_data#:= mbf
 		      then () = heights#:= max(for (tau,) in mbf
 					       do height(tau)
@@ -724,7 +707,7 @@ set make_min_small_bottom_data () = min_small_bottom_data:
        then () = if m = M
 	     	 then let start = elapsed_ms()
 		      {then xcG = natural_KGB_elt(mu)}
-		      then (,mbfs) = min_small_bottom_factors(x0,lambda0)
+		      then mbfs = min_small_bottom_factors(x0,lambda0)
 		      then () = bottom_data#:= mbfs
 		      then () = heights#:= max(for mbf in mbfs
 		      	      		       do max(for(tau,) in mbf do height(tau) od)
