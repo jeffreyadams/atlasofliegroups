@@ -18,7 +18,7 @@ check these two sets are equal}
 <twisted_endoscopy_D.at
 <strong_real_forms.at
 
-set arthur_sp_verbose=true
+set arthur_sp_verbose=false
 
 set pr_long([Param] params)=
 prints("G=",params[0].real_form);
@@ -162,12 +162,13 @@ set all_shifts(Param p_der,RealForm G)=
 let rho_shift_0=rho_shift_0(p_der,G) then 
 b_max=ceil(max(infinitesimal_character(p_der))) then 
 box=box(b_max+1,rank(G)-rank(p_der.real_form)) then
-()=prints("box: ", box) then
-()=prints("rho_shift_0: ", rho_shift_0) then
-shifts_0=for v in box do prints("v, ", v, "  ", v-rho_shift_0);if is_decreasing(v{-rho_shift_0}) then [v-rho_shift_0] else [] fi od.## in
+{()=prints("box: ", box) then
+()=prints("rho_shift_0: ", rho_shift_0) then}
+shifts_0=for v in box do {prints("v, ", v, "  ", v-rho_shift_0);}if is_decreasing(v{-rho_shift_0}) then [v-rho_shift_0] else [] fi od.## in
 shifts_0
 
 set induce_Arthur_packets_strong_all(Param p_der,RealForm G)=(Param,[(vec,[int],ratvec,Param,[Param])]):
+let ()=prints("L_der=",p_der.real_form," p_der=", p_der) in
 let rho_shift=rho_shift(rank(G),rank(p_der.real_form)) then
 shifts_0=all_shifts(p_der,G) then
 ()=if arthur_sp_verbose then prints("all shifts: ", shifts_0) fi in
@@ -194,6 +195,29 @@ induce_Arthur_packets_strong_all(for (,params) in data do params od.##,G)
 set show([(Param,[(vec,[int],ratvec,Param,[Param])])] data)=void:
 for d@i in data do show(d);prints("==============================") od
 
+{------------------------------ inducing one-dimensional from U(p,q) to Sp(2n,R) -----}
+
+set arthur_packet_trivial_upq_strong(int n)=[Param]:
+for G in strong_real_forms(U(n,0)) do G.trivial od
+
+set arthur_packet_trivial_upq_strong(int n,int shift)=[Param]:
+for G in strong_real_forms(U(n,0)) do
+ let p=G.trivial in parameter(p.x, p.lambda + shift*ones(n), p.nu) od
+
+set induce_arthur_packet_trivial_upq_strong(int n)=
+for p in arthur_packet_trivial_upq_strong(n) do
+ let ind=theta_induce_irreducible(p,Sp(2*n,R))  in
+  let ()=if #ind>1 then prints("warning:  induced is reducible, p=", p) fi in
+  monomials(ind) od.##
+
+set induce_arthur_packet_trivial_upq_strong(int n, int shift)=
+for p in arthur_packet_trivial_upq_strong(n,shift) do
+ let ind=theta_induce_irreducible(p,Sp(2*n,R))  in
+  let ()=if #ind>1 then prints("warning:  induced is reducible, p=", p) fi in
+  monomials(ind) od.##
+
+set ind_upq(int n)=induce_arthur_packet_trivial_upq_strong(n)
+set ind_upq(int n, int shift)=induce_arthur_packet_trivial_upq_strong(n,shift)
 
 
 
