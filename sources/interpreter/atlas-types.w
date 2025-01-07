@@ -226,7 +226,7 @@ inline std::istream& skip_punctuation(std::istream &is)
     return is.unget();
 }
 @)
-void Lie_type_wrapper(expression_base::level l)
+void Lie_type_wrapper(eval_level l)
 { std::istringstream is(get<string_value>()->val);
   own_Lie_type result = std::make_shared<Lie_type_value>();
   char c;
@@ -242,12 +242,12 @@ void Lie_type_wrapper(expression_base::level l)
     result->add_simple_factor(c,rank);
       // this may |throw| a |runtime_error| as well
   }
-  if (l!=expression_base::no_value)
+  if (l!=eval_level::no_value)
     push_value(std::move(result));
 }
 @)
 void Lie_type_coercion()
-@+{@; Lie_type_wrapper(expression_base::single_value); }
+@+{@; Lie_type_wrapper(eval_level::single_value); }
 
 @ Other useful ways of building Lie types is by combining two of them to a
 single one, or in a more incremental fashion by adding a single (type,rank)
@@ -258,7 +258,7 @@ from this constant rather than trying to pass it be reference, as the latter
 would require memory to be reserved for it permanently.
 
 @< Local function definitions @>=
-void compose_Lie_types_wrapper(expression_base::level l)
+void compose_Lie_types_wrapper(eval_level l)
 {
   shared_Lie_type t2=get<Lie_type_value>();
   own_Lie_type t1=get_own<Lie_type_value>();
@@ -270,21 +270,21 @@ void compose_Lie_types_wrapper(expression_base::level l)
     throw runtime_error(o.str());
   }
 @.Combined rank exceeds...@>
-  if (l==expression_base::no_value)
+  if (l==eval_level::no_value)
     return;
 @)
   t1->val.append(t2->val); // both factors have been tested, so this is safe
   push_value(std::move(t1));
 }
 @)
-void extend_Lie_type_wrapper(expression_base::level l)
+void extend_Lie_type_wrapper(eval_level l)
 {
   auto rank = get<int_value>()->int_val();
   auto type_string = get<string_value>()->val;
   char type_letter = type_string.empty() ? 'T' : type_string[0];
   own_Lie_type t=get_own<Lie_type_value>();
   t->add_simple_factor(type_letter,rank);
-  if (l!=expression_base::no_value)
+  if (l!=eval_level::no_value)
     push_value(std::move(t));
 }
 
@@ -293,16 +293,16 @@ comparison is done by generic equality operations defined in the \Cpp\ standard
 library for |std::vector| values (of equal types).
 
 @< Local function definitions @>=
-void Lie_type_eq_wrapper (expression_base::level l)
+void Lie_type_eq_wrapper (eval_level l)
 { shared_Lie_type lt1 = get<Lie_type_value>();
   shared_Lie_type lt0 = get<Lie_type_value>();
-  if (l!=expression_base::no_value)
+  if (l!=eval_level::no_value)
     push_value(whether(lt0->val==lt1->val));
 }
-void Lie_type_neq_wrapper (expression_base::level l)
+void Lie_type_neq_wrapper (eval_level l)
 { shared_Lie_type lt1 = get<Lie_type_value>();
   shared_Lie_type lt0 = get<Lie_type_value>();
-  if (l!=expression_base::no_value)
+  if (l!=eval_level::no_value)
     push_value(whether(lt0->val!=lt1->val));
 }
 
@@ -316,9 +316,9 @@ lead to entirely zero rows and columns.
 
 @h "prerootdata.h"
 @< Local function definitions @>=
-void Cartan_matrix_wrapper(expression_base::level l)
+void Cartan_matrix_wrapper(eval_level l)
 { shared_Lie_type t=get<Lie_type_value>();
-  if (l!=expression_base::no_value)
+  if (l!=eval_level::no_value)
     push_value(std::make_shared<matrix_value>(t->val.true_Cartan_matrix()));
 }
 
@@ -348,11 +348,11 @@ ignoring the result but catching any |error::Cartan_error| thrown and returning
 
 @h "dynkin.h"
 @< Local function definitions @>=
-void type_of_Cartan_matrix_wrapper (expression_base::level l)
+void type_of_Cartan_matrix_wrapper (eval_level l)
 { shared_matrix m=get<matrix_value>();
   Permutation pi;
   LieType lt=dynkin::Lie_type(m->val,pi);
-  if (l==expression_base::no_value)
+  if (l==eval_level::no_value)
     return;
 @)
   push_value(std::make_shared<Lie_type_value>(lt));
@@ -361,11 +361,11 @@ void type_of_Cartan_matrix_wrapper (expression_base::level l)
   for(auto it=pi.begin(); it!=pi.end(); ++it)
     perm->val.push_back(std::make_shared<int_value>(*it));
   push_value(std::move(perm));
-  if (l==expression_base::single_value)
+  if (l==eval_level::single_value)
     wrap_tuple<2>();
 }
 
-void is_Cartan_matrix_wrapper (expression_base::level l)
+void is_Cartan_matrix_wrapper (eval_level l)
 { shared_matrix m=get<matrix_value>();
   Permutation pi;
   try
@@ -385,9 +385,9 @@ we allow transforming it into a list of $(code,rank)$ pairs, where |code| is a
 one-letter string.
 
 @< Local function definitions @>=
-void simple_factors_wrapper(expression_base::level l)
+void simple_factors_wrapper(eval_level l)
 { shared_Lie_type t=get<Lie_type_value>();
-  if (l==expression_base::no_value)
+  if (l==eval_level::no_value)
     return;
 @)
   own_row result = std::make_shared<row_value>(0);
@@ -405,9 +405,9 @@ void simple_factors_wrapper(expression_base::level l)
 }
 
 void rank_of_Lie_type_wrapper
-(expression_base::level l)
+(eval_level l)
 { shared_Lie_type t=get<Lie_type_value>();
-  if (l==expression_base::no_value)
+  if (l==eval_level::no_value)
     return;
 
   unsigned result=0;
@@ -453,16 +453,16 @@ the sense that the Smith basis for those factors is the standard basis and the
 invariant factors are null.
 
 @< Local function definitions @>=
-void Smith_Cartan_wrapper(expression_base::level l)
+void Smith_Cartan_wrapper(eval_level l)
 { shared_Lie_type t=get<Lie_type_value>();
-  if (l==expression_base::no_value)
+  if (l==eval_level::no_value)
     return;
 @)
   own_vector inv_factors = std::make_shared<vector_value>(CoeffList());
   push_value(std::make_shared<matrix_value>
     (t->val.Smith_basis(inv_factors->val)));
   push_value(std::move(inv_factors));
-  if (l==expression_base::single_value)
+  if (l==eval_level::single_value)
      wrap_tuple<2>();
 }
 
@@ -476,7 +476,7 @@ result of the previous one, filters out the invariant factors~$1$ and the
 corresponding columns.
 
 @< Local function definitions @>=
-void filter_units_wrapper (expression_base::level l)
+void filter_units_wrapper (eval_level l)
 { own_vector inv_f=get_own<vector_value>();
   own_matrix basis=get_own<matrix_value>();
   unsigned int n=basis->val.n_columns();
@@ -487,7 +487,7 @@ void filter_units_wrapper (expression_base::level l)
     throw runtime_error(o.str());
   }
 @.Too many factors@>
-  if (l==expression_base::no_value)
+  if (l==eval_level::no_value)
     return;
 @)
   unsigned int i=0;
@@ -499,7 +499,7 @@ void filter_units_wrapper (expression_base::level l)
         basis->val.eraseColumn(i);
     }
   push_value(std::move(basis)); push_value(std::move(inv_f));
-  if (l==expression_base::single_value)
+  if (l==eval_level::single_value)
       wrap_tuple<2>();
 }
 
@@ -560,11 +560,11 @@ annihilator_modulo(const LatticeMatrix& M, arithmetic::Denom_t denominator)
 @ The wrapper function is now particularly simple.
 
 @< Local function definitions @>=
-void ann_mod_wrapper(expression_base::level l)
+void ann_mod_wrapper(eval_level l)
 { int d=get<int_value>()->int_val();
   shared_matrix m=get<matrix_value>();
 @)
-  if (l!=expression_base::no_value)
+  if (l!=eval_level::no_value)
     push_value(std::make_shared<matrix_value>(annihilator_modulo(m->val,d)));
 }
 
@@ -582,7 +582,7 @@ has to take place. In fact this is so simple that we define the wrapper
 function directly.
 
 @< Local function definitions @>=
-void replace_gen_wrapper (expression_base::level l)
+void replace_gen_wrapper (eval_level l)
 { shared_matrix new_generators=get<matrix_value>();
   push_tuple_components(); // a pair as returned by \.{Smith\_Cartan}
   shared_vector inv_f=get<vector_value>();
@@ -613,7 +613,7 @@ void replace_gen_wrapper (expression_base::level l)
   if (k<new_generators->val.n_columns())
         throw runtime_error ("Too many replacement columns");
 @.Too many replacement columns@>
-  if (l!=expression_base::no_value)
+  if (l!=eval_level::no_value)
     push_value(std::move(generators));
 }
 
@@ -652,16 +652,16 @@ top of the stack, as~$S$ serves both in the call to $filter\_units$
 (immediately) and in the to~$replace\_gen$ (at the end).
 
 @< Local function definitions @>=
-void quotient_basis_wrapper(expression_base::level l)
+void quotient_basis_wrapper(eval_level l)
 { shared_row L=get<row_value>();
   // and leave Lie type on stack for $Smith\_Cartan$
-  Smith_Cartan_wrapper(expression_base::multi_value);
+  Smith_Cartan_wrapper(eval_level::multi_value);
   shared_value SC_basis = *(execution_stack.end()-2);
   shared_value invf = *(execution_stack.end()-1);
   wrap_tuple<2>(); // |replace_gen| wants as first argument a tuple
 @/push_value(std::move(SC_basis));
   push_value(std::move(invf));
-  filter_units_wrapper(expression_base::multi_value);
+  filter_units_wrapper(eval_level::multi_value);
   shared_vector v=get<vector_value>();
   // and leave $C$ for call to $mm\_prod$
 @)
@@ -671,7 +671,7 @@ void quotient_basis_wrapper(expression_base::level l)
      denominators into the columns of~$M$; also test validity of entries
      against |v|, and |throw| a runtime error for invalid ones @>
   push_value(std::make_shared<matrix_value>(annihilator_modulo(M,d)));
-@/mm_prod_wrapper(expression_base::single_value);
+@/mm_prod_wrapper(eval_level::single_value);
 @/replace_gen_wrapper(l); // pass level parameter to final call
 }
 
@@ -857,7 +857,7 @@ correspondence that |type_of_Cartan_matrix| implements). Everything gets packed
 into a |lietype::Layout| first.
 
 @< Local function def... @>=
-void basic_involution_wrapper(expression_base::level l)
+void basic_involution_wrapper(eval_level l)
 { shared_string str=get<string_value>();
   shared_row perm = get<row_value>();
   shared_Lie_type t=get<Lie_type_value>();
@@ -867,7 +867,7 @@ void basic_involution_wrapper(expression_base::level l)
       << " does not match rank " << t->val.rank() << " of Lie type";
     throw runtime_error(o.str());
   }
-  if (l==expression_base::no_value)
+  if (l==eval_level::no_value)
     return;
 @)
 
@@ -899,7 +899,7 @@ some of the work done here to its situation.
 
 
 @< Local function def... @>=
-void based_involution_wrapper(expression_base::level l)
+void based_involution_wrapper(eval_level l)
 { shared_string s = get<string_value>();
 @/shared_matrix basis = get<matrix_value>();
 @/shared_Lie_type type = get<Lie_type_value>();
@@ -916,7 +916,7 @@ void based_involution_wrapper(expression_base::level l)
         (type->val,checked_inner_class_type(s->val.c_str(),type->val));
   try
   { push_value(std::make_shared<matrix_value>(inv.on_basis(basis->val)));
-    if (l==expression_base::no_value)
+    if (l==eval_level::no_value)
       execution_stack.pop_back(); // we needed testing, but not the result
   }
   catch (std::runtime_error&) // relabel |"Inexact integer division"|
@@ -1202,15 +1202,15 @@ void root_datum_value::print(std::ostream& out) const
 whether the coroots rather than roots were used to determine the root numbering
 (from the stored field) available by wrapper functions.
 @< Local fun...@>=
-void type_of_root_datum_wrapper(expression_base::level l)
+void type_of_root_datum_wrapper(eval_level l)
 { shared_root_datum rd(get<root_datum_value>());
-  if (l!=expression_base::no_value)
+  if (l!=eval_level::no_value)
     push_value(std::make_shared<Lie_type_value>(rd->val.type()));
 }
 
-void coroot_preference_wrapper(expression_base::level l)
+void coroot_preference_wrapper(eval_level l)
 { shared_root_datum rd(get<root_datum_value>());
-  if (l!=expression_base::no_value)
+  if (l!=eval_level::no_value)
     push_value(whether(rd->val.prefer_coroots()));
 }
 
@@ -1227,7 +1227,7 @@ succeed, we must test the ``Cartan'' matrix computed from these data to be a
 valid one.
 
 @< Local function definitions @>=
-void root_datum_wrapper(expression_base::level l)
+void root_datum_wrapper(eval_level l)
 { bool prefer_coroots = get<bool_value>()->val;
 @/shared_matrix simple_coroots=get<matrix_value>();
   shared_matrix simple_roots=get<matrix_value>();
@@ -1249,7 +1249,7 @@ void root_datum_wrapper(expression_base::level l)
 try @/{
   PreRootDatum prd(simple_roots->val,simple_coroots->val,prefer_coroots);
   prd.test_Cartan_matrix();
-  if (l!=expression_base::no_value)
+  if (l!=eval_level::no_value)
     push_value(root_datum_value::build(std::move(prd)));
 }
   catch (error::Cartan_error&)
@@ -1267,7 +1267,7 @@ span at least the root lattice associated to the type. Failure of either
 condition will cause |PreRootDatum::quotient| to throw a |std::runtime_error|.
 
 @< Local function definitions @>=
-void root_datum_from_type_wrapper(expression_base::level l)
+void root_datum_from_type_wrapper(eval_level l)
 { bool prefer_coroots = get<bool_value>()->val;
 @/shared_matrix lattice=get<matrix_value>();
   shared_Lie_type type=get<Lie_type_value>();
@@ -1284,7 +1284,7 @@ void root_datum_from_type_wrapper(expression_base::level l)
 @.Sub-lattice matrix not square...@>
 @.Dependent lattice generators@>
 @.Sub-lattice does not contain...@>
-  if (l!=expression_base::no_value)
+  if (l!=eval_level::no_value)
     push_value(root_datum_value::build(std::move(prd)));
 }
 
@@ -1296,7 +1296,7 @@ construction does this. The call to the |quotient| method may throw the same
 errors as in the previous function.
 
 @< Local function definitions @>=
-void sublattice_root_datum_wrapper(expression_base::level l)
+void sublattice_root_datum_wrapper(eval_level l)
 { shared_matrix lattice=get<matrix_value>();
   shared_root_datum rd=get<root_datum_value>();
   const auto r = rd->val.rank();
@@ -1312,7 +1312,7 @@ void sublattice_root_datum_wrapper(expression_base::level l)
   prd.quotient(lattice->val); // this may |throw| a |std::runtime_error|
 @.Sub-lattice does not contain...@>
 @.Dependent lattice generators@>
-  if (l!=expression_base::no_value)
+  if (l!=eval_level::no_value)
     push_value(root_datum_value::build(std::move(prd)));
 }
 
@@ -1328,9 +1328,9 @@ hand'', namely making sure that all null diagonal entries of~$M$ (which must
 come from torus factors) are replaced by ones.
 
 @< Local function definitions @>=
-void simply_connected_datum_wrapper(expression_base::level l)
+void simply_connected_datum_wrapper(eval_level l)
 { bool prefer_coroots = get<bool_value>()->val;
-  if (l==expression_base::no_value)
+  if (l==eval_level::no_value)
 @/{@; execution_stack.pop_back();
     return;
   } // no possibilities of errors, so avoid useless work
@@ -1338,27 +1338,27 @@ void simply_connected_datum_wrapper(expression_base::level l)
   auto rank =
     force<Lie_type_value>(execution_stack.back().get())->val.rank();
   push_value(std::make_shared<int_value>(rank));
-  id_mat_wrapper(expression_base::single_value);
+  id_mat_wrapper(eval_level::single_value);
   push_value(whether(prefer_coroots));
-@/root_datum_from_type_wrapper(expression_base::single_value);
+@/root_datum_from_type_wrapper(eval_level::single_value);
 }
 @)
-void adjoint_datum_wrapper(expression_base::level l)
+void adjoint_datum_wrapper(eval_level l)
 { bool prefer_coroots = get<bool_value>()->val;
-  if (l==expression_base::no_value)
+  if (l==eval_level::no_value)
 @/{@; execution_stack.pop_back();
     return;
   } // no possibilities of errors, so avoid useless work
 @)
   push_value(execution_stack.back()); // duplicate Lie type argument
-  Cartan_matrix_wrapper(expression_base::single_value);
-  transpose_mat_wrapper(expression_base::single_value);
+  Cartan_matrix_wrapper(eval_level::single_value);
+  transpose_mat_wrapper(eval_level::single_value);
   own_matrix M=get_own<matrix_value>();
   for (unsigned int i=0; i<M->val.n_rows(); ++i)
     if (M->val(i,i)==0) M->val(i,i)=1;
   push_value(std::move(M));
   push_value(whether(prefer_coroots));
-@/root_datum_from_type_wrapper(expression_base::single_value);
+@/root_datum_from_type_wrapper(eval_level::single_value);
 }
 
 
@@ -1367,55 +1367,55 @@ void adjoint_datum_wrapper(expression_base::level l)
 We start with attributes of root data as a whole.
 
 @< Local function definitions @>=
-void root_datum_eq_wrapper (expression_base::level l)
+void root_datum_eq_wrapper (eval_level l)
 { shared_root_datum rd1 = get<root_datum_value>();
   shared_root_datum rd0 = get<root_datum_value>();
-  if (l!=expression_base::no_value)
+  if (l!=eval_level::no_value)
     push_value(whether(rd0.get()==rd1.get())); // compare pointers
 }
-void root_datum_neq_wrapper (expression_base::level l)
+void root_datum_neq_wrapper (eval_level l)
 { shared_root_datum rd1 = get<root_datum_value>();
   shared_root_datum rd0 = get<root_datum_value>();
-  if (l!=expression_base::no_value)
+  if (l!=eval_level::no_value)
     push_value(whether(rd0.get()!=rd1.get())); // compare pointers
 }
 @)
-void datum_Cartan_wrapper(expression_base::level l)
+void datum_Cartan_wrapper(eval_level l)
 { shared_root_datum rd = get<root_datum_value>();
-  if (l==expression_base::no_value)
+  if (l==eval_level::no_value)
     return;
 @)
   push_value(std::make_shared<matrix_value>(rd->val.Cartan_matrix()));
 }
 @)
-void rd_rank_wrapper(expression_base::level l)
+void rd_rank_wrapper(eval_level l)
 { shared_root_datum rd = get<root_datum_value>();
-  if (l!=expression_base::no_value)
+  if (l!=eval_level::no_value)
     push_value(std::make_shared<int_value>(rd->val.rank()));
 }
 @)
-void rd_semisimple_rank_wrapper(expression_base::level l)
+void rd_semisimple_rank_wrapper(eval_level l)
 { shared_root_datum rd = get<root_datum_value>();
-  if (l!=expression_base::no_value)
+  if (l!=eval_level::no_value)
     push_value(std::make_shared<int_value>(rd->val.semisimple_rank()));
 }
 @)
-void rd_nposroots_wrapper(expression_base::level l)
+void rd_nposroots_wrapper(eval_level l)
 { shared_root_datum rd = get<root_datum_value>();
-  if (l!=expression_base::no_value)
+  if (l!=eval_level::no_value)
     push_value(std::make_shared<int_value>(rd->val.numPosRoots()));
 }
 @)
-void two_rho_wrapper(expression_base::level l)
+void two_rho_wrapper(eval_level l)
 { shared_root_datum rd = get<root_datum_value>();
-  if (l!=expression_base::no_value)
-  if (l!=expression_base::no_value)
+  if (l!=eval_level::no_value)
+  if (l!=eval_level::no_value)
     push_value(std::make_shared<vector_value>(rd->val.twoRho()));
 }
-void two_rho_check_wrapper(expression_base::level l)
+void two_rho_check_wrapper(eval_level l)
 { shared_root_datum rd = get<root_datum_value>();
-  if (l!=expression_base::no_value)
-  if (l!=expression_base::no_value)
+  if (l!=eval_level::no_value)
+  if (l!=eval_level::no_value)
     push_value(std::make_shared<vector_value>(rd->val.dual_twoRho()));
 }
 
@@ -1447,19 +1447,19 @@ full list of roots starts at index~$0$ with the most negative roots, we must
 apply a shift by the number of positive roots here.
 
 @< Local function definitions @>=
-void root_wrapper(expression_base::level l)
+void root_wrapper(eval_level l)
 { int root_index = get<int_value>()->int_val();
   shared_root_datum rd(get<root_datum_value>());
   RootNbr alpha = internal_root_index(rd->val,root_index,false);
-  if (l!=expression_base::no_value)
+  if (l!=eval_level::no_value)
      push_value(std::make_shared<vector_value>(rd->val.root(alpha)));
 }
 @)
-void coroot_wrapper(expression_base::level l)
+void coroot_wrapper(eval_level l)
 { int coroot_index = get<int_value>()->int_val();
   shared_root_datum rd(get<root_datum_value>());
   RootNbr alpha = internal_root_index(rd->val,coroot_index,true);
-  if (l!=expression_base::no_value)
+  if (l!=eval_level::no_value)
      push_value(std::make_shared<vector_value>(rd->val.coroot(alpha)));
 }
 
@@ -1484,18 +1484,18 @@ shared_int convert_to_signed_root_index(const RootSystem& rs, RootNbr alpha)
   return std::make_shared<int_value>(sa); // uses signed interpretation
 }
 @)
-void root_index_wrapper(expression_base::level l)
+void root_index_wrapper(eval_level l)
 { shared_vector alpha = get<vector_value>();
   shared_root_datum rd = get<root_datum_value>();
-  if (l!=expression_base::no_value)
+  if (l!=eval_level::no_value)
     push_value(convert_to_signed_root_index
       (rd->val,rd->val.root_index(alpha->val)));
 }
 @)
-void coroot_index_wrapper(expression_base::level l)
+void coroot_index_wrapper(eval_level l)
 { shared_vector alpha_v = get<vector_value>();
   shared_root_datum rd = get<root_datum_value>();
-  if (l!=expression_base::no_value)
+  if (l!=eval_level::no_value)
     push_value
     (convert_to_signed_root_index(rd->val,rd->val.coroot_index(alpha_v->val)));
 }
@@ -1504,19 +1504,19 @@ void coroot_index_wrapper(expression_base::level l)
 roots respectively coroots, and we give the user access to these.
 
 @< Local function definitions @>=
-void root_expression_wrapper(expression_base::level l)
+void root_expression_wrapper(eval_level l)
 { int root_index = get<int_value>()->int_val();
   shared_root_datum rd = get<root_datum_value>();
   RootNbr alpha = internal_root_index(rd->val,root_index,false);
-  if (l!=expression_base::no_value)
+  if (l!=eval_level::no_value)
     push_value(std::make_shared<vector_value>(rd->val.root_expr(alpha)));
 }
 
-void coroot_expression_wrapper(expression_base::level l)
+void coroot_expression_wrapper(eval_level l)
 { int coroot_index = get<int_value>()->int_val();
   shared_root_datum rd = get<root_datum_value>();
   RootNbr alpha = internal_root_index(rd->val,coroot_index,true);
-  if (l!=expression_base::no_value)
+  if (l!=eval_level::no_value)
     push_value(std::make_shared<vector_value>(rd->val.coroot_expr(alpha)));
 }
 
@@ -1527,19 +1527,19 @@ considered short, while for other components a root is long if and only if the
 corresponding coroot is short.
 
 @< Local function def...@>=
-void is_long_root_wrapper(expression_base::level l)
+void is_long_root_wrapper(eval_level l)
 { int root_index = get<int_value>()->int_val();
   shared_root_datum rd = get<root_datum_value>();
   RootNbr alpha = internal_root_index(rd->val,root_index,false);
-  if (l!=expression_base::no_value)
+  if (l!=eval_level::no_value)
     push_value(whether(is_long_root(rd->val,alpha)));
 }
 @)
-void is_long_coroot_wrapper(expression_base::level l)
+void is_long_coroot_wrapper(eval_level l)
 { int coroot_index = get<int_value>()->int_val();
   shared_root_datum rd = get<root_datum_value>();
   RootNbr alpha = internal_root_index(rd->val,coroot_index,true);
-  if (l!=expression_base::no_value)
+  if (l!=eval_level::no_value)
     push_value(whether(is_long_coroot(rd->val,alpha)));
 }
 
@@ -1547,11 +1547,11 @@ void is_long_coroot_wrapper(expression_base::level l)
 its name, works for any positive root index (counting from~$0$).
 
 @< Local function def...@>=
-void root_involution_wrapper(expression_base::level l)
+void root_involution_wrapper(eval_level l)
 { int root_index = get<int_value>()->int_val();
   shared_root_datum rd = get<root_datum_value>();
   RootNbr alpha = internal_root_index(rd->val,root_index,false);
-  if (l==expression_base::no_value)
+  if (l==eval_level::no_value)
     return;
   auto perm = rd->val.simple_root_permutation(rd->val.rt_abs(alpha));
   push_value(std::make_shared<vector_value>(perm.begin(),perm.end()));
@@ -1566,11 +1566,11 @@ the alias |RootNbrSet|), whose coded unsigned values are converted here to the
 signed indexing convention of root systems.
 
 @< Local function def...@>=
-void root_ladder_bottoms_wrapper(expression_base::level l)
+void root_ladder_bottoms_wrapper(eval_level l)
 { int root_index = get<int_value>()->int_val();
   shared_root_datum rd(get<root_datum_value>());
   RootNbr alpha = internal_root_index(rd->val,root_index,false);
-  if (l==expression_base::no_value)
+  if (l==eval_level::no_value)
     return;
 
   const RootNbrSet& bots = rd->val.min_roots_for(alpha);
@@ -1581,11 +1581,11 @@ void root_ladder_bottoms_wrapper(expression_base::level l)
   push_value(std::move(result));
 }
 @)
-void coroot_ladder_bottoms_wrapper(expression_base::level l)
+void coroot_ladder_bottoms_wrapper(eval_level l)
 { int coroot_index = get<int_value>()->int_val();
   shared_root_datum rd(get<root_datum_value>());
   RootNbr alpha = internal_root_index(rd->val,coroot_index,true);
-  if (l==expression_base::no_value)
+  if (l==eval_level::no_value)
     return;
 
   const RootNbrSet& bots = rd->val.min_coroots_for(alpha);
@@ -1602,7 +1602,7 @@ with the simple coroots respectively simple roots are given by the
 Kronecker~$\delta$ (in other words, they form dual bases in within those spans).
 
 @< Local function definitions @>=
-void fundamental_weight_wrapper(expression_base::level l)
+void fundamental_weight_wrapper(eval_level l)
 { int i= get<int_value>()->int_val();
   shared_root_datum rd = get<root_datum_value>();
   if (unsigned(i)>=rd->val.semisimple_rank())
@@ -1610,12 +1610,12 @@ void fundamental_weight_wrapper(expression_base::level l)
     o << "Invalid index " << i;
     throw runtime_error(o.str());
   }
-  if (l!=expression_base::no_value)
+  if (l!=eval_level::no_value)
     push_value(std::make_shared<rational_vector_value> @|
       (rd->val.fundamental_weight(i)));
 }
 @)
-void fundamental_coweight_wrapper(expression_base::level l)
+void fundamental_coweight_wrapper(eval_level l)
 { int i= get<int_value>()->int_val();
   shared_root_datum rd = get<root_datum_value>();
   if (unsigned(i)>=rd->val.semisimple_rank())
@@ -1623,7 +1623,7 @@ void fundamental_coweight_wrapper(expression_base::level l)
     o << "Invalid index " << i;
     throw runtime_error(o.str());
   }
-  if (l!=expression_base::no_value)
+  if (l!=eval_level::no_value)
     push_value(std::make_shared<rational_vector_value> @|
       (rd->val.fundamental_coweight(i)));
 }
@@ -1635,36 +1635,36 @@ to the user program to handle. Our implementation here exploits the by-columns
 extra copying.
 
 @< Local function definitions @>=
-void simple_roots_wrapper(expression_base::level l)
+void simple_roots_wrapper(eval_level l)
 { shared_root_datum rd(get<root_datum_value>());
-  if (l==expression_base::no_value)
+  if (l==eval_level::no_value)
     return;
 @)
   push_value(std::make_shared<matrix_value> @|
     (rd->val.beginSimpleRoot(),rd->val.endSimpleRoot(),rd->val.rank()));
 }
 @)
-void simple_coroots_wrapper(expression_base::level l)
+void simple_coroots_wrapper(eval_level l)
 { shared_root_datum rd(get<root_datum_value>());
-  if (l==expression_base::no_value)
+  if (l==eval_level::no_value)
     return;
 @)
   push_value(std::make_shared<matrix_value> @|
     (rd->val.beginSimpleCoroot(),rd->val.endSimpleCoroot(),rd->val.rank()));
 }
 @)
-void positive_roots_wrapper(expression_base::level l)
+void positive_roots_wrapper(eval_level l)
 { shared_root_datum rd = get<root_datum_value>();
-  if (l==expression_base::no_value)
+  if (l==eval_level::no_value)
     return;
 @)
   push_value(std::make_shared<matrix_value> @|
     (rd->val.beginPosRoot(),rd->val.endPosRoot(),rd->val.rank()));
 }
 @)
-void positive_coroots_wrapper(expression_base::level l)
+void positive_coroots_wrapper(eval_level l)
 { shared_root_datum rd = get<root_datum_value>();
-  if (l==expression_base::no_value)
+  if (l==eval_level::no_value)
     return;
 @)
   push_value(std::make_shared<matrix_value> @|
@@ -1676,9 +1676,9 @@ coradical, and for the sum of the coroot lattice and the radical; the latter
 will in fact be used later in a function to built inner classes.
 
 @< Local function definitions @>=
-void root_coradical_wrapper(expression_base::level l)
+void root_coradical_wrapper(eval_level l)
 { shared_root_datum rd = get<root_datum_value>();
-  if (l==expression_base::no_value)
+  if (l==eval_level::no_value)
     return;
 @)
   std::vector<int_Vector_cref> srl
@@ -1688,9 +1688,9 @@ void root_coradical_wrapper(expression_base::level l)
     (srl.begin(),srl.end(),rd->val.rank()));
 }
 @)
-void coroot_radical_wrapper(expression_base::level l)
+void coroot_radical_wrapper(eval_level l)
 { shared_root_datum rd = get<root_datum_value>();
-  if (l==expression_base::no_value)
+  if (l==eval_level::no_value)
     return;
 @)
   std::vector<int_Vector_cref> scl
@@ -1710,35 +1710,35 @@ weight coordinates is achieved by pairing with the old coroots.
 
 @h "tags.h"
 @< Local function definitions @>=
-void dual_datum_wrapper(expression_base::level l)
+void dual_datum_wrapper(eval_level l)
 { shared_root_datum rd = get<root_datum_value>();
-  if (l!=expression_base::no_value)
+  if (l!=eval_level::no_value)
     push_value(rd->dual());
 }
 @)
-void derived_info_wrapper(expression_base::level l)
+void derived_info_wrapper(eval_level l)
 { shared_root_datum rd = get<root_datum_value>();
-  if (l==expression_base::no_value)
+  if (l==eval_level::no_value)
     return;
 @)
   int_Matrix projector;
   PreRootDatum pre(projector,rd->val,tags::DerivedTag());
   push_value(root_datum_value::build(std::move(pre)));
   push_value(std::make_shared<matrix_value>(projector));
-  if (l==expression_base::single_value)
+  if (l==eval_level::single_value)
     wrap_tuple<2>();
 }
 @)
-void mod_central_torus_info_wrapper(expression_base::level l)
+void mod_central_torus_info_wrapper(eval_level l)
 { shared_root_datum rd = get<root_datum_value>();
-  if (l==expression_base::no_value)
+  if (l==eval_level::no_value)
     return;
 @)
   int_Matrix injector;
   PreRootDatum pre(injector,rd->val,tags::CoderivedTag());
   push_value(root_datum_value::build(std::move(pre)));
   push_value(std::make_shared<matrix_value>(injector));
-  if (l==expression_base::single_value)
+  if (l==eval_level::single_value)
     wrap_tuple<2>();
 }
 
@@ -1746,7 +1746,7 @@ void mod_central_torus_info_wrapper(expression_base::level l)
 by selecting coroots taking integral values on a given rational weight vector.
 
 @< Local function definitions @>=
-void integrality_datum_wrapper(expression_base::level l)
+void integrality_datum_wrapper(eval_level l)
 { shared_rational_vector lambda = get<rational_vector_value>();
   shared_root_datum rd = get<root_datum_value>();
   if (lambda->val.size()!=rd->val.rank())
@@ -1756,7 +1756,7 @@ void integrality_datum_wrapper(expression_base::level l)
     throw runtime_error(o.str());
   }
 @.Length of rational vector...@>
-  if (l!=expression_base::no_value)
+  if (l!=eval_level::no_value)
   @/push_value(root_datum_value::build @|
       (rootdata::integrality_predatum(rd->val,lambda->val)));
 }
@@ -1765,7 +1765,7 @@ void integrality_datum_wrapper(expression_base::level l)
 the integral system without constructing the full integrality datum.
 
 @< Local function definitions @>=
-void integrality_rank_wrapper(expression_base::level l)
+void integrality_rank_wrapper(eval_level l)
 { shared_rational_vector lambda = get<rational_vector_value>();
   shared_root_datum rd = get<root_datum_value>();
   if (lambda->val.size()!=rd->val.rank())
@@ -1775,12 +1775,12 @@ void integrality_rank_wrapper(expression_base::level l)
     throw runtime_error(o.str());
   }
 @.Length of rational vector...@>
-  if (l!=expression_base::no_value)
+  if (l!=eval_level::no_value)
     push_value(std::make_shared<int_value>
       (rootdata::integrality_rank(rd->val,lambda->val)));
 }
 @)
-void is_integrally_dominant_wrapper(expression_base::level l)
+void is_integrally_dominant_wrapper(eval_level l)
 { shared_rational_vector lambda = get<rational_vector_value>();
   shared_root_datum rd = get<root_datum_value>();
   if (lambda->val.size()!=rd->val.rank())
@@ -1790,7 +1790,7 @@ void is_integrally_dominant_wrapper(expression_base::level l)
     throw runtime_error(o.str());
   }
 @.Length of rational vector...@>
-  if (l==expression_base::no_value)
+  if (l==eval_level::no_value)
     return;
   PreRootDatum ipd = rootdata::integrality_predatum(rd->val,lambda->val);
   for (unsigned int j=0; j<ipd.semisimple_rank(); ++j)
@@ -1805,7 +1805,7 @@ void is_integrally_dominant_wrapper(expression_base::level l)
 set of roots with integrality is non-empty.
 
 @< Local function definitions @>=
-void integrality_points_wrapper(expression_base::level l)
+void integrality_points_wrapper(eval_level l)
 { shared_rational_vector lambda = get<rational_vector_value>();
   shared_root_datum rd = get<root_datum_value>();
   if (lambda->val.size()!=rd->val.rank())
@@ -1815,7 +1815,7 @@ void integrality_points_wrapper(expression_base::level l)
     throw runtime_error(o.str());
   }
 @.Length of rational vector...@>
-  if (l==expression_base::no_value)
+  if (l==eval_level::no_value)
     return;
 @)
   RatNumList ipl = rootdata::integrality_points(rd->val,lambda->val);
@@ -1838,31 +1838,31 @@ built-in functions the distinction between the two variants will in each case
 again be determined by the order of the arguments.
 
 @< Local function definitions @>=
-void Weyl_orbit_wrapper(expression_base::level l)
+void Weyl_orbit_wrapper(eval_level l)
 {
   shared_vector v = get<vector_value>();
   shared_root_datum rd = get<root_datum_value>();
-  if (l==expression_base::no_value)
+  if (l==eval_level::no_value)
     return;
 @)
   push_value(std::make_shared<matrix_value>(Weyl_orbit(rd->val,v->val)));
 }
 @)
-void Weyl_coorbit_wrapper(expression_base::level l)
+void Weyl_coorbit_wrapper(eval_level l)
 {
   shared_root_datum rd = get<root_datum_value>();
   shared_vector v = get<vector_value>();
-  if (l==expression_base::no_value)
+  if (l==eval_level::no_value)
     return;
 @)
   push_value(std::make_shared<matrix_value>(Weyl_orbit(v->val,rd->val)));
 }
 
-void Weyl_orbit_ws_wrapper(expression_base::level l)
+void Weyl_orbit_ws_wrapper(eval_level l)
 {
   shared_vector v = get<vector_value>();
   shared_root_datum rd = get<root_datum_value>();
-  if (l==expression_base::no_value)
+  if (l==eval_level::no_value)
     return;
 @)
   const auto& ws = Weyl_orbit_words(rd->val, rd->W(), v->val);
@@ -1873,11 +1873,11 @@ void Weyl_orbit_ws_wrapper(expression_base::level l)
   push_value(std::move(result));
 }
 @)
-void Weyl_coorbit_ws_wrapper(expression_base::level l)
+void Weyl_coorbit_ws_wrapper(eval_level l)
 {
   shared_root_datum rd = get<root_datum_value>();
   shared_vector v = get<vector_value>();
-  if (l==expression_base::no_value)
+  if (l==eval_level::no_value)
     return;
 @)
   const auto& ws = Weyl_orbit_words(v->val, rd->val, rd->W());
@@ -1895,10 +1895,10 @@ use this only when the distinguished involution is the one defining our inner
 class, we use an argument of type |InnerClass|.
 
 @< Local function def...@>=
-void cofolded_wrapper(expression_base::level l)
+void cofolded_wrapper(eval_level l)
 {
   const auto& ic = get<inner_class_value>();
-  if (l!=expression_base::no_value)
+  if (l!=eval_level::no_value)
     push_value(root_datum_value::copy(ic->val.cofolded_datum()));
 }
 
@@ -1910,7 +1910,7 @@ algorithm.
 @h "alcoves.h"
 
 @< Local function def...@>=
-void walls_wrapper(expression_base::level l)
+void walls_wrapper(eval_level l)
 {
   shared_rational_vector gamma = get<rational_vector_value>();
   shared_root_datum rd = get<root_datum_value>();
@@ -1920,7 +1920,7 @@ void walls_wrapper(expression_base::level l)
       << gamma->val.size() << ':' << rd->val.rank();
     throw runtime_error(o.str());
   }
-  if (l==expression_base::no_value)
+  if (l==eval_level::no_value)
     return;
 @)
   RootNbrSet integrals,walls = weyl::wall_set(rd->val,gamma->val,integrals);
@@ -1939,14 +1939,14 @@ void walls_wrapper(expression_base::level l)
       roots->val.push_back(convert_to_signed_root_index(rd->val,alpha));
   push_value(std::move(roots));
   push_value(std::make_shared<int_value>(integrals.size()));
-  if (l==expression_base::single_value)
+  if (l==eval_level::single_value)
     wrap_tuple<2>();
 }
 @)
-void alcove_center_wrapper(expression_base::level l)
+void alcove_center_wrapper(eval_level l)
 {
   shared_module_parameter p = get<module_parameter_value>();
-  if (l!=expression_base::no_value)
+  if (l!=eval_level::no_value)
     push_value(std::make_shared<module_parameter_value> @|
       (p->rf,weyl::alcove_center(p->rc(),p->val)));
 }
@@ -1958,7 +1958,7 @@ from an alcove, then the alcove can be obtained from $w(FA)$ by a translation
 (not necessarily by an element of the root lattice).
 
 @< Local function definitions @>=
-void walls_attitude_wrapper (expression_base::level l)
+void walls_attitude_wrapper (eval_level l)
 {
   shared_row walls_list = get<row_value>();
   shared_root_datum rd = get<root_datum_value>();
@@ -1984,7 +1984,7 @@ void walls_attitude_wrapper (expression_base::level l)
       << rd->val.fundamental_alcove_walls().size();
     throw runtime_error(o.str());
   }
-  if (l!=expression_base::no_value)
+  if (l!=eval_level::no_value)
     push_value(std::make_shared<W_elt_value> @|
      (rd,rd->W().element(weyl::from_fundamental_alcove(rd->val,walls))));
 }
@@ -1992,7 +1992,7 @@ void walls_attitude_wrapper (expression_base::level l)
 @ One interesting property of alcoves is that (projected to the rational span of
 the root system) they have exactly one vertex that is in the root lattice.
 @< Local function definitions @>=
-void alcove_root_vertex_wrapper (expression_base::level l)
+void alcove_root_vertex_wrapper (eval_level l)
 {
   shared_rational_vector gamma = get<rational_vector_value>();
   shared_root_datum rd = get<root_datum_value>();
@@ -2002,7 +2002,7 @@ void alcove_root_vertex_wrapper (expression_base::level l)
       << gamma->val.size() << ':' << rd->val.rank();
     throw runtime_error(o.str());
   }
-  if (l==expression_base::no_value)
+  if (l==eval_level::no_value)
     return;
   push_value(std::make_shared<vector_value> @|
     (weyl::root_vertex_of_alcove(rd->val,gamma->val)));
@@ -2012,7 +2012,7 @@ void alcove_root_vertex_wrapper (expression_base::level l)
 fact enumerating quotients of pseudo-Levi subgroups.
 
 @< Local function definitions @>=
-void basic_orbit_ws_wrapper(expression_base::level l)
+void basic_orbit_ws_wrapper(eval_level l)
 {
   unsigned int stab_rank = get<int_value>()->uint_val();
   shared_row v = get<row_value>();
@@ -2023,7 +2023,7 @@ void basic_orbit_ws_wrapper(expression_base::level l)
   @< Check validity of root indices in |v->val| and the absence acute angles
      among them; store internal number for its entry at |stab_rank| in |final|,
      and the set of its earlier entries in |stab| @>
-  if (l==expression_base::no_value)
+  if (l==eval_level::no_value)
     return;
 @)
   bool to_affine_orbit=false;
@@ -2041,7 +2041,7 @@ void basic_orbit_ws_wrapper(expression_base::level l)
   push_value(std::move(result));
 }
 @)
-void affine_orbit_ws_wrapper(expression_base::level l)
+void affine_orbit_ws_wrapper(eval_level l)
 {
   shared_rational_vector gamma = get<rational_vector_value>();
   shared_root_datum rd = get<root_datum_value>();
@@ -2051,7 +2051,7 @@ void affine_orbit_ws_wrapper(expression_base::level l)
       << rd->val.rank() << ':' << gamma->val.size();
     throw runtime_error(o.str());
   }
-  if (l==expression_base::no_value)
+  if (l==eval_level::no_value)
     return;
 @)
   auto ws = weyl::affine_orbit_ws(rd->val,rd->W(),gamma->val);
@@ -2120,7 +2120,7 @@ a finite computation by working modulo the root lattice.
 given one in the fundamental alcove, without invoking |affine_orbit_ws|.
 
 @< Local function definitions @>=
-void FPP_numers_wrapper(expression_base::level l)
+void FPP_numers_wrapper(eval_level l)
 {
   shared_rational_vector gamma = get<rational_vector_value>();
   shared_root_datum rd = get<root_datum_value>();
@@ -2141,7 +2141,7 @@ void FPP_numers_wrapper(expression_base::level l)
       throw runtime_error(o.str());
     }
   }
-  if (l==expression_base::no_value)
+  if (l==eval_level::no_value)
     return;
 @)
   auto L = weyl::FPP_orbit_numers(rd->val,rd->W(),gamma->val);
@@ -2157,7 +2157,7 @@ void FPP_numers_wrapper(expression_base::level l)
 given one in the fundamental alcove, without invoking |affine_orbit_ws|.
 
 @< Local function definitions @>=
-void FPP_w_shifts_wrapper(expression_base::level l)
+void FPP_w_shifts_wrapper(eval_level l)
 {
   shared_rational_vector gamma = get<rational_vector_value>();
   shared_root_datum rd = get<root_datum_value>();
@@ -2178,7 +2178,7 @@ void FPP_w_shifts_wrapper(expression_base::level l)
       throw runtime_error(o.str());
     }
   }
-  if (l==expression_base::no_value)
+  if (l==eval_level::no_value)
     return;
 @)
   auto L = weyl::FPP_w_shifts(rd->val,rd->W(),gamma->val);
@@ -2359,11 +2359,11 @@ WeylWord check_Weyl_word(const row_value& r, unsigned int rank)
   return result;
 }
 @)
-void W_elt_wrapper(expression_base::level l)
+void W_elt_wrapper(eval_level l)
 { shared_row r = get<row_value>();
   shared_root_datum rd = get<root_datum_value>();
   auto ww=check_Weyl_word(*r,rd->val.semisimple_rank());
-  if (l!=expression_base::no_value)
+  if (l!=eval_level::no_value)
     push_value(std::make_shared<W_elt_value>(rd,rd->W().element(ww)));
 }
 
@@ -2372,9 +2372,9 @@ extract the root datum it was built from, to find its length, to and test for
 equality.
 
 @< Local function def... @>=
-void W_word_wrapper(expression_base::level l)
+void W_word_wrapper(eval_level l)
 { shared_W_elt w = get<W_elt_value>();
-  if (l==expression_base::no_value)
+  if (l==eval_level::no_value)
     return;
 @)
   auto word = w->W.word(w->val);
@@ -2382,49 +2382,49 @@ void W_word_wrapper(expression_base::level l)
   push_value(vector_to_row(wv));
 }
 @)
-void datum_from_W_elt_wrapper(expression_base::level l)
+void datum_from_W_elt_wrapper(eval_level l)
 { shared_W_elt w = get<W_elt_value>();
-  if (l!=expression_base::no_value)
+  if (l!=eval_level::no_value)
     push_value(w->rd);
 }
 @)
-void W_length_wrapper(expression_base::level l)
+void W_length_wrapper(eval_level l)
 { shared_W_elt w = get<W_elt_value>();
-  if (l!=expression_base::no_value)
+  if (l!=eval_level::no_value)
     push_value(std::make_shared<int_value>(w->W.length(w->val)));
 }
 @)
 void W_elt_unary_eq_wrapper
-(expression_base::level l)
+(eval_level l)
 { shared_W_elt w = get<W_elt_value>();
-  if (l!=expression_base::no_value)
+  if (l!=eval_level::no_value)
     push_value(whether(w->val==WeylElt()));
 }
 void W_elt_unary_neq_wrapper
-(expression_base::level l)
+(eval_level l)
 { shared_W_elt w = get<W_elt_value>();
-  if (l!=expression_base::no_value)
+  if (l!=eval_level::no_value)
     push_value(whether(w->val!=WeylElt()));
 }
 @)
 void W_elt_eq_wrapper
-(expression_base::level l)
+(eval_level l)
 { shared_W_elt w1 = get<W_elt_value>();
   shared_W_elt w0 = get<W_elt_value>();
   if (&w0->W!=&w1->W)
     throw runtime_error("Weyl group mismatch");
 @.Weyl group mismatch@>
-  if (l!=expression_base::no_value)
+  if (l!=eval_level::no_value)
     push_value(whether(w0->val==w1->val));
 }
 void W_elt_neq_wrapper
-(expression_base::level l)
+(eval_level l)
 { shared_W_elt w1 = get<W_elt_value>();
   shared_W_elt w0 = get<W_elt_value>();
   if (&w0->W!=&w1->W)
     throw runtime_error("Weyl group mismatch");
 @.Weyl group mismatch@>
-  if (l!=expression_base::no_value)
+  if (l!=eval_level::no_value)
     push_value(whether(w0->val!=w1->val));
 }
 
@@ -2432,22 +2432,22 @@ void W_elt_neq_wrapper
 take their inverse.
 
 @< Local function def... @>=
-void W_elt_prod_wrapper(expression_base::level l)
+void W_elt_prod_wrapper(eval_level l)
 { shared_W_elt w1 = get<W_elt_value>();
   own_W_elt w0 = get_own<W_elt_value>();
   if (&w0->W!=&w1->W)
     throw runtime_error("Weyl group mismatch");
 @.Weyl group mismatch@>
-  if (l==expression_base::no_value)
+  if (l==eval_level::no_value)
     return;
 @)
   w0->W.mult(w0->val,w1->val);
   push_value(std::move(w0));
 }
 
-void W_elt_invert_wrapper(expression_base::level l)
+void W_elt_invert_wrapper(eval_level l)
 { own_W_elt w = get_own<W_elt_value>();
-  if (l==expression_base::no_value)
+  if (l==eval_level::no_value)
     return;
 @)
   w->W.invert(w->val);
@@ -2468,44 +2468,44 @@ void check_Weyl_gen(int s, unsigned int rank)
   }
 }
 @)
-void W_elt_gen_prod_wrapper(expression_base::level l)
+void W_elt_gen_prod_wrapper(eval_level l)
 { auto s = get<int_value>()->int_val();
   own_W_elt w = get_own<W_elt_value>();
   check_Weyl_gen(s,w->W.rank());
-  if (l==expression_base::no_value)
+  if (l==eval_level::no_value)
     return;
 @)
   w->W.mult(w->val,s);
   push_value(std::move(w));
 }
 @)
-void W_gen_elt_prod_wrapper(expression_base::level l)
+void W_gen_elt_prod_wrapper(eval_level l)
 { own_W_elt w = get_own<W_elt_value>();
   auto s = get<int_value>()->int_val();
   check_Weyl_gen(s,w->W.rank());
-  if (l==expression_base::no_value)
+  if (l==eval_level::no_value)
     return;
 @)
   w->W.left_multiply(w->val,s);
   push_value(std::move(w));
 }
 
-void W_elt_word_prod_wrapper(expression_base::level l)
+void W_elt_word_prod_wrapper(eval_level l)
 { shared_row r = get<row_value>();
   own_W_elt w = get_own<W_elt_value>();
   auto ww=check_Weyl_word(*r,w->W.rank());
-  if (l==expression_base::no_value)
+  if (l==eval_level::no_value)
     return;
 @)
   w->W.mult(w->val,ww);
   push_value(std::move(w));
 }
 @)
-void W_word_elt_prod_wrapper(expression_base::level l)
+void W_word_elt_prod_wrapper(eval_level l)
 { own_W_elt w = get_own<W_elt_value>();
   shared_row r = get<row_value>();
   auto ww=check_Weyl_word(*r,w->W.rank());
-  if (l==expression_base::no_value)
+  if (l==eval_level::no_value)
     return;
 @)
   w->W.left_multiply(w->val,ww);
@@ -2517,7 +2517,7 @@ group elements act on weights and on coweights, and we can convert between them
 and (appropriate) square matrices.
 
 @< Local function def... @>=
-void W_elt_weight_prod_wrapper(expression_base::level l)
+void W_elt_weight_prod_wrapper(eval_level l)
 { own_vector v = get_own<vector_value>();
   shared_W_elt w = get<W_elt_value>();
   const auto& rd = w->rd->val;
@@ -2527,13 +2527,13 @@ void W_elt_weight_prod_wrapper(expression_base::level l)
       << rd.rank() << ':' << v->val.size();
     throw runtime_error(o.str());
   }
-  if (l!=expression_base::no_value)
+  if (l!=eval_level::no_value)
   @/{@;
     w->W.act(rd,w->val,v->val);
     push_value(std::move(v));
   }
 }
-void coweight_W_elt_prod_wrapper(expression_base::level l)
+void coweight_W_elt_prod_wrapper(eval_level l)
 { shared_W_elt w = get<W_elt_value>();
   own_vector v = get_own<vector_value>();
   const auto& rd = w->rd->val;
@@ -2543,7 +2543,7 @@ void coweight_W_elt_prod_wrapper(expression_base::level l)
       <<  v->val.size() << ':' << rd.rank();
     throw runtime_error(o.str());
   }
-  if (l!=expression_base::no_value)
+  if (l!=eval_level::no_value)
   @/{@;
     w->W.co_act(rd,v->val,w->val);
     push_value(std::move(v));
@@ -2559,7 +2559,7 @@ nature, and that the Weyl word has an opposite interpretation to the first case,
 we inverse argument and result order here.
 
 @< Local function def... @>=
-void W_decompose_wrapper(expression_base::level l)
+void W_decompose_wrapper(eval_level l)
 { own_vector v = get_own<vector_value>();
   shared_root_datum rd = get<root_datum_value>();
   if (v->val.size()!=rd->val.rank())
@@ -2568,17 +2568,17 @@ void W_decompose_wrapper(expression_base::level l)
       << rd->val.rank() << ':' << v->val.size();
     throw runtime_error(o.str());
   }
-  if (l==expression_base::no_value)
+  if (l==eval_level::no_value)
     return;
 @)
   auto ww = rd->val.factor_dominant(v->val);
 @/push_value(std::make_shared<W_elt_value>(rd,rd->W().element(ww)));
   push_value(std::move(v));
-  if (l==expression_base::single_value)
+  if (l==eval_level::single_value)
     wrap_tuple<2>();
 }
 @)
-void W_codecompose_wrapper(expression_base::level l)
+void W_codecompose_wrapper(eval_level l)
 { shared_root_datum rd = get<root_datum_value>();
   own_vector v = get_own<vector_value>();
   if (v->val.size()!=rd->val.rank())
@@ -2587,13 +2587,13 @@ void W_codecompose_wrapper(expression_base::level l)
       <<  v->val.size() << ':' << rd->val.rank();
     throw runtime_error(o.str());
   }
-  if (l==expression_base::no_value)
+  if (l==eval_level::no_value)
     return;
 @)
   auto ww = rd->val.factor_codominant(v->val);
 @/push_value(std::move(v));
   push_value(std::make_shared<W_elt_value>(rd,rd->W().element(ww)));
-  if (l==expression_base::single_value)
+  if (l==eval_level::single_value)
     wrap_tuple<2>();
 }
 
@@ -2602,10 +2602,10 @@ roots, thanks to the method |RootSystem::permuted_root|, which taps directly
 into the stored tables of root permutations for (simple) root reflections.
 
 @< Local function def...@>=
-void root_permutation_wrapper(expression_base::level l)
+void root_permutation_wrapper(eval_level l)
 { shared_W_elt w = get<W_elt_value>();
   const RootSystem& rs = w->rd->val;
-  if (l==expression_base::no_value)
+  if (l==eval_level::no_value)
     return;
   const auto ww = w->W.word(w->val);
   int_Vector result(rs.numRoots());
@@ -2695,19 +2695,19 @@ by |tori::classify|.
 @f delta nullptr
 
 @< Local function def...@>=
-void classify_wrapper(expression_base::level l)
+void classify_wrapper(eval_level l)
 { shared_matrix M(get<matrix_value>());
   const auto& delta=M->val;
   const auto r = delta.n_rows();
   @< Check that |delta| is an $r\times{r}$ matrix defining an involution @>
-  if (l==expression_base::no_value)
+  if (l==eval_level::no_value)
     return;
 @)
   const auto ranks = tori::classify(delta);
   push_value(std::make_shared<int_value>(std::get<0>(ranks))); // compact rank
   push_value(std::make_shared<int_value>(std::get<1>(ranks))); // C rank
   push_value(std::make_shared<int_value>(std::get<2>(ranks))); // split rank
-  if (l==expression_base::single_value)
+  if (l==eval_level::single_value)
     wrap_tuple<3>();
 }
 
@@ -3184,12 +3184,12 @@ directly into the |InnerClass|. Using that constructor here would be cumbersome
 and even less efficient then copying the existing root datum.
 
 @< Local function def...@>=
-void fix_involution_wrapper(expression_base::level l)
+void fix_involution_wrapper(eval_level l)
 { LatticeMatrix M(get<matrix_value>()->val);
     // copy construct, safely using temporary
   shared_root_datum rd = get<root_datum_value>();
   auto ic_value = inner_class_value::build(rd,M); // build and check
-  if (l!=expression_base::no_value)
+  if (l!=eval_level::no_value)
     push_value(std::move(ic_value));
 }
 
@@ -3198,17 +3198,17 @@ second value, which is the twisted involution corresponding in the inner class
 to the given involution matrix.
 
 @< Local function def...@>=
-void twisted_involution_wrapper(expression_base::level l)
+void twisted_involution_wrapper(eval_level l)
 { LatticeMatrix M(get<matrix_value>()->val);
   shared_root_datum rd = get<root_datum_value>();
   WeylWord ww;
   auto ic_value = inner_class_value::build(rd,M,&ww); // build and check
-  if (l==expression_base::no_value)
+  if (l==eval_level::no_value)
     return;
 @)
   push_value(std::make_shared<W_elt_value>(rd,rd->W().element(ww)));
   push_value(std::move(ic_value));
-  if (l==expression_base::single_value)
+  if (l==eval_level::single_value)
     wrap_tuple<2>();
 }
 
@@ -3220,43 +3220,43 @@ by simple pointer comparison), recover the ingredients that were used in the
 construction, and the final one constructs the dual inner class.
 
 @< Local function def...@>=
-void inner_class_eq_wrapper(expression_base::level l)
+void inner_class_eq_wrapper(eval_level l)
 { shared_inner_class G = get<inner_class_value>();
   shared_inner_class H = get<inner_class_value>();
-  if (l!=expression_base::no_value)
+  if (l!=eval_level::no_value)
     push_value(whether(G.get()==H.get())); // test identical objects
 }
-void inner_class_neq_wrapper(expression_base::level l)
+void inner_class_neq_wrapper(eval_level l)
 { shared_inner_class G = get<inner_class_value>();
   shared_inner_class H = get<inner_class_value>();
-  if (l!=expression_base::no_value)
+  if (l!=eval_level::no_value)
     push_value(whether(G.get()!=H.get())); // test identical objects
 }
 
 @)
-void distinguished_involution_wrapper(expression_base::level l)
+void distinguished_involution_wrapper(eval_level l)
 { shared_inner_class G = get<inner_class_value>();
-  if (l!=expression_base::no_value)
+  if (l!=eval_level::no_value)
     push_value(std::make_shared<matrix_value>(G->val.distinguished()));
 }
 @)
-void root_datum_of_inner_class_wrapper(expression_base::level l)
+void root_datum_of_inner_class_wrapper(eval_level l)
 { shared_inner_class G = get<inner_class_value>();
-  if (l!=expression_base::no_value)
+  if (l!=eval_level::no_value)
     push_value(G->datum);
 }
-void dual_datum_of_inner_class_wrapper(expression_base::level l)
+void dual_datum_of_inner_class_wrapper(eval_level l)
 { shared_inner_class G = get<inner_class_value>();
-  if (l!=expression_base::no_value)
+  if (l!=eval_level::no_value)
     push_value(G->dual_datum);
 }
 @)
 void inner_class_to_root_datum_coercion()
-{@; root_datum_of_inner_class_wrapper(expression_base::single_value); }
+{@; root_datum_of_inner_class_wrapper(eval_level::single_value); }
 @)
-void dual_inner_class_wrapper(expression_base::level l)
+void dual_inner_class_wrapper(eval_level l)
 { shared_inner_class G = get<inner_class_value>();
-  if (l!=expression_base::no_value)
+  if (l!=eval_level::no_value)
     push_value(G->dual());
 }
 
@@ -3275,15 +3275,15 @@ void push_name_list(const output::FormNumberMap& interface)
   push_value(std::move(result));
 }
 @)
-void form_names_wrapper(expression_base::level l)
+void form_names_wrapper(eval_level l)
 { shared_inner_class G = get<inner_class_value>();
-  if (l!=expression_base::no_value)
+  if (l!=eval_level::no_value)
     push_name_list(G->interface);
 }
 @)
-void dual_form_names_wrapper(expression_base::level l)
+void dual_form_names_wrapper(eval_level l)
 { shared_inner_class G = get<inner_class_value>();
-  if (l!=expression_base::no_value)
+  if (l!=eval_level::no_value)
     push_name_list(G->dual_interface);
 }
 
@@ -3292,21 +3292,21 @@ although the former two could be computed as the lengths of the list of (dual)
 form names.
 
 @< Local function def...@>=
-void n_real_forms_wrapper(expression_base::level l)
+void n_real_forms_wrapper(eval_level l)
 { shared_inner_class G = get<inner_class_value>();
-  if (l!=expression_base::no_value)
+  if (l!=eval_level::no_value)
     push_value(std::make_shared<int_value>(G->val.numRealForms()));
 }
 @)
-void n_dual_real_forms_wrapper(expression_base::level l)
+void n_dual_real_forms_wrapper(eval_level l)
 { shared_inner_class G = get<inner_class_value>();
-  if (l!=expression_base::no_value)
+  if (l!=eval_level::no_value)
     push_value(std::make_shared<int_value>(G->val.numDualRealForms()));
 }
 @)
-void n_Cartan_classes_wrapper(expression_base::level l)
+void n_Cartan_classes_wrapper(eval_level l)
 { shared_inner_class G = get<inner_class_value>();
-  if (l!=expression_base::no_value)
+  if (l!=eval_level::no_value)
     push_value(std::make_shared<int_value>(G->val.numCartanClasses()));
 }
 
@@ -3321,9 +3321,9 @@ actual computation of the block feasible. However, we also provide a function
 the computes a single block size as an unbounded integer.
 
 @< Local function def...@>=
-void block_sizes_wrapper(expression_base::level l)
+void block_sizes_wrapper(eval_level l)
 { shared_inner_class G = get<inner_class_value>();
-  if (l==expression_base::no_value)
+  if (l==eval_level::no_value)
     return;
 @)
   own_matrix M = std::make_shared<matrix_value> @|
@@ -3335,7 +3335,7 @@ void block_sizes_wrapper(expression_base::level l)
   push_value(std::move(M));
 }
 
-void block_size_wrapper(expression_base::level l)
+void block_size_wrapper(eval_level l)
 { auto j = get<int_value>()->val.ulong_val();
   auto i = get<int_value>()->val.ulong_val();
   shared_inner_class G = get<inner_class_value>();
@@ -3349,7 +3349,7 @@ void block_size_wrapper(expression_base::level l)
     o << "Dual real form number " << j << " out of bounds";
     throw runtime_error(o.str());
   }
-  if (l!=expression_base::no_value)
+  if (l!=eval_level::no_value)
     push_value(std::make_shared<int_value> @|
       (G->val.block_size(G->interface.in(i),G->dual_interface.in(j))));
 }
@@ -3359,9 +3359,9 @@ classes for various real forms. The rows will be indexed by real forms, and
 the columns by Cartan classes (note the alliteration).
 
 @< Local function def...@>=
-void occurrence_matrix_wrapper(expression_base::level l)
+void occurrence_matrix_wrapper(eval_level l)
 { shared_inner_class G = get<inner_class_value>();
-  if (l==expression_base::no_value)
+  if (l==eval_level::no_value)
     return;
 @)
   unsigned int nr=G->val.numRealForms();
@@ -3379,9 +3379,9 @@ void occurrence_matrix_wrapper(expression_base::level l)
 |dualCartanSet| for |InnerClass| in order to be able to write this function.
 
 @< Local function def...@>=
-void dual_occurrence_matrix_wrapper(expression_base::level l)
+void dual_occurrence_matrix_wrapper(eval_level l)
 { shared_inner_class G = get<inner_class_value>();
-  if (l==expression_base::no_value)
+  if (l==eval_level::no_value)
     return;
 @)
   unsigned int nr=G->val.numDualRealForms();
@@ -3583,7 +3583,7 @@ inner class; of course the opposite conversion applies here.
 As a special case we also provide the quasisplit form.
 
 @< Local function def...@>=
-void real_form_wrapper(expression_base::level l)
+void real_form_wrapper(eval_level l)
 { int i = get<int_value>()->int_val();
   shared_inner_class G = get<inner_class_value>();
   if (static_cast<unsigned int>(i)>=G->val.numRealForms())
@@ -3592,20 +3592,20 @@ void real_form_wrapper(expression_base::level l)
     throw runtime_error(o.str());
   }
 @.Illegal real form number@>
-  if (l!=expression_base::no_value)
+  if (l!=eval_level::no_value)
     push_value(real_form_value::build(G,G->interface.in(i)));
 }
 @)
-void form_number_wrapper(expression_base::level l)
+void form_number_wrapper(eval_level l)
 { shared_real_form rf= get<real_form_value>();
-  if (l!=expression_base::no_value)
+  if (l!=eval_level::no_value)
     push_value(std::make_shared<int_value>@|
       (rf->ic_ptr->interface.out(rf->val.realForm())));
 }
 @)
-void quasisplit_form_wrapper(expression_base::level l)
+void quasisplit_form_wrapper(eval_level l)
 { shared_inner_class G = get<inner_class_value>();
-  if (l!=expression_base::no_value)
+  if (l!=eval_level::no_value)
     push_value(real_form_value::build(G,G->val.quasisplit()));
 }
 
@@ -3615,9 +3615,9 @@ From a real reductive group we can go back to its inner class or root datum;
 the former is obtained by just copying the stored shared pointer |ic_ptr|.
 
 @< Local function def...@>=
-void inner_class_of_real_form_wrapper(expression_base::level l)
+void inner_class_of_real_form_wrapper(eval_level l)
 { shared_real_form rf= get<real_form_value>();
-  if (l!=expression_base::no_value)
+  if (l!=eval_level::no_value)
     push_value(rf->ic_ptr);
 }
 
@@ -3634,18 +3634,18 @@ of a real reductive group: it returns the rank~$r$ such that the component
 group is isomorphic to $(\Zee/2\Zee)^r$.
 
 @< Local function def...@>=
-void components_rank_wrapper(expression_base::level l)
+void components_rank_wrapper(eval_level l)
 { shared_real_form R= get<real_form_value>();
-  if (l!=expression_base::no_value)
+  if (l!=eval_level::no_value)
     push_value(std::make_shared<int_value>(R->val.dualComponentReps().size()));
 }
 
 @ And here is one that counts the number of Cartan classes for the real form.
 
 @< Local function def...@>=
-void count_Cartans_wrapper(expression_base::level l)
+void count_Cartans_wrapper(eval_level l)
 { shared_real_form rf= get<real_form_value>();
-  if (l!=expression_base::no_value)
+  if (l!=eval_level::no_value)
     push_value(std::make_shared<int_value>(rf->val.numCartan()));
 }
 
@@ -3653,9 +3653,9 @@ void count_Cartans_wrapper(expression_base::level l)
 form.
 
 @< Local function def...@>=
-void KGB_size_wrapper(expression_base::level l)
+void KGB_size_wrapper(eval_level l)
 { shared_real_form rf= get<real_form_value>();
-  if (l!=expression_base::no_value)
+  if (l!=eval_level::no_value)
     push_value(std::make_shared<int_value>(rf->val.KGB_size()));
 }
 
@@ -3687,15 +3687,15 @@ real from other ones in the same square class (which share the same
 |base_grading_vector|).
 
 @< Local function def...@>=
-void base_grading_vector_wrapper(expression_base::level l)
+void base_grading_vector_wrapper(eval_level l)
 { shared_real_form rf= get<real_form_value>();
-  if (l!=expression_base::no_value)
+  if (l!=eval_level::no_value)
     push_value(std::make_shared<rational_vector_value>(rf->val.g_rho_check()));
 }
 
-void initial_torus_bits_wrapper(expression_base::level l)
+void initial_torus_bits_wrapper(eval_level l)
 { shared_real_form rf= get<real_form_value>();
-  if (l!=expression_base::no_value)
+  if (l!=eval_level::no_value)
     push_value(std::make_shared<vector_value> @|
       (int_Vector(rf->val.x0_torus_part())));
 }
@@ -3707,9 +3707,9 @@ which substitutes for the \.{Fokko} command \.{corder}.
 
 @h "poset.h"
 @< Local function def...@>=
-void Cartan_order_wrapper(expression_base::level l)
+void Cartan_order_wrapper(eval_level l)
 { shared_real_form rf= get<real_form_value>();
-  if (l==expression_base::no_value)
+  if (l==eval_level::no_value)
     return;
 @)
   unsigned int n=rf->val.numCartan();
@@ -3733,9 +3733,9 @@ below, via the use of |non_const_get| when pulling the argument from the stack.
 @h "bruhat.h"
 
 @< Local function def...@>=
-void KGB_Hasse_wrapper(expression_base::level l)
+void KGB_Hasse_wrapper(eval_level l)
 { shared_real_form rf= get<real_form_value>();
-  if (l==expression_base::no_value)
+  if (l==eval_level::no_value)
     return;
 @)
   unsigned int n=rf->val.KGB_size();
@@ -3758,17 +3758,17 @@ efficiency.
 
 @< Local function def...@>=
 
-void real_form_eq_wrapper(expression_base::level l)
+void real_form_eq_wrapper(eval_level l)
 { shared_real_form y = get<real_form_value>();
   shared_real_form x = get<real_form_value>();
-  if (l!=expression_base::no_value)
+  if (l!=eval_level::no_value)
     push_value(whether(x.get()==y.get() or x->val==y->val));
 }
 
-void real_form_neq_wrapper(expression_base::level l)
+void real_form_neq_wrapper(eval_level l)
 { shared_real_form y = get<real_form_value>();
   shared_real_form x = get<real_form_value>();
-  if (l!=expression_base::no_value)
+  if (l!=eval_level::no_value)
     push_value(whether(x.get()!=y.get() and x->val!=y->val));
 }
 
@@ -3792,7 +3792,7 @@ index. We also provide the dual quasisplit form. In both cases, the dual
 |real_form_wrapper| above.
 
 @< Local function def...@>=
-void dual_real_form_wrapper(expression_base::level l)
+void dual_real_form_wrapper(eval_level l)
 { int i =get<int_value>()->int_val();
   shared_inner_class G = get<inner_class_value>();
   if (static_cast<unsigned int>(i)>=G->val.numDualRealForms())
@@ -3801,15 +3801,15 @@ void dual_real_form_wrapper(expression_base::level l)
     throw runtime_error(o.str());
   }
 @.Illegal dual real form number@>
-  if (l==expression_base::no_value)
+  if (l==eval_level::no_value)
     return;
 @)
   push_value(real_form_value::build(G->dual(),G->dual_interface.in(i)));
 }
 @)
-void dual_quasisplit_form_wrapper(expression_base::level l)
+void dual_quasisplit_form_wrapper(eval_level l)
 { shared_inner_class G = get<inner_class_value>();
-  if (l==expression_base::no_value)
+  if (l==eval_level::no_value)
     return;
 @)
   auto dual_ic=G->dual();
@@ -3849,7 +3849,7 @@ TwistedInvolution twisted_from_involution
   return G.Weyl_group().element(ww);
 }
 @)
-void synthetic_real_form_wrapper(expression_base::level l)
+void synthetic_real_form_wrapper(eval_level l)
 { own_rational_vector torus_factor = get_own<rational_vector_value>();
   shared_matrix theta = get<matrix_value>();
   shared_inner_class G = get<inner_class_value>();
@@ -3867,7 +3867,7 @@ void synthetic_real_form_wrapper(expression_base::level l)
   TorusPart tp = realredgp::minimal_torus_part @|
    (G->val,rf,coch,tw,torus_factor->val);
    // choose base |TorusPart| for $K\backslash G/B$ construction
-  if (l!=expression_base::no_value)
+  if (l!=eval_level::no_value)
     push_value(real_form_value::build(G,rf,coch,tp));
 }
 
@@ -3913,9 +3913,9 @@ distinguished involution that both remain in the strong real form orbit and are
 central (do not affect any gradings).
 
 @< Local function def...@>=
-void central_fiber_wrapper(expression_base::level l)
+void central_fiber_wrapper(eval_level l)
 { shared_real_form rf= get<real_form_value>();
-  if (l==expression_base::no_value)
+  if (l==eval_level::no_value)
     return;
 @)
   auto cf = rf->val.innerClass().central_fiber(rf->val.realForm());
@@ -4017,7 +4017,7 @@ void Cartan_class_value::print(std::ostream& out) const
 a valid index into its list of Cartan classes.
 
 @< Local function def...@>=
-void ic_Cartan_class_wrapper(expression_base::level l)
+void ic_Cartan_class_wrapper(eval_level l)
 { int i=get<int_value>()->int_val();
   shared_inner_class ic = get<inner_class_value>();
   if (static_cast<unsigned int>(i)>=ic->val.numCartanClasses())
@@ -4028,7 +4028,7 @@ void ic_Cartan_class_wrapper(expression_base::level l)
     throw runtime_error(o.str());
   }
 @.Illegal Cartan class number@>
-  if (l!=expression_base::no_value)
+  if (l!=eval_level::no_value)
     push_value(std::make_shared<Cartan_class_value>(ic,i));
 }
 
@@ -4038,7 +4038,7 @@ classes. We translate this number into an index into the list for its
 containing inner class, and then get the Cartan class from there.
 
 @< Local function def...@>=
-void rf_Cartan_class_wrapper(expression_base::level l)
+void rf_Cartan_class_wrapper(eval_level l)
 { int i=get<int_value>()->int_val();
   shared_real_form rf= get<real_form_value>();
   if (static_cast<unsigned int>(i)>=rf->val.numCartan())
@@ -4050,7 +4050,7 @@ void rf_Cartan_class_wrapper(expression_base::level l)
   }
 @.Illegal Cartan class number@>
   BitMap cs=rf->val.Cartan_set();
-  if (l!=expression_base::no_value)
+  if (l!=eval_level::no_value)
     push_value(std::make_shared<Cartan_class_value> @|
       (rf->ic_ptr,cs.n_th(i)));
 }
@@ -4063,9 +4063,9 @@ real form, but we have a direct access to it via the |mostSplit| method for
 |RealReductiveGroup|.
 
 @< Local function def...@>=
-void most_split_Cartan_wrapper(expression_base::level l)
+void most_split_Cartan_wrapper(eval_level l)
 { shared_real_form rf= get<real_form_value>();
-  if (l!=expression_base::no_value)
+  if (l!=eval_level::no_value)
     push_value(std::make_shared<Cartan_class_value> @|
       (rf->ic_ptr,rf->val.mostSplit()));
 }
@@ -4078,9 +4078,9 @@ We start with a fundamental attribute of Cartan classes: the associated
 (distinguished) involution, in the form of a matrix.
 
 @< Local function def...@>=
-void Cartan_involution_wrapper(expression_base::level l)
+void Cartan_involution_wrapper(eval_level l)
 { shared_Cartan_class cc(get<Cartan_class_value>());
-  if (l!=expression_base::no_value)
+  if (l!=eval_level::no_value)
     push_value(std::make_shared<matrix_value>(cc->val.involution()));
 }
 
@@ -4100,9 +4100,9 @@ independent objects.
 @h "prettyprint.h"
 
 @< Local function def...@>=
-void Cartan_info_wrapper(expression_base::level l)
+void Cartan_info_wrapper(eval_level l)
 { shared_Cartan_class cc(get<Cartan_class_value>());
-  if (l==expression_base::no_value)
+  if (l==eval_level::no_value)
     return;
 @)
   auto ranks = tori::classify(cc->val.involution());
@@ -4134,7 +4134,7 @@ void Cartan_info_wrapper(expression_base::level l)
     (rs.subsystem_type(cc->val.simpleComplex())));
   wrap_tuple<3>();
 @)
-  if (l==expression_base::single_value)
+  if (l==eval_level::single_value)
     wrap_tuple<4>();
 }
 
@@ -4153,9 +4153,9 @@ for |cc->number| should use the |dual_Cartan_set| of the current inner class
 rather than the |Cartan_set| of the just constructed dual inner class.
 
 @< Local function def...@>=
-void real_forms_of_Cartan_wrapper(expression_base::level l)
+void real_forms_of_Cartan_wrapper(eval_level l)
 { shared_Cartan_class cc(get<Cartan_class_value>());
-  if (l==expression_base::no_value)
+  if (l==eval_level::no_value)
     return;
 @)
   shared_inner_class icp=cc->ic_ptr;
@@ -4169,9 +4169,9 @@ void real_forms_of_Cartan_wrapper(expression_base::level l)
   push_value(std::move(result));
 }
 @)
-void dual_real_forms_of_Cartan_wrapper(expression_base::level l)
+void dual_real_forms_of_Cartan_wrapper(eval_level l)
 { shared_Cartan_class cc(get<Cartan_class_value>());
-  if (l==expression_base::no_value)
+  if (l==eval_level::no_value)
     return;
 @)
   auto dual_ic = cc->ic_ptr->dual();
@@ -4197,7 +4197,7 @@ list, and the part returned here will be empty. The part of the partition is
 returned as a list of integral values.
 
 @< Local function def...@>=
-void fiber_partition_wrapper(expression_base::level l)
+void fiber_partition_wrapper(eval_level l)
 { shared_real_form rf= get<real_form_value>();
   shared_Cartan_class cc(get<Cartan_class_value>());
   if (rf->ic_ptr.get()!=cc->ic_ptr.get())
@@ -4208,7 +4208,7 @@ void fiber_partition_wrapper(expression_base::level l)
   if (!b.isMember(cc->number))
     throw runtime_error("Cartan class not defined for this real form");
 @.Cartan class not defined@>
-  if (l==expression_base::no_value)
+  if (l==eval_level::no_value)
     return;
 @)
   const Partition& pi = cc->val.fiber().weakReal();
@@ -4227,11 +4227,11 @@ void fiber_partition_wrapper(expression_base::level l)
 Cartan class, but partitioned according to their square class, determined by
 the square of any strong involution representing the real form.
 @< Local function def...@>=
-void square_classes_wrapper(expression_base::level l)
+void square_classes_wrapper(eval_level l)
 { shared_Cartan_class cc(get<Cartan_class_value>());
   const output::FormNumberMap rfi = cc->ic_ptr->interface;
   const RealFormNbrList& rfl = cc->ic_ptr->val.realFormLabels(cc->number);
-  if (l==expression_base::no_value)
+  if (l==eval_level::no_value)
     return;
 @)
   unsigned int n_sq_classes = cc->val.numRealFormClasses();
@@ -4258,7 +4258,7 @@ bits corresponding to the simple imaginary roots.
 @f sigma nullptr
 
 @< Local function def...@>=
-void print_gradings_wrapper(expression_base::level l)
+void print_gradings_wrapper(eval_level l)
 { shared_real_form rf= get<real_form_value>();
 @/shared_Cartan_class cc(get<Cartan_class_value>());
   if (rf->ic_ptr.get()!=cc->ic_ptr.get())
@@ -4287,7 +4287,7 @@ void print_gradings_wrapper(expression_base::level l)
 
   @< Print the gradings for the part of |pi| corresponding to the real form @>
 
-  if (l==expression_base::single_value)
+  if (l==eval_level::single_value)
     wrap_tuple<0>(); // |no_value| needs no special care
 }
 
@@ -4410,7 +4410,7 @@ void KGB_elt_value::print(std::ostream& out) const
 @ To make a KGB element, one provides a |real_form_value| and a valid number.
 
 @< Local function def...@>=
-void KGB_elt_wrapper(expression_base::level l)
+void KGB_elt_wrapper(eval_level l)
 { int i = get<int_value>()->int_val();
   shared_real_form rf= get<real_form_value>();
   if (static_cast<unsigned int>(i)>=rf->val.KGB_size())
@@ -4419,7 +4419,7 @@ void KGB_elt_wrapper(expression_base::level l)
     throw runtime_error(o.str());
   }
 @.Inexistent KGB element@>
-  if (l!=expression_base::no_value)
+  if (l!=eval_level::no_value)
     push_value(std::make_shared<KGB_elt_value>(rf,i));
 }
 
@@ -4427,14 +4427,14 @@ void KGB_elt_wrapper(expression_base::level l)
 sometimes of its number within its real form.
 
 @< Local function def...@>=
-void decompose_KGB_wrapper(expression_base::level l)
+void decompose_KGB_wrapper(eval_level l)
 { shared_KGB_elt x = get<KGB_elt_value>();
-  if (l==expression_base::no_value)
+  if (l==eval_level::no_value)
     return;
 @)
   push_value(x->rf);
   push_value(std::make_shared<int_value>(x->val));
-  if (l==expression_base::single_value)
+  if (l==eval_level::single_value)
     wrap_tuple<2>();
 }
 
@@ -4442,27 +4442,27 @@ void decompose_KGB_wrapper(expression_base::level l)
 the root datum involution and the length.
 
 @< Local function def...@>=
-void KGB_Cartan_wrapper(expression_base::level l)
+void KGB_Cartan_wrapper(eval_level l)
 { shared_KGB_elt x = get<KGB_elt_value>();
   const KGB& kgb=x->rf->kgb();
-  if (l!=expression_base::no_value)
+  if (l!=eval_level::no_value)
     push_value(std::make_shared<Cartan_class_value> @|
       (x->rf->ic_ptr,kgb.Cartan_class(x->val)));
 }
 
-void KGB_involution_wrapper(expression_base::level l)
+void KGB_involution_wrapper(eval_level l)
 { shared_KGB_elt x = get<KGB_elt_value>();
   const KGB& kgb=x->rf->kgb();
   const InnerClass& G=x->rf->val.innerClass();
-  if (l!=expression_base::no_value)
+  if (l!=eval_level::no_value)
     push_value(std::make_shared<matrix_value>
       (G.matrix(kgb.involution(x->val))));
 }
 
-void KGB_length_wrapper(expression_base::level l)
+void KGB_length_wrapper(eval_level l)
 { shared_KGB_elt x = get<KGB_elt_value>();
   const KGB& kgb=x->rf->kgb();
-  if (l!=expression_base::no_value)
+  if (l!=eval_level::no_value)
     push_value(std::make_shared<int_value>(kgb.length(x->val)));
 }
 
@@ -4488,13 +4488,13 @@ inline RootNbr get_reflection_index(int root_index, RootNbr n_posroots)
   return alpha;
 }
 @)
-void KGB_cross_wrapper(expression_base::level l)
+void KGB_cross_wrapper(eval_level l)
 { own_KGB_elt x = get_own<KGB_elt_value>();
   const KGB& kgb=x->rf->kgb();
   const RootDatum& rd = kgb.root_datum();
   RootNbr alpha =
     get_reflection_index(get<int_value>()->int_val(),rd.numPosRoots());
-  if (l==expression_base::no_value)
+  if (l==eval_level::no_value)
     return;
 @)
   if (alpha<kgb.rank()) // do simple cross action
@@ -4504,13 +4504,13 @@ void KGB_cross_wrapper(expression_base::level l)
   push_value(std::move(x));
 }
 @)
-void KGB_Cayley_wrapper(expression_base::level l)
+void KGB_Cayley_wrapper(eval_level l)
 { own_KGB_elt x = get_own<KGB_elt_value>();
   const KGB& kgb=x->rf->kgb();
   const RootDatum& rd = kgb.root_datum();
   RootNbr alpha =
     get_reflection_index(get<int_value>()->int_val(),rd.numPosRoots());
-  if (l==expression_base::no_value)
+  if (l==eval_level::no_value)
     return;
 @)
   if (alpha<kgb.rank())
@@ -4537,13 +4537,13 @@ descent if |v<3|, imaginary if |v%2==1|, Complex if |v%4==0|, Cayley transform
 defined if |v==3|.
 
 @< Local function def...@>=
-void KGB_status_wrapper(expression_base::level l)
+void KGB_status_wrapper(eval_level l)
 { shared_KGB_elt x = get<KGB_elt_value>();
   const KGB& kgb=x->rf->kgb();
   const RootDatum& rd = kgb.root_datum();
   RootNbr alpha =
     get_reflection_index(get<int_value>()->int_val(),rd.numPosRoots());
-  if (l==expression_base::no_value)
+  if (l==eval_level::no_value)
     return;
 @)
   if (alpha<kgb.rank())
@@ -4578,7 +4578,7 @@ always be right if the real form was itself synthesised from the
 |torus_factor| value.
 
 @< Local function def...@>=
-void build_KGB_element_wrapper(expression_base::level l)
+void build_KGB_element_wrapper(eval_level l)
 { own_rational_vector torus_factor = get_own<rational_vector_value>();
   shared_matrix theta = get<matrix_value>();
   shared_real_form rf = get<real_form_value>();
@@ -4603,7 +4603,7 @@ void build_KGB_element_wrapper(expression_base::level l)
   if (x==UndefKGB)
     throw runtime_error("KGB element not present");
 
-  if (l!=expression_base::no_value)
+  if (l!=eval_level::no_value)
     push_value(std::make_shared<KGB_elt_value>(rf,x));
 }
 
@@ -4614,10 +4614,10 @@ class, or by an explicitly supplied distinguished involution that
 should commute with the inner class one; |test_compatible| tests this.
 
 @< Local function def...@>=
-void KGB_twist_wrapper(expression_base::level l)
+void KGB_twist_wrapper(eval_level l)
 { own_KGB_elt x = get_own<KGB_elt_value>();
   const KGB& kgb=x->rf->kgb();
-  if (l==expression_base::no_value)
+  if (l==eval_level::no_value)
     return;
 @)
   x->val= kgb.twisted(x->val,x->rf->val.innerClass().distinguished());
@@ -4632,11 +4632,11 @@ void test_compatible (const InnerClass& ic, shared_matrix& delta)
     throw runtime_error("Non commuting distinguished involution");
 }
 @)
-void KGB_outer_twist_wrapper(expression_base::level l)
+void KGB_outer_twist_wrapper(eval_level l)
 { auto delta = get<matrix_value>();
   own_KGB_elt x = get_own<KGB_elt_value>();
   test_compatible(x->rf->val.innerClass(),delta);
-  if (l==expression_base::no_value)
+  if (l==eval_level::no_value)
     return;
 @)
   x->val= x->rf->kgb().twisted(x->val,delta->val); // do twist
@@ -4647,9 +4647,9 @@ void KGB_outer_twist_wrapper(expression_base::level l)
 elements in the fibre over the same involution.
 
 @< Local function def...@>=
-void torus_bits_wrapper(expression_base::level l)
+void torus_bits_wrapper(eval_level l)
 { shared_KGB_elt x = get<KGB_elt_value>();
-  if (l==expression_base::no_value)
+  if (l==eval_level::no_value)
     return;
 @)
   const KGB& kgb=x->rf->kgb();
@@ -4668,9 +4668,9 @@ to~$x$ (i.e., the ignored part has been projected away), and at the same time it
 lies in the $X_*$-coset of |cocharacter| for the real form.
 
 @< Local function def...@>=
-void torus_factor_wrapper(expression_base::level l)
+void torus_factor_wrapper(eval_level l)
 { shared_KGB_elt x = get<KGB_elt_value>();
-  if (l!=expression_base::no_value)
+  if (l!=eval_level::no_value)
     push_value(std::make_shared<rational_vector_value> @|
       (x->rf->kgb().torus_factor(x->val)));
 }
@@ -4684,17 +4684,17 @@ objects for identity, and real form numbers for equality. This distinction is
 important to make synthesised real forms first class citizens.
 
 @< Local function def...@>=
-void KGB_eq_wrapper(expression_base::level l)
+void KGB_eq_wrapper(eval_level l)
 { shared_KGB_elt y = get<KGB_elt_value>();
   shared_KGB_elt x = get<KGB_elt_value>();
-  if (l!=expression_base::no_value)
+  if (l!=eval_level::no_value)
     push_value(whether(x->rf->val==y->rf->val and x->val==y->val));
 }
 
-void KGB_neq_wrapper(expression_base::level l)
+void KGB_neq_wrapper(eval_level l)
 { shared_KGB_elt y = get<KGB_elt_value>();
   shared_KGB_elt x = get<KGB_elt_value>();
-  if (l!=expression_base::no_value)
+  if (l!=eval_level::no_value)
     push_value(whether(x->rf->val!=y->rf->val or x->val!=y->val));
 }
 
@@ -4784,7 +4784,7 @@ bool is_dual(const shared_inner_class& ic0, const shared_inner_class& ic1)
 { return ic0->dual_datum.get()==ic1->datum.get() and
   ic0->val.dualDistinguished()==ic1->val.distinguished();
 }
-void Fokko_block_wrapper(expression_base::level l)
+void Fokko_block_wrapper(eval_level l)
 { shared_real_form drf=get<real_form_value>();
   shared_real_form rf=get<real_form_value>();
 @)
@@ -4792,7 +4792,7 @@ void Fokko_block_wrapper(expression_base::level l)
     throw runtime_error @|
     ("Inner class mismatch between real form and dual real form");
 @.Inner class mismatch...@>
-  if (l!=expression_base::no_value)
+  if (l!=eval_level::no_value)
     push_value(std::make_shared<Block_value>(rf,drf));
 }
 
@@ -4807,24 +4807,24 @@ inner classes, we must take care to create the dual inner class here, as is
 done in |real_form_from_dual_real_form_wrapper|.
 
 @< Local function def...@>=
-void decompose_block_wrapper(expression_base::level l)
+void decompose_block_wrapper(eval_level l)
 { shared_Block b = get<Block_value>();
-  if (l==expression_base::no_value)
+  if (l==eval_level::no_value)
     return;
 @)
   push_value(b->rf);
   push_value(b->dual_rf);
-  if (l==expression_base::single_value)
+  if (l==eval_level::single_value)
     wrap_tuple<2>();
 }
 
-void size_of_block_wrapper(expression_base::level l)
+void size_of_block_wrapper(eval_level l)
 { shared_Block b = get<Block_value>();
-  if (l!=expression_base::no_value)
+  if (l!=eval_level::no_value)
     push_value(std::make_shared<int_value>(b->val.size()));
 }
 
-void block_element_wrapper(expression_base::level l)
+void block_element_wrapper(eval_level l)
 { int i=get<int_value>()->int_val();
   shared_Block b = get<Block_value>();
   BlockElt z = i; // extract value unsigned
@@ -4834,14 +4834,14 @@ void block_element_wrapper(expression_base::level l)
       << " out of range (<" << b->val.size() << ")";
     throw runtime_error(o.str());
   }
-  if (l==expression_base::no_value)
+  if (l==eval_level::no_value)
     return;
 @)
   push_value(std::make_shared<KGB_elt_value>(b->rf,b->val.x(z)));
   auto dic = b->rf->ic_ptr->dual();
   auto drf = real_form_value::build(dic,b->dual_rf->val.realForm());
   push_value(std::make_shared<KGB_elt_value>(drf,b->val.y(z)));
-  if (l==expression_base::single_value)
+  if (l==eval_level::single_value)
     wrap_tuple<2>();
 }
 
@@ -4855,7 +4855,7 @@ the method |Block::element| does the actual work of looking up the pair
 $(x,y)$ in the block.
 
 @< Local function def...@>=
-void block_index_wrapper(expression_base::level l)
+void block_index_wrapper(eval_level l)
 { shared_KGB_elt y = get<KGB_elt_value>();
   shared_KGB_elt x = get<KGB_elt_value>();
   shared_Block b = get<Block_value>();
@@ -4872,7 +4872,7 @@ void block_index_wrapper(expression_base::level l)
 
   BlockElt z = b->val.element(x->val,y->val);
 
-  if (l!=expression_base::no_value)
+  if (l!=eval_level::no_value)
     push_value(std::make_shared<int_value>(z));
 }
 
@@ -4880,9 +4880,9 @@ void block_index_wrapper(expression_base::level l)
 has any elements), but it is very easy to implement directly.
 
 @< Local function def...@>=
-void dual_block_wrapper(expression_base::level l)
+void dual_block_wrapper(eval_level l)
 { shared_Block b = get<Block_value>();
-  if (l!=expression_base::no_value)
+  if (l!=eval_level::no_value)
     push_value(std::make_shared<Block_value>(b->dual_rf,b->rf));
 }
 
@@ -4890,7 +4890,7 @@ void dual_block_wrapper(expression_base::level l)
 a Weyl group generator with respect to a block element.
 
 @< Local function def...@>=
-void block_status_wrapper(expression_base::level l)
+void block_status_wrapper(eval_level l)
 { BlockElt i = get<int_value>()->int_val();
   shared_Block b = get<Block_value>();
   unsigned int s = get<int_value>()->int_val();
@@ -4905,7 +4905,7 @@ void block_status_wrapper(expression_base::level l)
       << " out of range (<" << b->val.size() << ')';
     throw runtime_error(o.str());
   }
-  if (l==expression_base::no_value)
+  if (l==eval_level::no_value)
     return;
 @)
   const DescentStatus::Value dv = b->val.descentValue(s,i);
@@ -4918,7 +4918,7 @@ void block_status_wrapper(expression_base::level l)
 
 @< Local function def...@>=
 
-void block_cross_wrapper(expression_base::level l)
+void block_cross_wrapper(eval_level l)
 { BlockElt i = get<int_value>()->int_val();
   shared_Block b = get<Block_value>();
   unsigned int s = get<int_value>()->int_val();
@@ -4933,11 +4933,11 @@ void block_cross_wrapper(expression_base::level l)
       << " out of range (<" << b->val.size() << ")";
     throw runtime_error(o.str());
   }
-  if (l!=expression_base::no_value)
+  if (l!=eval_level::no_value)
     push_value(std::make_shared<int_value>(b->val.cross(s,i)));
 }
 @)
-void block_Cayley_wrapper(expression_base::level l)
+void block_Cayley_wrapper(eval_level l)
 { shared_int i = get<int_value>();
   unsigned int ii = i->int_val();
   shared_Block b = get<Block_value>();
@@ -4953,7 +4953,7 @@ void block_Cayley_wrapper(expression_base::level l)
       << " out of range (<" << b->val.size() << ")";
     throw runtime_error(o.str());
   }
-  if (l==expression_base::no_value)
+  if (l==eval_level::no_value)
     return;
 @)
   BlockElt sx = b->val.cayley(s,ii).first;
@@ -4963,7 +4963,7 @@ void block_Cayley_wrapper(expression_base::level l)
     push_value(std::make_shared<int_value>(sx));
 }
 @)
-void block_inverse_Cayley_wrapper(expression_base::level l)
+void block_inverse_Cayley_wrapper(eval_level l)
 { shared_int i=get<int_value>();
   unsigned int ii = i->int_val();
   shared_Block b = get<Block_value>();
@@ -4979,7 +4979,7 @@ void block_inverse_Cayley_wrapper(expression_base::level l)
       << " out of range (<" << b->val.size() << ")";
     throw runtime_error(o.str());
   }
-  if (l==expression_base::no_value)
+  if (l==eval_level::no_value)
     return;
 @)
   BlockElt sx = b->val.inverseCayley(s,ii).first;
@@ -5053,54 +5053,54 @@ void split_int_value::print(std::ostream& out) const @+
 
 @< Local function definitions @>=
 
-void split_unary_eq_wrapper(expression_base::level l)
+void split_unary_eq_wrapper(eval_level l)
 { Split_integer i=get<split_int_value>()->val;
-  if (l!=expression_base::no_value)
+  if (l!=eval_level::no_value)
     push_value(whether(i.is_zero()));
 }
-void split_unary_neq_wrapper(expression_base::level l)
+void split_unary_neq_wrapper(eval_level l)
 { Split_integer i=get<split_int_value>()->val;
-  if (l!=expression_base::no_value)
+  if (l!=eval_level::no_value)
     push_value(whether(not i.is_zero()));
 }
 @)
-void split_eq_wrapper(expression_base::level l)
+void split_eq_wrapper(eval_level l)
 { Split_integer j=get<split_int_value>()->val;
   Split_integer i=get<split_int_value>()->val;
-  if (l!=expression_base::no_value)
+  if (l!=eval_level::no_value)
     push_value(whether(i==j));
 }
-void split_neq_wrapper(expression_base::level l)
+void split_neq_wrapper(eval_level l)
 { Split_integer j=get<split_int_value>()->val;
   Split_integer i=get<split_int_value>()->val;
-  if (l!=expression_base::no_value)
+  if (l!=eval_level::no_value)
     push_value(whether(i!=j));
 }
 @)
-void split_plus_wrapper(expression_base::level l)
+void split_plus_wrapper(eval_level l)
 { Split_integer j=get<split_int_value>()->val;
   own_split_int i=get_own<split_int_value>();
-  if (l!=expression_base::no_value)
+  if (l!=eval_level::no_value)
   {@; i->val+=j; push_value(std::move(i)); }
 }
 
-void split_minus_wrapper(expression_base::level l)
+void split_minus_wrapper(eval_level l)
 { Split_integer j=get<split_int_value>()->val;
   own_split_int i=get_own<split_int_value>();
-  if (l!=expression_base::no_value)
+  if (l!=eval_level::no_value)
   {@; i->val-=j; push_value(std::move(i)); }
 }
 @)
-void split_unary_minus_wrapper(expression_base::level l)
+void split_unary_minus_wrapper(eval_level l)
 { own_split_int i=get_own<split_int_value>();
-  if (l!=expression_base::no_value)
+  if (l!=eval_level::no_value)
   {@; i->val.negate(); push_value(std::move(i)); }
 }
 
-void split_times_wrapper(expression_base::level l)
+void split_times_wrapper(eval_level l)
 { Split_integer j=get<split_int_value>()->val;
   own_split_int i=get_own<split_int_value>();
-  if (l!=expression_base::no_value)
+  if (l!=eval_level::no_value)
   {@; i->val*=j; push_value(std::move(i)); }
 }
 
@@ -5121,14 +5121,14 @@ void pair_to_split_coercion()
   push_value(std::make_shared<split_int_value>(Split_integer(a,b)));
 }
 @)
-void from_split_wrapper(expression_base::level l)
+void from_split_wrapper(eval_level l)
 { Split_integer si = get<split_int_value>()->val;
-  if (l==expression_base::no_value)
+  if (l==eval_level::no_value)
     return;
 @)
   push_value(std::make_shared<int_value>(si.e()));
   push_value(std::make_shared<int_value>(si.s()));
-  if (l==expression_base::single_value)
+  if (l==eval_level::single_value)
     wrap_tuple<2>();
 }
 
@@ -5238,7 +5238,7 @@ equivalent to one at a lower involution in the Cartan class), or finally
 $\lambda-\rho\in X^*$.
 
 @< Local function def...@>=
-void K_type_wrapper(expression_base::level l)
+void K_type_wrapper(eval_level l)
 { shared_vector lam_rho(get<vector_value>());
   shared_KGB_elt x = get<KGB_elt_value>();
   if (lam_rho->val.size()!=x->rf->val.rank())
@@ -5248,7 +5248,7 @@ void K_type_wrapper(expression_base::level l)
     throw runtime_error(o.str());
   }
 @.Rank mismatch@>
-  if (l!=expression_base::no_value)
+  if (l!=eval_level::no_value)
     push_value(std::make_shared<K_type_value> @|
       (x->rf, x->rf->rc().sr_K(x->val,lam_rho->val)));
 }
@@ -5264,22 +5264,22 @@ choice of representative. That functionality is ensured by the implementation of
 |K_repr::K_type|, so here we need not worry about it.
 
 @< Local function def...@>=
-void unwrap_K_type_wrapper(expression_base::level l)
+void unwrap_K_type_wrapper(eval_level l)
 { shared_K_type p = get<K_type_value>();
-  if (l==expression_base::no_value)
+  if (l==eval_level::no_value)
     return;
 @)
   push_value(std::make_shared<KGB_elt_value>(p->rf,p->val.x()));
   push_value(std::make_shared<vector_value>(p->val.lambda_rho()));
-  if (l==expression_base::single_value)
+  if (l==eval_level::single_value)
     wrap_tuple<2>();
 }
 
 @)
 
-void real_form_of_K_type_wrapper(expression_base::level l)
+void real_form_of_K_type_wrapper(eval_level l)
 { shared_K_type p = get<K_type_value>();
-  if (l!=expression_base::no_value)
+  if (l!=eval_level::no_value)
     push_value(p->rf);
 }
 
@@ -5289,9 +5289,9 @@ the same height when comparing to the |bound| argument in functions like
 |K_repr::K_type| values themselves, so we simply get it from there.
 
 @< Local function def...@>=
-void K_type_height_wrapper(expression_base::level l)
+void K_type_height_wrapper(eval_level l)
 { shared_K_type p = get<K_type_value>();
-  if (l!=expression_base::no_value)
+  if (l!=eval_level::no_value)
     push_value(std::make_shared<int_value>(p->val.height()));
 }
 
@@ -5308,26 +5308,26 @@ must ensure the arguments are associated to the same real form before calling
 when this is not the case.
 
 @< Local function def...@>=
-void K_type_eq_wrapper(expression_base::level l)
+void K_type_eq_wrapper(eval_level l)
 { shared_K_type q = get<K_type_value>();
   shared_K_type p = get<K_type_value>();
-  if (l!=expression_base::no_value)
+  if (l!=eval_level::no_value)
     push_value(whether(p->rf->val==q->rf->val and p->val==q->val));
 }
-void K_type_neq_wrapper(expression_base::level l)
+void K_type_neq_wrapper(eval_level l)
 { shared_K_type q = get<K_type_value>();
   shared_K_type p = get<K_type_value>();
-  if (l!=expression_base::no_value)
+  if (l!=eval_level::no_value)
     push_value(whether(p->rf->val!=q->rf->val or p->val!=q->val));
 }
 @)
-void K_type_equivalent_wrapper(expression_base::level l)
+void K_type_equivalent_wrapper(eval_level l)
 { auto q = get_own<K_type_value>();
   auto p = get_own<K_type_value>();
   if (p->rf->val!=q->rf->val)
     throw runtime_error @|
       ("Real form mismatch when testing equivalence");
-  if (l!=expression_base::no_value)
+  if (l!=eval_level::no_value)
     push_value(whether(p->rc().equivalent(std::move(p->val),std::move(q->val))));
 }
 
@@ -5344,33 +5344,33 @@ function |normalize| below that produces a unique representative in any
 equivalence class of $K$-types.
 
 @< Local function def...@>=
-void K_type_is_standard_wrapper(expression_base::level l)
+void K_type_is_standard_wrapper(eval_level l)
 { shared_K_type p = get<K_type_value>();
-  if (l!=expression_base::no_value)
+  if (l!=eval_level::no_value)
     push_value(whether(p->rc().is_standard(p->val)));
 }
 
-void K_type_is_dominant_wrapper(expression_base::level l)
+void K_type_is_dominant_wrapper(eval_level l)
 { shared_K_type p = get<K_type_value>();
-  if (l!=expression_base::no_value)
+  if (l!=eval_level::no_value)
     push_value(whether(p->rc().is_dominant(p->val)));
 }
 
-void K_type_is_zero_wrapper(expression_base::level l)
+void K_type_is_zero_wrapper(eval_level l)
 { shared_K_type p = get<K_type_value>();
-  if (l!=expression_base::no_value)
+  if (l!=eval_level::no_value)
     push_value(whether(not p->rc().is_nonzero(p->val)));
 }
 
-void K_type_is_semifinal_wrapper(expression_base::level l)
+void K_type_is_semifinal_wrapper(eval_level l)
 { shared_K_type p = get<K_type_value>();
-  if (l!=expression_base::no_value)
+  if (l!=eval_level::no_value)
     push_value(whether(p->rc().is_semifinal(p->val)));
 }
 
-void K_type_is_final_wrapper(expression_base::level l)
+void K_type_is_final_wrapper(eval_level l)
 { shared_K_type p = get<K_type_value>();
-  if (l!=expression_base::no_value)
+  if (l!=eval_level::no_value)
     push_value(whether(p->rc().is_final(p->val)));
 }
 
@@ -5395,35 +5395,35 @@ applying |to_canonical_fiber|; also if a final representative exists, it is
 unique.
 
 @< Local function def...@>=
-void K_type_dominant_wrapper(expression_base::level l)
+void K_type_dominant_wrapper(eval_level l)
 { own_K_type p = get_own<K_type_value>();
 
-  if (l!=expression_base::no_value)
+  if (l!=eval_level::no_value)
   {@; p->rc().make_dominant(p->val);
     push_value(std::move(p));
   }
 }
 @)
-void to_canonical_fiber_wrapper(expression_base::level l)
+void to_canonical_fiber_wrapper(eval_level l)
 { own_K_type p = get_own<K_type_value>();
 
-  if (l!=expression_base::no_value)
+  if (l!=eval_level::no_value)
   @/{@; p->rc().to_canonical_involution(p->val);
     push_value(std::move(p));
   }
 }
 @)
-void K_type_normal_wrapper(expression_base::level l)
+void K_type_normal_wrapper(eval_level l)
 { own_K_type p = get_own<K_type_value>();
-  if (l!=expression_base::no_value)
+  if (l!=eval_level::no_value)
   {@; p->rc().normalise(p->val);
     push_value(std::move(p));
   }
 }
 @)
-void K_type_theta_stable_wrapper(expression_base::level l)
+void K_type_theta_stable_wrapper(eval_level l)
 { own_K_type p = get_own<K_type_value>();
-  if (l!=expression_base::no_value)
+  if (l!=eval_level::no_value)
   @/{@; p->rc().make_theta_stable(p->val);
     push_value(std::move(p));
   }
@@ -5469,9 +5469,9 @@ terms will not be a class invariant for |K_type_pol_value|.
 @< Type definitions @>=
 struct K_type_pol_value : public value_base
 { shared_real_form rf;
-  K_repr::K_type_pol val;
+  K_type_poly val;
 @)
-  K_type_pol_value(const shared_real_form& form, K_repr::K_type_pol&& v)
+  K_type_pol_value(const shared_real_form& form, K_type_poly&& v)
   : rf(form), val(std::move(v).flatten()) @+{}
   ~K_type_pol_value() @+{}
 @)
@@ -5506,19 +5506,19 @@ void K_type_pol_value::print(std::ostream& out) const
 has no copy constructor, providing instead a method |copy| that must be
 explicitly called (this was designed in order to better control the places where
 actual copies must be made). Since this is a component type buried inside the
-container |K_repr::K_type_pol| we copy the individual terms from the |val| field
+container |K_type_poly| we copy the individual terms from the |val| field
 first into a vector |accumulator|, and then move-construct a new
-|K_repr::K_type_pol| (which has a constructor for that purpose) from the vector.
+|K_type_poly| (which has a constructor for that purpose) from the vector.
 
 @< Function def...@>=
 K_type_pol_value::K_type_pol_value(const K_type_pol_value& v)
 : rf(v.rf), val()
 {
-  K_repr::K_type_pol::poly accumulator;
+  K_type_poly::poly accumulator;
   accumulator.reserve(v.val.size());
   for (const auto& term : v.val)
     accumulator.emplace_back(term.first.copy(),term.second);
-  val = K_repr::K_type_pol(std::move(accumulator),false,v.val.cmp());
+  val = K_type_poly(std::move(accumulator),false,v.val.cmp());
 }
 
 @*2 Functions for $K$-type polynomials.
@@ -5535,35 +5535,35 @@ is more efficient to just traverse both in parallel and stop once a difference
 is found.
 
 @< Local function def...@>=
-void K_type_pol_wrapper(expression_base::level l)
+void K_type_pol_wrapper(eval_level l)
 { shared_real_form rf = get<real_form_value>();
-  if (l!=expression_base::no_value)
-    push_value(std::make_shared<K_type_pol_value> @| (rf,K_repr::K_type_pol()));
+  if (l!=eval_level::no_value)
+    push_value(std::make_shared<K_type_pol_value> @| (rf,K_type_poly()));
 }
 @)
-void real_form_of_K_type_pol_wrapper(expression_base::level l)
+void real_form_of_K_type_pol_wrapper(eval_level l)
 { shared_K_type_pol m = get<K_type_pol_value>();
-  if (l!=expression_base::no_value)
+  if (l!=eval_level::no_value)
     push_value(m->rf);
 }
 @)
-void K_type_pol_unary_eq_wrapper(expression_base::level l)
+void K_type_pol_unary_eq_wrapper(eval_level l)
 { shared_K_type_pol m = get<K_type_pol_value>();
-  if (l!=expression_base::no_value)
+  if (l!=eval_level::no_value)
     push_value(whether(m->val.is_zero()));
 }
 
-void K_type_pol_unary_neq_wrapper(expression_base::level l)
+void K_type_pol_unary_neq_wrapper(eval_level l)
 { shared_K_type_pol m = get<K_type_pol_value>();
-  if (l!=expression_base::no_value)
+  if (l!=eval_level::no_value)
     push_value(whether(not m->val.is_zero()));
 }
 
 @)
-void K_type_pol_eq_wrapper(expression_base::level l)
+void K_type_pol_eq_wrapper(eval_level l)
 { shared_K_type_pol n = get<K_type_pol_value>();
   shared_K_type_pol m = get<K_type_pol_value>();
-  if (l==expression_base::no_value)
+  if (l==eval_level::no_value)
     return;
 @)
   auto mit=m->val.begin(), nit=n->val.begin(); // keep outside loop
@@ -5574,10 +5574,10 @@ void K_type_pol_eq_wrapper(expression_base::level l)
   push_value(whether
       (mit==m->val.end() and nit==n->val.end()));
 }
-void K_type_pol_neq_wrapper(expression_base::level l)
+void K_type_pol_neq_wrapper(eval_level l)
 { shared_K_type_pol n = get<K_type_pol_value>();
   shared_K_type_pol m = get<K_type_pol_value>();
-  if (l==expression_base::no_value)
+  if (l==eval_level::no_value)
     return;
 @)
   auto mit=m->val.begin(), nit=n->val.begin(); // keep outside loop
@@ -5592,9 +5592,9 @@ void K_type_pol_neq_wrapper(expression_base::level l)
 @ This function must be global, it is declared in the header file \.{global.h}.
 
 @< Function definitions @>=
-void K_type_pol_size_wrapper(expression_base::level l)
+void K_type_pol_size_wrapper(eval_level l)
 { shared_K_type_pol m = get<K_type_pol_value>();
-  if (l!=expression_base::no_value)
+  if (l!=eval_level::no_value)
     push_value(std::make_shared<int_value>(m->val.count_terms()));
 }
 
@@ -5610,7 +5610,7 @@ void K_type_to_poly()
 { shared_K_type p = get<K_type_value>();
   const auto& rf=p->rf;
   auto final_K_types = rf->rc().finals_for(p->val.copy());
-  K_repr::K_type_pol result;
+  K_type_poly result;
   for (auto it=final_K_types.begin(); not final_K_types.at_end(it); ++it)
     result.add_term(std::move(it->first),Split_integer(it->second));
   push_value(std::make_shared<K_type_pol_value>(p->rf,std::move(result)));
@@ -5637,7 +5637,7 @@ void K_type_pol_coefficient::evaluate(level l) const
     throw runtime_error @|
       ("Real form mismatch when subscripting KTypePol value");
   test_final(*p,"In subscription of KTypePol value");
-  if (l!=expression_base::no_value)
+  if (l!=eval_level::no_value)
     push_value(std::make_shared<split_int_value>(m->val[p->val]));
 }
 
@@ -5666,13 +5666,13 @@ must apply |finals_for| to expand it into a linear combination of final
 $K$-types, and call |accumulator.add_term| with each of them.
 
 @< Local function def...@>=
-void add_K_type_wrapper(expression_base::level l)
+void add_K_type_wrapper(eval_level l)
 { shared_K_type p = get<K_type_value>();
   own_K_type_pol accumulator = get_own<K_type_pol_value>();
   if (accumulator->rf!=p->rf)
     throw runtime_error @|
       ("Real form mismatch when adding a KType to a KTypePol");
-  if (l==expression_base::no_value)
+  if (l==eval_level::no_value)
     return;
   auto finals = p->rc().finals_for(p->val.copy());
     for (auto it = finals.wbegin(); it!=finals.wend(); ++it)
@@ -5680,13 +5680,13 @@ void add_K_type_wrapper(expression_base::level l)
   push_value(std::move(accumulator));
 }
 
-void subtract_K_type_wrapper(expression_base::level l)
+void subtract_K_type_wrapper(eval_level l)
 { shared_K_type p = get<K_type_value>();
   own_K_type_pol accumulator = get_own<K_type_pol_value>();
   if (accumulator->rf!=p->rf)
     throw runtime_error @|
       ("Real form mismatch when subtracting a KType from a KTypePol");
-  if (l==expression_base::no_value)
+  if (l==eval_level::no_value)
     return;
   auto finals = p->rc().finals_for(p->val.copy());
   for (auto it = finals.wbegin(); it!=finals.wend(); ++it)
@@ -5699,7 +5699,7 @@ specified coefficient; this is almost the same as the previous two functions.
 
 @< Local function def...@>=
 
-void add_K_type_term_wrapper(expression_base::level l)
+void add_K_type_term_wrapper(eval_level l)
 { push_tuple_components(); // second argument is a pair |(coef,p)|
   auto p = get<K_type_value>();
   Split_integer coef=get<split_int_value>()->val;
@@ -5707,7 +5707,7 @@ void add_K_type_term_wrapper(expression_base::level l)
 
 if (accumulator->rf!=p->rf)
     throw runtime_error@|("Real form mismatch when adding a term to a K_type");
-  if (l==expression_base::no_value)
+  if (l==eval_level::no_value)
     return;
 @)
   auto finals = p->rc().finals_for(p->val.copy());
@@ -5739,10 +5739,10 @@ instructive to see what needs to change if one sets out to reuse component
 values of a row-of-tuples argument.
 
 @< Local function... @>=
-void add_K_type_termlist_wrapper(expression_base::level l)
+void add_K_type_termlist_wrapper(eval_level l)
 { shared_row r = get<row_value>();
   own_K_type_pol accumulator = get_own<K_type_pol_value>();
-  if (l==expression_base::no_value)
+  if (l==eval_level::no_value)
     return;
 @)
   if (r.unique())
@@ -5778,25 +5778,25 @@ void add_K_type_termlist_wrapper(expression_base::level l)
 polynomials.
 
 @< Local function... @>=
-void add_K_type_pols_wrapper(expression_base::level l)
+void add_K_type_pols_wrapper(eval_level l)
 {
   own_K_type_pol addend = get_own<K_type_pol_value>();
   own_K_type_pol accumulator = get_own<K_type_pol_value>();
   if (accumulator->rf!=addend->rf)
     throw runtime_error @|("Real form mismatch when adding two K_types");
-  if (l!=expression_base::no_value)
+  if (l!=eval_level::no_value)
   @/{@; accumulator->val += std::move(addend->val);
     push_value(std::move(accumulator));
   }
 }
 @)
-void subtract_K_type_pols_wrapper(expression_base::level l)
+void subtract_K_type_pols_wrapper(eval_level l)
 {
   own_K_type_pol subtrahend = get_own<K_type_pol_value>();
   own_K_type_pol accumulator = get_own<K_type_pol_value>();
   if (accumulator->rf!=subtrahend->rf)
     throw runtime_error@|("Real form mismatch when subtracting two K_types");
-  if (l!=expression_base::no_value)
+  if (l!=eval_level::no_value)
   @/{@; accumulator->val -= std::move(subtrahend->val);
     push_value(std::move(accumulator));
   }
@@ -5819,7 +5819,7 @@ form; writing $0*P$ is quite a convenient way to achieve this.
 
 @< Local function... @>=
 
-void int_mult_K_type_pol_wrapper(expression_base::level l)
+void int_mult_K_type_pol_wrapper(eval_level l)
 { int c =
     force<int_value>(execution_stack[execution_stack.size()-2].get())
     // value below top
@@ -5828,15 +5828,15 @@ void int_mult_K_type_pol_wrapper(expression_base::level l)
   { shared_K_type_pol m = get<K_type_pol_value>();
       // |m| is needed for |m->rc()|
     pop_value();
-    if (l!=expression_base::no_value)
+    if (l!=eval_level::no_value)
     @/push_value@|(std::make_shared<K_type_pol_value>
-        (m->rf,K_repr::K_type_pol()));
+        (m->rf,K_type_poly()));
   }
   else
   { own_K_type_pol m = get_own<K_type_pol_value>();
      // will modify our copy now
     pop_value();
-    if (l!=expression_base::no_value)
+    if (l!=eval_level::no_value)
     { for (auto& term : m->val)
         term.second *= c;
       push_value(std::move(m));
@@ -5861,8 +5861,8 @@ dropping the arguments from the stack when it applies.
 
 @< Local function... @>=
 
-void split_mult_K_type_pol_wrapper(expression_base::level l)
-{  if (l==expression_base::no_value)
+void split_mult_K_type_pol_wrapper(eval_level l)
+{  if (l==eval_level::no_value)
    {@; pop_value();
        pop_value();
        return;
@@ -5874,7 +5874,7 @@ void split_mult_K_type_pol_wrapper(expression_base::level l)
   if (c.s_to_1()==0)
   // then coefficient is multiple of $1-s$; don't try to modify module in place
   { shared_K_type_pol m = get<K_type_pol_value>();
-    K_repr::K_type_pol result;
+    K_type_poly result;
     if (c.s_to_minus_1()!=0) // otherwise coefficient is $0$ and keep null module
       for (const auto& term: m->val)
         if (term.second.s_to_minus_1()!=0)
@@ -5887,7 +5887,7 @@ void split_mult_K_type_pol_wrapper(expression_base::level l)
   else if (c.s_to_minus_1()==0)
   // then coefficient is multiple of $1+s$; don't modify in place
   { shared_K_type_pol m = get<K_type_pol_value>();
-    K_repr::K_type_pol result;
+    K_type_poly result;
     for (const auto& term: m->val)
       if (term.second.s_to_1()!=0)
         result.add_term(term.first.copy(),term.second*c);
@@ -5908,9 +5908,9 @@ that is present, without looping over all terms. The most useful choice it the
 final term, be we allow taking the first term as well.
 
 @< Local function... @>=
-void last_K_type_term_wrapper (expression_base::level l)
+void last_K_type_term_wrapper (eval_level l)
 { shared_K_type_pol m = get<K_type_pol_value>();
-  if (l==expression_base::no_value)
+  if (l==eval_level::no_value)
     return;
 @)
   if (m->val.is_zero())
@@ -5919,13 +5919,13 @@ void last_K_type_term_wrapper (expression_base::level l)
   push_value(std::make_shared<split_int_value>(term.second));
   push_value(std::make_shared<K_type_value>
 	(m->rf,term.first.copy()));
-  if (l==expression_base::single_value)
+  if (l==eval_level::single_value)
     wrap_tuple<2>();
 }
 @)
-void first_K_type_term_wrapper (expression_base::level l)
+void first_K_type_term_wrapper (eval_level l)
 { shared_K_type_pol m = get<K_type_pol_value>();
-  if (l==expression_base::no_value)
+  if (l==eval_level::no_value)
     return;
 @)
   if (m->val.is_zero())
@@ -5934,7 +5934,7 @@ void first_K_type_term_wrapper (expression_base::level l)
   push_value(std::make_shared<split_int_value>(term.second));
   push_value(std::make_shared<K_type_value>
   	(m->rf,term.first.copy()));
-  if (l==expression_base::single_value)
+  if (l==eval_level::single_value)
     wrap_tuple<2>();
 }
 
@@ -5943,13 +5943,13 @@ Since terms are sorted by height this can be done fairly efficiently, and the
 built-in |truncate_above_height| will do this.
 
 @< Local function... @>=
-void truncate_K_type_poly_above_wrapper (expression_base::level l)
+void truncate_K_type_poly_above_wrapper (eval_level l)
 { int arg = get<int_value>()->int_val();
   shared_K_type_pol P = get<K_type_pol_value>();
-  if (l==expression_base::no_value)
+  if (l==eval_level::no_value)
     return;
 @)
-  sl_list<K_repr::K_type_pol::value_type> L;
+  sl_list<K_type_poly::value_type> L;
   if (arg>=0)
   { unsigned bound = arg; // use |unsigned| value for height comparison
     for (const auto& term : P->val)
@@ -5962,7 +5962,7 @@ void truncate_K_type_poly_above_wrapper (expression_base::level l)
   }
   wrap_up:
     push_value(std::make_shared<K_type_pol_value>@|
-      (P->rf,K_repr::K_type_pol(std::move(L).to_vector(),false)));
+      (P->rf,K_type_poly(std::move(L).to_vector(),false)));
       // no need to sort again
 }
 
@@ -5993,13 +5993,13 @@ a $K$-type.
 @h <limits> // for |max|
 
 @< Local function def...@>=
-void KGP_sum_wrapper(expression_base::level l)
+void KGP_sum_wrapper(eval_level l)
 { shared_K_type p = get<K_type_value>();
 @/const Rep_context rc = p->rc();
   auto srk = p->val.copy();
   if (not rc.is_semifinal(srk))
     throw runtime_error@|("K-type has parity real roots (so not semifinal)");
-  if (l==expression_base::no_value)
+  if (l==eval_level::no_value)
     return;
 @)
   auto length = rc.kgb().length(srk.x());
@@ -6028,18 +6028,19 @@ formula should be computed. Since there is only one method
 highest possible value of the unsigned type |repr::level|.
 
 @< Local function def...@>=
-void K_type_formula_wrapper(expression_base::level l)
+void K_type_formula_wrapper(eval_level l)
 { int bound = get<int_value>()->int_val();
   shared_K_type p = get<K_type_value>();
 @/const Rep_context rc = p->rc();
   auto srk = p->val.copy();
   if (not rc.is_semifinal(srk))
     throw runtime_error@|("K-type has parity real roots (so not semifinal)");
-  if (l==expression_base::no_value)
+  if (l==eval_level::no_value)
     return;
 @)
   repr::level h = bound<0 ? std::numeric_limits<repr::level>::max() : bound;
-  push_value(std::make_shared<K_type_pol_value>(p->rf,rc.K_type_formula(srk,h)));
+  auto f = K_type_poly::convert(rc.K_type_formula(srk,h));
+  push_value(std::make_shared<K_type_pol_value>(p->rf,std::move(f)));
 }
 
 @ Here is the function that implements branching. Because it is a long division
@@ -6053,12 +6054,12 @@ bound can the computation terminate.
 
 uses the |K_type_formula| internally.
 @< Local function def...@>=
-void branch_wrapper(expression_base::level l)
+void branch_wrapper(eval_level l)
 { int arg = get<int_value>()->int_val();
   own_K_type_pol P = get_own<K_type_pol_value>();
   if (arg<0)
     throw runtime_error("Maximum level in branch cannot be negative");
-  if (l==expression_base::no_value)
+  if (l==eval_level::no_value)
     return;
 @)
   unsigned int bound=arg;
@@ -6213,7 +6214,7 @@ infinitesimal character $\gamma$ in the place of $\nu$.
 @f nu nullptr
 
 @< Local function def...@>=
-void module_parameter_wrapper(expression_base::level l)
+void module_parameter_wrapper(eval_level l)
 { shared_rational_vector nu(get<rational_vector_value>());
   shared_vector lam_rho(get<vector_value>());
   shared_KGB_elt x = get<KGB_elt_value>();
@@ -6226,7 +6227,7 @@ void module_parameter_wrapper(expression_base::level l)
     throw runtime_error(o.str());
   }
 @.Rank mismatch@>
-  if (l!=expression_base::no_value)
+  if (l!=eval_level::no_value)
     push_value(std::make_shared<module_parameter_value> @| (x->rf,
       x->rf->rc().sr(x->val,lam_rho->val,nu->val)));
 }
@@ -6250,21 +6251,21 @@ We also provide a function directly extracting the real form from a module
 parameter (which would otherwise require extracting it from the |x| component).
 
 @< Local function def...@>=
-void unwrap_parameter_wrapper(expression_base::level l)
+void unwrap_parameter_wrapper(eval_level l)
 { shared_module_parameter p = get<module_parameter_value>();
-  if (l==expression_base::no_value)
+  if (l==eval_level::no_value)
     return;
 @)
   push_value(std::make_shared<KGB_elt_value>(p->rf,p->val.x()));
   push_value(std::make_shared<vector_value>(p->rc().lambda_rho(p->val)));
   push_value(std::make_shared<rational_vector_value>(p->val.gamma()));
-  if (l==expression_base::single_value)
+  if (l==eval_level::single_value)
     wrap_tuple<3>();
 }
 @)
-void real_form_of_parameter_wrapper(expression_base::level l)
+void real_form_of_parameter_wrapper(eval_level l)
 { shared_module_parameter p = get<module_parameter_value>();
-  if (l!=expression_base::no_value)
+  if (l!=eval_level::no_value)
     push_value(p->rf);
 }
 
@@ -6273,17 +6274,17 @@ restricting to $K$ (and ignoring $\nu$) in one direction, and extending with
 $\nu=0$ in the opposite direction.
 
 @< Local function def...@>=
-void param_to_K_type_wrapper(expression_base::level l)
+void param_to_K_type_wrapper(eval_level l)
 { shared_module_parameter p = get<module_parameter_value>();
-  if (l==expression_base::no_value)
+  if (l==eval_level::no_value)
     return;
   const auto& rf=p->rf;
   push_value(std::make_shared<K_type_value> @|
     (rf,rf->rc().sr_K(p->val)));
 }
-void K_type_to_param_wrapper(expression_base::level l)
+void K_type_to_param_wrapper(eval_level l)
 { shared_K_type p = get<K_type_value>();
-  if (l==expression_base::no_value)
+  if (l==eval_level::no_value)
     return;
   const auto& rf=p->rf;
   push_value(std::make_shared<module_parameter_value> @|
@@ -6298,9 +6299,9 @@ value, so it can be obtained from there there; this is somewhat more efficient
 than constructing a $K$-type from the parameter and taking the height of that.
 
 @< Local function def...@>=
-void parameter_height_wrapper(expression_base::level l)
+void parameter_height_wrapper(eval_level l)
 { shared_module_parameter p = get<module_parameter_value>();
-  if (l!=expression_base::no_value)
+  if (l!=eval_level::no_value)
     push_value(std::make_shared<int_value>(p->val.height()));
 }
 
@@ -6323,59 +6324,59 @@ equivalence of the parameters.
 
 @< Local function def...@>=
 
-void parameter_eq_wrapper(expression_base::level l)
+void parameter_eq_wrapper(eval_level l)
 { shared_module_parameter q = get<module_parameter_value>();
   shared_module_parameter p = get<module_parameter_value>();
-  if (l!=expression_base::no_value)
+  if (l!=eval_level::no_value)
     push_value(whether(p->rf->val==q->rf->val and p->val==q->val));
 }
-void parameter_neq_wrapper(expression_base::level l)
+void parameter_neq_wrapper(eval_level l)
 { shared_module_parameter q = get<module_parameter_value>();
   shared_module_parameter p = get<module_parameter_value>();
-  if (l!=expression_base::no_value)
+  if (l!=eval_level::no_value)
     push_value(whether(p->rf->val!=q->rf->val or p->val!=q->val));
 }
 
-void parameter_equivalent_wrapper(expression_base::level l)
+void parameter_equivalent_wrapper(eval_level l)
 { shared_module_parameter q = get<module_parameter_value>();
   shared_module_parameter p = get<module_parameter_value>();
   if (p->rf->val!=q->rf->val)
     throw runtime_error @|
       ("Real form mismatch when testing equivalence");
-  if (l!=expression_base::no_value)
+  if (l!=eval_level::no_value)
     push_value(whether(p->rc().equivalent(p->val,q->val)));
 }
 
 @ Here are some more attributes, in the form of predicates.
 
 @< Local function def...@>=
-void is_standard_wrapper(expression_base::level l)
+void is_standard_wrapper(eval_level l)
 { shared_module_parameter p = get<module_parameter_value>();
-  if (l!=expression_base::no_value)
+  if (l!=eval_level::no_value)
     push_value(whether(p->rc().is_standard(p->val)));
 }
 
-void is_dominant_wrapper(expression_base::level l)
+void is_dominant_wrapper(eval_level l)
 { shared_module_parameter p = get<module_parameter_value>();
-  if (l!=expression_base::no_value)
+  if (l!=eval_level::no_value)
     push_value(whether(p->rc().is_dominant(p->val)));
 }
 
-void is_zero_wrapper(expression_base::level l)
+void is_zero_wrapper(eval_level l)
 { shared_module_parameter p = get<module_parameter_value>();
-  if (l!=expression_base::no_value)
+  if (l!=eval_level::no_value)
     push_value(whether(not p->rc().is_nonzero(p->val)));
 }
 
-void is_semifinal_wrapper(expression_base::level l)
+void is_semifinal_wrapper(eval_level l)
 { shared_module_parameter p = get<module_parameter_value>();
-  if (l!=expression_base::no_value)
+  if (l!=eval_level::no_value)
     push_value(whether(p->rc().is_semifinal(p->val)));
 }
 
-void is_final_wrapper(expression_base::level l)
+void is_final_wrapper(eval_level l)
 { shared_module_parameter p = get<module_parameter_value>();
-  if (l!=expression_base::no_value)
+  if (l!=eval_level::no_value)
     push_value(whether(p->rc().is_final(p->val)));
 }
 
@@ -6392,17 +6393,17 @@ construction process, we stick to unqualified dominance for now.)
 
 
 @< Local function def...@>=
-void parameter_dominant_wrapper(expression_base::level l)
+void parameter_dominant_wrapper(eval_level l)
 { own_module_parameter p = get_own<module_parameter_value>();
-  if (l!=expression_base::no_value)
+  if (l!=eval_level::no_value)
   {@; p->rc().make_dominant(p->val);
     push_value(std::move(p));
   }
 }
 
-void parameter_normal_wrapper(expression_base::level l)
+void parameter_normal_wrapper(eval_level l)
 { own_module_parameter p = get_own<module_parameter_value>();
-  if (l!=expression_base::no_value)
+  if (l!=eval_level::no_value)
   {@; p->rc().normalise(p->val);
     push_value(std::move(p));
   }
@@ -6428,7 +6429,7 @@ already been adopted in the method that is called here, which presents a
 single-valued interface to the Cayley transform.
 
 @< Local function def...@>=
-void parameter_cross_wrapper(expression_base::level l)
+void parameter_cross_wrapper(eval_level l)
 { shared_module_parameter p = get<module_parameter_value>();
   int s = get<int_value>()->int_val();
   unsigned int r =
@@ -6438,12 +6439,12 @@ void parameter_cross_wrapper(expression_base::level l)
     o << "Illegal simple reflection: " << s << ", should be <" << r;
     throw runtime_error(o.str());
   }
-  if (l!=expression_base::no_value)
+  if (l!=eval_level::no_value)
     push_value(std::make_shared<module_parameter_value>
 		(p->rf,p->rc().cross(s,p->val)));
 }
 @)
-void parameter_Cayley_wrapper(expression_base::level l)
+void parameter_Cayley_wrapper(eval_level l)
 { shared_module_parameter p = get<module_parameter_value>();
   int s = get<int_value>()->int_val();
   unsigned int r =
@@ -6454,7 +6455,7 @@ void parameter_Cayley_wrapper(expression_base::level l)
       << ", should be <" << r;
     throw runtime_error(o.str());
   }
-  if (l==expression_base::no_value)
+  if (l==eval_level::no_value)
     return;
 
   try {
@@ -6477,7 +6478,7 @@ implement a new approach, less confusing and more general, in which the root
 is specified in coordinates. Given the internal implementation, there is in
 fact little dealing with the integral subsystem at all, just a test that it
 contains the specified root (if not an error is thrown inside the method
-called; the error will not happen if |l==expression_base::no_value|, which is
+called; the error will not happen if |l==eval_level::no_value|, which is
 not quite correct).
 
 There is not much difference between integral roots that are simple for the
@@ -6494,18 +6495,18 @@ handle undefined Cayley transforms by testing the returned value.
 @h "error.h"
 @< Local function def...@>=
 
-void root_parameter_cross_wrapper(expression_base::level l)
+void root_parameter_cross_wrapper(eval_level l)
 { shared_module_parameter p = get<module_parameter_value>();
   shared_vector alpha = get<vector_value>();
-  if (l!=expression_base::no_value)
+  if (l!=eval_level::no_value)
     push_value(std::make_shared<module_parameter_value>
 		(p->rf,p->rc().cross(alpha->val,p->val)));
 }
 @)
-void root_parameter_Cayley_wrapper(expression_base::level l)
+void root_parameter_Cayley_wrapper(eval_level l)
 { shared_module_parameter p = get<module_parameter_value>();
   shared_vector alpha = get<vector_value>();
-  if (l==expression_base::no_value)
+  if (l==eval_level::no_value)
     return;
 @)
   try {
@@ -6522,9 +6523,9 @@ void root_parameter_Cayley_wrapper(expression_base::level l)
 @ One useful thing to be able to for parameters is to compute their twist by
 the distinguished involution.
 @< Local function def...@>=
-void parameter_twist_wrapper(expression_base::level l)
+void parameter_twist_wrapper(eval_level l)
 { shared_module_parameter p = get<module_parameter_value>();
-  if (l!=expression_base::no_value)
+  if (l!=eval_level::no_value)
     push_value(std::make_shared<module_parameter_value>
 		(p->rf,p->rc().inner_twisted(p->val)));
 }
@@ -6534,11 +6535,11 @@ method of |Rep_context| to call is now |twisted| rather than |inner_twisted|,
 but we first call |test_compatible|.
 
 @< Local function def...@>=
-void parameter_outer_twist_wrapper(expression_base::level l)
+void parameter_outer_twist_wrapper(eval_level l)
 { auto delta = get<matrix_value>();
   auto p = get<module_parameter_value>();
   test_compatible(p->rc().inner_class(),delta);
-  if (l!=expression_base::no_value)
+  if (l!=eval_level::no_value)
     push_value(std::make_shared<module_parameter_value>
 		(p->rf,p->rc().twisted(p->val,delta->val)));
 }
@@ -6547,9 +6548,9 @@ void parameter_outer_twist_wrapper(expression_base::level l)
 @ The library can also compute orientation numbers for parameters.
 
 @< Local function def...@>=
-void orientation_number_wrapper(expression_base::level l)
+void orientation_number_wrapper(eval_level l)
 { shared_module_parameter p = get<module_parameter_value>();
-  if (l!=expression_base::no_value)
+  if (l!=eval_level::no_value)
     push_value(std::make_shared<int_value>(p->rc().orientation_number(p->val)));
 }
 
@@ -6559,9 +6560,9 @@ by~$t\nu$ is not topmost in its block, so that deformation of the parameter to
 $t\nu$ will produce a non-trivial decomposition.
 
 @< Local function def...@>=
-void reducibility_points_wrapper(expression_base::level l)
+void reducibility_points_wrapper(eval_level l)
 { shared_module_parameter p = get<module_parameter_value>();
-  if (l==expression_base::no_value)
+  if (l==eval_level::no_value)
     return;
 @)
   RatNumList rp = p->rc().reducibility_points(p->val);
@@ -6580,10 +6581,10 @@ construction of a $K$-type from a parameter is often a better alternative, as
 then the result type makes clear that information about $\nu$ has been erased.
 
 @< Local function def...@>=
-void scale_parameter_wrapper(expression_base::level l)
+void scale_parameter_wrapper(eval_level l)
 { shared_rat f = get<rat_value>();
   own_module_parameter p = get_own<module_parameter_value>();
-  if (l!=expression_base::no_value)
+  if (l!=eval_level::no_value)
 @/{@; p->val = p->rc().scale(p->val,f->rat_val());
     push_value(std::move(p));
   }
@@ -6651,22 +6652,21 @@ void test_final(const module_parameter_value& p, const char* descr)
 of the \.{full\_block} command in the \.{Fokko} program.
 
 @< Local function def...@>=
-void print_param_block_wrapper(expression_base::level l)
+void print_param_block_wrapper(eval_level l)
 { own_module_parameter p = get_own<module_parameter_value>();
   test_standard(*p,"Cannot generate block");
   auto srm = StandardReprMod::mod_reduce(p->rc(),p->val);
   common_context ctxt(p->rc(),srm.gamma_lambda());
-  BlockElt init_index; // will hold index in the block of the initial element
-  blocks::common_block block (ctxt,srm,init_index);
-  *output_stream << "Parameter defines element " << init_index
+  blocks::common_block block (ctxt,srm);
+  *output_stream << "Parameter defines element " << block.lookup(srm)
                @|<< " of the following block:" << std::endl;
   block.print_to(*output_stream,block.singular(p->val.gamma()));
     // print block using involution expressions
-  if (l==expression_base::single_value)
+  if (l==eval_level::single_value)
     wrap_tuple<0>(); // |no_value| needs no special care
 }
 @)
-void print_c_block_wrapper(expression_base::level l)
+void print_c_block_wrapper(eval_level l)
 { own_module_parameter p = get_own<module_parameter_value>();
   test_standard(*p,"Cannot generate block");
   BlockElt init_index; // will hold index in the block of the initial element
@@ -6691,14 +6691,14 @@ void print_c_block_wrapper(expression_base::level l)
   block.print_to(*output_stream,block.singular(bm,p->val.gamma()));
     // print block using involution expressions
   block.shift(-bm.shift);
-  if (l==expression_base::single_value)
+  if (l==eval_level::single_value)
     wrap_tuple<0>(); // |no_value| needs no special care
 }
 
 @ Here is a variation generating and printing only a partial block.
 @< Local function def...@>=
 
-void print_part_param_block_wrapper(expression_base::level l)
+void print_part_param_block_wrapper(eval_level l)
 { own_module_parameter p = get_own<module_parameter_value>();
   test_standard(*p,"Cannot generate block");
   auto srm = StandardReprMod::mod_reduce(p->rc(),p->val);
@@ -6707,11 +6707,11 @@ void print_part_param_block_wrapper(expression_base::level l)
   blocks::common_block block(ctxt,interval);
   block.print_to(*output_stream,block.singular(p->val.gamma()));
     // print using involution expressions
-  if (l==expression_base::single_value)
+  if (l==eval_level::single_value)
     wrap_tuple<0>(); // |no_value| needs no special care
 }
 @)
-void print_pc_block_wrapper(expression_base::level l)
+void print_pc_block_wrapper(eval_level l)
 { own_module_parameter p = get_own<module_parameter_value>();
   test_standard(*p,"Cannot generate block");
   BlockElt init_index; // will hold index in the block of the initial element
@@ -6735,7 +6735,7 @@ void print_pc_block_wrapper(expression_base::level l)
   block.print_to(*output_stream,block.singular(bm,p->val.gamma()));
     // print using involution expressions
   block.shift(-diff);
-  if (l==expression_base::single_value)
+  if (l==eval_level::single_value)
     wrap_tuple<0>(); // |no_value| needs no special care
 }
 
@@ -6746,10 +6746,10 @@ block. If not final, the original parameter will be absent, and the second
 value returned~$-1$.
 
 @< Local function def...@>=
-void common_block_wrapper(expression_base::level l)
+void common_block_wrapper(eval_level l)
 { own_module_parameter p = get_own<module_parameter_value>();
   test_standard(*p,"Cannot generate block");
-  if (l==expression_base::no_value)
+  if (l==eval_level::no_value)
     return;
 @)
   const auto& rc = p->rc();
@@ -6772,7 +6772,7 @@ void common_block_wrapper(expression_base::level l)
     push_value(std::move(param_list));
     push_value(std::make_shared<int_value>(start_pos));
   }
-  if (l==expression_base::single_value)
+  if (l==eval_level::single_value)
     wrap_tuple<2>();
 }
 
@@ -6784,10 +6784,10 @@ block |lookup| function); this avoids generating the full
 |block.bruhatOrder().poset()| structure.
 
 @< Local function def...@>=
-void partial_common_block_wrapper(expression_base::level l)
+void partial_common_block_wrapper(eval_level l)
 { own_module_parameter p = get_own<module_parameter_value>();
   test_standard(*p,"Cannot generate block");
-  if (l==expression_base::no_value)
+  if (l==eval_level::no_value)
     return;
 @)
   BlockElt start;
@@ -6816,10 +6816,10 @@ void partial_common_block_wrapper(expression_base::level l)
 
 @ Knowing the length in its block of a parameter is of independent interest.
 @< Local function def...@>=
-void param_length_wrapper(expression_base::level l)
+void param_length_wrapper(eval_level l)
 { shared_module_parameter p = get<module_parameter_value>();
   test_standard(*p,"Cannot determine block for parameter length");
-  if (l!=expression_base::no_value)
+  if (l!=eval_level::no_value)
     push_value(std::make_shared<int_value>(p->rt().length(p->val)));
 }
 
@@ -6827,10 +6827,10 @@ void param_length_wrapper(expression_base::level l)
 block on the fly.
 
 @< Local function def...@>=
-void block_Hasse_wrapper(expression_base::level l)
+void block_Hasse_wrapper(eval_level l)
 { own_module_parameter p = get_own<module_parameter_value>();
   test_standard(*p,"Cannot generate block");
-  if (l==expression_base::no_value)
+  if (l==eval_level::no_value)
     return;
 @)
   BlockElt init_index; // will hold index in the block of the initial element
@@ -6853,7 +6853,7 @@ void block_Hasse_wrapper(expression_base::level l)
       M->val(i,j)=1;
   push_value(std::move(param_list));
   push_value(std::move(M));
-  if (l==expression_base::single_value)
+  if (l==eval_level::single_value)
     wrap_tuple<2>();
 }
 
@@ -6866,10 +6866,10 @@ list, a matrix of KL-polynomial indices, and a list of polynomials (as vectors).
 @s IntPolEntry BlockElt
 
 @< Local function def...@>=
-void KL_block_wrapper(expression_base::level l)
+void KL_block_wrapper(eval_level l)
 { own_module_parameter p = get_own<module_parameter_value>();
   test_standard(*p,"KL_block requires a standard parameter");
-  if (l==expression_base::no_value)
+  if (l==eval_level::no_value)
     return;
 @)
   BlockElt start; // will hold index in the block of the initial element
@@ -6904,7 +6904,7 @@ void KL_block_wrapper(expression_base::level l)
   with polynomials replaced by there indices, and then push a list of the
   distinct polynomials @>
 @)
-  if (l==expression_base::single_value)
+  if (l==eval_level::single_value)
     wrap_tuple<4>();
 }
 
@@ -6996,10 +6996,10 @@ which the last one is the initial parameter), a matrix of KL-polynomial
 indices, and a list of polynomials (as vectors).
 
 @< Local function def...@>=
-void partial_KL_block_wrapper(expression_base::level l)
+void partial_KL_block_wrapper(eval_level l)
 { own_module_parameter p = get_own<module_parameter_value>();
   test_standard(*p,"partial_KL_block requires a standard parameter");
-  if (l==expression_base::no_value)
+  if (l==eval_level::no_value)
     return;
 @)
   BlockElt start; // will hold index in the block of the initial element
@@ -7035,7 +7035,7 @@ void partial_KL_block_wrapper(expression_base::level l)
   @< Push list of parameters corresponding to |survivors| in |block|,... @>
   @< Group distinct polynomials in |M| into a list,... @>
 @)
-  if (l==expression_base::single_value)
+  if (l==eval_level::single_value)
     wrap_tuple<3>();
 }
 
@@ -7051,10 +7051,10 @@ submatrix of polynomials at the corresponding indices; therefore we leave out
 that part of the computation altogether.
 
 @< Local function def...@>=
-void dual_KL_block_wrapper(expression_base::level l)
+void dual_KL_block_wrapper(eval_level l)
 { own_module_parameter p = get_own<module_parameter_value>();
   test_standard(*p,"Cannot generate block");
-  if (l==expression_base::no_value)
+  if (l==eval_level::no_value)
     return;
 @)
   BlockElt start; // will hold index into |block| of the initial element
@@ -7086,7 +7086,7 @@ void dual_KL_block_wrapper(expression_base::level l)
   @< Transfer the coefficient vectors of the polynomials from |pool| to an array,
      and push that array @>
 @)
-  if (l==expression_base::single_value)
+  if (l==eval_level::single_value)
     wrap_tuple<4>();
 }
 
@@ -7141,10 +7141,10 @@ the $W$-graph respectively $W$-cells from the block of the parameter, and
 export that.
 
 @< Local function def...@>=
-void param_W_graph_wrapper(expression_base::level l)
+void param_W_graph_wrapper(eval_level l)
 { own_module_parameter p = get_own<module_parameter_value>();
   test_standard(*p,"Cannot generate block");
-  if (l==expression_base::no_value)
+  if (l==eval_level::no_value)
     return;
 @)
   BlockElt start; // will hold index in the block of the initial element
@@ -7161,14 +7161,14 @@ void param_W_graph_wrapper(expression_base::level l)
      consisting of a descent set transformed by the permutation |bm.simple_pi|,
      and a list of outgoing labelled edges @>
   push_value(std::move(vertices));
-  if (l==expression_base::single_value)
+  if (l==eval_level::single_value)
     wrap_tuple<2>();
 }
 @)
-void param_W_cells_wrapper(expression_base::level l)
+void param_W_cells_wrapper(eval_level l)
 { own_module_parameter p = get_own<module_parameter_value>();
   test_standard(*p,"Cannot generate block");
-  if (l==expression_base::no_value)
+  if (l==eval_level::no_value)
     return;
 @)
   BlockElt start; // will hold index in the block of the initial element
@@ -7202,7 +7202,7 @@ void param_W_cells_wrapper(expression_base::level l)
     cells->val.push_back(std::move(tup));
   }
   push_value(std::move(cells));
-  if (l==expression_base::single_value)
+  if (l==eval_level::single_value)
     wrap_tuple<2>();
 }
 
@@ -7243,7 +7243,7 @@ second value the induced graph on strong components, using the same structure as
 for the argument graph.
 
 @< Local function def...@>=
-void strong_components_wrapper(expression_base::level l)
+void strong_components_wrapper(eval_level l)
 {
   shared_row graph = get<row_value>();
   const auto size = graph->val.size();
@@ -7263,7 +7263,7 @@ void strong_components_wrapper(expression_base::level l)
         throw runtime_error(o.str());
       }
   }
-  if (l==expression_base::no_value)
+  if (l==eval_level::no_value)
     return;
 @)
   std::unique_ptr<OrientedGraph> induced(new OrientedGraph);
@@ -7297,7 +7297,7 @@ void strong_components_wrapper(expression_base::level l)
     }
     push_value(std::move(edge_list_list));
   }
-  if (l==expression_base::single_value)
+  if (l==eval_level::single_value)
     wrap_tuple<2>();
 }
 
@@ -7311,7 +7311,7 @@ function |default_extend| that returns a tuple of the essential components of
 this extended parameter.
 
 @< Local function def...@>=
-void default_extend_wrapper(expression_base::level l)
+void default_extend_wrapper(eval_level l)
 {
   auto M =get<matrix_value>();
   shared_module_parameter p = get<module_parameter_value>();
@@ -7320,7 +7320,7 @@ void default_extend_wrapper(expression_base::level l)
   test_compatible(rc.inner_class(),M);
   if (not ((1-delta)*p->val.gamma().numerator()).is_zero())
     throw runtime_error@|("Involution does not fix infinitesimal character");
-  if (l==expression_base::no_value)
+  if (l==eval_level::no_value)
     return;
 @)
   repr::Ext_rep_context ctxt(rc,delta);
@@ -7339,7 +7339,7 @@ when shifted to a different infinitesimal character |gamma| produces an extended
 parameter opposite to the default extensions at |gamma|.
 
 @< Local function def...@>=
-void shift_flip_wrapper(expression_base::level l)
+void shift_flip_wrapper(eval_level l)
 {
   shared_rational_vector gamma = get<rational_vector_value>();
   auto M =get<matrix_value>();
@@ -7351,7 +7351,7 @@ void shift_flip_wrapper(expression_base::level l)
     throw runtime_error@|("Involution does not fix rational weight");
   if (not ((1-delta)*p->val.gamma().numerator()).is_zero())
     throw runtime_error@|("Involution does not fix infinitesimal character");
-  if (l==expression_base::no_value)
+  if (l==eval_level::no_value)
     return;
 @)
   repr::Ext_rep_context ctxt(rc,delta);
@@ -7364,7 +7364,7 @@ void shift_flip_wrapper(expression_base::level l)
 directly in \.{atlas}.
 
 @< Local function def...@>=
-void extended_block_wrapper(expression_base::level l)
+void extended_block_wrapper(eval_level l)
 { auto delta =get<matrix_value>();
   shared_module_parameter p = get<module_parameter_value>();
   const auto& rc = p->rc();
@@ -7372,17 +7372,16 @@ void extended_block_wrapper(expression_base::level l)
   test_compatible(rc.inner_class(),delta);
   if (not ((1-delta->val)*p->val.gamma().numerator()).is_zero())
     throw runtime_error@|("Involution does not fix infinitesimal character");
-  if (l==expression_base::no_value)
+  if (l==eval_level::no_value)
     return;
 @)
-  BlockElt start;
   auto zm = repr::StandardReprMod::mod_reduce(rc,p->val);
   common_context ctxt(rc,zm.gamma_lambda());
-  blocks::common_block block(ctxt,zm,start); // build full block
+  blocks::common_block block(ctxt,zm); // build full block
   @< Construct the extended block, then the return value components,
      calling |push_value| for each of them @>
 @)
-  if (l==expression_base::single_value)
+  if (l==eval_level::single_value)
     wrap_tuple<4>();
 }
 
@@ -7443,12 +7442,12 @@ finally a list of vectors, to be interpreted as polynomials, and into which list
 the matrix entries are indices.
 
 @< Local function def...@>=
-void extended_KL_block_wrapper(expression_base::level l)
+void extended_KL_block_wrapper(eval_level l)
 { auto delta = get<matrix_value>();
   auto p = get<module_parameter_value>();
   test_standard(*p,"Cannot generate extended block");
   test_compatible(p->rc().inner_class(),delta);
-  if (l==expression_base::no_value)
+  if (l==eval_level::no_value)
     return;
 @)
   std::vector<StandardRepr> block;
@@ -7464,7 +7463,7 @@ void extended_KL_block_wrapper(expression_base::level l)
   push_value(std::move(P_mat));
   @< Transfer the coefficient vectors of the polynomials from |pool|... @>
 
-  if (l==expression_base::single_value)
+  if (l==eval_level::single_value)
     wrap_tuple<3>();
 }
 
@@ -7611,35 +7610,35 @@ is more efficient to just traverse both in parallel and stop once a difference
 is found.
 
 @< Local function def...@>=
-void virtual_module_wrapper(expression_base::level l)
+void virtual_module_wrapper(eval_level l)
 { shared_real_form rf = get<real_form_value>();
-  if (l!=expression_base::no_value)
+  if (l!=eval_level::no_value)
     push_value(std::make_shared<virtual_module_value> @| (rf,SR_poly()));
 }
 @)
-void real_form_of_virtual_module_wrapper(expression_base::level l)
+void real_form_of_virtual_module_wrapper(eval_level l)
 { shared_virtual_module m = get<virtual_module_value>();
-  if (l!=expression_base::no_value)
+  if (l!=eval_level::no_value)
     push_value(m->rf);
 }
 @)
-void virtual_module_unary_eq_wrapper(expression_base::level l)
+void virtual_module_unary_eq_wrapper(eval_level l)
 { shared_virtual_module m = get<virtual_module_value>();
-  if (l!=expression_base::no_value)
+  if (l!=eval_level::no_value)
     push_value(whether(m->val.empty()));
 }
 
-void virtual_module_unary_neq_wrapper(expression_base::level l)
+void virtual_module_unary_neq_wrapper(eval_level l)
 { shared_virtual_module m = get<virtual_module_value>();
-  if (l!=expression_base::no_value)
+  if (l!=eval_level::no_value)
     push_value(whether(m->val.size()>0));
 }
 
 @)
-void virtual_module_eq_wrapper(expression_base::level l)
+void virtual_module_eq_wrapper(eval_level l)
 { shared_virtual_module n = get<virtual_module_value>();
   shared_virtual_module m = get<virtual_module_value>();
-  if (l==expression_base::no_value)
+  if (l==eval_level::no_value)
     return;
 @)
   auto mit=m->val.begin(), nit=n->val.begin(); // keep outside loop
@@ -7650,10 +7649,10 @@ void virtual_module_eq_wrapper(expression_base::level l)
   push_value(whether
       (mit==m->val.end() and nit==n->val.end()));
 }
-void virtual_module_neq_wrapper(expression_base::level l)
+void virtual_module_neq_wrapper(eval_level l)
 { shared_virtual_module n = get<virtual_module_value>();
   shared_virtual_module m = get<virtual_module_value>();
-  if (l==expression_base::no_value)
+  if (l==eval_level::no_value)
     return;
 @)
   auto mit=m->val.begin(), nit=n->val.begin(); // keep outside loop
@@ -7669,9 +7668,9 @@ void virtual_module_neq_wrapper(expression_base::level l)
 file \.{global.h}.
 
 @< Function definitions @>=
-void virtual_module_size_wrapper(expression_base::level l)
+void virtual_module_size_wrapper(eval_level l)
 { shared_virtual_module m = get<virtual_module_value>();
-  if (l!=expression_base::no_value)
+  if (l!=eval_level::no_value)
     push_value(std::make_shared<int_value>(m->val.size()));
 }
 
@@ -7715,12 +7714,12 @@ void param_to_poly()
     (rf,rf->rc().expand_final(p->val)));
 }
 @)
-void param_poly_to_K_type_poly_wrapper(expression_base::level l)
+void param_poly_to_K_type_poly_wrapper(eval_level l)
 { shared_virtual_module p = get<virtual_module_value>();
-  if (l==expression_base::no_value)
+  if (l==eval_level::no_value)
     return;
   const auto& rf=p->rf;
-  K_repr::K_type_pol result;
+  K_type_poly result;
   for (const auto& term : p->val)
   { auto finals = rf->rc().finals_for(rf->rc().sr_K(term.first));
     for (auto it = finals.begin(); not finals.at_end(it); ++it)
@@ -7753,7 +7752,7 @@ void module_coefficient::evaluate(level l) const
      // it is OK to do this test before |make_dominant|
   StandardRepr sr = p->val;
   p->rc().make_dominant(sr);
-  if (l!=expression_base::no_value)
+  if (l!=eval_level::no_value)
     push_value(std::make_shared<split_int_value>(m->val[sr]));
 }
 
@@ -7784,25 +7783,25 @@ void virtual_module_value::assign_coef
 parameters to or from them.
 
 @< Local function def...@>=
-void add_module_wrapper(expression_base::level l)
+void add_module_wrapper(eval_level l)
 { shared_module_parameter p = get<module_parameter_value>();
   own_virtual_module accumulator = get_own<virtual_module_value>();
   if (accumulator->rf!=p->rf)
     throw runtime_error @|
       ("Real form mismatch when adding a Param to a ParamPol");
-  if (l!=expression_base::no_value)
+  if (l!=eval_level::no_value)
   @/{@; accumulator->val+= p->rc().expand_final(p->val);
     push_value(std::move(accumulator));
   }
 }
 
-void subtract_module_wrapper(expression_base::level l)
+void subtract_module_wrapper(eval_level l)
 { shared_module_parameter p = get<module_parameter_value>();
   own_virtual_module accumulator = get_own<virtual_module_value>();
   if (accumulator->rf!=p->rf)
     throw runtime_error @|
       ("Real form mismatch when subtracting a Param from a ParamPol");
-  if (l!=expression_base::no_value)
+  if (l!=eval_level::no_value)
   @/{@; accumulator->val-= p->rc().expand_final(p->val);
     push_value(std::move(accumulator));
   }
@@ -7816,7 +7815,7 @@ its final parameters.
 
 @< Local function def...@>=
 
-void add_module_term_wrapper(expression_base::level l)
+void add_module_term_wrapper(eval_level l)
 { push_tuple_components(); // second argument is a pair |(coef,p)|
   shared_module_parameter p = get<module_parameter_value>();
   Split_integer coef=get<split_int_value>()->val;
@@ -7824,7 +7823,7 @@ void add_module_term_wrapper(expression_base::level l)
 
 if (accumulator->rf!=p->rf)
     throw runtime_error@|("Real form mismatch when adding a term to a module");
-  if (l==expression_base::no_value)
+  if (l==eval_level::no_value)
     return;
 @)
   auto finals = p->rc().finals_for(p->val);
@@ -7840,10 +7839,10 @@ direction is given below). Therefore we provide instead the addition of an
 entire list of terms at once to a virtual module value.
 
 @< Local function... @>=
-void add_module_termlist_wrapper(expression_base::level l)
+void add_module_termlist_wrapper(eval_level l)
 { shared_row r = get<row_value>();
   own_virtual_module accumulator = get_own<virtual_module_value>();
-  if (l==expression_base::no_value)
+  if (l==eval_level::no_value)
     return;
 @)
   for (auto it=r->val.cbegin(); it!=r->val.cend(); ++it)
@@ -7864,25 +7863,25 @@ void add_module_termlist_wrapper(expression_base::level l)
 modules.
 
 @< Local function... @>=
-void add_virtual_modules_wrapper(expression_base::level l)
+void add_virtual_modules_wrapper(eval_level l)
 {
   own_virtual_module accumulator = get_own<virtual_module_value>();
   shared_virtual_module addend = get<virtual_module_value>();
   if (accumulator->rf!=addend->rf)
     throw runtime_error @|("Real form mismatch when adding two modules");
-  if (l!=expression_base::no_value)
+  if (l!=eval_level::no_value)
   @/{@; accumulator->val += addend->val;
     push_value(std::move(accumulator));
   }
 }
 @)
-void subtract_virtual_modules_wrapper(expression_base::level l)
+void subtract_virtual_modules_wrapper(eval_level l)
 {
   shared_virtual_module subtrahend = get<virtual_module_value>();
   own_virtual_module accumulator = get_own<virtual_module_value>();
   if (accumulator->rf!=subtrahend->rf)
     throw runtime_error@|("Real form mismatch when subtracting two modules");
-  if (l!=expression_base::no_value)
+  if (l!=eval_level::no_value)
   @/{@; accumulator->val -= subtrahend->val;
     push_value(std::move(accumulator));
   }
@@ -7905,7 +7904,7 @@ convenient way to achieve this.
 
 @< Local function... @>=
 
-void int_mult_virtual_module_wrapper(expression_base::level l)
+void int_mult_virtual_module_wrapper(eval_level l)
 { int c =
     force<int_value>(execution_stack[execution_stack.size()-2].get())
     // value below top
@@ -7914,7 +7913,7 @@ void int_mult_virtual_module_wrapper(expression_base::level l)
   { shared_virtual_module m = get<virtual_module_value>();
       // |m| is needed for |m->rc()|
     pop_value();
-    if (l!=expression_base::no_value)
+    if (l!=eval_level::no_value)
     @/push_value@|(std::make_shared<virtual_module_value>
         (m->rf,SR_poly()));
   }
@@ -7922,7 +7921,7 @@ void int_mult_virtual_module_wrapper(expression_base::level l)
   { own_virtual_module m = get_own<virtual_module_value>();
      // will modify our copy now
     pop_value();
-    if (l!=expression_base::no_value)
+    if (l!=eval_level::no_value)
     { for (auto& term : m->val)
         term.second *= c;
       push_value(std::move(m));
@@ -7947,8 +7946,8 @@ dropping the arguments from the stack when it applies.
 
 @< Local function... @>=
 
-void split_mult_virtual_module_wrapper(expression_base::level l)
-{  if (l==expression_base::no_value)
+void split_mult_virtual_module_wrapper(eval_level l)
+{  if (l==eval_level::no_value)
    {@; pop_value();
        pop_value();
        return;
@@ -7994,9 +7993,9 @@ is present, without looping over all terms. The most useful choice it the final
 term, be we allow taking the first term as well.
 
 @< Local function... @>=
-void last_term_wrapper (expression_base::level l)
+void last_term_wrapper (eval_level l)
 { shared_virtual_module m = get<virtual_module_value>();
-  if (l==expression_base::no_value)
+  if (l==eval_level::no_value)
     return;
 @)
   if (m->val.empty())
@@ -8005,13 +8004,13 @@ void last_term_wrapper (expression_base::level l)
   push_value(std::make_shared<split_int_value>(term.second));
   push_value(std::make_shared<module_parameter_value>
 	(m->rf,std::move(term.first)));
-  if (l==expression_base::single_value)
+  if (l==eval_level::single_value)
     wrap_tuple<2>();
 }
 @)
-void first_term_wrapper (expression_base::level l)
+void first_term_wrapper (eval_level l)
 { shared_virtual_module m = get<virtual_module_value>();
-  if (l==expression_base::no_value)
+  if (l==eval_level::no_value)
     return;
 @)
   if (m->val.empty())
@@ -8020,7 +8019,7 @@ void first_term_wrapper (expression_base::level l)
   push_value(std::make_shared<split_int_value>(term.second));
   push_value(std::make_shared<module_parameter_value>
   	(m->rf,std::move(term.first)));
-  if (l==expression_base::single_value)
+  if (l==eval_level::single_value)
     wrap_tuple<2>();
 }
 
@@ -8031,10 +8030,10 @@ Since are sorted by height this can be done fairly efficiently, and the built-in
 @h <algorithm>
 @< Local function... @>=
 
-void truncate_param_poly_above_wrapper (expression_base::level l)
+void truncate_param_poly_above_wrapper (eval_level l)
 { int arg = get<int_value>()->int_val();
   shared_virtual_module P = get<virtual_module_value>();
-  if (l==expression_base::no_value)
+  if (l==eval_level::no_value)
     return;
 @)
   auto point = P->val.begin(); // default to no terms
@@ -8056,10 +8055,10 @@ void truncate_param_poly_above_wrapper (expression_base::level l)
 entire virtual module.
 
 @< Local function def...@>=
-void scale_poly_wrapper(expression_base::level l)
+void scale_poly_wrapper(eval_level l)
 { shared_rat f = get<rat_value>();
   shared_virtual_module P = get<virtual_module_value>();
-  if (l!=expression_base::no_value)
+  if (l!=eval_level::no_value)
     push_value@|(std::make_shared<virtual_module_value>
       (P->rf,P->rc().scale(P->val,f->rat_val())));
 }
@@ -8082,9 +8081,9 @@ arguments to be final, we apply |finals_for| to |p->val| and sum over any
 (final) parameters this might produce.
 
 @< Local function def...@>=
-void deform_wrapper(expression_base::level l)
+void deform_wrapper(eval_level l)
 { own_module_parameter p = get_own<module_parameter_value>();
-  if (l==expression_base::no_value)
+  if (l==eval_level::no_value)
     return;
 @)
   auto& rt=p->rt();
@@ -8118,14 +8117,14 @@ dominant parameters, as this would internally produce an |SR_poly| value with
 non-dominant terms, which should never happen.
 
 @< Local function def...@>=
-void twisted_deform_wrapper(expression_base::level l)
+void twisted_deform_wrapper(eval_level l)
 { own_module_parameter p = get_own<module_parameter_value>();
   auto& rt=p->rt();
   test_standard(*p,"Cannot compute twisted deformation terms");
   if (not rt.is_delta_fixed(p->val))
     throw runtime_error@|("Parameter not fixed by inner class involution");
   test_final(*p,"Twisted deformation requires final parameter");
-  if (l==expression_base::no_value)
+  if (l==eval_level::no_value)
     return;
 @)
   BlockElt entry_elem;
@@ -8134,13 +8133,7 @@ void twisted_deform_wrapper(expression_base::level l)
     // though by reference, does not change |p->val|
   auto& eblock = block.extended_block(bm,rt.shared_poly_table());
 @)
-  RankFlags singular = block.singular(bm,p->val.gamma());
-  RankFlags singular_orbits;
-  for (weyl::Generator s=0; s<eblock.rank(); ++s)
-    singular_orbits.set(s,singular[eblock.orbit(s).s0]);
-@)
   auto terms = rt.twisted_deformation_terms@|(block,eblock,entry_elem,
-					     singular_orbits,
                                              bm,p->val.gamma());
   SR_poly result;
   for (auto&& term : terms)
@@ -8176,11 +8169,11 @@ deformation point in the direction of $\nu=0$.
 @s SR_poly vector
 
 @< Local function def...@>=
-void block_deform_wrapper(expression_base::level l)
+void block_deform_wrapper(eval_level l)
 { int bound = get<int_value>()->int_val();
   own_virtual_module accumulator = get_own<virtual_module_value>();
   own_module_parameter p = get_own<module_parameter_value>();
-  if (l==expression_base::no_value)
+  if (l==eval_level::no_value)
     return;
 @)
   SR_poly result;
@@ -8200,7 +8193,7 @@ void block_deform_wrapper(expression_base::level l)
   }
   push_value(std::make_shared<virtual_module_value>(p->rf,std::move(result)));
   push_value(std::move(accumulator));
-  if (l==expression_base::single_value)
+  if (l==eval_level::single_value)
     wrap_tuple<2>();
 }
 
@@ -8211,42 +8204,41 @@ within the |real_form_value|.
 @s K_type_poly vector
 
 @< Local function def...@>=
-void full_deform_wrapper(expression_base::level l)
+void full_deform_wrapper(eval_level l)
 { own_module_parameter p = get_own<module_parameter_value>();
-  if (l==expression_base::no_value)
+  if (l==eval_level::no_value)
     return;
 @)
-  repr::K_type_poly result;
-    // this is the data type used by |Rep_table::deformation|
+  repr::K_type_nr_poly result;
+    // this is the data type used by |Rep_table::full_deformation|
   auto finals = p->rc().finals_for(p->val);
   for (auto it=finals.begin(); not finals.at_end(it); ++it)
-    for (auto&& term : p->rt().deformation(std::move(it->first)))
+    for (auto&& term : p->rt().full_deformation(std::move(it->first)))
       result.add_term(std::move(term.first),term.second*it->second);
-@) // now convert from (tabled) |repr::K_type_poly| to |K_repr::K_type_pol|
+@) // now convert from (tabled) |repr::K_type_nr_poly| to |K_type_poly|
   push_value(std::make_shared<K_type_pol_value>@|
     (p->rf,export_K_type_pol(p->rt(),result)));
 }
 @)
-void twisted_full_deform_wrapper(expression_base::level l)
+void twisted_full_deform_wrapper(eval_level l)
 { shared_module_parameter p = get<module_parameter_value>();
   const auto& rc=p->rc(); auto& rt=p->rt();
   test_standard(*p,"Cannot compute full twisted deformation");
   if (not rc.is_delta_fixed(p->val))
     throw runtime_error@|("Parameter not fixed by inner class involution");
-  if (l==expression_base::no_value)
+  if (l==eval_level::no_value)
     return;
 @)
   auto finals = @;ext_block::
     extended_finalise(rc,p->val,rc.inner_class().distinguished());
-  repr::K_type_poly result;
-    // this is the data type used by |Rep_table::deformation|
+  repr::K_type_nr_poly result;
+    // this is the data type used by |Rep_table::twisted_full_deformation|
   for (auto it=finals.cbegin(); it!=finals.cend(); ++it)
-  { bool flip;
-    const auto& def = rt.twisted_deformation(std::move(it->first),flip);
+  { const auto& def = rt.twisted_full_deformation(std::move(it->first));
     result.add_multiple(def,
-	flip!=it->second ? Split_integer(0,1) : Split_integer(1,0));
+			it->second ? Split_integer(0,1) : Split_integer(1,0));
   }
-@) // now convert from (tabled) |repr::K_type_poly| to |K_repr::K_type_pol|
+@) // now convert from (tabled) |repr::K_type_nr_poly| to |K_type_poly|
   push_value(std::make_shared<K_type_pol_value>@|
     (p->rf,export_K_type_pol(p->rt(),result)));
 }
@@ -8260,20 +8252,20 @@ they wrap their result in the second (ordinary) variant of the union.
 @h "lexer.h" // for |main_hash_table|
 
 @< Local function def...@>=
-void timed_full_deform_wrapper(expression_base::level l)
+void timed_full_deform_wrapper(eval_level l)
 { auto period = get<int_value>()->long_val();
   auto p = get<module_parameter_value>();
-  if (l==expression_base::no_value)
+  if (l==eval_level::no_value)
     return;
 @)
-  repr::K_type_poly pol;
-    // this is the data type used by |Rep_table::deformation|
+  repr::K_type_nr_poly pol;
+    // this is the data type used by |Rep_table::full_deformation|
   auto finals = p->rc().finals_for(p->val);
 @)
   set_timer(period);
   try
   { for (auto it=finals.begin(); not finals.at_end(it); ++it)
-      for (auto&& term : p->rt().deformation(std::move(it->first)))
+      for (auto&& term : p->rt().full_deformation(std::move(it->first)))
         pol.add_term(std::move(term.first),term.second*it->second);
   }
   catch (const time_out& e)
@@ -8291,28 +8283,27 @@ void timed_full_deform_wrapper(expression_base::level l)
   // and inject into a union
 }
 @)
-void timed_twisted_full_deform_wrapper(expression_base::level l)
+void timed_twisted_full_deform_wrapper(eval_level l)
 { auto period = get<int_value>()->long_val();
   shared_module_parameter p = get<module_parameter_value>();
   const auto& rc=p->rc(); auto& rt=p->rt();
   test_standard(*p,"Cannot compute full twisted deformation");
   if (not rc.is_delta_fixed(p->val))
     throw runtime_error@|("Parameter not fixed by inner class involution");
-  if (l==expression_base::no_value)
+  if (l==eval_level::no_value)
     return;
 @)
   auto finals = @;ext_block::
     extended_finalise(rc,p->val,rc.inner_class().distinguished());
-  repr::K_type_poly pol;
-    // this is the data type used by |Rep_table::deformation|
+  repr::K_type_nr_poly pol;
+    // this is the data type used by |Rep_table::twisted_full_deformation|
 @)
   set_timer(period);
   try
   { for (auto it=finals.cbegin(); it!=finals.cend(); ++it)
-    { bool flip;
-      const auto& def = rt.twisted_deformation(std::move(it->first),flip);
+    { const auto& def = rt.twisted_full_deformation(std::move(it->first));
       pol.add_multiple(def,
-	     flip!=it->second ? Split_integer(0,1) : Split_integer(1,0));
+		       it->second ? Split_integer(0,1) : Split_integer(1,0));
     }
   }
   catch (const time_out& e)
@@ -8348,27 +8339,27 @@ height does not exceed a given limit, and which can therefore in many cases be
 more efficient in producing those terms.
 
 @< Local function def...@>=
-void KL_sum_at_s_wrapper(expression_base::level l)
+void KL_sum_at_s_wrapper(eval_level l)
 { shared_module_parameter p = get<module_parameter_value>();
   test_standard(*p,"Cannot compute Kazhdan-Lusztig sum");
   test_final(*p,"Cannot compute Kazhdan-Lusztig sum");
-  if (l!=expression_base::no_value)
+  if (l!=eval_level::no_value)
     push_value(std::make_shared<virtual_module_value>@|
       (p->rf,p->rt().KL_column_at_s(p->val)));
 }
-void KL_sum_at_s_to_ht_wrapper(expression_base::level l)
+void KL_sum_at_s_to_ht_wrapper(eval_level l)
 { int bound = get<int_value>()->int_val();
   shared_module_parameter p = get<module_parameter_value>();
   test_standard(*p,"Cannot compute Kazhdan-Lusztig sum");
   test_final(*p,"Cannot compute Kazhdan-Lusztig sum");
   repr::level limit = bound>=0 ? bound : -1;
     // negative becomes maximal unsigned value
-  if (l!=expression_base::no_value)
+  if (l!=eval_level::no_value)
     push_value(std::make_shared<virtual_module_value>@|
       (p->rf,p->rt().KL_column_at_s_to_height(p->val,limit)));
 }
 @)
-void twisted_KL_sum_at_s_wrapper(expression_base::level l)
+void twisted_KL_sum_at_s_wrapper(eval_level l)
 { shared_module_parameter p = get<module_parameter_value>();
   test_standard(*p,"Cannot compute Kazhdan-Lusztig sum");
   test_final(*p,"Cannot compute Kazhdan-Lusztig sum");
@@ -8377,7 +8368,7 @@ void twisted_KL_sum_at_s_wrapper(expression_base::level l)
     // |is_delta_fixed| and |twisted_KL_column_at_s| like this
   if (not p->rc().is_delta_fixed(sr))
     throw runtime_error@|("Parameter not fixed by inner class involution");
-  if (l!=expression_base::no_value)
+  if (l!=eval_level::no_value)
     push_value (std::make_shared<virtual_module_value>@|
       (p->rf,p->rt().twisted_KL_column_at_s(sr)));
 }
@@ -8388,11 +8379,11 @@ result, will be performed automatically by the method |Rep_table::KL_column| if
 it was not already done before.
 
 @< Local function def...@>=
-void KL_column_wrapper(expression_base::level l)
+void KL_column_wrapper(eval_level l)
 { own_module_parameter p = get_own<module_parameter_value>();
   test_standard(*p,"Cannot compute Kazhdan-Lusztig column");
   test_final(*p,"Cannot compute Kazhdan-Lusztig column");
-  if (l==expression_base::no_value)
+  if (l==eval_level::no_value)
     return;
 @)
   BlockElt z;
@@ -8418,7 +8409,7 @@ void KL_column_wrapper(expression_base::level l)
 @ We add another function in which the external involution is an argument
 
 @< Local function def...@>=
-void external_twisted_KL_sum_at_s_wrapper(expression_base::level l)
+void external_twisted_KL_sum_at_s_wrapper(eval_level l)
 { shared_matrix delta = get<matrix_value>();
   shared_module_parameter p = get<module_parameter_value>();
   test_standard(*p,"Cannot compute Kazhdan-Lusztig sum");
@@ -8426,7 +8417,7 @@ void external_twisted_KL_sum_at_s_wrapper(expression_base::level l)
   test_compatible(p->rc().inner_class(),delta);
   if (not p->rc().is_fixed(p->val,delta->val))
     throw runtime_error("Parameter not fixed by given involution");
-  if (l!=expression_base::no_value)
+  if (l!=eval_level::no_value)
     push_value (std::make_shared<virtual_module_value>@|
       (p->rf,twisted_KL_column_at_s(p->rc(),p->val,delta->val)));
 }
@@ -8447,7 +8438,7 @@ module \\{ext\_block} does the actual work.
 
 @< Local function def...@>=
 
-void scale_extended_wrapper(expression_base::level l)
+void scale_extended_wrapper(eval_level l)
 { auto factor = get<rat_value>();
   auto delta = get<matrix_value>();
   auto p = get<module_parameter_value>();
@@ -8460,7 +8451,7 @@ void scale_extended_wrapper(expression_base::level l)
   if (not rc.is_fixed(sr,delta->val))
     throw runtime_error@|
       ("Parameter to be scaled not fixed by given involution");
-  if (l==expression_base::no_value)
+  if (l==eval_level::no_value)
     return;
 @)
   auto result = @;ext_block::scaled_extended_finalise
@@ -8468,7 +8459,7 @@ void scale_extended_wrapper(expression_base::level l)
   push_value(std::make_shared<module_parameter_value>
     (p->rf,std::move(result.first)));
   push_value(whether(result.second));
-  if (l==expression_base::single_value)
+  if (l==eval_level::single_value)
     wrap_tuple<2>();
 }
 
@@ -8485,7 +8476,7 @@ module \\{ext\_block} does the actual work.
 
 @< Local function def...@>=
 
-void K_type_pol_extended_wrapper(expression_base::level l)
+void K_type_pol_extended_wrapper(eval_level l)
 { auto delta = get<matrix_value>();
   auto p = get<module_parameter_value>();
   const auto& rc = p->rc();
@@ -8493,7 +8484,7 @@ void K_type_pol_extended_wrapper(expression_base::level l)
   test_compatible(rc.inner_class(),delta);
   if (not p->rc().is_fixed(p->val,delta->val))
     throw runtime_error("Parameter not fixed by given involution");
-  if (l==expression_base::no_value)
+  if (l==eval_level::no_value)
     return;
 @)
   auto result = @;ext_block::extended_restrict_to_K(rc,p->val,delta->val);
@@ -8512,7 +8503,7 @@ the module \\{ext\_block} does the actual work.
 
 @< Local function def...@>=
 
-void finalize_extended_wrapper(expression_base::level l)
+void finalize_extended_wrapper(eval_level l)
 { auto delta = get<matrix_value>();
   auto p = get<module_parameter_value>();
   const auto& rc = p->rc();
@@ -8526,7 +8517,7 @@ void finalize_extended_wrapper(expression_base::level l)
       throw
         runtime_error("Involution of parameter does not commute with delta");
   }
-  if (l==expression_base::no_value)
+  if (l==eval_level::no_value)
     return;
 @)
   auto params = @;ext_block::extended_finalise(rc,p->val,delta->val);
@@ -8601,10 +8592,10 @@ install_function(finalize_extended_wrapper,@|"finalize_extended"
 access to the table of Kazhdan-Lusztig polynomials.
 
 @< Local function def...@>=
-void raw_KL_wrapper (expression_base::level l)
+void raw_KL_wrapper (eval_level l)
 { shared_Block b = get<Block_value>();
   const Block& block = b->val;
-  if (l==expression_base::no_value)
+  if (l==eval_level::no_value)
     return;
 @)
   b->kl_tab.fill(); // this does the actual KL computation
@@ -8629,7 +8620,7 @@ void raw_KL_wrapper (expression_base::level l)
   push_value(std::move(M));
   push_value(std::move(polys));
   push_value(std::make_shared<vector_value>(length_stops));
-  if (l==expression_base::single_value)
+  if (l==eval_level::single_value)
     wrap_tuple<3>();
 }
 
@@ -8638,14 +8629,14 @@ this case we cannot of course use the field |b->kl_tab| to store the KL
 polynomials, so we here us a local |kl::KL_table| variable.
 
 @< Local function def...@>=
-void raw_dual_KL_wrapper (expression_base::level l)
+void raw_dual_KL_wrapper (eval_level l)
 { shared_Block b = get<Block_value>();
   const Block& block = b->val;
   Block dual_block = Block::build(b->dual_rf->val,b->rf->val);
 
   std::vector<BlockElt> dual=blocks::dual_map(block,dual_block);
   kl::KL_table kl_tab(dual_block); kl_tab.fill();
-  if (l==expression_base::no_value)
+  if (l==eval_level::no_value)
     return;
 @)
   own_matrix M = std::make_shared<matrix_value>(int_Matrix(kl_tab.size()));
@@ -8669,7 +8660,7 @@ void raw_dual_KL_wrapper (expression_base::level l)
   push_value(std::move(M));
   push_value(std::move(polys));
   push_value(std::make_shared<vector_value>(length_stops));
-  if (l==expression_base::single_value)
+  if (l==eval_level::single_value)
     wrap_tuple<3>();
 }
 
@@ -8680,21 +8671,20 @@ parameter and an involution matrix as argument.
 @h "ext_kl.h"
 
 @< Local function def...@>=
-void raw_ext_KL_wrapper (expression_base::level l)
+void raw_ext_KL_wrapper (eval_level l)
 { auto delta = get<matrix_value>();
   own_module_parameter p = get_own<module_parameter_value>();
   test_standard(*p,"Cannot generate block");
   test_compatible(p->rc().inner_class(),delta);
-  if (l==expression_base::no_value)
+  if (l==eval_level::no_value)
     return;
 @)
   const auto& rc = p->rc();
   rc.make_dominant(p->val);
   const auto gamma = p->val.gamma();
   const auto srm = repr::StandardReprMod::mod_reduce(rc,p->val);
-  BlockElt start;
   common_context ctxt(rc,srm.gamma_lambda());
-  blocks::common_block block(ctxt,srm,start); // build full block
+  blocks::common_block block(ctxt,srm); // build full block
   if (not((delta->val-1)*gamma.numerator()).is_zero())
   { // block not globally stable, so return empty values;
     push_value(std::make_shared<matrix_value>(int_Matrix()));
@@ -8724,7 +8714,7 @@ void raw_ext_KL_wrapper (expression_base::level l)
     @< Transfer the coefficient vectors of the polynomials from |pool|... @>
     push_value(std::make_shared<vector_value>(length_stops));
   }
-  if (l==expression_base::single_value)
+  if (l==eval_level::single_value)
     wrap_tuple<3>();
 }
 
@@ -8736,9 +8726,9 @@ type \.{[[int],[int,int]]}, a list of pairs consisting of a $\tau$-invariant
 of a destination vertex and a $\mu$-value labelling the edge.
 
 @< Local function def...@>=
-void W_graph_wrapper(expression_base::level l)
+void W_graph_wrapper(eval_level l)
 { shared_Block b = get<Block_value>();
-  if (l=expression_base::no_value)
+  if (l==eval_level::no_value)
     return;
 @)
   b->kl_tab.fill(); // this does the actual KL computation
@@ -8781,9 +8771,9 @@ for (unsigned int i = 0; i < wg.size(); ++i)
 structures.
 
 @< Local function def...@>=
-void W_cells_wrapper(expression_base::level l)
+void W_cells_wrapper(eval_level l)
 { shared_Block b = get<Block_value>();
-  if (l=expression_base::no_value)
+  if (l==eval_level::no_value)
     return;
 @)
   b->kl_tab.fill(); // this does the actual KL computation
@@ -8829,7 +8819,7 @@ compatible Cartan class.
 
 @h "output.h"
 @< Local function def...@>=
-void print_realweyl_wrapper(expression_base::level l)
+void print_realweyl_wrapper(eval_level l)
 { shared_Cartan_class cc(get<Cartan_class_value>());
   shared_real_form rf= get<real_form_value>();
 @)
@@ -8843,19 +8833,19 @@ void print_realweyl_wrapper(expression_base::level l)
 @)
   output::printRealWeyl (*output_stream,rf->val,cc->number);
 @)
-  if (l==expression_base::single_value)
+  if (l==eval_level::single_value)
     wrap_tuple<0>();
 }
 
 @)
-void print_strongreal_wrapper(expression_base::level l)
+void print_strongreal_wrapper(eval_level l)
 { shared_Cartan_class cc(get<Cartan_class_value>());
 @)
  output::printStrongReal
     (*output_stream,
      cc->ic_ptr->val,cc->ic_ptr->interface,cc->number);
 @)
-  if (l==expression_base::single_value)
+  if (l==eval_level::single_value)
     wrap_tuple<0>();
 }
 
@@ -8867,13 +8857,13 @@ We shall next implement the \.{block} command.
 @h "block_io.h"
 
 @< Local function def...@>=
-void print_block_wrapper(expression_base::level l)
+void print_block_wrapper(eval_level l)
 { shared_Block b = get<Block_value>();
   const Block& block = b->val;
 @)
   block.print_to(*output_stream,false);
 @)
-  if (l==expression_base::single_value)
+  if (l==eval_level::single_value)
     wrap_tuple<0>();
 }
 
@@ -8881,24 +8871,24 @@ void print_block_wrapper(expression_base::level l)
 variations of \.{block}.
 
 @< Local function def...@>=
-void print_blockd_wrapper(expression_base::level l)
+void print_blockd_wrapper(eval_level l)
 { shared_Block b = get<Block_value>();
   const Block& block = b->val;
 @)
   block.print_to(*output_stream,true);
 @)
-  if (l==expression_base::single_value)
+  if (l==eval_level::single_value)
     wrap_tuple<0>();
 }
 
 @)
-void print_blocku_wrapper(expression_base::level l)
+void print_blocku_wrapper(eval_level l)
 { shared_Block b = get<Block_value>();
   const Block& block = b->val;
 @)
   block_io::printBlockU(*output_stream,block);
 @)
-  if (l==expression_base::single_value)
+  if (l==eval_level::single_value)
     wrap_tuple<0>();
 }
 
@@ -8918,14 +8908,14 @@ used in |output::printBlockStabilizer|, we have changed its parameter
 specification to allow it to be called easily here.
 
 @< Local function def...@>=
-void print_blockstabilizer_wrapper(expression_base::level l)
+void print_blockstabilizer_wrapper(eval_level l)
 { shared_Cartan_class cc(get<Cartan_class_value>());
   shared_Block b = get<Block_value>();
 @)
   output::printBlockStabilizer
    (*output_stream, @| b->rf->val,cc->number,b->dual_rf->val.realForm());
 @)
-  if (l==expression_base::single_value)
+  if (l==eval_level::single_value)
     wrap_tuple<0>();
 }
 
@@ -8942,7 +8932,7 @@ out-of-range values in the list.
 @h "kgb_io.h"
 
 @< Local function def...@>=
-void print_KGB_wrapper(expression_base::level l)
+void print_KGB_wrapper(eval_level l)
 { shared_real_form rf= get<real_form_value>();
 @)
   *output_stream
@@ -8950,10 +8940,10 @@ void print_KGB_wrapper(expression_base::level l)
   const KGB& kgb=rf->kgb();
   kgb_io::var_print_KGB(*output_stream,rf->val.innerClass(),kgb);
 @)
-  if (l==expression_base::single_value)
+  if (l==eval_level::single_value)
     wrap_tuple<0>();
 }
-void print_KGB_selection_wrapper(expression_base::level l)
+void print_KGB_selection_wrapper(eval_level l)
 { shared_row selection = get<row_value>();
   shared_real_form rf= get<real_form_value>();
 @)
@@ -8968,43 +8958,43 @@ void print_KGB_selection_wrapper(expression_base::level l)
   const KGB& kgb=rf->kgb();
   kgb_io::print(*output_stream,kgb,false,&rf->val.innerClass(),&sel);
 @)
-  if (l==expression_base::single_value)
+  if (l==eval_level::single_value)
     wrap_tuple<0>();
 }
 @)
-void print_KGB_order_wrapper(expression_base::level l)
+void print_KGB_order_wrapper(eval_level l)
 { shared_real_form rf= get<real_form_value>();
 @)
   *output_stream
     << "kgbsize: " << rf->val.KGB_size() << std::endl;
   kgb_io::printBruhatOrder(*output_stream,rf->val.Bruhat_KGB());
 @)
-  if (l==expression_base::single_value)
+  if (l==eval_level::single_value)
     wrap_tuple<0>();
 }
 @)
-void print_KGB_graph_wrapper(expression_base::level l)
+void print_KGB_graph_wrapper(eval_level l)
 { shared_real_form rf= get<real_form_value>();
 @)
   *output_stream
     << "kgbsize: " << rf->val.KGB_size() << std::endl;
   kgb_io::makeDotFile(*output_stream,rf->kgb(),rf->val.Bruhat_KGB());
 @)
-  if (l==expression_base::single_value)
+  if (l==eval_level::single_value)
     wrap_tuple<0>();
 }
 
 @ The function |print_X| even takes only an inner class as argument.
 
 @< Local function def...@>=
-void print_X_wrapper(expression_base::level l)
+void print_X_wrapper(eval_level l)
 { shared_inner_class ic = get<inner_class_value>();
 @)
   InnerClass& G=ic->val;
   kgb::global_KGB kgb(G); // build global Tits group, "all" square classes
   kgb_io::print_X(*output_stream,kgb);
 @)
-  if (l==expression_base::single_value)
+  if (l==eval_level::single_value)
     wrap_tuple<0>();
 }
 
@@ -9015,7 +9005,7 @@ parametrisation is concerned.
 @h "klsupport.h"
 @h "kl_io.h"
 @< Local function def...@>=
-void print_KL_basis_wrapper(expression_base::level l)
+void print_KL_basis_wrapper(eval_level l)
 { shared_Block b = get<Block_value>();
   Block& block = b->val;
 @)
@@ -9024,14 +9014,14 @@ void print_KL_basis_wrapper(expression_base::level l)
     << "Full list of non-zero Kazhdan-Lusztig-Vogan polynomials:\n\n";
   kl_io::printAllKL(*output_stream,b->kl_tab,block);
 @)
-  if (l==expression_base::single_value)
+  if (l==eval_level::single_value)
     wrap_tuple<0>();
 }
 
 @ The function |print_prim_KL| is a variation of |print_KL_basis|.
 
 @< Local function def...@>=
-void print_prim_KL_wrapper(expression_base::level l)
+void print_prim_KL_wrapper(eval_level l)
 { shared_Block b = get<Block_value>();
   Block &block = b->val; // this one must be non-|const|
 @)
@@ -9040,7 +9030,7 @@ void print_prim_KL_wrapper(expression_base::level l)
     << "Non-zero Kazhdan-Lusztig-Vogan polynomials for primitive pairs:\n\n";
   kl_io::printPrimitiveKL(*output_stream,b->kl_tab,block);
 @)
-  if (l==expression_base::single_value)
+  if (l==eval_level::single_value)
     wrap_tuple<0>();
 }
 
@@ -9048,13 +9038,13 @@ void print_prim_KL_wrapper(expression_base::level l)
 outputs just a list of all distinct Kazhdan-Lusztig-Vogan polynomials.
 
 @< Local function def...@>=
-void print_KL_list_wrapper(expression_base::level l)
+void print_KL_list_wrapper(eval_level l)
 { shared_Block b = get<Block_value>();
 @)
   b->kl_tab.fill(); // this does the actual KL computation
   kl_io::printKLList(*output_stream,b->kl_tab);
 @)
-  if (l==expression_base::single_value)
+  if (l==eval_level::single_value)
     wrap_tuple<0>();
 }
 
@@ -9066,7 +9056,7 @@ after having built the |kl_tab::KL_table|.
 @h "wgraph_io.h"
 
 @< Local function def...@>=
-void print_W_cells_wrapper(expression_base::level l)
+void print_W_cells_wrapper(eval_level l)
 { shared_Block b = get<Block_value>();
 @)
   b->kl_tab.fill(); // this does the actual KL computation
@@ -9075,7 +9065,7 @@ void print_W_cells_wrapper(expression_base::level l)
 @)
   wgraph_io::printWDecomposition(*output_stream,dg);
 @)
-  if (l==expression_base::single_value)
+  if (l==eval_level::single_value)
     wrap_tuple<0>();
 }
 
@@ -9083,7 +9073,7 @@ void print_W_cells_wrapper(expression_base::level l)
 routine of |print_W_cells|.
 
 @< Local function def...@>=
-void print_W_graph_wrapper(expression_base::level l)
+void print_W_graph_wrapper(eval_level l)
 { shared_Block b = get<Block_value>();
 @)
   b->kl_tab.fill(); // this does the actual KL computation
@@ -9091,7 +9081,7 @@ void print_W_graph_wrapper(expression_base::level l)
 @)
   wgraph_io::printWGraph(*output_stream,wg);
 @)
-  if (l==expression_base::single_value)
+  if (l==eval_level::single_value)
     wrap_tuple<0>();
 }
 

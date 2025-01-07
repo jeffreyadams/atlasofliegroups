@@ -192,7 +192,7 @@ set D_irreps (int n) = [D_irrep]:
 set index_D_irreps = ([D_irrep]->(D_irrep->int)):
    let flatten(D_irrep chi) = (BiPartition,int):
       case chi
-      | pair.unsplit_irr: (pair,minus_1)
+      | (pair).unsplit_irr: (pair,minus_1)
       | (lambda,b).split_irr: ((lambda,lambda),#b)
       esac
    ,  before_eq (BiPartition(nu,):pair1,int flag1) = (BiPartition,int->bool):
@@ -225,7 +225,7 @@ set index_D_irreps = ([D_irrep]->(D_irrep->int)):
       in (D_irrep chi) int:
 	 let key = { like |flatten(chi)|, but maybe swap partitions }
 	    case chi
-	    | (lambda,mu):pair.unsplit_irr:
+	    | ((lambda,mu):pair).unsplit_irr:
 	       (if leq_partitions(pair) then (mu,lambda) else pair fi,minus_1)
 	    | (lambda,b).split_irr: ((lambda,lambda),#b)
 	    esac

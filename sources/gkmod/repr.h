@@ -93,7 +93,7 @@ class StandardRepr
 
   const RatWeight& gamma() const { return infinitesimal_char; }
   KGBElt x() const { return x_part; }
-  const TorusPart& y() const { return y_bits; }
+  TorusPart y() const { return y_bits; }
   unsigned int height() const { return hght; }
 
   // precomputed height is first criterion for ordering
@@ -114,10 +114,13 @@ class StandardRepr
   which suffices for block construction, and given |gamma| we can easily
   reconstruct a full |StandardRepr|.
 
-  We use a trick to assume by parallel shift that |lambda=rho|, so the
-  corresponding value |rgl| of |gamma| now also encodes |gamma-lambda|, and we
-  do not need to represent |y_bits| at all. In fact doing without the packing
-  and unpacking operations for |y_bits| greatly simplifies our operations.
+  There is always such a representative with |lambda=rho|, and the value that
+  |gamma| has for that representative represents |rho+gamma-lambda| for
+  arbitrary representatives. That value used to be stored in |StandardReprMod|,
+  making separate |y_bits| superfluous, and doing without the packing and
+  unpacking operations for |y_bits| greatly simplifies our operations. Currently
+  we have decided to not include the |rho| part, so that the stored |gamlam|
+  (which is short for |gamma-lambda|) lies in the $-1$ eigenspace for $\theta$.
 */
 class StandardReprMod
 {
@@ -130,7 +133,7 @@ class StandardReprMod
     : x_part(x_part), gamlam(std::move(gl.normalize())) {}
 
  public:
-  // the raw constructor is always called through one of two pseudo constructors
+  // the raw constructor is always called through one of these two pseudo constructors:
   static StandardReprMod mod_reduce
     (const Rep_context& rc,const StandardRepr& sr);
   static StandardReprMod build
@@ -140,7 +143,7 @@ class StandardReprMod
   const RatWeight& gamma_lambda() const & { return gamlam; }
   RatWeight&& gamma_lambda() && { return std::move(gamlam); }
 
-  // since pseudo constructors map |rgl| to fundamental domain, equality is easy
+  // pseudo constructors call |real_unique| on |gamlam|, making equality easy
   bool operator==(const StandardReprMod& other) const
   { return x_part==other.x_part and gamlam==other.gamlam; }
 
@@ -151,11 +154,12 @@ class StandardReprMod
 }; // |class StandardReprMod|
 
 // hashable type for |StandardReprMod| up to shift orthogonal to integral system
+// This is the most reduced for of a parameter for block computation purposes
 class Reduced_param
 {
   KGBElt x;
   unsigned int int_sys_nr;
-  unsigned int evs_reduced; // encodes |internalise(gamlam) mod diagonal|
+  unsigned int evs_reduced; // encodes |codec.internalise(gamlam) mod lattice|
 
   Reduced_param(KGBElt x, unsigned int i, unsigned int v)
     : x(x), int_sys_nr(i), evs_reduced(v)
@@ -165,10 +169,10 @@ public:
   Reduced_param(Reduced_param&&) = default;
   Reduced_param& operator=(Reduced_param&&) = default;
 
-  static Reduced_param reduce // factory function that sets |int_sys_nr|, |loc|
+  static Reduced_param reduce // factory function, also sets |loc| for |gamma|
     (const Rep_context& rc, StandardReprMod srm, const RatWeight& gamma,
      locator& loc);
-  static Reduced_param co_reduce // factory function that uses |int_sys_nr|, |w|
+  static Reduced_param co_reduce // factory function that uses |loc| alcove
     (const Rep_context& rc, StandardReprMod srm, const locator& loc);
 
 
@@ -179,13 +183,25 @@ public:
   size_t hashCode(size_t modulus) const; // this one ignores $X^*$ too
 }; // |class Reduced_param|
 
-// a structure to help normalising and reducing |StandardReprMod| values
 /*
- Below, |in| will transform weights in a manner depending only on their
- coroot evaluations (multiplying by |coroots_matrix| to coordinates on a basis
- adapted to $N=\Im(\theta-1)$; this can be followed by reduction modulo
- |diagonal| then left-multiplication by |out| to the lattice $N=\Im(\theta-1)$,
- the result being expressed in usual coordinates
+ A |codec| structure helps reducing |StandardReprMod| values to |Reduced_param|.
+ Instances are constructed once the integral system has been determined, giving
+ a |subsystem::integral_datum_item| (that can be stored in the inner class),
+ whose |data| method builds a |codec| for the integral system and involution.
+
+ Below, |in| will transform weights in a manner depending only on their coroot
+ evaluations (multiplying by |coroots_matrix|) to coordinates on a basis adapted
+ to $N=\Im(\theta-1)$, whose multiples by |diagonal| span $N$; this can be
+ followed by reductions modulo |diagonal|, then left-multiplication by |out| to
+ the lattice $N$, the result being expressed in usual coordinates
+
+ Required properties of |codec|:
+ - |internalise| is linear for arguments with the integrality for which the
+   |codec| was built, and vanishes on the kernel of |coroots_matrix|
+ - |Reduced_param::reduce(gamma)| depends only on remainders of the first
+   |diagonal.size()| entries of |internalise(gamma)| (later entries are ignored)
+ - For every $\gamma\in(1-\theta)X^*$ (the image space of |out|), one has
+   |gamma == out*(internalise(gamma)/diagonal)| (coefficient-wise division)
 */
 struct codec
 {
@@ -196,6 +212,8 @@ struct codec
     (const InnerClass& ic,
      InvolutionNbr inv,
      const int_Matrix& int_simp_coroots);
+
+  // main method, compacts |gamma| (with proper integrality) to quotient element
   int_Vector internalise (const RatWeight& gamma) const;
 }; // |struct codec|
 
@@ -243,8 +261,9 @@ class Rep_context
     (KGBElt x, const Weight& lambda_rho, const RatWeight& nu) const
   { return sr_gamma(x,lambda_rho,gamma(x,lambda_rho,nu)); }
 
-  // reconstruct |StandardRep| from |srm| and difference of |gamma_lambda|s
+  // reconstruct |StandardRepr| from |srm| and difference of |gamma_lambda|s
   StandardRepr sr (const StandardReprMod& srm,const RatWeight& gamma)  const;
+  // modify (stored) |srm| by |bm|, then reconstruct |StandardRepr| at |gamma|
   StandardRepr sr
     (StandardReprMod srm, const block_modifier& bm, const RatWeight& gamma)
     const;
@@ -286,16 +305,16 @@ class Rep_context
       (z,RankFlags(constants::lt_mask[root_datum().semisimple_rank()])); }
   void normalise(K_repr::K_type& z) const; // which ensures a normalised form
 
-  simple_list<std::pair<K_repr::K_type,int> >
-    finals_for(K_repr::K_type t) const;
+  simple_list<std::pair<K_repr::K_type,int> > // unsorted list
+    finals_for(K_repr::K_type t) const; // defined in K_repr.cpp
 
   // conservative estimate for lowest height that can be obtained from |lambda|
   level height_bound(RatWeight lambda) const; // "projecting to dominant cone"
   // apart from producing a result, these methods also make |t| theta-stable:
   sl_list<K_repr::K_type> KGP_set (K_repr::K_type& t) const;
-  K_repr::K_type_pol K_type_formula (K_repr::K_type& t,level cutoff) const;
+  K_repr::KT_pol K_type_formula (K_repr::K_type& t,level cutoff) const;
 
-  K_repr::K_type_pol branch(K_repr::K_type_pol P, level cutoff) const;
+  K_type_poly branch(K_type_poly P, level cutoff) const;
 
   // parameter component extraction
   const WeightInvolution& theta (const StandardRepr& z) const;
@@ -322,7 +341,8 @@ class Rep_context
 
   StandardReprMod inner_twisted(const StandardReprMod& z) const;
 
-  void shift(const RatWeight& diff, StandardReprMod& srm) const;
+  // shift continuous component of |srm| by |diff| and then renormalise it
+  void shift (const RatWeight& diff, StandardReprMod& srm) const;
   StandardReprMod shifted(const RatWeight& diff, StandardReprMod srm) const
   { shift(diff,srm); return srm; } // perform |shift| on a copy and return it
 
@@ -356,7 +376,7 @@ class Rep_context
 
   bool equivalent(StandardRepr z0, StandardRepr z1) const; // by value
 
-  // transform |srm| by cofolded Weyl element |w|, or its inverse
+  // transform |srm| by Weyl element |w|, or its inverse
   template<bool left_to_right> void transform
     (const WeylElt& w, StandardReprMod& srm) const;
 
@@ -376,14 +396,12 @@ class Rep_context
   StandardRepr cross(const Weight& alpha, StandardRepr z) const;
   StandardRepr any_Cayley(const Weight& alpha, StandardRepr z) const;
 
-  using poly = Free_Abelian<StandardRepr,Split_integer>;
+  SR_poly scale(const SR_poly& P, const RatNum& f) const;
+  K_type_poly scale_0(const SR_poly& P) const;
 
-  poly scale(const poly& P, const RatNum& f) const;
-  K_repr::K_type_pol scale_0(const poly& P) const;
-
-  simple_list<std::pair<StandardRepr,int> >
+  simple_list<std::pair<StandardRepr,int> >  // unsorted list
     finals_for (StandardRepr z) const; // like |finals_for| K-type (by value)
-  poly expand_final(StandardRepr z) const; // the same, as |poly| (by value)
+  SR_poly expand_final(StandardRepr z) const; // the same, as |SR_poly| (by value)
 
   Weight to_simple_shift(InvolutionNbr theta, InvolutionNbr theta_p,
 			 RootNbrSet pos_to_neg) const; // |pos_to_neg| by value
@@ -392,14 +410,16 @@ class Rep_context
   // |gamlam-srm.gamma_lambda()|, adapted by equivalence to be orth to integrals
   RatWeight make_diff_integral_orthogonal
     (const RatWeight& gamlam, const StandardReprMod& srm) const;
-  void make_relative_to // modify |bm| to record being relative to |loc|, |srm0|
-    (const locator& loc, const StandardReprMod& srm0,
-     block_modifier& bm, StandardReprMod srm1) const;
+
+  // modifier for block for |srm1, loc1| relative to stored one for |srm0, loc0|
+  block_modifier make_relative_to
+    (const StandardReprMod& srm0, const locator& loc0,
+     StandardReprMod srm1, locator&& loc1) const;
 
  private:
   // compute $\check\alpha\dot(1+\theta_x)\lambda$, with $(x,\lambda)$ from $t$
   int theta_plus_1_eval (const K_repr::K_type& t, RootNbr alpha) const;
-  // auxiliary for |offset|
+  // auxiliary for |make_diff_integral_orthogonal|
   // find element in |(1-theta)X^*| with same evaluation on all integral coroots
   Weight theta_1_preimage (const RatWeight& offset, const codec& cd) const;
   RankFlags singular_simples (const StandardRepr& z) const;
@@ -410,34 +430,43 @@ class Rep_context
   void to_singular_canonical(RankFlags gens, StandardRepr& z) const;
   level height(Weight theta_plus_1_gamma) const;
 
-  K_repr::K_type_pol monomial_product // $P*X^e$; implemented in K_repr.cpp
-    (const K_repr::K_type_pol& P, const Weight& e) const;
+  K_repr::KT_pol monomial_product // $P*X^e$; implemented in K_repr.cpp
+    (const K_repr::KT_pol& P, const Weight& e) const;
 }; // |Rep_context|
 
-/* In internal computations for deformation, it will be important to have a
-   quite compact representation of (twisted) deformation formulas. To this end
-   we shall make (inside a |Rep_table|) a table of K-types encountered (the
-   number of possible K-types for a given real form is fairly limited), and
-   represent linear coefficients as a map from such K-types to the ring of
-   coefficients (in practice |Split_integer|). Moreover, for storing formulas as
-   collections of key-value pairs, we wish to avoid using the |Free_Abelian|
-   container, derived from |std::map| which requires a lot of additional memory
-   per node stored, preferring to it our tailor made |Free_Abelian_light| which
-   has no per-node memory overhead.
+/*
+  In internal computations for deformation, it will be important to have a quite
+  compact representation of (twisted) deformation formulas. To this end we shall
+  make (inside a |Rep_table|) a table of K-types encountered (the number of
+  possible K-types for a given real form is fairly limited), and represent
+  linear coefficients as a map from such K-types to the ring of coefficients (in
+  practice |Split_integer|). Moreover, for storing formulas as collections of
+  key-value pairs, we wish to avoid using the |Free_Abelian| container, derived
+  from |std::map| which requires a lot of additional memory per node stored,
+  preferring to it our tailor made |Free_Abelian_light| which, being a short
+  list of sorted vectors of key-value pairs, has no per-node memory overhead.
 */
 
 using K_type_nr = unsigned int; // hashed in |Rep_table| below
-using K_type_poly = Free_Abelian_light<K_type_nr,Split_integer>;
+using K_type_nr_poly = Free_Abelian_light<K_type_nr,Split_integer>;
+using KT_nr_pol = Free_Abelian_light<K_type_nr,int>;
 
 /*
-  A class to serve as key-value pair for deformation formula lookup.
+  The class |deformation_unit| to serves to store both key and values for
+  deformation formula lookup inside the class |Rep_table| below.
 
   A key determines a parameter up to variations in $\nu$ that do not change the
   integral part (always rounding down) of the evaluation on any positive coroot;
-  the domain of such changes is called an alcove. (Strictly speaking, set of
-  associated infinitesimal characters is the intersection of an alcove with an
-  affine subspace parallel to the $-1$ eigenspace of the involution; no
+  the domain of such changes is called an alcove here. (Strictly speaking, the
+  set of associated infinitesimal characters is the intersection of an alcove
+  with an affine subspace parallel to the $-1$ eigenspace of the involution; no
   (discrete) variation is allowed in the direction of the $+1$ eigenspace.)
+
+  Due to the subtle definition of equivalence, the methods |operator!=| and
+  |hashCode| for hashing purposes are more elaborate that is typically the case
+  for hashable entry types. The fact that associated values are also stored
+  inside the entry type (while being ignored by the mentioned methods) is also
+  not typical, but valid as a way to use |HashTable| as an association table.
 
   For compactness we store a sample |StandardRepr|, but the functions used for
   hashing only take into account aspects that are unchanging within the alcove.
@@ -446,34 +475,50 @@ class deformation_unit
 {
   friend class Rep_table; // while not essential, allows easier instrumenting
 
-  StandardRepr sample;
-  K_type_poly untwisted, twisted;
-  const Rep_context& rc; // access coroots etc. necessary for alcove testing
+  StandardRepr sample; // first parameter found in alcove, its reference point
+  // the reference point aspect only serves to determine the default extension
+
+  KT_nr_pol lowest_K_types, def_contrib,
+    LKTs_twisted, def_contrib_twisted; // twisted versions at $q = -1$
+  Rep_table& rt; // access $K$-type table, coroots (for alcove testing) etc.
+
+  RankFlags status; // set bits when defined: |0->defcontrib| up to |3->twisted|
+
+  void set_LKTs();
 public:
-  deformation_unit(const Rep_context& rc, const StandardRepr& sr)
-  : sample(sr), untwisted(), twisted(), rc(rc) {}
-  deformation_unit(const Rep_context& rc, StandardRepr&& sr)
-  : sample(std::move(sr)), untwisted(), twisted(), rc(rc) {}
+  deformation_unit(Rep_table& rt, const StandardRepr& sr)
+    : sample(sr)
+    , lowest_K_types(), def_contrib(), LKTs_twisted(), def_contrib_twisted()
+    , rt(rt), status(0)
+  {
+    set_LKTs();
+  }
+  deformation_unit(Rep_table& rt, StandardRepr&& sr)
+  : sample(std::move(sr))
+  , lowest_K_types(), def_contrib(), LKTs_twisted(), def_contrib_twisted()
+  , rt(rt), status(0)
+  {
+    set_LKTs();
+  }
 
   deformation_unit(deformation_unit&&) = default; // type is only movable
 
-  bool has_deformation_formula() const { return not untwisted.is_zero(); }
-  bool has_twisted_deformation_formula() const { return not twisted.is_zero(); }
+  bool has_def_contrib() const { return status.test(0); }
+  bool has_twdef_contrib() const { return status.test(1); }
+  // no separate test for |LKTs_twisted|: it is set whenever |has_twdef_contrib|
 
-  size_t def_form_size () const { return untwisted.size(); }
-  size_t twisted_def_form_size () const { return twisted.size(); }
+  const KT_nr_pol& LKTs() const { return lowest_K_types; }
+  const KT_nr_pol& LKTs_at_minus_1() const { return LKTs_twisted; }
+  const KT_nr_pol& deformation_contribution() const
+  { return def_contrib; }
+  const KT_nr_pol& twisted_deformation_contribution() const
+  { return def_contrib_twisted; }
 
-  const K_type_poly& def_formula() const       { return untwisted; }
-  const K_type_poly& twisted_def_formula() const { return twisted; }
-
-  const K_type_poly& set_deformation_formula (const K_type_poly& formula)
-  { return untwisted = formula.copy(); }
-  const K_type_poly& set_deformation_formula (K_type_poly&& formula)
-  { return untwisted = std::move(formula); }
-  const K_type_poly& set_twisted_deformation_formula (const K_type_poly& formula)
-  { return twisted = formula.copy(); }
-  const K_type_poly& set_twisted_deformation_formula (K_type_poly&& formula)
-  { return twisted = std::move(formula); }
+  void set_def_contrib(KT_nr_pol&& p)
+  { status.set(0); def_contrib=std::move(p); }
+  void set_LKTs_at_minus_1(KT_nr_pol&& p) { LKTs_twisted = std::move(p); }
+  void set_twisted_contribution(KT_nr_pol&& p)
+  { status.set(1); def_contrib_twisted=std::move(p); }
 
 // special members required by HashTable
   using Pooltype = std::vector<deformation_unit>;
@@ -481,24 +526,42 @@ public:
   size_t hashCode(size_t modulus) const; // value depending on alcove only
 }; // |class deformation_unit|
 
-// data to transform stored block to user attitude
+// Information about some alcove face relative to one of the fundamental alcove.
 struct locator
 {
-  unsigned int int_sys_nr; // sequence number for integral system in inner class
-  WeylElt w; // in |Weyl_group|; apply to fundamental alcove integral system
-  sl_list<RootNbr> simp_int; // image simply integral roots in increasing order
-  Permutation simple_pi; // to transform integral system simple generators by
+  unsigned int int_syst_nr; // sequence number for integral system in inner class
+  WeylElt w; // transformation, applied to a fundamental alcove integral system
+  sl_list<RootNbr> simp_int; // images simply integral roots, sorted
+  Permutation simple_pi; // to reorder FA integral system simple generators by
 };
 
-struct block_modifier : public locator
+/*
+  A block is stored for only one alcove orientation, so the lookup methods
+  return a block reference with |block_modifier|. The stored parameter will
+  first be shifted by |shift| then transformed by |w|. The simply integral
+  roots for the modified blocks are the |w|-images of those in the stored block,
+  but they are reordered increasingly, as they would be if the transformed
+  block had been generated freshly; |simple_pi| is the permutation involved.
+*/
+struct block_modifier
 {
-  RatWeight shift; // add this one field
+  RatWeight shift; // initial change to the stored |gamlam| value
+  WeylElt w; // initially from fundamental alcove integral system
+  RootNbrList simp_int; // images of simply integral roots of block, sorted
+  Permutation simple_pi; // to reorder integral system simple generators by
   block_modifier () = default;
+  block_modifier(RatWeight&& shift,locator&& loc)
+    : shift(std::move(shift))
+    , w(std::move(loc.w))
+    , simp_int(loc.simp_int.begin(),loc.simp_int.end())
+    , simple_pi(std::move(loc.simple_pi))
+  {}
   block_modifier (const common_block& b); // construct trivial modifier
-  void clear (unsigned int block_rank, unsigned int datum_rank);
 };
 
 struct sub_triple; // implementation specific, needed in auxiliary method type
+
+
 
 /*
   In addition to providing methods inherited from |Rep_context|, the class
@@ -506,13 +569,13 @@ struct sub_triple; // implementation specific, needed in auxiliary method type
   various related nonzero final |StandardRepr| values.
 
   The data stored are:
-  * the |blocks::common_block| values encountered for this real form, together
+  * The |blocks::common_block| values encountered for this real form, together
     with their KL data if computed; these are linked together in |block_list|,
     and accessed via |place|. To this end |StandardRepr| values are mapped to a
-    smaller set of |Reduced_param| value that are hashed into |reduced_hash|,
+    smaller set of |Reduced_param| values that are hashed into |reduced_hash|,
     where the sequence number indexes |place| which provides both an iterator
     into the block list and an element number within the block. The latter
-    number need not by unique, in other words the map to |Reduced_param| may
+    number need not be unique, in other words the map to |Reduced_param| may
     fail to be injective even restricted to a single block, but block elements
     with the same image are conjugate under some block automorphism. The effect
     is that if a |StandardRepr| value comes along whose |Reduced_param| value is
@@ -521,15 +584,17 @@ struct sub_triple; // implementation specific, needed in auxiliary method type
     this, all other block elements will lead to |StandardRepr| values deduced
     via that isomorphism. The isomorphism may involve action of $W^\delta$, and
     a |block_modifier| records the details for deducing |StandardRepr| values.
-  * a table of (twisted) full deformation formulae, associated to alcoves;
-    these are stored in |pool| and accessed through |alcove_hash|
-  * a table |reduced_hash| of distinct |Reduced_param| values encountered.
+  * A hash table |alcove_hash| of |deformation_unit|s, each representing a single
+    alcove, also holding an ordinary and possibly a twisted deformation formula
+  * A table |reduced_hash| of distinct |Reduced_param| values encountered. As
+    mentioned the reduction serves to as much as possible share equivalent block
+    structures, and each element accesses a block and an element in it.
   * a table |K_type_hash| of |K_type| values having been found to occur in
     deformation formulas, which allows compact representation of the latter
   * tables |KL_poly_hash| and |poly_hash| of |kl::KLPol| (positive coefficient)
     respectively |ext_kl::Pol| (integer coefficient) polynomials, which can be
     shared among blocks to reduce the size of their tables of such polynomials
-    (they may also choose to maintain their local polynomials themselves).
+    (they may choose to instead maintain their local polynomials themselves).
 */
 class Rep_table : public Rep_context
 {
@@ -564,19 +629,24 @@ class Rep_table : public Rep_context
   // the |length| method generates a partial block, for best amortised efficiency
   unsigned short length(StandardRepr z); // by value
 
+  // look up block which must be full; if not found construct and swallow crumbs
   blocks::common_block& lookup_full_block
-    (StandardRepr& sr,BlockElt& z, block_modifier& bm
-      ); // |sr| is by reference; will be normalised
+    (StandardRepr& sr, // input argument, but by reference: it will be normalised
+     BlockElt& z, block_modifier& bm); // output arguments
 
+  // look up block containing |sr|; if not found constuct one and swallow crumbs
   blocks::common_block& lookup // construct only partial block if necessary
-    (StandardRepr& sr,BlockElt& z, block_modifier& bm
-      ); // |sr| is by reference; will be normalised`
+    (StandardRepr& sr, // input argument, but by reference: it will be normalised
+     BlockElt& z, block_modifier& bm); // output arguments
 
+  // polynomial representing column of |z| in KL-table, evaluated at $q:=s$
   SR_poly KL_column_at_s(StandardRepr z); // by value
+  // column of |z| in KL-table, as (sparse) list of pairs $(x,P_{x,y})$
   simple_list<std::pair<BlockElt,kl::KLPol> >
-    KL_column(common_block& block, BlockElt z);
+    KL_column(common_block& block, BlockElt y);
+  // length-alternating sum of twisted KL polynomials at $q:=s$ (results tabled)
   SR_poly twisted_KL_column_at_s(StandardRepr z); // by value
-
+  // heights-bounded KL column; computed via dual block, no tabling is done
   SR_poly KL_column_at_s_to_height (StandardRepr p, level height_bound);
 
 #if 0 // this would now require an actual |delta|-fixed |gamma| to be supplied
@@ -585,8 +655,8 @@ class Rep_table : public Rep_context
     return reduced_hash.find(Reduced_param::reduce(*this,srm,bm)); }
 #endif
 
-  K_repr::K_type stored_K_type(K_type_nr i) const
-  { return K_type_pool[i].copy(); }
+  K_type_nr match(K_type&& t) { return K_type_hash.match(std::move(t)); }
+  K_type stored_K_type(K_type_nr i) const { return K_type_pool[i].copy(); }
 
   // a signed multiset of final parameters needed to be considered (i.e., their
   // deformations to $\nu=0$ included) when deforming |y| a bit towards $\nu=0$
@@ -595,6 +665,16 @@ class Rep_table : public Rep_context
      const block_modifier& bm, const RatWeight& gamma);
 
 /*
+   A method intended to be an alternative to |deformation|, but ignoring any
+   contributions with height above |heign_bound|. In order to do so, the
+   recursive "depth first" approach of |deformation| is relaced by a "breadth
+   first" approch, that works out all deformation associated with the current
+   block at once, so that the resulting terms can all be deformed towards
+   $\nu=0$ until (maybe) hitting a reducibility determined by another block.
+
+   Implementation is using dual block, like |KL_column_at_s_to_height|, and
+   obtained results are not tabled. Might well be slower than height-unlimited.
+
    Compute the signed multi-set of final parameters "post deformation"
    (subsequently they will be deformed towards zero without reduction here)
    obtained from the elements of the block of |p|, with their "pre deformation"
@@ -607,13 +687,15 @@ class Rep_table : public Rep_context
 
 
   // full deformation to $\nu=0$ of |z|
-  const K_type_poly& deformation(StandardRepr z); // by value
+  const deformation_unit& // warning: transient reference (into |pool| vector)
+    deformation(const StandardRepr& z);
+  K_type_nr_poly full_deformation(StandardRepr z); // by value
 
   // like |deformation_terms|; caller multiplies returned coefficients by $1-s$
   sl_list<std::pair<StandardRepr,int> > twisted_deformation_terms
     (blocks::common_block& block, ext_block::ext_block& eblock,
      BlockElt y, // in numbering of |block|, not |eblock|
-     RankFlags singular, const block_modifier& bm, const RatWeight& gamma);
+     const block_modifier& bm, const RatWeight& gamma);
 #if 0
   SR_poly twisted_deformation_terms (unsigned long sr_hash) const;
   // once a parameter has been entered, we can compute this without a block
@@ -623,35 +705,41 @@ class Rep_table : public Rep_context
   (const common_context& ctxt, const StandardReprMod& init) const;
 
   blocks::common_block& add_block_below // partial; defined in common_blocks.cpp
-    (const StandardReprMod& srm, BitMap* subset, const block_modifier& bm);
+    (const StandardReprMod& srm, BitMap* subset, const locator& loc);
 
   // full twisted deformation, with |flip| telling whether to multiply by |s|
-  const K_type_poly& twisted_deformation(StandardRepr z, bool& flip); // by value
+  const deformation_unit& // warning: transient reference (into |pool| vector)
+  twisted_deformation(const StandardRepr& z, bool& flip);
+  K_type_nr_poly
+  twisted_full_deformation(StandardRepr z); // by value
 
  private:
   class Bruhat_generator; // helper class: internal |add_block_below| recursion
   void block_erase (bl_it pos); // erase from |block_list| in safe manner
   // add a full block, assuming has trivial attitude
-  void add_block (const StandardReprMod& srm, const block_modifier& bm);
-  void append_block_containing // appending is to final argument
-    (const StandardReprMod& elt, size_t place_limit, const locator& block_loc,
+  void add_block (const StandardReprMod& srm, const locator& loc);
+  void append_block_containing // maybe appends an item to |sub_blocks|
+    (const StandardReprMod& elt, size_t place_limit, locator block_loc,
      sl_list<sub_triple>& sub_blocks);
-  void swallow_blocks_and_append
-    (const sl_list<sub_triple>& subs,
-     common_block& block, const block_modifier& bm,
-     sl_list<located_block>& temp);
+  void swallow_then_append_singleton // import and erase |subs|, then add |tail|
+    (const sl_list<sub_triple>& subs, const locator& loc,
+     sl_list<located_block>&& tail);
 }; // |Rep_table|
 
 
-// another extension of |Rep_context|, fix integral system for common block
+// another extension of |Rep_context|, used by both |common_block| constructors
+// given |gamma| or just its facet, pre-compute integral system for common block
 class common_context
 {
   const Rep_context& rep_con;
-  sl_list<RootNbr> simp_int; // simply integral roots in increasing order
-  const SubSystem sub; // embeds |id_it|s |bm.w| image into full root datum
+  sl_list<RootNbr> simply_int; // simply integral roots for facet, increasing
+  const SubSystem sub; // embeds |simply_int| subsystem into full root datum
 public:
+  // constructor for all normal uses:
   common_context (const Rep_context& rc, const RatWeight& gamma);
-  common_context (const Rep_context& rc, const block_modifier& bm);
+
+  // special constructor for |add_block| and |add_block_below| only:
+  common_context (const Rep_context& rc, const locator& loc);
 
   // accessors
   const Rep_context& rc() const { return rep_con; }
@@ -660,7 +748,7 @@ public:
     { return rep_con.involution_table(); }
   const RootDatum& full_root_datum() const { return rep_con.root_datum(); }
   const SubSystem& subsys() const { return sub; }
-  RootNbrList simply_integrals() const { return simp_int.to_vector(); }
+  RootNbrList simply_integrals() const { return simply_int.to_vector(); }
 
   // methods for local common block construction, as in |Rep_context|
   // however, the generator |s| is interpreted for |subsys()|
@@ -726,7 +814,7 @@ Weight Cayley_shift (const InnerClass& G,
 SR_poly twisted_KL_column_at_s
   (const Rep_context& rc, StandardRepr z, const WeightInvolution& delta);
 
-K_repr::K_type_pol export_K_type_pol(const Rep_table& rt,const K_type_poly& P);
+K_type_poly export_K_type_pol(const Rep_table& rt,const K_type_nr_poly& P);
 
 } // |namespace repr|
 

@@ -1,0 +1,30 @@
+"Type" symbols can be used to designate not only types, but certain (continuous?)
+maps from types to types (one output), or to other such type maps, and so forth.
+
+These come in two varieties: those that are merely abbreviations (that can be
+given by type-lambda expressions, maybe with a fix point combinator thrown for
+recursive types) and those whose output type is opaque (like primitive). Of the
+first type would be one like the Haskell Maybe type constructor (the type map
+T=>(void|T) and an infinite list constructor T=>rec_type: r=(->T,r), of the
+second kind SearchTree: T=>(NewType); here NewType is an opaque type determined
+implicitly by a bunch of related values that are entered into the global tables
+where SearchTree is defined. (These values must involve at least one constructor
+function returning NewType, or else one can never create values of this type;
+the constructor presumably will be of type (Order(T)->NewType) where |Order| is
+a type constructor of the first kind, describing a comparison function or other
+elements that allow values of type |T| to be totally ordered.)
+
+With the introduction of types and type constructors of the second type, the
+whole type system must be revised. The new types must be added to the list of
+primitive types, and the new type constructors extend the structure of type
+expressions. If even higher order type constructors are allowed (those taking
+type constructors as one of their arguments) then the type structure must also
+cater for this. Probably the latter is useful, if one needs to define type
+constructors that work across a class of types (obtained from some other
+constructor) but not all types; it is not an urgent need though. Examples given
+for Haskell kind are quite unconvincing; before ever giving an example of code
+that could not be written without higher order kinds, they seem to need to talk
+about Haskell-specific (maybe non-orthogonal) details such as Constraints.
+Nonetheless it is conceivable that some code can be usefully parametrised over
+higher kind types, so when redoing the type system it might be an idea to leave
+the possibility of representing these in type values during type analysis.

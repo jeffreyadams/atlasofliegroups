@@ -41,7 +41,7 @@ set cycles_string ([int,bool] cycles) = string:
 
 set cycles_string (D_class c) = string:
     case c
-    | cycles.unsplit_class: cycles.cycles_string
+    | (cycles).unsplit_class: cycles.cycles_string
     | (alpha,s).split_class: (alpha,sign_string(s)).to_string
     esac
 
@@ -63,13 +63,13 @@ in for x@i in list
    od; ((split,map_split),(unsplit,map_unsplit))
 
 set is_split(D_irrep pi) = bool:
-   case pi | (,).split_irr: true | else false esac
+   case pi | split_irr(,): true | else false esac
 
 set split_irrep (D_irrep pi) = (Partition,bool):
-   case pi | pair.split_irr: pair | else error("rep is unsplit") esac
+   case pi | split_irr(pair): pair | else error("rep is unsplit") esac
 
 set unsplit_irrep (D_irrep pi) = (Partition,Partition):
-   case pi | pair.unsplit_irr: pair | else error("rep is split") esac
+   case pi | unsplit_irr(pair): pair | else error("rep is split") esac
 
 
 set split_and_unsplit_reps([D_irrep] list) =

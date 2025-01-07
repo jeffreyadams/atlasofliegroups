@@ -20,7 +20,10 @@
   is quite subtle; maybe forbid binding to names with such type altogether.
 
 - Check whether using |break| or |return| could leave the runtime stack in a
-  bad state in certain cases, and if so provide chatch blocks to clean up
+  bad state in certain cases, and if so provide catch blocks to clean up.
+
+- Change 'case e in (T x): e1 | (S y): e2 esac' semantics so no function calls
+  are involved; this make it possible for e1 and e2 to contain |return|s.
 
 - give better type error message about "needed type" when a let expression
   pattern does not match the type of the defining expression. What appears to
@@ -35,20 +38,6 @@
 
 - Improve output of expressions
   Distinguish one-line (maybe abbreviated) and long forms.
-
-- Implement operate-and-assign directly. While 'v #:= x' (with vec v, int x)
-  is easy to write (and common in loop bodies), it is converted to 'v := v#x'
-  which is not efficient: with the operation '#' separated in the syntax tree
-  from the assignment ':=', it has no chance of knowing that the same object
-  can be used to store the result, even if the pointer accessing it has the
-  lowest possible refcount (which is 2, since the name 'v' must be sharing the
-  pointer). This could however be made possible if built-in compound
-  assignment were handled as a single operation for certain built-in
-  operations. Note that this can never be done for user-defined functions, as
-  they have no means of indicating how the return value might reuse the memory
-  from the argument. The combined operator would be most useful for
-  concatenation, but operations on large values, such as vector addition,
-  could also profit; indeed also (big) integer arithmetic might use this.
 
 - Extend type system to deal with second-order types
 - Allow encapsulation into user-defined types (possibly using 2nd order types)

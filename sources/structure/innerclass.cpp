@@ -1135,7 +1135,7 @@ subsystem::integral_datum_item& InnerClass::int_item
 
   // now filter out simple reflections in |ww| that are integral when acting
   assert(loc.w==WeylElt()); // start out with identity
-  for (auto it=ww.crbegin(); it!=ww.crend(); ++it) // traverse rtl, as applied
+  for (auto it=ww.crbegin(); it!=ww.crend(); ++it) // traverse L<-R, as applied
     { weyl::Generator s=*it;
       if (gamma.dot_Q(rd.simpleCoroot(s)).denominator()!=1) // skip integrals
       {
@@ -1149,11 +1149,11 @@ subsystem::integral_datum_item& InnerClass::int_item
     fundamental_integral_poscoroots.insert(rd.posroot_index(alpha));
   subsystem::integral_datum_entry e(fundamental_integral_poscoroots);
   assert(integral_pool.size()==int_table.size());
-  loc.int_sys_nr= int_hash.match(e);
-  if (loc.int_sys_nr==int_table.size())
+  loc.int_syst_nr= int_hash.match(e);
+  if (loc.int_syst_nr==int_table.size())
     int_table.emplace_back(*this,e.posroots);
 
-  subsystem::integral_datum_item& result = int_table[loc.int_sys_nr];
+  subsystem::integral_datum_item& result = int_table[loc.int_syst_nr];
 
   const SubSystem& int_sys = result.int_system(); // subsystem of |rd|
 

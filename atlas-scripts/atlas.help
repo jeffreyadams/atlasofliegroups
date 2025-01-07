@@ -201,7 +201,7 @@ towards sequencing of side-effects, although they do provide the latter.
 Somewhat curiously for a language close to functional languages, ordinary
 definitions cannot be recursive, which is a consequence of strict scoping rules
 derived from the lambda-calculus. Nonetheless recursive function definitions are
-supported through use of the rec_fun keyword.
+supported through use of the 'rec_fun' keyword.
 
 For beginning users it is important to stress the fundamental distinction
 between creating names (variables) and assigning to them. The interpreter will
@@ -1592,110 +1592,101 @@ are present, the 'then' branch should occur before the 'else' branch.
 
 The number n of 'in' branches is only required to be nonzero. As a consequence,
 one can test whether an integer I is negative, zero, or positive using an
-integer case expression of the form 'case I then F in E else G esac'.
+integer case clause of the form 'case I then F in E else G esac'.
 
-In the conditional or case expression, the branches should all have the same
-type that will become the type of the whole expression. However, all but one
-of the branches may apply implicit conversions to obtain the common type, and
-during type analysis the interpreter tries to find a branch type that the
-others can be converted to in a process names balancing. (Balancing also takes
-place between expressions in a row display.) Since every type can be converted
-to void, the results of all branches will be voided (thrown away) as soon as
-at least one branch has void type (as is the case for an omitted else branch).
-If the context imposes a specific type for the whole expression, then that
-type will be imposed on each branch, without requiring balancing. Thus casting
-the whole expression to type T is equivalent to casting each branch to T.
+In a conditional or case clause, the branches should all have the same type
+that will become the type of the whole expression. However, all but one of the
+branches may apply implicit conversions to obtain the common type, and during
+type analysis the interpreter tries to find a branch type that the others can be
+converted to in a process names balancing. (Balancing also takes place between
+expressions in a row display.) Since every type can be converted to void, the
+results of all branches will be voided (thrown away) as soon as at least one
+branch has void type (as is the case for an omitted else branch). If the context
+imposes a specific type for the whole expression, then that type will be imposed
+on each branch, without requiring balancing. Thus casting the whole expression
+to type T is equivalent to casting each branch to T.
 
 ** Case expressions for discriminating on union values
 
-While case expressions using an integer to make the choice obtains a result
-that could also be obtained (less efficiently) using a nested conditional
-expression, there is another form of case expression that is indispensable
-when working with union values. How to produce values of a union type will be
-described elsewhere, so here we focus just on how to process such values.
+While case clauses using an integer to make the choice obtains a result that
+could also be obtained (less efficiently) using nested conditional clauses,
+there is another form of case clause that is indispensable when working with
+union values. How to produce values of a union type will be described elsewhere,
+so here we focus just on how to process such values.
 
-The idea is that since a value of a given union type assumes one and only one
-of the variants of the union, but it is not known which, the only type-safe
-way to inspect the value is to do a case distinction on the variants, and to
-provide for each a function to handle the case; these functions must all
-return values of the same type (if any), but each can take an argument whose
-type is that of the variant in question. There are two forms of case
-expressions for union values, a simple one that realises exactly this idea
-without frills, and a second for intended to be more user friendly. We call
-the first form "union case expression", the other "discrimination expression".
+The idea is that since a value of a given union type assumes one and only one of
+the variants of the union, but it is not known which, the only type-safe way to
+inspect the value is to do a case distinction on the variants, and to provide
+for each a branch to handle the case; these functions must all return values of
+the same type (if any), but each can bind an identifier of pattern specific to
+the variant in question. There are two forms of such expressions for union
+values, a simpler and more elaborated one; both are "discrimination clauses".
 
-Union case expressions resemble integer case expressions syntactically, only
-differing by the use of vertical bars instead of a commas. So they read
+In the first form of a discrimination clause, each branch starts by introducing
+a formal parameter (or pattern) to stand for the component C, followed by a body
+that can use C. Because the type of that parameter is implied by the context (it
+must be that of component i of the union type of U), it can (and must) be
+omitted; the discrimination clause then has form
 
   case U
-  in F_0
-  |  F_1
+  | (p_0): body_0
+  | (p_1): body_1
   |  ...
-  |  F_{n-1}
+  |  (p_{n-1}): body_{n-1}
   esac
-
-where U is an expression whose type is a union with n variants, and each F_i
-specifies a function to apply for variant i. Usually the F_i will be anonymous
-functions (lambda expressions) of the form '(T v): body' where 'T' is the
-type of the variant, 'v' is a name given to the value of type T that
-constitutes the component of U in the case it has this variant, and 'body' is
-an expression telling the action to perform and value to yield in this case.
-It is however possible to have for F_i any expression yielding an appropriate
-function value: if evaluation of U yields a component C for variant i of the
-union, then the expression F_i is evaluated to yield a function, which
-function is then called with argument C.
 
 The more elaborate discrimination expressions use tags that are associated to
-the variants of the union. These tags must be introduced in a (general) type
-definition (see above) for the union type, and serve as "injector functions",
-converting "free" (non-union) values of type T into a value of the union type
-for one of its variants, which must have type T. For instance if 'int_val' (not
-a good name) is a tag for the first variant of the type (int|vec), then
-'int_val(4)' or the equivalent '4.int_val' will yield a value of the first
-variant of the union, with as component value 4. The discrimination expression
-now uses patterns of that form to head each of the branches; if t_i denotes the
-tag for variant i, then the discrimination expression takes the general form:
+the variants of the union. These tags must be introduced in a general type
+definition (one with square brackets, see above) for the union type, and serve
+as "injector functions", converting "free" (non-union) values of type T into a
+value of the union type for one of its variants, which must have type T. For
+instance if 'int_val' (not a good name) is a tag for the first variant of the
+type (int|vec), then 'int_val(4)' or the equivalent '4.int_val' will yield a
+value of the first variant of the union, with as component value 4. The
+discrimination expression now uses at the head of each branch, instead of bare
+parenthesized pattern, patterns that resemble injector function calls, as in
 
-  case U
-  |  t_0(p_0): body_0
-  |  t_1(p_0): body_1
-  |  ...
-  |  t_{n-1}(p_{n-1}): body_{n-1}
-  esac
+  case f(x) | int_val(n): n+3 | vec_val(v): v*v esac
 
-where the p_i are identifiers or patterns that will be bound to the component
-yielded by U in case it belongs to variant i of the union. In analogy with the
-equivalent forms of function calls, the part 't_i(p_i):' heading each branch
-may also be written as 'p_i.t_i:'. Note that with respect to the simple form,
-the keyword 'in' has been replaced by a vertical bar; this facilitates telling
-the two forms apart. Apart from the presence of a tag, the heading of each
-branch also differs from a function heading (as would be used in a branch of a
-union case expression) by the absence of a type for the identifier(s) that p_i
-introduces: here this type is implicitly determined to be the type of the
-variant of the union type identified by the tag t_i. (Even though the types
-are also determined by the context in the case of a union case expression, the
-language does not allow omitting types in the header of a function, even where
-they could be derived from the context.)
+which can also be written using "postfixed injectors" (still with parentheses)
 
-The use of tags allows two additional forms of flexibility for discrimination
-expressions with respect to union case expressions. Firstly, the variants do
-not need to be listed in order in which they occur in the union, since they
-tags can serve to locate their positions (but of course all tags used must be
-associated to this union type, and none must occur in more than one branch).
-Secondly, it is possible to omit certain branches, provided a "default" branch
-is specified; this is a branch that does not introduce any identifiers (so it
-cannot access the component of U) and which has the simple form
+  case f(x) | (n).int_val: n+3 | (v).vec_val: v*v esac
+
+(these examples assume the f(x) is of type (int|vec), and that this type has
+been named using "set_type [ u_type = (int int_val | vec vec_val) ]",
+introducing the tags int_val, vec_val used in the discrimination clause).
+The general form, for an expression U of union type with n variants, is
+
+  case U                           or   case U
+  |  t_0(p_0): body_0                   | (p_0).t_0: body_0
+  |  t_1(p_1): body_1                   | (p_1).t_0: body_1
+  |  ...                                | ...
+  |  t_{n-1}(p_{n-1}): body_{n-1}       | (p_{n-1}).t_{n-1}: body_{n-1}
+  esac				        esac
+
+where the p_i are the tags for the variants of the union type. The use of tags
+allows two additional types of flexibility for these more elaborate
+discrimination clauses. Firstly, the variants do not need to be listed in order
+in which they occur in the union, since they tags can serve to locate their
+positions. Secondly, it is possible to omit certain branches, provided a
+"default" branch is specified; this is a branch that does not introduce any
+identifiers (so it cannot access the component of U) and which has the form
 
   | else body
 
 where 'body' is the expression defining the default action and/or value. If a
 default branch is present there should be just one, and at least one of the
-variants must not have a matching branch listed (so that this variant would
-select the default branch). Default branches are probably most useful for
-variants that have 'void' as component type, so that there is no value to bind
-in the branch anyway. But they could also serve when some computation delivers
-its result in the form of a union value, but the user either knows beforehand
-which variant will occur, or can only handle one or a few variants usefully.
+variants must not have its tag listed (so that this variant would select the
+default branch). Default branches are probably most useful for variants that
+have one 'void' component type, so that there is no value to bind in that branch
+anyway (although in that case "tag():" or "().tag:" could be used equally well
+instead of "else"), or when the variant returned by a function call is known
+beforehand by the caller, but some expression must still be specified for the
+other variants. An advantage that discrimination clauses (simple or elaborate)
+have over union-case clauses, is that branches are not (separate) function
+bodies, so that |break| or |return| statements can be used to jump out of the
+discrimination clause; this can be a useful way to handle error conditions.
+
 
 * Loops
 
@@ -2081,53 +2072,60 @@ jump is supported by the axis language when that evaluation is that of a loop or
 of a function.
 
 In the case of a loop, this is achieved by executing a "break", and the value
-returned from the loop is as if the final (interrupted) iteration had never
-started; when this happens in a 'for' loop, the size of the list of values
-returned will strictly smaller than the number of iterations that was computed
-when the loop evaluation started. As no value is contributed, the expression
-whose evaluation leads to this interruption is usually just the keyword 'break',
-which for the purpose of type checking has undetermined type (just like for the
-keyword 'die'). The 'break' expression is syntactically bound to the loop
-expression that its execution will terminate; this is normally the innermost
-loop in whose body the 'break' occurs. It can however be specified to be a more
-outward loop by writing a positive integer number after 'break' (separated by
-whitespace to avoid being combined into an identifier), which number counts the
-number of extra levels to move outward (so 'break 1' breaks from the
-innermost-but-one loop). If there are insufficient nested levels of loops that
-contain a 'break' expression, it will be rejected upon parsing. The outwards
-search for an enclosing loop body stops (with an error) in case the body of a
-function is found instead (which makes a difference only in the unlikely case of
-a local function definition contained in a loop). As a consequence executing a
-'break' never interrupts an active function call (although of course it can
-cause a function to terminate immediately after a loop in contains finishes).
+returned from the loop is as if its final (interrupted) iteration had never
+started. When this happens in a 'for' loop, the size of the list of values
+returned will then be strictly smaller than the number of iterations that was
+computed when the loop evaluation started. This interruption is signaled by the
+keyword 'break', which syntactically is an expression; when this expression is
+executed, this terminates the loop (and any evaluation that might be in progress
+inside that loop body). Since no value is returned to its context from
+evaluating 'break', it has undetermined type the purpose of type checking (just
+like the keyword 'die'). The 'break' expression is syntactically bound to the
+loop expression that its execution will terminate; this is normally the
+innermost loop in whose body the 'break' occurs. It can however be specified to
+be a more outward loop by repeating the keyword 'break' as many times as the are
+loop bodies to be broken out of, so 'break break' breaks from both current loop
+and the loop body that it occurs in. If there are insufficient nested levels of
+loops within the current command or function body to identify the loop to be
+terminated, the parser will reject the 'break' expression. Therefore, executing
+a (repeated) 'break' expression never directly interrupts an active function
+call (although of course a function call might terminate immediately after a
+loop contained in its body is interrupted).
 
-The evaluation of the body of a user defined function can be terminated without
-completing that of the whole body by executing a 'return' expression nested
-within. It is composed of the keyword 'return' followed by an expression that
-will be evaluated to produce the value returned from the function in case the
-'return' expression it executed. Similarly to 'break', the 'return' expression
-is syntactically bound to the function body that its execution will terminate,
-which is the innermost function that contains the 'return' expression (and in
-this case there is no way to specify any other function body). When the 'return'
+Similarly, there is a 'return' expression that can be used to prematurely
+terminate the call of a user defined function. A 'return' expression composed of
+the keyword 'return', followed by an expression that will be evaluated to
+produce the value returned from that function in case the 'return' expression it
+executed. Similarly to 'break', the 'return' expression is syntactically bound
+to the function body that its execution will terminate, which is the innermost
+function whose body contains the 'return' expression. (Contrary to break
+expressions, there is no way to specify a more outward function body to be
+terminated, as it is uncertain whether such functions are even still being
+evaluated by the time the 'return' expression is executed.) When the 'return'
 expression is executed, this interrupts the evaluations of any subexpressions of
 the function body that are in progress, which may include loop expressions.
 Since a function should always return a value of the same type, the type of any
 and all expressions following a 'return' (directly) contained in a function body
 and the function body itself should have the same type, in the same way as all
-branches in a choice expression should have the same type. In the syntactic
-context where the 'return' expression occurs, it has undetermined type (like a
-'break' expression), since it never provides a value for that context.
+branches in a choice expression should have the same type. Just like a 'break'
+expression, a 'return' expression has undetermined type for the purpose of type
+checking, since evaluating it never provides a value to its immediate context.
 
 For completeness we mention two other expressions whose evaluation will
 interrupt the containing evaluation, this time leading to a runtime error rather
 than resuming execution at a different point: the already mentioned expression
 consisting of the keyword 'die', and a call of the built-in function 'error'.
 The latter allows providing a message to be printed after the runtime error is
-signalled, by way of the argument expression for 'error'; this is usually a
+signaled, by way of the argument expression for 'error'; this is usually a
 string but could be any value, which will be formatted as the 'prints' built-in
 function would. (Also, as for any function, the argument is evaluated before the
 function is called, so it the argument expression manages to produce an error
-itself, it is that error that will be reported instead of calling 'error'.)
+itself, it is that error that will be reported instead of calling 'error'.) The
+keyword 'die' is intended to provide an expression in places where one is
+syntactically required, but which provably cannot be reached for evaluation; it
+is introduced in some automatic program transformations, but users should
+probably prefer calling 'error', to help indicating where something went wrong.
+
 
 9 Recursion
 

@@ -58,10 +58,11 @@ set split_data ([Cyclotomic_Pivot_info] data,CyclotomicField F) =
    in
    for d@j in data
    do case d
-      | piv.pivot:
+      | pivot(piv):
          let !f=spread, !k=#pivots { freeze these values } in
-         pivots #:= piv; spread := (([CyclotomicFieldElement] c): let v=f(c) in v[j] := c[k]; v)
-      | col.no_pivot: let kc = spread(col) in kc[j]:=-F.one; kernel #:= kc
+         pivots #:= piv;
+	 spread := (([CyclotomicFieldElement] c): let v=f(c) in v[j] := c[k]; v)
+      | no_pivot(col): let kc = spread(col) in kc[j]:=-F.one; kernel #:= kc
       esac
    od; (pivots,kernel,spread)
 

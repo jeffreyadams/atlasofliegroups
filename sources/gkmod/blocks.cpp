@@ -707,7 +707,8 @@ RankFlags common_block::singular (const RatWeight& gamma) const
   return result;
 }
 
-// Here the |block_modifier| records actual singular coroots, and the mapping
+// Flag among |this->simply_integrals| those that under |bm.w| map to a coroot
+// singular for |gamma| (equivalently those singular for $w^{-1}(\gamma)$)
 RankFlags common_block::singular
   (const repr::block_modifier& bm, const RatWeight& gamma) const
 {
@@ -727,13 +728,11 @@ common_block::~common_block() = default;
 bool y_less (const StandardReprMod& a,const StandardReprMod& b)
 { return a.gamma_lambda() < b.gamma_lambda(); };
 
-// the full block constructor is only called on explicit user demand
-// it is long because of the need to find elements in all corners
+// the full block constructor is usually only called on explicit user demand
+// it is long because of the need to find elements "in all corners" of the block
 
 common_block::common_block // full block constructor
-  (const common_context& ctxt, const StandardReprMod& srm,
-   BlockElt& entry_element	// set to block element matching input
-  )
+  (const common_context& ctxt, const StandardReprMod& srm)
   : Block_base(ctxt.subsys().rank())
   , rc(ctxt.rc())
   , simply_integrals(ctxt.simply_integrals())
@@ -1076,8 +1075,6 @@ common_block::common_block // full block constructor
 
   sort(); // by |length| then |x|, then |y| (which remains increasing)
 
-  entry_element = lookup(srm); // look up element matching the original input
-
 } // |common_block::common_block|, full block version
 
 // the partial block constructor is used for Bruhat intervals below some element
@@ -1103,7 +1100,8 @@ common_block::common_block // partial block constructor
   Block_base::dd = // integral Dynkin diagram, converted from dual side
     DynkinDiagram(int_sys.Cartan_matrix().transposed());
 
-  using y_list = containers::sl_list<RatWeight>; // |rgl| values, increasing
+  // a type to represent |rho+gamma-lambda| values, increasing
+  using y_list = containers::sl_list<RatWeight>;
   struct inv_y_data
   {
     y_list list; unsigned long offset;    inv_y_data() : list(), offset(-1) {}
@@ -1270,18 +1268,18 @@ repr::StandardRepr common_block::sr
   return rc.sr(representative(z),bm,gamma);
 }
 
-// unlike |bm.simp_int| get simply integrals in mapped order using |bm.w|
-// This is used by |common_block::singular| above only.
+// Unlike |bm.simp_int|, get simply integrals in mapped order using |bm.w|
+// This is used by |common_block::singular| and |common_block::fold_orbits| only.
 RootNbrList common_block::simply_ints(const repr::block_modifier& bm) const
 {
-#if 1 // original implementation
+#if 0 // original implementation
   auto ww = rc.Weyl_group().word(bm.w);
   RootNbrList result; result.reserve(simply_integrals.size());
   for (auto alpha : simply_integrals)
     result.push_back(root_datum().permuted_root(ww,alpha));
   return result;
 #else
-  return bm.simple_pi.pull_back(bm.simp_int.to_vector());
+  return bm.simple_pi.pull_back(bm.simp_int);
 #endif
 }
 
@@ -1301,7 +1299,7 @@ bool common_block::is_integral_orthogonal(const RatWeight& shift) const
 }
 #endif
 
-// build extended block for custom built |common_block|, given an involution
+// build |delta|-extended block, when |*this| is a custom built |common_block|
 ext_block::ext_block common_block::extended_block
   (const WeightInvolution& delta) const
 {

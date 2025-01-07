@@ -858,24 +858,24 @@ set_type
 { recover the value of |n| }
 set rank (D_class c) = int:
    case c
-   | cycles.unsplit_class: cycles.rank { rank@Signed_cycles; combinatorics.at }
+   | (cycles).unsplit_class: cycles.rank { rank@Signed_cycles; combinatorics.at }
    | (lambda,).split_class: lambda.sum { |lambda| has all cycles (even,false) }
    esac
 
 set rank (D_irrep chi) = int:
    case chi
-   | pair.unsplit_irr: pair.rank { rank@(Partition,Partition); combinatorics.at }
-   | (lambda,).split_irr: 2*lambda.sum { |lambda| stands for (lambda,lambda) }
+   | (pair).unsplit_irr: pair.rank { rank@(Partition,Partition) }
+   | (lambda,).split_irr: 2*lambda.sum { |as lambda| stands for (lambda,lambda) }
    esac
 
 set cycle_type_order (D_class c) = int:
    case c
-   | cycles.unsplit_class: cycles.cycle_type_order { as in types B, C }
+   | (cycles).unsplit_class: cycles.cycle_type_order { as in types B, C }
    | (lambda,).split_class: lambda.cycle_type_order { as in type A }
    esac
 set centralizer_order (D_class c) = int:
    case c
-   | cycles.unsplit_class: { unsplit means half of BC centralizer is not in Dn }
+   | (cycles).unsplit_class: { unsplit means half of BC centralizer isn't in Dn }
        cycles.cycle_centralizer_order\2
    | (alpha,).split_class: { split means full BC centralizer is in Dn subgroup }
        { simulate |cycle_centralizer_order@Signed_cycles|, using ..@Partition }
@@ -887,7 +887,7 @@ set class_size (D_class c) = int:
 { compute cycle type of power of a signed permutation, given its cycle type }
 set cycle_power (D_class c, int k) = D_class:
    case c
-   | cycles.unsplit_class: cycle_power(cycles,k).unsplit_class
+   | (cycles).unsplit_class: cycle_power(cycles,k).unsplit_class
    | (alpha,sign).split_class: let beta=cycle_power(alpha,k) in
      if beta.is_very_even { whether class remains split (may fail for even |k|) }
      then (beta,sign).split_class { keep sign when class remains split }
@@ -918,10 +918,10 @@ in if neg_count.is_odd then error("Permutation is not in type D subgroup")
 
 set same_as (D_class c0) = (D_class->bool):
    case c0
-   | cyc0.unsplit_class:
+   | (cyc0).unsplit_class:
      let test=same_as(cyc0) in
      (D_class c1) bool:
-        case c1 | cyc1.unsplit_class: test(cyc1) | else false esac
+        case c1 | (cyc1).unsplit_class: test(cyc1) | else false esac
    | (lambda,eps0).split_class:
      let freq=lambda.frequencies in
      (D_class c1) bool:
@@ -959,17 +959,17 @@ set D_irreducibles (int n) = [D_irrep]:
 { predicate of coming before a given element in the ordering of |D_classes| }
 set less_eq (D_class elt) = (D_class->bool):
    case elt
-   | cycles.unsplit_class:
+   | (cycles).unsplit_class:
      let pair = cycles.to_partition_pair in
      (D_class C) bool:
 	case C
-	| cycles_C.unsplit_class: cycles_C.to_partition_pair<=pair
+	| (cycles_C).unsplit_class: cycles_C.to_partition_pair<=pair
 	| (lambda,).split_class: (lambda,lambda)<=pair
 	esac
    | (nu,b1).split_class:
      (D_class C) bool:
 	case C
-	| cycles_C.unsplit_class:
+	| (cycles_C).unsplit_class:
 	  cycles_C.to_partition_pair<=(nu,nu)
 	| (lambda,b0).split_class:
 	  case cmp_equal_sum_partitions(lambda,nu)
@@ -991,9 +991,11 @@ in (D_class C) int:
 
 set same_as (D_irrep chi) = (D_irrep->bool):
    case chi
-   | (p0a,p0b):pair0.unsplit_irr: let swapped=(p0b,p0a) in
+   | ((p0a,p0b):pair0).unsplit_irr: let swapped=(p0b,p0a) in
      (D_irrep xi) bool:
-     case xi | pair1.unsplit_irr: pair0=pair1 or swapped=pair1 | else false esac
+     case xi | (pair1).unsplit_irr: pair0=pair1 or swapped=pair1
+             | else false
+     esac
    | (lambda,b0).split_irr:
      (D_irrep psi) bool:
      case psi | (mu,b1).split_irr: lambda=mu and b0=b1 | else false esac
@@ -1026,15 +1028,15 @@ set character (D_irrep chi, D_class c) = int:
    assert(chi.rank = c.rank,"Size mismatch");
    let pos_cycles(Partition mu)=Signed_cycles: for l in mu do (l,false) od in
    case chi
-   | pair.unsplit_irr:
+   | (pair).unsplit_irr:
      case c
-     | cycles.unsplit_class: hyperoctahedral_character(pair,cycles)
+     | (cycles).unsplit_class: hyperoctahedral_character(pair,cycles)
      | (alpha,).split_class: { both halves behave as their BC class }
         hyperoctahedral_character(pair,pos_cycles(alpha))
      esac
    | (lambda,epsilon).split_irr:
      case c
-     | cycles.unsplit_class:
+     | (cycles).unsplit_class:
        let (q,r) = hyperoctahedral_character((lambda,lambda),cycles)\%2 in
        assert(=r,"Odd character value at unsplit class"); q
      | (alpha,delta).split_class:

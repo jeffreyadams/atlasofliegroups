@@ -134,7 +134,7 @@ set gcd = (int,int->int): { greatest common divisor; no size limit }
       while let r=a%b in r.!= do a:=b; b:=r od; b
    fi
 
-{ the following cannot be called |gcd|: too close to built-in |gcd@vec| }
+{ the following cannot be called |gcd|: too cloase to built-in |gcd@vec| }
 set gcd_big([int] v) = int:
    let d=0 in for x in v do if (d:=gcd(d,x))=1 then break fi od; d
 
@@ -1019,6 +1019,7 @@ set root (RootDatum rd, vec alpha_v) = vec: root(rd,coroot_index(rd,alpha_v))
 set coroot (RootDatum rd, vec alpha) = vec: coroot(rd,root_index(rd,alpha))
 
 set is_orthogonal (RootDatum rd, int i, int j) = bool: =coroot(rd,i)*root(rd,j)
+set is_orthogonal (RootDatum rd, vec alpha, vec beta) = bool: is_orthogonal(rd,root_index(rd,alpha),root_index(rd,beta))
 set is_orthogonal (RootDatum rd, [int] S, int j) = bool:
    for i in S do is_orthogonal(rd,i,j) od.all
 
@@ -2316,3 +2317,7 @@ set monomials([ParamPol] list) = [Param]:
 	  for P in list for @p in P do (split_1,p) od od
    in monomials(sum)
    fi
+
+set min_height([Param] params)=[Param]:
+if #params=0 then [] else
+let min=min(for p in params do height(p) od) in for p in params do if height(p)=min then [p] else [] fi od.## fi

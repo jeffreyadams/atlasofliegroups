@@ -1,0 +1,87 @@
+<hermitian.at {for hermitian_form_irreducible}
+<basic.at {for x_open}
+<group_operations.at {for derived}
+<parabolics.at { for Levi, KGPElt}
+<K_types.at {for branch_std}
+<convert_c_form.at {for convert_cform_hermitian}
+<hermitian.at {for twisted_c_form_irreducible}
+
+set P36 = KGPElt:([1,2,3,4,5],x_open(E6_s))
+set L36 = P36.Levi
+set rf36 = derived(L36)
+set p36 = parameter(rf36,161,[2,2,0,1,0],[ 1, 1, 0, 1, 1 ]/1)
+set q36 = parameter(rf36,162,[2,2,0,1,0],[ 1, 1, 0, 1, 1 ]/1)
+set H36 = hermitian_form_irreducible(p36)
+set J36 = hermitian_form_irreducible(q36)
+branch(H36,40)
+branch(J36,40)
+
+set P41 = KGPElt:([0,1,2,3,4],x_open(E6_s))
+set L41 = P41.Levi
+set rf41 = derived(L41)
+set p41 = parameter(rf41,161,[0,2,1,0,2],[ 1, 1, 1, 0, 1 ]/1)
+set q41 = parameter(rf41,162,[0,2,1,0,2],[ 1, 1, 1, 0, 1 ]/1)
+set H41 = hermitian_form_irreducible(p41)
+set J41 = hermitian_form_irreducible(q41)
+branch(H41,40)
+branch(J41,40)
+
+{If coefficient of K-type tau is a+bs, then signature of c-form on tau is (a,b)}
+set my_twisted_c_form_irreducible_to_ht(Param p, int N) = KTypePol:
+convert_cform_hermitian(branch_std(convert_cform_hermitian(twisted_c_form_irreducible(p)),N))
+
+{same thing, but works only in untwisted case}
+set my_c_form_irreducible_to_ht(Param p, int N) = KTypePol:
+convert_cform_hermitian(branch_std(convert_cform_hermitian(c_form_irreducible(p)),N))
+
+{"true" means the KTypePol CANNOT represent the signature of an honest form}
+set is_bad(KTypePol Q) = bool:
+    any(for c@m in Q do int_part(c).< or s_part(c).< od)
+
+set is_bad([Param] B) = bool:
+    any(for p in B do if not is_fixed(p.real_form.distinguished_involution ,p)
+    	      	      then false
+		      elif is_bad(my_twisted_c_form_irreducible_to_ht(p,height(p) + 20))
+		      then prints("bad one:",p); true
+		      else false
+		      fi od)
+
+set my_twisted_c_form_std_to_ht(Param p, int N) = KTypePol:
+convert_cform_hermitian(branch_std(convert_cform_hermitian(twisted_c_form_std(p)),N))
+
+{The two groups rf36 and rf41 are both Spin(5,5), with X* having basis
+the fundamental weights; simple root numbers 0,1,2,3,4 for rf36
+correspond to 4,1,3,2,0 for rf41. The lambdas and nus for p36 and p41
+correspond under this isomorphism. The pair of KGBElts (161, 162) for
+rf36 corresponds to the same pair of numbers in rf41, because the
+involutions match; I'm not sure in whicn order.
+
+SO (p36, q36) differs from (p41,q41) (unordered pairs) by an
+isomorphism of groups.
+
+Point is that p41 and q41 are both claimed by atlas to be unitary, as is p36.
+But atlas says that q36 is NOT unitary.
+
+Further problem: if p is anything Hermitian, then
+
+branch(hermitian_form_irreducible(p), N)
+
+reports the signature on each K-type to height N. Each coefficient
+must be a+bs, with a and b nonnegative. This fails for q36.}
+
+{So I'm fairly confident that the extended KL library function is
+broken. Jeff can probably check this more easily than I can, and of
+course only Marc has a chance to fix it.}
+
+{Probably useless hint: a few days ago I accidentally ran some code with
+debugging on, and got a failed assertion message from the library, I
+think: maybe
+
+ assert(same_standard_reps(node0,F0)); ???
+
+I was working on unequal rank examples, where my code had a bunch of bugs.
+}
+
+{last reason there has to be a bug: I now realize that p and q (in
+either real form rf36 or rf41) differ by an automorphism of the real
+form.}

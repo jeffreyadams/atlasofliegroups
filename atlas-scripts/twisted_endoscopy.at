@@ -231,9 +231,7 @@ Value:
 }
 
 set restrict_action_weak (mat A, mat M) =  { shapes A: n by n, M: n by m }
-   case solve(M,A*M) | B.solution: B
-   | else null(0,0)
-   esac
+   case solve(M,A*M) | solution(B): B | else null(0,0) esac
 
 set lift(mat m, RootDatum G,mat M)=WeylElt:
 let W=G.W then
@@ -274,7 +272,7 @@ t_G=solve(left_inverse(M),E_H.t).requisition in}
 
 {g_G=M*E_H.g then
 l_G=M*E_H.l then}
-g_G=G.rho_check then 
+g_G=G.rho_check then
 l_G=null(#g_G) then
 tau_G=solve(^M,E_H.tau).requisition then
 t_G=solve(^M,E_H.t).requisition in
@@ -338,7 +336,7 @@ set solve(mat M,mat N,ratvec v)=maybe_a_ratvec:
 set inverse_lift_std(Param p_G,RealForm H,mat M, mat delta,ratvec gamma_H)=ParamPol:
 let y_G=y_gen(p_G) then
 action_H=restrict_action(y_G.involution,M) then
-tf_u_G=y_G.unnormalized_torus_factor {unnormalized torus factor for G} then  
+tf_u_G=y_G.unnormalized_torus_factor {unnormalized torus factor for G} then
 theta=p_G.x.involution then
 N=(1+theta)##id_mat(n_rows(theta)) then
 ()=if te_verbose then prints(M##N) fi then
@@ -356,7 +354,7 @@ if is_valid(y_H_gen,gamma_H) then
  ()= if te_verbose then prints("lp="); for a in lp do prints(a) od fi in
  sign_difference(p_G,delta)*param_pol(lp)
 else
- let ()=prints("not valid, consider using inverse_lift_std_by_search instead") in 
+ let ()=prints("not valid, consider using inverse_lift_std_by_search instead") in
  error("not valid")
 fi
 
@@ -376,20 +374,20 @@ N=(1+theta)##id_mat(n_rows(theta)) then
 ()=if te_verbose then prints(M##N) fi then
 tf_u_H_maybe=solve(M,N,tf_u_G) then
 tf_u_H=if not any(tf_u_H_maybe) then error("no solution") else
-        2*tf_u_H_maybe.requisition 
+        2*tf_u_H_maybe.requisition
 fi  then
 {tf_u_H=left_inverse(M)*tf_u_G then lift}
 tf_H=(1+action_H)*(2*tf_u_H-H.rho)/2 then
 ()=if te_verbose then prints("tf_u_G: ", tf_u_G, new_line, "tf_u_H: ", tf_u_H, new_line, "tf_H: ", tf_H) fi then
 y_H_gen=KGB_elt_gen(dual(inner_class(H)),action_H,tf_H) then
 ()=if te_verbose then prints("y_H_gen=", y_H_gen) fi in
-if is_valid(y_H_gen,gamma_H) then 
+if is_valid(y_H_gen,gamma_H) then
  let ()=if te_verbose then prints("is valid") fi in
  let  lp=L_packet(H,gamma_H,y_H_gen) then
  ()= if te_verbose then prints("lp="); for a in lp do prints(a) od fi in
  sign_difference(p_G,delta)*param_pol(lp)
 else
- let ()=prints("not valid, using inverse_lift_std_by_search instead") in 
+ let ()=prints("not valid, using inverse_lift_std_by_search instead") in
  inverse_lift_std_by_search(p_G,H,M,delta,gamma_H)
 fi
 
@@ -422,7 +420,7 @@ set abv_mixed(Param p_H,mat M,RealForm G,mat delta)=
 let lift_std_ext=lift_std(p_H,M,G,delta) then
 lift_std=parameter(lift_std_ext) then
 inverse_lift=inverse_lift_irr_mixed(lift_std,p_H.real_form,M,delta,p_H.infinitesimal_character) {sum of standards} then
-()=if te_verbose then prints("inverse_lift: (sum of stds): ", inverse_lift) fi in 
+()=if te_verbose then prints("inverse_lift: (sum of stds): ", inverse_lift) fi in
 (p_H,lift_std,inverse_lift,composition_series(inverse_lift))
 
 {to use: set G=GL(n,R), delta=G.distinguished_involution,
@@ -441,4 +439,4 @@ let (p_H,p_G,)=data[0] then
 ()=prints("H=", p_H.real_form,new_line, "G=", p_G.real_form) in
 for (p_H,p_G,abv)@i in data do
 prints(new_line,"i: ", i, new_line, "p_H: ", p_H,new_line,"inf char(p_H): ", p_H.infinitesimal_character,
-new_line, "p_G=lift(p_H): ", p_G, new_line,"inf_ char(p_G): ", p_G.infinitesimal_character	, new_line,"Packet(p_H): ", abv) od 
+new_line, "p_G=lift(p_H): ", p_G, new_line,"inf_ char(p_G): ", p_G.infinitesimal_character	, new_line,"Packet(p_H): ", abv) od

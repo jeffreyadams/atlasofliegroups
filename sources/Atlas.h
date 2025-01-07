@@ -254,7 +254,7 @@ namespace atlas {
   typedef matrix::PID_Matrix<LatticeCoeff> LatticeMatrix;
 
   namespace bitvector {
-    template<unsigned int> class BitVector;
+    template<unsigned int> class BitVector; // |BitSet<n>|, with size field
     template<unsigned int> class BitVectorList;
     template<unsigned int> class BitMatrix;
   }
@@ -285,7 +285,7 @@ namespace atlas {
   using lietype::SimpleLieType;
   using lietype::LieType;
   using lietype::InnerClassType;
-  using lietype::ext_gen;
+  using lietype::ext_gen; // generator of extended Weyl group
   typedef std::vector<ext_gen> ext_gens;
 
   namespace prerootdata { class PreRootDatum; }
@@ -479,6 +479,14 @@ namespace atlas {
 
 // the standardrepk module no longer is part of Atlas program, leave it out
 // declarations exclusively for the Fokko program are in standardrepk.h
+
+  namespace K_repr {
+    class K_type;
+    using KT_pol = Free_Abelian_light<K_type,int>;
+    using K_type_poly = Free_Abelian_light<K_type,Split_integer>;
+  }
+  using K_repr::K_type;
+  using K_repr::K_type_poly;
 
   namespace repr {
     using level = unsigned int; // for height statistic of K type and parameters
