@@ -1251,7 +1251,7 @@ void clean_out_type_identifier(id_type id)
   const auto* defined_type = global_id_table->type_of(id);
   if (defined_type->kind()!=tabled)
     return; // we cannot clear out the pro/in/jector functions, not recorded
-  auto type_number = defined_type->type_nr();
+  auto type_number = defined_type->tabled_nr();
   const auto& fields = type_expr::fields(type_number);
   if (not fields.empty())
   { if (defined_type->kind()==tuple_type)
@@ -1651,10 +1651,10 @@ iteratively, manually maintaining a stack of types remaining to be visited.
         work.push(&*it);
     break;
     case tabled: // this case is what it is all about
-      { id_type id = t.type_nr();
+      { id_type id = t.tabled_nr();
  // narrows the integer, but it was really an identifier code
         if (translate[id]!=absent)
-          t = type_expr::tabled_nr(translate[id]);
+          t = type_expr::user_type(translate[id],type_list());
             // replace by future tabled reference
         else if (global_id_table->is_defined_type(id))
           t = global_id_table->type_of(id)->bake();
@@ -1701,7 +1701,7 @@ index~|i| into the vector.
   for (auto it=defs.begin(); not defs.at_end(it); ++it,++i)
     if (not it->fields.empty())
     { const auto& fields = it->fields;
-      const auto& tp = type_expr::tabled_nr(type_nrs[i]);
+      const auto& tp = type_expr::user_type(type_nrs[i],type_list());
       @/@< Append to |store| bindings for the identifiers in |fields| as
          injector or projector function for |tp| @>
     }
@@ -1711,13 +1711,13 @@ index~|i| into the vector.
   {
     const auto& fields = it->fields;
     const auto type_nr = type_nrs[i];
-    const auto& tp = type_expr::tabled_nr(type_nr);
+    const auto& tp = type_expr::user_type(type_nr,type_list());
     if (it->id!=type_binding::no_id)
     {
       if (global_id_table->is_defined_type(it->id))
         clean_out_type_identifier(it->id);
       global_id_table->add_type_def
-        (it->id,type::wrap(type_expr::tabled_nr(type_nr),0));
+        (it->id,type::wrap(type_expr::user_type(type_nr,type_list()),0));
     }
     @< Emit... @>
     if (it->id==type_binding::no_id)
@@ -1851,7 +1851,7 @@ void type_of_type_name(id_type id)
 { const auto* tp = global_id_table->type_of(id);
   const std::vector<id_type>* fields = nullptr;
   if (tp->kind()==tabled)
-    fields = &type_expr::fields(tp->type_nr());
+    fields = &type_expr::fields(tp->tabled_nr());
   *output_stream << "Defined type: ";
   if (fields==nullptr or fields->empty())
     *output_stream << tp->unwrap().untabled();
