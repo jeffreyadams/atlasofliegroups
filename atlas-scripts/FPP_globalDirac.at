@@ -785,7 +785,9 @@ set FPP_unitary_hash_bottom_layer([(KGBElt,ratvec)] xlambdas, Param_hash UhashG{
 	      		    then prints("  ",print_time_string(xlambdatimes[k]),
 			   	" = time for (x,lambda) #",k, " = (", xnums[k],",",xlambdas[k],"), ht = ",
 				  height(parameter(x,lambda,0*lambda)), ", L = ", let (Q,) =
-				  theta_stable_quasi_data(parameter(x,lambda,0*lambda)) in Q.Levi.Lie_type,
+				  if small_test_flag then theta_stable_data_small(parameter(x,lambda,0*lambda))
+				  else theta_stable_quasi_data(parameter(x,lambda,0*lambda))
+				  fi in Q.Levi.Lie_type,
 				  ",",test_string);
 			         prints("    #LF = ", for L in LF do #L od, "; #unitary params = ", answerCards[k],
 				 ", #new unitary = ", Uhash.size() - startUhash,
@@ -1058,9 +1060,10 @@ set FPP_unitary_hash_bottom_layer([KGBElt] xs, Param_hash UhashG{, Param_hash Up
 			 	 in if every_lambda_flag
 				    then prints("  ",print_time_string(templambdatimes[index]),
 			   	    " = time for (x,lambda) = (", x.number, ", #",index," = ",lambda, "), ht = ",
-				    height(parameter(x,lambda,0*lambda)),", L = ",
-				    let (Q,) = theta_stable_quasi_data(parameter(x,lambda,0*lambda))
-				    in Q.Levi.Lie_type, ",",test_string);
+				    height(parameter(x,lambda,0*lambda)),", L = ", let (Q,) =
+				    if small_test_flag then theta_stable_data_small(parameter(x,lambda,0*lambda))
+				    else theta_stable_quasi_data(parameter(x,lambda,0*lambda))
+				    fi in Q.Levi.Lie_type, ",",test_string);
 				         if more_flag
 					 then prints("    #LF = ", for L in LF do #L od, ", #unitary params = ",
 					      	tempanswerCards[index], ", #new unitary = ", Uhash.size() - startUhash,

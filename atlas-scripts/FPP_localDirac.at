@@ -866,7 +866,7 @@ set local_testK_hash_min_bottom_layer(KGBElt x, ratvec lambda, LocalVertexData L
 		      fi {not is_final(pC)}
 		fi {newStatuses[k]}
 	      od {k:NumClasses}
-    then () = if fund_face_verbose and NumClasses > 100
+    then () = if fund_face_verbose {and NumClasses > 100}
     then prints(); prints("start local_testK_hash_min_bottom_layer ", NumClasses,
 		   " equiv classes of faces to dim ",#FVKH-1)
 	      ; prints()
@@ -889,8 +889,8 @@ set local_testK_hash_min_bottom_layer(KGBElt x, ratvec lambda, LocalVertexData L
 		       	      then true
 			      elif not all(for p in ps
 		     	  	     	   do @bool: if #ps = 1
-					      	     then min_bottom_elim_factors(p,pol_hash.index(FVKH[d][j][d+red_shift+1]))
-						     else min_bottom_elim_factors(p)
+					      	     then min_bottom_elim_factors(p,pC,pol_hash.index(FVKH[d][j][d+red_shift+1]))
+						     else min_bottom_elim_factors(p,pC)
 						     fi
 					   od)
 				then false
@@ -974,8 +974,8 @@ set local_testK_hash_bottom_layer_more(KGBElt x, ratvec lambda, LocalVertexData 
                   then test = if all(for p in ps do @bool:Uhash.lookup(p).>= od)
 		       	      then true
 			      elif not all(for p in ps
-		     	  	     	   do @bool: if #ps = 1 then min_bottom_elim_factors(p, pol_hash.index(FVKH[d][j][d+red_shift+1]))
-					      	     else min_bottom_elim_factors(p)
+		     	  	     	   do @bool: if #ps = 1 then min_bottom_elim_factors(p,pC, pol_hash.index(FVKH[d][j][d+red_shift+1]))
+					      	     else min_bottom_elim_factors(p,pC)
 						     fi
 					   od)
 				then false
@@ -3211,10 +3211,12 @@ set local_test_GEO_hash_bottom_layer_interrupt(KGBElt x, ratvec lambda, {VertexD
     	      then let () = Uhash.match({herm_center(}first_param(finalize(pmin{pmax}{)})))
 	      	   in return [pmin]
 	      fi
-
-    then DG0 = max(for mu in LKTs(pmin)
-    	       	   do minBottomData.G_min_height(mu)
-		   od)
+    then DG0 = if small_test_flag
+    	       then minSmallBottomData.G_min_height(x,lambda)
+	       else max(for mu in LKTs(pmin)
+    	       	    	do minBottomData.G_min_height(mu)
+		   	od)
+	       fi
     then Ds = for j:bl_step_count+1 do let H = height(pmin) + j*bl_step_size
     	      	  		       in if H > FPP_max_ht then {prints("too big H = ",H,", x = ",x.number,
 				       	  ", lambda = ",lambda);} break fi;
@@ -3381,9 +3383,12 @@ set local_test_GEO_hash_bottom_layer_step(KGBElt x, ratvec lambda, {VertexData v
     	      then let () = Uhash.match(first_param(finalize(pmin)))
 	      	   in return [pmin]
 	      fi
-    then DG0 = max(for mu in LKTs(pmin)
-    	       	   do minBottomData.G_min_height(mu)
-		   od)
+    then DG0 = if small_test_flag
+    	       then minSmallBottomData.G_min_height(x,lambda)
+	       else max(for mu in LKTs(pmin)
+    	       	    	do minBottomData.G_min_height(mu)
+		   	od)
+	       fi
     then Ds = for j:bl_step_count+1 do let H = ht + j*bl_step_size
     	      	  		       in if H > FPP_max_ht then {prints("too big H = ",H,", x = ",x.number,
 				       	  ", lambda = ",lambda);} break fi;
