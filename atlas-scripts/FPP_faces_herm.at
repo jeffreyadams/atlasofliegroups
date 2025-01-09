@@ -1617,6 +1617,7 @@ set_type
   , (RealForm -> ) writeG {output data for one group to file}
   , ((RealForm, int, int) -> ) writeGrange {output data for KGB(G)[low,high]}
   , ((KGBElt, ratvec) -> ) writexlam {output data for one x,lambda}
+  , ((KGBElt, ratvec) -> ) writexlam_no_G {output data for one x,lambda; without writing G}
 )
 ]
 
@@ -1867,6 +1868,28 @@ set make_big_unitary_hash() = big_unitary_hash_table:
 		   od.##
       then N = to_bitset([position(x,lambda)])
       in write_real_form(G,Gname);
+         prints("set j = big_unitary_hash.rf_number(",Gname,")");
+	 for p in plist
+	 do prints("void: big_unitary_hash.long_match(parameter(G_temp,",xnum,",",lambda,",",p.nu,"),j)")
+	 od;
+	 if is_member_bitset(position(x,lambda), xl_known[i][xnum])
+	 then prints("big_unitary_hash.finish(KGB(G_temp)[",xnum,"],",to_string(N),")")
+	 fi
+    , ((KGBElt,ratvec) -> ): {writexlam_no_G} (KGBElt x, ratvec lambda):
+      let G = x.real_form
+      then xnum = x.number
+      then i = add_real_form(G)
+      then Gname = "G_temp"
+      then listname = Gname+"_list"
+      then longlist = uhashes[i].list()
+      then plist = for p in longlist
+      	   	   do if p.x = x and p.lambda = lambda
+		      then [p]
+		      else []
+		      fi
+		   od.##
+      then N = to_bitset([position(x,lambda)])
+      in {write_real_form(G,Gname);}
          prints("set j = big_unitary_hash.rf_number(",Gname,")");
 	 for p in plist
 	 do prints("void: big_unitary_hash.long_match(parameter(G_temp,",xnum,",",lambda,",",p.nu,"),j)")
