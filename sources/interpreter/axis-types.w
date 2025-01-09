@@ -1062,11 +1062,11 @@ type_expr simple_subst
 of |type_expr|, so it cannot directly assign to private members. Instead, we use
 the factory methods like |type_expr::row| to build our result on the way back in
 a recursive traversal of the type, moving from the result of recursive calls (no
-|std::move| is needed, since these results are not stored in variables). When
-encountering a type variable, which is always interpreted as an parameter of the
-type constructor (since we do not allow defining such constructors in the scope
-of any bound type variables), we simply copy the corresponding |type_expr| from
-|assign|.
+|std::move| is needed, since these results are not stored in variables). All
+type variables are interpreted as an parameters of the type constructor, since
+such constructors cannot be defined in the scope of any bound type variables.
+Therefore we simply replace them by copies the corresponding |type_expr| from
+|assign|, which are required to exist.
 
 @< Function definitions @>=
 
@@ -1099,17 +1099,20 @@ type_expr simple_subst
     }
     default: assert(false); // there should be no undetermined type components
   }
-  return type_expr();
+  return type_expr(); // cannot be reached
 }
 
 
-@*2 Storage of defined, possibly recursive, types.
+@*2 User defined, possibly recursive, types and type constructors.
 %
-We come to a new part of the |type_expr| type, a static member that allows
-names in types to be used that stand for certain type expressions. The
-mechanism has been around some time, but was previously implemented by just
-replacing the type name by the corresponding type expression after
-having been input.
+We come to a new part of the |type_expr| type, a static member that allows for
+storage of ``tabled'' type and type constructors. These can represent recursive
+(effectively infinite) type expressions, like a row-of type whose component type
+is the type itself, or algebraic types like binary trees with node labels of
+some type (the latter would be a recursive type constructor). The mechanism
+coexists with an older and simpler system of user defined but non recursive
+types and type constructors, which are completely expanded in the parser so that
+the rest of the program (like the code here) can ignore their existence.
 
 The sub-class |type_expr::defined_type_mapping| is basically a vector of type
 expressions possibly paired to a type identifier and maybe a list of field names
@@ -1135,13 +1138,18 @@ associate tags identifying the variants of a given |union| type.
 @< Type definitions @>=
 struct type_binding
 { static constexpr id_type no_id = -1;
-  id_type name; type_expr tp; std::vector<id_type> fields;
-  type_binding(type_expr&& t) : name(no_id), tp(std::move(t)), fields() @+{}
+  id_type name;
+  unsigned short arity;
+  type_expr tp;
+  std::vector<id_type> fields;
+  type_binding(type_expr&& t, unsigned short arity)
+  : name(no_id), arity(arity), tp(std::move(t)), fields() @+{}
 };
+@)
 class type_expr::defined_type_mapping : public std::vector<type_binding>
 { public:
   defined_type_mapping () : std::vector<type_binding>() @+{}
-  const type_expr& defined_type(type_nr_type i) const @+
+  const type_expr& definiens(type_nr_type i) const @+
     {@; return (*this)[i].tp; }
 };
 
@@ -1170,8 +1178,8 @@ static std::vector<type_nr_type>
 static type_nr_type table_size();
 static void reset_table_size(type_nr_type old_size);
 static type_nr_type find (const type_expr& type);
-static void set_fields (id_type type_number, std::vector<id_type>&& fields);
 static const std::vector<id_type>& fields(type_nr_type type_number);
+static void set_fields (id_type type_number, std::vector<id_type>&& fields);
 
 @ Here are the easy ones among those methods: |table_size| just returns the
 current |size| of |type_map| while |reset_table_size| shrinks the table back to
@@ -1198,13 +1206,13 @@ type_nr_type type_expr::find (const type_expr& tp)
   return -1;
 }
 @)
-void type_expr::set_fields(id_type type_number, std::vector<id_type>&& fields)
-{@; assert(type_number<type_map.size());
-   type_map[type_number].fields=fields;
-}
 const std::vector<id_type>& type_expr::fields(type_nr_type type_number)
 {@; assert(type_number<type_map.size());
   return type_map[type_number].fields;
+}
+void type_expr::set_fields(id_type type_number, std::vector<id_type>&& fields)
+{@; assert(type_number<type_map.size());
+   type_map[type_number].fields=fields;
 }
 
 @ And here are the accessor methods for |type_expr| values that have
@@ -1215,57 +1223,74 @@ id_type type_expr::type_name() const @+
 {@; return type_map[tabled_variant.nr].name; }
 
 const type_expr& type_expr::top_level() const
-{@; return type_map.defined_type(tabled_variant.nr); }
+{@; return type_map.definiens(tabled_variant.nr); }
 
-@ The |expanded| methods requires more work. However we relegate the actual
-replacement to a local function |tabled_subs| defined below, and we only have to
-deal with type kinds that have at least one component expression, since
+@ The |expanded| methods requires more work, but a call to |simple_subst| does
+the essential part. We just need to convert the type arguments from
+|raw_type_list| to a |std::vector| to prepare for the call. In all cases we must
+make a copy, so trying to save work when |arity==0| is not really worth it.
 
 @< Function definitions @>=
-type_expr type_expr::expanded () const // top level expansion of |tabled_variant|
+type_expr type_expr::expanded () const
+  // top level expansion of |tabled_variant|
 { if (tag!=tabled)
     return copy();
+  const auto& binding = type_map[tabled_variant.nr];
+  assert(length(tabled_variant.type_args)==binding.arity);
   std::vector<type_expr> assign;
-  assign.reserve(length(tabled_variant.type_args));
+  assign.reserve(binding.arity);
   for (wtl_const_iterator it(tabled_variant.type_args); not it.at_end(); ++it)
     assign.push_back(it->copy());
-  return simple_subst(top_level(),assign);
+  return simple_subst(binding.tp,assign);
 }
 
 @ The definition of |type_expr::add_typedefs| is subtle and requires quite a bit
-of work, due to our requirement that all cases of type equivalence be
-recognised, and each equivalence class reduced to a single entry. Thus we trade
-off getting a more rapid and (more importantly) simpler equivalence test during
-actual type checking against additional time spent in processing type
-definitions. Type equivalence is defined in a conceptually simple way: each
-recursive type gives rise by repeated expansion of the defining relations to a
-unique, possibly infinite, type tree; we use structural equivalence of those
+of work. This is due to our requirements about tabled types~: all their
+descendent types must be tabled as well (but the |definiens| of a tabled type
+cannot again be tabled, as this might cause non-termination of expansion), and
+type equivalence among tabled types can be tested by matching the |tabled_nr()|
+values and (recursively) testing equality of arguments types (if any). Thus we
+trade off getting a more rapid and (more importantly) simpler equivalence test
+during type for the additional time spent in processing type definitions.
+
+Type equivalence is defined in a conceptually simple way: each (possibly
+recursive) type gives rise by repeated expansion of the defining relations to a
+unique (possibly infinite) type tree; we use structural equivalence of those
 trees. As the trees are obtained by unfolding a finite set of type equations,
-they can only be infinite due to periodicity. The problem at hand is like one of
-testing (oriented) graph isomorphism for the finite graphs, but it might be
-(though highly unlikely in practice) that the given description is already
-repetitive (has a non-trivial automorphism) in which case we must compare
-minimal quotients, where any such symmetry has been ``folded up'' and thereby
-disappeared.
+they can only be infinite due to periodicity. While type equivalences occurring
+in practice will most often be of the trivial kind, the two types being
+formed identically, we must be capable of detecting ``accidental'' type
+equivalence if we are to honour this definition.
 
-This however still does not give a practical algorithm for testing equivalence,
-so instead we use the following ``bottom-up'' technique. We gather all types
-descending from currently given type definitions (the vertices of our graph,
-which is a finite collection) and partition them according to immediate
-structural differences found (such as: a procedure type is never equivalent to a
-row type, tuple types with different numbers of components are never equivalent,
-etc.). Then we refine that partition by looking at possible differences among
-descendent types (we effectively look around in or graph one level further),
-then again look if the refined relation has found distinctions between
-descendent types that previously were not distinguished, and repeat this until
-no change occurs any more; types that still occur in the same part of the
-partition apparently cannot be shown to differ in \emph{any} finite number of
-steps, so they must be equivalent.
+We can exploit the finiteness of the set of defining relations to obtain an
+effective type equivalence test. The type definitions define a kind of oriented
+graph, where each vertex is a type mentioned in the definitions, is tagged with
+the |kind()| of that type, and has an ordered list of outgoing edges, one for
+each directly descendant type. If there are any type definition groups with
+abstracted type variables, then each such group defines a set of type
+constructors of the same arity; these also have their vertices in the graph.
+(Here arity is just an attribute given to the vertices, unrelated to the number
+of outgoing edges; it allows certain type variables as descendent types.) We
+then construct an equivalence relation on vertices, where any difference in tags
+of the vertex or its descendants makes them not equivalent. This can be obtained
+by successive refinement of the equivalence relation that starts out as equality
+of tags: in each round we separate elements when for some direct descendent, a
+distinction was found, iterating until no further refinements occur.
 
-This approach would be most efficient if it could be done once and for all when
-all type definitions are known, but in an interpreter we must be able to process
-commands one by one, so we repeat the operation every time a new set of type
-definitions comes along, which hopefully is not too often. We can limit our
+In this procedure type variables, standing for arguments of type constructors,
+do not participate in the equivalence relation, and when they occur as
+descendants they will be treated as wildcards that never prompt a distinction
+between there parents. Among type constructors, equivalence then will just mean
+that some instances of them are equivalent types. If such cases should arise
+(which is probably rare), some additional concern will be necessary to allow
+easy detection of equivalence among instances of such type constructors. Our
+plan is to select (or maybe introduce) a type constructor in each equivalence
+class such that all members of the class can be expressed in terms of it.
+
+@ Our approach would be most efficient if it could be done once and for all
+when all type definitions are known, but in an interpreter we must be able to
+process commands one by one, so we repeat the operation every time a new set of
+type definitions comes along, which hopefully is not too often. We can limit our
 embarrassment by keeping our |defined_type_mapping| in a form that makes
 restarting the equivalencing relatively easy, namely by ensuring (as mentioned
 above) that all sub-types of types in the table have their own entries.
@@ -1802,7 +1827,7 @@ record which |rank| values have already been seen.
     // a new (sub)type in a so far unseen equivalence class
    {@;
       renumber[it->rank]=count++;
-      type_map.emplace_back(std::move(it->type));
+      type_map.emplace_back(std::move(it->type),0);
     }
 @)
   for (unsigned int i=0; i<defs.size(); ++i)
