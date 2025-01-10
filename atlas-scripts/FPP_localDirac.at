@@ -864,9 +864,9 @@ set local_testK_hash_bottom_layer_more(KGBElt x, ratvec lambda, LocalVertexData 
 				then false
 			      }
 			      elif {(more_flag and} #ps = 1 {otherwise the K-char is wrong!}{)}
-				then bottom_elim_factors_more(ps[0], maxQs, datas, pol_hash.index(FVKH[d][j][d+red_shift+1]))
+				then bottom_elim_factors_more(ps[0], pC, datas, pol_hash.index(FVKH[d][j][d+red_shift+1]))
 			      else all(for p in ps
-				       do @bool: bottom_elim_factors_more(p, maxQs, datas)
+				       do @bool: bottom_elim_factors_more(p, pC, datas)
 				       od)
 			      fi
 		  {then () = if test and U_flag {get definitive yes/no}
@@ -956,8 +956,8 @@ set local_testK_hash_bottom_layer_more_step(KGBElt x, ratvec lambda, LocalVertex
                   then test = if all(for p in ps do @bool:Uhash.lookup(p).>= od)
 		       	      then true
 			      elif #ps = 1 {otherwise the K-char is wrong!}{)}
-				then let still_here = bottom_elim_factors_more(ps[0],
-				     	       		  maxQs, datas, pol_hash.index(FVKH[d][j][d+red_shift+1]))
+				then let still_here = bottom_elim_factors_more(ps[0], pC,
+				     	       		  datas, pol_hash.index(FVKH[d][j][d+red_shift+1]))
 				     then () = while still_here and #Ds > 1
 				      	      	do let old_size = #datas
 					   	   then (datasNEW, DsNEW) = add_datas(pC, Qmin, datas, Ds, MU)
@@ -965,14 +965,14 @@ set local_testK_hash_bottom_layer_more_step(KGBElt x, ratvec lambda, LocalVertex
 						   in if #datas > old_size
 						      then Ds:=DsNEW;
 						      	   still_here := {test with new datas}
-				bottom_elim_factors_more(ps[0], maxQs, [datas~[0]], pol_hash.index(FVKH[d][j][d+red_shift+1]));
+				bottom_elim_factors_more(ps[0], pC, [datas~[0]], pol_hash.index(FVKH[d][j][d+red_shift+1]));
 				                   	   if not still_here then break fi
 						      else break
 						      fi
 					        od
 				      in still_here
 			      else let still_here = all(for p in ps
-				       	      	    do bottom_elim_factors_more(p, maxQs, datas)
+				       	      	    do bottom_elim_factors_more(p, pC, datas)
 				       		    od)
 				   then () = while still_here and #Ds > 1
 				      	     do let old_size = #datas
@@ -980,7 +980,7 @@ set local_testK_hash_bottom_layer_more_step(KGBElt x, ratvec lambda, LocalVertex
 						then () = datas := datasNEW
 					   	in if #datas> old_size
 						   then Ds:=DsNEW;
-							still_here := bottom_elim_factors_more(ps[0], maxQs, [datas~[0]]);
+							still_here := bottom_elim_factors_more(ps[0], pC, [datas~[0]]);
 				                             	     if not still_here then break fi
 						   else break
 						   fi
@@ -1222,10 +1222,10 @@ set local_test_hash_bottom(KGBElt x, ratvec lambda, LocalVertexData Lvd,
 	      	     then ps = monomials(finalize(p))
 		     then () = if more_flag or mix_flag
 			       then elim_more:= if #ps = 1
-				    		then bottom_elim_factors_more(ps[0], maxQs, datas, pol_hash.index(LFVH[d][j][d+red_shift+1]))
+				    		then bottom_elim_factors_more(ps[0], p, datas, pol_hash.index(LFVH[d][j][d+red_shift+1]))
 		                    		else all(for p1 in ps
 		   	       	    	       	     	 do Uhash.lookup(p1).>= or {this can produce "isn't LKT message"}
-			       	       	    	      	 bottom_elim_factors_more(p1, maxQs, datas)
+			       	       	    	      	 bottom_elim_factors_more(p1, p, datas)
 					      	    	 od)
 				     	   	 fi
 			        fi
@@ -1484,7 +1484,7 @@ set one_param_test_bottom(Param p, [int] Ds, Param_hash Uhash) = [Param]:
 		   then () = {for D in Ds[:1]
 		      	     do} still_here := all(for {D@j in Ds[1:]} j:#Es-1 from 1
 					       	  do all(for q@i in QG
-						      	 do @bool: bottom_elim_factors_more(q, Es[j-1],Es[j], Ps[i])
+						      	 do @bool: bottom_elim_factors_more(q, p, Es[j-1],Es[j], Ps[i])
 						   	 od)
 					          od){;
 				 if not still_here then break fi}
@@ -1557,7 +1557,7 @@ set one_param_test_all_bottom(Param p, [int] Ds, Param_hash Uhash) = [Param]:
 		   then () = {for D in Ds[:1]
 		      	     do} still_here := all(for {D@j in Ds[1:]} j:#Es-1 from 1
 					       	  do all(for q@i in QG
-						      	 do @bool: bottom_elim_factors_more(q, Es[j-1],Es[j], Ps[i])
+						      	 do @bool: bottom_elim_factors_more(q, p, Es[j-1],Es[j], Ps[i])
 						   	 od)
 					          od){;
 				 if not still_here then break fi}

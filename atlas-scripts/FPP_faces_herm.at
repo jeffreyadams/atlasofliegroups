@@ -2168,7 +2168,8 @@ set is_unitary_to_ht_big_SIMPLE(Param p,int N) = bool:
      then is_unitary_to_ht_big_SIMPLE_interrupt(p,N, interrupt_base_time)
      else {unitary_test_counter.use(); done in calls below}
      	  if low(p,N) {low(p.x,p.lambda,N)}
-     	  then is_pure(hermitian_form_irreducible_to_ht(p,N))
+     	  then {is_pure(hermitian_form_irreducible_to_ht(p,N))}
+	       is_unitary_to_ht(p,N)
      	  else is_pure(to_ht(hermitian_form_irreducible(p),N))
      	  fi
      fi

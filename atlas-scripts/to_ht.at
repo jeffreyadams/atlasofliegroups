@@ -268,6 +268,7 @@ set twisted_c_form_irreducible_to_ht_MvL (Param p,int N, int time) = maybe_KTP:
 initial term.}
 set hermitian_form_irreducible_to_ht_MvL (Param p,int N) = KTypePol:
   unitary_test_counter.use();
+  {if N > height(p) + 20 then prints(p,N) fi;}
   let start_time = elapsed_ms(), answer =
   if is_equal_rank(real_form(p))
   then c_form_irreducible_to_ht_MvL(p,N) { not twisted, in equal rank case this is faster }
@@ -294,6 +295,7 @@ set hermitian_form_irreducible_to_ht_MvL (Param p,int N,int time) = maybe_KTP:
 
 set hermitian_form_irreducible_to_ht (Param p,int N) = KTypePol:
   unitary_test_counter.use();
+  {if N > height(p) + 20 then prints(p,N) fi;}
   let start_time = elapsed_ms(), answer =
   if is_equal_rank(real_form(p))
   then c_form_irreducible_to_ht(p,N) { not twisted, in equal rank case this is faster }
@@ -433,8 +435,15 @@ set make_unitarity_to_hts_bool_hash () = unitarity_to_hts_bool_hash:
 
 set unitarity_to_hts_hash = make_unitarity_to_hts_bool_hash ()
 
-set is_unitary_to_ht_hash(Param p, int h) =  unitarity_to_hts_hash.entry(p,h)
-set is_unitary_to_ht(Param p, int h) =  unitarity_to_hts_hash.entry(p,h)
+set is_unitary_to_ht_hash(Param p, int h) = unitarity_to_hts_hash.entry(p,h)
+
+set to_hts_hash_flag = true
+
+set is_unitary_to_ht(Param p, int h) =  bool:
+    if to_hts_hash_flag
+    then unitarity_to_hts_hash.entry(p,h)
+    else is_unitary_to_ht_base(p,h)
+    fi
 
 {Think this is wrong, and fails in Sp(8,R): even if p is in weakly
 good range from pL, the height of failures for p and pL can be different.}

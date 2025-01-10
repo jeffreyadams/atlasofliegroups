@@ -801,27 +801,36 @@ set max_Ls(RealForm G) = [RealForm]:
      	do rfhash.index(j)
 	od
 
+{assume all Qs contain Q0, pL0 defined on Q0.Levi, weak positivity?}
+set Q_ps(Param pL0, [KGPElt] Qs) = [(KGPElt,Param)]:
+    for Q in Qs
+    do (Q,first_param(theta_induce_standard(pL0,Q.Levi)))
+    od
+
+{p included to define minimal parabolic; assume p0 is a LQ of p}
+set Q_ps(Param p0, Param p, [KGPElt] Qs) = [(KGPElt,Param)]:
+    let (Q0,pL) = if small_test_flag
+    		   then theta_stable_data_small(p)
+		   else theta_stable_quasi_data(p)
+		   fi
+    then mu0 = LKTs(p0)[0]
+    then muL0 = highest_LK(mu0,Q0)
+    then pLis = monomials(1*pL)
+    then i0 = first(for pLi in pLis do (K_type_pol(pLi*0))[muL0].!= od)
+    then pL0 = pLis[i0] {now has LKT muL}
+    in Q_ps(pL0, Qs)
+
 {these are the maximal proper theta-stable parabolics from which p is naturally cohom induced,
        with inducing reps}
-set max_Qps(Param p, [KGPElt] maxQs) = [(KGPElt,Param)]:
+set max_Qps(Param p0, Param p) = [(KGPElt,Param)]:
     let (Q0,pL0) = if small_test_flag
     		   then theta_stable_data_small(p)
 		   else theta_stable_quasi_data(p)
 		   fi
-    in for Q in max_Qs(Q0)
-       do (Q,first_param(theta_induce_standard(pL0,Q.Levi)))
-       od
+    in Q_ps(pL0, max_Qs(Q0))
 
 set max_Qps(Param p) = [(KGPElt,Param)]:
-    let (Q0,pL0) = if small_test_flag
-    		   then theta_stable_data_small(p)
-		   else theta_stable_quasi_data(p)
-		   fi
-    then maxQs = max_Qs(Q0)
-    in for Q in maxQs
-       do (Q,first_param(theta_induce_standard(pL0,Q.Levi)))
-       od
-
+    max_Qps(p,p)
 
 {returns is_good, is_weakly_good, is_weakly_fair for each maximal Q from which p is coh ind}
 set max_goodness(Param p, [(KGPElt,Param)] maxQps) = [(bool, bool, bool)]:
@@ -851,8 +860,11 @@ set more_good_hash = make_Param_hash()
 
 set every_MBEF_flag = false
 
-{insist that every LKT of p0 is a LQ of p, and that P is K_type_pol of
+{insist that p0 final, test is for p0; p is included to fix Q}
+{p0 is a LQ of p, and that P is K_type_pol of
 character formula of p0 to some height}
+set NIHCOUNT = int: 0
+set quitNIH_flag = false
 set min_small_bottom_elim_factors(Param p0, Param p, KTypePol P) = bool:
     let start = elapsed_ms(), (Q,pL) = theta_stable_data_small(p), G = p.real_form,
     	x = p.x, lambda = p.lambda
@@ -862,20 +874,27 @@ set min_small_bottom_elim_factors(Param p0, Param p, KTypePol P) = bool:
     	      print_time_string(start))
 	      fi
     then DG = minSmallBottomData.G_min_height(x,lambda)
-    then mu = LKTs(p)[0]
+    then mu = LKTs(p0)[0]
     then muL = highest_LK(mu,Q)
     then pLis = monomials(1*pL)
     then i0 = first(for pLi in pLis do (K_type_pol(pLi*0))[muL].!= od)
     then pL0 = pLis[i0] {now has LKT muL}
-    then () = if not is_hermitian(pL0) then return is_unitary_to_ht(p0,DG) fi
+    then () = if not is_hermitian(pL0)
+    	      then NIHCOUNT +:= 1;
+	      	   return if quitNIH_flag
+		   	  then true
+			  else {is_unitary_to_hts_big_SIMPLE(p0,[(DG+height(p0))\2,DG])}
+			       {is_unitary_to_ht_big_SIMPLE(p0,(DG+height(p0))\2)}
+			       is_unitary_to_ht_big_SIMPLE(p0,DG)
+			  fi
+	      fi
     	 {this case can happen in Spin(5,3), p = p = parameter(G,39,[1,1,1,1],[0,1,1,1])}
     then derpL0js = derived_factor_params0(pL0) {all height 0}
     then dermuLj = derived_factor_K_types0(muL)
-    {then () = mbefTime +:= elapsed_ms()-start}
     then DLs = minSmallBottomData.L_min_heights(x,lambda)
     then derxLjs = for derpL0j in derpL0js do derpL0j.x od
     then derLjs = for derpL0j in derpL0js do derpL0j.real_form od
-    then  multG = branch_std(P,DG)
+    then multG = branch_std(P,DG)
     then LKDatas = for LKData in minSmallBottomData.entry(x,lambda)
     	 {[tau,[[dertauLj]]}
 		   do let (mui, ) = LKData[0]
@@ -926,9 +945,9 @@ set min_bottom_elim_factors(Param p0, Param p, KTypePol P) = bool:
     if small_test_flag
     then return min_small_bottom_elim_factors(p0,p,P)
     fi;
-    let start = elapsed_ms(), (Q,pL) = theta_stable_quasi_data(p), G = p.real_form
+    let start = elapsed_ms(), (Q,pL0) = theta_stable_quasi_data(p0), G = p.real_form
     then () = if every_MBEF_flag
-    	      then prints("starting MBEF(",p.x.number,",",p.lambda,",",p.nu,") at time ",
+    	      then prints("starting MBEF(",p0.x.number,",",p0.lambda,",",p0.nu,") at time ",
     	      print_time_string(start))
 	      fi
     {pL is height 0 on quasisplit L}
@@ -936,10 +955,16 @@ set min_bottom_elim_factors(Param p0, Param p, KTypePol P) = bool:
     then mu = mus[0]
     then DG = max(for mu in mus do minBottomData.G_min_height(mu) od)
     then muL = highest_LK(mu,Q)
-    then pLis = monomials(1*pL)
+    then () = assert(is_final(pL0),"nonfinal pL0 in min_bottom_elim_factors")
+    {then pL0is = monomials(1*pL0)
     then i0 = first(for pLi in pLis do (K_type_pol(pLi*0))[muL].!= od)
-    then pL0 = pLis[i0] {now has LKT muL}
-    then () = if not is_hermitian(pL0) then return is_unitary_to_ht(p0,DG) fi
+    then pL0 = pLis[i0] {now has LKT muL}}
+    then () = assert(is_hermitian(pL0),"nonherm pL0 in min_bottom_elim_factors")
+    {then () = if not is_hermitian(pL0)
+    	      then NIHCOUNT +:= 1;
+	      return is_unitary_to_ht(p0,DG)
+	      fi}
+{if not is_hermitian(pL0) then return is_unitary_to_ht(p0,DG) fi}
     	 {this case can happen in Spin(5,3), p = p = parameter(G,39,[1,1,1,1],[0,1,1,1])}
     then derpL0js = derived_factor_params0(pL0) {all height 0}
     then dermuLjs = derived_factor_K_types0(muL)
@@ -972,10 +997,7 @@ set min_bottom_elim_factors(Param p0, Param p, KTypePol P) = bool:
 	       	       for (tau,list) in LKData[1:] {one function for each min_bottom K-type tau}
  		       do let coeff = Split: 1 {this will be the bottom layer signature at tau}
 			  then () = for tauLj@j in list
-			       	    do {if Lsigs[j][tauLj] = 0
-			     	       then prints(j," ",tauLj," ",Lsigs[j]," ",Lsigs[j])
-			     	       fi;}
-			     	       coeff*:= Lbranches[j][tauLj]
+			       	    do coeff*:= Lbranches[j][tauLj]
 			  	    od
 		    	   in @bool: int_part(coeff) >= int_part(multG[tau])
 	       	        od)
@@ -1035,16 +1057,32 @@ set bottom_factors(QK_bottom_data (Q,taus)) = QKL_bottom_data: {(KGPElt,[(KType,
 set bottom_factors([QK_bottom_data] data) = [QKL_bottom_data]: {[(KGPElt,[(KType, [KType])])]}
     for (Q,taus) in data do bottom_factors(Q,taus) od
 
-{P is meant to be K-char(p) at least to max ht of taus}
-set bottom_elim_factors(Param p, (KGPElt Q, [(KType,[KType])] LKdata), KTypePol P) = bool:
-    let start = elapsed_ms(), {answers = for k:#LKdata do false od,}
-    	(,pL0) = if small_test_flag
+{insist that p0 is final, p0 is a LQ of p, and that P is K_type_pol of
+character formula of p0 to some height}
+set bottom_elim_factors(Param p0, Param p, QKL_bottom_data (Q, LKdata), KTypePol P) = bool:
+    let start = elapsed_ms(), L = Q.Levi, {answers = for k:#LKdata do false od,}
+    	(Qm,pLm) = if small_test_flag
     	 	 then theta_stable_data_small(p)
 		 else theta_stable_quasi_data(p)
-		 fi, L = Q.Levi
-    then pL = first_param(theta_induce_standard(pL0,L)), mu = LKTs(p)[0]
-    then () = if not is_hermitian(pL) then return is_unitary_to_ht(p,height(P)) fi
-    then muL = highest_LK(mu, Q)
+		 fi
+    then Lm = Qm.Levi, mu = LKTs(p0)[0]
+    then muL = highest_LK(mu,Q), muLm = highest_LK(mu,Qm)
+    then pLmis = monomials(1*pLm)
+    then i0 = first(for pLmi in pLmis do (K_type_pol(pLmi*0))[muLm].!= od)
+    then pLm0 = pLmis[i0] {now has LKT muL}
+    then pL = first_param(theta_induce_standard(pLm0,L)) {has muL as a LKT}
+    then D = max(for (tau,) in LKdata do height(tau) od)
+    then () = if not is_hermitian(pL)
+    	      then NIHCOUNT +:= 1;
+	      	   if not small_test_flag then prints("bad bef at ",p0) fi;
+	      	   return if quitNIH_flag
+		   	  then true
+			  else is_unitary_to_ht_big_SIMPLE(p0,D)
+			       {is_unitary_to_ht_big_SIMPLE(p0,(D+height(p0))\2)}
+			       {is_unitary_to_hts_big_SIMPLE(p0,[(D+height(p0))\2,D])}
+			  fi
+	      fi
+    {then () = if not is_hermitian(pL) then return is_unitary_to_ht(p0,height(P)) fi}
     then derpLjs = derived_factor_params0(pL) {one for each derived simple factor derLj}
     then derxLjs = for derpLj in derpLjs do derpLj.x od
     then derLjs = for derpLj in derpLjs do derpLj.real_form od
@@ -1054,17 +1092,16 @@ set bottom_elim_factors(Param p, (KGPElt Q, [(KType,[KType])] LKdata), KTypePol 
        	    	      do height(list[j])
 		      od)
 	       od
-    then D = max(for (tau,) in LKdata do height(tau) od)
     then Pmult = branch_std(P, D)
     then branchLjs = for derpLj@j in derpLjs
-	       	     do let sigLj =
+	       	     do let sigLj = KTypePol: {signature for derpLm0j}
 	       	   	    if RF_code
 		   	    then rf_sig_tables.sig_entry(derpLj, DLs[j])
 		   	    else hermitian_form_irreducible_to_ht_big_SIMPLE(derpLj,DLs[j])
 		   	    fi
 			then () = if int_part(sigLj[dermuLjs[j]]) = 0
 		       	   	  then sigLj := s*sigLj
-			 	  fi
+			 	  fi {this bit makes sigLj pos on LKTs}
 	       		in branch_std(sigLj, DLs[j])
 		     od
        then result = all( [(->bool)]: {list of functions, one for each bottom layer K-type tau}
@@ -1076,18 +1113,23 @@ set bottom_elim_factors(Param p, (KGPElt Q, [(KType,[KType])] LKdata), KTypePol 
 			  	     od
 			   in @bool: int_part(coeff) >= int_part(Pmult[tau])
 			od )
-	then () = {mbefTime} befmoreTime +:= elapsed_ms()-start
+	then () =  befmoreTime +:= elapsed_ms()-start
 	in result
+
+set bottom_elim_factors(Param p0, QKL_bottom_data qkl, KTypePol P) = bool:
+    bottom_elim_factors(p0,p0,qkl,P)
 
 {!!! in next functions, danger that pL is has several Langlands factors even if p has only one; need the
 factor inducing to p !!!}
 {false guarantees not unitary, but true does not guarantee unitary}
 {LKdata[j] is [(tauj,tauLj)]: tauLj are thes Lj\cap K-types inducing to a bottom layer tauj of p.}
-set bottom_elim_factors(Param p, QKL_bottom_data (Q,LKdata)) = bool:
+set bottom_elim_factors(Param p0, Param p, QKL_bottom_data (Q,LKdata)) = bool:
     let DG = max(for (tau,) in LKdata do height(tau) od)
-    then P = K_type_pol(character_formula_to_height(p,DG))
-    in bottom_elim_factors(p, (Q, LKdata), P)
+    then P = K_type_pol(character_formula_to_height(p0,DG))
+    in bottom_elim_factors(p0, p, (Q, LKdata), P)
 
+set bottom_elim_factors(Param p0, QKL_bottom_data qkl) = bool:
+    bottom_elim_factors(p0, p0, qkl)
 {permutation of the simple roots defined by delta}
 set delta_on_simple(InnerClass ic) = [int]:
     let r = ic.semisimple_rank, SR = ic.simple_roots, delta = ic.distinguished_involution
@@ -1220,23 +1262,42 @@ set goodness(Param p, KGPElt Q) = (bool, bool, bool):
 {P is the K-character of p}
 {need to be sure nQs does not include a Borel}
 {add computation of D = max heights(mu in datas); just do good range sigs to D.}
-set bottom_elim_factors_more(Param p, [KGPElt] maxQs, [QKL_bottom_data] data, KTypePol P)= bool:
-    let start =  elapsed_ms(), G=p.real_form
-     then maxQps = max_Qps(p,maxQs)
-     then three_bools = max_goodness(p, maxQps), R = more_good_hash.size()
+set bottom_elim_factors_more(Param p0, Param p, [QKL_bottom_data] data, KTypePol P)= bool:
+    let start =  elapsed_ms(), G=p.real_form, h = height(p0)
+    then D = max(for (Q,LKdata) in data
+		 do max(for (tau,) in LKdata do height(tau) od#h)
+		 od#h)
+    then maxQps = max_Qps(p0,p)
+    then () = maxQps := for (Q,pL) in maxQps
+    	 	   do if is_hermitian(pL)
+		      then [(Q,pL)]
+		      else []
+		      fi
+		   od.##
+    then () = if #maxQps = 0
+    	      then NIHCOUNT +:= 1;
+	      	  if not small_test_flag then prints("bad befm at ",p0) fi;
+	      	   return if quitNIH_flag
+		   	  then true
+			  else is_unitary_to_ht_big_SIMPLE(p0,D)
+			       {is_unitary_to_ht_big_SIMPLE(p0,(D+height(p0))\2)}
+			       {is_unitary_to_hts_big_SIMPLE(p0,[(D+height(p0))\2,D])}
+			  fi
+	      fi
+     then three_bools = max_goodness(p0, maxQps), R = more_good_hash.size()
      then good = first(for (g,,) in three_bools do g od)
      then () = if good>=0
-    	       then let (,pL) =  maxQps[good]
-	      	    then () = if bottom_verbose then prints("p = ",p," is a good one!") fi
-                    then answer = is_unitary_hash_big(pL)
+    	       then let (,pL0) =  maxQps[good]
+	      	    then () = if bottom_verbose then prints("p = ",p0," is a good one!") fi
+                    then answer = is_unitary_hash_big(pL0)
                     {then () = attest_is_unitary(p,answer)}
 		    then () = befmoreTime +:= elapsed_ms() - start
                     in return answer
 	      	fi
      then wk_good = first(for (,wg,) in three_bools do wg = true od)
      then () = if wk_good >= 0 {form on p is induced from form on L}
-    	       then let (,pL) = maxQps[wk_good]
-	       	    then HG = theta_induce_signature(pL,G){, Ip = theta_induce_irreducible(pL,G)}
+    	       then let (,pL0) = maxQps[wk_good]
+	       	    then HG = theta_induce_signature(pL0,G){, Ip = theta_induce_irreducible(pL,G)}
 		    then G_pure = is_pure(HG)
 		    in  befmoreTime +:= elapsed_ms() - start;
                         {attest_is_unitary(p, G_pure);}
@@ -1244,12 +1305,12 @@ set bottom_elim_factors_more(Param p, [KGPElt] maxQs, [QKL_bottom_data] data, KT
 	        fi
      then () = befmoreTime +:= elapsed_ms() - start
      then () = if not all(for (Q,list) in data
-			  do  @bool: bottom_elim_factors(p, (Q, list), P)
+			  do  @bool: bottom_elim_factors(p0, p, (Q, list), P)
 			  od)
 	       then let MG = more_good_hash.size()
-		    then mg = more_good_hash.match(p)
+		    then mg = more_good_hash.match(p0)
 		    then () = if bottom_verbose and mg=MG
-			      then prints("at p = ",p,", more helped!")
+			      then prints("at p = ",p0,", more helped!")
 			      fi
                     {then () = attest_is_unitary(p,false)}
 		    then () = befmoreTime +:= elapsed_ms() - start
@@ -1258,44 +1319,60 @@ set bottom_elim_factors_more(Param p, [KGPElt] maxQs, [QKL_bottom_data] data, KT
      then () = if bottom_verbose then prints("sorry, don't know") fi
      in true
 
-set bottom_elim_factors_more(Param p, [KGPElt] maxQs, [QKL_bottom_data] data)= bool:
-    let h = height(p)
+set bottom_elim_factors_more(Param p0, Param p, [QKL_bottom_data] data)= bool:
+    let h = height(p0)
     then D = max(for (Q,LKdata) in data
 		 do max(for (tau,) in LKdata do height(tau) od#h)
 		 od#h)
     then startCF = elapsed_ms()
-    then Q = character_formula_to_height(p,D)
+    then Q = character_formula_to_height(p0,D)
     then () = charTime +:= elapsed_ms() - startCF
     {then () = prints("in befm, use ",elapsed_ms() - startCF)}
     then () = char_counter.use()
     then P = K_type_pol(Q)
-    in  bottom_elim_factors_more(p, maxQs, data, P)
+    in  bottom_elim_factors_more(p0, p, data, P)
 
 {D is meant to be max(height(tau) for tau in BKT. nQs are the parabolics where bottom layer might help.}
 {nQs is meant to be new_Qs(), P the K-character of p}
 {need to be sure nQs does not include a Borel}
-set bottom_elim_factors_more(Param p, int D_low, int D, KTypePol P)= bool:
+set bottom_elim_factors_more(Param p0, Param p, int D_low, int D, KTypePol P)= bool:
     let start =  elapsed_ms(), G=p.real_form, (Q0,pL0) = if small_test_flag
     	 	 	       		      	       	 then theta_stable_data_small(p)
 		 					 else theta_stable_quasi_data(p)
 		 					 fi
-    then () = if not is_hermitian(pL0) then return is_unitary_to_ht(p,D) fi
+    {then () = if not is_hermitian(pL0) then return is_unitary_to_ht(p0,D) fi}
     then maxQs = max_Qs(Q0), R = more_good_hash.size()
-    then maxQps = max_Qps(p,maxQs)
-    then three_bools = max_goodness(p, maxQps)
+    then maxQps = max_Qps(p0) {[(KGPElt,Param)]}
+    then () = maxQps := for (Q,pL) in maxQps
+    	 	   do if is_hermitian(pL)
+		      then [(Q,pL)]
+		      else []
+		      fi
+		   od.##
+    then () = if #maxQps = 0
+    	      then NIHCOUNT +:= 1;
+	      	  {if not small_test_flag then prints("bad befm at ",p0) fi;}
+	      	   return if quitNIH_flag
+		   	  then true
+			  else is_unitary_to_ht_big_SIMPLE(p0,D)
+			       {is_unitary_to_ht_big_SIMPLE(p0,(D+height(p0))\2)}
+			       {is_unitary_to_hts_big_SIMPLE(p0,[(D+height(p0))\2,D])}
+			  fi
+	      fi
+    then three_bools = max_goodness(p0, maxQps)
      then good = first(for (g,,) in three_bools do g od)
      then () = if good>=0
-    	       then let (,pL) =  maxQps[good]
-	      	    then () = if bottom_verbose then prints("p = ",p," is a good one!") fi
-                    then answer = is_unitary_hash_big(pL)
+    	       then let (,pL0) =  maxQps[good]
+	      	    then () = if bottom_verbose then prints("p = ",p0," is a good one!") fi
+                    then answer = is_unitary_hash_big(pL0)
                     {then () = attest_is_unitary(p,answer)}
 		    then () = befmoreTime +:= elapsed_ms() - start
                     in return answer
 	      	fi
      then wk_good = first(for (,wg,) in three_bools do wg = true od)
      then () = if wk_good >= 0 {form on p is induced from form on L}
-    	       then let (,pL) = maxQps[wk_good]
-	       	    then HG = theta_induce_signature(pL,G){, Ip = theta_induce_irreducible(pL,G)}
+    	       then let (,pL0) = maxQps[wk_good]
+	       	    then HG = theta_induce_signature(pL0,G){, Ip = theta_induce_irreducible(pL,G)}
 		    then G_pure = is_pure(HG)
 		    in  befmoreTime +:= elapsed_ms() - start;
                         {attest_is_unitary(p, G_pure);}
@@ -1303,12 +1380,12 @@ set bottom_elim_factors_more(Param p, int D_low, int D, KTypePol P)= bool:
 	        fi
      then () = befmoreTime +:= elapsed_ms() - start
      then () = if not all(for (Q,list) in bottom_K_type_Qs(p,Q0,D_low,D,P)
-			  do  @bool: bottom_elim_factors(p, bottom_factors({p, Q0, pL0,} (Q, list)), P)
+			  do  @bool: bottom_elim_factors(p0, p, bottom_factors(Q, list), P)
 			  od)
 	       then let MG = more_good_hash.size()
-		    then mg = more_good_hash.match(p)
+		    then mg = more_good_hash.match(p0)
 		    then () = if bottom_verbose and mg=MG
-			      then prints("at p = ",p,", more helped!")
+			      then prints("at p = ",p0,", more helped!")
 			      fi
                     {then () = attest_is_unitary(p,false)}
 		    then () = befmoreTime +:= elapsed_ms() - start
@@ -1317,43 +1394,43 @@ set bottom_elim_factors_more(Param p, int D_low, int D, KTypePol P)= bool:
      then () = if bottom_verbose then prints("sorry, don't know") fi
      in true
 
-set bottom_elim_factors_more(Param p, int D, KTypePol P)= bool:
-    bottom_elim_factors_more(p, height(p), D, P)
+set bottom_elim_factors_more(Param p0, Param p, int D, KTypePol P)= bool:
+    bottom_elim_factors_more(p0, p, height(p), D, P)
 
-set bottom_elim_factors_more(Param p, int D_low, int D) = bool:
+set bottom_elim_factors_more(Param p, Param p0, int D_low, int D) = bool:
     let startCF = elapsed_ms(), (Q0,pL0) = if small_test_flag
     	 	 	       		   then theta_stable_data_small(p)
 		 			   else theta_stable_quasi_data(p)
 		 			   fi
-    then Q = character_formula_to_height(p,D)
+    then Q = character_formula_to_height(p0,D)
     then () = charTime +:= elapsed_ms() - startCF
     then () = char_counter.use()
     then P = K_type_pol(Q)
-    in  bottom_elim_factors_more(p, D_low, D, P)
+    in  bottom_elim_factors_more(p0, p, D_low, D, P)
 
-set bottom_elim_factors_more(Param p, int D) = bool:
-    bottom_elim_factors_more(p, height(p), D)
+set bottom_elim_factors_more(Param p, Param p0, int D) = bool:
+    bottom_elim_factors_more(p0, p, height(p), D)
 
-set bottom_test_factors_more(Param p, [KGPElt] maxQs, [KType, [QKL_bottom_data]] datas, KTypePol P)= bool:
+set bottom_test_factors_more(Param p0, Param p, [KType, [QKL_bottom_data]] datas, KTypePol P)= bool:
     if not more_flag
-    then is_unitary_hash_big(p) {min_bottom_test_factors(p,P)}
+    then is_unitary_hash_big(p0) {min_bottom_test_factors(p,P)}
     else
      let start =  elapsed_ms(), G=p.real_form
-     then maxQps = max_Qps(p, maxQs), R = more_good_hash.size()
-     then three_bools = max_goodness(p, maxQps)
+     then maxQps = max_Qps(p0), R = more_good_hash.size()
+     then three_bools = max_goodness(p0, maxQps)
      then good = first(for (g,,) in three_bools do g od)
      then () = if good>=0
-    	       then let (,pL) =  maxQps[good]
-	      	    then () = if bottom_verbose then prints("p = ",p," is a good one!") fi
-                    then answer = is_unitary_hash_big(pL)
+    	       then let (,pL0) =  maxQps[good]
+	      	    then () = if bottom_verbose then prints("p = ",p0," is a good one!") fi
+                    then answer = is_unitary_hash_big(pL0)
                     {then () = attest_is_unitary(p,answer)}
 		    then () = befmoreTime +:= elapsed_ms() - start
                     in return answer
 	      	fi
      then wk_good = first(for (,wg,) in three_bools do wg = true od)
      then () = if wk_good >= 0 {form on p is induced from form on L}
-    	       then let (,pL) = maxQps[wk_good]
-	       	    then HG = theta_induce_signature(pL,G){, Ip = theta_induce_irreducible(pL,G)}
+    	       then let (,pL0) = maxQps[wk_good]
+	       	    then HG = theta_induce_signature(pL0,G){, Ip = theta_induce_irreducible(pL,G)}
 		    then G_pure = is_pure(HG)
 		    in  befmoreTime +:= elapsed_ms() - start;
                         {attest_is_unitary(p, G_pure);}
@@ -1362,13 +1439,13 @@ set bottom_test_factors_more(Param p, [KGPElt] maxQs, [KType, [QKL_bottom_data]]
      then () = befmoreTime +:= elapsed_ms() - start
      then () = if not all(for (mu, data) in datas
 			 do @bool: all(for (Q,list) in data
-				       do  @bool: bottom_elim_factors(p, (Q, list), P)
+				       do  @bool: bottom_elim_factors(p0, p, (Q, list), P)
 			      	       od)
 		         od) {this seems to be quite rare??}
 	       then let MG = more_good_hash.size()
 		    then mg = more_good_hash.match(p)
 		    then () = if bottom_verbose and mg=MG
-			      then prints("at p = ",p,", more helped!")
+			      then prints("at p = ",p0,", more helped!")
 			      fi
                     {then () = attest_is_unitary(p,false)}
 		    then () = befmoreTime +:= elapsed_ms() - start
@@ -1379,16 +1456,16 @@ set bottom_test_factors_more(Param p, [KGPElt] maxQs, [KType, [QKL_bottom_data]]
     fi
 
 {P is K-character at least to appropriate height, NOT branch!. Assume already eliminated using minimal P0}
-set bottom_test_factors_more(Param p, int D, KTypePol P) = bool:
+set bottom_test_factors_more(Param p0, Param p, int D, KTypePol P) = bool:
     if not more_flag
     then is_unitary_hash_big(p) {min_bottom_test_factors(p,P)}
     else
     let start = elapsed_ms(), G = p.real_form
-    then (Q0,pL0) = if small_test_flag
+    then (Q0,pL) = if small_test_flag
     	 	    then theta_stable_data_small(p)
 		    else theta_stable_quasi_data(p)
 		    fi
-    then three_bools = max_goodness(p), maxQps = max_Qps(p)
+    then three_bools = max_goodness(p0), maxQps = max_Qps(p0)
     then good = first(for (g,,) in three_bools do g od)
     then () = if good>=0
     	      then let (,pL) =  maxQps[good]
@@ -1427,15 +1504,15 @@ set bottom_test_factors_more(Param p, int D, KTypePol P) = bool:
      in is_unitary_hash_big(p)
      fi
 
-set bottom_test_factors_more(Param p, int D) = bool:
+set bottom_test_factors_more(Param p0, Param p, int D) = bool:
     if not more_flag
-    then is_unitary_hash_big(p) {min_bottom_test_factors(p)}
+    then is_unitary_hash_big(p0) {min_bottom_test_factors(p)}
     else let startCF = elapsed_ms()
-    	 then Q = character_formula_to_height(p, D)
+    	 then Q = character_formula_to_height(p0, D)
     	 then () = charTime +:= elapsed_ms() - startCF
     	 then () = char_counter.use()
     	 then P = K_type_pol(Q)
     	 {let P = K_type_pol(character_formula(p))}
-    	 in bottom_test_factors_more(p, D, P)
+    	 in bottom_test_factors_more(p0, p, D, P)
     fi
 
