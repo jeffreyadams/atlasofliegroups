@@ -17,6 +17,32 @@
 
 set_type [ Tits_elt = (RootDatum root_datum,ratvec torus_part,mat theta) ]
 
+
+set tits_element(RootDatum G,ratvec torus_part, mat theta)=Tits_elt:(G,torus_part,theta)
+set tits_element(RootDatum G,ratvec torus_part, WeylElt w)=Tits_elt:
+assert(G=w.root_datum,"root data don't match");
+tits_element(G,torus_part,w.matrix)
+set tits_element(RootDatum G,WeylElt w)=tits_element(G,null(rank(G)),w)
+
+{sigma is a synonyn for tits_element}
+set sigma(RootDatum G,ratvec torus_part, mat theta)=Tits_elt:tits_element(G,torus_part,theta)
+set sigma(RootDatum G,ratvec torus_part, WeylElt w)=Tits_elt:tits_element(G,torus_part,w)
+set sigma(RootDatum G,WeylElt w)=Tits_elt:tits_element(G,w)
+
+set tits_simple_reflection(RootDatum G, ratvec torus_part,int i)=Tits_elt:
+assert(0<=i and i<rank(G),"i must be index of a simple reflection");
+(G,torus_part,reflection(G,i))
+set sigma(RootDatum G, ratvec torus_part,int i)=Tits_elt:tits_simple_reflection(G,torus_part,i)
+
+set tits_simple_reflection(RootDatum G, int i)=Tits_elt:tits_simple_reflection(G,null(rank(G)),i)
+set sigma(RootDatum G,int i)=Tits_elt:tits_simple_reflection(G,null(rank(G)),i)
+
+set tits_simple_reflection(RootDatum G,vec alpha)=Tits_elt:
+let i=root_index(G,alpha) in tits_simple_reflection(G,i) 
+set sigma(RootDatum G,int i)=Tits_elt:tits_simple_reflection(G,i)
+
+
+
 { equality test assumes the root data agree, without check (though it could) }
 set = (Tits_elt(,v,theta),Tits_elt(,u,eta)) = bool: =(v-u)%1 and theta=eta
 set != ((Tits_elt,Tits_elt)p) = bool: not =p
@@ -60,13 +86,19 @@ set right (Tits_elt xi, WeylElt w) = Tits_elt:
   assert(w.root_datum=xi.root_datum);
   for s in w.word do xi:=right(xi,s) od; xi
 
-{ left multiply by torus factor \exp(2i\pi v)\sigma_s }
+{ left multiply by torus part \exp(2i\pi v)\sigma_s }
 set left ((ratvec,int)(v,s), Tits_elt xi) = Tits_elt:
   let (rd,u,phi) = left(s,xi) in (rd,(u+v)%1,phi)
 
-{ right multiply by torus factor \exp(2i\pi v)\sigma_s }
+{ right multiply by torus part \exp(2i\pi v)\sigma_s }
 set right (Tits_elt xi, (ratvec,int)(v,s)) = Tits_elt:
   let (rd,u,phi) = right(xi,s) in (rd,(v*xi.theta.inverse+u)%1,phi)
+
+{ left multiply by torus part \exp(2i\pi v) }
+set left (ratvec v, Tits_elt xi) = Tits_elt:(xi.root_datum,xi.torus_part+v,xi.theta)
+
+{ right multiply by torus part \exp(2i\pi v) }
+set right (Tits_elt xi, ratvec v)=Tits_elt:(xi.root_datum,xi.torus_part+ v*xi.theta.inverse,xi.theta)
 
 { conjugate by simple reflection }
 set conjugate (int s, Tits_elt xi) = Tits_elt:
@@ -114,6 +146,26 @@ set inverse (Tits_elt(rd,v,theta)) = Tits_elt:
 
 { canonical lift of Weyl group element, assumed reduced, to Tits group }
 set lift (WeylElt w) = Tits_elt: left(w,tits_identity(w.root_datum))
+
+{write Tits_elt as product of tits simple reflections, where the first one 
+ can have a non-zero torus factor 
+ in other words suppose sigma=tits_element (G,t,w) 
+ write word(w)=[i1,...,in] then return
+ tits_element(G,t,i1)*tits_element(G,i2)*...*tits_element(G,in)
+}
+set simple_expression(Tits_elt sigma)=[Tits_elt]:
+let (G,v,theta)=sigma then
+rv=[Tits_elt]:[] then
+w=W_elt(G,theta) in
+for i@j in word(w) do
+rv#:=
+ if j=0 then tits_simple_reflection(G,v,i)
+        else tits_simple_reflection(G,i)
+ fi
+od;
+rv
+
+
 
 { canonical lift of Weyl group element to \delta-twisted Tits group }
 set lift (mat delta, WeylElt w) = Tits_elt:

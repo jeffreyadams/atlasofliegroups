@@ -21,10 +21,12 @@ set permute([WeylElt] W,mat M)=[WeylElt]:
 {M should be a permutation matrix}
 let f(int i)=first(for j:#M do M[i][j]=1 od) in permute(W,f)
 
+{returns w satisfying w*(simple root)=alpha}
 set conjugate_to_simple(RootDatum rd,vec alpha)=
+if is_simple_root(rd,alpha) then rd.id_W else
 for beta in rd.simple_roots do
  let (success,w)=conjugate_to(rd,alpha,beta) in
- if success then return(w) fi od ;id_W(rd)
+ if success then return(w) fi od ;id_W(rd) fi
 
 {cell action in the presence of a permutation isomorphism of the root datum}
 set cell_action(WCell cell, int i, mat permutation)=sparse_mat:

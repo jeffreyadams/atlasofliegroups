@@ -3,26 +3,41 @@
 
 <misc.at
 
+set_type  orientation =  (int->int)
+
+set -(orientation epsilon)=orientation: (int j): -epsilon(j) 
+
 {structure constants for the Lie algebra
 following Lusztig, via [Geck]:
 "On the construction of semisimple Lie algebras and Chevalley groups" 2017
 see structure_constants.pdf
 }
 
-{m_\pm defined as in [Geck]}
-set m_plus(RootDatum rd,vec alpha, vec beta)=int:let (p,)=root_string(rd,alpha,beta) in p+1
-set m_minus(RootDatum rd,vec alpha, vec beta)=int:let (,q)=root_string(rd,alpha,beta) in q+1
-set m_plus(RootDatum rd,int i,vec beta)=int:m_plus(rd,rd.simple_roots[i],beta)
-set m_minus(RootDatum rd,int i,vec beta)=int:m_minus(rd,rd.simple_roots[i],beta)
+{m_\pm defined as in [Geck], requires alpha\ne \pm \beta}
+set m_plus(RootDatum rd,vec alpha, vec beta)=int:
+assert(alpha != beta and alpha != -beta,"only defined for alpha\ne \pm beta");
+let (p,)=root_string(rd,alpha,beta) in p+1
+set m_minus(RootDatum rd,vec alpha, vec beta)=int:
+assert(alpha != beta and alpha != -beta,"only defined for alpha\ne \pm beta");
+let (,q)=root_string(rd,alpha,beta) in q+1
 
 set m_plus(RootDatum rd)=((vec,vec)->int):(vec alpha,vec beta):m_plus(rd,alpha,beta)
 set m_minus(RootDatum rd)=((vec,vec)->int):(vec alpha,vec beta):m_minus(rd,alpha,beta)
 
+{m_pm(rd,i,beta)=m_pm(rd,alpha_i,beta) assuming alpha_i\ne \beta}
+{extend definition: m_pm(rd,i,\pm alpha_i)=1}
+set m_plus(RootDatum rd,int i,vec beta)=int:
+let alpha=rd.simple_roots[i] in 
+if alpha=beta or alpha=-beta then 1 else m_plus(rd,alpha,beta) fi
+set m_minus(RootDatum rd,int i,vec beta)=int:
+let alpha=rd.simple_roots[i] in 
+if alpha=beta or alpha=-beta then 1 else m_minus(rd,alpha,beta) fi
+
 {f:simple roots -> \pm 1 satisfying f(alpha)f(beta)=-1 if
 (distinct) roots alpha,beta are non-orthogonal
  there are exactly two such functions
+ f(i)=pm 1 (0<=i<=ss_rank -1), otherwise f(i)=0 (meaningless value)
 }
-
 set orientation_function(RootDatum rd)=(int ->int):(int index):
 let n=rd.ss_rank then
 v=null(n) in
@@ -48,7 +63,7 @@ od;if index>=0 and index<n then v[index] else 0 fi
 
 set_type StructureConstantTable=
 (RootDatum root_datum,
-(int->int) orientation_function,  {mapping [0,...,n-1] to \pm 1}
+(int->int) orientation_function,  {mapping [0,...,n-1] to [\pm 1,...,\pm 1]}
 mat table  
 )
 

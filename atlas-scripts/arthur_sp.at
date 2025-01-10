@@ -54,21 +54,37 @@ let G=Sp(2*n,R) in
 (for m:n-1 from 1 do
  let (,L_der,params)=init(n,m)  in (L_der,params) od,G)
 
+set quasisplit_unitary_group(int n)=RealForm:  if is_even(n)  then U(n\2,n\2) else U(n\2+1,n\2) fi
+set antidiagonal(int n)=mat:for i:n do e(n,n-1-i) od
+
 {for Sp(2n,R) only}
 set endoscopic_data(RealForm G)=(mat,RealForm,mat):  {(M,GL(2n+1,R),delta): matrix M for twisted endoscopic transfer Sp(2n,R)-> GL(2n+1,R), with nice coordinates}
-let n=rank(G) in 
-assert(G=Sp(2*n,R),"G is not Sp(2n,R)");
-let GL=GL(2*n+1,R) then
-delta=GL.distinguished_involution then
-(rd_0,M_0,)=complex_endoscopic_group(GL,delta)  then {rd_0=Sp(2n) with the negative coordinates}
-{skip the next two steps:
-rd=root_datum(-rd_0.simple_roots,-rd_0.simple_coroots) then   {clumsy way to get nicer coordinates}
-G=split_form(rd) then {Sp(2n,R) with usual coordinates, just gives G}
-}
-M=-M_0 {M*simple_coroots(G) = first n columns of GL.simple_coroots}
-in (M,GL,delta)
+let n=rank(G) in
+if G=Sp(2*n,R) then
+  let GL=GL(2*n+1,R) then
+  delta=GL.distinguished_involution then
+  (rd_0,M_0,)=complex_endoscopic_group(GL,delta)  then {rd_0=Sp(2n) with the negative coordinates}
+  {skip the next two steps:
+  rd=root_datum(-rd_0.simple_roots,-rd_0.simple_coroots) then   {clumsy way to get nicer coordinates}
+  G=split_form(rd) then {Sp(2n,R) with usual coordinates, just gives G}
+  }
+  M=-M_0 {M*simple_coroots(G) = first n columns of GL.simple_coroots}
+  in (M,GL,delta)
+elif quasisplit_form(G)=quasisplit_unitary_group(n) then
+  let GL=GL(n,C) then
+  delta=GL.distinguished_involution then
+  (rd_0,M_0,)=complex_endoscopic_group(GL,delta)  in
+  (M_0,GL,delta)
+else
+  prints("only implemented for Sp(2n,R) and U(p,q)");
+  (null(0,0),GL(1,R), null(0,0))
+fi
 
-{Arthur packet for G=Sp(2n,R)}
+{
+set endoscopic_data(RealForm G)=
+}
+
+{Arthur packet for G=Sp(2n,R) or U(p,q)}
 set Arthur_packet_character(Param p)=ParamPol:
 let (M,GL,delta)=endoscopic_data(p.real_form) in
 let ecf=extended_character_formula(Finalize(lift_std(p,M,GL)),delta) in
@@ -79,6 +95,39 @@ composition_series(inverse_lift_std(Pw,p.real_form,M,p.infinitesimal_character))
 {Gives the A-packet as a set of Params in the case of a classical group of type A, B and C}
 set Arthur_packet(Param p)=[Param]:
 monomials(Arthur_packet_character(p))
+
+{central shift, intended only for U(p,q)}
+set shift(Param p, int k)=Param:
+parameter(p.x,p.lambda + ones(rank(p.real_form)), p.nu)
+
+{include central shift for U(p,q)}
+set Arthur_packet_character(Param p, int shift)=ParamPol:
+Arthur_packet_character(shift(p,shift))
+
+set Arthur_packet(Param p,int shift)=[Param]:monomials(Arthur_packet_character(p,shift))
+
+{p should be a langlands member of an Arthur packet on the quasisplit form
+shift allowed for U(p,q)}
+set Arthur_packet_character_strong(Param p)=[ParamPol]:
+let char_qs=Arthur_packet_character(p) in
+for G in strong_real_forms(p.real_form) do inner_lift(char_qs,G) od
+
+set Arthur_packet_strong(Param p)=[Param]:
+for P in Arthur_packet_character_strong(p) do monomials(P) od.##
+
+set Arthur_packet_character_strong(Param p, int shift)=[ParamPol]:
+Arthur_packet_character_strong(shift(p,shift))
+
+set Arthur_packet_strong(Param p,int shift)=[Param]:
+Arthur_packet_strong(shift(p,shift))
+
+set induce_Arthur_packet_strong(Param p_L,RealForm G)=[Param]:
+let strong_packet=for p in Arthur_packet_strong(p_L) do
+ let ind=theta_induce_irreducible(p,G) then
+ ()=if #ind>1 then prints("Warning: induced is reducible:  p=", p) fi in
+ monomials(ind) od.##
+in strong_packet
+
 
 {L=compact torus * L_der
  extended parameter from L_der to L with given character on compact torus
@@ -119,6 +168,8 @@ requirement:  p_der.real_form=Sp(2m,R) with usual coordinates
 same as previous, but replace each ParamPol with its monomials}
 set Arthur_packet_strong(vec central_char,Param p_der)=[[Param]]:
 for P in Arthur_packet_character_strong(central_char,p_der) do monomials(P) od
+
+
 
 {Given L=U(1)^{n-m}*Sp(2m,R)\subset G=Sp(2n,R)
  fixed character of U(1), p_der on Sp(2m,R)
@@ -219,8 +270,6 @@ for p in arthur_packet_trivial_upq_strong(n,shift) do
 set ind_upq(int n)=induce_arthur_packet_trivial_upq_strong(n)
 set ind_upq(int n, int shift)=induce_arthur_packet_trivial_upq_strong(n,shift)
 
-
-
-
+{-----------------------------inducing from 1 dimensional on U(p,q) x Sp(2m,R) -----------}
 
 

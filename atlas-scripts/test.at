@@ -1,52 +1,13 @@
-<basic.at
-<std_decs.at
-<groups.at
 
-G:=GL(6,R)
+set test(RootDatum G,(int->int) epsilon)=
+let rv=for w in G.W do
+ for i:ss_rank(G) do
+  let alpha=G.simple_roots[i] in
+   if is_simple_root (G,w*alpha) then [(w,i,delta(epsilon,w,i))] else [] fi od.##  od.##
+then
+signs=for (,,j) in rv do j od then
+result=all(for x in signs do x=1 od)
+in prints("result: ", result);
+(rv,signs,result)
 
-set L=[0,1,2,3,6,7,12,19,20,24]
-
-set go () = for i in L do param(KGB(G,i),null(6),rho(G)).twisted_full_deform od
-
-set fund_barys (RootDatum rd, int dim) = [ratvec]:
-   let n=rd.semisimple_rank, d1=dim+1, lb = simple_coroot_labels(rd)
-   then vert = [ratvec]:
-      (null(rd.rank)/1) # for i:n do fundamental_weight(rd,i)/lb[i] od
-in for S in choices_from(vert.#.#,d1)
-   do sum(rd.rank,for i in S do vert[i] od)/d1
-   od
-
-set FPP_barys(RootDatum rd, int dim) = [ratvec]:
-   for v in fund_barys(rd,dim)
-   do let d=v.denom in for numer in FPP_numers(rd,v) do numer/d od
-   od.##
-
-{ in the next function |P| is for a pure torus sharing its $X^*$ with |rd| }
-{ one can get that torus as |torus(rd.rank,0,0)| as defined in torus.at }
-set Demazure (RootDatum rd, int i, KTypePol P) = KTypePol:
-(  let alpha=root(rd,i), alpha_v=coroot(rd,i), result = null_K_module(P)
-in P +:= { calls +@(KTypePol,[(Split,KType)]) }
-     for c@t in P
-     do (-c,let (x,lambda)=%t in K_type(x,reflect(rd,i,lambda)-alpha)) od
-;  while !=P
-   do let (x,lambda) = %first_K_type(P), acc=null_K_module(P)
-   then level = alpha_v*lambda
-   in if level.< then lambda+:=alpha*(-1-level) fi
-   ;  assert(!=P[K_type(x,lambda)], @:to_string("absent term for ",(x,lambda)))
-   ;  while !=P[K_type(x,lambda+alpha)] do lambda+:=alpha od { back up }
-   ;  level := alpha_v*lambda { recompute |level| }
-   ;  let top = K_type(x,lambda), bot=K_type(x,lambda+alpha*(-1-level))
-      then c=P[top]
-   in while assert(=P[top]+P[bot],"failing anti-symmetry"); P[top]:=P[bot]:=0
-      ; acc[top]+:=c
-      ; if =level
-        then dont { i.e., quit the loop }
-        else acc[bot:=K_type(x,bot.lambda_rho+alpha)]+:=c { mirror contribute }
-        ; level>=2 { condition to continue }
-        do level-:=2; c+:=P[top:=K_type(x,lambda-:=alpha)]
-	fi
-      od
-   ;  result +:= acc
-   od
-; result
-)
+set test(RootDatum G)=test(G,orientation_function(G))
