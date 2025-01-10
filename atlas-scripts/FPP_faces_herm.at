@@ -9,11 +9,28 @@
 <face_classes.at {for coords}
 {BREAK HERE?}
 
+set KUKU_flag = true
+
+{For each list of faces in FVKH, indices of faces for which the corresponding parament is known
+(by Uhash) to be unitary}
+set KU(KGBElt x, ratvec lambda, LocalVertexData Lvd, [[FaceVertsKHash]] FVKH, Param_hash Uhash) =
+    [vec]:
+    for FVKHd@d in FVKH
+    do for vlong@j in FVKHd
+       do let verts = vlong[:d+1]
+       	  then ps = monomials(finalize(parameter(x,lambda, face_bary(Lvd,verts))))
+	  in if all(for p in ps do (Uhash.lookup(p)).>= od)
+	     then [j]
+	     else []
+	     fi
+       od.##
+     od
 
 {takes the known unitaries from unitary_hash having the given x and lambda,
  and returns their locations in LFDKH}
 set known_unitaries(Param_hash Uhash, KGBElt x, ratvec lambda, LocalVertexData Lvd,
     [[FaceVertsKHash]] LFDKH) = [vec]:
+    if KUKU_flag then return KU(x,lambda, Lvd, LFDKH, Uhash) fi;
     let ps = for d:#LFDKH
     	     do for v in LFDKH[d]
 	     	do parameter(x,lambda,face_bary(Lvd, v[:d+1]))
@@ -222,7 +239,10 @@ set localFD_1Dirac2\
 	    in if any(for q in monomials(finalize(p)) do not is_pos_on_LKTs(q) od) or
  	       (Dirac_flag and Q(v, v)> DiracBD)
 	    then []
-	    else [[j]]
+	    else if red_count_flag
+	    	 then [[j, red_count(p)]]
+		 else [[j]]
+		 fi
 	    fi
 	 od.##
     {then () = prints("after LFO, time is ",print_time_string(elapsed_ms() - start))}
@@ -271,7 +291,10 @@ set localFD_1Dirac2\
 	 do let p = parameter(x,lambda,face_bary(Lvd, v))
 	 {face_bary_ic(x.inner_class, face_bary(Lvd.list, v))}
 	    in  if all(for q in monomials(p) do is_pos_on_LKTs(q) od)
-	    then [v]
+	    then if red_count_flag
+	    	 then [v#red_count(p)]
+		 else [v]
+		 fi
 	    else []
 	    fi
 	 od.##
@@ -1941,7 +1964,7 @@ set UHBS_time = int: 0
 
 {assume p is hermitian}
 set hermitian_form_irreducible_big_SIMPLE(Param p) = KTypePol:
-    let L = big_unitary_hash.lookup(p)
+    let L = big_unitary_hash.lookup(herm_center(p))
     in if L.>=
        then let startCF = elapsed_ms()
        	    then m = char_counter.use()
@@ -1960,7 +1983,7 @@ set is_unitary_hash_big_SIMPLE(Param p) = bool:
     	      then return is_unitary(p) {prints("FPP DANGER at ",p)}
 	      fi
     {then () = p := herm_center(p)}
-    then L = big_unitary_hash.lookup(p)
+    then L = big_unitary_hash.lookup(herm_center(p))
     {then () = prints("p = ", p, ". L = ",L, ", is_finished = ",is_finished(p.x, p.lambda))}
     then () = if L.>= then return true fi
     then () = if is_finished(p.x, p.lambda) then return L.>= fi

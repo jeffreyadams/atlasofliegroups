@@ -207,7 +207,7 @@ set_type
 set make_RF_sig_tables () = RF_sig_tables:
 (  let real_form_hash = make_RealForm_hash()
    then deltas = [mat]: [] {distinguished involution for each form}
-   then param_hashes = [Param_hash] : [] {one for each real form}
+   then param_hashes = [Param_hash] : [] {one for each real form}{ONLY ENTER HERM_CENTER}
    then K_type_hashes = [KType_hash] : [] {one for each real form; list of LKTs of params}
    then K_type_pol_hashes = [KTypePol_hash] : []  {one for each real form}
    then branches = [vec] : [] {one vec for each real form, of size #K types;
@@ -300,6 +300,7 @@ set make_RF_sig_tables () = RF_sig_tables:
    then add_param(Param p) = (int, int, int): {add a param, full herm form}
    	let  rfnum = add_real_form(p.real_form)
 	then PNUM = param_hashes[rfnum].size()
+	then () = p:=herm_center(p)
 	then pnum = param_hashes[rfnum].match(p)
 	then () = if pnum = PNUM {haven't computed with p before}
 	     	  then let start_sig = elapsed_ms()
@@ -321,6 +322,7 @@ set make_RF_sig_tables () = RF_sig_tables:
    then add_param(Param p, int D) = (int, int, int): {add a param, form to ht D}
         let  rfnum = add_real_form(p.real_form)
         then PNUM = param_hashes[rfnum].size()
+	then () = p:=herm_center(p)
         then pnum = param_hashes[rfnum].match(p)
         then () = if pnum = PNUM {haven't computed with p before}
                   then let start_sig = elapsed_ms()
@@ -917,62 +919,12 @@ set min_small_bottom_elim_factors(Param p0, Param p, KTypePol P) = bool:
 
 set min_small_bottom_elim_factors(Param p, KTypePol P) = bool:
     min_small_bottom_elim_factors(p, p, P)
-    {let start = elapsed_ms(), (Q,pL) = theta_stable_data_small(p), G = p.real_form
-    	{pL is height 0 on quasisplit L}
-    then () = if every_MBEF_flag
-    	      then prints("starting MBSEF(",p.x.number,",",p.lambda,",",p.nu,") at time ",
-    	      print_time_string(start))
-	      fi
-    then DG = minSmallBottomData.G_min_height(p.x,p.lambda)
-    then () = if not is_hermitian(pL) then return is_unitary_to_ht(p,DG) fi
-    	 {this case can happen in Spin(5,3), p = p = parameter(G,39,[1,1,1,1],[0,1,1,1])}
-    then derpLjs = derived_factor_params0(pL) {all height 0}
-    then mus = LKTs(p)
-    then muLs = for mu in mus do highest_LK(mu,Q) od
-    then dermuLjs = derived_factor_K_types0(muLs[0])
-    {then () = mbefTime +:= elapsed_ms()-start}
-    then DLs = minSmallBottomData.L_min_heights(p.x,p.lambda)
-    then derxLjs = for derpLj in derpLjs do derpLj.x od
-    then derLjs = for derpLj in derpLjs do derpLj.real_form od
-    then  multG = branch_std(P,DG)
-    then LKDatas = minSmallBottomData.entry(p.x,p.lambda) {[[tau,[[dertauLj]]]]} {, pmu = param(mu)}
-    then Lbranches = for derpLj@j in derpLjs {indexed by j, factors of L}
-	    	     do let sigLj = KTypePol: {signature for derpLj}
-			    if big_unitary_hash.uhash(derLjs[j]).lookup(derpLj).>=
-			    then let startCF = elapsed_ms()
-			       	 then QLj = character_formula_to_height(derpLj,DLs[j])
-			       	 then () = charTime +:= elapsed_ms() - startCF
-			       	 then () = char_counter.use()
-			       	 in K_type_pol(QLj)
-			     elif RF_code
-	    	      	     then rf_sig_tables.sig_entry(derpLj, DLs[j])
-			     else hermitian_form_irreducible_to_ht_big_SIMPLE(derpLj,DLs[j])
-		             fi
-			 in if int_part(sigLj[dermuLjs[j]]) = 0
-		       	    then branch_std(s*sigLj, DLs[j])
-			    else branch_std(sigLj,DLs[j])
-			    fi {this bit makes sigLj pos on LKTs}
-		      od
-    then answers = [(->bool)]: {one function for each LKT mu of (x,lambda)}
-    	 for LKData in LKDatas {mu@i in LKTs(p)}
-	 do @: all( for (tau,list) in LKData{s[i]}[1:]
-	       	    do let coeff = Split: 1 {this will be the bottom layer signature at tau}
-	               then () = for tauLj@j in list
-			       	 do coeff*:= Lbranches[j][tauLj]
-			    	 od
-		       in @bool: int_part(coeff) >= int_part(multG[tau])
-	       	    od)
-	  od
-   then answer = all(answers)
-   then () = mbefTime +:= elapsed_ms()-start
-   then () = if every_MBEF_flag then prints("  ",answer) fi
-   in answer}
 
 {insist that every LKT of p0 is a LQ of p, and that P is K_type_pol of
-character formula of p0 to some height}
+character formula of p0 to some height. Need p0 FINAL}
 set min_bottom_elim_factors(Param p0, Param p, KTypePol P) = bool:
     if small_test_flag
-    then return min_small_bottom_elim_factors(p,P)
+    then return min_small_bottom_elim_factors(p0,p,P)
     fi;
     let start = elapsed_ms(), (Q,pL) = theta_stable_quasi_data(p), G = p.real_form
     then () = if every_MBEF_flag
@@ -980,10 +932,10 @@ set min_bottom_elim_factors(Param p0, Param p, KTypePol P) = bool:
     	      print_time_string(start))
 	      fi
     {pL is height 0 on quasisplit L}
-    then mu = LKTs(p)[0]
-    then mus = LKTs(p)
+    then mus = LKTs(p0)
+    then mu = mus[0]
     then DG = max(for mu in mus do minBottomData.G_min_height(mu) od)
-    then muL = highest_LK(mus[0],Q)
+    then muL = highest_LK(mu,Q)
     then pLis = monomials(1*pL)
     then i0 = first(for pLi in pLis do (K_type_pol(pLi*0))[muL].!= od)
     then pL0 = pLis[i0] {now has LKT muL}
@@ -1038,63 +990,6 @@ set min_bottom_elim_factors(Param p0, Param p, KTypePol P) = bool:
 {NEED VERSION FOR small_test_flag = true using minSmallBottomData}
 set min_bottom_elim_factors(Param p, KTypePol P) = bool:
     min_bottom_elim_factors(p, p, P)
-{    if small_test_flag
-    then return min_small_bottom_elim_factors(p,P)
-    fi;
-    let start = elapsed_ms(), (Q,pL) = theta_stable_quasi_data(p), G = p.real_form
-    then () = if every_MBEF_flag
-    	      then prints("starting MBEF(",p.x.number,",",p.lambda,",",p.nu,") at time ",
-    	      print_time_string(start))
-	      fi
-    {pL is height 0 on quasisplit L}
-    then mus = LKTs(p)
-    then muL = highest_LK(mus[0],Q)
-    then dermuLjs = derived_factor_K_types0(muL)
-    then DG = max(for mu in mus do minBottomData.G_min_height(mu) od)
-    then DLs = minBottomData.L_min_heights(mus[0])
-    then derpLjs = derived_factor_params0(pL) {all height 0}
-    then derxLjs = for derpLj in derpLjs do derpLj.x od
-    then derLjs = for derpLj in derpLjs do derpLj.real_form od
-    then  multG = branch_std(P,DG)
-    then Lbranches = for derpLj@j in derpLjs
-	    	     do let sigLj =
-		            if big_unitary_hash.uhash(derLjs[j]).lookup(derpLj).>=
-			    then let startCF = elapsed_ms()
-				 then QLj = character_formula_to_height(derpLj,DLs[j])
-				 then () = charTime +:= elapsed_ms() - startCF
-				 then () = char_counter.use()
-				 in K_type_pol(QLj)
-			    elif RF_code
-	    	      	    then rf_sig_tables.sig_entry(derpLj, DLs[j])
-			    else hermitian_form_irreducible_to_ht_big_SIMPLE(derpLj,DLs[j])
-		            fi
-	                 in if int_part(sigLj[dermuLjs[j]]) = 0
-		       	        then branch_std(s*sigLj, DLs[j])
-				else branch_std(sigLj,DLs[j])
-				fi
-			 od
-    then answers = [(->bool)]: {one function for each LKT mu of p}
-    	 for mu in LKTs(p)
-    	 do let LKData = minBottomData.entry(mu) {[tau,[dertauLj]]}
-	    in @: all( [(->bool)]:
-	       	       for (tau,list) in LKData[1:] {one function for each min_bottom K-type tau}
- 		       do let coeff = Split: 1 {this will be the bottom layer signature at tau}
-			  then () = for tauLj@j in list
-			       	    do {if Lsigs[j][tauLj] = 0
-			     	       then prints(j," ",tauLj," ",Lsigs[j]," ",Lsigs[j])
-			     	       fi;}
-			     	       coeff*:= Lbranches[j][tauLj]
-			  	    od
-		    	   in @bool: int_part(coeff) >= int_part(multG[tau])
-	       	        od)
-        od
-   then answer = all(answers)
-	{then () = if not answer then attest_is_unitary(p,answer) fi}
-   then () = mbefTime +:= elapsed_ms()-start
-   then () = if every_MBEF_flag then prints("  ",answer) fi
-   in answer
-}
-
 
 {These min_bottom functions are used only on simple G}
 set min_bottom_elim_factors(Param p0, Param p) = bool:
@@ -1108,7 +1003,7 @@ set min_bottom_elim_factors(Param p0, Param p) = bool:
     {could figure out max ht needed?}
     then () = charTime +:= elapsed_ms() - startCF
     then () = char_counter.use()
-    in min_bottom_elim_factors(p, K_type_pol(Q))
+    in min_bottom_elim_factors(p0, p, K_type_pol(Q))
 
 set min_bottom_elim_factors(Param p) = bool:
     min_bottom_elim_factors(p,p)
