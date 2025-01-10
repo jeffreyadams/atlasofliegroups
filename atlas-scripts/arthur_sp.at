@@ -98,7 +98,7 @@ monomials(Arthur_packet_character(p))
 
 {central shift, intended only for U(p,q)}
 set shift(Param p, int k)=Param:
-parameter(p.x,p.lambda + ones(rank(p.real_form)), p.nu)
+parameter(p.x,p.lambda + k*ones(rank(p.real_form)), p.nu)
 
 {include central shift for U(p,q)}
 set Arthur_packet_character(Param p, int shift)=ParamPol:
@@ -127,6 +127,54 @@ let strong_packet=for p in Arthur_packet_strong(p_L) do
  ()=if #ind>1 then prints("Warning: induced is reducible:  p=", p) fi in
  monomials(ind) od.##
 in strong_packet
+
+set induce_Arthur_packet_strong(Param p_L,int shift,RealForm G)=[Param]:
+induce_Arthur_packet_strong(shift(p_L,shift),G)
+
+set induce_all_Arthur_packets_strong(RealForm L, int shift,RealForm G)=[[Param]]:
+for p_L in unipotent_langlands_parameters(L) do induce_Arthur_packet_strong(p_L,shift,G) od
+
+set join(KGBElt x,KGBElt y)=
+let G=x.real_form*y.real_form in 
+let t_x=torus_factor(x), t_y=torus_factor(y), theta_x=x.involution, theta_y=y.involution in
+KGB_elt(KGB_elt_gen(inner_class(G),block_matrix(theta_x,theta_y),t_x##t_y))
+
+set join(Param p_L,Param p_M)=
+parameter(join(p_L.x,p_M.x), p_L.lambda##p_M.lambda,p_L.nu##p_M.nu)
+
+set join(Param p_L,int shift,Param p_M)=
+join(shift(p_L,shift),p_M)
+
+set Arthur_packet_strong(Param p_L, int shift,Param p_M)=[Param]:
+for p in Arthur_packet_strong(shift(p_L,shift)) do
+ for q in Arthur_packet_strong(p_M) do
+ join(p,q) od od.##
+
+set induce_Arthur_packet_strong(Param p_L, int shift, Param p_M,RealForm G)=
+let strong_packet=for p in Arthur_packet_strong(p_L,shift,p_M) do
+let ind=theta_induce_irreducible(p,G) then
+ ()=if #ind>1 then prints("Warning: induced is reducible:  p=", p) fi in
+ monomials(ind) od.##
+in strong_packet
+
+set unipotent_langlands_parameters(RealForm L,int shift,RealForm M)=
+for p_L in unipotent_langlands_parameters(L) do
+ for p_M in unipotent_langlands_parameters(M) do
+  join(shift(p_L,shift),p_M) od od.##
+
+set induce_all_Arthur_packets_strong(RealForm L,int shift,RealForm M,RealForm G)=
+for p_L in unipotent_langlands_parameters(L) do
+for p_M in unipotent_langlands_parameters(M) do 
+induce_Arthur_packet_strong(p_L,shift,p_M,G) od od.##
+
+
+
+
+
+
+
+
+
 
 
 {L=compact torus * L_der
