@@ -24,6 +24,12 @@ set pr_long([Param] params)=
 prints("G=",params[0].real_form);
 tabulate(for p in params do [p.to_string,p.infinitesimal_character.to_string] od)
 
+set show([[Param]] packets)=void:
+for S@i in packets do 
+ prints("i=",i);pr_long(S) od;prints("")
+
+
+
 {run over all weak packets, return the Langlands members: those of minimal height}
 set unipotent_langlands_parameters(RealForm G)=[Param]:
 let wp=weak_packets(G) in
@@ -106,8 +112,7 @@ Arthur_packet_character(shift(p,shift))
 
 set Arthur_packet(Param p,int shift)=[Param]:monomials(Arthur_packet_character(p,shift))
 
-{p should be a langlands member of an Arthur packet on the quasisplit form
-shift allowed for U(p,q)}
+{p should be a langlands member of an Arthur packet on the quasisplit form}
 set Arthur_packet_character_strong(Param p)=[ParamPol]:
 let char_qs=Arthur_packet_character(p) in
 for G in strong_real_forms(p.real_form) do inner_lift(char_qs,G) od
@@ -115,12 +120,18 @@ for G in strong_real_forms(p.real_form) do inner_lift(char_qs,G) od
 set Arthur_packet_strong(Param p)=[Param]:
 for P in Arthur_packet_character_strong(p) do monomials(P) od.##
 
-set Arthur_packet_character_strong(Param p, int shift)=[ParamPol]:
-Arthur_packet_character_strong(shift(p,shift))
+{------------ inducing Arthur packets from U(p,q) to Sp(2n,R)-----------}
 
-set Arthur_packet_strong(Param p,int shift)=[Param]:
-Arthur_packet_strong(shift(p,shift))
+{this is intended for U(p,q), allowing central shift
+ given parameter p_L should be for a quasisplit unitary group}
+set Arthur_packet_character_strong(Param p_L, int shift)=[ParamPol]:
+Arthur_packet_character_strong(shift(p_L,shift))
 
+set Arthur_packet_strong(Param p_L,int shift)=[Param]:
+Arthur_packet_strong(shift(p_L,shift))
+
+{compute the strong Arthur packet of p_L (on strong real forms of U(p,q)) and induce it to G
+p_L should be on quasisplit unitary group of rank n, G=Sp(2n,R)}
 set induce_Arthur_packet_strong(Param p_L,RealForm G)=[Param]:
 let strong_packet=for p in Arthur_packet_strong(p_L) do
  let ind=theta_induce_irreducible(p,G) then
@@ -128,53 +139,72 @@ let strong_packet=for p in Arthur_packet_strong(p_L) do
  monomials(ind) od.##
 in strong_packet
 
+{same as previous but allow shift}
 set induce_Arthur_packet_strong(Param p_L,int shift,RealForm G)=[Param]:
 induce_Arthur_packet_strong(shift(p_L,shift),G)
 
+{compute all unipotent langlands parameters for strong real forms of unitary group
+ compute resulting Arthur packets on L, induce up to G
+ L should be quasisplit unitary group of rank n, G=Sp(2n,R)}
 set induce_all_Arthur_packets_strong(RealForm L, int shift,RealForm G)=[[Param]]:
 for p_L in unipotent_langlands_parameters(L) do induce_Arthur_packet_strong(p_L,shift,G) od
 
+{-----------inducing unipotent packets from U(p,q) x Sp(2m,R) to Sp(2n,R)-----}
+
+{now allow L=U(p,q)xSp(2m,R)}
+
+{given KGB elements for G,H -> KGB element for GxH}
 set join(KGBElt x,KGBElt y)=
 let G=x.real_form*y.real_form in 
 let t_x=torus_factor(x), t_y=torus_factor(y), theta_x=x.involution, theta_y=y.involution in
 KGB_elt(KGB_elt_gen(inner_class(G),block_matrix(theta_x,theta_y),t_x##t_y))
 
+{given parameters p_L,p_M -> parameter for LxM}
 set join(Param p_L,Param p_M)=
 parameter(join(p_L.x,p_M.x), p_L.lambda##p_M.lambda,p_L.nu##p_M.nu)
 
+{given parameters p_L for U(p,q), p_M for Sp(2m,R), shift on U(p,q) factor -> parameter for U(p,q)xSp(2m,R)}
 set join(Param p_L,int shift,Param p_M)=
 join(shift(p_L,shift),p_M)
 
+{given p_L for quasisplit unitary group, shift on this term, p_M on Sp(2m,R)
+ assuming p_L, p_M are langlands members of Arthur packets
+ -> parameter for LxM -> Arthur packet for LxM
+ also repeat this on all strong real forms of L (but only the split form of M)}
 set Arthur_packet_strong(Param p_L, int shift,Param p_M)=[Param]:
 for p in Arthur_packet_strong(shift(p_L,shift)) do
- for q in Arthur_packet_strong(p_M) do
+for q in Arthur_packet(p_M) do 
  join(p,q) od od.##
 
-set induce_Arthur_packet_strong(Param p_L, int shift, Param p_M,RealForm G)=
+{given p_L for quasisplit unitary group, shift on L, p_M for Sp(2m,R)
+ assuming p_L, p_M are langlands members of Arthur packets
+ compute strong Arthur packet on (strong real forms of L)xM and induce to G}
+set induce_Arthur_packet_strong(Param p_L, int shift, Param p_M,RealForm G)=[Param]:
 let strong_packet=for p in Arthur_packet_strong(p_L,shift,p_M) do
-let ind=theta_induce_irreducible(p,G) then
+ let ind=theta_induce_irreducible(p,G) then
  ()=if #ind>1 then prints("Warning: induced is reducible:  p=", p) fi in
  monomials(ind) od.##
 in strong_packet
 
+{Langlands members of all unipotent packets for LxM, shifted on L}
 set unipotent_langlands_parameters(RealForm L,int shift,RealForm M)=
 for p_L in unipotent_langlands_parameters(L) do
  for p_M in unipotent_langlands_parameters(M) do
   join(shift(p_L,shift),p_M) od od.##
 
-set induce_all_Arthur_packets_strong(RealForm L,int shift,RealForm M,RealForm G)=
+{run over all weak unipotent packets for strong real forms of L (=quasisplit unitary group), with shift,
+ and all weak unipotent packets of M=Sp(2m,R) ->
+ keep just the Langlands members (of minimal height) 
+ for each of these parameters of LxM compute the unipotent (+shift on L) Arthur packet on LxM, 
+ induce up to G=Sp(2n,R)}
+set induce_all_Arthur_packets_strong(RealForm L,int shift,RealForm M,RealForm G)=[[Param]]:
 for p_L in unipotent_langlands_parameters(L) do
 for p_M in unipotent_langlands_parameters(M) do 
 induce_Arthur_packet_strong(p_L,shift,p_M,G) od od.##
 
 
 
-
-
-
-
-
-
+{-------------------------compact torus x Sp(2m,R) in Sp(2n,R)-----------------}
 
 
 {L=compact torus * L_der
@@ -244,7 +274,13 @@ a_packet=Arthur_packet(min[0]) in (params,a_packet,param_pol(params)=param_pol(a
 set is_Arthur_packet([Param] params)=bool:
 let (,,test)=is_Arthur_packet_long(params) in test
 
+set show_long([[Param]] packets)=void:
+for S@i in packets do 
+ prints("i=",i);pr_long(S);prints(is_Arthur_packet(S));prints("-------------") od
 
+set test([[Param]] packets)=bool:
+let rv=for S in packets do is_Arthur_packet(S) od in
+prints(rv, new_line, all(rv));all(rv)
 
 set is_decreasing([int] v)=bool:
 all(for i:#v-1 do v[i]>=v[i+1] od)
