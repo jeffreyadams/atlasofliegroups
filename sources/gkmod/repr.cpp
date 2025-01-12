@@ -1837,16 +1837,17 @@ blocks::common_block& Rep_table::lookup_full_block
     return block; // use block of related |StandardReprMod| as ours
   }
 
-  // now we must first add the full block for |srm|
+  // now first generate and add a new full block (swallowing any older ones)
   add_block(srm,loc);
   h = reduced_hash.find(rp); // block containing |srm| is now present
   assert(h<place.size());
   which = place[h].second;
 
-  auto& block = place[h].first->first;
+  auto& block_loc = *place[h].first;
+  auto& block = block_loc.first;
   assert(block.is_full());
-  assert(block.representative(which)==srm); // we should find |srm| here
-  bm = block_modifier(block); // we are relative to ourselves
+  auto stored_srm = block.representative(which);
+  bm = make_relative_to(stored_srm,block_loc.second, srm,std::move(loc));
   return block;
 } // |Rep_table::lookup_full_block|
 
