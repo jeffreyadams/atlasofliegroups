@@ -90,19 +90,18 @@ set tau(RootDatum G,orientation epsilon, vec beta)=Tits_elt:
 if is_simple_root(G,beta)
  then tits_simple_reflection(G,beta)
 else
- let w=conjugate_to_simple(G,beta) then  {w*simple=beta}
- alpha=inverse(w)*beta then
+ let conj=conjugate_to_simple(G,beta) then  {conj*simple=beta}
+ alpha=inverse(conj)*beta then
  i=root_index(G,alpha) then
- ()=prints(i) then
- sigma=tits_element(G,w) then
- delta=delta(epsilon,w,i) then
+ sigma=tits_element(G,conj)*tits_simple_reflection(G,alpha)*inverse(tits_element(G,conj)) then
+ delta=delta(epsilon,conj,i) then
  torus_factor=
   if delta=1
      then null(rank(G))
   else 
      G.simple_coroots[i]
   fi
- in tits_element(G,torus_factor,w)
+ in left(torus_factor,sigma)
 fi
 
 set tau(RootDatum G, vec beta)=Tits_elt:tau(G,orientation_function(G),beta)
@@ -145,22 +144,85 @@ set map_tits_element(RootDatum H,RootDatum G,WeylElt w_H)=Tits_elt:map_tits_elem
 set map_tits_element(RootDatum H,RootDatum G, orientation epsilon,mat theta_H)=Tits_elt:
 map_tits_element(H,G,epsilon,W_elt(H,theta_H))
 
-{map_tits_simple_reflection(H,G,epsilon,sigma_H}
+{sigma_H must be tits element of a simple reflection}
+set map_tits_element_simple(RootDatum H,RootDatum G,orientation epsilon,Tits_elt sigma_H)=Tits_elt:
+let w=w(sigma_H) in 
+assert(length(w(sigma_H))=1,"not the tits element of a simple reflection");
+tits_element(left(sigma_H.torus_part,map_tits_simple_reflection(H,G,epsilon,w.word[0])))
+
 set map_tits_element(RootDatum H,RootDatum G,orientation epsilon,Tits_elt sigma_H)=Tits_elt:
-let product=simple_expression(sigma_H) then   {sigma_H=product of tits simple reflections}
-rv=tits_identity(G) in
-for sigma in product do prints("rv=",rv);rv*:=sigma od;rv
+if length(sigma_H.w)=0 then
+ left(sigma_H.torus_part,tits_identity(G))
+else
+ let product=simple_expression(sigma_H) then   {sigma_H=product of tits simple reflections}
+ ()=prints("product=", product) then
+ {rv=left(sigma_H.torus_part,tits_identity(G)) in}
+ rv=tits_identity(G) in
+ let ()=prints("rv starting: ", rv) in 
+ for sigma@j in product do prints("j=",j,new_line,"rv=",rv,"  sigma=",sigma);rv*:=map_tits_element_simple(H,G,epsilon,sigma) od;prints("got rv: ", rv);rv
+fi
+
+set embed_tits_group(RootDatum H,RootDatum G,orientation epsilon)=[Tits_elt]:
+for w in H.W do map_tits_element(H,G,epsilon,sigma(H,w)) od
+
+set embed_tits_group(RootDatum H,RootDatum G)=[Tits_elt]:
+embed_tits_group(H,G,orientation_function(G))
 
 
 
+set test_tits_braid(RootDatum G)=
+let ops=for i:ss_rank(G) do tits_simple_reflection(G,i) od in 
+let results=##for i:G.ss_rank do
+ for j:G.ss_rank do
+  if i=j then (i,j,ops[i]^4=tits_identity(G))
+ else
+  let m=m(G,i,j) in
+   let ()=prints("i ", i, " ", j) in
+   if m=0 then (i,j,ops[i]*ops[j]=ops[j]*ops[i]) 
+   elif m=1 then (i,j,ops[i]*ops[j]*ops[i]=ops[j]*ops[i]*ops[j])
+   elif m=2 then (i,j,ops[i]*ops[j]*ops[i]*ops[j]=ops[j]*ops[i]*ops[j]*ops[i])
+   elif m=3 then (i,j,ops[i]*ops[j]*ops[i]*ops[j]*ops[i]*ops[j]=ops[j]*ops[i]*ops[j]*ops[i]*ops[j]*ops[i])
+   else error("m>3???")
+  fi
+fi
+od od
+then all=all(for (,,tf) in results do tf od) in
+if not all then prints(results) fi ;all
 
-{set map_tits_simple_reflection(RootDatum H,RootDatum G,int i)=Tits_elt:map_tits_simple_reflection(H,G,orientation_function(G),i)
-set map_tits_element(RootDatum H,RootDatum G,WeylElt w)=Tits_elt:map_tits_element(H,G,orientation_function(G),w)
+set test_tits_braid(RootDatum H,RootDatum G)=
+let ops=for i:ss_rank(H) do map_tits_simple_reflection(H,G,i) od in 
+let results=##for i:H.ss_rank do
+ for j:H.ss_rank do
+  if i=j then (i,j,ops[i]^4=tits_identity(G))
+ else
+  let m=m(G,H.simple_roots[i],H.simple_roots[j]) in
+   let ()=prints("i ", i, " ", j, " ", m) in
+   if m=0 then (i,j,ops[i]*ops[j]=ops[j]*ops[i]) 
+   elif m=1 then (i,j,ops[i]*ops[j]*ops[i]=ops[j]*ops[i]*ops[j])
+   elif m=2 then (i,j,ops[i]*ops[j]*ops[i]*ops[j]=ops[j]*ops[i]*ops[j]*ops[i])
+   elif m=3 then (i,j,ops[i]*ops[j]*ops[i]*ops[j]*ops[i]*ops[j]=ops[j]*ops[i]*ops[j]*ops[i]*ops[j]*ops[i])
+   else error("m>3???")
+  fi
+fi
+od od
+then all=all(for (,,tf) in results do tf od) in
+if not all then prints(results) fi ;all 
 
+set tits(KGBElt x)=Tits_elt:(x.real_form,x.unnormalized_torus_factor,x.involution)
+set KGB_elt (Tits_elt t)=KGB_elt(t.root_datum,t.theta,2*t.torus_part-t.root_datum.rho_check)
 
+set embed_KGB_tits(RealForm Gd, orientation epsilon, KGBElt x_Hd)=KGBElt:
+let Hd=x_Hd.real_form then
+sigma_Hd=tits(x_Hd) {this has unnormalized torus factor} then
+ sigma_Gd=map_tits_element(Hd,Gd,epsilon,sigma_Hd) {uses unnormalized torus factor from Hd} then
+ x_Gd=KGB_elt(sigma_Gd) {when making x_Gd, input sigma_Gd has unnormalized torus factor, x get normalized torus_factor} in
+ x_Gd
 
-{Suppose H\subset G is an equal rank subgroup, so WLOG the fixed torus T\subset H
- let S_H be the simple roots of H}
- 
+set embed_KGB_tits(RealForm Gd,KGBElt x_Hd)=KGBElt:embed_KGB_tits(Gd,orientation_function(Gd),x_Hd)
 
+set embed_KGB_tits(RealForm Hd,RealForm Gd, orientation epsilon)=[KGBElt]:
+for x in KGB(Hd) do embed_KGB_tits(Gd,epsilon,x) od
+
+set embed_KGB_tits(RealForm Hd,RealForm Gd)=[KGBElt]:
+for x in KGB(Hd) do embed_KGB_tits(Gd,x) od
 

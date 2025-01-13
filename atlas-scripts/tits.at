@@ -17,12 +17,14 @@
 
 set_type [ Tits_elt = (RootDatum root_datum,ratvec torus_part,mat theta) ]
 
+set w(Tits_elt (rd,t,theta))=WeylElt:W_elt(rd,theta)
 
 set tits_element(RootDatum G,ratvec torus_part, mat theta)=Tits_elt:(G,torus_part,theta)
 set tits_element(RootDatum G,ratvec torus_part, WeylElt w)=Tits_elt:
 assert(G=w.root_datum,"root data don't match");
 tits_element(G,torus_part,w.matrix)
 set tits_element(RootDatum G,WeylElt w)=tits_element(G,null(rank(G)),w)
+set tits_element(RootDatum G,mat theta)=tits_element(G,null(rank(G)),theta)
 
 {sigma is a synonyn for tits_element}
 set sigma(RootDatum G,ratvec torus_part, mat theta)=Tits_elt:tits_element(G,torus_part,theta)
@@ -157,15 +159,17 @@ set simple_expression(Tits_elt sigma)=[Tits_elt]:
 let (G,v,theta)=sigma then
 rv=[Tits_elt]:[] then
 w=W_elt(G,theta) in
+if length(w)=0 then {special case: no Weyl element but there is a torus element}
+ rv:=[left(sigma.torus_part,tits_identity(G))]
+else
 for i@j in word(w) do
-rv#:=
- if j=0 then tits_simple_reflection(G,v,i)
-        else tits_simple_reflection(G,i)
- fi
-od;
+ rv#:=
+  if j=0 then tits_simple_reflection(G,v,i)
+         else tits_simple_reflection(G,i)
+  fi
+ od
+fi;
 rv
-
-
 
 { canonical lift of Weyl group element to \delta-twisted Tits group }
 set lift (mat delta, WeylElt w) = Tits_elt:

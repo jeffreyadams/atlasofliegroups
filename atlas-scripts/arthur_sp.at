@@ -279,8 +279,9 @@ for S@i in packets do
  prints("i=",i);pr_long(S);prints(is_Arthur_packet(S));prints("-------------") od
 
 set test([[Param]] packets)=bool:
-let rv=for S in packets do is_Arthur_packet(S) od in
-prints(rv, new_line, all(rv));all(rv)
+let rv=
+ for S@i in packets do let result=is_Arthur_packet(S) in prints(i, " ", result);result od
+in prints(all(rv));all(rv)
 
 set is_decreasing([int] v)=bool:
 all(for i:#v-1 do v[i]>=v[i+1] od)
@@ -317,6 +318,14 @@ prints("rho_shift: ", rho_shift, " shift (v): ", v,"  total shift: ", v+rho_shif
 "inf.char. on L_der: ", infinitesimal_character(p),"  inf.char. on G: ", infchar);
 prints("L_der=", p.real_form);
 pr_long(params);
+prints("-----------------------") od
+
+set show_long((Param p_der,[(vec,[int],ratvec,Param,[Param])] data))=void:
+for (v,rho_shift,infchar,p,params) in data do
+prints("rho_shift: ", rho_shift, " shift (v): ", v,"  total shift: ", v+rho_shift,new_line,
+"inf.char. on L_der: ", infinitesimal_character(p),"  inf.char. on G: ", infchar);
+prints("L_der=", p.real_form);
+pr_long(params);
 prints("Arthur packet: ", is_Arthur_packet(params));
 prints("-----------------------") od
 
@@ -329,6 +338,9 @@ induce_Arthur_packets_strong_all(for (,params) in data do params od.##,G)
 
 set show([(Param,[(vec,[int],ratvec,Param,[Param])])] data)=void:
 for d@i in data do show(d);prints("==============================") od
+
+set show_long([(Param,[(vec,[int],ratvec,Param,[Param])])] data)=void:
+for d@i in data do show_long(d);prints("==============================") od
 
 {------------------------------ inducing one-dimensional from U(p,q) to Sp(2n,R) -----}
 

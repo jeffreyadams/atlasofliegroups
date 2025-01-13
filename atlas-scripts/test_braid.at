@@ -1,7 +1,10 @@
 <cells.at
 
 set m(RootDatum rd,int i, int j)=int:
-let M=rd.Cartan_matrix in M[i,j]*M[j,i] 
+let M=rd.Cartan_matrix in M[i,j]*M[j,i]
+
+set m(RootDatum rd,vec alpha,vec beta)=int:
+alpha*coroot(rd,beta)*beta*coroot(rd,alpha)
 
 
 {Given: RootDatum, one operator for each simple roots
