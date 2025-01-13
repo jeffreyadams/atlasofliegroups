@@ -1982,6 +1982,13 @@ set all_finished(RealForm G) = [(KGBElt,ratvec)]:
        	     do (x, FPP_lambdas(x)[pos])
        	     od
        od.##
+{ ??? PLACE TO PUT RF_SIG_TABLES ??? }
+
+
+
+
+
+{ ??? PLACE TO PUT RF_SIG_TABLES ??? }
 
 set UHBS_time = int: 0
 
@@ -2030,6 +2037,7 @@ set is_unitary_hash_big_SIMPLE(Param p) = bool:
 			      od))
        fi
     then () = UHBS_time+:= elapsed_ms() - start
+    then () = if answer then big_unitary_hash.match(p) fi
     in answer
 
 set is_unitary_hash_big(Param p) = bool:
@@ -2111,9 +2119,12 @@ set hermitian_form_irreducible_to_ht_big_SIMPLE(Param p,int N) = KTypePol:
      then hermitian_form_irreducible_to_ht_big_SIMPLE_interrupt(p,N, interrupt_base_time)
      else if low(p,N) {low(p.x,p.lambda,N)}
      	  then hermitian_form_irreducible_to_ht(p,N)
-     	  else to_ht(hermitian_form_irreducible(p),N)
+     	  else let P = hermitian_form_irreducible(p)
+	       then () = if is_pure(P) then big_unitary_hash.match(p) fi
+	       in to_ht(P,N)
      	  fi
      fi
+
 {assume p is hermitian}
 { compute Hermitian form to ht on p, report if it is unitary}
 set hermitian_form_irreducible_to_ht_big(Param p,int N) = KTypePol:
@@ -2170,7 +2181,9 @@ set is_unitary_to_ht_big_SIMPLE(Param p,int N) = bool:
      	  if low(p,N) {low(p.x,p.lambda,N)}
      	  then {is_pure(hermitian_form_irreducible_to_ht(p,N))}
 	       is_unitary_to_ht(p,N)
-     	  else is_pure(to_ht(hermitian_form_irreducible(p),N))
+     	  else let P = hermitian_form_irreducible(p)
+	       then () = if is_pure(P) then big_unitary_hash.match(p) fi
+	       in is_pure(to_ht(P,N))
      	  fi
      fi
 

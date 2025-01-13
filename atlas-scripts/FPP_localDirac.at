@@ -485,6 +485,10 @@ set local_testK_hash(KGBElt x, ratvec lambda, LocalVertexData Lvd,
 	      	     then verts = vec: FVKH[d][j][:d+1]
 	      	     then ps = monomials(finalize(parameter(x, lambda
 		    	  , face_bary(Lvd, verts))))
+		     then pTarget = parameter(Sp(6,R),8,[2,1,1],[1,-1,0]/2)
+		     then () = if ps[0] = pTarget
+		     	       then prints("#FVKH = ",for list in FVKH do #list od)
+			       fi
 		     {then () = prints(new_line,"k = ",k,", ICPNU_flag = ",ICPNU_flag,", ICPU_flag = ",ICPU_flag)
 		     then () = prints("before ICPNU, newStatuses = ",newStatuses)}
 		     then () = if ICPNU_flag {test for non-unitary}
@@ -1053,7 +1057,9 @@ set local_test_hash(KGBElt x, ratvec lambda, LocalVertexData Lvd,
 	      	   {then () = prints(knownUnitaries)}
     	      	   then () = for list@d in knownUnitaries
     	      	   	     do for j in list
-	      	 	     	do newStatuses[classListByFace[d][j]] := "T"
+	      	 	     	do let k = classListByFace[d][j]
+				   then ()=newStatuses:= downdateUclassesB(newStatuses, gr, k, "T")
+				   in newStatuses[k] := "T"
 	    	 		od
 	      		     od
 		   in ()

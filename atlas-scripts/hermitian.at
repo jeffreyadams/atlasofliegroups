@@ -326,6 +326,47 @@ set is_pure_cert_hash(KTypePol P, KTypePol_hash cert_hash) = bool:
     else true
     fi
 
+set tested_hash = make_Param_hash()
+set tested_list = [Param]: []
+
+set tested_to_ht_hashes = for h:100 do make_Param_hash() od
+set tested_to_ht_lists = for h:100 do [Param]:[] od
+
+{set cSp = int:0}
+set was_tested(Param p) = void:
+    {let () = if p = parameter(Sp(6,R),8,[2,1,1],[1,-1,0]/2)
+    	     then cSp+:=1; 1/(cSp-4)
+	     else 1/1
+	     fi}
+    tested_hash.match(p); tested_list#:=p
+
+set was_tested_to_ht(Param p,int N) = void:
+    let j = N - height(p)
+    in tested_to_ht_hashes[j].match(p); tested_to_ht_lists[j]#:=p
+
+set report_tested() = void:
+    let mults = [int]: null(tested_hash.size())
+    then () = for p in tested_list do mults[tested_hash.lookup(p)] +:= 1 od
+    then max_mult = max(mults)
+    then j_mult = first(for m in mults do m=max_mult od)
+    then simply_bad_js = for p@j in tested_hash.list()
+    	 	       	 do if mults[j] > 1 and is_simple(p.real_form)
+			    then [j]
+			    else []
+			    fi
+			 od.##
+    in prints(sum(for j:100 do #tested_to_ht_lists[j] od)," tests to_ht, ",#tested_list," is_unitary tests;");
+    prints(sum(for j:100 do tested_to_ht_hashes[j].size() od)," different tests to_ht, ",
+    		   tested_hash.size()," different is_unitary.");
+    prints("largest mult is_unitary test = ",max_mult," for p = ", tested_hash.list()[j_mult]);
+    if #simply_bad_js > 0
+    then let max_mult_simple = max(for j in simply_bad_js do mults[j] od)
+    	 then j_mult_simple = simply_bad_js[first(for j in simply_bad_js do mults[j] = max_mult_simple od)]
+    	 in prints("largest mult in simple G is_unitary = ",max_mult_simple," for p = ",
+	    	   tested_hash.list()[j_mult_simple])
+    fi
+
+
 {.write c-invariant form on standard module as a KTypePol }
 { never involves |twisted_full_deform| }
 set c_form_std(Param p) = KTypePol:
@@ -417,6 +458,7 @@ set hermitian_form_irreducible (Param p) = KTypePol:
  		else check_hermitian(p,true); twisted_c_form_irreducible(p)
   		fi.convert_cform_hermitian
   then () = unitaryTime+:=elapsed_ms() - start_time
+  then () = was_tested(p)
   in answer
 
 { compute Hermitian form on p, and report if it is unitary }
@@ -475,6 +517,7 @@ set hermitian_form_irreducible (Param p, int time) = maybe_KTP:
    		 | done(r): r.convert_cform_hermitian.done
    		 esac
   then () = unitaryTime+:=elapsed_ms() - start_time
+  then () = was_tested(p)
   in answer
 
 set is_unitary (Param p, int time) = int: { -1: no, 0:timed out, 1: yes }
@@ -867,7 +910,7 @@ set make_unitarity_bool_hash () = unitarity_bool_hash:
 	let M = param_hash.size()
 	then m = param_hash.match(p)
 	then () = if m = M
-	     	  then unitary_test_counter.use();
+	     	  then {unitary_test_counter.use();}
 		       bool_data:= (bool_data next bool_data:= [])
 		       	     	   # is_unitary(p);
 		       assert(#bool_data = param_hash.size(),
@@ -888,7 +931,7 @@ set make_unitarity_bool_hash () = unitarity_bool_hash:
 	let M = param_hash.size()
 	then m = param_hash.match(p)
 	in if m = M
-	   then unitary_test_counter.use();
+	   then {unitary_test_counter.use();}
 		bool_data:= (bool_data next bool_data:= [])
 		       	     	   # is_unitary(p)
            fi
