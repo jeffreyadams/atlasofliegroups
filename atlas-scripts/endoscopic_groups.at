@@ -208,13 +208,13 @@ WeylElt w_G_vee)=(RealForm,mat,RealForm):   {an additional twist; the identity g
 assert(delta_vee*matrix(w_G_vee)=matrix(w_G_vee)*delta_vee,"w_G_vee doesn't commute with delta_vee");
 {assert(is_fixed(w_G_vee,xi_vee,s), "w_G_vee*xi_vee doesn't fix s");}
 let (H,M,H_vee)=complex_endoscopic_group(G,delta_vee,s) then
-()=prints("complex H: ", H) then
-()=prints("complex H_vee: ", H_vee) then
+{()=prints("complex H: ", H) then
+()=prints("complex H_vee: ", H_vee) then}
 restrict=restrict_co_action(M,w_G_vee.matrix) then
 (w_H,)=to_dominant(H,restrict*H.rho) then
-()=prints("w_H: ", w_H, new_line, w_H.matrix) then
+{()=prints("w_H: ", w_H, new_line, w_H.matrix) then
 ()=prints( "restrict: ", restrict) then
-()=prints("wh:", w_H.matrix) then
+()=prints("wh:", w_H.matrix) then}
 dual_inner_class=inner_class(H_vee,w_H.matrix) then
 inner_class_H_vee=inner_class(H_vee,w_H.matrix*restrict) then
 inner_class_H=dual(inner_class_H_vee) in

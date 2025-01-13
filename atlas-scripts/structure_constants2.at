@@ -155,11 +155,10 @@ if length(sigma_H.w)=0 then
  left(sigma_H.torus_part,tits_identity(G))
 else
  let product=simple_expression(sigma_H) then   {sigma_H=product of tits simple reflections}
- ()=prints("product=", product) then
+{ ()=prints("product=", product) then}
  {rv=left(sigma_H.torus_part,tits_identity(G)) in}
  rv=tits_identity(G) in
- let ()=prints("rv starting: ", rv) in 
- for sigma@j in product do prints("j=",j,new_line,"rv=",rv,"  sigma=",sigma);rv*:=map_tits_element_simple(H,G,epsilon,sigma) od;prints("got rv: ", rv);rv
+ for sigma@j in product do {prints("j=",j,new_line,"rv=",rv,"  sigma=",sigma);}rv*:=map_tits_element_simple(H,G,epsilon,sigma) od;{prints("got rv: ", rv);} rv
 fi
 
 set embed_tits_group(RootDatum H,RootDatum G,orientation epsilon)=[Tits_elt]:
@@ -225,4 +224,60 @@ for x in KGB(Hd) do embed_KGB_tits(Gd,epsilon,x) od
 
 set embed_KGB_tits(RealForm Hd,RealForm Gd)=[KGBElt]:
 for x in KGB(Hd) do embed_KGB_tits(Gd,x) od
+
+
+
+
+
+{---------------testing-----------------}
+
+
+{set lifted=embed_KGB_tits(Hd,Gd)
+ test_embed_KGB_tits(Hd,lifted) tests Cayleys and crosses}
+set test_embed_KGB_tits_crosses(RealForm Hd,[KGBElt] lifted,mat M)=
+let KGB_Hd=KGB(Hd) in
+##for x_Hd@i in KGB_Hd do
+{ let ()=prints("i=",i) in }
+ let x_Gd=lifted[i] in
+ ##for alpha in Hd.simple_roots do
+  let y_Hd=cross(alpha,x_Hd) then
+  index_y_Hd=find(KGB_Hd,y_Hd) then
+  y_Gd=lift_KGB_cross(Hd,alpha,M,x_Gd) in
+  [("x",i,alpha,lifted[index_y_Hd]=y_Gd)]
+ od
+od
+
+set test_embed_KGB_tits_Cayleys(RealForm Hd,[KGBElt] lifted, mat M)=
+let KGB_Hd=KGB(Hd) in
+##for x_Hd@i in KGB_Hd do
+{ let ()=prints("i=",i) in}
+{ let ()=prints("x_Hd=", x_Hd) in}
+ let x_Gd=lifted[i] in
+ ##for alpha in Hd.simple_roots do
+{  let ()=prints("alpha=",alpha) in }
+  if is_noncompact_imaginary(x_Hd)(alpha) then
+   let y_Hd=Cayley(alpha,x_Hd) then
+{   ()=prints("y_Hd=", y_Hd) then}
+   y_Gd=lift_KGB_Cayley(Hd,alpha,M,x_Gd) then
+  index_y_Hd=find(KGB_Hd,y_Hd) then
+{  ()=prints("index_y_Hd=", index_y_Hd) then}
+  y_Gd=lift_KGB_Cayley(Hd,alpha,M,x_Gd) in
+{  let   ()=prints("y_Gd=", y_Gd) in
+  let ()=prints("lifted[index_y_Hd]: ", lifted[index_y_Hd]) in}
+  [("^",i,alpha,lifted[index_y_Hd]=y_Gd)]
+  else []
+ fi
+ od
+od
+
+set test_embed_KGB_tits(RealForm Hd,[KGBElt] lifted, mat M)=
+let result=test_embed_KGB_tits_crosses(Hd,lifted,M)##
+test_embed_KGB_tits_Cayleys(Hd,lifted,M) then
+failures=##for (,,,test)@i in result do
+ if test=false then [i] else [] fi od in
+ if #failures=0 then prints("Result: True") else
+ prints("Result: False");prints(failures) fi;result
+
+set test_embed_KGB_tits(RealForm Hd,RealForm Gd, mat M)=
+test_embed_KGB_tits(Hd,embed_KGB_tits(Hd,Gd),M)
 
