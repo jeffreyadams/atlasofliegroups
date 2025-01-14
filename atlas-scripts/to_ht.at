@@ -275,7 +275,7 @@ set hermitian_form_irreducible_to_ht_MvL (Param p,int N) = KTypePol:
   else  check_hermitian(p,true); twisted_c_form_irreducible_to_ht_MvL(p,N)
   fi.convert_cform_hermitian
   then () = unitaryTime+:=elapsed_ms() - start_time
-  then () = was_tested_to_ht(p,N)
+  then () = was_tested_to_ht(p,N, elapsed_ms() - start_time)
   in answer
 
 
@@ -292,7 +292,7 @@ set hermitian_form_irreducible_to_ht_MvL (Param p,int N,int time) = maybe_KTP:
   | done(r): r.convert_cform_hermitian.done
   esac
   then () = unitaryTime+:=elapsed_ms() - start_time
-  then () = was_tested_to_ht(p,N)
+  then () = was_tested_to_ht(p,N,elapsed_ms() - start_time )
   in answer
 
 set hermitian_form_irreducible_to_ht (Param p,int N) = KTypePol:
@@ -304,7 +304,7 @@ set hermitian_form_irreducible_to_ht (Param p,int N) = KTypePol:
   else  check_hermitian(p,true); twisted_c_form_irreducible_to_ht(p,N)
   fi.convert_cform_hermitian
   then () = unitaryTime+:=elapsed_ms() - start_time
-  then () = was_tested_to_ht(p,N)
+  then () = was_tested_to_ht(p,N,elapsed_ms() - start_time)
   in answer
 
 {for predicting whether to_ht or is_unitary is faster}
