@@ -1,0 +1,28 @@
+
+
+
+
+set G=GL(5,R)
+set delta=distinguished_involution(G)
+set xi0=id_mat(4)
+set xi1=mat:[[0,0,0,-1],[0,0,-1,0],[0,-1,0,0],[-1,0,0,0]]
+
+
+
+set KGB=KGB(U(2,2))
+set B=block_of(trivial(U(2,2)))
+set B2=block_of(Sp(4,R).trivial)
+
+set N=nilpotent_orbits(dual(Sp(4,R)))
+
+set Q=theta_stable_parabolics(SO(2,3))
+set P=for P in Q do complex_parabolic (SO(2,3),Levi(P)) od
+
+set G1=GL(4,R)
+set delta1=distinguished_involution(G1)
+
+set wp=weak_packet(N[2],Sp(4,R))
+
+
+
+

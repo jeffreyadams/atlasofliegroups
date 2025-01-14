@@ -1,0 +1,82 @@
+{ordinary endoscopic lifting}
+<endoscopic_groups.at
+<kappa.at
+<jeff.at
+
+set endoscopic_lift_param_lambda(Param p_H,mat M,RealForm G)=ratvec:
+let x=KGB_elt(lift(p_H.x,M,G)) in
+rho(G)+(M*(p_H.lambda-rho(p_H.real_form)))+solve(1+x.involution,(1+x.involution)*(M*(rho(p_H.real_form))-rho(G))).requisition {vec}
+
+set endoscopic_lift_param_nu(Param p_H,mat M,RealForm G)=ratvec:
+M*p_H.nu
+
+set endoscopic_lift_param_raw(Param p_H,mat M,RealForm G)=Param:
+let x=KGB_elt(lift(p_H.x,M,G)) then
+lambda_G=rho(G)+(M*(p_H.lambda-rho(p_H.real_form)))+solve(1+x.involution,(1+x.involution)*(M*(rho(p_H.real_form))-rho(G))).requisition {vec}  then
+nu_G=M*p_H.nu in
+parameter(x,lambda_G,nu_G)
+
+set endoscopic_lift_param(Param p_H,mat M,RealForm G)=Param:
+let x=KGB_elt(lift(p_H.x,M,G)) then
+lambda_G=rho(G)+(M*(p_H.lambda-rho(p_H.real_form)))+solve(1+x.involution,(1+x.involution)*(M*(rho(p_H.real_form))-rho(G))).requisition {vec}  then
+nu_G=M*p_H.nu in
+first_param(finalize(parameter(x,lambda_G,nu_G)))
+
+set find([(Param,Param)] lifts, Param pH)=int:first(for (p,) in lifts do p=pH od)
+
+set find_lift([(Param,Param)] lifts, Param p_H)=Param:
+let index=find(lifts,p_H) in
+assert(index>-1, "parameter p_H  not found in lifts");
+let (,p_G)=lifts[index]  in p_G
+
+set endoscopic_lift_std(Param p_H,mat M,RealForm G, [(Param,Param)] lifts,ratvec v)=ParamPol:
+param_pol(kappa_packet(find_lift(lifts,p_H),v))
+
+set endoscopic_lift_std_raw(ParamPol P_H,mat M,RealForm G, [(Param,Param)] lifts, ratvec v)=
+assert(is_stable_irr(P_H), "P_H is not stable");
+let rv=[ParamPol]:[] in
+for (c,p) in %P_H do
+ if p=L_packet_representative(p) then
+  rv#:=c*endoscopic_lift_std(p,M,G,lifts,v) fi
+ od;
+rv
+
+set try_all([ParamPol] raw_lifts)=[([int],ParamPol)]:
+let signs=box(2,#raw_lifts-1) then
+lists=
+ for v@i in signs do
+  let w=1#v in
+  for j:#w do (-1)^w[j]*raw_lifts[j] od od
+in
+for terms@i in lists do (1#signs[i],sum(raw_lifts[0].real_form,terms)) od
+
+set endoscopic_lift_irr_tries(ParamPol P_H_of_irreducibles, mat M, RealForm G, [(Param,Param)] lifts, ratvec v)=
+let lift_terms=try_all(endoscopic_lift_std_raw(character_formula(P_H_of_irreducibles), M,G,lifts,v)) in
+for (w,P_G) in lift_terms
+do (w,composition_series(P_G)) od
+
+set endoscopic_lift_irr_tries_smallest(ParamPol P_H_of_irreducibles, mat M, RealForm G, [(Param,Param)] lifts, ratvec v)=
+let all=endoscopic_lift_irr_tries(P_H_of_irreducibles,M,G,lifts,v) then
+min=min(for (,P) in all do #P od) in
+for (w,P) in all do if #P=min then [(w,P)] else [] fi od.##
+
+set pick_basepoint(Param p_H)=block_of(p_H)~[0]
+set pick_basepoint_lift(Param p_H,mat M,RealForm G)=
+ let p_H_basepoint=pick_basepoint(p_H) in 
+ (p_H_basepoint,endoscopic_lift_param(p_H_basepoint,M,G))
+
+{need root_map here to define lifts}
+set endoscopic_lift_irr_tries_smallest(ParamPol P_H_of_irreducibles, mat M, RealForm G, [[int]] rm,ratvec v)=
+let (p_H,p_G)=pick_basepoint_lift(last_param(P_H_of_irreducibles),M,G) then
+lifts=embed_parameters(p_H,p_G,rm) in
+endoscopic_lift_irr_tries_smallest(P_H_of_irreducibles, M, G,lifts,v)
+
+set endoscopic_lift_DS(Param p_H,mat M, RealForm G, [[int]] rm,ratvec v)=
+endoscopic_lift_irr_tries_smallest(L_packet_stable_sum(p_H),M,G,rm,v)
+
+set endoscopic_lift(ParamPol P_H_of_irreducibles, mat M, RealForm G, [[int]] rm,ratvec v)=
+endoscopic_lift_irr_tries_smallest(P_H_of_irreducibles,M,G,rm,v)
+
+set endoscopic_lift_unipotents(RealForm H, mat M, RealForm G, [[int]] rm, ratvec v)=
+let stable_sums=unipotent_stable_sums(H) in
+for P in stable_sums do endoscopic_lift(P,M,G,rm,v) od

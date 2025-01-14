@@ -1,0 +1,9 @@
+<weak_packets.at
+
+set stable_sums(([([Param],[WCell])],[(int,int,Param)]) weak_packet)=[ParamPol]:
+stable_sums(parameters(weak_packet))
+
+set stable_sums([([([Param],[WCell])],[(int,int,Param)])] weak_packets)=
+for wp in weak_packets do stable_sums(wp) od.##
+
+set unipotent_stable_sums(RealForm G)=stable_sums(weak_packets(G))

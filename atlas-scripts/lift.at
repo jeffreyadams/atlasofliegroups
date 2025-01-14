@@ -1,0 +1,425 @@
+<embed.at 
+<kappa.at 
+
+
+
+
+
+set representant0(ratvec s,Param p)=ratvec:
+let L=L_packet(p) then
+n=first(for k:#L do is_integer((-L[k].x.torus_factor)/2-(s-floor(s)) + L[k].involution*((-L[k].x.torus_factor)/2-(s-floor(s)))) od) in {then}
+{m=first(for k:#L do is_integer((-L[k].x.torus_factor)/2-s) od) in}
+{if n=-1 then -L[m].x.torus_factor/2 else} 
+-L[n].x.torus_factor/2 {fi}
+
+
+set representant1(ratvec s,Param p)=ratvec:
+let L=L_packet(p) then
+n=first(for k:#L do (-L[k].x.torus_factor)/2-(s-floor(s)) + L[k].involution*((-L[k].x.torus_factor)/2-(s-floor(s)))=0*rho(p.real_form) od) in {then}
+{m=first(for k:#L do is_integer((-L[k].x.torus_factor)/2-s) od) in}
+{if n=-1 then -L[m].x.torus_factor/2 else} 
+{if n=-1 then representant0(s,p) else }
+-L[n].x.torus_factor/2 {fi}
+
+set representant2(ratvec s,Param p)=ratvec:
+let L=L_packet(p) then
+n=first(for k:#L do (-L[k].x.torus_factor)/2-(s-floor(s)) + L[k].involution*((-L[k].x.torus_factor)/2-(s-floor(s)))=0*rho(p.real_form) od) in {then}
+{m=first(for k:#L do is_integer((-L[k].x.torus_factor)/2-s) od) in}
+{if n=-1 then -L[m].x.torus_factor/2 else} 
+if n=-1 then representant0(s,p) else -L[n].x.torus_factor/2 fi
+
+
+set representant(ratvec s,Param p)=ratvec:
+let s1=s-floor(s) in
+(s1-dual(p).involution*s1)/2	
+
+
+set dominant_regular(ratvec r,RealForm G)=ratvec:
+let m=min(for a in posroots(G) do a*r od) in
+if m<0 then r+2*(-2*m)*rho(G) else if m=0 then r+2*rho(G) else r fi fi
+
+set regular(ratvec r,RealForm H, RealForm G)=ratvec:
+let k=first(for i:#KGB(G) do KGB(G)[i].w.matrix*r=dominant(G,r) and is_dominant(H,r+KGB(G)[i].w.matrix.inverse*(2*rho(G))) od) in
+{if first(for i:#KGB(G) do KGB(G)[i].w.matrix*r=dominant(G,r) od)>=0 then }
+r+KGB(G)[k].w.matrix.inverse*(2*rho(G))
+{else r+G.W[first(for i:#G.W do G.W[i].matrix*r=dominant(G,r) od)].matrix.inverse*(2*rho(G)) fi}
+
+set regular2(ratvec r,RealForm G)=ratvec:
+r+G.W[first(for i:#G.W do G.W[i].matrix*r=dominant(G,r) od)].matrix.inverse*(2*rho(G))
+
+set dominant_in_G(ratvec r,RealForm G)=ratvec:
+G.W[first(for i:#G.W do G.W[i].matrix*r=dominant(G,r) od)].matrix.inverse*r
+
+set coor1(int a, int b)=int:
+a
+
+set coor2(int a, int b)=int:
+b
+
+
+
+
+set lift_base_point(Param p, RealForm G)=Param: {only works for split groups}
+let x=KGB_elt(KGBElt_gen:(G,p.involution,0*rho(G))) in
+parameter(x,p.lambda+rho(G)-rho(p.real_form),p.nu)
+
+
+{set lift_base_point_rho(Param p, RealForm G)=Param: {only works for split groups}
+let x=KGB_elt(KGBElt_gen:(G,p.involution,0*rho(G))) in
+parameter(x,p.lambda,p.nu)}
+
+
+
+
+set lift_param(Param p, RealForm G, RealForm dG,[(int , int)] I)=Param:
+let y_H=dual(p).x then
+ny=number(y_H) then
+A=for i in I do coor1(i) od then 
+B=for i in I do coor2(i) od then
+N=for i:#A do if ny=A[i] then [B[i]] else [] fi od  then
+n=## for i in N do i od then
+y= KGB(dG)[n[0]] then
+x= KGB_elt(KGBElt_gen:(G,-y.involution,0*rho(G))) in
+parameter(x,y,p.infinitesimal_character)
+
+set lift_param(Param p, RealForm G, RealForm dG,[(int , int)] I,ratvec s, ratvec gamma)=Param:
+let y_H=dual(p).x then
+ny=number(y_H) then
+A=for i in I do coor1(i) od then 
+B=for i in I do coor2(i) od then
+N=for i:#A do if ny=A[i] then [B[i]] else [] fi od  then
+n=## for i in N do i od then
+y= KGB(dG)[n[0]] then
+x= KGB_elt(KGBElt_gen:(G,-y.involution,0*rho(G))) in
+parameter(x,y,p.infinitesimal_character)
+
+set lift_std(Param p, RealForm G, RealForm dG, [(int , int)] I,ratvec s, ratvec gamma, ratvec eta)=ParamPol:
+let y_H=dual(p).x then
+ny=number(y_H) then
+A=for i in I do coor1(i) od then 
+B=for i in I do coor2(i) od then
+N=for i:#A do if ny=A[i] then [B[i]] else [] fi od  then
+n=## for i in N do i od then
+y= KGB(dG)[n[0]] then
+x= KGB_elt(KGBElt_gen:(G,-y.involution,0*rho(G))) then
+{L=L_packet(Finalize(parameter(x,y,gamma))) then}
+L= for a in fiber(x) do parameter(a,y,gamma) od then
+s1=representant(s,L[0]) then
+rv=null_module(G) in
+for l in L do rv+:=(-1)^((torus_factor(l.x)*(2*s1))\1)*finalize(T_param(l,eta))  od;
+{L=L_packet(parameter(x,y,gamma)) then
+s1=representant(s,L[0]) then}
+{L2=for p in L do ((-1)^((torus_factor(p.x)*(2*s))\1)*p ) od then} 
+{for p in L do rv+:=((-1)^((torus_factor(p.x)*(2*s1))\1)*p ) od;} {since we are taking s to be a vector of half-integers (torus_factor(p.x)*(2*s)) is an integer}
+rv
+
+set lift_rep(Param p, RealForm G, RealForm dG, [(int , int)] I,ratvec s, ratvec gamma, ratvec eta)=(int,Param):
+let y_H=dual(p).x then
+ny=number(y_H) then
+A=for i in I do coor1(i) od then 
+B=for i in I do coor2(i) od then
+N=for i:#A do if ny=A[i] then [B[i]] else [] fi od  then
+n=## for i in N do i od then
+y= KGB(dG)[n[0]] then
+{x= KGB_elt(KGBElt_gen:(G,-y.involution,p.x.torus_factor)) then}
+x= KGB_elt(KGBElt_gen:(G,-y.involution,0*rho(G))) then
+{L=L_packet(Finalize(parameter(x,y,gamma))) then}
+L= for a in fiber(x) do parameter(a,y,gamma) od then
+q=L[first(for l in L do l.x.torus_factor=p.x.torus_factor od)] then
+{q=parameter(x,y,gamma) then}
+s1=representant(s,q) in
+((-1)^((torus_factor(q.x)*(2*s1))\1),T_param(q,eta))
+{((-1)^((torus_factor(q.x)*(2*s1))\1),q) }
+
+
+ 
+set lift_std_params(Param p, RealForm G, RealForm dG, [(int , int)] I,ratvec s, ratvec gamma, ratvec eta)=[(int, ParamPol)]:
+let y_H=dual(p).x then
+ny=number(y_H) then
+A=for i in I do coor1(i) od then 
+B=for i in I do coor2(i) od then
+N=for i:#A do if ny=A[i] then [B[i]] else [] fi od  then
+n=## for i in N do i od then
+y= KGB(dG)[n[0]] then
+x= KGB_elt(KGBElt_gen:(G,-y.involution,0*rho(G))) then
+L= for a in fiber(x) do parameter(a,y,gamma) od then
+s1=representant(s,L[0]) in
+for l in L do ((-1)^((torus_factor(l.x)*(2*s1))\1), finalize(T_param(l,eta))) od {since we are taking s to be a vector of half-integers (torus_factor(p.x)*(2*s)) is an integer}
+
+
+
+
+
+
+
+set lift_std_kappa(Param p, RealForm G, RealForm dG, [(int , int)] I,ratvec s, ratvec gamma)=ParamPol:
+let y_H=dual(p).x then
+ny=number(y_H) then
+A=for i in I do coor1(i) od then 
+B=for i in I do coor2(i) od then
+N=for i:#A do if ny=A[i] then [B[i]] else [] fi od  then
+n=## for i in N do i od then
+y= KGB(dG)[n[0]] then
+x= KGB_elt(KGBElt_gen:(G,-y.involution,0*rho(G))) in
+kappa_packet(parameter(x,y,gamma),s)
+
+
+
+
+set lift_std_T(Param p, RealForm G, RealForm dG, [(int , int)] I,ratvec s, ratvec gamma)=ParamPol:
+{let eta=make_regular(G,dominant(G,gamma)) then}  {in the case of H=SO(2,3)*SO(2,3), G=SO(4,5) this translation gave me an error in the non-integral case}
+{let eta=p.infinitesimal_character+4*rho(G) then} {this translation works in the case of H=SO(2,3)*SO(2,3), G=SO(4,5) but it needs to be improved so that it works in general}
+let eta=dominant_regular(p.infinitesimal_character,G) then
+all=all_parameters_x_gamma(p.x,eta) then {this needs to be improved}
+k=first(for i:#all do T_std(all[i],gamma)=p od) then
+q=all[k] in
+{q=parameter(p.x,p.lambda + 2*eta, p.nu + 2*eta) in}
+{T_std(lift_std(q, G, dG, I,s, eta),gamma)}
+lift_std(q, G, dG, I,s, eta,gamma)
+
+set lift_std_T_kappa(Param p, RealForm G, RealForm dG, [(int , int)] I,ratvec s, ratvec gamma)=ParamPol:
+let eta=make_regular(G,dominant(G,gamma)) then
+all=all_parameters_x_gamma(p.x,eta) then {this needs to be improved}
+k=first(for i:#all do T_std(all[i],gamma)=p od) then
+q=all[k] in
+{q=parameter(p.x,p.lambda + 2*eta, p.nu + 2*eta) in}
+T_std(lift_std_kappa(q, G, dG, I,s, eta),gamma)
+
+
+set lift_std_T_test(Param p, RealForm G,ratvec s)=ParamPol:
+{let eta=make_regular(G,dominant(G,p.infinitesimal_character)) then}  {in the case of H=SO(2,3)*SO(2,3), G=SO(4,5) this translation gave me an error in the non-integral case}
+{let eta=make_regular(G,p.infinitesimal_character) then}
+{let eta=p.infinitesimal_character+4*rho(G) then}  {this translation works in the case of H=SO(2,3)*SO(2,3), G=SO(4,5) but it needs to be improved so that it works in general}
+{let eta=dominant_regular(p.infinitesimal_character,G) then}
+let eta=regular(p.infinitesimal_character,p.real_form,G) then
+all=all_parameters_x_gamma(p.x,eta) then {this needs to be improved}
+k=first(for i:#all do T_std(all[i],p.infinitesimal_character)=p od) then
+q=all[k] then
+{q=parameter(p.x,p.lambda + 2*eta, p.nu + 2*eta) then}
+dH=dual(q).real_form then
+B=block_of(q) then
+t_H=B~[0] then
+y_tH=dual(t_H).x then
+t_G=lift_base_point(t_H, G) then
+dG=dual(t_G).real_form then
+y_tG=dual(t_G).x then
+rm=root_map(dH,dG) then
+Ekgb=embed_KGB(y_tH,y_tG,rm) in
+{T_std(lift_std(q, G, dG, Ekgb,s, eta),dominant_in_G(p.infinitesimal_character,G))}
+lift_std(q, G, dG, Ekgb,s, eta,p.infinitesimal_character)
+
+set lift_std_T_test_param(Param p, RealForm G,ratvec s)=[(int, ParamPol)]:
+{let eta=make_regular(G,dominant(G,p.infinitesimal_character)) then}  {in the case of H=SO(2,3)*SO(2,3), G=SO(4,5) this translation gave me an error in the non-integral case}
+{let eta=make_regular(G,p.infinitesimal_character) then}
+{let eta=p.infinitesimal_character+4*rho(G) then}  {this translation works in the case of H=SO(2,3)*SO(2,3), G=SO(4,5) but it needs to be improved so that it works in general}
+{let eta=dominant_regular(p.infinitesimal_character,G) then}
+let eta=regular(p.infinitesimal_character,p.real_form,G) then
+all=all_parameters_x_gamma(p.x,eta) then {this needs to be improved}
+k=first(for i:#all do T_std(all[i],p.infinitesimal_character)=p od) then
+q=all[k] then
+{q=parameter(p.x,p.lambda + 2*eta, p.nu + 2*eta) then}
+dH=dual(q).real_form then
+B=block_of(q) then
+t_H=B~[0] then
+y_tH=dual(t_H).x then
+t_G=lift_base_point(t_H, G) then
+dG=dual(t_G).real_form then
+y_tG=dual(t_G).x then
+rm=root_map(dH,dG) then
+Ekgb=embed_KGB(y_tH,y_tG,rm) in
+{T_std(lift_std(q, G, dG, Ekgb,s, eta),p.infinitesimal_character)}
+lift_std_params(q, G, dG, Ekgb,s, eta, p.infinitesimal_character)
+
+
+
+set lift_rep_T_test(Param p, RealForm G,ratvec s)=(int, Param):
+{let eta=make_regular(G,dominant(G,p.infinitesimal_character)) then}  {in the case of H=SO(2,3)*SO(2,3), G=SO(4,5) this translation gave me an error in the non-integral case}
+{let eta=make_regular(G,p.infinitesimal_character) then}
+{let eta=p.infinitesimal_character+4*rho(G) then}  {this translation works in the case of H=SO(2,3)*SO(2,3), G=SO(4,5) but it needs to be improved so that it works in general}
+{let eta=dominant_regular(p.infinitesimal_character,G) then}
+let eta=regular(p.infinitesimal_character,p.real_form,G) then
+all=all_parameters_x_gamma(p.x,eta) then {this needs to be improved}
+k=first(for i:#all do T_std(all[i],p.infinitesimal_character)=p od) then
+q=all[k] then
+{q=parameter(p.x,p.lambda + 2*eta, p.nu + 2*eta) then}
+dH=dual(q).real_form then
+B=block_of(q) then
+t_H=B~[0] then
+y_tH=dual(t_H).x then
+t_G=lift_base_point(t_H, G) then
+dG=dual(t_G).real_form then
+y_tG=dual(t_G).x then
+rm=root_map(dH,dG) then
+Ekgb=embed_KGB(y_tH,y_tG,rm) in
+lift_rep(q, G, dG, Ekgb,s, eta, p.infinitesimal_character)
+
+
+
+
+
+set lift_std_T_test_kappa(Param p, RealForm G,ratvec s)=ParamPol:
+let eta=make_regular(G,dominant(G,p.infinitesimal_character)) then
+all=all_parameters_x_gamma(p.x,eta) then {this needs to be improved}
+k=first(for i:#all do T_std(all[i],p.infinitesimal_character)=p od) then
+q=all[k] then
+{q=parameter(p.x,p.lambda + 2*eta, p.nu + 2*eta) then}
+dH=dual(q).real_form then
+B=block_of(q) then
+t_H=B~[0] then
+y_tH=dual(t_H).x then
+t_G=lift_base_point(t_H, G) then
+dG=dual(t_G).real_form then
+y_tG=dual(t_G).x then
+rm=root_map(dH,dG) then
+Ekgb=embed_KGB(y_tH,y_tG,rm) in
+T_std(lift_std_T_kappa(q, G, dG, Ekgb,s, eta),p.infinitesimal_character)
+
+
+set lift_std_TT(Param p, RealForm G, RealForm dG, [(int , int)] I,ratvec s, ratvec gamma)=ParamPol:
+{let eta=make_regular(G,dominant(G,gamma)) then}
+let eta=regular(p.infinitesimal_character,p.real_form,G) then
+all=all_parameters_x_gamma(p.x,eta) then
+k=first(for i:#all do T_std(all[i],gamma)=p od) then
+q=all[k] in
+{q=parameter(p.x,p.lambda + 2*eta, p.nu + 2*eta) in}
+lift_std(q, G, dG, I,s, eta,p.infinitesimal_character)
+
+set lift_std_TT_test(Param p, RealForm G,ratvec s)=ParamPol:
+let eta=make_regular(G,dominant(G,p.infinitesimal_character)) then
+all=all_parameters_x_gamma(p.x,eta) then {this needs to be improved}
+k=first(for i:#all do T_std(all[i],p.infinitesimal_character)=p od) then
+q=all[k] then
+{q=parameter(p.x,p.lambda + 2*eta, p.nu + 2*eta) then}
+dH=dual(q).real_form then
+B=block_of(q) then
+t_H=B~[0] then
+y_tH=dual(t_H).x then
+t_G=lift_base_point(t_H, G) then
+dG=dual(t_G).real_form then
+y_tG=dual(t_G).x then
+rm=root_map(dH,dG) then
+Ekgb=embed_KGB(y_tH,y_tG,rm) in
+lift_std(q, G, dG, Ekgb,s, eta, p.infinitesimal_character)
+
+
+
+
+set lift_std(ParamPol P, RealForm G, RealForm dG, [(int , int)] I,ratvec s, ratvec gamma, ratvec eta)=ParamPol:
+let rv = null_module(G) then 
+X = ## for (c,p) in %P do if torus_factor(p.x)=0*rho(real_form(P)) then [(c,p)] else [] fi od in
+for (c,p) in X do rv+:=c*lift_std(p, G, dG, I, s,  gamma, eta) od;
+rv
+
+set lift_std_T(ParamPol P, RealForm G, RealForm dG, [(int , int)] I,ratvec s, ratvec gamma)=ParamPol:
+let rv = null_module(G) then 
+X = ## for (c,p) in %P do if torus_factor(p.x)=0*rho(P.real_form) then [(c,p)] else [] fi od in
+for (c,p) in X do rv+:=c*lift_std_T(p, G, dG, I, s,  gamma) od;
+rv
+
+set lift_std_T_kappa(ParamPol P, RealForm G, RealForm dG, [(int , int)] I,ratvec s, ratvec gamma)=ParamPol:
+let rv = null_module(G) then 
+X = ## for (c,p) in %P do if torus_factor(p.x)=0*rho(P.real_form) then [(c,p)] else [] fi od in
+for (c,p) in X do rv+:=c*lift_std_T_kappa(p, G, dG, I, s,  gamma) od;
+rv
+
+set lift_std_T_test(ParamPol P, RealForm G,ratvec s)=ParamPol:
+let rv = null_module(G) then 
+X = ## for (c,p) in %P do if torus_factor(p.x)=0*rho(P.real_form) then [(c,p)] else [] fi od in
+for (c,p) in X do rv+:=c*lift_std_T_test(p, G, s) od;
+rv
+
+
+set lift_std_T_test_kappa(ParamPol P, RealForm G,ratvec s)=ParamPol:
+let rv = null_module(G) then 
+X = ## for (c,p) in %P do if torus_factor(p.x)=0*rho(P.real_form) then [(c,p)] else [] fi od in
+for (c,p) in X do rv+:=c*lift_std_T_test_kappa(p, G, s) od;
+rv
+
+
+
+set lift_irr(Param p, RealForm G, RealForm dG, [(int , int)] I,ratvec s, ratvec gamma)=ParamPol:
+let cf=character_formula(p) in
+composition_series(lift_std(cf, G, dG,  I, s, gamma,p.infinitesimal_character))
+
+set lift_irr_T(Param p, RealForm G, RealForm dG, [(int , int)] I,ratvec s, ratvec gamma)=ParamPol:
+let cf=character_formula(p) in
+composition_series(lift_std_T(cf,  G, dG,  I, s, gamma))
+
+
+set lift_irr_T_test(Param p, RealForm G,ratvec s)=ParamPol:
+{let eta=make_regular(G,dominant(G,p.infinitesimal_character)) then} {in the case of H=SO(2,3)*SO(2,3), G=SO(4,5) this translation gave me an error in the non-integral case}
+{let eta=p.infinitesimal_character+4*rho(G) then} {this translation works in the case of H=SO(2,3)*SO(2,3), G=SO(4,5) but it needs to be improved so that it works in general}
+let eta=regular(p.infinitesimal_character,p.real_form,G) then
+all=all_parameters_x_gamma(p.x,eta) then {this needs to be improved}
+k=first(for i:#all do T_std(all[i],p.infinitesimal_character)=p od) then
+q=all[k] then
+{q=parameter(p.x,p.lambda + 2*eta, p.nu + 2*eta) then}
+dH=dual(q).real_form then
+B=block_of(q) then
+t_H=B~[0] then
+y_tH=dual(t_H).x then
+t_G=lift_base_point(t_H, G) then
+dG=dual(t_G).real_form then
+y_tG=dual(t_G).x then
+rm=root_map(dH,dG) then
+Ekgb=embed_KGB(y_tH,y_tG,rm) then
+cf=character_formula(p) in
+composition_series(lift_std(cf,  G,dG, Ekgb, s,eta, p.infinitesimal_character))
+
+
+
+set lift_irr_T_test(ParamPol p, RealForm G,ratvec s)=ParamPol:
+{let eta=make_regular(G,dominant(G,p.infinitesimal_character)) then} {in the case of H=SO(2,3)*SO(2,3), G=SO(4,5) this translation gave me an error in the non-integral case}
+let m=monomials(p)[0] then
+eta=regular(p.infinitesimal_character,p.real_form,G) then
+{eta=m.infinitesimal_character+4*rho(G) then}   {this translation works in the case of H=SO(2,3)*SO(2,3), G=SO(4,5) but it needs to be improved so that it works in general}
+all=all_parameters_x_gamma(m.x,eta) then {this needs to be improved}
+k=first(for i:#all do T_std(all[i],p.infinitesimal_character)=m od) then
+q=all[k] then
+{q=parameter(p.x,p.lambda + 2*eta, p.nu + 2*eta) then}
+dH=dual(q).real_form then
+B=block_of(q) then
+t_H=B~[0] then
+y_tH=dual(t_H).x then
+t_G=lift_base_point(t_H, G) then
+dG=dual(t_G).real_form then
+y_tG=dual(t_G).x then
+rm=root_map(dH,dG) then
+Ekgb=embed_KGB(y_tH,y_tG,rm) then
+cf=character_formula(p) in
+composition_series(lift_std(cf,  G,dG, Ekgb, s,eta,p.infinitesimal_character))
+
+
+
+{set lift_irr_T_test_kappa(ParamPol p, RealForm G,ratvec s)=ParamPol:
+let cf=character_formula(p) in
+composition_series(lift_std_T_test_kappa(cf,  G, s))}
+
+set lift_irr_T_test_kappa(Param p, RealForm G,ratvec s)=ParamPol:
+{let eta=make_regular(G,dominant(G,p.infinitesimal_character)) then} {in the case of H=SO(2,3)*SO(2,3), G=SO(4,5) this translation gave me an error in the non-integral case}
+{let eta=p.infinitesimal_character+4*rho(G) then}  {this translation works in the case of H=SO(2,3)*SO(2,3), G=SO(4,5) but it needs to be improved so that it works in general}
+let eta=dominant_regular(p.infinitesimal_character,G) then
+all=all_parameters_x_gamma(p.x,eta) then {this needs to be improved}
+k=first(for i:#all do T_std(all[i],p.infinitesimal_character)=p od) then
+q=all[k] then
+{q=parameter(p.x,p.lambda + 2*eta, p.nu + 2*eta) then}
+dH=dual(q).real_form then
+B=block_of(q) then
+t_H=B~[0] then
+y_tH=dual(t_H).x then
+t_G=lift_base_point(t_H, G) then
+dG=dual(t_G).real_form then
+y_tG=dual(t_G).x then
+rm=root_map(dH,dG) then
+Ekgb=embed_KGB(y_tH,y_tG,rm) then
+cf=character_formula(p) in
+composition_series(lift_std_T_kappa(cf,  G,dG, Ekgb, s,p.infinitesimal_character))
+
+
+{set representant(ratvec s,Param p)=ratvec:
+let L=L_packet(p) then
+H= for p in L do let endoscopic_group(p.real_form,-p.x.torus_factor/2)
+n=first(for k:#L do (-L[k].x.torus_factor)/2-s + L[k].involution*((-L[k].x.torus_factor)/2-s)=0*rho(p.real_form) od) in
+-L[n].x.torus_factor/2}
+
+

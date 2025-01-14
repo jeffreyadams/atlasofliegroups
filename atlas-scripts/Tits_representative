@@ -1,0 +1,56 @@
+
+
+set Index_W (RealForm H)=[[int]]:
+let R=posroots(H) in
+for r in R do ## for i:#r do if r[i]=0 then [] else [i] fi od od 
+
+
+set tits_alpha_GL (RealForm H, int k)=mat:
+let R=posroots(H) then
+I = for r in R do ## for i:#r do if r[i]=0 then [] else [i] fi od od then
+s1 = for i:rank(H) do if i=I[k][1] then -1 else 0 fi od then
+s2 = for i:rank(H) do if i=I[k][0] then 1 else 0 fi od then
+M = for j:rank(H) do if j=I[k][0] then s1 else if j=I[k][1] then s2 else id_mat(rank(H))[j] fi fi od in
+^M
+
+{dH = symplectic or special orthogonal group. G = general linear group containing dH}
+set tits_alpha (RealForm dH,RealForm G,mat M, int k)=mat:
+{let G=GL(2*rank(dH),R) then}
+let delta=distinguished_involution(G) then
+{(,M,) = endoscopic_group(G,delta) then }
+r=posroots(dH)[k] then
+index = if first(for p in posroots(G) do p*(M)=r od)=-1 then first(for p in posroots(G) do p*(M)=2*r od) else first(for p in posroots(G) do p*(M)=r od) fi then 
+A=tits_alpha_GL (G, index) in
+if inverse(A)=delta*A*delta then A else A*(delta*A*delta) fi
+
+
+set tits_representative_GL (KGBElt x)=mat:
+let H= real_form(x) then
+A = id_mat(rank(H)) in
+if word(x.w)=null(0) then id_mat(rank(H)) else for i in word(x.w) do A:=A*tits_alpha_GL(H,i) od;
+A fi
+
+
+{x KGB element of dH a symplectic or special orthogonal group. G = general linear group containing dH}
+set tits_representative (KGBElt x, RealForm G)=mat:
+let dH= real_form(x) then
+delta=distinguished_involution(G) then
+(,M,) = endoscopic_group(G,delta) then
+A = id_mat(rank(G)) in
+if word(x.w)=null(0) then id_mat(rank(G)) else for i in word(x.w) do A:=A*tits_alpha(dH,G,M,i) od;
+A fi
+
+{x KGB element of dH1 an endoscopic group of dH a symplectic or special orthogonal group. G = general linear group containing dH.
+Gives the diagonal of the product (tits representative of x.w in dH1)*(inverse of tits representative of x.w in dH)}
+
+set tits_difference (KGBElt x,RealForm dH, RealForm G)=vec:
+let H1=real_form(x) then
+xH=KGB_elt(KGBElt_gen:(dH,x.involution,0*rho(dH))) then
+W1=tits_representative (x,G) then
+WH=tits_representative (xH,G) then
+D=W1*inverse(WH) then
+N = if is_even(#D) then #D/2 else (#D-1)/2 fi in
+for i:(N\1) do D[i][i] od
+
+
+

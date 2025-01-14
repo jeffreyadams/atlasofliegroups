@@ -1,0 +1,27 @@
+
+
+
+{set ABV_packet_G2_regular2(Param p)=[Param]:
+let B=block_of(p) then
+l=length(p) in
+if l=0 then L_packet(p) else
+if l=1 then [p,B[first(for t in B do print(length(t)=0 and tau(t)=tau(p)) od)]] else
+if l=2 then [p] else
+if l=3 then [p,B[first(for t in B do print(length(t)=1 and tau(t)=tau(p)) od)]] else
+if p=trivial(p.real_form) then [p] else [p,B[first(for t in B do print(length(t)=0 and tau(t)=tau(p)) od)]] fi fi fi fi fi}
+
+set ABV_packet_G2_regular(Param p)=[Param]:
+let B=block_of(p) then
+l=length(p) in
+if l=0 then L_packet(p) 
+elif l=1 then let index=first(for t in B do (length(t)=0 and tau(t)=tau(p)) od) in [p,B[index]]
+elif l=2 then [p] 
+elif l=3 then let q=B[first(for t in B do (length(t)=1 and tau(t)=tau(p)) od)] in [p,q]
+else if p=trivial(p.real_form) then [p] else let index= first(for t in B do (length(t)=0 and tau(t)=tau(p)) od) in [p,B[index]] fi fi
+
+
+set ABV_packet_G2(Param p)=
+let q=make_regular(p) then
+A = if is_integral(G2_s,q.infinitesimal_character)=false then [[p]] else
+for t in ABV_packet_G2_regular(q) do if T_irr(t,p.infinitesimal_character)=null_module(G2_s) then [] else [monomials(T_irr(t,p.infinitesimal_character))[0]] fi  od fi in 
+## for t in A do t od

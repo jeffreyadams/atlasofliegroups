@@ -1,0 +1,18 @@
+<lift.at
+
+set G=SO(4,5)
+set v=[0,0,1,1]/2
+set (H,M,dH)=endoscopic_group(G,[0,0,1,1]/2)
+set H=H.quasisplit_form 
+set dH=dH.quasisplit_form 
+set dG=dual(G).quasisplit_form 
+set ss=unipotent_stable_sums (H)
+set lifts=for s in ss do lift_irr_T_test(s,G,v) od
+
+
+
+{set drm=root_map(dH,dG)
+set Ekgb=embed_KGB(KGB(dH)[0],KGB(dG)[0],drm)
+set lift_std=lift_std_T(trivial(H),G,dG,Ekgb,v,infinitesimal_character(trivial(H))) {Lift of the pseudo packet of trivial H}
+set lift=lift_irr_T(trivial(H),G,dG,Ekgb,v,infinitesimal_character(trivial(H)))     {Lift of the A-packet of trivial H in the basis of irreducibles}}
+
