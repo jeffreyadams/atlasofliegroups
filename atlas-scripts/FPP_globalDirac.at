@@ -221,6 +221,7 @@ set FPP_unitary_hash_general([(KGBElt,ratvec)] xlambdas, Param_hash Uhash,
 				 ", time = ", print_time_string(unitaryTime - startUTime));
 				 prints("     #char calcs for this lambda = ",char_counter.use_count() - startCcounter,
 				 ", time = ",print_time_string(charTime - startCTime));
+				  report_tested();
 				 prints("  ------------------")
 			     fi
 		    fi
@@ -252,6 +253,7 @@ set FPP_unitary_hash_general([(KGBElt,ratvec)] xlambdas, Param_hash Uhash,
        	    prints("  #hash = ", hashCounter.use_count(), ", #hash2 = ", hash2Counter.use_count(),
 	      	 	", #hash_one_level = ", hash_one_levelCounter.use_count(), ", #hash_bottom_layer = ",
 			hash_bottom_layerCounter.use_count());
+	    report_tested();
        	    prints("Number of unitary params = ", sum(answerCards), ", time for is_finished = ",
 	    print_time_string(is_finished_time), ", time for position = ",
 	    print_time_string(position_time));
@@ -490,7 +492,8 @@ set FPP_unitary_hash_general([KGBElt] xs, Param_hash Uhash, {Param_hash Uparamha
 		     	     deformCalcCounter.use_count());}
        	    		  prints("Time spent in char calcs = ",print_time_string(charTime-formerCharTime),
        	      		  	 ", number of char calcs = ", char_counter.use_count() - formerCcounter,
-				 " time spent in red_count = ",  print_time_string(red_count_times[j]))
+				 " time spent in red_count = ",  print_time_string(red_count_times[j]));
+			 report_tested()
                      fi
 	   then () = big_unitary_hash.finish(x, full_M) {mark as done all lambdas for x}
 	   in big_unitary_hash.finishx(x) {mark as done all lambdas for x}
@@ -531,7 +534,8 @@ set FPP_unitary_hash_general([KGBElt] xs, Param_hash Uhash, {Param_hash Uparamha
 	    		   ", time for is_finished = ", print_time_string(is_finished_time),
 			   ", time for position = ", print_time_string(position_time));
       	    prints("Number of known FPP-unitary faces = ",Uhash.size(),
-       	      ", number found on this run = ", Uhash.size() - oldUhash)
+       	      ", number found on this run = ", Uhash.size() - oldUhash);
+	    report_tested()
       fi {FPP_report_flag}
    fi {#xs = 0}
 
@@ -801,6 +805,7 @@ set FPP_unitary_hash_bottom_layer([(KGBElt,ratvec)] xlambdas, Param_hash UhashG{
 				 ", char time = ", print_time_string(currentCtime - startCtime),
 				 ", #Params missed by more = ", more_bad_hash.size() - startmorebad,
 				 ", #unitary params so far = ",sum(answerCards));
+				 report_tested();
 				 prints("  ------------------")
 			    fi
 		    fi
@@ -848,7 +853,8 @@ set FPP_unitary_hash_bottom_layer([(KGBElt,ratvec)] xlambdas, Param_hash UhashG{
        	    prints("Number of unitary params = ", sum(answerCards), ", time for is_finished = ",
 	    		   print_time_string(is_finished_time), ", time for position = ",
 	    		   print_time_string(position_time));
-       	    prints("Number of FPP-unitary faces = ",UhashG.size(), ", number found on this run = ", UhashG.size() - oldUhash)
+       	    prints("Number of FPP-unitary faces = ",UhashG.size(), ", number found on this run = ", UhashG.size() - oldUhash);
+	    report_tested()
        fi {FPP_report_flag}
     fi {#xlambdas = 0}
 
@@ -1077,14 +1083,16 @@ set FPP_unitary_hash_bottom_layer([KGBElt] xs, Param_hash UhashG{, Param_hash Up
 					        ", char time = ", print_time_string(charTime - startCtime));
 					      prints("     more_shift_level = ",if bl_interrupt_flag then
 		    bl_step_count*bl_step_size else more_shift_level fi, ", #Params missed by more = ",
-					     	more_bad_hash.size() - startmorebadlambda)
+					     	more_bad_hash.size() - startmorebadlambda);
+						report_tested()
 					 else prints("    #LF = ", for L in LF do #L od, ", #unitary params = ",
 					      	tempanswerCards[index],
 			     	                ", #new unitary = ", Uhash.size() - startUhash,
 						", #tests for this lambda = ", unitary_test_counter.use_count() - startUcounter,
 						", time = ",print_time_string(unitaryTime - startUtime));
 					      prints("    #char calcs for lambda = ", char_counter.use_count() - startCcounter,
-					       ", char time = ", print_time_string(charTime - startCtime))
+					       ", char time = ", print_time_string(charTime - startCtime));
+					       report_tested()
 					 fi ;
 					 prints("  ------------------")
 				    fi{every_lambda_flag}
@@ -1122,7 +1130,8 @@ set FPP_unitary_hash_bottom_layer([KGBElt] xs, Param_hash UhashG{, Param_hash Up
 		     	     deformCalcCounter.use_count());}
 			   prints("     Time spent in char calcs = ", print_time_string(charTime - formerCharTime),
 			      	     ", number of char calcs = ", currentCcounter - formerCcounter,
-				     ", time for red_count = ",print_time_string(red_count_times[j]))
+				     ", time for red_count = ",print_time_string(red_count_times[j]));
+			   report_tested()
                      fi
 	   then () = big_unitary_hash.finish(x, full_N1) {mark as done all lambdas for x}
 	   then () = big_unitary_hash.finishx(x)
@@ -1169,7 +1178,8 @@ set FPP_unitary_hash_bottom_layer([KGBElt] xs, Param_hash UhashG{, Param_hash Up
 	    		   ", time for is_finished = ", print_time_string(is_finished_time),
 			   ", time for position = ", print_time_string(position_time));
             prints("Number of known FPP-unitary faces = ",UhashG.size(),
-       	      ", number found on this run = ", UhashG.size() - oldUhash)
+       	      ", number found on this run = ", UhashG.size() - oldUhash);
+	     report_tested()
       fi {FPP_report_flag}
    fi {#xs = 0}
 

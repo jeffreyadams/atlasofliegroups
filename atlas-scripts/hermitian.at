@@ -326,37 +326,55 @@ set is_pure_cert_hash(KTypePol P, KTypePol_hash cert_hash) = bool:
     else true
     fi
 
-set tested_hash = make_Param_hash()
-set tested_list = [Param]: []
-set tested_times = [int]: [] {one for each tested_list entry}
-set tested_mults = [int]: [] {one for each tested_hash.list() entry}
-set tested_mult_times = [[int]]: [] {one for each tested_hash.list()}
+set tested_pos_hash = make_Param_hash()
+set tested_pos_list = [Param]: []
+set tested_pos_times = [int]: [] {one for each tested_pos_hash.list() entry}
+set tested_pos_mults = [int]: [] {one for each tested_hash.list() entry}
+{set tested_bools = [bool]: []}
+set tested_pos_mult_times = [[int]]: [] {one for each tested_pos_hash.list() entry}
+
+set tested_neg_hash = make_Param_hash()
+set tested_neg_list = [Param]: []
+set tested_neg_times = [int]: [] {one for each tested_list entry}
+set tested_neg_mults = [int]: [] {one for each tested_hash.list() entry}
+{set tested_bools = [bool]: []}
+set tested_neg_mult_times = [[int]]: [] {one for each tested_hash.list()}
 
 set tested_to_ht_hashes = for h:100 do make_Param_hash() od
 set tested_to_ht_lists = for h:100 do [Param]:[] od
 set tested_to_ht_times = for h:100 do [int]:[] od
 set tested_to_ht_mults = [[int]]: for h:100 do [] od {one for each tested_to_ht_hashes[h].list()}
+set tested_to_ht_bools = [[bool]]: for h:100 do [] od 
 set tested_to_ht_mult_times = [[[int]]]: for h:100 do [] od{one for each tested_to_ht_hashes[h].list()}
 
 {set cSp = int:0}
-set was_tested(Param p, int T) = void:
+set was_tested(Param p, int T, bool ans) = void:
     {let () = if p = parameter(Sp(6,R),8,[2,1,1],[1,-1,0]/2)
     	     then cSp+:=1; 1/(cSp-4)
 	     else 1/1
 	     fi}
-    let M = tested_hash.size()
-    then m = tested_hash.match(p)
-    then () = if m=M then tested_mults #:= 0; tested_mult_times #:=[] fi
-    in tested_list#:=p; tested_times#:=T; tested_mults[m]+:=1; tested_mult_times[m] #:=T
+    if ans
+    then let M = tested_pos_hash.size()
+       	 then m = tested_pos_hash.match(p)
+       	 then () = if m=M then tested_pos_mults #:= 0; tested_pos_mult_times #:=[] fi
+       	 in tested_pos_list#:=p; tested_pos_times#:=T; tested_pos_mults[m]+:=1;
+       	  {tested_bools#:= ans;} tested_pos_mult_times[m] #:=T
+    else let M = tested_neg_hash.size()
+       	 then m = tested_neg_hash.match(p)
+       	 then () = if m=M then tested_neg_mults #:= 0; tested_neg_mult_times #:=[] fi
+       	 in tested_neg_list#:=p; tested_neg_times#:=T; tested_neg_mults[m]+:=1;
+       	  {tested_bools#:= ans;} tested_neg_mult_times[m] #:=T
+    fi
 
-set was_tested_to_ht(Param p,int N, int T) = void:
+set was_tested_to_ht(Param p,int N, int T, bool ans) = void:
     let h = N - height(p)
     then M = tested_to_ht_hashes[h].size()
     then m = tested_to_ht_hashes[h].match(p)
     then () = if m=M then tested_to_ht_mults[h] #:= 0; tested_to_ht_mult_times[h] #:=[] fi
-    then tthtsh = tested_to_ht_times[h], tthmsh = tested_to_ht_mults[h], tthmtsh = tested_to_ht_mult_times[h]
-    then () = tthtsh #:=T; tthmsh[m] +:=1; tthmtsh[m] #:=T
-    then () = tested_to_ht_times[h] := tthtsh; tested_to_ht_mults[h]:=tthmsh;
+    then tthtsh = tested_to_ht_times[h], tthmsh = tested_to_ht_mults[h], tthmtsh = tested_to_ht_mult_times[h],
+    	 tthbsh = tested_to_ht_bools[h]
+    then () = tthtsh #:=T; tthmsh[m] +:=1; tthmtsh[m] #:=T; tthbsh #:=ans
+    then () = tested_to_ht_times[h] := tthtsh; tested_to_ht_mults[h]:=tthmsh; tested_to_ht_bools[h] :=tthbsh;
     	      tested_to_ht_mult_times[h]:=tthmtsh
     in tested_to_ht_lists[h]#:=p
 
@@ -369,6 +387,7 @@ set report_tested() = void:
     	      	    time_lists[j] #:= tested_times[k]
 
               od}
+ {
     let max_mult = max(tested_mults)
     then max_time = max(tested_times)
     then j_mult = first(for m in tested_mults do m=max_mult od)
@@ -383,6 +402,7 @@ set report_tested() = void:
 			   else 0
 			   fi
     then j_long = first(for T in tested_times do T = max_time od)
+}
     {then mults_to_ht = [[int]]: for h:100 do null(tested_to_ht_hashes[h].size()) od
     then time_lists_to_ht = [[[int]]]: for h:100 do for j:tested_to_ht_hashes[h].size() do [] od od
     then () = for h:100
@@ -393,6 +413,7 @@ set report_tested() = void:
 		    in mults_to_ht[h]:= mthh; time_lists_to_ht[h]:=tlthh
 		 od
 	      od}
+{
     then max_mult_to_hts = for h:100 do if #tested_to_ht_mults[h]>0
     	 		       	     	then max(tested_to_ht_mults[h])
 					else 0
@@ -422,12 +443,26 @@ set report_tested() = void:
     then j_long_to_ht = for h:100
     	 	      	do first(for T in tested_to_ht_times[h] do T = max_time_to_hts[h] od)
 			od
-    in prints(#tested_list," is_unitary tests; ",tested_hash.size(),
-    	 		   " different. Total time = ",print_time_string(sum(tested_times)));
-       prints(sum(for h:100 do #tested_to_ht_lists[h] od)," tests to_ht; ",
- sum(for h:100 do tested_to_ht_hashes[h].size() od)," different. Total time = ",
- print_time_string(sum(for h:100 do sum(tested_to_ht_times[h]) od)), new_line);
 
+    in
+}
+    prints(new_line,#tested_pos_list," positive is_unitary tests; ",tested_pos_hash.size()," distinct, in time = ",
+    	print_time_string(sum(tested_pos_times)),
+	"; time for repetitions = ", print_time_string(
+	 sum(for v in tested_pos_mult_times do sum(v[1:]) od)));
+    prints(#tested_neg_list," negative is_unitary tests; ",tested_neg_hash.size()," distinct, in time = ",
+    	print_time_string(sum(tested_neg_times)),
+	"; time for repetitions = ", print_time_string(
+	 sum(for v in tested_neg_mult_times do sum(v[1:]) od)),new_line);
+    prints(sum(for h:100 do #tested_to_ht_lists[h] od)," tests to_ht; ",
+       	 sum(for h:100 do tested_to_ht_hashes[h].size() od)," distinct. Total time = ",
+ 	 print_time_string(sum(for h:100 do sum(tested_to_ht_times[h]) od)), "; time for repetitions = ",
+ 	 print_time_string(sum(for h:100 do sum(for v in tested_to_ht_mult_times[h] do sum(v[1:]) od)od)));
+    prints(sum(for h:100 do count(tested_to_ht_bools[h]) od)," positive tests to_ht, taking ",
+    	print_time_string(sum(for h:100 do sum(for T@m in tested_to_ht_times[h] do
+	if tested_to_ht_bools[h][m] then T else 0 fi od) od)))
+{
+    ;
     prints("largest mult is_unitary test is ",max_mult," for p#", j_mult,"; times ",tested_mult_times[j_mult]);
     {for j in simply_bad_js
     do prints("times for simple G repeated is_unitary #",j," are ", time_lists[j])
@@ -449,9 +484,11 @@ set report_tested() = void:
 	       fi
        fi
     od
+}
 
 set clear_report_tested() = void:
-    tested_hash.clear(); tested_list:=[]; tested_times:=[]; tested_mults:=[]; tested_mult_times:=[]
+    tested_pos_hash.clear(); tested_pos_list:=[]; tested_pos_times:=[]; tested_pos_mults:=[]; tested_pos_mult_times:=[];
+    tested_neg_hash.clear(); tested_neg_list:=[]; tested_neg_times:=[]; tested_neg_mults:=[]; tested_neg_mult_times:=[];
     for h:100
     do tested_to_ht_hashes[h].clear(); tested_to_ht_lists[h]:=[]; tested_to_ht_times[h]:=[];
        tested_to_ht_mults[h] := []; tested_to_ht_mult_times[h]:=[]
@@ -549,7 +586,7 @@ set hermitian_form_irreducible (Param p) = KTypePol:
  		else check_hermitian(p,true); twisted_c_form_irreducible(p)
   		fi.convert_cform_hermitian
   then () = unitaryTime+:=elapsed_ms() - start_time
-  then () = was_tested(p, elapsed_ms() - start_time)
+  then () = was_tested(p, elapsed_ms() - start_time, is_pure(answer))
   in answer
 
 { compute Hermitian form on p, and report if it is unitary }
@@ -608,7 +645,6 @@ set hermitian_form_irreducible (Param p, int time) = maybe_KTP:
    		 | done(r): r.convert_cform_hermitian.done
    		 esac
   then () = unitaryTime+:=elapsed_ms() - start_time
-  then () = was_tested(p, elapsed_ms() - start_time)
   in answer
 
 set is_unitary (Param p, int time) = int: { -1: no, 0:timed out, 1: yes }

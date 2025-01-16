@@ -158,7 +158,7 @@ set theta_induce_K(KTypePol QL, RealForm G) = KTypePol:
 K_type_pol(sum(G, for c@pL in QL do c*theta_induce_standard(param(pL),G) od))
 
 set theta_induce_signature(Param pL, RealForm G) = KTypePol:
-    theta_induce_K(hermitian_form_irreducible(pL),G)
+    theta_induce_K(hermitian_form_irreducible_big(pL),G)
 
 {meant to be applied to quasisplit simple L}
 set next_heights = (RealForm -> int):

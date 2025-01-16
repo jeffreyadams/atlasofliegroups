@@ -1610,6 +1610,10 @@ set FPP_lambdas([KGBElt] xs) = [[ratvec]]:
 
 set nullint(int N) = [int]:
     for n:N do 0 od
+
+{whether to record nonunitary reps as well as unitary}
+set nuhash_flag = true
+
 {whether to include KGB numbers in output files. True makes them more human-readable, sometimes longer}
 set write_x_flag = false
 {decide NOT to hash nonunitary}
@@ -1618,6 +1622,8 @@ set_type
 ( ( -> int) real_form_size {number of real forms included}
   , ( -> vec) uhash_sizes {for every real form, the number of unitary reps}
   , (RealForm -> int) uhash_size {for one real form, number of unitary reps}
+  , ( -> vec) nuhash_sizes {for every real form, the number of nonunitary reps}
+  , (RealForm -> int) nuhash_size {for one real form, number of nonunitary reps}
   , ( -> ) clear
   , (RealForm -> ) clearG
   , (RealForm -> int) rf_number {number of real form in list}
@@ -1631,11 +1637,14 @@ set_type
   , (KGBElt -> ) partialx {add x to x_partial}
   , ((RealForm,[int]) -> ) finishall {add bitmaps of all new known (x,lambda) to xl_known}
   , (RealForm -> Param_hash) uhash {hash table of known unitary}
+  , (RealForm -> Param_hash) nuhash {hash table of known nonunitary}
   , (Param -> (int,int)) long_lookup {(rf_index(p.real_form), location of p in its uhash)}
   , (Param -> int) lookup {(location of p in its uhash)}
-  , (Param -> bool) check {check whether p is unitary, and if so add to its hash table}
-  , (Param -> int) match {add p to its hash table}
-  , ((Param,int) -> int) long_match {add p to ith hash table}
+  , (Param -> int) nulookup {(location of p in its nuhash)}
+  , (Param -> bool) check {check whether p is unitary, and add to appropriate hash table}
+  , (Param -> int) match {add p to its uhash table}
+  , (Param -> int) numatch {add p to its nuhash table}
+  , ((Param,int) -> int) long_match {add p to ith uhash table}
   , ( -> ) write {output unitary data for file}
   , (RealForm -> ) writeG {output data for one group to file}
   , ((RealForm, int, int) -> ) writeGrange {output data for KGB(G)[low,high]}
@@ -1650,14 +1659,14 @@ set is_finished_time = int:0
 set make_big_unitary_hash() = big_unitary_hash_table:
 (   let real_form_hash = make_RealForm_hash()
     then uhashes = [Param_hash]: [] {one for each real form}
-    {then nuhashes = [Param_hash]: [] {one for each real form}}
+    then nuhashes = [Param_hash]: [] {one for each real form}
     then xl_known = [[int]]: [] {one bitmap of known (x,lambda) for each real form and x}
     then x_known = [int]: [] {one bitmap of known x for each real form}
     then x_partial = [int]: [] {one bitmap of partially known x for each real form}
     then clearBUH() = void:
     	 let () = real_form_hash.clear()
 	 then () = uhashes := []
-	 {then () = nuhashes := []}
+	 then () = nuhashes := []
 	 then () = xl_known := []
 	 then () = x_known := []
 	 then () = x_partial := []
@@ -1670,10 +1679,11 @@ set make_big_unitary_hash() = big_unitary_hash_table:
 		   	then () = xl_known #:= empty {null(#KGB(rf))}
 			then () = x_known #:= 0
 			then () = x_partial #:= 0
-			in uhashes #:= make_Param_hash()
+			then () = uhashes #:= make_Param_hash()
+			in nuhashes #:= make_Param_hash()
 	    	   fi
 	  then () = assert(real_form_hash.size() = #uhashes and #uhashes = #xl_known
-	       	    				 and #uhashes = #x_known
+	       	    				 and #uhashes = #x_known and #nuhashes = #x_known
 						 and #x_partial = #x_known, "big_unitarity_hash damaged")
 	  in i
     then clearG(RealForm rf) =
@@ -1681,6 +1691,7 @@ set make_big_unitary_hash() = big_unitary_hash_table:
 	 in if i >= 0
 	    then {prints(i);}
 	    	 uhashes[i].clear();
+		 nuhashes[i].clear();
 	    	 {prints("i = ",i, ", x_partial = ",x_partial);}
 	    	 x_partial[i] := 0;
 		 xl_known[i] := nullint(#KGB(rf));
@@ -1691,6 +1702,9 @@ set make_big_unitary_hash() = big_unitary_hash_table:
     , ( -> vec): {uhash_sizes} @vec: for uhash in uhashes do uhash.size() od
     , (RealForm -> int): {uhash_size} (RealForm rf) int:
       uhashes[add_real_form(rf)].size()
+    , ( -> vec): {nuhash_sizes} @vec: for nuhash in nuhashes do nuhash.size() od
+    , (RealForm -> int): {nuhash_size} (RealForm rf) int:
+      nuhashes[add_real_form(rf)].size()
     , ( -> ): {clear} clearBUH
     , (RealForm -> ): {clearG} (RealForm rf):
       clearG(rf)
@@ -1747,12 +1761,17 @@ set make_big_unitary_hash() = big_unitary_hash_table:
       in finish_time+:= elapsed_ms() - start
     , (RealForm -> Param_hash): {uhash} (RealForm rf) Param_hash:
       uhashes[add_real_form(rf)]
+    , (RealForm -> Param_hash): {nuhash} (RealForm rf) Param_hash:
+      nuhashes[add_real_form(rf)]
     , (Param -> (int,int)): {long_lookup} (Param p) (int,int):
       let i = add_real_form(p.real_form)
       in (i, uhashes[i].lookup(p))
     , (Param -> int): {lookup} (Param p) int:
       let i = add_real_form(p.real_form)
       in uhashes[i].lookup(p)
+    , (Param -> int): {nulookup} (Param p) int:
+      let i = add_real_form(p.real_form)
+      in nuhashes[i].lookup(p)
     , (Param -> bool): {check} (Param p) bool:
       let i = add_real_form(p.real_form)
       {then () = prints("bitmap for ",p.x.number," is ",xl_known[i][p.x.number])}
@@ -1764,16 +1783,28 @@ set make_big_unitary_hash() = big_unitary_hash_table:
 	 then false
 	 elif {now x not completely known} position(p.x, p.lambda).>=
 	 and is_member_bitset(position(p.x, p.lambda), xl_known[i][p.x.number])	 then false
-	 else {now nothing complete} let chk = is_unitary(p)
-	      	   then () = if chk
-	      		     then uhashes[i].match(p)
-	      		     {else nuhashes[i].match(p)}
-			     fi
-	      	   in chk
-	  fi
+	 else let jn = nuhashes[i].lookup(p)
+	      in if jn.>= then false
+	      	 else {now nothing previously known}
+		      let chk = is_unitary(p)
+	      	      then () = if chk
+	      		      	then uhashes[i].match(p)
+	      		     	else if nuhash_flag
+				     then nuhashes[i].match(p)
+				     fi
+			     	fi
+	      	      in chk
+	  	 fi
+	 fi
     , (Param -> int): {match} (Param p):
       let i = add_real_form(p.real_form)
       in uhashes[i].match(p)
+    , (Param -> int): {numatch} (Param p):
+      let i = add_real_form(p.real_form)
+      in if nuhash_flag
+      	 then nuhashes[i].match(p)
+	 else -1
+	 fi
     , ((Param,int) -> int): {long_match} (Param p, int i):
       uhashes[i].match(p)
     , ( -> ): {write} @void:
@@ -1992,16 +2023,23 @@ set all_finished(RealForm G) = [(KGBElt,ratvec)]:
 
 set UHBS_time = int: 0
 
-{assume p is hermitian}
+{assume p is hermitian, FPP}
 set hermitian_form_irreducible_big_SIMPLE(Param p) = KTypePol:
-    let L = big_unitary_hash.lookup(herm_center(p))
+    let () = p:=herm_center(p)
+    then L = big_unitary_hash.lookup(herm_center(p))
     in if L.>=
        then let startCF = elapsed_ms()
        	    then m = char_counter.use()
 	    then ans = K_type_pol(character_formula(p))
 	    then () = charTime +:= elapsed_ms() - startCF
-	    in return(ans)
-       else hermitian_form_irreducible(p)
+	    in ans
+       else let ans = hermitian_form_irreducible(p)
+       	    then boo = is_pure(ans)
+	    then () = if boo
+	    	      then big_unitary_hash.match(p)
+		      else big_unitary_hash.numatch(p)
+		      fi
+	    in ans
        fi
 
 {this version is only for G simple and hermitian FPP params}
@@ -2037,13 +2075,32 @@ set is_unitary_hash_big_SIMPLE(Param p) = bool:
 			      od))
        fi
     then () = UHBS_time+:= elapsed_ms() - start
-    then () = if answer then big_unitary_hash.match(p) fi
+    then () = if answer
+    	      then big_unitary_hash.match(p)
+	      else big_unitary_hash.numatch(p)
+	      fi
     in answer
 
 set is_unitary_hash_big(Param p) = bool:
     if not is_hermitian(p) then return false fi;
     let pds = derived_factor_params0(p)
     in all(for pd in pds do @bool: is_unitary_hash_big_SIMPLE(pd) od)
+
+set hermitian_form_irreducible_big(Param p) = KTypePol:
+    if is_unitary_hash_big(p)
+    then let startCF = elapsed_ms()
+       	 then m = char_counter.use()
+	 then ans = K_type_pol(character_formula(p))
+	 then () = charTime +:= elapsed_ms() - startCF
+	 in return(ans)
+     else let ans = hermitian_form_irreducible(p)
+     	  then boo = is_pure(ans)
+	  then () = if boo
+	       	    then big_unitary_hash.match(p)
+	       	    else big_unitary_hash.numatch(p)
+		    fi
+	  in return(ans)
+     fi
 
 {If NU (nu part) > LAM (lambda part) *low_frac, then figure to_ht could work better}
 set low_frac = 1/1
@@ -2106,7 +2163,7 @@ set hermitian_form_irreducible_to_ht_big_SIMPLE(Param p,int N) = KTypePol:
   then () = if not FPP_flag
     	    then return hermitian_form_irreducible_to_ht(p,N) {prints("FPP DANGER TO HT at ",p)}
 	    fi
-  {then () = p := herm_center(p)}
+  {Now p is FPP. Assume it was already herm center? {then () = p := herm_center(p)}}
   then L = big_unitary_hash.lookup(p)
   then () = if L.>=
        	    then let startCF = elapsed_ms()
@@ -2120,13 +2177,16 @@ set hermitian_form_irreducible_to_ht_big_SIMPLE(Param p,int N) = KTypePol:
      else if low(p,N) {low(p.x,p.lambda,N)}
      	  then hermitian_form_irreducible_to_ht(p,N)
      	  else let P = hermitian_form_irreducible(p)
-	       then () = if is_pure(P) then big_unitary_hash.match(p) fi
+	       then () = if is_pure(P)
+	       	       	 then big_unitary_hash.match(p)
+	       	       	 else big_unitary_hash.numatch(p)
+			 fi
 	       in to_ht(P,N)
      	  fi
      fi
 
 {assume p is hermitian}
-{ compute Hermitian form to ht on p, report if it is unitary}
+{ }
 set hermitian_form_irreducible_to_ht_big(Param p,int N) = KTypePol:
     if low(p,N) {low(p.x,p.lambda,N)}
     then hermitian_form_irreducible_to_ht(p,N)
@@ -2180,9 +2240,16 @@ set is_unitary_to_ht_big_SIMPLE(Param p,int N) = bool:
      else {unitary_test_counter.use(); done in calls below}
      	  if low(p,N) {low(p.x,p.lambda,N)}
      	  then {is_pure(hermitian_form_irreducible_to_ht(p,N))}
-	       is_unitary_to_ht(p,N)
+	       let boo = is_unitary_to_ht(p,N)
+	       then () = if not boo
+	       	       	 then big_unitary_hash.numatch(p)
+			 fi
+	       in boo
      	  else let P = hermitian_form_irreducible(p)
-	       then () = if is_pure(P) then big_unitary_hash.match(p) fi
+	       then () = if is_pure(P)
+	       	       	 then big_unitary_hash.match(p)
+			 else big_unitary_hash.numatch(p)
+			 fi
 	       in is_pure(to_ht(P,N))
      	  fi
      fi
