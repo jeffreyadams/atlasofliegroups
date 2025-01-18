@@ -1518,7 +1518,7 @@ void process_type_definitions (raw_typedef_list l, const source_location& loc)
     std::vector<std::pair<id_type,const_type_p> > b; b.reserve(length(defs));
     for (auto it=defs.begin(); it!=end(defs); ++it)
       b.emplace_back(it->id,it->tp);
-    auto type_nrs = type_expr::add_typedefs(b);
+    auto type_nrs = type_expr::add_typedefs(b,0);
 @)
     @< Update |global_id_table| with types and values (injector and  projector
        functions, if any) corresponding to the type definitions in |defs|, or

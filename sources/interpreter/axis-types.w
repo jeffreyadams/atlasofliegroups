@@ -1173,8 +1173,9 @@ after applying type equivalencing~; usually these will be the same numbers used
 initially, but some may have mapped to equivalent previously known types.
 
 @< Static methods of |type_expr| that will access |type_map| @>=
-static std::vector<type_nr_type>
-  add_typedefs(const std::vector<std::pair<id_type,const_type_p> >& defs);
+static std::vector<type_nr_type> add_typedefs
+ (const std::vector<std::pair<id_type,const_type_p> >& defs,
+  unsigned int n_args);
 static type_nr_type table_size();
 static void reset_table_size(type_nr_type old_size);
 static type_nr_type find (const type_expr& type);
@@ -1295,20 +1296,21 @@ embarrassment by keeping our |defined_type_mapping| in a form that makes
 restarting the equivalencing relatively easy, namely by ensuring (as mentioned
 above) that all sub-types of types in the table have their own entries.
 
-Our way to proceed it outlined below (the description uses some locally defined
-types, like |type_data|, detailed below). The |type_array| collects definitions
-of all the types under consideration, in order by the |tabled_nr| that refers to
-them, with attached to them a ``rank'' that will be computed during our
-algorithm. The list |type_perm| has same size, holds pointers to the
-|type_array| elements, and will be permuted. This setup with ranks stored in
+Our way to proceed is outlined below (the description uses some locally defined
+types, like |type_data|, that will be detailed later). The |type_array| collects
+definitions of all the types under consideration, in order by the |tabled_nr|
+that refers to them, with attached to them a ``rank'' that will be computed
+during our algorithm. The list |type_perm| has the same size, holds pointers to
+the |type_array| elements, and will be permuted. This setup with ranks stored in
 |type_array| rather than directly in |type_perm| is needed because they will
 later be looked up for a |tabled_nr| inside a |type_expr| rather than for a
 pointer found in |type_perm|. The list |groups| will describe equivalence
-classes so far that need further refinement.
+classes so far, for an equivalence that needs further refinement.
 
 @< Function definitions @>=
 std::vector<type_nr_type> type_expr::add_typedefs
-  (const std::vector<std::pair<id_type,const_type_p> >& defs)
+  (const std::vector<std::pair<id_type,const_type_p> >& defs,
+   unsigned int n_args)
 {
 @/std::vector<type_data> type_array;
   p_list type_perm; // list of pointers into |type_array|
@@ -1338,24 +1340,32 @@ std::vector<type_nr_type> type_expr::add_typedefs
 |type_expr| values temporarily with a |rank| field. The provided constructor
 initially leaves that |rank| unset, as it will be explicitly set later.
 
-Values of type |p_list|, like |type_perm|, are lists that will be used for to
-get a permuted view of the elements in |type_array|.
+The local variable |type_perm| has type |p_list|; it is a linked list of
+pointers into~|type_array|, which we use to get a permuted view of those
+elements. Having pointers into a dynamic vector has the potential danger of
+becoming dangling when the underlying array needs to be reallocated. We shall
+therefore take care to do such reallocation at most once during each call of
+|add_typedefs|, and to create the pointers in |type_perm| only after that point.
+Our permutations of |type_perm| and modifications of the |rank| fields will
+preserve the invariant that |item->rank| weakly increasing as |item| advances
+through elements of the list.
 
-We shall delimit ranges (after sorting) in |type_perm| by pairs of iterators
+We shall delimit ranges of constant |rank| in |type_perm| by pairs of iterators
 into it; we name the type of such iterators |tracker|. There is a subtlety
-though with keeping track of (disjoint) ranges in a list when the ranges
-themselves may get permuted: this permutation may make the delimiter that
-designated the end of the range no longer designate the end of the permuted
-range, but rather an earlier point (since the iterator is attached to the
-originally final node of the range). The methods like |merge| that perform the
-permutation take their ending iterator by variable reference and take care to
-update it to the new final position, but this does not handle the situation
-where another copy of that iterator occurs as starting iterator of another
-range. The solution adopted here is to accompany the starting iterator by its
-dereferenced value (the |first| field in the |type_range| struct below), which
-permits detecting that the iterator has been moved backwards in the list, and
-then correcting by advancing it; the |type_range::realign| method takes care of
-this and returns the possibly updated starting iterator of the range.
+though with using this representation when the ranges themselves may get
+permuted: this permutation may make the delimiter that designated the end of the
+range no longer designate the end of the permuted range, but rather an earlier
+point (since the iterator is attached to the originally final node of the
+range). The methods like |sl_list::merge| that are used internally to perform
+the permutation take their ending iterator by variable reference and take care
+to update it to the new final position; however this does not handle the
+situation where another copy of the same iterator occurs as starting iterator of
+another range. The solution adopted here is to accompany the starting iterator
+by its dereferenced value (the |first| field in the |type_range| struct below),
+which permits detecting that the iterator has been moved backwards in the list,
+and then correcting the situation by advancing it until it points to its |first|
+value. The |type_range::realign| method performs this operation, and as a
+convenience also returns the (possibly) updated starting iterator of the range.
 
 @< Local type definitions @>=
 
@@ -1364,8 +1374,8 @@ struct type_data
 @)
   type_data(type_expr&& e) : type(std::move(e)) @+{}
 };
-typedef containers::sl_list<type_data *> p_list; // list of type pointers
-typedef p_list::iterator tracker;
+using p_list = containers::sl_list<type_data *>; // list of type pointers
+using  tracker = p_list::iterator;
 struct type_range
 { tracker begin, end; @+
   type_data* first; // usually equal to |*begin|, but sometimes ahead
@@ -1381,124 +1391,173 @@ struct type_range
 @ The following is not conceptually hard, but it took us long thought to find a
 somewhat elegant solution. We want |type_array| to hold |type_expr| values whose
 descendent sub-types (if any) are also stored in |type_array|, and are
-represented using types with |tag==tabled|; we shall call types for which
-this holds ``fully dissected'' for ease of reference. However, we do not want
-any |type_array[i].tag| to be |tabled| since that would just equate one entry
-to another (or itself) with no indication about even its top-level structure. So
-the top level structure of each entry should be explicit, and for types with any
-descendants this means that apart from the |type_expr| present in |type_array|,
-one dynamically allocated node, for instance of type |func_type|, should be
-present; below that descendent types should have  |tag==tabled|.
+represented using types with |tag==tabled|; we shall call types for which this
+holds ``fully dissected'' for ease of reference. On the other hand we do not
+want any |type_array[i].tag| to itself be |tabled|, since that would just equate
+one entry to another (or itself) with no indication about even its top-level
+structure. So |type_array| makes the top level structure of each entry explicit.
+This means, for types with any descendants, that apart from the |type_expr|
+present in |type_array| itself, exactly one dynamically allocated node, for
+instance of type |func_type|, is present; any types stored in that node should
+have |tag==tabled|.
 
-We may (and do) assume entries from |type_map| to be already fully dissected,
-but for the newly added definitions from |defs| the dissection has to be done
-here. Apart from the entries directly coming from |defs|, this may require
-adding unnamed descendent types to |type_array|, but we want the former (named)
-ones to get the first set of new slots, because they may already be being
-referred to by |tabled_nr| inside the defining type expressions. But since types
-refer to their descendants by their position in |type_array|, the most natural
-way to proceed is to (recursively) insert descendent types first, and then refer
-to them by their allocated position; this is in conflict with our requirement to
-have the named root types at fixed initial positions.
+We may (and do) assume entries from |type_map| to already be fully dissected.
+For the newly added definitions from |defs| however, the dissection (creation of
+table entries for descendants) has to be done here. Apart from the named entries
+of |defs|, this may require adding unnamed descendent types to |type_array|. We
+want the named entries to get the initial set of new slots, as these positions
+are already referred to by |tabled_nr| inside the defining type expressions; the
+unnamed new types should be numbered after them. But the most natural way to
+proceed is to (recursively) create entries for descendent types first, and then
+rewrite the root expression for each named type to refer to its unnamed children
+by their allocated position, and store this as entry for the named type. This
+procedure would normally number the root type \emph{after} its children,
+creating tension with our wish to have the named root types at fixed initial
+positions.
 
-We initially solved this by reserving empty slots in |type_array| for the
-entries from |defs|, then dissecting the type expressions from |defs| (extending
-|type_array| at the end in the process), and finally move the |type_expr|
-produced into the empty slot (using the |type_expr::set_from|). However this was
-error prone, and indeed was done incorrectly in a first version, because a
-reference to an empty slot may become invalid (dangling) if during dissection
-|type_array| needs to be expanded (reallocated). But |containers::simple_list|
-(of which |dressed_type_list| is an instance) is perfectly suited to this task,
-as we can avoid any empty slots by ultimately inserting the root types in the
-middle of the list that has been expanded, without any risk of dangling
-references; this is the approach used now. It just needs to take care of getting
-the numbering correct for the final state of the list; this is done by
-pre-computing the position |count| where numbering of additional types produced
-during dissection will start, and numbering consecutively from there on. The
-auxiliary static method |type_expr::dissect_type_to|, to be defined below, does
-the actual dissection, using the |types| list to append the descendent types to,
-and |count| to keep track of their future numbering.
+We initially solved this by reserving empty slots in |type_array| for the named
+entries from |defs|, then dissecting their defining type expressions from |defs|
+(extending |type_array| at the end in the process), and finally move the root
+|type_expr| produced by the dissection into the empty slot. This was error
+prone, and indeed initially done incorrectly, because any reference to an empty
+slot is transient, since |type_array| grows during dissection (one needs to
+refer to slots by number instead). On the other hand the container |simple_list|
+(of which |dressed_type_list| is an instance) can expand without creating
+dangling references. We therefore use such a list, and avoid empty slots
+altogether: after dissecting a root type which may extend the linked list, we
+insert the resulting |type_expr| at an earlier position~|insert_pt|. We just
+need to take care that the dissection numbers unnamed entries according to their
+positions \emph{after} the named ones are inserted before them; this is done by
+pre-computing the position |count| where numbering of unnamed types will start,
+and numbering them consecutively from there on. The auxiliary static method
+|type_expr::dissect_type_to|, to be defined below, does the actual dissection,
+using its |types| argument as list to append the unnamed descendent types to,
+and by-reference argument |count| to keep track of their numbering.
 
 @< Copy types from |type_map| to |type_array|,... @>=
 {
   dressed_type_list types;
-  for (auto it=type_map.begin(); it!=type_map.end(); ++it)
-    types.push_back(it->tp.copy());
+  for (const auto& entry: type_map)
+    types.push_back(entry.tp.copy());
   type_nr_type count=types.size()+defs.size();
     // start numbering auxiliary types here
   auto insert_pt = types.end();
     // named types will go here; their descendents will come after
-  for (auto it=defs.cbegin(); it!=defs.cend(); ++it) // process each definition
+  for (const auto& def : defs) // process each definition
   // insert the defined type after expanding its descendents, then hop over it:
     insert_pt =
-      types.insert(insert_pt,it->second->dissect_type_to(types,count));
+      types.insert(insert_pt,def.second->dissect_type_to
+        (n_args,type_map.size(),types,count));
 @)
-  type_array.reserve(types.size()); // necessary to do the following in one loop
-  for (auto it=types.wbegin(); it!=types.wend(); ++it)
+  type_array.reserve(types.size());
+  // necessary to avoid relocation in the following loop
+  for (auto&& tp : types)
   {
-    type_array.emplace_back(std::move(*it));
+    type_array.emplace_back(std::move(tp));
       // also expands |type_expr| to |type_data| structure
     type_perm.push_back(&type_array.back());
+      // push pointer that will not dangle
   }
 }
 
-@ The |type_expr| method |dissect_type_to| pushes all descendents of |*this|
-onto |dst|, and then returns a dissected version of~|*this|; clearly something
-for a recursive function. But while in the root call a non-tabled |type_expr| is
-to be returned (for insertion into an empty slot), in all recursive calls the
-|type_expr| is instead to be added to |dst|, and the type returned is a tabled
-one with type number referring to the added slot in~|dst|. Therefore we
-make this into a mutually recursive pair of functions; |dissect_type_to| is the
-one receiving the root call, but instead of calling itself it calls |to_table|
-that in addition to recursive expansion takes care of extending |dst| and
-replacing the returned |type_expr| by one with |tag==tabled|.
+@ The method |dissect_type_to| produces a dissected form of the |type_expr| it
+is called for, while pushing unnamed descendants dissected onto |dst|. This is
+clearly something for a recursive function. But while in the root call just
+returns a non-tabled |type_expr|, some post-processing of that result is needed
+in all recursive calls: the |type_expr| is to be added to |dst|, and a tabled of
+it must be computed (using |count| for numbering) for storage by the parent. As
+that post-processing occurs in several branches, we make this into a mutually
+recursive pair of methods: |dissect_type_to| as main method with |to_table| as
+auxiliary for the post-processing. Both methods return a~|type_expr|, but for
+|to_tabled| this always has |tag==tabled|. Both have four arguments: the number
+|deg| type arguments of the current definition group and the number~|lim| of
+types that were previously tabled, and output parameters |dst| and |count.|
 
 @< Ordinary methods of the |type_expr| class @>=
 private:
-  type_expr dissect_type_to (dressed_type_list& dst, type_nr_type& count) const;
-  type_expr to_table (dressed_type_list& dst, type_nr_type& count) const;
+  type_expr dissect_type_to
+    (unsigned int deg, unsigned int lim,
+     dressed_type_list& dst, type_nr_type& count) const;
+  type_expr to_table
+    (unsigned int deg, unsigned int lim,
+     dressed_type_list& dst, type_nr_type& count) const;
 
-@ The recursion stops in |to_table| whenever a type with |tag==tabled| is
-encountered, which is what ensures termination. Hence if |dissect_type_to|
-should find |tag==tabled|, this can only be during the root call, and means the
-user has been equating one type name directly to another. This possibility seems
-somewhat silly, and is a potential cause of trivially recursive type definitions
-(defining a type directly or indirectly as itself), so rather than handling it,
-we for now decide that the possibility should be ruled out syntactically (a bare
-type identifiers will not be accepted as right hand side); therefore we
-|assert(false)| for this case below.
-
+@ With the |to_table| taking care of storing any necessary types to |dst| and
+returning a tabled |type_expr| ready for use by the parent, the definition of
+|dissect_type_to| is a simple reconstruction of the top level structure. Only
+the case |tag==tabled| is a problem, since a tabled type definition cannot
+simply refer to another one. We simply refuse to treat the case by issuing
+|assert(false)|: for the root call the possibility is ruled out by the syntax
+for type definition groups (which does not allow bare type identifiers or user
+type constructor calls as right hand side), while we never have this case in
+recursive calls through~|to_table|, as we shall see in the next section. There
+is one case where it might be useful to define one tabled type in terms of
+another, namely one could define a new type as an application of an existing
+type constructor with specific arguments. However, if the syntax were to make
+that a possibility, it should be handled by expanding the type constructor call
+before invoking |dissect_type_to|, which is probably simpler and clearer than
+trying to cater for the possibility here.
 
 @< Function definitions @>=
-type_expr type_expr::to_table (dressed_type_list& dst, type_nr_type& count) const
-{ if (tag==tabled)
-    return copy(); // the buck stops here
-  dst.push_back(dissect_type_to(dst,count));
-  return type_expr::user_type(count++,type_list());
-    // type number that will refer to |dst.back()|
-}
-@)
-type_expr
-  type_expr::dissect_type_to (dressed_type_list& dst, type_nr_type& count) const
+type_expr type_expr::dissect_type_to
+    (unsigned int deg, unsigned int lim,
+     dressed_type_list& dst, type_nr_type& count) const
 { switch(tag)
   {
   case function_type:
     return type_expr::function
-      (func_variant->arg_type.to_table(dst,count),
-       func_variant->result_type.to_table(dst,count));
+      (func_variant->arg_type.to_table(deg,lim,dst,count),
+       func_variant->result_type.to_table(deg,lim,dst,count));
   case row_type:
-      return type_expr::row(row_variant->to_table(dst,count));
+      return type_expr::row(row_variant->to_table(deg,lim,dst,count));
   case tuple_type:
   case union_type:
     { dressed_type_list l;
       for (wtl_const_iterator it(tuple_variant); not it.at_end(); ++it)
-        l.push_back(it->to_table(dst,count));
+        l.push_back(it->to_table(deg,lim,dst,count));
       return type_expr::tuple_or_union(tag,l.undress());
     }
   case tabled: assert(false);
 // we don't allow $\&{set\_type}~\&a=\&a$ or $\&{set\_type}~\&a=\&b,\&b=\ldots$
   default: return copy(); // types with no descendants are returned unchanged
   }
+}
+
+@ The method |to_table| handles non-tabled |type_expr| values by (recursively)
+calling |dissect_to| and moving the value returned to the end of |dst|; it then
+returns a tabled type with |tabled_nr()==count| to refer to this type, and
+finally increments |count|. But |to_table| must also deal with the case
+|tag==tabled| already (which together with primitive types are the cases where
+the recursion stops), which are of two kinds: tabled types and type constructor
+applications from previously entered type definitions on one hand, and
+references to types or type constructors from the current definition group on
+the other hand. In the former case we just copy the |type_expr| (which includes
+any type arguments to a tabled type constructor), but in the latter case no
+arguments will be present (within a definition group all names have the same
+arity, any mutual references are implicitly assumed to preserve the argument list
+identically). Therefore in the latter case we make this implicit argument list,
+with type variables numbered from $0$ up to |arity|, explicit, and attach it to
+the tabled type constructor, so that when used in the expansion of a member of
+this group, the argument types will be passed unchanged to it. In fact the case
+mentioned at the beginning of this section where a new tabled type is made to
+refer to a type expression just pushed to |dst| is similarly supplied with a
+standard argument list, since the type pushes defines an unnamed member of the
+current definition group, which should also inherit the argument types.
+
+@< Function definitions @>=
+type_expr type_expr::to_table
+    (unsigned int deg, unsigned int lim,
+     dressed_type_list& dst, type_nr_type& count) const
+{ if (tag==tabled and tabled_nr()<lim)
+     return copy(); // pre-existing tabled type and any argument types
+  type_list args; // prepare standard argument list for new tabled types
+  for (unsigned int i=deg; i-->0; )
+    args.push_front(type_expr::variable(i));
+  if (tag==tabled) // recursive type reference within current definition group
+    return type_expr::user_type(tabled_nr(),std::move(args));
+  dst.push_back(dissect_type_to(deg,lim,dst,count));
+  return type_expr::user_type(count++,std::move(args));
+  // increment |count| after using it
 }
 
 @ The following is a bit long, but quite straightforward and efficient.
@@ -1554,7 +1613,7 @@ type_expr
 
 @ As an auxiliary for the final part above, here is the function that empties a
 single bucket. We need to modify the |type_perm| and |groups| containers, so we
-pass these as reference arguments. The |bucket| contents is spliced (using
+pass these as reference arguments. The |bucket| contents will be spliced (using
 |append|) into |type_perm|, so we take it as rvalue reference to indicate this
 pilfering.
 
@@ -1580,8 +1639,8 @@ void empty_bucket (p_list&& bucket, @|
                    containers::sl_list<type_range>& groups)
 { const unsigned int cur_rank=type_perm.size();
 
-  for (auto it=bucket.wcbegin(); not bucket.at_end(it); ++it)
-    (*it)->rank=cur_rank;
+  for (auto* p : bucket)
+    p->rank=cur_rank;
 @)
   const tracker lwb = type_perm.end(); // hold this value for later use
   const bool new_group =
@@ -2279,7 +2338,12 @@ type_expr shift
         aux.push_back(shift(*it,fix,amount));
       return type_expr::tuple_or_union(t.raw_kind(),aux.undress());
     }
-    case tabled: return type_expr::user_type(t.tabled_nr(),type_list());
+    case tabled:
+    { dressed_type_list aux;
+      for (wtl_const_iterator it(t.tabled_args()); not it.at_end(); ++it)
+        aux.push_back(shift(*it,fix,amount));
+      return type_expr::user_type(t.tabled_nr(),aux.undress());
+    }
     case variable_type:
   @/{@; auto c = t.typevar_count();
       return type_expr::variable(c<fix ? c : c+amount);
