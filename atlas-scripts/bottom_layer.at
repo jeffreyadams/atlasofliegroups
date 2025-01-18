@@ -198,6 +198,8 @@ has failed}
     in NU > 2*N*low_frac}
 
 {allow NON-height 0 K-type entries}
+
+{
 set_type
 [RF_sig_tables =
 ( ( -> int) real_form_size
@@ -217,7 +219,10 @@ set_type
 )
 ]
 
+}
 {at the moment this is only used for simple G, so herm_form_irr calls reflect that. Easy to change.}
+
+{
 set make_RF_sig_tables () = RF_sig_tables:
 (  let real_form_hash = make_RealForm_hash()
    then deltas = [mat]: [] {distinguished involution for each form}
@@ -418,11 +423,14 @@ set make_RF_sig_tables () = RF_sig_tables:
   )
 )
 
+}
+
 {whether to use RF_sig_tables in bottom layer computation}
+
 set RF_code = true
-
+{
 set rf_sig_tables = make_RF_sig_tables()
-
+}
 set nKeTime = int: 0
 {pick the distinguished one making mu+2\rho_c dominant}
 set natural_KGB_elt(KType mu) = KGBElt:
@@ -487,7 +495,7 @@ set min_bottom_factors(KType mu) = LK_data:
     then dertauLs = [[KType]]: {jth list on derived simple factor derLj}
     	 for dermuLj@j in dermuLs
 	 do if RF_code {should use bottom_data}
-	    then monomials(rf_sig_tables.branch_entry(dermuLj,DLjs[j]))
+	    then monomials(big_unitary_hash.branch_entry(dermuLj,DLjs[j]))
 	    else monomials(branch(dermuLj, DLjs[j]))
 	    fi
 	 od
@@ -583,7 +591,7 @@ set min_small_bottom_factors(KGBElt x, ratvec lambda) = [LK_data]:
     	 for dermuLs in dermuLss {loop indexed by i}
     	     do for dermuLj@j in dermuLs {loop indexed by j}
 	     	do if RF_code {should use bottom_data}
-	    	   then monomials(rf_sig_tables.branch_entry(dermuLj,DLjs[j])) {indexed by k}
+	    	   then monomials(big_unitary_hash.branch_entry(dermuLj,DLjs[j])) {indexed by k}
 	    	   else monomials(branch(dermuLj, DLjs[j]))
 	    	   fi
 	 	od
@@ -651,7 +659,7 @@ set_type
   )
 ]
 
-{with small_test_flag = true, the theta_stable parabolic doesn't depend just on the LKT, but
+{with small_test_flag = true, the theta_stable parabolic depends not just on the LKT, but
 on the pair (x,lambda)}
 set make_min_bottom_data () = min_bottom_data:
 (  let K_type_hash = make_KType_hash()
@@ -709,7 +717,7 @@ set make_min_bottom_data () = min_bottom_data:
 {use this constant one instead of carrying around bott_data}
 set minBottomData = make_min_bottom_data()
 
-{table of bottom layer data indexed by KType}
+{table of bottom layer data indexed by (x,lambda)}
 set_type
 [min_small_bottom_data =
 ( ( -> int) size
@@ -945,7 +953,7 @@ set min_small_bottom_elim_factors(Param p0, Param p, KTypePol P) = bool:
 			       	 then () = char_counter.use()
 			       	 in K_type_pol(QLj)
 			     elif RF_code
-	    	      	     then rf_sig_tables.sig_entry(derpL0j, DLs[j])
+	    	      	     then big_unitary_hash.sig_entry(derpL0j, DLs[j])
 			     else hermitian_form_irreducible_to_ht_big_SIMPLE(derpL0j,DLs[j])
 		             fi
 			 in if int_part(sigLj[dermuLj[j]]) = 0
@@ -1015,7 +1023,7 @@ set min_bottom_elim_factors(Param p0, Param p, KTypePol P) = bool:
 				 then () = char_counter.use()
 				 in K_type_pol(QLj)
 			    elif RF_code
-	    	      	    then rf_sig_tables.sig_entry(derpL0j, DLs[j])
+	    	      	    then big_unitary_hash.sig_entry(derpL0j, DLs[j])
 			    else hermitian_form_irreducible_to_ht_big_SIMPLE(derpL0j,DLs[j])
 		            fi
 	                 in if int_part(sigLj[dermuLjs[j]]) = 0
@@ -1129,7 +1137,7 @@ set bottom_elim_factors(Param p0, Param p, QKL_bottom_data (Q, LKdata), KTypePol
     then branchLjs = for derpLj@j in derpLjs
 	       	     do let sigLj = KTypePol: {signature for derpLm0j}
 	       	   	    if RF_code
-		   	    then rf_sig_tables.sig_entry(derpLj, DLs[j])
+		   	    then big_unitary_hash.sig_entry(derpLj, DLs[j])
 		   	    else hermitian_form_irreducible_to_ht_big_SIMPLE(derpLj,DLs[j])
 		   	    fi
 			then () = if int_part(sigLj[dermuLjs[j]]) = 0
