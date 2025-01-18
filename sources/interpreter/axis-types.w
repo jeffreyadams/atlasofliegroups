@@ -575,25 +575,37 @@ inline type_expr type_expr::function(type_expr&& arg_tp, type_expr&& res_tp)
   return result;
 }
 
-@ Instead of a regular copy constructor, which would have to make a deep copy
-(because these descendants are owned by the object), |type_expr| provides a
-method |copy| that recursively copies the descendant types; this way the
-inadvertent making of deep copies is avoided. If necessary the |type_expr|
-move constructor can be applied to the temporary for the result from |copy|,
-but this can probably always be avoided by return value optimisation (and in
-any case move construction costs little). Using a named function here results
-in the recursion being visible in the argument of the calls of |new|. Since this
-is not a constructor, the pointers returned from |new| are immediately owned
-when stored in a component of |type_expr| (and even if this had been a
-constructor, no exception can happen between storing the pointer and function
-termination).
+@ Because a |type_expr| owns all of its descendants, copying one means making a
+deep copy, and in order to avoid inadvertently invoking that operation, it is
+provided by an explicitly called |copy| method rather than by a regular copy
+constructor. If the copy needs to be held in an existing variable, the result of
+|copy| can be move-assigned; this is cheap, and probably return value
+optimisation from |copy| can avoid all overhead. Using a named function here
+also results in the recursion being more visible that it would be for a regular
+copy constructor. Since this is not a constructor, the pointers returned from
+|new| are immediately owned when stored in a component of |result|, so we need
+not worry about that. (We can also note that, even if this had been a
+constructor, there would be no need for action to ensure exception safety, since
+no exception can happen between storing the pointer and function termination.)
+
+This is a straightforward structural recursion. We do not replace any tabled
+types by their definitions, so there is no possibility of infinite recursion; we
+do however continue to deep copy to the argument types, if any, of a tabled type
+constructor. Note that any owned pointers of |result| are assigned just before
+exit from the |switch|, and therefore just before |result.tag| gets assigned so
+as to signal ownership of those pointers; no exception (which would cause a
+memory leak) can happen between the two assignments. And if an exception should
+occur before those pointers are installed, no attempt will be made to |delete|
+any pointer fields while destructing |result| because one still has
+|result.tag==undetermined_type| (this would be different if we instead had
+written |switch (result.tag=tag)|, as we erroneously used to).
 
 @:type expression copy@>
 
 @< Function definitions @>=
 type_expr type_expr::copy() const
 { type_expr result;
-  switch (result.tag=tag)
+  switch (tag)
   { case undetermined_type: break;
     case primitive_type: result.prim_variant=prim_variant; break;
     case variable_type: result.typevar_variant=typevar_variant; break;
@@ -608,6 +620,7 @@ type_expr type_expr::copy() const
     break;
     case tabled: result.tabled_variant=tabled_variant; break;
   }
+  result.tag=tag; // henceforth |result| owns added things
   return result;
 }
 
