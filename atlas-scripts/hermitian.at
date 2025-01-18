@@ -326,12 +326,16 @@ set is_pure_cert_hash(KTypePol P, KTypePol_hash cert_hash) = bool:
     else true
     fi
 
+{will be modified to name of local test being run}
+set test_string = string: ""
+
 set tested_pos_hash = make_Param_hash()
 set tested_pos_list = [Param]: []
 set tested_pos_times = [int]: [] {one for each tested_pos_hash.list() entry}
 set tested_pos_mults = [int]: [] {one for each tested_hash.list() entry}
 {set tested_bools = [bool]: []}
 set tested_pos_mult_times = [[int]]: [] {one for each tested_pos_hash.list() entry}
+set tested_pos_strings = [string]: []
 
 set tested_neg_hash = make_Param_hash()
 set tested_neg_list = [Param]: []
@@ -339,13 +343,15 @@ set tested_neg_times = [int]: [] {one for each tested_list entry}
 set tested_neg_mults = [int]: [] {one for each tested_hash.list() entry}
 {set tested_bools = [bool]: []}
 set tested_neg_mult_times = [[int]]: [] {one for each tested_hash.list()}
+set tested_neg_strings = [string]: []
 
 set tested_to_ht_hashes = for h:100 do make_Param_hash() od
 set tested_to_ht_lists = for h:100 do [Param]:[] od
 set tested_to_ht_times = for h:100 do [int]:[] od
 set tested_to_ht_mults = [[int]]: for h:100 do [] od {one for each tested_to_ht_hashes[h].list()}
-set tested_to_ht_bools = [[bool]]: for h:100 do [] od 
+set tested_to_ht_bools = [[bool]]: for h:100 do [] od
 set tested_to_ht_mult_times = [[[int]]]: for h:100 do [] od{one for each tested_to_ht_hashes[h].list()}
+set tested_to_ht_strings = [[string]]: for h:100 do [] od
 
 {set cSp = int:0}
 set was_tested(Param p, int T, bool ans) = void:
@@ -358,12 +364,14 @@ set was_tested(Param p, int T, bool ans) = void:
        	 then m = tested_pos_hash.match(p)
        	 then () = if m=M then tested_pos_mults #:= 0; tested_pos_mult_times #:=[] fi
        	 in tested_pos_list#:=p; tested_pos_times#:=T; tested_pos_mults[m]+:=1;
-       	  {tested_bools#:= ans;} tested_pos_mult_times[m] #:=T
+       	  {tested_bools#:= ans;} tested_pos_mult_times[m] #:=T;
+	  tested_pos_strings #:= test_string
     else let M = tested_neg_hash.size()
        	 then m = tested_neg_hash.match(p)
        	 then () = if m=M then tested_neg_mults #:= 0; tested_neg_mult_times #:=[] fi
        	 in tested_neg_list#:=p; tested_neg_times#:=T; tested_neg_mults[m]+:=1;
-       	  {tested_bools#:= ans;} tested_neg_mult_times[m] #:=T
+       	  {tested_bools#:= ans;} tested_neg_mult_times[m] #:=T;
+	  tested_neg_strings #:= test_string
     fi
 
 set was_tested_to_ht(Param p,int N, int T, bool ans) = void:
@@ -372,10 +380,11 @@ set was_tested_to_ht(Param p,int N, int T, bool ans) = void:
     then m = tested_to_ht_hashes[h].match(p)
     then () = if m=M then tested_to_ht_mults[h] #:= 0; tested_to_ht_mult_times[h] #:=[] fi
     then tthtsh = tested_to_ht_times[h], tthmsh = tested_to_ht_mults[h], tthmtsh = tested_to_ht_mult_times[h],
-    	 tthbsh = tested_to_ht_bools[h]
-    then () = tthtsh #:=T; tthmsh[m] +:=1; tthmtsh[m] #:=T; tthbsh #:=ans
-    then () = tested_to_ht_times[h] := tthtsh; tested_to_ht_mults[h]:=tthmsh; tested_to_ht_bools[h] :=tthbsh;
-    	      tested_to_ht_mult_times[h]:=tthmtsh
+    	 tthbsh = tested_to_ht_bools[h], tthsh = tested_to_ht_strings[h]
+    then () = tthtsh #:=T; tthmsh[m] +:=1; tthmtsh[m] #:=T; tthbsh #:=ans; tthsh #:=test_string
+    then () = tested_to_ht_times[h] := tthtsh; tested_to_ht_mults[h]:=tthmsh;
+    	 tested_to_ht_bools[h] :=tthbsh; tested_to_ht_mult_times[h]:=tthmtsh;
+	 tested_to_ht_strings[h] := tthsh
     in tested_to_ht_lists[h]#:=p
 
 set report_tested() = void:

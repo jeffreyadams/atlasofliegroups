@@ -1028,9 +1028,6 @@ set AllKchars() = [int]:
 set NumKchars() = int:
     #AllKchars()
 
-{will be modified to name of local test being run}
-set test_string = ""
-
 set more_verbose =false
 
 { Input is candidate faces, and graph info. Output is the tester-unitary ones.
@@ -1428,7 +1425,7 @@ set one_param_test_min_bottom(Param p, Param_hash Uhash) = [Param]:
     then () = if height(p) > 0
     	      then let () = hash_bottom_layerCounter.use()
     	       	   then elim_min = all(for q in QG
-    	      	    	do min_bottom_elim_factors(q)
+    	      	    	do min_bottom_elim_factors(q,p)
 		    	od)
     	 {then () = if one_param_verbose then then () = prints("result of elim_min was ",elim_min) fi}
     	       	  in if not elim_min {minimal bottom layer proved not a unitary Param}
@@ -1540,7 +1537,7 @@ set one_param_test_all_bottom(Param p, [int] Ds, Param_hash Uhash) = [Param]:
 	      fi
     then () = hash_bottom_layerCounter.use()
     then elim_min = all(for q in QG
-    	      	    	do min_bottom_elim_factors(q)
+    	      	    	do min_bottom_elim_factors(q,p)
 		    	od)
     	 {then () = if one_param_verbose then then () = prints("result of elim_min was ",elim_min) fi}
     then () = if not elim_min {minimal bottom layer proved not a unitary Param}
@@ -3137,7 +3134,7 @@ set local_test_GEO_hash_bottom_layer_interrupt(KGBElt x, ratvec lambda, {VertexD
     {then sph_far_flag = dominant(G,thetaMinus*gammamax)*G.two_rho_check/2 < to_ht_frac*(gammamax*G.two_rho_check)}
     then steps = max(r-1,1)
     then start=elapsed_ms()
-    then test_heights = next_heights(pmin, steps)
+    {then test_heights = next_heights(pmin, steps)
     then j0 = if #newDs = 0
     	      then -1
 	      else first(for m in test_heights do newDs~[0] < m od)
@@ -3146,7 +3143,7 @@ set local_test_GEO_hash_bottom_layer_interrupt(KGBElt x, ratvec lambda, {VertexD
     then HT = if j0 = -1
     	      then test_heights~[0]
 	      else test_heights[j0]
-	      fi
+	      fi}
     {then () = prints("testing to ",HT)}
     then UParams = [Param]:
          let ((eq,gr),IUCL,CLBF) = localGraphK(LFDKH)
@@ -3291,7 +3288,7 @@ set local_test_GEO_hash_bottom_layer_step(KGBElt x, ratvec lambda, {VertexData v
     {then sph_far_flag = dominant(G,thetaMinus*gammamax)*G.two_rho_check/2 < to_ht_frac*(gammamax*G.two_rho_check)}
     then steps = max(r-1,1)
     then start=elapsed_ms()
-    then test_heights = next_heights(pmin, steps)
+    {then test_heights = next_heights(pmin, steps)
     then j0 = if #newDs = 0
     	      then -1
 	      else first(for m in test_heights do newDs~[0] < m od)
@@ -3300,7 +3297,7 @@ set local_test_GEO_hash_bottom_layer_step(KGBElt x, ratvec lambda, {VertexData v
     then HT = if j0 = -1
     	      then test_heights~[0]
 	      else test_heights[j0]
-	      fi
+	      fi}
     {then () = prints("testing to ",HT)}
     then UParams = [Param]:
          let ((eq,gr),IUCL,CLBF) = localGraphK(LFDKH)
@@ -3452,13 +3449,13 @@ set local_test_GEO_hash_bottom_layer(KGBElt x, ratvec lambda, {VertexData vd,}
     {then sph_far_flag = dominant(G,thetaMinus*gammamax)*G.two_rho_check/2 < to_ht_frac*(gammamax*G.two_rho_check)}
     then steps = max(r-1,1)
     then start=elapsed_ms()
-    then test_heights = next_heights(pmin, steps)
+{    then test_heights = next_heights(pmin, steps)
     then j0 = first(for x in test_heights do D < x od)
     	 {so that we test above the height bottom layer has examined}
     then HT = if j0 = -1
     	      then -1
 	      else test_heights[j0]
-	      fi
+	      fi}
     then UParams = [Param]:
          let ((eq,gr),IUCL,CLBF) = localGraphK(LFDKH)
 	 {these have had know_lower, min_bottom, and bottom_elim

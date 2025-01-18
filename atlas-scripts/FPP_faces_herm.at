@@ -2054,7 +2054,10 @@ set is_unitary_hash_big_SIMPLE(Param p) = bool:
     then L = big_unitary_hash.lookup(herm_center(p))
     {then () = prints("p = ", p, ". L = ",L, ", is_finished = ",is_finished(p.x, p.lambda))}
     then () = if L.>= then return true fi
-    then () = if is_finished(p.x, p.lambda) then return L.>= fi
+    then () = if is_finished(p.x, p.lambda)
+    	      then big_unitary_hash.numatch(p); return false fi
+    then Ln = big_unitary_hash.nulookup(p)
+    then () = if Ln.>= then return false fi
     then (,pL) = wkgood_Q(p)
     then derpLs = for qLj in derived_factor_params0(pL)
     	 	  do monomials(finalize(qLj))
