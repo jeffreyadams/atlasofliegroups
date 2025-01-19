@@ -7,6 +7,7 @@
 <unity.at {for deform_hts}
 <red_count.at {for red_count@Param}
 <face_classes.at {for coords}
+<cohom_reductionND.at {for glue_sigs}
 {BREAK HERE?}
 
 set KUKU_flag = true
@@ -1643,7 +1644,7 @@ set write_x_flag = false
 
 {decide NOT to hash nonunitary...well, UNdecided 1/14/25}
 {try to incorporate RF_sig_table 1/18/25}
-{sig_height = height(p) means full signature
+{sig_height = height(p)-1 means full signature
 phash always contains uhash and nuhash}
 set_type
 [big_unitary_hash_table =
@@ -1670,15 +1671,19 @@ set_type
   , ((RealForm,int) ->) finishxmap {OR int with x_known(RealForm)}
   , (KGBElt -> ) partialx {add x to x_partial}
   , ((RealForm,[int]) -> ) finishall {add bitmaps of all new known (x,lambda) to xl_known}
+  , (RealForm -> Param_hash) phash {hash table of all indexed parameters}
   , (RealForm -> Param_hash) uhash {hash table of known unitary}
   , (RealForm -> Param_hash) nuhash {hash table of known nonunitary}
+  , (Param -> (int,int)) long_plookup {(rf_index(p.real_form), location of p in its phash)}
   , (Param -> (int,int)) long_ulookup {(rf_index(p.real_form), location of p in its uhash)}
+  , (Param -> int) plookup {(location of p in its uhash)}
   , (Param -> int) ulookup {(location of p in its uhash)}
   , (Param -> int) nulookup {(location of p in its nuhash)}
   , (Param -> bool) check {check whether p is unitary, and add to appropriate hash table}
   , (Param -> int) umatch {add p to its uhash table}
   , (Param -> int) numatch {add p to its nuhash table}
   , ((Param,int) -> int) long_umatch {add p to ith uhash table}
+  , ((Param,int) -> int) long_match {add p to ith uhash table} {included for back compatibility}
   , ( -> ) write {output unitary data for file}
   , (RealForm -> ) writeG {output data for one group to file}
   , ((RealForm, int, int) -> ) writeGrange {output data for KGB(G)[low,high]}
@@ -1803,7 +1808,7 @@ set make_big_unitary_hash() = big_unitary_hash_table:
 		        fi
 		    fi
 	in (rfnum, ktypenum, branches[rfnum][ktypenum])
-    then add_param(Param p) = (int, int, int): {add a param, full herm form}
+    then add_param_inf(Param p) = (int, int, int): {add a param, full herm form}
    	let  rfnum = add_real_form(p.real_form)
 	then PNUM = phashes[rfnum].size()
 	then () = p:=herm_center(p)
@@ -1813,13 +1818,19 @@ set make_big_unitary_hash() = big_unitary_hash_table:
 		       let sig = hermitian_form_irreducible(p)
 		       {then () = bottom_sig_time +:= elapsed_ms() - start_sig}
 		       then sig_ind = K_type_pol_hashes[rfnum].match(sig)
-		       then () = sigs[rfnum] := if #sigs[rfnum] = 0 then [sig_ind]
+		       then () = if #sigs[rfnum] = 0 then sigs[rfnum] := [sig_ind]
+		       	       	 else sigs[rfnum] #:= sig_ind
+				 fi
+		       {then () = sigs[rfnum] := if #sigs[rfnum] = 0 then [sig_ind]
 		     	      	      	     else sigs[rfnum] #:= sig_ind
-				      	     fi
-		       then () = sig_heights[rfnum] #:= height(p)
+				      	     fi}
+		       then () = if #sig_heights[rfnum] = 0 then sig_heights[rfnum] := [height(p)]
+		       	       	 else sig_heights[rfnum] #:= height(p) - 1
+				 fi
+		       {sig_heights[rfnum] #:= height(p)}
 		       then () = if is_pure(sig)
-		       	       	 then {status_strings[rfnum] #:= "T";} uhashes[rfnum].match(p)
-				 else {status_strings[rfnum] #:= "F";} nuhashes[rfnum].match(p)
+		       	       	 then uhashes[rfnum].match(p)
+				 else nuhashes[rfnum].match(p)
 				 fi
 		       then () = assert(real_form_hash.size() = #K_type_pol_hashes,"big_unitarity_hash damaged")
 		       then () = assert(real_form_hash.size() = #phashes,"big_unitarity_hash damaged")
@@ -1830,7 +1841,7 @@ set make_big_unitary_hash() = big_unitary_hash_table:
 		       in ()
 		  fi
 	 in (rfnum, pnum, sigs[rfnum][pnum])
-   then add_param(Param p, int D) = (int, int, int): {add a param, form to ht D}
+   then add_param(Param p, int D) = (int, int, int): {add a param, form to ht D; assume D >= ht(p)}
         let  rfnum = add_real_form(p.real_form)
         then PNUM = phashes[rfnum].size()
 	then () = p:=herm_center(p)
@@ -1840,23 +1851,31 @@ set make_big_unitary_hash() = big_unitary_hash_table:
                        then} sigD = if low(p,D) {low(p.x,p.lambda,D)}
      	  			   then let ans =  hermitian_form_irreducible_to_ht(p,D)
 				   	then () = if is_pure(ans)
-					     	  then (){status_strings[rfnum] #:= ""}
-					     	  else {status_strings[rfnum] #:= "F";} nuhashes[rfnum].match(p)
+					     	  then ()
+					     	  else nuhashes[rfnum].match(p)
 						  fi
 					in ans
      	 			   else let ans = hermitian_form_irreducible(p)  {??? COULD INCREASE D ???}
 	       				then () = if is_pure(ans)
-					     	  then {status_strings[rfnum] #:= "T";} uhashes[rfnum].match(p)
-						  else {status_strings[rfnum] #:= "F";} nuhashes[rfnum].match(p)
+					     	  then uhashes[rfnum].match(p)
+						  else nuhashes[rfnum].match(p)
 						  fi
 	       				in to_ht(ans,D)
      	 			   fi
                        {then () = bottom_sig_time +:= elapsed_ms() - start_sig}
                        then sigD_ind = K_type_pol_hashes[rfnum].match(sigD)
-                       then () = sigs[rfnum] := if #sigs[rfnum] = 0 then [sigD_ind]
+		       then () = if #sigs[rfnum] = 0
+		       	       	 then sigs[rfnum] := [sigD_ind]
+				 else sigs[rfnum] #:= sigD_ind
+				 fi
+                       {then () = sigs[rfnum] := if #sigs[rfnum] = 0 then [sigD_ind]
                                              	else sigs[rfnum] #:= sigD_ind
-                                             	fi
-                       then () = sig_heights[rfnum] #:= D
+                                             	fi}
+		       then () = if #sig_heights[rfnum] = 0
+		       	       	 then sig_heights[rfnum] := [D]
+				 else sig_heights[rfnum] #:= D
+				 fi
+		       {then () = sig_heights[rfnum] #:= D}
                        then () = assert(real_form_hash.size() = #K_type_pol_hashes,"big_unitarity_hash damaged")
                        then () = assert(real_form_hash.size() = #phashes,"big_unitarity_hash damaged")
                        then () = assert(real_form_hash.size() = #branch_heights,"big_unitarity_hash damaged")
@@ -1864,30 +1883,25 @@ set make_big_unitary_hash() = big_unitary_hash_table:
                        then () = assert(#sigs[rfnum] = phashes[rfnum].size(), "big_unitarity_hash damaged")
                        in ()
                    else {we've seen p before}
-                       if sig_heights[rfnum][pnum] < D and sig_heights[rfnum][pnum] > height(p)
+                       if sig_heights[rfnum][pnum] < D and sig_heights[rfnum][pnum] >= height(p)
                        then let tempsigs = sigs[rfnum], tempsights = sig_heights[rfnum]
                             {then start_sig = elapsed_ms()}
                             then sigD = if low(p,D) {low(p.x,p.lambda,N)}
      	  			   	then let ans = hermitian_form_irreducible_to_ht(p,D)
 					     then () = if is_pure(ans)
-					     	       then () {status_strings[rfnum] #:= ""}
-					     	       else {status_strings[rfnum] #:= "F";} nuhashes[rfnum].match(p)
+					     	       then ()
+					     	       else nuhashes[rfnum].match(p)
 						       fi
 					     in ans
      	 				else let ans = hermitian_form_irreducible(p)  {??? COULD INCREASE D ???}
 	       				     then () = if is_pure(ans)
-					     	       then {status_strings[rfnum] #:= "T";} uhashes[rfnum].match(p)
-						       else {status_strings[rfnum] #:= "F";} nuhashes[rfnum].match(p)
+					     	       then uhashes[rfnum].match(p)
+						       else nuhashes[rfnum].match(p)
 						       fi
 	       				     in to_ht(ans,D)
 					fi
 			    {then () = bottom_sig_time +:= elapsed_ms() - start_sig}
 			    then sigD_ind = K_type_pol_hashes[rfnum].match(sigD)
-                       	    then () = sigs[rfnum] := if #sigs[rfnum] = 0 then [sigD_ind]
-                                             	     else sigs[rfnum] #:= sigD_ind
-                                             	     fi
-                       	    then () = sig_heights[rfnum] #:= D
-                            then sigD_ind = K_type_pol_hashes[rfnum].match(sigD)
                             then () = tempsigs[pnum] :=  sigD_ind
                             then () = tempsights[pnum]:=D
                             then () = sigs[rfnum]:=tempsigs
@@ -1939,8 +1953,14 @@ set make_big_unitary_hash() = big_unitary_hash_table:
      end
     , ((Param,int) -> KTypePol): {sig_entry} (Param p, int D) KTypePol:
      begin
-	let (rf,pnum,sig_ind) = add_param(p,D)
-	in regroup(p.real_form, to_ht(K_type_pol_hashes[rf].index(sig_ind), D))
+	let (rf,pnum,sig_ind) = if D < height(p)
+	    		      	then add_param_inf(p)
+				else add_param(p,D)
+				fi
+	in if D < height(p)
+	   then regroup(p.real_form, K_type_pol_hashes[rf].index(sig_ind))
+	   else regroup(p.real_form, to_ht(K_type_pol_hashes[rf].index(sig_ind), D))
+	   fi
      end
     , (int, int -> int): {branch_height} (int rf, int ktypenum): branch_heights[rf][ktypenum]
     , (int, int -> int): {sig_height} (int rf, int pnum): sig_heights[rf][pnum]
@@ -1998,15 +2018,23 @@ set make_big_unitary_hash() = big_unitary_hash_table:
       then v = vec: for M@j in Ms do if M.= then [] else [j] fi od.##
       then () = x_partial[i] := OR(x_partial[i], to_bitset(v))
       in finish_time+:= elapsed_ms() - start
+    , (RealForm -> Param_hash): {phash} (RealForm rf) Param_hash:
+      phashes[add_real_form(rf)]
     , (RealForm -> Param_hash): {uhash} (RealForm rf) Param_hash:
       uhashes[add_real_form(rf)]
     , (RealForm -> Param_hash): {nuhash} (RealForm rf) Param_hash:
       nuhashes[add_real_form(rf)]
-    , (Param -> (int,int)): {long_lookup} (Param p) (int,int):
+    , (Param -> (int,int)): {long_plookup} (Param p) (int,int):
+      let i = add_real_form(p.real_form)
+      then j = phashes[i].lookup(p)
+      in (i,j)
+    , (Param -> (int,int)): {long_ulookup} (Param p) (int,int):
       let i = add_real_form(p.real_form)
       then j = uhashes[i].lookup(p)
       in (i,j)
-    , (Param -> int): {lookup} (Param p) int:
+    , (Param -> int): {plookup} (Param p) int:
+       phashes[add_real_form(p.real_form)].lookup(p)
+    , (Param -> int): {ulookup} (Param p) int:
        uhashes[add_real_form(p.real_form)].lookup(p)
     , (Param -> int): {nulookup} (Param p) int:
        nuhashes[add_real_form(p.real_form)].lookup(p)
@@ -2039,6 +2067,8 @@ set make_big_unitary_hash() = big_unitary_hash_table:
       	 then nuhashes[i].match(p)
 	 else -1
 	 fi
+    , ((Param,int) -> int): {long_umatch} (Param p, int i):
+      uhashes[i].match(p)
     , ((Param,int) -> int): {long_match} (Param p, int i):
       uhashes[i].match(p)
     , ( -> ): {write} @void:
@@ -2260,13 +2290,7 @@ set hermitian_form_irreducible_big_SIMPLE(Param p) = KTypePol:
 	    then ans = K_type_pol(character_formula(p))
 	    then () = charTime +:= elapsed_ms() - startCF
 	    in ans
-       else let ans = hermitian_form_irreducible(p)
-       	    then boo = is_pure(ans)
-	    then () = if boo
-	    	      then big_unitary_hash.umatch(p)
-		      else big_unitary_hash.numatch(p)
-		      fi
-	    in ans
+       else big_unitary_hash.sig_entry(p,height(p)-1) {hermitian_form_irreducible(p)}
        fi
 
 {this version is only for G simple and hermitian FPP params}
@@ -2316,20 +2340,29 @@ set is_unitary_hash_big(Param p) = bool:
     let pds = derived_factor_params0(p)
     in all(for pd in pds do @bool: is_unitary_hash_big_SIMPLE(pd) od)
 
+set HOWMANY = int:0
+
 set hermitian_form_irreducible_big(Param p) = KTypePol:
     if is_unitary_hash_big(p)
     then let startCF = elapsed_ms()
        	 then m = char_counter.use()
 	 then ans = K_type_pol(character_formula(p))
 	 then () = charTime +:= elapsed_ms() - startCF
-	 in return(ans)
-     else let ans = hermitian_form_irreducible(p)
-     	  then boo = is_pure(ans)
-	  then () = if boo
-	       	    then big_unitary_hash.umatch(p)
-	       	    else big_unitary_hash.numatch(p)
-		    fi
-	  in return(ans)
+	 in ans
+     else let G = p.real_form
+     	  then () = HOWMANY +:= 1
+	  {in hermitian_form_irreducible(p)}
+     	  then derps = derived_factor_params0(p)
+     	  then mu0 = LKTs(p)[0]
+	  {then ans = }
+	  in glue_sigs(for derp in derps do hermitian_form_irreducible_big_SIMPLE(derp) od, mu0)
+	  {
+	  then () = prints("to-glue = ",for derp in derps do hermitian_form_irreducible_big_SIMPLE(derp) od)
+	  then () = prints("glued answer = ",ans)
+	  then () = prints("correct answer = ", hermitian_form_irreducible(p))
+	  }
+	  {then () = assert((ans - hermitian_form_irreducible(p)).=,"bad glue_sigs!")}
+	  {in ans}
      fi
 
 {if true, then try is_unitary during is_unitary_to_ht}
@@ -2387,18 +2420,25 @@ set hermitian_form_irreducible_to_ht_big_SIMPLE(Param p,int N) = KTypePol:
 	       	       	 then big_unitary_hash.numatch(p)
 			 fi
 	       in ans
-     	  else let P = hermitian_form_irreducible(p)
+     	  else big_unitary_hash.sig_entry(p,N)
+	  fi {low}
+     fi{interrupt}
+
+{	  let P = hermitian_form_irreducible(p)
 	       then () = if is_pure(P)
 	       	       	 then big_unitary_hash.umatch(p)
 	       	       	 else big_unitary_hash.numatch(p)
-			 fi
+			 fi {is_pure}
 	       in to_ht(P,N)
      	  fi
-     fi
+     fi}
 
 {assume p is hermitian}
 { }
+set HOWMTH = int:0
+
 set hermitian_form_irreducible_to_ht_big(Param p,int N) = KTypePol:
+    HOWMTH +:= 1;
     if low(p,N) {low(p.x,p.lambda,N)}
     then hermitian_form_irreducible_to_ht(p,N)
     else to_ht(hermitian_form_irreducible(p),N)
@@ -2449,6 +2489,9 @@ set is_unitary_to_ht_big_SIMPLE(Param p,int N) = bool:
   in if interrupt_flag
      then is_unitary_to_ht_big_SIMPLE_interrupt(p,N, interrupt_base_time)
      else {unitary_test_counter.use(); done in calls below}
+     	  is_pure(big_unitary_hash.sig_entry(p,N))
+     fi
+{
      	  if low(p,N) {low(p.x,p.lambda,N)}
      	  then {is_pure(hermitian_form_irreducible_to_ht(p,N))}
 	       let boo = is_unitary_to_ht(p,N)
@@ -2464,7 +2507,7 @@ set is_unitary_to_ht_big_SIMPLE(Param p,int N) = bool:
 	       in is_pure(to_ht(P,N))
      	  fi
      fi
-
+}
 { compute Hermitian form to ht on p, report if it is unitary}
 set is_unitary_to_ht_big(Param p,int N) = bool:
   if (not is_hermitian(p)) or (not is_pos_on_LKTs(p)) then return false fi;
@@ -2643,10 +2686,10 @@ set is_unitary_test_big_SIMPLE (Param p, [int] Ns) = bool:
 	    fi
   {then () = p := herm_center(p)}
   then () = test_count[#Ns] +:= 1
-  then L = big_unitary_hash.ulookup(p)
-  then () = if L.>= then return true fi
+  then () = if (big_unitary_hash.ulookup(p)).>= then return true fi
+  then () = if (big_unitary_hash.nulookup(p)).>= then return false fi
   then () = if #Ns = 0
-       	    then test_count_mat[0,0] +:= 1;
+       	    then {test_count_mat[0,0] +:= 1;}
 	    return is_unitary_hash_big_SIMPLE(p)
 	    fi
   then (LAM,NU,) = low(p)

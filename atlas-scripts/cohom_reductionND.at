@@ -361,19 +361,46 @@ set glue_params(RealForm G, [Param] drfs, ratvec shift) = Param:
     in parameter(x,lambda,nu)
     {glue_params(G,for p in drfs do [p] od,shift)[0]}
 
-set glue_K_types(RealForm G, [KType] muis, ratvec gamma) = KType:
-    let x = glue_KGBs(G, for mui in muis do mui.x od), dfwis = derived_factor_weight_inclusions(G)
+{Here mu0 is meant to be a base K-type on G from which all targets differ by a sum of roots}
+
+{x0 is a fundamental KGBElt on G, and derx0s its factors. There is a secret K-type mu0 on G
+differing from the desired glue by a sum of roots. If dermus are its factors, then
+
+shift = highest_weight(mu0,x0) - sum_j dfwjs[j](highest_weight(dermus[j],derx0s[j]).mu)
+}
+set glue_K_types([KType] dermus, [(ratvec->ratvec)] dfwjs, KGBElt x0,
+    [KGBElt] derx0s, ratvec shift) = KType:
+    K_type(KHighestWeight:((),x0, (sum(#shift, for dermu@j in dermus do
+    		dfwjs[j](highest_weight(dermu, derx0s[j]).mu) od) + shift).numer))
+
+
+set glue_K_types(RealForm G, [KType] muis, KType mu0) = KType:
+    let G = mu0.real_form
+    then x0 = KGB(G,0), dfwis = derived_factor_weight_inclusions(G)
+    then derx0s = derived_factor_KGBs0(x0), dermu0s = derived_factor_K_types0(mu0)
+    then base = highest_weight(mu0, x0).mu
+    then derbases = for dermu0@j in dermu0s do highest_weight(dermu0s[j], derx0s[j]).mu od
+    then root_shifts = for mui@j in muis do highest_weight(mui, derx0s[j]).mu - derbases[j] od
+    in K_type(KHighestWeight:((),x0, base + sum(G.rank,
+       for shift@j in root_shifts do dfwis[j](shift).numer od)))
+    { let x = glue_KGBs(G, for mui in muis do mui.x od), dfwis = derived_factor_weight_inclusions(G)
     then lambda = sum(G.rank, for mui@j in muis do dfwis[j](mui.lambda - mui.real_form.rho) od) + 
     	 gamma + G.rho
-    in LKTs(parameter(x,lambda,null(G.rank)))[0]
+    in LKTs(parameter(x,lambda,null(G.rank)))[0]}
     {K_type(KHighestWeight:((),x,lambda))}
 
     {LKT(glue_params(G, for mui in muis do param(mui) od, gamma))}
 
+{??? this fails with gamma = projection on center of infinitesimal character for G ???  }
 {take signatures on each derived simple factor of G and glue them into a signature on G}
-{the ratvec is meant to give the central character}
-set glue_sigs(RealForm G, [KTypePol] sigs, ratvec gamma) = KTypePol:
-    let B = box(for sig in sigs do #sig od)
+{the K-type mu0 on G  meant to differ from everything in the image by a sum of roots}
+set glue_sigs([KTypePol] sigs, KType mu0) = KTypePol:
+    let G = mu0.real_form
+    then x0 = KGB(G,0), dermu0s = derived_factor_K_types0(mu0)
+    then dfwis = derived_factor_weight_inclusions(G), derx0s = derived_factor_KGBs0(x0)
+    then shift = highest_weight(mu0,x0).mu - (sum(G.rank, for dermu0@j in dermu0s
+    	 do dfwis[j](highest_weight(dermu0,derx0s[j]).mu) od))
+    then B = box(for sig in sigs do #sig od)
     then factor_terms = for sig in sigs
     	 	      	do for c@m in sig do (c,m) od
 			od
@@ -385,6 +412,6 @@ set glue_sigs(RealForm G, [KTypePol] sigs, ratvec gamma) = KTypePol:
 	              	 then () = c*:= ci
 		    	 in ms #:= mi
 		      od
-	    in (c, glue_K_types(G,ms,gamma))
+	    in (c, glue_K_types(ms,dfwis,x0,derx0s,shift))
 	 od
     in sum(G, for (c,m) in terms do c*m od)

@@ -838,8 +838,8 @@ set FPP_unitary_hash_bottom_layer([(KGBElt,ratvec)] xlambdas, Param_hash UhashG{
 	    	     ", in localFD_1Dirac2_by_zero = ",print_time_string(FD12bzTime));
        	    prints("Time in derived_factor_K_types_info = ", print_time_string(dfkiTime), ", time in natural KGB = ", print_time_string(nKeTime));
        	    prints("Time in min_bottom_factors = ",print_time_string(mbfTime), ", time in min_bottom_elim_factors = ",print_time_string(mbefTime));
-       	    prints("Time in bottom layer branching = ",print_time_string(rf_sig_tables.bottom_branch_time()),
-       		    ", time in bottom layer sig = ", print_time_string(rf_sig_tables.bottom_sig_time()));
+       	    {prints("Time in bottom layer branching = ",print_time_string(rf_sig_tables.bottom_branch_time()),
+       		    ", time in bottom layer sig = ", print_time_string(rf_sig_tables.bottom_sig_time()));}
        	    if more_flag
 	    then prints("Time in bottom_factors = ", print_time_string(bfTime), ", time in bottom_elim_factors_more = ",
        	  	    print_time_string(befmoreTime), ", more_shift_level = ", if bl_interrupt_flag then
@@ -1162,8 +1162,8 @@ set FPP_unitary_hash_bottom_layer([KGBElt] xs, Param_hash UhashG{, Param_hash Up
 	    	     ", in localFD_1Dirac2_by_zero = ",print_time_string(FD12bzTime));
        	    prints("Time in derived_factor_K_types_info = ",print_time_string(dfkiTime),", time in natural KGB = ", print_time_string(nKeTime));
        	    prints("Time in min_bottom_factors = ",print_time_string(mbfTime), ", time in min_bottom_elim_factors = ", print_time_string(mbefTime));
-       	    prints("Time in bottom layer branching = ",print_time_string(rf_sig_tables.bottom_branch_time()),
-       		    ", time in bottom layer sig = ", print_time_string(rf_sig_tables.bottom_sig_time()));
+       	    {prints("Time in bottom layer branching = ",print_time_string(rf_sig_tables.bottom_branch_time()),
+       		    ", time in bottom layer sig = ", print_time_string(rf_sig_tables.bottom_sig_time()));}
        	    if more_flag
 	    then prints("Time in bottom_factors = ", print_time_string(bfTime), ", time in bottom_elim_factors_more = ",
        	  	   	      print_time_string(befmoreTime));
@@ -1392,7 +1392,7 @@ set theta_induced(RealForm G) = void:
      then () = for maxLthi@i in maxLthis
 	     	  do for pL in cands[i]
 	     	     do for q in monomials(theta_induce_irreducible(pL,G))
-		   	do big_unitary_hash.match(herm_center(q))
+		   	do big_unitary_hash.umatch(herm_center(q))
 			od
 	     	     od
 		  od
@@ -1631,7 +1631,7 @@ set real_induced(RealForm G) = void:
 			   	      	    	do monomials(composition_series(Qdef))
 					    	od.##
 			   in for qdef in qdeflist
-			      do big_unitary_hash.match(herm_center(qdef))
+			      do big_unitary_hash.umatch(herm_center(qdef))
 			      od
 			od
 	     	     od
@@ -1936,7 +1936,7 @@ set precomputeALL(RealForm G) = void:
        		  	" FPP unitary faces for G.")
     then Th_time = elapsed_ms()
     then unips = unipotent_representations(G), IG = big_unitary_hash.rf_number(G)
-    then () = for p in unips do big_unitary_hash.long_match(p,IG) od
+    then () = for p in unips do big_unitary_hash.long_umatch(p,IG) od
     then NUnip =  big_unitary_hash.uhash(G).size()
     then () = prints("In ",print_time_string(elapsed_ms() -Th_time), ", found additional ",NUnip - NTheta,
        		  	" unipotent faces for G.")
