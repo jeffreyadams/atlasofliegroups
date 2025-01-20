@@ -35,10 +35,31 @@ if alpha=beta or alpha=-beta then 1 else m_minus(rd,alpha,beta) fi
 
 {f:simple roots -> \pm 1 satisfying f(alpha)f(beta)=-1 if
 (distinct) roots alpha,beta are non-orthogonal
+ if root datum is simple
  there are exactly two such functions
- f(i)=pm 1 (0<=i<=ss_rank -1), otherwise f(i)=0 (meaningless value)
 }
-set orientation_function(RootDatum rd)=(int ->int):(int index):
+set orientation_function_vector(RootDatum G)=vec:
+let n=ss_rank(G) then
+R=G.simple_roots then
+Rd=G.simple_coroots then 
+values=null(n)    {values=[0,0,0...] will eventually be all \pm 1} in
+values[0]:=1;
+while =product(values) do
+ let j=first(for i:n do values[i]=0 od) then  {j=index of first unvalued root, want to assign sign to R[j]}
+  root_j=R[j] then
+  k=first(for value@i in values do value*root_j*Rd[i] !=0 od)  {k is index of first valued root adjacent to root_j} in
+  if k!=-1 
+    then {root_j is not orthogonal to valued root_k, so root_j has minus this value}
+       values[j]:=-values[k] 
+    else
+       values[j]:=1  {k=-1 means all unvalued roots are orthogonal to all valued roots, so assign arbitrarily}
+  fi
+ od;
+values
+
+set orientation_function(RootDatum G)=(int->int):(int j):orientation_function_vector(G)[j] 
+ 
+set orientation_function_old(RootDatum rd)=(int ->int):(int index):
 let n=rd.ss_rank then
 v=null(n) in
 v[0]:=1;

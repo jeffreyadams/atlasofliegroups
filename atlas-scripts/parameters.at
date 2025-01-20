@@ -14,8 +14,6 @@
   NOTE: result of |unnormalized_torus_factor| is not $\theta-fixed$
   probably better not to use |unnormalized_torus_factor|
 }
-set unnormalized_torus_factor (KGBElt x) = ratvec:
-  (torus_factor(x)+rho_check(real_form(x)))/2
 
 { compute xi^2 and test if it is central
   this is formula when v= unnormalized_torus_factor
@@ -129,10 +127,6 @@ set choose_g (Param p) = ratvec:
   choose_g(real_form(p),dual(integrality_datum(p)))
 
 {contragredient of a parameter}
-set tits(KGBElt x)=Tits_elt:(x.real_form,x.unnormalized_torus_factor,x.involution)
-set KGB_elt (Tits_elt t)=KGB_elt(t.root_datum,t.theta,2*t.torus_part-t.root_datum.rho_check)
-set inverse(KGBElt x)=KGB_elt(x.tits.inverse)
-
 {contragredient: (x,lambda,nu) -> (w_0\times x,-w_0\lambda,-w_0\nu)
  sketch: the contragredient is given by the Chevalley involution (of the real group)
  which acts by -1 on lambda,nu, but keeps the same x (it doesn't change the "group")

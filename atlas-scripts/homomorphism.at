@@ -1,0 +1,241 @@
+{\phi: G1->G2, WLOG T1->T2
+ M is matrix of the dual map X^*(T2)->X^*(T1)
+ let R1,R2 = roots, C1,C2 = coroots
+ assume that d\phi restricted to G1_der is injective (very mild assumption)
+ M:R2 -> R1 not necessarily injective (e.g. if R1 is empty)
+ M^t: C1->C2 is injective (M^t itself not necessarily injective because of the center)
+ so *define* S:R1->R2 by: S*alpha_1=  root(G2,M^t*coroot(G1,alpha_1))
+ use this to define map on W}
+
+{---------------mapping W1->W2--------------}
+
+set map_root(RootDatum G1,RootDatum G2,mat M,vec alpha_1)=vec:
+root(G2,^M*coroot(G1,alpha_1))
+
+set map_reflection(RootDatum G1,RootDatum G2,mat M,vec alpha_1)=WeylElt:
+W_elt(G2,reflection(G2,map_root(G1,G2,M,alpha_1)))
+
+set map_simple_reflection(RootDatum G1,RootDatum G2,mat M,int i)=WeylElt:
+map_reflection(G1,G2,M,G1.simple_roots[i])
+
+set map(RootDatum G1,RootDatum G2,mat M,WeylElt w_1)=WeylElt:
+product(G2,for i in w_1.word do map_simple_reflection(G1,G2,M,i) od)
+
+set map_W(RootDatum G1,RootDatum G2,mat M)=(WeylElt -> WeylElt):(WeylElt w_1):map(G1,G2,M,w_1)
+
+{in special case when G1_der and G2_der are locally isomorphic, we can compute M,
+assuming there is a map G1->G2
+e.g. this works for G1=GL(n), G2=PGL(n) but not G2=SL(n)}
+set root_map(RootDatum G1,RootDatum G2)=
+let M=left_solve(G2.simple_roots,G1.simple_roots) in
+if M.any then requisition(M) else error("cannot solve M*G2.simple_roots=G1.simple_roots") fi
+
+{coroot map is the transpose
+set coroot_map(RootDatum G1,RootDatum G2)=
+let M=left_solve(G2.simple_coroots,G1.simple_coroots) in
+if M.any then requisition(M) else error("cannot solve M*G2.simple_roots=G1.simple_roots") fi
+}
+
+set map(RootDatum G1,RootDatum G2,WeylElt w_1)=WeylElt:
+map(G1,G2,root_map(G1,G2),w_1)
+
+set map_W(RootDatum G1,RootDatum G2)=(WeylElt -> WeylElt):(WeylElt w_1):map(G1,G2,w_1)
+
+{-----------mapping of Tits groups -----------------}
+
+{summary of functions:
+
+map_tits_simple_reflection(G1,G2,M,epsilon2,alpha1)
+map_tits_simple_reflection(G1,G2,M,epsilon2,index1)
+map_tits_simple_reflection(G1,G2,M,alpha1)
+map_tits_simple_reflection(G1,G2,M,index1)
+map_tits_element(G1,G2,epsilon2,w1)
+map_tits_element(G1,G2,w1)
+map_tits_element(G1,G2,epsilon2,matrix1)
+map_tits_element(G1,G2,matrix1)
+map_tits_element(G1,G2,epsilon2,sigma1)
+map_tits_element(G1,G2,sigma1)
+map tits_group(G1,G2,epsilon2)
+map tits_group(G1,G2)
+
+test_tits_braid(G)
+test_tits_braid(G1,G2,M,epsilon2)
+test_tits_braid(G1,G2,M)
+
+}
+
+{see structure_constants.at for tau(G,epsilon,f) and other things needed here
+ G2 is the basic group, we use its pinning, and derive a pinning for G1}
+set map_tits_simple_reflection(RootDatum G1,RootDatum G2,mat M,orientation epsilon2,vec alpha1)=Tits_elt:
+assert(is_simple_root(G1,alpha1),"alpha1 is not simple for G1");
+tau(G2,epsilon2,map_root(G1,G2,M,alpha1))
+
+{i is the index in G1 of a simple root: alpha1 =G1.simple_roots[i] (might not be simple for G2)}
+set map_tits_simple_reflection(RootDatum G1,RootDatum G2,mat M,orientation epsilon2,int index1)=Tits_elt:
+assert(0<=index1 and index1<G1.ss_rank,"i is not the index of a simple root for G1");
+map_tits_simple_reflection(G1,G2,M,epsilon2,G1.simple_roots[index1])
+
+{if no orientation function given, choose one}
+set map_tits_simple_reflection(RootDatum G1,RootDatum G2,mat M,vec alpha1)=Tits_elt:map_tits_simple_reflection(G1,G2,M,orientation_function(G2),alpha1)
+set map_tits_simple_reflection(RootDatum G1,RootDatum G2,mat M,int i)=Tits_elt:map_tits_simple_reflection(G1,G2,M,orientation_function(G2),i)
+
+{map on Tits group given by WeylElt}
+set map_tits_element(RootDatum G1,RootDatum G2,mat M, orientation epsilon,WeylElt w1)=Tits_elt:
+product(G2,for i in word(w1) do map_tits_simple_reflection(G1,G2,M,epsilon,i) od)
+
+{if no epsilon given choose one}
+set map_tits_element(RootDatum G1,RootDatum G2,mat M,WeylElt w1)=Tits_elt:map_tits_element(G1,G2,M,orientation_function(G2),w1)
+{map on Tits group given by matrix of WeylElt}
+set map_tits_element(RootDatum G1,RootDatum G2,mat M, orientation epsilon2,mat matrix1)=Tits_elt:
+map_tits_element(G1,G2,M,epsilon2,W_elt(G1,matrix1))
+{if no epsilon given choose one}
+set map_tits_element(RootDatum G1,RootDatum G2,mat M,mat matrix1)=Tits_elt:
+map_tits_element(G1,G2,M,orientation_function(G2),matrix1)
+
+{sigma1 must be tits element of a simple reflection}
+set map_tits_element_simple(RootDatum G1,RootDatum G2,mat M,orientation epsilon2,Tits_elt sigma1)=Tits_elt:
+let w=w(sigma1) in 
+assert(length(w(sigma1))=1,"not the tits element of a simple reflection");
+tits_element(left(sigma1.torus_part,map_tits_simple_reflection(G1,G2,M,epsilon2,w.word[0])))
+
+set map_tits_element(RootDatum G1,RootDatum G2,mat M,orientation epsilon2,Tits_elt sigma1)=Tits_elt:
+if length(sigma1.w)=0 then
+ left(sigma1.torus_part,tits_identity(G))
+else
+ let product=simple_expression(sigma1) in   {sigma1=product of tits simple reflections}
+ product(G2,for sigma@j in product do map_tits_element_simple(G1,G2,M,epsilon2,sigma1) od)
+fi
+{if no epsilon given choose one}
+set map_tits_element(RootDatum G1,RootDatum G2,mat M,Tits_elt sigma1)=Tits_elt:
+map_tits_element(G1,G2,M,orientation_function(G2),sigma1)
+
+set map_tits_group(RootDatum G1,RootDatum G2,mat M,orientation epsilon2)=(Tits_elt->Tits_elt):
+(Tits_elt sigma1):map_tits_element(G1,G2,M,epsilon2,sigma1)
+
+set map_tits_group(RootDatum G1,RootDatum G2,mat M)=(Tits_elt->Tits_elt):
+(Tits_elt sigma1):map_tits_element(G1,G2,M,orientation_function(G2),sigma1)
+
+set test_tits_braid(RootDatum G)=
+let ops=for i:ss_rank(G) do tits_simple_reflection(G,i) od in 
+let results=##for i:G.ss_rank do
+ for j:G.ss_rank do
+  if i=j then (i,j,ops[i]^4=tits_identity(G))
+ else
+  let m=m(G,i,j) in
+   let ()=prints("i ", i, " ", j) in
+   if m=0 then (i,j,ops[i]*ops[j]=ops[j]*ops[i]) 
+   elif m=1 then (i,j,ops[i]*ops[j]*ops[i]=ops[j]*ops[i]*ops[j])
+   elif m=2 then (i,j,ops[i]*ops[j]*ops[i]*ops[j]=ops[j]*ops[i]*ops[j]*ops[i])
+   elif m=3 then (i,j,ops[i]*ops[j]*ops[i]*ops[j]*ops[i]*ops[j]=ops[j]*ops[i]*ops[j]*ops[i]*ops[j]*ops[i])
+   else error("m>3???")
+  fi
+fi
+od od
+then all=all(for (,,tf) in results do tf od) in
+if not all then prints(results) fi ;all
+
+set test_tits_braid(RootDatum G1,RootDatum G2,mat M,orientation epsilon2)=bool:
+let ops=for i:ss_rank(G1) do map_tits_simple_reflection(G1,G2,M,i) od in 
+let results=##for i:G1.ss_rank do
+ for j:G1.ss_rank do
+  if i=j then (i,j,ops[i]^4=tits_identity(G2))
+ else
+  let m=m(G2,G1.simple_roots[i],G1.simple_roots[j]) in
+   let ()=prints("i ", i, " ", j, " ", m) in
+   if m=0 then (i,j,ops[i]*ops[j]=ops[j]*ops[i]) 
+   elif m=1 then (i,j,ops[i]*ops[j]*ops[i]=ops[j]*ops[i]*ops[j])
+   elif m=2 then (i,j,ops[i]*ops[j]*ops[i]*ops[j]=ops[j]*ops[i]*ops[j]*ops[i])
+   elif m=3 then (i,j,ops[i]*ops[j]*ops[i]*ops[j]*ops[i]*ops[j]=ops[j]*ops[i]*ops[j]*ops[i]*ops[j]*ops[i])
+   else error("m>3???")
+  fi
+fi
+od od
+then all=all(for (,,tf) in results do tf od) in
+if not all then prints(results) fi ;all
+
+set test_tits_braid(RootDatum G1,RootDatum G2,mat M)=bool:test_tits_braid(G1,G2,M,orientation_function(G2))
+
+{----------------mapping of KGB ------------------}
+
+{map KGB using the Tits group}
+set map_KGB_tits(KGBElt x1,RealForm G2,mat M, orientation epsilon2)=KGBElt:
+let G1=x1.real_form then
+sigma1=tits(x1) {this has unnormalized torus factor} then
+sigma2=map_tits_element(G1,G2,M,epsilon2,sigma1) {uses unnormalized torus factor from Hd} then
+x2=KGB_elt(sigma2) {when making x_Gd, input sigma_Gd has unnormalized torus factor, x gets normalized torus_factor} in
+x2
+
+
+set map_KGB_tits(KGBElt x1,RealForm G2,mat M)=KGBElt:map_KGB_tits(x1,G2,M,orientation_function(G2))
+
+
+
+
+{
+
+set map_KGB_tits(RealForm Hd,RealForm Gd, orientation epsilon)=[KGBElt]:
+for x in KGB(Hd) do map_KGB_tits(Gd,epsilon,x) od
+
+set map_KGB_tits(RealForm Hd,RealForm Gd)=[KGBElt]:
+for x in KGB(Hd) do map_KGB_tits(Gd,x) od
+
+
+
+
+
+{---------------testing-----------------}
+
+
+{set lifted=embed_KGB_tits(Hd,Gd)
+ test_embed_KGB_tits(Hd,lifted) tests Cayleys and crosses}
+set test_embed_KGB_tits_crosses(RealForm Hd,[KGBElt] lifted,mat M)=
+let KGB_Hd=KGB(Hd) in
+##for x_Hd@i in KGB_Hd do
+{ let ()=prints("i=",i) in }
+ let x_Gd=lifted[i] in
+ ##for alpha in Hd.simple_roots do
+  let y_Hd=cross(alpha,x_Hd) then
+  index_y_Hd=find(KGB_Hd,y_Hd) then
+  y_Gd=lift_KGB_cross(Hd,alpha,M,x_Gd) in
+  [("x",i,alpha,lifted[index_y_Hd]=y_Gd)]
+ od
+od
+
+set test_embed_KGB_tits_Cayleys(RealForm Hd,[KGBElt] lifted, mat M)=
+let KGB_Hd=KGB(Hd) in
+##for x_Hd@i in KGB_Hd do
+{ let ()=prints("i=",i) in}
+{ let ()=prints("x_Hd=", x_Hd) in}
+ let x_Gd=lifted[i] in
+ ##for alpha in Hd.simple_roots do
+{  let ()=prints("alpha=",alpha) in }
+  if is_noncompact_imaginary(x_Hd)(alpha) then
+   let y_Hd=Cayley(alpha,x_Hd) then
+{   ()=prints("y_Hd=", y_Hd) then}
+   y_Gd=lift_KGB_Cayley(Hd,alpha,M,x_Gd) then
+  index_y_Hd=find(KGB_Hd,y_Hd) then
+{  ()=prints("index_y_Hd=", index_y_Hd) then}
+  y_Gd=lift_KGB_Cayley(Hd,alpha,M,x_Gd) in
+{  let   ()=prints("y_Gd=", y_Gd) in
+  let ()=prints("lifted[index_y_Hd]: ", lifted[index_y_Hd]) in}
+  [("^",i,alpha,lifted[index_y_Hd]=y_Gd)]
+  else []
+ fi
+ od
+od
+
+set test_embed_KGB_tits(RealForm Hd,[KGBElt] lifted, mat M)=
+let result=test_embed_KGB_tits_crosses(Hd,lifted,M)##
+test_embed_KGB_tits_Cayleys(Hd,lifted,M) then
+failures=##for (,,,test)@i in result do
+ if test=false then [i] else [] fi od in
+ if #failures=0 then prints("Result: True") else
+ prints("Result: False");prints(failures) fi;result
+
+set test_embed_KGB_tits(RealForm Hd,RealForm Gd, mat M)=
+test_embed_KGB_tits(Hd,embed_KGB_tits(Hd,Gd),M)
+
+
+
+
+}

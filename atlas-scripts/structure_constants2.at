@@ -107,6 +107,9 @@ fi
 set tau(RootDatum G, vec beta)=Tits_elt:tau(G,orientation_function(G),beta)
 
 
+{move all the rest to homomorphism.at
+
+
 {   embedding of Tits group of equal rank subgroups }
 {assumption: roots of H are a subset of those of G}
 
@@ -281,3 +284,4 @@ failures=##for (,,,test)@i in result do
 set test_embed_KGB_tits(RealForm Hd,RealForm Gd, mat M)=
 test_embed_KGB_tits(Hd,embed_KGB_tits(Hd,Gd),M)
 
+}
