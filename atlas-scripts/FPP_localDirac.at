@@ -3383,6 +3383,18 @@ set local_test_GEO_hash_bottom_layer(KGBElt x, ratvec lambda, {VertexData vd,}
     then () = if {TINY CASE} #LF[0]=1
     	      then return one_param_test_all_bottom(pmin, [ht,D], Uhash)
 	      fi
+    then LKDatas = if small_test_flag
+    	 	   then minSmallBottomData.entry(x,lambda)
+		   else for mu in LKTs(pmin)
+			do minBottomData.entry(mu)
+			od
+		   fi
+    then () = if #LKDatas = #LKTs(pmin) and not more_flag
+   	      then if one_level_revert_flag
+	      	   then return local_test_GEO_hash_one_level(x, lambda, Lvd, LF, pol_hash, Uhash)
+		   else return local_test_GEO_hash2(x, lambda, Lvd, LF, pol_hash, Uhash)
+		   fi
+	      fi
     then () = test_string:= " using local_test_GEO_hash_bottom_layer"
     then  () = hash_bottom_layerCounter.use()
     then () =  if test_verbose then prints("face counts to dim 1: ",
@@ -3399,14 +3411,19 @@ set local_test_GEO_hash_bottom_layer(KGBElt x, ratvec lambda, {VertexData vd,}
  {then LFDKH = [[FaceVertsKHash]]: localFD_KHash_01(x,lambda, Lvd, pol_hash, LF)}
       {label each face (vertex/edge) with index
    	      	in pol_hash of its K-character}
-   then ((eq,gr),IUCL,CLBF) = localGraphK(LFDKH)
-    	{next remove from LFDKH all faces failing min_bottom_factors_elim}
-   {then () = prints("all faces 0, 1 = ",for list in LFDKH do #list od)}
-   then () = LFDKH:= local_testK_hash_min_bottom_layer(x,lambda, Lvd, LFDKH, eq,
-		      gr, CLBF, pol_hash,  Uhash)
-   {then () = prints("min bot faces = ",for list in LFDKH do #list od)}
-   then () = if test_verbose then prints("unitary on min_bottom layer face counts to dim 1: ",
-   	for list in LFDKH do #list od){; prints(parameter(x,lambda,Lvd.list[LFDKH[0][0][0]]))} fi
+   then () = if #LKDatas > #LKTs(pmin)
+   	     then let ((eq,gr),IUCL,CLBF) = localGraphK(LFDKH)
+    	     	      {next remove from LFDKH all faces failing min_bottom_factors_elim}
+   	     	 {then () = prints("all faces 0, 1 = ",for list in LFDKH do #list od)}
+   	     	  then () = LFDKH:= local_testK_hash_min_bottom_layer(x,lambda, Lvd, LFDKH, eq,
+		       	    	    gr, CLBF, pol_hash,  Uhash)
+   	    	 {then () = prints("min bot faces = ",for list in LFDKH do #list od)}
+   	    	  in if test_verbose
+		     then prints("unitary on min_bottom layer face counts to dim 1: ",
+   	    	       	       		for list in LFDKH do #list od)
+		  		{; prints(parameter(x,lambda,Lvd.list[LFDKH[0][0][0]]))}
+		      fi
+	     fi
    then () = if #LFDKH[0] = 0
    	     then return []
 	     fi
@@ -3416,26 +3433,31 @@ set local_test_GEO_hash_bottom_layer(KGBElt x, ratvec lambda, {VertexData vd,}
 			 fi
 	     fi
    then () = if more_flag {want to use non-minimal theta-stable q}
-   	     then let ((eq,gr),IUCL,CLBF) = localGraphK(LFDKH)
-   	     	  then start_datas = elapsed_ms()
-   		  then datas = [QKL_bottom_data]: bottom_factors(bottom_K_type_Qs(pmin, Q0, D))
-		  then () = if test_verbose then prints("cardinality(datas) = ", card(datas)) fi
-		  then  maxQs = max_Qs(Q0) {all MAXIMAL theta-stable containing Q0}
-   		  then () = if time_verbose then prints("time for more datas/maxQs was ",
+   	     then let datas = [QKL_bottom_data]: bottom_factors(bottom_K_type_Qs(pmin, Q0, D))
+	     	  then () = if card(datas) > #datas {more than lowest K-type for each Q}
+	     	       	    then let ((eq,gr),IUCL,CLBF) = localGraphK(LFDKH)
+   	     	  	    {then start_datas = elapsed_ms()}
+		  	    then () = if test_verbose then prints("cardinality(datas) = ", card(datas)) fi
+		  	    then  maxQs = max_Qs(Q0) {all MAXIMAL theta-stable containing Q0}
+   		  	    {then () = if time_verbose then prints("time for more datas/maxQs was ",
     	      	      	      print_time_string(elapsed_ms() - start_datas), " at lambda = ",lambda)
-	      		    fi
-   		  then () = LFDKH := local_testK_hash_bottom_layer_more(x,lambda, Lvd, LFDKH, eq,
-		       	  gr, CLBF, maxQs, datas, pol_hash,  Uhash) {bottom layer test on K-types in datas}
-   		  then () = if test_verbose then prints("unitary on bottom layer to ",D,
-		   	   " face counts to dim 1: ",for list in LFDKH do
-			     #list od)
-		    	    fi
-   		  then () = if #LFDKH[0] = 0 then return [] fi
-		  then () = if #LFDKH[0] = 1 {already passed D}
-   	     	       	    then return one_param_test{_bottom}(parameter(x,lambda,
-			    Lvd.list[LFDKH[0][0][0]]),{ [D],} Uhash)
-	     		    fi
-		  in ()
+	      		    fi}
+   		  	    then () = LFDKH := local_testK_hash_bottom_layer_more(x,lambda, Lvd, LFDKH, eq,
+		       	    gr, CLBF, maxQs, datas, pol_hash,  Uhash)
+			    {bottom layer test on K-types in datas}
+   		  	    then () = if test_verbose then prints("unitary on bottom layer to ",D,
+		   	    	      	 	" face counts to dim 1: ",for list in LFDKH do #list od)
+		    	    	      fi
+   		  	    then () = if #LFDKH[0] = 0 then return [] fi
+		  	    then () = if #LFDKH[0] = 1 {already passed D}
+   	     	       	    	      then return one_param_test{_bottom}(parameter(x,lambda,
+			    	      	   Lvd.list[LFDKH[0][0][0]]),{ [D],} Uhash)
+	     		    	      fi
+		  	    in ()
+			    {consider an "else" reverting to hash2?}
+			    else return local_test_GEO_hash2(x, lambda, Lvd, LF, pol_hash, Uhash)
+			    fi
+		    in ()
 	      fi
 	      {now have list of vertices and edges passing bottom layer test out to D}
    then () = if test_verbose then prints("unitary on bottom layer to height ",D," face counts to dim 1: ",

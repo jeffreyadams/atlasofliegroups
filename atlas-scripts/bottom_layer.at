@@ -660,6 +660,7 @@ set every_MBEF_flag = false
 character formula of p0 to some height}
 set NIHCOUNT = int: 0
 set quitNIH_flag = false
+
 set min_small_bottom_elim_factors(Param p0, Param p, KTypePol P) = bool:
     let start = elapsed_ms(), (Q,pL) = theta_stable_data_small(p), G = p.real_form,
     	x = p.x, lambda = p.lambda
