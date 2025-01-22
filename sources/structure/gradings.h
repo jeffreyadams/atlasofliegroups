@@ -124,7 +124,7 @@ class Status
 
 // a comparison object. Compares bit counts first, when tied uses binary order
 struct GradingCompare
-  : public std::binary_function<const Grading& , const Grading& , bool>
+// : public std::binary_function<const Grading& , const Grading& , bool>
 {
   bool operator() (const Grading&, const Grading&);
 };
