@@ -713,10 +713,10 @@ set local_testK_hash_min_bottom_layer(KGBElt x, ratvec lambda, LocalVertexData L
 		      then pCdef = if not is_final(pC)
 		      	   	   then monomials(finalize(pC))
 		  		   elif wiggle_flag0 and d > 0
-		  		   then let () = char_counter.use()
-				   	then startCF = elapsed_ms()
-				   	then CF = character_formula(finalize(pC))
-					then () = charTime +:= elapsed_ms() - startCF
+		  		   then {let () = char_counter.use()
+				   	then startCF = elapsed_ms()}
+				   	let CF = character_formula(finalize(pC))
+					{then () = charTime +:= elapsed_ms() - startCF}
 		       		   	in  monomials(composition_series((sum(x.real_form,
 		       	   		    for j:d+1 {v in ratverts}
 			   		    do wiggle(CF, face_bary(Lvd,verts[:j]##verts[j+1:]))
@@ -1110,7 +1110,7 @@ set local_test_hash(KGBElt x, ratvec lambda, LocalVertexData Lvd,
 			   	     fi
 		       	   in q
 		    	od {list of tester unitary Params}
-		   else if more_flag
+		   else if more_flag and is_final(pC)
 		   	then more_bad_hash.match(pC)
 			fi;
 		        updateNUclassesB(newStatuses, gr, m);
@@ -1159,10 +1159,10 @@ set local_test_hash_bottom(KGBElt x, ratvec lambda, LocalVertexData Lvd,
                       then pC = parameter(x, lambda, face_bary(Lvd,verts)) {,sigma/(d+1))}
                       then pCdef = if is_final(pC)
                                    then if wiggle_flag and d > 0
-					then let () = char_counter.use()
-				   	     then startCF = elapsed_ms()
-				   	     then CF = character_formula(pC)
-					     then () = charTime +:= elapsed_ms() - startCF
+					then {let () = char_counter.use()
+				   	     then startCF = elapsed_ms()}
+				   	     let CF = character_formula(pC)
+					     {then () = charTime +:= elapsed_ms() - startCF}
 					     in monomials(composition_series((sum(x.real_form,
 					     for j:d+1 {v in ratverts}
 					     do wiggle(CF, face_bary(Lvd,verts[:j]##verts[j+1:]))
@@ -1282,10 +1282,10 @@ set local_test_wiggle_hash(KGBElt x, ratvec lambda, LocalVertexData Lvd,
                       then pC = parameter(x, lambda, face_bary(Lvd, verts)) {sigma/(d+1))}
                       then pCdef = if is_final(pC)
                                    then if wiggle_flag and d > 0
-					then let () = char_counter.use()
-				   	     then startCF = elapsed_ms()
-				   	     then CF = character_formula(pC)
-					     then () = charTime +:= elapsed_ms() - startCF
+					then {let () = char_counter.use()
+				   	     then startCF = elapsed_ms()}
+				   	     let CF = character_formula(pC)
+					     {then () = charTime +:= elapsed_ms() - startCF}
 					     in monomials(composition_series((sum(x.real_form,
 					     	for j:d+1{v in ratverts}
 						do wiggle(CF, face_bary(Lvd,verts[:j]##verts[:j+1]))
@@ -1501,7 +1501,9 @@ set one_param_test_bottom(Param p, [int] Ds, Param_hash Uhash) = [Param]:
        then test = all( [(->bool)]:
 		    	   for q in QG
 			   do @bool: {is_unitary_test_big_SIMPLE(q, test_heights[j0:])}
-			      is_unitary_def_test_big_SIMPLE(q,steps)
+			      let ans = is_unitary_def_test_big_SIMPLE(q,steps)
+			      then () = if not ans then more_bad_hash.match(q) fi
+			      in ans
 			   od)
 	    then () = if more_verbose then prints("your final answer was ",test) fi
 	    in if test
@@ -1513,7 +1515,6 @@ set one_param_test_bottom(Param p, [int] Ds, Param_hash Uhash) = [Param]:
 	    	    in [p]
 	       else let () = one_false_counter.use() {if test is false}
 	       	    then () = one_param_time +:= elapsed_ms() - start
-	     	    then () = more_bad_hash.match(p)
 		    in []
                fi
 	else let () = one_false_counter.use() {if elim_more is false}
@@ -1573,7 +1574,9 @@ set one_param_test_all_bottom(Param p, [int] Ds, Param_hash Uhash) = [Param]:
        	    then test = all( [(->bool)]:
 		    	   for q in QG
 			   do @bool: {is_unitary_test_big_SIMPLE(q, test_heights[j0:])}
-			      	     is_unitary_def_test_big_SIMPLE(q,steps)
+			      let ans = is_unitary_def_test_big_SIMPLE(q,steps)
+			      then () = if not ans then more_bad_hash.match(q) fi
+			      in ans
 		    	od)
 	    then () = if more_verbose then prints("your final answer was ",test) fi
 	    in if test
@@ -1585,7 +1588,7 @@ set one_param_test_all_bottom(Param p, [int] Ds, Param_hash Uhash) = [Param]:
 	    	    in [p]
 	       else let () = one_false_counter.use() {if test is false}
 	       	    then () = one_param_time +:= elapsed_ms() - start
-	     	    then () = more_bad_hash.match(p)
+	     	    {then () = more_bad_hash.match(p)}
 		    in []
                fi
 	else let () = one_false_counter.use() {if elim_more is false}
@@ -2039,10 +2042,10 @@ set local_test_GEO_hash_def_dumb(KGBElt x, ratvec lambda, {VertexData vd,} Local
 				      fi {any(for q}
 				 else {now pC is final}
 				      if wiggle_flag
-				      then let () = char_counter.use()
-				   	   then startCF = elapsed_ms()
-				   	   then CF = character_formula(pC)
-					   then () = charTime +:= elapsed_ms() - startCF
+				      then {let () = char_counter.use()
+				   	   then startCF = elapsed_ms()}
+				   	   let CF = character_formula(pC)
+					   {then () = charTime +:= elapsed_ms() - startCF}
 					   then pCdef =  monomials(composition_series((sum(x.real_form,
 					   	      for j:#verts
 						      do wiggle(CF, face_bary(Lvd, verts[:j]##verts[j+1:]))

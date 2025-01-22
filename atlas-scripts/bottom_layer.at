@@ -183,254 +183,8 @@ set_type LK_data = [(KType,[KType])] {for each bottom layer tau, list [dertauLj]
 set_type QK_bottom_data = (KGPElt Q, [KType] list) {intent is that list consists of K-types tau that are Q-bottom layer}
 set_type QKL_bottom_data = (KGPElt Q, [(KType,[KType])] LKdata) {for each bottom layer tau, list [dertauLj] of corr derLKj-types}
 
-{versions of big_SIMPLE functions meant to be used without big_unitary_hash, after lookup in RF_sig_tables
-has failed}
-
-{set hfibs(Param p) = KTypePol: hermitian_form_irreducible(p)}
-
-{whether to use the old invocations of big_unitary_hash}
-{set old_HF_flag = true}
-
-{whether to use to_height in computing to height N}
-{true means large nu, so to_ht could be better}
-{set low(Param p, int N) = bool:
-    let (,NU,) = low(p)
-    in NU > 2*N*low_frac}
-
-{allow NON-height 0 K-type entries}
-
-{
-set_type
-[RF_sig_tables =
-( ( -> int) real_form_size
-  , ( -> ) clear
-  , ( -> vec) K_type_size {number of LKTs for each real form}
-  , ( -> vec) K_type_pol_size
-  , ( -> vec) Param_size
-  , ((KType, int) -> KTypePol) branch_entry {branch std to height}
-{  , ((KType, int) ->) branch_append {branch std to height, don't report}}
-  , ((Param,int) -> KTypePol) sig_entry {signature to height}
-{  , ((Param,int) ->) append}
-  , (int -> RealForm) real_form_index
-  , (int, int -> int) branch_height {largest ht to which K type j on real form i has been branched}
-  , (int, int -> int) sig_height {largest ht to which param j on real form i has had sig computed}
-  , ( -> int) bottom_branch_time
-  , ( -> int) bottom_sig_time
-)
-]
-
-}
-{at the moment this is only used for simple G, so herm_form_irr calls reflect that. Easy to change.}
-
-{
-set make_RF_sig_tables () = RF_sig_tables:
-(  let real_form_hash = make_RealForm_hash()
-   then deltas = [mat]: [] {distinguished involution for each form}
-   then param_hashes = [Param_hash] : [] {one for each real form}{ONLY ENTER HERM_CENTER}
-   then K_type_hashes = [KType_hash] : [] {one for each real form; list of LKTs of params}
-   then K_type_pol_hashes = [KTypePol_hash] : []  {one for each real form}
-   then branches = [vec] : [] {one vec for each real form, of size #K types;
-   		   	      ith entry is index of branching KTypePol for KType #i}
-   then sigs = [vec]: [] {one vec for each real form, of size #params;
-   	       	      	  jth entry is index of signature KTypePol for Param #j}
-   then branch_heights = [vec]: [] {one list for each real form; jth entry is vec with ith entry the height
-   		       	 	   to which branch(param i) is known}
-   then sig_heights = [vec]: [] {one list for each real form; jth entry is vec with ith entry the height
-   		       	 	   to which sig(param i) is known}
-   then bottom_branch_time = int: 0
-   then bottom_sig_time = int: 0
-   then clear() = void:
-       let () = real_form_hash.clear()
-       then () = deltas:=[]
-       then () = param_hashes:=[]
-       then () = K_type_hashes:=[]
-       then () = K_type_pol_hashes := []
-       then () = branches := []
-       then () = sigs := []
-       then () = branch_heights := []
-       then () = sig_heights := []
-       then () = bottom_branch_time := 0
-       then () = bottom_sig_time := 0
-       in ()
-   then add_real_form(RealForm S) = int:
-   	let RFNUM = real_form_hash.size()
-	then rfnum = real_form_hash.match(S)
-	then () =  if rfnum = RFNUM {haven't seen this real form before}
-	     	   then deltas #:= S.distinguished_involution;
-		   	param_hashes #:= make_Param_hash();
-		        K_type_hashes #:= make_KType_hash();
-		        K_type_pol_hashes #:= make_KTypePol_hash();
-		        branches #:= null(0);
-		        sigs #:= null(0);
-		        branch_heights #:= null(0);
-			sig_heights #:= null(0)
-		   fi
-	 in rfnum
-   then add_K_type(KType mu) = (int, int): {real form index, K type index}
-   	let rfnum = add_real_form(mu.real_form)
-	then KTYPENUM = K_type_hashes[rfnum].size()
-	then ktypenum = K_type_hashes[rfnum].match(mu)
-	then () = if ktypenum = KTYPENUM {haven't computed with mu before}
-	     	  then let pol = 1*mu
-	     	       then m = K_type_pol_hashes[rfnum].match(pol)
-		       then () = branches[rfnum] #:= m
-		       then () = branch_heights[rfnum] #:= height(mu)
-		       then () = assert(real_form_hash.size() = #K_type_pol_hashes,"RF_sig_table damaged")
-        	       then () = assert(real_form_hash.size() = #K_type_hashes,"RF_sig_table damaged")
-		       then () = assert(real_form_hash.size() = #param_hashes,"RF_sig_table damaged")
-		       then () = assert(#sigs[rfnum] = param_hashes[rfnum].size(), "RF_sig_table damaged")
-		       then () = assert(#branches[rfnum] = K_type_hashes[rfnum].size(), "RF_sig_table damaged")
-		       in ()
-		  fi
-	in (rfnum, ktypenum)
-   then add_K_type(KType mu, int D) = (int, int, int): {this time add to height; D should be >= height(mu)}
-   	let rfnum = add_real_form(mu.real_form)
-	then KTYPENUM = K_type_hashes[rfnum].size()
-	then ktypenum = K_type_hashes[rfnum].match(mu)
-	then () = if ktypenum = KTYPENUM {haven't computed with mu before}
-	     	  then let start_branch = elapsed_ms()
-		       then pol = branch_std(mu,D)
-	     	       then m = K_type_pol_hashes[rfnum].match(pol)
-		       then () = bottom_branch_time +:= elapsed_ms() - start_branch
-		       then () = branches[rfnum] #:= m
-		       then () = branch_heights[rfnum] #:= D
-		       then () = assert(real_form_hash.size() = #K_type_pol_hashes,"RF_sig_table damaged")
-        	       then () = assert(real_form_hash.size() = #K_type_hashes,"RF_sig_table damaged")
-		       then () = assert(real_form_hash.size() = #param_hashes,"RF_sig_table damaged")
-		       then () = assert(#sigs[rfnum] = param_hashes[rfnum].size(), "RF_sig_table damaged")
-		       then () = assert(#branches[rfnum] = K_type_hashes[rfnum].size(), "RF_sig_table damaged")
-		       in ()
-		   else {we've seen mu before}
-		       if branch_heights[rfnum][ktypenum] < D
-		       then let tempbranchhts = branch_heights[rfnum]
-		       	    then tempbranches = branches[rfnum]
-		       	    then start_branch = elapsed_ms()
-		       	    then pol = branch_std(mu, D)
-		       	    then () = bottom_branch_time +:= elapsed_ms() - start_branch
-		       	    then m = K_type_pol_hashes[rfnum].match(pol)
-		       	    then () = tempbranches[ktypenum]:=m
-		       	    then () = tempbranchhts[ktypenum] :=  D
-		       	    then () = branch_heights[rfnum] := tempbranchhts
-			    then () = branches[rfnum] := tempbranches
-		       	    in()
-		        fi
-		    fi
-	in (rfnum, ktypenum, branches[rfnum][ktypenum])
-   then add_param(Param p) = (int, int, int): {add a param, full herm form}
-   	let  rfnum = add_real_form(p.real_form)
-	then PNUM = param_hashes[rfnum].size()
-	then () = p:=herm_center(p)
-	then pnum = param_hashes[rfnum].match(p)
-	then () = if pnum = PNUM {haven't computed with p before}
-	     	  then let start_sig = elapsed_ms()
-		       then sig = {if old_HF_flag
-		       	    	  then} hermitian_form_irreducible_big_SIMPLE(p)
-				  {else hermitian_form_irreducible(p)
-				  fi}
-		       then () = bottom_sig_time +:= elapsed_ms() - start_sig
-		       then sig_ind = K_type_pol_hashes[rfnum].match(sig)
-		       then () = sigs[rfnum] := if #sigs[rfnum] = 0 then [sig_ind]
-		     	      	      	     else (sigs[rfnum] next sigs[rfnum] := [])# sig_ind
-				      	     fi
-		       then () = sig_heights[rfnum] #:= height(p)
-		       then () = assert(real_form_hash.size() = #K_type_pol_hashes,"RF_sig_table damaged")
-		       then () = assert(real_form_hash.size() = #param_hashes,"RF_sig_table damaged")
-		       then () = assert(real_form_hash.size() = #branch_heights,"RF_sig_table damaged")
-		       then () = assert(real_form_hash.size() = #sig_heights,"RF_sig_table damaged")
-		       then () = assert(#sigs[rfnum] = param_hashes[rfnum].size(), "RF_sig_table damaged")
-		       in ()
-		  fi
-	 in (rfnum, pnum, sigs[rfnum][pnum])
-   then add_param(Param p, int D) = (int, int, int): {add a param, form to ht D}
-        let  rfnum = add_real_form(p.real_form)
-        then PNUM = param_hashes[rfnum].size()
-	then () = p:=herm_center(p)
-        then pnum = param_hashes[rfnum].match(p)
-        then () = if pnum = PNUM {haven't computed with p before}
-                  then let start_sig = elapsed_ms()
-                       then sigD = {if old_HF_flag
-		       	    	   then} hermitian_form_irreducible_to_ht_big_SIMPLE(p, D)
-				   {else if low(p,D) {low(p.x,p.lambda,D)}
-     	  			   	then hermitian_form_irreducible_to_ht(p,D)
-     	 				else let P = hermitian_form_irreducible(p)
-	       				     {then () = if is_pure(P) then big_unitary_hash.match(p) fi}
-	       				     in to_ht(P,D)
-     	 			        fi
-				    fi}
-                       then () = bottom_sig_time +:= elapsed_ms() - start_sig
-                       then sigD_ind = K_type_pol_hashes[rfnum].match(sigD)
-                       then () = sigs[rfnum] := if #sigs[rfnum] = 0 then [sigD_ind]
-                                             	else sigs[rfnum] #:= sigD_ind
-                                             	fi
-                       then () = sig_heights[rfnum] #:= D
-                       then () = assert(real_form_hash.size() = #K_type_pol_hashes,"RF_sig_table damaged")
-                       then () = assert(real_form_hash.size() = #param_hashes,"RF_sig_table damaged")
-                       then () = assert(real_form_hash.size() = #branch_heights,"RF_sig_table damaged")
-		       then () = assert(real_form_hash.size() = #sig_heights,"RF_sig_table damaged")
-                       then () = assert(#sigs[rfnum] = param_hashes[rfnum].size(), "RF_sig_table damaged")
-                       in ()
-                   else {we've seen p before}
-                       if sig_heights[rfnum][pnum] < D and sig_heights[rfnum][pnum] > height(p)
-                       then let tempsigs = sigs[rfnum]
-                            then tempsights = sig_heights[rfnum]
-                            then start_sig = elapsed_ms()
-                            then sigD = {if old_HF_flag
-		       	    	      	then} hermitian_form_irreducible_to_ht_big_SIMPLE(p, D)
-					{else if low(p,N) {low(p.x,p.lambda,N)}
-     	  			   	     then hermitian_form_irreducible_to_ht(p,N)
-     	 				     else let P = hermitian_form_irreducible(p)
-	       				     	  then () = if is_pure(P) then big_unitary_hash.match(p) fi
-	       				     	  in to_ht(P,N)
-     	 			             fi
-					fi}
-			    then () = bottom_sig_time +:= elapsed_ms() - start_sig
-			    then sigD_ind = K_type_pol_hashes[rfnum].match(sigD)
-                       	    then () = sigs[rfnum] := if #sigs[rfnum] = 0 then [sigD_ind]
-                                             	     else sigs[rfnum] #:= sigD_ind
-                                             	     fi
-                       	    then () = sig_heights[rfnum] #:= D
-                             then sigD_ind = K_type_pol_hashes[rfnum].match(sigD)
-                            then () = tempsigs[pnum] :=  sigD_ind
-                            then () = tempsights[pnum]:=D
-                            then () = sigs[rfnum]:=tempsigs
-                            then () = sig_heights[rfnum] := tempsights
-                            in()
-
-                       fi
-                   fi
-         in (rfnum, pnum, sigs[rfnum][pnum])
-    in
-   ( ( -> int): { real_form_size } @int: real_form_hash.size()
-   , ( -> ): {clear} clear
-   , ( -> vec): {K_type_size} @vec: for hash in K_type_hashes do hash.size() od
-   , ( -> vec): {K_type_pol_size} @vec: for hash in K_type_pol_hashes do hash.size() od
-   , ( -> vec): {Param_size} @vec: for hash in param_hashes do hash.size() od
-   , ((KType,int) -> KTypePol): {branch_entry} (KType mu, int D) KTypePol:
-     begin
-     	let (rf, ktypenum,m) = add_K_type(mu,D)
-	in regroup(mu.real_form, to_ht(K_type_pol_hashes[rf].index(m), D))
-     end
-   , ((Param,int) -> KTypePol): {sig_entry} (Param p, int D) KTypePol:
-     begin
-	let (rf,pnum,sig_ind) = add_param(p,D)
-	in regroup(p.real_form, to_ht(K_type_pol_hashes[rf].index(sig_ind), D))
-     end
-    , (int -> RealForm): {real_form_index} (int j): real_form_hash.index(j)
-   , ((int, int) -> int): {branch_height} (int rf, int ktypenum): branch_heights[rf][ktypenum]
-   , ((int, int) -> int): {sig_height} (int rf, int pnum): sig_heights[rf][pnum]
-   , ( -> int): {bottom_branch_time} @int: bottom_branch_time
-   , ( -> int): {bottom_sig_time} @int: bottom_sig_time
-  )
-)
-
-}
-
-{whether to use RF_sig_tables in bottom layer computation}
-
 set RF_code = true
-{
-set rf_sig_tables = make_RF_sig_tables()
-}
+
 set nKeTime = int: 0
 {pick the distinguished one making mu+2\rho_c dominant}
 set natural_KGB_elt(KType mu) = KGBElt:
@@ -947,10 +701,10 @@ set min_small_bottom_elim_factors(Param p0, Param p, KTypePol P) = bool:
     then Lbranches = for derpL0j@j in derpL0js {indexed by j, factors of L}
 	    	     do let sigLj = KTypePol: {signature for derpLj}
 			    if big_unitary_hash.uhash(derLjs[j]).lookup(derpL0j).>=
-			    then let startCF = elapsed_ms()
-			       	 then QLj = character_formula_to_height(derpL0j,DLs[j])
-			       	 then () = charTime +:= elapsed_ms() - startCF
-			       	 then () = char_counter.use()
+			    then {let startCF = elapsed_ms()}
+			       	 let QLj = character_formula_to_height(derpL0j,DLs[j])
+			       	 {then () = charTime +:= elapsed_ms() - startCF
+			       	 then () = char_counter.use()}
 			       	 in K_type_pol(QLj)
 			     elif RF_code
 	    	      	     then big_unitary_hash.sig_entry(derpL0j, DLs[j])
@@ -1017,10 +771,10 @@ set min_bottom_elim_factors(Param p0, Param p, KTypePol P) = bool:
     then Lbranches = for derpL0j@j in derpL0js
 	    	     do let sigLj =
 		            if big_unitary_hash.uhash(derLjs[j]).lookup(derpL0j).>=
-			    then let startCF = elapsed_ms()
-				 then QLj = character_formula_to_height(derpL0j,DLs[j])
-				 then () = charTime +:= elapsed_ms() - startCF
-				 then () = char_counter.use()
+			    then {let startCF = elapsed_ms()}
+				 let QLj = character_formula_to_height(derpL0j,DLs[j])
+				 {then () = charTime +:= elapsed_ms() - startCF
+				 then () = char_counter.use()}
 				 in K_type_pol(QLj)
 			    elif RF_code
 	    	      	    then big_unitary_hash.sig_entry(derpL0j, DLs[j])
@@ -1056,16 +810,16 @@ set min_bottom_elim_factors(Param p, KTypePol P) = bool:
 
 {These min_bottom functions are used only on simple G}
 set min_bottom_elim_factors(Param p0, Param p) = bool:
-    let startCF = elapsed_ms()
-    then Q = if small_test_flag
+    {let startCF = elapsed_ms()}
+    let Q = if small_test_flag
     	     then character_formula_to_height(p0, minSmallBottomData.G_min_height(p.x,p.lambda))
     	     else character_formula_to_height(p0, max(for mu in LKTs(p0)
     	       	    				     do minBottomData.G_min_height(mu)
 		   				     od))
 	     fi
     {could figure out max ht needed?}
-    then () = charTime +:= elapsed_ms() - startCF
-    then () = char_counter.use()
+    {then () = charTime +:= elapsed_ms() - startCF
+    then () = char_counter.use()}
     in min_bottom_elim_factors(p0, p, K_type_pol(Q))
 
 set min_bottom_elim_factors(Param p) = bool:
@@ -1365,11 +1119,11 @@ set bottom_elim_factors_more(Param p0, Param p, [QKL_bottom_data] data)= bool:
     then D = max(for (Q,LKdata) in data
 		 do max(for (tau,) in LKdata do height(tau) od#h)
 		 od#h)
-    then startCF = elapsed_ms()
+    {then startCF = elapsed_ms()}
     then Q = character_formula_to_height(p0,D)
-    then () = charTime +:= elapsed_ms() - startCF
+    {then () = charTime +:= elapsed_ms() - startCF
     {then () = prints("in befm, use ",elapsed_ms() - startCF)}
-    then () = char_counter.use()
+    then () = char_counter.use()}
     then P = K_type_pol(Q)
     in  bottom_elim_factors_more(p0, p, data, P)
 
@@ -1439,13 +1193,13 @@ set bottom_elim_factors_more(Param p0, Param p, int D, KTypePol P)= bool:
     bottom_elim_factors_more(p0, p, height(p), D, P)
 
 set bottom_elim_factors_more(Param p, Param p0, int D_low, int D) = bool:
-    let startCF = elapsed_ms(), (Q0,pL0) = if small_test_flag
+    let {startCF = elapsed_ms(),} (Q0,pL0) = if small_test_flag
     	 	 	       		   then theta_stable_data_small(p)
 		 			   else theta_stable_quasi_data(p)
 		 			   fi
     then Q = character_formula_to_height(p0,D)
-    then () = charTime +:= elapsed_ms() - startCF
-    then () = char_counter.use()
+    {then () = charTime +:= elapsed_ms() - startCF
+    then () = char_counter.use()}
     then P = K_type_pol(Q)
     in  bottom_elim_factors_more(p0, p, D_low, D, P)
 
@@ -1548,10 +1302,10 @@ set bottom_test_factors_more(Param p0, Param p, int D, KTypePol P) = bool:
 set bottom_test_factors_more(Param p0, Param p, int D) = bool:
     if not more_flag
     then is_unitary_hash_big(p0) {min_bottom_test_factors(p)}
-    else let startCF = elapsed_ms()
-    	 then Q = character_formula_to_height(p0, D)
-    	 then () = charTime +:= elapsed_ms() - startCF
-    	 then () = char_counter.use()
+    else {let startCF = elapsed_ms()}
+    	 let Q = character_formula_to_height(p0, D)
+    	 {then () = charTime +:= elapsed_ms() - startCF
+    	 then () = char_counter.use()}
     	 then P = K_type_pol(Q)
     	 {let P = K_type_pol(character_formula(p))}
     	 in bottom_test_factors_more(p0, p, D, P)

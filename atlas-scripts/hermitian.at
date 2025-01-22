@@ -369,9 +369,17 @@ set was_tested(Param p, int T, bool ans) = void:
     else let M = tested_neg_hash.size()
        	 then m = tested_neg_hash.match(p)
        	 then () = if m=M then tested_neg_mults #:= 0; tested_neg_mult_times #:=[] fi
-       	 in tested_neg_list#:=p; tested_neg_times#:=T; tested_neg_mults[m]+:=1;
-       	  {tested_bools#:= ans;} tested_neg_mult_times[m] #:=T;
+       	 then () = tested_neg_list#:=p; tested_neg_times#:=T; tested_neg_mults[m]+:=1;
+       	  tested_neg_mult_times[m] #:=T;
 	  tested_neg_strings #:= test_string
+	 {then () = if p.real_form = Spin(5,5) and p.x.number = 72
+	      	      and p.lambda = [0,3,0,0,0]/1 and p.nu =[-3,5,-1,0,0]/2
+		   then error("later will have multiple neg mult")
+		   fi}
+	 {then () = if tested_neg_mults[m] = 2
+	      	   then error("multiple neg mult")
+		   fi}
+	 in ()
     fi
 
 set was_tested_to_ht(Param p,int N, int T, bool ans) = void:

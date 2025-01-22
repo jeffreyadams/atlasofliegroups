@@ -6,6 +6,7 @@
 }
 
 <basic.at
+<count.at {for char_counter}
 {<time.at {for print_time_string}}
 {
   Basic object: column of KL matrix (P-matrix), of polynomials evaluated as s,
@@ -25,18 +26,19 @@
 
 { ------------------------------------------------------------------- }
 
-{set CF_flag = false
-set CharFormTime = int:0}
+{set CF_flag = false}
+set charTime = int:0
 
-{set character_formula (Param p) = ParamPol:
+set character_formula (Param p) = ParamPol:
     let start = elapsed_ms()
     then answer = s_to_1(KL_sum_at_s(p))
-    then () = CharFormTime+:= elapsed_ms() - start
-    then () = if CF_flag then prints("CF(",p.x.number,",",p.lambda,",",
-       p.nu,"), CTime = ",print_time_string(CharFormTime)) fi
-    in answer}
+    then () = charTime+:= elapsed_ms() - start
+    then () = char_counter.use()
+    {then () = if CF_flag then prints("CF(",p.x.number,",",p.lambda,",",
+       p.nu,"), charTime = ",print_time_string(CharFormTime)) fi}
+    in answer
 
-set character_formula (Param p) = ParamPol: s_to_1(KL_sum_at_s(p))
+{set character_formula (Param p) = ParamPol: s_to_1(KL_sum_at_s(p))}
 
 set character_formula (ParamPol P) = ParamPol: map(character_formula@Param,P)
 
@@ -51,7 +53,7 @@ set low(Param p) = (rat,rat,int):
     then () = if R.= then R:=1 fi
     in (LAM,NU,R)
 
-{set character_formula_to_height(Param p, int N) = ParamPol:
+set character_formula_to_height(Param p, int N) = ParamPol:
     let (,NU,R) = low(p), ic = p.inner_class, start = elapsed_ms()
     {so height is LAM/2}
     {then R = ic.two_rho *ic.two_rho_check
@@ -64,12 +66,13 @@ set low(Param p) = (rat,rat,int):
        		  else let (below,) = height_split(KL_sum_at_s(p),N)
        	    	       in s_to_1(below)
        		  fi
-     then () = CharFormTime+:= elapsed_ms() - start
-     then () = if CF_flag then prints("CFTH((",p.x.number,",",p.lambda,",",
-       p.nu,"),",N,"), CTime = ",print_time_string(CharFormTime)) fi
-     in answer}
+     then () = charTime+:= elapsed_ms() - start
+     then () = char_counter.use()
+     {then () = if CF_flag then prints("CFTH((",p.x.number,",",p.lambda,",",
+       p.nu,"),",N,"), CTime = ",print_time_string(CharFormTime)) fi}
+     in answer
 
-set character_formula_to_height(Param p, int N) = ParamPol:
+{set character_formula_to_height(Param p, int N) = ParamPol:
     let (,NU,R) = low(p), ic = p.inner_class, start = elapsed_ms()
     {so height is LAM/2}
     {then R = ic.two_rho *ic.two_rho_check
@@ -81,7 +84,7 @@ set character_formula_to_height(Param p, int N) = ParamPol:
        then KL_sum_at_s_to_height(p,N)
        else let (below,) = height_split(KL_sum_at_s(p),N)
        	    in s_to_1(below)
-       fi
+       fi}
 
 set character_formula_to_height (ParamPol P, int N) = ParamPol:
     map(((Param->ParamPol): (Param p): character_formula_to_height(p, N)), P)

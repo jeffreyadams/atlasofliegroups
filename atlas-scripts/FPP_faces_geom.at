@@ -1750,15 +1750,15 @@ set herm_center(Param p) = Param:
     in answer
 
 {meant to record time in character_formula(p) and character_formula_to_height(p)}
-set charTime = int: 0
+{set charTime = int: 0}
 
 {Take character_formula(p), and move each term to infl char gamma0. This works (give
 honest deformed rep) if gamma0 is in the closed local face of infl_char(p)}
 set wiggle(Param p, ratvec gamma0) = ParamPol:
-let start = elapsed_ms()
+{let start = elapsed_ms()
 then () = char_counter.use()
-then P = character_formula(p)
-then () = charTime +:= elapsed_ms() -start
+then} let P = character_formula(p)
+{then () = charTime +:= elapsed_ms() -start}
 in  sum(p.real_form, for c@q in P do c*parameter(q.x, q.lambda, gamma0) od)
 
 set wiggle(ParamPol P, ratvec gamma0) = ParamPol:
@@ -1769,10 +1769,10 @@ a list of 2^{#local_vertices} - 1 ParamPol's, the character formulas
 on the boundary faces. If p is unitary, this is a sum with positive coeffs of
 characters of unitary reps} {OOPS! these may not be hermitian ?? what??}
 set local_defs(Param p) = [ParamPol]:
- let start = elapsed_ms()
- then () = char_counter.use()
- then CF = character_formula(p)
- then () = charTime +:= elapsed_ms() -start
+ {let start = elapsed_ms()
+ then () = char_counter.use()xs
+ then} let CF = character_formula(p)
+ {then () = charTime +:= elapsed_ms() -start}
  then list = local_vertices(p)
  then () = if #list = 1 then return [] fi
  then d = #list {dim of local face plus 1; between 2 and dim A+1}
@@ -1790,10 +1790,10 @@ coeffs of characters of unitary reps}
 set local_facet_defs(Param p) = [ParamPol]:
     let list = local_vertices(p)
     in if #list = 1 then [ParamPol]: []
-       else let start = elapsed_ms()
+       else {let start = elapsed_ms()
        	    then () = char_counter.use()
- 	    then CF = character_formula(p)
- 	    then () = charTime +:= elapsed_ms() -start
+ 	    then} let CF = character_formula(p)
+ 	    {then () = charTime +:= elapsed_ms() -start}
        	    then sum = sum(#list[0], list), d=#list
        	    in for v in list
        	       do wiggle(CF, (sum - v)/(d-1))

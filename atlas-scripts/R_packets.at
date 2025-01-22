@@ -7,6 +7,7 @@
 < aff_cube.at
 <L_packet.at {for simple_imaginary_roots}
 <FPP_localDirac.at {for local_test functions}
+<kl.at {for character formulas}
 
 {this computes the R-packet of a single K-type.}
 set R_packet(KType mu) = [KType]: LKTs(anti_finalize(parameter(mu)))
