@@ -92,10 +92,13 @@ class Partition
   unsigned long size() const { return d_class.size(); }
 
   // an auxiliary class to turn a partition into function object for comparison
-  class Comp : public std::unary_function<unsigned long,unsigned long>
+  class Comp
+  // : public std::unary_function<unsigned long,unsigned long> // deprecated
   {
     const Partition& pi;
   public:
+    using argument_type = unsigned long;
+    using result_type = unsigned long;
     Comp (const Partition& p) : pi(p) {}
     Comp::result_type operator()(Comp::argument_type x) const
     { return pi.class_of(x); }
