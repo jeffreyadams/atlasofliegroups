@@ -1377,10 +1377,27 @@ set one_param_time = int: 0
 
 set one_param_test(Param p, Param_hash Uhash) = [Param]:
     let start = elapsed_ms(), Q = monomials(finalize(p)), G = p.real_form
+    then r = rank(Q[0].x.involution - 1)
+    then DEFHTS = [int]: next_heights(Q[0], (r*stretcher)\2)
+    {then steps = max(rank(p.x.involution-1),1)}
+    then test = all(for q in Q
+       	      	    do @bool: {is_unitary_def_test_big_SIMPLE(q,steps)}
+		    is_unitary_test_big_SIMPLE(q, DEFHTS)
+	   	    od)
+    in if test
+       then one_true_counter.use();
+	    one_param_time +:= elapsed_ms() - start;
+	    [p]
+       else one_false_counter.use();
+	    one_param_time +:= elapsed_ms() - start;
+	    []
+       fi
+{
     then () = if not is_final(p)
     	      then if all(for q in Q do is_finished(q.x,q.lambda) and
 	      	      	      (Uhash.lookup(q) >= 0) od)
 	      	   then return [p]
+		   elif any(for	q in Q do big_unitary_
 		   else if any(for q in Q do is_finished(q.x,q.lambda) and
 		   	   	   (Uhash.lookup(q) <0) od)
 		   	then return []
@@ -1408,10 +1425,32 @@ set one_param_test(Param p, Param_hash Uhash) = [Param]:
 	    then () = one_param_time +:= elapsed_ms() - start
 	    in []
        fi
-
+}
 {only does min_bottom test}
 set one_param_test_min_bottom(Param p, Param_hash Uhash) = [Param]:
-    let start = elapsed_ms(), QG = monomials(finalize(p)), G = p.real_form
+    let start = elapsed_ms(), Q = monomials(finalize(p)), G = p.real_form
+    then elim_min = all(for q in Q do min_bottom_elim_factors(q,p) od)
+    then () = if not elim_min
+    	      then let () = one_false_counter.use()
+	      	   then ()= one_param_time +:= elapsed_ms() - start
+		   in return []
+	      fi
+    then r = rank(Q[0].x.involution - 1)
+    then DEFHTS = [int]: next_heights(Q[0], (r*stretcher)\2)
+    {then steps = max(rank(Q[0].x.involution - 1),1)}
+    then test = all(for q in Q
+       	      	    do @bool: {is_unitary_def_test_big_SIMPLE(q, steps)}
+		    is_unitary_test_big_SIMPLE(q,DEFHTS)
+	   	    od)
+    in if test
+       then one_true_counter.use();
+	    one_param_time +:= elapsed_ms() - start;
+	    [p]
+       else one_false_counter.use();
+	    one_param_time +:= elapsed_ms() - start;
+	    []
+       fi
+{
     then () = if is_final(p)
     	      then if all(for q in QG do is_finished(q.x,q.lambda) and
 	      	      	      (Uhash.lookup(q) >= 0) od)
@@ -1457,20 +1496,12 @@ set one_param_test_min_bottom(Param p, Param_hash Uhash) = [Param]:
 	    then ()= one_param_time +:= elapsed_ms() - start
 	    in []
        fi
+}
 
 {assume min_bottom already called?}
 set one_param_test_bottom(Param p, [int] Ds, Param_hash Uhash) = [Param]:
     let start = elapsed_ms(), QG = monomials(finalize(p)),G = p.real_form
-    then () = if is_final(p)
-    	      then if all(for q in QG do is_finished(q.x,q.lambda) and
-	      	      	      (Uhash.lookup(q) >= 0) od)
-	      	   then return [p]
-		   else if any(for q in QG do is_finished(q.x,q.lambda) and
-		   	   	   (Uhash.lookup(q) < 0) od)
-		   	then return []
-			fi
-		   fi
-	      fi
+    { used to check here whether terms of QG already known? }
     then () = hash_bottom_layerCounter.use()
     then elim_more = true
     then Es = if #Ds > 1 then Ds
@@ -1480,37 +1511,33 @@ set one_param_test_bottom(Param p, [int] Ds, Param_hash Uhash) = [Param]:
        	      then let () = if more_verbose then prints("start more with p = ",p, ", Es = ",Es) fi
 	    	   then Ps = for q in QG do K_type_pol(character_formula_to_height(q, Es~[0])) od
        	    	   then still_here = true
-		   then () = {for D in Ds[:1]
-		      	     do} still_here := all(for {D@j in Ds[1:]} j:#Es-1 from 1
-					       	  do all(for q@i in QG
-						      	 do @bool: bottom_elim_factors_more(q, p, Es[j-1],Es[j], Ps[i])
-						   	 od)
-					          od){;
-				 if not still_here then break fi}
-			      {od}
+		   then () = still_here := all(for j:#Es-1 from 1
+					       do all(for q@i in QG
+						      do
+					@bool: bottom_elim_factors_more(q, p, Es[j-1],Es[j], Ps[i])
+						      od)
+					       od)
 		   in elim_more:= still_here
 		fi {#Es > 1}
     then () = if more_verbose then prints("result of elim_more was ",elim_more) fi
-    then steps = max(rank(p.x.involution-1),1)
-    {then test_heights = next_heights(p, steps)
-    then (def_heights,) = deform_hts(QG[0],steps)
-    then j0 = max(0,first(for m in test_heights do Ds~[0] < m od))}
-		 {so that we test above the height bottom layer has examined}
+    then r = rank(p.x.involution-1)
+    {then steps = max(r,1)}
+    then DEFHTS = [int]: next_heights(QG[0], (r*stretcher)\2)
     in if elim_more
        then let () = if test_verbose then prints("one parameter unitary on bottom layer to height ",Es~[0]) fi
        then test = all( [(->bool)]:
 		    	   for q in QG
-			   do @bool: {is_unitary_test_big_SIMPLE(q, test_heights[j0:])}
-			      let ans = is_unitary_def_test_big_SIMPLE(q,steps)
+			   do @bool: let ans = {is_unitary_def_test_big_SIMPLE(q,steps)}
+			      is_unitary_test_big_SIMPLE(q,DEFHTS)
 			      then () = if not ans then more_bad_hash.match(q) fi
 			      in ans
 			   od)
 	    then () = if more_verbose then prints("your final answer was ",test) fi
 	    in if test
-	       then let () = for q in QG
+	       then {let () = for q in QG
 		     	     do Uhash.match(q)
-		     	     od
-	    	    then () = one_true_counter.use()
+		     	     od}
+	    	    let () = one_true_counter.use()
 	    	    then () = one_param_time +:= elapsed_ms() - start
 	    	    in [p]
 	       else let () = one_false_counter.use() {if test is false}
@@ -1525,38 +1552,26 @@ set one_param_test_bottom(Param p, [int] Ds, Param_hash Uhash) = [Param]:
 
 {don't assume min_bottom already called; should only be called if ht > 0?}
 set one_param_test_all_bottom(Param p, [int] Ds, Param_hash Uhash) = [Param]:
-    let start = elapsed_ms(), QG = monomials(finalize(p)),G = p.real_form
-    then () = if is_final(p)
-    	      then if all(for q in QG do is_finished(q.x,q.lambda) and
-	      	      	      (Uhash.lookup(q) >= 0) od)
-	      	   then return [p]
-		   else if any(for q in QG do is_finished(q.x,q.lambda) and
-		   	   	   (Uhash.lookup(q) < 0) od)
-		   	then return []
-			fi
-		   fi
-	      fi
+    let start = elapsed_ms(), Q = monomials(finalize(p)),G = p.real_form
     then () = hash_bottom_layerCounter.use()
-    then elim_min = all(for q in QG
-    	      	    	do min_bottom_elim_factors(q,p)
-		    	od)
-    	 {then () = if one_param_verbose then then () = prints("result of elim_min was ",elim_min) fi}
-    then () = if not elim_min {minimal bottom layer proved not a unitary Param}
-       	       	     then one_false_counter.use();
-	    	       	  one_param_time +:= elapsed_ms() - start;
-		       	  return []
+    then elim_min = all(for q in Q do min_bottom_elim_factors(q,p) od)
+    then () = if not elim_min
+    	      then let () = one_false_counter.use()
+	      	   then ()= one_param_time +:= elapsed_ms() - start
+		   in return []
 	      fi
+{now min bottom failed to eliminate...}
     then elim_more = true
     then Es = if #Ds > 1 then Ds
     	      else height(p)#Ds
 	      fi
     then () = if #Es > 1
        	      then let () = if more_verbose then prints("start more with p = ",p, ", Es = ",Es) fi
-	    	   then Ps = for q in QG do K_type_pol(character_formula_to_height(q, Es~[0])) od
+	    	   then Ps = for q in Q do K_type_pol(character_formula_to_height(q, Es~[0])) od
        	    	   then still_here = true
 		   then () = {for D in Ds[:1]
 		      	     do} still_here := all(for {D@j in Ds[1:]} j:#Es-1 from 1
-					       	  do all(for q@i in QG
+					       	  do all(for q@i in Q
 						      	 do @bool: bottom_elim_factors_more(q, p, Es[j-1],Es[j], Ps[i])
 						   	 od)
 					          od){;
@@ -1566,21 +1581,19 @@ set one_param_test_all_bottom(Param p, [int] Ds, Param_hash Uhash) = [Param]:
 		fi {#Es > 1}
     then () = if more_verbose then prints("result of elim_more was ",elim_more) fi
     then steps = max(rank(p.x.involution-1),1)
-    {then test_heights = next_heights(p, steps)
-    then j0 = max(0,first(for m in test_heights do Ds~[0] < m od))}
-		 {so that we test above the height bottom layer has examined}
+    then test_heights = next_heights(p, steps)
     in if elim_more
        then let () = if test_verbose then prints("one parameter unitary on bottom layer to height ",Es~[0]) fi
        	    then test = all( [(->bool)]:
-		    	   for q in QG
-			   do @bool: {is_unitary_test_big_SIMPLE(q, test_heights[j0:])}
-			      let ans = is_unitary_def_test_big_SIMPLE(q,steps)
+		    	   for q in Q
+			   do @bool: let ans = is_unitary_test_big_SIMPLE(q, test_heights)
+			      {let ans = is_unitary_def_test_big_SIMPLE(q,steps)}
 			      then () = if not ans then more_bad_hash.match(q) fi
 			      in ans
 		    	od)
 	    then () = if more_verbose then prints("your final answer was ",test) fi
 	    in if test
-	       then let () = for q in QG
+	       then let () = for q in Q
 		     	     do Uhash.match(q)
 		     	     od
 	    	    then () = one_true_counter.use()
@@ -2489,17 +2502,16 @@ KTypePol_hash pol_hash, Param_hash Uhash) = [Param]:
     then () = test_string:= " using local_test_GEO_hash2"
     then  () = hash2Counter.use()
     then test_levels = for d:max(r+1,3) do (d*edge_skip*stretcher)\1 + edge_offset_temp od
-    {last test_level is approx depth}
+      {last test_level is approx depth}
     then test_hts = for d:max(r+1,3) do hts[test_levels[d]] od, Dlast = max(r,2)
-    {test_hts[d] = hts[test_levels[d]}
-    {test_levels and test_hts both size about r+2}
-    {hts[:max(depth,4)}
+      {test_hts[d] = hts[test_levels[d]}
+      {test_levels and test_hts both size about r+2}
+      {hts[:max(depth,4)}
     then () = if(test_verbose) then prints("heights = ", hts, " , test levels = ",
     	 test_levels, ", test heights = ",test_hts) fi
     {get K-type formulas for all vertices and edges}
     then temp_K_char_flag = height(parameter(x,lambda,0*lambda))/(G.rho * G.two_rho_check) <= CUTOFF
      {defaults to true if ht=0, false otherwise}
-    {then temp_K_char_flag = false}
     then pol_hash0 = if temp_K_char_flag
     	 	     then make_KTypePol_hash() {to hold chars to height test_hts[0]}
 		     else pol_hash
@@ -2517,14 +2529,9 @@ KTypePol_hash pol_hash, Param_hash Uhash) = [Param]:
     	       	  then localFD_KHash_01(x, lambda, Lvd, test_hts[0], pol_hash0, LF)
 		  else localFD_KHash_01(x, lambda, Lvd, pol_hash, LF)
 		  fi {red_count_flag}
-    {then LFDKH = if temp_K_char_flag
-    	       	 then localFD_KHash_01(x, lambda, Lvd, test_hts[0], pol_hash0, LF)
-		 else localFD_KHash_01(x, lambda, Lvd, pol_hash, LF)
-		 fi}
     then () =  if test_verbose then prints("face counts to dim 1: ",
                           for list in LFDKH do #list od) fi
         {compute graph on faces to dim 1, to hts[edge_offset]}
-    {then () = prints("temp_K_char_flag = ",temp_K_char_flag)}
     then ((eq,gr),IUCL,CLBF) = if temp_K_char_flag
     	 		       then localGraphK(LFDKH)
     	 		       else localGraphK(LFDKH, pol_hash, test_hts[0]) {pol_hash0??}
@@ -2535,7 +2542,7 @@ KTypePol_hash pol_hash, Param_hash Uhash) = [Param]:
     then ICPNU_flag_hold = ICPNU_flag
     then () = KNU_flag:=false
     then () = ICPNU_flag:=false
-    then () = LFDKH := local_testK_hash(x,lambda,Lvd, LFDKH, eq, gr, CLBF, {comment out _big???}
+    then () = LFDKH := local_testK_hash(x,lambda,Lvd, LFDKH, eq, gr, CLBF,
     	      (Param->bool):(Param p): is_unitary_to_hts_big_SIMPLE(p, hts[:test_levels[0]+1].sort_u)
 				       , Uhash)
     {then () = prints("LFDKH before extend = ",LFDKH)}
@@ -3407,14 +3414,11 @@ set local_test_GEO_hash_bottom_layer(KGBElt x, ratvec lambda, {VertexData vd,}
 		      in localFD_KHash_01_graph(x,lambda,Lvd,pol_hash,LF, eq,CLBF)
 		  else localFD_KHash_01(x, lambda, Lvd, pol_hash, LF)
 		  fi {red_count_flag}
-    {???these classes have a common unitarity status; ought to use that going forward.???}
- {then LFDKH = [[FaceVertsKHash]]: localFD_KHash_01(x,lambda, Lvd, pol_hash, LF)}
-      {label each face (vertex/edge) with index
+       {label each face (vertex/edge) with index
    	      	in pol_hash of its K-character}
    then () = if #LKDatas > #LKTs(pmin)
    	     then let ((eq,gr),IUCL,CLBF) = localGraphK(LFDKH)
     	     	      {next remove from LFDKH all faces failing min_bottom_factors_elim}
-   	     	 {then () = prints("all faces 0, 1 = ",for list in LFDKH do #list od)}
    	     	  then () = LFDKH:= local_testK_hash_min_bottom_layer(x,lambda, Lvd, LFDKH, eq,
 		       	    	    gr, CLBF, pol_hash,  Uhash)
    	    	 {then () = prints("min bot faces = ",for list in LFDKH do #list od)}

@@ -907,7 +907,11 @@ set bottom_elim_factors(Param p0, Param p, QKL_bottom_data (Q, LKdata), KTypePol
 			   then () = for tauLj@j in list
 			     	     do coeff*:= branchLjs[j][tauLj]
 			  	     od
-			   in @bool: int_part(coeff) >= int_part(Pmult[tau])
+			   in @bool: let ans = int_part(coeff) >= int_part(Pmult[tau])
+			      	     then () = if not ans
+				     	       then big_unitary_hash.numatch(p0)
+					       fi
+				     in ans
 			od )
 	then () =  befmoreTime +:= elapsed_ms()-start
 	in result
