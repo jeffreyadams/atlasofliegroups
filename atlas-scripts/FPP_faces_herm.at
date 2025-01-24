@@ -2493,8 +2493,8 @@ set is_unitary_to_ht_big_SIMPLE(Param p,int N) = bool:
     	    then return is_unitary_to_ht(p,N) {prints("FPP DANGER TO HT at ",p)}
 	    fi
   {then () = p := herm_center(p)}
-  then L = big_unitary_hash.ulookup(p)
-  then () = if L.>= then return true fi
+  then () = if (big_unitary_hash.ulookup(p)).>= then return true fi
+  then () = if (big_unitary_hash.nulookup(p)).>= then return false fi
   in if interrupt_flag
      then is_unitary_to_ht_big_SIMPLE_interrupt(p,N, interrupt_base_time)
      else {unitary_test_counter.use(); done in calls below}
@@ -2563,29 +2563,19 @@ set is_unitary_to_hts_big_SIMPLE(Param p,[int] Ns) = bool:
     	    then return is_unitary_to_hts(p,Ns) {prints("FPP DANGER TO HT at ",p)}
 	    fi
   {then () = p := herm_center(p)}
-  then L = big_unitary_hash.ulookup(p)
-  then () = if L.>= then return true fi
-  {then (LAM,NU,) = low(p)}
-  {then () = if #Ns > 0 and NU > 8*Ns~[0]*low_frac
-       	    then return is_unitary_to_hts(p,Ns)
-	    elif #Ns > 0 and NU < Ns~[0]*low_frac/2
-	    then return is_pure(to_ht(hermitian_form_irreducible(p),Ns~[0]))
-	    fi}
+  then () = if (big_unitary_hash.ulookup(p)).>= then return true fi
+  then () = if (big_unitary_hash.nulookup(p)).>= then return false fi
   in if interrupt_flag
      then return is_unitary_to_hts_big_SIMPLE_interrupt(p, Ns, interrupt_base_time)
-     else to_hts_count[#Ns] +:= 1;
-     	  if #Ns = 0
-       	  then to_hts_count_mat[0,0]+:=1;
-	       return is_unitary_hash_big_SIMPLE(p)
+     else if #Ns = 0
+       	  then return is_unitary_hash_big_SIMPLE(p)
 	  fi;
-  	  for N@i in Ns
+  	  for N in Ns
      	  do if not is_unitary_to_ht_big_SIMPLE(p,N)
-     	     then to_hts_count_mat[i,#Ns] +:= 1;
-	     	  return false
+     	     then return false
 	     fi
      	  od;
-     to_hts_count_mat[#Ns,#Ns] +:= 1;
-     true
+     	  true
      fi
 
 { compute Hermitian form to hts on p, report if it is unitary}
@@ -2594,9 +2584,6 @@ set is_unitary_to_hts_big (Param p,[int] Ns) = bool:
   if #Ns = 0 then return is_unitary_hash_big(p) fi;
   let pds = derived_factor_params0(p)
   in all(for pd in pds do @bool: is_unitary_to_hts_big_SIMPLE(pd,Ns) od)
-
-{set test_count_mat = null(10,10)
-set test_count = null(10)}
 
 {ONLY for G simple}
 { compute Hermitian form to height N; if it's positive, then compute full form }
@@ -2701,14 +2688,14 @@ set is_unitary_test_big_SIMPLE (Param p, [int] Ns) = bool:
        	    then {test_count_mat[0,0] +:= 1;}
 	    return is_unitary_hash_big_SIMPLE(p)
 	    fi
-  then (LAM,NU,) = low(p)
-  in if #Ns > 0 and NU > 8*Ns~[0]*low_frac
-     then if all(for N in Ns do @bool: is_pure(big_unitary_hash.sig_entry(p,N)) od)
-	  then is_unitary_hash_big_SIMPLE(p)
-	  else false
-	  fi
-     else is_unitary_hash_big_SIMPLE(p)
-     fi
+  {then (LAM,NU,) = low(p)}
+  in for N in Ns
+     do if not is_pure(big_unitary_hash.sig_entry(p,N))
+     	then return false
+	fi
+     od;
+     is_unitary_hash_big_SIMPLE(p)
+
 {
   in if interrupt_flag then is_unitary_test_big_SIMPLE_interrupt(p, Ns,interrupt_base_time)
      else for N@i in Ns
