@@ -433,7 +433,7 @@ set FPP_unitary_hash_general([KGBElt] xs, Param_hash Uhash, {Param_hash Uparamha
 			   			    	      " to find [",#LF[0],",",#LF[1],"] verts and edges.")
 	      		   			    	 fi
 			 		   in if #LF[0] = 0
-			    		      then []
+					      then finish(x, lambda); []
 			    		      else if every_lambda_deets_flag
 			       	 	      	   then face_verbose := old_face_verbose;
 						   time_verbose := old_time_verbose;
@@ -442,6 +442,7 @@ set FPP_unitary_hash_general([KGBElt] xs, Param_hash Uhash, {Param_hash Uparamha
 				 		   fi;
 				 		   let answer = local(xW, lambdaW, {LPm_table.FPP_vertex_data(G),}
 						       Lvd, LF, pol_hash, Uhash)
+						   then () = finish(x, lambda)
 						   {then p = parameter(Sp(6,R),8,[2,1,1],[1,-1,0]/2)
 						   then Lp = big_unitary_hash.lookup(p)
 						   then () = prints ("Lp = ",Lp," at (",x,",",lambda, ")")}
@@ -770,7 +771,11 @@ set FPP_unitary_hash_bottom_layer([(KGBElt,ratvec)] xlambdas, Param_hash UhashG{
     	      	      	   then prints("time for localFD_1Dirac2* = ", print_time_string(elapsed_ms() - startLF),
 			   	       " to find [",#LF[0],",",#LF[1],"] verts and edges.")
 	      		   fi
-		 in if #LF[0] = 0 then ()
+		 in if #LF[0] = 0
+		    then let () = finish(x_sc, lambda_sc)
+			 in if disconn_flag
+			    then finish(x,lambda)
+			    fi; ()
 		    else if every_lambda_deets_flag
 			 then face_verbose := old_face_verbose; time_verbose := old_time_verbose;
 			      test_verbose :=old_test_verbose; test_slightly_verbose := old_test_slightly_verbose
