@@ -1031,12 +1031,12 @@ set bottom_K_type_Qs2(KType mu, KGPElt Q, int D_low, int D) = QKL_bottom_data:
     then dermuLs = [KType]: derived_factor_K_types0(muL)
     then derLs = [RealForm]: derived_simple_factorsRF(L)
     then derProjKinvs = for derL in derLs do right_inverse(projection_to_K_matrix(derL)) od
-    then DL_lows = for derL in derLs
-    	 	   do (D_low*derL.semisimple_rank)\G.semisimple_rank
+    then DL_lows = for derL@j in derLs
+    	 	   do ((D_low - height(mu))*derL.semisimple_rank)\G.semisimple_rank +height(dermuLs[j])
 		   od
-    then DLs = for derL in derLs
-    	 	   do (D*derL.semisimple_rank)\G.semisimple_rank
-		   od
+    then DLs = for derL@j in derLs
+    	       do ((D-D_low)*derL.semisimple_rank)\G.semisimple_rank + DL_lows[j]
+	       od
     then x0L = KGB(L,0)
     then x0G = embed_KGB(x0L,G)
     then K0 = K_0(x0G)
@@ -1279,7 +1279,7 @@ set bottom_elim_factors_more_old(Param p, Param p0, int D) = bool:
     bottom_elim_factors_more_old(p0, p, height(p), D)
 
 
-set befm_old_flag = true
+set befm_old_flag = false
 
 {P is the K-character of p}
 {need to be sure nQs does not include a Borel}
@@ -1349,8 +1349,8 @@ set bottom_elim_factors_more(Param p0, Param p, [QKL_bottom_data] data)= bool:
     then D = max(for (Q,LKdata) in data
 		 do max(for (tau,) in LKdata do height(tau) od#h)
 		 od#h)
-    then Q = character_formula_to_height(p0,D)
-     then P = K_type_pol(Q)
+    then CF = character_formula_to_height(p0,D)
+     then P = K_type_pol(CF)
     in  bottom_elim_factors_more(p0, p, data, P)
 
 {D is meant to be max(height(tau) for tau in BKT. nQs are the parabolics where bottom layer might help.}
@@ -1366,7 +1366,7 @@ set bottom_elim_factors_more(Param p0, Param p, int D_low, int D, KTypePol P)= b
 		 					 fi
     {then () = if not is_hermitian(pL0) then return is_unitary_to_ht(p0,D) fi}
     then maxQs = max_Qs(Q0), R = more_good_hash.size()
-    then maxQps = max_Qps(p0) {[(KGPElt,Param)]}
+    then maxQps = max_Qps(p0,p) {[(KGPElt,Param)]}
     then () = maxQps := for (Q,pL) in maxQps
     	 	   do if is_hermitian(pL)
 		      then [(Q,pL)]
@@ -1403,7 +1403,7 @@ set bottom_elim_factors_more(Param p0, Param p, int D_low, int D, KTypePol P)= b
 	        fi
      then () = befmoreTime +:= elapsed_ms() - start
      then () = if not all(for (Q,pL) in maxQps
-     	       	      	  do @bool: not all(for mu in LKTs(p)
+     	       	      	  do @bool: all(for mu in LKTs(p)
 			     	     	    do  @bool: bottom_elim_factors(p0, p,
 					    	bottom_K_type_Qs2(mu,Q,D_low,D), P)
 					    od)

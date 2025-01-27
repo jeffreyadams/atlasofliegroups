@@ -1392,40 +1392,7 @@ set one_param_test(Param p, Param_hash Uhash) = [Param]:
 	    one_param_time +:= elapsed_ms() - start;
 	    []
        fi
-{
-    then () = if not is_final(p)
-    	      then if all(for q in Q do is_finished(q.x,q.lambda) and
-	      	      	      (Uhash.lookup(q) >= 0) od)
-	      	   then return [p]
-		   elif any(for	q in Q do big_unitary_
-		   else if any(for q in Q do is_finished(q.x,q.lambda) and
-		   	   	   (Uhash.lookup(q) <0) od)
-		   	then return []
-			fi
-		   fi
-	      fi
-    then r = rank(Q[0].x.involution - 1)
-    then DEFHTS = [int]:
-    	 if low(p, height(p)) {low(Q[0].x,Q[0].lambda)} {number(Q[0].x) < NK*low_KGB_frac}
-	 then []
-	 else {let (answer,) =} next_heights(Q[0], (r*stretcher)\2) {deform_hts(Q[0],(r*stretcher)\2)}
-	 {in answer} {could record boolean, use it to replace _test by _to_hts}
-	 fi
-    then  () = hash_def_dumbCounter.use()
-    then test = all(for q in Q do {Uhash.lookup(q).>= or}
-		   	       is_unitary_test_big_SIMPLE(q, DEFHTS) od)
-    in if test
-       then let () = for q in Q
-		     do Uhash.match(q)
-		     od
-	    then () = one_true_counter.use()
-	    then () = one_param_time +:= elapsed_ms() - start
-	    in [p]
-       else let () = one_false_counter.use()
-	    then () = one_param_time +:= elapsed_ms() - start
-	    in []
-       fi
-}
+
 {only does min_bottom test}
 set one_param_test_min_bottom(Param p, Param_hash Uhash) = [Param]:
     let start = elapsed_ms(), Q = monomials(finalize(p)), G = p.real_form
@@ -1450,53 +1417,6 @@ set one_param_test_min_bottom(Param p, Param_hash Uhash) = [Param]:
 	    one_param_time +:= elapsed_ms() - start;
 	    []
        fi
-{
-    then () = if is_final(p)
-    	      then if all(for q in QG do is_finished(q.x,q.lambda) and
-	      	      	      (Uhash.lookup(q) >= 0) od)
-	      	   then return [p]
-		   else if any(for q in QG do is_finished(q.x,q.lambda) and
-		   	   	   (Uhash.lookup(q) < 0) od)
-		   	then return []
-			fi
-		   fi
-	      fi
-    then () = if height(p) > 0
-    	      then let () = hash_bottom_layerCounter.use()
-    	       	   then elim_min = all(for q in QG
-    	      	    	do min_bottom_elim_factors(q,p)
-		    	od)
-    	 {then () = if one_param_verbose then then () = prints("result of elim_min was ",elim_min) fi}
-    	       	  in if not elim_min {minimal bottom layer proved not a unitary Param}
-       	       	     then one_false_counter.use();
-	    	       	  one_param_time +:= elapsed_ms() - start;
-		       	  return []
-		     fi
-	       else hash_def_dumbCounter.use()
-	       fi
-    {now min_bottom failed, or ht = 0}
-    then r = rank(QG[0].x.involution - 1)
-    then DEFHTS = [int]:
-    	 if low(p, height(p))
-	 then []
-	 else  next_heights(QG[0], (r*stretcher)\2) {let (answer,) = deform_hts(QG[0],(r*stretcher)\2)}
-	 {in answer} {could record boolean, use it to replace _test by _to_hts}
-	 fi
-    then test =  all( [(->bool)]:
-	    	     for q in QG
-		     do @bool: is_unitary_test_big_SIMPLE(q,DEFHTS) od)
-    in if test
-       then let () = for q in QG
-		     do Uhash.match({herm_center(}q{)})
-		     od
-	    then () = one_true_counter.use()
-	    then () = one_param_time +:= elapsed_ms() - start
-	    in [p]
-       else let () = one_false_counter.use()
-	    then ()= one_param_time +:= elapsed_ms() - start
-	    in []
-       fi
-}
 
 {assume min_bottom already called?}
 set one_param_test_bottom(Param p, [int] Ds, Param_hash Uhash) = [Param]:
@@ -1504,9 +1424,9 @@ set one_param_test_bottom(Param p, [int] Ds, Param_hash Uhash) = [Param]:
     { used to check here whether terms of QG already known? }
     then () = hash_bottom_layerCounter.use()
     then elim_more = true
-    then Es = if #Ds > 1 then Ds
+    then Es = (if #Ds > 1 then Ds
     	      else height(p)#Ds
-	      fi
+	      fi).sort_u
     then () = if #Es > 1
        	      then let () = if more_verbose then prints("start more with p = ",p, ", Es = ",Es) fi
 	    	   then Ps = for q in QG do K_type_pol(character_formula_to_height(q, Es~[0])) od
@@ -1549,10 +1469,10 @@ set one_param_test_bottom(Param p, [int] Ds, Param_hash Uhash) = [Param]:
 	     in []
         fi
 
-
 {don't assume min_bottom already called; should only be called if ht > 0?}
 set one_param_test_all_bottom(Param p, [int] Ds, Param_hash Uhash) = [Param]:
     let start = elapsed_ms(), Q = monomials(finalize(p)),G = p.real_form
+    {then () = prints("Ds = ",Ds)}
     then () = hash_bottom_layerCounter.use()
     then elim_min = all(for q in Q do min_bottom_elim_factors(q,p) od)
     then () = if not elim_min
@@ -1562,9 +1482,9 @@ set one_param_test_all_bottom(Param p, [int] Ds, Param_hash Uhash) = [Param]:
 	      fi
 {now min bottom failed to eliminate...}
     then elim_more = true
-    then Es = if #Ds > 1 then Ds
+    then Es = (if #Ds > 1 then Ds
     	      else height(p)#Ds
-	      fi
+	      fi).sort_u
     then () = if #Es > 1
        	      then let () = if more_verbose then prints("start more with p = ",p, ", Es = ",Es) fi
 	    	   then Ps = for q in Q do K_type_pol(character_formula_to_height(q, Es~[0])) od
