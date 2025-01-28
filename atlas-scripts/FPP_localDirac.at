@@ -3248,6 +3248,8 @@ set local_test_GEO_hash_bottom_layer_step(KGBElt x, ratvec lambda, {VertexData v
 	      fi
    in UParams
 
+{whether to use bottom_K_type_Qs2 in bottom layer}
+set Qs2_flag = false
 
 {assume local faces to dim 1 are recorded in LF, already herm and pos
 on LKTs. This version uses min_bottom_elim instead of
@@ -3356,12 +3358,28 @@ set local_test_GEO_hash_bottom_layer(KGBElt x, ratvec lambda, {VertexData vd,}
 	     	  	 else one_param_test(parameter(x,lambda, Lvd.list[LFDKH[0][0][0]]),Uhash)
 			 fi
 	     fi
-   then () = if more_flag {want to use non-minimal theta-stable q}
-   	     then let datas = [QKL_bottom_data]: bottom_factors(bottom_K_type_Qs(pmin, Q0, D))
+
+   then maxQps = max_Qps(pmin,pmin)
+   then () = maxQps := for (Q,pL) in maxQps
+    	 	   do if is_hermitian(pL)
+		      then [(Q,pL)]
+		      else []
+		      fi
+		   od.##
+   then () = if more_flag {want to use non-minimal theta-stable q} {??? USE Qs2 ???}
+   	     then let datas = if Qs2_flag
+	     	      	      then for mu in LKTs(pmin)
+			      	       do for (Q,pL) in maxQps
+				       	  do bottom_K_type_Qs2(mu,Q,D)
+					  od
+				       od.##
+			      else [QKL_bottom_data]: bottom_factors(bottom_K_type_Qs(pmin, Q0, D))
+			      fi
 	     	  then () = if card(datas) > #datas {more than lowest K-type for each Q}
 	     	       	    then let ((eq,gr),IUCL,CLBF) = localGraphK(LFDKH)
    	     	  	    {then start_datas = elapsed_ms()}
-		  	    then () = if test_verbose then prints("cardinality(datas) = ", card(datas)) fi
+		  	    then () = if test_verbose then prints("cardinality(datas) = ", card(datas),
+			    ", #datas = ",#datas) fi
 		  	    then  maxQs = max_Qs(Q0) {all MAXIMAL theta-stable containing Q0}
    		  	    {then () = if time_verbose then prints("time for more datas/maxQs was ",
     	      	      	      print_time_string(elapsed_ms() - start_datas), " at lambda = ",lambda)
