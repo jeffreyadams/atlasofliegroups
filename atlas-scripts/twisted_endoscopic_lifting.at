@@ -5,6 +5,7 @@
 <stable.at
 <extParamPol.at
 <extended_character_formula.at
+<synthetic2.at
 
 {NOTE: have to load twisted_endoscopy_D.at AT THE END
 this is a clear bug to be fixed; want to get rid of twisted_endoscopy_D.at

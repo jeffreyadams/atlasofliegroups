@@ -32,6 +32,7 @@ set unnormalized_torus_factor (KGBElt x) = ratvec:
 set tits(KGBElt x)=Tits_elt:(x.real_form,x.unnormalized_torus_factor,x.involution)
 set KGB_elt (Tits_elt t)=KGB_elt(t.root_datum,t.theta,2*t.torus_part-t.root_datum.rho_check)
 
+
 {sigma is a synonyn for tits_element}
 set sigma(RootDatum G,ratvec torus_part, mat theta)=Tits_elt:tits_element(G,torus_part,theta)
 set sigma(RootDatum G,ratvec torus_part, WeylElt w)=Tits_elt:tits_element(G,torus_part,w)

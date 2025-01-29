@@ -1,14 +1,28 @@
+set G=SL(2,R)
+set Gd=dual_quasisplit_form(G)
+set Gc=real_forms(G)[0]
+set G11=real_forms(G)[1]
+set (H,M,Hd)=endoscopic_group(G,[1]/2,G.W[1])
+{set H=parabolic_by_cwt([1,0,0,0],KGB(G,0)).Levi
+set Hd=dual_quasisplit_form(H)}
+set M=id_mat(rank(G))
+set ph=block_of(H.trivial)[0]
+set gamma_H=ph.infinitesimal_character	
+set y=y_gen(ph)
+set phi_H=phi(y,gamma_H)
+set Pi_H=L_packet(phi_H)
+set S_H=component_group(phi_H)
 
-set test(RootDatum G,(int->int) epsilon)=
-let rv=for w in G.W do
- for i:ss_rank(G) do
-  let alpha=G.simple_roots[i] in
-   if is_simple_root (G,w*alpha) then [(w,i,delta(epsilon,w,i))] else [] fi od.##  od.##
-then
-signs=for (,,j) in rv do j od then
-result=all(for x in signs do x=1 od)
-in prints("result: ", result);
-(rv,signs,result)
+set y_H=phi_H.y 
 
-set test(RootDatum G)=test(G,orientation_function(G))
+set gamma_G=gamma_H*M
 
+
+set y_G=map_KGB_gen_tits(y,Gd,M) 
+set phi_G=phi(y_G,gamma_G) 
+set theta_G_v=involution(y) 
+set theta_G=-^theta_G_v
+
+set Pi_G=L_packet(phi_G)
+{set x_G=KGB_elt(inner_class(G),theta_G,torus_factor(x_H)*M) 
+set p_G=parameter(x_G,phi_G) }

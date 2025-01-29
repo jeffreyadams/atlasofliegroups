@@ -21,8 +21,7 @@ check these two sets are equal}
 set arthur_sp_verbose=false
 
 set pr_long([Param] params)=
-prints("G=",params[0].real_form);
-tabulate(for p in params do [p.to_string,p.infinitesimal_character.to_string] od)
+tabulate(for p in params do [p.to_string,p.real_form.to_string,p.infinitesimal_character.to_string] od)
 
 set show([[Param]] packets)=void:
 for S@i in packets do 

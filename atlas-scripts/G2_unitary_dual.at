@@ -4,7 +4,7 @@
 <hermitian.at { for |is_unitary| }
 <coordinates.at
 
-set G=G2_s
+set G2=G2_s
 set my_simple_roots=mat:[[1,-1,0],[-1,2,-1]]
 
 set short_format(Param p)=string:
@@ -25,8 +25,8 @@ set all_parameters_x_gamma (KGBElt x,ratvec gamma) = [Param]:
       parameter(x,lambda+v,nu) {not necessarily final}  od
    esac.reduce  { keep only 1 from each equivalence class; NOTE: this finalizes each parameter}
 
-set M=mat:ratmat_as_mat(change_basis(G,my_simple_roots))
-set i_M=ratmat: inverse_change_basis(G,my_simple_roots)
+set M=mat:ratmat_as_mat(change_basis(G2,my_simple_roots))
+set i_M=ratmat: inverse_change_basis(G2,my_simple_roots)
 
 {
 M: 3x2 integral matrix, takes Z^2 -> Z^3, atlas roots -> my_simple_roots
@@ -46,7 +46,7 @@ atlas      Vogan
 
 
 set g2_parameter(KGBElt x, ratvec lambda, ratvec nu)=parameter(x, i_M*lambda,i_M*nu)
-set cartans=Cartan_classes(G)
+set cartans=Cartan_classes(G2)
 
 {use numbering from [voganG2]}
 set H1=cartans[1]  {has short real roots}
@@ -55,7 +55,7 @@ set H_s=H1
 set H_l=H2
 
 {principal series}
-set ps(int epsilon,ratvec v)=parameter(x_open(G), G.rho+epsilon*[1,0],v)
+set ps(int epsilon,ratvec v)=parameter(x_open(G2), G2.rho+epsilon*[1,0],v)
 
 {short root Cartan}
 {infinitesimal character, not necessarily dominant:}
@@ -63,7 +63,7 @@ set gamma_s(rat m,rat v)=ratvec:(m/2)*[0,1] + (v/2)*[2,-1]
 {gamma_s=[v,(m-v)/2] (atlas)
         =[m+v,m-v,-m]/2 (Vogan 9.2a)
 }
-set x_s=KGB(G,4)
+set x_s=KGB(G2,4)
 
 {short simple root    [2,-1]=[1,-1,0] is real
  orthogonal long root [0,1] =[1,1,-2] is nci
@@ -83,7 +83,7 @@ set gamma_l(rat m,rat v)=ratvec:(m/2)*[1,0] + (v/2)*[3,-2]
 {gamma_l=[(m+3v)/2,-v] (atlas)
         =[(m+v)/2,-v,(-m+v)/2] (10.2a)
 }
-set x_l=KGB(G,3)
+set x_l=KGB(G2,3)
 
 {root [-3,2] is long, simple, real
  short root [1,0] = [1,0,-1] is nci (not simple)
@@ -91,7 +91,7 @@ set x_l=KGB(G,3)
  [2,3]*gamma_l(m,v)=m so this is a valid gamma for x_l
 }
 
-set coords(RootDatum G,ratvec v)=[rat]:for a in G.simple_coroots do a*v od
+set coords(RootDatum G2,ratvec v)=[rat]:for a in G2.simple_coroots do a*v od
 
 set in_fpp(ratvec v)=bool:all(for x in v do x>=0 and x<=1 od)
 set in_fpp(RootDatum G,ratvec v)=bool:in_fpp(coords(G,v))
@@ -109,14 +109,14 @@ tabulate(
  for i:number_steps do let v=v0+i*step_size in
   let p=p_s(m,v)[0] then
   unitary=is_unitary(p) then
-  coords=coords(G,p.infinitesimal_character) {not gamma_s(m,v)}  then
+  coords=coords(G2,p.infinitesimal_character) {not gamma_s(m,v)}  then
   in_fpp=in_fpp(coords) then
   (check,L)=(string,string):if in_fpp then ("","")
         elif not unitary then ("","")
         else
          let ind=is_good_range_induced_from(p) in
  	 if =#ind then ("false","")
-	 elif ind[0].real_form=G then ("false",ind[0].real_form.nice_format.to_string)
+	 elif ind[0].real_form=G2 then ("false",ind[0].real_form.nice_format.to_string)
 	 else (is_unitary(ind[0]).to_string, ind[0].real_form.nice_format.to_string)
         fi
   fi
@@ -131,14 +131,14 @@ tabulate(
  for i:number_steps do let v=v0+i*step_size in
   let p=p_l(m,v)[0] then
   unitary=is_unitary(p) then
-  coords=coords(G,p.infinitesimal_character) {not gamma_s(m,v)}  then
+  coords=coords(G2,p.infinitesimal_character) {not gamma_s(m,v)}  then
   in_fpp=in_fpp(coords) then
   (check,L)=(string,string):if in_fpp then ("","")
         elif not unitary then ("","")
         else
          let ind=is_good_range_induced_from(p) in
  	 if =#ind then ("false","")
-	 elif ind[0].real_form=G then ("false",ind[0].real_form.nice_format.to_string)
+	 elif ind[0].real_form=G2 then ("false",ind[0].real_form.nice_format.to_string)
 	 else (is_unitary(ind[0]).to_string, ind[0].real_form.nice_format.to_string)
         fi
   fi

@@ -68,6 +68,9 @@ let fiber=fiber(G,-^y_gen.involution) in
  P=finalize(p) in
  monomials(P) od
 
+set super_L_packet(ratvec gamma,KGBElt_gen y)=[Param]:
+##for G in real_forms(dual_quasisplit_form(y.real_form)) do L_packet(G,gamma,y) od 
+
 {L-packet of parameters, containing p}
 set L_packet(Param p)=[Param]:
 monomials(

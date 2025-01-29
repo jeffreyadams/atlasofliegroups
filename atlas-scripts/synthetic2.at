@@ -7,37 +7,20 @@ set_type
 [ KGBElt_gen = (InnerClass inner_class, mat involution, ratvec torus_factor) ]
   { generalized KGB elements: x^2 not necessarily central }
 
-{construct KGBElt_gen (see KGB_elt@(RealForm,mat,ratvec) in atlas-functions.help)
- given (G,theta,v) need to find torus factor ratvec:w satisfying
- 1) w-base_grading_vector(G)\in Z^n
- 2) w(1+theta)=v(1+theta)
- in other words solve (M=theta, bg=base_grading_vector):
- u*(1+M)=(v-bg)*(1+M) for vec u and set w=u+bg
- => 1) w-bg is a vec, and 2) w(1+M)=v(1+M)
-   (check 2): w(1+M)=(u+bg)(1+M)=u(1+M)+bg(1+M)=(v-bg)*(1+M)+bg(1+M)=v(1+M))
-}
-set KGB_elt_gen(InnerClass ic,mat involution, ratvec v)=
-let G=real_form(ic,involution,v) then
-bg=base_grading_vector(G) then
-u=solve(^(1+involution),^(1+involution)*(v-bg)) in
-if u.any then KGBElt_gen:(ic,involution,u.requisition) else
-error("cannot find KGB_elt_gen") fi
-
-{old version KGBElt_gen:(ic,theta,torus_factor)
+{ KGBElt_gen:(ic,theta,torus_factor)
   torus_factor must be theta_x-fixed (else error)
      could replace torus_factor with torus_factor*(1+theta)/2 but it seems better to flag this
   [no: requirement: base_grading_vector - torus_factor\in Z^n don't have base_grading_vector]
   xi=exp(2\pi i(torus_factor+rho^v)/2)\sigma_w\delta
 }
-set KGB_elt_gen_old(InnerClass ic,mat involution, ratvec v)=KGBElt_gen:
+set KGB_elt_gen(KGBElt x)=KGB_elt_gen(x.inner_class,x.involution,x.torus_factor)
+
+{
+set KGB_elt_gen(InnerClass ic,mat involution, ratvec v)=KGBElt_gen:
  assert(v*involution=v,"v is not theta-fixed");
  (ic,involution,v)
-set KGB_elt_gen_old(KGBElt x)=KGB_elt_gen_old(x.inner_class,x.involution,x.torus_factor)
-
-
-
 set KGB_elt(KGBElt_gen x)=KGB_elt(x.inner_class,x.involution,x.torus_factor)
-
+}
 set grading_coweight (KGBElt x) = ratvec: torus_factor(x) + rho_check_i(x)
 
 { alternative to KGB_elt that incorporates shift by rho_check_i }
