@@ -18,7 +18,18 @@
 
 set_type [ Tits_elt = (RootDatum root_datum,ratvec torus_part,mat theta) ]
 
+{Caution: given a Tits_element sigma=(G,v,theta)
+ this represents an element:
+    \exp(2\pi i v)\sigma_w of G OR
+    \exp(2\pi i v)\sigma_w\delta of G\delta
+ thus the action of sigma on the torus is by w OR w*\delta; in the latter case this might not be the action of an element of W
+ to distinguish these we define
+ w@Tits_element -> WeylElt: taking w(sigma)\in W satisfies sigma acts on T by w, i.e. sigma is the Tits lift of w up to a torus factor
+ w@(Tits_element, mat) -> WeylElt: w(sigma,delta)\in W satisfies: sigma acts on T by w*delta
+}
+
 set w(Tits_elt (rd,t,theta))=WeylElt:W_elt(rd,theta)
+set w(Tits_elt (rd,t,theta), mat delta)=WeylElt:W_elt(rd,theta*delta)
 
 set tits_element(RootDatum G,ratvec torus_part, mat theta)=Tits_elt:(G,torus_part,theta)
 set tits_element(RootDatum G,ratvec torus_part, WeylElt w)=Tits_elt:
@@ -31,7 +42,6 @@ set unnormalized_torus_factor (KGBElt x) = ratvec:
   (torus_factor(x)+rho_check(real_form(x)))/2
 set tits(KGBElt x)=Tits_elt:(x.real_form,x.unnormalized_torus_factor,x.involution)
 set KGB_elt (Tits_elt t)=KGB_elt(t.root_datum,t.theta,2*t.torus_part-t.root_datum.rho_check)
-
 
 {sigma is a synonyn for tits_element}
 set sigma(RootDatum G,ratvec torus_part, mat theta)=Tits_elt:tits_element(G,torus_part,theta)
@@ -62,8 +72,8 @@ set tits_identity (RootDatum rd) = Tits_elt:
 
 { element (torus factor=1)*delta in twisted Tits group }
 set tits_delta (RootDatum rd,mat delta) = Tits_elt: (rd,null(rank(rd)),delta)
-set tits_delta (RealForm G) = Tits_elt:
-  tits_delta(RootDatum:G,distinguished_involution(InnerClass:G))
+set tits_delta (InnerClass ic) = Tits_elt:
+  tits_delta(ic.root_datum,distinguished_involution(ic))
 
 { left multiplication by sigma_s, where s must index a simple root }
 set left (int s,Tits_elt(rd,v,theta)) = Tits_elt:

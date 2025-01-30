@@ -1,0 +1,43 @@
+{For now: G, H split; no issue with rho_G-rho_H cover}
+
+set e_verbose=true
+
+{M: X^*(H_v) to X^*(G_v), i.e. also takes X_*(H) to X_*(G)}
+
+set e_star(KGBElt x_H,L_homomorphism phi_H,RealForm G,mat M)=
+let y_H=phi_H.y then
+gamma_H=phi_H.gamma then
+()=if e_verbose then prints("y_H: ", y_H, new_line, "gamma_H: ", gamma_H) fi  then
+gamma_G=M*gamma_H then
+()=if e_verbose then prints("gamma_G: ", gamma_G) fi  then
+y_G=map_KGB_gen_tits(y_H,dual_quasisplit_form(G),M) then
+()=if e_verbose then prints("y_G: ", y_G) fi then
+phi_G=phi(y_G,gamma_G) then 
+theta_G_v=involution(y_G) then
+theta_G=-^theta_G_v then
+()=if e_verbose then prints("theta_G: ", theta_G,new_line,"torus_factor(x_H): ", torus_factor(x_H)) fi then 
+x_G=KGB_elt(inner_class(G),theta_G,torus_factor(x_H)*M) then
+()=if e_verbose then prints("x_G: ", x_G, " ", x_G.real_form, " ", x_G.torus_factor) fi then
+p_G=parameter(x_G,phi_G) then
+()=if e_verbose then ("p_G=", p_G) fi
+in p_G
+
+{usage: set
+(y_H,y_G,gamma_H,gamma_G,phi_G,theta_G,x_G,p_G) =e_star_info(x_H,phi_H,G,M)}1
+set e_star_info(KGBElt x_H,L_homomorphism phi_H,RealForm G,mat M)=
+let y_H=phi_H.y then
+gamma_H=phi_H.gamma then
+()=if e_verbose then prints("y_H: ", y_H, new_line, "gamma_H: ", gamma_H) fi  then
+gamma_G=M*gamma_H then
+()=if e_verbose then prints("gamma_G: ", gamma_G) fi  then
+y_G=map_KGB_gen_tits(y_H,dual_quasisplit_form(G),M) then
+()=if e_verbose then prints("y_G: ", y_G) fi then
+phi_G=phi(y_G,gamma_G) then 
+theta_G_v=involution(y_G) then
+theta_G=-^theta_G_v then
+()=if e_verbose then prints("theta_G: ", theta_G,new_line,"torus_factor(x_H): ", torus_factor(x_H)) fi then 
+x_G=KGB_elt(inner_class(G),theta_G,torus_factor(x_H)*M) then
+()=if e_verbose then prints("x_G: ", x_G, " ", x_G.real_form, " ", x_G.torus_factor) fi then
+p_G=parameter(x_G,phi_G) then
+()=if e_verbose then ("p_G=", p_G) fi
+in (y_H,y_G,gamma_H,gamma_G,phi_G,theta_G,x_G,p_G) 

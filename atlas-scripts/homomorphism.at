@@ -41,45 +41,6 @@ map(G1,G2,root_map(G1,G2),w_1)
 
 set map_W(RootDatum G1,RootDatum G2)=(WeylElt -> WeylElt):(WeylElt w_1):map(G1,G2,w_1)
 
-{---------------mapping of twisted Weyl groups--------------}
-
-{G1,G2 are inner classes here, i.e. include distinguished involutions}
-
-{  X^*(T1) -- M --> X^*(T2)
-    |                |
-    |delta1          |  lift(delta1)
-    V                V
-   X^*(T1) -- M --> X^*(T2)
-
-lift(delta1) satisfies       M*delta1 = lift(delta1)*M
-
-recall for elements of W we do this by lifting roots, thus avoiding any issues about right/left inverses of M
-however here we need to do this once for delta1
-if M is right-invertible then  lift(delta1)=M*delta1*right_inverse(M)
-
-We assume: M is right-invertible over Q
-this should not be necessary: some weaker condition involving just the derived group should suffice}
-
-set map_distinguished_involution(InnerClass ic1,InnerClass ic2,mat M)=WeylElt:
-let N=right_inverse(M/1)  {right inverse of M as a rational matrix} then
-lift_delta=M*ic1.distinguished_involution*N  {this is a rational matrix} then
-(,,d)=lift_delta  {denominator, should be 1} then 
-()=assert(d=1, "M is not right invertible/Q") then
-w_action = ratmat_as_mat(lift_delta)*inverse(ic2.distinguished_involution) in 
-W_elt(ic1,w_action)
-
-{to lift w1*delta1: lift w1 as before (one root at a time) and then tack on delta1}
-set map_twisted(InnerClass ic1,InnerClass ic2,mat M,WeylElt w)=WeylElt:
-map(ic1,ic2,M,w)*map_distinguished_involution(ic1,ic2,M)
-
-{ f: W1->W2 satisfying: w*delta1 -> f(w)*delta2}
-set map_W_twisted(InnerClass ic1,InnerClass ic2,mat M)=(WeylElt -> WeylElt):(WeylElt w_1):map_twisted(ic1,ic2,M,w_1)
-
-set map_twisted(InnerClass ic1,InnerClass ic2,WeylElt w_1)=WeylElt:
-map_twisted(ic1,ic2,root_map(ic1,ic2),w_1)
-
-set map_W_twisted(InnerClass ic1,InnerClass ic2)=(WeylElt -> WeylElt):(WeylElt w_1):map(ic1,ic2,w_1)
-
 {-----------mapping of (untwisted) Tits groups -----------------}
 
 {twisted version follows next}
@@ -198,9 +159,67 @@ if not all then prints(results) fi ;all
 
 set test_tits_braid(RootDatum G1,RootDatum G2,mat M)=bool:test_tits_braid(G1,G2,M,orientation_function(G2))
 
+{---------------mapping of twisted Weyl groups--------------}
+
+{G1,G2 are inner classes here, i.e. include distinguished involutions}
+
+{  X^*(T1) -- M --> X^*(T2)
+    |                |
+    |delta1          |  lift(delta1)*delta2  with lift(delta1) in W(G1)
+    V                V
+   X^*(T1) -- M --> X^*(T2)
+
+lift(delta1) satisfies       M*delta1 = (lift(delta1)*delta2)*M
+
+recall for elements of W we do this by lifting roots, thus avoiding any issues about right/left inverses of M
+however here we need to do this once for delta1
+if M is right-invertible then  
+  lift(delta1)*delta2=M*(delta1)*right_inverse(M),or
+  lift(delta1)=M*(delta1)*right_inverse(M)*delta2^{-1}
+
+We assume: M is right-invertible over Q
+this should not be necessary: some weaker condition involving just the derived group should suffice}
+
+set map_distinguished_involution(InnerClass ic1,InnerClass ic2,mat M)=WeylElt:
+let N=right_inverse(M/1)  {right inverse of M as a rational matrix} then
+lift_delta=M*ic1.distinguished_involution*N  {this is a rational matrix} then
+(,,d)=lift_delta  {denominator, should be 1} then 
+()=assert(d=1, "M is not right invertible/Q") then
+w_action = ratmat_as_mat(lift_delta)*inverse(ic2.distinguished_involution) {this should be in the Weyl group} in 
+W_elt(ic2,w_action)
+
+{to lift w1*delta1: lift w1 as before (one root at a time) and then tack on delta1}
+set map_twisted(InnerClass ic1,InnerClass ic2,mat M,WeylElt w)=WeylElt:
+map(ic1,ic2,M,w)*map_distinguished_involution(ic1,ic2,M)
+
+{ f: W1->W2 satisfying: w*delta1 -> f(w)*delta2}
+set map_W_twisted(InnerClass ic1,InnerClass ic2,mat M)=(WeylElt -> WeylElt):(WeylElt w_1):map_twisted(ic1,ic2,M,w_1)
+
+set map_twisted(InnerClass ic1,InnerClass ic2,WeylElt w_1)=WeylElt:
+map_twisted(ic1,ic2,root_map(ic1,ic2),w_1)
+
+set map_W_twisted(InnerClass ic1,InnerClass ic2)=(WeylElt -> WeylElt):(WeylElt w_1):map(ic1,ic2,w_1)
+
+
+{--------------- mapping of twisted Tits group------------}
+
+{similar to the twisted Weyl group situation
+given H,G,M as above, H,G have given inner classes, i.e. delta_H,delta_G
+
+}
+
+set map_tits_element_twisted(InnerClass ic1,InnerClass ic2,mat M,Tits_elt sigma1)=Tits_elt:
+let sigma1_W=sigma1*tits_delta(ic1)   {Tits element of an element of W(G1)} then
+sigma2_W=map_tits_element(ic1,ic2,M,sigma1_W)  {Tits element of an element of W(G2)} then
+w_delta2=map_distinguished_involution(ic1,ic2,M)  {w2\in W(G2):  w2*delta2 is lift of delta1} then
+sigma_delta2=tits_element(ic2,w_delta2) then
+sigma2=sigma2_W*sigma_delta2 in
+sigma2
+
+
 {----------------mapping of KGB ------------------}
 
-{here the involution matters}
+{here we're working with the twisted Tits group}
 
 set KGB_elt_gen (RootDatum rd, mat theta, ratvec v) = KGBElt_gen:
   KGB_elt_gen(inner_class(rd,theta), theta, v)
@@ -212,11 +231,21 @@ set tits(KGBElt_gen x)=Tits_elt:(x.real_form,x.unnormalized_torus_factor,x.invol
 
 {map KGB and generalized KGB elements using the Tits group}
 set map_KGB_tits(KGBElt x1,RealForm G2,mat M, orientation epsilon2)=KGBElt:
+let sigma1=tits(x1)  {acts by w1*delta1} then
+sigma2=map_tits_element_twisted(x1.real_form,G2,M,sigma1) {sigma2 acts by w2*delta2} in
+KGB_elt(sigma2)
+
+
+{map KGB and generalized KGB elements using the Tits group}
+set map_KGB_tits_old(KGBElt x1,RealForm G2,mat M, orientation epsilon2)=KGBElt:
 let G1=x1.real_form then
 sigma1=tits(x1) {this has unnormalized torus factor} then
 sigma1_untwisted=sigma1*tits_delta(G1)  {this now maps to an element of the Weyl group of G1} then
 sigma2_untwisted=map_tits_element(G1,G2,M,epsilon2,sigma1_untwisted)  {maps to W(G2); uses unnormalized torus factor from Hd} then
 sigma2=sigma2_untwisted*tits_delta(G2)  {put the twist delta(G2) back in} then
+lift_delta_2=map_distinguished_involution(G1,G2,M) {element w of Weyl group satifying w.matrix*delta_2=(lift of delta_1)} then
+tits_delta_2=tits_element(G2,lift_delta_2)  {tits lift of Weyl element lift_delta_2
+sigma2=sigma2_untwisted*map_distinguished_involution(G1,G2,M)  {put the twist lift(delta(G2)) back in}} then
 x2=KGB_elt(sigma2) {when making x_Gd, input sigma_Gd has unnormalized torus factor, x gets normalized torus_factor}  in
 x2
 
@@ -225,17 +254,9 @@ set map_KGB_tits(KGBElt x1,RealForm G2,mat M)=KGBElt:map_KGB_tits(x1,G2,M,orient
 set map_KGB_tits(RealForm G2,mat M)=(KGBElt->KGBElt):(KGBElt x1):map_KGB_tits(x1,G2,M,orientation_function(G2))
 
 set map_KGB_gen_tits(KGBElt_gen x1,RealForm G2,mat M, orientation epsilon2)=KGBElt_gen:
-let G1=x1.real_form then
-sigma1=tits(x1) {this has unnormalized torus factor} then
-sigma1_untwisted=sigma1*tits_delta(G1)  {this now maps to an element of the Weyl group of G1} then
-sigma2_untwisted=map_tits_element(G1,G2,M,epsilon2,sigma1_untwisted)  {maps to W(G2); uses unnormalized torus factor from Hd} then
-sigma2=sigma2_untwisted*tits_delta(G2)  {put the twist delta(G2) back in} then
-()=prints("sigma2: ", sigma2) then
-x2=KGB_elt_gen(sigma2) {when making x_Gd, input sigma_Gd has unnormalized torus factor, x gets normalized torus_factor} in
-{sigma1=tits(x1) {this has unnormalized torus factor} then
-sigma2=map_tits_element(G1,G2,M,epsilon2,sigma1) {uses unnormalized torus factor from Hd} then
-}
-x2
+let sigma1=tits(x1)  {acts by w1*delta1} then
+sigma2=map_tits_element_twisted(x1.real_form,G2,M,sigma1) {sigma2 acts by w2*delta2} in
+KGB_elt_gen(sigma2)
 
 set map_KGB_gen_tits(KGBElt_gen x1,RealForm G2,mat M)=KGBElt_gen:map_KGB_gen_tits(x1,G2,M,orientation_function(G2))
 

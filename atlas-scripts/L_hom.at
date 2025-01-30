@@ -1,0 +1,21 @@
+set_type [L_homomorphism = (KGBElt_gen y,ratvec gamma)]
+
+set phi(KGBElt_gen y,ratvec gamma)=L_homomorphism:(y,gamma)
+
+set L_packet(RealForm G,L_homomorphism phi)=[Param]:L_packet(G,phi.gamma,phi.y)
+set L_packet(L_homomorphism phi)=[[Param]]:
+for G in strong_real_forms(dual_quasisplit_form(phi.y.real_form)) do
+ let LP=L_packet(G,phi.phi.gamma,phi.y)  in
+ if #LP>0 then [LP] else [] fi od.##
+
+set phi(Param p)=L_homomorphism:phi(y_gen(p),infinitesimal_character(p))
+
+set component_group(L_homomorphism phi)=[KGBElt]:
+for p in ##L_packet(phi) do p.x od
+
+set parameter(KGBElt x,L_homomorphism phi)=Param:parameter(x,phi.y,phi.gamma)
+
+set KGB_elt_gen (RootDatum rd, mat theta, ratvec v) = KGBElt_gen:
+  KGB_elt_gen(inner_class(rd,theta), theta, v)
+
+set KGB_elt_gen (Tits_elt t)=KGB_elt_gen(t.root_datum,t.theta,2*t.torus_part-t.root_datum.rho_check)

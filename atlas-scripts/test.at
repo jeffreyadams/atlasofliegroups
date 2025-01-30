@@ -12,6 +12,7 @@ set y=y_gen(ph)
 set phi_H=phi(y,gamma_H)
 set Pi_H=L_packet(phi_H)
 set S_H=component_group(phi_H)
+set x_H=S_H[0]
 
 set y_H=phi_H.y 
 
