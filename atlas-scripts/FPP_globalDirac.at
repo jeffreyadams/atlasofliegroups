@@ -130,7 +130,6 @@ set FPP_unitary_hash_general([(KGBElt,ratvec)] xlambdas, Param_hash Uhash,
     then {vd = FPP_vertex_data(G),} start = elapsed_ms(),  zeroNu = null(G.rank)/1
     then () = unitaryTime := 0
     then () = charTime := 0
-    then () = prepDirac(G)
     then () = FD12Time:=0
     then () = FD12bzTime:=0
     then () = red_count_time :=0
@@ -277,7 +276,6 @@ set FPP_unitary_hash_general([KGBElt] xs, Param_hash Uhash, {Param_hash Uparamha
     then start = elapsed_ms(), zeroPol = null_module(G), zeroNu = null(G.rank)/1
     then () = unitaryTime := 0
     then () = charTime := 0
-    then () = prepDirac(G)
     then () = FD12Time :=0
     then () = FD12bzTime :=0
     then () = red_count_time :=0
@@ -709,7 +707,6 @@ set FPP_unitary_hash_bottom_layer([(KGBElt,ratvec)] xlambdas, Param_hash UhashG{
     then () = FD12Time := 0
     then () = FD12bzTime := 0
     then () = red_count_time :=0
-    then () = if Dirac_flag then prepDirac(Gsc) fi
     then xnums = for (x,) in xlambdas do let (,m) = %x in m od
     {then lambdas = for (,lambda) in xlambdas do lambda od}
     then LPmss = for (x,lambda) in xlambdas_sc
@@ -901,7 +898,6 @@ set FPP_unitary_hash_bottom_layer([KGBElt] xs, Param_hash UhashG{, Param_hash Up
     then () = FD12Time := 0
     then () = FD12bzTime :=0
     then () = red_count_time :=0
-    then () = if Dirac_flag then prepDirac(Gsc) fi
     {then {xnums = for x in xs do let (,m) = %x in m od,} xtimes = null(#xs)}
     then () = pol_hash.clear()
     then old_face_verbose = face_verbose, old_time_verbose = time_verbose,

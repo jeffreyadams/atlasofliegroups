@@ -131,27 +131,104 @@ set sort(RealForm G, LocalVertexData Lvd, [[FaceVertsKHash]] LFDKH, int tail) = 
     else LFDKH
     fi
 
+{when using Dirac on non-LKTs, go out to height + Dirac_height}
+set Dirac_height = int: 0
+
 {this is the Q(infinitesimal character) bound provided by Dirac inequality on all LKTs}
 set DiracBD(KGBElt x, ratvec lambda) = rat:
     let G = x.real_form
-    then Q = invariant_form(G)
-    in if not(Dirac_flag and is_equal_rank(G))
-       then Q(G.rho,G.rho)
-       else let mus = LKTs(parameter(x,lambda,0*lambda))
-       	    then ics = for mu in mus do DiracIC(mu) od
-    	    in min(for ic in ics do Q(ic,ic) od)
-       fi
+    in min(for mu in LKTs(parameter(x,lambda,0*lambda))
+       	   do DiracBD(mu)
+	   od)
 
 {"true" means unitarity is possible in light of Dirac}
 {avoid using is_hermitian defined in hermitian.at}
 set DiracTest(Param p) = bool:
     let G=p.real_form
-    then () = Dirac_flag:=true
-    in if not is_equal_rank(G) then return equivalent(twist(p),p) {is_hermitian(p)}
+    {then () = Dirac_flag:=true}
+    in if not is_hermitian(p) then false
        else let gamma = p.infinitesimal_character
     	    then Q = invariant_form(G)
 	    then bound = DiracBD(p.x, p.lambda)
 	    in Q(gamma, gamma) <= bound
+       fi
+
+{here p must be irr for branch_irr to work}
+set DiracBestTest(Param p) = bool:
+    {if not Dirac_best_flag then return true fi;}
+    let mu = LKTs(p)[0], G = p.real_form
+    then Q = invariant_form(G)
+    then (mus,hts,bds) = best_Dirac_bound(mu)
+    then gamma = p.infinitesimal_character
+    then psize = Q(gamma,gamma)
+    then j1 = first(for b in bds do b<psize od)
+    in if j1 = -1
+       then true {none of the bds catches p}
+       else let j2 = first(for mu@j in mus[j1:]
+       	    	     	   do @bool: branch_irr(p,hts[j+j1])[mu].!=
+			   od)
+	    in j2.< {if the bound at j0+j1 corresponds to a mu0
+	       	     actually appearing in p, then get false}
+       fi
+
+{assume Kchar is the K-character of the some subquotients of std(p); result says
+whether ALL those subquos pass DiracBestTest}
+set DiracBestTest(Param p, KTypePol Kchar) = bool:
+    {if not Dirac_best_flag then return true fi;}
+    let mu = LKTs(p)[0], G = p.real_form
+    then Q = invariant_form(G)
+    then (mus,hts,bds) = best_Dirac_bound(mu)
+    then gamma = p.infinitesimal_character
+    then psize = Q(gamma,gamma)
+    then j1 = first(for b in bds do b<psize od)
+    in if j1 = -1
+       then true {none of the bds catches p}
+       else let j2 = first(for mu@j in mus[j1:]
+       	    	     	   do @bool: branch_std(Kchar,hts[j1+j])[mu].!=
+			   od)
+	    in j2.< {if the bound at j+j1 corresponds to a mu1
+	       	     actually appearing in p, then get false}
+       fi
+
+set DiracBestTest(Param p, int D) = bool:
+    let mu = LKTs(p)[0], G=p.real_form
+    then (mus,hts,bds) = best_Dirac_bound(mu)
+    then j0 = first(for h in hts do h > D od)
+    {then () = prints("j0 = ",j0)}
+    then () = if j0<0 then j0:= #hts fi
+    {now we only look up at [:j0]}
+    then Q = invariant_form(G)
+    then gamma = p.infinitesimal_character
+    then psize = Q(gamma,gamma)
+    then j1 = first(for b in bds[:j0] do b<psize od)
+    {then () = prints("j1 = ",j1)}
+    in if j1 = -1
+       then true {none of the bds catches p}
+       else let j2 = first(for mu@j in mus[j1:j0] {these mus would exclude p}
+       	    	     	    do @bool: branch_irr(p,hts[j1+j])[mu].!=
+			    od)
+	    in j2.< {if the bound at j0+j corresponds to a mu1
+	       	     actually appearing in p, then get false}
+       fi
+{Kchar is mean to be the K-character, to height at least D,  of some subquotients
+of p to which Dirac ineq is applied}
+set DiracBestTest(Param p, int D, KTypePol Kchar) = bool:
+    let mu = LKTs(p)[0], G=p.real_form
+    then (mus,hts,bds) = best_Dirac_bound(mu)
+    then j0 = first(for h in hts do h > D od)
+    then () = if j0<0 then j0:=#hts fi
+    {now we only look up at [:j0]}
+    then Q = invariant_form(G)
+    then gamma = p.infinitesimal_character
+    then psize = Q(gamma,gamma)
+    then j1 = first(for b in bds[:j0] do b<psize od)
+    in if j1 < 0
+       then true {none of the bds catches p with hts bdded by D}
+       else let j2 = first(for mu@j in mus[j1:j0] {these mus would exclude p}
+       	    	     	    do @bool: branch_std(Kchar,hts[j1+j])[mu].!=
+			    od)
+	    in j2.< {if the bound at j0+j corresponds to a mu1
+	       	     actually appearing in p, then get false}
        fi
 
 {creates LVD, map Perm on FPPverts at (x,lambda), {mapAct from FPPverts to local verts}}
@@ -237,13 +314,14 @@ set localFD_1Dirac2\
     then LF0 = [FaceVertsIndex]:
     	 for v@j in Lvd.list
 	 do let p = parameter(x,lambda,v)
-	    in if any(for q in monomials(finalize(p)) do not is_pos_on_LKTs(q) od) or
- 	       (Dirac_flag and Q(v, v)> DiracBD)
+	    in if Q(v,v) > DiracBD
+	       or not all(for q in monomials(finalize(p))
+	       	      	  do @bool: is_pos_on_LKTs(q)
+			  od)
 	    then []
-	    else if red_count_flag
-	    	 then [[j, red_count(p)]]
-		 else [[j]]
-		 fi
+	    elif red_count_flag
+	    then [[j, red_count(p)]]
+	    else [[j]]
 	    fi
 	 od.##
     {then () = prints("after LFO, time is ",print_time_string(elapsed_ms() - start))}
@@ -343,15 +421,16 @@ set localFD_1Dirac2_by_zero\
     then LF0 = [FaceVertsIndex]:
     	 for v@j in Lvd.list
 	 do let p = parameter(x,lambda,v)
-	    in if any(for q in monomials(finalize(p)) do not is_pos_on_LKTs(q) od) or
- 	       (Dirac_flag and Q(v, v)> DiracBD)
-	    then []
-	    else if red_count_flag
-	    	 then [[j, red_count(p)]]
-		 else [[j]]
-		 fi
-	    fi
-	 od.##{list of j for which vertex j is a candidate}
+	    in if Q(v,v) > DiracBD
+	       	  or not all(for q in monomials(finalize(p))
+	       	      	     do is_pos_on_LKTs(q)
+			     od)
+	       then []
+	       elif red_count_flag
+	       then [[j, red_count(p)]]
+	       else [[j]]
+	       fi
+	 od.## {list of j for which vertex j is a candidate}
     {then () = prints("after LFO, time is ",print_time_string(elapsed_ms() - start))}
     {then Llookup = is_member_sorted((for v in LF0 do v[0] od))}
     then Edges = [vec]:
@@ -559,8 +638,9 @@ set localFD_1Dirac2_add_red(KGBElt x, ratvec lambda, LocalVertexData Lvd, [[Face
        	  do let nu = face_bary(Lvd,v)
 	     then p = parameter(x,lambda,nu)
 	     then qs = monomials(p)
-	     in if all(for q in qs do is_pos_on_LKTs(q) od)
-	     	   and ((not Dirac_flag) or (Q(nu,nu) <= DiracBD))
+	     in if Q(v,v) < DiracBD
+	     	   and all(for q in qs do is_pos_on_LKTs(q)
+				   od)
 		then if red_count_flag
 		     then [v#red_count(p)]
 		     else [v]
@@ -588,10 +668,12 @@ set localFD_1Dirac2_by_zero_old\
     then LF0 = [FaceVertsIndex]:
     	 for v@j in Lvd.list
 	 do let p = parameter(x,lambda,v)
-	    in if any(for q in monomials(finalize(p)) do not is_pos_on_LKTs(q) od) or
- 	       (Dirac_flag and Q(v, v)> DiracBD)
-	    then []
-	    else [[j]]
+	    in if Q(v,v) < DiracBD
+	       and all(for q in monomials(finalize(p))
+	       	      do is_pos_on_LKTs(q)
+		      od)
+	    then [[j]]
+	    else []
 	    fi
 	 od.##{list of j for which vertex j is a candidate}
     {then () = prints("after LFO, time is ",print_time_string(elapsed_ms() - start))}
@@ -665,9 +747,10 @@ set localFD_1Dirac2_by_zero_old\
 
 {set left_good = int:0, left_bad = int:0, right_good = int:0, right_bad = int:0, LR_no_info = int:0}
 {takes 0 and 1-diml local faces and adds K-char index}
+{having K-char, take opportunity to apply Dirac ineq deeper }
 set localFD_KHash_01 (KGBElt x, ratvec lambda, LocalVertexData Lvd, KTypePol_hash ktp_hash,
 [[FaceVertsIndex]] LF) = [[FaceVertsKHash]]:
-    let start = elapsed_ms()
+    let start = elapsed_ms(), ht = height(parameter(x,lambda,0*lambda))
     then lookup0 = if red_count_flag
     	 	   then index_in(for v in LF[0] do v[:1] od)
 	 	   else index_in([vec]:[])
@@ -680,39 +763,41 @@ set localFD_KHash_01 (KGBElt x, ratvec lambda, LocalVertexData Lvd, KTypePol_has
 		      let nu = Lvd.list[v[0]]
        	      	      then p0 = parameter(x, lambda, nu)
 	      	      then P = finalize(p0)
-		      {then startCF = elapsed_ms()}
-	      	      {then m = char_counter.use();}
-		      then m = ktp_hash.match(K_type_pol(character_formula(P)))
-		      {then () = charTime +:= elapsed_ms() - startCF}
-		      in v##[m,#monomials(P)]
-		   od
+		      then KCF = K_type_pol(character_formula(P))
+		      then m = ktp_hash.match(KCF)
+		      in if (not Dirac_best_flag) or DiracBestTest(p0,KCF)
+		      	 then [v##[m,#monomials(P)]]
+			 else []
+			 fi
+		   od.##
+    then lookup0D = index_in(for v in answer0
+    	 	    	     do v[:1]
+			     od)
     then answer1 = for v@k in LF[1] {if red_count_flag, has red_count as coor#2}
     	 	   do if k%(max(#LF[1]\10,2))=0 and fund_face_verbose
 	      	      then prints("examining face ",k,
 	      	      	   "; #ktp_hash = ",ktp_hash.size())
 	      	      fi;
+		      if lookup0D(v[:1])<0 or lookup0D(v[1:2])<0
+		      then []
+		      else
 		      let nu = face_bary(Lvd,v[:2])
 		      then p0 = parameter(x, lambda, nu)
 		      then P = finalize(p0)
 		      in if red_count_flag
-		      	 then let i = lookup0([v[0]]), j = lookup0([v[1]])
-			 in if answer0[i][1] = v[2]
-			    then v##[answer0[i][2],#monomials(P)]
+		      	 then let i = lookup0D([v[0]]), j = lookup0D([v[1]])
+			 in if answer0[i][1] = v[2] {Kchars match}
+			    then [v##[answer0[i][2],#monomials(P)]]
 			    elif answer0[j][1] = v[2]
-			    then v##[answer0[j][2], #monomials(P)]
-			    else {let startCF = elapsed_ms()
-			    	 then m = char_counter.use();}
-				 let m = ktp_hash.match(K_type_pol(character_formula(P)))
-				 {then () = charTime +:= elapsed_ms() - startCF}
-			    	 in v##[m, #monomials(P)]
+			    then [v##[answer0[j][2], #monomials(P)]]
+			    else let m = ktp_hash.match(K_type_pol(character_formula(P)))
+			    	 in [v##[m, #monomials(P)]]
 			    fi {answer = v[2]}
-			 else {let startCF = elapsed_ms() 
-			      then m = char_counter.use();}
-			      let m = ktp_hash.match(K_type_pol(character_formula(P)))
-			      {then () = charTime +:= elapsed_ms() - startCF}
-			      in v##[m, #monomials(P)]
+			 else let m = ktp_hash.match(K_type_pol(character_formula(P)))
+			      in [v##[m, #monomials(P)]]
 			 fi{red_count_flag}
-       	     	     od
+			 fi{lookup0}
+       	     	     od.##
     then time = elapsed_ms() - start
     then () = if time_verbose then prints("     ", print_time_string(time),
    	     		     " for localFD_KHash_01 (vertex/edge K-chars)") fi
@@ -721,7 +806,7 @@ set localFD_KHash_01 (KGBElt x, ratvec lambda, LocalVertexData Lvd, KTypePol_has
 {takes 0 and 1-diml local faces and adds K-char index to height HT}
 set localFD_KHash_01 (KGBElt x, ratvec lambda, LocalVertexData Lvd, int HT, KTypePol_hash ktp_hash,
 [[FaceVertsIndex]] LF) = [[FaceVertsKHash]]:
-    let start = elapsed_ms()
+    let start = elapsed_ms(), ht = height(parameter(x,lambda,0*lambda))
     then lookup0 = if red_count_flag
     	 	   then index_in(for v in LF[0] do v[:1] od)
 		   else index_in([vec]:[])
@@ -734,44 +819,47 @@ set localFD_KHash_01 (KGBElt x, ratvec lambda, LocalVertexData Lvd, int HT, KTyp
 		      let nu = Lvd.list[v[0]]
        	      	      then p0 = parameter(x, lambda, nu)
 	      	      then P = finalize(p0)
-		      {then startCF = elapsed_ms()}
-	      	      then m = {char_counter.use();} ktp_hash.match(
-		      	   K_type_pol(character_formula_to_height(P,HT)))
-		      {then () = charTime +:= elapsed_ms() - startCF}
-		      in v##[m,#monomials(P)]
-		   od
+		      then KCF = K_type_pol(character_formula_to_height(P,HT))
+		      then m = ktp_hash.match(KCF)
+		      in if (not Dirac_best_flag) or DiracBestTest(p0,HT,KCF)
+		      	 then [v##[m,#monomials(P)]]
+			 else []
+			 fi
+		   od.##
+    then lookup0D = index_in(for v in answer0
+    	 	    	     do v[:1]
+			     od)
     then answer1 = for v@k in LF[1]
     	 	   do if k%(max(#LF[1]\10,2))=0 and fund_face_verbose
 	      	      then prints("examining face ",k,
 	      	      	   "; #ktp_hash = ",ktp_hash.size())
 	      	      fi;
+		      if lookup0D(v[:1])<0 or lookup0D(v[1:2])<0
+		      then []
+		      else
 		      let nu = face_bary(Lvd,v[:2])
 		      then p0 = parameter(x, lambda, nu)
 		      then P = finalize(p0)
 		      in if red_count_flag
-		      	 then let i = lookup0([v[0]]), j = lookup0([v[1]])
+		      	 then let i = lookup0D([v[0]]), j = lookup0D([v[1]])
 			 in if answer0[i][1] = v[2]
-			    then v##[answer0[i][2],#monomials(P)]
+			    then [v##[answer0[i][2],#monomials(P)]]
 			    elif answer0[j][1] = v[2]
-			    then v##[answer0[j][2], #monomials(P)]
-			    else {let startCF = elapsed_ms()}
-			      	 let m = {char_counter.use();} ktp_hash.match(
+			    then [v##[answer0[j][2], #monomials(P)]]
+			    else let m = ktp_hash.match(
 				      K_type_pol(character_formula_to_height(P,HT)))
-			      	 {then () = charTime +:= elapsed_ms() - startCF}
-			         in  v##[m,#monomials(P)]
+			         in  [v##[m,#monomials(P)]]
 			    fi {answer = v[2]}
-			 else {let startCF = elapsed_ms()}
-			      let m = {char_counter.use();} ktp_hash.match(
+			 else let m = {char_counter.use();} ktp_hash.match(
 				      K_type_pol(character_formula_to_height(P,HT)))
-			      {then () = charTime +:= elapsed_ms() - startCF}
-			      in v##[m,#monomials(P)]
+			      in [v##[m,#monomials(P)]]
 			 fi{red_count_flag}
-       	     	    od
+			 fi{lookup0D}
+       	     	    od.##
     then time = elapsed_ms() - start
     then () = if time_verbose then prints("     ", print_time_string(time),
    	     		     " for localFD_KHash_01 (vertex/edge K-chars)") fi
     in [answer0,answer1]
-
 
 {same as above, using graph of K-relations}
 {takes 0 and 1-diml local faces and adds K-char index}
@@ -779,28 +867,35 @@ set localFD_KHash_01 (KGBElt x, ratvec lambda, LocalVertexData Lvd, int HT, KTyp
 next and last is red_count. Adjoin two more: K-char, and #Langlands quotients}
 set localFD_KHash_01_graph (KGBElt x, ratvec lambda, LocalVertexData Lvd, KTypePol_hash ktp_hash,
 [[FaceVertsIndex]] LF, [[int]] eq, [vec] classListByFace) = [[FaceVertsKHash]]:
-    let NumClasses = #eq
-    then polNums = [int]:
+    let ht = height(parameter(x,lambda,0*lambda))
+    then NumClasses = #eq
+    then polNums = [int]: {one for each class}
     	 for C in eq
     	 do let (d,j) = coords(LF,C~[0]) {the tilde chooses a
 	 representative on largest possible face, so least integral}
 	    then verts = vec: LF[d][j][:d+1]
-	    then pC = parameter(x,lambda,face_bary(Lvd,verts))
+	    then nu = face_bary(Lvd,verts)
+	    then pC = parameter(x,lambda,nu)
 	    then PC = finalize(pC)
-	    {then startCF = elapsed_ms()}
-	    then m = {char_counter.use();} ktp_hash.match(K_type_pol(character_formula(PC)))
-	    {then () = charTime +:= elapsed_ms() - startCF}
-	    in m
+	    then KCF = K_type_pol(character_formula(PC))
+	    in if (not Dirac_best_flag) or DiracBestTest(pC,KCF)
+	       then ktp_hash.match(KCF)
+	       else -1
+	       fi
 	 od
     then nLKT = #LKTs(parameter(x,lambda,0*lambda))
     in for LFd@d in LF
        do for v@j in LFd
-	  do let m = if nLKT = 1
-		     then 1
-		     else #monomials(finalize(parameter(x,lambda,face_bary(Lvd,v[:d+1]))))
-		     fi
-	      in v##[polNums[classListByFace[d][j]],m]
-	  od
+	  do let N = polNums[classListByFace[d][j]]
+	     then m = if nLKT = 1 or N.<
+		      then 1
+		      else #monomials(finalize(parameter(x,lambda,face_bary(Lvd,v[:d+1]))))
+		      fi
+	      in if N.>=
+	      	 then [v##[N,m]]
+		 else []
+		 fi
+	  od.##
        od
 
 {same as above, using graph of K-relations}
@@ -809,28 +904,36 @@ set localFD_KHash_01_graph (KGBElt x, ratvec lambda, LocalVertexData Lvd, KTypeP
 next and last is red_count. Adjoin two more: K-char, and #Langlands quotients}
 set localFD_KHash_01_graph (KGBElt x, ratvec lambda, LocalVertexData Lvd, int HT, KTypePol_hash ktp_hash,
 [[FaceVertsIndex]] LF, [[int]] eq, [vec] classListByFace) = [[FaceVertsKHash]]:
-    let NumClasses = #eq
+    let ht = height(parameter(x,lambda,0*lambda))
+    then NumClasses = #eq
     then polNums = [int]:
     	 for C in eq
     	 do let (d,j) = coords(LF,C~[0]) {the tilde chooses a
 	 representative on largest possible face, so least integral}
 	    then verts = vec: LF[d][j][:d+1]
-	    then pC = parameter(x,lambda,face_bary(Lvd,verts))
+	    then nu = face_bary(Lvd,verts)
+	    then pC = parameter(x,lambda,nu)
 	    then PC = finalize(pC)
-	    {then startCF = elapsed_ms()}
-	    then m = {char_counter.use();} ktp_hash.match(K_type_pol(character_formula_to_height(PC,HT)))
-	    {then () = charTime +:= elapsed_ms() - startCF}
-	    in m
+
+	    then KCF = K_type_pol(character_formula(PC))
+	    in if (not Dirac_best_flag) or DiracBestTest(pC,HT,KCF)
+	       then ktp_hash.match(KCF)
+	       else -1
+	       fi
 	 od
     then nLKT = #LKTs(parameter(x,lambda,0*lambda))
     in for LFd@d in LF
        do for v@j in LFd
-	  do let m = if nLKT = 1
+	  do let N = polNums[classListByFace[d][j]]
+	     then m = if nLKT = 1 or N.<
 		     then 1
 		     else #monomials(finalize(parameter(x,lambda,face_bary(Lvd,v[:d+1]))))
 		     fi
-	      in v##[polNums[classListByFace[d][j]],m]
-	  od
+	      in if N.>=
+	      	 then [v##[N,m]]
+		 else []
+		 fi
+	  od.##
        od
 
 {takes list of 0- and d-diml faces, with d \ge 1, and builds all
