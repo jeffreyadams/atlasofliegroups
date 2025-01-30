@@ -1761,6 +1761,8 @@ set_type
   , (RealForm -> int) nuhash_size {for one real form, number of nonunitary reps}
   , ( -> vec) K_type_size {number of LKTs for each real form}
   , ( -> vec) K_type_pol_size
+  , (KType -> KTypePol) K_type_formula
+  , ((KType,int) -> KTypePol) K_type_formula_to_ht
   , ((KType, int) -> KTypePol) branch_entry {branch std to height}
   , ((Param,int) -> KTypePol) sig_entry {signature to height}
   , (int, int -> int) branch_height {largest ht to which K type j on real form i has been branched}
@@ -1809,6 +1811,8 @@ set make_big_unitary_hash() = big_unitary_hash_table:
     {then status_strings = [[string]]: [] {one for each real form; "" is unknown, "T..." is unitary, "F..." nonunitary}}
     then K_type_hashes = [KType_hash] : [] {one for each real form; list of LKTs of params}
     then K_type_pol_hashes = [KTypePol_hash] : []  {one for each real form}
+    then formulas = [vec]:[] {size of K_type_hash; entry in K_type_pol_hash recording K_type_formula}
+    then formula_heights = [vec]:[] {size that of K_type_hash; largest height to which formula computed}
     then branches = [vec] : [] {one vec for each real form, of size #K types;
    		   	      ith entry is index of branching KTypePol for KType #i}
     then sigs = [vec]: [] {one vec for each real form, of size #params;
@@ -1828,6 +1832,8 @@ set make_big_unitary_hash() = big_unitary_hash_table:
 	 {then () = status_strings := []}
          then () = K_type_hashes := []
          then () = K_type_pol_hashes := []
+    	 then () = formulas := [] 
+    	 then () = formula_heights := [] 
          then () = branches := []
          then () = sigs := []
          then () = branch_heights := []
@@ -1871,6 +1877,8 @@ set make_big_unitary_hash() = big_unitary_hash_table:
 	 then () = if ktypenum = KTYPENUM {haven't computed with mu before}
 	     	   then let pol = 1*mu
 	     	       	then m = K_type_pol_hashes[rfnum].match(pol)
+			then () = formulas[rfnum] #:= m
+			then () = formula_heights[rfnum] #:= height(mu)
 		      	then () = branches[rfnum] #:= m
 		       	then () = branch_heights[rfnum] #:= height(mu)
 		       	then () = assert(real_form_hash.size() = #K_type_pol_hashes,"big_unitarity_hash damaged")
@@ -1879,7 +1887,43 @@ set make_big_unitary_hash() = big_unitary_hash_table:
 		       	in ()
 		   fi
 	in (rfnum, ktypenum)
-    then add_K_type(KType mu, int D) = (int, int, int): {this time add to height; D should be >= height(mu)}
+    then add_K_type_formula(KType mu) = (int, int, int): {rfn, ktypen, index(formula)}
+       	 let (rfnum,ktypenum) = add_K_type(mu), h = height(mu)
+       	 then () = if formula_heights[rfnum][ktypenum] != h-1
+       	       	   then let m = K_type_pol_hashes[rfnum].match(K_type_formula(mu))
+		   	then formsrf = formulas[rfnum], formhsrf = formula_heights[rfnum]
+			then () = formsrf[ktypenum] := m
+			then () = formhsrf[ktypenum] :=h-1
+		      	{then () = formulas[rfnum][ktypenum] :=m}
+			{then () formula_heights[rfnum][ktypenum] :=h-1}
+			then () = formulas[rfnum] := formsrf
+			then () = formula_heights[rfnum] := formhsrf
+			in ()
+		   fi
+         then() = assert(K_type_hashes[rfnum].size() = #branches[rfnum] and #branches[rfnum] = #formulas[rfnum]
+       	      		and #branches[rfnum] = #branch_heights[rfnum]
+			and #branches[rfnum] = #formula_heights[rfnum], "branch_hash_table damagedAKTF")
+         in (rfnum, ktypenum, formulas[rfnum][ktypenum])
+    then add_K_type_formula_to_ht(KType mu, int D) = (int,int,int): {rfn, ktypen, index_to_ht(formula)}
+      	 let (rfnum,ktypenum) = add_K_type(mu), h = height(mu)
+       	 then () = assert(D >= h, "too-low height argument for K_type_formula")
+       	 then () = if (formula_heights[rfnum][ktypenum] < D and formula_heights[rfnum][ktypenum] >= h)
+       	       	   then let m = K_type_pol_hashes[rfnum].match(K_type_formula(mu,D))
+		   	then formsrf = formulas[rfnum], formhsrf = formula_heights[rfnum]
+			then () = formsrf[ktypenum] := m
+			then () = formhsrf[ktypenum] := D
+		      	{then () = formulas[rfnum][ktypenum] :=m}
+			{then () formula_heights[rfnum][ktypenum] :=h-1}
+			then () = formulas[rfnum] := formsrf
+			then () = formula_heights[rfnum] := formhsrf
+		      	in ()
+		   fi
+         then() = assert(K_type_hashes[rfnum].size() = #branches[rfnum] and #branches[rfnum] = #formulas[rfnum]
+	 	         and #branches[rfnum] = #branch_heights[rfnum]
+			 and #branches[rfnum] = #formula_heights[rfnum], "branch_hash_table damagedAKTFTH")
+         in (rfnum, ktypenum, formulas[rfnum][ktypenum])
+    then add_K_type_branch(KType mu, int D) = (int, int, int):
+    	 {this time add to height; D should be >= height(mu)}
    	 let rfnum = add_real_form(mu.real_form)
 	 then KTYPENUM = K_type_hashes[rfnum].size()
 	 then ktypenum = K_type_hashes[rfnum].match(mu)
@@ -2040,9 +2084,19 @@ set make_big_unitary_hash() = big_unitary_hash_table:
      in uhashes[rfnum].size()
     , ( -> vec): {K_type_size} @vec: for hash in K_type_hashes do hash.size() od
     , ( -> vec): {K_type_pol_size} @vec: for hash in K_type_pol_hashes do hash.size() od
+    , (KType -> KTypePol): {K_type_formula} (KType mu) KTypePol:
+    begin
+     let (rfnum,,m) = add_K_type_formula(mu)
+     in K_type_pol_hashes[rfnum].index(m)
+    end
+    , ((KType,int) -> KTypePol): {K_type_formula_to_ht} (KType mu, int D) KTypePol:
+    begin
+      let (rfnum,,m) = add_K_type_formula_to_ht(mu,D)
+      in to_ht(K_type_pol_hashes[rfnum].index(m), D)
+    end
     , ((KType, int) -> KTypePol): {branch_entry} (KType mu, int D) KTypePol:
      begin
-     	let (rf, ktypenum,m) = add_K_type(mu,D)
+     	let (rf, ktypenum,m) = add_K_type_branch(mu,D)
 	in regroup(mu.real_form, to_ht(K_type_pol_hashes[rf].index(m), D))
      end
     , ((Param,int) -> KTypePol): {sig_entry} (Param p, int D) KTypePol:
