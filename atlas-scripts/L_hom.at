@@ -13,6 +13,9 @@ set phi(Param p)=L_homomorphism:phi(y_gen(p),infinitesimal_character(p))
 set component_group(L_homomorphism phi)=[KGBElt]:
 for p in ##L_packet(phi) do p.x od
 
+set pure_component_group(L_homomorphism phi)=[KGBElt]:
+##for p in ##L_packet(phi) do if is_pure(p.x) then [p.x] else [] fi od
+
 set parameter(KGBElt x,L_homomorphism phi)=Param:parameter(x,phi.y,phi.gamma)
 
 set KGB_elt_gen (RootDatum rd, mat theta, ratvec v) = KGBElt_gen:

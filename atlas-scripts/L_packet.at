@@ -100,6 +100,15 @@ for p in params do
  od;
 for p in representatives do L_packet(p) od
 
+set L_packets(RealForm G,ratvec gamma)=[[Param]]:
+L_packets(all_parameters_gamma(G,gamma))
+
+set L_packets(InnerClass ic,ratvec gamma)=[[Param]]:
+##for G in strong_real_forms(ic) do L_packets(G,gamma)  od
+
+set L_packets(InnerClass ic,ratvec gamma)=[[Param]]:
+##for G in strong_real_forms(ic) do L_packets(G,gamma)  od
+
 {P is a sum of standards:}
 set is_stable_std(ParamPol P)=bool:
 all(##for p in L_packet_representatives(monomials(P)) do

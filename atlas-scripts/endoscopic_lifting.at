@@ -4,7 +4,10 @@ set e_verbose=true
 
 {M: X^*(H_v) to X^*(G_v), i.e. also takes X_*(H) to X_*(G)}
 
-set e_star(KGBElt x_H,L_homomorphism phi_H,RealForm G,mat M)=
+{x_H must be a pure KGB element for H}
+{long version includes p_G}
+set e_star_long(KGBElt x_H,L_homomorphism phi_H,RealForm G,mat M)=(Param,[Param]):
+assert(is_pure(x_H), "x_H is not pure (e_star only defined at the moment for pure real forms of H and G");
 let y_H=phi_H.y then
 gamma_H=phi_H.gamma then
 ()=if e_verbose then prints("y_H: ", y_H, new_line, "gamma_H: ", gamma_H) fi  then
@@ -19,12 +22,15 @@ theta_G=-^theta_G_v then
 x_G=KGB_elt(inner_class(G),theta_G,torus_factor(x_H)*M) then
 ()=if e_verbose then prints("x_G: ", x_G, " ", x_G.real_form, " ", x_G.torus_factor) fi then
 p_G=parameter(x_G,phi_G) then
-()=if e_verbose then ("p_G=", p_G) fi
-in p_G
+()=if e_verbose then prints("p_G=", p_G) fi
+in (p_G,monomials(finalize(p_G)))
+
+set e_star(KGBElt x_H,L_homomorphism phi_H,RealForm G,mat M)=[Param]:let (,X)=e_star_long(x_H,phi_H,G,M) in X
 
 {usage: set
-(y_H,y_G,gamma_H,gamma_G,phi_G,theta_G,x_G,p_G) =e_star_info(x_H,phi_H,G,M)}1
-set e_star_info(KGBElt x_H,L_homomorphism phi_H,RealForm G,mat M)=
+(y_H,y_G,gamma_H,gamma_G,phi_G,theta_G,x_G,p_G) =e_star_info(x_H,phi_H,G,M)}
+set e_star_info(KGBElt x_H,L_homomorphism phi_H,RealForm G,mat M)=(KGBElt_gen,KGBElt_gen,ratvec,ratvec,L_homomorphism,mat,KGBElt,[Param]):
+assert(is_pure(x_H), "x_H is not pure (e_star only defined at the moment for pure real forms of H and G");
 let y_H=phi_H.y then
 gamma_H=phi_H.gamma then
 ()=if e_verbose then prints("y_H: ", y_H, new_line, "gamma_H: ", gamma_H) fi  then
@@ -40,4 +46,5 @@ x_G=KGB_elt(inner_class(G),theta_G,torus_factor(x_H)*M) then
 ()=if e_verbose then prints("x_G: ", x_G, " ", x_G.real_form, " ", x_G.torus_factor) fi then
 p_G=parameter(x_G,phi_G) then
 ()=if e_verbose then ("p_G=", p_G) fi
-in (y_H,y_G,gamma_H,gamma_G,phi_G,theta_G,x_G,p_G) 
+in (y_H,y_G,gamma_H,gamma_G,phi_G,theta_G,x_G, monomials(finalize(p_G)))
+

@@ -35,6 +35,18 @@ for H in real_forms do
 {strong real forms(G): remove duplicates from strong_real_forms_with_duplicates(G)}
 set strong_real_forms(RealForm G)=[RealForm]:remove_duplicates(strong_real_forms_with_duplicates(G))
 
+{this next function redefines the one defined in galois.at, which has been renamed}
+set strong_real_forms(InnerClass ic)=[RealForm]:strong_real_forms(quasisplit_form(ic))
+
+
+{ square_classes(ic) =
+  list of all square classes of inner class, each a list of real form numbers
+  square_classes(G) = list of all square classes of inner class of G
+}
+set square_classes (InnerClass ic) = [[int]]:
+  square_classes(Cartan_class(ic,0)) { the most compact Cartan }
+{ for a RealForm just convert it to its InnerClass, Cartan(0) is the same }
+
 {the number of strong_real_forms produced by strong_real_forms(G) should
 be the same as the sum of the sizes of the arrays in square_classes(G)
 These arrays are parametrized by RealForms of G, and the size of the vector is

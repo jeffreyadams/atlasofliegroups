@@ -1,12 +1,28 @@
-set G=SL(2,R)
+set G=Sp(4,R)
+set (H,M,Hd)=endoscopic_group(G,[1,0]/2)   {H=compact torus}
+set gamma_G=G.rho
+{set ph=parameter(KGB(H,0),[0],[0])}
+set ph=parameter(KGB(H,0),[2,1],[0,0])
+set gamma_H=ph.infinitesimal_character
+set y=y_gen(ph)
+set y_G=map_KGB_gen_tits(y,dual_quasisplit_form(G),M) 
+set phi_G=phi(y_G,gamma_G) 
+set phi_H=phi(y,gamma_H)
+set S_H=pure_component_group(phi_H)
+set lifts=for x in S_H do e_star(x,phi_H,G,M) od
+
+
+{
+
+
+set G=Sp(4,R)
 set Gd=dual_quasisplit_form(G)
 set Gc=real_forms(G)[0]
 set G11=real_forms(G)[1]
-set (H,M,Hd)=endoscopic_group(G,[1]/2,G.W[1])
-{set H=parabolic_by_cwt([1,0,0,0],KGB(G,0)).Levi
-set Hd=dual_quasisplit_form(H)}
+set (H,M,Hd)=endoscopic_group(G,[2,1]/5,w0(G))
 set M=id_mat(rank(G))
-set ph=block_of(H.trivial)[0]
+{set ph=block_of(H.trivial)[0]}
+set ph=parameter(KGB(H,0),[2,1],[0,0])
 set gamma_H=ph.infinitesimal_character	
 set y=y_gen(ph)
 set phi_H=phi(y,gamma_H)
@@ -24,6 +40,4 @@ set phi_G=phi(y_G,gamma_G)
 set theta_G_v=involution(y) 
 set theta_G=-^theta_G_v
 
-set Pi_G=L_packet(phi_G)
-{set x_G=KGB_elt(inner_class(G),theta_G,torus_factor(x_H)*M) 
-set p_G=parameter(x_G,phi_G) }
+{set Pi_G=L_packet(phi_G)}}

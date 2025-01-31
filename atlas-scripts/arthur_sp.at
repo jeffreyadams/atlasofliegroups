@@ -20,8 +20,7 @@ check these two sets are equal}
 
 set arthur_sp_verbose=false
 
-set pr_long([Param] params)=
-tabulate(for p in params do [p.to_string,p.real_form.to_string,p.infinitesimal_character.to_string] od)
+{moved pr_long to misc.at}
 
 set show([[Param]] packets)=void:
 for S@i in packets do 

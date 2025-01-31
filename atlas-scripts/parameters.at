@@ -47,6 +47,10 @@ set square_is_central (InnerClass ic,mat theta,ratvec tf) = bool:
   let sq = square(ic,theta,tf), alpha = simple_roots(ic) in
   all(n_columns(alpha), (int i): is_integer(sq*alpha[i]) )
 
+set is_pure(KGBElt x)=bool:square(x)=square(quasisplit_form(x.real_form))
+set is_pure(RealForm G)=bool:square(G)=square(quasisplit_form(G))
+
+
 set parity (Param p,vec alpha_hat) = bool: { parity condition }
 ( let x = x(p), gamma=infinitesimal_character(p) in
   assert(=alpha_hat*(involution(x)+1),"root not real")
