@@ -692,7 +692,10 @@ set min_small_bottom_elim_factors(Param p0, Param p, KTypePol P) = bool:
     then DLs = minSmallBottomData.L_min_heights(x,lambda)
     then derxLjs = for derpL0j in derpL0js do derpL0j.x od
     then derLjs = for derpL0j in derpL0js do derpL0j.real_form od
-    then multG = branch_std(P,DG)
+    then multG = if branch_hash_flag
+    	       	 then big_unitary_hash.branch(P,DG)
+		 else branch_std(P,DG)
+		 fi
     then LKDatas = for LKData in minSmallBottomData.entry(x,lambda)
     	 {[tau,[[dertauLj]]}
 		   do let (mui, ) = LKData[0]
@@ -713,10 +716,14 @@ set min_small_bottom_elim_factors(Param p0, Param p, KTypePol P) = bool:
 	    	      	     then big_unitary_hash.sig_entry(derpL0j, DLs[j])
 			     else hermitian_form_irreducible_to_ht_big_SIMPLE(derpL0j,DLs[j])
 		             fi
-			 in if int_part(sigLj[dermuLj[j]]) = 0
-		       	    then branch_std(s*sigLj, DLs[j])
-			    else branch_std(sigLj,DLs[j])
-			    fi {this bit makes sigLj pos on LKTs}
+			 then posLj = if int_part(sigLj[dermuLj[j]]) = 0
+			      	      then s*sigLj
+				      else sigLj {this bit makes posLj pos on LKTs}
+				      fi
+			 in if branch_hash_flag
+		       	    then big_unitary_hash.branch(posLj,DLs[j])
+			    else branch_std(posLj,DLs[j])
+			    fi
 		      od
     then answers = [(->bool)]: {one function for each LKT mu of (x,lambda)}
     	 for LKData in LKDatas {mu@i in LKTs(p)}
@@ -761,7 +768,10 @@ set min_bottom_elim_factors(Param p0, Param p, KTypePol P) = bool:
     then derpL0js = derived_factor_params0(pL0) {all height 0}
     then derxLjs = for derpL0j in derpL0js do derpL0j.x od
     then derLjs = for derpL0j in derpL0js do derpL0j.real_form od
-    then  multG = branch_std(P,DG)
+    then  multG = if branch_hash_flag
+    	  	  then big_unitary_hash.branch(P,DG)
+		  else branch_std(P,DG)
+		  fi
     then Lbranches = for derpL0j@j in derpL0js
 	    	     do let sigLj =
 		            if big_unitary_hash.uhash(derLjs[j]).lookup(derpL0j).>=
@@ -771,10 +781,14 @@ set min_bottom_elim_factors(Param p0, Param p, KTypePol P) = bool:
 	    	      	    then big_unitary_hash.sig_entry(derpL0j, DLs[j])
 			    else hermitian_form_irreducible_to_ht_big_SIMPLE(derpL0j,DLs[j])
 		            fi
-	                 in if int_part(sigLj[dermuLjs[j]]) = 0
-		       	        then branch_std(s*sigLj, DLs[j])
-				else branch_std(sigLj,DLs[j])
-				fi
+			 then posLj = if int_part(sigLj[dermuLjs[j]]) = 0
+			      	      then s*sigLj
+				      else sigLj {this bit makes posLj pos on LKTs}
+				      fi
+			 in if branch_hash_flag
+		       	    then big_unitary_hash.branch(posLj,DLs[j])
+			    else branch_std(posLj,DLs[j])
+			    fi
 			 od
     then answers = [(->bool)]: {one function for each LKT mu of p}
     	 for mu in LKTs(p)
@@ -875,17 +889,24 @@ set bottom_elim_factors(Param p0, Param p, QKL_bottom_data (Q, LKdata), KTypePol
        	    	      do height(list[j])
 		      od)
 	       od
-    then Pmult = branch_std(P, D)
+    then Pmult = if branch_hash_flag
+    	       	 then big_unitary_hash.branch(P,D)
+		 else branch_std(P, D)
+		 fi
     then branchLjs = for derpLj@j in derpLjs
 	       	     do let sigLj = KTypePol: {signature for derpLm0j}
 	       	   	    if RF_code
 		   	    then big_unitary_hash.sig_entry(derpLj, DLs[j])
 		   	    else hermitian_form_irreducible_to_ht_big_SIMPLE(derpLj,DLs[j])
 		   	    fi
-			then () = if int_part(sigLj[dermuLjs[j]]) = 0
-		       	   	  then sigLj := s*sigLj
-			 	  fi {this bit makes sigLj pos on LKTs}
-	       		in branch_std(sigLj, DLs[j])
+			 then posLj = if int_part(sigLj[dermuLjs[j]]) = 0
+			      	      then s*sigLj
+				      else sigLj {this bit makes posLj pos on LKTs}
+				      fi
+			 in if branch_hash_flag
+		       	    then big_unitary_hash.branch(posLj,DLs[j])
+			    else branch_std(posLj,DLs[j])
+			    fi
 		     od
        then result = all( [(->bool)]: {list of functions, one for each bottom layer K-type tau}
 			for(tau,list) in LKdata
@@ -1086,8 +1107,10 @@ c) are bottom layer for (smallest possible) theta-stable parabolic Q;
 
 list is indexed by Q.}
 set bottom_K_type_Qs(Param p, KGPElt Qmin, int D_low, int D) = [QK_bottom_data] {[KGPElt, [KType]]}:
-    bottom_K_type_Qs(p, Qmin, D_low, D, branch_std(p,D))
-
+    bottom_K_type_Qs(p, Qmin, D_low, D, if branch_hash_flag
+    			      	     	then big_unitary_hash.branch(K_type_pol(p),D)
+					else branch_std(p,D)
+					fi)
 set bottom_K_type_Qs(Param p, KGPElt Qmin, int D) = [QK_bottom_data]:
     bottom_K_type_Qs(p, Qmin, height(p), D)
 
