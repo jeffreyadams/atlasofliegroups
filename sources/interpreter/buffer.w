@@ -194,7 +194,7 @@ identifiers.
 @h<vector>
 @< Class declarations @>=
 
-typedef unsigned short id_type; // type of value representing identifiers
+using id_type = unsigned short; // type of value representing identifiers
 
 class Hash_table
 {

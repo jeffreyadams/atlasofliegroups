@@ -1608,22 +1608,25 @@ does not allow a single type identifier at the top level (this makes it
 impossible to recursively define a type as itself), and (2) does not look up
 type identifiers in |global_id_table|, but simply stores the identifier code as
 if it were a type number. The trick (2) avoids premature looking up the
-identifier, without having to reserve a special tag value in |type_expr| for
-this transient purpose.
+identifier, without having to introduce a special variant of |type_expr| for
+this transient purpose of storing unprocessed identifier codes (a slightly more
+honest solution that would still avoid modification of |type_expr| would be to
+define, and use here, a type derived from it, whose sole purpose is changing the
+interpretation of |type_nr()| in the |tabled| variant in this way). In any case
+we must remember that not looking up type identifiers in |global_id_table| has
+also affected identifiers that were defined as types there, and could have been
+looked up safely; for them the looking up still needs to be done.
 
-Once the whole list of type equations has been parsed, we know the list of type
-identifiers being defined, and we can set out to replace the identifier codes by
-the type numbers they refer to, which is what we shall do here. We already set
-of the table |translate| to provide the mapping for the type identifiers the
-list of equations is defining. We need to traverse all type expressions in the
-right hand sides of |defs| and do the replacement, in every type with
-|raw_kind()==tabled|, of the |id==type_nr()| encountered either by
-|translate[id]| if that entry is set, or else by
-|global_id_table->type_of(id)->type_nr()|. Since we cannot just assign to the
-private |type_number| field of a type, we simply replace the whole type by a
-fresh one constructed from the proper type number; for a type from
-|global_id_table| this is most easily achieved by applying |copy| to the stored
-type.
+Once the type identifiers being defined are recorded in |translate| and mapped
+to their position, we come to the code below to do the postponed looking up,
+which we do by replacing |type_expr| components in the right hand sides of
+|defs|. For the type identifiers of the current definition this means just
+replacing the |table_variant.nr| field, but since that is |private| we just
+replace the whole |type_expr|; this is also the case for older type identifiers,
+for which the replacement value comes from |global_id_table| by applying |copy|
+to the stored type. It is an error that we do consider type constructors with
+arguments here (already the grammatical production for |typedef_unit| does not
+allow it).
 
 Traversing type expressions is best done recursively, but since we are getting a
 bit bored by defining recursive functions for each little task, we do this one

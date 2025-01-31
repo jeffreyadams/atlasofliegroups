@@ -352,31 +352,33 @@ const char* prim_names[]=@/
 @*1 Type expressions.
 %
 Type expressions are defined by a tagged union, where the tags indicate the kind
-of type denoted (primitive, function, row, etc.). We intend to always only
-access the variant corresponding to the current tag value, but this is not
-something that can be statically ascertained in \Cpp. Nonetheless the fields are
-private with public accessor methods, which often makes handling of the variant
-with |tag==tabled| more transparent.
+of type denoted (primitive, function, row, etc.). We always only access the
+variant corresponding to the current tag value, but this is not something that
+can be statically ascertained in \Cpp. Nonetheless the fields are private, with
+public accessor methods, which facilitates handling of the variant with
+|tag==tabled|.
 
-Tabled types function as user-defined type constructors, although their arity
-(number of argument types) might be~$0$ (as indeed originally was always the
-case). Their use involves a structure |tabled_type_cons| that holds the number
-of the type and an argument list. The number refers to an entry in the static
-field |type_map|, which holds a |type_expr| in which any type parameters are
-represented by numbered |variable_type| variants. The potential recursion comes
-about from the possibility to use |tabled| variants in the tabled
-definition, directly or indirectly referring back to the type being defined. The
-root of that definition however can only be a built-in type constructor or type,
-which ensures that we can make one of those appear at the root of any type.
-Doing an expansion to such a form implicitly means that we can to some extent
-ignore the possibility of tabled types and type constructors when defining
-operation on types, although care should be taken to avoid infinite recursion
-through such expansions.
+That variant is used to represent use of user-defined type (constructor)
+identifiers. As these may have argument types (the number of which should
+matches the arity recorded for the type identifier), the variant uses a
+structure |tabled_type_cons| (which is larger than other variants, thus
+enlarging |type_expr|, but this is no great deal). Its |nr| field changes
+interpretation by a transformation during type analysis: initially it stores the
+type identifier there, but the transformation will in most cases expand user
+defined type constructors using their definition in the |global_id_table|. This
+is not (and cannot be) done for recursively defined types or type constructors,
+which are picked up during processing of type definitions, and such definitions
+are turned into entries of |type_map|, a static member of |type_expr|. Use of
+such a type (constructor) identifier in a |tabled| type will be replaced by a
+type which still has |tag==tabled|, but in which the |nr| field refers to the
+corresponding |type_map| entry rather than the type identifier. Such type
+identifiers function, for the purpose of equivalence of types, like primitive
+types (when their arity is~$0$) or primitive type constructors.
 
-Although variant members of a |union| with nontrivial special member functions,
-as is the case for smart pointer types, are allowed in \Cpp11, it then remains
-the programmer's responsibility to explicitly call constructors and destructors
-as those variants come and go, which effectively ruins most of the advantages of
+Although \Cpp11 allows variant members of a |union| with nontrivial special
+member functions, as is the case for smart pointer types, it leaves it to the
+programmer's responsibility to explicitly call constructors and destructors as
+those variants come and go; this effectively ruins most of the advantages of
 using smart pointers. For this reason we use raw pointers here instead, and in
 particular |raw_type_list| rather than |type_list| for the |tuple_variant| and
 in |tabled_type_cons|. One drawback of that is that we will not be able to
@@ -389,15 +391,16 @@ have length~$1$. This is because syntactically anything that would suggest a
 $1$-tuple or $1$-union (for instance a parenthesised expression) in fact
 designates what would be the unique component of such a tuple or union. We do
 allow a list of length~$0$ when |tag==tuple_type|, which defines the |void| type
-as we saw above. We do not use a list of length~$0$ with |tag==union_type|,
-although this $0$-union would naturally represent an uninhabited type, and could
-be used for expressions whose evaluation never returns normally at all, like
-calls of |error|. But instead we have chosen to use the impossible polymorphic
-type \.{A} (``all types at once'') for that purpose.
+as we saw above. We do not use an empty list with |tag==union_type|, even though
+a $0$-union would naturally represent an uninhabited type. We do have use for
+such a type, to assign to expressions whose evaluation never returns normally at
+all, like calls of |error|; however we have chosen to instead use the impossible
+polymorphic type (for all \.{A}) \.{A} (that is, ``all types at once'') for that
+purpose.
 
 @< Type definitions @>=
 
-using type_nr_type = unsigned int;
+using type_nr_type = id_type; // interpretation flips after parsing
 struct tabled_type_cons {@; type_nr_type nr; raw_type_list type_args; };
 class type_expr
 { type_tag tag;
