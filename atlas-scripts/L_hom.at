@@ -8,7 +8,14 @@ for G in strong_real_forms(dual_quasisplit_form(phi.y.real_form)) do
  let LP=L_packet(G,phi.phi.gamma,phi.y)  in
  if #LP>0 then [LP] else [] fi od.##
 
+set pure_L_packet(L_homomorphism phi)=[[Param]]:
+for G in pure_strong_real_forms(dual_quasisplit_form(phi.y.real_form)) do
+ let LP=L_packet(G,phi.phi.gamma,phi.y)  in
+ if #LP>0 then [LP] else [] fi od.##
+
 set phi(Param p)=L_homomorphism:phi(y_gen(p),infinitesimal_character(p))
+
+set phis(RealForm G,ratvec gamma)=[L_homomorphism]: for packet in L_packets(G,gamma) do phi(packet[0]) od
 
 set component_group(L_homomorphism phi)=[KGBElt]:
 for p in ##L_packet(phi) do p.x od

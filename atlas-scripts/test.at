@@ -1,5 +1,5 @@
 set G=Sp(4,R)
-set (H,M,Hd)=endoscopic_group(G,[1,0]/2)   {H=compact torus}
+set (H,M,Hd)=endoscopic_group(G,[1,1]/2)  
 set gamma_G=G.rho
 {set ph=parameter(KGB(H,0),[0],[0])}
 set ph=parameter(KGB(H,0),[2,1],[0,0])

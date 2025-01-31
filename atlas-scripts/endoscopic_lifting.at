@@ -4,6 +4,9 @@ set e_verbose=true
 
 {M: X^*(H_v) to X^*(G_v), i.e. also takes X_*(H) to X_*(G)}
 
+set endoscopic_lift(L_homomorphism phi_H,RealForm G,mat M)=
+phi(map_KGB_gen_tits(phi_H.y,dual_quasisplit_form(G),M),phi_H.gamma*M)
+
 {x_H must be a pure KGB element for H}
 {long version includes p_G}
 set e_star_long(KGBElt x_H,L_homomorphism phi_H,RealForm G,mat M)=(Param,[Param]):

@@ -38,6 +38,8 @@ set strong_real_forms(RealForm G)=[RealForm]:remove_duplicates(strong_real_forms
 {this next function redefines the one defined in galois.at, which has been renamed}
 set strong_real_forms(InnerClass ic)=[RealForm]:strong_real_forms(quasisplit_form(ic))
 
+set pure_strong_real_forms(RealForm G )=[RealForm]:##for G in strong_real_forms(G) do if is_pure(G) then [G] else [] fi od
+set pure_strong_real_forms(InnerClass ic)=[RealForm]:##for G in strong_real_forms(ic) do if is_pure(G) then [G] else [] fi od
 
 { square_classes(ic) =
   list of all square classes of inner class, each a list of real form numbers

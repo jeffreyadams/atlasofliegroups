@@ -106,8 +106,8 @@ L_packets(all_parameters_gamma(G,gamma))
 set L_packets(InnerClass ic,ratvec gamma)=[[Param]]:
 ##for G in strong_real_forms(ic) do L_packets(G,gamma)  od
 
-set L_packets(InnerClass ic,ratvec gamma)=[[Param]]:
-##for G in strong_real_forms(ic) do L_packets(G,gamma)  od
+set pure_L_packets(InnerClass ic,ratvec gamma)=[[Param]]:
+##for G in pure_strong_real_forms(ic) do L_packets(G,gamma)  od
 
 {P is a sum of standards:}
 set is_stable_std(ParamPol P)=bool:
