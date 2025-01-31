@@ -1698,13 +1698,11 @@ type which is store in the |global_id_table|.
 
 @< Definitions of functions for the parser @>=
 type_p expand_type_symbol(id_type id)
-{ bool dummy; // for reporting "constness", which is ignored for types
-  return acquire(&global_id_table->type_of(id,dummy)->unwrap()).release();
+{ return acquire(&global_id_table->type_of(id)->unwrap()).release();
 }
 type_p expand_type_constructor(id_type id,raw_type_list l)
-{ bool dummy;
-  type_list args(l); // reversed below
-  const type& poly_type = *global_id_table->type_of(id,dummy);
+{ type_list args(l); // reversed below
+  const type& poly_type = *global_id_table->type_of(id);
   unsigned int len=length(args), degree = poly_type.degree();
   if (len!=degree)
     @< Throw a |program_error| signalling an incorrectly applied type symbol

@@ -7,21 +7,23 @@ Currently, the type system has several elements:
     (both have syntactic uses that go beyond their use as functions, but there
     is lack of symmetry in that only projectors can be aliased in these uses)
 
-"Type" symbols can be used to designate not only types, but certain (continuous?)
-maps from types to types (one output), or to other such type maps, and so forth.
+"Type" symbols (introduced by |set_type|) will be used to designate not only
+types, but certain also type constructors, which are maps from $n$-tuples of
+types (where $n\in\N$ is the arity of the type symbol) to types (one output).
 
 These come in two varieties: those that are merely abbreviations (that can be
-given by type-lambda expressions, maybe with a fix point combinator thrown for
-recursive types) and those whose output type is opaque (like primitive). Of the
-first type would be one like the Haskell Maybe type constructor (the type map
-T=>(void|T) and an infinite list constructor T=>rec_type: r=(->T,r), of the
-second kind SearchTree: T=>(NewType); here NewType is an opaque type determined
-implicitly by a bunch of related values that are entered into the global tables
-where SearchTree is defined. (These values must involve at least one constructor
-function returning NewType, or else one can never create values of this type;
-the constructor presumably will be of type (Order(T)->NewType) where |Order| is
-a type constructor of the first kind, describing a comparison function or other
-elements that allow values of type |T| to be totally ordered.)
+given by type-lambda expressions, maybe with a fix point combinator thrown in
+for recursive types or type constructors) and those whose output type is opaque
+(like primitive types). Of the first type would be one like the Haskell Maybe
+type constructor (the type map T=>(void|T) and an infinite list constructor
+T=>rec_type: r=(->T,r), of the second kind SearchTree: T=>(NewType); here
+NewType is an opaque type determined implicitly by a bunch of related values
+that are entered into the global tables where SearchTree is defined. (These
+values must involve at least one constructor function returning NewType, or else
+one can never create values of this type; the constructor presumably will be of
+type (Order(T)->NewType) where |Order| is a type constructor of the first kind,
+describing a comparison function or other elements that allow values of type |T|
+to be totally ordered.)
 
 With the introduction of types and type constructors of the second type, the
 whole type system must be revised. The new types must be added to the list of
@@ -40,44 +42,31 @@ the possibility of representing these in type values during type analysis.
 
 It appears that the following general principles should apply:
 
-- The contents of the table of type (constructor) abbreviations should have no
-  implications for the set of available types: every possible type can be
-  written without using any of the abbreviations. They are for convenience only.
+- In each group of type (constructor) definitions, each clique of mutually
+  recursive items acts like a collection of primitive types (or primitive type
+  constructors all of the same arity). The remaining items are treated as
+  abbreviations only, and have no implications for the set of available types.
+  For simplicity and maybe for now, we treat all cliques as distinct, even if
+  their definitions would be isomorphic; this mostly has the benefit that we do
+  not need to worry about a recursively defined type being an instance of a
+  recursively defined type constructor (different recursive definitions give
+  different types). However beyond this, equivalence is purely structural.
 
 - Every type definition, abbreviation or not, is made in the context of zero or
   more type abstractions: names are introduced that can stand for abitrary types
-  or type constructors (following Haskell, each name has a "kind", which is '*'
-  to stand for any (complete) type, but could be '(*->*)' for a type constructor
-  of one (type) parameter, and more generally any expression formed by combining
-  '*' atoms with (.->.) constructors; currying can maybe avoid the need for
-  multi-parameter type constructors). It seems that type abbreviations with
-  abstracted types could be used as arguments to instantiate type constructors,
-  so if multiple names are introduced by abstractions, the result is to be
-  interpreted and a curried type constructor (if multi-parameter was avoided).
+  and their number is the arity of the type symbol(s) defined.
 
-- An abbreviation definition essentially becomes a (possibly higher order)
-  type map defined by a type lambda-expression (so if we allow the latter
-  to be written explicitly, we can eliminate the use of type constructor
-  abbreviations as arguments to type constructors; e.g., `T->[T] as a
-  designation of the (otherwise unnamed) 'row-of' type constructor).
-
-- A new (non abbreviation, maybe parameterised) type definition introduced zero
-  or more type (constructor) names (of specified kind), then either a list of
-  new type names defined by mutually recursive definitions (basically the
-  existing 'set_type [ ... ]' style definition, but allowing parameters), or one
-  or more types are introduced as new primitives with a collection of related
-  identifiers (presumably at least one designating a function producing the type
-  so that values can actually be built). In the latter case one also needs to
-  specify a concrete implementation type expression for each new type name
-  introduced, as well as expressions giving the values for the related
-  identifiers (to go into a table of constant values, like the overload table).
+- Opaque types can be introduced by formulating their intergace, probably a
+  bunch of functions related to the type, some of which can build values of the
+  type. All this can be inside a constext with abstracted types, so that one
+  gets opaque type constructors. (This has not yet been addressed at all.)
 
 -------------------------------------------------------------------------------
 
 Come to think of it, there seem to be two mechanisms that could be treated
 separately. The first is a mechanism to write type-lambda-expressions (possibly
 with many-kinded arguments) and to introduce abbreviations for them. The second
-is a (curently inexistent) mechanis to introduce new (closed) types and type
+is a (curently inexistent) mechanism to introduce new (opaque) types and type
 constructors, and their "specification" using provided value types, with
 implementation types given by type-lambda-expressions, and implementation values
 matching the specification types.
@@ -88,18 +77,15 @@ higher order types. In principle these are not first-class values, but objects
 that become actual values by specifying the missing types, which could be done
 partially by type automatic type deduction, and if needed by explicit
 specialisation by the user (as currently gcd@(int,int) somewhat does, but it
-would be more like #@[int] for the generic row-length operator #).
+would be more like #@[int] for the generic row-length operator #). This is done.
 
 Deployment plan:
 
-- Extend type system such that types of expressions can be defined as dependent
-  on a set of fresh (dummy) names, each of a specified kind, and then given by a
-  valid (kind-matched) type-valid expression using those names. (Maybe initially
-  just allow names for indeterminate types; it does not seem that allowing
-  indeterminate constructors and such will alter algotithms funadamentally, but
-  it gives some complications that one does not wish to tackle directly.)
++ Extend type system such that types of expressions can be defined as dependent
+  on a set of fresh (dummy) type names, and then given by a type-valid
+  expression using those type names.
 
-- Adapt type checking algorithm to handle such generic type values, and to a
++ Adapt type checking algorithm to handle such generic type values, and to a
   certain extent provide automatic specialisation of them to match the type
   constraints given by the expression being analysed. The analysis may enter
   new type indeterminates into the context, remove them when specialised, and
@@ -109,9 +95,8 @@ Deployment plan:
 
 - Allow introducing type genericity in processing certain definitions and, why
   not, in expressions to be evaluated. Introducing can be explicit (say
-  'let_type T') to introduce local names to the abstracted types (and type
-  constructors or whatever) but it could also occur implicitly when invoking
-  values with generic types.
+  'any_type S,T') to introduce local names to the abstracted types, but it could
+  also occur implicitly when invoking values with generic types.
 
 - With all that in place, define a mechanism (syntax and semantics) to introduce
   new primitive types and constructors. (This could in fact be done _before_ all
@@ -135,11 +120,8 @@ Deployment plan:
 
 Structure of new (polymorphic) types and operations to be implemented for them
 
-Besides primitive types, there will be primitive type constructors, of kind
-(*->*), as well as primitives of arbitrary kinds (the latter will have no
-predefined instances, but they can be introduced by abstraction to stand for
-non-primitive type-expressions of that kind, or they can stand for user-defined
-'new primitives'). Any fully-applied well-formed combination of primitives is a
-type that will be considered primitive, in the sense that it fails to match any
-specific type form (like being a function type, or a 3-tuple type), so that only
-exact type match can allow for a usage of subexpressions with such a type.
+Besides primitive types, there will be primitive type constructors. Any
+fully-applied well-formed combination of primitives is a type that will be
+considered primitive, in the sense that it fails to match any specific type form
+(like being a function type, or a 3-tuple type), so that only exact type match
+can allow for a usage of subexpressions with such a type.
