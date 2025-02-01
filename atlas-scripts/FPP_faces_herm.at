@@ -134,7 +134,8 @@ set sort(RealForm G, LocalVertexData Lvd, [[FaceVertsKHash]] LFDKH, int tail) = 
 {If NU (nu part) > LAM (lambda part) *low_frac, then figure to_ht could work better}
 set low_frac = 1/1
 
-
+{START LAMBDA TABLES}
+{
 {version of solve from basic using precomputed echelon form, to speed repeated calcs}
 set solve(vec b, mat M, mat C, [int] s) = maybe_a_vec:
 (    let (n,k)=shape(M)
@@ -586,6 +587,15 @@ set FPP_lambdas([KGBElt] xs) = [[ratvec]]:
     do FPP_lambdas(x)
     od
 
+<<<<<<< HEAD
+=======
+}
+
+{
+{If NU (nu part) > LAM (lambda part) *low_frac, then figure to_ht could work better}
+set low_frac = 1/1
+
+>>>>>>> cdc73be45de957a7206fe4eaa76c8475ca9948b7
 {low refers to small lambda}
 {"true" should mean nu is large, so these elts are near the
 "top" of their blocks, and is_unitary_to_ht is fast.
@@ -975,10 +985,16 @@ set make_big_unitary_hash() = big_unitary_hash_table:
       let terms = [(Split, KType)]: for c@mu in to_ht(pol,D)
       	  	  	   	    do (c,mu)
 				    od
+<<<<<<< HEAD
       then G = pol.real_form
       in to_ht( sum(pol.real_form, for (c,mu) in terms
       	 			   do let (rf,,m) = add_K_type_branch(mu,D)
 				      in regroup(G, c*K_type_pol_hashes[rf].index(m))
+=======
+      in to_ht( sum(pol.real_form, for (c,mu) in terms
+      	 			   do let (rf,,m) = add_K_type_branch(mu,D)
+				      in K_type_pol_hashes[rf].index(m)
+>>>>>>> cdc73be45de957a7206fe4eaa76c8475ca9948b7
 				   od) , D)
     , ((Param,int) -> KTypePol): {sig_entry} (Param p, int D) KTypePol:
      begin
@@ -1267,6 +1283,7 @@ set make_big_unitary_hash() = big_unitary_hash_table:
 	 fi
 }
 set big_unitary_hash = make_big_unitary_hash()
+}
 
 {uses the results stored in big_unitary_hash.}
 set branch_irr_hash(Param p, int D) = KTypePol:
