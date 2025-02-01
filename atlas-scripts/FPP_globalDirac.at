@@ -400,6 +400,14 @@ set FPP_unitary_hash_general([KGBElt] xs, Param_hash Uhash, {Param_hash Uparamha
 				      	   	     then last(for kappa in lambdas[:index] do kappa = lambdacont od)
 						     else -1
 						     fi
+
+		 		      then () = if every_lambda_flag
+      	      	   	     	      	      	then prints("     start #", index, " = (",x,",",lambda,
+						"), Uhash.size() = ", Uhash.size(),
+						", runtime = ", print_time_string(elapsed_ms() - start),
+			      			", #uparams so far = ",sum(answerCards));
+		   		   prints("  ------------------")
+        	   		   fi {every_lambda_flag}
 				      in if lcontnum.>=
 				      	 then tempanswerCards[index]:= tempanswerCards[lcontnum];
 		    	 		      for p in Uparamhash.list()
@@ -466,6 +474,7 @@ set FPP_unitary_hash_general([KGBElt] xs, Param_hash Uhash, {Param_hash Uparamha
 					 		   prints("  char calcs for lambda = ",
 						   	   char_counter.use_count() - startCcounter,
 					 	 	   " char time = ", print_time_string(charTime - startCtime));
+						           report_tested();
 					 		   prints("  ------------------")
 				    		       fi{every_lambda_flag}
 			      			 fi{#LF[0] = 0}
@@ -1102,6 +1111,13 @@ set FPP_unitary_hash_bottom_layer([KGBElt] xs, Param_hash UhashG{, Param_hash Up
 		      	    unitary_test_counter.use_count(), startUtime = unitaryTime,
 			    startmorebadlambda = more_bad_hash.size(), startLF = elapsed_ms(),
 			    startCcounter = char_counter.use_count(), startCtime = charTime
+		      then () = if every_lambda_flag
+      	      	   	     	then prints("     start #", index, " = (",x,",",lambda,
+					    "), Uhash.size() = ", Uhash.size(),
+					    ", runtime = ", print_time_string(elapsed_ms() - start){,
+			      		    ", #uparams so far = ",sum(answerCards)});
+		   		   prints("  ------------------")
+        	   		fi {every_lambda_flag}
  		      then LF = if by_zero_flag {and dominant(G,lamthlam)*G.two_rho_check > 0}
 		      	      	then localFD_1Dirac2_by_zero(x_sc, M*lambda, Lvd, Perm2)
 			   	else localFD_1Dirac2(x, lambda, Lvd, Perm2)

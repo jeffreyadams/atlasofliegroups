@@ -1462,9 +1462,14 @@ set localFD_1Dirac2\
     then Q = (ratvec,ratvec->rat): (ratvec v, ratvec w) rat: 0/1
     then DiracBD = 0/1
     then () = if Dirac_flag
-    	      then let () = DiracBD := DiracBD(x,lambda)
-	      	   then () = Q:=invariant_form(G)
-	      	   in ()
+    	      then let bd = DiracBD(x,lambda)
+	      	   then QG =invariant_form(G)
+		   then index = first(for v in Lvd.list
+		   	      	      do @bool: QG(v,v) > bd
+				      od)
+		   in if index.>=
+		      then Q:=QG; DiracBD:=bd
+		      fi
 	      fi
     then LF0 = [FaceVertsIndex]:
     	 for v@j in Lvd.list
@@ -1473,7 +1478,7 @@ set localFD_1Dirac2\
 	       or not all(for q in monomials(finalize(p))
 	       	      	  do @bool: is_pos_on_LKTs(q)
 			  od)
-	    then []
+	    then {prints(" Dirac caught ",p);} []
 	    elif red_count_flag
 	    then [[j, red_count(p)]]
 	    else [[j]]
@@ -1485,11 +1490,14 @@ set localFD_1Dirac2\
     	 let EdgesFixFix = [vec]:
 	     if #Perm2.fixed > 1
  	     then for v in FPP_edges(G)
-	     	  do let m = locate_sorted(Perm2.fixed, v[0]), n = locate_sorted(Perm2.fixed, v[1])
-		     in if m< #Perm2.fixed and n < #Perm2.fixed and Perm2.fixed[m] = v[0] and Perm2.fixed[n] = v[1]
-		     	then [[m,n].sort]
-			else []
-			fi
+	     	  do if not(Llookup(v[0]) and Llookup(v[1])) then []
+		     else let m = locate_sorted(Perm2.fixed, v[0]), n = locate_sorted(Perm2.fixed, v[1])
+		     	  in if m< #Perm2.fixed and n < #Perm2.fixed and Perm2.fixed[m] = v[0]
+			     	and Perm2.fixed[n] = v[1]
+		     	     then [[m,n].sort]
+			     else []
+			     fi
+		      fi
 		  od.##
 	       else []
 	       fi
@@ -1569,9 +1577,14 @@ set localFD_1Dirac2_by_zero\
     then Q = (ratvec,ratvec->rat): (ratvec v, ratvec w) rat: 0/1
     then DiracBD = 0/1
     then () = if Dirac_flag
-    	      then let () = DiracBD := DiracBD(x,lambda)
-	      	   then () = Q:=invariant_form(G)
-	      	   in ()
+    	      then let bd = DiracBD(x,lambda)
+	      	   then QG =invariant_form(G)
+		   then index = first(for v in Lvd.list
+		   	      	      do @bool: QG(v,v) > bd
+				      od)
+		   in if index.>=
+		      then Q:=QG; DiracBD:=bd
+		      fi
 	      fi
     then LF0 = [FaceVertsIndex]:
     	 for v@j in Lvd.list
@@ -1580,14 +1593,14 @@ set localFD_1Dirac2_by_zero\
 	       	  or not all(for q in monomials(finalize(p))
 	       	      	     do is_pos_on_LKTs(q)
 			     od)
-	       then []
+	       then  {prints("Dirac caught ",p);} []
 	       elif red_count_flag
 	       then [[j, red_count(p)]]
 	       else [[j]]
 	       fi
 	 od.## {list of j for which vertex j is a candidate}
     {then () = prints("after LFO, time is ",print_time_string(elapsed_ms() - start))}
-    {then Llookup = is_member_sorted((for v in LF0 do v[0] od))}
+    then Llookup = is_member_sorted((for v in LF0 do v[0] od))
     then Edges = [vec]:
     	 let startFF = elapsed_ms()
     	 then EdgesFixFix = [vec]:
@@ -1597,7 +1610,8 @@ set localFD_1Dirac2_by_zero\
 		     in for v in cands {global edges with v[0] = j}
 			do let n = locate_sorted(Perm2.fixed, v[1])
 			   in if n< #Perm2.fixed and Perm2.fixed[n] = v[1] {and Llookup(n)}
-			      then [[m,n].sort]
+			      	 and Llookup(m) and Llookup(n)
+			      	   then [[m,n].sort]
 			      else []
 			      fi
 			od.## {this is the list of edges starting with m}
@@ -1615,7 +1629,8 @@ set localFD_1Dirac2_by_zero\
 			in if {Llookup(m) and} #cands > 0
 			   then for v in cands
 			      	do let n = #Perm2.fixed + trans_hash.lookup(v[1:])
-				   in if n >= #Perm2.fixed {and Llookup(n)}
+				   in if n >= #Perm2.fixed
+				      	 and Llookup(n) and Llookup(m)
 				      then [[m,n]]
 				      else []
 				      fi
@@ -1636,7 +1651,8 @@ set localFD_1Dirac2_by_zero\
 		      	 in if {Llookup(m+#Perm2.fixed) and} #Perm2.trans > m+1 and #cands > 0
 		      	    then for v in cands
 			      	 do let n = #Perm2.fixed + trans_hash.lookup(v[2:])
-				    in if n >= #Perm2.fixed {and Llookup(n)}
+				    in if n >= #Perm2.fixed
+				       	  and Llookup(n) and Llookup(m+#Perm2.fixed)
 				       then [[m+#Perm2.fixed,n].sort]
 				       else []
 				       fi
@@ -1790,9 +1806,14 @@ set localFD_1Dirac2_add_red(KGBElt x, ratvec lambda, LocalVertexData Lvd, [[Face
     then Q = (ratvec,ratvec->rat): (ratvec v, ratvec w) rat: 0/1
     then DiracBD = 0/1
     then () = if Dirac_flag
-    	      then let () = DiracBD := DiracBD(x,lambda)
-	      	   then () = Q:=invariant_form(G)
-	      	   in ()
+    	      then let bd = DiracBD(x,lambda)
+	      	   then QG =invariant_form(G)
+		   then index = first(for v in Lvd.list
+		   	      	      do @bool: QG(v,v) > bd
+				      od)
+		   in if index.>=
+		      then Q:=QG; DiracBD:=bd
+		      fi
 	      fi
     in for d:#LF
        do for v in LF[d]
@@ -1806,7 +1827,7 @@ set localFD_1Dirac2_add_red(KGBElt x, ratvec lambda, LocalVertexData Lvd, [[Face
 		     then [v#red_count(p)]
 		     else [v]
 		     fi
-		else []
+		else {prints("Dirac caught ",p);} []
 		fi
 	  od.##
        od
@@ -1822,9 +1843,14 @@ set localFD_1Dirac2_by_zero_old\
     then Q = (ratvec,ratvec->rat): (ratvec v, ratvec w) rat: 0/1
     then DiracBD = 0/1
     then () = if Dirac_flag
-    	      then let () = DiracBD := DiracBD(x,lambda)
-	      	   then () = Q:=invariant_form(G)
-	      	   in ()
+    	      then let bd = DiracBD(x,lambda)
+	      	   then QG =invariant_form(G)
+		   then index = first(for v in Lvd.list
+		   	      	      do @bool: QG(v,v) > bd
+				      od)
+		   in if index.>=
+		      then Q:=QG; DiracBD:=bd
+		      fi
 	      fi
     then LF0 = [FaceVertsIndex]:
     	 for v@j in Lvd.list
@@ -1916,6 +1942,22 @@ set localFD_KHash_01 (KGBElt x, ratvec lambda, LocalVertexData Lvd, KTypePol_has
     	 	   then index_in(for v in LF[0] do v[:1] od)
 	 	   else index_in([vec]:[])
 		   fi
+    then temp_Dirac_best_flag = bool:
+    	 if not Dirac_best_flag then false
+	 else let mus = LKTs(parameter(x,lambda,0*lambda))
+	      then Q = invariant_form(x.real_form)
+	      then best_bounds = for mu in mus do best_Dirac_bound(mu) od
+	      then bestbd = min(for (,,bs) in best_bounds
+	      	   	    	do bs~[0]
+				od)
+	     then index = first(for v in Lvd.list
+	     	  	  	do @bool: Q(v,v) > bestbd
+				od)
+	     in if index.>=
+	     	then true
+		else false
+		fi
+	 fi
     then answer0 = for v@k in LF[0]
        	     	   do if k%(max(#LF[0]\10,2))=0 and fund_face_verbose
 	      	      then prints("examining face ",k,
@@ -1926,9 +1968,9 @@ set localFD_KHash_01 (KGBElt x, ratvec lambda, LocalVertexData Lvd, KTypePol_has
 	      	      then P = finalize(p0)
 		      then KCF = K_type_pol(character_formula(P))
 		      then m = ktp_hash.match(KCF)
-		      in if (not Dirac_best_flag) or DiracBestTest(p0,KCF)
+		      in if (not temp_Dirac_best_flag) or DiracBestTest(p0,KCF)
 		      	 then [v##[m,#monomials(P)]]
-			 else []
+			 else {prints("Dirac_best caught ",p0);} []
 			 fi
 		   od.##
     then lookup0D = index_in(for v in answer0
@@ -1972,6 +2014,22 @@ set localFD_KHash_01 (KGBElt x, ratvec lambda, LocalVertexData Lvd, int HT, KTyp
     	 	   then index_in(for v in LF[0] do v[:1] od)
 		   else index_in([vec]:[])
 		   fi
+    then temp_Dirac_best_flag = bool:
+    	 if not Dirac_best_flag then false
+	 else let mus = LKTs(parameter(x,lambda,0*lambda))
+	      then Q = invariant_form(x.real_form)
+	      then best_bounds = for mu in mus do best_Dirac_bound(mu) od
+	      then bestbd = min(for (,,bs) in best_bounds
+	      	   	    	do bs~[0]
+				od)
+	     then index = first(for v in Lvd.list
+	     	  	  	do @bool: Q(v,v) > bestbd
+				od)
+	     in if index.>=
+	     	then true
+		else false
+		fi
+	 fi
     then answer0 = for v@k in LF[0]
        	     	   do if k%(max(#LF[0]\10,2))=0 and fund_face_verbose
 	      	      then prints("examining face ",k,
@@ -1982,7 +2040,7 @@ set localFD_KHash_01 (KGBElt x, ratvec lambda, LocalVertexData Lvd, int HT, KTyp
 	      	      then P = finalize(p0)
 		      then KCF = K_type_pol(character_formula_to_height(P,HT))
 		      then m = ktp_hash.match(KCF)
-		      in if (not Dirac_best_flag) or DiracBestTest(p0,HT,KCF)
+		      in if (not temp_Dirac_best_flag) or DiracBestTest(p0,HT,KCF)
 		      	 then [v##[m,#monomials(P)]]
 			 else []
 			 fi
@@ -2029,6 +2087,22 @@ next and last is red_count. Adjoin two more: K-char, and #Langlands quotients}
 set localFD_KHash_01_graph (KGBElt x, ratvec lambda, LocalVertexData Lvd, KTypePol_hash ktp_hash,
 [[FaceVertsIndex]] LF, [[int]] eq, [vec] classListByFace) = [[FaceVertsKHash]]:
     let ht = height(parameter(x,lambda,0*lambda))
+    then temp_Dirac_best_flag = bool:
+    	 if not Dirac_best_flag then false
+	 else let mus = LKTs(parameter(x,lambda,0*lambda))
+	      then Q = invariant_form(x.real_form)
+	      then best_bounds = for mu in mus do best_Dirac_bound(mu) od
+	      then bestbd = min(for (,,bs) in best_bounds
+	      	   	    	do bs~[0]
+				od)
+	     then index = first(for v in Lvd.list
+	     	  	  	do @bool: Q(v,v) > bestbd
+				od)
+	     in if index.>=
+	     	then true
+		else false
+		fi
+	 fi
     then NumClasses = #eq
     then polNums = [int]: {one for each class}
     	 for C in eq
@@ -2039,9 +2113,9 @@ set localFD_KHash_01_graph (KGBElt x, ratvec lambda, LocalVertexData Lvd, KTypeP
 	    then pC = parameter(x,lambda,nu)
 	    then PC = finalize(pC)
 	    then KCF = K_type_pol(character_formula(PC))
-	    in if (not Dirac_best_flag) or DiracBestTest(pC,KCF)
+	    in if (not temp_Dirac_best_flag) or DiracBestTest(pC,KCF)
 	       then ktp_hash.match(KCF)
-	       else -1
+	       else {prints("Dirac_best caught ",pC);} -1
 	       fi
 	 od
     then nLKT = #LKTs(parameter(x,lambda,0*lambda))
@@ -2066,6 +2140,22 @@ next and last is red_count. Adjoin two more: K-char, and #Langlands quotients}
 set localFD_KHash_01_graph (KGBElt x, ratvec lambda, LocalVertexData Lvd, int HT, KTypePol_hash ktp_hash,
 [[FaceVertsIndex]] LF, [[int]] eq, [vec] classListByFace) = [[FaceVertsKHash]]:
     let ht = height(parameter(x,lambda,0*lambda))
+    then temp_Dirac_best_flag = bool:
+    	 if not Dirac_best_flag then false
+	 else let mus = LKTs(parameter(x,lambda,0*lambda))
+	      then Q = invariant_form(x.real_form)
+	      then best_bounds = for mu in mus do best_Dirac_bound(mu) od
+	      then bestbd = min(for (,,bs) in best_bounds
+	      	   	    	do bs~[0]
+				od)
+	     then index = first(for v in Lvd.list
+	     	  	  	do @bool: Q(v,v) > bestbd
+				od)
+	     in if index.>=
+	     	then true
+		else false
+		fi
+	 fi
     then NumClasses = #eq
     then polNums = [int]:
     	 for C in eq
@@ -2077,9 +2167,9 @@ set localFD_KHash_01_graph (KGBElt x, ratvec lambda, LocalVertexData Lvd, int HT
 	    then PC = finalize(pC)
 
 	    then KCF = K_type_pol(character_formula(PC))
-	    in if (not Dirac_best_flag) or DiracBestTest(pC,HT,KCF)
+	    in if (not temp_Dirac_best_flag) or DiracBestTest(pC,HT,KCF)
 	       then ktp_hash.match(KCF)
-	       else -1
+	       else  {prints("Dirac_best caught ",pC);} -1
 	       fi
 	 od
     then nLKT = #LKTs(parameter(x,lambda,0*lambda))
@@ -2423,1135 +2513,6 @@ set extend_K_characters_graph(KGBElt x, ratvec lambda, LocalVertexData Lvd,
      then () = if time_verbose then prints("     ", print_time_string(time),
      	       	  " for extend_K_characters_graph") fi
      in answer
-
-
-{START LAMBDA TABLES}
-{
-{version of solve from basic using precomputed echelon form, to speed repeated calcs}
-set solve(vec b, mat M, mat C, [int] s) = maybe_a_vec:
-(    let (n,k)=shape(M)
-     then j=0 { runs up to k, used to index backwards }, sol=null(k)
-     in assert(#b=n,"equation mismatch");
-     	for i:n
-       ~do if j<#s and i=s~[j] { then it is a pivot row, with pivot at M[j][i] }
-       	   then let Mj=M~[j]
-	   	then (q,r)=b[i]\%Mj[i]
-		in if !=r then return ().no_vec { because inexact division} fi;
-       		   sol~[j]:=q;
-		   b-:=Mj*q; { correct for contribution from sol[j~] }
-       		   j+:=1
-       	    elif !=b[i] then return ().no_vec { because no pivot available }
-       	    fi
-   	 od;
-	 (C[:k]*sol).solution
-)
-
-{these are the possible lambda+theta*lambda for x.involution = theta. First
-vec_hash will be filled with candidate lamthlam (for which a lambda in X* + rho exists).
-For each lamthlam there is a Perm2 in the second list.}
-set cands_hash(InnerClass ic, mat theta, vec_hash lamthlam_hash) = [PermOrderTwo]:
-    let th1 = 1+theta, verts = FPP_vertices(ic), FEs = FPP_flippable_edges(ic),
-    	Perm2s = [PermOrderTwo]: [], empty = [(int,int)]: []
-    then shift = (-th1*ic.rho).numer
-    then () = for v@j in verts
-       	      do let w = th1*v
-       	      	 in if w.denom = 1 and any(vec_solve(th1, w.numer + shift))
-	       	    then let M = lamthlam_hash.size()
-	       	    then m = lamthlam_hash.match(w.numer)
-	       	    in if m = M
-	     	       then let () = Perm2s #:= (vec: [j],empty)
-		       	    in ()
-		       else let Perm2sm = Perm2s[m]
-			    then () = Perm2sm.fixed #:= j
-			    then () = Perm2s[m] := Perm2sm
-			    in ()
-		       fi
-	            fi
-               od
-    then () = for pair in FEs
-    	      do  let a = verts[pair[0]], b = verts[pair[1]]
-	      	  then w = a+theta*b
-	      	  in if theta*w = w and w.denom = 1
-		     and any(vec_solve(th1, w.numer + shift))
-		     then let M = lamthlam_hash.size()
-	             then m = lamthlam_hash.match(w.numer)
-	             in if m = M
-		     	then let () = Perm2s #:= (null(0),[(pair[0],pair[1])])
-			     in ()
-			else let Perm2sm = Perm2s[m]
-			     then () = Perm2sm.trans #:= (pair[0],pair[1])
-			     then () = Perm2s[m] := Perm2sm
-			     in ()
-			fi
-		     fi
-	       od
-     in Perm2s
-
-set Lnu(Param p) = RealForm:
-    let p1 = to_no_Cplus(p), G=p.real_form
-    then rhoi1 = rho_i(p1.x)
-    then rdnu = centralizer(G,[rhoi1.numer])
-    in quasisplit_form(inner_class(rdnu, p1.x.involution))
-
-
-set Wnu(Param p) = [WeylElt]:
-    let Lnu = Lnu(p), p1 = to_no_Cplus(p), rho = p.real_form.rho
-    then theta1 = p1.x.involution
-    in for w1 in Weyl_orbit_ws(Lnu,(p1.infinitesimal_character).numer)
-       do if w1*theta1 = theta1*w1 and parameter(p1.x, w1*(p1.lambda - rho)+rho, 0*rho) = p1*0
-       	  then [w1]
-	  else [] fi
-       od.##
-
-set maxPR_cowts(Param p) = [vec]:
-    let p1 = to_no_Cplus(p), G = p.real_form
-    then theta = p1.x.involution {, xo = x_open(G)}
-    then coweights = for xi in G.fundamental_coweights
-    	 	   do (xi - xi*theta).numer
-		   od.no_reps
-    then M = null(rank(G),0)
-    then () = for tau in coweights
-       	      do if rank(M#tau) = rank(M) + 1
-       	      	 then M#:=tau
-	  	 fi
-       	      od
-    in M
-
-{result is tuples ([dpLs]) with pL hermitian and p = Ind_P^G(pL); so pL and p are unitary iff all the dpLs are}
-set ind_cand_params = (Param -> [Param]):
-    let param_hash = make_Param_hash()
-    then answers = [[Param]]: [] {one for each Param known}
-    in (Param -> [Param]): (Param p) [Param]:
-       if not is_hermitian(p) then return [] fi;
-       let I = param_hash.size()
-       then i = param_hash.match(p)
-       then () = if i=I
-       	       	 then let G = p.real_form, p1 = to_no_Cplus(p)
-    		      then xo = x_open(G)
-    		      then lists = for tau in maxPR_cowts(p)
-    	 	      	   	   do let Q = parabolic_by_cwt(tau, xo)
-	    		      	      then L = Q.Levi
-	    		      	      then x1L = inverse_embed_KGB(p1.x, L)
-	    		      	      then lambda1L = p1.lambda - rho_u(Q)
-	    		      	      then list = [Param]: []
-	    		      	      then () =  for w1 in Wnu(p)
-	       	       	      	      	   do let p1L = first_param(finalize(
-					      parameter(x1L, lambda1L, w1*p1.nu)))
-		       	  		      in if is_hermitian(p1L)
-		      	     		     	    {and is_FPP(L, p1L.infinitesimal_character)}
-		     	    			    and real_induce_irreducible(p1L,G) = p
-	       	     	     		          then list := for q in derived_factor_params0((p1L))										  do herm_center(q)
-						       	       od
-	       		    			  fi
-	 	        		    od
-	    		      	      in list
-	 		    	    od
-		       then j = first(for list in lists do #list >0 od)
-		       in if j.>=
-		       	  then answers#:= lists[j]
-			  else answers#:= []
-		   	  fi
-		   fi
-
-	then ()= assert(#answers = param_hash.size(),"ind_cand_params hash damaged")
-	in answers[i]
-
-set_type Lvd_Perm2{_mapAct} = (LocalVertexData Lvd, PermOrderTwo Perm2{, vec mapAct})
-
-set Perm2_to_LPm(InnerClass ic, PermOrderTwo Perm2) = Lvd_Perm2{_mapAct}:
-    let verts = FPP_vertices(ic)
-    then FEs = FPP_flippable_edges(ic)
-    then vlist = (for f in Perm2.fixed do verts[f] od)## (for (p,q) in Perm2.trans do face_bary(verts,[p,q]) od)
-    then Lvd = to_vertex_data(vlist,#Perm2.fixed)
-    {then mapAct = vec: for j:#verts do minus_1 od
-    {maps FPP vertex indices from vd to local indices from Lvd}
-    then () = for f@k in Perm2.fixed do mapAct[f]:= k od
-    then () = for (p,q)@ell in Perm2.trans do mapAct[p]:=#Perm2.fixed + ell;
-    	      	  	       		      mapAct[q]:=#Perm2.fixed + ell od}
-    in (Lvd, Perm2{, mapAct})
-
-{Record for each inner class a list of some involutions in inner class; and for each such involution,
- some possible lambdas; and for each such lambda, a list of (local vertex data, Perm2, mapAct)}
-set_type
-[Lvd_Perm2_table =
-
-( (->int) inner_class_size {number of inner classes included}
-  , ( -> vec) ic_vlist_size {for each inner class, the number of FPP-vertices}
-  , ( -> ) clear
-  , ( -> vec) involution_size {for each inner class, number of involutions so far considered}
-  , ( -> [vec]) lamthlam_size {for each inner class and involution, number of d_lambdas (actually lambda+theta*lambda)
-      	 		       so far considered}
-{  , ( -> [vec]) cands_size {for each inner class and involution, number of candidate lambda+theta*lambda
-      	 		       so far considered}}
-  , ( -> [[vec]]) Lvd_list_size {for each inner class and involution and d_lambda, size of Lvd.list}
-  , (InnerClass -> VertexData) FPP_vertex_data {one for each inner class}
-  , (InnerClass -> (vec -> int)) flippable_edge_lookup
-  {, (InnerClass -> [FaceVertsIndex]) FPP_flip_tet}
-  , (InnerClass -> [ratvec]) FPP_local_vertices {one for each inner class}
-{  , ((InnerClass, mat) -> [vec]) cands {for each involution, a list of candidates for lambda+theta_lambda}}
-  , ((InnerClass, mat) -> [vec]) lamthlams {for each involution, list of allowed lambda+theta_lambda}
-  , ((InnerClass, mat, vec) -> int) lamthlam_number {for each involution, number of lambda+theta_lambda in list}
-  , ((InnerClass, mat) -> [ratvec]) lambda0s {for each involution, list of allowed lambda mod twists}
-  , ((InnerClass, mat,vec) -> PermOrderTwo) Perm2 {for each involution and lamthlam, corresponding Perm2}
-  , ((InnerClass, mat) -> [(ratvec, Lvd_Perm2{_mapAct})]) LPm_entries {allowed lambda mod twists, corr entry}
-    		       	  	    {like output of old FPP_lambdas_big_new}
-  , ((InnerClass, mat, vec) -> LocalVertexData) Lvd {local vertex data, one for each theta and lambda+theta*lambda}
-  , ((InnerClass, mat, vec) -> Lvd_Perm2{_mapAct}) LPm_entry {one for each theta and lambda+theta*lambda}
-{  , ((InnerClass, mat, vec) -> ) append {just compute, don't report LPm entry}}
-  , (int -> InnerClass) inner_class_index
-  , (int -> VertexData) vd_index {vertex data for inner class}
-  , ((int,int,int) -> Lvd_Perm2{_mapAct}) Lvd_Perm2_index {one for each inner class, involution,
-    		      					       lambda + theta*lambda}
-)
-]
-
-set make_Lvd_Perm2_table() = Lvd_Perm2_table:
-(   let inner_class_hash = make_InnerClass_hash()
-    then inv_hashes = [mat_hash]: [] {one for each inner class}
-    then vertex_datas = [VertexData]: [] {one for each inner class}
-    then FELs = [(vec->int)]: [] {one for each inner class}
-    then FPP_local_verts = [[ratvec]]: [] {one list for each inner class}
-{    then cands = [[[vec]]]: [] {one [vec] for each inner class and involution}}
-    then lamthlam_hashess = [[vec_hash]]: [] {one for each inner class and involution}
-    	 {entries are vecs of size ic.rank: lamba+theta*lambda, for a
-	 	  certain choice of lambda (defined up to twist and equivalence}
-    then Perm2s = [[[PermOrderTwo]]]: [] {one for each involution and cand lamthlam}
-    then entries = [[[Lvd_Perm2]]]: [] {one list for each involution and cand lamthlam}
-    then clear() = void:
-    	 let () = inner_class_hash.clear()
-	 then () = inv_hashes := []
-	 then () = vertex_datas := []
-	 then () = FELs := []
-	 then () = FPP_local_verts := []
-{	 then () = cands := []}
-	 then () = lamthlam_hashess := []
-	 then () = Perm2s := []
-	 then () = entries := []
-	 in ()
-    then add_inner_class(InnerClass ic) = int:
-    	 let I = inner_class_hash.size()
-	 then i = inner_class_hash.match(ic)
-    	 then () = if i = I {haven't seen this inner class before}
-	      	   then inv_hashes #:= make_mat_hash();
-	    	   	vertex_datas #:= FPP_vertex_data(ic);
-			FELs #:= FPP_flippable_edge_lookup(ic);
-	    	   	FPP_local_verts #:= FPP_local_vertices(ic, vertex_datas[i].list, FELs[i]);
-{			cands #:= [];}
-	    	   	lamthlam_hashess #:= [];
-			Perm2s #:= [];
-	    	   	entries #:= []
-	    	   fi
-	  in i
-     then add_involution(InnerClass ic, mat theta) = (int, int):
-    	 let i = add_inner_class(ic)
-	 then J = inv_hashes[i].size()
-      	 then j = inv_hashes[i].match(theta)
-     	 then () = if j = J {haven't seen this involution before}
-      	      	   then {cands[i] #:= [];}
-			lamthlam_hashess[i] #:= make_vec_hash();
-			Perm2s[i] #:= [];
-		   	entries[i] #:= []
-		   fi
-	 in (i, j)
-    then add_cands(InnerClass ic, mat theta) = (int, int):
-    	 let (i,j) = add_involution(ic,theta)
-	 then tempPerm2si = Perm2s[i]
-	 then entriesi = entries[i]
-	 then () = if {#cands[i][j] > 0} lamthlam_hashess[i][j].size() > 0
-	 	   then return (i,j)
-	 	   else let Perm2cands = cands_hash(ic,theta, lamthlam_hashess[i][j]) {this  writes to the hash table the possible lamthlam}
-			then () = tempPerm2si[j] := Perm2cands
-			then () = entriesi[j] := for lamthlam@k in lamthlam_hashess[i][j].list()
-			     	       	    do let Perm2 = Perm2cands[k]
-				     	       in Perm2_to_LPm(ic,Perm2)
-					    od
-			then () = Perm2s[i] :=tempPerm2si
-			then () = entries[i] := entriesi
-			in ()
-		    fi
-	 in (i,j)
-    then add_KGBElt(KGBElt x) = (int,int):
-    	 let i = add_inner_class(x.inner_class)
-    	 then n = x.number
-	 in (i,n)
-    in
-    ( ( -> int): {inner_class_size} @int: inner_class_hash.size()
-    , ( -> vec): {ic_vlist_size} @vec: for vd in vertex_datas do #vd.list od
-    , ( -> ): {clear} clear
-    , ( -> vec): {involution_size} @vec: for inv_hash in inv_hashes do inv_hash.size() od
-    , ( -> [vec]): {lamthlam_size} @[vec]:
-      for lamthlam_hashes in lamthlam_hashess {ith inner class}
-      do for lamthlam_hash in lamthlam_hashes    {jth involution}
-      	 do lamthlam_hash.size()
-	 od
-      od
-    , ( -> [[vec]]): {Lvd_list_size} @[[vec]]:
-      for i: #entries
-      do for j: #entries[i]
-	 do for k: #entries[i][j]
-	    do #(entries[i][j][k].Lvd.list)
-	    od {vec for involution}
-	 od {[vec] for inner class}
-      od
-    , (InnerClass -> VertexData): {FPP_vertex_data}  (InnerClass ic) VertexData:
-      let i = add_inner_class(ic)
-      in vertex_datas[i]
-    , (InnerClass -> (vec -> int)): {flippable_edge_lookup} (InnerClass ic) (vec -> int):
-      let i = add_inner_class(ic)
-      in FELs[i]
-    , (InnerClass -> [ratvec]): {FPP_local_vertices} (InnerClass ic)  [ratvec]:
-      let i = add_inner_class(ic)
-       in FPP_local_verts[i]
-{    , ((InnerClass, mat) -> [vec]): {cands} (InnerClass ic, mat theta) [vec]:
-      let (i,j) = add_cands(ic,theta)
-      in cands[i][j]}
-    , ((InnerClass, mat) -> [vec]): {lamthlams} (InnerClass ic, mat theta) [vec]:
-      let (i,j) = add_cands(ic,theta)
-      in lamthlam_hashess[i][j].list()
-     , ((InnerClass, mat, vec) -> int): {lamthlam_number} (InnerClass ic, mat theta, vec lamthlam) int:
-      let (i,j) = add_cands(ic,theta), th1 = theta+1
-      in lamthlam_hashess[i][j].lookup(lamthlam)
-    , ((InnerClass, mat) -> [ratvec]): {lambda0s} (InnerClass ic, mat theta) [ratvec]:
-      let (i,j) = add_cands(ic,theta), th1 = 1+theta
-      in for lamthlam in lamthlam_hashess[i][j].list()  {k:lamthlam_hashess[i][j].size()}
-      	 do let lr = required_solution(th1,lamthlam - ratvec_as_vec(th1*ic.rho))
-      	    in lr+ic.rho
-	 od
-    , ((InnerClass, mat,vec) -> PermOrderTwo): {Perm2} (InnerClass ic, mat theta, vec lamthlam):
-      let (i,j) = add_cands(ic,theta)
-      then k = lamthlam_hashess[i][j].lookup(lamthlam)
-      in Perm2s[i][j][k]
-    , ((InnerClass, mat) -> [(ratvec, Lvd_Perm2{_mapAct})]): {LPm_entries} (InnerClass ic, mat theta)
-      [(ratvec, Lvd_Perm2{_mapAct})]:
-      let (i,j) = add_cands{lamthlam_hash}(ic,theta), th1 = theta+1
-      in for lamthlam@k in lamthlam_hashess[i][j].list()
-	 do let lr = required_solution(th1,lamthlam - ratvec_as_vec(th1*ic.rho))
-	    in (lr+ic.rho, entries[i][j][k])
-	 od
-    , ((InnerClass, mat, vec) -> LocalVertexData): {Lvd} (InnerClass ic, mat theta, vec lamthlam)
-      		    LocalVertexData:
-      let (i,j) = add_cands{lamthlam_hash}(ic,theta), th1 = theta+1
-      then k = lamthlam_hashess[i][j].lookup(lamthlam)
-      in entries[i][j][k].Lvd
-      {the next function FAILS in U(3,3), called inside FPP_unitary_hash(U(3,3))}
-    , ((InnerClass, mat, vec) -> Lvd_Perm2{_mapAct}): {LPm_entry} (InnerClass ic, mat theta, vec lamthlam)
-    Lvd_Perm2{_mapAct}:
-      let (i,j) = add_cands(ic,theta), th1 = theta+1
-      then k = lamthlam_hashess[i][j].lookup(lamthlam)
-      in entries[i][j][k]
-    , (int -> InnerClass): {inner_class_index} (int i) InnerClass: inner_class_hash.index(i)
-    , (int -> VertexData): {vd_index} (int i) VertexData: vertex_datas[i]
-    , ((int,int,int) -> Lvd_Perm2{_mapAct}): {Lvd_Perm2_index} (int i, int j, int k): Lvd_Perm2{_mapAct}:
-      entries[i][j][k]
-)
-)
-
-set LPm_table = make_Lvd_Perm2_table()
-
-set localFD_1Dirac2_by_zero(KGBElt x, ratvec lambda) = [[FaceVertsIndex]]:
-    let theta = x.involution, ic = x.inner_class
-    then lamthlam = ((1+theta)*lambda).numer
-    then (Lvd,Perm2) = LPm_table.LPm_entry(ic,theta,lamthlam)
-    in localFD_1Dirac2_by_zero(x,lambda,Lvd,Perm2)
-
-{this is the list of all possible lambda + theta*lambda for ic and theta}
-set FPP_lamthlams(InnerClass ic, mat theta) = [vec]:
-    LPm_table.lamthlams(ic,theta)
-
-{list of lambdas up to twist by differential zero}
-set FPP_lambda0s(InnerClass ic, mat theta) = [ratvec]:
-    LPm_table.lambda0s(ic, theta)
-
-set_type
-[FPP_lambda_table =
-
-( (->int) real_form_size {number of RealForms included}
-  , ( -> ) clear
-  , (KGBElt -> int) add_KGBElt
-  , (KGBElt -> [ratvec]) FPP_lambdas {for each inner class, the number of FPP-vertices}
-  , ((KGBElt,ratvec) -> int) position {location of lambda in FPP_lambdas(x)}
-)
-]
-
-set make_FPP_lambda_table() = FPP_lambda_table:
-(   let real_form_hash = make_RealForm_hash()
-    then lambda_hashess = [[ratvec_hash]]: [] {one ratvec_hash for each real form and KGBElt}
-    then clear() = void:
-    	 let () = real_form_hash.clear()
-	 then () = lambda_hashess := []
-	 in ()
-    then add_real_form(RealForm rf) = int:
-    	 let I = real_form_hash.size()
-	 then i = real_form_hash.match(rf)
-    	 then () = if i = I {haven't seen this real form before}
-	      	   then lambda_hashess #:= for x in KGB(rf) do make_ratvec_hash() od
-	    	   fi
-	  in i
-    then add_KGBElt(KGBElt x) = int:
-    	 let i = add_real_form(x.real_form)
-    	 then n = x.number
-	 then () = if lambda_hashess[i][n].size() = 0 {haven't computed FPP_lambdas(x)}
-	      	   then {let theta = x.involution
-		   	then tworhoi = sum(imaginary_posroots(G,theta))
-			then imag_simple_roots = for alphav in imaginary_poscoroots(G,theta)
-			     		   do if tworhoi*alphav = 2
-					      then [alphav]
-					      else []
-					      fi
-					   od.##}
-			let zeroPol = null_module(x.real_form), zeroNu = null(x.real_form.rank)/1
-		   	then longlist = LPm_table.lambda0s(x.inner_class, x.involution),
-			     twists = all_lambda_differential_0(x.involution)
-			then list0 = for lambda0 in longlist
-			     	     do let q = parameter(x, lambda0, zeroNu)
-				     	in if q!= zeroPol
-				     	then [q.lambda]
-					else []
-					fi
-				     od.##
-			in for l0 in list0
-			   do for tau in twists
-			      do lambda_hashess[i][n].match(parameter(x,l0+tau,zeroNu).lambda)
-	  		      od
-       			   od.##
-		     fi
-	  in n
-     in
-( (->int): {real_form_size} @int: real_form_hash.size()
-  , ( -> ): clear
-  , (KGBElt -> int): {add_KGBElt} (KGBElt x) int: add_KGBElt(x)
-  , (KGBElt -> [ratvec]): {FPP_lambdas} (KGBElt x) [ratvec]:
-    let i = add_real_form(x.real_form)
-    then n = add_KGBElt(x)
-    in lambda_hashess[i][n].list()
-  , ((KGBElt,ratvec) -> int): {position} (KGBElt x, ratvec lambda) int:
-    let i = add_real_form(x.real_form)
-    then n = add_KGBElt(x)
-    in lambda_hashess[i][n].lookup(lambda)
-)
-)
-
-set FPP_lam_table = make_FPP_lambda_table()
-
-{list of lambdas for x up to twist by differential zero}
-set FPP_lambda0s(KGBElt x) = [ratvec]:
-    let longlist = LPm_table.lambda0s(x.inner_class, x.involution), G=x.real_form
-    then zeroPol = null_module(G), zeroNu = null(G.rank)/1
-    in for lambda0 in longlist
-       do if 1*parameter(x, lambda0, zeroNu) != zeroPol
-       	  then [lambda0]
-	  else []
-	  fi
-       od.##
-
-set FPP_lambda_table_flag = true
-
-set FPP_lambdas(KGBElt x) = [ratvec]:
-    if FPP_lambda_table_flag
-    then FPP_lam_table.FPP_lambdas(x)
-    else let list0 = FPP_lambda0s(x), G=x.real_form
-    	 then twists = all_lambda_differential_0(x.involution)
-	 then zeroNu = null(G.rank)/1
-	 in for ell0 in list0
-	    do for tau in twists
-	       do parameter(x,ell0+tau,zeroNu).lambda
-	       od
-       	     od.##
-    fi
-
-set position_time = int:0
-
-{location of lambda in FPP_lambdas(x)}
-set position(KGBElt x, ratvec lambda) = int:
-    let start = elapsed_ms()
-    then lambdaNorm = parameter(x,lambda,0*lambda).lambda
-    then N = FPP_lam_table.position(x,lambdaNorm)
-    then () = if N=-1 then prints("WARNING: at G = ",x.real_form,", x = ",x.number,", lambda = ",
-    	 lambdaNorm," is not attached to x.") fi
-    then () = position_time +:= elapsed_ms() - start
-    in N
-
-set FPP_lambdas([KGBElt] xs) = [[ratvec]]:
-    for x in xs
-    do FPP_lambdas(x)
-    od
-
-}
-
-{
-{If NU (nu part) > LAM (lambda part) *low_frac, then figure to_ht could work better}
-set low_frac = 1/1
-
-{low refers to small lambda}
-{"true" should mean nu is large, so these elts are near the
-"top" of their blocks, and is_unitary_to_ht is fast.
-"false" should mean  nu is small, and is_unitary is fast.}
-{N is meant to be a height bound (bigger than height(parameter)}
-{set low(KGBElt x, ratvec lambda, int N) = bool:
-    let G = x.inner_class
-    then theta = x.involution
-    then Lvd = LPm_table.Lvd(G, theta, (1+theta)*lambda.numer)
-    then LAM = dominant(G, (1+theta)*lambda)*G.two_rho_check + 2*N
-    then NU = max(for gamma in Lvd.list do dominant(G, (1-theta)*gamma) *G.two_rho_check od)
-    {then R = G.two_rho * G.two_rho_check}
-    in NU > low_frac*LAM}
-
-{whether to use to_height in computing to height N}
-{true means large nu, so to_ht could be better}
-set low(Param p, int N) = bool:
-    let (,NU,) = low(p)
-    in NU > 2*N*low_frac
-
-set nullint(int N) = [int]:
-    for n:N do 0 od
-
-{whether to record nonunitary reps as well as unitary}
-set nuhash_flag = true
-
-{whether to use this hashed branch function as often as possible}
-set branch_hash_flag = false
-
-{whether to include KGB numbers in output files. True makes them more human-readable, sometimes longer}
-set write_x_flag = false
-
-{decide NOT to hash nonunitary...well, UNdecided 1/14/25}
-{try to incorporate RF_sig_table 1/18/25}
-{sig_height = height(p)-1 means full signature
-phash always contains uhash and nuhash}
-set_type
-[big_unitary_hash_table =
-( ( -> int) real_form_size {number of real forms included}
-  , ( -> vec) uhash_sizes {for every real form, the number of unitary reps}
-  , (RealForm -> int) uhash_size {for one real form, number of unitary reps}
-  , ( -> vec) nuhash_sizes {for every real form, the number of nonunitary reps}
-  , (RealForm -> int) nuhash_size {for one real form, number of nonunitary reps}
-  , ( -> vec) K_type_size {number of LKTs for each real form}
-  , ( -> vec) K_type_pol_size
-  , (KType -> KTypePol) K_type_formula
-  , ((KType,int) -> KTypePol) K_type_formula_to_ht
-  , ((KType, int) -> KTypePol) branch_entry {branch std to height}
-  , ((KTypePol, int) -> KTypePol) branch {branch pol of stds to height}
-  , ((Param,int) -> KTypePol) sig_entry {signature to height}
-  , (int, int -> int) branch_height {largest ht to which K type j on real form i has been branched}
-  , (int, int -> int) sig_height {largest ht to which param j on real form i has had sig computed}
-  , ( -> ) clear
-  , (RealForm -> ) clearG
-  , (RealForm -> int) rf_number {number of real form in list}
-  , (int -> RealForm) rf_index {jth real form in list}
-  , (RealForm -> [int]) xl_known {for each x, bitmap of lambda for which FPP unitary dual is known}
-  , (RealForm -> int) x_known {bitmap of x for which entire FPP dual is known}
-  , (RealForm -> int) x_partial {bitmap of x for which some lambda have FPP dual known}
-  , ((KGBElt,int) -> ) finish {add bitmap of new known (x,lambda) to xl_known}
-  , (KGBElt -> ) finishx {add x to x_known}
-  , ((RealForm,int) ->) finishxmap {OR int with x_known(RealForm)}
-  , (KGBElt -> ) partialx {add x to x_partial}
-  , ((RealForm,[int]) -> ) finishall {add bitmaps of all new known (x,lambda) to xl_known}
-  , (RealForm -> Param_hash) phash {hash table of all indexed parameters}
-  , (RealForm -> Param_hash) uhash {hash table of known unitary}
-  , (RealForm -> Param_hash) nuhash {hash table of known nonunitary}
-  , (Param -> (int,int)) long_plookup {(rf_index(p.real_form), location of p in its phash)}
-  , (Param -> (int,int)) long_ulookup {(rf_index(p.real_form), location of p in its uhash)}
-  , (Param -> int) plookup {(location of p in its phash)}
-  , (Param -> int) ulookup {(location of p in its uhash)}
-  , (Param -> int) nulookup {(location of p in its nuhash)}
-  , (Param -> bool) check {check whether p is unitary, and add to appropriate hash table}
-  , (Param -> int) umatch {add p to its uhash table}
-  , (Param -> int) numatch {add p to its nuhash table}
-  , ((Param,int) -> int) long_umatch {add p to ith uhash table}
-  , ((Param,int) -> int) long_match {add p to ith uhash table} {included for back compatibility}
-  , ( -> ) write {output unitary data for file}
-  , (RealForm -> ) writeG {output data for one group to file}
-  , ((RealForm, int, int) -> ) writeGrange {output data for KGB(G)[low,high]}
-  , ((KGBElt, ratvec) -> ) writexlam {output data for one x,lambda}
-  , ((KGBElt, ratvec) -> ) writexlam_no_G {output data for one x,lambda; without writing G}
-)
-]
-
-set finish_time = int:0
-set is_finished_time = int:0
-
-set make_big_unitary_hash() = big_unitary_hash_table:
-(   let real_form_hash = make_RealForm_hash()
-    then uhashes = [Param_hash]: [] {one for each real form}
-    then nuhashes = [Param_hash]: [] {one for each real form}
-    then phashes = [Param_hash]: []
-    {then status_strings = [[string]]: [] {one for each real form; "" is unknown, "T..." is unitary, "F..." nonunitary}}
-    then K_type_hashes = [KType_hash] : [] {one for each real form; list of LKTs of params}
-    then K_type_pol_hashes = [KTypePol_hash] : []  {one for each real form}
-    then formulas = [vec]:[] {size of K_type_hash; entry in K_type_pol_hash recording K_type_formula}
-    then formula_heights = [vec]:[] {size that of K_type_hash; largest height to which formula computed}
-    then branches = [vec] : [] {one vec for each real form, of size #K types;
-   		   	      ith entry is index of branching KTypePol for KType #i}
-    then sigs = [vec]: [] {one vec for each real form, of size #params;
-   	       	      	  jth entry is index of signature KTypePol for Param #j}
-    then branch_heights = [vec]: [] {one list for each real form; jth entry is vec with ith entry the height
-   		       	 	   to which branch(param i) is known}
-    then sig_heights = [vec]: [] {one list for each real form; jth entry is vec with ith entry
-    	 	       	      	 the height to which sig(param i) is known}
-    then xl_known = [[int]]: [] {one bitmap of known (x,lambda) for each real form and x}
-    then x_known = [int]: [] {one bitmap of known x for each real form}
-    then x_partial = [int]: [] {one bitmap of partially known x for each real form}
-    then clearBUH() = void:
-    	 let () = real_form_hash.clear()
-	 then () = uhashes := []
-	 then () = nuhashes := []
-	 then () = phashes := []
-	 {then () = status_strings := []}
-         then () = K_type_hashes := []
-         then () = K_type_pol_hashes := []
-    	 then () = formulas := [] 
-    	 then () = formula_heights := [] 
-         then () = branches := []
-         then () = sigs := []
-         then () = branch_heights := []
-         then () = sig_heights := []
-	 then () = xl_known := []
-	 then () = x_known := []
-	 then () = x_partial := []
-	 in ()
-    then add_real_form(RealForm rf) = int:
-    	 let I = real_form_hash.size()
-	 then i = real_form_hash.match(rf)
-    	 then () = if i = I {haven't seen this real form before}
-	      	   then	let empty = [int]: nullint(#KGB(rf))
-		   	then () = K_type_hashes #:= make_KType_hash();
-		             K_type_pol_hashes #:= make_KTypePol_hash();
-		       	     branches #:= null(0);
-		             sigs #:= null(0);
-		             branch_heights #:= null(0);
-			     sig_heights #:= null(0)
-		   	then () = xl_known #:= empty {null(#KGB(rf))}
-			then () = x_known #:= 0
-			then () = x_partial #:= 0
-			{then () = status_strings #:= []}
-			then () = uhashes #:= make_Param_hash()
-			then () = nuhashes #:= make_Param_hash()
-			then () = phashes #:= make_Param_hash()
-			in ()
-	    	   fi
-	  then () = assert(real_form_hash.size() = #phashes and #phashes = #xl_known
-	       	    				 and #uhashes = #phashes and #nuhashes = #phashes
-	       	    				 and #phashes = #x_known {and #phashes = #status_strings}
-						 and #x_partial = #x_known
-						 and #K_type_hashes = #x_known and #K_type_pol_hashes = #x_known
-						 and #branches = #x_known and #sigs = #x_known
-						 and #sig_heights = #x_known, "big_unitarity_hash damaged")
-	  in i
-    then add_K_type(KType mu) = (int, int): {real form index, K type index}
-   	 let rfnum = add_real_form(mu.real_form)
-	 then KTYPENUM = K_type_hashes[rfnum].size()
-	 then ktypenum = K_type_hashes[rfnum].match(mu)
-	 then () = if ktypenum = KTYPENUM {haven't computed with mu before}
-	     	   then let pol = 1*mu
-	     	       	then m = K_type_pol_hashes[rfnum].match(pol)
-			then () = formulas[rfnum] #:= m
-			then () = formula_heights[rfnum] #:= height(mu)
-		      	then () = branches[rfnum] #:= m
-		       	then () = branch_heights[rfnum] #:= height(mu)
-		       	then () = assert(real_form_hash.size() = #K_type_pol_hashes,"big_unitarity_hash damaged")
-        	       	then () = assert(real_form_hash.size() = #K_type_hashes,"big_unitarity_hash damaged")
-		       	then () = assert(#branches[rfnum] = K_type_hashes[rfnum].size(), "big_unitarity_hash damaged")
-		       	in ()
-		   fi
-	in (rfnum, ktypenum)
-    then add_K_type_formula(KType mu) = (int, int, int): {rfn, ktypen, index(formula)}
-       	 let (rfnum,ktypenum) = add_K_type(mu), h = height(mu)
-       	 then () = if formula_heights[rfnum][ktypenum] != h-1
-       	       	   then let m = K_type_pol_hashes[rfnum].match(K_type_formula(mu))
-		   	then formsrf = formulas[rfnum], formhsrf = formula_heights[rfnum]
-			then () = formsrf[ktypenum] := m
-			then () = formhsrf[ktypenum] :=h-1
-		      	{then () = formulas[rfnum][ktypenum] :=m}
-			{then () formula_heights[rfnum][ktypenum] :=h-1}
-			then () = formulas[rfnum] := formsrf
-			then () = formula_heights[rfnum] := formhsrf
-			in ()
-		   fi
-         then() = assert(K_type_hashes[rfnum].size() = #branches[rfnum] and #branches[rfnum] = #formulas[rfnum]
-       	      		and #branches[rfnum] = #branch_heights[rfnum]
-			and #branches[rfnum] = #formula_heights[rfnum], "branch_hash_table damagedAKTF")
-         in (rfnum, ktypenum, formulas[rfnum][ktypenum])
-    then add_K_type_formula_to_ht(KType mu, int D) = (int,int,int): {rfn, ktypen, index_to_ht(formula)}
-      	 let (rfnum,ktypenum) = add_K_type(mu), h = height(mu)
-       	 then () = assert(D >= h, "too-low height argument for K_type_formula")
-       	 then () = if (formula_heights[rfnum][ktypenum] < D and formula_heights[rfnum][ktypenum] >= h)
-       	       	   then let m = K_type_pol_hashes[rfnum].match(K_type_formula(mu,D))
-		   	then formsrf = formulas[rfnum], formhsrf = formula_heights[rfnum]
-			then () = formsrf[ktypenum] := m
-			then () = formhsrf[ktypenum] := D
-		      	{then () = formulas[rfnum][ktypenum] :=m}
-			{then () formula_heights[rfnum][ktypenum] :=h-1}
-			then () = formulas[rfnum] := formsrf
-			then () = formula_heights[rfnum] := formhsrf
-		      	in ()
-		   fi
-         then() = assert(K_type_hashes[rfnum].size() = #branches[rfnum] and #branches[rfnum] = #formulas[rfnum]
-	 	         and #branches[rfnum] = #branch_heights[rfnum]
-			 and #branches[rfnum] = #formula_heights[rfnum], "branch_hash_table damagedAKTFTH")
-         in (rfnum, ktypenum, formulas[rfnum][ktypenum])
-    then add_K_type_branch(KType mu, int D) = (int, int, int):
-    	 {this time add to height; D should be >= height(mu)}
-   	 let rfnum = add_real_form(mu.real_form)
-	 then KTYPENUM = K_type_hashes[rfnum].size()
-	 then ktypenum = K_type_hashes[rfnum].match(mu)
-	 then () = if ktypenum = KTYPENUM {haven't computed with mu before}
-	     	   then {let start_branch = elapsed_ms()}
-		       	let pol = branch_std(mu,D)
-	     	       	then m = K_type_pol_hashes[rfnum].match(pol)
-		       	{then () = bottom_branch_time +:= elapsed_ms() - start_branch}
-		       	then () = branches[rfnum] #:= m
-		       	then () = branch_heights[rfnum] #:= D
-		       	then () = assert(real_form_hash.size() = #K_type_pol_hashes,"big_unitarity_hash damaged")
-        	       	then () = assert(real_form_hash.size() = #K_type_hashes,"big_unitarity_hash damaged")
-		       	then () = assert(#branches[rfnum] = K_type_hashes[rfnum].size(), "big_unitarity_hash damaged")
-		       	   in ()
-		   else {we've seen mu before}
-		       if branch_heights[rfnum][ktypenum] < D
-		       then let tempbranchhts = branch_heights[rfnum]
-		       	    then tempbranches = branches[rfnum]
-		       	    then start_branch = elapsed_ms()
-		       	    then pol = branch_std(mu, D)
-		       	    {then () = bottom_branch_time +:= elapsed_ms() - start_branch}
-		       	    then m = K_type_pol_hashes[rfnum].match(pol)
-		       	    then () = tempbranches[ktypenum]:=m
-		       	    then () = tempbranchhts[ktypenum] :=  D
-		       	    then () = branch_heights[rfnum] := tempbranchhts
-			    then () = branches[rfnum] := tempbranches
-		       	    in()
-		        fi
-		    fi
-	in (rfnum, ktypenum, branches[rfnum][ktypenum])
-    then add_param_inf(Param p) = (int, int, int): {add a param, full herm form}
-   	let  rfnum = add_real_form(p.real_form)
-	then PNUM = phashes[rfnum].size()
-	then () = p:=herm_center(p)
-	then pnum = phashes[rfnum].match(p)
-	then () = if pnum = PNUM {haven't computed with p before}
-	     	  then let sig = hermitian_form_irreducible(p) {insert computation from good?}
-		       then sig_ind = K_type_pol_hashes[rfnum].match(sig)
-		       then () = sigs[rfnum] #:= sig_ind
-		       then () = sig_heights[rfnum] #:= height(p) - 1
-		       then () = if is_pure(sig)
-		       	       	 then uhashes[rfnum].match(p)
-				 else nuhashes[rfnum].match(p)
-				 fi
-		       then () = assert(real_form_hash.size() = #phashes,"big_unitarity_hash damaged")
-		       then () = assert(real_form_hash.size() = #sig_heights,"big_unitarity_hash damaged")
-		       then () = assert(#sigs[rfnum] = phashes[rfnum].size(), "big_unitarity_hash damaged")
-		       then () = assert(#sig_heights[rfnum] = phashes[rfnum].size(), "big_unitarity_hash damaged")
-		       in ()
-
-		  else {we've seen p before}
-                       if sig_heights[rfnum][pnum] >= height(p)
-                       then let tempsigs = sigs[rfnum], tempsights = sig_heights[rfnum]
-                            then sigD = hermitian_form_irreducible(p)
-			    then () = if is_pure(sigD)
-				      then uhashes[rfnum].match(p)
-				      else nuhashes[rfnum].match(p)
-				      fi
-			    then sigD_ind = K_type_pol_hashes[rfnum].match(sigD)
-			    then () = tempsigs[pnum] := sigD_ind
-                            then () = tempsights[pnum]:= height(p) - 1
-			    then () = sigs[rfnum] := tempsigs
-                            then () = sig_heights[rfnum] := tempsights
-                            in()
-
-                       fi
-		  fi
-	 in (rfnum, pnum, sigs[rfnum][pnum])
-   then add_param(Param p, int D) = (int, int, int): {add a param, form to ht D; assume D >= ht(p)}
-        let  rfnum = add_real_form(p.real_form)
-        then PNUM = phashes[rfnum].size()
-	then () = p:=herm_center(p)
-        then pnum = phashes[rfnum].match(p)
-        then () = if pnum = PNUM {haven't computed with p before}
-                  then let sigD = if low(p,D) {low(p.x,p.lambda,D)}
-     	  			  then let ans =  hermitian_form_irreducible_to_ht(p,D)
-				       then () = if is_pure(ans)
-					     	 then ()
-					     	 else nuhashes[rfnum].match(p)
-						 fi
-					in ans
-     	 			   else let ans = hermitian_form_irreducible(p)
-					then () = D:=height(p)-1
-	       				then () = if is_pure(ans)
-					     	  then uhashes[rfnum].match(p)
-						  else nuhashes[rfnum].match(p)
-						  fi
-	       				in ans
-     	 			   fi
-                       then sigD_ind = K_type_pol_hashes[rfnum].match(sigD)
-		       then () = sigs[rfnum] #:= sigD_ind
-		       then () = sig_heights[rfnum] #:= D
-                       then () = assert(real_form_hash.size() = #phashes,"big_unitarity_hash damaged")
-		       then () = assert(real_form_hash.size() = #sig_heights,"big_unitarity_hash damaged")
-                       then () = assert(#sigs[rfnum] = phashes[rfnum].size(), "big_unitarity_hash damaged")
-                       in ()
-                   else {we've seen p before}
-                       if sig_heights[rfnum][pnum] >= height(p) and sig_heights[rfnum][pnum] < D
-                       then let tempsigs = sigs[rfnum], tempsights = sig_heights[rfnum]
-                            {then start_sig = elapsed_ms()}
-                            then sigD = if low(p,D) {low(p.x,p.lambda,N)}
-     	  			   	then let ans = hermitian_form_irreducible_to_ht(p,D)
-					     then () = if is_pure(ans)
-					     	       then ()
-					     	       else nuhashes[rfnum].match(p)
-						       fi
-					     in ans
-     	 				else let ans = hermitian_form_irreducible(p)
-					     then () = D:=height(p)-1
-					     then () = if is_pure(ans)
-					     	       then uhashes[rfnum].match(p)
-						       else nuhashes[rfnum].match(p)
-						       fi
-	       				     in ans
-					fi
-			    then sigD_ind = K_type_pol_hashes[rfnum].match(sigD)
-			    then () = tempsigs[pnum] := sigD_ind
-                            then () = tempsights[pnum]:=D
-			    then () = sigs[rfnum] := tempsigs
-                            then () = sig_heights[rfnum] := tempsights
-                            in()
-
-                       fi
-                   fi
-         in (rfnum, pnum, sigs[rfnum][pnum])
-    then clearG(RealForm rf) =
-    	 let i = real_form_hash.lookup(rf)
-	 in if i >= 0
-	    then {prints(i);}
-	    	 uhashes[i].clear();
-		 nuhashes[i].clear();
-		 phashes[i].clear();
-		 {status_strings[i]:=[];}
-		 K_type_hashes[i].clear();
-		 K_type_pol_hashes[i].clear();
-		 branches[i] := [];
-       		 sigs[i] := [];
-       		 branch_heights[i] := [];
-       		 sig_heights[i] := [];
-	    	 {prints("i = ",i, ", x_partial = ",x_partial);}
-	    	 x_partial[i] := 0;
-		 xl_known[i] := nullint(#KGB(rf));
-		 x_known[i] := 0
-	    fi
-    in
-    ( (->int): {real_form_size} @int: real_form_hash.size()
-    , ( -> vec): {uhash_sizes} @vec: for uhash in uhashes
-      	   	 	       	     do uhash.size()
-				     od
-    , (RealForm -> int): {uhash_size} (RealForm rf) int:
-     let rfnum = add_real_form(rf)
-     in uhashes[rfnum].size()
-    , ( -> vec): {nuhash_sizes} @vec: for nuhash in nuhashes
-      	   	 		      do nuhash.size()
-				      od
-    , (RealForm -> int): {nuhash_size} (RealForm rf) int:
-     let rfnum = add_real_form(rf)
-     in uhashes[rfnum].size()
-    , ( -> vec): {K_type_size} @vec: for hash in K_type_hashes do hash.size() od
-    , ( -> vec): {K_type_pol_size} @vec: for hash in K_type_pol_hashes do hash.size() od
-    , (KType -> KTypePol): {K_type_formula} (KType mu) KTypePol:
-    begin
-     let (rfnum,,m) = add_K_type_formula(mu)
-     in K_type_pol_hashes[rfnum].index(m)
-    end
-    , ((KType,int) -> KTypePol): {K_type_formula_to_ht} (KType mu, int D) KTypePol:
-    begin
-      let (rfnum,,m) = add_K_type_formula_to_ht(mu,D)
-      in to_ht(K_type_pol_hashes[rfnum].index(m), D)
-    end
-    , ((KType, int) -> KTypePol): {branch_entry} (KType mu, int D) KTypePol:
-     begin
-     	let (rf, ktypenum,m) = add_K_type_branch(mu,D)
-	in regroup(mu.real_form, to_ht(K_type_pol_hashes[rf].index(m), D))
-     end
-
-    , ((KTypePol, int) -> KTypePol): {branch} (KTypePol pol, int D) KTypePol:
-      let terms = [(Split, KType)]: for c@mu in to_ht(pol,D)
-      	  	  	   	    do (c,mu)
-				    od
-      in to_ht( sum(pol.real_form, for (c,mu) in terms
-      	 			   do let (rf,,m) = add_K_type_branch(mu,D)
-				      in K_type_pol_hashes[rf].index(m)
-				   od) , D)
-    , ((Param,int) -> KTypePol): {sig_entry} (Param p, int D) KTypePol:
-     begin
-	let (rf,pnum,sig_ind) = if D < height(p)
-	    		      	then add_param_inf(p)
-				else add_param(p,D)
-				fi
-	in if D < height(p)
-	   then regroup(p.real_form, K_type_pol_hashes[rf].index(sig_ind))
-	   else regroup(p.real_form, to_ht(K_type_pol_hashes[rf].index(sig_ind), D))
-	   fi
-     end
-    , (int, int -> int): {branch_height} (int rf, int ktypenum): branch_heights[rf][ktypenum]
-    , (int, int -> int): {sig_height} (int rf, int pnum): sig_heights[rf][pnum]
-    , ( -> ): {clear} clearBUH
-    , (RealForm -> ): {clearG} (RealForm rf):
-      clearG(rf)
-    , (RealForm -> int): {rf_number} (RealForm rf) int:
-      add_real_form(rf)
-    , (int -> RealForm): {rf_index} (int i) RealForm:
-      real_form_hash.index(i)
-    , (RealForm -> [int]): {xl_known} (RealForm rf) [int]:
-      let i = add_real_form(rf)
-      in xl_known[i]
-    , (RealForm -> int): {x_known} (RealForm rf) int:
-      let i = add_real_form(rf)
-      in x_known[i]
-    , (RealForm -> int): {x_partial} (RealForm rf) int:
-      let i = add_real_form(rf)
-      in x_partial[i]
-    , ((KGBElt,int) -> ): {finish} (KGBElt x, int M):
-      let start = elapsed_ms()
-      then i = add_real_form(x.real_form)
-      then xl_knowni = [int]: xl_known[i]
-      then () = xl_knowni[x.number] := OR(M,xl_knowni[x.number])
-      then () = xl_known[i] := xl_knowni
-      {then () = x_partial[i] := OR(to_bitset([x.number]),x_partial[i])
-      then () = if xl_known[i][x.number] + 1 = to_bitset([#FPP_lambdas(x)])
-      	      	then x_known[i] := OR(to_bitset([x.number]),x_known[i])
-		fi}
-      then () = finish_time+:= elapsed_ms() - start
-      in ()
-    , (KGBElt -> ): {finishx} (KGBElt x):
-      let i = add_real_form(x.real_form)
-      then M = to_bitset([x.number])
-      then () = x_known[i] := OR(M,x_known[i])
-      then () = x_partial[i] := OR(M,x_partial[i])
-      in ()
-    , ((RealForm,int) ->): {finishxmap} (RealForm G, int M):
-      let i = add_real_form(G)
-      then () = x_known[i] := OR(M,x_known[i])
-      in ()
-    , (KGBElt -> ): {partialx}  (KGBElt x):
-      let i = add_real_form(x.real_form)
-      then M = to_bitset([x.number])
-      then () = x_partial[i] := OR(M,x_partial[i])
-      in ()
-    , ((RealForm,[int]) -> ): {finishall} (RealForm rf, [int] Ms):
-      let start = elapsed_ms()
-      then i = add_real_form(rf)
-      then xl_knowni = [int]: xl_known[i]
-      then () = for n:#KGB(rf)
-      	      	do xl_knowni[n] := OR(Ms[n],xl_knowni[n])
-		od
-      then () = xl_known[i] := xl_knowni
-      then v = vec: for M@j in Ms do if M.= then [] else [j] fi od.##
-      then () = x_partial[i] := OR(x_partial[i], to_bitset(v))
-      in finish_time+:= elapsed_ms() - start
-    , (RealForm -> Param_hash): {phash} (RealForm rf) Param_hash:
-      phashes[add_real_form(rf)]
-    , (RealForm -> Param_hash): {uhash} (RealForm rf) Param_hash:
-      uhashes[add_real_form(rf)]
-    , (RealForm -> Param_hash): {nuhash} (RealForm rf) Param_hash:
-      nuhashes[add_real_form(rf)]
-    , (Param -> (int,int)): {long_plookup} (Param p) (int,int):
-      let i = add_real_form(p.real_form)
-      then j = phashes[i].lookup(p)
-      in (i,j)
-    , (Param -> (int,int)): {long_ulookup} (Param p) (int,int):
-      let i = add_real_form(p.real_form)
-      then j = uhashes[i].lookup(p)
-      in (i,j)
-    , (Param -> int): {plookup} (Param p) int:
-       phashes[add_real_form(p.real_form)].lookup(p)
-    , (Param -> int): {ulookup} (Param p) int:
-       uhashes[add_real_form(p.real_form)].lookup(p)
-    , (Param -> int): {nulookup} (Param p) int:
-       nuhashes[add_real_form(p.real_form)].lookup(p)
-    , (Param -> bool): {check} (Param p) bool:
-      let (i,,sigD) = add_param_inf(p)
-      in is_pure(K_type_pol_hashes[i].list()[sigD])
-{
-      let i = add_real_form(p.real_form)
-      {then () = prints("bitmap for ",p.x.number," is ",xl_known[i][p.x.number])}
-      then () = p := herm_center(p)
-      then j = add_param_inf(p)
-      then ju = uhashes[i].lookup(p)
-      in if ju.>= then true
-      	 else let jn = nuhashes[i].lookup(p)
-      	      in if jn.>= then false
-      	      	 elif {now p was not found in either} is_member_bitset(p.x.number, x_known[i])
-	 	 then nuhashes[i].match(p); false
-	 	 elif {now x not completely known} position(p.x, p.lambda).>=
-	 	      and is_member_bitset(position(p.x, p.lambda), xl_known[i][p.x.number])	 then false
-	 	 else let sig = add_param
-		 chk = is_unitary(p)
-	      	      then () = if chk
-	      		      	then uhashes[i].match(p)
-	      			else if nuhash_flag
-			     	     then nuhashes[i].match(p)
-			     	     fi
-				fi
-	      	      in chk
-	 	 fi
-	 fi
-}
-    , (Param -> int): {umatch} (Param p):
-      let i = add_real_form(p.real_form)
-      in uhashes[i].match(p)
-    , (Param -> int): {numatch} (Param p):
-      let i = add_real_form(p.real_form)
-      in if nuhash_flag
-      	 then nuhashes[i].match(p)
-	 else -1
-	 fi
-    , ((Param,int) -> int): {long_umatch} (Param p, int i):
-      uhashes[i].match(p)
-    , ((Param,int) -> int): {long_match} (Param p, int i):
-      uhashes[i].match(p)
-    , ( -> ): {write} @void:
-    let rf_list = real_form_hash.list()
-    in for rf@i in rf_list
-       do let Gname = "G"+to_string(i)
-	  then listname = Gname+"_list"
-	  then intlistname = Gname+"_XLK"
-	  then plist = uhashes[i].list()
-	  {then bitmapintlist = xl_known[i]}
-	  then donemap = x_known[i]
-	  then done_list = [int]:[]
-	  then () = if write_x_flag then done_list :=
-	        for x in KGB(rf)
-      	   	       do if is_member_bitset(x.number, donemap)
-			  then [x.number]
-			  else []
-			  fi
-		       od.##
-		 fi
-	  in write_real_form(rf,Gname);
-	     prints("set j = big_unitary_hash.rf_number(",Gname,")");
-	     for p in plist
-	     do let xnum = p.x.number
-	     	in prints("void: big_unitary_hash.long_match(parameter(Gname,",xnum,",",p.lambda,",",p.nu,"),j)")
-	     od;
-	     if write_x_flag
-	     then for xnum in done_list
-	      	  do prints("void: big_unitary_hash.finishx(KGB(Gname)[",xnum,"])")
-	      	  od
-	     else prints("void: big_unitary_hash.finishxmap(Gname,",donemap,")")
-	     fi
-	     {prints("set ",intlistname,"=[int]:[]");
-	     write_append(bitmapintlist,intlistname);
-	     prints("big_unitary_hash.finishall(",Gname,",",intlistname,")")}
-	od
-    , (RealForm -> ): {writeG} (RealForm G):
-      let i = add_real_form(G)
-      then Gname = "G_temp"
-      then listname = Gname+"_list"
-      then intlistname = Gname+"_XLK"
-      then plist = uhashes[i].list()
-      {then bitmapintlist = xl_known[i]}
-      then donemap = x_known[i]
-      then done_list = [int]:[]
-      then () = if write_x_flag then done_list :=
-      	      	       for x in KGB(G)
-      	   	       do if is_member_bitset(x.number, donemap)
-			  then [x.number]
-			  else []
-			  fi
-		       od.##
-		 fi
-      in write_real_form(G,Gname);
-      	 prints("set j = big_unitary_hash.rf_number(",Gname,")"); 
-	 for p in plist
-	 do let xnum = p.x.number
-	    in prints("void:  big_unitary_hash.long_match(parameter(G_temp,",xnum,",",p.lambda,",",p.nu,"),j)")
-	 od;
-	 {prints("void: big_unitary_hash.finishall(",Gname,",",xl_known[i],")");} {this has length #KGB(G), which is a lot; not worth including}
-	 if write_x_flag
-	 then for xnum in done_list
-	      do prints("void: big_unitary_hash.finishx(KGB(G_temp)[",xnum,"])")
-	      od
-	 else prints("void: big_unitary_hash.finishxmap(G_temp,",donemap,")")
-	 fi
-    , ((RealForm, int, int) -> ): {writeGrange} (RealForm G, int low, int high):
-      let i = add_real_form(G)
-      then Gname = "G_temp"
-      then listname = Gname+"_list_"+to_string(low)+"_"+to_string(high)
-      then intlistname = Gname+"_XLK_"+to_string(low)+"_"+to_string(high)
-      then longlist = uhashes[i].list()
-      then plist = for p in longlist
-      	   	   do if p.x.number >= low and p.x.number < high
-		      then [p]
-		      else []
-		      fi
-		   od.##
-      then donemap = x_known[i]
-      then donerangemap = AND(donemap, 2^high - 2^low)
-      then done_list = [int]: []
-      then () = if write_x_flag then done_list :=
-      	      	       for x in KGB(G)[low:high]
-      	   	       do if is_member_bitset(x.number, donemap)
-			  then [x.number]
-			  else []
-			  fi
-		       od.##
-		fi
-      	   {these are the x's being written for which list is complete}
-      in write_real_form(G,Gname);
-      	 prints("set j = big_unitary_hash.rf_number(",Gname,")"); {, ptemp = GL(1,R).trivial");}
-	 for p in plist
-	 do let xnum = p.x.number
-	    in prints("void: big_unitary_hash.long_match(parameter(G_temp,",xnum,",",p.lambda,",",p.nu,"),j)")
-	 od;
-	 if write_x_flag
-	 then for xnum in done_list
-	      do prints("void: big_unitary_hash.finishx(KGB(G_temp)[",xnum,"])")
-	      od
-	 else prints("void: big_unitary_hash.finishxmap(G_temp,",donerangemap,")")
-	 fi
-    , ((KGBElt,ratvec) -> ): {writexlam} (KGBElt x, ratvec lambda):
-      let G = x.real_form
-      then xnum = x.number
-      then i = add_real_form(G)
-      then Gname = "G_temp"
-      then listname = Gname+"_list"
-      then longlist = uhashes[i].list()
-      then plist = for p in longlist
-      	   	   do if p.x = x and p.lambda = lambda
-		      then [p]
-		      else []
-		      fi
-		   od.##
-      then N = to_bitset([position(x,lambda)])
-      in write_real_form(G,Gname);
-         prints("set j = big_unitary_hash.rf_number(",Gname,")");
-	 for p in plist
-	 do prints("void: big_unitary_hash.long_match(parameter(G_temp,",xnum,",",lambda,",",p.nu,"),j)")
-	 od;
-	 if is_member_bitset(position(x,lambda), xl_known[i][xnum])
-	 then prints("big_unitary_hash.finish(KGB(G_temp)[",xnum,"],",to_string(N),")")
-	 fi
-    , ((KGBElt,ratvec) -> ): {writexlam_no_G} (KGBElt x, ratvec lambda):
-      let G = x.real_form
-      then xnum = x.number
-      then i = add_real_form(G)
-      then Gname = "G_temp"
-      then listname = Gname+"_list"
-      then longlist = uhashes[i].list()
-      then plist = for p in longlist
-      	   	   do if p.x = x and p.lambda = lambda
-		      then [p]
-		      else []
-		      fi
-		   od.##
-      then N = to_bitset([position(x,lambda)])
-      in {write_real_form(G,Gname);}
-         prints("set j = big_unitary_hash.rf_number(",Gname,")");
-	 for p in plist
-	 do prints("void: big_unitary_hash.long_match(parameter(G_temp,",xnum,",",lambda,",",p.nu,"),j)")
-	 od;
-	 if is_member_bitset(position(x,lambda), xl_known[i][xnum])
-	 then prints("big_unitary_hash.finish(KGB(G_temp)[",xnum,"],",to_string(N),")")
-	 fi
-    )
-)
-
-set big_unitary_hash = make_big_unitary_hash()
-}
 
 {. The next family of functions all need simple derived group. Always
 |vd.list| should be ALL vertices in the FPP; Lvd.list will be all infl
