@@ -2066,7 +2066,7 @@ type_p make_function_type(type_p a,type_p r);
 type_p make_row_type(type_p c);
 type_p make_tuple_type(raw_type_list l);
 type_p make_union_type(raw_type_list l);
-type_p make_tabled_type(id_type nr);
+type_p make_tabled_type(id_type nr,raw_type_list l);
 @)
 raw_type_list make_type_singleton(type_p raw);
 raw_type_list make_type_list(raw_type_list l,type_p t);
@@ -2162,11 +2162,10 @@ type_p make_union_type(raw_type_list l)
     return mk_union_type(std::move(result)).release();
 }
 @)
-type_p make_tabled_type(id_type nr)
-@/{
-// for now store identifier |nr| in |tabled_variant| field, until type equivalencing
-  return new type_expr(type_expr::user_type(nr,type_list()));
-  }
+type_p make_tabled_type(id_type id,raw_type_list l)
+{ type_list args(l); args.reverse();
+  return new type_expr(type_expr::user_type(id,std::move(args)));
+}
 
 @)
 raw_type_list make_type_singleton(type_p t)

@@ -162,6 +162,7 @@ public:
   const type* type_of(id_type id,bool& is_const) const;
   // pure lookup, may return |nullptr|
   const type* type_of(id_type id) const; // same without asking for |const|
+  type_expr expand(const type_expr& tp) const;
 
   shared_value value_of(id_type id) const; // look up
 @)
@@ -273,6 +274,55 @@ shared_share Id_table::address_of(id_type id)
   }
 @.Identifier without table entry@>
   return p->second.get_value();
+}
+
+@ The method |Id_table::expand| transforms a |type_expr| by looking up type
+identifiers in any |tabled| components, checking the number of type arguments
+against its arity, recursively transforming those arguments, and finally calling
+|simple_subst| to obtain the expanded type. At its heart, it is yet another
+recursive type copying function with substitution with a transformation for the
+|tabled| variant.
+
+@< Global function def... @>=
+type_expr Id_table::expand(const type_expr& tp) const
+{ switch(tp.raw_kind())
+  { case row_type: return type_expr::row(expand(tp.component_type()));
+    case function_type: return
+      type_expr::function(expand(tp.func()->arg_type),
+                          expand(tp.func()->result_type));
+    case tuple_type:
+    case union_type:
+    { dressed_type_list aux;
+      for (wtl_const_iterator it(tp.tuple()); not it.at_end(); ++it)
+        aux.push_back(expand(*it));
+      return type_expr::tuple_or_union(tp.raw_kind(),aux.undress());
+    }
+    case tabled: // this is where something happens
+    { const id_type id = tp.tabled_nr();
+      const type& poly_type = *global_id_table->type_of(id);
+      unsigned int len=length(tp.tabled_args()), degree = poly_type.degree();
+      if (len!=degree)
+        @< Throw a |program_error| signalling an incorrectly applied type symbol
+           or type constructor @>
+      std::vector<type_expr> arg_vec; arg_vec.reserve(len);
+      for (wtl_const_iterator it(tp.tabled_args()); not it.at_end(); ++it)
+        arg_vec.push_back(expand(*it));
+      return simple_subst(poly_type.unwrap(),arg_vec);
+    }
+  default: return tp.copy(); // undetermined should not occur
+  }
+}
+
+@ Since this code is to be executed during type analysis, the error thrown here
+will be caught there. We cannot however provide an location here.
+
+@< Throw a |program_error| signalling an incorrectly applied type symbol or
+   type constructor @>=
+{ std::ostringstream o;
+  o << "Type constructor '"
+    << main_hash_table->name_of(id) @| << "' called with " << len
+    << " type arguments" << ", expected " << degree;
+  throw program_error(o.str());
 }
 
 @ We provide a |print| member that shows the contents of the entire table.
@@ -1231,7 +1281,7 @@ message afterwards.
 @< Global function definitions @>=
 void global_declare_identifier(id_type id, type_p t)
 { type_ptr saf(t); // ensure clean-up
-  type_expr& tp=*t;
+  type_expr tp=global_id_table->expand(*t);
   @< Emit indentation corresponding to the input level to |*output_stream| @>
   *output_stream << "Declaring identifier '" << main_hash_table->name_of(id) @|
             << "': " << tp << std::endl;
@@ -1326,7 +1376,7 @@ straightforward.
 @< Global function definitions @>=
 void global_forget_overload(id_type id, type_p t)
 { type_ptr saf(t); // ensure clean-up
-  const type_expr& tp=*t;
+  const type_expr tp=global_id_table->expand(*t);
   const bool removed = global_overload_table->remove(id,tp);
   *output_stream << "Definition of '" << main_hash_table->name_of(id)
             << '@@' << tp @|
@@ -1364,7 +1414,7 @@ void type_define_identifier
   (id_type id, type_p t, unsigned int deg, raw_id_pat ip,
   const source_location& loc)
 { type_ptr saf(t); id_pat field_pat(ip); // ensure clean-up
-  type tp= type::constructor(std::move(*t),deg);
+  type tp= type::constructor(global_id_table->expand(*t),deg);
   const auto& fields = field_pat.sublist;
   const auto n=length(fields);
 @)
@@ -1600,45 +1650,37 @@ accepted.
 
 @ In order to be able to process a set of recursive type definitions where a
 defined type can be referenced before its defining equation is even scanned, the
-scanner and parser play some small tricks. The scanner simply processes all
-identifiers as type identifiers while a \&{set\_type} command is being read. The
-parser also enters a distinct piece of syntax for the right hand side of any
-equation, which closely resembles the productions for a type expression, but (1)
-does not allow a single type identifier at the top level (this makes it
-impossible to recursively define a type as itself), and (2) does not look up
-type identifiers in |global_id_table|, but simply stores the identifier code as
-if it were a type number. The trick (2) avoids premature looking up the
-identifier, without having to introduce a special variant of |type_expr| for
-this transient purpose of storing unprocessed identifier codes (a slightly more
-honest solution that would still avoid modification of |type_expr| would be to
-define, and use here, a type derived from it, whose sole purpose is changing the
-interpretation of |type_nr()| in the |tabled| variant in this way). In any case
-we must remember that not looking up type identifiers in |global_id_table| has
-also affected identifiers that were defined as types there, and could have been
-looked up safely; for them the looking up still needs to be done.
+scanner and parser play together as follows. In a \&{set\_type} command followed
+by a bracketed list of definitions (the kind processed by
+|process_type_definitions|), the scanner tags identifiers as type identifiers,
+even when |global_id_table->is_defined_type| does not hold, so that the ones
+being defined can be used as types immediately. (It does honour
+|global_id_table->is_type_constructor|, so that previously defined type
+constructors require and combine with an argument type list.) The parser records
+uses of type identifiers and type constructors using the |tabled| variant of
+|type_expr|, but the |tabled_nr()| does not refer to |type_expr::type_map|, but
+is simply the identifier code. This used to be a trick only used in the right
+hand side of type definitions, but is now the case throughout: although the
+scanner uses |global_id_table| to classify identifiers, the parser does not look
+up type definitions there. As a consequence we need transform any types recorded
+by the parser by |global_id_table->expand| before using them, or give them a
+different special treatment as is done here.
 
-Once the type identifiers being defined are recorded in |translate| and mapped
-to their position, we come to the code below to do the postponed looking up,
-which we do by replacing |type_expr| components in the right hand sides of
-|defs|. For the type identifiers of the current definition this means just
-replacing the |table_variant.nr| field, but since that is |private| we just
-replace the whole |type_expr|; this is also the case for older type identifiers,
-for which the replacement value comes from |global_id_table| by applying |copy|
-to the stored type. It is an error that we do consider type constructors with
-arguments here (already the grammatical production for |typedef_unit| does not
-allow it).
-
-Traversing type expressions is best done recursively, but since we are getting a
-bit bored by defining recursive functions for each little task, we do this one
-iteratively, manually maintaining a stack of types remaining to be visited.
+Below we replace types by similar types, which differ just in the case of tabled
+type components, which we realise by in-place substitution (this is possible
+since we own the type expressions in |defs|). Traversing type expressions is
+naturally done recursively, but we are getting a bit bored by defining a
+recursive function for every little task, so we do this one iteratively instead.
+We do this with the aid of a manually maintained stack of pointers to types
+remaining to be visited.
 
 @< Replace in type expressions for |defs|... @>=
 { containers::stack<type_p> work;
   for (auto it=defs.begin(); not defs.at_end(it); ++it)
     work.push(it->tp);
   while (not work.empty())
-  { auto& t = *work.top();
-    work.pop(); // copy pointer as non-owned reference, then drop pointer
+  { type_expr& t = *work.top();
+    work.pop(); // copy pointer as non-owned reference, then pop pointer
     switch(t.raw_kind())
     { default: break;
     case function_type:
@@ -1653,23 +1695,32 @@ iteratively, manually maintaining a stack of types remaining to be visited.
       for (wtl_iterator it(t.tuple()); not it.at_end(); ++it)
         work.push(&*it);
     break;
-    case tabled: // this case is what it is all about
-      { id_type id = t.tabled_nr();
- // narrows the integer, but it was really an identifier code
-        if (translate[id]!=absent)
-          t = type_expr::user_type(translate[id],type_list());
-            // replace by future tabled reference
-        else if (global_id_table->is_defined_type(id))
-          t = global_id_table->type_of(id)->bake();
-        else
-        { std::ostringstream o;
-          o << "Type identifier '" << main_hash_table->name_of(id) @|
-            << "' does not refer to any type";
-          throw program_error(o.str());
-        }
-      }
+    case tabled:
+      @< If |t.tabled_nr()| is recorded in |translate| use that to replace it,
+         or else expand an existing user type definition; if there is none
+         |throw| a |program_error| @>
     break;
     }
+  }
+}
+
+@ We replace tabled types whose identifier were among those being defined in
+|defs| by a new tabled type with |tabled_nr()| obtained from |translate|. For
+other cases of tabled types, we apply |global_id_table->expand| to interpret
+previously defined types and type constructor applications.
+
+@< If |t.tabled_nr()| is recorded in |translate| use that to replace it... @>=
+{ id_type id = t.tabled_nr();
+  if (translate[id]!=absent)
+    // then type defined here: replace by future tabled reference
+    t = type_expr::user_type(translate[id],type_list());
+  else if (global_id_table->is_defined_type(id))
+    t = global_id_table->expand(t);
+  else
+  { std::ostringstream o;
+    o << "Identifier '" << main_hash_table->name_of(id) @|
+      << "' does not refer to any type";
+    throw program_error(o.str());
   }
 }
 

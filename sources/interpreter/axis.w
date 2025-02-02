@@ -3440,8 +3440,8 @@ checking), and ignore the return type.
 case lambda_expr:
 { const lambda_node& fun=*e.lambda_variant;
   const id_pat& pat=fun.pattern;
-  const type_expr& par_tp = fun.parameter_type;
-    // argument type specified in |fun|
+  const type_expr par_tp = // argument type specified in |fun|
+    global_id_table->expand(fun.parameter_type);
   if (not par_tp.can_specialise(pattern_type(pat)))
     throw expr_error
       (e,"Specified parameter type does not match identifier pattern");
@@ -3484,12 +3484,13 @@ should be no such changes since |fun.result_type| is already fully specialised.
 case rec_lambda_expr:
 { const rec_lambda_node& fun=*e.rec_lambda_variant;
   const id_pat& pat=fun.pattern;
-  const type_expr& par_tp = fun.parameter_type;
-    // argument type specified in |fun|
+  const type_expr par_tp =
+    global_id_table->expand(fun.parameter_type);
+  type_expr f_type = type_expr::function @|
+    (par_tp.copy(),global_id_table->expand(fun.result_type));
   if (not par_tp.can_specialise(pattern_type(pat)))
     throw expr_error
       (e,"Specified parameter type does not match identifier pattern");
-  type_expr f_type=type_expr::function(par_tp.copy(),fun.result_type.copy());
   if ( tp!=void_type and not tp.specialise(f_type))
       @/throw type_error(e, std::move(f_type), tp.copy());
 @)
@@ -7076,10 +7077,11 @@ if it is exported from that scope.
 @< Cases for type-checking and converting... @>=
 case cast_expr:
 { cast_node& c=*e.cast_variant;
-  if (tp.specialise(c.dst_tp)) // see if we can do without coercion
+  const type_expr cast_tp = global_id_table->expand(c.dst_tp);
+  if (tp.specialise(cast_tp)) // see if we can do without coercion
     return convert_expr(c.exp,fc,tp); // in which case use now specialised |tp|
-  expression_ptr p = convert_expr_strongly(c.exp,fc,c.dst_tp);
-  // otherwise use |c.dst_tp|
+  expression_ptr p = convert_expr_strongly(c.exp,fc,cast_tp);
+  // otherwise use |cast_tp|
   return conform_types(c.dst_tp,tp,std::move(p),e);
 }
 
@@ -7128,7 +7130,7 @@ and we pas to the second try, which uses |overload_table::variants|.
 @< Cases for type-checking and converting... @>=
 case op_cast_expr:
 { const op_cast& c=e.op_cast_variant;
-  const type_expr& c_type = c->type;
+  const type_expr c_type = global_id_table->expand(c->arg_type);
   std::ostringstream o; // prepare name for value, and for error message
   o << main_hash_table->name_of(c->oper) << '@@' << c_type;
   expression_ptr result;
