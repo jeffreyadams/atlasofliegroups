@@ -842,17 +842,45 @@ union_specs: type_field '|' type_field
 	  }
 ;
 
-type_field : type IDENT { $$.type_pt=$1; $$.ip.kind=0x1; $$.ip.name=$2; }
+type_field
+	: type IDENT { $$.type_pt=$1; $$.ip.kind=0x1; $$.ip.name=$2; }
 	| type '.' { $$.type_pt=$1; $$.ip.kind=0x0; }
 ;
 
 type	: PRIMTYPE	{ $$=make_prim_type($1); }
-	| TYPE_ID	{ $$ = expand_type_symbol($1); }
+	| TYPE_ID	{ $$ = make_tabled_type($1,nullptr); }
 	| TYPE_CONSTR '<' type '>'
-	  { $$=expand_type_constructor($1,make_type_singleton($3)); }
-	| TYPE_CONSTR '<' type_list '>' { $$=expand_type_constructor($1,$3); }
+	  { $$=make_tabled_type($1,make_type_singleton($3)); }
+	| TYPE_CONSTR '<' type_list '>' { $$=make_tabled_type($1,$3); }
 	| closed_type
 	| TYPE_VAR { $$=make_type_variable($1); }
+;
+
+type_list
+	: type ',' type  { $$=make_type_list(make_type_singleton($1),$3); }
+	| type_list ',' type { $$=make_type_list($1,$3); }
+;
+
+closed_type
+	: '(' union_list ')'	{ $$=make_union_type($2); }
+	| '(' union_list_opt ARROW union_list_opt ')'
+	  { $$=make_function_type(make_union_type($2),make_union_type($4)); }
+	| '[' union_list ']'	{ $$=make_row_type(make_union_type($2)); }
+;
+
+union_list_opt
+	:   { $$=make_type_singleton(make_tuple_type(nullptr)); }
+	| union_list
+;
+
+union_list
+	: type { $$ = make_type_singleton($1); }
+	| type_list { $$ = make_type_singleton(make_tuple_type($1)); }
+	| union_list_opt '|'
+	  { $$ = make_type_list ($1, make_tuple_type(nullptr)); }
+	| union_list_opt '|' type { $$ = make_type_list($1,$3); }
+	| union_list_opt '|' type_list
+	  { $$ = make_type_list($1,make_tuple_type($3)); }
 ;
 
 typevar_list : id_list
@@ -871,30 +899,6 @@ id_list : IDENT
 	    aux.kind=0x1; aux.name=$3;
 	    $$=make_pattern_node($1,aux);
 	  }
-;
-
-closed_type:
-	  '(' union_list ')'	{ $$=make_union_type($2); }
-	| '(' union_list_opt ARROW union_list_opt ')'
-	  { $$=make_function_type(make_union_type($2),make_union_type($4)); }
-	| '[' union_list ']'	{ $$=make_row_type(make_union_type($2)); }
-;
-
-union_list_opt :   { $$=make_type_singleton(make_tuple_type(nullptr)); }
-	| union_list
-;
-
-union_list : type { $$ = make_type_singleton($1); }
-	| type_list { $$ = make_type_singleton(make_tuple_type($1)); }
-	| union_list_opt '|'
-	  { $$ = make_type_list ($1, make_tuple_type(nullptr)); }
-	| union_list_opt '|' type { $$ = make_type_list($1,$3); }
-	| union_list_opt '|' type_list
-	  { $$ = make_type_list($1,make_tuple_type($3)); }
-;
-
-type_list: type ',' type  { $$=make_type_list(make_type_singleton($1),$3); }
-	| type_list ',' type { $$=make_type_list($1,$3); }
 ;
 
 type_equations : type_equation
@@ -946,13 +950,17 @@ typedef_composite: typedef_units // tuple type with at least 2 components
 	  { $$ = make_type_list($1,make_tuple_type($3)); }
 ;
 
-typedef_units :
-	  typedef_unit ',' typedef_unit
+typedef_units
+	: typedef_unit ',' typedef_unit
 	  { $$=make_type_list(make_type_singleton($1),$3); }
 	| typedef_units ',' typedef_unit { $$=make_type_list($1,$3); }
 ;
 
-typedef_unit : TYPE_ID { $$=make_tabled_type($1); }
+typedef_unit
+	: TYPE_ID { $$=make_tabled_type($1,nullptr); }
+	| TYPE_CONSTR '<' type '>'
+	  { $$=make_tabled_type($1,make_type_singleton($3)); }
+	| TYPE_CONSTR '<' type_list '>' { $$=make_tabled_type($1,$3); }
 	| typedef_type {$$=$1.type_pt;}
 	| '(' typedef_unit ')' { $$=$2; }
 ;
