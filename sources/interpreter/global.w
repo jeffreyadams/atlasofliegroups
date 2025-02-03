@@ -1650,12 +1650,12 @@ accepted.
 
 @ In order to be able to process a set of recursive type definitions where a
 defined type can be referenced before its defining equation is even scanned, the
-scanner and parser play together as follows. In a \&{set\_type} command followed
-by a bracketed list of definitions (the kind processed by
+scanner and parser play together as follows. Within a \&{set\_type} command
+followed by a bracketed list of definitions (the kind processed by
 |process_type_definitions|), the scanner tags identifiers as type identifiers,
 even when |global_id_table->is_defined_type| does not hold, so that the ones
-being defined can be used as types immediately. (It does honour
-|global_id_table->is_type_constructor|, so that previously defined type
+being defined can be parsed as types immediately. (It does on the other hand
+honour |global_id_table->is_type_constructor|, so that previously defined type
 constructors require and combine with an argument type list.) The parser records
 uses of type identifiers and type constructors using the |tabled| variant of
 |type_expr|, but the |tabled_nr()| does not refer to |type_expr::type_map|, but
@@ -1667,19 +1667,19 @@ by the parser by |global_id_table->expand| before using them, or give them a
 different special treatment as is done here.
 
 Below we replace types by similar types, which differ just in the case of tabled
-type components, which we realise by in-place substitution (this is possible
-since we own the type expressions in |defs|). Traversing type expressions is
-naturally done recursively, but we are getting a bit bored by defining a
-recursive function for every little task, so we do this one iteratively instead.
-We do this with the aid of a manually maintained stack of pointers to types
-remaining to be visited.
+type components. We realise this replacement by in-place substitution (this is
+possible since we own the type expressions in |defs|). Traversing type
+expressions is naturally done recursively, but we are getting a bit bored by
+defining a recursive function for every little task, so we do this one
+iteratively instead. We do this with the aid of a manually maintained queue of
+pointers to types remaining to be visited (a stack would have done equally well).
 
 @< Replace in type expressions for |defs|... @>=
-{ containers::stack<type_p> work;
+{ containers::queue<type_p> work;
   for (auto it=defs.begin(); not defs.at_end(it); ++it)
     work.push(it->tp);
   while (not work.empty())
-  { type_expr& t = *work.top();
+  { type_expr& t = *work.front();
     work.pop(); // copy pointer as non-owned reference, then pop pointer
     switch(t.raw_kind())
     { default: break;
