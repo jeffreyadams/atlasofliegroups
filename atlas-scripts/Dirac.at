@@ -8,14 +8,203 @@
 <K_types.at { for |branch_irr| }
 <hash.at {for |make_KType_hash| }
 
-
-
 {whether to use the faster/less powerful easy versions}
 set Dirac_easy_flag = true
 
+{how deep into {easy} best_Dirac_bound one ought to go. Setting to 1 means only LKT, ordinary Dirac.}
+set Dirac_best_steps = int: 2 {3 slows E6_s from about 160 secs to 360 secs on laptop}
+
+set_type
+[Dirac_easy_hash_table =
+(  ( -> int) real_form_size {number of real forms considered}
+   , ( -> vec) K_type_sizes {number of K_types for each real form}
+   , ( -> ) clear
+   , (KType -> ratvec) easy_muPRV_remember {highest weight of a PRV comp of mu\otimes spin,
+     	       	       			   of minimal highest weight}
+   , (KType -> ratvec) easyDiracIC {estimated infl char from Dirac}
+   , (KType -> rat) easyDiracBD {for Dirac inequality}
+   , (KType -> ([KType], [int], [rat])) easy_best_Dirac_bound {possible improvements of Dirac over LKT}
+   , ( -> (KType_hash,[ratvec],[rat], [[int]])) test
+)
+]
+
+
+set make_Dirac_easy_hash() = Dirac_easy_hash_table:
+(  let real_form_hash = make_RealForm_hash()
+   then Qs = [(ratvec -> rat)]:[] {for each G, quadratic invariant form on X^*}
+   then K0s = [RealForm]: [] {for each G, id comp of maximal compact}
+   then Ms = [mat]: [] {for each G, projection to K matrix}
+   then Mrts = [ratmat]: [] {for each G, right inverse of M}
+   then muhashes = [KType_hash]:[] {for each G, list of mu's}
+   then muPRVs = [[ratvec]]:[] {for each G, list of one for each mu}
+   	       	 	       {now made G-dominant; could keep list of K~ weights??}
+   then DiracBDs = [[rat]]:[] {for each G, list of one for each mu}
+   then muss = [[[int]]]:[] {for each G and mu, list of indices into muhash for
+   	       		   easy_best_Dirac_bd}
+   then clear() = void:
+   	real_form_hash.clear(); Qs:=[]; muhashes:=[]; muPRVs :=[]; DiracBDs :=[]; muss :=[]
+   then add_real_form(RealForm rf) = int:
+    	let I = real_form_hash.size()
+	then i = real_form_hash.match(rf)
+    	then () = if i = I {haven't seen this real form before}
+	      	  then let f = (ratvec -> rat): (ratvec v) rat:
+		   	       let B = invariant_form(rf)
+			       in B(v,v)
+		       then () = Qs #:= f
+		  {let () = Qs #:= (ratvec -> rat): (ratvec v) rat:
+ 		       	      	let B = invariant_form(rf)
+				in B(v,v)}
+		       then () = K0s #:= K_0(rf)
+		       then () = Ms #:= projection_to_K_matrix(rf)
+		       then () = Mrts #:=  ((1+rf.distinguished_involution)*right_inverse(Ms[I]))/2
+		       	    then () = muhashes #:=make_KType_hash()
+		       	    then () = muPRVs #:= []
+			    then () = DiracBDs #:= []
+			    then () = muss #:= []
+			    then () = assert(real_form_hash.size() = #Qs and #Qs = #muhashes
+	     	  	    	      and #Qs = #muPRVs and #Qs = #DiracBDs and #Qs = #muss
+				      and #Ms = #Qs and #Mrts = #Qs, "Dirac_easy_hash damaged")
+			    in ()
+		   fi
+	in i
+    then add_K_type(KType mu) = (int, int): {real form index, K type index}
+   	 let rfnum = add_real_form(mu.real_form)
+	 then KTYPENUM = muhashes[rfnum].size()
+	 then ktypenum = muhashes[rfnum].match(mu)
+	 then () = if ktypenum = KTYPENUM {haven't computed with mu before}
+	     	   then let newmprv = ratvec:
+		   	    let G = real_form_hash.index(rfnum)
+			    then x0 = KGB(G,0)
+			    then wt0 = highest_weights(mu)[0].mu, rhoc = rho_c(x0), rho = G.rho
+			    {DANGER: this wt0 need not be delta-fixed!}
+			    then M = Ms[rfnum], Mrt = Mrts[rfnum], K0 = K0s[rfnum]
+		      	    then (w,wt1) = from_dominant(G,Mrt*M*wt0+rhoc)
+			    	 {wt1 is dominant, w*wt1 = wt0+rhoc}
+		      	    in dominant(G, Mrt*dominant(K0, M*(wt0 - w*rho + rhoc)) + rhoc)
+		   	then() = muPRVs[rfnum] #:= newmprv
+		   	    {let x0 = KGB(G,0)
+			    then wt0 = highest_weights(mu,x0)[0].mu, rhoc = rho_c(x0), rho = G.rho
+		      	    then (w,wt1) = from_dominant(G,wt0+rhoc) {wt1 is dominant, w*wt1 = wt0+rhoc}
+		      	    in dominant(G, Mrt*dominant(K0, M*(wt0 - inverse(w)*(rho - rhoc))) + rhoc)}
+		         then () = DiracBDs[rfnum] #:= Qs[rfnum](newmprv)
+			 then () = muss[rfnum] #:= null(0)
+			 then () = assert(#DiracBDs[rfnum] = muhashes[rfnum].size()
+	     	  	    	      and #muPRVs[rfnum] = #DiracBDs[rfnum]
+				      and #muss[rfnum] = #DiracBDs[rfnum], "Dirac_easy_hash damaged in akt")
+			 in ()
+		    fi
+	in (rfnum, ktypenum)
+    then add_muss(KType mu) = (int,int): {real form index, K type index}
+       	 let (rfnum,ktypenum) = add_K_type(mu)
+	 {then () = prints("#K-types for rf is ",muhashes[rfnum].size(),", #muss = ",#muss[rfnum])}
+	 then () = if muss[rfnum][ktypenum].=
+	      	   then let G = mu.real_form
+	      	   	then delta = G.distinguished_involution
+ 		   	then newhts = [int]: [height(mu)], newbds = [rat]: [DiracBDs[rfnum][ktypenum]],
+		   	     newmunums = [int]: [ktypenum]
+		   	then p0 = parameter(mu), M = Ms[rfnum], Mrt = Mrts[rfnum]
+		   	then (Q,) = theta_stable_quasi_data(p0)
+    		   	then L = Q.Levi
+    		   	then x0L = KGB(L,0), rhoucheck = rho_check(G) - rho_check(L)
+    		   	then x0G = embed_KGB(x0L,G)
+    		   	then KG = K_0(x0G), rhoc = rho_c(x0G)
+    		   	then shifters = [vec]: []
+		   	then () = for beta@j in G.posroots
+    	      	      	     ~do if (rhoucheck*beta).=
+	      	 	      	 then ()
+		 	      	 elif status(beta,x0G)=3
+	      	 	      	 then shifters#:=beta
+	    	 	      	 elif status(beta,x0G) = 4 and root_index(G,delta*beta) > j
+	    	 	      	 then shifters#:=beta
+	    	 	      	 fi
+	      		      od
+    		  	then () = for alpha@i in L.posroots
+    	      	      	    ~do if status(alpha,x0G)=3
+	      	  	      	then shifters##:=[alpha,-alpha]
+	     	  	      	elif status(alpha,x0G) = 4 and root_index(L,delta*alpha) > i
+	     	  	      	then shifters##:=[alpha,-alpha]
+	     	  	      	fi
+	      		     od
+			then testers = for alpha in shifters
+			     	       do Mrt*M*coroot(G,alpha)
+				       od
+    	     {now any K-type highest weight of p0 is mu + sum of shifters}
+    	     	  then wt0 = highest_weight(muhashes[rfnum].index(newmunums[0]),x0G).mu, j0 = int:-1
+		  {run over only alpha increasing || mu+2rhoc || ?}
+		  {(wt0 + 2rhoc)*alpha^vee > 0}
+    		  then () = while #newhts <= Dirac_best_steps
+		       	    	  and (j0:= first(for alpha@i in shifters
+    	       	       	    	      	    do @bool:
+				     	    if not testers[i]*(wt0+2*rhoc) > -1
+				     	    then false
+				     	    elif not (is_dominant(KG, M*(wt0 + alpha)))
+				     	    then false
+				     	    else let testmu = K_type(K_highest_weight_from_K0_weight(
+					    	 x0G,M*(wt0 + alpha)))
+					     	 in let (,testknum) = add_K_type(testmu)
+					     	    then testbd = DiracBDs[rfnum][testknum]
+						    in if not testbd < newbds~[0]
+						       then false
+						       else true
+						       fi
+				     	    fi {not testers[i]}
+					    od)) >= 0 {there is a valid shift!}
+              	    	     do let alpha = shifters[j0] {now the "while" action starts}
+	      	       		then () = wt0:= wt0+alpha
+				then newmu = K_type(K_highest_weight_from_K0_weight(x0G,M*wt0))
+				then (,newmunum) = add_K_type(newmu)
+				then () = if #muss[rfnum][newmunum] >0 {already moved up from newmu}
+				     	  then newmunums ##:= muss[rfnum][newmunum]; break {leave while loop}
+				   	  else newmunums #:= newmunum; newbds #:= DiracBDs[rfnum][newmunum];
+					       newhts #:= height(newmu)
+				   	  fi
+				 in ()
+	    	       		     {then () = newmunums #:= newmunum
+	    	       		     then () = newbds #:= DiracBDs[rfnum][newmunum]
+		       		     then () = newhts #:= height(newmu)
+	    	       		     in ()}
+	      	    	     od {end of "while #newhts"}
+		   then mussrf = muss[rfnum]
+    	           then () = mussrf[ktypenum] := newmunums
+		   in muss[rfnum]:=mussrf
+	     fi {[muss].=}
+	 then () =  assert(#DiracBDs[rfnum] = muhashes[rfnum].size() and #muss[rfnum] = #DiracBDs[rfnum],
+	      	    "Dirac_easy_hash damaged in am")
+	 in (rfnum,ktypenum)
+    in
+(  ( -> int): {real_form_size} @int: real_form_hash.size()
+   , ( -> vec): {K_type_sizes} @vec:
+       for muhash in muhashes
+       do muhash.size()
+       od
+   , ( -> ): {clear} clear
+   , (KType -> ratvec): {easy_muPRV_remember} (KType mu) ratvec:
+     let (rfnum,ktypenum) = add_K_type(mu)
+     in muPRVs[rfnum][ktypenum]
+   , (KType -> ratvec): {easyDiracIC} (KType mu) ratvec:
+     let (rfnum, ktypenum) = add_K_type(mu)
+     in muPRVs[rfnum][ktypenum]
+   , (KType -> rat): {easyDiracBD} (KType mu) rat:
+     let (rfnum, ktypenum) = add_K_type(mu)
+     in DiracBDs[rfnum][ktypenum]
+   , (KType -> ([KType], [int], [rat])): {easy_best_Dirac_bound} (KType mu) ([KType],[int],[rat]):
+     let (rfnum,ktypenum) = add_muss(mu)
+     then taunums = muss[rfnum][ktypenum]
+     then taus = for m in taunums
+     	       	 do muhashes[rfnum].index(m)
+		 od
+     in (taus, for tau in taus do height(tau) od, for m in taunums do DiracBDs[rfnum][m] od)
+    , ( -> (KType_hash,[ratvec],[rat],[[int]])): {test} @(KType_hash,[ratvec],[rat],[[int]]):
+      (muhashes[0],muPRVs[0],DiracBDs[0],muss[0])
+)
+)
+
+set Dirac_easy_hash = make_Dirac_easy_hash()
+
 {instead of running over all fundamental x's, just use one making hwt(mu) dominant}
-set easy_muPRV_remember = (KType -> ratvec):
-    let muhash = make_KType_hash() {list of known KType's}
+set easy_muPRV_remember(KType mu) = ratvec: {= (KType -> ratvec):}
+    Dirac_easy_hash.easy_muPRV_remember(mu)
+{    let muhash = make_KType_hash() {list of known KType's}
     then answers = [ratvec]: [] {answer for each known KType, start with empty list}
     in (KType -> ratvec): (KType mu) ratvec:
        let I = muhash.size()  {size() is a function attached to muhash, takes no argument}
@@ -25,15 +214,17 @@ set easy_muPRV_remember = (KType -> ratvec):
     	      	      then M = projection_to_K_matrix(G), delta = G.distinguished_involution, x0 = KGB(G,0)
     		      then Mrt = ratmat: ((1+G.distinguished_involution)*right_inverse(M))/2, K0 = K_0(G)
 		      then wt0 = highest_weights(mu,x0)[0].mu, rhoc = rho_c(x0), rho = G.rho
-		      then (w,wt1) = from_dominant(G,wt0+rhoc) {wt1 is dominant, w*wt1 = wt0}
+		      then (w,wt1) = from_dominant(G,Mrt*M*wt0+rhoc) {wt1 is dominant, w*wt1 = wt0+rhoc}
 		      then answer = Mrt*dominant(K0, M*(wt0 - inverse(w)*(rho - rhoc))) + rhoc 
 		      in answers #:= answer
 	      	 fi {i=I}
        in answers[i]
+}
 
 {easyDirac infl char estimate for mu}
-set easyDiracIC = (KType -> ratvec):
-    let easyDiracKTypeHash = make_KType_hash()
+set easyDiracIC(KType mu) = ratvec:
+    Dirac_easy_hash.easyDiracIC(mu) {= (KType -> ratvec):}
+ {   let easyDiracKTypeHash = make_KType_hash()
     then easyDiracICs = [ratvec]:[]
     in (KType -> ratvec): (KType mu) ratvec:
        let j = easyDiracKTypeHash.match(mu)
@@ -41,22 +232,22 @@ set easyDiracIC = (KType -> ratvec):
        	       	 then let mutilde=easy_muPRV_remember(mu), G= mu.real_form
        	      	      in easyDiracICs #:=dominant(G,mutilde)
 		 fi {mu is new}
-       in easyDiracICs[j]
+       in easyDiracICs[j]}
 
 {this is the Q(infinitesimal character) bound provided by Dirac inequality on all LKTs}
 set easyDiracBD(KType mu) = rat:
-    let G = mu.real_form
+    Dirac_easy_hash.easyDiracBD(mu)
+{    let G = mu.real_form
     then Q = invariant_form(G), gamma = easyDiracIC(mu)
-    in Q(gamma,gamma)
-
-{how deep into {easy} best_Dirac_bound one ought to go. Setting to 1 means only LKT, ordinary Dirac.}
-set max_best_steps = int:4
+    in Q(gamma,gamma)}
 
 {try to shrink DiracBD by moving mu in what looks like inside parameter(mu)}
 {answer is 3 tuples: KType achieving smaller bounds,  their heights, and their bounds.
 The first is mu, last is the best one.}
 {result should be made into a longer list, still sorted by height, of ALL mus you can reach in this fashion}
-set easy_best_Dirac_bound = (KType -> ([KType], [int], [rat])):
+set easy_best_Dirac_bound(KType mu) = ([KType], [int], [rat]):
+    Dirac_easy_hash.easy_best_Dirac_bound(mu)
+    {
     let muhash = make_KType_hash()
     then muss = [[KType]]: []
     then htss = [[int]]: []
@@ -100,7 +291,7 @@ set easy_best_Dirac_bound = (KType -> ([KType], [int], [rat])):
 			and height(K_type(K_highest_weight_from_K0_weight(
 				        x0G,M*(wt0 + alpha)))) > newhts~[0]
 		    	        od)) >= 0 {there is a valid shift!}
-			and #newhts < max_best_steps
+			and #newhts <= Dirac_best_steps
               	    do let alpha = shifters[j0]
 	      	       then () = wt0:= wt0+alpha
 	    	       then () = newmus #:= K_type(K_highest_weight_from_K0_weight(x0G,M*wt0))
@@ -111,7 +302,7 @@ set easy_best_Dirac_bound = (KType -> ([KType], [int], [rat])):
     	     in muss #:= newmus; htss #:= newhts; bdss #:= newbds
 	     fi {j=#htss}
 	 in (muss[j], htss[j], bdss[j])
-
+}
 {end of easy versions}
 
 {prepped lists need to be hashed over G or forgotten}
@@ -252,7 +443,7 @@ set best_Dirac_bound = (KType -> ([KType], [int], [rat])):
 			and height(K_type(K_highest_weight_from_K0_weight(
 				        x0G,M*(wt0 + alpha)))) > newhts~[0]
 		    	        od)) >= 0 {there is a valid shift!}
-			and #newhts < max_best_steps
+			and #newhts <= Dirac_best_steps
               	    do let alpha = shifters[j0]
 	      	       then () = wt0:= wt0+alpha
 	    	       then () = newmus #:= K_type(K_highest_weight_from_K0_weight(x0G,M*wt0))
