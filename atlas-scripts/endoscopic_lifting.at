@@ -7,6 +7,7 @@ set e_verbose=true
 set endoscopic_lift(L_homomorphism phi_H,RealForm G,mat M)=
 phi(map_KGB_gen_tits(phi_H.y,dual_quasisplit_form(G),M),phi_H.gamma*M)
 
+
 {x_H must be a pure KGB element for H}
 {long version includes p_G}
 set e_star_long(KGBElt x_H,L_homomorphism phi_H,RealForm G,mat M)=(Param,[Param]):
@@ -21,8 +22,15 @@ y_G=map_KGB_gen_tits(y_H,dual_quasisplit_form(G),M) then
 phi_G=phi(y_G,gamma_G) then 
 theta_G_v=involution(y_G) then
 theta_G=-^theta_G_v then
-()=if e_verbose then prints("theta_G: ", theta_G,new_line,"torus_factor(x_H): ", torus_factor(x_H)) fi then 
-x_G=KGB_elt(inner_class(G),theta_G,torus_factor(x_H)*M) then
+{()=if e_verbose then prints("theta_G: ", theta_G,new_line,"torus_factor(x_H): ", torus_factor(x_H)) fi then
+mu_H=unnormalized_torus_factor(x_H) then
+()=if e_verbose then prints("unnormalized torus factor of x_H: ", mu_H) fi then
+mu_G=mu_H*M+ rho_check(G)  then
+()=if e_verbose then prints("unnormalized torus factor of x_G: ", mu_G) fi then
+tau_G=(1+theta_G)*(2*mu_G-rho_check(G))/2 then
+()=if e_verbose then prints("normalized torus factor of x_G: ", tau_G) fi then}
+{x_G=KGB_elt(inner_class(G),theta_G,tau_G) then}
+x_G=KGB_elt(inner_class(G),theta_G,x_H.torus_factor*M) then
 ()=if e_verbose then prints("x_G: ", x_G, " ", x_G.real_form, " ", x_G.torus_factor) fi then
 p_G=parameter(x_G,phi_G) then
 ()=if e_verbose then prints("p_G=", p_G) fi
