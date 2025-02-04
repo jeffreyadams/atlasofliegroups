@@ -96,11 +96,14 @@ now be replaced by sphericalFold.}
 anything else. This seems not to help significantly: checking Dirac
 takes significant time, (maybe 4% of total for F4) and the resulting
 savings in the rest of the computation seems tiny (maybe 1% for F4).}
-set Dirac_flag = false
+{now have Dirac_easy_flag, defaulting to true, which greatly speeds
+the computation of Dirac inequality, at the expense of making it
+slightly less sharp.}
+set Dirac_flag = true
 
 {if true, unitary candidates are checked for Dirac inequality on many
 K-types when the K-chars are computed.}
-set Dirac_best_flag = false
+set Dirac_best_flag = true
 
 { useful to assign this to 'true" to get information about the
   progress of long calculations }

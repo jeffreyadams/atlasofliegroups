@@ -326,6 +326,13 @@ set is_pure_cert_hash(KTypePol P, KTypePol_hash cert_hash) = bool:
     else true
     fi
 
+{meant to hold number of NEGATIVE Dirac inequality tests}
+set DTcount = int: 0
+
+{meant to hold number of NEGATIVE Dirac_best inequality tests}
+set DBTcount = int: 0
+
+
 {will be modified to name of local test being run}
 set test_string = string: ""
 
@@ -380,6 +387,7 @@ set report_tested() = void:
  	 	   print_time_string(sum(for h:100 do sum(tested_pos_to_ht_times[h]) od)),"; ",
 	   sum(for h:100 do tested_neg_to_ht_hashes[h].size() od)," neg tests to_ht, in time = ",
  	   	   print_time_string(sum(for h:100 do sum(tested_neg_to_ht_times[h]) od)));
+    prints("Dirac elims = ",DTcount,", Dirac_best elims = ",DBTcount)
     prints("  ----------------")
 
 

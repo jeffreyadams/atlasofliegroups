@@ -281,6 +281,7 @@ set FPP_unitary_hash_general([KGBElt] xs, Param_hash Uhash, {Param_hash Uparamha
     then () = red_count_time :=0
     {then {xnums = for x in xs do x.number od, xtimes = null(#xs),}}
     then () = pol_hash.clear()
+    then () = clear_report_tested(); DTcount:=0; DBTcount:=0
     then old_face_verbose = face_verbose, old_time_verbose = time_verbose,
     	 old_test_verbose = test_verbose, old_test_slightly_verbose = test_slightly_verbose
     then () = face_verbose:=false
@@ -474,7 +475,7 @@ set FPP_unitary_hash_general([KGBElt] xs, Param_hash Uhash, {Param_hash Uparamha
 					 		   prints("  char calcs for lambda = ",
 						   	   char_counter.use_count() - startCcounter,
 					 	 	   " char time = ", print_time_string(charTime - startCtime));
-						           report_tested();
+				  			   report_tested();
 					 		   prints("  ------------------")
 				    		       fi{every_lambda_flag}
 			      			 fi{#LF[0] = 0}
@@ -709,6 +710,7 @@ set FPP_unitary_hash_bottom_layer([(KGBElt,ratvec)] xlambdas, Param_hash UhashG{
 		 else UhashG
 		 fi
     then () = pol_hash.clear()
+    then () = clear_report_tested(); DTcount:=0; DBTcount:=0
     then start = elapsed_ms()
     then () = unitaryTime := 0
     then () = charTime := 0
@@ -818,7 +820,7 @@ set FPP_unitary_hash_bottom_layer([(KGBElt,ratvec)] xlambdas, Param_hash UhashG{
 				 ", char time = ", print_time_string(currentCtime - startCtime),
 				 ", #Params missed by more = ", more_bad_hash.size() - startmorebad,
 				 ", #unitary params so far = ",sum(answerCards));
-				 report_tested();
+				  report_tested();
 				 prints("  ------------------")
 			    fi
 		    fi
@@ -909,6 +911,7 @@ set FPP_unitary_hash_bottom_layer([KGBElt] xs, Param_hash UhashG{, Param_hash Up
     then () = red_count_time :=0
     {then {xnums = for x in xs do let (,m) = %x in m od,} xtimes = null(#xs)}
     then () = pol_hash.clear()
+    then () = clear_report_tested(); DTcount:=0; DBTcount:=0
     then old_face_verbose = face_verbose, old_time_verbose = time_verbose,
     	 old_test_verbose = test_verbose, old_test_slightly_verbose = test_slightly_verbose
     then () = face_verbose:=false
@@ -1013,81 +1016,6 @@ set FPP_unitary_hash_bottom_layer([KGBElt] xs, Param_hash UhashG{, Param_hash Up
 		         big_unitary_hash.finish(x,full_N1); {mark as done all lambdas for x}
 		       	 big_unitary_hash.finishx(x)
 		     fi
-{
-
-    then () = for x@j in xs
-    	      do {xs}
-	 if twist(x) != x
-	 then big_unitary_hash.finishx(x)
-	 else
-	 let former_time = current, formerUhash = currentUhash, formerUcounter = currentUcounter, x_sc = xs_sc[j],
-	     startmorebadx = more_bad_hash.size(), formerCharTime = charTime, formerCcounter = currentCcounter,
-	     former_red_count_time = red_count_time, formerUtime = unitaryTime
-	 then xtwists = isotwistKGBs(x), lambdas = FPP_lambdas(x), twists = all_lambda_differential_0(x)
-	 then lambdas_sc = if disconn_flag
-	      		   then for lambda in lambdas do M*lambda od
-			   else lambdas
-			   fi
-	 then N1 = #lambdas
-	 then full_N1 = to_bitset([N1])-1
-	 then tw = first(for y in xtwists[1:]
-	      	   	 do big_unitary_hash.xl_known(G)[y.number] = full_N1 {\Ypower)%two_power_Nl}
-			 od)
-	 then xtwist = if tw.>=
-	      	       then xtwists[tw]
-		       else x
-		       fi
-	 then twnum = if xtwist != x
-                      then last(for y in xs[:j] do xtwist = y od)
-                      else -1
-                      fi
-	 in if twnum.>=  {now xtwist is xs[twnum]}
-	    then answerCards[j]:= answerCards[twnum]; {this is too small if xtwist wasn't computed here}
-	    	 for p in Uparamhash.list()
-		 do if p.x = xtwist
-		    then let ptwist = parameter(x,p.lambda,p.nu)
-		    	 in Uparamhash.match(ptwist)
-		    fi
-		 od;
-		 big_unitary_hash.finish(x, full_N1); {mark as done all lambdas for x}
-		 big_unitary_hash.finishx(x);
-		 for p in UhashG.list()
-	      	 do if p.x = xtwist
-		    then let ptwist = parameter(x, p.lambda, p.nu)
-		       	 then () = UhashG.match(ptwist)
-		       	 in if disconn_flag
-			    then for psc in sc_lifts2(ptwist,Gsc,M)
-				 do  Uhash.match(psc)
-				 od
-			       fi
-		       fi
-		 od
-	    else let xcont = contragredient(x)
-	    	 then contnum = if xcont != x
-		      	      	then last(for y in xs[:j] do xcont = y od)
-				else -1
-				fi
-	    	 in if contnum.>= {and contnum < j}
-	    	    then answerCards[j]:= answerCards[contnum];
-		    for p in Uparamhash.list()
-		    do if p.x = xcont
-		       then Uparamhash.match(contragredient(p))
-		       fi
-		    od;
-		    big_unitary_hash.finish(x, full_N1);
-		    big_unitary_hash.finishx(x);
-		    for p in UhashG.list()
-	      	    do if p.x = xcont
-		       then let pcont = contragredient(p)
-		       	    then () = UhashG.match(contragredient(p))
-			    in if disconn_flag
-			       then for psc in sc_lifts2(pcont,Gsc,M)
-				    do Uhash.match(psc)
-				    od
-			       fi
-		    	fi
-		    od
-}
 	 then () = if {C} skipx = false
 	 then let lambdas = FPP_lambdas(x)
     	 then Ncases = #lambdas
@@ -1178,7 +1106,7 @@ set FPP_unitary_hash_bottom_layer([KGBElt] xs, Param_hash UhashG{, Param_hash Up
 					      prints("     more_shift_level = ",if bl_interrupt_flag then
 		    bl_step_count*bl_step_size else more_shift_level fi, ", #Params missed by more = ",
 					     	more_bad_hash.size() - startmorebadlambda);
-						report_tested()
+	    					report_tested()
 					 else prints("    #LF = ", for L in LF do #L od, ", #unitary params = ",
 					      	tempanswerCards[index],
 			     	                ", #new unitary = ", Uhash.size() - startUhash,
@@ -1276,7 +1204,7 @@ set FPP_unitary_hash_bottom_layer([KGBElt] xs, Param_hash UhashG{, Param_hash Up
 			   ", time for position = ", print_time_string(position_time));
             prints("Number of known FPP-unitary faces = ",UhashG.size(),
        	      ", number found on this run = ", UhashG.size() - oldUhash);
-	     report_tested()
+	    report_tested()
       fi {FPP_report_flag}
    fi {#xs = 0}
 

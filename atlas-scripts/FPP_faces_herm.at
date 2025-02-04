@@ -1279,13 +1279,10 @@ set DiracBD(KGBElt x, ratvec lambda) = rat:
        	   do DiracBD(mu)
 	   od)
 
-set DTcount = int: 0
-
 {"true" means unitarity is possible in light of Dirac}
 {avoid using is_hermitian defined in hermitian.at}
 set DiracTest(Param p) = bool:
     let G=p.real_form
-    {then () = Dirac_flag:=true}
     then ans = bool: if not all(for q in monomials(finalize(p)) do is_hermitian(q) od) then false
        else let gamma = p.infinitesimal_character
     	    then Q = invariant_form(G)
@@ -1295,7 +1292,6 @@ set DiracTest(Param p) = bool:
     then () = if not ans then DTcount +:= 1 fi
     in ans
 
-set DBTcount = int: 0
 {here p must be irr for branch_irr to work}
 set DiracBestTest(Param p) = bool:
     if not all(for q in monomials(finalize(p)) do is_hermitian(q) od) then return false fi;
