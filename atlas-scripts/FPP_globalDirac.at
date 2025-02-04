@@ -186,14 +186,17 @@ set FPP_unitary_hash_general([(KGBElt,ratvec)] xlambdas, Param_hash Uhash,
 		   		   prints("  ------------------")
         	   		   fi {every_lambda_flag}
 		 then startLF = elapsed_ms()
-		 {then () = prints("time thru start [",k,"] = ",print_time_string(startLF - start))}
+		 {then () = prints("time thru start [",k,"] =
+		 ",print_time_string(startLF - start))}
+		 then startDTcount = DTcount
 		 then LF = if by_zero_flag {and height(p0) > 0}
 		      	   then localFD_1Dirac2_by_zero(x, lambda, Lvd, Perm2)
 			   else localFD_1Dirac2(x, lambda, Lvd, Perm2)
 			   fi
 		 then () = if every_lambda_deets_flag
     	      	      	   then prints("time for localFD_1Dirac2* = ",print_time_string(elapsed_ms() - startLF),
-			   " to find [",#LF[0],",",#LF[1],"] verts and edges.")
+			   " to find [",#LF[0],",",#LF[1],"] verts and edges; Dirac eliminated ",
+			   DTcount - startDTcount)
 	      		   fi
 		 in if #LF[0] = 0 then ()
 		     else if every_lambda_deets_flag
@@ -429,7 +432,7 @@ set FPP_unitary_hash_general([KGBElt] xs, Param_hash Uhash, {Param_hash Uparamha
 					       	     startUcounter = unitary_test_counter.use_count(),
 						     startUtime = unitaryTime, startCcounter =
 						     char_counter.use_count(), startCtime = charTime
-				      	       then startLF = elapsed_ms()
+				      	       then startLF = elapsed_ms(), startDTcount = DTcount
  		      		      	       then LF = if by_zero_flag {and dominant(G,lamthlam)*G.two_rho_check > 0}
 		      	      	      	      	       	 then localFD_1Dirac2_by_zero(xW, lambdaW, Lvd, Perm2)
 			   				 else localFD_1Dirac2(xW, lambdaW, Lvd, Perm2)
@@ -437,7 +440,8 @@ set FPP_unitary_hash_general([KGBElt] xs, Param_hash Uhash, {Param_hash Uparamha
 				      	       then () = if every_lambda_deets_flag
     	      	      	              	       	       	 then prints("time for localFD_1Dirac2* = ",
 				      	       	    	      print_time_string(elapsed_ms() - startLF),
-			   			    	      " to find [",#LF[0],",",#LF[1],"] verts and edges.")
+			   			    	      " to find [",#LF[0],",",#LF[1],
+							      "] verts and edges; Dirac eliminated ",DTcount - startDTcount)
 	      		   			    	 fi
 			 		   in if #LF[0] = 0
 					      then finish(x, lambda); []
@@ -772,14 +776,14 @@ set FPP_unitary_hash_bottom_layer([(KGBElt,ratvec)] xlambdas, Param_hash UhashG{
 			      ", #uparams so far = ",sum(answerCards));
 		   		   prints("  ------------------")
         	   		   fi {every_lambda_flag}
-		 then startLF = elapsed_ms()
+		 then startLF = elapsed_ms(), startDTcount = DTcount
 		 then LF = if by_zero_flag {and height(parameter(x,lambda,0*lambda)) > 0}
 		      	   then localFD_1Dirac2_by_zero(x_sc, lambda_sc, Lvd, Perm2)
 			   else localFD_1Dirac2(x_sc, lambda_sc, Lvd, Perm2)
 			   fi
 		 then () = if every_lambda_deets_flag
     	      	      	   then prints("time for localFD_1Dirac2* = ", print_time_string(elapsed_ms() - startLF),
-			   	       " to find [",#LF[0],",",#LF[1],"] verts and edges.")
+			   	       " to find [",#LF[0],",",#LF[1],"] verts and edges; Dirac eliminated ",DTcount - startDTcount)
 	      		   fi
 		 in if #LF[0] = 0
 		    then let () = finish(x_sc, lambda_sc)
@@ -1046,6 +1050,7 @@ set FPP_unitary_hash_bottom_layer([KGBElt] xs, Param_hash UhashG{, Param_hash Up
 			      		    ", #uparams so far = ",sum(answerCards)});
 		   		   prints("  ------------------")
         	   		fi {every_lambda_flag}
+		      then startDTcount = DTcount
  		      then LF = if by_zero_flag {and dominant(G,lamthlam)*G.two_rho_check > 0}
 		      	      	then localFD_1Dirac2_by_zero(x_sc, M*lambda, Lvd, Perm2)
 			   	else localFD_1Dirac2(x, lambda, Lvd, Perm2)
@@ -1053,7 +1058,8 @@ set FPP_unitary_hash_bottom_layer([KGBElt] xs, Param_hash UhashG{, Param_hash Up
 		      then () = if every_lambda_deets_flag
     	      	      	      	then prints("time for localFD_1Dirac2* = ",
 				print_time_string(elapsed_ms() - startLF),
-				" to find [",#LF[0],",",#LF[1],"] verts and edges.")
+				" to find [",#LF[0],",",#LF[1],"] verts and edges; Dirac eliminated ",
+				DTcount - startDTcount)
 	      		   	fi
 		       in if #LF[0] = 0
 			  then []
