@@ -2825,6 +2825,7 @@ set is_unitary_to_ht_big_SIMPLE(Param p,int N) = bool:
 { compute Hermitian form to ht on p, report if it is unitary}
 set is_unitary_to_ht_big(Param p,int N) = bool:
   if (not is_hermitian(p)) or (not is_pos_on_LKTs(p)) then return false fi;
+  if (big_unitary_hash.ulookup(p)).>= then return true fi;
   let pds = derived_factor_params0(p)
   in all(for pd in pds do @bool: is_unitary_to_ht_big_SIMPLE(pd,N) od)
 
@@ -2869,8 +2870,7 @@ set is_unitary_to_hts_big_SIMPLE(Param p,[int] Ns) = bool:
 	    fi
   {then () = p := herm_center(p)}
   then () = if (big_unitary_hash.ulookup(p)).>= then return true fi
-  then () = if (big_unitary_hash.nulookup(p)).>= then return false fi
-  in if interrupt_flag
+    in if interrupt_flag
      then return is_unitary_to_hts_big_SIMPLE_interrupt(p, Ns, interrupt_base_time)
      else if #Ns = 0
        	  then return is_unitary_hash_big_SIMPLE(p)
