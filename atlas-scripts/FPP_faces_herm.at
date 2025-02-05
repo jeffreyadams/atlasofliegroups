@@ -10,112 +10,6 @@
 <cohom_reductionND.at {for glue_sigs}
 {BREAK HERE?}
 
-set KUKU_flag = true
-
-{For each list of faces in FVKH, indices of faces for which the corresponding parament is known
-(by Uhash) to be unitary}
-set KU(KGBElt x, ratvec lambda, LocalVertexData Lvd, [[FaceVertsKHash]] FVKH, Param_hash Uhash) =
-    [vec]:
-    for FVKHd@d in FVKH
-    do for vlong@j in FVKHd
-       do let verts = vlong[:d+1]
-       	  then ps = monomials(finalize(parameter(x,lambda, face_bary(Lvd,verts))))
-	  in if all(for p in ps do (Uhash.lookup(p)).>= od)
-	     then [j]
-	     else []
-	     fi
-       od.##
-     od
-
-{takes the known unitaries from unitary_hash having the given x and lambda,
- and returns their locations in LFDKH}
-set known_unitaries(Param_hash Uhash, KGBElt x, ratvec lambda, LocalVertexData Lvd,
-    [[FaceVertsKHash]] LFDKH) = [vec]:
-    if KUKU_flag then return KU(x,lambda, Lvd, LFDKH, Uhash) fi;
-    let ps = for d:#LFDKH
-    	     do for v in LFDKH[d]
-	     	do parameter(x,lambda,face_bary(Lvd, v[:d+1]))
-		{face_bary_ic(x.inner_class, face_bary(Lvd.list, v[:d+1])))}
-		od
-	     od
-    in for d:#LFDKH
-       do for p@j in ps[d]
-       	  do if p.nu.=
-	     then [j]
-	     else let qs = monomials(finalize(p))
-	     	  in if all(for q in qs do @bool: Uhash.lookup(q).>= od)
-	     	     then [j]
-		     else []
-		     fi
-	     fi
-	  od.##
-       od
-
-{Here UhashLocal is assumed to consist of Param's at (x,lambda)}
-{this misses (in local_testK_level) unitary Param's that finalize to different x;
-those are caught by local_testK_hash}
-set known_unitaries(Param_hash UhashLocal, LocalVertexData Lvd,
-    [[FaceVertsKHash]] LFDKH) = [vec]:
-    let lookups = for list@d in LFDKH do index_in(if #list = 0 then [vec]:[]
-    	      	  	    	     	      else for v in list do v[:d+1] od
-					      fi)
-				      od
-    then NumKnown = UhashLocal.size(), out = [vec]: for j:#LFDKH do vec:[] od
-    then () = for k:NumKnown
-       	 do let p = UhashLocal.index(k)
-       	    then list = local_vertices(p)
-            in if #list-1 < #LFDKH
-	       then let local_verts = vec: for ell in list do Lvd.lookup(ell) od.sort
-	     	    then m = lookups[#list-1](local_verts)
-		    then () = assert(m.>=,"have known unitary not appearing in LFDKH")
-		    then () = out[#list-1]#:=m
-		    in ()
-	       fi
-	 od
-     in out
-
-{takes the known non-unitaries from non-unitary_hash having the given x and lambda,
- and returns their locations in LFDKH}
-{set known_non_unitaries(Param_hash NUhash, KGBElt x, ratvec lambda, VertexData Lvd,
-    [[FaceVertsKHash]] LFDKH) = [vec]:
-    let ps = for d:#LFDKH
-    	     do for v in LFDKH[d]
-	     	do parameter(x,lambda,face_bary(Lvd, v[:d+1]))
-		{face_bary_ic(x.inner_class, face_bary(Lvd.list, v[:d+1]))}
-		od
-	     od
-    in for d:#LFDKH
-       do for p@j in ps[d]
-       	  do let qs = monomials(finalize(p))
-	     in if all(for q in qs do @bool: NUhash.lookup(q).>= od)
-	     	then [j]
-		else []
-		fi
-	  od.##
-       od}
-
-
-set localize(Param_hash Uhash, KGBElt x, ratvec lambda) = Param_hash:
-    let NumKnown = Uhash.size(), UhashLoc = make_Param_hash()
-    then () = for k:NumKnown
-       	      do let p = Uhash.index(k)
-	      	 in if p.x = x and p.lambda = lambda
-		    then UhashLoc.match(p)
-		    else -1
-		    fi
-	      od
-    in UhashLoc
-
-set localize(Param_hash Uhash, ratvec lambda) = Param_hash:
-    let NumKnown = Uhash.size(), UhashLoc = make_Param_hash()
-    then () = for k:NumKnown
-       	      do let p = Uhash.index(k)
-	      	 in if p.lambda = lambda
-		    then UhashLoc.match(p)
-		    else -1
-		    fi
-	      od
-    in UhashLoc
 {collection of lookup functions for faces of various dimensions}
 set lookups([[vec]] LFD) = [(vec->int)]:
     for L@d in LFD do index_in(for v in L do v[:d+1] od) od
@@ -1269,8 +1163,796 @@ set branch_irr_hash(Param p, int D) = KTypePol:
     let CF = character_formula_to_height(p,D)
     in big_unitary_hash.branch(K_type_pol(CF),D)
 
-{when using Dirac on non-LKTs, go out to height + Dirac_height}
-set Dirac_height = int: 0
+
+{. The next family of functions all need simple derived group. Always
+|vd.list| should be ALL vertices in the FPP; Lvd.list will be all infl
+chars in the FPP for a parameter (x,lambda,*), with x and lambda
+fixed. The face lists carried by [[FaceBary]] or [[FaceVertsIndex]]
+may be pruned of reps not interesting for unitarity, but the indices
+will always refer to a constant vlist.}
+
+set two_to_position(KGBElt x, ratvec lambda) = int:
+    let pos = position(x,lambda)
+    in if pos.>=
+       then to_bitset([position(x,lambda)])
+       else -1
+       fi
+
+{set a bit in xl_known}
+set finish(KGBElt x, ratvec lambda) = void:
+    let pos = two_to_position(x,lambda)
+    in if pos.>=
+       then big_unitary_hash.finish(x, pos)
+       fi
+
+set finish(KGBElt x) = void:
+    {let lambdas = FPP_lambdas(x)
+    then m = #lambdas
+    then M = (to_bitset([m]) - 1)
+    in} big_unitary_hash.finishx(x)
+
+{check whether a bit in xl_known is set}
+set is_finished(KGBElt x, ratvec lambda) = bool:
+    let start = elapsed_ms(), Mx_known = big_unitary_hash.x_known(x.real_form),
+    	Mx_partial = big_unitary_hash.x_partial(x.real_form), M = big_unitary_hash.xl_known(x.real_form)[x.number]
+    {then () = prints("Mx_known = ",Mx_known,", Mx_partial = ",Mx_partial,", M = ",M)}
+    then answer = if is_member_bitset(x.number,Mx_known)
+    	 	  then true
+		  elif {is_member_bitset(x.number,Mx_partial)
+		  then} let pos = position(x,lambda)
+		  	in if pos.>=
+			   then is_member_bitset(pos,M)
+			   else false
+			   fi
+		  then true
+		  else false
+		  fi
+    then () = is_finished_time +:= elapsed_ms() - start
+    in answer
+
+{list of all pairs (x,lambda) for which complete FPP-unitary dual is present in big_unitary_hash}
+set all_finished(RealForm G) = [(KGBElt,ratvec)]:
+    let list = for x in KGB(G)
+    	       do set_bit_positions(big_unitary_hash.xl_known(G)[x.number])
+	       od
+    in for x in KGB(G)
+       do let poss = list[x.number]
+       	  in for pos in poss
+       	     do (x, FPP_lambdas(x)[pos])
+       	     od
+       od.##
+
+set UHBS_time = int: 0
+
+{assume p is hermitian, FPP}
+set hermitian_form_irreducible_big_SIMPLE(Param p) = KTypePol:
+    let () = p:=herm_center(p)
+    then L = big_unitary_hash.ulookup(herm_center(p))
+    in if L.>=
+       then {let startCF = elapsed_ms()}
+       	    {then m = char_counter.use()
+	    then} let ans = K_type_pol(character_formula(p))
+	    {then () = charTime +:= elapsed_ms() - startCF}
+	    in ans
+       else big_unitary_hash.sig_entry(p,height(p)-1) {hermitian_form_irreducible(p)}
+       fi
+
+{this version is only for G simple and hermitian FPP params}
+set is_unitary_hash_big_SIMPLE(Param p) = bool:
+    if not is_hermitian(p) then return false fi;
+    let start = elapsed_ms(), G = p.real_form
+    then FPP_flag = is_FPP(G,p.infinitesimal_character)
+    then () = if not FPP_flag
+    	      then return is_unitary(p) {prints("FPP DANGER at ",p)}
+	      fi
+    {then () = p := herm_center(p)}
+    then L = big_unitary_hash.ulookup(herm_center(p))
+    {then () = prints("p = ", p, ". L = ",L, ", is_finished = ",is_finished(p.x, p.lambda))}
+    then () = if L.>= then return true fi
+    then () = if is_finished(p.x, p.lambda)
+    	      then big_unitary_hash.numatch(p); return false fi
+    then Ln = big_unitary_hash.nulookup(p)
+    then () = if Ln.>= then return false fi
+    then (,pL) = wkgood_Q(p)
+    then derpLs = for qLj in derived_factor_params0(pL)
+    	 	  do monomials(finalize(qLj))
+		  od.##
+    then () = if #derpLs = 0 then return true fi
+    {then () = for derpL in derpLs do big_unitary_hash.rf_index(derpL.real_form) od}
+    then statuses = for derpL in derpLs
+    		    do big_unitary_hash.check(derpL)
+		    od
+    then answer =
+       if all(statuses) or #statuses = 1 or (all(statuses) and good_L(p) = pL.real_form)
+       then let ans = statuses[0]
+       	    then () = if ans
+	       	      then big_unitary_hash.umatch(p)
+	       	      else big_unitary_hash.numatch(p)
+		      fi
+	    in ans
+       else {some derpL is not unitary, but the induction is not trivial}
+       	    let goodL = good_L(p)
+	    in let ans = is_pure(sum(G, for c@qL in hermitian_form_irreducible(pL)
+			      do c*theta_induce_standard(param(qL),
+			           goodL)
+			      od))
+	       then () = if ans
+	       	       	 then big_unitary_hash.umatch(p)
+	       	       	 else big_unitary_hash.numatch(p)
+			 fi
+	       in ans
+       fi
+    then () = UHBS_time+:= elapsed_ms() - start
+    then () = if answer
+    	      then big_unitary_hash.umatch(p)
+	      else big_unitary_hash.numatch(p)
+	      fi
+    in answer
+
+set is_unitary_hash_big(Param p) = bool:
+    if not is_hermitian(p) then return false fi;
+    let pds = derived_factor_params0(p)
+    in all(for pd in pds do @bool: is_unitary_hash_big_SIMPLE(pd) od)
+
+set HOWMANY = int:0
+
+set hermitian_form_irreducible_big(Param p) = KTypePol:
+    if is_unitary_hash_big(p)
+    then {let startCF = elapsed_ms()
+       	 then m = char_counter.use()
+	 then} let ans = K_type_pol(character_formula(p))
+	 {then () = charTime +:= elapsed_ms() - startCF}
+	 in ans
+     else let G = p.real_form
+     	  then () = HOWMANY +:= 1
+	  {in hermitian_form_irreducible(p)}
+     	  then derps = derived_factor_params0(p)
+     	  then mu0 = LKTs(p)[0]
+	  {then ans = }
+	  in glue_sigs(for derp in derps do hermitian_form_irreducible_big_SIMPLE(derp) od, mu0)
+	  {
+	  then () = prints("to-glue = ",for derp in derps do hermitian_form_irreducible_big_SIMPLE(derp) od)
+	  then () = prints("glued answer = ",ans)
+	  then () = prints("correct answer = ", hermitian_form_irreducible(p))
+	  }
+	  {then () = assert((ans - hermitian_form_irreducible(p)).=,"bad glue_sigs!")}
+	  {in ans}
+     fi
+
+{if true, then try is_unitary during is_unitary_to_ht}
+set interrupt_flag = false {KGB(E7_s,20895), lambda = rho is HORRIBLE with "true"}
+set print_int_flag = false
+
+{initial time to give interruptible command}
+set interrupt_base_time = int:200
+
+{START with full is_unitary tests, because those are actually interruptable}
+{ meant to be used for G simple }
+{ compute Hermitian form to ht on p, report if it is unitary}
+set hermitian_form_irreducible_to_ht_big_SIMPLE_interrupt(Param p,int N, int time) = KTypePol:
+  let which_flag = low(p,N), start = elapsed_ms(), (LAM,NU,) = low(p), empty = p.real_form.null_K_module
+  then () = if print_int_flag then prints("N = ",N, ", p = ",p) fi
+  then result = empty
+  then () = while result.=
+       	    do let maybe = if which_flag
+     	       	       	   then hermitian_form_irreducible_to_ht_MvL(p,N,time)
+	      	       	   else hermitian_form_irreducible(p,time)
+	      	       	   fi
+	       then () = result := case maybe
+	      	       	 	   | timed_out: empty
+		  		   | done(ans): to_ht(ans,N)
+		  		   esac
+      	        then () = if which_flag then time := 2*time fi
+	        then () = which_flag := not which_flag;
+		if print_int_flag then prints("in form_to_ht, time = ", time, ", which_flag = ", which_flag,
+		", elapsed = ",elapsed_ms() - start) fi
+		in ()
+  	     od
+  in result
+
+{assume p is hermitian}
+set hermitian_form_irreducible_to_ht_big_SIMPLE(Param p,int N) = KTypePol:
+  let G = p.real_form
+  then FPP_flag = is_FPP(G,p.infinitesimal_character)
+  then () = if not FPP_flag
+    	    then return hermitian_form_irreducible_to_ht(p,N) {prints("FPP DANGER TO HT at ",p)}
+	    fi
+  {Now p is FPP. Assume it was already herm center? {then () = p := herm_center(p)}}
+  then L = big_unitary_hash.ulookup(p)
+  then () = if L.>=
+       	    then {let startCF = elapsed_ms()
+	    	 then m = char_counter.use()
+	    	 then} let ans =K_type_pol(character_formula_to_height(p,N))
+		 {then () = charTime +:= elapsed_ms() - startCF}
+		 in return(ans)
+	     fi
+  in if interrupt_flag
+     then hermitian_form_irreducible_to_ht_big_SIMPLE_interrupt(p,N, interrupt_base_time)
+     else if low(p,N) {low(p.x,p.lambda,N)}
+     	  then let ans = hermitian_form_irreducible_to_ht(p,N)
+	       then () = if not is_pure(ans)
+	       	       	 then big_unitary_hash.numatch(p)
+			 fi
+	       in ans
+     	  else big_unitary_hash.sig_entry(p,N)
+	  fi {low}
+     fi{interrupt}
+
+{	  let P = hermitian_form_irreducible(p)
+	       then () = if is_pure(P)
+	       	       	 then big_unitary_hash.umatch(p)
+	       	       	 else big_unitary_hash.numatch(p)
+			 fi {is_pure}
+	       in to_ht(P,N)
+     	  fi
+     fi}
+
+{assume p is hermitian}
+{ }
+set HOWMTH = int:0
+
+set hermitian_form_irreducible_to_ht_big(Param p,int N) = KTypePol:
+    HOWMTH +:= 1;
+    if low(p,N) {low(p.x,p.lambda,N)}
+    then hermitian_form_irreducible_to_ht(p,N)
+    else to_ht(hermitian_form_irreducible(p),N)
+    fi
+
+{START with full is_unitary tests, because those are actually interruptable}
+{ meant to be used for G simple }
+{ compute Hermitian form to ht on p, report if it is unitary}
+set is_unitary_to_ht_big_SIMPLE_interrupt(Param p,int N, int time) = bool:
+  let which_flag = low(p,N), result = 0, start = elapsed_ms(), (LAM,NU,) = low(p)
+  then () = if print_int_flag then prints("N = ",N, ", p = ",p) fi
+  {then () = if NU > 8*N*low_frac
+       	    then return is_pure(hermitian_form_irreducible_to_ht(p,N))
+      	    elif NU < N*low_frac/2
+      	    then return is_pure(to_ht(hermitian_form_irreducible(p),N))
+      	    else}
+  then () = while result.=
+       	    do result := if which_flag
+     	       	      	 then is_unitary_to_ht_MvL(p,N,time)
+	      		 else case hermitian_form_irreducible(p,time)
+	      	   	      | timed_out: 0
+		   	      | done(result): if is_pure(to_ht(result,N))
+		     		   	      then 1
+				   	      else -1
+					      fi
+		   	      esac
+	      		 fi;
+      		if which_flag then time := 2*time fi;
+	        which_flag := not which_flag;
+		if print_int_flag then prints("in to_ht, time = ", time, ", which_flag = ", which_flag,
+		", elapsed = ",elapsed_ms() - start) fi
+      		{unitary_test_counter.use() done in calls above}
+  	     od
+  in result.>
+
+{ meant to be used for G simple }
+{ compute Hermitian form to ht on p, report if it is unitary}
+set is_unitary_to_ht_big_SIMPLE(Param p,int N) = bool:
+  if (not is_hermitian(p)) or (not is_pos_on_LKTs(p)) then return false fi;
+  let G = p.real_form
+  then FPP_flag = is_FPP(G,p.infinitesimal_character)
+  then () = if not FPP_flag
+    	    then return is_unitary_to_ht(p,N) {prints("FPP DANGER TO HT at ",p)}
+	    fi
+  {then () = p := herm_center(p)}
+  then () = if (big_unitary_hash.ulookup(p)).>= then return true fi
+  then () = if (big_unitary_hash.nulookup(p)).>= then return false fi
+  in if interrupt_flag
+     then is_unitary_to_ht_big_SIMPLE_interrupt(p,N, interrupt_base_time)
+     else {unitary_test_counter.use(); done in calls below}
+     	  is_pure(big_unitary_hash.sig_entry(p,N))
+     fi
+{
+     	  if low(p,N) {low(p.x,p.lambda,N)}
+     	  then {is_pure(hermitian_form_irreducible_to_ht(p,N))}
+	       let boo = is_unitary_to_ht(p,N)
+	       then () = if not boo
+	       	       	 then big_unitary_hash.numatch(p)
+			 fi
+	       in boo
+     	  else let P = hermitian_form_irreducible(p)
+	       then () = if is_pure(P)
+	       	       	 then big_unitary_hash.umatch(p)
+			 else big_unitary_hash.numatch(p)
+			 fi
+	       in is_pure(to_ht(P,N))
+     	  fi
+     fi
+}
+{ compute Hermitian form to ht on p, report if it is unitary}
+set is_unitary_to_ht_big(Param p,int N) = bool:
+  if (not is_hermitian(p)) or (not is_pos_on_LKTs(p)) then return false fi;
+  if (big_unitary_hash.ulookup(p)).>= then return true fi;
+  let pds = derived_factor_params0(p)
+  in all(for pd in pds do @bool: is_unitary_to_ht_big_SIMPLE(pd,N) od)
+
+set to_hts_count_mat = null(10,10)
+set to_hts_count = null(10)
+
+set is_unitary_to_hts_big_SIMPLE_interrupt(Param p,[int] Ns, int time) = bool:
+    if print_int_flag then prints("N = ",Ns, " p = ",p) fi;
+    let () = for N@i in Ns
+       	     do let result = 0, which_flag = low(p,N), start = elapsed_ms()
+     	        then () = while result = 0
+	     	       	  do result:= if which_flag
+		     	      	     then is_unitary_to_ht_MvL(p,N,time)
+			      	     else case hermitian_form_irreducible(p,time)
+	     	      	      	     	  | timed_out: 0
+		      		   	  | done(result):
+					    if is_pure((to_ht(result,Ns~[0])))
+					    then 1
+					    else -1
+					    fi
+		      	      	   	  esac
+			      	     fi;
+			     	if print_int_flag then prints("in to_hts, time = ", time, ", which_flag = ",
+				which_flag, ", elapsed = ", elapsed_ms() - start) fi;
+                	     {unitary_test_counter.use(); this is done in the calls above}
+			     if not which_flag and not result.= then break fi;
+		       	     if which_flag then time := 2*time fi;
+		       	     which_flag := not which_flag
+     	      		  od {while result}
+		in if result.< then big_unitary_hash.numatch(p); return false fi
+	     od
+     in true
+
+{meant to be used for G simple}
+{ compute Hermitian form to hts on p, report if it is unitary}
+set is_unitary_to_hts_big_SIMPLE(Param p,[int] Ns) = bool:
+  if (not is_hermitian(p)) or (not is_pos_on_LKTs(p)) then return false fi;
+  let G = p.real_form
+  then FPP_flag = is_FPP(G,p.infinitesimal_character)
+  then () = if not FPP_flag
+    	    then return is_unitary_to_hts(p,Ns) {prints("FPP DANGER TO HT at ",p)}
+	    fi
+  {then () = p := herm_center(p)}
+  then () = if (big_unitary_hash.ulookup(p)).>= then return true fi
+    in if interrupt_flag
+     then return is_unitary_to_hts_big_SIMPLE_interrupt(p, Ns, interrupt_base_time)
+     else if #Ns = 0
+       	  then return is_unitary_hash_big_SIMPLE(p)
+	  fi;
+  	  for N in Ns
+     	  do if not is_unitary_to_ht_big_SIMPLE(p,N)
+     	     then return false
+	     fi
+     	  od;
+     	  true
+     fi
+
+{ compute Hermitian form to hts on p, report if it is unitary}
+set is_unitary_to_hts_big (Param p,[int] Ns) = bool:
+  if (not is_hermitian(p)) or (not is_pos_on_LKTs(p)) then return false fi;
+  if #Ns = 0 then return is_unitary_hash_big(p) fi;
+  let pds = derived_factor_params0(p)
+  in all(for pd in pds do @bool: is_unitary_to_hts_big_SIMPLE(pd,Ns) od)
+
+{ONLY for G simple}
+{ compute Hermitian form to height N; if it's positive, then compute full form }
+set is_unitary_test_big_SIMPLE_interrupt(Param p, int N, int time) = bool:
+    let which_flag = low(p,N), result = 0, start = elapsed_ms()
+    then () = while result.=
+    	      do result := if which_flag
+	      	 	   then is_unitary_to_ht_MvL(p,N,time)
+			   else case hermitian_form_irreducible(p,time)
+	      	   	      	| timed_out: 0
+		   	      	| done(r): if is_pure(r) then return true fi;
+					   if is_pure(to_ht(r,N))
+		     		   	      then 1
+				   	      else -1
+					      fi
+		   	        esac
+	      		   fi;
+			   if result = -1 then big_unitary_hash.numatch(p); return false fi;
+      			   if which_flag then time := 2*time fi;
+	        	   which_flag := not which_flag;
+			   if print_int_flag then prints("in test, time = ", time, ", which_flag = ",
+			      		     which_flag, ", elapsed = ",elapsed_ms() - start) fi
+	       od
+    {now result = +1}
+    in is_unitary_hash_big_SIMPLE(p)
+
+{ONLY for G simple}
+{ compute Hermitian form to height N; if it's positive, then compute full form }
+set is_unitary_test_big_SIMPLE(Param p, int N) = bool:
+    if (not is_hermitian(p)) or (not is_pos_on_LKTs(p)) then return false fi;
+    if N < height(p) then return is_unitary_hash_big_SIMPLE(p) fi;
+    let G = p.real_form
+    then FPP_flag = is_FPP(G,p.infinitesimal_character)
+    then () = if not FPP_flag
+    	      then return is_unitary_test(p,N) {prints("FPP DANGER TO HT at ",p)}
+	      fi
+    {then () = p := herm_center(p)}
+    then () = if is_finished(p.x, p.lambda) and big_unitary_hash.ulookup(p).>=
+    	      then return true
+    	      fi
+    in if interrupt_flag
+       then is_unitary_test_big_SIMPLE_interrupt(p,N,interrupt_base_time)
+       else let P = big_unitary_hash.sig_entry(p,N)
+       	    in if not is_pure(P)
+	       then false
+	       else is_unitary_hash_big_SIMPLE(p)
+	       fi
+       fi
+
+{ONLY for G simple}
+{ like previous, with list of heights; use interrupted is_unitary}
+set is_unitary_test_big_SIMPLE_interrupt (Param p, [int] Ns, int time) = bool:
+   let () = for N@i in Ns
+       	    do let result=0, which_flag=low(p,N), start = elapsed_ms()
+	       then () =  while result = 0
+	     	       	  do result:= if which_flag
+		     	      	      then is_unitary_to_ht_MvL(p,N,time)
+			      	      else case hermitian_form_irreducible(p,time)
+	     	      	      	     	   | timed_out: 0
+		      		   	   | done(result):
+					     if is_pure(result)
+					     then 1
+					     else -1
+					     fi
+		      	      	   	   esac
+			      	       fi;
+			    if print_int_flag then prints("in tests, time = ", time, "which_flag = ",
+			       		      which_flag, ", elapsed = ",elapsed_ms() - start) fi;
+               	    	    {unitary_test_counter.use();}
+			    if result = -1 then big_unitary_hash.numatch(p); return false fi;
+ 			    if not which_flag and result = 1 then return true fi;
+		       	    if which_flag then time := 2*time fi;
+		       	    which_flag := not which_flag
+     	      		 od {while result}
+	      {at this point result =1, indicating unitarity to ht N is true}
+	      in ()
+	   od
+    in is_unitary_hash_big_SIMPLE(p)
+
+{ONLY for G simple}
+{ like previous, with list of heights }
+set is_unitary_test_big_SIMPLE (Param p, [int] Ns) = bool:
+  if (not is_hermitian(p)) or (not is_pos_on_LKTs(p)) then return false fi;
+  let G = p.real_form
+  then FPP_flag = is_FPP(G,p.infinitesimal_character)
+  then () = if not FPP_flag
+    	    then  return is_unitary_test(p,Ns) {prints("FPP DANGER TEST at ",p)}
+	    fi
+  {then () = p := herm_center(p)}
+  {then () = test_count[#Ns] +:= 1}
+  then () = if (big_unitary_hash.ulookup(p)).>= then return true fi
+  then () = if (big_unitary_hash.nulookup(p)).>= then return false fi
+  then () = if #Ns = 0
+       	    then {test_count_mat[0,0] +:= 1;}
+	    return is_unitary_hash_big_SIMPLE(p)
+	    fi
+  in for N in Ns
+     do if not is_pure(big_unitary_hash.sig_entry(p,N))
+     	then return false
+	fi
+     od;
+     is_unitary_hash_big_SIMPLE(p)
+
+{
+  in if interrupt_flag then is_unitary_test_big_SIMPLE_interrupt(p, Ns,interrupt_base_time)
+     else for N@i in Ns
+     	  do if not is_pure(hermitian_form_irreducible_to_ht(p,N))
+	     {then unitary_test_counter.use()}
+	     then test_count_mat[i,#Ns] +:= 1;
+	     return false fi
+	  od;
+  	  test_count_mat[#Ns,#Ns] +:= 1;
+	  is_unitary_hash_big_SIMPLE(p)
+      fi
+}
+
+set is_unitary_test_big(Param p, int N) = bool:
+    if (not is_hermitian(p)) or (not is_pos_on_LKTs(p)) then return false fi;
+    let pds = derived_factor_params0(p)
+    in all(for pd in pds do @bool: is_unitary_test_big_SIMPLE(pd,N) od)
+
+set is_unitary_test_big(Param p, [int] Ns) = bool:
+    if (not is_hermitian(p)) or (not is_pos_on_LKTs(p)) then return false fi;
+    let pds = derived_factor_params0(p)
+    in all(for pd in pds do @bool: is_unitary_test_big_SIMPLE(pd,Ns) od)
+
+
+{ONLY for G simple}
+{use the first m heights from deform_heights to test}
+set is_unitary_def_test_big_SIMPLE_interrupt(Param p,int m, int time) = bool:
+    let (def,flag)= deform_hts(p,m)
+    in if flag
+       then is_pos_on_LKTs(p) and is_unitary_to_hts_big_SIMPLE(p,def)
+       else is_unitary_test_big_SIMPLE_interrupt(p,def,interrupt_base_time)
+       fi
+
+{ONLY for G simple}
+{use the first m heights from deform_heights to test}
+set is_unitary_def_test_big_SIMPLE(Param p,int m) = bool:
+    if (not is_hermitian(p)) or (not is_pos_on_LKTs(p)) then return false fi;
+    let G = p.real_form
+    then FPP_flag = is_FPP(G,p.infinitesimal_character)
+    then () = if not FPP_flag
+    	      then return is_unitary_def_test(p,m) {prints("FPP DANGER DEF TEST at ",p)}
+	      fi
+    {then () = p := herm_center(p)}
+    then () = if (big_unitary_hash.ulookup(p)).>= then return true fi
+    then () = if (big_unitary_hash.nulookup(p)).>= then return false fi
+    then () = if interrupt_flag
+    	      then return is_unitary_def_test_big_SIMPLE_interrupt(p, m, interrupt_base_time)
+	      fi
+    in if low(p, height(p) + 4*m)
+       then let (def,flag)= deform_hts(p,m)
+       	    in if flag
+       	       then is_pos_on_LKTs(p) and is_unitary_to_hts_big_SIMPLE(p,def)
+       	       else is_unitary_test_big_SIMPLE(p,def)
+       	       fi
+       else is_unitary_hash_big_SIMPLE(p)
+       fi
+
+set is_unitary_def_test_big(Param p,int m) = bool:
+    if (not is_hermitian(p)) or (not is_pos_on_LKTs(p)) then return false fi;
+    let pds = derived_factor_params0(p)
+    in all(for pd in pds do @bool: is_unitary_def_test_big_SIMPLE(pd,m) od)
+
+{ONLY for G simple}
+{use the first height from deform_heights to test}
+set is_unitary_def_test_big_SIMPLE(Param p) = bool:
+    is_unitary_def_test_big_SIMPLE(p,1)
+
+set is_unitary_def_test_big(Param p) = bool:
+    is_unitary_def_test_big(p,1)
+
+{ONLY for G simple}
+set is_unitary_next_big_SIMPLE(Param p) = bool:
+    if (not is_hermitian(p)) or (not is_pos_on_LKTs(p)) then return false fi;
+    let G = p.real_form
+    then (LAM,NU,) = low(p)
+    then FPP_flag = is_FPP(G,p.infinitesimal_character)
+    then () = if not FPP_flag
+    	      then if NU > LAM*low_frac
+       	      	   then let n=next_heightB(p)
+    	    	   	in if (n+1).=
+	      		   then return true
+	      		   elif is_unitary_to_ht_big(p,n)
+	      		   then return is_unitary_hash_big_SIMPLE(p)
+			   else big_unitary_hash.numatch(p); return false {NOT unitary_to_ht}
+			   fi {n=-1}
+		   else return is_unitary_hash_big_SIMPLE(p)
+		   fi {NU > LAM}
+	       fi {not FPP_flag}
+    {then () = p := herm_center(p)}
+    in if NU > LAM*low_frac
+       then let n=next_heightB(p)
+    	    in  if (n+1).=
+	      	then true
+	      	elif is_unitary_to_ht_big_SIMPLE(p,n)
+	      	then is_unitary_hash_big_SIMPLE(p)
+		else big_unitary_hash.numatch(p); false {NOT unitary_to_ht}
+		fi {n=-1}
+	else is_unitary_hash_big_SIMPLE(p)
+	fi {NU > LAM}
+
+set is_unitary_next_big(Param p) = bool:
+    if (not is_hermitian(p)) or (not is_pos_on_LKTs(p)) then return false fi;
+    let pds = derived_factor_params0(p)
+    in all(for pd in pds do @bool: is_unitary_next_big_SIMPLE(pd) od)
+
+set is_FPP_unitary_flag = false
+
+{Use Davis/Mason-Brown criterion. First bool says whether the test applies; second gives
+result of test. Second is meaningful only if first is true; I guess make result (false,false)
+otherwise?}
+set is_FPP_unitary(Param p) = (bool,bool):
+    if not is_FPP_unitary_flag then return (false,false) fi;
+    if (not is_hermitian(p)) or (not is_pos_on_LKTs(p))
+    then return (true,false)
+    fi;
+    let () = p:= herm_center(p), G = p.real_form
+    then gamma = p.infinitesimal_character
+    then alphavs = for alphav@j in G.simple_coroots
+    	 	  do if gamma*alphav < 1
+		     then [j]
+		     elif gamma*alphav > 1
+		     then []
+		     else let rdi = integrality_datum(G,gamma)
+		     	  then ji = coroot_index(rdi,alphav)
+			  in if not is_member_sorted(tau(p))(ji)
+			     then []
+			     else [j]
+			     fi
+		     fi
+		  od.##
+     then () = if #alphavs = G.semisimple_rank
+     	       then return (false,false)
+	       fi
+     then Q = KGPElt:(alphavs, p.x) {p now must be good range coh ind from Q}
+     then rhou = Q.rho_u
+     then () = if((p.x.involution-1)*rhou).!=
+     	       then return (true,false)
+	       fi
+     then L = Q.Levi
+     then xL = inverse_embed_KGB(p.x,L)
+     then pL = parameter(xL,p.lambda - rhou, p.nu)
+     then () = assert(p = first_param(theta_induce_standard(pL,G)),"screwed up pL!")
+     then derpLs = derived_factor_params0(pL)
+     in (true, all(for derpL in derpLs
+     	       	   do @bool:
+		      {let () = FPP_unitary_hash_bottom_layer([(pL.x,pL.lambda)])
+		      in} is_unitary_hash_big_SIMPLE(derpL)
+		   od))
+
+
+{First bool says whether the test applies; second gives result of
+test. Second is meaningful only if first is true; I guess make result
+(false,false) otherwise?}
+{hope later to insert a version of fancy_tester that uses FPP_unitary_hash}
+
+set is_FPP_unitary(Param p, (Param -> bool) fancy_tester ) = (bool,bool):
+    if not is_FPP_unitary_flag then return (false,false) fi;
+    if (not is_hermitian(p)) or (not is_pos_on_LKTs(p))
+    then return (true,false)
+    fi;
+    let () = p:= herm_center(p), G = p.real_form
+    then gamma = p.infinitesimal_character
+    then alphavs = for alphav@j in G.simple_coroots
+    	 	  do if gamma*alphav < 1
+		     then [j]
+		     elif gamma*alphav > 1
+		     then []
+		     else let rdi = integrality_datum(G,gamma)
+		     	  then ji = coroot_index(rdi,alphav)
+			  in if not is_member_sorted(tau(p))(ji)
+			     then []
+			     else [j]
+			     fi
+		     fi
+		  od.##
+     then () = if #alphavs = G.semisimple_rank
+     	       then return (false,false)
+	       fi
+     then Q = KGPElt:(alphavs, p.x) {p now must be good range coh ind from Q}
+     {then ()= prints("have Q = ",Q," in is_FPP_unitary")}
+     then rhou = Q.rho_u
+     then () = if((p.x.involution-1)*rhou).!=
+     	       then return (true,false)
+	       fi
+     then L = Q.Levi
+     then xL = inverse_embed_KGB(p.x,L)
+     then pL = parameter(xL,p.lambda - rhou, p.nu)
+     then () = assert(p = first_param(theta_induce_standard(pL,G)),"screwed up pL!")
+     then derpLs = derived_factor_params0(pL)
+     in (true, all(for derpL in derpLs
+     	       	   do @bool: fancy_tester(derpL)
+		   od))
+
+set KUKU_flag = true
+
+{For each list of faces in FVKH, indices of faces for which the corresponding parament is known
+(by Uhash) to be unitary}
+set KU(KGBElt x, ratvec lambda, LocalVertexData Lvd, [[FaceVertsKHash]] FVKH, Param_hash Uhash,
+ (Param->bool) fancy_tester) = [vec]:
+    {prints("in KU",fancy_tester);}
+    for FVKHd@d in FVKH
+    do for vlong@j in FVKHd
+       do let verts = vlong[:d+1], G = x.real_form
+       	  then ps = monomials(finalize(parameter(x,lambda, face_bary(Lvd,verts))))
+	  in if all(for p in ps do (Uhash.lookup(p)).>= od)
+	     then [j]
+	     elif all(for p in ps
+	     	      do let (x,y) = is_FPP_unitary(p, fancy_tester)
+		      	 then () = if x
+			      	   then if y
+			      	   	then big_unitary_hash.uhash(G).match(p)
+				   	else big_unitary_hash.nuhash(G).match(p)
+				   	fi
+			      	   fi
+			 in x and y
+		       od)
+	     then [j]
+	     else []
+	     fi
+       od.##
+     od
+
+set KU(KGBElt x, ratvec lambda, LocalVertexData Lvd, [[FaceVertsKHash]] FVKH, Param_hash Uhash) =
+[vec]:
+    KU(x,lambda,Lvd,FVKH,Uhash, is_unitary_hash_big_SIMPLE@Param) 
+ 
+{takes the known unitaries from unitary_hash having the given x and lambda,
+ and returns their locations in LFDKH}
+set known_unitaries(Param_hash Uhash, KGBElt x, ratvec lambda, LocalVertexData Lvd,
+    [[FaceVertsKHash]] LFDKH, (Param->bool) fancy_tester) = [vec]:
+    if KUKU_flag then return KU(x,lambda, Lvd, LFDKH, Uhash) fi;
+    let ps = for d:#LFDKH
+    	     do for v in LFDKH[d]
+	     	do parameter(x,lambda,face_bary(Lvd, v[:d+1]))
+		{face_bary_ic(x.inner_class, face_bary(Lvd.list, v[:d+1])))}
+		od
+	     od
+    in for d:#LFDKH
+       do for p@j in ps[d]
+       	  do if p.nu.=
+	     then [j]
+	     else let qs = monomials(finalize(p))
+	     	  in if all(for q in qs do @bool: Uhash.lookup(q).>= od)
+	     	     then [j]
+		     else []
+		     fi
+	     fi
+	  od.##
+       od
+
+set known_unitaries(Param_hash Uhash, KGBElt x, ratvec lambda, LocalVertexData Lvd,
+    [[FaceVertsKHash]] LFDKH) = [vec]:
+   known_unitaries(Uhash, x, lambda, Lvd, LFDKH, is_unitary_hash_big_SIMPLE@Param)
+
+
+{Here UhashLocal is assumed to consist of Param's at (x,lambda)}
+{this misses (in local_testK_level) unitary Param's that finalize to different x;
+those are caught by local_testK_hash}
+set known_unitaries(Param_hash UhashLocal, LocalVertexData Lvd,
+    [[FaceVertsKHash]] LFDKH) = [vec]:
+    let lookups = for list@d in LFDKH do index_in(if #list = 0 then [vec]:[]
+    	      	  	    	     	      else for v in list do v[:d+1] od
+					      fi)
+				      od
+    then NumKnown = UhashLocal.size(), out = [vec]: for j:#LFDKH do vec:[] od
+    then () = for k:NumKnown
+       	 do let p = UhashLocal.index(k)
+       	    then list = local_vertices(p)
+            in if #list-1 < #LFDKH
+	       then let local_verts = vec: for ell in list do Lvd.lookup(ell) od.sort
+	     	    then m = lookups[#list-1](local_verts)
+		    then () = assert(m.>=,"have known unitary not appearing in LFDKH")
+		    then () = out[#list-1]#:=m
+		    in ()
+	       fi
+	 od
+     in out
+
+{takes the known non-unitaries from non-unitary_hash having the given x and lambda,
+ and returns their locations in LFDKH}
+{set known_non_unitaries(Param_hash NUhash, KGBElt x, ratvec lambda, VertexData Lvd,
+    [[FaceVertsKHash]] LFDKH) = [vec]:
+    let ps = for d:#LFDKH
+    	     do for v in LFDKH[d]
+	     	do parameter(x,lambda,face_bary(Lvd, v[:d+1]))
+		{face_bary_ic(x.inner_class, face_bary(Lvd.list, v[:d+1]))}
+		od
+	     od
+    in for d:#LFDKH
+       do for p@j in ps[d]
+       	  do let qs = monomials(finalize(p))
+	     in if all(for q in qs do @bool: NUhash.lookup(q).>= od)
+	     	then [j]
+		else []
+		fi
+	  od.##
+       od}
+
+
+set localize(Param_hash Uhash, KGBElt x, ratvec lambda) = Param_hash:
+    let NumKnown = Uhash.size(), UhashLoc = make_Param_hash()
+    then () = for k:NumKnown
+       	      do let p = Uhash.index(k)
+	      	 in if p.x = x and p.lambda = lambda
+		    then UhashLoc.match(p)
+		    else -1
+		    fi
+	      od
+    in UhashLoc
+
+set localize(Param_hash Uhash, ratvec lambda) = Param_hash:
+    let NumKnown = Uhash.size(), UhashLoc = make_Param_hash()
+    then () = for k:NumKnown
+       	      do let p = Uhash.index(k)
+	      	 in if p.lambda = lambda
+		    then UhashLoc.match(p)
+		    else -1
+		    fi
+	      od
+    in UhashLoc
+
 
 {this is the Q(infinitesimal character) bound provided by Dirac inequality on all LKTs}
 set DiracBD(KGBElt x, ratvec lambda) = rat:
@@ -2052,7 +2734,7 @@ set localFD_KHash_01 (KGBElt x, ratvec lambda, LocalVertexData Lvd, int HT, KTyp
 		      then m = ktp_hash.match(KCF)
 		      in if (not temp_Dirac_best_flag) or DiracBestTest(p0,HT,KCF)
 		      	 then [v##[m,#monomials(P)]]
-			 else {prints("line 2059");} DBTcount +:=1; []
+			 else {prints("line 2059");} {DBTcount +:=1;} []
 			 fi
 		   od.##
     then lookup0D = index_in(for v in answer0
@@ -2125,7 +2807,7 @@ set localFD_KHash_01_graph (KGBElt x, ratvec lambda, LocalVertexData Lvd, KTypeP
 	    then KCF = K_type_pol(character_formula(PC))
 	    in if (not temp_Dirac_best_flag) or DiracBestTest(pC,KCF)
 	       then ktp_hash.match(KCF)
-	       else {prints("line 2132");} DBTcount+:=1; -1
+	       else {prints("line 2132");} {DBTcount+:=1;} -1
 	       fi
 	 od
     then nLKT = #LKTs(parameter(x,lambda,0*lambda))
@@ -2179,7 +2861,7 @@ set localFD_KHash_01_graph (KGBElt x, ratvec lambda, LocalVertexData Lvd, int HT
 	    then KCF = K_type_pol(character_formula(PC))
 	    in if (not temp_Dirac_best_flag) or DiracBestTest(pC,HT,KCF)
 	       then ktp_hash.match(KCF)
-	       else {prints("line 2186");}  DBTcount+:=1; -1
+	       else {prints("line 2186");}  {DBTcount+:=1;} -1
 	       fi
 	 od
     then nLKT = #LKTs(parameter(x,lambda,0*lambda))
@@ -2523,576 +3205,3 @@ set extend_K_characters_graph(KGBElt x, ratvec lambda, LocalVertexData Lvd,
      then () = if time_verbose then prints("     ", print_time_string(time),
      	       	  " for extend_K_characters_graph") fi
      in answer
-
-{. The next family of functions all need simple derived group. Always
-|vd.list| should be ALL vertices in the FPP; Lvd.list will be all infl
-chars in the FPP for a parameter (x,lambda,*), with x and lambda
-fixed. The face lists carried by [[FaceBary]] or [[FaceVertsIndex]]
-may be pruned of reps not interesting for unitarity, but the indices
-will always refer to a constant vlist.}
-
-set two_to_position(KGBElt x, ratvec lambda) = int:
-    let pos = position(x,lambda)
-    in if pos.>=
-       then to_bitset([position(x,lambda)])
-       else -1
-       fi
-
-{set a bit in xl_known}
-set finish(KGBElt x, ratvec lambda) = void:
-    let pos = two_to_position(x,lambda)
-    in if pos.>=
-       then big_unitary_hash.finish(x, pos)
-       fi
-
-set finish(KGBElt x) = void:
-    {let lambdas = FPP_lambdas(x)
-    then m = #lambdas
-    then M = (to_bitset([m]) - 1)
-    in} big_unitary_hash.finishx(x)
-
-{check whether a bit in xl_known is set}
-set is_finished(KGBElt x, ratvec lambda) = bool:
-    let start = elapsed_ms(), Mx_known = big_unitary_hash.x_known(x.real_form),
-    	Mx_partial = big_unitary_hash.x_partial(x.real_form), M = big_unitary_hash.xl_known(x.real_form)[x.number]
-    {then () = prints("Mx_known = ",Mx_known,", Mx_partial = ",Mx_partial,", M = ",M)}
-    then answer = if is_member_bitset(x.number,Mx_known)
-    	 	  then true
-		  elif {is_member_bitset(x.number,Mx_partial)
-		  then} let pos = position(x,lambda)
-		  	in if pos.>=
-			   then is_member_bitset(pos,M)
-			   else false
-			   fi
-		  then true
-		  else false
-		  fi
-    then () = is_finished_time +:= elapsed_ms() - start
-    in answer
-
-{list of all pairs (x,lambda) for which complete FPP-unitary dual is present in big_unitary_hash}
-set all_finished(RealForm G) = [(KGBElt,ratvec)]:
-    let list = for x in KGB(G)
-    	       do set_bit_positions(big_unitary_hash.xl_known(G)[x.number])
-	       od
-    in for x in KGB(G)
-       do let poss = list[x.number]
-       	  in for pos in poss
-       	     do (x, FPP_lambdas(x)[pos])
-       	     od
-       od.##
-
-set UHBS_time = int: 0
-
-{assume p is hermitian, FPP}
-set hermitian_form_irreducible_big_SIMPLE(Param p) = KTypePol:
-    let () = p:=herm_center(p)
-    then L = big_unitary_hash.ulookup(herm_center(p))
-    in if L.>=
-       then {let startCF = elapsed_ms()}
-       	    {then m = char_counter.use()
-	    then} let ans = K_type_pol(character_formula(p))
-	    {then () = charTime +:= elapsed_ms() - startCF}
-	    in ans
-       else big_unitary_hash.sig_entry(p,height(p)-1) {hermitian_form_irreducible(p)}
-       fi
-
-{this version is only for G simple and hermitian FPP params}
-set is_unitary_hash_big_SIMPLE(Param p) = bool:
-    if not is_hermitian(p) then return false fi;
-    let start = elapsed_ms(), G = p.real_form
-    then FPP_flag = is_FPP(G,p.infinitesimal_character)
-    then () = if not FPP_flag
-    	      then return is_unitary(p) {prints("FPP DANGER at ",p)}
-	      fi
-    {then () = p := herm_center(p)}
-    then L = big_unitary_hash.ulookup(herm_center(p))
-    {then () = prints("p = ", p, ". L = ",L, ", is_finished = ",is_finished(p.x, p.lambda))}
-    then () = if L.>= then return true fi
-    then () = if is_finished(p.x, p.lambda)
-    	      then big_unitary_hash.numatch(p); return false fi
-    then Ln = big_unitary_hash.nulookup(p)
-    then () = if Ln.>= then return false fi
-    then (,pL) = wkgood_Q(p)
-    then derpLs = for qLj in derived_factor_params0(pL)
-    	 	  do monomials(finalize(qLj))
-		  od.##
-    then () = if #derpLs = 0 then return true fi
-    {then () = for derpL in derpLs do big_unitary_hash.rf_index(derpL.real_form) od}
-    then statuses = for derpL in derpLs
-    		    do big_unitary_hash.check(derpL)
-		    od
-    then answer =
-       if all(statuses) or #statuses = 1 or (all(statuses) and good_L(p) = pL.real_form)
-       then let ans = statuses[0]
-       	    then () = if ans
-	       	      then big_unitary_hash.umatch(p)
-	       	      else big_unitary_hash.numatch(p)
-		      fi
-	    in ans
-       else {some derpL is not unitary, but the induction is not trivial}
-       	    let goodL = good_L(p)
-	    in let ans = is_pure(sum(G, for c@qL in hermitian_form_irreducible(pL)
-			      do c*theta_induce_standard(param(qL),
-			           goodL)
-			      od))
-	       then () = if ans
-	       	       	 then big_unitary_hash.umatch(p)
-	       	       	 else big_unitary_hash.numatch(p)
-			 fi
-	       in ans
-       fi
-    then () = UHBS_time+:= elapsed_ms() - start
-    then () = if answer
-    	      then big_unitary_hash.umatch(p)
-	      else big_unitary_hash.numatch(p)
-	      fi
-    in answer
-
-set is_unitary_hash_big(Param p) = bool:
-    if not is_hermitian(p) then return false fi;
-    let pds = derived_factor_params0(p)
-    in all(for pd in pds do @bool: is_unitary_hash_big_SIMPLE(pd) od)
-
-set HOWMANY = int:0
-
-set hermitian_form_irreducible_big(Param p) = KTypePol:
-    if is_unitary_hash_big(p)
-    then {let startCF = elapsed_ms()
-       	 then m = char_counter.use()
-	 then} let ans = K_type_pol(character_formula(p))
-	 {then () = charTime +:= elapsed_ms() - startCF}
-	 in ans
-     else let G = p.real_form
-     	  then () = HOWMANY +:= 1
-	  {in hermitian_form_irreducible(p)}
-     	  then derps = derived_factor_params0(p)
-     	  then mu0 = LKTs(p)[0]
-	  {then ans = }
-	  in glue_sigs(for derp in derps do hermitian_form_irreducible_big_SIMPLE(derp) od, mu0)
-	  {
-	  then () = prints("to-glue = ",for derp in derps do hermitian_form_irreducible_big_SIMPLE(derp) od)
-	  then () = prints("glued answer = ",ans)
-	  then () = prints("correct answer = ", hermitian_form_irreducible(p))
-	  }
-	  {then () = assert((ans - hermitian_form_irreducible(p)).=,"bad glue_sigs!")}
-	  {in ans}
-     fi
-
-{if true, then try is_unitary during is_unitary_to_ht}
-set interrupt_flag = false {KGB(E7_s,20895), lambda = rho is HORRIBLE with "true"}
-set print_int_flag = false
-
-{initial time to give interruptible command}
-set interrupt_base_time = int:200
-
-{START with full is_unitary tests, because those are actually interruptable}
-{ meant to be used for G simple }
-{ compute Hermitian form to ht on p, report if it is unitary}
-set hermitian_form_irreducible_to_ht_big_SIMPLE_interrupt(Param p,int N, int time) = KTypePol:
-  let which_flag = low(p,N), start = elapsed_ms(), (LAM,NU,) = low(p), empty = p.real_form.null_K_module
-  then () = if print_int_flag then prints("N = ",N, ", p = ",p) fi
-  then result = empty
-  then () = while result.=
-       	    do let maybe = if which_flag
-     	       	       	   then hermitian_form_irreducible_to_ht_MvL(p,N,time)
-	      	       	   else hermitian_form_irreducible(p,time)
-	      	       	   fi
-	       then () = result := case maybe
-	      	       	 	   | timed_out: empty
-		  		   | done(ans): to_ht(ans,N)
-		  		   esac
-      	        then () = if which_flag then time := 2*time fi
-	        then () = which_flag := not which_flag;
-		if print_int_flag then prints("in form_to_ht, time = ", time, ", which_flag = ", which_flag,
-		", elapsed = ",elapsed_ms() - start) fi
-		in ()
-  	     od
-  in result
-
-{assume p is hermitian}
-set hermitian_form_irreducible_to_ht_big_SIMPLE(Param p,int N) = KTypePol:
-  let G = p.real_form
-  then FPP_flag = is_FPP(G,p.infinitesimal_character)
-  then () = if not FPP_flag
-    	    then return hermitian_form_irreducible_to_ht(p,N) {prints("FPP DANGER TO HT at ",p)}
-	    fi
-  {Now p is FPP. Assume it was already herm center? {then () = p := herm_center(p)}}
-  then L = big_unitary_hash.ulookup(p)
-  then () = if L.>=
-       	    then {let startCF = elapsed_ms()
-	    	 then m = char_counter.use()
-	    	 then} let ans =K_type_pol(character_formula_to_height(p,N))
-		 {then () = charTime +:= elapsed_ms() - startCF}
-		 in return(ans)
-	     fi
-  in if interrupt_flag
-     then hermitian_form_irreducible_to_ht_big_SIMPLE_interrupt(p,N, interrupt_base_time)
-     else if low(p,N) {low(p.x,p.lambda,N)}
-     	  then let ans = hermitian_form_irreducible_to_ht(p,N)
-	       then () = if not is_pure(ans)
-	       	       	 then big_unitary_hash.numatch(p)
-			 fi
-	       in ans
-     	  else big_unitary_hash.sig_entry(p,N)
-	  fi {low}
-     fi{interrupt}
-
-{	  let P = hermitian_form_irreducible(p)
-	       then () = if is_pure(P)
-	       	       	 then big_unitary_hash.umatch(p)
-	       	       	 else big_unitary_hash.numatch(p)
-			 fi {is_pure}
-	       in to_ht(P,N)
-     	  fi
-     fi}
-
-{assume p is hermitian}
-{ }
-set HOWMTH = int:0
-
-set hermitian_form_irreducible_to_ht_big(Param p,int N) = KTypePol:
-    HOWMTH +:= 1;
-    if low(p,N) {low(p.x,p.lambda,N)}
-    then hermitian_form_irreducible_to_ht(p,N)
-    else to_ht(hermitian_form_irreducible(p),N)
-    fi
-
-{START with full is_unitary tests, because those are actually interruptable}
-{ meant to be used for G simple }
-{ compute Hermitian form to ht on p, report if it is unitary}
-set is_unitary_to_ht_big_SIMPLE_interrupt(Param p,int N, int time) = bool:
-  let which_flag = low(p,N), result = 0, start = elapsed_ms(), (LAM,NU,) = low(p)
-  then () = if print_int_flag then prints("N = ",N, ", p = ",p) fi
-  {then () = if NU > 8*N*low_frac
-       	    then return is_pure(hermitian_form_irreducible_to_ht(p,N))
-      	    elif NU < N*low_frac/2
-      	    then return is_pure(to_ht(hermitian_form_irreducible(p),N))
-      	    else}
-  then () = while result.=
-       	    do result := if which_flag
-     	       	      	 then is_unitary_to_ht_MvL(p,N,time)
-	      		 else case hermitian_form_irreducible(p,time)
-	      	   	      | timed_out: 0
-		   	      | done(result): if is_pure(to_ht(result,N))
-		     		   	      then 1
-				   	      else -1
-					      fi
-		   	      esac
-	      		 fi;
-      		if which_flag then time := 2*time fi;
-	        which_flag := not which_flag;
-		if print_int_flag then prints("in to_ht, time = ", time, ", which_flag = ", which_flag,
-		", elapsed = ",elapsed_ms() - start) fi
-      		{unitary_test_counter.use() done in calls above}
-  	     od
-  in result.>
-
-{ meant to be used for G simple }
-{ compute Hermitian form to ht on p, report if it is unitary}
-set is_unitary_to_ht_big_SIMPLE(Param p,int N) = bool:
-  if (not is_hermitian(p)) or (not is_pos_on_LKTs(p)) then return false fi;
-  let G = p.real_form
-  then FPP_flag = is_FPP(G,p.infinitesimal_character)
-  then () = if not FPP_flag
-    	    then return is_unitary_to_ht(p,N) {prints("FPP DANGER TO HT at ",p)}
-	    fi
-  {then () = p := herm_center(p)}
-  then () = if (big_unitary_hash.ulookup(p)).>= then return true fi
-  then () = if (big_unitary_hash.nulookup(p)).>= then return false fi
-  in if interrupt_flag
-     then is_unitary_to_ht_big_SIMPLE_interrupt(p,N, interrupt_base_time)
-     else {unitary_test_counter.use(); done in calls below}
-     	  is_pure(big_unitary_hash.sig_entry(p,N))
-     fi
-{
-     	  if low(p,N) {low(p.x,p.lambda,N)}
-     	  then {is_pure(hermitian_form_irreducible_to_ht(p,N))}
-	       let boo = is_unitary_to_ht(p,N)
-	       then () = if not boo
-	       	       	 then big_unitary_hash.numatch(p)
-			 fi
-	       in boo
-     	  else let P = hermitian_form_irreducible(p)
-	       then () = if is_pure(P)
-	       	       	 then big_unitary_hash.umatch(p)
-			 else big_unitary_hash.numatch(p)
-			 fi
-	       in is_pure(to_ht(P,N))
-     	  fi
-     fi
-}
-{ compute Hermitian form to ht on p, report if it is unitary}
-set is_unitary_to_ht_big(Param p,int N) = bool:
-  if (not is_hermitian(p)) or (not is_pos_on_LKTs(p)) then return false fi;
-  if (big_unitary_hash.ulookup(p)).>= then return true fi;
-  let pds = derived_factor_params0(p)
-  in all(for pd in pds do @bool: is_unitary_to_ht_big_SIMPLE(pd,N) od)
-
-set to_hts_count_mat = null(10,10)
-set to_hts_count = null(10)
-
-set is_unitary_to_hts_big_SIMPLE_interrupt(Param p,[int] Ns, int time) = bool:
-    if print_int_flag then prints("N = ",Ns, " p = ",p) fi;
-    let () = for N@i in Ns
-       	     do let result = 0, which_flag = low(p,N), start = elapsed_ms()
-     	        then () = while result = 0
-	     	       	  do result:= if which_flag
-		     	      	     then is_unitary_to_ht_MvL(p,N,time)
-			      	     else case hermitian_form_irreducible(p,time)
-	     	      	      	     	  | timed_out: 0
-		      		   	  | done(result):
-					    if is_pure((to_ht(result,Ns~[0])))
-					    then 1
-					    else -1
-					    fi
-		      	      	   	  esac
-			      	     fi;
-			     	if print_int_flag then prints("in to_hts, time = ", time, ", which_flag = ",
-				which_flag, ", elapsed = ", elapsed_ms() - start) fi;
-                	     {unitary_test_counter.use(); this is done in the calls above}
-			     if not which_flag and not result.= then break fi;
-		       	     if which_flag then time := 2*time fi;
-		       	     which_flag := not which_flag
-     	      		  od {while result}
-		in if result.< then big_unitary_hash.numatch(p); return false fi
-	     od
-     in true
-
-{meant to be used for G simple}
-{ compute Hermitian form to hts on p, report if it is unitary}
-set is_unitary_to_hts_big_SIMPLE(Param p,[int] Ns) = bool:
-  if (not is_hermitian(p)) or (not is_pos_on_LKTs(p)) then return false fi;
-  let G = p.real_form
-  then FPP_flag = is_FPP(G,p.infinitesimal_character)
-  then () = if not FPP_flag
-    	    then return is_unitary_to_hts(p,Ns) {prints("FPP DANGER TO HT at ",p)}
-	    fi
-  {then () = p := herm_center(p)}
-  then () = if (big_unitary_hash.ulookup(p)).>= then return true fi
-    in if interrupt_flag
-     then return is_unitary_to_hts_big_SIMPLE_interrupt(p, Ns, interrupt_base_time)
-     else if #Ns = 0
-       	  then return is_unitary_hash_big_SIMPLE(p)
-	  fi;
-  	  for N in Ns
-     	  do if not is_unitary_to_ht_big_SIMPLE(p,N)
-     	     then return false
-	     fi
-     	  od;
-     	  true
-     fi
-
-{ compute Hermitian form to hts on p, report if it is unitary}
-set is_unitary_to_hts_big (Param p,[int] Ns) = bool:
-  if (not is_hermitian(p)) or (not is_pos_on_LKTs(p)) then return false fi;
-  if #Ns = 0 then return is_unitary_hash_big(p) fi;
-  let pds = derived_factor_params0(p)
-  in all(for pd in pds do @bool: is_unitary_to_hts_big_SIMPLE(pd,Ns) od)
-
-{ONLY for G simple}
-{ compute Hermitian form to height N; if it's positive, then compute full form }
-set is_unitary_test_big_SIMPLE_interrupt(Param p, int N, int time) = bool:
-    let which_flag = low(p,N), result = 0, start = elapsed_ms()
-    then () = while result.=
-    	      do result := if which_flag
-	      	 	   then is_unitary_to_ht_MvL(p,N,time)
-			   else case hermitian_form_irreducible(p,time)
-	      	   	      	| timed_out: 0
-		   	      	| done(r): if is_pure(r) then return true fi;
-					   if is_pure(to_ht(r,N))
-		     		   	      then 1
-				   	      else -1
-					      fi
-		   	        esac
-	      		   fi;
-			   if result = -1 then big_unitary_hash.numatch(p); return false fi;
-      			   if which_flag then time := 2*time fi;
-	        	   which_flag := not which_flag;
-			   if print_int_flag then prints("in test, time = ", time, ", which_flag = ",
-			      		     which_flag, ", elapsed = ",elapsed_ms() - start) fi
-	       od
-    {now result = +1}
-    in is_unitary_hash_big_SIMPLE(p)
-
-{ONLY for G simple}
-{ compute Hermitian form to height N; if it's positive, then compute full form }
-set is_unitary_test_big_SIMPLE(Param p, int N) = bool:
-    if (not is_hermitian(p)) or (not is_pos_on_LKTs(p)) then return false fi;
-    if N < height(p) then return is_unitary_hash_big_SIMPLE(p) fi;
-    let G = p.real_form
-    then FPP_flag = is_FPP(G,p.infinitesimal_character)
-    then () = if not FPP_flag
-    	      then return is_unitary_test(p,N) {prints("FPP DANGER TO HT at ",p)}
-	      fi
-    {then () = p := herm_center(p)}
-    then () = if is_finished(p.x, p.lambda) and big_unitary_hash.ulookup(p).>=
-    	      then return true
-    	      fi
-    in if interrupt_flag
-       then is_unitary_test_big_SIMPLE_interrupt(p,N,interrupt_base_time)
-       else let P = big_unitary_hash.sig_entry(p,N)
-       	    in if not is_pure(P)
-	       then false
-	       else is_unitary_hash_big_SIMPLE(p)
-	       fi
-       fi
-
-{ONLY for G simple}
-{ like previous, with list of heights; use interrupted is_unitary}
-set is_unitary_test_big_SIMPLE_interrupt (Param p, [int] Ns, int time) = bool:
-   let () = for N@i in Ns
-       	    do let result=0, which_flag=low(p,N), start = elapsed_ms()
-	       then () =  while result = 0
-	     	       	  do result:= if which_flag
-		     	      	      then is_unitary_to_ht_MvL(p,N,time)
-			      	      else case hermitian_form_irreducible(p,time)
-	     	      	      	     	   | timed_out: 0
-		      		   	   | done(result):
-					     if is_pure(result)
-					     then 1
-					     else -1
-					     fi
-		      	      	   	   esac
-			      	       fi;
-			    if print_int_flag then prints("in tests, time = ", time, "which_flag = ",
-			       		      which_flag, ", elapsed = ",elapsed_ms() - start) fi;
-               	    	    {unitary_test_counter.use();}
-			    if result = -1 then big_unitary_hash.numatch(p); return false fi;
- 			    if not which_flag and result = 1 then return true fi;
-		       	    if which_flag then time := 2*time fi;
-		       	    which_flag := not which_flag
-     	      		 od {while result}
-	      {at this point result =1, indicating unitarity to ht N is true}
-	      in ()
-	   od
-    in is_unitary_hash_big_SIMPLE(p)
-
-{ONLY for G simple}
-{ like previous, with list of heights }
-set is_unitary_test_big_SIMPLE (Param p, [int] Ns) = bool:
-  if (not is_hermitian(p)) or (not is_pos_on_LKTs(p)) then return false fi;
-  let G = p.real_form
-  then FPP_flag = is_FPP(G,p.infinitesimal_character)
-  then () = if not FPP_flag
-    	    then  return is_unitary_test(p,Ns) {prints("FPP DANGER TEST at ",p)}
-	    fi
-  {then () = p := herm_center(p)}
-  {then () = test_count[#Ns] +:= 1}
-  then () = if (big_unitary_hash.ulookup(p)).>= then return true fi
-  then () = if (big_unitary_hash.nulookup(p)).>= then return false fi
-  then () = if #Ns = 0
-       	    then {test_count_mat[0,0] +:= 1;}
-	    return is_unitary_hash_big_SIMPLE(p)
-	    fi
-  in for N in Ns
-     do if not is_pure(big_unitary_hash.sig_entry(p,N))
-     	then return false
-	fi
-     od;
-     is_unitary_hash_big_SIMPLE(p)
-
-{
-  in if interrupt_flag then is_unitary_test_big_SIMPLE_interrupt(p, Ns,interrupt_base_time)
-     else for N@i in Ns
-     	  do if not is_pure(hermitian_form_irreducible_to_ht(p,N))
-	     {then unitary_test_counter.use()}
-	     then test_count_mat[i,#Ns] +:= 1;
-	     return false fi
-	  od;
-  	  test_count_mat[#Ns,#Ns] +:= 1;
-	  is_unitary_hash_big_SIMPLE(p)
-      fi
-}
-
-set is_unitary_test_big(Param p, int N) = bool:
-    if (not is_hermitian(p)) or (not is_pos_on_LKTs(p)) then return false fi;
-    let pds = derived_factor_params0(p)
-    in all(for pd in pds do @bool: is_unitary_test_big_SIMPLE(pd,N) od)
-
-set is_unitary_test_big(Param p, [int] Ns) = bool:
-    if (not is_hermitian(p)) or (not is_pos_on_LKTs(p)) then return false fi;
-    let pds = derived_factor_params0(p)
-    in all(for pd in pds do @bool: is_unitary_test_big_SIMPLE(pd,Ns) od)
-
-
-{ONLY for G simple}
-{use the first m heights from deform_heights to test}
-set is_unitary_def_test_big_SIMPLE_interrupt(Param p,int m, int time) = bool:
-    let (def,flag)= deform_hts(p,m)
-    in if flag
-       then is_pos_on_LKTs(p) and is_unitary_to_hts_big_SIMPLE(p,def)
-       else is_unitary_test_big_SIMPLE_interrupt(p,def,interrupt_base_time)
-       fi
-
-{ONLY for G simple}
-{use the first m heights from deform_heights to test}
-set is_unitary_def_test_big_SIMPLE(Param p,int m) = bool:
-    if (not is_hermitian(p)) or (not is_pos_on_LKTs(p)) then return false fi;
-    let G = p.real_form
-    then FPP_flag = is_FPP(G,p.infinitesimal_character)
-    then () = if not FPP_flag
-    	      then return is_unitary_def_test(p,m) {prints("FPP DANGER DEF TEST at ",p)}
-	      fi
-    {then () = p := herm_center(p)}
-    then () = if (big_unitary_hash.ulookup(p)).>= then return true fi
-    then () = if (big_unitary_hash.nulookup(p)).>= then return false fi
-    then () = if interrupt_flag
-    	      then return is_unitary_def_test_big_SIMPLE_interrupt(p, m, interrupt_base_time)
-	      fi
-    in if low(p, height(p) + 4*m)
-       then let (def,flag)= deform_hts(p,m)
-       	    in if flag
-       	       then is_pos_on_LKTs(p) and is_unitary_to_hts_big_SIMPLE(p,def)
-       	       else is_unitary_test_big_SIMPLE(p,def)
-       	       fi
-       else is_unitary_hash_big_SIMPLE(p)
-       fi
-
-set is_unitary_def_test_big(Param p,int m) = bool:
-    if (not is_hermitian(p)) or (not is_pos_on_LKTs(p)) then return false fi;
-    let pds = derived_factor_params0(p)
-    in all(for pd in pds do @bool: is_unitary_def_test_big_SIMPLE(pd,m) od)
-
-{ONLY for G simple}
-{use the first height from deform_heights to test}
-set is_unitary_def_test_big_SIMPLE(Param p) = bool:
-    is_unitary_def_test_big_SIMPLE(p,1)
-
-set is_unitary_def_test_big(Param p) = bool:
-    is_unitary_def_test_big(p,1)
-
-{ONLY for G simple}
-set is_unitary_next_big_SIMPLE(Param p) = bool:
-    if (not is_hermitian(p)) or (not is_pos_on_LKTs(p)) then return false fi;
-    let G = p.real_form
-    then (LAM,NU,) = low(p)
-    then FPP_flag = is_FPP(G,p.infinitesimal_character)
-    then () = if not FPP_flag
-    	      then if NU > LAM*low_frac
-       	      	   then let n=next_heightB(p)
-    	    	   	in if (n+1).=
-	      		   then return true
-	      		   elif is_unitary_to_ht_big(p,n)
-	      		   then return is_unitary_hash_big_SIMPLE(p)
-			   else big_unitary_hash.numatch(p); return false {NOT unitary_to_ht}
-			   fi {n=-1}
-		   else return is_unitary_hash_big_SIMPLE(p)
-		   fi {NU > LAM}
-	       fi {not FPP_flag}
-    {then () = p := herm_center(p)}
-    in if NU > LAM*low_frac
-       then let n=next_heightB(p)
-    	    in  if (n+1).=
-	      	then true
-	      	elif is_unitary_to_ht_big_SIMPLE(p,n)
-	      	then is_unitary_hash_big_SIMPLE(p)
-		else big_unitary_hash.numatch(p); false {NOT unitary_to_ht}
-		fi {n=-1}
-	else is_unitary_hash_big_SIMPLE(p)
-	fi {NU > LAM}
-
-set is_unitary_next_big(Param p) = bool:
-    if (not is_hermitian(p)) or (not is_pos_on_LKTs(p)) then return false fi;
-    let pds = derived_factor_params0(p)
-    in all(for pd in pds do @bool: is_unitary_next_big_SIMPLE(pd) od)
