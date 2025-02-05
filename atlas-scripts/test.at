@@ -1,17 +1,25 @@
-set G=Sp(4,R)
-set (H,M,Hd)=endoscopic_group(G,[1,1]/2)  
-set gamma_G=G.rho
-{set ph=parameter(KGB(H,0),[0],[0])}
-set ph=parameter(KGB(H,0),[2,1],[0,0])
+set G=Sp(6,R)
+set (H,M,Hd)=endoscopic_group(G,[1,1,0]/2)  
+set unip_H=unipotent_representations(H)
+set ph=unip_H[6]
 set gamma_H=ph.infinitesimal_character
+set gamma_G=gamma_H*M
 set y=y_gen(ph)
-set y_G=map_KGB_gen_tits(y,dual_quasisplit_form(G),M) 
-set phi_G=phi(y_G,gamma_G) 
-set phi_H=phi(y,gamma_H)
+set phi_H=phi(y,gamma_H) 
+set y_G=map_KGB_gen_tits(y,dual_quasisplit_form(G),M)
 set S_H=pure_component_group(phi_H)
-set lifts=for x in S_H do e_star(x,phi_H,G,M) od
-
-
+set phi_G=phi(y_G,gamma_G) 
+set S_H=pure_component_group(phi_H)
+set lifts=##for ph@i in unip_H do
+prints(i);
+ let gamma_H=ph.infinitesimal_character then
+ y=y_gen(ph) then
+ y_G=map_KGB_gen_tits(y,dual_quasisplit_form(G),M) then
+ phi_G=phi(y_G,gamma_G)  then
+ phi_H=phi(y,gamma_H) then
+ S_H=pure_component_group(phi_H)
+ in for x in S_H do e_star(x,phi_H,G,M) od
+od
 {
 
 

@@ -4,7 +4,7 @@ set phi(KGBElt_gen y,ratvec gamma)=L_homomorphism:(y,gamma)
 
 set L_packet(RealForm G,L_homomorphism phi)=[Param]:L_packet(G,phi.gamma,phi.y)
 set L_packet(L_homomorphism phi)=[[Param]]:
-for G in strong_real_forms(dual_quasisplit_form(phi.y.real_form)) do
+for G in strong_real_forms(dual_quasisplit_form(phi.y.inner_class)) do
  let LP=L_packet(G,phi.phi.gamma,phi.y)  in
  if #LP>0 then [LP] else [] fi od.##
 
