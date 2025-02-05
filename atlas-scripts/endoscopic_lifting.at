@@ -1,6 +1,7 @@
-{For now: G, H split; no issue with rho_G-rho_H cover}
+{For now: G, H split; no issue with rho_G-rho_H cover
+also: only pure strong real forms}
 
-set e_verbose=true
+set e_verbose=false
 
 {M: X^*(H_v) to X^*(G_v), i.e. also takes X_*(H) to X_*(G)}
 
@@ -38,8 +39,9 @@ in (p_G,monomials(finalize(p_G)))
 
 set e_star(KGBElt x_H,L_homomorphism phi_H,RealForm G,mat M)=[Param]:let (,X)=e_star_long(x_H,phi_H,G,M) in X
 
-{usage: set
-(y_H,y_G,gamma_H,gamma_G,phi_G,theta_G,x_G,p_G) =e_star_info(x_H,phi_H,G,M)}
+{for debugging
+ usage: set (y_H,y_G,gamma_H,gamma_G,phi_G,theta_G,x_G,p_G) =e_star_info(x_H,phi_H,G,M)
+}
 set e_star_info(KGBElt x_H,L_homomorphism phi_H,RealForm G,mat M)=(KGBElt_gen,KGBElt_gen,ratvec,ratvec,L_homomorphism,mat,KGBElt,[Param]):
 assert(is_pure(x_H), "x_H is not pure (e_star only defined at the moment for pure real forms of H and G");
 let y_H=phi_H.y then
@@ -59,3 +61,30 @@ p_G=parameter(x_G,phi_G) then
 ()=if e_verbose then ("p_G=", p_G) fi
 in (y_H,y_G,gamma_H,gamma_G,phi_G,theta_G,x_G, monomials(finalize(p_G)))
 
+{testing: given G, H, compute endoscopic lifting of all unipotent packets from H to (pure real forms of) G
+sample usage:
+set lifts=test_endoscopic_lifting(Sp(6,R),[1,1,1]/2)
+pr_long(lifts)
+
+to lift from H=compact torus, make s=rho_check(G)/Coxeter number, add long Weyl group element
+set G=Sp(6,R)
+set lifts=test_endoscopic_lifting(G,rho_check(G)/coxeter_number(G),w0(G))
+} 
+set test_endoscopic_lifting(RealForm G,ratvec v,WeylElt w)=[[Param]]:
+let (H,M,Hd)=endoscopic_group(G,v,w) then
+unip_H=unipotent_representations(H) then
+lifts=##for ph@i in unip_H do
+let ()=if e_verbose then prints("i=",i) fi then
+ gamma_H=ph.infinitesimal_character then
+ gamma_G=gamma_H*M then
+ y=y_gen(ph) then
+ y_G=map_KGB_gen_tits(y,dual_quasisplit_form(G),M) then
+ phi_G=phi(y_G,gamma_G)  then
+ phi_H=phi(y,gamma_H) then
+ S_H=pure_component_group(phi_H)
+ in for x in S_H do e_star(x,phi_H,G,M) od
+od
+in prints("G=",G,new_line,"s=",v,new_line,"H=",H);
+prints("#lifts: ", #lifts, new_line, "#parameters: ", #(##lifts));lifts
+
+set test_endoscopic_lifting(RealForm G,ratvec v)=[[Param]]:test_endoscopic_lifting(G,v,id_W(G))
