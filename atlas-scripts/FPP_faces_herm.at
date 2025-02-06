@@ -1737,7 +1737,13 @@ set is_unitary_next_big(Param p) = bool:
     let pds = derived_factor_params0(p)
     in all(for pd in pds do @bool: is_unitary_next_big_SIMPLE(pd) od)
 
+{whether to use the new Davis/Mason-Brown criterion saying FPP reps on an outside
+face of FPP might have to be coh ind}
 set is_FPP_unitary_flag = false
+
+{IF using test, whether to stop after easy part}
+set Lucas_fast_flag = true
+
 
 {Use Davis/Mason-Brown criterion. First bool says whether the test applies; second gives
 result of test. Second is meaningful only if first is true; I guess make result (false,false)
@@ -1770,6 +1776,11 @@ set is_FPP_unitary(Param p) = (bool,bool):
      then () = if((p.x.involution-1)*rhou).!=
      	       then return (true,false)
 	       fi
+     then () = if Lucas_fast_flag
+     	       then return (false,false)
+	       {in this case question reduces to L, but we choose not to do
+	       calculation on L}
+	       fi
      then L = Q.Levi
      then xL = inverse_embed_KGB(p.x,L)
      then pL = parameter(xL,p.lambda - rhou, p.nu)
@@ -1794,13 +1805,13 @@ set is_FPP_unitary(Param p, (Param -> bool) fancy_tester ) = (bool,bool):
     fi;
     let () = p:= herm_center(p), G = p.real_form
     then gamma = p.infinitesimal_character
+    then rdi = integrality_datum(G,gamma)
     then alphavs = for alphav@j in G.simple_coroots
     	 	  do if gamma*alphav < 1
 		     then [j]
 		     elif gamma*alphav > 1
 		     then []
-		     else let rdi = integrality_datum(G,gamma)
-		     	  then ji = coroot_index(rdi,alphav)
+		     else let ji = coroot_index(rdi,alphav)
 			  in if not is_member_sorted(tau(p))(ji)
 			     then []
 			     else [j]
@@ -1816,7 +1827,11 @@ set is_FPP_unitary(Param p, (Param -> bool) fancy_tester ) = (bool,bool):
      then () = if((p.x.involution-1)*rhou).!=
      	       then return (true,false)
 	       fi
+     then () = if Lucas_fast_flag
+     	       then return (false,false)
+	       fi
      then L = Q.Levi
+     {then () = prints("in isfppu(fancy) at line 1834, p = ",p)}
      then xL = inverse_embed_KGB(p.x,L)
      then pL = parameter(xL,p.lambda - rhou, p.nu)
      then () = assert(p = first_param(theta_induce_standard(pL,G)),"screwed up pL!")
@@ -1827,32 +1842,41 @@ set is_FPP_unitary(Param p, (Param -> bool) fancy_tester ) = (bool,bool):
 
 set KUKU_flag = true
 
+{if false, suppress printing of report after an FPP_unitary_hash* job}
+{need this here for recursive application of smaller FPP's in fancy_tester}
+set FPP_report_flag = true
+
 {For each list of faces in FVKH, indices of faces for which the corresponding parament is known
 (by Uhash) to be unitary}
 set KU(KGBElt x, ratvec lambda, LocalVertexData Lvd, [[FaceVertsKHash]] FVKH, Param_hash Uhash,
  (Param->bool) fancy_tester) = [vec]:
     {prints("in KU",fancy_tester);}
-    for FVKHd@d in FVKH
-    do for vlong@j in FVKHd
-       do let verts = vlong[:d+1], G = x.real_form
-       	  then ps = monomials(finalize(parameter(x,lambda, face_bary(Lvd,verts))))
-	  in if all(for p in ps do (Uhash.lookup(p)).>= od)
-	     then [j]
-	     elif all(for p in ps
-	     	      do let (x,y) = is_FPP_unitary(p, fancy_tester)
-		      	 then () = if x
-			      	   then if y
-			      	   	then big_unitary_hash.uhash(G).match(p)
-				   	else big_unitary_hash.nuhash(G).match(p)
-				   	fi
-			      	   fi
-			 in x and y
-		       od)
-	     then [j]
-	     else []
-	     fi
-       od.##
-     od
+    let FPP_report_flag_hold = FPP_report_flag
+    then () = FPP_report_flag :=false
+    then answer =
+    	 for FVKHd@d in FVKH
+    	 do for vlong@j in FVKHd
+       	    do let verts = vlong[:d+1], G = x.real_form
+       	       then ps = monomials(finalize(parameter(x,lambda, face_bary(Lvd,verts))))
+	       in if all(for p in ps do (Uhash.lookup(p)).>= od)
+	       	  then [j]
+	     	  elif all(for p in ps
+	     	       	   do let (x,y) = is_FPP_unitary(p, fancy_tester)
+		      	      then () = if x
+			      	      	then if y
+			      	   	     then big_unitary_hash.uhash(G).match(p)
+				   	     else big_unitary_hash.nuhash(G).match(p)
+				   	     fi
+			      	   	fi
+			      in x and y
+		       	  od)
+	     	  then [j]
+	     	  else []
+	     	  fi
+       	    od.##
+     	 od
+    then () = FPP_report_flag:=FPP_report_flag_hold
+    in answer
 
 set KU(KGBElt x, ratvec lambda, LocalVertexData Lvd, [[FaceVertsKHash]] FVKH, Param_hash Uhash) =
 [vec]:
@@ -1862,7 +1886,7 @@ set KU(KGBElt x, ratvec lambda, LocalVertexData Lvd, [[FaceVertsKHash]] FVKH, Pa
  and returns their locations in LFDKH}
 set known_unitaries(Param_hash Uhash, KGBElt x, ratvec lambda, LocalVertexData Lvd,
     [[FaceVertsKHash]] LFDKH, (Param->bool) fancy_tester) = [vec]:
-    if KUKU_flag then return KU(x,lambda, Lvd, LFDKH, Uhash) fi;
+    if KUKU_flag then return KU(x,lambda, Lvd, LFDKH, Uhash, fancy_tester) fi;
     let ps = for d:#LFDKH
     	     do for v in LFDKH[d]
 	     	do parameter(x,lambda,face_bary(Lvd, v[:d+1]))

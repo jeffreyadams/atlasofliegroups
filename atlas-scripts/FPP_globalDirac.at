@@ -102,9 +102,6 @@ set DSFLevis(RealForm G) = [RealForm]:
 set DSFLevi_hash(RealForm G) = RealForm_hash:
     make_RealForm_hash(DSFLevis(G), hash_code@(RealForm,int))
 
-{if false, suppress printing of report after an FPP_unitary_hash* job}
-set FPP_report_flag = true
-
 {if true, move computation to most split Cartan in R-packet}
 set R_packet_flag = false
 {as presently implemented, this misses unitary representations in
@@ -135,7 +132,8 @@ set FPP_unitary_hash_general([(KGBElt,ratvec)] xlambdas, Param_hash Uhash,
     then () = red_count_time :=0
     then xnums = for (x,) in xlambdasW do x.number od
     then lambdas = for (,lambda) in xlambdasW do lambda od
-    then () = pol_hash.clear()
+    {then () = pol_hash.clear()} {in recursive calls, this screws up bigger G, which has
+    	  already indexed some K_chars here.}
     then old_face_verbose = face_verbose, old_time_verbose = time_verbose,
     	 old_test_verbose = test_verbose, old_test_slightly_verbose = test_slightly_verbose
     then startLPmss = elapsed_ms()
@@ -283,8 +281,11 @@ set FPP_unitary_hash_general([KGBElt] xs, Param_hash Uhash, (Param->bool) fancy_
     then () = FD12bzTime :=0
     then () = red_count_time :=0
     {then {xnums = for x in xs do x.number od, xtimes = null(#xs),}}
-    then () = pol_hash.clear()
-    then () = clear_report_tested(); DTcount:=0; DBTcount:=0
+    {then () = pol_hash.clear()} {in recursive calls, this screws up bigger G, which has
+    	  already indexed some K_chars here.}
+    then () = if FPP_report_flag
+    	      then clear_report_tested(); DTcount:=0; DBTcount:=0
+	      fi
     then old_face_verbose = face_verbose, old_time_verbose = time_verbose,
     	 old_test_verbose = test_verbose, old_test_slightly_verbose = test_slightly_verbose
     then () = face_verbose:=false
@@ -714,8 +715,11 @@ fancy_tester) = void:
 		 {this is for unitary reps of Gsc that factor to G}
 		 else UhashG
 		 fi
-    then () = pol_hash.clear()
-    then () = clear_report_tested(); DTcount:=0; DBTcount:=0
+    {then () = pol_hash.clear()} {in recursive calls, this screws up bigger G, which has
+    	  already indexed some K_chars here.}
+    then () = if FPP_report_flag
+    	      then clear_report_tested(); DTcount:=0; DBTcount:=0
+	      fi
     then start = elapsed_ms()
     then () = unitaryTime := 0
     then () = charTime := 0
@@ -915,8 +919,11 @@ set FPP_unitary_hash_bottom_layer([KGBElt] xs, Param_hash UhashG, (Param->bool) 
     then () = FD12bzTime :=0
     then () = red_count_time :=0
     {then {xnums = for x in xs do let (,m) = %x in m od,} xtimes = null(#xs)}
-    then () = pol_hash.clear()
-    then () = clear_report_tested(); DTcount:=0; DBTcount:=0
+    {then () = pol_hash.clear()} {in recursive calls, this screws up bigger G, which has
+    	  already indexed some K_chars here.}
+    then () = if FPP_report_flag
+    	      then clear_report_tested(); DTcount:=0; DBTcount:=0
+	      fi
     then old_face_verbose = face_verbose, old_time_verbose = time_verbose,
     	 old_test_verbose = test_verbose, old_test_slightly_verbose = test_slightly_verbose
     then () = face_verbose:=false
@@ -1221,65 +1228,94 @@ set FPP_unitary_hash_bottom_layer([KGBElt] xs, (Param->bool) fancy_tester) = voi
 set FPP_unitary_hash_bottom_layer(RealForm G, (Param->bool) fancy_tester) = void:
     FPP_unitary_hash_bottom_layer(KGB(G), fancy_tester)
 
+{Following functions invoke David/Mason-Brown result from February 2025: if infl char is on
+ some one-walls of the FPP, and those roots NOT in tau-invariatn, then rep is either non-unitary,
+ or coh ind from the parabolic whose Levi omits those one-walls; so unitarity is determined on Levi.}
+ 
+{does is_unitary on Levi by running FPP}
+set recursive_tester_flag = false
+
+{does is_unitary on Levi with FPP} {TTF}
+set Lucas_full_rec() = void:
+    is_FPP_unitary_flag:=true;
+    recursive_tester_flag:= true;
+    Lucas_fast_flag:=false
+
+{does is_unitary on Levi one at a time}
+set Lucas_non_rec() = void: {TFF}
+    is_FPP_unitary_flag:=true;
+    recursive_tester_flag:=false;
+    Lucas_fast_flag:=false
+
+{Lucas test, but no unitarity test on L}
+set Lucas_fast() = void: {T*T}
+    is_FPP_unitary_flag:=true;
+    Lucas_fast_flag:=true
+
+{don't apply test. This is now the default.}
+set Lucas_no() = void: {F**}
+    is_FPP_unitary_flag:=false
+
 {meant to be used only on hermitian centered hermitian FPP reps p of simple G}
 {Computes the (p.x,p.lambda) part of the unitary dual of p.real_form. That's good
 if one is going to do a bunch of related is_unitary tests, for ex as in known_unitaries}
 set MyFancyTester(Param p) = bool:
     let () = FPP_unitary_hash_bottom_layer([(p.x,p.lambda)], is_unitary_hash_big_SIMPLE@Param)
+    {then () = prints("invoked MFT at p = ",p,", real form = ",p.real_form)}
     in big_unitary_hash.uhash(p.real_form).lookup(p).>=
 
 set FPP_unitary_hash_def_dumb([(KGBElt, ratvec)] xls) = void:
-   if is_FPP_unitary_flag
+   if recursive_tester_flag
    then FPP_unitary_hash_def_dumb(xls, MyFancyTester@Param)
    else FPP_unitary_hash_def_dumb(xls, is_unitary_hash_big_SIMPLE@Param)
    fi
 
 set FPP_unitary_hash_def_dumb([KGBElt] xs) = void:
-   if is_FPP_unitary_flag
+   if recursive_tester_flag
    then FPP_unitary_hash_def_dumb(xs, MyFancyTester@Param)
    else FPP_unitary_hash_def_dumb(xs, is_unitary_hash_big_SIMPLE@Param)
    fi
 
 set FPP_unitary_hash_def_dumb(RealForm rf) = void:
-   if is_FPP_unitary_flag
+   if recursive_tester_flag
    then FPP_unitary_hash_def_dumb(rf, MyFancyTester@Param)
    else FPP_unitary_hash_def_dumb(rf, is_unitary_hash_big_SIMPLE@Param)
    fi
 
 
 set FPP_unitary_hash_dumb([(KGBElt, ratvec)] xls) = void:
-   if is_FPP_unitary_flag
+   if recursive_tester_flag
    then FPP_unitary_hash_dumb(xls, MyFancyTester@Param)
    else FPP_unitary_hash_dumb(xls, is_unitary_hash_big_SIMPLE@Param)
    fi
 
 set FPP_unitary_hash_def_dumb([KGBElt] xs) = void:
-   if is_FPP_unitary_flag
+   if recursive_tester_flag
    then FPP_unitary_hash_dumb(xs, MyFancyTester@Param)
    else FPP_unitary_hash_dumb(xs, is_unitary_hash_big_SIMPLE@Param)
    fi
 
 set FPP_unitary_hash_dumb(RealForm rf) = void:
-   if is_FPP_unitary_flag
+   if recursive_tester_flag
    then FPP_unitary_hash_dumb(rf, MyFancyTester@Param)
    else FPP_unitary_hash_dumb(rf, is_unitary_hash_big_SIMPLE@Param)
    fi
 
 
 set FPP_unitary_hash_one_level([(KGBElt, ratvec)] xls) = void:
-   if is_FPP_unitary_flag
+   if recursive_tester_flag
    then FPP_unitary_hash_one_level(xls, MyFancyTester@Param)
    else FPP_unitary_hash_one_level(xls, is_unitary_hash_big_SIMPLE@Param)
    fi
 
 set FPP_unitary_hash_one_level([KGBElt] xs) = void:
-   if is_FPP_unitary_flag
+   if recursive_tester_flag
    then FPP_unitary_hash_one_level(xs, MyFancyTester@Param)
    else FPP_unitary_hash_one_level(xs, is_unitary_hash_big_SIMPLE@Param)
    fi
 
 set FPP_unitary_hash_one_level(RealForm rf) = void:
-   if is_FPP_unitary_flag
+   if recursive_tester_flag
    then FPP_unitary_hash_one_level(rf, MyFancyTester@Param)
    else FPP_unitary_hash_one_level(rf, is_unitary_hash_big_SIMPLE@Param)
    fi
@@ -1287,38 +1323,38 @@ set FPP_unitary_hash_one_level(RealForm rf) = void:
 
 
 set FPP_unitary_hash2([(KGBElt, ratvec)] xls) = void:
-   if is_FPP_unitary_flag
+   if recursive_tester_flag
    then FPP_unitary_hash2(xls, MyFancyTester@Param)
    else FPP_unitary_hash2(xls, is_unitary_hash_big_SIMPLE@Param)
    fi
 
 set FPP_unitary_hash2([KGBElt] xs) = void:
-   if is_FPP_unitary_flag
+   if recursive_tester_flag
    then FPP_unitary_hash2(xs, MyFancyTester@Param)
    else FPP_unitary_hash2(xs, is_unitary_hash_big_SIMPLE@Param)
    fi
 
 set FPP_unitary_hash2(RealForm rf) = void:
-   if is_FPP_unitary_flag
+   if recursive_tester_flag
    then FPP_unitary_hash2(rf, MyFancyTester@Param)
    else FPP_unitary_hash2(rf, is_unitary_hash_big_SIMPLE@Param)
    fi
 
 
 set FPP_unitary_hash_bottom_layer([(KGBElt, ratvec)] xls) = void:
-   if is_FPP_unitary_flag
+   if recursive_tester_flag
    then FPP_unitary_hash_bottom_layer(xls, MyFancyTester@Param)
    else FPP_unitary_hash_bottom_layer(xls, is_unitary_hash_big_SIMPLE@Param)
    fi
 
 set FPP_unitary_hash_bottom_layer([KGBElt] xs) = void:
-   if is_FPP_unitary_flag
+   if recursive_tester_flag
    then FPP_unitary_hash_bottom_layer(xs, MyFancyTester@Param)
    else FPP_unitary_hash_bottom_layer(xs, is_unitary_hash_big_SIMPLE@Param)
    fi
 
 set FPP_unitary_hash_bottom_layer(RealForm rf) = void:
-   if is_FPP_unitary_flag
+   if recursive_tester_flag
    then FPP_unitary_hash_bottom_layer(rf, MyFancyTester@Param)
    else FPP_unitary_hash_bottom_layer(rf, is_unitary_hash_big_SIMPLE@Param)
    fi
