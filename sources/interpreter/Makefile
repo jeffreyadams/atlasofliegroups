@@ -62,6 +62,7 @@ Atlas_objects := $(sources_dir)/structure/prerootdata.o \
  $(sources_dir)/utilities/partition.o \
  $(sources_dir)/utilities/poset.o \
  $(sources_dir)/utilities/size.o \
+ $(sources_dir)/utilities/preorder.o \
  $(sources_dir)/structure/tori.o \
  $(sources_dir)/structure/weylsize.o \
  $(sources_dir)/structure/gradings.o \
