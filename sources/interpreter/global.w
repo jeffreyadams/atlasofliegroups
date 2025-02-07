@@ -156,6 +156,7 @@ public:
 @)
   bool present (id_type id) const
   @+{@; return table.find(id)!=table.end(); }
+  bool is_ordinary(id_type id) const; // whether |id| stands for a variable
   bool is_defined_type(id_type id) const; // whether |id| stands for a type
   bool is_type_constructor(id_type id) const;
     // whether |id| is defined as a type constructor
@@ -199,8 +200,9 @@ void Id_table::add(id_type id, shared_value val, type&& tp, bool is_const)
 @ Inserting a type definition is similar, but inserts a |shared_value| object
 holding a null pointer, produced by |shared_share(nullptr)| (this indeed binds
 to the rvalue reference parameter of the |id_data| constructor). The resulting
-|id_data| object will have |value()==nullptr|. The |is_defined_type| method
-tests this condition, for identifiers that are present in the table at all.
+|id_data| object will have |value()==nullptr|, and the methods |is_normal| and
+|is_defined_type| distinguish based on this attribute; the method
+|is_type_constructor| in addition checks for a polymorphism of the stored type.
 Type definitions will be formally marked as constant (the final |true|
 argument) but this has no consequences, since types cannot be assigned anyway.
 
@@ -215,6 +217,10 @@ void Id_table::add_type_def(id_type id, type&& tp)
     its.first->second = id_data(shared_share(),std::move(tp),true);
 }
 @)
+bool Id_table::is_ordinary(id_type id) const
+{ map_type::const_iterator p = table.find(id);
+@/ return p!=table.end() and p->second.get_value()!=nullptr;
+}
 bool Id_table::is_defined_type(id_type id) const
 { map_type::const_iterator p = table.find(id);
 @/ return p!=table.end() and p->second.get_value()==nullptr;
@@ -280,8 +286,7 @@ shared_share Id_table::address_of(id_type id)
 identifiers in any |tabled| components, checking the number of type arguments
 against its arity, recursively transforming those arguments, and finally calling
 |simple_subst| to obtain the expanded type. At its heart, it is yet another
-recursive type copying function with substitution with a transformation for the
-|tabled| variant.
+recursive type copying function, with a transformation for the |tabled| variant.
 
 @< Global function def... @>=
 type_expr Id_table::expand(const type_expr& tp) const
@@ -1554,19 +1559,18 @@ void process_type_definitions (raw_typedef_list l, const source_location& loc)
   const auto old_size = type_expr::table_size(); // for roll back
   try
   {
+    const type_nr_type n_defs = length(defs);
     static const type_nr_type absent = -1;
     std::vector<type_nr_type> translate (main_hash_table->nr_entries(),absent);
-  @/@< For each equation |i| in |defs| set
-       |translate[id]=type_exp::table_size()+i| for the identifier |id| defined
-       by the equation; |throw| a |program_error| if any identifiers in the
-       equation are problematic @>
-  @/@< Replace in type expressions for |defs|, in any types with |kind==tabled|,
-       the contained identifier code by the type number associated to it, either
-       in |translate| or else in |global_id_table|; in case neither possibility
-       applies, signal an erroneous type identifier @>
+  @/@< For each equation |i| in |defs| set |translate[id]=i| for the
+       identifier |id| defined by the equation; |throw| a |program_error|
+       if any identifiers in the equation are problematic @>
+  @/@< For any type with |kind==tabled| occurring in |defs|, either replace
+       the stored identifier code by what |translate| associates to it, or apply
+       |global_id_table->expand| to the type @>
 @)
-    std::vector<std::pair<id_type,const_type_p> > b; b.reserve(length(defs));
-    for (auto it=defs.begin(); it!=end(defs); ++it)
+@/  std::vector<std::pair<id_type,const_type_p> > b; b.reserve(n_defs);
+    for (auto it=defs.wcbegin(); not defs.at_end(it); ++it)
       b.emplace_back(it->id,it->tp);
     auto type_nrs = type_expr::add_typedefs(b,0);
 @)
@@ -1601,13 +1605,13 @@ status would make the field name unusable.
 
 @< For each equation |i| in |defs|... @>=
 {
-  type_nr_type count = type_expr::table_size();
-  for (auto it=defs.begin(); not defs.at_end(it); ++it,++count)
+  auto it=defs.begin();
+  for (type_nr_type i=0; i<n_defs; ++i,++it)
     if(it->id!=type_binding::no_id)
     { id_type id = it->id;
       @< Protest if |id| is currently used as ordinary identifier @>
       if (translate[id]==absent)
-        translate[id] = count;
+        translate[id] = i;
       else
       { std::ostringstream o;
         o << "Repeated definition of '" @| << main_hash_table->name_of(id);
@@ -1615,7 +1619,7 @@ status would make the field name unusable.
       }
     }
   for (auto it=defs.begin(); not defs.at_end(it); ++it)
-    for (auto jt=it->fields.wcbegin(); not jt.at_end(); ++jt)
+    for (auto jt=it->fields.wcbegin(); not it->fields.at_end(jt); ++jt)
       if ((jt->kind&0x1)!=0 and translate[jt->name]!=absent)
       { std::ostringstream o;
         o << "Used '" << main_hash_table->name_of(jt->name) @|
@@ -1624,22 +1628,15 @@ status would make the field name unusable.
       }
 }
 
-@ The method |Id_table::present| will report any presence in the table of an
-identifier, whether as a variable or as a type name. Usually only one of the two
-is possible because the scanner brands the two kinds of identifiers as in
-distinct syntactic classes, but during a type definition it considers
-everything as a type identifier, so we do have both possibilities here. We do in
-fact want to allow redefining a previous type identifier again as a type
-identifier, since this makes it generally possible to reload a script a second
-time (with modification) without provoking an error for code that was previously
-accepted.
+@ The code below serves to prohibit introducing the name of an existing (global)
+variable of function as a type name, which would make the former inaccessible.
+We call the method |global_id_table.is_ordinary| to test for this. To make it
+possible to reload a script a second time without error, we do allow redefining
+a previous type identifier again as a type identifier.
 
 @< Protest if |id| is currently used as ordinary identifier @>=
 { auto q = global_overload_table->variants(id);
-  if (q!=nullptr or @|
-       global_id_table->present(id) and
-       not global_id_table->is_defined_type(id)
-     )
+  if (q!=nullptr or global_id_table->is_ordinary(id))
   { std::ostringstream o;
     o  << "Cannot define '" << main_hash_table->name_of(id) @|
        << "' as a type; it is in use as " @|
@@ -1671,35 +1668,38 @@ type components. We realise this replacement by in-place substitution (this is
 possible since we own the type expressions in |defs|). Traversing type
 expressions is naturally done recursively, but we are getting a bit bored by
 defining a recursive function for every little task, so we do this one
-iteratively instead. We do this with the aid of a manually maintained queue of
-pointers to types remaining to be visited (a stack would have done equally well).
+iteratively instead. We do this with the aid of a manually maintained queue
+|work| of pointers to types remaining to be visited (a stack would have done
+equally well).
 
-@< Replace in type expressions for |defs|... @>=
+@< For any type with |kind==tabled| occurring in |defs|... @>=
 { containers::queue<type_p> work;
   for (auto it=defs.begin(); not defs.at_end(it); ++it)
+  {
     work.push(it->tp);
-  while (not work.empty())
-  { type_expr& t = *work.front();
-    work.pop(); // copy pointer as non-owned reference, then pop pointer
-    switch(t.raw_kind())
-    { default: break;
-    case function_type:
-    @/{@; auto f=t.func();
-        work.push(&f->result_type);
-        work.push(&f->arg_type);
+    while (not work.empty())
+    { type_expr& t = *work.front();
+      work.pop(); // copy pointer as non-owned reference, then pop pointer
+      switch(t.raw_kind())
+      { default: break;
+      case function_type:
+      @/{@; auto f=t.func();
+          work.push(&f->result_type);
+          work.push(&f->arg_type);
+        }
+      break;
+      case row_type: work.push(&t.component_type());
+      break;
+      case tuple_type: case union_type:
+        for (wtl_iterator it(t.tuple()); not it.at_end(); ++it)
+          work.push(&*it);
+      break;
+      case tabled:
+        @< If |t.tabled_nr()| is recorded in |translate| use that to replace it,
+           or else expand an existing user type definition; if there is none
+           |throw| a |program_error| @>
+      break;
       }
-    break;
-    case row_type: work.push(&t.component_type());
-    break;
-    case tuple_type: case union_type:
-      for (wtl_iterator it(t.tuple()); not it.at_end(); ++it)
-        work.push(&*it);
-    break;
-    case tabled:
-      @< If |t.tabled_nr()| is recorded in |translate| use that to replace it,
-         or else expand an existing user type definition; if there is none
-         |throw| a |program_error| @>
-    break;
     }
   }
 }
@@ -1713,7 +1713,7 @@ previously defined types and type constructor applications.
 { id_type id = t.tabled_nr();
   if (translate[id]!=absent)
     // then type defined here: replace by future tabled reference
-    t = type_expr::user_type(translate[id],type_list());
+    t = type_expr::user_type(type_expr::table_size()+translate[id],type_list());
   else if (global_id_table->is_defined_type(id))
     t = global_id_table->expand(t);
   else
@@ -1836,7 +1836,7 @@ projector and injector types as a |shared_function|, which would have required
 static casts if a conditional expression were used.)
 
 Meanwhile we assemble a list |names| of field names that is finally passed to
-|expr_type::set_fields|. The list could have holes, which have no counterpart in
+|type_expr::set_fields|. The list could have holes, which have no counterpart in
 |group|, which is why the loop below iterates over |fields| rather than over
 |group|. The mysterious cast in the constructor call for |names| avoids
 passing the |constexpr no_id@;| by reference (it builds a temporary

@@ -952,6 +952,8 @@ typedef_type
 	  }
 	| PRIMTYPE // though not very useful, allow a single PRIMITIVE type
 	  { $$.type_pt=make_prim_type($1); $$.ip.kind=0x0; }
+// we might allow  TYPE_CONSTR '<' type '>' and  TYPE_CONSTR '<' type_list '>'
+// since they cannot refer to type being defined, so cannot be circular
 ;
 
 typedef_struct_specs: typedef_type_field ',' typedef_type_field
