@@ -125,11 +125,9 @@ set FPP_unitary_hash_general([(KGBElt,ratvec)] xlambdas, Param_hash Uhash,
     	      else let (x,) = xlambdasW[0]
     then G = x.real_form
     then {vd = FPP_vertex_data(G),} start = elapsed_ms(),  zeroNu = null(G.rank)/1
-    then () = unitaryTime := 0
-    then () = charTime := 0
-    then () = FD12Time:=0
-    then () = FD12bzTime:=0
-    then () = red_count_time :=0
+    then () = if FPP_report_flag
+    	      then unitaryTime := 0; charTime := 0; FD12Time:=0; FD12bzTime:=0; red_count_time :=0
+	      fi
     then xnums = for (x,) in xlambdasW do x.number od
     then lambdas = for (,lambda) in xlambdasW do lambda od
     {then () = pol_hash.clear()} {in recursive calls, this screws up bigger G, which has
@@ -140,7 +138,7 @@ set FPP_unitary_hash_general([(KGBElt,ratvec)] xlambdas, Param_hash Uhash,
     then LPmss = for (x,lambda) in xlambdasW
     	       	 do LPm_table.LPm_entry(G,x.involution, ratvec_as_vec(lambda+x.involution*lambda))
               	 od
-    then () = if every_lambda_deets_flag
+    then () = if every_lambda_deets_flag and FPP_report_flag
     	      then prints("time for LPmss = ",print_time_string(elapsed_ms() - startLPmss))
 	      fi
     then () = face_verbose:=false; time_verbose:=false; test_verbose:=false; test_slightly_verbose:=false
@@ -177,12 +175,12 @@ set FPP_unitary_hash_general([(KGBElt,ratvec)] xlambdas, Param_hash Uhash,
 		 then p0 = parameter(x,lambda,zeroNu)
 		 {then () = prints("time before LPmss[",k,"] = ",print_time_string(elapsed_ms() - start))}
 		 then (Lvd, Perm2{, mapAct}) = LPmss[k]
-		 then () = if every_lambda_flag
+		 then () = if every_lambda_flag and FPP_report_flag
       	      	   	      then prints("     start #", k, " = (",x,",",lambda,"), Uhash.size() = ",
 			      Uhash.size(), ", runtime = ", print_time_string(elapsed_ms() - start),
 			      ", #uparams so far = ",sum(answerCards));
 		   		   prints("  ------------------")
-        	   		   fi {every_lambda_flag}
+        	   	   fi {every_lambda_flag}
 		 then startLF = elapsed_ms()
 		 {then () = prints("time thru start [",k,"] =
 		 ",print_time_string(startLF - start))}
@@ -191,7 +189,7 @@ set FPP_unitary_hash_general([(KGBElt,ratvec)] xlambdas, Param_hash Uhash,
 		      	   then localFD_1Dirac2_by_zero(x, lambda, Lvd, Perm2)
 			   else localFD_1Dirac2(x, lambda, Lvd, Perm2)
 			   fi
-		 then () = if every_lambda_deets_flag
+		 then () = if every_lambda_deets_flag and FPP_report_flag
     	      	      	   then prints("time for localFD_1Dirac2* = ",print_time_string(elapsed_ms() - startLF),
 			   " to find [",#LF[0],",",#LF[1],"] verts and edges; Dirac eliminated ",
 			   DTcount - startDTcount)
@@ -212,7 +210,7 @@ set FPP_unitary_hash_general([(KGBElt,ratvec)] xlambdas, Param_hash Uhash,
 			       	    currentUcounter := unitary_test_counter.use_count();
 				    currentCcounter := char_counter.use_count()
     		 	  then () = xlambdatimes[k] := current - startxl
-    			  in if every_lambda_flag
+    			  in if every_lambda_flag and FPP_report_flag
 	      		     then prints("  ",print_time_string(xlambdatimes[k]),
 			   	" = time for (x,lambda) #",k, " = (", xnums[k], ",",lambdas[k],")", test_string);
 			         prints("    #LF = ", for L in LF do #L od, "; #unitary params = ", answerCards[k],
@@ -275,11 +273,9 @@ set FPP_unitary_hash_general([KGBElt] xs, Param_hash Uhash, (Param->bool) fancy_
     	      fi
     then G = xs[0].real_form
     then start = elapsed_ms(), zeroPol = null_module(G), zeroNu = null(G.rank)/1
-    then () = unitaryTime := 0
-    then () = charTime := 0
-    then () = FD12Time :=0
-    then () = FD12bzTime :=0
-    then () = red_count_time :=0
+    then () = if FPP_report_flag
+    	      then unitaryTime := 0; charTime := 0; FD12Time:=0; FD12bzTime:=0; red_count_time :=0
+	      fi
     {then {xnums = for x in xs do x.number od, xtimes = null(#xs),}}
     {then () = pol_hash.clear()} {in recursive calls, this screws up bigger G, which has
     	  already indexed some K_chars here.}
@@ -384,7 +380,7 @@ set FPP_unitary_hash_general([KGBElt] xs, Param_hash Uhash, (Param->bool) fancy_
     	 	    	 then Ncases = #lambdas
 	          	 then tempanswerCards = null(Ncases)
 	 	  	 then templambdatimes = null(Ncases)
-	 		 then () = if every_KGB_flag
+	 		 then () = if every_KGB_flag and FPP_report_flag
       	      	   	      then prints("     start KGBElt #", x.number, ", #lambdas = ",#lambdas,
 		   	       " Uhash.size() = ", Uhash.size(), ", runtime = ",
 			       	 print_time_string(elapsed_ms() - start), ", #uparams so far = ",
@@ -406,7 +402,7 @@ set FPP_unitary_hash_general([KGBElt] xs, Param_hash Uhash, (Param->bool) fancy_
 						     else -1
 						     fi
 
-		 		      then () = if every_lambda_flag
+		 		      then () = if every_lambda_flag and FPP_report_flag
       	      	   	     	      	      	then prints("     start #", index, " = (",x,",",lambda,
 						"), Uhash.size() = ", Uhash.size(),
 						", runtime = ", print_time_string(elapsed_ms() - start),
@@ -438,7 +434,7 @@ set FPP_unitary_hash_general([KGBElt] xs, Param_hash Uhash, (Param->bool) fancy_
 		      	      	      	      	       	 then localFD_1Dirac2_by_zero(xW, lambdaW, Lvd, Perm2)
 			   				 else localFD_1Dirac2(xW, lambdaW, Lvd, Perm2)
 			   				 fi {by_zero_flag}
-				      	       then () = if every_lambda_deets_flag
+				      	       then () = if every_lambda_deets_flag and FPP_report_flag
     	      	      	              	       	       	 then prints("time for localFD_1Dirac2* = ",
 				      	       	    	      print_time_string(elapsed_ms() - startLF),
 			   			    	      " to find [",#LF[0],",",#LF[1],
@@ -466,7 +462,7 @@ set FPP_unitary_hash_general([KGBElt] xs, Param_hash Uhash, (Param->bool) fancy_
 				 	   		     	  test_verbose := false; test_slightly_verbose := false
 				 	   		     fi
  			 	 		   then () = templambdatimes [index] := elapsed_ms() - startlambda
-			 	 		   in if every_lambda_flag
+			 	 		   in if every_lambda_flag and FPP_report_flag
 				    		      then prints("  ",print_time_string(templambdatimes[index]),
 			   	    	 	      	   " = time for (x,lambda) = (", xW.number, ",",index," = ",
 							   lambdaW, ")", test_string);
@@ -493,7 +489,7 @@ set FPP_unitary_hash_general([KGBElt] xs, Param_hash Uhash, (Param->bool) fancy_
 	   	     lambdatimes[j] := templambdatimes; currentUcounter := unitary_test_counter.use_count();
 		     currentCcounter := char_counter.use_count(); answerCards[j]:= tempanswerCards
 	   then longLambdaLoc = max_loc(templambdatimes)
-           then () = if every_KGB_flag
+           then () = if every_KGB_flag and FPP_report_flag
                      then  prints("     time for KGBElt ",x.number," was ",
                           print_time_string(times[j]), "; longest lambda = ",
 			  print_time_string(templambdatimes[longLambdaLoc]),
@@ -721,12 +717,9 @@ fancy_tester) = void:
     	      then clear_report_tested(); DTcount:=0; DBTcount:=0
 	      fi
     then start = elapsed_ms()
-    then () = unitaryTime := 0
-    then () = charTime := 0
-    then () = dfkiTime := 0
-    then () = FD12Time := 0
-    then () = FD12bzTime := 0
-    then () = red_count_time :=0
+    then () = if FPP_report_flag
+    	      then unitaryTime := 0; charTime := 0; FD12Time:=0; FD12bzTime:=0; red_count_time :=0
+	      fi
     then xnums = for (x,) in xlambdas do let (,m) = %x in m od
     {then lambdas = for (,lambda) in xlambdas do lambda od}
     then LPmss = for (x,lambda) in xlambdas_sc
@@ -775,7 +768,7 @@ fancy_tester) = void:
 				   startCTime = charTime, startmorebad = more_bad_hash.size()
 				   {startUparamhash = Uparamhash.size(),} 
 		 then (Lvd, Perm2{, mapAct}) = LPmss[k] {already lives on Gsc}
-		 then () = if every_lambda_flag
+		 then () = if every_lambda_flag and FPP_report_flag
       	      	   	      then prints("     start #", k, " = (",x,",",lambda,"), Uhash.size() = ",
 			      Uhash.size(), ", runtime = ", print_time_string(elapsed_ms() - start),
 			      ", #uparams so far = ",sum(answerCards));
@@ -786,7 +779,7 @@ fancy_tester) = void:
 		      	   then localFD_1Dirac2_by_zero(x_sc, lambda_sc, Lvd, Perm2)
 			   else localFD_1Dirac2(x_sc, lambda_sc, Lvd, Perm2)
 			   fi
-		 then () = if every_lambda_deets_flag
+		 then () = if every_lambda_deets_flag and FPP_report_flag
     	      	      	   then prints("time for localFD_1Dirac2* = ", print_time_string(elapsed_ms() - startLF),
 			   	       " to find [",#LF[0],",",#LF[1],"] verts and edges; Dirac eliminated ",DTcount - startDTcount)
 	      		   fi
@@ -813,7 +806,7 @@ fancy_tester) = void:
 				   currentCcounter := char_counter.use_count();
 				   currentCtime := charTime
     		 	 then () = xlambdatimes[k] := current - startxl
-    			 in if every_lambda_flag
+    			 in if every_lambda_flag and FPP_report_flag
 	      		    then prints("  ",print_time_string(xlambdatimes[k]),
 			   	" = time for (x,lambda) #",k, " = (", xnums[k],",",xlambdas[k],"), ht = ",
 				  height(parameter(x,lambda,0*lambda)), ", L = ", let (Q,) =
@@ -1033,7 +1026,7 @@ set FPP_unitary_hash_bottom_layer([KGBElt] xs, Param_hash UhashG, (Param->bool) 
     	 then Ncases = #lambdas
 	 then tempanswerCards = null(Ncases)
 	 then templambdatimes = null(Ncases)
-	 then () = if every_KGB_flag
+	 then () = if every_KGB_flag and FPP_report_flag
       	      	   then prints("     start KGBElt #", x.number, ", #lambdas = ",Ncases,
 		   	       " Uhash.size() = ", Uhash.size(), ", runtime = ",
 			       print_time_string(elapsed_ms() - start), ", #uparams so far = ",
@@ -1051,7 +1044,7 @@ set FPP_unitary_hash_bottom_layer([KGBElt] xs, Param_hash UhashG, (Param->bool) 
 		      	    unitary_test_counter.use_count(), startUtime = unitaryTime,
 			    startmorebadlambda = more_bad_hash.size(), startLF = elapsed_ms(),
 			    startCcounter = char_counter.use_count(), startCtime = charTime
-		      then () = if every_lambda_flag
+		      then () = if every_lambda_flag and FPP_report_flag
       	      	   	     	then prints("     start #", index, " = (",x,",",lambda,
 					    "), Uhash.size() = ", Uhash.size(),
 					    ", runtime = ", print_time_string(elapsed_ms() - start){,
@@ -1063,7 +1056,7 @@ set FPP_unitary_hash_bottom_layer([KGBElt] xs, Param_hash UhashG, (Param->bool) 
 		      	      	then localFD_1Dirac2_by_zero(x_sc, M*lambda, Lvd, Perm2)
 			   	else localFD_1Dirac2(x, lambda, Lvd, Perm2)
 			   	fi
-		      then () = if every_lambda_deets_flag
+		      then () = if every_lambda_deets_flag and FPP_report_flag
     	      	      	      	then prints("time for localFD_1Dirac2* = ",
 				print_time_string(elapsed_ms() - startLF),
 				" to find [",#LF[0],",",#LF[1],"] verts and edges; Dirac eliminated ",
@@ -1103,7 +1096,7 @@ set FPP_unitary_hash_bottom_layer([KGBElt] xs, Param_hash UhashG, (Param->bool) 
 				      	     od {y_sc}
 				    	   od{qsc}
  			 	 then () = templambdatimes [index] := elapsed_ms() - startlambda
-			 	 in if every_lambda_flag
+			 	 in if every_lambda_flag and FPP_report_flag
 				    then prints("  ",print_time_string(templambdatimes[index]),
 			   	    " = time for (x,lambda) = (", x.number, ", #",index," = ",lambda, "), ht = ",
 				    height(parameter(x,lambda,0*lambda)),", L = ", let (Q,) =
@@ -1147,7 +1140,7 @@ set FPP_unitary_hash_bottom_layer([KGBElt] xs, Param_hash UhashG, (Param->bool) 
 	   	     lambdatimes[j] := templambdatimes; currentUcounter := unitary_test_counter.use_count();
 		     currentCcounter := char_counter.use_count(); answerCards[j] := tempanswerCards
 	   then longLambdaLoc = max_loc(templambdatimes)
-           then () = if every_KGB_flag
+           then () = if every_KGB_flag and FPP_report_flag
                      then  prints("     time for KGBElt ",x.number," was ",
                           print_time_string(times[j]), "; longest lambda = ",
 			  print_time_string(templambdatimes[longLambdaLoc]),
@@ -1256,13 +1249,13 @@ set Lucas_fast() = void: {T*T}
 set Lucas_no() = void: {F**}
     is_FPP_unitary_flag:=false
 
-{meant to be used only on hermitian centered hermitian FPP reps p of simple G}
+{meant to be used only on FPP reps p of simple G}
 {Computes the (p.x,p.lambda) part of the unitary dual of p.real_form. That's good
 if one is going to do a bunch of related is_unitary tests, for ex as in known_unitaries}
 set MyFancyTester(Param p) = bool:
-    let () = FPP_unitary_hash_bottom_layer([(p.x,p.lambda)], is_unitary_hash_big_SIMPLE@Param)
+    let () = FPP_unitary_hash2([(p.x,p.lambda)], is_unitary_hash_big_SIMPLE@Param)
     {then () = prints("invoked MFT at p = ",p,", real form = ",p.real_form)}
-    in big_unitary_hash.uhash(p.real_form).lookup(p).>=
+    in big_unitary_hash.uhash(p.real_form).lookup(herm_center(p)).>=
 
 set FPP_unitary_hash_def_dumb([(KGBElt, ratvec)] xls) = void:
    if recursive_tester_flag

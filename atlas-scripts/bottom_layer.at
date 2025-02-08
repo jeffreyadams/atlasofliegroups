@@ -152,14 +152,6 @@ set theta_stable_data_small_long(Param p, KType mu) = (Param, KGPElt, Param):
     then i0 = first(for q in qs do q.!= and LKT(first_param(q)) = mu od)
     in (first_param(qs[i0]),Q,qLs[i0])
 
-
-{The result of cohomological induction on the level of K}
-set theta_induce_K(KTypePol QL, RealForm G) = KTypePol:
-K_type_pol(sum(G, for c@pL in QL do c*theta_induce_standard(param(pL),G) od))
-
-set theta_induce_signature(Param pL, RealForm G) = KTypePol:
-    theta_induce_K(hermitian_form_irreducible_big(pL),G)
-
 {meant to be applied to quasisplit simple L}
 set next_heights = (RealForm -> int):
     let ichash = make_InnerClass_hash()
@@ -1298,14 +1290,18 @@ set bottom_elim_factors_more(Param p0, Param p, [QKL_bottom_data] data, KTypePol
      then () = if good>=0
     	       then let (,pL0) =  maxQps[good]
 	      	    then () = if bottom_verbose then prints("p = ",p0," is a good one!") fi
-                    then answer = is_unitary_hash_big(pL0)
+		    then DL = D - height(p) + height(pL0)
+		    then answer = is_unitary_to_ht_big(pL0,DL)
+                    {then answer = is_unitary_hash_big(pL0)}
 		    then () = befmoreTime +:= elapsed_ms() - start
                     in return answer
 	      	fi
      then wk_good = first(for (,wg,) in three_bools do wg = true od)
      then () = if wk_good >= 0 {form on p is induced from form on L}
     	       then let (,pL0) = maxQps[wk_good]
-	       	    then HG = theta_induce_signature(pL0,G){, Ip = theta_induce_irreducible(pL,G)}
+	       	    then DL = D - height(p) + height(pL0)
+	       	    then HG = to_ht(theta_induce_signature_to_ht(pL0,DL,G),D)
+		    {, Ip = theta_induce_irreducible(pL,G)}
 		    then G_pure = is_pure(HG)
 		    in  befmoreTime +:= elapsed_ms() - start;
                         {attest_is_unitary(p, G_pure);}
@@ -1364,14 +1360,19 @@ set bottom_elim_factors_more(Param p0, Param p, int D_low, int D, KTypePol P)= b
     then () = if good>=0
     	      then let (,pL0) =  maxQps[good]
 	      	   then () = if bottom_verbose then prints("p = ",p0," is a good one!") fi
-                   then answer = is_unitary_hash_big(pL0)
+		   then DL = D - height(p) + height(pL0)
+		   then answer = is_unitary_to_ht_big(pL0,DL)
+                   {then answer = is_unitary_hash_big(pL0)}
 		   then () = befmoreTime +:= elapsed_ms() - start
                    in return answer
 	      fi
      then wk_good = first(for (,wg,) in three_bools do wg = true od)
      then () = if wk_good >= 0 {form on p is induced from form on L}
     	       then let (,pL0) = maxQps[wk_good]
-	       	    then HG = theta_induce_signature(pL0,G){, Ip = theta_induce_irreducible(pL,G)}
+	       	    then DL = D - height(p) + height(pL0)
+		    then HG = to_ht(theta_induce_signature_to_ht(pL0,DL,G),D)
+		    {then HG = theta_induce_signature(pL0,G)}
+		    {, Ip = theta_induce_irreducible(pL,G)}
 		    then G_pure = is_pure(HG)
 		    in  befmoreTime +:= elapsed_ms() - start;
                         {attest_is_unitary(p, G_pure);}

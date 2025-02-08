@@ -519,6 +519,10 @@ set branch_hash_flag = true
 {whether to include KGB numbers in output files. True makes them more human-readable, sometimes longer}
 set write_x_flag = false
 
+{The result of cohomological induction on the level of K}
+set theta_induce_K(KTypePol QL, RealForm G) = KTypePol:
+K_type_pol(sum(G, for c@pL in QL do c*theta_induce_standard(param(pL),G) od))
+
 {decide NOT to hash nonunitary...well, UNdecided 1/14/25}
 {try to incorporate RF_sig_table 1/18/25}
 {sig_height = height(p)-1 means full signature
@@ -560,6 +564,7 @@ set_type
   , (Param -> int) ulookup {(location of p in its uhash)}
   , (Param -> int) nulookup {(location of p in its nuhash)}
   , (Param -> bool) check {check whether p is unitary, and add to appropriate hash table}
+  , ((Param,int) -> bool) check_to_ht {check whether p is unitary to height}
   , (Param -> int) umatch {add p to its uhash table}
   , (Param -> int) numatch {add p to its nuhash table}
   , ((Param,int) -> int) long_umatch {add p to ith uhash table}
@@ -971,6 +976,9 @@ set make_big_unitary_hash() = big_unitary_hash_table:
     , (Param -> bool): {check} (Param p) bool:
       let (i,,sigD) = add_param_inf(p)
       in is_pure(K_type_pol_hashes[i].list()[sigD])
+    , ((Param,int) -> bool): {check_to_ht} (Param p, int N) bool:
+      let (i,,sigD) = add_param(p,N)
+      in is_pure(to_ht(K_type_pol_hashes[i].list()[sigD], N))
 {
       let i = add_real_form(p.real_form)
       {then () = prints("bitmap for ",p.x.number," is ",xl_known[i][p.x.number])}
@@ -1237,57 +1245,223 @@ set hermitian_form_irreducible_big_SIMPLE(Param p) = KTypePol:
        else big_unitary_hash.sig_entry(p,height(p)-1) {hermitian_form_irreducible(p)}
        fi
 
+{this version is only for G simple, p FPP hermitian and centered}
+{First weakly good, then Lucas}
+set is_unitary_hash_big_SIMPLE_weak_Lucas(Param p) = bool:
+    let (,pL) = wkgood_Q(p), G = p.real_form {first try weakly good induction}
+    then L = pL.real_form
+    then goodL = good_L(p)
+    then answer = if L !=G
+		  then let derpLs = for qLj in derived_factor_params0(pL)
+    	 	   	    	    do monomials(finalize(qLj))
+		  	    	    od.##
+		       in if #derpLs = 0
+		       	  then true
+    		      	  else
+		       	   let statuses = for derpL in derpLs
+    		     	   	      	  do big_unitary_hash.check(derpL)
+		    		      	  od
+       		       	   in if all(statuses) or goodL = L
+		       	      then all(statuses)
+        		      else {some derpL is not unitary, but the induction is not trivial}
+       	    		        is_pure(sum(G, for c@qL in hermitian_form_irreducible(pL)
+			      		    do c*theta_induce_standard(param(qL), goodL)
+			      		    od))
+			     fi {all(statuses}
+		          fi{#derpLs = 0}
+		   else    {now start Lucas test}
+    		    let gamma = p.infinitesimal_character, rd = p.root_datum
+    		    then rdi = integrality_datum(rd,gamma)
+    		    then alphavs = for alphav@j in rd.simple_coroots
+    	 	    	 	   do if gamma*alphav < 1
+		     		      then [j]
+		     		      else let ji = coroot_index(rdi,alphav)
+			  	      in if not is_member_sorted(tau(p))(ji)
+			     	      	 then []
+			     		 else [j]
+			     		 fi {not is_member}
+		     		      fi {gamma*alphav < 1}
+		  		   od.##
+   		   then Q = KGPElt: (alphavs, p.x)
+    		   then rhou = Q.rho_u
+    		   in if((p.x.involution-1)*rhou).!=
+     	     	      then false
+   		      else
+		        let LL = Q.Levi
+    		      	in if LL != G {Lucas test gives a reduction}
+       	 	      	   then let xLL = inverse_embed_KGB(p.x,LL)
+       	      	      	   	then pLL = parameter(xLL,p.lambda - rhou, p.nu)
+       	      	   	   	{then () = assert(p = first_param(theta_induce_standard(pL,G)),
+		  		"screwed up pL!")}
+    	      	   	   	then derpLLs = derived_factor_params0(pLL)
+    	     	   	   	in all(for derpLL in derpLLs
+    	 	      	  	       do @bool: big_unitary_hash.check(derpLL)
+		      	  	       od)
+	 	  	   else big_unitary_hash.check(p)
+		           fi {LL != G}
+			fi {Q theta-stable}
+		 fi {L!=G}
+    then () = if answer
+	      then big_unitary_hash.umatch(p)
+	      else big_unitary_hash.numatch(p)
+	      fi
+    in answer
+
+{this version is only for G simple, FPP hermitian and herm center p}
+{tries first Lucas, then weakly good}
+set is_unitary_hash_big_SIMPLE_Lucas_weak(Param p) = bool:
+    let gamma = p.infinitesimal_character, rd = p.root_datum, G = p.real_form
+    then rdi = integrality_datum(rd,gamma)
+    then alphavs = for alphav@j in rd.simple_coroots
+    	 	  do if gamma*alphav < 1
+		     then [j]
+		     else let ji = coroot_index(rdi,alphav)
+			  in if not is_member_sorted(tau(p))(ji)
+			     then []
+			     else [j]
+			     fi
+		     fi
+		  od.##
+    then Q = KGPElt: (alphavs, p.x)
+    then rhou = Q.rho_u
+    then () = if((p.x.involution-1)*rhou).!=
+     	      then big_unitary_hash.numatch(p); return false
+	      fi
+    then L = Q.Levi
+    then answer = if L != G {Lucas test gives a reduction}
+       	 	  then
+		   let xL = inverse_embed_KGB(p.x,L)
+       	      	   then pL = parameter(xL,p.lambda - rhou, p.nu)
+       	      	   {then () = assert(p = first_param(theta_induce_standard(pL,G)),
+		  	"screwed up pL!")}
+    	      	   then derpLs = derived_factor_params0(pL)
+    	     	   in all(for derpL in derpLs
+    	 	      	  do @bool: big_unitary_hash.check(derpL)
+		      	  od)
+	 	  else
+		   let (,pL) = wkgood_Q(p) {else try weakly good induction}
+		   then derpLs = for qLj in derived_factor_params0(pL)
+    	 	   	    	 do monomials(finalize(qLj))
+		  	    	 od.##
+		   then goodL = good_L(p)
+		   in if #derpLs = 0
+		      then big_unitary_hash.umatch(p); true
+    		      else
+		       let statuses = for derpL in derpLs
+    		     	   	      do big_unitary_hash.check(derpL)
+		    		      od
+       		       in if all(statuses) or goodL = pL.real_form
+       			  then all(statuses)
+        		  else {some derpL is not unitary, but the induction is not trivial}
+       	    		       is_pure(sum(G, for c@qL in hermitian_form_irreducible(pL)
+			      		    do c*theta_induce_standard(param(qL), goodL)
+			      		    od))
+			 fi {all(statuses}
+		       fi{#derpLs = 0}
+		    fi {L!=G}
+    then () = if answer
+	      then big_unitary_hash.umatch(p)
+	      else big_unitary_hash.numatch(p)
+	      fi
+    in answer
+
+{this version is only for G simple}
+set is_unitary_hash_big_SIMPLE_Lucas(Param p) = bool:
+    let gamma = p.infinitesimal_character, rd = p.root_datum, G=p.real_form
+    then rdi = integrality_datum(rd,gamma)
+    then alphavs = for alphav@j in rd.simple_coroots
+    	 	  do if gamma*alphav < 1
+		     then [j]
+		     else let ji = coroot_index(rdi,alphav)
+			  in if not is_member_sorted(tau(p))(ji)
+			     then []
+			     else [j]
+			     fi
+		     fi
+		  od.##
+    then Q = KGPElt: (alphavs, p.x)
+    then rhou = Q.rho_u
+    then () = if((p.x.involution-1)*rhou).!=
+     	      then big_unitary_hash.numatch(p); return false
+	      fi
+    then L = Q.Levi
+    then answer = if L != G {Lucas test gives a reduction}
+       	 	  then
+		   let xL = inverse_embed_KGB(p.x,L)
+       	      	   then pL = parameter(xL,p.lambda - rhou, p.nu)
+       	      	   {then () = assert(p = first_param(theta_induce_standard(pL,G)),
+		  	"screwed up pL!")}
+    	      	   then derpLs = derived_factor_params0(pL)
+    	     	   in all(for derpL in derpLs
+    	 	      	  do @bool: big_unitary_hash.check(derpL)
+		      	  od)
+	 	  else
+		   big_unitary_hash.check(p)
+		  fi {L!=G}
+    then () = if answer
+	      then big_unitary_hash.umatch(p)
+	      else big_unitary_hash.numatch(p)
+	      fi
+    in answer
+
+
 {this version is only for G simple and hermitian FPP params}
+{does weakly good induction}
+set is_unitary_hash_big_SIMPLE_weak(Param p) = bool:
+    let (,pL) = wkgood_Q(p), G = p.real_form
+    then derpLs = for qLj in derived_factor_params0(pL)
+    	 	  do monomials(finalize(qLj))
+		  od.##
+    then () = if #derpLs = 0 then big_unitary_hash.umatch(p); return true fi
+    then statuses = for derpL in derpLs
+    		    do big_unitary_hash.check(derpL)
+		    od
+    then goodL = good_L(p)
+    then answer =
+       if all(statuses) or goodL = pL.real_form
+       then all(statuses)
+       else {some derpL is not unitary, but the induction is not trivial}
+       	    is_pure(sum(G, for c@qL in hermitian_form_irreducible(pL)
+			      do c*theta_induce_standard(param(qL),
+			           goodL)
+			      od))
+       fi{all(statuses)}
+    then () = if answer
+	      then big_unitary_hash.umatch(p)
+	      else big_unitary_hash.numatch(p)
+	      fi
+    in answer
+
+set u_Lucas_flag = false
+set u_wk_flag = false
+set u_wk_Lucas_flag = false
+set u_Lucas_wk_flag = false
+
+{this version is only for G simple}
 set is_unitary_hash_big_SIMPLE(Param p) = bool:
     if not is_hermitian(p) then return false fi;
-    let start = elapsed_ms(), G = p.real_form
+    let G = p.real_form
     then FPP_flag = is_FPP(G,p.infinitesimal_character)
     then () = if not FPP_flag
     	      then return is_unitary(p) {prints("FPP DANGER at ",p)}
 	      fi
-    {then () = p := herm_center(p)}
-    then L = big_unitary_hash.ulookup(herm_center(p))
-    {then () = prints("p = ", p, ". L = ",L, ", is_finished = ",is_finished(p.x, p.lambda))}
-    then () = if L.>= then return true fi
+    then () = p := herm_center(p)
+    then Lu = big_unitary_hash.ulookup(p)
+    {then () = prints("p = ", p, ". Lu = ",Lu, ", is_finished = ",is_finished(p.x, p.lambda))}
+    then () = if Lu.>= then return true fi
     then () = if is_finished(p.x, p.lambda)
     	      then big_unitary_hash.numatch(p); return false fi
     then Ln = big_unitary_hash.nulookup(p)
     then () = if Ln.>= then return false fi
-    then (,pL) = wkgood_Q(p)
-    then derpLs = for qLj in derived_factor_params0(pL)
-    	 	  do monomials(finalize(qLj))
-		  od.##
-    then () = if #derpLs = 0 then return true fi
-    {then () = for derpL in derpLs do big_unitary_hash.rf_index(derpL.real_form) od}
-    then statuses = for derpL in derpLs
-    		    do big_unitary_hash.check(derpL)
-		    od
-    then answer =
-       if all(statuses) or #statuses = 1 or (all(statuses) and good_L(p) = pL.real_form)
-       then let ans = statuses[0]
-       	    then () = if ans
-	       	      then big_unitary_hash.umatch(p)
-	       	      else big_unitary_hash.numatch(p)
-		      fi
-	    in ans
-       else {some derpL is not unitary, but the induction is not trivial}
-       	    let goodL = good_L(p)
-	    in let ans = is_pure(sum(G, for c@qL in hermitian_form_irreducible(pL)
-			      do c*theta_induce_standard(param(qL),
-			           goodL)
-			      od))
-	       then () = if ans
-	       	       	 then big_unitary_hash.umatch(p)
-	       	       	 else big_unitary_hash.numatch(p)
-			 fi
-	       in ans
+    then () = if u_Lucas_flag then return is_unitary_hash_big_SIMPLE_Lucas(p) fi
+    then () = if u_wk_flag then return is_unitary_hash_big_SIMPLE_weak(p) fi
+    then () = if u_Lucas_wk_flag then return is_unitary_hash_big_SIMPLE_Lucas_weak(p) fi
+    then () = if u_wk_Lucas_flag then return is_unitary_hash_big_SIMPLE_weak_Lucas(p) fi
+    then answer = big_unitary_hash.check(p)
+    in if answer
+       then big_unitary_hash.umatch(p); answer
+       else big_unitary_hash.numatch(p); answer
        fi
-    then () = UHBS_time+:= elapsed_ms() - start
-    then () = if answer
-    	      then big_unitary_hash.umatch(p)
-	      else big_unitary_hash.numatch(p)
-	      fi
-    in answer
 
 set is_unitary_hash_big(Param p) = bool:
     if not is_hermitian(p) then return false fi;
@@ -1357,7 +1531,7 @@ set hermitian_form_irreducible_to_ht_big_SIMPLE(Param p,int N) = KTypePol:
   then () = if not FPP_flag
     	    then return hermitian_form_irreducible_to_ht(p,N) {prints("FPP DANGER TO HT at ",p)}
 	    fi
-  {Now p is FPP. Assume it was already herm center? {then () = p := herm_center(p)}}
+  then () = p := herm_center(p)
   then L = big_unitary_hash.ulookup(p)
   then () = if L.>=
        	    then {let startCF = elapsed_ms()
@@ -1369,26 +1543,24 @@ set hermitian_form_irreducible_to_ht_big_SIMPLE(Param p,int N) = KTypePol:
   in if interrupt_flag
      then hermitian_form_irreducible_to_ht_big_SIMPLE_interrupt(p,N, interrupt_base_time)
      else if low(p,N) {low(p.x,p.lambda,N)}
-     	  then let ans = hermitian_form_irreducible_to_ht(p,N)
-	       then () = if not is_pure(ans)
-	       	       	 then big_unitary_hash.numatch(p)
+     	  then let (,pL) = wkgood_Q(p)
+	       then derpLs = for qLj in derived_factor_params0(pL)
+    	 	    	     do monomials(finalize(qLj))
+		  	     od.##
+    	       then () = if #derpLs = 0
+	       	       	 then big_unitary_hash.umatch(p);
+	       	       	      return K_type_pol(character_formula_to_height(p,N))
 			 fi
-	       in ans
+	       then NLs = for derpL in derpLs do N - height(p) + height(derpL) od
+ 	       then dersigs = for derpL@j in derpLs
+		       	      do big_unitary_hash.sig_entry(derpL,NLs[j])
+			      od
+	       then sigL = to_ht(glue_sigs(dersigs, LKTs(pL)[0]), N -height(p) + height(pL))
+	       in to_ht(theta_induce_K(sigL,G), N)
      	  else big_unitary_hash.sig_entry(p,N)
 	  fi {low}
      fi{interrupt}
 
-{	  let P = hermitian_form_irreducible(p)
-	       then () = if is_pure(P)
-	       	       	 then big_unitary_hash.umatch(p)
-	       	       	 else big_unitary_hash.numatch(p)
-			 fi {is_pure}
-	       in to_ht(P,N)
-     	  fi
-     fi}
-
-{assume p is hermitian}
-{ }
 set HOWMTH = int:0
 
 set hermitian_form_irreducible_to_ht_big(Param p,int N) = KTypePol:
@@ -1737,6 +1909,12 @@ set is_unitary_next_big(Param p) = bool:
     let pds = derived_factor_params0(p)
     in all(for pd in pds do @bool: is_unitary_next_big_SIMPLE(pd) od)
 
+set theta_induce_signature(Param pL, RealForm G) = KTypePol:
+    theta_induce_K(hermitian_form_irreducible_big(pL),G)
+
+set theta_induce_signature_to_ht(Param pL, int DL, RealForm G) = KTypePol:
+    theta_induce_K(hermitian_form_irreducible_to_ht_big(pL,DL),G)
+
 {whether to use the new Davis/Mason-Brown criterion saying FPP reps on an outside
 face of FPP might have to be coh ind}
 set is_FPP_unitary_flag = false
@@ -1769,7 +1947,7 @@ set is_FPP_unitary(Param p) = (bool,bool):
 		     fi
 		  od.##
      then () = if #alphavs = G.semisimple_rank
-     	       then return (false,false)
+     	       then return (false,false) {say we don't know}
 	       fi
      then Q = KGPElt:(alphavs, p.x) {p now must be good range coh ind from Q}
      then rhou = Q.rho_u
@@ -1794,9 +1972,9 @@ set is_FPP_unitary(Param p) = (bool,bool):
 
 
 {First bool says whether the test applies; second gives result of
-test. Second is meaningful only if first is true; I guess make result
-(false,false) otherwise?}
-{hope later to insert a version of fancy_tester that uses FPP_unitary_hash}
+test. Second is meaningful only if first is true; make result
+(false,false) otherwise}
+{Can allow fancy_tester to use FPP_unitary_hash}
 
 set is_FPP_unitary(Param p, (Param -> bool) fancy_tester ) = (bool,bool):
     if not is_FPP_unitary_flag then return (false,false) fi;
@@ -1819,7 +1997,7 @@ set is_FPP_unitary(Param p, (Param -> bool) fancy_tester ) = (bool,bool):
 		     fi
 		  od.##
      then () = if #alphavs = G.semisimple_rank
-     	       then return (false,false)
+     	       then return (false,false) {say we don't know}
 	       fi
      then Q = KGPElt:(alphavs, p.x) {p now must be good range coh ind from Q}
      {then ()= prints("have Q = ",Q," in is_FPP_unitary")}
@@ -1828,7 +2006,7 @@ set is_FPP_unitary(Param p, (Param -> bool) fancy_tester ) = (bool,bool):
      	       then return (true,false)
 	       fi
      then () = if Lucas_fast_flag
-     	       then return (false,false)
+     	       then return (false,false) {say we don't know}
 	       fi
      then L = Q.Levi
      {then () = prints("in isfppu(fancy) at line 1834, p = ",p)}
