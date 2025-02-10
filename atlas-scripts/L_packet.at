@@ -19,13 +19,9 @@ for p in list do
  od;
  for i:#blocks do (blocks[i], subsets[i]) od
 
-
-set is_valid(KGBElt_gen y,ratvec gamma)=bool:is_integer(square(y)-gamma)
-
 set parameter(KGBElt x,KGBElt_gen y,ratvec gamma)=Param:parameter(x,gamma-y.torus_factor,gamma)
 
-set y_gen(Param p)=KGBElt_gen: let y=(dual(p.inner_class),-^p.x.involution,p.infinitesimal_character-p.lambda) in
-assert(is_valid(y,p.infinitesimal_character),"y_gen(p) is not valid");y
+
 
 set simple_imaginary_roots(KGBElt x)=mat:
 let (simple_imaginary_roots,)=simple_imaginary_subsystem(x) in simple_imaginary_roots
@@ -55,21 +51,6 @@ for x in KGB(G) do
  fi
 od;rv 
 
-{given G, gamma,y -> defines an L-homomorphism phi: W_R -> LG}
-
-{We think of an L-packet as a set of *parameters*
- these should always be sorted according to the order given by monomials@Param
- If we want to specify a set of irreducibles or standards we make this explicit}
-set L_packet(RealForm G,ratvec gamma, KGBElt_gen y_gen)=[Param]:
-assert(is_valid(y_gen,gamma), "(y_gen,gamma) is not valid");
-let fiber=fiber(G,-^y_gen.involution) in
-##for x in fiber do
- let p=parameter(x,y_gen,gamma)  then
- P=finalize(p) in
- monomials(P) od
-
-set super_L_packet(ratvec gamma,KGBElt_gen y)=[Param]:
-##for G in real_forms(dual_quasisplit_form(y.real_form)) do L_packet(G,gamma,y) od 
 
 {L-packet of parameters, containing p}
 set L_packet(Param p)=[Param]:

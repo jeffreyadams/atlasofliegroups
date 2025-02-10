@@ -6,6 +6,7 @@
 <extParamPol.at
 <extended_character_formula.at
 <synthetic2.at
+<L_hom.at
 
 {NOTE: have to load twisted_endoscopy_D.at AT THE END
 this is a clear bug to be fixed; want to get rid of twisted_endoscopy_D.at
@@ -421,10 +422,11 @@ fi  then
 tf_H=(1+action_H)*(2*tf_u_H-H.rho)/2 {convert to normalized torus factor} then
 ()=if te_verbose then prints("tf_u_G: ", tf_u_G, new_line, "tf_u_H: ", tf_u_H, new_line, "tf_H: ", tf_H) fi then
 y_H_gen=KGB_elt_gen(dual(inner_class(H)),action_H,tf_H) then
+phi_H=phi(y_H_gen,gamma_H) then 
 ()=if te_verbose then prints("y_H_gen=", y_H_gen) fi in
-if is_valid(y_H_gen,gamma_H) then
- let ()=if te_verbose then prints("is valid") fi in
- let  lp=L_packet(H,left_inverse(M)*p_G.infinitesimal_character,y_H_gen) then
+if is_valid(phi_H) then 
+ let ()=if te_verbose then prints("phi_H is valid") fi in
+ let  lp=L_packet(H,phi_H) then
  ()= if te_verbose then prints("lp="); for a in lp do prints(a) od fi in
  if lift_std(lp[0],M,p_G.real_form,delta)=p_G then
   (true,sign_difference(p_G,delta)*param_pol(lp))

@@ -14,6 +14,8 @@ set KGB_elt_gen(InnerClass ic,mat theta, ratvec v)=KGBElt_gen:
  
 set KGB_elt(KGBElt_gen x)=KGB_elt(x.inner_class,x.involution,x.torus_factor)
 
+set root_datum(KGBElt_gen x)=RootDatum: root_datum(real_form(x))
+
 set grading_coweight (KGBElt x) = ratvec: torus_factor(x) + rho_check_i(x)
 
 { alternative to KGB_elt that incorporates shift by rho_check_i }
@@ -213,4 +215,35 @@ set KGB_elt_gen_old(InnerClass ic,mat involution, ratvec v)=KGBElt_gen:
  (ic,involution,v)
 set KGB_elt_gen_old(KGBElt x)=KGB_elt_gen_old(x.inner_class,x.involution,x.torus_factor)
 
+{action by W on KGB and KGB_gen by transport of structure: theta_x(t)=xtx^{-1}
+ (inner_class,theta,lambda) -> (inner_class. w*theta*inverse(w), w*lambda)
 
+This is NOT the same as the cross action
+In fact this can change the strong real form
+For example:
+
+atlas> set G=SU(2,0)
+atlas> set x=KGB(G,0)
+atlas> x.torus_factor
+Value: [ 1 ]/2
+atlas> set w=G.W[1]
+atlas> set y=w*x
+atlas> y
+Value: KGB element #0
+atlas> y.torus_factor
+Value: [ -1 ]/2
+atlas> y.real_form
+Value: compact connected real group with Lie algebra 'su(2)'
+atlas> x.real_form
+Value: compact connected real group with Lie algebra 'su(2)'
+atlas> x.real_form=y.real_form
+Value: false
+
+check we have the inverse in the right place;
+ theta_{wx}(t)=(gxg^{-1})t(gxg^{-1}^{-1} where g\in Norm(T) maps to w =>
+              g[x(g^{-1}tg)]g^{-1} i.e
+ (wx).involution = w.matrix * x.involution * inverse(w).matrix
+}
+
+set *(WeylElt w,KGBElt x)=KGBElt:KGB_elt(x.inner_class,w.matrix*x.involution*inverse(w).matrix, w*x.torus_factor)
+set *(WeylElt w,KGBElt_gen x)=KGBElt_gen:KGB_elt_gen(x.inner_class,w.matrix*x.involution*inverse(w).matrix, w*x.torus_factor)

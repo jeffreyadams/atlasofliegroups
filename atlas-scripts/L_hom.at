@@ -1,16 +1,56 @@
+{gamma is NOT required to be dominant
+a pair (x,phi) defines a parameter (x defines a character of S_phi)
+here phi.gamma does need to be dominant, but you need to make the PAIR
+(x,phi) dominant, by applying the same Weyl group element to x and phi}
+
 set_type [L_homomorphism = (KGBElt_gen y,ratvec gamma)]
 
-set phi(KGBElt_gen y,ratvec gamma)=L_homomorphism:(y,gamma)
+{usualay this is used this in the setting of packets, but not individual representations}
+set make_dominant(KGBElt_gen y,ratvec gamma)=L_homomorphism:
+let (w,gamma_dom)=to_dominant(y.real_form,gamma) in (w*y,gamma_dom)
 
-set L_packet(RealForm G,L_homomorphism phi)=[Param]:L_packet(G,phi.gamma,phi.y)
+{next two are synonyms
+ gamma is not required to be dominant
+}
+set phi(KGBElt_gen y,ratvec gamma)=L_homomorphism:(y,gamma)
+set L_hom(KGBElt_gen y,ratvec gamma)=L_homomorphism:phi(y,gamma)
+
+set is_valid(L_homomorphism (y,gamma))=bool:is_integer(square(y)-gamma) 
+
+set y_gen(Param p)=KGBElt_gen: let y=(dual(p.inner_class),-^p.x.involution,p.infinitesimal_character-p.lambda) in
+assert(is_valid(phi(y,p.infinitesimal_character)),"y(p) is not valid");y
+
+{when making pair (x,phi) dominant: apply the same Weyl group element to x and phi}
+set make_dominant(KGBElt x,L_homomorphism (y,gamma))=(KGBElt,L_homomorphism):
+let (w,gamma_dom)=to_dominant(y.real_form,gamma) in (w*x,(w*y,gamma_dom))
+
+set make_dominant(KGBElt_gen x,L_homomorphism (y,gamma))=(KGBElt_gen,L_homomorphism):
+let (w,gamma_dom)=to_dominant(y.real_form,gamma) in (w*x,(w*y,gamma_dom))
+
+set L_packet(RealForm G,L_homomorphism phi)=[Param]:
+assert(is_valid(phi), "phi is not valid");
+let phi_dom=make_dominant(phi) then
+(y,gamma)=phi_dom in
+assert(is_valid(y,gamma), "(y,gamma) is not valid");
+let fiber=fiber(G,-^y.involution) in
+##for x in fiber do
+ let p=parameter(x,y,gamma)  then
+ P=finalize(p) in
+ monomials(P) od
+
+set super_L_packet(ratvec gamma,KGBElt_gen y)=[Param]:
+let phi=phi(y,gamma) in is_valid(phi);
+##for G in real_forms(dual_quasisplit_form(y.real_form)) do L_packet(G,phi) od
+
+
 set L_packet(L_homomorphism phi)=[[Param]]:
 for G in strong_real_forms(dual_quasisplit_form(phi.y.inner_class)) do
- let LP=L_packet(G,phi.phi.gamma,phi.y)  in
+ let LP=L_packet(G,phi) in 
  if #LP>0 then [LP] else [] fi od.##
 
 set pure_L_packet(L_homomorphism phi)=[[Param]]:
 for G in pure_strong_real_forms(dual_quasisplit_form(phi.y.real_form)) do
- let LP=L_packet(G,phi.phi.gamma,phi.y)  in
+ let LP=L_packet(G,phi) in
  if #LP>0 then [LP] else [] fi od.##
 
 set phi(Param p)=L_homomorphism:phi(y_gen(p),infinitesimal_character(p))
@@ -29,3 +69,6 @@ set KGB_elt_gen (RootDatum rd, mat theta, ratvec v) = KGBElt_gen:
   KGB_elt_gen(inner_class(rd,theta), theta, v)
 
 set KGB_elt_gen (Tits_elt t)=KGB_elt_gen(t.root_datum,t.theta,2*t.torus_part-t.root_datum.rho_check)
+
+
+
