@@ -3141,9 +3141,8 @@ set local_test_GEO_hash_bottom_layer_interrupt(KGBElt x, ratvec lambda, LocalVer
 	     	  	 else one_param_test(parameter(x,lambda, Lvd.list[LFDKH[0][0][0]]),Uhash)
 			 fi
 	     fi
-
    then start_datas = elapsed_ms(), newDs = [int]:[]
-   then MU = branch_std(pmin, Ds~[0])
+   then MU = big_unitary_hash.branch(K_type_pol(pmin), Ds~[0])
    then datass =  for j:{bl_step_count} #Ds - 1 from 1
    	       	  do let datas = bottom_factors(bottom_K_type_Qs(pmin, Q0, Ds[j-1], Ds[j], MU))
 		     {then () = prints("j = ",j,", card(datas) = ", card(datas),", datas = ",datas, new_line)}
@@ -3309,7 +3308,7 @@ set local_test_GEO_hash_bottom_layer_step(KGBElt x, ratvec lambda, {VertexData v
    	     then return one_param_test_bottom(parameter(x,lambda, Lvd.list[LFDKH[0][0][0]]), Ds, Uhash)
 	     fi
    then start_datas = elapsed_ms(), newDs = [int]:[]
-   then MU = branch_std(pmin, Ds~[0])
+   then MU = big_unitary_hash.branch(K_type_pol(pmin), Ds~[0])
    then empty_datas = [QKL_bottom_data]: []
    then (trial, newDs) = add_datas(pmin, Q0, empty_datas, Ds, MU)
    {then () = if time_verbose then prints("cardinalities = ",for datas in datass do card(datas) od) fi}

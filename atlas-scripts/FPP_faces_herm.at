@@ -582,6 +582,7 @@ set_type
 
 set finish_time = int:0
 set is_finished_time = int:0
+set branch_script_time = int:0
 
 set make_big_unitary_hash() = big_unitary_hash_table:
 (   let real_form_hash = make_RealForm_hash()
@@ -762,7 +763,8 @@ set make_big_unitary_hash() = big_unitary_hash_table:
     	 then KTYPENUM = K_type_hashes[rfnum].size()
 	 then (,ktypenum) = add_K_type(mu)
 	 then () = if ktypenum = KTYPENUM {haven't computed with mu before}
-	      	   then let ans = null_K_module(rf)
+	      	   then let start = elapsed_ms()
+		   	then ans = null_K_module(rf)
 		   	then undone = 1*mu {guaranteed on rf}
 			then () = while undone.!=
 			     do let (c,tau) = first_term(undone)
@@ -771,6 +773,7 @@ set make_big_unitary_hash() = big_unitary_hash_table:
 				in ans+:=c*tau
 			     od
 			then m = K_type_pol_hashes[rfnum].match(ans)
+			then () = branch_script_time +:= elapsed_ms() - start
 			then tempbranchhts = branch_heights[rfnum]
 			then tempbranches = branches[rfnum]
 			then () = tempbranches[ktypenum] := m
