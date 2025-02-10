@@ -12,7 +12,7 @@
 set Dirac_easy_flag = true
 
 {how deep into {easy} best_Dirac_bound one ought to go. Setting to 1 means only LKT, ordinary Dirac.}
-set Dirac_best_steps = int: 2 {3 slows E6_s from about 160 secs to 360 secs on laptop}
+set Dirac_best_steps = int: 1 {3 slows E6_s from about 160 secs to 360 secs on laptop} {even 2 seems bad for E7}
 
 set_type
 [Dirac_easy_hash_table =
