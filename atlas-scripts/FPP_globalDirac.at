@@ -150,7 +150,7 @@ set FPP_unitary_hash_general([(KGBElt,ratvec)] xlambdas, Param_hash Uhash,
 	      elif coh_ind_most_flag
 	      then coh_ind_unip_most(G,Uhash)
 	      {elif coh_ind_few_flag
-	      then coh_ind_unip_few(G,Uhash)}
+then coh_ind_unip_few(G,Uhash)}
 	      fi
     then xlambdatimes = [int]: null(#xlambdasW)
     then answerCards = [int]: null(#xlambdasW) {number of unitary parameters found}
@@ -167,7 +167,13 @@ set FPP_unitary_hash_general([(KGBElt,ratvec)] xlambdas, Param_hash Uhash,
     	      then prints("time up to main loop = ",print_time_string(elapsed_ms() - start))
 	      fi}
     then () = for (x,lambda)@k in xlambdasW
-    	      do {xlambdasW} 
+    	      do {xlambdasW}
+	      	let skip_lambda= is_finished(x,lambda)
+		in if skip_lambda
+		   then if FPP_report_flag
+		   	then prints("Already computed (",x,",",lambda,")")
+			fi; return ()
+		   else
 	 	 let startxl = elapsed_ms(), startUhash = Uhash.size(),
 		     		   startUcounter = unitary_test_counter.use_count(),
 				   startCcounter = char_counter.use_count(),
@@ -222,7 +228,8 @@ set FPP_unitary_hash_general([(KGBElt,ratvec)] xlambdas, Param_hash Uhash,
 				  report_tested();
 				 prints("  ------------------")
 			     fi
-		    fi
+		    fi {#LF[0]=0}
+		    fi{skip_lambda}
 		 od{xlambdasW}
     then () = face_verbose:=old_face_verbose; time_verbose:=old_time_verbose;
     	      test_verbose:=old_test_verbose; test_slightly_verbose:=old_test_slightly_verbose
@@ -759,9 +766,12 @@ fancy_tester) = void:
 		   {start_min_L_bottom_factors = minBottomData.min_L_bottom_factors_time()}
     then () = for (x,lambda)@k in xlambdas
     	      do {xlambdas}
-	      	 if is_finished(x,lambda)
-		 then ()
-	 	 else let startxl = elapsed_ms(), startUhash = Uhash.size(), (x_sc,lambda_sc) = xlambdas_sc[k],
+	      	 let skip_xlambda = is_finished(x,lambda)
+		 in if skip_xlambda
+		    then if every_lambda_flag and FPP_report_flag
+		    	 then prints("Already computed (",x,",",lambda,")")
+		      	 fi
+	 	    else let startxl = elapsed_ms(), startUhash = Uhash.size(), (x_sc,lambda_sc) = xlambdas_sc[k],
 		     		   startUcounter = unitary_test_counter.use_count(),
 				   startUtime = unitaryTime, theta = x.involution,
 				   startCcounter = char_counter.use_count(), startCtime = charTime,
@@ -825,7 +835,7 @@ fancy_tester) = void:
 				  report_tested();
 				 prints("  ------------------")
 			    fi
-		    fi
+		    fi{#LF[0] = 0}
 		 fi {is_finished(x,lambda)}
 		 od{xlambdas}
     then () = if disconn_flag
@@ -1294,6 +1304,11 @@ set FPP_unitary_hash_dumb(RealForm rf) = void:
    else FPP_unitary_hash_dumb(rf, is_unitary_hash_big_SIMPLE@Param)
    fi
 
+set FPP_unitary_hash(RealForm rf) = void:
+   if recursive_tester_flag
+   then FPP_unitary_hash(rf, MyFancyTester@Param)
+   else FPP_unitary_hash(rf, is_unitary_hash_big_SIMPLE@Param)
+   fi
 
 set FPP_unitary_hash_one_level([(KGBElt, ratvec)] xls) = void:
    if recursive_tester_flag

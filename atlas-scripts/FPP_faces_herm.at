@@ -519,6 +519,9 @@ set branch_hash_flag = true
 {whether to include KGB numbers in output files. True makes them more human-readable, sometimes longer}
 set write_x_flag = false
 
+{whether to use the script branching code instead of library}
+set my_branch_flag = true
+
 {The result of cohomological induction on the level of K}
 set theta_induce_K(KTypePol QL, RealForm G) = KTypePol:
 K_type_pol(sum(G, for c@pL in QL do c*theta_induce_standard(param(pL),G) od))
@@ -626,6 +629,8 @@ set make_big_unitary_hash() = big_unitary_hash_table:
 	      	   then	let empty = [int]: nullint(#KGB(rf))
 		   	then () = K_type_hashes #:= make_KType_hash();
 		             K_type_pol_hashes #:= make_KTypePol_hash();
+			     formulas #:= null(0);
+			     formula_heights #:= null(0);
 		       	     branches #:= null(0);
 		             sigs #:= null(0);
 		             branch_heights #:= null(0);
@@ -649,23 +654,31 @@ set make_big_unitary_hash() = big_unitary_hash_table:
 	  in i
     then add_K_type(KType mu) = (int, int): {real form index, K type index}
    	 let rfnum = add_real_form(mu.real_form)
+	 then rf = real_form_hash.index(rfnum)
+	 then () = mu := first_K_type(regroup(rf,1*mu))
 	 then KTYPENUM = K_type_hashes[rfnum].size()
 	 then ktypenum = K_type_hashes[rfnum].match(mu)
 	 then () = if ktypenum = KTYPENUM {haven't computed with mu before}
 	     	   then let pol = 1*mu
 	     	       	then m = K_type_pol_hashes[rfnum].match(pol)
+			{then () = if KTYPENUM = 26 then prints(K_type_hashes[rfnum].size(),", bs = ",branches[rfnum], ", fs = ",formulas[rfnum],", bhs = ",branch_heights[rfnum], ", fhs = ",formula_heights[rfnum]) fi}
 			then () = formulas[rfnum] #:= m
 			then () = formula_heights[rfnum] #:= height(mu)
 		      	then () = branches[rfnum] #:= m
 		       	then () = branch_heights[rfnum] #:= height(mu)
 		       	then () = assert(real_form_hash.size() = #K_type_pol_hashes,"big_unitarity_hash damaged")
         	       	then () = assert(real_form_hash.size() = #K_type_hashes,"big_unitarity_hash damaged")
-		       	then () = assert(#branches[rfnum] = K_type_hashes[rfnum].size(), "big_unitarity_hash damaged")
+		       	then () = assert(#branches[rfnum] = K_type_hashes[rfnum].size() and
+			     	  #branch_heights[rfnum] = #branches[rfnum], "branch_hash_table damaged")
+			then () = assert(#branches[rfnum] = #formula_heights[rfnum] and
+			     	#branches[rfnum]  = #formulas[rfnum], "branch_hash_table damagedAKTFTH")
 		       	in ()
 		   fi
 	in (rfnum, ktypenum)
     then add_K_type_formula(KType mu) = (int, int, int): {rfn, ktypen, index(formula)}
        	 let (rfnum,ktypenum) = add_K_type(mu), h = height(mu)
+	 then rf = real_form_hash.index(rfnum)
+	 then () = mu := first_K_type(regroup(rf,1*mu))
        	 then () = if formula_heights[rfnum][ktypenum] != h-1
        	       	   then let m = K_type_pol_hashes[rfnum].match(K_type_formula(mu))
 		   	then formsrf = formulas[rfnum], formhsrf = formula_heights[rfnum]
@@ -677,6 +690,7 @@ set make_big_unitary_hash() = big_unitary_hash_table:
 			then () = formula_heights[rfnum] := formhsrf
 			in ()
 		   fi
+	 {then () = prints(K_type_hashes[rfnum].size(),", bs = ",branches[rfnum], ", fs = ",formulas[rfnum],", bhs = ",branch_heights[rfnum], ", fhs = ",formula_heights[rfnum])}
          then() = assert(K_type_hashes[rfnum].size() = #branches[rfnum] and #branches[rfnum] = #formulas[rfnum]
        	      		and #branches[rfnum] = #branch_heights[rfnum]
 			and #branches[rfnum] = #formula_heights[rfnum], "branch_hash_table damagedAKTF")
@@ -695,6 +709,8 @@ set make_big_unitary_hash() = big_unitary_hash_table:
 			then () = formula_heights[rfnum] := formhsrf
 		      	in ()
 		   fi
+	 {then () = if ktypenum = 13 then prints(K_type_hashes[rfnum].size(),", bs = ",branches[rfnum],
+	      ", fs = ",formulas[rfnum], ", bhs = ",branch_heights[rfnum], ", fhs = ",formula_heights[rfnum]) fi}
          then() = assert(K_type_hashes[rfnum].size() = #branches[rfnum] and #branches[rfnum] = #formulas[rfnum]
 	 	         and #branches[rfnum] = #branch_heights[rfnum]
 			 and #branches[rfnum] = #formula_heights[rfnum], "branch_hash_table damagedAKTFTH")
@@ -702,15 +718,20 @@ set make_big_unitary_hash() = big_unitary_hash_table:
     then add_K_type_branch(KType mu, int D) = (int, int, int):
     	 {this time add to height; D should be >= height(mu)}
    	 let rfnum = add_real_form(mu.real_form)
+	 then rf = real_form_hash.index(rfnum)
+	 then () = mu := first_K_type(regroup(rf,1*mu))
 	 then KTYPENUM = K_type_hashes[rfnum].size()
-	 then ktypenum = K_type_hashes[rfnum].match(mu)
+	 then (,ktypenum) = add_K_type(mu)
 	 then () = if ktypenum = KTYPENUM {haven't computed with mu before}
 	     	   then {let start_branch = elapsed_ms()}
 		       	let pol = branch_std(mu,D)
 	     	       	then m = K_type_pol_hashes[rfnum].match(pol)
-		       	{then () = bottom_branch_time +:= elapsed_ms() - start_branch}
-		       	then () = branches[rfnum] #:= m
-		       	then () = branch_heights[rfnum] #:= D
+			then tempbranchhts = branch_heights[rfnum]
+		       	then tempbranches = branches[rfnum]
+		       	then () = tempbranches[ktypenum] := m
+		       	then () = tempbranchhts[ktypenum] := D
+		       	then () = branch_heights[rfnum] := tempbranchhts
+			then () = branches[rfnum] := tempbranches
 		       	then () = assert(real_form_hash.size() = #K_type_pol_hashes,"big_unitarity_hash damaged")
         	       	then () = assert(real_form_hash.size() = #K_type_hashes,"big_unitarity_hash damaged")
 		       	then () = assert(#branches[rfnum] = K_type_hashes[rfnum].size(), "big_unitarity_hash damaged")
@@ -719,18 +740,75 @@ set make_big_unitary_hash() = big_unitary_hash_table:
 		       if branch_heights[rfnum][ktypenum] < D
 		       then let tempbranchhts = branch_heights[rfnum]
 		       	    then tempbranches = branches[rfnum]
-		       	    then start_branch = elapsed_ms()
 		       	    then pol = branch_std(mu, D)
-		       	    {then () = bottom_branch_time +:= elapsed_ms() - start_branch}
 		       	    then m = K_type_pol_hashes[rfnum].match(pol)
 		       	    then () = tempbranches[ktypenum]:=m
 		       	    then () = tempbranchhts[ktypenum] :=  D
 		       	    then () = branch_heights[rfnum] := tempbranchhts
 			    then () = branches[rfnum] := tempbranches
 		       	    in()
-		        fi
-		    fi
+		        fi {branch_heights[rfnum][ktypenum] < D}
+		    fi {ktypenum = KTYPENUM}
 	in (rfnum, ktypenum, branches[rfnum][ktypenum])
+
+    then add_K_type_my_branch(KType mu, int D) = (int, int, int):
+    	 let rfnum = add_real_form(mu.real_form)
+	 then rf = real_form_hash.index(rfnum)
+	 then () = mu :=  first_K_type(regroup(rf,1*mu))
+	 then () = assert(D>=height(mu),"branch to D below height(mu)")
+	 then rfnum = add_real_form(rf)
+	 then () = rf:= real_form_hash.index(rfnum)
+	 then () = mu:= first_K_type(regroup(rf,1*mu))
+    	 then KTYPENUM = K_type_hashes[rfnum].size()
+	 then (,ktypenum) = add_K_type(mu)
+	 then () = if ktypenum = KTYPENUM {haven't computed with mu before}
+	      	   then let ans = null_K_module(rf)
+		   	then undone = 1*mu {guaranteed on rf}
+			then () = while undone.!=
+			     do let (c,tau) = first_term(undone)
+			     	then (,,t) = add_K_type_formula_to_ht(tau,D)
+				then () = undone-:=c*regroup(rf, to_ht(K_type_pol_hashes[rfnum].list()[t],D))
+				in ans+:=c*tau
+			     od
+			then m = K_type_pol_hashes[rfnum].match(ans)
+			then tempbranchhts = branch_heights[rfnum]
+			then tempbranches = branches[rfnum]
+			then () = tempbranches[ktypenum] := m
+		       	then () = tempbranchhts[ktypenum] := D
+			then () = branch_heights[rfnum] := tempbranchhts
+			then () = branches[rfnum] := tempbranches
+		       	then () = assert(real_form_hash.size() = #K_type_pol_hashes,"big_unitarity_hash damaged")
+        	       	then () = assert(real_form_hash.size() = #K_type_hashes,"big_unitarity_hash damaged")
+		       	then () = assert(#branches[rfnum] = K_type_hashes[rfnum].size(), "big_unitarity_hash damaged")
+		       	in ()
+		   else {we've seen mu before}
+		       let Dold = branch_heights[rfnum][ktypenum]
+		       then () = if Dold < D
+			       then let ans = to_ht(K_type_pol_hashes[rfnum].list()[branches[rfnum][ktypenum]],D)
+			       	    then undone = mu - sum(rf, for c@tau in ans
+			       	    	     do let (,,Kft) = add_K_type_formula_to_ht(tau,D)
+						in c*regroup(rf, to_ht(K_type_pol_hashes[rfnum].list()[Kft],D))
+					     od)
+			       	    then () = while undone.!=
+			       	    	      do let (c,tau) = first_term(undone)
+			     	       	      	 then (,,t) = add_K_type_formula_to_ht(tau,D)
+				       		 then () = undone-:=c*regroup(rf,
+						      to_ht(K_type_pol_hashes[rfnum].list()[t],D))
+				       		 in ans+:=c*tau
+			     	    	      od
+		       	       then m = K_type_pol_hashes[rfnum].match(ans)
+			       then tempbranches = branches[rfnum]
+			       then tempbranchhts = branch_heights[rfnum]
+		       	       then () = tempbranches[ktypenum]:=m
+		       	       then () = tempbranchhts[ktypenum]:=  D
+		       	       then () = branch_heights[rfnum] := tempbranchhts
+			       then () = branches[rfnum] := tempbranches
+		       	       in()
+		               fi {Dold < D}
+			in ()
+		     fi {ktypenum = KTYPENUM}
+	in (rfnum, ktypenum, branches[rfnum][ktypenum])
+
     then add_param_inf(Param p) = (int, int, int): {add a param, full herm form}
    	let  rfnum = add_real_form(p.real_form)
 	then PNUM = phashes[rfnum].size()
@@ -873,7 +951,10 @@ set make_big_unitary_hash() = big_unitary_hash_table:
     end
     , ((KType, int) -> KTypePol): {branch_entry} (KType mu, int D) KTypePol:
      begin
-     	let (rf, ktypenum,m) = add_K_type_branch(mu,D)
+     	let (rf, ktypenum,m) = if my_branch_flag
+	    	 	       then add_K_type_my_branch(mu,D)
+			       else add_K_type_branch(mu,D)
+			       fi
 	in regroup(mu.real_form, to_ht(K_type_pol_hashes[rf].index(m), D))
      end
 
@@ -883,7 +964,10 @@ set make_big_unitary_hash() = big_unitary_hash_table:
 				    od
       then G = pol.real_form
       in to_ht( sum(pol.real_form, for (c,mu) in terms
-      	 			   do let (rf,,m) = add_K_type_branch(mu,D)
+      	 			   do let (rf,,m) = if my_branch_flag
+				      	  	    then add_K_type_my_branch(mu,D)
+						    else add_K_type_branch(mu,D)
+						    fi
 				      in regroup(G, c*K_type_pol_hashes[rf].index(m))
 				   od) , D)
     , ((Param,int) -> KTypePol): {sig_entry} (Param p, int D) KTypePol:
@@ -1314,7 +1398,7 @@ set is_unitary_hash_big_SIMPLE_Lucas_weak(Param p) = bool:
     then rdi = integrality_datum(rd,gamma)
     then alphavs = for alphav@j in rd.simple_coroots
     	 	  do if gamma*alphav < 1
-		     then [j]
+		     then [j] {else must be = 1 since we're in FPP}
 		     else let ji = coroot_index(rdi,alphav)
 			  in if not is_member_sorted(tau(p))(ji)
 			     then []
@@ -1432,9 +1516,10 @@ set is_unitary_hash_big_SIMPLE_weak(Param p) = bool:
 	      fi
     in answer
 
+{tiny evidence that wk_Lucas is best, or at least not very bad}
 set u_Lucas_flag = false
 set u_wk_flag = false
-set u_wk_Lucas_flag = false
+set u_wk_Lucas_flag = true
 set u_Lucas_wk_flag = false
 
 {this version is only for G simple}
@@ -2438,8 +2523,8 @@ set localFD_1Dirac2\
     then () = FD12Time +:= elapsed_ms() - start
     in if face_verbose then prints("After localFD_1Dirac2, face counts are [",#LF0,
     		      	   	  ",",#LF1,"]") fi;
-       if time_verbose then prints("     ",print_time_string(elapsed_ms() - start),
-       			     		  " for localFD_1Dirac2") fi;
+       {if time_verbose then prints("     ",print_time_string(elapsed_ms() - start),
+       			     		  " for localFD_1Dirac2") fi;}
        answer
 )
 
@@ -2579,8 +2664,8 @@ set localFD_1Dirac2_by_zero\
 	      fi}
     in if(face_verbose) then prints("After localFD_1Dirac2_by_zero, face counts are [",#LF0,
     		      	   	  ",",#LF1,"]") fi;
-       if(time_verbose) then prints("     ",print_time_string(elapsed_ms() - start),
-       			     		  " for localFD_1Dirac2_by_zero") fi;
+       {if(time_verbose) then prints("     ",print_time_string(elapsed_ms() - start),
+       			     		  " for localFD_1Dirac2_by_zero") fi;}
        answer
 )
 
@@ -2688,8 +2773,8 @@ set localFD_by_zero_short\
 	      fi}
     in if(face_verbose) then prints("After localFD_1Dirac2_by_zero_short, face counts are [",#LF0,
     		      	   	  ",",#LF1,"]") fi;
-       if(time_verbose) then prints("     ",print_time_string(elapsed_ms() - start),
-       			     		  " for localFD_1Dirac2_by_zero") fi;
+       {if(time_verbose) then prints("     ",print_time_string(elapsed_ms() - start),
+       			     		  " for localFD_1Dirac2_by_zero") fi;}
        answer
 )
 
@@ -2821,8 +2906,8 @@ set localFD_1Dirac2_by_zero_old\
     then () = FD12bzTime +:= elapsed_ms() - start
     in if(face_verbose) then prints("After localFD_1Dirac2_by_zero, face counts are [",#LF0,
     		      	   	  ",",#LF1,"]") fi;
-       if(time_verbose) then prints("     ",print_time_string(elapsed_ms() - start),
-       			     		  " for localFD_1Dirac2_by_zero") fi;
+       {if(time_verbose) then prints("     ",print_time_string(elapsed_ms() - start),
+       			     		  " for localFD_1Dirac2_by_zero") fi;}
        answer
 )
 

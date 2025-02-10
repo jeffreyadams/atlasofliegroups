@@ -2080,8 +2080,14 @@ set as_pol (RealForm G, [Param] ps) = ParamPol:
   let one=Split:(1,0) in null_module(G)+for p in ps do (one,p) od
 { DON'T define as_pol ([Param] pp): cannot be correctly defined when #pp=0 }
 
+set branch_builtin_time = int:0
+
 { branch to get only the coefficient of a specific K-type }
-set branch (KTypePol P, KType t) = Split: branch(P,height(t))[t]
+set branch (KTypePol P, KType t) = Split:
+let start = elapsed_ms()
+then ans = branch(P,height(t))[t]
+in branch_builtin_time+:=elapsed_ms() - start; ans
+
 set branch (ParamPol P, KType t) = Split: branch(K_type_pol(P),t)
 
 set full_deform (ParamPol P) = KTypePol:

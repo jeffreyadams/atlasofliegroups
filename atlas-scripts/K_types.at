@@ -8,16 +8,26 @@ set int_part (KTypePol P) = KTypePol:
 set s_part (KTypePol P) = KTypePol:
    P.null_K_module + for c@t in P do (c.s_part,t) od
 
-set branch_std = (KTypePol,int->KTypePol): branch@(KTypePol,int) { built-in }
-set branch_std (KType t, int cut_off) = KTypePol: branch_std(KTypePol:t,cut_off)
-set branch_std (ParamPol P, int bound) = KTypePol: branch(K_type_pol(P),bound)
+{set branch_std = (KTypePol,int->KTypePol): branch@(KTypePol,int) { built-in }}
+set branch_std (KTypePol P, int cut_off) = KTypePol:
+    let start = elapsed_ms()
+    then ans = branch(P,cut_off)
+    in branch_builtin_time +:= elapsed_ms() - start; ans
+
+set branch_std (KType mu, int cut_off) = KTypePol:
+    branch_std(1*mu,cut_off)
+
+set branch_std (ParamPol P, int bound) = KTypePol:
+    let start = elapsed_ms()
+    then ans = branch(K_type_pol(P),bound)
+    in branch_builtin_time +:= elapsed_ms() - start; ans
 
 set branch_irr (Param p, int bound) = KTypePol:
-  branch_std(K_type_pol(character_formula(p)),bound)
+   branch_std(K_type_pol(character_formula(p)),bound)
 
 set branch_irr (ParamPol P,int bound) = KTypePol:
   branch_std(K_type_pol(character_formula(P)),bound)
-
+ 
 { multiplicity of K-type p_K in standard module p }
 set mult_std (KType p_K,KTypePol P) = int:
   (branch_std(P,height(p_K))[p_K]).int_part
@@ -27,14 +37,22 @@ set mult_irr (KType p_K,ParamPol P) = int:
   (branch_irr(P,height(p_K))[p_K]).int_part
 
 set K_signature_irr (Param p,int bound) = (KTypePol,KTypePol):
-  let b=branch(hermitian_form_irreducible(p),bound) in (int_part(b),s_part(b) )
+  let HI = hermitian_form_irreducible(p)
+  then start = elapsed_ms()
+  then ans = branch(HI,bound)
+  in branch_builtin_time +:= start-elapsed_ms(); (int_part(ans),s_part(ans) )
 
 set K_signature_irrB (Param p,int bound) = (KTypePol,KTypePol):
-  let b=branch(hermitian_form_irreducible_to_ht(p,bound),bound) in
-  (int_part(b),s_part(b) )
-  
+  let HI = hermitian_form_irreducible_to_ht(p,bound)
+  then start = elapsed_ms()
+  then ans = branch(HI,bound)
+  in branch_builtin_time +:= start-elapsed_ms(); (int_part(ans),s_part(ans) )
+
 set signed_mult (KType p_K,Param p) = (int,int):
   let (P,Q)=K_signature_irr(p,height(p_K)) in (P[p_K].int_part,Q[p_K].int_part)
+
+set signed_multB (KType p_K,Param p) = (int,int):
+  let (P,Q)=K_signature_irrB(p,height(p_K)) in (P[p_K].int_part,Q[p_K].int_part)
 
 { this should be modified to print all LKTs }
 set print_K_types (ParamPol P) = void:
