@@ -352,6 +352,7 @@ set is_unitary_to_ht (Param p,int N, KTypePol_hash cert_hash) = bool:
   p,N), cert_hash)
 
 {table of is_unitary results, indexed by Param}
+{not used}
 set_type
 [ unitarity_to_hts_bool_hash =
 ( ( -> int) heights_size {number of heights stored}
