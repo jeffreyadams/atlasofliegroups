@@ -580,6 +580,16 @@ set_type
 )
 ]
 
+{function that will be properly defined in K_types.at}
+
+set branch_std (KTypePol P, int cut_off) = KTypePol:
+    let start = elapsed_ms()
+    then ans = branch(P,cut_off)
+    in branch_builtin_time +:= elapsed_ms() - start; ans
+
+{set branch_std (KType mu, int cut_off) = KTypePol:
+    branch_std(1*mu,cut_off)}
+
 set finish_time = int:0
 set is_finished_time = int:0
 set branch_script_time = int:0
@@ -725,7 +735,7 @@ set make_big_unitary_hash() = big_unitary_hash_table:
 	 then (,ktypenum) = add_K_type(mu)
 	 then () = if ktypenum = KTYPENUM {haven't computed with mu before}
 	     	   then {let start_branch = elapsed_ms()}
-		       	let pol = branch_std(mu,D)
+		       	let pol = branch_std(1*mu,D)
 	     	       	then m = K_type_pol_hashes[rfnum].match(pol)
 			then tempbranchhts = branch_heights[rfnum]
 		       	then tempbranches = branches[rfnum]
@@ -741,7 +751,7 @@ set make_big_unitary_hash() = big_unitary_hash_table:
 		       if branch_heights[rfnum][ktypenum] < D
 		       then let tempbranchhts = branch_heights[rfnum]
 		       	    then tempbranches = branches[rfnum]
-		       	    then pol = branch_std(mu, D)
+		       	    then pol = branch_std(1*mu, D)
 		       	    then m = K_type_pol_hashes[rfnum].match(pol)
 		       	    then () = tempbranches[ktypenum]:=m
 		       	    then () = tempbranchhts[ktypenum] :=  D
@@ -1317,6 +1327,73 @@ set all_finished(RealForm G) = [(KGBElt,ratvec)]:
        	     od
        od.##
 
+
+
+{these functions were in unity.at; give useful heights to which to try unitarity}
+
+
+{. gives (one of) the K-types of lowest height above mu in the
+standard of LKT mu .} {NEED USEFUL BOUND in K_type_formula.}
+set next_to_lowest(KType mu) = KType:
+    let form = if my_branch_flag
+    	       then big_unitary_hash.K_type_formula_to_ht(mu, height(mu) + 30)
+	       else K_type_formula(mu, height(mu) + 30)
+	       fi
+    in first_K_type(form - mu)
+
+{. height of a smallest non-lowest K_type of standard with LKT mu .}
+set next_height(KType mu)  = int:
+    height(next_to_lowest(mu))
+
+set next_height(KType mu) = int:
+    let m = height(mu)
+    in m+first( for j in #30 do @:!=
+     if my_branch_flag
+     then big_unitary_hash.K_type_formula_to_ht(mu, height(mu) + m+2*j+2) - mu
+     else K_type_formula(mu,m+2*j+2) - mu
+     fi od)
+
+{. height of a smallest non-lowest K_type of p .}
+set next_height(Param p) = int:
+    height(next_to_lowest(LKTs(p)[0]))
+
+{entries are the m heights of K-types of standard of mu after mu.}
+set next_heights(KType mu, int m) = [int]:
+    let h = height(mu), start = elapsed_ms()
+    then N = h+10, list = [int]: []
+    then () = while #list < m
+    	 do let klist = monomials(
+	    	      	if my_branch_flag
+	    	      	then big_unitary_hash.branch(mu, N) - mu
+			else branch_std(mu,N) - mu
+			fi)
+	     then () = list:= sort_u(for tau in klist do height(tau) od)
+	     in N+:=5
+	 od
+    { then () = if time_verbose then prints("    ",print_time_string(
+    elapsed_ms() - start)," for next_heights to ",m) fi }
+    in list[:m]
+
+set next_heights(Param p, int m) = [int]:
+    for tau in LKTs(p) do next_heights(tau,m) od.##.sort_u[:m]
+
+{if this produces -1, then the (hermitian) p is automatically unitary}
+set next_heightB(Param p) = int:
+    let mu = LKTs(p)[0]
+    then M = if my_branch_flag
+    	     then big_unitary_hash.K_type_formula_to_ht(mu, height(p) +
+	     	  height(p.root_datum, p.nu)) - mu
+	     else K_type_formula(mu, height(p) + height(p.root_datum, p.nu)) - mu
+	     fi
+    in
+    if =M then -1
+    else
+    let (,tau) = first_term(M) in height(tau)
+    fi
+
+
+
+
 set UHBS_time = int: 0
 
 {assume p is hermitian, FPP}
@@ -1823,7 +1900,7 @@ set is_unitary_test_big_SIMPLE(Param p, int N) = bool:
     let G = p.real_form
     then FPP_flag = is_FPP(G,p.infinitesimal_character)
     then () = if not FPP_flag
-    	      then return is_unitary_test(p,N) {prints("FPP DANGER TO HT at ",p)}
+    	      then return is_unitary{_test}(p{,N}) {prints("FPP DANGER TO HT at ",p)}
 	      fi
     {then () = p := herm_center(p)}
     then () = if is_finished(p.x, p.lambda) and big_unitary_hash.ulookup(p).>=
@@ -1875,7 +1952,7 @@ set is_unitary_test_big_SIMPLE (Param p, [int] Ns) = bool:
   let G = p.real_form
   then FPP_flag = is_FPP(G,p.infinitesimal_character)
   then () = if not FPP_flag
-    	    then  return is_unitary_test(p,Ns) {prints("FPP DANGER TEST at ",p)}
+    	    then  return is_unitary{_test}(p{,Ns}) {prints("FPP DANGER TEST at ",p)}
 	    fi
   {then () = p := herm_center(p)}
   {then () = test_count[#Ns] +:= 1}
@@ -1932,7 +2009,7 @@ set is_unitary_def_test_big_SIMPLE(Param p,int m) = bool:
     let G = p.real_form
     then FPP_flag = is_FPP(G,p.infinitesimal_character)
     then () = if not FPP_flag
-    	      then return is_unitary_def_test(p,m) {prints("FPP DANGER DEF TEST at ",p)}
+    	      then return is_unitary{_def_test}(p{,m}) {prints("FPP DANGER DEF TEST at ",p)}
 	      fi
     {then () = p := herm_center(p)}
     then () = if (big_unitary_hash.ulookup(p)).>= then return true fi
@@ -2278,7 +2355,10 @@ set DiracBestTest(Param p) = bool:
        else let j2 = first(for tau@j in taus[j1:]
        	    	     	   do @bool: if branch_hash_flag
 			      	     then branch_irr_hash(p, hts[j+j1])[tau].!=
-				     else branch_irr(p,hts[j+j1])[tau].!=
+				     else let bound = hts[j+j1]
+				     	  in branch_std(
+				     K_type_pol(character_formula_to_height(p,bound))
+				     ,bound)[tau].!=
 				     fi
 			   od)
 	    in j2.< {if the bound at j0+j1 corresponds to a tau

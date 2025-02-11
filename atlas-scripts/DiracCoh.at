@@ -1,7 +1,23 @@
+<K_types {for branch_irr}
 <Dirac
 <dirac_index
 <finite_dimensional
 <basic {for is_equal_rank}
+
+{this calculates all unitary reps containing mu for which mu
+contributes to Dirac cohom}
+set DiracCoh(KType mu) = [Param]:
+    let ic =  DiracIC(mu), G= mu.real_form
+    then ht = rat_as_int(2*ic*rho_check(G)), allic = all_parameters_gamma(G,ic)
+    in
+	for p in allic do
+    	if height(p) <= ht then
+	      if is_unitary(p) and branch_irr(p,ht)[mu] != 0
+	      then [p]
+	      else []
+	      fi
+	else break
+	fi od.##
 
 {Aim to tell whether a unitary rep has nonzero Dirac cohomology, and
 what it is. For UNITARY reps, this is close to correct. For
