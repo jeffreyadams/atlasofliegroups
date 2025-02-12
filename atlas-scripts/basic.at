@@ -548,7 +548,7 @@ set sum (int n,[mat] L) = mat: sum((n,n),L)
 set product (int n, [mat] L) = mat:
   let len=#L in
   if =len then id_mat(n)
-  else let p=L~[0] in for i:len-1 from 1 do p *:= L[i] od; p
+  else let p=L~[0] in for i:len-1 ~do p *:= L[i] od; p
   fi
 
 set gcd(mat M) = int:
