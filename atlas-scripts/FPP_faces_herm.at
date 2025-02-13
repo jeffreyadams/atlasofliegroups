@@ -2694,7 +2694,7 @@ set localFD_1Dirac2_by_zero\
 				   in if n >= #Perm2.fixed
 				      	 and Llookup(n) and Llookup(m)
 				      then [[m,n]]
-				      else []
+				      else DTcount +:= 1; []
 				      fi
 			       	od.## {[vec], all starting with m}
 			    else []
@@ -3032,7 +3032,9 @@ set localFD_KHash_01 (KGBElt x, ratvec lambda, LocalVertexData Lvd, KTypePol_has
 		      then m = ktp_hash.match(KCF)
 		      in if (not temp_Dirac_best_flag) or DiracBestTest(p0,KCF)
 		      	 then [v##[m,#monomials(P)]]
-			 else {prints("line 1987");} DBTcount+:=1; []
+			 else if x.number = 20047
+			      then prints("eliminated p0 = ",p0," using DBT = ",DiracBestTest(p0,KCF))
+			      fi; DBTcount+:=1; []
 			 fi
 		   od.##
     then lookup0D = index_in(for v in answer0
@@ -3044,7 +3046,7 @@ set localFD_KHash_01 (KGBElt x, ratvec lambda, LocalVertexData Lvd, KTypePol_has
 	      	      	   "; #ktp_hash = ",ktp_hash.size())
 	      	      fi;
 		      if lookup0D(v[:1])<0 or lookup0D(v[1:2])<0
-		      then []
+		      then DBTcount+:=1; []
 		      else
 		      let nu = face_bary(Lvd,v[:2])
 		      then p0 = parameter(x, lambda, nu)
@@ -3104,7 +3106,7 @@ set localFD_KHash_01 (KGBElt x, ratvec lambda, LocalVertexData Lvd, int HT, KTyp
 		      then m = ktp_hash.match(KCF)
 		      in if (not temp_Dirac_best_flag) or DiracBestTest(p0,HT,KCF)
 		      	 then [v##[m,#monomials(P)]]
-			 else {prints("line 2059");} {DBTcount +:=1;} []
+			 else {prints("line 2059");} DBTcount +:=1; []
 			 fi
 		   od.##
     then lookup0D = index_in(for v in answer0
@@ -3190,7 +3192,7 @@ set localFD_KHash_01_graph (KGBElt x, ratvec lambda, LocalVertexData Lvd, KTypeP
 		      fi
 	      in if N.>=
 	      	 then [v##[N,m]]
-		 else []
+		 else DBTcount +:= 1; []
 		 fi
 	  od.##
        od
@@ -3244,7 +3246,7 @@ set localFD_KHash_01_graph (KGBElt x, ratvec lambda, LocalVertexData Lvd, int HT
 		     fi
 	      in if N.>=
 	      	 then [v##[N,m]]
-		 else []
+		 else DBTcount+:=1; []
 		 fi
 	  od.##
        od

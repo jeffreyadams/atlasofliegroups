@@ -154,18 +154,15 @@ set make_Dirac_easy_hash() = Dirac_easy_hash_table:
 				then newmu = K_type(K_highest_weight_from_K0_weight(x0G,M*wt0))
 				then (,newmunum) = add_K_type(newmu)
 				then () = if #muss[rfnum][newmunum] >0 {already moved up from newmu}
-				     	  then newmunums ##:= muss[rfnum][newmunum]; break {leave while loop}
+				     	  then newmunums ##:=
+					       muss[rfnum][newmunum]; break {leave while loop}
 				   	  else newmunums #:= newmunum; newbds #:= DiracBDs[rfnum][newmunum];
 					       newhts #:= height(newmu)
 				   	  fi
 				 in ()
-	    	       		     {then () = newmunums #:= newmunum
-	    	       		     then () = newbds #:= DiracBDs[rfnum][newmunum]
-		       		     then () = newhts #:= height(newmu)
-	    	       		     in ()}
 	      	    	     od {end of "while #newhts"}
 		   then mussrf = muss[rfnum]
-    	           then () = mussrf[ktypenum] := newmunums
+    	           then () = mussrf[ktypenum] := newmunums[:min(#newmunums,Dirac_best_steps+1)]
 		   in muss[rfnum]:=mussrf
 	     fi {[muss].=}
 	 then () =  assert(#DiracBDs[rfnum] = muhashes[rfnum].size() and #muss[rfnum] = #DiracBDs[rfnum],

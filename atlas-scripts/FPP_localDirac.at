@@ -3245,8 +3245,10 @@ set local_test_GEO_hash_bottom_layer_step(KGBElt x, ratvec lambda, {VertexData v
     then ht = height(parameter(x,lambda,0*lambda))
     then () = if ht = 0 {fine K-type in quasisplit G}
     	      then if one_level_revert_flag
-	      	   then return local_test_GEO_hash_one_level(x, lambda, {vd,} Lvd, LF, pol_hash, Uhash)
-		   else return local_test_GEO_hash2(x, lambda, {vd,} Lvd, LF, pol_hash, Uhash)
+	      	   then return local_test_GEO_hash_one_level(x, lambda, {vd,} Lvd, LF, pol_hash, Uhash,
+		   	fancy_tester)
+		   else return local_test_GEO_hash2(x, lambda, {vd,} Lvd, LF, pol_hash, Uhash,
+		   	fancy_tester)
 		   fi
 	      fi
     then FPP_max_ht = (G.rho * G.two_rho_check)\1
@@ -3278,8 +3280,10 @@ set local_test_GEO_hash_bottom_layer_step(KGBElt x, ratvec lambda, {VertexData v
 	 so we can compute K-chars just to this height} {NOT TRUE for good range arguments!}
      then () = if L0=G
     	      then if one_level_revert_flag
-	      	   then return local_test_GEO_hash_one_level(x, lambda, {vd,} Lvd, LF, pol_hash, Uhash)
-		   else return local_test_GEO_hash2(x, lambda, {vd,} Lvd, LF, pol_hash, Uhash)
+	      	   then return local_test_GEO_hash_one_level(x, lambda, {vd,} Lvd, LF, pol_hash, Uhash,
+		   fancy_tester)
+		   else return local_test_GEO_hash2(x, lambda, {vd,} Lvd, LF, pol_hash, Uhash,
+		   fancy_tester)
 		   fi
 	      fi
     then () = if {TINY CASE} #LF[0]=1
@@ -3396,7 +3400,8 @@ set local_test_GEO_hash_bottom_layer(KGBElt x, ratvec lambda, {VertexData vd,}
     if bl_interrupt_flag
     then more_flag:=true;
     	 {more_shift_level:=bl_step_count*bl_step_size}
-	 return local_test_GEO_hash_bottom_layer_interrupt(x, lambda, {vd,} Lvd, LF, pol_hash, Uhash)
+	 return local_test_GEO_hash_bottom_layer_interrupt(x, lambda, {vd,} Lvd, LF, pol_hash, Uhash,
+	 	fancy_tester)
     fi;
     let G = x.real_form, thetaMinus = x.involution - 1, start = elapsed_ms(),
     	UTCstart = unitary_test_counter.use_count()
@@ -3411,8 +3416,10 @@ set local_test_GEO_hash_bottom_layer(KGBElt x, ratvec lambda, {VertexData vd,}
     then L0 = Q0.Levi
     then () = if L0=G {fine K-type in quasisplit G}
     	      then if one_level_revert_flag
-	      	   then return local_test_GEO_hash_one_level(x, lambda, {vd,} Lvd, LF, pol_hash, Uhash)
-		   else return local_test_GEO_hash2(x, lambda, {vd,} Lvd, LF, pol_hash, Uhash)
+	      	   then return local_test_GEO_hash_one_level(x, lambda, {vd,} Lvd, LF, pol_hash, Uhash,
+		   fancy_tester)
+		   else return local_test_GEO_hash2(x, lambda, {vd,} Lvd, LF, pol_hash, Uhash,
+		   fancy_tester)
 		   fi
 	      fi
     then FPP_max_ht = (G.rho * G.two_rho_check)\1
@@ -3420,7 +3427,8 @@ set local_test_GEO_hash_bottom_layer(KGBElt x, ratvec lambda, {VertexData vd,}
     then () = if bl_step_flag {bl_step_count steps of size bl_step_size; defaults to 2 and 5}
     	      then more_flag:=true;
     	      	   {if more_shift_level = 0 then more_shift_level := maxht - ht fi;}
-    	           return local_test_GEO_hash_bottom_layer_step(x, lambda, {vd,} Lvd, LF, pol_hash, Uhash)
+    	           return local_test_GEO_hash_bottom_layer_step(x, lambda, {vd,} Lvd, LF, pol_hash, Uhash,
+		   	  fancy_tester)
 	      fi
     {then temp_K_char_flag= htFrac <= CUTOFF {CUTOFF defaults to 0}}
     then r = rank(thetaMinus)
@@ -3447,8 +3455,10 @@ set local_test_GEO_hash_bottom_layer(KGBElt x, ratvec lambda, {VertexData vd,}
 		   fi
     then () = if #LKDatas = #LKTs(pmin) and not more_flag
    	      then if one_level_revert_flag
-	      	   then return local_test_GEO_hash_one_level(x, lambda, Lvd, LF, pol_hash, Uhash)
-		   else return local_test_GEO_hash2(x, lambda, Lvd, LF, pol_hash, Uhash)
+	      	   then return local_test_GEO_hash_one_level(x, lambda, Lvd, LF, pol_hash, Uhash,
+		   	       fancy_tester)
+		   else return local_test_GEO_hash2(x, lambda, Lvd, LF, pol_hash, Uhash,
+		   	       fancy_tester)
 		   fi
 	      fi
     then () = test_string:= " using local_test_GEO_hash_bottom_layer"
@@ -3529,7 +3539,8 @@ set local_test_GEO_hash_bottom_layer(KGBElt x, ratvec lambda, {VertexData vd,}
 	     		    	      fi
 		  	    in ()
 			    {consider an "else" reverting to hash2?}
-			    else return local_test_GEO_hash2(x, lambda, Lvd, LF, pol_hash, Uhash)
+			    else return local_test_GEO_hash2(x, lambda, Lvd, LF, pol_hash, Uhash,
+			    	 	fancy_tester)
 			    fi
 		    in ()
 	      fi
