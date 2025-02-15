@@ -828,13 +828,14 @@ KGP_sum: (KType->[int,KType]) signed subset of KGB associated to theta_stable(t)
   component gets projected or reflected), while a sign for the length change of
   the x component is prefixed to the K-type. These K-types may be non standard
   (even if the argument was standard) which is why the result is not transformed
-  into a KTypePol value, as their terms are always standard, and even final.
+  into a KTypePol value (the terms of which are always standard, even final).
 K_type_formula: (KType,int->KTypePol): formula for K-types as irreducibles
   Express irreducible K representation as linear combination of standard
   representations, limiting (for efficiency) the height of resulting terms to be
-  at most the second argument, unless that argument is negative. This is like
-  the function of the same name, and should give the result of the latter
-  restricted to K, but the implementations are entirely separate.
+  at most the second argument, unless that argument is negative.
+K_type_formula_raw: (KType,int->KTypePol): the same function, not using storage
+  The previous function calls this one for its computation, but also stores and
+  looks up previous results for speeding up. This one does no storage or look-up
 branch: (KTypePol,int->KTypePol): convert standard to irreducible, up to height
   In the first argument K-types are interpreted as standard K-representations,
   each of which is decomposed into irreducible factors; those factors (with

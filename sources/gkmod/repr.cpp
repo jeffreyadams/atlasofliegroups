@@ -24,6 +24,7 @@
 #include "blocks.h"	// the |blocks::common_block| class, |dual_involution|
 #include "subsystem.h" // |SubSystem| methods
 #include "alcoves.h"
+#include "K_repr.h"
 
 #include "kl.h"
 
@@ -1454,6 +1455,7 @@ Rep_table::Rep_table(RealReductiveGroup &G)
 , KL_poly_pool{KLPol(),KLPol(KLCoeff(1))}, KL_poly_hash(KL_poly_pool)
 , poly_pool{ext_kl::Pol(0),ext_kl::Pol(1)}, poly_hash(poly_pool)
 , block_list(), place()
+, KTF_table()
 {}
 Rep_table::~Rep_table() = default;
 
