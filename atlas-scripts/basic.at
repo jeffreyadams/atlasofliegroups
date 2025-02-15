@@ -508,11 +508,12 @@ set sum ((int,int) shape, [mat] L) = mat:
 { square matrices are frequent, so there is a special case of |sum| for them }
 set sum (int n,[mat] L) = mat: sum((n,n),L)
 
-{ product of list of square matrices, with given size for when list is empty }
+{ product left-to-right of list of square matrices, all square of size |n| }
 set product (int n, [mat] L) = mat:
   let len=#L in
   if =len then id_mat(n)
-  else let p=L~[0] in for i:len-1 from 1 do p *:= L[i] od; p
+  else let p=L[0] in assert(shape(p)=(n,n),"Matrix has wrong shape")
+  ; for i:len-1 from 1 do p *:= L[i] od; p
   fi
 
 set gcd(mat M) = int:
