@@ -105,6 +105,10 @@ set Dirac_flag = true
 K-types when the K-chars are computed.}
 set Dirac_best_flag = true
 
+{if true, unitary candidates are checked for Dirac inequality on many
+K-types when the local_testK_hash is computed.}
+set Dirac_best_local_flag = false
+
 { useful to assign this to 'true" to get information about the
   progress of long calculations }
 set face_verbose = false
