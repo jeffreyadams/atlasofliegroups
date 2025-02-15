@@ -3125,7 +3125,7 @@ set localFD_KHash_01 (KGBElt x, ratvec lambda, LocalVertexData Lvd, int HT, KTyp
 next and last is red_count. Adjoin two more: K-char, and #Langlands quotients}
 set localFD_KHash_01_graph (KGBElt x, ratvec lambda, LocalVertexData Lvd, KTypePol_hash ktp_hash,
 [[FaceVertsIndex]] LF, [[int]] eq, [vec] classListByFace) = [[FaceVertsKHash]]:
-    let ht = height(parameter(x,lambda,0*lambda))
+    let ht = height(parameter(x,lambda,0*lambda)), start = elapsed_ms()
     then QG = (ratvec,ratvec->rat): (ratvec v, ratvec w) rat: 0/1
     then DiracBestBD = 0/1
     then temp_Dirac_best_flag = bool:
@@ -3161,27 +3161,30 @@ set localFD_KHash_01_graph (KGBElt x, ratvec lambda, LocalVertexData Lvd, KTypeP
 	       fi
 	 od
     then nLKT = #LKTs(parameter(x,lambda,0*lambda))
-    in for LFd@d in LF
-       do for v@j in LFd
-	  do let N = polNums[classListByFace[d][j]]
-	     then m = if nLKT = 1 or N.<
-		      then 1
-		      else #monomials(finalize(parameter(x,lambda,face_bary(Lvd,v[:d+1]))))
-		      fi
-	      in if N.>=
-	      	 then [v##[N,m]]
-		 else []
-		 fi
-	  od.##
-       od
-
+    then answer = for LFd@d in LF
+       	 	  do for v@j in LFd
+	  	     do let N = polNums[classListByFace[d][j]]
+	     	     	then m = if nLKT = 1 or N.<
+		      	       	 then 1
+		      		 else #monomials(finalize(parameter(x,lambda,face_bary(Lvd,v[:d+1]))))
+		      		 fi
+	      	        in if N.>=
+	      	 	   then [v##[N,m]]
+		 	   else []
+		 	   fi
+	  	     od.##
+       		  od
+    then time = elapsed_ms() - start
+    then () = if time_verbose then prints("     ", print_time_string(time),
+   	     		     " for localFD_KHash_01_graph (vertex/edge K-chars)") fi
+    in answer
 {same as above, using graph of K-relations}
 {takes 0 and 1-diml local faces and adds K-char index}
 {only called when red_count_flag = true. In element of LF[d], first d+1 coords are vertices;
 next and last is red_count. Adjoin two more: K-char, and #Langlands quotients}
 set localFD_KHash_01_graph (KGBElt x, ratvec lambda, LocalVertexData Lvd, int HT, KTypePol_hash ktp_hash,
 [[FaceVertsIndex]] LF, [[int]] eq, [vec] classListByFace) = [[FaceVertsKHash]]:
-    let ht = height(parameter(x,lambda,0*lambda))
+    let ht = height(parameter(x,lambda,0*lambda)), start = elapsed_ms()
     then QG = (ratvec,ratvec->rat): (ratvec v, ratvec w) rat: 0/1
     then DiracBestBD = 0/1
     then temp_Dirac_best_flag = bool:
@@ -3218,19 +3221,23 @@ set localFD_KHash_01_graph (KGBElt x, ratvec lambda, LocalVertexData Lvd, int HT
 	       fi
 	 od
     then nLKT = #LKTs(parameter(x,lambda,0*lambda))
-    in for LFd@d in LF
-       do for v@j in LFd
-	  do let N = polNums[classListByFace[d][j]]
-	     then m = if nLKT = 1 or N.<
-		     then 1
-		     else #monomials(finalize(parameter(x,lambda,face_bary(Lvd,v[:d+1]))))
-		     fi
-	      in if N.>=
-	      	 then [v##[N,m]]
-		 else []
-		 fi
-	  od.##
-       od
+    then answer = for LFd@d in LF
+       	 	  do for v@j in LFd
+	  	     do let N = polNums[classListByFace[d][j]]
+	     	     	then m = if nLKT = 1 or N.<
+		     	then 1
+		     	else #monomials(finalize(parameter(x,lambda,face_bary(Lvd,v[:d+1]))))
+		     	fi
+	      		in if N.>=
+	      	 	   then [v##[N,m]]
+		 	   else []
+		 	   fi
+	  	     od.##
+       		  od
+    then time = elapsed_ms() - start
+    then () = if time_verbose then prints("     ", print_time_string(time),
+   	     		     " for localFD_KHash_01_graph (vertex/edge K-chars)") fi
+    in answer
 
 {takes list of 0- and d-diml faces, with d \ge 1, and builds all
 d+1-diml faces having all faces in the d-diml list. The int e is the
