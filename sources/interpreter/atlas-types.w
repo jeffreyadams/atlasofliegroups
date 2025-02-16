@@ -8204,7 +8204,7 @@ within the |real_form_value|.
 
 @< Local function def...@>=
 void full_deform_wrapper(eval_level l)
-{ own_module_parameter p = get_own<module_parameter_value>();
+{ shared_module_parameter p = get_own<module_parameter_value>();
   if (l==eval_level::no_value)
     return;
 @)
