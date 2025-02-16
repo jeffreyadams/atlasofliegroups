@@ -2632,27 +2632,40 @@ set localFD_1Dirac2_by_zero\
 	       else [[j]]
 	       fi
 	 od.## {list of j for which vertex j is a candidate}
-    {then () = prints("after LFO, time is ",print_time_string(elapsed_ms() - start))}
-    then Llookup = is_member_sorted((for v in LF0 do v[0] od))
+    then () = if time_verbose
+    	      then prints("after LFO, time is ",print_time_string(elapsed_ms() - start))
+	      fi
+    then FixedList = [int]: for v in LF0
+    	 	     	    do let j = v[0]
+			       in if j < #Perm2.fixed
+			       	  then [j]
+				  else break
+				  fi
+			    od.##
+    then TranList = [int]: for v in LF0[#FixedList:] do v[0] od
+    then Llookup = is_member_sorted(FixedList##TranList)
+    {then Llookup = is_member_sorted((for v in LF0 do v[0] od))}
     then Edges = [vec]:
     	 let startFF = elapsed_ms()
     	 then EdgesFixFix = [vec]:
-             if #Perm2.fixed > 1
-	     then for j@m in Perm2.fixed[:#Perm2.fixed - 1]
-	     	  do let cands = FPP_edges_by_zero_unsorted(G)[j] {list of edges beginning j}
-		     in for v in cands {global edges with v[0] = j}
-			do let n = locate_sorted(Perm2.fixed, v[1])
-			   in if n< #Perm2.fixed and Perm2.fixed[n] = v[1] {and Llookup(n)}
-			      	 and Llookup(m) and Llookup(n)
-			      	   then [[m,n].sort]
-			      else []
-			      fi
-			od.## {this is the list of edges starting with m}
-		   od.## {all FixFix edges}
-	       else []
-	       fi
+	      let F = #FixedList
+	      in if F < 2 then []
+	      	 else
+	      for j in FixedList[:F-1]
+	      do for w in FPP_edges_by_zero_unsorted(G)[Perm2.fixed[j]]
+		 do let k = locate_sorted(Perm2.fixed, w[1])
+		    in if k < #Perm2.fixed and Perm2.fixed[k] = w[1] and
+		       	     Llookup(k)
+		       then [[j,k].sort]
+		       else []
+		       fi
+		    od.## {list of edges starting with j}
+	       od.## {list of all FixFix edges}
+	       fi {F < 2}
 	    then () = FD12bzFFTime +:=elapsed_ms() - startFF
-	   {then () = prints("after FixFix, time is ",print_time_string(elapsed_ms() - start))}
+	   then () = if time_verbose
+	   	     then prints("after FixFix, time is ",print_time_string(elapsed_ms() - start))
+		     fi
 	   then startFT = elapsed_ms()
       	   then EdgesFixTrans = [vec]:
 	   	if #Perm2.fixed > 0 and #Perm2.trans >0
@@ -2674,6 +2687,9 @@ set localFD_1Dirac2_by_zero\
 		  else []
 		  fi
 	   then () = FD12bzFTTime +:= elapsed_ms() - startFT
+	   then () = if time_verbose
+	   	     then prints("after FixTranspose, time is ",print_time_string(elapsed_ms() - start))
+		     fi
 	   then startTT = elapsed_ms()
 	   then EdgesTransTrans = [vec]: {this is the longest}
 	      if #Perm2.trans > 1
@@ -2695,7 +2711,10 @@ set localFD_1Dirac2_by_zero\
 		       od.## {[vec], all mloc}
 		 else []
 		 fi
-	    then () = FD12bzTTTime +:= elapsed_ms() - startTT
+	   then () = FD12bzTTTime +:= elapsed_ms() - startTT
+	   then () = if time_verbose
+	   	     then prints("after TransposeTranspose, time is ",print_time_string(elapsed_ms() - start))
+		     fi
      	    {then () = prints("EFF = ", EdgesFixFix, ", EFT = ",EdgesFixTrans,", ETT = ",EdgesTransTrans)}
 	   in EdgesFixFix ## EdgesFixTrans ## EdgesTransTrans
      then LF1 = [FaceVertsIndex]:
@@ -2710,7 +2729,9 @@ set localFD_1Dirac2_by_zero\
 	    else []
 	    fi
 	 od.##
-    { then () = prints("after LF1, time is ",print_time_string(elapsed_ms() - start))}
+    then () = if time_verbose
+    	      then prints("after LF1, time is ",print_time_string(elapsed_ms() - start))
+	      fi
     then answer = sort(G, Lvd, [LF0]##[LF1], 0)
     then () = FD12bzTime +:= elapsed_ms() - start
     {then () = if elapsed_ms() - start > 10{FD12bzTime}
