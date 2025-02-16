@@ -2695,8 +2695,8 @@ set local_test_GEO_hash2(KGBElt x, ratvec lambda, {VertexData vd,} LocalVertexDa
 				       , test_hts[0], Uhash, fancy_tester)
     {then () = prints("LFDKH before extend = ",LFDKH)}
     then () = if test_verbose then prints("unitary to ht ",test_hts[0],
-                        " face counts to dim 1: ",for list in LFDKH do #list od) fi
-			{,"; Dirac_best eliminated ", DBTcount - startDBTcount)}
+                        " face counts to dim 1: ",for list in LFDKH do #list od
+			,"; Dirac_best eliminated ", DBTcount - startDBTcount) fi
     then () = LFDKH:= if temp_K_char_flag and red_count_flag and #LFDKH[1] > 0
     	      	      then let (eq_red,CLBF_red) = localGraphRed(LFDKH)
 		      	   in  extend_K_characters_graph(x, lambda, Lvd, LFDKH, pol_hash, eq_red, CLBF_red)

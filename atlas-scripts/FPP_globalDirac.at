@@ -790,6 +790,7 @@ fancy_tester) = void:
 		   		   prints("  ------------------")
         	   		   fi {every_lambda_flag}
 		 then startLF = elapsed_ms(), startDTcount = DTcount
+		 then () = time_verbose := old_time_verbose {REMOVE THIS LINE??}
 		 then LF = if by_zero_flag {and height(parameter(x,lambda,0*lambda)) > 0}
 		      	   then localFD_1Dirac2_by_zero(x_sc, lambda_sc, Lvd, Perm2)
 			   else localFD_1Dirac2(x_sc, lambda_sc, Lvd, Perm2)
