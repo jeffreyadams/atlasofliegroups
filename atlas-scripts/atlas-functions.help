@@ -842,6 +842,12 @@ branch: (KTypePol,int->KTypePol): convert standard to irreducible, up to height
   their multiplicities) form a multi-set, from which terms whose height
   exceeds the limit (given as second argument) are truncated, so as to give a
   finite result. A KType argument can be converted to KTypePol implicitly.
+branch: (KTypePol,int,int->(void|KTypePol): time-limited version of |branch|
+  The final argument is a time limit in milliseconds; this alters the behavior
+  with respect to the previous version of 'branch' by choosing the |void|
+  variant if the time limit is passed without completing the result, just like
+  for versions of 'full_deform' and 'twisted_full_deform' below. See to the
+  description of those versions for more explanations on using this function.
 
 param: (KGBElt,vec,ratvec->Param): form parameter from (x,lambda-rho,nu)
   From nu only the projection (1-involution(x))nu/2 is used, the complementary

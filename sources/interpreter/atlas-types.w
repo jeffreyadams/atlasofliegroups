@@ -6106,6 +6106,43 @@ void branch_wrapper(eval_level l)
   push_value(std::make_shared<K_type_pol_value>(P->rf,std::move(result)));
 }
 
+@ We provide a variant of the |branch| function with a time-out argument. It
+returns a value of a union type: if the computation does not finish in the
+allotted time, the return the first (|void|) variant of the union, and otherwise
+they wrap their result in the second (|K_type_pol_value|) variant of the union.
+
+@h "lexer.h" // for |main_hash_table|
+
+@< Local function def...@>=
+void timed_branch_wrapper(eval_level l)
+{ auto period = get<int_value>()->long_val();
+  int arg = get<int_value>()->int_val();
+  own_K_type_pol P = get_own<K_type_pol_value>();
+  if (arg<0)
+    throw runtime_error("Maximum level in branch cannot be negative");
+  if (l==eval_level::no_value)
+    return;
+@)
+  unsigned int bound=arg;
+  const Rep_context rc = P->rc();
+  K_type_poly result;
+
+  set_timer(period);
+  try { result = rc.branch(std::move(P->val),bound); }
+  catch (const time_out& e)
+  { auto nil = std::make_shared<tuple_value>(0); // the void
+    push_value(std::make_shared<union_value>
+      (0,std::move(nil),main_hash_table->match_literal("timed_out")));
+    return;
+  }
+  clear_timer();
+@)
+  push_value(std::make_shared<union_value>
+    (1,std::make_shared<K_type_pol_value>(P->rf,std::move(result)),
+       main_hash_table->match_literal("done")));
+  // and inject into a union
+}
+
 @ Finally we install everything related to $K$-types.
 @< Install wrapper functions @>=
 install_function(K_type_wrapper,"K_type","(KGBElt,vec->KType)");
@@ -6163,6 +6200,8 @@ install_function(K_type_formula_wrapper,@|"K_type_formula_raw"
 install_function(K_type_formula_memo_wrapper,@|"K_type_formula"
 		,"(KType,int->KTypePol)");
 install_function(branch_wrapper,@|"branch" ,"(KTypePol,int->KTypePol)",1);
+install_function(timed_branch_wrapper,@|"branch"
+		,"(KTypePol,int,int->|KTypePol)",1);
 
 @*1 Standard module parameters.
 %
@@ -8283,11 +8322,12 @@ void twisted_full_deform_wrapper(eval_level l)
     (p->rf,export_K_type_pol(p->rt(),result)));
 }
 
-@ As an experiment, we provide variants of the |full_deform| function, and of
-its twisted counterpart, each with a time-out argument. These function return a
-value of (the same) union type: if the computation does not finish in the
-allotted time, the return the first (void) variant of the union, and otherwise
-they wrap their result in the second (ordinary) variant of the union.
+@ We provide variants of the |full_deform| function and of its twisted
+counterpart, each with a time-out argument, in the same vein as |branch| above.
+The union type returned is the same as for |branch|: if the computation does not
+finish in the allotted time, the return the first (|void|) variant of the union,
+and otherwise they wrap their result in the second (|K_type_pol_value|) variant
+of the union.
 
 @h "lexer.h" // for |main_hash_table|
 
@@ -8309,8 +8349,8 @@ void timed_full_deform_wrapper(eval_level l)
         pol.add_term(std::move(term.first),term.second*it->second);
   }
   catch (const time_out& e)
-  { auto result = std::make_shared<tuple_value>(0); // the void
-    push_value(std::make_shared<union_value>(0,std::move(result),
+  { auto nil = std::make_shared<tuple_value>(0); // the void
+    push_value(std::make_shared<union_value>(0,std::move(nil),
                main_hash_table->match_literal("timed_out")));
     return;
   }
@@ -8347,8 +8387,8 @@ void timed_twisted_full_deform_wrapper(eval_level l)
     }
   }
   catch (const time_out& e)
-  { auto result = std::make_shared<tuple_value>(0); // the void
-    push_value(std::make_shared<union_value>(0,std::move(result),
+  { auto nil = std::make_shared<tuple_value>(0); // the void
+    push_value(std::make_shared<union_value>(0,std::move(nil),
                main_hash_table->match_literal("timed_out")));
     return;
   }
