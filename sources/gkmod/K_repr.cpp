@@ -610,6 +610,8 @@ K_type_poly Rep_context::branch(K_type_poly remainder, repr::level cutoff) const
   size_t count=0;
   do
   {
+    interpreter::check_interrupt(); // make this loop interruptible
+
     ++count;
     // periodically flatten |remainder| to remove leading zero terms
     if (count*count>2*remainder.size())
