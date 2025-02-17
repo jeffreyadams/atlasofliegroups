@@ -527,6 +527,9 @@ set write_x_flag = false
 {whether to use the script branching code instead of library}
 set my_branch_flag = true
 
+{whether to use the script hash of K_type_formula instead of library}
+set my_formula_flag = false
+
 {The result of cohomological induction on the level of K}
 set theta_induce_K(KTypePol QL, RealForm G) = KTypePol:
 K_type_pol(sum(G, for c@pL in QL do c*theta_induce_standard(param(pL),G) od))
@@ -691,7 +694,7 @@ set make_big_unitary_hash() = big_unitary_hash_table:
 		       	in ()
 		   fi
 	in (rfnum, ktypenum)
-    then add_K_type_formula(KType mu) = (int, int, int): {rfn, ktypen, index(formula)}
+    then add_K_type_formula(KType mu) = (int, int, int): {rfnum, ktypenum, index(formula)}
        	 let (rfnum,ktypenum) = add_K_type(mu), h = height(mu)
 	 then rf = real_form_hash.index(rfnum)
 	 then () = mu := first_K_type(regroup(rf,1*mu))
@@ -783,8 +786,13 @@ set make_big_unitary_hash() = big_unitary_hash_table:
 		   	then undone = 1*mu {guaranteed on rf}
 			then () = while undone.!=
 			     do let (c,tau) = first_term(undone)
-			     	then (,,t) = add_K_type_formula_to_ht(tau,D)
-				then () = undone-:=c*regroup(rf, to_ht(K_type_pol_hashes[rfnum].list()[t],D))
+			     	then corr = if my_formula_flag
+				     	    then let (,,t) = add_K_type_formula_to_ht(tau,D)
+					    	 in c*regroup(rf, to_ht(K_type_pol_hashes[rfnum].list()[t],D))
+					    else c*K_type_formula(tau,D)
+					    fi
+			     	{then (,,t) = add_K_type_formula_to_ht(tau,D)}
+				then () = undone-:= corr {c*regroup(rf, to_ht(K_type_pol_hashes[rfnum].list()[t],D))}
 				in ans+:=c*tau
 			     od
 			then m = K_type_pol_hashes[rfnum].match(ans)
@@ -809,9 +817,14 @@ set make_big_unitary_hash() = big_unitary_hash_table:
 					     od)
 			       	    then () = while undone.!=
 			       	    	      do let (c,tau) = first_term(undone)
-			     	       	      	 then (,,t) = add_K_type_formula_to_ht(tau,D)
-				       		 then () = undone-:=c*regroup(rf,
-						      to_ht(K_type_pol_hashes[rfnum].list()[t],D))
+					      	 then corr = if my_formula_flag
+				     	    	      	     then let (,,t) = add_K_type_formula_to_ht(tau,D)
+					    	 	     	  in c*regroup(rf, to_ht(K_type_pol_hashes[rfnum].list()[t],D))
+					    		     else c*K_type_formula(tau,D)
+					    		     fi
+			     	       	      	 {then (,,t) = add_K_type_formula_to_ht(tau,D)}
+				       		 then () = undone-:= corr {c*regroup(rf,
+						      to_ht(K_type_pol_hashes[rfnum].list()[t],D))}
 				       		 in ans+:=c*tau
 			     	    	      od
 		       	       then m = K_type_pol_hashes[rfnum].match(ans)
@@ -959,11 +972,13 @@ set make_big_unitary_hash() = big_unitary_hash_table:
     , ( -> vec): {K_type_pol_size} @vec: for hash in K_type_pol_hashes do hash.size() od
     , (KType -> KTypePol): {K_type_formula} (KType mu) KTypePol:
     begin
+     if not my_formula_flag then return K_type_formula(mu) fi;
      let (rfnum,,m) = add_K_type_formula(mu)
      in regroup(mu.real_form, K_type_pol_hashes[rfnum].index(m))
     end
     , ((KType,int) -> KTypePol): {K_type_formula_to_ht} (KType mu, int D) KTypePol:
     begin
+      if not my_formula_flag then return K_type_formula(mu,D) fi;
       let (rfnum,,m) = add_K_type_formula_to_ht(mu,D)
       in regroup(mu.real_form, to_ht(K_type_pol_hashes[rfnum].index(m), D))
     end
@@ -2607,7 +2622,7 @@ set localFD_1Dirac2_by_zero\
     let G = x.real_form, start = elapsed_ms(), trans_hash = make_vec_hash()
     then () = for (m,n) in Perm2.trans do trans_hash.match([m,n]) od
     then Q = (ratvec,ratvec->rat): (ratvec v, ratvec w) rat: 0/1
-    then DiracBD = 0/1
+    then DiracBD = 0/1, start = elapsed_ms()
     then () = if Dirac_flag
     	      then let bd = DiracBD(x,lambda)
 	      	   then QG =invariant_form(G)
@@ -2633,7 +2648,7 @@ set localFD_1Dirac2_by_zero\
 	       fi
 	 od.## {list of j for which vertex j is a candidate}
     then () = if time_verbose
-    	      then prints("after LFO, time is ",print_time_string(elapsed_ms() - start))
+    	      then prints("for LFO, time is ",print_time_string(elapsed_ms() - start))
 	      fi
     then FixedList = [int]: for v in LF0
     	 	     	    do let j = v[0]
@@ -2644,7 +2659,6 @@ set localFD_1Dirac2_by_zero\
 			    od.##
     then TranList = [int]: for v in LF0[#FixedList:] do v[0] od
     then Llookup = is_member_sorted(FixedList##TranList)
-    {then Llookup = is_member_sorted((for v in LF0 do v[0] od))}
     then Edges = [vec]:
     	 let startFF = elapsed_ms()
     	 then EdgesFixFix = [vec]:
@@ -2664,7 +2678,7 @@ set localFD_1Dirac2_by_zero\
 	       fi {F < 2}
 	    then () = FD12bzFFTime +:=elapsed_ms() - startFF
 	   then () = if time_verbose
-	   	     then prints("after FixFix, time is ",print_time_string(elapsed_ms() - start))
+	   	     then prints("for FixFix, time is ",print_time_string(elapsed_ms() - startFF))
 		     fi
 	   then startFT = elapsed_ms()
       	   then EdgesFixTrans = [vec]:
@@ -2688,7 +2702,7 @@ set localFD_1Dirac2_by_zero\
 		  fi
 	   then () = FD12bzFTTime +:= elapsed_ms() - startFT
 	   then () = if time_verbose
-	   	     then prints("after FixTranspose, time is ",print_time_string(elapsed_ms() - start))
+	   	     then prints("for FixTranspose, time is ",print_time_string(elapsed_ms() - startFT))
 		     fi
 	   then startTT = elapsed_ms()
 	   then EdgesTransTrans = [vec]: {this is the longest}
@@ -2713,10 +2727,13 @@ set localFD_1Dirac2_by_zero\
 		 fi
 	   then () = FD12bzTTTime +:= elapsed_ms() - startTT
 	   then () = if time_verbose
-	   	     then prints("after TransposeTranspose, time is ",print_time_string(elapsed_ms() - start))
+	   	     then prints("for TransposeTranspose, time is ",print_time_string(elapsed_ms() - startTT))
 		     fi
      	    {then () = prints("EFF = ", EdgesFixFix, ", EFT = ",EdgesFixTrans,", ETT = ",EdgesTransTrans)}
 	   in EdgesFixFix ## EdgesFixTrans ## EdgesTransTrans
+     then () = if time_verbose
+     	       then prints("after Edges, time is ",print_time_string(elapsed_ms() - start))
+	       fi
      then LF1 = [FaceVertsIndex]:
     	 for v in Edges
 	 do let p = parameter(x,lambda,face_bary(Lvd, v))
@@ -2734,13 +2751,8 @@ set localFD_1Dirac2_by_zero\
 	      fi
     then answer = sort(G, Lvd, [LF0]##[LF1], 0)
     then () = FD12bzTime +:= elapsed_ms() - start
-    {then () = if elapsed_ms() - start > 10{FD12bzTime}
-    	      then prints("(fixed,trans) = (",#Perm2.fixed, ",",#Perm2.trans, "), face counts (",#LF0,",",#LF1,") took ",print_time_string(elapsed_ms() - start))
-	      fi}
     in if(face_verbose) then prints("After localFD_1Dirac2_by_zero, face counts are [",#LF0,
     		      	   	  ",",#LF1,"]") fi;
-       {if(time_verbose) then prints("     ",print_time_string(elapsed_ms() - start),
-       			     		  " for localFD_1Dirac2_by_zero") fi;}
        answer
 )
 
