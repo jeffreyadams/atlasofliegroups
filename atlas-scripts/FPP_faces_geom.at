@@ -906,6 +906,8 @@ set FPP_faces(SimpleAffine Affd, VertexData vd, int dim, int j0) =
 	     od { type is [FaceVertsIndex], remains for next line}
 	 od.##
 
+set edge_report_flag=false
+
 {laptop 330 sec, 1.57g; wave??}
 set FPP_edges = (InnerClass -> [FaceVertsIndex]):
     let ichashedges = make_InnerClass_hash()
@@ -917,6 +919,10 @@ set FPP_edges = (InnerClass -> [FaceVertsIndex]):
        	       	 then let (Affd,M,j0) = cofolded(ic)
 	       	      then answer = FPP_faces(Affd, FPP_vertex_data(Affd,j0), 1, j0)
 	       	      then () = FPPedges #:= answer
+		       then () = if edge_report_flag
+		      	      	 then prints("#ichashedges = ",ichashedges.size(), ", #FPPedges = ",#FPPedges);
+				      prints("total edges recorded = ",sum(for list in FPPedges do #list od))
+				fi
 	      	      in ()
 	      	 fi
       in FPPedges[i]
@@ -966,6 +972,10 @@ set append_to_febzu(InnerClass ic, [[FaceVertsIndex]] FVs) = void:
     in if i=I {haven't seen this inner class before}
        then FPPebzu #:= FVs
        fi
+
+set febzu_report() = void:
+    prints("# inner classes = ",ichashezu.size(), ", # edge lists = ",#FPPebzu,", # edges = ",
+    	      sum(for list in FPPebzu do #list od))
 
 set write_vecss([[vec]] listss, string listss_name) = void:
     begin
