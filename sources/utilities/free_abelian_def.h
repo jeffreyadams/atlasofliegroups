@@ -316,14 +316,16 @@ template<typename T, typename C, typename Compare>
   for (auto it=L.wbegin(); not L.at_end(it); ++it)
     assert(not it->empty()),ptrs.push_front(&*it);
 
-  triplist stack;
+  triplist stack; // this ends with triples for vectors in forwards order
   for (auto it = ptrs.wcbegin(); not ptrs.at_end(it); ++it)
   {
-    auto lead = (*it)->begin(); // iterator to leading term of current poly
+    poly* p = *it;
+    assert(not p->empty()); // we never retain empty vectors
+    auto lead = p->begin(); // iterator to leading term of current poly
     typename poly::iterator min = // make it refer to minimum seen so far:
       stack.empty() or cmp()(lead->first,stack.front().min->first)
       ? lead : stack.front().min;
-    stack.emplace_front(min,lead,(*it)->end());
+    stack.emplace_front(min,lead,p->end());
   }
   iterator result(std::move(stack),cmp());
   result.skip_zeros();
@@ -364,14 +366,16 @@ template<typename T, typename C, typename Compare>
   for (auto it=L.wbegin(); not L.at_end(it); ++it)
     assert(not it->empty()),ptrs.push_front(&*it);
 
-  triplist stack;
+  triplist stack; // this ends with triples for vectors in forwards order
   for (auto it = ptrs.wcbegin(); not ptrs.at_end(it); ++it)
   {
-    auto lead = std::prev((*it)->end()); // to trailing term of current poly
+    poly* p = *it;
+    assert(not p->empty()); // we never retain empty vectors
+    auto lead = std::prev(p->end()); // to trailing term of current poly
     typename poly::iterator max = // make it refer to maximum seen so far:
       stack.empty() or cmp()(stack.front().min->first,lead->first)
       ? lead : stack.front().min;
-    stack.emplace_front(max,lead,(*it)->begin());
+    stack.emplace_front(max,lead,p->begin());
   }
   reverse_iterator result(std::move(stack),cmp());
   result.skip_zeros();
@@ -398,9 +402,9 @@ template<typename T, typename C, typename Compare>
 }
 
 // The |pop| method moves |min| to the next position, possibly increasing |cur|
-// It an argument |it| originally equal to |stack.begin()|
+// It takes an argument |it| originally equal to |stack.begin()|
 // This allows it to call itself recursively for a tail portion of |stack|
-// The return value signal whether nothing was left to point |min| to.
+// The return value signals whether nothing was left to point |min| to.
 template<typename T, typename C, typename Compare>
   bool Free_Abelian_light<T,C,Compare>::const_iterator::pop
     (typename triplist::iterator it)
@@ -409,14 +413,15 @@ template<typename T, typename C, typename Compare>
   const auto nit = std::next(it); // so this is well defined
   if (stack.at_end(nit)) // then just one vector remains to iterate in
   {
-    if ((it->min = ++it->cur) != it->end)
+    if ((it->min = ++(it->cur)) != it->end)
       return false; // one unfinished iteration remains here
     stack.erase(it); // this clears |stack| after |it|
     return true; // indicate iteration has terminated; no more term found
   }
+
   if (it->min==it->cur) // iterator comparison: whether minimum came from |*it|
-  { // if so advance iteration in |*it|
-    if (++it->cur == it->end)
+  { // if so advance iteration in |*it|, and remove from |stack| if it runs out
+    if (++(it->cur) == it->end)
     {
       stack.erase(it); // remove empty font node, no |it->min| to set
       return false; // return whether the rest is absent too, which it isn't
@@ -441,7 +446,7 @@ template<typename T, typename C, typename Compare>
   if (stack.at_end(nit)) // then just one vector remains to iterate in
   {
     if (it->cur!=it->end) // the we can back up within this last vector
-      return (it->min = --it->cur), false; // do that; report not yet finished
+      return (it->min = --(it->cur)), false; // do that; report not yet finished
     stack.erase(it); // this clears |stack| after |it|
     return true; // indicate iteration has terminated; no more term found
   }
@@ -452,11 +457,11 @@ template<typename T, typename C, typename Compare>
       stack.erase(it); // remove empty font node, no |it->min| to set
       return false; // return whether the rest is absent too, which it isn't
     }
-    --it->cur; // otherwise back up |cur|; |min| will be set below
+    --(it->cur); // otherwise back up |cur|; |min| will be set below
   }
   else // the minimum came from further down the list, recurse
     if (pop(nit)) // if so, |*it| is now the last valid node
-      return (it->min= --it->cur),false; // an unfinished iteration remains here
+      return (it->min= it->cur),false; // an unfinished iteration remains
 
   // if we arrive here, decrement was done in |cur| or in the recursive call;
   // it remains to update |it->min| to "maximum" of |it->cur| and |nit->min|
