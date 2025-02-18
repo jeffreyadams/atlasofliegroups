@@ -84,8 +84,8 @@
 %type <expression> iffor_loop if_loop for_loop
 %type <ini_form> formula_start
 %type <oper> operator symbol
-%type <id_code> id id_op
-%type <code> tilde_opt breaker typevar_list
+%type <id_code> id id_op type_or_constr
+%type <code> tilde_opt breaker typevar_list settype_open
 %destructor { destroy_expr ($$); }
             expr expr_opt tertiary cast lettail or_expr and_expr not_expr
 	    formula operand secondary primary comprim unit selector
@@ -169,13 +169,12 @@ input:	'\n'			{ YYABORT; } /* null input, skip evaluator */
 		  global_set_identifier(id,$3,0,@$); YYABORT; }
 	| IDENT ':' type '\n' { global_declare_identifier($1,$3); YYABORT; }
 	| FORGET id '\n'	  { global_forget_identifier($2); YYABORT; }
-	| FORGET TYPE_CONSTR '\n' { global_forget_identifier($2); YYABORT; }
 	| FORGET id_op '@' type '\n'
 	  { global_forget_overload($2,$4); YYABORT;  }
 	| SET_TYPE id '=' type_spec '\n'
 	  { type_define_identifier($2,$4.type_pt,0,$4.ip,@$); YYABORT; }
-	| SET_TYPE '[' type_equations ']' '\n'
-	  { process_type_definitions($3,@$); YYABORT; }
+	| settype_open '[' type_equations ']' '\n'
+	  { process_type_definitions($3,$1,@$); YYABORT; }
 
 	| QUIT	'\n'		{ *verbosity =-1; } /* causes immediate exit */
 	| SET IDENT '\n' // set an option; option identifiers have lowest codes
@@ -192,8 +191,10 @@ input:	'\n'			{ YYABORT; } /* null input, skip evaluator */
 	| FROMFILE '\n'		{ include_file(1); YYABORT; } /* include file */
 	| FORCEFROMFILE '\n'	{ include_file(0); YYABORT; } // force include
 	| WHATTYPE expr '\n'	{ type_of_expr($2); YYABORT; } // print type
-	| WHATTYPE TYPE_ID '\n'	{ type_of_type_name($2); YYABORT; } // expand
-	| WHATTYPE TYPE_ID '?' '\n' { type_of_type_name($2); YYABORT; } // same
+	| WHATTYPE type_or_constr '\n'
+        			{ type_of_type_name($2); YYABORT; } // expand
+	| WHATTYPE type_or_constr '?' '\n'
+				{ type_of_type_name($2); YYABORT; } // same
 	| WHATTYPE id_op '?' '\n' // show types for which symbol is overloaded
 	  { show_overloads($2,std::cout); YYABORT; }
 	| TOFILE WHATTYPE id_op '?' '\n'
@@ -228,7 +229,11 @@ input:	'\n'			{ YYABORT; } /* null input, skip evaluator */
 ;
 
 id	: IDENT
-	| TYPE_ID
+	| type_or_constr
+;
+type_or_constr
+	: TYPE_ID
+        | TYPE_CONSTR
 ;
 
 id_op	: IDENT
@@ -906,6 +911,7 @@ union_list_2
 typevar_list : id_list
 	  { $$=length($1); // compute before |reverse_patlist| makes $1 useless
 	    prepare_type_variables(reverse_patlist($1));
+	    // call |lex->put_type_variable| for all identifiers in the list
 	  }
 ;
 
@@ -921,12 +927,17 @@ id_list : IDENT
 	  }
 ;
 
+settype_open // before reducing this, the lexer must sense the following '['
+	: SET_TYPE { $$=0; lex->start_defining_types(); }
+	| SET_TYPE typevar_list { $$=$2; lex->start_defining_types(); }
+;
+
 type_equations : type_equation
 	| type_equations ',' type_equation { $$=append_typedef_node($1,$3); }
 ;
 
 type_equation
-	: TYPE_ID '=' typedef_type
+	: type_or_constr '=' typedef_type
 	  { $$=make_typedef_singleton($1,$3.type_pt,$3.ip); }
 	| '.' '=' typedef_type
 	  { $$=make_typedef_singleton(-1,$3.type_pt,$3.ip); }

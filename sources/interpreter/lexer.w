@@ -117,6 +117,7 @@ public:
   bool is_initial () const @+{@; return state==initial; }
   void put_type_variable(id_type v);
   unsigned int typevar_level() const;
+  void start_defining_types() { state = type_defining; }
 private:
   void skip_space() const;
   void push_nest() @+ {@; nest.push_front(eggs{}); }
@@ -382,9 +383,13 @@ the first action in |get_token|, sending the following null token if it holds.
 The |state| variable is also used to allow the scanner to behave differently
 while scanning the very first token of a command, and in the course of type
 definitions. Before the first token of a command is scanned |state==initial|
-will hold; once a token is scanned, state |state| is set to |normal| or
-possibly to |type_defining| when a |SET_TYPE| token is scanned, and scanning a
-command-terminating newline will set |state=ended|.
+will hold; once a token is scanned, state |state| is set to |normal|, and it may
+change to |type_defining| when our |start_defining_types| method is called,
+which happens when a grouped |SET_TYPE| command is found in the parser (the call
+happens in a parser action happening when the opening bracket of the group is
+scanned, so everything inside the brackets is scanned with
+|state==type_defining|). Finally, scanning a command-terminating newline will set
+|state=ended|.
 
 Besides returning a token code, each token defines a value for
 |prevent_termination|. Since the previous value is only used in |skip_space|,
@@ -500,11 +505,7 @@ some cases seeing the keyword provokes some activity on the |nest|.
     case AND: case OR: case NOT: prevent_termination='~'; break;
     case WHATTYPE: prevent_termination='W'; break;
     case SET: prevent_termination='S'; break;
-    case SET_TYPE: prevent_termination='T'; skip_space();
-      if (*input.point()=='[')
-        state=type_defining;
-      // |type_defining| only for ``\&{set\_type} [ \dots ]''
-    break;
+    case SET_TYPE: prevent_termination='T'; break;
   }
 }
 
@@ -658,9 +659,7 @@ included before) respectively appending output redirection.
            : input.shift()=='>' ? ADDTOFILE : (input.unshift(),TOFILE) ;
 	   @< Read in |file_name| @>
            @+ break;
-         }
-         operator_termination(c);
-         valp->oper.priority=2;
+         }         valp->oper.priority=2;
          {} // don't try |OPERATOR_BECOMES| for operators staring '$<$' or '$>$'
          if (input.shift()=='=')
        @/{@;

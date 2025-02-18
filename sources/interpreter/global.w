@@ -792,11 +792,13 @@ void global_forget_overload(id_type id, type_p tp);
 void type_define_identifier
   (id_type id, type_p tp, unsigned int deg, raw_id_pat ip,
    const source_location& loc);
-void process_type_definitions (raw_typedef_list l, const source_location& loc);
+void process_type_definitions
+  (raw_typedef_list l, unsigned int deg, const source_location& loc);
 void set_back_trace(const simple_list<std::string>& back_trace);
 void show_ids(std::ostream& out);
 void type_of_expr(expr_p e);
 void type_of_type_name(id_type t);
+void type_of_type_constr(id_type t);
 void show_overloads(id_type id,std::ostream& out);
 
 @ These functions produce a brief report of what they did, for which they use
@@ -1390,12 +1392,12 @@ void global_forget_overload(id_type id, type_p t)
 
 @*2 Defining type identifiers.
 %
-There are two types of type definitions: simple one that simply equate a new
+There are two types of type definitions: simple ones that simply equate a new
 type name to an existing type expression, and general type definitions that may
 introduce recursive and mutually recursive types. Syntactically, the distinction
-is marked by brackets around the list of definition clauses in the latter case,
-and the latter is also the only one that records the type binding in
-|type_expr::type_map|, where it will also be used on output.
+is marked by brackets around the list of definition clauses in the latter case.
+The latter case is currently also the only one that records the type binding in
+|type_expr::type_map|, from where the type name can also be used on output.
 
 We start with the simple type definitions, which are handled by the function
 |type_define_identifier|. Its argument |id| is a new type identifier that is
@@ -1472,7 +1474,7 @@ themselves and store them in |jectors|.
       if (id_it->kind==0x1) // field selector present
       { names[i]=id_it->name;
         jectors.push_back
-          (std::make_shared<projector_value>(tp.bake(),i,names[i],loc));
+          (std::make_shared<projector_value>(tp.unwrap(),i,names[i],loc));
         type_expr fte = type_expr::function(tp.bake(),tp_it->copy());
         group.add(names[i],type::wrap(std::move(fte),0),id_it->kind);
           // projector type
@@ -1483,7 +1485,7 @@ themselves and store them in |jectors|.
       if (id_it->kind==0x1) // field selector present
       { names[i]=id_it->name;
         jectors.push_back
-          (std::make_shared<injector_value>(tp.bake(),i,names[i],loc));
+          (std::make_shared<injector_value>(tp.unwrap(),i,names[i],loc));
         type_expr fte = type_expr::function(tp_it->copy(),tp.bake());
         group.add(names[i],type::wrap(std::move(fte),0),id_it->kind);
           // injector type
@@ -1553,7 +1555,8 @@ installing the definitions, and afterwards we emit a report summarising the
 definitions that were processed.
 
 @< Global function definitions @>=
-void process_type_definitions (raw_typedef_list l, const source_location& loc)
+void process_type_definitions
+  (raw_typedef_list l, unsigned int deg, const source_location& loc)
 { typedef_list defs(l);
   defs.reverse(); // since the parser collects by prepending new nodes
   const auto old_size = type_expr::table_size(); // for roll back
@@ -1572,7 +1575,7 @@ void process_type_definitions (raw_typedef_list l, const source_location& loc)
 @/  std::vector<std::pair<id_type,const_type_p> > b; b.reserve(n_defs);
     for (auto it=defs.wcbegin(); not defs.at_end(it); ++it)
       b.emplace_back(it->id,it->tp);
-    auto type_nrs = type_expr::add_typedefs(b,0);
+    auto type_nrs = type_expr::add_typedefs(b,deg);
 @)
     @< Update |global_id_table| with types and values (injector and  projector
        functions, if any) corresponding to the type definitions in |defs|, or
@@ -1600,8 +1603,8 @@ variables or functions inaccessible.
 
 Once the set of defined type names is recorded, we can easily test for any
 collision between a field name and a type name in our set of type definitions,
-which would cause the same kind of trouble as mentioned above, because the type
-status would make the field name unusable.
+which would cause the same kind of trouble as mentioned above, because its
+status as a type identifier would make the field name unusable.
 
 @< For each equation |i| in |defs|... @>=
 {
@@ -1650,18 +1653,19 @@ defined type can be referenced before its defining equation is even scanned, the
 scanner and parser play together as follows. Within a \&{set\_type} command
 followed by a bracketed list of definitions (the kind processed by
 |process_type_definitions|), the scanner tags identifiers as type identifiers,
-even when |global_id_table->is_defined_type| does not hold, so that the ones
-being defined can be parsed as types immediately. (It does on the other hand
-honour |global_id_table->is_type_constructor|, so that previously defined type
-constructors require and combine with an argument type list.) The parser records
-uses of type identifiers and type constructors using the |tabled| variant of
-|type_expr|, but the |tabled_nr()| does not refer to |type_expr::type_map|, but
-is simply the identifier code. This used to be a trick only used in the right
-hand side of type definitions, but is now the case throughout: although the
-scanner uses |global_id_table| to classify identifiers, the parser does not look
-up type definitions there. As a consequence we need transform any types recorded
-by the parser by |global_id_table->expand| before using them, or give them a
-different special treatment as is done here.
+even when |global_id_table->is_defined_type| does not hold; this is so that the
+ones to be defined here can be used as types even before they are seen as a left
+hand side. (The scanner does on the other hand honour
+|global_id_table->is_type_constructor|, so that previously defined type
+constructors can combine with an argument type list, which must be present.) The
+parser records uses of type identifiers and type constructors using the |tabled|
+variant of |type_expr|, but the |tabled_nr()| does not refer to
+|type_expr::type_map|: it is simply the identifier code. This used to be a trick
+used only in the right hand side of type definitions, but is now the case
+throughout: although the scanner uses |global_id_table| to classify identifiers,
+the parser does not look up those type definitions. As a consequence we need
+transform any types recorded by the parser by |global_id_table->expand| before
+using them, or else give them some other special treatment, as is done here.
 
 Below we replace types by similar types, which differ just in the case of tabled
 type components. We realise this replacement by in-place substitution (this is
@@ -1704,10 +1708,17 @@ equally well).
   }
 }
 
-@ We replace tabled types whose identifier were among those being defined in
-|defs| by a new tabled type with |tabled_nr()| obtained from |translate|. For
-other cases of tabled types, we apply |global_id_table->expand| to interpret
-previously defined types and type constructor applications.
+@ We come here for any type subexpression of a right hand side that is given as
+a type identifier or as an application of an already defined type constructor.
+We recognise those whose identifier is among the ones being defined here by
+inspecting |translate|, and replace their |tabled_nr()| with the value found
+in~|translate|. The remaining ones must be uses of previously defined types of
+type constructors, for which we apply |global_id_table->expand| to convert them
+from the format used by the parser into the one to be used internally. This may
+fail with a |program_error| either because the identifier table does not hold a
+definition for the identifier at all, or because |expand| finds a mismatch
+between the arity of a defined type constructor and the number of argument types
+provided.
 
 @< If |t.tabled_nr()| is recorded in |translate| use that to replace it... @>=
 { id_type id = t.tabled_nr();
@@ -1730,12 +1741,13 @@ class member of |type_expr|, so that their (new) type numbers available in the
 |type_nrs| array can be used with for instance the |type_expr::expansion|
 method.
 
-Three kinds of actions remain to be done: for each definition the left hand side
-has to be bound to a type expression (always of the |tabled| kind) in
-|global_id_table|; the other two only apply when right hand side is a tuple or
-union type with specified field names, in which case projector respectively
-injector functions have to be bound to these field names in the
-|global_overload_table|, while the list of field selectors is to be added to the
+Three kinds of actions remain to be done. For each definition, its left hand
+side identifier has to be bound to a type expression in |global_id_table|, which
+will be of the |tabled| kind, referring to the internal definition just added at
+a position found in |type_nrs|. The other two actions only apply when right hand
+side is a tuple or union type with specified field names: if so, projector
+respectively injector functions have to be bound to these field names in the
+|global_overload_table|, and the list of field names has to be added to the
 |type_expr| static data. The new overloads for field names might conflict with
 existing overloads, and to be certain that we don't leave matters in a partially
 updated state upon an error, we must make two passes over |defs|: one to test
@@ -1754,8 +1766,9 @@ index~|i| into the vector.
   containers::sl_list<definition_group> store;
   for (auto it=defs.begin(); not defs.at_end(it); ++it,++i)
     if (not it->fields.empty())
-    { const auto& fields = it->fields;
-      const auto& tp = type_expr::user_type(type_nrs[i],type_list());
+    { const auto& tp = type_expr::local_ref(type_nrs[i],0).top_level();
+      // a |type_map| entry
+      const auto& fields = it->fields;
       @/@< Append to |store| bindings for the identifiers in |fields| as
          injector or projector function for |tp| @>
     }
@@ -1765,13 +1778,13 @@ index~|i| into the vector.
   {
     const auto& fields = it->fields;
     const auto type_nr = type_nrs[i];
-    const auto& tp = type_expr::user_type(type_nr,type_list());
+    const auto& tp = type_expr::local_ref(type_nr,deg);
     if (it->id!=type_binding::no_id)
     {
       if (global_id_table->is_defined_type(it->id))
         clean_out_type_identifier(it->id);
       global_id_table->add_type_def
-        (it->id,type::wrap(type_expr::user_type(type_nr,type_list()),0));
+        (it->id,type::wrap(tp,0));
     }
     @< Emit... @>
     if (it->id==type_binding::no_id)
@@ -1782,9 +1795,9 @@ index~|i| into the vector.
         << "' defined as " << tp.untabled() << std::endl;
     if (not fields.empty())
     { auto& group = *store_it;
-      @< Add functions for |fields| with types taken from |group| to
-      |global_overload_table|, and associate those fields to type |type_nr|;
-      also print project/injector names @>
+      @< Add to |global_overload_table| functions for |fields| with types taken
+         from |group|, and associate those fields to type |type_nr|;
+         also print project/injector names @>
     @/ ++store_it; // |store_it| only advances when fields were present
     }
   }
@@ -1792,26 +1805,29 @@ index~|i| into the vector.
 
 @ A type definition introducing a structure or union type may introduce field
 names for their components, which names will then be associated to projector
-respectively injector functions for the type; these also have uses beyond that
-of mere functions. All field names must be distinct, and it must be possible
-to add the corresponding functions to the overload table, which is what the
-code below tests by passing declaration of each field and its function type
-through |definition_group::add|.
+respectively injector functions for the type, just like in
+|type_define_identifier|. When associated to a |tabled| type, these fields names
+also have uses beyond that of mere function symbols: for tuple fields they can
+be used in component assignments, and for union fields in discrimination
+clauses. All field names for a given type must be distinct, and it must be
+possible to add the corresponding functions to the overload table; the code
+below tests both conditions by passing declaration of each field and its
+function type through |definition_group::add|.
 
 @< Append to |store| bindings for the identifiers in |fields|... @>=
 { assert(tp.kind()==tuple_type or tp.kind()==union_type);
-  auto record = store.end(); // iterator that will point to next pushed item
-  store.emplace_back(definition_group(length(fields)));
+  auto& record = store.emplace_back(definition_group(length(fields)));
 @/
   auto tp_it =wtl_const_iterator(tp.tuple());
   if (tp.kind()==tuple_type)
   {
     for (auto id_it=fields.wcbegin(); not fields.at_end(id_it);
          ++id_it,++tp_it)
-      if (id_it->kind==0x1) // field selector present
+      if (id_it->kind==0x1)
+      // field selector present (|*id_it| is an |id_pat|)
       {
         type_expr fte = type_expr::function(tp.copy(),tp_it->copy());
-        record->add(id_it->name,type::wrap(std::move(fte),0),id_it->kind);
+        record.add(id_it->name,type::wrap(std::move(fte),0),id_it->kind);
           // projector type
       }
   }
@@ -1822,7 +1838,7 @@ through |definition_group::add|.
       if (id_it->kind==0x1) // field selector present
       {
         type_expr fte = type_expr::function(tp_it->copy(),tp.copy());
-        record->add(id_it->name,type::wrap(std::move(fte),0),id_it->kind);
+        record.add(id_it->name,type::wrap(std::move(fte),0),id_it->kind);
           // injector type
       }
   }
@@ -1842,14 +1858,14 @@ Meanwhile we assemble a list |names| of field names that is finally passed to
 passing the |constexpr no_id@;| by reference (it builds a temporary
 instead); this avoids needing to allocate an actual static variable.
 
-@< Add functions for |fields| with types taken from |group| to
-   |global_overload_table|,... @>=
+@< Add to |global_overload_table| functions for |fields| with types
+   taken from |group|,... @>=
 
 {
-  bool tup = tp.kind()==tuple_type;
+  bool is_tup = tp.kind()==tuple_type;
   @< Emit indentation corresponding to the input level to |*output_stream| @>
 @/*output_stream << "  with " @|
-   << (tup ? "pro" : "in");
+   << (is_tup ? "pro" : "in");
   auto group_it = group.begin(); unsigned int j=0;
   std::vector<id_type> names(length(it->fields),id_type(type_binding::no_id));
   for (auto id_it=fields.wcbegin(); not fields.at_end(id_it); ++id_it,++j)
@@ -1858,7 +1874,7 @@ instead); this avoids needing to allocate an actual static variable.
     if (id_it->kind==0x1) // field selector present
     { auto name = names[j] = id_it->name; assert(name==group_it->first);
       shared_function tor; // function object to store
-      if (tup)
+      if (is_tup)
         tor = std::make_shared<projector_value>(tp,j,name,loc);
       else
         tor = std::make_shared<injector_value>(tp,j,name,loc);
@@ -1908,7 +1924,7 @@ void type_of_type_name(id_type id)
     fields = &type_expr::fields(tp->tabled_nr());
   *output_stream << "Defined type: ";
   if (fields==nullptr or fields->empty())
-    *output_stream << tp->unwrap().untabled();
+    *output_stream << tp->unwrap().untabled() << '\n';
   else
   { char sep = tp->kind()==tuple_type ? ',' : '|';
     auto f_it = fields->begin();
@@ -1917,9 +1933,38 @@ void type_of_type_name(id_type id)
        << ' ' << *it << ' ' @|
        << (*f_it == type_binding::no_id ? "." : main_hash_table->name_of(*f_it))
        << ' ';
-    *output_stream << ')';
+    *output_stream << ")\n";
   }
-  *output_stream << std::endl;
+}
+
+@ The function |type_of_type_constr| is similar, but reports information about a
+user defined type constructors. It introduces formal arguments, which by the way
+polymorphic types are printed have to be named with single-letter capitals
+starting from |'A'|.
+
+@< Global function definitions @>=
+void type_of_type_constr(id_type id)
+{ const auto* tp = global_id_table->type_of(id);
+  const std::vector<id_type>* fields = nullptr;
+  if (tp->kind()==tabled)
+    fields = &type_expr::fields(tp->tabled_nr());
+  *output_stream << "Defined type constructor: "
+                 << main_hash_table->name_of(id) << "<A";
+  for (unsigned int i=1; i<tp->degree(); ++i)
+     *output_stream << ',' << static_cast<char>('A'+i);
+  *output_stream << "> = ";
+  if (fields==nullptr or fields->empty())
+    *output_stream << tp->unwrap().untabled() << '\n';
+  else
+  { char sep = tp->kind()==tuple_type ? ',' : '|';
+    auto f_it = fields->begin();
+    for (wtl_const_iterator it(tp->tuple()); not it.at_end(); ++it,++f_it)
+      *output_stream << (f_it==fields->begin() ? '(' : sep)
+       << ' ' << *it << ' ' @|
+       << (*f_it == type_binding::no_id ? "." : main_hash_table->name_of(*f_it))
+       << ' ';
+    *output_stream << ")\n";
+  }
 }
 
 @ The function |show_overloads| has a similar purpose to |type_of_expr|,
