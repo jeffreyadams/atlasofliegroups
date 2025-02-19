@@ -1035,13 +1035,14 @@ set bottom_K_type_Qs2(KType mu, KGPElt Q, int D_low, int D) = QKL_bottom_data:
     then muL = highest_LK(mu,Q)
     then dermuLs = [KType]: derived_factor_K_types0(muL)
     then derLs = [RealForm]: derived_simple_factorsRF(L)
+    then maxLs = [int]: for G in derLs do ((G.two_rho)*(G.two_rho_check))\2 od
     then derProjKinvs = for derL in derLs do right_inverse(projection_to_K_matrix(derL)) od
-    then cutter = int: 2*(G.semisimple_rank)*(#derLs)
+    then cutter = int: G.semisimple_rank
     then DL_lows = for derL@j in derLs
     	 	   do ((D_low - height(mu))*derL.semisimple_rank)\cutter +height(dermuLs[j])
 		   od
     then DLs = for derL@j in derLs
-    	       do ((D-D_low)*derL.semisimple_rank)\cutter + DL_lows[j]
+    	       do min(((D-D_low)*derL.semisimple_rank)\cutter + DL_lows[j], maxLs[j])
 	       od
     then x0L = KGB(L,0)
     then x0G = embed_KGB(x0L,G)
