@@ -810,7 +810,7 @@ set make_big_unitary_hash() = big_unitary_hash_table:
 		   else {we've seen mu before}
 		       let Dold = branch_heights[rfnum][ktypenum]
 		       then () = if Dold < D
-			       then let ans = to_ht(K_type_pol_hashes[rfnum].list()[branches[rfnum][ktypenum]],D)
+			       then let ans = to_ht(K_type_pol_hashes[rfnum].list()[branches[rfnum][ktypenum]],Dold)
 			       	    then undone = mu - sum(rf, for c@tau in ans
 			       	    	     do let (,,Kft) = add_K_type_formula_to_ht(tau,D)
 						in c*regroup(rf, to_ht(K_type_pol_hashes[rfnum].list()[Kft],D))
