@@ -5448,23 +5448,25 @@ case discrimination_expr:
 @)
   expression_ptr c  =  convert_expr(exp.subject,fc,subject_type);
   if (subject_type.kind()!=union_type)
-    throw type_error(exp.subject,std::move(subject_type),
-                     std::move(*unknown_union_type(n_branches)));
-  const auto& variants = subject_type.tuple();
+    @< Report that a discrimination clause needs to be a union type,
+       |exp.subject| has non-union type |subject_type| @>
+  const auto* variants = subject_type.tuple();
   size_t n_variants=length(variants);
   std::vector<choice_part> choices(n_variants);
 @)
   if (exp.has_tags())
   {
-    const wtl_const_iterator types_start(variants); // fix base
-    const auto type_number = type_expr::find(subject_type);
-    if (type_number>=type_expr::table_size())
+    sl_list<id_type> tags = exp.tag_set();
+    auto candidates = type_expr::matching_bindings(subject_type,fc);
+    if (candidates.empty())
       @< Report that union type |subject_type| cannot be used in a discrimination
          clause without having been defined @>
-    const auto& field_names = type_expr::fields(type_number);
-    if (field_names.empty())
-      @< Report that union type |subject_type| needs named injectors to be
-         used in a discrimination clause @>
+    bool unique_candidate = candidates.singleton();
+    simple_list<unsigned int> positions; // to record indexes of the |tags|
+    @< Filter from |candidates| those that do not know all |tags|, and report an
+       error if this does not reduce it to a singleton;
+       otherwise set |positions| according to that remaining candidate @>
+    const auto& field_names = candidates.front()->fields;
   @)
     @< Process |branches| and assign them to |choices|, possibly reordering them
       according to the specified variant names and taking into account a
@@ -5476,31 +5478,20 @@ case discrimination_expr:
     discrimination_expression(std::move(c),std::move(choices)));
 }
 
-@ Here we produce a union type for use in an error message when a non-union
-type was found. The provided |length| is obtained by counting branches, which
-is not always reliable (in the presence of a default); in any case we ensure
-that at least two unspecified variants are listed so that it will at least be
-clear that some union type was called for.
-
-@< Local fun... @>=
-type_ptr unknown_union_type(size_t length)
-{ type_list l; auto n = std::max<size_t>(2,length);
-  while (n-->0)
-    l.push_front(unknown_type.copy());
-  return mk_union_type(std::move(l));
-}
-
-@ Without tags, branch processing proceeds simply by sequentially following
-variants of |subject_type| which should match the branches. We do set up this
-code (notably using an index $k$ rather than yet another iterator) in such a way
-that the actual branch processing can be shared with the case with tags.
+@ We start with the easiest case, namely where the user does not use any tags,
+but simply lists branches in the order of the union type. Processing then
+proceeds by sequentially following variants of |subject_type| which should match
+the branches. We do set up this code (notably using an index $k$ rather than yet
+another iterator) in such a way that the actual branch processing can be shared
+with the case with tags.
 
 @< Process |branches| in order @>=
 { if (n_branches!=n_variants)
     @< Report mismatching number of branches @>
-  auto branch_p=&exp.branches; wtl_const_iterator type_it(variants);
-  for (size_t k=0; k<n_branches; ++k,branch_p=branch_p->next.get(),++type_it)
-  { const auto& branch = branch_p->contents;
+  case_list::weak_const_iterator branch_it(&exp.branches);
+  wtl_const_iterator type_it(variants);
+  for (size_t k=0; k<n_branches; ++k,++branch_it,++type_it)
+  { const auto& branch = *branch_it;
     const auto& variant_type = *type_it; // type of variant for this branch
     @/@< Type-check branch |branch.branch|, with |branch.pattern| bound to
          |variant_type|, against result type |tp|,  and insert the
@@ -5508,17 +5499,47 @@ that the actual branch processing can be shared with the case with tags.
   }
 }
 
-@ The error message for a wrong number of branches just uses the branch count,
-but does report the full union type for clarity rather than just its number of
-variants.
+@ When tags were specified, their set is given in |tags| and the candidate union
+types that were retrieved from |type_expr::type_map| are collected in the list
+|candidates|. Before insisting that there is a unique candidate that governs the
+correspondence between tags and positions in the union, we remove and candidates
+whose set of tags do not provide for all tags that were used in the clause.
 
-@< Report mismatching number of branches @>=
-{ std::ostringstream o;
-  o << "Discrimination clause has " << n_branches @|
-    << "branches, which does not match\nthe number of variants ("
-    << n_variants @| << ") of the type " << subject_type
-    << " discriminated upon";
-  throw expr_error(e,o.str());
+@< Filter from |candidates| those that do not know all |tags|,...@>=
+{ for (auto it = candidates.begin(); not candidates.at_end(it); )
+  // no |++it| here!
+  { sl_list<unsigned int> pos;
+    const std::vector<id_type>& fields = (*it)->fields;
+    assert(fields.size()==n_variants);
+      // because |(*it)->tp| unifies with |subject_type|
+    bool failure = false;
+    for (id_type tag : tags)
+    { unsigned int i;
+      for (i=0; i<n_variants; ++i)
+        if (fields[i]==tag)
+        {@;
+          pos.push_back(i);
+          break;
+        }
+      if (i==fields.size()) // then |tag| was not found
+      { if (unique_candidate)
+          @< Report that |tag| does not match any of the tags of our unique
+             candidate type @>
+        failure = true;
+        break;
+      }
+    } // |for(tag)|
+    if (failure)
+      candidates.erase(it);
+    else
+    { if (positions.empty())
+        positions=pos.undress();
+      ++it;
+    }
+  } // |for (it)| looping over |candidates|
+  if (not candidates.singleton())
+    @< Report that the number of |candidates| accommodating all |tags|
+       is not exactly one @>
 }
 
 @ In order to be able to share the default branch expression among multiple
@@ -5537,16 +5558,17 @@ conversion of previous branches.
 
 @< Process |branches| and assign them to |choices|... @>=
 { shared_expression default_choice;
-  for (auto branch_p=&exp.branches; branch_p!=nullptr;
-       branch_p=branch_p->next.get())
-  { const auto& branch = branch_p->contents;
+  auto pos_it = positions.cbegin();
+  for (case_list::weak_const_iterator br_it(&exp.branches);
+       not br_it.at_end(); ++br_it)
+  { const auto& branch = *br_it;
     if (branch.is_default())
       @< Use |branch| to set |default_choice| @>
     else
-    { size_t k = std::find(field_names.begin(), field_names.end(),branch.label)
-                 -field_names.begin();
-      @< Check that |k| is a valid index into |choices|, and that the slot
-         |choices[k]| has not been filled before @>
+    { size_t k = *pos_it;
+      ++pos_it;
+      @< Check that |choices[k]| has not been filled before @>
+      const wtl_const_iterator types_start(variants); // base for ``indexing''
       const auto& variant_type = *std::next(types_start,k);
       // type of variant for this branch
     @/@< Type-check branch |branch.branch|, with |branch.pattern| bound to
@@ -5582,43 +5604,102 @@ this branch is chosen, and suppress creating a |frame| for the branch.
 @/choices[k] = choice_part (copy_id_pat(branch.pattern),std::move(result));
 }
 
-@ When reporting a mismatched branch or when a pair of identical branch labels
-is found, we print the whole discrimination expression.
+@ When a pair of identical branch labels is found, we print the whole
+discrimination expression.
 
-@< Check that |k| is a valid index into |choices|, and that the slot... @>=
-{ if (k==field_names.size())
-  { o << "Branch has label " << main_hash_table->name_of(branch.label) @|
-      << " not associated to any variant of the union type "
-      << subject_type;
-    throw expr_error(e,o.str());
-  }
-  if (choices[k].second.get()!=nullptr)
+@< Check that |choices[k]| has not been filled before... @>=
+{ if (choices[k].second.get()!=nullptr)
   { o << "Multiple branches with label "
       << main_hash_table->name_of(branch.label);
     throw expr_error(e,o.str());
   }
 }
 
-@ Here we just observe that using a discrimination clause requires using a
-\emph{named} union type.
+@ Reporting a non-union subject is done by producing a union type with unknown
+components, and throwing a |type_error| with that as required type. Since we
+don't know which union type the user intended, we produce their number by
+counting branches od the discrimination clause, but ensuring that this number is
+at least~$2$ so that a union type can be recognised in the error message.
+
+@< Report that a discrimination clause needs to be a union type,
+       |exp.subject| has non-union type |subject_type| @>=
+
+{ type_list l; auto n = std::max<size_t>(2,n_branches);
+  while (n-->0)
+    l.push_front(unknown_type.copy());
+  throw type_error(exp.subject,std::move(subject_type),
+                   type_expr::tuple_or_union(union_type,std::move(l)));
+}
+
+@ The error message for a wrong number of branches just uses the branch count,
+but does report the full union type for clarity rather than just its number of
+variants.
+
+@< Report mismatching number of branches @>=
+{ std::ostringstream o;
+  o << "Discrimination clause has " << n_branches @|
+    << "branches, which does not match\nthe number of variants ("
+    << n_variants @| << ") of the type " << subject_type
+    << " discriminated upon";
+  throw expr_error(e,o.str());
+}
+
+@ Here our error message tries to suggest the two solutions to attempting to use
+a union type without declared tags: either declare them or use the tag-less
+version of a discrimination clause.
 
 @< Report that union type |subject_type| cannot be used in a discrimination
    clause without having been defined @>=
 
 { std::ostringstream o;
   o << "Discrimination on expression of type " << subject_type @|
-    << " requires using 'set_type [ ... ]' for this type";
+    << " with clause using tags, but none are known.\n" @|
+     "  Either use 'set_type' with tag names first, " @|
+     "or use discrimination clause without tags.";
   throw expr_error(e,o.str());
 }
 
-@ In case a matching definition is found in the type table but without injector
-functions, the message is a bit different.
+@ When there is an unambiguous defined union type matching |subject_type|, we
+report the first tag that fails to match it as the offender.
 
-@< Report that union type |subject_type| needs named injectors to be
-   used in a discrimination clause @>=
+@< Report that |tag| does not match any of the tags... @>=
 { std::ostringstream o;
-  o << "Discrimination on expression of type " << subject_type @|
-    << " requires naming injectors for it";
+  o << "Identifier " << main_hash_table->name_of(tag) @|
+    << " is not a tag associated with the union type" @|
+    << (candidates.front()->arity==0 ? " " : " constructor " ) ;
+  if (candidates.front()->name==type_binding::no_id)
+    o << candidates.front()->tp;
+  else
+    o << main_hash_table->name_of(candidates.front()->name);
+  throw expr_error(e,o.str());
+}
+
+@ We already tested there were defined union types, or type constructors, with
+tags, that match the |subject_type| of the discrimination clause, so if we find
+there are none left, the error message should focus on the tags that failed to
+all match for one of the candidates.
+
+@< Report that the number of |candidates| accommodating all |tags| is not
+   exactly one @>=
+{ std::ostringstream o;
+  if (candidates.empty())
+  {
+    o << "No union definition found to accommodate the tags "
+      << main_hash_table->name_of(tags.front());
+    for (auto it=std::next(tags.begin()); not tags.at_end(it); ++it)
+      o << ", " << main_hash_table->name_of(*it);
+    o << "\nused in discrimination clause";
+  }
+  else
+  { o << "Ambiguity in discrimination clause, possible types are:\n";
+    for (const auto& cand : candidates)
+    { o << "    ";
+      if (cand->name==type_binding::no_id)
+         o << cand->tp << '\n';
+      else
+        o << main_hash_table->name_of(cand->name) << '\n';
+    }
+  }
   throw expr_error(e,o.str());
 }
 
@@ -5648,10 +5729,11 @@ the identifier pattern of defaulted branches be empty, the value from the
     throw expr_error(e,"Spurious default branch present");
   if (default_choice.get()!=nullptr)
   // if a default was given, insert for omitted branches
-    for (auto it=choices.begin(); it!=choices.end(); ++it)
+  { for (auto it=choices.begin(); it!=choices.end(); ++it)
       if (it->second.get()==nullptr)
         *it = choice_part(id_pat(),default_choice);
               // share |default_choice| here
+  }
   else if (n_branches<n_variants)
     @< Report a missing branch @>
 }

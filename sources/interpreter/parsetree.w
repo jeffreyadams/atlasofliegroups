@@ -2097,18 +2097,18 @@ expressions to be evaluated, they behave like functions that will be applied
 to the value (within its variant type) of the subject value being discriminated
 upon, provided it has the variant corresponding to the branch.
 
-In fact we define two forms of discrimination clauses. A first, more
-primitive form, provides what looks like a $\lambda$-expression for the function
-defining each branch, except that no type for the parameter has to be provided
-because it is implicitly the type of the corresponding variant of the union. In
-fact the branches are semantically more like |let| expressions in that the
-binding to the parameter happens without an actual function call.
-A second form provides more flexibility to the user, but can only be used if
-the union type has occurred in a type definition where the different variants
-have been given names (tags); these can then be used to identify branches, and
-frees the user from the obligation of writing the branches in the same order
-as the corresponding variants are listed in the union, as well as of explicitly
-specifying types for the parameters introduced.
+In fact we define two forms of discrimination clauses. A first, more primitive
+form, provides what looks like a $\lambda$-expression for the function defining
+each branch, except that no type for the parameter has to be provided because it
+is implicitly the type of the corresponding variant of the union. In fact the
+branches are semantically more like |let| expressions in that the binding to the
+parameter happens without an actual function call. A second more elaborate form
+provides more flexibility to the user, but can only be used if the union type
+has occurred in a type definition where the different variants have been given
+names (tags). In the ``tagged'' form of the discrimination clause, these tags
+can then be used to identify branches, and frees the user from the obligation of
+writing the branches in the same order as the corresponding variants are listed
+in the union.
 
 The label used for both form is |discrimination_expr|, while the presence of
 absence of tags allows telling them apart.
@@ -2124,9 +2124,10 @@ typedef struct discrimination_node* disc;
 @ Concretely, branches have an identifier |label| that indicates the variant it
 matches when the elaborate form is used, and then a pattern and a body as in
 a \&{let} statement. When the simple form is used one has |label==0| in each
-branch, while defaulted branches have |label==1|; both |0| and |1| are outside
-the range of |id_type| values used for identifiers that could be used as tags,
-since small |id_type| values correspond to keywords. In
+branch, while defaulted branches (which can only be used with the tagged form)
+have |label==1|. Both |0| and |1| are outside the range of |id_type| values used
+for identifiers that could be used as tags, since small |id_type| values
+correspond to keywords. In
 a |discrimination_node|, the expression being discriminated is called its
 |subject|, which is followed by a non-empty list of |branches|, and a flag
 indicating whether tags are being used.
@@ -2148,6 +2149,7 @@ struct discrimination_node
 @)
   discrimination_node(expr&& subject, case_list&& branches);
   bool has_tags() const { return branches.contents.label!=id_type(0); }
+  sl_list<id_type> tag_set() const;
 };
 
 @ The |discrimination_node| constructor is somewhat special in that the
@@ -2162,6 +2164,23 @@ discrimination_node::discrimination_node (expr&& subject, case_list&& branches)
 @/: subject(std::move(subject))
   , branches(std::move(*branches.release()))
   @+{}
+
+@ Exceptionally, we provide some methods of |discrimination_node| for the
+convenience of use in processing the clause after parsing. The definition of
+|discrimination_node::has_tags| was given inside the structure definition; here
+is the somewhat more elaborate |discrimination_node::tag_set| that collects all
+tags that are not default into a list. Even though the |branches| field directly
+stores a node of a |case_list|, we can use a|weak_const_iterator| to loop over
+all nodes in the (non-empty) list.
+
+@< Definitions of functions not for the parser @>=
+sl_list<id_type> discrimination_node::tag_set() const
+{ sl_list<id_type> result;
+  for (case_list::weak_const_iterator it(&branches); not it.at_end(); ++it)
+    if (it->label>1)
+      result.push_back(it->label);
+  return result;
+}
 
 @ The variant of |expr| values with |disc| as parsing value is tagged
 |disc_variant|.

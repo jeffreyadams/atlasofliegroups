@@ -1170,25 +1170,30 @@ type_expr simple_subst
 @*2 User defined, possibly recursive, types and type constructors.
 %
 We come to a new part of the |type_expr| type, a static member |type_map| that
-allows for storage of ``tabled'' types and type constructors. These can represent
-recursive (effectively infinite) type expressions, like a row-of type whose
-component type is the type itself, or algebraic types like binary trees with
-node labels of some type (the latter would be a recursive type constructor). The
-mechanism is separate from the one used to associate types with user defined
-type identifiers, of which it can be considered an internalised form, made
-accessible to |type_expr| methods. Indeed entries of |type_map| derive from user
-type definitions, and the identifier table will equate such type identifiers
-to certain tabled types.
+allows for storage of ``tabled'' types and type constructors. These can
+represent recursive (effectively infinite) type expressions, like a row-of type
+whose component type is the type itself, or algebraic types like binary trees
+with node labels of some type (the latter would be a recursive type
+constructor). The mechanism is separate from the one used to associate types
+with user defined type identifiers, of which it can be considered an
+internalised form, made accessible to |type_expr| methods. Indeed entries of
+|type_map| derive from user type definitions, and the identifier table will
+equate such type identifiers to certain tabled types. We need to pre-declare the
+structure used to hold the attributes of these internalised type definitions,
+like a type name or a list of field names (for tuples or unions, mostly useful
+for the latter).
 
-The sub-class |type_expr::defined_type_mapping| is basically a vector of type
-expressions, with some associated information like a type name or a list of
-field names (for tuples or unions, mostly useful for the latter). The variant
-|tabled_variant| of |type_expr| will record an index into this vector (we ignore
-here another use made of this variant in the parser, which is dealt with in
-the \.{global.w} module). This class does not hide its data (though it does have
-one private method |dissect_to|), but the unique object of this class is a
-private static member of |type_expr|, so access is mostly controlled by static
-methods of that class.
+@< Type declarations @>=
+struct type_binding;
+
+@ The |type_map| member is of a sub-class |type_expr::defined_type_mapping|,
+which is basically a vector of |type_binding|. The variant |tabled_variant| of
+|type_expr| will record an index into this vector (we ignore here another use
+made of this variant in the parser, which is dealt with in the \.{global.w}
+module). This class does not hide its data (though it does have one private
+method |dissect_to|), but the unique object of this class is a private static
+member of |type_expr|, so access is mostly controlled by static methods of that
+class.
 
 The way tabled type are used has evolved a bit since the introduction of user
 type constructors. Before, the main importance was being able to do structural
@@ -1254,17 +1259,17 @@ static std::vector<type_nr_type> add_typedefs
   unsigned int n_args);
 static type_nr_type table_size();
 static void reset_table_size(type_nr_type old_size);
-static type_nr_type find (const type_expr& type);
 static const std::vector<id_type>& fields(type_nr_type type_number);
 static void set_fields (id_type type_number, std::vector<id_type>&& fields);
+static sl_list<const type_binding*> matching_bindings
+  (const type_expr& te, unsigned int fix_count);
 
 @ Here are the easy ones among those methods: |table_size| just returns the
 current |size| of |type_map| while |reset_table_size| shrinks the table back to
-a previous size; the method |find| locates a type given by an expression and
-returns is associated identifier; |fields| and |set_fields| provide access to
-the list of field names that can be associated to tuple and union types (note
+a previous size; |fields| and |set_fields| provide access to the list of field
+names that can be associated to tuple and union types. (Note
 that being a |static| member, we cannot |const| qualify |fields|, or any other
-of these methods, to indicate that they leave |type_map| unchanged). There
+of these methods, to indicate that they leave |type_map| unchanged.) There
 should be no method to remove the name of a tabled type, as doing so might lead
 to non-termination of printing recursive types, but |reset_table_size| provides
 a way to undo extensions of the table size; it must however be used only in
@@ -1276,13 +1281,6 @@ type_nr_type type_expr::table_size() @+{@; return type_map.size(); }
 void type_expr::reset_table_size(type_nr_type old_size)
 {@; type_map.erase(std::next(type_map.begin(),old_size),type_map.end()); }
 @)
-type_nr_type type_expr::find (const type_expr& tp)
-{ for (auto it=type_map.begin(); it!=type_map.end(); ++it)
-    if (it->tp==tp)
-      return it-type_map.begin();
-  return -1;
-}
-@)
 const std::vector<id_type>& type_expr::fields(type_nr_type type_number)
 {@; assert(type_number<table_size());
   return type_map[type_number].fields;
@@ -1292,7 +1290,30 @@ void type_expr::set_fields(id_type type_number, std::vector<id_type>&& fields)
    type_map[type_number].fields=fields;
 }
 
-@ And here are the accessor methods for |type_expr| values that have
+@ The method |matching_bindings| is used to find |fields| associated to a given
+union type, in order to interpret a discrimination clause; it returns a list
+non-owning pointers to |type_binding| whose |tp| member can unify with |tp|.
+
+
+@< Function definitions @>=
+sl_list<const type_binding*>
+  type_expr::matching_bindings (const type_expr& te, unsigned int fix_count)
+{ sl_list<const type_binding*> result;
+  type tp = type::wrap(te,fix_count);
+  if (fix_count==0)
+  { for (auto it=type_map.begin(); it!=type_map.end(); ++it)
+      if (not it->fields.empty() and tp.has_unifier(it->tp))
+        result.push_back(&*it);
+  }
+  else // we must shift any polymorphic variables in |it->tp|
+  { for (auto it=type_map.begin(); it!=type_map.end(); ++it)
+      if (not it->fields.empty() and tp.has_unifier(shift(it->tp,0,fix_count)))
+        result.push_back(&*it);
+  }
+  return result;
+}
+
+@ Here are the accessor methods for |type_expr| values that have
 |raw_kind()==tabled|.
 
 @< Function definitions @>=
