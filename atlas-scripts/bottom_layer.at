@@ -857,6 +857,7 @@ set bottom_elim_factors(Param p0, Param p, QKL_bottom_data (Q, LKdata), KTypePol
     	 	 then theta_stable_data_small(p)
 		 else theta_stable_quasi_data(p)
 		 fi
+    then () = if #(Q.S) = p.real_form.semisimple_rank then error() fi
     then Lm = Qm.Levi, mu = LKTs(p0)[0]
     then muL = highest_LK(mu,Q), muLm = highest_LK(mu,Qm)
     then pLmis = monomials(1*pLm)

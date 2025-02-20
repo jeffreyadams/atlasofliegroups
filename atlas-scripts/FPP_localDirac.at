@@ -957,6 +957,7 @@ set local_testK_hash_bottom_layer_more(KGBElt x, ratvec lambda, LocalVertexData 
     {Find all Param's in Uhash with (x,lambda). For each, compute corresponding Face.
      Use function known_unitaries from FPP_faces
      Look up class in classListByFace, and mark "T"}
+    then () = assert(all(for (Q,) in datas do #(Q.S) < #lambda od),"Q=G occurs here")
     then temp_Dirac_best_local_flag = bool: {whether Dirac_best could help here}
     	 if not Dirac_best_local_flag then false
 	 else let mus = LKTs(parameter(x,lambda,0*lambda))
@@ -3638,9 +3639,14 @@ set local_test_GEO_hash_bottom_layer(KGBElt x, ratvec lambda, {VertexData vd,}
 	     	      	      then let start_data = elapsed_ms()
 			      	   then ans = for mu in LKTs(pmin)
 			      	       	      do for (Q,pL) in maxQps
-				       	      	 do bottom_K_type_Qs2(mu,Q,D)
-					  	 od
+				       	      	 do let (,data) = bottom_K_type_Qs2(mu,Q,D)
+						    in if #data > 1
+						       then [(Q,data)]
+						       else []
+						       fi
+					  	 od.##
 				       	       od.##
+				   {then () = for (Q,) in ans do prints(Q, Q.S) od}
 				   in if test_verbose
 				      then prints("time to compute Qs2 data at (",x,",",lambda,") = ",
 				      	   print_time_string(elapsed_ms() - start_data))
@@ -3649,11 +3655,18 @@ set local_test_GEO_hash_bottom_layer(KGBElt x, ratvec lambda, {VertexData vd,}
 			      else let start_data = elapsed_ms()
 			      	   then ans = [QKL_bottom_data]:
 				   	    bottom_factors(bottom_K_type_Qs(pmin, Q0, D))
+				   then good_ans = for (Q,data) in ans
+				   		   do if #data > 1
+						      then [(Q,data)]
+						      else []
+						      fi
+						   od.##
+				   {then () = for (Q,) in ans do prints(Q, Q.S) od}
 				   in if test_verbose
 				      then prints("time to compute QKL data at (",x,",",lambda,") = ",
 				      	    print_time_string(elapsed_ms() - start_data))
 				      fi;
-				      ans
+				      good_ans
 			      fi
 	     	  then () = if card(datas) > #datas {more than lowest K-type for each Q}
 	     	       	    then let ((eq,gr),IUCL,CLBF) = localGraphK(LFDKH)
