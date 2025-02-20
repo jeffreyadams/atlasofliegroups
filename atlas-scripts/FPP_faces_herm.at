@@ -699,7 +699,7 @@ set make_big_unitary_hash() = big_unitary_hash_table:
 	 then rf = real_form_hash.index(rfnum)
 	 then () = mu := first_K_type(regroup(rf,1*mu))
        	 then () = if formula_heights[rfnum][ktypenum] != h-1
-       	       	   then let m = K_type_pol_hashes[rfnum].match(K_type_formula(mu))
+       	       	   then let m = K_type_pol_hashes[rfnum].match(regroup(rf, K_type_formula(mu)))
 		   	then formsrf = formulas[rfnum], formhsrf = formula_heights[rfnum]
 			then () = formsrf[ktypenum] := m
 			then () = formhsrf[ktypenum] :=h-1
@@ -716,9 +716,11 @@ set make_big_unitary_hash() = big_unitary_hash_table:
          in (rfnum, ktypenum, formulas[rfnum][ktypenum])
     then add_K_type_formula_to_ht(KType mu, int D) = (int,int,int): {rfn, ktypen, index_to_ht(formula)}
       	 let (rfnum,ktypenum) = add_K_type(mu), h = height(mu)
+	 then rf = real_form_hash.index(rfnum)
+	 then () = mu := first_K_type(regroup(rf, 1*mu))
        	 then () = assert(D >= h, "too-low height argument for K_type_formula")
        	 then () = if (formula_heights[rfnum][ktypenum] < D and formula_heights[rfnum][ktypenum] >= h)
-       	       	   then let m = K_type_pol_hashes[rfnum].match(K_type_formula(mu,D))
+       	       	   then let m = K_type_pol_hashes[rfnum].match(regroup(rf,K_type_formula(mu,D)))
 		   	then formsrf = formulas[rfnum], formhsrf = formula_heights[rfnum]
 			then () = formsrf[ktypenum] := m
 			then () = formhsrf[ktypenum] := D
@@ -743,7 +745,7 @@ set make_big_unitary_hash() = big_unitary_hash_table:
 	 then (,ktypenum) = add_K_type(mu)
 	 then () = if ktypenum = KTYPENUM {haven't computed with mu before}
 	     	   then {let start_branch = elapsed_ms()}
-		       	let pol = branch_std(1*mu,D)
+		       	let pol = regroup(rf, branch_std(1*mu,D))
 	     	       	then m = K_type_pol_hashes[rfnum].match(pol)
 			then tempbranchhts = branch_heights[rfnum]
 		       	then tempbranches = branches[rfnum]
@@ -759,7 +761,7 @@ set make_big_unitary_hash() = big_unitary_hash_table:
 		       if branch_heights[rfnum][ktypenum] < D
 		       then let tempbranchhts = branch_heights[rfnum]
 		       	    then tempbranches = branches[rfnum]
-		       	    then pol = branch_std(1*mu, D)
+		       	    then pol = regroup(rf, branch_std(1*mu, D))
 		       	    then m = K_type_pol_hashes[rfnum].match(pol)
 		       	    then () = tempbranches[ktypenum]:=m
 		       	    then () = tempbranchhts[ktypenum] :=  D
@@ -775,9 +777,6 @@ set make_big_unitary_hash() = big_unitary_hash_table:
 	 then rf = real_form_hash.index(rfnum)
 	 then () = mu :=  first_K_type(regroup(rf,1*mu))
 	 then () = assert(D>=height(mu),"branch to D below height(mu)")
-	 then rfnum = add_real_form(rf)
-	 then () = rf:= real_form_hash.index(rfnum)
-	 then () = mu:= first_K_type(regroup(rf,1*mu))
     	 then KTYPENUM = K_type_hashes[rfnum].size()
 	 then (,ktypenum) = add_K_type(mu)
 	 then () = if ktypenum = KTYPENUM {haven't computed with mu before}
@@ -788,8 +787,9 @@ set make_big_unitary_hash() = big_unitary_hash_table:
 			     do let (c,tau) = first_term(undone)
 			     	then corr = if my_formula_flag
 				     	    then let (,,t) = add_K_type_formula_to_ht(tau,D)
-					    	 in c*regroup(rf, to_ht(K_type_pol_hashes[rfnum].list()[t],D))
-					    else c*K_type_formula(tau,D)
+					    	 in c*to_ht(K_type_pol_hashes[rfnum].list()[t],D)
+						 {c*regroup(rf, to_ht(K_type_pol_hashes[rfnum].list()[t],D))}
+					    else c*regroup(rf, K_type_formula(tau,D))
 					    fi
 			     	{then (,,t) = add_K_type_formula_to_ht(tau,D)}
 				then () = undone-:= corr {c*regroup(rf, to_ht(K_type_pol_hashes[rfnum].list()[t],D))}
@@ -813,14 +813,14 @@ set make_big_unitary_hash() = big_unitary_hash_table:
 			       then let ans = to_ht(K_type_pol_hashes[rfnum].list()[branches[rfnum][ktypenum]],Dold)
 			       	    then undone = mu - sum(rf, for c@tau in ans
 			       	    	     do let (,,Kft) = add_K_type_formula_to_ht(tau,D)
-						in c*regroup(rf, to_ht(K_type_pol_hashes[rfnum].list()[Kft],D))
+						in c*{regroup(rf,} to_ht(K_type_pol_hashes[rfnum].list()[Kft],D){)}
 					     od)
 			       	    then () = while undone.!=
 			       	    	      do let (c,tau) = first_term(undone)
 					      	 then corr = if my_formula_flag
 				     	    	      	     then let (,,t) = add_K_type_formula_to_ht(tau,D)
-					    	 	     	  in c*regroup(rf, to_ht(K_type_pol_hashes[rfnum].list()[t],D))
-					    		     else c*K_type_formula(tau,D)
+					    	 	     	  in c*{regroup(rf,} to_ht(K_type_pol_hashes[rfnum].list()[t],D){)}
+					    		     else c*regroup(rf, K_type_formula(tau,D))
 					    		     fi
 			     	       	      	 {then (,,t) = add_K_type_formula_to_ht(tau,D)}
 				       		 then () = undone-:= corr {c*regroup(rf,
@@ -842,8 +842,8 @@ set make_big_unitary_hash() = big_unitary_hash_table:
 
     then add_param_inf(Param p) = (int, int, int): {add a param, full herm form}
    	let  rfnum = add_real_form(p.real_form)
-	then PNUM = phashes[rfnum].size()
-	then () = p:=herm_center(p)
+	then PNUM = phashes[rfnum].size(), rf = real_form_hash.index(rfnum)
+	then () = p:=regroup(rf, herm_center(p))
 	then pnum = phashes[rfnum].match(p)
 	then () = if pnum = PNUM {haven't computed with p before}
 	     	  then let sig = hermitian_form_irreducible(p) {insert computation from good?}
@@ -880,8 +880,9 @@ set make_big_unitary_hash() = big_unitary_hash_table:
 	 in (rfnum, pnum, sigs[rfnum][pnum])
    then add_param(Param p, int D) = (int, int, int): {add a param, form to ht D; assume D >= ht(p)}
         let  rfnum = add_real_form(p.real_form)
+	then rf = real_form_hash.index(rfnum)
         then PNUM = phashes[rfnum].size()
-	then () = p:=herm_center(p)
+	then () = p:=regroup(rf,herm_center(p))
         then pnum = phashes[rfnum].match(p)
         then () = if pnum = PNUM {haven't computed with p before}
                   then let sigD = if low(p,D) {low(p.x,p.lambda,D)}
@@ -992,30 +993,34 @@ set make_big_unitary_hash() = big_unitary_hash_table:
      end
 
     , ((KTypePol, int) -> KTypePol): {branch} (KTypePol pol, int D) KTypePol:
-      let terms = [(Split, KType)]: for c@mu in to_ht(pol,D)
+      let G = pol.real_form
+      then rfnum = add_real_form(G)
+      then rf = real_form_hash.index(rfnum)
+      then () = pol := regroup(rf,pol)
+      then terms = [(Split, KType)]: for c@mu in to_ht(pol,D)
       	  	  	   	    do (c,mu)
 				    od
-      then G = pol.real_form
-      in to_ht( sum(pol.real_form, for (c,mu) in terms
-      	 			   do let (rf,,m) = if my_branch_flag
+      in regroup(G, to_ht(sum(rf, for (c,mu) in terms
+      	 			   do let (,,m) = if my_branch_flag
 				      	  	    then add_K_type_my_branch(mu,D)
 						    else add_K_type_branch(mu,D)
 						    fi
-				      in regroup(G, c*K_type_pol_hashes[rf].index(m))
-				   od) , D)
+				      in c*K_type_pol_hashes[rfnum].index(m)
+				   od) , D))
     , ((Param,int) -> KTypePol): {sig_entry} (Param p, int D) KTypePol:
      begin
-	let (rf,pnum,sig_ind) = if D < height(p)
+	let (rfnum,pnum,sig_ind) = if D < height(p)
 	    		      	then add_param_inf(p)
 				else add_param(p,D)
 				fi
+	then G = p.real_form, rf = real_form_hash.index(rfnum)
 	in if D < height(p)
-	   then regroup(p.real_form, K_type_pol_hashes[rf].index(sig_ind))
-	   else regroup(p.real_form, to_ht(K_type_pol_hashes[rf].index(sig_ind), D))
+	   then regroup(G, K_type_pol_hashes[rfnum].index(sig_ind))
+	   else regroup(G, to_ht(K_type_pol_hashes[rfnum].index(sig_ind), D))
 	   fi
      end
-    , (int, int -> int): {branch_height} (int rf, int ktypenum): branch_heights[rf][ktypenum]
-    , (int, int -> int): {sig_height} (int rf, int pnum): sig_heights[rf][pnum]
+    , (int, int -> int): {branch_height} (int rfnum, int ktypenum): branch_heights[rfnum][ktypenum]
+    , (int, int -> int): {sig_height} (int rfnum, int pnum): sig_heights[rfnum][pnum]
     , ( -> ): {clear} clearBUH
     , (RealForm -> ): {clearG} (RealForm rf):
       clearG(rf)
@@ -2647,9 +2652,9 @@ set localFD_1Dirac2_by_zero\
 	       else [[j]]
 	       fi
 	 od.## {list of j for which vertex j is a candidate}
-    then () = if time_verbose
-    	      then prints("for LFO, time is ",print_time_string(elapsed_ms() - start))
-	      fi
+    {then () = if time_verbose
+    	      then prints("for LF0, time is ",print_time_string(elapsed_ms() - start))
+	      fi}
     then FixedList = [int]: for v in LF0
     	 	     	    do let j = v[0]
 			       in if j < #Perm2.fixed
@@ -2677,9 +2682,9 @@ set localFD_1Dirac2_by_zero\
 	       od.## {list of all FixFix edges}
 	       fi {F < 2}
 	    then () = FD12bzFFTime +:=elapsed_ms() - startFF
-	   then () = if time_verbose
+	   {then () = if time_verbose
 	   	     then prints("for FixFix, time is ",print_time_string(elapsed_ms() - startFF))
-		     fi
+		     fi}
 	   then startFT = elapsed_ms()
       	   then EdgesFixTrans = [vec]:
 	   	if #Perm2.fixed > 0 and #Perm2.trans >0
@@ -2701,9 +2706,9 @@ set localFD_1Dirac2_by_zero\
 		  else []
 		  fi
 	   then () = FD12bzFTTime +:= elapsed_ms() - startFT
-	   then () = if time_verbose
+	   {then () = if time_verbose
 	   	     then prints("for FixTranspose, time is ",print_time_string(elapsed_ms() - startFT))
-		     fi
+		     fi}
 	   then startTT = elapsed_ms()
 	   then EdgesTransTrans = [vec]: {this is the longest}
 	      if #Perm2.trans > 1
@@ -2726,14 +2731,14 @@ set localFD_1Dirac2_by_zero\
 		 else []
 		 fi
 	   then () = FD12bzTTTime +:= elapsed_ms() - startTT
-	   then () = if time_verbose
+	   {then () = if time_verbose
 	   	     then prints("for TransposeTranspose, time is ",print_time_string(elapsed_ms() - startTT))
-		     fi
+		     fi}
      	    {then () = prints("EFF = ", EdgesFixFix, ", EFT = ",EdgesFixTrans,", ETT = ",EdgesTransTrans)}
 	   in EdgesFixFix ## EdgesFixTrans ## EdgesTransTrans
-     then () = if time_verbose
+     {then () = if time_verbose
      	       then prints("after Edges, time is ",print_time_string(elapsed_ms() - start))
-	       fi
+	       fi}
      then LF1 = [FaceVertsIndex]:
     	 for v in Edges
 	 do let p = parameter(x,lambda,face_bary(Lvd, v))
@@ -2746,9 +2751,9 @@ set localFD_1Dirac2_by_zero\
 	    else []
 	    fi
 	 od.##
-    then () = if time_verbose
+    {then () = if time_verbose
     	      then prints("after LF1, time is ",print_time_string(elapsed_ms() - start))
-	      fi
+	      fi}
     then answer = sort(G, Lvd, [LF0]##[LF1], 0)
     then () = FD12bzTime +:= elapsed_ms() - start
     in if(face_verbose) then prints("After localFD_1Dirac2_by_zero, face counts are [",#LF0,
