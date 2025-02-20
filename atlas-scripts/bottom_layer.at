@@ -1017,7 +1017,151 @@ set bottom_K_type_Qs(Param p, KGPElt Qmin, int D_low, int D, KTypePol M) = [QK_b
 	   {then shifts = for }
 	   in (KGPElt:(S, xcG),list)
        od
+set bfBTime = int: 0
 
+{whether to use the following instead of bottom_K_type_Qs. Meant to make bottom layer signature arguments happen
+on smaller Q}
+set Qs2B_flag = true
+
+{For KType mu, assumed coh ind from Q, lists the K-types tau which
+
+a) occur in standard(mu)
+b) are not mu
+c) are bottom layer for some proper Q;
+d) corr dertauL (in some Qmax) is in scaled mysteriously (by (rk derL)/(rk G)) height range
+
+Each is paired with the smallest Q on which i
+}
+{the parabolics here all contain Qmin, and so can only be studied with fundamental KGBElts coming from Lmin.
+Trying to move coordinates to KGB(G,0) is a mistake.}
+set bottom_K_type_Qs2B(KType mu, KGPElt Qmin, int D_low, int D) = [QK_bottom_data]:
+    let G = mu.real_form,  Smin = Qmin.S, Lmin = Qmin.Levi
+    then Proj = projection_to_K_matrix(G), start = elapsed_ms()
+    then ProjInv = right_inverse(Proj), x0min = KGB(Lmin,0)
+    then x0G = embed_KGB(x0min,G)
+    then K0 = K_0(x0G)
+    then muwt = vec: K0_param(mu,x0G).lambda_minus_rho {size is rank K}
+    then Krk = #ProjInv, delta = G.distinguished_involution
+    then Sminc = complement(G.semisimple_rank,Smin), DOS = delta_on_simple(G)
+    then fixc = for a in Sminc {type [int]}
+    	      	do if DOS[a] = a
+		   then [a]
+		   else []
+		   fi
+		od.##
+    then pairsc = for a in Sminc {type [[int]]}
+    	 	  do if DOS[a] > a
+		     then [[a,DOS[a]]]
+		     else []
+		     fi
+		  od.##
+    then fixc_cowts = mat:
+    	 if #fixc = 0
+	 then null(rank(G),0)
+    	 else for a in fixc
+    	      do (G.fundamental_coweights[a].numer)*ProjInv
+	      od
+	 fi
+    then pairsc_cowts = mat:
+    	 if #pairsc = 0
+	 then null(rank(G),0)
+    	 else for pair in pairsc
+    	      do sum(G.rank, for a in pair do G.fundamental_coweights[a].numer od)*ProjInv
+              od
+	 fi
+    then mumin = highest_LK(mu,Qmin)
+    then tauWtHash = make_vec_hash() {to hold bottom layer wt candidates}
+    then () = for Q in max_Qs(Qmin)
+    	 do let L = Q.Levi, Smin = Qmin.S, SFRP = simple_factor_root_partition(Q), muL = highest_LK(mu,Q)
+	    then dermuLs = [KType]: derived_factor_K_types0(muL)
+    	    then derLs = [RealForm]: derived_simple_factorsRF(L)
+    	    then maxLs = [int]: for derL@j in derLs do max( height(dermuLs[j]), ((derL.two_rho)*(derL.two_rho_check))\2) od
+    	    then derProjKinvs = for derL in derLs do right_inverse(projection_to_K_matrix(derL)) od
+    	    then cutter = int: G.semisimple_rank
+    	    then DL_lows = for derL@j in derLs
+    	 	   	   do min(((D_low - height(mu))*derL.semisimple_rank)\cutter +height(dermuLs[j]), maxLs[j])
+		   	   od
+    	    then DLs = for derL@j in derLs
+    	       	       do min(((D-D_low)*derL.semisimple_rank)\cutter + DL_lows[j], maxLs[j])
+	       	       od
+    	    then x0L = embed_KGB(x0min,L)
+    	    then derx0Ls = derived_factor_KGBs0(x0L)
+	    then QKwt = Proj*two_rho_u(Q)
+    	    then dertauLs = [[KType]]: {jth list on derived simple factor derLj}
+    	    	 for dermuLj@j in dermuLs {loop indexed by j}
+	 	 do monomials(big_unitary_hash.branch_entry(dermuLj,DLs[j]))
+ 	 	 od
+    	    then dertauLjshifts = {size = rank of derLj cap K}
+    	    	 for listj@j in dertauLs {list of derLj types; list indexed by k}
+    	 	 do let dermuLwtj = K0_param(listj[0], derx0Ls[j]).lambda_minus_rho
+	    	    in for dertauLjk in listj
+	       	    do K0_param(dertauLjk,derx0Ls[j]).lambda_minus_rho - dermuLwtj {wt for K on derLj}
+	       	    od
+	 	 od
+   	    then test_coroots = [vec]:
+    	    	 for  alpha_vee in K0.simple_coroots
+    	 	 do if (alpha_vee*QKwt).=
+	    	    then []
+	   	    else [alpha_vee]
+	    	    fi
+	 	 od.## {simple coroots for K0 NOT in any Lj\cap K}
+	    then taushifts = for shiftlist@j in dertauLjshifts
+    	 	   {for jth simple factor of L, this is a list of the (ratvec)
+    	 	    contributions to shift on G from the various dertauLj}
+    	 	 do let Sj = SFRP[j]
+		    in for dertauLjshift in shiftlist
+    	 	       do Proj*(sum(G.rank, for xi@k in fundamental_coweights(derLs[j])
+			      	       	    do ((derProjKinvs[j]*dertauLjshift)*xi)*
+							       (G.simple_roots[Sj[k]])
+					    od))
+		       od
+		 od
+    	    then B = [[int]]: {one coord of B for each derLj, ranging from 0 to #dertauLjshifts}
+	      	 box(for list in dertauLs do #list od) {coords of box indexed by j}
+	      	 	 {going to look at all tensor products over j of dertauLj}
+    	    in for b in B
+    	       do let trial = ratvec_as_vec(sum(rank(K0),
+		      	      for m@j in b do taushifts[j][b[j]] od) + muwt)
+		  in if all([(->bool)]:for alpha_vee in test_coroots
+			     	  	     	 do @bool:(alpha_vee * trial).>= od)
+
+		     then tauWtHash.match(trial)
+		     fi
+	       od {now we've put into tauWtHash the bottom layer dominant wts attached to Q}
+	 od {for Q in max_Qs(Qmin)}
+    then allS = for i:2^(#fixc)
+    	      	do for j:2^(#pairsc)
+		   do (Smin##(for k in set_bit_positions(i) do fixc[k] od)
+		      	  ##(for ell in set_bit_positions(j) do pairsc[ell] od.##)).sort
+		   od
+		od.##
+    then last = 2^(#fixc + #pairsc) - 1
+    then Qhash = make_vec_hash() {list all possible S for Q containing Qmin}
+    then () = for S in allS do Qhash.match(S) od
+    then K_type_lists = [[KType]]: for j:Qhash.size() do [] od
+    then tauwts = tauWtHash.list()
+     then () = for tauwt in tauwts
+       	       do let Ssmall = [int]: (Smin ##
+		     	      (for col@i in fixc_cowts
+		     	      do if ((tauwt-muwt)*col).= then [] else [fixc[i]] fi
+		  	      od.##)
+			   ## (for col@j in pairsc_cowts
+		  	       do if ((tauwt-muwt)*col).= then [] else pairsc[j] fi
+		  	       od.##)
+			       ).sort_u
+		  then s = Qhash.lookup(Ssmall)
+		  then () = if s = last
+		       	    then prints(tauwt," ",muwt)
+			    fi
+		  in K_type_lists[s]#:= K_type(K_highest_weight_from_K0_weight(x0G, tauwt))
+	       od.##
+    then QKData = for S@m in allS
+    	 	  do if #K_type_lists[m] > 0
+		     then [(KGPElt:(S,Qmin.x),K_type_lists[m])]
+		     else []
+		     fi
+		  od.##
+    in bfBTime+:= elapsed_ms() - start; QKData
 
 {For KType mu, assumed coh ind from Q, lists the K-types tau which
 
@@ -1036,7 +1180,7 @@ set bottom_K_type_Qs2(KType mu, KGPElt Q, int D_low, int D) = QKL_bottom_data:
     then muL = highest_LK(mu,Q)
     then dermuLs = [KType]: derived_factor_K_types0(muL)
     then derLs = [RealForm]: derived_simple_factorsRF(L)
-    then maxLs = [int]: for G in derLs do ((G.two_rho)*(G.two_rho_check))\2 od
+    then maxLs = [int]: for derL@j in derLs do max( ((derL.two_rho)*(derL.two_rho_check))\2, height(dermuLs[j])) od
     then derProjKinvs = for derL in derLs do right_inverse(projection_to_K_matrix(derL)) od
     then cutter = int: G.semisimple_rank
     then DL_lows = for derL@j in derLs
@@ -1093,6 +1237,8 @@ set bottom_K_type_Qs2(KType mu, KGPElt Q, int D_low, int D) = QKL_bottom_data:
 		     fi
 		  od.##
     in bfTime+:= elapsed_ms() - start; (Q,LKData)
+
+
 
 {For the Param p, lists the K-types tau in height range (D_low,D] which
 
@@ -1382,20 +1528,28 @@ set bottom_elim_factors_more(Param p0, Param p, int D_low, int D, KTypePol P)= b
 			return G_pure
 	        fi
      then () = befmoreTime +:= elapsed_ms() - start
-     then () = if not all(for (Q,pL) in maxQps
-     	       	      	  do @bool: all(for mu in LKTs(p)
-			     	     	    do  @bool: bottom_elim_factors(p0, p,
-					    	bottom_K_type_Qs2(mu,Q,D_low,D), P)
-					    od)
+     then test = if Qs2B_flag
+     	       	 then all(for mu in LKTs(p)
+		      	  do @bool: all(for (Q,list) in bottom_K_type_Qs2B(mu,Q0,D_low,D)
+	       	      	     	    	do @bool : bottom_elim_factors(p0, p, bottom_factors(Q,list), P)
+			  	    	od)
 			  od)
-	       then let MG = more_good_hash.size()
-		    then mg = more_good_hash.match(p0)
-		    then () = if bottom_verbose and mg=MG
+     		 else all(for mu in LKTs(p)
+		      	  do @bool: all(for (Q,pL) in maxQps
+     	       	      	     	    	do @bool: bottom_elim_factors(p0, p,
+					    	bottom_K_type_Qs2(mu,Q,D_low,D), P)
+				        od)
+			  od)
+		 fi
+    then () = if not test
+    	      then let MG = more_good_hash.size()
+		   then mg = more_good_hash.match(p0)
+		   then () = if bottom_verbose and mg=MG
 			      then prints("at p = ",p0,", more helped!")
 			      fi
-                    {then () = attest_is_unitary(p,false)}
-		    then () = befmoreTime +:= elapsed_ms() - start
-		    in return false
+                   {then () = attest_is_unitary(p,false)}
+		   then () = befmoreTime +:= elapsed_ms() - start
+		   in return false
 	       fi
      then () = if bottom_verbose then prints("sorry, don't know") fi
      in true
