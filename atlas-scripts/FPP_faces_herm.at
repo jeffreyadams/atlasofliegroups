@@ -2663,25 +2663,36 @@ set localFD_1Dirac2_by_zero\
 				  fi
 			    od.##
     then TranList = [int]: for v in LF0[#FixedList:] do v[0] od
-    then Llookup = is_member_sorted(FixedList##TranList)
+     then Llookup = is_member_sorted(FixedList##TranList)
+    then E = #FPP_edges(G), F = #FPP_vertices(G), f = #FixedList
     then Edges = [vec]:
     	 let startFF = elapsed_ms()
     	 then EdgesFixFix = [vec]:
-	      let F = #FixedList
-	      in if F < 2 then []
-	      	 else
-	      for j in FixedList[:F-1]
-	      do for w in FPP_edges_by_zero_unsorted(G)[Perm2.fixed[j]]
-		 do let k = locate_sorted(Perm2.fixed, w[1])
-		    in if k < #Perm2.fixed and Perm2.fixed[k] = w[1] and
+	       if f < 2 then []
+	       elif f*F > E
+	       then {prints("we're in A");} for j in FixedList[:f-1]
+	       	    do for w in FPP_edges_by_zero_unsorted(G)[Perm2.fixed[j]]
+		       do let k = locate_sorted(Perm2.fixed, w[1])
+		       	  in if k < #Perm2.fixed and Perm2.fixed[k] = w[1] and
 		       	     Llookup(k)
-		       then [[j,k].sort]
-		       else []
-		       fi
-		    od.## {list of edges starting with j}
-	       od.## {list of all FixFix edges}
-	       fi {F < 2}
-	    then () = FD12bzFFTime +:=elapsed_ms() - startFF
+		       	     then [[j,k].sort]
+		       	     else []
+		       	     fi
+		        od.## {list of edges starting with j}
+	       	     od.## {list of all FixFix edges}
+	       else let lookups = FPP_edges_by_zero_indices(G)
+	        {index_in(FPP_edges(G)) {f choose 2 tests}}
+	       	    in {prints("we're in B");} for j in FixedList[:f-1] {f * (E/F)/2 tests}
+	      	       do for k in FixedList[j+1:f]
+		      	  do if lookups[Perm2.fixed[j]]([Perm2.fixed[j],Perm2.fixed[k]]).>=
+			     	and Llookup(k)
+		       	     then [[j,k]]
+		       	     else []
+		       	     fi
+		    	  od.## {list of edges starting with j}
+	       	       od.## {list of all FixFix edges}
+	       fi {f < 2}
+	   then () = FD12bzFFTime +:=elapsed_ms() - startFF
 	   {then () = if time_verbose
 	   	     then prints("for FixFix, time is ",print_time_string(elapsed_ms() - startFF))
 		     fi}

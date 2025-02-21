@@ -947,6 +947,7 @@ set FPP_edges_rat = (InnerClass -> [[ratvec]]):
 {Following two variables could be preloaded by reading a file afterward.}
 set ichashezu = make_InnerClass_hash()
 set FPPebzu = [[[FaceVertsIndex]]]: []
+set indicesebz = [[(vec -> int)]]: [] {ith list is the indices into all edges_by_zero lists for real form i}
 
 {edges in a list indexed by first vertex; size is number of FPP vertices}
 {this command takes 5 min/ 2.21g on laptop, 15 min/3.5 g on wave}
@@ -961,16 +962,23 @@ set FPP_edges_by_zero_unsorted = (InnerClass ic) [[FaceVertsIndex]]:
 		    	      do answer[v[0]] #:= v
 			      od
 	       	    then () = FPPebzu #:= answer
+		    then () = indicesebz #:= for list in answer do index_in(list) od
     	      	    {then () = FPPebz_time +:= elapsed_ms() - start}
 	      	    in ()
 	      	 fi
 in FPPebzu[i]
 
+set FPP_edges_by_zero_indices(InnerClass ic) = [(vec->int)]:
+    let () = FPP_edges_by_zero_unsorted(ic)
+    then i = ichashezu.match(ic)
+    in indicesebz[i]
+
 set append_to_febzu(InnerClass ic, [[FaceVertsIndex]] FVs) = void:
     let I = ichashezu.size()
     then i = ichashezu.match(ic)
     in if i=I {haven't seen this inner class before}
-       then FPPebzu #:= FVs
+       then FPPebzu #:= FVs;
+       	    indicesebz #:= for list in FVs do index_in(list) od
        fi
 
 set febzu_report() = void:
