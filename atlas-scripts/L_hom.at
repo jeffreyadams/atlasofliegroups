@@ -7,7 +7,7 @@ set_type [L_homomorphism = (KGBElt_gen y,ratvec gamma)]
 
 {usualay this is used this in the setting of packets, but not individual representations}
 set make_dominant(KGBElt_gen y,ratvec gamma)=L_homomorphism:
-let (w,gamma_dom)=to_dominant(y.real_form,gamma) in (w*y,gamma_dom)
+let (w,gamma_dom)=to_dominant(y.root_datum,gamma) in (w*y,gamma_dom)
 
 {next two are synonyms
  gamma is not required to be dominant
@@ -22,10 +22,13 @@ assert(is_valid(phi(y,p.infinitesimal_character)),"y(p) is not valid");y
 
 {when making pair (x,phi) dominant: apply the same Weyl group element to x and phi}
 set make_dominant(KGBElt x,L_homomorphism (y,gamma))=(KGBElt,L_homomorphism):
-let (w,gamma_dom)=to_dominant(y.real_form,gamma) in (w*x,(w*y,gamma_dom))
+let (w,gamma_dom)=to_dominant(y.root_datum,gamma) in
+let ()=prints("wx: ", w*x) then
+()=prints("wphi: ", w*y, " ", gamma_dom) in
+(w*x,(w*y,gamma_dom))
 
 set make_dominant(KGBElt_gen x,L_homomorphism (y,gamma))=(KGBElt_gen,L_homomorphism):
-let (w,gamma_dom)=to_dominant(y.real_form,gamma) in (w*x,(w*y,gamma_dom))
+let (w,gamma_dom)=to_dominant(y.root_datum,gamma) in (w*x,(w*y,gamma_dom))
 
 set L_packet(RealForm G,L_homomorphism phi)=[Param]:
 assert(is_valid(phi), "phi is not valid");
@@ -38,20 +41,16 @@ let fiber=fiber(G,-^y.involution) in
  P=finalize(p) in
  monomials(P) od
 
-set super_L_packet(ratvec gamma,KGBElt_gen y)=[Param]:
-let phi=phi(y,gamma) in is_valid(phi);
-##for G in real_forms(dual_quasisplit_form(y.real_form)) do L_packet(G,phi) od
-
-
 set L_packet(L_homomorphism phi)=[[Param]]:
 for G in strong_real_forms(dual_quasisplit_form(phi.y.inner_class)) do
  let LP=L_packet(G,phi) in 
  if #LP>0 then [LP] else [] fi od.##
 
 set pure_L_packet(L_homomorphism phi)=[[Param]]:
-for G in pure_strong_real_forms(dual_quasisplit_form(phi.y.real_form)) do
+for G in pure_strong_real_forms(dual_quasisplit_form(phi.y.inner_class)) do
  let LP=L_packet(G,phi) in
  if #LP>0 then [LP] else [] fi od.##
+
 
 set phi(Param p)=L_homomorphism:phi(y_gen(p),infinitesimal_character(p))
 
@@ -71,4 +70,59 @@ set KGB_elt_gen (RootDatum rd, mat theta, ratvec v) = KGBElt_gen:
 set KGB_elt_gen (Tits_elt t)=KGB_elt_gen(t.root_datum,t.theta,2*t.torus_part-t.root_datum.rho_check)
 
 
+{-----------various things related to stability------------}
+
+set sign(KGBElt x,ratvec z)=int:(-1)^(rat_as_int(x.unnormalized_torus_factor*z))
+
+{stable sum of phi on single real form}
+set stable_sum(RealForm G,L_homomorphism phi)=param_pol(L_packet(G,phi))
+
+{stable sum collection of phis (and coefficients) on one real form}
+set stable_sum(RealForm G,[(Split,L_homomorphism)] pairs)=ParamPol:
+sum(G,for (c,phi) in pairs do c*stable_sum(G,phi) od)
+
+{stable sum from phi on all strong real forms, with sign coming from central element z}
+set pure_stable_sum(L_homomorphism phi,ratvec z)=[ParamPol]:
+for packet in pure_L_packet(phi) do
+ let G=packet[0].real_form in kottwitz_sign(G)*(-1)^rat_as_int(central_invariant(G)*z)*param_pol(packet) od
+
+{stable sum from collection of phis (and coefficients), on all strong real forms, with sign coming from central z}
+set pure_stable_sum([(Split,L_homomorphism)] pairs,ratvec z)=[[ParamPol]]:
+for (c,phi) in pairs do
+ for packet in pure_L_packet(phi) do
+  let G=packet[0].real_form in c*kottwitz_sign(G)*(-1)^rat_as_int(central_invariant(G)*z)*param_pol(packet)
+ od
+od
+
+{take stable sum on G_qs to pure stable sum on pure inner forms}
+set pure_stabilize(ParamPol P,ratvec z)=[ParamPol]:
+if =P then [] else
+assert(is_stable(P),"P is not stable");
+assert(is_quasisplit(P.real_form), "G is not quasisplit");
+for G in pure_strong_real_forms(P.real_form) do
+let x=first_param(P).x {all should gave the same answer} in
+kottwitz_sign(G)*sign(x,z)*inner_lift(P,G) od fi
+
+set pure_stabilize(Param p,ratvec z)=[ParamPol]:pure_stabilize(1*p,z )
+
+set super_L_packet(ratvec gamma,KGBElt_gen y)=[Param]:
+let phi=phi(y,gamma) in is_valid(phi);
+##for G in real_forms(dual_quasisplit_form(y.real_form)) do L_packet(G,phi) od
+
+{on one real form}
+set stable_as_L_packet_sum(ParamPol P)=[(Split,L_homomorphism)]:
+assert(is_stable(P),"P is not stable");
+let  rv=[(Split,L_homomorphism)]:[] in 
+if =P
+ then []
+else
+ let G=P.real_form in
+ while !=P do
+  let (c,p)=(%P)[0] then
+  phi=phi(p) in
+  P-:=c*stable_sum(G,phi);
+  rv#:=(c,phi(p))
+ od
+ fi;
+rv
 

@@ -24,19 +24,21 @@ phi_G_0=phi(y_G,gamma_G) then
 ()=assert(is_valid(phi_G_0), "phi_G is not valid") then
 theta_G_v=involution(y_G) then
 theta_G=-^theta_G_v then
-{()=if e_verbose then prints("theta_G: ", theta_G,new_line,"torus_factor(x_H): ", torus_factor(x_H)) fi then
-mu_H=unnormalized_torus_factor(x_H) then
+()=if e_verbose then prints("theta_G: ", theta_G,new_line,"torus_factor(x_H): ", torus_factor(x_H)) fi then
+{mu_H=unnormalized_torus_factor(x_H) then
 ()=if e_verbose then prints("unnormalized torus factor of x_H: ", mu_H) fi then
-mu_G=mu_H*M+ rho_check(G)  then
+pppmu_G=mu_H*M+ rho_check(G)  then
 ()=if e_verbose then prints("unnormalized torus factor of x_G: ", mu_G) fi then
 tau_G=(1+theta_G)*(2*mu_G-rho_check(G))/2 then
 ()=if e_verbose then prints("normalized torus factor of x_G: ", tau_G) fi then}
 {x_G=KGB_elt(inner_class(G),theta_G,tau_G) then}
 x_G_0=KGB_elt(inner_class(G),theta_G,x_H.torus_factor*M) then
-()=if e_verbose then prints("x_G_0: ", x_G_0, " ", x_G_0.real_form, " ", x_G_0.torus_factor) fi then
+()=if e_verbose then prints("x_G_0: ", x_G_0) fi then
+()= if e_verbose then prints("x_G_0.real_form: ",x_G_0.real_form) fi then
+()=if e_verbose then prints("x_G_0.torus_factor",x_G_0.torus_factor) fi then
 (x_G,phi_G)=make_dominant(x_G_0,phi_G_0) then
 ()=if e_verbose then prints("x_G: ", x_G, " ", x_G.real_form, " ", x_G.torus_factor) fi then
-p_G=parameter(x_G,phi_G_0) then
+p_G=parameter(x_G,phi_G) then
 ()=if e_verbose then prints("p_G=", p_G) fi
 in (p_G,finalize(p_G))
 
@@ -135,5 +137,18 @@ set test_epstar_std(RealForm G,ratvec v)=test_epstar_std(G,v,id_W(G))
 
 {---------------irreducibles-----------}
 
+set epstar_irr(Param p_H,RealForm G,mat M)=ParamPol:
+composition_series(epstar_std(character_formula(p_H),G,M))
 
+set epstar_irr(Param p_H,RealForm G)=ParamPol:epstar_irr(p_H,G,id_mat(rank(G)))
 
+set epstar_irr(ParamPol P_H,RealForm G,mat M)=
+sum(G,for (c,p) in %P_H do c*epstar_irr(p,G,M) od)
+
+set epstar_irr(ParamPol P_H,RealForm G)=
+sum(G,for (c,p) in %P_H do c*epstar_irr(p,G) od)
+
+{P should be stable on G_qs, P is a ParamPol of irreducibles}
+set epstar_stable(ParamPol P,RealForm G,mat M,ratvec z)=
+let ps=pure_stabilize(P,z) in
+sum(G,for P in ps do prints("P=",P);let ep=epstar_irr(P,G,M)  in prints("ep=",ep);ep od)

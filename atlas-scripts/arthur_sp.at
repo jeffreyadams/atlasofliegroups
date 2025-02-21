@@ -367,3 +367,8 @@ set ind_upq(int n, int shift)=induce_arthur_packet_trivial_upq_strong(n,shift)
 {-----------------------------inducing from 1 dimensional on U(p,q) x Sp(2m,R) -----------}
 
 
+set list_Arthur_packets(RealForm G)=
+let wp=weak_packets(G) in
+for packet in wp do 
+ let min=min_height(parameters(packet)) in
+  for p in min do Arthur_packet(p) od od

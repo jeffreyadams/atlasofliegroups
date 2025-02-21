@@ -14,7 +14,7 @@ set KGB_elt_gen(InnerClass ic,mat theta, ratvec v)=KGBElt_gen:
  
 set KGB_elt(KGBElt_gen x)=KGB_elt(x.inner_class,x.involution,x.torus_factor)
 
-set root_datum(KGBElt_gen x)=RootDatum: root_datum(real_form(x))
+set root_datum(KGBElt_gen x)=RootDatum:x.inner_class.root_datum
 
 set grading_coweight (KGBElt x) = ratvec: torus_factor(x) + rho_check_i(x)
 
