@@ -5447,7 +5447,9 @@ case discrimination_expr:
   std::ostringstream o; // for use in various error messages
 @)
   expression_ptr c  =  convert_expr(exp.subject,fc,subject_type);
-  if (subject_type.kind()!=union_type)
+  if (subject_type.raw_kind()==tabled)
+    subject_type = subject_type.expanded();
+  if (subject_type.raw_kind()!=union_type)
     @< Report that a discrimination clause needs to be a union type,
        |exp.subject| has non-union type |subject_type| @>
   const auto* variants = subject_type.tuple();
@@ -5466,7 +5468,7 @@ case discrimination_expr:
     @< Filter from |candidates| those that do not know all |tags|, and report an
        error if this does not reduce it to a singleton;
        otherwise set |positions| according to that remaining candidate @>
-    const auto& field_names = candidates.front()->fields;
+    const wtl_const_iterator candidate_var_tps(candidates.front()->tp.tuple());
   @)
     @< Process |branches| and assign them to |choices|, possibly reordering them
       according to the specified variant names and taking into account a
@@ -5492,10 +5494,11 @@ with the case with tags.
   wtl_const_iterator type_it(variants);
   for (size_t k=0; k<n_branches; ++k,++branch_it,++type_it)
   { const auto& branch = *branch_it;
-    const auto& variant_type = *type_it; // type of variant for this branch
-    @/@< Type-check branch |branch.branch|, with |branch.pattern| bound to
-         |variant_type|, against result type |tp|,  and insert the
-         |choice_part| resulting from the conversion into |choices[k]| @>
+    const type variant_type =
+      type::wrap(*type_it,fc); // type of current variant of the union
+    @/@< Type-check branch |branch.branch|, with the names of |branch.pattern|
+         bound to |variant_type|, requiring result type |tp|; insert the
+         resulting |choice_part| value into |choices[k]| @>
   }
 }
 
@@ -5569,11 +5572,15 @@ conversion of previous branches.
       ++pos_it;
       @< Check that |choices[k]| has not been filled before @>
       const wtl_const_iterator types_start(variants); // base for ``indexing''
-      const auto& variant_type = *std::next(types_start,k);
+      type variant_type =
+        type::wrap(*std::next(types_start,k),fc);
       // type of variant for this branch
-    @/@< Type-check branch |branch.branch|, with |branch.pattern| bound to
-         |variant_type|, against result type |tp|,  and insert the
-         |choice_part| resulting from the conversion into |choices[k]| @>
+      type tag_type = type::wrap(*std::next(candidate_var_tps,k),0,fc);
+      bool success = variant_type.unify(tag_type);
+      assert(success); ndebug_use(success);
+    @/@< Type-check branch |branch.branch|, with the names of |branch.pattern|
+         bound to |variant_type|, requiring result type |tp|; insert the
+         resulting |choice_part| value into |choices[k]| @>
     }
   }
   @< Check valid use of default branch, and insert it into the empty slots
@@ -5589,8 +5596,8 @@ entirely empty |id_pat| is recorded whenever |branch.pattern| does not bind
 any identifiers at all, which the |evaluate| method then will recognise if
 this branch is chosen, and suppress creating a |frame| for the branch.
 
-@< Type-check branch |branch.branch|, with |branch.pattern|... @>=
-{ if (not variant_type.can_specialise(pattern_type(branch.pattern)))
+@< Type-check branch |branch.branch|, with the names of |branch.pattern|... @>=
+{ if (not variant_type.unwrap().can_specialise(pattern_type(branch.pattern)))
   { o << "Pattern " << branch.pattern @|
       << " does not match type " << variant_type @|
       << " for variant " <<  main_hash_table->name_of(branch.label);
@@ -5599,7 +5606,7 @@ this branch is chosen, and suppress creating a |frame| for the branch.
 @)
   expression_ptr result;
   layer branch_layer(count_identifiers(branch.pattern));
-  thread_bindings(branch.pattern,variant_type,fc,branch_layer,false);
+  thread_bindings(branch.pattern,variant_type.unwrap(),fc,branch_layer,false);
   result=convert_expr(branch.branch,fc,tp);
 @/choices[k] = choice_part (copy_id_pat(branch.pattern),std::move(result));
 }
@@ -5747,11 +5754,11 @@ among the variants.
 {
   auto it=choices.begin();
   while(it->second.get()!=nullptr) ++it;
-  auto variant=field_names[it-choices.begin()];
-  if (variant==type_binding::no_id)
+  auto tag = candidates.front()->fields[it-choices.begin()];
+  if (tag==type_binding::no_id)
     o << "Missing branch for anonymous variant " << it-choices.begin();
   else
-    o << "Missing branch for variant " << main_hash_table->name_of(variant);
+    o << "Missing branch for variant " << main_hash_table->name_of(tag);
   o << " of type " << subject_type << " in discrimination clause";
   throw expr_error(e,o.str());
 }
