@@ -3273,7 +3273,17 @@ set local_test_GEO_hash_bottom_layer_interrupt(KGBElt x, ratvec lambda, LocalVer
    then start_datas = elapsed_ms(), newDs = [int]:[]
    then MU = big_unitary_hash.branch(K_type_pol(pmin), Ds~[0])
    then datass =  for j:{bl_step_count} #Ds - 1 from 1
-   	       	  do let datas = bottom_factors(bottom_K_type_Qs(pmin, Q0, Ds[j-1], Ds[j], MU))
+   	       	  do let datas = if Qs2_flag
+		     	       	 then for mu in LKTs(pmin)
+				      do if Qs2B_flag
+		     	       	      	 then bottom_factors(bottom_K_type_Qs2B(mu,Q0, Ds[j-1], Ds[j]))
+					 else for Q in max_Qs(Q0)
+					      do bottom_K_type_Qs2(mu,Q, Ds[j-1], Ds[j])
+					      od
+					 fi {Qs2B_flag}
+				       od.##
+		  		 else bottom_factors(bottom_K_type_Qs(pmin, Q0, Ds[j-1], Ds[j], MU))
+				 fi {Qs2_flag}
 		     {then () = prints("j = ",j,", card(datas) = ", card(datas),", datas = ",datas, new_line)}
 		     in if card(datas) > 0
 		     	then newDs #:= Ds[j];
@@ -3636,13 +3646,13 @@ set local_test_GEO_hash_bottom_layer(KGBElt x, ratvec lambda, {VertexData vd,}
 		      else []
 		      fi
 		   od.##
+   then start_data = elapsed_ms()
    then () = if more_flag {want to use non-minimal theta-stable q} {??? USE Qs2 ???}
    	     then let datas = if Qs2_flag
-	     	      	      then let start_data = elapsed_ms()
-			      	   then ans = for mu in LKTs(pmin)
-			      	       	      do if Qs2B_flag
-					      	 then bottom_factors(bottom_K_type_Qs2B(mu,Q0,height(pmin),D))
-						 else for (Q,pL) in maxQps
+	     	      	      then let ans = for mu in LKTs(pmin)
+			      	       	     do if Qs2B_flag
+					      	then bottom_factors(bottom_K_type_Qs2B(mu,Q0,height(pmin),D))
+						else for (Q,pL) in maxQps
 				       	      	      do let (,data) = bottom_K_type_Qs2(mu,Q,D)
 						      	 in if #data > 1
 						       	    then [(Q,data)]
@@ -3657,9 +3667,8 @@ set local_test_GEO_hash_bottom_layer(KGBElt x, ratvec lambda, {VertexData vd,}
 				      	   print_time_string(elapsed_ms() - start_data))
 				      fi;
 				      ans
-			      else let start_data = elapsed_ms()
-			      	   then ans = [QKL_bottom_data]:
-				   	    bottom_factors(bottom_K_type_Qs(pmin, Q0, D))
+			      else let ans = [QKL_bottom_data]:
+				       bottom_factors(bottom_K_type_Qs(pmin, Q0, D))
 				   then good_ans = for (Q,data) in ans
 				   		   do if #data > 1
 						      then [(Q,data)]

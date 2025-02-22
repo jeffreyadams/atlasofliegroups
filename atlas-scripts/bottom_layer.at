@@ -857,7 +857,9 @@ set bottom_elim_factors(Param p0, Param p, QKL_bottom_data (Q, LKdata), KTypePol
     	 	 then theta_stable_data_small(p)
 		 else theta_stable_quasi_data(p)
 		 fi
-    then () = if #(Q.S) = p.real_form.semisimple_rank then error() fi
+    then () = if #(Q.S) = p.real_form.semisimple_rank
+    	      then prints("tried to use Q=G in bottom_elim_factors"); error()
+	      fi
     then Lm = Qm.Levi, mu = LKTs(p0)[0]
     then muL = highest_LK(mu,Q), muLm = highest_LK(mu,Qm)
     then pLmis = monomials(1*pLm)
@@ -1070,7 +1072,8 @@ set bottom_K_type_Qs2B(KType mu, KGPElt Qmin, int D_low, int D) = [QK_bottom_dat
               od
 	 fi
     then mumin = highest_LK(mu,Qmin)
-    then tauWtHash = make_vec_hash() {to hold bottom layer wt candidates}
+    {then tauWtHash = make_vec_hash() {to hold bottom layer wt candidates}}
+    then tauPol = null_K_module(G) {to hold bottom layer K-types}
     then () = for Q in max_Qs(Qmin)
     	 do let L = Q.Levi, Smin = Qmin.S, SFRP = simple_factor_root_partition(Q), muL = highest_LK(mu,Q)
 	    then dermuLs = [KType]: derived_factor_K_types0(muL)
@@ -1125,10 +1128,24 @@ set bottom_K_type_Qs2B(KType mu, KGPElt Qmin, int D_low, int D) = [QK_bottom_dat
 		  in if all([(->bool)]:for alpha_vee in test_coroots
 			     	  	     	 do @bool:(alpha_vee * trial).>= od)
 
-		     then tauWtHash.match(trial)
+		     then tauPol +:= K_type(K_highest_weight_from_K0_weight(x0G, trial))
+		     {tauWtHash.match(trial)}
 		     fi
-	       od {now we've put into tauWtHash the bottom layer dominant wts attached to Q}
+	       od {now we've put into tauPol the bottom layer K-types attached to Q}
 	 od {for Q in max_Qs(Qmin)}
+    then QKData = for @tau in tauPol {bottom layer K-types by increasing height}
+    	      	  do let taushift = K0_param(tau,x0G).lambda_minus_rho - muwt
+	      	     then Ssmall = [int]: (Smin ##
+		      	       	      	   (for col@i in fixc_cowts
+		      		     	    do if (taushift*col).= then [] else [fixc[i]] fi
+		  	      		    od.##) ##
+			   		   (for col@j in pairsc_cowts
+		  	       		    do if (taushift*col).= then [] else pairsc[j] fi
+		  	       		    od.##)
+			       		    ).sort_u
+		     in (KGPElt:(Smin, Qmin.x), [tau])
+		  od
+{
     then allS = for i:2^(#fixc)
     	      	do for j:2^(#pairsc)
 		   do (Smin##(for k in set_bit_positions(i) do fixc[k] od)
@@ -1161,6 +1178,7 @@ set bottom_K_type_Qs2B(KType mu, KGPElt Qmin, int D_low, int D) = [QK_bottom_dat
 		     else []
 		     fi
 		  od.##
+}
     in bfBTime+:= elapsed_ms() - start; QKData
 
 {For KType mu, assumed coh ind from Q, lists the K-types tau which
