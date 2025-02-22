@@ -2682,8 +2682,8 @@ set localFD_1Dirac2_by_zero\
 	       	     od.## {list of all FixFix edges}
 	       else let lookups = FPP_edges_by_zero_indices(G)
 	        {index_in(FPP_edges(G)) {f choose 2 tests}}
-	       	    in {prints("we're in B");} for j in FixedList[:f-1] {f * (E/F)/2 tests}
-	      	       do for k in FixedList[j+1:f]
+	       	    in {prints("we're in B");} for j@i in FixedList[:f-1] {f * (E/F)/2 tests}
+	      	       do for k in FixedList[i+1:f]
 		      	  do if lookups[Perm2.fixed[j]]([Perm2.fixed[j],Perm2.fixed[k]]).>=
 			     	and Llookup(k)
 		       	     then [[j,k]]
