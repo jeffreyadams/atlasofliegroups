@@ -1815,7 +1815,7 @@ expression_ptr resolve_overload
   )
 {
   const expr& args = e.call_variant->arg;
-  auto n_args = args.kind==tuple_display ? length(args.sublist) : 1;
+  const auto n_args = args.kind==tuple_display ? length(args.sublist) : 1;
   auto tup_exp = std::make_unique<tuple_expression>(n_args);
   std::vector<expression_ptr>& arg_vector = tup_exp->component;
 @)
@@ -2031,7 +2031,7 @@ for (const auto& variant : variants)
   if (not variant.is_polymorphic() and
       (is_close(a_priori_type.unwrap(),variant.f_tp().arg_type)&0x1)!=0)
     // inexact match
-  { const type_expr& arg_type = variant.f_tp().arg_type;
+  { const type_expr arg_type = variant.f_tp().arg_type.expanded();
     expression_ptr arg; // will hold the final converted argument expression
     @< Apply an implicit conversion for every argument whose type in
        |a_priori_type| differs from that required in |arg_type|, then assign
@@ -2086,8 +2086,10 @@ the same.
       }
     else arg = convert_expr_strongly(cur_arg,fc,arg_type); // redo conversion
   }
-  else
-  { wtl_const_iterator apt_it(a_priori_type.tuple())
+  else // |n_args!=1|
+  { assert(a_priori_type.kind()==tuple_type
+       and arg_type.kind()==tuple_type);
+    wtl_const_iterator apt_it(a_priori_type.tuple())
     , argt_it(arg_type.tuple());
     wel_const_iterator exp_it(args.sublist);
     for (auto res_it = arg_vector.begin(); res_it!=arg_vector.end();
@@ -3060,7 +3062,8 @@ void thread_bindings
   if ((pat.kind & 0x2)!=0)
     // recursively traverse sub-list for a tuple of identifiers
   { assert(te.kind()==tuple_type);
-    wtl_const_iterator t_it(te.tuple());
+    auto tex = te.expanded(); // ensure substitution into any argument types
+    wtl_const_iterator t_it(tex.tuple());
     for (auto p_it=pat.sublist.begin(); not pat.sublist.at_end(p_it);
          ++p_it,++t_it)
       thread_bindings(*p_it,*t_it,lvl,dst,is_const);
@@ -5443,13 +5446,12 @@ in |type_expr::type_map| (presumably specifying tags) in that case.
 case discrimination_expr:
 { auto& exp = *e.disc_variant;
   size_t n_branches=length(&exp.branches);
-  type_expr subject_type;
+  type_expr subject_te;
   std::ostringstream o; // for use in various error messages
 @)
-  expression_ptr c  =  convert_expr(exp.subject,fc,subject_type);
-  if (subject_type.raw_kind()==tabled)
-    subject_type = subject_type.expanded();
-  if (subject_type.raw_kind()!=union_type)
+  expression_ptr c  =  convert_expr(exp.subject,fc,subject_te);
+  type subject_type = type::wrap(subject_te.expanded(),fc);
+  if (subject_type.unwrap().raw_kind()!=union_type)
     @< Report that a discrimination clause needs to be a union type,
        |exp.subject| has non-union type |subject_type| @>
   const auto* variants = subject_type.tuple();
@@ -5459,7 +5461,7 @@ case discrimination_expr:
   if (exp.has_tags())
   {
     sl_list<id_type> tags = exp.tag_set();
-    auto candidates = type_expr::matching_bindings(subject_type,fc);
+    auto candidates = type_expr::matching_bindings(subject_type);
     if (candidates.empty())
       @< Report that union type |subject_type| cannot be used in a discrimination
          clause without having been defined @>
@@ -5524,7 +5526,7 @@ whose set of tags do not provide for all tags that were used in the clause.
           pos.push_back(i);
           break;
         }
-      if (i==fields.size()) // then |tag| was not found
+      if (i==n_variants) // then |tag| was not found
       { if (unique_candidate)
           @< Report that |tag| does not match any of the tags of our unique
              candidate type @>
@@ -5634,7 +5636,7 @@ at least~$2$ so that a union type can be recognised in the error message.
 { type_list l; auto n = std::max<size_t>(2,n_branches);
   while (n-->0)
     l.push_front(unknown_type.copy());
-  throw type_error(exp.subject,std::move(subject_type),
+  throw type_error(exp.subject,subject_type.bake_off(),
                    type_expr::tuple_or_union(union_type,std::move(l)));
 }
 
@@ -7812,24 +7814,24 @@ latter. This simplifies testing of type compatibility in the destination
 pattern, where the only possible error now is that a type for a ``parent''
 identifier does not match the (possibly partly specified) tuple type
 established by its children. The main information obtained by the traversal is
-recorded in the output parameter |tp|, which is preferred here over a return
+recorded in the output parameter |te|, which is preferred here over a return
 value because its value is obtained by multiple calls of the |specialise|
-method.
+method, and in addition possibly expansion of tabled type subexpressions.
 
 @< Function definitions @>=
-void threader::thread(const id_pat& pat,type_expr& tp)
+void threader::thread(const id_pat& pat,type_expr& te)
 { if ((pat.kind&0x4)!=0)
     @< Throw an error to signal forbidden qualifier \.! before |pat.name| @>
   if ((pat.kind&0x2)!=0) // first treat any sublist
-  { tp.specialise(unknown_tuple(length(pat.sublist)));
-    assert(tp.kind()==tuple_type); // this should succeed
-    wtl_iterator t_it(tp.tuple());
+  { te.expand().specialise(unknown_tuple(length(pat.sublist)));
+    assert(te.kind()==tuple_type); // this should succeed
+    wtl_iterator t_it(te.tuple());
     for (auto it=pat.sublist.begin(); not pat.sublist.at_end(it); ++it,++t_it)
       thread(*it,*t_it);
   }
   if ((pat.kind&0x1)!=0)
   @< Look up type associated to |pat.name|, and after making some checks,
-     record it in |tp|, updating our fields |locs|, |globs|, |is_global| and
+     record it in |te|, updating our fields |locs|, |globs|, |is_global| and
      |assoc| @>
 }
 
@@ -7837,7 +7839,7 @@ void threader::thread(const id_pat& pat,type_expr& tp)
 is quite straightforward here. We need to check for the absence of repeated
 identifiers, look up each identifier locally and maybe globally, refuse
 assigning to identifiers that were marked as being constant, transfer the type
-information from that lookup into |tp| using a |specialise| call, and finally
+information from that lookup into |te| using a |specialise| call, and finally
 recording the localisation of the identifiers in our various fields.
 
 @< Look up type associated to |pat.name|, and after making some checks... @>=
@@ -7854,11 +7856,11 @@ recording the localisation of the identifiers in our various fields.
 
   is_global.extend_capacity(not is_local); // push one bit onto the |BitMap|
 @)
-  if (not tp.specialise(id_t->unwrap()))
-  // incorporate type found for |id| into |tp|
+  if (not te.specialise(id_t->unwrap()))
+  // incorporate type found for |id| into |te|
     @< Throw an error to signal type incompatibility for |id| @>
-  assoc.push_back(std::make_pair(id,&tp));
-    // record pointer to |tp| for later refinement of |id|
+  assoc.push_back(std::make_pair(id,&te));
+    // record pointer to |te| for later refinement of |id|
   if (is_local)
     locs.push_back(multiple_assignment::local_dest{i,j});
   else
@@ -7903,7 +7905,7 @@ assembling the data to identify the error.
 { std::ostringstream o;
   o << "Incompatible type for '" << main_hash_table->name_of(id)
   @|<< "' in multi-assignment: type " << *id_t
-  @|<< " does no match pattern " << tp;
+  @|<< " does no match pattern " << te;
   throw expr_error(e,o.str());
 }
 
@@ -8642,16 +8644,17 @@ case field_ass_stat:
       and (tuple_t=global_id_table->type_of(tuple,is_const))==nullptr)
     report_undefined(tuple,e,"field assignment");
 @.Undefined identifier@>
+  type tuple_tp = type::wrap(tuple_t->unwrap().expanded(),tuple_t->floor());
   if (is_const)
     report_constant_modified(tuple,e,"field assignment");
 @.Name is constant @>
-  assert(not tuple_t->is_polymorphic());
+  assert(not tuple_tp.is_polymorphic());
   // polymorphic variables are made constant
 @)
-  unsigned pos; const type_expr* comp_loc;
-  @< Look up a projector for |*tuple_t| named |selector|, and if found assign
-     its |position| to |pos| and make |comp_loc| point to the corresponding
-     component |type_expr| of |*tuple_t|; on failure |throw expr_error| @>
+  unsigned pos; const_type_p comp_loc;
+  @< Look up a field of |tuple_tp| named |selector|, and if found assign
+     its position to |pos| and make |comp_loc| point to the corresponding
+     component |type_expr| of |tuple_t|; on failure |throw expr_error| @>
   expression_ptr r = convert_expr_strongly(rhs,fc,*comp_loc);
   expression_ptr p;
   if (is_local)
@@ -8666,21 +8669,63 @@ the function found is not a projector, then we signal failure. Moving |pos|
 places forward in the linked list can be done by calling |std::next| after
 converting the raw node pointer |tuple_t->tuple()| to a weak type list iterator.
 
-@< Look up a projector for |*tuple_t| named |selector|... @>=
-{ const auto* entry=global_overload_table->entry(selector,tuple_t->unwrap());
-  if (entry==nullptr)
-    throw expr_error (e,"Improper selection in field assignment");
-  const projector_value* proj=
-    dynamic_cast<const projector_value*>(entry->value().get());
-  if (proj==nullptr)
+@< Look up a field of |tuple_tp| named |selector|... @>=
+{ std::ostringstream o;
+  if (tuple_tp.unwrap().raw_kind()!=tuple_type)
     throw expr_error
-      (e,"Selector in field assignment is not a projector function");
-  pos=proj->position;
-  assert(tuple_t->kind() == tuple_type and pos < length(tuple_t->tuple()));
+      (e,"Field assignment with variable of non tuple type");
+  auto candidates = type_expr::matching_bindings(tuple_tp);
+  if (candidates.empty())
+    @< Report that field assignments for tuple type |tuple_tp| require a
+       type definition with field names @>
+  for (auto it=candidates.begin(); not candidates.at_end(it); ) // no |++it|
+  { unsigned int i;
+    for (i=0; i<(*it)->fields.size(); ++i)
+      if ((*it)->fields[i]==selector)
+      {@; pos=i;
+        break;
+      }
+    if (i==(*it)->fields.size())
+      candidates.erase(it);
+    else
+      ++it;
+  }
+  if (candidates.empty())
+    @< Report that |tuple_tp| has no defined field named |selector| @>
+  else if (not candidates.singleton())
+    @< Report selecting |selector| from |tuple_tp| is ambiguous @>
 @)
-// |comp_loc| needs to point to a modifiable |type_expr|; point it into |tuple_t|
+  comp_loc = &*std::next(wtl_const_iterator(tuple_tp.unwrap().tuple()),pos);
+}
 
-  comp_loc = &*std::next(wtl_const_iterator(tuple_t->tuple()),pos);
+@ We try to give error messages that identify clearly what has gone wrong.
+
+@< Report that field assignments for tuple type |tuple_tp| require a
+   type definition with field names @>=
+{ o << "Type " << tuple_tp
+    << " of variable in field assignment has no associated field names";
+  throw expr_error(e,o.str());
+}
+
+@ When there are field selectors for the tuple type, but the selector matches
+none of the candidates, we blame the selector rather than the type.
+
+@< Report that |tuple_tp| has no defined field named |selector| @>=
+{ o << "Type " << tuple_tp @|
+    << " of variable in field assignment has no field '" @|
+    << main_hash_table->name_of(selector) << '\'';
+  throw expr_error(e,o.str());
+}
+
+@ In the rare case that there is more than one tuple type (constructor) that
+both matches the type of the variable being selected from and have a field
+called |selector|, we just say the situation is ambiguous.
+
+@< Report selecting |selector| from |tuple_tp| is ambiguous @>=
+{ o << "Type " << tuple_tp @|
+    << " of variable matches more than one definition with field name '" @|
+    << main_hash_table->name_of(selector) << '\'';
+  throw expr_error(e,o.str());
 }
 
 @ Type-checking and converting component and field transform statements is quite
@@ -8727,14 +8772,15 @@ case field_trans_stat:
       (tuple_t=global_id_table->type_of(tuple,is_const))==nullptr)
     report_undefined(tuple,e,"field transform");
 @.Undefined identifier@>
+  type tuple_tp = type::wrap(tuple_t->unwrap().expanded(),tuple_t->floor());
   if (is_const)
     report_constant_modified(tuple,e,"field transform");
 @.Name is constant @>
-  assert(not tuple_t->is_polymorphic());
+  assert(not tuple_tp.is_polymorphic());
   // polymorphic variables are made constant
 @)
   unsigned pos; const_type_p comp_loc;
-  @< Look up a projector for |*tuple_t| named |selector|... @>
+  @< Look up a field of |tuple_tp| named |selector|... @>
   expression_ptr call;
   @< Assign to |call| the |convert_expr| of the application of |op| to
      an argument pair formed of |lhs|... @>

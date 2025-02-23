@@ -582,7 +582,8 @@ overloaded instances.
 
 @< Global function def... @>=
 void overload_table::add (id_type id, shared_function val, type&& tp)
-{ assert (tp.kind()==function_type);
+{ tp.expand(); // ensure any tabled function type constructor is expanded
+  assert (tp.kind()==function_type);
   func_type ftype(tp.func()->copy()); // locally copy the function type
   auto its = table.equal_range(id);
   if (its.first==its.second) // a fresh overloaded identifier
@@ -940,7 +941,8 @@ void definition_group::thread_bindings(const id_pat& pat,const type_expr& te)
   if ((pat.kind & 0x2)!=0)
     // recursively traverse sub-list for a tuple of identifiers
   { assert(te.kind()==tuple_type);
-    wtl_const_iterator t_it(te.tuple());
+    auto tex = te.expanded(); // ensure substitution into any argument types
+    wtl_const_iterator t_it(tex.tuple());
     for (auto p_it=pat.sublist.begin(); not pat.sublist.at_end(p_it);
          ++p_it,++t_it)
       thread_bindings(*p_it,*t_it);
@@ -954,7 +956,8 @@ of the definitions.
 @< Global function definitions @>=
 
 void definition_group::add(id_type id,type&& tp, unsigned char flags)
-{ @< Check that this identifier is not already bound in the same group @>
+{ tp.expand(); // ensure tabled function types are made explicit
+  @< Check that this identifier is not already bound in the same group @>
   @< Check that we are not setting an operator to a non-function value @>
   @< When |tp| is a function type, test for conflicts in the overload table @>
   constness.set_to(bindings.size(),(flags&0x4)!=0);
@@ -1003,7 +1006,8 @@ which is all that we need from it here.
 
 @< When |tp| is a function type, test for conflicts in the overload table @>=
 {
-  if (tp.kind()==function_type) // then test for conflicts with existing entries
+  if (tp.kind()==function_type)
+    // then test for conflicts with existing entries
   { if (@[auto* var=global_overload_table->variants(id)@;@])
     { bool dummy;
       locate_overload(id,*var,tp.func()->arg_type, dummy);

@@ -482,7 +482,11 @@ unsigned short tabled_arity() const; // number of arguments taken
 bool is_recursive() const; // whether |tabled| type is recursive
 id_type type_name () const; // identifier corresponding to |tabled_variant|
 type_expr expanded () const; // top level expansion of |tabled_variant|
-
+type_expr& expand ()
+{@; if (tag==tabled)
+      *this = expanded();
+    return *this;
+}
 
 @ There is a default constructor that sets |kind==undetermined_type| and
 constructs no variant at all (in \Cpp\ \emph{at most} one variant of a union is
@@ -861,19 +865,6 @@ here any specialisation that brings $t_1$ closer to $t_2$ cannot be harmful
 important, we provide an accessor method |can_specialise| that can be tested
 before calling |specialise| to avoid unwanted side-effects.
 
-This method must pay some nontrivial attention to types with |tag==tabled|,
-whose (possibly recursive) meaning is stored in |type_expr::type_map|. Types or
-type constructors that are entered into that table never have undetermined
-components, so if |tag==tabled| holds for our own |type_expr|, then no side
-effect will be produced, and we revert to |can_specialise| to just find the
-Boolean result. In the unlikely case that our type is neither undetermined nor
-tabled, but we do have |pattern.tag==tabled| (apparently the context had imposed
-some partial structure, but the type check came up with a tabled type instead),
-we expand the definition of |pattern| in a recursive call of specialise, just to
-make sure we don't accidentally miss a case where the tabled type does match the
-context requirement. In all remaining cases tags must match, and we proceed by
-structural recursion.
-
 Both of types here can have undetermined parts, but we do not deal with
 polymorphism here: a context never requires a polymorphic type, and if |pattern|
 is polymorphic it must match an undetermined part of our type, which will then
@@ -886,10 +877,8 @@ bool type_expr::specialise(const type_expr& pattern)
   if (tag==undetermined_type) // specialising \.* also always succeeds,
     {@; set_from(pattern.copy()); return true; }
      // by setting |*this| to a copy of  |pattern|
-  if (tag==tabled)
-    return can_specialise(pattern); // call |const| method here
-  if (pattern.tag==tabled)
-    return specialise(pattern.expanded());
+  @< Handle cases of |specialise| where at least one type is tabled,
+     but fall through if both are tabled with equal |tabled_nr()| @>
 @)
   if (pattern.tag!=tag) return false;
     // now it is impossible to refine if tags mismatch
@@ -906,9 +895,54 @@ bool type_expr::specialise(const type_expr& pattern)
      @< Try to specialise types in |tuple_variant| to those in
         |pattern.tuple_variant|,
         and |return| whether this succeeded @>
+    case tabled: assert(tabled_nr()==pattern.tabled_nr());
+      // since we fell through above
+     @< Try to specialise types in |tabled_args()| to those in
+        |pattern.tabled_args()|,
+        and |return| whether this succeeded @>
     default: assert(false);
       return true; // to keep the compiler happy, cannot be reached
   }
+}
+
+@ This method must pay some nontrivial attention to types with |tag==tabled|,
+whose (possibly recursive) meaning is stored in |type_expr::type_map|. We fall
+through this code only in the case mentioned in the module name Types or type
+constructors that are entered into that table never have undetermined
+components, so if |tag==tabled| holds for our own |type_expr|, then no
+substitution for undetermined parts needs to be made. However, in order to
+ensure for instance that, after a successful |specialise| against a ``row of''
+pattern, our |component_type()| can be relied upon, we instead replace, when
+|tag==tabled|, ourselves by an expanded version before trying again recursively.
+In the unlikely case that our type is neither undetermined nor tabled, but we do
+have |pattern.tag==tabled| (apparently the context had imposed some partial
+structure, but the type check came up with a tabled type instead), we expand the
+definition of |pattern| in a recursive call of specialise, just to make sure we
+don't accidentally miss a case where the tabled type does match the context
+requirement.
+
+@< Handle cases of |specialise| where at least one type is tabled,
+   but fall through if both are tabled with equal |tabled_nr()| @>=
+{
+  if (tag==tabled)
+  { if (pattern.tag==tabled)
+    { if (tabled_nr()!=pattern.tabled_nr())
+      { if (is_recursive() and pattern.is_recursive()
+            or top_level().tag!=pattern.top_level().tag)
+          return false;
+        return expand().specialise(pattern.expanded());
+      }
+      else {} // equal tabled types: fall through
+    }
+    else // only |*this| is tabled
+    {
+      if (top_level().tag!=pattern.tag)
+        return false;
+      return expand().specialise(pattern);
+    }
+  }
+  else if (pattern.tag==tabled)
+    return specialise(pattern.expanded());
 }
 
 @ For tuples and unions, specialisation is done component by component. As
@@ -926,6 +960,24 @@ failing.
   return it0.at_end() and it1.at_end();
   // whether both lists terminated
 }
+
+@ This is quite similar to the previous section, but argument lists must have
+equal lengths.
+
+@< Try to specialise types in |tabled_args()| to those in
+|pattern.tabled_args()|, and |return| whether this succeeded @>=
+
+{
+  wtl_iterator it0(tabled_args());
+  wtl_const_iterator it1(pattern.tabled_args());
+  while (not it0.at_end() and not it1.at_end())
+    if (not it0->specialise(*it1))
+      return false;
+    else @/{@; ++it0; ++it1; }
+  assert (it0.at_end() and it1.at_end());
+  return true;
+}
+
 
 @ The accessor |can_specialise| returns the same value as |specialise|, but
 without any side effect. It turns out to be perfectly symmetric in |*this| and
@@ -1178,13 +1230,12 @@ constructor). The mechanism is separate from the one used to associate types
 with user defined type identifiers, of which it can be considered an
 internalised form, made accessible to |type_expr| methods. Indeed entries of
 |type_map| derive from user type definitions, and the identifier table will
-equate such type identifiers to certain tabled types. We need to pre-declare the
-structure used to hold the attributes of these internalised type definitions,
-like a type name or a list of field names (for tuples or unions, mostly useful
-for the latter).
+equate such type identifiers to certain tabled types. We need to pre-declare
+some types used in the declaration of |type_expr| methods.
 
 @< Type declarations @>=
 struct type_binding;
+class type;
 
 @ The |type_map| member is of a sub-class |type_expr::defined_type_mapping|,
 which is basically a vector of |type_binding|. The variant |tabled_variant| of
@@ -1241,28 +1292,29 @@ type_expr::defined_type_mapping type_expr::type_map;
 @ A number of additional |static| methods of |type_expr| serve to regulate
 access to the static class member |type_map|. While most of them simply serve as
 a hatch (dutch: ``doorgeefluik'', no good English equivalent) to pass on
-information, the method |add_typedefs| used to enter a list of newly defined
-(potentially recursive) types into |type_map| is quite elaborate. Its argument
-is a list |defs| of pairings of a type identifier to a type expression, the
-latter passed by non-owning pointer. The potentially recursive nature of these
-definitions lies in that they can not only refer, using the |tabled_variant|, to
-types already defined in the mapping, but also to the types they define
-themselves. For this purpose, those recursive type numbers start to count from
+information, the method |matching_bindings| used to find fields to be used for a
+given (supposedly tabled) tuple or union type is not entirely trivial, and the
+method |add_typedefs| used to enter a list of newly defined (potentially
+recursive) types into |type_map| is quite elaborate. Its argument is a list
+|defs| of pairings of a type identifier to a type expression, the latter passed
+by non-owning pointer. The potentially recursive nature of these definitions
+lies in that they can not only refer, using the |tabled_variant|, to types
+already defined in the mapping, but also to the types they define themselves.
+For this purpose, those recursive type numbers start to count from
 |type_expr::table_size()| as it is before |add_typedefs| method is called. The
 return value is a list of the same length giving their type numbers after
 applying type equivalencing~; usually these will be the same numbers used
 initially, but some may have mapped to equivalent previously known types.
 
 @< Static methods of |type_expr| that will access |type_map| @>=
-static std::vector<type_nr_type> add_typedefs
- (const std::vector<std::pair<id_type,const_type_p> >& defs,
-  unsigned int n_args);
 static type_nr_type table_size();
 static void reset_table_size(type_nr_type old_size);
 static const std::vector<id_type>& fields(type_nr_type type_number);
 static void set_fields (id_type type_number, std::vector<id_type>&& fields);
-static sl_list<const type_binding*> matching_bindings
-  (const type_expr& te, unsigned int fix_count);
+static sl_list<const type_binding*> matching_bindings (const type& tp);
+static std::vector<type_nr_type> add_typedefs
+ (const std::vector<std::pair<id_type,const_type_p> >& defs,
+  unsigned int n_args);
 
 @ Here are the easy ones among those methods: |table_size| just returns the
 current |size| of |type_map| while |reset_table_size| shrinks the table back to
@@ -1291,23 +1343,25 @@ void type_expr::set_fields(id_type type_number, std::vector<id_type>&& fields)
 }
 
 @ The method |matching_bindings| is used to find |fields| associated to a given
-union type, in order to interpret a discrimination clause; it returns a list
-non-owning pointers to |type_binding| whose |tp| member can unify with |tp|.
+tuple or union type, in order to interpret a field assignment or a
+discrimination clause, respectively; it returns a list non-owning pointers to
+|type_binding| whose |tp| member can unify with |tp|. Since all type variables
+in entries of |type_map| are polymorphic, but |tp| can have some fixed type
+variables, the former need to be shifted if |tp.floor()>0|, so that all
+polymorphic type variables start at the same level.
 
 
 @< Function definitions @>=
-sl_list<const type_binding*>
-  type_expr::matching_bindings (const type_expr& te, unsigned int fix_count)
+sl_list<const type_binding*> type_expr::matching_bindings (const type& tp)
 { sl_list<const type_binding*> result;
-  type tp = type::wrap(te,fix_count);
-  if (fix_count==0)
+  if (tp.floor()==0)
   { for (auto it=type_map.begin(); it!=type_map.end(); ++it)
       if (not it->fields.empty() and tp.has_unifier(it->tp))
         result.push_back(&*it);
   }
   else // we must shift any polymorphic variables in |it->tp|
   { for (auto it=type_map.begin(); it!=type_map.end(); ++it)
-      if (not it->fields.empty() and tp.has_unifier(shift(it->tp,0,fix_count)))
+      if (not it->fields.empty() and tp.has_unifier(shift(it->tp,0,tp.floor())))
         result.push_back(&*it);
   }
   return result;
@@ -1921,7 +1975,7 @@ void type_expr::print(std::ostream& out) const
         if (tabled_variant.type_args!=nullptr)
         {@;
            interpreter::print(out << '<', tabled_variant.type_args,',');
-           out << "> ";
+           out << '>';
         }
       }
       else out << top_level();
@@ -2344,8 +2398,8 @@ bool type_assignment::is_free_in(const type_expr& tp, unsigned int nr) const
     is_free_in(tp.func()->arg_type,nr) or
     is_free_in(tp.func()->result_type,nr);
   case tuple_type: case union_type:
-    for(const_raw_type_list p = tp.tuple(); p!=nullptr; p = p->next.get())
-      if (is_free_in(p->contents,nr))
+    for(wtl_const_iterator it(tp.tuple()); not it.at_end(); ++it)
+      if (is_free_in(*it,nr))
         return true;
     return false;
   default: // |undetermined| (shouldn't happen), |primitive_type|, |tabled|
@@ -2547,6 +2601,7 @@ type lists (for the same tabled type constructor) are of equal length.
 When we come here we know that at least one type is tabled; if indeed just one
 is, we expand that one (whether recursive or not) and call |can_unify|
 recursively.
+@:avoiding infinite recursion@>
 
 @< If both types are tabled, recursive, and different... @>=
 { if (P_kind==tabled and Q_kind==tabled)
@@ -2591,10 +2646,10 @@ just makes the unification fail; this is precisely what we want for this case.
 { const_type_p p; // we first substitute already assigned type variables
   while (P_kind==variable_type and
          (p=assign.equivalent(P->typevar_count()))!=nullptr)
-    P_kind=(P=p)->kind(); // replace |P| by type previously assigned to it
+    P_kind=(P=p)->raw_kind(); // replace |P| by type previously assigned to it
   while (Q_kind==variable_type and
          (p=assign.equivalent(Q->typevar_count()))!=nullptr)
-    Q_kind=(Q=p)->kind(); // replace |Q| by type previously assigned to it
+    Q_kind=(Q=p)->raw_kind(); // replace |Q| by type previously assigned to it
 @)
   if (P_kind==variable_type and P->typevar_count()>=assign.var_start())
   { auto c = P->typevar_count();
@@ -2791,6 +2846,7 @@ the the complete function type, and passing it the argument type.
 
 @< Utility methods of |type| @>=
 type& expunge(); // eliminate assigned type variables, by substitution
+type& expand() {@; te.expand(); return *this; }
 type_expr bake() const; // extract |type_expr| after substitution
 type_expr bake_off(); // extract |type_expr|, sacrificing self if needed
 type& clear(unsigned int d); // remove any type assignments, reserve |d| new ones
@@ -3000,15 +3056,16 @@ in our |a| field, which is convenient for our implementation: any occurrence of
 a type variable after the first will get the value that was substituted for it
 the first time. Once the unification succeeds, the caller can decide whether to
 preserve these type assignments for further unification, or use them to perform
-substitutions, or forget them by calling |clear|.
+substitutions, or forget them by calling |clear|. If the unification fails,
+any type assignments should be forgotten by the caller.
 
 @< Function definitions @>=
 
 bool type::unify_specialise(const type_expr& sub_tp, type_expr& pattern)
-{ if (sub_tp.raw_kind()==tabled and pattern.raw_kind()==tabled)
-    return sub_tp.tabled_nr()==pattern.tabled_nr();
-    // avoid non-termination, test for identity
-  auto P_kind = sub_tp.kind(), Q_kind = pattern.kind();
+{ auto P_kind = sub_tp.raw_kind(), Q_kind = pattern.raw_kind();
+  if (P_kind==tabled or Q_kind==tabled)
+    @< Decide |unify_specialise| in the presence of tabled types,
+       avoiding any recursive calls if both type are tabled and recursive @>
   if (Q_kind==undetermined_type)
     {@; pattern.set_from(sub_tp.copy()); return true; }
   if (P_kind!=Q_kind and P_kind!=variable_type)
@@ -3033,14 +3090,11 @@ bool type::unify_specialise(const type_expr& sub_tp, type_expr& pattern)
   case row_type: return
     unify_specialise(sub_tp.component_type(),pattern.component_type());
   case tuple_type: case union_type:
-    { const_raw_type_list p; raw_type_list q; // need two different types here
-      for(p = sub_tp.tuple(), q=pattern.tuple();
-          p!=nullptr or q!=nullptr;
-          p = p->next.get(), q=q->next.get())
-      { if (p==nullptr or q==nullptr)
-          return false; // unequal length lists
-        if (not unify_specialise(p->contents,q->contents))
-          return false; // some subtype fails unification
+    { wtl_const_iterator p_it(sub_tp.tuple()); // need two different types here
+      for(wtl_iterator q_it(pattern.tuple());
+          not (p_it.at_end() and q_it.at_end()); ++p_it,++q_it)
+      { if (p_it.at_end() or q_it.at_end() or not unify_specialise(*p_it,*q_it))
+          return false; // unequal lengths or some subtype fails unification
       }
       return true;
     }
@@ -3048,6 +3102,37 @@ bool type::unify_specialise(const type_expr& sub_tp, type_expr& pattern)
   // |tabled| impossible, and |undetermined_type| should not happen
   }
   return false; // keep compiler happy
+}
+
+@ This code is a bit subtle, and follows the pattern laid out in
+section@#avoiding infinite recursion@>. Even though we are in a method of
+|type| here, |*this| is only there to provide its |a| field, so recursive calls
+can expand |sub_tp| and/or |pattern| as needed, and any assignments to |a| they
+make will be picked up as they should. Since the |pattern| argument, expanding
+it means assigning the expanded value to |pattern| before passing it down into
+the recursive call.
+
+@< Decide |unify_specialise| in the presence of tabled types,
+   avoiding any recursive calls if both type are tabled and recursive @>=
+{ if (P_kind==tabled and Q_kind==tabled)
+  { if (sub_tp.tabled_nr()!=pattern.tabled_nr())
+    @/return not (sub_tp.is_recursive() and pattern.is_recursive()) @|
+        and unify_specialise(sub_tp.expanded(),pattern=pattern.expanded());
+    wtl_const_iterator it0(sub_tp.tabled_args());
+    wtl_iterator it1(pattern.tabled_args());
+    while (not it0.at_end() and not it1.at_end())
+      if (not unify_specialise(*it0,(*it1)=it1->expanded()))
+        return false;
+      else
+        {@; ++it0; ++it1; }
+    assert (it0.at_end() and it1.at_end());
+     // both length should match tabled arity
+    return true;
+  }
+  if (P_kind==tabled)
+    return unify_specialise(sub_tp.expanded(),pattern);
+  else
+    return unify_specialise(sub_tp,pattern=pattern.expanded());
 }
 
 @ The scenario in which we are asked to unify a type variable with a pattern
@@ -3139,9 +3224,10 @@ bool type::matches_argument(const type& actual_arg_type)
   assert(floor()==actual_arg_type.floor());
   unsigned int fd=degree(), ad=actual_arg_type.degree();
   a.grow(ad);
+  const type_expr& arg_type = expand().func()->arg_type;
   if (fd==0 or ad==0) // then no need to renumber |actual_arg_type|
-    return can_unify(func()->arg_type,actual_arg_type.te,a);
-  return can_unify(func()->arg_type,shift(actual_arg_type.te,floor(),fd),a);
+    return can_unify(arg_type,actual_arg_type.te,a);
+  return can_unify(arg_type,shift(actual_arg_type.te,floor(),fd),a);
 }
 
 @ Before converting the argument for a polymorphic function, we can extract from
@@ -4654,7 +4740,7 @@ const conversion_record* row_coercion(const type_expr& final_type,
                                             type_expr& component_type)
 { assert(component_type==type_expr());
   for (const auto& entry : coerce_table)
-    if (final_type==*entry.to and entry.from->kind()==row_type)
+    if (final_type==*entry.to and entry.from->raw_kind()==row_type)
       return component_type.specialise(entry.from->component_type())
         ? &entry
         : nullptr;
@@ -4793,7 +4879,8 @@ is identical or if there is a direct conversion between the types, as decided
 by~|coerce|. Two row types are in the relation |is_close| if their component
 types are, and two tuple types are so if they have the same number of component
 types, and if each pair of corresponding component types is (recursively) in the
-relation |is_close|.
+relation |is_close|. Tabled types are expanded, except if they are recursive in
+which case (the case of equality having already been considered) we just say no.
 
 The above applies to the most significant of the three bits used in the result
 of the function |is_close|. The two other bits indicate whether, by applying
@@ -4806,12 +4893,17 @@ possible combinations of the remaining bits could be set.
 unsigned int is_close (const type_expr& x, const type_expr& y)
 { if (x==y)
     return 0x7; // this also makes recursive types equal to themselves
-  auto xk=x.kind(), yk=y.kind();
+  auto xk=x.raw_kind(), yk=y.raw_kind();
   if (xk==undetermined_type or yk==undetermined_type)
     return 0x0;
       // undetermined types do not specialise (or coerce), and are not close
   if (x==void_type or y==void_type)
     return 0x0; // |void| does not allow coercion for overload, and is not close
+  if (xk==tabled)
+    return x.is_recursive() ? 0x0 : is_close(x.expanded(),y);
+  if (yk==tabled)
+    return y.is_recursive() ? 0x0 : is_close(x,y.expanded());
+@)
   if (xk==primitive_type or yk==primitive_type)
   { unsigned int flags=0x0;
     if (coercible(x,y)) flags |= 0x1;
@@ -4891,7 +4983,7 @@ The implementation of |accepts| is by structural recursion; for this reason it
 uses |type_expr| arguments rather than |type|. It is like |is_close|, but some
 details are different. We do take |void_type| into consideration here, as type
 that will accept any type. Being a partial ordering, we forbid one direction of
-all two-way coercions; such cases always involve exactly one primitive types,
+all two-way coercions; such cases always involve exactly one primitive type,
 and we make that one accept the other type, which does not in return accept the
 primitive one. For the rest we just do structural recursion (accepting only if
 top-level structure matches and all components accept), but with one twist: for
@@ -4904,17 +4996,21 @@ though it is a fairly hypothetical possibility.
 @< Local function definitions @>=
 bool accepts (const type_expr& a, const type_expr& b)
 {
-  if (a.raw_kind()==tabled and b.raw_kind()==tabled and
-      a.tabled_nr()==b.tabled_nr())
-    return true; // prevent infinite recursion
-  auto ak=a.kind(), bk=b.kind();
+  auto ak=a.raw_kind(), bk=b.raw_kind();
   if (a==void_type or bk==undetermined_type)
     return true; // |void| accepts every type, everything accepts \.*
   if (b==void_type)
     return false; // nothing else accepts |void|
+  if (a==b)
+    return true;
+  if (ak==tabled)
+    return not a.is_recursive() and accepts(a.expanded(),b);
+  if (bk==tabled)
+    return not b.is_recursive() and accepts(a,b.expanded());
   if (ak!=primitive_type and ak!=bk)
     return false;
     // different kinds on non-primitive types are incomparable
+@)
   switch(ak)
   {
   case undetermined_type: return false; // should not happen
