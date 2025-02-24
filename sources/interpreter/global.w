@@ -940,8 +940,8 @@ void definition_group::thread_bindings(const id_pat& pat,const type_expr& te)
   }
   if ((pat.kind & 0x2)!=0)
     // recursively traverse sub-list for a tuple of identifiers
-  { assert(te.kind()==tuple_type);
-    auto tex = te.expanded(); // ensure substitution into any argument types
+  { auto tex = te.expanded(); // ensure substitution into any argument types
+    assert(tex.raw_kind()==tuple_type);
     wtl_const_iterator t_it(tex.tuple());
     for (auto p_it=pat.sublist.begin(); not pat.sublist.at_end(p_it);
          ++p_it,++t_it)
@@ -1742,14 +1742,13 @@ provided.
 @ When we come here, the newly defined types from |defs| have been tested for
 equivalence with previous types and with each other, and added to the static
 class member of |type_expr|, so that their (new) type numbers available in the
-|type_nrs| array can be used with for instance the |type_expr::expansion|
-method.
+|type_nrs| array can be used with for instance the |type_expr::expanded| method.
 
 Three kinds of actions remain to be done. For each definition, its left hand
 side identifier has to be bound to a type expression in |global_id_table|, which
 will be of the |tabled| kind, referring to the internal definition just added at
-a position found in |type_nrs|. The other two actions only apply when right hand
-side is a tuple or union type with specified field names: if so, projector
+a position found in |type_nrs|. The other two actions only apply when the right
+hand side is a tuple or union type with specified field names: if so, projector
 respectively injector functions have to be bound to these field names in the
 |global_overload_table|, and the list of field names has to be added to the
 |type_expr| static data. The new overloads for field names might conflict with
@@ -1768,7 +1767,7 @@ index~|i| into the vector.
 @< Update |global_id_table| with types and values... @>=
 { unsigned int i = 0; // position within |defs|
   containers::sl_list<definition_group> store;
-  for (auto it=defs.begin(); not defs.at_end(it); ++it,++i)
+  for (auto it=defs.wcbegin(); not defs.at_end(it); ++it,++i)
     if (not it->fields.empty())
     { const auto& tp = type_expr::local_ref(type_nrs[i],0).top_level();
       // a |type_map| entry
@@ -1782,7 +1781,7 @@ index~|i| into the vector.
   {
     const auto& fields = it->fields;
     const auto type_nr = type_nrs[i];
-    const auto& tp = type_expr::local_ref(type_nr,deg);
+    const auto& tp = type_expr::local_ref(type_nr,deg).top_level();
     if (it->id!=type_binding::no_id)
     {
       if (global_id_table->is_defined_type(it->id))
@@ -1796,7 +1795,7 @@ index~|i| into the vector.
                      << tp << std::endl;
     else
       *output_stream << "Type name '" << main_hash_table->name_of(it->id) @|
-        << "' defined as " << tp.untabled() << std::endl;
+        << "' defined as " << tp.expanded() << std::endl;
     if (not fields.empty())
     { auto& group = *store_it;
       @< Add to |global_overload_table| functions for |fields| with types taken
@@ -1819,11 +1818,11 @@ below tests both conditions by passing declaration of each field and its
 function type through |definition_group::add|.
 
 @< Append to |store| bindings for the identifiers in |fields|... @>=
-{ assert(tp.kind()==tuple_type or tp.kind()==union_type);
+{ assert(tp.raw_kind()==tuple_type or tp.raw_kind()==union_type);
   auto& record = store.emplace_back(definition_group(length(fields)));
 @/
   auto tp_it =wtl_const_iterator(tp.tuple());
-  if (tp.kind()==tuple_type)
+  if (tp.raw_kind()==tuple_type)
   {
     for (auto id_it=fields.wcbegin(); not fields.at_end(id_it);
          ++id_it,++tp_it)
@@ -1835,9 +1834,8 @@ function type through |definition_group::add|.
           // projector type
       }
   }
-  else
-  {
-    for (auto id_it=fields.wcbegin(); not fields.at_end(id_it);
+  else // |tp.raw_kind()==union_type|
+  { for (auto id_it=fields.wcbegin(); not fields.at_end(id_it);
          ++id_it,++tp_it)
       if (id_it->kind==0x1) // field selector present
       {
@@ -1865,8 +1863,8 @@ instead); this avoids needing to allocate an actual static variable.
 @< Add to |global_overload_table| functions for |fields| with types
    taken from |group|,... @>=
 
-{
-  bool is_tup = tp.kind()==tuple_type;
+{ assert(tp.raw_kind()==tuple_type or tp.raw_kind()==union_type);
+  bool is_tup = tp.raw_kind()==tuple_type;
   @< Emit indentation corresponding to the input level to |*output_stream| @>
 @/*output_stream << "  with " @|
    << (is_tup ? "pro" : "in");
@@ -1922,47 +1920,28 @@ associated to the defined type.
 
 @< Global function definitions @>=
 void type_of_type_name(id_type id)
-{ const auto* tp = global_id_table->type_of(id);
-  const std::vector<id_type>* fields = nullptr;
-  if (tp->kind()==tabled)
-    fields = &type_expr::fields(tp->tabled_nr());
-  *output_stream << "Defined type: ";
-  if (fields==nullptr or fields->empty())
-    *output_stream << tp->unwrap().untabled() << '\n';
-  else
-  { char sep = tp->kind()==tuple_type ? ',' : '|';
-    auto f_it = fields->begin();
-    for (wtl_const_iterator it(tp->tuple()); not it.at_end(); ++it,++f_it)
-      *output_stream << (f_it==fields->begin() ? '(' : sep)
-       << ' ' << *it << ' ' @|
-       << (*f_it == type_binding::no_id ? "." : main_hash_table->name_of(*f_it))
-       << ' ';
-    *output_stream << ")\n";
+{ const auto* tp_p = global_id_table->type_of(id);
+  *output_stream << "Defined type";
+  if (tp_p->degree()>0)
+  { *output_stream << " constructor<A";
+    for (unsigned int i=1; i<tp_p->degree(); ++i)
+      *output_stream << ',' << static_cast<char>('A'+i);
+    *output_stream << ">: ";
   }
-}
-
-@ The function |type_of_type_constr| is similar, but reports information about a
-user defined type constructors. It introduces formal arguments, which by the way
-polymorphic types are printed have to be named with single-letter capitals
-starting from |'A'|.
-
-@< Global function definitions @>=
-void type_of_type_constr(id_type id)
-{ const auto* tp = global_id_table->type_of(id);
+    else *output_stream << ": ";
+  if (tp_p->kind()!=tabled)
+  {@; *output_stream << *tp_p << '\n';
+    return;
+  }
+  type_expr tp=tp_p->bake().expanded();
   const std::vector<id_type>* fields = nullptr;
-  if (tp->kind()==tabled)
-    fields = &type_expr::fields(tp->tabled_nr());
-  *output_stream << "Defined type constructor: "
-                 << main_hash_table->name_of(id) << "<A";
-  for (unsigned int i=1; i<tp->degree(); ++i)
-     *output_stream << ',' << static_cast<char>('A'+i);
-  *output_stream << "> = ";
+  fields = &type_expr::fields(tp_p->tabled_nr());
   if (fields==nullptr or fields->empty())
-    *output_stream << tp->unwrap().untabled() << '\n';
+    *output_stream << tp << '\n';
   else
-  { char sep = tp->kind()==tuple_type ? ',' : '|';
+  { char sep = tp.raw_kind()==tuple_type ? ',' : '|';
     auto f_it = fields->begin();
-    for (wtl_const_iterator it(tp->tuple()); not it.at_end(); ++it,++f_it)
+    for (wtl_const_iterator it(tp.tuple()); not it.at_end(); ++it,++f_it)
       *output_stream << (f_it==fields->begin() ? '(' : sep)
        << ' ' << *it << ' ' @|
        << (*f_it == type_binding::no_id ? "." : main_hash_table->name_of(*f_it))
@@ -2842,7 +2821,7 @@ in case of variadic functions, installs a pointer of type
 null pointer.
 
 @< If the function type |tp| matches arguments of any type... @>=
-if (tp.func()->arg_type.kind()==variable_type)
+if (tp.func()->arg_type.top_kind()==variable_type)
 {
   shared_variadic_builtin val =
     std::make_shared<builtin_value<true> >(f,print_name.str(),hunger);
