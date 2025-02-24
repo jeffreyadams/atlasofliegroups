@@ -930,7 +930,7 @@ set FPP_edges = (InnerClass -> [FaceVertsIndex]):
 {each entry is a pair of ratvec's}
 set FPP_edges_rat = (InnerClass -> [[ratvec]]):
     let ichashedges = make_InnerClass_hash()
-    then FPPedges_rat = [[[ratvec]]]: []
+    then FPPedges_rat = [[[ratvec]]]: [] {one for each inner class}
     in (InnerClass -> [[ratvec]]): (InnerClass ic) [[ratvec]]:
     let I = ichashedges.size()
     then i = ichashedges.match(ic)
