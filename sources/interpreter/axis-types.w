@@ -461,18 +461,17 @@ does involve a redundant call of |untabled|, which is too bad).
 @< Ordinary methods of the |type_expr| class @>=
 type_tag raw_kind () const @+{@; return tag; } // don't translate |tabled|
 const type_expr& top_level () const; // what |tabled_variant| is equated to
-const type_expr& untabled () const
-  @+{@; return tag==tabled ? top_level() : *this; }
+type_tag top_kind () const @+
+{@; return raw_kind()==tabled ? top_level().raw_kind() : raw_kind(); }
 @)
-type_tag kind () const @+{@; return untabled().tag; }
-primitive_tag prim () const     @+{@; return untabled().prim_variant; }
+primitive_tag prim () const     @+{@; return prim_variant; }
 unsigned int typevar_count () const @+{@; return typevar_variant; }
-const func_type* func() const  @+{@; return untabled().func_variant; }
-      func_type* func()        @+{@; return untabled().func_variant; }
-const type_expr& component_type () const @+{@; return *untabled().row_variant; }
-      type_expr& component_type ()       @+{@; return *untabled().row_variant; }
-const_raw_type_list tuple () const @+{@; return untabled().tuple_variant; }
-      raw_type_list tuple ()       @+{@; return untabled().tuple_variant; }
+const func_type* func() const  @+{@; return func_variant; }
+      func_type* func()        @+{@; return func_variant; }
+const type_expr& component_type () const @+{@; return *row_variant; }
+      type_expr& component_type ()       @+{@; return *row_variant; }
+const_raw_type_list tuple () const @+{@; return tuple_variant; }
+      raw_type_list tuple ()       @+{@; return tuple_variant; }
 @)
 type_nr_type tabled_nr () const
 @+{@; assert(tag==tabled); return tabled_variant.nr; }
@@ -1978,8 +1977,7 @@ void type_expr::print(std::ostream& out) const
            out << '>';
         }
       }
-      else out << top_level();
-        // expand out when no identifier is attached
+      else expanded().print(out); // expand out when no identifier is attached
     break;
   }
 }
@@ -2793,7 +2791,9 @@ counterparts. We include here also a few methods that access the
 |type_assignment| field, and some simple tests.
 
 @< Methods of |type| to access component types @>=
-type_tag kind () const @+{@; return te.kind(); }
+type_tag kind () const @+{@; return te.raw_kind(); }
+type_tag top_kind () const @+
+{@; return kind()==tabled ? te.top_level().raw_kind() : kind(); }
 primitive_tag prim () const     @+{@; return te.prim(); }
 unsigned int typevar_count () const @+{@; return te.typevar_count(); }
 const func_type* func() const  @+{@; return te.func(); }
@@ -2813,7 +2813,7 @@ bool is_polymorphic() const @+{@; return degree()>0; }
 bool is_clean() const; // absence of pending type assignments
 const type_expr& unwrap() const @+{@; return te ; }
 bool is_void() const @+
-{@; return te.kind()==tuple_type and length(te.tuple())==0; }
+{@; return te.raw_kind()==tuple_type and length(te.tuple())==0; }
 
 @ The method |unwrap| above gives access to the stored |type_expr|, but ignores
 any type assignments that were made. If one does want to take into account type

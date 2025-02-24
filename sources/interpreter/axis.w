@@ -408,7 +408,7 @@ to an expression of non-function type.
 
 @< Check that we are not binding an operator to a non-function value @>=
 {
-  if ((flags&0x8)!=0 and tp.kind()!=function_type)
+  if ((flags&0x8)!=0 and tp.top_kind()!=function_type)
     { std::ostringstream o;
       o << "Cannot bind operator '" << main_hash_table->name_of(id) @|
         << "' to an expression of non-function type " << tp;
@@ -494,7 +494,7 @@ that it is being used correctly.
 expression_ptr convert_expr_strongly
   (const expr& e, unsigned int fc, const type_expr& te)
 {
-  assert(te.kind()!=undetermined_type and type::wrap(te,fc).degree()==0);
+  assert(te.raw_kind()!=undetermined_type and type::wrap(te,fc).degree()==0);
   type_expr context_type = te.copy();
   return convert_expr(e,fc,context_type);
 }
@@ -1645,7 +1645,7 @@ this code as if there were no overloads at all.
 @< See if a unique member of |*vars| matches |tp|, and if so |return| a
    |capture_expression| holding the value of that variant @>=
 { if (tp.specialise(gen_func_type))
-  { if (tp.func()->arg_type.kind()==undetermined_type)
+  { if (tp.func()->arg_type.raw_kind()==undetermined_type)
     @< If |*vars| has a unique variant, |return| its value wrapped in a
        |capture_expression|, otherwise |throw| an error signalling ambiguity @>
     else
@@ -2088,7 +2088,7 @@ the same.
   }
   else // |n_args!=1|
   { assert(a_priori_type.kind()==tuple_type
-       and arg_type.kind()==tuple_type);
+       and arg_type.raw_kind()==tuple_type);
     wtl_const_iterator apt_it(a_priori_type.tuple())
     , argt_it(arg_type.tuple());
     wel_const_iterator exp_it(args.sublist);
@@ -2758,7 +2758,7 @@ type.
 { const id_type id =call.fun.identifier_variant;
   size_t i,j; // dummies; local binding not used here
   auto local_type_p=layer::lookup(id,i,j);
-  if (local_type_p==nullptr or local_type_p->kind()!=function_type)
+  if (local_type_p==nullptr or local_type_p->top_kind()!=function_type)
      // not calling by local identifier
   { if (@[const auto* variants = global_overload_table->variants(id)@;@])
       return resolve_overload(e,fc,tp,*variants);
@@ -3061,8 +3061,8 @@ void thread_bindings
   }
   if ((pat.kind & 0x2)!=0)
     // recursively traverse sub-list for a tuple of identifiers
-  { assert(te.kind()==tuple_type);
-    auto tex = te.expanded(); // ensure substitution into any argument types
+  { auto tex = te.expanded(); // ensure substitution into any argument types
+    assert(tex.raw_kind()==tuple_type);
     wtl_const_iterator t_it(tex.tuple());
     for (auto p_it=pat.sublist.begin(); not pat.sublist.at_end(p_it);
          ++p_it,++t_it)
@@ -4352,8 +4352,9 @@ subscr_base::sub_type subscr_base::index_kind
   (const type_expr& aggr,
    const type_expr& index,
          type_expr& subscr)
-{ if (aggr.kind()==primitive_type)
-    switch (aggr.prim())
+{ type_expr ag_tp = aggr.expanded();
+  if (ag_tp.raw_kind()==primitive_type)
+    switch (ag_tp.prim())
     {  default:
     break; case vector_type:
       if (index==int_type and subscr.specialise(int_type))
@@ -4376,15 +4377,16 @@ subscr_base::sub_type subscr_base::index_kind
       if (index==param_type and subscr.specialise(split_type))
         return mod_poly_term;
     }
-  else if (aggr.kind()==row_type and index==int_type and
-           subscr.specialise(aggr.component_type()))
+  else if (ag_tp.raw_kind()==row_type and index==int_type and
+           subscr.specialise(ag_tp.component_type()))
          return row_entry;
   return not_so;
 }
 @)
 subscr_base::sub_type subscr_base::slice_kind (const type_expr& aggr)
-{ if (aggr.kind()==primitive_type)
-    switch (aggr.prim())
+{ type_expr ag_tp = aggr.expanded();
+  if (ag_tp.raw_kind()==primitive_type)
+    switch (ag_tp.prim())
     {
     case vector_type: return vector_entry;
     case rational_vector_type: return ratvec_entry;
@@ -4392,7 +4394,7 @@ subscr_base::sub_type subscr_base::slice_kind (const type_expr& aggr)
     case matrix_type: return matrix_column;
     default: return not_so;
     }
-  else if (aggr.kind()==row_type)
+  else if (ag_tp.raw_kind()==row_type)
     return row_entry;
   else return not_so;
 }
@@ -7824,7 +7826,7 @@ void threader::thread(const id_pat& pat,type_expr& te)
     @< Throw an error to signal forbidden qualifier \.! before |pat.name| @>
   if ((pat.kind&0x2)!=0) // first treat any sublist
   { te.expand().specialise(unknown_tuple(length(pat.sublist)));
-    assert(te.kind()==tuple_type); // this should succeed
+    assert(te.raw_kind()==tuple_type); // succeeds due to successful |specialise|
     wtl_iterator t_it(te.tuple());
     for (auto it=pat.sublist.begin(); not pat.sublist.at_end(it); ++it,++t_it)
       thread(*it,*t_it);
