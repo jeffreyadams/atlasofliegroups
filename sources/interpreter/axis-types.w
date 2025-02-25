@@ -360,35 +360,32 @@ Type expressions are defined by a tagged union, where the tags indicate the kind
 of type denoted (primitive, function, row, etc.). We always only access the
 variant corresponding to the current tag value, but this is not something that
 can be statically ascertained in \Cpp. Nonetheless the fields are private, with
-public accessor methods, which facilitates handling of the variant with
-|tag==tabled|.
+public accessor methods.
 
-That variant is used to represent use of user-defined type (constructor)
-identifiers. As these may have argument types (the number of which should
-matches the arity recorded for the type identifier), the variant uses a
-structure |tabled_type_cons| (which is larger than other variants, thus
-enlarging |type_expr|, but this is no great deal). Its |nr| field changes
-interpretation by a transformation during type analysis: initially it stores the
-type identifier there, but the transformation will in most cases expand user
-defined type constructors using their definition in the |global_id_table|. This
-is not (and cannot be) done for recursively defined types or type constructors,
-which are picked up during processing of type definitions, and such definitions
-are turned into entries of |type_map|, a static member of |type_expr|. Use of
-such a type (constructor) identifier in a |tabled| type will be replaced by a
-type which still has |tag==tabled|, but in which the |nr| field refers to the
-corresponding |type_map| entry rather than the type identifier. Such type
-identifiers function, for the purpose of equivalence of types, like primitive
-types (when their arity is~$0$) or primitive type constructors.
+That variant |tabled|, used for applied user-defined type (constructor)
+identifiers, makes use of a structure |tabled_type_cons| (which is larger than
+other variants, thus enlarging |type_expr|, but this is no big deal). Its |nr|
+field changes interpretation between parsing and type analysis: the parser first
+stores the type identifier there, but this will be looked up in the
+|global_id_table|, after which either the |type_expr| is replaced by the
+definition stored there, or the type remains |tabled| but with |nr| replaced by
+an index into the |type_map|, where most ``heavy weight'' user type definitions
+are recorded, notably those of recursive types and type constructors, that can
+never be full expanded. Functions like the equality operation on |type_expr|
+values take care to not indefinitely expand references into |type_map|; they
+avoid specifically to do this when both types (or constructors) are recursive,
+in which case they just test equivalence of any type arguments present.
 
 Although \Cpp11 allows variant members of a |union| with nontrivial special
-member functions, as is the case for smart pointer types, it leaves it to the
+member functions, so that they could be smart pointer types, it leaves it to the
 programmer's responsibility to explicitly call constructors and destructors as
-those variants come and go; this effectively ruins most of the advantages of
-using smart pointers. For this reason we use raw pointers here instead, and in
-particular |raw_type_list| rather than |type_list| for the |tuple_variant| and
-in |tabled_type_cons|. One drawback of that is that we will not be able to
-create a |type_list::iterator| for traversal of the list, but in practice weak
-iterators, which we can obtain from a raw pointer, will always suffice.
+those variants come and go; this effectively ruins most of the advantages that
+smart pointers would give. For this reason we use raw pointers here instead, and
+in particular |raw_type_list| rather than |type_list| for the |tuple_variant|
+and the |type_args| field in |tabled_type_cons|. One drawback of that is that we
+will not be able to create a |type_list::iterator| for traversal of the list,
+but in practice weak iterators (specifically |wtl_iterator|), which one can
+construct from a raw pointer, will always suffice.
 
 There is one restriction on types that is not visible in the definition below,
 namely that the list of types referred to by the |tuple_variant| field cannot
@@ -431,32 +428,37 @@ public:
 };
 
 @ We start with a number of public methods that allow testing the actual variant
-of a |type_expr|, and after that the data specific to that variant. We can
-distinguish |tabled| types using the |raw_kind| method, and the method
-|top_level| finds the |type_expr| that defines them. But when we want to
-transparently treat them as the type they are equated to, we can call |untabled|
-to automatically fetch the |top_level()| if required. The |kind| method does
-this replacement, so never returns |tabled|. The access methods for the
-variant-specific data assume |kind()| has been tested, and all do this
-replacement implicitly. Since a tabled type cannot be equated to a type
-variable, the method |typevar_count| is an uexception and skips the replacement.
+of a |type_expr|, and after that the data specific to that variant. The method
+|raw_kind| should in general be used first, in order to determine which variant
+of the union is active. Then according to the value found, one can call one of
+the methods |prim|, |typevar_count|, |func|, |component_type|, |tuple| (the last
+one serving both for |tuple_type| and |union_type|), or one of |tabled_nr|,
+|tabled_args|, and some others mentioned below, when |raw_kind()==tabled|. In
+the final case one often is interested in what the definition of the tabled type
+expands to, and this information is given by the |top_level|, which returns a
+reference to the relevant |type_map| entry. For most purposes, this is not a
+practical value to use however, since any arguments of a |tabled| type
+constructor are represented by type variables, and the appropriate elements of
+|tabled_args()| still need to be substituted for them; the exception to this is
+when one just needs to know the |tag| in the type (constructor) definition, and
+the method |top_kind| can be used to get this tag.
 
-Using this automatic replacement comes with a caveat in the case the tabled type
-is in fact a type constructor: the argument type list is not used, so that the
-caller should expect to see type variables in the components of the |type_expr|
-returned from calls of |func|, |component_type| or |tuple|, in the form they are
-stored in the |type_map|. This is inevitable since these methods return
-non-owning pointers or references, so they must refer to objects that already
-existed in memory, rather than ones that are generated (by substitution) during
-the call of the method. The necessity to apply a substitution to the result may
-be inconvenient to the caller however, so we provide an alternative method
-|expanded|, which unlike |top_level| returns a newly built |type_expr|; in it,
-it is ensured that |tag!=tabled|, and that all component types are stand-alone
-valid types. The suggested way of using this is to call |expanded|, storing the
-result in a (local) variable, and then test its |raw_kind()| (or |kind()|, which
-is equivalent here) and apply selector methods like |component_type| (the latter
-does involve a redundant call of |untabled|, which is too bad).
+Before user defined type constructors were introduced it used to be the case
+that |top_kind| (then simply called |kind|) was used where we now use
+|raw_kind|, and methods like |func|, |component_type| or |tuple| would similarly
+call |top_level| implicitly whenever |tag==tabled|. In cases where we want to
+treat the tabled case transparently by expanding the definition, we now instead
+use the |expanded| method. This method actually performs the substitution of
+type constructor arguments, and therefore returns |type_expr| by value rather
+than by reference; it will usually require introducing a local variable to hold
+the result. Sometimes it is convenient to actually replace a |type_expr| by this
+expansion when |tag==tabled|, and the non-|const| method |expand| provides for
+this.
 
+The table |type_map| provides some additional information about its types, such
+as names of their fields in case of tuple or union types, and whether the
+definition is actually recursive. The methods |tabled_arity|, |is_recursive| and
+|type_name| access such information for a |type_expr| with |tag==tabled|.
 
 @< Ordinary methods of the |type_expr| class @>=
 type_tag raw_kind () const @+{@; return tag; } // don't translate |tabled|
@@ -464,19 +466,27 @@ const type_expr& top_level () const; // what |tabled_variant| is equated to
 type_tag top_kind () const @+
 {@; return raw_kind()==tabled ? top_level().raw_kind() : raw_kind(); }
 @)
-primitive_tag prim () const     @+{@; return prim_variant; }
-unsigned int typevar_count () const @+{@; return typevar_variant; }
-const func_type* func() const  @+{@; return func_variant; }
-      func_type* func()        @+{@; return func_variant; }
-const type_expr& component_type () const @+{@; return *row_variant; }
-      type_expr& component_type ()       @+{@; return *row_variant; }
-const_raw_type_list tuple () const @+{@; return tuple_variant; }
-      raw_type_list tuple ()       @+{@; return tuple_variant; }
+primitive_tag prim () const @+
+    {@; assert(tag==primitive_type); return prim_variant; }
+unsigned int typevar_count () const @+
+    {@; assert(tag==variable_type); return typevar_variant; }
+const func_type* func() const  @+
+    {@; assert(tag==function_type); return func_variant; }
+  func_type* func() @+
+    {@; assert(tag==function_type); return func_variant; }
+const type_expr& component_type () const @+
+    {@; assert(tag==row_type); return *row_variant; }
+ type_expr& component_type () @+
+    {@; assert(tag==row_type); return *row_variant; }
+const_raw_type_list tuple () const @+
+    {@; assert(tag==tuple_type or tag==union_type); return tuple_variant; }
+  raw_type_list tuple () @+
+    {@; assert(tag==tuple_type or tag==union_type); return tuple_variant; }
 @)
-type_nr_type tabled_nr () const
-@+{@; assert(tag==tabled); return tabled_variant.nr; }
-const raw_type_list tabled_args() const
-@+{@; assert(tag==tabled); return tabled_variant.type_args; }
+type_nr_type tabled_nr () const @+
+    {@; assert(tag==tabled); return tabled_variant.nr; }
+const raw_type_list tabled_args() const @+
+    {@; assert(tag==tabled); return tabled_variant.type_args; }
 unsigned short tabled_arity() const; // number of arguments taken
 bool is_recursive() const; // whether |tabled| type is recursive
 id_type type_name () const; // identifier corresponding to |tabled_variant|
@@ -514,32 +524,42 @@ the fly, given just the arity |n_args|.
 
 type_expr() noexcept : tag(undetermined_type) @+{}
 static type_expr primitive(primitive_tag p)
-@/{@; type_expr result; result.tag=primitive_type, result.prim_variant=p;
-    return result;
-  }
+@/{@; type_expr result;
+  result.tag=primitive_type,
+    result.prim_variant=p;
+  return result;
+}
 static type_expr variable(unsigned int nr)
-@/{@; type_expr result; result.tag=variable_type, result.typevar_variant=nr;
-    return result;
-  }
+@/{@; type_expr result;
+  result.tag=variable_type,
+    result.typevar_variant=nr;
+  return result;
+}
 static type_expr function(type_expr&& arg, type_expr&& result);
 static type_expr row(type_expr&& t)
-@/{@; type_expr result;
-    result.tag=row_type, result.row_variant=new type_expr(std::move(t));
+@/{ type_expr result;
+    result.tag=row_type,
+      result.row_variant=new type_expr(std::move(t));
     return result;
   }
 static type_expr tuple(type_list&& l)
-@/{@; type_expr result; result.tag=tuple_type, result.tuple_variant=l.release();
+@/{@; type_expr result;
+    result.tag=tuple_type,
+      result.tuple_variant=l.release();
     return result;
   }
 static type_expr tuple_or_union(type_tag tag,type_list&& l)
-@/{@; type_expr result; result.tag=tag, result.tuple_variant=l.release();
-    return result;
-  }
+@/{@; type_expr result;
+  result.tag=tag,
+    result.tuple_variant=l.release();
+  return result;
+}
 
 static type_expr user_type(type_nr_type type_nr,type_list&& l)
-{ type_expr result; result.tag=tabled;
-  result.tabled_variant.nr=type_nr;
-  result.tabled_variant.type_args=l.release();
+{ type_expr result;
+  result.tag=tabled,
+    result.tabled_variant.nr=type_nr,
+    result.tabled_variant.type_args=l.release();
   return result;
 }
 
@@ -927,7 +947,7 @@ requirement.
   { if (pattern.tag==tabled)
     { if (tabled_nr()!=pattern.tabled_nr())
       { if (is_recursive() and pattern.is_recursive()
-            or top_level().tag!=pattern.top_level().tag)
+            or top_kind()!=pattern.top_kind())
           return false;
         return expand().specialise(pattern.expanded());
       }
@@ -935,7 +955,7 @@ requirement.
     }
     else // only |*this| is tabled
     {
-      if (top_level().tag!=pattern.tag)
+      if (top_kind()!=pattern.tag)
         return false;
       return expand().specialise(pattern);
     }
@@ -1279,9 +1299,9 @@ class type_expr::defined_type_mapping : public std::vector<type_binding>
 { public:
   defined_type_mapping () : std::vector<type_binding>() @+{}
   const type_expr& definiens(type_nr_type i) const @+
-    {@; return (*this)[i].tp; }
+    {@; assert (i<size()); return (*this)[i].tp; }
   unsigned short arity(type_nr_type i) const @+
-    {@; return (*this)[i].arity; }
+    {@; assert (i<size()); return (*this)[i].arity; }
 };
 
 @~We need to define that declared static class member; it starts out empty.
@@ -2792,8 +2812,7 @@ counterparts. We include here also a few methods that access the
 
 @< Methods of |type| to access component types @>=
 type_tag kind () const @+{@; return te.raw_kind(); }
-type_tag top_kind () const @+
-{@; return kind()==tabled ? te.top_level().raw_kind() : kind(); }
+type_tag top_kind () const @+{@; return te.top_kind(); }
 primitive_tag prim () const     @+{@; return te.prim(); }
 unsigned int typevar_count () const @+{@; return te.typevar_count(); }
 const func_type* func() const  @+{@; return te.func(); }
