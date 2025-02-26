@@ -5695,11 +5695,12 @@ all match for one of the candidates.
 { std::ostringstream o;
   if (candidates.empty())
   {
-    o << "No union definition found to accommodate the tags "
+    o << "No union definition found to accommodate the tag" @|
+      << (tags.singleton() ? ": '" : "s: '") @|
       << main_hash_table->name_of(tags.front());
     for (auto it=std::next(tags.begin()); not tags.at_end(it); ++it)
-      o << ", " << main_hash_table->name_of(*it);
-    o << "\nused in discrimination clause";
+      o << "', '" << main_hash_table->name_of(*it);
+    o << "',\n  used in discrimination clause";
   }
   else
   { o << "Ambiguity in discrimination clause, possible types are:\n";
