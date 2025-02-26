@@ -129,6 +129,9 @@ set FPP_unitary_hash_general([(KGBElt,ratvec)] xlambdas, Param_hash Uhash,
     	      then unitaryTime := 0; charTime := 0; FD12Time:=0; FD12bzTime:=0; red_count_time :=0;
 	      	   branch_builtin_time :=0; branch_script_time := 0
 	      fi
+    then () = if FPP_report_flag
+    	      then clear_report_tested(); DTcount:=0; DBTcount:=0
+	      fi
     then xnums = for (x,) in xlambdasW do x.number od
     then lambdas = for (,lambda) in xlambdasW do lambda od
     {then () = pol_hash.clear()} {in recursive calls, this screws up bigger G, which has

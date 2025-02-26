@@ -429,7 +429,7 @@ set wiggle_flag = true
 {test candidate classes with (new) tester; delete
  from LFVKH faces established to be nonunitary in this way. Output is new
  shorter list of candidate faces. Lvd is LOCAL LocalVertexData}
- {If tester is to_ht, then OK to all eq to be computed to_ht. Trickier for bottom_layer.}
+ {If tester is to_ht, then OK for all eq to be computed to_ht. Trickier for bottom_layer.}
  {Seems to require that equivalence classes be for ENTIRE K-char, not to height}
  {called lines 2183...}
 set local_testK_hash(KGBElt x, ratvec lambda, LocalVertexData Lvd,
@@ -617,7 +617,7 @@ set local_testK_hash(KGBElt x, ratvec lambda, LocalVertexData Lvd,
  from LFVKH faces established to be nonunitary in this way. Output is new
  shorter list of candidate faces. Lvd is LOCAL VertexData}
 set local_testK_hash_know_lower(KGBElt x, ratvec lambda, LocalVertexData Lvd,
-    [[FaceVertsKHash]] FVKH, [[int]] eq, [[int]] gr, [vec] classListByFace,  KTypePol_hash pol_hash, 
+    [[FaceVertsKHash]] FVKH, [[int]] eq, [[int]] gr, [vec] classListByFace,  KTypePol_hash pol_hash,
     (Param->bool) tester, Param_hash Uhash, (Param->bool) fancy_tester) = [[FaceVertsKHash]]:
     let newStatuses = for j:#eq do "?" od,  NumClasses = #eq, red_shift = if red_count_flag then 1 else 0 fi
     	, printInterval = int: 1{, NUhash = big_unitary_hash.nuhash(x.real_form)}
