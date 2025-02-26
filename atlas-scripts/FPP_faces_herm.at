@@ -2605,7 +2605,7 @@ set FD12bzTTTime = int:0
  sets smaller than BoundA1, and (Test C) for larger vertex sets. I don't really have a clue how these
  should be computed}
 set BoundB = int: 600
-set BoundA1 = int:1250
+set BoundA1 = int:BoundB
 {takes local data and low global faces and computes local vertices and edges, imposing
 hermitian, pos on LKTs, and Dirac. Subspace is fixed points of affine involution of
 h*. Perm records involution action on FPP verts. mapAct records local vertex to which an FPP
@@ -2665,7 +2665,8 @@ set localFD_1Dirac2_by_zero\
     then Llookup = is_member_sorted(FixedList##TranList)
     then Glookup = {is_member_sorted(for j in FixedList do Perm2.fixed[j] od)}
     	 	   to_bitset(for j in FixedList do Perm2.fixed[j] od)
-    then E = #FPP_edges(G), F = #FPP_vertices(G), f = #FixedList
+    then {E = sum(for list in FPP_edges_by_zero_unsorted(G) do #list od),} Fverts = FPP_vertices(G)
+    then F = #Fverts, f = #FixedList
     then Edges = [vec]:
     	 let startFF = elapsed_ms()
     	 then EdgesFixFix = [vec]:
@@ -2691,14 +2692,15 @@ set localFD_1Dirac2_by_zero\
 		       	  fi
 		       od.## {list of edges starting with j}
 	       	    od.##
-	       else for w@m in FPP_edges(G)  {TEST C}
-    	       	    do if is_member_bitset(w[0],Glookup) and
-		       	  is_member_bitset(w[1],Glookup) {Glookup(w[0]) and Glookup(w[1])}
-		       then let wrat = FPP_edges_rat(G)[m]
-		    	    in [[Lvd.lookup(wrat[0]), Lvd.lookup(wrat[1])]]
-		       else []
-		       fi
-		    od.##
+	       else let FPPEBZ = FPP_edges_by_zero_unsorted(G)
+	       	    in for j in FixedList[:f-1] {TEST C} {seems always a little faster than A1?}
+	       	       do for w@m in FPPEBZ[Perm2.fixed[j]]
+    	       	       	  do if is_member_bitset(w[1],Glookup) {Glookup(w[0]) and Glookup(w[1])}
+		       	     then [[j, Lvd.lookup(Fverts[w[1]])]]
+		       	     else []
+		       	     fi
+		    	  od.##
+		       od.##
 	       fi {f < 2}
 	   then () = FD12bzFFTime +:=elapsed_ms() - startFF
 	   {then () = if time_verbose
