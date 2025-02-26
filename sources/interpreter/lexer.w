@@ -568,13 +568,27 @@ pointer to a |std::string|, again to minimise complications for the parser.
 }
 
 @ The method |put_type_variable| is repeatedly called from the parser when a
-list of fresh type variables is announced. The reduction that performs this
-action is triggered by an opening symbol occurring as look-ahead token, so that
-the lexer has already performed the corresponding call of |push_nest|. Therefore
-it is ready to receive those type variables, even though the identifiers are
-textually outside the closed expression that is their scope. These type
-variables will revert to their previous status at the matching call of
-|pop_nest|. We could test in |put_type_variable| that all identifiers in the
+list of fresh type variables is announced. When correctly used, the reduction
+that performs this action has scanned a following opening symbol as look-ahead
+token, so that the lexer has already performed the corresponding call of
+|push_nest|, and is therefore it is ready to receive those type variables, even
+though the identifiers are textually outside the closed expression that is their
+scope. However it may happen that the reduction to |typevar_list| that calls
+this function is actually due to a look-ahead that excludes a reduction to
+anything else than a |typevar_list|, even though it is not an opening symbol and
+therefore not a valid look-ahead for |typevar_list| either (since the \.{bison}
+parser generator allows its parser to do reductions even when a token has
+already been seen that will inevitably cause a syntax error after the
+reduction). When called in such erroneous situations, |put_type_variable| may
+either find an already formed clutch present that is not expecting any more type
+variables, or (more likely) a completely empty nest. We don't mind that in the
+former case the clutch is unduly extended, since the coming syntax error will
+wipe it out anyway, but in the latter case we do not want to crash the program
+by accessing a non-existing |nest.front()|, so we test for |nest.empty()|, in
+which case we do nothing.
+
+These type variables will revert to their previous status at the matching call
+of |pop_nest|. We could test in |put_type_variable| that all identifiers in the
 clutch be distinct, but there is no obvious action to take if it should fail;
 all that would result from such an error is that any repeated occurrence of a
 same type variable in the list cannot be referred to, and so will remain unused.
@@ -582,9 +596,9 @@ This is no catastrophe, so for once we'll let slip this kind of error.
 
 @< Definitions of class members @>=
 void Lexical_analyser::put_type_variable(id_type v)
-{ assert(not nest.empty()); // because |push_nest| was just called
-  type_vars.insert(v-type_limit);
-  nest.front().push_back(v);
+{ type_vars.insert(v-type_limit);
+  if (not nest.empty()) // should be the case: |push_nest| was already called
+    nest.front().push_back(v);
 }
 void Lexical_analyser::pop_nest()
 { if (not nest.empty()) // avoid crashing before parser detects an error

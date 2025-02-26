@@ -908,7 +908,8 @@ union_list_2
 	  { $$ = make_type_list($1,make_tuple_type($3)); }
 ;
 
-typevar_list : id_list
+typevar_list // wait reducing to this until list is complete and look-ahead seen
+	: id_list
 	  { $$=length($1); // compute before |reverse_patlist| makes $1 useless
 	    prepare_type_variables(reverse_patlist($1));
 	    // call |lex->put_type_variable| for all identifiers in the list
