@@ -19,7 +19,7 @@ Haven't figured out which is faster when.}
 set bottom_verbose = false
 
 {whether to use a smaller Q, with split Levi, in place of theta_stable_quasi_data(p)}
-set small_test_flag = false
+set small_test_flag = true
 
 set deform_support(Param p, int D) = KTypePol:
     to_ht(deform_support(p), D)

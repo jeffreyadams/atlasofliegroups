@@ -351,14 +351,6 @@ set make_Lvd_Perm2_table() = Lvd_Perm2_table:
 
 set LPm_table = make_Lvd_Perm2_table()
 
-{
-set localFD_1Dirac2_by_zero(KGBElt x, ratvec lambda) = [[FaceVertsIndex]]:
-    let theta = x.involution, ic = x.inner_class
-    then lamthlam = ((1+theta)*lambda).numer
-    then (Lvd,Perm2) = LPm_table.LPm_entry(ic,theta,lamthlam)
-    in localFD_1Dirac2_by_zero(x,lambda,Lvd,Perm2)
-}
-
 set Lvd(KGBElt x, ratvec lambda) = LocalVertexData:
     let theta = x.involution, ic = x.inner_class
     then lamthlam = ratvec_as_vec((1+theta)*lambda)
@@ -2588,7 +2580,7 @@ set localFD_1Dirac2\
 	    in  if not all(for q in monomials(p) do is_pos_on_LKTs(q) od)
 	    	then []
 		elif Q(nu,nu) > DiracBD
-	        then DTcount +:=1; []
+	        then DTcount +:=1; prints("GOT HERE!"); []
 	        elif red_count_flag
 	    	then [v#red_count(p)]
 		else [v]
@@ -2609,6 +2601,11 @@ set FD12bzFFTime = int:0
 set FD12bzFTTime = int:0
 set FD12bzTTTime = int:0
 
+{edge-finding tests are performed by (Test B) for vertex set smaller than BoundB, (Test A1) for vertex
+ sets smaller than BoundA1, and (Test C) for larger vertex sets. I don't really have a clue how these
+ should be computed}
+set BoundB = int: 600
+set BoundA1 = int:1250
 {takes local data and low global faces and computes local vertices and edges, imposing
 hermitian, pos on LKTs, and Dirac. Subspace is fixed points of affine involution of
 h*. Perm records involution action on FPP verts. mapAct records local vertex to which an FPP
@@ -2643,12 +2640,12 @@ set localFD_1Dirac2_by_zero\
     then LF0 = [FaceVertsIndex]:
     	 for v@j in Lvd.list
 	 do let p = parameter(x,lambda,v)
-	    in if not all(for q in monomials(finalize(p))
+	    in if Q(v,v) > DiracBD
+	       then DTcount +:=1; []
+	       elif not all(for q in monomials(finalize(p))
 	       	      	     do is_pos_on_LKTs(q)
 			     od)
 	       then []
-	       elif Q(v,v) > DiracBD
-	       then DTcount +:=1; []
 	       elif red_count_flag
 	       then [[j, red_count(p)]]
 	       else [[j]]
@@ -2666,13 +2663,15 @@ set localFD_1Dirac2_by_zero\
 			    od.##
     then TranList = [int]: for v in LF0[#FixedList:] do v[0] od
     then Llookup = is_member_sorted(FixedList##TranList)
-    then Glookup = is_member_sorted(for j in FixedList do Perm2.fixed[j] od)
+    then Glookup = {is_member_sorted(for j in FixedList do Perm2.fixed[j] od)}
+    	 	   to_bitset(for j in FixedList do Perm2.fixed[j] od)
     then E = #FPP_edges(G), F = #FPP_vertices(G), f = #FixedList
     then Edges = [vec]:
     	 let startFF = elapsed_ms()
     	 then EdgesFixFix = [vec]:
 	       if f < 2 then []
-	       elif f < (E*set_bit_positions(E)~[0]*set_bit_positions(f)~[0])\F
+	       elif f < BoundB  {TEST B}
+	       	      	{(E*set_bit_positions(E)~[0]*set_bit_positions(f)~[0])\F} 
 	       then let lookups = FPP_edges_by_zero_indices(G)
 	       	    in for j@i in FixedList[:f-1] {f * (E/F)/2 tests}
 	      	       do for k in FixedList[i+1:f]
@@ -2682,47 +2681,25 @@ set localFD_1Dirac2_by_zero\
 		       	     fi
 		       	  od.## {list of edges starting with j}
 	       	       od.##
-	       else for w@m in FPP_edges(G)
-    	       	    do if Glookup(w[0]) and Glookup(w[1])
+	       elif f < BoundA1 {TEST A1}
+	       	      {2*(E*set_bit_positions(E)~[0]*set_bit_positions(f)~[0])\F}
+	       then for j in FixedList
+    	       	    do for w in FPP_edges_by_zero_unsorted(G)[Perm2.fixed[j]]
+		       do if is_member_bitset(w[1],Glookup)
+		          then [[j,locate_sorted(Perm2.fixed, w[1])]]
+		       	  else []
+		       	  fi
+		       od.## {list of edges starting with j}
+	       	    od.##
+	       else for w@m in FPP_edges(G)  {TEST C}
+    	       	    do if is_member_bitset(w[0],Glookup) and
+		       	  is_member_bitset(w[1],Glookup) {Glookup(w[0]) and Glookup(w[1])}
 		       then let wrat = FPP_edges_rat(G)[m]
 		    	    in [[Lvd.lookup(wrat[0]), Lvd.lookup(wrat[1])]]
 		       else []
 		       fi
 		    od.##
 	       fi {f < 2}
-{
-	       elif f*F > E
-	       then {prints("we're in A");}
-	       	    for j in FixedList[:f-1]
-	       	    do for w in FPP_edges_by_zero_unsorted(G)[Perm2.fixed[j]]
-		       do if Glookup(w[1])
-		       	  then [[j,locate_sorted(Perm2.fixed,w[1])]]
-			  else []
-			  fi
-			  {
-			  let k = locate_sorted(Perm2.fixed, w[1])
-		       	  in if k < #Perm2.fixed and Perm2.fixed[k] = w[1] and
-		       	     Llookup(k)
-		       	     then [[j,k].sort]
-		       	     else []
-		       	     fi
-			   }
-		        od.## {list of edges starting with j}
-	       	     od.## {list of all FixFix edges}prints("xls = ",#xls)
-	       else let lookups = FPP_edges_by_zero_indices(G)
-	        {index_in(FPP_edges(G)) {f choose 2 tests}}
-	       	    in {prints("we're in B");}
-		       for j@i in FixedList[:f-1] {f * (E/F)/2 tests}
-	      	       do for k in FixedList[i+1:f]
-		      	  do if lookups[Perm2.fixed[j]]([Perm2.fixed[j],Perm2.fixed[k]]).>=
-			     	{and Llookup(k)}
-		       	     then [[j,k]]
-		       	     else []
-		       	     fi
-		    	  od.## {list of edges starting with j}
-	       	       od.## {list of all FixFix edges}
-
-}
 	   then () = FD12bzFFTime +:=elapsed_ms() - startFF
 	   {then () = if time_verbose
 	   	     then prints("for FixFix, time is ",print_time_string(elapsed_ms() - startFF))
@@ -3056,10 +3033,10 @@ set localFD_1Dirac2_by_zero_old\
 set localFD_KHash_01 (KGBElt x, ratvec lambda, LocalVertexData Lvd, KTypePol_hash ktp_hash,
 [[FaceVertsIndex]] LF) = [[FaceVertsKHash]]:
     let start = elapsed_ms(), ht = height(parameter(x,lambda,0*lambda))
-    then lookup0 = if red_count_flag
+{    then lookup0 = if red_count_flag
     	 	   then index_in(for v in LF[0] do v[:1] od)
 	 	   else index_in([vec]:[])
-		   fi
+		   fi}
     then QG = (ratvec,ratvec->rat): (ratvec v, ratvec w) rat: 0/1
     then DiracBestBD = 0/1
     then temp_Dirac_best_flag = bool:
@@ -3102,25 +3079,24 @@ set localFD_KHash_01 (KGBElt x, ratvec lambda, LocalVertexData Lvd, KTypePol_has
 	      	      then prints("examining face ",k,
 	      	      	   "; #ktp_hash = ",ktp_hash.size())
 	      	      fi;
-		      if lookup0D(v[:1])<0 or lookup0D(v[1:2])<0
-		      then []
-		      else
-		      let nu = face_bary(Lvd,v[:2])
-		      then p0 = parameter(x, lambda, nu)
-		      then P = finalize(p0)
-		      in if red_count_flag
-		      	 then let i = lookup0D([v[0]]), j = lookup0D([v[1]])
-			 in if answer0[i][1] = v[2] {Kchars match}
-			    then [v##[answer0[i][2],#monomials(P)]]
-			    elif answer0[j][1] = v[2]
-			    then [v##[answer0[j][2], #monomials(P)]]
-			    else let m = ktp_hash.match(K_type_pol(character_formula(P)))
-			    	 in [v##[m, #monomials(P)]]
-			    fi {answer = v[2]}
-			 else let m = ktp_hash.match(K_type_pol(character_formula(P)))
-			      in [v##[m, #monomials(P)]]
-			 fi{red_count_flag}
-			 fi{lookup0}
+		      let i = lookup0D([v[0]]), j = lookup0D([v[1]])
+		      in if i < 0 or j < 0 {one edge endpoint has been removed already}
+		      	 then []
+		      	 else let nu = face_bary(Lvd,v[:2])
+		      	      then p0 = parameter(x, lambda, nu)
+		      	      then P = finalize(p0)
+		      	      in if red_count_flag
+		      	      	 then if answer0[i][1] = v[2] {Kchars match}
+			    	      then [v##[answer0[i][2],#monomials(P)]]
+			    	      elif answer0[j][1] = v[2]
+			    	      then [v##[answer0[j][2], #monomials(P)]]
+			    	      else let m = ktp_hash.match(K_type_pol(character_formula(P)))
+			    	      in [v##[m, #monomials(P)]]
+			   	      fi {answer = v[2]}
+			 	 else let m = ktp_hash.match(K_type_pol(character_formula(P)))
+			      	      in [v##[m, #monomials(P)]]
+			 	 fi{red_count_flag}
+			 fi{i<0}
        	     	     od.##
     then time = elapsed_ms() - start
     then () = if time_verbose then prints("     ", print_time_string(time),
@@ -3131,10 +3107,6 @@ set localFD_KHash_01 (KGBElt x, ratvec lambda, LocalVertexData Lvd, KTypePol_has
 set localFD_KHash_01 (KGBElt x, ratvec lambda, LocalVertexData Lvd, int HT, KTypePol_hash ktp_hash,
 [[FaceVertsIndex]] LF) = [[FaceVertsKHash]]:
     let start = elapsed_ms(), ht = height(parameter(x,lambda,0*lambda))
-    then lookup0 = if red_count_flag
-    	 	   then index_in(for v in LF[0] do v[:1] od)
-		   else index_in([vec]:[])
-		   fi
     then QG = (ratvec,ratvec->rat): (ratvec v, ratvec w) rat: 0/1
     then DiracBestBD = 0/1
     then temp_Dirac_best_flag = bool:
@@ -3177,28 +3149,27 @@ set localFD_KHash_01 (KGBElt x, ratvec lambda, LocalVertexData Lvd, int HT, KTyp
 	      	      then prints("examining face ",k,
 	      	      	   "; #ktp_hash = ",ktp_hash.size())
 	      	      fi;
-		      if lookup0D(v[:1])<0 or lookup0D(v[1:2])<0
-		      then []
-		      else
-		      let nu = face_bary(Lvd,v[:2])
-		      then p0 = parameter(x, lambda, nu)
-		      then P = finalize(p0)
-		      in if red_count_flag
-		      	 then let i = lookup0D([v[0]]), j = lookup0D([v[1]])
-			 in if answer0[i][1] = v[2]
-			    then [v##[answer0[i][2],#monomials(P)]]
-			    elif answer0[j][1] = v[2]
-			    then [v##[answer0[j][2], #monomials(P)]]
-			    else let m = ktp_hash.match(
-				      K_type_pol(character_formula_to_height(P,HT)))
-			         in  [v##[m,#monomials(P)]]
-			    fi {answer = v[2]}
-			 else let m = {char_counter.use();} ktp_hash.match(
-				      K_type_pol(character_formula_to_height(P,HT)))
-			      in [v##[m,#monomials(P)]]
-			 fi{red_count_flag}
-			 fi{lookup0D}
-       	     	    od.##
+		      let i = lookup0D([v[0]]), j = lookup0D([v[1]])
+		      in if i < 0 or j < 0 {one edge endpoint has been removed already}
+		      	 then []
+		      	 else let nu = face_bary(Lvd,v[:2])
+		      	      then p0 = parameter(x, lambda, nu)
+		      	      then P = finalize(p0)
+		      	      in if red_count_flag
+		      	      	 then if answer0[i][1] = v[2] {Kchars match}
+			    	      then [v##[answer0[i][2],#monomials(P)]]
+			    	      elif answer0[j][1] = v[2]
+			    	      then [v##[answer0[j][2], #monomials(P)]]
+			    	      else let m = ktp_hash.match(
+				      	       K_type_pol(character_formula_to_height(P,HT)))
+			    	      in [v##[m, #monomials(P)]]
+			   	      fi {answer = v[2]}
+			 	 else let m = ktp_hash.match(
+				      	      K_type_pol(character_formula_to_height(P,HT)))
+			      	      in [v##[m, #monomials(P)]]
+			 	 fi{red_count_flag}
+			 fi{i<0}
+       	     	     od.##
     then time = elapsed_ms() - start
     then () = if time_verbose then prints("     ", print_time_string(time),
    	     		     " for localFD_KHash_01 (vertex/edge K-chars)") fi
@@ -3503,11 +3474,8 @@ set localFD_KHashbt_lookDownGEO \
 				      in if all(for p in ms do is_pos_on_LKTs(p) od)
 				      	 then if k.>=
 					      then [actual##midreds##[ LFKH[dim-1][locs[k]][dim+1], #ms]]
-					      else {let startCF = elapsed_ms()
-					      	   then () = char_counter.use()}
-					     	   let m =  {char_counter.use();} ktp_hash.match(
+					      else let m = ktp_hash.match(
 						   	K_type_pol(character_formula_to_height(P,HT)))
-					      	   {then () = charTime +:= elapsed_ms() - startCF}
 					      	   in [actual##[m, #ms]]
 					      fi {K-char matches a face}
 		       		    	  else []
@@ -3546,7 +3514,7 @@ set extend_K_characters(KGBElt x, ratvec lambda, LocalVertexData Lvd,
        	  	 then p0 = parameter(x, lambda, nu)
 	  	 then P = finalize(p0)
 		 {then startCF = elapsed_ms()}
-	  	 then m = {char_counter.use();} ktp_hash.match(K_type_pol(character_formula(P)))
+	  	 then m = ktp_hash.match(K_type_pol(character_formula(P)))
 		 {then () = charTime +:= elapsed_ms() - startCF}
 	  	 then () = w[d+red_shift+1] := m
 		 in w
