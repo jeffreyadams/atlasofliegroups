@@ -2466,50 +2466,6 @@ for this case.
   }
 }
 
-@ The presence of recursive types creates the risk of an infinite recursion if
-we simply expand type definitions as we usually do. To avoid that scenario, we
-perform a test near the entry of the recursive function |can_unify|, but after
-assigned type variables have been substituted. (The order is important here: an
-assignment can equate a type variable to a tabled type, but a tabled type cannot
-be defined as a type variable.) Since types descended from tabled types are also
-tabled, it suffices to catch the case where both types are now simultaneously
-tabled, as any non-termination would have to run via such a case. So, as the
-module title says, we always |return| when a pair of tabled types is
-encountered, the return value telling whether they are identical.
-
-@< If both types are tabled, |return| a Boolean telling whether they are
-     the same tabled type @>=
-{
-  if (P->raw_kind()==tabled and Q->raw_kind()==tabled)
-    return P->type_nr()==Q->type_nr();
-}
-
-@ The test for non-containment of a type variable is best done by a local
-recursive function:
-@< Local function def... @>=
-bool is_free_in(const type_expr& tp, unsigned int nr,
-                const type_assignment& assign)
-{ switch(tp.raw_kind())
-  {
-  case variable_type:
-    if (@[auto p=assign.equivalent(tp.typevar_count())@;@])
-      return is_free_in(*p,nr,assign);
-      // unpack assigned type variable, and retry
-    return tp.typevar_count()==nr;
-  case row_type: return is_free_in(tp.component_type(),nr,assign);
-  case function_type: return
-    is_free_in(tp.func()->arg_type,nr,assign) or
-    is_free_in(tp.func()->result_type,nr,assign);
-  case tuple_type: case union_type:
-    for(const_raw_type_list p = tp.tuple(); p!=nullptr; p = p->next.get())
-      if (is_free_in(p->contents,nr,assign))
-        return true;
-    return false;
-  default: // |undetermined| (shouldn't happen), |primitive_type|, |tabled|
-    return false;
-  }
-}
-
 @*2 Wrapped up polymorphic types.
 %
 For a long time, the recursive class |type_expr| was used both to represent a
