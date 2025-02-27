@@ -246,7 +246,7 @@ set up_graph_gens([[FaceVertsKHash]] FDKHash) = [[int]]:
  in
     for d:#FDKHash-1 from 1 { traverse faces having a vertex to spare }
     do let lookup = lookups[d-1] { looking up will be at previous level }
-    in for Find@j1 in FDKHash[d] {Find has d+3 entries; first d+1 corr
+    in for Find@j1 in FDKHash[d] {Find has d+3+redshift entries; first d+1 corr
     to verts of d-diml face}
        do for e:d+1
 	  do let j0 = lookup(delete(Find,e)[:d])
