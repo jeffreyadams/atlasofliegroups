@@ -1238,7 +1238,7 @@ type_expr simple_subst
 }
 
 
-@*2 User defined, possibly recursive, types and type constructors.
+@*2 User defined types and type constructors.
 %
 We come to a new part of the |type_expr| type, a static member |type_map| that
 allows for storage of ``tabled'' types and type constructors. These can
@@ -1313,17 +1313,20 @@ access to the static class member |type_map|. While most of them simply serve as
 a hatch (dutch: ``doorgeefluik'', no good English equivalent) to pass on
 information, the method |matching_bindings| used to find fields to be used for a
 given (supposedly tabled) tuple or union type is not entirely trivial, and the
-method |add_typedefs| used to enter a list of newly defined (potentially
-recursive) types into |type_map| is quite elaborate. Its argument is a list
-|defs| of pairings of a type identifier to a type expression, the latter passed
-by non-owning pointer. The potentially recursive nature of these definitions
-lies in that they can not only refer, using the |tabled_variant|, to types
-already defined in the mapping, but also to the types they define themselves.
-For this purpose, those recursive type numbers start to count from
-|type_expr::table_size()| as it is before |add_typedefs| method is called. The
-return value is a list of the same length giving their type numbers after
-applying type equivalencing~; usually these will be the same numbers used
-initially, but some may have mapped to equivalent previously known types.
+methods |add_simple_typedef| and especially |add_typedefs| (used to enter a list
+of newly defined, potentially recursive types into |type_map|) are quite
+elaborate. While |add_simple_typedef| requires no processing of its |type| entry
+and can directly create a |type_map| entry, |add_typedefs| does need to
+pre-process its argument |defs|, a list of pairings of a type identifier to a
+type expression, the latter passed by non-owning pointer. The potentially
+recursive nature of these definitions lies in that they can not only refer,
+using the |tabled_variant|, to types already defined in the mapping, but also to
+the types they define themselves. For this purpose, those recursive type numbers
+start to count from |type_expr::table_size()| as it is before |add_typedefs|
+method is called. The return value is a list of the same length giving their
+type numbers after applying type equivalencing~; usually these will be the same
+numbers used initially, but some may have mapped to equivalent previously known
+types.
 
 @< Static methods of |type_expr| that will access |type_map| @>=
 static type_nr_type table_size();
@@ -1331,6 +1334,7 @@ static void reset_table_size(type_nr_type old_size);
 static const std::vector<id_type>& fields(type_nr_type type_number);
 static void set_fields (id_type type_number, std::vector<id_type>&& fields);
 static sl_list<const type_binding*> matching_bindings (const type& tp);
+static type_nr_type add_simple_typedef (id_type id, type tp);
 static std::vector<type_nr_type> add_typedefs
  (const std::vector<std::pair<id_type,const_type_p> >& defs,
   unsigned int n_args);
@@ -1425,15 +1429,44 @@ type_expr type_expr::expanded () const
   return simple_subst(type_map.definiens(tabled_nr()),assign);
 }
 
-@ The definition of |type_expr::add_typedefs| is subtle and requires quite a bit
-of work. This is due to our requirements about tabled types~: for recursive
-types, all types in their recursive cluster (mutual descendants) must be tabled
-and marked as recursive, and among remaining tabled types and type constructors
-there are no two equivalent ones. (The latter is no a strict necessity, since
-tabled types not marked as recursive will be expanded if needed in the equality
-test, so equivalence among them would ultimately be detected anyway.) We trade
-off getting a simpler and more rapid equivalence test during type analysis for
-the additional time spent in processing type definitions.
+@ To add a simple non-recursive definition, in which the right hand side already
+has a definite meaning (as opposed to the situation for recursive definitions),
+there is no other requirement for it than that it should not directly be (at its
+top level) a reference to an instance of another tabled type (constructor). To
+make sure this is the case, we start applying |expand| to it, but this is
+probably never necessary, since the only reason to actually table such a
+definition is to have a place to attach field names given in the definition for
+a tuple or union type, and applying an existing type constructor does not give
+an occasion to introduce such field names.
+
+@< Function definitions @>=
+
+type_nr_type type_expr::add_simple_typedef (id_type id, type rhs)
+{ rhs.expand(); // ensure |rhs.kind()!=tabled| so it can go into |type_map|
+  auto arity = rhs.degree();
+  type_expr tp = rhs.bake_off();
+  for (type_nr_type i=0; i<type_map.size(); ++i)
+    if (type_map.arity(i)==arity and type_map.definiens(i)==tp)
+    { if (type_map[i].name==type_binding::no_id)
+        type_map[i].name=id;
+      return i;
+    }
+  type_nr_type result = type_map.size();
+  type_map.emplace_back(std::move(tp),arity);
+  type_map.back().name=id;
+  return result;
+}
+
+@*3 Adding groups of possibly mutually recursive type definitions.
+%
+We will now define the method |type_expr::add_typedefs|, which is subtle and
+requires quite a bit of work. This is due to our requirements about tabled
+types~: for recursive types, all types in their recursive cluster (mutual
+descendants) must be tabled and marked as recursive, and among remaining tabled
+types and type constructors there are no two equivalent ones. (The latter is no
+a strict necessity, since tabled types not marked as recursive will be expanded
+if needed in the equality test, so equivalence among them would ultimately be
+detected anyway.)
 
 Type equivalence is defined in a conceptually simple way: two type expressions
 are equivalent if they can be made identical by finitely many expansions of user
@@ -1497,8 +1530,8 @@ std::vector<type_nr_type> type_expr::add_typedefs
 
   std::vector<type_nr_type> relocate(type_array.size());
 @/@< For new members of |type_map| that are not |recursive|, test whether they
-     are equivalent any earlier type and if so set the corresponding entry of
-     |relocate| @>
+     are equivalent to any earlier type and if so set the corresponding entry
+     of |relocate| @>
   @< Remove redundant types from |type_map|, and adjust |relocate|
      correspondingly @>
   @< Renumber the tabled entries according to |relocate| @>
@@ -1772,7 +1805,7 @@ just type variables. It does not seem like this can cause problems.
 fairly easy to eliminate any duplicates.
 
 @< For new members of |type_map| that are not |recursive|, test whether they
-   are equivalent any earlier type and if so set the corresponding entry of
+   are equivalent to any earlier type and if so set the corresponding entry of
    |relocate| @>=
 {
   for (type_nr_type nr = 0; nr<type_array.size(); ++nr)

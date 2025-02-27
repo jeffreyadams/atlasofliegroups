@@ -115,13 +115,13 @@ public:
   const char* scanned_file_name() const @+{@; return file_name.c_str(); }
   id_type first_identifier() const @+{@; return type_limit; }
   bool is_initial () const @+{@; return state==initial; }
+  void push_nest() @+ {@; nest.push_front(eggs{}); }
+  void pop_nest(); // pop and decommission a clutch of type variables
   void put_type_variable(id_type v);
   unsigned int typevar_level() const;
   void start_defining_types() { state = type_defining; }
 private:
   void skip_space() const;
-  void push_nest() @+ {@; nest.push_front(eggs{}); }
-  void pop_nest(); // pop and decommission a clutch of type variables
   bool becomes_follows();
   void operator_termination (char c);
   std::string scan_quoted_string() const;

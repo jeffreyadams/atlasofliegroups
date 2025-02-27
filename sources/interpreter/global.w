@@ -1426,7 +1426,7 @@ void type_define_identifier
   const source_location& loc)
 { type_ptr saf(t); id_pat field_pat(ip); // ensure clean-up
   type tp= type::constructor(global_id_table->expand(*t),deg);
-  const auto& fields = field_pat.sublist;
+  auto& fields = field_pat.sublist;
   const auto n=length(fields);
 @)
   definition_group group(n);
@@ -1447,8 +1447,11 @@ void type_define_identifier
       @< Add to |global_overload_table| the projector or injector function
          values from |jectors| @>
 @)
+    if (not fields.empty())
+    { type_nr_type k = type_expr::add_simple_typedef(id,tp.copy());
+      type_expr::set_fields(k,std::move(names));
+    }
     global_id_table->add_type_def(id,std::move(tp));
-
   }
   catch (program_error& err)
   { std::ostringstream o;
