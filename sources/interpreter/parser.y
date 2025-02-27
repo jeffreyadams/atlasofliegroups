@@ -84,8 +84,8 @@
 %type <expression> iffor_loop if_loop for_loop
 %type <ini_form> formula_start
 %type <oper> operator symbol
-%type <id_code> id id_op type_or_constr
-%type <code> tilde_opt breaker typevar_list settype_open
+%type <id_code> id id_op id_eq type_or_constr
+%type <code> tilde_opt breaker typevar_list type_args settype_open
 %destructor { destroy_expr ($$); }
             expr expr_opt tertiary cast lettail or_expr and_expr not_expr
 	    formula operand secondary primary comprim unit selector
@@ -162,8 +162,8 @@ input:	'\n'			{ YYABORT; } /* null input, skip evaluator */
 	    auto decls = insert_type_abstraction($2,$4,@$);
 	    sequentially_set_identifiers(decls,@$); YYABORT;
 	  }
-	| ANY_TYPE typevar_list BEGIN SET_TYPE id '=' type_spec END '\n'
-	  { type_define_identifier($5,$7.type_pt,$2,$7.ip,@$); YYABORT; }
+	| SET_TYPE id '<' type_args '>' '=' type_spec '!' '\n'
+	  { type_define_identifier($2,$7.type_pt,$4,$7.ip,@$); YYABORT; }
 	| IDENT ':' expr '\n'
 		{ struct raw_id_pat id; id.kind=0x1; id.name=$1;
 		  global_set_identifier(id,$3,0,@$); YYABORT; }
@@ -171,8 +171,8 @@ input:	'\n'			{ YYABORT; } /* null input, skip evaluator */
 	| FORGET id '\n'	  { global_forget_identifier($2); YYABORT; }
 	| FORGET id_op '@' type '\n'
 	  { global_forget_overload($2,$4); YYABORT;  }
-	| SET_TYPE id '=' type_spec '\n'
-	  { type_define_identifier($2,$4.type_pt,0,$4.ip,@$); YYABORT; }
+	| SET_TYPE id_eq type_spec '\n'
+	  { type_define_identifier($2,$3.type_pt,0,$3.ip,@$); YYABORT; }
 	| settype_open '[' type_equations ']' '\n'
 	  { process_type_definitions($3,$1,@$); YYABORT; }
 
@@ -238,6 +238,9 @@ type_or_constr
 
 id_op	: IDENT
 	| symbol { $$=$1.id; }
+;
+
+id_eq	: id '=' { $$=$1; lex->push_nest(); }
 ;
 
 expr    : LET lettail { $$=$2; }
@@ -828,14 +831,18 @@ param_list
 	| /* empty */ { $$.typel=nullptr; $$.patl=nullptr; }
 ;
 
-type_spec: type { $$.type_pt=$1; $$.ip.kind=0x0; }
+type_spec
+	: type
+	  { $$.type_pt=$1; $$.ip.kind=0x0; lex->pop_nest(); }
 	| '(' struct_specs ')'
 	  { $$.type_pt=make_tuple_type($2.typel);
 	    $$.ip.kind=0x2; $$.ip.sublist=reverse_patlist($2.patl);
+	    lex->pop_nest();
 	  }
 	| '(' union_specs ')'
 	  { $$.type_pt=make_union_type($2.typel);
 	    $$.ip.kind=0x2; $$.ip.sublist=reverse_patlist($2.patl);
+	    lex->pop_nest();
 	  }
 ;
 
@@ -911,6 +918,15 @@ union_list_2
 typevar_list // wait reducing to this until list is complete and look-ahead seen
 	: id_list
 	  { $$=length($1); // compute before |reverse_patlist| makes $1 useless
+	    prepare_type_variables(reverse_patlist($1));
+	    // call |lex->put_type_variable| for all identifiers in the list
+	  }
+;
+
+type_args // this reduces with no lexical groups present; create a virtual one
+	: id_list
+	  { $$=length($1); // compute before |reverse_patlist| makes $1 useless
+	    lex->push_nest(); // creat group before preparing variables
 	    prepare_type_variables(reverse_patlist($1));
 	    // call |lex->put_type_variable| for all identifiers in the list
 	  }
