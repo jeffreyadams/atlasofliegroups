@@ -2601,11 +2601,13 @@ set FD12bzFFTime = int:0
 set FD12bzFTTime = int:0
 set FD12bzTTTime = int:0
 
-{edge-finding tests are performed by (Test B) for vertex set smaller than BoundB, (Test A1) for vertex
- sets smaller than BoundA1, and (Test C) for larger vertex sets. I don't really have a clue how these
+{edge-finding tests are performed by (Test B) for vertex set smaller than BoundB,}
+{NOT ANY MORE: A1 is always slower than C, by quite a bit?}
+     {(Test A1) for vertex sets smaller than BoundA1,}
+{and (Test C) for larger vertex sets. I don't really have a clue how these
  should be computed}
 set BoundB = int: 600
-set BoundA1 = int:BoundB
+{set BoundA1 = int:BoundB}
 {takes local data and low global faces and computes local vertices and edges, imposing
 hermitian, pos on LKTs, and Dirac. Subspace is fixed points of affine involution of
 h*. Perm records involution action on FPP verts. mapAct records local vertex to which an FPP
@@ -2661,12 +2663,14 @@ set localFD_1Dirac2_by_zero\
 				  else break
 				  fi
 			    od.##
-    then TranList = [int]: for v in LF0[#FixedList:] do v[0] od
+    then f = #FixedList, f0 = #Perm2.fixed
+    then TranList = [int]: for v in LF0[f:] do v[0] od
     then Llookup = is_member_sorted(FixedList##TranList)
     then Glookup = {is_member_sorted(for j in FixedList do Perm2.fixed[j] od)}
     	 	   to_bitset(for j in FixedList do Perm2.fixed[j] od)
-    then {E = sum(for list in FPP_edges_by_zero_unsorted(G) do #list od),} Fverts = FPP_vertices(G)
-    then F = #Fverts, f = #FixedList
+    then {E = sum(for list in FPP_edges_by_zero_unsorted(G) do #list od),}
+         Fverts = FPP_vertices(G)
+    then F = #Fverts
     then Edges = [vec]:
     	 let startFF = elapsed_ms()
     	 then EdgesFixFix = [vec]:
@@ -2682,6 +2686,7 @@ set localFD_1Dirac2_by_zero\
 		       	     fi
 		       	  od.## {list of edges starting with j}
 	       	       od.##
+	       {
 	       elif f < BoundA1 {TEST A1}
 	       	      {2*(E*set_bit_positions(E)~[0]*set_bit_positions(f)~[0])\F}
 	       then for j in FixedList
@@ -2692,11 +2697,15 @@ set localFD_1Dirac2_by_zero\
 		       	  fi
 		       od.## {list of edges starting with j}
 	       	    od.##
+
+	       }
 	       else let FPPEBZ = FPP_edges_by_zero_unsorted(G)
 	       	    in for j in FixedList[:f-1] {TEST C} {seems always a little faster than A1?}
+		    {in E7 spherical, C is seven times faster than B}
+		    {SO OMIT A1}
 	       	       do for w@m in FPPEBZ[Perm2.fixed[j]]
     	       	       	  do if is_member_bitset(w[1],Glookup) {Glookup(w[0]) and Glookup(w[1])}
-		       	     then [[j, Lvd.lookup(Fverts[w[1]])]]
+		       	     then [[j, Lvd.lookup(Fverts[w[1]])]] {SEEMS FASTER THAN A1}
 		       	     else []
 		       	     fi
 		    	  od.##
@@ -2708,22 +2717,20 @@ set localFD_1Dirac2_by_zero\
 		     fi}
 	   then startFT = elapsed_ms()
       	   then EdgesFixTrans = [vec]:
-	   	if #Perm2.fixed > 0 and #Perm2.trans >0
-		then for j@m in Perm2.fixed
-		     do {let mloc = mapAct[j]} {this is m?}
-		     	let cands = FPP_flippable_triangles_by_zero_unsorted(G)[j]
-			in if {Llookup(m) and} #cands > 0
+	   	if #FixedList > 0 and #TranList > 0
+		then for j in FixedList
+		     do let cands = FPP_flippable_triangles_by_zero_unsorted(G)[Perm2.fixed[j]]
+			in if #cands > 0
 			   then for v in cands
-			      	do let n = #Perm2.fixed + trans_hash.lookup(v[1:])
-				   in if n >= #Perm2.fixed
-				      	 and Llookup(n) and Llookup(m)
-				      then [[m,n]]
-				      else {DTcount +:= 1;} []
+			      	do let k = f0 + trans_hash.lookup(v[1:])
+				   in if k >= f0 and Llookup(k) {and Llookup(j)}
+				      then [[j,k]]
+				      else []
 				      fi
-			       	od.## {[vec], all starting with m}
+			       	od.## {[vec], all starting with j}
 			    else []
 			    fi {#cands > 0}
-		      od.## {[vec], all m}
+		      od.## {[vec], all j}
 		  else []
 		  fi
 	   then () = FD12bzFTTime +:= elapsed_ms() - startFT
@@ -2732,17 +2739,19 @@ set localFD_1Dirac2_by_zero\
 		     fi}
 	   then startTT = elapsed_ms()
 	   then EdgesTransTrans = [vec]: {this is the longest}
-	      if #Perm2.trans > 1
+	      if #TranList > 1
 	      then let FEL = FPP_flippable_edge_lookup(G)
-	      	   in for (i,j)@m in Perm2.trans
-	      	      do let a = FEL([i,j]) {, mloc = mapAct[i]} {this is m+#Perm2.fixed?}
+	      	   in for k@m in TranList[:#TranList - 1] {k is the number of a midpoint local vertex}
+		      	  {(i,j)@m in Perm2.trans}
+	      	      do let (i,j) = Perm2.trans[k-f0]
+		      	 then a = FEL([i,j]) {this is m + f0?}
 	      	      	 then cands = FPP_flippable_tetrahedra_by_zero_unsorted(G)[a]
-		      	 in if {Llookup(m+#Perm2.fixed) and} #Perm2.trans > m+1 and #cands > 0
+		      	 in if {#Perm2.trans > m+1 and} #cands > 0
 		      	    then for v in cands
-			      	 do let n = #Perm2.fixed + trans_hash.lookup(v[2:])
-				    in if n >= #Perm2.fixed
-				       	  and Llookup(n) and Llookup(m+#Perm2.fixed)
-				       then [[m+#Perm2.fixed,n].sort]
+			      	 do let n = f0 + trans_hash.lookup(v[2:])
+				    in if n >= f0
+				       	  and Llookup(n) {and Llookup(m+f)}
+				       then {prints("used TT!");} [[m+f0,n].sort]
 				       else []
 				       fi
 			       	 od.## {[vec], all starting with mloc}
@@ -2765,9 +2774,9 @@ set localFD_1Dirac2_by_zero\
 	 do let nu = face_bary(Lvd,v)
 	    then p = parameter(x,lambda,nu)
 	 {face_bary_ic(x.inner_class, face_bary(Lvd.list, v)))}
-	    in if Q(nu,nu) > DiracBD
-	       then DTcount +:=1; []
-	       elif not all(for q in monomials(p) do is_pos_on_LKTs(q) od)
+	    in {if Q(nu,nu) > DiracBD
+	       then DTcount +:=1; []} {can't happen}
+	       if not all(for q in monomials(p) do is_pos_on_LKTs(q) od)
 	       then []
 	       elif red_count_flag
 	       then [v#red_count(p)]
@@ -3101,8 +3110,8 @@ set localFD_KHash_01 (KGBElt x, ratvec lambda, LocalVertexData Lvd, KTypePol_has
 			 fi{i<0}
        	     	     od.##
     then time = elapsed_ms() - start
-    then () = if time_verbose then prints("     ", print_time_string(time),
-   	     		     " for localFD_KHash_01 (vertex/edge K-chars)") fi
+    {then () = if time_verbose then prints("     ", print_time_string(time),
+   	     		     " for localFD_KHash_01 (vertex/edge K-chars)") fi}
     in [answer0,answer1]
 
 {takes 0 and 1-diml local faces and adds K-char index to height HT}
@@ -3233,8 +3242,8 @@ set localFD_KHash_01_graph (KGBElt x, ratvec lambda, LocalVertexData Lvd, KTypeP
 	  	     od.##
        		  od
     then time = elapsed_ms() - start
-    then () = if time_verbose then prints("     ", print_time_string(time),
-   	     		     " for localFD_KHash_01_graph (vertex/edge K-chars)") fi
+    {then () = if time_verbose then prints("     ", print_time_string(time),
+   	     		     " for localFD_KHash_01_graph (vertex/edge K-chars)") fi}
     in answer
 {same as above, using graph of K-relations}
 {takes 0 and 1-diml local faces and adds K-char index}
@@ -3293,8 +3302,8 @@ set localFD_KHash_01_graph (KGBElt x, ratvec lambda, LocalVertexData Lvd, int HT
 	  	     od.##
        		  od
     then time = elapsed_ms() - start
-    then () = if time_verbose then prints("     ", print_time_string(time),
-   	     		     " for localFD_KHash_01_graph (vertex/edge K-chars)") fi
+    {then () = if time_verbose then prints("     ", print_time_string(time),
+   	     		     " for localFD_KHash_01_graph (vertex/edge K-chars)") fi}
     in answer
 
 {takes list of 0- and d-diml faces, with d \ge 1, and builds all
