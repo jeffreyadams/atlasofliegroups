@@ -5,6 +5,10 @@ here phi.gamma does need to be dominant, but you need to make the PAIR
 
 set_type [L_homomorphism = (KGBElt_gen y,ratvec gamma)]
 
+{inner class on the dual side:}
+set inner_class(L_homomorphism phi)=InnerClass:inner_class(phi.y)
+
+
 {usualay this is used this in the setting of packets, but not individual representations}
 set make_dominant(KGBElt_gen y,ratvec gamma)=L_homomorphism:
 let (w,gamma_dom)=to_dominant(y.root_datum,gamma) in (w*y,gamma_dom)
@@ -72,7 +76,8 @@ set KGB_elt_gen (Tits_elt t)=KGB_elt_gen(t.root_datum,t.theta,2*t.torus_part-t.r
 
 {-----------various things related to stability------------}
 
-set sign(KGBElt x,ratvec z)=int:(-1)^(rat_as_int(x.unnormalized_torus_factor*z))
+{set sign(KGBElt x,ratvec z)=int:(-1)^(rat_as_int(x.unnormalized_torus_factor*(1+x.involution)*z))}
+set sign(KGBElt x,ratvec z)=int:(-1)^(rat_as_int(x.torus_factor*(1+x.involution)*z))
 
 {stable sum of phi on single real form}
 set stable_sum(RealForm G,L_homomorphism phi)=param_pol(L_packet(G,phi))
@@ -82,15 +87,22 @@ set stable_sum(RealForm G,[(Split,L_homomorphism)] pairs)=ParamPol:
 sum(G,for (c,phi) in pairs do c*stable_sum(G,phi) od)
 
 {stable sum from phi on all strong real forms, with sign coming from central element z}
+{NOTE: Z=exp(2\pi iz) is element of center of G,
+ x= KGBElt (of any element of Pi(phi))
+ compute <tau(x),(1+theta_x)*v> since (1+theta)v is in X_*(T)^{-theta}/(1+theta)X_*(T), which is isomorphic to pi_0(T^theta)
+ don't have x, but theta_x = -theta_y-transpose where phi=(y,gamma)
+ so compute <tau(x),v*(1-theta_y)> but I think this is the same as <2tau(x),v>
+}
 set pure_stable_sum(L_homomorphism phi,ratvec z)=[ParamPol]:
 for packet in pure_L_packet(phi) do
- let G=packet[0].real_form in kottwitz_sign(G)*(-1)^rat_as_int(central_invariant(G)*z)*param_pol(packet) od
+{ let G=packet[0].real_form in kottwitz_sign(G)*(-1)^rat_as_int(2*central_invariant(G)*z)*param_pol(packet) od}
+ let G=packet[0].real_form in kottwitz_sign(G)*(-1)^rat_as_int(2*torus_factor(G)*z)*param_pol(packet) od
 
 {stable sum from collection of phis (and coefficients), on all strong real forms, with sign coming from central z}
 set pure_stable_sum([(Split,L_homomorphism)] pairs,ratvec z)=[[ParamPol]]:
 for (c,phi) in pairs do
  for packet in pure_L_packet(phi) do
-  let G=packet[0].real_form in c*kottwitz_sign(G)*(-1)^rat_as_int(central_invariant(G)*z)*param_pol(packet)
+  let G=packet[0].real_form in c*kottwitz_sign(G)*(-1)^rat_as_int(2*torus_factor(G)*z)*param_pol(packet)
  od
 od
 
@@ -100,8 +112,14 @@ if =P then [] else
 assert(is_stable(P),"P is not stable");
 assert(is_quasisplit(P.real_form), "G is not quasisplit");
 for G in pure_strong_real_forms(P.real_form) do
-let x=first_param(P).x {all should gave the same answer} in
-kottwitz_sign(G)*sign(x,z)*inner_lift(P,G) od fi
+ let Q=inner_lift(P,G) in
+ if !=Q then 
+  let x=first_param(Q).x in
+  let ()=prints("x=",x,", ", torus_factor(x)) in 
+  [kottwitz_sign(G)*sign(x,z)*inner_lift(P,G)]
+ else []
+ fi
+od.## fi
 
 set pure_stabilize(Param p,ratvec z)=[ParamPol]:pure_stabilize(1*p,z )
 

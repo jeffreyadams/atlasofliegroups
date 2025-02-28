@@ -9,9 +9,7 @@ set e_verbose=false
 set endoscopic_lift(L_homomorphism phi_H,RealForm G,mat M)=
 phi(map_KGB_gen_tits(phi_H.y,dual_quasisplit_form(G),M),phi_H.gamma*M)
 
-{x_H must be a pure KGB element for H}
-{long version includes p_G}
-set epstar_std_long(KGBElt x_H,L_homomorphism phi_H,RealForm G,mat M)=(Param,ParamPol):
+set lift_pair(KGBElt x_H,L_homomorphism phi_H,RealForm G,mat M)=(KGBElt,L_homomorphism):
 assert(is_pure(x_H), "x_H is not pure (epstar only defined at the moment for pure real forms of H and G");
 let y_H=phi_H.y then
 gamma_H=phi_H.gamma then
@@ -25,18 +23,17 @@ phi_G_0=phi(y_G,gamma_G) then
 theta_G_v=involution(y_G) then
 theta_G=-^theta_G_v then
 ()=if e_verbose then prints("theta_G: ", theta_G,new_line,"torus_factor(x_H): ", torus_factor(x_H)) fi then
-{mu_H=unnormalized_torus_factor(x_H) then
-()=if e_verbose then prints("unnormalized torus factor of x_H: ", mu_H) fi then
-pppmu_G=mu_H*M+ rho_check(G)  then
-()=if e_verbose then prints("unnormalized torus factor of x_G: ", mu_G) fi then
-tau_G=(1+theta_G)*(2*mu_G-rho_check(G))/2 then
-()=if e_verbose then prints("normalized torus factor of x_G: ", tau_G) fi then}
-{x_G=KGB_elt(inner_class(G),theta_G,tau_G) then}
 x_G_0=KGB_elt(inner_class(G),theta_G,x_H.torus_factor*M) then
 ()=if e_verbose then prints("x_G_0: ", x_G_0) fi then
 ()= if e_verbose then prints("x_G_0.real_form: ",x_G_0.real_form) fi then
 ()=if e_verbose then prints("x_G_0.torus_factor",x_G_0.torus_factor) fi then
-(x_G,phi_G)=make_dominant(x_G_0,phi_G_0) then
+(x_G,phi_G)=make_dominant(x_G_0,phi_G_0) in (x_G,phi_G)
+
+{x_H must be a pure KGB element for H}
+{long version includes p_G}
+set epstar_std_long(KGBElt x_H,L_homomorphism phi_H,RealForm G,mat M)=(Param,ParamPol):
+assert(is_pure(x_H), "x_H is not pure (epstar only defined at the moment for pure real forms of H and G");
+let (x_G,phi_G)=lift_pair(x_H,phi_H,G,M) then
 ()=if e_verbose then prints("x_G: ", x_G, " ", x_G.real_form, " ", x_G.torus_factor) fi then
 p_G=parameter(x_G,phi_G) then
 ()=if e_verbose then prints("p_G=", p_G) fi
@@ -149,6 +146,65 @@ set epstar_irr(ParamPol P_H,RealForm G)=
 sum(G,for (c,p) in %P_H do c*epstar_irr(p,G) od)
 
 {P should be stable on G_qs, P is a ParamPol of irreducibles}
-set epstar_stable(ParamPol P,RealForm G,mat M,ratvec z)=
+set epstar_stable(ParamPol P,RealForm G,mat M,ratvec z)=ParamPol:
 let ps=pure_stabilize(P,z) in
 sum(G,for P in ps do prints("P=",P);let ep=epstar_irr(P,G,M)  in prints("ep=",ep);ep od)
+
+set epstar_stable(ParamPol P,RealForm G,ratvec z)=ParamPol:epstar_stable(P,G,id_mat(rank(G)),z)
+
+set epstar_stable(L_homomorphism phi_H,RealForm G,ratvec z)=ParamPol:
+let H=dual_quasisplit_form(inner_class(phi_H)) then
+P_H=stable_sum(H,phi_H) in 
+epstar_stable(P_H,G,z)
+
+set test_epstar_stable([Param] params,RealForm G, ratvec z)=[(ParamPol,ParamPol)]:
+for P in stable_sums_irr(params) do (P, epstar_stable(P,G,z)) od
+
+{test_epstar_stable(weak_packets(H),G,z)}
+set test_epstar_stable([([([Param],[WCell])],[(int,int,Param)])] wp_H,RealForm G,ratvec z)=[[(ParamPol,ParamPol)]]:
+for packet in wp_H do test_epstar_stable(parameters(packet),G,z) od
+
+set show([[(ParamPol,ParamPol)]] data)=void:
+for a@i in data do 
+ for (P,Q)@j in a do 
+  prints("-------------------------------",new_line,"i=",i," j=",j,new_line,"P=",P,new_line,"lift(P)=",Q,new_line) od od
+
+
+set quotient(mat A,mat B)=
+let X=left_inverse(A)*B in finite_quotient(X)
+
+set matrices(mat theta)=
+let A=kernel(1+theta) then
+B=1-theta in (A,B)
+
+set matrices(KGBElt x)=matrices(x.involution)
+set quotient(KGBElt x)=let (A,B)=matrices(x) in quotient(A,B)
+set matrices(KGBElt_gen x)=matrices(x.involution)
+set quotient(KGBElt_gen x)=let (A,B)=matrices(x) in quotient(A,B)
+
+set quotient_elements(KGBElt_gen x)=[ratvec]:
+let (A,B)=matrices(x) then 
+q=quotient(A,B) in
+if =#q then [] else let
+Q=for (v,d) in q do v/d od then
+vecs=box(2,#Q) in columns(A*Q*vecs) fi
+
+set quotient_elements(KGBElt x)=[ratvec]:quotient_elements(KGB_elt_gen(x))
+
+set endoscopic_elements(L_homomorphism phi)=[ratvec]:
+quotient_elements(phi.y)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
