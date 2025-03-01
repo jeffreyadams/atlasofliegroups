@@ -366,7 +366,8 @@ set split_lines (string text) = [string]:
 )
 
 set is_substring (string key, string text) = bool:
-  let l=#key in any(#text-l,(int start)bool: text[start:start+l]=key)
+  let l=#key then n_tries=#text+1-l { number of interletter positions to try }
+  in any(n_tries,(int start)bool: text[start:start+l]=key)
 
 set fgrep (string s, string text) = [string]:
   for line in split_lines(text) if is_substring(s,line) do line fi od
