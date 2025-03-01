@@ -175,6 +175,29 @@ set_type LK_data = [(KType,[KType])] {for each bottom layer tau, list [dertauLj]
 set_type QK_bottom_data = (KGPElt Q, [KType] list) {intent is that list consists of K-types tau that are Q-bottom layer}
 set_type QKL_bottom_data = (KGPElt Q, [(KType,[KType])] LKdata) {for each bottom layer tau, list [dertauLj] of corr derLKj-types}
 
+set max_ht([KType] list) = int:
+    if #list = 0
+    then -1
+    else max(for tau in list do height(tau) od)
+    fi
+
+set max_ht ([KType,[KType]] list) = int:
+    max_ht (for (tau,) in list do tau od)
+
+set max_ht([QK_bottom_data] data) = int:
+    if #data = 0 then return -1 fi;
+    max(for (,list) in data
+    	do max_ht(list)
+	od)
+
+set max_ht([QKL_bottom_data] data) = int:
+    if #data = 0 then return -1 fi;
+    max(for (,list) in data
+    	do max_ht(list)
+	od)
+
+{set max_ht([(KType, [QKL_bottom_data])] datas) = int:}
+
 set RF_code = true
 
 set nKeTime = int: 0
@@ -870,7 +893,7 @@ set bottom_elim_factors(Param p0, Param p, QKL_bottom_data (Q, LKdata), KTypePol
     then i0 = first(for pLmi in pLmis do (K_type_pol(pLmi*0))[muLm].!= od)
     then pLm0 = pLmis[i0] {now has LKT muL}
     then pL = first_param(theta_induce_standard(pLm0,L)) {has muL as a LKT}
-    then D = max(for (tau,) in LKdata do height(tau) od)
+    then D = max(max_ht(LKdata), height(p))
     then () = if not is_hermitian(pL)
     	      then NIHCOUNT +:= 1;
 	      	   if not small_test_flag then prints("bad bef at ",p0) fi;
@@ -884,9 +907,10 @@ set bottom_elim_factors(Param p0, Param p, QKL_bottom_data (Q, LKdata), KTypePol
     then derLjs = for derpLj in derpLjs do derpLj.real_form od
     then dermuLjs = derived_factor_K_types0(muL)
     then DLs = for j:#derpLjs
-       	       do max(for (, list) in LKdata {one for each j}
+       	       do max_ht(LKdata)
+	       {(for (, list) in LKdata {one for each j}
        	    	      do height(list[j])
-		      od)
+		      od)}
 	       od
     then Pmult = if branch_hash_flag
     	       	 then big_unitary_hash.branch(P,D)
@@ -1291,6 +1315,7 @@ set card([QKL_bottom_data] data) = int:
 set card([(KType, [QKL_bottom_data])] datas) = int:
     sum(for (,data) in datas do card(data) od)
 
+
 {returns is_good, is_weakly_good, is_weakly_fair}
 set goodness(Param p, KGPElt Q) = (bool, bool, bool):
     let (P0,pL0) = if small_test_flag
@@ -1628,6 +1653,7 @@ set bottom_test_factors_more(Param p0, Param p, [KType, [QKL_bottom_data]] datas
 			      then prints("at p = ",p0,", more helped!")
 			      fi
                     {then () = attest_is_unitary(p,false)}
+		    then () = befmoreCount +:= 1
 		    then () = befmoreTime +:= elapsed_ms() - start
 		    in return false
 	       fi
@@ -1676,6 +1702,7 @@ set bottom_test_factors_more(Param p0, Param p, int D, KTypePol P) = bool:
 		    	 then () = if bottom_verbose and mg=MG
 			      	   then prints("at p = ",p,", more helped!")
 			      	   fi
+		    	 then () = befmoreCount +:= 1
 		    	 then () = befmoreTime +:= elapsed_ms() - start
 		         in return false
 	             fi
@@ -1689,6 +1716,7 @@ set bottom_test_factors_more(Param p0, Param p, int D, KTypePol P) = bool:
 		    	then () = if bottom_verbose and mg=MG
 			      	then prints("at p = ",p,", more helped!")
 			      	fi
+		    	then () = befmoreCount +:= 1
 		        then () = befmoreTime +:= elapsed_ms() - start
 		    	in return false
 	       	   fi
