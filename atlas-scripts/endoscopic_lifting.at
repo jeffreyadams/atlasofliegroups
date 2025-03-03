@@ -2,14 +2,16 @@
 also: only pure strong real forms}
 <L_hom.at
 
-set e_verbose=false
+set e_verbose=true
 
 {M: X^*(H_v) to X^*(G_v), i.e. also takes X_*(H) to X_*(G)}
 
-set endoscopic_lift(L_homomorphism phi_H,RealForm G,mat M)=
+{lift L-homomorphism from H to G}
+set epstar(L_homomorphism phi_H,RealForm G,mat M)=
 phi(map_KGB_gen_tits(phi_H.y,dual_quasisplit_form(G),M),phi_H.gamma*M)
 
-set lift_pair(KGBElt x_H,L_homomorphism phi_H,RealForm G,mat M)=(KGBElt,L_homomorphism):
+{lift pair (x_H,phi_H) to (x_G,phi_G)}
+set epstar(KGBElt x_H,L_homomorphism phi_H,RealForm G,mat M)=(KGBElt,L_homomorphism):
 assert(is_pure(x_H), "x_H is not pure (epstar only defined at the moment for pure real forms of H and G");
 let y_H=phi_H.y then
 gamma_H=phi_H.gamma then
@@ -33,7 +35,7 @@ x_G_0=KGB_elt(inner_class(G),theta_G,x_H.torus_factor*M) then
 {long version includes p_G}
 set epstar_std_long(KGBElt x_H,L_homomorphism phi_H,RealForm G,mat M)=(Param,ParamPol):
 assert(is_pure(x_H), "x_H is not pure (epstar only defined at the moment for pure real forms of H and G");
-let (x_G,phi_G)=lift_pair(x_H,phi_H,G,M) then
+let (x_G,phi_G)=epstar(x_H,phi_H,G,M) then
 ()=if e_verbose then prints("x_G: ", x_G, " ", x_G.real_form, " ", x_G.torus_factor) fi then
 p_G=parameter(x_G,phi_G) then
 ()=if e_verbose then prints("p_G=", p_G) fi
@@ -44,6 +46,7 @@ set epstar_std(KGBElt x_H,L_homomorphism phi_H,RealForm G,mat M)=ParamPol:let (,
 {assume M=id}
 set epstar_std(KGBElt x_H,L_homomorphism phi_H,RealForm G)=ParamPol:let (,X)=epstar_std_long(x_H,phi_H,G,id_mat(x_H.root_datum.rank)) in X
 
+{epstar_std p_H: p_H -> (x_H,phi_H) -> epstar_std(x_H,phi_H,G)}
 set epstar_std(Param p_H,RealForm G,mat M)=ParamPol:
 let gamma_H=p_H.infinitesimal_character then
 y_H=y_gen(p_H) then
@@ -53,14 +56,13 @@ epstar_std(x_H,phi_H,G,M)
 
 {assume M=id}
 set epstar_std(Param p_H,RealForm G)=ParamPol:epstar_std(p_H,G,id_mat(G.rank))
-
 set epstar_std(ParamPol P_H,RealForm G,mat M)=ParamPol:
 sum(G,for c@p in P_H do c*epstar_std(p,G,M) od)
-
 {assume M=id}
 set epstar_std(ParamPol P_H,RealForm G)=ParamPol:epstar_std(P_H,G,id_mat(rank(G)))
 
-set epstar(L_homomorphism phi_H,RealForm G,mat M)=L_homomorphism:
+{defined above more succintly}
+{set epstar(L_homomorphism phi_H,RealForm G,mat M)=L_homomorphism:
 let y_H=phi_H.y then
 gamma_H=phi_H.gamma then
 ()=if e_verbose then prints("y_H: ", y_H, new_line, "gamma_H: ", gamma_H) fi  then
@@ -69,11 +71,10 @@ gamma_G=M*gamma_H then
 y_G=map_KGB_gen_tits(y_H,dual_quasisplit_form(G),M) then
 ()=if e_verbose then prints("y_G: ", y_G) fi then
 phi_G=phi(y_G,gamma_G) in
-assert(is_valid(phi_G),"phi_G is not valid");phi_G
+assert(is_valid(phi_G),"phi_G is not valid");phi_G}
 
 {assume M=id}
 set epstar(L_homomorphism phi_H,RealForm G)=L_homomorphism:epstar(phi_H,G,id_mat(G.rank))
-
 
 {for debugging
  usage: set (y_H,y_G,gamma_H,gamma_G,phi_G,theta_G,x_G,p_G) =epstar_std_info(x_H,phi_H,G,M)a
@@ -169,6 +170,11 @@ for a@i in data do
  for (P,Q)@j in a do 
   prints("-------------------------------",new_line,"i=",i," j=",j,new_line,"P=",P,new_line,"lift(P)=",Q,new_line) od od
 
+{-----------------------inversion of stable lifting----------------}
+
+{given phi_G, run over representatives x_i of \pi_0(Cent(phi)
+each  s -> endoscopic group H,  phi_H, -> stable lift of phi_H = sum of (standard) parameters in Pi(phi_G)}
+
 
 set quotient(mat A,mat B)=
 let X=left_inverse(A)*B in finite_quotient(X)
@@ -194,14 +200,41 @@ set quotient_elements(KGBElt x)=[ratvec]:quotient_elements(KGB_elt_gen(x))
 set endoscopic_elements(L_homomorphism phi)=[ratvec]:
 quotient_elements(phi.y)
 
+{given phi_G and ordinary endoscopic group H, assuming  phi_G factors through L-H,
+return phi_H.
+This is almost exactly the same epstar(L_homomorphism,RealForm G): the matrix M is the identity
+so both directions are essentially the same}
+set epstar_inverse_old(L_homomorphism phi_G,RealForm H)=
+phi(map_KGB_gen_tits(phi_G.y,dual_quasisplit_form(H),id_mat(rank(H))),phi_G.gamma)
+
+{phi_G factors through L-group of H}
+set epstar_inverse(L_homomorphism phi_G,InnerClass ic_H)=L_homomorphism:
+let y_G=phi_G.y then
+ic_H_d=dual(ic_H) then
+sigma_G=tits_element(y_G) then
+w_G=w(sigma_G,G.distinguished_involution) then
+()=prints(w_G.matrix) then
+w_H_matrix=w_G.matrix*distinguished_involution(ic_H_d) then
+()=prints(w_H_matrix) then
+w_H=W_elt(ic_H_d, w_H_matrix) then
+sigma_H=tits_element(ic_H_d,w_H)*tits_delta(ic_H_d) then
+y_H=KGB_elt_gen(sigma_H) in
+L_hom(y_H,phi_G.gamma)
+
+set epstar_inverse(L_homomorphism phi_G,RealForm H)=L_homomorphism:epstar_inverse(phi_G,inner_class(H))
 
 
 
-
-
-
-
-
+set endoscopy(L_homomorphism phi_G,RealForm G)=
+let ic=dual(inner_class(phi_G)) then
+S=endoscopic_elements(phi_G) in
+for s in S do
+let ()=prints("------------------------------------",new_line,"s=",s) in
+ let (H,M,Hd)=endoscopic_group(ic,s) then
+ ()=prints("H=",H, " Hd=", Hd) then
+ phi_H=epstar_inverse(phi_G,H) then
+ ()=prints("phi_H=",phi_H) in
+ epstar_stable(phi_H,G,s) od
 
 
 
