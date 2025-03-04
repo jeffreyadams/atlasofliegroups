@@ -3,15 +3,13 @@
 <parameters.at { for parameter(x,y,gamma), square, square_is_central }
 <Weylgroup.at  { for make_dominant_using_roots }
 
-set_type
-[ x_rep = (ratvec v, mat theta)
-, ExtParam =
+set_type x_rep = (ratvec v, mat theta)
+set_type ExtParam =
   ( InnerClass ic, mat delta
   , ratvec gamma, vec lambda_rho, mat theta
   , ratvec g, vec l, mat omega
   , vec tau, vec t
   )
-]
 
 { canonical_g(x) returns a dominant regular element g such that e(g)=x^2
   This only depends on the real_form(x), in fact only on its square class

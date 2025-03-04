@@ -4,9 +4,9 @@
   The interface has changed as follows:
 
   Rather than having variants of functions that generate the conjugacy classes
-  of and W and their sizes, or use such values if passed as arguments, all
+  of W and their sizes, or use such values if passed as arguments, all
   functions in W_classes assume this done during construction of a
-  |WeylClassTable| value; some functions are in fact part of such a value,
+  |WeylClassTable| value. Some functions are in fact part of such a value,
   others are produced by functions taking a |WeylClassTable| as argument; the
   calling syntax is the same in foth cases: |ct.function(arguments)| where |ct|
   holds the |WeylClassTable| value.
@@ -25,48 +25,54 @@
 <W_classes.at { for |conjugacy_class_reps| }
 
 {. data type for class functions .}
-set_type [ ClassFunction=([WeylElt] classes, [int] sizes, [int] values) ]
+set_type ClassInfo = (WeylElt rep, int size)
+set_type ClassDatum = (ClassInfo ci, int value)
+set_type ClassFunction = [ClassDatum]
 
-{. products of two class functions .}
-set *(ClassFunction f,ClassFunction g)=int:
-let (elts,sizes,f_values)=f then
-(,,g_values)=g in
-rat_as_int(sum(for i:#sizes do sizes[i]*f_values[i]*g_values[i] od)/order_W(elts[0].root_datum))
+{. inner product of two class functions .}
+set * (ClassFunction f,ClassFunction g) = int:
+   assert(#f=#g and f[0].ci.rep=g[0].ci.rep and f~[0].ci.size=g~[0].ci.size);
+   let denom = f[0].ci.rep.root_datum.order_W
+   then (q,r) =
+     for (ci,val)@i in f do ci.size*val*g[i].value od.sum \% denom
+in assert(r=0,
+     @:"Divisibility failure in character inner product "+q*denom+r+"/"+denom
+   ); q
 
-{. character of the trivial representation of W .}
-set trivial_character(RootDatum rd)=ClassFunction:
-let classes=conjugacy_class_reps(rd) then
-sizes=for w in classes do size_of_conjugacy_class(w) od in
-(classes,sizes, for i:#classes do 1 od)
+set classes_info (RootDatum rd) = [ClassInfo]:
+   for w in conjugacy_class_reps(rd) do (w,size_of_conjugacy_class(w)) od
 
 {. character of the trivial representation of W: assuming classes and sizes already defined .}
-set trivial_character([WeylElt] classes, [int] sizes)=ClassFunction:(classes,sizes,for i:#classes do 1 od)
+set trivial_character ([ClassInfo] cis) = ClassFunction:
+   for ci in cis do (ci,1) od
+{. character of the trivial representation of W .}
+set trivial_character (RootDatum rd) = ClassFunction:
+   rd.classes_info.trivial_character
 
-{.character of the sgn representation of W .}
-set sgn_character(RootDatum rd)=ClassFunction:
-let classes=conjugacy_class_reps(rd) then
-sizes=for w in classes do size_of_conjugacy_class(w) od in
-(classes,sizes, for i:#classes do det(matrix(classes[i])) od)
 
 {. character of the sgn representation of W: assuming classes and sizes already defined .}
-set sgn_character([WeylElt] classes, [int] sizes)=
-ClassFunction:(classes,sizes, for i:#classes do det(matrix(classes[i])) od)
+set sign_character ([ClassInfo] cis) = ClassFunction:
+   for ci in cis do (ci,ci.rep.matrix.det) od
 
-{. character of the reflection (tautological) representation of W .}
-set reflection_character(RootDatum rd)=ClassFunction:
-let classes=conjugacy_class_reps(rd) then
-sizes=for w in classes do size_of_conjugacy_class(w) od in
-(classes,sizes, for w in classes do trace(matrix(w)) od)
+{.character of the sgn representation of W .}
+set sign_character (RootDatum rd) = ClassFunction:
+   rd.classes_info.sign_character
+
 
 {. character of the reflection (tautological) representation of W, classes and sizes already defined .}
-set reflection_character([WeylElt] classes, [int] sizes)=ClassFunction:
-(classes,sizes, for w in classes do trace(matrix(w)) od)
+set reflection_character ([ClassInfo] cis) = ClassFunction:
+   for ci in cis do (ci,ci.rep.matrix.trace) od
+
+{. character of the reflection (tautological) representation of W .}
+{.character of the sgn representation of W .}
+set reflection_character (RootDatum rd) = ClassFunction:
+  rd.classes_info.reflection_character
 
 {. character of n^th tensor power of a class function .}
-set tensor(int n, ClassFunction f)=ClassFunction:
-(f.classes,f.sizes, for r in f.values do r^n od)
+set tensor (int n, ClassFunction f) = ClassFunction:
+  for (ci,val) in f do (ci,val^n) od
 
-set dimension(ClassFunction f)=int:f.values[0]
+set dimension(ClassFunction f) = int: f[0].value
 
-set matrix_of_inner_products([ClassFunction] S)=mat:
-for i:#S do for j:#S do S[i]*S[j] od od
+set matrix_of_inner_products ([ClassFunction] S) = mat:
+  for Sj in S do for Si in S do Si*Sj od od

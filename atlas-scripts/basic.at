@@ -1,16 +1,16 @@
 { Union types for built-in |linear_solve| and versions of |solve| below
   Such types cannot share |void| tag, so we choose distince ones }
-set_type
-[ linear_solution = ( void empty_set | (vec,int,mat) affine_subspace )
-, maybe_a_vec =     ( void no_vec | vec solution)
-, maybe_a_ratvec =  ( void no_ratvec | ratvec solution )
-, maybe_a_mat =     ( void no_mat | mat solution )
-]
+
+set_type One_of<S,T> = ( S fail | T succeed ) !
+set_type Maybe<T>    = ( void none | T some) !
 
 set where() = void:
    for line@i in back_trace
    do if line[:3]="In " then prints([i]," ",line) fi
    od
+
+any_type T begin set print_lines ([T] a) = void: for x in a do prints(x) od end
+set ! = print_lines@T[T] { allow printing any list line-by-line as |list!| }
 
 set !minus_1 = -1 { used to be more efficient than |-1|, now equally efficient }
 
@@ -631,8 +631,8 @@ set columns_with ((vec->bool) p,mat m) = mat:
   n_rows(m)# for col in m if p(col) do col fi od
 set columns_with ((int->bool) p,mat m) = mat:
   n_rows(m)# for col@j in m if p(j) do col fi od
-set a_column_with ((vec->bool) p,mat m) = maybe_a_vec:
-  for col in m do if p(col) then return solution(col) fi od; no_vec()
+set a_column_with ((vec->bool) p,mat m) = Maybe<vec>:
+  for col in m do if p(col) then return some(col) fi od; none()
 
 set rows_with ((int,vec->bool) p,mat m) = mat:
   n_columns(m) ^ for row@i in rows(m) if p(i,row) do row fi od
@@ -640,8 +640,8 @@ set rows_with ((vec->bool) p,mat m) = mat:
   n_columns(m) ^ for row in rows(m) if p(row) do row fi od
 set rows_with ((int->bool) p,mat m) = mat:
   n_columns(m) ^ for row@i in rows(m) if p(i) do row fi od
-set a_row_with ((vec->bool) p,mat m) = maybe_a_vec:
-  for row in rows(m) do if p(row) then return solution(row) fi od; no_vec()
+set a_row_with ((vec->bool) p,mat m) = Maybe<vec>:
+  for row in rows(m) do if p(row) then return some(row) fi od; none()
 
 set >=([vec] m) = bool: { non-negative (dominant) columns only } all(m,>=@vec)
 set >([vec] m) = bool: { strictly positive (dominant) columns only } all(m,>@vec)
@@ -660,23 +660,23 @@ set sum (mat m)= vec: m*ones(n_columns(m))
   - solve M*y = b (possibly finding none); this is easy using the echelon form
   - if a solution is found, return x = C*y
 }
-set solve (mat A,vec b) = maybe_a_vec:
+set solve (mat A,vec b) = Maybe<vec>:
 (  let (M,C,s,) = echelon(A) then (n,k)=shape(M)
    then j=0 { runs up to k, used to index backwards }, sol=null(k)
    in assert(#b=n,"equation mismatch")
 ;  for i:n
   ~do if j<#s and i=s~[j] { then it is a pivot row, with pivot at M[j][i] }
       then let Mj=M~[j] then (q,r)=b[i]\%Mj[i] in
-         if !=r then return ().no_vec { because inexact division} fi
+         if !=r then return ().none { because inexact division} fi
        ;  sol~[j]:=q; b-:=Mj*q { correct for contribution from sol[j~] }
        ;  j+:=1
-       elif !=b[i] then return ().no_vec { because no pivot available }
+       elif !=b[i] then return ().none { because no pivot available }
        fi
    od
-;  (C[:k]*sol).solution
+;  (C[:k]*sol).some
 )
 
-set solve (mat A,mat B) = maybe_a_mat: { matrix |X| satisfying |A*X=B|, if any }
+set solve (mat A,mat B) = Maybe<mat>: { matrix |X| satisfying |A*X=B|, if any }
 (  let (M,C,s,) = echelon(A) then (n,k)=shape(M)
    then sols = mat: { column |j| is solutions of |M*y=B[j]| }
       assert(n_rows(B)=n,"equation mismatch");
@@ -687,20 +687,20 @@ set solve (mat A,mat B) = maybe_a_mat: { matrix |X| satisfying |A*X=B|, if any }
       in for i:n
 	~do if j<#s and i=s~[j] { a pivot row, with pivot at |M~[j][i]| }
 	    then let Mj=M~[j] then (q,r)=rem[i]\%Mj[i]
-	    in if !=r then return ().no_mat { because inexact division} fi
+	    in if !=r then return ().none { because inexact division} fi
 	    ;  sol~[j]:=q; rem-:=Mj*q { correct for contribution from sol[j~] }
 	    ;  j+:=1
-	    elif !=rem[i] then return ().no_mat { because no pivot available }
+	    elif !=rem[i] then return ().none { because no pivot available }
 	    fi
 	 od
       ;  sol
       od
-   in (C[:k]*sols).solution
+   in (C[:k]*sols).some
 )
 
-set any (maybe_a_vec x) = bool: case x  | solution: true | no_vec: false esac
-set requisition (string message) = (maybe_a_vec->vec):
-   (maybe_a_vec x) vec: case x  | solution(s): s | else error(message) esac
+set any (Maybe<vec> x) = bool: case x  | some: true | none: false esac
+set requisition (string message) = (Maybe<vec>->vec):
+   (Maybe<vec> x) vec: case x  | some(s): s | else error(message) esac
 set requisition = requisition("No solution found; having one was required")
 
 set required_solution ((mat,vec) system) = vec: system.solve.requisition
@@ -762,7 +762,7 @@ set <  (ratvec v) = bool: < numer(v)
 { solve(mat A,ratvec b): find a solution ratvec x of A*x=b, or indicate that
   none exists. Solution as in vec case, but exact division requirement is OK.
 }
-set solve (mat A, ratvec b) = maybe_a_ratvec:
+set solve (mat A, ratvec b) = Maybe<ratvec>:
 (  let (M,C,s,) = echelon(A) then (n,k)=shape(M)
    then j=0 { runs up to k, used to index backwards }, sol=for :k do rat:0 od
    in assert(#b=n,"equation mismatch")
@@ -771,17 +771,15 @@ set solve (mat A, ratvec b) = maybe_a_ratvec:
       then let Mj=M~[j] then q=b[i]/Mj[i] in
          sol~[j]:=q; b-:=Mj*q { correct for contribution from sol[j~] }
       ;  j+:=1
-      elif !=b[i] then return ().no_ratvec { because no pivot here }
+      elif !=b[i] then return ().none { because no pivot here }
       fi
    od
-;  (C[:#sol]*sol).solution
+;  (C[:#sol]*sol).some
 )
 
-set any (maybe_a_ratvec x) = bool:
-   case x  | solution: true | no_ratvec: false esac
-set rat_requisition (string message) = (maybe_a_ratvec->ratvec):
-   (maybe_a_ratvec x) ratvec:
-    case x  | solution(s): s | else error(message) esac
+set any (Maybe<ratvec> x) = bool: case x  | some: true | none: false esac
+set rat_requisition (string message) = (Maybe<ratvec> -> ratvec):
+   (Maybe<ratvec> x) ratvec:  case x  | some(s): s | else error(message) esac
 set requisition = rat_requisition("No solution found; having one was required")
 
 set required_solution ((mat,ratvec) system) = ratvec: system.solve.requisition

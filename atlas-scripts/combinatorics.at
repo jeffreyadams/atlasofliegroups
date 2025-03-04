@@ -722,16 +722,14 @@ in for (l,sign) in cycles
 
 { adaptation to the above to deal with Weyl groups of type Dn }
 
-set_type
-[ Dn_class = { cycle types restricted to Dn subgroup }
+set_type Dn_class = { cycle types restricted to Dn subgroup }
    ( Signed_cycles unsplit_class { the XOR of all |bool| values is |false| }
    | (Partition,bool) split_class { "all false" even cycles, and a single sign }
    )
-, Dn_irrep = { from folding pairs of partitions under swapping }
+set_type Dn_irrep = { from folding pairs of partitions under swapping }
    ( (Partition,Partition) unsplit_irr { unequal partitions, larger first }
    | (Partition,bool) split_irr { for pair of equal partitions, with sign }
    )
-]
 
 { recover the value of |n| }
 set rank (Dn_class C) = int:

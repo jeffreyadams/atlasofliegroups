@@ -16,7 +16,7 @@
   a marker |stop| saying where the newest level (where duplicates must be
   avoided) starts.
 }
-set generate_from_dom ([(vec->maybe_a_vec)] S,vec v) = ([vec],[[int]]):
+set generate_from_dom ([(vec->Maybe<vec>)] S,vec v) = ([vec],[[int]]):
   let words=[[int]]:[[]], orbit=[v], done=0, stop=1
   then absent (vec y) = bool: { check down to last level marker }
          none(#orbit-stop,(int i)bool:orbit~[i]=y)
@@ -26,13 +26,13 @@ set generate_from_dom ([(vec->maybe_a_vec)] S,vec v) = ([vec],[[int]]):
   ; let w = words[done], a=orbit[done] in done+:=1
   ; for f@i in S
     do case f(a) | else () { skip when no new vector is returned }
-       | solution(b): if absent(b) then ( words #:= i#w, orbit #:= b ) fi
+       | some(b): if absent(b) then ( words #:= i#w, orbit #:= b ) fi
        esac
     od
   od; (orbit,words)
 
 { same as above, but also compose |gens_rep| matrices for applied generators }
-set generate_action_from_dom ([(vec->maybe_a_vec)] S,vec v
+set generate_action_from_dom ([(vec->Maybe<vec>)] S,vec v
                              ,int dim,[mat] gens_rep) =
      ([vec],[[int]],[mat]):
   let orbit=[v], words=[[int]]:[[]], actions=[id_mat(dim)], done=0, stop=1
@@ -44,7 +44,7 @@ set generate_action_from_dom ([(vec->maybe_a_vec)] S,vec v
   ; let a=orbit[done], w = words[done], act=actions[done] in done+:=1
   ; for f@i in S
     do case f(a) | else () { skip when no new vector is returned }
-       | solution(b):
+       | some(b):
          if absent(b)
          then orbit #:= b; words #:= i#w; actions #:= gens_rep[i]*act
          fi
@@ -53,9 +53,9 @@ set generate_action_from_dom ([(vec->maybe_a_vec)] S,vec v
   od; (orbit,words,actions)
 
 
-set simple_actor (RootDatum rd, int i) = (vec->maybe_a_vec):
+set simple_actor (RootDatum rd, int i) = (vec -> Maybe<vec>):
   let s=W_gen(rd,i), av=coroot(rd,i) in
-  (vec x)maybe_a_vec: if (av*x).> then solution(s*x) else no_vec() fi
+  (vec x) Maybe<vec>: if (av*x).> then some(s*x) else none() fi
 
 { get orbit of |v| under parabolic subgroup of Weyl group with generators |S|,
   and witnessing (minimal) Weyl group elements |w|: |x=w*v| for |x| in orbit }
