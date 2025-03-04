@@ -74,7 +74,9 @@ set is_unitary (Param p) = bool:
 
 
 { some time-limited functions, using new built-in |full_deform@(Param,int)| }
-set_type [ maybe_KTP = (void timed_out | KTypePol done) ]
+
+{ the next type is the same as |Maybe<KTypePol>|, but injector names differ }
+set_type maybe_KTP = (void timed_out | KTypePol done)
 
 set map ((Param->maybe_KTP)f, ParamPol P) = maybe_KTP:
   sum(P.real_form

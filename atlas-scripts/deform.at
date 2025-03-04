@@ -131,16 +131,10 @@ in null_module(p) +
    od
 )
 
-set_type
-[ ReductionStatus = (void reducible | Param lower )
-]
-
 { go to next reducibility point (move even if at reducibility point) }
-set reduction_at (Param p) = ReductionStatus:
+set reduction_at (Param p) = Maybe<Param>:
    let rp=(0/1)#reducibility_points(p)
-in if rp~[0]=1 then reducible()
-   else lower(p*rp~[0])
-   fi
+in if rp~[0]=1 then none() else some(p*rp~[0]) fi
 
 set next_down (Param p) = Param:
    let rp=(0/1)#reducibility_points(p)
@@ -153,10 +147,7 @@ set deform_to_height (Param p,int max_height) = KTypePol:
 ;  let G=real_form(p)
    then !K_empty=null_K_module(G), !empty=null_module(G)
 in { first ensure there is a potential deformation at |p| }
-   case reduction_at(p)
-      | lower(q): p:=q
-      | reducible(): () { keep p }
-      esac
+   case reduction_at(p) | some(q): p:=q | none(): () { keep p } esac
 ;  let queue = ParamPol: p, result = KTypePol: K_empty, lower = ParamPol:empty
 in while >#queue or
        if >#lower else false
@@ -172,9 +163,9 @@ in while >#queue or
    ;  let terms = deformation_terms_by_dual(q,max_height)
    in for c@r in terms
       do case reduction_at(r)
-         | reducible():
+         | none():
 	    queue:= (queue next queue:=empty) + (c0*c,r)
-         | lower(qq): { element of initial block, but no further deformation }
+         | some(qq): { element of initial block, but no further deformation }
 	    lower:= (lower next lower:=empty) + (c0*c,qq)
          esac
       od

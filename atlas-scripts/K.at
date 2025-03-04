@@ -24,9 +24,7 @@
 <matrix.at { for left_inverse }
 <Weylgroup.at { for from_no_Cminus }
 
-set_type
-[ KHighestWeight = (void .,KGBElt x, vec mu)
-]
+set_type KHighestWeight = (void .,KGBElt x, vec mu)
 
 set k_highest_weight (KGBElt x, vec mu) = KHighestWeight: ((),x,mu)
 

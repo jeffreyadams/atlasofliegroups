@@ -77,10 +77,12 @@ in { now apply |reps_by_rho| to each size class, and concatenate the results }
 }
 
 { given a standard Levi, list conjugate non-standard Levis with dominant 2rho }
-set_type
-[ orbit_entry = (int L_int, WeylElt w)
-, orbit_data = [orbit_entry] { posroot set as single number, conjugator }
-]
+set_type orbit_entry =
+  (int L_int   { posroot set as bitset: a single nonnegative number }
+  , WeylElt w  { conjugator from first element of orbot }
+  )
+set_type orbit_data = [orbit_entry]
+
 
 { since the number of roots in the subset is fixed, we use |combination_encode|
   to represent a subset of $k$ positive roots as a number inside |orbit_data|;
@@ -162,10 +164,8 @@ set rho_stabiliser_orbit (RootDatum rd, [int] standard_Levi) = orbit_data:
 { in a |Std_Levi_orbit|, |Levi_repr| is an encoded standard Levi, as are first
   members |L| of |others|; for |(L,w) in others| one has |L=w*Levi_repr|
 }
-set_type
-[ Std_Levi_orbit = (vec rho2, int Levi_repr, [int,WeylElt] others)
-, Std_Levi_table = [[Std_Levi_orbit]] { list of lists, grouped by |k| }
-]
+set_type Std_Levi_orbit = (vec rho2, int Levi_repr, [int,WeylElt] others)
+set_type Std_Levi_table = [[Std_Levi_orbit]] { list of lists, grouped by |k| }
 
 { group together conjugate standard Levis, with witness conjugating from first }
 set classify_standard_Levis (RootDatum rd) =  Std_Levi_table:
@@ -223,8 +223,8 @@ set minimal_extenders (RootDatum rd,[int] Levi) = [int]:
    let orth = { columns: generators in $X_*$ of annihilator subspace of |Levi| }
       kernel(rd.rank ^ for i in Levi do root(rd,i) od)
 in case a_column_with((vec alpha)bool: !=alpha*orth {@*(vec,mat)}, rd.posroots)
-   | no_vec: [] { |Levi| already spans subspace containing all roots }
-   | solution(alpha):
+   | none(): [] { |Levi| already spans subspace containing all roots }
+   | some(alpha):
       { find a column |f| of |orth| (coweight) witnessing |alpha*orth| nonzero }
       let f = requisition(a_column_with((vec cowt)bool: !=cowt*alpha, orth))
       , min=0 { minimal positive coroot evaluation on |wt| so far; 0 if none }
