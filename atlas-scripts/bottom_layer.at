@@ -638,8 +638,8 @@ set Q_ps(Param p0, Param p, [KGPElt] Qs) = [(KGPElt,Param)]:
        with inducing reps}
 set max_Qps(Param p0, Param p) = [(KGPElt,Param)]:
     let (Q0,pL0) = if small_test_flag
-    		   then theta_stable_data_small(p)
-		   else theta_stable_quasi_data(p)
+    		   then theta_stable_data_small(p0)
+		   else theta_stable_quasi_data(p0)
 		   fi
     in Q_ps(pL0, max_Qs(Q0))
 
@@ -877,7 +877,7 @@ set bottom_factors([QK_bottom_data] data) = [QKL_bottom_data]: {[(KGPElt,[(KType
     for (Q,taus) in data do bottom_factors(Q,taus) od
 
 {insist that p0 is final, p0 is a LQ of p, and that P is K_type_pol of
-character formula of p0 to some height}
+character formula of p0 to height at least heights in LKdata}
 set bottom_elim_factors(Param p0, Param p, QKL_bottom_data (Q, LKdata), KTypePol P) = bool:
     let start = elapsed_ms(), L = Q.Levi, {answers = for k:#LKdata do false od,}
     	(Qm,pLm) = if small_test_flag
@@ -907,10 +907,9 @@ set bottom_elim_factors(Param p0, Param p, QKL_bottom_data (Q, LKdata), KTypePol
     then derLjs = for derpLj in derpLjs do derpLj.real_form od
     then dermuLjs = derived_factor_K_types0(muL)
     then DLs = for j:#derpLjs
-       	       do max_ht(LKdata)
-	       {(for (, list) in LKdata {one for each j}
+       	       do max([height(derpLjs[j])] ## for (, list) in LKdata {one for each j}
        	    	      do height(list[j])
-		      od)}
+		      od)
 	       od
     then Pmult = if branch_hash_flag
     	       	 then big_unitary_hash.branch(P,D)
@@ -933,11 +932,12 @@ set bottom_elim_factors(Param p0, Param p, QKL_bottom_data (Q, LKdata), KTypePol
 		     od
        then result = all( [(->bool)]: {list of functions, one for each bottom layer K-type tau}
 			for(tau,list) in LKdata
-			do {prints(posLj[tauLj]," ",multG[tauj]);}
-			   let coeff = Split: 1 {this will be the bottom layer signature at tau}
+			do let coeff = Split: 1 {this will be the bottom layer signature at tau}
 			   then () = for tauLj@j in list
-			     	     do coeff*:= branchLjs[j][tauLj]
+			     	     do {prints(branchLjs[j][tauLj]);}
+				     coeff*:= branchLjs[j][tauLj]
 			  	     od
+			   {then () = prints("coeff = ",coeff,", Pmult = ",Pmult[tau])}
 			   in @bool: let ans = int_part(coeff) >= int_part(Pmult[tau])
 			      	     then () = if not ans
 				     	       then big_unitary_hash.numatch(p0)
@@ -957,7 +957,7 @@ factor inducing to p !!!}
 {false guarantees not unitary, but true does not guarantee unitary}
 {LKdata[j] is [(tauj,tauLj)]: tauLj are thes Lj\cap K-types inducing to a bottom layer tauj of p.}
 set bottom_elim_factors(Param p0, Param p, QKL_bottom_data (Q,LKdata)) = bool:
-    let DG = max(for (tau,) in LKdata do height(tau) od)
+    let DG = max([height(p)]##for (tau,) in LKdata do height(tau) od)
     then P = K_type_pol(character_formula_to_height(p0,DG))
     in bottom_elim_factors(p0, p, (Q, LKdata), P)
 
@@ -1016,7 +1016,7 @@ set bottom_K_type_Qs(Param p, KGPElt Qmin, int D_low, int D) = [QK_bottom_data]:
     then xcG = embed_KGB(xcLmin, G)
     then M = big_unitary_hash.branch(K_type_pol(p),D)
     then mu = LKTs(p)[0]
-    then too_many_taus = monomials(M - to_ht(M,D_low))
+    then too_many_taus = monomials(M - to_ht(M,D_low)) {now all tau have height in desired range}
     {then () = prints("D = ",D,", D_low = ",D_low," TMT = ",too_many_taus)}
     then hwt = K0_param(mu,xcG).lambda_minus_rho
     then too_many_shifts = for tau in too_many_taus
@@ -1113,10 +1113,12 @@ set bottom_K_type_Qs2B(KType mu, KGPElt Qmin, int D_low, int D) = [QK_bottom_dat
     	    then derProjKinvs = for derL in derLs do right_inverse(projection_to_K_matrix(derL)) od
     	    then cutter = int: G.semisimple_rank
     	    then DL_lows = for derL@j in derLs
-    	 	   	   do min(((D_low - height(mu))*derL.semisimple_rank)\cutter +height(dermuLs[j]), maxLs[j])
+    	 	   	   do height(dermuLs[j])
+			   {min(((D_low - height(mu))*derL.semisimple_rank)\cutter +height(dermuLs[j]), maxLs[j])}
 		   	   od
     	    then DLs = for derL@j in derLs
     	       	       do min(((D-D_low)*derL.semisimple_rank)\cutter + DL_lows[j], maxLs[j])
+		       {min(((D-D_low)*derL.semisimple_rank)\cutter + DL_lows[j], maxLs[j])}
 	       	       od
     	    then x0L = embed_KGB(x0min,L)
     	    then derx0Ls = derived_factor_KGBs0(x0L)
@@ -1178,7 +1180,7 @@ set bottom_K_type_Qs2B(KType mu, KGPElt Qmin, int D_low, int D) = [QK_bottom_dat
 		     	       then break
 			       fi
 		     in if height(tau) > D_low
-		     	then [(KGPElt:(Smin, Qmin.x), [tau])]
+		     	then [(KGPElt:(Ssmall, Qmin.x), [tau])]
 			else []
 			fi
 		  od.##
@@ -1205,10 +1207,12 @@ set bottom_K_type_Qs2(KType mu, KGPElt Q, int D_low, int D) = QKL_bottom_data:
     then derProjKinvs = for derL in derLs do right_inverse(projection_to_K_matrix(derL)) od
     then cutter = int: G.semisimple_rank
     then DL_lows = for derL@j in derLs
-    	 	   do ((D_low - height(mu))*derL.semisimple_rank)\cutter +height(dermuLs[j])
+    	 	   do height(dermuLs[j])
+		   {((D_low - height(mu))*derL.semisimple_rank)\cutter +height(dermuLs[j])}
 		   od
     then DLs = for derL@j in derLs
-    	       do min(((D-D_low)*derL.semisimple_rank)\cutter + DL_lows[j], maxLs[j])
+    	       do min(((D - D_low)*derL.semisimple_rank)\cutter + DL_lows[j], maxLs[j])
+	       {min(((D-D_low)*derL.semisimple_rank)\cutter + DL_lows[j], maxLs[j])}
 	       od
     then x0L = KGB(L,0)
     then x0G = embed_KGB(x0L,G)
@@ -1566,7 +1570,7 @@ set bottom_elim_factors_more(Param p0, Param p, int D_low, int D{, KTypePol P})=
                         {attest_is_unitary(p, G_pure);}
 			return G_pure
 	        fi
-     then test = if Qs2B_flag
+     then test = if small_test_flag and Qs2B_flag
      	       	 then all(for mu in LKTs(p)
 		      	  do @bool: all(for (Q,list) in bottom_K_type_Qs2B(mu,Q0,D_low,D)
 	       	      	     	    	do @bool : bottom_elim_factors(p0, p, bottom_factors(Q,list){, P})
@@ -1600,9 +1604,9 @@ set bottom_elim_factors_more(Param p0, Param p, int D{, KTypePol P})= bool:
 
 {insist that p0 is final, p0 is a LQ of p}
 set bottom_elim_factors_more(Param p0, Param p, int D_low, int D) = bool:
-    let CF = character_formula_to_height(p0,D)
+    {let CF = character_formula_to_height(p0,D)
     then P = K_type_pol(CF)
-    in  bottom_elim_factors_more(p0, p, D_low, D{, P})
+    in } bottom_elim_factors_more(p0, p, D_low, D{, P})
 
 {insist that p0 is final, p0 is a LQ of p}
 set bottom_elim_factors_more(Param p0, Param p, int D) = bool:
@@ -1614,7 +1618,7 @@ set bottom_test_factors_more(Param p0, Param p, [KType, [QKL_bottom_data]] datas
     then is_unitary_hash_big_SIMPLE(p0) {min_bottom_test_factors(p,P)}
     else
      let start =  elapsed_ms(), G=p.real_form
-     then maxQps = max_Qps(p0), R = more_good_hash.size()
+     then maxQps = max_Qps(p0,p), R = more_good_hash.size()
      then three_bools = max_goodness(p0, maxQps)
      then good = first(for (g,,) in three_bools do g od)
      then () = if good>=0
