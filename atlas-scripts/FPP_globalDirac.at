@@ -1325,6 +1325,18 @@ set FPP_unitary_hash_dumb(RealForm rf) = void:
    else FPP_unitary_hash_dumb(rf, is_unitary_hash_big_SIMPLE@Param)
    fi
 
+set FPP_unitary_hash([(KGBElt, ratvec)] xls) = void:
+   if recursive_tester_flag
+   then FPP_unitary_hash(xls, MyFancyTester@Param)
+   else FPP_unitary_hash(xls, is_unitary_hash_big_SIMPLE@Param)
+   fi
+
+set FPP_unitary_hash([KGBElt] xs) = void:
+   if recursive_tester_flag
+   then FPP_unitary_hash(xs, MyFancyTester@Param)
+   else FPP_unitary_hash(xs, is_unitary_hash_big_SIMPLE@Param)
+   fi
+
 set FPP_unitary_hash(RealForm rf) = void:
    if recursive_tester_flag
    then FPP_unitary_hash(rf, MyFancyTester@Param)
