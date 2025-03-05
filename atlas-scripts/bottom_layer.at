@@ -835,7 +835,7 @@ set min_bottom_elim_factors(Param p, KTypePol P) = bool:
 {These min_bottom functions are used only on simple G}
 set min_bottom_elim_factors(Param p0, Param p) = bool:
     {let startCF = elapsed_ms()}
-    let Q = if small_test_flag
+    let CF = if small_test_flag
     	     then character_formula_to_height(p0, minSmallBottomData.G_min_height(p.x,p.lambda))
     	     else character_formula_to_height(p0, max(for mu in LKTs(p0)
     	       	    				     do minBottomData.G_min_height(mu)
@@ -844,7 +844,7 @@ set min_bottom_elim_factors(Param p0, Param p) = bool:
     {could figure out max ht needed?}
     {then () = charTime +:= elapsed_ms() - startCF
     then () = char_counter.use()}
-    in min_bottom_elim_factors(p0, p, K_type_pol(Q))
+    in min_bottom_elim_factors(p0, p, K_type_pol(CF))
 
 set min_bottom_elim_factors(Param p) = bool:
     min_bottom_elim_factors(p,p)
@@ -978,7 +978,7 @@ a) occur in standard(p)
 b) are not mu
 c) are bottom layer for (smallest possible) theta-stable parabolic Q containing Qmin;
 
-list is indexed by Q. KTypePol argument is branch_std(p) at least to height D.}
+list is indexed by Q.}
 
 set bottom_K_type_Qs(Param p, KGPElt Qmin, int D_low, int D) = [QK_bottom_data]:
     let G = p.real_form,  Lmin = Qmin.Levi, Smin = Qmin.S
@@ -1117,7 +1117,7 @@ set bottom_K_type_Qs2B(KType mu, KGPElt Qmin, int D_low, int D) = [QK_bottom_dat
 			   {min(((D_low - height(mu))*derL.semisimple_rank)\cutter +height(dermuLs[j]), maxLs[j])}
 		   	   od
     	    then DLs = for derL@j in derLs
-    	       	       do min(((D-D_low)*derL.semisimple_rank)\cutter + DL_lows[j], maxLs[j])
+    	       	       do min(((D-height(mu))*derL.semisimple_rank)\cutter + DL_lows[j], maxLs[j])
 		       {min(((D-D_low)*derL.semisimple_rank)\cutter + DL_lows[j], maxLs[j])}
 	       	       od
     	    then x0L = embed_KGB(x0min,L)
@@ -1179,11 +1179,11 @@ set bottom_K_type_Qs2B(KType mu, KGPElt Qmin, int D_low, int D) = [QK_bottom_dat
 		     then () = if height(tau) > D
 		     	       then break
 			       fi
-		     in if height(tau) > D_low
-		     	then [(KGPElt:(Ssmall, Qmin.x), [tau])]
+		     in {if height(tau) > D_low
+		     	then [}(KGPElt:(Ssmall, Qmin.x), [tau]){]
 			else []
-			fi
-		  od.##
+			fi}
+		  od{.##}
     in bfBTime+:= elapsed_ms() - start; QKData
 
 {For KType mu, assumed coh ind from Q, lists the K-types tau which
@@ -1258,12 +1258,12 @@ set bottom_K_type_Qs2(KType mu, KGPElt Q, int D_low, int D) = QKL_bottom_data:
        	 	  do if all( [(->bool)]:for alpha_vee in test_coroots
 			     	  	     do @bool:(alpha_vee * tauwt).>= od)
 		     then let tau = K_type(K_highest_weight_from_K0_weight(x0G, tauwt))
-		     	  in if D_low < height(tau)
+		     	  in {if D_low < height(tau)
 			     	and height(tau) <= D
-			     then 
+			     then}
 		     [(K_type(K_highest_weight_from_K0_weight(x0G, tauwt)), for m@j in B[k] do dertauLs[j][m] od)]
-		     	     else []
-		     	     fi
+		     	     {else []
+		     	     fi}
 		     else []
 		     fi
 		  od.##
@@ -1313,7 +1313,7 @@ set goodness(Param p, KGPElt Q) = (bool, bool, bool):
 				      od)
     in (is_dominant(G,gamma) and is_regular(G,gamma), is_dominant(G,gamma), is_dominant(G,gamma0))
 
-
+{
 {P is the K-character of p}
 {need to be sure nQs does not include a Borel}
 {add computation of D = max heights(mu in datas); just do good range sigs to D.}
@@ -1371,15 +1371,15 @@ set bottom_elim_factors_more_old(Param p0, Param p, [QKL_bottom_data] data)= boo
     then D = max(for (Q,LKdata) in data
 		 do max(for (tau,) in LKdata do height(tau) od#h)
 		 od#h)
-    then Q = character_formula_to_height(p0,D)
-    then P = K_type_pol(Q)
+    then CF = character_formula_to_height(p0,D)
+    then P = K_type_pol(CF)
     in  bottom_elim_factors_more_old(p0, p, data, P)
 
 {D is meant to be max(height(tau) for tau in BKT. nQs are the parabolics where bottom layer might help.}
 {nQs is meant to be new_Qs(), P the K-character of p}
 {need to be sure nQs does not include a Borel}
 {insist that p0 is final, p0 is a LQ of p}
-set bottom_elim_factors_more_old(Param p0, Param p, int D_low, int D{, KTypePol P})= bool:
+set bottom_elim_factors_more_old(Param p0, Param p, int D_low, int D, KTypePol P)= bool:
     let start =  elapsed_ms(), G=p.real_form, (Q0,pL0) = if small_test_flag
     	 	 	       		      	       	 then theta_stable_data_small(p)
 		 					 else theta_stable_quasi_data(p)
@@ -1418,7 +1418,7 @@ set bottom_elim_factors_more_old(Param p0, Param p, int D_low, int D{, KTypePol 
 			return G_pure
 	        fi
      then () = if not all(for (Q,list) in bottom_K_type_Qs(p,Q0,D_low,D)
-			  do  @bool: bottom_elim_factors(p0, p, bottom_factors(Q, list))
+			  do  @bool: bottom_elim_factors(p0, p, bottom_factors(Q, list),P)
 			  od)
 	       then let MG = more_good_hash.size()
 		    then mg = more_good_hash.match(p0)
@@ -1434,8 +1434,8 @@ set bottom_elim_factors_more_old(Param p0, Param p, int D_low, int D{, KTypePol 
      in true
 
 {insist that p0 is final, p0 is a LQ of p}
-set bottom_elim_factors_more_old(Param p0, Param p, int D{, KTypePol P})= bool:
-    bottom_elim_factors_more_old(p0, p, height(p), D{, P})
+set bottom_elim_factors_more_old(Param p0, Param p, int D, KTypePol P)= bool:
+    bottom_elim_factors_more_old(p0, p, height(p), D, P)
 
 {insist that p0 is final, p0 is a LQ of p}
 set bottom_elim_factors_more_old(Param p, Param p0, int D_low, int D) = bool:
@@ -1443,24 +1443,25 @@ set bottom_elim_factors_more_old(Param p, Param p0, int D_low, int D) = bool:
     	 	 	       		   then theta_stable_data_small(p)
 		 			   else theta_stable_quasi_data(p)
 		 			   fi
-    then Q = character_formula_to_height(p0,D)
-    {then P = K_type_pol(Q)}
-    in  bottom_elim_factors_more_old(p0, p, D_low, D{, P})
+    then CF = character_formula_to_height(p0,D)
+    then P = K_type_pol(CF)
+    in  bottom_elim_factors_more_old(p0, p, D_low, D, P)
 
 {insist that p0 is final, p0 is a LQ of p}
 set bottom_elim_factors_more_old(Param p0, Param p, int D) = bool:
     bottom_elim_factors_more_old(p0, p, height(p), D)
 
-set befm_old_flag = false
+}
+{set befm_old_flag = false}
 
 {P is the K-character of p}
 {need to be sure nQs does not include a Borel}
 {add computation of D = max heights(mu in datas); just do good range sigs to D.}
 {insist that p0 is final, p0 is a LQ of p}
 set bottom_elim_factors_more(Param p0, Param p, [QKL_bottom_data] data, KTypePol P)= bool:
-    if befm_old_flag
+{    if befm_old_flag
     then return bottom_elim_factors_more_old(p0,p,data,P)
-    fi;
+    fi;}
     let start =  elapsed_ms(), G=p.real_form, h = height(p0)
     then D = max(for (Q,LKdata) in data
 		 do max(for (tau,) in LKdata do height(tau) od#h)
@@ -1527,10 +1528,11 @@ set bottom_elim_factors_more(Param p0, Param p, [QKL_bottom_data] data)= bool:
 {nQs is meant to be new_Qs(), P the K-character of p}
 {need to be sure nQs does not include a Borel}
 {insist that p0 is final, p0 is a LQ of p}
-set bottom_elim_factors_more(Param p0, Param p, int D_low, int D{, KTypePol P})= bool:
-    if befm_old_flag
-    then return bottom_elim_factors_more_old(p0,p,D_low,D{,P})
-    fi;
+{P must be K-char of p0, at least to height of biggest tau constructed; D might not be enough}
+set bottom_elim_factors_more(Param p0, Param p, int D_low, int D, KTypePol P)= bool:
+    {if befm_old_flag
+    then return bottom_elim_factors_more_old(p0,p,D_low,D,P)
+    fi;}
     let start =  elapsed_ms(), G=p.real_form, (Q0,pL0) = if small_test_flag
     	 	 	       		      	       	 then theta_stable_data_small(p)
 		 					 else theta_stable_quasi_data(p)
@@ -1573,13 +1575,13 @@ set bottom_elim_factors_more(Param p0, Param p, int D_low, int D{, KTypePol P})=
      then test = if small_test_flag and Qs2B_flag
      	       	 then all(for mu in LKTs(p)
 		      	  do @bool: all(for (Q,list) in bottom_K_type_Qs2B(mu,Q0,D_low,D)
-	       	      	     	    	do @bool : bottom_elim_factors(p0, p, bottom_factors(Q,list){, P})
+	       	      	     	    	do @bool : bottom_elim_factors(p0, p, bottom_factors(Q,list), P)
 			  	    	od)
 			  od)
      		 else all(for mu in LKTs(p)
 		      	  do @bool: all(for (Q,pL) in maxQps
      	       	      	     	    	do @bool: bottom_elim_factors(p0, p,
-					    	bottom_K_type_Qs2(mu,Q,D_low,D){, P})
+					    	bottom_K_type_Qs2(mu,Q,D_low,D), P)
 				        od)
 			  od)
 		 fi
@@ -1599,21 +1601,21 @@ set bottom_elim_factors_more(Param p0, Param p, int D_low, int D{, KTypePol P})=
      in true
 
 {insist that p0 is final, p0 is a LQ of p}
-set bottom_elim_factors_more(Param p0, Param p, int D{, KTypePol P})= bool:
-    bottom_elim_factors_more(p0, p, height(p), D{, P})
+set bottom_elim_factors_more(Param p0, Param p, int D, KTypePol P)= bool:
+    bottom_elim_factors_more(p0, p, height(p), D, P)
 
 {insist that p0 is final, p0 is a LQ of p}
 set bottom_elim_factors_more(Param p0, Param p, int D_low, int D) = bool:
-    {let CF = character_formula_to_height(p0,D)
+    let CF = character_formula_to_height(p0,D)
     then P = K_type_pol(CF)
-    in } bottom_elim_factors_more(p0, p, D_low, D{, P})
+    in bottom_elim_factors_more(p0, p, D_low, D, P)
 
 {insist that p0 is final, p0 is a LQ of p}
 set bottom_elim_factors_more(Param p0, Param p, int D) = bool:
     bottom_elim_factors_more(p0, p, height(p), D)
 
 {insist that p0 is final, p0 is a LQ of p}
-set bottom_test_factors_more(Param p0, Param p, [KType, [QKL_bottom_data]] datas{, KTypePol P})= bool:
+set bottom_test_factors_more(Param p0, Param p, [KType, [QKL_bottom_data]] datas, KTypePol P)= bool:
     if not more_flag
     then is_unitary_hash_big_SIMPLE(p0) {min_bottom_test_factors(p,P)}
     else
@@ -1641,7 +1643,7 @@ set bottom_test_factors_more(Param p0, Param p, [KType, [QKL_bottom_data]] datas
      then () = befmoreTime +:= elapsed_ms() - start
      then () = if not all(for (mu, data) in datas
 			 do @bool: all(for (Q,list) in data
-				       do  @bool: bottom_elim_factors(p0, p, (Q, list){, P})
+				       do  @bool: bottom_elim_factors(p0, p, (Q, list), P)
 			      	       od)
 		         od) {this seems to be quite rare??}
 	       then let MG = more_good_hash.size()
@@ -1660,7 +1662,7 @@ set bottom_test_factors_more(Param p0, Param p, [KType, [QKL_bottom_data]] datas
 
 {P is K-character at least to appropriate height, NOT branch!. Assume already eliminated using minimal P0}
 {insist that p0 is final, p0 is a LQ of p}
-set bottom_test_factors_more(Param p0, Param p, int D{, KTypePol P}) = bool:
+set bottom_test_factors_more(Param p0, Param p, int D, KTypePol P) = bool:
     if not more_flag
     then is_unitary_hash_big_SIMPLE(p0) {min_bottom_test_factors(p,P)}
     else
@@ -1692,7 +1694,7 @@ set bottom_test_factors_more(Param p0, Param p, int D{, KTypePol P}) = bool:
     	      then if not all(for (Q,pL) in maxQps
      	       	      	      do @bool: all(for mu in LKTs(p)
 			     	     	    do  @bool: bottom_elim_factors(p0, p,
-					    	bottom_K_type_Qs2(mu,Q,D){, P})
+					    	bottom_K_type_Qs2(mu,Q,D), P)
 					    od)
 			      od)
  		    then let MG = more_good_hash.size()
@@ -1706,7 +1708,7 @@ set bottom_test_factors_more(Param p0, Param p, int D{, KTypePol P}) = bool:
 	             fi
 	      else if not all(for mu in LKTs(p)
 			 do @bool: all(for (Q,list) in bottom_K_type_Qs(p0,Q0 ,D)
-			    	       do @bool: bottom_elim_factors(p, bottom_factors(Q,list){, P})
+			    	       do @bool: bottom_elim_factors(p, bottom_factors(Q,list), P)
 				       od)
 		         od)
 	       	   then let MG = more_good_hash.size()
