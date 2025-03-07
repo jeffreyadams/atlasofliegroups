@@ -2308,9 +2308,11 @@ simple_list<std::pair<BlockElt,kl::KLPol> >
 } // |Rep_table::KL_column|
 
 
-const deformation_unit& Rep_table::deformation(const StandardRepr& z)
+const deformation_unit& Rep_table::deformation(StandardRepr z)
 {
   assert(is_final(z));
+  if (z.gamma().denominator() > (1LL<<rank()))
+    z = weyl::alcove_center(*this,z);
 
   auto h=alcove_hash.match(deformation_unit(*this,z));
   {
@@ -2346,13 +2348,11 @@ const deformation_unit& Rep_table::deformation(const StandardRepr& z)
   return pool[h];
 } // |Rep_table::deformation|
 
-K_type_nr_poly Rep_table::full_deformation(StandardRepr z)
+K_type_nr_poly Rep_table::full_deformation(const StandardRepr& z)
 // that |z| is dominant and final is a precondition assured in the recursion
 // for more general |z|, do the preconditioning outside the recursion
 {
   assert(is_final(z));
-  if (z.gamma().denominator() > (1LL<<rank()))
-    z = weyl::alcove_center(*this,z);
 
   K_type_nr_poly result;
   auto& du = deformation(z);
@@ -2625,10 +2625,13 @@ SR_poly Rep_table::twisted_deformation_terms (unsigned long sr_hash)
 #endif
 
 const deformation_unit&
-  Rep_table::twisted_deformation(const StandardRepr& z, bool& flip)
+  Rep_table::twisted_deformation(StandardRepr z, bool& flip)
 {
   assert(is_final(z));
   assert(is_delta_fixed(z));
+  if (z.gamma().denominator() > (1LL<<rank()))
+    z = weyl::alcove_center(*this,z);
+
   const auto& delta = inner_class().distinguished();
 
   auto h = alcove_hash.match(deformation_unit(*this,z));
@@ -2691,12 +2694,10 @@ const deformation_unit&
 } // |Rep_table::twisted_deformation (StandardRepr z)|
 
 
-K_type_nr_poly Rep_table::twisted_full_deformation(StandardRepr z)
+K_type_nr_poly Rep_table::twisted_full_deformation(const StandardRepr& z)
 {
   assert(is_final(z));
   assert(is_delta_fixed(z));
-  if (z.gamma().denominator() > (1LL<<rank()))
-    z = weyl::alcove_center(*this,z);
 
   K_type_nr_poly result { std::less<K_type_nr>() };
   bool flipper=false;
