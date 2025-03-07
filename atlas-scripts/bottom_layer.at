@@ -747,9 +747,9 @@ set min_small_bottom_elim_factors(Param p0, Param p, KTypePol P) = bool:
 	 do @: all( for (tau,list) in LKData[1:]
 	       	    do let coeff = Split: 1 {this will be the bottom layer signature at tau}
 	               then () = for tauLj@j in list
-			       	 do coeff*:= Lbranches[j][tauLj]
+			       	 do coeff*:= regroup(tauLj.real_form,Lbranches[j])[tauLj]
 			    	 od
-		       in @bool: int_part(coeff) >= int_part(multG[tau])
+		       in @bool: int_part(coeff) >= int_part(regroup(tau.real_form,multG)[tau])
 	       	    od)
 	  od
    then answer = all(answers)
@@ -817,7 +817,7 @@ set min_bottom_elim_factors(Param p0, Param p, KTypePol P) = bool:
 			  then () = for tauLj@j in list
 			       	    do coeff*:= Lbranches[j][tauLj]
 			  	    od
-		    	   in @bool: int_part(coeff) >= int_part(multG[tau])
+		    	   in @bool: int_part(coeff) >= int_part(regroup(tau.real_form, multG)[tau])
 	       	        od)
         od
    then answer = all(answers)
@@ -935,10 +935,10 @@ set bottom_elim_factors(Param p0, Param p, QKL_bottom_data (Q, LKdata), KTypePol
 			do let coeff = Split: 1 {this will be the bottom layer signature at tau}
 			   then () = for tauLj@j in list
 			     	     do {prints(branchLjs[j][tauLj]);}
-				     coeff*:= branchLjs[j][tauLj]
+				     coeff*:= regroup(tauLj.real_form,branchLjs[j])[tauLj]
 			  	     od
 			   {then () = prints("coeff = ",coeff,", Pmult = ",Pmult[tau])}
-			   in @bool: let ans = int_part(coeff) >= int_part(Pmult[tau])
+			   in @bool: let ans = int_part(coeff) >= int_part(regroup(tau.real_form,Pmult)[tau])
 			      	     then () = if not ans
 				     	       then big_unitary_hash.numatch(p0)
 					       fi
