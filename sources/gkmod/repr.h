@@ -687,9 +687,9 @@ class Rep_table : public Rep_context
 
   // full deformation to $\nu=0$ of |z|
   const deformation_unit& // warning: transient reference (into |pool| vector)
-    deformation(StandardRepr& z);
+    deformation(StandardRepr z); // by value
   bool has_deformation(const StandardRepr& z);
-  K_type_nr_poly full_deformation(StandardRepr& z);
+  K_type_nr_poly full_deformation(const StandardRepr& z);
 
   // like |deformation_terms|; caller multiplies returned coefficients by $1-s$
   sl_list<std::pair<StandardRepr,int> > twisted_deformation_terms
@@ -709,10 +709,9 @@ class Rep_table : public Rep_context
 
   // full twisted deformation, with |flip| telling whether to multiply by |s|
   const deformation_unit& // warning: transient reference (into |pool| vector)
-  twisted_deformation(StandardRepr& z, bool& flip);
+    twisted_deformation(StandardRepr z, bool& flip); // |z| by value
   bool has_twisted_deformation(const StandardRepr& z);
-  K_type_nr_poly
-  twisted_full_deformation(StandardRepr& z);
+  K_type_nr_poly twisted_full_deformation(const StandardRepr& z);
 
  private:
   class Bruhat_generator; // helper class: internal |add_block_below| recursion
