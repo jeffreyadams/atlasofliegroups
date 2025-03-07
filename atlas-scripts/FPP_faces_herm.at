@@ -1799,7 +1799,7 @@ set is_unitary_to_ht_big_SIMPLE(Param p,int N) = bool:
 	    fi
   {then () = p := herm_center(p)}
   then () = if (big_unitary_hash.ulookup(p)).>= then return true fi
-  then () = if (big_unitary_hash.nulookup(p)).>= then return false fi
+  {then () = if (big_unitary_hash.nulookup(p)).>= then return false fi} {This line was a mistake: p could be nonunitary but unitary to ht N. Led to problems in E7_s, when this eliminated UNITARY reps agreeing with  a nonunitary p to ht N}
   in if interrupt_flag
      then is_unitary_to_ht_big_SIMPLE_interrupt(p,N, interrupt_base_time)
      else {unitary_test_counter.use(); done in calls below}
