@@ -2828,14 +2828,10 @@ set local_test_GEO_hash2end(KGBElt x, ratvec lambda, LocalVertexData Lvd, [[Face
     	     	     	 	    then short_hts(pmax)
 		     	      	    else next_heights(pmax,depth)
 				    fi
-    		     {then () = if #Shorthts < depth and revert_flag
-			       then return local_test_GEO_hash_else_dumb(x, lambda, Lvd, LF,
-			       Shorthts[:min(#Shorthts,1)], pol_hash, Uhash, fancy_tester)
-			       fi}
     		     then d0 = min(#Shorthts, depth)
 		     in Shorthts[:d0] ## for j:depth-d0 do -1 od
-    then () = test_string:= " using local_test_GEO_hash2end"
-    then  () = hash2Counter.use()
+    {then () = test_string:= " using local_test_GEO_hash2end"}
+    {then  () = hash2Counter.use()}
     then test_levels = for d:max(r+1,3) do (d*edge_skip*stretcher)\1 + edge_offset_temp od
       {last test_level is approx depth}
     then test_hts = for d:max(r+1,3) do hts[test_levels[d]] od, Dlast = max(r,2)
@@ -2863,7 +2859,7 @@ set local_test_GEO_hash2end(KGBElt x, ratvec lambda, LocalVertexData Lvd, [[Face
     	      do let () = LFDKH := localFD_KHashbt_lookDownGEO(x,lambda, Lvd,
                           	   LFDKH, D+1,D+2,pol_hash)
 	         {then () = if D=1 then prints(LFDKH[2]) fi}
-		 then ((eq,gr),IUCL,CLBF) = localGraphK(LFDKH, pol_hash, {test_}hts[D])
+		 then ((eq,gr),IUCL,CLBF) = localGraphK(LFDKH, pol_hash, hts[D])
        	      	 {compute graph on faces to dim D+1}
 		 {then () = prints("trial of eq at dim ",D+1," is ",
 		 trial(x,lambda,Lvd,LFDKH, eq, test_hts[D]))}
@@ -2880,20 +2876,11 @@ set local_test_GEO_hash2end(KGBElt x, ratvec lambda, LocalVertexData Lvd, [[Face
      in ()
      fi{quick_flag}
     {now have faces of all dims, to height test_hts[Dlast]}
-    {then () = KNU_flag:=KNU_flag_hold
-    then () = ICPNU_flag:= ICPNU_flag_hold}
     then ((eq,gr),IUCL,CLBF) = localGraphK(LFDKH)
-    {then () = prints("last eq = ",eq)}
-    {then sph_far_flag = dominant(G,thetaMinus*gammamax)*G.two_rho_check/2 < to_ht_frac*(gammamax*G.two_rho_check)}
-    {term on left guaranteed <= right term on right. If close, then
-    	       params are close to spherical princ series, and to_ht is fast}
     then () = if test_verbose
     	      then prints(for list in LFDKH do #list od, " = ",sum(for list in LFDKH do #list od),
 	      	      	" unitary candidates in ",#eq," equivalence classes.");
-	           {if sph_far_flag
-		   then} prints("using is_unitary")
-		   {else prints("testing to height ",hts[test_levels[Dmid+1]])
-		   fi}
+		   prints("using is_unitary")
 	      fi
     then start=elapsed_ms() {already unitary to height hts[test_levels[Dlast]] = test_hts[max(r,2)]}
     then UParams = local_test_hash(x, lambda, Lvd, LFDKH, eq, gr, CLBF, (Param->bool): (Param p):
@@ -2904,6 +2891,27 @@ set local_test_GEO_hash2end(KGBElt x, ratvec lambda, LocalVertexData Lvd, [[Face
 	      then prints("     ", print_time_string(time),
 	      " for UParams calculation ", test_string, new_line) fi
     in UParams
+
+{
+set local_test_GEO_hash2tail_end(KGBElt x, ratvec lambda, LocalVertexData Lvd, [[FaceVertsKHash]] LFDKH,
+    			KTypePol_hash pol_hash, Param_hash Uhash, (Param->bool) fancy_tester) = [Param]:
+
+    let ((eq,gr),IUCL,CLBF) = localGraphK(LFDKH)
+    then () = if test_verbose
+    	      then prints(for list in LFDKH do #list od, " = ",sum(for list in LFDKH do #list od),
+	      	      	" unitary candidates in ",#eq," equivalence classes.");
+		   prints("using is_unitary")
+	      fi
+    then start=elapsed_ms() {already unitary to height hts[test_levels[Dlast]] = test_hts[max(r,2)]}
+    then UParams = local_test_hash(x, lambda, Lvd, LFDKH, eq, gr, CLBF, (Param->bool): (Param p):
+		 is_unitary_hash_big_SIMPLE(p), Uhash)
+    {Maybe NEED TO PUT BOTTOM LAYER STUFF BACK}
+    then time = elapsed_ms() - start
+    then () = if time_verbose
+	      then prints("     ", print_time_string(time),
+	      " for UParams calculation ", test_string, new_line) fi
+    in UParams
+}
 
 set local_test_GEO_hash2(KGBElt x, ratvec lambda, {VertexData vd,} LocalVertexData Lvd,
     [[FaceVertsIndex]] LF, KTypePol_hash pol_hash, Param_hash Uhash) = [Param]:
@@ -3853,18 +3861,22 @@ set local_test_GEO_hash_bottom_layer(KGBElt x, ratvec lambda, {VertexData vd,}
 			    	      	   Lvd.list[LFDKH[0][0][0]]),{ [D],} Uhash)
 	     		    	      fi
 		  	    in ()
+			    fi
 			    {consider an "else" reverting to hash2?}
-			    else if test_verbose then prints("sorry, no non-lowest bottom layer K-types;",
+			    {else if test_verbose then prints("sorry, no non-lowest bottom layer K-types;",
 			    	       	       		     " reverting to hash2end") fi;
 			    return local_test_GEO_hash2end(x, lambda, Lvd, LFDKH, pol_hash, Uhash,
 			    	 	fancy_tester)
 			    {should use a short version where verts and Kchars already known!}
-			    fi
+			    fi}
 		    in ()
 	      fi
 	      {now have list of vertices and edges passing bottom layer test out to D}
    then () = if test_verbose then prints("unitary on bottom layer to height ",D," face counts to dim 1: ",
    	for list in LFDKH do #list od) fi
+   in local_test_GEO_hash2end(x, lambda, Lvd, LFDKH, pol_hash, Uhash,
+			    	 	fancy_tester)
+{
    then DiffList = for v in LFDKH[0]
     	 	   do G.two_rho_check*(dominant(G,thetaMinus*Lvd.list[v[0]]))
 		   od
@@ -3902,6 +3914,7 @@ set local_test_GEO_hash_bottom_layer(KGBElt x, ratvec lambda, {VertexData vd,}
 	      " for UParams calculation ", test_string, new_line){;}
 	      fi
    in UParams
+}
 
 set local_test_GEO_hash_bottom_layer(KGBElt x, ratvec lambda, LocalVertexData Lvd,
 [[FaceVertsIndex]] LF, KTypePol_hash pol_hash, Param_hash Uhash) = [Param]:
