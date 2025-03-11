@@ -42,14 +42,15 @@ set delta_on_simple(InnerClass ic) = [int]:
 {version of to_no_Cminus@Param that seeks to keep d_lambda as dominant as possible}
 set to_no_Cminus_small(Param p) = Param:
     let rd=p.root_datum then {w=id_W(rd),} pnew = p, xnew = p.x, r=rd.semisimple_rank
+    then mus = LKTs(p)
     then DOS = delta_on_simple(p.real_form)
     then () = while let s = last(r, (int i)bool:
     	      	    	    status(i,xnew).= and
 			    ((pnew.d_lambda)*rd.simple_coroots[i]).<)
 		    {then () = prints("s = ",s)}
 		    in s.>=
- 	      do let s1 = DOS[s]
-	      	 then sword = [int]:
+ 	      do let sword = [s] {let s1 = DOS[s]
+	      	 then sword = [s][int]:
 		      if s1 = s
 		      then [s]
 		      elif ((rd.simple_coroots[s])*(rd.simple_roots[s1])).= and
@@ -57,18 +58,19 @@ set to_no_Cminus_small(Param p) = Param:
 		      	   length(cross(s1,cross(s,xnew))) < length(xnew)
 		      then [s,s1]
 		      else [s]
-		      fi
+		      fi}
 		 then changer = W_elt(rd,sword)
 	      	 {then () = w:=w*changer}
 		 then () = xnew:=cross(changer,xnew)
-		 in pnew:=parameter(xnew, changer*(pnew.lambda), changer*(pnew.nu))
+		 then () = pnew:=parameter(xnew, changer*(pnew.lambda), changer*(pnew.nu))
+		 in assert(LKTs(pnew)[0] = mus[0],"trouble!")
 	      od {now pnew.lambda is weakly dominant}
     then () = while let s = last(r, (int i)bool:
     	      	    	    status(i,xnew).= and
 			    ((pnew.d_lambda)*rd.simple_coroots[i]).=)
 		    {then () = prints("s = ",s)}
 		    in s.>=
- 	      do let s1 = DOS[s]
+ 	      do let sword = [s] {s1 = DOS[s]
 	      	 then sword = [int]:
 		      if s1 = s
 		      then [s]
@@ -77,7 +79,7 @@ set to_no_Cminus_small(Param p) = Param:
 		      	   length(cross(s1,cross(s,xnew))) < length(xnew)
 		      then [s,s1]
 		      else [s]
-		      fi
+		      fi}
 		 then changer = W_elt(rd,sword)
 	      	 {then () = w:=w*changer}
 		 then () = xnew:=cross(changer,xnew)
@@ -94,7 +96,7 @@ set to_no_Cminus_small(KGBElt x, ratvec lambda) = (KGBElt, ratvec):
 			    (((1+xnew.involution)*lambdanew)*rd.simple_coroots[i]).<)
 		    {then () = prints("s = ",s)}
 		    in s.>=
- 	      do let s1 = DOS[s]
+ 	      do let sword = [s] {s1 = DOS[s]
 	      	 then sword = [int]:
 		      if s1 = s
 		      then [s]
@@ -103,7 +105,7 @@ set to_no_Cminus_small(KGBElt x, ratvec lambda) = (KGBElt, ratvec):
 		      	   length(cross(s1,cross(s,xnew))) < length(xnew)
 		      then [s,s1]
 		      else [s]
-		      fi
+		      fi}
 		 then changer = W_elt(rd,sword)
 	      	 {then () = w:=w*changer}
 		 then () = xnew:=cross(changer,xnew)
@@ -115,7 +117,7 @@ set to_no_Cminus_small(KGBElt x, ratvec lambda) = (KGBElt, ratvec):
 			    (((1+xnew.involution)*lambdanew)*rd.simple_coroots[i]).=)
 		    {then () = prints("s = ",s)}
 		    in s.>=
- 	      do let s1 = DOS[s]
+ 	      do let sword = [s] {s1 = DOS[s]
 	      	 then sword = [int]:
 		      if s1 = s
 		      then [s]
@@ -124,7 +126,7 @@ set to_no_Cminus_small(KGBElt x, ratvec lambda) = (KGBElt, ratvec):
 		      	   length(cross(s1,cross(s,xnew))) < length(xnew)
 		      then [s,s1]
 		      else [s]
-		      fi
+		      fi}
 		 then changer = W_elt(rd,sword)
 	      	 {then () = w:=w*changer}
 		 then () = xnew:=cross(changer,xnew)
@@ -682,6 +684,8 @@ character formula of p0 to some height}
 set NIHCOUNT = int: 0
 set quitNIH_flag = true
 
+{insist that p0 is a LQ of p, and that P is K_type_pol of
+character formula of p0 to some height. Need p0 FINAL}
 set min_small_bottom_elim_factors(Param p0, Param p, KTypePol P) = bool:
     let start = elapsed_ms(), (Q,pL) = theta_stable_data_small(p), G = p.real_form,
     	x = p.x, lambda = p.lambda
