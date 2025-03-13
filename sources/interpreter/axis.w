@@ -204,17 +204,17 @@ processing consist of two separate stages: type analysis, which also
 transforms the syntax tree into a more directly executable form and therefore
 might be called compilation, and execution of those transformed expressions.
 
-The expression returned by the parser, of type |expr|, and the conversion to
-the executable format |expression| (a type defined in \.{axis-types.w} as a
-pointer to the base class |expression_base|, from which many more specialised
-classes will be derived) is performed by the function |convert_expr|. This is
-a large and highly recursive function, and a large part of the current module
+The expression returned by the parser, of type |expr|, and the conversion to the
+executable format |expression| (a type defined in \.{axis-types.w} as a pointer
+to the base class |expression_base|, from which many more specialised classes
+will be derived) is performed by the function |convert_expr|. This is a large
+and highly recursive function, and a large part of the current compilation unit
 is dedicated to its definition. The execution of the converted value is
-performed by calling the (purely) virtual method |expression_base::evaluate|,
-so that the code describing the actual execution of expressions is distributed
-among the many definitions of that method in derived classes, and this
-definition is only implicitly (mutually) recursive through calls to the
-|expression_base::evaluate| method.
+performed by calling the (purely) virtual method |evaluate|, so that the code
+describing the actual execution of expressions is distributed among the many
+definitions of that method in derived classes, and this definition is only
+implicitly (mutually) recursive through calls to the |expression_base::evaluate|
+method.
 
 @ During type checking, it may happen for certain subexpressions that a definite
 type is required for them, while for others nothing is known beforehand about
@@ -226,25 +226,40 @@ vector value (one that can be directly used by the Atlas library); this is in
 fact the only way the user can construct such vector values. However, both cases
 (with known or unknown result type), and some intermediate cases (where the
 result type is partially known) are handled by a single function |convert_expr|.
-In addition to doing types analysis, it builds (upon success) an |expression|
-value. As arguments, |convert_expr| takes an |const expr& e@;| referring to a
-value produced by the parser, a number |fix_count| indicating the level up to
-which type variables are to be considered fixed but opaque (because they could
-represent any type), and a type in the form of a modifiable reference
-|type_expr& tp@;|.
+There are even cases where the expected type is any instance of a given
+polymorphic type, which is why |convert_expr| takes a |type| as second argument
+(where originally it took a |type_expr|). The first argument is an a |const
+expr& e@;| referring to a value produced by the parser, which represents the
+expression to be analysed.
 
 If there are no restrictions on the final type, then |tp| will be undetermined
 initially; if a precise type is required then it is set to that. It could also
 be that there are partial requirements; then |tp| is a partially determined type
 expression reflecting those. Then during the call to |convert_expr|, the value
 of |tp| can be changed by calling |specialise| on it or on its subexpressions.
-However, |convert_expr| should not use its modifiable reference to |tp| for any
-other purpose. It should notably not |std::move| from such type expressions.
-Also |tp| should not be a reference to a table entry or other permanent value,
-to avoid changes to the |tp| argument causing permanent changes to them. (But
-after returning from |convert_expr|, |tp| can be used in a permanent manner.)
+As polymorphic types were introduced, we discovered (fairly late) that we cannot
+limit ourselves to partially defined context types determined by patterns with
+undetermined parts, but we need to allow the requirement of being an instance of
+some polymorphic type: while overloaded function calls must evaluate their
+argument(s) in an undetermined type context, even if some function instances
+are polymorphic, non overloaded calls do impose a type on their argument, which
+may be a polymorphic type. For this reason we pass (by reference) a |type|
+argument rather than a |type_expr|, and expect its type assignment to pick up
+information during the type checking process.
 
-In some cases |tp| will remain partly undefined, like for an empty list display
+Apart from specialisation of |tp|, we also occasionally call within the |expand|
+method to replace a tabled type by an equivalent one that makes the top level
+structure apparent. However, |convert_expr| should not modify |tp| in other
+ways, or |std::move| from it. Also |tp| should not refer to a table entry like
+the type of a variable, or to any other permanent value, to avoid changes to the
+|tp| argument causing permanent changes to them. (But after returning from
+|convert_expr|, |tp| can be used in a permanent manner.)
+
+@< Declarations of exported functions @>=
+expression_ptr convert_expr
+  (const expr& e, unsigned int fix_count, type_expr& tp);
+
+@ In some cases |tp| will remain partly undefined, like for an empty list display
 with an unknown type, which gets specialised only to~`\.{[*]}'. That type
 expression will then be converted to a polymorphic type `\.{[A]}' upon calling
 |type::wrap|. If |tp| remains completely undefined (as will happen for an
@@ -260,10 +275,6 @@ completely undetermined as a type error; currently this is not signalled as
 such, but occasionally we might choose to not handle certain scenarios in which
 the type derived for a subexpression is `\.*', if this allows us to simplify our
 code.
-
-@< Declarations of exported functions @>=
-expression_ptr convert_expr
-  (const expr& e, unsigned int fix_count, type_expr& tp);
 
 @*1 Layers of lexical context.
 %
@@ -1631,9 +1642,9 @@ now try instead to find something from the |global_overload_table| first,
 provided there is a unique instance of the identifier there that matches the
 type requirement |tp| from the context (which may be no requirement at all). We
 do not come to this code for an applied identifier that is in the function
-position of a call: in that case an overloaded call is tried unless the
-identifier is actually known as a local identifier with a function type, or
-there are no overloads at all, as we shall see below. Therefore the context type
+position of a call: we shall see below that in that case an overloaded call is
+tried, unless the identifier is actually known as a local identifier with a
+function type, or there are no overloads at all. Therefore the context type
 pattern |tp| cannot be a partially determined function type: it is either
 completely undetermined, in which case we return a variant if it is unique and
 otherwise complain about ambiguity, or it is a monomorphic function type, in
@@ -1649,7 +1660,7 @@ this code as if there were no overloads at all.
     @< If |*vars| has a unique variant, |return| its value wrapped in a
        |capture_expression|, otherwise |throw| an error signalling ambiguity @>
     else
-    @< If a unique variant among |*vars| unifies to the monomorphic type |tp|,
+    @< If a unique variant among |*vars| unifies to the type |tp|,
        |return| its value wrapped in a |capture_expression|, if more than one
        does, |throw| an error signalling ambiguity, and if none does
        fall through @>
@@ -1690,7 +1701,7 @@ context, and the possibly polymorphic function type from the overload table must
 be renumbered to avoid them. This is done below implicitly, in the call of the
 method |type::matches|.
 
-@< If a unique variant among |*vars| unifies to the monomorphic type |tp|... @>=
+@< If a unique variant among |*vars| unifies to the type |tp|... @>=
 { type expected = type::wrap(tp,fc); // in |expected|, floor is at level |fc|
   assert(not expected.is_polymorphic());
   // since now |tp| is fully determined monomorphic
@@ -1912,8 +1923,8 @@ error, also aborting the matching process.
 @/    @< Assign to |call| a converted call expression of the function value
         |variant.value()|... @>
       const type res_type = type::wrap @|
-        ( substitution(variant.f_tp().result_type
-                      ,a_priori_type.assign(),shift_amount)
+        ( a_priori_type.assign().substitution
+            (variant.f_tp().result_type ,shift_amount)
         , fc
         );
       result = conform_types(res_type,tp,fc,std::move(call),e);
@@ -2740,7 +2751,7 @@ case function_call:
   expression_ptr re(new @|
      call_expression(std::move(fun),std::move(arg),e.loc));
   const type result_type = type::wrap
-    (substitution(f_type.func()->result_type,f_type.assign()) ,fc);
+    (f_type.assign().substitution(f_type.func()->result_type) ,fc);
   return conform_types(result_type,tp,fc,std::move(re),e);
 }
 
@@ -5580,7 +5591,7 @@ conversion of previous branches.
         type::wrap(*std::next(types_start,k),fc);
       // type of variant for this branch
       type tag_type = type::wrap(*std::next(candidate_var_tps,k),0,fc);
-      bool success = variant_type.unify(tag_type);
+      bool success = variant_type.unify_to(tag_type);
       assert(success); ndebug_use(success);
     @/@< Type-check branch |branch.branch|, with the names of |branch.pattern|
          bound to |variant_type|, requiring result type |tp|; insert the
@@ -7283,8 +7294,8 @@ we fall through this code, leading to a ``no instance found'' error.
        applied @>
     result.reset(new capture_expression(variant.value(),o.str()));
     deduced_type = type_expr::function @|
-      (substitution(variant.f_tp().arg_type,target.assign(),shift_amount)
-      ,substitution(variant.f_tp().result_type,target.assign(),shift_amount)
+      (target.assign().substitution(variant.f_tp().arg_type,shift_amount)
+      ,target.assign().substitution(variant.f_tp().result_type,shift_amount)
       );
    prev_match = &variant;
   }
@@ -7319,7 +7330,7 @@ match the specified type.
     {
       o << (first ? (first=false, '[') : ',')
         << *mk_type_variable(i) << '='
-        << substitution(*p,target.assign());
+        << target.assign().substitution(*p);
     }
   if (not first)
     o << ']';

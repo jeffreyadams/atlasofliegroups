@@ -673,7 +673,8 @@ included before) respectively appending output redirection.
            : input.shift()=='>' ? ADDTOFILE : (input.unshift(),TOFILE) ;
 	   @< Read in |file_name| @>
            @+ break;
-         }         valp->oper.priority=2;
+         }
+         valp->oper.priority=2;
          {} // don't try |OPERATOR_BECOMES| for operators staring '$<$' or '$>$'
          if (input.shift()=='=')
        @/{@;
