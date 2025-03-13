@@ -22,6 +22,24 @@ small values are faster. Too small a value cannot lead to wrong
 answers, but only to running more is_unitary tests .}
 set chop_bound = int: 6
 
+
+set kill_for_big_uTime_flag = false
+
+set kill_for_big_uTime_bound = int: -1
+
+set activate_kill_for_big_uTime(int T) = void:
+    let () = kill_for_big_uTime_flag :=  true
+    in kill_for_big_uTime_bound:= T
+
+set kill_for_big_uTime() = void:
+    if (kill_for_big_uTime_flag)
+       and (kill_for_big_uTime_bound.>=)
+       and (unitaryTime > kill_for_big_uTime_bound)
+    then prints("I can't live...if living is without U")
+    fi
+
+
+
 {if true, compute reps weakly fair cohom induced from Arthur unipotent}
 {set coh_ind_few_flag = false}
 
@@ -238,7 +256,7 @@ then coh_ind_unip_few(G,Uhash)}
     then () = face_verbose:=old_face_verbose; time_verbose:=old_time_verbose;
     	      test_verbose:=old_test_verbose; test_slightly_verbose:=old_test_slightly_verbose
     then longest = max_loc(xlambdatimes)
-    in if FPP_report_flag
+    then () = if FPP_report_flag
        then prints(new_line,"Total time = ", print_time_string(current-start),
        	      "; max time = ",print_time_string(xlambdatimes[longest]),
 	      " for (x,lambda) = (",  xnums[longest], ",",
@@ -269,9 +287,9 @@ then coh_ind_unip_few(G,Uhash)}
 	    print_time_string(is_finished_time), ", time for position = ",
 	    print_time_string(position_time));
        	    prints("Number of FPP-unitary faces = ",Uhash.size(), ", number found on this run = ", Uhash.size() - oldUhash)
-       fi {FPP_report_flag}
-       fi {#xlambdasW = 0}
-     in ()
+	fi {FPP_report_flag}
+       in () fi {#xlambdasW = 0}
+     in kill_for_big_uTime(); ()
 
 set FPP_unitary_hash_general([KGBElt] xs, Param_hash Uhash, (Param->bool) fancy_tester,
     (KGBElt, ratvec, LocalVertexData,[[FaceVertsIndex]],
@@ -527,7 +545,7 @@ set FPP_unitary_hash_general([KGBElt] xs, Param_hash Uhash, (Param->bool) fancy_
     then () = face_verbose:=old_face_verbose; time_verbose:=old_time_verbose; test_verbose:=old_test_verbose;
     	      test_slightly_verbose:=old_test_slightly_verbose
     then longest = max_loc(times)
-    in if FPP_report_flag
+    then () = if FPP_report_flag
        then prints("----------------");
        	    prints("Total time = ", print_time_string(current-start),
               "; max time = ",print_time_string(times[longest]),
@@ -562,7 +580,8 @@ set FPP_unitary_hash_general([KGBElt] xs, Param_hash Uhash, (Param->bool) fancy_
        	      ", number found on this run = ", Uhash.size() - oldUhash);
 	    report_tested()
       fi {FPP_report_flag}
-   fi {#xs = 0}
+   in kill_for_big_uTime(); () fi {#xs = 0}
+
 
 set FPP_unitary_hash_general(RealForm G,Param_hash Uhash, (Param->bool) fancy_tester,
     (KGBElt,ratvec,{VertexData,}LocalVertexData, [[FaceVertsIndex]],
@@ -865,8 +884,8 @@ fancy_tester) = void:
     then () = face_verbose:=old_face_verbose; time_verbose:=old_time_verbose;
     	      test_verbose:=old_test_verbose; test_slightly_verbose:=old_test_slightly_verbose
     then longest = max_loc(xlambdatimes)
-    in if FPP_report_flag
-       then prints(new_line,"Total time = ", print_time_string(current-start),
+    then () =  if FPP_report_flag
+       	       then prints(new_line,"Total time = ", print_time_string(current-start),
        	      "; max time = ",print_time_string(xlambdatimes[longest]),
 	      " for (x,lambda) = (",  xlambdas[longest], {",", lambdas[longest],}")");
        	    if small_test_flag
@@ -902,8 +921,9 @@ fancy_tester) = void:
 	    		   print_time_string(position_time));
        	    prints("Number of FPP-unitary faces = ",UhashG.size(), ", number found on this run = ", UhashG.size() - oldUhash);
 	    report_tested()
-       fi {FPP_report_flag}
-    fi {#xlambdas = 0}
+	    fi {FPP_report_flag}
+     in kill_for_big_uTime(); () 
+   fi {#xlambdas = 0}
 
 set FPP_unitary_hash_bottom_layer([(KGBElt,ratvec)] xlambdas, (Param -> bool) fancy_tester) = void:
     FPP_unitary_hash_bottom_layer(xlambdas, let (x,lambda) = xlambdas[0]
@@ -1204,7 +1224,7 @@ set FPP_unitary_hash_bottom_layer([KGBElt] xs, Param_hash UhashG, (Param->bool) 
     then () = face_verbose:=old_face_verbose; time_verbose:=old_time_verbose; test_verbose:=old_test_verbose;
     	      test_slightly_verbose:=old_test_slightly_verbose
     then longest = max_loc(times)
-    in if FPP_report_flag
+    then () = if FPP_report_flag
        then prints("----------------");
        	    prints("Total time = ", print_time_string(current-start),
               "; max time = ",print_time_string(times[longest]),
@@ -1244,6 +1264,7 @@ set FPP_unitary_hash_bottom_layer([KGBElt] xs, Param_hash UhashG, (Param->bool) 
        	      ", number found on this run = ", UhashG.size() - oldUhash);
 	    report_tested()
       fi {FPP_report_flag}
+     in kill_for_big_uTime(); ()
    fi {#xs = 0}
 
 set FPP_unitary_hash_bottom_layer([KGBElt] xs, (Param->bool) fancy_tester) = void:
