@@ -1170,11 +1170,10 @@ and this suffices.
 
 @< Local function definitions @>=
 
-type balance
-   ( type_expr& target // component type required from context
+void balance
+   ( type& target // component type required from context
    , raw_expr_list elist // list of expression to be balanced
    , const expr& e // containing expression, for error reporting
-   , unsigned int fc // ``fixed count'' level from and for |convert_expr|
    , const char* description // what kind of components, for error message
    , std::vector<expression_ptr>& components // output, converted expressions
    )
@@ -1182,7 +1181,7 @@ type balance
   unsigned n = length(elist); components.reserve(n);
   std::vector<type> comp_type; comp_type.reserve(n);
   type common // will become the common type accepting all branch types
-  = type::bottom(fc); // initially the least accepting polymorphic type
+    = target.copy(); // every expression initially sees the |target| type
   containers::sl_list<type> conflicts;
     // except those branch types that are put aside here
   @< Convert each expression in |elist| in the context of a copy of |target|,
@@ -1195,7 +1194,6 @@ type balance
   if (not common.is_polymorphic())
     @< Redo conversion with context type |target| for components that do not
        already have that type @>
-  return common;
 }
 
 @ We try to maintain |common| as unifying type between the branches, as computed
@@ -1231,12 +1229,12 @@ purpose of pruning.
 @< Convert each expression in |elist| in the context... @>=
 for (wel_const_iterator it(elist); not it.at_end(); ++it)
 { try
-  { type_expr te = target.copy();
-      // start each with a copy of original |target| pattern
-    components.push_back(expression_ptr());
+  { components.push_back(expression_ptr());
        // push, whether or not |convert_expr| succeeds
-    components.back()=convert_expr(*it,fc,te);
-    type ctype = type::wrap(te,fc);
+    type_expr te = target.skeleton(target.unwrap());
+      // we need to copy in / copy out for now
+    components.back()=convert_expr(*it,target.floor(),te);
+    type ctype = type::wrap(te,target.floor());
     comp_type.push_back(ctype.copy());
     if (not join_to(common,std::move(ctype)))
       conflicts.push_back(std::move(ctype));
@@ -1277,13 +1275,13 @@ branches); the method |type::unify_specialise| accomplishes this.
       ++it;
   if (not conflicts.empty())
   { balance_error err(e,description);
-    if (common.unwrap()!=type_expr::variable(fc))
+    if (not common.is_bottom())
       err.variants.push_back(std::move(common));
     err.variants.append(std::move(conflicts));
     throw std::move(err);
   }
-  if (not common.unify_specialise(target))
-    throw type_error(e,common.bake_off(),target.copy());
+  if (not common.unify(target))
+    throw type_error(e,common.bake_off(),target.bake());
 }
 
 @ When converting a component expression a second time in the hope it can adapt
@@ -1305,9 +1303,11 @@ by the new conversion (if it is successful)).
 @< Redo conversion with context type |target| for components that do not
    already have that type @>=
 { wel_const_iterator it(elist);
+  type_expr te = target.bake();
   for (unsigned i=0; i<n; ++i,++it)
-    if (not comp_type[i].is_polymorphic() and comp_type[i].unwrap()!=target)
-      components[i] = convert_expr(*it,fc,target);
+    if (not comp_type[i].is_polymorphic() and
+        comp_type[i].unwrap()!=te)
+      components[i] = convert_expr(*it,target.floor(),te);
       // redo conversion with unifying |target| type
 }
 
@@ -1349,7 +1349,9 @@ case list_display:
 @/static const char* const str = "components of list expression";
   if (tp.specialise(row_of_type))
   {
-    type comp_type = balance(tp.component_type(),e.sublist,e,fc,str,comps);
+    type comp_type = type::wrap(tp.component_type(),fc);
+    balance(comp_type,e.sublist,e,str,comps);
+    tp.component_type() = comp_type.bake_off();
     if (comp_type.is_void())
       @< Insert voiding coercions into members of |comps| that need it @>
     if (std::all_of(comps.begin(),comps.end(),is_const))
@@ -1357,17 +1359,21 @@ case list_display:
     return result;
   }
 @)
-  type_expr comp_type;
   if (tp==void_type) // in void context leave undetermined target type
-  { balance(comp_type,e.sublist,e,fc,str,comps);
+  { type comp_type = type::bottom(fc);
+    balance(comp_type,e.sublist,e,str,comps);
+      // no need to export back to |comp_type|
     return result; // and forget |comp_type| and result of |balance|
   }
 @)
+  type_expr comp_type;
   const conversion_record* conv = row_coercion(tp,comp_type);
   if (conv!=nullptr)
-  { balance(comp_type,e.sublist,e,fc,str,comps);
+  { type target = type::wrap(comp_type,fc);
+    balance(target,e.sublist,e,str,comps);
+      // no need to export back to |comp_type|
     if (std::all_of(comps.begin(),comps.end(),is_const))
-    {
+    @/{@;
       make_row_denotation<true>(result);
       do_conversion(result,*conv,e.loc);
     }
@@ -5203,7 +5209,9 @@ case conditional_expr:
     exp.branches.contents.swap(exp.branches.next->contents);
   expression_ptr c = convert_expr_strongly(exp.condition,fc,bool_type);
   std::vector<expression_ptr> conv;
-  balance(tp,&exp.branches,e,fc,"branches of conditional",conv);
+  type target = type::wrap(tp,fc);
+  balance(target,&exp.branches,e,"branches of conditional",conv);
+  tp = target.bake_off();
 @/return expression_ptr(new @|
     conditional_expression(std::move(c),std::move(conv[0]),std::move(conv[1])));
 }
@@ -5345,7 +5353,9 @@ case int_case_expr2:
 { auto& exp = *e.if_variant;
   expression_ptr c = convert_expr_strongly (exp.condition,fc,int_type);
   std::vector<expression_ptr> conv;
-  balance(tp,&exp.branches,e,fc,"branches of case",conv);
+  type target = type::wrap(tp,fc);
+  balance(target,&exp.branches,e,"branches of case",conv);
+  tp = target.bake_off();
   if (e.kind==int_case_expr0)
     return expression_ptr(new @|
       int_case_expression(std::move(c),std::move(conv)));
