@@ -2406,6 +2406,7 @@ public:
 @)
   type_expr substitution
     (const type_expr& tp, unsigned int shift_amount=0) const;
+  type_expr skeleton (const type_expr& sub_t) const;
   bool unify(type_expr& P, type_expr& Q);
 @)
 private:
@@ -2559,6 +2560,52 @@ indirectly refer back to the variable in question itself.
   return p==nullptr
     ? type_expr::variable(renumber(c))
     : substitution(*p,0);
+}
+
+@ Before converting the argument for a polymorphic function, we can extract from
+its polymorphic type a type pattern that may aid the conversion, namely by
+simply replacing all type variables bound in the polymorphic type by
+undetermined types; the type variables up to |floor()| are unchanged. The method
+|skeleton| achieves this. It is a minor variation of |substitution|, in which no
+renumbering of variables is done; it could in fact have been implemented by
+calling |substitution| after modifying |equiv| by putting undetermined types in
+all empty slots, and leaving the |shift_amount| zero.
+
+@< Function definitions @>=
+type_expr type_assignment::skeleton (const type_expr& te) const
+{ type_ptr result;
+  switch (te.raw_kind())
+  { case primitive_type: return type_expr::primitive(te.prim());
+    case function_type: result =
+      mk_function_type(skeleton(te.func()->arg_type),
+                       skeleton(te.func()->result_type));
+    break;
+    case row_type:
+      result = mk_row_type(skeleton(te.component_type()));
+    break;
+    case tuple_type:
+    case union_type:
+    { dressed_type_list aux;
+      for (wtl_const_iterator it(te.tuple()); not it.at_end(); ++it)
+        aux.push_back(skeleton(*it));
+      return type_expr::tuple_or_union(te.raw_kind(),aux.undress());
+    }
+    case tabled:
+    { dressed_type_list aux;
+      for (wtl_const_iterator it(te.tabled_args()); not it.at_end(); ++it)
+        aux.push_back(skeleton(*it));
+      return type_expr::user_type(te.tabled_nr(),aux.undress());
+    }
+    case variable_type:
+    { auto c = te.typevar_count();
+      auto p = equivalent(c);
+      return p!=nullptr ? skeleton(*p)
+          : c<threshold ? type_expr::variable(c)
+          : type_expr() ;
+    }
+    default: assert(false);
+  }
+  return std::move(*result);
 }
 
 @ Finally we give the general unification method |type_assignment::unify|,
@@ -2976,6 +3023,8 @@ unsigned int ceil() const @+{@; return floor()+degree(); }
   // start disjoint type variables here
 bool is_polymorphic() const @+{@; return degree()>0; }
 bool is_clean() const; // absence of pending type assignments
+bool is_bottom() const @+
+{@; return kind()==variable_type and typevar_count()>=floor(); }
 const type_expr& unwrap() const @+{@; return te ; }
 bool is_void() const @+
 {@; return te.raw_kind()==tuple_type and length(te.tuple())==0; }
@@ -3461,37 +3510,7 @@ as easily by a direct recursion.
 
 @< Function definitions @>=
 type_expr type::skeleton (const type_expr& sub_t) const
-{ type_ptr result;
-  switch (sub_t.raw_kind())
-  { case primitive_type: return type_expr::primitive(sub_t.prim());
-    case function_type: result =
-      mk_function_type(skeleton(sub_t.func()->arg_type),
-                       skeleton(sub_t.func()->result_type));
-    break;
-    case row_type:
-      result = mk_row_type(skeleton(sub_t.component_type()));
-    break;
-    case tuple_type:
-    case union_type:
-    { dressed_type_list aux;
-      for (wtl_const_iterator it(sub_t.tuple()); not it.at_end(); ++it)
-        aux.push_back(skeleton(*it));
-      return type_expr::tuple_or_union(sub_t.raw_kind(),aux.undress());
-    }
-    case tabled:
-    { dressed_type_list aux;
-      for (wtl_const_iterator it(sub_t.tabled_args()); not it.at_end(); ++it)
-        aux.push_back(skeleton(*it));
-      return type_expr::user_type(sub_t.tabled_nr(),aux.undress());
-    }
-    case variable_type:
-    { auto c = sub_t.typevar_count();
-      return c>=floor() ? type_expr() : type_expr::variable(c);
-    }
-    default: assert(false);
-  }
-  return std::move(*result);
-}
+{@; return assign().skeleton(sub_t); }
 
 
 @ We also provide an overload for printing |type| values without having to call
