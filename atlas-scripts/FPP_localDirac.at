@@ -1344,19 +1344,28 @@ set local_test_hash(KGBElt x, ratvec lambda, LocalVertexData Lvd,
     [[LocalFaceVertsKHash]] LFVH, [[int]] eq, [[int]] gr, [vec] classListByFace,
     Param_hash Uhash, (Param->bool) fancy_tester) = [Param]:
     local_test_hash(x, lambda, Lvd, LFVH, eq, gr, classListByFace,
-    is_unitary_hash_big_SIMPLE@Param, Uhash, fancy_tester)
+    if up_mu_flag
+    then is_unitary_test_big_SIMPLE_interrupt@Param
+    else is_unitary_hash_big_SIMPLE@Param
+    fi, Uhash, fancy_tester)
 
 {don't want to specify fancy_tester}
 set local_test_hash(KGBElt x, ratvec lambda, LocalVertexData Lvd, [[LocalFaceVertsKHash]] LFVH,
     [[int]] eq, [[int]] gr, [vec] classListByFace, (Param->bool) tester, Param_hash Uhash) = [Param]:
     local_test_hash(x, lambda, Lvd, LFVH, eq, gr, classListByFace, tester, Uhash,
-    		       is_unitary_def_test_big_SIMPLE@Param)
+    if up_mu_flag
+    then is_unitary_test_big_SIMPLE_interrupt@Param
+    else is_unitary_hash_big_SIMPLE@Param
+    fi)
 
 {don't want to specify either}
 set local_test_hash(KGBElt x, ratvec lambda, LocalVertexData Lvd, [[LocalFaceVertsKHash]] LFVH,
     [[int]] eq, [[int]] gr, [vec] classListByFace, Param_hash Uhash) = [Param]:
     local_test_hash(x, lambda, Lvd, LFVH, eq, gr, classListByFace, Uhash,
-    		       is_unitary_def_test_big_SIMPLE@Param)
+    if up_mu_flag
+    then is_unitary_test_big_SIMPLE_interrupt@Param
+    else is_unitary_hash_big_SIMPLE@Param
+    fi)
 
 {meant to hold params p with pL unitary and p not}
 {set surprise_hash = make_Param_hash()
@@ -1611,7 +1620,10 @@ set one_param_test(Param p, Param_hash Uhash) = [Param]:
     {then steps = max(rank(p.x.involution-1),1)}
     then test = all(for q in Q
        	      	    do @bool: {is_unitary_def_test_big_SIMPLE(q,steps)}
-		    is_unitary_test_big_SIMPLE(q, DEFHTS)
+		    if up_mu_flag
+		    then is_unitary_test_big_SIMPLE_interrupt(q)
+		    else is_unitary_test_big_SIMPLE(q, DEFHTS)
+		    fi
 	   	    od)
     in if test
        then one_true_counter.use();
@@ -1636,7 +1648,10 @@ set one_param_test_min_bottom(Param p, Param_hash Uhash) = [Param]:
     {then steps = max(rank(Q[0].x.involution - 1),1)}
     then test = all(for q in Q
        	      	    do @bool: {is_unitary_def_test_big_SIMPLE(q, steps)}
-		    is_unitary_test_big_SIMPLE(q,DEFHTS)
+		    if up_mu_flag
+		    then is_unitary_test_big_SIMPLE_interrupt(q)
+		    else is_unitary_test_big_SIMPLE(q, DEFHTS)
+		    fi
 	   	    od)
     in if test
        then one_true_counter.use();
@@ -1695,7 +1710,10 @@ set one_param_test_bottom(Param p, [int] Ds, Param_hash Uhash) = [Param]:
        then test = all( [(->bool)]:
 		    	   for q in QG
 			   do @bool: let ans = {is_unitary_def_test_big_SIMPLE(q,steps)}
-			      is_unitary_test_big_SIMPLE(q,DEFHTS)
+			      if up_mu_flag
+		    	      then is_unitary_test_big_SIMPLE_interrupt(q)
+		    	      else is_unitary_test_big_SIMPLE(q, DEFHTS)
+		    	      fi
 			      then () = if not ans
 		            {HERE USE DIRAC ON MORE K-types}
 			      	      	then more_bad_hash.match(q)
@@ -1756,9 +1774,10 @@ set one_param_test_all_bottom(Param p, [int] Ds, Param_hash Uhash) = [Param]:
        then let () = if test_verbose then prints("one parameter unitary on bottom layer to height ",Es~[0]) fi
        	    then test = all( [(->bool)]:
 		    	   for q in Q
-			   do @bool: let ans = is_unitary_test_big_SIMPLE(q, test_heights)
-			      {let ans = is_unitary_def_test_big_SIMPLE(q,steps)}
-		            {HERE USE DIRAC ON MORE K-types}
+			   do @bool: let ans = if up_mu_flag
+		    	      then is_unitary_test_big_SIMPLE_interrupt(q)
+		    	      else is_unitary_test_big_SIMPLE(q,steps)
+		    	      fi
 			      then () = if not ans then more_bad_hash.match(q) fi
 			      in ans
 		    	od)
@@ -1828,7 +1847,10 @@ set local_test_GEO_hash_real_dumb(KGBElt x, ratvec lambda, {VertexData vd,} Loca
     then () = if too_high.>= then {prints(test_hts);} test_hts:=test_hts[:too_high] fi
     then tester = (Param->bool): (Param p) bool: {could have recorded bool above to
     	 	  		 	   	 omit is_unitary at end}
-    	 is_unitary_test_big_SIMPLE(p,test_hts)
+	 if up_mu_flag
+	 then is_unitary_test_big_SIMPLE_interrupt(p)
+	 else is_unitary_test_big_SIMPLE(p, test_hts)
+	 fi
     {then () = if face_verbose then prints("test_ht = ",test_ht) fi}
     then () = test_string:= " using local_test_GEO_hash_real_dumb"
     then  () = hash_real_dumbCounter.use()
@@ -1902,7 +1924,8 @@ set local_test_GEO_hash_real_dumb(KGBElt x, ratvec lambda, {VertexData vd,} Loca
                                                    	od)
                                                then true
                                                else all(for p in ps
-					       	    	do is_unitary_test_big_SIMPLE(p,test_hts)
+					       	    	do tester(p)
+							{is_unitary_test_big_SIMPLE(p,test_hts)}
 					       		od)
                                                fi {any}
                                      	  {else all(for p in ps
@@ -2001,7 +2024,10 @@ set local_test_GEO_hash_else_dumb(KGBElt x, ratvec lambda, {VertexData vd,} Loca
     {then test_hts = hts[:min(#hts,1{r})]  {??? who knows about r!}}
     then tester = (Param->bool): (Param p) bool:
     	 {is_unitary_test_big_SIMPLE(p,test_ht) {this settles unitarity absolutely}}
-	 is_unitary_def_test_big_SIMPLE(p)
+	 if up_mu_flag
+	 then is_unitary_test_big_SIMPLE_interrupt(p)
+	 else is_unitary_def_test_big_SIMPLE(p)
+	 fi
     {then () = if test_verbose then prints("test_ht = ",test_ht) fi}
     then () = test_string:= " using local_test_GEO_hash_dumb"
     then  () = hash_dumbCounter.use()
@@ -2029,8 +2055,10 @@ set local_test_GEO_hash_else_dumb(KGBElt x, ratvec lambda, {VertexData vd,} Loca
               	   then ((eq,gr),IUCL,CLBF) = localGraphK(LFDKH)
 		   then () = LFDKH := local_testK_hash(x,lambda,Lvd,
                       LFDKH, eq, gr, CLBF, pol_hash, (Param->bool): (Param p):
-		      is_unitary_def_test_big_SIMPLE(p), height(pmin) + 100
-		      ,Uhash)
+		      if up_mu_flag
+		      then is_unitary_test_big_SIMPLE_interrupt(p)
+		      else is_unitary_def_test_big_SIMPLE(p)
+		      fi , height(pmin) + 100 ,Uhash)
 		      {should make a version of local_testK_hash with inf HT}
                    in if test_verbose
 		      then prints("unitary face counts to dim ", #LFDKH - 1,
@@ -2156,7 +2184,10 @@ set local_test_GEO_hash_def_dumb(KGBElt x, ratvec lambda, LocalVertexData Lvd, [
 			  else def_steps
 			  fi
     then tester = (Param->bool): (Param p) bool:
-     	 is_unitary_def_test_big_SIMPLE(p,def_steps_temp)
+     	 if up_mu_flag
+	 then is_unitary_test_big_SIMPLE_interrupt(p)
+	 else is_unitary_def_test_big_SIMPLE(p,def_steps_temp)
+	 fi
     then () = test_string:= " using local_test_GEO_hash_def_dumb"
     then  () = hash_def_dumbCounter.use()
     then start_count = unitary_test_counter.use_count(), startDBTcount = DBTcount

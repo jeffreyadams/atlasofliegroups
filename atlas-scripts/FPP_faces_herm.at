@@ -1843,7 +1843,11 @@ set is_unitary_test_big_SIMPLE_interrupt(Param p, int N) = bool:
 	    fi
   then () = p := herm_center(p)
   then () = if (big_unitary_hash.ulookup(p)).>= then return true fi
-  then result = 0, mu = LKTs(p)[0], ht = height(p), top_ht = floor((p.infinitesimal_character)*G.two_rho_check)
+  then result = 0, mu = LKTs(p)[0], top_ht = floor((p.infinitesimal_character)*G.two_rho_check)
+  then ht = up_mu_hash.up_heights(mu, N+1)~[0]
+  then () = if not low(p,ht)
+       	    then return is_unitary_hash_big_SIMPLE(p)
+	    fi
   then () = while result = 0
        	    do let hts = up_mu_hash.up_heights(mu, N+1)
 	       then () = if #hts < N+1
@@ -1853,6 +1857,9 @@ set is_unitary_test_big_SIMPLE_interrupt(Param p, int N) = bool:
 	       then start_to_ht = elapsed_ms()
 	       then to_ht_ans = is_unitary_to_ht_big_SIMPLE(p,ht)
 	       then time_to_ht = elapsed_ms() - start_to_ht
+	       then () = if time_to_ht > 10000 and test_verbose
+	       	       	 then prints("Level ",N," of SIMPLE_interrupt took ",print_time_string(time_to_ht))
+			 fi
 	       in result := if not to_ht_ans
 	       	       	    then big_unitary_hash.numatch(p); -1
 			    elif ht >= top_ht
