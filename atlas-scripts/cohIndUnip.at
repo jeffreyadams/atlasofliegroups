@@ -346,7 +346,7 @@ set all_shifts = (InnerClass, [int], ratvec) -> [vec]):
 		    	  then first = first(for length in lengths do length <= BG +Bup od)
 		    	  then last = #lengths - first(for length in lengths ~do length <=BG+Bup od)
 		    	  in {prints("first = ", first,", last = ",last);}
-			     for m:last-first+1 from first {same as m's above?}
+-pp			     for m:last-first+1 from first {same as m's above?}
 		       	     do {prints("cand = ",ell0 - m*smallterms[j]);}
 			        ell0 - m*smallterms[j]
 		       	     od

@@ -347,17 +347,13 @@ set tested_neg_hash = make_Param_hash()
 set tested_neg_times = [int]: [] {one for each tested_list entry}
 set tested_neg_strings = [string]: []
 
-set tested_pos_to_ht_hashes = for h:100 do make_Param_hash() od
-set tested_pos_to_ht_times = for h:100 do [int]:[] od
-set tested_pos_to_ht_strings = [[string]]: for h:100 do [] od
+set tested_pos_to_ht_hashes = [Param_hash]: [] {for h:100 do make_Param_hash() od}
+set tested_pos_to_ht_times = [[int]]: [] {for h:100 do [int]:[] od}
+set tested_pos_to_ht_strings = [[string]]: [] {for h:100 do [] od}
 
-set tested_pos_to_ht_hashes = for h:100 do make_Param_hash() od
-set tested_pos_to_ht_times = for h:100 do [int]:[] od
-set tested_pos_to_ht_strings = [[string]]: for h:100 do [] od
-
-set tested_neg_to_ht_hashes = for h:100 do make_Param_hash() od
-set tested_neg_to_ht_times = for h:100 do [int]:[] od
-set tested_neg_to_ht_strings = [[string]]: for h:100 do [] od
+set tested_neg_to_ht_hashes = [Param_hash]: [] {for h:100 do make_Param_hash() od}
+set tested_neg_to_ht_times = [[int]]: [] {for h:100 do [int]:[] od}
+set tested_neg_to_ht_strings = [[string]]: [] {for h:100 do [] od}
 
 {set cSp = int:0}
 set was_tested(Param p, int T, bool ans) = void:
@@ -374,6 +370,15 @@ set was_tested(Param p, int T, bool ans) = void:
 
 set was_tested_to_ht(Param p,int N, int T, bool ans) = void:
     let h = N - height(p)
+    then add = h+1 - #tested_pos_to_ht_hashes
+    then () = if add>0
+    	      then tested_pos_to_ht_hashes ##:= for j:add do make_Param_hash() od;
+	      	   tested_neg_to_ht_hashes ##:= for j:add do make_Param_hash() od;
+		   tested_pos_to_ht_times ##:= for j:add do [int]: [] od;
+		   tested_neg_to_ht_times ##:= for j:add do [int]: [] od;
+		   tested_pos_to_ht_strings ##:= for j:add do [string]: [] od;
+		   tested_neg_to_ht_strings ##:= for j:add do [string]: [] od
+	      fi
     in if ans
        then let () = tested_pos_to_ht_hashes[h].match(p)
        	    in tested_pos_to_ht_times[h]#:=T; tested_pos_to_ht_strings[h] #:= test_string
@@ -386,10 +391,10 @@ set report_tested() = void:
     prints(tested_pos_hash.size()," pos is_unitary tests, in time = ",
     	print_time_string(sum(tested_pos_times)),"; ",tested_neg_hash.size()," neg is_unitary tests, in time = ",
     	print_time_string(sum(tested_neg_times)));
-    prints(sum(for h:100 do tested_pos_to_ht_hashes[h].size() od)," pos tests to_ht, in time = ",
- 	 	   print_time_string(sum(for h:100 do sum(tested_pos_to_ht_times[h]) od)),"; ",
-	   sum(for h:100 do tested_neg_to_ht_hashes[h].size() od)," neg tests to_ht, in time = ",
- 	   	   print_time_string(sum(for h:100 do sum(tested_neg_to_ht_times[h]) od)));
+    prints(sum(for hash in tested_pos_to_ht_hashes do hash.size() od)," pos tests to_ht, in time = ",
+ 	 	   print_time_string(sum(for list in tested_pos_to_ht_times do sum(list) od)),"; ",
+	   sum(for hash in tested_neg_to_ht_hashes do hash.size() od)," neg tests to_ht, in time = ",
+ 	   	   print_time_string(sum(for list in tested_neg_to_ht_times do sum(list) od)));
     prints("Dirac elims = ",DTcount,", Dirac_best elims = ",DBTcount)
     prints("  ----------------")
 
@@ -397,7 +402,7 @@ set report_tested() = void:
 set clear_report_tested() = void:
     tested_pos_hash.clear(); tested_pos_times:=[]; tested_pos_strings:=[];
     tested_neg_hash.clear(); tested_neg_times:=[]; tested_neg_strings:=[];
-    for h:100
+    for h:#tested_pos_to_ht_hashes
     do tested_pos_to_ht_hashes[h].clear(); tested_pos_to_ht_times[h]:=[]; tested_pos_to_ht_strings[h]:=[];
        tested_neg_to_ht_hashes[h].clear(); tested_neg_to_ht_times[h]:=[]; tested_neg_to_ht_strings[h]:=[]
     od
