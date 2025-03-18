@@ -8,6 +8,7 @@
 <red_count.at {for red_count@Param}
 <face_classes.at {for coords}
 <cohom_reductionND.at {for glue_sigs}
+<up_mu.at {for up_mu_hash}
 {BREAK HERE?}
 
 {collection of lookup functions for faces of various dimensions}
@@ -1829,6 +1830,44 @@ set is_unitary_to_ht_big(Param p,int N) = bool:
   let pds = derived_factor_params0(p)
   in all(for pd in pds do @bool: is_unitary_to_ht_big_SIMPLE(pd,N) od)
 
+set mu_time_mult = rat: 1/1
+{ meant to be used for G simple }
+{ run successive is_unitary_to_ht tests, recording time; after each, run interruptible is_unitary with twice
+  that much time. Integer N \ge 1 is meant to be number of height in up_mu_hash.up_heights where we start testing.}
+set is_unitary_test_big_SIMPLE_interrupt(Param p, int N) = bool:
+    if (not is_hermitian(p)) or (not is_pos_on_LKTs(p)) then return false fi;
+  let G = p.real_form
+  then FPP_flag = is_FPP(G,p.infinitesimal_character)
+  then () = if not FPP_flag
+    	    then return is_unitary(p) {prints("FPP DANGER TO HT at ",p)}
+	    fi
+  then () = p := herm_center(p)
+  then () = if (big_unitary_hash.ulookup(p)).>= then return true fi
+  then result = 0, mu = LKTs(p)[0], ht = height(p), top_ht = floor((p.infinitesimal_character)*G.two_rho_check)
+  then () = while result = 0
+       	    do let hts = up_mu_hash.up_heights(mu, N+1)
+	       then () = if #hts < N+1
+	       	       	 then break
+			 else ht := hts[N]; N +:= 1
+			 fi
+	       then start_to_ht = elapsed_ms()
+	       then to_ht_ans = is_unitary_to_ht_big_SIMPLE(p,ht)
+	       then time_to_ht = elapsed_ms() - start_to_ht
+	       in result := if not to_ht_ans
+	       	       	    then big_unitary_hash.numatch(p); -1
+			    elif ht >= top_ht
+			    then big_unitary_hash.umatch(p); 1
+			    else is_unitary(p,floor(mu_time_mult*time_to_ht))
+			    fi
+	    od
+   in if result > 0 then true
+      elif result < 0 then big_unitary_hash.numatch(p); false
+      else is_unitary_hash_big_SIMPLE(p)
+      fi
+
+set is_unitary_test_big_SIMPLE_interrupt(Param p) = bool:
+    is_unitary_test_big_SIMPLE_interrupt(p, 1)
+
 set to_hts_count_mat = null(10,10)
 set to_hts_count = null(10)
 
@@ -1892,7 +1931,7 @@ set is_unitary_to_hts_big (Param p,[int] Ns) = bool:
 
 {ONLY for G simple}
 { compute Hermitian form to height N; if it's positive, then compute full form }
-set is_unitary_test_big_SIMPLE_interrupt(Param p, int N, int time) = bool:
+{set is_unitary_test_big_SIMPLE_interrupt(Param p, int N, int time) = bool:
     let which_flag = low(p,N), result = 0, start = elapsed_ms()
     then () = while result.=
     	      do result := if which_flag
@@ -1914,6 +1953,7 @@ set is_unitary_test_big_SIMPLE_interrupt(Param p, int N, int time) = bool:
 	       od
     {now result = +1}
     in is_unitary_hash_big_SIMPLE(p)
+}
 
 {ONLY for G simple}
 { compute Hermitian form to height N; if it's positive, then compute full form }
@@ -1929,14 +1969,14 @@ set is_unitary_test_big_SIMPLE(Param p, int N) = bool:
     then () = if is_finished(p.x, p.lambda) and big_unitary_hash.ulookup(p).>=
     	      then return true
     	      fi
-    in if interrupt_flag
+    in {if interrupt_flag
        then is_unitary_test_big_SIMPLE_interrupt(p,N,interrupt_base_time)
-       else let P = big_unitary_hash.sig_entry(p,N)
-       	    in if not is_pure(P)
-	       then false
-	       else is_unitary_hash_big_SIMPLE(p)
-	       fi
-       fi
+       else} let P = big_unitary_hash.sig_entry(p,N)
+       	     in if not is_pure(P)
+	       	then false
+	       	else is_unitary_hash_big_SIMPLE(p)
+	       	fi
+       {fi}
 
 {ONLY for G simple}
 { like previous, with list of heights; use interrupted is_unitary}

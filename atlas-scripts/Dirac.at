@@ -34,30 +34,33 @@ set best_late(int steps) = void:
     best_late();
     Dirac_best_steps:= steps
 
-{These are candidates to shift mu to one with a smaller Dirac bound, larger height}
+set include_imag_flag = true
+
+{These are candidates to shift mu to one with a larger height}
 set shifters(KType tau) = ([vec],KGBElt):
     let G = tau.real_form, p = parameter(tau)
     then (Q,) = theta_stable_quasi_data(p), delta = G.distinguished_involution
     then L = Q.Levi
     then rhoucheck = rho_check(G) - rho_check(L)
-    then x0L = KGB(L,0)
-    then x0G = embed_KGB(x0L,G)
+    then x0L = KGB(L,0){, x1L = x_open(L)}
+    then x0G = embed_KGB(x0L,G){, x1G = embed_KGB(x1L,G)}
+    {then theta = x0G.involution}
     then ansu = [vec]:
     	 for beta@j in G.posroots
     	 ~do if (rhoucheck*beta).=
 	     then []
-	     elif status(beta,x0G)=3
+	     elif status(beta,x0G)=3 {and include_imag_flag }{nc imag}
 	     then [beta]
-	     elif status(beta,x0G) = 4 and root_index(G,delta*beta) > j
+	     elif status(beta,x0G) = 4 {and root_index(G,theta*beta) > j} {cplx +}
 	     then [beta]
 	     else []
 	     fi
 	  od.##
      then ansl = [vec]:
      	  for alpha@i in L.posroots
-    	  ~do if status(alpha,x0G)=3
+    	  ~do if status(alpha,x0G)=3 {and include_imag_flag } {nc imag}
 	      then [alpha,-alpha]
-	      elif status(alpha,x0G) = 4 and root_index(L,delta*alpha) > i
+	      elif status(alpha,x0G) = 4 {and root_index(L,theta*alpha) > i} {cplx}
 	      then [alpha,-alpha]
 	      else []
 	      fi
@@ -101,7 +104,7 @@ set make_Dirac_easy_hash() = Dirac_easy_hash_table:
    		  	    as long as possible}
    then clear() = void:
    	real_form_hash.clear(); Qs:=[]; K0s := []; Ms := [];
-	Mrts := []; muhashes:=[]; muPRVs :=[]; DiracBDs :=[]; muss :=[]
+	Mrts := []; muhashes:=[]; muPRVs :=[]; DiracBDs :=[]; muss :=[]; muDones :=[]
    then add_real_form(RealForm rf) = int:
     	let I = real_form_hash.size()
 	then i = real_form_hash.match(rf)
@@ -271,7 +274,8 @@ set make_Dirac_easy_hash() = Dirac_easy_hash_table:
 						 then () = muDones[rfnum] := muDonesrf
 						 {then () = prints(muDones[rfnum])}
 						 in false
-					    else true {there is a valid shift!}
+					    else wtlast:= wtlast + shifters[j0];
+					    	 true {there is a valid shift!}
 					    fi)
               	    	     do let newmu = K_type(K_highest_weight_from_K0_weight(x0G,M*wtlast))
 				then (,newmunum) = add_K_type(newmu)
