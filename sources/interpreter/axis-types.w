@@ -2389,6 +2389,11 @@ public:
       (assert(i<threshold+size()),equiv[i-threshold].get()); }
   bool set_equivalent(unsigned int i, type_ptr&& p);
   bool set_equivalent(unsigned int i, const type_expr& tp);
+  bool is_polymorphic(const type_expr& tp) const
+  {@; return tp.raw_kind()==variable_type
+  and tp.typevar_count()>=threshold
+  and equiv[tp.typevar_count()-threshold]==nullptr;
+  }
 @)
   unsigned int renumber(unsigned int i) const
   // reflect removal of variables assigned here
@@ -2412,7 +2417,7 @@ filed holds unique pointers, we need to clone the type they point to.
 
 @< Function definitions @>=
 type_assignment type_assignment::copy() const
-{ type_assignment result(threshold,size());
+{ type_assignment result(threshold,0);
   result.equiv.reserve(size());
   for (const auto& tp : equiv)
     result.equiv.emplace_back(tp==nullptr ? nullptr : new type_expr(tp->copy()));
@@ -2629,27 +2634,40 @@ cases using as few tests as possible.
     : unify(P,Q.expand());
 }
 
-@
+@ The decision process for type variables is somewhat similar to that of tabled
+types as far as already assigned or non polymorphic type variables are
+concerned, but the important case is where there is an unassigned type variable,
+in which case we call |set_equivalent| for it with the other type (which might
+be another polymorphic type variable) and return success. We start by setting
+two Boolean values telling whether our types are polymorphic type variables, for
+which all $4$ combinations are possible (since we only know when we come here
+that there is a type variable, not that it is polymorphic).
+
 @< Decide |unify| when at least one type is a type variable @>=
-{ if (P_kind==variable_type and Q_kind==variable_type)
-  { auto p=P.typevar_count(), q=Q.typevar_count();
-    if (p==q)
-      return true;
-    auto eq_p = equivalent(p), eq_q = equivalent(q);
-    if (eq_p!=nullptr)
-      return unify(*eq_p, eq_q==nullptr ? Q : *eq_q);
-    if (eq_q!=nullptr)
-      return unify(P,*eq_q);
-    if (p>=var_start())
-    {@; set_equivalent(p,Q);
-      return true;
-    }
-    else if (q>=var_start())
-    {@; set_equivalent(q,P);
-      return true;
-    }
-    return false; // two non polymorphic type variables; equality was ruled out
+{ if (is_polymorphic(P))
+  { auto p=P.typevar_count();
+    return is_polymorphic(Q) and p==Q.typevar_count() or set_equivalent(p,Q);
   }
+  else if (is_polymorphic(Q))
+    return set_equivalent(Q.typevar_count(),P);
+@)
+// now neither is polymorphic, but at least one is a type variable
+  if (Q.raw_kind()!=variable_type)
+  { assert(P.raw_kind()==variable_type);
+    auto eq = equivalent(P.typevar_count());
+    return eq!=nullptr and unify(*eq, Q);
+  }
+  if (P.raw_kind()!=variable_type)
+  { auto eq = equivalent(Q.typevar_count());
+    return eq!=nullptr and unify(P,*eq);
+  }
+@)
+// now both are type variables but not polymorphic: either assigned or fixed
+  auto p=P.typevar_count(), q=Q.typevar_count();
+  if (p==q)
+    return true;
+  auto eq_p = equivalent(p), eq_q = equivalent(q);
+  unify(eq_p!=nullptr ? *eq_p : P, eq_q!=nullptr ? *eq_q : Q);
 }
 
 
@@ -3346,14 +3364,12 @@ the |assign()| of our |type|, and upon success copying it to |other| as well.
 @< Function definitions @>=
 
 bool type::unify(type& other)
-{ auto new_floor=floor();
-  if (floor()<other.floor())
+{ if (floor()<other.floor())
   { expunge(); // take into account and erase pending type assignments
-    new_floor = other.floor();
-    if (is_polymorphic())
+    if (is_polymorphic()) // then shift |te| to start at |other.ceil()|
       te = shift(te,floor(),other.ceil()-floor());
-    assign().set_floor(new_floor);
-    assign().grow(other.degree());
+    assign().set_floor(other.floor());
+    assign().grow(other.degree()); // encompass all type variables
     other.assign().grow(degree()-other.degree());
     // make degrees equal and ceilings align
   }
@@ -3361,15 +3377,13 @@ bool type::unify(type& other)
   { other.expunge();
     if (other.is_polymorphic())
       other.te = shift(other.te,other.floor(),ceil()-other.floor());
-    other.assign().set_floor(new_floor);
-    other.assign().grow(degree());
-    other.assign().grow(other.degree()-degree());
+    other.assign().set_floor(floor());
+    other.assign().grow(degree()); // encompass all type variables
+    assign().grow(other.degree()-degree());
     // make degrees equal and ceilings align
   }
-  bool success = assign().unify(te,other.te); // now do the actual unification
-  if (success)
-    other.assign() = assign().copy();
-  return success;
+  type_assignment& a = is_polymorphic() ? assign() : other.assign();
+  return a.unify(te,other.te); // now do the actual unification
 }
 
 @ The method |matches| is typically called with as our type the type of an
