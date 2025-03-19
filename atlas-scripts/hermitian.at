@@ -9,6 +9,12 @@
 set deformLookupCounter = make_counter()
 set deformCalcCounter = make_counter()
 
+set up_mu_time = int:0
+set mu_time_mult = rat: 1/1 {1/1}
+
+{if true, try to raise mu in few steps to minimize number of to_ht calculations}
+set max_loc_flag = true
+
 set to_ht (KTypePol P,int N) = KTypePol:
   let (below,)=height_split(P,N) in below
 
@@ -395,6 +401,8 @@ set report_tested() = void:
  	 	   print_time_string(sum(for list in tested_pos_to_ht_times do sum(list) od)),"; ",
 	   sum(for hash in tested_neg_to_ht_hashes do hash.size() od)," neg tests to_ht, in time = ",
  	   	   print_time_string(sum(for list in tested_neg_to_ht_times do sum(list) od)));
+    prints("time for up_mu = ",print_time_string(up_mu_time),", max_loc_flag = ", max_loc_flag,
+    	   ", mu_time_mult = ",mu_time_mult);
     prints("Dirac elims = ",DTcount,", Dirac_best elims = ",DBTcount)
     prints("  ----------------")
 

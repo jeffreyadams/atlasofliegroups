@@ -292,7 +292,7 @@ set hermitian_form_irreducible_to_ht_MvL (Param p,int N,int time) = maybe_KTP:
   | done(r): r.convert_cform_hermitian.done
   esac
   then () = unitaryTime+:=elapsed_ms() - start_time
-  {then () = was_tested_to_ht(p,N,elapsed_ms() - start_time )}
+  {then () = was_tested_to_ht(p,N,elapsed_ms() - start_time, is_pure )} {need purity of maybe_KTP?}
   in answer
 
 set hermitian_form_irreducible_to_ht (Param p,int N) = KTypePol:
