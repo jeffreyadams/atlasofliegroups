@@ -1,5 +1,35 @@
 < Dirac.at {for shifters}
 
+{whether to use this function instead of shifters}
+set short_mu_flag = true
+
+{to get correct shifts for a standard rep p, use the the (non-final) K-type K_type(p.x, p.lambda_minus_rho)}
+set short_shifts(KType mu) = [KType]:
+    let x = mu.x, lambda = mu.lambda, lambdamin = mu.lambda_minus_rho, G = mu.real_form
+    then theta = x.involution, rh = G.rho
+    in for alpha@j in G.posroots
+       do if root_index(G,theta*alpha) > j
+       	     and G.poscoroots[j]*(lambda + theta*lambda) > 0 {now have cplx alpha}
+	  then let tau = K_type(x,lambdamin+alpha)
+	       in [KType]: if {(not tau.=)
+	       	  and} is_standard(tau)
+		  then monomials(1*tau) {[[tau]]}
+		  else []
+		  fi
+	  elif theta*alpha = -alpha
+	  then let y = Cayley(alpha,x)
+	       then ell = (G.poscoroots[j]*lambda).numer
+	       then lambda0min = if (ell%2).=
+		    	       	 then lambdamin - (ell\2 - 1)*alpha
+	       	    	      	 else lambdamin - ((ell-1)\2)*alpha
+			      	 fi
+	       then tau0 = K_type(y, lambda0min), tau1 = K_type(cross(j,y),lambda0min)
+	       in [KType]: if {(not tau0.=) and} is_standard(tau0) then monomials(1*tau0) else [] fi##
+		       if {(not tau1.=) and} is_standard(tau1) then monomials(1*tau1) else [] fi
+	  else []
+	  fi {type is [KType]}
+      od.##
+
 set_type
 [up_mu_hash_table =
 (  ( -> int) real_form_size {number of real forms considered}
@@ -57,51 +87,72 @@ set make_up_mu_hash() = up_mu_hash_table:
 	 then () = if not muDones[rfnum][ktypenum] and #muss[rfnum][ktypenum] < bd
 	      	   then let G = mu.real_form
 		   	then M = Ms[rfnum], Mrt = Mrts[rfnum]
-	      	   	then newmunums = [int]: muss[rfnum][ktypenum], uptaus = [KType]: []
+	      	   	then newmunums = [int]: muss[rfnum][ktypenum], uptaus = [KType]: [], finished_up = false
 			then j0 = int: -1, wtlast= vec:null(G.rank), alphaup = vec: null(G.rank), x0G = KGB(G,0)
-    		   then () = while (not muDones[rfnum][newmunums~[0]])
-		   	     	    and #newmunums < bd
-		       	    	    and (let lastmunum = newmunums~[0]
-				       	 then taulast = muhashes[rfnum].index(lastmunum)
-				       	 then (shifters,newx) = shifters(taulast)
-				       	 then () = x0G:=newx
-				       	 then KG = K_0(x0G), rhoc = rho_c(x0G)
-				       	 then () = wtlast := highest_weight(taulast,x0G).mu
-				       	 then testers = for alpha in shifters
-			     	       	    	      	do Mrt*M*coroot(G,alpha)
-				       		      	od
-					 then () =
-					      uptaus := for alpha in shifters
-					      	       	do let wt = M*(wtlast + alpha)
-						       	   in if is_dominant(KG, wt)
-							      {then [K_type(K_highest_weight_from_K0_weight(x0G,wt))]}
-						       	      then let upcand = K_type(K_highest_weight_from_K0_weight(x0G,wt))
-							           in if height(upcand) > height(taulast)
-								      then [upcand]
-								      else []
-								      fi
-							      else []
-							      fi
-						       	od.##
-					 in if #uptaus > 0
-					    then let () = j0 := if max_loc_flag
-					    	     	     	then max_loc (for uptau in uptaus
-					      	   	     	     	      do height(uptau) od)
-					    	     	     	else min_loc (for uptau in uptaus
-					      	   	     	     	      do height(uptau) od)
-								fi
-						 in true
-					    else let muDonesrf = muDones[rfnum]
-					    	 then () = for j@i in newmunums
-						      	   do muDonesrf[j] :=true
-						      	   od
-						 then () = muDones[rfnum] := muDonesrf
-						 in false
-					    fi {#uptaus > 0})
-              	    	     do let (,newmunum) = add_K_type(uptaus[j0])
-				then () = newmunums ##:= muss[rfnum][newmunum]
-				in ()
-	      	    	     od {end of "not muDones"}
+    		   then () = while #newmunums < bd and not finished_up
+		   	     do let lastmunum = newmunums~[0]
+				then taulast = muhashes[rfnum].index(lastmunum)
+			        then () = uptaus :=
+					  if short_mu_flag
+					  then short_shifts(taulast)
+					  else let (shifters,newx) = shifters(taulast)
+				       	       then () = x0G:=newx
+				       	       then KG = K_0(x0G), rhoc = rho_c(x0G)
+				       	       then () = wtlast := highest_weight(taulast,x0G).mu
+				       	       then testers = for alpha in shifters
+			     	       	    	      	      do Mrt*M*coroot(G,alpha)
+				       		      	      od
+					       in for alpha in shifters
+					      	  do let wt = M*(wtlast + alpha)
+						     in if is_dominant(KG, wt)
+							then let upcand =
+							     K_type(K_highest_weight_from_K0_weight(x0G,wt))
+							     in if height(upcand) > height(taulast)
+							     	then [upcand]
+							     	else []
+							 	fi {height(upcand)}
+							 else []
+							 fi {is_dominant}
+						  od.##
+					    fi
+				  in if #uptaus > 0
+				     then let () = j0 := if max_loc_flag
+					    	     	 then max_loc (for uptau in uptaus
+					      	   	     	       do height(uptau) od)
+					    	     	 else min_loc (for uptau in uptaus
+					      	   	     	       do height(uptau) od)
+							 fi
+				 	  {then () = prints("adding at ",taulast)}
+					  then (,newmunum) = add_K_type(uptaus[j0])
+					  then () = newmunums ##:= muss[rfnum][newmunum]
+					  then () = if muDones[rfnum][newmunums~[0]]
+						    then let () = finished_up :=true
+						    	 then muDonesrf = muDones[rfnum]
+							 then () = for j@i in newmunums
+						      	   	   do muDonesrf[j] :=true
+						      	   	   od
+						 	 in muDones[rfnum] := muDonesrf
+						     fi {muDones}
+		   			  then mussrf = muss[rfnum]
+    	           			  then () = mussrf[ktypenum] := newmunums
+		   			  then () = for j@i in newmunums
+		   	     		       	    do if #mussrf[j] < #newmunums[i:]
+			     			       then mussrf[j] := newmunums[i:]
+						       fi
+			     			    od
+		   			  then () = muss[rfnum]:=mussrf
+					  in () {then () = j0:=-1; true }{we managed to get a new tau}
+				      else let () = finished_up :=true
+					   then muDonesrf = muDones[rfnum]
+					   then () = for j@i in newmunums
+						     do muDonesrf[j] :=true
+						     od
+					   then () = muDones[rfnum] := muDonesrf
+				           {then () = prints("finishing ",taulast,
+						      ", muDones[rf] = ",muDones[rfnum])}
+					   in () {false }{we failed to get a new tau}
+				      fi {#uptaus > 0}
+			    od {#newmunums < bd}
 		   then mussrf = muss[rfnum]
     	           {then () = mussrf[ktypenum] := newmunums}
 		   then () = for j@i in newmunums
