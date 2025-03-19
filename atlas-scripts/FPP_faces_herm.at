@@ -1843,7 +1843,8 @@ set is_unitary_test_big_SIMPLE_interrupt(Param p, int N) = bool:
 	    fi
   then () = p := herm_center(p)
   then () = if (big_unitary_hash.ulookup(p)).>= then return true fi
-  then result = 0, mu = LKTs(p)[0], top_ht = floor((p.infinitesimal_character)*G.two_rho_check)
+  then result = 0, mu = K_type(p.x, p.lambda_minus_rho) {LKTs(p)[0]},
+       top_ht = floor((p.infinitesimal_character)*G.two_rho_check)
        {unitary to top_ht implies unitary}
   then ht = up_mu_hash.up_heights(mu, N+1)~[0]
   {then () = if not low(p,ht)

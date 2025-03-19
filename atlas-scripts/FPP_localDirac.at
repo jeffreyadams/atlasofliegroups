@@ -182,7 +182,7 @@ set short_hts_flag = false
 set to_ht_flag = true
 
 {it "true" use up_mu_hash to calculate heights for is_unitary_to_ht}
-set up_mu_flag = false
+set up_mu_flag = true
 
 set long_out_flag = false
 
@@ -2856,7 +2856,7 @@ set local_test_GEO_hash2(KGBElt x, ratvec lambda, {VertexData vd,} LocalVertexDa
 		   {else prints("testing to height ",hts[test_levels[Dmid+1]])
 		   fi}
 	      fi
-    then mu = LKTs(pmax)[0]
+    then mu = K_type(x, pmax.lambda_minus_rho) {LKTs(pmax)[0]}
     then N = int:1
     then () = if up_mu_flag and to_ht_flag
     	      then let () = hts:=up_mu_hash.up_heights(mu,1)
@@ -2902,11 +2902,12 @@ set local_test_GEO_hash2end(KGBElt x, ratvec lambda, LocalVertexData Lvd, [[Face
     	      then to_ht_flag:=false
 	      fi
     then gammamax = pmax.infinitesimal_character
+    then mu = K_type(x,pmax.lambda_minus_rho)
     then hts =[int]: if to_ht_flag
     	     	     then let Shorthts = if short_hts_flag {want hts guaranteed to be size depth}
     	     	     	 	       	 then short_hts(pmax)
 					 elif up_mu_flag
-					 then up_mu_hash.up_heights(LKTs(pmax)[0], depth+1+up_shift)[1:]
+					 then up_mu_hash.up_heights(mu, depth+1+up_shift)[1:]
 					 else next_heights(pmax,depth)
 				    fi
     		          then d0 = min(#Shorthts, depth)
@@ -3320,7 +3321,7 @@ set local_test_GEO_hash_one_level(KGBElt x, ratvec lambda, {VertexData vd,}
 	      	      fi
     then start=elapsed_ms()
     then () = long_out_flag := long_out_temp_flag
-    then mu = LKTs(pmax)[0]
+    then mu = K_type(x, pmax.lambda_minus_rho) {LKTs(pmax)[0]}
     then N = int:1
     then () = if up_mu_flag
     	      then let () = hts:=up_mu_hash.up_heights(mu,1)
@@ -3431,6 +3432,7 @@ set local_test_GEO_hash_one_level_end(KGBElt x, ratvec lambda, LocalVertexData L
     	 	       	      	 in  G.two_rho_check*(dominant(G,thetaMinus*gamma))
 		       	      od)
     then pmax = parameter(x, lambda, Lvd.list[maxDiffLoc])
+    then mu = K_type(x,pmax.lambda_minus_rho)
     then (,NUmax,) = low(pmax)
     then () = if NUmax < 4*height(pmax)*low_frac {is_unitary_to_ht is never a good idea}
     	      then to_ht_flag:=false
@@ -3439,7 +3441,7 @@ set local_test_GEO_hash_one_level_end(KGBElt x, ratvec lambda, LocalVertexData L
     	     	     then let Shorthts = if short_hts_flag {guaranteed to be size depth}
     	     	     	 	       	 then short_hts(pmax)
 					 elif up_mu_flag
-					 then up_mu_hash.up_heights(LKTs(pmax)[0], depth + 1 + up_shift)[1:]
+					 then up_mu_hash.up_heights(mu{LKTs(pmax)[0]}, depth + 1 + up_shift)[1:]
 		     	      	    	 else next_heights(pmax,depth)
 				    	 fi
     		     	   then d0 = min(#Shorthts, depth)
@@ -3539,7 +3541,7 @@ set local_test_GEO_hash_one_level_end(KGBElt x, ratvec lambda, LocalVertexData L
 		      then extend_K_characters(x, lambda, Lvd, LFDKH, pol_hash)
     	      	      else LFDKH
 	      	      fi}
-    then mu = LKTs(pmax)[0]
+    then mu = K_type(x, pmax.lambda_minus_rho) {LKTs(pmax)[0]}
     then N = int:1
     then () = if up_mu_flag
     	      then let () = hts:=up_mu_hash.up_heights(mu,1)
