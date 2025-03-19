@@ -11,8 +11,6 @@ set_type
 )
 ]
 
-set up_mu_time = int: 0
-
 set make_up_mu_hash() = up_mu_hash_table:
 (  let real_form_hash = make_RealForm_hash()
    then K0s = [RealForm]: [] {for each G, id comp of maximal compact}
@@ -86,9 +84,12 @@ set make_up_mu_hash() = up_mu_hash_table:
 							      fi
 						       	od.##
 					 in if #uptaus > 0
-					    then let () = j0 := min_loc(for uptau in uptaus
-					      	   	     	  do height(uptau)
-							   	  od)
+					    then let () = j0 := if max_loc_flag
+					    	     	     	then max_loc (for uptau in uptaus
+					      	   	     	     	      do height(uptau) od)
+					    	     	     	else min_loc (for uptau in uptaus
+					      	   	     	     	      do height(uptau) od)
+								fi
 						 in true
 					    else let muDonesrf = muDones[rfnum]
 					    	 then () = for j@i in newmunums
