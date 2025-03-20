@@ -12,8 +12,10 @@
 set Dirac_easy_flag = true
 
 {how deep into {easy} best_Dirac_bound one ought to go. Setting to 1 means only LKT, ordinary Dirac.}
-set Dirac_best_steps = int: 1 {3 slows E6_s from about 160 secs to 360 secs on laptop} {even 2 seems bad for E7}
+set Dirac_best_steps = int: 3 {new short_shifts is much faster, so more steps is OK}
 
+{whether to use short_shifts instead of shifters}
+set short_mu_flag = true
 
 {but this table should consider the possibility of bigger Dirac_best_steps "cap"}
 {Always "cap" \ge Dirac_best_steps?}
@@ -66,6 +68,33 @@ set shifters(KType tau) = ([vec],KGBElt):
 	      fi
 	   od.##
       in (ansu##ansl,x0G)
+
+{to get correct shifts for a standard rep p, use the the (non-final) K-type K_type(p.x, p.lambda_minus_rho)}
+set short_shifts(KType mu) = [KType]:
+    let x = mu.x, lambda = mu.lambda, lambdamin = mu.lambda_minus_rho, G = mu.real_form
+    then theta = x.involution, rh = G.rho
+    in for alpha@j in G.posroots
+       do if root_index(G,theta*alpha) > j
+       	     and G.poscoroots[j]*(lambda + theta*lambda) > 0 {now have cplx alpha}
+	  then let tau = K_type(x,lambdamin+alpha)
+	       in [KType]: if {(not tau.=)
+	       	  and} is_standard(tau)
+		  then monomials(1*tau) {[[tau]]}
+		  else []
+		  fi
+	  elif theta*alpha = -alpha
+	  then let y = Cayley(alpha,x)
+	       then ell = (G.poscoroots[j]*lambda).numer
+	       then lambda0min = if (ell%2).=
+		    	       	 then lambdamin - (ell\2 - 1)*alpha
+	       	    	      	 else lambdamin - ((ell-1)\2)*alpha
+			      	 fi
+	       then tau0 = K_type(y, lambda0min), tau1 = K_type(cross(j,y),lambda0min)
+	       in [KType]: if {(not tau0.=) and} is_standard(tau0) then monomials(1*tau0) else [] fi##
+		       if {(not tau1.=) and} is_standard(tau1) then monomials(1*tau1) else [] fi
+	  else []
+	  fi {type is [KType]}
+      od.##
 
 set_type
 [Dirac_easy_hash_table =
@@ -173,51 +202,70 @@ set make_Dirac_easy_hash() = Dirac_easy_hash_table:
 					     od
 		   	     , newmunums = [int]: muss[rfnum][ktypenum]
 		  then j0 = int: -1, wtlast= vec:null(G.rank), alphaup = vec: null(G.rank), x0G = KGB(G,0)
+		  then cands = [KType]: [], candnums = [int]:[]
     		  then () = while #newhts < cap+1 and muDones[rfnum][newmunums~[0]] = false
 		       	    	  and (let lastmunum = newmunums~[0]
 				       then taulast = muhashes[rfnum].index(lastmunum)
-				       then (shifters,newx) = shifters(taulast)
-				       then () = x0G:=newx
-				       then KG = K_0(x0G), rhoc = rho_c(x0G)
-				       then () = wtlast := highest_weight(taulast,x0G).mu
-				       then testers = for alpha in shifters
-			     	       	    	      do Mrt*M*coroot(G,alpha)
-				       		      od
-				       then () = j0 := first(for alpha@i in shifters
-    	       	       	    	      	    do @bool:
-				     	    if not testers[i]*(wtlast+2*rhoc) > -1
-				     	    then false
-				     	    elif not (is_dominant(KG, M*(wtlast + alpha)))
-				     	    then false
-				     	    else let testmu = K_type(K_highest_weight_from_K0_weight(
-					    	 x0G,M*(wtlast + alpha)))
-					     	 in let (,testknum) = add_K_type(testmu)
-					     	    then testbd = DiracBDs[rfnum][testknum]
-						    in if not testbd < newbds~[0]
-						       then false
-						       else true
-						       fi
-				     	    fi {not testers[i]}
-					    od)
+				       then htlast = height(taulast)
+				       then uptaus =
+				       	    if short_mu_flag
+					    then short_shifts(taulast)
+					    else let (shifters,newx) = shifters(taulast)
+					     	 then () = x0G:=newx
+				      		 then KG = K_0(x0G), rhoc = rho_c(x0G)
+				      		 then () = wtlast := highest_weight(taulast,x0G).mu
+				       	    	 then testers = for alpha in shifters
+			     	       	    	      	      	do Mrt*M*coroot(G,alpha)
+				       		      		od
+						 in for alpha@i in shifters
+						    do if not testers[i]*(wtlast+2*rhoc) > -1
+				     	    	       then []
+				     	    	       elif not (is_dominant(KG, M*(wtlast + alpha)))
+				     	    	       then []
+				     	    	       else let testmu = K_type(K_highest_weight_from_K0_weight(
+					    	   	    x0G,M*(wtlast + alpha)))
+						       in [testmu]
+					     	        {in let (,testknum) = add_K_type(testmu)
+					     	    	   then testbd = DiracBDs[rfnum][testknum]
+						    	   in if not testbd < newbds~[0]
+						       	      then []
+						       	      else [testmu]
+						       	      fi {not testbd}}
+				     	    	    	fi {not testers[i]}
+					    	      od.##
+					     fi {short_mu_flag}
+					then () = candnums:= for cand in uptaus
+				     	  	     do let (,m) = add_K_type(cand)
+							     then candbd = DiracBDs[rfnum][m]
+							     in if candbd < newbds~[0]
+							     	   and height(cand) > htlast
+								then [m]
+								else []
+								fi
+							     od.##
+					then () = if #candnums > 0
+					     	  then j0 := max_loc(for m in candnums
+						       	    	     do DiracBDs[rfnum][m]
+								     od)
+						  fi {#candnums > 0}
 					in if j0 <0 then let muDonesrf = muDones[rfnum]
 					      	    	 then () = muDonesrf[newmunums~[0]] := true
 							 then () = muDonesrf[ktypenum] :=true
 							 then () = muDones[rfnum]:= muDonesrf
 						 	 {then () = prints(muDones[rfnum])}
 							 in false
-					   else wtlast:= wtlast + shifters[j0];
-						true {there is a valid shift!}
-					   fi)
-              	    	     do {let alpha = shifters[j0]} {now the "while" action starts}
-	      	       		let newmu = K_type(K_highest_weight_from_K0_weight(x0G,M*wtlast))
-				then (,newmunum) = add_K_type(newmu)
+					   else true {there is a valid shift!}
+					   fi){end of  "let lastmunum"}
+              	    	     do let newmunum = candnums[j0]
+				{then (,newmunum) = add_K_type(newmu)}
 				then () = newmunums ##:= muss[rfnum][newmunum];
 					  newhts ##:= for j in muss[rfnum][newmunum]
 					       	      do height(muhashes[rfnum].index(j))
 						      od;
 					  newbds ##:= for j in muss[rfnum][newmunum]
 					  	      do DiracBDs[rfnum][j]
-						      od
+						      od;
+					  j0:=-1
 				in ()
 	      	    	     od {end of "while #newhts"}
 		   then mussrf = muss[rfnum]

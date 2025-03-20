@@ -1,10 +1,10 @@
 < Dirac.at {for shifters}
 
 {whether to use this function instead of shifters}
-set short_mu_flag = true
+{set short_mu_flag = true}
 
-{to get correct shifts for a standard rep p, use the the (non-final) K-type K_type(p.x, p.lambda_minus_rho)}
-set short_shifts(KType mu) = [KType]:
+{to get correct shifts for a standard rep p, use the the (non-final) K-type K_type(p.x, p.lambda_minus_rho)} {MOVED TO DIRAC.at}
+{set short_shifts(KType mu) = [KType]:
     let x = mu.x, lambda = mu.lambda, lambdamin = mu.lambda_minus_rho, G = mu.real_form
     then theta = x.involution, rh = G.rho
     in for alpha@j in G.posroots
@@ -28,7 +28,7 @@ set short_shifts(KType mu) = [KType]:
 		       if {(not tau1.=) and} is_standard(tau1) then monomials(1*tau1) else [] fi
 	  else []
 	  fi {type is [KType]}
-      od.##
+      od.##}
 
 set_type
 [up_mu_hash_table =
