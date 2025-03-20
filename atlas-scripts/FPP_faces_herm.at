@@ -2413,9 +2413,23 @@ set DiracTest(Param p) = bool:
     then () = if not ans then DTcount +:= 1 fi
     in ans
 
+{to be used in DiracBestTest. If the branch is too long, give up}
+set protected_occurrence(KTypePol KC, KType tau, int time) = bool:
+    case branch(KC, height(tau), time)
+       | timed_out: false
+       | done(B): B[tau].!=
+    esac
+
+{whether to use the time-protected versions of DiracBestTest}
+set Dirac_pro_flag = true
+
+set protected_occurrence(KTypePol KC, KType tau) = bool:
+    let T = max(10000#tested_neg_times)\4
+    in protected_occurrence(KC,tau,T)
+
 {Kchar is mean to be the K-character, to height at least HT, of some subquotients
 of p to which Dirac ineq is applied.}
-set DiracBestTest(int steps, Param p, int HT, KTypePol Kchar) = bool:
+set DiracBestTest_pro(int steps, Param p, int HT, KTypePol Kchar, int time) = bool:
     if not  all(for q in monomials(finalize(p)) do is_hermitian(q) od) then return false fi;
     let mu = LKTs(p)[0], G=p.real_form {should test all LKTs!}
     then (taus,hts,bds) = best_Dirac_bound_cap(mu,steps)
@@ -2429,6 +2443,72 @@ set DiracBestTest(int steps, Param p, int HT, KTypePol Kchar) = bool:
     then ans = bool:  if j1 < 0
        then true {none of the bds catches p with hts bdded by HT}
        else let j2 = first(for tau@j in taus[j1:j0] {these taus would exclude p}
+       	    	     	    do @bool: protected_occurrence(Kchar, tau,time)
+{
+			       if branch_hash_flag
+			       then big_unitary_hash.branch(Kchar,hts[j1+j])[tau].!=
+			       else branch_std(Kchar,hts[j1+j])[tau].!=
+			       fi
+}
+			    od)
+	    in j2.< {if the bound at j0+j corresponds to a tau
+	       	     actually appearing in p, then get false}
+       fi
+    then () = if not ans then DBTcount +:= 1 fi
+    in ans
+
+set DiracBestTest_pro(int steps, Param p, int HT, KTypePol Kchar) = bool:
+    let T = max(10000#tested_neg_times)
+    in DiracBestTest_pro(steps, p, HT, Kchar, T)
+
+{Kchar is mean to be the K-character, of some subquotients of p to which Dirac ineq is applied.}
+set DiracBestTest_pro(int steps, Param p, KTypePol Kchar, int time) = bool:
+    if not  all(for q in monomials(finalize(p)) do is_hermitian(q) od) then return false fi;
+    let mu = LKTs(p)[0], G=p.real_form {should test all LKTs!}
+    then (taus,hts,bds) = best_Dirac_bound_cap(mu,steps)
+    then Q = invariant_form(G)
+    then gamma = p.infinitesimal_character
+    then psize = Q(gamma,gamma)
+    then j1 = first(for b in bds do b<psize od)
+    then ans = bool:  if j1 < 0
+       then true {none of the bds catches p}
+       else let j2 = first(for tau@j in taus[j1:] {these taus would exclude p}
+       	    	     	    do @bool: protected_occurrence(Kchar,tau,time)
+			    {if branch_hash_flag
+			       then big_unitary_hash.branch(Kchar,hts[j1+j])[tau].!=
+			       else branch_std(Kchar,hts[j1+j])[tau].!=
+			       fi}
+			    od)
+	    in j2.< {if the bound at j corresponds to a tau
+	       	     actually appearing in p, then get false}
+       fi
+    then () = if not ans then DBTcount +:= 1 fi
+    in ans
+
+set DiracBestTest_pro(int steps, Param p, KTypePol Kchar) = bool:
+    let T = max(10000#tested_neg_times)\4
+    in DiracBestTest_pro(steps, p, Kchar, T)
+
+set DiracBestTest_pro(Param p, KTypePol Kchar) = bool:
+    DiracBestTest_pro(Dirac_best_steps, p, Kchar)
+
+{Kchar is mean to be the K-character, to height at least HT, of some subquotients
+of p to which Dirac ineq is applied.}
+set DiracBestTest(int steps, Param p, int HT, KTypePol Kchar) = bool:
+    if Dirac_pro_flag then return DiracBestTest_pro(steps, p, HT, Kchar) fi;
+    if not  all(for q in monomials(finalize(p)) do is_hermitian(q) od) then return false fi;
+    let mu = LKTs(p)[0], G=p.real_form {should test all LKTs!}
+    then (taus,hts,bds) = best_Dirac_bound_cap(mu,steps)
+    then j0 = first(for h in hts do h > HT od)
+    then () = if j0<0 then j0:=#hts fi
+    {now we only look up at [:j0]}
+    then Q = invariant_form(G)
+    then gamma = p.infinitesimal_character
+    then psize = Q(gamma,gamma)
+    then j1 = first(for b in bds[:j0] do b<psize od)
+    then ans = bool:  if j1 < 0
+       then true {none of the bds catches p with hts bdded by HT}
+       else let j2 = first(for tau@j in taus[j1:] {these taus would exclude p}
        	    	     	    do @bool: if branch_hash_flag
 			       then big_unitary_hash.branch(Kchar,hts[j1+j])[tau].!=
 			       else branch_std(Kchar,hts[j1+j])[tau].!=
@@ -2440,8 +2520,8 @@ set DiracBestTest(int steps, Param p, int HT, KTypePol Kchar) = bool:
     then () = if not ans then DBTcount +:= 1 fi
     in ans
 
-{Kchar is mean to be the K-character, of some subquotients of p to which Dirac ineq is applied.}
 set DiracBestTest(int steps, Param p, KTypePol Kchar) = bool:
+    if Dirac_pro_flag then return DiracBestTest_pro(steps, p, Kchar) fi;
     if not  all(for q in monomials(finalize(p)) do is_hermitian(q) od) then return false fi;
     let mu = LKTs(p)[0], G=p.real_form {should test all LKTs!}
     then (taus,hts,bds) = best_Dirac_bound_cap(mu,steps)
@@ -2450,14 +2530,14 @@ set DiracBestTest(int steps, Param p, KTypePol Kchar) = bool:
     then psize = Q(gamma,gamma)
     then j1 = first(for b in bds do b<psize od)
     then ans = bool:  if j1 < 0
-       then true {none of the bds catches p}
+       then true {none of the bds catches p with hts bdded by HT}
        else let j2 = first(for tau@j in taus[j1:] {these taus would exclude p}
        	    	     	    do @bool: if branch_hash_flag
 			       then big_unitary_hash.branch(Kchar,hts[j1+j])[tau].!=
 			       else branch_std(Kchar,hts[j1+j])[tau].!=
 			       fi
 			    od)
-	    in j2.< {if the bound at j corresponds to a tau
+	    in j2.< {if the bound at j0+j corresponds to a tau
 	       	     actually appearing in p, then get false}
        fi
     then () = if not ans then DBTcount +:= 1 fi
