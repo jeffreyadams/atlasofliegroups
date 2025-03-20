@@ -14,6 +14,11 @@ set Dirac_easy_flag = true
 {how deep into {easy} best_Dirac_bound one ought to go. Setting to 1 means only LKT, ordinary Dirac.}
 set Dirac_best_steps = int: 3 {new short_shifts is much faster, so more steps is OK}
 
+{If true, seeks big steps in Dirac_best search, giving fewer opportunities for test; but
+ getting to strong test sooner}
+ {false is better in time/ #elims for E6_s}
+set Dirac_max_flag = false
+
 {whether to use short_shifts instead of shifters}
 set short_mu_flag = true
 
@@ -244,9 +249,14 @@ set make_Dirac_easy_hash() = Dirac_easy_hash_table:
 								fi
 							     od.##
 					then () = if #candnums > 0
-					     	  then j0 := max_loc(for m in candnums
+					     	  then j0 := if Dirac_max_flag
+							     then max_loc(for m in candnums
 						       	    	     do DiracBDs[rfnum][m]
 								     od)
+							     else min_loc(for m in candnums
+						       	    	     do DiracBDs[rfnum][m]
+								     od)
+							     fi
 						  fi {#candnums > 0}
 					in if j0 <0 then let muDonesrf = muDones[rfnum]
 					      	    	 then () = muDonesrf[newmunums~[0]] := true
