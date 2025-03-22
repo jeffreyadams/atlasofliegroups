@@ -550,6 +550,7 @@ set_type
   , ((KType,int) -> KTypePol) K_type_formula_to_ht
   , ((KType, int) -> KTypePol) branch_entry {branch std to height}
   , ((KTypePol, int) -> KTypePol) branch {branch pol of stds to height}
+  , ((KTypePol, int, int) -> maybe_KTP) branch_interrupt {branch pol of stds to height if possible in bounded time}
   , ((Param,int) -> KTypePol) sig_entry {signature to height}
   , (int, int -> int) branch_height {largest ht to which K type j on real form i has been branched}
   , (int, int -> int) sig_height {largest ht to which param j on real form i has had sig computed}
@@ -1006,6 +1007,22 @@ set make_big_unitary_hash() = big_unitary_hash_table:
 						    fi
 				      in c*K_type_pol_hashes[rfnum].index(m)
 				   od) , D))
+      {for the next one assume my_branch; there is a built in interruptible}
+    , ((KTypePol, int, int) -> maybe_KTP): {branch_interrupt} (KTypePol pol, int D, int time) maybe_KTP:
+      let G = pol.real_form
+      then rfnum = add_real_form(G), start_time = elapsed_ms()
+      then rf = real_form_hash.index(rfnum)
+      then () = pol := regroup(rf,pol)
+      then terms = [(Split, KType)]: for c@mu in to_ht(pol,D)
+      	  	  	   	    do (c,mu)
+				    od
+      then ans = null_K_module(rf)
+      then () = for (c,mu) in terms
+      	      	do if elapsed_ms() - start_time >= time then return timed_out() fi;
+		   let (,,m) = add_K_type_my_branch(mu,D)
+		   in ans +:= c*K_type_pol_hashes[rfnum].index(m)
+		od
+      in done(regroup(G, to_ht(ans, D)))
     , ((Param,int) -> KTypePol): {sig_entry} (Param p, int D) KTypePol:
      begin
 	let (rfnum,pnum,sig_ind) = if D < height(p)
@@ -1852,6 +1869,7 @@ set is_unitary_test_big_SIMPLE_interrupt(Param p, int N) = bool:
 	    fi}
   then () = while result = 0 and ht < ht_bound
        	    do let hts = up_mu_hash.up_heights(mu, N+1)
+	       {then () = prints("N = ",N, ", hts = ",hts)}
 	       then () = if #hts < N+1
 	       	       	 then break
 			 else ht := hts[N]; N +:= 1
@@ -1859,9 +1877,9 @@ set is_unitary_test_big_SIMPLE_interrupt(Param p, int N) = bool:
 	       then start_to_ht = elapsed_ms()
 	       then to_ht_ans = is_unitary_to_ht_big_SIMPLE(p,ht)
 	       then time_to_ht = elapsed_ms() - start_to_ht
-	       then () = if time_to_ht > 10000 and test_verbose
+	       {then () = if time_to_ht > 10000 and test_verbose
 	       	       	 then prints("Level ",N," of SIMPLE_interrupt took ",print_time_string(time_to_ht))
-			 fi
+			 fi}
 	       in result := if not to_ht_ans
 	       	       	    then big_unitary_hash.numatch(p); -1
 			    elif ht >= top_ht
@@ -2415,7 +2433,10 @@ set DiracTest(Param p) = bool:
 
 {to be used in DiracBestTest. If the branch is too long, give up}
 set protected_occurrence(KTypePol KC, KType tau, int time) = bool:
-    case branch(KC, height(tau), time)
+    case if my_branch_flag
+    	 then big_unitary_hash.branch_interrupt(KC,height(tau),time)
+	 else branch(KC, height(tau), time)
+	 fi
        | timed_out: false
        | done(B): B[tau].!=
     esac
@@ -2424,7 +2445,7 @@ set protected_occurrence(KTypePol KC, KType tau, int time) = bool:
 set Dirac_pro_flag = true
 
 set protected_occurrence(KTypePol KC, KType tau) = bool:
-    let T = max(10000#tested_neg_times)\4
+    let T = max(4000#tested_neg_times)\4
     in protected_occurrence(KC,tau,T)
 
 {Kchar is mean to be the K-character, to height at least HT, of some subquotients

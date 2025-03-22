@@ -2175,6 +2175,7 @@ set local_test_GEO_hash_def_dumb(KGBElt x, ratvec lambda, LocalVertexData Lvd, [
     then zero_pol = null_module(G), pmin = parameter(x,lambda, 0*lambda), NK = #KGB(G)
     then () = if 1*pmin = zero_pol then return [] fi
     then r = rank(x.involution - 1)
+    then () = to_ht_flag:=true
     then () = if {TINY CASE} #LF[0]=1
     	      then if mix_flag
 	      	   then return one_param_test_min_bottom(parameter(x,lambda,Lvd.list[LF[0][0][0]]),
@@ -2700,6 +2701,7 @@ set local_test_GEO_hash2(KGBElt x, ratvec lambda, {VertexData vd,} LocalVertexDa
 		   fi
 	      fi
     then edge_offset_temp = edge_offset
+    then () = to_ht_flag:=true
     then () = if edge_offset = -1
     	      then edge_offset_temp := r\3 {3 seems best for F4}
 	      fi
@@ -2889,6 +2891,7 @@ set local_test_GEO_hash2end(KGBElt x, ratvec lambda, LocalVertexData Lvd, [[Face
 	      	   	  	   LF, pol_hash, Uhash, fancy_tester) {use def_dumb if def_flag}
 	      fi}
     then edge_offset_temp = edge_offset
+    then () = to_ht_flag:=true
     then () = if edge_offset = -1
     	      then edge_offset_temp := r\3 {3 seems best for F4}
 	      fi
@@ -3090,6 +3093,7 @@ set local_test_GEO_hash_one_level(KGBElt x, ratvec lambda, {VertexData vd,}
     {if LAST = ONE, then final step should be _just_ is_unitary}
     { then () = prints("ONE = ",ONE,", LAST = ",LAST) }
     then edge_offset_temp = edge_offset
+    then () = to_ht_flag:=true
     then () = if edge_offset = -1
     	      then edge_offset_temp := r\2 {3 seems best for F4}
 	      fi
@@ -3421,6 +3425,7 @@ set local_test_GEO_hash_one_level_end(KGBElt x, ratvec lambda, LocalVertexData L
     {if LAST = ONE, then final step should be _just_ is_unitary}
     { then () = prints("ONE = ",ONE,", LAST = ",LAST) }
     then edge_offset_temp = edge_offset
+    then () = to_ht_flag:=true
     then () = if edge_offset = -1
     	      then edge_offset_temp := r\2 {3 seems best for F4}
 	      fi
