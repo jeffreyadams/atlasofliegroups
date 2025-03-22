@@ -1352,7 +1352,7 @@ bool deformation_unit::operator!=(const deformation_unit& another) const
 
   { RootNbrSet complex_posroots = rd.posroot_set() & i_tab.complex_roots(inv_nr);
     for (auto it=complex_posroots.begin(); it(); ++it)
-      // if (i_tab.complex_is_descent(inv_nr,*it))
+        if (i_tab.complex_is_descent(inv_nr,*it))
 	if (arithmetic::divide(rd.coroot(*it).dot(num0),d0) !=
 	    arithmetic::divide(rd.coroot(*it).dot(num1),d1))
 	  return true; // distinct integer part of evaluation poscoroot found
