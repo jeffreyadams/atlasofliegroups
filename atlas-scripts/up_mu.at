@@ -41,6 +41,7 @@ set_type
 )
 ]
 
+{Maybe the K-hash is just the zero element of each L-packet of K-types: the LKTs of anti_finalize?}
 set make_up_mu_hash() = up_mu_hash_table:
 (  let real_form_hash = make_RealForm_hash()
    then K0s = [RealForm]: [] {for each G, id comp of maximal compact}
@@ -71,7 +72,8 @@ set make_up_mu_hash() = up_mu_hash_table:
     then add_K_type(KType mu) = (int, int): {real form index, K type index}
    	 let rfnum = add_real_form(mu.real_form)
 	 then KTYPENUM = muhashes[rfnum].size()
-	 then ktypenum = muhashes[rfnum].match(mu)
+	 then mu0 = monomials(1*mu)[0]
+	 then ktypenum = muhashes[rfnum].match(mu0)
 	 then () = if ktypenum = KTYPENUM {haven't computed with mu before}
 	     	   then let () = muss[rfnum] #:= [ktypenum]
 			then () = muDones[rfnum] #:= false
@@ -94,7 +96,9 @@ set make_up_mu_hash() = up_mu_hash_table:
 				then taulast = muhashes[rfnum].index(lastmunum)
 			        then () = uptaus :=
 					  if short_mu_flag
-					  then short_shifts(taulast)
+					  then let qlast = anti_finalize(parameter(taulast))
+					  then aftaulast = K_type(qlast.x, qlast.lambda_minus_rho)
+					  in short_shifts(aftaulast)
 					  else let (shifters,newx) = shifters(taulast)
 				       	       then () = x0G:=newx
 				       	       then KG = K_0(x0G), rhoc = rho_c(x0G)
