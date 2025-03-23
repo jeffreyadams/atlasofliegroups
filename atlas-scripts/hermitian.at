@@ -355,6 +355,7 @@ set tested_neg_strings = [string]: []
 
 set tested_inter_hash = make_Param_hash()
 set tested_inter_times = [int]: [] {one for each tested_inter_hash.list() entry}
+set tested_inter_counts = [int]: []
 {set tested_inter_strings = [string]: []}
 
 set tested_pos_to_ht_hashes = [Param_hash]: [] {for h:100 do make_Param_hash() od}
@@ -375,15 +376,17 @@ set was_tested(Param p, int T, bool ans) = void:
     then let () = tested_pos_hash.match(p)
        	 in tested_pos_times#:=T; tested_pos_strings #:= test_string
     else let () = tested_neg_hash.match(p)
-       	 in tested_neg_times#:=T; tested_neg_strings #:= test_string
+    in tested_neg_times#:=T; tested_neg_strings #:= test_string
     fi
 
 set was_tested_inter(Param p, int T) = void:
     let M = tested_inter_hash.size()
     then m = tested_inter_hash.match(p)
     in if m=M
-       then tested_inter_times #:= T
-       else tested_inter_times[m] +:= T
+       then tested_inter_times #:= T;
+       	    tested_inter_counts #:=1
+       else tested_inter_times[m] +:= T;
+       	    tested_inter_counts[m] +:=1
        fi
 
 set was_tested_to_ht(Param p,int N, int T, bool ans) = void:
@@ -409,7 +412,8 @@ set report_tested() = void:
     prints(tested_pos_hash.size()," pos is_unitary tests, in time = ",
     	print_time_string(sum(tested_pos_times)),"; ",tested_neg_hash.size()," neg is_unitary tests, in time = ",
     	print_time_string(sum(tested_neg_times)));
-    prints(tested_inter_hash.size(), " interrupted is_unitary tests, in time = ",
+    prints(sum(tested_inter_counts), " interrupted is_unitary tests, of ",
+    	   tested_inter_hash.size(), " different parameters, in time ",
 	print_time_string(sum(tested_inter_times)));
     prints(sum(for hash in tested_pos_to_ht_hashes do hash.size() od)," pos tests to_ht, in time = ",
  	 	   print_time_string(sum(for list in tested_pos_to_ht_times do sum(list) od)),"; ",
