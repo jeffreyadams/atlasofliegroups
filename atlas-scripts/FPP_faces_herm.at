@@ -1869,7 +1869,7 @@ set is_unitary_test_big_SIMPLE_interrupt(Param p, int N) = bool:
   if (not is_hermitian(p)) or (not is_pos_on_LKTs(p)) then return false fi;
   let G = p.real_form, (,NU,) = low(p)
   then shift = if easy_up_shift = -1
-       	       then G.rank
+       	       then max(1,(G.rank*mu_rank_mult)\1)
 	       else easy_up_shift
 	       fi
   then ht_bound = NU\4{2} {this estimates the biggest ht where to_ht could be faster than is_unitary}
@@ -1882,7 +1882,7 @@ set is_unitary_test_big_SIMPLE_interrupt(Param p, int N) = bool:
   then result = 0, mu = K_type(p.x, p.lambda_minus_rho) {LKTs(p)[0]},
        top_ht = floor((p.infinitesimal_character)*G.two_rho_check)
        {unitary to top_ht implies unitary}
-  then times_to_ht = int: 0
+  then times_to_ht = [int]: [], time_to_ht = int:0
   then ht = if easy_up_flag
        	    then next_heights(p,N)~[0]
 	    else up_mu_hash.up_heights(mu, N+1)~[0]
@@ -1904,7 +1904,8 @@ set is_unitary_test_big_SIMPLE_interrupt(Param p, int N) = bool:
 	       let () = ht +:= shift
 	       then start_to_ht = elapsed_ms()
 	       then to_ht_ans = is_unitary_to_ht_big_SIMPLE(p,ht)
-	       then () = times_to_ht +:= elapsed_ms() - start_to_ht
+	       then () = time_to_ht:=elapsed_ms() - start_to_ht
+	       then () = times_to_ht #:= time_to_ht
 	       {then () = if time_to_ht > 10000 and test_verbose
 	       	       	 then prints("height ",ht," of SIMPLE_interrupt took ",print_time_string(time_to_ht))
 			 fi}
@@ -1912,7 +1913,7 @@ set is_unitary_test_big_SIMPLE_interrupt(Param p, int N) = bool:
 	       	       	    then big_unitary_hash.numatch(p); -1
 			    elif ht >= top_ht
 			    then big_unitary_hash.umatch(p); 1
-			    else is_unitary(p,floor(mu_time_mult*times_to_ht))
+			    else is_unitary(p,floor(mu_time_mult*max(times_to_ht)))
 			    fi
 	    od
    in if result > 0 then true
