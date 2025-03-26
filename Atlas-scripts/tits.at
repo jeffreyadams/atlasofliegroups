@@ -70,8 +70,11 @@ set = (Tits_elt(,v,theta),Tits_elt(,u,eta)) = bool: =(v-u)%1 and theta=eta
 set != ((Tits_elt,Tits_elt)p) = bool: not =p
 
 { identity in Tits group }
+{NONONO}
+{set tits_identity (RootDatum rd) = Tits_elt:
+  let r=rank(rd) in (rd,ratvec:null(r),id_mat(r))}
 set tits_identity (RootDatum rd) = Tits_elt:
-  let r=rank(rd) in (rd,ratvec:null(r),id_mat(r))
+  let r=rank(rd) in (rd,rd.rho_check,id_mat(r))
 
 { element (torus factor=1)*delta in twisted Tits group }
 set tits_delta (RootDatum rd,mat delta) = Tits_elt: (rd,null(rank(rd)),delta)
@@ -154,7 +157,7 @@ set multiply_old(Tits_elt(rd,v,theta), Tits_elt({assume rd},u,eta)) = Tits_elt:
   )
 
 
-set multiply (Tits_elt t1, Tits_elt t2) = Tits_elt:
+set multiply(Tits_elt t1, Tits_elt t2) = Tits_elt:
   assert(t1.root_datum=t2.root_datum,"root data don't match in multiplying Tits elements");
   let rd=t1.root_datum then
   theta1=t1.theta then
@@ -190,8 +193,6 @@ let mu=unnormalized_torus_factor(rd,v,theta) then
 mu_inverse_unnormalized=rho_check(rd)*(1-theta)/2 - mu*theta then
 tau_inverse=(2*mu_inverse_unnormalized-rd.rho_check)*(1-theta)/2 in
 (rd,tau_inverse%1,theta.inverse)
-
-
 
 
 set inverse(KGBElt x)=KGB_elt(x.tits_element.inverse)
