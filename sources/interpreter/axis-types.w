@@ -462,9 +462,9 @@ definition is actually recursive. The methods |tabled_arity|, |is_recursive| and
 
 @< Ordinary methods of the |type_expr| class @>=
 type_tag raw_kind () const @+{@; return tag; } // don't translate |tabled|
-const type_expr& top_level () const; // what |tabled_variant| is equated to
+const type_expr& tabled_eq () const; // what |tabled_variant| is equated to
 type_tag top_kind () const @+
-{@; return raw_kind()==tabled ? top_level().raw_kind() : raw_kind(); }
+{@; return raw_kind()==tabled ? tabled_eq().raw_kind() : raw_kind(); }
 @)
 primitive_tag prim () const @+
     {@; assert(tag==primitive_type); return prim_variant; }
@@ -1407,7 +1407,7 @@ bool type_expr::is_recursive() const
 @/return type_map[tabled_variant.nr].recursive;
 }
 
-const type_expr& type_expr::top_level() const
+const type_expr& type_expr::tabled_eq() const
 {@; return type_map.definiens(tabled_variant.nr); }
 
 @ The |expanded| methods requires more work, but a call to |simple_subst| does
@@ -2980,7 +2980,7 @@ class type
 public:
   static type wrap(const type_expr& te,
 		   unsigned int fix_count, unsigned int gap=0);
-  static type wrap_tuple(const sl_list<type>& components);
+  static type wrap_tuple(sl_list<type>&& components);
   static type constructor(type_expr&& te, unsigned int degree);
   static type bottom(unsigned int fix_count); // a polymorphic type variable
   type(type&& tp) = default;
@@ -3004,8 +3004,10 @@ counterparts. We include here also a few methods that access the
 |type_assignment| field, and some simple tests.
 
 @< Methods of |type| to access component types @>=
+const type_expr& top_expr () const;
+type_expr& top_expr ();
 type_tag kind () const @+{@; return te.raw_kind(); }
-type_tag top_kind () const @+{@; return te.top_kind(); }
+type_tag top_kind () const @+{@; return top_expr().top_kind(); }
 primitive_tag prim () const     @+{@; return te.prim(); }
 unsigned int typevar_count () const @+{@; return te.typevar_count(); }
 const func_type* func() const  @+{@; return te.func(); }
@@ -3023,9 +3025,8 @@ unsigned int degree() const @+{@; return a.size(); }
 unsigned int ceil() const @+{@; return floor()+degree(); }
   // start disjoint type variables here
 bool is_polymorphic() const @+{@; return degree()>0; }
-bool is_clean() const; // absence of pending type assignments
-bool is_bottom() const @+
-{@; return kind()==variable_type and typevar_count()>=floor(); }
+bool is_clean() const @+{@; return a.empty(); }
+bool is_bottom() const @+{@; return a.is_polymorphic(te); }
 const type_expr& unwrap() const @+{@; return te ; }
 bool is_void() const @+
 {@; return te.raw_kind()==tuple_type and length(te.tuple())==0; }
@@ -3069,7 +3070,8 @@ the the complete function type, and passing it the argument type.
 
 @< Utility methods of |type| @>=
 type& expunge(); // eliminate assigned type variables, by substitution
-type& expand() @+{@; te.expand(); return *this; }
+type& expand() @+{@; expunge().te.expand(); return *this; }
+type_expr expanded() const @+{@; return bake().expanded(); }
 type_expr bake() const; // extract |type_expr| after substitution
 type_expr bake_off(); // extract |type_expr|, sacrificing self if needed
 type& clear(unsigned int d); // remove any type assignments, reserve |d| new ones
@@ -3079,9 +3081,8 @@ bool unify(type& other);
 bool unify_to(const type& other);
 bool has_unifier(const type_expr& t) const;
 bool unify_specialise(type_expr& pattern)
-  // adapt to pattern while specialising pattern
-  {@; return unify_specialise(te,pattern); }
-  // recursive helper method does the work
+  {@; return unify_specialise(te,pattern); } // call recursive helper
+bool unify_specialise(const type_expr& sub_tp, type_expr& pattern);
 bool unify_specialise(type_expr& pattern, unsigned int fix_count) const;
 bool matches
   (const type_expr& formal, unsigned int poly_degree,
@@ -3090,20 +3091,41 @@ bool matches_argument(const type& arg_type); // for non-overloaded calls
 @)
 type_expr skeleton (const type_expr& sub_tp) const;
   // extract a type pattern from polymorphic |sub_tp|
-void wrap_row () @+{@; te.set_from(type_expr::row(std::move(te))); }
-  // put on a ``row-of''
-private:
-bool unify_specialise(const type_expr& sub_tp, type_expr& pattern);
+type& wrap_row () // put on a ``row-of''
+{@; te.set_from(type_expr::row(std::move(te)));
+  return *this;
+}
 
-@ First some simple methods. One uses |expunge| to incorporate any pending type
-assignments, and |clear| to forget any and reset the number of type variables
+@ First some simple methods. We provide two methods |top_expr|, one |const| and
+one not, that resolve any indirection present in the form of a type variable
+assignment; this may need repeating but will surely terminate. After this, the
+user can apply |top_kind| to find out its basic kind, and then |expanded| or (in
+the non-|const| case) |expand| if the corresponding components need to be
+accessed. More radically, the |expunge| method can be called to incorporate any
+pending type assignments and then clear them out. Or instead one call |clear| to
+forget any such assignments, and possibly reset the number of type variables
 to~|d| (presumably the number it had before some unification method might have
 extended the set). Finally |bake| and |bake_off| provide the type expression
 taking into account pending type assignments, the latter leaving the type itself
 in an unusable state (since it was possibly moved from).
 
 @< Function definitions @>=
-bool type::is_clean() const @+{@; return assign().empty(); }
+const type_expr& type::top_expr() const
+{ const_type_p p = &te,q;
+  while (p->raw_kind()==variable_type and
+         (q=a.equivalent(p->typevar_count()))!=nullptr)
+    p=q;
+  return *p;
+}
+
+type_expr& type::top_expr()
+{ type_p p = &te,q;
+  while (p->raw_kind()==variable_type and
+         (q=a.equivalent(p->typevar_count()))!=nullptr)
+    p=q;
+  return *p;
+}
+@)
 type& type::expunge()
 {
   if (is_clean())
@@ -3214,7 +3236,7 @@ polymorphic type variables from there, avoiding any collision between variables
 from different components.
 
 @< Function definitions @>=
-type type::wrap_tuple(const sl_list<type>& components)
+type type::wrap_tuple(sl_list<type>&& components)
 {
   unsigned int floor = 0;
   for (const auto& comp : components)
@@ -3223,9 +3245,10 @@ type type::wrap_tuple(const sl_list<type>& components)
   trans_list translate(floor,floor);
 
   dressed_type_list aux;
-  for (const auto& comp : components)
+  for (auto it = components.begin(); it!=components.end(); ++it)
   {
-    aux.push_back(pack(comp.unwrap(),translate));
+    type&& comp = std::move(*it);
+    aux.push_back(pack(comp.bake_off(),translate));
     translate.start += translate.vars.size();
       // keep polymorphic variables disjoint
     translate.vars.clear();
@@ -3449,23 +3472,28 @@ bool type::unify(type& other)
 { if (floor()<other.floor())
   { expunge(); // take into account and erase pending type assignments
     if (is_polymorphic()) // then shift |te| to start at |other.ceil()|
+    {
       te = shift(te,floor(),other.ceil()-floor());
-    assign().set_floor(other.floor());
-    assign().grow(other.degree()); // encompass all type variables
-    other.assign().grow(degree()-other.degree());
-    // make degrees equal and ceilings align
+      assign().set_floor(other.floor());
+      assign().grow(other.degree()); // encompass all type variables
+      other.assign().grow(degree()-other.degree());
+      // make degrees equal and ceilings align
+    }
   }
   else if (floor()>other.floor() or is_polymorphic() and other.is_polymorphic())
-  { other.expunge();
-    if (other.is_polymorphic())
+    if (other.expunge().is_polymorphic())
+    {
       other.te = shift(other.te,other.floor(),ceil()-other.floor());
-    other.assign().set_floor(floor());
-    other.assign().grow(degree()); // encompass all type variables
-    assign().grow(other.degree()-degree());
-    // make degrees equal and ceilings align
-  }
+      other.assign().set_floor(floor());
+      other.assign().grow(degree()); // encompass all type variables
+      assign().grow(other.degree()-degree());
+      // make degrees equal and ceilings align
+    }
   type_assignment& a = is_polymorphic() ? assign() : other.assign();
-  return a.unify(te,other.te); // now do the actual unification
+  bool success = a.unify(te,other.te); // now do the actual unification
+  if (is_polymorphic() and other.is_polymorphic())
+    other.assign() = a.copy(); // ensure both types see the assignments
+  return success;
 }
 
 @ The method |matches| is typically called with as our type the type of an

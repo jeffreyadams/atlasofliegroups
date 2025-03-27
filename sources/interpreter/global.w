@@ -719,9 +719,9 @@ point to really resume after an error.
 @< Global function definitions @>=
 type analyse_types(const expr& e,expression_ptr& p, unsigned int fc)
 { try
-  { type_expr tp; // this starts out as an |undetermined_type|
-    p = convert_expr(e,0,tp);
-    return type::wrap(tp,0); // no fixed type variables at this outer scope
+  { type tp=type::bottom(0); // this starts out as an |undetermined_type|
+    p = convert_expr(e,tp);
+    return tp; // no fixed type variables at this outer scope
   }
   catch (const type_error& err)
   { std::cerr << "Error during analysis of expression " << e.loc << std::endl;
@@ -1772,7 +1772,7 @@ index~|i| into the vector.
   containers::sl_list<definition_group> store;
   for (auto it=defs.wcbegin(); not defs.at_end(it); ++it,++i)
     if (not it->fields.empty())
-    { const auto& tp = type_expr::local_ref(type_nrs[i],0).top_level();
+    { const auto& tp = type_expr::local_ref(type_nrs[i],0).tabled_eq();
       // a |type_map| entry
       const auto& fields = it->fields;
       @/@< Append to |store| bindings for the identifiers in |fields| as
@@ -1784,7 +1784,7 @@ index~|i| into the vector.
   {
     const auto& fields = it->fields;
     const auto type_nr = type_nrs[i];
-    const auto& tp = type_expr::local_ref(type_nr,deg).top_level();
+    const auto& tp = type_expr::local_ref(type_nr,deg).tabled_eq();
     if (it->id!=type_binding::no_id)
     {
       if (global_id_table->is_defined_type(it->id))
