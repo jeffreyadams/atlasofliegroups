@@ -2980,6 +2980,7 @@ class type
 public:
   static type wrap(const type_expr& te,
 		   unsigned int fix_count, unsigned int gap=0);
+  static type wrap_tuple(const sl_list<type>& components);
   static type constructor(type_expr&& te, unsigned int degree);
   static type bottom(unsigned int fix_count); // a polymorphic type variable
   type(type&& tp) = default;
@@ -3138,7 +3139,13 @@ themselves, and is updated with entries for type variables encountered or
 created during the recursive traversal.
 
 @< Local function definitions @>=
-type_expr pack(const type_expr& te, sl_list<unsigned int>& translate)
+struct trans_list
+{ unsigned int fc, start;
+  sl_list<unsigned int> vars;
+  trans_list(unsigned int fc, unsigned int start)
+  : fc(fc),start(start), vars() @+{}
+};
+type_expr pack(const type_expr& te, trans_list& translate)
 { switch (te.raw_kind())
   { case primitive_type: return type_expr::primitive(te.prim());
     case function_type:
@@ -3161,15 +3168,18 @@ type_expr pack(const type_expr& te, sl_list<unsigned int>& translate)
       return type_expr::user_type(te.tabled_nr(),aux.undress());
     }
     case undetermined_type:
-    { unsigned int k=translate.size(); translate.push_back(-1);
+    { unsigned int k=translate.vars.size(); translate.vars.push_back(-1);
       return type_expr::variable(k);
     }
     case variable_type:
-    { unsigned int k=0;
-      for (auto it=translate.begin(); not translate.at_end(it); ++it, ++k)
-        if (*it==te.typevar_count()) // then we found a known type variable
+    { auto c=te.typevar_count();
+      if (c<translate.fc)
+        return type_expr::variable(c);
+      unsigned int k=translate.start;
+      for (auto it=translate.vars.begin(); not it.at_end(); ++it, ++k)
+        if (*it==c) // then we found a known type variable
           return type_expr::variable(k);
-      translate.push_back(te.typevar_count()); // new variable; record it
+      translate.vars.push_back(te.typevar_count()); // new variable; record it
       return type_expr::variable(k); // return new number for variable
     }
    default: assert(false); return type_expr();
@@ -3190,19 +3200,42 @@ into that type.
 @< Function definitions @>=
 type type::wrap (const type_expr& t, unsigned int fix_count, unsigned int gap)
 {
-  sl_list<unsigned int> translate;
-  for (unsigned int k=0; k<fix_count; ++k)
-    translate.push_back(k);
-     // up to |fix_count|, type variables are unchanged,
-  for (unsigned int k=0; k<gap; ++k)
-    translate.push_back(-1); // reserve |gap| values as ``to remain unused''
-@)
+  trans_list translate(fix_count,fix_count+gap);
   type_expr te=pack(t,translate);
   fix_count += gap; // the new starting value
-  type result(fix_count,translate.size()-fix_count);
+  type result(fix_count,translate.vars.size()-fix_count);
   result.te = std::move(te);
   return result;
 }
+
+@ When we string together a list of |type| values into a single tuple |type|,
+we make its |floor()| the maximum of those of the components, and renumber
+polymorphic type variables from there, avoiding any collision between variables
+from different components.
+
+@< Function definitions @>=
+type type::wrap_tuple(const sl_list<type>& components)
+{
+  unsigned int floor = 0;
+  for (const auto& comp : components)
+    floor = std::max(floor,comp.floor());
+
+  trans_list translate(floor,floor);
+
+  dressed_type_list aux;
+  for (const auto& comp : components)
+  {
+    aux.push_back(pack(comp.unwrap(),translate));
+    translate.start += translate.vars.size();
+      // keep polymorphic variables disjoint
+    translate.vars.clear();
+  }
+
+  type result(floor,translate.start);
+  result.te = type_expr::tuple(std::move(aux.undress()));
+  return result;
+}
+
 
 @ We can use a |type| to serve as body of a type constructor, in which case the
 type variables it contains represent arguments of that constructor, identified
@@ -3514,7 +3547,7 @@ type_expr type::skeleton (const type_expr& sub_t) const
 
 
 @ We also provide an overload for printing |type| values without having to call
-|expr| explicitly each time.
+|bake| explicitly each time.
 
 @< Function definitions @>=
 std::ostream& operator<<(std::ostream& strm, const type& t)
@@ -4626,8 +4659,8 @@ applicable conversion was found. The function |conform_types|, available in two
 forms, first tries to specialise the type |required| by the context to the one
 |found| for the expression itself; if this fails it then tries to
 coerce |found| to |required|. If the latter is the case, it wraps the translated
-expression |d| in a call of the conversion function found. Should both attempts
-fail an, then it trows an error mentioning the expression~|e|.
+expression |d| in a call of the conversion function found. In case both
+attempts fail, it throws an error mentioning the expression~|e|.
 
 The function |row_coercion| specialises, if possible, |component_type| in such a
 way that the type ``row-of |component_type|'' can be coerced to |final_type|,
@@ -4646,8 +4679,13 @@ expression_ptr conform_types
   ( const type_expr& found, type_expr& required
   , expression_ptr&& d, const expr& e);
 expression_ptr conform_types
+  ( const type_expr& found, type& required
+  , expression_ptr&& d, const expr& e);
+expression_ptr conform_types
   ( const type& found, type_expr& required, unsigned int fix_count
   , expression_ptr&& d, const expr& e);
+expression_ptr conform_types
+  ( const type& found, type& required, expression_ptr&& d, const expr& e);
 const conversion_record* row_coercion(const type_expr& final_type,
 				     type_expr& component_type);
 void coercion(const type_expr& from,
@@ -4950,12 +4988,29 @@ expression_ptr conform_types
   return std::move(d); // invoking |std::move| is necessary here
 }
 expression_ptr conform_types
+(const type_expr& found, type& required, expression_ptr&& d, const expr& e)
+{ if (not required.unify_to(type::wrap(found,required.floor())) and
+    not coerce(found,required.bake(),d,e.loc))
+    throw type_error(e,found.copy(),required.bake());
+  return std::move(d); // invoking |std::move| is necessary here
+}
+@)
+expression_ptr conform_types
   (const type& found, type_expr& required, unsigned int fix_count,
    expression_ptr&& d, const expr& e)
 { if (not found.unify_specialise(required,fix_count) and @|
       not coerce(found.unwrap(),required,d,e.loc))
     throw type_error(e,found.bake(),required.copy());
   return std::move(d); // invoking |std::move| is necessary here
+}
+expression_ptr conform_types
+  (const type& found, type& required, expression_ptr&& d, const expr& e)
+{ if (required.unify_to(found))
+    return std::move(d); // invoking |std::move| is necessary here
+  type_expr f = found.bake(), r = required.bake();
+  if (coerce(f,r,d,e.loc))
+    return std::move(d);
+  throw type_error(e,std::move(f),std::move(r));
 }
 
 @ List displays and loops produce a row of values of arbitrary (but identical)
