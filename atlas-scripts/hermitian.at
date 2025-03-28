@@ -11,10 +11,13 @@ set deformCalcCounter = make_counter()
 
 {next three global variables concern function is_unitary_test_big_SIMPLE_interrupt in FPP_faces_herm.at}
 set up_mu_time = int:0
-set mu_time_mult = rat: 1/4 {1/1}
+set mu_time_mult = rat: 1/1 {1/1}
+
+{it "true" use up_mu_hash to calculate heights for is_unitary_to_ht}
+set up_mu_flag = false {true}
 
 {multiple of G.rank to use as jump in step size}
-set mu_rank_mult = rat: 2/1 {1/1}
+set mu_rank_mult = rat: {2/1} 1/2
 
 {if true, try to raise mu in few steps to minimize number of to_ht calculations}
 set max_loc_flag = true
