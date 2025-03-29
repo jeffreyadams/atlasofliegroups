@@ -315,13 +315,13 @@ private:
   vec variable;
   BitMap constness;
   const unsigned loop_depth; // number of nested loops we are in
-  const type_p return_type;
+  type* const return_type;
     // address of return type of current function, if any (non owned)
 public:
   layer(const layer&) = delete; // no ordinary copy constructor
   layer& operator= (const layer&) = delete; // nor assignment operator
   explicit layer(size_t n); // non-function non-loop layer
-  layer(size_t n,type_p return_type);
+  layer(size_t n,type* return_type);
     // function or (with |return_type==nullptr|) loop layer
   ~layer () @+{@; lexical_context.pop_front(); }
 @)
@@ -341,7 +341,7 @@ public:
   static bool may_break(unsigned depth);
     // whether \&{break}~|depth| is legal here
   static bool may_return(); // whether \&{return} is legal here
-  static type_expr& current_return_type() @+
+  static type& current_return_type() @+
   {@; return *lexical_context.front()->return_type; }
 };
 
@@ -360,7 +360,7 @@ layer::layer(size_t n) // non-function non-loop layer
 , return_type(lexical_context.empty() ? nullptr
              : lexical_context.front()->return_type)
 {@; variable.reserve(n); lexical_context.push_front(this); }
-layer::layer(size_t n,type_p return_type) // function or loop layer
+layer::layer(size_t n,type* return_type) // function or loop layer
 : variable(), constness(n)
 ,@/ loop_depth(return_type!=nullptr ? 0
             : lexical_context.empty() ? 1
@@ -481,7 +481,7 @@ these cases and treat them one syntactic construction at the time.
 
 @< Function definitions @>=
 expression_ptr convert_expr(const expr& e, type& tp)
-{ auto fc = tp.floor(); // temporary, to limit number of errors
+{ const auto fc = tp.floor(); // short for ``fixed count''
   switch(e.kind)
   {
    @\@< Cases for type-checking and converting expression~|e| against
@@ -761,14 +761,14 @@ the result type. If the function body is a cast, that gives the type, otherwise
 the first |return| expression gives the type, and if there are none, any further
 expressions occurring in branches of conditionals or integer case expressions
 are balanced to determine the result type. This rule results implicitly from the
-fact that the function body and all |return| expressions share a same
-|type_expr| variable to record their type, which is the one
-|layer::current_return_type()| refers to.
+fact that the function body and all |return| expressions share a same |type|
+variable to record their type, which is the one |layer::current_return_type()|
+refers to.
 
 @< Cases for type-checking and converting... @>=
 case return_expr:
 { if (layer::may_return())
-  { type rt = type::wrap(layer::current_return_type(),fc);
+  { type& rt = layer::current_return_type(); // shared return type
     return expression_ptr(new returner(convert_expr(*e.return_variant,rt)));
   }
   throw expr_error(e,"One can only use 'return' inside a function body");
@@ -1302,7 +1302,7 @@ by the new conversion (if it is successful)).
   type_expr te = target.bake();
   for (unsigned i=0; i<n; ++i,++it)
     if (not comp_type[i].is_polymorphic() and
-        comp_type[i].unwrap()!=te)
+        comp_type[i].bake_off()!=te)
       components[i] = convert_expr(*it,target);
       // redo conversion with unifying |target| type
 }
@@ -1867,8 +1867,8 @@ we set the variable to |false| in that case.
     for (wel_const_iterator it(args.sublist); not it.at_end();
          ++it,++arg_vector_it)
     {
-      type& tp = comp_types.push_back(type::bottom(tp.floor()));
-      *arg_vector_it = convert_expr(*it,tp);
+      type& comp_tp = comp_types.push_back(type::bottom(tp.floor()));
+      *arg_vector_it = convert_expr(*it,comp_tp);
       is_constant = is_constant and
          dynamic_cast<const denotation*>(arg_vector_it->get()) != nullptr;
     }
@@ -3479,18 +3479,18 @@ case lambda_expr:
       (e,"Specified parameter type does not match identifier pattern");
   if (not(tp.unify_specialise(fun_type) or tp.is_void()))
     throw type_error(e,std::move(fun_type), tp.bake());
-  type_expr& result_type = fun_type.func()->result_type;
+@)
+  type body_type = type::wrap(fun_type.func()->result_type,fc);
     // probably undetermined here
-@/layer new_layer(count_identifiers(pat),&result_type);
+@/layer new_layer(count_identifiers(pat),&body_type);
     // create layer for function body
   thread_bindings(pat,par_tp,fc,new_layer,false);
-  type body_type = type::wrap(result_type,fc);
 @/expression_ptr body_ptr = convert_expr(fun.body,body_type);
-  body_type.unify_specialise(result_type);
-    // conversion may have assigned directly to |result_type|
-  if (not(tp.unify_specialise(tp.func()->result_type,result_type)
-          or tp.is_void()))
-    throw logic_error("Failed to export result type of lambda-expression");
+  if (not tp.is_void()) // then we must integrate |body_type| into |tp|
+  { const type_expr& sub_tp = tp.top_expr().func()->result_type;
+    if (not tp.unify_to(sub_tp,body_type))
+      throw logic_error("Failed to export result type of lambda-expression");
+  }
 @/return expression_ptr(new @| lambda_expression
    (copy_id_pat(pat), std::move(body_ptr), std::move(e.loc)));
 }
@@ -3529,17 +3529,16 @@ case rec_lambda_expr:
   if (not (tp.unify_specialise(fun_type) or tp.is_void()))
       @/throw type_error(e, std::move(fun_type), tp.bake());
 @)
-  type_expr& result_type=fun_type.func()->result_type; // non |const|
-  layer new_layer(1+count_identifiers(pat),&result_type);
+  type body_type = type::wrap(fun_type.func()->result_type,fc);
+  layer new_layer(1+count_identifiers(pat),&body_type);
 @/thread_bindings(id_pat(fun.self_id),fun_type,fc,new_layer,true);
   thread_bindings(pat,par_tp,fc,new_layer,false);
-  type body_type = type::wrap(result_type,fc);
 @/expression_ptr body_ptr = convert_expr(fun.body,body_type);
-  body_type.unify_specialise(result_type);
-    // conversion may have assigned directly to |result_type|
-  if (not(tp.unify_specialise(tp.func()->result_type,result_type)
-          or tp.is_void()))
-    throw logic_error("Failed to export result type of lambda-expression");
+  if (not tp.is_void()) // then we must integrate |body_type| into |tp|
+  { const type_expr& sub_tp = tp.top_expr().func()->result_type;
+    if (not tp.unify_to(sub_tp,body_type))
+      throw logic_error("Failed to export result type of lambda-expression");
+  }
 @/return expression_ptr(new @| recursive_lambda
    (fun.self_id,copy_id_pat(pat), std::move(body_ptr), std::move(e.loc)));
 }

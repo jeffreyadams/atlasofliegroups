@@ -446,7 +446,7 @@ the method |top_kind| can be used to get this tag.
 Before user defined type constructors were introduced it used to be the case
 that |top_kind| (then simply called |kind|) was used where we now use
 |raw_kind|, and methods like |func|, |component_type| or |tuple| would similarly
-call |top_level| implicitly whenever |tag==tabled|. In cases where we want to
+call |top_expr| implicitly whenever |tag==tabled|. In cases where we want to
 treat the tabled case transparently by expanding the definition, we now instead
 use the |expanded| method. This method actually performs the substitution of
 type constructor arguments, and therefore returns |type_expr| by value rather
@@ -465,6 +465,7 @@ type_tag raw_kind () const @+{@; return tag; } // don't translate |tabled|
 const type_expr& tabled_eq () const; // what |tabled_variant| is equated to
 type_tag top_kind () const @+
 {@; return raw_kind()==tabled ? tabled_eq().raw_kind() : raw_kind(); }
+bool is_void () const;
 @)
 primitive_tag prim () const @+
     {@; assert(tag==primitive_type); return prim_variant; }
@@ -856,6 +857,21 @@ void type_expr::swap(type_expr& other) noexcept
   }
 }
 #endif
+
+@ The method |is_void| to test if a type is void, that is the $0$-tuple type,
+is fairly simple, but we must take into account the possibility of a tabled type
+(constructor) expanding to that. Normally we do not silently replace |te| by its
+|tabled_eq()| for a tabled type, because that ignores any type arguments of a
+tabled type constructor, but in this case it is all right (as it was for
+|type_expr::top_kind|) as there is nothing left that might depend on argument
+substitution.
+
+@< Function definitions @>=
+
+bool type_expr::is_void () const
+{ const type_expr& t = tag==tabled ? tabled_eq() : *this;
+  return t.tag == tuple_type and length(t.tuple())==0;
+}
 
 @ The |specialise| method is mostly used to either set (if initially
 undetermined) the |type_expr| it is called for to a given |pattern| (which might
@@ -2378,6 +2394,10 @@ public:
   { auto null = @[ [](const type_ptr& p){@; return p==nullptr; } @];
     return std::all_of(equiv.begin(),equiv.end(),null);
   }
+  bool full() const
+  { auto null = @[ [](const type_ptr& p){@; return p==nullptr; } @];
+    return std::none_of(equiv.begin(),equiv.end(),null);
+  }
   void set_floor(unsigned int n) @+{@; threshold=n; }
   void grow(unsigned int n) @+{@; equiv.resize(size()+n); }
 @)
@@ -3024,12 +3044,11 @@ unsigned int floor () const @+{@; return a.var_start(); }
 unsigned int degree() const @+{@; return a.size(); }
 unsigned int ceil() const @+{@; return floor()+degree(); }
   // start disjoint type variables here
-bool is_polymorphic() const @+{@; return degree()>0; }
+bool is_polymorphic() const @+{@; return not a.full(); }
 bool is_clean() const @+{@; return a.empty(); }
 bool is_bottom() const @+{@; return a.is_polymorphic(te); }
 const type_expr& unwrap() const @+{@; return te ; }
-bool is_void() const @+
-{@; return te.raw_kind()==tuple_type and length(te.tuple())==0; }
+bool is_void() const @+ {@; return top_expr().is_void(); }
 
 @ The method |unwrap| above gives access to the stored |type_expr|, but ignores
 any type assignments that were made. If one does want to take into account type
@@ -3051,7 +3070,7 @@ in the context (with number below |floor()| remain so. While this method
 potentially modifies both types, making them equal to the unifying type, the
 method |unify_to| does not modify its argument, but does adapt |*this|.
 The |const| method |has_unifier| tests whether our
-type can unify to what the |type_expr| expects. The method |unify_specialise|
+type can unify to what the |type_expr| expects. The methods |unify_specialise|
 preforms one-sided unification of our |type| (in |pattern| no type variables are
 changed, but undetermined parts may be filled in), recording the substitution
 required in our |type_assignment|. The |matches| method is similar, but specific
@@ -3078,7 +3097,9 @@ type& clear(unsigned int d); // remove any type assignments, reserve |d| new one
 type& clear() @+{@; return clear(degree()); }
 @)
 bool unify(type& other);
-bool unify_to(const type& other);
+bool unify_to(const type& other)
+  {@; return unify_to(te,other); } // call recursive helper
+bool unify_to(const type_expr& sub_tp, const type& other);
 bool has_unifier(const type_expr& t) const;
 bool unify_specialise(type_expr& pattern)
   {@; return unify_specialise(te,pattern); } // call recursive helper
@@ -3190,7 +3211,8 @@ type_expr pack(const type_expr& te, trans_list& translate)
       return type_expr::user_type(te.tabled_nr(),aux.undress());
     }
     case undetermined_type:
-    { unsigned int k=translate.vars.size(); translate.vars.push_back(-1);
+    { unsigned int k=translate.start+translate.vars.size();
+      translate.vars.push_back(-1);
       return type_expr::variable(k);
     }
     case variable_type:
@@ -3225,7 +3247,7 @@ type type::wrap (const type_expr& t, unsigned int fix_count, unsigned int gap)
   trans_list translate(fix_count,fix_count+gap);
   type_expr te=pack(t,translate);
   fix_count += gap; // the new starting value
-  type result(fix_count,translate.vars.size()-fix_count);
+  type result(fix_count,translate.vars.size());
   result.te = std::move(te);
   return result;
 }
@@ -3286,36 +3308,20 @@ type type::bottom(unsigned int fix_count)
 }
 
 @ The methods |type::unify_to| and |type::has_unifier| are easily implemented
-using |can_unify|.
+using |can_unify|. For now, there is no roll back when |can_unify| fails; when
+it succeeds the |assign()| field records the unifying type assignments, possibly
+involving new type variables introduced by |other|.
 
 @< Function definitions @>=
-bool type::unify_to(const type& other)
+bool type::unify_to(const type_expr& sub_tp, const type& other)
 { assert(floor()==other.floor());
-  const auto d = degree();
   if (other.is_polymorphic())
   {
-    assign().grow(other.degree()); // make place for other type variables
-    if (can_unify(te,shift(other.te,floor(),d),assign()))
-    {@;
-      expunge();
-      return true;
-    }
-    else
-    {@;
-      clear(d);
-      return false;
-    }
+    type tp = type::wrap(other.bake(),floor(),degree());
+    assign().grow(tp.degree()); // make place for added type variables
+    return can_unify(sub_tp,tp.te,assign());
   }
-  if (can_unify(te, other.te, assign()))
-  {@;
-    expunge();
-    return true;
-  }
-  else
-  {@;
-    clear(d);
-    return false;
-  }
+  return can_unify(sub_tp, other.bake(), assign());
 }
 @)
 bool type::has_unifier(const type_expr& t) const
@@ -3358,9 +3364,12 @@ bool type::unify_specialise(const type_expr& sub_tp, type_expr& pattern)
       auto eq=assign().equivalent(c);
       if (eq!=nullptr)
         return unify_specialise(*eq,pattern);
-      @< If |pattern| has |undetermined| entries, throw an error @>
-      assign().set_equivalent(c,std::make_unique<type_expr>(pattern.copy()));
-      return true;
+      type plug = type::wrap(pattern,ceil());
+      assign().grow(plug.degree()); // accommodate new type variables
+      bool success = pattern.specialise(plug.te);
+      assign().set_equivalent(c,std::make_unique<type_expr>(plug.bake_off()));
+      assert(success);
+      return success;
     }
   case primitive_type: return sub_tp.prim()==pattern.prim();
   case function_type: return
@@ -3414,21 +3423,6 @@ the recursive call.
     return unify_specialise(sub_tp,pattern=pattern.expanded());
 }
 
-@ The scenario in which we are asked to unify a type variable with a pattern
-that has undetermined parts without being completely undetermined is extremely
-unlikely if at all possible. Rather than finding the ``right thing'' to do here,
-like inventing new type variables to plug the undetermined parts, we prefer to
-signal an error in such cases. It is awkward that we need to throw an error from
-a method of |type|, with no expression to attach this type to, but a caller may
-catch and repackage the error to provide more detail.
-
-@< If |pattern| has |undetermined| entries, throw an error @>=
-if (pattern.is_unstable())
-{ std::ostringstream o;
-  o << "Cannot unify a type variable and an incomplete type " << pattern;
-  throw program_error(o.str());
-}
-
 @ The second method |type::unify_specialise| is basically the same as the first,
 but is a |const| method so that in particular the |type_assignment| field |a| is
 unchanged. This is achieved by copying our type before calling
@@ -3470,8 +3464,7 @@ the |assign()| of our |type|, and upon success copying it to |other| as well.
 
 bool type::unify(type& other)
 { if (floor()<other.floor())
-  { expunge(); // take into account and erase pending type assignments
-    if (is_polymorphic()) // then shift |te| to start at |other.ceil()|
+  { if (is_polymorphic()) // then shift |te| to start at |other.ceil()|
     {
       te = shift(te,floor(),other.ceil()-floor());
       assign().set_floor(other.floor());
@@ -3479,9 +3472,11 @@ bool type::unify(type& other)
       other.assign().grow(degree()-other.degree());
       // make degrees equal and ceilings align
     }
+    else
+      expunge(); // reduce to monomorphic type, which |other| unifies with
   }
   else if (floor()>other.floor() or is_polymorphic() and other.is_polymorphic())
-    if (other.expunge().is_polymorphic())
+  { if (other.is_polymorphic())
     {
       other.te = shift(other.te,other.floor(),ceil()-other.floor());
       other.assign().set_floor(floor());
@@ -3489,9 +3484,12 @@ bool type::unify(type& other)
       assign().grow(other.degree()-degree());
       // make degrees equal and ceilings align
     }
+    else
+      other.expunge();
+  }
   type_assignment& a = is_polymorphic() ? assign() : other.assign();
   bool success = a.unify(te,other.te); // now do the actual unification
-  if (is_polymorphic() and other.is_polymorphic())
+  if (degree()>0 and other.degree()>0) // if both were initially polymorphic
     other.assign() = a.copy(); // ensure both types see the assignments
   return success;
 }
@@ -5275,12 +5273,11 @@ detection of possible coercions in the monomorphic case.
 @< Function definitions @>=
 bool join_to (type& a, type&& b)
 {
-  assert (a.is_clean() and b.is_clean()); // caller should ensure this
   assert(a.floor()==b.floor()); // caller ensures both match the current scope
-  if (a.is_polymorphic())
+  if (a.is_polymorphic() or b.is_polymorphic())
     return a.unify_to(b);
-  if (b.is_polymorphic())
-    return b.has_unifier(a.unwrap());
+  a.expunge();
+  b.expunge(); // simplify the monomorphic types, so using |unwrap| is OK
   if (accepts(a.unwrap(),b.unwrap()))
     return true; // nothing to do
   if (accepts(b.unwrap(),a.unwrap()))
