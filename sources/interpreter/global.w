@@ -721,7 +721,8 @@ type analyse_types(const expr& e,expression_ptr& p, unsigned int fc)
 { try
   { type tp=type::bottom(0); // this starts out as an |undetermined_type|
     p = convert_expr(e,tp);
-    return tp; // no fixed type variables at this outer scope
+    tp.expunge();
+    return tp;
   }
   catch (const type_error& err)
   { std::cerr << "Error during analysis of expression " << e.loc << std::endl;
