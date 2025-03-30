@@ -4056,10 +4056,11 @@ interpretation of type variables when going in.
 @< Cases for type-checking and converting... @>=
 case type_abstraction_expr:
 { const abstr_node& a = *e.abstr_variant;
-  tp.assign().set_floor(fc+a.count);
+  tp.raise_floor(a.count);
     // increase abstraction level in the scope |a.exp|
   expression_ptr result  = convert_expr(a.exp,tp);
-  tp.assign().set_floor(fc); // restore outer abstraction level
+  tp.assign().lower_floor(a.count);
+    // restore outer abstraction level, capturing the abstracted types
   return result;
 }
 
