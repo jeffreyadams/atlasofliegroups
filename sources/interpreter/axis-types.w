@@ -2400,6 +2400,7 @@ public:
   }
   void set_floor(unsigned int n) @+{@; threshold=n; }
   void grow(unsigned int n) @+{@; equiv.resize(size()+n); }
+  void lower_floor(unsigned int n);
 @)
   type_p equivalent (unsigned int i)
   {@; return i<threshold ? nullptr :
@@ -2409,20 +2410,11 @@ public:
       (assert(i<threshold+size()),equiv[i-threshold].get()); }
   bool set_equivalent(unsigned int i, type_ptr&& p);
   bool set_equivalent(unsigned int i, const type_expr& tp);
-  bool is_polymorphic(const type_expr& tp) const
-  {@; return tp.raw_kind()==variable_type
-  and tp.typevar_count()>=threshold
-  and equiv[tp.typevar_count()-threshold]==nullptr;
-  }
+  bool is_polymorphic(const type_expr& tp) const;
+  BitMap polymorphics() const;
+  void make_polymorphic(const BitMap& which);
 @)
-  unsigned int renumber(unsigned int i) const
-  // reflect removal of variables assigned here
-  { for (unsigned int j=i; j-->threshold; )
-    // backwards to avoid using |i| after initialisation
-      if (equiv[j-threshold]!=nullptr)
-        --i; // take into account removal of |j|
-    return i;
-  }
+  unsigned int renumber(unsigned int i) const;
 @)
   type_expr substitution
     (const type_expr& tp, unsigned int shift_amount=0) const;
@@ -2445,7 +2437,28 @@ type_assignment type_assignment::copy() const
   return result;
 }
 
-@  The test for non-containment of a type variable is done by a private
+@ After having introduced abstract type variables, one can turn a set of the
+newest type such variables (typically all of them) into polymorphic type
+variables by lowering the |threshold| of a type assignment. Since |equiv| is
+indexed by the difference between a type variable number and the threshold,
+existing type variables will correspond to higher slots in |equiv| after this
+happens, and the variables turned polymorphic by the operation will correspond
+to the lowest slots in |equiv|. In order for this to work correctly, we should
+insert null pointers into the start of |equiv| while pushing the existing values
+upwards.
+
+@< Function definitions @>=
+
+void type_assignment::lower_floor(unsigned int n)
+{
+  assert(n<=threshold);
+  threshold -= n;
+  while (n-->0) // range insert does not work, |type_ptr| not CopyAssignable
+    equiv.insert(equiv.begin(),nullptr);
+      // recompute |begin()| each time, it might relocate
+}
+
+@ The test for non-containment of a type variable is done by a private
 recursive method |is_free_in|. In case a type variable is encountered for which
 an equivalent is present in |equiv|, the recursion continues into the type
 expression it is equated to; since we avoid situations where that expression
@@ -2498,6 +2511,50 @@ bool type_assignment::set_equivalent(unsigned int i, const type_expr& tp)
   return true;
 }
 
+@ The method |is_polymorphic| tests whether a given type is a type variable that
+is currently unassigned.
+
+@< Function definitions @>=
+bool type_assignment::is_polymorphic(const type_expr& tp) const
+{ return tp.raw_kind()==variable_type
+     and tp.typevar_count()>=threshold
+     and equiv[tp.typevar_count()-threshold]==nullptr;
+}
+
+@ Sometimes it is useful to be able to roll back new assignments made by a call
+of |can_unify|. To this end we provide a method |polymorphics| that can be
+called before to record which type variables are unassigned, and a second method
+|make_polymorphic| that undoes any type assignment to those polymorphic
+variables. There should obviously not be any remapping of type variables (as
+general |type| unification described below may occasion) done between the two
+calls; indeed these methods only serve in the implementation of |type::unify|.
+
+@< Function definitions @>=
+BitMap type_assignment::polymorphics() const
+{ BitMap result(threshold+equiv.size());
+  for (unsigned int i=threshold; i<result.capacity(); ++i)
+    result.set_to(i,equiv[i-threshold]==nullptr);
+  return result;
+}
+void type_assignment::make_polymorphic(const BitMap& which)
+{ assert(which.capacity()<=threshold+equiv.size());
+  for (unsigned int i : which)
+    equiv[i-threshold]=nullptr;
+}
+
+@ A helper method |renumber| can be used during substitution to ensure that the
+remaining polymorphic variables are compacted to become consecutive. Doing this
+on the fly is not efficient, but |equiv| is hardly ever a large vector.
+
+@< Function definitions @>=
+unsigned int type_assignment::renumber(unsigned int i) const
+  // reflect removal of variables assigned here
+  { for (unsigned int j=i; j-->threshold; )
+    // backwards to avoid using |i| after initialisation
+      if (equiv[j-threshold]!=nullptr)
+        --i; // take into account removal of |j|
+    return i;
+  }
 
 @ We next give the |substitution| method. Types assigned may themselves be
 polymorphic and subject to later substitutions; therefore, and in contrast to
@@ -3095,6 +3152,7 @@ type_expr bake() const; // extract |type_expr| after substitution
 type_expr bake_off(); // extract |type_expr|, sacrificing self if needed
 type& clear(unsigned int d); // remove any type assignments, reserve |d| new ones
 type& clear() @+{@; return clear(degree()); }
+void raise_floor(unsigned int d);
 @)
 bool unify(type& other);
 bool unify_to(const type& other)
@@ -3147,6 +3205,7 @@ type_expr& type::top_expr()
   return *p;
 }
 @)
+
 type& type::expunge()
 {
   if (is_clean())
@@ -3169,6 +3228,15 @@ type_expr type::bake_off() // variant available if |*this| is no longer needed
     return std::move(te); // save some work here
   return assign().substitution(te);
 }
+@)
+void type::raise_floor(unsigned int d)
+{ expunge(); // incorporate pending assignments before shifting
+  const auto old_floor = floor();
+  assign().set_floor(old_floor+d);
+  if (degree()>0)
+    te = shift(te,old_floor,d); // remap any type variables
+}
+
 
 @ When turning a |type_expr| into a |type|, we build a transformed copy using a
 local recursive function |pack|. While doing so it also eliminates
@@ -3459,12 +3527,22 @@ polymorphic type variables are disjoint between the two types, and each is
 disjoint from any type variables that are not polymorphic for the other type.
 The second step consists of then calling the method |type_assignment::unify| for
 the |assign()| of our |type|, and upon success copying it to |other| as well.
+During the first step we ensure that any non polymorphic type is expunged, and
+in case both are polymorphic that the one with a smaller value if |floor()| is
+renumbered after the other one.
 
 @< Function definitions @>=
 
 bool type::unify(type& other)
-{ if (floor()<other.floor())
-  { if (is_polymorphic()) // then shift |te| to start at |other.ceil()|
+{ if (not is_polymorphic())
+  { expunge();
+    if (not other.is_polymorphic())
+      other.expunge();
+  }
+  else if (not other.is_polymorphic())
+    other.expunge();
+  else // both are polymorphic and we must shift one of them
+  { if (floor()<other.floor())
     {
       te = shift(te,floor(),other.ceil()-floor());
       assign().set_floor(other.floor());
@@ -3473,10 +3551,6 @@ bool type::unify(type& other)
       // make degrees equal and ceilings align
     }
     else
-      expunge(); // reduce to monomorphic type, which |other| unifies with
-  }
-  else if (floor()>other.floor() or is_polymorphic() and other.is_polymorphic())
-  { if (other.is_polymorphic())
     {
       other.te = shift(other.te,other.floor(),ceil()-other.floor());
       other.assign().set_floor(floor());
@@ -3484,14 +3558,18 @@ bool type::unify(type& other)
       assign().grow(other.degree()-degree());
       // make degrees equal and ceilings align
     }
-    else
-      other.expunge();
   }
-  type_assignment& a = is_polymorphic() ? assign() : other.assign();
-  bool success = a.unify(te,other.te); // now do the actual unification
-  if (degree()>0 and other.degree()>0) // if both were initially polymorphic
-    other.assign() = a.copy(); // ensure both types see the assignments
-  return success;
+@)
+  type_assignment& a = degree()>0 ? assign() : other.assign();
+  auto snapshot = a.polymorphics();
+  if (a.unify(te,other.te)) // now do the actual unification
+  {
+    if (degree()>0 and other.degree()>0) // if both were initially polymorphic
+      other.a = a.copy();
+    return true;
+  }
+  a.make_polymorphic(snapshot); // roll back any type assignments upon failure
+  return false;
 }
 
 @ The method |matches| is typically called with as our type the type of an
