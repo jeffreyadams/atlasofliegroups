@@ -5342,24 +5342,34 @@ We pass |b| by rvalue reference so that we can move this type into |a| in the
 case where |b| is the more accepting (monomorphic) type.
 
 @< Declarations of exported functions @>=
-bool join_to (type& a, type&& b);
+bool join_to (type& a, const type& b);
 
 @~The implementation of |join_to| mainly dispatches between unification methods
 in the case of polymorphic types, and a local function |accepts| that handles
 detection of possible coercions in the monomorphic case.
 
 @< Function definitions @>=
-bool join_to (type& a, type&& b)
+bool join_to (type& a, const type& b)
 {
   assert(a.floor()==b.floor()); // caller ensures both match the current scope
-  if (a.is_polymorphic() or b.is_polymorphic())
+  if (a.is_void())
+    return true; // |void| accepts all types, no questions asked
+  if (b.is_void())
+  {@; a = b.copy();
+    return true;
+  }
+@)
+if (a.is_polymorphic() or b.is_polymorphic())
     return a.unify_to(b);
-  a.expunge();
-  b.expunge(); // simplify the monomorphic types, so using |unwrap| is OK
-  if (accepts(a.unwrap(),b.unwrap()))
+@)
+  a.expunge(); // simplify the monomorphic type, so using |unwrap| is OK
+  type_expr b_te = b.bake();
+  if (accepts(a.unwrap(),b_te))
     return true; // nothing to do
-  if (accepts(b.unwrap(),a.unwrap()))
-    {@; a = std::move(b); return true; }
+  if (accepts(b_te,a.unwrap()))
+    {@; a = type::wrap(b_te,a.floor());
+      return true;
+    }
   return false;
 }
 

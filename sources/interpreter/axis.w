@@ -1117,105 +1117,106 @@ Type-checking of list displays involves a difficulty that also exists for
 conditional expressions and possibly other cases: all component expressions need
 to be of the same type, but we might not know which. We adopt the rule (borrowed
 from Algol~68) that at least one of the components already gets the common type
-when converted in the context of the original type (pattern), while the others
-can be accepted in a context requiring that common type, possibly either by
-inserting coercions or in case they have a polymorphic type by certain
-substitutions to certain type variables. For instance a list display containing
-expressions of \foreign{a priori} types \.{int} and \.{rat} will compile as a
-list of \.{rat} expressions, or for a polymorphic example the list display
-$[([\,],[3/4,5]),([2],[\,])]$ will compile as type \.{[([int],[rat])]}. (The
-latter example is polymorphic due to the presence of empty lists. This somewhat
-contrived example incidentally did not compile without a cast before the
-introduction of polymorphic types into the language. It should be said that
-since our algorithm chooses between either using coercions, for monomorphic
-types, or using substitutions, for polymorphic types, it still cannot handle
-cases where these could operate in parallel, as in
+when converted unaided in the given context, while the others can be accepted in
+a context requiring that common type, possibly either by inserting coercions or
+in case they have a polymorphic type by unifying to it. For instance a list
+display containing expressions of \foreign{a priori} types \.{int} and \.{rat}
+will compile as a list of \.{rat} expressions, or for a polymorphic example the
+list display $[([\,],[3/4,5]),([2],[\,])]$ will compile as
+type \.{[([int],[rat])]}. (The latter example is polymorphic due to the presence
+of empty lists. This somewhat contrived example incidentally did not compile
+without a cast before the introduction of polymorphic types into the language.
+It should be said that since our algorithm chooses between either using
+coercions, for monomorphic types, or using substitutions, for polymorphic types,
+it still cannot handle cases where these could operate in parallel, as in
 $[([3/4,5/7],[\.{true}]),([2],[\,])]$; this is because of the way the auxiliary
 function |join_to| used operates.) This process is called type balancing (the
 mental image is comparing the ``weights'' of the component expression types, to
 see which one is the most accepting in determining the result type).
 
-The general situation where balancing can be applied is that we have a list of
+The situations where balancing can be applied are those where one has a list of
 expressions that can all be type checked successively, producing a common type
 and a list of converted expressions. This means that for nested conditional
 expressions, we only balance two subexpressions each time; if one or both of
 these subexpression are themselves balanced internally, that involves separate
 calls of |balance|. Also, if for instance we have a row display some of whose
 component expressions are also row displays, the latter are handled by separate
-calls of |balance| (but there may be interaction with the outer call of
-|balance| in case the inner balance fails, through the catching of a
-|balance_error|).
+calls of |balance|. Nonetheless there is interaction in such cases between the
+outer call of |balance| and any inner balance calls that it directly contains:
+in case the inner balancing initially fails, it transmits the set of types is
+was unable to balance in a |balance_error|, which allows the outer call to take
+this into account and possibly retry the conversion of the inner expressions
+once a common type is found.
 
 @ Here is the set-up for balancing. We try to find in |common| a type that can
-accept all component expressions. Branch types incomparable with the current
-value of |common| are put aside in |conflicts|. At the end, |common| may have
-become accepting enough to accommodate them (for instance |void| accepts every
-possible type; we will not however make |common| be |void| unless at least one
-expression \emph{requires} a void type). So at the end we prune |conflict|
-before possibly reporting an error.
+accept all component expressions; being passed as an argument, the caller may
+already have (partially) set this type, or otherwise pass |type::bottom(fc)| to
+leave it undetermined initially. Each branch will be converted initially in the
+context of this type, recording both the type and the converted expression.
+Then a pass is made that tries to possibly modify |common| to a type that
+accepts all the types found. This may fail for some types encountered
+(if |common| was initially undetermined, there is no reason to suppose any
+relation between those types), so we collect the rejected types in a list of
+|conflicts|. When a common type is found this may resolve some conflicts (if
+|common| is |void| it will accept any type), but if after a pruning round there
+are still any |conflicts| left, we report this as an error.
 
-In case of success, the context type |target| that was used as initial goal for
-the conversion of the balanced expressions is set to |common|. The change here
-can only involve specialisation; although |target| initially cannot be
-polymorphic (just undetermined), the specialisation can make it polymorphic if
-|common| is. Then any branches that were originally found to have a different
-type than |common|, but apparently were saved by pruning (so the final value of
-|common| accepts them), are converted again in the context of the |target| type.
-The second conversion can only differ from the first by insertion of coercions,
-so we skip this phase altogether if |common| is polymorphic; in that case the
-fact that pruning succeeded shows that |common| accepts all types of components,
-and this suffices.
+In case of success, any branches that were originally found to have a different
+type than the final |common| one, are converted again in the context of that
+type. The second conversion can only differ from the first by insertion of
+coercions, which the joining process has only considered when |common| is (or
+has become) monomorphic, so we can skip this phase altogether if a polymorphic
+|common| type was found (the joining never changes a monomorphic type into a
+polymorphic one).
 
 @< Local function definitions @>=
 
 void balance
-   ( type& target // component type required from context
+   ( type& common // component type required from context
    , raw_expr_list elist // list of expression to be balanced
    , const expr& e // containing expression, for error reporting
    , const char* description // what kind of components, for error message
    , std::vector<expression_ptr>& components // output, converted expressions
    )
 {
-  unsigned n = length(elist); components.reserve(n);
-  std::vector<type> comp_type; comp_type.reserve(n);
-  type common // will become the common type accepting all branch types
-    = target.copy(); // every expression initially sees the |target| type
-  containers::sl_list<type> conflicts;
-    // except those branch types that are put aside here
-  @< Convert each expression in |elist| in the context of a copy of |target|,
-     pushing the results to |components|; maintain |common| as unified type,
-     record in |conflicts| non conforming component types @>
+  using data = std::pair<std::unique_ptr<type>,expression_ptr>;
+  sl_list<data> comp_data;
+  sl_list<type> conflicts;
+  @< Convert each expression in |elist| in the context of a copy of |common|,
+     pushing the results to |comp_data|... @>
+  @< Join |common| with each of the types in |comp_data|, copying to
+     |conflicts| those for which this fails @>
   @< Prune from |conflicts| any types that |common| now accepts, and if any
      conflicts remain, |throw| a |balance_error| mentioning |common| and all
-     |conflicts|; otherwise specialise |target| to |common| @>
-
+     remaining |conflicts| @>
+@)
   if (not common.is_polymorphic())
-    @< Redo conversion with context type |target| for components that do not
+    @< Redo conversion with context type |common| for components that do not
        already have that type @>
+@)
+  components.clear();
+  components.reserve(comp_data.size());
+  for (auto&& datum : std::move(comp_data))
+    components.push_back(std::move(datum.second));
 }
 
-@ We try to maintain |common| as unifying type between the branches, as computed
-by repeated application of |join_for|. If this fails due to incomparable types
-we move the non-conforming type to |conflicts|. Changing |common| to incorporate
-the presence of |ctype| as a priori type of a branch is what the call
-|join_to(common,ctype)| accomplishes; it decides between changing according to a
-coercion, unifying a polymorphic type, doing nothing if |common| already accepts
-|ctype|, or returning |false| if nothing can be done.
-
-The list |conflicts| also collects types from any |balance_error| thrown
-directly by one of the calls to |convert_expr|. This is because it might happen
-that the conflicting types causing the |balance_error| can nonetheless all be
-converted to a final |common| type that ends up getting chosen due to other
-branches. So we |catch| such an error and just record the types involved; if
-there ends up being a |balance_error| for the parent expression anyway, they
-will be reported among the offending types. However, when catching a
-|balance_error| that was produced in a lower level subexpression, we do
-re-|throw|, as a more accepting type |common| cannot salvage in this case: the
-thrown |balance_error| is in that case independent of our current balancing and
-to be reported directly. For the case where we do move the types from the
-|balance_error| to |conflicts|, the fact that they apparently have internal
-incompatibilities means that they can never provide the |common| type here,
-which justifies making no comparison with that type.
+@ The first pass consists of pushing pairs consisting of a converted expression
+preceded by the |type| found for it onto |comp_data|, making sure that an
+(empty) item is pushed even in case an error occurs during conversion. During
+this pass, |conflicts| collects types from any |balance_error| thrown directly
+by one of the calls to |convert_expr|. This is because it might happen that the
+conflicting types causing the |balance_error| can nonetheless all be converted
+to a final |common| type that ends up getting chosen due to other branches. So
+we |catch| such an error and just record the types involved; if there ends up
+being a |balance_error| for the parent expression anyway, they will be reported
+among the offending types. However, when catching a |balance_error| that was
+produced in a lower level subexpression, we do re-|throw|, as a more accepting
+type |common| cannot salvage in this case: the thrown |balance_error| is in that
+case independent of our current balancing and to be reported directly. For the
+case where we do move the types from the |balance_error| to |conflicts|, the
+fact that they apparently have internal incompatibilities means that they can
+never provide the |common| type here, which justifies not considering them in
+the second pass below.
 
 If a branch that produces a maybe salvageable |balance_error| is a list display,
 the type that it will give for our current balancing has an additional
@@ -1224,17 +1225,14 @@ the type that it will give for our current balancing has an additional
 the |common| type, but at least they will compare correctly to it for the
 purpose of pruning.
 
-@< Convert each expression in |elist| in the context... @>=
+@< Convert each expression in |elist| in the context of a copy of |common|,
+   pushing the results to |comp_data|; for each |balance_error| thrown while
+   converting the component, also add the incriminated types to |conflicts| @>=
 for (wel_const_iterator it(elist); not it.at_end(); ++it)
 { try
-  { components.push_back(expression_ptr());
-       // push, whether or not |convert_expr| succeeds
-    type ctype = target.copy();
-    components.back() = convert_expr(*it,ctype);
-    comp_type.push_back(ctype.copy());
-    if (not join_to(common,std::move(ctype)))
-      conflicts.push_back(std::move(ctype));
-      // record type not convertible to |common|
+  { auto& node = comp_data.emplace_back
+     (std::make_unique<type>(common.copy()),expression_ptr());
+    node.second = convert_expr(*it,*node.first);
   }
   catch (balance_error& err)
   { if (&err.offender!=&*it) // only incorporate top-level balancing errors
@@ -1248,6 +1246,26 @@ for (wel_const_iterator it(elist); not it.at_end(); ++it)
   }
 }
 
+@ In order to ensure equivalent treatment of all branches, we perform joining
+the resulting types (back) with |common| during a separate, second, pass. We try
+to maintain |common| as type accepting those of all the branches, as computed by
+repeated application of |join_for|. For monomorphic types, one type accepts
+another if the latter can be converted to the former. In the case of polymorphic
+types it means the former unifies to the latter; this may seem
+counter-intuitive, but in a mix of more or less polymorphic types, the most
+accepting type will be the least polymorphic one, if all others can unify to it.
+If joining fails due to incomparable types we add the non-conforming types to
+|conflicts|. The call |join_to(common,T)| succeeds without changes if |common|
+already accepts |T|, and otherwise may succeed after setting |common| to |T| is
+|T| accepts |common|; in the remaining cases the call fails without changes.
+
+@< Join |common| with each of the types in |comp_data|, copying to
+     |conflicts| those for which this fails @>=
+for (const auto& node : comp_data)
+  if (not join_to(common,*node.first))
+    conflicts.push_back(node.first->copy());
+
+
 @ Pruning is quite simple, and gives us an occasion to exercise the |erase|
 method of |containers::sl_list|. In such loops one should not forget
 to \emph{not advance} the iterator in case a node is erased in front of it.
@@ -1256,16 +1274,12 @@ Only if at least one conflicting type remains do we report an error; if so, the
 type |common| is added as first type to the error object, unless it is unchanged
 from the |type::bottom(fc)| value it was initialised to (which may happen if
 every branch threw a |balance_error| that was caught), so that one has a
-complete list of types that caused balancing to fail. Upon success, we
-specialise |target| to a type accepting |common| (which might be polymorphic, or
-even |type::bottom(fc)|, as happens in an empty list display which has $0$
-branches); the method |type::unify_specialise| accomplishes this.
-
+complete list of types that caused balancing to fail.
 
 @< Prune from |conflicts| any types... @>=
 { for (auto it=conflicts.begin(); not conflicts.at_end(it); )
       // no increment here!
-    if (join_to(common,std::move(*it))) // only actually moves if it succeeds
+    if (join_to(common,*it))
       conflicts.erase(it);
     else
       ++it;
@@ -1276,12 +1290,10 @@ branches); the method |type::unify_specialise| accomplishes this.
     err.variants.append(std::move(conflicts));
     throw std::move(err);
   }
-  if (not common.unify(target))
-    throw type_error(e,common.bake_off(),target.bake());
 }
 
 @ When converting a component expression a second time in the hope it can adapt
-to the |target| type that results from balancing, the result of a successful
+to the |common| type that results from balancing, the result of a successful
 conversion replaces the previous result in the |components| vector. There is no
 guarantee the new conversion succeeds, but we won't catch any exceptions this
 second time.
@@ -1289,25 +1301,33 @@ second time.
 The same treatment is given to branches whose conversion threw a balancing error
 when initially converted (meaning they had internal balancing that failed in
 their initial type context), but for which all types involved in the balancing
-were later pruned in the outer balancing. Such branches leave their |comp_type|
-at the value |target| had for the attempted initial conversion, which must
-differ from its final value if pruning removed the offending types. Therefore
-the test that |comp_type[i].unwrap()!=target| holds for them, and
-|components[i]|, which was left unset by the failed initial conversion, gets set
-by the new conversion (if it is successful)).
+were later pruned in the outer balancing. Such branches can be recognised by the
+fact that they have no converted expression (the |expression_ptr| is null);
+a second conversion is always attempted for such branches, but for those that
+did at least convert successfully in the first pass we skip the second
+conversion in case the type found in the first pass was already the ultimate
+|common| type, or a polymorphic type (since the fact that no conflicts remained
+shows that |common| accepts that polymorphic type, which can only be due to
+unification).
 
-@< Redo conversion with context type |target| for components that do not
+@< Redo conversion with context type |common| for components that do not
    already have that type @>=
-{ wel_const_iterator it(elist);
-  type_expr te = target.bake();
-  for (unsigned i=0; i<n; ++i,++it)
-    if (not comp_type[i].is_polymorphic() and
-        comp_type[i].bake_off()!=te)
-      components[i] = convert_expr(*it,target);
-      // redo conversion with unifying |target| type
+{ assert(comp_data.size()==length(elist));
+  wel_const_iterator it(elist);
+  type_expr te = common.bake();
+  for (auto& node : comp_data)
+  {
+    if (node.second == nullptr or
+        (not node.first->is_polymorphic() and node.first->bake_off()!=te))
+      node.second = convert_expr(*it,common);
+      // redo conversion with unifying |common| type
+    ++it; // keep traversal of |elist| in sync with that of |comp_data|
+  }
 }
 
-@ With balancing implemented, converting a list display becomes fairly easy.
+@*1 Type checking list displays.
+%
+With balancing implemented, converting a list display becomes fairly easy.
 The simplest case is one where |tp| is a row type (or |undefined_type|, which
 can be specialised to such). In that case we prepare an initially empty
 |list_expression|, then call |balance| with the component type of |tp|,
@@ -7248,7 +7268,12 @@ inline bool functype_absorb (type& tp, const overload_data& entry)
    (entry.f_tp().arg_type.copy(),
     entry.f_tp().result_type.copy());
   type model = type::wrap(te,0,tp.floor()); // proper shift facilitates |unify|
-  return tp.unify(model);
+  if (tp.unify(model))
+  {@;
+    tp.expunge();
+    return true;
+  }
+  return false;
 }
 
 @ Operator casts only access already existing values, which are looked up in the
