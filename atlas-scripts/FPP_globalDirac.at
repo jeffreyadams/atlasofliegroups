@@ -829,15 +829,21 @@ fancy_tester) = void:
 			 then face_verbose := old_face_verbose; time_verbose := old_time_verbose;
 			      test_verbose :=old_test_verbose; test_slightly_verbose := old_test_slightly_verbose
 			 fi;
-			 let answer = if x_sc.number > #KGB(Gsc)*hash2_frac
-			     	      then local_test_GEO_hash_bottom_layer(x_sc,
-				      lambda_sc, Lvd, LF, pol_hash, Uhash, fancy_tester)
-				      elif one_level_revert_flag
-				      then local_test_GEO_hash_one_level(x_sc, lambda_sc, Lvd,
-				      LF, pol_hash, Uhash, fancy_tester)
-				      else local_test_GEO_hash2(x_sc, lambda_sc, Lvd,
-				      LF, pol_hash, Uhash, fancy_tester)
-				      fi
+			 let pmax = pmax(x_sc, M*lambda, Lvd)
+			 then (LAM,NU,R) = low(pmax)  {bottom layer is best only if
+			     lambda and nu both reasonably big?}
+			 then answer = if LAM + NU > hash2_frac*R and
+					  {x_sc.number > #KGB(Gsc)*hash2_frac}
+			     	       	  {LAM > hashlam_frac*R and}
+				      	  NU > hashnu_frac*R
+			     	       then local_test_GEO_hash_bottom_layer(x_sc,
+						lambda_sc, Lvd, LF, pol_hash, Uhash, fancy_tester)
+				       elif one_level_revert_flag
+				       then local_test_GEO_hash_one_level(x_sc, lambda_sc, Lvd,
+				       	    	LF, pol_hash, Uhash, fancy_tester)
+				       else local_test_GEO_hash2(x_sc, lambda_sc, Lvd,
+				       	    	LF, pol_hash, Uhash, fancy_tester)
+				       fi
 			 then () = finish(x_sc, lambda_sc)
 			 then () = if disconn_flag
 			      	   then finish(x,lambda)
@@ -1124,8 +1130,13 @@ set FPP_unitary_hash_bottom_layer([KGBElt] xs, Param_hash UhashG, (Param->bool) 
 				    test_verbose :=old_test_verbose; test_slightly_verbose :=
 					 	      old_test_slightly_verbose
 			       fi;
-			        let answer = if x_sc.number > #KGB(Gsc)*hash2_frac
-			     	      then local_test_GEO_hash_bottom_layer(x_sc,
+			       let pmax = pmax(x_sc, M*lambda, Lvd)
+			       then (LAM,NU,R) = low(pmax)
+			        then answer = if LAM + NU > hash2_frac*R and
+				     	      	 {x_sc.number > #KGB(Gsc)*hash2_frac}
+			     	       	  	{LAM > hashlam_frac*R*G.semisimple_rank and}
+				      		 NU > hashnu_frac*R
+			     	      	     then local_test_GEO_hash_bottom_layer(x_sc,
 				      M*lambda, Lvd, LF, pol_hash, Uhash, fancy_tester)
 				      elif one_level_revert_flag
 				      then local_test_GEO_hash_one_level(x_sc, M*lambda, Lvd,

@@ -266,6 +266,18 @@ set approx_ht_saving(Param p, int N) = int:
 	 fi
     in result
 
+set pmax(KGBElt x, ratvec lambda, LocalVertexData Lvd) = Param:
+    let G = x.real_form
+    then thetaMinus = x.involution - 1, BF = invariant_form(G)
+    then max_loc = max_loc(for v in Lvd.list
+    		  	   do G.two_rho_check*dominant(G, thetaMinus*v)
+			   od)
+    in parameter(x,lambda, Lvd.list[max_loc])
+
+set pmax(KGBElt x, ratvec lambda) = Param:
+    let Lvd = Lvd(x,lambda)
+    in pmax(x, lambda, Lvd)
+
 {computes directed graph of local faces. Output GraphData is
 [[int]],[[int]] giving equivalence classes and the graph. Next output
 [vec]s are IUCL and classListByFace}
@@ -1835,11 +1847,12 @@ set local_test_GEO_hash_real_dumb(KGBElt x, ratvec lambda, {VertexData vd,} Loca
 		   else return one_param_test(parameter(x,lambda,Lvd.list[LF[0][0][0]]), Uhash)
 		   fi
 	      fi
-    then maxDiffLoc = max_loc(for v in Lvd.list
+    then pmax = pmax(x,lambda,Lvd)
+    {then maxDiffLoc = max_loc(for v in Lvd.list
     	 	       	       do G.two_rho_check*(dominant(G,thetaMinus*v))
 			       od)
-    then pmax = first_param(finalize(parameter(x, lambda, Lvd.list[maxDiffLoc]))),
-    	 r = rank(x.involution - 1), rk = rank(x_open(G).involution - 1), step = max(G.semisimple_rank\2,1)
+    then pmax = first_param(finalize(parameter(x, lambda, Lvd.list[maxDiffLoc]))),}
+    then r = rank(x.involution - 1), rk = rank(x_open(G).involution - 1), step = max(G.semisimple_rank\2,1)
     then FPP_max_ht = (G.rho * G.two_rho_check)\1
     {then test_hts = [int]:
     	 {if low(x,lambda) {number(pmax.x) < NK*low_KGB_frac} {defaults to 1/4 of #KGB; so most of time, use to_ht}
@@ -2223,10 +2236,11 @@ set local_test_GEO_hash_def_dumb(KGBElt x, ratvec lambda, LocalVertexData Lvd, [
 		   else return one_param_test(parameter(x,lambda,Lvd.list[LF[0][0][0]]), Uhash)
 		   fi
 	      fi
-    then maxDiffLoc = max_loc(for v in Lvd.list
+    then pmax = pmax(x,lambda, Lvd)
+    {then maxDiffLoc = max_loc(for v in Lvd.list
     	 	             do G.two_rho_check*(dominant(G,thetaMinus*v))
 		             od)
-    then pmax = parameter(x, lambda, Lvd.list[maxDiffLoc])
+    then pmax = parameter(x, lambda, Lvd.list[maxDiffLoc])}
     then (,NUmax,) = low(pmax)
     then () = if NUmax < 2*height(pmax)*low_frac {is_unitary_to_ht is never a good idea}
     	      then to_ht_flag:=false
@@ -2649,10 +2663,11 @@ set local_test_GEO_hash(KGBElt x, ratvec lambda, LocalVertexData Lvd, [[FaceVert
 	      fi
     {then depth= max(r,2)}
     then depth= max(((r-1)*edge_skip*stretcher)\1 + edge_offset_temp + 3, edge_skip + edge_offset_temp + 3)
-    in [Param]: let maxDiffLoc = max_loc(for v in Lvd.list
+    in [Param]: let {maxDiffLoc = max_loc(for v in Lvd.list
     	       		    do G.two_rho_check*(dominant(G,thetaMinus*v))
 		       		    od)
-    	      	then pmax = first_param(finalize(parameter(x, lambda, Lvd.list[maxDiffLoc])))
+    	      	then pmax = first_param(finalize(parameter(x, lambda, Lvd.list[maxDiffLoc])))}
+		     pmax = pmax(x, lambda, Lvd)
 		then Shorthts = if short_hts_flag
 		     	      	then short_hts(pmax)
 		     	      	else next_heights(pmax,depth)
@@ -2750,10 +2765,11 @@ set local_test_GEO_hash2(KGBElt x, ratvec lambda, {VertexData vd,} LocalVertexDa
 	      	   	  	   LF, pol_hash, Uhash, fancy_tester) {use def_dumb if def_flag}
 	      fi
     then depth= max(((r+1)*edge_skip*stretcher)\1 + edge_offset_temp + 3, edge_skip + edge_offset_temp + 3)
-    then maxDiffLoc = max_loc(for v in Lvd.list
+    {then maxDiffLoc = max_loc(for v in Lvd.list
     	 	             do G.two_rho_check*(dominant(G,thetaMinus*v))
 		             od)
-    then pmax = parameter(x, lambda, Lvd.list[maxDiffLoc])
+    then pmax = parameter(x, lambda, Lvd.list[maxDiffLoc])}
+    then pmax = pmax(x, lambda, Lvd)
     then (,NUmax,) = low(pmax)
     then () = if NUmax < 2*height(pmax)*low_frac {is_unitary_to_ht is never a good idea}
     	      then to_ht_flag:=false
@@ -2926,10 +2942,11 @@ set local_test_GEO_hash2_end(KGBElt x, ratvec lambda, LocalVertexData Lvd, [[Fac
 	      fi}
     then depth= max(r+1,3)
     {max(((r+1)*edge_skip*stretcher)\1 + edge_offset_temp + 3, edge_skip + edge_offset_temp + 3)}
-    then maxDiffLoc = max_loc(for v in Lvd.list
+    {then maxDiffLoc = max_loc(for v in Lvd.list
     	 	             do G.two_rho_check*(dominant(G,thetaMinus*v))
 		             od)
-    then pmax = parameter(x, lambda, Lvd.list[maxDiffLoc])
+    then pmax = parameter(x, lambda, Lvd.list[maxDiffLoc])}
+    then pmax = pmax(x, lambda, Lvd)
     then (,NUmax,) = low(pmax)
     then () = if NUmax < 2*height(pmax)*low_frac {is_unitary_to_ht is never a good idea}
     	      then to_ht_flag:=false
@@ -3129,10 +3146,11 @@ set local_test_GEO_hash_one_level(KGBElt x, ratvec lambda, {VertexData vd,}
 	      fi
     {then depth= max(r+2, 4)}
     {max(((r-1)*edge_skip*stretcher)\1 + edge_offset_temp + 3, edge_skip + edge_offset_temp + 3)}
-    then maxDiffLoc = max_loc(for v in Lvd.list
+    {then maxDiffLoc = max_loc(for v in Lvd.list
     	 	       	      do G.two_rho_check*(dominant(G,thetaMinus*v))
 		       	      od)
-    then pmax = parameter(x, lambda, Lvd.list[maxDiffLoc])
+    then pmax = parameter(x, lambda, Lvd.list[maxDiffLoc])}
+    then pmax = pmax(x, lambda, Lvd)
     then (,NUmax,) = low(pmax)
     then () = if NUmax < 2*height(pmax)*low_frac {is_unitary_to_ht is never a good idea}
     	      then to_ht_flag:=false
@@ -3465,11 +3483,12 @@ set local_test_GEO_hash_one_level_end(KGBElt x, ratvec lambda, LocalVertexData L
     then () = long_out_flag:=false {to allow using local_test_hash without recording Params}
     {then depth= max(r+2,4)}
     {max(((r-1)*edge_skip*stretcher)\1 + edge_offset_temp + 3, edge_skip + edge_offset_temp + 3)}
-    then maxDiffLoc = max_loc(for v in LFDKH[0]{Lvd.list}
+    {then maxDiffLoc = max_loc(for v in LFDKH[0]{Lvd.list}
     	 	      	      do let gamma = Lvd.list[v[0]]
     	 	       	      	 in  G.two_rho_check*(dominant(G,thetaMinus*gamma))
 		       	      od)
-    then pmax = parameter(x, lambda, Lvd.list[maxDiffLoc]), step = max(G.semisimple_rank\2,1)
+    then pmax = parameter(x, lambda, Lvd.list[maxDiffLoc]), step = max(G.semisimple_rank\2,1)}
+    then pmax = pmax(x, lambda, Lvd)
     then mu = K_type(x,pmax.lambda_minus_rho)
     then (,NUmax,) = low(pmax)
     then () = if NUmax < 2*height(pmax)*low_frac {is_unitary_to_ht is never a good idea}
@@ -4131,9 +4150,9 @@ set local_test_GEO_hash_bottom_layer(KGBElt x, ratvec lambda, {VertexData vd,}
 				  then () = LFDKH := local_testK_hash_bottom_layer_more(x,lambda, Lvd,
 			    	  LFDKH, eq, gr, CLBF, maxQs, datas, pol_hash,  Uhash)
 			    	  	 {bottom layer test on K-types in datas}
-   		  	    	  {then () = if test_verbose then prints("unitary on bottom layer to ",D,
+   		  	    	  then () = if test_verbose then prints("unitary on bottom layer to ",D,
 		   	    	      	 	" face counts to dim 1: ",for list in LFDKH do #list od)
-		    	    	      fi}
+		    	    	      fi
    		  	    then () = if #LFDKH[0] = 0 then return [] fi
 		  	    then () = if #LFDKH[0] = 1 {already passed D}
    	     	       	    	      then return one_param_test(parameter(x,lambda,
@@ -4141,61 +4160,13 @@ set local_test_GEO_hash_bottom_layer(KGBElt x, ratvec lambda, {VertexData vd,}
 	     		    	      fi
 		  	    in ()
 			    fi
-			    {consider an "else" reverting to hash2?}
-			    {else if test_verbose then prints("sorry, no non-lowest bottom layer K-types;",
-			    	       	       		     " reverting to hash2end") fi;
-			    return local_test_GEO_hash2end(x, lambda, Lvd, LFDKH, pol_hash, Uhash,
-			    	 	fancy_tester)
-			    {should use a short version where verts and Kchars already known!}
-			    fi}
 		    in ()
 	      fi
 	      {now have list of vertices and edges passing bottom layer test out to D}
-   then () = if test_verbose then prints("unitary on bottom layer to height ",D," face counts to dim 1: ",
-   	for list in LFDKH do #list od) fi
    in if one_level_revert_flag
       then local_test_GEO_hash_one_level_end(x, lambda, Lvd, LFDKH, pol_hash, Uhash, fancy_tester)
       else local_test_GEO_hash2_end(x, lambda, Lvd, LFDKH, pol_hash, Uhash, fancy_tester)
       fi
-{
-   then DiffList = for v in LFDKH[0]
-    	 	   do G.two_rho_check*(dominant(G,thetaMinus*Lvd.list[v[0]]))
-		   od
-  then maxDiffLoc = max_loc(DiffList), minDiffLoc = min_loc(DiffList)
-  { Have faces to dim 1 bottom layer unitary to D. Seek to extend list to all higher dims }
-  then () = LFDKH := localFD_KHashbt_lookDownGEO(x,lambda, Lvd, LFDKH, 2,
-       	    	     		r + 1, pol_hash)
-    then unitary_by_dim = vec: for L in LFDKH do #L od
-    {then gammamax = Lvd.list[LFDKH[0][maxDiffLoc][0]]}
-    {then sph_far_flag = dominant(G,thetaMinus*gammamax)*G.two_rho_check/2 < to_ht_frac*(gammamax*G.two_rho_check)}
-    then steps = max(r-1,1)
-    then start=elapsed_ms()
-{    then test_heights = next_heights(pmin, steps)
-    then j0 = first(for x in test_heights do D < x od)
-    	 {so that we test above the height bottom layer has examined}
-    then HT = if j0 = -1
-    	      then -1
-	      else test_heights[j0]
-	      fi}
-    then UParams = [Param]:
-         let ((eq,gr),IUCL,CLBF) = localGraphK(LFDKH)
-	 {these have had know_lower, min_bottom, and bottom_elim
-	 already applied; so just do is_unitary_test}
-    	 then () = if test_verbose
-    	      	   then prints(for list in LFDKH do #list od, " = ",sum(for list in LFDKH do #list od),
-	      	      	" unitary candidates in ",#eq," equivalence classes.");
-		   	prints("number of tests so far = ",unitary_test_counter.use_count() - UTCstart);
-			prints("testing with def_test(1)")
-	           fi
-    	 in local_test_hash(x, lambda, Lvd, LFDKH, eq, gr, CLBF, (Param->bool): (Param p) bool:
-			    is_unitary_def_test_big_SIMPLE(p), Uhash)
-    then time = elapsed_ms() - start
-    then () = if time_verbose
-	      then prints("     ", print_time_string(time),
-	      " for UParams calculation ", test_string, new_line){;}
-	      fi
-   in UParams
-}
 
 set local_test_GEO_hash_bottom_layer(KGBElt x, ratvec lambda, LocalVertexData Lvd,
 [[FaceVertsIndex]] LF, KTypePol_hash pol_hash, Param_hash Uhash) = [Param]:

@@ -10,8 +10,11 @@ set deformLookupCounter = make_counter()
 set deformCalcCounter = make_counter()
 
 {if this is 1, hash2 is always substituted for bottom_layer. If it's 0, then
-hash2 is never substituted for bottom_layer.}
-set hash2_frac = 2/5 {1/2} {1/3} {2/5 might be close to optimal for E7_s??}
+hash2 is never substituted for bottom_layer.} {NOW NOT USED}
+set hash2_frac = 3/4 {1/2} {1/3} {2/5 might be close to optimal for E7_s??}
+
+set hashlam_frac = 3/8
+set hashnu_frac = 3/8
 
 {next three global variables concern function is_unitary_test_big_SIMPLE_interrupt in FPP_faces_herm.at}
 set up_mu_time = int:0
@@ -430,8 +433,9 @@ set report_tested() = void:
  	 	   print_time_string(sum(for list in tested_pos_to_ht_times do sum(list) od)),"; ",
 	   sum(for hash in tested_neg_to_ht_hashes do hash.size() od)," neg tests to_ht, in time = ",
  	   	   print_time_string(sum(for list in tested_neg_to_ht_times do sum(list) od)));
-    prints("time for up_mu = ",print_time_string(up_mu_time),", hash2_frac = ", hash2_frac,
-    	   ", mu_time_mult = ",mu_time_mult, ", mu_rank_mult = ",mu_rank_mult);
+    prints("time for up_mu = ",print_time_string(up_mu_time), ", mu_time_mult = ",mu_time_mult,
+    		   ", mu_rank_mult = ",mu_rank_mult);
+    prints("hashlam_frac = ",hashlam_frac,", hashnu_frac = ",hashnu_frac, ", hash2_frac = ", hash2_frac);
     prints("Dirac elims = ",DTcount,", Dirac_best elims = ",DBTcount);
     prints("  ----------------")
 
