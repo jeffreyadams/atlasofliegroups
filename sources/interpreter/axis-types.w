@@ -4794,8 +4794,8 @@ expression_ptr conform_types
   , expression_ptr&& d, const expr& e);
 expression_ptr conform_types
   ( const type& found, type& required, expression_ptr&& d, const expr& e);
-const conversion_record* row_coercion(const type_expr& final_type,
-				     type_expr& component_type);
+const conversion_record*
+  row_coercion(const type_expr& final_type, type_expr& component_type);
 void coercion(const type_expr& from,
               const type_expr& to,
               const char* s, conversion_info::conv_f f);
@@ -5139,8 +5139,8 @@ currently happens when |final_type| is \.{mat}, in which case this function
 will return |component_type| equal to \.{vec} rather than to \.{[int]}.
 
 @< Function def... @>=
-const conversion_record* row_coercion(const type_expr& final_type,
-                                            type_expr& component_type)
+const conversion_record*
+  row_coercion(const type_expr& final_type, type_expr& component_type)
 { assert(component_type==type_expr());
   for (const auto& entry : coerce_table)
     if (final_type==*entry.to and entry.from->raw_kind()==row_type)
