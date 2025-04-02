@@ -822,7 +822,7 @@ template<bool r_to_l>
 may be components that turn out to have a polymorphic type, in which case we
 must ensure that they are converted at an unchanged level of fixed type
 variables (because any new type variables introduced inside the component
-expression will be numbers by the lexical analyser at that level), but that in
+expression will be numbered by the lexical analyser at that level), but that in
 the resulting type the polymorphic variable may then need renumbering to make
 then disjoint form those of previous components. In a case where this might
 happen, we do not want to pass a component of |tp| to the recursive call of
@@ -877,10 +877,7 @@ case tuple_display:
   for (wel_const_iterator it(e.sublist); not it.at_end(); ++it,++tl_it)
   {
     type& comp_type = comp_types.push_back(type::wrap(*tl_it,fc));
-    if (tl_it->is_unstable())
-      @< Call |convert_expr| for |*it| with |comp_type| @>
-    else
-      comp.push_back(convert_expr(*it,comp_type));
+    @< Call |convert_expr| for |*it| with |comp_type| @>
     @< Handle |is_constant| maintenance and possible need for voiding @>
   }
 @)
@@ -889,7 +886,7 @@ case tuple_display:
   if (is_constant)
      make_row_denotation<false>(result);
      // wrap tuple inside a denotation, see below
-  auto tup_tp = type::wrap_tuple(std::move(comp_types));
+  auto tup_tp = type::wrap_tuple(std::move(comp_types),fc);
   if (tp.unify_to(tup_tp) or coerce(tup_tp.bake(),tp.bake(),result,e.loc))
     return result;
   throw type_error(e,tup_tp.bake_off(),tp.bake());
@@ -1892,7 +1889,7 @@ we set the variable to |false| in that case.
       is_constant = is_constant and
          dynamic_cast<const denotation*>(arg_vector_it->get()) != nullptr;
     }
-    a_priori_type = type::wrap_tuple(std::move(comp_types));
+    a_priori_type = type::wrap_tuple(std::move(comp_types),tp.floor());
       // combine argument types
   }
 }
@@ -3154,8 +3151,7 @@ case let_expr:
   const auto& rhs = lexp.val;
   type decl_type=type::bottom(fc);
   expression_ptr arg = convert_expr(rhs,decl_type);
-  type_expr tuple_tp = pattern_type(pat);
-  if (not decl_type.unify_specialise(tuple_tp))
+  if (not decl_type.has_unifier(pattern_type(pat)))
   @< Complain that the type |decl_type| of |rhs| does not match the identifier
       pattern |pat| in a let expression @>
 @/auto n=count_identifiers(pat);
@@ -3167,7 +3163,7 @@ case let_expr:
     // rare case, introducing void identifier
     arg.reset(new voiding(std::move(arg)));
   layer new_layer(n);
-  thread_bindings(pat,tuple_tp,fc,new_layer,false);
+  thread_bindings(pat,decl_type.bake(),decl_type.floor(),new_layer,false);
   return expression_ptr(new @|
     let_expression(pat,std::move(arg),convert_expr(lexp.body,tp)));
 }
