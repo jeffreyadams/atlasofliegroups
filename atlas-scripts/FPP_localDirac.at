@@ -203,8 +203,7 @@ reps. But not in a few test situations.}
 set unip_flag = true
 
 {if KGB number is below this times #KGB, use is_unitary rather than is_unitary_to_ht}
-set low_KGB_frac = rat: 1/2
-
+{set low_KGB_frac = rat: 1/2}
 
 set difficulty(Param p) = rat:
     let rA = HTA(p)
