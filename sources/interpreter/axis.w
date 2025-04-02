@@ -3505,10 +3505,25 @@ case lambda_expr:
   if (not tp.is_void()) // then we must integrate |body_type| into |tp|
   { const type_expr& sub_tp = tp.top_expr().func()->result_type;
     if (not tp.unify_to(sub_tp,body_type))
-      throw logic_error("Failed to export result type of lambda-expression");
+      @< Report failure to export |body_type| to type |tp| of
+         lambda expression @>
   }
 @/return expression_ptr(new @| lambda_expression
    (copy_id_pat(pat), std::move(body_ptr), std::move(e.loc)));
+}
+
+@ If the context type |tp| constrains the result type, the type |body_type| will
+have take this into account even before the body is type checked. So it should
+be possible to unify the result type of |tp| with the type obtained as
+|body_type| after that type check is completed, and |unify_to| was called to
+integrate the information of |body_type| into |tp|. We therefore treat failure
+of this call to be a |logic_error|, but we do specify the offending types.
+
+@< Report failure to export |body_type| to type |tp| of lambda expression @>=
+{ std::ostringstream o;
+  o << "In lambda expression required to be of type " << tp.bake()
+    << " a body of incompatible type " << body_type.bake() << " was found";
+  throw logic_error(o.str());
 }
 
 @ Type-checking recursive lambda expressions is slightly different. We must, in
@@ -3553,7 +3568,8 @@ case rec_lambda_expr:
   if (not tp.is_void()) // then we must integrate |body_type| into |tp|
   { const type_expr& sub_tp = tp.top_expr().func()->result_type;
     if (not tp.unify_to(sub_tp,body_type))
-      throw logic_error("Failed to export result type of lambda-expression");
+      @< Report failure to export |body_type| to type |tp| of
+         lambda expression @>
   }
 @/return expression_ptr(new @| recursive_lambda
    (fun.self_id,copy_id_pat(pat), std::move(body_ptr), std::move(e.loc)));
@@ -5919,14 +5935,19 @@ case while_expr:
   else if (tp.bake()==int_type)
     return expression_ptr(make_while_loop @| (0x8,
        convert_expr_strongly(w.body,fc,void_type)));
-  type_expr loop_type = row_of_type.copy();
-  if (tp.unify_specialise(loop_type))
-  { type comp_type = type::wrap(loop_type.component_type(),fc);
-    expression_ptr b = convert_expr(w.body,comp_type);
-    if (comp_type.is_void() and not is_empty(w.body))
-      b.reset(new voiding(std::move(b)));
-    return expression_ptr (make_while_loop @|
-       (w.flags.to_ulong(),std::move(b)));
+@)
+  type_expr tmp_tp = row_of_type.copy();
+  if (tp.unify_specialise(tmp_tp))
+  {
+    type_expr& comp_tp = tmp_tp.component_type();
+    type body_type = type::wrap(comp_tp,fc);
+    expression_ptr body = convert_expr(w.body,body_type);
+    if (body_type.is_void() and not is_empty(w.body))
+      body.reset(new voiding(std::move(body)));
+    if (tp.unify_to(body_type.wrap_row()))
+      return expression_ptr (make_while_loop @|
+        (w.flags.to_ulong(),std::move(body)));
+    @< Report failure to export |body_type| to type |tp| of a loop @>
   }
   else
   @< If |tp| can be converted from some row-of type, check |w.body|
@@ -5935,19 +5956,32 @@ case while_expr:
      |type_error| @>
 }
 
+@ Similar to what we saw for lambda expressions, the context type |tp| of a loop
+may impose a constraint on the |body_type|, but that is already taken
+into account before the body is type-checked. The call of |unify_to| that is
+used to integrate the information of |body_type| into |tp| should therefore
+always succeed, and a failure to do so is considered to be a |logic_error|.
+
+@< Report failure to export |body_type| to type |tp| of a loop @>=
+{ std::ostringstream o;
+  o << "In loop of required to be of type " << tp.bake()
+    << " a body of incompatible type " << body_type.bake() << " was found";
+  throw logic_error(o.str());
+}
+
 @ For |while| loops we follow the same logic for finding an appropriate
 component type as for list displays, in section@#list display conversion@>.
 
 @< If |tp| can be converted from some row-of type, check |w.body| against
    its component type, construct the |while_expression|, and apply the
    appropriate conversion function to it; otherwise |throw| a |type_error| @>=
-{ type_expr comp_type;
-  const conversion_record* conv = row_coercion(tp.bake(),comp_type);
+{ type_expr comp_tp;
+  const conversion_record* conv = row_coercion(tp.bake(),comp_tp);
   if (conv==nullptr)
     throw type_error(e,row_of_type.copy(),tp.bake());
 @)
   return expression_ptr(new conversion(*conv, expression_ptr(make_while_loop @|
-       (w.flags.to_ulong(),convert_expr_strongly(w.body,fc,comp_type)))));
+       (w.flags.to_ulong(),convert_expr_strongly(w.body,fc,comp_tp)))));
 }
 
 @ Of course evaluating is what most distinguishes loops from conditionals. The
@@ -6355,60 +6389,61 @@ expression make_for_loop
 }
 
 @ Type-checking is more complicated for |for| loops than for |while| loops,
-since more types and potential coercions are involved. We start by processing
-the in-part in a neutral type context, which will on success set |in_type| to
-its a priori type. Then after binding the loop variable(s) in a new |layer|, we
-process the loop body requiring either the type |*tp.component_type()| if |tp|
-is a row type, of void if the loop occurs in a void context, or a type that
-|row_coercion| finds will allow a subsequent coercion of the row type to~|tp|.
-If none of these apply a |type_error| is thrown, which indicates the row type of
-the first option as expected type. After converting the loop, we must not forget
-to maybe apply voiding (if the body has void type that is not due to a void
-context for the loop itself) or a coercion.
+since more types and potential coercions are involved. Therefore we reorganise
+the code so as to keep the paths corresponding to different type requirements
+from the context (void, row type, or conversion from row type) together, so that
+code not related to that can be shared.
 
-There is a slight twist for the rare occasion that a loop over components
-introduced no identifiers at all, since |for_expression::evaluate| should not
-push a forbidden empty |frame| on the evaluation context. The case is marginal
-since it just allows repeated evaluation of the loop body as many times as the
-number of components looped over, but it is no excluded syntactically (and
-would be hard to). To avoid having to worry about this at runtime, we shall
-substitute a counted loop for such loops.
+We start by processing the \&{in}-part in a neutral type context, which will on
+success set |in_type| to its a priori type, and based on that determine |which|
+kind of loop to perform. Then after binding the loop variable(s) in a new
+|layer|, we determine from |tp| what will happen to the values produced from
+executing the loop body (ignore, use in a row, or convert to some non-row type),
+and based on that what |body_type| to expect.
+
+Then we convert the loop body, apply voiding to the result in the rare cases
+where this is needed (the body has void type that is not due to a void context
+for the loop itself), and when appropriate export the |body_type| found as
+component type of |tp|.
+
+Finally we produce the conversion of the loop from that of its body, and apply a
+conversion function around it in case that was required. There is a slight twist
+for the rare occasion that a loop over components introduces no identifiers at
+all, since |for_expression::evaluate| should not push a forbidden empty |frame|
+on the evaluation context. The case is marginal since it just allows repeated
+evaluation of the loop body as many times as the number of components looped
+over, but it is no excluded syntactically (and would be hard to). To avoid
+having to worry about this at runtime, we shall simply substitute a counted loop
+for such loops.
 
 @< Cases for type-checking and converting... @>=
 case for_expr:
-{ const for_node& f=*e.for_variant;
+{ const for_node& node=*e.for_variant;
   type in_type = type::bottom(fc);
-  expression_ptr in_expr = convert_expr(f.in_part,in_type);  // \&{in} part
+  expression_ptr in_expr = convert_expr(node.in_part,in_type);  // \&{in} part
   subscr_base::sub_type which; // the kind of aggregate iterated over
-  layer bind(count_identifiers(f.id),nullptr);
+  layer bind(count_identifiers(node.id),nullptr);
    // for identifier(s) introduced in this loop
   @< Set |which| according to |in_type|, and set |bind| according to the
-     identifiers contained in |f.id| @>
-
+     identifiers contained in |node.id| @>
+@)
+  bool do_export;
   type body_type = type::bottom(fc);
   const conversion_record* conv=nullptr;
-    // initialise in case we don't reach the assignment below
-  type_expr tmp_tp = row_of_type.copy();
-  bool do_export = tp.unify_specialise(tmp_tp);
-  if (do_export)
-    body_type = type::wrap(tmp_tp.component_type(),fc);
-  else if (tp.is_void())
-    body_type =tp.copy();
-  else if ((conv=row_coercion(tp.bake(),tmp_tp))!=nullptr)
-    body_type = type::wrap(tmp_tp,fc);
-  else throw type_error(e,row_of_type.copy(),tp.bake());
+  @< Set |do_export| to whether |tp| is a row-of type, and |body_type| to
+     the expected type for the loop body; in case a conversion is involved in
+     producing |tp|, point |conv| to the corresponding |conversion_record| @>
 @)
-  expression_ptr body(convert_expr(f.body,body_type));
-  if (do_export)
-    tp.unify_to(body_type.wrap_row());
-  if (body_type.is_void() and not tp.is_void() and not is_empty(f.body))
-    body.reset(new voiding(std::move(body)));
-@/expression_ptr loop;
+  expression_ptr body(convert_expr(node.body,body_type));
+@/@< Export |body_type| as component type of |tp| if appropriate,
+     after possibly inserting a |voiding| around |body| @>
+@)
+  expression_ptr loop;
   if (bind.empty()) // we must avoid having an empty |frame| produced at runtime
     @< Set |loop| to a index-less counted |for| loop controlled by the
        size of |in_expr|, and containing |body| @>
   else loop.reset(make_for_loop@|
-    (f.flags.to_ulong(),f.id,std::move(in_expr),std::move(body),which));
+    (node.flags.to_ulong(),node.id,std::move(in_expr),std::move(body),which));
 @/return conv==nullptr ? std::move(loop)
   : @| expression_ptr(new conversion(*conv,std::move(loop))) ;
 }
@@ -6416,33 +6451,71 @@ case for_expr:
 @ The |in_type| must be indexable by integers (so it is either a row-type or
 vector, rational vector, matrix or string), or it must be the polynomial type,
 indexable by |param_type|. If so, the first or second call to
-|subscr_base::index_kind| will set |comp_type| to the component type resulting
+|subscr_base::index_kind| will set |comp_tp| to the component type resulting
 from such a subscription. We also make |tp| point to the index type used.
 
 @< Set |which| according to |in_type|, and set |bind| according to the
-   identifiers contained in |f.id| @>=
-{ type_expr in_tp = in_type.bake(), comp_type;
+   identifiers contained in |node.id| @>=
+{ type_expr in_tp = in_type.bake(), comp_tp;
   const_type_p inx_type;
-  which = subscr_base::index_kind(in_tp,*(inx_type=&int_type),comp_type);
+  which = subscr_base::index_kind(in_tp,*(inx_type=&int_type),comp_tp);
   if (which==subscr_base::not_so)
     // if not integer-indexable, try $K$-type indexable
-    which = subscr_base::index_kind(in_tp,*(inx_type=&KType_type),comp_type);
+    which = subscr_base::index_kind(in_tp,*(inx_type=&KType_type),comp_tp);
   if (which==subscr_base::not_so)
     // if not integer-indexable, try parameter indexable
-    which = subscr_base::index_kind(in_tp,*(inx_type=&param_type),comp_type);
+    which = subscr_base::index_kind(in_tp,*(inx_type=&param_type),comp_tp);
   if (which==subscr_base::not_so) // if its not that either, it is wrong
   { std::ostringstream o;
     o << "Cannot iterate over value of type " << in_type;
     throw expr_error(e,o.str());
   }
   type_list it_comps; // type of "iterator" value (pattern) named in the loop
-  it_comps.push_front(std::move(comp_type));
+  it_comps.push_front(std::move(comp_tp));
   it_comps.push_front(type_expr(inx_type->copy()));
   const type_expr it_type = type_expr::tuple(std::move(it_comps));
     // build tuple type from index and component types
-  if (not it_type.can_specialise(pattern_type(f.id)))
+  if (not it_type.can_specialise(pattern_type(node.id)))
     throw expr_error(e,"Improper structure of loop variable pattern");
-  thread_bindings(f.id,it_type,fc,bind,true); // force all identifiers constant
+  thread_bindings(node.id,it_type,fc,bind,true); // force all identifiers constant
+}
+
+@ As usual, testing id |tp| is a row-of type is done by calling
+|unify_specialise| with a prepared |type_expr|, in this case called |temp_tp|,
+from which upon success the component type is obtained. If |tp| cannot be
+produced from any loop, a |type_error| is thrown without attempting to convert
+the body; it indicates a generic row type as expected type.
+
+@< Set |do_export| to whether |tp| is a row-of type, and |body_type| to
+   the expected type for the loop body; in case a conversion is involved in
+   producing |tp|, point |conv| to the corresponding |conversion_record| @>=
+{
+  type_expr tmp_tp = row_of_type.copy();
+  do_export = tp.unify_specialise(tmp_tp);
+    // if true, |tp| will be row-of-|body_type|
+  type_expr& comp_tp = tmp_tp.component_type();
+@)
+  if (do_export)
+    body_type = type::wrap(comp_tp,fc);
+  else if (tp.is_void())
+    body_type = tp.copy();
+  else if ((conv=row_coercion(tp.bake(),comp_tp))!=nullptr)
+    body_type = type::wrap(comp_tp,fc);
+  else throw type_error(e,row_of_type.copy(),tp.bake());
+}
+
+@ As before we use |unify_to| to export a component type into a containing
+|type|. The wrapping of |body| in a |voiding| is independent of this, but has to
+be performed first since |wrap_row| modifies its argument |body_type|.
+
+@< Export |body_type| as component type of |tp| if appropriate,
+   after possibly inserting a |voiding| around |body| @>=
+if (not tp.is_void())
+{
+  if (body_type.is_void() and not is_empty(node.body))
+    body.reset(new voiding(std::move(body)));
+  if (do_export and not tp.unify_to(body_type.wrap_row()))
+    @< Report failure to export |body_type| to type |tp| of a loop @>
 }
 
 @ Now follows the code that actually implements various kinds of loops. It is
@@ -6916,7 +6989,7 @@ functions needed here are declared (and in one case even defined in the first
 place) as global rather than as local functions.
 
 @< Set |loop| to a index-less counted |for| loop... @>=
-{ expression_ptr call; const source_location &loc = f.in_part.loc;
+{ expression_ptr call; const source_location &loc = node.in_part.loc;
   switch(which)
   {
   case subscr_base::row_entry: call.reset(new @|
@@ -6934,7 +7007,7 @@ place) as global rather than as local functions.
   break; default: assert(false);
   }
 
-  if (f.flags.test(1)) // whether reversed assembly of return value
+  if (node.flags.test(1)) // whether reversed assembly of return value
     loop.reset(new @| counted_for_expression<6>
       (-1,std::move(call),expression_ptr(nullptr),std::move(body)));
   else
@@ -6948,47 +7021,38 @@ body.
 
 @< Cases for type-checking and converting... @>=
 case cfor_expr:
-{ const cfor_node& c=*e.cfor_variant;
-  expression_ptr count_expr = convert_expr_strongly(c.count,fc,int_type);
-  expression_ptr bound_expr = is_empty(c.bound)
+{ const cfor_node& node=*e.cfor_variant;
+  expression_ptr count_expr = convert_expr_strongly(node.count,fc,int_type);
+  expression_ptr bound_expr = is_empty(node.bound)
     ? expression_ptr(nullptr)
-    : convert_expr_strongly(c.bound,fc,int_type) ;
+    : convert_expr_strongly(node.bound,fc,int_type) ;
 @)
+  bool do_export;
   type body_type = type::bottom(fc);
   const conversion_record* conv=nullptr;
-  type_expr tmp_tp = row_of_type.copy();
-  bool do_export = tp.unify_specialise(tmp_tp);
-  if (do_export)
-    body_type = type::wrap(tmp_tp.component_type(),fc);
-  else if (tp.is_void())
-    body_type =tp.copy();
-  else if ((conv=row_coercion(tp.bake(),tmp_tp))!=nullptr)
-    body_type = type::wrap(tmp_tp,fc);
-  else throw type_error(e,row_of_type.copy(),tp.bake());
+  @< Set |do_export| to whether |tp| is a row-of type, and |body_type| to
+     the expected type for the loop body; in case a conversion is involved in
+     producing |tp|, point |conv| to the corresponding |conversion_record| @>
 @)
-  if (c.flags[2]) // case of absent loop variable
+  if (node.flags[2]) // case of absent loop variable
   { layer bind(0,nullptr);  // no local variables for loop, but allow \&{break}
-    expression_ptr body(convert_expr(c.body,body_type));
-    if (do_export)
-      tp.unify_to(body_type.wrap_row());
-    if (not tp.is_void() and body_type.is_void() and not is_empty(c.body))
-      body.reset(new voiding(std::move(body)));
-  @/expression_ptr loop(make_counted_loop(c.flags.to_ulong(), @|
-      c.id,std::move(count_expr),std::move(bound_expr),std::move(body)));
+    expression_ptr body(convert_expr(node.body,body_type));
+  @/@< Export |body_type| as component type of |tp| if appropriate,
+       after possibly inserting a |voiding| around |body| @>
+  @/expression_ptr loop(make_counted_loop(node.flags.to_ulong(), @|
+      node.id,std::move(count_expr),std::move(bound_expr),std::move(body)));
     return conv==nullptr
            ? std::move(loop) @|
            : expression_ptr(new conversion(*conv,std::move(loop)));
   }
   else // case of a present loop variable
   { layer bind(1,nullptr);
-    bind.add(c.id,type::wrap(int_type,fc),true); // add |id| as constant
-    expression_ptr body(convert_expr(c.body,body_type));
-    if (do_export)
-      tp.unify_to(body_type.wrap_row());
-    if (not tp.is_void() and body_type.is_void() and not is_empty(c.body))
-      body.reset(new voiding(std::move(body)));
-  @/expression_ptr loop(make_counted_loop(c.flags.to_ulong(), @|
-      c.id,std::move(count_expr),std::move(bound_expr),std::move(body)));
+    bind.add(node.id,type::wrap(int_type,fc),true); // add |id| as constant
+    expression_ptr body(convert_expr(node.body,body_type));
+  @/@< Export |body_type| as component type of |tp| if appropriate,
+       after possibly inserting a |voiding| around |body| @>
+  @/expression_ptr loop(make_counted_loop(node.flags.to_ulong(), @|
+      node.id,std::move(count_expr),std::move(bound_expr),std::move(body)));
     return conv==nullptr
            ? std::move(loop) @|
            : expression_ptr(new conversion(*conv,std::move(loop)));
