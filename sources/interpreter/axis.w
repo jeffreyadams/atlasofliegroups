@@ -1713,7 +1713,7 @@ be more careful, and instead record |tp.polymorphics()| initially, and then use
 |restore_polymorphics| instead of |clear|.
 
 @< If a unique variant among |*vars| unifies to the type |tp|... @>=
-{ tp.expunge(); // ensure no assignments are pending
+{ tp.wring_out(); // ensure no assignments are pending
   const overload_data* prev_match=nullptr;
   expression_ptr result;
   for (const auto& variant : *vars)
@@ -1840,7 +1840,7 @@ expression_ptr resolve_overload
      if there are multiple arguments and they are all constant expressions @>
 @)
   id_type id =  e.call_variant->fun.identifier_variant;
-  a_priori_type.expunge(); // make sure any type assignments are baked in
+  a_priori_type.wring_out(); // make sure any type assignments are baked in
   @< Try to find an element of |variants| whose |arg_type| exactly matches
      |a_priori_type|, and for it |return| a corresponding call with argument
      from |tup_exp| @>
@@ -2752,12 +2752,12 @@ case function_call:
   expression_ptr arg = convert_expr(call.arg,arg_type);
   if (arg_type.is_void() and not is_empty(call.arg))
     arg.reset(new voiding(std::move(arg)));
-  if (not f_type.matches_argument(arg_type))
+  if (not f_type.matches_argument(arg_type.wring_out()))
     throw type_error(e,arg_type.bake_off(),std::move(f_type.func()->arg_type));
-  expression_ptr re(new @|
-     call_expression(std::move(fun),std::move(arg),e.loc));
   const type result_type = type::wrap
     (f_type.assign().substitution(f_type.func()->result_type) ,fc);
+  expression_ptr re(new @|
+     call_expression(std::move(fun),std::move(arg),e.loc));
   return conform_types(result_type,tp,std::move(re),e);
 }
 
@@ -5524,7 +5524,7 @@ case discrimination_expr:
 @)
   type subject_type = type::bottom(fc);
   expression_ptr c  =  convert_expr(exp.subject,subject_type);
-  if (subject_type.expunge().expand().kind()!=union_type)
+  if (subject_type.expand().kind()!=union_type)
     @< Report that a discrimination clause needs to be a union type,
        |exp.subject| has non-union type |subject_type| @>
   const auto* variants = subject_type.tuple();
@@ -7330,7 +7330,7 @@ inline bool functype_absorb (type& tp, const overload_data& entry)
   type model = type::wrap(te,0,tp.floor()); // proper shift facilitates |unify|
   if (tp.unify(model))
   {@;
-    tp.expunge();
+    tp.wring_out();
     return true;
   }
   return false;

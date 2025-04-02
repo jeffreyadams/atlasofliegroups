@@ -721,7 +721,7 @@ type analyse_types(const expr& e,expression_ptr& p, unsigned int fc)
 { try
   { type tp=type::bottom(0); // this starts out as an |undetermined_type|
     p = convert_expr(e,tp);
-    tp.expunge();
+    tp.wring_out();
     return tp;
   }
   catch (const type_error& err)
