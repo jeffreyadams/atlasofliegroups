@@ -2381,9 +2381,9 @@ class type_assignment
 { unsigned int threshold; // first |variable_type| number that may vary
   std::vector<type_ptr> equiv; // variable substitutions go here
 public:
-  type_assignment(unsigned int fix_nr, unsigned int var_nr)
+  type_assignment(unsigned int fix_nr, unsigned int degree)
   : threshold(fix_nr)
-  , equiv(var_nr)
+  , equiv(degree)
     // default initialises |equiv| entries, we cannot say ``to |nullptr|''
   {}
 @)
@@ -3053,11 +3053,11 @@ class type
   type_assignment a;
 @)
   type() : te(), a(0,0) @+{}
-  type(unsigned int fix_nr,unsigned int var_nr) : te(), a(fix_nr,var_nr) @+{}
+  type(unsigned int fix_nr,unsigned int degree) : te(), a(fix_nr,degree) @+{}
 public:
   static type wrap(const type_expr& te,
 		   unsigned int fix_count, unsigned int gap=0);
-  static type wrap_tuple(sl_list<type>&& components);
+  static type wrap_tuple(sl_list<type>&& components, unsigned int floor);
   static type constructor(type_expr&& te, unsigned int degree);
   static type bottom(unsigned int fix_count); // a polymorphic type variable
   type(type&& tp) = default;
@@ -3320,31 +3320,35 @@ type type::wrap (const type_expr& t, unsigned int fix_count, unsigned int gap)
   return result;
 }
 
-@ When we string together a list of |type| values into a single tuple |type|,
-we make its |floor()| the maximum of those of the components, and renumber
-polymorphic type variables from there, avoiding any collision between variables
-from different components.
+@ When we string together a list of |type| values into a single tuple |type|, a
+|floor| value is passed that indicates the number of type variables fixed in the
+current context, and that will become the |floor()| value of that |type|; this
+is important in particularly because the list may be empty. Each component type
+has its own |floor()| value that might be lower than |floor|, if attached to a
+value produced before the currently abstracted type variables were introduced.
+So we make sure that this |floor()| is used as threshold in the call of |pack|
+to renumber its type variables, avoiding the accidental capture of polymorphic
+variables as fixed ones. We also adapt the |start| field used for the renumbered
+variables, so as to keep the sets of polymorphic type variables from distinct
+components disjoint.
 
 @< Function definitions @>=
-type type::wrap_tuple(sl_list<type>&& components)
+type type::wrap_tuple(sl_list<type>&& components, unsigned int floor)
 {
-  unsigned int floor = 0;
-  for (const auto& comp : components)
-    floor = std::max(floor,comp.floor());
-
   trans_list translate(floor,floor);
 
   dressed_type_list aux;
-  for (auto it = components.begin(); it!=components.end(); ++it)
+  for (auto&& comp : std::move(components))
   {
-    type&& comp = std::move(*it);
+    assert(comp.floor()<=floor); // fixed variables cannot become polymorphic
+    translate.fc = comp.floor(); // interpret as fixed below this threshold
     aux.push_back(pack(comp.bake_off(),translate));
     translate.start += translate.vars.size();
       // keep polymorphic variables disjoint
-    translate.vars.clear();
+    translate.vars.clear(); // forget the |vars| seen when done with |comp|
   }
 
-  type result(floor,translate.start);
+  type result(floor,translate.start-floor);
   result.te = type_expr::tuple(std::move(aux.undress()));
   return result;
 }
