@@ -901,7 +901,7 @@ set make_big_unitary_hash() = big_unitary_hash_table:
 					     	  then uhashes[rfnum].match(p)
 						  else nuhashes[rfnum].match(p)
 						  fi
-	       				in ans
+	       				in ans {this records full sig!}
      	 			   fi
                        then sigD_ind = K_type_pol_hashes[rfnum].match(sigD)
 		       then () = sigs[rfnum] #:= sigD_ind
@@ -1803,32 +1803,10 @@ set hermitian_form_irreducible_to_ht_big_SIMPLE(Param p,int N) = KTypePol:
   then () = p := herm_center(p)
   then L = big_unitary_hash.ulookup(p)
   then () = if L.>=
-       	    then {let startCF = elapsed_ms()
-	    	 then m = char_counter.use()
-	    	 then} let ans =K_type_pol(character_formula_to_height(p,N))
-		 {then () = charTime +:= elapsed_ms() - startCF}
+       	    then let ans =K_type_pol(character_formula_to_height(p,N))
 		 in return(ans)
 	     fi
-  in {if interrupt_flag
-     then hermitian_form_irreducible_to_ht_big_SIMPLE_interrupt(p,N, interrupt_base_time)
-     else if low(p,N) {low(p.x,p.lambda,N)}
-     	  then let (,pL) = wkgood_Q(p)
-	       then derpLs = for qLj in derived_factor_params0(pL)
-    	 	    	     do monomials(finalize(qLj))
-		  	     od.##
-    	       then () = if #derpLs = 0
-	       	       	 then big_unitary_hash.umatch(p);
-	       	       	      return K_type_pol(character_formula_to_height(p,N))
-			 fi
-	       then NLs = for derpL in derpLs do N - height(p) + height(derpL) od
- 	       then dersigs = for derpL@j in derpLs
-		       	      do big_unitary_hash.sig_entry(derpL,NLs[j])
-			      od
-	       then sigL = to_ht(glue_sigs(dersigs, LKTs(pL)[0]), N -height(p) + height(pL))
-	       in to_ht(theta_induce_K(sigL,G), N)
-     	  else} big_unitary_hash.sig_entry(p,N)
-	  {fi} {low}
-     {fi}{interrupt}
+  in big_unitary_hash.sig_entry(p,N)
 
 set HOWMTH = int:0
 
@@ -1839,10 +1817,9 @@ set hermitian_form_irreducible_to_ht_big(Param p,int N) = KTypePol:
     else to_ht(hermitian_form_irreducible(p),N)
     fi
 
-
 { meant to be used for G simple }
 { compute Hermitian form to ht on p, report if it is unitary}
-set is_unitary_to_ht_big_SIMPLE(Param p,int N) = bool:
+set is_unitary_to_ht_big_SIMPLE_old(Param p,int N) = bool:
   if (not is_hermitian(p)) or (not is_pos_on_LKTs(p)) then return false fi;
   let G = p.real_form
   then FPP_flag = is_FPP(G,p.infinitesimal_character)
@@ -1851,35 +1828,8 @@ set is_unitary_to_ht_big_SIMPLE(Param p,int N) = bool:
 	    fi
   {then () = p := herm_center(p)}
   then () = if (big_unitary_hash.ulookup(p)).>= then return true fi
-  {then () = if (big_unitary_hash.nulookup(p)).>= then return false fi} {This line was a mistake: p could be nonunitary but unitary to ht N. Led to problems in E7_s, when this eliminated UNITARY reps agreeing with  a nonunitary p to ht N}
-  in {if interrupt_flag
-     then is_unitary_to_ht_big_SIMPLE_interrupt(p,N, interrupt_base_time)
-     else} {unitary_test_counter.use(); done in calls below}
-     	  is_pure(big_unitary_hash.sig_entry(p,N))
-     {fi}
-{
-     	  if low(p,N) {low(p.x,p.lambda,N)}
-     	  then {is_pure(hermitian_form_irreducible_to_ht(p,N))}
-	       let boo = is_unitary_to_ht(p,N)
-	       then () = if not boo
-	       	       	 then big_unitary_hash.numatch(p)
-			 fi
-	       in boo
-     	  else let P = hermitian_form_irreducible(p)
-	       then () = if is_pure(P)
-	       	       	 then big_unitary_hash.umatch(p)
-			 else big_unitary_hash.numatch(p)
-			 fi
-	       in is_pure(to_ht(P,N))
-     	  fi
-     fi
-}
-{ compute Hermitian form to ht on p, report if it is unitary}
-set is_unitary_to_ht_big(Param p,int N) = bool:
-  if (not is_hermitian(p)) or (not is_pos_on_LKTs(p)) then return false fi;
-  if (big_unitary_hash.ulookup(p)).>= then return true fi;
-  let pds = derived_factor_params0(p)
-  in all(for pd in pds do @bool: is_unitary_to_ht_big_SIMPLE(pd,N) od)
+  in is_pure(big_unitary_hash.sig_entry(p,N)) {this will use full is_unitary
+     					      if that seems faster}
 
 { meant to be used for G simple }
 { run successive is_unitary_to_ht tests, recording time; after each, run interruptible is_unitary with twice
@@ -1895,6 +1845,71 @@ set easy_up() = void:
 set easy_up(int D) = void:
     easy_up_flag :=true;
     easy_up_shift := D
+
+{try is_unitary if H big enough for it to look faster. Increasing ht_bound_frac means
+is_unitary is tried LESS often}
+set ht_bound_frac = rat: 1/2
+
+{if low suggests it's worthwhile, try is_unitary with time limit time}
+set is_unitary_to_ht_big_SIMPLE(Param p, int H, int time) = bool:
+  if (not is_hermitian(p)) or (not is_pos_on_LKTs(p)) then return false fi;
+  let G = p.real_form, (,NU,) = low(p)
+  then ht_bound = NU/(2*low_frac) {this estimates the biggest ht where to_ht could be faster than is_unitary}
+  then FPP_flag = is_FPP(G,p.infinitesimal_character)
+  then () = if not FPP_flag and H < ht_bound*ht_bound_frac
+    	    then return is_unitary_to_ht(p,H) {prints("FPP DANGER TO HT at ",p)}
+	    elif not FPP_flag
+	    then return is_pure(to_ht(hermitian_form_irreducible(p),H))
+	    fi
+  then () = p := herm_center(p)
+  then () = if (big_unitary_hash.ulookup(p)).>= then return true fi
+  then result = 0, mu = K_type(p.x, p.lambda_minus_rho) {LKTs(p)[0]},
+       top_ht = floor((p.infinitesimal_character)*G.two_rho_check)
+       {unitary to top_ht implies unitary}
+
+  then () = if H > ht_bound*ht_bound_frac {so is_unitary might be faster?}
+       	    then let maybe_form = hermitian_form_irreducible(p,time)
+  	    	 in result := case maybe_form
+       	    	      	      | timed_out: 0
+		      	      | done(form): if is_pure(form)
+		      		       	    then big_unitary_hash.umatch(p); 1
+				    	    else big_unitary_hash.numatch(p);
+				      		 if is_pure(to_ht(form,H))
+				      		 then 1
+				      		 else -1
+				      	    	 fi
+				    	    fi
+			      esac
+	    fi
+  in if result > 0
+     then true
+     elif result < 0
+     then false
+     else is_unitary_to_ht_big_SIMPLE_old(p,H)
+     fi
+
+set old_to_ht_flag = false
+
+{controls the time alloted to an is_unitary trial in is_unitary_to_ht. Increasing it gives more time
+to the is_unitary trial, so it succeeds more often}
+set avtime_frac = rat: 16/1
+
+set is_unitary_to_ht_big_SIMPLE(Param p, int H) = bool:
+    if old_to_ht_flag then return is_unitary_to_ht_big_SIMPLE_old(p, H) fi;
+    let N_hts = min(#tested_pos_to_ht_times, height(p) - H)
+    then prevtimes = for j:N_hts do tested_pos_to_ht_times[j] od.##
+    then () = if #prevtimes = 0
+    	      then return is_unitary_to_ht_big_SIMPLE(p,H,floor(avtime_frac*100))
+	      fi
+    then avtime = sum(prevtimes)/#prevtimes
+    in is_unitary_to_ht_big_SIMPLE(p, H, floor(avtime_frac*avtime))
+
+{ compute Hermitian form to ht on p, report if it is unitary}
+set is_unitary_to_ht_big(Param p,int N) = bool:
+  if (not is_hermitian(p)) or (not is_pos_on_LKTs(p)) then return false fi;
+  if (big_unitary_hash.ulookup(p)).>= then return true fi;
+  let pds = derived_factor_params0(p)
+  in all(for pd in pds do @bool: is_unitary_to_ht_big_SIMPLE(pd,N) od)
 
 {N is how many steps up in to_ht list to start}
 set is_unitary_test_big_SIMPLE_interrupt(Param p, int N) = bool:

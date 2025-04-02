@@ -167,7 +167,7 @@ set next_heights = (RealForm -> int):
        	    then i = ichash.match(L)
 	    then ()= if i = I {haven't yet seen L}
 		     then nhs#:=max(for p in all_parameters_gamma(L, null(L.rank))
-    	     	      	       	    do next_heights(p, (semisimple_rank(L) + 3)\2)
+    	     	      	       	    do next_heights(p, max(1,(semisimple_rank(L) + 1)\3)) {3)\2)}
 	     	     	       	    od.##)
     	    	     fi
 	    in nhs[i]
