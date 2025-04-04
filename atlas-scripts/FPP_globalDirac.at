@@ -127,6 +127,8 @@ these parameters are studied only on most split Cartan; software finds
 that a parameter there has a nonunitary (reducible) LQ, and fails to
 to record unitary factors.}
 
+set none_count = int:0
+
 {uses LPm_table to keep track of local face info}
 set FPP_unitary_hash_general([(KGBElt,ratvec)] xlambdas, Param_hash Uhash,
     (Param->bool) fancy_tester, (KGBElt, ratvec, LocalVertexData,[[FaceVertsIndex]],
@@ -193,7 +195,7 @@ then coh_ind_unip_few(G,Uhash)}
 		in if skip_lambda
 		   then if FPP_report_flag
 		   	then prints("Already computed (",x,",",lambda,")")
-			fi; return ()
+			fi; ()
 		   else
 	 	 let startxl = elapsed_ms(), startUhash = Uhash.size(),
 		     		   startUcounter = unitary_test_counter.use_count(),
@@ -211,7 +213,31 @@ then coh_ind_unip_few(G,Uhash)}
 		 then startLF = elapsed_ms()
 		 {then () = prints("time thru start [",k,"] =
 		 ",print_time_string(startLF - start))}
-		 then startDTcount = DTcount
+		 {then ps = for v in Lvd.list do parameter(x,lambda,v) od}
+		 {then p0 = parameter(x,lambda, 0*lambda)}
+		 then (Rs,CORs) = simple_real_subsystem(x)
+		 then colCORs = [vec]: for alpha@j in Rs
+		      	      	     do if Cayley(alpha,x) != x
+				     	and (((CORs[j]*lambda).numer)%2).=
+					{Cayley(alpha,p0).x != x}
+				     	then [CORs[j]]
+					else []
+					fi
+				     od.##
+		 in if not is_pos_on_LKTs(parameter(x,lambda, 0*lambda))
+		       and all(for v in Lvd.list
+		       	       do @bool: all(for colCOR in colCORs
+			       	      do @bool: (v*colCOR).>
+				      od)
+			       od) {no relevant real coroots vanish on any nu}
+		       {and all(for p in ps
+			       do not is_pos_on_LKTs(p)
+				  and any(for q in monomials(finalize(p))
+			      	 	  do not is_pos_on_LKTs(q)
+					  od)
+			       od)}
+		    then none_count +:= 1; {prints("SKIPPED ",x,",",lambda);} ()
+		    else let startDTcount = DTcount
 		 then LF = if by_zero_flag {and height(p0) > 0}
 		      	   then localFD_1Dirac2_by_zero(x, lambda, Lvd, Perm2)
 			   else localFD_1Dirac2(x, lambda, Lvd, Perm2)
@@ -250,6 +276,7 @@ then coh_ind_unip_few(G,Uhash)}
 				 prints("  ------------------")
 			     fi
 		    fi {#LF[0]=0}
+		    fi {not is_pos_on_LKTs) > 1}
 		    fi{skip_lambda}
 		 od{xlambdasW}
     then () = face_verbose:=old_face_verbose; time_verbose:=old_time_verbose;
@@ -459,7 +486,25 @@ set FPP_unitary_hash_general([KGBElt] xs, Param_hash Uhash, (Param->bool) fancy_
 					       	     startUcounter = unitary_test_counter.use_count(),
 						     startUtime = unitaryTime, startCcounter =
 						     char_counter.use_count(), startCtime = charTime
-				      	       then startLF = elapsed_ms(), startDTcount = DTcount
+				      	       then startLF = elapsed_ms(){, startDTcount = DTcount}
+	 				       {then p0 = parameter(x,lambda, 0*lambda)}
+		 			       then (Rs,CORs) = simple_real_subsystem(x)
+		 			       then colCORs = [vec]: for alpha@j in Rs
+		      	      	     	       	    	    do if Cayley(alpha,x) != x
+				     			       	  and (((CORs[j]*lambda).numer)%2).=
+								  {Cayley(alpha,p0).x != x}
+				     			       then [CORs[j]]
+							       else []
+							       fi
+				     			     od.##
+		 			       in if not is_pos_on_LKTs(parameter(x,lambda, 0*lambda))
+					             and all(for v in Lvd.list
+		       	       			    	     do @bool: all(for colCOR in colCORs
+			       	      			   	       	   do @bool: (v*colCOR).>
+				      				      	   od)
+			       			             od)
+		   				   then none_count +:= 1; {prints("SKIPPED ",x,",",lambda);} ()
+		    			       else let startDTcount = DTcount
  		      		      	       then LF = if by_zero_flag {and dominant(G,lamthlam)*G.two_rho_check > 0}
 		      	      	      	      	       	 then localFD_1Dirac2_by_zero(xW, lambdaW, Lvd, Perm2)
 			   				 else localFD_1Dirac2(xW, lambdaW, Lvd, Perm2)
@@ -510,6 +555,7 @@ set FPP_unitary_hash_general([KGBElt] xs, Param_hash Uhash, (Param->bool) fancy_
 					 		   prints("  ------------------")
 				    		       fi{every_lambda_flag}
 			      			 fi{#LF[0] = 0}
+					      fi {not is_pos_on_LKTs}
 					    fi{lcontnum.>=}
                    		od{lambda}
 				{would be easy enough to get [Param] for each (x,lambda), but for now just
@@ -810,7 +856,25 @@ fancy_tester) = void:
 			      ", #uparams so far = ",sum(answerCards));
 		   		   prints("  ------------------")
         	   		   fi {every_lambda_flag}
-		 then startLF = elapsed_ms(), startDTcount = DTcount
+		 then startLF = elapsed_ms(){, startDTcount = DTcount}
+	 	 then p0 = parameter(x,lambda, 0*lambda)
+		 then (Rs,CORs) = simple_real_subsystem(x)
+		 then colCORs = [vec]: for alpha@j in Rs
+		      	      	     do if Cayley(alpha,x) != x
+				     	and (((CORs[j]*lambda).numer)%2).=
+					    {Cayley(alpha,p0).x != x}
+				     	then [CORs[j]]
+					else []
+					fi
+				     od.##
+		 in if not is_pos_on_LKTs(parameter(x,lambda, 0*lambda))
+		       and all(for v in Lvd.list
+		       	       do @bool: all(for colCOR in colCORs
+			       	      	     do @bool: (v*colCOR).>
+				      	     od)
+			       od)
+		    then none_count +:= 1; {prints("SKIPPED ",x,",",lambda);} ()
+		    else let startDTcount = DTcount
 		 {then () = time_verbose := old_time_verbose} {REMOVE THIS LINE??}
 		 then LF = if by_zero_flag {and height(parameter(x,lambda,0*lambda)) > 0}
 		      	   then localFD_1Dirac2_by_zero(x_sc, lambda_sc, Lvd, Perm2)
@@ -884,6 +948,7 @@ fancy_tester) = void:
 				 prints("  ------------------")
 			    fi
 		    fi{#LF[0] = 0}
+		   fi {not is_pos_on_LKTs}
 		 fi {is_finished(x,lambda)}
 		 od{xlambdas}
     then () = if disconn_flag
@@ -1113,11 +1178,28 @@ set FPP_unitary_hash_bottom_layer([KGBElt] xs, Param_hash UhashG, (Param->bool) 
 		   		   prints("  ------------------")
         	   		fi {every_lambda_flag}
 		      then startDTcount = DTcount
- 		      then LF = if by_zero_flag {and dominant(G,lamthlam)*G.two_rho_check > 0}
-		      	      	then localFD_1Dirac2_by_zero(x_sc, M*lambda, Lvd, Perm2)
-			   	else localFD_1Dirac2(x, lambda, Lvd, Perm2)
-			   	fi
-		      then () = if every_lambda_deets_flag and FPP_report_flag
+	 	      {then p0 = parameter(x,lambda, 0*lambda)}
+		      then (Rs,CORs) = simple_real_subsystem(x)
+		      then colCORs = [vec]: for alpha@j in Rs
+		      	      	     	    do if Cayley(alpha,x) != x
+				     	       and (((CORs[j]*lambda).numer)%2).=
+						   {Cayley(alpha,p0).x != x}
+				     	       then [CORs[j]]
+					       else []
+					       fi
+				     	     od.##
+		     in if not is_pos_on_LKTs(parameter(x,lambda, 0*lambda))
+		       	   and all(for v in Lvd.list
+		       	       	   do @bool: all(for colCOR in colCORs
+			       	      	     	 do @bool: (v*colCOR).>
+				      	     	 od)
+			           od)
+		       	then none_count +:= 1; {prints("SKIPPED ",x,",",lambda);} ()
+		    	else let LF = if by_zero_flag {and dominant(G,lamthlam)*G.two_rho_check > 0}
+ 		      	      	      then localFD_1Dirac2_by_zero(x_sc, M*lambda, Lvd, Perm2)
+			   	      else localFD_1Dirac2(x, lambda, Lvd, Perm2)
+			   	      fi
+		             then () = if every_lambda_deets_flag and FPP_report_flag
     	      	      	      	then prints("time for localFD_1Dirac2* = ",
 				print_time_string(elapsed_ms() - startLF),
 				" to find [",#LF[0],",",#LF[1],"] verts and edges; Dirac eliminated ",
@@ -1134,7 +1216,7 @@ set FPP_unitary_hash_bottom_layer([KGBElt] xs, Param_hash UhashG, (Param->bool) 
 			       then (LAM,NU,R) = low(pmax)
 			        then answer = if LAM + NU > hash2_frac*R and
 				     	      	 {x_sc.number > #KGB(Gsc)*hash2_frac}
-			     	       	  	{LAM > hashlam_frac*R*G.semisimple_rank and}
+			     	       	  	 LAM > hashlam_frac*R and
 				      		 NU > hashnu_frac*R
 			     	      	     then local_test_GEO_hash_bottom_layer(x_sc,
 				      M*lambda, Lvd, LF, pol_hash, Uhash, fancy_tester)
@@ -1201,6 +1283,7 @@ set FPP_unitary_hash_bottom_layer([KGBElt] xs, Param_hash UhashG, (Param->bool) 
 					 prints("  ------------------")
 				    fi{every_lambda_flag}
 			       fi{#LF = 0}
+			     fi {not is_pos_on_LKTs}
                  od {lambdas} {good_entries} {would be easy enough to get [Param] for each (x,lambda), but for now
 		       just put unitary reps in Uhash}
     	   then () = if disconn_flag

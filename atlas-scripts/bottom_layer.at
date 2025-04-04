@@ -676,6 +676,9 @@ set more_flag = false
 {meant to hold nonunitary reps identified first by more}
 set more_good_hash = make_Param_hash()
 
+{meant to hold nonunitary Params not eliminated by more}
+set more_bad_hash = make_Param_hash()
+
 set every_MBEF_flag = false
 
 {insist that p0 final, test is for p0; p is included to fix Q}
@@ -948,7 +951,14 @@ set bottom_elim_factors(Param p0, Param p, QKL_bottom_data (Q, LKdata), KTypePol
 					       fi
 				     in ans
 			od )
-   	then () = if not result then {prints("adding to befmoreCount");} befmoreCount +:=1 fi
+   	then () = if not result
+	     	  then {prints("adding to befmoreCount");}
+		       let MG = more_good_hash.size()
+		       then mG = more_good_hash.match(p0)
+		       in if mG = MG
+		       	  then befmoreCount +:=1
+		     	  fi
+		   fi
 	then () =  befmoreTime +:= elapsed_ms()-start
 	in result
 
@@ -1317,146 +1327,6 @@ set goodness(Param p, KGPElt Q) = (bool, bool, bool):
 				      od)
     in (is_dominant(G,gamma) and is_regular(G,gamma), is_dominant(G,gamma), is_dominant(G,gamma0))
 
-{
-{P is the K-character of p}
-{need to be sure nQs does not include a Borel}
-{add computation of D = max heights(mu in datas); just do good range sigs to D.}
-{insist that p0 is final, p0 is a LQ of p}
-set bottom_elim_factors_more_old(Param p0, Param p, [QKL_bottom_data] data, KTypePol P)= bool:
-    let start =  elapsed_ms(), G=p.real_form, h = height(p0)
-    then D = max(for (Q,LKdata) in data
-		 do max(for (tau,) in LKdata do height(tau) od#h)
-		 od#h)
-    then maxQps = max_Qps(p0,p)
-    then () = if #maxQps = 0
-    	      then NIHCOUNT +:= 1;
-	      	  if not small_test_flag then prints("bad befm at ",p0) fi;
-	      	   return if quitNIH_flag
-		   	  then true
-			  else is_unitary_to_ht_big_SIMPLE(p0,D)
-			  fi
-	      fi
-     then three_bools = max_goodness(p0, maxQps), R = more_good_hash.size()
-     then good = first(for (g,,) in three_bools do g od)
-     then () = if good>=0
-    	       then let (,pL0) =  maxQps[good]
-	      	    then () = if bottom_verbose then prints("p = ",p0," is a good one!") fi
-                    then answer = is_unitary_hash_big(pL0)
- 		    then () = befmoreTime +:= elapsed_ms() - start
-                    in return answer
-	      	fi
-     then wk_good = first(for (,wg,) in three_bools do wg = true od)
-     then () = if wk_good >= 0 {form on p is induced from form on L}
-    	       then let (,pL0) = maxQps[wk_good]
-	       	    then HG = theta_induce_signature(pL0,G)
-		    then G_pure = is_pure(HG)
-		    in  befmoreTime +:= elapsed_ms() - start;
-			return G_pure
-	        fi
-     then () = if not all(for (Q,list) in data
-			  do  @bool: bottom_elim_factors(p0, p, (Q, list), P)
-			  od)
-	       then let MG = more_good_hash.size()
-		    then mg = more_good_hash.match(p0)
-		    then () = if bottom_verbose and mg=MG
-			      then prints("at p = ",p0,", more helped!")
-			      fi
-		    then () = befmoreTime +:= elapsed_ms() - start
-		    then () = {prints("old adding to befmoreCount");} befmoreCount +:=1
-		    in return false
-	       fi
-     then () = if bottom_verbose then prints("sorry, don't know") fi
-     then () = befmoreTime +:= elapsed_ms() - start
-     in true
-
-{insist that p0 is final, p0 is a LQ of p}
-set bottom_elim_factors_more_old(Param p0, Param p, [QKL_bottom_data] data)= bool:
-    let h = height(p0)
-    then D = max(for (Q,LKdata) in data
-		 do max(for (tau,) in LKdata do height(tau) od#h)
-		 od#h)
-    then CF = character_formula_to_height(p0,D)
-    then P = K_type_pol(CF)
-    in  bottom_elim_factors_more_old(p0, p, data, P)
-
-{D is meant to be max(height(tau) for tau in BKT. nQs are the parabolics where bottom layer might help.}
-{nQs is meant to be new_Qs(), P the K-character of p}
-{need to be sure nQs does not include a Borel}
-{insist that p0 is final, p0 is a LQ of p}
-set bottom_elim_factors_more_old(Param p0, Param p, int D_low, int D, KTypePol P)= bool:
-    let start =  elapsed_ms(), G=p.real_form, (Q0,pL0) = if small_test_flag
-    	 	 	       		      	       	 then theta_stable_data_small(p)
-		 					 else theta_stable_quasi_data(p)
-		 					 fi
-    then maxQs = max_Qs(Q0), R = more_good_hash.size()
-    then maxQps = max_Qps(p0) {[(KGPElt,Param)]}
-    then () = maxQps := for (Q,pL) in maxQps
-    	 	   do if is_hermitian(pL)
-		      then [(Q,pL)]
-		      else []
-		      fi
-		   od.##
-    then () = if #maxQps = 0
-    	      then NIHCOUNT +:= 1;
-	      	   return if quitNIH_flag
-		   	  then true
-			  else is_unitary_to_ht_big_SIMPLE(p0,D)
-			  fi
-	      fi
-    then three_bools = max_goodness(p0, maxQps)
-     then good = first(for (g,,) in three_bools do g od)
-     then () = if good>=0
-    	       then let (,pL0) =  maxQps[good]
-	      	    then () = if bottom_verbose then prints("p = ",p0," is a good one!") fi
-                    then answer = is_unitary_hash_big(pL0)
-                    {then () = attest_is_unitary(p,answer)}
-		    then () = befmoreTime +:= elapsed_ms() - start
-                    in return answer
-	      	fi
-     then wk_good = first(for (,wg,) in three_bools do wg = true od)
-     then () = if wk_good >= 0 {form on p is induced from form on L}
-    	       then let (,pL0) = maxQps[wk_good]
-	       	    then HG = theta_induce_signature(pL0,G){, Ip = theta_induce_irreducible(pL,G)}
-		    then G_pure = is_pure(HG)
-		    in  befmoreTime +:= elapsed_ms() - start;
-			return G_pure
-	        fi
-     then () = if not all(for (Q,list) in bottom_K_type_Qs(p,Q0,D_low,D)
-			  do  @bool: bottom_elim_factors(p0, p, bottom_factors(Q, list),P)
-			  od)
-	       then let MG = more_good_hash.size()
-		    then mg = more_good_hash.match(p0)
-		    then () = if bottom_verbose and mg=MG
-			      then prints("at p = ",p0,", more helped!")
-			      fi
-		    then () = {prints("old adding to befmoreCount");} befmoreCount +:= 1
-		    then () = befmoreTime +:= elapsed_ms() - start
-		    in return false
-	       fi
-     then () = if bottom_verbose then prints("sorry, don't know") fi
-     then () = befmoreTime +:= elapsed_ms() - start
-     in true
-
-{insist that p0 is final, p0 is a LQ of p}
-set bottom_elim_factors_more_old(Param p0, Param p, int D, KTypePol P)= bool:
-    bottom_elim_factors_more_old(p0, p, height(p), D, P)
-
-{insist that p0 is final, p0 is a LQ of p}
-set bottom_elim_factors_more_old(Param p, Param p0, int D_low, int D) = bool:
-    let {startCF = elapsed_ms(),} (Q0,pL0) = if small_test_flag
-    	 	 	       		   then theta_stable_data_small(p)
-		 			   else theta_stable_quasi_data(p)
-		 			   fi
-    then CF = character_formula_to_height(p0,D)
-    then P = K_type_pol(CF)
-    in  bottom_elim_factors_more_old(p0, p, D_low, D, P)
-
-{insist that p0 is final, p0 is a LQ of p}
-set bottom_elim_factors_more_old(Param p0, Param p, int D) = bool:
-    bottom_elim_factors_more_old(p0, p, height(p), D)
-
-}
-{set befm_old_flag = false}
 
 {P is the K-character of p}
 {need to be sure nQs does not include a Borel}
@@ -1506,12 +1376,13 @@ set bottom_elim_factors_more(Param p0, Param p, [QKL_bottom_data] data, KTypePol
 			  od)
 	       then let MG = more_good_hash.size()
 		    then mg = more_good_hash.match(p0)
-		    then () = if bottom_verbose and mg=MG
-			      then prints("at p = ",p0,", more helped!")
+		    then () = if mg=MG
+			      then if bottom_verbose
+			      	   then prints("at p = ",p0,", more helped!")
+				   fi;
+			      	   befmoreCount +:=1
 			      fi
                     {then () = attest_is_unitary(p,false)}
-		    then () = befmoreTime +:= elapsed_ms() - start
-		    then () = {prints("adding to befmoreCount");} befmoreCount +:=1
 		    in return false
 	       fi
      then () = befmoreTime +:= elapsed_ms() - start
@@ -1592,12 +1463,13 @@ set bottom_elim_factors_more(Param p0, Param p, int D_low, int D, KTypePol P)= b
     then () = if not test
     	      then let MG = more_good_hash.size()
 		   then mg = more_good_hash.match(p0)
-		   then () = if bottom_verbose and mg=MG
-			      then prints("at p = ",p0,", more helped!")
-			      fi
+		   then () = if mg=MG
+			     then if bottom_verbose
+			      	  then prints("at p = ",p0,", more helped!")
+				  fi; befmoreCount+:=1
+			     fi
                    {then () = attest_is_unitary(p,false)}
 		   then () = befmoreTime +:= elapsed_ms() - start
-		   then () = {prints("adding to befmoreCount");} befmoreCount+:=1
 		   in return false
 	       fi
      then () = befmoreTime +:= elapsed_ms() - start
@@ -1652,11 +1524,13 @@ set bottom_test_factors_more(Param p0, Param p, [KType, [QKL_bottom_data]] datas
 		         od) {this seems to be quite rare??}
 	       then let MG = more_good_hash.size()
 		    then mg = more_good_hash.match(p)
-		    then () = if bottom_verbose and mg=MG
-			      then prints("at p = ",p0,", more helped!")
+		    then () = if mg=MG
+			      then if bottom_verbose
+			      	   then prints("at p = ",p0,", more helped!")
+				   fi;
+				   befmoreCount +:= 1
 			      fi
                     {then () = attest_is_unitary(p,false)}
-		    then () = befmoreCount +:= 1
 		    then () = befmoreTime +:= elapsed_ms() - start
 		    in return false
 	       fi
@@ -1703,10 +1577,11 @@ set bottom_test_factors_more(Param p0, Param p, int D, KTypePol P) = bool:
 			      od)
  		    then let MG = more_good_hash.size()
 		    	 then mg = more_good_hash.match(p)
-		    	 then () = if bottom_verbose and mg=MG
-			      	   then prints("at p = ",p,", more helped!")
+		    	 then () = if mg=MG
+			      	   then if bottom_verbose
+				   	then prints("at p = ",p,", more helped!")
+					fi; befmoreCount +:= 1
 			      	   fi
-		    	 then () = befmoreCount +:= 1
 		    	 then () = befmoreTime +:= elapsed_ms() - start
 		         in return false
 	             fi
@@ -1717,10 +1592,11 @@ set bottom_test_factors_more(Param p0, Param p, int D, KTypePol P) = bool:
 		         od)
 	       	   then let MG = more_good_hash.size()
 		    	then mg = more_good_hash.match(p)
-		    	then () = if bottom_verbose and mg=MG
-			      	then prints("at p = ",p,", more helped!")
-			      	fi
-		    	then () = befmoreCount +:= 1
+		    	then () = if mg=MG
+			      	  then if bottom_verbose
+				       then prints("at p = ",p,", more helped!")
+				       fi; befmoreCount +:= 1
+			      	  fi
 		        then () = befmoreTime +:= elapsed_ms() - start
 		    	in return false
 	       	   fi
