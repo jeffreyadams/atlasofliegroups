@@ -202,6 +202,9 @@ set bl_step_size = 5
 reps. But not in a few test situations.}
 set unip_flag = true
 
+{if true, then more_bottom has already been applied where we are}
+set more_after_flag = false
+
 {if KGB number is below this times #KGB, use is_unitary rather than is_unitary_to_ht}
 {set low_KGB_frac = rat: 1/2}
 
@@ -440,6 +443,10 @@ set wiggle_flag0 = false
 {set this to false to avoid wiggle tests in know_more mode later on}
 set wiggle_flag = true
 
+{if the testing in these functions is happening after
+more_bottom_layer, then negative results should be recorded in
+more_bad_hash.}
+
 {test candidate classes with (new) tester; delete
  from LFVKH faces established to be nonunitary in this way. Output is new
  shorter list of candidate faces. Lvd is LOCAL LocalVertexData}
@@ -485,15 +492,6 @@ set local_testK_hash(KGBElt x, ratvec lambda, LocalVertexData Lvd,
 		else false
 		fi
 	 fi
-    {then () = if KNU_flag {and #FVKH = 2} 
-    	      then let knownNonUnitaries = known_non_unitaries(NUhash, x, lambda, Lvd, FVKH)
-    	      	   then () = for list@d in knownNonUnitaries
-    	      	   	     do for j in list
-	      	 	     	do newStatuses[classListByFace[d][j]] := "F"
-	    	 		od
-	      		     od
-		   in ()
-	       fi}
     then () = if fund_face_verbose
     	      then prints("     Examining ",NumClasses," classes in local_testK_hash; ",
 	      count(for ans in newStatuses do ans[0] = "T" od)," are known unitary.")
@@ -522,17 +520,9 @@ set local_testK_hash(KGBElt x, ratvec lambda, LocalVertexData Lvd,
 		     then test_DB = (not temp_Dirac_best_local_flag) or (QG(gamma,gamma) <= DiracBestBD)
 		     	  or DiracBestTest(pC,HT,KCF)
 		     then () = if not test_DB
-		       	    then newStatuses:= updateNUclassesB(newStatuses, gr, k,"F"); newStatuses[k] := "F"
-			    {elif not is_final(pC)
-		      	    then if all(for q in ps do @bool: is_finished(q.x, q.lambda) and
-			       	       	       	    	     (Uhash.lookup(q) >= 0) od)
-			   	 then newStatuses[k] := "T"
-			   	 elif any(for q in ps do @bool: is_finished(q.x,q.lambda) and
-				    	 (Uhash.lookup(q) = -1) od)
-			         then {prints("nonfinal, k = ",k, ", gr = ",gr);}
-			   	      newStatuses:= updateNUclassesB(newStatuses, gr, k,"F"); "F"
-			   	 fi}
-			     fi {not test_DB}
+		       	       then newStatuses:= updateNUclassesB(newStatuses, gr, k,"F");
+			       	    newStatuses[k] := "F"
+			       fi {not test_DB}
 		     {then () = prints(new_line,"k = ",k,", ICPNU_flag = ",ICPNU_flag,", ICPU_flag = ",ICPU_flag)
 		     then () = prints("before ICPNU, newStatuses = ",newStatuses)}
 		     then () = if newStatuses[k] = "?" and ICPNU_flag {test for non-unitary}
@@ -543,6 +533,7 @@ set local_testK_hash(KGBElt x, ratvec lambda, LocalVertexData Lvd,
 				   	   od)
 		       	     	     then newStatuses:= updateNUclassesB(newStatuses, gr, k, "F");
 				     	  NU_ind_counter+:=1;
+					  {here need to make an entry in more_bad_hash if approp}
 				  {this appears to mark as nonunitary-under-tester anything equivalent to
 				   a non-unitary-under-tester face}
 			     	  {prints("Khash ICP F: ",parameter(x,lambda,face_bary(Lvd,verts)));}
@@ -567,7 +558,8 @@ set local_testK_hash(KGBElt x, ratvec lambda, LocalVertexData Lvd,
 		     	then if ps[0].nu.= or all(for p in ps do Uhash.lookup(p).>= or tester(p) od)
 		     	     then newStatuses[k]:= "T"
 		     	     else newStatuses:= updateNUclassesB(newStatuses, gr, k, "F")
-		     	     	; newStatuses[k] := "F"
+		     	     	; {here need to make an entry in more_bad_hash if approp}
+				newStatuses[k] := "F"
 			     fi
 		     	fi{NEWU}
 		 fi {newStatuses[k] = "?"}
@@ -588,6 +580,13 @@ set local_testK_hash(KGBElt x, ratvec lambda, LocalVertexData Lvd,
 			    for k in C
 			    do let (d,j) = coords(FVKH,k)
 			       in FVKHnew[d] #:= FVKH[d][j]
+			    od
+		       elif more_after_flag
+		       then for k in C
+		       	    do let (d,j) = coords(FVKH,k)
+			       in if d <= 1
+			       	  then more_bad_hash.match(parameter(x, lambda, face_bary(Lvd, FVKH[d][j][:d+1])))
+		     		  fi
 			    od
 		       fi
 		    od
@@ -951,9 +950,6 @@ candidates, because they will lead to a graph with fewer components,
 so fewer is_unitary tests. For E6_s, U_flag = false needs 833 tests;
 U_flag = true needs 1001}
 set U_flag = false
-
-{meant to hold nonunitary Params not eliminated by more}
-set more_bad_hash = make_Param_hash()
 
 {Delete from LFVKH faces established to be nonunitary using
 known_lower, bottom layer, and deformation. Output is new shorter list
@@ -1336,7 +1332,7 @@ set local_test_hash(KGBElt x, ratvec lambda, LocalVertexData Lvd,
 			   	     fi
 		       	   in q
 		    	od {list of tester unitary Params}
-		   else if more_flag and is_final(pC)
+		   else if more_after_flag and is_final(pC)
 		        {HERE USE DIRAC ON MORE K-types}
 		   	then more_bad_hash.match(pC)
 			fi;
@@ -1646,7 +1642,11 @@ set one_param_test(Param p, Param_hash Uhash) = [Param]:
 	    one_param_time +:= elapsed_ms() - start;
 	    [p]
        else one_false_counter.use();
-	    one_param_time +:= elapsed_ms() - start;
+       	    if more_after_flag and #finalize(p) = 1
+	    then more_bad_hash.match(first_param(finalize(p)));
+	    	 more_after_flag:=false;
+	    	 one_param_time +:= elapsed_ms() - start
+	    fi;
 	    []
        fi
 
@@ -1732,9 +1732,9 @@ set one_param_test_bottom(Param p, [int] Ds, Param_hash Uhash) = [Param]:
 		    	      else let DEFHTS = [int]: next_heights(p, (r*stretcher)\2)
 			      	   in is_unitary_test_big_SIMPLE(q, DEFHTS)
 		    	      fi
-			      then () = if not ans
+			      then () = if not ans and more_after_flag
 		            {HERE USE DIRAC ON MORE K-types}
-			      	      	then more_bad_hash.match(q)
+			      	      	then more_bad_hash.match(q); more_after_flag:=false
 					fi
 			      in ans
 			   od)
@@ -1799,7 +1799,10 @@ set one_param_test_all_bottom(Param p, [int] Ds, Param_hash Uhash) = [Param]:
     				       then test_heights = next_heights(p, steps)
 				       in is_unitary_test_big_SIMPLE(q,test_heights)
 		    	      fi
-			      then () = if not ans then more_bad_hash.match(q) fi
+			      then () = if not ans and more_after_flag
+			      	      	then more_bad_hash.match(q);
+					     more_after_flag:=false
+					fi
 			      in ans
 		    	od)
 	    then () = if more_verbose then prints("your final answer was ",test) fi
@@ -4041,6 +4044,7 @@ set local_test_GEO_hash_bottom_layer(KGBElt x, ratvec lambda, {VertexData vd,}
     {then () = prints("Got past small LFDatas")}
     then () = test_string:= " using local_test_GEO_hash_bottom_layer"
     {then () = prints("Got here; SHOULD set blcounter")}
+    then () = more_after_flag:=false
     then  () = hash_bottom_layerCounter.use()
     then () = if test_verbose then prints("face counts to dim 1: ",
 			  for list in LF do #list od);
@@ -4154,6 +4158,7 @@ set local_test_GEO_hash_bottom_layer(KGBElt x, ratvec lambda, {VertexData vd,}
 		   	    	      	 	" face counts to dim 1: ",for list in LFDKH do #list od)
 		    	    	      fi
    		  	    then () = if #LFDKH[0] = 0 then return [] fi
+			    then () = more_after_flag:=true
 		  	    then () = if #LFDKH[0] = 1 {already passed D}
    	     	       	    	      then return one_param_test(parameter(x,lambda,
 			    	      	   Lvd.list[LFDKH[0][0][0]]),{ [D],} Uhash)
