@@ -73,6 +73,30 @@ set every_KGB_flag = false
 set contragredient(KGBElt x) = KGBElt:
     let wzero = w0(x.root_datum) in cross(wzero,x)
 
+set test_bl(KGBElt x, ratvec lambda) = bool:
+    let pmax = pmax(x,lambda)
+    then (LAM, NU, R) = low(pmax)
+    in LAM > hashlam_frac*R and
+       LAM < hashnu_frac*NU
+    {LAM + NU > hash2_frac*R and
+       LAM > hashlam_frac*R and
+       NU > hashnu_frac*R}
+
+set test_no_unitary(KGBElt x, ratvec lambda) = bool:
+    let (Rs,CORs) = simple_real_subsystem(x), Lvd = Lvd(x,lambda)
+    then colCORs = [vec]: for alpha@j in Rs
+		      	  do if (((CORs[j]*lambda).numer)%2).= {parity at zero}
+			     then [CORs[j]]
+			     else []
+			     fi
+			  od.##
+    in not is_pos_on_LKTs(parameter(x,lambda, 0*lambda)) and
+       	   all(for v in Lvd.list
+	       do @bool: all(for colCOR in colCORs
+			     do @bool: (v*colCOR).>
+			     od)
+	      od) {no parity real coroots vanish on any nu}
+
 set contragredient(KGBElt x, ratvec lambda) = (KGBElt, ratvec):
     let p = contragredient(parameter(x,lambda,0*lambda))
     in (p.x, p.lambda)
@@ -127,7 +151,6 @@ these parameters are studied only on most split Cartan; software finds
 that a parameter there has a nonunitary (reducible) LQ, and fails to
 to record unitary factors.}
 
-set none_count = int:0
 
 {uses LPm_table to keep track of local face info}
 set FPP_unitary_hash_general([(KGBElt,ratvec)] xlambdas, Param_hash Uhash,
@@ -211,31 +234,7 @@ then coh_ind_unip_few(G,Uhash)}
 		   		   prints("  ------------------")
         	   	   fi {every_lambda_flag}
 		 then startLF = elapsed_ms()
-		 {then () = prints("time thru start [",k,"] =
-		 ",print_time_string(startLF - start))}
-		 {then ps = for v in Lvd.list do parameter(x,lambda,v) od}
-		 {then p0 = parameter(x,lambda, 0*lambda)}
-		 then (Rs,CORs) = simple_real_subsystem(x)
-		 then colCORs = [vec]: for alpha@j in Rs
-		      	      	     do if Cayley(alpha,x) != x
-				     	and (((CORs[j]*lambda).numer)%2).=
-					{Cayley(alpha,p0).x != x}
-				     	then [CORs[j]]
-					else []
-					fi
-				     od.##
-		 in if not is_pos_on_LKTs(parameter(x,lambda, 0*lambda))
-		       and all(for v in Lvd.list
-		       	       do @bool: all(for colCOR in colCORs
-			       	      do @bool: (v*colCOR).>
-				      od)
-			       od) {no relevant real coroots vanish on any nu}
-		       {and all(for p in ps
-			       do not is_pos_on_LKTs(p)
-				  and any(for q in monomials(finalize(p))
-			      	 	  do not is_pos_on_LKTs(q)
-					  od)
-			       od)}
+		 in if test_no_unitary(x,lambda)
 		    then none_count +:= 1; {prints("SKIPPED ",x,",",lambda);} ()
 		    else let startDTcount = DTcount
 		 then LF = if by_zero_flag {and height(p0) > 0}
@@ -487,23 +486,8 @@ set FPP_unitary_hash_general([KGBElt] xs, Param_hash Uhash, (Param->bool) fancy_
 						     startUtime = unitaryTime, startCcounter =
 						     char_counter.use_count(), startCtime = charTime
 				      	       then startLF = elapsed_ms(){, startDTcount = DTcount}
-	 				       {then p0 = parameter(x,lambda, 0*lambda)}
-		 			       then (Rs,CORs) = simple_real_subsystem(x)
-		 			       then colCORs = [vec]: for alpha@j in Rs
-		      	      	     	       	    	    do if Cayley(alpha,x) != x
-				     			       	  and (((CORs[j]*lambda).numer)%2).=
-								  {Cayley(alpha,p0).x != x}
-				     			       then [CORs[j]]
-							       else []
-							       fi
-				     			     od.##
-		 			       in if not is_pos_on_LKTs(parameter(x,lambda, 0*lambda))
-					             and all(for v in Lvd.list
-		       	       			    	     do @bool: all(for colCOR in colCORs
-			       	      			   	       	   do @bool: (v*colCOR).>
-				      				      	   od)
-			       			             od)
-		   				   then none_count +:= 1; {prints("SKIPPED ",x,",",lambda);} ()
+		 			       in if test_no_unitary(x,lambda)
+		   				  then none_count +:= 1; {prints("SKIPPED ",x,",",lambda);} ()
 		    			       else let startDTcount = DTcount
  		      		      	       then LF = if by_zero_flag {and dominant(G,lamthlam)*G.two_rho_check > 0}
 		      	      	      	      	       	 then localFD_1Dirac2_by_zero(xW, lambdaW, Lvd, Perm2)
@@ -858,21 +842,7 @@ fancy_tester) = void:
         	   		   fi {every_lambda_flag}
 		 then startLF = elapsed_ms(){, startDTcount = DTcount}
 	 	 then p0 = parameter(x,lambda, 0*lambda)
-		 then (Rs,CORs) = simple_real_subsystem(x)
-		 then colCORs = [vec]: for alpha@j in Rs
-		      	      	     do if Cayley(alpha,x) != x
-				     	and (((CORs[j]*lambda).numer)%2).=
-					    {Cayley(alpha,p0).x != x}
-				     	then [CORs[j]]
-					else []
-					fi
-				     od.##
-		 in if not is_pos_on_LKTs(parameter(x,lambda, 0*lambda))
-		       and all(for v in Lvd.list
-		       	       do @bool: all(for colCOR in colCORs
-			       	      	     do @bool: (v*colCOR).>
-				      	     od)
-			       od)
+		 in if test_no_unitary(x,lambda)
 		    then none_count +:= 1; {prints("SKIPPED ",x,",",lambda);} ()
 		    else let startDTcount = DTcount
 		 {then () = time_verbose := old_time_verbose} {REMOVE THIS LINE??}
@@ -893,13 +863,7 @@ fancy_tester) = void:
 			 then face_verbose := old_face_verbose; time_verbose := old_time_verbose;
 			      test_verbose :=old_test_verbose; test_slightly_verbose := old_test_slightly_verbose
 			 fi;
-			 let pmax = pmax(x_sc, M*lambda, Lvd)
-			 then (LAM,NU,R) = low(pmax)  {bottom layer is best only if
-			     lambda and nu both reasonably big?}
-			 then answer = if LAM + NU > hash2_frac*R and
-					  {x_sc.number > #KGB(Gsc)*hash2_frac}
-			     	       	  {LAM > hashlam_frac*R and}
-				      	  NU > hashnu_frac*R
+			 let answer = if test_bl(x,lambda)
 			     	       then local_test_GEO_hash_bottom_layer(x_sc,
 						lambda_sc, Lvd, LF, pol_hash, Uhash, fancy_tester)
 				       elif one_level_revert_flag
@@ -1178,22 +1142,7 @@ set FPP_unitary_hash_bottom_layer([KGBElt] xs, Param_hash UhashG, (Param->bool) 
 		   		   prints("  ------------------")
         	   		fi {every_lambda_flag}
 		      then startDTcount = DTcount
-	 	      {then p0 = parameter(x,lambda, 0*lambda)}
-		      then (Rs,CORs) = simple_real_subsystem(x)
-		      then colCORs = [vec]: for alpha@j in Rs
-		      	      	     	    do if Cayley(alpha,x) != x
-				     	       and (((CORs[j]*lambda).numer)%2).=
-						   {Cayley(alpha,p0).x != x}
-				     	       then [CORs[j]]
-					       else []
-					       fi
-				     	     od.##
-		     in if not is_pos_on_LKTs(parameter(x,lambda, 0*lambda))
-		       	   and all(for v in Lvd.list
-		       	       	   do @bool: all(for colCOR in colCORs
-			       	      	     	 do @bool: (v*colCOR).>
-				      	     	 od)
-			           od)
+		     in if test_no_unitary(x,lambda)
 		       	then none_count +:= 1; {prints("SKIPPED ",x,",",lambda);} ()
 		    	else let LF = if by_zero_flag {and dominant(G,lamthlam)*G.two_rho_check > 0}
  		      	      	      then localFD_1Dirac2_by_zero(x_sc, M*lambda, Lvd, Perm2)
@@ -1212,12 +1161,7 @@ set FPP_unitary_hash_bottom_layer([KGBElt] xs, Param_hash UhashG, (Param->bool) 
 				    test_verbose :=old_test_verbose; test_slightly_verbose :=
 					 	      old_test_slightly_verbose
 			       fi;
-			       let pmax = pmax(x_sc, M*lambda, Lvd)
-			       then (LAM,NU,R) = low(pmax)
-			        then answer = if LAM + NU > hash2_frac*R and
-				     	      	 {x_sc.number > #KGB(Gsc)*hash2_frac}
-			     	       	  	 LAM > hashlam_frac*R and
-				      		 NU > hashnu_frac*R
+			       let answer = if test_bl(x_sc, M*lambda)
 			     	      	     then local_test_GEO_hash_bottom_layer(x_sc,
 				      M*lambda, Lvd, LF, pol_hash, Uhash, fancy_tester)
 				      elif one_level_revert_flag
