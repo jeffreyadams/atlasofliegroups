@@ -244,6 +244,7 @@ set bitwise_union ([int] ns) = int:
    let a=0 in for n in ns do a:=OR(a,n) od; a
 
 set fac (int n) = int: let p=1 in for i:n-1 from 2 do p *:=i od; p
+set ! = fac@int { allo conventional factorial notation }
 
 { convert to base n as polynomial: small coef polynomial evaluating to k at n }
 set to_base_poly (int n) = (int->vec):
