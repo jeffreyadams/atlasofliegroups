@@ -29,6 +29,10 @@ set mu_rank_mult = rat: 1/2 {1/4}
 {if true, try to raise mu in few steps to minimize number of to_ht calculations}
 set max_loc_flag = true
 
+{records how many pairs (x,lambda) are skipped because all Params are
+indefinite on LKTs.}
+set none_count = int:0
+
 set to_ht (KTypePol P,int N) = KTypePol:
   let (below,)=height_split(P,N) in below
 
@@ -436,7 +440,7 @@ set report_tested() = void:
     prints("time for up_mu = ",print_time_string(up_mu_time), ", mu_time_mult = ",mu_time_mult,
     		   ", mu_rank_mult = ",mu_rank_mult);
     prints("hashlam_frac = ",hashlam_frac,", hashnu_frac = ",hashnu_frac, ", hash2_frac = ", hash2_frac);
-    prints("Dirac elims = ",DTcount,", Dirac_best elims = ",DBTcount);
+    prints("Dirac elims = ",DTcount,", Dirac_best elims = ",DBTcount, ", #(x,lambda) eliminated by LKTs = ",none_count);
     prints("  ----------------")
 
 set clear_report_tested() = void:

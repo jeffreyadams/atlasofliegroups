@@ -670,6 +670,9 @@ set befmoreCount = int: 0
 set mbefTime = int: 0 {time spent in min_bottom_elim_factors}
 set mbefCount = int: 0
 
+{meant to hold nonunitary reps identified by min_bottom}
+set good_hash = make_Param_hash()
+
 {whether to use _more versions of bottom layer tests for unitarity}
 set more_flag = false
 
@@ -760,11 +763,10 @@ set min_small_bottom_elim_factors(Param p0, Param p, KTypePol P) = bool:
 	       	    od)
 	  od
    then answer = all(answers)
-   then () = if not answer then {prints("adding to mbefCount");} mbefCount +:=1 fi
+   then () = if not answer then good_hash.match(p0); {prints("adding to mbefCount");} mbefCount +:=1 fi
    then () = mbefTime +:= elapsed_ms()-start
    then () = if every_MBEF_flag then prints("  ",answer) fi
    in answer
-
 
 set min_small_bottom_elim_factors(Param p, KTypePol P) = bool:
     min_small_bottom_elim_factors(p, p, P)
@@ -829,7 +831,7 @@ set min_bottom_elim_factors(Param p0, Param p, KTypePol P) = bool:
         od
    then answer = all(answers)
 	{then () = if not answer then attest_is_unitary(p,answer) fi}
-   then () = if not answer then {prints("adding to mbefCount");} mbefCount +:=1 fi
+   then () = if not answer then good_hash.match(p0); {prints("adding to mbefCount");} mbefCount +:=1 fi
    then () = mbefTime +:= elapsed_ms()-start
    then () = if every_MBEF_flag then prints("  ",answer) fi
    in answer
