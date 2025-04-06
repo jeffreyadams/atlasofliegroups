@@ -2303,16 +2303,12 @@ substituting $T:=(L\to{L})$, is rejected. Allowing it would complicate
 unification immensely for no good purpose; if really needed, a user can
 explicitly demand such a type substitution.
 
-@ Before we introduce the classes for handling polymorphic types, we define some
-relevant free functions. The first, |shift|, implements the operation of
-renumbering polymorphic type variables. The second, |can_unify|, is the
-workhorse for the unification process; it will be defined after the introduction
-of the |type_assignment| structure that it uses to store the result of the
-unification.
+@ Before we introduce the classes for handling polymorphic types, we define a
+useful auxiliary function~|shift|, which implements the operation of renumbering
+polymorphic type variables.
 
 @< Declarations of exported functions @>=
 type_expr shift (const type_expr& tp, unsigned int fix, unsigned int amount);
-bool can_unify(const type_expr& P, const type_expr& Q, type_assignment& assign);
 
 
 @ The recursive function |shift| is similar to |simple_subst|, but is limited to
@@ -2564,7 +2560,7 @@ bool type_assignment::is_free_in(const type_expr& tp, unsigned int nr) const
 }
 
 @ Sometimes it is useful to be able to roll back new assignments made by a call
-of |can_unify|. To this end we provide a method |polymorphics| that can be
+of |unify|. To this end we provide a method |polymorphics| that can be
 called before to record which type variables are unassigned, and a second method
 |restore_polymorphics| that undoes any type assignment to those polymorphic
 variables. There should obviously not be any remapping of type variables (as
@@ -2681,10 +2677,25 @@ itself.
     : substitution(*p,0);
 }
 
-@ Finally we give the general unification method |type_assignment::unify|,
-whose effect is to modify the type assignment in such a way that, in case
-success is returned, the substitution for the new assignment will unify the two
-argument |type_expr| values.
+@ Finally we give the general unification method |type_assignment::unify|, whose
+effect is to modify the type assignment in such a way that, in case success is
+returned, the substitution for the new assignment will unify the two argument
+|type_expr| values. The actual unified type can then be obtained by calling the
+|substitute| method. This separation of unification and actual substitution into
+other related types rather than to unified types themselves. For instance in a
+function application we apply unification between the parameter part of a
+function type and the type of the argument expression; once the match is made,
+the |type_assignment| can then be used for substitution into the result part of
+the function type to get the type of the call.
+
+In case of failure, the caller should ignore (or wipe out) any substitutions
+that might be recorded in |assign|.
+
+The treatment of type variables and tabled types is detailed in other sections.
+Apart from that, we just perform a recursive traversal of both types, failing as
+soon as different tags are found, and succeeding if the traversal completes
+without that happening.
+
 
 @< Function definitions @>=
 bool type_assignment::unify(const type_expr& P, const type_expr& Q)
@@ -2721,13 +2732,15 @@ bool type_assignment::unify(const type_expr& P, const type_expr& Q)
 }
 
 @ If one or both of the types being unified are tabled, we most of the time call
-|unify| recursively after calling |expand()| on the tabled type(s). However we
-must not do it in case both type are recursive, and we may avoid calling
-|expand| if both are the same tabled type or type constructor, as we can then
-just apply a recursive test to any type arguments (in case of a constructor).
-In the case of distinct recursive types (or constructors) we can immediately
-conclude failure of the unification. The code below tries to cover all these
-cases using as few tests as possible.
+|unify| recursively with |expanded()| tabled type(s). However we must not do it
+in case both types are recursive, and we may avoid calling |expand| if both are
+the same tabled type or type constructor, as we can then just apply a recursive
+test to any type arguments (in case of a constructor). In the case of distinct
+recursive types (or constructors) we can immediately conclude failure of the
+unification. The code below tries to cover all these cases using as few tests as
+possible.
+
+@:avoiding infinite recursion@>
 
 @< Decide |unify| in the presence of tabled types,
    avoiding any recursive calls if both types are tabled and recursive @>=
@@ -2782,154 +2795,6 @@ we want for this case.
   return false; // since one or two unequal fixed type variables are left
 }
 
-
-@ Next we define the unification procedure, which is called |can_unify| since
-returns a Boolean value indicating whether unification succeeded. In case of
-success the substitutions made to achieve unification are recorded in |assign|;
-in case of failure, the caller should ignore (or wipe out) any substitutions
-that might be recorded in |assign|. In case of success, the actual unified type
-can then be obtained if desired by a subsequent call |substitute(P_orig,assign)|
-or |substitute(Q_orig,assign)|. This separation of unification and actual
-substitution is made because substitution is not restricted in its application
-to one of the unified types themselves. For instance in a function application
-we apply unification between the parameter part of a function type and the type
-of the argument expression; once the match is made, the |type_assignment| can
-then be used for substitution into the result part of the function type to get
-the type of the call.
-
-The treatment of type variables and tabled types is detailed in other sections.
-Apart from that, we just perform a recursive traversal of both types, failing as
-soon as different tags are found, and succeeding if the traversal completes
-without that happening.
-
-@< Function definitions @>=
-
-bool can_unify
-  (const type_expr& P_orig, const type_expr& Q_orig, type_assignment& assign)
-{ const_type_p P=&P_orig, Q=&Q_orig; // we need assignable pointers internally
-  auto P_kind = P->raw_kind(), Q_kind = Q->raw_kind();
-@/@< If |P| or |Q| is a type variable with |typevar_count()>=assign.var_start()|,
-     expand any existing substitution in |assign| for them, or when none is
-     present record a new one and return whether that was possible;
-     in expanded cases, |P|, |Q|, |P_kind| and |Q_kind| are updated @>
-  assert(P_kind!=undetermined_type and Q_kind!=undetermined_type);
-  // no patterns here
-  if (P_kind==tabled or Q_kind==tabled)
-    @< If both types are tabled, recursive, and different, |return false|;
-       otherwise decide and |return| using recursive calls of |can_unify|:
-       if both types are tabled and equal, call it for their type arguments,
-       or else for their expansions @>
-  if (P_kind!=Q_kind)
-    return false;
-    // with name expansions behind us, the type tags must match to succeed
-  switch(P_kind)
-  {
-  case primitive_type: return P->prim()==Q->prim();
-  case variable_type: // by above preparation, both are fixed in the context
-    return P->typevar_count()==Q->typevar_count();
-    // they are treated as primitive types
-  case function_type: return
-    can_unify(P->func()->arg_type,Q->func()->arg_type,assign) @|
-    and
-    can_unify(P->func()->result_type,Q->func()->result_type,assign);
-  case row_type: return
-    can_unify(P->component_type(),Q->component_type(),assign);
-  case tuple_type: case union_type:
-    {
-      wtl_const_iterator it0(P->tuple()), it1(Q->tuple());
-      while (not it0.at_end() and not it1.at_end()
-             and can_unify(*it0,*it1,assign))
-         ++it0,++it1;
-      return it0.at_end() and it1.at_end(); // whether equal length lists
-    }
-  default: assert(false); // other cases were eliminated before the |switch|
-    return false; // keep compiler happy
-  }
-}
-
-@ The presence of recursive types creates the risk of an infinite recursion if
-we simply expand type definitions as we usually do. To avoid that scenario, we
-perform a test near the entry of the recursive function |can_unify|, but after
-assigned type variables have been substituted. (The order is important here: an
-assignment can equate a type variable to a tabled type, but a tabled type cannot
-be defined as a type variable.) Types descended from tabled types are also
-tabled, so it suffices to catch the case where both types are now simultaneously
-tabled and recursive: any non-termination would have to run via such a case.
-
-The code here is similar to the corresponding part of the equality test among
-|type_expr| values. Since for non recursive tabled types we only know they are
-not identical to another such type, but substitution instances of different
-tabled type constructors (possibly of different arity) could be equal, the case
-of finding distinct |tabled_nr()| values is only short-circuited if both types
-are recursive; in the remaining cases we expand and try again. The recursive
-call is necessary, as reassignment of |P| and |Q| (as we do in the case of type
-variables) would run into lifetime problems for the expanded types. When we do
-find equal |tabled_nr()| values, we proceed similarly to the handling of tuple
-and union types we just saw, with argument types in the place of component
-types; the only difference is that here we expect (and insist) that the argument
-type lists (for the same tabled type constructor) are of equal length.
-
-When we come here we know that at least one type is tabled; if indeed just one
-is, we expand that one (whether recursive or not) and call |can_unify|
-recursively.
-@:avoiding infinite recursion@>
-
-@< If both types are tabled, recursive, and different... @>=
-{ if (P_kind==tabled and Q_kind==tabled)
-  { if (P->tabled_nr()!=Q->tabled_nr())
-    @/return not (P->is_recursive() and Q->is_recursive()) @|
-        and can_unify(P->expanded(),Q->expanded(),assign);
-    wtl_const_iterator it0(P->tabled_args()), it1(Q->tabled_args());
-    while (not it0.at_end() and not it1.at_end())
-      if (not can_unify(*it0,*it1,assign))
-        return false;
-      else
-        {@; ++it0; ++it1; }
-    assert (it0.at_end() and it1.at_end());
-     // both length should match tabled arity
-    return true;
-  }
-  if (P_kind==tabled)
-    return can_unify(P->expanded(),*Q,assign);
-  else
-    return can_unify(*P,Q->expanded(),assign);
-}
-
-@ The code below is basically symmetric in |P| and |Q|, but we need to write out
-the two cases anyway. When a type variable is encountered that already has an
-equivalent in |assign|, we proceed with the substituted type expression in its
-place, much like what is done with tabled type names but using their
-|assign.equivalent| instead of they |definiens|. A difference is that while a
-tabled type cannot refer directly to another one, |assign| can make one type
-variable equal to another (through an assignment in one direction, to avoid
-circularity); therefore we use |while| loops to iterate replacement until
-something other than a type variable is found. Type variables numbered below
-|assign.threshold| do not have an |equiv| entry in |assign|, so they will fall
-through these loops, just like polymorphic variables without assignment to them.
-When one of those polymorphic variables is present and the two are not already
-equal, we call |assign.set_equivalent| to try to assign the other type
-expression to it, and return whether that succeeds. The way |set_equivalent|
-handles the case of a type expression that cannot be assigned because it refers
-back to the same type variable, namely by returning |false|, means that this
-just makes the unification fail; this is precisely what we want for this case.
-
-@< If |P| or |Q| is a type variable... @>=
-{ const_type_p p; // we first substitute already assigned type variables
-  while (P_kind==variable_type and
-         (p=assign.equivalent(P->typevar_count()))!=nullptr)
-    P_kind=(P=p)->raw_kind(); // replace |P| by type previously assigned to it
-  while (Q_kind==variable_type and
-         (p=assign.equivalent(Q->typevar_count()))!=nullptr)
-    Q_kind=(Q=p)->raw_kind(); // replace |Q| by type previously assigned to it
-@)
-  if (P_kind==variable_type and P->typevar_count()>=assign.var_start())
-  { auto c = P->typevar_count();
-    return (Q_kind==variable_type and Q->typevar_count()==c)
-      or assign.set_equivalent(c,*Q);
-  }
-  if (Q_kind==variable_type and Q->typevar_count()>=assign.var_start())
-    return assign.set_equivalent(Q->typevar_count(),*P);
-}
 
 @*2 Wrapped up polymorphic types.
 %
@@ -3370,9 +3235,9 @@ type type::bottom(unsigned int fix_count)
 }
 
 @ The methods |type::unify_to| and |type::has_unifier| are easily implemented
-using |can_unify|. For now, there is no roll back when |can_unify| fails; when
-it succeeds the |assign()| field records the unifying type assignments, possibly
-involving new type variables introduced by |other|.
+using |type_assignment::unify|. For now, there is no roll back when |unify|
+fails; when it succeeds the |assign()| field records the unifying type
+assignments, possibly involving new type variables introduced by |other|.
 
 @< Function definitions @>=
 bool type::unify_to(const type_expr& sub_tp, const type& other)
@@ -3381,27 +3246,28 @@ bool type::unify_to(const type_expr& sub_tp, const type& other)
   if (other.is_polymorphic())
   {
     auto diff = assign().append(other.assign());
-    return can_unify(sub_tp,shift(other.te,other.floor(),diff),assign());
+    return assign().unify(sub_tp,shift(other.te,other.floor(),diff));
   }
-  return can_unify(sub_tp, other.bake(), assign());
+  return assign().unify(sub_tp, other.bake());
 }
 @)
 bool type::has_unifier(const type_expr& t) const
 {
   type tp = type::wrap(t,floor(),degree()); // renumber to avoid clashes
   tp.assign().append(assign()); // (ab)use |tp.a| as local variable
-  return can_unify(te,tp.te,tp.assign());
+  return tp.assign().unify(te,tp.te);
 }
 
-@ The method |type::unify_specialise| is like the function |can_unify|, but on
-the side of the pattern the only changes are specialisations of undefined
-subexpressions. Any type variables present in |pattern| are not substituted for:
-unless they match up with the same type variable on our side, they cause
-unification to fail. This method is often called to test whether a |type|
-matches (taking into account its pending type assignments and tabled type
-definitions) a required structure |pattern|, and if so give access to the type
-subexpressions that matched the undetermined parts of the |pattern|: the call
-will have substituted these subexpressions for those parts.
+@ The method |type::unify_specialise| is like |unify|, but its argument is a
+type pattern with undetermined parts, and the only changes made to the argument
+are specialisations of those undefined subexpressions. Any type variables
+present in |pattern| are not substituted for: unless they match up with the same
+type variable on our side, they cause unification to fail. This method is often
+called to test whether a |type| matches (taking into account its pending type
+assignments and tabled type definitions) a required structure |pattern|, and if
+so give access to the type subexpressions that matched the undetermined parts of
+the |pattern|: the call will have substituted these subexpressions for those
+parts.
 
 The necessary substitutions on our |type| side are also recorded in our
 |assign()| field, which is convenient for our implementation: any occurrence of
@@ -3543,7 +3409,7 @@ bool type::unify(type& other)
   }
 @)
   auto snapshot = tap->polymorphics();
-  if (can_unify(te,other.te,*tap)) // now do the actual unification
+  if (tap->unify(te,other.te)) // now do the actual unification
   {
     if (degree()>0 and other.degree()>0) // if both were initially polymorphic
       (tap==&a ? other.a : a) = tap->copy();
@@ -3588,8 +3454,8 @@ bool type::matches
   shift_amount = ceil(); // record where our type assignments used to end
   assign().grow(f_deg); // create space for new type variables
   if (shift_amount==0 or f_deg==0) // then no need to renumber |f_par_tp|
-    return can_unify(f_par_tp,te,assign());
-  return can_unify(shift(f_par_tp,0,shift_amount),te,assign());
+    return assign().unify(f_par_tp,te);
+  return assign().unify(shift(f_par_tp,0,shift_amount),te);
 }
 
 @ The method |matches_argument| is a variation on |matches| to be used in
@@ -3630,8 +3496,8 @@ bool type::matches_argument(const type& actual_arg_type)
   unsigned int fd=degree(), ad=actual_arg_type.degree();
   assign().grow(ad);
   if (fd==0 or ad==0) // then no need to renumber |actual_arg_type|
-    return can_unify(arg_type,actual_arg_type.te,assign());
-  return can_unify(arg_type,shift(actual_arg_type.te,floor(),fd),assign());
+    return assign().unify(arg_type,actual_arg_type.te);
+  return assign().unify(arg_type,shift(actual_arg_type.te,floor(),fd));
 }
 
 @ We also provide an overload for printing |type| values without having to call
