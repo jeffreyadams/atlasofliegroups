@@ -212,10 +212,10 @@ given H,G,M as above, H,G have given inner classes, i.e. delta_H,delta_G
 
 set map_tits_element_twisted(InnerClass ic1,InnerClass ic2,mat M,Tits_elt sigma1)=Tits_elt:
 let sigma1_W=sigma1*tits_delta(ic1)   {Tits element of an element of W( G1)} then
-()=prints("sigma1_W: ", sigma1_W) then 
+{()=prints("sigma1_W: ", sigma1_W) then }
 sigma2_W=map_tits_element(ic1,ic2,M,sigma1_W)  {Tits element of an element of W(G2)} then
 {sigma2_W=map_tits_element(ic1,ic2,M,sigma1_W.*distinguished_involution(ic2))  {Tits element of an element of W(G2)} then}
-()=prints("sigma2_W: ", sigma2_W) then
+{()=prints("sigma2_W: ", sigma2_W) then}
 w_delta2=map_distinguished_involution(ic1,ic2,M)  {w2\in W(G2):  w2*delta2 is lift of delta1} then
 sigma_delta2=tits_element(ic2,w_delta2) then
 sigma2=sigma2_W*sigma_delta2 in
@@ -229,16 +229,22 @@ sigma2
 set KGB_elt_gen (RootDatum rd, mat theta, ratvec v) = KGBElt_gen:
   KGB_elt_gen(inner_class(rd,theta), theta, v)
 
-
-set KGB_elt_gen (Tits_elt t)=KGB_elt_gen(t.root_datum,t.theta,2*t.torus_part-t.root_datum.rho_check)
-
+{ no: using unnormalized torus factor?}
+{set KGB_elt_gen (Tits_elt t)=KGB_elt_gen(t.root_datum,t.theta,2*t.torus_part-t.root_datum.rho_check)
 set tits_element(KGBElt_gen x)=Tits_elt:(x.inner_class,x.unnormalized_torus_factor,x.involution)
+}
+set KGB_elt_gen (Tits_elt t)=KGB_elt_gen(t.root_datum,t.theta,t.torus_part)
+set tits_element(KGBElt_gen x)=Tits_elt:(x.inner_class,x.torus_factor,x.involution)
 
 {map KGB and generalized KGB elements using the Tits group}
-set map_KGB_tits(KGBElt x1,RealForm G2,mat M, orientation epsilon2)=KGBElt:
+set map_KGB_tits(KGBElt x1,InnerClass ic2,mat M, orientation epsilon2)=KGBElt:
+let sigma1=tits_element(x1)  {acts by w1*delta1} then
+sigma2=map_tits_element_twisted(x1.inner_class,ic2,M,sigma1) {sigma2 acts by w2*delta2} in
+KGB_elt(sigma2)
+{set map_KGB_tits(KGBElt x1,RealForm G2,mat M, orientation epsilon2)=KGBElt:
 let sigma1=tits_element(x1)  {acts by w1*delta1} then
 sigma2=map_tits_element_twisted(x1.inner_class,G2,M,sigma1) {sigma2 acts by w2*delta2} in
-KGB_elt(sigma2)
+KGB_elt(sigma2)}
 
 
 {map KGB and generalized KGB elements using the Tits group}
@@ -255,18 +261,19 @@ x2=KGB_elt(sigma2) {when making x_Gd, input sigma_Gd has unnormalized torus fact
 x2
 }
 
-set map_KGB_tits(KGBElt x1,RealForm G2,mat M)=KGBElt:map_KGB_tits(x1,G2,M,orientation_function(G2))
+set map_KGB_tits(KGBElt x1,InnerClass ic2,mat M)=KGBElt:map_KGB_tits(x1,ic2,M,orientation_function(ic2))
 
-set map_KGB_tits(RealForm G2,mat M)=(KGBElt->KGBElt):(KGBElt x1):map_KGB_tits(x1,G2,M,orientation_function(G2))
+set map_KGB_tits(InnerClass ic2,mat M)=(KGBElt->KGBElt):(KGBElt x1):map_KGB_tits(x1,ic2,M,orientation_function(G2))
 
-set map_KGB_gen_tits(KGBElt_gen x1,RealForm G2,mat M, orientation epsilon2)=KGBElt_gen:
+set map_KGB_gen_tits(KGBElt_gen x1,InnerClass ic2,mat M, orientation epsilon2)=KGBElt_gen:
 let sigma1=tits_element(x1)  {acts by w1*delta1} then
+()=prints("x1: ", x1) then
 ()=prints("sigma1=", sigma1) then
-sigma2=map_tits_element_twisted(x1.inner_class,G2,M,sigma1) {sigma2 acts by w2*delta2} in
+sigma2=map_tits_element_twisted(x1.inner_class,ic2,M,sigma1) {sigma2 acts by w2*delta2} in
 let ()=prints("sigma2= ", sigma2) in
 KGB_elt_gen(sigma2)
 
-set map_KGB_gen_tits(KGBElt_gen x1,RealForm G2,mat M)=KGBElt_gen:map_KGB_gen_tits(x1,G2,M,orientation_function(G2))
+set map_KGB_gen_tits(KGBElt_gen x1,InnerClass ic2,mat M)=KGBElt_gen:map_KGB_gen_tits(x1,ic2,M,orientation_function(G2))
 
 set map_KGB_gen_tits(RealForm G2,mat M)=(KGBElt_gen->KGBElt_gen):(KGBElt_gen x1):
 map_KGB_gen_tits(x1,G2,M)

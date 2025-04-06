@@ -100,6 +100,7 @@ composition_series(inverse_lift_std(Pw,p.real_form,M,p.infinitesimal_character))
 set Arthur_packet(Param p)=[Param]:
 monomials(Arthur_packet_character(p))
 
+
 {central shift, intended only for U(p,q)}
 set shift(Param p, int k)=Param:
 parameter(p.x,p.lambda + k*ones(rank(p.real_form)), p.nu)
@@ -373,3 +374,15 @@ let wp=weak_packets(G) then
 remove_duplicates(for packet in wp do 
  let min=min_height(parameters(packet)) in
   for p in min do Arthur_packet_character(p) od od.##) in chars
+
+set Arthur_phi([Param] params)=L_homomorphism:
+let min=min_height(params)[0] in phi(min)
+
+set Arthur_phi(ParamPol P)=L_homomorphism:
+Arthur_phi(monomials(P))
+
+set Arthur_phis(RealForm G)=[L_homomorphism]:
+for params in Arthur_packets(G) do Arthur_phi(params) od
+
+set Arthur_packet(L_homomorphism phi_arthur)=Arthur_packet(L_packet(phi_arthur)[0][0])
+{set Arthur_packet(L_homomorphism phi_arthur)=Arthur_packet(L_packet(phi_arthur)[0])}

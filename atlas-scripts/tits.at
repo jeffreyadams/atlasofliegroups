@@ -65,13 +65,16 @@ set sigma(RootDatum G,int i)=Tits_elt:tits_simple_reflection(G,i)
 
 
 
-{ equality test assumes the root data agree, without check (though it could) }
-set = (Tits_elt(,v,theta),Tits_elt(,u,eta)) = bool: =(v-u)%1 and theta=eta
+{ equality test assumes the root data agree, without check (though it could)  BAD IDEA}
+set = (Tits_elt(rd1,v,theta),Tits_elt(rd2,u,eta)) = bool: rd1=rd2 and =(v-u)%1 and theta=eta
 set != ((Tits_elt,Tits_elt)p) = bool: not =p
 
 { identity in Tits group }
+{NONONO YESYESYES???}
 set tits_identity (RootDatum rd) = Tits_elt:
   let r=rank(rd) in (rd,ratvec:null(r),id_mat(r))
+{set tits_identity (RootDatum rd) = Tits_elt:
+  let r=rank(rd) in (rd,rd.rho_check,id_mat(r))}
 
 { element (torus factor=1)*delta in twisted Tits group }
 set tits_delta (RootDatum rd,mat delta) = Tits_elt: (rd,null(rank(rd)),delta)
@@ -144,14 +147,29 @@ set conjugate (WeylElt w, Tits_elt xi) = Tits_elt:
   their columns (so that the passage from S to m_S is obtained by taking the
   half-sum modulo 1). The action of \theta,\eta is then by transpose inverse.
 }
-set multiply (Tits_elt(rd,v,theta), Tits_elt({assume rd},u,eta)) = Tits_elt:
+set multiply_old(Tits_elt(rd,v,theta), Tits_elt({assume rd},u,eta)) = Tits_elt:
   let tt1 = ^theta.inverse
   , neg_crs = columns_with(is_negative_coroot(rd),^eta.inverse*poscoroots(rd))
   in
   ( rd
-  , ( v + tt1*u + sum(columns_with(is_positive_coroot(rd),tt1*neg_crs))/2 ) % 1
+  , ( v + tt1*u + sum(columns_with(is_positive_coroot(rd),tt1*neg_crs))/2 ).print % 1
   , theta*eta
   )
+
+
+set multiply(Tits_elt t1, Tits_elt t2) = Tits_elt:
+  assert(t1.root_datum=t2.root_datum,"root data don't match in multiplying Tits elements");
+  let rd=t1.root_datum then
+  theta1=t1.theta then
+  theta2=t2.theta then
+  mu1=unnormalized_torus_factor(t1) then
+  mu2=unnormalized_torus_factor(t2) then
+  tt1 = ^theta1.inverse then
+  neg_crs = columns_with(is_negative_coroot(rd),^theta2.inverse*poscoroots(rd)) then
+  mu3=mu1 + tt1*mu2 + sum(columns_with(is_positive_coroot(rd),tt1*neg_crs))/2 then
+  theta3=theta1*theta2 then
+  tau3=((2*mu3-rd.rho_check)*theta3)%1 in
+  ( t1.root_datum,tau3,theta3)
 
 set * = multiply@(Tits_elt,Tits_elt)
 
@@ -166,8 +184,16 @@ set product (RootDatum rd, [Tits_elt] L) = Tits_elt:
   and inverse(Tits_elt:(v,theta))=inverse(Tits_elt:(0,theta))*\exp(2\pi i * -v)
     = Tits_elt:(rho_check*(1-theta)/2-v*theta,inverse(theta))
 }
-set inverse (Tits_elt(rd,v,theta)) = Tits_elt:
+{NO: need to use the unnormalized torus factors}
+set inverse_old (Tits_elt(rd,v,theta)) = Tits_elt:
   (rd, (rho_check(rd)*(1-theta)/2 - v*theta) % 1, theta.inverse)
+
+set inverse (Tits_elt(rd,v,theta)) = Tits_elt:
+let mu=unnormalized_torus_factor(rd,v,theta) then
+mu_inverse_unnormalized=rho_check(rd)*(1-theta)/2 - mu*theta then
+tau_inverse=(2*mu_inverse_unnormalized-rd.rho_check)*(1-theta)/2 in
+(rd,tau_inverse%1,theta.inverse)
+
 
 set inverse(KGBElt x)=KGB_elt(x.tits_element.inverse)
 
@@ -214,3 +240,5 @@ set ^ (Tits_elt !xi, int n) = Tits_elt:
 set order (Tits_elt xi) = int:
   let id=tits_identity(xi.root_datum), d=order(xi.theta)
   in if xi^d=id then d elif xi^(2*d)=id then 2*d else error() fi
+
+set square(Tits_elt (rd,tf,theta))=ratvec:tf+rho_check(rd)

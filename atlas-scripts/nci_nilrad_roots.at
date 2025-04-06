@@ -38,12 +38,21 @@ Note: our application will be to L_0\subset L\subset G
 Dangerous bend: this is a KGBElt for L (what is needed for a weight function to compute
 tensor products) but the roots are for G, so embed_KGB(x_L,G)
 }
-set nci_nilrad_roots_restricted_to_H_theta (KGBElt x_L,Parabolic P) = mat:
+{bug fix on 3/31/25}
+set nci_nilrad_roots_restricted_to_H_theta_old (KGBElt x_L,Parabolic P) = mat:
 (  assert(is_parabolic_theta_stable(P),"P is not theta-stable");
    let x_G=embed_KGB(x_L,P.real_form)
 in columns_with
     ((vec alpha)bool: is_noncompact_imaginary(alpha,x_G) , nilrad_roots(P)) ##
-   for root in makeS(x_G,P) do root od
+   for root in makeS(x_G,P) do root od  {don't know why this was done, it fails if makeS(x_G,P) is empty; replace with ##makeS(x_G,P)}
+)
+
+set nci_nilrad_roots_restricted_to_H_theta (KGBElt x_L,Parabolic P) = mat:
+(  assert(is_parabolic_theta_stable(P),"P is not theta-stable");
+   let x_G=embed_KGB(x_L,P.real_form)
+then cols=columns_with ((vec alpha)bool: is_noncompact_imaginary(alpha,x_G) , nilrad_roots(P))
+then extra=makeS(x_G,P) in 
+if #extra=0 then cols else cols##for root in extra do root od fi
 )
 
 {returns a function taking a KGBElt to [ratvec]

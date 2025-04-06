@@ -3,6 +3,8 @@
 <embed.at
 {<fixed.at}
 
+set e_verbose=true
+
 set is_orthogonal (RootDatum rd, vec alpha, vec beta) = bool: =alpha*coroot(rd,beta)
 set to_dominant(RootDatum rd, vec wt)=(WeylElt,vec):
  let (w,wt_dom)=from_dominant(rd,wt) in (inverse(w),wt_dom)  {w*wt=wt_dom}
@@ -37,11 +39,13 @@ set to_dominant (ratvec cowt,RootDatum rd) = (ratvec,WeylElt):
                  alpha long:  (gamma/2)*v\not\in Z  i.e. not is_integer(v*gamma/2)
 
 }
+
 set fixed(TwistedRootDatum (rd,delta),ratvec v)=(RootDatum,mat):
 assert(is_distinguished(rd,delta),"delta is not distinguished");
 let T=SubTorus:eigen_lattice(^delta,1) then
-restricted_roots=sort_u(for alpha in rd.posroots do T.restrict(alpha) od) then
-roots=sort_u(##
+{restricted_roots=sort_u(for alpha in rd.posroots do T.restrict(alpha) od) then}
+restricted_roots=remove_duplicates(for alpha in rd.posroots do T.restrict(alpha) od) then
+roots=remove_duplicates(##
 for alpha in restricted_roots do
  let lifts=roots_restricting_to_multiple(rd,T,alpha) in
  if #lifts=1 then
@@ -206,32 +210,42 @@ RootDatum G, {G not G_vee}
 mat delta_vee,   {optional dual twist, trivial for ordinary endoscopy}
 mat xi_vee,     {dual involution defining the L-group of G; if inner class is given don't need to specify this}
 ratvec s,        {take centralizer(exp(2i\pi s)}
-WeylElt w_G_vee)=(RealForm,mat,RealForm):   {an additional twist; the identity gives the default inner class of the endoscopic group
-                      w_G_vee is only needed to get other inner classes of H}
-assert(delta_vee*matrix(w_G_vee)=matrix(w_G_vee)*delta_vee,"w_G_vee doesn't commute with delta_vee");
+mat twist)=(RealForm,mat,RealForm):   {an additional twist; the identity gives the default inner class of the endoscopic group
+                      this is only needed to get other inner classes of H}
+assert(delta_vee*twist=twist*delta_vee,"w_G_vee doesn't commute with delta_vee");
 {assert(is_fixed(w_G_vee,xi_vee,s), "w_G_vee*xi_vee doesn't fix s");}
 let (H,M,H_vee)=complex_endoscopic_group(G,delta_vee,s) then
-()=prints("complex H: ", H) then
-()=prints("complex H_vee: ", H_vee) then
-restrict=restrict_co_action(M,w_G_vee.matrix) then
-(w_H,)=to_dominant(H,restrict*H.rho) then
-()=prints("w_H: ", w_H, new_line, w_H.matrix) then
-()=prints( "restrict: ", restrict) then
-()=prints("wh:", w_H.matrix) then
-dual_inner_class=inner_class(H_vee,w_H.matrix) then
-()=prints("dual inner class: ", dual_inner_class) then 
+()=if e_verbose then prints("complex H: ", H) fi then
+()=if e_verbose then prints("complex H_vee: ", H_vee) fi then
+restrict=restrict_co_action(M,twist) then
+{(w_H,)=to_dominant(H,restrict*H.rho) then  }
+(,w_H)=to_dominant(H_vee.rho_check*restrict,H_vee) then     {w_H on dual side: acting on X^*(T)=X_*(T^vee), so coroots for H_vee}
+()=if e_verbose then prints("w_H: ", w_H, new_line, w_H.matrix) fi then
+()=if e_verbose then prints( "restrict: ", restrict) fi then
+()=if e_verbose then prints("wh:", w_H.matrix) fi then
+{new_twist=w_H.matrix*twist*inverse(w_H.matrix) then}
+new_twist=inverse(w_H.matrix)*twist*w_H.matrix then
+()=if e_verbose then prints("new_twist: ", new_twist) fi then
+dual_inner_class=inner_class(H_vee,new_twist) then
+()=if e_verbose then prints("dual inner class: ", dual_inner_class) fi then
 inner_class_H_vee=inner_class(H_vee,w_H.matrix*restrict) then
 inner_class_H=dual(inner_class_H_vee) in
 (quasisplit_form(inner_class_H), M, quasisplit_form(inner_class_H_vee))
+
+{get twist from w_G_vee}
+set endoscopic_group(RootDatum G,mat delta_vee,mat xi_vee,ratvec s,WeylElt w_G_vee)=(RealForm,mat,RealForm):
+endoscopic_group(G,delta_vee,xi_vee,s,w_G_vee.matrix)
 
 {many special cases}
 {given inner class of G don't need xi_vee}
 set endoscopic_group(InnerClass ic_G,mat delta_vee,ratvec s,WeylElt w_G_vee)=(RealForm,mat,RealForm):
 endoscopic_group(root_datum(ic_G),delta_vee,dual(ic_G).distinguished_involution,s,w_G_vee)
+set endoscopic_group(InnerClass ic_G,mat delta_vee,ratvec s,mat twist)=(RealForm,mat,RealForm):
+endoscopic_group(root_datum(ic_G),delta_vee,dual(ic_G).distinguished_involution,s,twist)
 
 {given real form -> inner class}
-set endoscopic_group(RealForm G, mat delta_vee,ratvec s,WeylElt w_G_vee)=(RealForm,mat,RealForm): 
-endoscopic_group(inner_class(G),delta_vee,s,w_G_vee)
+set endoscopic_group(RealForm G, mat delta_vee,ratvec s,WeylElt w_G_vee)=(RealForm,mat,RealForm):endoscopic_group(inner_class(G),delta_vee,s,w_G_vee)
+set endoscopic_group(RealForm G, mat delta_vee,ratvec s,mat twist)=(RealForm,mat,RealForm):endoscopic_group(inner_class(G),delta_vee,s,twist)
 
 {no w: assume w=1}
 set endoscopic_group(RootDatum G, mat delta_vee,mat xi_vee,ratvec s)=(RealForm,mat,RealForm): endoscopic_group(G,delta_vee,xi_vee,s,id_W(dual(G)))
@@ -244,17 +258,29 @@ set endoscopic_group(RootDatum G, mat delta_vee,mat xi_vee,WeylElt w_G_vee)=(Rea
 set endoscopic_group(InnerClass ic,mat delta_vee,WeylElt w_G_vee)=(RealForm,mat,RealForm): endoscopic_group(root_datum(ic),dual(ic).distinguished_involution,delta_vee,w_G_vee)
 set endoscopic_group(RealForm G,mat delta_vee,WeylElt w_G_vee)=(RealForm,mat,RealForm): endoscopic_group(inner_class(G),delta_vee,w_G_vee)
 
+set endoscopic_group(RootDatum G, mat delta_vee,mat xi_vee,mat twist)=(RealForm,mat,RealForm): endoscopic_group(G,delta_vee,xi_vee,null(rank(G)),twist)
+set endoscopic_group(InnerClass ic,mat delta_vee,mat twist)=(RealForm,mat,RealForm): endoscopic_group(root_datum(ic),dual(ic).distinguished_involution,delta_vee,twist)
+set endoscopic_group(RealForm G,mat delta_vee,mat twist)=(RealForm,mat,RealForm): endoscopic_group(inner_class(G),delta_vee,twist)
+
 
 {no delta_vee: delta_vee=1}
 set endoscopic_group(RootDatum G, mat xi_vee,ratvec s,WeylElt w_G_vee)=(RealForm,mat,RealForm): endoscopic_group(G,id_mat(rank(G)),xi_vee,s,w_G_vee)
 set endoscopic_group(RootDatum G, mat xi_vee,ratvec s)=(RealForm,mat,RealForm): endoscopic_group(G,id_mat(rank(G)),xi_vee,s,id_W(dual(G)))
 set endoscopic_group(RootDatum G, mat xi_vee,WeylElt w_G_vee)=(RealForm,mat,RealForm): endoscopic_group(G,xi_vee,null(rank(G)),w_G_vee)
 
+set endoscopic_group(RootDatum G, mat xi_vee,ratvec s,mat twist)=(RealForm,mat,RealForm): endoscopic_group(G,id_mat(rank(G)),xi_vee,s,twist)
+set endoscopic_group(RootDatum G, mat xi_vee,ratvec s)=(RealForm,mat,RealForm): endoscopic_group(G,id_mat(rank(G)),xi_vee,s,id_W(dual(G)))
+set endoscopic_group(RootDatum G, mat xi_vee,mat twist)=(RealForm,mat,RealForm): endoscopic_group(G,xi_vee,null(rank(G)),twist)
+
 set endoscopic_group(RootDatum G, mat xi_vee,ratvec s)=(RealForm,mat,RealForm):endoscopic_group(G,xi_vee,s,id_W(dual(G)))
 
 set endoscopic_group(InnerClass ic,ratvec s,WeylElt w_G_vee)=(RealForm,mat,RealForm): endoscopic_group(ic.root_datum,dual(ic).distinguished_involution,id_mat(rank(ic)),s,w_G_vee)
 set endoscopic_group(InnerClass ic,ratvec s)=(RealForm,mat,RealForm): endoscopic_group(ic.root_datum,dual(ic).distinguished_involution,id_mat(rank(ic)),s,id_W(dual(ic)))
 set endoscopic_group(InnerClass ic,WeylElt w_G_vee)=(RealForm,mat,RealForm): endoscopic_group(ic.root_datum,dual(ic).distinguished_involution,id_mat(rank(ic)),null(rank(ic)),w_G_vee)
+
+set endoscopic_group(InnerClass ic,ratvec s,mat twist)=(RealForm,mat,RealForm): endoscopic_group(ic.root_datum,dual(ic).distinguished_involution,id_mat(rank(ic)),s,twist)
+set endoscopic_group(InnerClass ic,ratvec s)=(RealForm,mat,RealForm): endoscopic_group(ic.root_datum,dual(ic).distinguished_involution,id_mat(rank(ic)),s,id_W(dual(ic)))
+set endoscopic_group(InnerClass ic,mat twist)=(RealForm,mat,RealForm): endoscopic_group(ic.root_datum,dual(ic).distinguished_involution,id_mat(rank(ic)),null(rank(ic)),twist)
 
 {most common untwisted case:}
 set endoscopic_group(RealForm G,ratvec s)=(RealForm,mat,RealForm):endoscopic_group(inner_class(G),s)

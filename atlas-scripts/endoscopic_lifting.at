@@ -2,108 +2,125 @@
 also: only pure strong real forms}
 <L_hom.at
 
-set e_verbose=true
-
 {M: X^*(H_v) to X^*(G_v), i.e. also takes X_*(H) to X_*(G)}
 
 {lift L-homomorphism from H to G}
-set epstar(L_homomorphism phi_H,RealForm G,mat M)=
-phi(map_KGB_gen_tits(phi_H.y,dual_quasisplit_form(G),M),phi_H.gamma*M)
+set epstar(L_homomorphism phi_H,InnerClass ic_G,mat M)=
+phi(map_KGB_gen_tits(phi_H.y,dual(ic_G),M),phi_H.gamma*M)
+{assume M=id}
+set epstar(L_homomorphism phi_H,InnerClass ic_G)=L_homomorphism:epstar(phi_H,ic_G,id_mat(ic_G.rank))
 
-{lift pair (x_H,phi_H) to (x_G,phi_G)}
-set epstar(KGBElt x_H,L_homomorphism phi_H,RealForm G,mat M)=(KGBElt,L_homomorphism):
+{lift pair (x_H,phi_H) to (x_G,phi_G); x_H must be pure element for H}
+set epstar(KGBElt x_H,L_homomorphism phi_H,InnerClass ic_G,mat M)=(KGBElt,L_homomorphism):
 assert(is_pure(x_H), "x_H is not pure (epstar only defined at the moment for pure real forms of H and G");
 let y_H=phi_H.y then
 gamma_H=phi_H.gamma then
 ()=if e_verbose then prints("y_H: ", y_H, new_line, "gamma_H: ", gamma_H) fi  then
 gamma_G=M*gamma_H then
 ()=if e_verbose then prints("gamma_G: ", gamma_G) fi  then
-y_G=map_KGB_gen_tits(y_H,dual_quasisplit_form(G),M) then
+{y_G=map_KGB_gen_tits(y_H,dual_quasisplit_form(G),M) then}
+y_G=map_KGB_gen_tits(y_H,dual(ic_G),M) then  {NOTE dual(ic_G)}
 ()=if e_verbose then prints("y_G: ", y_G) fi then
 phi_G_0=phi(y_G,gamma_G) then
-()=assert(is_valid(phi_G_0), "phi_G is not valid") then
+()=if e_verbose then prints("phi_G_0: ", phi_G_0) fi then
+()=assert(is_valid(phi_G_0), "phi_G_0 is not valid") then
 theta_G_v=involution(y_G) then
 theta_G=-^theta_G_v then
 ()=if e_verbose then prints("theta_G: ", theta_G,new_line,"torus_factor(x_H): ", torus_factor(x_H)) fi then
-x_G_0=KGB_elt(inner_class(G),theta_G,x_H.torus_factor*M) then
+x_G_0=KGB_elt(ic_G,theta_G,x_H.torus_factor*M) then   {NOTE: this might be on a different real form of G}
 ()=if e_verbose then prints("x_G_0: ", x_G_0) fi then
 ()= if e_verbose then prints("x_G_0.real_form: ",x_G_0.real_form) fi then
 ()=if e_verbose then prints("x_G_0.torus_factor",x_G_0.torus_factor) fi then
-(x_G,phi_G)=make_dominant(x_G_0,phi_G_0) in (x_G,phi_G)
+(x_G,phi_G)=make_dominant(x_G_0,phi_G_0) in
+let ()=prints("x_G: ", x_G, new_line, "phi_G: ", phi_G) in (x_G,phi_G)
 
-{x_H must be a pure KGB element for H}
-{long version includes p_G}
-set epstar_std_long(KGBElt x_H,L_homomorphism phi_H,RealForm G,mat M)=(Param,ParamPol):
+{(x_H,phi_H) -> (x_G,phi_G) -> standard module p_G for some real form in ic_G -> (p_G, finalize(p_G)
+long version includes p_G (not just its finalization)}
+set epstar_std_long(KGBElt x_H,L_homomorphism phi_H,InnerClass ic_G,mat M)=(Param,ParamPol):
 assert(is_pure(x_H), "x_H is not pure (epstar only defined at the moment for pure real forms of H and G");
-let (x_G,phi_G)=epstar(x_H,phi_H,G,M) then
+let (x_G,phi_G)=epstar(x_H,phi_H,ic_G,M) then
 ()=if e_verbose then prints("x_G: ", x_G, " ", x_G.real_form, " ", x_G.torus_factor) fi then
 p_G=parameter(x_G,phi_G) then
 ()=if e_verbose then prints("p_G=", p_G) fi
 in (p_G,finalize(p_G))
 
-set epstar_std(KGBElt x_H,L_homomorphism phi_H,RealForm G,mat M)=ParamPol:let (,X)=epstar_std_long(x_H,phi_H,G,M) in X
+{just keep the finalization:
+(x_H,phi_H) -> (x_G,phi_G) -> standard module p_G for some real form in ic_G -> finalize(p_G)}
+set epstar_std(KGBElt x_H,L_homomorphism phi_H,InnerClass ic_G,mat M)=ParamPol:let (,X)=epstar_std_long(x_H,phi_H,ic_G,M) in X
+set epstar_std(KGBElt x_H,L_homomorphism phi_H,InnerClass ic_G)=ParamPol:let (,X)=epstar_std_long(x_H,phi_H,ic_G,id_mat(x_H.root_datum.rank)) in X
 
-{assume M=id}
-set epstar_std(KGBElt x_H,L_homomorphism phi_H,RealForm G)=ParamPol:let (,X)=epstar_std_long(x_H,phi_H,G,id_mat(x_H.root_datum.rank)) in X
-
-{epstar_std p_H: p_H -> (x_H,phi_H) -> epstar_std(x_H,phi_H,G)}
-set epstar_std(Param p_H,RealForm G,mat M)=ParamPol:
+{main std function: standard module on H -> (finalization of) standard module on real form in ic_G
+p_H -> (x_H,phi_H) -> epstar_std(x_H,phi_H,ic_G) }
+set epstar_std(Param p_H,InnerClass ic_G,mat M)=ParamPol:
 let gamma_H=p_H.infinitesimal_character then
 y_H=y_gen(p_H) then
 phi_H=phi(y_H,gamma_H) then
 x_H=p_H.x in
-epstar_std(x_H,phi_H,G,M)
+epstar_std(x_H,phi_H,ic_G,M)
+set epstar_std(Param p_H,InnerClass ic_G)=ParamPol:epstar_std(p_H,ic_G,id_mat(ic_G.rank))
 
+{given a ParamPol on H, apply epstar_std(p_H,G) to each term; the result can live on
+different real forms of G, so return [ParamPol]}
+set epstar_std(ParamPol P_H,InnerClass ic_G,mat M)=[ParamPol]:
+let lifts=##for c@p in P_H do [c*epstar_std(p,ic_G,M)] od
+ in if =#lifts then
+  [null_module(quasisplit_form(ic_G))]
+ else
+  for G in real_forms(ic_G) do sum(G,for P in lifts do if P.real_form=G then [P] else [] fi od.##) od
+ fi
 {assume M=id}
-set epstar_std(Param p_H,RealForm G)=ParamPol:epstar_std(p_H,G,id_mat(G.rank))
-set epstar_std(ParamPol P_H,RealForm G,mat M)=ParamPol:
-sum(G,for c@p in P_H do c*epstar_std(p,G,M) od)
-{assume M=id}
-set epstar_std(ParamPol P_H,RealForm G)=ParamPol:epstar_std(P_H,G,id_mat(rank(G)))
+set epstar_std(ParamPol P_H,InnerClass ic_G)=[ParamPol]:epstar_std(P_H,ic_G,id_mat(rank(ic_G)))
 
-{defined above more succintly}
-{set epstar(L_homomorphism phi_H,RealForm G,mat M)=L_homomorphism:
-let y_H=phi_H.y then
-gamma_H=phi_H.gamma then
-()=if e_verbose then prints("y_H: ", y_H, new_line, "gamma_H: ", gamma_H) fi  then
-gamma_G=M*gamma_H then
-()=if e_verbose then prints("gamma_G: ", gamma_G) fi  then
-y_G=map_KGB_gen_tits(y_H,dual_quasisplit_form(G),M) then
-()=if e_verbose then prints("y_G: ", y_G) fi then
-phi_G=phi(y_G,gamma_G) in
-assert(is_valid(phi_G),"phi_G is not valid");phi_G}
 
+
+set epstar_std([ParamPol] pols_H,InnerClass ic_G,mat M)=[ParamPol]:
+let list=for P_H in pols_H do epstar_std(P_H,ic_G,M) od
+{list=[[ParamPol]]: list[j]= [ParamPol on rf_1,...,ParamPol on rf_r]}
+in for G@i in real_forms(ic_G) do
+ sum(G,for j:#list do list[j][i] od) od
+set epstar_std([ParamPol] pols_H,InnerClass ic_G)=[ParamPol]:epstar_std(pols_H,ic_G,id_mat(rank(ic_G)))
+
+{apply epsstar_std(P_H,G, inner_class(G)) and keep just the terms on G}
+set epstar_std_one(ParamPol P_H,RealForm G,mat M)=ParamPol:
+let lifts=##for c@p in P_H do [c*epstar_std(p,inner_class(G),M)] od
+in sum(G,for P in lifts do if P.real_form=G then [P] else [] fi od.##)
 {assume M=id}
-set epstar(L_homomorphism phi_H,RealForm G)=L_homomorphism:epstar(phi_H,G,id_mat(G.rank))
+set epstar_std_one(ParamPol P_H,RealForm G)=ParamPol:epstar_std_one(P_H,G,id_mat(rank(G)))
+
+{note:
+epstar_std(P_H,ic_G):=[ParamPol]  (on multiple real forms in ic_G)
+epstar_std_one(P_H,G):=ParamPol   (just on G)
+can't drop "_one" because too close to epstar_std(P_H,ic_G)
+}
 
 {for debugging
- usage: set (y_H,y_G,gamma_H,gamma_G,phi_G,theta_G,x_G,p_G) =epstar_std_info(x_H,phi_H,G,M)a
+ usage: set (y_H,y_G,gamma_H,gamma_G,phi_G,theta_G,x_G,p_G) =epstar_std_info(x_H,phi_H,ic_G,M)a
 }
-set epstar_std_info(KGBElt x_H,L_homomorphism phi_H,RealForm G,mat M)=(KGBElt_gen,KGBElt_gen,ratvec,ratvec,L_homomorphism,mat,KGBElt,ParamPol):
+set epstar_std_info(KGBElt x_H,L_homomorphism phi_H,InnerClass ic_G,mat M)=(KGBElt_gen,KGBElt_gen,ratvec,ratvec,L_homomorphism,mat,KGBElt,ParamPol):
 assert(is_pure(x_H), "x_H is not pure (epstar only defined at the moment for pure real forms of H and G");
 let y_H=phi_H.y then
 gamma_H=phi_H.gamma then
 ()=if e_verbose then prints("y_H: ", y_H, new_line, "gamma_H: ", gamma_H) fi  then
 gamma_G=M*gamma_H then
 ()=if e_verbose then prints("gamma_G: ", gamma_G) fi  then
-y_G=map_KGB_gen_tits(y_H,dual_quasisplit_form(G),M) then
+y_G=map_KGB_gen_tits(y_H,dual(ic_G),M) then
 ()=if e_verbose then prints("y_G: ", y_G) fi then
 phi_G=phi(y_G,gamma_G) then 
 theta_G_v=involution(y_G) then
 theta_G=-^theta_G_v then
 ()=if e_verbose then prints("theta_G: ", theta_G,new_line,"torus_factor(x_H): ", torus_factor(x_H)) fi then 
-x_G=KGB_elt(inner_class(G),theta_G,torus_factor(x_H)*M) then
+x_G=KGB_elt(ic_G,theta_G,torus_factor(x_H)*M) then
 ()=if e_verbose then prints("x_G: ", x_G, " ", x_G.real_form, " ", x_G.torus_factor) fi then
 p_G=parameter(x_G,phi_G) then
 ()=if e_verbose then ("p_G=", p_G) fi
 in (y_H,y_G,gamma_H,gamma_G,phi_G,theta_G,x_G,finalize(p_G))
 
-set epstar_std_info(Param p_H,RealForm G,mat M)=(KGBElt_gen,KGBElt_gen,ratvec,ratvec,L_homomorphism,mat,KGBElt,ParamPol):
+set epstar_std_info(Param p_H,InnerClass ic_G,mat M)=(KGBElt_gen,KGBElt_gen,ratvec,ratvec,L_homomorphism,mat,KGBElt,ParamPol):
 let gamma_H=p_H.infinitesimal_character then
 y_H=y_gen(p_H) then
 phi_H=phi(y_H,gamma_H) then
 x_H=p_H.x in
-epstar_std_info(x_H,phi_H,G,M)
+epstar_std_info(x_H,phi_H,ic_G,M)
 
 {testing: given G, H, compute endoscopic lifting of all unipotent packets from H to (pure real forms of) G
 sample usage:
@@ -114,61 +131,129 @@ set G=Sp(6,R)
 set lifts=test_epstar_std(G,rho_check(G)/coxeter_number(G),w0(G))
 }
 
-set test_epstar_std(RealForm G,ratvec v,WeylElt w)=
-let (H,M,Hd)=endoscopic_group(G,v,w) then
+set test_epstar_std(InnerClass ic_G,ratvec v,WeylElt w)=
+let (H,M,Hd)=endoscopic_group(ic_G,v,w) then
 unip_H=unipotent_representations(H) then
 lifts=##for ph@i in unip_H do
 let ()=if e_verbose then prints("i=",i) fi then
  gamma_H=ph.infinitesimal_character then
  gamma_G=gamma_H*M then
  y=y_gen(ph) then
- y_G=map_KGB_gen_tits(y,dual_quasisplit_form(G),M) then
+ y_G=map_KGB_gen_tits(y,dual(ic_G),M) then
  phi_G=phi(y_G,gamma_G)  then
  phi_H=phi(y,gamma_H) then
  S_H=pure_component_group(phi_H)
- in for x in S_H do epstar_std(x,phi_H,G,M) od
+ in for x in S_H do epstar_std(x,phi_H,ic_G,M) od
 od
-in prints("G=",G,new_line,"s=",v,new_line,"H=",H);
+in prints("ic_G=",ic_G,new_line,"s=",v,new_line,"H=",H);
 prints("#lifts: ", #lifts);lifts
 
-set test_epstar_std(RealForm G,ratvec v)=test_epstar_std(G,v,id_W(G))
+set test_epstar_std(InnerClass ic_G,ratvec v)=test_epstar_std(ic_G,v,id_W(ic_G))
 
 {---------------irreducibles-----------}
 
-set epstar_irr(Param p_H,RealForm G,mat M)=ParamPol:
-composition_series(epstar_std(character_formula(p_H),G,M))
+{p_H is parameter on a real form of H, target is ic_G:}
+set epstar_irr(Param p_H,InnerClass ic_G,mat M)=[ParamPol]:
+let standards_G=epstar_std(character_formula(p_H),ic_G,M) in
+ for P in standards_G do composition_series(P) od
+set epstar_irr(Param p_H,InnerClass ic_G)=[ParamPol]:epstar_irr(p_H,ic_G,id_mat(rank(ic_G)))
 
-set epstar_irr(Param p_H,RealForm G)=ParamPol:epstar_irr(p_H,G,id_mat(rank(G)))
+{P_H is a sum of irreducibles on a single real form of H (not necessarily stable)
+target is ic_G:}
+set epstar_irr(ParamPol P_H,InnerClass ic_G,mat M)=[ParamPol]:
+let pols_G=for (,p_H) in %P_H do epstar_irr(p_H,ic_G,M) od 
+{for loop returns:
+r=#real forms of ic_G, n = #terms in P_H:
+pol_{i,j}  i<r, j<n is on real_form i, coming from j^th term of P_H
+[
+ [pol_1,1 on rf_1,...,pol_1,r on real form r],
+ ...
+ [pol_n,1 on rf_1,..., pol_n,r on real form r]
+]
+each pol_i,j is missing c_i
+result is
+c_1*pol_[1,1] + c_2*pol_[2,1] + ... + c_n*pol_[n,1] on real_form #1,
+c_1*pol_[1,2] + c_2*pol_[2,2] + ... + c_n*pol_[n,2] on real_form #2,
+...
+c_1*pol_[1,r] + c_2*pol_[2,r] + ... + c_n*pol_[n,r] on real_form #r
+}
+in
+for G@i in real_forms(ic_G) do 
+ sum(G,for (c_j,)@j in %P_H do pols_G[j][i] od)
+od
+{assume M=id} 
+set epstar_irr(ParamPol P_H,InnerClass ic_G)=[ParamPol]:epstar_irr(P_H,ic_G,id_mat(rank(ic_G)))
 
-set epstar_irr(ParamPol P_H,RealForm G,mat M)=
-sum(G,for (c,p) in %P_H do c*epstar_irr(p,G,M) od)
+{apply epstar_irr to a set of ParamPols P_H on different real forms of H, combine terms
+result is [P_G_1,...,P_G_r]
+ P_G_i is ParamPol on real form #i of G
+ P_G_i = (lift of P_H[0] + ... + lift of P_H[n]) restricted to real form G_i}
+set epstar_irr([ParamPol] pols_H,InnerClass ic_G,mat M)=[ParamPol]:
+let list=for P_H in pols_H do epstar_irr(P_H,ic_G,M) od
+{list=[[ParamPol]]: list[j]= [ParamPol on rf_1,...,ParamPol on rf_r]}
+in for G@i in real_forms(ic_G) do
+ sum(G,for j:#list do list[j][i] od) od
+set epstar_irr([ParamPol] pols_H,InnerClass ic_G)=[ParamPol]:epstar_irr(pols_H,ic_G,id_mat(rank(ic_G)))
 
-set epstar_irr(ParamPol P_H,RealForm G)=
-sum(G,for (c,p) in %P_H do c*epstar_irr(p,G) od)
+set real_form_index(RealForm G)=int: first(for rf@i in real_forms(inner_class(G)) do rf=G od)
 
-{P should be stable on G_qs, P is a ParamPol of irreducibles}
-set epstar_stable(ParamPol P,RealForm G,mat M,ratvec z)=ParamPol:
-let ps=pure_stabilize(P,z) in
-sum(G,for P in ps do prints("P=",P);let ep=epstar_irr(P,G,M)  in prints("ep=",ep);ep od)
+{target is single real form G: }
+set epstar_irr_one(Param p_H,RealForm G,mat M)=ParamPol:
+composition_series(epstar_std_one(character_formula(p_H),G,M))
+set epstar_irr_one(Param p_H,RealForm G)=ParamPol:epstar_irr_one(p_H,G,id_mat(rank(G)))
 
-set epstar_stable(ParamPol P,RealForm G,ratvec z)=ParamPol:epstar_stable(P,G,id_mat(rank(G)),z)
+set epstar_irr_one(ParamPol P_H,RealForm G,mat M)=ParamPol:
+sum(G,for (c,p) in %P_H do c*epstar_irr_one(p,G,M) od)
+set epstar_irr_one(ParamPol P_H,RealForm G)=
+sum(G,for (c,p) in %P_H do c*epstar_irr_one(p,G) od)
 
-set epstar_stable(L_homomorphism phi_H,RealForm G,ratvec z)=ParamPol:
+set epstar_irr_one([ParamPol] pols_H,RealForm G,mat M)=ParamPol:
+let param_pols_G=epstar_irr(pols_H,G,M) in param_pols_G[real_form_index(G)]
+set epstar_irr_one([ParamPol] pols_H,RealForm G)=epstar_irr_one(pols_H,G,id_mat(rank(G)))
+
+
+{ -------------stable lifting: as in Shelstad---------------------}
+
+{two versions:
+epstar_stable(P_H,...): P_H is stable sum of irreducibles
+epstar_stable(phi_H,...): lift stable sum of standards in Pi(phi_H) (this is lifting of "micro-packets")
+}
+
+{P_H is a ParamPol of stable sum of irreducibles on H_qs}
+set epstar_stable(ParamPol P_H_qs,InnerClass ic_G,mat M,ratvec z)=[ParamPol]:
+assert(is_stable(P_H_qs), "P_H_qs is not stable");
+assert(P_H_qs.real_form.is_quasisplit,"H is not quasisplit");
+let ps=pure_stabilize(P_H_qs,z) in
+epstar_irr(ps,ic_G,M)
+{assume M=d}
+set epstar_stable(ParamPol P,InnerClass ic_G,ratvec z)=[ParamPol]:epstar_stable(P,ic_G,id_mat(rank(ic_G)),z)
+
+{phi_H -> stable sum of standards on H_qs -> stable sum of standards on all real forms of H -> apply epstar}
+set epstar_stable(L_homomorphism phi_H,InnerClass ic_G,mat M,ratvec z)=[ParamPol]:
 let H=dual_quasisplit_form(inner_class(phi_H)) then
-P_H=stable_sum(H,phi_H) in 
-epstar_stable(P_H,G,z)
+P_H=stable_sum_std(H,phi_H) in 
+epstar_stable(P_H,ic_G,M,z)
+set epstar_stable(L_homomorphism phi_H,InnerClass ic_G,ratvec z)=[ParamPol]:
+epstar_stable(phi_H,ic_G,id_mat(rank(ic_G)),z)
 
-set test_epstar_stable([Param] params,RealForm G, ratvec z)=[(ParamPol,ParamPol)]:
+set epstar_stable_one(L_homomorphism phi_H,RealForm G,mat M,ratvec z)=ParamPol:
+epstar_stable(phi_H,inner_class(G),M,z)[real_form_index(G)]
+set epstar_stable_one(L_homomorphism phi_H,RealForm G,ratvec z)=ParamPol:
+epstar_stable_one(phi_H,G,id_mat(rank(G)),z)
+
+
+set test_epstar_stable([Param] params,RealForm G, ratvec z)=
 for P in stable_sums_irr(params) do (P, epstar_stable(P,G,z)) od
 
 {test_epstar_stable(weak_packets(H),G,z)}
-set test_epstar_stable([([([Param],[WCell])],[(int,int,Param)])] wp_H,RealForm G,ratvec z)=[[(ParamPol,ParamPol)]]:
+set test_epstar_stable([([([Param],[WCell])],[(int,int,Param)])] wp_H,RealForm G,ratvec z)=
 for packet in wp_H do test_epstar_stable(parameters(packet),G,z) od
 
 set show([[(ParamPol,ParamPol)]] data)=void:
 for a@i in data do 
  for (P,Q)@j in a do 
   prints("-------------------------------",new_line,"i=",i," j=",j,new_line,"P=",P,new_line,"lift(P)=",Q,new_line) od od
+
 
 {-----------------------inversion of stable lifting----------------}
 
@@ -191,7 +276,7 @@ set quotient(KGBElt_gen x)=let (A,B)=matrices(x) in quotient(A,B)
 set quotient_elements(KGBElt_gen x)=[ratvec]:
 let (A,B)=matrices(x) then 
 q=quotient(A,B) in
-if =#q then [] else let
+if =#q then [null(rank(x.root_datum))] else let
 Q=for (v,d) in q do v/d od then
 vecs=box(2,#Q) in columns(A*Q*vecs) fi
 
@@ -200,44 +285,97 @@ set quotient_elements(KGBElt x)=[ratvec]:quotient_elements(KGB_elt_gen(x))
 set endoscopic_elements(L_homomorphism phi)=[ratvec]:
 quotient_elements(phi.y)
 
-{given phi_G and ordinary endoscopic group H, assuming  phi_G factors through L-H,
-return phi_H.
-This is almost exactly the same epstar(L_homomorphism,RealForm G): the matrix M is the identity
-so both directions are essentially the same}
-set epstar_inverse_old(L_homomorphism phi_G,RealForm H)=
-phi(map_KGB_gen_tits(phi_G.y,dual_quasisplit_form(H),id_mat(rank(H))),phi_G.gamma)
-
 {phi_G factors through L-group of H}
 set epstar_inverse(L_homomorphism phi_G,InnerClass ic_H)=L_homomorphism:
 let y_G=phi_G.y then
 ic_H_d=dual(ic_H) then
 sigma_G=tits_element(y_G) then
-w_G=w(sigma_G,G.distinguished_involution) then
-()=prints(w_G.matrix) then
+w_G=w(sigma_G,phi_G.inner_class.distinguished_involution) then
+{()=prints("w_G: ",w_G.matrix) then}
 w_H_matrix=w_G.matrix*distinguished_involution(ic_H_d) then
-()=prints(w_H_matrix) then
+{()=prints("w_H: ",w_H_matrix) then}
 w_H=W_elt(ic_H_d, w_H_matrix) then
-sigma_H=tits_element(ic_H_d,w_H)*tits_delta(ic_H_d) then
+{()=prints("tits_delta: ", tits_delta(ic_H_d)) then}
+sigma_H=tits_element(ic_H_d,y_G.torus_factor,w_H)*tits_delta(ic_H_d) then
 y_H=KGB_elt_gen(sigma_H) in
 L_hom(y_H,phi_G.gamma)
 
+{usage:
+set (y_G,ic_H_d,sigma_G,w_G,w_H_matrix,w_H,sigma_H,y_H,L_hom_H)=epstar_inverse_debug(phi,ic_H)}
+set epstar_inverse_debug(L_homomorphism phi_G,InnerClass ic_H)=
+let y_G=phi_G.y then
+ic_H_d=dual(ic_H) then
+sigma_G=tits_element(y_G) then
+w_G=w(sigma_G,phi_G.inner_class.distinguished_involution) then
+w_H_matrix=w_G.matrix*distinguished_involution(ic_H_d) then
+w_H=W_elt(ic_H_d, w_H_matrix) then
+sigma_H=tits_element(ic_H_d,w_H)*tits_delta(ic_H_d) then
+y_H=KGB_elt_gen(sigma_H) in
+(y_G,ic_H_d,sigma_G,w_G,w_H_matrix,w_H,sigma_H,y_H,L_hom(y_H,phi_G.gamma))
+
 set epstar_inverse(L_homomorphism phi_G,RealForm H)=L_homomorphism:epstar_inverse(phi_G,inner_class(H))
 
+{all the terms should live on the same real form of ic_G}
+set epstar_stable_std(L_homomorphism phi_H,RealForm G,ratvec z, mat M)=ParamPol:
+let param_pols_H=pure_stable_sum_std(phi_H,z) in
+sum(G,for P_H in param_pols_H do epstar_std_one(P_H,G,M) od)
+
+set epstar_stable_std(L_homomorphism phi_H,RealForm G,ratvec z)=ParamPol:
+epstar_stable_std(phi_H,G,z,id_mat(rank(G)))
+
+
+set endoscopy(L_homomorphism phi_G,RealForm G, ratvec s)=
+let ic=dual(inner_class(phi_G)) then
+y_G=phi_G.y then
+twist=y_G.involution then
+(H,M,Hd)=endoscopic_group(ic,s,twist) then
+ ()=prints("H=",H, " Hd=", Hd) then
+ phi_H=epstar_inverse(phi_G,H) in
+ epstar_stable_std(phi_H,G,s) 
+
+set endoscopy_naive(L_homomorphism phi_G,RealForm G, ratvec s)=
+let ic=dual(inner_class(phi_G)) then
+y_G=phi_G.y then
+twist=y_G.involution then
+(H,M,Hd)=endoscopic_group(ic,s,twist) then
+ phi_H=epstar_inverse(phi_G,H) in
+ epstar_stable_std(phi_H,G,s) 
 
 
 set endoscopy(L_homomorphism phi_G,RealForm G)=
 let ic=dual(inner_class(phi_G)) then
-S=endoscopic_elements(phi_G) in
+S=endoscopic_elements(phi_G) then
+y_G=phi_G.y then
+twist=y_G.involution in
 for s in S do
-let ()=prints("------------------------------------",new_line,"s=",s) in
- let (H,M,Hd)=endoscopic_group(ic,s) then
+ let ()=prints("--------------------------",new_line,"s=",s) in
+ let (H,M,Hd)=endoscopic_group(ic,s,twist) then
  ()=prints("H=",H, " Hd=", Hd) then
- phi_H=epstar_inverse(phi_G,H) then
- ()=prints("phi_H=",phi_H) in
- epstar_stable(phi_H,G,s) od
+ phi_H=epstar_inverse(phi_G,H) {then} in 
+{ ()=prints("phi_H=",phi_H) in}
+(phi_G,s,H,epstar_stable_std(phi_H,G,s)) od
+
+set endoscopy([L_homomorphism] phis,RealForm G)=
+for phi in phis do endoscopy(phi,G) od
+
+set show([[(L_homomorphism,ratvec,RealForm,ParamPol)]] data)=void:
+for list@i in data do
+ prints("================================================",new_line,"i=",i,"/",#data);
+ for (phi,s,H,P)@j in list do
+ prints("--------------------",new_line,"i=",i,"/",#data," j=",j,"/",#list);
+  prints("H=",H);
+  show(phi);
+  prints("s=",s,new_line,"P.infinitesimal character:",P.infinitesimal_character,new_line,"P=",P	)
+ od
+od
+
+set show([(L_homomorphism,ratvec,RealForm,ParamPol)] data)=void:show([data])
+set show((L_homomorphism,ratvec,RealForm,ParamPol) data)=void:show([data])
 
 
 
 
 
 
+
+ 
