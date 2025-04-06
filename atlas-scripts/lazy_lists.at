@@ -331,4 +331,6 @@ in memoize(@:(0,@:(1,r))) { here |memoize| is essential }
 { e.g., compositional_inverse([0,1,-1].extend_0) solves $f-f^2=X$ }
 
 set series_precision = 12
-set show (inf_list f) = initial(series_precision)(f)
+any_type T begin set show(infinite_list<T> f) = [T]:
+  initial(series_precision)(f) { use |series_precision| only when |f| is there }
+end

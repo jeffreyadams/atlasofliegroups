@@ -2242,46 +2242,56 @@ Our new type system much resembles in flavour (and is inspired by) the
 Hindley-Milner type system used for instance in the Haskell language, but with
 important differences, stemming mostly from the fact that we don't care much
 about deducing types of \emph{all} expressions without any help from the user;
-we have always required function parameters to be given explicit types. Indeed
-such deduction might not be possible in the presence of certain features; it
-notably does not blend well with``ad hoc'' function overloading (where a same
-symbol or identifier can have multiple meanings to choose from) which was in use
-long before we had second order types. We also allow declaring recursive types,
-which Hindley-Milner typing does not allow (it gives a singular role to
-injection maps into a disjoint union type, called constructors of an algebraic
-data type, which provides a way around this restriction in cases that are
-important in practice).
+we have always required explicit mention of types in the programs notably for
+function parameters. And indeed the presence certain features of our language
+make entirely unaided type deduction type deduction impossible: it notably does
+not blend well with``ad hoc'' function overloading (where a same symbol or
+identifier can have multiple meanings to choose from) which was in use long
+before we had second order types. We also allow declaring recursive types, which
+Hindley-Milner typing does not allow. (It circumvents the obvious need for
+recursive data types by a special treatment of disjoint union types: unlike
+tuple types they are not considered to be composite types built up from
+component types, but instead as opaque types that are created by a user
+declaration and accompanied by named injection maps that enable recursive
+construction of values; their names (called data type constructors) have a
+special status in that that system, that is neither that of an identifier nor
+that of a type name. Using such ``data type definitions'', they can effectively
+handle those recursive types for which each recursive relation involves a
+disjoint union.)
 
 We already introduced (numbered) type variables into the definition of
-|type_expr|. In type of expressions these arise either through explicit
-introduction by the user (abstraction clauses), or from using names with a
-polymorphic type. In the former case the type variables start out as
-``fixed by the context'' within their scope (nothing can be assumed about them
-and no substitution made) but when emerging from such a scope, the type
-variables in its type become polymorphic (implicitly universally quantified).
-We have chosen to use just one kind of type variables, with a frontier between
-fixed and polymorphic types determined by the lexical context. Polymorphic type
-variables have no distinct identity, and can be freely renumbered, for instance
-to avoid a clash with other type variables when moving to a different context.
+|type_expr|. These can arise in types of expressions either through explicit
+introduction by the user in a type abstraction clause, or through the use of
+globally bound identifiers with a polymorphic type. In the former case the type
+variables start out as ``fixed by the context'' within their scope (nothing can
+be assumed about them, nor can they be substituted for) but when emerging from
+such a scope, such type variables present in the type of the type abstraction
+clause become polymorphic. i.e., implicitly universally quantified. We have
+chosen to use just one kind of type variables internally, with a threshold
+between fixed and polymorphic variables present in the context where the type
+expressions are handled. Polymorphic type variables (those above the threshold)
+have no distinct identity, and can be freely renumbered, for instance to avoid a
+clash with other type variables that arose in a different context.
 
-Polymorphic types require various forms of substitution operations, and a new
-process called unification, which in its simplest form answers the question
-whether two given polymorphic types admit any types obtainable from both by
-substitution. If so, one usually also wants to know the simplest (most general)
-such substitution. For instance, with $f,g,h$ denoting distinct type
-constructors of one argument and with type variables $S,T$, the expressions
-$f(S)$ and $f(g(T))$ can be made equal by the substitution $S:=g(T)$, and this
-is the most general such substitution (with less general solutions being those
-which in addition substitute some specific type for $T$). On the other hand, if
-the second expression had instead been just $g(T)$, the substitution problem
-would have had no solutions, as we cannot make the difference between the top
-level $f$ and $g$ go away. The initial problem could arise in the context of
-trying to match a function with type (for all~$S$) $(f(S)\to{h(S)})$ when called
-with an argument expression of type (for all~$T$) $f(g(T))$; here the match
-succeeds, and the function application so formed then has type (for all~$T$)
-$h(g(T))$. Here the type of the function call reuses the type variable $T$ from
-the type of the argument; in general it could involve type variables coming both
-from the function and the argument types.
+@ Polymorphic types require various forms of substitution operations, that are
+related to a new process called type unification: in its simplest form it
+answers the question whether two given polymorphic types admit any types
+obtainable from both by substitution. If so, one usually also wants to know the
+simplest (most general) such substitution. For instance, with $f,g,h$ denoting
+distinct type constructors of one argument and with type variables $S,T$, the
+expressions $f(S)$ and $f(g(T))$ can be made equal by the substitution
+$S:=g(T)$, and this is the most general such substitution (with less general
+solutions being those which in addition substitute some specific type for $T$).
+On the other hand, if the second expression had instead been just $g(T)$, the
+substitution problem would have had no solutions, as no substitution can make
+the difference between the top level $f$ and $g$ go away. The initial problem
+could arise in the context of trying to match a function with type (for all~$S$)
+$(f(S)\to{h(S)})$ when called with an argument expression of type (for all~$T$)
+$f(g(T))$; here the match succeeds, and the function application so formed then
+has type (for all~$T$) $h(g(T))$. Here the type of the function call reuses the
+type variable $T$ from the type of its argument subexpression; in general it
+might combine type variables coming both from the function and argument
+subexpressions.
 
 Although we allow recursive user-defined types that represent infinitely
 repetitive type expressions, we do not allow unification to invent such types in
@@ -2293,49 +2303,33 @@ substituting $T:=(L\to{L})$, is rejected. Allowing it would complicate
 unification immensely for no good purpose; if really needed, a user can
 explicitly demand such a type substitution.
 
-@ We come to type transformation and substitution operations. The argument~|tp|
-to these functions, while specified as |type_expr|, should not contain any
-|undetermined_type| subexpressions; to achieve this, a caller may need to first
-replace each such occurrence by a fresh (only used at that place) type variable;
-the factory function |type::wrap| given later does such a replacement.
-
-The utility function |shift| renumbers type variables by adding |amount|, but
-(in order to respect variables that are fixed in the context) leaves those
-numbered less than |fix| unchanged.
-
-Th function |can_unify| relates to the unification process of polymorphic types.
-It uses an auxiliary structure |type_assignment|, defined below, which specifies
-the type assignments to perform; it will be filled during the unification by
-|can_unify|, and provides a |substitution| method to obtain the unified type.
-The later substitution need not be to one of the unified types themselves; for
-instance in a function application we apply unification to the argument part of
-a function type and the type of a concrete argument, and once the match is made,
-the |type_assignment| can then bu used for substitution into the result part of
-the function type to get the type of the call.
+@ Before we introduce the classes for handling polymorphic types, we define some
+relevant free functions. The first, |shift|, implements the operation of
+renumbering polymorphic type variables. The second, |can_unify|, is the
+workhorse for the unification process; it will be defined after the introduction
+of the |type_assignment| structure that it uses to store the result of the
+unification.
 
 @< Declarations of exported functions @>=
 type_expr shift (const type_expr& tp, unsigned int fix, unsigned int amount);
-@)
 bool can_unify(const type_expr& P, const type_expr& Q, type_assignment& assign);
 
 
-@ When we need to renumber the polymorphic type variables in one type
-to avoid collision with variables bound in another type, we can use the
-auxiliary recursive function |shift|, which is similar to |simple_subst|.
-Type variables below the threshold |fix| are unchanged.
+@ The recursive function |shift| is similar to |simple_subst|, but is limited to
+adding a fixed |amount| to the numbers of polymorphic type variables, while
+leaving those numbered less than the threshold |fix| unchanged.
 
 @< Function definitions @>=
 type_expr shift
   (const type_expr& t, unsigned int fix, unsigned int amount)
-{ type_ptr result;
-  switch (t.raw_kind())
+{ switch (t.raw_kind())
   { case primitive_type: return type_expr::primitive(t.prim());
-    case function_type: result =
-      mk_function_type(shift(t.func()->arg_type,fix,amount),
-                       shift(t.func()->result_type,fix,amount));
+    case function_type: return
+      type_expr::function(shift(t.func()->arg_type,fix,amount),
+      @|                  shift(t.func()->result_type,fix,amount));
     break;
     case row_type:
-      result = mk_row_type(shift(t.component_type(),fix,amount));
+      return type_expr::row(shift(t.component_type(),fix,amount));
     break;
     case tuple_type:
     case union_type:
@@ -2356,25 +2350,26 @@ type_expr shift
     }
     default: assert(false);
   }
-  return std::move(*result);
+  return type_expr(); // cannot be reached
 }
 
-@ Unification produces a set of substitutions for type variables, whose
-structure is a bit more complicated than the simple list of |type_expr| values
-that was used in |simple_subst|. We define a class |type_assignment| to hold the
-relevant information. In fact it still holds a list of |const_type_ptr| values,
-but we add a threshold |var_start| where the numbering of the corresponding type
-variables starts. Also, the default value for these pointers is |nullptr|,
-indicating that no substitution is to be made for the type variable. When a
-substitution is called for, the type expression substituted may contain other
-type variables, either below or above the threshold; in the latter case these
-type variables may need further substitution. The absence of cycles that would
-prevent termination of the substitution process is a class invariant.
+@ Unification produces a set of assignments to type variables, using a structure
+a bit more complicated than the simple list of |type_expr| values that was used
+in |simple_subst|. The class |type_assignment| holds the relevant information,
+and provides some related functionality like substitution using those
+assignments. It holds a vector of |type_ptr| values (that may be null pointers,
+meaning that no assignment is made to this type variable), and also records a
+|threshold| value, indicating where the numbering of the corresponding
+polymorphic type variables starts. When an assignment is recorded, the type
+expression substituted may contain other type variables, either below or above
+the |threshold|; in the latter case these type variables may be subject to
+further substitution. The absence of cycles that would prevent termination of
+the substitution process is a class invariant.
 
-Some methods are provided to easily assign a type expression to a type variable,
-test whether this has been done, and as help in performing substitutions, to
-renumber type variables taking into account that those that have been assigned
-to will disappear from the type by the substitution.
+Of the numerous methods provided, some serve to provide the essential
+characteristics of the data structure and the basic manipulations allowed,
+while the |substitution| and |unify| methods are operations at a somewhat higher
+level.
 
 @< Type definitions @>=
 class type_assignment
@@ -2398,8 +2393,9 @@ public:
   { auto null = @[ [](const type_ptr& p){@; return p==nullptr; } @];
     return std::none_of(equiv.begin(),equiv.end(),null);
   }
-  void set_floor(unsigned int n) @+{@; threshold=n; }
+  void set_floor(unsigned int n) @+{@; assert(empty()); threshold=n; }
   void grow(unsigned int n) @+{@; equiv.resize(size()+n); }
+    // add |n| unassigned type variables
   unsigned int append(const type_assignment& other);
     // grow by transferring assignments
   void lower_floor(unsigned int n);
@@ -2420,7 +2416,6 @@ public:
 @)
   type_expr substitution
     (const type_expr& tp, unsigned int shift_amount=0) const;
-  type_expr skeleton (const type_expr& sub_t) const;
   bool unify(type_expr& P, type_expr& Q);
 @)
 private:
@@ -2449,7 +2444,7 @@ If there are any pending assignments, then the same shift should be applied to
 the equivalents in those assignments as to the main type expression, and the
 method |type_assignment::append| will take care of this. Since it computes the
 shift amount applied, we for convenience return this number to the caller, who
-might use it to |shift| the main type expression.
+might use it to |shift| the main type expression as well.
 
 @< Function definitions @>=
 
@@ -2466,6 +2461,7 @@ unsigned int type_assignment::append(const type_assignment& other)
         (shift(*p,other.threshold,diff)));
    return diff;
 }
+
 @ After having introduced abstract type variables, one can turn a set of the
 newest type such variables (typically all of them) into polymorphic type
 variables by lowering the |threshold| of a type assignment. Since |equiv| is
@@ -2476,15 +2472,48 @@ to the lowest slots in |equiv|. In order for this to work correctly, we should
 insert null pointers into the start of |equiv| while pushing the existing values
 upwards.
 
+We provide two implementations; the first one is more readable, the second
+(active) one is slightly more efficient.
+
 @< Function definitions @>=
 
 void type_assignment::lower_floor(unsigned int n)
 {
   assert(n<=threshold);
   threshold -= n;
+#if 0
+  equiv.reserve(equiv.size()+n);
   while (n-->0) // range insert does not work, |type_ptr| not CopyAssignable
     equiv.insert(equiv.begin(),nullptr);
       // recompute |begin()| each time, it might relocate
+#else
+  equiv.resize(equiv.size()+n); // add |n| null pointers at the end
+  std::rotate(equiv.begin(),equiv.end()-n,equiv.end());
+    // move the null pointers to the front
+#endif
+}
+
+@ There are two versions of |set_equivalent|, the first of which can move from
+its type argument, while the second makes a copy of it. Both use |is_free_in| to
+test for direct or indirect self-reference that would be introduced by the
+assignment; if it is found, the assignment is not done, so as to preserve the
+class invariant. These methods return a Boolean value telling whether setting
+the type variable succeeded.
+
+@< Function definitions @>=
+bool type_assignment::set_equivalent(unsigned int i, type_ptr&& p)
+{ assert (i>=threshold and i<threshold+size());
+@/if (p!=nullptr and is_free_in(*p,i))
+    return false;
+  equiv[i-threshold]=std::move(p);
+  return true;
+}
+bool type_assignment::set_equivalent(unsigned int i, const type_expr& tp)
+{ assert (i>=threshold and i<threshold+size());
+@/if (is_free_in(tp,i))
+    return false;
+  equiv[i-threshold]=std::make_unique<type_expr>(tp.copy());
+  return true;
 }
 
 @ The test for non-containment of a type variable is done by a private
@@ -2512,32 +2541,14 @@ bool type_assignment::is_free_in(const type_expr& tp, unsigned int nr) const
       if (is_free_in(*it,nr))
         return true;
     return false;
-  default: // |undetermined| (shouldn't happen), |primitive_type|, |tabled|
+  case tabled:
+    for(wtl_const_iterator it(tp.tabled_args()); not it.at_end(); ++it)
+      if (is_free_in(*it,nr))
+        return true;
+    return false;
+  default: // |undetermined| (shouldn't happen), |primitive_type|
     return false;
   }
-}
-
-@ There are two versions of |set_equivalent|, the first of which can move from
-its type argument, while the second makes a copy of it. Both use |is_free_in| to
-test for direct or indirect self-reference that would be introduced by the
-assignment; if it is found, the assignment is not done, so as to preserve the
-class invariant. These methods return a Boolean value telling whether setting
-the type variable succeeded.
-
-@< Function definitions @>=
-bool type_assignment::set_equivalent(unsigned int i, type_ptr&& p)
-{ assert (i>=threshold and i<threshold+size());
-@/if (is_free_in(*p,i))
-    return false;
-  equiv[i-threshold]=std::move(p);
-  return true;
-}
-bool type_assignment::set_equivalent(unsigned int i, const type_expr& tp)
-{ assert (i>=threshold and i<threshold+size());
-@/if (is_free_in(tp,i))
-    return false;
-  equiv[i-threshold]=std::make_unique<type_expr>(tp.copy());
-  return true;
 }
 
 @ The method |is_polymorphic| tests whether a given type is a type variable that
@@ -2546,8 +2557,8 @@ is currently unassigned.
 @< Function definitions @>=
 bool type_assignment::is_polymorphic(const type_expr& tp) const
 { return tp.raw_kind()==variable_type
-     and tp.typevar_count()>=threshold
-     and equiv[tp.typevar_count()-threshold]==nullptr;
+  @| and tp.typevar_count()>=threshold
+  @| and equiv[tp.typevar_count()-threshold]==nullptr;
 }
 
 @ Sometimes it is useful to be able to roll back new assignments made by a call
@@ -2608,15 +2619,14 @@ happens; we shall deal with this in a separate section.
 
 type_expr type_assignment::substitution
   (const type_expr& tp, unsigned int shift_amount) const
-{ type_ptr result;
-  switch (tp.raw_kind())
+{ switch (tp.raw_kind())
   { case primitive_type: return type_expr::primitive(tp.prim());
-    case function_type: result =
-      mk_function_type(substitution(tp.func()->arg_type,shift_amount),
-                       substitution(tp.func()->result_type,shift_amount));
+    case function_type: return
+      type_expr::function(substitution(tp.func()->arg_type,shift_amount),
+      @|                  substitution(tp.func()->result_type,shift_amount));
     break;
     case row_type:
-      result = mk_row_type(substitution(tp.component_type(),shift_amount));
+      return type_expr::row(substitution(tp.component_type(),shift_amount));
     break;
     case tuple_type:
     case union_type:
@@ -2637,7 +2647,7 @@ type_expr type_assignment::substitution
          applied; otherwise return a copy of the type variable itself @>
     default: assert(false); // there should be no undetermined type components
   }
-  return std::move(*result);
+  return type_expr(); // cannot be reached
 }
 
 @ The |equivalent| method looks up any substitution recorded for a type
@@ -2656,9 +2666,10 @@ polymorphic type variables need to fill a contiguous range, notably in the
 
 There is a potential for non-terminating recursion here, but that possibility is
 avoided by ensuring that no |type_assignment| ever has direct or indirect
-self-references. To that end we shall refuse, when setting a type expression for
-type variable in any |type_assignment|, such expressions that directly or
-indirectly refer back to the variable in question itself.
+self-references. To that end we have refused, when setting a type expression for
+type variable in any |type_assignment|, such expressions that (according to
+|is_free_in|) directly or indirectly refer back to the variable in question
+itself.
 
 @< If a type is associated to type variable |tp.typevar_count()|... @>=
 { auto c = tp.typevar_count()+shift_amount;
@@ -2666,52 +2677,6 @@ indirectly refer back to the variable in question itself.
   return p==nullptr
     ? type_expr::variable(renumber(c))
     : substitution(*p,0);
-}
-
-@ Before converting the argument for a polymorphic function, we can extract from
-its polymorphic type a type pattern that may aid the conversion, namely by
-simply replacing all type variables bound in the polymorphic type by
-undetermined types; the type variables up to |floor()| are unchanged. The method
-|skeleton| achieves this. It is a minor variation of |substitution|, in which no
-renumbering of variables is done; it could in fact have been implemented by
-calling |substitution| after modifying |equiv| by putting undetermined types in
-all empty slots, and leaving the |shift_amount| zero.
-
-@< Function definitions @>=
-type_expr type_assignment::skeleton (const type_expr& te) const
-{ type_ptr result;
-  switch (te.raw_kind())
-  { case primitive_type: return type_expr::primitive(te.prim());
-    case function_type: result =
-      mk_function_type(skeleton(te.func()->arg_type),
-                       skeleton(te.func()->result_type));
-    break;
-    case row_type:
-      result = mk_row_type(skeleton(te.component_type()));
-    break;
-    case tuple_type:
-    case union_type:
-    { dressed_type_list aux;
-      for (wtl_const_iterator it(te.tuple()); not it.at_end(); ++it)
-        aux.push_back(skeleton(*it));
-      return type_expr::tuple_or_union(te.raw_kind(),aux.undress());
-    }
-    case tabled:
-    { dressed_type_list aux;
-      for (wtl_const_iterator it(te.tabled_args()); not it.at_end(); ++it)
-        aux.push_back(skeleton(*it));
-      return type_expr::user_type(te.tabled_nr(),aux.undress());
-    }
-    case variable_type:
-    { auto c = te.typevar_count();
-      auto p = equivalent(c);
-      return p!=nullptr ? skeleton(*p)
-          : c<threshold ? type_expr::variable(c)
-          : type_expr() ;
-    }
-    default: assert(false);
-  }
-  return std::move(*result);
 }
 
 @ Finally we give the general unification method |type_assignment::unify|,
@@ -2724,7 +2689,7 @@ bool type_assignment::unify(type_expr& P, type_expr& Q)
 { auto P_kind = P.raw_kind(), Q_kind = Q.raw_kind();
   if (P_kind==tabled or Q_kind==tabled)
     @< Decide |unify| in the presence of tabled types,
-       avoiding any recursive calls if both type are tabled and recursive @>
+       avoiding any recursive calls if both types are tabled and recursive @>
   if (P_kind==undetermined_type)
     {@; P.set_from(Q.copy()); return true; }
   else if (Q_kind==undetermined_type)
@@ -2766,7 +2731,7 @@ conclude failure of the unification. The code below tries to cover all these
 cases using as few tests as possible.
 
 @< Decide |unify| in the presence of tabled types,
-   avoiding any recursive calls if both type are tabled and recursive @>=
+   avoiding any recursive calls if both types are tabled and recursive @>=
 { if (P_kind==tabled and Q_kind==tabled)
   { if (P.tabled_nr()!=Q.tabled_nr())
     @/return not (P.is_recursive() and Q.is_recursive()) @|
@@ -2830,8 +2795,13 @@ success the substitutions made to achieve unification are recorded in |assign|;
 in case of failure, the caller should ignore (or wipe out) any substitutions
 that might be recorded in |assign|. In case of success, the actual unified type
 can then be obtained if desired by a subsequent call |substitute(P_orig,assign)|
-or |substitute(Q_orig,assign)|, but |assign| can also be used in different
-manners.
+or |substitute(Q_orig,assign)|. This separation of unification and actual
+substitution is made because substitution is not restricted in its application
+to one of the unified types themselves. For instance in a function application
+we apply unification between the parameter part of a function type and the type
+of the argument expression; once the match is made, the |type_assignment| can
+then be used for substitution into the result part of the function type to get
+the type of the call.
 
 The treatment of type variables and tabled types is detailed in other sections.
 Apart from that, we just perform a recursive traversal of both types, failing as
@@ -3196,8 +3166,6 @@ bool matches
    unsigned int& shift_amount);
 bool matches_argument(const type& arg_type); // for non-overloaded calls
 @)
-type_expr skeleton (const type_expr& sub_tp) const;
-  // extract a type pattern from polymorphic |sub_tp|
 type& wrap_row () // put on a ``row-of''
 {@; te.set_from(type_expr::row(std::move(te)));
   return *this;
@@ -3585,7 +3553,7 @@ bool type::unify(type& other)
   {
     if (degree()>0 and other.degree()>0) // if both were initially polymorphic
       (tap==&a ? other.a : a) = tap->copy();
-      // |*tap| to the unchanged |type_assignment|
+      // copy |*tap| to the unchanged |type_assignment|
     return true;
   }
   tap->make_polymorphic(snapshot); // roll back any type assignments upon failure
@@ -3661,7 +3629,7 @@ bool type::matches_argument(const type& actual_arg_type)
 {
   assert(actual_arg_type.is_clean()); // caller should ensure this
   if (floor()<actual_arg_type.floor()) // ensure we can preserve fixed variables
-    *this = type::wrap(bake_off(),floor(),actual_arg_type.floor()-floor());
+    raise_floor(actual_arg_type.floor()-floor());
   const type_expr& arg_type = expand().func()->arg_type;
     // in passing this calls |wring_out|
   unsigned int fd=degree(), ad=actual_arg_type.degree();
@@ -3670,19 +3638,6 @@ bool type::matches_argument(const type& actual_arg_type)
     return can_unify(arg_type,actual_arg_type.te,assign());
   return can_unify(arg_type,shift(actual_arg_type.te,floor(),fd),assign());
 }
-
-@ Before converting the argument for a polymorphic function, we can extract from
-its polymorphic type a type pattern that may aid the conversion, namely by
-simply replacing all type variables bound in the polymorphic type by
-undetermined types; the type variables up to |floor()| are unchanged. The method
-|skeleton| achieves this; it could have been implemented by calling
-|substitution| with an assignment of undetermined types, but it can be done just
-as easily by a direct recursion.
-
-@< Function definitions @>=
-type_expr type::skeleton (const type_expr& sub_t) const
-{@; return assign().skeleton(sub_t); }
-
 
 @ We also provide an overload for printing |type| values without having to call
 |bake| explicitly each time.
