@@ -2416,7 +2416,7 @@ public:
 @)
   type_expr substitution
     (const type_expr& tp, unsigned int shift_amount=0) const;
-  bool unify(type_expr& P, type_expr& Q);
+  bool unify(const type_expr& P, const type_expr& Q);
 @)
 private:
   bool is_free_in(const type_expr& tp, unsigned int nr) const;
@@ -2685,15 +2685,12 @@ success is returned, the substitution for the new assignment will unify the two
 argument |type_expr| values.
 
 @< Function definitions @>=
-bool type_assignment::unify(type_expr& P, type_expr& Q)
+bool type_assignment::unify(const type_expr& P, const type_expr& Q)
 { auto P_kind = P.raw_kind(), Q_kind = Q.raw_kind();
+  assert(P_kind!=undetermined_type and Q_kind!=undetermined_type);
   if (P_kind==tabled or Q_kind==tabled)
     @< Decide |unify| in the presence of tabled types,
        avoiding any recursive calls if both types are tabled and recursive @>
-  if (P_kind==undetermined_type)
-    {@; P.set_from(Q.copy()); return true; }
-  else if (Q_kind==undetermined_type)
-    {@; Q.set_from(P.copy()); return true; }
   if (P_kind==variable_type or Q_kind==variable_type)
     @< Decide |unify| when at least one type is a type variable @>
 @)
@@ -2708,7 +2705,7 @@ bool type_assignment::unify(type_expr& P, type_expr& Q)
   case row_type: return
     unify(P.component_type(),Q.component_type());
   case tuple_type: case union_type:
-    { for (wtl_iterator p_it(P.tuple()), q_it(Q.tuple());
+    { for (wtl_const_iterator p_it(P.tuple()), q_it(Q.tuple());
            not (p_it.at_end() and q_it.at_end()); ++p_it,++q_it)
       { if (p_it.at_end() or q_it.at_end() or not unify(*p_it,*q_it))
           return false; // unequal lengths or some subtype fails unification
@@ -2735,7 +2732,7 @@ cases using as few tests as possible.
 { if (P_kind==tabled and Q_kind==tabled)
   { if (P.tabled_nr()!=Q.tabled_nr())
     @/return not (P.is_recursive() and Q.is_recursive()) @|
-        and unify(P.expand(),Q.expand());
+        and unify(P.expanded(),Q.expanded());
     wtl_iterator it0(P.tabled_args());
     wtl_iterator it1(Q.tabled_args());
     while (not it0.at_end() and not it1.at_end())
@@ -2748,8 +2745,8 @@ cases using as few tests as possible.
     return true;
   }
   return P_kind==tabled
-    ? unify(P.expand(),Q)
-    : unify(P,Q.expand());
+    ? unify(P.expanded(),Q)
+    : unify(P,Q.expanded());
 }
 
 @ The decision process for type variables is somewhat similar to that of tabled
@@ -2785,7 +2782,7 @@ that there is a type variable, not that it is polymorphic).
   if (p==q)
     return true;
   auto eq_p = equivalent(p), eq_q = equivalent(q);
-  unify(eq_p!=nullptr ? *eq_p : P, eq_q!=nullptr ? *eq_q : Q);
+  return unify(eq_p!=nullptr ? *eq_p : P, eq_q!=nullptr ? *eq_q : Q);
 }
 
 
@@ -3549,7 +3546,7 @@ bool type::unify(type& other)
   }
 @)
   auto snapshot = tap->polymorphics();
-  if (tap->unify(te,other.te)) // now do the actual unification
+  if (can_unify(te,other.te,*tap)) // now do the actual unification
   {
     if (degree()>0 and other.degree()>0) // if both were initially polymorphic
       (tap==&a ? other.a : a) = tap->copy();
