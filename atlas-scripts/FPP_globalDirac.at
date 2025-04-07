@@ -74,36 +74,42 @@ set contragredient(KGBElt x) = KGBElt:
     let wzero = w0(x.root_datum) in cross(wzero,x)
 
 set test_bl(KGBElt x, ratvec lambda) = bool:
-    let pmax = pmax(x,lambda)
+    let start = elapsed_ms(), pmax = pmax(x,lambda)
     then (LAM, NU, R) = low(pmax)
-    in LAM > hashlam_frac*R and
-       LAM < hashnu_frac*NU
+    then answer = LAM > hashlam_frac*R and
+       	 	  LAM < hashnu_frac*NU
+    then () = test_bl_time +:= elapsed_ms() - start
+    in answer
     {LAM + NU > hash2_frac*R and
        LAM > hashlam_frac*R and
        NU > hashnu_frac*R}
 
 set test_no_unitary(KGBElt x, ratvec lambda, LocalVertexData Lvd) = bool:
-    let (Rs,CORs) = simple_real_subsystem(x)
+    let  start = elapsed_ms(), (Rs,CORs) = simple_real_subsystem(x)
     then colCORs = [vec]: for alpha@j in Rs
 		      	  do if (((CORs[j]*lambda).numer)%2).= {parity at zero}
 			     then [CORs[j]]
 			     else []
 			     fi
 			  od.##
-    in not is_pos_on_LKTs(parameter(x,lambda, 0*lambda)) and
-       	   all(for v in Lvd.list
-	       do @bool: all(for colCOR in colCORs
-			     do @bool: (v*colCOR).>
-			     od)
-	      od) {no parity real coroots vanish on any nu}
+    then answer = not is_pos_on_LKTs(parameter(x,lambda, 0*lambda)) and
+       	   	      all(for v in Lvd.list
+	       	      	  do @bool: all(for colCOR in colCORs
+			     	    	do @bool: (v*colCOR).>
+			     		od)
+	      		  od) {no parity real coroots vanish on any nu}
+    then () = test_no_unitary_time +:= elapsed_ms() - start
+    in answer
 
 set test_no_unitary(KGBElt x, ratvec lambda) = bool:
     test_no_unitary(x, lambda, Lvd(x, lambda))
 
 set test_no_Dirac(KGBElt x, ratvec lambda, LocalVertexData Lvd) = bool:
-    let DiracBD = DiracBD(x,lambda)
-    in none(for v in Lvd.list
-       	   do @bool: DiracTest(parameter(x,lambda,v)) od)
+    let start = elapsed_ms(), DiracBD = DiracBD(x,lambda)
+    then answer = none(for v in Lvd.list
+       	   	        do @bool: DiracTest(x,lambda,v) od)
+    then () = test_no_Dirac_time +:= elapsed_ms() - start
+    in answer
 
 set test_no_Dirac(KGBElt x, ratvec lambda) = bool:
     test_no_Dirac(x, lambda, Lvd(x, lambda))
@@ -502,7 +508,7 @@ set FPP_unitary_hash_general([KGBElt] xs, Param_hash Uhash, (Param->bool) fancy_
 					       	     startUcounter = unitary_test_counter.use_count(),
 						     startUtime = unitaryTime, startCcounter =
 						     char_counter.use_count(), startCtime = charTime
-				      	       then startLF = elapsed_ms(){, startDTcount = DTcount}
+				      	       then startLF = elapsed_ms()
 		 			       in if test_neither(x,lambda,Lvd)
 		   				  then none_count +:= 1; {prints("SKIPPED ",x,",",lambda);} ()
 		    			       else let startDTcount = DTcount

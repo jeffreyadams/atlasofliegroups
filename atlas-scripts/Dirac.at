@@ -120,10 +120,12 @@ set_type
 (  ( -> int) real_form_size {number of real forms considered}
    , ( -> vec) K_type_sizes {number of K_types for each real form}
    , ( -> ) clear
+   , (RealForm -> (ratvec -> rat)) invt_form
    , (KType -> ratvec) easy_muPRV_remember {highest weight of a PRV comp of mu\otimes spin,
      	       	       			   of minimal highest weight}
    , (KType -> ratvec) easyDiracIC {estimated infl char from Dirac}
    , (KType -> rat) easyDiracBD {for Dirac inequality}
+   , (KType -> (rat,(ratvec -> rat))) long_easyDiracBD {include invariant form}
    , (KType -> ([KType], [int], [rat])) easy_best_Dirac_bound
    {possible improvements of Dirac over LKT, at most Dirac_best_steps}
    , ((KType,int) -> ([KType], [int], [rat])) easy_best_Dirac_bound_cap
@@ -374,6 +376,8 @@ set make_Dirac_easy_hash() = Dirac_easy_hash_table:
        do muhash.size()
        od
    , ( -> ): {clear} clear
+   , (RealForm -> (ratvec -> rat)): {invt_form} (RealForm G) (ratvec -> rat):
+     let rfnum = add_real_form(G) in Qs[rfnum]
    , (KType -> ratvec): {easy_muPRV_remember} (KType mu) ratvec:
      let (rfnum,ktypenum) = add_K_type(mu)
      in muPRVs[rfnum][ktypenum]
@@ -383,6 +387,9 @@ set make_Dirac_easy_hash() = Dirac_easy_hash_table:
    , (KType -> rat): {easyDiracBD} (KType mu) rat:
      let (rfnum, ktypenum) = add_K_type(mu)
      in DiracBDs[rfnum][ktypenum]
+   , (KType -> (rat,(ratvec -> rat))): {long_easyDiracBD} (KType mu) (rat,(ratvec -> rat)):
+     let (rfnum, ktypenum) = add_K_type(mu)
+     in (DiracBDs[rfnum][ktypenum], Qs[rfnum])
    , (KType -> ([KType], [int], [rat])): {easy_best_Dirac_bound} (KType mu) ([KType],[int],[rat]):
      let (rfnum,ktypenum) = add_muss_cap(mu, Dirac_best_steps)
      then taunums = muss[rfnum][ktypenum][:min(#muss[rfnum][ktypenum], Dirac_best_steps+1)]
@@ -451,9 +458,9 @@ set easyDiracIC(KType mu) = ratvec:
 {this is the Q(infinitesimal character) bound provided by Dirac inequality on all LKTs}
 set easyDiracBD(KType mu) = rat:
     Dirac_easy_hash.easyDiracBD(mu)
-{    let G = mu.real_form
-    then Q = invariant_form(G), gamma = easyDiracIC(mu)
-    in Q(gamma,gamma)}
+
+set long_easyDiracBD(KType mu) = (rat,(ratvec -> rat)):
+    Dirac_easy_hash.long_easyDiracBD(mu)
 
 {try to shrink DiracBD by moving mu in what looks like inside parameter(mu)}
 {answer is 3 tuples: KType achieving smaller bounds,  their heights, and their bounds.

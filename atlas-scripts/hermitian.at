@@ -26,6 +26,12 @@ set up_mu_flag = false {true}
 {multiple of G.rank to use as jump in step size}
 set mu_rank_mult = rat: 1/2 {1/4}
 
+set test_bl_time = int: 0
+
+set test_no_unitary_time = int: 0
+
+set test_no_Dirac_time = int: 0
+
 {if true, try to raise mu in few steps to minimize number of to_ht calculations}
 set max_loc_flag = true
 
@@ -439,8 +445,10 @@ set report_tested() = void:
  	   	   print_time_string(sum(for list in tested_neg_to_ht_times do sum(list) od)));
     prints("time for up_mu = ",print_time_string(up_mu_time), ", mu_time_mult = ",mu_time_mult,
     		   ", mu_rank_mult = ",mu_rank_mult);
-    prints("hashlam_frac = ",hashlam_frac,", hashnu_frac = ",hashnu_frac, ", hash2_frac = ", hash2_frac);
-    prints("Dirac elims = ",DTcount,", Dirac_best elims = ",DBTcount, ", #(x,lambda) eliminated by LKTs = ",none_count);
+    prints("hashlam_frac = ",hashlam_frac,", hashnu_frac = ",hashnu_frac, ", hash2_frac = ", hash2_frac,
+    	   ", Dirac elims = ",DTcount,", Dirac_best elims = ",DBTcount);
+    prints("no_unitary_time = ", print_time_string(test_no_unitary_time), ", no_Dirac_time = ",
+    	   print_time_string(test_no_Dirac_time)," , #(x,lambda) eliminated by LKTs = ",none_count);
     prints("  ----------------")
 
 set clear_report_tested() = void:
