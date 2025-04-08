@@ -2571,8 +2571,11 @@ BitMap type_assignment::polymorphics() const
 }
 void type_assignment::restore_polymorphics(const BitMap& which)
 { assert(which.capacity()<=threshold+equiv.size());
+  equiv.erase(equiv.begin()+(which.capacity()-threshold),equiv.end());
   for (unsigned int i : which)
+  { assert(i>=threshold); // since |threshold| should not have changed
     equiv[i-threshold]=nullptr;
+  }
 }
 
 @ A helper method |renumber| can be used during substitution to ensure that the
@@ -2810,9 +2813,14 @@ variables. It does not entirely hide the |type_expr| functionality, since many
 of the methods to be implemented, like the already introduced |substitution|,
 are defined by structural recursion over~|type_expr|. Adapting the main type
 checking function |convert_expr| to communicate with its caller using |type|
-rather than |type_expr| was a particularly difficult change, since it requires
-changes in so many places, but it is inevitable given that in some places the
-type requirement imposed by the caller can only be given by a polymorphic type.
+rather than |type_expr| was a particularly difficult change, since it cut across
+such a large part of the interpreter. The change was worth making though, as it
+clarified what functionality is needed for polymorphic types. In the old
+approach where, in contexts with a polymorphic type requirement, we passed a
+necessarily weaker type pattern derived from it to the type checker, certain
+uses of overloaded symbols needed disambiguation by the user where this can now
+be done automatically; in addition the caller was forced to re-check after the
+fact any polymorphic constraints that were not passed down.
 
 Polymorphic types arise in type checking when identifiers and functions with a
 recorded polymorphic type are used. When combined in for instance function
@@ -2829,26 +2837,24 @@ quantified, and they can be substituted for during unification. An important
 quantity that |type| records in addition to its |type_expr| is the threshold
 between type variables still in scope (numbered below the threshold), and
 polymorphic type variables (numbered from the threshold upwards). When we are
-manipulating |type_expr| rather than |type| values, this threshold will need to
-be stored separately, in variables with names like |fix_count| or |fc|. Thus
-polymorphic type variables ``float on top'' of the fixed type variables. This
-often creates an requirement to renumber polymorphic type variables, which is
-annoying; it seems inevitable though, since even if we kept a separate pool of
-polymorphic variables, unification would require sets of polymorphic type
-variables from separate types to be made disjoint. Therefore we stick to our
-decision here.
+manipulating |type_expr| values, this threshold is stored in somewhere the
+context. Thus polymorphic type variables ``float on top'' of the fixed type
+variables. This often creates the necessity to renumber polymorphic type
+variables, which is annoying; it is inevitable however, since even if we had
+kept a separate pool of polymorphic variables, unification would require sets of
+polymorphic type variables, from separate subexpressions, to be made disjoint.
 
 Polymorphic types are most often function types, and the main use of
 polymorphism and unification occurs when we resolve function overloading.
-However, unification also occurs whenever a previously determined polymorphic
-type arises in a context expecting a specific type, which also may be
-polymorphic to indicate that some instance of it is required. In this case the
-two types must successfully unify, and the expression type becomes the unified
-one. Some expressions can be given a non-function polymorphic type, of which the
-most common example is the empty row display, which in a context that does not
-expect any particular component type is given the polymorphic type \.{[A]}.
-Similar examples arise for the call of an injector function into a union type
-with polymorphism that only affects \emph{other} variants of the union.
+However, unification can also occur where no overloading is involved, when using
+variables with a previously determined polymorphic type, and if two such types
+are combined in a function application, say, unification is applied producing
+yet another (possibly) polymorphic type. Also, some expressions can be given a
+non-function polymorphic type, of which the most common example is the empty row
+display, which in a context that does not expect any particular component type
+is given the polymorphic type \.{[A]}. Similar examples arise for an application
+of an injector function associated to a union type constructor, which gets a
+type that remains polymorphic in the \emph{other} variants of the union.
 
 Note that when a context expects a polymorphic type, this does not mean it
 \emph{requires} an expression having that exact type, but just an instance of
@@ -2861,10 +2867,10 @@ the constant attribute, ruling out later assignments to it. As there are usually
 not many different values with a given polymorphic type anyway, this is not
 expected to be a severe restriction for user. Note that in the scope of
 abstracted type variables, they are not yet polymorphic, so they \emph{can}
-occur in types of assignable variables. Also, in case the initial value of a
-variables should be accidentally polymorphic, as commonly occurs in case of
-initialisation to an empty row expression, one can use a cast to remove the
-polymorphism, which will make the variable assignable.
+occur in cast and in types of assignable variables. Also, in case the initial
+value of a variables should be accidentally polymorphic (as commonly occurs in
+case of initialisation to an empty row expression), one can use a cast to remove
+the polymorphism, which will make the variable assignable.
 
 @ The main information added by a |type| to the |type_expr| it contains, is the
 range of type variable numbers that are considered to be polymorphic. This is
@@ -2873,16 +2879,17 @@ lower bound of the range, and its |size()| (namely that of its |equiv| table)
 for the size of the range. At the same time, that field allows (optionally and
 temporarily) recording assignments to the polymorphic type variables, which
 possibility is used in the unification process (when this has happened, the type
-variables in question are considered to be neither fixed nor polymorphic). When
-we don't need the type assignments or are done with them, we have the
-possibility to clear them, and revert to the original (more) polymorphic type.
+variables in question are considered to be neither fixed nor polymorphic in the
+|type| holding that |type_assignment|). When we don't need the type assignments
+or are done with them, we have the possibility to clear them, and revert to the
+original (more) polymorphic type.
 
 The class |type| has a large number of methods, many of them invoking some form
-of unification or substitution of type variables. Here we give those related to
-creating instances of |type|. Like for |type_expr| we have a move constructor
-and move-assignment operator, while constructing a copy requires explicitly
-calling |copy|, but the main ways of constructing |type| are by factory
-functions (static methods). The principal one is |wrap| that converts a
+of unification or substitution of type variables. Here we give the methods
+related to creating instances of |type|. Like for |type_expr|, we have a move
+constructor and move-assignment operator, while constructing a copy requires
+explicitly calling |copy|, but the main ways of constructing |type| are by
+factory functions (static methods). The principal one is |wrap| that converts a
 |type_expr| to a |type|. It needs an indication |fix_nr| of the threshold above
 which to consider variables polymorphic, and it will renumber those polymorphic
 values in order of appearance in the type expression to a consecutive range of
@@ -2927,14 +2934,19 @@ public:
   @< Utility methods of |type| @>@;
 };
 
-@ We access the component |type_expr| elements of a |type| using methods of the
-same name of those of |type_expr|; we do not attempt to recreate |type| values
-for them, so these methods have the same return types as their |type_expr|
-counterparts. We include here also a few methods that access the
-|type_assignment| field, and some simple tests.
+@ We access the component |type_expr| elements of a |type| using methods with
+the same name as those of |type_expr|; we do not attempt to recreate |type|
+values for them, so these methods have the same return types as their
+|type_expr| counterparts. These methods must be used with caution, as they
+require |te.raw_kind()| (which can be inspected by calling |type::kind|) to have
+the corresponding value; notably they will not only \emph{not} expand |tabled|
+types, they will not take into account pending type assignments either. We
+include here also a few methods that access the |type_assignment| field, and
+some simple tests.
 
 @< Methods of |type| to access component types @>=
 const type_expr& top_expr () const;
+// |te|, made to not be an assigned type variable
 type_expr& top_expr ();
 type_tag kind () const @+{@; return te.raw_kind(); }
 type_tag top_kind () const @+{@; return top_expr().top_kind(); }
@@ -2977,25 +2989,37 @@ decrease or increase the degree (the latter by capturing polymorphic type
 variables from the other type); there is no fixed relationship between type
 variables before and after, beyond the fact that type variables that are fixed
 in the context (with number below |floor()| remain so. While this method
-potentially modifies both types, making them equal to the unifying type, the
-method |unify_to| does not modify its argument, but does adapt |*this|.
-The |const| method |has_unifier| tests whether our
-type can unify to what the |type_expr| expects. The methods |unify_specialise|
-preforms one-sided unification of our |type| (in |pattern| no type variables are
-changed, but undetermined parts may be filled in), recording the substitution
-required in our |type_assignment|. The |matches| method is similar, but specific
-for use in overload resolution, where our type is that found for the argument,
-and |formal| is the argument type specification of one overloaded instance. In
-case of success, our |assign()| can then be used to perform substitutions to the
-type of that overloaded instance, while in case of failure the caller can call
-|clear| before attempting another match. The |degree| parameter and output
-parameter |shift_amount| are needed for polymorphic overloads: the former
-informs about the degree of polymorphism of the overload, and the latter reports
-back the amount by which the polymorphic variables needed to be shifted to avoid
-collision with our type variables. Calls where no overloading is involved are
-simpler: one just needs to attempt unification for the parameter part of the
-function and the argument type; it can be done by calling |matches_argument| on
-the the complete function type, and passing it the argument type.
+potentially modifies both types, changing their type assignments so as to make
+their (substituted) values equal to the unifying type, the method |unify_to|
+modifies only |*this|, whereas the |const| method |has_unifier| just tests
+whether our type can unify with the |type_expr t@;|, in which any occurring
+type variables are interpreted as polymorphic (it was used in the function
+|matching_bindings| defined above, where |t| is a |type_expr::type_map| entry,
+and also to test whether using an expression in identifier pattern matching is
+valid).
+
+The methods |unify_specialise| preform unification with the specific purpose of
+testing whether our |type| matches, after taking into account its pending type
+assignments and tabled type definitions, a required structure, and to give
+access to its corresponding type subexpressions. For this purpose a |pattern|
+for the structure is given as argument, in which any changes to obtain the
+unifying type are replacements of undetermined parts (made through a call of
+|specialise|), so that the caller can then find the mentioned subexpressions in
+their place. The |pattern| typically contains no type variables, and if there
+should be, no attempt is made to find assignments for them. The |matches| method
+is similar, but specific for use in overload resolution, where our type is that
+found for the argument, and |formal| is the argument type specification of one
+overloaded instance. In case of success, our |assign()| can then be used to
+perform substitutions to the type of that overloaded instance, while in case of
+failure the caller can call |clear| before attempting another match. The
+|degree| parameter and output parameter |shift_amount| are needed for
+polymorphic overloads: the former informs about the degree of polymorphism of
+the overload, and the latter reports back the amount by which the polymorphic
+variables needed to be shifted to avoid collision with our type variables. Calls
+where no overloading is involved are simpler: one just needs to attempt
+unification for the parameter part of the function and the argument type; it can
+be done by calling |matches_argument| on the the complete function type, and
+passing it the argument type.
 
 @< Utility methods of |type| @>=
 type& wring_out(); // eliminate assigned type variables, by substitution
@@ -3008,35 +3032,37 @@ type& clear() @+{@; return clear(degree()); }
 void raise_floor(unsigned int d);
 @)
 bool unify(type& other);
-bool unify_to(const type& other)
-  {@; return unify_to(te,other); } // call recursive helper
-bool unify_to(const type_expr& sub_tp, const type& other);
+bool unify_to(const type& other) @+ {@; return unify_to(te,other); }
+bool unify_to(const type_expr& sub_tp, const type& other); // recursive helper
 bool has_unifier(const type_expr& t) const;
-bool unify_specialise(type_expr& pattern)
-  {@; return unify_specialise(te,pattern); } // call recursive helper
+  // for matching tabled |t|; assumes |is_Clean()|
+bool unify_specialise(type_expr& pattern) @+
+  {@; return unify_specialise(te,pattern); }
 bool unify_specialise(const type_expr& sub_tp, type_expr& pattern);
+   // recursive helper
 bool matches
   (const type_expr& formal, unsigned int poly_degree,
    unsigned int& shift_amount);
 bool matches_argument(const type& arg_type); // for non-overloaded calls
 @)
-type& wrap_row () // put on a ``row-of''
-{@; te.set_from(type_expr::row(std::move(te)));
+type& wrap_row () @+
+{@; te = type_expr::row(std::move(te));
   return *this;
 }
+// add a ``row-of''
 
 @ First some simple methods. We provide two methods |top_expr|, one |const| and
 one not, that resolve any indirection present in the form of a type variable
 assignment; this may need repeating but will surely terminate. After this, the
 user can apply |top_kind| to find out its basic kind, and then |expanded| or (in
 the non-|const| case) |expand| if the corresponding components need to be
-accessed. More radically, the |wring_out| method can be called to incorporate any
-pending type assignments and then clear them out. Or instead one call |clear| to
-forget any such assignments, and possibly reset the number of type variables
-to~|d| (presumably the number it had before some unification method might have
-extended the set). Finally |bake| and |bake_off| provide the type expression
-taking into account pending type assignments, the latter leaving the type itself
-in an unusable state (since it was possibly moved from).
+accessed. More radically, the |wring_out| method can be called to incorporate
+any pending type assignments and then clear them out. Or instead one can call
+|clear| to forget any such assignments, and possibly reset the number of type
+variables to~|d| (presumably the number it had before some unification method
+might have extended the set). Finally |bake| and |bake_off| provide the type
+expression taking into account pending type assignments, the latter leaving the
+type itself in an unusable state (since it was possibly moved from).
 
 @< Function definitions @>=
 const type_expr& type::top_expr() const
@@ -3078,7 +3104,16 @@ type_expr type::bake_off() // variant available if |*this| is no longer needed
     return std::move(te); // save some work here
   return assign().substitution(te);
 }
-@)
+
+@ The method |raise_floor| is used to ensure that certain type variables (that
+are or become fixed in the context) will not be in use as polymorphic type
+variables. This is achieved by simply setting a higher threshold, and
+renumbering any existent polymorphic type variables to start at the new
+threshold value. To avoid complications with pending type assignments, which
+would also need renumbering, we call |wring_out| to incorporate and remove them
+before taking any other actions.
+
+@< Function definitions @>=
 void type::raise_floor(unsigned int d)
 { wring_out(); // incorporate pending assignments before shifting
   const auto old_floor = floor();
@@ -3089,15 +3124,13 @@ void type::raise_floor(unsigned int d)
 
 
 @ When turning a |type_expr| into a |type|, we build a transformed copy using a
-local recursive function |pack|. While doing so it also eliminates
-undetermined components by replacing them by fresh type variables; this probably
-should never be necessary, but will ensure that in a |type| the |te| field never
-|is_unstable()|. The implementation of |pack| is similar to that of
-|substitution|, but returns a |type_expr| rather than a (smart) pointer to it.
-The |translate| argument is a lookup list, mapping new (position) to old (value)
-type variable numbers, which initially just maps frozen type variables to
-themselves, and is updated with entries for type variables encountered or
-created during the recursive traversal.
+local recursive function |pack|. While doing so, it also eliminates undetermined
+components by replacing them by fresh type variables; this will ensure that the
+|te| field in a |type| never |is_unstable()|. The implementation of |pack| is
+similar to that of |substitution|, but with a dynamically evolving mapping of
+polymorphic variables. The |translate| argument is a lookup list, mapping new
+(position) to old (value) type variable numbers; it is updated with entries
+for type variables encountered or created during the recursive traversal.
 
 @< Local function definitions @>=
 struct trans_list
@@ -3150,14 +3183,12 @@ type_expr pack(const type_expr& te, trans_list& translate)
 
 
 @ The call |type::wrap(t,fc,gap)| that converts a |type_expr t@;| to a |type|,
-renumbering the type variables from $fc$ upwards into a consecutive range
-starting at |fc+gap|. Using |pack| this is straightforward: we prepare a local
-list |translate| to map type variables that should remain fixed themselves and
-pad it out with |gap| dummy entries, and then let |pack| do the work. The
-polymorphic degree of the result is determined by how much |pack| makes the
-|translate| table grow, so we need to store the |type_expr| returned by |pack|
-in a local variable |te| before constructing our |type|, and finally move |te|
-into that type.
+renumbering the type variables above the threshold |fc| into a consecutive range
+starting at |fc+gap|. The |pack| function, which is called with an initially
+empty |trans_list| does the main work. The polymorphic degree of the result is
+the size of |translate| after |pack| has done its work. So we need to store the
+|type_expr| returned by |pack| in a local variable |te| before constructing our
+|type|, and finally move |te| into that type.
 
 @< Function definitions @>=
 type type::wrap (const type_expr& t, unsigned int fix_count, unsigned int gap)
@@ -3259,14 +3290,7 @@ bool type::has_unifier(const type_expr& t) const
 
 @ The method |type::unify_specialise| is like |unify|, but its argument is a
 type pattern with undetermined parts, and the only changes made to the argument
-are specialisations of those undefined subexpressions. Any type variables
-present in |pattern| are not substituted for: unless they match up with the same
-type variable on our side, they cause unification to fail. This method is often
-called to test whether a |type| matches (taking into account its pending type
-assignments and tabled type definitions) a required structure |pattern|, and if
-so give access to the type subexpressions that matched the undetermined parts of
-the |pattern|: the call will have substituted these subexpressions for those
-parts.
+are specialisations of those undefined subexpressions.
 
 The necessary substitutions on our |type| side are also recorded in our
 |assign()| field, which is convenient for our implementation: any occurrence of
@@ -3299,8 +3323,9 @@ bool type::unify_specialise(const type_expr& sub_tp, type_expr& pattern)
       type plug = type::wrap(pattern,ceil());
       assign().grow(plug.degree()); // accommodate new type variables
       bool success = pattern.specialise(plug.te);
+        // tell |pattern| knows about the new type variables
       assign().set_equivalent(c,std::make_unique<type_expr>(plug.bake_off()));
-      assert(success);
+   @/ assert(success);
       return success;
     }
   case primitive_type: return sub_tp.prim()==pattern.prim();
@@ -3357,19 +3382,18 @@ the recursive call.
 
 @ In implementing the method |type::unify|, we shall try to cater for every
 possibility, so that it can be used without caveats. Notably, we assume nothing
-about |floor| values of the types, nor about absence of undetermined parts of
-their |type-expr| component; the latter will be treated as if they are anonymous
-type variables not used anywhere else, so that substitution for them does not
-involve the |type_assignment| component, but rather a call of
-|type_expr::specialise| directly on the undetermined part. The specification of
-the method is symmetric in |*this| and the argument type |tp|, namely that upon
-success they will have equal type assignments, and under the substitution by
-this type assignment, their |type_expr| components become equal. Polymorphic
-type variables may need to be renumbered so as to be unrelated to any type
-variables in the other type; apart from this, the |type_expr| components undergo
-no other changes than obtained by calling |specialise| of certain undetermined
-parts, and maybe calling |expand| on tabled subexpression to expose their top
-level structure.
+about |floor| values of the types. We do assume (more precisely
+|type_assignment::unify| does) the absence of undetermined parts in~|te|, which
+is justified by the fact that |type::wrap| converts these to polymorphic type
+variables. The specification of the method is symmetric in |*this| and the
+argument type |tp|, namely that upon success they will have equal type
+assignments, and under the substitution by this type assignment, their
+|type_expr| components become equal. Polymorphic type variables may need to be
+renumbered so as to be unrelated to any type variables in the other type; apart
+from this, the |te| members undergo no changes. To be as generally useful as
+possible, we roll back any changes to the type assignments whenever unification
+fails, even though we are not currently aware of client code whose correctness
+depends on this.
 
 The implementation proceeds in two steps, the first ensuring that the sets of
 polymorphic type variables are disjoint between the two types, and each is
@@ -3384,10 +3408,11 @@ renumbered after the other one.
 
 bool type::unify(type& other)
 { type_assignment* tap = &a; // type assignment pointer
+  auto snapshot = tap->polymorphics();
   if (not is_polymorphic())
   { wring_out();
     if (other.is_polymorphic())
-      tap = &other.a; // use |other.assign()|
+      snapshot = (tap = &other.a)->polymorphics(); // use |other.assign()|
     else
       other.wring_out(); // and use our |assign()|, but nothing to assign
   }
@@ -3396,18 +3421,17 @@ bool type::unify(type& other)
   else // both are polymorphic and we must shift one of them
   { if (floor()<other.floor())
     {
-      tap = &other.a; // use |other.assign()|
+      snapshot = (tap = &other.a)->polymorphics(); // use |other.assign()|
       auto diff = tap->append(assign());
       te = shift(te,floor(),diff);
     }
     else
-    {
+    {@;
       auto diff = tap->append(other.assign());
       other.te = shift(other.te,other.floor(),diff);
     }
   }
 @)
-  auto snapshot = tap->polymorphics();
   if (tap->unify(te,other.te)) // now do the actual unification
   {
     if (degree()>0 and other.degree()>0) // if both were initially polymorphic
@@ -3416,7 +3440,7 @@ bool type::unify(type& other)
     return true;
   }
   tap->restore_polymorphics(snapshot);
-    // roll back any type assignments upon failure
+    // roll back type assignment changes upon failure
   return false;
 }
 
