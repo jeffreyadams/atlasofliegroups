@@ -1392,17 +1392,12 @@ polymorphic type variables start at the same level.
 
 @< Function definitions @>=
 sl_list<const type_binding*> type_expr::matching_bindings (const type& tp)
-{ sl_list<const type_binding*> result;
-  if (tp.floor()==0)
-  { for (auto it=type_map.begin(); it!=type_map.end(); ++it)
-      if (not it->fields.empty() and tp.has_unifier(it->tp))
-        result.push_back(&*it);
-  }
-  else // we must shift any polymorphic variables in |it->tp|
-  { for (auto it=type_map.begin(); it!=type_map.end(); ++it)
-      if (not it->fields.empty() and tp.has_unifier(shift(it->tp,0,tp.floor())))
-        result.push_back(&*it);
-  }
+{ auto tp_clean = tp.copy();
+  tp_clean.wring_out(); // incorporate any pending type assignments
+  sl_list<const type_binding*> result;
+  for (auto it=type_map.begin(); it!=type_map.end(); ++it)
+    if (not it->fields.empty() and tp_clean.has_unifier(it->tp))
+      result.push_back(&*it);
   return result;
 }
 
@@ -3234,10 +3229,13 @@ type type::bottom(unsigned int fix_count)
   return result;
 }
 
-@ The methods |type::unify_to| and |type::has_unifier| are easily implemented
-using |type_assignment::unify|. For now, there is no roll back when |unify|
-fails; when it succeeds the |assign()| field records the unifying type
-assignments, possibly involving new type variables introduced by |other|.
+@ The method |type_assignment::unify| can serve to implement |type::unify_to|
+and |type::has_unifier|. Currently |unify_to| does not provide roll back when
+the call to |unify| fails, because any changes made will do no harm (making the
+types closer to each other, even if they fail to unify). Upon success, the
+|assign()| field records the unifying type assignments, which may involve new
+polymorphic type variables that were added when the original set of polymorphic
+variables was combined with those from~|other|.
 
 @< Function definitions @>=
 bool type::unify_to(const type_expr& sub_tp, const type& other)
@@ -3253,9 +3251,10 @@ bool type::unify_to(const type_expr& sub_tp, const type& other)
 @)
 bool type::has_unifier(const type_expr& t) const
 {
-  type tp = type::wrap(t,floor(),degree()); // renumber to avoid clashes
-  tp.assign().append(assign()); // (ab)use |tp.a| as local variable
-  return tp.assign().unify(te,tp.te);
+  assert(is_clean()); // to simplify our task, caller must ensure this
+  type tp = type::wrap(t,0,ceil()); // renumber to avoid clashes
+  type_assignment assign(floor(),degree()+tp.degree());
+  return assign.unify(te,tp.te);
 }
 
 @ The method |type::unify_specialise| is like |unify|, but its argument is a

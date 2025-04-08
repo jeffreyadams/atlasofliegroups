@@ -3151,9 +3151,9 @@ case let_expr:
   const auto& rhs = lexp.val;
   type decl_type=type::bottom(fc);
   expression_ptr arg = convert_expr(rhs,decl_type);
-  if (not decl_type.has_unifier(pattern_type(pat)))
-  @< Complain that the type |decl_type| of |rhs| does not match the identifier
-      pattern |pat| in a let expression @>
+  if (not decl_type.wring_out().has_unifier(pattern_type(pat)))
+    @< Complain that the type |decl_type| of |rhs| does not match the identifier
+       pattern |pat| in a let expression @>
 @/auto n=count_identifiers(pat);
   if (n==0)
   // then avoid frame without identifiers, so compile as sequence expression
