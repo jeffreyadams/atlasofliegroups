@@ -126,9 +126,9 @@ set test_no_unitary(KGBElt x, ratvec lambda) = bool:
 
 set test_no_Dirac(KGBElt x, ratvec lambda, LocalVertexData Lvd) = bool:
     if twist(x) != x then return false fi;
-    let start = elapsed_ms(), DiracBD = DiracBD(x,lambda)
+    let start = elapsed_ms(), DiracBD = DiracBD(x,lambda), Q = invariant_form(x.real_form)
     then answer = none(for v in Lvd.list
-       	   	        do @bool: DiracTest(x,lambda,v) od)
+       	   	        do @bool: Q(v,v) <= DiracBD od)
     then () = test_no_Dirac_time +:= elapsed_ms() - start
     in answer
 
@@ -136,9 +136,9 @@ set test_no_Dirac(KGBElt x, ratvec lambda, LocalVertexData Lvd) = bool:
 fail for the extreme points, but pass for some interior point.}
 set test_no_Dirac(KGBElt x, ratvec lambda) = bool:
     if twist(x) != x then return false fi;
-    let start = elapsed_ms(), DiracBD = DiracBD(x,lambda)
+    let start = elapsed_ms(), DiracBD = DiracBD(x,lambda), Q = invariant_form(x.real_form)
     then answer = none(for v in local_FPP_extrema(x,lambda)
-    	 	       do @bool: DiracTest(x,lambda,v) od)
+    	 	       do @bool: Q(v,v) <= DiracBD od)
     then () = test_no_Dirac_time +:= elapsed_ms() - start
     in answer
     {test_no_Dirac(x, lambda, Lvd(x, lambda))}
@@ -147,14 +147,18 @@ set test_no_Dirac(KGBElt x, ratvec lambda) = bool:
 use local_FPP_extrema less}
 set test_list_frac = rat:11/10 {at the moment FPP_extrema is too slow to be helpful}
 
+set test_neither_flag = true
+
 set test_neither(KGBElt x, ratvec lambda, LocalVertexData Lvd) = bool:
+    if not test_neither_flag then return false fi;
     if twist(x) != x then return false fi;
-    if #Lvd.list > test_list_frac*(#FPP_vertex_data(x.real_form).list)
+    if #Lvd.list > test_list_frac*(#FPP_vertices(x.real_form))
     then test_no_unitary(x,lambda) or test_no_Dirac(x,lambda)
     else test_no_unitary(x, lambda, Lvd) or test_no_Dirac(x, lambda, Lvd)
     fi
 
 set test_neither(KGBElt x, ratvec lambda) = bool:
+    if not test_neither_flag then return false fi;
     if twist(x) != x then return false fi;
     {test_no_unitary(x, lambda) or test_no_Dirac(x, lambda)}
     test_neither(x, lambda, Lvd(x, lambda))
