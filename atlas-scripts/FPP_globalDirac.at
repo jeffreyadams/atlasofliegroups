@@ -85,6 +85,7 @@ set test_bl(KGBElt x, ratvec lambda) = bool:
        NU > hashnu_frac*R}
 
 set test_no_unitary(KGBElt x, ratvec lambda, LocalVertexData Lvd) = bool:
+    if twist(x) != x then return false fi;
     let  start = elapsed_ms(), (Rs,CORs) = simple_real_subsystem(x)
     then colCORs = [vec]: for alpha@j in Rs
 		      	  do if (((CORs[j]*lambda).numer)%2).= {parity at zero}
@@ -102,24 +103,62 @@ set test_no_unitary(KGBElt x, ratvec lambda, LocalVertexData Lvd) = bool:
     in answer
 
 set test_no_unitary(KGBElt x, ratvec lambda) = bool:
-    test_no_unitary(x, lambda, Lvd(x, lambda))
+    if twist(x) != x then return false fi;
+    let  start = elapsed_ms()
+    then () = if is_pos_on_LKTs(parameter(x,lambda,0*lambda))
+     	      then test_no_unitary_time +:= elapsed_ms() - start; return false
+	      fi
+    then (Rs,CORs) = simple_real_subsystem(x)
+    then colCORs = [vec]: for alpha@j in Rs
+		      	  do if (((CORs[j]*lambda).numer)%2).= {parity at zero}
+			     then [CORs[j]]
+			     else []
+			     fi
+			  od.##
+    then answer = all(for v in local_FPP_extrema(x,lambda)
+	       	      do @bool: all(for colCOR in colCORs
+			     	    do @bool: (v*colCOR).>
+			     	    od)
+	      	      od) {no parity real coroots vanish on any nu}
+    then () = test_no_unitary_time +:= elapsed_ms() - start
+    in answer
+    {test_no_unitary(x, lambda, Lvd(x, lambda))}
 
 set test_no_Dirac(KGBElt x, ratvec lambda, LocalVertexData Lvd) = bool:
+    if twist(x) != x then return false fi;
     let start = elapsed_ms(), DiracBD = DiracBD(x,lambda)
     then answer = none(for v in Lvd.list
        	   	        do @bool: DiracTest(x,lambda,v) od)
     then () = test_no_Dirac_time +:= elapsed_ms() - start
     in answer
 
+{just test extremal vertices. Not clear that this is OK: Dirac could
+fail for the extreme points, but pass for some interior point.}
 set test_no_Dirac(KGBElt x, ratvec lambda) = bool:
-    test_no_Dirac(x, lambda, Lvd(x, lambda))
+    if twist(x) != x then return false fi;
+    let start = elapsed_ms(), DiracBD = DiracBD(x,lambda)
+    then answer = none(for v in local_FPP_extrema(x,lambda)
+    	 	       do @bool: DiracTest(x,lambda,v) od)
+    then () = test_no_Dirac_time +:= elapsed_ms() - start
+    in answer
+    {test_no_Dirac(x, lambda, Lvd(x, lambda))}
+
+{if lots of local verts, then use local_FPP_extrema; increasing this means
+use local_FPP_extrema less}
+set test_list_frac = rat:11/10 {at the moment FPP_extrema is too slow to be helpful}
 
 set test_neither(KGBElt x, ratvec lambda, LocalVertexData Lvd) = bool:
-    test_no_unitary(x, lambda, Lvd) or test_no_Dirac(x, lambda, Lvd)
+    if twist(x) != x then return false fi;
+    if #Lvd.list > test_list_frac*(#FPP_vertex_data(x.real_form).list)
+    then test_no_unitary(x,lambda) or test_no_Dirac(x,lambda)
+    else test_no_unitary(x, lambda, Lvd) or test_no_Dirac(x, lambda, Lvd)
+    fi
 
 set test_neither(KGBElt x, ratvec lambda) = bool:
+    if twist(x) != x then return false fi;
+    {test_no_unitary(x, lambda) or test_no_Dirac(x, lambda)}
     test_neither(x, lambda, Lvd(x, lambda))
-    
+
 set contragredient(KGBElt x, ratvec lambda) = (KGBElt, ratvec):
     let p = contragredient(parameter(x,lambda,0*lambda))
     in (p.x, p.lambda)
@@ -1350,7 +1389,7 @@ set FPP_unitary_hash_bottom_layer(RealForm G, (Param->bool) fancy_tester) = void
     FPP_unitary_hash_bottom_layer(KGB(G), fancy_tester)
 
 {Following functions invoke David/Mason-Brown result from February 2025: if infl char is on
- some one-walls of the FPP, and those roots NOT in tau-invariatn, then rep is either non-unitary,
+ some one-walls of the FPP, and those roots NOT in tau-invariant, then rep is either non-unitary,
  or coh ind from the parabolic whose Levi omits those one-walls; so unitarity is determined on Levi.}
  
 {does is_unitary on Levi by running FPP}
