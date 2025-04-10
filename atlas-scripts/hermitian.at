@@ -13,8 +13,13 @@ set deformCalcCounter = make_counter()
 hash2 is never substituted for bottom_layer.} {NOW NOT USED}
 set hash2_frac = 1/2 {1/2} {1/3} {2/5 might be close to optimal for E7_s??}
 
-set hashlam_frac = 1/8
-set hashnu_frac = 1/4
+{This is to insist that lambda is moderately big compared to rho}
+{DECREASING this means more bottom layer (with smaller lambda}
+set hashlam_frac = 4/5{3/4}
+
+{This is to insist that lambda is moderately small compared to nu}
+{INCREASING this means more bottom layer (allow bigger lambda relative to nu}
+set hashnu_frac = 1/2
 
 {next three global variables concern function is_unitary_test_big_SIMPLE_interrupt in FPP_faces_herm.at}
 set up_mu_time = int:0

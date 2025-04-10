@@ -73,11 +73,31 @@ set every_KGB_flag = false
 set contragredient(KGBElt x) = KGBElt:
     let wzero = w0(x.root_datum) in cross(wzero,x)
 
+{
+Global variable hashlam_frac defaults to 1/8 in hermitian.at
+This is to insist that lambda is moderately big compared to rho.
+DECREASING hashlam_frac  means more bottom layer (with smaller lambda
+}
+
+{if false, then always use bottom layer when it's called for}
+set test_bl_flag = true
+{
+Global variable hashnu_frac defaults to 1/2 in hermitian.at
+This is to insist that lambda is moderately small compared to nu
+INCREASING this means more bottom layer (allow bigger lambda relative to nu)
+}
 set test_bl(KGBElt x, ratvec lambda) = bool:
+    if not test_bl_flag then return true fi;
     let start = elapsed_ms(), pmax = pmax(x,lambda)
     then (LAM, NU, R) = low(pmax)
-    then answer = LAM > hashlam_frac*R and
-       	 	  LAM < hashnu_frac*NU
+    then mu = LKTs(pmax)[0]
+    then GA = height(x.real_form,pmax.infinitesimal_character)
+    then answer = LAM > hashlam_frac*GA{R} {and
+       	 	  LAM > hashnu_frac*NU}
+    {then () = if answer and (minBottomData.G_min_height(mu)) > (GA + 3*LAM)\2
+    	      then more_shift((GA-LAM)\2)
+	      else more_flag:=false
+	      fi}
     then () = test_bl_time +:= elapsed_ms() - start
     in answer
     {LAM + NU > hash2_frac*R and
@@ -133,15 +153,18 @@ set test_no_Dirac(KGBElt x, ratvec lambda, LocalVertexData Lvd) = bool:
     in answer
 
 {just test extremal vertices. Not clear that this is OK: Dirac could
-fail for the extreme points, but pass for some interior point.}
-set test_no_Dirac(KGBElt x, ratvec lambda) = bool:
+fail for the extreme points, but pass for some interior point. Also SLOWER than test_no_Dirac
+except for #Lvd.list approximately 50000???}
+set test_no_Dirac_extr(KGBElt x, ratvec lambda) = bool:
     if twist(x) != x then return false fi;
     let start = elapsed_ms(), DiracBD = DiracBD(x,lambda), Q = invariant_form(x.real_form)
     then answer = none(for v in local_FPP_extrema(x,lambda)
     	 	       do @bool: Q(v,v) <= DiracBD od)
     then () = test_no_Dirac_time +:= elapsed_ms() - start
     in answer
-    {test_no_Dirac(x, lambda, Lvd(x, lambda))}
+
+set test_no_Dirac_extr(KGBElt x, ratvec lambda) = bool:
+    test_no_Dirac(x, lambda, Lvd(x, lambda))
 
 {if lots of local verts, then use local_FPP_extrema; increasing this means
 use local_FPP_extrema less}
@@ -152,15 +175,15 @@ set test_neither_flag = true
 set test_neither(KGBElt x, ratvec lambda, LocalVertexData Lvd) = bool:
     if not test_neither_flag then return false fi;
     if twist(x) != x then return false fi;
-    if #Lvd.list > test_list_frac*(#FPP_vertices(x.real_form))
-    then test_no_unitary(x,lambda) or test_no_Dirac(x,lambda)
-    else test_no_unitary(x, lambda, Lvd) or test_no_Dirac(x, lambda, Lvd)
-    fi
+    test_no_unitary(x,lambda,Lvd) or
+    	if #Lvd.list > test_list_frac*(#FPP_vertices(x.real_form))
+    	then test_no_Dirac_extr(x,lambda)
+    	else test_no_Dirac(x, lambda, Lvd)
+    	fi
 
 set test_neither(KGBElt x, ratvec lambda) = bool:
     if not test_neither_flag then return false fi;
     if twist(x) != x then return false fi;
-    {test_no_unitary(x, lambda) or test_no_Dirac(x, lambda)}
     test_neither(x, lambda, Lvd(x, lambda))
 
 set contragredient(KGBElt x, ratvec lambda) = (KGBElt, ratvec):
@@ -365,8 +388,8 @@ then coh_ind_unip_few(G,Uhash)}
        	    if mix_flag
 	    then prints("Time in bottom_factors = ", print_time_string(bfTime), ", time in bottom_elim_factors_more = ",
        	  	    print_time_string(befmoreTime), ", more_shift_level = ", if bl_interrupt_flag then
-		    bl_step_count*bl_step_size else more_shift_level fi, ", #Params missed = ",
-		    more_bad_hash.size(), ", #Params caught = ",befmoreCount)
+		    bl_step_count*bl_step_size else more_shift_level fi, ", #Params more-missed = ",
+		    more_bad_hash.size(), ", #Params more-caught = ", more_good_hash.size{befmoreCount})
 	    fi;
        	    prints("  #hash_real_dumb = ",hash_real_dumbCounter.use_count(), ", #hash_dumb = ", hash_dumbCounter.use_count(),
        	      	 	   ", #hash_def_dumb = ", hash_def_dumbCounter.use_count());
@@ -658,8 +681,8 @@ set FPP_unitary_hash_general([KGBElt] xs, Param_hash Uhash, (Param->bool) fancy_
 	    if mix_flag
 	    then prints("Time in bottom_factors = ", print_time_string(bfTime), ", time in bottom_elim_factors_more = ",
        	  	    print_time_string(befmoreTime), ", more_shift_level = ", if bl_interrupt_flag then
-		    bl_step_count*bl_step_size else more_shift_level fi, ", #Params missed = ",
-		    more_bad_hash.size(), ", #Params caught = ",befmoreCount)
+		    bl_step_count*bl_step_size else more_shift_level fi, ", #Params more-missed = ",
+		    more_bad_hash.size(), ", #Params more-caught = ",more_good_hash.size(){befmoreCount})
 	    fi;
        	    prints("  #hash_real_dumb = ",hash_real_dumbCounter.use_count(),
 	      ", #hash_dumb = ", hash_dumbCounter.use_count(),
@@ -964,16 +987,18 @@ fancy_tester) = void:
 				 ", unitary time = ", print_time_string(currentUtime - startUtime));
 				 prints("  #char calcs = ", currentCcounter - startCcounter,
 				 ", char time = ", print_time_string(currentCtime - startCtime),
-				 ", #Params missed by more = ", more_bad_hash.size() - startmorebad,
+				 ", #Params more-missed = ", more_bad_hash.size() - startmorebad,
 				 ", #unitary params so far = ",sum(answerCards));
-       	    			 prints("Time in min_bottom_factors = ",print_time_string(mbfTime), ", time in min_bottom_elim_factors = ",
-				 print_time_string(mbefTime), ", #Params caught = ", mbefCount);
-       	    			 if more_flag or bl_step_flag
-	    			 then prints("Time in bottom_factors = ", print_time_string(bfTime), ", time in bottom_elim_factors_more = ",
-       	  	   		       	     print_time_string(befmoreTime), ", more_shift_level = ", if bl_step_flag then
-		    		       	     bl_step_count*bl_step_size else more_shift_level fi, ", #Params caught = ", befmoreCount);
-      		 		      prints("     #Params missed by more = ", more_bad_hash.size())
-				 fi;
+       	    			 prints("Time in min_bottom_factors = ",print_time_string(mbfTime),
+				 ", time in min_bottom_elim_factors = ", print_time_string(mbefTime);
+				 prints("     #Params min-caught = ", good_hash.size(),
+				 ", #Params min-missed = ", bad_hash.size());
+ 			         prints("Time in bottom_factors = ", print_time_string(bfTime),
+				 ", time in bottom_elim_factors_more = ", print_time_string(befmoreTime),
+				 ", more_shift_level = ", if bl_step_flag then
+		    		       	     bl_step_count*bl_step_size else more_shift_level fi);
+				 prints("     #Params more-caught = ", more_good_hash.size(){befmoreCount});
+      		 		 ", #Params more-missed = ", more_bad_hash.size());
 				 report_tested();
 				 prints("  ------------------")
 			    fi
@@ -996,8 +1021,10 @@ fancy_tester) = void:
        	      "; max time = ",print_time_string(xlambdatimes[longest]),
 	      " for (x,lambda) = (",  xlambdas[longest], {",", lambdas[longest],}")");
        	    if small_test_flag
-	    then prints("Time spent in is_unitary = ",print_time_string(unitaryTime), ", #unitarity tests = ",
-       		unitary_test_counter.use_count() - oldUcounter, ", #(x,lambda) studied = ", minSmallBottomData.size())
+	    then prints("Time spent in is_unitary = ",print_time_string(unitaryTime),
+	    ", #unitarity tests = ",
+       		unitary_test_counter.use_count() - oldUcounter, ", #(x,lambda) studied = ",
+		minSmallBottomData.size())
 	    else prints("Time spent in is_unitary = ",print_time_string(unitaryTime), ", #unitarity tests = ",
        		unitary_test_counter.use_count() - oldUcounter, ", #K-types studied = ", minBottomData.size())
 	    fi;
@@ -1007,18 +1034,21 @@ fancy_tester) = void:
 	    prints("Time in localFD_1Dirac2* = ", print_time_string(FD12Time + FD12bzTime),
 	      ", in localFD_1Dirac2 = ",print_time_string(FD12Time),
 	    	     ", in localFD_1Dirac2_by_zero = ",print_time_string(FD12bzTime));
-	    prints("Time for built-in branch = ",print_time_string(branch_builtin_time), ", in script branch = ",
+	    prints("Time for built-in branch = ",print_time_string(branch_builtin_time),
+	    ", in script branch = ",
 	    		 print_time_string(branch_script_time));
-       	    prints("Time in derived_factor_K_types_info = ", print_time_string(dfkiTime), ", time in natural KGB = ", print_time_string(nKeTime));
-       	    prints("Time in min_bottom_factors = ",print_time_string(mbfTime), ", time in min_bottom_elim_factors = ",print_time_string(mbefTime), ", #Params caught = ", mbefCount);
-       	    {prints("Time in bottom layer branching = ",print_time_string(rf_sig_tables.bottom_branch_time()),
-       		    ", time in bottom layer sig = ", print_time_string(rf_sig_tables.bottom_sig_time()));}
-       	    if more_flag or bl_step_flag
-	    then prints("Time in bottom_factors = ", print_time_string(bfTime), ", time in bottom_elim_factors_more = ",
-       	  	    print_time_string(befmoreTime), ", more_shift_level = ", if bl_step_flag then
-		    bl_step_count*bl_step_size else more_shift_level fi, ", #Params caught = ", befmoreCount);
-      		 prints("     #Params missed by more = ", more_bad_hash.size())
-	    fi;
+       	    prints("Time in derived_factor_K_types_info = ", print_time_string(dfkiTime),
+	    ", time in natural KGB = ", print_time_string(nKeTime));
+       	    prints("Time in min_bottom_factors = ",print_time_string(mbfTime),
+	    ", time in min_bottom_elim_factors = ", print_time_string(mbefTime);
+	    prints("     #Params min-caught = ", good_hash.size(),
+	    ", #Params min-missed = ", bad_hash.size());
+ 	    prints("Time in bottom_factors = ", print_time_string(bfTime),
+				 ", time in bottom_elim_factors_more = ", print_time_string(befmoreTime),
+				 ", more_shift_level = ", if bl_step_flag then
+		    		       	     bl_step_count*bl_step_size else more_shift_level fi);
+	    prints("     #Params more-caught = ", more_good_hash.size(){befmoreCount});
+      		 		 ", #Params more-missed = ", more_bad_hash.size());
        	    prints("  #hash_real_dumb = ",hash_real_dumbCounter.use_count(),",  #hash_dumb = ", hash_dumbCounter.use_count(),
 	      ", #hash_def_dumb = ", hash_def_dumbCounter.use_count(),
 	      ", #hash2 = ", hash2Counter.use_count(), ", #hash_one_level = ", hash_one_levelCounter.use_count(),
@@ -1116,7 +1146,8 @@ set FPP_unitary_hash_bottom_layer([KGBElt] xs, Param_hash UhashG, (Param->bool) 
 	 else
 	 let former_time = current, formerUhash = currentUhash, formerUcounter = currentUcounter, x_sc = xs_sc[j],
 	     formerUtime = unitaryTime, formerCcounter = currentCcounter, formerCharTime = charTime,
-	     former_red_count_time = red_count_time,  startmorebadx = more_bad_hash.size()
+	     former_red_count_time = red_count_time,  startmorebadx = more_bad_hash.size(),
+	     startmorex = more_good_hash.size(), startminbadx = bad_hash.size(), startminx = good_hash.size()
 	 then xtwists = isotwistKGBs(x), twists = all_lambda_differential_0(x)
 	 then N1 = #FPP_lambdas(x)
 	 then full_N1 = to_bitset([N1])-1
@@ -1198,7 +1229,9 @@ set FPP_unitary_hash_bottom_layer([KGBElt] xs, Param_hash UhashG, (Param->bool) 
 				 fi
 		      then  startlambda = elapsed_ms(), startUhash = Uhash.size(), startUcounter =
 		      	    unitary_test_counter.use_count(), startUtime = unitaryTime,
-			    startmorebadlambda = more_bad_hash.size(), startLF = elapsed_ms(),
+			    startminlambda = good_hash.size(), startminbadlambda = bad_hash.size(),
+			    startmorebadlambda = more_bad_hash.size(), startmorelambda = more_good_hash.size(),
+			    startLF = elapsed_ms(),
 			    startCcounter = char_counter.use_count(), startCtime = charTime
 		      then () = if every_lambda_flag and FPP_report_flag
       	      	   	     	then prints("     start #", index, " = (",x,",",lambda,
@@ -1270,32 +1303,29 @@ set FPP_unitary_hash_bottom_layer([KGBElt] xs, Param_hash UhashG, (Param->bool) 
 				    if small_test_flag then theta_stable_data_small(parameter(x,lambda,0*lambda))
 				    else theta_stable_quasi_data(parameter(x,lambda,0*lambda))
 				    fi in Q.Levi.Lie_type, ",",test_string);
-				         if more_flag or bl_step_flag
-					 then prints("    #LF = ", for L in LF do #L od, ", #unitary params = ",
+				         {if more_flag or bl_step_flag
+					 then} prints("    #LF = ", for L in LF do #L od, ", #unitary params = ",
 					      	tempanswerCards[index], ", #new unitary = ", Uhash.size() - startUhash,
 						", #tests for this lambda = ", unitary_test_counter.use_count() - startUcounter,
 						", time = ",print_time_string(unitaryTime - startUtime));
 					      prints("     #char calcs for lambda = ", char_counter.use_count() - startCcounter,
 					        ", char time = ", print_time_string(charTime - startCtime));
-					      prints("     more_shift_level = ",if bl_interrupt_flag then
-		    bl_step_count*bl_step_size else more_shift_level fi, ", #Params missed by more = ",
-					     	more_bad_hash.size() - startmorebadlambda);
-	    					report_tested()
-					 else prints("    #LF = ", for L in LF do #L od, ", #unitary params = ",
-					      	tempanswerCards[index],
-			     	                ", #new unitary = ", Uhash.size() - startUhash,
-						", #tests for this lambda = ", unitary_test_counter.use_count() - startUcounter,
-						", time = ",print_time_string(unitaryTime - startUtime));
-					      prints("    #char calcs for lambda = ", char_counter.use_count() - startCcounter,
-					       ", char time = ", print_time_string(charTime - startCtime));
-					       report_tested()
-					 fi ;
-					 prints("  ------------------")
+       	    prints("Time in min_bottom_factors = ",print_time_string(mbfTime),
+	    ", time in min_bottom_elim_factors = ", print_time_string(mbefTime);
+	    prints("     #Params min-caught for lambda = ", good_hash.size() - startminlambda,
+	    ", #Params min-missed for lambda = ", bad_hash.size() - startminbadlambda);
+ 	    prints("Time in bottom_factors = ", print_time_string(bfTime),
+	    ", time in bottom_elim_factors_more = ", print_time_string(befmoreTime),
+	    ", more_shift_level = ", if bl_step_flag then bl_step_count*bl_step_size else more_shift_level fi);
+	    prints("     #Params more-caught for lambda = ", more_good_hash.size() - startmorelambda);
+      	    ", #Params more-missed for lambda = ", more_bad_hash.size() - startmorebadlambda);
+	    report_tested();
+	    prints("  ------------------")
 				    fi{every_lambda_flag}
 			       fi{#LF = 0}
 			     fi {not is_pos_on_LKTs}
-                 od {lambdas} {good_entries} {would be easy enough to get [Param] for each (x,lambda), but for now
-		       just put unitary reps in Uhash}
+                 od {lambdas} {good_entries} {would be easy enough to get [Param] for each (x,lambda),
+		    	      		     but for now just put unitary reps in Uhash}
     	   then () = if disconn_flag
 	   	     then for j: Uhash.size()
 		     	  do for p in sc_descends(Uhash.index(j), G, M)
@@ -1313,17 +1343,20 @@ set FPP_unitary_hash_bottom_layer([KGBElt] xs, Param_hash UhashG, (Param->bool) 
                           print_time_string(times[j]), "; longest lambda = ",
 			  print_time_string(templambdatimes[longLambdaLoc]),
 			  " for ", longLambdaLoc, " = ",lambdas[longLambdaLoc]);
-			  if more_flag or bl_step_flag
-			  then prints("       more_shift_level = ", if bl_step_flag then
-		    bl_step_count*bl_step_size else more_shift_level fi, ", #Params missed by more for this x = ",
-			     	       more_bad_hash.size() - startmorebadx)
-			  fi;
+       	    prints("Time in min_bottom_factors = ",print_time_string(mbfTime),
+	    ", time in min_bottom_elim_factors = ", print_time_string(mbefTime);
+	    prints("     #Params min-caught for this x = ", good_hash.size() - startminx,
+	    ", #Params min-missed for this x = ", bad_hash.size() - startminbadx);
+ 	    prints("Time in bottom_factors = ", print_time_string(bfTime),
+	    ", time in bottom_elim_factors_more = ", print_time_string(befmoreTime),
+	    ", more_shift_level = ", if bl_step_flag then bl_step_count*bl_step_size else more_shift_level fi);
+	    prints("     #Params more-caught for this x = ", more_good_hash.size() - startmorex);
+      	    ", #Params more-missed for this x = ", more_bad_hash.size() - startmorebadx);
 			  prints("     #unitary params = ", sum(tempanswerCards), ", #new unitary faces = ",
 			     currentUhash - formerUhash, ", #tests for this x = ",
 		     	     currentUcounter - formerUcounter, ", time in is_unitary = ", print_time_string(unitaryTime - formerUtime));
-			     {", #def lookups = ",
-		      	     deformLookupCounter.use_count(), ", #def calcs = ",
-		     	     deformCalcCounter.use_count());}
+
+
 			   prints("     Time spent in char calcs = ", print_time_string(charTime - formerCharTime),
 			      	     ", number of char calcs = ", currentCcounter - formerCcounter,
 				     ", time for red_count = ",print_time_string(red_count_times[j]));
@@ -1363,15 +1396,17 @@ set FPP_unitary_hash_bottom_layer([KGBElt] xs, Param_hash UhashG, (Param->bool) 
 	    prints("Time for built-in branch = ",print_time_string(branch_builtin_time), ", in script branch = ",
 	    		 print_time_string(branch_script_time));
        	    prints("Time in derived_factor_K_types_info = ",print_time_string(dfkiTime),", time in natural KGB = ", print_time_string(nKeTime));
-       	    prints("Time in min_bottom_factors = ",print_time_string(mbfTime), ", time in min_bottom_elim_factors = ", print_time_string(mbefTime), ", Params caught = ",mbefCount);
-       	    {prints("Time in bottom layer branching = ",print_time_string(rf_sig_tables.bottom_branch_time()),
-       		    ", time in bottom layer sig = ", print_time_string(rf_sig_tables.bottom_sig_time()));}
-       	    if more_flag or bl_step_flag
-	    then prints("Time in bottom_factors = ", print_time_string(bfTime), ", time in bottom_elim_factors_more = ",
-       	  	   	      print_time_string(befmoreTime));
-		 prints("     more_shift_level = ", if bl_step_flag then
-		    bl_step_count*bl_step_size else more_shift_level fi, ", #Params missed = ", more_bad_hash.size(), ", #Params caught = ",befmoreCount)
-	    fi;
+
+       	    prints("Time in min_bottom_factors = ",print_time_string(mbfTime),
+	    ", time in min_bottom_elim_factors = ", print_time_string(mbefTime));
+	    prints("     #Params min-caught = ", good_hash.size(),
+	    ", #Params min-missed = ", bad_hash.size());
+ 	    prints("Time in bottom_factors = ", print_time_string(bfTime),
+	    ", time in bottom_elim_factors_more = ", print_time_string(befmoreTime),
+	    ", more_shift_level = ", if bl_step_flag then
+		    		       	     bl_step_count*bl_step_size else more_shift_level fi);
+	    prints("     #Params more-caught = ", more_good_hash.size(), 
+      	    ", #Params more-missed = ", more_bad_hash.size());
        	    prints("  #hash_real_dumb = ",hash_real_dumbCounter.use_count(),",  #hash_dumb = ", hash_dumbCounter.use_count(),
 	    	   ", #hash_def_dumb = ", hash_def_dumbCounter.use_count(),
 	    	   ", #hash2 = ",hash2Counter.use_count(), ", #hash_one_level = ", hash_one_levelCounter.use_count(), ", #hash_bottom_layer = ",

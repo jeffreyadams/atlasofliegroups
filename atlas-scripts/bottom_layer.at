@@ -666,12 +666,16 @@ set max_goodness(Param p) = [(bool, bool, bool)]:
 {this time counter INCLUDES the time in bottom_factor, which is separately counted by bfTime. Correct
 at printing in FPP_globalDirac.at}
 set befmoreTime = int:0 {time spent with non-minimal parabolics}
-set befmoreCount = int: 0
+{set befmoreCount = int: 0}
+
 set mbefTime = int: 0 {time spent in min_bottom_elim_factors}
-set mbefCount = int: 0
+{set mbefCount = int: 0}
 
 {meant to hold nonunitary reps identified by min_bottom}
 set good_hash = make_Param_hash()
+
+{meant to hold nonunitary reps not identified by min_bottom}
+set bad_hash = make_Param_hash()
 
 {whether to use _more versions of bottom layer tests for unitarity}
 set more_flag = false
@@ -679,7 +683,7 @@ set more_flag = false
 {meant to hold nonunitary reps identified first by more}
 set more_good_hash = make_Param_hash()
 
-{meant to hold nonunitary Params not eliminated by more}
+{meant to hold nonunitary Params not eliminated by more}{far from perfect}
 set more_bad_hash = make_Param_hash()
 
 set every_MBEF_flag = false
@@ -763,7 +767,7 @@ set min_small_bottom_elim_factors(Param p0, Param p, KTypePol P) = bool:
 	       	    od)
 	  od
    then answer = all(answers)
-   then () = if not answer then good_hash.match(p0); {prints("adding to mbefCount");} mbefCount +:=1 fi
+   then () = if not answer then good_hash.match(p0) fi{; prints("adding to mbefCount");} {mbefCount +:=1 fi}
    then () = mbefTime +:= elapsed_ms()-start
    then () = if every_MBEF_flag then prints("  ",answer) fi
    in answer
@@ -831,7 +835,7 @@ set min_bottom_elim_factors(Param p0, Param p, KTypePol P) = bool:
         od
    then answer = all(answers)
 	{then () = if not answer then attest_is_unitary(p,answer) fi}
-   then () = if not answer then good_hash.match(p0); {prints("adding to mbefCount");} mbefCount +:=1 fi
+   then () = if not answer then good_hash.match(p0){;prints("adding to mbefCount");}{mbefCount +:=1} fi
    then () = mbefTime +:= elapsed_ms()-start
    then () = if every_MBEF_flag then prints("  ",answer) fi
    in answer
@@ -954,12 +958,12 @@ set bottom_elim_factors(Param p0, Param p, QKL_bottom_data (Q, LKdata), KTypePol
 				     in ans
 			od )
    	then () = if not result
-	     	  then {prints("adding to befmoreCount");}
-		       let MG = more_good_hash.size()
+	     	  then more_good_hash.match(p0){prints("adding to befmoreCount");}
+		       {let MG = more_good_hash.size()
 		       then mG = more_good_hash.match(p0)
 		       in if mG = MG
 		       	  then befmoreCount +:=1
-		     	  fi
+		     	  fi}
 		   fi
 	then () =  befmoreTime +:= elapsed_ms()-start
 	in result
@@ -1358,6 +1362,7 @@ set bottom_elim_factors_more(Param p0, Param p, [QKL_bottom_data] data, KTypePol
 	      	    then () = if bottom_verbose then prints("p = ",p0," is a good one!") fi
 		    then DL = D - height(p) + height(pL0)
 		    then answer = is_unitary_to_ht_big(pL0,DL)
+		    then () = if not answer then more_good_hash.match(p0) fi
                     {then answer = is_unitary_hash_big(pL0)}
 		    then () = befmoreTime +:= elapsed_ms() - start
                     in return answer
@@ -1369,6 +1374,7 @@ set bottom_elim_factors_more(Param p0, Param p, [QKL_bottom_data] data, KTypePol
 	       	    then HG = to_ht(theta_induce_signature_to_ht(pL0,DL,G),D)
 		    {, Ip = theta_induce_irreducible(pL,G)}
 		    then G_pure = is_pure(HG)
+		    then () = if not G_pure then more_good_hash.match(p0) fi
 		    in  befmoreTime +:= elapsed_ms() - start;
                         {attest_is_unitary(p, G_pure);}
 			return G_pure
@@ -1381,8 +1387,8 @@ set bottom_elim_factors_more(Param p0, Param p, [QKL_bottom_data] data, KTypePol
 		    then () = if mg=MG
 			      then if bottom_verbose
 			      	   then prints("at p = ",p0,", more helped!")
-				   fi;
-			      	   befmoreCount +:=1
+				   fi{;
+			      	   befmoreCount +:=1}
 			      fi
                     {then () = attest_is_unitary(p,false)}
 		    in return false
@@ -1468,7 +1474,7 @@ set bottom_elim_factors_more(Param p0, Param p, int D_low, int D, KTypePol P)= b
 		   then () = if mg=MG
 			     then if bottom_verbose
 			      	  then prints("at p = ",p0,", more helped!")
-				  fi; befmoreCount+:=1
+				  fi{; befmoreCount+:=1}
 			     fi
                    {then () = attest_is_unitary(p,false)}
 		   then () = befmoreTime +:= elapsed_ms() - start
@@ -1529,8 +1535,8 @@ set bottom_test_factors_more(Param p0, Param p, [KType, [QKL_bottom_data]] datas
 		    then () = if mg=MG
 			      then if bottom_verbose
 			      	   then prints("at p = ",p0,", more helped!")
-				   fi;
-				   befmoreCount +:= 1
+				   fi{;
+				   befmoreCount +:= 1}
 			      fi
                     {then () = attest_is_unitary(p,false)}
 		    then () = befmoreTime +:= elapsed_ms() - start
@@ -1577,14 +1583,14 @@ set bottom_test_factors_more(Param p0, Param p, int D, KTypePol P) = bool:
 					    	bottom_K_type_Qs2(mu,Q,D), P)
 					    od)
 			      od)
- 		    then let MG = more_good_hash.size()
+ 		    then {let MG = more_good_hash.size()
 		    	 then mg = more_good_hash.match(p)
 		    	 then () = if mg=MG
 			      	   then if bottom_verbose
 				   	then prints("at p = ",p,", more helped!")
-					fi; befmoreCount +:= 1
-			      	   fi
-		    	 then () = befmoreTime +:= elapsed_ms() - start
+					fi; {befmoreCount +:= 1}
+			      	   fi}
+		    	 let () = befmoreTime +:= elapsed_ms() - start
 		         in return false
 	             fi
 	      else if not all(for mu in LKTs(p)
@@ -1592,14 +1598,14 @@ set bottom_test_factors_more(Param p0, Param p, int D, KTypePol P) = bool:
 			    	       do @bool: bottom_elim_factors(p, bottom_factors(Q,list), P)
 				       od)
 		         od)
-	       	   then let MG = more_good_hash.size()
+	       	   then {let MG = more_good_hash.size()
 		    	then mg = more_good_hash.match(p)
 		    	then () = if mg=MG
 			      	  then if bottom_verbose
 				       then prints("at p = ",p,", more helped!")
-				       fi; befmoreCount +:= 1
-			      	  fi
-		        then () = befmoreTime +:= elapsed_ms() - start
+				       fi{; befmoreCount +:= 1}
+			      	  fi}
+		        let () = befmoreTime +:= elapsed_ms() - start
 		    	in return false
 	       	   fi
 	      fi{Qs2_flag}
