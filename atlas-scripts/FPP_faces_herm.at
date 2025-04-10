@@ -512,7 +512,7 @@ set low_frac = 1/1
 {true means large nu, so to_ht could be better}
 set low(Param p, int N) = bool:
     let (,NU,) = low(p)
-    in NU > 2*N*low_frac
+    in NU > N*low_frac
 
 set nullint(int N) = [int]:
     for n:N do 0 od
@@ -1854,7 +1854,7 @@ set ht_bound_frac = rat: 1/2
 set is_unitary_to_ht_big_SIMPLE(Param p, int H, int time) = bool:
   if (not is_hermitian(p)) or (not is_pos_on_LKTs(p)) then return false fi;
   let G = p.real_form, (,NU,) = low(p)
-  then ht_bound = NU/(2*low_frac) {this estimates the biggest ht where to_ht could be faster than is_unitary}
+  then ht_bound = NU/low_frac {this estimates the biggest ht where to_ht could be faster than is_unitary}
   then FPP_flag = is_FPP(G,p.infinitesimal_character)
   then () = if not FPP_flag and H < ht_bound*ht_bound_frac
     	    then return is_unitary_to_ht(p,H) {prints("FPP DANGER TO HT at ",p)}
@@ -1919,7 +1919,7 @@ set is_unitary_test_big_SIMPLE_interrupt(Param p, int N) = bool:
        	       then max(1,(G.rank*mu_rank_mult)\1)
 	       else easy_up_shift
 	       fi
-  then ht_bound = NU/(2*low_frac) {this estimates the biggest ht where to_ht could be faster than is_unitary}
+  then ht_bound = NU/low_frac {this estimates the biggest ht where to_ht could be faster than is_unitary}
   then FPP_flag = is_FPP(G,p.infinitesimal_character)
   then () = if not FPP_flag
     	    then return is_unitary(p) {prints("FPP DANGER TO HT at ",p)}
@@ -1976,7 +1976,7 @@ set is_unitary_test_big_SIMPLE_interrupt(Param p, [int] hts) = bool:
     if (not is_hermitian(p)) or (not is_pos_on_LKTs(p)) then return false fi;
     if #hts = 0 then return is_unitary_test_big_SIMPLE_interrupt(p, 1) fi;
   let G = p.real_form, (,NU,) = low(p)
-  then ht_bound = NU\4{2} {this estimates the biggest ht where to_ht could be faster than is_unitary}
+  then ht_bound = NU\2{1} {this estimates the biggest ht where to_ht could be faster than is_unitary}
   then FPP_flag = is_FPP(G,p.infinitesimal_character)
   then () = if not FPP_flag
     	    then return is_unitary(p) {prints("FPP DANGER TO HT at ",p)}
