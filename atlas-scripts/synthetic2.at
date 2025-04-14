@@ -7,11 +7,22 @@ set_type
 [ KGBElt_gen = (InnerClass inner_class, mat involution, ratvec torus_factor) ]
   { generalized KGB elements: x^2 not necessarily central }
 
+set KGB_elt_gen(InnerClass ic,mat theta, ratvec v)=KGBElt_gen:
+ (ic,theta,v*(1+theta)/2)
+ 
+set KGB_elt(KGBElt_gen x)=KGB_elt(x.inner_class,x.involution,x.torus_factor)
+set root_datum(KGBElt_gen x)=RootDatum:x.inner_class.root_datum
+
+{NOTE: torus_factor tau is the "normalized" torus factor. This means: tau is theta_x fixed,
+and xi=exp(2\pi i(torus_factor+rho^v)/2)\sigma_w\delta  (note the rho^v and /2 terms!)
+KGBElt_gen's are only defined up to conjugation by H, and every such element can be conjugated to this form}
+
 { KGBElt_gen:(ic,theta,torus_factor)
   torus_factor must be theta_x-fixed (else error)
-     could replace torus_factor with torus_factor*(1+theta)/2 but it seems better to flag this
+
+  [could replace torus_factor with torus_factor*(1+theta)/2 but it seems better to flag this]
   [no: requirement: base_grading_vector - torus_factor\in Z^n don't have base_grading_vector]
-  xi=exp(2\pi i(torus_factor+rho^v)/2)\sigma_w\delta
+
 }
 set KGB_elt_gen(KGBElt x)=KGB_elt_gen(x.inner_class,x.involution,x.torus_factor)
 
@@ -183,6 +194,9 @@ set != ((KGBElt_gen,KGBElt_gen)p) = bool: not =p
 
 set *(mat delta,KGBElt_gen(ic,theta,t)) = KGBElt_gen:
   (ic,delta*theta*delta,t*delta)
+
+set *(WeylElt w,KGBElt x)=KGBElt:KGB_elt(x.inner_class,w.matrix*x.involution*inverse(w).matrix, w*x.torus_factor)
+set *(WeylElt w,KGBElt_gen x)=KGBElt_gen:KGB_elt_gen(x.inner_class,w.matrix*x.involution*inverse(w).matrix, w*x.torus_factor)
 
 set is_fixed (KGBElt_gen y,mat delta) = bool: y = delta*y
 

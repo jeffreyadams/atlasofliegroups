@@ -38,7 +38,12 @@ set square2 (InnerClass ic,mat theta,ratvec tf) = ratvec:
 
 { the following is the same as central_cocharacter@RealForm in Vogan-dual.at }
 set square (RealForm G) = ratvec: (base_grading_vector(G)+rho_check(G))%1
-set square (KGBElt x) = ratvec: square(real_form(x))
+
+{include testing!}
+set square (KGBElt x) = ratvec:
+let square1=square(real_form(x)) then
+square2=square2(x.inner_class,x.involution,x.torus_factor) in
+assert(2*square1=square2,"error in calculating square");square1
 
 { tf=normalized torus_factor: xi=exp(\pi i(tf\rho^v))\sigma_w\xi_0
   so square_is_central(ic,theta(x),torus_factor(x)) should always be true

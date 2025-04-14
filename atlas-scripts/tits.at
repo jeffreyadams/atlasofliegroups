@@ -11,6 +11,9 @@
   do without explicitly representing d, since we shall work with the image
   under \theta of the set of positive (co)roots, which set d stabilises.
 
+  NOTE: sigma=(rd,v,theta) means v is the "unnormalized torus factor" of sigma, in the
+        terminology of KGBElt and KGBElt_gen. Thath is x=(inner_cl
+
   So v is a rational coweight taken modulo 1; theta need not be an involution.
   Note that theta is defined as operating from left on X^*; for left action of
   theta on v, use the transpose inverse (right-multiply v by inverse(theta)).
@@ -44,7 +47,8 @@ set torus_factor(Tits_elt t)=ratvec:torus_part(t)
 set unnormalized_torus_factor(Tits_elt t)=ratvec:(torus_factor(t)+rho_check(root_datum(t)))/2
 
 set tits_element(KGBElt x)=Tits_elt:(x.root_datum,x.unnormalized_torus_factor,x.involution)
-set KGB_elt (Tits_elt t)=KGB_elt(t.root_datum,t.theta,2*t.torus_part-t.root_datum.rho_check)
+{set KGB_elt (Tits_elt t)=KGB_elt(t.root_datum,t.theta,2*t.torus_part-t.root_datum.rho_check)}
+set KGB_elt (Tits_elt t)=KGB_elt(t.root_datum,t.theta,(2*t.torus_part-t.root_datum.rho_check)*(1+t.theta)/2)
 
 {sigma is a synonyn for tits_element}
 set sigma(RootDatum G,ratvec torus_part, mat theta)=Tits_elt:tits_element(G,torus_part,theta)
@@ -70,11 +74,10 @@ set = (Tits_elt(rd1,v,theta),Tits_elt(rd2,u,eta)) = bool: rd1=rd2 and =(v-u)%1 a
 set != ((Tits_elt,Tits_elt)p) = bool: not =p
 
 { identity in Tits group }
-{NONONO YESYESYES???}
 set tits_identity (RootDatum rd) = Tits_elt:
   let r=rank(rd) in (rd,ratvec:null(r),id_mat(r))
-{set tits_identity (RootDatum rd) = Tits_elt:
-  let r=rank(rd) in (rd,rd.rho_check,id_mat(r))}
+{recall in the Tits group there is no normalized torus factor,
+ so tits_identity=exp(2\pi i*0)=identity in G}
 
 { element (torus factor=1)*delta in twisted Tits group }
 set tits_delta (RootDatum rd,mat delta) = Tits_elt: (rd,null(rank(rd)),delta)
@@ -147,17 +150,20 @@ set conjugate (WeylElt w, Tits_elt xi) = Tits_elt:
   their columns (so that the passage from S to m_S is obtained by taking the
   half-sum modulo 1). The action of \theta,\eta is then by transpose inverse.
 }
-set multiply_old(Tits_elt(rd,v,theta), Tits_elt({assume rd},u,eta)) = Tits_elt:
-  let tt1 = ^theta.inverse
+set multiply(Tits_elt(rd,v,theta), Tits_elt({assume rd},u,eta)) = Tits_elt:
+
+let tt1 = ^theta.inverse
   , neg_crs = columns_with(is_negative_coroot(rd),^eta.inverse*poscoroots(rd))
   in
   ( rd
-  , ( v + tt1*u + sum(columns_with(is_positive_coroot(rd),tt1*neg_crs))/2 ).print % 1
+{  , ( v + tt1*u + sum(columns_with(is_positive_coroot(rd),tt1*neg_crs))/2 )% 1}
+     {NO: %1 doesn't make sense for Tits elements, only KGB_elt_gen}
+  , ( v + tt1*u + sum(columns_with(is_positive_coroot(rd),tt1*neg_crs))/2 )
   , theta*eta
   )
 
-
-set multiply(Tits_elt t1, Tits_elt t2) = Tits_elt:
+{this makes no sense:
+set multiply_wrong(Tits_elt t1, Tits_elt t2) = Tits_elt:
   assert(t1.root_datum=t2.root_datum,"root data don't match in multiplying Tits elements");
   let rd=t1.root_datum then
   theta1=t1.theta then
@@ -170,6 +176,7 @@ set multiply(Tits_elt t1, Tits_elt t2) = Tits_elt:
   theta3=theta1*theta2 then
   tau3=((2*mu3-rd.rho_check)*theta3)%1 in
   ( t1.root_datum,tau3,theta3)
+}
 
 set * = multiply@(Tits_elt,Tits_elt)
 
@@ -242,3 +249,9 @@ set order (Tits_elt xi) = int:
   in if xi^d=id then d elif xi^(2*d)=id then 2*d else error() fi
 
 set square(Tits_elt (rd,tf,theta))=ratvec:tf+rho_check(rd)
+
+set show(Tits_elt sigma)=void:
+prints(sigma.root_datum);
+prints("theta=",sigma.theta);
+prints("mu=",sigma.torus_factor);
+prints("rho_check=", rho_check(sigma.root_datum))

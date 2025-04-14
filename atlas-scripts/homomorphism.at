@@ -226,9 +226,6 @@ sigma2
 
 {here we're working with the twisted Tits group}
 
-set KGB_elt_gen (RootDatum rd, mat theta, ratvec v) = KGBElt_gen:
-  KGB_elt_gen(inner_class(rd,theta), theta, v)
-
 { no: using unnormalized torus factor?}
 {set KGB_elt_gen (Tits_elt t)=KGB_elt_gen(t.root_datum,t.theta,2*t.torus_part-t.root_datum.rho_check)
 set tits_element(KGBElt_gen x)=Tits_elt:(x.inner_class,x.unnormalized_torus_factor,x.involution)
@@ -268,6 +265,7 @@ set map_KGB_tits(InnerClass ic2,mat M)=(KGBElt->KGBElt):(KGBElt x1):map_KGB_tits
 set map_KGB_gen_tits(KGBElt_gen x1,InnerClass ic2,mat M, orientation epsilon2)=KGBElt_gen:
 let sigma1=tits_element(x1)  {acts by w1*delta1} then
 ()=prints("x1: ", x1) then
+()=prints("ic2: ", ic2) then
 ()=prints("sigma1=", sigma1) then
 sigma2=map_tits_element_twisted(x1.inner_class,ic2,M,sigma1) {sigma2 acts by w2*delta2} in
 let ()=prints("sigma2= ", sigma2) in
