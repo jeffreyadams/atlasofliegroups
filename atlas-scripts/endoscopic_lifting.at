@@ -232,10 +232,10 @@ set epstar_stable(ParamPol P,InnerClass ic_G,ratvec z)=[ParamPol]:epstar_stable(
 set epstar_stable(L_homomorphism phi_H,InnerClass ic_G,mat M,ratvec z)=[ParamPol]:
 let H=dual_quasisplit_form(inner_class(phi_H)) then
 P_H=stable_sum_std(H,phi_H) in 
-jepstar_stable(P_H,ic_G,M,z)
+epstar_stable(P_H,ic_G,M,z)
 set epstar_stable(L_homomorphism phi_H,InnerClass ic_G,ratvec z)=[ParamPol]:
 epstar_stable(phi_H,ic_G,id_mat(rank(ic_G)),z)
-t
+
 set epstar_stable_one(L_homomorphism phi_H,RealForm G,mat M,ratvec z)=ParamPol:
 epstar_stable(phi_H,inner_class(G),M,z)[real_form_index(G)]
 set epstar_stable_one(L_homomorphism phi_H,RealForm G,ratvec z)=ParamPol:

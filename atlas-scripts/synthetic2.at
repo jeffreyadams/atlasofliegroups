@@ -24,6 +24,10 @@ KGBElt_gen's are only defined up to conjugation by H, and every such element can
   [no: requirement: base_grading_vector - torus_factor\in Z^n don't have base_grading_vector]
 
 }
+
+{v might not be theta-fixed, so it can (and should?) be replaced by v(1+theta_x)/2}
+set normalized_torus_factor(KGBElt_gen(ic,theta,v))=ratvec:v*(1+theta)/2
+
 set KGB_elt_gen(KGBElt x)=KGB_elt_gen(x.inner_class,x.involution,x.torus_factor)
 
 {
@@ -165,7 +169,8 @@ set is_conjugate (ratvec v,ratvec w,mat theta) = bool:
 set unnormalized_torus_factor (KGBElt_gen x) = ratvec:
   (x.torus_factor+rho_check(x.inner_class))/2
 
-set square (KGBElt_gen x)=ratvec:torus_factor(x)+inner_class(x).rho_check
+{to compute square, need to make torus_factor theta_fixed, i.e. use normalized_torus_factor}
+set square (KGBElt_gen x)=ratvec:normalized_torus_factor(x)+inner_class(x).rho_check
 
 set square_is_central(KGBElt_gen x)=bool:is_integer(square(x)*x.inner_class.simple_roots)
 

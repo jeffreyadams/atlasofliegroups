@@ -226,11 +226,16 @@ sigma2
 
 {here we're working with the twisted Tits group}
 
-{ no: using unnormalized torus factor?}
+{sigma=(rd,theta,v)  v is the torus_factor (TitsElts only have one kind of torus factor, "unnormalized")
+KGB_elt_gen(sigma) has unnormalized torus factor v, so normalized torus factor (2*v-rho)*(1+theta)/2
+note theta is on the right since v is in (X_*)_Q}
+
 {set KGB_elt_gen (Tits_elt t)=KGB_elt_gen(t.root_datum,t.theta,2*t.torus_part-t.root_datum.rho_check)
 set tits_element(KGBElt_gen x)=Tits_elt:(x.inner_class,x.unnormalized_torus_factor,x.involution)
 }
-set KGB_elt_gen (Tits_elt t)=KGB_elt_gen(t.root_datum,t.theta,t.torus_part)
+{set KGB_elt_gen (Tits_elt t)=KGB_elt_gen(t.root_datum,t.theta,t.torus_part)}
+set KGB_elt_gen (Tits_elt t)=KGB_elt_gen(t.root_datum,t.theta,(2*t.torus_part-rho_check(t.root_datum)))
+
 set tits_element(KGBElt_gen x)=Tits_elt:(x.inner_class,x.torus_factor,x.involution)
 
 {map KGB and generalized KGB elements using the Tits group}

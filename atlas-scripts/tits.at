@@ -156,9 +156,8 @@ let tt1 = ^theta.inverse
   , neg_crs = columns_with(is_negative_coroot(rd),^eta.inverse*poscoroots(rd))
   in
   ( rd
-{  , ( v + tt1*u + sum(columns_with(is_positive_coroot(rd),tt1*neg_crs))/2 )% 1}
-     {NO: %1 doesn't make sense for Tits elements, only KGB_elt_gen}
-  , ( v + tt1*u + sum(columns_with(is_positive_coroot(rd),tt1*neg_crs))/2 )
+{  , ( v + tt1*u + sum(columns_with(is_positive_coroot(rd),tt1*neg_crs))/2 )%1  NO %1 is wrong?}
+    , ( v + tt1*u + sum(columns_with(is_positive_coroot(rd),tt1*neg_crs))/2 )%1
   , theta*eta
   )
 
