@@ -573,27 +573,32 @@ the symbol `\.\$'.
 extern type last_type;
 extern shared_value last_value;
 
-@~We set the pointers to |nullptr| here, but the |main| function will give them
-more appropriate starting values.
+@~We set a valid (empty tuple) value and its type here so that expressions
+`\.\$' used before any previous value is ever assigned to |last_value| will not
+crash the program.
 
 @< Global variable definitions @>=
-type last_type = type::bottom(0);
-shared_value last_value;
+shared_value last_value = shared_value(new tuple_value(0));
+type last_type = type::wrap(void_type,0);
 
-@ In some occasions, a previously computed value can be captured in an
-expression (currently this applies to `\.\$', which captures the last computed
-value, and of operator casts, which capture a function value from the overload
-table). In those cases we shall use an expression type that is like
-|denotation| so that evaluation will give back the captured value; however for
-the purpose of printing (if this expression occurs inside a function body) it
-is undesirable to embark on printing the whole captured value, so we derive
-and override the |print| method.
+@ The |capture_expression| class stores a |std::string|, so the header file
+needs to know about this.
 
 @< Includes needed in the header file @>=
 
 #include <string>
 
-@~@<Type definitions @>=
+@~The class |capture_expression| implements the expression `\.\$', and also
+function and operator casts. These differ only from denotations only in that the
+value they capture depend on the current (at the time of type checking the
+expression) state of the interpreter; in the case of function and operator
+casts they are retrieved from the global overload table. Therefore we derive
+this class from |denotation|, and override only the |print| method. This is
+because when printing expressions we want to print \emph{how} the value captured
+was specified, rather than what value was. In order to do so, the string to
+print is explicitly passed to the class constructor.
+
+@<Type definitions @>=
 class capture_expression : public denotation
 { std::string print_name;
 public:
@@ -604,10 +609,12 @@ public:
 
 @ Upon parsing `\.\$', an |expr| value with |kind==last_value_computed| is
 transmitted. Upon type-checking we capture the value in a |denotation|
-structure, which may or may not be evaluated soon after; even if the value
-gets captured in a function value, it will remain immutable. For printing the
-expression so formed, we suppress the actual value, but record the type as
-stored in |last_type| at the time of type checking.
+structure, which may or may not be evaluated soon after; even if the value gets
+captured in a function value, it will remain immutable (it will \emph{not}
+capture |last_value| at the time of executing the function, because we cannot
+know its type in advance). For printing the expression so formed, we record
+(converted to a string) the type as stored in |last_type| at the time of type
+checking.
 
 @< Cases for type-checking and converting... @>=
 case last_value_computed:
