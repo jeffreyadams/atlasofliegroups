@@ -198,23 +198,23 @@ void check_interrupt()
 
 @* Outline of the analysis and evaluation processes.
 %
-This module is concerned with the processing of the abstract syntax tree as
-produced by the parser, ultimately producing actions and computed values. This
-processing consist of two separate stages: type analysis, which also
-transforms the syntax tree into a more directly executable form and therefore
-might be called compilation, and execution of those transformed expressions.
+This file \.{axis.w} is concerned with the processing of the abstract syntax
+tree as produced by the parser, ultimately producing actions and computed
+values. This processing consist of two separate stages: type analysis, which
+also transforms the syntax tree into a more directly executable form and
+therefore might be called compilation, and execution of those transformed
+expressions.
 
 The expression returned by the parser, of type |expr|, and the conversion to the
 executable format |expression| (a type defined in \.{axis-types.w} as a pointer
 to the base class |expression_base|, from which many more specialised classes
 will be derived) is performed by the function |convert_expr|. This is a large
-and highly recursive function, and a large part of the current compilation unit
-is dedicated to its definition. The execution of the converted value is
-performed by calling the (purely) virtual method |evaluate|, so that the code
-describing the actual execution of expressions is distributed among the many
-definitions of that method in derived classes, and this definition is only
-implicitly (mutually) recursive through calls to the |expression_base::evaluate|
-method.
+and highly recursive function, and its definition fills a large part of the
+current compilation unit. The execution of the converted value is performed by
+calling the (purely) virtual method |evaluate|, so that the code describing the
+actual execution of expressions is distributed among the many definitions of
+that method in derived classes, and this definition is only implicitly
+(mutually) recursive through calls to the |expression_base::evaluate| method.
 
 @ During type checking, it may happen for certain subexpressions that a definite
 type is required for them, while for others nothing is known beforehand about
@@ -226,81 +226,71 @@ vector value (one that can be directly used by the Atlas library); this is in
 fact the only way the user can construct such vector values. However, both cases
 (with known or unknown result type), and some intermediate cases (where the
 result type is partially known) are handled by a single function |convert_expr|.
-There are even cases where the expected type is any instance of a given
-polymorphic type, which is why |convert_expr| takes a |type| as second argument
+There are even cases where the expected type is ``any instance of a given
+polymorphic type'', which is why |convert_expr| takes a |type| as second argument
 (where originally it took a |type_expr|). The first argument is an a |const
 expr& e@;| referring to a value produced by the parser, which represents the
 expression to be analysed.
 
-If there are no restrictions on the final type, then |tp| will be undetermined
-initially; if a precise type is required then it is set to that. It could also
-be that there are partial requirements; then |tp| is a partially determined type
-expression reflecting those. Then during the call to |convert_expr|, the value
-of |tp| can be changed by calling |specialise| on it or on its subexpressions.
-As polymorphic types were introduced, we discovered (fairly late) that we cannot
-limit ourselves to partially defined context types determined by patterns with
-undetermined parts, but we need to allow the requirement of being an instance of
-some polymorphic type: while overloaded function calls must evaluate their
-argument(s) in an undetermined type context, even if some function instances
-are polymorphic, non overloaded calls do impose a type on their argument, which
-may be a polymorphic type. For this reason we pass (by reference) a |type|
-argument rather than a |type_expr|, and expect its type assignment to pick up
-information during the type checking process.
+If the context places no restrictions the type, then |tp| will be a polymorphic
+variables, meaning undetermined initially; if a precise monomorphic type is
+required then |tp| is set to that. It could also be that there are partial
+requirements; then |tp| is a polymorphic type reflecting those, with polymorphic
+type variables for undetermined parts. Then during the call to |convert_expr|,
+the value of |tp| can be changed by unification, assigning type expressions to
+so of the polymorphic type variables. Instead of polymorphic types we used to
+pass type patterns with undetermined parts, but we discovered (fairly late) that
+this cannot handle all situations. Notably, polymorphic type requirements can
+arise in the argument position of a function call: while overloaded function
+calls initially evaluate their argument(s) in an unrestricted type context (even
+in the presence of polymorphic instances of the function symbol), non overloaded
+calls do directly impose a type on their argument, and it may be polymorphic.
+This is why we pass (by reference) a |type| rather than a |type_expr| argument.
 
-The argument |tp| can be changed to a more specific one in various ways: by
-calling |unify|, or calling |specialise| for (a subexpressions of) the contained
-|type_expr|, or possibly by assigning a new more specialised value obtained in
-another way. We also occasionally call the |expand| method to replace a tabled
-sub-type by an equivalent one that makes the top level structure apparent. One
-should not modify |tp| in other ways, and in particular not |std::move| from it.
-Also |tp| should not refer to a table entry like the type of a variable, or to
-any other permanent value, to avoid changes to the |tp| argument causing
-permanent changes to them. (But after returning from |convert_expr|, |tp| can be
-used in a permanent manner.)
+This argument |tp| can be changed during the call of |convert_expr| in various
+ways. Most importantly, calls of |unify| may add assignments to (initially)
+polymorphic type variables. We also occasionally call the |expand| method to
+replace a tabled sub-type by an equivalent one that makes the top level
+structure apparent. One should not modify |tp| in ways that make it no longer an
+instance of its initial value, and in particular not |std::move| from it, even
+when |convert_expr| is terminated by an exception. Nonetheless, the caller
+should not make |tp| refer to the storage for the type of a variable, or for
+some other permanent value, to avoid any changes to them as side effects
+of the call. After returning from |convert_expr|, it is of course safe to use
+|tp| for storing the type in a permanent manner.
 
 @< Declarations of exported functions @>=
 expression_ptr convert_expr (const expr& e, type& tp);
 
-@ In some cases |tp| used to remain partly undefined, like for an empty list
-display with an unknown type, which got specialised only to~`\.{[*]}'. Now that
-|tp| is a |type|, that result will be given as the polymorphic type `\.{[A]}'
-(to which that old result could have been converted by calling |type::wrap|). If
-|tp| remains completely undefined (as will happen for an expression that selects
-a value from an empty list, or that calls |error|) this will produce the
-uninhabited type `\.A'; an expression having that type means that its evaluation
-cannot possibly complete without error. (If one would try to deduce the return
-type of a recursive function from its body, this situation would also happen if
-such a function were to have no terminating case; in reality, the syntax insists
-that recursive functions declare their return type explicitly, avoiding this
-situation.)
-
 @*1 Layers of lexical context.
 %
-In the function |convert_expr| we shall need a type for storing bindings between
-identifiers and types, and this will be the |layer| class. It stores a
-|layer::vec| of identifier bindings, while it automatically pushes (a pointer
-to) itself onto a stack |layer::lexical_context| of such vectors. Instances of
-|layer| shall always be stored in ordinary (stack-allocated) variables; since
-their unique constructor pushes the new object, and their destructor pops it,
-|layer::lexical_context| is guaranteed to hold at all times a list of pointers
-to all current |layer| objects, from newest to oldest. Besides being cute, this
-approach is exception safe: as long as all |layer| objects are held in automatic
-variables their destructors will be called as the \Cpp\ stack unwinds, popping
-them from the context. We do commit to not using threads during type analysis,
-as this would break the strict stack discipline.
+When implementing |convert_expr|, we shall need a type for storing bindings
+between identifiers and types, and this will be the |layer| class. Each |layer|
+stores a |layer::vec| of identifier bindings, while the class automatically
+maintains a list |layer::lexical_context|, functioning as a stack of (pointers
+to) currently active |layer| instances. Each |layer| is stored in an automatic
+(so stack-allocated) variable; its constructor pushes a pointer to the variable
+to the front of |lexical_context|, which the destructor will pop. Thus
+|layer::lexical_context| at all times gives access to all current |layer|
+objects, from newest to oldest. Besides being cute, this approach is exception
+safe: as long as all |layer| objects are held in automatic variables their
+destructors will be called as the \Cpp\ stack unwinds, popping them from the
+context. We do hereby commit to not using threads during type analysis, as this
+would break the strict stack discipline.
 
-Ordinary methods are used to prepare the |layer| object inside the block where
-it is constructed, while generally accessible lookup methods are implemented as
-|static| methods, which use |lexical_context| to access the stack of layers.
+Ordinary methods of |layer| serve to prepare the |layer| object for use, inside
+the \Cpp\ block where it is constructed. Lookup methods intended for use from
+within any part of |convert_expr| are implemented as |static| methods; they use
+|lexical_context| to access the stack of layers.
 
-We also use this structure to maintain additional attributes telling
-whether we are inside a function and how deeply nested inside loops we are.
-This is to facilitate checking the legality of \&{break} and \&{return}
-expressions. Correct use of these could have been left to the parser at the
-price of increasing the size of the grammar. These attributes may change only
-when pushing/popping a layer. In most cases such a layer was needed anyway,
-but in some cases (|while| loops) a layer is added specifically to mark this
-change.
+We also use this structure to maintain additional attributes telling whether we
+are inside a function and how deeply nested inside loops we are. This is to
+facilitate checking the legality of \&{break} and \&{return} statements. Correct
+use of these statements could have been ensured by the parser instead, at the
+price of increasing the size of the grammar. The mentioned attributes may change
+only when pushing/popping a layer. In most cases such a layer was needed anyway,
+but in some cases (|while| loops) a not otherwise useful layer is pushed
+specifically to mark this change.
 
 @< Type def... @>=
 class layer
@@ -312,7 +302,7 @@ public:
   };
   using vec = std::vector<id_data>;
 private:
-  vec variable;
+  vec variables;
   BitMap constness;
   const unsigned loop_depth; // number of nested loops we are in
   type* const return_type;
@@ -326,14 +316,14 @@ public:
   ~layer () @+{@; lexical_context.pop_front(); }
 @)
   void add(id_type id,type&& t, unsigned char flags);
-  bool empty() const @+{@; return variable.empty(); }
-  id_data& operator[] (size_t i) @+{@; return variable[i]; }
-  vec::iterator begin() @+{@; return variable.begin(); }
-  vec::iterator end() @+{@; return variable.end(); }
-  vec::const_iterator cbegin() const @+{@; return variable.begin(); }
-  vec::const_iterator cend() const @+{@; return variable.end(); }
-  bool is_const (vec::const_iterator it) const
-  @+{@; return constness.isMember(it-cbegin()); }
+  bool empty() const @+{@; return variables.empty(); }
+  id_data& operator[] (size_t i) @+{@; return variables[i]; }
+  vec::iterator begin() @+{@; return variables.begin(); }
+  vec::iterator end() @+{@; return variables.end(); }
+  vec::const_iterator cbegin() const @+{@; return variables.begin(); }
+  vec::const_iterator cend() const @+{@; return variables.end(); }
+  bool is_const (const id_data* p) const
+  @+{@; return constness.isMember(p-&variables[0]); }
 @)
   static const type* lookup
     (id_type id, size_t& depth, size_t& offset, bool& is_const);
@@ -348,27 +338,27 @@ public:
 @ Here are the constructors, which are used on three kinds of occasions: the
 first one for \&{let} expressions, and the second one for loops (in which case
 |return_type==nullptr|) and for user-defined functions (in which case
-|return_type!=nullptr|). Effectively we have a loop counter starting at~$0$,
-incremented for every loop and reset to~$0$ for every function body entered, and
-a pointer to a return type that set for every function body, and otherwise
-remains constant in newer layers.
+|return_type!=nullptr|). Effectively we have a counter of loop nesting (starting
+at~$0$, incremented for every loop and reset to~$0$ for every function body
+entered), and a pointer to a return type that is set for every function body
+entered, and otherwise remains constant in newer layers.
 
 @< Function def... @>=
 layer::layer(size_t n) // non-function non-loop layer
-: variable(), constness(n)
+: variables(), constness(n)
 , loop_depth(lexical_context.empty() ? 0 : lexical_context.front()->loop_depth)
 , return_type(lexical_context.empty() ? nullptr
              : lexical_context.front()->return_type)
-{@; variable.reserve(n); lexical_context.push_front(this); }
+{@; variables.reserve(n); lexical_context.push_front(this); }
 layer::layer(size_t n,type* return_type) // function or loop layer
-: variable(), constness(n)
+: variables(), constness(n)
 ,@/ loop_depth(return_type!=nullptr ? 0
             : lexical_context.empty() ? 1
             : lexical_context.front()->loop_depth+1)
 ,@/ return_type(return_type!=nullptr ? return_type @|
              : lexical_context.empty() ? nullptr
              : lexical_context.front()->return_type)
-{@; variable.reserve(n); lexical_context.push_front(this); }
+{@; variables.reserve(n); lexical_context.push_front(this); }
 
 @ A statement of $n$ successive \&{break} keywords breaks out of $n$ levels of
 loops at once, and will call |layer::may_break| with |depth==n-1| to see if it
@@ -395,17 +385,17 @@ into the |layer| object.
 void layer::add(id_type id,type&& tp, unsigned char flags)
 { @< Check that |id| is not already bound in our |layer| @>
   @< Check that we are not binding an operator to a non-function value @>
-   constness.set_to(variable.size(),(flags&0x4)!=0);
-  variable.emplace_back( id, std::move(tp) );
+   constness.set_to(variables.size(),(flags&0x4)!=0);
+  variables.emplace_back( id, std::move(tp) );
 }
 
 @ This is a good place to check for the presence of identical identifiers.
 
 @< Check that |id| is not already bound in our |layer| @>=
 {
-  for (auto it=variable.begin(); it!=variable.end(); ++it)
-  // traverse |variable| vector
-    if (it->id==id)
+  for (const auto& var : variables)
+  // traverse |variables| vector
+    if (var.id==id)
       throw program_error @/
        (std::string("Multiple binding of '")
                     +main_hash_table->name_of(id)
@@ -445,8 +435,8 @@ increasing the |depth| it reports.
 
 The loop variable |range| below is a const-iterator over a |simple_list|, where
 |*range| is a list item which is a pointer to |layer|. We therefore access
-|layer| members using a double dereference of |range| (the second one hidden in
-the arrow symbol).
+|layer| members using a double dereference of |range| (the second one is
+sometimes hidden in the form of an arrow symbol).
 
 @< Function def... @>=
 const type* layer::lookup (id_type id, size_t& depth, size_t& offset)
@@ -457,20 +447,22 @@ const type* layer::lookup
   for (auto range=lexical_context.cbegin();
        not lexical_context.at_end(range);
        ++range)
-    if (not (*range)->variable.empty())
-    { for (auto it=(*range)->cbegin(); it!=(*range)->cend(); ++it)
-        if (it->id==id) // then found; now set output values
+    if (not (*range)->empty())
+    { for (const auto& var : **range)
+        if (var.id==id) // then found; now set output values
           { depth=i;
-            offset=it-(*range)->begin();
-            is_const = (*range)->is_const(it);
-            return &it->tp;
+            offset = &var-&(*range)->variables[0];
+            is_const = (*range)->is_const(&var);
+            return &var.tp;
           }
       ++i; // increment depth for non-empty layers only
     }
   return nullptr;
 }
 
-@ We come to our highly recursive main type analysis function |convert_expr|. It
+@*1 The type checking function |convert_expr|.
+%
+We come to our highly recursive main type analysis function |convert_expr|. It
 returns a owning pointer |expression_ptr| to the result of converting the |expr|
 to an |expression|.
 
