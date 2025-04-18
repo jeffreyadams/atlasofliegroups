@@ -73,23 +73,53 @@ set every_KGB_flag = false
 set contragredient(KGBElt x) = KGBElt:
     let wzero = w0(x.root_datum) in cross(wzero,x)
 
-{
-Global variable hashlam_frac defaults to 1/8 in hermitian.at
-This is to insist that lambda is moderately big compared to rho.
-DECREASING hashlam_frac  means more bottom layer (with smaller lambda
-}
-
 {if false, then always use bottom layer when it's called for}
 set test_bl_flag = true
+
+set bl_shift(KGBElt x, ratvec lambda, LocalVertexData Lvd) = int:
+    let pmax = pmax(x,lambda,Lvd), rd = x.root_datum, theta = x.involution
+    then GAM = height(rd, pmax.infinitesimal_character)
+    then LAM = height(rd, (1+theta)*lambda/2)
+    in floor((GAM - LAM)*shift_frac)
+
+{returning "true" means bottom layer ought to be used}
+set test_bl(KGBElt x, ratvec lambda, LocalVertexData Lvd) = bool:
+    if not test_bl_flag then return true fi;
+    if rank(x.real_form) < 6 then return false fi;
+    let start = elapsed_ms(), pmax = pmax(x,lambda,Lvd), rd = x.root_datum, theta = x.involution
+    then gamma = pmax.infinitesimal_character
+    then () = more_flag :=false
+    then () = more_shift_level:=0
+    then GAM = height(rd, pmax.infinitesimal_character)
+    then LAM = height(rd, (1+theta)*lambda/2), R = (rd.rho)*(rd.two_rho_check)
+    then NU = height(rd, (1-theta)*gamma/2)
+    then ans = GAM*GAM + R*LAM > R*GAM*GARLAGmin and LAM < GAM*LAGAmax
+    then () = if GAM > R*GARmin
+    	      then more_shift(floor((GAM - LAM)*shift_frac))
+	      fi
+    then () = test_bl_time +:= elapsed_ms() - start
+    in ans
+
+{LAM > LARmin*R and LAM < LARmax*R  and GAM > GARmin*R and GAM < GARmax*R}
+
 {
-Global variable hashnu_frac defaults to 1/2 in hermitian.at
-This is to insist that lambda is moderately small compared to nu
-INCREASING this means more bottom layer (allow bigger lambda relative to nu)
-}
+{hash*frac parameters not used 4/16/25}
+{if this is 1, hash2 is always substituted for bottom_layer. If it's 0, then
+hash2 is never substituted for bottom_layer.} {NOW NOT USED}
+set hash2_frac = 1/2 {1/2} {1/3} {2/5 might be close to optimal for E7_s??}
+
+{This is to insist that lambda is moderately big compared to rho}
+{DECREASING this means more bottom layer (with smaller lambda}
+set hashlam_frac = 4/5{3/4}
+
+{This is to insist that lambda is moderately small compared to nu}
+{INCREASING this means more bottom layer (allow bigger lambda relative to nu}
+set hashnu_frac = 1/2
+
 set test_bl(KGBElt x, ratvec lambda) = bool:
     if not test_bl_flag then return true fi;
     let start = elapsed_ms(), pmax = pmax(x,lambda)
-    then (LAM, NU, R) = low(pmax)
+    then (LAM, NU, R) = low(pmax) {LAM = height(pmax)}
     then mu = LKTs(pmax)[0]
     then GA = height(x.real_form,pmax.infinitesimal_character)
     then answer = LAM > hashlam_frac*GA{R} {and
@@ -103,6 +133,7 @@ set test_bl(KGBElt x, ratvec lambda) = bool:
     {LAM + NU > hash2_frac*R and
        LAM > hashlam_frac*R and
        NU > hashnu_frac*R}
+}
 
 set test_no_unitary(KGBElt x, ratvec lambda, LocalVertexData Lvd) = bool:
     if twist(x) != x then return false fi;
@@ -290,10 +321,6 @@ then coh_ind_unip_few(G,Uhash)}
     then xlambdatimes = [int]: null(#xlambdasW)
     then answerCards = [int]: null(#xlambdasW) {number of unitary parameters found}
     then oldUhash = Uhash.size()
-    {then () = adjust_global_top(G)}
-    {then () = prints("time thru global_faces = ",print_time_string(elapsed_ms() - start))}
-    {then () = global_faces_by_zero := low_FPP_faces_by_zero(global_faces)}
-    {then () = prints("time thru global_faces_by_zero = ",print_time_string(elapsed_ms() - start))}
     then current = elapsed_ms(), oldUhash = Uhash.size(), currentUhash = Uhash.size(), formerUhash = Uhash.size(),
          oldUtime = unitaryTime, currentUtime = unitaryTime, oldCtime = charTime, currentCtime = charTime,
     	 oldUcounter = unitary_test_counter.use_count(), currentUcounter = unitary_test_counter.use_count(),
@@ -646,9 +673,6 @@ set FPP_unitary_hash_general([KGBElt] xs, Param_hash Uhash, (Param->bool) fancy_
 			  prints("     #unitary params = ", sum(tempanswerCards), ", #new unitary faces = ",
 			     currentUhash - formerUhash, ", #tests for this x = ",
 		     	     currentUcounter-formerUcounter,", time = ", print_time_string(unitaryTime-formerUtime));
-			     {", #def lookups = ",
-		      	     deformLookupCounter.use_count(), ", #def calcs = ",
-		     	     deformCalcCounter.use_count());}
        	    		  prints("Time spent in char calcs = ",print_time_string(charTime-formerCharTime),
        	      		  	 ", number of char calcs = ", char_counter.use_count() - formerCcounter,
 				 " time spent in red_count = ",  print_time_string(red_count_times[j]));
@@ -699,7 +723,6 @@ set FPP_unitary_hash_general([KGBElt] xs, Param_hash Uhash, (Param->bool) fancy_
 	    report_tested()
       fi {FPP_report_flag}
    in kill_for_big_uTime(); () fi {#xs = 0}
-
 
 set FPP_unitary_hash_general(RealForm G,Param_hash Uhash, (Param->bool) fancy_tester,
     (KGBElt,ratvec,{VertexData,}LocalVertexData, [[FaceVertsIndex]],
@@ -803,7 +826,7 @@ set FPP_unitary_hash2([(KGBElt,ratvec)] xlambdas, (Param->bool) fancy_tester) = 
 
 set FPP_unitary_hash2([KGBElt] xs, Param_hash Uhash, (Param->bool) fancy_tester) = void:
     FPP_unitary_hash_general(xs, Uhash, fancy_tester, local_test_GEO_hash2@(
-    KGBElt,ratvec,{VertexData,}LocalVertexData,[[FaceVertsIndex]],
+    KGBElt,ratvec, LocalVertexData,[[FaceVertsIndex]],
     KTypePol_hash, Param_hash, (Param->bool)))
 
 set FPP_unitary_hash2([KGBElt] xs, (Param->bool) fancy_tester) = void:
@@ -823,7 +846,7 @@ set FPP_unitary_hash_one_level([(KGBElt,ratvec)] xlambdas, (Param->bool) fancy_t
 
 set FPP_unitary_hash_one_level([KGBElt] xs, Param_hash Uhash, (Param->bool) fancy_tester) = void:
     FPP_unitary_hash_general(xs, Uhash, fancy_tester, local_test_GEO_hash_one_level@(
-    KGBElt,ratvec,{VertexData,} LocalVertexData,[[FaceVertsIndex]], KTypePol_hash, Param_hash,
+    KGBElt,ratvec, LocalVertexData,[[FaceVertsIndex]], KTypePol_hash, Param_hash,
     (Param->bool)))
 
 set FPP_unitary_hash_one_level([KGBElt] xs, (Param->bool) fancy_tester) = void:
@@ -952,7 +975,7 @@ fancy_tester) = void:
 			 then face_verbose := old_face_verbose; time_verbose := old_time_verbose;
 			      test_verbose :=old_test_verbose; test_slightly_verbose := old_test_slightly_verbose
 			 fi;
-			 let answer = if test_bl(x,lambda)
+			 let answer = if test_bl(x,lambda,Lvd)
 			     	       then local_test_GEO_hash_bottom_layer(x_sc,
 						lambda_sc, Lvd, LF, pol_hash, Uhash, fancy_tester)
 				       elif one_level_revert_flag
@@ -1260,7 +1283,7 @@ set FPP_unitary_hash_bottom_layer([KGBElt] xs, Param_hash UhashG, (Param->bool) 
 				    test_verbose :=old_test_verbose; test_slightly_verbose :=
 					 	      old_test_slightly_verbose
 			       fi;
-			       let answer = if test_bl(x_sc, M*lambda)
+			       let answer = if test_bl(x_sc, M*lambda, Lvd)
 			     	      	     then local_test_GEO_hash_bottom_layer(x_sc,
 				      M*lambda, Lvd, LF, pol_hash, Uhash, fancy_tester)
 				      elif one_level_revert_flag

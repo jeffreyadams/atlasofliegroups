@@ -1,0 +1,273 @@
+<<FPP_globalDirac.at
+
+set pos_entries(mat M) = mat: for c in columns(M) do for x in c do max(0,x) od od
+
+set xls(RealForm G, int low, int high) = [(KGBElt, ratvec)]:
+    for x in KGB(G)[low:high]
+    do let theta1 = x.involution + 1
+       in for lambda in FPP_lambdas(x)
+       	  do if (theta1*lambda).= or test_neither(x,lambda)
+	     then []
+	     else [(x,lambda)]
+	     fi
+       	  od.##
+    od.##
+
+set xls(RealForm G) = [(KGBElt, ratvec)]:
+    xls(G,0,#KGB(G))
+
+set data((KGBElt, ratvec) xl) = vec:
+    let (x,) = xl
+    then G = x.real_form
+    then pmax = pmax(xl)
+    then GA = height(G,pmax.infinitesimal_character)
+    then (LAM,NU,R) = low(pmax)
+    in [LAM,NU,R,GA]
+
+{each vec is [LAM,NU,R,GA]}
+{R >= GA >= LA, NU}
+set data([(KGBElt, ratvec)] xls) = [vec]:
+    for xl in xls
+    do data(xl)
+    od
+
+set data(RealForm G, int low, int high) = data(xls(G,low,high))
+
+set data(RealForm G) = data(xls(G))
+
+{assume moreBadHash is a hash of nonunitary reps missed by bottom layer with shift 0}
+{output is ([ht, largest nu, largest FPP height], needed more_shift to catch)} 
+set more_test(Param_hash moreBadHash) = [(vec,int)]:
+    let missed = moreBadHash.list()
+    then () = prints("#   (LAM,NU,R,GA)    min more_shift  (GA-LAM)\2 works?")
+    in for p@j in missed
+       do
+       let data = data(p.x,p.lambda)
+       then (L,N,R,GA) = (data[0], data[1], data[2], data[3])
+       then m0 = first(for m:30 do not bottom_elim_factors_more(p,p,height(p) + m) od)
+       then () = prints(j, " (",L,",",N,",",R,",",GA,")   min more_shift = ", m0,"   ",
+       	    (GA-L)\2 >= m0 and m0 >=0)
+       in (data, m0)
+    od
+
+
+set more_test(RealForm G, int low, int high) = [(vec, int)]:
+    more_bad_hash.clear();
+    big_unitary_hash.clear();
+    more_shift(0);
+    test_bl_flag:=false;
+    FPP_unitary_hash_bottom_layer(KGB(G)[low:high]);
+    more_test(more_bad_hash)
+
+set more_test(RealForm G) = more_test(G,0,#KGB(G))
+
+{assume good_hash is a hash of non-unitary reps found by min bottom layer argument}
+set min_test(Param_hash goodHash) = [vec]:
+    let caught = goodHash.list()
+    then () = prints("#, (LAM,NU,R,GA)")
+    in for p@j in caught
+       do let data = data(p.x, p.lambda)
+       	  then () = prints(j, "   (",data[0],",",data[1],",",data[2],",",data[3],")")
+       	  in data
+       od
+
+set min_test(RealForm G, int low, int high) = [vec]:
+    good_hash.clear();
+    big_unitary_hash.clear();
+    more_flag:=false;
+    test_bl_flag:=false;
+    FPP_unitary_hash_bottom_layer(KGB(G)[low:high]);
+    min_test(good_hash)
+
+set min_test(RealForm G) = min_test(G,0,#KGB(G))
+
+{sort list by ith coordinate}
+set sorti([vec] list, int i) = [vec]:
+    let sorter(int m, int n) = bool: list[m][i] < list[n][i]
+    then indices = sort(#list, sorter)
+    in for m:#list do list[indices[m]] od
+
+
+set timeOL([(KGBElt, ratvec)] xls) = [int]:
+    let () = FPP_report_flag:=false, (x0,) = xls[0]
+    then G = x0.real_form
+    then () = unipotents_to_hash(G, big_unitary_hash.uhash(G))
+    then () = unip_flag:=false
+    then() =  revert_flag:=false
+    then ans = for xl@j in xls
+       	       do let start = elapsed_ms()
+       	       	  then () = FPP_unitary_hash_one_level(xls[j:j+1])
+	  	  in elapsed_ms() - start
+       	       od
+     then () = unip_flag:=true
+     in ans
+
+set timeBL([(KGBElt, ratvec)] xls) = [int]:
+    let () = FPP_report_flag:=false
+    then (x0,) = xls[0]
+    then G = x0.real_form
+    then () = unipotents_to_hash(G, big_unitary_hash.uhash(G))
+    then () = unip_flag:=false
+    then () = test_bl_flag:=false
+    then() =  revert_flag:=false
+    then ans = for xl@j in xls
+       do let start = elapsed_ms()
+       	  then () = FPP_unitary_hash_bottom_layer(xls[j:j+1])
+	  in elapsed_ms() - start
+       od
+    then () = unip_flag:=true
+    in ans
+
+{some experimental evidence that shift = (GA - LAM)\2 catches almost
+everything that can be caught by more. So shift_frac a bit smaller
+than 1/2 is probably reasonable?}
+{set shift_frac = 1/3 (now set in hermitian.at)}
+
+set timeBLMS([(KGBElt, ratvec)] xls) = [int]:
+    let () = FPP_report_flag:=false
+    then (x0,) = xls[0]
+    then G = x0.real_form
+    then () = unipotents_to_hash(G, big_unitary_hash.uhash(G))
+    then () = unip_flag:=false
+    then () = test_bl_flag:=false
+    then() =  revert_flag:=false
+    then ans = for xl@j in xls
+       do let start = elapsed_ms()
+       	  then pmax = pmax(xl)
+	  then GA = height(G,pmax.infinitesimal_character) , (LAM,,) = low(pmax)
+	  then () = more_shift(((GA-LAM)*shift_frac)\1)
+       	  then () = FPP_unitary_hash_bottom_layer(xls[j:j+1])
+	  in elapsed_ms() - start
+       od
+    then () = unip_flag:=true
+    in ans
+
+set timeOL(RealForm G, int low, int high) = [int]:
+    timeOL(xls(G, low, high))
+
+set timeBL(RealForm G, int low, int high) = [int]:
+    timeBL(xls(G, low, high))
+
+set timeBLMS(RealForm G, int low, int high) = [int]:
+    timeBLMS(xls(G,low,high))
+
+set timeOL(RealForm G) = timeOL(xls(G))
+
+set timeBL(RealForm G) = timeBL(xls(G))
+
+set timeBLMS(RealForm G) = timeBLMS(xls(G))
+
+{void: for v in longdata6 do let i = (10*v[4])\v[3] then j = (10*v[i])\v[3] in quads[i,j] +:= v[5] od}
+
+{    coord 0 is index j in xls
+     coord 1 is LAM
+     coord 2 is NU
+     coord 3 is R (max possible height)
+     coord 4 is GAM (max possible height at this infl char)
+     coord 5 is speed advantage of other over one_level}
+{last coord POSITIVE means othertimes is better}
+
+{set longDataOLother([vec] data, [int] OLtimes, [int] othertimes) = [vec]:
+    for d@j in data
+       do j#d#(OLtimes[j]-othertimes[j])
+       od}
+
+{set longDataOLother(RealForm G, int low, int high, [int] OLtimes, [int] othertimes) = [vec]:
+    let xls = xls(G,low,high)
+    then data = data(xls)
+    in longDataOLother(data, OLtimes, othertimes)
+}
+
+{Arrange other time advantages in an (N+1) x (N+1) matrix according to two variables}
+{set mat_data([vec] longDataOLother, int N) = mat:
+    let ans = id_mat(N+1) - id_mat(N+1)
+    then () = for v in longDataOLother
+    	      do if v[4] != 0
+	      	 then let i = (N*v[4])\v[3]
+	      	      then j = (N*v[2])\v[4]
+	    	      in ans[i,j]+:= v[5]
+		 fi
+	      od
+    in ans
+}
+
+set mat_data([vec] data, [int] OLtimes, [int] othertimes, int N) = mat:
+    let ans = id_mat(N+1) - id_mat(N+1)
+    then () = for v@k in data
+    	      do if v[3]*v[0] != 0
+	      	 then let i = (N*v[3])\v[2] {GA/R}
+	      	      then j = (N*v[0])\v[3] {LA/GA}
+	    	      in ans[i,j]+:= OLtimes[k]-othertimes[k]
+		 fi
+	      od
+    then() = for i:N+1 do ans[i,0]:=i; ans[0,i]:=i od
+    in ans
+
+set pos_mat_data([vec] data, [int] OLtimes, [int] othertimes, int N) = mat:
+    pos_entries(mat_data(data, OLtimes, othertimes, N))
+
+set mat_dataNU([vec] data, [int] OLtimes, [int] othertimes, int N) = mat:
+    let ans = id_mat(N+1) - id_mat(N+1)
+    then () = for v@k in data
+    	      do if v[3]*v[0] != 0
+	      	 then let i = (N*v[3])\v[2] {GA/R}
+	      	      then j = (N*v[1])\v[3] {NU/GA}
+	    	      in ans[i,j]+:= OLtimes[k]-othertimes[k]
+		 fi
+	      od
+    then() = for i:N+1 do ans[i,0]:=i; ans[0,i]:=i od
+    in ans
+
+set pos_mat_dataNU([vec] data, [int] OLtimes, [int] othertimes, int N) = mat:
+    pos_entries(mat_dataNU(data, OLtimes, othertimes, N))
+
+set mat_dataGANU([vec] data, [int] OLtimes, [int] othertimes, int N) = mat:
+    let ans = id_mat(N+1) - id_mat(N+1)
+    then () = for v@k in data
+    	      do if v[3]*v[0] != 0
+	      	 then let i = (N*v[3])\v[2] {GA/R}
+	      	      then j = (N*v[1])\v[2] {NU/R}
+	    	      in ans[i,j]+:= OLtimes[k]-othertimes[k]
+		 fi
+	      od
+    then() = for i:N+1 do ans[i,0]:=i; ans[0,i]:=i od
+    in ans
+
+set pos_mat_dataGANU([vec] data, [int] OLtimes, [int] othertimes, int N) = mat:
+    pos_entries(mat_dataGANU(data, OLtimes, othertimes, N))
+
+
+{
+here the conditions tested are
+
+GARlow < GAM/R < GARhigh
+LAGAlow < LAM/GAM < LAGAhigh
+}
+set gain([vec] data, [int] OLtimes, [int] othertimes, rat GARlow, rat GARhigh, rat LAGAlow,
+    	 rat LAGAhigh) = int:
+    sum(for v@j in data do if GARlow*v[2] <v[3]
+    	    	   	      and GARhigh*v[2]>v[3]
+			      and LAGAlow*v[3] < v[0]
+			      and LAGAhigh*v[3] > v[0]
+			   then OLtimes[j] - othertimes[j]
+			   else 0
+			   fi
+			od)
+
+{
+here the tested conditions are
+
+NUGAMlow <  NU/GAM < NUGAhigh
+NU/GAM+ NUGAlow < GAM/R < NU/GAM + NUGAhigh
+}
+set gain_quadNU([vec] data, [int] OLtimes, [int] othertimes, rat NUGAMlow, rat NUGAMhigh,
+    rat NUGAlowGAR, rat NUGAhighGAR) = int:
+    sum(for v@j in data do if NUGAMlow*v[3] <v[1]
+    	    	   	      and NUGAMhigh*v[3]>v[1]
+			      and v[3] > 0
+			      and v[1]/v[3] + NUGAlowGAR < v[3]/v[2]
+			      and v[1]/v[3] + NUGAhighGAR > v[3]/v[2]
+			   then OLtimes[j] - othertimes[j]
+			   else 0
+			   fi
+			od)
