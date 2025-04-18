@@ -9,17 +9,29 @@
 set deformLookupCounter = make_counter()
 set deformCalcCounter = make_counter()
 
-{if this is 1, hash2 is always substituted for bottom_layer. If it's 0, then
-hash2 is never substituted for bottom_layer.} {NOW NOT USED}
-set hash2_frac = 1/2 {1/2} {1/3} {2/5 might be close to optimal for E7_s??}
+{let p = pmax(x,lambda,nu) be the FPP parameter of biggest infl char gamma;
+and write LAM = height(pmax), GAM = height(gamma), R = height(rho).}
 
-{This is to insist that lambda is moderately big compared to rho}
-{DECREASING this means more bottom layer (with smaller lambda}
-set hashlam_frac = 4/5{3/4}
+{when bottom_layer is used at (x,lambda), more_shift is set to shift_frac*(GAM - LAM)}
+{DECREASING means less deep bottom layer, which is faster but catches less non-unitarity}
+{a little experimentation suggested that shift_frac about 1 would capture almost all the
+non-unitarity that it's possible to capture with bottom layer; but that is expensive in time.}
+set shift_frac = rat: 1/3
 
-{This is to insist that lambda is moderately small compared to nu}
-{INCREASING this means more bottom layer (allow bigger lambda relative to nu}
-set hashnu_frac = 1/2
+{bottom layer is used only when LAM/GAM  < LAGAmax...}
+{should be in [0,1]}
+set LAGAmax = rat: 3/4
+
+{... and GAM/R + LAM/GAM > GARLAGmin}
+{should be in [0,2]}
+set GARLAGmin = 1/1
+
+{more_shift invoked when when GAM/R > GARmin}
+set GARmin = rat: 3/5
+
+set LARmax = rat: 4/5
+set LAGAmin = 1/1
+set LARmin = rat: 1/2
 
 {next three global variables concern function is_unitary_test_big_SIMPLE_interrupt in FPP_faces_herm.at}
 set up_mu_time = int:0
@@ -449,8 +461,8 @@ set report_tested() = void:
 	   sum(for hash in tested_neg_to_ht_hashes do hash.size() od)," neg tests to_ht, in time = ",
  	   	   print_time_string(sum(for list in tested_neg_to_ht_times do sum(list) od)));
     prints("time for up_mu = ",print_time_string(up_mu_time), ", mu_time_mult = ",mu_time_mult,
-    		   ", mu_rank_mult = ",mu_rank_mult);
-    prints("hashlam_frac = ",hashlam_frac,", hashnu_frac = ",hashnu_frac, ", hash2_frac = ", hash2_frac,
+    		   ", mu_rank_mult = ",mu_rank_mult, ", shift_frac = ",shift_frac);
+    prints("LAGAmax = ",LAGAmax,", GARLAGmin = ",GARLAGmin, ", GARmin = ", GARmin,
     	   ", Dirac elims = ",DTcount,", Dirac_best elims = ",DBTcount);
     prints("no_unitary_time = ", print_time_string(test_no_unitary_time), ", no_Dirac_time = ",
     	   print_time_string(test_no_Dirac_time)," , #(x,lambda) eliminated by LKTs = ",none_count);

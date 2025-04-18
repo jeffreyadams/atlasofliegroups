@@ -166,7 +166,7 @@ set revert_flag = true
 
 {If "false", use the old version of one_level, in which vertex/edge calcs
 are done immediately to ONE_HT}
-set step_flag = false
+set step_flag = true
 
 {If "true", then hash_dumb uses real_dumb, which does less to_ht}
 set real_flag = false
@@ -1488,10 +1488,10 @@ set local_test_hash_bottom(KGBElt x, ratvec lambda, LocalVertexData Lvd,
 		      	 then false {we got rid of p by bottom layer}
 			 else all(for p1 in ps
 			      	  do @bool: let ans = is_unitary_def_test_big_SIMPLE(p1)
-				     	    in if more_after_flag and not ans
+				     	    in if d <= 1 and more_after_flag and not ans
 				     	       then more_bad_hash.match(p1)
 					       fi;
-					       if min_after_flag and not ans
+					       if d<=1 and min_after_flag and not ans
 				     	       then bad_hash.match(p1)
 					       fi; ans
 				  od)
