@@ -2400,6 +2400,8 @@ public:
     // grow by transferring assignments
   void lower_floor(unsigned int n);
 @)
+  bool is_polymorphic(const type_expr& tp) const;
+    // whether |tp| is a polymorphic type variable
   type_p equivalent (unsigned int i)
   {@; return i<threshold ? nullptr :
       (assert(i<threshold+size()),equiv[i-threshold].get()); }
@@ -2408,9 +2410,9 @@ public:
       (assert(i<threshold+size()),equiv[i-threshold].get()); }
   bool set_equivalent(unsigned int i, type_ptr&& p);
   bool set_equivalent(unsigned int i, const type_expr& tp);
-  bool is_polymorphic(const type_expr& tp) const;
   BitMap polymorphics() const;
-  void make_polymorphic(const BitMap& which);
+  void restore_polymorphics(const BitMap& which);
+    // erase |equivalent| for |which| type variables
 @)
   unsigned int renumber(unsigned int i) const;
 @)
@@ -2493,6 +2495,16 @@ void type_assignment::lower_floor(unsigned int n)
 #endif
 }
 
+@ The method |is_polymorphic| tests whether a given type is a type variable that
+is still unassigned.
+
+@< Function definitions @>=
+bool type_assignment::is_polymorphic(const type_expr& tp) const
+{ return tp.raw_kind()==variable_type
+  @| and tp.typevar_count()>=threshold
+  @| and equiv[tp.typevar_count()-threshold]==nullptr;
+}
+
 @ There are two versions of |set_equivalent|, the first of which can move from
 its type argument, while the second makes a copy of it. Both use |is_free_in| to
 test for direct or indirect self-reference that would be introduced by the
@@ -2551,20 +2563,10 @@ bool type_assignment::is_free_in(const type_expr& tp, unsigned int nr) const
   }
 }
 
-@ The method |is_polymorphic| tests whether a given type is a type variable that
-is currently unassigned.
-
-@< Function definitions @>=
-bool type_assignment::is_polymorphic(const type_expr& tp) const
-{ return tp.raw_kind()==variable_type
-  @| and tp.typevar_count()>=threshold
-  @| and equiv[tp.typevar_count()-threshold]==nullptr;
-}
-
 @ Sometimes it is useful to be able to roll back new assignments made by a call
 of |can_unify|. To this end we provide a method |polymorphics| that can be
 called before to record which type variables are unassigned, and a second method
-|make_polymorphic| that undoes any type assignment to those polymorphic
+|restore_polymorphics| that undoes any type assignment to those polymorphic
 variables. There should obviously not be any remapping of type variables (as
 general |type| unification described below may occasion) done between the two
 calls; indeed these methods only serve in the implementation of |type::unify|.
@@ -2576,7 +2578,7 @@ BitMap type_assignment::polymorphics() const
     result.set_to(i,equiv[i-threshold]==nullptr);
   return result;
 }
-void type_assignment::make_polymorphic(const BitMap& which)
+void type_assignment::restore_polymorphics(const BitMap& which)
 { assert(which.capacity()<=threshold+equiv.size());
   for (unsigned int i : which)
     equiv[i-threshold]=nullptr;
@@ -2753,36 +2755,31 @@ cases using as few tests as possible.
 types as far as already assigned or non polymorphic type variables are
 concerned, but the important case is where there is an unassigned type variable,
 in which case we call |set_equivalent| for it with the other type (which might
-be another polymorphic type variable) and return success. We start by setting
-two Boolean values telling whether our types are polymorphic type variables, for
-which all $4$ combinations are possible (since we only know when we come here
-that there is a type variable, not that it is polymorphic).
+be another polymorphic type variable) and return whether it succeeds. The way
+|set_equivalent| handles the case of a type expression that cannot be assigned
+because it refers back to the same type variable, namely by returning |false|,
+means that this just makes the |unify| unification fail; this is precisely what
+we want for this case.
 
 @< Decide |unify| when at least one type is a type variable @>=
-{ if (is_polymorphic(P))
+{ if (P_kind==variable_type)
   { auto p=P.typevar_count();
-    return is_polymorphic(Q) and p==Q.typevar_count() or set_equivalent(p,Q);
+    if (Q_kind==variable_type and p==Q.typevar_count())
+      return true; // unifying equal type variables succeeds trivially
+    if (p>=threshold)
+    @/{@; auto* eq_p=equivalent(p);
+      return eq_p!=nullptr ? unify(*eq_p,Q) : set_equivalent(p,Q);
+    }
   }
-  else if (is_polymorphic(Q))
-    return set_equivalent(Q.typevar_count(),P);
+  if (Q_kind==variable_type)
+  { auto q=Q.typevar_count();
+    if (q>=threshold)
+    @/{@; auto* eq_q=equivalent(q);
+      return eq_q!=nullptr ? unify(P,*eq_q) : set_equivalent(q,P);
+    }
+  }
 @)
-// now neither is polymorphic, but at least one is a type variable
-  if (Q.raw_kind()!=variable_type)
-  { assert(P.raw_kind()==variable_type);
-    auto eq = equivalent(P.typevar_count());
-    return eq!=nullptr and unify(*eq, Q);
-  }
-  if (P.raw_kind()!=variable_type)
-  { auto eq = equivalent(Q.typevar_count());
-    return eq!=nullptr and unify(P,*eq);
-  }
-@)
-// now both are type variables but not polymorphic: either assigned or fixed
-  auto p=P.typevar_count(), q=Q.typevar_count();
-  if (p==q)
-    return true;
-  auto eq_p = equivalent(p), eq_q = equivalent(q);
-  return unify(eq_p!=nullptr ? *eq_p : P, eq_q!=nullptr ? *eq_q : Q);
+  return false; // since one or two unequal fixed type variables are left
 }
 
 
@@ -3553,7 +3550,8 @@ bool type::unify(type& other)
       // copy |*tap| to the unchanged |type_assignment|
     return true;
   }
-  tap->make_polymorphic(snapshot); // roll back any type assignments upon failure
+  tap->restore_polymorphics(snapshot);
+    // roll back any type assignments upon failure
   return false;
 }
 
