@@ -5565,6 +5565,9 @@ void K_type_pol_eq_wrapper(eval_level l)
   if (l==eval_level::no_value)
     return;
 @)
+  if (n->rf->val!=m->rf->val)
+    @/{@;  push_value(whether(false));
+      return; } // between different real forms, just say ``no''
   auto mit=m->val.begin(), nit=n->val.begin(); // keep outside loop
   for (; mit!=m->val.end() and nit!=n->val.end(); ++mit,++nit)
     if (mit->first!=nit->first or mit->second!=nit->second)
@@ -5579,6 +5582,9 @@ void K_type_pol_neq_wrapper(eval_level l)
   if (l==eval_level::no_value)
     return;
 @)
+  if (n->rf->val!=m->rf->val)
+    @/{@;  push_value(whether(true));
+      return; } // between different real forms, just say ``yes''
   auto mit=m->val.begin(), nit=n->val.begin(); // keep outside loop
   for (; mit!=m->val.end() and nit!=n->val.end(); ++mit,++nit)
     if (mit->first!=nit->first or mit->second!=nit->second)
@@ -7640,6 +7646,9 @@ void virtual_module_eq_wrapper(eval_level l)
   if (l==eval_level::no_value)
     return;
 @)
+  if (n->rf->val!=m->rf->val)
+    @/{@;  push_value(whether(false));
+      return; } // between different real forms, just say ``no''
   auto mit=m->val.begin(), nit=n->val.begin(); // keep outside loop
   for (; mit!=m->val.end() and nit!=n->val.end(); ++mit,++nit)
     if (mit->first!=nit->first or mit->second!=nit->second)
@@ -7654,6 +7663,9 @@ void virtual_module_neq_wrapper(eval_level l)
   if (l==eval_level::no_value)
     return;
 @)
+  if (n->rf->val!=m->rf->val)
+    @/{@;  push_value(whether(true));
+      return; } // between different real forms, just say ``yes''
   auto mit=m->val.begin(), nit=n->val.begin(); // keep outside loop
   for (; mit!=m->val.end() and nit!=n->val.end(); ++mit,++nit)
     if (mit->first!=nit->first or mit->second!=nit->second)
