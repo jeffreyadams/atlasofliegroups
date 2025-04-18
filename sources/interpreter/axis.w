@@ -1631,18 +1631,14 @@ case applied_identifier:
 the |global_id_table|, we used to flag an error, but as a service to the user we
 now try instead to find something from the |global_overload_table| first,
 provided there is a unique instance of the identifier there that matches the
-type requirement |tp| from the context (which may be no requirement at all). We
-do not come to this code for an applied identifier that is in the function
-position of a call: we shall see below that in that case an overloaded call is
-tried, unless the identifier is actually known as a local identifier with a
-function type, or there are no overloads at all. Therefore the context type
-pattern |tp| cannot be a partially determined function type: it is either
-completely undetermined, in which case we return a variant if it is unique and
-otherwise complain about ambiguity, or it is a monomorphic function type, in
-which case we look for a unique overload whose type unifies with that type
-(there is still a possibility of ambiguity here, though that should be quite
-rare). If none of the variants is acceptable in the context, we fall through
-this code as if there were no overloads at all.
+type requirement |tp| from the context (which may be no requirement at all).
+If the context type does not accept any function type we skip this code (the
+overload table can hold only functions), and if it does we distinguish between
+accepting functions of any argument type, or making some restriction on the
+argument type. This is mainly to be able to give more meaningful error messages
+when our attempt fails, but the case of no restrictions also can be handled with
+somewhat simpler logic. if the type requirements should rule out all available
+variants, then we fall through this code as if there were no overloads at all.
 
 @< See if a unique member of |*vars| matches |tp|, and if so |return| a
    |capture_expression| holding the value of that variant @>=
@@ -1661,11 +1657,10 @@ this code as if there were no overloads at all.
 
 @ When the context poses no requirements, we basically look for a unique variant
 for the identifier and return it. However we must specialise |tp| to the
-possibly polymorphic function type stored, and we must avoid using type
-variables below |fc| as polymorphic variables in doing so, whence we need the
-calls of |shift| below. If there are multiple variants, we warn the user that
-one cannot simply use an overloaded symbol as an identifier with nothing to
-disambiguate the usage.
+possibly polymorphic function type of |variant|, which |functype_absorb| should
+accomplish. If there are multiple variants, we warn the user that one cannot
+simply use an overloaded symbol as an identifier with nothing to disambiguate
+the usage.
 
 @< If |*vars| has a unique variant, |return| its value wrapped...@>=
 { if (vars->size()==1)
@@ -1685,12 +1680,20 @@ disambiguate the usage.
   }
 }
 
-@ In the case where the context requires a specific type, we just need to find
-the variant that matches, if it is unique; the type |tp| need not be
-specialised. Nonetheless, it can contain type variables that are fixed in the
-context, and the possibly polymorphic function type from the overload table must
-be renumbered to avoid them. This is done below implicitly, in the call of the
-method |type::matches|.
+@ In the case where the context poses a restriction, we filter the variants for
+one that matches the requirement, and use the result if it is unique. We proceed
+basically as in the case of no restriction, but here the call of
+|functype_absorb| can meaningfully fail, indicating that the variant does not
+satisfy the restriction. In case of such a failure, we must undo any type
+assignments that the failed attempt to match may have made. Since this must be
+done repeatedly, it is simplest to just apply any assignment that might be
+pending initially, by calling |tp.wring_out|, after which any type assignments
+we have must be new, and can be undone by calling |tp.clear|. The fact that we
+call |tp.wring_out| does mean that callers to |convert_expr| cannot expect that
+changes to |tp| are limited to acquiring type assignments; we do not believe any
+caller make that assumption, but if that should be the case, the code below must
+be more careful, and instead record |tp.polymorphics()| initially, and then use
+|restore_polymorphics| instead of |clear|.
 
 @< If a unique variant among |*vars| unifies to the type |tp|... @>=
 { tp.expunge(); // ensure no assignments are pending
