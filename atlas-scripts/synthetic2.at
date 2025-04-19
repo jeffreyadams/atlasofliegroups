@@ -171,6 +171,7 @@ set unnormalized_torus_factor (KGBElt_gen x) = ratvec:
 
 {to compute square, need to make torus_factor theta_fixed, i.e. use normalized_torus_factor}
 set square (KGBElt_gen x)=ratvec:normalized_torus_factor(x)+inner_class(x).rho_check
+{set square (KGBElt_gen x)=ratvec:2*normalized_torus_factor(x)+inner_class(x).rho_check*(1+involution(x))/2}
 
 set square_is_central(KGBElt_gen x)=bool:is_integer(square(x)*x.inner_class.simple_roots)
 

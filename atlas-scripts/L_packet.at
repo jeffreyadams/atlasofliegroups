@@ -247,8 +247,10 @@ set show_stable_sums_irr([Param] list)=void:
 show(stable_sums_irr_mat(list))
 
 
-set q(RealForm G)=int:
-let Gder=derived(G) in rat_as_int((dimension(Gder) - dimension(K_0(Gder)))/2)
+set q(RealForm G)=rat:
+let Gder=derived(G) in (dimension(Gder) - dimension(K_0(Gder)))/2
+
+set q_diff(RealForm G,RealForm H)=int:rat_as_int(q(G)-q(H))
 
 set kottwitz_invariant(RealForm G)=int:rat_as_int(q(quasisplit_form(G))-q(G))
 

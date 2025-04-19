@@ -22,6 +22,7 @@ set L_hom(KGBElt_gen y,ratvec gamma)=L_homomorphism:phi(y,gamma)
 set is_valid(L_homomorphism (y,gamma))=bool:is_integer(square(y)-gamma) 
 
 set y_gen(Param p)=KGBElt_gen: let y=(dual(p.inner_class),-^p.x.involution,p.infinitesimal_character-p.lambda) in
+{set y_gen(Param p)=KGBElt_gen: let y=(dual(p.inner_class),-^p.x.involution,(p.infinitesimal_character-p.lambda)/2) in}
 assert(is_valid(phi(y,p.infinitesimal_character)),"y(p) is not valid");y
 
 {when making pair (x,phi) dominant: apply the same Weyl group element to x and phi}

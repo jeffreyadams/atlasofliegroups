@@ -52,7 +52,8 @@ set Aq_stable_long(RealForm G,ratvec lambda)=[(Param,Param)]:Aq_stable_long(KGB(
 
 set Aq_stable(KGBElt x,ratvec lambda)=ParamPol:
 let pairs=Aq_stable_long(x,lambda) in
-null_module(x.real_form) + for (p_L,p) in pairs do (-1)^q(p_L.real_form)*p od
+{null_module(x.real_form) + for (p_L,p) in pairs do (-1)^q(p_L.real_form)*p od}
+null_module(x.real_form) + for (p_L,p) in pairs do (-1)^(q_diff(x.real_form,p_L.real_form))*p od
 
 set Aq_stable(RealForm G,ratvec lambda)=ParamPol: Aq_stable(KGB(G,0),lambda)
 

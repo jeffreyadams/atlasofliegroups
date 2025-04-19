@@ -236,7 +236,8 @@ set tits_element(KGBElt_gen x)=Tits_elt:(x.inner_class,x.unnormalized_torus_fact
 {set KGB_elt_gen (Tits_elt t)=KGB_elt_gen(t.root_datum,t.theta,t.torus_part)}
 set KGB_elt_gen (Tits_elt t)=KGB_elt_gen(t.root_datum,t.theta,(2*t.torus_part-rho_check(t.root_datum)))
 
-set tits_element(KGBElt_gen x)=Tits_elt:(x.inner_class,x.torus_factor,x.involution)
+{set tits_element(KGBElt_gen x)=Tits_elt:(x.inner_class,x.torus_factor,x.involution)}
+set tits_element(KGBElt_gen x)=Tits_elt:(x.inner_class,x.unnormalized_torus_factor,x.involution)
 
 {map KGB and generalized KGB elements using the Tits group}
 set map_KGB_tits(KGBElt x1,InnerClass ic2,mat M, orientation epsilon2)=KGBElt:

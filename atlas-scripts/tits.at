@@ -151,7 +151,6 @@ set conjugate (WeylElt w, Tits_elt xi) = Tits_elt:
   half-sum modulo 1). The action of \theta,\eta is then by transpose inverse.
 }
 set multiply(Tits_elt(rd,v,theta), Tits_elt({assume rd},u,eta)) = Tits_elt:
-
 let tt1 = ^theta.inverse
   , neg_crs = columns_with(is_negative_coroot(rd),^eta.inverse*poscoroots(rd))
   in
