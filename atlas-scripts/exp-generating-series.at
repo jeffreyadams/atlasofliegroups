@@ -68,7 +68,7 @@ set exp_substitute (inf_list g) = (inf_list->inf_list): { f->f[X:=g] }
 	  )
 in assert(=g0,"Can only substitute series with constant term 0")
 ;  (inf_list f) inf_list: { the map returned from |exp_substitute| }
-     let n=0, power=one, result=extend_0(#0), c=0 in
+     let n=0, power=series_1, result=extend_0(#0), c=0 in
      memoize
      (rec_fun r () inf_node:
        set (c,f):=f(); set (c,result):=(result+c*power)()
@@ -112,7 +112,7 @@ tan : exp_divide(sin,cos)
   which by the property of the exponential can be done as follows
 }
 set count_permutations_with_cycles ([int] L) = inf_list:
-   let prod = one
+   let prod = series_1
 in for l in L
    do prod := exp_multiply(prod,series((int n)int:
       { compute coefficient of $X^n/n!$ in $\exp({X^l\over l})$ : }

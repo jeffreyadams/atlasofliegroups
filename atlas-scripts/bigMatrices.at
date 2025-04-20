@@ -80,8 +80,6 @@ set tabulate_indices ([Param] B,mat delta) = ([int],[int],[(int,int)], [int]):
      )
   fi
 
-set !one = vec:[1]
-
 { some rebranding }
 set poly_add (i_poly f,i_poly g) = i_poly: flex_add(f,g)
 set poly_sub (i_poly f,i_poly g) = i_poly: flex_sub(f,g)
@@ -101,7 +99,7 @@ for a:n do
  for b:n-a from a do
    let (j,epsilon_j)=complete_indices[b] in
 {    let ()=prints("a=",a," b=",b," i=",i," e_i=",epsilon_i," j=",j," e_j=",epsilon_j)  in }
-    if a=b then  rv:=update_matrix_entry(rv,a,b,one) {diagonal entries} else
+    if a=b then  rv:=update_matrix_entry(rv,a,b,poly_1) {diagonal entries} else
     if (epsilon_i*epsilon_j=1) {both entries plus or both minus: P+P^delta} then
      let x=g[i] then
          y=g[j] in
@@ -136,7 +134,7 @@ set big_KL_P_polynomials ([Param] B,mat delta) = i_poly_mat:
         do let (j,epsilon_j)=complete_indices[b] in
 { prints("a=",a," b=",b," i=",i," e_i=",epsilon_i," j=",j," e_j=",epsilon_j); }
            if a=b
-           then  rv:=update_matrix_entry(rv,a,b,one) {diagonal entries}
+           then  rv:=update_matrix_entry(rv,a,b,poly_1) {diagonal entries}
            elif (epsilon_i*epsilon_j=1) { entries have same sign: P+P^delta}
            then let x=g[i], y=g[j] in
 { prints("P[i][j]=",P[i][j]," x=",x," y=",y," , Pdelta[x][y]=",P_delta[x][y]); }

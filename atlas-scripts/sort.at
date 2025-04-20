@@ -163,9 +163,6 @@ set lexicographic  ((T,T->bool)leq) = ([T] a,[T] b) bool:
 
 end
 
-{ the same for a list of rationals; the result is still a list of integers }
-set inv_standardisation = inv_standardisation(<=@(rat,rat))
-
 
 { also need sorting by rationals; take easily written but roundabout approach }
 set sort ([rat] v) = [rat]: for index in inv_standardisation(v) do v[index] od
