@@ -1,5 +1,3 @@
-<basic.at
-
 any_type S,T,R begin
 
 set I (T x) = T: x
