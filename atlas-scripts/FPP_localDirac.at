@@ -1640,6 +1640,9 @@ set one_param_time = int: 0
 {true more than 3/4 of time, so shouldn't do much to_height testing}
 set one_param_test(Param p, Param_hash Uhash) = [Param]:
     let start = elapsed_ms(), Q = monomials(finalize(p)), G = p.real_form
+    then () = if all(for q in Q do Uhash.lookup(q).>= od)
+    	      then return [p]
+	      fi
     then r = rank(Q[0].x.involution - 1), step = max(G.semisimple_rank\2,1)
     {then DEFHTS = [int]: next_heights(p, (r*stretcher)\2)}
     {then steps = max(rank(p.x.involution-1),1)}
@@ -1669,6 +1672,9 @@ set one_param_test(Param p, Param_hash Uhash) = [Param]:
 {only does min_bottom test}
 set one_param_test_min_bottom(Param p, Param_hash Uhash) = [Param]:
     let start = elapsed_ms(), Q = monomials(finalize(p)), G = p.real_form
+    then () = if all(for q in Q do Uhash.lookup(q).>= od)
+    	      then return [p]
+	      fi
     then elim_min = all(for q in Q do min_bottom_elim_factors(q,p) od)
     then () = if not elim_min
     	      then let () = one_false_counter.use()
@@ -1701,7 +1707,7 @@ set one_param_test_min_bottom(Param p, Param_hash Uhash) = [Param]:
 set one_param_test_bottom(Param p, [int] Ds, Param_hash Uhash) = [Param]:
     let start = elapsed_ms(), QG = monomials(finalize(p)),G = p.real_form
     { used to check here whether terms of QG already known? }
-    then () = if all(for q in QG do Uhash.lookup(p).>= od)
+    then () = if all(for q in QG do Uhash.lookup(q).>= od)
     	      then return [p]
 	      fi
     then () = hash_bottom_layerCounter.use()
@@ -1774,6 +1780,9 @@ set one_param_test_bottom(Param p, [int] Ds, Param_hash Uhash) = [Param]:
 set one_param_test_all_bottom(Param p, [int] Ds, Param_hash Uhash) = [Param]:
     let start = elapsed_ms(), Q = monomials(finalize(p)),G = p.real_form
     {then () = prints("Ds = ",Ds)}
+    then () = if all(for q in Q do Uhash.lookup(q).>= od)
+    	      then return [p]
+	      fi
     then () = hash_bottom_layerCounter.use()
     then elim_min = all(for q in Q do min_bottom_elim_factors(q,p) od)
     then () = if not elim_min
@@ -2097,7 +2106,7 @@ set local_test_GEO_hash_else_dumb(KGBElt x, ratvec lambda, {VertexData vd,} Loca
     	 		       else localGraphK(LFDKH, pol_hash, hts[0]) {pol_hash0??}
 			       fi {localGraphK(LFDKH)}
            {remove from LFDKH all faces failing is_unitary to hts[0]}
-	   {CAN'T use know_lower, because that uses DiracBest, withoug caring for height}
+	   {CAN'T use know_lower, because that uses DiracBest, without caring for height}
     then () =  LFDKH := local_testK_hash{_know_lower}(x,lambda,Lvd, LFDKH, eq, gr, CLBF, pol_hash0,
     (Param->bool): (Param p) bool: is_unitary_to_ht_big_SIMPLE(p, hts[0]), hts[0], Uhash, fancy_tester)
     then () = if test_verbose then prints("unitary to ",hts[0]," face counts to dim 1: ",
@@ -3193,9 +3202,8 @@ set local_test_GEO_hash_one_level(KGBElt x, ratvec lambda, {VertexData vd,}
     {now have at least two vertices. If it's an easy case,
     	 revert to local_test_GEO_hash}
     then () = if revert_flag and {(approxMaxDiff*approxVertexDiff < prod_cutoff) and}
-    	      	 (approxMaxDiff < diff_cutoff)  {and}
-		 {(approxVertexDiff < vert_diff_cutoff)}
-	      then return local_test_GEO_hash_no_dumb(x, lambda, {vd,} Lvd,
+    	      	 (approxMaxDiff < diff_cutoff)
+	      then return local_test_GEO_hash_no_dumb(x, lambda, Lvd,
 	      	   	  LF, hts, pol_hash, Uhash)
     	      fi
     then () = test_string:= " using local_test_GEO_hash_one_level"

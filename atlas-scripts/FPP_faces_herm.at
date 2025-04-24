@@ -677,7 +677,8 @@ set make_big_unitary_hash() = big_unitary_hash_table:
     then add_K_type(KType mu) = (int, int): {real form index, K type index}
    	 let rfnum = add_real_form(mu.real_form)
 	 then rf = real_form_hash.index(rfnum)
-	 then () = mu := first_K_type(regroup(rf,1*mu))
+	 then () = mu := K_type(KGB(rf,mu.x.number), mu.lambda_minus_rho)
+	 {first_K_type(regroup(rf,1*mu))}
 	 then KTYPENUM = K_type_hashes[rfnum].size()
 	 then ktypenum = K_type_hashes[rfnum].match(mu)
 	 then () = if ktypenum = KTYPENUM {haven't computed with mu before}
@@ -700,9 +701,10 @@ set make_big_unitary_hash() = big_unitary_hash_table:
     then add_K_type_formula(KType mu) = (int, int, int): {rfnum, ktypenum, index(formula)}
        	 let (rfnum,ktypenum) = add_K_type(mu), h = height(mu)
 	 then rf = real_form_hash.index(rfnum)
-	 then () = mu := first_K_type(regroup(rf,1*mu))
+	 then () = mu :=  K_type(KGB(rf,mu.x.number), mu.lambda_minus_rho)
+	 {first_K_type(regroup(rf,1*mu))}
        	 then () = if formula_heights[rfnum][ktypenum] != h-1
-       	       	   then let m = K_type_pol_hashes[rfnum].match(regroup(rf, K_type_formula(mu)))
+       	       	   then let m = K_type_pol_hashes[rfnum].match({regroup(rf,} K_type_formula(mu)){)}
 		   	then formsrf = formulas[rfnum], formhsrf = formula_heights[rfnum]
 			then () = formsrf[ktypenum] := m
 			then () = formhsrf[ktypenum] :=h-1
@@ -720,10 +722,11 @@ set make_big_unitary_hash() = big_unitary_hash_table:
     then add_K_type_formula_to_ht(KType mu, int D) = (int,int,int): {rfn, ktypen, index_to_ht(formula)}
       	 let (rfnum,ktypenum) = add_K_type(mu), h = height(mu)
 	 then rf = real_form_hash.index(rfnum)
-	 then () = mu := first_K_type(regroup(rf, 1*mu))
+	 then () = mu :=  K_type(KGB(rf,mu.x.number), mu.lambda_minus_rho)
+	 {first_K_type(regroup(rf, 1*mu))}
        	 then () = assert(D >= h, "too-low height argument for K_type_formula")
        	 then () = if (formula_heights[rfnum][ktypenum] < D and formula_heights[rfnum][ktypenum] >= h)
-       	       	   then let m = K_type_pol_hashes[rfnum].match(regroup(rf,K_type_formula(mu,D)))
+       	       	   then let m = K_type_pol_hashes[rfnum].match({regroup(rf,}K_type_formula(mu,D)){)}
 		   	then formsrf = formulas[rfnum], formhsrf = formula_heights[rfnum]
 			then () = formsrf[ktypenum] := m
 			then () = formhsrf[ktypenum] := D
@@ -743,12 +746,14 @@ set make_big_unitary_hash() = big_unitary_hash_table:
     	 {this time add to height; D should be >= height(mu)}
    	 let rfnum = add_real_form(mu.real_form)
 	 then rf = real_form_hash.index(rfnum)
-	 then () = mu := first_K_type(regroup(rf,1*mu))
+	 then () = mu := K_type(KGB(rf,mu.x.number), mu.lambda_minus_rho)
+	 {now mu is attached to rf}
+	 {first_K_type(regroup(rf,1*mu))}
 	 then KTYPENUM = K_type_hashes[rfnum].size()
 	 then (,ktypenum) = add_K_type(mu)
 	 then () = if ktypenum = KTYPENUM {haven't computed with mu before}
 	     	   then {let start_branch = elapsed_ms()}
-		       	let pol = regroup(rf, branch_std(1*mu,D))
+		       	let pol = {regroup(rf,} branch_std(1*mu,D){)}
 	     	       	then m = K_type_pol_hashes[rfnum].match(pol)
 			then tempbranchhts = branch_heights[rfnum]
 		       	then tempbranches = branches[rfnum]
@@ -764,7 +769,7 @@ set make_big_unitary_hash() = big_unitary_hash_table:
 		       if branch_heights[rfnum][ktypenum] < D
 		       then let tempbranchhts = branch_heights[rfnum]
 		       	    then tempbranches = branches[rfnum]
-		       	    then pol = regroup(rf, branch_std(1*mu, D))
+		       	    then pol = {regroup(rf,} branch_std(1*mu, D){)}
 		       	    then m = K_type_pol_hashes[rfnum].match(pol)
 		       	    then () = tempbranches[ktypenum]:=m
 		       	    then () = tempbranchhts[ktypenum] :=  D
@@ -778,7 +783,9 @@ set make_big_unitary_hash() = big_unitary_hash_table:
     then add_K_type_my_branch(KType mu, int D) = (int, int, int):
     	 let rfnum = add_real_form(mu.real_form)
 	 then rf = real_form_hash.index(rfnum)
-	 then () = mu :=  first_K_type(regroup(rf,1*mu))
+	 then () = mu :=  K_type(KGB(rf)[mu.x.number], mu.lambda_minus_rho)
+	      	   {now mu is attached to rf}
+	      	   {first_K_type(regroup(rf,1*mu))}
 	 then () = assert(D>=height(mu),"branch to D below height(mu)")
     	 then KTYPENUM = K_type_hashes[rfnum].size()
 	 then (,ktypenum) = add_K_type(mu)
@@ -792,7 +799,7 @@ set make_big_unitary_hash() = big_unitary_hash_table:
 				     	    then let (,,t) = add_K_type_formula_to_ht(tau,D)
 					    	 in c*to_ht(K_type_pol_hashes[rfnum].list()[t],D)
 						 {c*regroup(rf, to_ht(K_type_pol_hashes[rfnum].list()[t],D))}
-					    else c*regroup(rf, K_type_formula(tau,D))
+					    else c*{regroup(rf,} K_type_formula(tau,D){)}
 					    fi
 			     	{then (,,t) = add_K_type_formula_to_ht(tau,D)}
 				then () = undone-:= corr {c*regroup(rf, to_ht(K_type_pol_hashes[rfnum].list()[t],D))}
@@ -846,10 +853,16 @@ set make_big_unitary_hash() = big_unitary_hash_table:
     then add_param_inf(Param p) = (int, int, int): {add a param, full herm form}
    	let  rfnum = add_real_form(p.real_form)
 	then PNUM = phashes[rfnum].size(), rf = real_form_hash.index(rfnum)
-	then () = p:=regroup(rf, herm_center(p))
+	{then () = p := regroup(rf, herm_center(p))}
+	then list = global_vertices(rf, p.infinitesimal_character)
+	{then phc = herm_center(p)}
+	then () = p:=parameter(rf, p.x.number, p.lambda, sum(#list[0],list)/#list)
 	then pnum = phashes[rfnum].match(p)
 	then () = if pnum = PNUM {haven't computed with p before}
-	     	  then let sig = hermitian_form_irreducible(p) {insert computation from good?}
+	     	  then let sig = if uhashes[rfnum].lookup(p).>=
+		       	       	 then K_type_pol(character_formula(p))
+				 else hermitian_form_irreducible(p) {insert computation from good?}
+				 fi
 		       then sig_ind = K_type_pol_hashes[rfnum].match(sig)
 		       then () = sigs[rfnum] #:= sig_ind
 		       then () = sig_heights[rfnum] #:= height(p) - 1
@@ -866,7 +879,10 @@ set make_big_unitary_hash() = big_unitary_hash_table:
 		  else {we've seen p before}
                        if sig_heights[rfnum][pnum] >= height(p)
                        then let tempsigs = sigs[rfnum], tempsights = sig_heights[rfnum]
-                            then sigD = hermitian_form_irreducible(p)
+                            then sigD = if uhashes[rfnum].lookup(p).>=
+		       	       	      	then K_type_pol(character_formula(p))
+			    		else hermitian_form_irreducible(p)
+					fi
 			    then () = if is_pure(sigD)
 				      then uhashes[rfnum].match(p)
 				      else nuhashes[rfnum].match(p)
@@ -885,23 +901,30 @@ set make_big_unitary_hash() = big_unitary_hash_table:
         let  rfnum = add_real_form(p.real_form)
 	then rf = real_form_hash.index(rfnum)
         then PNUM = phashes[rfnum].size()
-	then () = p:=regroup(rf,herm_center(p))
+	{then () = p:=regroup(rf,herm_center(p))}
+        then list = global_vertices(rf, p.infinitesimal_character)
+	{then phc = herm_center(p)}
+	then () = p:=parameter(rf, p.x.number, p.lambda, sum(#list[0],list)/#list)
         then pnum = phashes[rfnum].match(p)
         then () = if pnum = PNUM {haven't computed with p before}
-                  then let sigD = if low(p,D) {low(p.x,p.lambda,D)}
+                  then let sigD = if uhashes[rfnum].lookup(p).>=
+		       	       	  then let ans = K_type_pol(character_formula(p))
+				       then () = D:=height(p)-1
+				       in ans
+				  elif low(p,D) {low(p.x,p.lambda,D)}
      	  			  then let ans =  hermitian_form_irreducible_to_ht(p,D)
 				       then () = if is_pure(ans)
 					     	 then ()
 					     	 else nuhashes[rfnum].match(p)
 						 fi
-					in ans
-     	 			   else let ans = hermitian_form_irreducible(p)
-					then () = D:=height(p)-1
-	       				then () = if is_pure(ans)
-					     	  then uhashes[rfnum].match(p)
-						  else nuhashes[rfnum].match(p)
-						  fi
-	       				in ans {this records full sig!}
+				       in ans
+     	 			  else let ans = hermitian_form_irreducible(p)
+				       then () = D:=height(p)-1
+	       			       then () = if is_pure(ans)
+					     	 then uhashes[rfnum].match(p)
+						 else nuhashes[rfnum].match(p)
+						 fi
+	       			       in ans {this records full sig!}
      	 			   fi
                        then sigD_ind = K_type_pol_hashes[rfnum].match(sigD)
 		       then () = sigs[rfnum] #:= sigD_ind
@@ -914,7 +937,11 @@ set make_big_unitary_hash() = big_unitary_hash_table:
                        if sig_heights[rfnum][pnum] >= height(p) and sig_heights[rfnum][pnum] < D
                        then let tempsigs = sigs[rfnum], tempsights = sig_heights[rfnum]
                             {then start_sig = elapsed_ms()}
-                            then sigD = if low(p,D) {low(p.x,p.lambda,N)}
+                            then sigD = if uhashes[rfnum].lookup(p).>=
+		       	       	  	then let ans = K_type_pol(character_formula(p))
+					     then () = D:=height(p)-1
+					     in ans
+					elif low(p,D) {low(p.x,p.lambda,N)}
      	  			   	then let ans = hermitian_form_irreducible_to_ht(p,D)
 					     then () = if is_pure(ans)
 					     	       then ()
@@ -1182,13 +1209,13 @@ set make_big_unitary_hash() = big_unitary_hash_table:
 	     prints("set j = big_unitary_hash.rf_number(",Gname,")");
 	     for p in plist
 	     do let xnum = p.x.number
-	     	in prints("void: big_unitary_hash.long_match(parameter(Gname,",xnum,",",p.lambda,",",p.nu,"),j)")
+	     	in prints("void: big_unitary_hash.long_match(parameter(",Gname,",",xnum,",",p.lambda,",",p.nu,"),j)")
 	     od;
 	     if write_x_flag
 	     then for xnum in done_list
-	      	  do prints("void: big_unitary_hash.finishx(KGB(Gname)[",xnum,"])")
+	      	  do prints("void: big_unitary_hash.finishx(KGB(",Gname,")[",xnum,"])")
 	      	  od
-	     else prints("void: big_unitary_hash.finishxmap(Gname,",donemap,")")
+	     else prints("void: big_unitary_hash.finishxmap(",Gname,",",donemap,")")
 	     fi
 	     {prints("set ",intlistname,"=[int]:[]");
 	     write_append(bitmapintlist,intlistname);
@@ -1224,6 +1251,8 @@ set make_big_unitary_hash() = big_unitary_hash_table:
 	      od
 	 else prints("void: big_unitary_hash.finishxmap(G_temp,",donemap,")")
 	 fi
+{NOTE: next function records whether a given x is finished, but NOT whether
+some lambdas for that x might be finished.}
     , ((RealForm, int, int) -> ): {writeGrange} (RealForm G, int low, int high):
       let i = add_real_form(G)
       then Gname = "G_temp"
@@ -2944,6 +2973,9 @@ set localFD_1Dirac2_by_zero\
     {then () = if time_verbose
     	      then prints("for LF0, time is ",print_time_string(elapsed_ms() - start))
 	      fi}
+    then () = if #LF0 = 0
+    	      then return [[],[]]
+	      fi
     then FixedList = [int]: for v in LF0
     	 	     	    do let j = v[0]
 			       in if j < #Perm2.fixed

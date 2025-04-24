@@ -66,7 +66,7 @@ set regroup(RealForm G, KTypePol P) = KTypePol:
     	   in c*K_type(KGB(G,m), q.lambda_minus_rho) od)
 
 set regroup(RealForm G, Param p) = Param:
-    parameter(G,p.x.number, p.lambda, p.nu)
+    parameter(G, p.x.number, p.lambda, p.nu)
 
 { table of full_deform to ht, indexed by Param. Height zero means no cutoff.}
 {Twisted always stored with no cutoff, since we don't now have a good twisted
