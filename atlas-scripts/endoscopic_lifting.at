@@ -296,7 +296,7 @@ w_H_matrix=w_G.matrix*distinguished_involution(ic_H_d) then
 {()=prints("w_H: ",w_H_matrix) then}
 w_H=W_elt(ic_H_d, w_H_matrix) then
 {()=prints("tits_delta: ", tits_delta(ic_H_d)) then}
-sigma_H=tits_element(ic_H_d,y_G.torus_factor,w_H)*tits_delta(ic_H_d) then
+sigma_H=tits_element(ic_H_d,y_G.unnormalized_torus_factor,w_H)*tits_delta(ic_H_d) then
 y_H=KGB_elt_gen(sigma_H) in
 L_hom(y_H,phi_G.gamma)
 
