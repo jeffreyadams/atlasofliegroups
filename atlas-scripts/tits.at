@@ -187,18 +187,19 @@ set product (RootDatum rd, [Tits_elt] L) = Tits_elt:
    inverse(Tits_elt:(0,theta)) = Tits_elt:(rho_check*(1-theta)/2,inverse(theta))
   (this formula remains valid in both cosets of W)
   and inverse(Tits_elt:(v,theta))=inverse(Tits_elt:(0,theta))*\exp(2\pi i * -v)
-    = Tits_elt:(rho_check*(1-theta)/2-v*theta,inverse(theta))
-}
-{NO: need to use the unnormalized torus factors}
+    = Tits_elt:(rho_check*(1-theta)/2-v*theta,inverse(theta))  [No: v*theta should be v*inverse(theta)
+CORRECTION:
+inverse(Tits_elt:(v,theta))=inverse(Tits_elt:(0,theta))*\exp(2\pi i * -v)
+                           =Tits_elt((rho_check*(1-theta)/2),inverse(theta))*\exp(2\pi i *-v)
+                           =Tits_elt((rho_check*(1-theta)/2) - v*inverse(theta)}
+
+{this formula is wrong: the last theta should be inverse(theta)}
 set inverse_old (Tits_elt(rd,v,theta)) = Tits_elt:
   (rd, (rho_check(rd)*(1-theta)/2 - v*theta) % 1, theta.inverse)
 
-set inverse (Tits_elt(rd,v,theta)) = Tits_elt:
-let mu=unnormalized_torus_factor(rd,v,theta) then
-mu_inverse_unnormalized=rho_check(rd)*(1-theta)/2 - mu*theta then
-tau_inverse=(2*mu_inverse_unnormalized-rd.rho_check)*(1-theta)/2 in
-(rd,tau_inverse%1,theta.inverse)
-
+{corrected formula}
+set inverse(Tits_elt(rd,v,theta))=Tits_elt:
+  (rd, (rho_check(rd)*(1-theta)/2 - v*inverse(theta)) % 1, theta.inverse)
 
 set inverse(KGBElt x)=KGB_elt(x.tits_element.inverse)
 
