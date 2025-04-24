@@ -4,7 +4,13 @@ set pos_entries(mat M) = mat: for c in columns(M) do for x in c do max(0,x) od o
 
 set xls(RealForm G, int low, int high) = [(KGBElt, ratvec)]:
     for x in KGB(G)[low:high]
-    do let theta1 = x.involution + 1
+    do for lambda in FPP_lambdas(x)
+       do (x,lambda)
+       od
+    od.##
+
+{
+let theta1 = x.involution + 1
        in for lambda in FPP_lambdas(x)
        	  do if (theta1*lambda).= or test_neither(x,lambda)
 	     then []
@@ -12,17 +18,17 @@ set xls(RealForm G, int low, int high) = [(KGBElt, ratvec)]:
 	     fi
        	  od.##
     od.##
+}
 
 set xls(RealForm G) = [(KGBElt, ratvec)]:
     xls(G,0,#KGB(G))
 
 set data((KGBElt, ratvec) xl) = vec:
     let (x,) = xl
-    then G = x.real_form
-    then pmax = pmax(xl)
+    then G = x.real_form, pmax = pmax(xl), Lvd = Lvd(xl)
     then GA = height(G,pmax.infinitesimal_character)
     then (LAM,NU,R) = low(pmax)
-    in [LAM,NU,R,GA]
+    in [LAM,NU,R,GA,#Lvd.list]
 
 {each vec is [LAM,NU,R,GA]}
 {R >= GA >= LA, NU}
@@ -102,6 +108,22 @@ set timeOL([(KGBElt, ratvec)] xls) = [int]:
      then () = unip_flag:=true
      in ans
 
+{this version uses red_count to try to reduce char calc time}
+set timeOLred_count([(KGBElt, ratvec)] xls) = [int]:
+    let () = FPP_report_flag:=false, (x0,) = xls[0]
+    then G = x0.real_form
+    then () = unipotents_to_hash(G, big_unitary_hash.uhash(G))
+    then () = unip_flag:=false
+    then () = revert_flag:=false
+    then () = red_count_flag:=true
+    then ans = for xl@j in xls
+       	       do let start = elapsed_ms()
+       	       	  then () = FPP_unitary_hash_one_level(xls[j:j+1])
+	  	  in elapsed_ms() - start
+       	       od
+     then () = unip_flag:=true
+     in ans
+
 set timeBL([(KGBElt, ratvec)] xls) = [int]:
     let () = FPP_report_flag:=false
     then (x0,) = xls[0]
@@ -117,6 +139,24 @@ set timeBL([(KGBElt, ratvec)] xls) = [int]:
        od
     then () = unip_flag:=true
     in ans
+
+{this version uses red_count to try to reduce char calc time}
+set timeBLred_count([(KGBElt, ratvec)] xls) = [int]:
+    let () = FPP_report_flag:=false, (x0,) = xls[0]
+    then G = x0.real_form
+    then () = unipotents_to_hash(G, big_unitary_hash.uhash(G))
+    then () = unip_flag:=false
+    then () = test_bl_flag:=false
+    then () = revert_flag:=false
+    then () = red_count_flag:=true
+    then ans = for xl@j in xls
+       	       do let start = elapsed_ms()
+       	       	  then () = FPP_unitary_hash_bottom_layer(xls[j:j+1])
+	  	  in elapsed_ms() - start
+       	       od
+     then () = unip_flag:=true
+     in ans
+
 
 {some experimental evidence that shift = (GA - LAM)\2 catches almost
 everything that can be caught by more. So shift_frac a bit smaller
@@ -145,13 +185,21 @@ set timeBLMS([(KGBElt, ratvec)] xls) = [int]:
 set timeOL(RealForm G, int low, int high) = [int]:
     timeOL(xls(G, low, high))
 
+set timeOLred_count(RealForm G, int low, int high) = [int]:
+    timeOLred_count(xls(G, low, high))
+
 set timeBL(RealForm G, int low, int high) = [int]:
     timeBL(xls(G, low, high))
+
+set timeBLred_count(RealForm G, int low, int high) = [int]:
+    timeBLred_count(xls(G, low, high))
 
 set timeBLMS(RealForm G, int low, int high) = [int]:
     timeBLMS(xls(G,low,high))
 
 set timeOL(RealForm G) = timeOL(xls(G))
+
+set timeOLred_count(RealForm G) = timeOLred_count(xls(G))
 
 set timeBL(RealForm G) = timeBL(xls(G))
 

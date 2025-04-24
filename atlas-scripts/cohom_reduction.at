@@ -8,14 +8,6 @@
 < FPP_facets_geom {for herm_center}
 < weak_packets {for unipotent_representations}
 
-{
-{take a KTypePol _apparently_ attached to G and make it _actually_ attached
-to G}
-set regroup(RealForm G, KTypePol P) = KTypePol:
-    sum(G, for c@q in P do let (,m) = %q.x
-    	   in c*K_type(KGB(G,m), q.lambda_minus_rho) od)
-}
-
 { lists real and/or complex simple factors }
 set simple_factors(RealForm G) = [RealForm]:
     let delta=G.distinguished_involution, tf=KGB(G,0).torus_factor,
