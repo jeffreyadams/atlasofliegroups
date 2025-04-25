@@ -8748,7 +8748,7 @@ case comp_ass_stat:
   expression_ptr i = convert_expr(index,ind_tp);
 @/type_expr comp_te;
   subscr_base::sub_type kind =
-    subscr_base::index_kind(aggr_tp->expanded(),ind_tp.bake(),comp_te);
+    subscr_base::index_kind(aggr_tp->bake().expanded(),ind_tp.bake(),comp_te);
   if (not subscr_base::assignable(kind))
   { std::ostringstream o;
     o << "Cannot subscript value of type " << *aggr_tp @|
@@ -8843,7 +8843,8 @@ converting the raw node pointer |tuple_tp->tuple()| to a weak type list iterator
   else if (not candidates.singleton())
     @< Report selecting |selector| from |*tuple_tp| is ambiguous @>
 @)
-  type_expr tup_exp = tuple_tp->expanded(); // ensure tabled type is expanded
+  type_expr tup_exp = tuple_tp->bake().expanded();
+    // ensure tabled type is expanded
   component = std::move(*std::next(wtl_iterator(tup_exp.tuple()),pos));
 }
 
@@ -9152,7 +9153,7 @@ be used in subsequent modules.
    subscription does not allow assignment @>=
 {
   ind = convert_expr(index,ind_tp);
-@/kind=subscr_base::index_kind(aggr_tp->expanded(),ind_tp.bake(),comp_te);
+@/kind=subscr_base::index_kind(aggr_tp->bake().expanded(),ind_tp.bake(),comp_te);
   if (not subscr_base::assignable(kind))
   { std::ostringstream o;
     o << "Cannot assign to component of value of type " << *aggr_tp @|

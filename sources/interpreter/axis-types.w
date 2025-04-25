@@ -3024,7 +3024,6 @@ passing it the argument type.
 @< Utility methods of |type| @>=
 type& wring_out(); // eliminate assigned type variables, by substitution
 type& expand() @+{@; wring_out().te.expand(); return *this; }
-type_expr expanded() const @+{@; return bake().expanded(); }
 type_expr bake() const; // extract |type_expr| after substitution
 type_expr bake_off(); // extract |type_expr|, sacrificing self if needed
 type& clear(unsigned int d); // remove any type assignments, reserve |d| new ones
