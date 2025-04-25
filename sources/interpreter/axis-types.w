@@ -1263,10 +1263,10 @@ whose component type is the type itself, or algebraic types like binary trees
 with node labels of some type (the latter would be a recursive type
 constructor). The mechanism is separate from the one used to associate types
 with user defined type identifiers, of which it can be considered an
-internalised form, made accessible to |type_expr| methods. Indeed entries of
-|type_map| derive from user type definitions, and the identifier table will
-equate such type identifiers to certain tabled types. We need to pre-declare
-some types used in the declaration of |type_expr| methods.
+internalised form, made accessible to |type_expr| methods. Entries of |type_map|
+derive from user type definitions, and the identifier table will equate such
+type identifiers to certain tabled types. We need to pre-declare some types used
+in the declaration of |type_expr| methods.
 
 @< Type declarations @>=
 struct type_binding;
@@ -1320,7 +1320,7 @@ class type_expr::defined_type_mapping : public std::vector<type_binding>
     {@; assert (i<size()); return (*this)[i].arity; }
 };
 
-@~We need to define that declared static class member; it starts out empty.
+@ We need to define that declared static class member; it starts out empty.
 @< Global variable definitions @>=
 type_expr::defined_type_mapping type_expr::type_map;
 
@@ -1350,7 +1350,8 @@ static void reset_table_size(type_nr_type old_size);
 static const std::vector<id_type>& fields(type_nr_type type_number);
 static void set_fields (id_type type_number, std::vector<id_type>&& fields);
 static sl_list<const type_binding*> matching_bindings (const type& tp);
-static type_nr_type add_simple_typedef (id_type id, type tp);
+static type_nr_type add_simple_typedef
+  (id_type id, type_expr tp, unsigned int arity);
 static std::vector<type_nr_type> add_typedefs
  (const std::vector<std::pair<id_type,const_type_p> >& defs,
   unsigned int n_args);
@@ -1383,7 +1384,7 @@ void type_expr::set_fields(id_type type_number, std::vector<id_type>&& fields)
 
 @ The method |matching_bindings| is used to find |fields| associated to a given
 tuple or union type, in order to interpret a field assignment or a
-discrimination clause, respectively; it returns a list non-owning pointers to
+discrimination clause, respectively; it returns a list of non-owning pointers to
 |type_binding| whose |tp| member can unify with |tp|. Since all type variables
 in entries of |type_map| are polymorphic, but |tp| can have some fixed type
 variables, the former need to be shifted if |tp.floor()>0|, so that all
@@ -1452,10 +1453,9 @@ an occasion to introduce such field names.
 
 @< Function definitions @>=
 
-type_nr_type type_expr::add_simple_typedef (id_type id, type rhs)
-{ rhs.expand(); // ensure |rhs.kind()!=tabled| so it can go into |type_map|
-  auto arity = rhs.degree();
-  type_expr tp = rhs.bake_off();
+type_nr_type
+  type_expr::add_simple_typedef (id_type id, type_expr tp, unsigned int arity)
+{ tp.expand(); // ensure |tp.kind()!=tabled| so it can go into |type_map|
   for (type_nr_type i=0; i<type_map.size(); ++i)
     if (type_map.arity(i)==arity and type_map.definiens(i)==tp)
     { if (type_map[i].name==type_binding::no_id)
@@ -2699,11 +2699,11 @@ without that happening.
 bool type_assignment::unify(const type_expr& P, const type_expr& Q)
 { auto P_kind = P.raw_kind(), Q_kind = Q.raw_kind();
   assert(P_kind!=undetermined_type and Q_kind!=undetermined_type);
+  if (P_kind==variable_type or Q_kind==variable_type)
+    @< Decide |unify| when at least one type is a type variable @>
   if (P_kind==tabled or Q_kind==tabled)
     @< Decide |unify| in the presence of tabled types,
        avoiding any recursive calls if both types are tabled and recursive @>
-  if (P_kind==variable_type or Q_kind==variable_type)
-    @< Decide |unify| when at least one type is a type variable @>
 @)
   if(P_kind!=Q_kind)
     return false;
