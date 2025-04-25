@@ -1,0 +1,35 @@
+set G=Sp(6,R)
+set Gd=dual_quasisplit_form(G)
+set id=inner_class(G)
+set unip=unipotent_representations(G)
+set ap=Arthur_packets(G)
+set packet_pol=ap[15]
+set packet=monomials(packet_pol)
+
+set phis=for packet in ap do Arthur_phi(packet) od
+set phi=phis[15]
+set S=endoscopic_elements(phi)
+set s=S[1]
+set twist=phi.y.involution
+set (H,M,Hd)=endoscopic_group(G,s,twist)
+set phi_H=epstar_inverse(phi,H)
+set p_H0=L_packet(phi_H)[0][0]
+set p_H1=L_packet(phi_H)[1][0]
+
+set unip_H0=unipotent_representations(p_H0.real_form)
+set unip_H1=unipotent_representations(p_H1.real_form)
+
+prints("G=",G,new_line,"H=",H,
+new_line,
+"p_H0=",p_H0,
+new_line,
+"p_H1=",p_H1,
+new_line,"Unipotent packet on G: ")
+pr(packet)
+prints("lift of p_H0 is not in the Arthur packet: ", epstar_irr_one(p_H0,G,M));
+prints("lift of p_H1 is not in the Arthur packet: ", epstar_irr_one(p_H1,G,M));
+prints("difference of two lifts IS in the Arthur packet:: ",
+epstar_irr_one(p_H0,G,M)-epstar_irr_one(p_H1,G,M))
+
+
+
