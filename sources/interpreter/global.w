@@ -1435,24 +1435,24 @@ void type_define_identifier
   std::vector<id_type> names(n,id_type(type_binding::no_id));
   try
   {
-    if (not fields.empty()) // do this before we move from |type|
-      @< Bind in |group| any field identifiers in |fields| to the types of
-         their projector or injector functions, store the identifiers themselves
-         in |names|, and store the corresponding function values in |jectors| @>
-@)
     @< Test for conflicts for adding |id| as type identifier to
        |global_id_table|, in which case |throw| a |program_error|,
        also report the type definition proper @>
-    if (group.begin()!=group.end())
-      // only need the following when there are field names
+@)
+    if (not fields.empty()) // do this before we move from |type|
+    {
+      @< Bind in |group| any field identifiers in |fields| to the types of
+         their projector or injector functions, store the identifiers themselves
+         in |names|, and store the corresponding function values in |jectors| @>
       @< Add to |global_overload_table| the projector or injector function
          values from |jectors| @>
-@)
-    if (not fields.empty())
-    { type_nr_type k = type_expr::add_simple_typedef(id,tp.copy());
-      type_expr::set_fields(k,std::move(names));
     }
-    global_id_table->add_type_def(id,std::move(tp));
+@)
+    type_nr_type k = type_expr::add_simple_typedef(id,tp.bake_off(),deg);
+    if (not fields.empty())
+      type_expr::set_fields(k,std::move(names));
+    global_id_table->add_type_def(id,
+      type::constructor(type_expr::local_ref(k,deg),deg));
   }
   catch (program_error& err)
   { std::ostringstream o;
@@ -1479,7 +1479,7 @@ themselves and store them in |jectors|.
   auto id_it=fields.wcbegin();
   if (tp.kind()==tuple_type)
   { for (unsigned i=0; i<n; ++i,id_it++,tp_it++)
-      if (id_it->kind==0x1) // field selector present
+      if (id_it->kind==0x1) // field name present
       { names[i]=id_it->name;
         jectors.push_back
           (std::make_shared<projector_value>(tp.unwrap(),i,names[i],loc));
@@ -1490,7 +1490,7 @@ themselves and store them in |jectors|.
   }
   else
   { for (unsigned i=0; i<n; ++i,id_it++,tp_it++)
-      if (id_it->kind==0x1) // field selector present
+      if (id_it->kind==0x1) // variant name present
       { names[i]=id_it->name;
         jectors.push_back
           (std::make_shared<injector_value>(tp.unwrap(),i,names[i],loc));
