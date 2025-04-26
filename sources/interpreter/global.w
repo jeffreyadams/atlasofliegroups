@@ -1007,11 +1007,11 @@ which is all that we need from it here.
 
 @< When |tp| is a function type, test for conflicts in the overload table @>=
 {
-  if (tp.kind()==function_type)
+  if (tp.top_kind()==function_type)
     // then test for conflicts with existing entries
   { if (@[auto* var=global_overload_table->variants(id)@;@])
     { bool dummy;
-      locate_overload(id,*var,tp.func()->arg_type, dummy);
+      locate_overload(id,*var,tp.arg_type(), dummy);
       // ignore result
     }
   }
@@ -2792,10 +2792,10 @@ shared_builtin install_function
   type tp = type::wrap(te,0); // no fixed type variables at outer scope
   assert(tp.degree()==var_count);
   std::ostringstream print_name; print_name<<name;
-  if (tp.kind()!=function_type)
+  if (tp.top_kind()!=function_type)
     throw logic_error
      ("Built-in with non-function type: "+print_name.str());
-  print_name << '@@' << tp.func()->arg_type;
+  print_name << '@@' << tp.arg_type();
 @/
   @< If the function type |tp| matches arguments of any type,
      install a |shared_variadic_builtin| and return a null pointer @>

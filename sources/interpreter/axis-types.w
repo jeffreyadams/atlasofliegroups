@@ -2953,7 +2953,8 @@ type_tag top_kind () const @+{@; return top_expr().top_kind(); }
 primitive_tag prim () const     @+{@; return te.prim(); }
 unsigned int typevar_count () const @+{@; return te.typevar_count(); }
 const func_type* func() const  @+{@; return te.func(); }
-      func_type* func()        @+{@; return te.func(); }
+type_expr arg_type() const;
+type_expr result_type() const; // cut through type assignments and |tabled|
 const type_expr& component_type () const @+{@; return te.component_type(); }
       type_expr& component_type ()       @+{@; return te.component_type(); }
 const_raw_type_list tuple () const @+{@; return te.tuple(); }
@@ -3023,7 +3024,7 @@ passing it the argument type.
 
 @< Utility methods of |type| @>=
 type& wring_out(); // eliminate assigned type variables, by substitution
-type& expand() @+{@; wring_out().te.expand(); return *this; }
+type_expr& expand() @+{@; return top_expr().expand(); }
 type_expr bake() const; // extract |type_expr| after substitution
 type_expr bake_off(); // extract |type_expr|, sacrificing self if needed
 type& clear(unsigned int d); // remove any type assignments, reserve |d| new ones
@@ -3102,6 +3103,32 @@ type_expr type::bake_off() // variant available if |*this| is no longer needed
   if (assign().empty())
     return std::move(te); // save some work here
   return assign().substitution(te);
+}
+
+@ When accessing descendent type expressions of a type, like the result type
+of a function type, we must be aware that the node that actually contains the
+component might be hidden behind a number of variable assignments and maybe a
+tabled type reference. The latter may be a tabled type constructor, in which
+case we must substitute the argument types as well. Therefore the methods
+|arg_type| and |result_type| that can be used to get at these components for a
+function type return a |type_expr| rather than a reference to it. Given that
+we are constructing a new value anyway, we also substitute away any pending type
+assignments.
+
+@< Function definitions @>=
+type_expr type::arg_type() const
+{ assert(top_kind()==function_type);
+  const auto& top = top_expr();
+  if (top.raw_kind()==function_type)
+    return assign().substitution(top.func()->arg_type);
+  return assign().substitution(top.expanded().func()->arg_type);
+}
+type_expr type::result_type() const
+{ assert(top_kind()==function_type);
+  const auto& top = top_expr();
+  if (top.raw_kind()==function_type)
+    return assign().substitution(top.func()->result_type);
+  return assign().substitution(top.expanded().func()->result_type);
 }
 
 @ The method |raise_floor| is used to ensure that certain type variables (that
@@ -3513,8 +3540,8 @@ bool type::matches_argument(const type& actual_arg_type)
   assert(actual_arg_type.is_clean()); // caller should ensure this
   if (floor()<actual_arg_type.floor()) // ensure we can preserve fixed variables
     raise_floor(actual_arg_type.floor()-floor());
-  const type_expr& arg_type = expand().func()->arg_type;
-    // in passing this calls |wring_out|
+  wring_out(); // incorporate and eliminate any pending type assignments
+  const type_expr& arg_type = te.expand().func()->arg_type;
   unsigned int fd=degree(), ad=actual_arg_type.degree();
   assign().grow(ad);
   if (fd==0 or ad==0) // then no need to renumber |actual_arg_type|
