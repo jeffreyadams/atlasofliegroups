@@ -2080,45 +2080,48 @@ set local_test_GEO_hash_else_dumb(KGBElt x, ratvec lambda, {VertexData vd,} Loca
     then () = test_string:= " using local_test_GEO_hash_else_dumb"
     then  () = hash_dumbCounter.use()
     then start_count = unitary_test_counter.use_count(), startDBTcount = DBTcount
-    then temp_K_char_flag = height(pmin)/(G.rho * G.two_rho_check) <= CUTOFF
+    {then temp_K_char_flag = height(pmin)/(G.rho * G.two_rho_check) <= CUTOFF}
      {defaults to true if ht=0, false otherwise}
-    then pol_hash0 = if temp_K_char_flag
+    then pol_hash0 = make_KTypePol_hash() {to hold chars to height hts[0]}
+    {if temp_K_char_flag
     	 	     then make_KTypePol_hash() {to hold chars to height hts[0]}
 		     else pol_hash
-		     fi
+		     fi}
     then LFDKH = if red_count_flag and #LF[1] > 0
     	       	 then let (eq,CLBF) = localGraphRed(LF)
-		      in if temp_K_char_flag
+		      in localFD_KHash_01_graph(x,lambda,Lvd,hts[0],pol_hash0, LF, eq,CLBF)
+		      {if temp_K_char_flag
 		      	 then localFD_KHash_01_graph(x,lambda,Lvd,hts[0],pol_hash0,
 			      LF, eq,CLBF)
 			 else localFD_KHash_01_graph(x,lambda,Lvd,pol_hash,LF, eq,CLBF)
-			 fi
-		  elif temp_K_char_flag
-    	       	  then localFD_KHash_01(x, lambda, Lvd, hts[0], pol_hash0, LF)
-		  else localFD_KHash_01(x, lambda, Lvd, pol_hash, LF)
+			 fi}
+		  {elif temp_K_char_flag}
+    	       	  else localFD_KHash_01(x, lambda, Lvd, hts[0], pol_hash0, LF)
+		  {else localFD_KHash_01(x, lambda, Lvd, pol_hash, LF)}
 		  fi {red_count_flag}
     {then LFDKH = localFD_KHash_01(x, lambda, Lvd, pol_hash,LF)}
     {then () =  if test_verbose then prints("face counts to dim 1: ",
                           for list in LFDKH do #list od,"; Dirac_best eliminated ",
 			  DBTcount - startDBTcount) fi}
         {compute graph on faces to dim 1}
-    then ((eq,gr),IUCL,CLBF) = if temp_K_char_flag
+    then ((eq,gr),IUCL,CLBF) = localGraphK(LFDKH)
+    	 		       {if temp_K_char_flag
     	 		       then localGraphK(LFDKH)
     	 		       else localGraphK(LFDKH, pol_hash, hts[0]) {pol_hash0??}
-			       fi {localGraphK(LFDKH)}
+			       fi {localGraphK(LFDKH)}}
            {remove from LFDKH all faces failing is_unitary to hts[0]}
 	   {CAN'T use know_lower, because that uses DiracBest, without caring for height}
     then () =  LFDKH := local_testK_hash{_know_lower}(x,lambda,Lvd, LFDKH, eq, gr, CLBF, pol_hash0,
     (Param->bool): (Param p) bool: is_unitary_to_ht_big_SIMPLE(p, hts[0]), hts[0], Uhash, fancy_tester)
     then () = if test_verbose then prints("unitary to ",hts[0]," face counts to dim 1: ",
     	      	 	      	   		   for list in LFDKH do #list od) fi
-    then () = LFDKH:= if temp_K_char_flag and red_count_flag and #LFDKH[1] > 0
+    then () = LFDKH:= if {temp_K_char_flag and} red_count_flag and #LFDKH[1] > 0
     	      	      then let (eq_red,CLBF_red) = localGraphRed(LFDKH)
 		      	   in  extend_K_characters_graph(x, lambda, Lvd, LFDKH, pol_hash, eq_red,
 			   CLBF_red)
-    	      	      elif temp_K_char_flag
-		      then extend_K_characters(x, lambda, Lvd, LFDKH, pol_hash)
-		      else LFDKH
+    	      	      {elif temp_K_char_flag}
+		      else extend_K_characters(x, lambda, Lvd, LFDKH, pol_hash)
+		      {else LFDKH}
 		      fi
     {then () = prints("set LFDKH01 = ",LFDKH)}
     then () = if quick_flag
