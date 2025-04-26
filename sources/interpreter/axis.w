@@ -1682,7 +1682,7 @@ the usage.
 { if (vars->size()==1)
   { const auto& variant = vars->front();
     if (functype_absorb(tp,variant))
-    { o << main_hash_table->name_of(id) << '@@' << tp.func()->arg_type;
+    { o << main_hash_table->name_of(id) << '@@' << tp.arg_type();
       return
         expression_ptr(new capture_expression(variant.value(),o.str()));
     }
@@ -1720,7 +1720,7 @@ be more careful, and instead record |tp.polymorphics()| initially, and then use
     if (functype_absorb(tp,variant))
     { if (result!=nullptr)
         @< Throw an error reporting ambiguous overloaded symbol usage @>
-      o << main_hash_table->name_of(id) << '@@' << tp.func()->arg_type;
+      o << main_hash_table->name_of(id) << '@@' << tp.arg_type();
       result.reset(new capture_expression(variant.value(),o.str()));
       prev_match = &variant; // record for purpose of possible error message
     }
@@ -2743,7 +2743,6 @@ case function_call:
        unless it is a local identifier with function type @>
   type f_type=type::bottom(fc); // start with completely generic type
   expression_ptr fun = convert_expr(call.fun,f_type);
-    // consolidate to a (maybe polymorphic) |type|
   type_expr f_tp = gen_func_type.copy();
   if (not f_type.unify_specialise(f_tp))
     @< Complain that function part of |e| has non-function type |f_type| @>
@@ -2752,9 +2751,9 @@ case function_call:
   if (arg_type.is_void() and not is_empty(call.arg))
     arg.reset(new voiding(std::move(arg)));
   if (not f_type.matches_argument(arg_type.wring_out()))
-    throw type_error(e,arg_type.bake_off(),std::move(f_type.func()->arg_type));
-  const type result_type = type::wrap
-    (f_type.assign().substitution(f_type.func()->result_type) ,fc);
+    throw type_error(e,arg_type.bake_off(),f_type.arg_type());
+    // should not happen
+  const type result_type = type::wrap (f_type.result_type() ,fc);
   expression_ptr re(new @|
      call_expression(std::move(fun),std::move(arg),e.loc));
   return conform_types(result_type,tp,std::move(re),e);
@@ -3502,8 +3501,7 @@ case lambda_expr:
   thread_bindings(pat,par_tp,fc,new_layer,false);
 @/expression_ptr body_ptr = convert_expr(fun.body,body_type);
   if (not tp.is_void()) // then we must integrate |body_type| into |tp|
-  { const type_expr& sub_tp = tp.top_expr().func()->result_type;
-    if (not tp.unify_to(sub_tp,body_type))
+  { if (not tp.unify_to(fun_type.func()->result_type,body_type))
       @< Report failure to export |body_type| to type |tp| of
          lambda expression @>
   }
@@ -3565,8 +3563,7 @@ case rec_lambda_expr:
   thread_bindings(pat,par_tp,fc,new_layer,false);
 @/expression_ptr body_ptr = convert_expr(fun.body,body_type);
   if (not tp.is_void()) // then we must integrate |body_type| into |tp|
-  { const type_expr& sub_tp = tp.top_expr().func()->result_type;
-    if (not tp.unify_to(sub_tp,body_type))
+  { if (not tp.unify_to(fun_type.func()->result_type,body_type))
       @< Report failure to export |body_type| to type |tp| of
          lambda expression @>
   }
@@ -5523,14 +5520,14 @@ case discrimination_expr:
 @)
   type subject_type = type::bottom(fc);
   expression_ptr c  =  convert_expr(exp.subject,subject_type);
-  if (subject_type.expand().kind()!=union_type)
+  if (subject_type.expand().raw_kind()!=union_type)
     @< Report that a discrimination clause needs to be a union type,
        |exp.subject| has non-union type |subject_type| @>
-  const auto* variants = subject_type.tuple();
+  const auto* variants = subject_type.top_expr().tuple();
   size_t n_variants=length(variants);
   std::vector<choice_part> choices(n_variants);
 @)
-  if (exp.has_tags())
+ if (exp.has_tags())
   {
     sl_list<id_type> tags = exp.tag_set();
     auto candidates = type_expr::matching_bindings(subject_type);

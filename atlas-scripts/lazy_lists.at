@@ -243,7 +243,7 @@ in case n
   As a proof of concept we show how an infinite list can be recursively
   defined using itself (taking care to not make any coefficient require itself)
   and use |memoize| to avoid re-evaluating previous terms while computing new
-  ones. The standard example is to compute the Fibonocci sequence F as 0, 1,
+  ones. The standard example is to compute the Fibonacci sequence F as 0, 1,
   followed by |sum(f,shift(1,F))| (where the first argument to |sum| gives the
   coefficient two steps before, the second argument the preceding coefficient).
 
@@ -259,7 +259,7 @@ in case n
   to tie the recursive knot by hand, rather than have |rec_fun| do it for us.
 }
 
-{ the Fibonacci sequence can be defined |divide_by([1,-1,-1],extend_0([0,1]))|,
+{ the Fibonacci sequence can be defined |divide_by([1,-1,-1])(extend_0([0,1]))|,
   however we now show how it can be defined in a directly recursive fashion }
 set Fibonacci = inf_list:
   let fibo () = inf_node:die { stub, which next |memoize| doesn't call yet }
