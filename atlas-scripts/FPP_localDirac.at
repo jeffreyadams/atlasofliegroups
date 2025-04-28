@@ -1632,10 +1632,10 @@ set local_test_wiggle_hash(KGBElt x, ratvec lambda, LocalVertexData Lvd,
 
 set one_true_counter = make_counter()
 set one_false_counter = make_counter()
-set hash_real_dumbCounter = make_counter()
+{set hash_real_dumbCounter = make_counter()
 set hash_dumbCounter = make_counter()
 set hash_def_dumbCounter = make_counter()
-set hash_bottom_layerCounter = make_counter()
+set hash_bottom_layerCounter = make_counter()}
 set one_param_time = int: 0
 
 {true more than 3/4 of time, so shouldn't do much to_height testing}
@@ -2469,7 +2469,7 @@ set vert_diff_cutoff = int: 10
 {If negative, always allow is_unitary_to_ht}
 set to_ht_frac = 9/10
 
-set hashCounter = make_counter()
+{set hashCounter = make_counter()}
 
 {assume we've already got hts, #hts >= 1, imposed Dirac, and decided not to use _dumb
 Assume LF is vertices and edges, already pos on LKTs and hermitian and Dirac}
@@ -2724,7 +2724,7 @@ set local_test_GEO(KGBElt x, ratvec lambda) =
     [Param]:
     local_test_GEO(x, lambda, is_unitary_hash_big_SIMPLE@Param)
 
-set hash2Counter = make_counter()
+{set hash2Counter = make_counter()}
 
 set up_shift = int: 0
 {This version assumes edges and vertices already computed, with herm and pos on LKTs; called by one_level}
@@ -3098,7 +3098,7 @@ from one_level+1 to last_level) to speed elimination of nonunitary. Need
 to have last_level \ge one_level}
 set last_level = int: -1
 
-set hash_one_levelCounter = make_counter()
+{set hash_one_levelCounter = make_counter()}
 
 {assume local faces to dim 1 are recorded in LF, already herm and pos on LKTs}
 set local_test_GEO_hash_one_level(KGBElt x, ratvec lambda, {VertexData vd,}

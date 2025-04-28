@@ -4,7 +4,7 @@
 <count.at {for unitary_test_counter}
 <time.at {for print_time_string}
 <cohom_reductionND {for derived_factor_params}
-<FPP_faces_geom {for herm_center}
+<FPP_faces_geom {for herm_center}{get charTime!}
 <writeFiles {for write commands}
 set deformLookupCounter = make_counter()
 set deformCalcCounter = make_counter()
@@ -55,6 +55,17 @@ set max_loc_flag = true
 {records how many pairs (x,lambda) are skipped because all Params are
 indefinite on LKTs.}
 set none_count = int:0
+
+set hash_real_dumbCounter = make_counter()
+set hash_dumbCounter = make_counter()
+set hash_def_dumbCounter = make_counter()
+set hashCounter = make_counter()
+set hash2Counter = make_counter()
+set hash_one_levelCounter = make_counter()
+set hash_bottom_layerCounter = make_counter()
+
+{to record time spent in is_unitary, is_unitary_to_ht, etc.}
+set unitaryTime = int: 0
 
 set to_ht (KTypePol P,int N) = KTypePol:
   let (below,)=height_split(P,N) in below
@@ -460,6 +471,11 @@ set report_tested() = void:
  	 	   print_time_string(sum(for list in tested_pos_to_ht_times do sum(list) od)),"; ",
 	   sum(for hash in tested_neg_to_ht_hashes do hash.size() od)," neg tests to_ht, in time = ",
  	   	   print_time_string(sum(for list in tested_neg_to_ht_times do sum(list) od)));
+    prints("#bottom_layer = ",hash_bottom_layerCounter.use_count(), ", #one_level = ",
+    	   hash_one_levelCounter.use_count(), ", #dumb = ",hash_dumbCounter.use_count(),
+	   ", #hash2 = ",hash2Counter.use_count());
+    prints(print_time_string(unitaryTime)," for ",unitary_test_counter.use_count()," unitarity tests; ",
+    print_time_string(charTime), " for ",char_counter.use_count(), " char calculations.");
     prints("time for up_mu = ",print_time_string(up_mu_time), ", mu_time_mult = ",mu_time_mult,
     		   ", mu_rank_mult = ",mu_rank_mult, ", shift_frac = ",shift_frac);
     prints("LAGAmax = ",LAGAmax,", GARLAGmin = ",GARLAGmin, ", GARmin = ", GARmin,
@@ -556,7 +572,6 @@ set check_hermitian (Param p, bool irreducible) = void:
             ," module does not admit any invariant Hermitian form")
   fi
 
-set unitaryTime = int: 0
 set show_unitary_time() = void: prints("Time so far for is_unitary = ",
     		      print_time_string(unitaryTime))
 
