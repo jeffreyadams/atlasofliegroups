@@ -1302,6 +1302,17 @@ set rho_diff (WeylElt w) = vec: let rho2=w.root_datum.two_rho in (rho2-w*rho2)\2
 set rho_check_diff (WeylElt w) = vec:
   let rho_check2=w.root_datum.two_rho_check in (rho_check2-rho_check2*w)\2
 
+{ the set of posroots that w maps to negative roots, as a bitset }
+set positive_to_negative (WeylElt w) = [int]:
+  let n=w.root_datum.nr_of_posroots in
+  for x@i in root_permutation(w)[n:] if x<n do i fi od
+set posroot_sum (RootDatum rd,[int] select) = vec:
+  sum(rd.rank # for i in select do root(rd,i) od)
+set poscoroot_sum (RootDatum rd,[int] select) = vec:
+  sum(rd.rank # for i in select do coroot(rd,i) od)
+
+
+
 set chamber ((RootDatum,vec) rd_lambda) = WeylElt:
   let (w,)=from_dominant(rd_lambda) in w
 set dominant ((RootDatum,vec) rd_lambda) = vec:
