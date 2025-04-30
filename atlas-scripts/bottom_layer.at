@@ -889,6 +889,29 @@ set bottom_factors(QK_bottom_data (Q,taus)) = QKL_bottom_data: {(KGPElt,[(KType,
 set bottom_factors([QK_bottom_data] data) = [QKL_bottom_data]: {[(KGPElt,[(KType, [KType])])]}
     for (Q,taus) in data do bottom_factors(Q,taus) od
 
+set sort([QKL_bottom_data] data, int Dlow, int Dhigh) = [QKL_bottom_data]: {(Q,[KType,[KType]])}
+    let answer = [[QKL_bottom_data]]:
+    	       	 for d:Dhigh - Dlow from Dlow {one for each d from height(p) up}
+		 do []
+		 od
+    then Khashes = [KType_hash]:
+    	 	 for  d:Dhigh - Dlow from Dlow {one for each d from height(p) up}
+		 do make_KType_hash()
+		 od
+    then () = for (Q,list) in data
+    	      do for (tau,stuff) in list
+	      	 do let h = height(tau)
+		    in if h < Dhigh and h >= Dlow
+		       then let M = Khashes[h-Dlow].size()
+		       	    then m = Khashes[h-Dlow].match(tau)
+	       	   	    in if M = m
+			       then answer[h-Dlow] #:= (Q,[(tau,stuff)])
+			       fi
+	       	       fi
+	    	 od
+	      od
+    in answer.##
+
 {insist that p0 is final, p0 is a LQ of p, and that P is K_type_pol of
 character formula of p0 to height at least heights in LKdata}
 set bottom_elim_factors(Param p0, Param p, QKL_bottom_data (Q, LKdata), KTypePol P) = bool:

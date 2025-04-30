@@ -76,11 +76,13 @@ set contragredient(KGBElt x) = KGBElt:
 {if false, then always use bottom layer when it's called for}
 set test_bl_flag = true
 
+{Very large values here in E8_s lead to very slow more_bottom calculations. Need to bound somehow}
 set bl_shift(KGBElt x, ratvec lambda, LocalVertexData Lvd) = int:
     let pmax = pmax(x,lambda,Lvd), rd = x.root_datum, theta = x.involution
     then GAM = height(rd, pmax.infinitesimal_character)
     then LAM = height(rd, (1+theta)*lambda/2)
     in floor((GAM - LAM)*shift_frac)
+
 
 {returning "true" means bottom layer ought to be used}
 set test_bl(KGBElt x, ratvec lambda, LocalVertexData Lvd) = bool:
