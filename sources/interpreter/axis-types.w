@@ -2934,15 +2934,16 @@ public:
   @< Utility methods of |type| @>@;
 };
 
-@ We access the component |type_expr| elements of a |type| using methods with
-the same name as those of |type_expr|; we do not attempt to recreate |type|
-values for them, so these methods have the same return types as their
-|type_expr| counterparts. These methods must be used with caution, as they
-require |te.raw_kind()| (which can be inspected by calling |type::kind|) to have
-the corresponding value; notably they will not only \emph{not} expand |tabled|
-types, they will not take into account pending type assignments either. We
-include here also a few methods that access the |type_assignment| field, and
-some simple tests.
+@ For |type| values whose |kind()| is known to be |function_type| or
+|tuple_type|, we allow access the component |type_expr| elements using the
+methods |func| and |tuple| respectively, which forward to |type_expr| methods of
+the same name. There is no need for similar access when |kind()==row_type|, so
+we do not define a |component_type| method for |type|. The methods we do define
+must be used with caution, as they will \emph{not} expand |tabled|, nor take
+into account pending type assignments. When on the other hand we know that
+|kind()==tabled|, we do provide a |tabled_nr| method to identify the tabled
+type. Finally we also include a few methods that access the |type_assignment|
+field, and some simple tests.
 
 @< Methods of |type| to access component types @>=
 const type_expr& top_expr () const;
@@ -2955,10 +2956,7 @@ unsigned int typevar_count () const @+{@; return te.typevar_count(); }
 const func_type* func() const  @+{@; return te.func(); }
 type_expr arg_type() const;
 type_expr result_type() const; // cut through type assignments and |tabled|
-const type_expr& component_type () const @+{@; return te.component_type(); }
-      type_expr& component_type ()       @+{@; return te.component_type(); }
 const_raw_type_list tuple () const @+{@; return te.tuple(); }
-      raw_type_list tuple ()       @+{@; return te.tuple(); }
 type_nr_type tabled_nr () const @+{@; return te.tabled_nr(); }
 @)
 type_assignment& assign () @+{@; return a; }
