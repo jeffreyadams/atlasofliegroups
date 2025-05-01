@@ -1475,6 +1475,7 @@ themselves and store them in |jectors|.
 @< Bind in |group| any field identifiers in |fields| to the types of
    their projector or injector functions... @>=
 { assert(tp.kind()==tuple_type or tp.kind()==union_type);
+    // ensured by the grammar
   auto tp_it =wtl_const_iterator(tp.tuple());
   auto id_it=fields.wcbegin();
   if (tp.kind()==tuple_type)
