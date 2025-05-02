@@ -2825,24 +2825,24 @@ fact any polymorphic constraints that were not passed down.
 Polymorphic types arise in type checking when identifiers and functions with a
 recorded polymorphic type are used. When combined in for instance function
 calls, unification may also produce new polymorphic types. However the main way
-in which fresh polymorphic types arise is by the use of ``type abstraction''
-clauses, in which the user explicitly introduces some type variables using
-the \&{any\_type} keyword. Within the scope of the clause introducing it, such a
-type variable represents a fixed but unknown type; it is handled like a
-primitive type, but with no related operations given for it. These type
-variables may end up in the (usually function) type that is derived for the
-clause, and when they thus emerge from the scope in which they were introduced,
-they become polymorphic type variables. The latter are implicitly universally
-quantified, and they can be substituted for during unification. An important
-quantity that |type| records in addition to its |type_expr| is the threshold
-between type variables still in scope (numbered below the threshold), and
-polymorphic type variables (numbered from the threshold upwards). When we are
-manipulating |type_expr| values, this threshold is stored in somewhere the
-context. Thus polymorphic type variables ``float on top'' of the fixed type
-variables. This often creates the necessity to renumber polymorphic type
-variables, which is annoying; it is inevitable however, since even if we had
-kept a separate pool of polymorphic variables, unification would require sets of
-polymorphic type variables, from separate subexpressions, to be made disjoint.
+in which fresh polymorphic types arise is by the use of a ``type abstraction''
+clause, in which the user explicitly introduces some type variables using
+the \&{any\_type} keyword. Within the scope of that clause, such a type variable
+represents a fixed but unknown type; it is handled like a primitive type,
+without any operations given for it. These type variables may end up in the
+(usually function) type derived for the clause, and when they thus emerge from
+the scope in which they were introduced, they become polymorphic type variables.
+The latter are implicitly universally quantified, and they can be substituted
+for during unification. An important quantity that |type| records in addition to
+its |type_expr|, is the threshold between type variables still in scope
+(numbered below the threshold), and polymorphic type variables (numbered from
+the threshold upwards). When we are manipulating |type_expr| values, this
+threshold is stored in somewhere the context. Thus polymorphic type variables
+``float on top'' of the fixed type variables. This often creates the necessity
+to renumber polymorphic type variables, which is annoying; it is inevitable
+however, since even if we had kept a separate pool of polymorphic variables,
+unification would require sets of polymorphic type variables, from separate
+subexpressions, to be made disjoint.
 
 Polymorphic types are most often function types, and the main use of
 polymorphism and unification occurs when we resolve function overloading.
@@ -3328,11 +3328,21 @@ type assignments should be forgotten by the caller.
 
 bool type::unify_specialise(const type_expr& sub_tp, type_expr& pattern)
 { auto P_kind = sub_tp.raw_kind(), Q_kind = pattern.raw_kind();
+  if (Q_kind==undetermined_type)
+    {@; pattern.set_from(sub_tp.copy()); return true; }
+  if (a.is_polymorphic(sub_tp))
+  { type plug = type::wrap(pattern,ceil());
+    a.grow(plug.degree()); // accommodate new type variables
+    bool success = pattern.specialise(plug.te)
+      // tell |pattern| about the new type variables
+    and a.set_equivalent(sub_tp.typevar_count(),
+                         std::make_unique<type_expr>(plug.bake_off()));
+    return success;
+// not entirely certain: type variable might have also been captured in |pattern|
+  }
   if (P_kind==tabled or Q_kind==tabled)
     @< Decide |unify_specialise| in the presence of tabled types,
        avoiding any recursive calls if both type are tabled and recursive @>
-  if (Q_kind==undetermined_type)
-    {@; pattern.set_from(sub_tp.copy()); return true; }
   if (P_kind!=Q_kind and P_kind!=variable_type)
     return false;
   switch(P_kind)
@@ -3341,16 +3351,9 @@ bool type::unify_specialise(const type_expr& sub_tp, type_expr& pattern)
     { auto c = sub_tp.typevar_count();
       if (c<floor()) // fixed type; |Q| must match
         return Q_kind==variable_type and pattern.typevar_count()==c;
-      auto eq=assign().equivalent(c);
-      if (eq!=nullptr)
-        return unify_specialise(*eq,pattern);
-      type plug = type::wrap(pattern,ceil());
-      assign().grow(plug.degree()); // accommodate new type variables
-      bool success = pattern.specialise(plug.te);
-        // tell |pattern| knows about the new type variables
-      assign().set_equivalent(c,std::make_unique<type_expr>(plug.bake_off()));
-   @/ assert(success);
-      return success;
+      auto eq=a.equivalent(c);
+      assert (eq!=nullptr); // since polymorphic case was already done
+      return unify_specialise(*eq,pattern);
     }
   case primitive_type: return sub_tp.prim()==pattern.prim();
   case function_type: return
