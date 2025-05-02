@@ -889,7 +889,9 @@ set bottom_factors(QK_bottom_data (Q,taus)) = QKL_bottom_data: {(KGPElt,[(KType,
 set bottom_factors([QK_bottom_data] data) = [QKL_bottom_data]: {[(KGPElt,[(KType, [KType])])]}
     for (Q,taus) in data do bottom_factors(Q,taus) od
 
-set sort([QKL_bottom_data] data, int Dlow, int Dhigh) = [QKL_bottom_data]: {(Q,[KType,[KType]])}
+{Dlow and Dhigh are K-type heights; KHash is a list of already-checked K-types}
+set sort([QKL_bottom_data] data, int Dlow, int Dhigh, KType_hash KHash) = [QKL_bottom_data]:
+    {(Q,[KType,[KType]])}
     let answer = [[QKL_bottom_data]]:
     	       	 for d:Dhigh - Dlow from Dlow {one for each d from height(p) up}
 		 do []
@@ -901,7 +903,7 @@ set sort([QKL_bottom_data] data, int Dlow, int Dhigh) = [QKL_bottom_data]: {(Q,[
     then () = for (Q,list) in data
     	      do for (tau,stuff) in list
 	      	 do let h = height(tau)
-		    in if h < Dhigh and h >= Dlow
+		    in if KHash.lookup(tau) = -1 and h < Dhigh and h >= Dlow
 		       then let M = Khashes[h-Dlow].size()
 		       	    then m = Khashes[h-Dlow].match(tau)
 	       	   	    in if M = m
