@@ -43,25 +43,24 @@ set character_formula (Param p) = ParamPol:
 set character_formula (ParamPol P) = ParamPol: map(character_formula@Param,P)
 
 {for predicting whether to_ht or is_unitary is faster}
-set low(Param p) = (rat,rat,int):
+set low(Param p) = (int,int,int):
     let ic = p.inner_class, theta = p.x.involution, gamma = p.infinitesimal_character
-    then LAM = dominant(ic,(1+theta)*gamma)*ic.two_rho_check {this is
-    twice height(p); size of lambda}
-    then NU = dominant(ic, (1-theta)*gamma) *ic.two_rho_check {size of nu}
-    then R = ic.two_rho * ic.two_rho_check {this is twice max height
-    at rho}
+    then LAM = (dominant(ic,(1+theta)*gamma)*ic.two_rho_check)\2 {this is
+    height(p); size of lambda}
+    then NU = (dominant(ic, (1-theta)*gamma) *ic.two_rho_check)\2 {size of nu}
+    then R = (ic.two_rho * ic.two_rho_check)\2 {this is max height at rho}
     then () = if R.= then R:=1 fi
     in (LAM,NU,R)
 
+{ trunc_factor is how much to DISLIKE trunctating character
+    formula; increase to truncate LESS often}
+set trunc_factor = rat: 2/1
+
 set character_formula_to_height(Param p, int N) = ParamPol:
-    let (,NU,R) = low(p), ic = p.inner_class, start = elapsed_ms()
-    {so height is LAM/2}
-    {then R = ic.two_rho *ic.two_rho_check
-    then () = if R.= then R:=1 fi}
-    {so we're going to height N}
-    {so should compare NU to 2N}
-    then answer = if NU > 4*N {4 is how much to prefer trunctating character
-    formula; increase to truncate more often}
+    let (,NU,) = low(p), ic = p.inner_class, start = elapsed_ms()
+    {we're going to height N}
+    {so should compare NU to N}
+    then answer = if NU > trunc_factor*N 
        	     	  then s_to_1(KL_sum_at_s_to_height(p,N))
        		  else let (below,) = height_split(KL_sum_at_s(p),N)
        	    	       in s_to_1(below)
@@ -71,20 +70,6 @@ set character_formula_to_height(Param p, int N) = ParamPol:
      {then () = if CF_flag then prints("CFTH((",p.x.number,",",p.lambda,",",
        p.nu,"),",N,"), CTime = ",print_time_string(CharFormTime)) fi}
      in answer
-
-{set character_formula_to_height(Param p, int N) = ParamPol:
-    let (,NU,R) = low(p), ic = p.inner_class, start = elapsed_ms()
-    {so height is LAM/2}
-    {then R = ic.two_rho *ic.two_rho_check
-    then () = if R.= then R:=1 fi}
-    {so we're going to height N}
-    {so should compare NU to 2N}
-    in if NU > 4*N {4 is how much to prefer trunctating character
-       	       	      formula; increase to truncate more often}
-       then KL_sum_at_s_to_height(p,N)
-       else let (below,) = height_split(KL_sum_at_s(p),N)
-       	    in s_to_1(below)
-       fi}
 
 set character_formula_to_height (ParamPol P, int N) = ParamPol:
     map(((Param->ParamPol): (Param p): character_formula_to_height(p, N)), P)

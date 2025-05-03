@@ -1944,8 +1944,8 @@ set local_test_GEO_hash_else_dumb(KGBElt x, ratvec lambda, {VertexData vd,} Loca
     then pol_hash0 = make_KTypePol_hash() {to hold chars to height hts[0]}
     then LFDKH = if red_count_flag and #LF[1] > 0
     	       	 then let (eq,CLBF) = localGraphRed(LF)
-		      in localFD_KHash_01_graph(x,lambda,Lvd,{hts[0],}pol_hash0, LF, eq,CLBF)
-    	       	 else localFD_KHash_01(x, lambda, Lvd, {hts[0],} pol_hash0, LF)
+		      in localFD_KHash_01_graph(x,lambda,Lvd,hts[0],pol_hash0, LF, eq,CLBF)
+    	       	 else localFD_KHash_01(x, lambda, Lvd, hts[0], pol_hash0, LF)
 		  fi {red_count_flag}
     {then () =  if test_verbose then prints("face counts to dim 1: ",
                           for list in LFDKH do #list od,"; Dirac_best eliminated ",
