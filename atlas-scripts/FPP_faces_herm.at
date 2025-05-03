@@ -3351,8 +3351,12 @@ set localFD_KHash_01 (KGBElt x, ratvec lambda, LocalVertexData Lvd, int HT, KTyp
 	 else let mus = LKTs(parameter(x,lambda,0*lambda))
 	      then QG = {Dirac_easy_hash.invt_form(x.real_form)} invariant_form(x.real_form)
 	      then best_bounds = for mu in mus do best_Dirac_bound(mu) od
-	      then bestbd = min(for (,,bs) in best_bounds
-	      	   	    	do bs~[0]
+	      then bestbd = min(for (,hs,bs) in best_bounds
+	      	   	    	do if hs~[0]>HT
+				   then let j = first(for h in hs do h > HT od)
+				   	in bs[j-1]
+				   else bs~[0]
+				   fi
 				od)
 	     then index = first(for v in Lvd.list
 	     	  	  	do @bool: QG(v,v) > bestbd
@@ -3488,8 +3492,12 @@ set localFD_KHash_01_graph (KGBElt x, ratvec lambda, LocalVertexData Lvd, int HT
 	 else let mus = LKTs(parameter(x,lambda,0*lambda))
 	      then QG = {Dirac_easy_hash.invt_form(x.real_form)} invariant_form(x.real_form)
 	      then best_bounds = for mu in mus do best_Dirac_bound(mu) od
-	      then bestbd = min(for (,,bs) in best_bounds
-	      	   	    	do bs~[0]
+	      then bestbd = min(for (,hs,bs) in best_bounds
+	      	   	    	do if hs~[0] > HT
+				   then let j = first(for h in hs do h > HT od)
+				   	in bs[j-1]
+				   else bs~[0]
+				   fi
 				od)
 	     then index = first(for v in Lvd.list
 	     	  	  	do @bool: QG(v,v) > bestbd

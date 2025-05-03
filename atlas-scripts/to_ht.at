@@ -308,13 +308,14 @@ set hermitian_form_irreducible_to_ht (Param p,int N) = KTypePol:
   in answer
 
 {for predicting whether to_ht or is_unitary is faster}
-set low(Param p) = (int,int,int):
+{definition moved to kl.at}
+{set low(Param p) = (int,int,int):
     let ic = p.inner_class, theta = p.x.involution, gamma = p.infinitesimal_character
     then LAM = (dominant(ic,(1+theta)*gamma)*ic.two_rho_check)\2
     then NU = (dominant(ic, (1-theta)*gamma) *ic.two_rho_check)\2
     then R = (ic.two_rho * ic.two_rho_check)\2
     then () = if R.= then R:=1 fi
-    in (LAM,NU,R)
+    in (LAM,NU,R)}
 
 { compute Hermitian form to ht on p, and report if it is unitary }
 set is_unitary_to_ht_base (Param p,int N) = bool:
