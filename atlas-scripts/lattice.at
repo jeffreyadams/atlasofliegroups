@@ -114,13 +114,13 @@ set quotient_matrix (mat A,mat M) = mat:
   let (c,R)=adapted_direct_sum(M) in (R.inverse[c: , : ]*A*R[ : ,c: ])
 
 set solve_ratvec (mat A, vec v) = ratvec:
-  (A,ratvec:v).solve.(rat_requisition("not in span"))
+  (A,ratvec:v).solve.(requisition("not in span"))
 
 { integer vector (lattice) solutions to linear system }
 
 
 set in_lattice (mat A, ratvec u) = bool: { whether v in image lattice of A }
-  let (b,n)=%u in n=1 and solve(A,b).any
+  let (b,n)=%u in n=1 and whether(solve(A,b))
 
 set vec_solve (mat A, ratvec u) = Maybe<vec>: { integer solution to A*x=b }
   let (b,n)=%u in if n>1 then none() else solve(A,b) fi
