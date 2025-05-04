@@ -264,4 +264,4 @@ set leading_terms (KTypePol P) = KTypePol:
 set all_K_norms = K_norms@KTypePol { no need to sort; already sorted }
 
 { sort [KType] by K_norm }
-set sort_by_K_norm = ([KType] -> [KType]): sort_by(K_norm@KType)
+set sort_by_K_norm = ([KType] -> [KType]): sort_by(K_norm@KType, <=@(int,int))

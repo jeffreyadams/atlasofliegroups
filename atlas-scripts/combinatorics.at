@@ -537,7 +537,8 @@ set hyperoctahedral_character (
   vertical adjacencies in the hook), and in case the hook was removed from |mu|
   by |sign| as well; the character value is the sum all the values so obtained.
 }
-   let alpha = signed_cycle_type.(sort_by((int l,bool.)int: l)) { do long first }
+   let alpha = signed_cycle_type
+               .(sort_by((int l,bool.)int: l, <=@(int,int))) { do long first }
    then (c,d) = (int,int): { numbers of 1-cycles with - resp. + in |alpha| }
      for (l,sign) in alpha do if l>1 then break else s^#sign{use |Split|} fi
      od.sum.% { sum powers of |s|, then extract its two components }

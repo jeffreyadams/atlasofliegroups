@@ -24,9 +24,6 @@ set sort ((T,T->bool)leq) = ([T]->[T]):
     fi
   in { sort = } ([T] v) [T]: ms(v,#v)
 
-set reverse_sort ((T,T->bool)leq) = ([T]->[T]): sort((T x,T y)bool:leq(y,x))
-
-
 { merge unique weakly increasing lists }
 set merge_u ((T,T->bool)leq) = ([T] a, [T] b) [T]:
   let na=#a in
@@ -55,103 +52,35 @@ set sort_u ((T,T->bool)leq) = ([T]->[T]):
 end
 
 set sort = sort(<=@(int,int))
+set sort = sort(<=@(rat,rat))
+set sort = sort(<=@(string,string))
 set merge = merge(<=@(int,int)) { used separately in combinatorics.at }
 set reverse_sort = sort(>=@(int,int))
+set reverse_sort = sort(>=@(rat,rat))
+set reverse_sort = sort(>=@(string,string))
 set sort_u = sort_u(<=@(int,int))
-
-{ auxiliary for sorting of general types, using provided comparison }
-set merge_indices ((int,int->bool) leq) = ([int] a,[int] b) [int]:
-   let na=#a, nb=#b, i=0, j=0 in
-   for :na + nb
-   do if i<na and (j=nb or leq(a[i],b[j]))
-      then a[i] next i+:=1
-      else b[j] next j+:=1
-      fi
-   od
-
-{ sort for a general type: in order to remain type agnostic here, we have the
-  caller pass just the array size and comparison function. For |a| of type
-  [string] (so <=@(string,string) is lexicographic comparison), sort it using:
-  |a:=for i in sort(#a,(int i,int j)bool: a[i]<=a[j]) do a[i] od|
-}
-set sort_indices((int,int->bool)leq) = (int->[int]):
-   let combine = merge_indices(leq)
-in (int n) [int]:
-   (0,n). { describes range of consecutive numbers to sort via |leq| }
-   (rec_fun ms(int b,int size) [int]:
-      case size-1
-      then [] { ensure termination for empty list }
-      in [b], let e=b+1 in if leq(b,e) then [b,e] else [e,b] fi
-      else let half=size\2 then chalf=size-half in
-         combine( ms(b,half), ms(b+half,chalf) )
-      esac
-   )
-
-{ uncurried version for everyday use }
-set sort_indices(int n,(int,int->bool)leq) = [int]: sort_indices(leq)(n)
-
-{ auxiliary for sort-unique of general types, using provided comparison }
-set merge_u_indices ((int,int->bool) leq) = ([int] a,[int] b) [int]:
-   let na=#a, nb=#b, i=0, j=0 in
-   if =na then b elif=nb then a
-   else
-      while { run until i=na and j=nb }
-      if i=na then j<nb do b[j] next j+:=1
-      else { loop certainly not terminated }
-      do if j=nb or not leq(b[j],a[i]) then a[i] next i+:=1
-	 elif leq(a[i],b[j])
-	 then a[i] next i+:=1; j+:=1 { take one, skip both }
-	 else b[j] next j+:=1
-	 fi
-      fi
-      od
-    fi
-
-{ sort-unique for a general type: as for cooresponding |sort|, we have the
-  caller pass just the array size and comparison function. For |a| of type
-  [(string,T)], select elements sorted by |string| component, keeping only the
-  first pair with a given string as
-  |a:=for i in sort_u(#a,(int i,int j)bool: let(x,)=a[i],(y,)=a[j]) in x<=y)
-      do a[i] od|
-}
-set sort_u_indices ((int,int->bool)leq) = (int->[int]):
-   let merge = merge_u_indices(leq)
-in (int n) [int]:
-   (0,n). { describes range of consecutive numbers to sort via |leq| }
-   (rec_fun ms(int b,int size) [int]: { range from |b| with |size| elements }
-      case size-1
-      in [b]
-      , let e=b+1 in
-        if not leq(b,e) then [e,b] elif leq(e,b) then [e] else [b,e] fi
-      else let half=size\2 then chalf=size-half in
-         merge( ms(b,half), ms(b+half,chalf) )
-      esac
-   )
-
-{ uncurried version for everyday use }
-set sort_u_indices (int n, (int,int->bool)leq) = [int]: leq.sort_u_indices(n)
-
+set sort_u = sort_u(<=@(rat,rat))
+set sort_u = sort_u(<=@(string,string))
 
 { the following helps stable-sorting of anything according to a statistic }
 
-any_type T begin
+any_type S,T begin
 
-{ Inverse (since used for permuting) of the permutation that stable-sorts a list
-  $a$ of values into increasing order: at $i$, it has the index of the
-  value ranked $i$ in $v$, where equal values are ranked from left to right.
-  That permutation itself is just the standardisation (stable ranking) of $v$.
+{ Compute list |R| such that |R[i]| is index of element ranked |i| for |leq|.
+  For $i<j$ one will have |leq(a[R[i]],a[R[j]])|, and in case of equality
+  (the comparison also holds in the opposite order) one also has |R[i]<R[j]|.
+  This is the inverse of the permutation that stable-sorts the list |a| into
+  into order for |leq|, the latter being called the standardisation of |a|.
+  Therfore this function used to be called |inv_standardisation|.
 }
-set inv_standardisation ((T,T->bool)leq) = ([T] a) [int]:
-{ since |sort@(int,(int,int->bool)| is a stable sort, we can just use it: }
-  sort_indices(#a,(int i,int j)bool: leq(a[i],a[j]))
+set ranking ((T,T->bool)leq) = ([T] a) [int]:
+  sort((int i,int j)bool:leq(a[i],a[j]))(# #a)
 
-set inv_standardisation = inv_standardisation(<=@(int,int))
-set inv_standardisation = inv_standardisation(<=@(rat,rat))
+set ranking = ranking(<=@(int,int))
+set ranking = ranking(<=@(rat,rat))
 
-set sort_by ((T->int)f) = ([T] v) [T]:
-  for index in inv_standardisation(for x in v do f(x) od) do v[index] od
-set sort_by ((T->rat)f) = ([T] v) [T]:
-  for index in inv_standardisation(for x in v do f(x) od) do v[index] od
+set sort_by ((T->S)f,(S,S->bool)leq) = ([T]->[T]):
+   sort((T x,T y)bool:leq(f(x),f(y)))
 
 set lexicographic  ((T,T->bool)leq) = ([T] a,[T] b) bool:
   for i:min(#a,#b)
@@ -163,9 +92,6 @@ set lexicographic  ((T,T->bool)leq) = ([T] a,[T] b) bool:
 
 end
 
-
-{ also need sorting by rationals; take easily written but roundabout approach }
-set sort ([rat] v) = [rat]: for index in inv_standardisation(v) do v[index] od
 
 { Here are example calls of the model functions above. They can be defined here
   because reducibility_points and height are built-in functions (those defined
@@ -180,18 +106,18 @@ set sort ([rat] v) = [rat]: for index in inv_standardisation(v) do v[index] od
 
 { sort list of pairs [(Param,bool)] by #reducibility_points of Param }
 set sort_by_reducibility_points = ([(Param,bool)]->[(Param,bool)]):
-  sort_by((Param p,bool x) int: #reducibility_points(p) )
+  sort_by((Param p,bool .) int: #reducibility_points(p), <=@(int,int) )
 
 { sort list [Param] by #reducibility_points of Param }
 set sort_by_reducibility = ([Param]->[Param]):
-  sort_by((Param p) int: #reducibility_points(p) )
+  sort_by((Param p) int: #reducibility_points(p), <=@(int,int) )
 
 { Sort list of parameters by height }
-set sort_by_height = ([Param] -> [Param]): sort_by( height@Param )
+set sort_by_height = ([Param] -> [Param]): sort_by( height@Param, <=@(int,int) )
 
 { Same for a list of parameters with a Split attached (ignored for sorting) }
 set sort_by_height = ([(Split,Param)] -> [(Split,Param)]):
- sort_by( (Split s,Param p) int: height(p) )
+ sort_by( (Split s,Param p) int: height(p), <=@(int,int) )
 
 { sorting fixed size vectors lexicographically }
 set lex_leq (vec v,vec w) = bool: { assert(#v=#w); }

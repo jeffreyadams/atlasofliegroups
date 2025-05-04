@@ -44,7 +44,6 @@ More topics addressed in this file:
 !}
 
 <misc.at { for is_simple_root }
-<sort.at { for inv_standardisation }
 <Weylgroup.at { for |cross@(WeylElt,KGBElt)| }
 <group_operations { for is_relatively_split }
 
