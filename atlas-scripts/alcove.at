@@ -39,12 +39,12 @@ set wall_set(RootDatum rd, ratvec gamma) = [int]:
                else root_datum(rd.simple_roots,rd.simple_coroots,true)
 	       fi
    then coroot_list = coroots(rd_pc)
-   then levels = for alpha_v in coroot_list do frac(alpha_v*gamma) od
+   then levels = [rat]: for alpha_v in coroot_list do frac(alpha_v*gamma) od
    , rk = rd.semisimple_rank, npr = rd.nr_of_posroots
    , gens=[int]: []
-   then ranking = inv_standardisation(levels)
+   then ranking = ranking(levels)
    then start = { skip over level 0 negative coroots in |ranking| }
-       #for ind in ranking do if >levels[ind] or ind>=npr then break fi od
+       #for ind in ranking do if levels[ind]>0 or ind>=npr then break fi od
 in for place in ranking[start:] ## ranking[:start]
       { treat coroots in |ranking| order but treat negative integral ones last }
    do let index = coroot_index(rd,coroot_list[place]) { translate to |rd| index }

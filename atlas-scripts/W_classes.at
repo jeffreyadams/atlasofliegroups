@@ -691,15 +691,17 @@ set print_conjugacy_classes (RootDatum rd) = void:
   rd.conjugacy_class_reps.print_conjugacy_classes
 
 set print_conjugacy_classes_long (RootDatum rd) = void:
-  rd.conjugacy_class_reps.(sort_by(order@WeylElt)).print_conjugacy_classes_long
+  rd.conjugacy_class_reps.
+  (sort_by(order@WeylElt, <=@(int,int))).
+  print_conjugacy_classes_long
 
 {. print elliptic classes only .}
 set print_elliptic_conjugacy_classes (RootDatum rd) = void:
   elliptic_conjugacy_class_reps(rd).
-  (sort_by(order@WeylElt)).
+  (sort_by(order@WeylElt, <=@(int,int))).
   print_conjugacy_classes
 
 set print_elliptic_conjugacy_classes_long (RootDatum rd) = void:
   rd.elliptic_conjugacy_class_reps.
-  (sort_by(order@WeylElt)).
+  (sort_by(order@WeylElt, <=@(int,int))).
   print_conjugacy_classes_long
