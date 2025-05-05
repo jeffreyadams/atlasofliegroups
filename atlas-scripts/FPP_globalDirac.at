@@ -92,9 +92,7 @@ set test_bl(KGBElt x, ratvec lambda, LocalVertexData Lvd) = bool:
     then gamma = pmax.infinitesimal_character
     then () = more_flag :=false
     then () = more_shift_level:=0
-    then GAM = height(rd, gamma)
-    then LAM = height(rd, (1+theta)*lambda/2), R = (rd.rho)*(rd.two_rho_check)
-    then NU = height(rd, (1-theta)*gamma/2)
+    then (LAM,NU,GAM) = low(pmax), R = (rd.rho)*(rd.two_rho_check)
     then ans = GAM*GAM + R*LAM > R*GAM*GARLAGmin and LAM < GAM*LAGAmax
     then () = if GAM > R*GARmin
     	      then more_shift(floor((GAM - LAM)*shift_frac))
@@ -103,39 +101,6 @@ set test_bl(KGBElt x, ratvec lambda, LocalVertexData Lvd) = bool:
     in ans
 
 {LAM > LARmin*R and LAM < LARmax*R  and GAM > GARmin*R and GAM < GARmax*R}
-
-{
-{hash*frac parameters not used 4/16/25}
-{if this is 1, hash2 is always substituted for bottom_layer. If it's 0, then
-hash2 is never substituted for bottom_layer.} {NOW NOT USED}
-set hash2_frac = 1/2 {1/2} {1/3} {2/5 might be close to optimal for E7_s??}
-
-{This is to insist that lambda is moderately big compared to rho}
-{DECREASING this means more bottom layer (with smaller lambda}
-set hashlam_frac = 4/5{3/4}
-
-{This is to insist that lambda is moderately small compared to nu}
-{INCREASING this means more bottom layer (allow bigger lambda relative to nu}
-set hashnu_frac = 1/2
-
-set test_bl(KGBElt x, ratvec lambda) = bool:
-    if not test_bl_flag then return true fi;
-    let start = elapsed_ms(), pmax = pmax(x,lambda)
-    then (LAM, NU, R) = low(pmax) {LAM = height(pmax)}
-    then mu = LKTs(pmax)[0]
-    then GA = height(x.real_form,pmax.infinitesimal_character)
-    then answer = LAM > hashlam_frac*GA{R} {and
-       	 	  LAM > hashnu_frac*NU}
-    {then () = if answer and (minBottomData.G_min_height(mu)) > (GA + 3*LAM)\2
-    	      then more_shift((GA-LAM)\2)
-	      else more_flag:=false
-	      fi}
-    then () = test_bl_time +:= elapsed_ms() - start
-    in answer
-    {LAM + NU > hash2_frac*R and
-       LAM > hashlam_frac*R and
-       NU > hashnu_frac*R}
-}
 
 set test_no_unitary(KGBElt x, ratvec lambda, LocalVertexData Lvd) = bool:
     if twist(x) != x then return false fi;

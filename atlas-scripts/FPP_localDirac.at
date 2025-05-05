@@ -2094,14 +2094,11 @@ set local_test_GEO_hash_def_dumb(KGBElt x, ratvec lambda, LocalVertexData Lvd, [
 		   fi
 	      fi
     then pmax = pmax(x,lambda, Lvd)
-    {then maxDiffLoc = max_loc(for v in Lvd.list
-    	 	             do G.two_rho_check*(dominant(G,thetaMinus*v))
-		             od)
-    then pmax = parameter(x, lambda, Lvd.list[maxDiffLoc])}
-    then (LAMmax,NUmax,) = low(pmax)
-    then () = if NUmax < LAMmax*low_frac {is_unitary_to_ht is never a good idea}
-    	      then to_ht_flag:=false
-	      fi
+    then (LAMmax,NUmax,GAMmax) = low(pmax)
+    then () = to_ht_flag := if prefer_gamma_flag
+    	 	       	    then LAMmax > GAMmax*gamma_frac
+		       	    else LAMmax*low_frac > NUmax
+		       	    fi {false means is_unitary_to_ht is never a good idea}
     then def_steps_temp = if def_steps = -1
     	 		  then ((r+G.rank)*stretcher)\5
 			  else def_steps
@@ -2602,15 +2599,15 @@ set local_test_GEO_hash2(KGBElt x, ratvec lambda, {VertexData vd,} LocalVertexDa
 	      	   	  	   LF, pol_hash, Uhash, fancy_tester) {use def_dumb if def_flag}
 	      fi
     then depth= max(((r+1)*edge_skip*stretcher)\1 + edge_offset_temp + 3, edge_skip + edge_offset_temp + 3)
-    {then maxDiffLoc = max_loc(for v in Lvd.list
-    	 	             do G.two_rho_check*(dominant(G,thetaMinus*v))
-		             od)
-    then pmax = parameter(x, lambda, Lvd.list[maxDiffLoc])}
     then pmax = pmax(x, lambda, Lvd)
-    then (LAMmax,NUmax,) = low(pmax)
-    then () = if NUmax < LAMmax*low_frac {is_unitary_to_ht is never a good idea}
+    then (LAMmax,NUmax,GAMmax) = low(pmax)
+    then () = to_ht_flag := if prefer_gamma_flag
+    	 	       	    then LAMmax > GAMmax*gamma_frac
+		       	    else LAMmax*low_frac > NUmax
+		       	    fi {false means is_unitary_to_ht is never a good idea}
+    {then () = if NUmax < LAMmax*low_frac 
     	      then to_ht_flag:=false
-	      fi
+	      fi}
     then () = if revert_flag and not to_ht_flag
     	      then to_ht_flag:=true;
 	      	   return local_test_GEO_hash_dumb(x, lambda, Lvd, LF, pol_hash, Uhash, fancy_tester)
@@ -2771,21 +2768,17 @@ set local_test_GEO_hash2_end(KGBElt x, ratvec lambda, LocalVertexData Lvd, [[Fac
 	      	   	  	   LF, pol_hash, Uhash, fancy_tester) {use def_dumb if def_flag}
 	      fi}
     {then edge_offset_temp = edge_offset, step = max(G.semisimple_rank\2,1)}
-    then () = to_ht_flag:=true
+    {then () = to_ht_flag:=true}
     {then () = if edge_offset = -1
     	      then edge_offset_temp := r\3 {3 seems best for F4}
 	      fi}
     then depth= max(r+1,3)
-    {max(((r+1)*edge_skip*stretcher)\1 + edge_offset_temp + 3, edge_skip + edge_offset_temp + 3)}
-    {then maxDiffLoc = max_loc(for v in Lvd.list
-    	 	             do G.two_rho_check*(dominant(G,thetaMinus*v))
-		             od)
-    then pmax = parameter(x, lambda, Lvd.list[maxDiffLoc])}
     then pmax = pmax(x, lambda, Lvd)
-    then (LAMmax,NUmax,) = low(pmax)
-    then () = if NUmax < LAMmax*low_frac {is_unitary_to_ht is never a good idea}
-    	      then to_ht_flag:=false
-	      fi
+    then (LAMmax,NUmax,GAMmax) = low(pmax)
+    then () = to_ht_flag := if prefer_gamma_flag
+    	 	       	    then LAMmax > GAMmax*gamma_frac
+		       	    else LAMmax*low_frac > NUmax
+		       	    fi {false means is_unitary_to_ht is never a good idea}
     then gammamax = pmax.infinitesimal_character
     then mu = K_type(x,pmax.lambda_minus_rho)
     then hts =[int]: if to_ht_flag
@@ -2931,6 +2924,9 @@ from one_level+1 to last_level) to speed elimination of nonunitary. Need
 to have last_level \ge one_level}
 set last_level = int: -1
 
+{number of steps to go up from ONE to LAST}
+set last_step = int :1
+
 {set hash_one_levelCounter = make_counter()}
 
 {assume local faces to dim 1 are recorded in LF, already herm and pos on LKTs}
@@ -2959,8 +2955,8 @@ set local_test_GEO_hash_one_level(KGBElt x, ratvec lambda, {VertexData vd,}
 		   fi
 	      fi
     then pmax = pmax(x,lambda,Lvd)
-    then (LAM,NUmax,R) = low(pmax)
-    then htFrac = LAM/R {height(parameter(x,lambda,0*lambda))/(G.rho * G.two_rho_check)}
+    then (LAMmax,NUmax,GAMmax) = low(pmax)
+    {then htFrac = LAM/R} {height(parameter(x,lambda,0*lambda))/(G.rho * G.two_rho_check)}
     {then temp_K_char_flag = step_flag}
     {htFrac <= CUTOFF}  {defaults to true if ht=0, false otherwise}
     then vertexDiff = #Lvd.list/#FPP_vertices(G){vd.list}
@@ -2973,25 +2969,20 @@ set local_test_GEO_hash_one_level(KGBElt x, ratvec lambda, {VertexData vd,}
     then ONE = if one_level = -1 then (r+2)\2
     	       else one_level
 	       fi
-    then LAST = if last_level = -1 then ONE+1
+    then LAST = if last_level = -1 then ONE+last_step
     	      else last_level
 	      fi
     {if LAST = ONE, then final step should be _just_ is_unitary}
     { then () = prints("ONE = ",ONE,", LAST = ",LAST) }
     then edge_offset_temp = edge_offset, step = max(G.semisimple_rank\2,1)
-    then () = to_ht_flag:=true
+     then () = to_ht_flag:=true
     then () = if edge_offset = -1
     	      then edge_offset_temp := r\2 {3 seems best for F4}
 	      fi
-    {then depth= max(r+2, 4)}
-    {max(((r-1)*edge_skip*stretcher)\1 + edge_offset_temp + 3, edge_skip + edge_offset_temp + 3)}
-    {then maxDiffLoc = max_loc(for v in Lvd.list
-    	 	       	      do G.two_rho_check*(dominant(G,thetaMinus*v))
-		       	      od)
-    then pmax = parameter(x, lambda, Lvd.list[maxDiffLoc])}
-    then () = if NUmax < LAM*low_frac {is_unitary_to_ht is never a good idea}
-    	      then to_ht_flag:=false
-	      fi
+    then () = to_ht_flag := if prefer_gamma_flag
+    	 	       	    then LAMmax > GAMmax*gamma_frac
+		       	    else LAMmax*low_frac > NUmax
+		       	    fi {is_unitary_to_ht is never a good idea}
     then () = if revert_flag and not to_ht_flag
     	      then to_ht_flag:=true;
 	      	   return local_test_GEO_hash_dumb(x, lambda, Lvd, LF, pol_hash, Uhash, fancy_tester)
@@ -3005,8 +2996,8 @@ set local_test_GEO_hash_one_level(KGBElt x, ratvec lambda, {VertexData vd,}
     	      		       then return local_test_GEO_hash_else_dumb(x, lambda, Lvd, LF,
 			       	    Shorthts[:min(1,#Shorthts)], pol_hash, Uhash, fancy_tester)
 	      		       fi
-		      then d0 = min({max(}LAST+1{,depth+1)},#Shorthts)
-    		      in Shorthts[:d0] ## for j:LAST + 1 - d0 do -1 od
+		      then d0 = min(LAST+1,#Shorthts)
+    		      in Shorthts[:d0] ## for j:LAST + 1 - d0 do Shorthts~[0]+j+1{-1} od
     {then () = prints({"depth = ",depth,} "#Shorthts = ",#Shorthts, ", LAST = ",LAST)}
     then pol_hash0 = if step_flag{temp_K_char_flag}
     	 	     then make_KTypePol_hash() {to hold chars to height hts[0]}
@@ -3241,26 +3232,26 @@ set local_test_GEO_hash_one_level_end(KGBElt x, ratvec lambda, LocalVertexData L
     then ONE = if one_level = -1 then (r+2)\2
     	       else one_level
 	       fi
-    then LAST = if last_level = -1 then ONE+1
+    then LAST = if last_level = -1 then ONE+last_step
     	      else last_level
 	      fi
     then long_out_temp_flag = long_out_flag
     then () = long_out_flag:=false {to allow using local_test_hash without recording Params}
-    {then pmax = parameter(x, lambda, Lvd.list[maxDiffLoc]), step = max(G.semisimple_rank\2,1)}
     then pmax = pmax(x, lambda, Lvd)
     then mu = K_type(x,pmax.lambda_minus_rho)
-    then (LAMmax,NUmax,) = low(pmax)
-    then () = if NUmax < LAMmax*low_frac {is_unitary_to_ht is never a good idea}
-    	      then to_ht_flag:=false
-	      fi
+    then (LAMmax,NUmax,GAMmax) = low(pmax)
+    then () = to_ht_flag := if prefer_gamma_flag
+    	 	       	    then LAMmax > GAMmax*gamma_frac
+		       	    else LAMmax*low_frac > NUmax
+		       	    fi {is_unitary_to_ht is never a good idea}
     then hts =[int]: if to_ht_flag
     	     	     then let Shorthts = if short_hts_flag {guaranteed to be size LAST+1}
     	     	     	 	       	 then short_hts(pmax)
 		     	      	    	 else next_heights(pmax,LAST+1)
 				    	 fi
     		     	   then d0 = min(#Shorthts, LAST+1)
-		     	   in Shorthts[:d0] ## for j:LAST+ 1 - d0 do -1 od
-		     else for j:LAST+1 do height(pmax) od
+		     	   in Shorthts[:d0] ## for j:LAST+ 1 - d0 do Shorthts~[0]+j+1 od
+		     else for j:LAST+1 do height(pmax)+1 od
 		     fi
     {then () = prints("depth = ",depth, ", #Shorthts = ",#Shorthts, ", LAST = ",LAST)}
     then one_ht = hts[ONE], last_ht = hts[LAST]
@@ -3340,7 +3331,10 @@ set local_test_GEO_hash_one_level_end(KGBElt x, ratvec lambda, LocalVertexData L
        	       	   		      		      unitary_by_dim);}
 		prints("number of tests so far = ",unitary_test_counter.use_count() - start_count)
 	      fi
-    then mu_tester(Param p) = bool: is_unitary_test_big_SIMPLE_interrupt(p, hts[ONE+1:])
+    then mu_tester(Param p) = bool: if to_ht_flag
+    	 		      	    then is_unitary_test_big_SIMPLE_interrupt(p, hts[ONE+1:])
+				    else is_unitary_hash_big_SIMPLE(p)
+				    fi
     then start=elapsed_ms()
     then () = long_out_flag := long_out_temp_flag
     then UParams = [Param]:
@@ -3420,7 +3414,7 @@ set local_test_GEO_hash_bottom_layer_interrupt(KGBElt x, ratvec lambda, LocalVer
 		   fi
 	      fi
     then FPP_max_ht = (G.rho * G.two_rho_check)\1
-    then htFrac = ht/FPP_max_ht
+    {then htFrac = ht/FPP_max_ht}
     then () = more_shift_level:= bl_step_count*bl_step_size
     {then temp_K_char_flag= htFrac <= CUTOFF {CUTOFF defaults to 0}}
     then r = rank(thetaMinus)
@@ -3600,7 +3594,7 @@ set local_test_GEO_hash_bottom_layer_step(KGBElt x, ratvec lambda, {VertexData v
     then () = if 1*parameter(x,lambda,0*lambda) = zero_pol then return [] fi
     then ht = height(parameter(x,lambda,0*lambda))
     then FPP_max_ht = (G.rho * G.two_rho_check)\1
-    then htFrac = ht/FPP_max_ht
+    {then htFrac = ht/FPP_max_ht}
      then r = rank(thetaMinus)
     then pmin = parameter(x, lambda, Lvd.list[LFDKH[0][0][0]] )
     then (Q0, pminL0) = if small_test_flag
@@ -3745,7 +3739,7 @@ set local_test_GEO_hash_bottom_layer(KGBElt x, ratvec lambda, {VertexData vd,}
 	      fi
     then pmax = pmax(x,lambda,Lvd)
     then gamma = pmax.infinitesimal_character
-    then ht_max = ht + min([more_shift_level, floor(gamma{G.rho}* G.two_rho_check) - ht,
+    then ht_max = ht + min([more_shift_level, floor(gamma* G.two_rho_check) - ht,
     	 floor(min_ht_mult*(min_ht_max - ht))])
     {then () = prints("Got past small LFDatas")}
     then pol_hash_min = make_KTypePol_hash() {to hold K-chars for min bottom layer, to height min_ht_max}

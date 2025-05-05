@@ -452,44 +452,6 @@ set is_unitary_to_ht(Param p, int h) =  bool:
     else is_unitary_to_ht_base(p,h)
     fi
 
-{Think this is wrong, and fails in Sp(8,R): even if p is in weakly
-good range from pL, the height of failures for p and pL can be different.}
-{set is_unitary_to_ht_hashBAD(Param p, int h) = bool:
-    let (,pL) = wkgood_Q(p), G=p.real_form
-    in if pL = p then unitarity_to_hts_hash.entry(p,h)
-       else {now pL is on a proper Levi}
-       	    let derpLs = derived_factor_params2(pL)
-    	    then answer = all([(->bool)] : for derpL in derpLs do @bool:
-       			unitarity_to_hts_hash.entry(derpL,h) od)
-    	    in if answer or pL = p then answer
-       	       else {answer is false, and pL is on proper Levi}
-       	    	    let goodL = good_L(p)
-       	    	    in is_pure(to_ht(sum(G, for c@qL in
-		       			    hermitian_form_irreducible(pL)
-			     		    do K_type_pol(c*theta_induce_standard(param(qL), goodL))
-			      		    od),h))
-               fi
-	fi}
-
-
-{set is_unitary_hash(Param p) = bool:
-    if not is_hermitian(p) then return false fi;
-    let (,pL) = wkgood_Q(p), G=p.real_form
-    then derpLs = derived_factor_params2(pL)
-    then answer = all([(->bool)] : for derpL in derpLs do @bool:
-       			unitarity_hash.entry(derpL) od)
-    {then formL = hermitian_form_irreducible(pL)}
-    {then answer = is_pure(formL)}
-    in if answer or pL = p
-       then answer
-       else {answer is false, and pL is on proper Levi}
-       	    let goodL = good_L(p)
-       	    in is_pure(sum(G, for c@qL in hermitian_form_irreducible(pL)
-			      do c*theta_induce_standard(param(qL),
-			           goodL)
-			      od))
-       fi}
-
 set is_unitary_to_hts(Param p, [int] Ns) = bool:
     { is_pos_on_LKTs(p) and }
     {unitary_test_counter.use();}
