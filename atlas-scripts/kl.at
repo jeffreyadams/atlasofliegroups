@@ -48,21 +48,47 @@ set low(Param p) = (int,int,int):
     then LAM = (dominant(ic,(1+theta)*gamma)*ic.two_rho_check)\2 {this is
     height(p); size of lambda}
     then NU = (dominant(ic, (1-theta)*gamma) *ic.two_rho_check)\2 {size of nu}
-    then R = (ic.two_rho * ic.two_rho_check)\2 {this is max height at rho}
-    then () = if R.= then R:=1 fi
-    in (LAM,NU,R)
+    then GAM = (p.infinitesimal_character* ic.two_rho_check)\1 {this is max height at infl char}
+    	 {is_unitary_to_ht(p,GAM) means unitary}
+    in (LAM,NU,GAM)
+
+{If NU (nu part) > LAM (lambda part) *low_frac, then figure to_ht could work better}
+set low_frac = 1/1
+
+{if target height < GAMMA*gamma_frac, then figure to_ht could be faster. So largest
+reasonable target height is GAMMA*gamma_frac}
+{In E7_s, gamma_frac = 1/3 and test25 = params of infl char rho so low(p, ht(p)+25)
+let to character_formula MUCH faster than character_formulas_to_ht: 178 secs vs 978 secs}
+set gamma_frac = 1/4
 
 { trunc_factor is how much to DISLIKE trunctating character
     formula; increase to truncate LESS often}
 set trunc_factor = rat: 2/1
 
+{whether to use to_height in computing to height N}
+{true means large nu, so to_ht could be better}
+set low_nu(Param p, int N) = bool:
+    let (,NU,) = low(p)
+    in NU > N*low_frac
+
+set low_gamma(Param p, int N) = bool:
+    let (,,GAM) = low(p)
+    in GAM*gamma_frac > N
+
+set prefer_gamma_flag = true
+
+set low(Param p, int N) = bool:
+    if prefer_gamma_flag
+    then low_gamma(p,N)
+    else low_nu(p,N)
+    fi
+
+
 set character_formula_to_height(Param p, int N) = ParamPol:
-    let (,NU,) = low(p), ic = p.inner_class, start = elapsed_ms()
-    {we're going to height N}
-    {so should compare NU to N}
-    then answer = if NU > trunc_factor*N 
-       	     	  then s_to_1(KL_sum_at_s_to_height(p,N))
-       		  else let (below,) = height_split(KL_sum_at_s(p),N)
+    let start = elapsed_ms()
+    then answer = if low(p,N)
+    	 	  then s_to_1(KL_sum_at_s_to_height(p,N))
+		  else let (below,) = height_split(KL_sum_at_s(p),N)
        	    	       in s_to_1(below)
        		  fi
      then () = charTime+:= elapsed_ms() - start

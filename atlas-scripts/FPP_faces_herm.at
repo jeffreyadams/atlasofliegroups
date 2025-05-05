@@ -29,9 +29,6 @@ set sort(RealForm G, LocalVertexData Lvd, [[FaceVertsKHash]] LFDKH, int tail) = 
     else LFDKH
     fi
 
-{If NU (nu part) > LAM (lambda part) *low_frac, then figure to_ht could work better}
-set low_frac = 1/1
-
 {. If "true," then print number of invocations of a unitarity test .}
 set test_verbose = true
 
@@ -487,12 +484,6 @@ set FPP_lambdas([KGBElt] xs) = [[ratvec]]:
     for x in xs
     do FPP_lambdas(x)
     od
-
-{whether to use to_height in computing to height N}
-{true means large nu, so to_ht could be better}
-set low(Param p, int N) = bool:
-    let (,NU,) = low(p)
-    in NU > N*low_frac
 
 set nullint(int N) = [int]:
     for n:N do 0 od
@@ -1939,7 +1930,12 @@ set is_unitary_test_big_SIMPLE_interrupt(Param p, int step) = bool:
     	    then return is_unitary(p) {prints("FPP DANGER TO HT at ",p)}
 	    fi
   then () = p := herm_center(p)
-  then () = if (big_unitary_hash.ulookup(p)).>= then return true fi
+  then () = if (big_unitary_hash.ulookup(p)).>=
+       	    then return true
+	    elif is_finished(p.x,p.lambda)
+	    then return false
+	    fi
+  then () = if (big_unitary_hash.nulookup(p)).>= then return false fi
   then result = 0, mu = K_type(p.x, p.lambda_minus_rho) {LKTs(p)[0],}
   then tau_bd = next_taus(mu,step)~[0], top_ht = floor((p.infinitesimal_character)*G.two_rho_check)
        {unitary to top_ht implies unitary}
@@ -1999,7 +1995,14 @@ set is_unitary_test_big_SIMPLE_interrupt(Param p, [int] hts) = bool:
     	    then return is_unitary(p) {prints("FPP DANGER TO HT at ",p)}
 	    fi
   then () = p := herm_center(p)
-  then () = if (big_unitary_hash.ulookup(p)).>= then return true fi
+  then () = if (big_unitary_hash.ulookup(p)).>=
+       	    then return true
+	    elif is_finished(p.x,p.lambda)
+	    then return false
+	    fi
+  then () = if (big_unitary_hash.nulookup(p)).>=
+       	    then return false
+	    fi
   then result = 0, mu = K_type(p.x, p.lambda_minus_rho) {LKTs(p)[0]},
        top_ht = floor((p.infinitesimal_character)*G.two_rho_check)
        {unitary to top_ht implies unitary}
@@ -2066,7 +2069,9 @@ set is_unitary_to_hts_big_SIMPLE(Param p,[int] Ns) = bool:
     	    then return is_unitary_to_hts(p,Ns) {prints("FPP DANGER TO HT at ",p)}
 	    fi
   {then () = p := herm_center(p)}
-  then () = if (big_unitary_hash.ulookup(p)).>= then return true fi
+  then () = if (big_unitary_hash.ulookup(p)).>=
+       	    then return true
+	    fi
     in if interrupt_flag
      then return is_unitary_to_hts_big_SIMPLE_interrupt(p, Ns, interrupt_base_time)
      else if #Ns = 0
@@ -2099,9 +2104,15 @@ set is_unitary_test_big_SIMPLE(Param p, int N) = bool:
     	      then return is_unitary{_test}(p{,N}) {prints("FPP DANGER TO HT at ",p)}
 	      fi
     {then () = p := herm_center(p)}
-    then () = if is_finished(p.x, p.lambda) and big_unitary_hash.ulookup(p).>=
+    then () = if big_unitary_hash.ulookup(p).>=
     	      then return true
+	      elif is_finished(p.x,p.lambda)
+	      then return false
     	      fi
+    then () = if big_unitary_hash.nulookup(p).>=
+    	      then return false
+    	      fi
+
     in let P = big_unitary_hash.sig_entry(p,N)
        in if not is_pure(P)
 	  then false
