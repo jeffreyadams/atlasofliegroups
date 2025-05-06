@@ -24,21 +24,14 @@ namespace error {
   // i-o errors
   struct InputError;
 
-  // overflow errors
-  struct MemoryOverflow;
+  // internal overflow errors
   struct NumericOverflow;
 
   struct Cartan_error;
   struct Cayley_error;
 
-  typedef FatalError PrimesError;
-
 /******** type definitions **************************************************/
 
-
-struct FatalError {
-  void operator() (const char*);
-};
 
 // user abandoning input
 struct InputError {
@@ -47,14 +40,6 @@ struct InputError {
 
 // failure opening or writing output
 struct OutputError {
-  void operator() (const char*);
-};
-
-struct InnerClassError {
-  void operator() (const char*);
-};
-
-struct MemoryOverflow {
   void operator() (const char*);
 };
 
