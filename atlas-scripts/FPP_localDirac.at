@@ -2095,7 +2095,9 @@ set local_test_GEO_hash_def_dumb(KGBElt x, ratvec lambda, LocalVertexData Lvd, [
 	      fi
     then pmax = pmax(x,lambda, Lvd)
     then (LAMmax,NUmax,GAMmax) = low(pmax)
-    then () = to_ht_flag := if prefer_gamma_flag
+    then () = to_ht_flag := if prefer_diff_flag
+    	      		    then LAMmax > (GAMmax - LAMmax)*diff_frac
+    			    elif prefer_gamma_flag
     	 	       	    then LAMmax > GAMmax*gamma_frac
 		       	    else LAMmax*low_frac > NUmax
 		       	    fi {false means is_unitary_to_ht is never a good idea}
@@ -2601,7 +2603,9 @@ set local_test_GEO_hash2(KGBElt x, ratvec lambda, {VertexData vd,} LocalVertexDa
     then depth= max(((r+1)*edge_skip*stretcher)\1 + edge_offset_temp + 3, edge_skip + edge_offset_temp + 3)
     then pmax = pmax(x, lambda, Lvd)
     then (LAMmax,NUmax,GAMmax) = low(pmax)
-    then () = to_ht_flag := if prefer_gamma_flag
+    then () = to_ht_flag := if prefer_diff_flag
+    	      		    then LAMmax > (GAMmax - LAMmax)*diff_frac
+    			    elif prefer_gamma_flag
     	 	       	    then LAMmax > GAMmax*gamma_frac
 		       	    else LAMmax*low_frac > NUmax
 		       	    fi {false means is_unitary_to_ht is never a good idea}
@@ -2775,7 +2779,9 @@ set local_test_GEO_hash2_end(KGBElt x, ratvec lambda, LocalVertexData Lvd, [[Fac
     then depth= max(r+1,3)
     then pmax = pmax(x, lambda, Lvd)
     then (LAMmax,NUmax,GAMmax) = low(pmax)
-    then () = to_ht_flag := if prefer_gamma_flag
+    then () = to_ht_flag := if prefer_diff_flag
+    	      		    then LAMmax > (GAMmax - LAMmax)*diff_frac
+    			    elif prefer_gamma_flag
     	 	       	    then LAMmax > GAMmax*gamma_frac
 		       	    else LAMmax*low_frac > NUmax
 		       	    fi {false means is_unitary_to_ht is never a good idea}
@@ -2979,7 +2985,9 @@ set local_test_GEO_hash_one_level(KGBElt x, ratvec lambda, {VertexData vd,}
     then () = if edge_offset = -1
     	      then edge_offset_temp := r\2 {3 seems best for F4}
 	      fi
-    then () = to_ht_flag := if prefer_gamma_flag
+    then () = to_ht_flag := if prefer_diff_flag
+    	      		    then LAMmax > (GAMmax - LAMmax)*diff_frac
+    			    elif prefer_gamma_flag
     	 	       	    then LAMmax > GAMmax*gamma_frac
 		       	    else LAMmax*low_frac > NUmax
 		       	    fi {is_unitary_to_ht is never a good idea}
@@ -3240,7 +3248,9 @@ set local_test_GEO_hash_one_level_end(KGBElt x, ratvec lambda, LocalVertexData L
     then pmax = pmax(x, lambda, Lvd)
     then mu = K_type(x,pmax.lambda_minus_rho)
     then (LAMmax,NUmax,GAMmax) = low(pmax)
-    then () = to_ht_flag := if prefer_gamma_flag
+    then () = to_ht_flag := if prefer_diff_flag
+    	      		    then LAMmax > (GAMmax - LAMmax)*diff_frac
+    			    elif prefer_gamma_flag
     	 	       	    then LAMmax > GAMmax*gamma_frac
 		       	    else LAMmax*low_frac > NUmax
 		       	    fi {is_unitary_to_ht is never a good idea}
