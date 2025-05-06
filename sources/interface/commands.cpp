@@ -397,7 +397,7 @@ void CommandTree::run() const
     catch (EntryError&) {} // resume loop after user abort in |activate|
     catch (error::InputError& e) // user abort in actual command execution
     { std::cerr << "input for command '" << name; e("' aborted");  }
-    catch (error::MemoryOverflow& e) { e("error: memory overflow"); }
+    catch (std::bad_alloc& e) { std::cerr<< "error: memory overflow\n"; }
     catch (std::exception& e)
     {
       std::cerr << "error occurred in command '" << name << "': "
