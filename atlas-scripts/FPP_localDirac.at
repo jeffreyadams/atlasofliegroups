@@ -2096,10 +2096,10 @@ set local_test_GEO_hash_def_dumb(KGBElt x, ratvec lambda, LocalVertexData Lvd, [
     then pmax = pmax(x,lambda, Lvd)
     then (LAMmax,NUmax,GAMmax) = low(pmax)
     then () = to_ht_flag := if prefer_diff_flag
-    	      		    then LAMmax > (GAMmax - LAMmax)*diff_frac
+    	      		    then LAMmax < (GAMmax - LAMmax)*diff_frac
     			    elif prefer_gamma_flag
-    	 	       	    then LAMmax > GAMmax*gamma_frac
-		       	    else LAMmax*low_frac > NUmax
+    	 	       	    then LAMmax < GAMmax*gamma_frac
+		       	    else LAMmax*low_frac < NUmax
 		       	    fi {false means is_unitary_to_ht is never a good idea}
     then def_steps_temp = if def_steps = -1
     	 		  then ((r+G.rank)*stretcher)\5
@@ -2604,20 +2604,17 @@ set local_test_GEO_hash2(KGBElt x, ratvec lambda, {VertexData vd,} LocalVertexDa
     then pmax = pmax(x, lambda, Lvd)
     then (LAMmax,NUmax,GAMmax) = low(pmax)
     then () = to_ht_flag := if prefer_diff_flag
-    	      		    then LAMmax > (GAMmax - LAMmax)*diff_frac
+    	      		    then LAMmax < (GAMmax - LAMmax)*diff_frac
     			    elif prefer_gamma_flag
-    	 	       	    then LAMmax > GAMmax*gamma_frac
-		       	    else LAMmax*low_frac > NUmax
+    	 	       	    then LAMmax < GAMmax*gamma_frac
+		       	    else LAMmax*low_frac < NUmax
 		       	    fi {false means is_unitary_to_ht is never a good idea}
-    {then () = if NUmax < LAMmax*low_frac 
-    	      then to_ht_flag:=false
-	      fi}
     then () = if revert_flag and not to_ht_flag
     	      then to_ht_flag:=true;
 	      	   return local_test_GEO_hash_dumb(x, lambda, Lvd, LF, pol_hash, Uhash, fancy_tester)
 	      {use def_dumb if def_flag}
 	      fi
-    then gammamax = pmax.infinitesimal_character
+    {then gammamax = pmax.infinitesimal_character}
     {then far_sph_flag = bool: dominant(G,thetaMinus*gammamax)*G.two_rho_check/2 < to_ht_frac*(gammamax*G.two_rho_check)}
     	      { left guaranteed <= right term on right. If close, then
 	       params are close to spherical princ series, and to_ht is fast}
@@ -2780,10 +2777,10 @@ set local_test_GEO_hash2_end(KGBElt x, ratvec lambda, LocalVertexData Lvd, [[Fac
     then pmax = pmax(x, lambda, Lvd)
     then (LAMmax,NUmax,GAMmax) = low(pmax)
     then () = to_ht_flag := if prefer_diff_flag
-    	      		    then LAMmax > (GAMmax - LAMmax)*diff_frac
+    	      		    then LAMmax < (GAMmax - LAMmax)*diff_frac
     			    elif prefer_gamma_flag
-    	 	       	    then LAMmax > GAMmax*gamma_frac
-		       	    else LAMmax*low_frac > NUmax
+    	 	       	    then LAMmax < GAMmax*gamma_frac
+		       	    else LAMmax*low_frac < NUmax
 		       	    fi {false means is_unitary_to_ht is never a good idea}
     then gammamax = pmax.infinitesimal_character
     then mu = K_type(x,pmax.lambda_minus_rho)
@@ -2986,10 +2983,10 @@ set local_test_GEO_hash_one_level(KGBElt x, ratvec lambda, {VertexData vd,}
     	      then edge_offset_temp := r\2 {3 seems best for F4}
 	      fi
     then () = to_ht_flag := if prefer_diff_flag
-    	      		    then LAMmax > (GAMmax - LAMmax)*diff_frac
+    	      		    then LAMmax < (GAMmax - LAMmax)*diff_frac
     			    elif prefer_gamma_flag
-    	 	       	    then LAMmax > GAMmax*gamma_frac
-		       	    else LAMmax*low_frac > NUmax
+    	 	       	    then LAMmax < GAMmax*gamma_frac
+		       	    else LAMmax*low_frac < NUmax
 		       	    fi {is_unitary_to_ht is never a good idea}
     then () = if revert_flag and not to_ht_flag
     	      then to_ht_flag:=true;
@@ -3249,10 +3246,10 @@ set local_test_GEO_hash_one_level_end(KGBElt x, ratvec lambda, LocalVertexData L
     then mu = K_type(x,pmax.lambda_minus_rho)
     then (LAMmax,NUmax,GAMmax) = low(pmax)
     then () = to_ht_flag := if prefer_diff_flag
-    	      		    then LAMmax > (GAMmax - LAMmax)*diff_frac
+    	      		    then LAMmax < (GAMmax - LAMmax)*diff_frac
     			    elif prefer_gamma_flag
-    	 	       	    then LAMmax > GAMmax*gamma_frac
-		       	    else LAMmax*low_frac > NUmax
+    	 	       	    then LAMmax < GAMmax*gamma_frac
+		       	    else LAMmax*low_frac < NUmax
 		       	    fi {is_unitary_to_ht is never a good idea}
     then hts =[int]: if to_ht_flag
     	     	     then let Shorthts = if short_hts_flag {guaranteed to be size LAST+1}
