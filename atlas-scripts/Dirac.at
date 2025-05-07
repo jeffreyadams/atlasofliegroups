@@ -17,7 +17,10 @@ set Dirac_best_steps = int: 3 {new short_shifts is much faster, so more steps is
 {If true, seeks big steps in Dirac_best search, giving fewer opportunities for test; but
  getting to strong test sooner}
  {false is better in time/ #elims for E6_s}
-set Dirac_max_flag = false
+set Dirac_max_flag = true{false}
+
+{whether to use next_mus instead of short_shifts}
+{set next_mu_flag = true}
 
 {whether to use short_shifts instead of shifters}
 set short_mu_flag = true
@@ -42,6 +45,48 @@ set best_late(int steps) = void:
     Dirac_best_steps:= steps
 
 set include_imag_flag = true
+
+{these functions were in unity.at; give useful heights to which to try unitarity}
+{. gives (one of) the K-types of lowest height above mu in the
+standard of LKT mu .} {NEED USEFUL BOUND in K_type_formula.}
+set next_to_lowest(KType mu, int step) = KType:
+    let form = null_K_module(mu.real_form)
+    then m = height(mu)
+    then () = for j:60 from 1
+    	      do let () = form := branch(mu,m+j*step) - mu
+		     {if my_branch_flag
+    	       	     then big_unitary_hash.branch(mu, m+j*step)-mu
+		     else branch(mu,m+j*step) - mu
+		     fi}
+		 in if form.!= then break fi
+	      od
+    in last_K_type(form)
+
+set next_to_lowest(KType mu) = KType:
+    next_to_lowest(mu,1)
+
+{. height of a smallest non-lowest K_type of standard with LKT mu .}
+set next_height(KType mu)  = int:
+    height(next_to_lowest(mu))
+
+{set next_height(KType mu) = int:
+    let m = height(mu)
+    in m+first( for j in #60 do @:!=
+     if my_branch_flag
+     then big_unitary_hash.K_type_formula_to_ht(mu, m+2*j+2) - mu
+     else K_type_formula(mu,m+2*j+2) - mu
+     fi od)}
+
+{. height of a smallest non-lowest K_type of p .}
+set next_height(Param p) = int:
+    min(for mu in LKTs(p) do height(next_to_lowest(mu)) od)
+
+set next_taus(KType mu, int D) = [KType]:
+    let taus = [mu]
+    then () = while #taus < D+1
+    	      do taus #:= next_to_lowest(taus~[0])
+	      od
+    in taus[1:]
 
 {These are candidates to shift mu to one with a larger height}
 set shifters(KType tau) = ([vec],KGBElt):
@@ -229,7 +274,9 @@ set make_Dirac_easy_hash() = Dirac_easy_hash_table:
 				       then taulast = muhashes[rfnum].index(lastmunum)
 				       then htlast = height(taulast)
 				       then uptaus =
-				       	    if short_mu_flag
+				       	    {if next_mu_flag
+					    then next_taus(taulast,3{Dirac_best_steps})
+					    el}if short_mu_flag
 					    then short_shifts(taulast)
 					    else let (shifters,newx) = shifters(taulast)
 					     	 then () = x0G:=newx
