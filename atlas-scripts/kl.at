@@ -91,7 +91,9 @@ set prefer_gamma_flag = true
 set prefer_diff_flag = true
 
 set low(Param p, int N) = bool:
-    if prefer_gamma_flag
+    if prefer_diff_flag
+    then low_diff(p,N)
+    elif prefer_gamma_flag
     then low_gamma(p,N)
     else low_nu(p,N)
     fi
