@@ -1963,7 +1963,7 @@ set local_test_GEO_hash_else_dumb(KGBElt x, ratvec lambda, {VertexData vd,} Loca
 		      	   in  extend_K_characters_graph(x, lambda, Lvd, LFDKH, pol_hash, eq_red,
 			   CLBF_red)
 		      else extend_K_characters(x, lambda, Lvd, LFDKH, pol_hash)
-		      fi
+		      fi {now LFDKH has complete K-chars for verts and edges}
     {then () = prints("set LFDKH01 = ",LFDKH)}
     then () = if quick_flag
     	      then let () = LFDKH := localFD_KHashbt_lookDownGEO(x,lambda, Lvd, LFDKH, 2,
@@ -1975,14 +1975,18 @@ set local_test_GEO_hash_else_dumb(KGBElt x, ratvec lambda, {VertexData vd,} Loca
 		      then prints("unitary face counts to dim ", #LFDKH - 1,
 				": ", for list in LFDKH do #list od)
 		      fi
-	      else let D = int:1
-    then () = while (D <= rank(x.involution-1) - 1  ) and
-    	      	    (#LFDKH = D + 1) and
-		    (#(LFDKH~[0]) > D+1)
+	      else let ((eq,gr),IUCL,CLBF) = localGraphK(LFDKH)
+		   then () = LFDKH := local_testK_hash(x,lambda,Lvd,
+                      LFDKH, eq, gr, CLBF, pol_hash, tester, Uhash) 
+	      	   then D = int:1 {now all verts and edges are unitary}
+    		   then () = while (D <= rank(x.involution-1) - 1  ) and
+    	   	   	     	   (#LFDKH = D + 1) and {found D-faces}
+		    		   (#(LFDKH~[0]) > D+1) {possibility of D+1 faces}
     {can't omit middle because LFDKH is truncated!}
     {step D in while loop adds faces of dim D+1; then does is_unitary on
     faces of dim D+1; then adds faces of dim D+2, etc. If there are less than
     D+2 possibly unitary faces of dim D, then none of dim D+1.}
+    {Algorithm assumes ALL lower diml faces are unitary}
     	      do let () = LFDKH := localFD_KHashbt_lookDownGEO(x,lambda, Lvd,
                        	  	LFDKH, D+1,D+2,pol_hash)
 		 then ((eq,gr),IUCL,CLBF) = localGraphK(LFDKH)
@@ -2665,7 +2669,7 @@ set local_test_GEO_hash2(KGBElt x, ratvec lambda, {VertexData vd,} LocalVertexDa
 		      	   in  extend_K_characters_graph(x, lambda, Lvd, LFDKH, hts[Dlast],
 			       pol_hash0, eq_red, CLBF_red)
  		      else extend_K_characters(x, lambda, Lvd, LFDKH, hts[Dlast], pol_hash0)
-		      fi
+		      fi {now pol_hash0 has K-chars to hts[Dlast]}
     {then () = prints("LFDKH after extend = ",LFDKH)}
     then () = if quick_flag
     	      then let () = LFDKH := localFD_KHashbt_lookDownGEO(x,lambda, Lvd, LFDKH, 2, r+1,
@@ -3024,7 +3028,7 @@ set local_test_GEO_hash_one_level(KGBElt x, ratvec lambda, {VertexData vd,}
     then two_temp_flag = step_flag and ONE > 0
     then () = if two_temp_flag
     	      then pol_hash0.clear()
-	      fi
+	      fi  {not needed?}
     then tester1 = (Param->bool): (Param p) bool:
      	     	   if prefer_to_hts then is_unitary_to_hts_big_SIMPLE(p, hts[1:ONE+1])
 	 	   else is_unitary_to_ht_big_SIMPLE(p,one_ht)
@@ -3074,7 +3078,7 @@ set local_test_GEO_hash_one_level(KGBElt x, ratvec lambda, {VertexData vd,}
 					  in if all(for p in ps
 					     	    do Uhash.lookup(p).>= or
 						       tester1(p) {is_unitary_to_ht_big_SIMPLE(p,one_ht)}
-	{better to use to_ht because usually p _already_ unitary to one_ht}
+	{better to use to_ht because usually p _already_ unitary below one_ht}
 						    od)
 					     then [LFDKH[D+1][m]]
 					     else []
