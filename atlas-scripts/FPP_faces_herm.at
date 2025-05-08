@@ -2353,7 +2353,7 @@ set KUKU_flag = true
 {need this here for recursive application of smaller FPP's in fancy_tester}
 set FPP_report_flag = true
 
-{For each list of faces in FVKH, indices of faces for which the corresponding parament is known
+{For each list of faces in FVKH, indices of faces for which the corresponding parameter is known
 (by Uhash) to be unitary}
 set KU(KGBElt x, ratvec lambda, LocalVertexData Lvd, [[FaceVertsKHash]] FVKH, Param_hash Uhash,
  (Param->bool) fancy_tester) = [vec]:
