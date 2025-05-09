@@ -154,6 +154,7 @@ set theta_stable_data_small_long(Param p, KType mu) = (Param, KGPElt, Param):
     then i0 = first(for q in qs do q.!= and LKT(first_param(q)) = mu od)
     in (first_param(qs[i0]),Q,qLs[i0])
 
+set NH_factor = rat: 1/3
 {meant to be applied to quasisplit simple L}
 set next_heights = (RealForm -> int):
     let ichash = make_InnerClass_hash()
@@ -167,7 +168,8 @@ set next_heights = (RealForm -> int):
        	    then i = ichash.match(L)
 	    then ()= if i = I {haven't yet seen L}
 		     then nhs#:=max(for p in all_parameters_gamma(L, null(L.rank))
-    	     	      	       	    do next_heights(p, max(1, (semisimple_rank(L) + 1)\3))~[0]  {(semisimple_rank(L) + 1)\2)}
+    	     	      	       	    do next_heights(p, max(1, floor((semisimple_rank(L) + 1)*NH_factor)))~[0]
+				    {(semisimple_rank(L) + 1)\2)}
 	     	     	       	    od)
     	    	     fi
 	    in nhs[i]

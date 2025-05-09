@@ -90,8 +90,17 @@ set prefer_gamma_flag = true
 
 set prefer_diff_flag = true
 
+{set low_test_flag = false
+
+set low_test(Param p, int N) = bool:
+    let q = all_parameters_gamma(p.real_form, p.infinitesimal_character)~[0]
+    in height(q) - height(p) > N
+}
+
 set low(Param p, int N) = bool:
-    if prefer_diff_flag
+    {if low_test_flag
+    then low_test
+    el}if prefer_diff_flag
     then low_diff(p,N)
     elif prefer_gamma_flag
     then low_gamma(p,N)
