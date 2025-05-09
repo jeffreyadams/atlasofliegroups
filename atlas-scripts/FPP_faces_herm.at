@@ -1444,8 +1444,9 @@ set next_heights(KType mu, int D, int step) = [int]:
 
 {this version is heights of SOME higher KTypes}
 set next_heights(KType mu, int D) = [int]:
-    let step = max((mu_rank_mult*semisimple_rank(mu.real_form))\1,1)
-    in next_heights(mu, D, step)
+    next_heights(mu, D, 1)
+    {let step = 1 max((mu_rank_mult*semisimple_rank(mu.real_form))\1,1)
+    in next_heights(mu, D, step)}
 
 {entries are the m heights of K-types of standard of mu after mu.}
 {
@@ -1471,8 +1472,9 @@ set next_heights(Param p, int D, int step) = [int]:
     for tau in LKTs(p) do next_heights(tau, D, step) od.##.sort_u[:D]
 
 set next_heights(Param p, int D) = [int]:
-    let step = max((mu_rank_mult*semisimple_rank(p.real_form))\1,1)
-    in next_heights(p, D, step)
+    next_heights(p, D, 1)
+    {let step = max((mu_rank_mult*semisimple_rank(p.real_form))\1,1)
+    in next_heights(p, D, step)}
 
 {if this produces -1, then the (hermitian) p is automatically unitary}
 set next_heightB(Param p) = int:
@@ -1487,9 +1489,6 @@ set next_heightB(Param p) = int:
     else
     let (,tau) = first_term(M) in height(tau)
     fi
-
-
-
 
 set UHBS_time = int: 0
 
@@ -1916,15 +1915,16 @@ set is_unitary_to_ht_big(Param p,int N) = bool:
 {if true, use next_tau to keep picking heights for unitary_test_big_simple_interrupt}
 set next_taus_flag = true
 
-{N is how many steps up in to_ht list to start}
+{"step" is how many steps up in to_ht list to start}
 set is_unitary_test_big_SIMPLE_interrupt(Param p, int step) = bool:
   if (not is_hermitian(p)) or (not is_pos_on_LKTs(p)) then return false fi;
-  let G = p.real_form, (,NU,) = low(p)
-  then shift = if easy_up_shift = -1
+  let G = p.real_form, (LAM,NU,GAM) = low(p)
+  then shift = 1 {if easy_up_shift = -1
        	       then max(1,(G.rank*mu_rank_mult)\1)
 	       else easy_up_shift
-	       fi
-  then ht_bound = NU/low_frac {this estimates the biggest ht where to_ht could be faster than is_unitary}
+	       fi}
+  then ht_bound = (GAM - LAM) * diff_frac {NU/low_frac}
+  {this estimates the biggest ht where to_ht could be faster than is_unitary}
   then FPP_flag = is_FPP(G,p.infinitesimal_character)
   then () = if not FPP_flag
     	    then return is_unitary(p) {prints("FPP DANGER TO HT at ",p)}
@@ -1937,7 +1937,7 @@ set is_unitary_test_big_SIMPLE_interrupt(Param p, int step) = bool:
 	    fi
   then () = if (big_unitary_hash.nulookup(p)).>= then return false fi
   then result = 0, mu = K_type(p.x, p.lambda_minus_rho) {LKTs(p)[0],}
-  then tau_bd = next_taus(mu,step)~[0], top_ht = floor((p.infinitesimal_character)*G.two_rho_check)
+  then tau_bd = next_taus(mu,step)~[0], top_ht = GAM {floor((p.infinitesimal_character)*G.two_rho_check)}
        {unitary to top_ht implies unitary}
   then times_to_ht = [int]: [], time_to_ht = int:0
   then ht = if next_taus_flag
@@ -1978,7 +1978,7 @@ set is_unitary_test_big_SIMPLE_interrupt(Param p, int step) = bool:
       else is_unitary_hash_big_SIMPLE(p)
       fi
 
-set default_interrupt_start = int: 2
+set default_interrupt_start = int: 1 {2}
 
 set is_unitary_test_big_SIMPLE_interrupt(Param p) = bool:
     is_unitary_test_big_SIMPLE_interrupt(p, default_interrupt_start)

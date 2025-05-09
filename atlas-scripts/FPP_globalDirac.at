@@ -6,7 +6,7 @@
 <TWOHEIGHTS {for HTA and HT}
 <FPP_localDirac
 <cohIndUnip {for weakly fair cohom ind}
-<derived_cover {for simply connected cover of derived group}
+<derived_cover {for simply connected acover of derived group}
 <R_packets.at {for trying to combine x's with same LKT}
 
 {functions for computing the entire FPP_unitary dual}
