@@ -62,27 +62,6 @@ set levels([[FaceStatusVertsIndex]] FD) = [int]:
 set levels([[vec]] T) = [int]:
     0 # for L in T do #L od.cumulate_forward
 
-{set levels([[LocalFaceVertsHash]] FD) = [int]:
-    0 # for L in FD do #L od.cumulate_forward}
-
-{set levels(FaceDataKchar FDK) = [int]:
-    levels(FDK.face_status_inds)}
-
-{set levels(FaceDataKNum FDK) = [int]:
-    levels(FDK.face_status_inds)}
-
-{set levels(FaceDataKHash FDK) = [int]:
-    levels(FDK.face_status_inds)}
-
-{set size(FaceDataKchar FDK) = int:
-    for x in FDK.face_status_inds do #x od.sum}
-
-{set size(FaceDataKNum FDK) = int:
-    for x in FDK.face_status_inds do #x od.sum}
-
-{set size(FaceDataKHash FDK) = int:
-    for x in FDK.face_status_inds do #x od.sum}
-
 set size([[FaceVertsKHash]] FDKH) = int:
     for x in FDKH do #x od.sum
 
@@ -93,27 +72,8 @@ set index_f ([[FaceStatusVertsIndex]] FD) = (int,int->int):
 set index_f ([[LocalFaceVertsHash]] FD) = (int,int->int):
     let lvls = levels(FD) in (int d,int j) int: lvls[d]+j
 
-{set index_f (FaceDataKchar FDK) = (int,int->int):
-    index_f(FDK.face_status_inds)}
-
-{set index_f (FaceDataKNum FDK) = (int,int->int):
-    index_f(FDK.face_status_inds)}
-
-{set index_f (FaceDataKHash FDK) = (int,int->int):
-    index_f(FDK.face_status_inds)}
-
 set index([[FaceStatusVertsIndex]] FD, int d, int j) = int:
     levels(FD)[d] + j
-
-{makes single list of faces}
-{set index(FaceDataKchar FDK, int d, int j) = int:
-    levels(FDK)[d] + j}
-
-{set index(FaceDataKNum FDK, int d, int j) = int:
-    levels(FDK)[d] + j}
-
-{set index(FaceDataKHash FDK, int d, int j) = int:
-    levels(FDK)[d] + j}
 
 {inverse of index}
 set coords_f ([[FaceStatusVertsIndex]] FD) = (int->int,int):
@@ -128,91 +88,24 @@ set coords_f ([[vec]] T) = (int->int,int):
     let d = binary_search_first((int i)bool:lvls[i]>n,0,#lvls)-1
     in (d,n-lvls[d])
 
-{set coords_f (FaceDataKchar FDK) = (int->int,int):
-    coords_f(FDK.face_status_inds)}
-
-{set coords_f (FaceDataKNum FDK) = (int->int,int):
-    coords_f(FDK.face_status_inds)}
-
-{set coords_f (FaceDataKHash FDK) = (int->int,int):
-    coords_f(FDK.face_status_inds)}
-
 set coords([[FaceStatusVertsIndex]] FD, int n) = (int,int):
     let d = last(for ell in levels(FD) do ell<=n od)
     then j = n- levels(FD)[d]
     in (d,j)
 
 {inverse of index}
-{set coords(FaceDataKchar FDK, int n) = (int,int):
-    let d = last(for ell in levels(FDK) do ell<=n od)
-    then j = n- levels(FDK)[d]
-    in (d,j)}
-
-{set coords(FaceDataKNum FDK, int n) = (int,int):
-    let d = last(for ell in levels(FDK) do ell<=n od)
-    then j = n- levels(FDK)[d]
-    in (d,j)}
-
-{set coords(FaceDataKHash FDK, int n) = (int,int):
-    let d = last(for ell in levels(FDK) do ell<=n od)
-    then j = n- levels(FDK)[d]
-    in (d,j)}
-
 set coords([[vec]] T, int n) = (int,int):
     let d = last(for ell in levels(T) do ell<=n od)
     then j = n- levels(T)[d]
     in (d,j)
 
 {functions for looking up faces of given dimension as vertex index lists}
-{
-set lookups ([[FaceStatusVertsIndex]] FDinds) = [(vec->int)]:
-    for L in FDinds do index_in_face_list(L) od
 
-set lookups ([[LocalFaceVertsHash]] FDinds) = [(vec->int)]:
-    for L in FDinds do index_in_face_list(L) od
-}
 set lookups ([[vec]] inds) = [(vec->int)]:
     for L@d in inds do index_in(for v in L do v[:d+1] od) od
 
 set lookups ([[FaceStatusVertsIndex]] FDinds) = [(vec->int)]:
     for L@d in FDinds do index_in(for (,v) in L do v[:d+1] od) od
-{
-set lookups (FaceDataKchar FDK) = [(vec->int)]:
-    lookups(FDK.face_status_inds)
-}
-
-{set lookups (FaceDataKNum FDK) = [(vec->int)]:
-    lookups(FDK.face_status_inds)}
-
-{set lookups (FaceDataKHash FDK) = [(vec->int)]:
-    lookups(FDK.face_status_inds)}
-
-{generating relations for up graph: an arrow j0 --> j1 means
-nonunitarity at j0 implies nonunitarity at j1}
-{
-set up_graph_gens(FaceDataKchar FDK) = [[int]]:
-    let (,FDinds,Pols) = FDK
-    then index   = (int,int->int): index_f(FDinds)
-    , edge_gens = [[int]]: for :size(FDK) do [] od
-    , lookups = [(vec->int)]:   lookups(FDK)
- in
-    for d:#FDinds-1 from 1 { traverse faces having a vertex to spare }
-    do let lookup = lookups[d-1] { looking up will be at previous level }
-    in for Find@j1 in FDinds[d]
-       do for e:d+1
-	  do let j0 = lookup(delete(Find.verts,e)[:d])
-	  in if j0.>=
-	     then edge_gens[index(d-1,j0)] #:= index(d,j1)
-	     { ; prints(index(d-1,j0),"  ",d," ",j1," ",j0, " "
-		,edge_gens[index(d-1,j0)])}
-	     ; if Pols[d][j1] = Pols[d-1][j0]
-	       then edge_gens[index(d,j1)] #:= index(d-1,j0)
-	       fi
-	     fi
-	   od
-	od
-     od;  edge_gens
-}
 
 {assume last coord of each entry is red_count; so equality
 means K-chars coincide. Only use when red_count_flag = true}
@@ -252,39 +145,13 @@ set up_graph_gens([[FaceVertsKHash]] FDKHash) = [[int]]:
 	  do let j0 = lookup(delete(Find,e)[:d])
 	  in if j0.>=
 	     then edge_gens[index(d-1,j0)] #:= index(d,j1)
-	     ; if Find[d+1+red_shift:d+3+red_shift] = FDKHash[d-1][j0][d+red_shift:d+2+red_shift]
+	     ; if Find[d+red_shift+1:] = FDKHash[d-1][j0][d+red_shift:]
 	       then edge_gens[index(d,j1)] #:= index(d-1,j0)
 	       fi
 	     fi
 	   od
 	od
      od;  edge_gens
-
-{generating relations for up graph: an arrow j0 --> j1 means
-nonunitarity at j0 implies nonunitarity at j1}
-{NEED TO ENSURE #LKTs matches. Ask for coord}
-{
-set up_graph_gens(FaceDataKNum FDK) = [[int]]:
-    let (,FDinds,Pols) = FDK
-    then index   = (int,int->int): index_f(FDinds)
-    , edge_gens = [[int]]: for :size(FDK) do [] od
-    , lookups = [(vec->int)]:   lookups(FDK)
- in
-    for d:#FDinds-1 from 1 { traverse faces having a vertex to spare }
-    do let lookup = lookups[d-1] { looking up will be at previous level }
-    in for Find@j1 in FDinds[d]
-       do for e:d+1
-	  do let j0 = lookup(delete(Find.verts,e)[:d])
-	  in if j0.>=
-	     then edge_gens[index(d-1,j0)] #:= index(d,j1)
-	     ; if Pols[d][j1] = Pols[d-1][j0]
-	       then edge_gens[index(d,j1)] #:= index(d-1,j0)
-	       fi
-	     fi
-	   od
-	od
-     od;  edge_gens
-}
 
 {this function seems to take 98% of time in localGraph. Using
 Kpol_hash slows it by factor of two, but even without hash it's the
@@ -303,15 +170,16 @@ else let indexFD   = (int,int->int): index_f(FDK)
     for d:#FDK-1 from 1 { traverse faces having a vertex to spare }
     do let lookup = lookups[d-1] { looking up will be at previous level }
     in for Find@j1 in FDK[d]
-     {Find has size d+red_shift+3. First d+1 entries index verts of a d-diml
-      face.  If red_shift=1, next is #reducibility roots. Next indexes K-char, last is #Langlands quotients}
+     {Find has size d+red_shift+2. First d+1 entries 0 to d index verts of a d-diml face.
+      If red_shift=1, d+red_shift is #reducibility roots. d+red_shift+1 indexes K-char.
+      d+red_shift+2 is #Langlands quotients}
        do for e:d+1
 	  do let j0 = lookup(delete(Find,e)[:d])
 	  in if j0.>=
 	     then edge_gens[indexFD(d-1,j0)] #:= indexFD(d,j1)
 	     	 ;if to_ht(Kpol_hash.index(FDK[d][j1][d+red_shift+1]),level) =
 	       	  to_ht(Kpol_hash.index(FDK[d-1][j0][d+red_shift]),level)
-		  and FDK[d][j1][d+red_shift+2] = FDK[d-1][j0][d+red_shift+1]
+		  and FDK[d][j1][d+red_shift+2] = FDK[d-1][j0][d+red_shift+1] {same # Langlands quos}
 	       then edge_gens[indexFD(d,j1)] #:= indexFD(d-1,j0)
 	       fi
 	     fi
@@ -386,21 +254,9 @@ set find_class_fast(GraphData gr_data, int n) = int:
 
 set K_graph_data([[FaceVertsIndex]] FDK) = GraphData:
     strong_components(K_graph_gens(FDK))
-{
-set up_data(FaceDataKchar FDK) = GraphData:
-    strong_components(up_graph_gens(FDK))
-}
-{set up_data(FaceDataKNum FDK) = GraphData:
-    strong_components(up_graph_gens(FDK))}
-
-{set up_data(FaceDataKHash FDK) = GraphData:
-    strong_components(up_graph_gens(FDK))}
 
 set up_data([[FaceVertsKHash]] FDKHash) = GraphData:
     strong_components(up_graph_gens(FDKHash))
-
-{set up_data(FaceDataKHash FDK, KTypePol_hash Kpol_hash, int level) = GraphData:
-    strong_components(up_graph_gens(FDK, Kpol_hash, level))}
 
 set up_data([[FaceVertsKHash]] FDKH, KTypePol_hash Kpol_hash, int level) = GraphData:
     strong_components(up_graph_gens(FDKH, Kpol_hash, level))
@@ -521,33 +377,6 @@ set full_down(GraphData (classes, covers)) =[[int]]:
     do (##for j in downClasses do classes[j] od).no_reps
     od
 
-{entry j is class to which j belongs}
-{
-set class_list_linear(FaceDataKchar FDK, GraphData (classes,covers)) = vec:
-  let v=null(size(FDK))
-  then () = for C@m in classes
-       do for j in C
-       	  do v[j] := m od
-       od
-  in v
-}
-
-{set class_list_linear(FaceDataKNum FDK, GraphData (classes,covers)) = vec:
-  let v=null(size(FDK))
-  then () = for C@m in classes
-       do for j in C
-       	  do v[j] := m od
-       od
-  in v}
-
-{set class_list_linear(FaceDataKHash FDK, GraphData (classes,covers)) = vec:
-  let v=null(size(FDK))
-  then () = for C@m in classes
-       do for j in C
-       	  do v[j] := m od
-       od
-  in v}
-
 set class_list_linear([[FaceVertsKHash]] FDKH, GraphData (classes,covers)) = vec:
   let v=null(size(FDKH))
   then () = for C@m in classes
@@ -565,6 +394,7 @@ Then in another session you can write
 << FILENAME
 which will give you GraphData GD_saved = (eq_saved, covers_saved)
 }
+
 set writeSC(GraphData (eq,cov)) = void:
     prints("set eq_saved = [[int]]:");
     prints(eq); prints("set covers_saved =[[int]]:");
