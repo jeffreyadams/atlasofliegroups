@@ -98,6 +98,9 @@ set test_bl(KGBElt x, ratvec lambda, LocalVertexData Lvd) = bool:
     	      then more_shift(floor((GAM - LAM)*shift_frac))
 	      fi
     then () = test_bl_time +:= elapsed_ms() - start
+    then () = if not ans and test_verbose
+    	      then prints("reverting from bottom_layer because of test_bl")
+	      fi
     in ans
 
 {LAM > LARmin*R and LAM < LARmax*R  and GAM > GARmin*R and GAM < GARmax*R}
