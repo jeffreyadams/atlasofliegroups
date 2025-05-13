@@ -181,10 +181,10 @@ else let indexFD   = (int,int->int): index_f(FDK)
 	       	  to_ht(Kpol_hash.index(FDK[d-1][j0][d+red_shift]),level)
 		  and FDK[d][j1][d+red_shift+2] = FDK[d-1][j0][d+red_shift+1] {same # Langlands quos}
 	       then edge_gens[indexFD(d,j1)] #:= indexFD(d-1,j0)
-	       fi
-	     fi
-	   od
-	od
+	       fi {to_ht(Kpol}
+	     fi {j0.>=}
+	   od {for e:d+1}
+	od {for Find@j1}
      od;  edge_gens
 fi
 
