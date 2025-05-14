@@ -1897,7 +1897,7 @@ set avtime_frac = rat: 16/1
 
 set is_unitary_to_ht_big_SIMPLE(Param p, int H) = bool:
     if old_to_ht_flag then return is_unitary_to_ht_big_SIMPLE_old(p, H) fi;
-    let N_hts = min(#tested_pos_to_ht_times, height(p) - H)
+    let N_hts = min(#tested_pos_to_ht_times, H - height(p))
     then prevtimes = for j:N_hts do tested_pos_to_ht_times[j] od.##
     then () = if #prevtimes = 0
     	      then return is_unitary_to_ht_big_SIMPLE(p,H,floor(avtime_frac*100))
