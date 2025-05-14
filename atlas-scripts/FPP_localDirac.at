@@ -527,11 +527,10 @@ set local_testK_hash(KGBElt x, ratvec lambda, LocalVertexData Lvd,
        then pC = parameter(x, lambda, gamma)
        then ps = monomials(finalize(pC))
        then KCF = pol_hash.index(FVKH[d][j][d+red_shift+1])
-       then test_DB = (not temp_Dirac_best_local_flag) or (QG(gamma,gamma) <= DiracBestBD)
-		     	   	   or DiracBestTest(pC,HT,KCF)
+       then test_DB = (not temp_Dirac_best_local_flag) or (QG(gamma,gamma) <= DiracBestBD) or
+       	    DiracBestTest(pC,HT,KCF)
        then () = if not test_DB
-		 then newStatuses:= {updateNUclassesB(newStatuses, gr, k,"F");}
-		      		    updateNUclassesC(newStatuses, FullUp, k,"F");
+		 then newStatuses:= updateNUclassesC(newStatuses, FullUp, k,"F");
 			    	    newStatuses[k] := "F"
 		 fi {not test_DB}
        then () = if newStatuses[k] = "?" and ICPNU_flag {test for non-unitary}
@@ -591,6 +590,7 @@ set local_testK_hash(KGBElt x, ratvec lambda, LocalVertexData Lvd,
 	    then prints("Class ",k," was ",newStatuses[k], "; remain ",#qnums," undecided equiv classes")
 	    fi
     od {while #qnums > 0}
+
      {then () = prints("after first loop, newStatuses = ",newStatuses)}
      then () = if fund_face_verbose
     	       then prints("     Total of ", count(for ans in newStatuses do ans[0] = "T" od),
@@ -878,7 +878,6 @@ set local_testK_hash_min_bottom_layer(KGBElt x, ratvec lambda, LocalVertexData L
      	       	  	       " for local_testK_hash_min_bottom_layer; number of tests = ",
 			       unitary_test_counter.use_count() - start_count) fi
      in  FVKHnew
-
 
 set local_testK_hash_min_bottom_layer(KGBElt x, ratvec lambda, LocalVertexData Lvd,
     [[FaceVertsKHash]] FVKH, [[int]] eq, [[int]] gr, [vec] classListByFace,
