@@ -1599,6 +1599,17 @@ string tail) = [string]:
     in statuses
 
 { m is a class known to be nonunitary; update classes above using
+graph; label as "Ffrom"##tail}
+{overs lists all the classes above m (computed elsewhere}
+set updateNUclassesC([string] statuses, [[int]] overs, int m, string tail) = [string]:
+    for k in overs[m]
+    do if statuses[k] = "?"
+       then statuses[k]:= "Ffrom"##tail
+       fi
+    od;
+    statuses
+
+{ m is a class known to be nonunitary; update classes above using
 graph; label as "Ffrom"m}
 set updateNUclassesB([string] statuses, [[int]] covers, int m) = [string]:
     updateNUclassesB(statuses, covers, m, to_string(m))
@@ -1633,11 +1644,21 @@ string tail) = [string]:
                            od)
               in for k in list
                  do  if statuses[k] = "?"
-                     then statuses[k] := "Ffrom"##tail{to_string(m)}
+                     then statuses[k] := "Tfrom"##tail{to_string(m)}
                      fi
                  od
               od
     in statuses
+
+set downdateUclassesC([string] statuses, [[int]] unders, int m,
+string tail) = [string]:
+        for k in unders[m]
+    do if statuses[k] = "?"
+       then statuses[k]:= "Tfrom"##tail
+       fi
+    od;
+    statuses
+
 
 set downdateUclassesB([string] statuses, [[int]] covers, int m) = [string]:
     downdateUclassesB(statuses, covers, m, to_string(m))
