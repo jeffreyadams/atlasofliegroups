@@ -533,6 +533,91 @@ set local_testK_hash(KGBElt x, ratvec lambda, LocalVertexData Lvd,
 	 fi
     {then () = if test_verbose then prints("eq = ",eq); prints("gr = ",gr) fi}
     {then () = if test_verbose then prints("ICPU_flag = ",ICPU_flag,", ICPNU_flag = ",ICPNU_flag) fi}
+
+    then () = if fund_face_verbose
+    	      then prints("     Examining ",NumClasses," classes in local_testK_hash; ",
+	      count(for ans in newStatuses do ans[0] = "T" od)," are known unitary.")
+	      fi
+    then () = if fund_face_verbose and NumClasses > 100
+    then prints(); prints("start local_testK_hash, ", NumClasses,
+		   " equiv classes of faces to dim ",#FVKH-1)
+	      ; prints()
+	      fi
+	      ; for k:NumClasses
+    	        ~do if fund_face_verbose and NumClasses > 100 and {removing ~ costs 5% in Spin(4,4)}
+	      	   ((NumClasses-k-1)%printInterval = 0)
+	      	   then prints("examining undet equiv class #"
+	      	   ,NumClasses-k -1, "; so far ",unitary_test_counter.use_count()
+	      	   ," 'is_unitary' tests.")
+	      	   ; printInterval := 2*printInterval
+	      	   fi
+	      ; if newStatuses[k] = "?"
+	      	then let C=eq[k]
+		     then (d,j) = coords(FVKH,C[0])
+	      	     then verts = vec: FVKH[d][j][:d+1]
+		     then gamma = face_bary(Lvd,verts)
+		     then pC = parameter(x, lambda, gamma)
+	      	     then ps = monomials(finalize(pC))
+		     then KCF = pol_hash.index(FVKH[d][j][d+red_shift+1])
+		     then test_DB = (not temp_Dirac_best_local_flag) or (QG(gamma,gamma) <= DiracBestBD)
+		     	  or DiracBestTest(pC,HT,KCF)
+		     then () = if not test_DB
+		       	       then newStatuses:= updateNUclassesB(newStatuses, gr, k,"F");
+			       	    newStatuses[k] := "F"
+			    {elif not is_final(pC)
+		      	    then if all(for q in ps do @bool: is_finished(q.x, q.lambda) and
+			       	       	       	    	     (Uhash.lookup(q) >= 0) od)
+			   	 then newStatuses[k] := "T"
+			   	 elif any(for q in ps do @bool: is_finished(q.x,q.lambda) and
+				    	 (Uhash.lookup(q) = -1) od)
+			         then {prints("nonfinal, k = ",k, ", gr = ",gr);}
+			   	      newStatuses:= updateNUclassesB(newStatuses, gr, k,"F"); "F"
+			   	 fi}
+			      fi {not test_DB}
+		     {then () = prints(new_line,"k = ",k,", ICPNU_flag = ",ICPNU_flag,", ICPU_flag = ",ICPU_flag)
+		     then () = prints("before ICPNU, newStatuses = ",newStatuses)}
+		     then () = if newStatuses[k] = "?" and ICPNU_flag {test for non-unitary}
+		       	       then if any(for p in ps
+		       	       	    	   do any(for pi in ind_cand_params(p)
+				      	       	  do not is_unitary_hash_big_SIMPLE(pi)
+					       	  od)
+				   	   od)
+		       	     	     then newStatuses:= updateNUclassesB(newStatuses, gr, k, "F");
+				     	  NU_ind_counter+:=1;
+				  {this appears to mark as nonunitary-under-tester anything equivalent to
+				   a non-unitary-under-tester face}
+			     	  {prints("Khash ICP F: ",parameter(x,lambda,face_bary(Lvd,verts)));}
+			     	  	  newStatuses[k] := "F"
+			     	    fi
+		       		fi
+		     {then () = prints("before ICPU, newStatuses = ",newStatuses)}
+		     then () = if newStatuses[k] = "?" and ICPU_flag {test for unitary}
+		       	       then if all(for p in ps
+		       	       	    	   do #ind_cand_params(p) > 0
+					      and all(for pi in ind_cand_params(p)
+				      	       	       do is_unitary_hash_big_SIMPLE(pi)
+					       	       od)
+				   	   od)
+		       	     	     then newStatuses[k] := "T";
+				     	  U_ind_counter+:=1{;
+			     	  prints("Khash ICP T: ",parameter(x,lambda,face_bary(Lvd,verts)))}
+			     	    fi
+		       		fi
+		     {then () = prints("before NEWU, newStatuses = ",newStatuses)}
+	             in if{NEWU} newStatuses[k] = "?"
+		     	then if ps[0].nu.= or all(for p in ps do Uhash.lookup(p).>= or
+			     		    tester(p) od)
+		     	     then newStatuses[k]:= "T"
+		     	     else newStatuses:= updateNUclassesB(newStatuses, gr, k, "F")
+			     	{; prints("tested F at class ",k)}
+		     	     	{; prints("number false = ",count(for S in newStatuses do S[0] = "F" od))}
+				; newStatuses[k] := "F"
+			     fi
+		     	fi{NEWU}
+		 fi {newStatuses[k] = "?"}
+	      od
+
+{{version that follows is slower by factor of two in spherical E7}
     then FullDown = full_down_classes(eq,gr)
     then downsizes = for v in FullDown do #v od
     then FullUp = full_up_classes(eq,gr)
@@ -570,7 +655,7 @@ set local_testK_hash(KGBElt x, ratvec lambda, LocalVertexData Lvd,
 		       	    		  updateNUclassesC(newStatuses, FullUp, k, "F");
 				     	  NU_ind_counter+:=1;
 			    newStatuses[k] := "F"
-		       fi {any(for p in ps}
+		       fi {any(for p in ps)}
 		    fi {ICPNU_flag}
 		     {then () = prints("before ICPU, newStatuses = ",newStatuses)}
 	then () = if newStatuses[k] = "?" and ICPU_flag {test for unitary}
@@ -590,7 +675,7 @@ set local_testK_hash(KGBElt x, ratvec lambda, LocalVertexData Lvd,
 			      		     downdateUclassesC(newStatuses, FullDown, k, "T");
 		       	      newStatuses[k] := "T";
 			      U_ind_counter+:=1
-		         fi {all(for p in ps}
+		         fi {all(for p in ps)}
 		    fi {ICPU_flag}
         {then () = prints("before NEWU, newStatuses = ",newStatuses)}
 	 then () = if{NEWU} newStatuses[k] = "?"
@@ -611,7 +696,7 @@ set local_testK_hash(KGBElt x, ratvec lambda, LocalVertexData Lvd,
 	    then prints("Class ",k," was ",newStatuses[k], "; remain ",#qnums," undecided equiv classes")
 	    fi
     od {while #qnums > 0}
-
+}
      {then () = prints("after first loop, newStatuses = ",newStatuses)}
      then () = if fund_face_verbose
     	       then prints("     Total of ", count(for ans in newStatuses do ans[0] = "T" od),
@@ -678,6 +763,23 @@ set local_testK_hash_know_lower(KGBElt x, ratvec lambda, LocalVertexData Lvd,
      Use function known_unitaries from FPP_faces
      Look up class in classListByFace, and mark "T"}
     then QG = (ratvec,ratvec->rat): (ratvec v, ratvec w) rat: 0/1
+    then DiracBestBD = 0/1
+    then temp_Dirac_best_local_flag = bool: {whether Dirac_best could help here}
+    	 if not Dirac_best_local_flag then false
+	 else let mus = LKTs(parameter(x,lambda,0*lambda))
+	      then Q = invariant_form(x.real_form)
+	      then best_bounds = for mu in mus do best_Dirac_bound_cap(mu,Dirac_best_steps) od
+	      then bestbd = min(for (,,bs) in best_bounds
+	      	   	    	do bs~[0]
+				od)
+	     then index = first(for v in Lvd.list
+	     	  	  	do @bool: Q(v,v) > bestbd
+				od)
+	     in if index.>=
+	     	then DiracBestBD:= bestbd; QG:=Q; true
+		else false
+		fi
+	 fi
     then start = elapsed_ms(), start_count = unitary_test_counter.use_count()
     then () = if KU_flag {and #FVKH = 2}
     	      then let knownUnitaries = known_unitaries(Uhash, x, lambda, Lvd, FVKH, fancy_tester)
@@ -693,6 +795,90 @@ set local_testK_hash_know_lower(KGBElt x, ratvec lambda, LocalVertexData Lvd,
 		   " equiv classes of faces to dim ",#FVKH-1)
 	      	   ; prints()
 	      fi
+    then () = if fund_face_verbose and NumClasses > 100
+    then prints(); prints("start local_testK_hash_know_lower, ", NumClasses,
+		   " equiv classes of faces to dim ",#FVKH-1)
+	      ; prints()
+	      fi
+	      ; for k:NumClasses
+    	        ~do if fund_face_verbose and NumClasses > 100 and {removing ~ costs 5% in Spin(4,4)}
+	      	   ((NumClasses-k-1)%printInterval = 0)
+	      	   then prints("examining undet equiv class #"
+	      	   ,NumClasses-k -1, "; so far ",unitary_test_counter.use_count()
+	      	   ," 'is_unitary' tests.")
+	      	   ; printInterval := 2*printInterval
+	      	   fi
+	      ; if newStatuses[k] = "?"
+	      	then let C=eq[k]
+		  then (d,j) = coords(FVKH,C[0])
+	      	  then verts = vec: FVKH[d][j][:d+1]
+		  then gamma = face_bary(Lvd,verts)
+		  then pC = parameter(x, lambda, gamma)
+		  {then () = prints("d = ",d,", pC = ",pC)}
+	      	  then ps = monomials(finalize(pC))
+		  then KCF = pol_hash.index(FVKH[d][j][d+red_shift+1])
+		  then test_DB = (not temp_Dirac_best_local_flag) or (QG(gamma,gamma) <= DiracBestBD)
+		       	       	 or DiracBestTest(pC,KCF)
+		  then () = if not test_DB
+		       	    then newStatuses:= updateNUclassesB(newStatuses, gr, k,"F"); newStatuses[k] := "F"
+			    elif not is_final(pC)
+		      	    then if all(for q in ps do @bool: is_finished(q.x, q.lambda) and
+			       	       	       	    	     (Uhash.lookup(q) >= 0) od)
+			   	 then newStatuses[k] := "T"
+			   	 elif any(for q in ps do @bool: is_finished(q.x,q.lambda) and
+				    	 (Uhash.lookup(q) = -1) od)
+			         then {prints("nonfinal, k = ",k, ", gr = ",gr);}
+			   	      newStatuses:= updateNUclassesB(newStatuses, gr, k,"F"); "F"
+			   	 fi
+			     fi {not test_DB}
+		   then () = if  newStatuses[k] = "?" and ICPNU_flag {test for non-unitary}
+		       	    then if any(for p in ps
+				    	do any(for pi in ind_cand_params(p)
+			    	       	       do not is_unitary_hash_big_SIMPLE(pi)
+				       	       od)
+				    	od)
+		       	          then newStatuses:= updateNUclassesB(newStatuses, gr, k, "F");
+				       NU_ind_counter+:=1;
+			          {prints("know_lower ICP F: ",pC);}
+			     	       newStatuses[k] := "F"
+			         fi {any p}
+		       	     fi {ICP_flag}
+		   then () = if  newStatuses[k] = "?" and ICPU_flag {test for unitary}
+		       	       then if all(for p in ps
+		       	       	    	   do #ind_cand_params(p) > 0
+					      and all(for pi in ind_cand_params(p)
+				      	       	       do is_unitary_hash_big_SIMPLE(pi)
+					       	       od)
+				   	   od)
+		       	     	     then U_ind_counter+:=1;
+				     	  newStatuses[k] := "T"
+			     	  {prints("know_lower ICP T: ",parameter(x,lambda,face_bary(Lvd,verts)));}
+			     	    fi
+		       		fi
+	          in if newStatuses[k] = "?"
+		     	and not is_final(pC) and all(for q in ps
+		     	    		     	 do @bool: is_finished(q.x,q.lambda)
+						    and Uhash.lookup(q).>=
+					    	 od)
+		     then newStatuses[k]:="T"
+		     elif {know_lower_flag and} any(for q in ps
+		     	    	   	    do @bool: is_finished(q.x,q.lambda)
+					    and (Uhash.lookup(q) = -1)
+					    od)
+		     then newStatuses:= updateNUclassesB(newStatuses, gr, k, "F")
+		     ; newStatuses[k] := "F"
+		     fi;
+		     if{NEWU} newStatuses[k] = "?"
+		     	then if{all} all(for p in ps do Uhash.lookup(p).>= or tester(p) od)
+			     {if p is unitary, tester(p) may record that fact in Uhash}
+		     	     then newStatuses[k]:= "T"
+		     	     else newStatuses:= updateNUclassesB(newStatuses, gr, k, "F")
+		     	     ; newStatuses[k] := "F"
+		     	     fi{all}
+		     fi{NEWU}
+	         fi
+	      od
+{{version that follows is much slower?}
     then FullDown = full_down_classes(eq,gr)
     then downsizes = for v in FullDown do #v od
     then FullUp = full_up_classes(eq,gr)
@@ -751,6 +937,8 @@ set local_testK_hash_know_lower(KGBElt x, ratvec lambda, LocalVertexData Lvd,
 	    then prints("Class ",k," was ",newStatuses[k], "; remain ",#qnums," undecided equiv classes")
 	    fi
     od {while #qnums > 0}
+
+}
      {make new local face list using only faces not already proven nonunitary}
      then FVKHnew = for @m in FVKH do [FaceVertsKHash]: [] od
           then () = for C@m in eq
@@ -795,6 +983,23 @@ set local_testK_hash_min_bottom_layer(KGBElt x, ratvec lambda, LocalVertexData L
      Use function known_unitaries from FPP_faces
      Look up class in classListByFace, and mark "T"}
     then QG = (ratvec,ratvec->rat): (ratvec v, ratvec w) rat: 0/1
+    then DiracBestBD = 0/1
+    then temp_Dirac_best_local_flag = bool: {whether Dirac_best could help here}
+    	 if not Dirac_best_local_flag then false
+	 else let mus = LKTs(parameter(x,lambda,0*lambda))
+	      then Q = invariant_form(x.real_form)
+	      then best_bounds = for mu in mus do best_Dirac_bound_cap(mu,Dirac_best_steps) od
+	      then bestbd = min(for (,,bs) in best_bounds
+	      	   	    	do bs~[0]
+				od)
+	     then index = first(for v in Lvd.list
+	     	  	  	do @bool: Q(v,v) > bestbd
+				od)
+	     in if index.>=
+	     	then DiracBestBD:= bestbd; QG:=Q; true
+		else false
+		fi
+	 fi
     then start = elapsed_ms(), start_count = unitary_test_counter.use_count()
     then () = if KU_flag {and #FVKH = 2}
     	      then let knownUnitaries = known_unitaries(Uhash, x, lambda, Lvd, FVKH, fancy_tester)
@@ -805,6 +1010,7 @@ set local_testK_hash_min_bottom_layer(KGBElt x, ratvec lambda, LocalVertexData L
 	      		     od
 		   in ()
 	       fi
+
 {next if possible label classes known to be nonunitary because they finalize or deform to nonunitary}
     then () = for k:NumClasses
     	     ~do if newStatuses[k] = "?"
@@ -812,48 +1018,140 @@ set local_testK_hash_min_bottom_layer(KGBElt x, ratvec lambda, LocalVertexData L
 		      then (d,j) = coords(FVKH,C~[0]) {d is dimension of face. Tilde picks a largest-dimensional face in C.}
 	      	      then verts = vec: FVKH[d][j][:d+1]
 		      then gamma = face_bary(Lvd,verts)
-		      then pC = parameter(x, lambda, gamma)
+		      then ratverts = [ratvec]: for m in verts do Lvd.list[m] od
+		      {then sigma = sum(#lambda, ratverts)}
+		      then pC = parameter(x, lambda, gamma) {sigma/(d+1))}
 		      then KCF = pol_hash.index(FVKH[d][j][d+red_shift+1])
 		      then pCdef = if not is_final(pC)
 		      	   	   then monomials(finalize(pC))
 		  		   elif wiggle_flag0 and d > 0
-		  		   then let CF = character_formula(finalize(pC))
+		  		   then {let () = char_counter.use()
+				   	then startCF = elapsed_ms()}
+				   	let CF = character_formula(finalize(pC))
+					{then () = charTime +:= elapsed_ms() - startCF}
 		       		   	in  monomials(composition_series((sum(x.real_form,
-		       	   		    for j:d+1
+		       	   		    for j:d+1 {v in ratverts}
 			   		    do wiggle(CF, face_bary(Lvd,verts[:j]##verts[j+1:]))
-			   		    od)))) {proper_face_deformed(pCtop)}
+					    {(sigma - v)/d)}
+			   		    od)))) {proper_facet_deformed(pCtop)}
 		  	           else []
 		  		   fi {not is_final pC}
 {this function is invoked only on the 0/1 faces in bottom_layer. That's a relatively long list,
       with few wiggles; the cost of computing proper_facet_deformed(pC) seems not justified by
       the few edges eliminated}
-		       {then test_DB = (not temp_Dirac_best_local_flag) or (QG(gamma,gamma) <= DiracBestBD)
-		       	    or DiracBestTest(pC,KCF)}
-		   in {if not test_DB
+		       then test_DB = (not temp_Dirac_best_local_flag) or (QG(gamma,gamma) <= DiracBestBD)
+		       	    or DiracBestTest(pC,KCF) 
+		   in if not test_DB
 		      then newStatuses:= updateNUclassesB(newStatuses, gr, k,"F"); newStatuses[k] := "F"
-		      el}if not is_final(pC)
-		      	    then if all(for q in pCdef do @bool: is_finished(q.x, q.lambda) and
+		      elif not is_final(pC)
+		      then if all(for q in pCdef do @bool: is_finished(q.x, q.lambda) and
 			       	       	       	    	     (Uhash.lookup(q) >= 0) od)
-			   	 then newStatuses[k] := "T"
-			   	 elif any(for q in pCdef do @bool: is_finished(q.x,q.lambda) and
+			   then newStatuses[k] := "T"
+			   elif any(for q in pCdef do @bool: is_finished(q.x,q.lambda) and
 				    	 (Uhash.lookup(q) = -1) od)
-			         then {prints("nonfinal, k = ",k, ", gr = ",gr);}
-			   	 newStatuses:= updateNUclassesB(newStatuses, gr, k,"F"); "F"
-			   	 fi
-		        else {now pC is final, and pCdef consists of wiggled Params with smaller x}
-			     if any(for q in pCdef do @bool:  is_finished(q.x,q.lambda)
+			   then {prints("nonfinal, k = ",k, ", gr = ",gr);}
+			   newStatuses:= updateNUclassesB(newStatuses, gr, k,"F"); "F"
+			   fi
+		      else {now pC is final, and pCdef consists of wiggled Params with smaller x}
+			  if any(for q in pCdef do @bool:  is_finished(q.x,q.lambda)
 				       	       and (Uhash.lookup(q) = -1) od)
-			     then {prints("final, k = ",k, ", gr = ",gr);}
-			     	  newStatuses := updateNUclassesB(newStatuses, gr, k,"F");
-			       	  newStatuses[k] := "F"
-		             fi {any}
-		      fi {not is_final}
+			  then {prints("final, k = ",k, ", gr = ",gr);}
+			  newStatuses := updateNUclassesB(newStatuses, gr, k,"F");
+			       newStatuses[k] := "F"
+		           fi {any}
+		      fi {not test_DB}
 		fi {newStatuses[k]}
 	      od {k:NumClasses}
+    {then () = prints("no test newStatuses = ",newStatuses)}
+    then () = if fund_face_verbose {and NumClasses > 100}
+    then prints(); prints("start local_testK_hash_min_bottom_layer ", NumClasses,
+		   " equiv classes of faces to dim ",#FVKH-1)
+	      ; prints()
+	      fi
+	      ; for k:NumClasses
+    	        ~do if fund_face_verbose and NumClasses > 100 and
+	      	   ((NumClasses-k-1)%printInterval = 0)
+	      	   then prints("examining undet equiv class #"
+	      	   ,NumClasses-k -1, "; so far ",unitary_test_counter.use_count()
+	      	   ," 'is_unitary' tests.")
+	      	   ; printInterval := 2*printInterval
+	      	   fi
+	      ; if newStatuses[k] = "?"
+	      	then let C=eq[k]
+		  then (d,j) = coords(FVKH,C[0]) {a lowest-diml face in C; least likely to be final}
+	      	  then verts = vec: FVKH[d][j][:d+1]
+		  then pC = parameter(x, lambda, face_bary(Lvd, verts))
+	      	  then ps = monomials(finalize(pC))
+                  then test = if all(for p in ps do @bool:Uhash.lookup(p).>= od)
+		       	      then true
+			      elif not all(for p in ps
+		     	  	     	   do @bool: if #ps = 1
+					      	     then min_bottom_elim_factors(p,pC,pol_hash.index(FVKH[d][j][d+red_shift+1]))
+						     else min_bottom_elim_factors(p,pC)
+						     fi
+					   od)
+				then false
+			      else true
+			      fi
+     		  in if not test
+		     then newStatuses:= updateNUclassesB(newStatuses, gr, k,"F"); newStatuses[k] := "F"
+		     else newStatuses[k] := "T"
+		     fi
+		  fi {newStatuses[k] = "?"}
+		  od {NumClasses}
+{ {version that follows is much slower?}
     then FullDown = full_down_classes(eq,gr)
     then downsizes = for v in FullDown do #v od
     then FullUp = full_up_classes(eq,gr)
     then upsizes = for v in FullUp do #v od
+    then to_doNU = [int]: q_nums(newStatuses)
+{next if possible label classes known to be nonunitary because they finalize or deform to nonunitary}
+    then () = while #to_doNU > 0 {for k:NumClasses}
+    do let k_loc = max_loc(for k in to_doNU do upsizes[k] od)
+       then k = to_doNU[k_loc]
+       then C=eq[k]
+       then (d,j) = coords(FVKH,C[0])
+       then verts = vec: FVKH[d][j][:d+1]
+       then gamma = face_bary(Lvd,verts)
+       then pC = parameter(x, lambda, gamma)
+       then ps = monomials(finalize(pC))
+       then KCF = pol_hash.index(FVKH[d][j][d+red_shift+1])
+       then pCdef = if not is_final(pC)
+		    then monomials(finalize(pC))
+		    elif wiggle_flag0 and d > 0
+		    then let CF = character_formula(finalize(pC))
+		       	 in  monomials(composition_series((sum(x.real_form,
+		       	   		    for j:d+1
+			   		    do wiggle(CF, face_bary(Lvd,verts[:j]##verts[j+1:]))
+			   		    od)))) {proper_face_deformed(pCtop)}
+		    else []
+		    fi {not is_final pC}
+
+       then () = if not is_final(pC)
+	  then if all(for q in pCdef do @bool: is_finished(q.x, q.lambda) and
+			       	       	       	    	     (Uhash.lookup(q) >= 0) od)
+	       then newStatuses := downdateUclassesC(newStatuses, FullDown, k,"T");
+	       	    newStatuses[k] := "T"
+	       elif any(for q in pCdef do @bool: is_finished(q.x,q.lambda) and
+				    	 (Uhash.lookup(q) = -1) od)
+	       then {prints("nonfinal, k = ",k, ", gr = ",gr);}
+	       	    newStatuses:= updateNUclassesC(newStatuses, FullUp, k,"F");
+	       	    newStatuses[k]:= "F"
+	       else newStatuses[k]:="??"
+	       fi {all(for q}
+	  else {now pC is final, and pCdef consists of wiggled Params with smaller x}
+	       if any(for q in pCdef do @bool:  is_finished(q.x,q.lambda)
+				       	       and (Uhash.lookup(q) = -1) od)
+	       then {prints("final, k = ",k, ", gr = ",gr);}
+		    newStatuses := updateNUclassesB(newStatuses, FullUp, k,"F");
+		    newStatuses[k] := "F"
+	       else newStatuses[k] := "??"
+	       fi {any(for q}
+	  fi {not is_final}
+       in to_doNU := for k in to_doNU
+       	       	 	do if newStatuses[k] = "?" then [k] else [] fi
+			od.## {everything considered has been labelled T*, F*, or ??}
+    od {while #to_doNU}
     then qnums = [int]: q_nums(newStatuses)
     then () = while #qnums > 0
     do let k_loc = max_loc(for k in qnums do upsizes[k] od)
@@ -884,6 +1182,7 @@ set local_testK_hash_min_bottom_layer(KGBElt x, ratvec lambda, LocalVertexData L
 	  fi;
 	  qnums := q_nums(newStatuses)
     od { while #qnums > 0}
+}
          {make new local face list using only faces not already proven nonunitary}
     then FVKHnew = for @m in FVKH do [FaceVertsKHash]: [] od
     then () = for C@m in eq
@@ -939,9 +1238,25 @@ set local_testK_hash_bottom_layer_more(KGBElt x, ratvec lambda, LocalVertexData 
     let newStatuses = for j:#eq do "?" od,  NumClasses = #eq, red_shift = if red_count_flag then 1 else 0 fi
     then printInterval = int: {1}max(NumClasses\10, 1)
     	{, printInterval = int: 1}{, NUhash = big_unitary_hash.nuhash(x.real_form)}
+    then temp_Dirac_best_local_flag = bool: {whether Dirac_best could help here}
+    	 if not Dirac_best_local_flag then false
+	 else let mus = LKTs(parameter(x,lambda,0*lambda))
+	      then Q = invariant_form(x.real_form)
+	      then best_bounds = for mu in mus do best_Dirac_bound(mu) od
+	      then bestbd = min(for (,,bs) in best_bounds
+	      	   	    	do bs~[0]
+				od)
+	     then index = first(for v in Lvd.list
+	     	  	  	do @bool: Q(v,v) > bestbd
+				od)
+	     in if index.>=
+	     	then true
+		else false
+		fi
+	 fi
     then start = elapsed_ms(), start_count = unitary_test_counter.use_count()
-    then () = if fund_face_verbose {and NumClasses > 100}
-    then prints(); prints("start local_testK_hash_bottom_layer_more ", NumClasses,
+    then () = if fund_face_verbose
+    	      then prints(); prints("start local_testK_hash_bottom_layer_more ", NumClasses,
 		   " equiv classes of faces to dim ",#FVKH-1)
 	      ; prints()
 	      fi
@@ -949,9 +1264,9 @@ set local_testK_hash_bottom_layer_more(KGBElt x, ratvec lambda, LocalVertexData 
     	        ~do if fund_face_verbose and NumClasses > 100 and
 	      	   ((NumClasses-k-1)%printInterval = 0)
 	      	   then prints("examining undet equiv class #"
-	      	   ,NumClasses-k -1, "; so far ",unitary_test_counter.use_count() - start_count
+	      	   ,NumClasses-k -1, "; so far ",unitary_test_counter.use_count()
 	      	   ," 'is_unitary' tests.")
-	      	   {; printInterval := 2*printInterval}
+	      	   ; printInterval := 2*printInterval
 	      	   fi
 	      ; if newStatuses[k] = "?"
 	      	then let C=eq[k]
@@ -962,10 +1277,10 @@ set local_testK_hash_bottom_layer_more(KGBElt x, ratvec lambda, LocalVertexData 
 		     then pC = parameter(x, lambda, face_bary(Lvd, verts))
 	      	     then ps = monomials(finalize(pC))
 		     then KCF = pol_hash.index(FVKH[d][j][d+red_shift+1])
-		     {then test_DB = (not temp_Dirac_best_local_flag) or DiracBestTest(pC,KCF)}
-                     then test = if {not test_DB
+		     then test_DB = (not temp_Dirac_best_local_flag) or DiracBestTest(pC,KCF)
+                     then test = if not test_DB
 		     	       	 then false
-				 elif} all(for p in ps do @bool:Uhash.lookup(p).>= od)
+				 elif all(for p in ps do @bool:Uhash.lookup(p).>= od)
 		       	         then true
 			      	 elif #ps = 1 {otherwise the K-char is wrong!}{)}
 				 then bottom_elim_factors_more(ps[0], pC, datas,
@@ -980,6 +1295,38 @@ set local_testK_hash_bottom_layer_more(KGBElt x, ratvec lambda, LocalVertexData 
 		     	fi
 		fi {newStatuses[k] = "?"}
 		od {NumClasses}
+{{this version is much slower?}
+    then FullDown = full_down_classes(eq,gr)
+    then downsizes = for v in FullDown do #v od
+    then FullUp = full_up_classes(eq,gr)
+    then upsizes = for v in FullUp do #v od
+    then qnums = [int]: q_nums(newStatuses)
+    then () = while #qnums > 0
+    do let k_loc = max_loc(for k in qnums do upsizes[k] od)
+       then k = qnums[k_loc]
+       then C=eq[k]
+       then (d,j) = coords(FVKH,C[0])
+       then verts = vec: FVKH[d][j][:d+1]
+       then gamma = face_bary(Lvd,verts)
+       then pC = parameter(x, lambda, gamma)
+       then ps = monomials(finalize(pC))
+       then KCF = pol_hash.index(FVKH[d][j][d+red_shift+1])
+       then test = if #ps = 1 {otherwise the K-char is wrong!}{)}
+		   then bottom_elim_factors_more(ps[0], pC, datas,
+				      pol_hash.index(FVKH[d][j][d+red_shift+1]))
+		   else all(for p in ps
+		            do @bool: bottom_elim_factors_more(p, pC, datas)
+			    od)
+		   fi {#ps = 1}
+       then () = if not test
+	   	 then newStatuses:= updateNUclassesC(newStatuses, FullUp, k,"F");
+	              newStatuses[k] := "F"
+	         else newStatuses:= downdateUclassesC(newStatuses, FullDown,k,"T");
+		      newStatuses[k] := "T"
+		 fi {not test}
+	in qnums := q_nums(newStatuses)
+     od
+}
      {make new local face list using only faces not already proven nonunitary}
      then FVKHnew = for @m in FVKH do [FaceVertsKHash]: [] od
           then () = for C@m in eq do if not newStatuses[m][0] = "F"
