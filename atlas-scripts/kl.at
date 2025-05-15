@@ -62,11 +62,15 @@ more often}
 let to character_formula MUCH faster than character_formulas_to_ht: 178 secs vs 978 secs}
 set gamma_frac = 1/4
 
-{if target height < (GAM - LAM)*diff_frac, then figure to_ht could be faster. So largest
+{if target height < (GAM - LAM)*diff_frac, then figure is_unitary_to_ht could be faster. So largest
 reasonable target height is (GAM-LAM)*diff_frac. INCREASE to use to_ht
 more often}
-
 set diff_frac = rat: 3/4
+
+{if target height < (GAM - LAM)*diff_frac, then figure is_unitary_to_ht could be faster. So largest
+reasonable target height is (GAM-LAM)*diff_frac. INCREASE to use to_ht
+more often}
+set diff_char_frac = rat: 1/8
 
 { trunc_factor is how much to DISLIKE trunctating character
     formula; increase to truncate LESS often}
@@ -85,6 +89,10 @@ set low_gamma(Param p, int N) = bool:
 set low_diff(Param p, int N) = bool:
     let (LAM, , GAM) = low(p)
     in (GAM - LAM)*diff_frac > N
+
+set low_diff_char(Param p, int N) = bool:
+    let (LAM, , GAM) = low(p)
+    in (GAM - LAM)*diff_char_frac > N
 
 set prefer_gamma_flag = true
 
@@ -107,10 +115,9 @@ set low(Param p, int N) = bool:
     else low_nu(p,N)
     fi
 
-
 set character_formula_to_height(Param p, int N) = ParamPol:
     let start = elapsed_ms()
-    then answer = if low(p,N)
+    then answer = if low_diff_char(p,N)
     	 	  then s_to_1(KL_sum_at_s_to_height(p,N))
 		  else let (below,) = height_split(KL_sum_at_s(p),N)
        	    	       in s_to_1(below)
