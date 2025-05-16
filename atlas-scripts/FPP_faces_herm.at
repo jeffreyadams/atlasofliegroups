@@ -536,9 +536,12 @@ set_type
   , (RealForm -> int) x_known {bitmap of x for which entire FPP dual is known}
   , (RealForm -> int) x_partial {bitmap of x for which some lambda have FPP dual known}
   , ((KGBElt,int) -> ) finish {add bitmap of new known (x,lambda) to xl_known}
+  , ((RealForm,int,int) -> ) finish_num {add bitmap of new known (x,lambda) to xl_known}
   , (KGBElt -> ) finishx {add x to x_known}
+  , ((RealForm,int) -> ) finishx_num {add x to x_known}
   , ((RealForm,int) ->) finishxmap {OR int with x_known(RealForm)}
   , (KGBElt -> ) partialx {add x to x_partial}
+  , ((RealForm,int) -> ) partialx_num {add x to x_partial}
   , ((RealForm,[int]) -> ) finishall {add bitmaps of all new known (x,lambda) to xl_known}
   , (RealForm -> Param_hash) phash {hash table of all indexed parameters}
   , (RealForm -> Param_hash) uhash {hash table of known unitary}
@@ -1060,7 +1063,19 @@ set make_big_unitary_hash() = big_unitary_hash_table:
       let start = elapsed_ms()
       then i = add_real_form(x.real_form)
       then xl_knowni = [int]: xl_known[i]
-      then () = xl_knowni[x.number] := OR(M,xl_knowni[x.number])
+      then () = xl_knowni[x.number] OR:= M
+      then () = xl_known[i] := xl_knowni
+      {then () = x_partial[i] := OR(to_bitset([x.number]),x_partial[i])
+      then () = if xl_known[i][x.number] + 1 = to_bitset([#FPP_lambdas(x)])
+      	      	then x_known[i] := OR(to_bitset([x.number]),x_known[i])
+		fi}
+      then () = finish_time+:= elapsed_ms() - start
+      in ()
+    , ((RealForm, int,int) -> ): {finish_num} (RealForm G, int x_num, int M):
+      let start = elapsed_ms()
+      then i = add_real_form(G)
+      then xl_knowni = [int]: xl_known[i]
+      then () = xl_knowni[x_num] OR:= M
       then () = xl_known[i] := xl_knowni
       {then () = x_partial[i] := OR(to_bitset([x.number]),x_partial[i])
       then () = if xl_known[i][x.number] + 1 = to_bitset([#FPP_lambdas(x)])
@@ -1071,8 +1086,14 @@ set make_big_unitary_hash() = big_unitary_hash_table:
     , (KGBElt -> ): {finishx} (KGBElt x):
       let i = add_real_form(x.real_form)
       then M = to_bitset([x.number])
-      then () = x_known[i] := OR(M,x_known[i])
-      then () = x_partial[i] := OR(M,x_partial[i])
+      then () = x_known[i] OR:= M
+      then () = x_partial[i] OR:= M
+      in ()
+    , ((RealForm,int) -> ): {finishx_num} (RealForm G,int x_num):
+      let i = add_real_form(G)
+      then M = to_bitset([x_num])
+      then () = x_known[i] OR:= M
+      then () = x_partial[i] OR:= M
       in ()
     , ((RealForm,int) ->): {finishxmap} (RealForm G, int M):
       let i = add_real_form(G)
@@ -1082,6 +1103,11 @@ set make_big_unitary_hash() = big_unitary_hash_table:
       let i = add_real_form(x.real_form)
       then M = to_bitset([x.number])
       then () = x_partial[i] := OR(M,x_partial[i])
+      in ()
+    , ((RealForm,int) -> ): {partialx_num}  (RealForm G, int x_num):
+      let i = add_real_form(G)
+      then M = to_bitset([x_num])
+      then () = x_partial[i] OR:= M
       in ()
     , ((RealForm,[int]) -> ): {finishall} (RealForm rf, [int] Ms):
       let start = elapsed_ms()
@@ -1184,7 +1210,7 @@ set make_big_unitary_hash() = big_unitary_hash_table:
 	     od;
 	     if write_x_flag
 	     then for xnum in done_list
-	      	  do prints("void: big_unitary_hash.finishx(KGB(",Gname,")[",xnum,"])")
+	      	  do prints("void: big_unitary_hash.finishx_num(",Gname,",",xnum,")")
 	      	  od
 	     else prints("void: big_unitary_hash.finishxmap(",Gname,",",donemap,")")
 	     fi
@@ -1218,7 +1244,7 @@ set make_big_unitary_hash() = big_unitary_hash_table:
 	 {prints("void: big_unitary_hash.finishall(",Gname,",",xl_known[i],")");} {this has length #KGB(G), which is a lot; not worth including}
 	 if write_x_flag
 	 then for xnum in done_list
-	      do prints("void: big_unitary_hash.finishx(KGB(G_temp)[",xnum,"])")
+	      do prints("void: big_unitary_hash.finishx_num(",Gname,xnum,")")
 	      od
 	 else prints("void: big_unitary_hash.finishxmap(G_temp,",donemap,")")
 	 fi
@@ -1256,9 +1282,9 @@ some lambdas for that x might be finished.}
 	 od;
 	 if write_x_flag
 	 then for xnum in done_list
-	      do prints("void: big_unitary_hash.finishx(KGB(G_temp)[",xnum,"])")
+	      do prints("void: big_unitary_hash.finishx_num(",Gname,",",xnum,")")
 	      od
-	 else prints("void: big_unitary_hash.finishxmap(G_temp,",donerangemap,")")
+	 else prints("void: big_unitary_hash.finishxmap(",Gname,",",donerangemap,")")
 	 fi
     , ((KGBElt,ratvec) -> ): {writexlam} (KGBElt x, ratvec lambda):
       let G = x.real_form
