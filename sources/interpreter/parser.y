@@ -84,8 +84,8 @@
 %type <expression> iffor_loop if_loop for_loop
 %type <ini_form> formula_start
 %type <oper> operator symbol
-%type <id_code> id id_op
-%type <code> tilde_opt breaker typevar_list
+%type <id_code> id id_op id_eq type_or_constr
+%type <code> tilde_opt breaker typevar_list type_args settype_open
 %destructor { destroy_expr ($$); }
             expr expr_opt tertiary cast lettail or_expr and_expr not_expr
 	    formula operand secondary primary comprim unit selector
@@ -104,30 +104,46 @@
 
 %left OPERATOR
 
-%type <ip> pattern pattern_opt closed_pattern case_pattern
+%type <ip>
+	    pattern pattern_opt closed_pattern case_pattern
 %destructor { destroy_id_pat($$); }
-	   pattern pattern_opt closed_pattern case_pattern
-%type <pl> pat_list id_list
-%destructor { destroy_pattern($$); } pat_list id_list
-%type <type_pt> type closed_type typedef_unit
-%destructor { destroy_type($$); } type closed_type typedef_unit
-%type <type_l> union_list_opt union_list type_list
-               typedef_list_opt typedef_list typedef_composite typedef_units
+	    pattern pattern_opt closed_pattern case_pattern
+
+%type <pl>
+	    pat_list id_list
+%destructor { destroy_pattern($$); }
+	    pat_list id_list
+
+%type <type_pt>
+	    type closed_type
+%destructor { destroy_type($$); }
+	    type closed_type
+
+%type <type_l>
+            union_list_opt union_list union_list_2 type_list
 %destructor { destroy_type_list($$); }
-            union_list_opt union_list type_list typedef_list_opt
-            typedef_composite typedef_list typedef_units
-%type <id_sp1> id_spec type_spec typedef_type type_field typedef_type_field
+            union_list_opt union_list type_list union_list_2
+
+%type <id_sp1>
+	    id_spec type_spec typedef_type type_field typedef_type_field
 %destructor { destroy_type($$.type_pt);destroy_id_pat($$.ip); }
 	    id_spec type_spec typedef_type type_field typedef_type_field
-%type <id_sp> param_list id_specs struct_specs union_specs
+
+%type <id_sp>
+	    param_list id_specs struct_specs union_specs
             typedef_struct_specs typedef_union_specs
 %destructor { destroy_type_list($$.typel);destroy_pattern($$.patl); }
-	    param_list id_specs
-%type <case_l> caselist tagged_caselist do_caselist tagged_do_caselist
+	    param_list id_specs struct_specs union_specs
+
+%type <case_l>
+	    caselist tagged_caselist do_caselist tagged_do_caselist
 %destructor { destroy_case_list($$); }
 	    caselist do_caselist tagged_caselist tagged_do_caselist
-%type <typedef_l> type_equation type_equations
-%destructor { destroy_typedef_list($$); } type_equation type_equations
+
+%type <typedef_l>
+	    type_equation type_equations
+%destructor { destroy_typedef_list($$); }
+	    type_equation type_equations
 
 
 %{
@@ -146,20 +162,19 @@ input:	'\n'			{ YYABORT; } /* null input, skip evaluator */
 	    auto decls = insert_type_abstraction($2,$4,@$);
 	    sequentially_set_identifiers(decls,@$); YYABORT;
 	  }
-	| ANY_TYPE typevar_list BEGIN SET_TYPE id '=' type_spec END '\n'
-	  { type_define_identifier($5,$7.type_pt,$2,$7.ip,@$); YYABORT; }
+	| SET_TYPE id '<' type_args '>' '=' type_spec '!' '\n'
+	  { type_define_identifier($2,$7.type_pt,$4,$7.ip,@$); YYABORT; }
 	| IDENT ':' expr '\n'
 		{ struct raw_id_pat id; id.kind=0x1; id.name=$1;
 		  global_set_identifier(id,$3,0,@$); YYABORT; }
 	| IDENT ':' type '\n' { global_declare_identifier($1,$3); YYABORT; }
 	| FORGET id '\n'	  { global_forget_identifier($2); YYABORT; }
-	| FORGET TYPE_CONSTR '\n' { global_forget_identifier($2); YYABORT; }
 	| FORGET id_op '@' type '\n'
 	  { global_forget_overload($2,$4); YYABORT;  }
-	| SET_TYPE id '=' type_spec '\n'
-	  { type_define_identifier($2,$4.type_pt,0,$4.ip,@$); YYABORT; }
-	| SET_TYPE '[' type_equations ']' '\n'
-	  { process_type_definitions($3,@$); YYABORT; }
+	| SET_TYPE id_eq type_spec '\n'
+	  { type_define_identifier($2,$3.type_pt,0,$3.ip,@$); YYABORT; }
+	| settype_open '[' type_equations ']' '\n'
+	  { process_type_definitions($3,$1,@$); YYABORT; }
 
 	| QUIT	'\n'		{ *verbosity =-1; } /* causes immediate exit */
 	| SET IDENT '\n' // set an option; option identifiers have lowest codes
@@ -176,8 +191,10 @@ input:	'\n'			{ YYABORT; } /* null input, skip evaluator */
 	| FROMFILE '\n'		{ include_file(1); YYABORT; } /* include file */
 	| FORCEFROMFILE '\n'	{ include_file(0); YYABORT; } // force include
 	| WHATTYPE expr '\n'	{ type_of_expr($2); YYABORT; } // print type
-	| WHATTYPE TYPE_ID '\n'	{ type_of_type_name($2); YYABORT; } // expand
-	| WHATTYPE TYPE_ID '?' '\n' { type_of_type_name($2); YYABORT; } // same
+	| WHATTYPE type_or_constr '\n'
+        			{ type_of_type_name($2); YYABORT; } // expand
+	| WHATTYPE type_or_constr '?' '\n'
+				{ type_of_type_name($2); YYABORT; } // same
 	| WHATTYPE id_op '?' '\n' // show types for which symbol is overloaded
 	  { show_overloads($2,std::cout); YYABORT; }
 	| TOFILE WHATTYPE id_op '?' '\n'
@@ -212,11 +229,18 @@ input:	'\n'			{ YYABORT; } /* null input, skip evaluator */
 ;
 
 id	: IDENT
-	| TYPE_ID
+	| type_or_constr
+;
+type_or_constr
+	: TYPE_ID
+        | TYPE_CONSTR
 ;
 
 id_op	: IDENT
 	| symbol { $$=$1.id; }
+;
+
+id_eq	: id '=' { $$=$1; lex->push_nest(); }
 ;
 
 expr    : LET lettail { $$=$2; }
@@ -807,14 +831,18 @@ param_list
 	| /* empty */ { $$.typel=nullptr; $$.patl=nullptr; }
 ;
 
-type_spec: type { $$.type_pt=$1; $$.ip.kind=0x0; }
+type_spec
+	: type
+	  { $$.type_pt=$1; $$.ip.kind=0x0; lex->pop_nest(); }
 	| '(' struct_specs ')'
 	  { $$.type_pt=make_tuple_type($2.typel);
 	    $$.ip.kind=0x2; $$.ip.sublist=reverse_patlist($2.patl);
+	    lex->pop_nest();
 	  }
 	| '(' union_specs ')'
 	  { $$.type_pt=make_union_type($2.typel);
 	    $$.ip.kind=0x2; $$.ip.sublist=reverse_patlist($2.patl);
+	    lex->pop_nest();
 	  }
 ;
 
@@ -842,22 +870,65 @@ union_specs: type_field '|' type_field
 	  }
 ;
 
-type_field : type IDENT { $$.type_pt=$1; $$.ip.kind=0x1; $$.ip.name=$2; }
+type_field
+	: type IDENT { $$.type_pt=$1; $$.ip.kind=0x1; $$.ip.name=$2; }
 	| type '.' { $$.type_pt=$1; $$.ip.kind=0x0; }
 ;
 
 type	: PRIMTYPE	{ $$=make_prim_type($1); }
-	| TYPE_ID	{ $$ = expand_type_symbol($1); }
+	| TYPE_ID	{ $$ = make_tabled_type($1,nullptr); }
 	| TYPE_CONSTR '<' type '>'
-	  { $$=expand_type_constructor($1,make_type_singleton($3)); }
-	| TYPE_CONSTR '<' type_list '>' { $$=expand_type_constructor($1,$3); }
+	  { $$=make_tabled_type($1,make_type_singleton($3)); }
+	| TYPE_CONSTR '<' type_list '>' { $$=make_tabled_type($1,$3); }
 	| closed_type
 	| TYPE_VAR { $$=make_type_variable($1); }
 ;
 
-typevar_list : id_list
+type_list // at least 2 comma-separated |type|s
+	: type ',' type  { $$=make_type_list(make_type_singleton($1),$3); }
+	| type_list ',' type { $$=make_type_list($1,$3); }
+;
+
+closed_type
+	: '(' union_list ')'	{ $$=make_union_type($2); }
+	| '(' union_list_opt ARROW union_list_opt ')'
+	  { $$=make_function_type(make_union_type($2),make_union_type($4)); }
+	| '[' union_list ']'	{ $$=make_row_type(make_union_type($2)); }
+;
+
+union_list_opt // 0 or more comma-or-bar-separated |type|s, as type list
+	:   { $$=make_type_singleton(make_tuple_type(nullptr)); }
+	| union_list
+;
+
+union_list
+	: type { $$ = make_type_singleton($1); }
+	| union_list_2
+;
+
+union_list_2
+	: type_list { $$ = make_type_singleton(make_tuple_type($1)); }
+	| union_list_opt '|'
+	  { $$ = make_type_list ($1, make_tuple_type(nullptr)); }
+	| union_list_opt '|' type { $$ = make_type_list($1,$3); }
+	| union_list_opt '|' type_list
+	  { $$ = make_type_list($1,make_tuple_type($3)); }
+;
+
+typevar_list // wait reducing to this until list is complete and look-ahead seen
+	: id_list
 	  { $$=length($1); // compute before |reverse_patlist| makes $1 useless
 	    prepare_type_variables(reverse_patlist($1));
+	    // call |lex->put_type_variable| for all identifiers in the list
+	  }
+;
+
+type_args // this reduces with no lexical groups present; create a virtual one
+	: id_list
+	  { $$=length($1); // compute before |reverse_patlist| makes $1 useless
+	    lex->push_nest(); // creat group before preparing variables
+	    prepare_type_variables(reverse_patlist($1));
+	    // call |lex->put_type_variable| for all identifiers in the list
 	  }
 ;
 
@@ -873,28 +944,9 @@ id_list : IDENT
 	  }
 ;
 
-closed_type:
-	  '(' union_list ')'	{ $$=make_union_type($2); }
-	| '(' union_list_opt ARROW union_list_opt ')'
-	  { $$=make_function_type(make_union_type($2),make_union_type($4)); }
-	| '[' union_list ']'	{ $$=make_row_type(make_union_type($2)); }
-;
-
-union_list_opt :   { $$=make_type_singleton(make_tuple_type(nullptr)); }
-	| union_list
-;
-
-union_list : type { $$ = make_type_singleton($1); }
-	| type_list { $$ = make_type_singleton(make_tuple_type($1)); }
-	| union_list_opt '|'
-	  { $$ = make_type_list ($1, make_tuple_type(nullptr)); }
-	| union_list_opt '|' type { $$ = make_type_list($1,$3); }
-	| union_list_opt '|' type_list
-	  { $$ = make_type_list($1,make_tuple_type($3)); }
-;
-
-type_list: type ',' type  { $$=make_type_list(make_type_singleton($1),$3); }
-	| type_list ',' type { $$=make_type_list($1,$3); }
+settype_open // before reducing this, the lexer must sense the following '['
+	: SET_TYPE { $$=0; lex->start_defining_types(); }
+	| SET_TYPE typevar_list { $$=$2; lex->start_defining_types(); }
 ;
 
 type_equations : type_equation
@@ -902,18 +954,18 @@ type_equations : type_equation
 ;
 
 type_equation
-	: TYPE_ID '=' typedef_type
+	: type_or_constr '=' typedef_type
 	  { $$=make_typedef_singleton($1,$3.type_pt,$3.ip); }
 	| '.' '=' typedef_type
 	  { $$=make_typedef_singleton(-1,$3.type_pt,$3.ip); }
 ;
 
 typedef_type
-	:'[' typedef_list ']'
+	:'[' union_list ']'
 	  { $$.type_pt=make_row_type(make_union_type($2)); $$.ip.kind=0x0; }
-	| '(' typedef_composite ')'
+	| '(' union_list_2 ')'
 	  { $$.type_pt=make_union_type($2); $$.ip.kind=0x0; }
-	| '(' typedef_list_opt ARROW typedef_list_opt ')'
+	| '(' union_list_opt ARROW union_list_opt ')'
 	  { $$.type_pt=
 	      make_function_type(make_union_type($2),make_union_type($4));
 	    $$.ip.kind=0x0;
@@ -928,33 +980,8 @@ typedef_type
 	  }
 	| PRIMTYPE // though not very useful, allow a single PRIMITIVE type
 	  { $$.type_pt=make_prim_type($1); $$.ip.kind=0x0; }
-;
-
-typedef_list_opt :   { $$=make_type_singleton(make_tuple_type(nullptr)); }
-	| typedef_list
-;
-typedef_list :
-	  typedef_unit { $$ = make_type_singleton($1); }
-	| typedef_composite
-;
-typedef_composite: typedef_units // tuple type with at least 2 components
-	  { $$ = make_type_singleton(make_tuple_type($1)); }
-	| typedef_list_opt '|'
-	  { $$ = make_type_list ($1, make_tuple_type(nullptr)); }
-	| typedef_list_opt '|' typedef_unit { $$ = make_type_list($1,$3); }
-	| typedef_list_opt '|' typedef_units
-	  { $$ = make_type_list($1,make_tuple_type($3)); }
-;
-
-typedef_units :
-	  typedef_unit ',' typedef_unit
-	  { $$=make_type_list(make_type_singleton($1),$3); }
-	| typedef_units ',' typedef_unit { $$=make_type_list($1,$3); }
-;
-
-typedef_unit : TYPE_ID { $$=make_tabled_type($1); }
-	| typedef_type {$$=$1.type_pt;}
-	| '(' typedef_unit ')' { $$=$2; }
+// we might allow  TYPE_CONSTR '<' type '>' and  TYPE_CONSTR '<' type_list '>'
+// since they cannot refer to type being defined, so cannot be circular
 ;
 
 typedef_struct_specs: typedef_type_field ',' typedef_type_field
@@ -981,9 +1008,9 @@ typedef_union_specs: typedef_type_field '|' typedef_type_field
 	  }
 ;
 
-typedef_type_field : typedef_unit TYPE_ID
+typedef_type_field : type TYPE_ID
 	  { $$.type_pt=$1; $$.ip.kind=0x1; $$.ip.name=$2; }
-	| typedef_unit '.'{ $$.type_pt=$1; $$.ip.kind=0x0; }
+	| type '.'{ $$.type_pt=$1; $$.ip.kind=0x0; }
 ;
 
 

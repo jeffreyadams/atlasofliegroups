@@ -1,16 +1,23 @@
 { Union types for built-in |linear_solve| and versions of |solve| below
   Such types cannot share |void| tag, so we choose distince ones }
-set_type
-[ linear_solution = ( void empty_set | (vec,int,mat) affine_subspace )
-, maybe_a_vec =     ( void no_vec | vec solution)
-, maybe_a_ratvec =  ( void no_ratvec | ratvec solution )
-, maybe_a_mat =     ( void no_mat | mat solution )
-]
+
+set_type One_of<S,T> = ( S fail | T succeed ) !
+set_type Maybe<T>    = ( void none | T some) !
 
 set where() = void:
    for line@i in back_trace
    do if line[:3]="In " then prints([i]," ",line) fi
    od
+
+any_type S,T begin
+set whether (One_of<S,T> v) = bool: case v | fail: false | succeed: true esac
+set requisition (string message) = (One_of<S,T> v) T:
+    case v | fail: error(message) | succeed(v): v esac
+set requisition = (One_of<S,T>->T):
+    requisition("No solution found; having one was required")
+set print_lines ([T] a) = void: for x in a do prints(x) od
+end
+set ! = print_lines@T[T] { allow printing any list line-by-line as |list!| }
 
 set !minus_1 = -1 { used to be more efficient than |-1|, now equally efficient }
 
@@ -65,7 +72,7 @@ set last ([(->bool)] p) = int: { this is somewhat more efficient than first }
   let i=#p-1 in while >=i and not p[i]() do i-:=1 od; i
 { there are no lazy versions of |count| and |XOR| }
 
-{ if cases to test are produced as predicates of an integer, on can use: }
+{ if cases to test are produced as predicates of an integer, one can use: }
 set all (int limit,(int->bool) predicate) = bool:
   for i:limit do if not predicate(i) then return false fi od; true
 set any (int limit,(int->bool) predicate) = bool:
@@ -77,6 +84,7 @@ set first (int limit,(int->bool) predicate) = int:
 set last (int limit,(int->bool) predicate) = int:
   for i:limit ~do if predicate(i) then return i fi od; -1
 
+{ with values stored in an array, similar functions can be applied to it }
 any_type T begin
 
 set all ([T] L,(T->bool) predicate) = bool:
@@ -90,9 +98,13 @@ set first ([T] L,(T->bool) predicate) = int:
 set last ([T] L,(T->bool) predicate) = int:
   last(#L,(int i)bool:L[i].predicate)
 
+{ Generic functions on any type with a provided total ordering }
+
+{ minimum or maximum of 2 candidates }
 set min ((T,T->bool)leq) = (T x, T y) T: if leq(x,y) then x else y fi
 set max ((T,T->bool)leq) = (T x, T y) T: if leq(x,y) then y else x fi
 
+{ extensions of these to lists of any posiitve length }
 set min_list ((T,T->bool)leq) = ([T] a) T:
   let l=#a in assert(l.>,"Minimum of an empty list");
   let m=a~[0] in for i:l-1 do if not leq(m,a[i]) then m:=a[i] fi od; m
@@ -137,6 +149,20 @@ set binary_search_first ((int->bool)pred, int low, int high) = int:
   do let mid=(low+high)\2 in if pred(mid) then high:=mid else low:=mid+1 fi
   od; low
 
+any_type T begin
+set binary_search_first ((T,T->bool) leq) = (T,[T]->Maybe<int>):
+  (T x,[T] a) Maybe<int>:
+  let low=0, high=#a in
+  while low<high
+  do let mid=(low+high)\2
+  in if leq(x,a[mid]) then high:=mid else low:=mid+1 fi
+  od { now low=high and leq(x,a[i]) iff low<=i }
+; if low<#a and leq(a[low],x) then some(low) else none() fi
+end
+
+set binary_lookup = binary_search_first(<=@(int,int))
+set binary_lookup = binary_search_first(<=@(string,string))
+
 set locate_sorted ([int] v,int lwb) = int: { first index of entry >= |lwb| }
   binary_search_first((int i):v[i]>=lwb,0,#v)
 
@@ -144,6 +170,7 @@ set locate_sorted ([int] v,int lwb) = int: { first index of entry >= |lwb| }
 set from_stops ([int] stops) = (int->int):
   { at |k| find last index |i| with |stops[i]<=k|; calculated via complement }
   (int k): locate_sorted(stops,k+1)-1 { find first excess, then back up 1 }
+
 
 {                               Integers                                }
 
@@ -195,8 +222,8 @@ set exact_divide (int a, int b) = int:
 
 set int_format = to_string@int
 
-set is_member = is_member(=@(int,int))
-set isnt_member = isnt_member(=@(int,int))
+set is_member   = ([int]->(int->bool)): is_member(=@(int,int))
+set isnt_member = ([int]->(int->bool)): isnt_member(=@(int,int))
 
 { when |v| is known to be sorted (and long), this can be done faster }
 set is_member_sorted ([int] v) = (int->bool):
@@ -210,7 +237,7 @@ set is_member_sorted ([int] v) = (int->bool):
   , (int n):
        case n-v[2] then n=v[0] or n=v[1] in true else n=v[3] or n=v[4] esac
   else
-     (int n)bool: let m = locate_sorted(v,n) in m<l and v[m]=n
+     (int n)bool: whether(binary_lookup(n,v))
   esac
 set isnt_member_sorted ([int] v) = (int->bool):
   let member = is_member_sorted(v) in (int n): not member(n)
@@ -244,6 +271,7 @@ set bitwise_union ([int] ns) = int:
    let a=0 in for n in ns do a:=OR(a,n) od; a
 
 set fac (int n) = int: let p=1 in for i:n-1 from 2 do p *:=i od; p
+set ! = fac@int { allo conventional factorial notation }
 
 { convert to base n as polynomial: small coef polynomial evaluating to k at n }
 set to_base_poly (int n) = (int->vec):
@@ -321,8 +349,8 @@ set !new_line = ascii(10) { including this in a string passes to a new line }
 
 set char_index (string c, string s) = int: first(#s,(int i)bool: c=s[i])
 
-set is_member = is_member(=@(string,string))
-set isnt_member = isnt_member(=@(string,string))
+set is_member   = ([string]->(string->bool)): is_member(=@(string,string))
+set isnt_member = ([string]->(string->bool)): isnt_member(=@(string,string))
 
 set + = ##@(string,string) { + aliases string concatenation "ax" ## "is" }
 set * = (string,int->string): { repeat string; use recursive doubling }
@@ -366,7 +394,8 @@ set split_lines (string text) = [string]:
 )
 
 set is_substring (string key, string text) = bool:
-  let l=#key in any(#text-l,(int start)bool: text[start:start+l]=key)
+  let l=#key then n_tries=#text+1-l { number of interletter positions to try }
+  in any(n_tries,(int start)bool: text[start:start+l]=key)
 
 set fgrep (string s, string text) = [string]:
   for line in split_lines(text) if is_substring(s,line) do line fi od
@@ -399,10 +428,10 @@ end
 
 set vector (int n,(int->int)f) = vec: for i:n do f(i) od
 
-set ones (int n)= vec: for i:n do 1 od
+set ones (int n) = vec: for i:n do 1 od
 
-set is_member = is_member(=@(vec,vec))
-set isnt_member = isnt_member(=@(vec,vec))
+set is_member   = ([vec]->(vec->bool)): is_member(=@(vec,vec))
+set isnt_member = ([vec]->(vec->bool)): isnt_member(=@(vec,vec))
 
 set ~ (vec v)= vec: v~[:]
 set lower (int k,vec v)= vec: v[:k]
@@ -631,8 +660,8 @@ set columns_with ((vec->bool) p,mat m) = mat:
   n_rows(m)# for col in m if p(col) do col fi od
 set columns_with ((int->bool) p,mat m) = mat:
   n_rows(m)# for col@j in m if p(j) do col fi od
-set a_column_with ((vec->bool) p,mat m) = maybe_a_vec:
-  for col in m do if p(col) then return solution(col) fi od; no_vec()
+set a_column_with ((vec->bool) p,mat m) = Maybe<vec>:
+  for col in m do if p(col) then return some(col) fi od; none()
 
 set rows_with ((int,vec->bool) p,mat m) = mat:
   n_columns(m) ^ for row@i in rows(m) if p(i,row) do row fi od
@@ -640,8 +669,8 @@ set rows_with ((vec->bool) p,mat m) = mat:
   n_columns(m) ^ for row in rows(m) if p(row) do row fi od
 set rows_with ((int->bool) p,mat m) = mat:
   n_columns(m) ^ for row@i in rows(m) if p(i) do row fi od
-set a_row_with ((vec->bool) p,mat m) = maybe_a_vec:
-  for row in rows(m) do if p(row) then return solution(row) fi od; no_vec()
+set a_row_with ((vec->bool) p,mat m) = Maybe<vec>:
+  for row in rows(m) do if p(row) then return some(row) fi od; none()
 
 set >=([vec] m) = bool: { non-negative (dominant) columns only } all(m,>=@vec)
 set >([vec] m) = bool: { strictly positive (dominant) columns only } all(m,>@vec)
@@ -649,7 +678,7 @@ set <=([vec] m) = bool: all(m,<=@vec)
 set <([vec] m) = bool: all(m,<@vec)
 
 set lookup_column (vec v,mat m) = int: last(columns(m),(vec w)bool: w=v)
-set lookup_row (vec v,mat m) = int: last(rows(m),(vec w)bool: w=v)
+set lookup_row    (vec v,mat m) = int: last(   rows(m),(vec w)bool: w=v)
 
 { sum of columns of a matrix; this is so neat, avoid calling it sum_columns }
 set sum (mat m)= vec: m*ones(n_columns(m))
@@ -660,23 +689,23 @@ set sum (mat m)= vec: m*ones(n_columns(m))
   - solve M*y = b (possibly finding none); this is easy using the echelon form
   - if a solution is found, return x = C*y
 }
-set solve (mat A,vec b) = maybe_a_vec:
+set solve (mat A,vec b) = Maybe<vec>:
 (  let (M,C,s,) = echelon(A) then (n,k)=shape(M)
    then j=0 { runs up to k, used to index backwards }, sol=null(k)
    in assert(#b=n,"equation mismatch")
 ;  for i:n
   ~do if j<#s and i=s~[j] { then it is a pivot row, with pivot at M[j][i] }
       then let Mj=M~[j] then (q,r)=b[i]\%Mj[i] in
-         if !=r then return ().no_vec { because inexact division} fi
+         if !=r then return ().none { because inexact division} fi
        ;  sol~[j]:=q; b-:=Mj*q { correct for contribution from sol[j~] }
        ;  j+:=1
-       elif !=b[i] then return ().no_vec { because no pivot available }
+       elif !=b[i] then return ().none { because no pivot available }
        fi
    od
-;  (C[:k]*sol).solution
+;  (C[:k]*sol).some
 )
 
-set solve (mat A,mat B) = maybe_a_mat: { matrix |X| satisfying |A*X=B|, if any }
+set solve (mat A,mat B) = Maybe<mat>: { matrix |X| satisfying |A*X=B|, if any }
 (  let (M,C,s,) = echelon(A) then (n,k)=shape(M)
    then sols = mat: { column |j| is solutions of |M*y=B[j]| }
       assert(n_rows(B)=n,"equation mismatch");
@@ -687,21 +716,16 @@ set solve (mat A,mat B) = maybe_a_mat: { matrix |X| satisfying |A*X=B|, if any }
       in for i:n
 	~do if j<#s and i=s~[j] { a pivot row, with pivot at |M~[j][i]| }
 	    then let Mj=M~[j] then (q,r)=rem[i]\%Mj[i]
-	    in if !=r then return ().no_mat { because inexact division} fi
+	    in if !=r then return ().none { because inexact division} fi
 	    ;  sol~[j]:=q; rem-:=Mj*q { correct for contribution from sol[j~] }
 	    ;  j+:=1
-	    elif !=rem[i] then return ().no_mat { because no pivot available }
+	    elif !=rem[i] then return ().none { because no pivot available }
 	    fi
 	 od
       ;  sol
       od
-   in (C[:k]*sols).solution
+   in (C[:k]*sols).some
 )
-
-set any (maybe_a_vec x) = bool: case x  | solution: true | no_vec: false esac
-set requisition (string message) = (maybe_a_vec->vec):
-   (maybe_a_vec x) vec: case x  | solution(s): s | else error(message) esac
-set requisition = requisition("No solution found; having one was required")
 
 set required_solution ((mat,vec) system) = vec: system.solve.requisition
 
@@ -762,7 +786,7 @@ set <  (ratvec v) = bool: < numer(v)
 { solve(mat A,ratvec b): find a solution ratvec x of A*x=b, or indicate that
   none exists. Solution as in vec case, but exact division requirement is OK.
 }
-set solve (mat A, ratvec b) = maybe_a_ratvec:
+set solve (mat A, ratvec b) = Maybe<ratvec>:
 (  let (M,C,s,) = echelon(A) then (n,k)=shape(M)
    then j=0 { runs up to k, used to index backwards }, sol=for :k do rat:0 od
    in assert(#b=n,"equation mismatch")
@@ -771,18 +795,11 @@ set solve (mat A, ratvec b) = maybe_a_ratvec:
       then let Mj=M~[j] then q=b[i]/Mj[i] in
          sol~[j]:=q; b-:=Mj*q { correct for contribution from sol[j~] }
       ;  j+:=1
-      elif !=b[i] then return ().no_ratvec { because no pivot here }
+      elif !=b[i] then return ().none { because no pivot here }
       fi
    od
-;  (C[:#sol]*sol).solution
+;  (C[:#sol]*sol).some
 )
-
-set any (maybe_a_ratvec x) = bool:
-   case x  | solution: true | no_ratvec: false esac
-set rat_requisition (string message) = (maybe_a_ratvec->ratvec):
-   (maybe_a_ratvec x) ratvec:
-    case x  | solution(s): s | else error(message) esac
-set requisition = rat_requisition("No solution found; having one was required")
 
 set required_solution ((mat,ratvec) system) = ratvec: system.solve.requisition
 
@@ -2232,8 +2249,7 @@ set find = find(=@(Param,Param))
   can be used for all types having =, without separate definition of |find|
 }
 
-set in_string_list (string s,[string] S) = bool:
-  s.(is_member(=@(string,string))(S))
+set in_string_list (string s,[string] S) = bool: s.(is_member(S))
 
 set positive_imaginary_roots_and_coroots = imaginary_sys@(RootDatum,mat)
 set positive_imaginary_roots_and_coroots = imaginary_sys@KGBElt

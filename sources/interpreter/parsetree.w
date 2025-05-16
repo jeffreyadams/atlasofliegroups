@@ -1652,7 +1652,7 @@ break;
 %
 As was indicated above, \&{let}-expressions were introduced before user-defined
 functions because it avoids to problem of having to specify types in the user
-program. When defining function one does have to specify parameter types, since
+program. When defining functions one does have to specify parameter types, since
 in this case there is no way to know those types with certainty: in an
 interactive program we cannot wait for \emph{usage} of the function to deduce
 the types of its parameters, and such things as type coercion and function
@@ -1667,19 +1667,17 @@ in the parser, to masquerade for the actual pointers to \Cpp~types; numerous
 static casts were then used to get the proper pointer types from them. Now
 that this is no longer necessary, everything has been reformulated in terms of
 the actual pointer types. Something that remains (for now) is the avoidance of
-smart pointers for types while being handled in the parser, since other
-pointers for expressions that it handles are not smart pointers either.
+smart pointers for types (at the outer level) while they are being handled in
+the parser. This is because the parser does destruction of discarded values
+explicitly anyway, and the pointers often become variants of a union type where
+there is no advantage in using smart pointers either.
 
 @< Includes needed... @>=
 #include "axis-types.h" // parsing types need |type_p| and such
 
-@ Much of the functionality for types is given in \.{axis-types.w}. Here we
-define function constructing types from applied use (expansion) of user defined
-type and type constructor symbols, and for destroying types.
+@ So we must provide explicit functions for destroying types and type lists.
 
 @< Declarations of functions for the parser @>=
-type_p expand_type_symbol(id_type id);
-type_p expand_type_constructor(id_type id,raw_type_list args);
 void destroy_type(type_p t);
 void destroy_type_list(raw_type_list t);
 
@@ -1693,52 +1691,26 @@ void destroy_type(type_p t)@+ {@; (type_ptr(t)); }
 void destroy_type_list(raw_type_list t)@+ {@; (type_list(t)); }
   // recursive destruction
 
-@ Expansion of user defined type symbols amounts to looking up the corresponding
-type which is store in the |global_id_table|.
-
-@< Definitions of functions for the parser @>=
-type_p expand_type_symbol(id_type id)
-{ bool dummy; // for reporting "constness", which is ignored for types
-  return acquire(&global_id_table->type_of(id,dummy)->unwrap()).release();
-}
-type_p expand_type_constructor(id_type id,raw_type_list l)
-{ bool dummy;
-  type_list args(l); // reversed below
-  const type& poly_type = *global_id_table->type_of(id,dummy);
-  unsigned int len=length(args), degree = poly_type.degree();
-  if (len!=degree)
-    @< Throw a |program_error| signalling an incorrectly applied type symbol
-       or type constructor @>
-   std::vector<type_expr> arg_vec(len);
-   auto v_it=arg_vec.rbegin(); // reverse while copying to |arg_vec|
-   for (auto it=args.begin(); not args.at_end(it); ++it,++v_it)
-     v_it->set_from(std::move(*it));
-   auto result=std::make_unique<type_expr>
-    (simple_subst(poly_type.unwrap(),arg_vec));
-  return result.release();
-}
-
-@ Exceptionally we throw an error here from within the parser, which seems
-inevitable given that we expand type symbols and type constructors
-@< Throw a |program_error| signalling an incorrectly applied type symbol or
-   type constructor @>=
-{ std::ostringstream o;
-  o << "Type constructor '"
-    << main_hash_table->name_of(id) @| << "' called with " << len
-    << " type arguments" << ", expected " << degree;
-  throw program_error(o.str());
-}
-
-
 @ For user-defined functions we shall use a structure |lambda_node|.
 @< Type declarations needed in definition of |struct expr@;| @>=
 typedef struct lambda_node* lambda_p;
 typedef struct rec_lambda_node* rec_lambda_p;
 
-@~It contains a pattern for the formal parameter(s), its type (a smart pointer
-defined in \.{axis-types.w}), an expression (the body of the function), and
-finally the source location of the function.
-
+@~This structure contains a |pattern| for the formal parameter(s), its
+(combined) type |parameter_type| (the type |type_expr| being defined
+in \.{axis-types.w}), and an expression giving the |body| of the function. For
+recursive functions we derive |rec_lambda_nod| from it, which adds as data the
+recursive identifier |id| and the |result_type|. A point that is worth noting,
+although it does not affect the code below, is that the values the parser passes
+in the |type_expr| variables can have user defined types and type variables that
+are not yet expanded, but encoded as the |tabled| variant of a type in which the
+|tabled_nr()| is simply the identifier code, and any argument types are
+similarly encoded. In order to obtain a |type_expr| that is usable in type
+analysis, clients should apply the method |global_id_table->expand| to these
+type values, which will look up the user definitions as necessary. One reason to
+not do this during parsing is that the process can fail (if the length of an
+argument list does not match the arity of the type constructor), but the paser
+is not equipped to properly handle such an error.
 
 @< Structure and typedef... @>=
 struct lambda_node
@@ -1763,7 +1735,9 @@ struct rec_lambda_node : public lambda_node
   , self_id(self_id), result_type(std::move(rt)) @+{}
 };
 
-@ The tag used for user-defined functions is |lambda_expr|.
+@ The tags used for user-defined functions are |lambda_expr|, end for recursive
+ones |rec_lambda_expr|.
+
 @< Enumeration tags... @>=
 lambda_expr,rec_lambda_expr,@[@]
 
@@ -1791,7 +1765,7 @@ by the parser.
 @< Declarations of functions for the parser @>=
 expr_p make_lambda_node(raw_patlist pat_l, raw_type_list type_l, expr_p body,
  const YYLTYPE& loc);
-expr_p make_rec_lambda_node(id_type self,
+expr_p make_rec_lambda_node(id_type self_id,
 @| raw_patlist pat_l, raw_type_list type_l,
 @| expr_p body, type_p body_t,
 @| const YYLTYPE& loc);
@@ -1830,7 +1804,7 @@ expr_p make_lambda_node(raw_patlist p, raw_type_list tl, expr_p b,
       (std::move(pattern),std::move(parameter_type),std::move(body))),loc);
 }
 @)
-expr_p make_rec_lambda_node(id_type self,
+expr_p make_rec_lambda_node(id_type self_id,
 @| raw_patlist p, raw_type_list tl,
 @| expr_p b, type_p bt,
 @| const YYLTYPE& loc)
@@ -1850,7 +1824,7 @@ expr_p make_rec_lambda_node(id_type self,
   // make tuple type
   }
   return new expr(rec_lambda_p(new@| rec_lambda_node
-      (self,std::move(pattern),std::move(parameter_type),@|
+      (self_id,std::move(pattern),std::move(parameter_type),@|
        std::move(*body_p),std::move(*body_t))
       ),loc);
 }
@@ -1869,30 +1843,35 @@ done correctly by the implicit destructions provoked by calling |delete|.
 case lambda_expr: delete lambda_variant; break;
 case rec_lambda_expr: delete rec_lambda_variant; break;
 
-@ Because of the above transformations, lambda expressions are printed with
-all parameter types grouped into one tuple (unless there was exactly one
-parameter). In case of no parameters at all, we do not print |"(() ())"| but
-rather |"@@"| (which though unrelated of other uses of .\\'@@ is easy to get
-used to).
+@ In their representation of parser output, lambda expressions are printed with
+the specified parameter type, which we do not forget to expand. Because of the
+above transformations, that type and the list of parameters are both grouped
+into one unit. In case of no parameters at all, we do not print |"(() ())"| or
+|"(void())"|, but rather |"@@"|, which is the simpler way to introduce a
+parameterless function (it is unrelated of other uses of \.@@, but is
+easy to get used to).
 
 @< Cases for printing... @>=
 case lambda_expr:
 { const auto& fun=*e.lambda_variant;
-  if (fun.parameter_type==void_type)
+  const type_expr par_tp = global_id_table->expand(fun.parameter_type);
+  if (par_tp==void_type)
     out << '@@';
   else
-    out << '(' << fun.parameter_type << ' ' << fun.pattern << ')';
+    out << '(' << par_tp << ' ' << fun.pattern << ')';
   out << ':' << fun.body;
 }
 break;
 case rec_lambda_expr:
 { const auto& fun=*e.rec_lambda_variant;
+  const type_expr par_tp = global_id_table->expand(fun.parameter_type);
+  const type_expr res_tp = global_id_table->expand(fun.result_type);
   out << "rec_fun " << main_hash_table->name_of(fun.self_id);
-  if (fun.parameter_type==void_type)
+  if (par_tp==void_type)
     out << '@@';
   else
-    out << '(' << fun.parameter_type << ' ' << fun.pattern << ')';
-  out << ':' << fun.body;
+    out << '(' << par_tp << ' ' << fun.pattern << ')';
+  out << res_tp << ':' << fun.body;
 }
 break;
 
@@ -2118,18 +2097,18 @@ expressions to be evaluated, they behave like functions that will be applied
 to the value (within its variant type) of the subject value being discriminated
 upon, provided it has the variant corresponding to the branch.
 
-In fact we define two forms of discrimination clauses. A first, more
-primitive form, provides what looks like a $\lambda$-expression for the function
-defining each branch, except that no type for the parameter has to be provided
-because it is implicitly the type of the corresponding variant of the union. In
-fact the branches are semantically more like |let| expressions in that the
-binding to the parameter happens without an actual function call.
-A second form provides more flexibility to the user, but can only be used if
-the union type has occurred in a type definition where the different variants
-have been given names (tags); these can then be used to identify branches, and
-frees the user from the obligation of writing the branches in the same order
-as the corresponding variants are listed in the union, as well as of explicitly
-specifying types for the parameters introduced.
+In fact we define two forms of discrimination clauses. A first, more primitive
+form, provides what looks like a $\lambda$-expression for the function defining
+each branch, except that no type for the parameter has to be provided because it
+is implicitly the type of the corresponding variant of the union. In fact the
+branches are semantically more like |let| expressions in that the binding to the
+parameter happens without an actual function call. A second more elaborate form
+provides more flexibility to the user, but can only be used if the union type
+has occurred in a type definition where the different variants have been given
+names (tags). In the ``tagged'' form of the discrimination clause, these tags
+can then be used to identify branches, and frees the user from the obligation of
+writing the branches in the same order as the corresponding variants are listed
+in the union.
 
 The label used for both form is |discrimination_expr|, while the presence of
 absence of tags allows telling them apart.
@@ -2145,9 +2124,10 @@ typedef struct discrimination_node* disc;
 @ Concretely, branches have an identifier |label| that indicates the variant it
 matches when the elaborate form is used, and then a pattern and a body as in
 a \&{let} statement. When the simple form is used one has |label==0| in each
-branch, while defaulted branches have |label==1|; both |0| and |1| are outside
-the range of |id_type| values used for identifiers that could be used as tags,
-since small |id_type| values correspond to keywords. In
+branch, while defaulted branches (which can only be used with the tagged form)
+have |label==1|. Both |0| and |1| are outside the range of |id_type| values used
+for identifiers that could be used as tags, since small |id_type| values
+correspond to keywords. In
 a |discrimination_node|, the expression being discriminated is called its
 |subject|, which is followed by a non-empty list of |branches|, and a flag
 indicating whether tags are being used.
@@ -2169,6 +2149,7 @@ struct discrimination_node
 @)
   discrimination_node(expr&& subject, case_list&& branches);
   bool has_tags() const { return branches.contents.label!=id_type(0); }
+  sl_list<id_type> tag_set() const;
 };
 
 @ The |discrimination_node| constructor is somewhat special in that the
@@ -2183,6 +2164,23 @@ discrimination_node::discrimination_node (expr&& subject, case_list&& branches)
 @/: subject(std::move(subject))
   , branches(std::move(*branches.release()))
   @+{}
+
+@ Exceptionally, we provide some methods of |discrimination_node| for the
+convenience of use in processing the clause after parsing. The definition of
+|discrimination_node::has_tags| was given inside the structure definition; here
+is the somewhat more elaborate |discrimination_node::tag_set| that collects all
+tags that are not default into a list. Even though the |branches| field directly
+stores a node of a |case_list|, we can use a|weak_const_iterator| to loop over
+all nodes in the (non-empty) list.
+
+@< Definitions of functions not for the parser @>=
+sl_list<id_type> discrimination_node::tag_set() const
+{ sl_list<id_type> result;
+  for (case_list::weak_const_iterator it(&branches); not it.at_end(); ++it)
+    if (it->label>1)
+      result.push_back(it->label);
+  return result;
+}
 
 @ The variant of |expr| values with |disc| as parsing value is tagged
 |disc_variant|.
@@ -2669,7 +2667,8 @@ case cast_expr: delete cast_variant; break;
 @< Cases for printing... @>=
 case cast_expr:
 {@; const auto& c = *e.cast_variant;
-  out << c.dst_tp << ':' << c.exp ;
+  const type_expr tp = global_id_table->expand(c.dst_tp);
+  out << tp << ':' << c.exp ;
 }
 break;
 
@@ -2684,11 +2683,11 @@ void pointer.
 
 @< Structure and typedef definitions for types built upon |expr| @>=
 struct op_cast_node
-{ id_type oper; type_expr type;
+{ id_type oper; type_expr arg_type;
 @)
-  op_cast_node(id_type oper,type_expr&& type)
+  op_cast_node(id_type oper,type_expr&& tp)
 @/: oper(oper)
-  , type(std::move(type))@+{}
+  , arg_type(std::move(tp))@+{}
   // backward compatibility for gcc 4.6
 };
 
@@ -2719,8 +2718,8 @@ expr_p make_op_cast(id_type name,type_p type, const YYLTYPE& loc);
 @< Definitions of functions for the parser@>=
 expr_p make_op_cast(id_type name,type_p t, const YYLTYPE& loc)
 {
-  type_ptr tt(t); type_expr& type=*tt;
-  return new expr(new op_cast_node { name, std::move(type) },loc);
+  type_ptr tt(t); type_expr& tp=*tt;
+  return new expr(new op_cast_node { name, std::move(tp) },loc);
 }
 
 @ Nor here.
@@ -2737,7 +2736,8 @@ case op_cast_expr: delete op_cast_variant; break;
 @< Cases for printing... @>=
 case op_cast_expr:
 { const auto& c = *e.op_cast_variant;
-  out << main_hash_table->name_of(c.oper) << '@@' << c.type;
+  const type_expr tp = global_id_table->expand(c.arg_type);
+  out << main_hash_table->name_of(c.oper) << '@@' << tp;
 }
 break;
 
