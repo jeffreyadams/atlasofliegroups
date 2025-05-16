@@ -587,6 +587,20 @@ K_repr::KT_pol Rep_context::K_type_formula
   return result;
 } // |Rep_context::K_type_formula|
 
+const K_repr::KT_pol& Rep_table::K_type_formula // memoized version of the same
+  (K_repr::K_type& t,level max_level)
+{
+  K_type_nr k = K_type_hash.match(t);
+  if (k<KTF_table.size() and KTF_table[k]!=nullptr
+      and KTF_table[k]->first >= max_level)
+    return KTF_table[k]->second;
+  if (k>=KTF_table.size())
+    KTF_table.resize(k+1);
+  KTF_table[k] = std::make_unique<KTF_entry>
+    (max_level,Rep_context::K_type_formula(t,max_level));
+  return KTF_table[k]->second;
+}
+
 K_type_poly Rep_context::branch(K_type_poly remainder, repr::level cutoff) const
 {
   K_type_poly result;
@@ -596,6 +610,8 @@ K_type_poly Rep_context::branch(K_type_poly remainder, repr::level cutoff) const
   size_t count=0;
   do
   {
+    interpreter::check_interrupt(); // make this loop interruptible
+
     ++count;
     // periodically flatten |remainder| to remove leading zero terms
     if (count*count>2*remainder.size())

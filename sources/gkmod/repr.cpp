@@ -24,6 +24,7 @@
 #include "blocks.h"	// the |blocks::common_block| class, |dual_involution|
 #include "subsystem.h" // |SubSystem| methods
 #include "alcoves.h"
+#include "K_repr.h"
 
 #include "kl.h"
 
@@ -1275,9 +1276,9 @@ sr_term_list Rep_context::finals_for(StandardRepr z) const
 	  lr -= rd.simpleRoot(s)*((eval_lr+1)/2); // project to wall for |s|
 	  assert( rd.simpleCoroot(s).dot(lr) == -1 );
 	  const KGBEltPair Cxs = kgb().inverseCayley(s,x);
-	  to_do.emplace(sr_gamma(Cxs.first,lr,std::move(gamma)),coef);
 	  if (Cxs.second!=UndefKGB)
 	    to_do.emplace(sr_gamma(Cxs.second,lr,gamma),coef);
+	  to_do.emplace(sr_gamma(Cxs.first,lr,std::move(gamma)),coef);
 	  goto drop; // we have rewritten |current|, don't contribute it
 	} // (singular real root)
 	// |x = kgb().cross(s,x)|; real roots act trivially on KGB elements
@@ -1454,6 +1455,7 @@ Rep_table::Rep_table(RealReductiveGroup &G)
 , KL_poly_pool{KLPol(),KLPol(KLCoeff(1))}, KL_poly_hash(KL_poly_pool)
 , poly_pool{ext_kl::Pol(0),ext_kl::Pol(1)}, poly_hash(poly_pool)
 , block_list(), place()
+, KTF_table()
 {}
 Rep_table::~Rep_table() = default;
 
@@ -1837,16 +1839,17 @@ blocks::common_block& Rep_table::lookup_full_block
     return block; // use block of related |StandardReprMod| as ours
   }
 
-  // now we must first add the full block for |srm|
+  // now first generate and add a new full block (swallowing any older ones)
   add_block(srm,loc);
   h = reduced_hash.find(rp); // block containing |srm| is now present
   assert(h<place.size());
   which = place[h].second;
 
-  auto& block = place[h].first->first;
+  auto& block_loc = *place[h].first;
+  auto& block = block_loc.first;
   assert(block.is_full());
-  assert(block.representative(which)==srm); // we should find |srm| here
-  bm = block_modifier(block); // we are relative to ourselves
+  auto stored_srm = block.representative(which);
+  bm = make_relative_to(stored_srm,block_loc.second, srm,std::move(loc));
   return block;
 } // |Rep_table::lookup_full_block|
 
@@ -2307,9 +2310,11 @@ simple_list<std::pair<BlockElt,kl::KLPol> >
 } // |Rep_table::KL_column|
 
 
-const deformation_unit& Rep_table::deformation(const StandardRepr& z)
+const deformation_unit& Rep_table::deformation(StandardRepr z)
 {
   assert(is_final(z));
+  if (z.gamma().denominator() > (1LL<<rank()))
+    z = weyl::alcove_center(*this,z);
 
   auto h=alcove_hash.match(deformation_unit(*this,z));
   {
@@ -2345,14 +2350,11 @@ const deformation_unit& Rep_table::deformation(const StandardRepr& z)
   return pool[h];
 } // |Rep_table::deformation|
 
-K_type_nr_poly Rep_table::full_deformation(StandardRepr z)
+K_type_nr_poly Rep_table::full_deformation(const StandardRepr& z)
 // that |z| is dominant and final is a precondition assured in the recursion
 // for more general |z|, do the preconditioning outside the recursion
 {
   assert(is_final(z));
-
-  if (z.gamma().denominator() > (1LL<<rank()))
-    z = weyl::alcove_center(*this,z);
 
   K_type_nr_poly result;
   auto& du = deformation(z);
@@ -2625,10 +2627,13 @@ SR_poly Rep_table::twisted_deformation_terms (unsigned long sr_hash)
 #endif
 
 const deformation_unit&
-  Rep_table::twisted_deformation(const StandardRepr& z, bool& flip)
+  Rep_table::twisted_deformation(StandardRepr z, bool& flip)
 {
   assert(is_final(z));
   assert(is_delta_fixed(z));
+  if (z.gamma().denominator() > (1LL<<rank()))
+    z = weyl::alcove_center(*this,z);
+
   const auto& delta = inner_class().distinguished();
 
   auto h = alcove_hash.match(deformation_unit(*this,z));
@@ -2691,12 +2696,10 @@ const deformation_unit&
 } // |Rep_table::twisted_deformation (StandardRepr z)|
 
 
-K_type_nr_poly Rep_table::twisted_full_deformation(StandardRepr z)
+K_type_nr_poly Rep_table::twisted_full_deformation(const StandardRepr& z)
 {
   assert(is_final(z));
   assert(is_delta_fixed(z));
-  if (z.gamma().denominator() > (1LL<<rank()))
-    z = weyl::alcove_center(*this,z);
 
   K_type_nr_poly result { std::less<K_type_nr>() };
   bool flipper=false;

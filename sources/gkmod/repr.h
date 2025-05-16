@@ -452,7 +452,7 @@ using K_type_nr_poly = Free_Abelian_light<K_type_nr,Split_integer>;
 using KT_nr_pol = Free_Abelian_light<K_type_nr,int>;
 
 /*
-  The class |deformation_unit| to serves to store both key and values for
+  The class |deformation_unit| serves to store both key and values for
   deformation formula lookup inside the class |Rep_table| below.
 
   A key determines a parameter up to variations in $\nu$ that do not change the
@@ -463,7 +463,7 @@ using KT_nr_pol = Free_Abelian_light<K_type_nr,int>;
   (discrete) variation is allowed in the direction of the $+1$ eigenspace.)
 
   Due to the subtle definition of equivalence, the methods |operator!=| and
-  |hashCode| for hashing purposes are more elaborate that is typically the case
+  |hashCode| for hashing purposes are more elaborate than is typically the case
   for hashable entry types. The fact that associated values are also stored
   inside the entry type (while being ignored by the mentioned methods) is also
   not typical, but valid as a way to use |HashTable| as an association table.
@@ -607,7 +607,7 @@ class Rep_table : public Rep_context
   K_repr::K_type::Pooltype K_type_pool;
   HashTable<K_repr::K_type,K_type_nr> K_type_hash;
 
-  PosPolEntry::Pooltype KL_poly_pool;
+  PosPolEntry::Pooltype KL_poly_pool; // storage for (isolated) KL polynomials
   KL_hash_Table KL_poly_hash;
 
   IntPolEntry::Pooltype poly_pool;
@@ -618,6 +618,9 @@ class Rep_table : public Rep_context
 
   using bl_it = sl_list<located_block>::iterator;
   std::vector<std::pair<bl_it, BlockElt> > place; // parallel to |reduced_pool|
+
+  using KTF_entry = std::pair<level,K_repr::KT_pol>;
+  std::vector<std::unique_ptr<KTF_entry> > KTF_table;
 
  public:
   Rep_table(RealReductiveGroup &G);
@@ -638,6 +641,8 @@ class Rep_table : public Rep_context
   blocks::common_block& lookup // construct only partial block if necessary
     (StandardRepr& sr, // input argument, but by reference: it will be normalised
      BlockElt& z, block_modifier& bm); // output arguments
+
+  const K_repr::KT_pol& K_type_formula (K_repr::K_type& t,level cutoff);
 
   // polynomial representing column of |z| in KL-table, evaluated at $q:=s$
   SR_poly KL_column_at_s(StandardRepr z); // by value
@@ -688,8 +693,8 @@ class Rep_table : public Rep_context
 
   // full deformation to $\nu=0$ of |z|
   const deformation_unit& // warning: transient reference (into |pool| vector)
-    deformation(const StandardRepr& z);
-  K_type_nr_poly full_deformation(StandardRepr z); // by value
+    deformation(StandardRepr z); // by value
+  K_type_nr_poly full_deformation(const StandardRepr& z);
 
   // like |deformation_terms|; caller multiplies returned coefficients by $1-s$
   sl_list<std::pair<StandardRepr,int> > twisted_deformation_terms
@@ -709,9 +714,8 @@ class Rep_table : public Rep_context
 
   // full twisted deformation, with |flip| telling whether to multiply by |s|
   const deformation_unit& // warning: transient reference (into |pool| vector)
-  twisted_deformation(const StandardRepr& z, bool& flip);
-  K_type_nr_poly
-  twisted_full_deformation(StandardRepr z); // by value
+  twisted_deformation(StandardRepr z, bool& flip); // |z| by value
+  K_type_nr_poly twisted_full_deformation(const StandardRepr& z);
 
  private:
   class Bruhat_generator; // helper class: internal |add_block_below| recursion

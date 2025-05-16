@@ -171,7 +171,7 @@ set gcd = (int,int->int): { greatest common divisor; no size limit }
       while let r=a%b in r.!= do a:=b; b:=r od; b
    fi
 
-{ the following cannot be called |gcd|: too close to built-in |gcd@vec| }
+{ the following cannot be called |gcd|: too cloase to built-in |gcd@vec| }
 set gcd_big([int] v) = int:
    let d=0 in for x in v do if (d:=gcd(d,x))=1 then break fi od; d
 
@@ -237,6 +237,14 @@ set is_disjoint_from (vec L) = (vec->bool):
 set set_bit_positions (int n) = vec:
    assert(n.>=,"Infinite number of set bits for negative number");
    while let pow = AND_NOT(n,n-1) in !=pow do n-:=pow; bit_length(pow)-1 od
+
+
+set is_subset_of_sorted ([int] sorted) = ([int]->bool):
+   let test = is_member_sorted(sorted) in
+   ([int] S)bool: all(#S,(int i)bool: test(S[i]))
+set is_disjoint_from_sorted ([int] sorted) = ([int]->bool):
+   let test = isnt_member_sorted(sorted) in
+   ([int] S)bool: all(#S,(int i)bool: test(S[i]))
 
 set bitwise_intersection ([int] ns) = int:
    let a=-1 in for n in ns do a:=AND(a,n) od; a
@@ -401,7 +409,7 @@ set sum (int l,[vec] list) = vec: { sum of vecs of constant length l }
 { for large sums |sum(l#list)|, using |sum@mat|, might be marginally faster }
 
 { all words with letter |i| running over elements of |alphabets[i]| }
-set all_words ([[int]] alphabets) = mat:
+set all_words ([[int]] alphabets) = [vec]: {mat:}
   let rec_fun generate(int final) = [vec]:
      if =final then [null(0)]
      else final-:=1; let alphabet=alphabets[final] in
@@ -410,10 +418,10 @@ set all_words ([[int]] alphabets) = mat:
 	od
      fi
   , size=#alphabets
-  in size # generate(size) { ensure column size |size|, even for empty set }
+  in generate(size) { ensure column size |size|, even for empty set }
 
 { all words of length |#limits|, with letter |i| running over |#limits[i]| }
-set all_words ([int] limits) = mat:
+set all_words ([int] limits) = [vec]: {mat:}
    for n in limits do #n od.all_words
 
 set all_0_1_vecs (int n) = [vec]: all_words(for :n do 2 od)
@@ -532,11 +540,12 @@ set sum ((int,int) shape, [mat] L) = mat:
 { square matrices are frequent, so there is a special case of |sum| for them }
 set sum (int n,[mat] L) = mat: sum((n,n),L)
 
-{ product of list of square matrices, with given size for when list is empty }
+{ product left-to-right of list of square matrices, all square of size |n| }
 set product (int n, [mat] L) = mat:
   let len=#L in
   if =len then id_mat(n)
-  else let p=L~[0] in for i:len-1 from 1 do p *:= L[i] od; p
+  else let p=L[0] in assert(shape(p)=(n,n),"Matrix has wrong shape")
+  ; for i:len-1 from 1 do p *:= L[i] od; p
   fi
 
 set gcd(mat M) = int:
@@ -694,13 +703,21 @@ set any (maybe_a_mat M) = bool: case M  | solution: true | no_mat: false esac
 
 set required_solution ((mat,vec) system) = vec: system.solve.requisition
 
+set any (maybe_a_mat M) = bool:
+   case M  | solution: true | no_mat: false esac
+set mat_requisition (string message) = (maybe_a_mat->mat):
+   (maybe_a_mat M) mat:
+    case M  | solution(s): s | else error(message) esac
+set requisition = mat_requisition("No solution found; having one was required")
+{system (A,B) means solving AX = B}
+set required_solution ((mat,mat) system) = mat: system.solve.requisition
+set required_solution ((mat,mat) system) = mat:system.solve.requisition
+
 { multiplicative order of a matrix, hangs unless finite }
 set order (mat !M) = int:
   let (n,):p =shape(M) in assert(=p,"Matrix is not square");
   let N=M, order=1, I=id_mat(n) in
   while N!=I do N *:= M; order+:=1 od; order
-
-
 
 {                           Rational vectors                            }
 
@@ -774,7 +791,6 @@ set rat_requisition (string message) = (maybe_a_ratvec->ratvec):
 set requisition = rat_requisition("No solution found; having one was required")
 
 set required_solution ((mat,ratvec) system) = ratvec: system.solve.requisition
-
 
 
 {                           Split integers                              }
@@ -1033,6 +1049,7 @@ set root (RootDatum rd, vec alpha_v) = vec: root(rd,coroot_index(rd,alpha_v))
 set coroot (RootDatum rd, vec alpha) = vec: coroot(rd,root_index(rd,alpha))
 
 set is_orthogonal (RootDatum rd, int i, int j) = bool: =coroot(rd,i)*root(rd,j)
+set is_orthogonal (RootDatum rd, vec alpha, vec beta) = bool: is_orthogonal(rd,root_index(rd,alpha),root_index(rd,beta))
 set is_orthogonal (RootDatum rd, [int] S, int j) = bool:
    for i in S do is_orthogonal(rd,i,j) od.all
 
@@ -1252,22 +1269,6 @@ in root_datum_from_positive((columns_with(pred,posroots(rd))
 			   ,rd.prefers_coroots
 			   )
 
-set project_to_dominant_cone (RootDatum rd, ratvec gamma) =
-  (ratvec,int): { (nearest dominant vector to |gamma|, facet identification nr }
-(  let candidates = [rd.semisimple_rank].to_bitset-1 { simple roots to start }
-   then !simples = candidates { to use as universe for complementation }
-in while let new_indices = int:
-	 for i in set_bit_positions(candidates) if (coroot(rd,i)*gamma).<=
-	 do i
-	 fi od.to_bitset
-   in new_indices.> { |while|-condition: whether new roots were found }
-   do candidates := AND_NOT(candidates,new_indices) { clear bits }
-   ;  let (M,d)=wall_projector(rd,(simples-candidates).set_bit_positions)
-      in gamma := M*gamma/d
-   od
-;  ( gamma, candidates )
-)
-
 set (highest_root_indices,highest_coroot_indices) =
     ((RootDatum->[int]),(RootDatum->[int])):
    let work((RootDatum,int->[int])bottom_f) = (RootDatum rd)[int]:
@@ -1343,6 +1344,17 @@ set order (WeylElt !w) = int: let x=w in 1+(int:while !=x do x*:=w od)
 set rho_diff (WeylElt w) = vec: let rho2=w.root_datum.two_rho in (rho2-w*rho2)\2
 set rho_check_diff (WeylElt w) = vec:
   let rho_check2=w.root_datum.two_rho_check in (rho_check2-rho_check2*w)\2
+
+{ the set of posroots that w maps to negative roots, as a bitset }
+set positive_to_negative (WeylElt w) = [int]:
+  let n=w.root_datum.nr_of_posroots in
+  for x@i in root_permutation(w)[n:] if x<n do i fi od
+set posroot_sum (RootDatum rd,[int] select) = vec:
+  sum(rd.rank # for i in select do root(rd,i) od)
+set poscoroot_sum (RootDatum rd,[int] select) = vec:
+  sum(rd.rank # for i in select do coroot(rd,i) od)
+
+
 
 set chamber ((RootDatum,vec) rd_lambda) = WeylElt:
   let (w,)=from_dominant(rd_lambda) in w
@@ -2152,8 +2164,40 @@ set purity (KTypePol P) = (int,int,int):
     if =b then x+:=1 elif =a then y+:=1 else z+:=1 fi
   od; (x,y,z)
 
+{ moved these earlier to use in no_reps }
+{ for user convenience; a ParamPol is an associative array ParamPol->Split
+  so selecting its monomials (Param values) by position is not reliable, but
+  allowing so is useful in user sessions to pick terms from a computed result
+}
+set monomials (KTypePol P) = [KType]: for @t in P do t od
+set monomials (ParamPol P) = [Param]: for @p in P do p od
+set monomial  (KTypePol P,int i) = KType: monomials(P)[i]
+set monomial  (ParamPol P,int i) = Param: monomials(P)[i]
+
 
 {		Rapid look-up in certain fixed structures		}
+
+{ remove repetitions from a list of vecs, assumed all same size }
+set no_reps([vec] L) = [vec]: 
+    if =#L then []
+    else
+       let n = #L[0] then R=null(n,0)
+       then G = inner_class(root_datum(R,R),id_mat(n)).quasicompact_form
+       then x0 = KGB(G,0)
+       then P = sum(G, for v in L do K_type(x0,v) od)
+       in for p in monomials(P) do lambda_rho(p) od
+    fi
+
+{ remove repetitions from a list of ratvecs, assumed all same size }
+set no_reps([ratvec] L) = [ratvec]:
+    if =#L then []
+    else
+       let n = #L[0] then R=null(n,0)
+       then G = inner_class(root_datum(R,R),-id_mat(n)).quasisplit_form
+       then x0 = KGB(G,0), zero = null(n)
+       then P = sum(G, for v in L do param(x0,zero,v) od)
+       in for p in monomials(P) do p.nu od
+    fi
 
 set index_in = ([vec]->(vec->int)):
    let limit = [30].to_bitset { $2^{30}$ } in
@@ -2272,3 +2316,7 @@ set monomials([ParamPol] list) = [Param]:
 	  for P in list for @p in P do (split_1,p) od od
    in monomials(sum)
    fi
+
+set min_height([Param] params)=[Param]:
+if #params=0 then [] else
+let min=min(for p in params do height(p) od) in for p in params do if height(p)=min then [p] else [] fi od.## fi

@@ -653,10 +653,10 @@ set class_table_E (int n) = WeylClassTable:
 set simple_class_table (LieType lt) = WeylClassTable:
 (  let (letter,rank)=lt.simple_type { this also asserts that |lt| is simple }
 in case ascii(letter)-ascii("A")
-   in let (table) = class_table_A(SL(rank+1)) in table
-   ,  let (table) = class_table_B(rank) in table
-   ,  let (table) = class_table_C(rank) in table
-   ,  let (table) = class_table_D(rank) in table
+   in class_table_A(SL(rank+1))
+   ,  class_table_B(rank)
+   ,  class_table_C(rank)
+   ,  class_table_D(rank)
    ,  class_table_E(rank)
    ,  class_table_F(4)
    ,  class_table_G(2)
@@ -666,10 +666,10 @@ in case ascii(letter)-ascii("A")
 
 set class_table_simple (RootDatum rd,string letter,int n) = WeylClassTable:
    case ascii(letter)-ascii("A")
-   in let (table) = class_table_A(rd) in table
-   ,  let (table) = class_table_B(rd) in table
-   ,  let (table) = class_table_C(rd) in table
-   ,  let (table) = class_table_D(rd) in table
+   in class_table_A(rd)
+   ,  class_table_B(rd)
+   ,  class_table_C(rd)
+   ,  class_table_D(rd)
    , case n-6
      in class_table_E6(rd), class_table_E7(rd), class_table_E8(rd)
      esac
