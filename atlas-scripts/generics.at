@@ -17,19 +17,6 @@ set uncurry  ((S->(T->R)) f) = (S x,T y) R: f(x)(y)
 
 set curried_swapargs ((S->(T->R)) f) = (T->(S->R)): (T y):(S x) R: f(x)(y)
 
-set filter ((T->bool) pred) = ([T]->[T]):
-  ([T] r): for x in r if pred(x) do x fi od
-
-set map ((S->T) f) = ([S] a) [T]: for x in a do f(x) od
-
-set split ([S,T] l) = ([S],[T]): ( for(s,)in l do s od, for(,t)in l do t od )
-
-set zip ([S] a,[T] b) = [S,T]:
-  if #a<=#b then for x@i in a do (x,b[i]) od else for y@i in b do (a[i],y) od fi
-
-set transpose ([[T]] rr) = [[T]]:
-  for i: min(map(#@t([t]))(rr)) do for r in rr do r[i] od od
-
 set foldl (S !start,(S,T->S) op) = ([T]->S):
   ([T] a) S: let v=start in for x in a do v:=op(v,x) od; v
   { rec_fun f ([T] a) S: if #a=0 then start else op(f(a[:1~]),a~[0]) fi }

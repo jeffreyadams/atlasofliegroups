@@ -66,9 +66,9 @@
 %token NEXT DO DONT FROM DOWNTO WHILE FOR OD CASE ESAC REC_FUN
 %token TRUE FALSE DIE BREAK RETURN SET_TYPE ANY_TYPE WHATTYPE SHOWALL FORGET
 
-%token <oper> OPERATOR OPERATOR_BECOMES '=' '*' '!'
+%token <oper> OPERATOR OPERATOR_BECOMES '!' '=' '*' '<' '>'
 %token <str> INT STRING
-%token <id_code> IDENT TYPE_ID TYPE_VAR
+%token <id_code> IDENT TYPE_ID TYPE_CONSTR TYPE_VAR
 %token TOFILE ADDTOFILE FROMFILE FORCEFROMFILE
 
 %token <type_code> PRIMTYPE
@@ -84,7 +84,7 @@
 %type <expression> iffor_loop if_loop for_loop
 %type <ini_form> formula_start
 %type <oper> operator symbol
-%type <id_code> id_op
+%type <id_code> id id_op
 %type <code> tilde_opt breaker typevar_list
 %destructor { destroy_expr ($$); }
             expr expr_opt tertiary cast lettail or_expr and_expr not_expr
@@ -146,20 +146,18 @@ input:	'\n'			{ YYABORT; } /* null input, skip evaluator */
 	    auto decls = insert_type_abstraction($2,$4,@$);
 	    sequentially_set_identifiers(decls,@$); YYABORT;
 	  }
+	| ANY_TYPE typevar_list BEGIN SET_TYPE id '=' type_spec END '\n'
+	  { type_define_identifier($5,$7.type_pt,$2,$7.ip,@$); YYABORT; }
 	| IDENT ':' expr '\n'
 		{ struct raw_id_pat id; id.kind=0x1; id.name=$1;
 		  global_set_identifier(id,$3,0,@$); YYABORT; }
-	| IDENT ':' type '\n'	{ global_declare_identifier($1,$3); YYABORT; }
-	| FORGET IDENT '\n'	{ global_forget_identifier($2); YYABORT; }
-	| FORGET TYPE_ID '\n'	{ global_forget_identifier($2); YYABORT; }
-	| FORGET IDENT '@' type '\n'
+	| IDENT ':' type '\n' { global_declare_identifier($1,$3); YYABORT; }
+	| FORGET id '\n'	  { global_forget_identifier($2); YYABORT; }
+	| FORGET TYPE_CONSTR '\n' { global_forget_identifier($2); YYABORT; }
+	| FORGET id_op '@' type '\n'
 	  { global_forget_overload($2,$4); YYABORT;  }
-	| FORGET symbol '@' type '\n'
-	  { global_forget_overload($2.id,$4); YYABORT; }
-	| SET_TYPE IDENT '=' type_spec '\n'
-	  { type_define_identifier($2,$4.type_pt,$4.ip,@$); YYABORT; }
-	| SET_TYPE TYPE_ID '=' type_spec '\n'
-	  { type_define_identifier($2,$4.type_pt,$4.ip,@$); YYABORT; }
+	| SET_TYPE id '=' type_spec '\n'
+	  { type_define_identifier($2,$4.type_pt,0,$4.ip,@$); YYABORT; }
 	| SET_TYPE '[' type_equations ']' '\n'
 	  { process_type_definitions($3,@$); YYABORT; }
 
@@ -213,6 +211,10 @@ input:	'\n'			{ YYABORT; } /* null input, skip evaluator */
 	  }
 ;
 
+id	: IDENT
+	| TYPE_ID
+;
+
 id_op	: IDENT
 	| symbol { $$=$1.id; }
 ;
@@ -224,7 +226,7 @@ expr    : LET lettail { $$=$2; }
 	  { $$=make_lambda_node($2.patl,$2.typel,$5,@$); }
 	| '(' id_specs ')' cast
 	  { $$=make_lambda_node($2.patl,$2.typel,$4,@$); }
-	| REC_FUN IDENT '(' param_list ')' type ':' expr
+	| REC_FUN id_op '(' param_list ')' type ':' expr
 	  { $$ = make_rec_lambda_node($2,$4.patl,$4.typel,$8,$6,@$); }
 	| cast
 	| tertiary ';' expr { $$=make_sequence($1,$3,0,@$); }
@@ -335,7 +337,7 @@ formula_start : operator       { $$=start_unary_formula($1.id,$1.priority,@1); }
 
 
 symbol  : operator | '!' ;
-operator: OPERATOR | '=' | '*' ;
+operator: OPERATOR | '=' | '*' | '<' | '>' ;
 
 operand : operator operand { $$=make_unary_call($1.id,$2,@$,@1); }
 	| primary
@@ -845,9 +847,10 @@ type_field : type IDENT { $$.type_pt=$1; $$.ip.kind=0x1; $$.ip.name=$2; }
 ;
 
 type	: PRIMTYPE	{ $$=make_prim_type($1); }
-	| TYPE_ID
-	  { bool c; // dummy for reporting "constness"
-	    $$=acquire(&global_id_table->type_of($1,c)->unwrap()).release(); }
+	| TYPE_ID	{ $$ = expand_type_symbol($1); }
+	| TYPE_CONSTR '<' type '>'
+	  { $$=expand_type_constructor($1,make_type_singleton($3)); }
+	| TYPE_CONSTR '<' type_list '>' { $$=expand_type_constructor($1,$3); }
 	| closed_type
 	| TYPE_VAR { $$=make_type_variable($1); }
 ;
@@ -898,14 +901,15 @@ type_equations : type_equation
 	| type_equations ',' type_equation { $$=append_typedef_node($1,$3); }
 ;
 
-type_equation: TYPE_ID '=' typedef_type
+type_equation
+	: TYPE_ID '=' typedef_type
 	  { $$=make_typedef_singleton($1,$3.type_pt,$3.ip); }
 	| '.' '=' typedef_type
 	  { $$=make_typedef_singleton(-1,$3.type_pt,$3.ip); }
 ;
 
-typedef_type :
-	  '[' typedef_list ']'
+typedef_type
+	:'[' typedef_list ']'
 	  { $$.type_pt=make_row_type(make_union_type($2)); $$.ip.kind=0x0; }
 	| '(' typedef_composite ')'
 	  { $$.type_pt=make_union_type($2); $$.ip.kind=0x0; }

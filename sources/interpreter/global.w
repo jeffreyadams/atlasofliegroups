@@ -157,6 +157,8 @@ public:
   bool present (id_type id) const
   @+{@; return table.find(id)!=table.end(); }
   bool is_defined_type(id_type id) const; // whether |id| stands for a type
+  bool is_type_constructor(id_type id) const;
+    // whether |id| is defined as a type constructor
   const type* type_of(id_type id,bool& is_const) const;
   // pure lookup, may return |nullptr|
   const type* type_of(id_type id) const; // same without asking for |const|
@@ -215,6 +217,11 @@ void Id_table::add_type_def(id_type id, type&& tp)
 bool Id_table::is_defined_type(id_type id) const
 { map_type::const_iterator p = table.find(id);
 @/ return p!=table.end() and p->second.get_value()==nullptr;
+}
+bool Id_table::is_type_constructor(id_type id) const
+{ map_type::const_iterator p = table.find(id);
+@/ return p!=table.end() and p->second.get_value()==nullptr
+  and p->second.get_type().is_polymorphic();
 }
 
 @ The |remove| method removes an identifier if present, and returns whether
@@ -435,8 +442,6 @@ const overload_data* overload_table::entry
           if (shift(entry.f_tp().arg_type,0,shift_amount)==arg_t)
           return &entry;
         }
-        else if (entry.f_tp().arg_type==arg_t)
-          return &entry;
   }
   return nullptr; // indicate that |(id,arg_t)| was not found
 }
@@ -730,7 +735,8 @@ void global_declare_identifier(id_type id, type_p tp);
 void global_forget_identifier(id_type id);
 void global_forget_overload(id_type id, type_p tp);
 void type_define_identifier
-  (id_type id, type_p tp, raw_id_pat ip, const source_location& loc);
+  (id_type id, type_p tp, unsigned int deg, raw_id_pat ip,
+   const source_location& loc);
 void process_type_definitions (raw_typedef_list l, const source_location& loc);
 void set_back_trace(const simple_list<std::string>& back_trace);
 void show_ids(std::ostream& out);
@@ -1338,9 +1344,10 @@ and the latter is also the only one that records the type binding in
 
 We start with the simple type definitions, which are handled by the function
 |type_define_identifier|. Its argument |id| is a new type identifier that is
-defined to stand for the type expression~|t|, and a third argument~|ip| may
-provide a list of ``field names'' that can be useful in the case of a tuple or
-union type.
+defined to stand for the type expression~|t|, or for a type constructor with
+|deg| type arguments is |deg>0|. A fourth argument~|ip| may provide a list of
+``field names'' (which will be set to certain functions related to the type)
+that can be useful in the case of a tuple or union type.
 
 Eventually the type is stored in its original form in |global_id_table|. We
 actually |move| the type there, we make sure that other actions, notably
@@ -1354,9 +1361,10 @@ for this constant.
 
 @< Global function definitions @>=
 void type_define_identifier
-  (id_type id, type_p t, raw_id_pat ip, const source_location& loc)
+  (id_type id, type_p t, unsigned int deg, raw_id_pat ip,
+  const source_location& loc)
 { type_ptr saf(t); id_pat field_pat(ip); // ensure clean-up
-  type tp= type::wrap(*t,0); // global identifiers have no fixed type variables
+  type tp= type::constructor(std::move(*t),deg);
   const auto& fields = field_pat.sublist;
   const auto n=length(fields);
 @)
@@ -1450,10 +1458,9 @@ section@#field name printing @>.
       throw program_error(o.str());
     }
 @)
-  bool redefine = global_id_table->is_defined_type(id);
-  if (not redefine)
-    @< Protest if |id| is currently used as ordinary identifier @>
-  else // those tests were already done when |id| became a type identifier
+  @< Protest if |id| is currently used as ordinary identifier @>
+  bool redefine=global_id_table->is_defined_type(id);
+  if (redefine)
     clean_out_type_identifier(id);
   @< Emit indentation corresponding to the input level to |*output_stream| @>
   *output_stream << "Type name '" << main_hash_table->name_of(id) @|
@@ -1578,14 +1585,15 @@ time (with modification) without provoking an error for code that was previously
 accepted.
 
 @< Protest if |id| is currently used as ordinary identifier @>=
-{ const bool pres = global_id_table->present(id) and
-                    not global_id_table->is_defined_type(id);
-  auto q = global_overload_table->variants(id);
-  if (pres or (q!=nullptr))
+{ auto q = global_overload_table->variants(id);
+  if (q!=nullptr or @|
+       global_id_table->present(id) and
+       not global_id_table->is_defined_type(id)
+     )
   { std::ostringstream o;
     o  << "Cannot define '" << main_hash_table->name_of(id) @|
        << "' as a type; it is in use as " @|
-       << (pres? "global variable" : "function");
+       << (q==nullptr? "global variable" : "function");
     throw program_error(o.str());
   }
 }

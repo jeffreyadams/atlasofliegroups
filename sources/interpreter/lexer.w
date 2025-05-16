@@ -116,10 +116,10 @@ public:
   id_type first_identifier() const @+{@; return type_limit; }
   bool is_initial () const @+{@; return state==initial; }
   void put_type_variable(id_type v);
+  unsigned int typevar_level() const;
 private:
   void skip_space() const;
-  void push_nest() @+
-  {@; nest.push_front(eggs{}); }
+  void push_nest() @+ {@; nest.push_front(eggs{}); }
   void pop_nest(); // pop and decommission a clutch of type variables
   bool becomes_follows();
   void operator_termination (char c);
@@ -460,7 +460,9 @@ a type definition, including injector or projector names, will be scanned as
     }
     else
     { valp->id_code=id_code;
-      if (global_id_table->is_defined_type(id_code) or state==type_defining)
+      if (global_id_table->is_type_constructor(id_code))
+        code=TYPE_CONSTR;
+      else if (state==type_defining or global_id_table->is_defined_type(id_code))
         code=TYPE_ID;
       else
         code=IDENT;
@@ -468,34 +470,41 @@ a type definition, including injector or projector names, will be scanned as
   }
   else if (id_code>=keyword_limit)
   @/{@; valp->type_code=id_code-keyword_limit; code=PRIMTYPE; }
-  else // we have |id_code<keyword_limit|, so it is a keyword
-  { code=QUIT+id_code;
-    switch(code)
-    {
-      case LET: push_nest(); input.push_prompt('L'); break;
-      case BEGIN:
-      case IF:
-      case WHILE:
-      case FOR:
-      case CASE:
-        push_nest(); input.push_prompt('G'); break;
-      case IN: if (input.top_prompt()=='L')
-      @/{@; pop_nest(); input.pop_prompt(); prevent_termination='I'; }
-      break;
-      case END:
-      case FI:
-      case OD:
-      case ESAC:
-        pop_nest(); input.pop_prompt(); break;
-      case AND: case OR: case NOT: prevent_termination='~'; break;
-      case WHATTYPE: prevent_termination='W'; break;
-      case SET: prevent_termination='S'; break;
-      case SET_TYPE: prevent_termination='T'; skip_space();
-        if (*input.point()=='[')
-          state=type_defining;
-        // |type_defining| only for ``\&{set\_type} [ \dots ]''
-      break;
-    }
+  else
+  // we have |id_code<keyword_limit|, so it is a keyword
+  @< Scan |id| as a keyword @>
+}
+
+@ Scanning keywords is done by computing |code| by a shift from |id_code|; in
+some cases seeing the keyword provokes some activity on the |nest|.
+
+@< Scan |id| as a keyword @>=
+{ code=QUIT+id_code;
+  switch(code)
+  {
+    case LET: push_nest(); input.push_prompt('L'); break;
+    case BEGIN:
+    case IF:
+    case WHILE:
+    case FOR:
+    case CASE:
+      push_nest(); input.push_prompt('G'); break;
+    case IN: if (input.top_prompt()=='L')
+    @/{@; pop_nest(); input.pop_prompt(); prevent_termination='I'; }
+    break;
+    case END:
+    case FI:
+    case OD:
+    case ESAC:
+      pop_nest(); input.pop_prompt(); break;
+    case AND: case OR: case NOT: prevent_termination='~'; break;
+    case WHATTYPE: prevent_termination='W'; break;
+    case SET: prevent_termination='S'; break;
+    case SET_TYPE: prevent_termination='T'; skip_space();
+      if (*input.point()=='[')
+        state=type_defining;
+      // |type_defining| only for ``\&{set\_type} [ \dots ]''
+    break;
   }
 }
 
@@ -527,6 +536,20 @@ of ordinary identifiers is found).
   valp->id_code = count;
 }
 
+@ Sometimes we need to know the current total number of type variables, and the
+simplest way to find it is to interrogate the lexical analyser. The function
+|typevar_level| provides the information by a simplified version if the above
+code, counting all eggs in the nest.
+
+@< Definitions of class members @>=
+unsigned int Lexical_analyser::typevar_level () const
+{
+  unsigned int count=0;
+  for (const auto& clutch : nest)
+    count += clutch.size();
+  return count;
+}
+
 @ Number denotations get as parsing value the string of characters
 (representing digits) that forms the denotation; no conversion is done here.
 This is in order to allow writing arbitrarily large integers without the
@@ -543,7 +566,7 @@ pointer to a |std::string|, again to minimise complications for the parser.
   valp->str = new std::string(p,input.point()); code=INT;
 }
 
-@ The method |put_type_variables| is repeatedly called from the parser when a
+@ The method |put_type_variable| is repeatedly called from the parser when a
 list of fresh type variables is announced. The reduction that performs this
 action is triggered by an opening symbol occurring as look-ahead token, so that
 the lexer has already performed the corresponding call of |push_nest|. Therefore
@@ -638,13 +661,17 @@ included before) respectively appending output redirection.
          }
          operator_termination(c);
          valp->oper.priority=2;
+         {} // don't try |OPERATOR_BECOMES| for operators staring '$<$' or '$>$'
          if (input.shift()=='=')
+       @/{@;
            valp->oper.id=id_table.match_literal(c=='<' ? "<=" : ">=");
-         else
-           {@; input.unshift();
-               valp->oper.id=id_table.match_literal(c=='<' ? "<" : ">");
-           }
-         code = becomes_follows() ? OPERATOR_BECOMES : OPERATOR;
+           code = OPERATOR;
+         }
+         else // scan as character token |c|, but also fetch identifier
+         {@; input.unshift();
+           valp->oper.id=id_table.match_literal(c=='<' ? "<" : ">");
+           code = c;
+         }
   break; case ':': prevent_termination=c;
     code = input.shift()=='=' ? BECOMES  : (input.unshift(),c);
   break; case '=':
