@@ -54,7 +54,7 @@ public:
 template<typename C> SizeType<C>::SizeType(unsigned long a)
 {
   if (a == 0)
-    error::PrimesError()("error: 0 is not representable as a SizeType");
+    error::NumericOverflow()("error: 0 is not representable as a SizeType");
 
   for (size_t n=0; n<PRIMES_MAX; ++n) // extract all factors |prime(n)|
     for (d_exp[n]=0; a%prime(n)==0; ++d_exp[n])
@@ -62,7 +62,7 @@ template<typename C> SizeType<C>::SizeType(unsigned long a)
 
 
   if (a > 1) // a was not representable
-    error::PrimesError()("error: number not representable as SizeType");
+    error::NumericOverflow()("error: number not representable as SizeType");
 }
 /*
   Return the |unsigned long| value of $prime(i)^{d_exp[i]}$
@@ -193,7 +193,7 @@ PrimeHelper::PrimeHelper(unsigned long n)
     if (i==count) // then |j| is prime
     {
       if (count == size::PRIMES_MAX) // error, cannot add one more prime
-	error::PrimesError()("error: value of PRIMES_MAX is too small");
+	error::NumericOverflow()("error: value of PRIMES_MAX is too small");
       d_primes[count]=j;
       ++count;
     }
