@@ -88,12 +88,6 @@ for row in M do
 then column_specifier="l"*#M[0]
 in tabulate(table,column_specifier,2," ")
 
-set transpose(CyclotomicMat M)=CyclotomicMat: { sublists must be of equal length }
-  let n=#M in
-  if n=0 then M { not much we can do for an empty list }
-  else for j:#M[0] do for i:n do M[i][j] od od
-  fi
-
 set *(CyclotomicMat A,CyclotomicMat B) = CyclotomicMat:
   let n=#A, B_tr=transpose(B) { best to rearrange B once and for all }
   then m=#B_tr { number of rows of B_tr, or columns of B, and of result }

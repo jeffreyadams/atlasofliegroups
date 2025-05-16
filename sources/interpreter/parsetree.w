@@ -1673,21 +1673,62 @@ pointers for expressions that it handles are not smart pointers either.
 @< Includes needed... @>=
 #include "axis-types.h" // parsing types need |type_p| and such
 
-@ Most functionality for these types is given in \.{axis-types.w}; we just
-need to say how to destroy them.
+@ Much of the functionality for types is given in \.{axis-types.w}. Here we
+define function constructing types from applied use (expansion) of user defined
+type and type constructor symbols, and for destroying types.
 
 @< Declarations of functions for the parser @>=
+type_p expand_type_symbol(id_type id);
+type_p expand_type_constructor(id_type id,raw_type_list args);
 void destroy_type(type_p t);
 void destroy_type_list(raw_type_list t);
 
-@ Since |type_ptr| and |type_list| are fully equipped types, it suffices to
-convert to them and forget.
+@ We can destroy values of the raw pointer types |type_p| and |raw_type_list| by
+converting them to the corresponding smart pointer type, |type_ptr| and
+|type_list| respectively, and then forgetting the result.
 
 @< Definitions of functions for the parser @>=
 
 void destroy_type(type_p t)@+ {@; (type_ptr(t)); }
 void destroy_type_list(raw_type_list t)@+ {@; (type_list(t)); }
   // recursive destruction
+
+@ Expansion of user defined type symbols amounts to looking up the corresponding
+type which is store in the |global_id_table|.
+
+@< Definitions of functions for the parser @>=
+type_p expand_type_symbol(id_type id)
+{ bool dummy; // for reporting "constness", which is ignored for types
+  return acquire(&global_id_table->type_of(id,dummy)->unwrap()).release();
+}
+type_p expand_type_constructor(id_type id,raw_type_list l)
+{ bool dummy;
+  type_list args(l); // reversed below
+  const type& poly_type = *global_id_table->type_of(id,dummy);
+  unsigned int len=length(args), degree = poly_type.degree();
+  if (len!=degree)
+    @< Throw a |program_error| signalling an incorrectly applied type symbol
+       or type constructor @>
+   std::vector<type_expr> arg_vec(len);
+   auto v_it=arg_vec.rbegin(); // reverse while copying to |arg_vec|
+   for (auto it=args.begin(); not args.at_end(it); ++it,++v_it)
+     v_it->set_from(std::move(*it));
+   auto result=std::make_unique<type_expr>
+    (simple_subst(poly_type.unwrap(),arg_vec));
+  return result.release();
+}
+
+@ Exceptionally we throw an error here from within the parser, which seems
+inevitable given that we expand type symbols and type constructors
+@< Throw a |program_error| signalling an incorrectly applied type symbol or
+   type constructor @>=
+{ std::ostringstream o;
+  o << "Type constructor '"
+    << main_hash_table->name_of(id) @| << "' called with " << len
+    << " type arguments" << ", expected " << degree;
+  throw program_error(o.str());
+}
+
 
 @ For user-defined functions we shall use a structure |lambda_node|.
 @< Type declarations needed in definition of |struct expr@;| @>=

@@ -1124,19 +1124,27 @@ substitutions to certain type variables. For instance a list display containing
 expressions of \foreign{a priori} types \.{int} and \.{rat} will compile as a
 list of \.{rat} expressions, or for a polymorphic example the list display
 $[([\,],[3/4,5]),([2],[\,])]$ will compile as type \.{[([int],[rat])]}. (The
-latter example is polymorphic due to the presence of empty lists; the somewhat
+latter example is polymorphic due to the presence of empty lists. This somewhat
 contrived example incidentally did not compile without a cast before the
-introduction of polymorphic types into the language.) This process is called
-type balancing (the mental image is comparing the ``weights'' of the component
-expression types, to see which one is the most accepting in determining the
-result type).
+introduction of polymorphic types into the language. It should be said that
+since our algorithm chooses between either using coercions, for monomorphic
+types, or using substitutions, for polymorphic types, it still cannot handle
+cases where these could operate in parallel, as in
+$[([3/4,5/7],[\.{true}]),([2],[\,])]$; this is because of the way the auxiliary
+function |join_to| used operates.) This process is called type balancing (the
+mental image is comparing the ``weights'' of the component expression types, to
+see which one is the most accepting in determining the result type).
 
 The general situation where balancing can be applied is that we have a list of
 expressions that can all be type checked successively, producing a common type
 and a list of converted expressions. This means that for nested conditional
 expressions, we only balance two subexpressions each time; if one or both of
 these subexpression are themselves balanced internally, that involves separate
-calls of |balance|.
+calls of |balance|. Also, if for instance we have a row display some of whose
+component expressions are also row displays, the latter are handled by separate
+calls of |balance| (but there may be interaction with the outer call of
+|balance| in case the inner balance fails, through the catching of a
+|balance_error|).
 
 @ Here is the set-up for balancing. We try to find in |common| a type that can
 accept all component expressions. Branch types incomparable with the current
@@ -1147,25 +1155,16 @@ expression \emph{requires} a void type). So at the end we prune |conflict|
 before possibly reporting an error.
 
 In case of success, the context type |target| that was used as initial goal for
-the conversion of the balanced expressions is set to |common|; the change here
-can only involve specialisation (because the initial |target| can be partially
-or wholly undetermined, but it cannot be polymorphic). Then any branches that
-were originally found to have a different type than |common|, but apparently
-were saved by pruning (so the final value of |common| accepts them), are
-converted again in the context of that final |common| type (which by now is also
-held in |target|), and the result of that conversion replaces the previous
-result in the |components| vector. There is no guarantee the new conversion
-succeeds, but we do not catch any exceptions this second time.
-
-The same treatment is given to branches whose conversion threw a balancing error
-when initially converted (meaning they had internal balancing that failed in
-their initial type context), but for which all types involved in the balancing
-were later pruned in the outer balancing. Such branches leave their |comp_type|
-at the value |target| had for the attempted initial conversion, which must
-differ from its final value if pruning removed the offending types. Therefore
-the test that |comp_type[i]!=target| applies to them, and |components[i]|, which
-was left unset by the failed initial conversion, gets set by the new conversion
-(if it is successful)).
+the conversion of the balanced expressions is set to |common|. The change here
+can only involve specialisation; although |target| initially cannot be
+polymorphic (just undetermined), the specialisation can make it polymorphic if
+|common| is. Then any branches that were originally found to have a different
+type than |common|, but apparently were saved by pruning (so the final value of
+|common| accepts them), are converted again in the context of the |target| type.
+The second conversion can only differ from the first by insertion of coercions,
+so we skip this phase altogether if |common| is polymorphic; in that case the
+fact that pruning succeeded shows that |common| accepts all types of components,
+and this suffices.
 
 @< Local function definitions @>=
 
@@ -1187,16 +1186,13 @@ type balance
   @< Convert each expression in |elist| in the context of a copy of |target|,
      pushing the results to |components|; maintain |common| as unified type,
      record in |conflicts| non conforming component types @>
-  @< Prune from |conflicts| any types that are now accepted by |common|, and
-     if any conflicts remain |throw| a |balance_error| mentioning |common| and
-     all |conflicts|; otherwise set an undetermined |target| to |common|, or
-     specialise |common| to |target| @>
+  @< Prune from |conflicts| any types that |common| now accepts, and if any
+     conflicts remain, |throw| a |balance_error| mentioning |common| and all
+     |conflicts|; otherwise specialise |target| to |common| @>
 
-  wel_const_iterator it(elist);
-  for (unsigned i=0; i<n; ++i,++it)
-    if (not comp_type[i].is_polymorphic() and comp_type[i]!=common)
-      components[i] = convert_expr(*it,fc,target);
-      // redo conversion with unifying |target| type
+  if (not common.is_polymorphic())
+    @< Redo conversion with context type |target| for components that do not
+       already have that type @>
   return common;
 }
 
@@ -1262,12 +1258,12 @@ to \emph{not advance} the iterator in case a node is erased in front of it.
 
 Only if at least one conflicting type remains do we report an error; if so, the
 type |common| is added as first type to the error object, unless it is unchanged
-from the |undetermined_type| value it was initialised to (which may happen if
+from the |type::bottom(fc)| value it was initialised to (which may happen if
 every branch threw a |balance_error| that was caught), so that one has a
 complete list of types that caused balancing to fail. Upon success, we
 specialise |target| to a type accepting |common| (which might be polymorphic, or
-even |type::bottom()|, as happens in an empty list display which has $0$
-branches); the method |type::unify_specialise| accomplished this.
+even |type::bottom(fc)|, as happens in an empty list display which has $0$
+branches); the method |type::unify_specialise| accomplishes this.
 
 
 @< Prune from |conflicts| any types... @>=
@@ -1279,13 +1275,38 @@ branches); the method |type::unify_specialise| accomplished this.
       ++it;
   if (not conflicts.empty())
   { balance_error err(e,description);
-    if (common.kind()!=variable_type)
+    if (common.unwrap()!=type_expr::variable(fc))
       err.variants.push_back(std::move(common));
     err.variants.append(std::move(conflicts));
     throw std::move(err);
   }
   if (not common.unify_specialise(target))
     throw type_error(e,common.bake_off(),target.copy());
+}
+
+@ When converting a component expression a second time in the hope it can adapt
+to the |target| type that results from balancing, the result of a successful
+conversion replaces the previous result in the |components| vector. There is no
+guarantee the new conversion succeeds, but we won't catch any exceptions this
+second time.
+
+The same treatment is given to branches whose conversion threw a balancing error
+when initially converted (meaning they had internal balancing that failed in
+their initial type context), but for which all types involved in the balancing
+were later pruned in the outer balancing. Such branches leave their |comp_type|
+at the value |target| had for the attempted initial conversion, which must
+differ from its final value if pruning removed the offending types. Therefore
+the test that |comp_type[i].unwrap()!=target| holds for them, and
+|components[i]|, which was left unset by the failed initial conversion, gets set
+by the new conversion (if it is successful)).
+
+@< Redo conversion with context type |target| for components that do not
+   already have that type @>=
+{ wel_const_iterator it(elist);
+  for (unsigned i=0; i<n; ++i,++it)
+    if (not comp_type[i].is_polymorphic() and comp_type[i].unwrap()!=target)
+      components[i] = convert_expr(*it,fc,target);
+      // redo conversion with unifying |target| type
 }
 
 @ With balancing implemented, converting a list display becomes fairly easy.
@@ -7083,11 +7104,26 @@ the global overload table to find the value. Since upon success we find a bare
 |shared_function|, we must (as we did for~`\.\$') use the |capture_expression|
 class to serve as wrapper that upon evaluation will return the value again.
 
-The method |overload_table::entry| finds an entry, if there exists one, whose
-argument type is \emph{equal} to the |type_expr| that method is called with,
-returning a pointer to it. When it returns a null pointer no exact match was
-found, but there could still be a polymorphic overload that accepts the given
-argument type; that case is handled in a separate section.
+We do two attempts to match the specified type |c_type| to an entry in the
+|global_overload_table|. In the first we deduce from |c_type| a type as it would
+be specified in a table entry for an exact match. Then as a second try, we try
+to find a unique polymorphic overload that accepts |c_type| as it would in a
+function call, and if one is found we use that. Although an exact match would
+also be found in the second try, the first one allows specifying any overload,
+even if the exact type of that overload also matches another, more general,
+polymorphic overload. (In that case it is not possible to call the intended
+overload through ordinary overload resolution, since no match to it would ever
+be unique; we do want to be able to specify it in an operator cast, if it were
+only to apply \.{forget} to get rid of the useless overload.)
+
+For the first try we use the method |overload_table::entry|, which in the call
+below finds an entry at symbol |c->oper|, if there exists one, whose argument
+type with any polymorphic variables shifted up by |fc| is |c_type|. That shift
+is what we want, because at the point where the operator cast is written, any
+polymorphic types introduced start at |fc|, while in the overload table there
+are no fixed type variables and they start at~$0$. that method is called with.
+When |overload_table::entry| returns a null pointer no exact match was found,
+and we pas to the second try, which uses |overload_table::variants|.
 
 @< Cases for type-checking and converting... @>=
 case op_cast_expr:
@@ -7095,17 +7131,25 @@ case op_cast_expr:
   const type_expr& c_type = c->type;
   std::ostringstream o; // prepare name for value, and for error message
   o << main_hash_table->name_of(c->oper) << '@@' << c_type;
-  type target = type::wrap(c_type,fc);
-  const unsigned target_deg=target.degree();
   expression_ptr result;
   type_expr deduced_type;
-  const overload_data* prev_match=nullptr;
-  if (@[auto* vars = global_overload_table->variants(c->oper)@;@])
-    for (const auto& variant : *vars)
-  @< See if |target| matches the argument type of a unique variant; if so,
-     assign to |result| a |capture_expression| around its value, and to
-     |deduced_type| the type with any substitutions to polymorphic type
-     variables to match |target| applied to it @>
+  if (const auto* entry = global_overload_table->entry(c->oper,c_type,fc))
+  {
+    result.reset(new capture_expression(entry->value(),o.str()));
+    functype_specialise(deduced_type,c_type,entry->f_tp().result_type);
+  }
+  else
+  {
+    type target = type::wrap(c_type,fc);
+    const unsigned int target_deg=target.degree();
+    const overload_data* prev_match=nullptr;
+    if (@[auto* vars = global_overload_table->variants(c->oper)@;@])
+      for (const auto& variant : *vars)
+    @< See if |target| matches the argument type of a unique variant; if so,
+       assign to |result| a |capture_expression| around its value, and to
+       |deduced_type| the type with any substitutions to polymorphic type
+       variables to match |target| applied to it @>
+  }
   if (result==nullptr)
     throw expr_error(e,"No instance for "+o.str()+" found");
   return conform_types(type::wrap(deduced_type,fc),tp,fc,std::move(result),e);
@@ -7132,24 +7176,24 @@ perform two separate substitutions to provide those. If nothing is found here,
 we fall through this code, leading to a ``no instance found'' error.
 
 @< See if |target| matches the argument type of a unique variant... @>=
-    {
-      unsigned int op_deg = variant.poly_degree(), shift_amount;
-      if (target.matches(variant.f_tp().arg_type,op_deg,shift_amount))
-      {
-        if (prev_match!=nullptr)
-          @< Throw an error reporting an ambiguous match in operator cast @>
-        @< Write to |o| the name of operator |c->oper| with the argument type of
-           |variant|, to which the substitutions in |target.assign()| have been
-           applied @>
-        result.reset(new capture_expression(variant.value(),o.str()));
-        deduced_type = type_expr::function @|
-          (substitution(variant.f_tp().arg_type,target.assign(),shift_amount)
-          ,substitution(variant.f_tp().result_type,target.assign(),shift_amount)
-          );
-       prev_match = &variant;
-      }
-      target.clear(target_deg);
-    }
+{
+  unsigned int op_deg = variant.poly_degree(), shift_amount;
+  if (target.matches(variant.f_tp().arg_type,op_deg,shift_amount))
+  {
+    if (prev_match!=nullptr)
+      @< Throw an error reporting an ambiguous match in operator cast @>
+    @< Write to |o| the name of operator |c->oper| with the argument type of
+       |variant|, to which the substitutions in |target.assign()| have been
+       applied @>
+    result.reset(new capture_expression(variant.value(),o.str()));
+    deduced_type = type_expr::function @|
+      (substitution(variant.f_tp().arg_type,target.assign(),shift_amount)
+      ,substitution(variant.f_tp().result_type,target.assign(),shift_amount)
+      );
+   prev_match = &variant;
+  }
+  target.clear(target_deg);
+}
 
 @ Similarly to what we do for ambiguous exact overload matches, we use the
 |prev_match| pointer to build an error report.

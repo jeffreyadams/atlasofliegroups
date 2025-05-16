@@ -289,11 +289,6 @@ set eval (rat_poly(,v,),rat k) = rat:
 
 set shape (i_poly_mat M) = (int,int): if =#M then (0,0) else (#M,#M[0]) fi
 
-set transpose(i_poly_mat M)=i_poly_mat: { sublists must be of equal length }
-  if =#M then M { there is not much we can do for an empty list }
-  else for j:#M[0] do for row in M do row[j] od od
-  fi
-
 { dot product of two vectors of polynomials (the name avoids *@(mat,mat)) }
 set dot_product([i_poly] v,[i_poly] w) = i_poly:
   let sum=i_poly:[] in for p@i in v do sum +:= p*w[i] od; sum
