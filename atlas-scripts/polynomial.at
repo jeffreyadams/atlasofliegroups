@@ -336,20 +336,19 @@ set update_row ([i_poly] R, int j,i_poly v) = [i_poly]: R[j]:=v; R
 { update one row of a matrix (replacing it by a given new row) }
 set update_matrix_row (i_poly_mat M, int i, [i_poly] row)= i_poly_mat:
    M[i]:=row; M
-{ update one entry in a matrix }
-set update_matrix_entry(i_poly_mat M, int i, int j, i_poly v)= i_poly_mat:
-  let row=M[i] in row[j]:=v; M[i]:=row; M
 
 set zero_poly_row (int n) = [i_poly]: for :n do poly_0 od
 set zero_poly_matrix (int rows, int columns) = i_poly_mat:
   let !row=zero_poly_row(columns) in for :rows do row od
 set zero_poly_matrix(int n) = i_poly_mat:zero_poly_matrix(n,n)
 set scalar_poly_matrix (int n, int c) = i_poly_mat:
-  let !row=zero_poly_row(n) { model row, almost equal to each wanted row } in
-  for i:n do update_row(row,i,constant_poly(c)) od
+   let !row=zero_poly_row(n) { model row, almost equal to each wanted row }
+   , cc =constant_poly(c)
+in for i:n do update_row(row,i,cc) od
+
 set identity_poly_matrix (int n) = i_poly_mat: scalar_poly_matrix(n,1)
 set mat_as_poly_mat (mat M) = i_poly_mat:
- let (r,c)=shape(M) in for i:r do for j:c do [M[i,j]] od od
+   let (r,c)=shape(M) in for i:r do for j:c do M[i,j].constant_poly od od
 
 set + (i_poly_mat M, i_poly p) = i_poly_mat: { add polynomial scalar matrix }
   for row@i in M  do for e@j in row do if i=j then e+p else e fi od od
@@ -446,6 +445,9 @@ set format (rat_poly(X,cs,)) = string:
 
 { nice printing of a polynomial }
 set printPoly (i_poly v) = void: prints(poly_format(v,"q"))
+set printPoly (i_poly v,string q) = void: prints(poly_format(v,q))
+{synonym}
+set show(i_poly v)=void:printPoly(v)
 
 { M=poly_mat is a polynomial matrix; e.g.
   expr> set M= poly_mat: [[ [0,1], [0,0,1]], [[0], [1]]]
