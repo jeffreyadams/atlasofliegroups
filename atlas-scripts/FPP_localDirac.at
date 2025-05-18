@@ -162,7 +162,7 @@ set deform_flag = false
 
 {. If "true," then some local FPP calculations revert to simpler (?)
    forms in "simple" cases.}
-set revert_flag = true
+set revert_flag = false {true}
 
 {If "false", use the old version of one_level, in which vertex/edge calcs
 are done immediately to ONE_HT}
