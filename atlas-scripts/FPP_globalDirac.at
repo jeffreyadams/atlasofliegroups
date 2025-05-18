@@ -76,27 +76,35 @@ set contragredient(KGBElt x) = KGBElt:
 {if false, then always use bottom layer when it's called for}
 set test_bl_flag = true
 
-{Very large values here in E8_s lead to very slow more_bottom calculations. Need to bound somehow}
+set more_bound = rat: 1/4
+{Very large values here in E8_s lead to very slow more_bottom calculations. Need to bound somehow.
+Try size of lambda/4???}
+
+{if x is less than this fraction of KGB, then switch bottom_layer to one_level}
+set KGB_frac = rat:2/3
+
 set bl_shift(KGBElt x, ratvec lambda, LocalVertexData Lvd) = int:
     let pmax = pmax(x,lambda,Lvd), rd = x.root_datum, theta = x.involution
     then GAM = height(rd, pmax.infinitesimal_character)
     then LAM = height(rd, (1+theta)*lambda/2)
-    in floor((GAM - LAM)*shift_frac)
+    in floor(min((LAM+1)*more_bound, (GAM - LAM)*shift_frac)) + 1
 
 
 {returning "true" means bottom layer ought to be used}
+{for now (5/17/25) don't do more_shift}
 set test_bl(KGBElt x, ratvec lambda, LocalVertexData Lvd) = bool:
     if not test_bl_flag then return true fi;
-    if rank(x.real_form) < 7 then return false fi;
-    let start = elapsed_ms(), pmax = pmax(x,lambda,Lvd), rd = x.root_datum, theta = x.involution
+    if let G = x.real_form in x.number < KGB_frac*(#KGB(G)) then return false fi;
+    {if rank(x.real_form) < 7 then return false fi;}
+    let start = elapsed_ms(), pmax = pmax(x,lambda,Lvd), rd = x.root_datum, theta = x.involution, ans = true
     then gamma = pmax.infinitesimal_character
     then () = more_flag :=false
     then () = more_shift_level:=0
     then (LAM,NU,GAM) = low(pmax), R = (rd.rho)*(rd.two_rho_check)
-    then ans = GAM*GAM + R*LAM > R*GAM*GARLAGmin and LAM < GAM*LAGAmax
-    then () = if GAM > R*GARmin
-    	      then more_shift(floor((GAM - LAM)*shift_frac))
-	      fi
+    {then ans := GAM*GAM + R*LAM > R*GAM*GARLAGmin and LAM < GAM*LAGAmax}
+    {then () = if GAM > R*GARmin
+    	      then more_shift(bl_shift(x,lambda,Lvd))
+	      fi}
     then () = test_bl_time +:= elapsed_ms() - start
     then () = if not ans and test_verbose
     	      then prints("reverting from bottom_layer because of test_bl")

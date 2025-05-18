@@ -556,6 +556,7 @@ set_type
   , (Param -> int) umatch {add p to its uhash table}
   , (Param -> int) numatch {add p to its nuhash table}
   , ((Param,int) -> int) long_umatch {add p to ith uhash table}
+{  , ((int,ratvec,ratvec,int) -> int) long_umatch_coords {add p to ith uhash table}}
   , ((Param,int) -> int) long_match {add p to ith uhash table} {included for back compatibility}
   , ( -> ) write {output unitary data for file}
   , (RealForm -> ) writeG {output data for one group to file}
@@ -757,7 +758,7 @@ set make_big_unitary_hash() = big_unitary_hash_table:
     then add_K_type_my_branch(KType mu, int D) = (int, int, int):
     	 let rfnum = add_real_form(mu.real_form)
 	 then rf = real_form_hash.index(rfnum)
-	 then () = mu :=  K_type(KGB(rf)[mu.x.number], mu.lambda_minus_rho)
+	 then () = mu :=  K_type(KGB(rf,mu.x.number), mu.lambda_minus_rho)
 	      	   {now mu is attached to rf}
 	      	   {first_K_type(regroup(rf,1*mu))}
 	 then () = assert(D>=height(mu),"branch to D below height(mu)")
@@ -1227,19 +1228,19 @@ set make_big_unitary_hash() = big_unitary_hash_table:
       {then bitmapintlist = xl_known[i]}
       then donemap = x_known[i]
       then done_list = [int]:[]
-      then () = if write_x_flag then done_list :=
-      	      	       for x in KGB(G)
+      then () = if write_x_flag then done_list := set_bit_positions(donemap)
+      	      	       {for x in KGB(G)
       	   	       do if is_member_bitset(x.number, donemap)
 			  then [x.number]
 			  else []
 			  fi
-		       od.##
+		       od.##}
 		 fi
       in write_real_form(G,Gname);
-      	 prints("set j = big_unitary_hash.rf_number(",Gname,")"); 
+      	 prints("set j = big_unitary_hash.rf_number(",Gname,")");
 	 for p in plist
 	 do let xnum = p.x.number
-	    in prints("void:  big_unitary_hash.long_match(parameter(G_temp,",xnum,",",p.lambda,",",p.nu,"),j)")
+	    in prints("void:  big_unitary_hash.long_match(parameter(",Gname,",",xnum,",",p.lambda,",",p.nu,"),j)")
 	 od;
 	 {prints("void: big_unitary_hash.finishall(",Gname,",",xl_known[i],")");} {this has length #KGB(G), which is a lot; not worth including}
 	 if write_x_flag
@@ -1264,7 +1265,8 @@ some lambdas for that x might be finished.}
 		   od.##
       then donemap = x_known[i]
       then donerangemap = AND(donemap, 2^high - 2^low)
-      then done_list = [int]: []
+      then done_list = set_bit_positions(donerangemap)
+      {then done_list = [int]: []
       then () = if write_x_flag then done_list :=
       	      	       for x in KGB(G)[low:high]
       	   	       do if is_member_bitset(x.number, donemap)
@@ -1272,7 +1274,7 @@ some lambdas for that x might be finished.}
 			  else []
 			  fi
 		       od.##
-		fi
+		fi}
       	   {these are the x's being written for which list is complete}
       in write_real_form(G,Gname);
       	 prints("set j = big_unitary_hash.rf_number(",Gname,")"); {, ptemp = GL(1,R).trivial");}
@@ -1306,7 +1308,7 @@ some lambdas for that x might be finished.}
 	 do prints("void: big_unitary_hash.long_match(parameter(G_temp,",xnum,",",lambda,",",p.nu,"),j)")
 	 od;
 	 if is_member_bitset(position(x,lambda), xl_known[i][xnum])
-	 then prints("big_unitary_hash.finish(KGB(G_temp)[",xnum,"],",to_string(N),")")
+	 then prints("big_unitary_hash.finish_num(",Gname,",",xnum,",",to_string(N),")")
 	 fi
     , ((KGBElt,ratvec) -> ): {writexlam_no_G} (KGBElt x, ratvec lambda):
       let G = x.real_form
@@ -1328,7 +1330,7 @@ some lambdas for that x might be finished.}
 	 do prints("void: big_unitary_hash.long_match(parameter(G_temp,",xnum,",",lambda,",",p.nu,"),j)")
 	 od;
 	 if is_member_bitset(position(x,lambda), xl_known[i][xnum])
-	 then prints("big_unitary_hash.finish(KGB(G_temp)[",xnum,"],",to_string(N),")")
+	 then prints("big_unitary_hash.finish_num(",Gname,",",xnum,",",to_string(N),")")
 	 fi
     )
 )
