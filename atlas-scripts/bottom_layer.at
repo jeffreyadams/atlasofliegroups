@@ -154,7 +154,8 @@ set theta_stable_data_small_long(Param p, KType mu) = (Param, KGPElt, Param):
     then i0 = first(for q in qs do q.!= and LKT(first_param(q)) = mu od)
     in (first_param(qs[i0]),Q,qLs[i0])
 
-set NH_factor = rat: 1/3
+set NH_factor = rat: 1/2 {3/8 failed to catch the non-unitary vertex
+at (KGB element #19200,[  2,  1,  1,  2, -1,  1,  2 ]/1) in E7_s}
 {meant to be applied to quasisplit simple L}
 set next_heights = (RealForm -> int):
     let ichash = make_InnerClass_hash()
