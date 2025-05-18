@@ -77,11 +77,11 @@ set contragredient(KGBElt x) = KGBElt:
 set test_bl_flag = true
 
 set more_bound = rat: 1/4
-{Very large values here in E8_s lead to very slow more_bottom calculations. Need to bound somehow.
+{Very large suggested values of more_shift in E8_s lead to very slow more_bottom calculations. Need to bound somehow.
 Try size of lambda/4???}
 
 {if x is less than this fraction of KGB, then switch bottom_layer to one_level}
-set KGB_frac = rat:2/3
+set KGB_frac = rat:1/3
 
 set bl_shift(KGBElt x, ratvec lambda, LocalVertexData Lvd) = int:
     let pmax = pmax(x,lambda,Lvd), rd = x.root_datum, theta = x.involution
