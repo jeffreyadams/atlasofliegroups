@@ -529,8 +529,8 @@ set matrix ((int,int)(r,c),(int,int->int) f) = mat:
 set n_rows    (mat m) = int: let (r,) = shape(m) in r
 set n_columns = #@mat { this one is built in as a # operator overload }
 
-set column (vec v) = mat: [v] { interpret v as single column }
-set row (vec v)    = mat: ^v  { interpret v as single row }
+set as_column (vec v) = mat: [v] { interpret v as single column }
+set as_row = ^@vec               { interpret v as single row }
 
 set ~ (mat A) = mat: { reverse rows and reverse columns }
   swiss_matrix_knife(45,A,0,0,0,0) { transform 45 = 36 + 9, rows&cols reversed }
@@ -589,11 +589,11 @@ set sum ((int,int) shape, [mat] L) = mat:
 { square matrices are frequent, so there is a special case of |sum| for them }
 set sum (int n,[mat] L) = mat: sum((n,n),L)
 
-{ product of list of square matrices, with given size for when list is empty }
+{ product left-to-right of list of square matrices, all square of size |n| }
 set product (int n, [mat] L) = mat:
   let len=#L in
-  if =len then id_mat(n)
-  else let p=L~[0] in for i:len-1 ~do p *:= L[i] od; p
+  if len=0 then id_mat(n)
+  else let p=L[0] in for i:len-1 from 1 do p *:= L[i] od; p
   fi
 
 set gcd(mat M) = int:
@@ -610,6 +610,8 @@ set % (mat m,int d) = mat: map_on(m)((int e) int: e%d)
 
 set Smith_basis (mat M) = mat: let (basis,)=Smith(M) in basis
 set inv_fact (mat M) = vec: let (,invf)=Smith(M) in invf
+
+set image (mat M) = mat: let (im,,,)=echelon(M) in im
 
 { matrix exponentiation }
 set ^ = (mat,int->mat):
@@ -968,6 +970,8 @@ set adjoint (RootDatum rd) = RootDatum: { change weight basis to simple roots }
 
 { in |sub_datum| the (co)roots at indices |S| must give a valid Cartan matrix,
   but they need not be positive, and will be taken in the order specified.
+  indices: [-n,...,0,1,...,n-1] where n is the number of positive roots
+  simple roots are numbered [0,1,...,rank-1]
   In particular any subset of simple roots taken in any order will be valid. }
 set sub_datum (RootDatum rd, [int]S) = RootDatum:
   let r = rd.rank in
@@ -1074,12 +1078,14 @@ set root (RootDatum rd, vec alpha_v) = vec: root(rd,coroot_index(rd,alpha_v))
 set coroot (RootDatum rd, vec alpha) = vec: coroot(rd,root_index(rd,alpha))
 
 set is_orthogonal (RootDatum rd, int i, int j) = bool: =coroot(rd,i)*root(rd,j)
+set is_orthogonal (RootDatum rd, vec alpha, vec beta) = bool:
+   is_orthogonal(rd,root_index(rd,alpha),root_index(rd,beta))
 set is_orthogonal (RootDatum rd, [int] S, int j) = bool:
    for i in S do is_orthogonal(rd,i,j) od.all
 
 { reflection action of roots }
 set reflection (RootDatum rd, int i) = mat: { i indexes a root/coroot pair }
-  1 - column(root(rd,i))*row(coroot(rd,i))
+  1 - root(rd,i).as_column*coroot(rd,i).as_row
 set reflection ((RootDatum,vec)(rd,):p) = mat: { specify root (not coroot) }
   reflection(rd,root_index(p))
 set reflection_co ((RootDatum,vec)(rd,):p) = mat: { specify coroot (not root) }
@@ -1385,14 +1391,52 @@ set rho_diff (WeylElt w) = vec: let rho2=w.root_datum.two_rho in (rho2-w*rho2)\2
 set rho_check_diff (WeylElt w) = vec:
   let rho_check2=w.root_datum.two_rho_check in (rho_check2-rho_check2*w)\2
 
+{ the set of posroots that w maps to negative roots, as a bitset }
+set positive_to_negative (WeylElt w) = [int]:
+  let n=w.root_datum.nr_of_posroots in
+  for x@i in root_permutation(w)[n:] if x<n do i fi od
+set posroot_sum (RootDatum rd,[int] select) = vec:
+  sum(rd.rank # for i in select do root(rd,i) od)
+set poscoroot_sum (RootDatum rd,[int] select) = vec:
+  sum(rd.rank # for i in select do coroot(rd,i) od)
+
+
+set from_dominant (RootDatum rd, [int] S, vec v) = (WeylElt,vec):
+  let w = for s in S do W_gen(rd,s) od
+  , last_asc () = int: last(#S,(int i): coroot(rd,S[i])*v<0)
+  then word = [WeylElt]:
+     while let i=last_asc() in i>=0 do v:=w[i]*v; w[i] od
+  in (product(rd,word),v)
+set from_dominant (RootDatum rd, [int] S, ratvec rv) = (WeylElt,ratvec):
+  let (n,d)=%rv then (w,v) = from_dominant(rd,S,n) in (w,v/d)
+
+set from_dominant (vec v, RootDatum rd, [int] S) = (vec,WeylElt):
+  let w = for s in S do W_gen(rd,s) od
+  , last_asc () = int: last(#S,(int i): v*root(rd,S[i])<0)
+  then word = [WeylElt]:
+     while let i=last_asc() in i>=0 do v:=v*w[i]; w[i] ~od
+  in (v,product(rd,word))
+set from_dominant (ratvec rv, RootDatum rd, [int] S) = (ratvec,WeylElt):
+  let (n,d)=%rv then (v,w) = from_dominant(n,rd,S) in (v/d,w)
+
 set chamber ((RootDatum,vec) rd_lambda) = WeylElt:
   let (w,)=from_dominant(rd_lambda) in w
 set dominant ((RootDatum,vec) rd_lambda) = vec:
   let (,dom_wt)=from_dominant(rd_lambda) in dom_wt
+set chamber ((RootDatum,[int],vec) triple) = WeylElt:
+  let (w,)=from_dominant(triple) in w
+set dominant ((RootDatum,[int],vec) triple) = vec:
+  let (,dom_wt)=from_dominant(triple) in dom_wt
+
 set chamber ((vec,RootDatum) lambda_rd) = WeylElt:
   let (,w)=from_dominant(lambda_rd) in w
 set dominant ((vec,RootDatum) lambda_rd) = vec:
   let (dom_cwt,)=from_dominant(lambda_rd) in dom_cwt
+set chamber ((vec,RootDatum,[int]) triple) = WeylElt:
+  let (,w)=from_dominant(triple) in w
+set dominant ((vec,RootDatum,[int]) triple) = vec:
+  let (dom_cwt,)=from_dominant(triple) in dom_cwt
+
 set w0 (RootDatum rd) = chamber(rd,-rd.two_rho)
 
 set * (WeylElt w, ratvec gamma) = ratvec: let (n,d)=%gamma in (w*n)/d
@@ -2251,6 +2295,9 @@ set find = find(=@(ratvec,ratvec))
 set find = find(=@(KGBElt,KGBElt))
 set find = find(=@(Param,Param))
 
+set delete (vec v, int i) = vec: v[:i] ## v[i+1:]
+set delete (mat M, int j) = mat: M[:j] ## M[j+1:]
+
 { No version for finding [int] due to potential ambiguity with vec version.
   Note that |find(L,x)| has alternative |first(for y in L do x=y od)| which
   can be used for all types having =, without separate definition of |find|
@@ -2292,8 +2339,8 @@ set monomial  (KTypePol P,int i) = KType: monomials(P)[i]
 set monomial  (ParamPol P,int i) = Param: monomials(P)[i]
 
 { height of a ParamPol is max of height of each term}
-set height (KTypePol P) = int: max(0)(for @t in P do height(t) od)
-set height (ParamPol P) = int: max(0)(for @p in P do height(p) od)
+set height (KTypePol P) = int: max(-1)(for @t in P do height(t) od)
+set height (ParamPol P) = int: max(-1)(for @p in P do height(p) od)
 
 {. Convert a list of KTypePol into the list of distinct parameters occurring;
    careful: don't let terms cancel! .}

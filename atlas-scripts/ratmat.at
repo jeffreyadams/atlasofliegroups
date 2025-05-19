@@ -64,10 +64,15 @@ set rows_with ((ratvec->bool) p,ratmat T) = ratmat:
 set rows_with ((int->bool) p,ratmat(M,,d)) = ratmat:
   { we can use mat version here } rows_with(p,M) / d
 
+set kernel (ratmat(M,,)) = mat: kernel(M)
 set det (ratmat(M,,d)) = rat: det(M)/d^n_rows(M) { this very easily overflows }
 
 set ^ (ratmat(M,,d)) { transpose } = ratmat: (^M,s,d)
 
+set + (ratmat(M,s,d),int k) = ratmat: (M+k*d,s,d)
+set + (int k,ratmat(M,s,d)) = ratmat: (k*d+M,s,d)
+set - (ratmat(M,s,d),int k) = ratmat: (M-k*d,s,d)
+set - (int k,ratmat(M,s,d)) = ratmat: (k*d-M,s,d)
 set + (ratmat(M,,d),ratmat(MM,,dd)) = ratmat: simplify(dd*M+d*MM,s,d*dd)
 set - (ratmat(M,,d),ratmat(MM,,dd)) = ratmat: simplify(dd*M-d*MM,s,d*dd)
 set - (ratmat(M,s,d)) = ratmat: (-M,s,d)
@@ -124,6 +129,9 @@ set - ([ratvec] M,[ratvec] MM)=ratmat:
 
 {define inverse of mat as ratmat}
 set rational_inverse(mat M) = ratmat:inverse(mat_as_ratmat(M))
+
+{ orthogonal reflection with respect to standard scalar product }
+set orth_reflection (vec v) = ratmat: 1 - 2*v.as_column*v.as_row/(v*v)
 
 { left inverse of injective (full column rank) rational matrix
   adapted from |weak_left_inverse| in matrix.at

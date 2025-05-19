@@ -1,7 +1,7 @@
 any_type S,T,R begin
 
 set I (T x) = T: x
-set K (T x) = (S .) T: x
+set constant (T x) = (S .) T: x
 set compose ((S->R) g) = ((T->S)f): (T x): R: g(f(x))
 
 set fst (S x,T y) = S: x
