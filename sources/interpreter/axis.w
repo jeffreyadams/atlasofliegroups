@@ -3148,6 +3148,9 @@ case let_expr:
   const id_pat& pat=lexp.pattern;
   const auto& rhs = lexp.val;
   type decl_type=type::bottom(fc);
+  if ((pat.kind & 0x2)!=0 and pat.sublist.empty())
+     decl_type.unify_to(type::wrap(void_type,fc));
+     // provide void context after '$()={}$'
   expression_ptr arg = convert_expr(rhs,decl_type);
   if (not decl_type.wring_out().has_unifier(pattern_type(pat)))
     @< Complain that the type |decl_type| of |rhs| does not match the identifier
