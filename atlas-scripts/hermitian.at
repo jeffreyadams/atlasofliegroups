@@ -402,6 +402,12 @@ set DBTcount = int: 0
 {will be modified to name of local test being run}
 set test_string = string: ""
 
+{whether to report on slow is_unitary and is_unitary_to_ht}
+set drain_plug_flag = bool: false
+
+{report on tests requiring more than this time; default is 100000 = 10 seconds}
+set drain_plug_time = int: 100000
+
 set tested_pos_hash = make_Param_hash()
 set tested_pos_times = [int]: [] {one for each tested_pos_hash.list() entry}
 set tested_pos_strings = [string]: []
@@ -429,6 +435,9 @@ set was_tested(Param p, int T, bool ans) = void:
     	     then cSp+:=1; 1/(cSp-4)
 	     else 1/1
 	     fi}
+    if drain_plug_flag and T > drain_plug_time
+    then prints(p," took ",print_time_string(T)," to test is_unitary = ", ans)
+    fi;
     if ans
     then let () = tested_pos_hash.match(p)
        	 in tested_pos_times#:=T; tested_pos_strings #:= test_string
@@ -437,6 +446,9 @@ set was_tested(Param p, int T, bool ans) = void:
     fi
 
 set was_tested_inter(Param p, int T) = void:
+    if drain_plug_flag and T > drain_plug_time
+    then prints(p," took ",print_time_string(T)," for interrupted is_unitary")
+    fi;
     let M = tested_inter_hash.size()
     then m = tested_inter_hash.match(p)
     in if m=M
@@ -447,6 +459,10 @@ set was_tested_inter(Param p, int T) = void:
        fi
 
 set was_tested_to_ht(Param p,int N, int T, bool ans) = void:
+    if drain_plug_flag and T > drain_plug_time
+    then prints(p," took ",print_time_string(T)," to test is_unitary_to_ht ", N,
+    	 	 " = ",ans)
+    fi;
     let h = N - height(p)
     then add = h+1 - #tested_pos_to_ht_hashes
     then () = if add>0
