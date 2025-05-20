@@ -80,8 +80,14 @@ set more_bound = rat: 1/4
 {Very large suggested values of more_shift in E8_s lead to very slow more_bottom calculations. Need to bound somehow.
 Try size of lambda/4???}
 
-{if x is less than this fraction of KGB, then switch bottom_layer to one_level}
+set KGB_frac_flag =true
+
+{if KGB_frac_flag and x is less than this fraction of KGB, then switch from bottom_layer to one_level}
 set KGB_frac = rat:1/3
+
+{if NOT KGB_frac, and height is smaller than this fraction of max height, then switch
+    from bottom_layer to one_level}
+set lambda_frac = rat: 2/3
 
 set bl_shift(KGBElt x, ratvec lambda, LocalVertexData Lvd) = int:
     let pmax = pmax(x,lambda,Lvd), rd = x.root_datum, theta = x.involution
@@ -89,18 +95,20 @@ set bl_shift(KGBElt x, ratvec lambda, LocalVertexData Lvd) = int:
     then LAM = height(rd, (1+theta)*lambda/2)
     in floor(min((LAM+1)*more_bound, (GAM - LAM)*shift_frac)) + 1
 
-
 {returning "true" means bottom layer ought to be used}
 {for now (5/17/25) don't do more_shift}
 set test_bl(KGBElt x, ratvec lambda, LocalVertexData Lvd) = bool:
     if not test_bl_flag then return true fi;
-    if let G = x.real_form in x.number < KGB_frac*(#KGB(G)) then return false fi;
-    {if rank(x.real_form) < 7 then return false fi;}
-    let start = elapsed_ms(), pmax = pmax(x,lambda,Lvd), rd = x.root_datum, theta = x.involution, ans = true
+    if rank(x.real_form) < 7 then return false fi;
+    if KGB_frac_flag and x.number < KGB_frac*(#KGB(x.real_form)) then return false fi;
+    let start = elapsed_ms(), pmax = pmax(x,lambda,Lvd), rd = x.root_datum,
+    	theta = x.involution, ans = true
+    then () = if not KGB_frac_flag and height(pmax) < lambda_frac*(rd.rho)*(rd.two_rho_check)
+    	      then return false fi
     {then gamma = pmax.infinitesimal_character
     then () = more_flag :=false
     then () = more_shift_level:=0
-    then (LAM,NU,GAM) = low(pmax), R = (rd.rho)*(rd.two_rho_check)}
+    then (LAM,NU,GAM) = low(pmax), R = (G.rho)*(G.two_rho_check)}
     {then ans := GAM*GAM + R*LAM > R*GAM*GARLAGmin and LAM < GAM*LAGAmax}
     {then () = if GAM > R*GARmin
     	      then more_shift(bl_shift(x,lambda,Lvd))

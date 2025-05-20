@@ -3166,7 +3166,7 @@ set local_test_GEO_hash2_end(KGBElt x, ratvec lambda, LocalVertexData Lvd, [[Fac
     let G = x.real_form, r = rank(x.involution -1), thetaMinus = 1-x.involution
     then vertexDiff = #LFDKH[0]/#FPP_vertices(G){vd.list}
     then approxVertexDiff = vertexDiff.numer*100\vertexDiff.denom {keeping this reduced #tests by 1/4}
-    then depth= max(r+1,3)
+    then depth= max(r,2) + edge_offset
     then pmax = pmax(x, lambda, Lvd)
     then (LAMmax,NUmax,GAMmax) = low(pmax)
     {then () = to_ht_flag := if prefer_diff_flag
@@ -3551,6 +3551,7 @@ set local_test_GEO_hash_one_level(KGBElt x, ratvec lambda, {VertexData vd,}
     then () = long_out_flag := long_out_temp_flag
     then mu = K_type(x, pmax.lambda_minus_rho) {LKTs(pmax)[0]}
     then mu_tester(Param p) = bool: is_unitary_test_big_SIMPLE_interrupt(p,hts[ONE+1:])
+    {then () = if test_verbose then prints("one_ht = ",one_ht) fi}
     then UParams = [Param]:
          if one_ht >=  0
          then let ((eq,gr),IUCL,CLBF) = localGraphK(LFDKH)
@@ -3754,10 +3755,10 @@ set local_test_GEO_hash_one_level_end(KGBElt x, ratvec lambda, LocalVertexData L
 				    fi
     then start=elapsed_ms()
     then () = long_out_flag := long_out_temp_flag
+    {then () = if test_verbose then prints("one_ht = ",one_ht) fi}
     then UParams = [Param]:
          if one_ht >=  0
-         then let () {= pol_hash_min.clear()
-	      then ()} = LFDKH := extend_K_characters(x,lambda,Lvd,LFDKH,pol_hash)
+         then let () = LFDKH := extend_K_characters(x,lambda,Lvd,LFDKH,pol_hash)
 	      then ((eq,gr),IUCL,CLBF) = localGraphK(LFDKH)
 	      then () = if test_verbose then prints(sum(for list in LFDKH do #list od),
 	      	      	   " unitary candidates in ",#eq," equivalence classes.") fi
