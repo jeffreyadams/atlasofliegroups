@@ -308,7 +308,7 @@ set Steinberg_character (RootDatum rd) = [int]:
 }
 set projector (WeylClassTable tab, W_rep (dim,ops), [int] char_values) = mat:
   let rd=tab.root_datum, Q=null(dim,dim) in
-  for (w,action) in W_parabolic_act(rd,all_simples(rd),dim,ops)
+  for (w,action) in W_parabolic_with_action(rd,all_simples(rd),dim,ops)
   do Q+:=character_value(tab,w,char_values)*action
   od; Q
 
