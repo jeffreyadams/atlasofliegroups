@@ -551,6 +551,7 @@ set_type
   , (Param -> int) plookup {(location of p in its phash)}
   , (Param -> int) ulookup {(location of p in its uhash)}
   , (Param -> int) nulookup {(location of p in its nuhash)}
+  , (Param -> int) nu_height_lookup {smallest height at which p is known to be nonunitary}
   , (Param -> bool) check {check whether p is unitary, and add to appropriate hash table}
   , ((Param,int) -> bool) check_to_ht {check whether p is unitary to height}
   , (Param -> int) umatch {add p to its uhash table}
@@ -1141,6 +1142,13 @@ set make_big_unitary_hash() = big_unitary_hash_table:
        uhashes[add_real_form(p.real_form)].lookup(p)
     , (Param -> int): {nulookup} (Param p) int:
        nuhashes[add_real_form(p.real_form)].lookup(p)
+    , (Param -> int): {nu_height_lookup} (Param p) int:
+      let i = add_real_form(p.real_form)
+      then j = nuhashes[i].lookup(p)
+      in if j = -1
+      	 then -1
+      	 else -1 {nu_heights[i][j]}
+	 fi {need to add [[int]] nu_heights, where ith [int] is of size nu_hashes[i].size()}
     , (Param -> bool): {check} (Param p) bool:
       let (i,,sigD) = add_param_inf(p)
       in is_pure(K_type_pol_hashes[i].list()[sigD])
@@ -3330,7 +3338,7 @@ set localFD_KHash_01 (KGBElt x, ratvec lambda, LocalVertexData Lvd, KTypePol_has
 	 fi
     then answer0 = for v@k in LF[0]
        	     	   do if k%(max(#LF[0]\10,2))=0 and fund_face_verbose
-	      	      then prints("examining face ",k,
+	      	      then prints("calculating K-character on face ",k,
 	      	      "; #ktp_hash = ",ktp_hash.size())
 	      	      fi;
 		      let gamma = Lvd.list[v[0]]
@@ -3349,7 +3357,7 @@ set localFD_KHash_01 (KGBElt x, ratvec lambda, LocalVertexData Lvd, KTypePol_has
 			     od)
     then answer1 = for v@k in LF[1] {if red_count_flag, has red_count as coor#2}
     	 	   do if k%(max(#LF[1]\10,2))=0 and fund_face_verbose
-	      	      then prints("examining face ",k,
+	      	      then prints("calculating K-character on face ",k,
 	      	      	   "; #ktp_hash = ",ktp_hash.size())
 	      	      fi;
 		      let i = lookup0D([v[0]]), j = lookup0D([v[1]])
@@ -3407,7 +3415,7 @@ set localFD_KHash_01 (KGBElt x, ratvec lambda, LocalVertexData Lvd, int HT, KTyp
 	 fi
     then answer0 = for v@k in LF[0]
        	     	   do if k%(max(#LF[0]\10,2))=0 and fund_face_verbose
-	      	      then prints("examining face ",k,
+	      	      then prints("calculating K-character on face ",k,
 	      	      "; #ktp_hash = ",ktp_hash.size())
 	      	      fi;
 		      let gamma = Lvd.list[v[0]]
@@ -3426,7 +3434,7 @@ set localFD_KHash_01 (KGBElt x, ratvec lambda, LocalVertexData Lvd, int HT, KTyp
 			     od)
     then answer1 = for v@k in LF[1]
     	 	   do if k%(max(#LF[1]\10,2))=0 and fund_face_verbose
-	      	      then prints("examining face ",k,
+	      	      then prints("calculating K-character on face ",k,
 	      	      	   "; #ktp_hash = ",ktp_hash.size())
 	      	      fi;
 		      let i = lookup0D([v[0]]), j = lookup0D([v[1]])
@@ -3550,7 +3558,7 @@ set localFD_KHash_01_graph (KGBElt x, ratvec lambda, LocalVertexData Lvd, int HT
     then polNums = [int]:
     	 for C@k in eq
     	 do if k%(max(#eq\10,2))=0 and fund_face_verbose
-	    then prints("examining class ",k, "; #ktp_hash = ",ktp_hash.size())
+	    then prints("calculating K-character on face ",k, "; #ktp_hash = ",ktp_hash.size())
 	    fi;
 	    let (d,j) = coords(LF,C~[0]) {the tilde chooses a
 	    	representative on largest possible face, so least integral}
@@ -3782,20 +3790,22 @@ set localFD_KHashbt_lookDownGEO \
        LFKH
 )
 
+set extend_character_verbose = false
+
 set extend_K_characters(KGBElt x, ratvec lambda, LocalVertexData Lvd,
     [[FaceVertsKHash]] LFKH, KTypePol_hash ktp_hash) = [[FaceVertsKHash]]:
-    {if face_verbose
-    then prints(new_line,"start extend_K_characters")
-    fi;}
+    if fund_face_verbose
+    then prints(new_line,"start extend_K_characters for ", [int]: for list in LFKH do #list od, " faces")
+    fi;
     let G = x.real_form, start = elapsed_ms(), red_shift = if red_count_flag then 1 else 0 fi
     then answer =
        for d:#LFKH
-       do if fund_face_verbose then prints(new_line, "start to extend ",#LFKH[d],
+       do if extend_character_verbose then prints(new_line, "start to extend ",#LFKH[d],
        	  		     " K-characters in dimension ",d,
 			     " in extend_K_characters")
        	  fi; for v@k in LFKH[d]
-       	      do if k%(max(#LFKH[d]\10,2))=0 and fund_face_verbose
-	      	 then prints("examining face ",k,
+       	      do if k%(max(#LFKH[d]\10,2))=0 and extend_character_verbose
+	      	 then prints("calculating K-character on face ",k,
 	    	      "; #ktp_hash = ",ktp_hash.size())
 	  	 fi;
 	  	 let nu = face_bary(Lvd, v[:d+1]), w=v
@@ -3817,17 +3827,18 @@ set extend_K_characters(KGBElt x, ratvec lambda, LocalVertexData Lvd,
 set extend_K_characters(KGBElt x, ratvec lambda, LocalVertexData Lvd,
     [[FaceVertsKHash]] LFKH, int ht, KTypePol_hash ktp_hash) =
     	[[FaceVertsKHash]]:
-    if face_verbose
-    then prints(new_line,"start extend_K_characters to height ",ht)
+    if fund_face_verbose
+    then prints(new_line,"start extend_K_characters to height ",ht, " for ",
+    	 [int]: for list in LFKH do #list od, " faces")
     fi;
     let G = x.real_form, start = elapsed_ms(), red_shift = if red_count_flag then 1 else 0 fi
     then answer =
        for d:#LFKH
-       do if fund_face_verbose then prints(new_line, "start to extend ",#LFKH[d],
+       do if extend_character_verbose then prints(new_line, "start to extend ",#LFKH[d],
        	  		     " K-characters in dimension ",d, " to height ",ht)
        	  fi; for v@k in LFKH[d]
-       	      do if k%(max(#LFKH[d]\10,2))=0 and fund_face_verbose
-	      	 then prints("examining face ",k,
+       	      do if k%(max(#LFKH[d]\10,2))=0 and extend_character_verbose
+	      	 then prints("calculating K-character on face ",k,
 	    	      "; #ktp_hash = ",ktp_hash.size())
 	  	 fi;
 	  	 let nu = face_bary(Lvd, v[:d+1]), w=v
@@ -3848,9 +3859,10 @@ set extend_K_characters(KGBElt x, ratvec lambda, LocalVertexData Lvd,
 
 set extend_K_characters_graph(KGBElt x, ratvec lambda, LocalVertexData Lvd,
     [[FaceVertsKHash]] LFKH, KTypePol_hash ktp_hash, [[int]] eq, [vec] classListByFace) = [[FaceVertsKHash]]:
-    {if face_verbose
-    then prints(new_line,"start extend_K_characters")
-    fi;}
+    if fund_face_verbose
+    then prints(new_line,"start extend_K_characters_graph for ", [int]:
+    	 for list in LFKH do #list od, " faces")
+    fi;
     let G = x.real_form, start = elapsed_ms(), NumClasses = #eq
     then polNums = [int]: {these are indices in ktp_hash of new K-characters}
        for C in eq
@@ -3879,8 +3891,9 @@ set extend_K_characters_graph(KGBElt x, ratvec lambda, LocalVertexData Lvd,
 set extend_K_characters_graph(KGBElt x, ratvec lambda, LocalVertexData Lvd,
     [[FaceVertsKHash]] LFKH, int ht, KTypePol_hash ktp_hash, [[int]] eq, [vec] classListByFace) =
     	[[FaceVertsKHash]]:
-    if face_verbose
-    then prints(new_line,"start extend_K_characters_graph to height ",ht)
+    if fund_face_verbose
+    then prints(new_line,"start extend_K_characters_graph to height ",ht, " for ",
+    [int]: for list in LFKH do #list od, " faces")
     fi;
     let G = x.real_form, start = elapsed_ms(), NumClasses = #eq
     then polNums = [int]: {these are indices in ktp_hash of new K-characters}
