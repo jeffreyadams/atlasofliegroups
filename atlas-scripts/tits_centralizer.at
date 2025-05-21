@@ -11,7 +11,7 @@ set to_base (int n, (int->string) digit) = (int->string):
 {matrix of permutation action of w on all roots}
 set permutation_of_root_vectors(WeylElt w)=mat:
 let r=w.root_datum.roots in
-for alpha in r do e(#r,find(r, w*alpha)) od
+for alpha in r do identity_row(#r,find(r, w*alpha)) od
 
 {index of alpha in all roots}
 set all_root_index(RootDatum rd,vec alpha)=int:
@@ -43,7 +43,7 @@ coeff=
  else
  (-1)*(-1)^rd.m_minus(rd.simple_roots[i],alpha)
  fi
-in coeff*e(#rd.roots,beta_index)
+in coeff*identity_row(#rd.roots,beta_index)
 
 {v=[x_0,x_1,...x_n] n=#roots -> \sum_i x_iX_{\alpha_i}
  action of sigma_i in Tits group on sums of root vectors in these coordinates

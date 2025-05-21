@@ -69,7 +69,7 @@ set lie_algebra_element_root_vectors(StructureConstantTable t,CyclotomicVec v)=l
 
 {1\le i\le dim\g -> (t,(v,w)) where either v or w has exactly one entry 1}
 set CFbasis(StructureConstantTable t,int i,CyclotomicField F)=CFLieAlgebraElement:
-lie_algebra_element(t,embed(e(t.root_datum.dimension,i),F))
+lie_algebra_element(t,embed(identity_row(t.root_datum.dimension,i),F))
 
 {nice string representation of LieAlgebraElement}
 set to_strings(CFLieAlgebraElement X)=string:
@@ -148,7 +148,11 @@ n=#X.H then
 scr=rd.simple_coroots in
 (X.t,
  (
-  (sum(for i:N do (-X.root_part[i]*Y.H*embed(rd.roots[i],F)+Y.root_part[i]*X.H*embed(rd.roots[i],F))*embed(e(N,i),F) od),CyclotomicVec:null(n,F)
+  (sum(for i:N
+       do (-X.root_part[i]*Y.H*
+        embed(rd.roots[i],F)+Y.root_part[i]*X.H*embed(rd.roots[i],F))*
+	embed(identity_row(N,i),F)
+       od),CyclotomicVec:null(n,F)
  )
 ))
 

@@ -159,7 +159,7 @@ set lambda_rho_from_dominant_height_upto (KGBElt x, ratvec v, int N) = mat: {wts
  w-> w.rho(u) is a bijection W/W_L -> W-orbit of rho(u)
 }
 set W_mod_W_L(RootDatum rd_L,RootDatum rd_G) = [WeylElt]:
-   stabiliser_quotient_of_dominant(rd_G,two_rho(rd_G)-two_rho(rd_L))
+   stabiliser_quotient_of_dom(rd_G,two_rho(rd_G)-two_rho(rd_L))
 
 {all W-conjugates of gamma which are L-dominant
  initialize empty list, for each w\in W/W_L add from_dominant(G,w.gamma)

@@ -39,7 +39,7 @@ set lie_algebra_element_root_vectors(StructureConstantTable t,ratvec v)=lie_alge
 
 {1\le i\le dim\g -> (t,(v,w)) where either v or w has exactly one entry 1}
 set basis(StructureConstantTable t,int i)=LieAlgebraElement:
-lie_algebra_element(t,e(t.root_datum.dimension,i))
+lie_algebra_element(t,identity_row(t.root_datum.dimension,i))
 
 set show(LieAlgebraElement X)=void:
 prints(X.root_part,":",X.H)
@@ -129,7 +129,7 @@ in
       ,for i:N
        do (-X.root_part[i]*Y.H*rd.roots[i]
            +Y.root_part[i]*X.H*rd.roots[i]
-	  )*e(N,i)
+	  )*identity_row(N,i)
        od
       )
   ),ratvec:null(n)
@@ -142,8 +142,10 @@ bracket_root_term(X,Y)+bracket_torus_term(X,Y)+bracket_off_diagonal_terms(X,Y)
 
 {root -> (v,null(rank)) where v=e(N,i)=1 in i^th spot, i=# of root in rd.roots}
 {set X_alpha(StructureConstantTable t,int i)=LieAlgebraElement:(t,(e(#t.root_datum.roots,i),null(#t.root_datum.simple_roots)))}
-set X_alpha(StructureConstantTable t,int i)=LieAlgebraElement:(t,(e(#t.root_datum.roots,i),null(t.root_datum.rank)))
-set X_alpha(StructureConstantTable t,vec alpha)=LieAlgebraElement:X_alpha(t,find(t.root_datum.roots,alpha))
+set X_alpha(StructureConstantTable t,int i) = LieAlgebraElement:
+  (t,(identity_row(#t.root_datum.roots,i),null(t.root_datum.rank)))
+set X_alpha(StructureConstantTable t,vec alpha)=LieAlgebraElement:
+   X_alpha(t,find(t.root_datum.roots,alpha))
 
 {H(t,h)=(t,null(N),h)}
 set H(StructureConstantTable t,vec h)=LieAlgebraElement:(t,(ratvec:null(#t.root_datum.roots),ratvec:h))
@@ -315,7 +317,7 @@ then v=
   sum(#rd.roots {need size of ratvecs}
      ,for i:#v_L
       do let index=find(rd.roots,X_L.root_datum.roots[i]) in
-         e(#rd.roots,index)*v_L[i]
+         identity_row(#rd.roots,index)*v_L[i]
       od
      )
 in LieAlgebraElement:(t_rd,(v,X_L.H))
