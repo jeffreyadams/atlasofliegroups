@@ -8,6 +8,28 @@ always; don't understand why. So switch to "old" versions as standard,
 labelling others as "new"}
 set herm_report = bool: false
 
+set low_height(KTypePol P) = int:
+    if P.= then -1
+    else min(0)(for @t in P do height(t) od)
+    fi
+
+set low_height(ParamPol P) = int:
+    if P.= then -1
+    else min(0)(for @t in P do height(t) od)
+    fi
+
+set impure_height(KTypePol P) = int:
+    if is_pure(P) then -1
+    else let (a, mu) = first_term(P)
+    	 then () = if not is_pure(a) then return height(mu) fi
+	 then () = for c@tau in a*P
+	    	   do if not s_part(c).=
+		      then return height(tau)
+		      fi
+		   od
+	 in -1
+     fi
+
 set to_ht (int N) = (ParamPol->ParamPol): (ParamPol P):
   if N < 0 then P
   else let (below,)=height_split(P,N) in below
