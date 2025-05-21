@@ -12,17 +12,17 @@ if ans>=0 then ans else ans+N fi
 {A is an (m,n) matrix, v an m-vector, contained in the span of the columns c_i of A
 write v=\sum a_i c_i (not unique unless A has rank n)
 }
-set in_span(mat A,vec v)=bool:solve(A,v).any
+set in_span(mat A,vec v)=bool:can(solve(A,v))
 set change_basis_to_subspace(mat A,vec v)=vec:
  let sol=solve(A,v) in
- assert(sol.any,"no solution");sol.requisition
-set in_span_Q(mat A,ratvec v)=bool:solve(A,v).any
+ assert(can(sol),"no solution");sol.requisition
+set in_span_Q(mat A,ratvec v)=bool:can(solve(A,v))
 {A is an (m,n) matrix, v an m-ratvec, contained in the span of the columns c_i of A
 write v=\sum a_i c_i (not unique unless A has rank n)
 }
 set change_basis_to_subspace_Q(mat A,ratvec v)=ratvec:
  let sol=solve(A,v) in
- assert(sol.any,"no solution");sol.requisition
+ assert(can(sol),"no solution");sol.requisition
 {-----------------------------------------------------}
 
 {central character data type: (InnerClass ic, vec lambda, ratvec nu)

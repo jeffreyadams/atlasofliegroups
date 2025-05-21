@@ -46,7 +46,7 @@ set get_raw_data(RootDatum rd,[[[int]]] S)=[[([int],RootDatum,int)]]:
    od
 
 set mysort = ([([int],RootDatum,int)] -> [([int],RootDatum,int)]):
- sort_by(([int].,RootDatum.,int k) int:k)
+ sort_by(([int].,RootDatum.,int k) int:k,<=@(int,int))
 
 set refine_raw_data([[([int],RootDatum,int)]] data)=[[([int],RootDatum,int)]]:for a in data do mysort(a) od
 

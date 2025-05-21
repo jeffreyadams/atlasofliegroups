@@ -76,10 +76,6 @@ in for row in ^M
 
 set print_matrix_compact(mat M)=prints(string_compact(M))
 
-{update one entry of a matrix; language already provides this}
-set update_matrix_entry(mat M, int i, int j, int value)= mat:
-  M[i,j]:=value; M
-
 {add an integer to one entry of a matrix; language already provides this}
 set add_to_matrix_entry(mat M, int i, int j, int value)= mat:
   M[i,j]+:=value; M

@@ -126,7 +126,7 @@ set sort_by_reducibility = ([Param]->[Param]):
 set sort_by_height = ([KType] -> [KType]): sort_by( height@KType, <=@(int,int) )
 set sort_by_height = ([Param] -> [Param]): sort_by( height@Param, <=@(int,int) )
 
-{ Same with a Split attached , which is ignored for sorting }
+{ Same with a Split attached, which is ignored for sorting }
 set sort_by_height = ([(Split,KType)] -> [(Split,KType)]):
   sort_by( (Split .,KType t) int: height(t), <=@(int,int) )
 set sort_by_height = ([(Split,Param)] -> [(Split,Param)]):

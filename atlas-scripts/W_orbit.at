@@ -160,7 +160,7 @@ in
    for s@i in gens
    do result := { expand previous |result| to a new version }
       for (,word,M) in generate_action_from_dom
-      	  (actors[:i+1],fundamental_weight(rd,s).numer,dim,gens_rep)
+	 (actors[:i+1],fundamental_weight(rd,s).numer,dim,gens_rep)
       do for (y,act) in result
          do (W_elt(rd,for i in word do gens[i] od)*y,M*act)
 	 od

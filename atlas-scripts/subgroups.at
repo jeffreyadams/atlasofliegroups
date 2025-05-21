@@ -260,11 +260,13 @@ find(rd,all_subs_rd_2,sub_rd_1) fi
 {  sorting and grouping of [RootData]  }
 
 set sort_by_dimension = ([RootDatum] -> [RootDatum]):
-   sort_by(dimension@RootDatum)
+   sort_by(dimension@RootDatum,<=@(int,int))
 
 set sort_by_ss_rank = ([RootDatum]->[RootDatum]):
-   sort_by(ss_rank@RootDatum)
+   sort_by(ss_rank@RootDatum,<=@(int,int))
 
+{ the next could be defined as |partition_by(ss_rank@RootDatum,<=@(int,int))|,
+  but that would not be equivalent, as it avoids empty |ss_rank| classes. MvL }
 set group_by_ss_rank([RootDatum] rds)=[[RootDatum]]:
 if =#rds then [rds] else
 let n=max(for rd in rds do ss_rank(rd) od) then

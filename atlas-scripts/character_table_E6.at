@@ -56,10 +56,9 @@ set Magma_reorder_E6(WeylClassTable Wct) = [int]: { map Magma to |Wct| numbers }
 	  do [reps[j].order, sizes[j], Wct.sign[j], Wct.reflection[j] ]
 	  od
    then profile_ranked = [int]: { columns |e6_profile| ranked |lex_leq| }
-      sort_indices((int i,int j)bool: lex_leq(e6_profile[i],e6_profile[j]))
-      (#e6_profile)
+      ranking([vec]:e6_profile)
    , Wct_ranked = { columns of |Wct_prof| ranked by |lex_leq| }
-      sort_indices((int i,int j): lex_leq(Wct_prof[i],Wct_prof[j]))(#Wct_prof)
+      ranking([vec]:Wct_prof)
 in compose_permutations(Wct_ranked,inverse(profile_ranked))
 
 set to_special_E6 = (int i) int:

@@ -59,16 +59,17 @@ set all_K_norms (RootDatum rd) = (KTypePol->[int]):
 set all_K_norms(KTypePol P) = [int]: all_K_norms(root_datum(P)) (P)
 
 { sort [KType] by K_norm(v) }
-set sort_by_K_norm (RootDatum rd) = ([KType] -> [KType]): sort_by(K_norm(rd))
+set sort_by_K_norm (RootDatum rd) = ([KType] -> [KType]):
+  sort_by(K_norm(rd),<=@(int,int))
 
 set sort_KTypePol_by_K_norm (RootDatum rd) = (KTypePol->[Split,KType]):
   let norm=K_norm(rd) in
   (KTypePol P)[Split,KType]:
-     for c@p in P do (c,p) od . (sort_by((Split .,KType p):norm(p)))
+     for c@p in P do (c,p) od . (sort_by((Split .,KType p):norm(p),<=@(int,int)))
 
-set sort_by_K_norm = ([KType] -> [KType]): sort_by(K_norm@KType )
+set sort_by_K_norm = ([KType] -> [KType]): sort_by(K_norm@KType,<=@(int,int) )
 set sort_by_K_norm = ([(Split,KType)] -> [(Split,KType)]):
-  sort_by( K_norm@(Split,KType) )
+  sort_by( K_norm@(Split,KType),<=@(int,int) )
 
 set print_by_K_norm_short (RootDatum rd) = (KTypePol P) void:
    let norm=K_norm(rd)
@@ -148,8 +149,8 @@ set lambda_rho_from_dominant_height_upto (KGBElt x, ratvec v, int N) = mat: {wts
   let th1=1+involution(x), rho=rho(root_datum(x)), result=[vec]:[] in
   for mu in all_dominant_height_upto(inner_class(x),v,N)
   do case solve(th1,mu-ratvec_as_vec(th1*rho))   {solution v is lambda-rho \in X^*}
-     | no_vec: ()
-     | solution(s): result #:= s
+     | none: ()
+     | some(s): result #:= s
      esac
   od; #rho{rank} # result
 
@@ -181,8 +182,8 @@ set lambda_rho_from_dominant_height_upto \
    for mu_L in L_dominant_conjugates(root_datum(x_L), rd, mu_G)
   do case solve(th1,mu_L-ratvec_as_vec(th1*rho_L))
      {solution v is lambda-rho_L \in X^*}
-     | no_vec: ()
-     | solution(s): result #:= s
+     | none: ()
+     | some(s): result #:= s
      esac
 od od; #rho_L{rank} # result
 
@@ -253,9 +254,9 @@ set K_parameters_norm_upto(RealForm G, int N)=[KType]:
 set number_K_parameters_norm_upto(RealForm G, int N, ratvec v)=int:#K_parameters_norm_upto(G,N,v)
 set number_K_parameters_norm_upt(RealForm G, int N)=int:#K_parameters_norm_upto(G,N)
 
-set sort_by_height = ([KType] -> [KType]): sort_by((KType mu) int: height(parameter(mu)))
+set sort_by_height = ([KType] -> [KType]):
+  sort_by( (KType mu)int: height(parameter(mu)),<=@(int,int))
 {set sort_by_K_norm = ([KType] -> [KType]): sort_by((KType mu) int: K_norm(mu))}
-set sort_by_K_norm = ([KType] -> [KType]): sort_by(K_norm@KType)
 
 set shorten(ratvec v)=string:
 if is_integer(v) then to_string([int]:numer(v)) else

@@ -16,7 +16,7 @@ set nilpotent_poset ((RootDatum, [ComplexNilpotent], Poset)triple) =
 
 {sort by dimension}
 set sort = ([ComplexNilpotent] -> [ComplexNilpotent]):
-   sort_by(dim_nilpotent@ComplexNilpotent)
+   sort_by(dim_nilpotent@ComplexNilpotent,<=@(int,int))
 
 set find([ComplexNilpotent] orbits,ComplexNilpotent O)=int:
 first(for orbit in orbits do orbit=O od)
@@ -210,7 +210,7 @@ set g(WeylElt w)=lusztig_of_special_elliptic(w).dim_nilpotent
  assuming each w is special elliptic so Lusztig(w) is known
  }
 set sort_by_dimension_of_nilpotent = ([WeylElt] -> [WeylElt]):
-  sort_by(g@WeylElt)
+  sort_by(g@WeylElt,<=@(int,int))
 
 set special_elliptic_poset(RootDatum rd)=NilpotentPoset:
 let ad=affine_datum(rd) then

@@ -39,7 +39,7 @@ set lie_algebra_element_root_vectors(StructureConstantTable t,ratvec v)=lie_alge
 
 {1\le i\le dim\g -> (t,(v,w)) where either v or w has exactly one entry 1}
 set basis(StructureConstantTable t,int i)=LieAlgebraElement:
-lie_algebra_element(t,identity_row(t.root_datum.dimension,i))
+   lie_algebra_element(t,identity_row(t.root_datum.dimension,i))
 
 set show(LieAlgebraElement X)=void:
 prints(X.root_part,":",X.H)
@@ -159,7 +159,8 @@ set ad(LieAlgebraElement X)=ratmat:
 ratvecs_as_ratmat(for i:X.root_datum.dimension do coordinates(bracket(X,basis(X.t,i))) od)
 
 {solve ad(X)(Y)=Z for Y}
-set solve_ad(LieAlgebraElement X,LieAlgebraElement Z)=maybe_a_ratvec:solve(ad(X),coordinates(Z))
+set solve_ad(LieAlgebraElement X,LieAlgebraElement Z)=Maybe<ratvec>:
+  solve(ad(X),coordinates(Z))
 
 {2-eigenspace of ad(H): as list of roots}
 set two_eigenspace(RootDatum rd,ratvec H)=[vec]:
@@ -182,7 +183,7 @@ coeffs=box(n,#S) in
  ()=prints("X:",X) then
  ()=prints("H:",H(t,H)) then
  sol=solve_ad(X,H(t,H)) in
- if any(sol) then {prints("found:", H, new_line, X.root_part);}
+ if can(sol) then {prints("found:", H, new_line, X.root_part);}
  return(true,(lie_algebra_element_semisimple(t,H),X,lie_algebra_element(t,requisition(sol)))) fi od;(false,(null(t),null(t),null(t)))
 
 set JM_triple(StructureConstantTable t,vec H)=(bool,(LieAlgebraElement,LieAlgebraElement,LieAlgebraElement)):JM_triple(t,H,2)
@@ -215,7 +216,7 @@ coeffs=for v in box(2,#S) do 2*v-shift od in
  let X=null(t) then
  ()= for i:#S do X+:=A[i]*S[i]  od then
  sol=solve_ad(X,H(t,H)) in
- if any(sol) then {prints("found:", H, new_line, X.root_part);}
+ if can(sol) then {prints("found:", H, new_line, X.root_part);}
  return(true,( lie_algebra_element_semisimple(t,H),X,lie_algebra_element(t,requisition(sol))))fi od;(false,(null(t),null(t),null(t)))
 
 set JM_triple_signs(StructureConstantTable t,ComplexNilpotent O)=(bool,(LieAlgebraElement,LieAlgebraElement,LieAlgebraElement)):
@@ -245,7 +246,7 @@ let ()=prints("#coeffs:",#coeffs) in
  ; let X=lie_algebra_element_root_vectors(t,v)
    then sol=solve_ad(X,H(t,H))
  in prints("trying:", X.root_part)
- ; if any(sol)
+ ; if can(sol)
    then prints("solved"); rv#:=(lie_algebra_element_semisimple(t,H),X,lie_algebra_element(t,requisition(sol)))
    else prints("NOT solved")
    fi

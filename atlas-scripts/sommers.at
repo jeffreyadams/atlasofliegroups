@@ -425,13 +425,8 @@ let D=P.default_orbit_symbol in
 set orbit_symbols(Partition P)=
 if P.sum.is_even then orbit_symbols_C(P) else orbit_symbols_B(P) fi
 
-set sort_by_dual_orbit = ([OrbitSymbol] symbols):
-for i in sort_indices(#symbols, (int i,int j)bool: lex_leq(symbols[j].dual_orbit,symbols[i].dual_orbit)) do symbols[i] od
-
-{ Sort list of parameters by height }
-set sort_by_height = ([Param] -> [Param]): sort_by( height@Param )
-set sort_by ((KGBElt -> int) f)= ([KGBElt] v) [KGBElt]:
-  for index in inv_standardisation(for x in v do f(x) od) do v[index] od
+set sort_by_dual_orbit = ([OrbitSymbol]->[OrbitSymbol]):
+  sort_by(dual_orbit@OrbitSymbol,(Partition a,Partition b):lex_leq(vec:a,vec:b))
 
 set birational_induction(OrbitSymbol S)=
 let (gl,cp)=S then

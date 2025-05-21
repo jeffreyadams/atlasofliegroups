@@ -59,7 +59,7 @@ else
  gdeg=ct_M.generic_degree(index_char_M) then
  G=levi_tables[0].root_datum then
  ()=if fig_verbose then prints("generic degree: ", gdeg) fi in
- let levis_M= proper_Levi_subgroups(M) in 
+ let levis_M= proper_Levi_subgroups(M) in
  for Lprime@i in levis_M do let
   (L,w)=find_Levi(G,M,Lprime) then
   index_table_L=first(for i:#levi_tables do equal_subgroups(levi_tables[i].root_datum,w*L) od)  then
@@ -114,7 +114,7 @@ let rec_fun my_function([SpringerTable] levi_tables,[(RootDatum,int,(int,bool))]
    let ()=if fig_verbose then prints("success ", "L=",L) fi in
    let (,new_table_index,new_char_index)=g_induced then
    new=(levi_tables[new_table_index].root_datum,new_table_index,(new_char_index,false)) then
-   ()=triples:=new#triples in
+   ()=void: triples:=new#triples in
    my_function(levi_springer_tables,triples)
   else
    let ()=if fig_verbose then prints("failure,sgn") fi in
@@ -123,7 +123,7 @@ let rec_fun my_function([SpringerTable] levi_tables,[(RootDatum,int,(int,bool))]
    if success_sgn then
     let (,new_table_index,new_char_index)=g_induced_sgn  {in my_function(levi_springer_tables,new_table_index,new_char_index)}  then
     new=(levi_tables[new_table_index].root_datum,new_table_index,(new_char_index,true)) then
-    ()=triples:=new#triples in
+    ()=void: triples:=new#triples in
     my_function(levi_springer_tables,triples)
    else
     assert(false,"error!!");return (levi_tables,triples) {should never get here, but need to return a value}
@@ -258,7 +258,7 @@ fi
 
 
 set test_special_maps([RootDatum] groups)=[bool]:
-for G in groups do 
+for G in groups do
 let result=test_special_maps(G) in prints(G.nice_format, ": ", result);result od
 
 set test_special_maps()=
@@ -276,10 +276,3 @@ let ct_L=tables[table_L].ct then
 ct_G=tables[table_G].ct then
 (M,P)=find_Levi(tables[0].root_datum,ct_G.root_datum, ct_L.root_datum) in
 induce_character(ct_L,ct_G,ct_L.characters[char_L],P.matrix)
-
-
-
-
-
-
-

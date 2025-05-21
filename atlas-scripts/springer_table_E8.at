@@ -87,8 +87,7 @@ set E8_dual_names= [string]: for (,,,,d,) in E8_Springer_table_data do d od
 set name_to_diagram_E8 = (string->vec):
    let n=#E8_names
    then name_diagram = [string,vec]:
-      for k in sort_indices(n,(int i,int j):E8_names[i]<=E8_names[j])
-          { ranked |k| }
+      for k in ranking(E8_names)
       do let (name,diag,,,,)=E8_Springer_table_data[k] in (name,diag)
       od
 in (string key) vec:
@@ -100,9 +99,10 @@ in (string key) vec:
 
 set E8_nilpotent_orbit_dual_map = (vec->vec):
    let n=#E8_diagrams
+   , ranking = ranking(([int]a,[int]b)bool:lex_leq(vec:a,vec:b))
    then dual_table = [vec,vec]:
       let sigma = [int]: { at index |r| the number of diagram ranked |r| }
-         sort_indices(n,(int i,int j):lex_leq(E8_diagrams[i],E8_diagrams[j]))
+         ranking(E8_diagrams)
       then diagram_dual = [vec,string]:
 	 for i in sigma { traverse in order making diagrams sorted }
 	 do let (,diag,,,d,)=E8_Springer_table_data[i] in (diag,d)

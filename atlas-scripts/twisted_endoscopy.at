@@ -77,44 +77,43 @@ set partial_fixed_block_of(mat delta,Param p)=
 
 set big_KL_P_polynomials(Param p,mat delta) = i_poly_mat:
 {  let B=partial_fixed_block_of(delta,p) in}
-  let (B,,)=partial_extended_KL_block(p,delta) in
+   let (B,,)=partial_extended_KL_block(p,delta) in
 
-  let (I_delta,g,complete_indices,delta_action)=tabulate_indices(B,delta)
-  then B_delta = for i in I_delta do B[i] od
-  , P=KL_P_polynomials(p)
-  then P_delta=KL_P_polynomials(p,delta)
-  in
-  if =#P_delta
-  then prints("Note: block not delta-fixed")
-  ; KL_P_polynomials(B) {block is not fixed by delta}
-  else let n=#complete_indices then rv=zero_poly_matrix(n) in
-     for a:n
-     do let (i,epsilon_i)=complete_indices[a] in
-        for b:n-a from a
-        do let (j,epsilon_j)=complete_indices[b] in
+   let (I_delta,g,complete_indices,delta_action)=tabulate_indices(B,delta)
+   then B_delta = for i in I_delta do B[i] od
+   , P=KL_P_polynomials(p)
+   then P_delta=KL_P_polynomials(p,delta)
+in if #P_delta=0
+   then prints("Note: block not delta-fixed")
+   ; KL_P_polynomials(B) {block is not fixed by delta}
+   else
+      let n=#complete_indices then result=zero_poly_matrix(n)
+      then put(int i, int j, i_poly p) = result:=matrix_assign(result,i,j,p)
+   in for a:n
+      do let (i,epsilon_i)=complete_indices[a]
+      in for b:n-a from a
+	 do let (j,epsilon_j)=complete_indices[b] in
 { prints("a=",a," b=",b," i=",i," e_i=",epsilon_i," j=",j," e_j=",epsilon_j); }
-           if a=b
-           then  rv:=update_matrix_entry(rv,a,b,one) {diagonal entries}
-           elif (epsilon_i*epsilon_j=1) { entries have same sign: P+P^delta}
-           then let x=g[i], y=g[j] in
+	    if a=b then put(a,b,poly_1) {diagonal entries}
+	    elif (epsilon_i*epsilon_j=1) { entries have same sign: P+P^delta}
+	    then let x=g[i], y=g[j] in
 { prints("P[i][j]=",P[i][j]," x=",x," y=",y," , Pdelta[x][y]=",P_delta[x][y]); }
-	     rv:=update_matrix_entry(rv,a,b,poly_add(P[i][j],P_delta[x][y])\2)
-	   elif epsilon_i*epsilon_j=minus_1
-	   then {(+,-) or (-,+): P-P^delta} let x=g[i], y=g[j] in
-	     rv:=update_matrix_entry(rv,a,b,poly_sub(P[i][j],P_delta[x][y])\2)
-	   elif abs(epsilon_i)=1 and epsilon_j=0 {(\pm,ind): P}
-	   then rv:=update_matrix_entry(rv,a,b,P[i][j])
-	   elif epsilon_i=0 and abs(epsilon_j)=1  {(ind,\pm): P}
-	   then rv:=update_matrix_entry(rv,a,b,P[i][j])
-	   elif epsilon_i=0 and epsilon_j=0
-	   then {(ind,ind): P(gamma,mu)+P(gamma,mu^delta)}
-	     rv:=update_matrix_entry
-		 (rv,a,b,poly_add(P[i][j],P[i][delta_action[j]]))
-           fi
-        od
-     od
-  ; rv
-  fi
+	       put(a,b,poly_add(P[i][j],P_delta[x][y])\2)
+	    elif epsilon_i*epsilon_j=minus_1
+	    then {(+,-) or (-,+): P-P^delta} let x=g[i], y=g[j] in
+	       put(a,b,poly_sub(P[i][j],P_delta[x][y])\2)
+	    elif abs(epsilon_i)=1 and epsilon_j=0 {(\pm,ind): P}
+	    then put(a,b,P[i][j])
+	    elif epsilon_i=0 and abs(epsilon_j)=1  {(ind,\pm): P}
+	    then put(a,b,P[i][j])
+	    elif epsilon_i=0 and epsilon_j=0
+	    then {(ind,ind): P(gamma,mu)+P(gamma,mu^delta)}
+	       put(a,b,poly_add(P[i][j],P[i][delta_action[j]]))
+	    fi
+	 od
+      od
+      ; result
+   fi
 
 set big_KL_P_signed_polynomials (Param p,mat delta) = i_poly_mat:
 {  let B=partial_fixed_block_of(delta,p) in}
@@ -128,7 +127,7 @@ set big_KL_P_signed_polynomials (Param p,mat delta) = i_poly_mat:
      in
      for a:n do for b:n
      do let (i,)=complete_indices[a], (j,)=complete_indices[b] in
-        P:=update_matrix_entry(P,a,b,P[a][b]*minus_1^(lengths[i]+lengths[j]))
+        P:=matrix_assign(P,a,b,P[a][b]*minus_1^(lengths[i]+lengths[j]))
      od od
   ; P
   fi
@@ -230,16 +229,20 @@ Value:
 |  1, -1, -1,  1 |
 }
 
-set restrict_action_weak (mat A, mat M) =  { shapes A: n by n, M: n by m }
-   case solve(M,A*M) | solution(B): B | else null(0,0) esac
+{ restrict action of |A| to the image of the embedding defined by |M| }
+{ shapes A: n by n, (embedding) M: n by m with m<=n, result m by m }
+set restrict_action_weak (mat A, mat M) = mat:
+   case solve(M,A*M) | some(B): B | else null(0,0) esac
 
-set lift(mat m, RootDatum G,mat M)=WeylElt:
-let W=G.W then
-i=first(for w in W do any(solve(M,w.matrix*M)) and restrict_action(w.matrix,M)=m od)
-in W[i]
+{ search for |w| for |G| whose action restricted through |M| is given by |A| }
+set lift (mat A, RootDatum G,mat M) = WeylElt:
+   let MA=M*A
+in for w in G.W
+   do if MA=matrix(w)*M then return w fi
+   od; error("No Weyl group element has required action")
 
 set lift(mat theta_H,mat M,RealForm G)=mat:
-let i=first(for x in KGB(G) do any(solve(M,x.involution*M)) and restrict_action(x.involution,M)=theta_H od) in
+let i=first(for x in KGB(G) do can(solve(M,x.involution*M)) and restrict_action(x.involution,M)=theta_H od) in
 KGB(G,i).involution
 
 set lift(KGBElt_gen x_H_gen,mat M, RealForm G)=KGBElt_gen:
@@ -321,15 +324,15 @@ set sign_difference(Param p_G, mat delta)=int:
   M##Nw=Mw1+Nw2=v
   Mw1=v-Nw2
   }
-set solve(mat M,mat N,ratvec v)=maybe_a_ratvec:
-  let sol=solve(M##N,v) in
-  let ()=if te_verbose then prints("solving: ", v) fi in
-   if any(sol) then
-    let    ()=if te_verbose then prints("solution: ", sol.requisition) fi in
-    let w=sol.requisition in w[:n_columns(M)].solution
-   else
-    ().no_ratvec
-   fi
+set solve(mat M,mat N,ratvec v) = Maybe<ratvec>:
+   let ()=if te_verbose then prints("solving: ", v) fi
+   then sol=solve(M##N,v)
+in case sol
+   | some(solution): { cut off unwanted columns of |solution| }
+      let    ()=if te_verbose then prints("solution: ", solution) fi
+   in some(solution[:n_columns(M)])
+   | none(): none()
+   esac
 
 
 {gamma_H is the known infinitesimal character for H}
@@ -341,9 +344,9 @@ theta=p_G.x.involution then
 N=(1+theta)##id_mat(n_rows(theta)) then
 ()=if te_verbose then prints(M##N) fi then
 tf_u_H_maybe=solve(M,N,tf_u_G) {solution to: M*tf_u_H=tf_u_G mod (X^*_Q)^[-theta]+X_*}  then
-tf_u_H=if not any(tf_u_H_maybe) then error("no solution") else
-        2*tf_u_H_maybe.requisition  {factor of 2}
-fi  then
+tf_u_H =if can(tf_u_H_maybe) else error("no solution")
+        then 2*tf_u_H_maybe.requisition  {factor of 2}
+        fi  then
 tf_H=(1+action_H)*(2*tf_u_H-H.rho)/2 {convert to normalized torus factor} then
 ()=if te_verbose then prints("tf_u_G: ", tf_u_G, new_line, "tf_u_H: ", tf_u_H, new_line, "tf_H: ", tf_H) fi then
 y_H_gen=KGB_elt_gen(dual(inner_class(H)),action_H,tf_H) then
@@ -373,9 +376,10 @@ theta=p_G.x.involution then
 N=(1+theta)##id_mat(n_rows(theta)) then
 ()=if te_verbose then prints(M##N) fi then
 tf_u_H_maybe=solve(M,N,tf_u_G) then
-tf_u_H=if not any(tf_u_H_maybe) then error("no solution") else
-        2*tf_u_H_maybe.requisition
-fi  then
+tf_u_H=if can(tf_u_H_maybe) else error("no solution")
+       then 2*tf_u_H_maybe.requisition
+       fi
+then
 {tf_u_H=left_inverse(M)*tf_u_G then lift}
 tf_H=(1+action_H)*(2*tf_u_H-H.rho)/2 then
 ()=if te_verbose then prints("tf_u_G: ", tf_u_G, new_line, "tf_u_H: ", tf_u_H, new_line, "tf_H: ", tf_H) fi then

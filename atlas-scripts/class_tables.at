@@ -256,8 +256,8 @@ in assert(size=n,"Cycles sum to "+size+" rather than "+n)
 set class_table_D(int n) = WeylClassTable:
    let rd=SO(n+n), classes = [D_class]: D_classes(n)
    then lookup = (D_class->int):
-      let ranked = { |ranked[i]| is index in |classes| of class ranked |i| }
-         sort_indices((int i,int j)bool: classes[i]<=classes[j])(#classes)
+      let ranked = { |ranked[i]| is index into |classes| of class ranked |i| }
+         ranking(<=@(D_class,D_class))(classes)
       then list = for i in ranked do classes[i] od
       in (D_class c) int: { index in |classes| where one finds |c| }
          ranked[binary_search_first((int i)bool: c<=list[i], 0,#classes)]
@@ -272,7 +272,7 @@ set class_table_D(RootDatum rd) = WeylClassTable:
    , class_rep = (D_class->WeylElt): conjugacy_class_D(rd)
    then lookup = (D_class->int):
       let ranked = { |ranked[i]| is index in |classes| of class ranked |i| }
-         sort_indices((int i,int j)bool: classes[i]<=classes[j])(#classes)
+         ranking(<=@(D_class,D_class))(classes)
       then list = for i in ranked do classes[i] od
       in (D_class c) int: { index in |classes| where one finds |c| }
          ranked[binary_search_first((int i)bool:c<=list[i], 0,#classes)]
@@ -366,7 +366,7 @@ set class_table_F (RootDatum rd) = WeylClassTable:
       for class in classes do class_signature_F4(class) od
    then N=1152 { = order_W(rd) }
    ,  lookup = (BiPartition->int):
-      let ranked = sort_indices((int i,int j)bool: sigs[i]<=sigs[j])(#sigs)
+      let ranked = ranking(<=@(BiPartition,BiPartition))(sigs)
       then list = for i in ranked do sigs[i] od { |sigs| sorted by |<=| }
       in (BiPartition sig) int: { index in |sigs| where one finds |sig| }
          ranked[binary_search_first((int i)bool: sig<=list[i], 0,#list)]
@@ -398,7 +398,7 @@ set class_table_E6 (RootDatum rd) = WeylClassTable:
    , leq = leq_equal_sum_partitions@(Partition,Partition)
    then N=51840 { order_W("E6") }
    ,  lookup = (Partition->int):
-      let ranked = sort_indices((int i,int j)bool: leq(sigs[i],sigs[j]))(#sigs)
+      let ranked = ranking(leq)(sigs)
       then list = for i in ranked do sigs[i] od { |sigs| sorted by |leq| }
       in (Partition sig) int: { index in |sigs| where one finds |sig| }
          ranked[binary_search_first((int i)bool: leq(sig,list[i]), 0,#list)]
@@ -474,9 +474,7 @@ set class_table_E7 (RootDatum rd) = WeylClassTable:
    then N=2903040 { order_W("E7") }
    ,  (lookup_w,lookup_cyc) { define two functions that share precomputed data }
          = ((WeylElt->int),(Partition->[int])):
-      let ranked = [int]:
-         sort_indices((int i,int j)bool: leq_E7_signatures(sigs[i],sigs[j]))
-	 (#sigs)
+      let ranked = [int]: ranking(leq_E7_signatures)(sigs)
       then (list,locs) = ([Partition],[[int]]): { sorted cycle type, positions }
          let locs=[int]:[], prev= Partition:[]
 	 then out = [Partition,[int]]: { grouping of |sigs[ranked[i]] values }
@@ -542,8 +540,7 @@ set class_table_E8 (RootDatum rd) = WeylClassTable:
    then sigs = [Partition]: for w in classes do class_signature_E8(w) od
    , leq = leq_equal_sum_partitions@(Partition,Partition)
    then lookup = (Partition->int):
-      let ranked =
-         sort_indices((int i,int j)bool: leq(sigs[i],sigs[j]))(#sigs)
+      let ranked = ranking(leq)(sigs)
       then list = for i in ranked do sigs[i] od { |sigs| sorted by |leq| }
       in (Partition sig) int: { index in |sigs| where one finds |sig| }
          ranked[binary_search_first((int i)bool: leq(sig,list[i]), 0,#list)]
@@ -632,12 +629,10 @@ set GAP_reorder_E8 (WeylClassTable Wct) = [int]: { map GAP to |Wct| numbers }
 	     , Wct.reflection[Wct.class_power(j,3)]
 	     ]
 	  od
-   then profile_ranked = [int]: { columns |eg_gap_profile| ranked }
-      sort_indices
-      ((int i,int j): lex_leq(e8_gap_profile[i],e8_gap_profile[j]))
-      (#e8_gap_profile)
+   then profile_ranked = [int]: { columns |eg_gap_profile| ranked by |lex_leq| }
+      ranking([vec]:e8_gap_profile)
    , Wct_ranked = { columns of |Wct_prof| ranked by |lex_leq| }
-      sort_indices((int i,int j): lex_leq(Wct_prof[i],Wct_prof[j]))(#Wct_prof)
+      ranking([vec]:Wct_prof)
    in compose_permutations(Wct_ranked,inverse(profile_ranked))
 
 
