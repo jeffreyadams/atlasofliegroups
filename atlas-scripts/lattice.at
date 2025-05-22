@@ -120,7 +120,7 @@ set solve_ratvec (mat A, vec v) = ratvec:
 
 
 set in_lattice (mat A, ratvec u) = bool: { whether v in image lattice of A }
-  let (b,n)=%u in n=1 and whether(solve(A,b))
+  let (b,n)=%u in n=1 and can(solve(A,b))
 
 set vec_solve (mat A, ratvec u) = Maybe<vec>: { integer solution to A*x=b }
   let (b,n)=%u in if n>1 then none() else solve(A,b) fi

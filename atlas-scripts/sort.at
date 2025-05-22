@@ -78,6 +78,9 @@ set ranking ((T,T->bool)leq) = ([T] a) [int]:
 
 set sort_by ((T->S)f,(S,S->bool)leq) = ([T]->[T]):
    sort((T x,T y)bool:leq(f(x),f(y)))
+{ when sorting by integer or rational value, default to increasing sort }
+set sort_by ((T->int) f) = ([T]->[T]): sort_by(f,<=@(int,int))
+set sort_by ((T->rat) f) = ([T]->[T]): sort_by(f,<=@(rat,rat))
 
 set partition_by ((T->S)f,(S,S->bool)leq) = ([T] a) [[T]]:
   let vals = map(f)(a) then rank = ranking(leq)(vals), i=0, n=#a in

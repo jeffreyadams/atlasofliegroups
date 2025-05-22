@@ -3,6 +3,7 @@
 
 set_type One_of<S,T> = ( S fail | T succeed ) !
 set_type Maybe<T>    = ( void none | T some) !
+set_type linear_solution = Maybe<(vec,int,mat)> { for built-in |linear_solve| }
 
 set where() = void:
    for line@i in back_trace
@@ -10,7 +11,11 @@ set where() = void:
    od
 
 any_type S,T begin
-set whether (One_of<S,T> v) = bool: case v | fail: false | succeed: true esac
+set succeeds (One_of<S,T> v) = bool: case v | fail: false | succeed: true esac
+set can = succeeds@One_of<S,T> { because |if can(solve(eqn))| sounds better }
+
+set to_list (One_of<S,T> v) = [T]: case v | fail: [] | succeed(x): [x] esac
+
 set requisition (string message) = (One_of<S,T> v) T:
     case v | fail: error(message) | succeed(v): v esac
 set requisition = (One_of<S,T>->T):
@@ -237,7 +242,7 @@ set is_member_sorted ([int] v) = (int->bool):
   , (int n):
        case n-v[2] then n=v[0] or n=v[1] in true else n=v[3] or n=v[4] esac
   else
-     (int n)bool: whether(binary_lookup(n,v))
+     (int n)bool: succeeds(binary_lookup(n,v))
   esac
 set isnt_member_sorted ([int] v) = (int->bool):
   let member = is_member_sorted(v) in (int n): not member(n)
