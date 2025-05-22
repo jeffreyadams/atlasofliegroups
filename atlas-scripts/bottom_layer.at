@@ -1080,7 +1080,7 @@ set bottom_K_type_Qs(Param p, KGPElt Qmin, int D_low, int D) = [QK_bottom_data]:
 		  od.##)).sort_u
          od  {these are the coroots needed to make a parabolic
 		       	    for which tau is bottom layer}
-    then candSs = too_many_Ss.sort_u
+    then candSs = too_many_Ss.sort_u_lex
     then proper_candSs = for S in candSs
     	 	       	 do if #S = G.semisimple_rank
 			    then []

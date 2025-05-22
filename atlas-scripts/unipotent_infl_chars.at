@@ -18,7 +18,7 @@ R(Lv,OLv) = {x \in (h/Z(l))^*: (Lv(x), Ind^{Lv(x)}_{Mv(x)} {0}) is Gv-conjugate 
 Conjecture: each R(Lv,OLv) contains a unique W-conjugacy class of minimal-length elements.
 
 A `Lusztig datum' for Gv is a pair (Ov,C) consisting of a nilpotent Gv-orbit Ov and a conjugacy class C in Abar(Ov). To each such pair, one can associate
-a finite set of Sommers data (Lv1,OLv1),...,(Lvn,OLvn). One can also associate a nilpotent cover \tilde{O} for G (see Mason-Brown-Matvieievskyi). 
+a finite set of Sommers data (Lv1,OLv1),...,(Lvn,OLvn). One can also associate a nilpotent cover \tilde{O} for G (see Mason-Brown-Matvieievskyi).
 
 Conjecture: the union \cup_i R(Lvi,OLvi) contains a unique W-conjugay class of minimal-length elements. This conjugacy class coincides
 with the infl char of the unipotent ideal attached to \tilde{O}.
@@ -39,7 +39,7 @@ set_type SommersDatum = (RootDatum G, ComplexNilpotent distinguished_orbit)
 
 {A conjugacy class in a nilpotent G-orbit is given by a pseudo-levi L, a distinguished nilpotent in L, and a coset t \in Z(L)/Z(L)^o}
 
-set_type ConjugacyClass = (RootDatum G, ComplexNilpotent distinguished_orbit, ratvec coset) 
+set_type ConjugacyClass = (RootDatum G, ComplexNilpotent distinguished_orbit, ratvec coset)
 
 {suppose (L,OL) is a Sommers datum which maps to O. Then OL is uniquely determined from L (??). This function computes OL from (O,L)}
 
@@ -47,12 +47,12 @@ set extract_distinguished(ComplexNilpotent O, RootDatum L) = ComplexNilpotent:
 let distinguished_H_L=distinguished_Hs(L)
 then j=first(for H_L in distinguished_H_L do dominant(H_L,O.root_datum)=O.H od)
 in complex_nilpotent(L,distinguished_H_L[j])
-  
+
 set conjugacy_classes(ComplexNilpotent O) = [ConjugacyClass]:
 let D=component_datum(O).pairs, G=O.root_datum in
 ##(for (L,list) in D do for x in list do (G,extract_distinguished(O,L),x) od od)
 
-set order(ConjugacyClass C) = int: 
+set order(ConjugacyClass C) = int:
 order_in_A(C.coset,C.G,C.distinguished_orbit.H)
 
 set Sommers_datum(ConjugacyClass C) = SommersDatum:
@@ -62,7 +62,7 @@ set Sommers_datum(ConjugacyClass C) = SommersDatum:
 {given a SommersDatum (G,OL), finds distinguished SommersDatum (M,OL) from which it is saturated}
 
 {set distinguished(SommersDatum (G,OL)) = SommersDatum:
-Roots of M are roots of G which have nonzero pairing with some 
+Roots of M are roots of G which have nonzero pairing with some
 
 
 }
@@ -74,7 +74,7 @@ Roots of M are roots of G which have nonzero pairing with some
 
 set distinguished_Sommers(RootDatum G) = [SommersDatum]:
 let S=max_pseudos(G.dual) in
-##(for Lv in S do for OLv in distinguished_orbits(Lv) do (G.dual,OLv) od od)  
+##(for Lv in S do for OLv in distinguished_orbits(Lv) do (G.dual,OLv) od od)
 
 
 {decides whether a conjugacy class C is distinguished}
@@ -98,7 +98,7 @@ let all=conjugacy_classes(Ov) in
 ##(for c in all do if is_distinguished(c) and order(c)>1 then [c] else [] fi od)
 
 
-{given a Sommers datum (Lv,OLv) for Gv and a ratvec x in h^*, checks whether 
+{given a Sommers datum (Lv,OLv) for Gv and a ratvec x in h^*, checks whether
 1) integrality_datum(G,x).dual = Lv (up to Gv conjugation)
 2) codim of {0} in nilpotent cone for singular root Levi coincides with codim of OLv in nilpotent cone for Lv}
 
@@ -128,9 +128,9 @@ dominant(G,OMv.H)=dominant(G,OLv.H) fi
 
 set cands_weak(SommersDatum (Gv,OLv), rat t) = [ratvec]:
 let G=Gv.dual, Lv=OLv.root_datum
-then F=fundamental_coweights(Lv)     
-then z=min(for f in F do f*Lv.rho od), H=t*dominant(Lv.dual,G.rho)*Lv.rho    
-then N=ceil(H/z)    
+then F=fundamental_coweights(Lv)
+then z=min(for f in F do f*Lv.rho od), H=t*dominant(Lv.dual,G.rho)*Lv.rho
+then N=ceil(H/z)
 then indices=compositions_le(N,#F) in
 ##(for I in indices do let p=sum(#F[0],for f@i in F do I[i]*f od) in
 if check_Richardson_weak((Gv,OLv),p) then [p] else [] fi od)
@@ -165,7 +165,7 @@ Mv=integrality_datum(G,p).dual, sing=singular_root_datum(G,p).dual in
 prints(p, " ", Mv, " ", sing, " ", #roots(Mv)-#roots(sing)) od
 
 {given a Sommers datum (Lv,OLv) and an integer n, lists representatives of all W-conjugacy classes
-of minimal-length elements in R(Lv,OLv) = {x \in h^*: check_Richardson((Gv,OLv),x)=true}. Algorithm 
+of minimal-length elements in R(Lv,OLv) = {x \in h^*: check_Richardson((Gv,OLv),x)=true}. Algorithm
 looks for elements in regions {x \in h^*: x dominant for Lv and dominant(Lv,G.rho)*x \leq t} as t increments from 1/n to 1 by 1/n}
 
 set remove_duplicates([ratvec] list) = [ratvec]:
@@ -177,17 +177,21 @@ for r in R do r[:#r-1]/r[#r-1] od
 
 
 
-set find_min(SommersDatum (Gv,OLv), int n) = maybe_a_ratvec:
-let G=Gv.dual, list=[ratvec]:[], t=1/n then
-I=invariant_form(G) in
-while #list=0 and t<1 do list:=cands_weak((Gv,OLv),t); t:=t+1/n od;
-if #list=0 then no_ratvec() else
-let lengths=for x in list do I(x,x) od then
-d=min(lengths) in
-let final=remove_duplicates(##(for x in list do if I(x,x)=d then [dominant(G,x)] else [] fi od)) in
-if #final=1 then final[0].solution else no_ratvec() fi fi
+set find_min(SommersDatum (Gv,OLv), int n) = Maybe<ratvec>:
+(  let G=Gv.dual, list=[ratvec]:[], t=1/n
+   then I=invariant_form(G)
+   in while #list=0 and t<1 do list:=cands_weak((Gv,OLv),t); t:=t+1/n od
+   ;  if #list=0 then ().none
+      else
+         let lengths=for x in list do I(x,x) od
+	 then d=min(lengths)
+	 then final=
+	    for x in list if I(x,x)=d do dominant(G,x) fi od.remove_duplicates
+	    in if #final=1 then final[0].some else ().none fi
+      fi
+)
 
-set find_min(ConjugacyClass C, int n) = maybe_a_ratvec:
+set find_min(ConjugacyClass C, int n) = Maybe<ratvec>:
 find_min(Sommers_datum(C),n)
 
 
@@ -198,7 +202,7 @@ induce_orbit(G,OL)
 {set rep_of_datum(SommersDatum (Gv,OLv)) = ratvec:
 let Lv=OLv.root_datum
 then F=fundamental_coweights(Lv)
-then k=first(for f in F do 
+then k=first(for f in F do
 let x=f+OLv.H/2 in
 check_Richardson((Gv,OLv),x) od) in
 F[k]+OLv.H/2}
@@ -227,7 +231,7 @@ set index_in([ComplexNilpotent] L, ComplexNilpotent O) = int:
 first(for X in L do X=O od)
 
 {equivalence relation ~ on conjugacy_class(Ov) defined by c1 ~ c2 iff Sommers_dual(c1)=Sommers_dual(c2) iff c1 and c2 have same image in Abar(Ov). This function lists equivalence classes,
-specified as lists of indices into conjugacy_classes(Ov)} 
+specified as lists of indices into conjugacy_classes(Ov)}
 
 set Lusztig_data_indices(ComplexNilpotent Ov) = [vec]:
 let CC=conjugacy_classes(Ov), LD=Sommers_duals(Ov) then
@@ -247,14 +251,15 @@ for X in L do for x in X do order(x) od od
 {set conjugacy_class_Abar(ConjugacyClass C) = [ConjugacyClass]:}
 
 
-set find_min_Abar([ConjugacyClass] CC, int n) = maybe_a_ratvec:
-let G=CC[0].G.dual, all=##(for c in CC do let a=find_min(c,n) in if any(a) then [a.requisition] else [] fi od) then
+set find_min_Abar([ConjugacyClass] CC, int n) = Maybe<ratvec>:
+let G=CC[0].G.dual, all= for c in CC do find_min(c,n).to_list od.##
+then
 I=invariant_form(G) in
-if #all=0 then no_ratvec() else
+if #all=0 then none() else
 let lengths=for x in all do I(x,x) od then
 d=min(lengths) in
 let final=remove_duplicates(##(for x in all do if I(x,x)=d then [x] else [] fi od)) in
-if #final=1 then final[0].solution else no_ratvec() fi fi
+if #final=1 then final[0].some else ().none fi fi
 
 
 set print_mins(ComplexNilpotent Ov, int n) = void:
@@ -297,10 +302,10 @@ prints("Diagram of Ov = ", Ov.diagram, "  dim(Ov) = ", Ov.dim); print_mins_nontr
 
 set print_mins_all(RootDatum G, int n) = void:
 let L=Levi_subgroups(G) in
-for M in L do 
+for M in L do
 let Nv=nilpotent_orbits(M.dual) in
 prints("Levi = ", M);
-for Ov in Nv do if #distinguished_classes_nontrivial(Ov)>0 then 
+for Ov in Nv do if #distinguished_classes_nontrivial(Ov)>0 then
 prints("Diagram of Ov = ", Ov.diagram, "  dim(Ov) = ", Ov.dim); print_mins_nontrivial_adjusted(G,Ov,n) fi od od
 
 
@@ -322,7 +327,7 @@ distinguished=distinguished_orbits(Lv) then
 S=for OLv in distinguished do (G.dual,OLv) od in
 prints("Lv = ", Lv, new_line);
 for s in S do let guess=dominant(G,distinguished_orbit(s).H/2+a), min=find_min(s,n) in
-prints("OLv = ", distinguished_orbit(s).H, "  x(Lv,OLv) = ", min, "  a+hv/2 = ", guess) od 
+prints("OLv = ", distinguished_orbit(s).H, "  x(Lv,OLv) = ", min, "  a+hv/2 = ", guess) od
 
 
 
@@ -337,7 +342,7 @@ j=first(for OL in NL do dominant(OL.H,O.root_datum)=O.H od) in
 complex_nilpotent(L,NL[j].H)
 
 
-{given a RootDatum G, a pseudoLevi M \subset G, a pseudoLevi L \subset G which is *G-conjugate* to a Levi subgroup of M, 
+{given a RootDatum G, a pseudoLevi M \subset G, a pseudoLevi L \subset G which is *G-conjugate* to a Levi subgroup of M,
 and a nilpotent orbit OL in L, computes the saturation Sat^M_L OL (after conjugating L to be a subgroup of M)}
 
 set saturate(RootDatum G, ComplexNilpotent OL, RootDatum M) = ComplexNilpotent:

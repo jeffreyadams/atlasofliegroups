@@ -85,14 +85,12 @@ Claim/conjecture: H\cap F is the convex hull of its good extreme
 points.}
 {A size m by n, b size m}
 set good_interior_point(mat A, vec b) = [ratvec]:
-if rank(A) < #A then return [] fi;
-let trial = [ratvec]: case solve(A,b/1) | no_ratvec: [] | solution(x): [x] esac
-{let Ainv = (A/1).left_inverse {size n by m}}
-in if #trial = 0
-   then return []
-   else let x = trial[0]
-   	in if all(for xi in x do xi.> and (1-xi).> od) then [x] else [] fi
-   fi
+    if rank(A) < #A then []
+    else
+       for x in [ratvec]: solve(A,b/1).to_list
+          if all(for xi in x do xi>0 and 1>xi od) do x fi
+       od
+    fi
 
 {Faces of dim at most r. Each term in result is subset of {0,..,n-1} of
 card n-d \ge n-r, and vec of size n-d with all entries 0 or 1}
@@ -249,8 +247,8 @@ set local_FPP_extrema_med = ((KGBElt, ratvec) -> [ratvec]):
        then () = rf := rf_hash.match(G)
        then () = if rf = RF {haven't seen this real form before}
 	   	 then inv_hash #:= make_mat_hash();
-		      lamthlam_hash #:= [];
-		      answer_list #:= [];
+		      lamthlam_hash #:= ([vec_hash]:[]);
+		      answer_list #:= ([[vec]]:[]);
 		      afflines #:= FPP_lines(G);
 		      affcoroots #:= FPP_coroots(G).^ ;
 		      vlists #:= FPP_local_vertices(G);
@@ -261,7 +259,7 @@ set local_FPP_extrema_med = ((KGBElt, ratvec) -> [ratvec]):
        then () = inv := inv_hash[rf].match(theta)
        then () = if inv = I {haven't seen this involution before}
 	         then lamthlam_hash[rf] #:= make_vec_hash();
-		       answer_list[rf] #:= []
+		      answer_list[rf] #:= ([vec]:[])
 		 fi {inv = I}
        then L = lamthlam_hash[rf][inv].size()
        then lamth = ((1+theta)*lambda).numer
@@ -300,8 +298,8 @@ set local_FPP_extrema_small = ((KGBElt, ratvec) -> [ratvec]):
        then () = rf := rf_hash.match(G)
        then () = if rf = RF {haven't seen this real form before}
 	   	 then inv_hash #:= make_mat_hash();
-		      lamthlam_hash #:= [];
-		      answer_list #:= [];
+		      lamthlam_hash #:= ([vec_hash]:[]);
+		      answer_list #:= ([[vec]]:[]);
 		      afflines #:= FPP_lines(G);
 		      vlists #:= FPP_local_vertices(G);
 		      vlookups #:= index_in(FPP_local_vertices(G))
@@ -311,7 +309,7 @@ set local_FPP_extrema_small = ((KGBElt, ratvec) -> [ratvec]):
        then () = inv := inv_hash[rf].match(theta)
        then () = if inv = I {haven't seen this involution before}
 	         then lamthlam_hash[rf] #:= make_vec_hash();
-		      answer_list[rf] #:= []
+		      answer_list[rf] #:= ([vec]:[])
 		 fi {inv = I}
        then L = lamthlam_hash[rf][inv].size()
        then lamth = ((1+theta)*lambda).numer
@@ -344,8 +342,8 @@ set local_FPP_extrema = ((KGBElt, ratvec) -> [ratvec]):
        then () = rf := rf_hash.match(G)
        then () = if rf = RF {haven't seen this real form before}
 	   	 then inv_hash #:= make_mat_hash();
-		      lamthlam_hash #:= [];
-		      answer_list #:= [];
+		      lamthlam_hash #:= ([vec_hash]:[]);
+		      answer_list #:= ([[[ratvec]]]:[]);
 		      afflines #:= FPP_lines(G)
 		 fi {rf = RF}
        then I = inv_hash[rf].size()
@@ -353,7 +351,7 @@ set local_FPP_extrema = ((KGBElt, ratvec) -> [ratvec]):
        then () = inv := inv_hash[rf].match(theta)
        then () = if inv = I {haven't seen this involution before}
 	         then lamthlam_hash[rf] #:= make_vec_hash();
-		      answer_list[rf] #:= []
+		      answer_list[rf] #:= ([[ratvec]]:[])
 		 fi {inv = I}
        then L = lamthlam_hash[rf][inv].size()
        then lamth = ((1+theta)*lambda).numer

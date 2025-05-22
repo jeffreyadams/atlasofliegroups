@@ -393,16 +393,22 @@ P=\sum a_i Q_i with a_i\in Z
 return true/false, and [KTypePol] R,[int] a so that
 P=sum a[i]*R[i]
 }
-set in_span([KTypePol] list,KTypePol P)=([KType],mat,vec,bool):
-if #list=0 then ([],null(0,0),null(0),false) else
-let basis=monomials(list) {list of distinct Params} then
-M=mat:for Q in list do let v=vector(basis,Q) in
-assert(succeeds(v),"failure in in_span");requisition(v)  od then
-T=vector(basis,P) in
-{assert(can(T),"can't find vector at all");}
-if not succeeds(T) then (basis,M,null(0),false) else
-let T=requisition(T) then
-inlattice=in_lattice(M,T) in (basis,M,T,inlattice) fi fi
+set in_span ([KTypePol] list,KTypePol P) = ([KType],mat,vec,bool):
+  if #list=0 then ([],null(0,0),null(0),false)
+  else
+     let basis=monomials(list) {list of distinct Params}
+     then M=mat:
+        for Q in list
+	do case vector(basis,Q)
+	   | else error("failure in in_span")
+	   | some(v): v
+	   esac
+	od
+     in case vector(basis,P)
+	| else {error("can't find vector at all");} (basis,M,null(0),false)
+	| some(T): (basis,M,T,in_lattice(M,T))
+	esac
+  fi
 
 {convenient to define in_span([[KTypePol]] list,KTypePol P)=
 in_span( flatten the list,P)

@@ -89,13 +89,11 @@ set min_test(RealForm G) = min_test(G,0,#KGB(G))
 
 {sort list by ith coordinate}
 set sorti([vec] list, int i) = [vec]:
-    let sorter(int m, int n) = bool: list[m][i] < list[n][i]
-    then indices = sort(#list, sorter)
-    in for m:#list do list[indices[m]] od
+    sort_by((vec v)int: v[i],<=@(int,int))(list)
 
 
 set timeOL([(KGBElt, ratvec)] xls) = [int]:
-    let () = FPP_report_flag:=false, (x0,) = xls[0]
+    let (x0,) = xls[0] next FPP_report_flag:=false
     then G = x0.real_form
     then () = unipotents_to_hash(G, big_unitary_hash.uhash(G))
     then () = unip_flag:=false
@@ -110,7 +108,7 @@ set timeOL([(KGBElt, ratvec)] xls) = [int]:
 
 {this version uses red_count to try to reduce char calc time}
 set timeOLred_count([(KGBElt, ratvec)] xls) = [int]:
-    let () = FPP_report_flag:=false, (x0,) = xls[0]
+    let (x0,) = xls[0] next FPP_report_flag:=false
     then G = x0.real_form
     then () = unipotents_to_hash(G, big_unitary_hash.uhash(G))
     then () = unip_flag:=false
@@ -125,8 +123,7 @@ set timeOLred_count([(KGBElt, ratvec)] xls) = [int]:
      in ans
 
 set timeBL([(KGBElt, ratvec)] xls) = [int]:
-    let () = FPP_report_flag:=false
-    then (x0,) = xls[0]
+    let (x0,) = xls[0] next FPP_report_flag:=false
     then G = x0.real_form
     then () = unipotents_to_hash(G, big_unitary_hash.uhash(G))
     then () = unip_flag:=false
@@ -142,7 +139,7 @@ set timeBL([(KGBElt, ratvec)] xls) = [int]:
 
 {this version uses red_count to try to reduce char calc time}
 set timeBLred_count([(KGBElt, ratvec)] xls) = [int]:
-    let () = FPP_report_flag:=false, (x0,) = xls[0]
+    let (x0,) = xls[0] next FPP_report_flag:=false
     then G = x0.real_form
     then () = unipotents_to_hash(G, big_unitary_hash.uhash(G))
     then () = unip_flag:=false
@@ -164,8 +161,7 @@ than 1/2 is probably reasonable?}
 {set shift_frac = 1/3 (now set in hermitian.at)}
 
 set timeBLMS([(KGBElt, ratvec)] xls) = [int]:
-    let () = FPP_report_flag:=false
-    then (x0,) = xls[0]
+    let (x0,) = xls[0] next FPP_report_flag:=false
     then G = x0.real_form
     then () = unipotents_to_hash(G, big_unitary_hash.uhash(G))
     then () = unip_flag:=false

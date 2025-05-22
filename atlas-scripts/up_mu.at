@@ -63,8 +63,8 @@ set make_up_mu_hash() = up_mu_hash_table:
 		       then () = Ms #:= projection_to_K_matrix(rf)
 		       then () = Mrts #:=  ((1+rf.distinguished_involution)*right_inverse(Ms[I]))/2
 		       then () = muhashes #:=make_KType_hash()
-		       then () = muss #:= []
-		       then () = muDones #:= []
+		       then () = muss #:= ([[int]]:[])
+		       then () = muDones #:= ([bool]:[])
 		       then () = assert(real_form_hash.size() = #muhashes and #K0s = #muhashes and #K0s = #Ms
 	     	  	    	       and #K0s = #muss and #Mrts = #K0s, "up_mu_hash damaged")
 		       in ()

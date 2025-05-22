@@ -9,14 +9,9 @@ Wi is the *vertex set* of Si), then the sets Wi are well-defined. The main funct
 {. produces all k-element subsets of verts. The term "# #verts" is
 [0,1,...,#verts - 1]
  .}
-set choices_from( [ratvec]verts, int k) = [[ratvec]]:
-    for S in choices_from(# #verts,k) do for s in S do verts[s] od od
+set to_rat(ratvec v) = [rat]: v { make implicit conversion explicit }
 
-set to_rat(ratvec v) = [rat]:
-  for q in v do rat: q od
-
-set to_ratvec([rat] v) = ratvec:
-   for q in v do q od
+set to_ratvec([rat] v) = ratvec: v { make implicit conversion explicit }
 
 
 set almost_LI([ratvec] V) = bool:
@@ -42,11 +37,14 @@ let k=bad_index(V) in
 
 
 set in_hull_0_almost_LI([ratvec] V) = bool:
-if #V=0 then false else
-let S=solve(find_basis_ratvec(V)) in
-if any(S) then sum(for s in S.requisition do #(s>0) od)=0 
-else let S_exact=a_solution(find_basis(V)) in
-sum(for s in S_exact do #(s>0) od)=0 fi fi
+if #V=0 then false
+else
+   case solve(find_basis_ratvec(V))
+   | some(sol): for s in sol do s>0 od.none
+   | else let S_exact=a_solution(find_basis(V))
+     in for s in S_exact do s>0 od.none
+   esac
+fi
 
 
 set in_hull_0([ratvec] V) = bool:
