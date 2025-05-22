@@ -36,8 +36,8 @@
 	 '("quit" "set" "let" "in" "begin" "end"
 	   "if" "then" "else" "elif" "fi" "and" "or" "not"
 	   "next" "do" "dont" "from" "downto" "while" "for" "od"
-	   "case" "esac" "rec_fun" "true" "false"  "die"
-	   "break" "return" "set_type" "whattype" "showall" "forget"))
+	   "case" "esac" "rec_fun" "true" "false"  "die" "break" "return"
+	   "set_type" "any_type" "whattype" "showall" "forget"))
 	(types '("int" "rat" "string" "bool" "void"
 		 "vec" "mat" "ratvec"
 		 "LieType" "RootDatum" "InnerClass" "RealForm"

@@ -13,14 +13,15 @@ i^th lists the indices of the characters in the same
 family; the first one in the list is the special,
 the others are in ascending order}
 set families(CharacterTable ct)=[[int]]:
-let v=for i:ct.n_classes do [] od then
-()=for j:ct.n_classes do v[ct.special(j)] #:= j od then
-rv=[[int]]:[] in
-for i:#v do if #v[i]>0 then rv#:=v[i] fi od;
-for a in rv do sort_special_first(ct,a) od
+(  let v= for i:ct.n_classes do [int]: [] od
+in for j:ct.n_classes do v[ct.special(j)] #:= j od
+;  let rv=[[int]]:[]
+in for i:#v do if #v[i]>0 then rv#:=v[i] fi od
+;  for a in rv do sort_special_first(ct,a) od
+)
 
 set family(CharacterTable ct, int i)=
-let sp=ct.special(i) in 
+let sp=ct.special(i) in
 sort_special_first(ct, ##for j:ct.n_classes do if  ct.special(j)=sp then [j] else [] fi od)
 
 set family(CharacterTable ct)=(int->[int]):(int i):family(ct,i)

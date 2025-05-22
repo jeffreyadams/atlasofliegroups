@@ -360,6 +360,8 @@ let (cwt_1_dom,)=affine_make_dominant(ad,cwt_1),
 (cwt_2_dom,)=affine_make_dominant(ad,cwt_2) in cwt_1_dom=cwt_2_dom
 
 {action of fundamental group on fundamental alcove}
-set action_fundamental_group(ratvec cwt,AffineDatum ad)=
-assert(is_affine_dominant(cwt,ad),"coweight is not in fundamental alcove");
-sort_u(for v in elements_of_fundamental_group(ad.rd) do let (w,)=ad.affine_co_make_dominant(cwt+v)  in w od)
+set action_fundamental_group (ratvec cwt,AffineDatum ad) =
+  assert(is_affine_dominant(cwt,ad),"coweight is not in fundamental alcove");
+  for v in elements_of_fundamental_group(ad.rd)
+  do let (w,)=ad.affine_co_make_dominant(cwt+v) in w
+  od.sort_u_lex

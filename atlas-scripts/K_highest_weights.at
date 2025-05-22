@@ -595,7 +595,7 @@ set all_parameters_x_gamma (KGBElt x,ratvec gamma) = [Param]:
    in
    case vec_solve(th1,th1*(gamma_d-rho))
    | else [Param]: [] { without solution no parameters }
-   | solution(lr):
+   | some(lr):
       let lambda = rho + lr, nu=(2-th1){1-theta}*gamma_d/2 in
       for v in all_lambda_differential_0(x) do parameter(x,lambda+v,nu) od
    esac.reduce  { keep only 1 from each equivalence class }
@@ -607,8 +607,8 @@ set all_parameters_gamma (RealForm G,ratvec gamma) = [Param]:
    for x in KGB(G)
    do let th1=1+involution(x) in
       case vec_solve(th1,th1*(v-rho))
-      | no_vec: [Param]:[]
-      | solution(lr):
+      | none: [Param]:[]
+      | some(lr):
         let lambda = rho + lr, nu=(2-th1){1-theta}*v/2 in
         for v in all_lambda_differential_0(x) do parameter(x,lambda+v,nu) od
       esac
@@ -703,14 +703,14 @@ to G, and make a list of the constituents of the induced. This results in
 a list of parameters for each L-spherical parameter. If mu is strongly
 dominant, the output should be a list of singletons. .}
 set inds (KHighestWeight mu_in)=[[Param]]:
-   let Q=parabolic_LKT(mu_in) then G=real_form(Q) then
-   result=[] then (,x,tau)=mu_in, L=Levi(Q) then
-   mu=tau-two_rho_u_cap_s(Q,x)+rho_l(Q) then
-   pL=parameter(KGB(L,#KGB(L)-1),mu,null(rank(L))) then
-   all_pL=all_G_spherical_same_differential(pL) in
-     for qL in all_pL do let
-        ind=monomials(theta_induce_standard(parameter(qL),real_form(x))) in
-      result#:=ind od; result
+   let Q=parabolic_LKT(mu_in)
+   then G = real_form(Q), L = Levi(Q), (,x,tau) = mu_in
+   then mu = tau-two_rho_u_cap_s(Q,x)+rho_l(Q)
+   then pL=parameter(KGB(L,#KGB(L)-1),mu,null(rank(L)))
+   then all_pL=all_G_spherical_same_differential(pL)
+in for qL in all_pL
+   do monomials(theta_induce_standard(parameter(qL),real_form(x)))
+   od
 
 {. Auxiliary function: For a list of lists as computed in the previous
 function, pick out those consisting just of singletons. In the next function,
@@ -973,7 +973,7 @@ set all_dominant_norm_upto (InnerClass ic, ratvec cowt,int N) =
 set lambda_rho_from_dominant_norm_upto (KGBElt x, ratvec v, int N) = mat: {wts}
    let th1=1+involution(x), rho=rho(root_datum(x))
    then th1_rho = ratvec_as_vec(th1*rho)
-in #rho { all weights have same size (the rank) as |rho| } ##
+in #rho { all weights have same size (the rank) as |rho| } #
    for mu in all_dominant_norm_upto(inner_class(x),v,N)
-   do case solve(th1,mu-th1_rho) | no_vec: [] | solution(s): [s] esac
-   od
+   do case solve(th1,mu-th1_rho) | some(s): [s] | none: [] esac
+   od.##

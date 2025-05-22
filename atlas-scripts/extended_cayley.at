@@ -54,7 +54,7 @@ begin
     , new_t=t
     then new_tau = vec:
       case solve(1-new_theta,alpha)
-      | solution(zeta): tau - zeta*(int:alpha_check*tau)
+      | some(zeta): tau - zeta*(int:alpha_check*tau)
       | else error("failure in Cayley of type 1i1, solving for zeta")
       esac
     in [(ic,delta,gamma,new_lambda,new_theta,g,new_l,new_omega,new_tau,new_t)]
@@ -95,7 +95,7 @@ begin
     , new_omega=omega*coref
     then new_t =
       case solve(1+^new_theta,alpha_check)
-      | solution(sol): t-sol*(int:t*alpha)
+      | some(sol): t-sol*(int:t*alpha)
       | else error("failure in Cayley of type 1r2, solving for s")
       esac
     then F=
@@ -168,7 +168,7 @@ begin
     , new_t=t
     then sigma =
       case solve(1+^new_omega,alpha-beta)
-      | solution(s): s
+      | some(s): s
       | else error
       ("failure in Cayley of type 2i12, solving for (1+omega')sigma=alpha-beta")
       esac

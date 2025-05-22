@@ -77,10 +77,12 @@ in { now apply |reps_by_rho| to each size class, and concatenate the results }
 }
 
 { given a standard Levi, list conjugate non-standard Levis with dominant 2rho }
-set_type
-[ orbit_entry = (int L_int, WeylElt w)
-, orbit_data = [orbit_entry] { posroot set as single number, conjugator }
-]
+set_type orbit_entry =
+  (int L_int   { posroot set as bitset: a single nonnegative number }
+  , WeylElt w  { conjugator from first element of orbot }
+  )
+set_type orbit_data = [orbit_entry]
+
 
 { since the number of roots in the subset is fixed, we use |combination_encode|
   to represent a subset of $k$ positive roots as a number inside |orbit_data|;
@@ -93,7 +95,7 @@ set right_act([int] Levi,WeylElt w) = int: { encode |w^-1*Levi| as a number }
 
 { the following function facilitates identifying all Levi subgroups conjugate to
   |standard_Levi|, by providing a full list of those (non standard) Levi
-  subgroups whose $2]rho$-value is dominant, with witnesses conjugating them
+  subgroups whose $2\rho$-value is dominant, with witnesses conjugating them
   back to |standard_Levi|; in other words it returns a list of |(L,w)| where
   |two_rho(L)=dominant(two_rho(standard_Levi)) and |L=w*standard_Levi| (but with
   |L| encoded as an integer, so these are not actually valid expressions).
@@ -134,6 +136,8 @@ set rho_stabiliser_orbit (RootDatum rd, [int] standard_Levi) = orbit_data:
      	let l=#sorted
 	then i = binary_search_first((int i)bool: sorted[i].L_int>=code, 0,l)
 	in i<l and sorted[i].L_int=code
+   , sanitise = { process new level of Levis: sort and remove duplicates }
+       sort_u((orbit_entry x,orbit_entry y) bool: x.L_int<=y.L_int)
    in while { loop with |do| near end }
 	 let new_level = [orbit_entry]:
 	    for (code,w) in stack~[0]
@@ -146,10 +150,7 @@ set rho_stabiliser_orbit (RootDatum rd, [int] standard_Levi) = orbit_data:
 	       od.##
 	    od.##
       in >#new_level { whether any new elements were found for new level }
-      do stack := (stack next stack:=[]) #
-         (let cmp(int i,int j)=bool: new_level[i].L_int<=new_level[j].L_int in
-          for i in sort_u(#new_level,cmp) do new_level[i] od
-	 )
+      do stack #:= sanitise(new_level)
       od
    ; let sizes = for level in stack do #level od, orbit = ##stack
      then merge = merge((int i,int j)bool: orbit[i].L_int<=orbit[j].L_int)
@@ -163,10 +164,8 @@ set rho_stabiliser_orbit (RootDatum rd, [int] standard_Levi) = orbit_data:
 { in a |Std_Levi_orbit|, |Levi_repr| is an encoded standard Levi, as are first
   members |L| of |others|; for |(L,w) in others| one has |L=w*Levi_repr|
 }
-set_type
-[ Std_Levi_orbit = (vec rho2, int Levi_repr, [int,WeylElt] others)
-, Std_Levi_table = [[Std_Levi_orbit]] { list of lists, grouped by |k| }
-]
+set_type Std_Levi_orbit = (vec rho2, int Levi_repr, [int,WeylElt] others)
+set_type Std_Levi_table = [[Std_Levi_orbit]] { list of lists, grouped by |k| }
 
 { group together conjugate standard Levis, with witness conjugating from first }
 set classify_standard_Levis (RootDatum rd) =  Std_Levi_table:
@@ -177,7 +176,7 @@ set classify_standard_Levis (RootDatum rd) =  Std_Levi_table:
          then i = first(#result,(int i)bool: result[i].rho2=rho2_dom)
       in if i.< { is this a previously unseen |rho2_dom| value }
          then orbs #:= rho_stabiliser_orbit(rd,Levi) { sorted }
-         ;  result #:= (rho2_dom,combination_encode(Levi),[])
+         ;  result #:= (rho2_dom,combination_encode(Levi),orbit_data:[])
          else { |rho2_dom| value already seen, and tabulated in |orbs[i]| }
             let cur=result[i], orbit=orbs[i], L = int: right_act(Levi,w0)
             then (,w) =
@@ -224,8 +223,8 @@ set minimal_extenders (RootDatum rd,[int] Levi) = [int]:
    let orth = { columns: generators in $X_*$ of annihilator subspace of |Levi| }
       kernel(rd.rank ^ for i in Levi do root(rd,i) od)
 in case a_column_with((vec alpha)bool: !=alpha*orth {@*(vec,mat)}, rd.posroots)
-   | no_vec: [] { |Levi| already spans subspace containing all roots }
-   | solution(alpha):
+   | none(): [] { |Levi| already spans subspace containing all roots }
+   | some(alpha):
       { find a column |f| of |orth| (coweight) witnessing |alpha*orth| nonzero }
       let f = requisition(a_column_with((vec cowt)bool: !=cowt*alpha, orth))
       , min=0 { minimal positive coroot evaluation on |wt| so far; 0 if none }

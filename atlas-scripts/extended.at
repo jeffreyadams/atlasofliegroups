@@ -112,11 +112,11 @@ begin let ic = inner_class(x), theta = involution(x) in
   then t   = solve(1-omega,l*(delta-1))
   ,    tau = solve(1-theta,(delta-1)*lambda_E)
   in
-  assert(t.any
+  assert(succeeds(t)
         ,@: prints("solve(",1-omega,",",l*(delta-1),")")
             ; "t*(1+theta)=l*(delta-1) has no integral solution t"
         )
-; assert(tau.any
+; assert(succeeds(tau)
         ,@: prints("solve(",1-theta,",",(delta-1)*lambda_E,")")
             ; "(1-theta)tau=(delta-1)*lambda has no integral solution tau"
         )
@@ -141,8 +141,8 @@ begin let ic = inner_class(x), theta = involution(x) in
   then t   = solve(1-omega,l*(delta-1))
   ,    tau = solve(1-theta,(delta-1)*lambda)
   in
-  assert(t.any  ,"(1-^delta)l=(1-omega)t has no integral solution")
-; assert(tau.any,"(1-delta)lambda=(1-theta)tau has no integral solution")
+  assert(succeeds(t)  ,"(1-^delta)l=(1-omega)t has no integral solution")
+; assert(succeeds(tau),"(1-delta)lambda=(1-theta)tau has no integral solution")
 ; (ic,delta,gamma,lambda,theta,g,l,omega,tau.requisition,t.requisition)
 end
 
@@ -314,9 +314,6 @@ set sign_find ([ExtParam] list,ExtParam E) = (int,int):
   let i=last(#list,(int i)bool: !=sign(E,list[i])) in
   if <i then (0,-1) else (sign(E,list[i]),i) fi
 
-
-set find (ExtParam E,[ExtParam] list) = int: find(list,E)
-set sign_find (ExtParam E,[ExtParam] list) = (int,int): sign_find(list,E)
 
 { for convenience
   usage: set (delta,B,g) = ext_basic(G)
