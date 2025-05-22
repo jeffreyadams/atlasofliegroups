@@ -8799,7 +8799,8 @@ case field_ass_stat:
   assert(not tuple_tp->is_polymorphic());
   // polymorphic variables are made constant
 @)
-  unsigned pos; type_expr component;
+  type_expr component;
+  unsigned pos=-1; // value is anxiolytic for the compiler
   @< Look up a field of |*tuple_tp| named |selector|, and if found assign
      its position to |pos| and set |component| to the corresponding
      component of |*tuple_tp|; on failure |throw expr_error| @>
@@ -8929,7 +8930,8 @@ case field_trans_stat:
   assert(not tuple_tp->is_polymorphic());
   // polymorphic variables are made constant
 @)
-  unsigned pos; type_expr component;
+  type_expr component;
+  unsigned pos=-1; // value is anxiolytic for the compiler
   @< Look up a field of |*tuple_tp| named |selector|... @>
   expression_ptr call;
   @< Assign to |call| the |convert_expr| of the application of |op| to
