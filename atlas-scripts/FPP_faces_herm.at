@@ -2247,7 +2247,7 @@ set is_unitary_def_test_big_SIMPLE(Param p,int m) = bool:
 
 set is_unitary_def_test_big(Param p,int m) = bool:
   if (not is_hermitian(p)) then return false fi;
-  if not (fewer_reducible_unitary_flag and is_pos_on_LKTs(p)) then return false fi;
+  if not (fewer_reducible_unitary_flag or is_pos_on_LKTs(p)) then return false fi;
   let pds = derived_factor_params0(p)
   in all(for pd in pds do @bool: is_unitary_def_test_big_SIMPLE(pd,m) od)
 
@@ -2262,7 +2262,7 @@ set is_unitary_def_test_big(Param p) = bool:
 {ONLY for G simple}
 set is_unitary_next_big_SIMPLE(Param p) = bool:
     if (not is_hermitian(p)) then return false fi;
-    if not (fewer_reducible_unitary_flag and is_pos_on_LKTs(p)) then return false fi;
+    if not (fewer_reducible_unitary_flag or is_pos_on_LKTs(p)) then return false fi;
     let G = p.real_form
     then (LAM,NU,) = low(p)
     then FPP_flag = is_FPP(G,p.infinitesimal_character)
@@ -2292,7 +2292,7 @@ set is_unitary_next_big_SIMPLE(Param p) = bool:
 
 set is_unitary_next_big(Param p) = bool:
     if (not is_hermitian(p)) then return false fi;
-    if not (fewer_reducible_unitary_flag and is_pos_on_LKTs(p)) then return false fi;
+    if not (fewer_reducible_unitary_flag or is_pos_on_LKTs(p)) then return false fi;
     let pds = derived_factor_params0(p)
     in all(for pd in pds do @bool: is_unitary_next_big_SIMPLE(pd) od)
 
@@ -2316,7 +2316,7 @@ otherwise?}
 set is_FPP_unitary(Param p) = (bool,bool):
     if not is_FPP_unitary_flag then return (false,false) fi;
     if (not is_hermitian(p)) then return (true,false) fi;
-    if not (fewer_reducible_unitary_flag and is_pos_on_LKTs(p)) then return (true,false) fi;
+    if not (fewer_reducible_unitary_flag or is_pos_on_LKTs(p)) then return (true,false) fi;
     let () = p:= herm_center(p), G = p.real_form
     then gamma = p.infinitesimal_character
     then alphavs = for alphav@j in G.simple_coroots
@@ -2365,7 +2365,7 @@ test. Second is meaningful only if first is true; make result
 set is_FPP_unitary(Param p, (Param -> bool) fancy_tester ) = (bool,bool):
     if not is_FPP_unitary_flag then return (false,false) fi;
     if (not is_hermitian(p)) then return (true,false) fi;
-    if not (fewer_reducible_unitary_flag and is_pos_on_LKTs(p)) then return (true,false) fi;
+    if not (fewer_reducible_unitary_flag or is_pos_on_LKTs(p)) then return (true,false) fi;
     let () = p:= herm_center(p), G = p.real_form
     then gamma = p.infinitesimal_character
     then rdi = integrality_datum(G,gamma)
@@ -2868,7 +2868,7 @@ set localFD_1Dirac2\
 	 do let nu = face_bary(Lvd, v)
 	    then p = parameter(x,lambda,nu)
 	 {face_bary_ic(x.inner_class, face_bary(Lvd.list, v))}
-	    in  if not (fewer_reducible_unitary_flag and all(for q in monomials(p)
+	    in  if not (fewer_reducible_unitary_flag or all(for q in monomials(p)
 	       	      	    do @bool: is_pos_on_LKTs(q)
 			    od))
 		then [] {from now on p is pos_on_LKTs}
