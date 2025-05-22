@@ -3170,7 +3170,7 @@ set local_test_GEO_hash2(KGBElt x, ratvec lambda, {VertexData vd,} LocalVertexDa
      	     		      od
      	     	    in ()
      	     fi{quick_flag}
-    {now have faces of all dims, unitary to height hts[Dlast]}
+    {now have faces of all dims, unitary to height hts[Dlast] or hts[Dmid]}
     then () = LFDKH := extend_K_characters(x, lambda, Lvd, LFDKH, pol_hash)
     then () = KNU_flag:=KNU_flag_hold
     then () = ICPNU_flag:= ICPNU_flag_hold
@@ -3244,6 +3244,11 @@ set local_test_GEO_hash2_end(KGBElt x, ratvec lambda, LocalVertexData Lvd, [[Fac
     {then () = prints("after extend, pol_hash_min.list() is ",pol_hash_min.list())}
 {eliminate vert/edges not unitary to ht0}
     then ((eq,gr),IUCL,CLBF) = localGraphK(LFDKH, pol_hash, ht0)
+{because of to_ht, CANNOT use KNU testing}
+    then KNU_flag_hold = KNU_flag
+    then ICPNU_flag_hold = ICPNU_flag
+    then () = KNU_flag:=false
+    then () = ICPNU_flag:=false
     then () = LFDKH := local_testK_hash(x,lambda,Lvd, LFDKH, eq, gr, CLBF, pol_hash,
     	       	  				 tester1, ht0, Uhash, fancy_tester)
     then () = if test_verbose then prints("unitary to ht ", ht0,
@@ -3291,6 +3296,9 @@ set local_test_GEO_hash2_end(KGBElt x, ratvec lambda, LocalVertexData Lvd, [[Fac
      in ()
      fi{quick_flag}
     {now have faces of all dims, to height hts[Dlast]}
+    then () = LFDKH := extend_K_characters(x, lambda, Lvd, LFDKH, pol_hash)
+    then () = KNU_flag:=KNU_flag_hold
+    then () = ICPNU_flag:= ICPNU_flag_hold
     then ((eq,gr),IUCL,CLBF) = localGraphK(LFDKH)
     then () = if test_verbose
     	      then prints(for list in LFDKH do #list od, " = ",sum(for list in LFDKH do #list od),
@@ -3668,7 +3676,7 @@ set local_test_GEO_hash_one_level_end(KGBElt x, ratvec lambda, LocalVertexData L
     			KTypePol_hash pol_hash, int HK_known, Param_hash Uhash,
 			(Param->bool) fancy_tester) = [Param]:
     let G = x.real_form, r = rank(x.involution -1), thetaMinus = 1-x.involution
-    then ONE = if one_level = -1 then max(edge_offset+1, (r+2)\2)
+    then ONE = if one_level = -1 then max(edge_offset, (r+2)\2)
     	       else one_level
 	       fi
     then LAST = if last_level = -1 then ONE+edge_skip
@@ -3696,7 +3704,6 @@ set local_test_GEO_hash_one_level_end(KGBElt x, ratvec lambda, LocalVertexData L
 		     fi
     {then () = prints("depth = ",depth, ", #Shorthts = ",#Shorthts, ", LAST = ",LAST)}
     then one_ht = hts[ONE], last_ht = hts[LAST]
-    then approxMaxDiff = approxDiff(pmax)
     then tester1 = (Param->bool): (Param p) bool:
      	     	  if prefer_to_hts then is_unitary_to_hts_big_SIMPLE(p, hts[:ONE+1])
 	 	  else is_unitary_to_ht_big_SIMPLE(p,one_ht)
