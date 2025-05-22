@@ -29,6 +29,12 @@ set sort(RealForm G, LocalVertexData Lvd, [[FaceVertsKHash]] LFDKH, int tail) = 
     else LFDKH
     fi
 
+{if the zero parameter at (x,lambda) has invariant form indefinite on
+LKTs, then no irreducible Langlands quotient can be unitary. We used
+to record the cases when all the LQs were unitary, but no
+longer. Setting this flag to "false" restores the old calculation.}
+set fewer_reducible_unitary_flag = true
+
 {. If "true," then print number of invocations of a unitarity test .}
 set test_verbose = true
 
@@ -1857,7 +1863,8 @@ set hermitian_form_irreducible_to_ht_big(Param p,int N) = KTypePol:
 { meant to be used for G simple }
 { compute Hermitian form to ht on p, report if it is unitary}
 set is_unitary_to_ht_big_SIMPLE_old(Param p,int N) = bool:
-  if (not is_hermitian(p)) or (not is_pos_on_LKTs(p)) then return false fi;
+  if (not is_hermitian(p)) then return false fi;
+  if not (fewer_reducible_unitary_flag or is_pos_on_LKTs(p)) then return false fi;
   let G = p.real_form
   then FPP_flag = is_FPP(G,p.infinitesimal_character)
   then () = if not FPP_flag
@@ -1889,7 +1896,8 @@ set ht_bound_frac = rat: 1/2
 
 {if low suggests it's worthwhile, try is_unitary with time limit time}
 set is_unitary_to_ht_big_SIMPLE(Param p, int H, int time) = bool:
-  if (not is_hermitian(p)) or (not is_pos_on_LKTs(p)) then return false fi;
+  if (not is_hermitian(p)) then return false fi;
+  if not (fewer_reducible_unitary_flag or is_pos_on_LKTs(p)) then return false fi;
   let G = p.real_form, (,NU,) = low(p)
   then ht_bound = NU/low_frac {this estimates the biggest ht where to_ht could be faster than is_unitary}
   then FPP_flag = is_FPP(G,p.infinitesimal_character)
@@ -1943,7 +1951,8 @@ set is_unitary_to_ht_big_SIMPLE(Param p, int H) = bool:
 
 { compute Hermitian form to ht on p, report if it is unitary}
 set is_unitary_to_ht_big(Param p,int N) = bool:
-  if (not is_hermitian(p)) or (not is_pos_on_LKTs(p)) then return false fi;
+  if (not is_hermitian(p)) then return false fi;
+  if not (fewer_reducible_unitary_flag or is_pos_on_LKTs(p)) then return false fi;
   if (big_unitary_hash.ulookup(p)).>= then return true fi;
   let pds = derived_factor_params0(p)
   in all(for pd in pds do @bool: is_unitary_to_ht_big_SIMPLE(pd,N) od)
@@ -1953,7 +1962,8 @@ set next_taus_flag = true
 
 {"step" is how many steps up in to_ht list to start}
 set is_unitary_test_big_SIMPLE_interrupt(Param p, int step) = bool:
-  if (not is_hermitian(p)) or (not is_pos_on_LKTs(p)) then return false fi;
+  if (not is_hermitian(p)) then return false fi;
+  if not (fewer_reducible_unitary_flag or is_pos_on_LKTs(p)) then return false fi;
   let G = p.real_form, (LAM,NU,GAM) = low(p)
   then shift = 1 {if easy_up_shift = -1
        	       then max(1,(G.rank*mu_rank_mult)\1)
@@ -2021,8 +2031,9 @@ set is_unitary_test_big_SIMPLE_interrupt(Param p) = bool:
 
 {hts should be increasing string of heights > height(p). Check those, then switch to above}
 set is_unitary_test_big_SIMPLE_interrupt(Param p, [int] hts) = bool:
-    if (not is_hermitian(p)) or (not is_pos_on_LKTs(p)) then return false fi;
-    if #hts = 0 then return is_unitary_test_big_SIMPLE_interrupt(p, 1) fi;
+  if (not is_hermitian(p)) then return false fi;
+  if not (fewer_reducible_unitary_flag or is_pos_on_LKTs(p)) then return false fi;
+  if #hts = 0 then return is_unitary_test_big_SIMPLE_interrupt(p, 1) fi;
   let G = p.real_form, (,NU,) = low(p)
   then ht_bound = NU*low_frac
   {this estimates the biggest ht where to_ht could be faster than is_unitary}
@@ -2098,7 +2109,8 @@ set is_unitary_to_hts_big_SIMPLE_interrupt(Param p,[int] Ns, int time) = bool:
 {meant to be used for G simple}
 { compute Hermitian form to hts on p, report if it is unitary}
 set is_unitary_to_hts_big_SIMPLE(Param p,[int] Ns) = bool:
-  if (not is_hermitian(p)) or (not is_pos_on_LKTs(p)) then return false fi;
+  if (not is_hermitian(p)) then return false fi;
+  if not (fewer_reducible_unitary_flag or is_pos_on_LKTs(p)) then return false fi;
   let G = p.real_form
   then FPP_flag = is_FPP(G,p.infinitesimal_character)
   then () = if not FPP_flag
@@ -2123,7 +2135,8 @@ set is_unitary_to_hts_big_SIMPLE(Param p,[int] Ns) = bool:
 
 { compute Hermitian form to hts on p, report if it is unitary}
 set is_unitary_to_hts_big (Param p,[int] Ns) = bool:
-  if (not is_hermitian(p)) or (not is_pos_on_LKTs(p)) then return false fi;
+  if (not is_hermitian(p)) then return false fi;
+  if not (fewer_reducible_unitary_flag or is_pos_on_LKTs(p)) then return false fi;
   if #Ns = 0 then return is_unitary_hash_big(p) fi;
   let pds = derived_factor_params0(p)
   in all(for pd in pds do @bool: is_unitary_to_hts_big_SIMPLE(pd,Ns) od)
@@ -2132,7 +2145,8 @@ set is_unitary_to_hts_big (Param p,[int] Ns) = bool:
 {ONLY for G simple}
 { compute Hermitian form to height N; if it's positive, then compute full form }
 set is_unitary_test_big_SIMPLE(Param p, int N) = bool:
-    if (not is_hermitian(p)) or (not is_pos_on_LKTs(p)) then return false fi;
+    if (not is_hermitian(p)) then return false fi;
+    if not (fewer_reducible_unitary_flag or is_pos_on_LKTs(p)) then return false fi;
     if N < height(p) then return is_unitary_hash_big_SIMPLE(p) fi;
     let G = p.real_form
     then FPP_flag = is_FPP(G,p.infinitesimal_character)
@@ -2158,7 +2172,8 @@ set is_unitary_test_big_SIMPLE(Param p, int N) = bool:
 {ONLY for G simple}
 { like previous, with list of heights }
 set is_unitary_test_big_SIMPLE (Param p, [int] Ns) = bool:
-  if (not is_hermitian(p)) or (not is_pos_on_LKTs(p)) then return false fi;
+  if (not is_hermitian(p)) then return false fi;
+  if not (fewer_reducible_unitary_flag or is_pos_on_LKTs(p)) then return false fi;
   let G = p.real_form
   then FPP_flag = is_FPP(G,p.infinitesimal_character)
   then () = if not FPP_flag
@@ -2193,19 +2208,22 @@ set is_unitary_test_big_SIMPLE (Param p, [int] Ns) = bool:
 }
 
 set is_unitary_test_big(Param p, int N) = bool:
-    if (not is_hermitian(p)) or (not is_pos_on_LKTs(p)) then return false fi;
+  if (not is_hermitian(p)) then return false fi;
+  if not (fewer_reducible_unitary_flag or is_pos_on_LKTs(p)) then return false fi;
     let pds = derived_factor_params0(p)
     in all(for pd in pds do @bool: is_unitary_test_big_SIMPLE(pd,N) od)
 
 set is_unitary_test_big(Param p, [int] Ns) = bool:
-    if (not is_hermitian(p)) or (not is_pos_on_LKTs(p)) then return false fi;
+  if (not is_hermitian(p)) then return false fi;
+  if not (fewer_reducible_unitary_flag or is_pos_on_LKTs(p)) then return false fi;
     let pds = derived_factor_params0(p)
     in all(for pd in pds do @bool: is_unitary_test_big_SIMPLE(pd,Ns) od)
 
 {ONLY for G simple}
 {use the first m heights from deform_heights to test}
 set is_unitary_def_test_big_SIMPLE(Param p,int m) = bool:
-    if (not is_hermitian(p)) or (not is_pos_on_LKTs(p)) then return false fi;
+  if (not is_hermitian(p)) then return false fi;
+  if not (fewer_reducible_unitary_flag or is_pos_on_LKTs(p)) then return false fi;
     let G = p.real_form
     then FPP_flag = is_FPP(G,p.infinitesimal_character)
     then () = if not FPP_flag
@@ -2220,16 +2238,18 @@ set is_unitary_def_test_big_SIMPLE(Param p,int m) = bool:
     in if low(p, height(p))
        then let (def,flag)= deform_hts(p,m)
        	    in if flag
-       	       then is_pos_on_LKTs(p) and is_unitary_to_hts_big_SIMPLE(p,def)
+	       then (fewer_reducible_unitary_flag or is_pos_on_LKTs(p)) and
+	       	    is_unitary_to_hts_big_SIMPLE(p,def)
        	       else is_unitary_test_big_SIMPLE(p,def)
        	       fi
        else is_unitary_hash_big_SIMPLE(p)
        fi
 
 set is_unitary_def_test_big(Param p,int m) = bool:
-    if (not is_hermitian(p)) or (not is_pos_on_LKTs(p)) then return false fi;
-    let pds = derived_factor_params0(p)
-    in all(for pd in pds do @bool: is_unitary_def_test_big_SIMPLE(pd,m) od)
+  if (not is_hermitian(p)) then return false fi;
+  if not (fewer_reducible_unitary_flag and is_pos_on_LKTs(p)) then return false fi;
+  let pds = derived_factor_params0(p)
+  in all(for pd in pds do @bool: is_unitary_def_test_big_SIMPLE(pd,m) od)
 
 {ONLY for G simple}
 {use the first height from deform_heights to test}
@@ -2241,7 +2261,8 @@ set is_unitary_def_test_big(Param p) = bool:
 
 {ONLY for G simple}
 set is_unitary_next_big_SIMPLE(Param p) = bool:
-    if (not is_hermitian(p)) or (not is_pos_on_LKTs(p)) then return false fi;
+    if (not is_hermitian(p)) then return false fi;
+    if not (fewer_reducible_unitary_flag and is_pos_on_LKTs(p)) then return false fi;
     let G = p.real_form
     then (LAM,NU,) = low(p)
     then FPP_flag = is_FPP(G,p.infinitesimal_character)
@@ -2270,7 +2291,8 @@ set is_unitary_next_big_SIMPLE(Param p) = bool:
 	fi {NU > LAM}
 
 set is_unitary_next_big(Param p) = bool:
-    if (not is_hermitian(p)) or (not is_pos_on_LKTs(p)) then return false fi;
+    if (not is_hermitian(p)) then return false fi;
+    if not (fewer_reducible_unitary_flag and is_pos_on_LKTs(p)) then return false fi;
     let pds = derived_factor_params0(p)
     in all(for pd in pds do @bool: is_unitary_next_big_SIMPLE(pd) od)
 
@@ -2293,9 +2315,8 @@ result of test. Second is meaningful only if first is true; I guess make result 
 otherwise?}
 set is_FPP_unitary(Param p) = (bool,bool):
     if not is_FPP_unitary_flag then return (false,false) fi;
-    if (not is_hermitian(p)) or (not is_pos_on_LKTs(p))
-    then return (true,false)
-    fi;
+    if (not is_hermitian(p)) then return (true,false) fi;
+    if not (fewer_reducible_unitary_flag and is_pos_on_LKTs(p)) then return (true,false) fi;
     let () = p:= herm_center(p), G = p.real_form
     then gamma = p.infinitesimal_character
     then alphavs = for alphav@j in G.simple_coroots
@@ -2343,9 +2364,8 @@ test. Second is meaningful only if first is true; make result
 
 set is_FPP_unitary(Param p, (Param -> bool) fancy_tester ) = (bool,bool):
     if not is_FPP_unitary_flag then return (false,false) fi;
-    if (not is_hermitian(p)) or (not is_pos_on_LKTs(p))
-    then return (true,false)
-    fi;
+    if (not is_hermitian(p)) then return (true,false) fi;
+    if not (fewer_reducible_unitary_flag and is_pos_on_LKTs(p)) then return (true,false) fi;
     let () = p:= herm_center(p), G = p.real_form
     then gamma = p.infinitesimal_character
     then rdi = integrality_datum(G,gamma)
@@ -2790,9 +2810,9 @@ set localFD_1Dirac2\
 	 do let p = parameter(x,lambda,v)
 	    in if Q(v,v) > DiracBD
 	       then DTcount +:=1; []
-	       elif not all(for q in monomials(finalize(p))
+	       elif not (fewer_reducible_unitary_flag or all(for q in monomials(p)
 	       	      	    do @bool: is_pos_on_LKTs(q)
-			    od)
+			    od))
 	       then []
 	       elif red_count_flag
 	       then [[j, red_count(p)]]
@@ -2848,8 +2868,10 @@ set localFD_1Dirac2\
 	 do let nu = face_bary(Lvd, v)
 	    then p = parameter(x,lambda,nu)
 	 {face_bary_ic(x.inner_class, face_bary(Lvd.list, v))}
-	    in  if not all(for q in monomials(p) do is_pos_on_LKTs(q) od)
-	    	then []
+	    in  if not (fewer_reducible_unitary_flag and all(for q in monomials(p)
+	       	      	    do @bool: is_pos_on_LKTs(q)
+			    od))
+		then [] {from now on p is pos_on_LKTs}
 		elif Q(nu,nu) > DiracBD
 	        then DTcount +:=1; prints("GOT HERE!"); []
 	        elif red_count_flag
@@ -2915,9 +2937,9 @@ set localFD_1Dirac2_by_zero\
 	 do let p = parameter(x,lambda,v)
 	    in if Q(v,v) > DiracBD
 	       then DTcount +:=1; []
-	       elif not all(for q in monomials(finalize(p))
-	       	      	     do is_pos_on_LKTs(q)
-			     od)
+	       elif not (fewer_reducible_unitary_flag or all(for q in monomials(finalize(p))
+	       	      	    do @bool: is_pos_on_LKTs(q)
+			    od))
 	       then []
 	       elif red_count_flag
 	       then [[j, red_count(p)]]
@@ -3050,7 +3072,9 @@ set localFD_1Dirac2_by_zero\
 	 {face_bary_ic(x.inner_class, face_bary(Lvd.list, v)))}
 	    in {if Q(nu,nu) > DiracBD
 	       then DTcount +:=1; []} {can't happen}
-	       if not all(for q in monomials(p) do is_pos_on_LKTs(q) od)
+	       if not (fewer_reducible_unitary_flag or all(for q in monomials(p)
+	       	      	    do @bool: is_pos_on_LKTs(q)
+			    od))
 	       then []
 	       elif red_count_flag
 	       then [v#red_count(p)]
@@ -3158,7 +3182,9 @@ set localFD_by_zero_short\
     	 for v in Edges
 	 do let p = parameter(x,lambda,face_bary(Lvd, v))
 	 {face_bary_ic(x.inner_class, face_bary(Lvd.list, v)))}
-	    in  if all(for q in monomials(p) do is_pos_on_LKTs(q) od)
+	    in  if fewer_reducible_unitary_flag or all(for q in monomials(p)
+	       	      	    do @bool: is_pos_on_LKTs(q)
+			    od)
 	    	then [v]
 	   	else []
 	    	fi
@@ -3199,7 +3225,9 @@ set localFD_1Dirac2_add_red(KGBElt x, ratvec lambda, LocalVertexData Lvd, [[Face
 	     then qs = monomials(p)
 	     in if Q(nu,nu) > DiracBD
 	     	then DTcount +:=1; []
-		elif not all(for q in qs do is_pos_on_LKTs(q) od)
+		elif not (fewer_reducible_unitary_flag or all(for q in qs
+	       	      	    do @bool: is_pos_on_LKTs(q)
+			    od))
 	     	then []
 		elif red_count_flag
 		then [v#red_count(p)]
@@ -3233,9 +3261,9 @@ set localFD_1Dirac2_by_zero_old\
 	 do let p = parameter(x,lambda,v)
 	    in if  Q(v,v) > DiracBD
 	       then DTcount+:=1; []
-	       elif not all(for q in monomials(finalize(p))
-	       	      	    do is_pos_on_LKTs(q)
-		      	    od)
+	       elif not (fewer_reducible_unitary_flag or all(for q in monomials(p)
+	       	      	    do @bool: is_pos_on_LKTs(q)
+			    od))
 	       then []
 	       else [[j]]
 	       fi
@@ -3297,7 +3325,9 @@ set localFD_1Dirac2_by_zero_old\
 	 {face_bary_ic(x.inner_class, face_bary(Lvd.list, v)))}
 	    in if Q(nu,nu) > DiracBD
 	       then DTcount+:=1; []
-	       elif not all(for q in monomials(p) do is_pos_on_LKTs(q) od)
+	       elif not (fewer_reducible_unitary_flag or all(for q in monomials(p)
+	       	      	    do @bool: is_pos_on_LKTs(q)
+			    od))
 	       then []
 	       else [v]
 	       fi
@@ -3697,7 +3727,9 @@ set localFD_KHashbt_lookDownGEO \
 						  else -1
 						  fi
 				         then ms = monomials(P)
-				      	 in if all(for p in ms do is_pos_on_LKTs(p) od)
+				      	 in if fewer_reducible_unitary_flag or all(for q in ms
+	       	      	    		       				    do @bool: is_pos_on_LKTs(q)
+			    						    od)
 				      	    then if k.>=
 					    	 then {prints(p0, ktp_hash.list()[LFKH[dim-1][locs[k]][dim]]);}
 					      	      [actual##midreds##[LFKH[dim-1][locs[k]][dim+e-1], #ms]]
@@ -3768,7 +3800,9 @@ set localFD_KHashbt_lookDownGEO \
 						  else -1
 						  fi
 				      then ms = monomials(P)
-				      in if all(for p in ms do is_pos_on_LKTs(p) od)
+				      in if fewer_reducible_unitary_flag or all(for q in ms
+	       	      	    	      	    				 do @bool: is_pos_on_LKTs(q)
+			    						 od)
 				      	 then if k.>=
 					      then [actual##midreds##[ LFKH[dim-1][locs[k]][dim+e-1], #ms]]
 					      else let m = ktp_hash.match(
