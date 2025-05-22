@@ -95,7 +95,7 @@ set complex_nilpotent_from_diagram(RootDatum rd,[int] diagram) =
 )
 
 set sort_by_dimension = ([ComplexNilpotent]->[ComplexNilpotent]):
-   sort_by(dim_nilpotent@ComplexNilpotent)
+   sort_by(dim_nilpotent@ComplexNilpotent, <=@(int,int))
 
 set find = find(=@(ComplexNilpotent,ComplexNilpotent))
 
@@ -397,7 +397,7 @@ set complex_orbit (RealNilpotent O) = ComplexNilpotent:
 set dimension (RealNilpotent O) = int: dim_nilpotent(O.complex_orbit)
 
 set sort_by_dimension = ([RealNilpotent]->[RealNilpotent]):
-   sort_by(dimension@RealNilpotent)
+   sort_by(dimension@RealNilpotent, <=@(int,int))
 
 set simple_roots_from_coweight (RootDatum rd, ratvec v) = [int]:
    for alpha@i in simple_roots(rd) if =alpha*v do i fi od

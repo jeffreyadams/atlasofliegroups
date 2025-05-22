@@ -1,7 +1,9 @@
 {Load this file to load all recommended .at files}
 <basic.at
+<generics.at
 <combinatorics.at
 <number_theory.at
+<exp-generating-series.at
 <hermitian.at
 <extParamPol.at
 <complex.at

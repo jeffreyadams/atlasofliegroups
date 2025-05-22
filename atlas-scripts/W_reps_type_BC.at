@@ -337,7 +337,7 @@ set is_sorted_subset ([int] a) = ([int] b) bool:
 )
 
 set inclusion_maximals ([[int]] taus) = [[int]]:
-   taus := taus.(sort_by(([int]tau)int:#tau));
+   taus := taus.(sort_by(#@[int],<=@(int,int)));
    while >#taus
    do let tau=taus~[0] then is_sub = is_sorted_subset(tau)
    in taus := for i:#taus-1 if not taus[i].is_sub do taus[i] fi od

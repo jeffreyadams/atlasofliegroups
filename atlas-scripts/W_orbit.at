@@ -3,7 +3,7 @@
 
 {
   An optimised orbit generation procedure, which assumes that generators can
-  detect and eliminate (by returning |no_vec|) backwards or stationary steps
+  detect and eliminate (by returning |none()|) backwards or stationary steps
   (in the main application we generate the orbit of a dominant weight, whence
   the function name, and "forward" will then mean subtracting posroots) and that
   the poset structure on the orbit is graded (as is true for the weak order on
@@ -18,7 +18,7 @@
   saying how many have been considered for successors, and a marker |stop|
   saying where the newest level (where duplicates must be avoided) starts.
 }
-set generate_from_dom ([(vec->maybe_a_vec)] S,vec start) = [vec,[int]]:
+set generate_from_dom ([(vec->Maybe<vec>)] S,vec start) = [vec,[int]]:
 (  let stack = [[vec,[int]]]: { each level |lex_leq|-sorted by its |vec| }
                [ [], [(start,[])] ] { start with two levels }
    , absent([vec,[int]] level, vec target) = bool:
@@ -29,13 +29,13 @@ set generate_from_dom ([(vec->maybe_a_vec)] S,vec start) = [vec,[int]]:
 in while
       let new_level =
          for (a,word) in stack~[0]
-	 do for f@i in S
+	    for f@i in S
 	    do case f(a)
-	       | solution(b):
+	       | some(b):
 	         if absent(stack~[1],b) and absent(stack~[0],b) do (b,i#word) fi
 	       | else [] { skip when no new vector is returned }
 	       esac
-	    od.##
+	    od
 	 od.##
    in {while}#new_level>0
    do stack #:=
@@ -52,7 +52,7 @@ in while
   reflection representation (for which |matrix@WeylElt| can find the action).
 }
 set generate_action_from_dom \
-   ( [(vec->maybe_a_vec)] S
+   ( [(vec->Maybe<vec>)] S
    , vec start
    , int dim
    , [mat] gens_rep
@@ -67,15 +67,15 @@ set generate_action_from_dom \
 in while
       let new_level =
          for (a,word,act) in stack~[0]
-	 do for f@i in S
+	    for f@i in S
 	    do case f(a)
-	       | solution(b):
+	       | some(b):
 	         if absent(stack~[1],b) and absent(stack~[0],b)
-		 do(b,i#word,gens_rep[i]*act)
+		 do (b,i#word,gens_rep[i]*act)
 		 fi
 	       | else [] { skip when no new vector is returned }
 	       esac
-	    od.##
+	    od
 	 od.##
    in {while} #new_level>0
    do stack #:=
@@ -86,10 +86,11 @@ in while
 ;  ##stack { concatenate generated levels, without merging the (sorted) lists }
 )
 
-{ define "lowering only" standard simple reflection actions on weights }
-set simple_actor (RootDatum rd, int i) = (vec->maybe_a_vec):
-  let s=W_gen(rd,i), av=coroot(rd,i) in
-  (vec x)maybe_a_vec: if av*x>0 then solution(s*x) else no_vec() fi
+{ "lowering only" standard simple reflection actions on weights }
+set simple_actor (RootDatum rd, int i) = (vec -> Maybe<vec>):
+   let s=W_gen(rd,i), av=coroot(rd,i) in
+   (vec x) Maybe<vec>: if av*x>0 then some(s*x) else none() fi
+
 { For Weyl group action on X^*, wrap previous form in pre/post processing }
 set generate_from_dom (RootDatum rd,[int] S,vec v) = [vec,WeylElt]:
    for (x,word) in generate_from_dom(for s in S do simple_actor(rd,s) od,v)
@@ -261,8 +262,8 @@ set conjugate_to (RootDatum rd, ratvec u, ratvec v) = (bool,WeylElt):
 
 
 { same as unbounded case, but limit generating word length to |length_bound| }
-set bounded_generate_from_dominant_with_action \
-   ( [(vec->maybe_a_vec)] S
+set bounded_generate_action_from_dom \
+   ( [(vec->Maybe<vec>)] S
    , vec start
    , int dim
    , [mat] gens_rep
@@ -283,7 +284,7 @@ in while
          for (a,word,act) in stack~[0]
 	 do for f@i in S
 	    do case f(a)
-	       | solution(b):
+	       | some(b):
 	         if absent(stack~[1],b) and absent(stack~[0],b)
 		 do (b,i#word,gens_rep[i]*act)
 		 fi
@@ -291,8 +292,7 @@ in while
 	       esac
 	    od.##
 	 od.##
-      then gain=#new_level
-   in {while} >gain
+   in {while} #new_level>0
    do stack #:=
       { sort |new_level| by weight components (lexicogr.), removing duplicates }
       sort_u (((vec v,[int].,mat.),(vec w,[int].,mat.))bool: lex_leq(v,w))
@@ -302,11 +302,11 @@ in while
 )
 {     orbit generation routines which terminate early based on length bound  }
 
-set bounded_generate_from_dominant \
-   ([(vec->maybe_a_vec)] S,vec v, int length_bound) = [vec,[int]]:
+set bounded_generate_from_dom \
+   ([(vec->Maybe<vec>)] S,vec v, int length_bound) = [vec,[int]]:
    let actions = [mat]: for in S do null(0,0) od
 in for (x,word,)
-   in bounded_generate_from_dominant_with_action(S,v,0,actions,length_bound)
+   in bounded_generate_action_from_dom(S,v,0,actions,length_bound)
    do (x,word) od
 
 { get orbit of |v| under parabolic subgroup of Weyl group with generators |S|,
@@ -314,7 +314,7 @@ in for (x,word,)
 set bounded_generate (RootDatum rd,[int] S,vec v,int bound) =
       [vec,WeylElt]:
    let (chamber,dom_wt)=from_dominant(rd,v) { dominant for |S| would suffice }
-   then orbit = bounded_generate_from_dominant
+   then orbit = bounded_generate_from_dom
       (for s in S do simple_actor(rd,s) od,dom_wt,bound)
    ,  to_dom= inverse(chamber)
 in for (x,word) in orbit do (x,W_elt(rd,for i in word do S[i] od)*to_dom) od

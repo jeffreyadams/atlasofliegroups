@@ -446,7 +446,7 @@ set all_parameters_x_gamma (KGBElt x,ratvec gamma) = [Param]:
    in
    case vec_solve(th1,th1*(gamma_d-rho))
    | else [Param]: [] { without solution no parameters }
-   | solution(lr):
+   | some(lr):
       let lambda = rho + lr, nu=(2-th1){1-theta}*gamma_d/2 in
       for v in all_lambda_differential_0(x) do parameter(x,lambda+v,nu) od
    esac.reduce  { keep only 1 from each equivalence class }
@@ -458,8 +458,8 @@ set all_parameters_gamma (RealForm G,ratvec gamma) = [Param]:
    for x in KGB(G)
    do let th1=1+involution(x) in
       case vec_solve(th1,th1*(v-rho))
-      | no_vec: [Param]:[]
-      | solution(lr):
+      | none: [Param]:[]
+      | some(lr):
         let lambda = rho + lr, nu=(2-th1){1-theta}*v/2 in
         for v in all_lambda_differential_0(x) do parameter(x,lambda+v,nu) od
       esac
@@ -733,5 +733,5 @@ set lambda_rho_from_dominant_norm_upto (KGBElt x, ratvec v, int N) = mat: {wts}
    then th1_rho = ratvec_as_vec(th1*rho)
 in #rho { all weights have same size (the rank) as |rho| } #
    for mu in all_dominant_norm_upto(inner_class(x),v,N)
-   do case solve(th1,mu-th1_rho) | solution(s): [s] | no_vec: [] esac
+   do case solve(th1,mu-th1_rho) | some(s): [s] | none: [] esac
    od.##

@@ -1,5 +1,5 @@
 <basic.at
-<sort.at { for inv_standardisation }
+<sort.at { for sort_by }
 <extended.at { for E@(mat,Param,ratvec) }
 <extended_cayley.at { for ext_Cayley }
 <nonintegral.at { for ext_cross }
@@ -104,13 +104,11 @@ set neighbors(int j, ExtParam Ep) = [ExtParam]:
 
 { see sort.at }
 { sort {x1,x2,...} by number of x }
-set kgb_sort ([KGBElt] v) = [KGBElt]:
-  for index in inv_standardisation(for x in v do #x od) do v[index] od
+set kgb_sort = ([KGBElt]->[KGBElt]): sort_by(#@KGBElt,<=@(int,int))
 
 {sort [(x1,y1),...] by number of x }
-set x_sort ([KGB_pair] v) = [KGB_pair]:
-  for index in inv_standardisation(for (x,y) in v do #x od) do v[index] od
-
+set x_sort = ([KGB_pair]->[KGB_pair]):
+  sort_by( (KGB_pair(x,)):#x, <=@(int,int) )
 
 { return [(x,y)] for the nodes connected to vertex by root j }
 set xy_neighbors (int j,

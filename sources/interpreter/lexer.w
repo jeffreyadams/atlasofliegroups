@@ -115,12 +115,13 @@ public:
   const char* scanned_file_name() const @+{@; return file_name.c_str(); }
   id_type first_identifier() const @+{@; return type_limit; }
   bool is_initial () const @+{@; return state==initial; }
-  void put_type_variable(id_type v);
-  unsigned int typevar_level() const;
-private:
-  void skip_space() const;
   void push_nest() @+ {@; nest.push_front(eggs{}); }
   void pop_nest(); // pop and decommission a clutch of type variables
+  void put_type_variable(id_type v);
+  unsigned int typevar_level() const;
+  void start_defining_types() { state = type_defining; }
+private:
+  void skip_space() const;
   bool becomes_follows();
   void operator_termination (char c);
   std::string scan_quoted_string() const;
@@ -382,9 +383,13 @@ the first action in |get_token|, sending the following null token if it holds.
 The |state| variable is also used to allow the scanner to behave differently
 while scanning the very first token of a command, and in the course of type
 definitions. Before the first token of a command is scanned |state==initial|
-will hold; once a token is scanned, state |state| is set to |normal| or
-possibly to |type_defining| when a |SET_TYPE| token is scanned, and scanning a
-command-terminating newline will set |state=ended|.
+will hold; once a token is scanned, state |state| is set to |normal|, and it may
+change to |type_defining| when our |start_defining_types| method is called,
+which happens when a grouped |SET_TYPE| command is found in the parser (the call
+happens in a parser action happening when the opening bracket of the group is
+scanned, so everything inside the brackets is scanned with
+|state==type_defining|). Finally, scanning a command-terminating newline will set
+|state=ended|.
 
 Besides returning a token code, each token defines a value for
 |prevent_termination|. Since the previous value is only used in |skip_space|,
@@ -500,11 +505,7 @@ some cases seeing the keyword provokes some activity on the |nest|.
     case AND: case OR: case NOT: prevent_termination='~'; break;
     case WHATTYPE: prevent_termination='W'; break;
     case SET: prevent_termination='S'; break;
-    case SET_TYPE: prevent_termination='T'; skip_space();
-      if (*input.point()=='[')
-        state=type_defining;
-      // |type_defining| only for ``\&{set\_type} [ \dots ]''
-    break;
+    case SET_TYPE: prevent_termination='T'; break;
   }
 }
 
@@ -567,13 +568,27 @@ pointer to a |std::string|, again to minimise complications for the parser.
 }
 
 @ The method |put_type_variable| is repeatedly called from the parser when a
-list of fresh type variables is announced. The reduction that performs this
-action is triggered by an opening symbol occurring as look-ahead token, so that
-the lexer has already performed the corresponding call of |push_nest|. Therefore
-it is ready to receive those type variables, even though the identifiers are
-textually outside the closed expression that is their scope. These type
-variables will revert to their previous status at the matching call of
-|pop_nest|. We could test in |put_type_variable| that all identifiers in the
+list of fresh type variables is announced. When correctly used, the reduction
+that performs this action has scanned a following opening symbol as look-ahead
+token, so that the lexer has already performed the corresponding call of
+|push_nest|, and is therefore it is ready to receive those type variables, even
+though the identifiers are textually outside the closed expression that is their
+scope. However it may happen that the reduction to |typevar_list| that calls
+this function is actually due to a look-ahead that excludes a reduction to
+anything else than a |typevar_list|, even though it is not an opening symbol and
+therefore not a valid look-ahead for |typevar_list| either (since the \.{bison}
+parser generator allows its parser to do reductions even when a token has
+already been seen that will inevitably cause a syntax error after the
+reduction). When called in such erroneous situations, |put_type_variable| may
+either find an already formed clutch present that is not expecting any more type
+variables, or (more likely) a completely empty nest. We don't mind that in the
+former case the clutch is unduly extended, since the coming syntax error will
+wipe it out anyway, but in the latter case we do not want to crash the program
+by accessing a non-existing |nest.front()|, so we test for |nest.empty()|, in
+which case we do nothing.
+
+These type variables will revert to their previous status at the matching call
+of |pop_nest|. We could test in |put_type_variable| that all identifiers in the
 clutch be distinct, but there is no obvious action to take if it should fail;
 all that would result from such an error is that any repeated occurrence of a
 same type variable in the list cannot be referred to, and so will remain unused.
@@ -581,9 +596,9 @@ This is no catastrophe, so for once we'll let slip this kind of error.
 
 @< Definitions of class members @>=
 void Lexical_analyser::put_type_variable(id_type v)
-{ assert(not nest.empty()); // because |push_nest| was just called
-  type_vars.insert(v-type_limit);
-  nest.front().push_back(v);
+{ type_vars.insert(v-type_limit);
+  if (not nest.empty()) // should be the case: |push_nest| was already called
+    nest.front().push_back(v);
 }
 void Lexical_analyser::pop_nest()
 { if (not nest.empty()) // avoid crashing before parser detects an error
@@ -659,7 +674,6 @@ included before) respectively appending output redirection.
 	   @< Read in |file_name| @>
            @+ break;
          }
-         operator_termination(c);
          valp->oper.priority=2;
          {} // don't try |OPERATOR_BECOMES| for operators staring '$<$' or '$>$'
          if (input.shift()=='=')

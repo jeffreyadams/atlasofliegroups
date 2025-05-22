@@ -14,12 +14,12 @@
   field can get large rapidly when inverses are taken.
 }
 
-set_type
-[ CyclotomicField = (int order, [int] Phi)
+set_type CyclotomicField = (int order, [int] Phi)
 { represent cyclotomic field by order and minpoly of generating root of 1 }
-, CyclotomicFieldElement = ([rat] v,CyclotomicField F)
+
+set_type CyclotomicFieldElement = ([rat] v,CyclotomicField F)
 { using [rat] (not ratvec) for elements in a cyclotomic field avoids overflow }
-]
+
 
 { to_denominator(r,N): integer $a$ such that rational $r$ is congruent to
   $a/N$ modulo 1; it is a precondition that |denom(r)| divides |N|.

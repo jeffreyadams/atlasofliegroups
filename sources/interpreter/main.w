@@ -473,18 +473,13 @@ if (paths.size()>0)
 
 @*1 The main command loop.
 %
-The command loop maintains two global variables that were defined
-in \.{axis.w}, namely |last_type| and |last_value|; these start off in a
-neutral state. In a loop we call the parser until it sets |verbosity<0|, which
+In a loop we call the parser until it sets |verbosity<0|, which
 is done upon seeing the \.{quit} command. We call the |reset| method of the
 lexical scanner before calling the parser, which will discard any input that
 is left by a possible previous erroneous input. This also already fetches a
 new line of input, or abandons the program in case none can be obtained.
 
 @< Enter the main command loop @>=
-last_value = shared_value (new tuple_value(0));
-last_type = type::wrap(void_type,0);
- // |last_type| is a |type_ptr| defined in \.{axis.w}
 elapsed_wrapper(eval_level::no_value); // start the stopwatch
 @)
 while (ana.prime())
