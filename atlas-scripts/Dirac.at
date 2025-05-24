@@ -521,6 +521,16 @@ set easy_best_Dirac_bound_cap(KType mu, int cap) = ([KType], [int], [rat]):
 
 set easy_best_Dirac_bound_inf(KType mu) = ([KType], [int], [rat]):
     Dirac_easy_hash.easy_best_Dirac_bound_inf(mu)
+
+{just allow bounds using KTypes up to HT}
+set truncate(([KType] taus, [int] hts, [rat] bds), int HT) =  ([KType], [int], [rat]):
+    let j = 0, J = #hts
+    then () = while j <J and hts[j] <= HT
+       	      do j+:=1
+       	      od
+    in (taus[:j], hts[:j], bds[:j])
+
+
     {
     let muhash = make_KType_hash()
     then muss = [[KType]]: []
