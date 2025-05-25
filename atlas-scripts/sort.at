@@ -82,11 +82,12 @@ set sort_by ((T->S)f,(S,S->bool)leq) = ([T]->[T]):
 set sort_by ((T->int) f) = ([T]->[T]): sort_by(f,<=@(int,int))
 set sort_by ((T->rat) f) = ([T]->[T]): sort_by(f,<=@(rat,rat))
 
+{ group together elements with the same value under |f|, ordered by that value }
 set partition_by ((T->S)f,(S,S->bool)leq) = ([T] a) [[T]]:
   let vals = map(f)(a) then rank = ranking(leq)(vals), i=0, n=#a in
   while i<n
   do let v = S: vals[rank[i]] in
-     while i<n and leq(vals[rank[i]],v) do a[i] next i+:=1 od
+     while i<n and leq(vals[rank[i]],v) do a[rank[i]] next i+:=1 od
   od
 
 set lexicographic  ((T,T->bool)leq) = ([T] a,[T] b) bool:
