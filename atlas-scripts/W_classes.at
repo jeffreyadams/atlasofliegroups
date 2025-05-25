@@ -173,7 +173,7 @@ in
    dominant(rd,two_rho(Levi_info(y)))=rho2 and
    ( let (w0,rho2_y) = from_dominant(rd,two_rho(Levi_info(y)))
      in rho2_y=rho2 and
-        ( let L = int: right_act(Levi_of(y),w0)
+        ( let L = int: act_up(/w0,Levi_of(y)).combination_encode
 	  then pos = first(#orbit,(int i)bool: let (rts,)=orbit[i] in rts=L)
           then (,w) =
 	      assert(pos.>=,"conjugate with dominant rho not found in orbit");
