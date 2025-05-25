@@ -131,19 +131,48 @@ set sort_by_height = ([Param] -> [Param]): sort_by( height@Param, <=@(int,int) )
 set sort_by_height = ([(Split,Param)] -> [(Split,Param)]):
  sort_by( (Split s,Param p) int: height(p), <=@(int,int) )
 
-{ sorting fixed size vectors lexicographically }
+{ comparing vectors lexicographically }
 set lex_leq (vec v,vec w) = bool: { assert(#v=#w); }
+( let lv=#v,lw=#w in
+  for i:min(lv,lw) do if v[i]!=w[i] then return v[i]<w[i] fi od
+; lv<=lw { break tie using length }
+)
+
+{ compariung fixed size vectors lexicographically (restricted lex ordering) }
+set rlex_leq (vec v,vec w) = bool: { assert(#v=#w); }
    for x@i in v do if x!=w[i] then return x<w[i] fi od; true
-{ for types [T], including [int], one can use |lexicographic(leq@(T,T))| instead }
+
+{ short lex ordering }
+set slex_leq (vec v,vec w) = bool:
+  let lv=#v,lw=#w in
+  if lv=lw else lv<lw
+  then for i:min(lv,lw) do if v[i]!=w[i] then return v[i]<w[i] fi od; true
+  fi
+
+{ for types [T], including [int], one can also use |lexicographic(leq@(T,T))| }
+
 
 set ranking = ranking(lex_leq@(vec,vec))
 set sort_lex = sort(lex_leq@(vec,vec))
 set sort_u_lex = sort_u(lex_leq@(vec,vec))
+set sort_rlex = sort(rlex_leq@(vec,vec))
+set sort_u_rlex = sort_u(rlex_leq@(vec,vec))
+set sort_slex = sort(slex_leq@(vec,vec))
+set sort_u_slex = sort_u(slex_leq@(vec,vec))
 
-{ sorting rational ratvectors lexicographically }
-set lex_leq (ratvec v,ratvec w) = bool: { assert(#v=#w); }
-   for x@i in v do if x!=w[i] then return x<w[i] fi od; true
+{ comparing rational vectors }
+set (lex_leq,rlex_leq,slex_leq) =
+   let same_denom (ratvec v,ratvec w) = (vec,vec):
+      let (vn,vd)=%v, (wn,wd)=%w in (vn*wd,wn*vd)
+in ( ((ratvec,ratvec)args)bool:args.same_denom.lex_leq
+   , ((ratvec,ratvec)args)bool:args.same_denom.rlex_leq
+   , ((ratvec,ratvec)args)bool:args.same_denom.slex_leq
+   )
 
 set ranking = ranking(lex_leq@(ratvec,ratvec))
 set sort_lex = sort(lex_leq@(ratvec,ratvec))
 set sort_u_lex = sort_u(lex_leq@(ratvec,ratvec))
+set sort_rlex = sort(rlex_leq@(ratvec,ratvec))
+set sort_u_rlex = sort_u(rlex_leq@(ratvec,ratvec))
+set sort_slex = sort(slex_leq@(ratvec,ratvec))
+set sort_u_slex = sort_u(slex_leq@(ratvec,ratvec))
