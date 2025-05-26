@@ -78,6 +78,8 @@ set ranking ((T,T->bool)leq) = ([T] a) [int]:
 
 set sort_by ((T->S)f,(S,S->bool)leq) = ([T]->[T]):
    sort((T x,T y)bool:leq(f(x),f(y)))
+set merge_by ((T->S)f,(S,S->bool)leq) = ([T],[T]->[T]):
+   merge((T x,T y)bool:leq(f(x),f(y)))
 { when sorting by integer or rational value, default to increasing sort }
 set sort_by ((T->int) f) = ([T]->[T]): sort_by(f,<=@(int,int))
 set sort_by ((T->rat) f) = ([T]->[T]): sort_by(f,<=@(rat,rat))
@@ -88,6 +90,14 @@ set partition_by ((T->S)f,(S,S->bool)leq) = ([T] a) [[T]]:
   while i<n
   do let v = S: vals[rank[i]] in
      while i<n and leq(vals[rank[i]],v) do a[rank[i]] next i+:=1 od
+  od
+
+{ similar, but keep only one (the first) element for each value of |f| }
+set representatives_by ((T->S)f,(S,S->bool)leq) = ([T] a) [T]:
+  let vals = map(f)(a) then rank = ranking(leq)(vals), i=0, n=#a in
+  while i<n
+  do let j=rank[i] then v = S: vals[j] in a[j] next
+     while (i+:=1)<n and leq(vals[rank[i]],v) do () od
   od
 
 set lexicographic  ((T,T->bool)leq) = ([T] a,[T] b) bool:

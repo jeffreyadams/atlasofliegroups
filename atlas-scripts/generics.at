@@ -16,11 +16,11 @@ set uncurry  ((S->(T->R)) f) = (S x,T y) R: f(x)(y)
 set curried_swapargs ((S->(T->R)) f) = (T->(S->R)): (T y):(S x) R: f(x)(y)
 
 set foldl (S !start,(S,T->S) op) = ([T]->S):
-  ([T] a) S: let v=start in for x in a do v:=op(v,x) od; v
+  ([T] a) S: let v=start in for x in a do v op:= x od; v
   { rec_fun f ([T] a) S: if #a=0 then start else op(f(a[:1~]),a~[0]) fi }
 
 set foldr ((S,T->T) op, T !start) = ([S]->T):
-  ([S] a) T: let v=start in for x in a ~do v:=op(x,v) od; v
+  ([S] a) T: let v=start in for x in a ~do v := op(x,v) od; v
   { rec_fun f ([S] a) T: if #a=0 then start else op(a[0],f(a[1:])) fi }
 
 end

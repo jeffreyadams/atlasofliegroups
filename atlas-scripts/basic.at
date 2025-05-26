@@ -20,7 +20,8 @@ set requisition (string message) = (One_of<S,T> v) T:
     case v | fail: error(message) | succeed(v): v esac
 set requisition = (One_of<S,T>->T):
     requisition("No solution found; having one was required")
-set print_lines ([T] a) = void: for x in a do prints(x) od
+set print_lines ([T] a) = void: for x in a do print(x) od
+set prints_lines ([T] a) = void: for x in a do prints(x) od
 end
 set ! = print_lines@T[T] { allow printing any list line-by-line as |list!| }
 
@@ -154,19 +155,31 @@ set binary_search_first ((int->bool)pred, int low, int high) = int:
   do let mid=(low+high)\2 in if pred(mid) then high:=mid else low:=mid+1 fi
   od; low
 
-any_type T begin
-set binary_search_first ((T,T->bool) leq) = (T,[T]->Maybe<int>):
-  (T x,[T] a) Maybe<int>:
-  let low=0, high=#a in
-  while low<high
-  do let mid=(low+high)\2
-  in if leq(x,a[mid]) then high:=mid else low:=mid+1 fi
-  od { now low=high and leq(x,a[i]) iff low<=i }
-; if low<#a and leq(a[low],x) then some(low) else none() fi
+any_type S,T begin
+set binary_search_in ([T] a,(T,T->bool) leq) = (T->Maybe<int>):
+  (T x) Maybe<int>:
+  let i = binary_search_first( (int i)bool:leq(x,a[i]) , 0,#a)
+  in if i<#a and leq(a[i],x) then some(i) else none() fi
+
+set binary_search_in ([S] a,(S->T)f,(T,T->bool) leq) = (T->Maybe<int>):
+  (T x) Maybe<int>:
+  let i = binary_search_first( (int i)bool:leq(x,f(a[i])) , 0,#a)
+  in if i<#a and leq(f(a[i]),x) then some(i) else none() fi
+
+set binary_search_get ([S] a,(S->T)f,(T,T->bool) leq) = (T->Maybe<S>):
+  (T x) Maybe<S>:
+  let i = binary_search_first( (int i)bool:leq(x,f(a[i])) , 0,#a)
+  in if i<#a and leq(f(a[i]),x) then some(a[i]) else none() fi
+
+set binary_lookup ((T,T->bool) leq) = (T x,[T]a) Maybe<int>:
+  binary_search_in(a,leq)(x)
+set binary_lookup_by ((S->T)f,(T,T->bool) leq) = (T x,[S]a) Maybe<int>:
+  binary_search_in(a,f,leq)(x)
+
 end
 
-set binary_lookup = binary_search_first(<=@(int,int))
-set binary_lookup = binary_search_first(<=@(string,string))
+set binary_lookup = binary_lookup(<=@(int,int))
+set binary_lookup = binary_lookup(<=@(string,string))
 
 set locate_sorted ([int] v,int lwb) = int: { first index of entry >= |lwb| }
   binary_search_first((int i):v[i]>=lwb,0,#v)
@@ -2288,8 +2301,12 @@ set index_in ([Param] L) = (Param->int): { an efficiency hack: }
 
 { find index of item in list, or -1 if not found; |first| does this }
 
-any_type T begin
-set find ((T,T->bool)eq) = ([T] a, T x) int: first(a,(T y)bool:eq(y,x))
+any_type S,T begin
+set present_in ([T]a,(T,T->bool)eq) = (T y) bool: any(a,(T x)bool:eq(x,y))
+set in_list((T,T->bool)eq) = ([T]a,T y) bool: any(a,(T x)bool:eq(x,y))
+set any_has((S,T->bool)rel) = ([S]a): (T y) bool: any(a,(S x)bool:rel(x,y))
+set find ((T,T->bool)eq) = ([T] a, T y) int: first(a,(T x)bool:eq(x,y))
+set find_in ([T] a, (T,T->bool)eq) = (T x) int: first(a,(T y)bool:eq(x,y))
 set delete ([T] a, int i) = [T]: a[:i] ## a[i+1:]
 end
 
@@ -2299,6 +2316,11 @@ set find = find(=@(vec,vec))
 set find = find(=@(ratvec,ratvec))
 set find = find(=@(KGBElt,KGBElt))
 set find = find(=@(Param,Param))
+
+set in_list = in_list(=@(int,int))
+set in_list = in_list(=@(rat,rat))
+set in_list = in_list(=@(KGBElt,KGBElt))
+set in_list = in_list(=@(Param,Param))
 
 set delete (vec v, int i) = vec: v[:i] ## v[i+1:]
 set delete (mat M, int j) = mat: M[:j] ## M[j+1:]
