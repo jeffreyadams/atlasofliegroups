@@ -7306,7 +7306,7 @@ case cast_expr:
     return convert_expr(c.exp,tp); // in which case use now specialised |tp|
   expression_ptr p = convert_expr_strongly(c.exp,fc,cast_tp);
     // otherwise use |cast_tp|
-  return conform_types(c.dst_tp,tp,std::move(p),e);
+  return conform_types(cast_tp,tp,std::move(p),e);
 }
 
 @ Another kind of cast is the operator cast, which selects an operator or
