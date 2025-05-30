@@ -1439,20 +1439,19 @@ void type_define_identifier
        |global_id_table|, in which case |throw| a |program_error|,
        also report the type definition proper @>
 @)
-    if (not fields.empty()) // do this before we move from |type|
+    type_nr_type k = type_expr::add_simple_typedef(id,tp.bake(),deg);
+    auto tabled_tp = type::constructor(type_expr::local_ref(k,deg),deg);
+    global_id_table->add_type_def(id,tabled_tp.copy());
+@)
+    if (not fields.empty())
     {
       @< Bind in |group| any field identifiers in |fields| to the types of
          their projector or injector functions, store the identifiers themselves
          in |names|, and store the corresponding function values in |jectors| @>
       @< Add to |global_overload_table| the projector or injector function
          values from |jectors| @>
-    }
-@)
-    type_nr_type k = type_expr::add_simple_typedef(id,tp.bake_off(),deg);
-    if (not fields.empty())
       type_expr::set_fields(k,std::move(names));
-    global_id_table->add_type_def(id,
-      type::constructor(type_expr::local_ref(k,deg),deg));
+    }
   }
   catch (program_error& err)
   { std::ostringstream o;
@@ -1483,8 +1482,8 @@ themselves and store them in |jectors|.
       if (id_it->kind==0x1) // field name present
       { names[i]=id_it->name;
         jectors.push_back
-          (std::make_shared<projector_value>(tp.unwrap(),i,names[i],loc));
-        type_expr fte = type_expr::function(tp.bake(),tp_it->copy());
+          (std::make_shared<projector_value>(tabled_tp.unwrap(),i,names[i],loc));
+        type_expr fte = type_expr::function(tabled_tp.bake(),tp_it->copy());
         group.add(names[i],type::wrap(std::move(fte),0),id_it->kind);
           // projector type
       }
@@ -1494,8 +1493,8 @@ themselves and store them in |jectors|.
       if (id_it->kind==0x1) // variant name present
       { names[i]=id_it->name;
         jectors.push_back
-          (std::make_shared<injector_value>(tp.unwrap(),i,names[i],loc));
-        type_expr fte = type_expr::function(tp_it->copy(),tp.bake());
+          (std::make_shared<injector_value>(tabled_tp.unwrap(),i,names[i],loc));
+        type_expr fte = type_expr::function(tp_it->copy(),tabled_tp.bake());
         group.add(names[i],type::wrap(std::move(fte),0),id_it->kind);
           // injector type
       }
@@ -1641,7 +1640,7 @@ status as a type identifier would make the field name unusable.
 }
 
 @ The code below serves to prohibit introducing the name of an existing (global)
-variable of function as a type name, which would make the former inaccessible.
+variable or function as a type name, which would make the former inaccessible.
 We call the method |global_id_table.is_ordinary| to test for this. To make it
 possible to reload a script a second time without error, we do allow redefining
 a previous type identifier again as a type identifier.
@@ -1721,7 +1720,7 @@ equally well).
 a type identifier or as an application of an already defined type constructor.
 We recognise those whose identifier is among the ones being defined here by
 inspecting |translate|, and replace their |tabled_nr()| with the value found
-in~|translate|. The remaining ones must be uses of previously defined types of
+in~|translate|. The remaining ones must be uses of previously defined types or
 type constructors, for which we apply |global_id_table->expand| to convert them
 from the format used by the parser into the one to be used internally. This may
 fail with a |program_error| either because the identifier table does not hold a
@@ -1774,11 +1773,12 @@ index~|i| into the vector.
   containers::sl_list<definition_group> store;
   for (auto it=defs.wcbegin(); not defs.at_end(it); ++it,++i)
     if (not it->fields.empty())
-    { const auto& tp = type_expr::local_ref(type_nrs[i],0).tabled_eq();
-      // a |type_map| entry
+    { type_expr tabled_tp = type_expr::local_ref(type_nrs[i],deg);
+      const auto& tp = tabled_tp.tabled_eq(); // a |type_map| entry
       const auto& fields = it->fields;
       @/@< Append to |store| bindings for the identifiers in |fields| as
-         injector or projector function for |tp| @>
+         injector or projector function for |tabled_tp|, the component types
+         being taken from |tp| @>
     }
 @)
   auto store_it = store.wbegin(); // rewind the list of field lists
@@ -1786,13 +1786,15 @@ index~|i| into the vector.
   {
     const auto& fields = it->fields;
     const auto type_nr = type_nrs[i];
-    const auto& tp = type_expr::local_ref(type_nr,deg).tabled_eq();
+    type tabled_tp =
+      type::constructor(type_expr::local_ref(type_nr,deg),deg);
+    const type_expr& tp = tabled_tp.unwrap().tabled_eq();
     if (it->id!=type_binding::no_id)
     {
       if (global_id_table->is_defined_type(it->id))
         clean_out_type_identifier(it->id);
       global_id_table->add_type_def
-        (it->id,type::wrap(tp,0));
+        (it->id,std::move(tabled_tp));
     }
     @< Emit... @>
     if (it->id==type_binding::no_id)
@@ -1834,7 +1836,7 @@ function type through |definition_group::add|.
       if (id_it->kind==0x1)
       // field selector present (|*id_it| is an |id_pat|)
       {
-        type_expr fte = type_expr::function(tp.copy(),tp_it->copy());
+        type_expr fte = type_expr::function(tabled_tp.copy(),tp_it->copy());
         record.add(id_it->name,type::wrap(std::move(fte),0),id_it->kind);
           // projector type
       }
@@ -1842,9 +1844,9 @@ function type through |definition_group::add|.
   else // |tp.raw_kind()==union_type|
   { for (auto id_it=fields.wcbegin(); not fields.at_end(id_it);
          ++id_it,++tp_it)
-      if (id_it->kind==0x1) // field selector present
+      if (id_it->kind==0x1) // injector name present
       {
-        type_expr fte = type_expr::function(tp_it->copy(),tp.copy());
+        type_expr fte = type_expr::function(tp_it->copy(),tabled_tp.copy());
         record.add(id_it->name,type::wrap(std::move(fte),0),id_it->kind);
           // injector type
       }
