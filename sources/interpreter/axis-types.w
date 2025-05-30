@@ -2955,7 +2955,8 @@ primitive_tag prim () const     @+{@; return te.prim(); }
 unsigned int typevar_count () const @+{@; return te.typevar_count(); }
 const func_type* func() const  @+{@; return te.func(); }
 type_expr arg_type() const;
-type_expr result_type() const; // cut through type assignments and |tabled|
+type_expr result_type() const;
+func_type f_type() const; // cut through type assignments and |tabled|
 const_raw_type_list tuple () const @+{@; return te.tuple(); }
 type_nr_type tabled_nr () const @+{@; return te.tabled_nr(); }
 @)
@@ -3127,6 +3128,13 @@ type_expr type::result_type() const
   if (top.raw_kind()==function_type)
     return assign().substitution(top.func()->result_type);
   return assign().substitution(top.expanded().func()->result_type);
+}
+
+func_type type::f_type() const
+{ assert(top_kind()==function_type);
+  const auto& top = top_expr();
+  type_expr te = assign().substitution(top.expanded());
+  return std::move(*te.func());
 }
 
 @ The method |raise_floor| is used to ensure that certain type variables (that

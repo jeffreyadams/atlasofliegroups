@@ -453,7 +453,7 @@ public:
   {@; auto p=table.find(id);
     return p==table.end() ? nullptr : &p->second;
   }
-  void add(id_type id, shared_function v, type&& t);
+  void add(id_type id, shared_function v, const type& t);
    // insertion
   bool remove(id_type id, const type_expr& arg_t); //deletion
 };
@@ -581,10 +581,9 @@ and otherwise make sure it is inserted before any strictly less specific
 overloaded instances.
 
 @< Global function def... @>=
-void overload_table::add (id_type id, shared_function val, type&& tp)
-{ tp.expand(); // ensure any tabled function type constructor is expanded
-  assert (tp.kind()==function_type);
-  func_type ftype(tp.func()->copy()); // locally copy the function type
+void overload_table::add (id_type id, shared_function val, const type& tp)
+{ assert (tp.top_kind()==function_type);
+  func_type ftype(tp.f_type());
   auto its = table.equal_range(id);
   if (its.first==its.second) // a fresh overloaded identifier
   {
@@ -957,8 +956,7 @@ of the definitions.
 @< Global function definitions @>=
 
 void definition_group::add(id_type id,type&& tp, unsigned char flags)
-{ tp.expand(); // ensure tabled function types are made explicit
-  @< Check that this identifier is not already bound in the same group @>
+{ @< Check that this identifier is not already bound in the same group @>
   @< Check that we are not setting an operator to a non-function value @>
   @< When |tp| is a function type, test for conflicts in the overload table @>
   constness.set_to(bindings.size(),(flags&0x4)!=0);
@@ -992,7 +990,7 @@ an identifier), which makes it possible to perform the test here.
 
 @< Check that we are not setting an operator to a non-function value @>=
 {
-  if ((flags&0x8)!=0 and tp.kind()!=function_type)
+  if ((flags&0x8)!=0 and tp.top_kind()!=function_type)
     { std::ostringstream o;
       o << "Cannot set operator '" << main_hash_table->name_of(id) @|
         << "' to a value of non-function type " << tp;
@@ -1140,7 +1138,7 @@ void add_overload(id_type id, shared_function&& f, type&& tp)
   auto old_n= p==nullptr ? 0 : p->size();
 @/std::ostringstream type_string;
   type_string << tp; // save type |tp| as string before moving from it
-  global_overload_table->add(id,std::move(f),std::move(tp));
+  global_overload_table->add(id,std::move(f),tp);
     // insert or replace table entry
   if (p==nullptr)
     p = global_overload_table->variants(id);
