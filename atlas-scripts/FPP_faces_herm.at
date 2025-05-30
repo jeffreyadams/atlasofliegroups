@@ -1220,7 +1220,7 @@ set make_big_unitary_hash() = big_unitary_hash_table:
     , ((Param,int) -> bool): {nu_height_lookup_bool} (Param p, int H) bool:
       let i = add_real_form(p.real_form)
       then j = nuhashes[i].lookup(p)
-      in if j = -1
+      in if j.< or H < height(p)
       	 then false
 	 else let H0 = nu_heights[i][j]
 	      in H0 <= H
@@ -2606,8 +2606,10 @@ set known_unitaries(Param_hash UhashLocal, LocalVertexData Lvd,
 		fi
 	  od.##
        od}
-{whether to use deformation in looking for evidence that a Param is not unitary}
-set wiggle_flag = true
+{whether to use deformation in looking for evidence that a Param is
+ not unitary}
+{TRUE fails in E6_q one_level at x = 723, lambda = [1,1,0,1,1,1]/1}
+set wiggle_flag = false {true}
 
 {list locations in LFDKH of reps known to be non-unitary to HT}
 set known_non_unitaries_wiggle(KGBElt x, ratvec lambda, LocalVertexData Lvd,
