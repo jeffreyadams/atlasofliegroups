@@ -1643,18 +1643,20 @@ case applied_identifier:
 @.Undefined identifier@>
 }
 
-@ When an identifier is found neither in the current |lexical_context| nor in
-the |global_id_table|, we used to flag an error, but as a service to the user we
-now try instead to find something from the |global_overload_table| first,
-provided there is a unique instance of the identifier there that matches the
-type requirement |tp| from the context (which may be no requirement at all).
-If the context type does not accept any function type we skip this code (the
+@ When an identifier is encountered that can be found neither in the current
+|lexical_context| nor in the |global_id_table|, the interpreter used to (in
+version~1 of the \.{axis} language) simply flag an error. But as a service to
+the user, we now try instead to find something from the |global_overload_table|
+first, provided there is a unique instance of the identifier there that matches
+the type requirement |tp| from the context (which may be no requirement at all).
+If the context type does not accept any function type, we skip this code (the
 overload table can hold only functions), and if it does we distinguish between
-accepting functions of any argument type, or making some restriction on the
-argument type. This is mainly to be able to give more meaningful error messages
-when our attempt fails, but the case of no restrictions also can be handled with
-somewhat simpler logic. if the type requirements should rule out all available
-variants, then we fall through this code as if there were no overloads at all.
+contexts accepting functions of any argument type, and those making some
+restriction on the argument type. This is mainly to be able to give more
+meaningful error messages when our attempt fails, but the case of no
+restrictions also can be handled with somewhat simpler logic. If the type
+requirements should rule out all available variants, then we fall through this
+code as if there were no overloads at all.
 
 @< See if a unique member of |*vars| matches |tp|, and if so |return| a
    |capture_expression| holding the value of that variant @>=
@@ -1671,12 +1673,20 @@ variants, then we fall through this code as if there were no overloads at all.
   }
 }
 
-@ When the context poses no requirements, we basically look for a unique variant
-for the identifier and return it. However we must specialise |tp| to the
-possibly polymorphic function type of |variant|, which |functype_absorb| should
-accomplish. If there are multiple variants, we warn the user that one cannot
-simply use an overloaded symbol as an identifier with nothing to disambiguate
-the usage.
+@ When the context requires or allows a function type for an identifier, while
+posing no restrictions on the argument type of that function type, there must be
+a unique variant defined for the identifier in the overload table; we then
+basically proceed as if the identifier was defined as a variable with the type
+corresponding to that variant. So we specialise |tp| to the possibly polymorphic
+function type of |variant|, which |functype_absorb| that we shall define below
+accomplishes. This may still fail, if the context does pose a restriction on the
+return type of the function type, and the variant does not meet this
+restriction; we throw a |type_error| in that case. If on the other hand we find
+multiple variants, we warn the user that one cannot simply use an overloaded
+symbol as an identifier with nothing to disambiguate the usage. (We could have
+used a possible restriction on the return type to eliminate certain variants in
+the hope that just one remains, but since we otherwise never use the return type
+to resolve overloading, we decided to not do so here either.)
 
 @< If |*vars| has a unique variant, |return| its value wrapped...@>=
 { if (vars->size()==1)
@@ -1686,14 +1696,40 @@ the usage.
       return
         expression_ptr(new capture_expression(variant.value(),o.str()));
     }
-    throw logic_error
-      ("Partially determined function type failed to specialise");
+    throw type_error(e,get_ftype(variant.f_tp()),tp.bake());
   }
   else
   { o << "Use of overloaded '" << main_hash_table->name_of(id)
     @| << "' is ambiguous, specify argument type to disambiguate";
     throw expr_error(e,o.str());
   }
+}
+
+@ The overload table stores type information in a |func_type| value, whose two
+components may contain polymorphic values numbered from~$0$. The function
+|functype_absorb| integrates these to integrate these into a |type tp@;| that is
+presumed to be sufficiently generic to allows this, but does provide a possibly
+nonzero |floor()| value that needs to be respected. This means that if we should
+use |unify_specialise| for this task, once for the argument type and once for
+the result type, these two types should be properly shifted first. It then seems
+a bit more straightforward to use |unify| with a |type| constructed from the
+|func_type| with the proper shifts; to do so we use a helper function |get_type|
+to construct a |type_expr| for the |func_type|, and which also will come in
+handy when reporting errors related to types in the overload table.
+
+@< Local function definitions @>=
+inline type_expr get_ftype(const func_type& ftp)
+{ return type_expr::function(ftp.arg_type.copy(),ftp.result_type.copy()); }
+
+inline bool functype_absorb (type& tp, const overload_data& entry)
+{ type model = type::wrap(get_ftype(entry.f_tp()),0,tp.floor());
+    // proper shift facilitates |unify|
+  if (tp.unify(model))
+  {@;
+    tp.wring_out();
+    return true;
+  }
+  return false;
 }
 
 @ In the case where the context poses a restriction, we filter the variants for
@@ -1901,7 +1937,7 @@ aside a call for the first match, and leave a pointer |prev_match| to the
 current variant, which will be used for error reporting in case an ambiguity is
 found.
 
-Whenever an argument matches, be it exact of inexact, |conform_types| will be
+Whenever an argument matches, be it exact or inexact, |conform_types| will be
 called for the variant result type and the expected |tp|; this may throw an
 error, also aborting the matching process.
 
@@ -7312,33 +7348,11 @@ case cast_expr:
 @ Another kind of cast is the operator cast, which selects an operator or
 overloaded function instance as it would for arguments of specified types, but
 without giving actual arguments, so that the selected function itself can be
-handled as a value. In order to do so we shall need the following function.
-
-The overload table stores type information in a |func_type| value, whose two
-components may contain polymorphic values numbered from~$0$. We want to
-integrate these into a |type tp@;| that was initialised to a generic function
-type with a possibly nonzero |floor()| value. We could use the subexpression
-form of |unify_specialise| here with properly shifted copies of the |func_type|
-components, but it seems a bit more straightforward to use |unify|.
-
-@< Local function definitions @>=
-inline bool functype_absorb (type& tp, const overload_data& entry)
-{ auto te = type_expr::function @|
-   (entry.f_tp().arg_type.copy(),
-    entry.f_tp().result_type.copy());
-  type model = type::wrap(te,0,tp.floor()); // proper shift facilitates |unify|
-  if (tp.unify(model))
-  {@;
-    tp.wring_out();
-    return true;
-  }
-  return false;
-}
-
-@ Operator casts only access already existing values, which are looked up in the
-global overload table. Since upon success we find a bare |shared_function|, we
-must (as we did for~`\.\$') use the |capture_expression| class to serve as
-wrapper that upon evaluation will return the value again.
+handled as a value. In other words, and operator cast accesses a value in the
+global overload table by providing its name and argument types. Since in
+successful cases we find a bare |shared_function| in the table, we must (as we
+did for~`\.\$') use the |capture_expression| class to serve as wrapper that upon
+evaluation will return the value again.
 
 We do two attempts to match the specified type |c_type| to an entry in the
 |global_overload_table|. In the first we deduce from |c_type| a type as it would
