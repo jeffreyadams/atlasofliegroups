@@ -552,15 +552,18 @@ set_type
   , (RealForm -> Param_hash) phash {hash table of all indexed parameters}
   , (RealForm -> Param_hash) uhash {hash table of known unitary}
   , (RealForm -> Param_hash) nuhash {hash table of known nonunitary}
+  , (RealForm -> vec) nu_heights {list of heights to which nu reps are known non-unitary}
   , (Param -> (int,int)) long_plookup {(rf_index(p.real_form), location of p in its phash)}
   , (Param -> (int,int)) long_ulookup {(rf_index(p.real_form), location of p in its uhash)}
   , (Param -> int) plookup {(location of p in its phash)}
   , (Param -> int) ulookup {(location of p in its uhash)}
   , (Param -> int) nulookup {(location of p in its nuhash)}
   , (Param -> int) nu_height_lookup {smallest height at which p is known to be nonunitary}
+  , ((Param,int) -> bool) nu_height_lookup_bool {whether p is known to be nonunitary to int}
   , (Param -> bool) check {check whether p is unitary, and add to appropriate hash table}
   , ((Param,int) -> bool) check_to_ht {check whether p is unitary to height}
   , (Param -> int) umatch {add p to its uhash table}
+  , ((Param,int) -> int) numatch_height {add p known nonunitary to int to its hash table}
   , (Param -> int) numatch {add p to its nuhash table}
   , ((Param,int) -> int) long_umatch {add p to ith uhash table}
 {  , ((int,ratvec,ratvec,int) -> int) long_umatch_coords {add p to ith uhash table}}
@@ -569,7 +572,7 @@ set_type
   , (RealForm -> ) writeG {output data for one group to file}
   , ((RealForm, int, int) -> ) writeGrange {output data for KGB(G)[low,high]}
   , ((KGBElt, ratvec) -> ) writexlam {output data for one x,lambda}
-  , ((KGBElt, ratvec) -> ) writexlam_no_G {output data for one x,lambda; without writing G}
+  , ((KGBElt, ratvec) -> ) writexlam_no_G {output data for one x,lambda; wit-hout writing G}
 )
 ]
 
@@ -605,6 +608,8 @@ set make_big_unitary_hash() = big_unitary_hash_table:
    		       	 	   to which branch(param i) is known}
     then sig_heights = [vec]: [] {one list for each real form; jth entry is vec with ith entry
     	 	       	      	 the height to which sig(param i) is known}
+    then nu_heights = [vec]: [] {one list for each real form; jth entry is height to which jth entry of nuhash
+    	 	      	     	 is known to be nonunitary}
     then xl_known = [[int]]: [] {one bitmap of known (x,lambda) for each real form and x}
     then x_known = [int]: [] {one bitmap of known x for each real form}
     then x_partial = [int]: [] {one bitmap of partially known x for each real form}
@@ -622,6 +627,7 @@ set make_big_unitary_hash() = big_unitary_hash_table:
          then () = sigs := []
          then () = branch_heights := []
          then () = sig_heights := []
+	 then () = nu_heights := []
 	 then () = xl_known := []
 	 then () = x_known := []
 	 then () = x_partial := []
@@ -638,7 +644,8 @@ set make_big_unitary_hash() = big_unitary_hash_table:
 		       	     branches #:= null(0);
 		             sigs #:= null(0);
 		             branch_heights #:= null(0);
-			     sig_heights #:= null(0)
+			     sig_heights #:= null(0);
+			     nu_heights #:= null(0)
 		   	then () = xl_known #:= empty {null(#KGB(rf))}
 			then () = x_known #:= 0
 			then () = x_partial #:= 0
@@ -654,7 +661,8 @@ set make_big_unitary_hash() = big_unitary_hash_table:
 						 and #x_partial = #x_known
 						 and #K_type_hashes = #x_known and #K_type_pol_hashes = #x_known
 						 and #branches = #x_known and #sigs = #x_known
-						 and #sig_heights = #x_known, "big_unitarity_hash damaged")
+						 and #sig_heights = #x_known and #nu_heights = #x_known,
+						 "big_unitarity_hash damaged")
 	  in i
     then add_K_type(KType mu) = (int, int): {real form index, K type index}
    	 let rfnum = add_real_form(mu.real_form)
@@ -848,16 +856,25 @@ set make_big_unitary_hash() = big_unitary_hash_table:
 		       then sig_ind = K_type_pol_hashes[rfnum].match(sig)
 		       then () = sigs[rfnum] #:= sig_ind
 		       then () = sig_heights[rfnum] #:= height(p) - 1
-		       then () = if is_pure(sig)
+		       then N = nuhashes[rfnum].size()
+		       then H = impure_height(sig)
+		       then () = if H = - 1
 		       	       	 then uhashes[rfnum].match(p)
-				 else nuhashes[rfnum].match(p)
-				 fi
+			  	 else let n = nuhashes[rfnum].match(p)
+			       	      in if n=N
+			       	      	 then nu_heights[rfnum] #:=H
+				  	 elif nu_heights[rfnum][n] > H
+				  	 then let nuheightsrf = nu_heights[rfnum]
+				       	      in nuheightsrf[n] :=H;
+					      	 nu_heights[rfnum]:= nuheightsrf
+				  	fi {n=N}
+		          	 fi {H = -1}
 		       then () = assert(real_form_hash.size() = #phashes,"big_unitarity_hash damaged")
 		       then () = assert(real_form_hash.size() = #sig_heights,"big_unitarity_hash damaged")
 		       then () = assert(#sigs[rfnum] = phashes[rfnum].size(), "big_unitarity_hash damaged")
 		       then () = assert(#sig_heights[rfnum] = phashes[rfnum].size(), "big_unitarity_hash damaged")
+		       then () = assert(#nu_heights[rfnum] = nuhashes[rfnum].size(), "big_unitarity_hash damaged")
 		       in ()
-
 		  else {we've seen p before}
                        if sig_heights[rfnum][pnum] >= height(p)
                        then let tempsigs = sigs[rfnum], tempsights = sig_heights[rfnum]
@@ -865,19 +882,27 @@ set make_big_unitary_hash() = big_unitary_hash_table:
 		       	       	      	then K_type_pol(character_formula(p))
 			    		else hermitian_form_irreducible(p)
 					fi
-			    then () = if is_pure(sigD)
+			    then N = nuhashes[rfnum].size()
+			    then H = impure_height(sigD)
+			    then () = if H = -1
 				      then uhashes[rfnum].match(p)
-				      else nuhashes[rfnum].match(p)
-				      fi
+				      else let n = nuhashes[rfnum].match(p)
+					   in if n=N
+					      then nu_heights[rfnum] #:= H
+					      elif nu_heights[rfnum][n] > H
+					      then let nuheightsrf = nu_heights[rfnum]
+				       		   in nuheightsrf[n] :=H;
+					  	      nu_heights[rfnum]:= nuheightsrf
+				  	      fi {n=N}
+				      fi {H = -1}
 			    then sigD_ind = K_type_pol_hashes[rfnum].match(sigD)
 			    then () = tempsigs[pnum] := sigD_ind
                             then () = tempsights[pnum]:= height(p) - 1
 			    then () = sigs[rfnum] := tempsigs
                             then () = sig_heights[rfnum] := tempsights
                             in()
-
-                       fi
-		  fi
+                       fi {sigheights >= height(p)}
+		  fi {pnum = PNUM}
 	 in (rfnum, pnum, sigs[rfnum][pnum])
    then add_param(Param p, int D) = (int, int, int): {add a param, form to ht D; assume D >= ht(p)}
         let  rfnum = add_real_form(p.real_form)
@@ -895,25 +920,45 @@ set make_big_unitary_hash() = big_unitary_hash_table:
 				       in ans
 				  elif low(p,D) {low(p.x,p.lambda,D)}
      	  			  then let ans =  hermitian_form_irreducible_to_ht(p,D)
-				       then () = if is_pure(ans)
+				       then N = nuhashes[rfnum].size()
+				       then H = impure_height(ans)
+				       then () = if H = -1 {is_pure(ans)}
 					     	 then ()
-					     	 else nuhashes[rfnum].match(p)
-						 fi
+					     	 else let n = nuhashes[rfnum].match(p)
+						      in if n=N
+						      	 then nu_heights[rfnum]#:=H
+						      	 elif nu_heights[rfnum][n] > H
+						      	 then let nuheightsrf = nu_heights[rfnum]
+				       			      in nuheightsrf[n] :=H;
+					  		      	 nu_heights[rfnum]:= nuheightsrf
+				  			 fi {n=N}
+						 fi {H = -1}
 				       in ans
      	 			  else let ans = hermitian_form_irreducible(p)
 				       then () = D:=height(p)-1
-	       			       then () = if is_pure(ans)
+				       then N = nuhashes[rfnum].size()
+				       then H = impure_height(ans)
+	       			       then () = if H = -1
 					     	 then uhashes[rfnum].match(p)
-						 else nuhashes[rfnum].match(p)
-						 fi
+						 else let n = nuhashes[rfnum].match(p)
+						      in if n=N
+						      	 then nu_heights[rfnum]#:=H
+						      	 elif nu_heights[rfnum][n] > H
+						      	 then let nuheightsrf = nu_heights[rfnum]
+				       			      in nuheightsrf[n] :=H;
+					  		      	 nu_heights[rfnum]:= nuheightsrf
+				  		      	 fi {n=N}
+						 fi {H = -1}
 	       			       in ans {this records full sig!}
-     	 			   fi
+     	 			   fi {uhashes[rfnum].lookup(p).>=}
                        then sigD_ind = K_type_pol_hashes[rfnum].match(sigD)
 		       then () = sigs[rfnum] #:= sigD_ind
 		       then () = sig_heights[rfnum] #:= D
                        then () = assert(real_form_hash.size() = #phashes,"big_unitarity_hash damaged")
 		       then () = assert(real_form_hash.size() = #sig_heights,"big_unitarity_hash damaged")
                        then () = assert(#sigs[rfnum] = phashes[rfnum].size(), "big_unitarity_hash damaged")
+		       then () = assert(#nu_heights[rfnum] = nuhashes[rfnum].size(),
+		       	       	 "big_unitarity_hash nu_heights damaged")
                        in ()
                    else {we've seen p before}
                        if sig_heights[rfnum][pnum] >= height(p) and sig_heights[rfnum][pnum] < D
@@ -925,10 +970,19 @@ set make_big_unitary_hash() = big_unitary_hash_table:
 					     in ans
 					elif low(p,D) {low(p.x,p.lambda,N)}
      	  			   	then let ans = hermitian_form_irreducible_to_ht(p,D)
-					     then () = if is_pure(ans)
+					     then N = nuhashes[rfnum].size()
+					     then H = impure_height(ans)
+					     then () = if H = -1
 					     	       then ()
-					     	       else nuhashes[rfnum].match(p)
-						       fi
+ 						       else let n = nuhashes[rfnum].match(p)
+						       	    in if n=N
+						      	       then nu_heights[rfnum]#:=H
+						      	       elif nu_heights[rfnum][n] > H
+						      	       then let nuheightsrf = nu_heights[rfnum]
+				       			       in nuheightsrf[n] :=H;
+					  		      	    nu_heights[rfnum]:= nuheightsrf
+				  		      	       fi {n=N}
+						       fi {H = -1}
 					     in ans
      	 				else let ans = hermitian_form_irreducible(p)
 					     then () = D:=height(p)-1
@@ -943,6 +997,11 @@ set make_big_unitary_hash() = big_unitary_hash_table:
                             then () = tempsights[pnum]:=D
 			    then () = sigs[rfnum] := tempsigs
                             then () = sig_heights[rfnum] := tempsights
+                       	    then () = assert(real_form_hash.size() = #phashes,"big_unitarity_hash damaged")
+		       	    then () = assert(real_form_hash.size() = #sig_heights,"big_unitarity_hash damaged")
+                       	    then () = assert(#sigs[rfnum] = phashes[rfnum].size(), "big_unitarity_hash damaged")
+		       	    then () = assert(#nu_heights[rfnum] = nuhashes[rfnum].size(),
+		       	       	 "big_unitarity_hash nu_heights damaged B")
                             in()
 
                        fi
@@ -964,6 +1023,7 @@ set make_big_unitary_hash() = big_unitary_hash_table:
        		 sigs[i] := [];
        		 branch_heights[i] := [];
        		 sig_heights[i] := [];
+		 nu_heights[i] := [];
 	    	 {prints("i = ",i, ", x_partial = ",x_partial);}
 	    	 x_partial[i] := 0;
 		 xl_known[i] := nullint(#KGB(rf));
@@ -1134,6 +1194,8 @@ set make_big_unitary_hash() = big_unitary_hash_table:
       uhashes[add_real_form(rf)]
     , (RealForm -> Param_hash): {nuhash} (RealForm rf) Param_hash:
       nuhashes[add_real_form(rf)]
+    , (RealForm -> vec): {nu_heights} (RealForm rf) vec:
+      nu_heights[add_real_form(rf)]
     , (Param -> (int,int)): {long_plookup} (Param p) (int,int):
       let i = add_real_form(p.real_form)
       then j = phashes[i].lookup(p)
@@ -1153,8 +1215,16 @@ set make_big_unitary_hash() = big_unitary_hash_table:
       then j = nuhashes[i].lookup(p)
       in if j = -1
       	 then -1
-      	 else -1 {nu_heights[i][j]}
-	 fi {need to add [[int]] nu_heights, where ith [int] is of size nu_hashes[i].size()}
+      	 else nu_heights[i][j]
+	 fi
+    , ((Param,int) -> bool): {nu_height_lookup_bool} (Param p, int H) bool:
+      let i = add_real_form(p.real_form)
+      then j = nuhashes[i].lookup(p)
+      in if j = -1
+      	 then false
+	 else let H0 = nu_heights[i][j]
+	      in H0 <= H
+	 fi
     , (Param -> bool): {check} (Param p) bool:
       let (i,,sigD) = add_param_inf(p)
       in is_pure(K_type_pol_hashes[i].list()[sigD])
@@ -1189,10 +1259,30 @@ set make_big_unitary_hash() = big_unitary_hash_table:
     , (Param -> int): {umatch} (Param p):
       let i = add_real_form(p.real_form)
       in uhashes[i].match(p)
+    , ((Param,int) -> int): {numatch_height} (Param p, int H):
+      let i = add_real_form(p.real_form)
+      then N = nuhashes[i].size()
+      in if nuhash_flag
+      	 then let n = nuhashes[i].match(p)
+	 in if n=N
+	    then nu_heights[i] #:= H; n
+	    else if nu_heights[i][n] > H
+	    	 then let nuhtsi = nu_heights[i]
+		      in nuhtsi[n]:=H;
+		      	 nu_heights[i]:=nuhtsi
+		 fi; n
+	    fi {n=N}
+	 else -1
+	 fi
     , (Param -> int): {numatch} (Param p):
       let i = add_real_form(p.real_form)
+      then N = nuhashes[i].size()
       in if nuhash_flag
-      	 then nuhashes[i].match(p)
+      	 then let n = nuhashes[i].match(p)
+	 in if n=N
+	    then nu_heights[i]#:= -1; n
+	    else n
+	    fi
 	 else -1
 	 fi
     , ((Param,int) -> int): {long_umatch} (Param p, int i):
@@ -1901,28 +1991,28 @@ set is_unitary_to_ht_big_SIMPLE(Param p, int H, int time) = bool:
   let G = p.real_form, (,NU,) = low(p)
   then ht_bound = NU/low_frac {this estimates the biggest ht where to_ht could be faster than is_unitary}
   then FPP_flag = is_FPP(G,p.infinitesimal_character)
-  then () = if not FPP_flag and H < ht_bound*ht_bound_frac
-    	    then return is_unitary_to_ht(p,H) {prints("FPP DANGER TO HT at ",p)}
+  then () = if (not FPP_flag) and H < ht_bound*ht_bound_frac
+    	    then return is_pure(to_ht(hermitian_form_irreducible(p),H))
 	    elif not FPP_flag
-	    then return is_pure(to_ht(hermitian_form_irreducible(p),H))
+	    then return is_pure(hermitian_form_irreducible_to_ht(p,H))
 	    fi
   then () = p := herm_center(p)
   then () = if (big_unitary_hash.ulookup(p)).>= then return true fi
   then result = 0, mu = K_type(p.x, p.lambda_minus_rho) {LKTs(p)[0]},
        top_ht = floor((p.infinitesimal_character)*G.two_rho_check)
        {unitary to top_ht implies unitary}
-
   then () = if H > ht_bound*ht_bound_frac {so is_unitary might be faster?}
        	    then let maybe_form = hermitian_form_irreducible(p,time)
   	    	 in result := case maybe_form
        	    	      	      | timed_out: 0
-		      	      | done(form): if is_pure(form)
-		      		       	    then big_unitary_hash.umatch(p); 1
-				    	    else big_unitary_hash.numatch(p);
-				      		 if is_pure(to_ht(form,H))
-				      		 then 1
-				      		 else -1
-				      	    	 fi
+		      	      | done(form): let H0 = impure_height(form)
+			      		    in if H0.<
+		      		       	       then big_unitary_hash.umatch(p); 1
+				    	       else big_unitary_hash.numatch_height(p,H0);
+				      		    if H0 > H {is_pure(to_ht(form,H))}
+				      		    then 1
+				      		    else -1
+				      	    	    fi
 				    	    fi
 			      esac
 	    fi
@@ -1953,7 +2043,7 @@ set is_unitary_to_ht_big_SIMPLE(Param p, int H) = bool:
 set is_unitary_to_ht_big(Param p,int N) = bool:
   if (not is_hermitian(p)) then return false fi;
   if not (fewer_reducible_unitary_flag or is_pos_on_LKTs(p)) then return false fi;
-  if (big_unitary_hash.ulookup(p)).>= then return true fi;
+  {if (big_unitary_hash.ulookup(p)).>= then return true fi;} {this function is meant for nonsimple G}
   let pds = derived_factor_params0(p)
   in all(for pd in pds do @bool: is_unitary_to_ht_big_SIMPLE(pd,N) od)
 
@@ -2013,7 +2103,7 @@ set is_unitary_test_big_SIMPLE_interrupt(Param p, int step) = bool:
 	       	       	 then prints("height ",ht," of SIMPLE_interrupt took ",print_time_string(time_to_ht))
 			 fi}
 	       in result := if not to_ht_ans
-	       	       	    then big_unitary_hash.numatch(p); -1
+	       	       	    then big_unitary_hash.numatch_height(p,ht); -1
 			    elif ht >= top_ht
 			    then big_unitary_hash.umatch(p); 1
 			    else is_unitary(p,floor(mu_time_mult*max(times_to_ht)))
@@ -2062,7 +2152,7 @@ set is_unitary_test_big_SIMPLE_interrupt(Param p, [int] hts) = bool:
 	       	       	 then prints("ht ",ht," of SIMPLE_interrupt took ",print_time_string(time_to_ht))
 			 fi}
 	       in result := if not to_ht_ans
-	       	       	    then big_unitary_hash.numatch(p); -1
+	       	       	    then big_unitary_hash.numatch_height(p,ht); -1
 			    elif ht >= top_ht
 			    then big_unitary_hash.umatch(p); 1
 			    else is_unitary(p,floor(mu_time_mult*times_to_ht))
@@ -2428,7 +2518,7 @@ set KU(KGBElt x, ratvec lambda, LocalVertexData Lvd, [[FaceVertsKHash]] FVKH, Pa
 		      	      then () = if x {whether the FPP test is applicable}
 			      	      	then if y {result of FPP test}
 			      	   	     then big_unitary_hash.uhash(G).match(p)
-				   	     else big_unitary_hash.nuhash(G).match(p)
+				   	     else big_unitary_hash.numatch(p)
 				   	     fi
 			      	   	fi
 			      in x and y
@@ -2516,7 +2606,113 @@ set known_unitaries(Param_hash UhashLocal, LocalVertexData Lvd,
 		fi
 	  od.##
        od}
+{whether to use deformation in looking for evidence that a Param is not unitary}
+set wiggle_flag = true
 
+{list locations in LFDKH of reps known to be non-unitary to HT}
+set known_non_unitaries_wiggle(KGBElt x, ratvec lambda, LocalVertexData Lvd,
+    [[FaceVertsKHash]] LFDKH, int HT) = [vec]:
+    let ps = for d:#LFDKH
+    	     do for v in LFDKH[d]
+	     	do parameter(x,lambda,face_bary(Lvd, v[:d+1]))
+		od
+	     od
+    in for d:#LFDKH
+       do for p@j in ps[d]
+       	  do let pdef =
+	     	 if not is_final(p) or d=0
+	     	 then monomials(finalize(p))
+	     	 else let CF = character_formula(finalize(p))
+		      then verts = LFDKH[d][j][:d+1]
+	     	      in  monomials(composition_series((sum(x.real_form,
+		       	   		    for k:d+1
+			   		    do wiggle(CF, face_bary(Lvd,verts[:k]##verts[k+1:]))
+			   		    od))))
+		 fi {now pdef consists of final Params that must be unitary to HT if p is}
+	     in if any(for q in pdef
+		       do @bool: big_unitary_hash.nu_height_lookup_bool(q,HT)
+		       {probably need to fix lookup_bool to handle HT < height(q)}
+	  	       od)
+	     	then [j]
+		else []
+		fi
+	  od.## {for p@j in ps[d]; this is vec of known nonunitary j for dim d}
+       od {for d:#LFDKH}
+
+{list locations in LFDKH of reps known to be non-unitary}
+set known_non_unitaries_wiggle(KGBElt x, ratvec lambda, LocalVertexData Lvd,
+    [[FaceVertsKHash]] LFDKH) = [vec]:
+    let ps = for d:#LFDKH
+    	     do for v in LFDKH[d]
+	     	do parameter(x,lambda,face_bary(Lvd, v[:d+1]))
+		od
+	     od
+    in for d:#LFDKH
+       do for p@j in ps[d]
+       	  do let pdef =
+	     	 if not is_final(p) or d=0
+	     	 then monomials(finalize(p))
+	     	 else let CF = character_formula(finalize(p))
+		      then verts = LFDKH[d][j][:d+1]
+	     	      in  monomials(composition_series((sum(x.real_form,
+		       	   		    for j:d+1
+			   		    do wiggle(CF, face_bary(Lvd,verts[:j]##verts[j+1:]))
+			   		    od))))
+		 fi {now pdef consists of reps that must be unitary if p is}
+	     in if any(for q in pdef
+		       do @bool: (big_unitary_hash.nulookup(q)).>=
+	  	       od)
+	     	then [j]
+		else []
+		fi
+	  od.## {for p@j in ps[d]; this is vec of known nonunitary j for dim d}
+       od {for d:#LFDKH}
+
+{list locations in LFDKH of reps known to be non-unitary at height HT}
+set known_non_unitaries(KGBElt x, ratvec lambda, LocalVertexData Lvd,
+    [[FaceVertsKHash]] LFDKH, int HT) = [vec]:
+    if wiggle_flag
+    then return known_non_unitaries_wiggle(x,lambda,Lvd,LFDKH,HT)
+    fi;
+    let ps = for d:#LFDKH
+    	     do for v in LFDKH[d]
+	     	do parameter(x,lambda,face_bary(Lvd, v[:d+1]))
+		od
+	     od
+    in for d:#LFDKH
+       do for p@j in ps[d]
+       	  do let qs = monomials(finalize(p))
+	     in if any(for q in qs
+		       do @bool: big_unitary_hash.nu_height_lookup_bool(q,HT)
+	  	       od)
+	     	then [j]
+		else []
+		fi
+	  od.##
+       od
+
+{list locations in LFDKH of reps known to be non-unitary}
+set known_non_unitaries(KGBElt x, ratvec lambda, LocalVertexData Lvd,
+    [[FaceVertsKHash]] LFDKH) = [vec]:
+    if wiggle_flag
+    then return known_non_unitaries_wiggle(x,lambda,Lvd,LFDKH)
+    fi;
+    let ps = for d:#LFDKH
+    	     do for v in LFDKH[d]
+	     	do parameter(x,lambda,face_bary(Lvd, v[:d+1]))
+		od
+	     od
+    in for d:#LFDKH
+       do for p@j in ps[d]
+       	  do let qs = monomials(finalize(p))
+	     in if any(for q in qs
+		       do @bool: (big_unitary_hash.nulookup(q)).>=
+	  	       od)
+	     	then [j]
+		else []
+		fi
+	  od.##
+       od
 
 set localize(Param_hash Uhash, KGBElt x, ratvec lambda) = Param_hash:
     let NumKnown = Uhash.size(), UhashLoc = make_Param_hash()
@@ -3498,7 +3694,7 @@ set localFD_KHash_01 (KGBElt x, ratvec lambda, LocalVertexData Lvd, int HT, KTyp
 next and last is red_count. Adjoin two more: K-char, and #Langlands quotients}
 set localFD_KHash_01_graph (KGBElt x, ratvec lambda, LocalVertexData Lvd, KTypePol_hash ktp_hash,
 [[FaceVertsIndex]] LF, [[int]] eq, [vec] classListByFace) = [[FaceVertsKHash]]:
-    let ht = height(parameter(x,lambda,0*lambda)), start = elapsed_ms()
+    let start = elapsed_ms()
     then Q = (ratvec,ratvec->rat): (ratvec v, ratvec w) rat: 0/1
     then DiracBestBD = 0/1
     then temp_Dirac_best_flag = bool:
@@ -3518,6 +3714,9 @@ set localFD_KHash_01_graph (KGBElt x, ratvec lambda, LocalVertexData Lvd, KTypeP
 		fi
 	 fi
     then NumClasses = #eq
+    then () = if test_verbose
+    	      then prints("     Examining ",NumClasses," classes in localFD_hash_01_graph.")
+	      fi
     then polNums = [int]: {one for each class}
     	 for C in eq
     	 do let (d,j) = coords(LF,C~[0]) {the tilde chooses a
@@ -3557,7 +3756,7 @@ set localFD_KHash_01_graph (KGBElt x, ratvec lambda, LocalVertexData Lvd, KTypeP
 next and last is red_count. Adjoin two more: K-char, and #Langlands quotients}
 set localFD_KHash_01_graph (KGBElt x, ratvec lambda, LocalVertexData Lvd, int HT, KTypePol_hash ktp_hash,
 [[FaceVertsIndex]] LF, [[int]] eq, [vec] classListByFace) = [[FaceVertsKHash]]:
-    let ht = height(parameter(x,lambda,0*lambda)), start = elapsed_ms(), startDBTcount = DBTcount
+    let start = elapsed_ms(), startDBTcount = DBTcount
     then Q = (ratvec,ratvec->rat): (ratvec v, ratvec w) rat: 0/1
     then DiracBestBD = 0/1
     then temp_Dirac_best_flag = bool:
@@ -3581,6 +3780,9 @@ set localFD_KHash_01_graph (KGBElt x, ratvec lambda, LocalVertexData Lvd, int HT
 		fi
 	 fi
     then NumClasses = #eq
+    then () = if test_verbose
+    	      then prints("     Examining ",NumClasses," classes in localFD_hash_01_graph to ht ",HT)
+	      fi
     then polNums = [int]:
     	 for C@k in eq
     	 do if k%(max(#eq\10,2))=0 and fund_face_verbose
@@ -3616,6 +3818,33 @@ set localFD_KHash_01_graph (KGBElt x, ratvec lambda, LocalVertexData Lvd, int HT
     then time = elapsed_ms() - start
     then () = if time_verbose then prints("     ", print_time_string(time),
    	     		     " for localFD_KHash_01_graph (vertex/edge K-chars)") fi
+    in answer
+
+{don't compute K_chars, just use red_count}
+set localFD_KHash_01_graph_dry (KGBElt x, ratvec lambda, LocalVertexData Lvd, KTypePol_hash ktp_hash,
+[[FaceVertsIndex]] LF, [[int]] eq, [vec] classListByFace) = [[FaceVertsKHash]]:
+    assert(red_count_flag,"localFD_KHash_01_graph_dry requires red_count_flag :=true");
+    let start = elapsed_ms(), startDBTcount = DBTcount
+    then NumClasses = #eq
+    then () = if test_verbose
+    	      then prints("     Examining ",NumClasses," classes in localFD_hash_01_graph_dry")
+	      fi
+    then mu = LKT(x.real_form.trivial)
+    then nLKT = #LKTs(parameter(x,lambda,0*lambda))
+    then answer = for LFd@d in LF
+       	 	  do for v@j in LFd
+	  	     do let KCF = v[d+1]*mu
+		     	then N = ktp_hash.match(KCF)
+	     	     	then m = if nLKT = 1
+		     	       	 then 1
+		     		 else #monomials(finalize(parameter(x,lambda,face_bary(Lvd,v[:d+1]))))
+		     		 fi
+	      		in v##[N,m]
+	  	     od
+       		  od
+    then time = elapsed_ms() - start
+    then () = if time_verbose then prints("     ", print_time_string(time),
+   	     		     " for localFD_KHash_01_graph_dry (vertex/edge K-chars)") fi
     in answer
 
 {takes list of 0- and d-diml faces, with d \ge 1, and builds all
@@ -3749,7 +3978,6 @@ set localFD_KHashbt_lookDownGEO \
        			      for list in LFKH do #list od) fi;
        LFKH
 )
-
 
 {takes local data to height level, dimension \le b-1, and adds faces from
 b to (t-1)-dimensional FPP-faces; make sure subfaces are also in list
