@@ -459,17 +459,14 @@ set KU_flag = true
 
 {whether to fill in statuses for known unitaries in local_testK_hash*
 and local_test_hash}
-set KNU_flag = true
+{true now (5/29/25) leads to missing 6 unitary reps for E6_q}
+set KNU_flag = false
 
 {count how often nonunitary induction identifies nonunitary rep}
 set NU_ind_counter = 0
 
 {count how often unitary induction identifies unitary rep}
 set U_ind_counter = 0
-
-{whether to fill in statuses for known non-unitaries in local_testK_hash
-and local_test_hash}
-set KNU_flag = true
 
 {whether to look at ind_cand_params to determine unitarity}
 set ICPU_flag = false {true becomes very slow in rk 6}

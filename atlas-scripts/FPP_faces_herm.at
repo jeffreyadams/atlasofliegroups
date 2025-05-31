@@ -985,11 +985,20 @@ set make_big_unitary_hash() = big_unitary_hash_table:
 						       fi {H = -1}
 					     in ans
      	 				else let ans = hermitian_form_irreducible(p)
+					     then N = nuhashes[rfnum].size()
+					     then H = impure_height(ans)
 					     then () = D:=height(p)-1
-					     then () = if is_pure(ans)
+					     then () = if H = -1
 					     	       then uhashes[rfnum].match(p)
-						       else nuhashes[rfnum].match(p)
-						       fi
+						       else let n = nuhashes[rfnum].match(p)
+						       	    in if n=N
+						      	       then nu_heights[rfnum]#:=H
+						      	       elif nu_heights[rfnum][n] > H
+						      	       then let nuheightsrf = nu_heights[rfnum]
+				       			       in nuheightsrf[n] :=H;
+					  		      	    nu_heights[rfnum]:= nuheightsrf
+				  		      	       fi {n=N}
+						       fi {H=-1}
 	       				     in ans
 					fi
 			    then sigD_ind = K_type_pol_hashes[rfnum].match(sigD)
@@ -1220,10 +1229,10 @@ set make_big_unitary_hash() = big_unitary_hash_table:
     , ((Param,int) -> bool): {nu_height_lookup_bool} (Param p, int H) bool:
       let i = add_real_form(p.real_form)
       then j = nuhashes[i].lookup(p)
-      in if j = -1
+      in if j.< or H < height(p)
       	 then false
 	 else let H0 = nu_heights[i][j]
-	      in H0 <= H
+	      in H0.>= and H0 <= H
 	 fi
     , (Param -> bool): {check} (Param p) bool:
       let (i,,sigD) = add_param_inf(p)
@@ -1893,39 +1902,6 @@ set print_int_flag = false
 {initial time to give interruptible command}
 set interrupt_base_time = int:200
 
-{START with full is_unitary tests, because those are actually interruptable}
-{ meant to be used for G simple }
-{ compute Hermitian form to ht on p, report if it is unitary}
-
-{
-set is_unitary_to_ht_big_SIMPLE_interrupt(Param p,int N, int time) = bool:
-  let which_flag = low(p,N), result = 0, start = elapsed_ms(), (LAM,NU,) = low(p)
-  then () = if print_int_flag then prints("N = ",N, ", p = ",p) fi
-  {then () = if NU > 8*N*low_frac
-       	    then return is_pure(hermitian_form_irreducible_to_ht(p,N))
-      	    elif NU < N*low_frac/2
-      	    then return is_pure(to_ht(hermitian_form_irreducible(p),N))
-      	    else}
-  then () = while result.=
-       	    do result := if which_flag
-     	       	      	 then is_unitary_to_ht_MvL(p,N,time)
-	      		 else case hermitian_form_irreducible(p,time)
-	      	   	      | timed_out: 0
-		   	      | done(result): if is_pure(to_ht(result,N))
-		     		   	      then 1
-				   	      else -1
-					      fi
-		   	      esac
-	      		 fi;
-      		if which_flag then time := 2*time fi;
-	        which_flag := not which_flag;
-		if print_int_flag then prints("in to_ht, time = ", time, ", which_flag = ", which_flag,
-		", elapsed = ",elapsed_ms() - start) fi
-      		{unitary_test_counter.use() done in calls above}
-  	     od
-  in result.>
-}
-
 {assume p is hermitian}
 set hermitian_form_irreducible_to_ht_big_SIMPLE(Param p,int N) = KTypePol:
   let G = p.real_form
@@ -1961,6 +1937,7 @@ set is_unitary_to_ht_big_SIMPLE_old(Param p,int N) = bool:
     	    then return is_unitary_to_ht(p,N) {prints("FPP DANGER TO HT at ",p)}
 	    fi
   {then () = p := herm_center(p)}
+  then () = if big_unitary_hash.nu_height_lookup_bool(p,N) then return false fi
   then () = if (big_unitary_hash.ulookup(p)).>= then return true fi
   in is_pure(big_unitary_hash.sig_entry(p,N)) {this will use full is_unitary
      					      if that seems faster}
@@ -1997,6 +1974,7 @@ set is_unitary_to_ht_big_SIMPLE(Param p, int H, int time) = bool:
 	    then return is_pure(hermitian_form_irreducible_to_ht(p,H))
 	    fi
   then () = p := herm_center(p)
+  then () = if big_unitary_hash.nu_height_lookup_bool(p,H) then return false fi
   then () = if (big_unitary_hash.ulookup(p)).>= then return true fi
   then result = 0, mu = K_type(p.x, p.lambda_minus_rho) {LKTs(p)[0]},
        top_ht = floor((p.infinitesimal_character)*G.two_rho_check)
@@ -2023,10 +2001,9 @@ set is_unitary_to_ht_big_SIMPLE(Param p, int H, int time) = bool:
      else is_unitary_to_ht_big_SIMPLE_old(p,H)
      fi
 
-set old_to_ht_flag = false
+{false tries is_unitary intermittently}
+set old_to_ht_flag = true
 
-{controls the time alloted to an is_unitary trial in is_unitary_to_ht. Increasing it gives more time
-to the is_unitary trial, so it succeeds more often}
 set avtime_frac = rat: 16/1
 
 set is_unitary_to_ht_big_SIMPLE(Param p, int H) = bool:
@@ -2070,8 +2047,9 @@ set is_unitary_test_big_SIMPLE_interrupt(Param p, int step) = bool:
        	    then return true
 	    elif is_finished(p.x,p.lambda)
 	    then return false
+	    elif (big_unitary_hash.nulookup(p)).>=
+	    then return false
 	    fi
-  then () = if (big_unitary_hash.nulookup(p)).>= then return false fi
   then result = 0, mu = K_type(p.x, p.lambda_minus_rho) {LKTs(p)[0],}
   then tau_bd = next_taus(mu,step)~[0], top_ht = GAM {floor((p.infinitesimal_character)*G.two_rho_check)}
        {unitary to top_ht implies unitary}
@@ -2169,8 +2147,10 @@ set is_unitary_test_big_SIMPLE_interrupt(Param p, [int] hts) = bool:
 set to_hts_count_mat = null(10,10)
 set to_hts_count = null(10)
 
+{Ns should be increasing string of heights > height(p).}
 set is_unitary_to_hts_big_SIMPLE_interrupt(Param p,[int] Ns, int time) = bool:
     if print_int_flag then prints("N = ",Ns, " p = ",p) fi;
+    if #Ns > 0 and big_unitary_hash.nu_height_lookup_bool(p, Ns~[0]) then return false fi;
     let () = for N@i in Ns
        	     do let result = 0, which_flag = low(p,N), start = elapsed_ms()
      	        then () = while result = 0
@@ -2192,7 +2172,7 @@ set is_unitary_to_hts_big_SIMPLE_interrupt(Param p,[int] Ns, int time) = bool:
 		       	     if which_flag then time := 2*time fi;
 		       	     which_flag := not which_flag
      	      		  od {while result}
-		in if result.< then big_unitary_hash.numatch(p); return false fi
+		in if result.< then big_unitary_hash.numatch_height(p,N); return false fi
 	     od
      in true
 
@@ -2210,7 +2190,10 @@ set is_unitary_to_hts_big_SIMPLE(Param p,[int] Ns) = bool:
   then () = if (big_unitary_hash.ulookup(p)).>=
        	    then return true
 	    fi
-    in if interrupt_flag
+  then () = if #Ns > 0 and big_unitary_hash.nu_height_lookup_bool(p, Ns~[0])
+   	    then return false
+	    fi
+   in if interrupt_flag
      then return is_unitary_to_hts_big_SIMPLE_interrupt(p, Ns, interrupt_base_time)
      else if #Ns = 0
        	  then return is_unitary_hash_big_SIMPLE(p)
@@ -2283,19 +2266,6 @@ set is_unitary_test_big_SIMPLE (Param p, [int] Ns) = bool:
 	fi
      od;
      is_unitary_hash_big_SIMPLE(p)
-
-{
-  in if interrupt_flag then is_unitary_test_big_SIMPLE_interrupt(p, Ns,interrupt_base_time)
-     else for N@i in Ns
-     	  do if not is_pure(hermitian_form_irreducible_to_ht(p,N))
-	     {then unitary_test_counter.use()}
-	     then test_count_mat[i,#Ns] +:= 1;
-	     return false fi
-	  od;
-  	  test_count_mat[#Ns,#Ns] +:= 1;
-	  is_unitary_hash_big_SIMPLE(p)
-      fi
-}
 
 set is_unitary_test_big(Param p, int N) = bool:
   if (not is_hermitian(p)) then return false fi;
@@ -2607,7 +2577,10 @@ set known_unitaries(Param_hash UhashLocal, LocalVertexData Lvd,
 	  od.##
        od}
 {whether to use deformation in looking for evidence that a Param is not unitary}
-set wiggle_flag = true
+{TRUE fails in E6_q one_level at x = 723, lambda = [1,1,0,1,1,1]/1}
+set wiggle_flag = false
+
+
 
 {list locations in LFDKH of reps known to be non-unitary to HT}
 set known_non_unitaries_wiggle(KGBElt x, ratvec lambda, LocalVertexData Lvd,
@@ -2621,8 +2594,8 @@ set known_non_unitaries_wiggle(KGBElt x, ratvec lambda, LocalVertexData Lvd,
        do for p@j in ps[d]
        	  do let pdef =
 	     	 if not is_final(p) or d=0
-	     	 then monomials(finalize(p))
-	     	 else let CF = character_formula(finalize(p))
+	     	 then monomials(p)
+	     	 else let CF = character_formula(1*p)
 		      then verts = LFDKH[d][j][:d+1]
 	     	      in  monomials(composition_series((sum(x.real_form,
 		       	   		    for k:d+1
@@ -2631,7 +2604,6 @@ set known_non_unitaries_wiggle(KGBElt x, ratvec lambda, LocalVertexData Lvd,
 		 fi {now pdef consists of final Params that must be unitary to HT if p is}
 	     in if any(for q in pdef
 		       do @bool: big_unitary_hash.nu_height_lookup_bool(q,HT)
-		       {probably need to fix lookup_bool to handle HT < height(q)}
 	  	       od)
 	     	then [j]
 		else []
