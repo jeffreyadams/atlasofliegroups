@@ -1,4 +1,5 @@
 < Dirac.at {for shifters}
+< goodroots.at {for antifinalize}
 
 {whether to use this function instead of shifters}
 {set short_mu_flag = true}
