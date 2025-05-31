@@ -208,14 +208,13 @@ set more_after_flag = false
 {if true, then min_bottom has already been applied where we are}
 set min_after_flag = false
 
-{if KGB number is below this times #KGB, use is_unitary rather than is_unitary_to_ht}
-{set low_KGB_frac = rat: 1/2}
-
 {lowest level (index in hts[]) to start testing}
-set edge_offset = int: 2
+{1 gives small improvement over 2 in E6; haven't tested bigger G}
+set edge_offset = int: 1
 
-{how much to increase index in hts[] for testing at various levels}
-set edge_skip = int: 2
+{how much to increase index in hts[] for testing at various levels} 
+{1 improves E6_s and E6_q time by almost 10% }
+set edge_skip = int: 1
 
 set difficulty(Param p) = rat:
     let rA = HTA(p)
@@ -459,8 +458,9 @@ set KU_flag = true
 
 {whether to fill in statuses for known unitaries in local_testK_hash*
 and local_test_hash}
-{true now (5/29/25) leads to missing 6 unitary reps for E6_q}
-set KNU_flag = false
+{true costs about 2% in time for E6_q, but seems to make E7_s faster
+by maybe 5%??}
+set KNU_flag = true
 
 {count how often nonunitary induction identifies nonunitary rep}
 set NU_ind_counter = 0
