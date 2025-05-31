@@ -1644,27 +1644,29 @@ case applied_identifier:
 }
 
 @ When an identifier is encountered that can be found neither in the current
-|lexical_context| nor in the |global_id_table|, the interpreter used to (in
-version~1 of the \.{axis} language) simply flag an error. But as a service to
-the user, we now try instead to find something from the |global_overload_table|
-first, provided there is a unique instance of the identifier there that matches
-the type requirement |tp| from the context (which may be no requirement at all).
-If the context type does not accept any function type, we skip this code (the
-overload table can hold only functions), and if it does we distinguish between
-contexts accepting functions of any argument type, and those making some
-restriction on the argument type. This is mainly to be able to give more
-meaningful error messages when our attempt fails, but the case of no
-restrictions also can be handled with somewhat simpler logic. If the type
-requirements should rule out all available variants, then we fall through this
-code as if there were no overloads at all.
+|lexical_context| nor in the |global_id_table|, the interpreter (in version~1 of
+the \.{axis} language) used to simply flag an error. But as a service to the
+user, we now instead try to get a value from the |global_overload_table|,
+provided there is a unique instance of the identifier there that matches the
+type requirement |tp| from the context (which may be no requirement at all).
+We make a distinction between the case where just a single variant is known in
+the overload table, which we treat essentially as if that value had been held in
+a variable of function type instead, and cases where multiple variants of the
+same identifier are defined; in the latter case we only succeed if exactly one
+of the variants meets the requirements of |tp|. The distinction is mainly made
+so that we can give more meaningful error messages when our attempt fails.
+If |tp| does not accept any function type to begin with, we just skip the
+attempt to use the overload table, and if it does accept function types but none
+of the defined variants matches it, we also fall through this code; in either
+case that will result in a simple ``undefined identifier'' error message.
 
 @< See if a unique member of |*vars| matches |tp|, and if so |return| a
    |capture_expression| holding the value of that variant @>=
 { type_expr f_type = gen_func_type.copy();
   if (tp.unify_specialise(f_type))
-  { if (tp.assign().is_polymorphic(f_type.func()->arg_type))
-    @< If |*vars| has a unique variant, |return| its value wrapped in a
-       |capture_expression|, otherwise |throw| an error signalling ambiguity @>
+  { if (vars->size()==1)
+    @< If the unique element of |*vars| matches |tp|, |return| its value wrapped
+       in a |capture_expression|; otherwise |throw| a |type_error| @>
     else
     @< If a unique variant among |*vars| unifies to the type |tp|,
        |return| its value wrapped in a |capture_expression|; if more than one
@@ -1673,53 +1675,39 @@ code as if there were no overloads at all.
   }
 }
 
-@ When the context requires or allows a function type for an identifier, while
-posing no restrictions on the argument type of that function type, there must be
-a unique variant defined for the identifier in the overload table; we then
-basically proceed as if the identifier was defined as a variable with the type
-corresponding to that variant. So we specialise |tp| to the possibly polymorphic
-function type of |variant|, which |functype_absorb| that we shall define below
-accomplishes. This may still fail, if the context does pose a restriction on the
-return type of the function type, and the variant does not meet this
-restriction; we throw a |type_error| in that case. If on the other hand we find
-multiple variants, we warn the user that one cannot simply use an overloaded
-symbol as an identifier with nothing to disambiguate the usage. (We could have
-used a possible restriction on the return type to eliminate certain variants in
-the hope that just one remains, but since we otherwise never use the return type
-to resolve overloading, we decided to not do so here either.)
+@ When the overload table hols a single variant for the identifier, we try to
+specialise |tp| to the function type of |variant|, which |functype_absorb|
+defined below does, returning whether it succeeded. In case of failure, we throw
+a |type_error|, just like we would for a variable used in a context requiring a
+different type.
 
-@< If |*vars| has a unique variant, |return| its value wrapped...@>=
-{ if (vars->size()==1)
-  { const auto& variant = vars->front();
-    if (functype_absorb(tp,variant))
-    { o << main_hash_table->name_of(id) << '@@' << tp.arg_type();
-      return
-        expression_ptr(new capture_expression(variant.value(),o.str()));
-    }
-    throw type_error(e,get_ftype(variant.f_tp()),tp.bake());
+@< If the unique element of |*vars| matches |tp|, |return| its value...@>=
+{ const auto& variant = vars->front();
+  if (functype_absorb(tp,variant))
+  { o << main_hash_table->name_of(id) << '@@' << tp.arg_type();
+    return expression_ptr(new capture_expression(variant.value(),o.str()));
   }
-  else
-  { o << "Use of overloaded '" << main_hash_table->name_of(id)
-    @| << "' is ambiguous, specify argument type to disambiguate";
-    throw expr_error(e,o.str());
-  }
+  throw type_error(e,get_ftype(variant.f_tp()),tp.bake());
 }
 
-@ The overload table stores type information in a |func_type| value, whose two
-components may contain polymorphic values numbered from~$0$. The function
-|functype_absorb| integrates these to integrate these into a |type tp@;| that is
-presumed to be sufficiently generic to allows this, but does provide a possibly
-nonzero |floor()| value that needs to be respected. This means that if we should
-use |unify_specialise| for this task, once for the argument type and once for
-the result type, these two types should be properly shifted first. It then seems
-a bit more straightforward to use |unify| with a |type| constructed from the
-|func_type| with the proper shifts; to do so we use a helper function |get_type|
-to construct a |type_expr| for the |func_type|, and which also will come in
-handy when reporting errors related to types in the overload table.
+@ The overload table stores type information in a |func_type| value, which
+|functype_absorb| must compare against the respective parts of |type tp@;| and
+make the necessary assignments to them in case of success. Note that unlike
+in ordinary overload resolution, we use both the argument and the result type to
+make the match.
+
+We should be aware that in case the table holds polymorphic types they will
+numbered from~$0$, while |tp| has a possibly nonzero |floor()| value that needs
+to be respected. This means that if we should use |unify_specialise| twice for
+this task, both argument and result type should be properly shifted first. It is
+a bit more straightforward to instead first construct a |type_expr| from the
+|func_type| with the proper shifts, and then use |unify| with that type. We so
+using a helper function |get_type|, which also will come in handy when reporting
+errors related to types in the overload table.
 
 @< Local function definitions @>=
 inline type_expr get_ftype(const func_type& ftp)
-{ return type_expr::function(ftp.arg_type.copy(),ftp.result_type.copy()); }
+{@; return type_expr::function(ftp.arg_type.copy(),ftp.result_type.copy()); }
 
 inline bool functype_absorb (type& tp, const overload_data& entry)
 { type model = type::wrap(get_ftype(entry.f_tp()),0,tp.floor());
@@ -1732,19 +1720,17 @@ inline bool functype_absorb (type& tp, const overload_data& entry)
   return false;
 }
 
-@ In the case where the context poses a restriction, we filter the variants for
-one that matches the requirement, and use the result if it is unique. We proceed
-basically as in the case of no restriction, but here the call of
-|functype_absorb| can meaningfully fail, indicating that the variant does not
-satisfy the restriction. In case of such a failure, we must undo any type
-assignments that the failed attempt to match may have made. Since this must be
-done repeatedly, it is simplest to just apply any assignment that might be
-pending initially, by calling |tp.wring_out|, after which any type assignments
-we have must be new, and can be undone by calling |tp.clear|. The fact that we
-call |tp.wring_out| does mean that callers to |convert_expr| cannot expect that
-changes to |tp| are limited to acquiring type assignments; we do not believe any
-caller make that assumption, but if that should be the case, the code below must
-be more careful, and instead record |tp.polymorphics()| initially, and then use
+@ In the case where there is more than one variant to choose from, we filter
+them for one that makes |functype_absorb| succeed. In case of a failure, we must
+undo any type assignments that the failed attempt to match may have made. Since
+this must be done repeatedly, it is simplest to just initially apply any
+assignment that might be pending, by calling |tp.wring_out|, after which any
+type assignments produced by |functype_absorb| must be new, and can be undone by
+calling |tp.clear|. The fact that we call |tp.wring_out| does mean that callers
+to |convert_expr| cannot expect that changes to |tp| are limited to acquiring
+type assignments; we do not believe any caller makes that assumption, but if
+that should turn out to be the case, the code below must be more careful: it
+should instead record |tp.polymorphics()| initially, and then use
 |restore_polymorphics| instead of |clear|.
 
 @< If a unique variant among |*vars| unifies to the type |tp|... @>=
