@@ -1,3 +1,9 @@
+<groups.at
+<structure_constants2.at
+<tits.at
+<test_braid.at
+<L_hom.at
+
 {\phi: G1->G2, WLOG T1->T2
  M is matrix of the dual map X^*(T2)->X^*(T1)
  let R1,R2 = roots, C1,C2 = coroots
@@ -266,7 +272,7 @@ x2
 
 set map_KGB_tits(KGBElt x1,InnerClass ic2,mat M)=KGBElt:map_KGB_tits(x1,ic2,M,orientation_function(ic2))
 
-set map_KGB_tits(InnerClass ic2,mat M)=(KGBElt->KGBElt):(KGBElt x1):map_KGB_tits(x1,ic2,M,orientation_function(G2))
+set map_KGB_tits(InnerClass ic2,mat M)=(KGBElt->KGBElt):(KGBElt x1):map_KGB_tits(x1,ic2,M,orientation_function(ic2))
 
 set map_KGB_gen_tits(KGBElt_gen x1,InnerClass ic2,mat M, orientation epsilon2)=KGBElt_gen:
 let sigma1=tits_element(x1)  {acts by w1*delta1} then
@@ -277,7 +283,7 @@ sigma2=map_tits_element_twisted(x1.inner_class,ic2,M,sigma1) {sigma2 acts by w2*
 {let ()=prints("sigma2= ", sigma2) in}
 KGB_elt_gen(sigma2)
 
-set map_KGB_gen_tits(KGBElt_gen x1,InnerClass ic2,mat M)=KGBElt_gen:map_KGB_gen_tits(x1,ic2,M,orientation_function(G2))
+set map_KGB_gen_tits(KGBElt_gen x1,InnerClass ic2,mat M)=KGBElt_gen:map_KGB_gen_tits(x1,ic2,M,orientation_function(ic2))
 
 set map_KGB_gen_tits(RealForm G2,mat M)=(KGBElt_gen->KGBElt_gen):(KGBElt_gen x1):
 map_KGB_gen_tits(x1,G2,M)

@@ -1,6 +1,10 @@
+<endoscopic_groups.at
+<twisted_endoscopy_D.at
 set GL=GL(9,R)
 set delta=GL.distinguished_involution
-set (G,M,)=endoscopic_group(GL,delta)  {S=Sp(8,R), note the negative coordinates}
+set (G,M)=endoscopy_type_BC(GL,delta)  {S=Sp(8,R), note the negative coordinates}
+{this used endoscopy_type_BC from twisted_endoscopy_D.at
+ this should be replaced by a (twisted endoscopy) function from endoscopic_groups.at but this is currently broken}
 set G=split_form(G)
 {G has funny negative roots:
 atlas> G.simple_roots

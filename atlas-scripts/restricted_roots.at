@@ -14,21 +14,6 @@ set basis_max_split_torus(RealForm G)=mat:
 let delta=G.trivial.x.involution in
 eigen_lattice(^delta,-1) { id_mat in split case}
 
-{eliminate duplicates from list}
-set remove_duplicates([vec] list)=[vec]:
-let rv=[vec]:[] in
-for v in list do
- if find(rv,v)=-1 then rv#:=v fi
-od;rv
-
-{remove zero vector from list}
-set remove_zeros([vec] list)=[vec]:
-##for v in list do if =v then [] else [v] fi od
-
-{removed both duplicates and zeros}
-set prune([vec] list)=[vec]:
-remove_zeros(remove_duplicates(list))
-
 {return: (mat A,mat B) where
  A is the matrix of positive restricted roots
  B is the matrix of positive injected coroots

@@ -1,3 +1,5 @@
+<L_packet.at
+
 {gamma is NOT required to be dominant
 a pair (x,phi) defines a parameter (x defines a character of S_phi)
 here phi.gamma does need to be dominant, but you need to make the PAIR
@@ -89,7 +91,7 @@ set KGB_elt_gen (Tits_elt t)=KGB_elt_gen(t.root_datum,t.theta,t.torus_part)
 {set sign(KGBElt x,ratvec z)=int:(-1)^(rat_as_int(x.unnormalized_torus_factor*(1+x.involution)*z))}
 set sign(KGBElt x,ratvec z)=int:(-1)^(rat_as_int(x.torus_factor*(1+x.involution)*z))
 
-{stable sum of standards, on single real form, defined by phi}a
+{stable sum of standards, on single real form, defined by phi}
 set stable_sum_std(RealForm G,L_homomorphism phi)=param_pol(L_packet(G,phi))
 
 {stable sum collection of phis (and coefficients) on one real form}

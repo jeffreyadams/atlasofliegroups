@@ -1,3 +1,6 @@
+<arthur_sp.at
+<endoscopic_lifting.at
+
 set G=Sp(6,R)
 set Gd=dual_quasisplit_form(G)
 set id=inner_class(G)

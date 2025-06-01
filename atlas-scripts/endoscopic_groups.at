@@ -1,7 +1,10 @@
-{endoscopic group, regular and twisted, structure theory}
-{see endoscopic_lifting.at for lifting (also twisted_endoscopy_D.at)}
-<embed.at
-{<fixed.at}
+{endoscopic group, regular and twisted, structure theory} {see
+endoscopic_lifting.at for lifting (also twisted_endoscopy_D.at)}
+<parameters.at
+<hash.at
+<L_packet.at
+<tabulate.at
+<embed.at {<fixed.at}
 
 set e_verbose=false
 
@@ -210,7 +213,7 @@ RootDatum G, {G not G_vee}
 mat delta_vee,   {optional dual twist, trivial for ordinary endoscopy}
 mat xi_vee,     {dual involution defining the L-group of G; if inner class is given don't need to specify this}
 ratvec s,        {take centralizer(exp(2i\pi s)}
-mat twist)=(RealForm,mat,RealForm):   {an additional twist; the identity gives the default inner class of the endoscopic group
+mat twist)=(RealForm,mat,RealForm):  {an additional twist; the identity gives the default inner class of the endoscopic group
                       this is only needed to get other inner classes of H}
 assert(delta_vee*twist=twist*delta_vee,"w_G_vee doesn't commute with delta_vee");
 {assert(is_fixed(w_G_vee,xi_vee,s), "w_G_vee*xi_vee doesn't fix s");}

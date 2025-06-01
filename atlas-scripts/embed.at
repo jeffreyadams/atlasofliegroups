@@ -1,5 +1,7 @@
 {embed_KGB and embed_param}
 <param_pair_hash.at
+<L_packet.at
+
 set pr([(Param,Param)] pairs)=void:
 let (ph,pg)=pairs[0] then
 ()=prints("H=", ph.real_form, new_line, "G=", pg.real_form) in

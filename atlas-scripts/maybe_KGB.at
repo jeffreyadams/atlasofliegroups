@@ -1,6 +1,5 @@
-{basic functions, should be moved elsewhere}
-set in_weight_lattice(RootDatum rd,ratvec v)=bool:is_integer(v*rd.simple_coroots)
-set in_coweight_lattice(RootDatum rd,ratvec v)=bool:is_integer(v*rd.simple_roots)
+<basic.at
+
 
 set_type
 [ maybe_KGBElt_for_inner_class =     ( void no_KGB | KGBElt solution)]

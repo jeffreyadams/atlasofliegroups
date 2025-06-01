@@ -90,6 +90,10 @@ set from_stops ([int] stops) = (int->int):
   { at |k| find last index |i| with |stops[i]<=k|; calculated via complement }
   (int k): locate_sorted(stops,k+1)-1 { find first excess, then back up }
 
+
+
+
+
 {                               Integers                                }
 
 set abs (int k)= int: if <k then -k else k fi
@@ -942,6 +946,9 @@ set root_datum (LieType t, ratvec gen) = RootDatum: root_datum(t,[gen])
 { list of indices of all simple roots or coroots }
 set all_simples (RootDatum rd) = [int]: #semisimple_rank(rd)
 
+set in_weight_lattice(RootDatum rd,ratvec v)=bool:is_integer(v*rd.simple_coroots)
+set in_coweight_lattice(RootDatum rd,ratvec v)=bool:is_integer(v*rd.simple_roots)
+
 { the following uses that root_index(rd,v)=nr_of_posroots(rd) for a non-root v }
 set is_root ((RootDatum,vec) (rd,):p) = bool:
   root_index(p)<nr_of_posroots(rd)
@@ -1355,6 +1362,18 @@ set ^ = (WeylElt,int->WeylElt):
     fi
   in (WeylElt w,int n) WeylElt:
   if n>0 then power(w,n) elif =n then id_W(root_datum(w)) else /power(w,-n) fi
+
+
+set is_orthogonal (RootDatum rd, vec alpha, vec beta) = bool: =alpha*coroot(rd,beta)
+
+set to_dominant(RootDatum rd, vec wt)=(WeylElt,vec):
+ let (w,wt_dom)=from_dominant(rd,wt) in (inverse(w),wt_dom)  {w*wt=wt_dom}
+set to_dominant( vec cowt,RootDatum rd)=(vec,WeylElt):
+ let (cowt_dom,w)=from_dominant(cowt,rd) in (cowt_dom,inverse(w))  {w*wt=wt_dom}
+set to_dominant (RootDatum rd, ratvec wt) = (WeylElt,ratvec):
+  let (n,d)=%wt then (w,v)=to_dominant(rd,n) in (w,v/d)
+set to_dominant (ratvec cowt,RootDatum rd) = (ratvec,WeylElt):
+  let (n,d)=%cowt then (v,w)=to_dominant(n,rd) in (v/d,w)
 
 set matrix (WeylElt w) = mat:
    let n=w.root_datum.rank in n # for c in id_mat(n) do w*c od
@@ -2233,6 +2252,22 @@ set delete ([ratvec] v, int k)  =[ratvec]:  v[:k]##v[k+1:]
 set delete ([[ratvec]] v, int k)=[[ratvec]]:v[:k]##v[k+1:]
 set delete ([[vec]] v, int k)   =[[vec]]:   v[:k]##v[k+1:]
 set delete ([ParamPol] P, int k)=[ParamPol]:P[:k]##P[k+1:]
+
+
+{eliminate duplicates from list}
+set remove_duplicates([vec] list)=[vec]:
+let rv=[vec]:[] in
+for v in list do
+ if find(rv,v)=-1 then rv#:=v fi
+od;rv
+
+{remove zero vector from list}
+set remove_zeros([vec] list)=[vec]:
+##for v in list do if =v then [] else [v] fi od
+
+{removed both duplicates and zeros}
+set prune([vec] list)=[vec]:
+remove_zeros(remove_duplicates(list))
 
 set positive_imaginary_roots_and_coroots = imaginary_sys@(RootDatum,mat)
 set positive_imaginary_roots_and_coroots = imaginary_sys@KGBElt

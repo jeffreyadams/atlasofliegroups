@@ -1,6 +1,9 @@
 {For now: G, H split; no issue with rho_G-rho_H cover
 also: only pure strong real forms}
+<homomorphism.at
 <L_hom.at
+<endoscopic_groups.at
+<weak_packets.at
 
 {M: X^*(H_v) to X^*(G_v), i.e. also takes X_*(H) to X_*(G)}
 

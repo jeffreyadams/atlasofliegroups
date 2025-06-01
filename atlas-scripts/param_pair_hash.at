@@ -1,3 +1,7 @@
+<parameters.at
+<hash.at
+<tabulate.at
+
 set_type
 [ Param_pair_hash =
   ( ( -> int) size

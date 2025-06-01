@@ -1,4 +1,8 @@
-{<jeff.at
+{an extended example related to questions from Lucas Mason-Brown}
+{this file takes about a few minutes to load, due to computing weak_packets(Sp(10,R))
+ if you reload the file it is best to comment out the line set wp_G=weak_packets(G)}
+<weak_packets.at
+
 set G=Sp(10,R)
 set L=Levi_by_wt([1,0,0,0,0], KGB(G,0))
 set wp_L=weak_packets(L)
@@ -74,8 +78,6 @@ set packet_H_0_langlands=min_height(packet_H_0)
 set packet_H_5_long=for pl in packet_LH_0 do (pl,monomials(theta_induce_irreducible(pl,H)))  od
 set packet_H_1_long=for pl in packet_LH_minus_4 do (pl,monomials(theta_induce_irreducible(pl,H)))  od
 set packet_H_0_long=for pl in packet_LH_minus_5 do (pl,monomials(theta_induce_irreducible(pl,H)))  od
-}
-
 
 set M=all_real_parabolics(G)~[1].Levi
 {set unip_M=for p in unip_L do parameter(KGB(M,p.x.number), p.lambda,p.nu) od}
