@@ -84,6 +84,9 @@ set merge_by ((T->S)f,(S,S->bool)leq) = ([T],[T]->[T]):
 set sort_by ((T->int) f) = ([T]->[T]): sort_by(f,<=@(int,int))
 set sort_by ((T->rat) f) = ([T]->[T]): sort_by(f,<=@(rat,rat))
 
+set lookup_in ([S]a,(S->T)f,(T,T->bool) leq) = (T->Maybe<S>):
+  binary_search_get(sort_by(f,leq)(a),f,leq)
+
 { group together elements with the same value under |f|, ordered by that value }
 set partition_by ((T->S)f,(S,S->bool)leq) = ([T] a) [[T]]:
   let vals = map(f)(a) then rank = ranking(leq)(vals), i=0, n=#a in

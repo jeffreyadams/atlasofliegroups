@@ -12,9 +12,11 @@ set where() = void:
 
 any_type S,T begin
 set succeeds (One_of<S,T> v) = bool: case v | fail: false | succeed: true esac
-set can = succeeds@One_of<S,T> { because |if can(solve(eqn))| sounds better }
+set can (Maybe<T> v) = bool: { because |if can(solve(eqn))| sounds nicer  }
+    case v | none: false | some: true esac
 
-set to_list (One_of<S,T> v) = [T]: case v | fail: [] | succeed(x): [x] esac
+set as_list (One_of<S,T> v) = [T]: case v | fail: [] | succeed(x): [x] esac
+set collect ([Maybe<T>] L) = [T]: for x in L do x.as_list od.##
 
 set requisition (string message) = (One_of<S,T> v) T:
     case v | fail: error(message) | succeed(v): v esac
@@ -30,6 +32,8 @@ set !minus_1 = -1 { used to be more efficient than |-1|, now equally efficient }
 set # (int n)= [int]: for i:n do i od       { [0,1,...,n-1] }
 set # (bool b) = int: if b then 1 else 0 fi { Iverson symbol }
 set sign (bool b) = int: { |(-1)^#b|, i.e.: } if b then -1 else 1 fi
+
+set range (int a, int b) = [int]: for i : b-a from a do i od
 
 set ^ = !=@(bool,bool) { simple exclusive or }
 
@@ -451,6 +455,9 @@ set split ([S,T] l) = ([S],[T]): ( for(s,)in l do s od, for(,t)in l do t od )
 
 set zip ([S] a,[T] b) = [S,T]:
   if #a<=#b then for x@i in a do (x,b[i]) od else for y@i in b do (a[i],y) od fi
+
+set unzip ([S,T] list) = ([S],[T]):
+  ( for (x,) in list do x od , for (,y) in list do y od )
 
 set transpose ([[T]] rr) = [[T]]:
 { only for rectangular array with at least one entry no information is lost }

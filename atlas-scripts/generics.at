@@ -23,4 +23,10 @@ set foldr ((S,T->T) op, T !start) = ([S]->T):
   ([S] a) T: let v=start in for x in a ~do v := op(x,v) od; v
   { rec_fun f ([S] a) T: if #a=0 then start else op(a[0],f(a[1:])) fi }
 
+set combine { lile |foldl|, but nonempty only and with swapped arguments }
+  ([T] a) = ((T,T->T) ->T):
+  if #a=0 then error("Empty argument to 'combine'")
+  else ((T,T->T) op) T: let v=a[0] in for i:#a-1 from 1 do v op:= a[i] od; v
+  fi
+
 end
