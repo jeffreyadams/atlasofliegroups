@@ -52,6 +52,10 @@ in while candidates>0
    in candidates:= AND(without_first_set_bit(candidates),bottoms)
    ;  i
    od
+{ alternatively, with (rd,select):LI
+     let rho2_L = two_rho(Levi_info)
+     in list(rd.nr_of_posroots,(int i): select(i) and coroot(rd,i)*rho2_L=2)
+}
 
 { a root datum can be formed from |Levi_info|, or simple (co)root index list }
 set Levi_datum = sub_datum@(RootDatum,(int->bool)) { defined in basic.at }
@@ -156,9 +160,7 @@ set rho_stabiliser_orbit (RootDatum rd, [int] standard_Levi) = orbit_data:
 	  { starting point: a single |orbit_entry| }
 	]
    , present(orbit_data sorted,int code) = bool:
-     	let l=#sorted
-	then i = binary_search_first((int i)bool: sorted[i].L_int>=code, 0,l)
-	in i<l and sorted[i].L_int=code
+        binary_search_in(sorted,L_int@orbit_entry,<=@(int,int))(code).succeeds
    , sanitise = { process new level of Levis: sort and remove duplicates }
         sort_u((orbit_entry x,orbit_entry y) bool: x.L_int<=y.L_int)
 in while { loop with |do| near end }
@@ -286,9 +288,10 @@ in case binary_search_get(table[#Levi], rho2_dom@rho_data, rlex_leq@(vec,vec))
 	esac
    esac
 
-{
-  Here is another approach that we previously used instead of using |two_rho|;
-  we keep it because the implemented functionality might have other uses.
+{ Here is another approach that we previously used instead of using |two_rho|;
+  we keep it because the implemented functionality might have other uses. For
+  one, the function |from_standard_Levi| below is a fast way to find some
+  conjugate standrad Levi of an arbitrary one, without doing classification.
 
   For the case where we are given a non standard list of simple generators (not
   all positive, and in arbitrary order) for the _full_ root system, there is an
@@ -416,8 +419,6 @@ set Levi_lookup (RootDatum rd,Std_Levi_table table) = ([int]->WeylElt,[int]):
    in (chamber*conj,Levi_repr)
 
 
-forget LeviInfo
-forget orbit_entry
 forget orbit_data
 forget Other_entry
 forget Std_Levi_orbit
