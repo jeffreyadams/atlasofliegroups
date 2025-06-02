@@ -2580,7 +2580,19 @@ set known_unitaries(Param_hash UhashLocal, LocalVertexData Lvd,
 {TRUE fails in E6_q one_level at x = 723, lambda = [1,1,0,1,1,1]/1}
 set wiggle_flag = false
 
-
+{whether Param's appearing by deforming the irreducible at the face defined by verts to its
+ codimension one faces give nonunitarity}
+{set nu_wiggle(KGBElt x, ratvec lambda, vec verts, LocalVertexData Lvd, int HT) = bool:
+    if #verts = 1 then return [] fi;
+    let p = parameter(x,lambda,face_bary(Lvd,verts)), d = #verts -1
+    then CF = character_formula_to_height(1*p,HT)
+    then qs = monomials(composition_series_to_ht(( sum(x.real_form,
+       						for k:d+1
+	   					do wiggle(CF, face_bary(Lvd,verts[:k]##verts[k+1:]))
+	   					od)), HT - 1))
+    in any(for q in qs
+       	   do @bool: not is_unitary_to_ht_big_SIMPLE(q,HT)
+	   od)}
 
 {list locations in LFDKH of reps known to be non-unitary to HT}
 set known_non_unitaries_wiggle(KGBElt x, ratvec lambda, LocalVertexData Lvd,
@@ -2595,12 +2607,13 @@ set known_non_unitaries_wiggle(KGBElt x, ratvec lambda, LocalVertexData Lvd,
        	  do let pdef =
 	     	 if not is_final(p) or d=0
 	     	 then monomials(p)
-	     	 else let CF = character_formula(1*p)
+	     	 else let CF = character_formula_to_height(1*p,HT)
 		      then verts = LFDKH[d][j][:d+1]
-	     	      in  monomials(composition_series((sum(x.real_form,
+	     	      in  monomials(composition_series_to_ht((sum(x.real_form,
 		       	   		    for k:d+1
 			   		    do wiggle(CF, face_bary(Lvd,verts[:k]##verts[k+1:]))
-			   		    od))))
+			   		    od)), HT - 1))
+		     {to have an interesting test to HT, terms should have strictly smaller HT}
 		 fi {now pdef consists of final Params that must be unitary to HT if p is}
 	     in if any(for q in pdef
 		       do @bool: big_unitary_hash.nu_height_lookup_bool(q,HT)
@@ -2663,12 +2676,13 @@ set known_non_unitaries(KGBElt x, ratvec lambda, LocalVertexData Lvd,
 	  od.##
        od
 
+{wiggle is quite slow without a height bound, so for now just don't do it here}
 {list locations in LFDKH of reps known to be non-unitary}
 set known_non_unitaries(KGBElt x, ratvec lambda, LocalVertexData Lvd,
     [[FaceVertsKHash]] LFDKH) = [vec]:
-    if wiggle_flag
+    {if wiggle_flag
     then return known_non_unitaries_wiggle(x,lambda,Lvd,LFDKH)
-    fi;
+    fi;}
     let ps = for d:#LFDKH
     	     do for v in LFDKH[d]
 	     	do parameter(x,lambda,face_bary(Lvd, v[:d+1]))

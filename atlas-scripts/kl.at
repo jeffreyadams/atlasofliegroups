@@ -143,6 +143,17 @@ set composition_series(ParamPol P) = ParamPol:
 
 set composition_series (Param p) = ParamPol: composition_series(ParamPol: p)
 
+set composition_series_to_ht(ParamPol P, int H) = ParamPol:
+  let (PH,) = height_split(P,H)
+  in null_module(P)+
+  while !=PH { non null module }
+  do let (coef,p):term=first_term(PH)
+     in PH -:= coef*character_formula_to_height(p,H)
+     ; term
+  od
+
+set composition_series_to_ht (Param p,int H) = ParamPol: composition_series_to_ht(ParamPol: p, H)
+
 set tabulate_at_1 ([Param] block, (Param->ParamPol) f) = mat:
   for y in block { y determines a column of the result }
   do let fy=f(y) in for x in block do fy[x].s_to_1 od
