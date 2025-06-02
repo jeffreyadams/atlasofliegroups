@@ -215,7 +215,7 @@ void KL_table::fill(BlockElt limit, bool verbose)
       d_KL[*it].clear();
       d_mu[*it].clear();
     }
-    throw error::MemoryOverflow();
+    throw;
   }
 
 } // |KL_table::fill|

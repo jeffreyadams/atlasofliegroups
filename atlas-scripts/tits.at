@@ -1,15 +1,25 @@
 <basic.at
-<Weylgroup.at
+<Weylgroup.at { for |lengthens| (both forms) }
 <W_orbit.at
 
+{ An element of the (\delta-extended) Tits group is represented by (RootDatum
+  rd,ratvec v,mat theta) representing \exp(2\ii\pi v) \sigma_w d where \theta is
+  the the action of wd on X^*, with w\in W and d is a distinguished involution
+  of that lattice, allowing for both d=\delta and d=identity. In fact we do not
+  directly represent w (separately from d), although we do implement
+  multiplications by elements of W (where w represents the canonical lift
+  \sigma_w) and we do have a well defined notion of length change for such
+  operations, in terms of counting roots in the \theta image of the poscoroots.
+  
 
-{ An element of the (\delta-extended) Tits group is represented by
+{Note for debugging purposes: here is the beginning of the comment before a recent modification:
+  An element of the (\delta-extended) Tits group is represented by
   (RootDatum rd,ratvec v,mat theta) representing \exp(2i\pi v) \sigma_w d
   where \theta is the the action of wd on X^*, with w\in W and d is a
   distinguished involution of that lattice (we need to allow both d=\delta and
   d=identity in order to get a group, with multiplication and inverse). We can
   do without explicitly representing d, since we shall work with the image
-  under \theta of the set of positive (co)roots, which set d stabilises.
+  under \theta of the set of positive (co)roots, which set d stabilises.}
 
   NOTE: sigma=(rd,v,theta) means v is the "unnormalized torus factor" of sigma, in the
         terminology of KGBElt and KGBElt_gen. Thath is x=(inner_cl
@@ -17,6 +27,16 @@
   So v is a rational coweight taken modulo 1; theta need not be an involution.
   Note that theta is defined as operating from left on X^*; for left action of
   theta on v, use the transpose inverse (right-multiply v by inverse(theta)).
+
+  The set of values for which \theta is the identity is the torus, an Abelian
+  normal subgroup of our Tits group. The basic ingredients of the groups
+  structure are the fact that (\sigma_s)^2 for Weyl group generators is a tutus
+  element m_s, represented by v=simple_coroot(rd,s)/2, and the commutation
+  relations \sigma_s*v=s(v)*\sigma_s where s(v)=v*M_s for the matrix M_s of s.
+
+  Note that if we had used a doubled scale for v (and consequently the map
+  $z\mapsto\exp(\ii\pi)$ as well as reduction modulo 2 rather than 1), this
+  would have avoided many divisions by 2; it might have been a better idea.
 }
 
 set_type [ Tits_elt = (RootDatum root_datum,ratvec torus_part,mat theta) ]
@@ -84,25 +104,26 @@ set tits_delta (RootDatum rd,mat delta) = Tits_elt: (rd,null(rank(rd)),delta)
 set tits_delta (InnerClass ic) = Tits_elt:
   tits_delta(ic.root_datum,distinguished_involution(ic))
 
-{ left multiplication by sigma_s, where s must index a simple root }
-set left (int s,Tits_elt(rd,v,theta)) = Tits_elt:
-  ( rd
-  , let v1 = coreflect(rd,v,s) { permute sigma_s e(v), so act by s on v } in
-    if lengthens(rd,s,theta) { valid even if theta=w.delta is not in W }
-    then v1
-    else v1+coroot(rd,s)/2 { second term represents m_s = sigma_s^2 }
-    fi % 1
-  , left_reflect(rd,s,theta)
-  )
-
 { right multiplication by sigma_s, where s must index a simple root }
 set right (Tits_elt(rd,v,theta), int s) = Tits_elt:
   ( rd
-  , if lengthens(rd,theta,s) { again valid even if theta=w.delta not in W }
+  , if lengthens(rd,theta,s) { valid even if theta=w.delta not in W }
     then v
     else v+coroot(rd,s)*theta.inverse/2 { got theta' m_s; permute factors }
     fi % 1
   , right_reflect(rd,theta,s)
+  )
+
+{ left multiplication by sigma_s, where s must index a simple root }
+set left (int s,Tits_elt(rd,v,theta)) = Tits_elt:
+  ( rd
+  , { first sigma_a must cross exp(v), so act by s on v by coreflection: }
+    let v1 = coreflect(rd,v,s) in
+    if lengthens(rd,s,theta) { again valid even if theta=w.delta is not in W }
+    then v1
+    else v1+coroot(rd,s)/2 { second term represents m_s = sigma_s^2 }
+    fi % 1
+  , left_reflect(rd,s,theta)
   )
 
 { multiplication by canonical lift of WeylElt }
@@ -133,22 +154,32 @@ set conjugate (int s, Tits_elt xi) = Tits_elt:
   let sigma_s_inv = (ratvec,int): (coroot(xi.root_datum,s)/2 {=m_s},s) in
   right(left(s,xi),sigma_s_inv)
 
+{ conjugate by canonical lift sigma_w of Weyl group element }
 set conjugate (WeylElt w, Tits_elt xi) = Tits_elt:
   for s in w.word ~ do xi:=conjugate(s,xi) od; xi
 
 {
   for general multiplication, we allow theta and eta to be in either of the
   W-cosets (that of the identity and of \delta). The basic formula is that if
-  \sigma_\theta denotes the canonical lift of \theta to the Tits group, which
-  is \sigma_w d where d is either the identity or \delta, then the product is
+  \sigma_w denotes the canonical lift of w to the Tits group, then one has
 
-         \sigma_\theta \sigma_\eta = m_S \sigma_{\theta\eta},
+         \sigma_{w_1} \sigma_{w_2} = m_{S(w_1,w_2)} \sigma_{w_1 w_2} ,
 
-  where S is the set of roots \theta(\eta(\Delta^+)\cap\Delta^-)\cap\Delta^+
-  and m_S is the image in the torus of the set of the coroots corresponding to
-  S. The code below actually computes S using matrices representing coroots as
+  where the set of posroots
+
+         S(w_1,w_2) = \Delta^+ \cap w( \Delta^- \cap w'(\Delta^+) ) ,
+
+  is transformed into a torus element m_{S(w_1,w_2)} by applying the map
+  v\mapsto\exp(\pi\ii t) to the sum of the corresponding coroots. (The proof is
+  by induction on the length of w_1: for the statrting case w_1=e, the set S is
+  empty making the result trivial. Otherwise write w_1=sw with l(w)<l(w_1):
+  then S(w_1,w_2) is obtained from s.S(w,w_1) (which is a set of posroots) by
+  possibly adding the simple root \alpha_s, in the case l(w_1w_2)<l(ww_2).)
+
+  The code below actually computes S using matrices representing coroots as
   their columns (so that the passage from S to m_S is obtained by taking the
-  half-sum modulo 1). The action of \theta,\eta is then by transpose inverse.
+  half-sum of the columns modulo 1). The action of \theta,\eta on such a matrix
+  is then by left multiplication by the transpose inverse (a right-action).
 }
 set multiply(Tits_elt(rd,v,theta), Tits_elt({assume rd},u,eta)) = Tits_elt:
 let tt1 = ^theta.inverse
@@ -181,8 +212,10 @@ set * = multiply@(Tits_elt,Tits_elt)
 set product (RootDatum rd, [Tits_elt] L) = Tits_elt:
   let p = tits_identity(rd) in for w in L do p *:= w od; p
 
-{ inverse uses the bicycle lemma (note the (2\-/2) "bicycle" structure):
+{ inverse uses the bicycle lemma (note the (2\.../2) "bicycle" structure):
+
    sigma_w*sigma_{w^{-1}} = exp(2\pi i(rho^vee-rho^vee*w^{-1})/2)
+   {this is a joke; the two 2's cancel, but doing so destroys the bicycle image}
   whence
    inverse(Tits_elt:(0,theta)) = Tits_elt:(rho_check*(1-theta)/2,inverse(theta))
   (this formula remains valid in both cosets of W)
