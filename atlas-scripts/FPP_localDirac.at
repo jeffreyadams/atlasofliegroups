@@ -214,7 +214,7 @@ set edge_offset = int: 2
 
 {how much to increase index in hts[] for testing at various levels} 
 {1 improves E6_s and E6_q time by almost 10% }
-set edge_skip = int: 2
+set edge_skip = int: 1
 
 set difficulty(Param p) = rat:
     let rA = HTA(p)
