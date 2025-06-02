@@ -1,4 +1,4 @@
-<k_highest_weights {for all_lambda_differential_zero}
+<K_highest_weights {for all_lambda_differential_zero}
 <lattice {for vec_solve}
 { <chopping_facets_fast.at {for chop_coroots(G, vertices)}}
 <face_classes {for ordering on facets}
