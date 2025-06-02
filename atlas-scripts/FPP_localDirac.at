@@ -166,7 +166,7 @@ set revert_flag = false {true}
 
 {If "false", use the old version of one_level, in which vertex/edge calcs
 are done immediately to ONE_HT}
-set step_flag = true
+set step_flag = false
 
 {If "true", then hash_dumb uses real_dumb, which does less to_ht}
 set real_flag = false
@@ -210,11 +210,11 @@ set min_after_flag = false
 
 {lowest level (index in hts[]) to start testing}
 {1 gives small improvement over 2 in E6; haven't tested bigger G}
-set edge_offset = int: 1
+set edge_offset = int: 2
 
 {how much to increase index in hts[] for testing at various levels} 
 {1 improves E6_s and E6_q time by almost 10% }
-set edge_skip = int: 1
+set edge_skip = int: 2
 
 set difficulty(Param p) = rat:
     let rA = HTA(p)
@@ -360,6 +360,11 @@ set localGraphRedLong([[FaceVertsIndex]] LF) = (GraphData, [vec], [vec]):
     then classListByFace = [vec]: class_lists(LF,(eq,gr)), IUCL = full_down_classes(eq,gr)
     in ((eq,gr), IUCL, classListByFace)
 
+{classes have common value of red_count, so same K-character}
+set localGraphRedMed([[FaceVertsIndex]] LF) = (GraphData, [vec]):
+    let (eq,gr) = GraphData: K_graph_data(LF)
+    then classListByFace = [vec]: class_lists(LF,(eq,gr))
+    in ((eq,gr), classListByFace)
 
 set look_up_vertices ([ratvec] vertices, [int] face)=[ratvec]:
    for n in face do vertices[n] od
@@ -556,6 +561,8 @@ set local_testK_hash(KGBElt x, ratvec lambda, LocalVertexData Lvd,
 	      	     then let C=eq[k]
 		     	  then (d,j) = coords(FVKH,C[0])
 	      	     	  then verts = vec: FVKH[d][j][:d+1]
+			  {then () = if wiggle_flag and nu_wiggle(x,lambda,verts,Lvd,HT)
+				    then result = any(for q in qs do not is_unitary_to_ht_big_SIMPLE(q,}
 		     	  then gamma = face_bary(Lvd,verts)
 		     	  then pC = parameter(x, lambda, gamma)
 	      	     	  then ps = monomials(pC)
@@ -596,7 +603,7 @@ set local_testK_hash(KGBElt x, ratvec lambda, LocalVertexData Lvd,
 					     "; so far ",unitary_test_counter.use_count(),
 	      	   			     " 'is_unitary' tests; ",unk," classes still undetermined")
 	      	   		     fi {fund_faca_verbose}
-		      	   then () = if newStatuses[K] = "?"
+		      	   then () = if newStatuses[K][0] = "?" {NEWU}
 	      	     	   	     then let C=eq[K]
 		     	  	     then (d,j) = coords(FVKH,C[0])
 	      	     	  	     then verts = vec: FVKH[d][j][:d+1]
@@ -628,7 +635,7 @@ set local_testK_hash(KGBElt x, ratvec lambda, LocalVertexData Lvd,
 			     	{; prints("tested F at class ",k)}
 		     	     	{; prints("number false = ",count(for S in newStatuses do S[0] = "F" od))}
 				;} newStatuses[K] := "F"
-			     fi
+			     fi {all for p in ps}
 		     	fi{NEWU}
 		 fi {newStatuses[K] = "?"}
 		      	   in ()
@@ -1352,25 +1359,28 @@ set local_test_hash(KGBElt x, ratvec lambda, LocalVertexData Lvd,
 	    	      od {j in list}
 	      	   od {list@d}
 		fi
-    then unitary_by_dim = vec: null(#LFVH)
-    then UParams = [Param]:
-	 for m:NumClasses {work from small faces toward big}
-    	~do {if fund_face_verbose {and NumClasses > 100} and
-	      	     (NumClasses - m - 1)%printInterval = 0
-	    	  then let unk = #q_nums(newStatuses[:m])
-	    	 in prints("testing equivalence class #"
-	      ,m, "; so far ",unitary_test_counter.use_count() - start_count
-	      ," 'is_unitary' tests; ",unk," classes still undetermined")
-	      {; printInterval := (3*printInterval)\2 + 1}
-	    fi; {fund_face_verbose}}
-	        let C=eq[m]
-	      	then (d,j) = coords(LFVH,C[0])
-	      	then verts = vec: LFVH[d][j][:d+1]
-		then pC = parameter(x, lambda, face_bary(Lvd, verts))
-		  {first_param makes trouble in UParams list!}
-	      	then ps = monomials(pC)
-	      	in if{NEWU} newStatuses[m][0] = "T"
-			    or all(for p in ps
+    then known_true_count = 0, known_false_count = 0, unknown_ms = [int]:[]
+    then () = for s@m in newStatuses
+    	      do if s[0] = "T" then known_true_count +:= 1
+	      	 elif s[0] = "F" then known_false_count +:=1
+		 else unknown_ms #:=m
+		 fi
+	      od
+    then () = if test_verbose
+    	      then prints("     Examining ",NumClasses," classes in local_testK_hash; ",
+	      known_true_count," are known unitary, ", known_false_count, " known nonunitary.")
+	      fi
+    then () = for m:NumClasses {work from small faces toward big}
+    	     ~do if{NEWU} newStatuses[m][0] = "?"
+	         then let C = eq[m]
+		      then (d,j) = coords(LFVH,C[0])
+	      	      then verts = vec: LFVH[d][j][:d+1]
+			  {then () = if wiggle_flag and nu_wiggle(x,lambda,verts,Lvd,HT)
+				    then result = any(for q in qs do not is_unitary_to_ht_big_SIMPLE(q,}
+		     then gamma = face_bary(Lvd,verts)
+		     then pC = parameter(x, lambda, gamma)
+	      	     then ps = monomials(pC)
+		     then () = if all(for p in ps
 		   	    	   do @bool: Uhash.lookup(p).>= or (let ans = tester(p)
 				      	     			   in if not ans
 								      then if more_after_flag
@@ -1380,98 +1390,81 @@ set local_test_hash(KGBElt x, ratvec lambda, LocalVertexData Lvd,
 									   fi
 								       fi; ans)
 				   od)
-		   then newStatuses[m]:="T";
-		   	for i in C
-		   	do let (e,k) = coords(LFVH,i)
-			   then moreverts = vec: LFVH[e][k][:e+1]
-			   then () = unitary_by_dim[e]+:=1
-			   then q = parameter(x,lambda, face_bary(Lvd,moreverts))
-			   then () = for q1 in monomials(finalize(q))
-			   	     do Uhash.match({herm_center(}q1{)});
-				     if deform_flag
-				     then for q1d in facet_deformed_new(q1)
-				     	  do Uhash.match({herm_center(}q1d{)})
-					  od
-				     fi
-				     od
-			   then () = if long_out_flag
-		      	   	     then let () = ParamsByDim[e] #:=q
-				     {ParamsByDim[d] := ParamsByDim[d]#q}
-			   	     	  then ()=LFDKHByDim[e]#:=LFVH[e][k]
-					  {LFDKHByDim[d]#LFVH[d][j]}
-				     	  in ()
-			   	     fi
-		       	   in q
-		    	od {list of tester unitary Params}
+		   	      then newStatuses[m]:="T"
+
 		   else newStatuses:= updateNUclassesB(newStatuses, gr, m);
 		   	newStatuses[m] := "F";
 			[]
-		   fi{NEWU} { {so far a [Param]}}
-	 ## (let M = NumClasses - m - 1 {M runs from 0}
-	    then () = if M >= m then []; break fi
-	    then () = if fund_face_verbose and M%printInterval = 0
-	    	      then let unk = #q_nums(newStatuses[M:m])
-	    	      	   in prints("testing equivalence class #",M, " and #",m,
-	      		     "; so far ",unitary_test_counter.use_count() - start_count
-	      		   ," 'is_unitary' tests; ",unk," classes still undetermined")
-	      		   ; printInterval := (3*printInterval)\2 + 1
-	    	       fi {fund_face_verbose}
-	     then C=eq[M]
-	     then (d,j) = coords(LFVH,C[0]) {always easier to test FIRST term in equiv class?}
-	     then verts = vec: LFVH[d][j][:d+1]
-	     then pC = parameter(x, lambda, face_bary(Lvd, verts))
-		  {first_param makes trouble in UParams list!}
-	     then ps = monomials(pC)
-	     in if{NEWU} newStatuses[M][0] = "T"
-		   or all(for p in ps
-		   	  do @bool: Uhash.lookup(p).>= or
-			     (let ans = tester(p)
-			      in if not ans
-				 then if more_after_flag
-				      then more_bad_hash.match(p)
-				      elif min_after_flag
-				      then bad_hash.match(p)
-				      fi {more_after}
-				  fi{not ans}
-				  ; ans)
-			  od)
-		 then for i in C
-		      do let (e,k) = coords(LFVH,i)
-			 then moreverts = vec: LFVH[e][k][:e+1]
-			   then () = unitary_by_dim[e]+:=1
-			   then q = parameter(x,lambda, face_bary(Lvd,moreverts))
-			   then () = for q1 in monomials(finalize(q))
-			   	     do Uhash.match({herm_center(}q1{)});
-				     if deform_flag
-				     then for q1d in facet_deformed_new(q1)
-				     	  do Uhash.match({herm_center(}q1d{)})
-					  od
-				     fi
+		   fi{NEWU};
+	         if let mopp = NumClasses - m - 1 in mopp < m
+	       	    then let M = NumClasses -m -1
+	    	      	 then () = if fund_face_verbose and M%printInterval = 0
+	    	      	      	   then let unk = #q_nums(newStatuses[M:m])
+	    	      	   	   	in prints("testing equivalence class #",M, " and #",m,
+	      		     	   "; so far ",unitary_test_counter.use_count() - start_count
+	      		   	   ," 'is_unitary' tests; ",unk," classes still undetermined")
+	      		   	   ; printInterval := (3*printInterval)\2 + 1
+	    	       	    	   fi {fund_face_verbose}
+	                  in if newStatuses[M][0] = "?" {NEWU}
+		      	     then let C=eq[M]
+		 	        then (d,j) = coords(LFVH,C[0]) {always easier to test FIRST term in equiv class?}
+	     			then verts = vec: LFVH[d][j][:d+1]
+	     			then pC = parameter(x, lambda, face_bary(Lvd, verts))
+		  		     {first_param makes trouble in UParams list!}
+	     			then ps = monomials(pC)
+	     			in if all(for p in ps
+		   	  	      	  do @bool: Uhash.lookup(p).>= or (let ans = tester(p)
+			      	 	     	    		       	   in if not ans
+				    					      then if more_after_flag
+				      	 				      	   then more_bad_hash.match(p)
+				      	 					   elif min_after_flag
+				      	 					   then bad_hash.match(p)
+				      	 					   fi {more_after}
+				    					      fi{not ans}
+				  					      ; ans)
+					od) {all for p in ps}
+			   	   then newStatuses := downdateUclassesB(newStatuses, gr, M,"T");
+			   	     	 newStatuses[M] := "T"
+		   		   else newStatuses[M] := "F"
+				   fi {all for p in ps}
+		            fi {NEWU} {list of unitary Params}
+		fi {mopp < m}
+		in ()
+		fi
+	  od {m:NumClasses}
+     then unitary_by_dim = vec: null(#LFVH)
+     then UParams = [Param]:[]
+     then () = for C@k in eq
+     	       do if newStatuses[k][0] = "T"
+	       	  then for i in C
+		       do let (d,j) = coords(LFVH,i)
+		          then moreverts = vec: LFVH[d][j][:d+1]
+			  then () = unitary_by_dim[d]+:=1
+			  then q = parameter(x,lambda, face_bary(Lvd,moreverts))
+			  in UParams #:= q;
+			     if long_out_flag
+		      	     then ParamsByDim[d] #:=q;
+			   	  LFDKHByDim[d]#:=LFVH[d][j]
+			     fi;
+			     for q1 in monomials(finalize(q))
+			     do Uhash.match(q1);
+				if deform_flag
+				then for q1d in facet_deformed_new(q1)
+				     do Uhash.match(q1d)
 				     od
-			   then () = if long_out_flag
-		      	   	     then let () = ParamsByDim[e] #:=q
-				     {ParamsByDim[d] := ParamsByDim[d]#q}
-			   	     	  then ()=LFDKHByDim[e]#:=LFVH[e][k]
-					  {LFDKHByDim[d]#LFVH[d][j]}
-				     	  in ()
-			   	     fi
-			   then () = newStatuses := downdateUclassesB(newStatuses, gr, m);
-			   newStatuses[m] := "T"
-		       	   in q
-		    	od 
-		   else newStatuses[M] := "F";
-			[]
-		   fi ){NEWU} {list of unitary Params}
-	  od.##
+				fi {deform_flag}
+			     od {q1 in monomials}
+		       od {i in C}
+		   fi {newStatuses[k]}
+		od
      then () = if test_verbose
     	       then prints("     Total of ", count(for ans in newStatuses do ans[0] = "T" od),
-	      	   		 " classes are unitary candidates.")
+	      	   		 " classes are unitary.")
 	       fi
     then () = if test_verbose or test_slightly_verbose
-    	      then prints("tester unitary faces by dim = ",
-       	       	    	   unitary_by_dim, test_string);
-		 prints("number of tests = ",unitary_test_counter.use_count() - start_count, ", in ",
-		 		print_time_string(elapsed_ms() - start))
+    	      then prints("unitary faces by dim = ",unitary_by_dim, test_string);
+		   prints("number of tests = ",unitary_test_counter.use_count() - start_count, ", in ",
+		 	print_time_string(elapsed_ms() - start))
 	      fi
     in  UParams
 
@@ -2854,6 +2847,8 @@ set local_test_GEO_hash2(KGBElt x, ratvec lambda, {VertexData vd,} LocalVertexDa
                         " face counts to dim 1: ",for list in LFDKH do #list od
 			,"; Dirac_best eliminated ", DBTcount - startDBTcount)
 	      fi
+    then wiggle_flag_hold = wiggle_flag
+    then () = wiggle_flag:=false
     then () = if quick_flag
     	      then let () = LFDKH:= extend_K_characters(x, lambda, Lvd, LFDKH, hts[Dmid], pol_hash)
 		       	    {now pol_hash has K-chars to hts[Dmid]}
@@ -2861,7 +2856,7 @@ set local_test_GEO_hash2(KGBElt x, ratvec lambda, {VertexData vd,} LocalVertexDa
 	      	       	    	     hts[Dmid], pol_hash)
 	           then ((eq,gr),IUCL,CLBF) = localGraphK(LFDKH, pol_hash, hts[Dmid])
 		   then () = LFDKH := local_testK_hash(x,lambda,Lvd,
-                      LFDKH, eq, gr, CLBF, (Param->bool): (Param p): is_unitary_to_hts_big_SIMPLE(p,hts[1:Dmid+1])
+                      LFDKH, eq, gr, CLBF, (Param->bool): (Param p): is_unitary_to_hts_big_SIMPLE(p,hts[:Dmid+1])
 		      	,hts[Dmid], Uhash, fancy_tester)  {test to the same height as not quick}
 		   in if test_verbose
 		      then prints("unitary to ht ",hts[Dmid],
@@ -2883,7 +2878,8 @@ set local_test_GEO_hash2(KGBElt x, ratvec lambda, {VertexData vd,} LocalVertexDa
 		       	       	  then ((eq,gr),IUCL,CLBF) = localGraphK(LFDKH, pol_hash, HD)
        	      	 		       {compute graph on faces to dim D+1}
 		 		  then () = LFDKH := local_testK_hash(x, lambda, Lvd, LFDKH, eq, gr, CLBF,
-		 		       	  (Param->bool):(Param p): is_unitary_to_ht_big_SIMPLE(p, HD)
+		 		       	  (Param->bool):(Param p): is_unitary_to_hts_big_SIMPLE(p,
+					  hts[:D*edge_skip + edge_offset+1] {HD})
 					  , hts[D*edge_skip +edge_offset], Uhash, fancy_tester)
 		 		  then () = if test_verbose
 		     	   	  then prints("unitary to ht ",HD , " face counts to dim ",D+1,
@@ -2905,7 +2901,7 @@ set local_test_GEO_hash2(KGBElt x, ratvec lambda, {VertexData vd,} LocalVertexDa
 	      	      	" unitary candidates in ",#eq," equivalence classes.");
 		   prints("using is_unitary_tester_big_SIMPLE_interrupt")
 	      fi
-    then mu_tester(Param p) = bool: is_unitary_test_big_SIMPLE_interrupt(p, hts[Dlast+1:])
+    then mu_tester(Param p) = bool: is_unitary_test_big_SIMPLE_interrupt(p, hts[min(Dlast,Dmid)+1:])
     then start=elapsed_ms() {already unitary to height hts[Dlast] = hts[max(r,2)]}
     then UParams = local_test_hash(x, lambda, Lvd, LFDKH, eq, gr, CLBF, (Param->bool): (Param p):
 		 if test_interrupt_flag {up_mu_flag}
@@ -2913,6 +2909,7 @@ set local_test_GEO_hash2(KGBElt x, ratvec lambda, {VertexData vd,} LocalVertexDa
 		 else is_unitary_hash_big_SIMPLE(p)
 		 fi, Uhash)
     {Maybe NEED TO PUT BOTTOM LAYER STUFF BACK}
+    then () = wiggle_flag:=wiggle_flag_hold
     then time = elapsed_ms() - start
     then () = if time_verbose
 	      then prints("     ", print_time_string(time),
@@ -2964,6 +2961,8 @@ set local_test_GEO_hash2_end(KGBElt x, ratvec lambda, LocalVertexData Lvd, [[Fac
     then ICPNU_flag_hold = ICPNU_flag
     then () = ICPNU_flag:=false
     then () = LFDKH := local_testK_hash(x,lambda,Lvd, LFDKH, eq, gr, CLBF, tester1, ht0, Uhash, fancy_tester)
+    then wiggle_flag_hold = wiggle_flag
+    then () = wiggle_flag :=false
     then () = if test_verbose then prints("unitary to ht ", ht0,
                         " face counts to dim 1: ",for list in LFDKH do #list od)
 			{,"; Dirac_best eliminated ", DBTcount - startDBTcount)} fi
@@ -3022,6 +3021,7 @@ set local_test_GEO_hash2_end(KGBElt x, ratvec lambda, LocalVertexData Lvd, [[Fac
 		 else is_unitary_hash_big_SIMPLE(p)
 		 fi, Uhash)
     {Maybe NEED TO PUT BOTTOM LAYER STUFF BACK}
+    then () = wiggle_flag:=wiggle_flag_hold
     then time = elapsed_ms() - start
     then () = if time_verbose
 	      then prints("     ", print_time_string(time),
@@ -3078,6 +3078,9 @@ set diff_cutoff = int: 90
 10000 means always default}
 set prod_cutoff = int: 3000
 
+{for zeroth round on vertices/edges}
+set zero_level = int: -1
+
 {3 is best for F4_s spherical
 4 or 5 best for E7_s spherical}
 set one_level = int: -1
@@ -3126,7 +3129,16 @@ set local_test_GEO_hash_one_level(KGBElt x, ratvec lambda, {VertexData vd,}
 	      	   	  {use def_dumb if def_flag}
 	      fi
     then r = rank(thetaMinus)
-    then ONE = if one_level = -1 then max(edge_offset + edge_skip, (r+2)\2)
+    then ZERO = if step_flag
+    	      	then if zero_level = -1
+		     then 0
+    	       	     else zero_level
+		     fi
+		else -1
+	        fi
+
+    then ONE = if one_level = -1 then edge_offset
+    	       	  	    {max(edge_offset + edge_skip, (r+2)\2)}
     	       else one_level
 	       fi
     then LAST = if last_level = -1 then ONE+edge_skip
@@ -3169,48 +3181,63 @@ set local_test_GEO_hash_one_level(KGBElt x, ratvec lambda, {VertexData vd,}
     then () = if test_verbose then prints("Chose",test_string) fi
     then start_count = unitary_test_counter.use_count()
     then  () = hash_one_levelCounter.use()
+    then zero_ht = if step_flag
+    	 	   then hts[ZERO]
+		   else 0
+		   fi
     then one_ht = hts[ONE], last_ht = hts[LAST]
     then () =  if test_verbose then prints("face counts to dim 1: ",
 			  for list in LF do #list od);
-		  prints("testing level = ", ONE, ", final level = ",LAST, "; heights = ", hts, new_line)
+		  prints(if step_flag
+		  	 then "zero level = "+to_string(ZERO)+", "
+			 else ""
+			 fi, "testing level = ", ONE, ", final level = ",LAST,
+			 "; heights = ", hts, new_line)
 	       fi
    then ICPNU_flag_hold = ICPNU_flag
-    then () = ICPNU_flag:=false
+   then () = ICPNU_flag:=false
    then HT = height(pmin)
    then long_out_temp_flag = long_out_flag
    then () = long_out_flag:=false
    then startDBTcount = DBTcount
-   then LFDKH = [[FaceVertsKHash]]:
-   	 if red_count_flag and #LF[1] > 0
-    	 then let (eq,CLBF) = localGraphRed(LF)
-	      in localFD_KHash_01_graph(x, lambda, Lvd, hts[edge_offset], pol_hash,LF, eq,CLBF)
-    	 else localFD_KHash_01(x, lambda, Lvd, hts[edge_offset], pol_hash, LF)
-	 fi {red_count_flag}
-    then tester0 = (Param->bool): (Param p) bool:
-     	     	  is_unitary_to_ht_big_SIMPLE(p, hts[edge_offset])
-    then ((eq,gr),IUCL,CLBF) = localGraphK(LFDKH, pol_hash, hts[edge_offset])
-              {then () = prints("at hts[edge_offset], #eq = ", #eq)}
-    then () = LFDKH := local_testK_hash(x,lambda, Lvd, LFDKH, eq,
-		      gr, CLBF, tester0, hts[edge_offset], Uhash, fancy_tester)
-	     {now we've tested verts and edges to hts[edge_offset]}
-    then () = if test_verbose then prints("unitary to ht ",hts[edge_offset],
-		   	   " face counts to dim 1: ",for list in LFDKH do
-			     #list od)
-	      fi
-    then two_temp_flag = step_flag and ONE > 0
-    {then () = if two_temp_flag
-    	      then pol_hash0.clear()
-	      fi}  {not needed?}
+   then LFDKH = if step_flag
+   	      	then let ans = [[FaceVertsKHash]]:
+   	   	     	 if red_count_flag and #LF[1] > 0
+    	 	     	 then let (eq,CLBF) = localGraphRed(LF)
+	      	     	      in localFD_KHash_01_graph(x, lambda, Lvd, zero_ht,
+			      	 pol_hash,LF, eq,CLBF)
+    	 	     	 else localFD_KHash_01(x, lambda, Lvd, zero_ht, pol_hash, LF)
+	 	     	 fi {red_count_flag}
+    	   	     then tester0 = if prefer_to_hts
+    	 	     	       then (Param->bool): (Param p) bool:
+     	     	   	       	    is_unitary_to_hts_big_SIMPLE(p, hts[:ZERO+1])
+		   	       else (Param->bool): (Param p) bool:
+     	     	   	       	    is_unitary_to_ht_big_SIMPLE(p, zero_ht)
+		   	       fi {prefer_to_hts}
+    	             then ((eq,gr),IUCL,CLBF) = localGraphK(ans, pol_hash, zero_ht)
+              	     {then () = prints("at hts[edge_offset], #eq = ", #eq)}
+    	      	     then () = ans := local_testK_hash(x,lambda, Lvd, ans, eq,
+		      			gr, CLBF, tester0, zero_ht, Uhash, fancy_tester)
+	     	     {now we've tested verts and edges to hts[ZERO]}
+    		     then () = if test_verbose then prints("unitary to ht ",zero_ht,
+		   	       	  " face counts to dim 1: ",for list in ans do #list od)
+			       fi
+		     in extend_K_characters(x, lambda, Lvd, ans, one_ht, pol_hash)
+		 else if red_count_flag and #LF[1] > 0
+    	 	      then let (eq,CLBF) = localGraphRed(LF)
+	      	     	   in localFD_KHash_01_graph(x, lambda, Lvd, one_ht,
+			      pol_hash,LF, eq,CLBF)
+    	 	      else localFD_KHash_01(x, lambda, Lvd, one_ht, pol_hash, LF)
+	 	      fi {red_count_flag}
+	          fi {step_flag}
     then tester1 = (Param->bool): (Param p) bool:
-     	     	   if prefer_to_hts then is_unitary_to_hts_big_SIMPLE(p, hts[1+edge_offset:ONE+1])
+     	     	   if prefer_to_hts then is_unitary_to_hts_big_SIMPLE(p, hts[ZERO+1:ONE+1])
 	 	   else is_unitary_to_ht_big_SIMPLE(p,one_ht)
-		   fi {to_ht is definitely 2% slower for F4 spherical, 10% slower for Sp(10) spherical}
-    then () = if two_temp_flag
-    	      then let () = LFDKH := extend_K_characters(x, lambda, Lvd, LFDKH, one_ht, pol_hash)
-    	      	   then ((eq,gr),IUCL,CLBF) = localGraphK(LFDKH)
-    		   in LFDKH := local_testK_hash(x,lambda,Lvd, LFDKH, eq,
-		       	gr, CLBF, tester1, hts[ONE], Uhash, fancy_tester)
-	      fi
+		   fi {to_ht is definitely 2% slower for F4 spherical,
+		       10% slower for Sp(10) spherical}
+    then ((eq,gr),IUCL,CLBF) = localGraphK(LFDKH, pol_hash, one_ht)
+    then () = LFDKH := local_testK_hash(x,lambda, Lvd, LFDKH, eq,
+		      			gr, CLBF, tester1, one_ht, Uhash, fancy_tester)
 	      {now we've tested verts and edges to one_ht}
     then () = if test_verbose then prints("unitary to ht ",one_ht,
 		   	   " face counts to dim 1: ",for list in LFDKH do
@@ -3244,30 +3271,28 @@ set local_test_GEO_hash_one_level(KGBElt x, ratvec lambda, {VertexData vd,}
 		         else let verts = vec: LFDKH[D+1][m][:D+2]
 			      {should insert Uhash.lookup(p).>=
 			      Actually this has no effect in SO(4,4)}
-			      then ps = monomials(finalize(
-					  parameter(x, lambda,
+			      then ps = monomials(finalize(parameter(x, lambda,
 					  face_bary(Lvd, verts))))
-					  in if all(for p in ps
-					     	    do Uhash.lookup(p).>= or
-						       tester1(p) {is_unitary_to_ht_big_SIMPLE(p,one_ht)}
+			      in if all(for p in ps
+					do Uhash.lookup(p).>= or tester1(p)
+	{is_unitary_to_ht_big_SIMPLE(p,one_ht)}
 	{better to use to_ht because usually p _already_ unitary below one_ht}
-						    od)
-					     then [LFDKH[D+1][m]]
+					od)
+				 then [LFDKH[D+1][m]]
 					     else []
-					     fi
-			  fi
+				 fi {all p in ps}
+			  fi {#eq[j] > 1}
 		       od.##
 		 then () = LFDKH := LFDKH[:D+1] # newDplus1
-                 then () = if test_verbose and
-		      	   ((D = r-1)  or
-    	      	    	   (#LFDKH < D) or
-		    	   (#(LFDKH~[0]) <= D+2))
+                 then () = if test_verbose and ((D = r-1)  or (#LFDKH < D) or
+		      	      (#(LFDKH~[0]) <= D+2))
 			   then prints("unitary to ht ",one_ht,
 		      	      		   " face counts to dim ",D+1,
-				": ", for list in LFDKH do #list od) fi
+				": ", for list in LFDKH do #list od)
+			    fi {test_verbose}
                  then ()= D:=D+1
                  in ()
-     	      od
+     	      od {while D <= r - 1}
 	      in ()
 	      fi{quick_flag}
     then long_out_temp_flag = long_out_flag

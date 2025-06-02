@@ -122,9 +122,11 @@ set K_graph_gens([[FaceVertsIndex]] FDK) = [[int]]:
     to verts of d-diml face, last is red_count}
        do for e:d+1
 	  do let j0 = lookup(delete(Find,e)[:d])
-	  in if j0.>= and Find[d+1] = FDK[d-1][j0][d]
-	     then edge_gens[index(d-1,j0)] #:= index(d,j1);
-	       	  edge_gens[index(d,j1)] #:= index(d-1,j0)
+	  in if j0.>= 
+	     then edge_gens[index(d-1,j0)] #:= index(d,j1)
+	     ; if Find[d+1] = FDK[d-1][j0][d]
+	       then edge_gens[index(d,j1)] #:= index(d-1,j0)
+	       fi
 	     fi
 	  od
        od

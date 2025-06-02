@@ -1,4 +1,4 @@
-<K_highest_weights {for all_lambda_differential_zero}
+<k_highest_weights {for all_lambda_differential_zero}
 <lattice {for vec_solve}
 { <chopping_facets_fast.at {for chop_coroots(G, vertices)}}
 <face_classes {for ordering on facets}
@@ -354,6 +354,14 @@ then coh_ind_unip_few(G,Uhash)}
 			   " to find [",#LF[0],",",#LF[1],"] verts and edges; Dirac eliminated ",
 			   DTcount - startDTcount)
 	      		   fi
+{
+		 then ((eq,gr),CLBF) = localGraphRedMed(LF)
+		 then () = prints("Lvd.list = ",for v@j in Lvd.list do (j,v) od);
+		      	   for d:2 do prints("LF[",d,"] = ",LF[d]) od;
+			   prints("eq = ",eq);
+			   prints("gr = ",gr);
+			   prints("CLBF = ",CLBF)
+}
 		 in if #LF[0] = 0
 		    then finish(x,lambda);
 		    	 none_count +:=1; ()
