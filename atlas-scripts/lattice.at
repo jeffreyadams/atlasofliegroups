@@ -104,13 +104,13 @@ set decompose (mat M, ratvec w) = (ratvec,ratvec):
   which is action of A restricted to that sublattice $\Z^m$, embedded via M
 }
 set restrict_action (mat A, mat M) = mat: { shapes A: n by n, M: n by m }
-   case solve(M,A*M) | solution(B): B
+   case solve(M,A*M) | some(B): B
    | else error("Image lattice M is not fixed by A")
    esac
 
 { assuming M full row rank and ker(M) is A-stable, find unique B with M*A=B*M }
 set corestrict_action (mat M,mat A) = mat:  { shapes M: m by n, A: n by n }
-   case solve(^M,^(M*A)) | solution(tB): ^tB
+   case solve(^M,^(M*A)) | some(tB): ^tB
    | else error("Kernel of M is not fixed by A")
    esac
 
@@ -122,28 +122,25 @@ set quotient_matrix (mat A,mat M) = mat:
   let (c,R)=adapted_direct_sum(M) in (R.inverse[c: , : ]*A*R[ : ,c: ])
 
 set solve_ratvec (mat A, vec v) = ratvec:
-  (A,ratvec:v).solve.(rat_requisition("not in span"))
+  (A,ratvec:v).solve.(requisition("not in span"))
 
 { integer vector (lattice) solutions to linear system }
 
 
 set in_lattice (mat A, ratvec u) = bool: { whether v in image lattice of A }
-  let (b,n)=%u in n=1 and solve(A,b).any
+  let (b,n)=%u in n=1 and can(solve(A,b))
 
 {test if ratvec v is in lattice L + rational subspace V}
-set in_lattice_subspace_sum ([vec] L,[vec] V)=(ratvec->bool):
-(ratvec v):
-if =#V then in_lattice(L,v) else
- let ck=cokernel(V) then (new_V,,,) = echelon(ck*L) in
- let v_new=ck*v in
- if not is_integer(v_new) then false
-  else
-  in_lattice(new_V,ratvec_as_vec(v_new))
- fi
-fi
+set in_lattice_subspace_sum ([vec] L,[vec] V)=(ratvec->bool): (ratvec v):
+   if =#V then in_lattice(L,v)
+   else
+      let ck=cokernel(V) then (new_V,,,) = echelon(ck*L)
+      then v_new=ck*v
+   in is_integer(v_new) and in_lattice(new_V,ratvec_as_vec(v_new))
+   fi
 
-set vec_solve (mat A, ratvec u) = maybe_a_vec: { integer solution to A*x=b }
-  let (b,n)=%u in if n>1 then no_vec() else solve(A,b) fi
+set vec_solve (mat A, ratvec u) = Maybe<vec>: { integer solution to A*x=b }
+  let (b,n)=%u in if n>1 then none() else solve(A,b) fi
 
 { express columns of M relative to basis A of a sub-lattice that contains them
   A: nxm matrix, columns are a basis of a Z-module V of rank m
@@ -217,7 +214,7 @@ for col@i in A do (col,v[i]) od
  return false if w doesn't exist, or boolean is_integer(w) if it does
 }
 set in_lattice (ratmat A, ratvec v) = bool:
-let (A_int,,d)=A then
-(M,C,pivots,)=echelon(A_int) in
-assert(#M>=#A_int,"columns of matrix are not linearly independent");
-   case solve(A,v) | solution(w): is_integer(w) | else false esac
+   let (A_int,,d)=A
+   then (M,C,pivots,)=echelon(A_int)
+in assert(#M>=#A_int,"columns of matrix are not linearly independent");
+   case solve(A,v) | some(w): is_integer(w) | else false esac

@@ -39,7 +39,8 @@ set test ([(Param,int)] parameters,bool verbose) =
           ,"Testing ", #parameters, " parameters ",new_line
           ,"index, parameter purity  predicted/computed result")
   fi;
-  let !delta=G.distinguished_involution, passed=true, result=[] in
+  let !delta=G.distinguished_involution, passed=true
+  , result=[(Param,KTypePol,int,bool)]: [] in
 
   for (p,predicted)@i in parameters
   do

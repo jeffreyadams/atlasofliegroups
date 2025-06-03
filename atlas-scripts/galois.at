@@ -28,7 +28,7 @@ set print_strong_real (RealForm G) = void:
 { find(vecs,k) returns the (smallest) int j such that k in occurs in vecs[j]
   returns -1 otherwise
 }
-set find ([[int]] vecs, int k) = int:
+set find_class ([[int]] vecs, int k) = int:
   first(#vecs,(int i): is_member(vecs[i])(k))
 set part_containing (int k) = ([[int]] parts) [int]:
   let pred=contains(k),i=#parts-1 in { do program out the loop, just for fun }
@@ -47,9 +47,9 @@ set part_containing (int k) = ([[int]] parts) [int]:
   central_invariant_index(Sp(2,0))=central_invariant_index(Sp(1,1))=1
 }
 set central_invariant_index (InnerClass ic, int k) = int:
-  find(square_classes(ic),k)
+  find_class(square_classes(ic),k)
 set central_invariant_index (RealForm G) = int:
-  find(square_classes(G),form_number(G))
+  find_class(square_classes(G),form_number(G))
 
 {central_invariant@RealForm is the same as square@RealForm,
  except that we will view its values in Z^delta/(1+delta)Z}

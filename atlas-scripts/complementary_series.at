@@ -21,11 +21,18 @@ in if #rp=0 then (false,p) else (true, q*rp[0]) fi
 list [(q,purity(hf))] where hf is the Hermitian form on q,
 all hf should be pure, in fact integers
 }
-set test_endpoint_complementary_series([Param] params)=
-let rv=[] in
-for p in params do  let (deformable,q)=end_of_complementary_series(p) then
-hf=hermitian_form_irreducible(q) then
-purity=purity(hf) in
-if deformable then rv#:=(q,purity);
-prints(new_line,"p=",p, new_line,"q=",q,new_line,purity) fi  od;
-prints(new_line);for (p,purity) in rv do prints(p, " ", purity) od;prints(new_line);rv
+set test_endpoint_complementary_series([Param] params) = [Param,(int,int,int)]:
+(  let result = [Param,(int,int,int)]:
+      for p in params
+      do let (deformable,q) = end_of_complementary_series(p)
+      in if deformable
+	 do let purity=purity(hermitian_form_irreducible(q))
+         in  prints(new_line,"p=",p, new_line,"q=",q,new_line,purity)
+	 ;   (q,purity)
+	 fi
+      od.##
+in prints(new_line)
+;  for (p,purity) in result do prints(p, " ", purity) od
+;  prints(new_line)
+;  result
+)

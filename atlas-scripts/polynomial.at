@@ -289,11 +289,6 @@ set eval (rat_poly(,v,),rat k) = rat:
 
 set shape (i_poly_mat M) = (int,int): if =#M then (0,0) else (#M,#M[0]) fi
 
-set transpose(i_poly_mat M)=i_poly_mat: { sublists must be of equal length }
-  if =#M then M { there is not much we can do for an empty list }
-  else for j:#M[0] do for row in M do row[j] od od
-  fi
-
 { dot product of two vectors of polynomials (the name avoids *@(mat,mat)) }
 set dot_product([i_poly] v,[i_poly] w) = i_poly:
   let sum=i_poly:[] in for p@i in v do sum +:= p*w[i] od; sum
@@ -342,20 +337,19 @@ set update_row ([i_poly] R, int j,i_poly v) = [i_poly]: R[j]:=v; R
 { update one row of a matrix (replacing it by a given new row) }
 set update_matrix_row (i_poly_mat M, int i, [i_poly] row)= i_poly_mat:
    M[i]:=row; M
-{ update one entry in a matrix }
-set update_matrix_entry(i_poly_mat M, int i, int j, i_poly v)= i_poly_mat:
-  let row=M[i] in row[j]:=v; M[i]:=row; M
 
 set zero_poly_row (int n) = [i_poly]: for :n do poly_0 od
 set zero_poly_matrix (int rows, int columns) = i_poly_mat:
   let !row=zero_poly_row(columns) in for :rows do row od
 set zero_poly_matrix(int n) = i_poly_mat:zero_poly_matrix(n,n)
 set scalar_poly_matrix (int n, int c) = i_poly_mat:
-  let !row=zero_poly_row(n) { model row, almost equal to each wanted row } in
-  for i:n do update_row(row,i,constant_poly(c)) od
+   let !row=zero_poly_row(n) { model row, almost equal to each wanted row }
+   , cc =constant_poly(c)
+in for i:n do update_row(row,i,cc) od
+
 set identity_poly_matrix (int n) = i_poly_mat: scalar_poly_matrix(n,1)
 set mat_as_poly_mat (mat M) = i_poly_mat:
- let (r,c)=shape(M) in for i:r do for j:c do [M[i,j]] od od
+   let (r,c)=shape(M) in for i:r do for j:c do M[i,j].constant_poly od od
 
 set + (i_poly_mat M, i_poly p) = i_poly_mat: { add polynomial scalar matrix }
   for row@i in M  do for e@j in row do if i=j then e+p else e fi od od
@@ -423,7 +417,7 @@ set poly_format (i_poly v, string q)= string:
 { we cannot reuse |poly_format| below, as it takes a |vec| of coefficients }
 
 { for |int_poly| and |rat_poly| that value names the indeterminate; use it }
-set to_string (int_poly(X,cs,)) = string:
+set format (int_poly(X,cs,)) = string:
    if =#cs then "0"
    else
       let pow(int k) = string: { print monomial X^k, possibly shortened }
@@ -437,7 +431,7 @@ set to_string (int_poly(X,cs,)) = string:
       od.##
    fi
 
-set to_string (rat_poly(X,cs,)) = string:
+set format (rat_poly(X,cs,)) = string:
    if =#cs then "0"
    else ##
       for c@k in cs

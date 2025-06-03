@@ -21,8 +21,9 @@ set ext_cross_1( int j
   , (alpha, alpha_check) =
       let id=integrality_datum(ic,gamma) { DO NOT USE RootDatum:ic } in
       (root(id,j), coroot(id,j))
-  then s_alpha    = 1 - column(alpha)*row(alpha_check)
-  , s_alpha_check = 1 - column(alpha_check)*row(alpha) { = ^s_alpha }
+  then s_alpha    = 1 - alpha.as_column*alpha_check.as_row
+                { = reflection(id=integrality_datum(ic,gamma),j) }
+  , s_alpha_check = 1 - alpha_check.as_column*alpha.as_row { = ^s_alpha }
   , ac_gamma = rat_as_int(alpha_check*gamma) { integral by construction }
   , g_alpha  = rat_as_int(g*alpha) { always integral by definition of g }
   , type = string: { one of: 1C+,1C-,1i1,1i2f,1i2s,1ic,1r1f,1r1s,1r2,1rn }

@@ -601,8 +601,8 @@ set hyperoctahedral_character (
   vertical adjacencies in the hook), and in case the hook was removed from |mu|
   by |sign| as well; the character value is the sum all the values so obtained.
 }
-   let alpha = signed_cycle_type. { preprocess putting longs cycles at end }
-               (sort_by((int l,bool.)int: l))
+   let alpha = signed_cycle_type
+               .(sort_by((int l,bool.)int: l, <=@(int,int))) { do long first }
    then (c,d) = (int,int): { numbers of 1-cycles with - resp. + in |alpha| }
      for (l,sign) in alpha do if l>1 then break else s^#sign{use |Split|} fi
      od.sum.% { sum powers of |s|, then extract its two components }
@@ -844,16 +844,14 @@ set is_very_even (Partition P) = bool: =P%2 { whether all parts are even }
 set is_doubly_even (Partition P) = bool: { even parts even multiplicities only }
   let freq = frequencies(P) in =freq.odd_places and =freq.even_places%2
 
-set_type
-[ D_class = { cycle types restricted to Dn subgroup }
+set_type D_class = { cycle types restricted to Dn subgroup }
    ( Signed_cycles unsplit_class { the XOR of all |bool| values is |false| }
    | (Partition,bool) split_class { "all false" even cycles, and a single sign }
    )
-, D_irrep = { from folding pairs of partitions under swapping }
+set_type D_irrep = { from folding pairs of partitions under swapping }
    ( (Partition,Partition) unsplit_irr { unequal partitions, larger first }
    | (Partition,bool) split_irr { for pair of equal partitions, with sign }
    )
-]
 
 { recover the value of |n| }
 set rank (D_class c) = int:

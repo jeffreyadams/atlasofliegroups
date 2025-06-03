@@ -19,7 +19,7 @@ set all_parameters_x_gamma (KGBElt x,ratvec gamma) = [Param]:
    in
    case vec_solve(th1,th1*(gamma-rho))
    | else [Param]: [] { without solution no parameters }
-   | solution(lr):
+   | some(lr):
       let lambda  =rho + lr, nu=(2-th1){1-theta}*gamma/2 in
       for v in all_lambda_differential_0(x) do
       parameter(x,lambda+v,nu) {not necessarily final}  od

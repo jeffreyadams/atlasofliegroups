@@ -42,12 +42,12 @@ set wall_set(RootDatum rd, ratvec gamma) = [int]:
                else root_datum(rd.simple_roots,rd.simple_coroots,true)
 	       fi
    then coroot_list = coroots(rd_pc)
-   then levels = for alpha_v in coroot_list do frac(alpha_v*gamma) od
+   then levels = [rat]: for alpha_v in coroot_list do frac(alpha_v*gamma) od
    , rk = rd.semisimple_rank, npr = rd.nr_of_posroots
    , gens=[int]: []
-   then ranking = inv_standardisation(levels)
+   then ranking = ranking(levels)
    then start = { skip over level 0 negative coroots in |ranking| }
-       #for ind in ranking do if >levels[ind] or ind>=npr then break fi od
+       #for ind in ranking do if levels[ind]>0 or ind>=npr then break fi od
 in for place in ranking[start:] ## ranking[:start]
       { treat coroots in |ranking| order but treat negative integral ones last }
    do let index = coroot_index(rd,coroot_list[place]) { translate to |rd| index }
@@ -240,7 +240,7 @@ set is_in_root_lattice(RootDatum rd, ratvec gamma) = bool:
    od; return true
 
 { root-lattice translation of |w(f. alcove)| into f. parallelepipedum, if any }
-set for_FPP (WeylElt w) = maybe_a_vec:
+set for_FPP (WeylElt w) = Maybe<vec>:
    let rd = w.root_datum
    then vertices = [ratvec]: alcove_vertices(rd,null(rd.rank))
    then bary = sum(rd.rank,vertices)/(#vertices)
@@ -249,4 +249,4 @@ set for_FPP (WeylElt w) = maybe_a_vec:
    then sc_shift = vec: sc_coords\1 { fundamental weight sum shift }
    , (inv_Cartan,d) = invert(^Cartan_matrix(rd))
    then adj_shift = inv_Cartan*sc_shift
-in if = adj_shift%d then solution(adj_shift\d) else no_vec() fi
+in if = adj_shift%d then some(adj_shift\d) else none() fi

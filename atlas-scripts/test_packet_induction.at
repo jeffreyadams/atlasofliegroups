@@ -1,16 +1,16 @@
 <weak_packets.at
 
 {The second list describes the parabolic}
-set weak_packets_parabolically_induced(RealForm G, [int] parabnodelist)=
+set weak_packets_parabolically_induced(RealForm G, [int] parabnodelist)=[Param]:
 let P=Parabolic:(parabnodelist,trivial(G).x)
 then L=Levi(P)
 then Lorbits=L.dual_orbits
 then wp=weak_packets(L)
-then output=[]
+then output=[Param]:[]
 in for p in parameters(wp) do for ppp in monomials(real_induce_irreducible(p,G)) do output#:=ppp od od; output
 
-set weak_packets_parabolically_induced_from_all_parabolics(RealForm G)=
-let alloutput=[]
+set weak_packets_parabolically_induced_from_all_parabolics(RealForm G)=[Param]:
+let alloutput=[Param]:[]
 in for k:#power_set(semisimple_rank(G))-1 from 1 do
 (
 let parabpackets=weak_packets_parabolically_induced(G,power_set(semisimple_rank(G))[k])
@@ -18,13 +18,13 @@ in for ppp in parabpackets do alloutput#:=ppp od
 )
 od; alloutput
 
-set maximalparablist(RealForm G)=
+set maximalparablist(RealForm G)=[[int]]:
 let ps=power_set(semisimple_rank(G))
-then psoutput=[]
+then psoutput=[[int]]:[]
 in for aps in ps do if #aps=semisimple_rank(G)-1 then psoutput#:=aps fi od;psoutput
 
-set weak_packets_parabolically_induced_from_all_parabolics(RealForm G)=
-let alloutput=[]
+set weak_packets_parabolically_induced_from_all_parabolics(RealForm G)=[Param]:
+let alloutput=[Param]:[]
 in for ps in maximalparablist(G) do
 (
 let parabpackets=weak_packets_parabolically_induced(G,ps)

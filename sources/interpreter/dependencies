@@ -3,8 +3,7 @@ $(atlas_dir)/buffer.cpp $(atlas_dir)/buffer.h: \
   $(atlas_dir)/buffer.w
 $(atlas_dir)/lexer.cpp $(atlas_dir)/lexer.h: \
   $(atlas_dir)/lexer.w
-$(atlas_dir)/parsetree.cpp \
-  $(atlas_dir)/parse_types.h $(atlas_dir)/parsetree.h: \
+$(atlas_dir)/parsetree.cpp $(atlas_dir)/parse_types.h $(atlas_dir)/parsetree.h: \
   $(atlas_dir)/parsetree.w
 $(atlas_dir)/axis-types.cpp $(atlas_dir)/axis-types.h: \
   $(atlas_dir)/axis-types.w
@@ -21,7 +20,12 @@ $(atlas_dir)/parser.tab.o: \
  $(atlas_dir)/global.h
 
 $(atlas_dir)/buffer.o: $(atlas_dir)/buffer.cpp
-$(atlas_dir)/buffer.o $(atlas_dir)/buffer.tex: $(atlas_dir)/buffer.h
+$(atlas_dir)/buffer.o $(atlas_dir)/buffer.tex: $(atlas_dir)/buffer.h\
+ $(atlas_dir)/lexer.h \
+ $(atlas_dir)/global.h \
+ $(sources_dir)/Atlas.h \
+ $(sources_dir)/utilities/bitmap.h \
+ $(sources_dir)/utilities/sl_list.h
 
 $(atlas_dir)/parsetree.o: $(atlas_dir)/parsetree.cpp
 $(atlas_dir)/parsetree.o $(atlas_dir)/parsetree.tex: \

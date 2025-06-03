@@ -6641,8 +6641,8 @@ void orientation_number_wrapper(eval_level l)
 
 @ Here is a function that computes a list of positive rational values $t\leq1$
 such that the parameter obtained by replacing the continuous part~$\nu$ of
-by~$t\nu$ is not topmost in its block, so that deformation of the parameter to
-$t\nu$ will produce a non-trivial decomposition.
+by~$t\nu$ is not at the bottom of its block, so that deformation of the
+parameter to $t\nu$ may produce a non-trivial decomposition.
 
 @< Local function def...@>=
 void reducibility_points_wrapper(eval_level l)

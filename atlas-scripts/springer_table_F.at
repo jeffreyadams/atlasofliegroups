@@ -37,13 +37,11 @@ set F4_nilpotent_orbit_dual_map = (vec->vec): { orbit diagrams as |vec| values }
       , ([2,2,0,2] , [1,0,0,0])
       , ([2,2,2,2] , [0,0,0,0])
       ]
-   then leq (int i,int j) = bool:
-        let (a,)=table[i], (b,)=table[j] in lex_lesseq(a,b)
-   then sigma = sort(#table, leq)
-in table := for i in sigma do table[i] od { adjust table to sorted form }
+   then leq ((vec a,vec.),(vec b,vec.)) = bool: lex_leq(a,b)
+in table := sort(leq)(table) { adjust table to sorted form }
 ;  { F4_nilpotent_orbit_dual_map = }
    (vec diagram) vec:
-   let predicate(int i)= bool: let (key,)=table[i] in lex_lesseq(diagram,key)
+   let predicate(int i)= bool: let (key,)=table[i] in lex_leq(diagram,key)
    then k = binary_search_first(predicate,0,#table)
    then (source,image) = assert(k<#table,"Wrong F4 diagram"); table[k]
    in assert(source=diagram,"Wrong F4 diagram"); image
@@ -72,13 +70,11 @@ set F4_Springer_map = (vec->int): { orbit diagrams as |vec| values }
       , ([2,2,0,2] , 16) {phi(4,1)}
       , ([2,2,2,2] ,  0) {phi(1,0)}
       ]
-   then leq (int i,int j) = bool:
-        let (a,)=table[i], (b,)=table[j] in lex_lesseq(a,b)
-   then sigma = sort(#table, leq)
-in table := for i in sigma do table[i] od { adjust table to sorted form }
+   then leq ((vec a,int.),(vec b,int.)) = bool: lex_leq(a,b)
+in table := sort(leq)(table) { adjust table to sorted form }
 ;  { F4_Springer_map = }
    (vec diagram) int:
-   let predicate(int i)= bool: let (key,)=table[i] in lex_lesseq(diagram,key)
+   let predicate(int i)= bool: let (key,)=table[i] in lex_leq(diagram,key)
    then k = binary_search_first(predicate,0,#table)
    then (source,image) = assert(k<#table,"Wrong F4 diagram"); table[k]
    in assert(source=diagram,"Wrong F4 diagram"); image

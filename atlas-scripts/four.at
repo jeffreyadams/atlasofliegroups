@@ -107,12 +107,12 @@ set make_vector(ParamPol P, [Param] list)=vec:
    sum(for (m,q) in %P do split_as_int(m)*make_vector(q,list) od)
 
 set block_action_matrix_std ([Param] bl, int s)=mat:
-   let M=column(make_vector(coherent_std(bl[0],s),bl))
+   let M = make_vector(coherent_std(bl[0],s),bl).as_column
    in for i:#bl-1 do M#:=make_vector(coherent_std(bl[i+1],s),bl)
       od; M
 
 set block_action_matrix_irr ([Param] bl, int s)=mat:
-   let M=column(make_vector(coherent_irr(bl[0],s),bl))
+   let M=make_vector(coherent_irr(bl[0],s),bl).as_column
    in for i:#bl-1 do M#:=make_vector(coherent_irr(bl[i+1],s),bl)
       od; M
 {
