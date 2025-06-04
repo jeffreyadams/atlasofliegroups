@@ -764,13 +764,11 @@ set required_solution ((mat,vec) system) = vec: system.solve.requisition
 set required_solution ((mat,mat) system) = mat: system.solve.requisition
 
 {Solve AX=B (from basic.at)}
-set right_solve(mat A,mat B)=maybe_a_mat: solve(A,B)
+set right_solve(mat A,mat B) = Maybe<mat>: solve(A,B)
 
 {Solve XA=B}
-set left_solve(mat A,mat B)=maybe_a_mat:
- let X=solve(^A,^B)  {^A*X=^B} in
- if X.any then (^requisition(X)).solution  {^AX=B=>X^t*A=B}
- else ().no_mat fi
+set left_solve(mat A,mat B) = Maybe<mat>:
+   case solve(^A,^B) | none: none() | some(sol): (^sol).some esac
 
 { multiplicative order of a matrix, hangs unless finite }
 set order (mat !M) = int:

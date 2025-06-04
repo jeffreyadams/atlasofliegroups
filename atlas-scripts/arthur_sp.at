@@ -59,7 +59,7 @@ let G=Sp(2*n,R) in
  let (,L_der,params)=init(n,m)  in (L_der,params) od,G)
 
 set quasisplit_unitary_group(int n)=RealForm:  if is_even(n)  then U(n\2,n\2) else U(n\2+1,n\2) fi
-set antidiagonal(int n)=mat:for i:n do e(n,n-1-i) od
+set antidiagonal(int n)=mat: id_mat(n)~[:] { reverse order of columns }
 
 {for Sp(2n,R) only}
 set endoscopic_data(RealForm G)=(mat,RealForm,mat):  {(M,GL(2n+1,R),delta): matrix M for twisted endoscopic transfer Sp(2n,R)-> GL(2n+1,R), with nice coordinates}

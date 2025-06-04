@@ -57,7 +57,7 @@ theta_G=left_inverse(M)*theta_H*M then
 x_G_0=KGB_elt(G,theta_G,null(rank(G))) {torus factor 0} then
 fiber_H=fiber(x_H) then
 fiber_G=cross_sub_orbit(simple_imaginary_reflections(x_G_0),x_G_0) then
-x_H_0=fiber_H[0] then 
+x_H_0=fiber_H[0] then
 {assume fiber_G[0] has torus factor 0: from cross_sub_orbit it has
  the smallest KGB number, so probably true, but this assumption
  should be removed}
@@ -80,21 +80,25 @@ G=x_G.real_form then
 known_H=[x_H.number] then
 known_G=[x_G.number] then
 KGB_map=[(x_H.number,x_G.number)] then
-done_H=[int]:[]  {x_H's for which we've computed all crosses and Cayleys} then
-is_known_H(int i)=bool:in_list(known_H,i) then
-is_known_G(int i)=bool:in_list(known_G,i) then
-is_known_H(KGBElt x_H)=bool:in_list(known_H,x_H.number) then
-is_known_G(KGBElt x_G)=bool:in_list(known_G,x_G.number) then
+done_H=[int]:[]  {x_H's for which we've computed all crosses and Cayleys}
+then
+in_list([int] L) = (int i)bool:any(L,(int l):l=i)
+then is_known_H = in_list(known_H)
+then is_known_G = in_list(known_G)
+then is_known_H(KGBElt x_H)=bool:is_known_H(x_H.number)
+then is_known_G(KGBElt x_G)=bool:is_known_G(x_G.number) then
 lookup_G(int i_G)=  {given i_G find i_H which we've already computed which maps to it}
   let index=first(for (,j) in KGB_map do j=i_G od) then (i_H,)=KGB_map[i_G] in i_H in
 while #KGB_map<KGB_size(H) do
 let ()=if te_verbose then prints("known_H: ", known_H, new_line, "known_G: ", known_G) fi in
 let ()=if te_verbose then prints("KGB_map: ", KGB_map) fi in
-let ()=if te_verbose then prints("done_H: ", done_H) fi in 
+let ()=if te_verbose then prints("done_H: ", done_H) fi in
  {find (i,j)  so that (i,j) occurs in KGB_map, but i is NOT in done_H}
- let index_in_KGB_map= first(for (i,) in KGB_map do not in_list(done_H,i) od) then
+ let index_in_KGB_map=
+    first(for (i,) in KGB_map do not in_list(done_H)(i) od)
+ then
     ()=if index_in_KGB_map=-1 then
-       prints("failed to compute complete KGB_map");prints("KGB size of H: ", KGB_size(H),new_line, "#KGB_map: ", #KGB_map);return(KGB_map) 
+       prints("failed to compute complete KGB_map");prints("KGB size of H: ", KGB_size(H),new_line, "#KGB_map: ", #KGB_map);return(KGB_map)
     fi then
     (i_H,i_G)=KGB_map[index_in_KGB_map] then
     x_H=KGB(H,i_H) then
@@ -112,7 +116,7 @@ let ()=if te_verbose then prints("done_H: ", done_H) fi in
                for example on group side: G=GL(4,R), H=SO(3,2)->GL(4,R)}
                 if  true then
 {               if not is_known_G(y_G) then}
-               if te_verbose then prints("adding: ", y_H.number, " ", y_G.number) fi; 
+               if te_verbose then prints("adding: ", y_H.number, " ", y_G.number) fi;
                KGB_map#:=(y_H.number, y_G.number);
                known_G#:=y_G.number;
                known_H#:=y_H.number
@@ -121,7 +125,7 @@ let ()=if te_verbose then prints("done_H: ", done_H) fi in
   in  {now try Cayleys}
   if te_verbose then prints("alpha=",alpha,"  x_H=", x_H, " " ,x_H.real_form, " status!: ", status_text(alpha,x_H)) fi;
   if is_noncompact_imaginary(x_H)(alpha) or is_real(alpha, x_H) then
-       let ()=if te_verbose then prints("doing Cayley") fi in 
+       let ()=if te_verbose then prints("doing Cayley") fi in
        let y_H=Cayley(alpha,x_H) in
        let ()=if te_verbose then prints("i=",i," alpha=",alpha," (Cayley)y_H=", y_H) fi in
        if not is_known_H(y_H) then
@@ -146,7 +150,7 @@ assert(M=id_mat(#M),"*@(mat M,Param p) only implement for M=identity");p
 {root map must be for the integrality data of H and G}
 set lift_parameter_cross(int j_H,[[int]] root_map,Param p_G)=Param:
 let G=p_G.real_form then
-G_int=integrality_datum(p_G) then 
+G_int=integrality_datum(p_G) then
 y=p_G then
  roots=root_map[j_H] in
  if #roots<2 then
@@ -161,7 +165,7 @@ y=p_G then
 
 set lift_parameter_cross(RootDatum H,vec alpha_H,mat M,Param p_G)=Param:
 let G=p_G.real_form then
-G_int=integrality_datum(p_G) then 
+G_int=integrality_datum(p_G) then
 y=p_G then
  roots=embed_root(H,alpha_H,M,G) in
  if #roots<2 then
@@ -175,7 +179,7 @@ y=p_G then
 {? this should also have a different formula in case of 2 non-orthogonal roots}
 set lift_parameter_Cayley(RootDatum H,vec alpha_H,mat M,Param p_G)=Param:
 let G=p_G.real_form then
-G_int=integrality_datum(p_G) then 
+G_int=integrality_datum(p_G) then
 y=p_G then
 roots=embed_root(H,alpha_H,M,G) in
 for alpha in roots do  y:=Cayley(alpha,y) od; y
@@ -252,7 +256,7 @@ pair_hash
 let H=p_H.real_form then
 G=p_G.real_form then
 H_int=integrality_datum(p_H) then
-G_int=integrality_datum(p_G) then 
+G_int=integrality_datum(p_G) then
 known_H=1*p_H then
 known_G=1*p_G then
 map=[(p_H,p_G)] then
@@ -284,7 +288,7 @@ let index_in_map= first(for (p_H,) in map do done_H[p_H]=0 od) then
                for example on group side: G=GL(4,R), H=SO(3,2)->GL(4,R)}
                 if  true then
 {               if not is_known_G(y_G) then}
-               if te_verbose then prints("adding: ", p_H, " ", p_G) fi; 
+               if te_verbose then prints("adding: ", p_H, " ", p_G) fi;
                map#:=(q_H,q_G);
                known_G+:=q_G;
                known_H+:=q_H
@@ -340,7 +344,7 @@ let index_in_map= first(for (p_H,) in map do done_H[p_H]=0 od) then
                for example on group side: G=GL(4,R), H=SO(3,2)->GL(4,R)}
                 if  true then
 {               if not is_known_G(y_G) then}
-               if te_verbose then prints("adding: ", p_H, " ", p_G) fi; 
+               if te_verbose then prints("adding: ", p_H, " ", p_G) fi;
                map#:=(q_H,q_G);
                known_G+:=q_G;
                known_H+:=q_H
@@ -398,7 +402,7 @@ let index_in_map= first(for (p_H,) in map do done_H[p_H]=0 od) then
                for example on group side: G=GL(4,R), H=SO(3,2)->GL(4,R)}
                 if  true then
 {               if not is_known_G(y_G) then}
-               if te_verbose then prints("adding: ", p_H, " ", p_G) fi; 
+               if te_verbose then prints("adding: ", p_H, " ", p_G) fi;
                map#:=(q_H,q_G);
                known_G+:=q_G;
                known_H+:=q_H

@@ -33,8 +33,10 @@ set map_W(RootDatum G1,RootDatum G2,mat M)=(WeylElt -> WeylElt):(WeylElt w_1):ma
 assuming there is a map G1->G2
 e.g. this works for G1=GL(n), G2=PGL(n) but not G2=SL(n)}
 set root_map(RootDatum G1,RootDatum G2)=
-let M=left_solve(G2.simple_roots,G1.simple_roots) in
-if M.any then requisition(M) else error("cannot solve M*G2.simple_roots=G1.simple_roots") fi
+case left_solve(G2.simple_roots,G1.simple_roots)
+| some(M): M
+| none():  error("cannot solve M*G2.simple_roots=G1.simple_roots")
+esac
 
 {coroot map is the transpose
 set coroot_map(RootDatum G1,RootDatum G2)=

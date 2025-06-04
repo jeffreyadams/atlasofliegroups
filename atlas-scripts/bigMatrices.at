@@ -11,7 +11,7 @@ set make_delta_invariant([Param] B,mat delta)=[Param]:
 monomials(one_plus_twist(param_pol(B),delta))
 
 set fixed_subset ([Param] B,mat delta) = [Param]:
-  ## for p in B do if is_fixed(p,delta) then [p] else [] fi od
+  for p in B if is_fixed(p,delta) do p fi od
 
 set indices_subset ([Param] subset,  [Param] whole) = [int]:
 { if both sets were ordered, we could do:
@@ -22,12 +22,9 @@ set indices_subset ([Param] subset,  [Param] whole) = [int]:
 
 { extract one index from each delta-orbit }
 set delta_orbit_reps ([Param] B,mat delta) = [int]:
-## for p@i in B
-   do let q=twist(p,delta) in
-      if p=q then [i]
-      else let j=find(B,q)  in
-{     assert(j>=0, "Block not fixed by delta"); }
-         if j.< or i<j then [i] else [] fi
+   for p@i in B
+      if let q=twist(p,delta) in p=q or (let j=find(B,q) in j<0 or i<j)
+      do i
       fi
    od
 
@@ -36,13 +33,12 @@ set delta_orbit_reps ([Param] B,mat delta) = [int]:
  each non-fixed pair (i,j_ contributes (i,0))
 }
 set complete_indices ([Param] B,mat delta) = [(int,int)]:
-## for p@i in B
+   for p@i in B
    do let q=twist(p,delta) in
       if p=q then [(i,1),(i,-1)]
-      elif i<find(B,q) then [(i,0)]
-      else []
+      else if i<find(B,q) do (i,0) fi
       fi
-   od
+   od.##
 
 { need to finalize extended_block(p,delta)
   only need the result and index into block_of(p)
@@ -91,8 +87,6 @@ set tabulate_indices ([Param] B,mat delta) = ([int],[int],[(int,int)], [int]):
 set mapping([Param] B,[Param] B_delta)=[int]:
 for p in B do find(B_delta,p) od
 
-set !one = vec:[1]
-
 { some rebranding }
 set poly_add (i_poly f,i_poly g) = i_poly: flex_add(f,g)
 set poly_sub (i_poly f,i_poly g) = i_poly: flex_sub(f,g)
@@ -120,70 +114,82 @@ set big_KL_P_signed_polynomials_old (Param p,mat delta) =
         do let (j,epsilon_j)=complete_indices[b] in
 { prints("a=",a," b=",b," i=",i," e_i=",epsilon_i," j=",j," e_j=",epsilon_j);}
            if a=b
-           then  {prints("diag ",a," ",b);}rv:=update_matrix_entry(rv,a,b,one) {diagonal entries}
+           then  {prints("diag ",a," ",b);}rv:=matrix_assign(rv,a,b,poly_1) {diagonal entries}
 {	   prints();printPolyMatrix(rv)}
            elif (epsilon_i*epsilon_j=1) { entries have same sign: P+P^delta}
            then let x=g[i], y=g[j] in
 { prints("same sign i=",i," j=",j," P[i][j]=",P[i][j],"a=",a," b=",b," x=",x," y=",y," , Pdelta[x][y]=",P_delta[x][y], "entry",poly_add(P[i][j],P_delta[x][y])\2);}
 {  prints("update loc: ",a, " ", b, "to: ", poly_add(P[i][j],P_delta[x][y])\2);}
-	     rv:=update_matrix_entry(rv,a,b,poly_add(P[i][j],P_delta[x][y])\2)
+	     rv:=matrix_assign(rv,a,b,poly_add(P[i][j],P_delta[x][y])\2)
 	   elif epsilon_i*epsilon_j=minus_1
 	   then {(+,-) or (-,+): P-P^delta} let x=g[i], y=g[j] in
 { prints("opp sign P[i][j]=",P[i][j]," x=",x," y=",y," , Pdelta[x][y]=",P_delta[x][y]);}
 { prints("update loc: ",a, " ", b, "to: ", poly_sub(P[i][j],P_delta[x][y])\2);}
-	   rv:=update_matrix_entry(rv,a,b,poly_sub(P[i][j],P_delta[x][y])\2)
+	   rv:=matrix_assign(rv,a,b,poly_sub(P[i][j],P_delta[x][y])\2)
 	   elif abs(epsilon_i)=1 and epsilon_j=0 {(\pm,ind): P}
 	   then
 { prints("1/0 sign P[i][j]=");}
 {  prints("update loc: ",a, " ", b, "to: ", P[i][j]);}
-rv:=update_matrix_entry(rv,a,b,P[i][j])
+rv:=matrix_assign(rv,a,b,P[i][j])
 	   elif epsilon_i=0 and abs(epsilon_j)=1  {(ind,\pm): P}
 	   then
 {             prints("0/1 sign P[i][j]=");}
-rv:=update_matrix_entry(rv,a,b,P[i][j])
+rv:=matrix_assign(rv,a,b,P[i][j])
 	   elif epsilon_i=0 and epsilon_j=0
 	   then {(ind,ind): P(gamma,mu)+P(gamma,mu^delta)}
 {                     prints("/00 sign P[i][j]=");}
 
-	     rv:=update_matrix_entry
+	     rv:=matrix_assign
 		 (rv,a,b,poly_add(P[i][j],P[i][delta_action[j]]))
            fi
         od
      od;
 {     for a:n do for b:n
      do let (i,)=complete_indices[a], (j,)=complete_indices[b] in
-        rv:=update_matrix_entry(rv,a,b,rv[a][b]*minus_1^(lengths[i]+lengths[j]))
+        rv:=matrix_assign(rv,a,b,rv[a][b]*minus_1^(lengths[i]+lengths[j]))
      od od;}
 rv
 
 {this is inefficient: much better to use the subsequent version which precomputes
 partial_extended_KL_blok, partial_KL_block and mapping(B,B_delta)}
 set big_KL_P_signed_polynomial(Param p, mat delta, int a, int b)=
-  let (B_delta,P_delta_matrix,polys_delta)=partial_extended_KL_block(p,delta) then
-  ()=prints("in bigKLP etc") then
-  (B,P_matrix,polys)=partial_KL_block(p) then
-  ()=prints("computed partialkl block") then
-  (I_delta,,complete_indices,delta_action)=tabulate_indices(B,delta) then  {based on partial_KL_block(p)}
-   g=mapping(B,B_delta) then
-   lengths=for i:#B do length(B[i]) od then
-   n=#complete_indices then
-   rv=zero_poly_matrix(n) then  {silly: keeping whole matrix for convenience, fix this}
-   (i,epsilon_i)=complete_indices[a] then
-   (j,epsilon_j)=complete_indices[b] in
-   if a=b
-      then rv:=update_matrix_entry(rv,a,b,one)
-    elif (epsilon_i*epsilon_j=1)
-      then let x=g[i], y=g[j] in
-           rv:=update_matrix_entry(rv,a,b,poly_add(entry(B,P_matrix,polys,i,j),entry_extended(P_delta_matrix,polys_delta,x,y))\2)
-    elif epsilon_i*epsilon_j=minus_1
-      then let x=g[i], y=g[j] in
-           rv:=update_matrix_entry(rv,a,b,poly_sub(entry(B,P_matrix,polys,i,j),entry_extended(P_delta_matrix,polys_delta,x,y))\2)
+   let (B_delta,P_delta_matrix,polys_delta)=partial_extended_KL_block(p,delta)
+   then () = prints("in bigKLP etc")
+   then (B,P_matrix,polys)=partial_KL_block(p)
+   then ()=prints("computed partialkl block")
+   then (I_delta,,complete_indices,delta_action)=tabulate_indices(B,delta)
+        {based on partial_KL_block(p)}
+   then g=mapping(B,B_delta)
+   , lengths = for i:#B do length(B[i]) od
+   , n = #complete_indices
+   then rv=zero_poly_matrix(n) {silly: keeping whole matrix for convenience, fix this}
+   , (i,epsilon_i)=complete_indices[a]
+   , (j,epsilon_j)=complete_indices[b]
+in if a=b then rv:=matrix_assign(rv,a,b,poly_1)
+   elif (epsilon_i*epsilon_j=1)
+   then let x=g[i], y=g[j] in
+        rv:=matrix_assign(rv,a,b
+	  ,poly_add(entry(B,P_matrix,polys,i,j)
+	           ,entry_extended(P_delta_matrix,polys_delta,x,y)
+		   )\2
+	  )
+   elif epsilon_i*epsilon_j=minus_1
+   then let x=g[i], y=g[j] in
+        rv:=matrix_assign(rv,a,b
+	  ,poly_sub(entry(B,P_matrix,polys,i,j)
+	           ,entry_extended(P_delta_matrix,polys_delta,x,y)
+		   )\2
+	  )
     elif abs(epsilon_i)=1 and epsilon_j=0
-	   then rv:=update_matrix_entry(rv,a,b,entry(B,P_matrix,polys,i,j))
+    then rv:=matrix_assign(rv,a,b,entry(B,P_matrix,polys,i,j))
     elif epsilon_i=0 and abs(epsilon_j)=1
-	   then rv:=update_matrix_entry(rv,a,b,entry(B,P_matrix,polys,i,j))
+    then rv:=matrix_assign(rv,a,b,entry(B,P_matrix,polys,i,j))
     elif epsilon_i=0 and epsilon_j=0
-	   then rv:=update_matrix_entry(rv,a,b,poly_add(entry(B,P_matrix,polys,i,j),entry(B,P_matrix,polys,i,delta_action[j])))
+    then rv:=matrix_assign(rv,a,b
+    	   ,poly_add(entry(B,P_matrix,polys,i,j)
+		    ,entry(B,P_matrix,polys,i,delta_action[j])
+		    )
+	   )
     fi;rv[a][b]
 
 {this is the best version to use - requires precomputing partial_KL_block, partial_extended_KL_block, tabulated_indices
@@ -204,19 +210,19 @@ let (B_delta,P_delta_matrix,polys_delta)=partial_extended_KL_block then
    (i,epsilon_i)=complete_indices[a] then
    (j,epsilon_j)=complete_indices[b] in
    if a=b
-      then rv:=update_matrix_entry(rv,a,b,one)
+      then rv:=matrix_assign(rv,a,b,poly_1)
     elif (epsilon_i*epsilon_j=1)
       then let x=g[i], y=g[j] in
-           rv:=rv:=update_matrix_entry(rv,a,b,poly_add(entry(B,P_matrix,polys,i,j),entry_extended(P_delta_matrix,polys_delta,x,y))\2)
+           rv:=rv:=matrix_assign(rv,a,b,poly_add(entry(B,P_matrix,polys,i,j),entry_extended(P_delta_matrix,polys_delta,x,y))\2)
     elif epsilon_i*epsilon_j=minus_1
       then let x=g[i], y=g[j] in
-           rv:=update_matrix_entry(rv,a,b,poly_sub(entry(B,P_matrix,polys,i,j),entry_extended(P_delta_matrix,polys_delta,x,y))\2)
+           rv:=matrix_assign(rv,a,b,poly_sub(entry(B,P_matrix,polys,i,j),entry_extended(P_delta_matrix,polys_delta,x,y))\2)
     elif abs(epsilon_i)=1 and epsilon_j=0
-	   then rv:=update_matrix_entry(rv,a,b,entry(B,P_matrix,polys,i,j))
+	   then rv:=matrix_assign(rv,a,b,entry(B,P_matrix,polys,i,j))
     elif epsilon_i=0 and abs(epsilon_j)=1
-	   then rv:=update_matrix_entry(rv,a,b,entry(B,P_matrix,polys,i,j))
+	   then rv:=matrix_assign(rv,a,b,entry(B,P_matrix,polys,i,j))
     elif epsilon_i=0 and epsilon_j=0
-	   then rv:=update_matrix_entry(rv,a,b,poly_add(entry(B,P_matrix,polys,i,j),entry(B,P_matrix,polys,i,delta_action[j])))
+	   then rv:=matrix_assign(rv,a,b,poly_add(entry(B,P_matrix,polys,i,j),entry(B,P_matrix,polys,i,delta_action[j])))
     fi;rv[a][b]
 
 {caution: this produces the entire matrix, which is gets slow quickly; for applications
@@ -251,47 +257,47 @@ set big_KL_P_signed_polynomials (Param p,mat delta) =
         do let ()=prints("a:",a, " b: ", b) in let (j,epsilon_j)=complete_indices[b] in
 { prints("a=",a," b=",b," i=",i," e_i=",epsilon_i," j=",j," e_j=",epsilon_j);}
            if a=b
-           then  {prints("diag ",a," ",b);}rv:=update_matrix_entry(rv,a,b,one) {diagonal entries}
+           then  {prints("diag ",a," ",b);}rv:=matrix_assign(rv,a,b,poly_1) {diagonal entries}
 {	   prints();printPolyMatrix(rv)}
            elif (epsilon_i*epsilon_j=1) { entries have same sign: P+P^delta}
            then let x=g[i], y=g[j] in
 { prints("same sign i=",i," j=",j," P[i][j]=",P[i][j],"a=",a," b=",b," x=",x," y=",y," , Pdelta[x][y]=",P_delta[x][y], "entry",poly_add(P[i][j],P_delta[x][y])\2);}
 {  prints("update loc: ",a, " ", b, "to: ", poly_add(P[i][j],P_delta[x][y])\2);}
-           {rv:=update_matrix_entry(rv,a,b,poly_add(P[i][j],P_delta[x][y])\2)}
+           {rv:=matrix_assign(rv,a,b,poly_add(P[i][j],P_delta[x][y])\2)}
 {           prints("update loc 1: ", a, " ", b, " ", i, " ", j, " ", x, " ", y);}
 {assert(P[i][j]= entry(B,P_matrix,polys,i,j), "loc 1a");
 assert(P_delta[x][y]= entry_extended(P_delta_matrix,polys_delta,x,y), "loc1b");}
-           rv:=update_matrix_entry(rv,a,b,poly_add(entry(B,P_matrix,polys,i,j),entry_extended(P_delta_matrix,polys_delta,x,y))\2)
+           rv:=matrix_assign(rv,a,b,poly_add(entry(B,P_matrix,polys,i,j),entry_extended(P_delta_matrix,polys_delta,x,y))\2)
 	   elif epsilon_i*epsilon_j=minus_1
 	   then {(+,-) or (-,+): P-P^delta} let x=g[i], y=g[j] in
 {assert(P[i][j]= entry(B,P_matrix,polys,i,j), "loc 2a");
 assert(P_delta[x][y]= entry_extended(P_delta_matrix,polys_delta,x,y),"loc 2b");}
-{	   rv:=update_matrix_entry(rv,a,b,poly_sub(P[i][j],P_delta[x][y])\2)}
-	   rv:=update_matrix_entry(rv,a,b,poly_sub(entry(B,P_matrix,polys,i,j),entry_extended(P_delta_matrix,polys_delta,x,y))\2)
+{	   rv:=matrix_assign(rv,a,b,poly_sub(P[i][j],P_delta[x][y])\2)}
+	   rv:=matrix_assign(rv,a,b,poly_sub(entry(B,P_matrix,polys,i,j),entry_extended(P_delta_matrix,polys_delta,x,y))\2)
 	   elif abs(epsilon_i)=1 and epsilon_j=0 {(\pm,ind): P}
 	   then
 { prints("1/0 sign P[i][j]=");}
 {  prints("update loc: ",a, " ", b, "to: ", P[i][j]);}
-{rv:=update_matrix_entry(rv,a,b,P[i][j])}
+{rv:=matrix_assign(rv,a,b,P[i][j])}
 {let ()=assert(P[i][j]=entry(B,P_matrix,polys,i,j), "loc 3") in}
-rv:=update_matrix_entry(rv,a,b,entry(B,P_matrix,polys,i,j))
+rv:=matrix_assign(rv,a,b,entry(B,P_matrix,polys,i,j))
 	   elif epsilon_i=0 and abs(epsilon_j)=1  {(ind,\pm): P}
 	   then
 {             prints("0/1 sign P[i][j]=");}
-rv:=update_matrix_entry(rv,a,b,entry(B,P_matrix,polys,i,j))
+rv:=matrix_assign(rv,a,b,entry(B,P_matrix,polys,i,j))
 	   elif epsilon_i=0 and epsilon_j=0
 	   then {(ind,ind): P(gamma,mu)+P(gamma,mu^delta)}
 {                     prints("/00 sign P[i][j]=");}
 {assert(P[i][j]=entry(B,P_matrix,polys,i,j), "loc 3a");
 assert(P[i][delta_action[j]]=entry(B,P_matrix,polys,i,delta_action[j]), "loc 3a");}
-	     rv:=update_matrix_entry
+	     rv:=matrix_assign
 		 (rv,a,b,poly_add(entry(B,P_matrix,polys,i,j),entry(B,P_matrix,polys,i,delta_action[j])))
            fi
         od
      od;
 {     for a:n do for b:n
      do let (i,)=complete_indices[a], (j,)=complete_indices[b] in
-        rv:=update_matrix_entry(rv,a,b,rv[a][b]*minus_1^(lengths[i]+lengths[j]))
+        rv:=matrix_assign(rv,a,b,rv[a][b]*minus_1^(lengths[i]+lengths[j]))
      od od;}
 rv
 

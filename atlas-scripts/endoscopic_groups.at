@@ -29,13 +29,13 @@ set to_dominant (ratvec cowt,RootDatum rd) = (ratvec,WeylElt):
  cases:
   lifts = [beta]: alpha is restriction of single delta-fixed root: condition is:  beta(s)=1 i.e. is_integer(beta*v)
         = [beta,delta(beta)]: two orthogonal roots: condition is                  beta(s)^2=1 i.e. is_integer(2*beta*v)
-        = [beta_1,beta_2,beta_3]: after renumbering, let beta=beta_1, 
+        = [beta_1,beta_2,beta_3]: after renumbering, let beta=beta_1,
               [beta_1,beta_2,beta_3]=[beta,delta(beta),beta+delta(beta)]
             these restricted give: [alpha,alpha,2*alpha] OR [alpha/2,alpha/2,alpha]
             then condition is
                  alpha short: beta(s)^2=1
                  alpha long:  beta(s)^2=-1
-            let gamma=(beta_1+beta_2+beta_3) = 2(1+delta)beta => (gamma/2)=(1+delta)beta 
+            let gamma=(beta_1+beta_2+beta_3) = 2(1+delta)beta => (gamma/2)=(1+delta)beta
                  => (gamma/2)(s)=(1+delta)(beta)(s)=beta(s)^2
             then the condition is:
                  alpha short: (gamma/2)*v\in Z      i.e. is_integer(v*gamma/2)
@@ -57,7 +57,7 @@ for alpha in restricted_roots do
      if is_integer(beta*v) then [alpha] else [] fi
  elif #lifts=2 then
 {    let ()=prints("#lifts=2,alpha=",alpha) in}
-    let beta=lifts[0] in 
+    let beta=lifts[0] in
        if is_integer(2*beta*v) then {prints("adding alpha; ", alpha);}[alpha] else [] fi
  else
 {  let ()=prints("#lifts=3,alpha=",alpha) in}
@@ -76,7 +76,7 @@ for alpha in restricted_roots do
    elif find(restrictions,alpha\2)!=-1 then  {alpha is long: condition isbeta(s)^2=\ne 11 i.e. (gamma/2)(s)\ne 1 i.e. not is_integer((gamma/2)*v)}
       {let ()=prints("alpha is long, condition (gamma/2)*v is not integer", new_line, "gamma/2=", half_gamma, new_line,"gamma*v/2=", half_gamma*v) in }
       if not is_integer(half_gamma*v)
-          then {let ()=prints("adding alpha", alpha) in} [alpha] else {let ()=prints("not adding alpha", alpha) in} [] fi 
+          then {let ()=prints("adding alpha", alpha) in} [alpha] else {let ()=prints("not adding alpha", alpha) in} [] fi
    else
       assert(false,"failure in cases");[]
    fi
@@ -85,8 +85,8 @@ od)
 in
 if =#roots
  then (complex_torus(rank(rd)),T)
-else 
- let coroots=[] in
+else
+ let coroots=[vec]:[] in
 for alpha in roots do
   let pullback_alpha=
     let j=first(for beta in rd.roots do T.restrict(beta)=alpha od) in rd.roots[j] then
@@ -127,7 +127,7 @@ set fixed(RootDatum rd,ratvec v)=RootDatum:centralizer(rd,v)  {defined in weyl_c
 set list_twisted_groups(RealForm G)=void:
 let all=for i:ss_rank(G) do fixed_by_nodes(G,G.distinguished_involution,i) od
 in
-let (H,)=fixed(G,G.distinguished_involution) in 
+let (H,)=fixed(G,G.distinguished_involution) in
 prints(H);for (H,)@i in all do prints(i, " ", H) od
 
 
@@ -140,7 +140,7 @@ in other words
 On the other hand
  ^M: X^*(T_G_vee) -> X^*(T_H_vee) and
  ^M: X_*(T_H) -> X^*(T_G) and
- 
+
 I think:
 
 M:  each simple root for H to a sum of simple roots for G
@@ -209,18 +209,21 @@ set is_fixed(WeylElt w,mat delta, ratvec v)=bool:is_integer(w*delta*v-v)
 set restrict_co_action(mat M, mat A)=mat:left_inverse(M)*A*M
 
 set endoscopic_group(
-RootDatum G, {G not G_vee}
-mat delta_vee,   {optional dual twist, trivial for ordinary endoscopy}
-mat xi_vee,     {dual involution defining the L-group of G; if inner class is given don't need to specify this}
-ratvec s,        {take centralizer(exp(2i\pi s)}
-mat twist)=(RealForm,mat,RealForm):  {an additional twist; the identity gives the default inner class of the endoscopic group
+   RootDatum G, {G not G_vee}
+   mat delta_vee,   {optional dual twist, trivial for ordinary endoscopy}
+   mat xi_vee,     {dual involution defining the L-group of G; if inner class is given don't need to specify this}
+   ratvec s,        {take centralizer(exp(2i\pi s)}
+   mat twist) =
+   (RealForm,mat,RealForm):  {an additional twist; the identity gives the default inner class of the endoscopic group
                       this is only needed to get other inner classes of H}
 assert(delta_vee*twist=twist*delta_vee,"w_G_vee doesn't commute with delta_vee");
 {assert(is_fixed(w_G_vee,xi_vee,s), "w_G_vee*xi_vee doesn't fix s");}
-let (H,M,H_vee)=complex_endoscopic_group(G,delta_vee,s) then
-()=if e_verbose then prints("complex H: ", H) fi then
-()=if e_verbose then prints("complex H_vee: ", H_vee) fi then
-restrict=restrict_co_action(M,twist) then
+let (H,M,H_vee)=complex_endoscopic_group(G,delta_vee,s)
+then ()=if e_verbose
+        then prints("complex H: ", H); prints("complex H_vee: ", H_vee)
+	fi
+then restrict = restrict_co_action(M,twist)
+then
 {(w_H,)=to_dominant(H,restrict*H.rho) then  }
 (,w_H)=to_dominant(H_vee.rho_check*restrict,H_vee) then     {w_H on dual side: acting on X^*(T)=X_*(T^vee), so coroots for H_vee}
 ()=if e_verbose then prints("w_H: ", w_H, new_line, w_H.matrix) fi then
@@ -290,6 +293,3 @@ set endoscopic_group(RealForm G,ratvec s)=(RealForm,mat,RealForm):endoscopic_gro
 
 {most common twisted case:}
 set endoscopic_group(RealForm G, mat delta_vee)=(RealForm,mat,RealForm): endoscopic_group(G,delta_vee,null(rank(G)), id_W(dual(G)))
-
-
-

@@ -59,7 +59,7 @@ else
   ()=if ecf_verbose then let end_time=elapsed_ms() then ()=prints("ecf time 4: ", end_time-start_time) then start_time=end_time in () fi  then
   (B_delta,P_delta_matrix,polys_delta)=partial_extended_KL_block then
   ()=if ecf_verbose then let end_time=elapsed_ms() then ()=prints("ecf time 5: ", end_time-start_time) then start_time=end_time in () fi  then
-  map_B_Bdelta=map(B,B_delta) then
+  map_B_Bdelta=mapping(B,B_delta) then
   ()=if ecf_verbose then let end_time=elapsed_ms() then ()=prints("ecf time 6: ", end_time-start_time) then start_time=end_time in () fi  then
    (B,P_matrix,polys)=partial_KL_block then
    tabulated_indices=tabulate_indices(B,delta) then

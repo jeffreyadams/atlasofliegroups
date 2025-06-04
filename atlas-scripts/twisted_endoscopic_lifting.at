@@ -15,7 +15,7 @@ altogether; this is a fix in the mean time}
 {move nice_format elsewhere}
 set nice_format(Param p)=string:
  "p=(" + p.x.number.to_string + "," + p.lambda.compact_string + "," + p.nu.compact_string + ")"
- 
+
 {find and remove_duplicates should be moved elsewhere (basic?)}
 set find ([ParamPol] pols,ParamPol P) = int:   first(#pols,(int i)bool:pols[i]=P)
 
@@ -49,7 +49,7 @@ let rv=[ParamPol]:[] then
 indices=[int]:[] in
 for P@i in pols do
  let index=find(rv,P) in
- if index=-1 
+ if index=-1
  then
    if all(for p in monomials(P) do find(unipotents,p) !=-1 od) then
     indices#:=#rv;
@@ -62,7 +62,7 @@ for P@i in pols do
  fi
 od;(rv,indices)
 
- 
+
 {preliminary version of twisted endoscopic lifting
 given: (G,delta)
 G=real group, delta=some distinguished involution (not necessarily the inner class one)
@@ -143,21 +143,21 @@ set big_KL_P_polynomials(Param p,mat delta) ={ i_poly_mat:}
         do let (j,epsilon_j)=complete_indices[b] in
            {prints("a=",a," b=",b," i=",i," e_i=",epsilon_i," j=",j," e_j=",epsilon_j);}
            if a=b
-           then  rv:=update_matrix_entry(rv,a,b,[1]) {diagonal entries}
+           then rv:=matrix_assign(rv,a,b,poly_1) {diagonal entries}
            elif (epsilon_i*epsilon_j=1) { entries have same sign: P+P^delta}
            then let x=g[i], y=g[j] in
            {prints("P[i][j]=",P[i][j]," x=",x," y=",y," , Pdelta[x][y]=",P_delta[x][y]);}
-	     rv:=update_matrix_entry(rv,a,b,poly_add(P[i][j],P_delta[x][y])\2)
+	     rv:=matrix_assign(rv,a,b,poly_add(P[i][j],P_delta[x][y])\2)
 	   elif epsilon_i*epsilon_j=minus_1
 	   then {(+,-) or (-,+): P-P^delta} let x=g[i], y=g[j] in
-	     rv:=update_matrix_entry(rv,a,b,poly_sub(P[i][j],P_delta[x][y])\2)
+	     rv:=matrix_assign(rv,a,b,poly_sub(P[i][j],P_delta[x][y])\2)
 	   elif abs(epsilon_i)=1 and epsilon_j=0 {(\pm,ind): P}
-	   then rv:=update_matrix_entry(rv,a,b,P[i][j])
+	   then rv:=matrix_assign(rv,a,b,P[i][j])
 	   elif epsilon_i=0 and abs(epsilon_j)=1  {(ind,\pm): P}
-	   then rv:=update_matrix_entry(rv,a,b,P[i][j])
+	   then rv:=matrix_assign(rv,a,b,P[i][j])
 	   elif epsilon_i=0 and epsilon_j=0
 	   then {(ind,ind): P(gamma,mu)+P(gamma,mu^delta)}
-	     rv:=update_matrix_entry
+	     rv:=matrix_assign
 		 (rv,a,b,poly_add(P[i][j],P[i][delta_action[j]]))
            fi
         od
@@ -189,21 +189,21 @@ set big_partial_KL_P_polynomials(Param p,mat delta) = i_poly_mat:
         do let (j,epsilon_j)=complete_indices[b] in
 { prints("a=",a," b=",b," i=",i," e_i=",epsilon_i," j=",j," e_j=",epsilon_j); }
            if a=b
-           then  rv:=update_matrix_entry(rv,a,b,[1]) {diagonal entries}
+           then  rv:=matrix_assign(rv,a,b,poly_1) {diagonal entries}
            elif (epsilon_i*epsilon_j=1) { entries have same sign: P+P^delta}
            then let x=g[i], y=g[j] in
 { prints("P[i][j]=",P[i][j]," x=",x," y=",y," , Pdelta[x][y]=",P_delta[x][y]); }
-	     rv:=update_matrix_entry(rv,a,b,poly_add(P[i][j],P_delta[x][y])\2)
+	     rv:=matrix_assign(rv,a,b,poly_add(P[i][j],P_delta[x][y])\2)
 	   elif epsilon_i*epsilon_j=minus_1
 	   then {(+,-) or (-,+): P-P^delta} let x=g[i], y=g[j] in
-	     rv:=update_matrix_entry(rv,a,b,poly_sub(P[i][j],P_delta[x][y])\2)
+	     rv:=matrix_assign(rv,a,b,poly_sub(P[i][j],P_delta[x][y])\2)
 	   elif abs(epsilon_i)=1 and epsilon_j=0 {(\pm,ind): P}
-	   then rv:=update_matrix_entry(rv,a,b,P[i][j])
+	   then rv:=matrix_assign(rv,a,b,P[i][j])
 	   elif epsilon_i=0 and abs(epsilon_j)=1  {(ind,\pm): P}
-	   then rv:=update_matrix_entry(rv,a,b,P[i][j])
+	   then rv:=matrix_assign(rv,a,b,P[i][j])
 	   elif epsilon_i=0 and epsilon_j=0
 	   then {(ind,ind): P(gamma,mu)+P(gamma,mu^delta)}
-	     rv:=update_matrix_entry
+	     rv:=matrix_assign
 		 (rv,a,b,poly_add(P[i][j],P[i][delta_action[j]]))
            fi
         od
@@ -226,7 +226,7 @@ set big_partial_KL_P_polynomials(Param p,mat delta) = i_poly_mat:
      in
      for a:n do for b:n
      do let (i,)=complete_indices[a], (j,)=complete_indices[b] in
-        P:=update_matrix_entry(P,a,b,P[a][b]*minus_1^(lengths[i]+lengths[j]))
+        P:=matrix_assign(P,a,b,P[a][b]*minus_1^(lengths[i]+lengths[j]))
      od od
   ; P
   fi
@@ -271,18 +271,16 @@ Value:
 |  1, -1, -1,  1 |
 }
 
-set restrict_action_weak (mat A, mat M) =  { shapes A: n by n, M: n by m }
-   case solve(M,A*M) | solution(B): B
-   | else null(0,0)
-   esac
+set restrict_action_weak (mat A, mat M) = mat: { shapes A: n by n, M: n by m }
+   case solve(M,A*M) | some(B): B | else null(0,0)  esac
 
 set lift(mat m, RootDatum G,mat M)=WeylElt:
 let W=G.W then
-i=first(for w in W do any(solve(M,w.matrix*M)) and restrict_action(w.matrix,M)=m od)
+i=first(for w in W do can(solve(M,w.matrix*M)) and restrict_action(w.matrix,M)=m od)
 in W[i]
 
 set lift(mat theta_H,mat M,RealForm G)=mat:
-let i=first(for x in KGB(G) do any(solve(M,x.involution*M)) and restrict_action(x.involution,M)=theta_H od) in
+let i=first(for x in KGB(G) do can(solve(M,x.involution*M)) and restrict_action(x.involution,M)=theta_H od) in
 KGB(G,i).involution
 
 {lift generalized KGB element:
@@ -309,7 +307,7 @@ let tf_H_raw=x_H_gen.unnormalized_torus_factor then
 theta_G=lift(x_H_gen.involution,M,G) then  {as advised by NA on 10/7/24}
 tf_G_raw=M*tf_H_raw then
 {tf_G=(2*tf_G_raw-G.rho_check)*(1+theta_G)/2 in}
-tf_G=M*(-2*tf_H_raw+rho_check(x_H_gen.real_form)) {-M*(-2*tf_H_raw+rho_check(x_H_gen.real_form))} in 
+tf_G=M*(-2*tf_H_raw+rho_check(x_H_gen.real_form)) {-M*(-2*tf_H_raw+rho_check(x_H_gen.real_form))} in
 {tf_G=(M*(-2*tf_H_raw+rho_check(x_H_gen.real_form)))\1+((1+theta_G)*(-M*(-2*tf_H_raw+rho_check(x_H_gen.real_form)))/2)\1 in}
 KGB_elt_gen(G.inner_class,theta_G,tf_G)
 {tf_G=(M*(dual(p_H).lambda-rho(x_H_gen.real_form)))\1+((1+theta_G)*(-M*(dual(p_H).lambda-rho(x_H_gen.real_form)))/2)\1 in}
@@ -374,15 +372,25 @@ E_G.parameter
 see after the definition for the application
 }
 
-set solve(mat M,mat N,ratvec v)=maybe_a_ratvec:
+set solve_old(mat M,mat N,ratvec v) = Maybe<ratvec>:
   let sol=solve(M##N,v) in
   let ()=if te_verbose then prints("solving: ", v) fi in
-   if any(sol) then
+   if can(sol) then
     let    ()=if te_verbose then prints("solution: ", sol.requisition) fi in
-    let w=sol.requisition in w[:n_columns(M)].solution
+    let w=sol.requisition in w[:n_columns(M)].some
    else
-    ().no_ratvec
+    ().none
    fi
+
+set solve(mat M,mat N,ratvec v) = Maybe<ratvec>:
+   if te_verbose then prints("solving: ", v) fi;
+   case solve(M##N,v)
+   | some(w):
+     if te_verbose then prints("solution: ", w) fi;
+     w[:n_columns(M)].some
+   | none():
+     none()
+   esac
 
 {key part of the next algorithm:
 
@@ -415,16 +423,16 @@ theta=p_G.x.involution then
 N=(1+theta)##id_mat(n_rows(theta)) then
 ()=if te_verbose then prints(M##N) fi then
 tf_u_H_maybe=solve(M,N,tf_u_G) {solution to: M*tf_u_H=tf_u_G mod (X^*_Q)^[-theta]+X_*}  then
-tf_u_H=if not any(tf_u_H_maybe) then error("no solution") else
+tf_u_H=if not can(tf_u_H_maybe) then error("no solution") else
         2*tf_u_H_maybe.requisition  {factor of 2}
 fi  then
 ()=if te_verbose then prints("tf_u_H=", tf_u_H) fi then
 tf_H=(1+action_H)*(2*tf_u_H-H.rho)/2 {convert to normalized torus factor} then
 ()=if te_verbose then prints("tf_u_G: ", tf_u_G, new_line, "tf_u_H: ", tf_u_H, new_line, "tf_H: ", tf_H) fi then
 y_H_gen=KGB_elt_gen(dual(inner_class(H)),action_H,tf_H) then
-phi_H=phi(y_H_gen,gamma_H) then 
+phi_H=phi(y_H_gen,gamma_H) then
 ()=if te_verbose then prints("y_H_gen=", y_H_gen) fi in
-if is_valid(phi_H) then 
+if is_valid(phi_H) then
  let ()=if te_verbose then prints("phi_H is valid") fi in
  let  lp=L_packet(H,phi_H) then
  ()= if te_verbose then prints("lp="); for a in lp do prints(a) od fi in
