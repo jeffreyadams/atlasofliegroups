@@ -85,8 +85,13 @@ set KGB_frac_flag =true
 {if KGB_frac_flag and x is less than this fraction of KGB, then switch from bottom_layer to one_level}
 set KGB_frac = rat:1/3
 
+{set one_level_frac_flag =true
+
+{If one_level_frac_flag and x exceeds this fraction of KGB, then make one_level_revert_flag true}
+set one_level_frac = 2/3
+}
 {if NOT KGB_frac, and height is smaller than this fraction of max height, then switch
-    from bottom_layer to one_level}
+    from bottom_layer to one_level or hash2}
 set lambda_frac = rat: 2/3
 
 set bl_shift(KGBElt x, ratvec lambda, LocalVertexData Lvd) = int:
@@ -101,6 +106,7 @@ set test_bl(KGBElt x, ratvec lambda, LocalVertexData Lvd) = bool:
     if not test_bl_flag then return true fi;
     if rank(x.real_form) < 7 then return false fi;
     if KGB_frac_flag and x.number < KGB_frac*(#KGB(x.real_form)) then return false fi;
+    {if one_level_frac_flag then one_level_revert_flag := x.number > one_level_frac*(#KGB(x.real_form)) fi;}
     let start = elapsed_ms(), pmax = pmax(x,lambda,Lvd), rd = x.root_datum,
     	theta = x.involution, ans = true
     then () = if not KGB_frac_flag and height(pmax) < lambda_frac*(rd.rho)*(rd.two_rho_check)
@@ -1171,7 +1177,13 @@ set FPP_unitary_hash_bottom_layer([KGBElt] xs, Param_hash UhashG, (Param->bool) 
 	 if twist(x) != x
 	 then big_unitary_hash.finishx(x)
 	 else
-	 let former_time = current, formerUhash = currentUhash, formerUcounter = currentUcounter, x_sc = xs_sc[j],
+	 let easy_test_bl_flag = if rank(x.real_form) < 7
+			       	 then false
+    			      	 elif KGB_frac_flag and x.number < KGB_frac*(#KGB(x.real_form))
+			       	 then false
+			       	 else true
+			         fi
+	 then former_time = current, formerUhash = currentUhash, formerUcounter = currentUcounter, x_sc = xs_sc[j],
 	     formerUtime = unitaryTime, formerCcounter = currentCcounter, formerCharTime = charTime,
 	     former_red_count_time = red_count_time,  startmorebadx = more_bad_hash.size(),
 	     startmorex = more_good_hash.size(), startminbadx = bad_hash.size(), startminx = good_hash.size()
@@ -1288,8 +1300,8 @@ set FPP_unitary_hash_bottom_layer([KGBElt] xs, Param_hash UhashG, (Param->bool) 
 				    test_verbose :=old_test_verbose; test_slightly_verbose :=
 					 	      old_test_slightly_verbose
 			       fi;
-			       let answer = if test_bl(x_sc, M*lambda, Lvd)
-			     	      	     then local_test_GEO_hash_bottom_layer(x_sc,
+			       let answer = if easy_test_bl_flag and test_bl(x_sc, M*lambda, Lvd)
+			     	      	    then local_test_GEO_hash_bottom_layer(x_sc,
 				      M*lambda, Lvd, LF, pol_hash, Uhash, fancy_tester)
 				      elif one_level_revert_flag
 				      then local_test_GEO_hash_one_level(x_sc, M*lambda, Lvd,

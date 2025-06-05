@@ -70,7 +70,7 @@ set diff_frac = rat: 3/4
 {if target height < (GAM - LAM)*diff_frac, then figure is_unitary_to_ht could be faster. So largest
 reasonable target height is (GAM-LAM)*diff_frac. INCREASE to use to_ht
 more often}
-set diff_char_frac = rat: 1/12 {1/8 used a bit more memory and time in
+set diff_char_frac = rat: 1/10 {1/8 and 1/12 used a bit more memory and time in
     		     	       spherical E7_s}
 
 { trunc_factor is how much to DISLIKE trunctating character

@@ -18,17 +18,29 @@
 set lookups([[vec]] LFD) = [(vec->int)]:
     for L@d in LFD do index_in(for v in L do v[:d+1] od) od
 
-{assume LFDKH has tail coords referring to K-char}
-set sort(RealForm G, LocalVertexData Lvd, [[FaceVertsKHash]] LFDKH, int tail) = [[FaceVertsKHash]]:
-    if sort_LFD_flag
-    then let tworhocheck = G.two_rho_check
-    	 then f(vec v) = int:
-    	      let (num,den) = %(sum(for j in v[:#v - tail] do Lvd.list[j]*tworhocheck od)*1000)
-	      in num\den
-    	 in for LFDKHd@d in LFDKH do sort_by(f)(LFDKHd) od
-    else LFDKH
-    fi
+set sort(RealForm G, LocalVertexData Lvd, [[FaceVertsKHash]] LFDKH) = [[FaceVertsKHash]]:
+    if #LFDKH[0]=0 then return LFDKH fi;
+    let tail = #LFDKH[0][0]-1
+    in if sort_LFD_flag
+       then let tworhocheck = G.two_rho_check
+    	    then f(vec v) = int:
+    	      	 let (num,den) = %((face_bary(Lvd,v[:#v - tail])*tworhocheck)*1000)
+	      	 in num\den
+    	    in for LFDKHd@d in LFDKH do sort_by(f)(LFDKHd) od
+       else LFDKH
+       fi
 
+set anti_sort(RealForm G, LocalVertexData Lvd, [[FaceVertsKHash]] LFDKH) = [[FaceVertsKHash]]:
+    if #LFDKH[0]=0 then return LFDKH fi;
+    let tail = #LFDKH[0][0]-1
+    in if sort_LFD_flag
+       then let tworhocheck = G.two_rho_check
+    	    then f(vec v) = int:
+    	      	 let (num,den) = %((face_bary(Lvd,v[:#v - tail])*tworhocheck)*1000)
+	      	 in -num\den
+    	    in for LFDKHd@d in LFDKH do sort_by(f)(LFDKHd) od
+       else LFDKH
+       fi
 {if the zero parameter at (x,lambda) has invariant form indefinite on
 LKTs, then no irreducible Langlands quotient can be unitary. We used
 to record the cases when all the LQs were unitary, but no
@@ -3062,7 +3074,7 @@ set localFD_1Dirac2\
 		fi
 	 od.##
     { then () = prints("after LF1, time is ",print_time_string(elapsed_ms() - start))}
-    then answer = sort(G, Lvd, [LF0]##[LF1], 0)
+    then answer = sort(G, Lvd, [LF0]##[LF1])
     then () = FD12Time +:= elapsed_ms() - start
     in if face_verbose then prints("After localFD_1Dirac2, face counts are [",#LF0,
     		      	   	  ",",#LF1,"]") fi;
@@ -3266,7 +3278,7 @@ set localFD_1Dirac2_by_zero\
     {then () = if time_verbose
     	      then prints("after LF1, time is ",print_time_string(elapsed_ms() - start))
 	      fi}
-    then answer = sort(G, Lvd, [LF0]##[LF1], 0)
+    then answer = sort(G, Lvd, [LF0]##[LF1])
     then () = FD12bzTime +:= elapsed_ms() - start
     in if(face_verbose) then prints("After localFD_1Dirac2_by_zero, face counts are [",#LF0,
     		      	   	  ",",#LF1,"]") fi;
@@ -3372,7 +3384,7 @@ set localFD_by_zero_short\
 	    	fi
 	 od.##
     { then () = prints("after LF1, time is ",print_time_string(elapsed_ms() - start))}
-    then answer = sort(G, Lvd, [LF0]##[LF1], 0)
+    then answer = sort(G, Lvd, [LF0]##[LF1])
     then () = FD12bzTime +:= elapsed_ms() - start
     {then () = if elapsed_ms() - start > 10{FD12bzTime}
     	      then prints("(fixed,trans) = (",#Perm2.fixed, ",",#Perm2.trans, "), face counts (",#LF0,",",Edges,") took ",print_time_string(elapsed_ms() - start))
@@ -3515,7 +3527,7 @@ set localFD_1Dirac2_by_zero_old\
 	       fi
 	  od.##
     { then () = prints("after LF1, time is ",print_time_string(elapsed_ms() - start))}
-    then answer = sort(G, Lvd, [LF0]##[LF1], 0)
+    then answer = sort(G, Lvd, [LF0]##[LF1])
     then () = FD12bzTime +:= elapsed_ms() - start
     in if(face_verbose) then prints("After localFD_1Dirac2_by_zero, face counts are [",#LF0,
     		      	   	  ",",#LF1,"]") fi;
@@ -3549,7 +3561,7 @@ set localFD_KHash_01 (KGBElt x, ratvec lambda, LocalVertexData Lvd, KTypePol_has
 		fi
 	 fi
     then answer0 = for v@k in LF[0]
-       	     	   do if k%(max(#LF[0]\10,2))=0 and fund_face_verbose
+       	     	   ~do if k%(max(#LF[0]\10,2))=0 and fund_face_verbose
 	      	      then prints("calculating K-character on face ",k,
 	      	      "; #ktp_hash = ",ktp_hash.size())
 	      	      fi;
@@ -3568,7 +3580,7 @@ set localFD_KHash_01 (KGBElt x, ratvec lambda, LocalVertexData Lvd, KTypePol_has
     	 	    	     do v[:1]
 			     od)
     then answer1 = for v@k in LF[1] {if red_count_flag, has red_count as coor#2}
-    	 	   do if k%(max(#LF[1]\10,2))=0 and fund_face_verbose
+    	 	   ~do if k%(max(#LF[1]\10,2))=0 and fund_face_verbose
 	      	      then prints("calculating K-character on face ",k,
 	      	      	   "; #ktp_hash = ",ktp_hash.size())
 	      	      fi;
@@ -3597,7 +3609,7 @@ set localFD_KHash_01 (KGBElt x, ratvec lambda, LocalVertexData Lvd, KTypePol_has
 			     prints(" face counts to dim 1: [",#answer0,",",#answer1,
 			     "]; Dirac_best eliminated ", DBTcount - startDBTcount)
 			     fi
-    in [answer0,answer1]
+    in sort(x.real_form, Lvd, [answer0,answer1])
 
 {takes 0 and 1-diml local faces and adds K-char index to height HT}
 set localFD_KHash_01 (KGBElt x, ratvec lambda, LocalVertexData Lvd, int HT, KTypePol_hash ktp_hash,
@@ -3622,7 +3634,7 @@ set localFD_KHash_01 (KGBElt x, ratvec lambda, LocalVertexData Lvd, int HT, KTyp
 		fi
 	 fi
     then answer0 = for v@k in LF[0]
-       	     	   do if k%(max(#LF[0]\10,2))=0 and fund_face_verbose
+       	     	   ~do if k%(max(#LF[0]\10,2))=0 and fund_face_verbose {TRY TILDE}
 	      	      then prints("calculating K-character on face ",k,
 	      	      "; #ktp_hash = ",ktp_hash.size())
 	      	      fi;
@@ -3641,7 +3653,7 @@ set localFD_KHash_01 (KGBElt x, ratvec lambda, LocalVertexData Lvd, int HT, KTyp
     	 	    	     do v[:1]
 			     od)
     then answer1 = for v@k in LF[1]
-    	 	   do if k%(max(#LF[1]\10,2))=0 and fund_face_verbose
+    	 	   ~do if k%(max(#LF[1]\10,2))=0 and fund_face_verbose {TRY TILDE}
 	      	      then prints("calculating K-character on face ",k,
 	      	      	   "; #ktp_hash = ",ktp_hash.size())
 	      	      fi;
@@ -3672,7 +3684,7 @@ set localFD_KHash_01 (KGBElt x, ratvec lambda, LocalVertexData Lvd, int HT, KTyp
 			     prints(" face counts to dim 1: [",#answer0,",",#answer1,
 			     "]; Dirac_best eliminated ", DBTcount - startDBTcount)
 			     fi
-    in [answer0,answer1]
+    in sort(x.real_form,Lvd,[answer0,answer1])
 
 {same as above, using graph of K-relations}
 {takes 0 and 1-diml local faces and adds K-char index}
@@ -3736,6 +3748,7 @@ set localFD_KHash_01_graph (KGBElt x, ratvec lambda, LocalVertexData Lvd, KTypeP
     {then () = if time_verbose then prints("     ", print_time_string(time),
    	     		     " for localFD_KHash_01_graph (vertex/edge K-chars)") fi}
     in answer
+
 {same as above, using graph of K-relations}
 {takes 0 and 1-diml local faces and adds K-char index}
 {only called when red_count_flag = true. In element of LF[d], first d+1 coords are vertices;
@@ -3916,8 +3929,9 @@ set localFD_KHashbt_lookDownGEO \
 			      else index_in([vec]:[])
 			      fi
 	      	 in LFKH := LFKH# (let acts = superFaces_plus(LFKH[0],LFKH[dim-1],e)
-	      	    	       	   in for (actual,locs) in acts {vec of size dim+1, coords of subs}
-	       	    	      	      do let bary = face_bary(Lvd, actual)
+	      	    	       	   in [vec]:
+				      for (actual,locs) in acts {vec of size dim+1, coords of subs}
+	       	    	      	      do let bary = face_bary(Lvd, actual) {try tilde}
 				      	     {sum(G.rank, for j in actual do Lvd.list[j] od)/(dim+1)}
 		       	      	      	 then p0 = parameter(x,lambda, bary)
 				      	 then P = finalize(p0)
@@ -3954,7 +3968,7 @@ set localFD_KHashbt_lookDownGEO \
 				    	     fi {pos on LKTs}
 		    	      	   od.## {[FaceVertsKHash]})
 	 od
-    then () = LFKH := sort(G, Lvd, LFKH, e)
+    then () = LFKH := sort(G, Lvd, LFKH)
     then time = elapsed_ms() - start
     then () = if time_verbose
 	      then prints("     ", print_time_string(time),
@@ -3988,8 +4002,9 @@ set localFD_KHashbt_lookDownGEO \
 			      else index_in([vec]:[])
 			      fi
 	      in LFKH := LFKH# (let acts = superFaces_plus(LFKH[0],LFKH[dim-1],e)
-	      	    	       	in for (actual,locs) in acts
-	       	    	      	   do let bary =
+	      	    	       	in [vec]:
+				   for (actual,locs) in acts
+	       	    	      	   do let bary =  {try tilde}
 				      sum(G.rank, for j in actual do Lvd.list[j] od)/(dim+1)
 		       	      	      then p0 = parameter(x,lambda, bary)
 				      then P = finalize(p0)
@@ -4023,7 +4038,7 @@ set localFD_KHashbt_lookDownGEO \
 				    	  fi {pos on LKTs}
 		    	      	   od.## {[FaceVertsKHash]})
 	 od
-    then () = LFKH := sort(G, Lvd, LFKH, e)
+    {then () = LFKH := sort(G, Lvd, LFKH)}
     {then time = elapsed_ms() - start
     then () = if time_verbose
 	      then prints("     ", print_time_string(time),
@@ -4044,11 +4059,11 @@ set extend_K_characters(KGBElt x, ratvec lambda, LocalVertexData Lvd,
     let G = x.real_form, start = elapsed_ms(), red_shift = if red_count_flag then 1 else 0 fi
     then answer =
        for d:#LFKH
-       do if extend_character_verbose then prints(new_line, "start to extend ",#LFKH[d],
+       do [vec]: if extend_character_verbose then prints(new_line, "start to extend ",#LFKH[d],
        	  		     " K-characters in dimension ",d,
 			     " in extend_K_characters")
        	  fi; for v@k in LFKH[d]
-       	      do if k%(max(#LFKH[d]\10,2))=0 and extend_character_verbose
+       	      ~do if k%(max(#LFKH[d]\10,2))=0 and extend_character_verbose {try tilde}
 	      	 then prints("calculating K-character on face ",k,
 	    	      "; #ktp_hash = ",ktp_hash.size())
 	  	 fi;
@@ -4066,7 +4081,7 @@ set extend_K_characters(KGBElt x, ratvec lambda, LocalVertexData Lvd,
      then time = elapsed_ms() - start
      then () = if time_verbose then prints("     ", print_time_string(time),
      	       	  " for extend_K_characters") fi
-     in answer
+     in answer {sort(G,Lvd,answer)}
 
 set extend_K_characters(KGBElt x, ratvec lambda, LocalVertexData Lvd,
     [[FaceVertsKHash]] LFKH, int ht, KTypePol_hash ktp_hash) =
@@ -4078,10 +4093,10 @@ set extend_K_characters(KGBElt x, ratvec lambda, LocalVertexData Lvd,
     let G = x.real_form, start = elapsed_ms(), red_shift = if red_count_flag then 1 else 0 fi
     then answer =
        for d:#LFKH
-       do if extend_character_verbose then prints(new_line, "start to extend ",#LFKH[d],
+        do [vec]: if extend_character_verbose then prints(new_line, "start to extend ",#LFKH[d], {try tilde}
        	  		     " K-characters in dimension ",d, " to height ",ht)
-       	  fi; for v@k in LFKH[d]
-       	      do if k%(max(#LFKH[d]\10,2))=0 and extend_character_verbose
+       	  fi;   for v@k in LFKH[d]
+       	        ~do if k%(max(#LFKH[d]\10,2))=0 and extend_character_verbose {try tilde}
 	      	 then prints("calculating K-character on face ",k,
 	    	      "; #ktp_hash = ",ktp_hash.size())
 	  	 fi;
@@ -4099,7 +4114,7 @@ set extend_K_characters(KGBElt x, ratvec lambda, LocalVertexData Lvd,
      then time = elapsed_ms() - start
      then () = if time_verbose then prints("     ", print_time_string(time),
      	       	  " for extend_K_characters to ht ", ht) fi
-     in answer
+     in anti_sort(G,Lvd,answer)
 
 set extend_K_characters_graph(KGBElt x, ratvec lambda, LocalVertexData Lvd,
     [[FaceVertsKHash]] LFKH, KTypePol_hash ktp_hash, [[int]] eq, [vec] classListByFace) = [[FaceVertsKHash]]:
@@ -4121,7 +4136,7 @@ set extend_K_characters_graph(KGBElt x, ratvec lambda, LocalVertexData Lvd,
 	  in m
        od {C in eq}
      then answer = for LFd@d in LFKH
-       	  	   do for j:#LFd
+       	  	   do [vec]: for j:#LFd
 	  	      do let v = LFd[j]
 		      	 then () = v[d+2] := polNums[classListByFace[d][j]]
 		         in v
@@ -4130,7 +4145,7 @@ set extend_K_characters_graph(KGBElt x, ratvec lambda, LocalVertexData Lvd,
      then time = elapsed_ms() - start
      then () = if time_verbose then prints("     ", print_time_string(time),
      	       	  " for extend_K_characters_graph") fi
-     in answer
+     in sort(x.real_form, Lvd, answer)
 
 set extend_K_characters_graph(KGBElt x, ratvec lambda, LocalVertexData Lvd,
     [[FaceVertsKHash]] LFKH, int ht, KTypePol_hash ktp_hash, [[int]] eq, [vec] classListByFace) =
@@ -4153,7 +4168,7 @@ set extend_K_characters_graph(KGBElt x, ratvec lambda, LocalVertexData Lvd,
 	  in m
        od {C in eq}
      then answer = for LFd@d in LFKH
-       	  	   do for j:#LFd
+       	  	   do [vec]: for j:#LFd
 	  	      do let v = LFd[j]
 		      	 then () = v[d+2] := polNums[classListByFace[d][j]]
 		         in v
