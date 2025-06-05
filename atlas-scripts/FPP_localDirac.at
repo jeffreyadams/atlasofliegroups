@@ -1367,7 +1367,7 @@ set local_test_hash(KGBElt x, ratvec lambda, LocalVertexData Lvd,
 		 fi
 	      od
     then () = if test_verbose
-    	      then prints("     Examining ",NumClasses," classes in local_testK_hash; ",
+    	      then prints("     Examining ",NumClasses," classes in local_test_hash; ",
 	      known_true_count," are known unitary, ", known_false_count, " known nonunitary.")
 	      fi
     then () = for m:NumClasses {work from small faces toward big}
@@ -1432,6 +1432,8 @@ set local_test_hash(KGBElt x, ratvec lambda, LocalVertexData Lvd,
 		in ()
 		fi
 	  od {m:NumClasses}
+     {while(known_true_count + known_false_count < NumClasses)
+     do if known_true_count>known_false_count}
      then unitary_by_dim = vec: null(#LFVH)
      then UParams = [Param]:[]
      then () = for C@k in eq
@@ -3302,13 +3304,21 @@ set local_test_GEO_hash_one_level(KGBElt x, ratvec lambda, {VertexData vd,}
        	       	   		      		      unitary_by_dim);}
 		prints("number of tests so far = ",unitary_test_counter.use_count() - start_count)
 	      fi
+    then () = LFDKH := for list in LFDKH do [vec]: for v in list ~do v od od
     then () = LFDKH := extend_K_characters(x, lambda, Lvd, LFDKH, pol_hash)
+    {anti_sort(x.real_form, Lvd, extend_K_characters(x, lambda, Lvd, LFDKH, pol_hash))} {this is worse in spherical E7_s}
     then start=elapsed_ms()
     then () = long_out_flag := long_out_temp_flag
-    then mu = K_type(x, pmax.lambda_minus_rho) {LKTs(pmax)[0]}
+    {then mu = K_type(x, pmax.lambda_minus_rho) {LKTs(pmax)[0]}}
     then mu_tester(Param p) = bool: is_unitary_test_big_SIMPLE_interrupt(p,hts[ONE+1:])
     {then () = if test_verbose then prints("one_ht = ",one_ht) fi}
-    then UParams = [Param]:
+    then ((eq,gr),IUCL,CLBF) = localGraphK(LFDKH)
+    then UParams = local_test_hash(x, lambda, Lvd, LFDKH, eq, gr, CLBF, (Param->bool): (Param p):
+		 if test_interrupt_flag {up_mu_flag}
+		 then mu_tester(p)
+		 else is_unitary_hash_big_SIMPLE(p)
+		 fi, Uhash)
+    {then UParams = [Param]:
          if one_ht >=  0
          then let ((eq,gr),IUCL,CLBF) = localGraphK(LFDKH)
 	      then () = if test_verbose then prints(sum(for list in LFDKH do #list od),
@@ -3323,7 +3333,7 @@ set local_test_GEO_hash_one_level(KGBElt x, ratvec lambda, {VertexData vd,}
 		       {NEED PERHAPS TO PUT BOTTOM LAYER BACK}
           else for list@d in LFDKH
                do for v in list
-                  do let p = parameter(x,lambda, face_bary(Lvd, v[:d+1]))
+                  ~do let p = parameter(x,lambda, face_bary(Lvd, v[:d+1]))
 		     then () = for  p1 in monomials(finalize(p))
                       	       do Uhash.match({herm_center(}p1{)});
                              	  if deform_flag
@@ -3340,7 +3350,7 @@ set local_test_GEO_hash_one_level(KGBElt x, ratvec lambda, {VertexData vd,}
 		     in p
                   od
                 od.##
-	 fi
+	 fi}
     then time = elapsed_ms() - start
     then () = if time_verbose
 	      then prints("     ", print_time_string(time),
@@ -3550,7 +3560,7 @@ to negative means never bottom layer.}
 {if true, use coh_ind_is_unitary in final tests; else is_unitary}
 set coh_ind_tester_flag = true
 
-set one_level_revert_flag = true {false}
+set one_level_revert_flag = {true} false
 
 {assume local faces to dim 1 are recorded in LF, already herm and pos
 on LKTs. This version uses min_bottom_elim instead of
