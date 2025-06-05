@@ -378,9 +378,9 @@ is_long_coroot: (RootDatum,int->bool): Whether a coroot is considered to be long
 root_involution : (RootDatum,int->vec): full system involution for reflection
   Renumbering the full root system from 0 for the most negative root, this gives
   the involution of those roots for the reflection for the given root/coroot
-root_ladder_bottoms: (RootDatum,int->[int] Starting indices of root ladders
+root_ladder_bottoms: (RootDatum,int->[int]) Starting indices of root ladders
   For (rd,i) the gives those j for which root(rd,j)-root(rd,i) is not a root
-coroot_ladder_bottoms: (RootDatum,int->[int] Starting indices of coroot ladders
+coroot_ladder_bottoms: (RootDatum,int->[int]) Starting indices of coroot ladders
   For (rd,i) the gives those j for which coroot(rd,j)-coroot(rd,i) is no coroot
 fundamental_weight: (RootDatum,int->ratvec): fundamental weight number $i$
 fundamental_coweight: (RootDatum,int->ratvec): fundamental coweight number $i$
