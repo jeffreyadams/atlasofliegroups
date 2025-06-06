@@ -29,11 +29,10 @@ assert(is_valid(phi(y,p.infinitesimal_character)),"y(p) is not valid");y
 
 {when making pair (x,phi) dominant: apply the same Weyl group element to x and phi}
 set make_dominant(KGBElt x,L_homomorphism (y,gamma))=(KGBElt,L_homomorphism):
-{let (w,gamma_dom)=to_dominant(y.root_datum,gamma) in}
 let (gamma_dom,w)=to_dominant(gamma,y.root_datum) in  {gamma is in X^*(H)=X_*(H^vee), y.root_datum on dual side}
-{let ()=prints("wx: ", w*x) then}
-{()=prints("wphi: ", w*y, " ", gamma_dom) in}
-(w*x,(w*y,gamma_dom))
+(w*x,(inverse(w)*y,gamma_dom))  {the inverse(w) was missing; this is a reflection of a more general sloppiness
+                                 regarding the actions on X^*/X_* coming from G and G^vee
+                                 this needs to be cleaned up globally}
 
 set make_dominant(KGBElt_gen x,L_homomorphism (y,gamma))=(KGBElt_gen,L_homomorphism):
 let (w,gamma_dom)=to_dominant(y.root_datum,gamma) in (w*x,(w*y,gamma_dom))
