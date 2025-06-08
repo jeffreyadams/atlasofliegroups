@@ -54,23 +54,22 @@ set std_labels(RootDatum rd) = vec:
 set labels(RootDatum rd, ratvec gamma) = vec:
     let SCR = simple_coroots(rd, gamma), zero = null(rd.rank)
     then LS = linear_solution: linear_solve(SCR,zero)
-    then lpm = vec: case LS | affine_subspace(v,d,M):M[0] |
-       	    	 else error("bad coroots") esac
+    then lpm = vec: case LS | some(v,d,M):M[0] | else error("bad coroots") esac
     in if lpm[0]>0 then lpm else -lpm fi
 
 {possible values of 2rho for the positive systems of the alcove}
 {Number of values is the order of the center of the simply connected group}
 set tworhos(RootDatum rd, ratvec gamma) = [vec]:
     let SCR = simple_coroots(rd, gamma), zero = null(rd.semisimple_rank),
-    	two = vec: for j:rd.semisimple_rank+1 do 2 od
+    	twos = vec: ones(rd.semisimple_rank+1) * 2
     then labs = vec: labels(rd, gamma)
     then corr = -2*sum(labs)
     in for m@j in labs
-       do if m=1 then let goal=two + corr*e(rd.semisimple_rank+1,j)
-	  in [requisition(solve(^SCR, goal))]
-	  else []
+          if m=1
+          do let goal=twos + corr*identity_row(rd.semisimple_rank+1,j)
+	     in required_solution(^SCR, goal)
 	  fi
-       od.##
+       od
 
 set ws(RootDatum rd, ratvec gamma) = [WeylElt]:
     for v in tworhos(rd,gamma) do let (w,) = from_dominant(rd,v) in w od

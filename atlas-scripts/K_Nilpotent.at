@@ -10,15 +10,15 @@ set kn_verbose=false
  returns a vector if all entries in the ParamPol occur in the basis
  otherwise returns no_vec
 }
-set vector([Param] basis,ParamPol P) = maybe_a_vec:
+set vector([Param] basis,ParamPol P) = Maybe<vec>:
    let v = vec: for p in basis do P[p].int_part od
    then diff=P + for c@i in v do (-c,basis[i]) od
-in if =diff then v.solution else ().no_vec fi
+in if =diff then v.some else ().none fi
 
-set vector([KType] basis,KTypePol P) = maybe_a_vec:
+set vector([KType] basis,KTypePol P) = Maybe<vec>:
    let v = vec: for p in basis do P[p].int_part od
    then diff=P + for c@i in v do (-c,basis[i]) od
-in if =diff then v.solution else ().no_vec fi
+in if =diff then v.some else ().none fi
 
 {versions that will fail is P not in span of basis}
 set Vector([KType] basis,KTypePol P)=vec:requisition(vector(basis,P))
@@ -149,7 +149,7 @@ K_basis(data, #(#data.real_orbits))
 set change_basis([KType] K_basis, [KType] K_basis_new,mat M)=mat:
 if n_columns(M)=0 then null(#K_basis_new,0) else
 for col in M do let v=vector(K_basis_new, expand(col,K_basis,K_basis[0].real_form)) in
-assert(any(v),"change_basis failed");
+assert(succeeds(v),"change_basis failed");
 requisition(v) od fi
 
 {L\cap K-types coming from given orbit}
@@ -178,7 +178,7 @@ L_cap_K_basis=for (mu_L,) in pairs do mu_L od then
 rv=null(#K_basis,#L_cap_K_basis) in
 for (mu_L,P) in pairs do
    let col=vector(K_basis,P) in
-   assert(any(col),"could not construct column of matrix");
+   assert(succeeds(col),"could not construct column of matrix");
    rv[find(L_cap_K_basis,mu_L)]:=requisition(col) od ;
 (K_basis,L_cap_K_basis,rv) fi
 
@@ -216,7 +216,7 @@ alpha,theta(alpha)
 if R isn't theta-stable this will fail with an error}
 set theta_orbit_reps(KGBElt x, [vec] roots)=[vec]:
 let theta=involution(x) then
-rv=[] in
+rv=[vec]:[] in
 while #roots>0 do
  let alpha=roots[0] in
  rv#:=alpha;
@@ -252,7 +252,7 @@ let roots=s_one_roots(O,x) in roots:=theta_orbit_reps(x,roots)
 these are the nci roots, and one of each pair of complex roots
 }
 set s_one_nc_cx_restricted_roots(RealNilpotent O,KGBElt x)=[vec]:
-let rv=[] then
+let rv=[vec]:[] then
 (H,,)=O then
 roots=s_one_roots(O,x) in
 for alpha in roots do
@@ -393,24 +393,28 @@ P=\sum a_i Q_i with a_i\in Z
 return true/false, and [KTypePol] R,[int] a so that
 P=sum a[i]*R[i]
 }
-set in_span([KTypePol] list,KTypePol P)=([KType],mat,vec,bool):
-if #list=0 then ([],null(0,0),null(0),false) else
-let basis=monomials(list) {list of distinct Params} then
-M=mat:for Q in list do let v=vector(basis,Q) in
-assert(any(v),"failure in in_span");requisition(v)  od then
-T=vector(basis,P) in
-{assert(any(T),"can't find vector at all");}
-if not any(T) then (basis,M,null(0),false) else
-let T=requisition(T) then
-inlattice=in_lattice(M,T) in (basis,M,T,inlattice) fi fi
+set in_span ([KTypePol] list,KTypePol P) = ([KType],mat,vec,bool):
+  if #list=0 then ([],null(0,0),null(0),false)
+  else
+     let basis=monomials(list) {list of distinct Params}
+     then M=mat:
+        for Q in list
+	do case vector(basis,Q)
+	   | else error("failure in in_span")
+	   | some(v): v
+	   esac
+	od
+     in case vector(basis,P)
+	| else {error("can't find vector at all");} (basis,M,null(0),false)
+	| some(T): (basis,M,T,in_lattice(M,T))
+	esac
+  fi
 
 {convenient to define in_span([[KTypePol]] list,KTypePol P)=
 in_span( flatten the list,P)
 }
 set in_span([[KTypePol]] list_of_lists,KTypePol P)=([KType],mat,vec,bool):
-let list=[KTypePol]:[] in
-let ()=for new_list in list_of_lists do list##:=new_list od in
-in_span(list,P)
+  let list= ##list_of_lists in in_span(list,P)
 
 {returns all (?) [(mu_L,extension)], such that all terms in extension have K_norm <= N }
 set Phi_upto(RealNilpotent O,int N, ratvec v)=[(KType,KTypePol)]:
@@ -556,10 +560,10 @@ set failed_av=    ([KType]:[],[KType]:[],[int]:[],null(0,0),null(0),null(0),fals
 set search(KNilpotentData d,[int] real_orbits,KTypePol P)=([KType],[KType],mat,vec,vec,bool):
 let (K_basis,LK_basis,T)=merge_T_matrices(d,real_orbits) then
 w0=vector(K_basis,P) then
-()=if not any(w0) then  return(failed) fi then
+()=if not succeeds(w0) then  return(failed) fi then
 w=requisition(w0) then
 v0=solve(T,w) then
-()=if not any(v0) then return(failed) fi then
+()=if not succeeds(v0) then return(failed) fi then
 v=requisition(v0) in
 (K_basis,LK_basis,T,v,w,true)
 
@@ -612,9 +616,9 @@ else let
 P_X=
 d.P_X_matrices[complex_orbit] then
 w0=vector(K_basis,P) in
- if not any(w0) then return(failed) fi;
+ if not succeeds(w0) then return(failed) fi;
 let w=requisition(w0) then v0=solve(Q,P_X*w) in
- if not any(v0) then return(failed) fi;
+ if not succeeds(v0) then return(failed) fi;
 let v=requisition(v0) in (K_basis,L_cap_K_basis,Q,v,w,true) fi
 
 {same as previous where the complex orbit OC isn't specified, return values
@@ -655,7 +659,7 @@ ones(v[i])##
 set av_from_av_ann(KNilpotentData d,int complex_orbit,KTypePol P)=vec:
 let K_basis=K_basis_closure(d,complex_orbit) then
 w0=vector(K_basis,P) in
-if not any(w0) then return(null(0))  else
+if not succeeds(w0) then return(null(0))  else
 let w=requisition(w0) then
 (,,Q,P_X)=d.Q_and_P_X_matrices[complex_orbit] in
 if Q=null(0,0) then

@@ -137,9 +137,11 @@ dependency on the readline library.
 @q axis_version "0.9.8" fully functional set_type command @>
 @q axis_version "0.9.9" integer 'case': optional out-of-bounds clause(s) @>
 @q axis_version "1.0" recursion implemented without creating memory leak @>
-@d axis_version "1.1" @q concatenating for and if loop syntax @>
+@q axis_version "1.1" concatenating for and if loop syntax 1/4/2022 @>
 
- // numbering from 0.5 (on 27/11/2010); last change April 1st, 2020
+@d axis_version "2.0" @q Major update to allow polymorphic types 1/12/2024 @>
+
+ // numbering from 0.5 (on 27/11/2010); last change December 1st, 2024
 
 @c
 
@@ -263,7 +265,7 @@ const char* keywords[] =
  ,"next","do","dont","from","downto","while","for","od"
  ,"case","esac", "rec_fun"
  ,"true","false", "die", "break", "return"
- ,"set_type"
+ ,"set_type", "any_type"
  ,"whattype","showall","forget"
  ,nullptr};
 
@@ -415,22 +417,19 @@ until other initialisations have been done), but we defer the details.
   auto oit = force<row_value>(input_path.get())->val.begin();
   for (auto it=paths.begin(); it!=paths.end(); ++it)
     *oit++ = std::make_shared<string_value>(std::string(*it)+'/');
-@/global_id_table->add@|(ip_id
-                       ,input_path, mk_type_expr("[string]"), false);
+@/global_id_table->add@|(ip_id, input_path, mk_type("[string]"), false);
   input_path_pointer = global_id_table->address_of(ip_id);
 @)
   own_value prelude_log = std::make_shared<row_value>(0); // start out empty
   id_type pl_id = main_hash_table->match_literal("prelude_log");
   auto& logs = force<row_value>(input_path.get())->val;
   logs.reserve(prelude_filenames.size());
-@/global_id_table->add@|(pl_id
-                       ,prelude_log, mk_type_expr("[string]"), true);
+@/global_id_table->add@|(pl_id, prelude_log, mk_type("[string]"), true);
   prelude_log_pointer = global_id_table->address_of(pl_id);
 @)
   own_value back_trace = std::make_shared<row_value>(0); // start out empty
   id_type bt_id = main_hash_table->match_literal("back_trace");
-@/global_id_table->add@|(bt_id
-                       ,back_trace, mk_type_expr("[string]"), false);
+@/global_id_table->add@|(bt_id, back_trace, mk_type("[string]"), false);
   back_trace_pointer = global_id_table->address_of(bt_id);
 }
 
@@ -474,18 +473,13 @@ if (paths.size()>0)
 
 @*1 The main command loop.
 %
-The command loop maintains two global variables that were defined
-in \.{axis.w}, namely |last_type| and |last_value|; these start off in a
-neutral state. In a loop we call the parser until it sets |verbosity<0|, which
+In a loop we call the parser until it sets |verbosity<0|, which
 is done upon seeing the \.{quit} command. We call the |reset| method of the
 lexical scanner before calling the parser, which will discard any input that
 is left by a possible previous erroneous input. This also already fetches a
 new line of input, or abandons the program in case none can be obtained.
 
 @< Enter the main command loop @>=
-last_value = shared_value (new tuple_value(0));
-last_type = void_type.copy();
- // |last_type| is a |type_ptr| defined in \.{axis.w}
 elapsed_wrapper(eval_level::no_value); // start the stopwatch
 @)
 while (ana.prime())
@@ -530,11 +524,11 @@ printing of the uninteresting value.
 
 @< Analyse types, and then evaluate and print... @>=
 { expression_ptr e;
-  type_expr found_type=analyse_types(*parse_tree,e);
+  type found_type=analyse_types(*parse_tree,e,0);
   if (verbosity>0)
     std::cout << "Type found: " << found_type << std::endl @|
               << "Converted expression: " << *e << std::endl;
-  if (found_type==void_type)
+  if (found_type.is_void())
     e->void_eval();
   else
   { e->eval();
@@ -591,9 +585,10 @@ for (auto it=prelude_filenames.begin(); it!=prelude_filenames.end(); ++it )
     }
     else
     { try
-      { expression_ptr e; type_expr found_type=analyse_types(*parse_tree,e);
+      { expression_ptr e;
+        type found_type=analyse_types(*parse_tree,e,0);
         e->evaluate(eval_level::single_value);
-        if (found_type!=void_type)
+        if (not found_type.is_void())
           log_stream << "Value: " << *pop_value() << '\n';
         else
           pop_value(); // don't forget to cast away that void value

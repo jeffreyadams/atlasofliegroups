@@ -14,12 +14,12 @@
   field can get large rapidly when inverses are taken.
 }
 
-set_type
-[ CyclotomicField = (int order, [int] Phi)
+set_type CyclotomicField = (int order, [int] Phi)
 { represent cyclotomic field by order and minpoly of generating root of 1 }
-, CyclotomicFieldElement = ([rat] v,CyclotomicField F)
+
+set_type CyclotomicFieldElement = ([rat] v,CyclotomicField F)
 { using [rat] (not ratvec) for elements in a cyclotomic field avoids overflow }
-]
+
 
 { to_denominator(r,N): integer $a$ such that rational $r$ is congruent to
   $a/N$ modulo 1; it is a precondition that |denom(r)| divides |N|.
@@ -192,11 +192,11 @@ assert(is_integer(F.order/r.denom),"not a root of unity in F");
 F.primitive_root^(rat_as_int(r.numer*F.order/r.denom))
 
 {.convert cyclotomic field element to a string for output.}
-set to_string (CyclotomicFieldElement(v,F)) = string:
-   to_rat_poly(v,"x").to_string +" in F("+ F.order+ ")"
+set format (CyclotomicFieldElement(v,F)) = string:
+   to_rat_poly(v,"x").format +" in F("+ F.order+ ")"
 
 {.display cyclotomic field element as polynomial in x.}
-set show (CyclotomicFieldElement z) = void: prints(to_string(z))
+set show (CyclotomicFieldElement z) = void: prints(format(z))
 
 set complex_conjugate(CyclotomicFieldElement(v,F)) = CyclotomicFieldElement:
   let result=F.zero in for c@j in v do result+:=c*zeta_power(-j,F) od; result

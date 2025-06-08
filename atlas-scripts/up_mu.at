@@ -1,5 +1,5 @@
 < Dirac.at {for shifters}
-< goodroots.at {for antifinalize}
+< goodroots.at { for anti_finalize }
 
 {whether to use this function instead of shifters}
 {set short_mu_flag = true}
@@ -63,9 +63,9 @@ set make_up_mu_hash() = up_mu_hash_table:
 		       then () = Ms #:= projection_to_K_matrix(rf)
 		       then () = Mrts #:=  ((1+rf.distinguished_involution)*right_inverse(Ms[I]))/2
 		       then () = muhashes #:=make_KType_hash()
-		       then () = muss #:= []
-		       then () = muDones #:= []
-		       then () = assert(real_form_hash.size() = #muhashes and #K0s = #muhashes and #K0s = #Ms 
+		       then () = muss #:= ([[int]]:[])
+		       then () = muDones #:= ([bool]:[])
+		       then () = assert(real_form_hash.size() = #muhashes and #K0s = #muhashes and #K0s = #Ms
 	     	  	    	       and #K0s = #muss and #Mrts = #K0s, "up_mu_hash damaged")
 		       in ()
 		   fi
@@ -173,7 +173,7 @@ set make_up_mu_hash() = up_mu_hash_table:
 	 {then () = include_imag_flag:=true}
 	 in (rfnum,ktypenum)
 
-    then up_types(KType mu,int m) = [KType]: 
+    then up_types(KType mu,int m) = [KType]:
      	 let (rfnum, ktypenum) = add_K_type(mu)
      	 then () = while #muss[rfnum][ktypenum] < m
      	       	     and not muDones[rfnum][ktypenum]

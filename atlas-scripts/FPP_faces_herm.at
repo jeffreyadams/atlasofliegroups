@@ -56,7 +56,7 @@ set test_slightly_verbose = true
 {START LAMBDA TABLES}
 
 {version of solve from basic using precomputed echelon form, to speed repeated calcs}
-set solve(vec b, mat M, mat C, [int] s) = maybe_a_vec:
+set solve(vec b, mat M, mat C, [int] s) = Maybe<vec>:
 (    let (n,k)=shape(M)
      then j=0 { runs up to k, used to index backwards }, sol=null(k)
      in assert(#b=n,"equation mismatch");
@@ -64,14 +64,14 @@ set solve(vec b, mat M, mat C, [int] s) = maybe_a_vec:
        ~do if j<#s and i=s~[j] { then it is a pivot row, with pivot at M[j][i] }
        	   then let Mj=M~[j]
 	   	then (q,r)=b[i]\%Mj[i]
-		in if !=r then return ().no_vec { because inexact division} fi;
+		in if !=r then return ().none { because inexact division} fi;
        		   sol~[j]:=q;
 		   b-:=Mj*q; { correct for contribution from sol[j~] }
        		   j+:=1
-       	    elif !=b[i] then return ().no_vec { because no pivot available }
+       	    elif !=b[i] then return ().none { because no pivot available }
        	    fi
    	 od;
-	 (C[:k]*sol).solution
+	 (C[:k]*sol).some
 )
 
 {these are the possible lambda+theta*lambda for x.involution = theta. First
@@ -83,7 +83,7 @@ set cands_hash(InnerClass ic, mat theta, vec_hash lamthlam_hash) = [PermOrderTwo
     then shift = (-th1*ic.rho).numer
     then () = for v@j in verts
        	      do let w = th1*v
-       	      	 in if w.denom = 1 and any(vec_solve(th1, w.numer + shift))
+       	      	 in if w.denom = 1 and can(vec_solve(th1, w.numer + shift))
 	       	    then let M = lamthlam_hash.size()
 	       	    then m = lamthlam_hash.match(w.numer)
 	       	    in if m = M
@@ -100,7 +100,7 @@ set cands_hash(InnerClass ic, mat theta, vec_hash lamthlam_hash) = [PermOrderTwo
     	      do  let a = verts[pair[0]], b = verts[pair[1]]
 	      	  then w = a+theta*b
 	      	  in if theta*w = w and w.denom = 1
-		     and any(vec_solve(th1, w.numer + shift))
+		     and can(vec_solve(th1, w.numer + shift))
 		     then let M = lamthlam_hash.size()
 	             then m = lamthlam_hash.match(w.numer)
 	             in if m = M
@@ -177,8 +177,8 @@ set ind_cand_params = (Param -> [Param]):
 	 		    	    od
 		       then j = first(for list in lists do #list >0 od)
 		       in if j.>=
-		       	  then answers#:= lists[j]
-			  else answers#:= []
+		       	  then answers #:= lists[j]
+			  else answers #:= ([Param]:[])
 		   	  fi
 		   fi
 
@@ -266,9 +266,9 @@ set make_Lvd_Perm2_table() = Lvd_Perm2_table:
 			FELs #:= FPP_flippable_edge_lookup(ic);
 	    	   	FPP_local_verts #:= FPP_local_vertices(ic, vertex_datas[i].list, FELs[i]);
 {			cands #:= [];}
-	    	   	lamthlam_hashess #:= [];
-			Perm2s #:= [];
-	    	   	entries #:= []
+	    	   	lamthlam_hashess #:= ([vec_hash]:[]);
+			Perm2s #:= ([[PermOrderTwo]]:[]);
+	    	   	entries #:= ([[Lvd_Perm2]]:[])
 	    	   fi
 	  in i
      then add_involution(InnerClass ic, mat theta) = (int, int):
@@ -278,8 +278,8 @@ set make_Lvd_Perm2_table() = Lvd_Perm2_table:
      	 then () = if j = J {haven't seen this involution before}
       	      	   then {cands[i] #:= [];}
 			lamthlam_hashess[i] #:= make_vec_hash();
-			Perm2s[i] #:= [];
-		   	entries[i] #:= []
+			Perm2s[i] #:= ([PermOrderTwo]:[]);
+		   	entries[i] #:= ([Lvd_Perm2]:[])
 		   fi
 	 in (i, j)
     then add_cands(InnerClass ic, mat theta) = (int, int):

@@ -351,7 +351,7 @@ set check_concatenate(KGBElt x, ratvec lambda, [(WeylElt, (LocalVertexData, [[ve
 			   do perms[i][j]
 			   od.sort {now a list of indices into big_list}
 			od {now a list of d-faces for ith LF}
-		     od.##.sort_u {sort_u eliminates repetitions}
+		     od.##.sort_u_lex {sort_u eliminates repetitions}
 		   od {d = 0, 1}
     in (big_Lvd, big_LF)
 
@@ -395,7 +395,7 @@ set concatenate(KGBElt x, ratvec lambda, [(WeylElt, (LocalVertexData, [[vec]]))]
 			    do perms[i][j]
 			    od.sort)
 			od {now a list of d-faces for ith LF}
-		     od.##.sort_u {sort_u eliminates repetitions}
+		     od.##.sort_u_lex {sort_u eliminates repetitions}
 		   od {d = 0, 1}
     {then () = prints("in concatenate, big_LF = ",big_LF)}
     then answer = localFD_1Dirac2_add_red(x,lambda,big_Lvd,big_LF)
@@ -417,7 +417,7 @@ set blob_time_flag = false
 
 set FPP_unitary_hash_blob(KGBElt x, ratvec lambda) = void:
     if is_finished(x,lambda) then return () fi;
-    let () = blobCounter +:= 1, start_blob_time = elapsed_ms()
+    let start_blob_time = elapsed_ms() next blobCounter +:= 1
     then xls = for (,y,tau) in blobwxl(x,lambda) do (y,tau) od
     then () = if blob_time_flag
     	      then prints("computed ",#xls," pairs (y,tau) in ",

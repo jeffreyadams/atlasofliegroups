@@ -56,10 +56,10 @@ set number_real_orthogonal_pairs (KGBElt x, mat delta) = int:
         , "Not defined unless all complex roots are type C+");
   for alpha in real_posroots(rd,theta)
   do int:
-    let pairing=coroot(rd,alpha)*delta*alpha in
-    assert(=pairing or pairing=-1 or pairing=2 { since we paired \emph{roots} }
+    let pairing = int: coroot(rd,alpha)*delta*alpha in
+    assert(pairing=0 or pairing=-1 or pairing=2 { since we paired \emph{roots} }
           ,"invalid pairing of root and coroot");
-    #=pairing { count zero pairings }
+    #(pairing=0) { count zero pairings }
   od.sum.half { compensate for each pair being counted twice }
 
 { function |mu| below was initially described in Vogan in email of Oct 25, 2016
@@ -87,15 +87,15 @@ set print_mu (KType tp) = void:
 E6_s, SL(5,R)}
 {.convert (twisted) c-form to hermitian form, using p0 for normalization.}
 set convert_cform_hermitian (KTypePol P,mat delta, KType p0)= KTypePol:
-  if =#P then P { since we cannot select a term from a null polynomial }
-  else let a_mu = mu(p0,delta) in
+  let a_mu = mu(p0,delta) in
     P.null_K_module +
       for c@p in P do (c*(mu(p,delta)-a_mu).rat_as_int.exp_s,p) od
-  fi
 
 { if no |p0| provided, use |first_param(P)|, a term of least height in |P| }
 set convert_cform_hermitian (KTypePol P,mat delta) = KTypePol:
-  convert_cform_hermitian(P,delta,first_K_type(P))
+   if =#P then P { since we cannot select a term from a null polynomial }
+   else convert_cform_hermitian (P,delta,first_K_type(P))
+   fi
 
 {.version that defaults delta to inner class involution.}
 set convert_cform_hermitian (KTypePol P,KType p0)= KTypePol:
@@ -103,6 +103,7 @@ set convert_cform_hermitian (KTypePol P,KType p0)= KTypePol:
 
 { apply both defaults simultaneously; this one is used from hermitian.at }
 set convert_cform_hermitian (KTypePol P)= KTypePol:
-  if =#P then P
-  else convert_cform_hermitian(P,P.real_form.distinguished_involution,first_K_type(P))
-  fi
+   if #P=0 then P { since we cannot select a term from a null polynomial }
+   else convert_cform_hermitian
+           (P,P.real_form.distinguished_involution,first_K_type(P))
+   fi

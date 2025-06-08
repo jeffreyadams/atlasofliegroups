@@ -163,7 +163,7 @@ set cofoldedBOTH(RootDatum rd, mat delta) = (RootDatum, RootDatum, mat):
 { Tstar: matrix of map Tstar->X^*(H) \simeq Z^r -> Z^n: this is Tstar.inject
  ^Tstar: matrix of map X_*(H)->X_*(Tstar) \simeq Z^n->Z^r:   this is
  Tstar.project=Tstar.restrict}
-    then coroots_nonreduced=sort_u(
+    then coroots_nonreduced=sort_u_lex(
 	 for alphavee in rd.poscoroots do Tstar.restrict(alphavee) od
 	 )
     then {DISCARDS COROOTS FOR WHICH ALPHAVEE/2 IS COROOT}
@@ -177,7 +177,7 @@ set cofoldedBOTH(RootDatum rd, mat delta) = (RootDatum, RootDatum, mat):
 	 do if find(coroots_nonreduced,2*alphavee)!=-1
 	    then [] else [alphavee] fi
 	 od)
-    then rootsC = [] in
+    then rootsC = [vec]:[] in
 	 for alphavee in corootsC do
 	     let pullback_alphavee = let j = first(
 		 for betavee in rd.poscoroots do Tstar.restrict(betavee) =
@@ -194,7 +194,7 @@ set cofoldedBOTH(RootDatum rd, mat delta) = (RootDatum, RootDatum, mat):
 	  in
 	  rootsC#:=ratvec_as_vec(corestrict_w)
 	  od;
-	  let rootsB = [] in
+	  let rootsB = [vec]:[] in
 	  for alphavee in corootsB do
 	     let pullback_alphavee = let j = first(
 		 for betavee in rd.poscoroots do Tstar.restrict(betavee) =
@@ -426,12 +426,6 @@ set barycenter ([ratvec] verts) = ratvec: { |verts| should be nonempty }
 {. barycenter of face of fundamental alcove that contains |gamma0|.}
 set face_bary0(SimpleAffine affd, ratvec gamma0) = FaceBary:
     barycenter(face_verts0(affd,gamma0))
-
-{. produces all k-element subsets of verts. The term "# #verts" is
-[0,1,...,#verts - 1]
- .}
-set choices_from( [ratvec]verts, int k) = [[ratvec]]:
-    for S in choices_from(# #verts,k) do for s in S do verts[s] od od
 
 set faces_fundamental(SimpleAffine affd, int d) = [FaceVerts]:
     choices_from(fundamental_vertices(affd),d+1)
@@ -1017,17 +1011,17 @@ set FPP_edges_by_zero= (InnerClass ->  [[FaceVertsIndex]]):
     let ichash = make_InnerClass_hash()
     then FPPebz = [[[FaceVertsIndex]]]: [] {one list for each inner class}
     in (InnerClass -> [[FaceVertsIndex]]): (InnerClass ic) [[FaceVertsIndex]]:
-       let I = ichash.size()
+    (  let I = ichash.size()
        then i = ichash.match(ic)
-       then () = if i=I {haven't seen this inner class before}
-       	       then let edges_u = FPP_edges_by_zero_unsorted(ic)
-	       	    then answer = [[FaceVertsIndex]]: for list in edges_u do list.sort od
-	       	    then () = FPPebz #:= answer
-    	      	    {then () = FPPebz_time +:= elapsed_ms() - start}
-	      	    in ()
-	      	 fi
-      in FPPebz[i]
-
+       in if i=I {haven't seen this inner class before}
+       	  then let edges_u = FPP_edges_by_zero_unsorted(ic)
+	       then answer = [[FaceVertsIndex]]:
+	          for list in edges_u do list.sort_lex od
+	       in FPPebz #:= answer
+    	      	    {; FPPebz_time +:= elapsed_ms() - start}
+	  fi
+       ;  FPPebz[i]
+    )
 
 set_type PermOrderTwo = (vec fixed, [(int,int)] trans)
 
@@ -1191,7 +1185,8 @@ set FPP_local_vertices_cube(InnerClass ic) = [ratvec]:
 set FPP_local_vertices_typed_sorted(InnerClass ic) = ([ratvec],[ratvec]):
     let vlist = FPP_vertices(ic)
     then FEL = FPP_flippable_edge_lookup(ic)
-    in (vlist.sort, for w in FPP_flippable_edges(ic) do face_bary(vlist,w) od)
+    in (vlist.sort_lex
+       , for w in FPP_flippable_edges(ic) do face_bary(vlist,w) od)
 
 {to record time computing flippable triangles}
 set Fftri_time = int: 0
@@ -1260,16 +1255,17 @@ set FPP_flippable_triangles_by_zero= (InnerClass ->  [[FaceVertsIndex]]):
     let ichash = make_InnerClass_hash()
     then Fftrisbz = [[[FaceVertsIndex]]]: [] {one list for each inner class}
     in (InnerClass -> [[FaceVertsIndex]]): (InnerClass ic) [[FaceVertsIndex]]:
-       let I = ichash.size()
+    (  let  I = ichash.size()
        then i = ichash.match(ic)
-       then () = if i=I {haven't seen this inner class before}
-       	       then let FEdges_u = FPP_flippable_triangles_by_zero_unsorted(ic)
-	       	    then answer = [[FaceVertsIndex]]: for list in FEdges_u do list.sort od
-	       	    then () = Fftrisbz #:= answer
-    	      	    {then () = Fftrisbz_time +:= elapsed_ms() - start}
-	      	    in ()
-	      	 fi
-      in Fftrisbz[i]
+       in if i=I {haven't seen this inner class before}
+	  then let FEdges_u = FPP_flippable_triangles_by_zero_unsorted(ic)
+	       then answer = [[FaceVertsIndex]]:
+	          for list in FEdges_u do list.sort_lex od
+	       in Fftrisbz #:= answer
+	       {; Fftrisbz_time +:= elapsed_ms() - start}
+	  fi
+       ;  Fftrisbz[i]
+    )
 
 {listed as their three ratvec vertices: the fixed one followed by the flipped pair}
 set FPP_flippable_triangles_rat = (InnerClass -> [[ratvec]]):

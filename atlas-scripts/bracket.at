@@ -39,23 +39,27 @@ set lie_algebra_element_root_vectors(StructureConstantTable t,ratvec v)=lie_alge
 
 {1\le i\le dim\g -> (t,(v,w)) where either v or w has exactly one entry 1}
 set basis(StructureConstantTable t,int i)=LieAlgebraElement:
-lie_algebra_element(t,e(t.root_datum.dimension,i))
+   lie_algebra_element(t,identity_row(t.root_datum.dimension,i))
 
 set show(LieAlgebraElement X)=void:
 prints(X.root_part,":",X.H)
 
 {nice string representation of LieAlgebraElement}
-set to_string(LieAlgebraElement X)=string:
-let rv="" then
-()=for i:#X.root_part do if !=X.root_part[i] then rv+:="+"+X.root_part[i].to_string+"*X_"+([int]:X.root_datum.roots[i]).to_string fi od then
-()=if !=X.H then rv+:=" "+(X.H).to_string fi in rv
+set format(LieAlgebraElement X)=string:
+let rv=""
+in for i:#X.root_part
+   do if !=X.root_part[i]
+      then rv+:="+"+X.root_part[i].to_string+"*X_"+
+                ([int]:X.root_datum.roots[i]).to_string
+      fi
+   od ; if !=X.H then rv+:=" "+(X.H).to_string fi; rv
 
 set root_part_array(LieAlgebraElement X)=[(rat,vec)]:
 ##(for i:#X.root_part do if !=X.root_part[i] then [(X.root_part[i],X.root_datum.roots[i])] else [] fi od)
 
-set show_long(LieAlgebraElement X)=void:prints(X.to_string)
+set show_long(LieAlgebraElement X)=void:prints(X.format)
 
-{coordinates of X_alpha: [0,...,1,..0] (N-tuple)} 
+{coordinates of X_alpha: [0,...,1,..0] (N-tuple)}
 set coordinates(RootDatum rd,vec alpha)=vec:
 let rv=null(#rd.roots) then
 k=find(rd.roots,alpha) in
@@ -125,7 +129,7 @@ in
       ,for i:N
        do (-X.root_part[i]*Y.H*rd.roots[i]
            +Y.root_part[i]*X.H*rd.roots[i]
-	  )*e(N,i)
+	  )*identity_row(N,i)
        od
       )
   ),ratvec:null(n)
@@ -138,8 +142,10 @@ bracket_root_term(X,Y)+bracket_torus_term(X,Y)+bracket_off_diagonal_terms(X,Y)
 
 {root -> (v,null(rank)) where v=e(N,i)=1 in i^th spot, i=# of root in rd.roots}
 {set X_alpha(StructureConstantTable t,int i)=LieAlgebraElement:(t,(e(#t.root_datum.roots,i),null(#t.root_datum.simple_roots)))}
-set X_alpha(StructureConstantTable t,int i)=LieAlgebraElement:(t,(e(#t.root_datum.roots,i),null(t.root_datum.rank)))
-set X_alpha(StructureConstantTable t,vec alpha)=LieAlgebraElement:X_alpha(t,find(t.root_datum.roots,alpha))
+set X_alpha(StructureConstantTable t,int i) = LieAlgebraElement:
+  (t,(identity_row(#t.root_datum.roots,i),null(t.root_datum.rank)))
+set X_alpha(StructureConstantTable t,vec alpha)=LieAlgebraElement:
+   X_alpha(t,find(t.root_datum.roots,alpha))
 
 {H(t,h)=(t,null(N),h)}
 set H(StructureConstantTable t,vec h)=LieAlgebraElement:(t,(ratvec:null(#t.root_datum.roots),ratvec:h))
@@ -153,7 +159,8 @@ set ad(LieAlgebraElement X)=ratmat:
 ratvecs_as_ratmat(for i:X.root_datum.dimension do coordinates(bracket(X,basis(X.t,i))) od)
 
 {solve ad(X)(Y)=Z for Y}
-set solve_ad(LieAlgebraElement X,LieAlgebraElement Z)=maybe_a_ratvec:solve(ad(X),coordinates(Z))
+set solve_ad(LieAlgebraElement X,LieAlgebraElement Z)=Maybe<ratvec>:
+  solve(ad(X),coordinates(Z))
 
 {2-eigenspace of ad(H): as list of roots}
 set two_eigenspace(RootDatum rd,ratvec H)=[vec]:
@@ -176,7 +183,7 @@ coeffs=box(n,#S) in
  ()=prints("X:",X) then
  ()=prints("H:",H(t,H)) then
  sol=solve_ad(X,H(t,H)) in
- if any(sol) then {prints("found:", H, new_line, X.root_part);}
+ if can(sol) then {prints("found:", H, new_line, X.root_part);}
  return(true,(lie_algebra_element_semisimple(t,H),X,lie_algebra_element(t,requisition(sol)))) fi od;(false,(null(t),null(t),null(t)))
 
 set JM_triple(StructureConstantTable t,vec H)=(bool,(LieAlgebraElement,LieAlgebraElement,LieAlgebraElement)):JM_triple(t,H,2)
@@ -209,7 +216,7 @@ coeffs=for v in box(2,#S) do 2*v-shift od in
  let X=null(t) then
  ()= for i:#S do X+:=A[i]*S[i]  od then
  sol=solve_ad(X,H(t,H)) in
- if any(sol) then {prints("found:", H, new_line, X.root_part);}
+ if can(sol) then {prints("found:", H, new_line, X.root_part);}
  return(true,( lie_algebra_element_semisimple(t,H),X,lie_algebra_element(t,requisition(sol))))fi od;(false,(null(t),null(t),null(t)))
 
 set JM_triple_signs(StructureConstantTable t,ComplexNilpotent O)=(bool,(LieAlgebraElement,LieAlgebraElement,LieAlgebraElement)):
@@ -222,22 +229,28 @@ JM_triple_signs(O.root_datum.structure_constant_table,O)
 
 {ALL Jacobson Morozov triples (with coefficient -1,1)}
 
-set JM_triples_signs(StructureConstantTable t,[vec] S,vec H)=[(LieAlgebraElement,LieAlgebraElement,LieAlgebraElement)]:
+set JM_triples_signs(StructureConstantTable t,[vec] S,vec H)=
+  [(LieAlgebraElement,LieAlgebraElement,LieAlgebraElement)]:
 let
 shift=for i:#S do 1 od then
-rv=[] then
+rv=[(LieAlgebraElement,LieAlgebraElement,LieAlgebraElement)]:[] then
 coeffs=for v in box(2,#S) do 2*v-shift od in
 let ()=prints("#coeffs:",#coeffs) in
- for A@i in coeffs do  let ()=prints("i=",i) in
- let v=null(#t.root_datum.roots) then
- ()= for i:#S do
- let ()=prints("A[i]:",A[i], new_line, "coords:", coordinates(t.root_datum)(S[i])) in
- v+:=A[i]*coordinates(t.root_datum)(S[i])  od then
- X=lie_algebra_element_root_vectors(t,v) then
- sol=solve_ad(X,H(t,H)) in
- let ()=prints("trying:", X.root_part) in
- if any(sol) then prints("solved"); rv#:=(lie_algebra_element_semisimple(t,H),X,lie_algebra_element(t,requisition(sol))) else prints("NOT solved") fi od;
-rv
+ for A@i in coeffs
+ do prints("i=",i)
+ ; let v=null(#t.root_datum.roots)
+ in for i:#S
+    do prints("A[i]:",A[i], new_line, "coords:", coordinates(t.root_datum)(S[i]))
+    ; v+:=A[i]*coordinates(t.root_datum)(S[i])
+    od
+ ; let X=lie_algebra_element_root_vectors(t,v)
+   then sol=solve_ad(X,H(t,H))
+ in prints("trying:", X.root_part)
+ ; if can(sol)
+   then prints("solved"); rv#:=(lie_algebra_element_semisimple(t,H),X,lie_algebra_element(t,requisition(sol)))
+   else prints("NOT solved")
+   fi
+od; rv
 
 set JM_triples_signs(StructureConstantTable t,vec H)=[(LieAlgebraElement,LieAlgebraElement,LieAlgebraElement)]:
 JM_triples_signs(t,two_eigenspace(t.root_datum,H){list of roots},H)
@@ -305,8 +318,7 @@ then v=
   sum(#rd.roots {need size of ratvecs}
      ,for i:#v_L
       do let index=find(rd.roots,X_L.root_datum.roots[i]) in
-         e(#rd.roots,index)*v_L[i]
+         identity_row(#rd.roots,index)*v_L[i]
       od
      )
 in LieAlgebraElement:(t_rd,(v,X_L.H))
-

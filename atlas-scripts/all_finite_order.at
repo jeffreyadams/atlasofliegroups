@@ -1,4 +1,4 @@
-<misc.at
+<basic.at
 <groups.at
 <sort.at
 <synthetic.at
@@ -11,24 +11,24 @@
    in the list of these labels). .}
 {simple_root_labels@RootDatum is now defined in basic.at}
 
-set get_subsets_given_order(RootDatum rd, int order)=[[int]]:
-   let labels=simple_root_labels(rd) then
-   labels_plus_one=for a in labels do a+1 od in
-   let S=[] in
-   for v in box(labels_plus_one) do
-    let extra=order-v*labels in
-     if extra>=0 then let   w=v#(extra) in
-    if gcd(w)=1 then S#:=w fi fi  od;S
+{ all nonnegative lists |L| of length |1+#limits| with |(limits#1)*L=0|, where
+  each entry (except final one) does not exceed the corresponding |label| entry
+}
+set bounded_lists ([int] limits,[int] labels, int order) = [ [int] ]:
+   for v in for n in limits do #(n+1) od.all_words
+   do let extra=order-v*labels in
+      if extra>=0
+      do let w= v # extra in
+	 if gcd(w)=1 do w fi
+      fi.##
+   od.##
 
-set get_subsets(RootDatum rd, int max_order)=[[[int]]]:
-   let labels=simple_root_labels(rd) then
-   labels_plus_one=for a in labels do a+1 od
-   then S=for i:max_order+1 do [[int]]:[] od in
-    for order:max_order+1 do
-    for v in box(labels_plus_one) do
-    let extra=order-v*labels in
-     if extra>=0 then let   w=v#(extra) in
-    if gcd(w)=1 then S[order]#:=w fi fi  od od;S
+set get_subsets_given_order(RootDatum rd, int order) = [ [int] ]:
+   let labels=simple_root_labels(rd) in bounded_lists(labels,labels,order)
+
+set get_subsets(RootDatum rd, int max_order) = [[ [int] ]]:
+   let labels=simple_root_labels(rd)
+in for order:max_order+1 do bounded_lists(labels,labels,order) od
 
 set null(RootDatum rd)=([int],RootDatum,int):([],GL(1),0)
 
@@ -45,11 +45,8 @@ set get_raw_data(RootDatum rd,[[[int]]] S)=[[([int],RootDatum,int)]]:
       row#:=(v_affine,rdi, dimension(rdi)) od ;row
    od
 
-set sort_by(([int],RootDatum,int->int) f)=([([int],RootDatum,int)] v) [([int],RootDatum,int)]:
-  for index in inv_standardisation(for x in v do f(x) od) do v[index] od
-
 set mysort = ([([int],RootDatum,int)] -> [([int],RootDatum,int)]):
- sort_by(([int] v,RootDatum rd,int k) int:k)
+ sort_by(([int].,RootDatum.,int k) int:k,<=@(int,int))
 
 set refine_raw_data([[([int],RootDatum,int)]] data)=[[([int],RootDatum,int)]]:for a in data do mysort(a) od
 
@@ -135,28 +132,15 @@ for i:#data-1 from 1 do info_reduced(data,i) od
    sum_i(a_i m_i)=m, with a_i's relatively prime. The last entry
    corresponds to the lowest root. These are essentially Kac diagrams. .}
 set Kac_diags_given_order(RootDatum rd, int order)=[[int]]:
-   let labels=simple_root_labels(rd) then
-   limits=for a in labels do if order=a then 2 else ceil(order/a)
-                             fi
-                          od in
-   let S=[] in
-   for v in box(limits) do
-    let extra=order-v*labels in
-     if extra>=0 then let   w=v#(extra) in
-    if gcd(w)=1 then S#:=w fi fi  od;S
+   let  labels = simple_root_labels(rd)
+   then limits = for a in labels do floor(order/a) od
+in bounded_lists(limits,labels,order)
 
 set Kac_diags_up_to_order(RootDatum rd, int max_order)=[[[int]]]:
    let labels=simple_root_labels(rd)
-   then S=for i:max_order+1 do [[int]]:[] od in
-    for order:max_order+1 do
-      let limits=for a in labels do if order=a then 2
-                                     else ceil(order/a)
-                                    fi
-                                 od in
-    for v in box(limits) do
-    let extra=order-v*labels in
-     if extra>=0 then let   w=v#(extra) in
-    if gcd(w)=1 then S[order]#:=w fi fi  od od;S
+in for order:max_order+1
+   do bounded_lists(for a in labels do floor(order/a) od,labels,order)
+   od
 
 
 {. Given a Kac diagram, compute the corresponding element of the Lie algebra. .}
@@ -173,7 +157,7 @@ set order (RootDatum rd, vec v)=int: denom(Kac_x(rd,v))
   (unique if G is simply connected). .}
 set Kac_diags_of_identity (RootDatum rd)=[[int]]:
   let list=Kac_diags_given_order (rd,1) in
-  ##for diag in list do if order(rd,diag)=1 then [diag] else [] fi od
+  for diag in list if order(rd,diag)=1 do diag fi od
 
 {. List the elements in the fundamental domain for the affine Weyl Group
    that exponentiate to the identity element. .}
@@ -192,32 +176,18 @@ set is_conjugate_Kac ([int] v,[int] w, RootDatum rd)=bool:
       do let (z,)=rd.affine_datum.affine_co_make_dominant(Kac_x(rd,v)+x) in z=Kac_x_w od)
 
 {. crude listing. }
-set Kac_classes_given_order_crude(RootDatum rd,int order)=[[int]]:
-   let labels=simple_root_labels(rd) then
-   limits=for a in labels do if order=a then 2 else ceil(order/a)
-                             fi
-                          od in
-   let S=[[int]]:[] in
-   for v in box(limits) do
-    let extra=order-v*labels in
-     if extra>=0 then let   w=v#(extra) in
-    if gcd(w)=1
-     then S#:=w fi fi  od;S
+set Kac_classes_given_order_crude = Kac_diags_given_order@(RootDatum,int)
 
 {. List all Kac elements of a given order, up to conjugacy of the
    corresponding group element. .}
 set Kac_classes_given_order (RootDatum rd,int order)=[[int]]:
-   let labels=simple_root_labels(rd) then
-   limits=for a in labels do if order=a then 2 else ceil(order/a)
-                             fi
-                          od in
-   let S=[[int]]:[] in
-   for v in box(limits) do
-    let extra=order-v*labels in
-     if extra>=0 then let   w=v#(extra) in
-    if gcd(w)=1 and (is_simply_connected(rd) or
-      none(for d in S do is_conjugate_Kac(d,w,rd) od))
-     then S#:=w fi fi  od;S
+   if is_simply_connected(rd) then Kac_diags_given_order(rd,order)
+   else let S = [[int]]: []
+   in for w in Kac_diags_given_order(rd,order)
+      do if none(for d in S do is_conjugate_Kac(d,w,rd) od) then S#:=w fi
+      od
+   ;  S
+   fi
 
 set zero_roots(RootDatum rd,[int] Kac)=[int]:
    ##for k@i in Kac do if k=0 then [i] else [] fi od

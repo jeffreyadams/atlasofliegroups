@@ -427,7 +427,7 @@ X*(G) the corr wt inclusion}
 set unipotents_to_hash(RealForm G, RealForm Gsc, Param_hash Uhash, mat M) = void:
     if unip_flag
     then for psc in unipotent_representations(Gsc)
-    	 do if solve(M,psc.lambda_minus_rho).any
+    	 do if can(solve(M,psc.lambda_minus_rho))
        	    then for  p in sc_descends(psc, G, M)
 	    	 do Uhash.match(p)
 	    	 od
@@ -441,7 +441,7 @@ reps of Gsc; put in U_hash those descending to G}
 set descend_to_quotient(RealForm G, Param_hash Usc_hash, Param_hash U_hash, mat M) = void:
     for j:Usc_hash.size()
     do let psc = Usc_hash.index(j)
-       in if solve(M, psc.lambda_minus_rho).any
+       in if can(solve(M, psc.lambda_minus_rho))
        	  then for p in sc_descends(psc, G, M)
 	       do U_hash.match(p)
 	       od

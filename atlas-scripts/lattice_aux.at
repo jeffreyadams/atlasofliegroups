@@ -8,7 +8,7 @@ set first_rows(int n,mat M)=mat:select_rows(#n,M)
 {A: mxn
  B: mxr
  returns (C,D)
- C: 
+ C:
 }
 set intersection_plus(mat A,mat B)=(mat,mat):
 assert(n_rows(A)=n_rows(B),"A and B must have same number of rows");
@@ -22,7 +22,7 @@ in (A1*M,M) {(mxt, n'xt)} fi
 set intersection(mat A,mat B)=mat:
 let (X,)=intersection_plus(A,B) in X
 
-set intersection([mat] A)=mat:let rv=A[0] in 
+set intersection([mat] A)=mat:let rv=A[0] in
 for i:#A-1 do rv:=intersection(rv, A[i]) od;rv
 
 {basis of L/M, assuming free}
@@ -42,21 +42,21 @@ set mod_image_projector(mat M)= mat:
   let (c,R)=adapted_direct_sum(M) in R.inverse[c: , : ]
 
 set is_sublattice(mat L,mat M)=bool:
-all(for v in L do any(solve(M,v)) od)
+all(for v in L do can(solve(M,v)) od)
 
 set is_lattice_equal(mat L,mat M)=bool:is_sublattice(L,M) and is_sublattice(M,L)
 
 set is_subspace(mat L,mat M)=bool:
-all(for v in L do any(solve(M,ratvec:v)) od)
+all(for v in L do can(solve(M,ratvec:v)) od)
 
 {columns of B must span a sublattice of span of columns of A
  then test if B is saturated in A}
 set is_saturated(mat A,mat B)=
 assert(is_sublattice(B,A),"not a sublattice");
 let A1=image_lattice(A), B1=image_lattice(B) then
-N=kernel(A1##B1) then 
-M=^((^N)[0:n_columns(A1)]) then 
-w=inv_fact(M) in 
+N=kernel(A1##B1) then
+M=^((^N)[0:n_columns(A1)]) then
+w=inv_fact(M) in
 w=for i:#w do 1 od {test if inv_fact=[1,1,...,1]}
 
 {assuming is_sublattice(a,B)}
@@ -76,13 +76,13 @@ in for i@j in pivots
 { (M,C)=image_lattice_plus(A)
   A*C=M
 }
-set image_lattice_plus (mat M) = 
-let (M,C0,pivots,)=echelon(M) then c=#M 
-then 
-C=C0[:c] 
+set image_lattice_plus (mat M) =
+let (M,C0,pivots,)=echelon(M) then c=#M
+then
+C=C0[:c]
    in for i@j in pivots
    do let colM=M[j],colC=C[j] then pivot=colM[i]
-   in for l: c-1-j from j+1 
+   in for l: c-1-j from j+1
     do let q = M[i,l]\pivot in
        M[l]-:=colM*q; C[l]-:=colC*q od
    od; (M,C)
@@ -100,7 +100,7 @@ in C:=C[:c] { only this part interests us here }
    od; C
 }
 {
-set image_lattice_plus (mat A) = 
+set image_lattice_plus (mat A) =
    let (M,C,pivots,)=echelon(A) then c=#M
 in C:=C[:c] { only this part interests us here }
    for i@j in pivots
@@ -120,8 +120,8 @@ A: (r,n) matrix
  M: (r,c) matrix, C (n,n) invertible  (s: pivot rows, eps is a sign)
  c=#columns of M
  n-c=dimension(kernel(A))
- Then AC=E=M##Z 
- Furthermore M -> (mat N,mat R) 
+ Then AC=E=M##Z
+ Furthermore M -> (mat N,mat R)
  E: (r,c)  N:(r,c)  R: (r,r) invertible
  (RN)##Z=E##Z=AC
  AC=RN##Z
@@ -144,15 +144,15 @@ set image_complement_basis_plus (mat A) = mat:
 {
 
 set f(mat A, mat B, mat Y,[K_Type] K_basis, int n)=
-let AB=intersection(A,B) 
+let AB=intersection(A,B)
 then num=truncate(AB,K_basis,n) then
-denom=truncate(intersection(AB,Y),K_basis,n) then 
-a=rank(num) then 
+denom=truncate(intersection(AB,Y),K_basis,n) then
+a=rank(num) then
 b=rank(denom) in (a,b,a-b)
 
 set f(mat A, mat Y,[K_Type] K_basis, int n)=
 let num=truncate(A,K_basis,n) then
-denom=truncate(intersection(A,Y),K_basis,n) then 
-a=rank(num) then 
+denom=truncate(intersection(A,Y),K_basis,n) then
+a=rank(num) then
 b=rank(denom) in (a,b,a-b)
 }

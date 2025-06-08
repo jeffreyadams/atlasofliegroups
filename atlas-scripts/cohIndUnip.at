@@ -191,7 +191,7 @@ set all_shifts_old(KGPElt Q, ratvec v) = [vec]:
 	     		fi
        		  od.##
     then () = shift_count +:= #answer
-    in answer.sort_u
+    in answer.sort_u_lex
 
 set all_shifts_old_flag=false
 
@@ -275,7 +275,7 @@ set all_shifts(KGPElt Q, ratvec v) = [vec]:
 	  {then () = prints(answer)}
     	  in ()
         od {b in Qupbox}
-      then answer = answer.sort_u
+      then answer = answer.sort_u_lex
       then () = shift_count +:= #answer
       in answer
 
@@ -360,7 +360,7 @@ set all_shifts = (InnerClass, [int], ratvec) -> [vec]):
 	     	     else []
 	     	     fi
        		  od.##)
-	  then answer = answer.sort_u
+	  then answer = answer.sort_u_lex
 	  {then () = prints(answer)}
     	  in ()
         od

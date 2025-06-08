@@ -40,7 +40,7 @@ set gammaKs(RealForm G, ratvec gamma) = [ratvec]:
 	      	   gammaK_Ks #:= for x in thetaStable(G)
 		   	       do (K_0(x),cross_divide(KGB(G,0),x))
 			       od;
-		   gammaK_gammas_data #:= []
+		   gammaK_gammas_data #:= ([[ratvec]]:[])
 	      fi
     then J = gammaK_gamma_hashes[i].size()
     then j = gammaK_gamma_hashes[i].match(gamma)
@@ -54,7 +54,7 @@ set gammaKs(RealForm G, ratvec gamma) = [ratvec]:
        	       	       	  	   then [w*gamma - rho_c(KGB(G,0))]
 				   else []
 	  		  	   fi
-       		       		od.##.sort_u
+       		       		od.##.sort_u_lex
 	    then () = gammaK_gammas_data[i] := datai
 	    in datai[j]
 	else gammaK_gammas_data[i][j]
