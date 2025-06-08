@@ -145,6 +145,7 @@ set maxPR_cowts(Param p) = [vec]:
        	      od
     in M
 
+{this is useless???}
 {result is tuples ([dpLs]) with pL hermitian and p = Ind_P^G(pL); so pL and p are unitary iff all the dpLs are}
 set ind_cand_params = (Param -> [Param]):
     let param_hash = make_Param_hash()
@@ -488,13 +489,17 @@ set FPP_lambdas(KGBElt x) = [ratvec]:
 
 set position_time = int:0
 
+set xl_alert_flag = false
+
 {location of lambda in FPP_lambdas(x)}
 set position(KGBElt x, ratvec lambda) = int:
     let start = elapsed_ms()
     then lambdaNorm = parameter(x,lambda,0*lambda).lambda
     then N = FPP_lam_table.position(x,lambdaNorm)
-    then () = if N=-1 then prints("WARNING: at G = ",x.real_form,", x = ",x.number,", lambda = ",
-    	 lambdaNorm," is not attached to x.") fi
+    then () = if xl_alert_flag and N=-1
+    	      then prints("WARNING: at G = ",x.real_form,", x = ",x.number,", lambda = ",
+    	      	   		    lambdaNorm," is not attached to x.")
+	      fi
     then () = position_time +:= elapsed_ms() - start
     in N
 
@@ -2606,14 +2611,18 @@ set wiggle_flag = false
        	   do @bool: not is_unitary_to_ht_big_SIMPLE(q,HT)
 	   od)}
 
-{list locations in LFDKH of reps known to be non-unitary to HT}
-set known_non_unitaries_wiggle(KGBElt x, ratvec lambda, LocalVertexData Lvd,
-    [[FaceVertsKHash]] LFDKH, int HT) = [vec]:
+{list locations in LFDKH of reps known to be non-unitary to HTs}
+set known_non_unitaries_wiggle_old(KGBElt x, ratvec lambda, LocalVertexData Lvd,
+    [[FaceVertsKHash]] LFDKH, [int] HTs) = [vec]:
+    if #LFDKH[0] = 0 then return [] fi;
     let ps = for d:#LFDKH
     	     do for v in LFDKH[d]
 	     	do parameter(x,lambda,face_bary(Lvd, v[:d+1]))
 		od
 	     od
+    then answer = [vec]: for v:#LFDKH do vec: [] od
+    then HT = HTs~[0], H0 = height(ps[0][0])
+    then lookups = lookups(LFDKH) {dth term finds a d-face in LFDKH[d]}
     in for d:#LFDKH
        do for p@j in ps[d]
        	  do let pdef =
@@ -2629,21 +2638,129 @@ set known_non_unitaries_wiggle(KGBElt x, ratvec lambda, LocalVertexData Lvd,
 		 fi {now pdef consists of final Params that must be unitary to HT if p is}
 	     in if any(for q in pdef
 		       do @bool: big_unitary_hash.nu_height_lookup_bool(q,HT)
-	  	       od)
+		       	  or (height(q) > H0 and not is_unitary_to_hts_big_SIMPLE(q,HTs))
+	  	       od) {CONCERN if HTs[0] < H0?}
 	     	then [j]
 		else []
 		fi
 	  od.## {for p@j in ps[d]; this is vec of known nonunitary j for dim d}
        od {for d:#LFDKH}
 
-{list locations in LFDKH of reps known to be non-unitary}
+{
+set wiggle_test(KGBElt x, ratvec lambda, LocalVertexData Lvd, [[FaceVertsKHash]] LFDKH,
+    		int d, int j, [int] HTs) = bool:
+    if d = 0 then return true fi;
+    let p = parameter(x,lambda,face_bary(Lvd, v[:d+1]))
+    then lookup = lookups(LFDKH)[d-1], HT HTs~[0]
+    then CF = character_formula_to_height(1*p,HT)
+    then verts = LFDKH[d][j][:d+1]
+    then short_verts = for k:d+1
+		       do verts[:k]##verts[k+1:]
+		       od {list of vertex sets for faces}
+    then short_js = for sv in short_verts
+		    do lookup(sv)
+		    od
+    in if red_count_flag
+       then let redjis = [int]:
+       	    	for ji in short_js
+	    	do if LFDKH[d-1][ji][d-1] > LFDKH[d][j][d]
+	       	   then [ji]
+	       	   else []
+	       	   fi {rcs don't match}
+	    	od
+       then if #redjis > 0
+       	    then all(for ji in red_jis
+       	       do LFDKH[d-1][ji][d] = LFDKH[
+	     	 in for sv in short_verts
+		     do let pdefi = monomials(composition_series_to_ht(
+		       	   		 wiggle(CF, face_bary(Lvd,sv)) , HT - 1))
+			in if any (for q in pdefi
+		       	      	  do @bool: big_unitary_hash.nu_height_lookup_bool(q,HT)
+		       	 	      or (height(q) > H0 and not is_unitary_to_hts_big_SIMPLE(q,HTs))
+	  	       		  od) {CONCERN if HTs[0] < H0?}
+			   then answer[d]#:= j;
+			   	for ji in short_js
+				do if {to_ht(pol_hash.index(LFDKH[d][j][d+red_shift+1]),HT) =
+	       	  		      to_ht(pol_hash.index(LFDKH[d-1][ji][d+red_shift]),HT)}
+				      LFDKH[d][j][d+red_shift+1:d+red_shift+3] =
+				      LFDKH[d-1][ji][d+red_shift:d+red_shift+2]
+		  		      {same K-char, # Langlands quos}
+				   then answer[d-1] #:= ji
+				   fi {to_ht}
+				od
+			   fi {any q}
+		      od {sv@i in short_verts}
+}
+
 set known_non_unitaries_wiggle(KGBElt x, ratvec lambda, LocalVertexData Lvd,
-    [[FaceVertsKHash]] LFDKH) = [vec]:
+    [[FaceVertsKHash]] LFDKH, [int] HTs) = [vec]:
+    if #LFDKH[0] = 0 then return [] fi;
     let ps = for d:#LFDKH
     	     do for v in LFDKH[d]
 	     	do parameter(x,lambda,face_bary(Lvd, v[:d+1]))
 		od
 	     od
+    then answer = [vec]: for v:#LFDKH do vec: [] od
+    then HT = HTs~[0], H0 = height(ps[0][0])
+    then lookups = lookups(LFDKH) {dth term finds a d-face in LFDKH[d]},
+    	 red_shift = if red_count_flag then 1 else 0 fi
+    then () = for d:#LFDKH
+       do for p@j in ps[d]
+       	  do if (not is_final(p)) or d=0
+	     then let pdef = monomials(p)
+	     	  in if any(for q in pdef
+		       	    do @bool: big_unitary_hash.nu_height_lookup_bool(q,HT)
+	  	       	    od)
+	     	     then answer[d]#:= j
+		     fi
+	     else {now p is final and d > 0}
+	     	  let CF = character_formula_to_height(1*p,HT)
+		  then verts = LFDKH[d][j][:d+1]
+		  then short_verts = for k:d+1
+		       		     do verts[:k]##verts[k+1:]
+				     od {list of vertex sets for faces}
+		  then short_js = for sv in short_verts
+		       		  do lookups[d-1](sv)
+				  od
+	     	  in for sv in short_verts
+		     do let pdefi = monomials(composition_series_to_ht(
+		       	   		 wiggle(CF, face_bary(Lvd,sv)) , HT - 1))
+			in if any (for q in pdefi
+		       	      	  do @bool: big_unitary_hash.nu_height_lookup_bool(q,HT)
+		       	 	      or (height(q) > H0 and not is_unitary_to_hts_big_SIMPLE(q,HTs))
+	  	       		  od) {CONCERN if HTs[0] < H0?}
+			   then answer[d]#:= j;
+			   	for ji in short_js
+				do if {to_ht(pol_hash.index(LFDKH[d][j][d+red_shift+1]),HT) =
+	       	  		      to_ht(pol_hash.index(LFDKH[d-1][ji][d+red_shift]),HT)}
+				      LFDKH[d][j][d+red_shift+1:d+red_shift+3] =
+				      LFDKH[d-1][ji][d+red_shift:d+red_shift+2]
+		  		      {same K-char, # Langlands quos}
+				   then answer[d-1] #:= ji
+				   fi {to_ht}
+				od
+			   fi {any q}
+		      od {sv@i in short_verts}
+	       fi {not is_final(p)}
+	  od {for p@j in ps[d]; this is vec of known nonunitary j for dim d}
+       od {for d:#LFDKH}
+   in for list in answer do sort_u(list) od
+
+{list locations in LFDKH of reps known to be non-unitary to HT}
+set known_non_unitaries_wiggle(KGBElt x, ratvec lambda, LocalVertexData Lvd,
+    [[FaceVertsKHash]] LFDKH, int HT) = [vec]:
+known_non_unitaries_wiggle(x,lambda,Lvd,LFDKH,[HT])
+
+{list locations in LFDKH of reps known to be non-unitary}
+set known_non_unitaries_wiggle_old(KGBElt x, ratvec lambda, LocalVertexData Lvd,
+    [[FaceVertsKHash]] LFDKH) = [vec]:
+    if #LFDKH[0] = 0 then return [] fi;
+    let ps = for d:#LFDKH
+    	     do for v in LFDKH[d]
+	     	do parameter(x,lambda,face_bary(Lvd, v[:d+1]))
+		od
+	     od
+    then H0 = height(ps[0][0])
     in for d:#LFDKH
        do for p@j in ps[d]
        	  do let pdef =
@@ -2658,12 +2775,65 @@ set known_non_unitaries_wiggle(KGBElt x, ratvec lambda, LocalVertexData Lvd,
 		 fi {now pdef consists of reps that must be unitary if p is}
 	     in if any(for q in pdef
 		       do @bool: (big_unitary_hash.nulookup(q)).>=
+		       	  or (height(q) > H0 and not is_unitary_test_big_SIMPLE_interrupt(q))
 	  	       od)
 	     	then [j]
 		else []
 		fi
 	  od.## {for p@j in ps[d]; this is vec of known nonunitary j for dim d}
        od {for d:#LFDKH}
+
+set known_non_unitaries_wiggle(KGBElt x, ratvec lambda, LocalVertexData Lvd,
+    [[FaceVertsKHash]] LFDKH) = [vec]:
+    if #LFDKH[0] = 0 then return [] fi;
+    let ps = for d:#LFDKH
+    	     do for v in LFDKH[d]
+	     	do parameter(x,lambda,face_bary(Lvd, v[:d+1]))
+		od
+	     od
+    then answer = [vec]: for v:#LFDKH do vec: [] od
+    then H0 = height(ps[0][0])
+    then lookups = lookups(LFDKH) {dth term finds a d-face in LFDKH[d]},
+    	 red_shift = if red_count_flag then 1 else 0 fi
+    then () = for d:#LFDKH
+       do for p@j in ps[d]
+       	  do if (not is_final(p)) or d=0
+	     then let pdef = monomials(p)
+	     	  in if any(for q in pdef
+		       	    do @bool: (big_unitary_hash.nulookup(q)).>=
+	  	       	    od)
+	     	     then answer[d]#:= j
+		     fi
+	     else {now p is final and d > 0}
+	     	  let CF = character_formula(1*p)
+		  then verts = LFDKH[d][j][:d+1]
+		  then short_verts = for k:d+1
+		       		     do verts[:k]##verts[k+1:]
+				     od {list of vertex sets for faces}
+		  then short_js = for sv in short_verts
+		       		  do lookups[d-1](sv)
+				  od
+	     	  in for sv in short_verts
+		     do let pdefi = monomials(composition_series(wiggle(CF, face_bary(Lvd,sv))))
+			in if any (for q in pdefi
+		       	      	  do @bool: (big_unitary_hash.nulookup(q)).>=
+		       	 	      or (height(q) > H0 and not
+				      is_unitary_test_big_SIMPLE_interrupt(q))
+	  	       		  od)
+			   then answer[d]#:= j;
+			   	for ji in short_js
+				do if LFDKH[d][j][d+red_shift+1] = LFDKH[d-1][ji][d+red_shift]
+		  		      and LFDKH[d][j][d+red_shift+2] =
+				      	  LFDKH[d-1][ji][d+red_shift+1] {same # Langlands quos}
+				   then answer[d-1] #:= ji
+				   fi {to_ht}
+				od
+			   fi {any q}
+		      od {sv@i in short_verts}
+	       fi {not is_final(p)}
+	  od {for p@j in ps[d]; this is vec of known nonunitary j for dim d}
+       od {for d:#LFDKH}
+   in for list in answer do sort_u(list) od
 
 {list locations in LFDKH of reps known to be non-unitary at height HT}
 set known_non_unitaries(KGBElt x, ratvec lambda, LocalVertexData Lvd,
@@ -4114,7 +4284,7 @@ set extend_K_characters(KGBElt x, ratvec lambda, LocalVertexData Lvd,
      then time = elapsed_ms() - start
      then () = if time_verbose then prints("     ", print_time_string(time),
      	       	  " for extend_K_characters to ht ", ht) fi
-     in anti_sort(G,Lvd,answer)
+     in answer
 
 set extend_K_characters_graph(KGBElt x, ratvec lambda, LocalVertexData Lvd,
     [[FaceVertsKHash]] LFKH, KTypePol_hash ktp_hash, [[int]] eq, [vec] classListByFace) = [[FaceVertsKHash]]:
