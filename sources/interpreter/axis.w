@@ -1643,26 +1643,30 @@ case applied_identifier:
 @.Undefined identifier@>
 }
 
-@ When an identifier is found neither in the current |lexical_context| nor in
-the |global_id_table|, we used to flag an error, but as a service to the user we
-now try instead to find something from the |global_overload_table| first,
+@ When an identifier is encountered that can be found neither in the current
+|lexical_context| nor in the |global_id_table|, the interpreter (in version~1 of
+the \.{axis} language) used to simply flag an error. But as a service to the
+user, we now instead try to get a value from the |global_overload_table|,
 provided there is a unique instance of the identifier there that matches the
 type requirement |tp| from the context (which may be no requirement at all).
-If the context type does not accept any function type we skip this code (the
-overload table can hold only functions), and if it does we distinguish between
-accepting functions of any argument type, or making some restriction on the
-argument type. This is mainly to be able to give more meaningful error messages
-when our attempt fails, but the case of no restrictions also can be handled with
-somewhat simpler logic. if the type requirements should rule out all available
-variants, then we fall through this code as if there were no overloads at all.
+We make a distinction between the case where just a single variant is known in
+the overload table, which we treat essentially as if that value had been held in
+a variable of function type instead, and cases where multiple variants of the
+same identifier are defined; in the latter case we only succeed if exactly one
+of the variants meets the requirements of |tp|. The distinction is mainly made
+so that we can give more meaningful error messages when our attempt fails.
+If |tp| does not accept any function type to begin with, we just skip the
+attempt to use the overload table, and if it does accept function types but none
+of the defined variants matches it, we also fall through this code; in either
+case that will result in a simple ``undefined identifier'' error message.
 
 @< See if a unique member of |*vars| matches |tp|, and if so |return| a
    |capture_expression| holding the value of that variant @>=
 { type_expr f_type = gen_func_type.copy();
   if (tp.unify_specialise(f_type))
-  { if (tp.assign().is_polymorphic(f_type.func()->arg_type))
-    @< If |*vars| has a unique variant, |return| its value wrapped in a
-       |capture_expression|, otherwise |throw| an error signalling ambiguity @>
+  { if (vars->size()==1)
+    @< If the unique element of |*vars| matches |tp|, |return| its value wrapped
+       in a |capture_expression|; otherwise |throw| a |type_error| @>
     else
     @< If a unique variant among |*vars| unifies to the type |tp|,
        |return| its value wrapped in a |capture_expression|; if more than one
@@ -1671,44 +1675,62 @@ variants, then we fall through this code as if there were no overloads at all.
   }
 }
 
-@ When the context poses no requirements, we basically look for a unique variant
-for the identifier and return it. However we must specialise |tp| to the
-possibly polymorphic function type of |variant|, which |functype_absorb| should
-accomplish. If there are multiple variants, we warn the user that one cannot
-simply use an overloaded symbol as an identifier with nothing to disambiguate
-the usage.
+@ When the overload table hols a single variant for the identifier, we try to
+specialise |tp| to the function type of |variant|, which |functype_absorb|
+defined below does, returning whether it succeeded. In case of failure, we throw
+a |type_error|, just like we would for a variable used in a context requiring a
+different type.
 
-@< If |*vars| has a unique variant, |return| its value wrapped...@>=
-{ if (vars->size()==1)
-  { const auto& variant = vars->front();
-    if (functype_absorb(tp,variant))
-    { o << main_hash_table->name_of(id) << '@@' << tp.arg_type();
-      return
-        expression_ptr(new capture_expression(variant.value(),o.str()));
-    }
-    throw logic_error
-      ("Partially determined function type failed to specialise");
+@< If the unique element of |*vars| matches |tp|, |return| its value...@>=
+{ const auto& variant = vars->front();
+  if (functype_absorb(tp,variant))
+  { o << main_hash_table->name_of(id) << '@@' << tp.arg_type();
+    return expression_ptr(new capture_expression(variant.value(),o.str()));
   }
-  else
-  { o << "Use of overloaded '" << main_hash_table->name_of(id)
-    @| << "' is ambiguous, specify argument type to disambiguate";
-    throw expr_error(e,o.str());
-  }
+  throw type_error(e,get_ftype(variant.f_tp()),tp.bake());
 }
 
-@ In the case where the context poses a restriction, we filter the variants for
-one that matches the requirement, and use the result if it is unique. We proceed
-basically as in the case of no restriction, but here the call of
-|functype_absorb| can meaningfully fail, indicating that the variant does not
-satisfy the restriction. In case of such a failure, we must undo any type
-assignments that the failed attempt to match may have made. Since this must be
-done repeatedly, it is simplest to just apply any assignment that might be
-pending initially, by calling |tp.wring_out|, after which any type assignments
-we have must be new, and can be undone by calling |tp.clear|. The fact that we
-call |tp.wring_out| does mean that callers to |convert_expr| cannot expect that
-changes to |tp| are limited to acquiring type assignments; we do not believe any
-caller make that assumption, but if that should be the case, the code below must
-be more careful, and instead record |tp.polymorphics()| initially, and then use
+@ The overload table stores type information in a |func_type| value, which
+|functype_absorb| must compare against the respective parts of |type tp@;| and
+make the necessary assignments to them in case of success. Note that unlike
+in ordinary overload resolution, we use both the argument and the result type to
+make the match.
+
+We should be aware that in case the table holds polymorphic types they will
+numbered from~$0$, while |tp| has a possibly nonzero |floor()| value that needs
+to be respected. This means that if we should use |unify_specialise| twice for
+this task, both argument and result type should be properly shifted first. It is
+a bit more straightforward to instead first construct a |type_expr| from the
+|func_type| with the proper shifts, and then use |unify| with that type. We so
+using a helper function |get_type|, which also will come in handy when reporting
+errors related to types in the overload table.
+
+@< Local function definitions @>=
+inline type_expr get_ftype(const func_type& ftp)
+{@; return type_expr::function(ftp.arg_type.copy(),ftp.result_type.copy()); }
+
+inline bool functype_absorb (type& tp, const overload_data& entry)
+{ type model = type::wrap(get_ftype(entry.f_tp()),0,tp.floor());
+    // proper shift facilitates |unify|
+  if (tp.unify(model))
+  {@;
+    tp.wring_out();
+    return true;
+  }
+  return false;
+}
+
+@ In the case where there is more than one variant to choose from, we filter
+them for one that makes |functype_absorb| succeed. In case of a failure, we must
+undo any type assignments that the failed attempt to match may have made. Since
+this must be done repeatedly, it is simplest to just initially apply any
+assignment that might be pending, by calling |tp.wring_out|, after which any
+type assignments produced by |functype_absorb| must be new, and can be undone by
+calling |tp.clear|. The fact that we call |tp.wring_out| does mean that callers
+to |convert_expr| cannot expect that changes to |tp| are limited to acquiring
+type assignments; we do not believe any caller makes that assumption, but if
+that should turn out to be the case, the code below must be more careful: it
+should instead record |tp.polymorphics()| initially, and then use
 |restore_polymorphics| instead of |clear|.
 
 @< If a unique variant among |*vars| unifies to the type |tp|... @>=
@@ -1901,7 +1923,7 @@ aside a call for the first match, and leave a pointer |prev_match| to the
 current variant, which will be used for error reporting in case an ambiguity is
 found.
 
-Whenever an argument matches, be it exact of inexact, |conform_types| will be
+Whenever an argument matches, be it exact or inexact, |conform_types| will be
 called for the variant result type and the expected |tp|; this may throw an
 error, also aborting the matching process.
 
@@ -7306,39 +7328,17 @@ case cast_expr:
     return convert_expr(c.exp,tp); // in which case use now specialised |tp|
   expression_ptr p = convert_expr_strongly(c.exp,fc,cast_tp);
     // otherwise use |cast_tp|
-  return conform_types(c.dst_tp,tp,std::move(p),e);
+  return conform_types(cast_tp,tp,std::move(p),e);
 }
 
 @ Another kind of cast is the operator cast, which selects an operator or
 overloaded function instance as it would for arguments of specified types, but
 without giving actual arguments, so that the selected function itself can be
-handled as a value. In order to do so we shall need the following function.
-
-The overload table stores type information in a |func_type| value, whose two
-components may contain polymorphic values numbered from~$0$. We want to
-integrate these into a |type tp@;| that was initialised to a generic function
-type with a possibly nonzero |floor()| value. We could use the subexpression
-form of |unify_specialise| here with properly shifted copies of the |func_type|
-components, but it seems a bit more straightforward to use |unify|.
-
-@< Local function definitions @>=
-inline bool functype_absorb (type& tp, const overload_data& entry)
-{ auto te = type_expr::function @|
-   (entry.f_tp().arg_type.copy(),
-    entry.f_tp().result_type.copy());
-  type model = type::wrap(te,0,tp.floor()); // proper shift facilitates |unify|
-  if (tp.unify(model))
-  {@;
-    tp.wring_out();
-    return true;
-  }
-  return false;
-}
-
-@ Operator casts only access already existing values, which are looked up in the
-global overload table. Since upon success we find a bare |shared_function|, we
-must (as we did for~`\.\$') use the |capture_expression| class to serve as
-wrapper that upon evaluation will return the value again.
+handled as a value. In other words, and operator cast accesses a value in the
+global overload table by providing its name and argument types. Since in
+successful cases we find a bare |shared_function| in the table, we must (as we
+did for~`\.\$') use the |capture_expression| class to serve as wrapper that upon
+evaluation will return the value again.
 
 We do two attempts to match the specified type |c_type| to an entry in the
 |global_overload_table|. In the first we deduce from |c_type| a type as it would

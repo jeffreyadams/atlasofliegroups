@@ -87,7 +87,7 @@ points.}
 set good_interior_point(mat A, vec b) = [ratvec]:
     if rank(A) < #A then []
     else
-       for x in [ratvec]: solve(A,b/1).to_list
+       for x in [ratvec]: solve(A,b/1).as_list
           if all(for xi in x do xi>0 and 1>xi od) do x fi
        od
     fi

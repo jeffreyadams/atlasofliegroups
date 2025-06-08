@@ -252,7 +252,7 @@ for X in L do for x in X do order(x) od od
 
 
 set find_min_Abar([ConjugacyClass] CC, int n) = Maybe<ratvec>:
-let G=CC[0].G.dual, all= for c in CC do find_min(c,n).to_list od.##
+let G=CC[0].G.dual, all= for c in CC do find_min(c,n).as_list od.##
 then
 I=invariant_form(G) in
 if #all=0 then none() else
