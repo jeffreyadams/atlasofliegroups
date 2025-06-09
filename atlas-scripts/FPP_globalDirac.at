@@ -2049,23 +2049,27 @@ set real_induced(RealForm G) = void:
 	     od.## {put all x together}
 	  od {but keep a separate list for each max Levi maxLRi}
      then () = for maxLRi@i in maxLRis
-	     	  do for pL in cands[i]
+	       do for pL in cands[i]
 	     	     do for q in monomials(real_induce_irreducible(pL,G))
-		   	do let qdeflist = [q]## for Qdef in local_defs(q)
-			   	      	    	do monomials(composition_series(Qdef))
-					    	od.##
-			   in for qdef in qdeflist
-			      do big_unitary_hash.umatch(herm_center(qdef))
-			      od
-			od
-	     	     od
-		  od
+		   	do let qdeflist = [q]##
+			if wiggle_flag
+			then for Qdef in local_defs(q)
+			     do monomials(composition_series(Qdef))
+			     od.##
+			else [Param]: []
+			fi
+			in for qdef in qdeflist
+			   do big_unitary_hash.umatch(herm_center(qdef))
+			   od {qdef in qdeflist}
+			od {for q in monommials}
+	     	     od {for pL in cands[i]}
+	       od {for maxLRi in maxLRis}
      in ()
 
 set NUR_verbose = true
 
-set non_unitary_real_induced(RealForm G) = Param_hash:
-    let maxLRis = max_LRs(G), NUhash = make_Param_hash()
+set non_unitary_real_induced(RealForm G) = void:
+    let maxLRis = max_LRs(G)
     then maxLRidatas = [[(RealForm, RealForm, mat)]]: {one list for each maxLRi, with
     	 	     an entry (Sik, derLik, Mik) for each derived simple factor derLik}
        	 for maxLRi in maxLRis
@@ -2112,7 +2116,7 @@ set non_unitary_real_induced(RealForm G) = Param_hash:
 	    do FPP_lambdas(x)
 	    od
 	 od
-    then lambdainms = [[[ratvec]]]: {one list of LRi lambdas for each xin; omit those that don't descent to FPP}
+    then lambdainms = [[[ratvec]]]: {one list of LRi lambdas for each xin; omit those that don't descend to FPP}
     	 for maxLRi@i in maxLRis
 	 do let rhoi = G.rho - maxLRi.rho
 	    in for xin@n in KGB(maxLRi)
@@ -2249,14 +2253,14 @@ make a rep non-unitary on maxLRi. If induction to G is irreducible, add it.}
 		      	    then let P = real_induce_irreducible(pL,G)
 			    	 {then () = prints("pL = ", pL)}
 		      	    	 in if #P = 1
-				    then NUhash.match(herm_center(first_param(P)))
+				    then big_unitary_hash.numatch(herm_center(first_param(P)))
 				    fi
 			    fi
 		      od {nu}
 		od {m}
 	     od {n}
 	  od {i}
-     in NUhash
+     in ()
 
 {get complete FPP dual for each derived simple factor of a theta-stable Levi; and then cohom ind
 all those things in weakly good range to G}
@@ -2291,7 +2295,7 @@ set precomputeR(RealForm G) = void:
     then temp_report_flag = FPP_report_flag
     then () = FPP_report_flag :=false
     then () = for rf@k in rflist
-    	      do prints("starting # ",k," = ",rf);
+    	      do prints("starting # ",k," = ",rf, " of ",#rflist);
 	      	 real_induced(rf);
 		 if pre_bottom_flag
 		 then FPP_unitary_hash_bottom_layer(rf)
@@ -2301,9 +2305,9 @@ set precomputeR(RealForm G) = void:
 		 fi
 	      od
     then () = FPP_report_flag:=temp_report_flag
-    in real_induced(G)
+    in () {real_induced(G)}
 
-{ set precomputeNUR(RealForm G) = Param_hash:
+set precomputeNUR(RealForm G) = void:
     let rflist = SDLRF(G), start = elapsed_ms()
     then () = coh_ind_all_flag:=false
     then () = coh_ind_most_flag:=false
@@ -2311,7 +2315,7 @@ set precomputeR(RealForm G) = void:
     then temp_report_flag = FPP_report_flag
     then () = FPP_report_flag :=false
     then () = for rf@k in rflist
-    	      do prints("starting # ",k," = ",rf);
+    	      do prints("starting # ",k," = ",rf, " of ", #rflist);
 	      	 {real_induced(rf);}
 		 if pre_bottom_flag
 		 then FPP_unitary_hash_bottom_layer(rf)
@@ -2319,11 +2323,12 @@ set precomputeR(RealForm G) = void:
 		 then FPP_unitary_hash_def_dumb(rf)
 		 else FPP_unitary_hash2(rf)
 		 fi;
-		 big_unitary_hash.nuhash_fill(rf);
+		 {big_unitary_hash.nuhash_fill(rf);}
 		 prints("found ",big_unitary_hash.nuhash(rf).size(), " nonunitary reps")
 	      od
     then () = FPP_report_flag:=true
-    then NUhash = non_unitary_real_induced(G)
+    in ()
+    {then NUhash = non_unitary_real_induced(G)
     in prints("In time ",print_time_string(elapsed_ms() - start)," found ", NUhash.size(),
        	      " nonunitary reps.")}
 
