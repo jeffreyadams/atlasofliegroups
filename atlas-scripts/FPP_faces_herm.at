@@ -1929,7 +1929,7 @@ set add_to_u_to_ht(Param p,int h) = void:
     let M = u_to_ht_hash.size()
     then m = u_to_ht_hash.match(p)
     in if m = M
-       then u_to_ht_hts#h
+       then u_to_ht_hts #:= h
        else u_to_ht_hts[m] := max(u_to_ht_hts[m],h)
        fi
 
@@ -1981,7 +1981,6 @@ set is_unitary_to_ht_big_SIMPLE_old(Param p,int N) = bool:
 	    fi
   {then () = p := herm_center(p)}
   then () = if big_unitary_hash.nu_height_lookup_bool(p,N) then return false fi
-  then () = if (big_unitary_hash.ulookup(p)).>= then return true fi
   then j = u_to_ht_hash.lookup(p)
   then () = if j.>= and u_to_ht_hts[j] >= N
        	    then return(true)
