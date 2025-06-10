@@ -1,3 +1,4 @@
+
 {this file concerns (local) facets of parameters, in preparation of analysis of their unitarity.}
 <FPP_faces_geom.at
 <goodroots.at { for is_pos_on_LKTs }
@@ -1919,6 +1920,26 @@ set print_int_flag = false
 {initial time to give interruptible command}
 set interrupt_base_time = int:200
 
+{assume p = u_to_ht_hash.list()[j], h = u_to_ht_hts[j] gives
+is_unitary_to_ht(p,h) = true}
+set u_to_ht_hash = make_Param_hash()
+set u_to_ht_hts = [int]:[]
+
+set add_to_u_to_ht(Param p,int h) = void:
+    let M = u_to_ht_hash.size()
+    then m = u_to_ht_hash.match(p)
+    in if m = M
+       then u_to_ht_hts#h
+       else u_to_ht_hts[m] := max(u_to_ht_hts[m],h)
+       fi
+
+set add_to_u_to_ht([(Param,int)] data) = void:
+    for d in data do add_to_u_to_ht(d) od
+
+set u_to_ht_clear() = void:
+    u_to_ht_hash.clear();
+    u_to_ht_hts := ([int]: [])
+
 {assume p is hermitian}
 set hermitian_form_irreducible_to_ht_big_SIMPLE(Param p,int N) = KTypePol:
   let G = p.real_form
@@ -1932,6 +1953,11 @@ set hermitian_form_irreducible_to_ht_big_SIMPLE(Param p,int N) = KTypePol:
        	    then let ans =K_type_pol(character_formula_to_height(p,N))
 		 in return(ans)
 	     fi
+  then j = u_to_ht_hash.lookup(p)
+  then () = if j.>= and u_to_ht_hts[j] >= N
+       	    then let ans =K_type_pol(character_formula_to_height(p,N))
+	    	 in return(ans)
+	    fi
   in big_unitary_hash.sig_entry(p,N)
 
 set HOWMTH = int:0
@@ -1956,6 +1982,10 @@ set is_unitary_to_ht_big_SIMPLE_old(Param p,int N) = bool:
   {then () = p := herm_center(p)}
   then () = if big_unitary_hash.nu_height_lookup_bool(p,N) then return false fi
   then () = if (big_unitary_hash.ulookup(p)).>= then return true fi
+  then j = u_to_ht_hash.lookup(p)
+  then () = if j.>= and u_to_ht_hts[j] >= N
+       	    then return(true)
+	    fi
   in is_pure(big_unitary_hash.sig_entry(p,N)) {this will use full is_unitary
      					      if that seems faster}
 
@@ -1993,6 +2023,10 @@ set is_unitary_to_ht_big_SIMPLE(Param p, int H, int time) = bool:
   then () = p := herm_center(p)
   then () = if big_unitary_hash.nu_height_lookup_bool(p,H) then return false fi
   then () = if (big_unitary_hash.ulookup(p)).>= then return true fi
+  then j = u_to_ht_hash.lookup(p)
+  then () = if j.>= and u_to_ht_hts[j] >= H
+       	    then return(true)
+	    fi
   then result = 0, mu = K_type(p.x, p.lambda_minus_rho) {LKTs(p)[0]},
        top_ht = floor((p.infinitesimal_character)*G.two_rho_check)
        {unitary to top_ht implies unitary}
