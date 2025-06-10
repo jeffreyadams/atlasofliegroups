@@ -350,15 +350,10 @@ set is_unitary_to_ht_base (Param p,int N) = bool:
 
 { compute Hermitian form to ht on p, and report if it is unitary }
 set is_unitary_to_ht_MvL (Param p,int N) = bool:
-  {unitary_test_counter.use();} {done in herm form}
-  {let start_time = elapsed_ms(), answer =}
       p.is_hermitian and hermitian_form_irreducible_to_ht_MvL(p,N).is_pure
-  {then () = unitaryTime+:=elapsed_ms() - start_time} 
-  {in answer}
 
 { compute Hermitian form to ht on p, and report if it is unitary }
 set is_unitary_to_ht_MvL (Param p,int N, int time) = int: { -1: no, 0:timed out, 1: yes }
-  {unitary_test_counter.use();} {done in herm form}
    let start_time = elapsed_ms()
    in   if p.is_hermitian
       	else -1
@@ -369,18 +364,16 @@ set is_unitary_to_ht_MvL (Param p,int N, int time) = int: { -1: no, 0:timed out,
 	     		   if boo then 1 else -1 fi
 	   esac
       fi
-  {then () = unitaryTime+:=elapsed_ms() - start_time}
-  {in answer}
 
 { compute Hermitian form to ht on p, report if it is unitary,
   and record certificate }
 set is_unitary_to_ht (Param p,int N, KTypePol_hash cert_hash) = bool:
-  {unitary_test_counter.use();} {done in herm form}
   p.is_hermitian and is_pure_cert_hash(hermitian_form_irreducible_to_ht(
   p,N), cert_hash)
 
 {table of is_unitary results, indexed by Param}
 {not used}
+{
 set_type
 [ unitarity_to_hts_bool_hash =
 ( ( -> int) heights_size {number of heights stored}
@@ -464,20 +457,22 @@ set make_unitarity_to_hts_bool_hash () = unitarity_to_hts_bool_hash:
    , ((int,int) -> bool): {data_index} (int i, int j): bool_datas[i][j]
   )
 )
+}
 
-set unitarity_to_hts_hash = make_unitarity_to_hts_bool_hash ()
+{set unitarity_to_hts_hash = make_unitarity_to_hts_bool_hash ()}
 
-set is_unitary_to_ht_hash(Param p, int h) = unitarity_to_hts_hash.entry(p,h)
+{set is_unitary_to_ht_hash(Param p, int h) = unitarity_to_hts_hash.entry(p,h)}
 
 {whether to tabulate results of is_unitary_to_ht. "true" certainly reduces
 number of tests, and seems to help a bit with time.}
-set to_hts_hash_flag = true
+
+{set to_hts_hash_flag = true}
 
 set is_unitary_to_ht(Param p, int h) =  bool:
-    if to_hts_hash_flag
+    {if to_hts_hash_flag
     then unitarity_to_hts_hash.entry(p,h)
-    else is_unitary_to_ht_base(p,h)
-    fi
+    else} is_unitary_to_ht_base(p,h)
+    {fi}
 
 set is_unitary_to_hts(Param p, [int] Ns) = bool:
     { is_pos_on_LKTs(p) and }
@@ -489,6 +484,7 @@ set is_unitary_to_hts(Param p, [int] Ns) = bool:
     od;
     true
 
+{
 set is_unitary_to_hts_hash(Param p, [int] Ns) = bool:
     { is_pos_on_LKTs(p) and }
     {unitary_test_counter.use();}
@@ -497,4 +493,4 @@ set is_unitary_to_hts_hash(Param p, [int] Ns) = bool:
        then return false
        fi
     od;
-    true
+    true}
