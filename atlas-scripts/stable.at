@@ -11,7 +11,10 @@
 
 set indices ([Param] B,[Param] subset) = [int]: for p in subset do find(B,p) od
 set evaluate_at_1 ([i_poly] v)= vec: for w in v do evaluate_at_1(w)  od
-set evaluate_at_1 (i_poly_mat M) = mat: ^for v in M do evaluate_at_1(v) od
+set evaluate_at_1 (i_poly_mat M) = mat:
+  if #M=0 then 0 { |null(0,0)| for |[]| } else #M[0] fi ^ { stack rows}
+  for v in M do evaluate_at_1(v) od
+
 set number = #@KGBElt { defined as |#| in basic.at }
 set left_kernel = cokernel@mat { defined as |cokernel| in basic.at }
 
@@ -133,7 +136,7 @@ set dual_parameters_standard_basis ([Param] B) = mat:
 {r x n matrix, subset of rows of the previous, corresponding to rows in dual_parameter(S,B)}
 set dual_parameters_standard_basis ([int] S,[Param] B) = mat:
   let M=dual_parameters_standard_basis(B) in
-  ^(for i in dual_parameters(S,B) do row(M,i) od)
+  n_columns(M) ^ for i in dual_parameters(S,B) do row(M,i) od
 
 set get_y ([Param] B) = [int]:
   let dual_inner_class=dual_inner_class(B[0]) in

@@ -389,11 +389,12 @@ set cone (rat limit, [rat] cs { all >0 } ) = mat: { columns are weights }
   then rec_fun cn (rat limit, int k) { from this index on } = mat:
     if k=n { 0 parts } then null(0,1) { one column of size 0; don't miss it! }
     else
-      let c=cs[k] in mat: { conversion safe, there is at least one vector }
-        [vec]: ##
-        for first: limit\c+1
-        do let rec=cn(limit-c*first,k+1) in
-          [vec]: (ones(n_columns(rec))*first)^rec
+      let c=cs[k] in
+      assert(c>0,"Non-positive coefficient in bounding linear form");
+      mat: (n-k) ## { horizontally combine list of |n-k|-column matrices }
+        for first: limit\c+1 { all |first| with $0<=c*first<=limit$ }
+        do let rec=cn(limit-c*first,k+1) in mat:
+	  (ones(n_columns(rec))*first)^rec { prepend row of |first| to |rec| }
         od
     fi
   in cn(limit,0)
