@@ -2,6 +2,7 @@
 <hodgeParamLaurentPol.at
 <stable.at
 <extParamPol.at
+<twisted_root_datum { for |pre_folded|, |folded| }
 
 set te_verbose=true
 
@@ -134,49 +135,6 @@ set big_KL_P_signed_polynomials (Param p,mat delta) = i_poly_mat:
 
 set twisted_root_datum(RootDatum G,mat T)=TwistedRootDatum:(G,T)
 
-set pre_folded(TwistedRootDatum (rd,delta))=(mat,mat):
-assert(is_distinguished(rd,delta),"delta is not distinguished");
-let T=SubTorus:eigen_lattice(^delta,1) then   {T=(H^\delta)^0; columns are a basis of X_*(T)}
-{T is nxr where n=rd.rank and r=dimension(T)}
-{ T: matrix of map X_*(T)->X_*(H) \simeq Z^r -> Z^n: this is T.inject
- ^T: matrix of map X^*(H)->X^*(T) \simeq Z^n->Z^r:   this is T.project=T.restrict
-}
-roots_nonreduced=sort_u_lex(for alpha in rd.posroots do T.restrict(alpha) od) then
-roots=mat:##(for alpha in roots_nonreduced do if find(roots_nonreduced,2*alpha)=-1 then [alpha] else [] fi od) then
-coroots=[vec]:[] in
-for alpha in roots do
- let pullback_alpha=let j=first(for beta in rd.roots do T.restrict(beta)=alpha od) in rd.roots[j] then
- v=sum(##(for beta in rd.roots do if T.restrict(beta)=alpha then  [coroot(rd,beta)]
-   else []
-  fi od)) then
- w=2*v/(v*pullback_alpha) {element of X_*(H) which lives in X_*(T)} then
- corestrict_w=solve(T,w).requisition {coordinates of w in the given basis of X_*(T)} in
- coroots#:=ratvec_as_vec(corestrict_w)
-od;(roots,coroots)
-
-set Folded(TwistedRootDatum (rd,delta))=(RootDatum,mat):
-{assert(rd.is_semisimple or delta=id_mat(#delta),"root datum is not semisimple and delta !=1");}
-assert(is_distinguished(rd,delta),"delta is not distinguished");
-let T=SubTorus:eigen_lattice(^delta,1) then   {T=(H^\delta)^0; columns are a basis of X_*(T)}
-{T is nxr where n=rd.rank and r=dimension(T)}
-{ T: matrix of map X_*(T)->X_*(H) \simeq Z^r -> Z^n: this is T.inject
- ^T: matrix of map X^*(H)->X^*(T) \simeq Z^n->Z^r:   this is T.project=T.restrict
-}
-roots_nonreduced=sort_u_lex(for alpha in rd.posroots do T.restrict(alpha) od) then
-{roots=mat:##(for alpha in roots_nonreduced do if find(roots_nonreduced,2*alpha)=-1 then [alpha] else [] fi od) then}
-roots=mat:##(for alpha in roots_nonreduced do if find(2*roots_nonreduced,alpha)=-1 then [alpha] else [] fi od) then
-coroots=[vec]:[] in
-for alpha in roots do
- let pullback_alpha=let j=first(for beta in rd.roots do T.restrict(beta)=alpha od) in rd.roots[j] then
- v=sum(##(for beta in rd.roots do if T.restrict(beta)=alpha then  [coroot(rd,beta)]
-   else []
-  fi od)) then
- w=2*v/(v*pullback_alpha) {element of X_*(H) which lives in X_*(T)} then
- corestrict_w=solve(T,w).requisition {coordinates of w in the given basis of X_*(T)} in
- coroots#:=ratvec_as_vec(corestrict_w)
-od;
-(root_datum_from_positive((roots,coroots),rd.prefers_coroots),T)
-
 {this returns: (RootDatum H,mat M) where
  Gd=G.dual, T_Gd=Cartan of Gd
  Hd=identity component of Gd^{delta^t}
@@ -192,7 +150,7 @@ M:  X^*(T_H) -> X^*(T_G)  OR X_*(T_{Hd}) -> X_*(T_{Gd})
 set endoscopic(RootDatum G,mat delta)=(RootDatum,mat):
 let Gd=G.dual then
 trd=twisted_root_datum(Gd,^delta) then
-(Hd,M)=Folded(Gd,^delta) then
+(Hd,M)=folded(Gd,^delta) then
 H=Hd.dual in
 (H,M)
 

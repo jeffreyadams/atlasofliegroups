@@ -68,26 +68,32 @@ roots_C: roots of T in C=Cent(O)
 coroots_C: coroots of T in C, obtained by writing the coroots_G in the given basis of X_*(T)
 }
 set centralizer_roots_and_coroots \
-  (ComplexNilpotent O,[vec] roots_G,[vec] roots_C)=([vec],[vec],[vec],[vec]):
-let T=O.torus then
-coroots_G=[vec]:[] then
-coroots_C=[vec]:[] in
-for alpha in roots_C do
- let pullback_alpha=let j=first(for beta in roots_G do T.restrict(beta)=alpha od) in roots_G[j] then
- v=sum(##(for beta in roots_G do
-  if T.restrict(beta)=alpha then  [coroot(O.root_datum,beta)]
-   else []
-  fi od)) then
+  (ComplexNilpotent O,[vec] roots_G,[vec] roots_C)=(mat,mat,mat,mat):
+let T=O.torus, rd=O.root_datum then
+coroots_G=null(rd.rank,0),
+coroots_C=null(rd.rank,0) in
+for alpha in roots_C
+do
+  let pullback_alpha = vec:
+    let j=first(for beta in roots_G do T.restrict(beta)=alpha od)
+    in roots_G[j]
+ then v=sum
+  (O.root_datum.rank #
+   for beta in roots_G
+   if T.restrict(beta)=alpha do  coroot(O.root_datum,beta) fi
+   od)
+ then
  w=2*v/(v*pullback_alpha) {element of X_*(H) which lives in X_*(T)} then
  corestrict_w=solve(T,w).requisition {coordinates of w in the given basis of X_*(T)} in
  coroots_G#:=v;
  coroots_C#:=ratvec_as_vec(corestrict_w)
 od;
-(roots_G,coroots_G,roots_C,coroots_C)
+(rd.rank # roots_G,coroots_G,rd.rank # roots_C,coroots_C)
 
 {compute centralizer coroots from scratch}
-set centralizer_roots_and_coroots(ComplexNilpotent O)=([vec],[vec],[vec],[vec]):
-let (roots_G,roots_C)=O.centralizer_roots in centralizer_roots_and_coroots(O,roots_G,roots_C)
+set centralizer_roots_and_coroots(ComplexNilpotent O)=(mat,mat,mat,mat):
+let (roots_G,roots_C)=O.centralizer_roots
+in centralizer_roots_and_coroots(O,roots_G,roots_C)
 
 {put it all together: compute the identity component of Cent_G(O) as a reductive group
  more precisely: the (id component of) reductive part of Cent_G(X), or Cent_G(SL(2))

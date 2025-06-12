@@ -26,8 +26,8 @@ set remove_zeros([vec] list)=[vec]:
 ##for v in list do if =v then [] else [v] fi od
 
 {removed both duplicates and zeros}
-set prune([vec] list)=[vec]:
-remove_zeros(remove_duplicates(list))
+set prune(mat list)=mat:
+  n_rows(list) # remove_zeros(remove_duplicates(list))
 
 {return: (mat A,mat B) where
  A is the matrix of positive restricted roots
@@ -50,12 +50,14 @@ restricted_roots=prune(proj*G.posroots) {roots are the restrictions} then
     (since <alpha_vee*delta,alpha>=0 or +1)
 }
 injected_coroots=prune(
- pullback*(
- ##for alpha_vee@j in G.poscoroots do
-   if alpha_vee*delta=-alpha_vee then [alpha_vee] elif
-   alpha_vee*delta=alpha_vee then [] else
-   [alpha_vee*(1-delta)*(int: 1+alpha_vee*delta*G.posroots[j])] fi
-   od))
+ pullback*( G.rank #
+   for alpha_vee@j in G.poscoroots
+   do
+      if alpha_vee*delta=-alpha_vee then [alpha_vee]
+      elif alpha_vee*delta=alpha_vee then []
+      else [alpha_vee*(1-delta)*(int: 1+alpha_vee*delta*G.posroots[j])]
+      fi
+   od.##))
 in (mat:restricted_roots,mat:injected_coroots)
 
 {if both v,2v occur keep only 2v}
@@ -67,10 +69,10 @@ set keep_short([vec] list)=[vec]:
 ##for v in list do if is_integer(v/2) and find(list,v\2)>=0 then [] else [v] fi od
 
 set keep_short_roots_long_coroots(mat roots, mat coroots)=(mat,mat):
-(mat:keep_short(roots),mat:keep_long(coroots))
+(n_rows(roots) # keep_short(roots),n_rows(coroots) # keep_long(coroots))
 
 set keep_long_roots_short_coroots(mat roots, mat coroots)=(mat,mat):
-(mat:keep_long(roots),mat:keep_short(coroots))
+(n_rows(roots) # keep_long(roots),n_rows(coroots) # keep_short(coroots))
 
 {reduced root system obtained by keep short roots/long coroots}
 set restricted_roots_short(RealForm G)=RootDatum:

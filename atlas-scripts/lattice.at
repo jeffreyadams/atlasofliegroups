@@ -130,8 +130,10 @@ set solve_ratvec (mat A, vec v) = ratvec:
 set in_lattice (mat A, ratvec u) = bool: { whether v in image lattice of A }
   let (b,n)=%u in n=1 and can(solve(A,b))
 
-{test if ratvec v is in lattice L + rational subspace V}
-set in_lattice_subspace_sum ([vec] L,[vec] V)=(ratvec->bool): (ratvec v):
+{ whether in the sum of lattice |L| and rational subspace spanned by |V| }
+set in_lattice_subspace_sum (mat L,mat V) = (ratvec->bool):
+   assert(n_rows(L)=n_rows(V),"Unequal dimensions");
+   (ratvec v):
    if =#V then in_lattice(L,v)
    else
       let ck=cokernel(V) then (new_V,,,) = echelon(ck*L)

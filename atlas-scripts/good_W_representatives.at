@@ -62,22 +62,17 @@ let M=matrix(w) in eigenpairs(M,M.order)
 
 {coroots vanishing on a set of weights}
 set zero_coroots(RootDatum rd,[CyclotomicVec] wts)=[int]:
-##for alpha_check@i in poscoroots(rd) do
-if all (for v in wts do =dot_product(alpha_check,v) od)
-then [i] else [] fi  od
+for alpha_check@i in poscoroots(rd)
+  if all (for v in wts do =dot_product(alpha_check,v) od)
+  do i
+  fi
+od
 
 {returns a root_datum for a *possibly non-standard* Levi}
 set levi(RootDatum rd,[CyclotomicVec] vecs)=RootDatum:
-let real_vecs=for v in vecs do v+bar(v) od then
-im_vecs  =for v in vecs do v-bar(v) od then
-all_vecs=real_vecs##im_vecs then
-coroots=zero_coroots(rd,all_vecs) then pos_roots=for i in coroots do
-posroots(rd)[i] od then pos_coroots=for i in coroots do
-poscoroots(rd)[i] od in if =#pos_roots then complex_Levi(rd,[int]:[])
-else let
-(simple_roots,simple_coroots)=simple_system_from_positive(pos_roots,pos_coroots)
-in root_datum(simple_roots,simple_coroots,rd.prefers_coroots)
-fi
+let real_vecs=for v in vecs do v+bar(v) od
+then im_vecs  =for v in vecs do v-bar(v) od
+in sub_datum(rd,is_member_fast(zero_coroots(rd,real_vecs##im_vecs)))
 
 set nested_Levis(RootDatum rd,[EigenPair] pairs_in)=
 let F=pairs_in[0].F then

@@ -77,11 +77,11 @@ assert(G.is_complex,"G is not complex");
 let sf=G.simple_factors in
 for (i,j) in G.swapped_factors do sf[i] od
 
-set left_roots(RealForm G)=[vec]:
-##for f in G.left_factors do [vec]:f.simple_roots od
+set left_roots(RealForm G)=mat:
+  G.rank ## for f in G.left_factors do f.simple_roots od
 
-set left_coroots(RealForm G)=[vec]:
-##for f in G.left_factors do [vec]:f.simple_coroots od
+set left_coroots(RealForm G)=mat:
+  G.rank ## for f in G.left_factors do f.simple_coroots od
 
 set left_copy(RealForm G)=RootDatum:
   root_datum(left_roots(G),left_coroots(G),G.prefers_coroots)
@@ -94,11 +94,11 @@ assert(G.is_complex,"G is not complex");
 let sf=G.simple_factors in
 for (i,j) in G.swapped_factors do sf[i] od
 
-set right_roots(RealForm G)=[vec]:
-##for f in G.right_factors do [vec]:f.simple_roots od
+set right_roots(RealForm G)=mat:
+  G.rank ## for f in G.right_factors do mat:f.simple_roots od
 
-set right_coroots(RealForm G)=[vec]:
-##for f in G.right_factors do [vec]:f.simple_coroots od
+set right_coroots(RealForm G)=mat:
+  G.rank ## for f in G.right_factors do mat:f.simple_coroots od
 
 set right_copy(RealForm G)=RootDatum:
    root_datum(right_roots(G),right_coroots(G),G.prefers_coroots)

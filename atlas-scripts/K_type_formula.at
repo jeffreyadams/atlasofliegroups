@@ -36,7 +36,10 @@ sum(for alpha in roots do
 
 {each subset S of u\cap s roots -> (sum of roots in S, cardinality(S))}
 set u_cap_s_rho_shifts_and_cardinalities(Parabolic P,KGBElt x)=[(vec,int)]:
-(null(P.root_datum.rank),0)#for A in delete(generate_all_subsets(u_cap_s_roots(P,x)),0) do (sum(A),modified_cardinality(x,A)) od
+  (null(P.root_datum.rank),0) # { prefix this pair to list of others }
+  for A in delete(generate_all_subsets(u_cap_s_roots(P,x)),0)
+  do (sum(P.root_datum.rank # A),modified_cardinality(x,A))
+  od
 {(null(P.root_datum.rank),0)#for A in delete(generate_all_subsets(u_cap_s_roots(P,x)),0) do (sum(A),#A) od}
 
 set r(RealForm G)=int:nr_of_posroots(G)-nr_of_posroots(K_0(G))

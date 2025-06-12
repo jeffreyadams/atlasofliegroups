@@ -91,12 +91,7 @@ Want to induce from [conjugate of] W(L) to W(M)
 need to find L'\subset M which is G-conjugate to L}
 
 set equal_subgroups(RootDatum L,RootDatum M)=bool:
-if is_abelian(L)  and is_abelian (M) then
- L.rank=M.rank
-elif is_abelian(L) or is_abelian(M) then
- false
-else sort_lex(L.simple_roots)=sort_lex(M.simple_roots)
-fi
+L.rank # sort_lex(L.simple_roots) = M.rank # sort_lex(M.simple_roots)
 
 set find_Levi(RootDatum G,RootDatum M,RootDatum L)=(RootDatum,WeylElt):
 let L_std= standard_Levi(G,L) then

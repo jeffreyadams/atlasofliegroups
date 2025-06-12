@@ -27,10 +27,10 @@ set roots_restricting_to(RootDatum rd,SubTorus T,vec alpha)=[vec]:
  if T.restrict(beta)=alpha  then [beta] else [] fi od
 
 {rd is semsimple and delta is distinguished
-returns (RootDatum folded, mat T) where T is a matrix relating H and H^delta
+ returns roots and coroots matrices for the folded diagram
 }
-set folded(TwistedRootDatum (rd,delta))=(RootDatum,mat):
-   assert(rd.is_semisimple or delta=id_mat(#delta),
+set pre_folded(TwistedRootDatum (rd,delta)) = (mat,mat):
+(  assert(rd.is_semisimple or delta=id_mat(#delta),
 	  "root datum is not semisimple and delta !=1");
    assert(is_distinguished(rd,delta),"delta is not distinguished");
    let T=SubTorus:eigen_lattice(^delta,1)
@@ -39,22 +39,35 @@ set folded(TwistedRootDatum (rd,delta))=(RootDatum,mat):
 { T: matrix of map X_*(T)->X_*(H) \simeq Z^r -> Z^n: this is T.inject
  ^T: matrix of map X^*(H)->X^*(T) \simeq Z^n->Z^r:   this is T.project=T.restrict
 }
-   roots_nonreduced=sort_u_lex(for alpha in rd.posroots do T.restrict(alpha) od)
-   then roots = mat:
+     T_dim = n_columns(T)
+   , roots_nonreduced =
+        for alpha in rd.posroots do T.restrict(alpha) od.sort_u_lex
+   then roots = mat: T_dim #
+   ( let locate = binary_search_in (roots_nonreduced,lex_leq@(vec,vec)) in
      for alpha in roots_nonreduced
-     do if find(roots_nonreduced,2*alpha)=-1 then [alpha] else [] fi
-     od.##
-   then coroots = [vec]: []
+        if not locate(alpha*2).succeeds	do alpha fi
+     od
+   )
+   then coroots = null(T_dim,0)
 in for alpha in roots
    do let pullback = mat:
          columns_with((vec beta): T.restrict(beta)=alpha,rd.roots)
-      then  v = for beta in pullback do coroot(rd,beta) od.sum
-      then den = int: v*pullback[0]
-      then w=v*2/den {element of X_*(H) which lives in X_*(T)}
+      then v = sum(rd.rank # for beta in pullback do coroot(rd,beta) od)
+      then w=v*2/(v*pullback[0]) {element of X_*(H) which lives in X_*(T)}
       then corestrict_w=solve(T,w).requisition
            {coordinates of w in the given basis of X_*(T)}
-  in coroots#:=ratvec_as_vec(corestrict_w)
-  od; (root_datum_from_positive((roots,coroots),rd.prefers_coroots),T)
+   in coroots#:=ratvec_as_vec(corestrict_w)
+   od
+;  (roots,coroots)
+)
+
+{rd is semsimple and delta is distinguished
+returns (RootDatum folded, mat T) where T is a matrix relating H and H^delta
+}
+set folded(TwistedRootDatum(rd,delta):args) = (RootDatum,mat):
+   ( root_datum_from_positive(pre_folded(args),rd.prefers_coroots)
+   , eigen_lattice(^delta,1)
+   )
 
 {make it easy to construct in simple case:
 use the first outer automorphism of given order

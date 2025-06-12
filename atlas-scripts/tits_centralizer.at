@@ -452,16 +452,16 @@ sum(for i:#v do  v[i]*modulus^i od)
 {-------------------------------------------------------------------}
 set JM_triple_strong(StructureConstantTable t,vec H,[vec] S_roots,CyclotomicField F,WeylElt w,[int] start_vec, int tries)=
 (bool,CFLieAlgebraElement,CFLieAlgebraElement,Tits_elt):
-let zeta=F.primitive_root then
-S=for alpha in S_roots do embed(coordinates(t.root_datum,alpha),F) od then
+let zeta=F.primitive_root, rd=t.root_datum then
+S=for alpha in S_roots do embed(coordinates(rd,alpha),F) od then
 N=#S {length of vectors} then
 start=inverse_make_coords(start_vec,F.order) in
 for i:tries  do let
  A=make_coords(start-i,F.order,N) then
- v=null(#t.root_datum.roots,F) then
+ v=null(#rd.roots,F) then
  ()=void:  for i:#S do v+:=zeta^A[i]*S[i]   od
 in
- let (M,,)=spanning_subset(S_roots) in
+ let (M,,)=spanning_subset(rd.rank # S_roots) in
  if is_solvable_for_torus_element(M,v) then
   let X_vec=null(t,F).root_part then
   ()=void:  for i:#S do X_vec+:=zeta^A[i]*S[i]   od then
@@ -488,16 +488,16 @@ JM_triple_strong(t,O.H,S,F,w,v,tries)
 {same but with a set of Weyl group elements}
 set JM_triple_strong(StructureConstantTable t,vec H,[vec] S_roots,CyclotomicField F,[WeylElt] ws,[int] start_vec, int tries)=
 (bool,CFLieAlgebraElement,CFLieAlgebraElement,[Tits_elt]):
-let zeta=F.primitive_root then
-S=for alpha in S_roots do embed(coordinates(t.root_datum,alpha),F) od then
+let zeta=F.primitive_root, rd=t.root_datum then
+S=for alpha in S_roots do embed(coordinates(rd,alpha),F) od then
 N=#S {length of vectors} then
 start=inverse_make_coords(start_vec,F.order) in
 for i:tries  do let
  A=make_coords(start-i,F.order,N) then
- v=null(#t.root_datum.roots,F) then
+ v=null(#rd.roots,F) then
  ()=void:  for i:#S do v+:=zeta^A[i]*S[i]   od
  in
- let (M,,)=spanning_subset(S_roots) in
+ let (M,,)=spanning_subset(rd.rank # S_roots) in
  if is_solvable_for_torus_element(M,v) then
   let X_vec=null(t,F).root_part then
   ()=void:  for i:#S do X_vec+:=zeta^A[i]*S[i]   od then

@@ -695,9 +695,11 @@ set saturating_orbits(ComplexNilpotent O) = [ComplexNilpotent]:
 set pseudo_Levi(RootDatum rd,[int] S)=RootDatum:
 if #S=0 then root_datum(null(rank(rd),0),null(rank(rd),0),rd.prefers_coroots)
 else
-let simple_roots=for i in S do
- if i<ss_rank(rd) then simple_roots(rd)[i] else -highest_root(rd) fi od
-then simple_coroots=for v in simple_roots do coroot(rd,v) od
+let simple_roots= mat: rd.rank #
+   for i in S
+   do if i<semisimple_rank(rd) then root(rd,i) else -highest_root(rd) fi
+   od
+then simple_coroots= mat: rd.rank # for v in simple_roots do coroot(rd,v) od
 in root_datum(simple_roots,simple_coroots,rd.prefers_coroots)  fi
 
 {run over list of pairs [(v,w)], only keep those for which the v's

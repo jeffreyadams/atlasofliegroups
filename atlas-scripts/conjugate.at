@@ -61,13 +61,9 @@ set sub_datum_for_roots(RootDatum rd,[vec] roots) = RootDatum:
 set Cartan_matrix_for_roots(RootDatum rd,[vec] roots) = mat:
    Cartan_matrix(rd,for alpha in roots do root_index(rd,alpha) od)
 
-{typically S is a set of roots
- compute root datum of coroots perpendicular to all vectors in S}
-set centralizer (RootDatum rd,[vec] S) = RootDatum:
-   let select(int i) = bool:
-      let alpha_v=coroot(rd,i) in all(#S,(int j)bool: =alpha_v*S[j])
-in sub_datum(rd,select)
-
+{ root datum of coroots perpendicular to all columns of |wts| }
+set centralizer(RootDatum rd,mat wts) = RootDatum:
+  sub_datum(rd,(int i) bool: =coroot(rd,i)*wts)
 
 set_type
 [maybe_a_mover = (void no_w | WeylElt w),
@@ -167,7 +163,8 @@ set maybe_conjugate(RootDatum rd,[WeylElt] S,[vec] A,[vec] B) = maybe_a_conjugat
    elif (#A=0 and #B>0) or (#A>0 and #B=0) then ().no_w { trivial cases }
    else let perms=symmetric_group(#A) then nperms=#perms, i=0 in
       while i<nperms
-      do let maybe=maybe_conjugate_strict(rd,[id_W(rd)],A*perms[i],B) in
+      do let Amat = mat: #A[0] # A
+         then maybe=maybe_conjugate_strict(rd,[id_W(rd)],Amat*perms[i],B) in
          if any(maybe) then return maybe { and break from loop and function }
          else i+:=1
          fi
