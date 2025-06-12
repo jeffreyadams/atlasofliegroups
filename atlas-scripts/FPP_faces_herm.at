@@ -10,6 +10,7 @@
 <face_classes.at {for coords}
 <cohom_reductionND.at {for glue_sigs}
 <up_mu.at {for up_mu_hash}
+<Vogan-dual.at {for dual@Param}
 {BREAK HERE?}
 
 {it "true" use up_mu_hash to calculate heights for is_unitary_to_ht}
@@ -1466,6 +1467,7 @@ some lambdas for that x might be finished.}
     )
 )
 
+
 set big_unitary_hash = make_big_unitary_hash()
 
 {uses the results stored in big_unitary_hash.}
@@ -1473,6 +1475,50 @@ set branch_irr_hash(Param p, int D) = KTypePol:
     let CF = character_formula_to_height(p,D)
     in big_unitary_hash.branch(K_type_pol(CF),D)
 
+set pos_part(Split s) = int:
+    let (a,b) = %s in abs(a+b)
+
+{this appears to work even if p is not final, although I'm not sure why}
+{mult of irr q in std p <-> coeff of std pd in char of irr qd}
+set composition_series_to_htB(Param p, int H) = ParamPol:
+    let Bp = partial_block(p), H0 = height(p)
+    then BpH_js = for q@j in Bp do if q.height <= H
+				   then [j]
+				   else [] fi od.##
+    then BpH = for j in BpH_js do Bp[j] od, pd = dual(p)
+    then dBpH = for q in BpH do regroup(pd.real_form,dual(q)) od {these qd are lower ht than pd}
+    then dKLs = for qd in dBpH do KL_sum_at_s(qd) od
+    in sum(p.real_form, for Qd@i in dKLs do pos_part(Qd[pd])*BpH[i] od)
+    {KL_sum_at_s(qd) is character formula of irr qd}
+
+{i,j entry is mult of irr i in (partial block) in standard j; so always i <= j, mat is upper triang}
+{column j is comp series of std #j <-> coeffs of std dj in irrs di}
+set composition_series_mat_to_htB(Param p, int H) = mat:
+    let Bp = partial_block(p) {block elts q of greater ht (closer to discrete series) than p;
+    	     		      things that may occur}
+    then BpH_js = for q@j in Bp do if q.height <= H then [j] else [] fi od.##
+    then BpH = for j in BpH_js do Bp[j] od, pd = dual(p)
+    then dBpH = for q in BpH do {regroup(pd.real_form,}dual(q){)} od {these qd are lower ht than pd}
+    then dKLs = for qd in dBpH do KL_sum_at_s(qd) od
+    then () = for dQi in dKLs do prints( dQi{for dqj in dBpH do pos_part(dQi[dqj]) od}) od {this is row i}
+    then f(int i, int j) = pos_part(dKLs[i][dBpH[j]])
+    in matrix((#dBpH,#dBpH),f)
+
+set character_formula_to_heightB(Param p, int H) = ParamPol:
+   let Bp = partial_block(p) {block elts q of greater ht (closer to discrete series) than p;
+    	     		      things that may occur}
+   then BpH_js = for q@j in Bp do if q.height <= H then [j] else [] fi od.##
+   then BpH = for j in BpH_js do Bp[j] od, pd = dual(p)
+   then dBpH = for q in BpH do regroup(pd.real_form,dual(q)) od {these qd are lower ht than pd}
+   then dKLs = for qd in dBpH do KL_sum_at_s(qd) od {qd plus earlier q'd}
+   then f(int i, int j) = pos_part(dKLs[i][dBpH[j]])
+   then M = matrix((#dBpH,#dBpH),f), ppol = 1*p
+   then pvec = vec: for q in BpH do int_part(ppol[q]) od {e(#BpH, #BpH-1)}
+   then ansvec = solve(M,pvec).requisition
+   in sum(p.real_form, for q@j in BpH do ansvec[j]*q od)
+
+set character_formula_to_heightB(ParamPol P, int H) = ParamPol:
+    map(((Param->ParamPol): (Param p): character_formula_to_heightB(p, H)), P)
 
 {. The next family of functions all need simple derived group. Always
 |vd.list| should be ALL vertices in the FPP; Lvd.list will be all infl
@@ -3814,6 +3860,8 @@ set localFD_KHash_01 (KGBElt x, ratvec lambda, LocalVertexData Lvd, KTypePol_has
 			     fi
     in sort(x.real_form, Lvd, [answer0,answer1])
 
+set to_htB_flag = false
+
 {takes 0 and 1-diml local faces and adds K-char index to height HT}
 set localFD_KHash_01 (KGBElt x, ratvec lambda, LocalVertexData Lvd, int HT, KTypePol_hash ktp_hash,
 [[FaceVertsIndex]] LF) = [[FaceVertsKHash]]:
@@ -3844,7 +3892,10 @@ set localFD_KHash_01 (KGBElt x, ratvec lambda, LocalVertexData Lvd, int HT, KTyp
 		      let gamma = Lvd.list[v[0]]
        	      	      then p0 = parameter(x, lambda, gamma)
 	      	      then P = finalize(p0)
-		      then KCF = K_type_pol(character_formula_to_height(P,HT))
+		      then KCF = K_type_pol(if to_htB_flag
+				 	    then character_formula_to_heightB(P,HT)
+				 	    else character_formula_to_height(P,HT)
+				 	    fi)
 		      then m = ktp_hash.match(KCF)
 		      in if (not temp_Dirac_best_flag) or (Q(gamma,gamma) <= DiracBestBD)
 		      	    or DiracBestTest(p0,HT,KCF)
@@ -3871,12 +3922,18 @@ set localFD_KHash_01 (KGBElt x, ratvec lambda, LocalVertexData Lvd, int HT, KTyp
 			    	      then [v##[answer0[i][2],#monomials(P)]]
 			    	      elif answer0[j][1] = v[2]
 			    	      then [v##[answer0[j][2], #monomials(P)]]
-			    	      else let m = ktp_hash.match(
-				      	       K_type_pol(character_formula_to_height(P,HT)))
-			    	      in [v##[m, #monomials(P)]]
+			    	      else let m = ktp_hash.match(K_type_pol(
+				      	       if to_htB_flag
+					       then character_formula_to_heightB(P,HT)
+					       else character_formula_to_height(P,HT)
+					       fi))
+			    	      	    in [v##[m, #monomials(P)]]
 			   	      fi {answer = v[2]}
 			 	 else let m = ktp_hash.match(
-				      	      K_type_pol(character_formula_to_height(P,HT)))
+				 	  if to_htB_flag
+					  then K_type_pol(character_formula_to_heightB(P,HT))
+					  else K_type_pol(character_formula_to_height(P,HT))
+					  fi)
 			      	      in [v##[m, #monomials(P)]]
 			 	 fi{red_count_flag}
 			 fi{i<0}
@@ -3996,7 +4053,10 @@ set localFD_KHash_01_graph (KGBElt x, ratvec lambda, LocalVertexData Lvd, int HT
 	    then gamma = face_bary(Lvd,verts)
 	    then pC = parameter(x,lambda,gamma)
 	    then PC = finalize(pC)
-	    then KCF = K_type_pol(character_formula_to_height(PC,HT))
+	    then KCF = if to_htB_flag
+		       then K_type_pol(character_formula_to_heightB(PC,HT))
+		       else K_type_pol(character_formula_to_height(PC,HT))
+		       fi
 	    in if (not temp_Dirac_best_flag) or (Q(gamma,gamma) <= DiracBestBD)
 	       	  or DiracBestTest(pC,HT,KCF)
 	       then ktp_hash.match(KCF)
@@ -4233,8 +4293,10 @@ set localFD_KHashbt_lookDownGEO \
 			    						 od)
 				      	 then if k.>=
 					      then [actual##midreds##[ LFKH[dim-1][locs[k]][dim+e-1], #ms]]
-					      else let m = ktp_hash.match(
-						   	K_type_pol(character_formula_to_height(P,HT)))
+					      else let m = ktp_hash.match(if to_htB_flag
+		       	  		      	       	   		  then K_type_pol(character_formula_to_heightB(P,HT))
+		       			 				  else K_type_pol(character_formula_to_height(P,HT))
+		       			 				  fi)
 					      	   in [actual##midreds##[m, #ms]]
 					      fi {K-char matches a face}
 		       		    	  else []
@@ -4304,12 +4366,12 @@ set extend_K_characters(KGBElt x, ratvec lambda, LocalVertexData Lvd,
 	    	      "; #ktp_hash = ",ktp_hash.size())
 	  	 fi;
 	  	 let nu = face_bary(Lvd, v[:d+1]), w=v
-		 {face_bary_ic(x.inner_class, face_bary(Lvd.list, v[:d+1]))}
        	  	 then p0 = parameter(x, lambda, nu)
 	  	 then P = finalize(p0)
-		 {then startCF = elapsed_ms()}
-	  	 then m = {char_counter.use();} ktp_hash.match(K_type_pol(character_formula_to_height(P,ht)))
-		 {then () = charTime +:= elapsed_ms() - startCF}
+	  	 then m = ktp_hash.match(if to_htB_flag
+		       	  		 then K_type_pol(character_formula_to_heightB(P,ht))
+		       			 else K_type_pol(character_formula_to_height(P,ht))
+		       			 fi)
 	  	 then () = w[d+red_shift+1] := m
 		 in w
               od
@@ -4365,9 +4427,10 @@ set extend_K_characters_graph(KGBElt x, ratvec lambda, LocalVertexData Lvd,
 	  then verts = vec: LFKH[d][j][:d+1]
 	  then pC = parameter(x,lambda,face_bary(Lvd,verts))
 	  then PC = finalize(pC)
-	  {then startCF = elapsed_ms()}
-	  then m = {char_counter.use();} ktp_hash.match(K_type_pol(character_formula_to_height(PC,ht)))
-	  {then () = charTime +:= elapsed_ms() - startCF}
+	  then m = ktp_hash.match(if to_htB_flag
+		       	  	  then K_type_pol(character_formula_to_heightB(PC,ht))
+		       		  else K_type_pol(character_formula_to_height(PC,ht))
+		       		  fi)
 	  in m
        od {C in eq}
      then answer = for LFd@d in LFKH
