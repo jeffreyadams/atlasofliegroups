@@ -1,4 +1,4 @@
-
+<basic.at
 <combinatorics.at { for |even_places@[int] }
 <parabolics.at { for |Levi@Parabolic|, |parabolic_by_cwt@(ratvec,KGBElt)| }
 <parameters.at { for |parameter@(KGBElt,KGBElt,ratvec)| }
@@ -718,18 +718,25 @@ in for (v,w) in list
 {use maybe_conjugate from conjugate.at to test conjugacy}
 {. Given a pseudo-Levi L, find all Kac diagrams of order m and whose
    centralizer is conjugate to L. .}
-set Kac_diagrams_with_centralizer (RootDatum rd, RootDatum L,int m)=[([int],WeylElt)]:
+set Kac_diagrams_with_centralizer (RootDatum rd, RootDatum L,int m) =
+      [([int],WeylElt)]:
    let ()=if nilpotent_verbose then prints("Kac_diagrams_with_centralizer: L=", L,
    " m=", m) fi in
-   let diags=Kac_classes_given_order_crude(rd,m) in
+   let diags = [[int]]: Kac_classes_given_order_crude(rd,m) in
    let ()=if nilpotent_verbose then prints("#diagrams: ",#diags) fi in
-   let crude=##for d in diags do
-     let maybe=maybe_conjugate(rd,pseudo_Levi(rd,zero_roots(rd,d)),L)
+   let crude = [[int],WeylElt]:
+     for d in diags
+     do case maybe_conjugate(rd,pseudo_Levi(rd,zero_roots(rd,d)),L)
+        | none: []
+	| some(w): [(d,w)]
+	esac
+     od.##
+   then rv=filter(rd,crude)
    in
-      if any(maybe) then [(d,req(maybe))] else [] fi od then
-   rv=filter(rd,crude) in
-   if nilpotent_verbose then prints("crude answer:", #crude, "  final result:", #rv)
-   fi;rv
+      if nilpotent_verbose
+      then prints("crude answer:", #crude, "  final result:", #rv)
+      fi;
+   rv
 
 {order_center is defined in center.at}
 {set order_of_center (RootDatum rd)=#Kac_classes_given_order(rd,1)}
