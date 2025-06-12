@@ -3177,7 +3177,7 @@ set local_test_GEO_hash_one_level(KGBElt x, ratvec lambda, {VertexData vd,}
 	      fi}
     {if LAST = ONE, then final step should be _just_ is_unitary}
     { then () = prints("ONE = ",ONE,", LAST = ",LAST) }
-    then {edge_offset_temp = edge_offset,} step = max(G.semisimple_rank\2,1)
+    {then} {edge_offset_temp = edge_offset,} {step = max(G.semisimple_rank\2,1)}
     { then () = if edge_offset = -1
     	      then edge_offset_temp := r\2 {3 seems best for F4}
 	      fi}
@@ -3434,7 +3434,7 @@ set local_test_GEO_hash_one_level_end(KGBElt x, ratvec lambda, LocalVertexData L
     			KTypePol_hash pol_hash, int HK_known, Param_hash Uhash,
 			(Param->bool) fancy_tester) = [Param]:
     let G = x.real_form, r = rank(x.involution -1), thetaMinus = 1-x.involution
-    then ONE = if one_level = -1 then edge_offset + max(1, (r+2)\2)*edge_skip
+    then ONE = if one_level = -1 then edge_offset {+ max(1, (r+2)\2)*edge_skip}
     	       else one_level
 	       fi
     {then LAST = if last_level = -1 then ONE + edge_skip
@@ -3445,14 +3445,14 @@ set local_test_GEO_hash_one_level_end(KGBElt x, ratvec lambda, LocalVertexData L
     then pmax = pmax(x, lambda, Lvd)
     then mu = K_type(x,pmax.lambda_minus_rho)
     then (LAMmax,NUmax,GAMmax) = low(pmax)
-    then hts =[int]: let Shorthts = if short_hts_flag {guaranteed to be size LAST+1}
+    then hts =[int]: let Shorthts = if short_hts_flag {guaranteed to be size ONE+1}
     	     	     	 	    then short_hts(pmax)
 		     	      	    else next_heights(pmax,ONE+1)
 				    fi
     		     then d0 = min(#Shorthts, ONE+1)
 		     in Shorthts[:d0] ## for j:ONE+ 1 - d0 do Shorthts~[0]+j+1 od
-    {then () = prints("depth = ",depth, ", #Shorthts = ",#Shorthts, ", LAST = ",LAST)}
-    then one_ht = hts[ONE] {, last_ht = hts[LAST]}
+    {then () = prints("depth = ",depth, ", #Shorthts = ",#Shorthts, ", ONE = ",ONE)}
+    then one_ht = hts[ONE]
     then tester1 = (Param->bool): (Param p) bool:
      	     	  if prefer_to_hts then is_unitary_to_hts_big_SIMPLE(p, hts[:ONE+1])
 	 	  else is_unitary_to_ht_big_SIMPLE(p,one_ht)
@@ -3606,7 +3606,7 @@ to negative means never bottom layer.}
 {if true, use coh_ind_is_unitary in final tests; else is_unitary}
 set coh_ind_tester_flag = true
 
-set one_level_revert_flag = {true} false
+set one_level_revert_flag = true {false}
 
 {assume local faces to dim 1 are recorded in LF, already herm and pos
 on LKTs. This version uses min_bottom_elim instead of
