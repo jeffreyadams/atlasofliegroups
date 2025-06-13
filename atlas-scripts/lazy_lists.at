@@ -84,7 +84,7 @@ set geometric_progression (int lambda) = rec_fun f (int start) inf_list:
 }
 any_type T begin
 set rec_fun memoize (infinite_list<T> L) = infinite_list<T>:
-   let store = Maybe<infinite_node<T>>: none() { the cast makes it non-constant }
+   let store = Maybe<infinite_node<T> >: none() { cast to make non-constant }
 in @: { make what follows into a think }
    case store
    | none(): let (head,tail)=L() then result=(head,memoize(tail)) in
