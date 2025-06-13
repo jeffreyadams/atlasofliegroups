@@ -2394,7 +2394,7 @@ set is_FPP_unitary(Param p) = (bool,bool):
     if not is_FPP_unitary_flag then return (false,false) fi;
     if (not is_hermitian(p)) then return (true,false) fi;
     if not (fewer_reducible_unitary_flag or is_pos_on_LKTs(p)) then return (true,false) fi;
-    let () = p:= herm_center(p), G = p.real_form
+    let G = (p:= herm_center(p)).real_form
     then gamma = p.infinitesimal_character
     then alphavs = for alphav@j in G.simple_coroots
     	 	  do if gamma*alphav < 1
@@ -2443,7 +2443,7 @@ set is_FPP_unitary(Param p, (Param -> bool) fancy_tester ) = (bool,bool):
     if not is_FPP_unitary_flag then return (false,false) fi;
     if (not is_hermitian(p)) then return (true,false) fi;
     if not (fewer_reducible_unitary_flag or is_pos_on_LKTs(p)) then return (true,false) fi;
-    let () = p:= herm_center(p), G = p.real_form
+    let G = (p:= herm_center(p)).real_form
     then gamma = p.infinitesimal_character
     then rdi = integrality_datum(G,gamma)
     then alphavs = for alphav@j in G.simple_coroots

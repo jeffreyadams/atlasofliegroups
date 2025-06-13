@@ -1325,6 +1325,7 @@ set more_verbose =false
 {if true, hash_down runs through faces small to large, hoping for nonunitarity}
 set hash_down = true
 
+set final_verbose = false
 { Input is candidate faces, and graph info. Output is the tester-unitary ones.
  use and update a complete list Uhash of known tester-unitary faces.
  try to compute and systematically use partial order on faces}
@@ -1373,6 +1374,20 @@ set local_test_hash(KGBElt x, ratvec lambda, LocalVertexData Lvd,
     	      then prints("     Examining ",NumClasses," classes in local_test_hash; ",
 	      known_true_count," are known unitary, ", known_false_count, " known nonunitary.")
 	      fi
+    then () = if final_verbose and
+    	      	 NumClasses - known_true_count - known_false_count > 0
+    	      then prints("representatives of unknown classes:");
+	      	   for m:NumClasses
+	      	   do if newStatuses[m][0] = "?"
+	              then let C = eq[m]
+		      	   then (d,j) = coords(LFVH,C[0])
+	      	      	   then verts = vec: LFVH[d][j][:d+1]
+		      	   then gamma = face_bary(Lvd,verts)
+		     	   then pC = parameter(x, lambda, gamma)
+	      	      	   in prints("   ",pC, " for class of size ",#C)
+		      fi {newStatuses = ?}
+		   od
+	      fi {final_verbose}
     then () = for m:NumClasses {work from small faces toward big}
     	     ~do if{NEWU} newStatuses[m][0] = "?"
 	         then let C = eq[m]
