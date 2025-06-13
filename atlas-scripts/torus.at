@@ -1,4 +1,5 @@
-<basic.at
+<basic.at { for |ones| }
+<generics { for |curry| }
 
 {complex torus of rank n (RootDatum)}
 set complex_torus(int n) = RootDatum: root_datum(null(n,0),null(n,0),false)
@@ -21,30 +22,33 @@ set torus(CartanClass C) = RealForm:
 
 {a few constructions involving a subtorus T of our fixed Cartan subgroup H}
 
-{matrix gives X_*(T)\subset X_*(H)}
+{ Matrix gives inclusion X_*(T)\subset X_*(H) by left multiplication.
+  This is a "portrait" matrix (taller than wide). If one would adhere to the
+  convention of using right-mulitplication for coweights, it would have been the
+  transpose "landscape" matrix, which would avoid transposition below }
 set_type SubTorus=mat
 
 {Given T, defined determined by X_*(T)\subset X_*(H)
- X^*(T) is naturally a quotient: $X^*(H)/X^*(T/H)
+ X^*(T) is naturally a quotient: $X^*(H)/X^*(H/T)
  but this isn't useful, instead we define X^*(T)=Hom(X_*(T),Z)
 
-suppose T is given by mat:A, A is n\times c, of rank c
-the rows of ^A are a basis of X_*(T) {v_1,...,v_c}
-this gives an isomorphism X_*(T)\simeq Z^r
-suppose lambda\in X^*(H), then lambda restricted to T
-is in X^*(T)\simeq Z^r. The map is:
+ suppose T is given by mat:A, A is n\times c, of rank c
+ the rows of ^A are a basis of X_*(T) {v_1,...,v_c}
+ this gives an isomorphism X_*(T)\simeq Z^r
+ suppose lambda\in X^*(H), then lambda restricted to T
+ is in X^*(T)\simeq Z^r. The map is:
 
-restriction: lambda\in Z^n -> (^A)*lambda \in Z^r
-restrict=project (synonyms)
+ restriction: lambda\in Z^n -> (^A)*lambda \in Z^r
+ restrict=project (synonyms)
 
-dually: inject: X_*(T)-X_*(H)
+ dually: inject: X_*(T) -> X_*(H) is just left multiplication by matrix for T
 }
 
-set restrict(SubTorus T,vec lambda)=(^T)*lambda
-set restrict(SubTorus T)=(vec->vec):(vec lambda):(^T)*lambda
+set restrict (SubTorus T,vec lambda) = vec: (^T)*lambda
+set restrict = (SubTorus->(vec->vec)): curry(restrict@(SubTorus,vec))
 
-set project(SubTorus T,vec lambda)=(^T)*lambda
-set project(SubTorus T)=(vec->vec):(vec lambda):(^T)*lambda
+set project = (SubTorus,vec->vec): restrict@(SubTorus,vec)
+set project = (SubTorus->(vec->vec)): restrict@SubTorus
 
-set inject(SubTorus T,vec lambda)=T*lambda
-set inject(SubTorus T)=(vec->vec):(vec lambda):T*lambda
+set inject = (SubTorus,vec{coweight}->vec{coweight}): *@(mat,vec)
+set inject = (SubTorus->(vec->vec){map of coweights}): curry(*@(mat,vec))
