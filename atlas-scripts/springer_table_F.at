@@ -1,4 +1,4 @@
-<basic
+<basic.at
 <sort.at { for vector sorting, |lex_lesseq| }
 <character_table_F.at
 <springer_tables.at

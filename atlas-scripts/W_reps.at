@@ -4,7 +4,7 @@
 <sort.at { for |sort_u@[vec]| }
 <lattice.at { for |restrict_action@(mat,mat)| }
 <sparse.at { for column-grouped |sparse_mat| type }
-<W_orbit { for |W_parabolic_act@(RootDatum,[int],int,[mat])| }
+<W_orbit.at { for |W_parabolic_act@(RootDatum,[int],int,[mat])| }
 
 { data type for representation of W
   operators[i] is the matrix of the action of simple generator #i

@@ -1,4 +1,4 @@
-<all
+<all.at
 
 set all_reps_from_xy_blocks (RealForm G) = [Param]:
 ## for H in real_forms(dual_quasisplit_form(InnerClass:G))

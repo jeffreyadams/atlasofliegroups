@@ -1,7 +1,7 @@
 <basic.at
 <W_reps.at { type |WCell|; |vertex_and_cells| |cell_action@(WCell,WeylElt)|,.. }
 <character_tables.at { |smallest_degree_summands| }
-<character_table_reps { for |cell_character@(CharadcterTable,WCell,mat) }
+<character_table_reps.at { for |cell_character@(CharadcterTable,WCell,mat) }
 <springer_tables.at
 <isomorphism_W.at { |permute_character|, |root_permutation@(RootDatum^2)| }
 

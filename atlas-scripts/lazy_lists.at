@@ -1,4 +1,4 @@
-<basic.at
+<basic.at { for type constructor |Maybe| }
 
 { This file demonstrates how axis can handle lazy infinite lists (of |int|) }
 

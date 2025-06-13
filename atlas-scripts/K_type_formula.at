@@ -29,7 +29,7 @@ S#:=alpha elif is_complex(alpha,x) and find(S,involution(x)*alpha)=-1
 then S#:=alpha fi od;S
 
 {cardinality of set of roots, except that if alpha is complex and
-<theta_x(alpha),alpha^v>=1 then counts twice}
+ |<theta_x(alpha),alpha^v>=1| then counts twice}
 set modified_cardinality(KGBElt x,[vec] roots)=
 sum(for alpha in roots do
  if is_complex(alpha,x) and abs(coroot(x.root_datum,alpha)*involution(x)*alpha)=1 then 2 else 1 fi od)

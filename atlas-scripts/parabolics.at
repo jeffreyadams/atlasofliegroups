@@ -4,7 +4,7 @@
 <misc.at { for is_simple_root }
 <sort.at { for inv_standardisation }
 <Weylgroup.at { for |cross@(WeylElt,KGBElt)| }
-<group_operations { for |is_relatively_split| }
+<group_operations.at { for |is_relatively_split| }
 
 
 {! See "Parabolic Subgroups and Induction", in dropbox, ultimately on the

@@ -2,7 +2,7 @@
 <hodgeParamLaurentPol.at
 <stable.at
 <extParamPol.at
-<twisted_root_datum { for |pre_folded|, |folded| }
+<twisted_root_datum.at { for |pre_folded|, |folded| }
 
 set te_verbose=true
 
