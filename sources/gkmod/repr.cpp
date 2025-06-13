@@ -262,7 +262,7 @@ bool Rep_context::is_parity_at_0(RootNbr i,const StandardRepr& z) const
   Weight theta_1_lamrho = i_tab.y_lift(i_x,z.y()); // |(1-theta)*lam_rho|
   int eval = // twice evaluation of |alpha_hat| on |\lambda-\rho_{rea]}|
     alpha_hat.dot(theta_1_lamrho+rd.twoRho(non_real_roots));
-  assert (eval%2==0); // because |\lambda-\rho_{rea]}| is integral
+  assert (eval%2==0); // because |\lambda-\rho_{real}| is integral
   return eval%4!=0;
 }
 

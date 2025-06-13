@@ -22,10 +22,19 @@ set requisition (string message) = (One_of<S,T> v) T:
     case v | fail: error(message) | succeed(v): v esac
 set requisition = (One_of<S,T>->T):
     requisition("No solution found; having one was required")
+
+set ! ((S,T->bool)rel) = ([S] a,[T] b)bool: { distribute relation over lists }
+  #a=#b and (for x@i in a do if not rel(x,b[i]) then return false fi od; true)
+
 set print_lines ([T] a) = void: for x in a do print(x) od
 set prints_lines ([T] a) = void: for x in a do prints(x) od
+
 end
 set ! = print_lines@T[T] { allow printing any list line-by-line as |list!| }
+
+set == = =@(int,int)! { make comparison of two |[int]| available as |==| }
+set == = =@(vec,vec)! { make comparison of two |[int]| available as |==| }
+set === = ==@([int],[int])! { comparison of two |[[int]]| available as |===| }
 
 set !minus_1 = -1 { used to be more efficient than |-1|, now equally efficient }
 
