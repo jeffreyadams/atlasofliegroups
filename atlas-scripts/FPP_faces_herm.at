@@ -3812,7 +3812,7 @@ set localFD_KHash_01 (KGBElt x, ratvec lambda, LocalVertexData Lvd, KTypePol_has
     then answer0 = for v@k in LF[0]
        	     	   ~do if k%(max(#LF[0]\10,2))=0 and fund_face_verbose
 	      	      then prints("calculating K-character on face ",k,
-	      	      "; #ktp_hash = ",ktp_hash.size())
+	      	      " in time ",print_time_string(elapsed_ms() - start),"; #ktp_hash = ",ktp_hash.size())
 	      	      fi;
 		      let gamma = Lvd.list[v[0]]
        	      	      then p0 = parameter(x, lambda, gamma)
@@ -3831,7 +3831,7 @@ set localFD_KHash_01 (KGBElt x, ratvec lambda, LocalVertexData Lvd, KTypePol_has
     then answer1 = for v@k in LF[1] {if red_count_flag, has red_count as coor#2}
     	 	   ~do if k%(max(#LF[1]\10,2))=0 and fund_face_verbose
 	      	      then prints("calculating K-character on face ",k,
-	      	      	   "; #ktp_hash = ",ktp_hash.size())
+	      	      	    " in time ",print_time_string(elapsed_ms() - start),"; #ktp_hash = ",ktp_hash.size())
 	      	      fi;
 		      let i = lookup0D([v[0]]), j = lookup0D([v[1]])
 		      in if i < 0 or j < 0 {one edge endpoint has been removed already}
@@ -3887,7 +3887,7 @@ set localFD_KHash_01 (KGBElt x, ratvec lambda, LocalVertexData Lvd, int HT, KTyp
     then answer0 = for v@k in LF[0]
        	     	   ~do if k%(max(#LF[0]\10,2))=0 and fund_face_verbose {TRY TILDE}
 	      	      then prints("calculating K-character on face ",k,
-	      	      "; #ktp_hash = ",ktp_hash.size())
+	      	      " in time ",print_time_string(elapsed_ms() - start),"; #ktp_hash = ",ktp_hash.size())
 	      	      fi;
 		      let gamma = Lvd.list[v[0]]
        	      	      then p0 = parameter(x, lambda, gamma)
@@ -3909,7 +3909,7 @@ set localFD_KHash_01 (KGBElt x, ratvec lambda, LocalVertexData Lvd, int HT, KTyp
     then answer1 = for v@k in LF[1]
     	 	   ~do if k%(max(#LF[1]\10,2))=0 and fund_face_verbose {TRY TILDE}
 	      	      then prints("calculating K-character on face ",k,
-	      	      	   "; #ktp_hash = ",ktp_hash.size())
+	      	      	   " in time ",print_time_string(elapsed_ms() - start),"; #ktp_hash = ",ktp_hash.size())
 	      	      fi;
 		      let i = lookup0D([v[0]]), j = lookup0D([v[1]])
 		      in if i < 0 or j < 0 {one edge endpoint has been removed already}
@@ -4044,8 +4044,9 @@ set localFD_KHash_01_graph (KGBElt x, ratvec lambda, LocalVertexData Lvd, int HT
 	      fi
     then polNums = [int]:
     	 for C@k in eq
-    	 do if k%(max(#eq\10,2))=0 and fund_face_verbose
-	    then prints("calculating K-character on face ",k, "; #ktp_hash = ",ktp_hash.size())
+    	 ~do if k%(max(#eq\10,2))=0 and fund_face_verbose
+	    then prints("calculating K-character on face ",k,
+	    	 " in time ",print_time_string(elapsed_ms() - start),"; #ktp_hash = ",ktp_hash.size())
 	    fi;
 	    let (d,j) = coords(LF,C~[0]) {the tilde chooses a
 	    	representative on largest possible face, so least integral}
@@ -4330,7 +4331,7 @@ set extend_K_characters(KGBElt x, ratvec lambda, LocalVertexData Lvd,
        	  fi; for v@k in LFKH[d]
        	      ~do if k%(max(#LFKH[d]\10,2))=0 and extend_character_verbose {try tilde}
 	      	 then prints("calculating K-character on face ",k,
-	    	      "; #ktp_hash = ",ktp_hash.size())
+	    	      " in time ",print_time_string(elapsed_ms() - start),"; #ktp_hash = ",ktp_hash.size())
 	  	 fi;
 	  	 let nu = face_bary(Lvd, v[:d+1]), w=v
 		 {face_bary_ic(x.inner_class, face_bary(Lvd.list, v[:d+1]))}
@@ -4361,9 +4362,9 @@ set extend_K_characters(KGBElt x, ratvec lambda, LocalVertexData Lvd,
         do [vec]: if extend_character_verbose then prints(new_line, "start to extend ",#LFKH[d], {try tilde}
        	  		     " K-characters in dimension ",d, " to height ",ht)
        	  fi;   for v@k in LFKH[d]
-       	        ~do if k%(max(#LFKH[d]\10,2))=0 and extend_character_verbose {try tilde}
+       	        do if k%(max(#LFKH[d]\10,2))=0 and extend_character_verbose {try tilde}
 	      	 then prints("calculating K-character on face ",k,
-	    	      "; #ktp_hash = ",ktp_hash.size())
+	    	      " in time ",print_time_string(elapsed_ms() - start),"; #ktp_hash = ",ktp_hash.size())
 	  	 fi;
 	  	 let nu = face_bary(Lvd, v[:d+1]), w=v
        	  	 then p0 = parameter(x, lambda, nu)
