@@ -1,4 +1,5 @@
-<basic.at
+<basic.at { for |all@(int,(int->bool))| }
+
 { Gaussian elimination on matrices represented by values of type [[rat]] }
 
 { Use as matrices: lists of their columns, each a list of rational numbers }

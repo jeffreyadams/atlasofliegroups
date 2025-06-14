@@ -1,4 +1,4 @@
-<basic.at
+<basic.at { for |*@(string,int)| }
 
 { generalise adjustment functions from basic.at to handle non-space padding }
 set l_adjust (int w, string s, string pad_char) = string:

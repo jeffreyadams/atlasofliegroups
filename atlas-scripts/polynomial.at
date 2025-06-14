@@ -1,4 +1,4 @@
-<basic.at
+<basic.at { for |assert| }
 
 { Several representations of univariate polynomials are defined below, all have
   in common a dense representation of coefficients starting at degree 0
