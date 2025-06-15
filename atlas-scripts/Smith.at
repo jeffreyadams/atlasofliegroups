@@ -1,15 +1,11 @@
 { versions of some built-in functions but using big integers only }
 
-<basic.at
+<basic.at { for |list@(int,(int->bool))| }
 
 set_type Vec = [int]
 set_type Mat = [[int]] { by columns }
 set_type RatVec = [rat]
 set_type RatMat = [[rat]] { by columns }
-set_type
-[ maybe_a_Vec =     ( void no_Vec | Vec Vec_solution )
-, maybe_a_RatVec =  ( void no_RatVec | RatVec RatVec_solution )
-]
 
 set minus (Vec col) = Vec: for e in col do -e od { avoid using -@vec }
 set minus (RatVec col) = RatVec: for e in col do -e od { avoid using -@ratvec }
@@ -18,7 +14,7 @@ set - (Vec c1, (Vec c0, int f)) = Vec: for e@i in c1 do e - c0[i]*f od
 set - (RatVec c1, (RatVec c0, rat f)) = RatVec: for e@i in c1 do e - c0[i]*f od
 
 forget Bezout@vec
-set Bezout (Vec a) = (int {global gcd |d|}, Mat {|M| with |M*a=(d,0,0,..)|} ):
+set Bezout (Vec a) = (int {global gcd |d|}, Mat {|M| with |a*M=(d,0,0,..)|} ):
 (  let n=#a then non_0 = list(n,(int i):!=a[i]), M=Mat: id_mat(n)
 in if =#non_0 then (0,M) { return gcd=0, no column operations }
    else let mindex = non_0[for i in non_0 do abs(a[i]) od.min_loc]
@@ -129,24 +125,24 @@ set ech_det (Mat A) = int:
    if #M=#s then (-1)^#flip*M.main_diagonal.product else 0 fi
 
 
-set ech_solve (Mat A, Vec b) = maybe_a_Vec:
+set ech_solve (Mat A, Vec b) = Maybe<Vec>:
 (  let n= assert(#b=#A,"equation mismatch"); #A, (M,C,s,) = column_echelon(A)
    then k=#M, j=0 { runs up to k, used to index backwards }
    then sol= for :k do 0 od
 in for i:n
   ~do if i=s~[j]
       then let Mj=M~[j] then (q,r)=b[i]\%Mj[i] in
-         if !=r then return ().no_Vec fi
+         if !=r then return ().none fi
        ;  sol~[j] := q; b -:= (Mj,q) { correct for contribution from sol[j~] }
        ;  j+:=1
-       elif !=b[i] then return ().no_Vec
+       elif !=b[i] then return ().none
        fi
    od
-;  safe_prod(C[:#sol],sol).Vec_solution
+;  safe_prod(C[:#sol],sol).some
 )
 
 { ech_solve(mat A,[rat] b) solves A*x=b for the [rat] x, possibly no solution }
-set ech_solve (Mat A, [rat] b) = maybe_a_RatVec:
+set ech_solve (Mat A, [rat] b) = Maybe<RatVec>:
 (  let n= assert(#b=#A,"equation mismatch"); #A, (M,C,s,) = column_echelon(A)
    then k=#M, j=0 { runs up to k, used to index backwards }
    then sol=for :k do rat:0 od
@@ -155,10 +151,10 @@ in for i:n
       then let Mj=M~[j] then q=b[i]/Mj[i] in
          sol~[j]:=q; b -:= (Mj,q) { correct for contribution from sol[j~] }
       ;  j+:=1
-      elif !=b[i] then return ().no_RatVec
+      elif !=b[i] then return ().none
       fi
    od
-;  safe_prod(C[:#sol],sol).RatVec_solution
+;  safe_prod(C[:#sol],sol).some
 )
 
 

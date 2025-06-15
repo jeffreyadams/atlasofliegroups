@@ -1,6 +1,6 @@
-<basic.at
+<basic.at { for type constructor |Maybe| }
 
-{ This file demonstrates how axis can handle lazy infinite lists (of |int|) }
+{ This file demonstrates how axis can handle lazy infinite lists (of any type) }
 
 set_type T [
   infinite_list
@@ -11,8 +11,6 @@ set_type T [
 
 set_type inf_list = infinite_list<int>
 set_type inf_node = infinite_node<int>
-
-set_type maybe_a_node = Maybe<inf_node>
 
 { One may for instance define, to get an infinite list of entries 1:
 
@@ -49,10 +47,10 @@ end
 
 set extend_0 ([int] pol) = inf_list: extend(pol,0)
 
-series_0 : inf_list: extend_0(#0) { additive unit for power series }
+series_0 : inf_list: extend_0([]) { additive unit for power series }
 series_1 :  inf_list: [1].extend_0  { multiplicative unit for power series }
 X :   inf_list: [0,1].extend_0 { neutral element for power series composition }
-ones : inf_list: extend(#0,1) { infinite list of '1', algebraically 1/(1-X) }
+ones : inf_list: extend([],1) { infinite list of '1', algebraically 1/(1-X) }
 
 { more general then |ones|, we can define arithmetic and geometric progressions }
 set arithmetic_progression (int stride) = rec_fun f (int start) inf_list:

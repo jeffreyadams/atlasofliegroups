@@ -146,12 +146,14 @@ swiss_matrix_knife: (int,mat,int,int,int,int->mat): slice and dice a matrix
 
 gcd: (vec->int): the greatest common divisor of all entries of the vector
 Bezout: (vec->int,mat): gcd of entries, and linear map sending v to (d,0,0,...)
-  In addition to finding the gcd d like the previous function this also produces
-  an invertible matrix (change of coordinates) that sends the argument vector v
-  to d times the first canonical basis vector. That means the first row has a
-  sequence of Bezout coefficients (for the gcd) and the other rows are sequences
-  that similarly produce 0, so any combination of them can be added to the
-  sequence of Bezout coefficients to produce another valid such sequence.
+  In addition to finding the gcd d of the entries of the argument v (like the
+  previous function) this produces an invertible matrix M that records the
+  column operations that transform v viewed as a row matrix into d times the
+  first row of an identity matrix (so that result equals v*M). That means the
+  first column of M is a sequence of Bezout coefficients for v, and the other
+  columns describe linear combinations of the entries of v that are 0, so that
+  any linear combination of them can be added to the first column to produce
+  another valid sequence of Bezout coefficients.
 echelon: (mat->mat,mat,[int],int): column echelon form, with extra information
   This applies to the n*m matrix A column operations and possibly removal of
   null columns to obtain an n*k matrix M (with k<=m) and a unimodular matrix C
