@@ -6,7 +6,7 @@ endoscopic_lifting.at for lifting (also twisted_endoscopy_D.at)}
 <tabulate.at
 <embed.at {<fixed.at}
 
-set e_verbose=false
+set e_verbose=true
 
 set is_orthogonal (RootDatum rd, vec alpha, vec beta) = bool: =alpha*coroot(rd,beta)
 set to_dominant(RootDatum rd, vec wt)=(WeylElt,vec):
@@ -229,8 +229,10 @@ then
 ()=if e_verbose then prints("w_H: ", w_H, new_line, w_H.matrix) fi then
 ()=if e_verbose then prints( "restrict: ", restrict) fi then
 ()=if e_verbose then prints("wh:", w_H.matrix) fi then
+()=if e_verbose then prints("twist:", twist) fi then
 {new_twist=w_H.matrix*twist*inverse(w_H.matrix) then}
-new_twist=inverse(w_H.matrix)*twist*w_H.matrix then
+{new_twist=inverse(w_H.matrix)*twist*w_H.matrix then}
+new_twist=inverse(w_H.matrix)*restrict*w_H.matrix then
 ()=if e_verbose then prints("new_twist: ", new_twist) fi then
 dual_inner_class=inner_class(H_vee,new_twist) then
 ()=if e_verbose then prints("dual inner class: ", dual_inner_class) fi then
