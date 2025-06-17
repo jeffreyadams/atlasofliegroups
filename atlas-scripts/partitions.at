@@ -1,6 +1,5 @@
 <basic.at
 <combinatorics.at
-<torus.at { use compact torus to do regular Laurent polynomials }
 
 set size = sum@Partition
 

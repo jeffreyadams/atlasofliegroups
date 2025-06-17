@@ -1,6 +1,5 @@
 <basic.at
 <lattice.at { for (co)restrict_action }
-<torus.at { for torus }
 <ratmat.at {needed for simply_connected_cover et. al. }
 
 {----------------some more general group constructions----------------}
