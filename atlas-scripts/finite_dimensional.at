@@ -3,15 +3,15 @@
 { finite dimensional representations of G(C)}
 
 {.constructs parameter for the algebraic finite-dimensional of
-extremal weight lambda.}
+  extremal weight lambda.}
 set finite_dimensional(RealForm G, vec lambda) = Param:
-let lambdadomrho = dominant(G,lambda)+G.rho  in
-parameter(x_open(G),lambdadomrho,lambdadomrho)
+  let lambda_dom = dominant(G,lambda)
+  in  param(x_open(G),lambda_dom,lambda_dom+G.rho)
 
 {.whether p is finite dimensional.}
 set is_finite_dimensional (Param p) = bool:
   let ssr = semisimple_rank(real_form(p))
-  in semisimple_rank(integrality_datum(p))=ssr and #tau(p)=ssr
+  in  semisimple_rank(integrality_datum(p)) = ssr and #tau(p) = ssr
 
 {.for protecting functions intended for finite dimensional parameters only.}
 set fd_only (Param p) = Param:
@@ -99,7 +99,7 @@ set complex_KT (RealForm G, vec v)=KType:
    in K_type(KGB(GC,0),(v-two_rho(G))##null(n))
 
 { in the next function |P| is for a pure torus sharing its $X^*$ with |rd| }
-{ one can get that torus as |torus(rd.rank,0,0)| as defined in torus.at }
+{ one can get that torus as |compact_torus(rd.rank)| }
 set Demazure (RootDatum rd, int i, KTypePol P) = KTypePol:
 (  let alpha=root(rd,i), alpha_v=coroot(rd,i), result = null_K_module(P)
 in P +:= { calls +@(KTypePol,[(Split,KType)]) }
@@ -128,16 +128,11 @@ in P +:= { calls +@(KTypePol,[(Split,KType)]) }
 ; result
 )
 
-{The weights of a finite dimensional algebraic representation with extremal
-weight hwt}
-set wts_of_fd (RootDatum rd, vec hwt)=KTypePol:
-   let r=rank(rd), w=word(w0(rd))
-   then T=torus(r,0,0)
-   then x=KGB(T,0)
-   then Q=KTypePol: K_type(x,hwt)
-   in for n in w
-      do Q:=Demazure(rd,n,Q)
-      od; Q
+{ The weights of a finite dimensional algebraic representation with extremal
+  weight hwt }
+set wts_of_fd (RootDatum rd, vec hwt) = KTypePol:
+   let Q = KTypePol: K_type(KGB(compact_torus(rank(rd)),0),hwt)
+in for s in word(w0(rd)) do Q:=Demazure(rd,s,Q) od; Q
 
 
 

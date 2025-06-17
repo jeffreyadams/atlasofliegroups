@@ -647,12 +647,18 @@ void Lexical_analyser::operator_termination (char c)
 large switch on the value of the look-ahead character~|c|. We increase and
 decrease nesting on obvious grouping characters, and for certain characters we
 store them into |prevent_termination| to prevent a newline to be interpreted
-as command termination. If in the |initial| state we find a |'<'| or |'>'|
-character, then we prepare for input file inclusion or output redirection;
-both tokens can be doubled to designate forced inclusion (if file was already
-included before) respectively appending output redirection.
+as command termination.
 
-@< Scan a token... @>=
+When the initial character is |'='| or |'!'|, we do some extra work to allow
+them to form multi-character tokens. For |'='|, we allow any sequence of
+characters from |"<=>"| to be strung together to a single token with code
+|OPERATOR| (the cases starting with |'<'| or |'>'| below will do similarly).
+For |'!'|, we just allow it to combine with a single |'='| that follows, or else
+remain as a single-character operator symbol (which is, exceptionally, written
+on the right, due to special treatment of this token in the parser; for this
+reason its operator priority, although set here, is not really relevant).
+
+@< Scan a token starting with a non alphanumeric... @>=
 { switch(c)
   {      case '"': @< Scan a string denotation @> @+
   break; case '(':
@@ -665,40 +671,25 @@ included before) respectively appending output redirection.
          case ';':
          case '.':
          code=prevent_termination=c;
-  break; case '<':
-         case '>':
-         if (state==initial)
-         { code= c=='<'
-           ? input.shift()=='<' ? FORCEFROMFILE:  (input.unshift(),FROMFILE)
-           : input.shift()=='>' ? ADDTOFILE : (input.unshift(),TOFILE) ;
-	   @< Read in |file_name| @>
-           @+ break;
-         }
-         valp->oper.priority=2;
-         {} // don't try |OPERATOR_BECOMES| for operators staring '$<$' or '$>$'
-         if (input.shift()=='=')
-       @/{@;
-           valp->oper.id=id_table.match_literal(c=='<' ? "<=" : ">=");
-           code = OPERATOR;
-         }
-         else // scan as character token |c|, but also fetch identifier
-         {@; input.unshift();
-           valp->oper.id=id_table.match_literal(c=='<' ? "<" : ">");
-           code = c;
-         }
   break; case ':': prevent_termination=c;
     code = input.shift()=='=' ? BECOMES  : (input.unshift(),c);
   break; case '=':
-         valp->oper.id = id_table.match_literal("=");
-         valp->oper.priority = 2; // in case
+         valp->oper.priority = 2;
 	 operator_termination(c);
-	 code = becomes_follows() ? OPERATOR_BECOMES : '=';
+         { const char* p=input.point()-1; // start of token
+	   do c=input.shift();
+           while(c=='<' or c=='=' or c=='>');
+           input.unshift();
+           valp->oper.id=id_table.match(p,input.point()-p);
+           code = p==input.point()-1 ? '=' : OPERATOR;
+           // don't try |OPERATOR_BECOMES|
+         }
   break; case '!':
          if (input.shift()=='=')
          { valp->oper.id = id_table.match_literal("!=");
            valp->oper.priority = 2;
            operator_termination('=');
-           code = becomes_follows() ? OPERATOR_BECOMES : OPERATOR;
+           code = OPERATOR; // don't try |OPERATOR_BECOMES|
          }
          else
          {
@@ -706,6 +697,8 @@ included before) respectively appending output redirection.
            valp->oper.priority = 10; // not really relevant
            code= (input.unshift(),c);
          }
+  break; case '<':
+         case '>': @< Scan a token starting with |'<'| or |'>'| @>
   break; case '~': @< Handle the |'~'| case, involving some look-ahead @>
   break; case '\f': code=END_OF_FILE; // tell the parser a file ended
   break; @/@< Cases of arithmetic operators, ending with |break| @>
@@ -714,6 +707,57 @@ included before) respectively appending output redirection.
   }
 }
 
+@ If in the |initial| state we find a |'<'| or |'>'| character, then we prepare
+for input file inclusion or output redirection; both tokens can be doubled to
+designate forced inclusion (if file was already included before) respectively
+appending output redirection. In any other state the character either is a
+single-character token with |code| equal to the character value, or a
+multi-character (relation) symbol composed of characters from |"<=>"|, with
+|code==OPERATOR|. The single-character versions have a special role in the
+parser, notably in applying user-define type constructors, but will still be
+used as if they were operator symbols in other contexts, which is why we set a
+(fairly low) |priority| value in all cases (except those with |state==initial|).
+
+The usage of the single-character versions with type constructors does mean that
+we should not set |prevent_termination| for them, as type expressions can
+validly come at the end of a command, and can end with |'>'|. This does imply
+that users should take care to not break a not otherwise protected formula after
+a relation |'<'| or |'>'| (while they can after multi-character operators like
+|"<="|) which is unfortunate. Another unfortunate consequence of the code below
+it that in type expressions any consecutive occurrences of |'>'| need to be
+separated by white space, since we want to scan |">>"| and similar strings as a
+single operator token. It would be nice to know whether the parser is busy
+recognising a type expression or not, so that we could handle such cases more
+pleasantly, but feeding back the relevant state information from the parser to
+the lexical scanner would be a messy affair, which we do not attempt.
+
+@< Scan a token starting with |'<'| or |'>'| @>=
+{
+  if (state==initial)
+  { code= c=='<'
+    ? input.shift()=='<' ? FORCEFROMFILE:  (input.unshift(),FROMFILE)
+    : input.shift()=='>' ? ADDTOFILE : (input.unshift(),TOFILE) ;
+    @< Read in |file_name| @>
+    @+ break;
+  }
+  valp->oper.priority=2;
+  {} // don't try |OPERATOR_BECOMES| for operators starting |'<'| or |'>'|
+  const char* p=input.point()-1; // start of token
+  do c=input.shift();
+  while(c=='<' or c=='=' or c=='>');
+  input.unshift();
+  if (p!=input.point()-1) // at least one extra character was absorbed
+  {
+    valp->oper.id=id_table.match(p,input.point()-p);
+    code = OPERATOR; operator_termination(*p);
+  }
+  else
+  // scan as (unique) character token |*p|, but also fetch identifier
+  {@; c=*p;
+    valp->oper.id=id_table.match_literal(c=='<' ? "<" : ">");
+    code = c;
+  }
+}
 @ The tilde character was long unused, but was introduced in subscriptions,
 slices and loops, where it can be placed before certain punctuation tokens or
 the keywords \&{do} or \&{od} to indicate various kinds of reversals to be

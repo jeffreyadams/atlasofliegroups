@@ -22,7 +22,7 @@ set FPP_barys(RootDatum rd, int dim) = [ratvec]:
    od.##
 
 { in the next function |P| is for a pure torus sharing its $X^*$ with |rd| }
-{ one can get that torus as |torus(rd.rank,0,0)| as defined in torus.at }
+{ one can get that torus as |torus_datum(rd.rank)| }
 set Demazure (RootDatum rd, int i, KTypePol P) = KTypePol:
 (  let alpha=root(rd,i), alpha_v=coroot(rd,i), result = null_K_module(P)
 in P +:= { calls +@(KTypePol,[(Split,KType)]) }

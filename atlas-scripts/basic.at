@@ -22,10 +22,19 @@ set requisition (string message) = (One_of<S,T> v) T:
     case v | fail: error(message) | succeed(v): v esac
 set requisition = (One_of<S,T>->T):
     requisition("No solution found; having one was required")
+
+set ! ((S,T->bool)rel) = ([S] a,[T] b)bool: { distribute relation over lists }
+  #a=#b and (for x@i in a do if not rel(x,b[i]) then return false fi od; true)
+
 set print_lines ([T] a) = void: for x in a do print(x) od
 set prints_lines ([T] a) = void: for x in a do prints(x) od
+
 end
 set ! = print_lines@T[T] { allow printing any list line-by-line as |list!| }
+
+set == = =@(int,int)! { make comparison of two |[int]| available as |==| }
+set == = =@(vec,vec)! { make comparison of two |[int]| available as |==| }
+set === = ==@([int],[int])! { comparison of two |[[int]]| available as |===| }
 
 set !minus_1 = -1 { used to be more efficient than |-1|, now equally efficient }
 
@@ -999,6 +1008,9 @@ set is_simple(RootDatum rd) = bool: Lie_type(rd).is_simple
 set root_datum (mat simple_roots, mat simple_coroots) = RootDatum:
   root_datum(simple_roots,simple_coroots,false) { by default prefer roots }
 
+set torus_datum (int rank) = RootDatum:
+  root_datum(null(rank,0),null(rank,0),false)
+
 set root_datum (LieType type, mat lattice) = RootDatum:
   root_datum(type,lattice,false) { by default prefer roots }
 
@@ -1633,6 +1645,23 @@ set quasicompact_form (InnerClass ic) = RealForm: real_form(ic,0)
 
 set compact_form (RootDatum r) = RealForm:
   quasicompact_form(inner_class(r,id_mat(rank(r))))
+
+set compact_torus (int rank) = RealForm:
+  let ic = inner_class(torus_datum(rank),id_mat(rank)) in real_form(ic,0)
+set split_torus (int rank) = RealForm:
+  let ic = inner_class(torus_datum(rank),-id_mat(rank)) in real_form(ic,0)
+set real_complex_torus (int complex_rank) = RealForm:
+  let rank=2*complex_rank then M=null(rank,rank)
+  then ic = for i:complex_rank do M[i+i,i+i+1]:=1; M[i+i+1,i+i]:=1 od
+          ; inner_class(torus_datum(rank),M)
+  in real_form(ic,0)
+
+set torus(CartanClass C) = RealForm:
+   let ((a,b,c),,,)=Cartan_info(C) then rank = a+b+b+c
+   then M = diagonal(ones(a)##null(b+b)##-ones(c))
+   then ic = for i:b do let k=a+i+i in M[k,k+1]:=1; M[k+1,k]:=1 od
+           ; inner_class(torus_datum(rank),M)
+   in real_form(ic,0)
 
 set is_compatible (RealForm f, RealForm g) = bool:
   let ic = inner_class(f) in

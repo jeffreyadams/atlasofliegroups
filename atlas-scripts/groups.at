@@ -1,7 +1,7 @@
 <basic.at
-<torus.at
 
-set !trivial_group = RootDatum: root_datum(null(0,0),null(0,0),false)
+set !trivial_datum = RootDatum: torus_datum(0)
+set !trivial_group = compact_torus(0) { also split }
 
 { complex group for |rd| (the group viewed as a real form of doubled type) }
 set complex (RootDatum rd) = RealForm:
@@ -9,7 +9,7 @@ set complex (RootDatum rd) = RealForm:
   then rd_C = root_datum(twice(rd.simple_roots)
 			,twice(rd.simple_coroots)
 			,rd.prefers_coroots)
-  in quasisplit_form(inner_class(rd_C, id_2r[r:] ## id_2r[:r] ))
+  in quasisplit_form(inner_class(rd_C, id_2r[r:] ## id_2r[:r] {swap halves} ))
 
 { complexification of a real group, another name for the same }
 set complexification = complex@RootDatum

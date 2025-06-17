@@ -17,15 +17,6 @@ set order_twist(TwistedRootDatum (rd,delta))=int:
 assert(is_distinguished(rd,delta),"automorphism is not distinguished");
 max(for alpha in rd.simple_roots do first(for i:order(delta) from 1 do delta^i*alpha=alpha od)+1 od)
 
-{roots of G with same restriction to T as alpha}
-set roots_same_restriction(RootDatum rd,SubTorus T,vec alpha)=[vec]:
-##for beta in rd.roots do
- if =T.restrict(beta-alpha)  then [beta] else [] fi od
-
-set roots_restricting_to(RootDatum rd,SubTorus T,vec alpha)=[vec]:
-##for beta in rd.roots do
- if T.restrict(beta)=alpha  then [beta] else [] fi od
-
 {rd is semsimple and delta is distinguished
  returns roots and coroots matrices for the folded diagram
 }
@@ -33,25 +24,23 @@ set pre_folded(TwistedRootDatum (rd,delta)) = (mat,mat):
 (  assert(rd.is_semisimple or delta=id_mat(#delta),
 	  "root datum is not semisimple and delta !=1");
    assert(is_distinguished(rd,delta),"delta is not distinguished");
-   let T=SubTorus:eigen_lattice(^delta,1)
+   let T = mat: eigen_lattice(^delta,1) { inclusion of sublattice of $X_*$ }
    then   {T=(H^\delta)^0; columns are a basis of X_*(T)}
 {T is nxr where n=rd.rank and r=dimension(T)}
 { T: matrix of map X_*(T)->X_*(H) \simeq Z^r -> Z^n: this is T.inject
  ^T: matrix of map X^*(H)->X^*(T) \simeq Z^n->Z^r:   this is T.project=T.restrict
 }
      T_dim = n_columns(T)
-   , roots_nonreduced =
-        for alpha in rd.posroots do T.restrict(alpha) od.sort_u_lex
+   , roots_nonreduced = sort_u_rlex((^T)*rd.posroots) { restricted roots }
    then roots = mat: T_dim #
-   ( let locate = binary_search_in (roots_nonreduced,lex_leq@(vec,vec)) in
+   ( let locate = binary_search_in (roots_nonreduced,rlex_leq@(vec,vec)) in
      for alpha in roots_nonreduced
         if not locate(alpha*2).succeeds	do alpha fi
      od
    )
    then coroots = null(T_dim,0)
 in for alpha in roots
-   do let pullback = mat:
-         columns_with((vec beta): T.restrict(beta)=alpha,rd.roots)
+   do let pullback = mat: columns_with((vec beta): beta*T = alpha, rd.roots)
       then v = sum(rd.rank # for beta in pullback do coroot(rd,beta) od)
       then w=v*2/(v*pullback[0]) {element of X_*(H) which lives in X_*(T)}
       then corestrict_w=solve(T,w).requisition
@@ -80,12 +69,12 @@ let out=rd.outer_automorphism_group then
 delta=out[first(for g in out do order(g)=n od)] in (rd,delta) fi
 
 
-{all simple factors of rd mapping to given simple factor of folded root datum}
+{ all simple factors of rd mapping to given simple factor of folded root datum }
 set inverse_image_simple_factor \
   (TwistedRootDatum (rd,delta),RootDatum folded_factor, mat T) = RootDatum:
 let pred =
    for alpha@i in rd.posroots
-   if find(folded_factor.posroots,T.project(alpha))>=0
+   if find(folded_factor.posroots,alpha*T)>=0
    do i
    fi od.is_member_fast
 then roots = columns_with(pred,rd.posroots)
