@@ -224,7 +224,7 @@ set theta_stable_data (Param p) = (Parabolic,Param):
 
 {. Theta-stable data associated to a parameter q: a theta-stable parabolic Q=LU
    with L quasisplit, and parameter q_L for a fine principal series
-   representation 
+   representation
    so that is obtained by cohomological parabolic induction
    from q_L.}
 set theta_stable_quasi_data (Param q) = (Parabolic,Param):
@@ -233,10 +233,10 @@ set theta_stable_quasi_data (Param q) = (Parabolic,Param):
   then dlambda1 = d_lambda(q1), x1=q1.x, lambda1=q1.lambda
   then Q1 = parabolic_by_wt(dlambda1,x1)
   then L1 = Q1.Levi
-  then x1_L1=inverse_embed_KGB(x1,L1)  
+  then x1_L1=inverse_embed_KGB(x1,L1)
   in
   (Q1, parameter(x1_L1, lambda1-rho(real_form(q1))+rho(L1), q1.nu))
-  
+
 {---------------------standardize-----------------------------------------}
 
 {on the compact Cartan, coherent continuation is well defined even
@@ -977,4 +977,3 @@ set induce_from_gen_parabolic_irr ([int] Levi, Param p)=ParamPol:
 set L_infinitesimal_character ([int] Levi, Param p)=ratvec:
    let theta=involution(p.x) then P=Parabolic:(Levi,p.x) in
    ((1+theta)*lambda(p)+(1-theta)*nu(p))/2-rho_u(P)
-
