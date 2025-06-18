@@ -114,7 +114,7 @@ K-chars at j0 and j1 coincide}
 set K_graph_gens([[FaceVertsIndex]] FDK) = [[int]]:
     let index   = (int,int->int): index_f(FDK)
     , edge_gens = [[int]]: for :size(FDK) do [] od
-    , lookups = [(vec->int)]:   lookups(FDK)
+    , lookups = [(vec->int)]: lookups(FDK)
  in
     for d:#FDK-1 from 1 { traverse faces having a vertex to spare }
     do let lookup = lookups[d-1] { looking up will be at previous level }
@@ -122,9 +122,9 @@ set K_graph_gens([[FaceVertsIndex]] FDK) = [[int]]:
     to verts of d-diml face, last is red_count}
        do for e:d+1
 	  do let j0 = lookup(delete(Find,e)[:d])
-	  in if j0.>= 
+	  in if j0.>= {ought to be automatic?}
 	     then edge_gens[index(d-1,j0)] #:= index(d,j1)
-	     ; if Find[d+1] = FDK[d-1][j0][d]
+	     ; if Find~[0] = FDK[d-1][j0]~[0]
 	       then edge_gens[index(d,j1)] #:= index(d-1,j0)
 	       fi
 	     fi
@@ -145,7 +145,7 @@ set up_graph_gens([[FaceVertsKHash]] FDKHash) = [[int]]:
     to verts of d-diml face}
        do for e:d+1
 	  do let j0 = lookup(delete(Find,e)[:d])
-	  in if j0.>=
+	  in if j0.>= {ought to be automatic}
 	     then edge_gens[index(d-1,j0)] #:= index(d,j1)
 	     ; if Find[d+red_shift+1:] = FDKHash[d-1][j0][d+red_shift:]
 	       then edge_gens[index(d,j1)] #:= index(d-1,j0)
@@ -177,7 +177,7 @@ else let indexFD   = (int,int->int): index_f(FDK)
       d+red_shift+2 is #Langlands quotients}
        do for e:d+1
 	  do let j0 = lookup(delete(Find,e)[:d])
-	  in if j0.>=
+	  in if j0.>= {ought to be automatic}
 	     then edge_gens[indexFD(d-1,j0)] #:= indexFD(d,j1)
 	     	 ;if to_ht(Kpol_hash.index(FDK[d][j1][d+red_shift+1]),level) =
 	       	  to_ht(Kpol_hash.index(FDK[d-1][j0][d+red_shift]),level)
