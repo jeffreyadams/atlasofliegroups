@@ -119,7 +119,7 @@ set face_verbose = false
 set fund_face_verbose = false
 
 { if true, local face data is sorted by increasing height}
-set sort_LFD_flag = false
+set sort_LFD_flag = true{false}
 
 { for faces of codim > face_codim, use shifted char formula to
 improve memory use. Setting equal to folded semisimple rank means no

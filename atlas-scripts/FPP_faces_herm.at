@@ -1478,6 +1478,80 @@ set branch_irr_hash(Param p, int D) = KTypePol:
 set pos_part(Split s) = int:
     let (a,b) = %s in abs(a+b)
 
+set rho_corr(RootDatum rd, mat theta) = ratvec:
+    rho(rd) - rho_r(rd,theta)
+
+{note torus_factor(x) = base_grading_vector + vec; vec is more or less torus_bits(x)}
+set dualB(Param p) = Param:
+    let G = p.real_form, dGi = dual_inner_class(p), gamma = p.infinitesimal_character, x = p.x
+    then dgamma = base_grading_vector(G) + rho(dGi), theta = x.involution
+    then dtheta = -(x.involution).^
+    then rho_corr = rho(G) - rho_check(dGi) - rho_r(G,theta) + rho_check_i(dGi,dtheta)
+    then dtf = gamma - p.lambda + [1,0,1]/2 - [2,1,1]
+    then dlambda = dgamma - torus_factor(x)
+    then dx = KGB_elt(dGi,dtheta,dtf)
+    in parameter(dx, dlambda, dgamma)
+
+set endo_ic(Param p) = inner_class(integrality_datum(p),p.x.involution)
+
+{one root from each non-real, non-imag pos pair (alpha, theta*alpha)}
+{well-defined up to (1-theta)alpha}
+set rho_C(RootDatum rd, mat theta) = vec:
+    let zero = null(rd.rank)
+    in sum(rd.rank, for alpha@j in rd.posroots
+    		    do let k = root_index(rd,theta*alpha)
+		        in if k > j {k=j is imag; k = -j-1 is real}
+		       	   then alpha
+		       	   else zero
+			   fi
+		    od)
+
+{one root from each non-real, non-imag pos pair (alpha, -theta*alpha)}
+{well-defined up to (1+theta)alpha}
+set rho_minus_C(RootDatum rd, mat theta) = vec:
+    let zero = null(rd.rank)
+    in sum(rd.rank, for alpha@j in rd.posroots
+    		    do let k = root_index(rd,theta*alpha)
+		        in if -k-1 > j {k=j is imag; k = -j-1 is real}
+		       	   then alpha
+		       	   else zero
+			   fi
+		    od)
+
+set rho_check_C(RootDatum rd, mat theta) = vec:
+    let zero = null(rd.rank)
+    in sum(rd.rank, for alpha@j in rd.posroots
+    		    do let k = root_index(rd,theta*alpha)
+		        in if k > j {k=j is imag; k = -j-1 is real}
+		       	   then rd.poscoroots[j]
+		       	   else zero
+			   fi
+		    od)
+
+set rho_check_minus_C(RootDatum rd, mat theta) = vec:
+    let zero = null(rd.rank)
+    in sum(rd.rank, for alpha@j in rd.posroots
+    		    do let k = root_index(rd,theta*alpha)
+		        in if -k-1 > j {k=j is imag; k = -j-1 is real}
+		       	   then rd.poscoroots[j]
+		       	   else zero
+			   fi
+		    od)
+
+set endo(Param p) = Param:
+    let endoic = endo_ic(p), x = p.x, rd = p.root_datum
+    then theta = x.involution
+    then rho_shift =  rd.rho  - endoic.rho
+    then lambda_shift =  rho_i(x)  - rho_i(endoic,theta) + rho_C(rd,theta) - rho_C(endoic,theta)
+    {then lambda_shift = rho_shift - rho_C(rd,theta) + rho_C(endoic,theta)}
+    then nu_shift = p.x.rho_r  - rho_r(endoic,theta) + rho_minus_C(rd,theta) - rho_minus_C(endoic,theta)
+    then corho_shift = {rho_check_C(rd,theta) +} rho_check_minus_C(rd,theta)
+    	 	     {- rho_check_C(endoic,theta)} - rho_check_minus_C(endoic,theta)
+    {then endgamma = p.infinitesimal_character+rho_shift_r}
+    then endox = KGB_elt(KGBElt_gen:(endoic, x.involution, x.torus_factor - corho_shift))
+    in parameter(endox, p.lambda + lambda_shift, p.nu + nu_shift)
+
+
 {this appears to work even if p is not final, although I'm not sure why}
 {mult of irr q in std p <-> coeff of std pd in char of irr qd}
 set composition_series_to_htB(Param p, int H) = ParamPol:
@@ -1485,11 +1559,11 @@ set composition_series_to_htB(Param p, int H) = ParamPol:
     then BpH_js = for q@j in Bp do if q.height <= H
 				   then [j]
 				   else [] fi od.##
-    then BpH = for j in BpH_js do Bp[j] od, pd = dual(p)
-    then dBpH = for q in BpH do regroup(pd.real_form,dual(q)) od {these qd are lower ht than pd}
-    then dKLs = for qd in dBpH do KL_sum_at_s(qd) od
-    in sum(p.real_form, for Qd@i in dKLs do pos_part(Qd[pd])*BpH[i] od)
-    {KL_sum_at_s(qd) is character formula of irr qd}
+    then BpH = for j in BpH_js do Bp[j] od, dp = dualB(p)
+    then dBpH = for q in BpH do regroup(dp.real_form,dualB(q)) od {these qd are lower ht than pd}
+    then dKLs = for dq in dBpH do KL_sum_at_s(dq) od
+    in sum(p.real_form, for dQ@i in dKLs do pos_part(dQ[dp])*BpH[i] od)
+    {KL_sum_at_s(dq) is character formula of irr dq}
 
 {i,j entry is mult of irr i in (partial block) in standard j; so always i <= j, mat is upper triang}
 {column j is comp series of std #j <-> coeffs of std dj in irrs di}
@@ -1497,9 +1571,9 @@ set composition_series_mat_to_htB(Param p, int H) = mat:
     let Bp = partial_block(p) {block elts q of greater ht (closer to discrete series) than p;
     	     		      things that may occur}
     then BpH_js = for q@j in Bp do if q.height <= H then [j] else [] fi od.##
-    then BpH = for j in BpH_js do Bp[j] od, pd = dual(p)
-    then dBpH = for q in BpH do {regroup(pd.real_form,}dual(q){)} od {these qd are lower ht than pd}
-    then dKLs = for qd in dBpH do KL_sum_at_s(qd) od
+    then BpH = for j in BpH_js do Bp[j] od, pd = dualB(p)
+    then dBpH = for q in BpH do {regroup(pd.real_form,}dualB(q){)} od {these qd are lower ht than pd}
+    then dKLs = for dq in dBpH do KL_sum_at_s(dq) od
     then () = for dQi in dKLs do prints( dQi{for dqj in dBpH do pos_part(dQi[dqj]) od}) od {this is row i}
     then f(int i, int j) = pos_part(dKLs[i][dBpH[j]])
     in matrix((#dBpH,#dBpH),f)
@@ -1508,9 +1582,9 @@ set character_formula_to_heightB(Param p, int H) = ParamPol:
    let Bp = partial_block(p) {block elts q of greater ht (closer to discrete series) than p;
     	     		      things that may occur}
    then BpH_js = for q@j in Bp do if q.height <= H then [j] else [] fi od.##
-   then BpH = for j in BpH_js do Bp[j] od, pd = dual(p)
-   then dBpH = for q in BpH do regroup(pd.real_form,dual(q)) od {these qd are lower ht than pd}
-   then dKLs = for qd in dBpH do KL_sum_at_s(qd) od {qd plus earlier q'd}
+   then BpH = for j in BpH_js do Bp[j] od, dp = dualB(p)
+   then dBpH = for q in BpH do regroup(dp.real_form,dualB(q)) od {these dq are lower ht than dp}
+   then dKLs = for dq in dBpH do KL_sum_at_s(dq) od {qd plus earlier q'd}
    then f(int i, int j) = pos_part(dKLs[i][dBpH[j]])
    then M = matrix((#dBpH,#dBpH),f), ppol = 1*p
    then pvec = vec: for q in BpH do int_part(ppol[q]) od {e(#BpH, #BpH-1)}
@@ -3323,13 +3397,16 @@ set localFD_1Dirac2\
 		fi
 	 od.##
     { then () = prints("after LF1, time is ",print_time_string(elapsed_ms() - start))}
-    then answer = sort(G, Lvd, [LF0]##[LF1])
+    then answer = [LF0]##[LF1]
     then () = FD12Time +:= elapsed_ms() - start
     in if face_verbose then prints("After localFD_1Dirac2, face counts are [",#LF0,
     		      	   	  ",",#LF1,"]") fi;
        {if time_verbose then prints("     ",print_time_string(elapsed_ms() - start),
        			     		  " for localFD_1Dirac2") fi;}
-       answer
+       if sort_LFD_flag
+       then sort(G, Lvd, answer)
+       else answer
+       fi
 )
 
 set FD12bzTime = int:0
@@ -3527,11 +3604,14 @@ set localFD_1Dirac2_by_zero\
     {then () = if time_verbose
     	      then prints("after LF1, time is ",print_time_string(elapsed_ms() - start))
 	      fi}
-    then answer = sort(G, Lvd, [LF0]##[LF1])
+    then answer = [LF0]##[LF1]
     then () = FD12bzTime +:= elapsed_ms() - start
     in if(face_verbose) then prints("After localFD_1Dirac2_by_zero, face counts are [",#LF0,
     		      	   	  ",",#LF1,"]") fi;
-       answer
+       if sort_LFD_flag
+       then sort(G, Lvd, answer)
+       else answer
+       fi
 )
 
 
@@ -3633,7 +3713,7 @@ set localFD_by_zero_short\
 	    	fi
 	 od.##
     { then () = prints("after LF1, time is ",print_time_string(elapsed_ms() - start))}
-    then answer = sort(G, Lvd, [LF0]##[LF1])
+    then answer = [LF0]##[LF1]
     then () = FD12bzTime +:= elapsed_ms() - start
     {then () = if elapsed_ms() - start > 10{FD12bzTime}
     	      then prints("(fixed,trans) = (",#Perm2.fixed, ",",#Perm2.trans, "), face counts (",#LF0,",",Edges,") took ",print_time_string(elapsed_ms() - start))
@@ -3642,7 +3722,10 @@ set localFD_by_zero_short\
     		      	   	  ",",#LF1,"]") fi;
        {if(time_verbose) then prints("     ",print_time_string(elapsed_ms() - start),
        			     		  " for localFD_1Dirac2_by_zero") fi;}
-       answer
+       if sort_LFD_flag
+       then sort(G, Lvd, answer)
+       else answer
+       fi
 )
 
 {add red_count while checking pos on LKTs, Dirac}
@@ -3776,13 +3859,16 @@ set localFD_1Dirac2_by_zero_old\
 	       fi
 	  od.##
     { then () = prints("after LF1, time is ",print_time_string(elapsed_ms() - start))}
-    then answer = sort(G, Lvd, [LF0]##[LF1])
+    then answer = [LF0]##[LF1]
     then () = FD12bzTime +:= elapsed_ms() - start
     in if(face_verbose) then prints("After localFD_1Dirac2_by_zero, face counts are [",#LF0,
     		      	   	  ",",#LF1,"]") fi;
        {if(time_verbose) then prints("     ",print_time_string(elapsed_ms() - start),
        			     		  " for localFD_1Dirac2_by_zero") fi;}
-       answer
+       if sort_LFD_flag
+       then sort(G, Lvd, answer)
+       else answer
+       fi
 )
 
 {set left_good = int:0, left_bad = int:0, right_good = int:0, right_bad = int:0, LR_no_info = int:0}
@@ -3811,7 +3897,7 @@ set localFD_KHash_01 (KGBElt x, ratvec lambda, LocalVertexData Lvd, KTypePol_has
 	 fi
     then answer0 = for v@k in LF[0]
        	     	   ~do if k%(max(#LF[0]\10,2))=0 and fund_face_verbose
-	      	      then prints("calculating K-character on face ",k,
+	      	      then prints("calculating K-character on vertex ",k,
 	      	      " in time ",print_time_string(elapsed_ms() - start),"; #ktp_hash = ",ktp_hash.size())
 	      	      fi;
 		      let gamma = Lvd.list[v[0]]
@@ -3830,7 +3916,7 @@ set localFD_KHash_01 (KGBElt x, ratvec lambda, LocalVertexData Lvd, KTypePol_has
 			     od)
     then answer1 = for v@k in LF[1] {if red_count_flag, has red_count as coor#2}
     	 	   ~do if k%(max(#LF[1]\10,2))=0 and fund_face_verbose
-	      	      then prints("calculating K-character on face ",k,
+	      	      then prints("calculating K-character on edge ",k,
 	      	      	    " in time ",print_time_string(elapsed_ms() - start),"; #ktp_hash = ",ktp_hash.size())
 	      	      fi;
 		      let i = lookup0D([v[0]]), j = lookup0D([v[1]])
@@ -3858,7 +3944,10 @@ set localFD_KHash_01 (KGBElt x, ratvec lambda, LocalVertexData Lvd, KTypePol_has
 			     prints(" face counts to dim 1: [",#answer0,",",#answer1,
 			     "]; Dirac_best eliminated ", DBTcount - startDBTcount)
 			     fi
-    in sort(x.real_form, Lvd, [answer0,answer1])
+    in if sort_LFD_flag
+       then sort(x.real_form, Lvd, [answer0,answer1])
+       else [answer0,answer1]
+       fi
 
 set to_htB_flag = false
 
@@ -3884,9 +3973,10 @@ set localFD_KHash_01 (KGBElt x, ratvec lambda, LocalVertexData Lvd, int HT, KTyp
 		else false
 		fi
 	 fi
+    {then () = prints("starting LF0 = ",LF[0]); prints("starting LF1 = ",LF[1])}
     then answer0 = for v@k in LF[0]
-       	     	   ~do if k%(max(#LF[0]\10,2))=0 and fund_face_verbose {TRY TILDE}
-	      	      then prints("calculating K-character on face ",k,
+       	     	  ~do if k%(max(#LF[0]\10,2))=0 and fund_face_verbose {E7_s sph: 3 times slower without tilde}
+	      	      then prints("calculating K-character on vertex ",k,
 	      	      " in time ",print_time_string(elapsed_ms() - start),"; #ktp_hash = ",ktp_hash.size())
 	      	      fi;
 		      let gamma = Lvd.list[v[0]]
@@ -3899,16 +3989,22 @@ set localFD_KHash_01 (KGBElt x, ratvec lambda, LocalVertexData Lvd, int HT, KTyp
 		      then m = ktp_hash.match(KCF)
 		      in if (not temp_Dirac_best_flag) or (Q(gamma,gamma) <= DiracBestBD)
 		      	    or DiracBestTest(p0,HT,KCF)
-		      	 then [v##[m,#monomials(P)]]
-			 else []
+		      	 then {prints("gain param at p0 = ",p0, ", vert = ",v[0]," tests = ",
+			      not temp_Dirac_best_flag," ", (Q(gamma,gamma) <= DiracBestBD)," ",
+			      DiracBestTest(p0,HT,KCF));}
+	       		      [v##[m,#monomials(P)]]
+			 else  {prints("lose param at p0 = ",p0, ", vert = ",v[0], " tests = ",
+			       not temp_Dirac_best_flag," ", (Q(gamma,gamma) <= DiracBestBD)," ",
+			       DiracBestTest(p0,HT,KCF));}
+	     				    []
 			 fi
 		   od.##
     then lookup0D = index_in(for v in answer0
     	 	    	     do v[:1]
 			     od)
     then answer1 = for v@k in LF[1]
-    	 	   ~do if k%(max(#LF[1]\10,2))=0 and fund_face_verbose {TRY TILDE}
-	      	      then prints("calculating K-character on face ",k,
+    	 	  ~do if k%(max(#LF[1]\10,2))=0 and fund_face_verbose {E7_s spherical: 20% slower without tilde}
+	      	      then prints("calculating K-character on edge ",k,
 	      	      	   " in time ",print_time_string(elapsed_ms() - start),"; #ktp_hash = ",ktp_hash.size())
 	      	      fi;
 		      let i = lookup0D([v[0]]), j = lookup0D([v[1]])
@@ -3934,7 +4030,11 @@ set localFD_KHash_01 (KGBElt x, ratvec lambda, LocalVertexData Lvd, int HT, KTyp
 					  then K_type_pol(character_formula_to_heightB(P,HT))
 					  else K_type_pol(character_formula_to_height(P,HT))
 					  fi)
-			      	      in [v##[m, #monomials(P)]]
+			      	      in {prints("gain param at p0 = ",p0, ", verts = ", v[:2], " tests = ",
+				      	 	      not temp_Dirac_best_flag," ",
+	       		      		   	      (Q(nu,nu) <= DiracBestBD)," ",
+					   	      DiracBestTest(p0,HT))
+					   ;} [v##[m, #monomials(P)]]
 			 	 fi{red_count_flag}
 			 fi{i<0}
        	     	     od.##
@@ -3944,7 +4044,10 @@ set localFD_KHash_01 (KGBElt x, ratvec lambda, LocalVertexData Lvd, int HT, KTyp
 			     prints(" face counts to dim 1: [",#answer0,",",#answer1,
 			     "]; Dirac_best eliminated ", DBTcount - startDBTcount)
 			     fi
-    in sort(x.real_form,Lvd,[answer0,answer1])
+    in if sort_LFD_flag
+       then sort(x.real_form, Lvd, [answer0,answer1])
+       else [answer0,answer1]
+       fi
 
 {same as above, using graph of K-relations}
 {takes 0 and 1-diml local faces and adds K-char index}
@@ -3952,7 +4055,7 @@ set localFD_KHash_01 (KGBElt x, ratvec lambda, LocalVertexData Lvd, int HT, KTyp
 next and last is red_count. Adjoin two more: K-char, and #Langlands quotients}
 set localFD_KHash_01_graph (KGBElt x, ratvec lambda, LocalVertexData Lvd, KTypePol_hash ktp_hash,
 [[FaceVertsIndex]] LF, [[int]] eq, [vec] classListByFace) = [[FaceVertsKHash]]:
-    let start = elapsed_ms()
+    let start = elapsed_ms(), startDBTcount = DBTcount
     then Q = (ratvec,ratvec->rat): (ratvec v, ratvec w) rat: 0/1
     then DiracBestBD = 0/1
     then temp_Dirac_best_flag = bool:
@@ -3977,7 +4080,7 @@ set localFD_KHash_01_graph (KGBElt x, ratvec lambda, LocalVertexData Lvd, KTypeP
 	      fi
     then polNums = [int]: {one for each class}
     	 for C in eq
-    	 do let (d,j) = coords(LF,C~[0]) {the tilde chooses a
+    	 ~do let (d,j) = coords(LF,C~[0]) {the tilde chooses a
 	 representative on largest possible face, so least integral}
 	    then verts = vec: LF[d][j][:d+1]
 	    then gamma = face_bary(Lvd,verts)
@@ -3990,11 +4093,12 @@ set localFD_KHash_01_graph (KGBElt x, ratvec lambda, LocalVertexData Lvd, KTypeP
 	       else -1
 	       fi
 	 od
+    then () = polNums := ~polNums {since they were computed in reverse order}
     then nLKT = #LKTs(parameter(x,lambda,0*lambda))
     then answer = for LFd@d in LF
        	 	  do for v@j in LFd
 	  	     do let N = polNums[classListByFace[d][j]]
-	     	     	then m = if nLKT = 1 or N.<
+		     	then m = if nLKT = 1 or N.<
 		      	       	 then 1
 		      		 else #monomials(finalize(parameter(x,lambda,face_bary(Lvd,v[:d+1]))))
 		      		 fi
@@ -4005,6 +4109,11 @@ set localFD_KHash_01_graph (KGBElt x, ratvec lambda, LocalVertexData Lvd, KTypeP
 	  	     od.##
        		  od
     then time = elapsed_ms() - start
+    then () = if time_verbose then prints(" ", print_time_string(time),
+   	     		     " for localFD_KHash_01_graph (vertex/edge K-chars)");
+			     prints(" face counts to dim 1: [",#answer[0],",",#answer[1],
+			     "]; Dirac_best eliminated ", DBTcount - startDBTcount)
+			     fi
     {then () = if time_verbose then prints("     ", print_time_string(time),
    	     		     " for localFD_KHash_01_graph (vertex/edge K-chars)") fi}
     in answer
@@ -4030,6 +4139,7 @@ set localFD_KHash_01_graph (KGBElt x, ratvec lambda, LocalVertexData Lvd, int HT
 				   else bs~[0]
 				   fi
 				od)
+	     {then () = prints("bestbd = ",bestbd,", QG(rho) = ",QG(x.real_form.rho,x.real_form.rho))}
 	     then index = first(for v in Lvd.list
 	     	  	  	do @bool: QG(v,v) > bestbd
 				od)
@@ -4045,7 +4155,7 @@ set localFD_KHash_01_graph (KGBElt x, ratvec lambda, LocalVertexData Lvd, int HT
     then polNums = [int]:
     	 for C@k in eq
     	 ~do if k%(max(#eq\10,2))=0 and fund_face_verbose
-	    then prints("calculating K-character on face ",k,
+	    then prints("calculating K-character on class ",k,
 	    	 " in time ",print_time_string(elapsed_ms() - start),"; #ktp_hash = ",ktp_hash.size())
 	    fi;
 	    let (d,j) = coords(LF,C~[0]) {the tilde chooses a
@@ -4064,24 +4174,48 @@ set localFD_KHash_01_graph (KGBElt x, ratvec lambda, LocalVertexData Lvd, int HT
 	       else -1
 	       fi
 	 od
+    then () =  polNums := ~polNums {because they were calculated in reverse order}
     then nLKT = #LKTs(parameter(x,lambda,0*lambda))
-    then answer = for LFd@d in LF
-       	 	  do for v@j in LFd
-	  	     do let N = polNums[classListByFace[d][j]]
-	     	     	then m = if nLKT = 1 or N.<
-		     	then 1
-		     	else #monomials(finalize(parameter(x,lambda,face_bary(Lvd,v[:d+1]))))
-		     	fi
-	      		in if N.>=
-	      	 	   then [v##[N,m]]
-		 	   else []
-		 	   fi
+    then answer0 = for v@j in LF[0]
+	  	   do let N = polNums[classListByFace[0][j]]
+	     	      then m = if nLKT = 1 or N.<
+		     	       then 1
+		     	       else #monomials(finalize(parameter(x,lambda,Lvd.list[v[0]])))
+		     	       fi
+	      	      in if N.>=
+	      	 	 then [v##[N,m]]
+		 	 else []
+		 	 fi
+	  	    od.##
+    then lookup0D = index_in(for v in answer0
+    	 	    	     do v[:1]
+			     od)
+    then answer1 = for v@k in LF[1]
+	  	   do let i = lookup0D([v[0]]), j = lookup0D([v[1]])
+		      in if i < 0 or j < 0 {one edge endpoint has been removed already}
+		      	 then []
+		     	 else let N = polNums[classListByFace[1][k]]
+	     	     	   	then m = if nLKT = 1 or N.<
+		     		       	 then 1
+		     			 else #monomials(finalize(parameter(x,lambda,face_bary(Lvd,v[:2]))))
+		     			 fi
+	      			in if N.>=
+	      	 	   	   then [v##[N,m]]
+		 	  	   else []
+		 	   	   fi
+			   fi
 	  	     od.##
-       		  od
     then time = elapsed_ms() - start
-    then () = if time_verbose then prints("     ", print_time_string(time),
-   	     		     " for localFD_KHash_01_graph (vertex/edge K-chars)") fi
-    in answer
+    then () = if time_verbose
+    	      then prints("     ", print_time_string(time),
+   	     		     " for localFD_KHash_01_graph (vertex/edge K-chars)");
+		   prints(" face counts to dim 1: [",#answer0,",",#answer1,
+			     "]; Dirac_best eliminated ", DBTcount - startDBTcount)
+	       fi
+    in if sort_LFD_flag
+       then sort(x.real_form,Lvd,[answer0,answer1])
+       else [answer0,answer1]
+       fi
 
 {don't compute K_chars, just use red_count}
 set localFD_KHash_01_graph_dry (KGBElt x, ratvec lambda, LocalVertexData Lvd, KTypePol_hash ktp_hash,
@@ -4232,7 +4366,10 @@ set localFD_KHashbt_lookDownGEO \
 				    	     fi {pos on LKTs}
 		    	      	   od.## {[FaceVertsKHash]})
 	 od
-    then () = LFKH := sort(G, Lvd, LFKH)
+    then () = LFKH := if sort_LFD_flag
+    	      	      then sort(G, Lvd, LFKH)
+		      else LFKH
+		      fi
     then time = elapsed_ms() - start
     then () = if time_verbose
 	      then prints("     ", print_time_string(time),
@@ -4312,7 +4449,10 @@ set localFD_KHashbt_lookDownGEO \
     in if(face_verbose)
        then prints("After localFD_KHashbt_lookDownGEO, face counts are ",
        			      for list in LFKH do #list od) fi;
-       LFKH
+       if sort_LFD_flag
+       then sort(G,Lvd,LFKH)
+       else LFKH
+       fi
 )
 
 set extend_character_verbose = false
