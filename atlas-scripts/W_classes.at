@@ -47,25 +47,68 @@ set conjugacy_class_reps (RootDatum rd) = [WeylElt]:
 set Levi_of (WeylElt w) = [int]: { posroot indices for simples of |w| system }
    w.Levi_info.simples { avoiding construction of a |RootDatum| }
 
-{ some standard Levi conjugate to that of |w|, conjugator from it, $w'$ in it }
-set conjugate_from_standard_Levi (WeylElt w) =
-       (WeylElt,[int],WeylElt): { conjugator from, standard Levi, conjugate w }
+
+set_type StdLeviWImage =
+   (WeylElt actor { conjugator from |image| back to original |w| }
+  , [int]   Levi  { simples for a standard Levi }
+  , WeylElt image { an element for Levi, conjugate in |W| to original |w| }
+  )
+set_type StdLeviReducer = (WeylElt->StdLeviWImage)
+
+{ it is easy (but not very useful) to find some "standard" conjugate of |w| }
+set conjugate_from_some_standard_Levi = StdLeviReducer:
+   (WeylElt w):
    let (chamber,unsorted_standard_Levi)
       = from_standard_Levi(w.root_datum,Levi_of(w))
-   in (chamber,unsorted_standard_Levi.sort,/chamber*w*chamber)
+   in StdLeviWImage: (chamber,unsorted_standard_Levi.sort,/chamber*w*chamber)
 
-{ like |conjugate_from_standard_Levi|, using standard Levi chosen from |table| }
-set conjugate_from_classified_standard_Levi (RootDatum rd,[[rho_data]] table) =
-      (WeylElt->WeylElt,[int],WeylElt): { conjugator from, elected Levi, c(w) }
-   let lookup = Levi_lookup(rd,table) in
-(WeylElt w) (WeylElt,[int],WeylElt): { conjugator from, Levi_repr, w_repr) }
-   let (conj,Levi_repr) = lookup(Levi_of(w)) in (conj,Levi_repr,/conj*w*conj)
 
-set conjugate_from_classified_standard_Levi (RootDatum rd,Std_Levi_table table) =
-      (WeylElt->WeylElt,[int],WeylElt): { conjugator from, elected Levi, c(w) }
-   let lookup = Levi_lookup(rd,table) in
-(WeylElt w) (WeylElt,[int],WeylElt): { conjugator from, Levi_repr, w_repr) }
-   let (conj,Levi_repr) = lookup(Levi_of(w)) in (conj,Levi_repr,/conj*w*conj)
+{ The usefulness of a |StdLeviReducer| is limited if it can choose different
+  standard Levis for different element, even though they are conjugate. To be
+  more useful, we must force finding a Levi from a fixed set of representatives.
+  Both |levi_lookup| methods from Levi_subgroups.at will force choosing a Levi
+  from a fixed set of representatives of classes of standard Levi subgroups.
+}
+
+set conjugate_from_elected_Levi (StdLeviFinder lookup) = StdLeviReducer:
+   (WeylElt w): let (conj,elected_Levi) = lookup(Levi_of(w)) in
+   StdLeviWImage: (conj,elected_Levi,/conj*w*conj)
+
+set_type ConjugacyWitnesser = (WeylElt->(WeylElt->Maybe<WeylElt>))
+set_type ConjugacyTester    = (WeylElt->(WeylElt->bool))
+
+{ We may want to reduce |w| to an elliptic element of a sub-datum, which can be
+  done using |elliptic_reduction|; the sub-datum can be recoverd from it. }
+set elliptic_reduction (WeylElt w) = WeylElt: convert_to(Levi_datum(w),w)
+
+{ conjugacy test, using a provided |classify| method and an elliptic case test }
+
+set conjugacy_witness \
+   ( StdLeviReducer classify
+   , ConjugacyWitnesser elliptic_conjugacy_test
+   ) = (WeylElt x) (WeylElt-> Maybe<WeylElt>):
+   let rd=x.root_datum, ord_x = order(x), chi=char_poly(x)
+   , class_x = StdLeviWImage: classify(x)
+   then (ell_test,ell_datum) = ((WeylElt->Maybe<WeylElt>),RootDatum):
+       let erx = elliptic_reduction(class_x.image) { change Weyl group }
+       in ( elliptic_conjugacy_test(erx) { class membership } , erx.root_datum )
+in { end of preparations for |x|, now define the function of |y| }
+   (WeylElt y) Maybe<WeylElt>:
+   { start with easy necessary conditions on |y|: }
+   if y.root_datum=rd and order(y)=ord_x and char_poly(y)=chi
+   then
+      let (w_y,Levi_y,y_ell):class_y = classify(y) in
+      if class_y.Levi!=class_x.Levi then none()
+      else
+         case ell_test(convert_to(ell_datum,class_y.image))
+	 | none(): none()
+	 | some(w_Levi):
+	   (class_x.actor * convert_to(rd,w_Levi) * /class_y.actor).some
+	 esac
+      fi
+   else none()
+   fi
+
 
 {----------------------------------------------------------------------------}
 { compute minimal length representatives of an elliptic conjugacy class }
@@ -121,7 +164,7 @@ in while { loop with embedded |do| instances near end }
 	    od
 	 od.##
 { |do| for |while| is below, twice: }
-   in if shorter { unuaual exit was flagged }
+   in if shorter { unusual exit was flagged }
       then do lw:=lw-2 { restart |While| loop for a shorter length }
       else #new_level>0 { continue |while| loop if anything was contributed }
       do let filtered = new_level[:1] in { we still need to remove duplicates }
@@ -157,15 +200,12 @@ set minimal_representative (WeylElt w) = WeylElt:
   simple group are fixed by all outer automorphisms.
 }
 
-{ We may want to reduce |w| to an elliptic element of a sub-datum, which can be
-  done using |elliptic_reduction|; the sub-datum can be recoverd from it. }
-set elliptic_reduction (WeylElt w) = WeylElt: convert_to(Levi_datum(w),w)
 
 { to test for conugacy class membership, we use reduction to the elliptic case
   and a provided membership test for elliptic classes.
 }
 set is_conjugate_to ( WeylElt x
-		    , (WeylElt->(WeylElt->bool)) elliptic_conjugacy_test
+		    , ConjugacyTester elliptic_conjugacy_test
 		    ) = (WeylElt->bool):
 (  let rd=x.root_datum, ord_x = order(x), chi=char_poly(x)
    then rho2 = dominant(rd,two_rho(Levi_info(x)))
@@ -195,37 +235,6 @@ in
    )
 )
 
-{ conjugacy test, using a provided |Std_Levi_table| and elliptic case test.
-  in this case we nneed not compute the dominant $2\rho$ value for every |y| }
-
-set conjugacy_witness \
-  ( WeylElt x
-  , Std_Levi_table table
-  , (WeylElt->(WeylElt->Maybe<WeylElt>)) elliptic_conjugacy_test
-  ) = (WeylElt-> Maybe<WeylElt>):
-   let rd=x.root_datum, ord_x = order(x), chi=char_poly(x)
-   then classify = (WeylElt->WeylElt,[int],WeylElt):
-                   conjugate_from_classified_standard_Levi(rd,table)
-   then (w_x,Levi,x_L) = classify(x)
-   then (ell_test,ell_datum) = ((WeylElt->Maybe<WeylElt>),RootDatum):
-       let erx = elliptic_reduction(x_L)
-       in ( elliptic_conjugacy_test(erx) { class membership } , erx.root_datum )
-in { end of preparations for |x|, now define the function of |y| }
-   (WeylElt y) Maybe<WeylElt>:
-   { start with easy necessary conditions on |y|: }
-   if y.root_datum=rd and order(y)=ord_x and char_poly(y)=chi
-   then
-      let (w_y,Levi_y,y_ell) = classify(y) in
-      if Levi_y!=Levi then none()
-      else
-         case ell_test(convert_to(ell_datum,y_ell))
-	 | some(w_Levi): some(w_x * convert_to(rd,w_Levi) * /w_y)
-	 | none: none()
-	 esac
-      fi
-   else none()
-   fi
-
 { using an elliptic case test that does not provide a witness in case of a
   positive result, we can use the same approach but omit all the conjugacy
   computations (other than conjugating the given elements |w| to the elected
@@ -234,11 +243,11 @@ in { end of preparations for |x|, now define the function of |y| }
 set is_conjugate_to \
   ( WeylElt x
   , Std_Levi_table table
-  , (WeylElt->(WeylElt->bool)) elliptic_conjugacy_test
+  , ConjugacyTester elliptic_conjugacy_test
   ) = (WeylElt->bool):
    let rd=x.root_datum, ord_x = order(x), chi=char_poly(x)
-   then classify = (WeylElt->WeylElt,[int],WeylElt):
-                   conjugate_from_classified_standard_Levi(rd,table)
+   then classify = StdLeviReducer:
+      conjugate_from_elected_Levi(Levi_lookup(rd,table))
    then (,Levi,x_L) = classify(x)
    then (ell_test,ell_datum) = ((WeylElt->bool),RootDatum):
        let erx = elliptic_reduction(x_L)
@@ -253,33 +262,25 @@ in { end of preparations for |x|, now define the function of |y| }
 
 {------------------------------------------------------------------- }
 
-set present([WeylElt] list,WeylElt w) = bool: any(#list,(int i)bool: list[i]=w)
-
 { Given elliptic |x|, produce test for conjugacy of elliptic |y| to it.
-  uses |minimal_representatives| function that invokes He's algorithm
+  This uses the |minimal_representatives| function that invokes He's algorithm.
 }
 set is_conjugate_to_He (WeylElt x) = (WeylElt->bool):
    assert(is_relatively_elliptic(x),"Class is not (relatively) elliptic");
-   let reps = minimal_representatives(x) in
-   (WeylElt y)bool: present(reps,minimal_representative(y))
+   (WeylElt y): in_list(minimal_representatives(x),minimal_representative(y))
 
-set conjugacy_witness_He (WeylElt x) =
-      (WeylElt->Maybe<WeylElt>):
+set conjugacy_witness_He (WeylElt x) = (WeylElt->Maybe<WeylElt>):
    assert(is_relatively_elliptic(x),"Class is not (relatively) elliptic");
    let reps = [WeylElt,WeylElt]: apply_He(x) in
    (WeylElt y) Maybe<WeylElt>:
       let (min,w_y) = minimal_representative_with_witness(y) { min=w_y*y*/w_y }
-      then i = last(#reps,(int i)bool: let (w,)=reps[i] in w=min)
-   in if i<0 then none()
-      else let (,w_x)=reps[i] { min = w_x*x*/w_x }
-           in some(/w_x * w_y) { from y to x: x= /w_x*w_y*y*/w_y*w_x }
-      fi
+   in case get_last(fst,=@(WeylElt,WeylElt))(reps,min)
+      | none: none()
+      | some(,w_x): some(/w_x * w_y) { from y to x: x= /w_x*w_y*y*/w_y*w_x }
+      esac
 
-{ uncurried version of the previous function (only |x| needs to be elliptic) }
-set is_conjugate_He (WeylElt x,WeylElt y) = bool:
-   assert(is_relatively_elliptic(x),"Class is not (relatively) elliptic");
-   is_relatively_elliptic(y) and
-   present(minimal_representatives(x),minimal_representative(y))
+{ uncurried version of |is_conjugate_to_He| (only |x| needs to be elliptic) }
+set is_conjugate_He = (WeylElt,WeylElt->bool): uncurry(is_conjugate_to_He)
 
 { class membership for |x|: call |is_conjugate_to@(WeylElt,(WeylElt->bool))| }
 set is_conjugate_to(WeylElt x) = (WeylElt->bool):
@@ -289,10 +290,10 @@ set is_conjugate_to(WeylElt x) = (WeylElt->bool):
 set is_conjugate_to_He(Std_Levi_table table) = (WeylElt x) (WeylElt->bool):
    is_conjugate_to(x,table,is_conjugate_to_He@(WeylElt))
 
-{ similarly use |is_conjugate_elliptic_with_witness_He| }
-set conjugacy_witness(Std_Levi_table table) =
-   (WeylElt x) (WeylElt->Maybe<WeylElt>):
-      conjugacy_witness(x,table,conjugacy_witness_He@(WeylElt))
+{ similarly use |conjugacy_witness_He| }
+set conjugacy_witness (StdLeviReducer classify) =
+   (WeylElt->(WeylElt->Maybe<WeylElt>)):
+      conjugacy_witness(classify, conjugacy_witness_He@(WeylElt))
 
 { the following inefficient function is unused, but motivates the one after it }
 
