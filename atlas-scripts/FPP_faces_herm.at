@@ -2093,6 +2093,7 @@ set hermitian_form_irreducible_to_ht_big(Param p,int N) = KTypePol:
 { compute Hermitian form to ht on p, report if it is unitary}
 set is_unitary_to_ht_big_SIMPLE_old(Param p,int N) = bool:
   if (not is_hermitian(p)) then return false fi;
+  if N <= height(p) then return true fi;
   if not (fewer_reducible_unitary_flag or is_pos_on_LKTs(p)) then return false fi;
   let G = p.real_form
   then FPP_flag = is_FPP(G,p.infinitesimal_character)
@@ -2131,6 +2132,7 @@ set ht_bound_frac = rat: 1/2
 set is_unitary_to_ht_big_SIMPLE(Param p, int H, int time) = bool:
   if (not is_hermitian(p)) then return false fi;
   if not (fewer_reducible_unitary_flag or is_pos_on_LKTs(p)) then return false fi;
+  if H < height(p) then return true fi;
   let G = p.real_form, (,NU,) = low(p)
   then ht_bound = NU/low_frac {this estimates the biggest ht where to_ht could be faster than is_unitary}
   then FPP_flag = is_FPP(G,p.infinitesimal_character)
@@ -2178,6 +2180,7 @@ set avtime_frac = rat: 16/1
 
 set is_unitary_to_ht_big_SIMPLE(Param p, int H) = bool:
     if old_to_ht_flag then return is_unitary_to_ht_big_SIMPLE_old(p, H) fi;
+    if H < height(p) then return true fi;
     let N_hts = min(#tested_pos_to_ht_times, H - height(p))
     then prevtimes = for j:N_hts do tested_pos_to_ht_times[j] od.##
     then () = if #prevtimes = 0
@@ -2320,8 +2323,12 @@ set to_hts_count = null(10)
 {Ns should be increasing string of heights > height(p).}
 set is_unitary_to_hts_big_SIMPLE_interrupt(Param p,[int] Ns, int time) = bool:
     if print_int_flag then prints("N = ",Ns, " p = ",p) fi;
-    if #Ns > 0 and big_unitary_hash.nu_height_lookup_bool(p, Ns~[0]) then return false fi;
-    let () = for N@i in Ns
+    if #Ns = 0 or Ns~[0] < height(p) then return true fi;
+    if big_unitary_hash.nu_height_lookup_bool(p, Ns~[0]) then return false fi;
+    let k = u_to_ht_hash.lookup(p) in if k.>= and u_to_ht_hts[k] >= Ns~[0] then return true fi;
+    let j0 = first(for N in Ns do N>= height(p) od)
+    then () = Ns:=Ns[j0:]
+    then () = for N@i in Ns
        	     do let result = 0, which_flag = low(p,N), start = elapsed_ms()
      	        then () = while result = 0
 	     	       	  do result:= if which_flag
@@ -2351,18 +2358,18 @@ set is_unitary_to_hts_big_SIMPLE_interrupt(Param p,[int] Ns, int time) = bool:
 set is_unitary_to_hts_big_SIMPLE(Param p,[int] Ns) = bool:
   if (not is_hermitian(p)) then return false fi;
   if not (fewer_reducible_unitary_flag or is_pos_on_LKTs(p)) then return false fi;
-  let G = p.real_form
+  if #Ns = 0 or Ns~[0] < height(p) then return true fi;
+  if big_unitary_hash.nu_height_lookup_bool(p, Ns~[0]) then return false fi;
+  if (big_unitary_hash.ulookup(p)).>= then return true fi;
+  let k = u_to_ht_hash.lookup(p) in if k.>= and u_to_ht_hts[k] >= Ns~[0] then return true fi;
+  let j0 = first(for N in Ns do N>= height(p) od)
+  then () = Ns:=Ns[j0:]
+  then G = p.real_form
   then FPP_flag = is_FPP(G,p.infinitesimal_character)
   then () = if not FPP_flag
     	    then return is_unitary_to_hts(p,Ns) {prints("FPP DANGER TO HT at ",p)}
 	    fi
   {then () = p := herm_center(p)}
-  then () = if (big_unitary_hash.ulookup(p)).>=
-       	    then return true
-	    fi
-  then () = if #Ns > 0 and big_unitary_hash.nu_height_lookup_bool(p, Ns~[0])
-   	    then return false
-	    fi
    in if interrupt_flag
      then return is_unitary_to_hts_big_SIMPLE_interrupt(p, Ns, interrupt_base_time)
      else if #Ns = 0
