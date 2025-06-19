@@ -214,7 +214,7 @@ set min_after_flag = false
 
 {lowest level (index in hts[]) to start testing}
 {1 gives small improvement over 2 in E6; haven't tested bigger G}
-set edge_offset = int: 2
+set edge_offset = int: 3
 
 {how much to increase index in hts[] for testing at various levels} 
 {1 improves E6_s and E6_q time by almost 10% }
@@ -486,15 +486,15 @@ set ICPNU_flag = false {true becomes very slow in rk 6}
 {if true, functions in FPP_global pass through KGB backwards}
 set tilde_flag = false
 
-{set this to true to use wiggle tests in know_more mode in local_testK_hash_bottom_layer,
+{set this to true to use wiggle tests in local_testK_hash_bottom_layer,
 which handles the most cases}
 set wiggle_flag0 = false
 
-{set this to true to use wiggle tests in in local_test_hash}
+{set this to true to use wiggle tests in in local_test_hash (end)}
 set final_wiggle_flag = false
 
-{set this to true to use wiggle tests in local_testK_hash}
-set wiggle_flag1 = false
+{set this to true to use wiggle tests in local_testK_hash (beginning and middle)}
+set wiggle_flag1 = false 
 
 {if true, just do first LFDKH pass on red_count equiv classes: more is_unitary, but less character formula}
 set dry_flag = false
@@ -1192,7 +1192,9 @@ for unitarity.}
 set local_testK_hash_min_bottom_layer(KGBElt x, ratvec lambda, LocalVertexData Lvd,
     [[FaceVertsKHash]] FVKH, [[int]] eq, [[int]] gr, [vec] classListByFace, int HT,
     KTypePol_hash pol_hash, Param_hash Uhash, (Param -> bool) fancy_tester) = [[FaceVertsKHash]]:
-    let newStatuses = for j:#eq do "?" od,  NumClasses = #eq
+    let newStatuses = for j:#eq do "?" od,  NumClasses = #eq, p0 = parameter(x,lambda,0*lambda)
+    then hts = [int]: (for mu in monomials(branch_std(p0,HT)) do height(mu) od).sort_u
+    then ONE = min(edge_offset,#hts-1)
     then printInterval = int: {1} max(1,NumClasses\10), red_shift = if red_count_flag then 1 else 0 fi
     {Find all Param's in Uhash with (x,lambda). For each, compute corresponding Face.
      Use function known_unitaries from FPP_faces_herm
@@ -1228,41 +1230,43 @@ set local_testK_hash_min_bottom_layer(KGBElt x, ratvec lambda, LocalVertexData L
 		      then ratverts = [ratvec]: for m in verts do Lvd.list[m] od
 		      {then sigma = sum(#lambda, ratverts)}
 		      then pC = parameter(x, lambda, gamma) {sigma/(d+1))}
-		      then pCdef = if not is_final(pC)
-		      	   	   then monomials(finalize(pC))
-		  		   elif wiggle_flag0 and d > 0
-		  		   then {let () = char_counter.use()
-				   	then startCF = elapsed_ms()}
-				   	let CF = character_formula(finalize(pC))
-					{then () = charTime +:= elapsed_ms() - startCF}
-		       		   	in  monomials(composition_series((sum(x.real_form,
-		       	   		    for j:d+1 {v in ratverts}
-			   		    do wiggle(CF, face_bary(Lvd,verts[:j]##verts[j+1:]))
-					    {(sigma - v)/d)}
-			   		    od)))) {proper_facet_deformed(pCtop)}
-		  	           else []
-		  		   fi {not is_final pC}
-{this function is invoked only on the 0/1 faces in bottom_layer. That's a relatively long list,
-      with few wiggles; the cost of computing proper_facet_deformed(pC) seems not justified by
-      the few edges eliminated}
-		   in if not is_final(pC)
-		      then if all(for q in pCdef do @bool: is_finished(q.x, q.lambda) and
+		      then ps = monomials(pC)
+		      then () = if wiggle_flag0 and d>0
+			      	then let short_verts = for i:d+1
+		       		     	 	       do verts[:i]##verts[i+1:]
+				     		       od {list of vertex sets for faces}
+				     then CF = character_formula(1*pC)
+				     then pdef1 = for sv in short_verts
+					      	  do monomials(composition_series_to_ht(wiggle(CF,
+								face_bary(Lvd,sv)),HT))
+						  od.##
+				     in if any(for q in pdef1
+					       	   do height(q) > hts[0] and
+						      not is_unitary_to_hts_big_SIMPLE(q,hts[1:ONE+1])
+						   od)
+					then newStatuses:= updateNUclassesB(newStatuses, gr, k);
+					    	 newStatuses[k] := "F"
+					fi {any q}
+			        fi {wiggle_flag0}
+		      then pCdef = monomials(pC)
+		      in if newStatuses[k] = "?" and not is_final(pC) 
+		      	 then if all(for q in pCdef do @bool: is_finished(q.x, q.lambda) and
 			       	       	       	    	     (Uhash.lookup(q) >= 0) od)
-			   then newStatuses[k] := "T"
-			   elif any(for q in pCdef do @bool: is_finished(q.x,q.lambda) and
+			      then newStatuses[k] := "T"
+			      elif any(for q in pCdef do @bool: is_finished(q.x,q.lambda) and
 				    	 (Uhash.lookup(q) = -1) od)
-			   then {prints("nonfinal, k = ",k, ", gr = ",gr);}
-			   newStatuses:= updateNUclassesB(newStatuses, gr, k,"F"); "F"
-			   fi
-		      else {now pC is final, and pCdef consists of wiggled Params with smaller x}
-			  if any(for q in pCdef do @bool:  is_finished(q.x,q.lambda)
+			      then {prints("nonfinal, k = ",k, ", gr = ",gr);}
+			      	   newStatuses:= updateNUclassesB(newStatuses, gr, k,"F"); "F"
+			      fi {all for q}
+		     	  elif newStatuses[k] = "?"
+			  then if any(for q in pCdef do @bool:  is_finished(q.x,q.lambda)
 				       	       and (Uhash.lookup(q) = -1) od)
-			  then {prints("final, k = ",k, ", gr = ",gr);}
-			  newStatuses := updateNUclassesB(newStatuses, gr, k,"F");
-			       newStatuses[k] := "F"
-		           fi {any}
-		      fi {not is_final}
-		fi {newStatuses[k]}
+			       then {prints("final, k = ",k, ", gr = ",gr);}
+			       	    newStatuses := updateNUclassesB(newStatuses, gr, k,"F");
+			       	    newStatuses[k] := "F"
+		               fi {any}
+		          fi {not is_final}
+		fi {newStatuses[k] = "?"}
 	      od {k:NumClasses}
     {then () = prints("no test newStatuses = ",newStatuses)}
     then () = if fund_face_verbose {and NumClasses > 100}
