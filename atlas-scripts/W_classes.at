@@ -74,25 +74,46 @@ set conjugate_from_elected_Levi (StdLeviFinder lookup) = StdLeviReducer:
    (WeylElt w): let (conj,elected_Levi) = lookup(Levi_of(w)) in
    StdLeviWImage: (conj,elected_Levi,/conj*w*conj)
 
-set_type ConjugacyWitnesser = (WeylElt->(WeylElt->Maybe<WeylElt>))
-set_type ConjugacyTester    = (WeylElt->(WeylElt->bool))
+Levi_reducer : (RootDatum->StdLeviReducer)
+{ make this a variable; implements a map to standard Levi }
 
-{ We may want to reduce |w| to an elliptic element of a sub-datum, which can be
-  done using |elliptic_reduction|; the sub-datum can be recoverd from it. }
-set elliptic_reduction (WeylElt w) = WeylElt: convert_to(Levi_datum(w),w)
+set Levi_reducer_rho (RootDatum rd) = StdLeviReducer:
+   conjugate_from_elected_Levi(Levi_lookup(rd,orbits_table(rd)))
+set Levi_reducer_classify (RootDatum rd) = StdLeviReducer:
+   conjugate_from_elected_Levi(Levi_lookup(rd,classify_standard_Levis(rd)))
+
+Levi_reducer := Levi_reducer_rho@RootDatum { this appears to be faster }
+
+{ Conjugacy tests will always be curried (take one |WeylElt| first, then
+  possibly after some preparation produce a function that takes a second one)
+  and come in two forms: a strong one that can produce a withness of conjugacy
+  in case it holds, and a weak one that just tells whether conjugacy holds.
+
+  Our approach always begins with reducing to the relatively elliptic case:
+  each $w$ is relatively elliptic in the (generally not standard) Levi subgroup
+  |Levi_of(w)| and if $w,w'$ have |Levi_of(w)=Levi_of(w')| and are conjugate in
+  $W$ they are already conjugate in |Levi_of(w)|; therefore to test an arbitrary
+  pair for conjugacy we can first test their Levi subgroups for conjugacy, and
+  if so conjugate the elements to a common Levi subgroup and test conjugacy
+  there. (For practical reasons that common Levi will be taken to be standard.)
+  To avoid unnecessarily creation of (sub-) root data, the reduced test will be
+  performed inside the original Weyl group, but with a specified list of
+  generators of the Levi subgroup passed as argument (being a stardard Levi,
+  this will be a subset of the simple roots, not necessarily listed increasing).
+}
+set_type ConjugacyWitnesser     = (WeylElt->(WeylElt->Maybe<WeylElt>))
+set_type ConjugacyTester        = (WeylElt->(WeylElt->bool))
+set_type LeviConjugacyWitnesser = ([int],WeylElt->(WeylElt->Maybe<WeylElt>))
+set_type LeviConjugacyTester    = ([int],WeylElt->(WeylElt->bool))
 
 { conjugacy test, using a provided |classify| method and an elliptic case test }
 
-set conjugacy_witness \
-   ( StdLeviReducer classify
-   , ConjugacyWitnesser elliptic_conjugacy_test
-   ) = ConjugacyWitnesser:
+set conjugacy_witness (StdLeviReducer classify, LeviConjugacyWitnesser Lcw) =
+   ConjugacyWitnesser:
    (WeylElt x):
    let rd=x.root_datum, ord_x = order(x), chi=char_poly(x)
    , class_x = StdLeviWImage: classify(x)
-   then (ell_test,ell_datum) = ((WeylElt->Maybe<WeylElt>),RootDatum):
-       let erx = elliptic_reduction(class_x.image) { change Weyl group }
-       in ( elliptic_conjugacy_test(erx) { class membership } , erx.root_datum )
+   then Levi_test = (WeylElt->Maybe<WeylElt>): Lcw(class_x.Levi,class_x.image)
 in { end of preparations for |x|, now define the function of |y| }
    (WeylElt y) Maybe<WeylElt>:
    { start with easy necessary conditions on |y|: }
@@ -101,15 +122,34 @@ in { end of preparations for |x|, now define the function of |y| }
       let class_y = classify(y) in
       if class_y.Levi!=class_x.Levi then none()
       else
-         case ell_test(convert_to(ell_datum,class_y.image))
+         case Levi_test(class_y.image)
 	 | none(): none()
-	 | some(w_Levi):
-	   (class_x.actor * convert_to(rd,w_Levi) * /class_y.actor).some
+	 | some(w_Levi): some(class_x.actor * w_Levi * /class_y.actor)
 	 esac
       fi
    else none()
    fi
 
+
+{ Using an elliptic case test that does not provide a witness in case of a
+  positive result, we can use the same approach but omit all the conjugacy
+  computations (other than conjugating the given elements |w| to the elected
+  standard Levi in the orbit of of |Levi_of(w)|, which happens inside |classify|.
+}
+set conjugacy_test (StdLeviReducer classify, LeviConjugacyTester Levi_test) =
+   ConjugacyTester:
+   (WeylElt x):
+   let rd=x.root_datum, ord_x = order(x), chi=char_poly(x)
+   , (,Levi,xx) = StdLeviWImage: classify(x)
+   then test = (WeylElt->bool): Levi_test(Levi,xx)
+in { end of preparations for |x|, now define the function of |y| }
+   (WeylElt y) bool:
+   { start with easy necessary conditions on |y|: }
+   y.root_datum=rd and order(y)=ord_x and char_poly(y)=chi and
+   (
+     let (,Levi_y,yy) = classify(y) in
+     Levi_y=Levi and test(yy)
+   )
 
 {----------------------------------------------------------------------------}
 { compute minimal length representatives of an elliptic conjugacy class }
@@ -141,15 +181,17 @@ in { end of preparations for |x|, now define the function of |y| }
   |w|, with the twist that whenever we come across a conjugate |w'| of shorter
   length, we throw away all previous work and start a new "orbit" from |w'|.
 }
-set apply_He (WeylElt w) = [WeylElt,WeylElt]: { $(w', g)$ with $g*w*/g = w'$ }
+set minima_He ([int] Levi,WeylElt w) =
+  [WeylElt,WeylElt]: { $(w', g)$ with $g*w*/g = w'$ }
 (  let !rd = w.root_datum
    then stack = [[],[(w,id_W(rd))]], lw=length(w)
+   , gens = [WeylElt]: for i in Levi do W_gen(rd,i) od
    , absent([WeylElt,WeylElt] pairs, WeylElt w) = bool:
         none(pairs,(WeylElt x,WeylElt.)bool:x=w)
 in while { loop with embedded |do| instances near end }
       let shorter=false, last2_levels = stack~[0] ## stack~[1]
       then new_level = [WeylElt,WeylElt]:
-	 for s in W_gens(rd)
+	 for s in gens
 	    for (w,witness) in stack~[0]
 	    do let sws=s*w*s in
 	       case length(sws)-lw
@@ -178,16 +220,45 @@ in while { loop with embedded |do| instances near end }
 ;  ##stack
 )
 
-{ one selected minimal length class representative, witness conjugating to it }
+{ one selected minimal length class representative, witness conjugating to it;
+  this works whether or not |w| is (relatively) elliptic
+}
 set minimal_representative_with_witness (WeylElt w) = (WeylElt,WeylElt):
-   apply_He(w)[0]
-
+   minima_He(w.root_datum.all_simples,w)[0]
 { often one does not need a witness, so the following can be used instead }
-set minimal_representatives (WeylElt w) = [WeylElt]:
-   for (rep,) in apply_He(w) do rep od
 set minimal_representative (WeylElt w) = WeylElt:
-   let (rep,) = apply_He(w)[0] in rep
+   w.minimal_representative_with_witness.fst
 
+{ Even though finding a minimum can be done without, we can restrict to a Levi }
+set minimal_representative_with_witness (([int],WeylElt) a) = (WeylElt,WeylElt):
+   minima_He(a)[0]
+{ often one does not need a witness, so the following can be used instead }
+set minimal_representative (([int],WeylElt) a) = WeylElt:
+   a.minimal_representative_with_witness.fst
+
+set is_elliptic_for_Levi ([int] Levi,WeylElt w) = bool:
+   w.word.to_bitset=Levi.to_bitset
+
+set minimal_representatives_with_witness (([int],WeylElt)args) =
+   [WeylElt,WeylElt]:
+   assert(is_elliptic_for_Levi(args),"Element not elliptic for Levi subgroup");
+      minima_He(args)
+set minimal_representatives (([int],WeylElt)args) = [WeylElt]:
+   args.minimal_representatives_with_witness.(map(fst))
+
+set He_witnesser = LeviConjugacyWitnesser:
+   (([int],WeylElt)(Levi,x):args):
+   let minima = minimal_representatives_with_witness(args) in
+   (WeylElt y) Maybe<WeylElt>:
+   case get_last(fst,=@(WeylElt,WeylElt))(minima,y)
+   | none: none()
+   | some(,conj): some(conj)
+   esac
+
+set He_tester = LeviConjugacyTester:
+   (([int],WeylElt)(Levi,):args) (WeylElt->bool):
+   let test = (WeylElt->bool): is_member(minimal_representatives(args))
+   in (WeylElt y) bool: test(minimal_representative(Levi,y))
 
 { Conjugacy test, using reduction to elliptic
 
@@ -201,24 +272,49 @@ set minimal_representative (WeylElt w) = WeylElt:
   simple group are fixed by all outer automorphisms.
 }
 
+set is_conjugate_in (RootDatum rd) = ConjugacyTester:
+   conjugacy_test(Levi_reducer(rd),He_tester@([int],WeylElt))
 
-{ to test for conugacy class membership, we use reduction to the elliptic case
-  and a provided membership test for elliptic classes.
+{ similarly default to |He_witnesser| for |conjugacy_witness| }
+set conjugacy_witness (StdLeviReducer classify) = ConjugacyWitnesser:
+   conjugacy_witness(classify, He_witnesser@([int],WeylElt))
+
+set conjugacy_witness_in (RootDatum rd) = ConjugacyWitnesser:
+   conjugacy_witness(Levi_reducer(rd), He_witnesser@([int],WeylElt))
+
+
+{ We can test for conjugacy without doing a classificatin of the standard Levis.
+  The function |untabled_tester| conjugates |Levi_of(x)| for the first candidate
+  |x| to some standard Levi |sLevi|, and generates the |rho_stabiliser_orbit|
+  (which tabulates all Levis conjugate to it that have a dominant |two_rho|
+  value). For the other candidate |y|, it first does some quick checks that will
+  rule out many non-conjugate elements, and if this is not decisive, finds a
+  Levi |L| conjugate to |Levi_of(y))| that has dominant |two_rho|; if this
+  matches, |L| must be tabulated and we can find a conjugate from |Levi_of(y)|
+  via |L| to |sLevi|; after conjugating both |x| and |y| into |sLevi|, the
+  provided |LeviConjugacyTester| is applied to compare the images of |x| and |y|.
+
+  Note that although we are not interested in getting a witness for conjugacy in
+  case it should hold, we still must keep track of elemeent that conjugate the
+  Levi subgroups in question to each other.
 }
-set is_conjugate_to ( WeylElt x
-		    , ConjugacyTester elliptic_conjugacy_test
-		    ) = (WeylElt->bool):
-(  let rd=x.root_datum, ord_x = order(x), chi=char_poly(x)
+set untabled_tester (LeviConjugacyTester Levi_test) = ConjugacyTester:
+(  (WeylElt x) (WeylElt->bool):
+   let rd=x.root_datum, ord_x = order(x), chi=char_poly(x)
    then rho2 = dominant(rd,two_rho(Levi_info(x)))
-   , (w_x,sLevi) = from_standard_Levi(rd,Levi_of(x))
-   then { check that assignment successfully moved |s| to our standard Levi }
-      () = assert(Levi_of(x)=sLevi.sort,"failed to move x to standard Levi")
-   then orbit = [int,WeylElt]:
-     rho_stabiliser_orbit(rd,sLevi).(sort_by(L_int@orbit_entry,<=@(int,int)))
-   then lookup = lookup_in(orbit,L_int@orbit_entry,<=@(int,int))
-   , (ell_test,ell_datum) = ((WeylElt->bool),RootDatum):
-       let erx = elliptic_reduction(x := /w_x * x * w_x)
-       in ( elliptic_conjugacy_test(erx) { class membership } , erx.root_datum )
+   , (w_x,sLevi) = { w_x: conjugator some standard Levi |sLevi| to |Levi_of(x)| }
+       from_standard_Levi(rd,Levi_of(x))
+   then lookup = (int->Maybe<orbit_entry>):
+      let orbit = [orbit_entry]: { sorted by their |L_int| componenta }
+         rho_stabiliser_orbit(rd,sLevi)
+      in lookup_in(orbit,L_int@orbit_entry,<=@(int,int))
+   , ell_test = (WeylElt->bool):
+     { first conjugate |x| to standard Levi |sLevi| and check that it arrived }
+       let x_image = /w_x * x * w_x in
+       assert(Levi_of(x_image)=sLevi.sort
+             ,@: "Moving "+x.to_string+" to standard Levi "+sLevi.to_string
+	         +" failed: "+x_image.to_string );
+       Levi_test(sLevi,x_image)
 in
    (WeylElt y) bool: { the actual test |is_conjugate_to(x)| }
    y.root_datum=rd and order(y)=ord_x and char_poly(y)=chi and
@@ -228,73 +324,18 @@ in
       then (w0,rho2_y) = from_dominant(rd,rho2Ly)
    in rho2_y=rho2 and
       ( let L = int: act_up(/w0,simples(LIy)).combination_encode
-	then (,w) = lookup(L).
-	   (requisition("conjugate with dominant rho not found in orbit"))
-	then conjugator = w0 * w  { Levi_of(y) <-L <- sLevi=orbit.Levi_repr }
-      in ell_test(convert_to(ell_datum,/conjugator*y*conjugator))
+        then conjugator =  { Levi_of(y) <-L <- sLevi=orbit.Levi_repr }
+	  w0 *
+	  case lookup(L)
+	  | none: error("conjugate with dominant rho not found in orbit")
+	  | some(,w): w { conjugates |sLevi| to image |L| of |Levi_of(y)| }
+	  esac
+      in ell_test(/conjugator*y*conjugator)
       )
    )
 )
 
-{ using an elliptic case test that does not provide a witness in case of a
-  positive result, we can use the same approach but omit all the conjugacy
-  computations (other than conjugating the given elements |w| to the elected
-  standard Levi in the orbit of of |Levi_of(w)|, whic happens inside |classify|.
-}
-set is_conjugate_to \
-  ( WeylElt x
-  , Std_Levi_table table
-  , ConjugacyTester elliptic_conjugacy_test
-  ) = (WeylElt->bool):
-   let rd=x.root_datum, ord_x = order(x), chi=char_poly(x)
-   then classify = StdLeviReducer:
-      conjugate_from_elected_Levi(Levi_lookup(rd,table))
-   then (,Levi,x_L) = classify(x)
-   then (ell_test,ell_datum) = ((WeylElt->bool),RootDatum):
-       let erx = elliptic_reduction(x_L)
-       in ( elliptic_conjugacy_test(erx) { class membership } , erx.root_datum )
-in { end of preparations for |x|, now define the function of |y| }
-   (WeylElt y) bool:
-   { start with easy necessary conditions on |y|: }
-   y.root_datum=rd and order(y)=ord_x and char_poly(y)=chi and
-   ( let (,Levi_y,y_ell) = classify(y) in
-     Levi_y=Levi and ell_test(convert_to(ell_datum,y_ell))
-   )
 
-{------------------------------------------------------------------- }
-
-{ Given elliptic |x|, produce test for conjugacy of elliptic |y| to it.
-  This uses the |minimal_representatives| function that invokes He's algorithm.
-}
-set is_conjugate_to_He (WeylElt x) = (WeylElt->bool):
-   assert(is_relatively_elliptic(x),"Class is not (relatively) elliptic");
-   (WeylElt y): in_list(minimal_representatives(x),minimal_representative(y))
-
-set conjugacy_witness_He (WeylElt x) = (WeylElt->Maybe<WeylElt>):
-   assert(is_relatively_elliptic(x),"Class is not (relatively) elliptic");
-   let reps = [WeylElt,WeylElt]: apply_He(x) in
-   (WeylElt y) Maybe<WeylElt>:
-      let (min,w_y) = minimal_representative_with_witness(y) { min=w_y*y*/w_y }
-   in case get_last(fst,=@(WeylElt,WeylElt))(reps,min)
-      | none: none()
-      | some(,w_x): some(/w_x * w_y) { from y to x: x= /w_x*w_y*y*/w_y*w_x }
-      esac
-
-{ uncurried version of |is_conjugate_to_He| (only |x| needs to be elliptic) }
-set is_conjugate_He = (WeylElt,WeylElt->bool): uncurry(is_conjugate_to_He)
-
-{ class membership for |x|: call |is_conjugate_to@(WeylElt,(WeylElt->bool))| }
-set is_conjugate_to(WeylElt x) = (WeylElt->bool):
-   is_conjugate_to(x,is_conjugate_to_He@(WeylElt))
-
-{ use |is_conjugate_elliptic_He| to make a general |is_conjugate_to| function }
-set is_conjugate_to_He(Std_Levi_table table) = (WeylElt x) (WeylElt->bool):
-   is_conjugate_to(x,table,is_conjugate_to_He@(WeylElt))
-
-{ similarly use |conjugacy_witness_He| }
-set conjugacy_witness (StdLeviReducer classify) =
-   (WeylElt->(WeylElt->Maybe<WeylElt>)):
-      conjugacy_witness(classify, conjugacy_witness_He@(WeylElt))
 
 { the following inefficient function is unused, but motivates the one after it }
 
@@ -550,7 +591,7 @@ in
 set W_class_table ( RootDatum rd
 		  , [WeylElt] reps
 		  , (WeylElt->int) class_size
-		  , (WeylElt->(WeylElt->bool)) is_conjugate_to
+		  , ConjugacyTester is_conjugate_to
 		  ) = WeylClassTable:
    let memberships = [(WeylElt->bool)]: for r in reps do is_conjugate_to(r) od
    then class_of(WeylElt w) = int: first(#reps,(int i)bool: memberships[i](w))
@@ -565,7 +606,13 @@ in W_class_table( rd, reps
 set W_class_table_generic (RootDatum rd) = WeylClassTable:
    W_class_table( rd, conjugacy_class_reps(rd)
 		, size_of_conjugacy_class@WeylElt
-		, is_conjugate_to_He(classify_standard_Levis(rd))
+		, conjugacy_test(Levi_reducer(rd),He_tester@([int],WeylElt))
+		)
+
+set W_class_table_untabled (RootDatum rd) = WeylClassTable:
+   W_class_table( rd, conjugacy_class_reps(rd)
+		, size_of_conjugacy_class@WeylElt
+		, untabled_tester(He_tester@([int],WeylElt))
 		)
 
 { A valid class table that can be used to initialise local variables }
