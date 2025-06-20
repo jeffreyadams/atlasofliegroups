@@ -86,7 +86,8 @@ set elliptic_reduction (WeylElt w) = WeylElt: convert_to(Levi_datum(w),w)
 set conjugacy_witness \
    ( StdLeviReducer classify
    , ConjugacyWitnesser elliptic_conjugacy_test
-   ) = (WeylElt x) (WeylElt-> Maybe<WeylElt>):
+   ) = ConjugacyWitnesser:
+   (WeylElt x):
    let rd=x.root_datum, ord_x = order(x), chi=char_poly(x)
    , class_x = StdLeviWImage: classify(x)
    then (ell_test,ell_datum) = ((WeylElt->Maybe<WeylElt>),RootDatum):
@@ -97,7 +98,7 @@ in { end of preparations for |x|, now define the function of |y| }
    { start with easy necessary conditions on |y|: }
    if y.root_datum=rd and order(y)=ord_x and char_poly(y)=chi
    then
-      let (w_y,Levi_y,y_ell):class_y = classify(y) in
+      let class_y = classify(y) in
       if class_y.Levi!=class_x.Levi then none()
       else
          case ell_test(convert_to(ell_datum,class_y.image))
