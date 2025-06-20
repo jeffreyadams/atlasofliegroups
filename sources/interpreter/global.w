@@ -1084,7 +1084,7 @@ void do_global_set(id_pat&& pat, const expr& rhs, int overload,
     { assert(v_it!=v.end());
       @< Emit indentation corresponding to the input level to
          |*output_stream| @>
-      if (overload==0 or it->second.kind()!=function_type)
+      if (overload==0 or it->second.top_kind()!=function_type)
       @< Add instance of identifier |it->first| with value |*v_it| and
          type |it->second| to |global_id_table| @>
       else
