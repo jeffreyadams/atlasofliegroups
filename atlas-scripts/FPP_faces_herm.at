@@ -1475,124 +1475,7 @@ set branch_irr_hash(Param p, int D) = KTypePol:
     let CF = character_formula_to_height(p,D)
     in big_unitary_hash.branch(K_type_pol(CF),D)
 
-set pos_part(Split s) = int:
-    let (a,b) = %s in abs(a+b)
 
-set rho_corr(RootDatum rd, mat theta) = ratvec:
-    rho(rd) - rho_r(rd,theta)
-
-{note torus_factor(x) = base_grading_vector + vec; vec is more or less torus_bits(x)}
-set dualB(Param p) = Param:
-    let G = p.real_form, dGi = dual_inner_class(p), gamma = p.infinitesimal_character, x = p.x
-    then dgamma = base_grading_vector(G) + rho(dGi), theta = x.involution
-    then dtheta = -(x.involution).^
-    then rho_corr = rho(G) - rho_check(dGi) - rho_r(G,theta) + rho_check_i(dGi,dtheta)
-    then dtf = gamma - p.lambda + [1,0,1]/2 - [2,1,1]
-    then dlambda = dgamma - torus_factor(x)
-    then dx = KGB_elt(dGi,dtheta,dtf)
-    in parameter(dx, dlambda, dgamma)
-
-set endo_ic(Param p) = inner_class(integrality_datum(p),p.x.involution)
-
-{one root from each non-real, non-imag pos pair (alpha, theta*alpha)}
-{well-defined up to (1-theta)alpha}
-set rho_C(RootDatum rd, mat theta) = vec:
-    let zero = null(rd.rank)
-    in sum(rd.rank, for alpha@j in rd.posroots
-    		    do let k = root_index(rd,theta*alpha)
-		        in if k > j {k=j is imag; k = -j-1 is real}
-		       	   then alpha
-		       	   else zero
-			   fi
-		    od)
-
-{one root from each non-real, non-imag pos pair (alpha, -theta*alpha)}
-{well-defined up to (1+theta)alpha}
-set rho_minus_C(RootDatum rd, mat theta) = vec:
-    let zero = null(rd.rank)
-    in sum(rd.rank, for alpha@j in rd.posroots
-    		    do let k = root_index(rd,theta*alpha)
-		        in if -k-1 > j {k=j is imag; k = -j-1 is real}
-		       	   then alpha
-		       	   else zero
-			   fi
-		    od)
-
-set rho_check_C(RootDatum rd, mat theta) = vec:
-    let zero = null(rd.rank)
-    in sum(rd.rank, for alpha@j in rd.posroots
-    		    do let k = root_index(rd,theta*alpha)
-		        in if k > j {k=j is imag; k = -j-1 is real}
-		       	   then rd.poscoroots[j]
-		       	   else zero
-			   fi
-		    od)
-
-set rho_check_minus_C(RootDatum rd, mat theta) = vec:
-    let zero = null(rd.rank)
-    in sum(rd.rank, for alpha@j in rd.posroots
-    		    do let k = root_index(rd,theta*alpha)
-		        in if -k-1 > j {k=j is imag; k = -j-1 is real}
-		       	   then rd.poscoroots[j]
-		       	   else zero
-			   fi
-		    od)
-
-set endo(Param p) = Param:
-    let endoic = endo_ic(p), x = p.x, rd = p.root_datum
-    then theta = x.involution
-    then rho_shift =  rd.rho  - endoic.rho
-    then lambda_shift =  rho_i(x)  - rho_i(endoic,theta) + rho_C(rd,theta) - rho_C(endoic,theta)
-    {then lambda_shift = rho_shift - rho_C(rd,theta) + rho_C(endoic,theta)}
-    then nu_shift = p.x.rho_r  - rho_r(endoic,theta) + rho_minus_C(rd,theta) - rho_minus_C(endoic,theta)
-    then corho_shift = {rho_check_C(rd,theta) +} rho_check_minus_C(rd,theta)
-    	 	     {- rho_check_C(endoic,theta)} - rho_check_minus_C(endoic,theta)
-    {then endgamma = p.infinitesimal_character+rho_shift_r}
-    then endox = KGB_elt(KGBElt_gen:(endoic, x.involution, x.torus_factor - corho_shift))
-    in parameter(endox, p.lambda + lambda_shift, p.nu + nu_shift)
-
-
-{this appears to work even if p is not final, although I'm not sure why}
-{mult of irr q in std p <-> coeff of std pd in char of irr qd}
-set composition_series_to_htB(Param p, int H) = ParamPol:
-    let Bp = partial_block(p), H0 = height(p)
-    then BpH_js = for q@j in Bp do if q.height <= H
-				   then [j]
-				   else [] fi od.##
-    then BpH = for j in BpH_js do Bp[j] od, dp = dualB(p)
-    then dBpH = for q in BpH do regroup(dp.real_form,dualB(q)) od {these qd are lower ht than pd}
-    then dKLs = for dq in dBpH do KL_sum_at_s(dq) od
-    in sum(p.real_form, for dQ@i in dKLs do pos_part(dQ[dp])*BpH[i] od)
-    {KL_sum_at_s(dq) is character formula of irr dq}
-
-{i,j entry is mult of irr i in (partial block) in standard j; so always i <= j, mat is upper triang}
-{column j is comp series of std #j <-> coeffs of std dj in irrs di}
-set composition_series_mat_to_htB(Param p, int H) = mat:
-    let Bp = partial_block(p) {block elts q of greater ht (closer to discrete series) than p;
-    	     		      things that may occur}
-    then BpH_js = for q@j in Bp do if q.height <= H then [j] else [] fi od.##
-    then BpH = for j in BpH_js do Bp[j] od, pd = dualB(p)
-    then dBpH = for q in BpH do {regroup(pd.real_form,}dualB(q){)} od {these qd are lower ht than pd}
-    then dKLs = for dq in dBpH do KL_sum_at_s(dq) od
-    then () = for dQi in dKLs do prints( dQi{for dqj in dBpH do pos_part(dQi[dqj]) od}) od {this is row i}
-    then f(int i, int j) = pos_part(dKLs[i][dBpH[j]])
-    in matrix((#dBpH,#dBpH),f)
-
-set character_formula_to_heightB(Param p, int H) = ParamPol:
-   let Bp = partial_block(p) {block elts q of greater ht (closer to discrete series) than p;
-    	     		      things that may occur}
-   then BpH_js = for q@j in Bp do if q.height <= H then [j] else [] fi od.##
-   then BpH = for j in BpH_js do Bp[j] od, dp = dualB(p)
-   then dBpH = for q in BpH do regroup(dp.real_form,dualB(q)) od {these dq are lower ht than dp}
-   then dKLs = for dq in dBpH do KL_sum_at_s(dq) od {qd plus earlier q'd}
-   then f(int i, int j) = pos_part(dKLs[i][dBpH[j]])
-   then M = matrix((#dBpH,#dBpH),f), ppol = 1*p
-   then pvec = vec: for q in BpH do int_part(ppol[q]) od {e(#BpH, #BpH-1)}
-   then ansvec = solve(M,pvec).requisition
-   in sum(p.real_form, for q@j in BpH do ansvec[j]*q od)
-
-set character_formula_to_heightB(ParamPol P, int H) = ParamPol:
-    map(((Param->ParamPol): (Param p): character_formula_to_heightB(p, H)), P)
 
 {. The next family of functions all need simple derived group. Always
 |vd.list| should be ALL vertices in the FPP; Lvd.list will be all infl
@@ -2188,6 +2071,21 @@ set is_unitary_to_ht_big_SIMPLE(Param p, int H) = bool:
 	      fi
     then avtime = sum(prevtimes)/#prevtimes
     in is_unitary_to_ht_big_SIMPLE(p, H, floor(avtime_frac*avtime))
+
+{deform to walls of face, check lower comp factors for nonunitarity there}
+{false if parameter is proven nonunitary, true if cannot decide}
+set is_unitary_to_ht_wiggle_big_SIMPLE(KGBElt x, ratvec lambda, vec verts,
+    					int HT, LocalVertexData Lvd) = bool:
+    if #verts <= 1 then return true fi;
+    let p=parameter(x,lambda,face_bary(Lvd,verts)), d = #verts
+    then H0 = height(p), short_verts = for i:d+1 do delete(verts,i) od
+    then CF = character_formula_to_height(1*p,HT)
+    then pdef1 = for sv in short_verts
+	         do monomials(composition_series_to_ht(wiggle(CF, face_bary(Lvd,sv)), HT - 1))
+		 od.##
+    in not any(for q in pdef1
+       	   do @bool: height(q)>H0 and not is_unitary_to_ht_big_SIMPLE(q,HT)
+	   od)
 
 { compute Hermitian form to ht on p, report if it is unitary}
 set is_unitary_to_ht_big(Param p,int N) = bool:
@@ -3990,7 +3888,7 @@ set localFD_KHash_01 (KGBElt x, ratvec lambda, LocalVertexData Lvd, int HT, KTyp
        	      	      then p0 = parameter(x, lambda, gamma)
 	      	      then P = finalize(p0)
 		      then KCF = K_type_pol(if to_htB_flag
-				 	    then character_formula_to_heightB(P,HT)
+				 	    then composition_series_to_heightB(P,HT)
 				 	    else character_formula_to_height(P,HT)
 				 	    fi)
 		      then m = ktp_hash.match(KCF)

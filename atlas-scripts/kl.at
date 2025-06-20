@@ -7,6 +7,7 @@
 
 <basic.at
 <count.at {for char_counter}
+<parameters.at {for dual_inner_class}
 {<time.at {for print_time_string}}
 {
   Basic object: column of KL matrix (P-matrix), of polynomials evaluated as s,
@@ -154,6 +155,138 @@ set composition_series_to_ht(ParamPol P, int H) = ParamPol:
 
 set composition_series_to_ht (Param p,int H) = ParamPol: composition_series_to_ht(ParamPol: p, H)
 
+{---------------------------}
+{same using dual}
+
+set pos_part(Split s) = int:
+    let (a,b) = %s in abs(a+b)
+
+set endo_ic(Param p) = inner_class(integrality_datum(p),p.x.involution)
+
+{one root from each non-real, non-imag pos pair (alpha, theta*alpha)}
+{well-defined up to (1-theta)alpha}
+set rho_C(RootDatum rd, mat theta) = vec:
+    let zero = null(rd.rank)
+    in sum(rd.rank, for alpha@j in rd.posroots
+    		    do let k = root_index(rd,theta*alpha)
+		        in if k > j {k=j is imag; k = -j-1 is real}
+		       	   then alpha
+		       	   else zero
+			   fi
+		    od)
+
+{one root from each non-real, non-imag pos pair (alpha, -theta*alpha)}
+{well-defined up to (1+theta)alpha}
+set rho_minus_C(RootDatum rd, mat theta) = vec:
+    let zero = null(rd.rank)
+    in sum(rd.rank, for alpha@j in rd.posroots
+    		    do let k = root_index(rd,theta*alpha)
+		        in if -k-1 > j {k=j is imag; k = -j-1 is real}
+		       	   then alpha
+		       	   else zero
+			   fi
+		    od)
+
+set rho_check_C(RootDatum rd, mat theta) = vec:
+    let zero = null(rd.rank)
+    in sum(rd.rank, for alpha@j in rd.posroots
+    		    do let k = root_index(rd,theta*alpha)
+		        in if k > j {k=j is imag; k = -j-1 is real}
+		       	   then rd.poscoroots[j]
+		       	   else zero
+			   fi
+		    od)
+
+set rho_check_minus_C(RootDatum rd, mat theta) = vec:
+    let zero = null(rd.rank)
+    in sum(rd.rank, for alpha@j in rd.posroots
+    		    do let k = root_index(rd,theta*alpha)
+		        in if -k-1 > j {k=j is imag; k = -j-1 is real}
+		       	   then rd.poscoroots[j]
+		       	   else zero
+			   fi
+		    od)
+
+set endo(Param p) = Param:
+    let endoic = endo_ic(p), x = p.x, rd = p.root_datum
+    then theta = x.involution
+    then rho_shift =  rd.rho  - endoic.rho
+    then lambda_shift =  rho_i(x)  - rho_i(endoic,theta) + rho_C(rd,theta) - rho_C(endoic,theta)
+    then nu_shift = p.x.rho_r  - rho_r(endoic,theta) + rho_minus_C(rd,theta) - rho_minus_C(endoic,theta)
+    then corho_shift = rho_check_minus_C(rd,theta) - rho_check_minus_C(endoic,theta)
+    {then endgamma = p.infinitesimal_character+rho_shift_r}
+    then endox = KGB_elt(endoic, x.involution, x.torus_factor - corho_shift)
+    in parameter(endox, p.lambda + lambda_shift, p.nu + nu_shift)
+
+{note torus_factor(x) = base_grading_vector + vec; vec is more or less torus_bits(x)}
+set dualB(Param p) = Param:
+    let rd = p.root_datum, dGi = dual_inner_class(p), gamma = p.infinitesimal_character, x = p.x
+    then endoic = endo_ic(p), theta = x.involution
+    then rho_shift =  rd.rho  - endoic.rho
+    then lambda_shift =  rho_i(x)  - rho_i(endoic,theta) + rho_C(rd,theta) - rho_C(endoic,theta)
+    then dgamma = base_grading_vector(p.real_form) + rho(dGi), theta = x.involution
+    then dtheta = -(x.involution).^
+    then dtf = gamma + rho_shift  - p.lambda - lambda_shift
+    then dlambda = dgamma - torus_factor(x)
+    then dx = KGB_elt(dGi,dtheta,dtf)
+    in parameter(dx, dlambda, dgamma)
+
+{this appears to work even if p is not final, although I'm not sure why}
+{mult of irr q in std p <-> coeff of std pd in char of irr qd}
+{low_diff_char(p,H) is a terrible way to decide whether to use this}
+set composition_series_to_heightB(Param p, int H) = ParamPol:
+    let start = elapsed_ms()
+    then answer = {if low_diff_char(p,H)
+    	 	  then} let Bp = partial_block(p), H0 = height(p)
+    		       then BpH_js = for q@j in Bp do if q.height <= H
+				     	     	      then [j]
+				     		      else [] fi
+						      od.##
+    		       then BpH = for j in BpH_js do Bp[j] od, dp = dualB(p)
+    		       then dBpH = for q in BpH do dualB(q)
+    	      	       	    	   od {these qd are lower ht than pd}
+    		       then dKLs = for dq in dBpH do KL_sum_at_s(dq) od
+    		       in sum(p.real_form, for dQ@i in dKLs do pos_part(dQ[dp])*BpH[i] od)
+    		  {else let (below,) = height_split(composition_series(p),H)
+       	 	       in s_to_1(below)
+    		  fi}
+     then () = charTime+:= elapsed_ms() - start
+     then () = char_counter.use()
+     in answer
+ 
+set composition_series_to_heightB(ParamPol P, int H) = ParamPol:
+    map(((Param->ParamPol): (Param p): composition_series_to_heightB(p, H)), P)
+
+{i,j entry is mult of irr i in (partial block) in standard j; so always i <= j, mat is upper triang}
+{column j is comp series of std #j <-> coeffs of std dj in irrs di}
+set composition_series_mat_to_heightB(Param p, int H) = mat:
+    let Bp = partial_block(p) {block elts q of greater ht (closer to discrete series) than p;
+    	     		      things that may occur}
+    then BpH_js = for q@j in Bp do if q.height <= H then [j] else [] fi od.##
+    then BpH = for j in BpH_js do Bp[j] od, pd = dualB(p)
+    then dBpH = for q in BpH do {regroup(pd.real_form,}dualB(q){)} od {these qd are lower ht than pd}
+    then dKLs = for dq in dBpH do KL_sum_at_s(dq) od
+    then () = for dQi in dKLs do prints( dQi{for dqj in dBpH do pos_part(dQi[dqj]) od}) od {this is row i}
+    then f(int i, int j) = pos_part(dKLs[i][dBpH[j]])
+    in matrix((#dBpH,#dBpH),f)
+
+set character_formula_to_heightB(Param p, int H) = ParamPol:
+   let Bp = partial_block(p) {block elts q of greater ht (closer to discrete series) than p;
+    	     		      things that may occur}
+   then BpH_js = for q@j in Bp do if q.height <= H then [j] else [] fi od.##
+   then BpH = for j in BpH_js do Bp[j] od, dp = dualB(p)
+   then dBpH = for q in BpH do {regroup(dp.real_form,}dualB(q){)} od {these dq are lower ht than dp}
+   then dKLs = for dq in dBpH do KL_sum_at_s(dq) od {qd plus earlier q'd}
+   then f(int i, int j) = pos_part(dKLs[i][dBpH[j]])
+   then M = matrix((#dBpH,#dBpH),f), ppol = 1*p
+   then pvec = vec: for q in BpH do int_part(ppol[q]) od {e(#BpH, #BpH-1)}
+   then ansvec = solve(M,pvec).requisition
+   in sum(p.real_form, for q@j in BpH do ansvec[j]*q od)
+
+set character_formula_to_heightB(ParamPol P, int H) = ParamPol:
+    map(((Param->ParamPol): (Param p): character_formula_to_heightB(p, H)), P)
+
+{-----------------------------}
 set tabulate_at_1 ([Param] block, (Param->ParamPol) f) = mat:
   for y in block { y determines a column of the result }
   do let fy=f(y) in for x in block do fy[x].s_to_1 od
