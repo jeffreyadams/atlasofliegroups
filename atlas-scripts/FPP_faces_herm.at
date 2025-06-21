@@ -2102,6 +2102,7 @@ set next_taus_flag = true
 set is_unitary_test_big_SIMPLE_interrupt(Param p, int step) = bool:
   if (not is_hermitian(p)) then return false fi;
   if not (fewer_reducible_unitary_flag or is_pos_on_LKTs(p)) then return false fi;
+  if step.<= then step:=1 fi;
   let G = p.real_form, (LAM,NU,GAM) = low(p)
   then shift = 1 {if easy_up_shift = -1
        	       then max(1,(G.rank*mu_rank_mult)\1)
@@ -2173,6 +2174,7 @@ set is_unitary_test_big_SIMPLE_interrupt(Param p, [int] hts) = bool:
   if (not is_hermitian(p)) then return false fi;
   if not (fewer_reducible_unitary_flag or is_pos_on_LKTs(p)) then return false fi;
   if #hts = 0 then return is_unitary_test_big_SIMPLE_interrupt(p, 1) fi;
+  if hts~[0] <= height(p) then return is_unitary_test_big_SIMPLE_interrupt(p) fi;
   let G = p.real_form, (,NU,) = low(p)
   then ht_bound = NU*low_frac
   {this estimates the biggest ht where to_ht could be faster than is_unitary}
@@ -2193,6 +2195,8 @@ set is_unitary_test_big_SIMPLE_interrupt(Param p, [int] hts) = bool:
        top_ht = floor((p.infinitesimal_character)*G.two_rho_check)
        {unitary to top_ht implies unitary}
   then times_to_ht = int: 0
+  then i0 = first(for ht in hts do ht > height(p) od)
+  then () = hts:= hts[i0:]
   then () = for ht in hts
        	    do let start_to_ht = elapsed_ms()
 	       then to_ht_ans = is_unitary_to_ht_big_SIMPLE(p,ht)
@@ -3129,18 +3133,18 @@ set DiracBestTest(Param p, KTypePol Kchar) = bool:
 
 {here p must be irr for branch_irr to work}
 set DiracBestTest(int steps, Param p, int HT) = bool:
-    DiracBestTest(steps, p, HT, K_type_pol(character_formula_to_height(p,HT)))
+    DiracBestTest(steps, p, HT, K_type_pol(character_formula_to_height(1*p,HT)))
 
 {here p must be irr for branch_irr to work}
 set DiracBestTest(int steps, Param p) = bool:
-    DiracBestTest(steps, p, K_type_pol(character_formula(p)))
+    DiracBestTest(steps, p, K_type_pol(character_formula(1*p)))
 
 {here p must be irr for branch_irr to work}
 set DiracBestTest(Param p, int HT) = bool:
-    DiracBestTest(Dirac_best_steps, p, HT, K_type_pol(character_formula_to_height(p,HT)))
+    DiracBestTest(Dirac_best_steps, p, HT, K_type_pol(character_formula_to_height(1*p,HT)))
 
 set DiracBestTest(Param p) = bool:
-    DiracBestTest(Dirac_best_steps, p, K_type_pol(character_formula(p)))
+    DiracBestTest(Dirac_best_steps, p, K_type_pol(character_formula(1*p)))
 
 {creates LVD, map Perm on FPPverts at (x,lambda), {mapAct from FPPverts to local verts}}
 {in U(3,2), x_open, #vlist = 16: 4 fixed, 6 pairs flipped by Perm. The set of 6 pairs
@@ -3879,8 +3883,9 @@ set localFD_KHash_01 (KGBElt x, ratvec lambda, LocalVertexData Lvd, int HT, KTyp
 		fi
 	 fi
     {then () = prints("starting LF0 = ",LF[0]); prints("starting LF1 = ",LF[1])}
+    {then () = if to_htB_flag then LF[0] :=~LF[0] fi}
     then answer0 = for v@k in LF[0]
-       	     	  ~do if k%(max(#LF[0]\10,2))=0 and fund_face_verbose {E7_s sph: 3 times slower without tilde}
+       	     	   ~do if k%(max(#LF[0]\10,2))=0 and fund_face_verbose {E7_s sph: 3 times slower without tilde}
 	      	      then prints("calculating K-character on vertex ",k,
 	      	      " in time ",print_time_string(elapsed_ms() - start),"; #ktp_hash = ",ktp_hash.size())
 	      	      fi;
@@ -3893,7 +3898,7 @@ set localFD_KHash_01 (KGBElt x, ratvec lambda, LocalVertexData Lvd, int HT, KTyp
 				 	    fi)
 		      then m = ktp_hash.match(KCF)
 		      in if (not temp_Dirac_best_flag) or (Q(gamma,gamma) <= DiracBestBD)
-		      	    or DiracBestTest(p0,HT,KCF)
+		      	    or DiracBestTest(p0,HT)
 		      	 then {prints("gain param at p0 = ",p0, ", vert = ",v[0]," tests = ",
 			      not temp_Dirac_best_flag," ", (Q(gamma,gamma) <= DiracBestBD)," ",
 			      DiracBestTest(p0,HT,KCF));}
@@ -3907,6 +3912,7 @@ set localFD_KHash_01 (KGBElt x, ratvec lambda, LocalVertexData Lvd, int HT, KTyp
     then lookup0D = index_in(for v in answer0
     	 	    	     do v[:1]
 			     od)
+     {then () = if to_htB_flag then LF[1] :=~LF[1] fi}
     then answer1 = for v@k in LF[1]
     	 	  ~do if k%(max(#LF[1]\10,2))=0 and fund_face_verbose {E7_s spherical: 20% slower without tilde}
 	      	      then prints("calculating K-character on edge ",k,
@@ -3925,16 +3931,16 @@ set localFD_KHash_01 (KGBElt x, ratvec lambda, LocalVertexData Lvd, int HT, KTyp
 			    	      then [v##[answer0[j][2], #monomials(P)]]
 			    	      else let m = ktp_hash.match(K_type_pol(
 				      	       if to_htB_flag
-					       then character_formula_to_heightB(P,HT)
+					       then composition_series_to_heightB(P,HT)
 					       else character_formula_to_height(P,HT)
 					       fi))
 			    	      	    in [v##[m, #monomials(P)]]
 			   	      fi {answer = v[2]}
-			 	 else let m = ktp_hash.match(
+			 	 else let m = ktp_hash.match(K_type_pol(
 				 	  if to_htB_flag
-					  then K_type_pol(character_formula_to_heightB(P,HT))
-					  else K_type_pol(character_formula_to_height(P,HT))
-					  fi)
+					  then composition_series_to_heightB(P,HT)
+					  else character_formula_to_height(P,HT)
+					  fi))
 			      	      in {prints("gain param at p0 = ",p0, ", verts = ", v[:2], " tests = ",
 				      	 	      not temp_Dirac_best_flag," ",
 	       		      		   	      (Q(nu,nu) <= DiracBestBD)," ",
@@ -4070,7 +4076,7 @@ set localFD_KHash_01_graph (KGBElt x, ratvec lambda, LocalVertexData Lvd, int HT
 	    then pC = parameter(x,lambda,gamma)
 	    then PC = finalize(pC)
 	    then KCF = if to_htB_flag
-		       then K_type_pol(character_formula_to_heightB(PC,HT))
+		       then K_type_pol(composition_series_to_heightB(PC,HT))
 		       else K_type_pol(character_formula_to_height(PC,HT))
 		       fi
 	    in if (not temp_Dirac_best_flag) or (Q(gamma,gamma) <= DiracBestBD)
@@ -4337,7 +4343,7 @@ set localFD_KHashbt_lookDownGEO \
 				      	 then if k.>=
 					      then [actual##midreds##[ LFKH[dim-1][locs[k]][dim+e-1], #ms]]
 					      else let m = ktp_hash.match(if to_htB_flag
-		       	  		      	       	   		  then K_type_pol(character_formula_to_heightB(P,HT))
+		       	  		      	       	   		  then K_type_pol(composition_series_to_heightB(P,HT))
 		       			 				  else K_type_pol(character_formula_to_height(P,HT))
 		       			 				  fi)
 					      	   in [actual##midreds##[m, #ms]]
@@ -4415,7 +4421,7 @@ set extend_K_characters(KGBElt x, ratvec lambda, LocalVertexData Lvd,
        	  	 then p0 = parameter(x, lambda, nu)
 	  	 then P = finalize(p0)
 	  	 then m = ktp_hash.match(if to_htB_flag
-		       	  		 then K_type_pol(character_formula_to_heightB(P,ht))
+		       	  		 then K_type_pol(composition_series_to_heightB(P,ht))
 		       			 else K_type_pol(character_formula_to_height(P,ht))
 		       			 fi)
 	  	 then () = w[d+red_shift+1] := m
@@ -4474,7 +4480,7 @@ set extend_K_characters_graph(KGBElt x, ratvec lambda, LocalVertexData Lvd,
 	  then pC = parameter(x,lambda,face_bary(Lvd,verts))
 	  then PC = finalize(pC)
 	  then m = ktp_hash.match(if to_htB_flag
-		       	  	  then K_type_pol(character_formula_to_heightB(PC,ht))
+		       	  	  then K_type_pol(composition_series_to_heightB(PC,ht))
 		       		  else K_type_pol(character_formula_to_height(PC,ht))
 		       		  fi)
 	  in m
