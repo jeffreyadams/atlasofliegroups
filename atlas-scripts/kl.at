@@ -117,11 +117,11 @@ set low(Param p, int N) = bool:
     else low_nu(p,N)
     fi
 
-set character_formula_to_height(Param p, int N) = ParamPol:
+set character_formula_to_height(Param p, int HT) = ParamPol:
     let start = elapsed_ms()
-    then answer = if low_diff_char(p,N)
-    	 	  then s_to_1(KL_sum_at_s_to_height(p,N))
-		  else let (below,) = height_split(KL_sum_at_s(p),N)
+    then answer = if low_diff_char(p,HT)
+    	 	  then s_to_1(KL_sum_at_s_to_height(p,HT))
+		  else let (below,) = height_split(KL_sum_at_s(p),HT)
        	    	       in s_to_1(below)
        		  fi
      then () = charTime+:= elapsed_ms() - start
@@ -130,8 +130,8 @@ set character_formula_to_height(Param p, int N) = ParamPol:
        p.nu,"),",N,"), CTime = ",print_time_string(CharFormTime)) fi}
      in answer
 
-set character_formula_to_height (ParamPol P, int N) = ParamPol:
-    map(((Param->ParamPol): (Param p): character_formula_to_height(p, N)), P)
+set character_formula_to_height (ParamPol P, int HT) = ParamPol:
+    map(((Param->ParamPol): (Param p): character_formula_to_height(p, HT)), P)
 { ------------------------------------------------------------------- }
 
 { composition series }
@@ -144,12 +144,12 @@ set composition_series(ParamPol P) = ParamPol:
 
 set composition_series (Param p) = ParamPol: composition_series(ParamPol: p)
 
-set composition_series_to_ht(ParamPol P, int H) = ParamPol:
-  let (PH,) = height_split(P,H)
+set composition_series_to_ht(ParamPol P, int HT) = ParamPol:
+  let (PHT,) = height_split(P,HT)
   in null_module(P)+
-  while !=PH { non null module }
-  do let (coef,p):term=first_term(PH)
-     in PH -:= coef*character_formula_to_height(p,H)
+  while !=PHT { non null module }
+  do let (coef,p):term=first_term(PHT)
+     in PHT -:= coef*character_formula_to_height(p,HT)
      ; term
   od
 
@@ -236,8 +236,8 @@ set dualB(Param p) = Param:
 {low_diff_char(p,H) is a terrible way to decide whether to use this}
 set composition_series_to_heightB(Param p, int H) = ParamPol:
     let start = elapsed_ms()
-    then answer = {if low_diff_char(p,H)
-    	 	  then} let Bp = partial_block(p), H0 = height(p)
+    then answer = if low_diff_char(p,H)
+    	 	  then let Bp = partial_block(p), H0 = height(p)
     		       then BpH_js = for q@j in Bp do if q.height <= H
 				     	     	      then [j]
 				     		      else [] fi
@@ -247,9 +247,9 @@ set composition_series_to_heightB(Param p, int H) = ParamPol:
     	      	       	    	   od {these qd are lower ht than pd}
     		       then dKLs = for dq in dBpH do KL_sum_at_s(dq) od
     		       in sum(p.real_form, for dQ@i in dKLs do pos_part(dQ[dp])*BpH[i] od)
-    		  {else let (below,) = height_split(composition_series(p),H)
+    		  else let (below,) = height_split(composition_series(p),H)
        	 	       in s_to_1(below)
-    		  fi}
+    		  fi
      then () = charTime+:= elapsed_ms() - start
      then () = char_counter.use()
      in answer
