@@ -29,7 +29,7 @@
   |standard_Levi_conjugacy_representatives| defined there lists standard Levi
   conjugacy class representatives, and the function |classify_standard_Levis|
   provides for a root datum more complete information in the form of a
-  |Std_Levi_table|, which also lists Levi conjugacy orbits for easy looking up.
+  |StdLeviTable|, which also lists Levi conjugacy orbits for easy looking up.
 }
 
 { A subsidiary task is to enumerate elliptic conjugacy classes for each standard
@@ -151,35 +151,34 @@ in { end of preparations for |x|, now define the function of |y| }
      Levi_y=Levi and test(yy)
    )
 
-{----------------------------------------------------------------------------}
-{ compute minimal length representatives of an elliptic conjugacy class }
+{ Our next task is giving a conjugacy test for the elliptic case. For that we
+  shall use an explicit enumeration of the set of minimal length representatives
+  of an elliptic element; once this is done for one element, we can test the
+  other element by finding a minimal length conjugate and looking it up.
+}
 
-{ This algorithm (due to He) gives *some* minimal length representatives of |w|
-  but it gives *all* such if |w| is elliptic. In that case one can conjugate |w|
-  to a minimal length representative doing one simple, weakly length decreasing
-  conjugation at a time (also: given one minimal length representative, all
-  other minimal length representatives can be obtained by conjugating without
-  increasing the length)
+{ The following greedy algorithm is guaranteed to give at least one minimal
+  length conjugate of any eleent |w| it may be applied to, and moreover to give
+  *all* such conjugates if |w| is elliptic; these facts are due to He. This
+  essentially says that one can conjugate |w| to a minimal length conjugate
+  doing one simple, weakly length decreasing conjugation at a time; moreover,
+  for a given minimal length elliptic element, all its conjugates of the same
+  length can be obtained by a sequence of length-preserving simple conjugations.
 
   NOTE: in A2 the two simple generators are conjugate, but (obviously) not by
-        either one of them, so any conjugation path increases length in this
-	case the algorithm does give a minimal length representative but not
-	all of them; since these simple generators are not elliptic, this does
-	not contradict what is said here.
-  So:
-  given a list of Weyl group elements, all conjugate and of the same length,
-  compute all their conjugates by simple generators that are not longer, keeping
-  a list |shorter| of all that are strictly shorter while extending the list by
-  any new elements of the same length. If |shorter| is non empty, replace the
-  list by |shorter| and repeat, else if any new elements were added repeat, and
-  if neither is the case terminate returning the list.
+  either one of them, which shows that the elliptic hypothesis in the second
+  part of the above claim cannot be dropped.
 
-  The function below implements this, while also returning conjugations witnesses
+  So: given a Weyl group element |w|, generate simple conjugates of it that are
+  not longer than it, replacing |w| whenever a shorter conjugate is found, while
+  restarting the generation; as long as that does not happen, make a collection
+  of all equal length conjugates generated, which is also used for producing
+  furtehr simple conjugates (and cleared at a restart). For every conjugate
+  generated, also record a conjugating element towards it from the original |w|.
 
-  It is an algorithm of orbit generation by shells of distance from the original
-  starting point |w| of the set of all conjugates of |w| *of the same length* as
-  |w|, with the twist that whenever we come across a conjugate |w'| of shorter
-  length, we throw away all previous work and start a new "orbit" from |w'|.
+  The function |minima_He| implements this. For generating equal length
+  conjugates we use an orbit generation by shells of distance from the starting
+  point at the current length.
 }
 set minima_He ([int] Levi,WeylElt w) =
   [WeylElt,WeylElt]: { $(w', g)$ with $g*w*/g = w'$ }
@@ -207,11 +206,11 @@ in while { loop with embedded |do| instances near end }
 	    od
 	 od.##
 { |do| for |while| is below, twice: }
-   in if shorter { unusual exit was flagged }
+   in if shorter { length decrease was flagged }
       then do lw:=lw-2 { restart |While| loop for a shorter length }
       else #new_level>0 { continue |while| loop if anything was contributed }
       do let filtered = new_level[:1] in { we still need to remove duplicates }
-	 for (w,):pair in new_level[1:]
+	 for (w,):pair in new_level[1:] { all except initial element are tested }
 	 do if absent(filtered,w) then filtered #:= pair fi
 	 od
       ;  stack#:=filtered
