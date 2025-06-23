@@ -1,4 +1,5 @@
-<isomorphism_W.at
+<conjugate.at { for |Levi_witness@(RootDatum,RootDatum,RootDatum)| }
+<isomorphism_W.at { for |root_permutation@(RootDatum,RootDatum)| }
 <character_tables_reductive.at
 <W_reps.at {for W_rep}
 
@@ -147,7 +148,7 @@ in induce_character(construct_class_table(L),Wct_G,pi_L)
 
 {given Wct_L, with RootDatum L, and L\simeq L'\subset G
 have character table for L, but L' is the subgroup we want
-to induce from 
+to induce from
 induce from W(L) to W(G) via this isomorphism
 That is:
   W(L)  --> w --> W(L')
@@ -169,7 +170,7 @@ set induce_character (WeylClassTable Wct_L,RootDatum L_prime,WeylClassTable Wct_
    ()=prints("induce_character: ");
    prints("rd=",rd, new_line, "rd_L=", rd_L) then
    w=matrix(Levi_witness(rd,L_prime,rd_L)) then
-   f(WeylElt x)=WeylElt: W_elt(rd,inverse(w)*matrix(x)*w)  {embedding} in 
+   f(WeylElt x)=WeylElt: W_elt(rd,inverse(w)*matrix(x)*w)  {embedding} in
    induce_character(Wct_L,Wct_G,f,pi_L)
 
 {I think this is misguided: one should always *specify* the root permutation in question}
