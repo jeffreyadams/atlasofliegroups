@@ -2,6 +2,7 @@
 <generics.at
 <Levi_subgroups.at
 <elliptic.at { for |elliptics_for_standard_Levi@(RootDatum,[int])| }
+<hash.at { for forming |hash<WeylElt>| }
 <cyclotomic.at {for |product_of_cyclotomic|}
 <Weylgroup.at { for |is_relatively_elliptic| }
 <tabulate.at { for |tabulate| }
@@ -180,43 +181,42 @@ in { end of preparations for |x|, now define the function of |y| }
   conjugates we use an orbit generation by shells of distance from the starting
   point at the current length.
 }
+
+set hash_code (WeylElt w,int mod) = int: hash_code(w.word,mod)
+
 set minima_He ([int] Levi,WeylElt w) =
   [WeylElt,WeylElt]: { $(w', g)$ with $g*w*/g = w'$ }
 (  let !rd = w.root_datum
-   then stack = [[],[(w,id_W(rd))]], lw=length(w)
+   then bag=make_hash(hash_code@(WeylElt,int),=@(WeylElt,WeylElt))
+   , conj = [id_W(rd)], done = 0
+   , lw   = length(w)
    , gens = [WeylElt]: for i in Levi do W_gen(rd,i) od
    , absent([WeylElt,WeylElt] pairs, WeylElt w) = bool:
         none(pairs,(WeylElt x,WeylElt.)bool:x=w)
-in while { loop with embedded |do| instances near end }
-      let shorter=false, last2_levels = stack~[0] ## stack~[1]
-      then new_level = [WeylElt,WeylElt]:
-	 for s in gens
-	    for (w,witness) in stack~[0]
-	    do let sws=s*w*s in
-	       case length(sws)-lw
-	       then { less: }
-		  stack:=[[],[(sws,s*witness)]] { reset }
-	       ;  shorter:=true;  break break  { flag, and break |for(s)| }
-	       in { equal: }
-		 if absent(last2_levels,sws) { check 2 most recent shells }
-	         do (sws,s*witness)  { contribute to |new_level|, and go on }
-		 fi
-	       else { greater: } [] { nothing to contribute, but continue }
-	       esac
-	    od
-	 od.##
-{ |do| for |while| is below, twice: }
-   in if shorter { length decrease was flagged }
+in bag.match(w) { start with just original |w| in |bag| }
+;  while { loop with embedded |do| instances near end; maintains |done<#conj| }
+      let shorter=false, cur_w=bag.index(done), witness=conj[done]
+   in done +:= 1
+   ;  for s in gens
+      do let sws=s*cur_w*s in
+	 case length(sws)-lw
+	 then { less: }
+	    shorter:=true; bag.clear() { abandon current level }
+	 ;  bag.match(sws);  conj:=[s*witness]; done:=0 { initialise new length }
+	 ;  break { |for(s)| }
+	 in { equal: }
+	   if bag.match(sws)=#conj { then element is new }
+	   then conj #:= s*witness { contribute to current length, and go on }
+	   fi
+	 else { greater: } ()  { nothing to contribute, but continue }
+	 esac
+      od
+   ;  if shorter { length decrease was flagged }
       then do lw:=lw-2 { restart |While| loop for a shorter length }
-      else #new_level>0 { continue |while| loop if anything was contributed }
-      do let filtered = new_level[:1] in { we still need to remove duplicates }
-	 for (w,):pair in new_level[1:] { all except initial element are tested }
-	 do if absent(filtered,w) then filtered #:= pair fi
-	 od
-      ;  stack#:=filtered
+      else done<#conj do ()
       fi
    od { while }
-;  ##stack
+;  for w@i in conj do (bag.index(i), w) od
 )
 
 { one selected minimal length class representative, witness conjugating to it;

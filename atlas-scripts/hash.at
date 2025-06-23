@@ -1,0 +1,191 @@
+< basic.at
+< generics.at
+
+{
+create a fresh table with
+
+set table = make_hash()
+
+Add polynomials P as table.match(P), which returns the sequence
+number (whether old or new).
+
+If you just need to test for presence without altering the table,
+
+table.lookup(P)
+
+will return a sequence number if previously seen, and -1
+otherwise. There are also
+
+table.size(),  table.capacity()
+
+to obtain those statistics, and
+
+table.index(i)
+
+returns KTypePol in the table with sequence number i.
+
+Currently no method for finding out what is in slot j of the hash
+table (either a polynomial sequence number or nothing), but there is
+probably no need to know about that anyway
+
+}
+
+set_type HashInfo<T> = ((T,int->int) hash_code, (T,T->bool) eq)!
+
+set_type Hash<T> =
+  ( (   -> int) size
+  , (   -> int) capacity
+  , ([T]->    ) fill
+  , (   ->    ) clear
+  , (   -> [T]) list
+  , (int->T   ) index
+  , (T  ->int ) match
+  , (T  ->Maybe<int> ) search
+  )!
+
+any_type T begin
+set make_hash (HashInfo<T> (hash_code,eq)) = Hash<T>:
+   let !empty=minus_1, values = [T]:[]
+   then seq_nbrs = [empty,empty]
+   then max_fill() = 2*#seq_nbrs\3
+   then clear() = void: seq_nbrs := [empty,empty]; values:=[]
+   , locate(T x) = (int,bool):
+     let  capacity=#seq_nbrs
+     then code = hash_code(x,capacity)
+     then i=seq_nbrs[code]
+     in while not (i=empty or eq(values[i],x))
+        do if (code+:=1)=capacity then code:=0 fi
+	; i:=seq_nbrs[code]
+        od
+     ; (code,i=empty) { slot in |seq_nbrs|, and whether it is new }
+   then rehash() = void:
+     begin seq_nbrs := for j:2*#seq_nbrs do empty od
+     ;  for v@i in values
+	do let (code,new) = locate(v)
+	in if new then seq_nbrs[code] := i
+	   else error("value ",v.to_string," at positions ",seq_nbrs[code]
+		     ," and ",i," while reshashing??")
+	   fi
+	od
+     end
+   then match(T x) =
+      let (code,new) = locate(x), seq=#values in
+      if new { an empty slot was found, fill it }
+      then values #:= x
+      ;  if seq>=max_fill()
+         then rehash()
+	 ; set(code,new):=locate(x)
+	 ; assert(not new,"Miraculous disappearence in rehashing!")
+	 fi
+      ;  seq_nbrs[code] := seq
+      else seq_nbrs[code]
+      fi
+in ( { (   -> int) size     } @: #values
+   , { (   -> int) capacity } @: #seq_nbrs
+   , { ([T]->    ) fill	    } ([T] list)void: for item in list do match(item) od
+   , { (   ->    ) clear    } clear
+   , { (   -> [T]) list	    } @[T]: values
+   , { (int->T   ) index    } (int i)T: values[i]
+   , { (T  ->int ) match    } match
+   , { (T  ->Maybe<int> ) search   }
+     (T x): let (i,new)=locate(x) in if new then none() else some(seq_nbrs[i]) fi
+   )
+
+set lookup(Hash<T> table) = (T x)int:
+   case table.search(x) | none: -1 | some(i): i esac
+
+end { of abstraction of type |T| }
+
+{ fast polynomial evaluation modulo power of 2, similar to polynomial |eval| }
+set eval_at_mod(int n, int m) = (vec->int):
+    let mask = m-1 then pow=bit_length(mask) in
+    assert(n>1 and m=exp_2(pow)," bad values for eval_at_mod");
+    (vec v) int: let sum=0 in  for e in v ~do sum:=AND(mask,e + n*sum) od; sum
+
+{meant to hash a [vec] to int in [0,d_mod)}
+set hash_code (vec v, int mod) = int: eval_at_mod(8647,mod)(v)
+
+{meant to hash a [mat] to int in [0,mod)}
+set hash_code (mat M, int mod) = int: hash_code(vec:M.##,mod)
+
+{meant to hash a [rat_vec] to int in [0,mod)}
+set hash_code (ratvec v, int mod) = int: let(n,d)=%v in hash_code(n#d,mod)
+
+
+set make_vec_hash () = Hash<vec>: make_hash(hash_code@(vec,int),=@(vec,vec))
+set make_mat_hash () = Hash<mat>: make_hash(hash_code@(mat,int),=@(mat,mat))
+set make_ratvec_hash () = Hash<ratvec>:
+   make_hash(hash_code@(ratvec,int),=@(ratvec,ratvec))
+
+{meant to hash KTypes for single group G}
+set hash_code (KType p, int mod) = int:
+   let (x,lr) = %p in hash_code(vec: (#x)#lr, mod)
+
+{meant to hash Params for single group G}
+set hash_code (Param p, int mod) = int:
+   let (x,lr,nu) = %p then (nun,nud) = %nu
+   in hash_code(vec: (#x) # lr ## (nun#nud), mod)
+
+{meant to hash a [KTypePol]}
+set to_vecs (KTypePol P) = [vec]:
+   for c@p in P do let (a,b)=%c,(x,lr)=%p in [a,b,#x]##lr od
+set hash_code (KTypePol P, int mod) = int: hash_code(vec: to_vecs(P).##, mod)
+
+set make_KType_hash () = Hash<KType>:
+   make_hash(hash_code@(KType,int),=@(KType,KType))
+set make_Param_hash () = Hash<Param>:
+   make_hash(hash_code@(Param,int),=@(Param,Param))
+set make_KTypePol_hash () = Hash<KTypePol>:
+   make_hash(hash_code@(KTypePol,int),=@(KTypePol,KTypePol))
+
+
+set hash_code (RootDatum rd, int mod) = int:
+    (   hash_code(vec: rd.simple_roots.##, mod)
+    + 5*hash_code(vec: rd.simple_coroots.##, mod)
+    ) % mod
+
+set hash_code (InnerClass ic, int mod) = int:
+    (    hash_code(ic.root_datum,mod)
+    + 11*hash_code(vec: ic.distinguished_involution.##,mod)
+    ) % mod
+
+set hash_code (RealForm G, int mod) = int:
+    let (bgvn, bgvd) = %base_grading_vector(G)
+    in ( hash_code(G.inner_class, mod) + hash_code(vec:bgvn # bgvd,mod) ) % mod
+
+set make_RootDatum_hash () = Hash<RootDatum>:
+   make_hash(hash_code@(RootDatum,int),=@(RootDatum,RootDatum))
+set make_InnerClass_hash () = Hash<InnerClass>:
+   make_hash(hash_code@(InnerClass,int),=@(InnerClass,InnerClass))
+set make_RealForm_hash () = Hash<RealForm>:
+   make_hash(hash_code@(RealForm,int),=@(RealForm,RealForm))
+
+
+set_type KGBratvec = (KGBElt x, ratvec lambda)
+
+set = (KGBratvec A, KGBratvec B) = bool:
+    A.x = B.x and A.lambda = B.lambda
+
+set != (KGBratvec A, KGBratvec B) = bool:
+    A.x != B.x or A.lambda != B.lambda
+
+
+set hash_code(KGBratvec p, int mod) = int:
+    (17*#p.x + hash_code(ratvec:p.lambda,mod)) % mod
+
+set make_xlambda_hash () = Hash<KGBratvec>:
+    make_hash(hash_code@(KGBratvec,int),=@(KGBratvec,KGBratvec))
+
+set_type vec_hash        = Hash<vec>
+set_type ratvec_hash 	 = Hash<ratvec>
+set_type mat_hash 	 = Hash<mat>
+set_type RootDatum_hash  = Hash<RootDatum>
+set_type InnerClass_hash = Hash<InnerClass>
+set_type RealForm_hash   = Hash<RealForm>
+set_type xlambda_hash	 = Hash<KGBratvec>
+set_type KType_hash	 = Hash<KType>
+set_type KTypePol_hash 	 = Hash<KTypePol>
+set_type Param_hash 	 = Hash<Param>
+
+set make_RealForm_hash ([RealForm] list, (RealForm,int->int).) = RealForm_hash:
+   let table = make_RealForm_hash() in table.fill(list); table
