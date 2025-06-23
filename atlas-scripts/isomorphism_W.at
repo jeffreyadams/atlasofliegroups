@@ -55,7 +55,7 @@ set induced_bijection_on_classes(
    mat M, [WeylElt] classes, [WeylElt] classes_new) = [int]:
    let rd_new = classes_new[0].root_datum
 in for w in classes
-   do let test = is_conjugate_to(permute(int_mapping(M),w,rd_new))
+   do let test = is_conjugate_in(rd_new)(permute(int_mapping(M),w,rd_new))
    in first(#classes_new,(int i)bool: test(classes_new[i]) )
    od
 

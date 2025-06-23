@@ -30,6 +30,8 @@ set print_lines ([T] a) = void: for x in a do print(x) od
 set prints_lines ([T] a) = void: for x in a do prints(x) od
 
 end
+
+
 set ! = print_lines@T[T] { allow printing any list line-by-line as |list!| }
 
 set == = =@(int,int)! { make comparison of two |[int]| available as |==| }
@@ -94,7 +96,7 @@ set last (int limit,(int->bool) predicate) = int:
   for i:limit ~do if predicate(i) then return i fi od; -1
 
 { with values stored in an array, similar functions can be applied to it }
-any_type T begin
+any_type S,T begin
 
 set all ([T] L,(T->bool) predicate) = bool:
   all(#L,(int i)bool:L[i].predicate)
@@ -106,6 +108,17 @@ set first ([T] L,(T->bool) predicate) = int:
   first(#L,(int i)bool:L[i].predicate)
 set last ([T] L,(T->bool) predicate) = int:
   last(#L,(int i)bool:L[i].predicate)
+
+set get_first (([T],(T->bool)) (a,):args) = Maybe<T>:
+   let i=first(args) in if i>=0 then a[i].some else ().none fi
+set get_last (([T],(T->bool)) (a,):args) = Maybe<T>:
+   let i=last(args) in if i>=0 then a[i].some else ().none fi
+
+set get_first ((T->S) attr, (S,S->bool)eq) = ([T]a, S b) Maybe<T>:
+   get_first (a,(T x)bool: eq(x.attr,b))
+set get_last ((T->S) attr, (S,S->bool)eq) = ([T]a, S b) Maybe<T>:
+   get_last (a,(T x)bool: eq(x.attr,b))
+
 
 { Generic functions on any type with a provided total ordering }
 
@@ -142,14 +155,19 @@ set maxdex ((T,T->bool)leq) = ([T] a) int:
     for i:l-1 from 1 do if not leq(a[i],m) then set (p,m):=(i,a[i]) fi od; p
   fi
 
-set is_member   ((T,T->bool) eq) = ([T] v) (T->bool):
-  (T val)bool: any(#v,(int i)bool: eq(v[i],val))
-set isnt_member ((T,T->bool) eq) = ([T] v) (T->bool):
-  (T val)bool: none(#v,(int i)bool: eq(v[i],val))
+set any_has ((S,T->bool)rel) = ([S]a) (T->bool): let n=#a in (T y) bool:
+   any(n,(int i)bool:rel(a[i],y))
+set none_has ((S,T->bool)rel) = ([S]a) (T->bool): let n=#a in (T y) bool:
+   none(n,(int i)bool:rel(a[i],y))
+set all_have ((S,T->bool)rel) = ([S]a) (T->bool): let n=#a in (T y) bool:
+   all(n,(int i)bool:rel(a[i],y))
 
 set reverse ([T] r) = [T]: for x in r do x ~od
 
 end
+
+set is_member = any_has @ T (T,T->bool) { argument is supposed an '=' relation }
+set isnt_member = none_has @ T (T,T->bool) { same }
 
 { binary search first |i| in [low,high) with |pred(i)|, or |high| if none }
 { of course |pred| is assumed monotonic here: $pred(i)\implies pred(i+1)$ }
@@ -1428,6 +1446,9 @@ set highest_root (RootDatum rd) = vec:
 
 {                               Weyl group				}
 
+set is_member   = ([WeylElt]->(WeylElt->bool)): is_member(=@(WeylElt,WeylElt))
+set isnt_member = ([WeylElt]->(WeylElt->bool)): isnt_member(=@(WeylElt,WeylElt))
+
 set id_W (RootDatum rd) = WeylElt: W_elt(rd,[int]:[])
 set W_gen (RootDatum rd, int s) = W_elt(rd,[s])
 set W_gens (RootDatum rd) = [WeylElt]:
@@ -2390,9 +2411,7 @@ set index_in ([Param] L) = (Param->int): { an efficiency hack: }
 { find index of item in list, or -1 if not found; |first| does this }
 
 any_type S,T begin
-set present_in ([T]a,(T,T->bool)eq) = (T y) bool: any(a,(T x)bool:eq(x,y))
-set in_list((T,T->bool)eq) = ([T]a,T y) bool: any(a,(T x)bool:eq(x,y))
-set any_has((S,T->bool)rel) = ([S]a): (T y) bool: any(a,(S x)bool:rel(x,y))
+set present_in ([T]a,(T,T->bool)eq) = is_member(eq)(a)
 set find ((T,T->bool)eq) = ([T] a, T y) int: first(a,(T x)bool:eq(x,y))
 set find_in ([T] a, (T,T->bool)eq) = (T x) int: first(a,(T y)bool:eq(x,y))
 set delete ([T] a, int i) = [T]: a[:i] ## a[i+1:]
@@ -2404,11 +2423,6 @@ set find = find(=@(vec,vec))
 set find = find(=@(ratvec,ratvec))
 set find = find(=@(KGBElt,KGBElt))
 set find = find(=@(Param,Param))
-
-set in_list = in_list(=@(int,int))
-set in_list = in_list(=@(rat,rat))
-set in_list = in_list(=@(KGBElt,KGBElt))
-set in_list = in_list(=@(Param,Param))
 
 set delete (vec v, int i) = vec: v[:i] ## v[i+1:]
 set delete (mat M, int j) = mat: M[:j] ## M[j+1:]

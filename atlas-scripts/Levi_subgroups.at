@@ -10,11 +10,6 @@
   It regroups things that used to be in W_classes.at and conjugate.at
 }
 
-set is_Levi (RootDatum rd, [int] simples) = bool:
-   let r=#simples in
-   matrix((r,r),(int i,int j)int:coroot(rd,simples[i])*root(rd,simples[j])).
-   is_Cartan_matrix
-
 { We try as much as possible to work with Levi subgroups without building a
   complete |RootDatum| for them all the time, since that is somewhat costly. }
 
@@ -30,7 +25,7 @@ set is_Levi (RootDatum rd, [int] simples) = bool:
   and |Levi_datum| builds the root datum for the subsystem, given the predicate.
 }
 
-set_type LeviInfo = (RootDatum,(int->bool))
+set_type LeviInfo = (RootDatum rd,(int->bool) select)
 
 { select posroots indices for (non standard) Levi, given by its simple system }
 set Levi_info (RootDatum rd, [int] simples) = LeviInfo:
@@ -56,6 +51,15 @@ in while candidates>0
      let rho2_L = two_rho(Levi_info)
      in list(rd.nr_of_posroots,(int i): select(i) and coroot(rd,i)*rho2_L=2)
 }
+
+set is_Levi ((RootDatum,[int]) (rd,simples):args) = bool:
+   let r=#simples in
+   is_Cartan_matrix(
+      matrix((r,r),(int i,int j)int: coroot(rd,simples[i])*root(rd,simples[j]))
+   ) and { no roots in the span of |simples| is orthogonal to their $2\rho$ }
+(  let ind = posroot_indices(Levi_info(args)), rho2 = two_rho(args) in
+   none(ind,(int i)bool: coroot(rd,i)*rho2=0)
+)
 
 { a root datum can be formed from |Levi_info|, or simple (co)root index list }
 set Levi_datum = sub_datum@(RootDatum,(int->bool)) { defined in basic.at }
@@ -185,11 +189,11 @@ in while { loop with |do| near end }
 { in a |Std_Levi_orbit|, |Levi_repr| is an encoded standard Levi, as are first
   members |L| of |others|; for |(L,w) in others| one has |L=w*Levi_repr|
 }
-set_type Other_entry = (int L, WeylElt w)
-set_type Std_Levi_orbit = (vec rho2, int Levi_repr, [Other_entry] others)
-set_type Std_Levi_table = [[Std_Levi_orbit]] { list of lists, grouped by |k| }
+set_type other_entry = (int L, WeylElt w)
+set_type StdLeviOrbit = (vec rho2, int Levi_repr, [other_entry] others)
+set_type StdLeviTable = [[StdLeviOrbit]] { list of lists, grouped by |k| }
 
-set show(Std_Levi_table t) = [vec,[int],[[int],WeylElt]]:
+set show(StdLeviTable t) = [vec,[int],[[int],WeylElt]]:
   for group@i in t
   do let dec = combination_decode(i)
   in for (r,L,o) in group
@@ -211,15 +215,16 @@ set show(Std_Levi_table t) = [vec,[int],[[int],WeylElt]]:
 }
 
 { group together conjugate standard Levis, with witness conjugating from first }
-set classify_standard_Levis (RootDatum rd) = Std_Levi_table:
-   let classify_group ([[int]] list) = [Std_Levi_orbit]:
+set classify_standard_Levis (RootDatum rd) = StdLeviTable:
+   let classify_group ([[int]] list) = [StdLeviOrbit]: { sorted by |rho2| }
       for class in [[ ([int],(WeylElt,vec)) ]]:
           list.
           (map( ([int]Levi):(Levi,from_dominant(rd,two_rho(rd,Levi))) )).
 	  (partition_by( ([int].,(WeylElt.,vec rho2)) vec: rho2
 	               , rlex_leq@(vec,vec)))
       do let (Levi0,(w0,rho2_dom))=class[0]
-	 then orbit = [orbit_entry]: rho_stabiliser_orbit(rd,Levi0) { sorted }
+	 then orbit = [orbit_entry]: { sorted by their |L_int| componenta }
+	    rho_stabiliser_orbit(rd,Levi0)
 	 then w_of(int L) = WeylElt:
 	    case binary_lookup_by(L_int,<=@(int,int)) (L,orbit)
 	    | none: error("Levi ",combination_decode(#Levi0)(L)
@@ -227,16 +232,21 @@ set classify_standard_Levis (RootDatum rd) = Std_Levi_table:
 	    | some(pos): orbit[pos].w
 	    esac
       in ( rho2_dom,combination_encode(Levi0)
-	 , [Other_entry]:
+	 , [other_entry]: { not sorted }
 	   for (Levi,(w1,)) in class[1:]
 	   do let Levi_dom = act_up(/w1,Levi).combination_encode in
-	      Other_entry: ( Levi.combination_encode, w1*w_of(Levi_dom) )
+	      other_entry: ( Levi.combination_encode, w1*w_of(Levi_dom) )
 	   od
 	 )
       od
    ,  r = rd.semisimple_rank
    in for k:r+1 do classify_group(choices_from(#r,k)) od
 
+set_type StdLeviImage =
+   (WeylElt actor { conjugator from |image| back to original |w| }
+  , [int]   std_Levi  { simples for a standard Levi }
+  )
+set_type StdLeviFinder = ([int]->StdLeviImage)
 
 {
   From $w$ we find the associated non-standard Levi subsystem, the minimal one
@@ -250,11 +260,11 @@ set classify_standard_Levis (RootDatum rd) = Std_Levi_table:
   under the Weyl group of just the Levi itself), but using it woudtl be quite
   cumbersome. However the function |two_rho@(rd,[int])| from basic/at is defined
   in a positivity-agnostic way, so we can use that and proceed very similarly to
-  how we looked up standard Levis (but using already computed |Std_Levi_table|).
+  how we looked up standard Levis (but using already computed |StdLeviTable|).
 }
 
 { For looking up arbitrary Levi subgroups, we need a slightly different table
-  than |Std_Levi_table|: a list of one |orbit_data| for each |rho2_dom| value
+  than |StdLeviTable|: a list of one |orbit_data| for each |rho2_dom| value
 }
 
 set_type rho_data = ([int] Levi, vec rho2_dom, orbit_data orbit)
@@ -272,12 +282,12 @@ in for k:r+1
       od
    od
 
-{ given |Std_Levi_table|: tabled representative of any Levi, and conjugator }
+{ given |StdLeviTable|: tabled representative of any Levi, and conjugator }
 
-set Levi_lookup (RootDatum rd, [[ rho_data ]] table) =
-      ([int] Levi) (WeylElt, [int]): { conjugator from, elected standard Levi }
-   let (w0,rho2_dom) = from_dominant(rd,two_rho(rd,Levi))
-in case binary_search_get(table[#Levi], rho2_dom@rho_data, rlex_leq@(vec,vec))
+set Levi_lookup (RootDatum rd, [[ rho_data ]] table) = StdLeviFinder:
+   ([int] Levi): let (w0,rho2_dom) = from_dominant(rd,two_rho(rd,Levi)) in
+   StdLeviImage:
+   case binary_search_get(table[#Levi], rho2_dom@rho_data, rlex_leq@(vec,vec))
                          (rho2_dom)
    | none: error("No Levi subgroups with 2rho = ",rho2_dom," are known!")
    | some(standard_Levi,,data):
@@ -386,39 +396,44 @@ set chamber_max_system (RootDatum rd, [int] sys) = (WeylElt,[int]):
    (W_elt(rd,for pos in positions do perm[pos] od),perm)
 
 { for non-standard Levi: some conjugate standard Levi, and conjugator from it }
-set from_standard_Levi ((RootDatum,[int]) (rd,Levi):arg) =
-      (WeylElt, [int]): { chamber, unsorted standard Levi }
+set from_standard_Levi ((RootDatum,[int]) (rd,Levi):arg) = StdLeviImage:
+   { the |std_Levi| component of the result is not sorted }
    let (chamber,perm) = chamber_max_system(rd,maximise(arg)) in
    (chamber,perm[:#Levi] { select start of simple indices list })
 
-{ given |Std_Levi_table|: tabled representative of a standard Levi, conjugator }
+{ given |StdLeviTable|: tabled representative of a standard Levi, conjugator }
 { does linear search for |rho2| in the table, then again in its orbit }
-set standard_Levi_lookup (RootDatum rd,Std_Levi_table full_table) =
-      ([int]->WeylElt, [int]):
-([int] unsorted_standard_Levi) (WeylElt, [int]): { conjugator, Levi class repr }
+set standard_Levi_lookup (RootDatum rd,StdLeviTable full_table) =
+   StdLeviFinder:
+   ([int] unsorted_standard_Levi):
    let rho2 = dominant(rd,two_rho(rd,unsorted_standard_Levi))
    , Levi_code=unsorted_standard_Levi.sort.combination_encode
-   , table = [Std_Levi_orbit]: full_table[#unsorted_standard_Levi]
+   , table = [StdLeviOrbit]: { list is sorted by their |rho2| components }
+       full_table[#unsorted_standard_Levi]
    , decode = combination_decode(#unsorted_standard_Levi)
-   then (,Levi_repr_code,others) =
-      table[first(#table,(int i)bool: table[i].rho2=rho2)]
-in if Levi_code=Levi_repr_code
-   then (id_W(rd),decode(Levi_repr_code))
-   else
-      let conj =
-	  others[first(#others,(int i)bool: others[i].L=Levi_code)].w
-      in (conj , decode(Levi_repr_code))
+   then orbit = StdLeviOrbit:
+      case binary_search_get(table,rho2@StdLeviOrbit,rlex_leq@(vec,vec))(rho2)
+      | some(orbit): orbit | none: error("No orbit matches dominant ",rho2)
+      esac
+   in StdLeviImage:
+   if Levi_code=orbit.Levi_repr
+   then (id_W(rd),decode(Levi_code))
+   else let conj =
+      case get_last(L@other_entry,=@(int,int))(orbit.others,Levi_code)
+      | none: error("No other entry for ",rho2," in table matches ",Levi_code)
+      | some(entry): entry.w
+      esac
+   in (conj , decode(orbit.Levi_repr))
    fi
 
-{ given |Std_Levi_table|: tabled representative of any Levi, and conjugator }
-set Levi_lookup (RootDatum rd,Std_Levi_table table) = ([int]->WeylElt,[int]):
-   let lookup = standard_Levi_lookup(rd,table) in
-([int] Levi) (WeylElt, [int]): { conjugator from, elected standard Levi }
-   let (chamber,unsorted_standard_Levi) = from_standard_Levi(rd,Levi)
-   then (conj,Levi_repr) = lookup(unsorted_standard_Levi)
-   in (chamber*conj,Levi_repr)
+{ given |StdLeviTable|: tabled representative of any Levi, and conjugator }
+set Levi_lookup (RootDatum rd,StdLeviTable table) = StdLeviFinder:
+   let lookup = StdLeviFinder: standard_Levi_lookup(rd,table) in
+   ([int] Levi) StdLeviImage:
+   let (w,unsorted_standard_Levi) = from_standard_Levi(rd,Levi)
+   then (conj,Levi) = StdLeviImage: lookup(unsorted_standard_Levi)
+   in (w*conj,Levi) { keep the tabulated Levi found, adapt the conjugator }
 
 
 forget orbit_data
-forget Other_entry
-forget Std_Levi_orbit
+forget other_entry

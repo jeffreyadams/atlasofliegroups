@@ -182,27 +182,22 @@ SO(8) <- SO(8)
 
 { these functions are slow, by calling |classify_standard_Levis| each time }
 set find_conjugate([WeylElt] S,WeylElt w) = int:
-  let match = is_conjugate_to_He(classify_standard_Levis(root_datum(w)))(w)
-  in first(for y in S do match(y) od)
+   first(S,(WeylElt->bool): is_conjugate_in(root_datum(w))(w))
 
 set find_all_conjugate([WeylElt] S,WeylElt w)=[int]:
-  let match = is_conjugate_to_He(classify_standard_Levis(root_datum(w)))(w)
-  in for y@i in S do if match(y) then [i] else [] fi od.##
+  let test = (WeylElt->bool): is_conjugate_in(root_datum(w))(w)
+  in for y@i in S if test(y) do i fi od
 
 set group_by_conjugacy([WeylElt] S)=[[WeylElt]]:
-  if =#S then []
-  else
-     let is_conjugate = (WeylElt->(WeylElt->bool)):
-         is_conjugate_to_He(classify_standard_Levis(root_datum(S[0])))
-  , rv=[[WeylElt]]:[]
-  in
-     for w in S
-     do let match = (WeylElt->bool): is_conjugate(w)
-        then i = first(for list in rv do match(list[0]) od)
-     in if i.< then rv#:=[w] else rv[i]#:=w fi
-     od
-  ;  rv
-  fi
+(  let rv=[[WeylElt]]:[], reps=[WeylElt]:[]
+in for w in S
+   do let i = find_conjugate(reps,w) in
+      if i<0 then rv#:=[w]; reps #:= w
+      else rv[i] #:= w
+      fi
+   od
+;  rv
+)
 
 {a few simple output routines}
 
@@ -709,17 +704,12 @@ set normalizer_reports()=normalizer_reports(default)
 {the following function could be done more efficiently using a |WeylClassTable| }
 {reduce list of W elements to representatives of distinct conjugacy classes}
 set filter_by_class ([WeylElt] list) = [WeylElt]:
-   if =#list then []
-   else
-     let is_conjugate = (WeylElt->(WeylElt->bool)):
-         is_conjugate_to_He(classify_standard_Levis(root_datum(list[0])))
-     , classes=[WeylElt]:[]
-   in for elt in list
-      do let match = is_conjugate(elt) in
-         if none(for w in classes do match(w) od) then classes#:=elt fi
-      od
-   ; classes
-   fi
+(  let reps = [WeylElt]:[]
+in for w in list
+   do if find_conjugate(reps,w)<0 then reps #:= w fi
+   od
+;  reps
+)
 
 
 {embed Coxeter element of W(equal rank subgroup)}

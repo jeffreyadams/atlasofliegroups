@@ -1712,12 +1712,7 @@ inline type_expr get_ftype(const func_type& ftp)
 inline bool functype_absorb (type& tp, const overload_data& entry)
 { type model = type::wrap(get_ftype(entry.f_tp()),0,tp.floor());
     // proper shift facilitates |unify|
-  if (tp.unify(model))
-  {@;
-    tp.wring_out();
-    return true;
-  }
-  return false;
+  return tp.unify(model);
 }
 
 @ In the case where there is more than one variant to choose from, we filter
@@ -1744,6 +1739,7 @@ should instead record |tp.polymorphics()| initially, and then use
         @< Throw an error reporting ambiguous overloaded symbol usage @>
       o << main_hash_table->name_of(id) << '@@' << tp.arg_type();
       result.reset(new capture_expression(variant.value(),o.str()));
+      o.str("");
       prev_match = &variant; // record for purpose of possible error message
     }
     tp.clear(); // reset initial type
@@ -1758,12 +1754,12 @@ overloaded function call, but here we report the full function types.
 @< Throw an error reporting ambiguous overloaded symbol usage @>=
 {
   tp.clear(); // forget the type assignment matching current variant
-  o << "Ambiguous overloaded symbol " << main_hash_table->name_of(id)
-    <<  ", context type " << tp
-  @|<< " matches both (" << prev_match->f_tp().arg_type
+  o << "Ambiguous overloaded symbol '" << main_hash_table->name_of(id)
+    <<  "': its context type " << tp
+  @|<< " matches\n  both (" << prev_match->f_tp().arg_type
   @|<< "->" << prev_match->f_tp().result_type
   @|<< ") and (" << variant.f_tp().arg_type
-  @|<< "->" << variant.f_tp().result_type << ')';
+  @|<< "->" << variant.f_tp().result_type << ") in overload table";
   throw expr_error(e,o.str());
 }
 

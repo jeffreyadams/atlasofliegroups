@@ -61,6 +61,9 @@ set reverse_sort = sort(>=@(string,string))
 set sort_u = sort_u(<=@(int,int))
 set sort_u = sort_u(<=@(rat,rat))
 set sort_u = sort_u(<=@(string,string))
+set merge_u = merge_u(<=@(int,int))
+set merge_u = merge_u(<=@(rat,rat))
+set merge_u = merge_u(<=@(string,string))
 
 { the following helps stable-sorting of anything according to a statistic }
 
@@ -80,6 +83,10 @@ set sort_by ((T->S)f,(S,S->bool)leq) = ([T]->[T]):
    sort((T x,T y)bool:leq(f(x),f(y)))
 set merge_by ((T->S)f,(S,S->bool)leq) = ([T],[T]->[T]):
    merge((T x,T y)bool:leq(f(x),f(y)))
+set sort_u_by ((T->S)f,(S,S->bool)leq) = ([T]->[T]):
+   sort_u((T x,T y)bool:leq(f(x),f(y)))
+set merge_u_by ((T->S)f,(S,S->bool)leq) = ([T],[T]->[T]):
+   merge_u((T x,T y)bool:leq(f(x),f(y)))
 { when sorting by integer or rational value, default to increasing sort }
 set sort_by ((T->int) f) = ([T]->[T]): sort_by(f,<=@(int,int))
 set sort_by ((T->rat) f) = ([T]->[T]): sort_by(f,<=@(rat,rat))

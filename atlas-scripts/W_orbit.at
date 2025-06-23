@@ -40,7 +40,7 @@ in while
    in {while}#new_level>0
    do stack #:=
       { sort |new_level| by weight components (lexicogr.), removing duplicates }
-      sort_u(((vec v,[int].),(vec w,[int].))bool: rlex_leq(v,w))(new_level)
+      sort_u_by ((vec v,[int].)vec: v,rlex_leq@(vec,vec)) (new_level)
    od
 ;  ##stack { concatenate generated levels, without merging the (sorted) lists }
 )
@@ -80,8 +80,7 @@ in while
    in {while} #new_level>0
    do stack #:=
       { sort |new_level| by weight components (lexicogr.), removing duplicates }
-      sort_u (((vec v,[int].,mat.),(vec w,[int].,mat.))bool: rlex_leq(v,w))
-      (new_level)
+      sort_u_by ((vec v,[int].,mat.)vec: v,rlex_leq@(vec,vec)) (new_level)
    od
 ;  ##stack { concatenate generated levels, without merging the (sorted) lists }
 )
