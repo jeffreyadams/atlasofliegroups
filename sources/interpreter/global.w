@@ -5443,7 +5443,7 @@ void linear_solve_wrapper(eval_level l)
   const auto m = M->val.n_columns();
   BitMap pivots=matreduc::column_echelon(M->val,column->val,flip);
   try
-  { static id_type affine_name=main_hash_table->match_literal("affine_subspace");
+  { static id_type affine_name=main_hash_table->match_literal("solution");
     const auto k = M->val.n_columns(); // number of pivots
     arithmetic::big_int factor;
     int_Vector ini_sol = matreduc::echelon_solve(M->val,pivots,b->val,factor);
