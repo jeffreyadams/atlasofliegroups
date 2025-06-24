@@ -3080,14 +3080,16 @@ set DiracBestTest(int steps, Param p, int HT, KTypePol Kchar) = bool:
     if Dirac_pro_flag then return DiracBestTest_pro(steps, p, HT, Kchar) fi;
     if not  all(for q in monomials(finalize(p)) do is_hermitian(q) od) then return false fi;
     let mu = LKTs(p)[0], G=p.real_form {should test all LKTs!}
-    then (taus,hts,bds) = best_Dirac_bound_cap(mu,steps)
-    then j0 = first(for h in hts do h > HT od)
-    then () = if j0<0 then j0:=#hts fi
+    then (taus,hts,bds) = truncate(best_Dirac_bound_cap(mu,steps),HT) {now all hts are <= HT}
+    {then () = prints(taus," ",hts," ",bds)}
+    {then j0 = first(for h in hts do h > HT od)
+    then () = if j0<0 then j0:=#hts fi}
     {now we only look up at [:j0]}
     then Q = {Dirac_easy_hash.invt_form(G)} invariant_form(G)
     then gamma = p.infinitesimal_character
     then psize = Q(gamma,gamma)
-    then j1 = first(for b in bds[:j0] do b<psize od)
+    then j1 = first(for b in bds do b<psize od)
+    {then () = prints("j1 = ",j1)}
     then ans = bool:  if j1 < 0
        then true {none of the bds catches p with hts bdded by HT}
        else let j2 = first(for tau@j in taus[j1:] {these taus would exclude p}
@@ -3096,7 +3098,8 @@ set DiracBestTest(int steps, Param p, int HT, KTypePol Kchar) = bool:
 			       else branch_std(Kchar,hts[j1+j])[tau].!=
 			       fi
 			    od)
-	    in j2.< {if the bound at j0+j corresponds to a tau
+	    in {prints("j2 = ",j2,", bad K_type = ",taus[j1 + j2]);}
+	       j2.< {if the bound at j0+j corresponds to a tau
 	       	     actually appearing in p, then get false}
        fi
     then () = if not ans then DBTcount +:= 1 fi
@@ -3110,7 +3113,8 @@ set DiracBestTest(int steps, Param p, KTypePol Kchar) = bool:
     then Q = {Dirac_easy_hash.invt_form(G)} invariant_form(G)
     then gamma = p.infinitesimal_character
     then psize = Q(gamma,gamma)
-    then j1 = first(for b in bds do b<psize od)
+    then j1 = first(for b in bds do b < psize od)
+    {then () = prints("j1 = ",j1)}
     then ans = bool:  if j1 < 0
        then true {none of the bds catches p with hts bdded by HT}
        else let j2 = first(for tau@j in taus[j1:] {these taus would exclude p}
@@ -3119,7 +3123,8 @@ set DiracBestTest(int steps, Param p, KTypePol Kchar) = bool:
 			       else branch_std(Kchar,hts[j1+j])[tau].!=
 			       fi
 			    od)
-	    in j2.< {if the bound at j0+j corresponds to a tau
+	    in {prints("j2 = ",j2,", bad K_type = ",taus[j1 + j2]);}
+	    j2.< {if the bound at j1+j corresponds to a tau
 	       	     actually appearing in p, then get false}
        fi
     then () = if not ans then DBTcount +:= 1 fi
@@ -3874,6 +3879,7 @@ set localFD_KHash_01 (KGBElt x, ratvec lambda, LocalVertexData Lvd, int HT, KTyp
 	      then bestbd = min(for (,hs,bs) in best_bounds
 	      	   	    	do bs~[0]
 				od)
+	     {then () = prints("best_bounds = ",best_bounds)}
 	     then index = first(for v in Lvd.list
 	     	  	  	do @bool: QG(v,v) > bestbd
 				od)
@@ -3905,10 +3911,13 @@ set localFD_KHash_01 (KGBElt x, ratvec lambda, LocalVertexData Lvd, int HT, KTyp
 	       		      [v##[m,#monomials(P)]]
 			 else  {prints("lose param at p0 = ",p0, ", vert = ",v[0], " tests = ",
 			       not temp_Dirac_best_flag," ", (Q(gamma,gamma) <= DiracBestBD)," ",
-			       DiracBestTest(p0,HT,KCF));}
+			       DiracBestTest(p0,HT));}
 	     				    []
 			 fi
 		   od.##
+    {then () = prints("answer0 = ",answer0)}
+    {then candps = for v in answer0 do parameter(x,lambda,Lvd.list[v[0]]) od}
+    {then () = prints("down to ",count(for p in candps do is_unitary(Finalize(p)) od)," unitary verts")}
     then lookup0D = index_in(for v in answer0
     	 	    	     do v[:1]
 			     od)
