@@ -3,7 +3,9 @@
 
 set_type One_of<S,T> = ( S fail | T succeed ) !
 set_type Maybe<T>    = ( void none | T some) !
-set_type linear_solution = Maybe<(vec,int,mat)> { for built-in |linear_solve| }
+
+set_type AffineSubspace = (vec base_point, int denom, mat tangent_basis)
+set_type LinearSolution = ( void empty_set | AffineSubspace solution)
 
 set where() = void:
    for line@i in back_trace
@@ -1031,9 +1033,9 @@ set adjoint (LieType type) = RootDatum:
   adjoint(type,false) { by default prefer roots here }
 
 set simply_connected (RootDatum rd) = RootDatum:
-  root_datum(^Cartan_matrix(rd),id_mat(semisimple_rank(rd)),rd.prefers_coroots)
+  root_datum(^Cartan_matrix(rd),id_mat(semisimple_rank(rd)),true)
 set adjoint (RootDatum rd) = RootDatum: { change weight basis to simple roots }
-  root_datum(id_mat(semisimple_rank(rd)),Cartan_matrix(rd),rd.prefers_coroots)
+  root_datum(id_mat(semisimple_rank(rd)),Cartan_matrix(rd),false)
 
 { in |sub_datum| the (co)roots at indices |S| must give a valid Cartan matrix,
   but they need not be positive, and will be taken in the order specified.

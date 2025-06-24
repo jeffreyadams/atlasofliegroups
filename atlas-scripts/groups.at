@@ -14,22 +14,29 @@ set complexification = complex@RootDatum
 { type A root data }
 
 set GL_roots (int n) = mat:
-  if n>0 then let I=id_mat(n) in I[:1~]-I[1:]
-  else error("Positive index required")
-  fi
+  case n { distincguish by sign }
+  then error("Non negative index required")
+  in id_mat(0) { extra empty set of null roots, making GL(0) trivial of rank 0 }
+  else let I=id_mat(n) in I[:1~]-I[1:]
+  esac
 
 set SL_coroots (int n) = mat: { equals |GL_roots(n)| without its final row }
-  if n>1 then matrix((n-1,n-1),(int i, int j) int: #(i=j)-#(i=j+1))
-  elif n=1 then null(0,0)
-  else error("Positive index required")
+  if n<=0
+  then error("Positive index required")
+  else { the same as GL_roots(n), without the final row }
+     matrix((n-1,n-1),(int i, int j) int: #(i=j)-#(i=j+1))
   fi
 
-set SL_roots (int n) = mat: { like |SL_coroots(n)|, but add 1 in final column }
-  matrix((n-1,n-1),(int i, int j) int: #(i=j)-#(i=j+1)+#(j=n-2))
+set SL_roots (int n) = mat:
+  if n<=0
+  then error("Positive index required")
+  else { like |SL_coroots(n)|, but add 1 in final column }
+     matrix((n-1,n-1),(int i, int j) int: #(i=j)-#(i=j+1)+#(j=n-2))
+  fi
 
-set GL (int n) = RootDatum: let r=GL_roots(n) in root_datum(r,r)
-set SL (int n) = RootDatum: root_datum(SL_roots(n),SL_coroots(n))
-set PSL (int n)= RootDatum: root_datum(SL_coroots(n),SL_roots(n))
+set GL (int n) = RootDatum: let r=GL_roots(n) in root_datum(r,r,false)
+set SL (int n) = RootDatum: root_datum(SL_roots(n),SL_coroots(n),false)
+set PSL (int n)= RootDatum: root_datum(SL_coroots(n),SL_roots(n),false)
 
 { roots and coroots in nice coordinates for roots in types B,C,D }
 
@@ -50,25 +57,25 @@ set type_D_roots (int n) = mat:
 
 set Sp (int n) = RootDatum:
   let (m,r) = n\%2 then ()= if r=1 then error("Odd symplectic datum") fi
-  in root_datum(type_C_roots(m),type_B_roots(m))
+  in root_datum(type_C_roots(m),type_B_roots(m),true)
 
 set PSp (int n) = RootDatum: { same as adjoint(Sp(n)) }
   let (m,r) = n\%2 then ()= if r=1 then error("Odd symplectic datum") fi
-  in root_datum(id_mat(m),^type_C_roots(m)*type_B_roots(m))
+  in root_datum(id_mat(m),^type_C_roots(m)*type_B_roots(m),false)
 
 set GSp (int n) = RootDatum:
   let (m,r) = n\%2 then ()= if r=1 then error("Odd symplectic datum") fi
   , type = LieType:
      if m>1 then "C" elif m=1 then "A" else "T" fi+int_format(m)+".T1"
-  in root_datum(type,quotient_basis(type,[[1/2,1/2]]))
+  in root_datum(type,quotient_basis(type,[[1/2,1/2]]),false)
 
 { type B/D root data }
 
 { use the standard basis for SO(n) }
 set SO (int n)= RootDatum:
   let (m,r)=n\%2 in
-  if r=1 then root_datum(type_B_roots(m),type_C_roots(m))
-  else let roots=type_D_roots(m) in root_datum(roots,roots)
+  if r=1 then root_datum(type_B_roots(m),type_C_roots(m),false)
+  else let roots=type_D_roots(m) in root_datum(roots,roots,false)
   fi
 
 set (Spin,PSO) { two functions that share a local definition } =
