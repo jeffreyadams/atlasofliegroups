@@ -2412,7 +2412,7 @@ set DiracBestTest(int steps, Param p) = bool:
 
 {here p must be irr for branch_irr to work}
 set DiracBestTest(Param p, int HT) = bool:
-    DiracBestTest(Dirac_best_steps, p, K_type_pol(character_formula_to_height(p,HT)))
+    DiracBestTest(Dirac_best_steps, p, HT, K_type_pol(character_formula_to_height(p,HT)))
 
 set DiracBestTest(Param p) = bool:
     DiracBestTest(Dirac_best_steps, p, K_type_pol(character_formula(p)))
