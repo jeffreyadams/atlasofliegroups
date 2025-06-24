@@ -4,6 +4,7 @@
 <test_braid.at
 <L_hom.at
 
+{we are off by a transpose here?}
 {\phi: G1->G2, WLOG T1->T2
  M is matrix of the dual map X^*(T2)->X^*(T1)
  let R1,R2 = roots, C1,C2 = coroots
@@ -15,11 +16,28 @@
 
 {---------------mapping W1->W2--------------}
 
-set map_root(RootDatum G1,RootDatum G2,mat M,vec alpha_1)=vec:
-root(G2,^M*coroot(G1,alpha_1))
+set map_root(RootDatum G1,RootDatum G2,mat M,vec alpha_1)=[vec]:
+{root(G2,^M*coroot(G1,alpha_1))}
+{root(G2,M*coroot(G1,alpha_1))
+{see note above: off by transpose}}
+{also: alpha_1 -> sum of roots}
+##for beta in G2.roots do if  ^M*beta=alpha_1  then [beta] else [] fi od 
 
+{map_roots(G1,G2,M,alpha_1)=a set of 1 or two roots for G2
+ if this=[beta] then return s_beta for G2
+ if this=[beta,gamma] then
+   if <beta,gamma^v>=0 then return s_beta*s_gamma
+   else return s_beta*s_gamma_s_beta (=s_beta*s_gamma*s_beta)}
 set map_reflection(RootDatum G1,RootDatum G2,mat M,vec alpha_1)=WeylElt:
-W_elt(G2,reflection(G2,map_root(G1,G2,M,alpha_1)))
+let roots=map_root(G1,G2,M,alpha_1) in
+ if #roots=1 then W_elt(G2,reflection(G2,roots[0]))
+ else {#roots=2}
+  if is_orthogonal(G2,roots[0],roots[1]) then
+      W_elt(G2,reflection(G2,roots[0]))*W_elt(G2,reflection(G2,roots[1]))
+  else
+      W_elt(G2,reflection(G2,roots[0]))*W_elt(G2,reflection(G2,roots[1]))*W_elt(G2,reflection(G2,roots[0]))
+  fi
+ fi
 
 set map_simple_reflection(RootDatum G1,RootDatum G2,mat M,int i)=WeylElt:
 map_reflection(G1,G2,M,G1.simple_roots[i])
@@ -79,7 +97,15 @@ test_tits_braid(G1,G2,M)
  G2 is the basic group, we use its pinning, and derive a pinning for G1}
 set map_tits_simple_reflection(RootDatum G1,RootDatum G2,mat M,orientation epsilon2,vec alpha1)=Tits_elt:
 assert(is_simple_root(G1,alpha1),"alpha1 is not simple for G1");
-tau(G2,epsilon2,map_root(G1,G2,M,alpha1))
+let roots_G2=map_root(G1,G2,M,alpha1) in
+ if #roots_G2=1 then tau(G2,epsilon2,roots_G2[0])
+ else
+  if is_orthogonal(G2,roots_G2[0],roots_G2[1])
+   then tau(G2,epsilon2,roots_G2[0])*tau(G2,epsilon2,roots_G2[1])
+ else
+   tau(G2,epsilon2,roots_G2[0])*tau(G2,epsilon2,roots_G2[1])*tau(G2,epsilon2,roots_G2[0])
+  fi
+ fi
 
 {i is the index in G1 of a simple root: alpha1 =G1.simple_roots[i] (might not be simple for G2)}
 set map_tits_simple_reflection(RootDatum G1,RootDatum G2,mat M,orientation epsilon2,int index1)=Tits_elt:
@@ -107,12 +133,18 @@ map_tits_element(G1,G2,M,orientation_function(G2),matrix1)
 set map_tits_element_simple(RootDatum G1,RootDatum G2,mat M,orientation epsilon2,Tits_elt sigma1)=Tits_elt:
 let w=w(sigma1) in 
 assert(length(w(sigma1))=1,"not the tits element of a simple reflection");
-tits_element(left(sigma1.torus_part*M,map_tits_simple_reflection(G1,G2,M,epsilon2,w.word[0])))
+{tits_element(left(sigma1.torus_part*M,map_tits_simple_reflection(G1,G2,M,epsilon2,w.word[0])))}
+{note: transpose here:}
+tits_element(left(sigma1.torus_part*^M,map_tits_simple_reflection(G1,G2,M,epsilon2,w.word[0])))
 
 set map_tits_element(RootDatum G1,RootDatum G2,mat M,orientation epsilon2,Tits_elt sigma1)=Tits_elt:
 if length(sigma1.w)=0 then
- left(sigma1.torus_part*M,tits_identity(G2))
+let ()=prints("length(sigma1=0") in 
+{transpose error? left(sigma1.torus_part*M,tits_identity(G2))}
+left(M*sigma1.torus_part,tits_identity(G2))
 else
+let ()=prints("length(sigma1\ne 0") in
+let ()=prints("w=",sigma1.w) in
  let product=simple_expression(sigma1) in   {sigma1=product of tits simple reflections}
  product(G2,for sigma@j in product do map_tits_element_simple(G1,G2,M,epsilon2,sigma) od)
 fi
@@ -189,8 +221,10 @@ We assume: M is right-invertible over Q
 this should not be necessary: some weaker condition involving just the derived group should suffice}
 
 {delta_1 -> w*delta_2}
-set map_distinguished_involution(InnerClass ic1,InnerClass ic2,mat M)=WeylElt:
-let N=right_inverse(M/1)  {right inverse of M as a rational matrix} then
+set map_distinguished_involution_old(InnerClass ic1,InnerClass ic2,mat M)=WeylElt:
+let R=ic2.simple_roots then
+MR=M*R then
+N=right_inverse(MR/1)  {right inverse of MR as a rational matrix} then
 lift_delta=M*ic1.distinguished_involution*N  {this is a rational matrix} then
 (,,d)=lift_delta  {denominator, should be 1} then 
 ()=assert(d=1, "M is not right invertible/Q") then
@@ -198,9 +232,14 @@ lift_delta=M*ic1.distinguished_involution*N  {this is a rational matrix} then
 w_action = ratmat_as_mat(lift_delta)*inverse(ic2.distinguished_involution) {this should be in the Weyl group} in 
 W_elt(ic2,w_action)
 
+set map_distinguished_involution(InnerClass ic1,InnerClass ic2,mat M)=WeylElt:id_W(ic2)
+
 {to lift w1*delta1: lift w1 as before (one root at a time) and then tack on delta1}
 set map_twisted(InnerClass ic1,InnerClass ic2,mat M,WeylElt w)=WeylElt:
 map(ic1,ic2,M,w)*map_distinguished_involution(ic1,ic2,M)
+
+
+
 
 { f: W1->W2 satisfying: w*delta1 -> f(w)*delta2}
 set map_W_twisted(InnerClass ic1,InnerClass ic2,mat M)=(WeylElt -> WeylElt):(WeylElt w_1):map_twisted(ic1,ic2,M,w_1)
@@ -220,10 +259,11 @@ given H,G,M as above, H,G have given inner classes, i.e. delta_H,delta_G
 
 set map_tits_element_twisted(InnerClass ic1,InnerClass ic2,mat M,Tits_elt sigma1)=Tits_elt:
 let sigma1_W=sigma1*tits_delta(ic1)   {Tits element of an element of W( G1)} then
-{()=prints("sigma1_W: ", sigma1_W) then }
+()=prints("sigma1_W(1): ", sigma1_W) then
+()=prints("M=",M) then 
 sigma2_W=map_tits_element(ic1,ic2,M,sigma1_W)  {Tits element of an element of W(G2)} then
 {sigma2_W=map_tits_element(ic1,ic2,M,sigma1_W.*distinguished_involution(ic2))  {Tits element of an element of W(G2)} then}
-{()=prints("sigma2_W: ", sigma2_W) then}
+()=prints("sigma2_W(1): ", sigma2_W) then
 w_delta2=map_distinguished_involution(ic1,ic2,M)  {w2\in W(G2):  w2*delta2 is lift of delta1} then
 sigma_delta2=tits_element(ic2,w_delta2) then
 sigma2=sigma2_W*sigma_delta2 in

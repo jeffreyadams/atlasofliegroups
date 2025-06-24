@@ -30,13 +30,13 @@ phi_G_0=phi(y_G,gamma_G) then
 theta_G_v=involution(y_G) then
 theta_G=-^theta_G_v then
 ()=if e_verbose then prints("theta_G: ", theta_G,new_line,"torus_factor(x_H): ", torus_factor(x_H)) fi then
-x_G_0=KGB_elt(ic_G,theta_G,x_H.torus_factor*M) then   {NOTE: this might be on a different real form of G}
+{x_G_0=KGB_elt(ic_G,theta_G,x_H.torus_factor*M) then   {NOTE: this might be on a different real form of G}}
+x_G_0=KGB_elt(ic_G,theta_G,M*x_H.torus_factor) then   {NOTE: this might be on a different real form of G}
 ()=if e_verbose then prints("x_G_0: ", x_G_0) fi then
 ()= if e_verbose then prints("x_G_0.real_form: ",x_G_0.real_form) fi then
 ()=if e_verbose then prints("x_G_0.torus_factor",x_G_0.torus_factor) fi then
 (x_G,phi_G)=make_dominant(x_G_0,phi_G_0) then
 ()=if e_verbose then prints("x_G: ", x_G, new_line, "phi_G: ", phi_G) fi in (x_G,phi_G)
-
 {(x_H,phi_H) -> (x_G,phi_G) -> standard module p_G for some real form in ic_G -> (p_G, finalize(p_G)
 long version includes p_G (not just its finalization)}
 set epstar_std_long(KGBElt x_H,L_homomorphism phi_H,InnerClass ic_G,mat M)=(Param,ParamPol):
