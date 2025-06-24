@@ -10,6 +10,7 @@ set height(RootDatum R, ratvec nu) = int:
     let q = dominant(R,nu)*R.two_rho_check
     in q.numer\q.denom
 
+{lists in order all the heights of terms in Q except the lowest}
 set off_hts(KTypePol Q) = [int]:
      for @q in Q
      do height(q)
