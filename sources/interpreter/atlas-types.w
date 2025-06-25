@@ -5284,9 +5284,11 @@ void real_form_of_K_type_wrapper(eval_level l)
 }
 
 @ Here is one more useful function: computing the height of a $K$-type. This is
-the same height when comparing to the |bound| argument in functions like
-|K_type_formula| and |branch|. This height is precomputed and stored inside
-|K_repr::K_type| values themselves, so we simply get it from there.
+an important statistic on $K$-type, that is for instance used to compare with
+the |bound| argument in functions below like |K_type_formula| and |branch|. So
+important in fact that it is precomputed upon construction of each
+|K_repr::K_type| value and stored as a member of that value, so we simply get it
+from there.
 
 @< Local function def...@>=
 void K_type_height_wrapper(eval_level l)
@@ -5986,7 +5988,7 @@ represented as $K$-types with a sign attached, but since the $K$-types need not
 be standard, representing this result as a $K$-type polynomial would not
 be right (regardless of whether it would be mathematically correct or not, the
 conversion to final $K$-types is not done in the internal implementation of
-|K_type_formula|, so it would be unhelpful to do it in the corresponding
+|KGB_sum|, so it would be unhelpful to do it in the corresponding
 built-in function); therefore we return a list of pairs of an integer (sign) and
 a $K$-type.
 
@@ -6017,15 +6019,23 @@ void KGP_sum_wrapper(eval_level l)
   push_value(std::move(result));
 }
 
-@ While the |KGP_sum| returns a result only depending on the initial $K$-type,
-the following function |K_type_formula| allows pruning its result to terms that
-will be useful for branching up to a given height, thus in many cases allowing
-for much more efficient computation and handling afterwards. Therefore we
-provide a height bound argument, which may however be given as a negative number
-to indicate that no pruning should be done, an the full (still finite) $K$-type
-formula should be computed. Since there is only one method
-|Rep_context::K_typ_formula|, we here transform such a negative integer into the
-highest possible value of the unsigned type |repr::level|.
+@ Contrary to the fairly small |KGP_sum|, the |K_type_formula| of a $K$-type can
+easily be very large: it is essentially a product of binomials, with factor
+being produced from the terms of the |KGB_sum|. Therefore the function
+|Rep_context::K_type_formula| that computes it has a height bound argument that
+allows pruning of the result during generation, which can considerably improve
+efficiency in situations where one wants to ignore $K$-types above that bound.
+Therefore the wrapper function below takes a height bound argument as well,
+which may however be given as a negative number to indicate that the full (still
+finite) $K$-type formula should be computed. Since |Rep_context::K_typ_formula|
+always expects and uses a height bound, the wrapper transforms any negative
+bound to the highest possible value of the unsigned type |repr::level| when
+passing it to the library function.
+
+The library also has a method |Rep_table::K_type_formula| that stores the
+formulas it computes, and tries to use them without recomputation when it can;
+it still uses the method from |Rep_context| to do the actual computation.
+We provide two wrapper functions, one without and one with this memoisation.
 
 @< Local function def...@>=
 void K_type_formula_wrapper(eval_level l)
@@ -6041,6 +6051,35 @@ void K_type_formula_wrapper(eval_level l)
   repr::level h = bound<0 ? std::numeric_limits<repr::level>::max() : bound;
   auto f = K_type_poly::convert(rc.K_type_formula(srk,h));
   push_value(std::make_shared<K_type_pol_value>(p->rf,std::move(f)));
+}
+
+void K_type_formula_memo_wrapper(eval_level l)
+{ int bound = get<int_value>()->int_val();
+  shared_K_type p = get<K_type_value>();
+@/Rep_table& rt = p->rt();
+  auto srk = p->val.copy();
+  if (not rt.is_semifinal(srk))
+    throw runtime_error@|("K-type has parity real roots (so not semifinal)");
+  if (l==eval_level::no_value)
+    return;
+@)
+  repr::level h = bound<0 ? std::numeric_limits<repr::level>::max() : bound;
+  if (p->val.height()>h)
+    return push_value(std::make_shared<K_type_pol_value>(p->rf,K_type_poly()));
+  const auto& formula = rt.K_type_formula(srk,h); // might have excess terms
+  auto cut = formula.end();
+  auto n = formula.size();
+  if (formula.rbegin()->first.height()>h) // do we need to truncate?
+  { cut = formula.begin(); n=0;
+    while (cut->first.height()<=h)
+      ++cut,++n;
+  }
+  K_type_poly::poly result; // this one has |Split_integer| coefficients
+  result.reserve(n);
+  for (auto it = formula.begin(); it!=cut; ++it)
+    result.emplace_back(it->first,Split_integer(it->second));
+  push_value(std::make_shared<K_type_pol_value>
+    (p->rf,K_type_poly(std::move(result),false,formula.cmp())));
 }
 
 @ Here is the function that implements branching. Because it is a long division
@@ -6066,6 +6105,43 @@ void branch_wrapper(eval_level l)
   const Rep_context rc = P->rc();
   auto result = rc.branch(std::move(P->val),bound);
   push_value(std::make_shared<K_type_pol_value>(P->rf,std::move(result)));
+}
+
+@ We provide a variant of the |branch| function with a time-out argument. It
+returns a value of a union type: if the computation does not finish in the
+allotted time, the return the first (|void|) variant of the union, and otherwise
+they wrap their result in the second (|K_type_pol_value|) variant of the union.
+
+@h "lexer.h" // for |main_hash_table|
+
+@< Local function def...@>=
+void timed_branch_wrapper(eval_level l)
+{ auto period = get<int_value>()->long_val();
+  int arg = get<int_value>()->int_val();
+  own_K_type_pol P = get_own<K_type_pol_value>();
+  if (arg<0)
+    throw runtime_error("Maximum level in branch cannot be negative");
+  if (l==eval_level::no_value)
+    return;
+@)
+  unsigned int bound=arg;
+  const Rep_context rc = P->rc();
+  K_type_poly result;
+
+  set_timer(period);
+  try { result = rc.branch(std::move(P->val),bound); }
+  catch (const time_out& e)
+  { auto nil = std::make_shared<tuple_value>(0); // the void
+    push_value(std::make_shared<union_value>
+      (0,std::move(nil),main_hash_table->match_literal("timed_out")));
+    return;
+  }
+  clear_timer();
+@)
+  push_value(std::make_shared<union_value>
+    (1,std::make_shared<K_type_pol_value>(P->rf,std::move(result)),
+       main_hash_table->match_literal("done")));
+  // and inject into a union
 }
 
 @ Finally we install everything related to $K$-types.
@@ -6120,9 +6196,13 @@ install_function(truncate_K_type_poly_above_wrapper,@|"truncate_above_height"
 		,"(KTypePol,int->KTypePol)",1);
 @)
 install_function(KGP_sum_wrapper,@|"KGP_sum","(KType->[int,KType])");
-install_function(K_type_formula_wrapper,@|"K_type_formula"
+install_function(K_type_formula_wrapper,@|"K_type_formula_raw"
+		,"(KType,int->KTypePol)");
+install_function(K_type_formula_memo_wrapper,@|"K_type_formula"
 		,"(KType,int->KTypePol)");
 install_function(branch_wrapper,@|"branch" ,"(KTypePol,int->KTypePol)",1);
+install_function(timed_branch_wrapper,@|"branch"
+		,"(KTypePol,int,int->|KTypePol)",1);
 
 @*1 Standard module parameters.
 %
@@ -8205,7 +8285,7 @@ within the |real_form_value|.
 
 @< Local function def...@>=
 void full_deform_wrapper(eval_level l)
-{ own_module_parameter p = get_own<module_parameter_value>();
+{ shared_module_parameter p = get_own<module_parameter_value>();
   if (l==eval_level::no_value)
     return;
 @)
@@ -8243,11 +8323,12 @@ void twisted_full_deform_wrapper(eval_level l)
     (p->rf,export_K_type_pol(p->rt(),result)));
 }
 
-@ As an experiment, we provide variants of the |full_deform| function, and of
-its twisted counterpart, each with a time-out argument. These function return a
-value of (the same) union type: if the computation does not finish in the
-allotted time, the return the first (void) variant of the union, and otherwise
-they wrap their result in the second (ordinary) variant of the union.
+@ We provide variants of the |full_deform| function and of its twisted
+counterpart, each with a time-out argument, in the same vein as |branch| above.
+The union type returned is the same as for |branch|: if the computation does not
+finish in the allotted time, the return the first (|void|) variant of the union,
+and otherwise they wrap their result in the second (|K_type_pol_value|) variant
+of the union.
 
 @h "lexer.h" // for |main_hash_table|
 
@@ -8269,8 +8350,8 @@ void timed_full_deform_wrapper(eval_level l)
         pol.add_term(std::move(term.first),term.second*it->second);
   }
   catch (const time_out& e)
-  { auto result = std::make_shared<tuple_value>(0); // the void
-    push_value(std::make_shared<union_value>(0,std::move(result),
+  { auto nil = std::make_shared<tuple_value>(0); // the void
+    push_value(std::make_shared<union_value>(0,std::move(nil),
                main_hash_table->match_literal("timed_out")));
     return;
   }
@@ -8307,8 +8388,8 @@ void timed_twisted_full_deform_wrapper(eval_level l)
     }
   }
   catch (const time_out& e)
-  { auto result = std::make_shared<tuple_value>(0); // the void
-    push_value(std::make_shared<union_value>(0,std::move(result),
+  { auto nil = std::make_shared<tuple_value>(0); // the void
+    push_value(std::make_shared<union_value>(0,std::move(nil),
                main_hash_table->match_literal("timed_out")));
     return;
   }
