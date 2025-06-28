@@ -37,7 +37,13 @@ set kill_for_big_uTime() = void:
     then prints("I can't live...if living is without U")
     fi
 
+set UFast() = void:
+    prints("Setting old_test_interrupt_flag:=false, deformed_hash_flag:=true");
+    old_test_interrupt_flag:=false;
+    deformed_hash_flag:=true
 
+set ULoud() = void:
+    test_interrupt_verbose:=true
 
 {if true, compute reps weakly fair cohom induced from Arthur unipotent}
 {set coh_ind_few_flag = false}
@@ -46,7 +52,7 @@ set kill_for_big_uTime() = void:
 set coh_ind_most_flag = false
 
 {if true, use (much) slower but complete coh_ind_all}
-set coh_ind_all_flag = false
+set coh_ind_all_flag = true
 
 {if true, load Arthur unipotent reps into unitary hash before starting FPP.
 Computing Arthur unipotents takes a long time for high rank (e.g. rank 4
@@ -2277,9 +2283,6 @@ set pre_bottom_flag = false
 set pre_def_dumb_flag = false
 set precomputeTheta(RealForm G) = void:
     let rflist = SDLF(G)
-    then () = coh_ind_all_flag:=false
-    then () = coh_ind_most_flag:=false
-    {then () = coh_ind_few_flag:=false}
     then temp_report_flag = FPP_report_flag
     then () = FPP_report_flag :=false
     then () = for rf@k in rflist
@@ -2298,9 +2301,6 @@ set precomputeTheta(RealForm G) = void:
 
 set precomputeR(RealForm G) = void:
     let rflist = SDLRF(G)
-    then () = coh_ind_all_flag:=false
-    then () = coh_ind_most_flag:=false
-    {then () = coh_ind_few_flag:=false}
     then temp_report_flag = FPP_report_flag
     then () = FPP_report_flag :=false
     then () = for rf@k in rflist
@@ -2318,9 +2318,6 @@ set precomputeR(RealForm G) = void:
 
 set precomputeNUR(RealForm G) = void:
     let rflist = SDLRF(G), start = elapsed_ms()
-    then () = coh_ind_all_flag:=false
-    then () = coh_ind_most_flag:=false
-    {then () = coh_ind_few_flag:=false}
     then temp_report_flag = FPP_report_flag
     then () = FPP_report_flag :=false
     then () = for rf@k in rflist
@@ -2343,9 +2340,6 @@ set precomputeNUR(RealForm G) = void:
 
 set precomputeALL(RealForm G) = void:
     let start = elapsed_ms(), rflist = SDLALL(G)
-    then () = coh_ind_all_flag:=false
-    then () = coh_ind_most_flag:=false
-    {then () = coh_ind_few_flag:=false}
     then temp_report_flag = FPP_report_flag
     then () = FPP_report_flag :=false
     then () = for rf@k in rflist

@@ -387,6 +387,9 @@ set coh_ind_unip_most(KGPElt Q, Param_hash Uhash,ratvec v) = void:
 set coh_ind_unip_most(KGPElt Q, ratvec v) = void:
     coh_ind_unip_most(Q, big_unitary_hash.uhash(Q.real_form),v)
 
+set coh_ind_report_flag = false
+
+set coh_ind_report = [(Param,Param)]: []
 {assume v is {G-dominant and?} central for L}
 set coh_ind_unip_all(KGPElt Q, Param_hash Uhash,ratvec v) = void:
     let L = Q.Levi, G = Q.real_form
@@ -413,8 +416,14 @@ set coh_ind_unip_all(KGPElt Q, Param_hash Uhash,ratvec v) = void:
 			   	   fi
 	     	   	   in void: for @q in P
 		      	     	    do if my_unitary_hash_flag
-				       then Uhash.match(herm_center(q))
-				       else Uhash.match(q)
+				       then if coh_ind_report_flag
+				       	    then coh_ind_report#:=(pL,q)
+					    fi;
+					    Uhash.match(herm_center(q))
+				       else if coh_ind_report_flag
+				       	    then coh_ind_report#:=(pL,q)
+					    fi;
+					    Uhash.match(q)
 				       fi
 		      		    od
 		      fi

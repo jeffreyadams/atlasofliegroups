@@ -107,10 +107,7 @@ set deformed_data = [KTypePol] : []
 set deform_max_heights = [int] : []
 set deform_use_count = [int] : []
 set make_deformation_hash_to_ht () = deformation_hash_to_ht:
-(  {let param_hash = make_Param_hash()
-   then max_heights = [int] : []
-   then deformed_data = [KTypePol] : []}
-   let clear() = void:
+(  let clear() = void:
        let () = deform_param_hash.clear()
        then () = deform_max_heights :=[]
        then () = deformed_data :=[]
