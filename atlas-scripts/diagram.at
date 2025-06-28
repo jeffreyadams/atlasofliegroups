@@ -37,29 +37,37 @@ set permutable_types ([string,int] simple_factors) = [[int]]:
 in partition_by ( (int i):simple_factors[i] , leq ) (# #simple_factors)
 
 set diagram_automorphisms (LieType t) = Iterator<vec>:
-   let types = [string,int]: simple_factors(t)
+(  let types = [string,int]: simple_factors(t)
    , n = semisimple_rank(t) { size of all permutations }
    then clusters = [[int]]: permutable_types(types).(filter(([int]a):#a>1))
    , simple_autos = [int,[vec]]:
      for type@i in types do (i,simple_automorphisms(type)) od
      .(filter((int.,[vec]a):#a>1))
+in { replace second component of each |simple_autos| entry }
+   for (k,autos)@i in simple_autos
+   do let m=#autos
+      then deltas = { left-multiply each entry by cyclically preceeding one }
+	for pi@i in autos
+	do compose_permutations(permutation_inverse(autos[(i-1)%m]),pi)
+	od
+      in simple_autos[i] := (k,deltas) { replace after all |autos| are used }
+   od
+;
+{ variables for iteration }
+   let go=true { set to false when |incr| cannot produce anything new }
    , cur = vec: #n { working permutation }
+   , auto_position = [int,int]:
+     { loop indices while traversing automorphisms, and their modulus }
+     for (,autos) in simple_autos do ( 0, #autos ) od { intially indices are 0 }
+
+{ constants for iteration }
    , starts = 0 # map(snd)(types).cumulate_forward
-   then delta_autos = [[vec]]:
-      for (,auto) in simple_autos
-      do let m=#auto in
-         for pi@i in auto
-	 do compose_permutations(permutation_inverse(auto[(i-1)%m]),pi)
-	 od
-      od
-   , auto_position = { positions of those in each list of automorphisms }
-     null(#simple_autos)
    , modulus = { orders of the lists of automoprhism that are run over }
      for (,autos) in simple_autos do #autos od
    , current_perm = [vec]: { for each cluster the currently used permutation }
      for c in clusters do #(#c) { cluster identity } od
-
-   , advance(int start,vec delta) = void:
+   then
+     advance(int start,vec delta) = void:
      { right-multiply by permutation |delta| lifted to simpla factor at |start }
         let snap = cur[start:start+#delta] { take snapshot of old values } in
         for dst@src in delta do cur[start+src] := snap[dst] od
@@ -70,29 +78,35 @@ set diagram_automorphisms (LieType t) = Iterator<vec>:
 	in for d:r
 	   do for dst@src in pi do cur[st[src]+d] := st[dst]+d od
 	   od
-in ( Maybe<vec>: some(cur) { initial value for iteration }
-   , @Maybe<vec>:
-     for c@j in auto_position { |j| indexes list of non-trivial automorphisms }
-     do let k = auto_position[j] := (c+1) % modulus[j] { increment "|c|" }
-     , (i,) = simple_autos[j] { find index of simple factor }
-     in advance(starts[i],delta_autos[j][k])
-     ;  if k>0 then return some(cur) fi { stop and deliver, unless wrap around }
+in ( @Maybe<vec>:  { |get| method: value produced this iteration, if any }
+     if go then some(cur) else none() fi
+   , @void:
+     for (c,m)@j in auto_position
+     do let k = (c+1) % m { increment "|c|" }
+     , (i,deltas) = simple_autos[j] { find index of simple factor }
+     in auto_position[j] := (k,m) { replace |c| by |k| }
+     ;  advance(starts[i],deltas[k])
+     ;  if k>0 then return() fi { stop unless |k| was wrapped around }
      od
      { now all factor automorphism are back to identity; advan the permutations }
    ; for perm@j in current_perm { |perm| is permutation of clusters[j] }
      do case next_permutation(perm)
         | none(): ()
-	| some(pi): install(j,current_perm[j] := pi); return some(cur)
+	| some(pi): install(j,current_perm[j] := pi); return()
 	esac
      od
-   ; return none()
+   ; go:=false
    )
+)
 
 set list_automorphisms (LieType t) = void:
-   let go=true, (start,it)=diagram_automorphisms(t)
-   then perm = case start | none: return() | some(auto): auto esac
-in
-   while go
-   do print(perm)
-   next case it() | none(): go:=false | some(pi): perm:=pi esac
-   od
+   let (get,incr)=diagram_automorphisms(t)
+in case get()
+   | none: ()
+   | some(auto): let go=true in
+     while go
+     do print(auto)
+     next incr()
+     ; case get() | none(): go:=false | some(permutation): auto:=permutation esac
+     od
+   esac

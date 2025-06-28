@@ -3,12 +3,13 @@
 
 set_type One_of<S,T> = ( S fail | T succeed ) !
 set_type Maybe<T>    = ( void none | T some) !
+set_type Pair<S,T>   = ( S fst , T snd )!
 
 set_type AffineSubspace = (vec base_point, int denom, mat tangent_basis)
 set_type LinearSolution = ( void empty_set | AffineSubspace solution)
 
 
-set_type Iterator<T> = (Maybe<T>,(->Maybe<T>))!
+set_type Iterator<T> = ((->Maybe<T>) get, (->) incr)!
 
 set where() = void:
    for line@i in back_trace
@@ -30,11 +31,13 @@ set requisition (string message) = (One_of<S,T> v) T:
 set requisition = (One_of<S,T>->T):
     requisition("No solution found; having one was required")
 
-set to_list (Iterator<T> (start,it) ) = [T]:
-   case start | none: []
+set to_list (Iterator<T> (get,incr) ) = [T]:
+   case get()
+   | none: []
    | some(value): let go=true in
        while go
-       do value next case it() | none: go:=false | some(v): value:=v esac
+       do value
+       next case incr(); get() | none: go:=false | some(v): value:=v esac
        od
    esac
 
