@@ -1,0 +1,98 @@
+{ Functionality related to Lie types dans Dynkin diagrams }
+
+<basic.at
+<generics.at { for |fst| }
+<sort.at { for |partition_by| }
+<combinatorics.at { for |compose_permutation| }
+
+{ Computing diagram automorphismes for a Lie type:
+  For a Lie type, generate all diagram automorphisms as permutation vectors,
+  whose positions correspond to nodes of the diagram, so size is semisimple rank.
+}
+
+set simple_automorphisms (string simple_type, int rank) = [vec]:
+   let identity = vec: #rank
+in case char_index(simple_type,"ABCDEFG")
+   in {A} if rank<=1 then [identity] else [identity, ~identity] fi
+   ,  {B} [identity]
+   ,  {C} [identity]
+   ,  {D} if rank=4
+          then [identity,[0,1,3,2],[2,1,0,3],[2,1,3,0],[3,1,0,2],[3,1,2,0] ]
+	  else [identity, identity[:2~] ## identity~[:2] ]
+	  fi
+   ,  {E} if rank=6 then [identity,[5,1,4,3,2,0] ] else [identity] fi
+   ,  {F} [identity]
+   ,  {G} [identity]
+   ,  {T} error("Cannot list diagram automorphisms for torus factors")
+   else error("Unknown Lie type ",simple_type,rank)
+   esac
+
+{ Find groups of equal simple factors. The caller should make sure not to pass
+  both factors B2 and C2 in the same call: choose one of the two to prefer,
+  and convert the other systematically to that one before calling us.
+}
+set permutable_types ([string,int] simple_factors) = [[int]]:
+   let leq((string t0,int r0),(string t1,int r1)) = bool:
+      if t0!=t1 then t0<=t1 else r0<=r1 fi
+in partition_by ( (int i):simple_factors[i] , leq ) (# #simple_factors)
+
+set diagram_automorphisms (LieType t) = Iterator<vec>:
+   let types = [string,int]: simple_factors(t)
+   , n = semisimple_rank(t) { size of all permutations }
+   then clusters = [[int]]: permutable_types(types).(filter(([int]a):#a>1))
+   , simple_autos = [int,[vec]]:
+     for type@i in types do (i,simple_automorphisms(type)) od
+     .(filter((int.,[vec]a):#a>1))
+   , cur = vec: #n { working permutation }
+   , starts = 0 # map(snd)(types).cumulate_forward
+   then delta_autos = [[vec]]:
+      for (,auto) in simple_autos
+      do let m=#auto in
+         for pi@i in auto
+	 do compose_permutations(permutation_inverse(auto[(i-1)%m]),pi)
+	 od
+      od
+   , auto_position = { positions of those in each list of automorphisms }
+     null(#simple_autos)
+   , modulus = { orders of the lists of automoprhism that are run over }
+     for (,autos) in simple_autos do #autos od
+   , current_perm = [vec]: { for each cluster the currently used permutation }
+     for c in clusters do #(#c) { cluster identity } od
+
+   , advance(int start,vec delta) = void:
+     { right-multiply by permutation |delta| lifted to simpla factor at |start }
+        let snap = cur[start:start+#delta] { take snapshot of old values } in
+        for dst@src in delta do cur[start+src] := snap[dst] od
+   , install(int k, vec pi) = void: { install permutation |pi| of cluster |k| }
+        let cl = [int]: clusters[k]
+	then (,r) = types[cl[0]] { get rank of eash of the factors permuted }
+	, st = for i in cl do starts[i] od { and starting points of each factor }
+	in for d:r
+	   do for dst@src in pi do cur[st[src]+d] := st[dst]+d od
+	   od
+in ( Maybe<vec>: some(cur) { initial value for iteration }
+   , @Maybe<vec>:
+     for c@j in auto_position { |j| indexes list of non-trivial automorphisms }
+     do let k = auto_position[j] := (c+1) % modulus[j] { increment "|c|" }
+     , (i,) = simple_autos[j] { find index of simple factor }
+     in advance(starts[i],delta_autos[j][k])
+     ;  if k>0 then return some(cur) fi { stop and deliver, unless wrap around }
+     od
+     { now all factor automorphism are back to identity; advan the permutations }
+   ; for perm@j in current_perm { |perm| is permutation of clusters[j] }
+     do case next_permutation(perm)
+        | none(): ()
+	| some(pi): install(j,current_perm[j] := pi); return some(cur)
+	esac
+     od
+   ; return none()
+   )
+
+set list_automorphisms (LieType t) = void:
+   let go=true, (start,it)=diagram_automorphisms(t)
+   then perm = case start | none: return() | some(auto): auto esac
+in
+   while go
+   do print(perm)
+   next case it() | none(): go:=false | some(pi): perm:=pi esac
+   od

@@ -7,12 +7,17 @@ set_type Maybe<T>    = ( void none | T some) !
 set_type AffineSubspace = (vec base_point, int denom, mat tangent_basis)
 set_type LinearSolution = ( void empty_set | AffineSubspace solution)
 
+
+set_type Iterator<T> = (Maybe<T>,(->Maybe<T>))!
+
 set where() = void:
    for line@i in back_trace
    do if line[:3]="In " then prints([i]," ",line) fi
    od
 
 any_type S,T begin
+set time ((->T)f) = T: let t=elapsed_ms() in f() next print(elapsed_ms ()-t)
+
 set succeeds (One_of<S,T> v) = bool: case v | fail: false | succeed: true esac
 set can (Maybe<T> v) = bool: { because |if can(solve(eqn))| sounds nicer  }
     case v | none: false | some: true esac
@@ -24,6 +29,14 @@ set requisition (string message) = (One_of<S,T> v) T:
     case v | fail: error(message) | succeed(v): v esac
 set requisition = (One_of<S,T>->T):
     requisition("No solution found; having one was required")
+
+set to_list (Iterator<T> (start,it) ) = [T]:
+   case start | none: []
+   | some(value): let go=true in
+       while go
+       do value next case it() | none: go:=false | some(v): value:=v esac
+       od
+   esac
 
 set ! ((S,T->bool)rel) = ([S] a,[T] b)bool: { distribute relation over lists }
   #a=#b and (for x@i in a do if not rel(x,b[i]) then return false fi od; true)
@@ -362,6 +375,19 @@ set hexadecimal = (int->string):
   let !shift = "A".ascii-10 then f=to_base(16,digits36@int)
   in (int n)string: if n.< then "-"##f(-n) else f(n) fi
 
+{		some transformations of sequences of numbers		}
+
+set cumulate_forward ([int] seq) = [int]:
+   let sum=0 in for k in seq do sum+:=k od
+set cumulate_backward ([int] seq) = [int]:
+   let sum=0 in for k in seq ~do sum+:=k ~od
+
+set forward_differences ([int] seq) = [int]: { inverse of |cumulate_forward| }
+   let last=0 in for k in seq do k-last next last:=k od
+set backward_differences ([int] seq) = [int]: { inverse of |cumulate_backward| }
+   let last=0 in for k in seq ~do k-last next last:=k ~od
+
+
 {                           Rational numbers                            }
 
 set numer (rat a) = let (n,)=%a in n
@@ -526,16 +552,32 @@ set sum (int l,[vec] list) = vec: { sum of vecs of constant length l }
 { for large sums |sum(l#list)|, using |sum@mat|, might be marginally faster }
 
 { all words with letter |i| running over elements of |alphabets[i]| }
-set all_words ([[int]] alphs) = mat: { keep |#alphs| even if one is empty }
+set all_words ([vec] alphabets) = mat:
+{ matrix records |#alphabets| as |n_rows|, even if there whoudl be no columns }
   let rec_fun generate(int final) = [vec]:
-     if =final then [null(0)]
-     else final-:=1; let alphabet=alphs[final] in
+     if final=0 then [null(0)]
+     else final-:=1; let alphabet=alphabets[final] in
 	for prefix in generate(final)
 	   for letter in alphabet do prefix#letter od
 	od
      fi
-  , size=#alphs
-  in size # generate(size) { ensure column size |size|, even for empty set }
+  , size=#alphabets
+  in size # generate(size) { convert list of vectors to matrix with |size| rows }
+
+{ we can do the same for other types than integers }
+any_type T begin
+set all_words ([[T]] alphabets) = [[T]]:
+  (#alphabets).
+  (rec_fun generate(int final) [[T]]:
+     if final=0 then [[]] { a single empty list }
+     else final-:=1; let alphabet=alphabets[final] in
+	for prefix in generate(final)
+	   for letter in alphabet do prefix#letter od
+	od
+     fi
+  )
+{ if any alphabet is empty, the result is an empty list, forgetting #alphabets }
+end
 
 { all words of length |#limits|, with letter |i| running over |#limits[i]| }
 set all_words ([int] limits) = mat:

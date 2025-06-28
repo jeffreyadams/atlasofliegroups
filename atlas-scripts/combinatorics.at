@@ -20,6 +20,10 @@ set binom (rat n, int k) = rat:
    else let p=n*(n-1) in for i:k-2 from 2 do p:=p/i*(n-i) od; p/k
    esac
 
+set multinom ([int] a) = int: { multinomial coefficient, upper index implicit }
+   let upper = cumulate_backward(a) in
+   for m@i in a do binom(upper[i],m) od.product
+
 set multi_choose (int n,int k) = int: binom(n+k-1,k)
 
 set falling_power (int n, int k) = int: assert(>=0,"Negative exponent");
@@ -53,6 +57,28 @@ in  (code,1).
 ;   result
 )
 
+{ The following generates partitions starting froim #n, without large storage
+  Example (this is subtle: body does |next| to yield old before preparing new):
+
+    let pi=vec:#4, go=true in
+    while go
+    do pi
+    next case next_permutation(pi) | none: go:=false | some(sig): pi:=sig esac
+    od
+
+  This can be applied even if some entries of |sigma| are the same (a multiset
+  permutation), in which case the lexicographically next permutation is found.
+}
+set next_permutation (vec perm) = Maybe<vec>: { find next, if one exists }
+   let i = last(#perm-1,(int i)bool: perm[i]<perm[i+1]) in
+   if i<0 then none()
+   else
+      let x=perm[i], j=0
+   in while perm~[j]<=x do j+:=1 od { search least element >x after it}
+   ;  perm[i] := perm~[j]; perm~[j] := x { swap to increase |perm[i]| }
+   ;  some(perm[:i+1] ## perm~[:i+1~]) { reverse tail after |perm[i]| }
+   fi
+
 any_type T begin
 set permutations([T] xs) = [[T]]: { permutations of entries, ignore equalities }
    let n  = #xs
@@ -73,18 +99,6 @@ in for i:k from 1 ~ { entries are determined in decreasing order }
    do let c_i = binary_search_first((int n)bool: binom(n,i)>N, 1,bound) - 1
    in N -:= binom(c_i,i); bound:=c_i
   ~od { next assert(N=0) }
-
-{		some transformations of sequences of numbers		}
-
-set cumulate_forward ([int] seq) = [int]:
-   let sum=0 in for k in seq do sum+:=k od
-set cumulate_backward ([int] seq) = [int]:
-   let sum=0 in for k in seq ~do sum+:=k ~od
-
-set forward_differences ([int] seq) = [int]: { inverse of |cumulate_forward| }
-   let last=0 in for k in seq do k-last next last:=k od
-set backward_differences ([int] seq) = [int]: { inverse of |cumulate_backward| }
-   let last=0 in for k in seq ~do k-last next last:=k ~od
 
 { extract components at even or odd positions }
 set even_places ([int] v) = for i:-(-#v)\2 do v[2*i] od
@@ -118,6 +132,19 @@ set inverse ([int] pi) = [int]: { hope that name causes no conflict }
 set permutation_inverse ([int] pi) = [int]:
   let result=null(#pi) in for i@j in pi do result[i]:=j od; result
 
+{ a product of many permutations, arranged as columns of a matrix }
+set permutation_product (mat M) = [int]:
+   for i: n_rows(M) do let x=i in for j:n_columns(M) ~do x:=M[x,j] od; x od
+
+set cyclic_permutation (int n) = ([int]->[int]): { cycle to one-line form }
+   ([int] cycle) [int]:
+   let pi=#n, l=#cycle in for e@i in cycle do pi[e]:=cycle[(i+1)%l] od; pi
+
+set cycle_product (int n) = ([[int]]->[int]): { cycles to one-line form }
+   let as_column = cyclic_permutation(n) in
+   ([[int]] cycles)[int]:
+   permutation_product(mat: n # for c in cycles do c.as_column od)
+
 set permute ([int] pi,vec v) = vec: { replaces |v[i]| by |v[pi.inverse[i]]| }
   assert(#pi=#v { and |pi| is a permutation },"length mismatch");
   let result=null(#v) in for i@j in pi do result[i]:=v[j] od; result
@@ -142,6 +169,19 @@ in for cycle in permutation_cycles(perm)
    do for index in cycle do index-npr od { shift back to interval [-npr,npr[ }
    od
 
+
+set multiset_permutations ([int] multiplicities) = [[int]]:
+   ([],multiplicities).
+   (rec_fun mp ([int] prefix, vec mult) [[int]]:
+    if =mult then [prefix]
+    else
+       for m@i in mult
+	  if m>0
+	  do let new_mult=mult in new_mult[i]-:=1; mp(prefix#i,new_mult)
+	  fi
+       od.##
+    fi
+   )
 
 {				Partitions				}
 
