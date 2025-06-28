@@ -52,7 +52,7 @@ set ULoud() = void:
 set coh_ind_most_flag = false
 
 {if true, use (much) slower but complete coh_ind_all}
-set coh_ind_all_flag = true
+set coh_ind_all_flag = false
 
 {if true, load Arthur unipotent reps into unitary hash before starting FPP.
 Computing Arthur unipotents takes a long time for high rank (e.g. rank 4
