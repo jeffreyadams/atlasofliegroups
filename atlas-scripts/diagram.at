@@ -1,7 +1,7 @@
-{ Functionality related to Lie types dans Dynkin diagrams }
+{ Functionality related to Lie types, Dynkin diagrams, and their automorphisms }
 
 <basic.at
-<generics.at { for |fst| }
+<generics.at { for |foldr| }
 <sort.at { for |partition_by| }
 <combinatorics.at { for |compose_permutation| }
 
@@ -36,7 +36,7 @@ set permutable_types ([string,int] simple_factors) = [[int]]:
       if t0!=t1 then t0<=t1 else r0<=r1 fi
 in partition_by ( (int i):simple_factors[i] , leq ) (# #simple_factors)
 
-set diagram_automorphisms (LieType t) = Iterator<vec>:
+set diagram_automorphism_iterator (LieType t) = Iterator<vec>:
 (  let types = [string,int]: simple_factors(t)
    , n = semisimple_rank(t) { size of all permutations }
    then clusters = [[int]]: permutable_types(types).(filter(([int]a):#a>1))
@@ -99,14 +99,49 @@ in ( @Maybe<vec>:  { |get| method: value produced this iteration, if any }
    )
 )
 
-set list_automorphisms (LieType t) = void:
-   let (get,incr)=diagram_automorphisms(t)
-in case get()
-   | none: ()
-   | some(auto): let go=true in
-     while go
-     do print(auto)
-     next incr()
-     ; case get() | none(): go:=false | some(permutation): auto:=permutation esac
-     od
-   esac
+set sanitize (bool to_C) = ((LieType,[int])->LieType,[int]):
+    let (fro,to) = if to_C then ("B","C") else ("C","B") fi
+in  (LieType lt,[int] sigma) (LieType,[int]):
+    let type = LieType:
+       let sum=0 in
+       for (letter,rank):st in simple_factors(lt)
+       do if rank=2 and letter = fro
+	  else letter+rank
+	  then let x=sigma[sum] in sigma[sum]:=sigma[sum+1]; sigma[sum+1]:=x
+	  ; to+rank
+	  fi
+       next sum +:= rank
+       od.##.Lie_type
+    in (type,sigma)
+
+
+set diagram_automorphism_iterator (RootDatum rd) = Iterator<mat>:
+   let (lt,map_to_rd)=Cartan_matrix_type(Cartan_matrix(rd)).(sanitize(false))
+   , ssr=rd.semisimple_rank, r=rd.rank
+   then ext = (#r)[ssr:] { extended permutation by identity }
+   then M = permutation_right_act(root_coradical(rd),map_to_rd ## (#r)[ssr:])
+   then (M1,d) = invert(M)
+   , flip = mat: for i:rank(rd) do if i<ssr then 1 else -1 fi od.diagonal
+   then (get,incr) = diagram_automorphism_iterator(lt)
+   , lift (vec auto) = Maybe<mat>:
+     { solve |M*A=P*M| where |A| is |auto.matrix| extended diagonally by $\pm1$ }
+        let A = permutation_matrix(auto ## ext) { extend by identity }
+	then MA = M*A then prod = MA*M1 in
+	if =prod%d then some(prod\d)
+	elif =(prod:=MA*flip*M1)%d then some(prod\d)
+	else none() { we only try acting by $\pm1$ on central torus, so fail }
+	fi
+in ( @Maybe<mat>: let result = Maybe<mat>: none() in
+     while
+        case get()
+	| none(): dont { quit while loop if inner iterator is exhausted }
+	| some(auto):
+	  case lift(auto)
+	  | none: do incr() { skip this one; continue |while| for another try }
+	  | some(M): result:=some(M); dont
+	  esac
+	esac
+     od; result
+   , @void: incr()
+     { no need to test whether iterator ran out, or to repeat until |lift| }
+   )
