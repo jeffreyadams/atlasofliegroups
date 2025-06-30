@@ -54,7 +54,7 @@ in if let diag=Tri.main_diagonal in diag=ones(#diag)
 
 set right_inverse(mat A) = mat: { section of a surjective lattice map A }
 (  let (M,C,pivots,)=echelon(^A), c=A.n_rows
-in if M.n_rows<c then error("row rank ",M.n_rows," not full (",c,")") fi
+in if M.n_columns<c then error("row rank ",M.n_columns," not full (",c,")") fi
 ;  let (Tri,R)= ech_up(M,pivots)
 in if let diag=Tri.main_diagonal in diag=ones(#diag)
    then ^(C*upper_unitriangular_inverse(Tri[:c,:])*R[:c,:])

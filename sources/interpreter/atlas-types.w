@@ -2366,9 +2366,9 @@ void W_elt_wrapper(eval_level l)
     push_value(std::make_shared<W_elt_value>(rd,rd->W().element(ww)));
 }
 
-@ We also want to be able to convert a Weyl group element back to a word, to
-extract the root datum it was built from, to find its length, to and test for
-equality.
+@ We also want to be able to convert a Weyl group element back to a word.
+Since a root datum has the information available, we also allow producing the
+reflection associated to any root index.
 
 @< Local function def... @>=
 void W_word_wrapper(eval_level l)
@@ -2381,6 +2381,22 @@ void W_word_wrapper(eval_level l)
   push_value(vector_to_row(wv));
 }
 @)
+void W_refl_wrapper(eval_level l)
+{ int root_index = get<int_value>()->int_val();
+  shared_root_datum rd = get<root_datum_value>();
+  RootNbr alpha = internal_root_index(rd->val,root_index,false);
+  if (l==eval_level::no_value)
+    return;
+
+ WeylWord ww = rd->val.reflection_word(alpha);
+ push_value(std::make_shared<W_elt_value>(rd,rd->W().element(ww)));
+}
+
+
+@ Simple operations on a Weyl group element include extracting the root datum it
+was built from, finding its length, and testing for (in)equality.
+
+@< Local function def... @>=
 void datum_from_W_elt_wrapper(eval_level l)
 { shared_W_elt w = get<W_elt_value>();
   if (l!=eval_level::no_value)
@@ -2627,6 +2643,7 @@ concatenation operation.
 
 @< Install wrapper functions @>=
 install_function(W_elt_wrapper,"W_elt","(RootDatum,[int]->WeylElt)");
+install_function(W_refl_wrapper,"W_refl","(RootDatum,int->WeylElt)");
 install_function(W_word_wrapper,"word","(WeylElt->[int])");
 install_function(datum_from_W_elt_wrapper,"root_datum","(WeylElt->RootDatum)");
 install_function(W_length_wrapper,"length","(WeylElt->int)");

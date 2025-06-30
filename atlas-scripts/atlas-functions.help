@@ -441,6 +441,9 @@ Weyl_orbit_ws: (vec,RootDatum->[WeylElt]): Weyl group elements, coweight orbit
 W_elt: (RootDatum,[int]->WeylElt): Make a WeylElt from a word in W-generators
   The root datum specifies the type of Weyl group, the vector gives the word in
   terms of simple reflections (indexed from 0) defining the Weyl group element
+W_refl: (RootDatum,int->WeylElt): Reflection for a root index as Weyl element
+  For any root index the reflection defined by for the corresponding root and
+  coroot is given by an element of the Weyl group; return that element
 word: (WeylElt->[int]): chosen reduced Weyl word for a Weyl group element
 root_datum: (WeylElt->RootDatum): Root datum underlying a Weyl group element
 length: (WeylElt->int): Length in Weyl group of an element

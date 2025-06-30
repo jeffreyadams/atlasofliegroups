@@ -3,9 +3,13 @@
 
 set_type One_of<S,T> = ( S fail | T succeed ) !
 set_type Maybe<T>    = ( void none | T some) !
+set_type Pair<S,T>   = ( S fst , T snd )!
 
 set_type AffineSubspace = (vec base_point, int denom, mat tangent_basis)
 set_type LinearSolution = ( void empty_set | AffineSubspace solution)
+
+
+set_type Iterator<T> = ((->Maybe<T>) get, (->) incr)!
 
 set where() = void:
    for line@i in back_trace
@@ -13,7 +17,10 @@ set where() = void:
    od
 
 any_type S,T begin
+set time ((->T)f) = T: let t=elapsed_ms() in f() next print(elapsed_ms ()-t)
+
 set succeeds (One_of<S,T> v) = bool: case v | fail: false | succeed: true esac
+set fails    (One_of<S,T> v) = bool: case v | fail: true | succeed: false esac
 set can (Maybe<T> v) = bool: { because |if can(solve(eqn))| sounds nicer  }
     case v | none: false | some: true esac
 
@@ -25,6 +32,23 @@ set requisition (string message) = (One_of<S,T> v) T:
 set requisition = (One_of<S,T>->T):
     requisition("No solution found; having one was required")
 
+set ! (Iterator<T> (get,incr) ) = void:
+   while
+     case get()
+     | none: false
+     | some(value): prints(value); true
+     esac
+   do incr()
+   od
+
+set to_list (Iterator<T> (get,incr) ) = [T]:
+   while
+     case get()
+     | none: dont
+     | some(value): do value next incr()
+     esac
+   od
+
 set ! ((S,T->bool)rel) = ([S] a,[T] b)bool: { distribute relation over lists }
   #a=#b and (for x@i in a do if not rel(x,b[i]) then return false fi od; true)
 
@@ -34,7 +58,7 @@ set prints_lines ([T] a) = void: for x in a do prints(x) od
 end
 
 
-set ! = print_lines@T[T] { allow printing any list line-by-line as |list!| }
+set ! = prints_lines@T[T] { allow printing any list line-by-line as |list!| }
 
 set == = =@(int,int)! { make comparison of two |[int]| available as |==| }
 set == = =@(vec,vec)! { make comparison of two |[int]| available as |==| }
@@ -362,6 +386,19 @@ set hexadecimal = (int->string):
   let !shift = "A".ascii-10 then f=to_base(16,digits36@int)
   in (int n)string: if n.< then "-"##f(-n) else f(n) fi
 
+{		some transformations of sequences of numbers		}
+
+set cumulate_forward ([int] seq) = [int]:
+   let sum=0 in for k in seq do sum+:=k od
+set cumulate_backward ([int] seq) = [int]:
+   let sum=0 in for k in seq ~do sum+:=k ~od
+
+set forward_differences ([int] seq) = [int]: { inverse of |cumulate_forward| }
+   let last=0 in for k in seq do k-last next last:=k od
+set backward_differences ([int] seq) = [int]: { inverse of |cumulate_backward| }
+   let last=0 in for k in seq ~do k-last next last:=k ~od
+
+
 {                           Rational numbers                            }
 
 set numer (rat a) = let (n,)=%a in n
@@ -526,16 +563,32 @@ set sum (int l,[vec] list) = vec: { sum of vecs of constant length l }
 { for large sums |sum(l#list)|, using |sum@mat|, might be marginally faster }
 
 { all words with letter |i| running over elements of |alphabets[i]| }
-set all_words ([[int]] alphs) = mat: { keep |#alphs| even if one is empty }
+set all_words ([vec] alphabets) = mat:
+{ matrix records |#alphabets| as |n_rows|, even if there whoudl be no columns }
   let rec_fun generate(int final) = [vec]:
-     if =final then [null(0)]
-     else final-:=1; let alphabet=alphs[final] in
+     if final=0 then [null(0)]
+     else final-:=1; let alphabet=alphabets[final] in
 	for prefix in generate(final)
 	   for letter in alphabet do prefix#letter od
 	od
      fi
-  , size=#alphs
-  in size # generate(size) { ensure column size |size|, even for empty set }
+  , size=#alphabets
+  in size # generate(size) { convert list of vectors to matrix with |size| rows }
+
+{ we can do the same for other types than integers }
+any_type T begin
+set all_words ([[T]] alphabets) = [[T]]:
+  (#alphabets).
+  (rec_fun generate(int final) [[T]]:
+     if final=0 then [[]] { a single empty list }
+     else final-:=1; let alphabet=alphabets[final] in
+	for prefix in generate(final)
+	   for letter in alphabet do prefix#letter od
+	od
+     fi
+  )
+{ if any alphabet is empty, the result is an empty list, forgetting #alphabets }
+end
 
 { all words of length |#limits|, with letter |i| running over |#limits[i]| }
 set all_words ([int] limits) = mat:
@@ -1068,6 +1121,9 @@ set root_datum (LieType t, ratvec gen) = RootDatum: root_datum(t,[gen])
 
 { list of indices of all simple roots or coroots }
 set all_simples (RootDatum rd) = [int]: #semisimple_rank(rd)
+set all_posroots (RootDatum rd) = [int]: #nr_of_posroots(rd)
+set all_roots (RootDatum rd) = [int]: let npr = rd.nr_of_posroots in
+    for i: 2*npr from -npr do i od
 
 { the following uses that root_index(rd,v)=nr_of_posroots(rd) for a non-root v }
 set is_root ((RootDatum,vec) (rd,):p) = bool:
@@ -1480,22 +1536,24 @@ set posroot_sum (RootDatum rd,[int] select) = vec:
 set poscoroot_sum (RootDatum rd,[int] select) = vec:
   sum(rd.rank # for i in select do coroot(rd,i) od)
 
-
+{ make dominant for a Levi subsystem, and find a witness for returning }
 set from_dominant (RootDatum rd, [int] S, vec v) = (WeylElt,vec):
-  let w = for s in S do W_gen(rd,s) od
+( let refl = for alpha in S do W_refl(rd,alpha) od
   , last_asc () = int: last(#S,(int i): coroot(rd,S[i])*v<0)
-  then word = [WeylElt]:
-     while let i=last_asc() in i>=0 do v:=w[i]*v; w[i] od
-  in (product(rd,word),v)
+  , w = id_W(rd)
+  in while let i=last_asc() in i>=0 do w *:= refl[i]; v:=refl[i]*v od
+; (w,v)
+)
 set from_dominant (RootDatum rd, [int] S, ratvec rv) = (WeylElt,ratvec):
   let (n,d)=%rv then (w,v) = from_dominant(rd,S,n) in (w,v/d)
 
 set from_dominant (vec v, RootDatum rd, [int] S) = (vec,WeylElt):
-  let w = for s in S do W_gen(rd,s) od
+( let refl = for alpha in S do W_refl(rd,alpha) od
   , last_asc () = int: last(#S,(int i): v*root(rd,S[i])<0)
-  then word = [WeylElt]:
-     while let i=last_asc() in i>=0 do v:=v*w[i]; w[i] ~od
-  in (v,product(rd,word))
+  , w = id_W(rd)
+  in while let i=last_asc() in i>=0 do v:=v*refl[i]; w := refl[i]*w od
+  ; (v,w)
+)
 set from_dominant (ratvec rv, RootDatum rd, [int] S) = (ratvec,WeylElt):
   let (n,d)=%rv then (v,w) = from_dominant(n,rd,S) in (v/d,w)
 
@@ -1516,6 +1574,25 @@ set chamber ((vec,RootDatum,[int]) triple) = WeylElt:
   let (,w)=from_dominant(triple) in w
 set dominant ((vec,RootDatum,[int]) triple) = vec:
   let (dom_cwt,)=from_dominant(triple) in dom_cwt
+
+set permuted_root (WeylElt w, int alpha) = int:
+   let npr = w.root_datum.nr_of_posroots in
+   root_permutation(w)[alpha+npr]-npr
+set permuted_coroot (int alpha,WeylElt w) = int:
+   let npr = w.root_datum.nr_of_posroots in
+   root_permutation(/w)[alpha+npr]-npr
+
+set from_dominant_root(RootDatum rd, [int]S, int alpha) = (WeylElt,int):
+(  let npr = rd.nr_of_posroots
+   then w=id_W(rd)
+   , invols = for i in S do root_involution(rd,i) od
+   , last_asc () = int: last(#S,(int i): coroot(rd,S[i])*root(rd,alpha)<0)
+   in while let i=last_asc() in i>=0
+      do w *:= W_refl(rd,i); alpha:=invols[i][npr+alpha]-npr
+      od
+   ;  (w,alpha)
+)
+
 
 set w0 (RootDatum rd) = chamber(rd,-rd.two_rho)
 

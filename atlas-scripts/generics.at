@@ -4,9 +4,6 @@ set I (T x) = T: x
 set constant (T x) = (S .) T: x
 set compose ((S->R) g) = ((T->S)f): (T x): R: g(f(x))
 
-set fst (S x,T y) = S: x
-set snd (S x,T y) = T: y
-
 set swap (S x,T y) = (T,S): (y,x)
 
 set swapargs ((S,T->R) f) = (T y,S x) R: f(x,y)
