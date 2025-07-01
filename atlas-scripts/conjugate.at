@@ -3,7 +3,7 @@
 <W_orbit.at
 <Levi_subgroups.at
 <simple_factors.at
-<lietypes.at  {for locally isomorphic}
+<lietypes.at  { for |is_locally_isomorphic| }
 <group_operations.at
 
 { Goal: given two sub-root systems of |rd|, find |w| taking one to the other
@@ -41,149 +41,92 @@ These work for any sub root system
 
 }
 
-{given subset of positive roots, which are
-return the root datum for which these are
-the simple roots
-}
-set sub_datum_for_roots(RootDatum rd,[vec] roots) = RootDatum:
-   sub_datum(rd,for alpha in roots do root_index(rd,alpha) od)
-
-{Cartan matrix just from a set of roots in rd
- (which are the simple roots of a sub root system)
- }
-set Cartan_matrix_for_roots(RootDatum rd,[vec] roots) = mat:
-   Cartan_matrix(rd,for alpha in roots do root_index(rd,alpha) od)
 
 { root datum of coroots perpendicular to all columns of |wts| }
 set centralizer(RootDatum rd,mat wts) = RootDatum:
   sub_datum(rd,(int i) bool: =coroot(rd,i)*wts)
 
+set move_by_Levi (RootDatum rd,[int]Levi,int alpha,int beta) = Maybe<WeylElt>:
+   let (x,dom0) = from_dominant_root(rd,Levi,alpha)
+     , (y,dom1) = from_dominant_root(rd,Levi,beta)
+in if dom0=dom1 then (y*/x).some else ().none fi
 
-{Two versions, weights and coweights}
-
-{Version 1: elements of X^*}
-
-{ try to find $w\in W$ such that $w*u=v$, for given $u,v\in X^*$ }
-set mover(RootDatum rd, vec u, vec v) = Maybe<WeylElt>:
-   let (x,u_1) = from_dominant(rd,u), (y,v_1)= from_dominant(rd,v) in
-   if u_1=v_1 then (y*inverse(x)).some else ().none fi
-
-set is_conjugate (RootDatum rd, vec u, vec v) = bool: { succeeds(mover(rd,u,v)) }
-   dominant(rd,u)=dominant(rd,v)
-
-set mover (RootDatum rd, ratvec u, ratvec v) = Maybe<WeylElt>:
-{ since $W$-action stabilizes $\Z^n$, it cannot change ratvec denominators }
-   let (a,b)=%u, (c,d)=%v in if b=d then mover(rd,a,c) else ().none fi
-
-set is_conjugate (RootDatum rd, ratvec u, ratvec v) = bool:
-   let (a,b)=%u, (c,d)=%v in b=d and is_conjugate(rd,a,c)
-
-
-{Version 2: elements of X_*}
-
-{ try to find $w\in W$ so u*w=v$, for given $u,v\in X_*$ }
-set mover (vec u, vec v,RootDatum rd) = Maybe<WeylElt>:
-   let (u_1,x)=from_dominant(u,rd), (v_1,y)=from_dominant(v,rd) in
-   if u_1=v_1 then (inverse(x)*y).some else ().none fi
-
-set is_conjugate(vec u, vec v,RootDatum rd) = bool: { succeeds(mover(u,v,rd)) }
-   dominant(u,rd)=dominant(v,rd)
-
-set mover (ratvec u, ratvec v,RootDatum rd) = Maybe<WeylElt>:
-   let (a,b)=%u, (c,d)=%v in if b=d then mover(a,c,rd) else ().none fi
-
-set is_conjugate(ratvec u, ratvec v,RootDatum rd) = bool:
-   let (a,b)=%u, (c,d)=%v in b=d and is_conjugate(a,c,rd)
-
-
-{ make an element of W(rd) from [W_Elt] for smaller root data}
-set make_W_element ([WeylElt] S,RootDatum rd) = WeylElt:
-   product(rd,for w in S do W_elt(rd,w.matrix) od)
-
-{try to conjugate A[0], A[1],... to B[0], B[1] *in this order*}
-{return value is Maybe<WeylElt>}
-set maybe_conjugate_strict (RootDatum !rd_orig,[vec] A,[vec] B) =
-   Maybe<WeylElt>:
-   if (#A != #B) then ().none
-   elif Cartan_matrix_for_roots(rd_orig,A) != Cartan_matrix_for_roots(rd_orig,B)
-   then ().none
-   else
-	{keep rd_orig for computing cartan_matrix(rd_orig,*)
-	 modify |rd| while building up a sequence of acting elments }
-      let rd=rd_orig, S=[WeylElt]: [] in
-      for (a,b) in zip(A,B)
-      do case mover(rd,make_W_element(S,rd_orig)*a,b) { apply prev mapping }
+{ Find all Weyl group elements that send the |mamas| in order to the |papas|
+  The result is in general a right coset for a Levis subgroup, we we return
+}
+set transporter(RootDatum rd, [int] mamas, [int] papas) =
+      Maybe<([int],WeylElt)>: { (L,w) represents right coset |Levi_of(L)*w| }
+   if Cartan_matrix(rd,mamas) = Cartan_matrix(rd,papas)
+   else none()
+   then
+      let cur_w = id_W(rd), Levi = [int]: all_simples(rd)
+   in
+      for (alpha,beta) in zip(mamas,papas)
+      do case move_by_Levi(rd,Levi,permuted_root(cur_w,alpha),beta)
 	 | none: return none()
-	 | some(w):
-	     rd :=centralizer(rd,[b]) { henceforth restrict to fixing |b| }
-	   ; S := w#S { prepend |w| to list of elements acting }
+	 | some(w): cur_w := w*cur_w { combine from right to left }
+	   ; let (,select) = Levi_info(rd,Levi)
+	     then stricter (int i) = bool:
+	        select(i) and coroot(rd,i)*root(rd,beta)=0
+	     in Levi := simples(rd,stricter)
 	 esac
-      od
-   ;  make_W_element(S,rd_orig).some { wrap up }
+     ~od
+   ;  some(Levi,cur_w)
    fi
 
-set is_conjugate_strict((RootDatum,[vec],[vec]) args)=bool:
-  succeeds(maybe_conjugate_strict(args))
+{ The same, but forget the Levi subgroup, return just a coset representative }
+set maybe_conjugate_strict (RootDatum rd,[vec] A,[vec] B) =
+   Maybe<WeylElt>:
+   let rts1 = for alpha in A do root_index(rd,alpha) od
+   ,   rts2 = for alpha in B do root_index(rd,alpha) od
+in case transporter(rd,rts1,rts2)| none: none() | some(,w): some(w) esac
 
-{error if w doesn't exist}
-set conjugate_strict((RootDatum,[vec],[vec]) args)=WeylElt:
-   requisition(maybe_conjugate_strict(args))
+{ Now try all permutations, intelligently }
 
-{try all permutations}
+{ Find some Weyl group element that sends the |mamas| in to the |papas|
+  as sets of root indices, possibly permuting them.
+}
+set permuting_transporter(RootDatum rd, [int] mamas, [int] papas) =
+      Maybe<(WeylElt)>:
+   let degree(int i,[int]js) = int:
+      for j in js do coroot(rd,i)*root(rd,j)!=0 od.count
+   , n = if #mamas=#papas then #mamas else return none() fi
+   , crts = mat: rd.rank # for m in mamas do coroot(rd,m) od { by columns }
+   then mdegs = for i in mamas do degree(i,mamas) od
+   ,    pdegs = for i in papas do degree(i,papas) od
+   ,  maps = [[int]]:
+      { maps |indices(mamas)->indices(papas)| preserving degree and more }
+      ([]).
+      (rec_fun perms([int]f) [[int]]:
+       let k=#f in { now |f| maps #k->#n injectively }
+       if k=n then [f]
+       else
+          let deg = degree(mamas[k],mamas), mcr_vec = root(rd,mamas[k])*crts[:k]
+          , pcr = mat: rd.rank # for i:k do coroot(rd,papas[f[i]]) od
+       in for im in complement(n,f)
+          do if =(deg,degree(papas[im],papas))
+	    and =(mcr_vec,coroot(rd,papas[im])*pcr)
+	     do perms(f#im)
+	     fi
+	  od.##.##
+       fi
+      )
+in for f in maps
+   do case transporter(rd,mamas,for v in f do papas[v] od)
+      | none: () { skip unproductive maps  }
+      | some(,w): return some(w)
+      esac
+   od; none()
 
-set maybe_conjugate(RootDatum rd,[vec] A,[vec] B) = Maybe<WeylElt>:
-   if rank(rd)=0 or #A=0 and #B=0 then id_W(rd).some
-   elif (#A=0 and #B>0) or (#A>0 and #B=0) then ().none { trivial cases }
-   else let Amat = mat: #A[0] # A { convert to matrix with given columns }
-   in for w in W(GL(#A))
-      do case maybe_conjugate_strict(rd,Amat*w,B)
-         | some(w): return some(w)
-	 | none: ()
-	 esac
-      od
-   ;  ().none { report failure if loop runs to completion }
-   fi
-
-set is_conjugate((RootDatum,[vec],[vec]) args)=bool:
-  succeeds(maybe_conjugate(args))
-
-{error if w doesn't exist}
-set conjugate((RootDatum,[vec],[vec]) args)=WeylElt:
-   requisition(maybe_conjugate(args))
-
-set is_conjugate (RootDatum rd,[vec] A,[vec] B) = bool:
-   succeeds(maybe_conjugate(rd,A,B))
-
-
-set maybe_conjugate_strict (RootDatum rd,RootDatum sub_1,RootDatum sub_2) =
-      Maybe<WeylElt>:
-{very easy test first}
-   if not is_locally_isomorphic(sub_1,sub_2) then ().none
-   elif {rho_check test next}
-       not is_conjugate(rd,rho_check(sub_1),rho_check(sub_2))
-   then ().none
-   else maybe_conjugate_strict(rd,simple_roots(sub_1),simple_roots(sub_2))
-   fi
-
-set maybe_conjugate (RootDatum rd,RootDatum sub_1,RootDatum sub_2) =
-      Maybe<WeylElt>:
-{very easy test first}
-   if not is_locally_isomorphic(sub_1,sub_2) then ().none
-   {rho_check test next}
-   elif not is_conjugate(rho_check(sub_1),rho_check(sub_2),rd) then ().none
-   else maybe_conjugate(rd,simple_roots(sub_1),simple_roots(sub_2))
-   fi
-
-set is_conjugate ((RootDatum,RootDatum,RootDatum)args) = bool:
-   succeeds(maybe_conjugate(args))
-
-set is_conjugate_weak (RootDatum rd,RootDatum sub_1,RootDatum sub_2) = bool:
-   is_conjugate(rd,rho(sub_1),rho(sub_2))
+set is_conjugate_weak (RootDatum rd,RootDatum sub1,RootDatum sub2) = bool:
+   dominant(rd,two_rho(sub1))=dominant(rd,two_rho(sub2))
+set is_conjugate_weak (RootDatum sub1,RootDatum sub2,RootDatum rd) = bool:
+   dominant(two_rho_check(sub1),rd)=dominant(two_rho_check(sub2),rd)
 
 { which standard Levi is conjugate to (the non-standard) L, and by which w? }
 { actually: makes a choice from a list of representatives of conjugacy classes
-  of Levi subgroupe. Here |L| can be non-standard, but even if it is standard
-  it will return anoth Levi in case it isn't the elected representative }
+  of Levi subgroups. Here |L| can be non-standard, but even if it is standard
+  it will return another Levi in case it isn't the elected representative }
 set standard_Levi_and_witness (RootDatum rd,RootDatum rd_L) =
       (RootDatum,WeylElt):
    let finder = StdLeviFinder: Levi_lookup(rd,orbits_table(rd))
@@ -228,15 +171,15 @@ set outer_automorphism_group (RootDatum rd) = [mat]: { isomorphisms of X^* }
       od.##
    fi
 
-{ return list of pairs (mat,WeylElt)
-  mat is a permutation matrix of size semisimple_rank(rd_L)
+{ return list of pairs (P,m)
+  here P is a permutation matrix of size semisimple_rank(rd_L)
   WeylElt is in W(rd)
 }
 set normalizer (RootDatum rd_L,RootDatum rd,[mat] outer_automorphisms) =
       [(mat,WeylElt)]:
    let A=simple_roots(rd_L) in
    for P in outer_automorphisms
-   do case maybe_conjugate_strict(rd,A,P*A)
+   do case maybe_conjugate_strict(rd,A,A*P)
       | none: []
       | some(m): [(P,m)]
       esac
@@ -251,11 +194,8 @@ set normalizer (RootDatum rd_L,RootDatum rd) = [(mat,WeylElt)]:
           rd_L.diagram_automorphisms
       fi
 in for P in automorphisms
-   do case maybe_conjugate_strict(rd,A,P*A)
+   do case maybe_conjugate_strict(rd,A,A*P)
       | none: []
       | some(m): [(P,m)]
       esac
    od.##
-
-set scad (RootDatum rd) = string:
-   if rd.is_simply_connected then "sc" elif rd.is_adjoint then "ad" else "" fi

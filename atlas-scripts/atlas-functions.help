@@ -763,6 +763,8 @@ operator % : (KType->KGBElt,vec): recover (x,lambda-rho) from a KType
   a KType is constructed; so this is no perfect inverse of the K_type function
 real_form: (KType->RealForm): recover the real form from a KType value
 height: (KType->int): height of a K-type
+  This is the sum of absolute values of the scalar products of (1+theta)lambda
+  and the positive coroots.
 operators =, != : (KType,KType): strict equality of KTypes
   Equality of KTypes implies equality of their real forms
 equivalent: (KType,KType->bool): test equivalence of K-types

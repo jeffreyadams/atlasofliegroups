@@ -1,29 +1,32 @@
+<basic.at
 <conjugate.at { for |centralizer@(RootDatum,mat)| }
+<diagram.at { for |diagram_automorphisms| }
 <parabolics.at {for Levis}
 <center.at
 <poset.at
-<number_theory.at {for is_prime}
+<number_theory.at {for |is_prime| }
 <W_classes.at
 <isomorphism.at
 
 {
   The functions deal with constructing Levi systems cut out by various linear
   conditions (being orthogonal to a given set of coroots), and their root data.
-  W_character.at handles Levi systems by specifying a RootDatum and a predicate
-  that selects among its positive root indices those for the Levi factor. For
-  the conditions considered here, such predicates are readily written down.
+  Levi_subgroups.at handles Levi systems by specifying a RootDatum and a
+  predicate that selects among its positive root indices those for the Levi
+  factor. For the conditions considered here, such predicates are readily
+  written down.
 }
 
 { subgroup(rd,roots):
-  roots are assumed to be the set of ALL roots of a reductive subgroup
-  containing H (positive and negative)
+  roots are assumed to be the set of ALL (positive and negative) roots of a
+  reductive subgroup containing H
   (otherwise an error)
   let twochocheck=compute sum of positive coroots
   simple roots are those with inner product 2 with this
   then construct a RootDatum: root_datum(simple_roots,simple_coroots)
 
-  Function take [vec] argument |roots|, which may be empty; always convert them
-  explicitly to a matrix |rd.rank#roots|, as implicit fails when |roots| empty.
+  Function takes [vec] argument |roots|, which may be empty; always convert them
+  explicitly to a matrix |rd.rank#roots| (implicit fails when |roots| empty).
 }
 set subgroup (RootDatum rd, [vec] roots) = (bool,RootDatum):
   let rk = rank(rd)
@@ -62,6 +65,10 @@ set subgroup_by_simple(RootDatum rd,[vec] roots)=RootDatum:
 root_datum(rd.rank # for v in roots do v od
           ,rd.rank # for v in roots do coroot(rd,v) od
 	  ,rd.prefers_coroots)
+
+{ convert |RootDatum| uncoding of |sub| back to list of root indices }
+set un_datum (RootDatum rd, RootDatum sub) = [int]:
+   for alpha in sub.simple_roots do root_index(rd,alpha) od
 
 
 {mat k: columns span a subspace U of X_*
@@ -127,8 +134,8 @@ let S=simple_roots(rd_L) in orthogonal_subgroup(rd,S)
 { note that |centralizer(RootDatum rd,mat wts)| is defioned in conjugate.at }
 
 { root datum of coroots perpendicular to a set of elements of X_* }
-set centralizer(mat cwts,RootDatum rd)=
-  sub_datum(rd,(int i)bool: =cwts*root(rd,i))
+set centralizer (mat cwts,RootDatum rd) = RootDatum:
+  sub_datum(rd,(int i)bool: =root(rd,i)*cwts) { cwts is morally transposed }
 
 {cowt is in X_*\otimes Q
  t=exp(2\pi i cowt)\in T
@@ -208,15 +215,24 @@ set show([[RootDatum]] rds)=void:
 for list@i in rds do prints(new_line, i);show(list) od
 
 {find a conjugate of sub_rd in rds, everything going on in rd_ambient}
-set find(RootDatum rd_ambient, [RootDatum] rds,RootDatum sub_rd)=bool:
-first(for rd in rds do is_conjugate(rd_ambient,rd,sub_rd) od) !=-1
+set can_locate (RootDatum rd_ambient, [RootDatum] rds,RootDatum sub_rd) = bool:
+   let sub = un_datum(rd_ambient,sub_rd)
+in for D in rds
+   do @: succeeds(permuting_transporter(rd_ambient,un_datum(rd_ambient,D),sub))
+   od.any
 
-{test sub_rd_1 is rd-conjugate to a subgroup of sub_rd_2}
-{in which all subs of rd_2 is precomputed}
-set is_contained(RootDatum rd,RootDatum sub_rd_1,RootDatum sub_rd_2,[RootDatum]  all_subs_rd_2)=bool:
-if dimension(sub_rd_1)>dimension(sub_rd_2) or
-   ss_rank(sub_rd_1)>ss_rank(sub_rd_2) then false else
-find(rd,all_subs_rd_2,sub_rd_1) fi
+{test sub_rd_1 is rd-conjugate to a subgroup of sub_rd_2, where a list
+ of all subgroups of the latter is precomputed and passed as argument }
+set is_contained \
+  (RootDatum rd
+  ,RootDatum sub_rd_1
+  ,RootDatum sub_rd_2
+  ,[RootDatum]  all_subs_rd_2
+  )=bool:
+(   dimension(sub_rd_1)       <= dimension(sub_rd_2)
+and semisimple_rank(sub_rd_1) <= semisimple_rank(sub_rd_2)
+and can_locate(rd,all_subs_rd_2,sub_rd_1)
+)
 
 {  sorting and grouping of [RootData]  }
 
@@ -245,8 +261,8 @@ for x in group_by_ss_rank(rds) do group_by_number_simple_factors(x) od
 
 {weak testing: only using rho and rho_check}
 set find_weak(RootDatum rd_ambient, [RootDatum] rds,RootDatum sub_rd)=bool:
-(first(for rd in rds do is_conjugate(rd_ambient,rho(rd),rho(sub_rd)) od) !=-1) and
-(first(for rd in rds do is_conjugate(rho_check(rd),rho_check(sub_rd),rd_ambient) od) !=-1)
+   for rd in rds do @:is_conjugate_weak(rd_ambient,rd,sub_rd) od.any and
+   for rd in rds do @:is_conjugate_weak(rd,sub_rd,rd_ambient) od.any
 
 {keep one representative from each conjugacy class of subgroups}
 set filter_weak(RootDatum rd_ambient, [RootDatum] subs)=[RootDatum]:
@@ -263,12 +279,13 @@ let rv=[[RootDatum]]:[] in
    if match=-1 then rv#:=[rd] else rv[match]#:=rd fi od ;rv
 
 {keep one representative from each conjugacy class of subgroups}
-set filter(RootDatum rd_ambient, [RootDatum] subs)=[RootDatum]:
-if #subs=0 then [] else
-let rv=[subs[0]] in
- for i:#subs-1 from 1 do
-  if not find(rd_ambient,rv,subs[i]) then rv#:=subs[i] fi od;
-rv fi
+set filter (RootDatum rd_ambient, [RootDatum] subs) = [RootDatum]:
+   let result = [RootDatum]: [] in
+   for sub in subs
+   do if not can_locate(rd_ambient,result,sub)
+      do result#:=sub { update for future tests }
+      fi
+   od; result
 
 {  constructing all equal rank reductive subgroups  }
 
@@ -404,11 +421,14 @@ do if #simple_roots<rd.ss_rank then [complex_Levi(rd,simple_roots)] else [] fi o
 
 {return true if rd_L is a (not necessarily standard) Levi subgroup}
 set is_Levi(RootDatum rd_L,RootDatum rd)=bool:
-assert(dimension(rd_L) <= dimension(rd), "L is not a subgroup of G");
-if dimension(rd)=dimension(rd_L) then true else
-let M=radical_basis(rd_L) in
-if n_columns(M)=0 then false else
-let cent=centralizer(M,rd) in dimension(cent)=dimension(rd_L) fi fi
+   assert(dimension(rd_L) <= dimension(rd), "L is not a subgroup of G");
+   if dimension(rd)=dimension(rd_L) then true
+   else
+      let M=radical_basis(rd_L) in
+      if n_columns(M)=0 then false
+      else let cent=centralizer(M,rd) in dimension(cent)=dimension(rd_L)
+      fi
+   fi
 
 {semisimple element t so that L=Cent_G(t)^0}
 set regular_central_elements(RootDatum rd_L, RootDatum rd)=
@@ -471,10 +491,11 @@ set strict_pseudo_Levi_subgroups(RootDatum rd)=[RootDatum]:
 ##for L in pseudo_Levi_subgroups(rd) do if not is_Levi(L,rd) then [L] else [] fi od
 
 {test sub_rd_1 is W(rd)-conjugate to a subgroup of sub_rd_2}
-set is_contained(RootDatum rd,RootDatum sub_rd_1,RootDatum sub_rd_2)=bool:
-if dimension(sub_rd_1)>dimension(sub_rd_2) or
-   ss_rank(sub_rd_1)>ss_rank(sub_rd_2) then false else
-find(rd,let all_subs_2=subgroups(sub_rd_2) in all_subs_2,sub_rd_1) fi
+set is_contained (RootDatum rd,RootDatum sub_rd_1,RootDatum sub_rd_2) = bool:
+(   dimension(sub_rd_1)       <= dimension(sub_rd_2)
+and semisimple_rank(sub_rd_1) <= semisimple_rank(sub_rd_2)
+and can_locate(rd,subgroups(sub_rd_2),sub_rd_1)
+)
 
 set proper_subgroups(RootDatum rd)=[RootDatum]:
 ##for L in subgroups(rd) do if
@@ -577,25 +598,38 @@ for row@i in P do [i.to_string,subs[i].derived.Lie_type.nice_format,row.to_strin
  one node for each subgroup, arrow for containment (graph is not necessarily reduced)
  node is a Levi: red; strict pseudo_Levi: green; neither: black
 }
-set sub_graph([[int]] data,RootDatum rd,[RootDatum] subs,[RootDatum] levis,[RootDatum] pseudo_levis)=string:
-let text=
-"strict digraph  { " +
-new_line + "size=""30.0,30.0!""; " +
-new_line + "center=true;  " +
-new_line + "node [color=black,fontcolor=black] " +
-new_line + " edge [arrowhead=none,color=black]; "
-in
-for i:#data do
- let sub=subs[i] then
- number_short=count(for alpha in sub.simple_roots do is_short(rd,alpha) od) then
- color= {Levis: red, strict pseudo Levis: green, neither: black}
-  if find(rd,levis,sub) then ",color=red" elif
-  find(rd,pseudo_levis,sub) then ",color=green" else ""
- fi in
-{ let str=new_line+i.to_string + "[label=""" + subs[i].derived.Lie_type.standardize_Lie_type.str + """];" in }
- let str=new_line+i.to_string + "[label=""" + subs[i].derived.Lie_type.nice_format + number_short*"~" +"""" + color + "];" in
-  for j in data[i] do str+:=i.to_string + "->" + j.to_string + ";" od;
- text+:=str od;text+new_line+"}"
+set sub_graph \
+   ( [[int]] data
+   , RootDatum rd
+   , [RootDatum] subs
+   , [RootDatum] levis
+   , [RootDatum] pseudo_levis
+   )=string:
+(  let text = "strict digraph  { " +
+   new_line + "size=""30.0,30.0!""; " +
+   new_line + "center=true;  " +
+   new_line + "node [color=black,fontcolor=black] " +
+   new_line + " edge [arrowhead=none,color=black]; "
+in for i:#data
+   do let sub=subs[i]
+      then number_short =
+	 for alpha in sub.simple_roots do is_short(rd,alpha) od.count
+      then color = {Levis: red, strict pseudo Levis: green, neither: black}
+	 if   can_locate(rd,levis,sub) then ",color=red"
+	 elif can_locate(rd,pseudo_levis,sub) then ",color=green"
+	 else ""
+	 fi
+   { then str=new_line+i.to_string + "[label="""
+   + subs[i].derived.Lie_type.standardize_Lie_type.str + """];" }
+      then str = new_line+i.to_string
+	  + "[label="""
+	  + subs[i].derived.Lie_type.nice_format
+	  + number_short*"~" + """" + color + "];"
+   in for j in data[i] do str+:=i.to_string + "->" + j.to_string + ";" od
+   ;  text +:= str
+   od
+;  text+new_line+"}"
+)
 
 {produce all of the ingredients needed from RootDatum rd}
 set sub_graph(RootDatum rd)=string:
@@ -664,27 +698,43 @@ for (,w) in norm do
  if m*t=t and m*rad_L=rad_L then rv#:=(m,w) fi od;
 rv
 
-set normalizer_report(RootDatum rd)=void:
-prints(new_line,"equal rank subgroups of " + rd.nice_format +
-if rd.scad !="" then " (" + rd.scad + ")"  else "" fi);
-prints("H: type of H_der");
-prints("type: : Levi/Pseudo-Levi/neither");
-prints("Diag: diagram automorphisms of H");
-prints("Out: : outer automorphism group of H_der");
-prints("Norm=Norm_G(H^0)/H^0");
-tabulate(["H","type","Diag","H/H^0","Out","Norm","Out/Norm"]#
-for L@i in subgroups(rd) do
-let type=
- if is_Levi(L,rd) then "L" elif
- is_pseudo_Levi(L,rd) then "PL" else "" fi in
- let d=diagram_automorphisms(L) then
- out=outer_automorphism_group(L.derived) then
- norm= normalizer(L,rd,out) then
-  comp=if is_pseudo_Levi(L,rd) then  (#centralizer_pseudo_Levi(L,rd)).to_string else "" fi then
- diff_string = if #out=#norm then "" else (#out\#norm).to_string fi in
-
- [L.derived.nice_format,type, (#d).to_string,comp,(#out).to_string,(#norm).to_string,diff_string]
-od)
+set normalizer_report (RootDatum rd) = void:
+   let scad (RootDatum rd) = string:
+      if rd.is_simply_connected then "sc" elif rd.is_adjoint then "ad" else "" fi
+in prints(new_line,"equal rank subgroups of ", rd.nice_format
+         , if rd.scad !="" then " (" + rd.scad + ")"  else "" fi);
+   prints("H: type of H_der");
+   prints("type: : Levi/Pseudo-Levi/neither");
+   prints("Diag: diagram automorphisms of H");
+   prints("Out: : outer automorphism group of H_der");
+   prints("Norm=Norm_G(H^0)/H^0");
+   tabulate ( ["H","type","Diag","H/H^0","Out","Norm","Out/Norm"] #
+      for L@i in subgroups(rd)
+      do let type =
+	    if is_Levi(L,rd) then "L"
+	    elif is_pseudo_Levi(L,rd) then "PL"
+	    else ""
+	    fi
+	 , d=diagram_automorphisms(L).to_list
+	 then out=outer_automorphism_group(L.derived)
+	 then norm= normalizer(L,rd,out)
+	 then comp =
+	    if is_pseudo_Levi(L,rd)
+	    then  (#centralizer_pseudo_Levi(L,rd)).to_string
+	    else ""
+	    fi
+	 then diff_string =
+	    if #out=#norm then "" else (#out\#norm).to_string fi
+      in [ L.derived.nice_format
+         , type
+	 , (#d).to_string
+	 , comp
+	 , (#out).to_string
+	 , (#norm).to_string
+	 , diff_string
+	 ]
+      od
+   )
 
 set normalizer_reports([RootDatum] rds)=
 for rd in rds do normalizer_report(rd) od

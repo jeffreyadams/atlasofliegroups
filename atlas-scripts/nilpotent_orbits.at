@@ -592,13 +592,18 @@ set is_W_conjugate_by_w ([vec] r1, [vec] r2, [WeylElt] W) = (bool,WeylElt):
 set is_W_conjugate_by_w ([vec] r1, [vec] r2, RootDatum rd) = (bool,WeylElt):
    is_W_conjugate_by_w(r1,r2,W(rd))
 
+set embed_aff (RootDatum rd) = (int->int):
+   let ssr = semisimple_rank(rd), aff_ind = root_index(rd,-highest_root(rd))
+in (int i)int:
+   case i-ssr then i in aff_ind
+   else error("Affine root index out of range: ",i,">",ssr)
+   esac
+
+set pseudo_root_indices ([int] S, RootDatum rd) = [int]: map(embed_aff(rd))(S)
+
 { this function assumes elements of |S| are >=0, and |rd| has a |highest_root| }
 set pseudo_roots ([int] S, RootDatum rd) = [vec]:
-   for i in S
-   do if i<semisimple_rank(rd) then root(rd,i)
-      else {any higher index encodes lowest root} -highest_root(rd)
-      fi
-   od
+   for alpha in pseudo_root_indices(S,rd) do root(rd,alpha) od
 
 set roots ([int] S, RootDatum rd) = [vec]: for i in S do root(rd,i) od
 
@@ -608,28 +613,26 @@ set two_rho_of_pseudo_Levi (RootDatum rd,[int] list)=vec:
 {use is_conjugate to test conjugacy}
 {this only works if rd(.derived?) is simple}
 {alternative: pseudo_Levi_subgroups defined in subgroups.at}
-set pseudo_Levis (RootDatum rd)=[[int]]:
-let
-   r=semisimple_rank(rd) then
-   levis=standard_Levi_conjugacy_representatives(rd) then
-   triples=[([int],vec,[vec])]:
-   for L in levis
-   do (L,two_rho_of_pseudo_Levi(rd,L),pseudo_roots(L,rd)) od
-   in for S in power_set(#r)
-     do let T=r#S in
-        if #S<r then let rhoT=two_rho_of_pseudo_Levi(rd,T) then
-                pr=pseudo_roots(T,rd) then
-                temp=[([int],vec,[vec])]:
-                ##for (a,v,c) in triples
-                    do if v=rhoT then [(a,v,c)] else []
-                       fi
-                    od in
-                      if none(for (,,m) in temp do is_conjugate(rd,pr,m) od)
-                         then triples#:=(T,rhoT,pr)
-                      fi
-         fi
-     od;
-     for (T,,) in triples do T od
+set pseudo_Levis (RootDatum rd) = [[int]]:
+(  let r=semisimple_rank(rd)
+   ,  levis=standard_Levi_conjugacy_representatives(rd)
+   then triples = [([int],vec,[int])]:
+      for L in levis
+      do (L,two_rho_of_pseudo_Levi(rd,L),pseudo_root_indices(L,rd))
+      od
+in for S in power_set(#r)
+      if #S<r { only do strict subsets }
+      do let T = r#S { add affine root r to set S }
+         then rhoT = two_rho_of_pseudo_Levi(rd,T)
+	 , pr = pseudo_root_indices(T,rd)
+      in if for (,v,m) in triples
+            do v=rhoT and permuting_transporter(rd,pr,m).succeeds
+	    od.none
+	 do triples#:=(T,rhoT,pr); T { contribution to result }
+	 fi
+      fi
+   od.## { combine two inner |if..do..fi| "loops" into one }
+)
 
 {use is_conjugate to test conjugacy}
 {slightly different version from jda
@@ -690,6 +693,7 @@ set pseudo_Levis (ComplexNilpotent O) = [RootDatum,vec]:
 set saturating_orbits(ComplexNilpotent O) = [ComplexNilpotent]:
    for (L,H) in O.pseudo_Levis do (L,(),H) od
 
+
 {Note: affine root is n+1 not 0}
 {this works only if rd.derived is simple}
 set pseudo_Levi(RootDatum rd,[int] S)=RootDatum:
@@ -703,7 +707,7 @@ then simple_coroots= mat: rd.rank # for v in simple_roots do coroot(rd,v) od
 in root_datum(simple_roots,simple_coroots,rd.prefers_coroots)  fi
 
 {run over list of pairs [(v,w)], only keep those for which the v's
-give distint torus elements
+give distinct torus elements
 use this to filter result of Kac_diagrams_with_centralizer
 previously the filtering was done on the fly which was wasteful
 }
@@ -715,28 +719,31 @@ in for (v,w) in list
       fi
    od; keep
 
-{use maybe_conjugate from conjugate.at to test conjugacy}
+{use |permuting_transporter| from conjugate.at to test pseud-Levi conjugacy }
 {. Given a pseudo-Levi L, find all Kac diagrams of order m and whose
    centralizer is conjugate to L. .}
 set Kac_diagrams_with_centralizer (RootDatum rd, RootDatum L,int m) =
       [([int],WeylElt)]:
-   let ()=if nilpotent_verbose then prints("Kac_diagrams_with_centralizer: L=", L,
-   " m=", m) fi in
-   let diags = [[int]]: Kac_classes_given_order_crude(rd,m) in
-   let ()=if nilpotent_verbose then prints("#diagrams: ",#diags) fi in
-   let crude = [[int],WeylElt]:
-     for d in diags
-     do case maybe_conjugate(rd,pseudo_Levi(rd,zero_roots(rd,d)),L)
-        | none: []
-	| some(w): [(d,w)]
-	esac
-     od.##
-   then rv=filter(rd,crude)
-   in
-      if nilpotent_verbose
-      then prints("crude answer:", #crude, "  final result:", #rv)
-      fi;
-   rv
+(  if nilpotent_verbose
+   then prints("Kac_diagrams_with_centralizer: L=", L, " m=", m)
+   fi
+;  let diags = [[int]]: Kac_classes_given_order_crude(rd,m)
+   , L_roots = [int]: for alpha in L.simple_roots do root_index(rd,alpha) od
+   , to_root_indices = ([int]->[int]): map(embed_aff(rd))
+in if nilpotent_verbose then prints("#diagrams: ",#diags) fi
+;  let crude =
+   for d in diags
+      do case permuting_transporter(rd,zero_roots(rd,d).to_root_indices,L_roots)
+	 | none: []
+	 | some(w): [(d,w)]
+	 esac
+      od.##
+   then result = filter(rd,crude)
+in if nilpotent_verbose
+   then prints("crude answer:", #crude, "  final result:", #result)
+   fi
+;  result
+)
 
 {order_center is defined in center.at}
 {set order_of_center (RootDatum rd)=#Kac_classes_given_order(rd,1)}

@@ -189,8 +189,9 @@ set Kac_classes_given_order (RootDatum rd,int order)=[[int]]:
    ;  S
    fi
 
+{ affine diagram roots labelled 0 in Kac diagram }
 set zero_roots(RootDatum rd,[int] Kac)=[int]:
-   ##for k@i in Kac do if k=0 then [i] else [] fi od
+   for label@i in Kac if label=0 do i fi od
 
 set complex_pseudo_Levi(RootDatum rd, [int] S)= RootDatum:
    if #S=0 then Levi_datum(rd,[int]:[]) else
