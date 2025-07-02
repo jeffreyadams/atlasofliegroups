@@ -1,44 +1,25 @@
 <basic.at
-<generics.at { for |fst|, |snd| }
-<W_orbit.at
 <Levi_subgroups.at
+<diagram.at { for |sanitize|, |diagram_automorphism_iterator| }
+<W_orbit.at
 <simple_factors.at
 <lietypes.at  { for |is_locally_isomorphic| }
 <group_operations.at
 
-{ Goal: given two sub-root systems of |rd|, find |w| taking one to the other
+{ convert root encoding of set of roots to list of root indices }
+set uproot (RootDatum rd, mat root_vectors) = [int]:
+   for alpha in root_vectors do root_index(rd,alpha) od
+
+{ convert |RootDatum| encoding of |sub| back to list of root indices }
+set un_datum (RootDatum rd, RootDatum sub) = [int]: uproot(rd,sub.simple_roots)
+
+{ Goal: given two sub-root systems of |rd| associated to pseudo Levi subgroups,
+  find, and count, Weyl elements |w| taking one to the other
 
 N.B. If these are Levi subsystems, this can be done efficiently by using
   a |StdLeviFinder| like |Levi_lookup(rd,orbits_table(rd))|, which for both
   subsystems will find a conjugate standard Levi subgroup, with a witness.
   The functions here however do not require de sub-rootsystem to be saturated.
-
-Algorithm:
-
-  Given (rd,[vec] A,[vec] B)
-  where A,B are subsets of roots of rd of same cardinality
-  implicitly assuming A, B are set of simple roots of
-  a sub root system (subgroup of the complex group)
-  containing the Cartan T
-
-maybe_a_conjugator_strict:
-  first test that A,B give the same Cartan matrix
-   assuming A,B are each the set of simple roots of a RootDatum
-  if this passes then
-  look for w\in W(rd) taking A[0] to B[0]
-  if found:
-   rd->centralizer(rd,B[0])
-   A-> delete(0,A)
-   B-> delete(0,B)
-  recursion, ends if #A=#B=0
-  return value is maybe_a_conjugator: (void no_w| WeylElt w)
-
-maybe_a_conjugator:
-  run over all of the permutation of A (symmetric group of size |A|)
-  many choices will fail quickly from the Cartan matrix test
-
-These work for any sub root system
-
 }
 
 
@@ -46,13 +27,14 @@ These work for any sub root system
 set centralizer(RootDatum rd,mat wts) = RootDatum:
   sub_datum(rd,(int i) bool: =coroot(rd,i)*wts)
 
+{ in spite of the name, this works for pseudo Levi subsystems as well }
 set move_by_Levi (RootDatum rd,[int]Levi,int alpha,int beta) = Maybe<WeylElt>:
    let (x,dom0) = from_dominant_root(rd,Levi,alpha)
      , (y,dom1) = from_dominant_root(rd,Levi,beta)
 in if dom0=dom1 then (y*/x).some else ().none fi
 
-{ Find all Weyl group elements that send the |mamas| in order to the |papas|
-  The result is in general a right coset for a Levis subgroup, we we return
+{ Find all Weyl group elements that send the |mamas| in order to the |papas|;
+  the result is in general a right coset for a Levi subgroup, which we return.
 }
 set transporter(RootDatum rd, [int] mamas, [int] papas) =
       Maybe<([int],WeylElt)>: { (L,w) represents right coset |Levi_of(L)*w| }
@@ -74,12 +56,13 @@ set transporter(RootDatum rd, [int] mamas, [int] papas) =
    ;  some(Levi,cur_w)
    fi
 
-{ The same, but forget the Levi subgroup, return just a coset representative }
+{ similar, but forget the Levi subgroup, return just a coset representative }
 set maybe_conjugate_strict (RootDatum rd,[vec] A,[vec] B) =
    Maybe<WeylElt>:
-   let rts1 = for alpha in A do root_index(rd,alpha) od
-   ,   rts2 = for alpha in B do root_index(rd,alpha) od
-in case transporter(rd,rts1,rts2)| none: none() | some(,w): some(w) esac
+   case transporter(rd,uproot(rd,A),uproot(rd,B))
+   | none: none()
+   | some(,w): some(w)
+   esac
 
 { Now try all permutations, intelligently }
 
@@ -130,7 +113,7 @@ set is_conjugate_weak (RootDatum sub1,RootDatum sub2,RootDatum rd) = bool:
 set standard_Levi_and_witness (RootDatum rd,RootDatum rd_L) =
       (RootDatum,WeylElt):
    let finder = StdLeviFinder: Levi_lookup(rd,orbits_table(rd))
-   , Levi = for alpha in simple_roots(rd_L) do root_index(rd,alpha) od
+   , Levi = un_datum(rd,rd_L)
    then (w,std_Levi) = finder(Levi) { |w| conjugates |std_Levi| to |Levi| }
 in (Levi_datum(rd,std_Levi),inverse(w)) { our convention is inverse for |w| }
 
@@ -145,57 +128,40 @@ set standard_Levi_witness ((RootDatum,RootDatum) args) = WeylElt:
 { witness of conjugation from |rd_L| to |rd_M|, using standard Levi in |rd| }
 set Levi_witness(RootDatum rd, RootDatum rd_L,RootDatum rd_M) = WeylElt:
    let finder = StdLeviFinder: Levi_lookup(rd,orbits_table(rd))
-   , L = for alpha in simple_roots(rd_L) do root_index(rd,alpha) od
-   , M = for alpha in simple_roots(rd_M) do root_index(rd,alpha) od
-   then (w1,Levi1)= finder(L), (w2,Levi2) = finder(M)
+   then (w1,Levi1) = finder(un_datum(rd,rd_L))
+   ,    (w2,Levi2) = finder(un_datum(rd,rd_M))
 in assert(Levi1=Levi2,"Non conjugate Levi data"); /w2*w1
 
-{ automorphisms given by permutations of simple roots/coroots
-  automorphism of Lie algebra
-}
-set diagram_automorphisms (RootDatum rd) = [mat]: { permutations of diagram }
-   let C=rd.Cartan_matrix
-in for w in W(GL(#C)) if w*C=C*w do matrix(w) fi od
-
-{this only works for rd semisimple}
-set outer_automorphism_group (RootDatum rd) = [mat]: { isomorphisms of X^* }
-   if rd.is_abelian then []
-   else
-      assert(rd.is_semisimple,"RootDatum is not semisimple (or abelian)")
-   ;  let A=simple_roots(rd) { viewed as basis change canonical->simple roots }
-      then A_inverse = ratmat: rational_inverse(A)
-   in for P in diagram_automorphisms(rd)
-      do {P is a permutation, M is in correct basis of X^*}
-         let (M,,d) = A*P*A_inverse { compute and take apart rational matrix }
-      in if d=1 do M fi { only use diagram automorphisms that extend to X^* }
-      od.##
-   fi
-
-{ return list of pairs (P,m)
-  here P is a permutation matrix of size semisimple_rank(rd_L)
-  WeylElt is in W(rd)
-}
-set normalizer (RootDatum rd_L,RootDatum rd,[mat] outer_automorphisms) =
-      [(mat,WeylElt)]:
-   let A=simple_roots(rd_L) in
-   for P in outer_automorphisms
-   do case maybe_conjugate_strict(rd,A,A*P)
-      | none: []
-      | some(m): [(P,m)]
+{ classes of (pseudo-)Levi normalizer, modulo its centralizer }
+set normalizer_classes (RootDatum rd,[int] sub_simples) = [WeylElt]:
+   let (lt,map_to_rd) =
+      Cartan_matrix_type(Cartan_matrix(rd,sub_simples)).(sanitize(false))
+   then (get,incr) = diagram_automorphism_iterator(lt)
+   , go = true
+in while
+      case get()
+      | none: dont { stop loop }
+      | some(sigma):
+         case transporter(rd,sub_simples,for k in sigma do sub_simples[k] od)
+	 | none: do [] next incr() { not induced by any $w$ in $W(rd)$, skip }
+         | some(,w): do [w] next incr()
+	 esac
       esac
    od.##
 
-set normalizer (RootDatum rd_L,RootDatum rd) = [(mat,WeylElt)]:
-   let A=simple_roots(rd_L)
-   , automorphisms = [mat]:
-      if rd_L.is_semisimple
-      then rd_L.outer_automorphism_group {if semsimple cut down to this}
-      else { when not semisimple, try all diagram automorphisms }
-          rd_L.diagram_automorphisms
-      fi
-in for P in automorphisms
-   do case maybe_conjugate_strict(rd,A,A*P)
-      | none: []
-      | some(m): [(P,m)]
-      esac
-   od.##
+{ enumerate the full normalizer of a pseudo Levi subgroup }
+set normalizer_iterator ((RootDatum,[int])(rd,sub_simples):args) =
+      Iterator<WeylElt>:
+   let N_mod_C = normalizer_classes(args)
+   , C = for w in
+           W(centralizer(rd, rd.rank # for i in sub_simples do root(rd,i) od))
+	 do W_elt(rd,w.matrix) od { convert to element of full Weyl group }
+   then k=#N_mod_C, l=#C
+   , i=0, j=0
+in ( @Maybe<WeylElt>: if i<k then some(N_mod_C[i] * C[j]) else none() fi
+   , @void: if (j+:=1)=l then j:=0; i+:=1 fi
+   )
+
+set normalizer (RootDatum rd_L,RootDatum rd) = [WeylElt]:
+   let simples = un_datum(rd,rd_L)
+in normalizer_iterator(rd,simples).to_list

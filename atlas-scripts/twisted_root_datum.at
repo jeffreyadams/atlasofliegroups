@@ -58,15 +58,18 @@ set folded(TwistedRootDatum(rd,delta):args) = (RootDatum,mat):
    , eigen_lattice(^delta,1)
    )
 
-{make it easy to construct in simple case:
-use the first outer automorphism of given order
-if you need to specify delta more precisely use folder(RootDatum,mat) above
+{ make it easy to construct in simple case: search for a diagram automorphism
+  of order |n|
+  if you need to specify delta more precisely use folder(RootDatum,mat) above
 }
-set folded(RootDatum rd,int n)=
-assert(rd.is_simple,"root datum is not simple");
-if n=1 then (rd,id_mat(rd.rank)) else
-let out=rd.outer_automorphism_group then
-delta=out[first(for g in out do order(g)=n od)] in (rd,delta) fi
+set folded (RootDatum rd,int n) = (RootDatum,mat):
+    let (get,incr) = diagram_automorphism_iterator(rd)
+in  while true { exit by error or return }
+    do case get()
+       | none: error("No automorphism of order ",n," found")
+       | some(auto): if order(auto)=n then return(rd,auto) else incr() fi
+       esac
+    od; die { to keep the type  checker happy }
 
 
 { all simple factors of rd mapping to given simple factor of folded root datum }

@@ -248,14 +248,14 @@ set Z_2 (RealForm G) = [vec]:
   The numbers $c[i]$ are forgotten, but in fact will appear as denominators
   of the rational vectors returned, due to the way they were obtained.
 }
-set center_torsion_quotient(RootDatum rd) = [ratvec]:
+set center_torsion_quotient(RootDatum rd) = [ratvec]: { generators in $X_*$ }
   let (B,) = filter_units(adapted_basis(^simple_roots(rd)))
   , fcws = fundamental_coweights(rd)
   in for col in B { compute |fcws*col| }
      do sum(rank(rd), for v@i in fcws do v*col[i] od)
      od
 
-set center(RootDatum rd)=[ratvec]:
+set center (RootDatum rd)=[ratvec]: { generators in $X_*$ }
   assert(rd.is_semisimple,"Group is not semisimple. For non-semisimple groups use center_torsion_quotient@RootDatum");
   center_torsion_quotient(rd)
 
@@ -270,10 +270,11 @@ set has_cyclic_center(RootDatum rd) = bool:
 
 { list of elements in center,  for |rd| semisimple }
 set elements_of_center(RootDatum rd) = [ratvec]:
-   let Z=center(rd) in
-   if =#Z then [null(rank(rd))] { just the identity here }
-   else let denoms= for i:#Z do let (,d)=%Z[i]  in d od
-   in columns(Z.ratvecs_as_ratmat*all_words(denoms))
+   let Z= [ratvec]: center(rd) in
+   if #Z=0 then [null(rank(rd))] { just the identity; ensure it has right size }
+   else { generate mixed-radix numbers for denominators }
+      let coefficient_vectors = [vec]: all_words(map(denom@ratvec)(Z))
+   in columns(Z.ratvecs_as_ratmat*coefficient_vectors)
    fi
 
 { rd semisimple, map arbitrary element v of P^vee to
@@ -293,7 +294,7 @@ set map_to_center(RootDatum rd,ratvec v)=ratvec:
 }
 set lift(RootDatum rd,ratvec v) = ratvec:
   let A = mod_central_torus(rd).simple_coroots
-  then coords = requisition(solve(A,v)) { exress |v| in basis |columns(A)| }
+  then coords = requisition(solve(A,v)) { express |v| in basis |columns(A)| }
   in simple_coroots(rd)*coords
 
 {list of elements of center of derived group,

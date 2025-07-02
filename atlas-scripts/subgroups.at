@@ -66,9 +66,6 @@ root_datum(rd.rank # for v in roots do v od
           ,rd.rank # for v in roots do coroot(rd,v) od
 	  ,rd.prefers_coroots)
 
-{ convert |RootDatum| uncoding of |sub| back to list of root indices }
-set un_datum (RootDatum rd, RootDatum sub) = [int]:
-   for alpha in sub.simple_roots do root_index(rd,alpha) od
 
 
 {mat k: columns span a subspace U of X_*
@@ -673,30 +670,22 @@ let values=
  }
 
 
-set component_group_of_pseudo_Levi(RootDatum rd_L,RootDatum rd)=
+set component_group_of_pseudo_Levi(RootDatum rd_L,RootDatum rd) = [mat,WeylElt]:
    assert(is_pseudo_Levi(rd_L,rd),"Not a pseudo-Levi");
-   if rd_L.is_abelian then []
-   else let (,M)=Levi_of_subspace(rd,radical_basis(rd_L)) {centralizer of L_rad}
-      then norm=normalizer(rd_L,M)
-      then center=elements_of_center(rd_L.derived)
-      then center_lifted = for v in center do lift(rd_L,v) od
-   in for (,w) in norm
-      do let m=w.matrix in
-         if for v in center_lifted do v*m=v od.all do (m,w) fi
-      od
-   fi
+let (,M)=Levi_of_subspace(rd,radical_basis(rd_L)) {centralizer of L_rad}
+   then center_lifted = [ratvec]: { center of derived(rd_L) lifted to rd_L }
+      for v in elements_of_center(rd_L.derived) do lift(rd_L,v) od
+in for w in normalizer(rd_L,RootDatum: M)
+      if for v in center_lifted do v*w=v od.all do (matrix(w),w) fi
+   od
 
-
-set centralizer_pseudo_Levi(RootDatum rd_L,RootDatum rd)=[(mat,WeylElt)]:
+set centralizer_pseudo_Levi (RootDatum rd_L,RootDatum rd)=[(mat,WeylElt)]:
 {assert(is_pseudo_Levi(rd_L,rd),"Not a pseudo-Levi");}
-let norm=normalizer(rd_L,rd) then
-rv=[(mat,WeylElt)]:[] then
-t=regular_central_element(rd_L,rd) then
-rad_L=rd_L.radical_basis in
-for (,w) in norm do
- let m=w.matrix in
- if t*m=t and rad_L*m=rad_L then rv#:=(m,w) fi od;
-rv
+   let t=regular_central_element(rd_L,rd)
+   , rad_L = mat: ^rd_L.radical_basis { transpose so W can act on the right }
+in for w in normalizer(rd_L,rd)
+      if t*w=t and rad_L*w=rad_L do (w.matrix,w) fi
+   od
 
 set normalizer_report (RootDatum rd) = void:
    let scad (RootDatum rd) = string:
@@ -708,29 +697,31 @@ in prints(new_line,"equal rank subgroups of ", rd.nice_format
    prints("Diag: diagram automorphisms of H");
    prints("Out: : outer automorphism group of H_der");
    prints("Norm=Norm_G(H^0)/H^0");
-   tabulate ( ["H","type","Diag","H/H^0","Out","Norm","Out/Norm"] #
+   tabulate ( ["H","type","Diag","H/H^0","Out","Norm","Norm/Out"] #
       for L@i in subgroups(rd)
       do let type =
 	    if is_Levi(L,rd) then "L"
 	    elif is_pseudo_Levi(L,rd) then "PL"
 	    else ""
 	    fi
-	 , d=diagram_automorphisms(L).to_list
-	 then out=outer_automorphism_group(L.derived)
-	 then norm= normalizer(L,rd,out)
-	 then comp =
+	 , d=diagram_automorphism_iterator(L.Lie_type).to_list
+	 then out_order = #normalizer_classes(rd,un_datum(rd,L))
+	 then norm_order = out_order * order_W(centralizer(rd,L.simple_roots))
+	 then comp = string:
 	    if is_pseudo_Levi(L,rd)
 	    then  (#centralizer_pseudo_Levi(L,rd)).to_string
 	    else ""
 	    fi
-	 then diff_string =
-	    if #out=#norm then "" else (#out\#norm).to_string fi
+	 then diff_string = string:
+	    if out_order=norm_order then ""
+	    else (norm_order\out_order).to_string
+	    fi
       in [ L.derived.nice_format
          , type
 	 , (#d).to_string
 	 , comp
-	 , (#out).to_string
-	 , (#norm).to_string
+	 , out_order.to_string
+	 , norm_order.to_string
 	 , diff_string
 	 ]
       od
