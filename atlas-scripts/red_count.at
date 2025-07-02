@@ -50,11 +50,11 @@ set red_coroots(Param p) = [vec]:
        do let gammaj = gamma*alphav
        	  in if is_integer(gammaj) and gammaj.>
        	     then if alphav*theta = -alphav and Cayley((G.posroots)[j],p) != p
-   	     	  then [alphav]
+   	     	  then [alphav] {parity real root}
 	       	  else []
 	       	  fi
 	     elif ((theta*(gamma.numer))*alphav).<
-	     then [alphav]
+	     then [alphav] {complex}
 	     else []
 	     fi
        od.##
@@ -84,9 +84,9 @@ set red_count_Cayley(Param p) = int:
     then gamma = p.infinitesimal_character
     then theta = p.x.involution
     then ans = count( for alphav@j in  G.poscoroots
-       	       	      do let (gammajn,gammajd) = %(gamma*alphav)
-       	      	      	 in gammajd=1 and
-	      	 	    gammajn.!= and
+       	       	      do let (gammajn,gammajd) = %(gamma*alphav),
+		      	     k = coroot_index(G,-alphav*theta)
+       	      	      	 in gammajd=1 and gammajn.!= and k >= j and
        	  	 	    if alphav*theta = -alphav
 	  	 	    then Cayley((G.posroots)[j],p) != p
 	  	 	    else gammajn.> and
@@ -115,7 +115,27 @@ set red_count(Param p) = int:
     then () = red_count_time +:= elapsed_ms() - start
     in ans
 
-
+set red_count(Param p, int HT) = int:
+    if HT = -1 then return red_count(p) fi;
+    let start = elapsed_ms(), G = p.real_form, x = p.x, lambda = p.lambda
+    then up = (HT-height(p)) {how much we're allowed to increase ht}
+    then gamma = p.infinitesimal_character
+    then lambdainttw = (2*p.lambda).numer + sum(x.real_posroots)
+    then theta = p.x.involution
+    then ans = count( for alphav@j in G.poscoroots
+       	       	      do let (gammajn,gammajd) = %(gamma*alphav)
+       	      	      	 in gammajd=1 and
+	      	 	    gammajn.!= and
+       	  	 	    if alphav*theta = -alphav
+			    then (2*gammajn + lambdainttw*alphav)%4 = 2
+			    	 and dominant(G,(1+reflection(G,j)*theta)*gamma)*G.two_rho_check <=2*HT
+	  	 	    else let (tgammajn,) = %((theta*gamma)*alphav)
+				 in tgammajn.< and dominant(G, (1+reflection(G,j)*theta*reflection(G,j))*
+				 gamma) * G.two_rho_check <= 2*HT
+		 	    fi
+	      	     od)
+    then () = red_count_time +:= elapsed_ms() - start
+    in ans
 
 {label integral non-parity real as 1}
 set test_nonpar(Param p) = vec:

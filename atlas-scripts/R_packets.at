@@ -362,6 +362,8 @@ set concatenate(KGBElt x, ratvec lambda, [(WeylElt, (LocalVertexData, [[vec]]))]
     let wLvds = for (w, (Lvd,)) in local01
     	      	do w*Lvd {apply w^{-1} to all vertices}
 		od
+    then p0 = parameter(x,lambda,0*lambda)
+    then HT = next_heights(p0,edge_offset+1)~[0]
     then vert_hash1 = make_ratvec_hash()
     then perms1 = for wLvd in wLvds {wth entry gives map from 1st half of wLvd.list to big_list}
     	      	  do for v in wLvd.list[:wLvd.pair_start]
@@ -398,7 +400,7 @@ set concatenate(KGBElt x, ratvec lambda, [(WeylElt, (LocalVertexData, [[vec]]))]
 		     od.##.sort_u {sort_u eliminates repetitions}
 		   od {d = 0, 1}
     {then () = prints("in concatenate, big_LF = ",big_LF)}
-    then answer = localFD_1Dirac2_add_red(x,lambda,big_Lvd,big_LF)
+    then answer = localFD_1Dirac2_add_red(x,lambda,HT,big_Lvd,big_LF)
     {then () = prints("in concatenate, answer = ",answer)}
     {need to test pos on LKTs even if red_count_flag is false}
     in (big_Lvd, answer)

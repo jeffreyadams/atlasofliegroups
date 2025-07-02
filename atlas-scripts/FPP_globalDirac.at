@@ -360,7 +360,7 @@ then coh_ind_unip_few(G,Uhash)}
 		 then LF = if by_zero_flag {and height(p0) > 0}
 		      	   then localFD_1Dirac2_by_zero(x, lambda, Lvd, Perm2)
 			   else localFD_1Dirac2(x, lambda, Lvd, Perm2)
-			   fi
+			   fi {just red_count to edge_offset}
 		 then () = if every_lambda_deets_flag and FPP_report_flag
     	      	      	   then prints("time for localFD_1Dirac2* = ",print_time_string(elapsed_ms() - startLF),
 			   " to find [",#LF[0],",",#LF[1],"] verts and edges; Dirac eliminated ",
@@ -2387,3 +2387,116 @@ set FPPpre(RealForm G) = void:
        	      else FPP_unitary_hash2(G)
        	      fi
     in prints("Total time required was ",print_time_string(elapsed_ms() - start))
+
+set long_flags = true
+
+{report on status of flags}
+set FPP_flags() = void:
+    prints(new_line,"prefer_to_hts = ",prefer_to_hts," (default true).");
+    if long_flags
+    then prints("     true means prefer is_unitary_to_hts(p,[HTs]) to is_unitary_to_ht(p,HTs~[0])")
+    fi;
+    prints(new_line,"deform_flag = ",deform_flag," (default false).");
+    if long_flags
+    then prints("     true means when calculating at (x,lambda), record also unitary reps (at strictly",
+    	 	new_line,"     higher (x',lambda')) arising by deformation from these.")
+    fi;
+    prints(new_line,"step_flag = ",step_flag," (default false).");
+    if long_flags
+    then prints("     true means one_level adds an extra to_ht step before going to the fixed level.")
+    fi;
+    prints(new_line,"short_hts_flag = ",short_hts_flag," (default false).");
+    if long_flags
+    then prints("     true means is_unitary_to_ht uses short_hts, which is slower to calculate than",
+    	 	new_line,"     next_hts, but perhaps better?")
+    fi;
+    prints(new_line,"unip_flag = ",unip_flag," (default true).");
+    if long_flags
+    then prints("     false means do NOT preload Arthur's unipotent representations.")
+    fi;
+    prints(new_line,"edge_offset = ",edge_offset," (default 3).");
+    if long_flags
+    then prints("     Start is_unitary_to_ht at next_heights(p,edge_offset)~[0].")
+    fi;
+    prints(new_line,"edge_skip = ",edge_skip," (default 1).");
+    if long_flags
+    then prints("     How much to increase index in next_heights at each step.")
+    fi;
+    prints(new_line,"KU_flag = ",KU_flag," (default true).");
+    if long_flags
+    then prints("     false means do not look up known unitary classes in local_testK_hash")
+    fi;
+    prints(new_line,"KNU_flag = ",KU_flag," (default true).");
+    if long_flags
+    then prints("     false means do not look up known nonunitary classes in local_testK_hash")
+    fi;
+    prints(new_line,"ICPU_flag = ",ICPU_flag," (default false).");
+    if long_flags
+    then prints("     true means try to realize each param as induced from unitary in local_testK_hash")
+    fi;
+    prints(new_line,"ICPNU_flag = ",ICPNU_flag," (default false).");
+    if long_flags
+    then prints("     true means try to realize each param as induced from nonunitary in local_testK_hash")
+    fi;
+    prints(new_line,"tilde_flag = ",tilde_flag," (default false).");
+    if long_flags
+    then prints("     true means FPP_unitary_hash functions on [KGBElt] work last to first")
+    fi;
+    prints(new_line,"wiggle_flag0 = ",wiggle_flag0," (default false).");
+    if long_flags
+    then prints("     true means deform params in local_test_K_hash_bottom_layer to look for nonunitarity")
+    fi;
+    prints(new_line,"wiggle_flag1 = ",wiggle_flag1," (default false).");
+    if long_flags
+    then prints("     true means deform params in local_test_K_hash to look for nonunitarity")
+    fi;
+    prints(new_line,"final_wiggle_flag = ",final_wiggle_flag," (default false).");
+    if long_flags
+    then prints("     true means deform params in local_test_hash ('final approadch') to look for nonunitarity")
+    fi;
+    prints(new_line,"sort_LFD_flag = ",sort_LFD_flag," (default true).");
+    if long_flags
+    then prints("     false means do NOT sort candidate faces by height(infl char)")
+    fi;
+
+
+    prints(new_line,"one_two_reverse_flag = ",one_two_reverse_flag," (default false).");
+    if long_flags
+    then prints("     true means each face list LFDKH[d] is reversed before unitarity tests.")
+    fi;
+    prints(new_line,"test_interrupt_flag = ",test_interrupt_flag," (default true).");
+    if long_flags
+    then prints("     false means use is_unitary_test_big_SIMPLE instead of is_unitary_test_big_simple_interrupt.")
+    fi;
+    prints(new_line,"def_flag = ",def_flag," (default false).");
+    if long_flags
+    then prints("     true means hash_dumb uses is_unitary_def_test.")
+    fi;
+    prints(new_line,"real_flag = ",real_flag," (default false).");
+    if long_flags
+    then prints("     true means hash_dumb does less to_ht.")
+    fi;
+    prints(new_line,"long_out_flag = ",long_out_flag," (default false).");
+    if long_flags
+    then prints("     true means put output for (x,lambda) into global vars ParamsByDim and LFDKHByDim.")
+    fi;
+    prints(new_line,"bl_interrupt_flag = ",bl_interrupt_flag," (default false).");
+    if long_flags
+    then prints("     true means use interrupted version of bottom_layer.")
+    fi;
+    prints(new_line,"bl_step_flag = ",bl_step_flag," (default false).");
+    if long_flags
+    then prints("     true means use stepped version of bottom_layer.")
+    fi;
+    prints(new_line,"bl_step_count = ",bl_step_count," (default 2).");
+    if long_flags
+    then prints("     Number of different shifts to try in bl_interrupt and bl_step.")
+    fi;
+    prints(new_line,"bl_step_size = ",bl_step_size," (default 5).");
+    if long_flags
+    then prints("     How much to increase the shift at each step.")
+    fi
+    prints(new_line,"fewer_reducible_unitary_flag = ",fewer_reducible_unitary_flag," (default true).");
+    if long_flags
+    then prints("     false means allow (x,lambda) where invt form is INDEF on LKTs.")
+    fi
