@@ -682,7 +682,7 @@ set component_group_of_pseudo_Levi(RootDatum rd_L,RootDatum rd)=
       then center_lifted = for v in center do lift(rd_L,v) od
    in for (,w) in norm
       do let m=w.matrix in
-         if for v in center_lifted do m*v=v od.all do (m,w) fi
+         if for v in center_lifted do v*m=v od.all do (m,w) fi
       od
    fi
 
@@ -695,7 +695,7 @@ t=regular_central_element(rd_L,rd) then
 rad_L=rd_L.radical_basis in
 for (,w) in norm do
  let m=w.matrix in
- if m*t=t and m*rad_L=rad_L then rv#:=(m,w) fi od;
+ if t*m=t and rad_L*m=rad_L then rv#:=(m,w) fi od;
 rv
 
 set normalizer_report (RootDatum rd) = void:
