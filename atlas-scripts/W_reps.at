@@ -42,21 +42,12 @@ set matrix_of_inner_products (WeylClassTable tab,[[int]] characters) = mat:
   let n=#characters
   in matrix((n,n),(int i,int j): tab.inner(characters[i],characters[j]))
 
-{ filter list of representations to a unique copy of any occurring character }
+{ reduce list of representations to one with at most 1 copy of any character }
 set unique (WeylClassTable tab,[W_rep] list) = [W_rep]:
-  case #list
-  in [], list
-  else let chars = for pi in list do character(tab,pi) od
-     , leq = lexicographic(<=@(int,int))
-     then sorted = [[int]]: sort_u(leq)(chars)
-     then positions = for :#sorted do -1 od
-     in for char@i in chars
-        do let j =
-           binary_search_first((int j):leq(char,sorted[j]),0,#sorted)
-           in assert(char=sorted[j]); if positions[j].< then positions[j]:=i fi
-        od
-     ; for pos in positions do list[pos] od
-  esac
+   let leq = ([int],[int]->bool): lexicographic(<=@(int,int))
+   then classes = [[W_rep,[int]]]:
+      for pi in list do (pi,character(tab,pi)) od.(partition_by(snd,leq))
+in for class in classes do class[0].fst od
 
 { ----------- cell representations --------------}
 
@@ -239,7 +230,7 @@ set standard_Levis (RootDatum rd) = [RootDatum]:
 
 { induction from a Levi factor
 
-  L is a Levi in G, |pi_L| is a class function on W(L)
+  Suppose L is a Levi in G, and |pi_L| is a class function on W(L),
   we want to compute the class function pi_G=ind_L^G(pi_L) on W(G)
 
   formula: if C is a conjugacy class for G
@@ -300,17 +291,28 @@ set Steinberg_character (RootDatum rd) = [int]:
 { scalar multiple of projection of representation space of |ops| on isotoypic
   subspace defined by character |char_values| of an irreducible representation
 
-  If and irreducible character |char_values| is not a constituent of the
+  If an irreducible character |char_values| is not a constituent of the
   representation defined by |ops|, this gives the null matrix; then since
   the result depends linearly on |char_values|, we can even use this when the
   character is reducible, but has a unique irreducible constituent in common
   with |ops|, giving (a multiple of) the projection for that isotypic subspace
 }
 set projector (WeylClassTable tab, W_rep (dim,ops), [int] char_values) = mat:
-  let rd=tab.root_datum, Q=null(dim,dim) in
+   let rd=tab.root_datum, Q=null(dim,dim)
+   then (get,incr) = Iterator<(WeylElt,mat)>: { to sum action over $W$ }
+      W_parabolic_iterator_with_action(rd,all_simples(rd),dim,ops)
+in while
+      case get()
+      | none: dont
+      | some(w,action): do
+        Q +:= character_value(tab,w,char_values)*action; incr()
+      esac
+   od; Q
+{ this used to be:
   for (w,action) in W_parabolic_with_action(rd,all_simples(rd),dim,ops)
   do Q+:=character_value(tab,w,char_values)*action
   od; Q
+}
 
 { restrict representation pi to isotypic subspace (image space of projector) }
 set restrict_representation_isotypic\
@@ -394,7 +396,3 @@ set print_primitive_ideal_info ([WCell] cells,[mat] projectors,string .) = void:
           , "dimension of special: ", #g)
   ; for a in g do prints(a) od
   od
-
-
-
-{Param->[(int, ([int],(RootDatum,[([int],[(int,int)])],[sparse_mat]) )    )]}
