@@ -20,6 +20,7 @@ any_type S,T begin
 set time ((->T)f) = T: let t=elapsed_ms() in f() next print(elapsed_ms ()-t)
 
 set succeeds (One_of<S,T> v) = bool: case v | fail: false | succeed: true esac
+set fails    (One_of<S,T> v) = bool: case v | fail: true | succeed: false esac
 set can (Maybe<T> v) = bool: { because |if can(solve(eqn))| sounds nicer  }
     case v | none: false | some: true esac
 
@@ -31,15 +32,22 @@ set requisition (string message) = (One_of<S,T> v) T:
 set requisition = (One_of<S,T>->T):
     requisition("No solution found; having one was required")
 
+set ! (Iterator<T> (get,incr) ) = void:
+   while
+     case get()
+     | none: false
+     | some(value): prints(value); true
+     esac
+   do incr()
+   od
+
 set to_list (Iterator<T> (get,incr) ) = [T]:
-   case get()
-   | none: []
-   | some(value): let go=true in
-       while go
-       do value
-       next case incr(); get() | none: go:=false | some(v): value:=v esac
-       od
-   esac
+   while
+     case get()
+     | none: dont
+     | some(value): do value next incr()
+     esac
+   od
 
 set ! ((S,T->bool)rel) = ([S] a,[T] b)bool: { distribute relation over lists }
   #a=#b and (for x@i in a do if not rel(x,b[i]) then return false fi od; true)
@@ -50,7 +58,7 @@ set prints_lines ([T] a) = void: for x in a do prints(x) od
 end
 
 
-set ! = print_lines@T[T] { allow printing any list line-by-line as |list!| }
+set ! = prints_lines@T[T] { allow printing any list line-by-line as |list!| }
 
 set == = =@(int,int)! { make comparison of two |[int]| available as |==| }
 set == = =@(vec,vec)! { make comparison of two |[int]| available as |==| }
