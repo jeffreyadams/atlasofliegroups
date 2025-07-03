@@ -149,6 +149,24 @@ set permute ([int] pi,vec v) = vec: { replaces |v[i]| by |v[pi.inverse[i]]| }
   assert(#pi=#v { and |pi| is a permutation },"length mismatch");
   let result=null(#v) in for i@j in pi do result[i]:=v[j] od; result
 
+any_type T begin
+set permute ([int] pi,[T]a) = [T]: { replaces |a[i]| by |a[pi.inverse[i]]| }
+  assert(#pi=#a { and |pi| is a permutation },"length mismatch");
+{ here we cannot pre-allocate a row of undefined T values, but have no need to }
+  for i in permutation_inverse(pi) do a[i] od
+end
+
+set permutation_act([int] sigma, mat M) = mat: { permutation_matrix(sigma)*M }
+   M.n_columns ^ for i in permutation_inverse(sigma) do row(M,i) od
+
+{ M*inverse(permutation_matrix(sigma)), for a right-action of S_n }
+set permutation_right_act (mat M,[int] sigma) = mat:
+   M.n_rows # for j in sigma do column(M,j) od
+
+set permutation_conjuagation([int] sigma, mat M) = mat:
+   permutation_act(sigma,permutation_right_act(M,sigma))
+
+
 set permutation_cycles ([int] pi) = [[int]]:
   let n=#pi then todo = full_bitset(n) in
   for start:n { try every index once as |start|, those visited give 0-cycles }
