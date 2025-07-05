@@ -305,12 +305,12 @@ in while
       case get()
       | none: dont
       | some(w,action): do
-        Q +:= character_value(tab,w,char_values)*action; incr()
+        Q +:= character_value(tab,char_values,w)*action; incr()
       esac
    od; Q
 { this used to be:
   for (w,action) in W_parabolic_with_action(rd,all_simples(rd),dim,ops)
-  do Q+:=character_value(tab,w,char_values)*action
+  do Q+:=character_value(tab,char_values,w)*action
   od; Q
 }
 
