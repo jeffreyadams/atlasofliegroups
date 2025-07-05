@@ -705,7 +705,7 @@ in for k:n from 1
 
 { Convenience functions }
 
-set show (WeylClassTable tab) = void:
+set print_classes(WeylClassTable tab) = void:
    let data = ["nr","count","order","length","Levi type","representative"] #
      for w@i in tab.class_representatives
      do [ i.to_string

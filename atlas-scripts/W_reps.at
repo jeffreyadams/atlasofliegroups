@@ -275,3 +275,17 @@ set smallest_degree (WeylClassTable Wct, [int] character) = int:
   first(Wct.root_datum.nr_of_posroots+1
        ,(int k) bool: !=Wct.inner(character,Wct.sym_power_refl(k))
        )
+
+{ the Steinberg character (mainly for testing)}
+
+{alternating sum, over all standard Levis, of induced from trivial
+ should equal the sign character (if it does not, this function fails) }
+set Steinberg_character (RootDatum rd) = [int]:
+  let ct_G=W_class_table_generic(rd)
+  then result =
+     for L in standard_Levis(rd)
+     do let ct_L=W_class_table_generic(L) in
+        minus_1^semisimple_rank(L) * induce_character(ct_G,ct_L,ct_L.trivial)
+     od
+     .sum
+  in assert(result=ct_G.sign); result
