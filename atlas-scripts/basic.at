@@ -41,6 +41,9 @@ set ! (Iterator<T> (get,incr) ) = void:
    do incr()
    od
 
+set count (Iterator<T> (get,incr) ) = int: { run through iteration, counting }
+   while get().succeeds do incr() od { in |int| context, |while| loop counts }
+
 set to_list (Iterator<T> (get,incr) ) = [T]:
    while
      case get()
@@ -48,6 +51,9 @@ set to_list (Iterator<T> (get,incr) ) = [T]:
      | some(value): do value next incr()
      esac
    od
+
+set take (int n,Iterator<T> (get,incr) ) = [T]:
+   for :n do case get() | none: break | some(value): value esac next incr() od
 
 set ! ((S,T->bool)rel) = ([S] a,[T] b)bool: { distribute relation over lists }
   #a=#b and (for x@i in a do if not rel(x,b[i]) then return false fi od; true)

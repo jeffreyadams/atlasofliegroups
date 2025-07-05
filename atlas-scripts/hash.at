@@ -40,7 +40,9 @@ set_type Hash<T> =
   , (   -> [T]) list
   , (int->T   ) index
   , (T  ->int ) match
+  , (T  ->bool) could_add { like |match|, but returns whether it was new }
   , (T  ->Maybe<int> ) search
+  , (   ->Iterator<T>) iterator
   )!
 
 any_type T begin
@@ -68,31 +70,51 @@ set make_hash (HashInfo<T> (hash_code,eq)) = Hash<T>:
 	   fi
 	od
      end
-   then match(T x) =
+   then acquire(T x) = (bool,int):
       let (code,new) = locate(x), seq=#values in
-      if new { an empty slot was found, fill it }
-      then values #:= x
-      ;  if seq>=max_fill()
-         then rehash()
-	 ; set(code,new):=locate(x)
-	 ; assert(not new,"Miraculous disappearence in rehashing!")
-	 fi
-      ;  seq_nbrs[code] := seq
-      else seq_nbrs[code]
-      fi
+      ( new
+      , if new { an empty slot was found, fill it }
+	then values #:= x
+	;  if seq>=max_fill()
+	   then rehash()
+	   ; set(code,new):=locate(x)
+	   ; assert(not new,"Miraculous disappearence in rehashing!")
+	   fi
+	;  seq_nbrs[code] := seq
+	else seq_nbrs[code]
+	fi
+      )
 in ( { (   -> int) size     } @: #values
    , { (   -> int) capacity } @: #seq_nbrs
-   , { ([T]->    ) fill	    } ([T] list)void: for item in list do match(item) od
+   , { ([T]->    ) fill	    }
+     ([T] list)void: for item in list do acquire(item) od
    , { (   ->    ) clear    } clear
    , { (   -> [T]) list	    } @[T]: values
    , { (int->T   ) index    } (int i)T: values[i]
-   , { (T  ->int ) match    } match
+   , { (T  ->int ) match    }  (T x)int:  acquire(x).snd
+   , { (T  ->bool) could_add } (T x)bool: acquire(x).fst
    , { (T  ->Maybe<int> ) search   }
      (T x): let (i,new)=locate(x) in if new then none() else some(seq_nbrs[i]) fi
+   , { (   ->Iterator<T>) iterator }
+     @Iterator<T>: let i=0 in
+                   (@Maybe<T>: if i<#values then some(values[i]) else none() fi
+		   ,@void: i +:= 1
+		   )
    )
 
 set lookup(Hash<T> table) = (T x)int:
    case table.search(x) | none: -1 | some(i): i esac
+
+{ efficient orbit generation; client seeds |hash| with initial element(s) first }
+set exhaust ([(T->T)] actions, Hash<T> hash) = [T]:
+   let (get,incr) = hash.iterator()
+in while
+      case get()
+      | none: dont
+      | some(x): do x next incr()
+        ; for act in actions do hash.match(act(x)) od
+      esac
+   od
 
 end { of abstraction of type |T| }
 

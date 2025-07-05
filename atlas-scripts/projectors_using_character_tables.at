@@ -13,18 +13,32 @@ set projectors_verbose=true
   with |ops|, giving (a multiple of) the projection for that isotypic subspace
 }
 set projector (WeylClassTable tab, W_rep (dim,ops), [int] chi) = mat:
-  let rd=tab.root_datum, Q=null(dim,dim) in
-  for (w,action) in W_parabolic_with_action(rd,all_simples(rd),dim,ops)
-  do Q+:=character_value(tab,chi,w)*action
+  let rd=tab.root_datum
+   then (get,incr) = Iterator<(WeylElt,mat)>: { to sum action over $W$ }
+      W_parabolic_iterator_with_action(rd,all_simples(rd),dim,ops)
+  , Q=null(dim,dim)
+in while
+      case get()
+      | none: dont
+      | some(w,action): do incr()
+        ; Q+:=character_value(tab,chi,w)*action
+      esac
   od; Q
 
 { since the preceding function is very slow for large W because of
 class_of(w), report on progress through W (if projectors_verbose=true}
 set projector_verbose (CharacterTable ct, W_rep (dim,ops), [int] char_values) = mat:
-  let rd=ct.root_datum, Q=null(dim,dim), N=#(ct.root_datum.W) in
-  for (w,action) in W_parabolic_with_action(rd,all_simples(rd),dim,ops)
-  do Q+:=char_values[ct.class_of(w)]*action; N-:= 1;
-   if projectors_verbose then if (N%100 = 0) then prints("N=",N) fi fi
+  let rd=ct.root_datum
+  then (get,incr) = Iterator<(WeylElt,mat)>: { to sum action over $W$ }
+      W_parabolic_iterator_with_action(rd,all_simples(rd),dim,ops)
+  , Q=null(dim,dim), N=#(ct.root_datum.W)
+in while
+      case get()
+      | none: dont
+      | some(w,action): do incr()
+        ; Q+:=char_values[ct.class_of(w)]*action
+	; N-:= 1; if projectors_verbose and N%100 = 0 then prints("N=",N) fi
+      esac
   od; Q
 
 { since the preceding function is very slow for large W because of
@@ -32,15 +46,22 @@ set projector_verbose (CharacterTable ct, W_rep (dim,ops), [int] char_values) = 
   some_char_values is a list of characters for which the isotypic
   projections are to be computed }
 set projectors (CharacterTable ct, W_rep (dim,ops), [[int]] some_char_values) = [mat]:
-let rd=ct.root_datum,
-Q=for j:#some_char_values do null(dim,dim) od,
-N=#(ct.root_datum.W) in
-for (w,action) in W_parabolic_with_action(rd,all_simples(rd),dim,ops)
- do let index = ct.class_of(w) in for j:#some_char_values do
- Q[j]+:=some_char_values[j][index]*action od; N-:= 1;
- if projectors_verbose then if (N%100 = 0) then prints("N=",N) fi fi
-od;
-Q
+let rd=ct.root_datum
+then (get,incr) = Iterator<(WeylElt,mat)>: { to sum action over $W$ }
+      W_parabolic_iterator_with_action(rd,all_simples(rd),dim,ops)
+  , Q=for j:#some_char_values do null(dim,dim) od
+  , N=#(ct.root_datum.W)
+in while
+      case get()
+      | none: dont
+      | some(w,action): do incr()
+        ; let index = ct.class_of(w) in
+	  for j:#some_char_values
+	  do Q[j]+:=some_char_values[j][index]*action
+	  od
+	; N-:= 1; if projectors_verbose and (N%100 = 0) then prints("N=",N) fi
+      esac
+   od; Q
 
 set projector (CharacterTable ct, W_rep (dim,ops), [int] char) = mat:
 projectors(ct,(dim,ops),[char])[0]
