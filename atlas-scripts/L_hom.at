@@ -11,7 +11,7 @@ set_type [L_homomorphism = (KGBElt_gen y,ratvec gamma)]
 set inner_class(L_homomorphism phi)=InnerClass:inner_class(phi.y)
 
 
-{usualay this is used this in the setting of packets, but not individual representations}
+{usually this is used this in the setting of packets, but not individual representations}
 set make_dominant(KGBElt_gen y,ratvec gamma)=L_homomorphism:
 let (w,gamma_dom)=to_dominant(y.root_datum,gamma) in (w*y,gamma_dom)
 
@@ -36,6 +36,10 @@ let (gamma_dom,w)=to_dominant(gamma,y.root_datum) in  {gamma is in X^*(H)=X_*(H^
 
 set make_dominant(KGBElt_gen x,L_homomorphism (y,gamma))=(KGBElt_gen,L_homomorphism):
 let (w,gamma_dom)=to_dominant(y.root_datum,gamma) in (w*x,(w*y,gamma_dom))
+
+{just applied to phi_H, not x}
+set make_dominant(L_homomorphism (y,gamma))=L_homomorphism:
+let (w,gamma_dom)=to_dominant(y.root_datum,gamma) in (w*y,gamma_dom)
 
 set L_packet(RealForm G,L_homomorphism phi)=[Param]:
 assert(is_valid(phi), "phi is not valid");

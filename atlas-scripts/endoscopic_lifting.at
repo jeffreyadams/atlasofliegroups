@@ -13,8 +13,36 @@ phi(map_KGB_gen_tits(phi_H.y,dual(ic_G),M),phi_H.gamma*M)
 {assume M=id}
 set epstar(L_homomorphism phi_H,InnerClass ic_G)=L_homomorphism:epstar(phi_H,ic_G,id_mat(ic_G.rank))
 
+set pure_fiber(InnerClass ic_G,mat theta)=[KGBElt]:
+##for G in pure_strong_real_forms(ic_G) do
+ fiber(G,theta) od
+
+set KGB_fiber(KGBElt x_H,InnerClass ic_G,mat M)=
+let theta_G=M*x_H.involution in
+##for x_G in pure_fiber(ic_G,theta_G) do
+ if embed_KGB(x_G,x_H.real_form)=x_H then [x_G] else [] fi od
+
+{map just phi_H} 
+set epstar(L_homomorphism phi_H,InnerClass ic_G,mat M)=L_homomorphism:
+let y_H=phi_H.y then
+gamma_H=phi_H.gamma then
+gamma_G=M*gamma_H then
+y_G=map_KGB_gen_tits(y_H,dual(ic_G),M) then  {NOTE dual(ic_G)}
+phi_G_0=phi(y_G,gamma_G) then
+theta_G_v=involution(y_G) then
+theta_G=-^theta_G_v in
+make_dominant(phi_G_0)
+
+{map S_phi_G -> S_phi_H is well defined, not 1-1 or onto}
+
+set inverse_map_on_pure_component_group(L_homomorphism phi_H,L_homomorphism phi_G,mat M)=
+let S_phi_G=pure_component_group(phi_G) then y_H=phi_H.y then
+theta_H_v=y_H.involution then theta_H=-^theta_H_v in for x_G in S_phi_G
+do (x_G,KGB_elt(inner_class(phi_H),theta_H,x_G.torus_factor*M)) od
+
 {lift pair (x_H,phi_H) to (x_G,phi_G); x_H must be pure element for H}
-set epstar(KGBElt x_H,L_homomorphism phi_H,InnerClass ic_G,mat M)=(KGBElt,L_homomorphism):
+{algorithm: first lift phi_H to phi_G; then run over all elements of S_phi_G mapping to S_phi_H by inverse_map_on__component_group; take the set of these pairs (x_H_i,phi_H)}
+set epstar(KGBElt x_H,L_homomorphism phi_H,InnerClass ic_G,mat M)=[(KGBElt,L_homomorphism)]:
 assert(is_pure(x_H), "x_H is not pure (epstar only defined at the moment for pure real forms of H and G");
 let y_H=phi_H.y then
 gamma_H=phi_H.gamma then
@@ -30,38 +58,45 @@ phi_G_0=phi(y_G,gamma_G) then
 theta_G_v=involution(y_G) then
 theta_G=-^theta_G_v then
 ()=if e_verbose then prints("theta_G: ", theta_G,new_line,"torus_factor(x_H): ", torus_factor(x_H)) fi then
-{x_G_0=KGB_elt(ic_G,theta_G,x_H.torus_factor*M) then   {NOTE: this might be on a different real form of G}}
-x_G_0=KGB_elt(ic_G,theta_G,M*x_H.torus_factor) then   {NOTE: this might be on a different real form of G}
+pairs=for (x_G,x_H_new) in inverse_map_on_pure_component_group(phi_H,phi_G_0,M) do if x_H_new=x_H then [(x_G,phi_G_0)] else [] fi od.## in
+for (x_G_0,phi_G) in pairs do make_dominant(x_G_0,phi_G) od
+
+{x_G_0=KGB_elt(ic_G,theta_G,M*x_H.torus_factor) then   {NOTE: this might be on a different real form of G}
 ()=if e_verbose then prints("x_G_0: ", x_G_0) fi then
 ()= if e_verbose then prints("x_G_0.real_form: ",x_G_0.real_form) fi then
 ()=if e_verbose then prints("x_G_0.torus_factor",x_G_0.torus_factor) fi then
 (x_G,phi_G)=make_dominant(x_G_0,phi_G_0) then
-()=if e_verbose then prints("x_G: ", x_G, new_line, "phi_G: ", phi_G) fi in (x_G,phi_G)
+()=if e_verbose then prints("x_G: ", x_G, new_line, "phi_G: ", phi_G) fi in (x_G,phi_G)}
+
 
 {(x_H,phi_H) -> (x_G,phi_G) -> standard module p_G for some real form in ic_G -> (p_G, finalize(p_G)
 long version includes p_G (not just its finalization)}
-set epstar_std_long(KGBElt x_H,L_homomorphism phi_H,InnerClass ic_G,mat M)=(Param,ParamPol):
+set epstar_std_long(KGBElt x_H,L_homomorphism phi_H,InnerClass ic_G,mat M)=[(Param,ParamPol)]:
 assert(is_pure(x_H), "x_H is not pure (epstar only defined at the moment for pure real forms of H and G");
-let (x_G,phi_G)=epstar(x_H,phi_H,ic_G,M) then
-()=if e_verbose then prints("x_G: ", x_G, " ", x_G.real_form, " ", x_G.torus_factor) fi then
-p_G=parameter(x_G,phi_G) then
-()=if e_verbose then prints("p_G=", p_G) fi
-in (p_G,finalize(p_G))
+let pairs=epstar(x_H,phi_H,ic_G,M) in
+for (x_G,phi_G) in pairs do 
+ let p_G=parameter(x_G,phi_G)  in
+ (p_G,finalize(p_G))
+od
 
-{just keep the finalization:
+{just keep the finalization
 (x_H,phi_H) -> (x_G,phi_G) -> standard module p_G for some real form in ic_G -> finalize(p_G)}
-set epstar_std(KGBElt x_H,L_homomorphism phi_H,InnerClass ic_G,mat M)=ParamPol:let (,X)=epstar_std_long(x_H,phi_H,ic_G,M) in X
-set epstar_std(KGBElt x_H,L_homomorphism phi_H,InnerClass ic_G)=ParamPol:let (,X)=epstar_std_long(x_H,phi_H,ic_G,id_mat(x_H.root_datum.rank)) in X
+set epstar_std(KGBElt x_H,L_homomorphism phi_H,InnerClass ic_G,mat M)=[ParamPol]:
+for (,X) in epstar_std_long(x_H,phi_H,ic_G,M) do X od
+
+set epstar_std(KGBElt x_H,L_homomorphism phi_H,InnerClass ic_G)=[ParamPol]:
+for (,X) in epstar_std_long(x_H,phi_H,ic_G,id_mat(x_H.root_datum.rank)) do X od
 
 {main std function: standard module on H -> (finalization of) standard module on real form in ic_G
 p_H -> (x_H,phi_H) -> epstar_std(x_H,phi_H,ic_G) }
-set epstar_std(Param p_H,InnerClass ic_G,mat M)=ParamPol:
+set epstar_std(Param p_H,InnerClass ic_G,mat M)=[ParamPol]:
 let gamma_H=p_H.infinitesimal_character then
 y_H=y_gen(p_H) then
 phi_H=phi(y_H,gamma_H) then
 x_H=p_H.x in
 epstar_std(x_H,phi_H,ic_G,M)
-set epstar_std(Param p_H,InnerClass ic_G)=ParamPol:epstar_std(p_H,ic_G,id_mat(ic_G.rank))
+
+set epstar_std(Param p_H,InnerClass ic_G)=[ParamPol]:epstar_std(p_H,ic_G,id_mat(ic_G.rank))
 
 {given a ParamPol on H, apply epstar_std(p_H,G) to each term; the result can live on
 different real forms of G, so return [ParamPol]}
@@ -70,12 +105,10 @@ let lifts=##for c@p in P_H do [c*epstar_std(p,ic_G,M)] od
  in if =#lifts then
   [null_module(quasisplit_form(ic_G))]
  else
-  for G in real_forms(ic_G) do sum(G,for P in lifts do if P.real_form=G then [P] else [] fi od.##) od
+  for G in real_forms(ic_G) do sum(G,##for P in lifts do if P.real_form=G then [P] else [] fi od.##) od
  fi
 {assume M=id}
 set epstar_std(ParamPol P_H,InnerClass ic_G)=[ParamPol]:epstar_std(P_H,ic_G,id_mat(rank(ic_G)))
-
-
 
 set epstar_std([ParamPol] pols_H,InnerClass ic_G,mat M)=[ParamPol]:
 let list=for P_H in pols_H do epstar_std(P_H,ic_G,M) od
@@ -87,7 +120,7 @@ set epstar_std([ParamPol] pols_H,InnerClass ic_G)=[ParamPol]:epstar_std(pols_H,i
 {apply epsstar_std(P_H,G, inner_class(G)) and keep just the terms on G}
 set epstar_std_one(ParamPol P_H,RealForm G,mat M)=ParamPol:
 let lifts=##for c@p in P_H do [c*epstar_std(p,inner_class(G),M)] od
-in sum(G,for P in lifts do if P.real_form=G then [P] else [] fi od.##)
+in sum(G,##for P in lifts do if P.real_form=G then [P] else [] fi od.##)
 {assume M=id}
 set epstar_std_one(ParamPol P_H,RealForm G)=ParamPol:epstar_std_one(P_H,G,id_mat(rank(G)))
 
