@@ -1960,7 +1960,7 @@ set print_KL_list  ((RealForm,RealForm) p) = void: print_KL_list(block(p))
 set print_W_cells  ((RealForm,RealForm) p) = void: print_W_cells(block(p))
 set print_W_graph  ((RealForm,RealForm) p) = void: print_W_cells(block(p))
 
-{				K types					}
+{				K-types					}
 
 set root_datum (KType t) = RootDatum: real_form(t)
 set inner_class (KType t) = InnerClass: real_form(t)

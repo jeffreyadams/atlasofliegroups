@@ -509,7 +509,7 @@ set find_x_with_dominant_rho_c (RealForm G) = KGBElt:
    error("Real form ",G," does not have KGB element with dominant rho_c")
 
 set find_x_with_dominant_rho_c (KGPElt Q) = (KGBElt,bool):
-   assert(is_parabolic_theta_stable(Q), "Q is not theta stable");
+   assert(parabolic_is_theta_stable(Q), "Q is not theta stable");
    let G=real_form(Q),
    C=equivalence_class_of(Q) in let n=#C, done=false in
    let i=0 in let x=C[0] in
@@ -553,7 +553,7 @@ set choose_irred_inds ([[[Param]]] list)=[[[Param]]]:
 set K_types (KHighestWeight(,x,v):mu_in)= [KType]:
    let G=real_form(x)
    then Q=parabolic_LKT(mu_in)
-in assert(is_parabolic_theta_stable(Q), "Q is not theta stable");
+in assert(parabolic_is_theta_stable(Q), "Q is not theta stable");
    let x_Q=x_min(Q)
    then list=for wt in R_K_dom_mu_orbit(mu_in) do move_weight(wt,x_Q) od
    then test=for weight in list do inds(weight) od
