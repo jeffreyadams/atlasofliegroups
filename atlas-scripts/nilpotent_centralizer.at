@@ -47,9 +47,9 @@ set m (ComplexNilpotent O,vec alpha) = int: m_0(O,alpha)-m_2(O,alpha)
  returns a set roots of G, and their restrictions to T (removing duplicates)
 }
 set centralizer_roots (ComplexNilpotent O)=([vec],[vec]):
-   let L=O.Bala_Carter_Levi in
-   let roots_G =
-      for alpha in nilrad_roots(O.root_datum,L)
+   let rd=O.root_datum, L=O.Bala_Carter_Levi
+   then roots_G =
+      for alpha in nilrad_roots(rd,un_datum(rd,L))
       do let m=m(O,alpha) in assert(m=0 or m=1,"m is not 0 or 1")
       ;  if m=1 do alpha fi
       od.##
@@ -129,15 +129,17 @@ O.root_datum.dimension - O.dim_centralizer - O.dim
 
 { for testing only, as the name suggests }
 set test (ComplexNilpotent O) = void:
-  let (S,H_L)=O.Bala_Carter_Levi_plus then L=sub_datum(O.root_datum,S)
-  then (roots_G,coroots_G,roots_C,coroots_C)=centralizer_roots_and_coroots(O)
-  , C=centralizer(O)
+  let rd = O.root_datum
+  , (S,H_L) = O.Bala_Carter_Levi_plus
+  , (roots_G,coroots_G,roots_C,coroots_C) = centralizer_roots_and_coroots(O)
+  , C = centralizer(O)
 in prints("------",new_line
          ,"H_L=", H_L,new_line
 	 ,"dim:", O.dim_nilpotent,new_line
 	 ,"L=",L,new_line
-	 ,"simple roots of L: ", L.simple_roots,new_line
-	 ,"nilrad: ", (O.root_datum,L).nilrad_roots);
+	 ,"simple roots of L: ", sub_datum(rd,S).simple_roots,new_line
+	 ,"nilrad: ", nilrad_roots(rd,S)
+	 );
    prints("#roots_G:",#roots_G);
    prints("#roots_C:  ", #roots_C,new_line, "#coroots_C:", #coroots_C);
    prints("roots_C:",roots_C);

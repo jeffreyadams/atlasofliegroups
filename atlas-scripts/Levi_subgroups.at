@@ -376,9 +376,9 @@ in for m in mins do if is_member_bitset(m+npr,bottoms) then return Levi#m fi od
 )
 
 { return maximal Levi containing |Levi|, ordered in the way they were found }
-set maximise (RootDatum rd,[int] !Levi) = [int]:
+set maximize_Levi (RootDatum rd,[int] !Levi) = [int]:
    let ssr = rd.semisimple_rank, max=Levi in
-   while #max<ssr do max:=extend_Levi(rd,max); assert(!=#max) od; max
+   while #max<ssr do max:=extend_Levi(rd,max); assert(#max!=0) od; max
 
 { find chamber defined by a maximal system, and its simple root permutation }
 set chamber_max_system (RootDatum rd, [int] sys) = (WeylElt,[int]):
@@ -398,7 +398,7 @@ set chamber_max_system (RootDatum rd, [int] sys) = (WeylElt,[int]):
 { for non-standard Levi: some conjugate standard Levi, and conjugator from it }
 set from_standard_Levi ((RootDatum,[int]) (rd,Levi):arg) = StdLeviImage:
    { the |std_Levi| component of the result is not sorted }
-   let (chamber,perm) = chamber_max_system(rd,maximise(arg)) in
+   let (chamber,perm) = chamber_max_system(rd,maximize_Levi(arg)) in
    (chamber,perm[:#Levi] { select start of simple indices list })
 
 { given |StdLeviTable|: tabled representative of a standard Levi, conjugator }
@@ -437,3 +437,12 @@ set Levi_lookup (RootDatum rd,StdLeviTable table) = StdLeviFinder:
 
 forget orbit_data
 forget other_entry
+
+{ facilitate reverting to |(RootDatum,[int])| encoding of Levi subgroups }
+
+{ convert root encoding of set of roots to list of root indices }
+set uproot (RootDatum rd, mat root_vectors) = [int]:
+   for alpha in root_vectors do root_index(rd,alpha) od
+
+{ convert |RootDatum| encoding of |sub| back to list of root indices }
+set un_datum (RootDatum rd, RootDatum sub) = [int]: uproot(rd,sub.simple_roots)

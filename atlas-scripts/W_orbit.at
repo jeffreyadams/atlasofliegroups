@@ -157,12 +157,7 @@ set W_parabolic_iterator (RootDatum rd, [int] gens) = Iterator<WeylElt>:
          then A = mat: { linear forms to vanish, or for |k| be positive, on |v| }
 	 (r ^ for i in para do coroot(rd,i) od) { to fix coroot evaluations }
 	  ^ cokernel(r # for i in para do root(rd,i) od) { to stay in root span }
-	 then v = vec:
-	    case solve(A,identity_row(r,k)/1)
-	    | none: error("set of roots ",gens," is dependent")
-	    | some(solution):
-	      numer(solution) { numerator already has the desired stabilizer }
-	    esac
+	 then v = vec: required_solution(A,identity_row(r,k)/1).numer
       in stabiliser_quotient_of_dom(rd, para, v)
       od
    then state = null(ng), m = vec: map(#@T[T])(subquotient_stack)
@@ -185,12 +180,7 @@ set W_parabolic_iterator_with_action \
          then A = mat: { linear forms to vanish, or for |k| be positive, on |v| }
 	 (r ^ for i in para do coroot(rd,i) od) { to fix coroot evaluations }
 	  ^ cokernel(r # for i in para do root(rd,i) od) { to stay in root span }
-	 then v = vec:
-	    case solve(A,identity_row(r,k)/1)
-	    | none: error("set of roots ",gens," is dependent")
-	    | some(solution):
-	      numer(solution) { numerator already has the desired stabilizer }
-	    esac
+	 then v = vec: required_solution(A,identity_row(r,k)/1).numer
       in for (,word,act) in
              generate_action_from_dom(actors, v, dim, gens_rep[:k+1])
          do (product(rd,for i in word do W_refl(rd,gens[i]) od),act)

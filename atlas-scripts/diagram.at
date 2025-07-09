@@ -64,16 +64,16 @@ in { replace second component of each |simple_autos| entry }
    , starts = 0 # map(snd)(types).cumulate_forward
    , modulus = { orders of the lists of automoprhism that are run over }
      for (,autos) in simple_autos do #autos od
-   , current_perm = [vec]: { for each cluster the currently used permutation }
-     for c in clusters do #(#c) { cluster identity } od
+   , current_perm = [Iterator<vec>]: { one iterator for each cluster }
+     for c in clusters do permutation_iterator(#c) od
    then
      advance(int start,vec delta) = void:
-     { right-multiply by permutation |delta| lifted to simpla factor at |start }
+     { right-multiply by permutation |delta| lifted to simpla factor at |start| }
         let snap = cur[start:start+#delta] { take snapshot of old values } in
         for dst@src in delta do cur[start+src] := snap[dst] od
    , install(int k, vec pi) = void: { install permutation |pi| of cluster |k| }
         let cl = [int]: clusters[k]
-	then (,r) = types[cl[0]] { get rank of eash of the factors permuted }
+	then (,r) = types[cl[0]] { get rank of each of the factors permuted }
 	, st = for i in cl do starts[i] od { and starting points of each factor }
 	in for d:r
 	   do for dst@src in pi do cur[st[src]+d] := st[dst]+d od
@@ -89,10 +89,13 @@ in ( @Maybe<vec>:  { |get| method: value produced this iteration, if any }
      ;  if k>0 then return() fi { stop unless |k| was wrapped around }
      od
      { now all factor automorphism are back to identity; advan the permutations }
-   ; for perm@j in current_perm { |perm| is permutation of clusters[j] }
-     do case next_permutation(perm)
-        | none(): ()
-	| some(pi): install(j,current_perm[j] := pi); return()
+   ; for (get,incr)@j in current_perm { |perm| is permutation of clusters[j] }
+     do incr();
+        case get()
+        | none(): let size = #clusters[j] in
+	  current_perm[j] := permutation_iterator(size) { reset }
+	  ; install(j,#size) { reset cluster permutation to identity }
+	| some(pi): install(j,pi); return()
 	esac
      od
    ; go:=false

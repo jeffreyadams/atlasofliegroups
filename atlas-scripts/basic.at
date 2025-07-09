@@ -372,13 +372,18 @@ set fac (int n) = int: let p=1 in for i:n-1 from 2 do p *:=i od; p
 set ! = fac@int { allo conventional factorial notation }
 
 { convert to base n as polynomial: small coef polynomial evaluating to k at n }
-set to_base_poly (int n) = (int->vec):
-  (int k): assert(k.>=); let r=0{dummy for multi-assign} in
-  vec: while !=k do set (k,r):=k\%n; r od
+set to_base_poly (int b) = (int->vec):
+  (int n): assert(n.>=); let r=0{dummy for multi-assign} in
+  vec: while n>0 do set (n,r):=n\%b; r od
 
-set to_base (int n, (int->string) digit) = (int->string):
-  let tbp=to_base_poly(n) in
-  (int k) string: for c in tbp(k) ~do c.digit od.##
+set to_base_fixed_length (int b, int l) = (int->vec{of length |l|}):
+  (int n): let r=0{dummy for multi-assign} in
+  vec: for :l do set (n,r):=n\%b; r od { get |l| finals digits, regardless }
+
+
+set to_base (int b, (int->string) digit) = (int->string):
+  let tbp=to_base_poly(b) in
+  (int n) string: for c in tbp(n) ~do c.digit od.##
 
 set binary = (int->string):
   let f=to_base(2,to_string@int) in
@@ -1963,7 +1968,7 @@ set print_KL_list  ((RealForm,RealForm) p) = void: print_KL_list(block(p))
 set print_W_cells  ((RealForm,RealForm) p) = void: print_W_cells(block(p))
 set print_W_graph  ((RealForm,RealForm) p) = void: print_W_cells(block(p))
 
-{				K types					}
+{				K-types					}
 
 set root_datum (KType t) = RootDatum: real_form(t)
 set inner_class (KType t) = InnerClass: real_form(t)

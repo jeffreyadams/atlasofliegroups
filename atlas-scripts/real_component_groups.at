@@ -8,7 +8,7 @@
 set test_real_orbit_plus (RealForm G,[int] H, RealForm M, [int] S) = [(KGBElt, KGBElt, RealForm)]:
  ##for x_M in KGB(M)
    do let P_L=Parabolic:(simple_roots_from_coweight(root_datum(M),H),x_M)
-   in if is_parabolic_theta_stable(P_L) and x_M=x_min(P_L) else []
+   in if parabolic_is_theta_stable(P_L) and x_M=x_min(P_L) else []
       then
          let MC=complex_Levi(G,S), theta=involution(x_M)
          then dim_center=rank(lie_compact_radical(inner_class(MC,theta)))
@@ -30,7 +30,7 @@ set test_real_orbit_plus (RealForm G,[int] H, RealForm M, [int] S) = [(KGBElt, K
 set test_real_orbit_alt (RealForm G,[int] H, RealForm M) = [KGBElt]:
  ##for x_M in KGB(M)
    do let P_L=Parabolic:(simple_roots_from_coweight(root_datum(M),H),x_M)
-   in if is_parabolic_theta_stable(P_L) and x_M=x_min(P_L) else []
+   in if parabolic_is_theta_stable(P_L) and x_M=x_min(P_L) else []
       then
          let MC=root_datum(M), theta=involution(x_M)
          then dim_center=rank(lie_compact_radical(inner_class(MC,theta)))
@@ -112,7 +112,7 @@ set pseudo_Levis (RealNilpotent O)=[RealForm]:
 set is_noticed_orbit (RealNilpotent (H,y,()))=bool:
    let G=real_form(y) then
       P=Parabolic:(simple_roots_from_coweight(root_datum(G),H),y)
-          in if is_parabolic_theta_stable(P) else false
+          in if parabolic_is_theta_stable(P) else false
       then let x=x_min(P) then
          MC=root_datum(G), theta=involution(x)
          then dim_center=rank(lie_compact_radical(inner_class(MC,theta)))

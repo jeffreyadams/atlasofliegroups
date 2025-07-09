@@ -68,7 +68,7 @@ sum(G,for c@p in cf do c*parameter(x(p),lambda(p)+w+(1-involution(x(p)))*v/2,nu(
 set theta_induce_standard_warning (Param p_L,RealForm G,bool warnings_on) = Param:
 let L=real_form(x(p_L)), x_G=embed_KGB(x(p_L),G)
 then shift=rho(G)-rho(L)
-in assert(is_parabolic_theta_stable(make_parabolic(L,G)),"L is not Levi of theta_stable parabolic");
+in assert(parabolic_is_theta_stable(make_parabolic(L,G)),"L is not Levi of theta_stable parabolic");
 let p_G=parameter(x_G,lambda(p_L)+shift,nu(p_L)) in
 if warnings_on then
  if not is_standard(p_G) then prints(new_line,"warning:", p_G, " is not standard") fi;

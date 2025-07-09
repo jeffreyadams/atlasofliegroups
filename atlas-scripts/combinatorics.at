@@ -69,15 +69,18 @@ in  (code,1).
   This can be applied even if some entries of |sigma| are the same (a multiset
   permutation), in which case the lexicographically next permutation is found.
 }
-set next_permutation (vec perm) = Maybe<vec>: { find next, if one exists }
-   let i = last(#perm-1,(int i)bool: perm[i]<perm[i+1]) in
-   if i<0 then none()
-   else
-      let x=perm[i], j=0
-   in while perm~[j]<=x do j+:=1 od { search least element >x after it}
-   ;  perm[i] := perm~[j]; perm~[j] := x { swap to increase |perm[i]| }
-   ;  some(perm[:i+1] ## perm~[:i+1~]) { reverse tail after |perm[i]| }
-   fi
+set permutation_iterator (int n) = Iterator<vec>:
+   let pi = vec: #n, go=true
+in ( @Maybe<vec>: if go then some(pi) else none() fi
+   , @void:
+      let i = last(n-1,(int i)bool: pi[i]<pi[i+1]) in
+      if i<0 then go:=false
+      else let x=pi[i], j=0
+      in while pi~[j]<=x do j+:=1 od { search least element >x after it}
+      ;  pi[i] := pi~[j]; pi~[j] := x { swap to increase |perm[i]| }
+      ;  pi := pi[:i+1] ## pi~[:i+1~] { reverse tail after |pi[i]| }
+      fi
+   )
 
 any_type T begin
 set permutations([T] xs) = [[T]]: { permutations of entries, ignore equalities }

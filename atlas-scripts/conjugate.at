@@ -6,13 +6,6 @@
 <lietypes.at  { for |is_locally_isomorphic| }
 <group_operations.at
 
-{ convert root encoding of set of roots to list of root indices }
-set uproot (RootDatum rd, mat root_vectors) = [int]:
-   for alpha in root_vectors do root_index(rd,alpha) od
-
-{ convert |RootDatum| encoding of |sub| back to list of root indices }
-set un_datum (RootDatum rd, RootDatum sub) = [int]: uproot(rd,sub.simple_roots)
-
 { Goal: given two sub-root systems of |rd| associated to pseudo Levi subgroups,
   find, and count, Weyl elements |w| taking one to the other
 
