@@ -434,6 +434,9 @@ set coh_ind_unip_all(KGPElt Q, ratvec v) = void:
     coh_ind_unip_all(Q, big_unitary_hash.uhash(Q.real_form),v)
 
 set coh_ind_unip_few(RealForm G, [KGPElt] Qs, Param_hash Uhash) = void:
+    if coh_ind_unip_verbose
+    then prints("Examining ",#Qs," parabolics in coh_ind_unip_few")
+    fi;
     let startTime = elapsed_ms(), oldSize = Uhash.size()
     then () = for Q@j in Qs
     	      do for v in offsets(Q)
@@ -442,7 +445,8 @@ set coh_ind_unip_few(RealForm G, [KGPElt] Qs, Param_hash Uhash) = void:
 		 if coh_ind_unip_verbose and
 		    j%(max(#Qs\40,1)) = 0
 		 then prints("finished parabolic #", j,
-		    " after ",print_time_string(elapsed_ms() - startTime),
+		    " of ",#Qs," after ",
+		    print_time_string(elapsed_ms() - startTime),
 		    "; found ",Uhash.size() - oldSize, " reps.")
 		 fi
 	      od
@@ -458,6 +462,9 @@ set coh_ind_unip_few(RealForm G, [KGPElt] Qs) = void:
 
 {"most" means all Qshifts AND version of shifts sllowing some negstive weights}
 set coh_ind_unip_most(RealForm G, [KGPElt] Qs, Param_hash Uhash) = void:
+    if coh_ind_unip_verbose
+    then prints("Examining ",#Qs," parabolics in coh_ind_unip_most")
+    fi;
     let startTime = elapsed_ms(), oldSize = Uhash.size()
     then () = for Q@j in Qs
     	      do for v in offsets(Q)
@@ -466,7 +473,8 @@ set coh_ind_unip_most(RealForm G, [KGPElt] Qs, Param_hash Uhash) = void:
 		 if coh_ind_unip_verbose and
 		    j%(max(#Qs\40,1)) = 0
 		 then prints("finished parabolic #", j,
-		    " after ",print_time_string(elapsed_ms() - startTime),
+		    " of ",#Qs," after ",
+		    print_time_string(elapsed_ms() - startTime),
 		    "; found ",Uhash.size() - oldSize, " reps.")
 		 fi
 	      od
@@ -482,6 +490,9 @@ set coh_ind_unip_most(RealForm G, [KGPElt] Qs) = void:
 
 {"all" means all Qshifts AND version of shifts sllowing all possible negstive weights}
 set coh_ind_unip_all(RealForm G, [KGPElt] Qs, Param_hash Uhash) = void:
+    if coh_ind_unip_verbose
+    then prints("Examining ",#Qs," parabolics in coh_ind_unip_all")
+    fi;
     let startTime = elapsed_ms(), oldSize = Uhash.size()
     then () = for Q@j in Qs
     	      do for v in offsets(Q)
@@ -490,7 +501,7 @@ set coh_ind_unip_all(RealForm G, [KGPElt] Qs, Param_hash Uhash) = void:
 		 if coh_ind_unip_verbose and
 		    j%(max(#Qs\40,1)) = 0
 		 then prints("finished parabolic #", j,
-		    " after ",print_time_string(elapsed_ms() - startTime),
+		    " of ",#Qs," after ",print_time_string(elapsed_ms() - startTime),
 		    "; found ",Uhash.size() - oldSize, " reps.")
 		 fi
 	      od

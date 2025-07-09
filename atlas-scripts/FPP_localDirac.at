@@ -3808,6 +3808,7 @@ set local_test_GEO_hash2_end(KGBElt x, ratvec lambda, LocalVertexData Lvd, [[Fac
     then () = if one_two_reverse_flag
     	      then LFDKH := for list in LFDKH do [vec]: for v in list ~do v od od
 	      fi
+    then () = check_pols(x, lambda, Lvd, LFDKH, ht0, pol_hash)
     then ((eq,gr),IUCL,CLBF) = localGraphK(LFDKH, pol_hash, ht0)
 {because of to_ht, CANNOT use ICPNU testing??}
     then ICPNU_flag_hold = ICPNU_flag
@@ -3825,6 +3826,7 @@ set local_test_GEO_hash2_end(KGBElt x, ratvec lambda, LocalVertexData Lvd, [[Fac
 		   then () = if one_two_reverse_flag
     	      	   	     then LFDKH := for list in LFDKH do [vec]: for v in list ~do v od od
 	      		     fi
+	           then () = check_pols(x, lambda, Lvd, LFDKH, hts[Dmid], pol_hash)
 		   then ((eq,gr),IUCL,CLBF) = localGraphK(LFDKH,pol_hash,hts[Dmid])
 		   then () = LFDKH := local_testK_hash(x,lambda,Lvd, LFDKH, eq, gr, CLBF, (Param->bool): (Param p):
 		      is_unitary_to_hts_big_SIMPLE(p,hts[:Dmid+1]), hts[Dmid], Uhash, fancy_tester)
@@ -3847,6 +3849,7 @@ set local_test_GEO_hash2_end(KGBElt x, ratvec lambda, LocalVertexData Lvd, [[Fac
 		 then () = if one_two_reverse_flag
     	      	      	   then LFDKH := for list in LFDKH do [vec]: for v in list ~do v od od
 	      		   fi
+	         then () = check_pols(x, lambda, Lvd, LFDKH, HD, pol_hash)
 		 then ((eq,gr),IUCL,CLBF) = localGraphK(LFDKH, pol_hash, HD)
        	      	 {compute graph on faces to dim D+1}
 		 {then () = prints("trial of eq at dim ",D+1," is ",
@@ -4053,6 +4056,7 @@ set local_test_GEO_hash_one_level(KGBElt x, ratvec lambda, {VertexData vd,}
 			      	 pol_hash,LF, eq,CLBF)
     	 	     	 else localFD_KHash_01(x, lambda, Lvd, zero_ht, pol_hash, LF)
 	 	     	 fi {red_count_flag}
+    		     then () = check_pols(x, lambda, Lvd, ans, zero_ht, pol_hash)
     	   	     then tester0 = if prefer_to_hts
     	 	     	       then (Param->bool): (Param p) bool:
      	     	   	       	    is_unitary_to_hts_big_SIMPLE(p, hts[:ZERO+1])

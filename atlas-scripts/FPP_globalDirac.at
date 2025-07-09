@@ -281,6 +281,15 @@ set FPP_unitary_hash_general([(KGBElt,ratvec)] xlambdas, Param_hash Uhash,
     (Param->bool) fancy_tester, (KGBElt, ratvec, LocalVertexData,[[FaceVertsIndex]],
     KTypePol_hash, Param_hash, (Param->bool)->[Param])
     local) = void:
+    if #xlambdas = 0 then return () fi;
+    let (x,) = xlambdas[0]
+    then G = x.real_form
+    in if is_compact(G)
+       then for p in all_parameters_gamma(G,G.rho)
+       	    do Uhash.match(p)
+	    od;
+            return ()
+        fi;
     let xlambdasW = if R_packet_flag
     	      	    then for (x,lambda) in xlambdas
 	      	         do up_Cayley_match_LKTs(x,lambda)
@@ -452,8 +461,14 @@ set FPP_unitary_hash_general([KGBElt] xs, Param_hash Uhash, (Param->bool) fancy_
     local) = void:
     if #xs = 0
     then return ()
-    else
-    {let () = deform_flag:=true}
+    fi;
+    let G = xs[0].real_form
+    in if is_compact(G)
+       then for p in all_parameters_gamma(G,G.rho)
+       	    do Uhash.match(p)
+	    od;
+            return ()
+        fi;
     let () = if tilde_flag
     	      then xs:= for x in xs ~do x od{; deform_flag:=false}
     	      fi
@@ -737,7 +752,7 @@ set FPP_unitary_hash_general([KGBElt] xs, Param_hash Uhash, (Param->bool) fancy_
        	      ", number found on this run = ", Uhash.size() - oldUhash);
 	    report_tested()
       fi {FPP_report_flag}
-   in kill_for_big_uTime(); () fi {#xs = 0}
+   in kill_for_big_uTime(); ()
 
 set FPP_unitary_hash_general(RealForm G,Param_hash Uhash, (Param->bool) fancy_tester,
     (KGBElt,ratvec, LocalVertexData, [[FaceVertsIndex]],
@@ -872,8 +887,16 @@ set FPP_unitary_hash_one_level(RealForm G, (Param->bool) fancy_tester) = void:
 
 set FPP_unitary_hash_bottom_layer([(KGBElt,ratvec)] xlambdas, Param_hash UhashG, (Param->bool)
 fancy_tester) = void:
-    if #xlambdas = 0 then return ()
-    else let (x,) = xlambdas[0]
+    if #xlambdas = 0 then return () fi;
+    let (x,) = xlambdas[0]
+    then G = x.real_form
+    in if is_compact(G)
+       then for p in all_parameters_gamma(G,G.rho)
+       	    do UhashG.match(p)
+	    od;
+            return ()
+        fi;
+    let (x,) = xlambdas[0]
     then G = x.real_form
     then disconn_flag = components_rank(G) > 0
     then (Gsc,M) = if disconn_flag
@@ -1099,7 +1122,6 @@ fancy_tester) = void:
 	    report_tested()
 	    fi {FPP_report_flag}
      in kill_for_big_uTime(); () 
-   fi {#xlambdas = 0}
 
 set FPP_unitary_hash_bottom_layer([(KGBElt,ratvec)] xlambdas, (Param -> bool) fancy_tester) = void:
     FPP_unitary_hash_bottom_layer(xlambdas, let (x,lambda) = xlambdas[0]
@@ -1108,7 +1130,15 @@ set FPP_unitary_hash_bottom_layer([(KGBElt,ratvec)] xlambdas, (Param -> bool) fa
 set FPP_unitary_hash_bottom_layer([KGBElt] xs, Param_hash UhashG, (Param->bool) fancy_tester) = void:
     if #xs = 0
     then return ()
-    else let () = if tilde_flag
+    fi;
+    let G = xs[0].real_form
+    in if is_compact(G)
+       then for p in all_parameters_gamma(G,G.rho)
+       	    do UhashG.match(p)
+	    od;
+            return ()
+        fi;
+    let () = if tilde_flag
     	     	  then xs:= for x in xs ~do x od{; deform_flag:=false}
     	      	  fi
     then G = xs[0].real_form
@@ -1463,7 +1493,6 @@ set FPP_unitary_hash_bottom_layer([KGBElt] xs, Param_hash UhashG, (Param->bool) 
 	    report_tested()
       fi {FPP_report_flag}
      in kill_for_big_uTime(); ()
-   fi {#xs = 0}
 
 set FPP_unitary_hash_bottom_layer([KGBElt] xs, (Param->bool) fancy_tester) = void:
     FPP_unitary_hash_bottom_layer(xs, big_unitary_hash.uhash(xs[0].real_form),fancy_tester)
@@ -2458,8 +2487,6 @@ set FPP_flags() = void:
     if long_flags
     then prints("     false means do NOT sort candidate faces by height(infl char)")
     fi;
-
-
     prints(new_line,"one_two_reverse_flag = ",one_two_reverse_flag," (default false).");
     if long_flags
     then prints("     true means each face list LFDKH[d] is reversed before unitarity tests.")
@@ -2495,7 +2522,7 @@ set FPP_flags() = void:
     prints(new_line,"bl_step_size = ",bl_step_size," (default 5).");
     if long_flags
     then prints("     How much to increase the shift at each step.")
-    fi
+    fi;
     prints(new_line,"fewer_reducible_unitary_flag = ",fewer_reducible_unitary_flag," (default true).");
     if long_flags
     then prints("     false means allow (x,lambda) where invt form is INDEF on LKTs.")

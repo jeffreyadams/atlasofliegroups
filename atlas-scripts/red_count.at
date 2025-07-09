@@ -3,45 +3,6 @@
 {whether to use these functions}
 set red_count_flag = false
 
-{counts integral roots perhaps contributing to reducibility of Param p
-(more or less assumed to be weakly normal TRY TO DROP THAT for blob}
-set red_roots_oldest(Param p) = [vec]:
-    let G = p.real_form, gamma = p.infinitesimal_character
-    then id = integrality_datum(G,gamma)
-    then pos_int = id.posroots, pos_int_co = id.poscoroots
-    then theta = p.x.involution
-    in for alpha@j in pos_int
-       do let m = gamma*pos_int_co[j]\1
-       	  in if gamma*pos_int_co[j] = 0
-       	     then []
-       	     elif theta*alpha = -alpha
-	     then if Cayley(alpha,p) != p then [alpha]
-	       	  else []
-	       	  fi
-	     elif ((theta*gamma)*pos_int_co[j])*m < 0
-	     then [alpha]
-	     else []
-	     fi
-      od.##
-
-set red_coroots_old(Param p) = [vec]:
-    let G = p.real_form, gamma = p.infinitesimal_character
-    then pos_co = G.poscoroots
-    then theta = p.x.involution
-    in for alphav@j in pos_co
-       do let gammaj = gamma*alphav
-       	  in if (not is_integer(gammaj)) or gammaj = 0
-       	  then []
-       	  elif alphav*theta = -alphav
-	  then if Cayley((G.posroots)[j],p) != p then [alphav]
-	       else []
-	       fi
-	  elif ((theta*gamma)*alphav)*gammaj < 0
-	  then [alphav]
-	  else []
-	  fi
-	  od.##
-
 set red_coroots(Param p) = [vec]:
     let G = p.real_form, gamma = p.infinitesimal_character
     then pos_co = G.poscoroots
@@ -59,45 +20,13 @@ set red_coroots(Param p) = [vec]:
 	     fi
        od.##
 
-set red_count_oldest(Param p) = int: #red_roots_oldest(p)
-
 set red_count_time =int:0
 
-set red_count_old(Param p) = int:
-    let start = elapsed_ms(), G = p.real_form
-    then pos_co = G.poscoroots, gamma = p.infinitesimal_character
-    then theta = p.x.involution
-    then ans = count( for alphav@j in pos_co
-       	      do let gammaj = gamma*alphav
-       	      in is_integer(gammaj) and
-	      	 (gammaj.numer).!= and
-       	  	 if alphav*theta = -alphav
-	  	 then Cayley((G.posroots)[j],p) != p
-	  	 else ((theta*gamma)*alphav)*gammaj < 0
-		 fi
-	      od)
-    then () = red_count_time +:= elapsed_ms() - start
-    in ans
-
-set red_count_Cayley(Param p) = int:
-    let start = elapsed_ms(), G = p.real_form
-    then gamma = p.infinitesimal_character
-    then theta = p.x.involution
-    then ans = count( for alphav@j in  G.poscoroots
-       	       	      do let (gammajn,gammajd) = %(gamma*alphav),
-		      	     k = coroot_index(G,-alphav*theta)
-       	      	      	 in gammajd=1 and gammajn.!= and k >= j and
-       	  	 	    if alphav*theta = -alphav
-	  	 	    then Cayley((G.posroots)[j],p) != p
-	  	 	    else gammajn.> and
-				 ((theta*(gamma.numer))*alphav).<
-		 	    fi
-	      	     od)
-    then () = red_count_time +:= elapsed_ms() - start
-    in ans
+{whether to use the old version, which does not store root system data}
+set red_count_old_flag = true
 
 {real parity: gamma+ lambda + rho_real EVEN on alphavee}
-set red_count(Param p) = int:
+set red_count_old(Param p) = int:
     let start = elapsed_ms(), G = p.real_form, x = p.x
     then gamma = p.infinitesimal_character
     then lambdainttw = (2*p.lambda).numer + sum(x.real_posroots)
@@ -115,8 +44,8 @@ set red_count(Param p) = int:
     then () = red_count_time +:= elapsed_ms() - start
     in ans
 
-set red_count(Param p, int HT) = int:
-    if HT = -1 then return red_count(p) fi;
+set red_count_old(Param p, int HT) = int:
+    if HT = -1 then return red_count_old(p) fi;
     let start = elapsed_ms(), G = p.real_form, x = p.x, lambda = p.lambda
     then up = (HT-height(p)) {how much we're allowed to increase ht}
     then gamma = p.infinitesimal_character
@@ -168,3 +97,64 @@ set lambda_test_nonpar(Param p) = vec:
 	     	     fi
 	     fi
        od.##
+
+set red_count_xl_hash = make_xlambda_hash()
+
+{same size as preceding hash}
+set red_counters_list = [[(ratvec -> int)]]: []
+
+{one function for each real root and each pair alpha < -theta*alpha of pos complex roots;
+attaches to infl char gamma the smallest HT of Cayley(alpha)(p(x,lambda,gamma)), or cross.}
+set red_counters(KGBElt x, ratvec lambda) = [(ratvec -> int)]:
+    let N = red_count_xl_hash.size()
+    then n = red_count_xl_hash.match(x,lambda)
+    in if n < N
+       then red_counters_list[n]
+       else let theta = x.involution, G = x.real_form
+       	    then lambdainttw = (2*lambda).numer + sum(x.real_posroots)
+	    then answers = [(ratvec -> int)]: [], keep = true
+	    then () = for alphav@j in G.poscoroots
+	       	      do let answer = (ratvec -> int): (ratvec gamma):
+	       	    	     let (gammajn,gammajd) = %(gamma*alphav)
+	       	    	     in if (alphav*theta + alphav).=
+			     	then if gammajd != 1 or gammajn.=
+				     then -1
+		     	   	     elif (2*gammajn + lambdainttw*alphav)%4 = 2
+		       	   	     then rat_as_int(dominant(G,(1+reflection(G,j)*theta)*gamma)*G.rho_check)
+				     else -1
+				     fi
+	    	       	   	elif alphav*theta*(G.rho) > 0
+				then keep:=false; -1
+				else if gammajd = 1 and (let (tgammajn,) = %((theta*gamma)*alphav)
+				     	     {now alpha cplx, theta(alpha) < 0}
+			      	     	       in tgammajn.<)
+		       	   	     then rat_as_int(dominant(G,(1+reflection(G,j)*theta*reflection(G,j))*
+							gamma) * G.rho_check)
+		       	             else -1
+				     fi
+		     	   	fi
+		     	 then () = if keep then answers#:= answer fi
+		     	 in keep:=true
+		       od
+	    in red_counters_list #:= answers;
+	       assert(#red_counters_list = red_count_xl_hash.size());
+	       answers
+         fi
+
+
+set red_count(Param p) = int:
+    if red_count_old_flag then return red_count_old(p) fi;
+    let start = elapsed_ms(), G = p.real_form, x = p.x
+    then gamma = p.infinitesimal_character
+    then ans = count(for f in red_counters(p.x,p.lambda) do f(gamma).>= od)
+    then () = red_count_time +:= elapsed_ms() - start
+    in ans
+
+set red_count(Param p, int HT) = int:
+    if red_count_old_flag then return red_count_old(p,HT) fi;
+    let start = elapsed_ms(), G = p.real_form, x = p.x
+    then gamma = p.infinitesimal_character
+    then ans = count(for f in red_counters(p.x,p.lambda) do let H = f(gamma) in H.>= and
+    	 H <= HT od)
+    then () = red_count_time +:= elapsed_ms() - start
+    in ans

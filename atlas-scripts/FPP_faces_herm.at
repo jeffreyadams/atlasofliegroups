@@ -1,4 +1,3 @@
-
 {this file concerns (local) facets of parameters, in preparation of analysis of their unitarity.}
 <FPP_faces_geom.at
 <goodroots.at { for is_pos_on_LKTs }
@@ -66,7 +65,8 @@ set check_pols(KGBElt x, ratvec lambda, LocalVertexData Lvd, [[FaceVertsKHash]] 
     		    	 then 1
 			 else 0
 			 fi
-    in for list@d in LFDKH
+    in {prints("checking pols at (",x.number,",",lambda,")");}
+       for list@d in LFDKH
        do for v in list
        	  do let p = parameter(x,lambda,face_bary(Lvd,v[:d+1]))
        	     then P = K_type_pol(character_formula_to_height(1*p,HT))
@@ -2145,7 +2145,7 @@ set is_unitary_test_big_SIMPLE_interrupt_old(Param p, int step) = bool:
       else is_unitary_hash_big_SIMPLE(p)
       fi
 
-set old_test_interrupt_flag = true
+set old_test_interrupt_flag = false
 
 {"step" is how many steps up in to_ht list to start}
 set is_unitary_test_big_SIMPLE_interrupt(Param p, int step) = bool:
@@ -3942,7 +3942,7 @@ set localFD_KHash_01 (KGBElt x, ratvec lambda, LocalVertexData Lvd, int HT, KTyp
 [[FaceVertsIndex]] LF) = [[FaceVertsKHash]]:
     let start = elapsed_ms(), p0 = parameter(x,lambda,0*lambda), startDBTcount = DBTcount
     then ht = height(p0), HT0= next_heights(p0,edge_offset+1)~[0]
-    then () = if HT > HT0
+    then () = if HT > HT0 and red_count_flag
     	      then LF := localFD_1Dirac2_red_update(x, lambda, HT, Lvd, LF)
 	      fi
     then Q = (ratvec,ratvec ->rat): (ratvec v, ratvec w) rat: 0/1
@@ -4144,6 +4144,16 @@ set localFD_KHash_01_graph (KGBElt x, ratvec lambda, LocalVertexData Lvd, int HT
     then () = if test_verbose
     	      then prints("     Examining ",NumClasses," classes in localFD_hash_01_graph to ht ",HT)
 	      fi
+    then () = for C@k in eq
+     	      do if #C > 1
+	      	 then let (d0,j0) = coords(LF, C[0])
+	    	      then r0 = LF[d0][j0][d0+1]
+		      in for m in C[1:]
+		      	 do let (d,j) = coords(LF,m)
+			    in assert(r0 = LF[d][j][d+1],"problem with red_count graph")
+			 od
+		  fi
+	       od
     then polNums = [int]:
     	 for C@k in eq
     	 ~do if k%(max(#eq\10,2))=0 and fund_face_verbose
