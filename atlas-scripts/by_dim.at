@@ -18,7 +18,7 @@ set test_prepared = false
 {NEED to run FPP_unitary_hash_one_level(G) or something first}
 set prepare(RealForm G, Param_hash cand_hash, Param_hash conf_hash) = void:
     non_unitary_count:=0;
-    missing_deform_count:=0
+    missing_deform_count:=0;
     let delta = G.distinguished_involution
     then () = D := rank(delta+1)
     then () = cand_hashes:= for d:D + 1 do make_Param_hash() od
