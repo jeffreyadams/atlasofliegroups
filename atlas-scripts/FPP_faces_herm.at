@@ -3398,9 +3398,9 @@ vertex "belongs" (either "is" or "is vertex of the edge")}
 set localFD_1Dirac2_by_zero\
   ( KGBElt x, ratvec lambda, LocalVertexData Lvd, PermOrderTwo Perm2) =
     [[FaceVertsIndex]]:
-(   {if face_verbose
-    then prints(new_line,"start localFD_1DiracBYZERO")
-    fi;}
+(   if fund_face_verbose
+    then prints(new_line,"start localFD_1Dirac2_by_zero")
+    fi;
     let G = x.real_form, start = elapsed_ms(), trans_hash = make_vec_hash()
     then HT = next_heights(parameter(x,lambda,0*lambda),edge_offset+1)~[0]
     then () = for (m,n) in Perm2.trans do trans_hash.match([m,n]) od
@@ -3416,9 +3416,15 @@ set localFD_1Dirac2_by_zero\
 		      then Q:=QG; DiracBD:=bd
 		      fi
 	      fi
+    then length = #(Lvd.list)
+    then freq = max(length\10,1)
     then LF0 = [FaceVertsIndex]:
     	 for v@j in Lvd.list
-	 do let p = parameter(x,lambda,v)
+	 do if fund_face_verbose and red_count_flag and (j%freq).=
+	    then prints("at vertex ",j," of ",length,
+	    	       " at time ", print_time_string(elapsed_ms() - start))
+	    fi;
+	    let p = parameter(x,lambda,v)
 	    in if Q(v,v) > DiracBD
 	       then DTcount +:=1; []
 	       elif not (fewer_reducible_unitary_flag or all(for q in monomials(finalize(p))
@@ -3549,11 +3555,16 @@ set localFD_1Dirac2_by_zero\
      {then () = if time_verbose
      	       then prints("after Edges, time is ",print_time_string(elapsed_ms() - start))
 	       fi}
+     then length = #Edges
+     then freq = max(length\10,1)
      then LF1 = [FaceVertsIndex]:
-    	 for v in Edges
-	 do let nu = face_bary(Lvd,v)
+    	 for v@j in Edges
+	 do if fund_face_verbose and red_count_flag and (j%freq).=
+	    then prints("at edge ",j," of ",length,
+	    	       " at time ", print_time_string(elapsed_ms() - start))
+	    fi;
+	    let nu = face_bary(Lvd,v)
 	    then p = parameter(x,lambda,nu)
-	 {face_bary_ic(x.inner_class, face_bary(Lvd.list, v)))}
 	    in {if Q(nu,nu) > DiracBD
 	       then DTcount +:=1; []} {can't happen}
 	       if not (fewer_reducible_unitary_flag or all(for q in monomials(p)
