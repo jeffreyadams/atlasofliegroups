@@ -1,7 +1,8 @@
 <conjugate.at { for |Levi_witness@(RootDatum,RootDatum,RootDatum)| }
 <isomorphism_W.at { for |root_permutation@(RootDatum,RootDatum)| }
+<character_tables.at { for type |CharacterTable| }
 <character_tables_reductive.at
-<W_reps.at {for W_rep}
+<W_reps.at { for |W_rep| }
 
 set character (CharacterTable ct, W_rep r) = [int]: character(ct.class_table,r)
 set smallest_degree (CharacterTable ct,[int]chi) = int:
@@ -307,7 +308,7 @@ set restrict_character \
 
 set Steinberg_character (RootDatum rd) = [int]:
   let ct_G=construct_class_table(rd)
-  then result = vec: {from |sum@mat|}
+  then result = vec: { from |sum@mat| }
      for S in power_set(rd.all_simples) { not empty; conversion [vec]->mat OK }
      do minus_1^#S * induce_trivial(ct_G,S)
      od.sum

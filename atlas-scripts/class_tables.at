@@ -6,10 +6,10 @@
 
 { The purpose of this module is to group case-by-case definitions of W-class
   tables for root data with a specified simple Cartan matrix type, and give a
-  definion of |class_table@RootDatum| the employs the decomposition of the
-  Dynkin diagram of a root datum into connected components to build up, for a
-  general root datum, a |WeylClassTable| built up from those for appropriate
-  sub-root-data.
+  definion of |class_table@RootDatum|. THe latter employs the decomposition of
+  the Dynkin diagram of a root datum into connected components, in order to
+  build up, for a general root datum, a |WeylClassTable| built up from those for
+  appropriate sub-root-data.
 }
 
 
@@ -24,13 +24,9 @@ set combine(RootDatum rd,[WeylClassTable] tables) = WeylClassTable:
    , radix = for table in tables do table.n_classes od { mixed radix list }
    , tr = two_rho(rd)
 in assert(for rdj@j in rds
-          do for i:j { iterate of all pairs |i<j| }
-	     do for alpha_v in simple_coroots(rds[i])
-	        do for beta in simple_roots(rdj)
-	           do =alpha_v*beta
-		   od.all
-	        od.all
-	     od.all
+             for i:j { iterate of all pairs |i<j| }
+	     do (^simple_coroots(rds[i]) * simple_roots(rdj)).=
+	     od
 	  od.all,"Factors are not mutually orthogonal")
 ;  let reps = [[WeylElt]]: { all class representatives, lifted to |rd| }
       for table in tables
