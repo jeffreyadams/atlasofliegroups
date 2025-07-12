@@ -145,14 +145,6 @@ set deform_test_look_down(int d,RealForm G) = void:
     then freq = max(#to_do\10,1)
     then () = for p@j in to_do
     	      do if (j%freq).= then prints("at Param #",j," of ", #to_do) fi;
-	      	 {if not is_unitary(p)
-		 then prints(new_line, "     ",d,"-diml ",p,
-		      	     " in cand_hash is NOT unitary",new_line);
-		      non_unitary_count +:= 1;
-		      break
-		 fi;
-		 conf_hashes[d].match(p);
-	 	 unitary_test_count +:= 1;}
           let theta = p.x.involution, delta = G.distinguished_involution
 	  then lambda = p.lambda
 	  then gamma = p.infinitesimal_character
@@ -194,10 +186,12 @@ set deform_test_look_down(int d,RealForm G) = void:
 	  then presult = false
 	  then () = if any(for (f,qq) in helpers do conf_hashes[f].lookup(qq).>= od)
 	       	    then presult :=true
-		    else presult := mult_is_unitary(for (,q) in helpers do q od)
+		    else unitary_test_count +:= 1;
+		    	 presult := mult_is_unitary(for (,q) in helpers do q od)
 		    fi
 	  in if presult
-	     then for (e,list) in CF_defs
+	     then conf_hashes[d].match(p);
+		  for (e,list) in CF_defs
 	       	  do for q in list
 		     do if cand_hashes[e].lookup(q).<
 		       	then prints("     while deforming ",d,"-diml ",p);
@@ -234,7 +228,7 @@ set deform_test_all(RealForm G,Param_hash cand_hash, Param_hash conf_hash) = voi
 	   fi
        	od;
     	prints(new_line,"tested ",unitary_test_count - old_test_count_all," of ",
-	big_unitary_hash.uhash(G).size(), " to verify cand_hash, in ",
+	cand_hash.size(), " to verify cand_hash, in ",
 	print_time_string(elapsed_ms() - start_all));
 	prints("Found ",non_unitary_count," nonunitary reps in cand_hash, and ",
 	      missing_deform_count, " unitary deformations not in cand_hash.")
