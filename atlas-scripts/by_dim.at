@@ -13,6 +13,24 @@ set missing_deform_count = int: 0
 {E8_s: for hash in D_hashes do hash.size() od
 Value: [174998,334233,611493,766860,633778,365036,147901,36746,4080]}
 
+{list is meant to be a not large collection of Param's with the same unitarity
+status; test interruptibly in succession until something gives}
+set mult_is_unitary([Param] list) = bool:
+    let next_time = interrupt_base_time
+    then answer = int:0
+    then () = while answer = 0
+    	      do for p in list
+	      	 do let this = is_unitary(p, next_time)
+		    in if this.!=
+		       then answer := this;
+		       	    break
+		       fi
+		 od;
+		 if answer.= then next_time:=2*next_time fi
+	      od
+    in answer.>
+
+
 set test_prepared = false
 
 {NEED to run FPP_unitary_hash_one_level(G) or something first}
@@ -107,13 +125,113 @@ set deform_test(int d,RealForm G) = void:
 	      sum(final_conf_sizes - old_conf_sizes),
 	      " unitary reps.")
 
+set deform_test_look_down(int d,RealForm G) = void:
+    if not test_prepared
+    then prints("You first need to run prepare(G,cand_hash,conf_hash)");
+    	 return ()
+    fi;
+    prints(new_line,"Starting to test and deform unknown ",d,"-diml faces");
+    prints("candidate sizes = ",for d:D+1 do cand_hashes[d].size() od);
+    let start = elapsed_ms()
+    then old_conf_sizes = for e:D+1 do conf_hashes[e].size() od
+    then old_test_count =  unitary_test_count
+    then () = prints("confirmed sizes = ",old_conf_sizes)
+    then to_do = for p in cand_hashes[d].list()
+    	       	 do if conf_hashes[d].lookup(p) = -1
+		    then [p]
+		    else []
+		    fi
+		 od.##
+    then freq = max(#to_do\10,1)
+    then () = for p@j in to_do
+    	      do if (j%freq).= then prints("at Param #",j," of ", #to_do) fi;
+	      	 {if not is_unitary(p)
+		 then prints(new_line, "     ",d,"-diml ",p,
+		      	     " in cand_hash is NOT unitary",new_line);
+		      non_unitary_count +:= 1;
+		      break
+		 fi;
+		 conf_hashes[d].match(p);
+	 	 unitary_test_count +:= 1;}
+          let theta = p.x.involution, delta = G.distinguished_involution
+	  then lambda = p.lambda
+	  then gamma = p.infinitesimal_character
+	  then lamthlam = ratvec_as_vec((1+theta)*lambda)
+	  then Aff_theta(ratvec v) =  -theta*v + lamthlam
+	  then FV = for v in face_verts(G,gamma) do (v+delta*v)/2 od
+	  then Lvd = Lvd(p.x,lambda)
+	  then local_vert_nums = for v in FV
+		      		 do Lvd.lookup((v+Aff_theta(v))/2)
+				 od.sort_u
+          then () = assert(gamma = face_bary(Lvd,local_vert_nums),
+	       	    		 "bad Lvd or local_vert_nums")
+    	  then vert_subs = power_set(local_vert_nums)[1:2^(d+1) - 1]
+	  then deform_cands_big = [(int,ratvec)]:
+	       for sub in vert_subs
+	       do (#sub-1, face_bary(Lvd,sub))
+	       od
+	  then deform_cands = [(int,ratvec)]:
+		for (e,gammabd) in deform_cands_big
+		do if Aff_theta(gammabd) = gammabd {gammabd is a local face}
+		   then [(e,gammabd)]
+	           else []
+		   fi
+		od.##
+	  then CF = character_formula(p)
+	  then CF_defs = [(int,[Param])]:
+	       	       	 for (e,gammabd) in deform_cands
+	       	       	 do  (e,monomials(composition_series(wiggle(CF, gammabd))))
+			 od
+          then helpers = [(int,Param)]:
+	       	       	 (d,p)#for (e,list) in CF_defs
+	       	       	 do if #list = 1
+			    then [(e,list[0])]
+			    else []
+			    fi
+			 od.##
+	     {these are Params whose unitarity is equivalent to that of p}
+	     {int is the face dim}
+	  then presult = false
+	  then () = if any(for (f,qq) in helpers do conf_hashes[f].lookup(qq).>= od)
+	       	    then presult :=true
+		    else presult := mult_is_unitary(for (,q) in helpers do q od)
+		    fi
+	  in if presult
+	     then for (e,list) in CF_defs
+	       	  do for q in list
+		     do if cand_hashes[e].lookup(q).<
+		       	then prints("     while deforming ",d,"-diml ",p);
+			     prints("     found ",e,"-diml ",q," not in cand_hash.");
+			     missing_deform_count +:=1
+			fi;
+			conf_hashes[e].match(q)
+		     od
+		  od
+	      else prints(new_line, "     ",d,"-diml ",p,
+		      	  " in cand_hash is NOT unitary",new_line);
+		   non_unitary_count +:= 1;
+		   break
+	      fi
+       od {p@j in to_do}
+    in let final_conf_sizes = for e:D+1 do conf_hashes[e].size() od
+       in prints("final conf sizes = ",final_conf_sizes);
+       	  prints(print_time_string(elapsed_ms() - start), " to do ",
+       	      unitary_test_count - old_test_count," tests, finding ",
+	      sum(final_conf_sizes - old_conf_sizes),
+	      " unitary reps.")
+
+set look_down_flag = false
+
 set deform_test_all(RealForm G,Param_hash cand_hash, Param_hash conf_hash) = void:
     let () = prepare(G,cand_hash, conf_hash)
     then start_all = elapsed_ms()
     then old_conf_sizes_all = for e:D+1 do conf_hashes[e].size() od
     then old_test_count_all =  unitary_test_count
     in for d:D+1
-       ~do deform_test(d,G)
+       ~do if look_down_flag
+       	   then deform_test_look_down(d,G)
+	   else deform_test(d,G)
+	   fi
        	od;
     	prints(new_line,"tested ",unitary_test_count - old_test_count_all," of ",
 	big_unitary_hash.uhash(G).size(), " to verify cand_hash, in ",
