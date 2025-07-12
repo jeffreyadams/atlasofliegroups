@@ -1,10 +1,10 @@
 <basic.at
-<misc.at { for generate_all_subsets }
-<group_operations.at { for is_split and such }
-<cross_W_orbit.at
+<group_operations.at { for |is_split| and such }
+<cross_W_orbit.at { for |cross_divide| }
 {<nilpotent.at}
 <nilpotent_orbit_partitions.at
-<nilpotent_orbits_exceptional.at
+<nilpotent_orbits_exceptional.at { for |nilpotent_lambdas@RootDatum| }
+<misc.at { for |generate_all_subsets| }
 
 { some common representations }
 
@@ -14,8 +14,7 @@
   and the infinitesimal character is gamma+rho
 }
 set finite_dimensional (RealForm G,vec lambda) = Param:
-  let lambda_dom=dominant(G,lambda) then gamma=lambda_dom+rho(G) in
-  parameter(KGB(G,KGB_size(G)-1),gamma,gamma)
+  let gamma=dominant(G,lambda)+rho(G) in parameter(x_open(G),gamma,gamma)
 
 set finite_dimensional_fundamental_weight_coordinates (RealForm G,vec tau) =
   Param:

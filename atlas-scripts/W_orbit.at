@@ -1,6 +1,6 @@
 <basic.at  { for assert, #@int,... }
 <sort.at
-<hash.at
+<hash.at { used in general |generate| method }
 
 {
   The next function is not needed for generating orbits for the reflection

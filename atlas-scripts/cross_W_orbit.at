@@ -1,24 +1,30 @@
 <basic.at
-<Weylgroup.at
+<hash.at
 
-{ orbit of |x| by cross actions from |gens|, with example transportin w }
-set cross_sub_orbit ([WeylElt] gens, KGBElt x) = ([KGBElt],[WeylElt]):
-  let rd = x.root_datum then orbit= [x], ws = [id_W(rd)], done=0
-  then absent (KGBElt y) = bool: none(#orbit,(int i)bool:orbit[i]=y)
-  in
-  while done<#orbit
-  do
-    let a=orbit[done], w = ws[done] in done+:=1 { pop |(w,a)| from queue }
-  ; for s in gens
-    do let b=cross(s,a) in
-      if absent(b) then ws #:= s*w ;  orbit #:= b fi
-    od
-  od; (orbit,ws)
+{ orbit of |x| by cross actions from |gens|, with example transporting |w| }
+set cross_sub_orbit ([WeylElt] gens, KGBElt x) = [KGBElt,WeylElt]:
+(  let hi = lift((KGBElt x,WeylElt .)int: #x, triv_hash_info)
+   then hash = make_hash(hi)
+   , actors =
+      for gen in gens
+      do (KGBElt x,WeylElt w)(KGBElt,WeylElt): (cross(gen,x),gen*w)
+      od
+in hash.match(x,id_W(x.root_datum))
+; exhaust(actors,hash)
+)
 
-set cross_orbit (KGBElt x) = ([KGBElt],[WeylElt]):
+set cross_orbit (KGBElt x) = [KGBElt,WeylElt]:
   cross_sub_orbit(x.root_datum.W_gens,x)
 
 { solve for w in W in y=cross(w,x); at least one solution should exist }
-set cross_divide (KGBElt y,KGBElt x) = WeylElt:
-  let (orbit,ws)=cross_orbit(x) then i=first(#orbit,(int i)bool:orbit[i]=y) in
-  if i<0 then error("Did not find ",y," in orbit of ",x) fi; ws[i]
+set cross_divide (KGBElt y,KGBElt x) {note argument order} = WeylElt:
+   let hi = lift((KGBElt x,WeylElt .)int: #x, triv_hash_info)
+   , rd = x.root_datum
+   then hash = Hash<(KGBElt,WeylElt)>: make_hash(hi)
+   , actors =
+      for gen in rd.W_gens do (KGBElt x,WeylElt w): (cross(gen,x),gen*w) od
+   , e = id_W(rd)
+in case hash.match(x,e); exhaust(actors,hash); hash.search(y,e)
+   | none: error("Did not find ",y," in cross-orbit of ",x)
+   | some(i): let (,w)=hash.index(i) in w
+   esac
