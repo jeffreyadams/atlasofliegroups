@@ -22,7 +22,7 @@ for i:#S do v[S[i]]+:=1 od;v
 
 {original computation}
 set cohom_orig(RootDatum rd, RootDatum rd_L)=
-collect(for w in coset_reps_Levi(rd,rd_L) do length(w) od)
+collect(for w in coset_reps(rd,rd_L) do length(w) od)
 
 {improved version: only compute up to length(w)=dim(G/P)\2
  and use Poincare duality
@@ -30,7 +30,7 @@ collect(for w in coset_reps_Levi(rd,rd_L) do length(w) od)
 set cohom(RootDatum rd, RootDatum rd_L)=
 let dim=(dimension(rd)-dimension(rd_L))\2 then
 bound=dim\2 in
-let half=collect(for w in bounded_coset_reps_Levi(rd,rd_L,bound) do length(w) od) in
+let half=collect(for w in bounded_coset_reps(rd,rd_L,bound) do length(w) od) in
 if is_odd(dim) then {no middle term} [int]:half##(reverse(half))
 else
 {is a middle term, need to delete it so it doesn't get counted twice}

@@ -145,8 +145,8 @@ for i:#P do split_as_int(P[i][p]) od
 set =(hodgeParamPol P,hodgeParamPol Q)=bool:
  (#P=#Q) and all(for i:#P do P[i]=Q[i] od)
 
-set real_form(hodgeParamPol P)=RealForm:
-if #P=0 then torus(0,0,0) else P[0].real_form fi
+set real_form(hodgeParamPol P) = RealForm:
+  if #P=0 then compact_torus(0) else P[0].real_form fi
 
 {polynomial  in v, or constant, times hodgeParamPol}
 set *(i_poly f,hodgeParamPol P) = hodgeParamPol:

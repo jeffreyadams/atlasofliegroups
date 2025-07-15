@@ -1,6 +1,6 @@
 <elliptic.at
 <W_orbit.at
-<bruhat.at
+<bruhat.at { for |bruhat|, also for |sort_by_length_descending| }
 
 {assuming w0 is a minimal length representative of its conjugacy class,
 find all others}
@@ -13,7 +13,9 @@ in while current<#class
    { assert(w=c*w0*/c); }
    ;  for s:ssr
       do let sws=s#w#s in
-         if absent(sws) and length(sws)=length(w) then class #:= sws; conjugators #:= s#c fi
+         if absent(sws) and length(sws)=length(w)
+	 then class #:= sws; conjugators #:= s#c
+	 fi
       od
    od; (conjugators,class)
 
@@ -29,15 +31,16 @@ set cc_less_than (WeylElt w0,WeylElt w1) = bool:
    let rd=w0.root_datum, class = [w0]
    then conjugators= [id_W(rd)], current=0, ssr=semisimple_rank(rd)
    , absent (WeylElt x) = none(for y in class do @: y=x od)
-   in let counter=0 
+   in let counter=0
 in while current<#class
    do let c = conjugators[current], w=class[current] in current+:=1
    ;  for s:ssr
       do let sws=s#w#s in
-         if absent(sws) and length(sws)=length(w) then
-	  if  bruhat(sws,w1) then return(true) 
-	 else
-	   counter+:=1;prints(counter);class #:= sws; conjugators #:= s#c
+         if absent(sws) and length(sws)=length(w)
+	 then
+	    if  bruhat(sws,w1) then return(true)
+	    else
+	       counter+:=1;prints(counter);class #:= sws; conjugators #:= s#c
 	 fi fi
       od
    od; false fi

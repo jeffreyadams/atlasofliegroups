@@ -49,14 +49,10 @@ set print = hodgePrint@(hodge_function,[KType])
 
 set nullHodgeFunction(RealForm G) = hodge_function: ((KType .):[],G)
 
-set sort_by ( (vec,KType->int) f) = ([(vec,KType)] v) [(vec,KType)]:
-   for index in inv_standardisation(for x in v do f(x) od) do v[index] od
-
-set sort_by ( (vec,Param->int) f) = ([(vec,Param)] v) [(vec,Param)]:
-   for index in inv_standardisation(for x in v do f(x) od) do v[index] od
-
-set sort = ([(vec,KType)]->[(vec,KType)]):sort_by((vec .,KType t):K_norm(t))
-set sort = ([(vec,Param)]->[(vec,Param)]):sort_by((vec .,Param p):K_norm(p))
+set sort = ([(vec,KType)]->[(vec,KType)]):
+  sort_by((vec .,KType t):K_norm(t),<=@(int,int))
+set sort = ([(vec,Param)]->[(vec,Param)]):
+  sort_by((vec .,Param p):K_norm(p),<=@(int,int))
 
 {multiply function by polynomial: f_new(mu)=f(mu)*poly\in Z[v]}
 set * (i_poly P, hodge_function f)=hodge_function:

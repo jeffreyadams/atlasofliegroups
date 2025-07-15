@@ -1,5 +1,6 @@
-<nilpotent_orbits.at
-<galois.at {for conjugacy_classes_involutions}
+<basic.at
+<nilpotent_orbits.at { for |Bala_Carter_Levi| }
+<galois.at { for |conjugacy_classes_involutions| }
 
 {computing the centralizer of a complex nilpotent}
 
@@ -15,13 +16,8 @@ and Cent_G(O)/Cent_G(O)^0
 The Bala Carter Levi plays a role here, we denote it L}
 
 {the Cartan subgroup of Cent(O) is the radical of the Bala Carter Levi of O}
-set torus(ComplexNilpotent O)=SubTorus:O.Bala_Carter_Levi.radical_basis
-
-{roots of G with same restriction to T as alpha}
-set roots_same_restriction(ComplexNilpotent O,vec alpha)=
-let T=O.torus in
-##for beta in O.root_datum.roots do
- if =T.restrict(beta-alpha)  then [beta] else [] fi od
+set torus(ComplexNilpotent O) = mat: { columns are coweights generating torus }
+  O.Bala_Carter_Levi.radical_basis
 
 {given (O,alpha)
 let H_L be the conjugate of O.H which is dominant for L
@@ -32,27 +28,33 @@ m(alpha)  =m_0-m_2 \in {0,1}
 alpha restricted to T is a root of T in Cent(O) <=> m(alpha)=1
 }
 set m_0 (ComplexNilpotent O,vec alpha) = int:
-   let (,H_L)=O.Bala_Carter_Levi_plus
-in for beta in roots_same_restriction(O,alpha)
-   do #(=H_L*beta) od.sum { count successes: convert |bool| to |int| and sum }
+   let (Levi,H_L)=O.Bala_Carter_Levi_plus
+   then restriction = mat: ^Levi_datum(O.root_datum,Levi).radical_basis
+in for beta in O.root_datum.posroots if =restriction*(alpha-beta)
+   do #(H_L*beta=0) { convert |bool| to |int|: 0 or 1 }
+   fi od.sum*2 { count successes: sum the integers, double for posroots-<roots }
 
 set m_2 (ComplexNilpotent O,vec alpha) = int:
-   let (,H_L)=O.Bala_Carter_Levi_plus
-in for beta in roots_same_restriction(O,alpha) do #(H_L*beta=2) od.sum
+   let (Levi,H_L)=O.Bala_Carter_Levi_plus
+   then restriction = mat: ^Levi_datum(O.root_datum,Levi).radical_basis
+in for beta in O.root_datum.posroots if =restriction*(alpha-beta)
+   do #(H_L*beta=2) { convert |bool| to |int|: 0 or 1 }
+   fi od.sum*2 { count successes: sum the integers, double for posroots-<roots }
 
 set m (ComplexNilpotent O,vec alpha) = int: m_0(O,alpha)-m_2(O,alpha)
 
 {roots of centralizer are those with m(alpha)=1
-returns a set roots of G, and their restrictions to T (eliminating duplications)
+ returns a set roots of G, and their restrictions to T (removing duplicates)
 }
-set centralizer_roots(ComplexNilpotent O)=([vec],[vec]):
-let L=O.Bala_Carter_Levi in
-let roots_G=##for alpha in nilrad_roots(O.root_datum,L) do
- let m=m(O,alpha) in
-  assert(m=0 or m=1,"m is not 0 or 1");
-  if m=1 then [alpha] else [] fi od
-then T=O.torus in
-(roots_G,sort_u(for alpha in roots_G do T.restrict(alpha) od))
+set centralizer_roots (ComplexNilpotent O)=([vec],[vec]):
+   let rd=O.root_datum, L=O.Bala_Carter_Levi
+   then roots_G =
+      for alpha in nilrad_roots(rd,un_datum(rd,L))
+      do let m=m(O,alpha) in assert(m=0 or m=1,"m is not 0 or 1")
+      ;  if m=1 do alpha fi
+      od.##
+   then T=L.radical_basis
+in (roots_G,sort_u_lex(for alpha in roots_G do alpha*T od))
 
 {to compute the centralizer coroots, start with the centralizer roots
  given a root alpha_C of T in Cent(O), compute the coroot:
@@ -66,26 +68,33 @@ coroots_G: elements of X_*(H), living in X_*(T)
 roots_C: roots of T in C=Cent(O)
 coroots_C: coroots of T in C, obtained by writing the coroots_G in the given basis of X_*(T)
 }
-set centralizer_roots_and_coroots(ComplexNilpotent O,[vec] roots_G,[vec] roots_C)=([vec],[vec],[vec],[vec]):
-let T=O.torus then
-coroots_G=[] then
-coroots_C=[] in
-for alpha in roots_C do
- let pullback_alpha=let j=first(for beta in roots_G do T.restrict(beta)=alpha od) in roots_G[j] then
- v=sum(##(for beta in roots_G do
-  if T.restrict(beta)=alpha then  [coroot(O.root_datum,beta)]
-   else []
-  fi od)) then
+set centralizer_roots_and_coroots \
+  (ComplexNilpotent O,[vec] roots_G,[vec] roots_C)=(mat,mat,mat,mat):
+let T=O.torus, rd=O.root_datum then
+coroots_G=null(rd.rank,0),
+coroots_C=null(rd.rank,0) in
+for alpha in roots_C
+do
+  let pullback_alpha = vec:
+    let j=first(for beta in roots_G do beta*T=alpha od)
+    in roots_G[j]
+ then v=sum
+  (O.root_datum.rank #
+   for beta in roots_G
+   if beta*T=alpha do coroot(O.root_datum,beta) fi
+   od)
+ then
  w=2*v/(v*pullback_alpha) {element of X_*(H) which lives in X_*(T)} then
  corestrict_w=solve(T,w).requisition {coordinates of w in the given basis of X_*(T)} in
  coroots_G#:=w.numer; {should be w, not v!}
  coroots_C#:=ratvec_as_vec(corestrict_w)
 od;
-(roots_G,coroots_G,roots_C,coroots_C)
+(rd.rank # roots_G,coroots_G,rd.rank # roots_C,coroots_C)
 
 {compute centralizer coroots from scratch}
-set centralizer_roots_and_coroots(ComplexNilpotent O)=([vec],[vec],[vec],[vec]):
-let (roots_G,roots_C)=O.centralizer_roots in centralizer_roots_and_coroots(O,roots_G,roots_C)
+set centralizer_roots_and_coroots(ComplexNilpotent O)=(mat,mat,mat,mat):
+let (roots_G,roots_C)=O.centralizer_roots
+in centralizer_roots_and_coroots(O,roots_G,roots_C)
 
 {put it all together: compute the identity component of Cent_G(O) as a reductive group
  more precisely: the (id component of) reductive part of Cent_G(X), or Cent_G(SL(2))
@@ -120,15 +129,17 @@ O.root_datum.dimension - O.dim_centralizer - O.dim
 
 { for testing only, as the name suggests }
 set test (ComplexNilpotent O) = void:
-  let (S,H_L)=O.Bala_Carter_Levi_plus then L=sub_datum(O.root_datum,S)
-  then (roots_G,coroots_G,roots_C,coroots_C)=centralizer_roots_and_coroots(O)
-  , C=centralizer(O)
+  let rd = O.root_datum
+  , (S,H_L) = O.Bala_Carter_Levi_plus
+  , (roots_G,coroots_G,roots_C,coroots_C) = centralizer_roots_and_coroots(O)
+  , C = centralizer(O)
 in prints("------",new_line
          ,"H_L=", H_L,new_line
 	 ,"dim:", O.dim_nilpotent,new_line
 	 ,"L=",L,new_line
-	 ,"simple roots of L: ", L.simple_roots,new_line
-	 ,"nilrad: ", (O.root_datum,L).nilrad_roots);
+	 ,"simple roots of L: ", sub_datum(rd,S).simple_roots,new_line
+	 ,"nilrad: ", nilrad_roots(rd,S)
+	 );
    prints("#roots_G:",#roots_G);
    prints("#roots_C:  ", #roots_C,new_line, "#coroots_C:", #coroots_C);
    prints("roots_C:",roots_C);

@@ -478,8 +478,7 @@ corresponding columns.
 @< Local function definitions @>=
 void filter_units_wrapper (eval_level l)
 { own_vector inv_f=get_own<vector_value>();
-  own_matrix basis=get_own<matrix_value>();
-  unsigned int n=basis->val.n_columns();
+  own_matrix basis=get_own<matrix_value>();  unsigned int n=basis->val.n_columns();
   if (inv_f->val.size()>n)
   { std::ostringstream o;
     o << "Too many factors: " @|
@@ -1317,19 +1316,22 @@ void sublattice_root_datum_wrapper(eval_level l)
 }
 
 @ We define two more wrappers with only a Lie type as argument, for building the
-simply connected and the adjoint root data. They mostly call other wrapper
-functions: the matrices that specify the sub-lattices are produced by the
-wrapper functions for |id_mat| respectively by those for |Cartan_matrix| and
-|transpose_mat|. Thus $simply\_connected\_datum(lt)$ is equivalent to
-$root\_datum(lt,id\_mat(Lie\_rank(lt)))$, while $adjoint\_datum(lt)$ is
-equivalent to the call $root\_datum(lt,M)$ where $M$ essentially the transpose
-matrix of |Cartan_matrix(lt)|; there is one modification that we do here ``by
-hand'', namely making sure that all null diagonal entries of~$M$ (which must
-come from torus factors) are replaced by ones.
+simply connected and the adjoint root data. They relegate the essential work to
+|root_datum_from_type_wrapper|, after keeping the Lie type on the stack, adding
+a matrix that describes the sublattice (of the ``simply connected'' lattice) to
+use, and re-pushing the |prefer_coroots| value. Thus
+$simply\_connected\_datum(lt,pc)$ is equivalent to
+$root\_datum(lt,id\_mat(Lie\_rank(lt)),pc)$, while $adjoint\_datum(lt,pc)$ is
+equivalent to $root\_datum(lt,M,pc)$ where $M$ is the transpose matrix of
+|Cartan_matrix(lt)|, extended in the case a central torus is present as a block
+matrix by an identity matrix is the size of the rank of the latter. That matrix
+is the one returned by |LieType::transpose_Cartan_matrix|, except for the
+diagonal entries of the identity matrix which are zero there instead; we
+therefore set those entries here ``by hand''.
 
 @< Local function definitions @>=
 void simply_connected_datum_wrapper(eval_level l)
-{ bool prefer_coroots = get<bool_value>()->val;
+{ auto prefer_coroots = get<bool_value>();
   if (l==eval_level::no_value)
 @/{@; execution_stack.pop_back();
     return;
@@ -1337,27 +1339,25 @@ void simply_connected_datum_wrapper(eval_level l)
 @)
   auto rank =
     force<Lie_type_value>(execution_stack.back().get())->val.rank();
-  push_value(std::make_shared<int_value>(rank));
-  id_mat_wrapper(eval_level::single_value);
-  push_value(whether(prefer_coroots));
+  push_value(std::make_shared<matrix_value>(int_Matrix(rank))); // identity matrix
+  push_value(std::move(prefer_coroots));
 @/root_datum_from_type_wrapper(eval_level::single_value);
 }
 @)
 void adjoint_datum_wrapper(eval_level l)
-{ bool prefer_coroots = get<bool_value>()->val;
+{ auto prefer_coroots = get<bool_value>();
+  LieType Lt = force<Lie_type_value>(execution_stack.back().get())->val;
+     // copy Lie type
   if (l==eval_level::no_value)
 @/{@; execution_stack.pop_back();
     return;
   } // no possibilities of errors, so avoid useless work
 @)
-  push_value(execution_stack.back()); // duplicate Lie type argument
-  Cartan_matrix_wrapper(eval_level::single_value);
-  transpose_mat_wrapper(eval_level::single_value);
-  own_matrix M=get_own<matrix_value>();
-  for (unsigned int i=0; i<M->val.n_rows(); ++i)
-    if (M->val(i,i)==0) M->val(i,i)=1;
+  own_matrix M = std::make_shared<matrix_value>(Lt.transpose_Cartan_matrix());
+  for (unsigned int i=Lt.semisimple_rank(); i<Lt.rank(); ++i)
+    M->val(i,i)=1;
   push_value(std::move(M));
-  push_value(whether(prefer_coroots));
+  push_value(std::move(prefer_coroots));
 @/root_datum_from_type_wrapper(eval_level::single_value);
 }
 
@@ -2367,9 +2367,9 @@ void W_elt_wrapper(eval_level l)
     push_value(std::make_shared<W_elt_value>(rd,rd->W().element(ww)));
 }
 
-@ We also want to be able to convert a Weyl group element back to a word, to
-extract the root datum it was built from, to find its length, to and test for
-equality.
+@ We also want to be able to convert a Weyl group element back to a word.
+Since a root datum has the information available, we also allow producing the
+reflection associated to any root index.
 
 @< Local function def... @>=
 void W_word_wrapper(eval_level l)
@@ -2382,6 +2382,22 @@ void W_word_wrapper(eval_level l)
   push_value(vector_to_row(wv));
 }
 @)
+void W_refl_wrapper(eval_level l)
+{ int root_index = get<int_value>()->int_val();
+  shared_root_datum rd = get<root_datum_value>();
+  RootNbr alpha = internal_root_index(rd->val,root_index,false);
+  if (l==eval_level::no_value)
+    return;
+
+ WeylWord ww = rd->val.reflection_word(alpha);
+ push_value(std::make_shared<W_elt_value>(rd,rd->W().element(ww)));
+}
+
+
+@ Simple operations on a Weyl group element include extracting the root datum it
+was built from, finding its length, and testing for (in)equality.
+
+@< Local function def... @>=
 void datum_from_W_elt_wrapper(eval_level l)
 { shared_W_elt w = get<W_elt_value>();
   if (l!=eval_level::no_value)
@@ -2628,6 +2644,7 @@ concatenation operation.
 
 @< Install wrapper functions @>=
 install_function(W_elt_wrapper,"W_elt","(RootDatum,[int]->WeylElt)");
+install_function(W_refl_wrapper,"W_refl","(RootDatum,int->WeylElt)");
 install_function(W_word_wrapper,"word","(WeylElt->[int])");
 install_function(datum_from_W_elt_wrapper,"root_datum","(WeylElt->RootDatum)");
 install_function(W_length_wrapper,"length","(WeylElt->int)");
@@ -6642,8 +6659,8 @@ void orientation_number_wrapper(eval_level l)
 
 @ Here is a function that computes a list of positive rational values $t\leq1$
 such that the parameter obtained by replacing the continuous part~$\nu$ of
-by~$t\nu$ is not topmost in its block, so that deformation of the parameter to
-$t\nu$ will produce a non-trivial decomposition.
+by~$t\nu$ is not at the bottom of its block, so that deformation of the
+parameter to $t\nu$ may produce a non-trivial decomposition.
 
 @< Local function def...@>=
 void reducibility_points_wrapper(eval_level l)

@@ -1,12 +1,16 @@
-<basic.at
+<basic.at { for type constructor |Maybe| }
 
-{ This file demonstrates how axis can handle lazy infinite lists (of |int|) }
+{ This file demonstrates how axis can handle lazy infinite lists (of any type) }
 
-set_type
-[ inf_list = (->inf_node) { defers creating of |inf_node| until called with () }
-, inf_node=(int head, inf_list thunk) { initial term, thunk for remaining terms }
-, maybe_a_node =(void no_node | inf_node stored) { needed to |memoize| below }
+set_type T [
+  infinite_list
+    = (->infinite_node) { defers creating of |inf_node| until called with () }
+, infinite_node
+    = (T head, infinite_list thunk) { initial term, thunk for remaining terms }
 ]
+
+set_type inf_list = infinite_list<int>
+set_type inf_node = infinite_node<int>
 
 { One may for instance define, to get an infinite list of entries 1:
 
@@ -15,31 +19,38 @@ set_type
   and then refer to it as |ones@void|, since |set| stores this function in the
   overload table. The following defines a variable instead, by avoiding |set|
 }
-ones : rec_fun me () inf_node: (1,me)
 
-set series ((int->int) coef) = inf_list:
-  0.(rec_fun up_from(int n) inf_list: @:(coef(n),up_from(n+1)))
+any_type T begin
+
+set series ((int->T) coef) = infinite_list<T>:
+  0.(rec_fun up_from(int n) infinite_list<T>: @:(coef(n),up_from(n+1)))
 
 { get initial |n| terms of the list, and return them as ordinary list }
-set initial (int n) = (inf_list->[int]):
-  (inf_list f) [int]: for :n do let (head,tail)=f() in head next f:=tail od
+set initial (int n) = (infinite_list<T>->[T]):
+  (infinite_list<T> f) [T]:
+  for :n do let (head,tail)=f() in head next f:=tail od
 
-set prepend (int c,inf_list F) = inf_list: @:(c,F)
-set shift(int n,inf_list F) = inf_list:
-  if >=n then for :n do F:=prepend(0,F) od else for :-n do set(,F):=F() od fi; F
+set prepend (T c,infinite_list<T> F) = infinite_list<T>: @:(c,F)
+set shift(int n,infinite_list<T> F) = infinite_list<T>:
+  for :n do set(,F):=F() od; F
 
-set constant_term (inf_list F) = int: let (c,)=F() in c
-set coefficient(int i,inf_list F) = int: shift(-i,F).constant_term
+set constant_term (infinite_list<T> F) = T: let (c,)=F() in c
+set coefficient(int i,infinite_list<T> F) = T: shift(i,F).constant_term
 
-set extend_0 ([int] pol) = inf_list:
-(  let result = rec_fun me () inf_node: (0,me)
+set extend ([T] pol,T zero) = infinite_list<T>:
+(  let result = rec_fun me () infinite_node<T>: (zero,me)
 in for c in pol ~do result:= prepend(c,result) od
 ;  result
 )
 
-zero : inf_list: extend_0(#0) { additive unit for power series }
-one :  inf_list: [1].extend_0  { multiplicative unit for power series }
+end
+
+set extend_0 ([int] pol) = inf_list: extend(pol,0)
+
+series_0 : inf_list: extend_0([]) { additive unit for power series }
+series_1 :  inf_list: [1].extend_0  { multiplicative unit for power series }
 X :   inf_list: [0,1].extend_0 { neutral element for power series composition }
+ones : inf_list: extend([],1) { infinite list of '1', algebraically 1/(1-X) }
 
 { more general then |ones|, we can define arithmetic and geometric progressions }
 set arithmetic_progression (int stride) = rec_fun f (int start) inf_list:
@@ -69,20 +80,18 @@ set geometric_progression (int lambda) = rec_fun f (int start) inf_list:
   further calls will retrieve it. The magic comes from applying |memoize|
   recursively to the tail, before storage.
 }
-set rec_fun memoize (inf_list L) = inf_list:
-  let store = no_node() in
-  @: case store
-     | no_node(): let (head,tail)=L() then result=(head,memoize(tail)) in
-                  store:=stored(result); result
-     | stored(node): node
-     esac
-
+any_type T begin
+set rec_fun memoize (infinite_list<T> L) = infinite_list<T>:
+   let store = Maybe<infinite_node<T> >: none() { cast to make non-constant }
+in @: { make what follows into a think }
+   case store
+   | none(): let (head,tail)=L() then result=(head,memoize(tail)) in
+		store:=some(result); result
+   | some(node): node
+   esac
+end
 
 {			    Formal power series				}
-
-{ drop |n| initial terms, remainder of division by $X^n$ }
-set shift (int n) = (inf_list->inf_list):
-  (inf_list L) inf_list: for :n do set(,L):=L() od; L
 
 { lazy sum of two infinite lists }
 set rec_fun sum (inf_list f, inf_list g) = inf_list:
@@ -224,7 +233,7 @@ set ^ (inf_list F,int n) = inf_list:
 in case n
    then assert(F.constant_term=1,"Negative power requires unit constant term")
    ; inverse(p(-n))
-   in one
+   in series_1
    else p(n)
    esac
 
@@ -232,8 +241,8 @@ in case n
   As a proof of concept we show how an infinite list can be recursively
   defined using itself (taking care to not make any coefficient require itself)
   and use |memoize| to avoid re-evaluating previous terms while computing new
-  ones. The standard example is to compute the Fibonocci sequence F as 0, 1,
-  followed by |sum(f,shift(1)(F))| (where the first argument to |sum| gives the
+  ones. The standard example is to compute the Fibonacci sequence F as 0, 1,
+  followed by |sum(f,shift(1,F))| (where the first argument to |sum| gives the
   coefficient two steps before, the second argument the preceding coefficient).
 
   Using |memoize| remains delicate here, since the |rec_fun| syntax does not
@@ -248,15 +257,15 @@ in case n
   to tie the recursive knot by hand, rather than have |rec_fun| do it for us.
 }
 
-{ the Fibonacci sequence can be defined |divide_by([1,-1,-1],extend_0([0,1]))|,
+{ the Fibonacci sequence can be defined |divide_by([1,-1,-1])(extend_0([0,1]))|,
   however we now show how it can be defined in a directly recursive fashion }
 set Fibonacci = inf_list:
   let fibo () = inf_node:die { stub, which next |memoize| doesn't call yet }
-  in fibo := memoize(@:(0,@:(1,sum(fibo,shift(1)(fibo)))))
+  in fibo := memoize(@:(0,@:(1,sum(fibo,shift(1,fibo)))))
 { Note that leaving out |memoize| would be possible here, but makes the runtime
   increase exponentially with the list length because of repeated evaluations of
   the same list elements. That inefficient version would also be obtained by
-  | set rec_fun Fibo () = inf_node:(0,@:(1,sum(Fibo,shift(1)(Fibo))))) |
+  | set rec_fun Fibo () = inf_node:(0,@:(1,sum(Fibo,shift(1,Fibo))))) |
 }
 
 { and note Fibonacci is also |inverse([1,-1,-1].extend_0)|, easy and efficient }
@@ -320,4 +329,6 @@ in memoize(@:(0,@:(1,r))) { here |memoize| is essential }
 { e.g., compositional_inverse([0,1,-1].extend_0) solves $f-f^2=X$ }
 
 set series_precision = 12
-set show (inf_list f) = initial(series_precision)(f)
+any_type T begin set show(infinite_list<T> f) = [T]:
+  initial(series_precision)(f) { use |series_precision| only when |f| is there }
+end

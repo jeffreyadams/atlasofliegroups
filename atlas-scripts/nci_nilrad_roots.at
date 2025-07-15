@@ -39,7 +39,7 @@ Dangerous bend: this is a KGBElt for L (what is needed for a weight function to 
 tensor products) but the roots are for G, so embed_KGB(x_L,G)
 }
 set nci_nilrad_roots_restricted_to_H_theta (KGBElt x_L,Parabolic P) = mat:
-(  assert(is_parabolic_theta_stable(P),"P is not theta-stable");
+(  assert(parabolic_is_theta_stable(P),"P is not theta-stable");
    let x_G=embed_KGB(x_L,P.real_form)
 in columns_with
     ((vec alpha)bool: is_noncompact_imaginary(alpha,x_G) , nilrad_roots(P)) ##makeS(x_G,P))   {bug fix on 3/31/25}

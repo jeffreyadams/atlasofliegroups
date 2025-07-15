@@ -48,8 +48,3 @@ set inverse_change_basis(RootDatum rd, mat my_roots)=inverse_change_basis(rd,mat
 set integral_inverse_change_basis(RootDatum rd,ratmat my_roots)=mat:ratmat_as_mat(inverse_change_basis(rd,my_roots))
 set integral_inverse_change_basis(RootDatum rd,[ratvec] my_roots)=mat:ratmat_as_mat(inverse_change_basis(rd,my_roots))
 set integral_inverse_change_basis(RootDatum rd,mat my_roots)=mat:ratmat_as_mat(inverse_change_basis(rd,my_roots))
-
-
-
-
-

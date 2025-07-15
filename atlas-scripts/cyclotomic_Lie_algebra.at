@@ -42,9 +42,9 @@ for i:#v do rv+:=alpha[i]*v[i] od;rv
 
 {X=\sum a_\alpha X_\alpha
 support: \alpha for which a_\alpha\ne 0}
-set support(CFLieAlgebraElement X)=[vec]:
-let v=X.root_part in
-##for alpha@i in X.root_datum.roots do if not =v[i] then [alpha] else [] fi od
+set support(CFLieAlgebraElement X) = mat:
+let v=CyclotomicVec: X.root_part, rd= X.root_datum in
+rd.rank # for alpha@i in rd.roots if !=v[i] do alpha fi od
 
 {element of Lie algebra coming from ratvec of size n+N=dim(\g)}
 set lie_algebra_element(StructureConstantTable t,CyclotomicVec v)=CFLieAlgebraElement:
@@ -69,7 +69,7 @@ set lie_algebra_element_root_vectors(StructureConstantTable t,CyclotomicVec v)=l
 
 {1\le i\le dim\g -> (t,(v,w)) where either v or w has exactly one entry 1}
 set CFbasis(StructureConstantTable t,int i,CyclotomicField F)=CFLieAlgebraElement:
-lie_algebra_element(t,embed(e(t.root_datum.dimension,i),F))
+lie_algebra_element(t,embed(identity_row(t.root_datum.dimension,i),F))
 
 {nice string representation of LieAlgebraElement}
 set to_strings(CFLieAlgebraElement X)=string:
@@ -148,7 +148,11 @@ n=#X.H then
 scr=rd.simple_coroots in
 (X.t,
  (
-  (sum(for i:N do (-X.root_part[i]*Y.H*embed(rd.roots[i],F)+Y.root_part[i]*X.H*embed(rd.roots[i],F))*embed(e(N,i),F) od),CyclotomicVec:null(n,F)
+  (sum(for i:N
+       do (-X.root_part[i]*Y.H*
+        embed(rd.roots[i],F)+Y.root_part[i]*X.H*embed(rd.roots[i],F))*
+	embed(identity_row(N,i),F)
+       od),CyclotomicVec:null(n,F)
  )
 ))
 
