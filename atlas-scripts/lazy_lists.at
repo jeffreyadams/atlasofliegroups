@@ -50,7 +50,7 @@ set extend_0 ([int] pol) = inf_list: extend(pol,0)
 series_0 : inf_list: extend_0([]) { additive unit for power series }
 series_1 :  inf_list: [1].extend_0  { multiplicative unit for power series }
 X :   inf_list: [0,1].extend_0 { neutral element for power series composition }
-ones : inf_list: extend([],1) { infinite list of '1', algebraically 1/(1-X) }
+inf_ones : inf_list: extend([],1) { infinite list of '1', algebraically 1/(1-X) }
 
 { more general then |ones|, we can define arithmetic and geometric progressions }
 set arithmetic_progression (int stride) = rec_fun f (int start) inf_list:

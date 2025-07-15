@@ -3,6 +3,7 @@
 <W_classes.at { for |character_value@(WeylCLassTable.[int],WeylElt)| }
 <Weylgroup.at { for |order_W| }
 <W_reps.at { for type |W_rep| }
+<lattice.at { for |restrict_action| }
 
 { ------------ projection on isotypic subspace  ----------- }
 
@@ -57,7 +58,7 @@ set restrict_representation_isotypic \
 set projector (WeylClassTable Wct, WCell cell, vec chi) = mat:
   projector(Wct,cell_representation(Wct,cell),chi)
 
-{ given a cell, compute the cell represetation pi, find the smallest k so that
+{ given a cell, compute the cell representation pi, find the smallest k so that
   <pi,sym^k(reflection)>!=0, then this inner product is 1, and the unique
   irreducible in common is special; use the character of sym^k(reflection)
   to compute the projection operator onto the special
