@@ -290,6 +290,15 @@ set inner_lift(ParamPol P,int i)=ParamPol: inner_lift(P,P.real_form.real_forms[i
 
 {p=parameter(p.x,p.y_gen,p.infinitesimal_character) should true}
 
+set print_sum_of_standards_by_packet(ParamPol P)=
+assert(is_stable_std(P),"P (considered as a sum of standard modules) is not stable");
+let ()=prints(new_line,"Here are the monomials of the ParamPol by L-packet:") in 
+let ()=for params in L_packets(monomials(P)) do
+   prints(); for q in params do prints(q) od od in 
+let ()=prints(new_line, "Here is the ParamPol with the Whittaker terms indicated by *") in 
+for (c,p) in %P do
+ let star=if =p.x.torus_factor then " *" else "" fi in prints(split_format(c), "*", p,  star)
+ od
 
 
 

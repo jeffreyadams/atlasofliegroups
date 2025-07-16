@@ -1,8 +1,9 @@
-<groups.at
 <structure_constants2.at
 <tits.at
 <test_braid.at
 <L_hom.at
+
+set hom_verbose=false
 
 {we are off by a transpose here?}
 {\phi: G1->G2, WLOG T1->T2
@@ -139,12 +140,14 @@ tits_element(left(sigma1.torus_part*^M,map_tits_simple_reflection(G1,G2,M,epsilo
 
 set map_tits_element(RootDatum G1,RootDatum G2,mat M,orientation epsilon2,Tits_elt sigma1)=Tits_elt:
 if length(sigma1.w)=0 then
-let ()=prints("length(sigma1=0") in 
+let ()=if hom_verbose then prints("length(sigma1=0") fi in
 {transpose error? left(sigma1.torus_part*M,tits_identity(G2))}
 left(M*sigma1.torus_part,tits_identity(G2))
 else
-let ()=prints("length(sigma1\ne 0") in
-let ()=prints("w=",sigma1.w) in
+let ()=if hom_verbose then 
+  prints("length(sigma1\ne 0");
+  prints("w=",sigma1.w) fi 
+in
  let product=simple_expression(sigma1) in   {sigma1=product of tits simple reflections}
  product(G2,for sigma@j in product do map_tits_element_simple(G1,G2,M,epsilon2,sigma) od)
 fi
@@ -233,7 +236,7 @@ w_action = ratmat_as_mat(lift_delta)*inverse(ic2.distinguished_involution) {this
 W_elt(ic2,w_action)
 
 set map_distinguished_involution(InnerClass ic1,InnerClass ic2,mat M)=WeylElt:
-if is_equal_rank(ic2)
+if is_equal_rank(ic1)
  then id_W(ic2)
 else
  prints("Warning: ic1 is not equal rank, not sure what to do");
@@ -265,11 +268,11 @@ given H,G,M as above, H,G have given inner classes, i.e. delta_H,delta_G
 
 set map_tits_element_twisted(InnerClass ic1,InnerClass ic2,mat M,Tits_elt sigma1)=Tits_elt:
 let sigma1_W=sigma1*tits_delta(ic1)   {Tits element of an element of W( G1)} then
-()=prints("sigma1_W(1): ", sigma1_W) then
-()=prints("M=",M) then 
+()=if hom_verbose then
+  prints("sigma1_W(1): ", sigma1_W, new_line, "M=",M) fi then
 sigma2_W=map_tits_element(ic1,ic2,M,sigma1_W)  {Tits element of an element of W(G2)} then
 {sigma2_W=map_tits_element(ic1,ic2,M,sigma1_W.*distinguished_involution(ic2))  {Tits element of an element of W(G2)} then}
-()=prints("sigma2_W(1): ", sigma2_W) then
+()=if hom_verbose then prints("sigma2_W(1): ", sigma2_W) fi then
 w_delta2=map_distinguished_involution(ic1,ic2,M)  {w2\in W(G2):  w2*delta2 is lift of delta1} then
 {sigma_delta2=tits_element(ic2,w_delta2) then}
 sigma_delta2=tits_element(ic2,w_delta2*ic2.distinguished_involution) then

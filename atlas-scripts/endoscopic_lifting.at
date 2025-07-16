@@ -36,9 +36,14 @@ make_dominant(phi_G_0)
 {map S_phi_G -> S_phi_H is well defined, not 1-1 or onto}
 
 set inverse_map_on_pure_component_group(L_homomorphism phi_H,L_homomorphism phi_G,mat M)=
-let S_phi_G=pure_component_group(phi_G) then y_H=phi_H.y then
-theta_H_v=y_H.involution then theta_H=-^theta_H_v in for x_G in S_phi_G
-do (x_G,KGB_elt(inner_class(phi_H),theta_H,x_G.torus_factor*M)) od
+let S_phi_G=pure_component_group(phi_G) then
+y_H=phi_H.y then
+ic_H=dual_quasisplit_form(inner_class(phi_H)) then
+theta_H_v=y_H.involution then theta_H=-^theta_H_v in
+ for x_G in S_phi_G
+{  do (x_G,KGB_elt(inner_class(phi_H),theta_H,x_G.torus_factor*M))}
+  do (x_G,KGB_elt(ic_H,theta_H,x_G.torus_factor*M))
+ od
 
 {lift pair (x_H,phi_H) to (x_G,phi_G); x_H must be pure element for H}
 {algorithm: first lift phi_H to phi_G; then run over all elements of S_phi_G mapping to S_phi_H by inverse_map_on__component_group; take the set of these pairs (x_H_i,phi_H)}
@@ -366,7 +371,7 @@ let ic=dual(inner_class(phi_G)) then
 y_G=phi_G.y then
 twist=y_G.involution then
 (H,M,Hd)=endoscopic_group(ic,s,twist) then
- ()=prints("H=",H, " Hd=", Hd) then
+ ()=if e_verbose then prints("H=",H, " Hd=", Hd) fi then
  phi_H=epstar_inverse(phi_G,H) in
  epstar_stable_std(phi_H,G,s) 
 
@@ -387,7 +392,7 @@ twist=y_G.involution in
 for s in S do
  let ()=prints("--------------------------",new_line,"s=",s) in
  let (H,M,Hd)=endoscopic_group(ic,s,twist) then
- ()=prints("H=",H, " Hd=", Hd) then
+  ()= if e_verbose then prints("H=",H, " Hd=", Hd) fi then
  phi_H=epstar_inverse(phi_G,H) {then} in 
 { ()=prints("phi_H=",phi_H) in}
 (phi_G,s,H,epstar_stable_std(phi_H,G,s)) od

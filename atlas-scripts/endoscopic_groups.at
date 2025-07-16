@@ -6,7 +6,7 @@ endoscopic_lifting.at for lifting (also twisted_endoscopy_D.at)}
 <tabulate.at
 <embed.at {<fixed.at}
 
-set e_verbose=true
+set e_verbose=false
 
 set is_orthogonal (RootDatum rd, vec alpha, vec beta) = bool: =alpha*coroot(rd,beta)
 set to_dominant(RootDatum rd, vec wt)=(WeylElt,vec):
