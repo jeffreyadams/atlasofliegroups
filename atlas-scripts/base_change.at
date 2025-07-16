@@ -1,0 +1,43 @@
+{assuming G(R) is equal rank: compute base change of parameter for G(R) to G(C)}
+{algorithm (see twisted_endosopy.pdf):
+ write H(R)=G(R)  (endoscopy picture)
+       G(R)=H(C)
+So: base_change(p) where p is a parameter for equal rank real form H
+set: G=complexification(H)
+     delta=distinguished_involution(G)
+     G_v=dual_quasisplit_form(G)= H^v x H^v
+     xi_v=distinguished_involution(G_v)
+     delta_v=xi_v
+     s=delta_v
+then Cent_{G_v}(s)=Cent_{G_v}(s)^0=H_v
+set: (H,M,Hd)=endoscopic_group(G,s=delta_v)
+     y=xi_v
+then (s,y) is a weak endoscopic datum
+this means y acts on \ch H by a distinguished involution (the identity)
+y^2=1\in \ch H
+
+then epstar_std(p_H,G,M) is defined for p_H a standard module for H
+epstar_std(p_H,G,M)=0 unless p_H has a  Whittaker model: recall
+p_H=(x_H,lambda_H,nu_H) has (the chosen) Whittaker model <=> torus_factor(x_H)=0
+so epstar_std(L_packet) = epstar_std(the unique Whittaker term in the packet)
+then:
+base_change(p_H)= composition_series(epstar_std(character_formula(p_H),G,M)
+}
+
+set bc_verbose=true
+
+set base_change(ParamPol P_H)=ParamPol:
+let H=P_H.real_form then
+G=complexification(H) then
+G_v=dual_quasisplit_form(G) then
+s=distinguished_involution(G_v) then
+(H,M,H_v)=endoscopic_group(G,s) then 
+()=if bc_verbose then prints("G=",G, new_line, "H=", H, new_line, "H_v=",H_v, new_line, "M=", M) fi
+in assert(H=P_H.real_form,"Sorry: the real forms H and p_H.real_form don't match");
+let cf=character_formula(P_H) then
+ep=epstar_std(cf,G,M)[0] then
+()=if bc_verbose then prints(new_line,"character_formula(P_H)=",  " ", cf) fi then
+()=if bc_verbose then prints(new_line,"character_formula(P_H) lifted to G= ",  " ", ep) fi then
+()=if  bc_verbose and is_stable_std(cf) then print_sum_of_standards_by_packet(cf) fi in
+composition_series(ep)
+
