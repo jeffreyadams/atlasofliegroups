@@ -24,7 +24,7 @@ set longest_invs(InnerClass ic) = [[mat]]:
     then inv_hash = make_mat_hash()
     in for C in CC
        do let KGBlist = KGB(C,G)
-       	  then max_lgth = length(KGBlist~[0])
+	  then max_lgth = length(KGBlist~[0])
 	  then first_long = locate_sorted(for x in KGBlist do length(x) od, max_lgth)
 	  then () = inv_hash.clear()
 	  then () = for x in KGBlist[first_long:] do inv_hash.match(x.involution) od
@@ -42,7 +42,7 @@ set fund_edges(InnerClass ic) = [[ratvec]]:
     let f_verts = fundamental_vertices(ic)
     in for v in f_verts
        do for w in f_verts
-       	  do v - w
+	  do v - w
 	  od
        od
 
@@ -52,9 +52,9 @@ set half_fund_edges(InnerClass ic) = [[[ratvec]]]:
     let fverts = fundamental_vertices(ic)
     in for e@i in fverts
        do let rde = integrality_datum(ic,e)
-       	  in for f@j in fverts
-       	  do for w in Weyl_orbit_ws(rde, (f-e).numer)
-       	     do w*(f-e)
+	  in for f@j in fverts
+	  do for w in Weyl_orbit_ws(rde, (f-e).numer)
+	     do w*(f-e)
 	     od {this [ratvec] is the edges of type (i,j) starting at e}
 	  od
        od
@@ -100,11 +100,11 @@ set cube_faces(int n, int r) = [([int],vec)]:
     do let N = binom(n,m) {number of subsets of n of size m}
        then betas = box(2,m)
        in for j:N
-       	  do let S = combination_decode(m)(j)
-       	     in for beta in betas
-	     	do (S,vec:beta)
-	     	od {everything attached to subset S}
-       	  od.## {everything attached to all subsets of size m}
+	  do let S = combination_decode(m)(j)
+	     in for beta in betas
+		do (S,vec:beta)
+		od {everything attached to subset S}
+	  od.## {everything attached to all subsets of size m}
     od.##
 
 {each term in result is subset of {0,..,n-1} of card n-d, and vec of
@@ -113,7 +113,7 @@ set cube_faces(int n) = [([int],vec)]:
     for S in power_set(n)
     do let n_minus_d = #S
        in for beta in box(2,n_minus_d)
-       	  do (S,vec:beta)
+	  do (S,vec:beta)
 	  od
     od.##
 
@@ -122,10 +122,10 @@ set face_restrict(mat A, vec b, [int] S, vec epsilon) = (mat,vec):
     let m = #b, n=#A
     then T = complement(n,S)
     then Ares = mat:
-    	 if #T = 0
-    	 then null(m,0)
-    	 else for j in T do A[j] od
-    	 fi
+	 if #T = 0
+	 then null(m,0)
+	 else for j in T do A[j] od
+	 fi
     then bres = vec: b - sum(#b, for i@m in S do epsilon[m]*A[i] od)
     in (Ares, bres)
 
@@ -137,14 +137,14 @@ set aff_cube_extrema(mat A, vec b) = [ratvec, [int], vec]:
     then r = rank(A) {replace by tr(A) - #A??}
     in for (S,epsilon) in cube_faces(n,r)
        do let this = good_interior_point(face_restrict(A,b,S,epsilon))
-       	  then T = complement(n,S)
-       	  then () = if #this = 1
-	     	    then {prints(this, " ",T);}
-		    	 for k@m in T do v[k]:=this[0][m] od;
-		  	 for j@n in S do v[j]:=epsilon[n] od
+	  then T = complement(n,S)
+	  then () = if #this = 1
+		    then {prints(this, " ",T);}
+			 for k@m in T do v[k]:=this[0][m] od;
+			 for j@n in S do v[j]:=epsilon[n] od
 		    fi
 	  in if #this = 1 and A*v = b
-       	     then {prints(this, "  ", A*v-b," ");}
+	     then {prints(this, "  ", A*v-b," ");}
 	     [(ratvec:v, S, epsilon)]
 	     else []
 	     fi
@@ -155,8 +155,8 @@ set aff_cube_extrema_short(mat A, vec b) = bool:
     let n = #A, answer = false
     then r = rank(A) {replace by tr(A) - #A??}
     then () = for (S,epsilon) in cube_faces(n,r)
-       	      ~do if #good_interior_point(face_restrict(A,b,S,epsilon)) = 1
-       	      	 then answer:=true; break
+	      ~do if #good_interior_point(face_restrict(A,b,S,epsilon)) = 1
+		 then answer:=true; break
 		 fi
 	      od
     in answer
@@ -183,14 +183,14 @@ set aff_cube_extrema_old(mat A, vec b) = [ratvec, [int], vec]:
     {then r = rank(A)} {replace by tr(A) - #A??}
     in for (S,epsilon) in cube_faces(n{,r})
        do let this = good_interior_point(face_restrict(A,b,S,epsilon))
-       	  then T = complement(n,S)
-       	  then () = if #this = 1
-	     	    then {prints(this, " ",T);}
-		    	 for k@m in T do v[k]:=this[0][m] od;
-		  	 for j@n in S do v[j]:=epsilon[n] od
+	  then T = complement(n,S)
+	  then () = if #this = 1
+		    then {prints(this, " ",T);}
+			 for k@m in T do v[k]:=this[0][m] od;
+			 for j@n in S do v[j]:=epsilon[n] od
 		    fi
 	  in if #this = 1 and A*v = b
-       	     then {prints(this, "  ", A*v-b," ");}
+	     then {prints(this, "  ", A*v-b," ");}
 	     [(ratvec:v, S, epsilon)]
 	     else []
 	     fi
@@ -199,7 +199,7 @@ set aff_cube_extrema_old(mat A, vec b) = [ratvec, [int], vec]:
 
 set twist(KGBElt x, ratvec lambda) = ratvec:
     parameter(twist(x),x.real_form.distinguished_involution *lambda,
-    	      0*lambda).lambda
+	      0*lambda).lambda
 
 set lFeCounter = int: 0
 set lFeTimer = int: 0
@@ -219,13 +219,13 @@ set local_FPP_extrema_old(KGBElt x, ratvec lambda) = [ratvec]:
     then lamthlam = (Aold*lambda).numer
     {then () = prints(Aold)}
     then A = mat: for xi@j in Afflines
-    	     	  do ratvec_as_vec(Affcoroots*Aold*xi) od
+		  do ratvec_as_vec(Affcoroots*Aold*xi) od
     {then () = prints(A)}
     then b = Affcoroots*lamthlam
     {then () = prints(lamthlam," ",b)}
     then answer = for (u,,) in aff_cube_extrema(A,b)
-       	 	  do Afflines*u
-       		  od
+		  do Afflines*u
+		  od
     then () = lFeTimer +:= elapsed_ms() - start
     in answer
 
@@ -236,7 +236,7 @@ set local_FPP_extrema_med = ((KGBElt, ratvec) -> [ratvec]):
     then inv_hash = [mat_hash]: [] {one for each real form}
     then lamthlam_hash = [[vec_hash]]: [] {one for each real form and involution}
     then answer_list = [[[vec]]]: [] {for each real form, involution, and lamthlam, the indices in FPP
-    	 	       		       	   vertices of the extremal points}
+					   vertices of the extremal points}
     then afflines = [[ratvec]]: [] {for each G, edges of FPP}
     then affcoroots = [mat]: [] {FPP_coroots(G), transpose}
     then vlists = [[ratvec]]: [] {possible local vertices for each G}
@@ -247,7 +247,7 @@ set local_FPP_extrema_med = ((KGBElt, ratvec) -> [ratvec]):
        then G = x.real_form, start = elapsed_ms()
        then () = rf := rf_hash.match(G)
        then () = if rf = RF {haven't seen this real form before}
-	   	 then inv_hash #:= make_mat_hash();
+		 then inv_hash #:= make_mat_hash();
 		      lamthlam_hash #:= ([vec_hash]:[]);
 		      answer_list #:= ([[vec]]:[]);
 		      afflines #:= FPP_lines(G);
@@ -259,7 +259,7 @@ set local_FPP_extrema_med = ((KGBElt, ratvec) -> [ratvec]):
        then theta = x.involution
        then () = inv := inv_hash[rf].match(theta)
        then () = if inv = I {haven't seen this involution before}
-	         then lamthlam_hash[rf] #:= make_vec_hash();
+		 then lamthlam_hash[rf] #:= make_vec_hash();
 		       answer_list[rf] #:= ([vec]:[])
 		 fi {inv = I}
        then L = lamthlam_hash[rf][inv].size()
@@ -268,7 +268,7 @@ set local_FPP_extrema_med = ((KGBElt, ratvec) -> [ratvec]):
        then () = if ell = L {haven't see this lamthlam}
 		 then let Aold = 1+theta
 		      then A = mat:
-		          for xi@j in afflines[rf]
+			  for xi@j in afflines[rf]
 			  do ratvec_as_vec(affcoroots[rf]*Aold*xi)
 			  od
 		      , b = affcoroots[rf]*lamth
@@ -288,7 +288,7 @@ set local_FPP_extrema_small = ((KGBElt, ratvec) -> [ratvec]):
     then inv_hash = [mat_hash]: [] {one for each real form}
     then lamthlam_hash = [[vec_hash]]: [] {one for each real form and involution}
     then answer_list = [[[vec]]]: [] {for each real form, involution, and lamthlam, the indices in FPP
-    	 	       		       	   vertices of the extremal points}
+					   vertices of the extremal points}
     then afflines = [[ratvec]]: [] {for each G, edges of FPP}
     then vlists = [[ratvec]]: [] {possible local vertices for each G}
     then vlookups = [(ratvec -> int)]: []
@@ -298,7 +298,7 @@ set local_FPP_extrema_small = ((KGBElt, ratvec) -> [ratvec]):
        then G = x.real_form, start = elapsed_ms()
        then () = rf := rf_hash.match(G)
        then () = if rf = RF {haven't seen this real form before}
-	   	 then inv_hash #:= make_mat_hash();
+		 then inv_hash #:= make_mat_hash();
 		      lamthlam_hash #:= ([vec_hash]:[]);
 		      answer_list #:= ([[vec]]:[]);
 		      afflines #:= FPP_lines(G);
@@ -309,21 +309,21 @@ set local_FPP_extrema_small = ((KGBElt, ratvec) -> [ratvec]):
        then theta = x.involution
        then () = inv := inv_hash[rf].match(theta)
        then () = if inv = I {haven't seen this involution before}
-	         then lamthlam_hash[rf] #:= make_vec_hash();
+		 then lamthlam_hash[rf] #:= make_vec_hash();
 		      answer_list[rf] #:= ([vec]:[])
 		 fi {inv = I}
        then L = lamthlam_hash[rf][inv].size()
        then lamth = ((1+theta)*lambda).numer
        then () = ell := lamthlam_hash[rf][inv].match(lamth)
        then () = if ell = L {haven't see this lamthlam}
-       	       	 then let th1 = 1+theta
+		 then let th1 = 1+theta
 		      then alrf = answer_list[rf]
 		      then () = alrf[inv] #:= for u in aff_cube_extrema(th1, afflines[rf], lamth)
 					      do vlookups[rf](u)
 					      od
-		                then () = answer_list[rf]:= alrf
+				then () = answer_list[rf]:= alrf
 				then () = lFeCounter +:=1
- 		                in ()
+				in ()
 		  fi {ell=L}
 	then () = lFeTimer +:= elapsed_ms() - start
 	in for m in answer_list[rf][inv][ell] do vlists[rf][m] od
@@ -336,13 +336,13 @@ set local_FPP_extrema = ((KGBElt, ratvec) -> [ratvec]):
     then inv_hash = [mat_hash]: [] {one for each real form}
     then lamthlam_hash = [[vec_hash]]: [] {one for each real form and involution}
     then answer_list = [[[[ratvec]]]]: [] {for each real form, involution, and lamthlam, the list of
-    	 	       		       	       extremal vertices}
+					       extremal vertices}
     in ((KGBElt, ratvec) -> [ratvec]): (KGBElt x, ratvec lambda) [ratvec]:
        let RF = rf_hash.size(), rf = int:-1, inv = int: -1, ell = int: -1
        then G = x.real_form, start = elapsed_ms()
        then () = rf := rf_hash.match(G)
        then () = if rf = RF {haven't seen this real form before}
-	   	 then inv_hash #:= make_mat_hash();
+		 then inv_hash #:= make_mat_hash();
 		      lamthlam_hash #:= ([vec_hash]:[]);
 		      answer_list #:= ([[[ratvec]]]:[]);
 		      afflines #:= FPP_lines(G)
@@ -351,19 +351,19 @@ set local_FPP_extrema = ((KGBElt, ratvec) -> [ratvec]):
        then theta = x.involution
        then () = inv := inv_hash[rf].match(theta)
        then () = if inv = I {haven't seen this involution before}
-	         then lamthlam_hash[rf] #:= make_vec_hash();
+		 then lamthlam_hash[rf] #:= make_vec_hash();
 		      answer_list[rf] #:= ([[ratvec]]:[])
 		 fi {inv = I}
        then L = lamthlam_hash[rf][inv].size()
        then lamth = ((1+theta)*lambda).numer
        then () = ell := lamthlam_hash[rf][inv].match(lamth)
        then () = if ell = L {haven't see this lamthlam}
-       	       	 then let th1 = 1+theta
+		 then let th1 = 1+theta
 		      then alrf = answer_list[rf]
 		      then () = alrf[inv] #:= aff_cube_extrema(th1, afflines[rf], lamth)
 		      then () = answer_list[rf]:= alrf
 		      then () = lFeCounter +:=1
- 		      in ()
+		      in ()
 		  fi {ell=L}
 	then () = lFeTimer +:= elapsed_ms() - start
 	in answer_list[rf][inv][ell]
@@ -379,7 +379,7 @@ set local_FPP_extrema_short(KGBElt x, ratvec lambda) = bool:
     then lamthlam = (Aold*lambda).numer
     {then () = prints(Aold)}
     then A = mat: for xi@j in Afflines
-    	     	  do ratvec_as_vec(Affcoroots*Aold*xi) od
+		  do ratvec_as_vec(Affcoroots*Aold*xi) od
     {then () = prints(A)}
     then b = Affcoroots*lamthlam
     {then () = prints(lamthlam," ",b)}
@@ -401,18 +401,18 @@ set trial(RealForm G) = void:
     do prints("starting KGBElt ",x.number);
        let lambdas = FPP_lambdas(x), theta =x.involution
        then () = for lambda in lambdas
-     	       	 do prints(new_line);
-	      	    let b = ((1+x.involution)*lambda).numer
-	     	    then Lvd = LPm_table.Lvd(G,theta,b)
-	     	    then () = prints("Lvd.list = ",Lvd.list)
-	     	    then long_answer = local_FPP_extrema (x,b)
-	     	    then () = prints("extrema = ", long_answer)
-	     	    then () = assert(all(for v in long_answer
-	     	       		  	 do Lvd.lookup(v).>=
-				  	 od),
+		 do prints(new_line);
+		    let b = ((1+x.involution)*lambda).numer
+		    then Lvd = LPm_table.Lvd(G,theta,b)
+		    then () = prints("Lvd.list = ",Lvd.list)
+		    then long_answer = local_FPP_extrema (x,b)
+		    then () = prints("extrema = ", long_answer)
+		    then () = assert(all(for v in long_answer
+					 do Lvd.lookup(v).>=
+					 od),
 				"trouble at x = " + to_string(x.number))
-	     	     in ()
-	         od
+		     in ()
+		 od
        in ()
    od
 
@@ -421,7 +421,7 @@ set trial_sizes(RealForm G) = [[int]]:
     do let lambdas = FPP_lambdas(x), theta =x.involution
        then A = 1+theta
        in for lambda in lambdas
-     	  do let b = (A*lambda).numer
+	  do let b = (A*lambda).numer
 	     then long_answer = local_FPP_extrema (x,b)
 	     in #long_answer
 	  od {list of ints for x}

@@ -10,10 +10,10 @@
     then theta = x.involution, rh = G.rho
     in for alpha@j in G.posroots
        do if root_index(G,theta*alpha) > j
-       	     and G.poscoroots[j]*(lambda + theta*lambda) > 0 {now have cplx alpha}
+	     and G.poscoroots[j]*(lambda + theta*lambda) > 0 {now have cplx alpha}
 	  then let tau = K_type(x,lambdamin+alpha)
 	       in [KType]: if {(not tau.=)
-	       	  and} is_standard(tau)
+		  and} is_standard(tau)
 		  then monomials(1*tau) {[[tau]]}
 		  else []
 		  fi
@@ -21,9 +21,9 @@
 	  then let y = Cayley(alpha,x)
 	       then ell = (G.poscoroots[j]*lambda).numer
 	       then lambda0min = if (ell%2).=
-		    	       	 then lambdamin - (ell\2 - 1)*alpha
-	       	    	      	 else lambdamin - ((ell-1)\2)*alpha
-			      	 fi
+				 then lambdamin - (ell\2 - 1)*alpha
+				 else lambdamin - ((ell-1)\2)*alpha
+				 fi
 	       then tau0 = K_type(y, lambda0min), tau1 = K_type(cross(j,y),lambda0min)
 	       in [KType]: if {(not tau0.=) and} is_standard(tau0) then monomials(1*tau0) else [] fi##
 		       if {(not tau1.=) and} is_standard(tau1) then monomials(1*tau1) else [] fi
@@ -57,7 +57,7 @@ begin
    then muhashes = [KType_hash]:[] {for each G, list of mu's}
    then muss = [[[int]]]:[] {for each G and mu, list of indices into muhash for up_mus}
    then muDones = [[bool]]: [] {for each G, one bool for each mu, saying whether muss[i][j] is
-   		  	    as long as possible}
+			    as long as possible}
    then clear() = void:	real_form_hash.clear(); G_data := []
    then add_real_form(RealForm rf) = int:
    (   let I = real_form_hash.size()
@@ -126,8 +126,8 @@ begin
 	    fi { |short_mu_flag|; end of initialisation of |uptaus| }
 	 in if #uptaus > 0
 	    then j0 := for uptau in uptaus do height(uptau) od
-	               . {now apply one of two functions: }
-	               if max_loc_flag then max_loc@[int] else min_loc@[int] fi
+		       . {now apply one of two functions: }
+		       if max_loc_flag then max_loc@[int] else min_loc@[int] fi
 		 {then () = prints("adding at ",taulast)}
 	    ;  let (,newmunum) = add_K_type(uptaus[j0])
 	    in newmunums ##:= mus[newmunum]
@@ -156,7 +156,7 @@ begin
 	 do if #mus[j] < #newmunums[i:] then mus[j] := newmunums[i:] fi
 	 od
       ;  assert(#mus= muhash.size() and #mus = #muDone
-      	       , "mu_up_hash damaged in am")
+	       , "mu_up_hash damaged in am")
       ;  G_data[rfnum] := (K0,M,Mrt,muhash,mus,muDone)
       fi {|not muDone[ktypenum] and #mus[ktypenum] < bd|}
    ;  up_mu_time +:= elapsed_ms() - start_time
@@ -167,15 +167,15 @@ begin
       then (K0,M,Mrt,muhash,mus,muDone) = G_data[rfnum]
       in while #mus[ktypenum] < m and not muDone[ktypenum] do add_muss(mu, m) od
       ;  { result of |up_types|: }
-         for j in mus[ktypenum][:min(#mus[ktypenum],m)] do muhash.index(j) od
+	 for j in mus[ktypenum][:min(#mus[ktypenum],m)] do muhash.index(j) od
 in (  ( -> int): {real_form_size} @int: real_form_hash.size()
       , ( -> vec): {K_type_sizes} @vec: for muh in muhashes do muh.size() od
       , ( -> ): {clear} clear
       , ((KType,int) -> [KType]): {up_types} up_types
       , ((KType,int) -> [int]): {up_heights}
-        (KType mu, int m) [int]: for tau in up_types(mu,m) do height(tau) od
+	(KType mu, int m) [int]: for tau in up_types(mu,m) do height(tau) od
       , (KType -> (int,bool)): {completion}
-        (KType mu) (int,bool):
+	(KType mu) (int,bool):
 	let (num, ktypenum) = add_K_type(mu) then (,,,,mus,muDone) = G_data[num]
 	in (#mus[ktypenum],muDone[ktypenum])
    )
