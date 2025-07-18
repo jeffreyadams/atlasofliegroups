@@ -11,11 +11,8 @@ set DiracCoh(KType mu) = [Param]:
     then ht = rat_as_int(2*ic*rho_check(G)), allic = all_parameters_gamma(G,ic)
     in
 	for p in allic do
-    	if height(p) <= ht then
-	      if is_unitary(p) and branch_irr(p,ht)[mu] != 0
-	      then [p]
-	      else []
-	      fi
+    	if height(p) <= ht
+	then if is_unitary(p) and branch_irr(p,ht)[mu] != 0 do p fi
 	else break
 	fi od.##
 
@@ -40,7 +37,7 @@ set gammaKs(RealForm G, ratvec gamma) = [ratvec]:
 	      	   gammaK_Ks #:= for x in thetaStable(G)
 		   	       do (K_0(x),cross_divide(KGB(G,0),x))
 			       od;
-		   gammaK_gammas_data #:= []
+		   gammaK_gammas_data #:= ([[ratvec]]:[])
 	      fi
     then J = gammaK_gamma_hashes[i].size()
     then j = gammaK_gamma_hashes[i].match(gamma)
@@ -48,13 +45,14 @@ set gammaKs(RealForm G, ratvec gamma) = [ratvec]:
        then let datai = gammaK_gammas_data[i] {type [[ratvec]]}
        	    then A = projection_to_K_matrix(G)
        	    then mu = A*gamma
+	    , leq(ratvec a,ratvec b) = <=(a-b)
        	    then () = datai #:= for (K,w) in gammaK_Ks[i]
        	    	       		do if (is_dominant(K, mu - K.rho))
 				      and (mu - A*(G.rho)).denom = 1
        	       	       	  	   then [w*gamma - rho_c(KGB(G,0))]
 				   else []
 	  		  	   fi
-       		       		od.##.sort_u
+       		       		od.##.(sort_u(leq))
 	    then () = gammaK_gammas_data[i] := datai
 	    in datai[j]
 	else gammaK_gammas_data[i][j]

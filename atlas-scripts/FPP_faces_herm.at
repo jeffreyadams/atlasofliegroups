@@ -89,64 +89,62 @@ set test_slightly_verbose = true
 {START LAMBDA TABLES}
 
 {version of solve from basic using precomputed echelon form, to speed repeated calcs}
-set solve(vec b, mat M, mat C, [int] s) = maybe_a_vec:
-(    let (n,k)=shape(M)
-     then j=0 { runs up to k, used to index backwards }, sol=null(k)
-     in assert(#b=n,"equation mismatch");
+set solve(vec b, mat M, mat C, [int] s) = Maybe<vec>:
+(   let (n,k)=shape(M)
+    then j=0 { runs up to k, used to index backwards }, sol=null(k)
+    in assert(#b=n,"equation mismatch");
      	for i:n
        ~do if j<#s and i=s~[j] { then it is a pivot row, with pivot at M[j][i] }
        	   then let Mj=M~[j]
 	   	then (q,r)=b[i]\%Mj[i]
-		in if !=r then return ().no_vec { because inexact division} fi;
+		in if !=r then return none() { because inexact division} fi;
        		   sol~[j]:=q;
 		   b-:=Mj*q; { correct for contribution from sol[j~] }
        		   j+:=1
-       	    elif !=b[i] then return ().no_vec { because no pivot available }
+       	    elif !=b[i] then return none() { because no pivot available }
        	    fi
-   	 od;
-	 (C[:k]*sol).solution
+   	 od
+    ; some(C[:k]*sol)
 )
 
 {these are the possible lambda+theta*lambda for x.involution = theta. First
 vec_hash will be filled with candidate lamthlam (for which a lambda in X* + rho exists).
 For each lamthlam there is a Perm2 in the second list.}
-set cands_hash(InnerClass ic, mat theta, vec_hash lamthlam_hash) = [PermOrderTwo]:
-    let th1 = 1+theta, verts = FPP_vertices(ic), FEs = FPP_flippable_edges(ic),
+set cands_hash(InnerClass ic, mat theta, vec_hash lamthlam_hash) =
+      [PermOrderTwo]:
+(   let th1 = 1+theta, verts = FPP_vertices(ic), FEs = FPP_flippable_edges(ic),
     	Perm2s = [PermOrderTwo]: [], empty = [(int,int)]: []
     then shift = (-th1*ic.rho).numer
-    then () = for v@j in verts
-       	      do let w = th1*v
-       	      	 in if w.denom = 1 and any(vec_solve(th1, w.numer + shift))
-	       	    then let M = lamthlam_hash.size()
-	       	    then m = lamthlam_hash.match(w.numer)
-	       	    in if m = M
-	     	       then let () = Perm2s #:= (vec: [j],empty)
-		       	    in ()
-		       else let Perm2sm = Perm2s[m]
-			    then () = Perm2sm.fixed #:= j
-			    then () = Perm2s[m] := Perm2sm
-			    in ()
-		       fi
-	            fi
-               od
-    then () = for pair in FEs
-    	      do  let a = verts[pair[0]], b = verts[pair[1]]
-	      	  then w = a+theta*b
-	      	  in if theta*w = w and w.denom = 1
-		     and any(vec_solve(th1, w.numer + shift))
-		     then let M = lamthlam_hash.size()
-	             then m = lamthlam_hash.match(w.numer)
-	             in if m = M
-		     	then let () = Perm2s #:= (null(0),[(pair[0],pair[1])])
-			     in ()
-			else let Perm2sm = Perm2s[m]
-			     then () = Perm2sm.trans #:= (pair[0],pair[1])
-			     then () = Perm2s[m] := Perm2sm
-			     in ()
-			fi
-		     fi
-	       od
-     in Perm2s
+ in for v@j in verts
+    do let w = th1*v
+       in if w.denom = 1 and can(vec_solve(th1, w.numer + shift))
+	  then let M = lamthlam_hash.size()
+	  then m = lamthlam_hash.match(w.numer)
+	  in if m = M
+	     then Perm2s #:= (vec: [j],empty)
+	     else let Perm2sm = Perm2s[m]
+	     in Perm2sm.fixed #:= j
+	     ; Perm2s[m] := Perm2sm
+	     fi
+	  fi
+     od
+;    for pair in FEs
+     do  let a = verts[pair[0]], b = verts[pair[1]]
+	 then w = a+theta*b
+	 in if theta*w = w and w.denom = 1
+	    and can(vec_solve(th1, w.numer + shift))
+	    then let M = lamthlam_hash.size()
+	    then m = lamthlam_hash.match(w.numer)
+	    in if m = M
+	       then Perm2s #:= (null(0),[(pair[0],pair[1])])
+	       else let Perm2sm = Perm2s[m]
+	       in Perm2sm.trans #:= (pair[0],pair[1])
+	       ; Perm2s[m] := Perm2sm
+	       fi
+	    fi
+      od
+;  Perm2s
+)
 
 set Lnu(Param p) = RealForm:
     let p1 = to_no_Cplus(p), G=p.real_form
@@ -211,7 +209,7 @@ set ind_cand_params = (Param -> [Param]):
 		       then j = first(for list in lists do #list >0 od)
 		       in if j.>=
 		       	  then answers#:= lists[j]
-			  else answers#:= []
+			  else answers#:= ([Param]:[])
 		   	  fi
 		   fi
 
@@ -299,9 +297,9 @@ set make_Lvd_Perm2_table() = Lvd_Perm2_table:
 			FELs #:= FPP_flippable_edge_lookup(ic);
 	    	   	FPP_local_verts #:= FPP_local_vertices(ic, vertex_datas[i].list, FELs[i]);
 {			cands #:= [];}
-	    	   	lamthlam_hashess #:= [];
-			Perm2s #:= [];
-	    	   	entries #:= []
+	    	   	lamthlam_hashess #:= ([vec_hash]:[]);
+			Perm2s #:= ([[PermOrderTwo]]:[]);
+	    	   	entries #:= ([[Lvd_Perm2]]:[])
 	    	   fi
 	  in i
      then add_involution(InnerClass ic, mat theta) = (int, int):
@@ -311,8 +309,8 @@ set make_Lvd_Perm2_table() = Lvd_Perm2_table:
      	 then () = if j = J {haven't seen this involution before}
       	      	   then {cands[i] #:= [];}
 			lamthlam_hashess[i] #:= make_vec_hash();
-			Perm2s[i] #:= [];
-		   	entries[i] #:= []
+			Perm2s[i] #:= ([PermOrderTwo]:[]);
+		   	entries[i] #:= ([Lvd_Perm2]:[])
 		   fi
 	 in (i, j)
     then add_cands(InnerClass ic, mat theta) = (int, int):
@@ -2505,7 +2503,7 @@ set is_FPP_unitary(Param p) = (bool,bool):
     if not is_FPP_unitary_flag then return (false,false) fi;
     if (not is_hermitian(p)) then return (true,false) fi;
     if not (fewer_reducible_unitary_flag or is_pos_on_LKTs(p)) then return (true,false) fi;
-    let () = p:= herm_center(p), G = p.real_form
+    let G = (p:= herm_center(p)).real_form
     then gamma = p.infinitesimal_character
     then alphavs = for alphav@j in G.simple_coroots
     	 	  do if gamma*alphav < 1
@@ -2554,7 +2552,7 @@ set is_FPP_unitary(Param p, (Param -> bool) fancy_tester ) = (bool,bool):
     if not is_FPP_unitary_flag then return (false,false) fi;
     if (not is_hermitian(p)) then return (true,false) fi;
     if not (fewer_reducible_unitary_flag or is_pos_on_LKTs(p)) then return (true,false) fi;
-    let () = p:= herm_center(p), G = p.real_form
+    let G = (p:= herm_center(p)).real_form
     then gamma = p.infinitesimal_character
     then rdi = integrality_datum(G,gamma)
     then alphavs = for alphav@j in G.simple_coroots
@@ -2563,9 +2561,8 @@ set is_FPP_unitary(Param p, (Param -> bool) fancy_tester ) = (bool,bool):
 		     elif gamma*alphav > 1
 		     then []
 		     else let ji = coroot_index(rdi,alphav)
-			  in if not is_member_sorted(tau(p))(ji)
-			     then []
-			     else [j]
+			  in if is_member_sorted(tau(p))(ji)
+			     do j
 			     fi
 		     fi
 		  od.##

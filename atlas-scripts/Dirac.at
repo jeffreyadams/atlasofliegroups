@@ -215,10 +215,10 @@ set make_Dirac_easy_hash() = Dirac_easy_hash_table:
 		       then () = Ms #:= projection_to_K_matrix(rf)
 		       then () = Mrts #:=  ((1+rf.distinguished_involution)*right_inverse(Ms[I]))/2
 		       	    then () = muhashes #:=make_KType_hash()
-		       	    then () = muPRVs #:= []
-			    then () = DiracBDs #:= []
-			    then () = muss #:= []
-			    then () = muDones #:= []
+		       	    then () = muPRVs #:= ([ratvec]: [])
+			    then () = DiracBDs #:= ([rat]:[])
+			    then () = muss #:= ([[int]]:[])
+			    then () = muDones #:= ([bool]:[])
 			    then () = assert(real_form_hash.size() = #Qs and #Qs = #muhashes
 	     	  	    	      and #Qs = #muPRVs and #Qs = #DiracBDs and #Qs = #muss
 				      and #Ms = #Qs and #Mrts = #Qs, "Dirac_easy_hash damaged")

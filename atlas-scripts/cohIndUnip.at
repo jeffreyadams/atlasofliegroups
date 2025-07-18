@@ -175,23 +175,20 @@ set all_shifts_old(KGPElt Q, ratvec v) = [vec]:
 		 od
     then Qbox = box(ms)
     then Qboxshifted = for b in Qbox do b + mdowns od
-    then answer = for b in Qboxshifted
+    then answer = [vec]:
+                  for b in Qboxshifted
        	 	  do let ell = sum(G.rank, for j@k in Qdeltafixed
        	  	      			   do b[k]*terms[k]
 		      			   od)
 		     {then () = if b = [1,1,-1] then prints(ell) fi}
 	  	     in if ell.denom = 1
-	     	     	and if short_shifts_flag
-		    	    then B(v + rhou - ell) <= BG
-		    	    else true
-		    	    fi
+	     	     	and (not short_shifts_flag or B(v + rhou - ell) <= BG)
 	     		{and is_FPP(G,ell)}
-	     		then [ratvec_as_vec(ell)]
-	     		else []
+	     		do ratvec_as_vec(ell)
 	     		fi
        		  od.##
     then () = shift_count +:= #answer
-    in answer.sort_u
+    in answer.sort_u_rlex
 
 set all_shifts_old_flag=false
 
@@ -275,7 +272,7 @@ set all_shifts(KGPElt Q, ratvec v) = [vec]:
 	  {then () = prints(answer)}
     	  in ()
         od {b in Qupbox}
-      then answer = answer.sort_u
+      then answer = answer.sort_u_rlex
       then () = shift_count +:= #answer
       in answer
 
