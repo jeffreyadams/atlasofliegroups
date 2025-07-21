@@ -275,6 +275,7 @@ set twisted_c_form_irreducible_to_ht_MvL (Param p,int HT, int time) = maybe_KTP:
 {.Hermitian form to ht on a irreducible module, normalization from its
 initial term.}
 set hermitian_form_irreducible_to_ht_MvL (Param p,int HT) = KTypePol:
+  if not low(p,HT) then return to_ht(hermitian_form_irreducible(p),HT) fi;
   unitary_test_counter.use();
   {if HT > height(p) + 20 then prints(p,HT) fi;}
   let start_time = elapsed_ms(), answer =
@@ -286,10 +287,10 @@ set hermitian_form_irreducible_to_ht_MvL (Param p,int HT) = KTypePol:
   then () = was_tested_to_ht(p,HT, elapsed_ms() - start_time,is_pure(answer))
   in answer
 
-
 {.Hermitian form to ht on a irreducible module, normalization from its
 initial term.}
 set hermitian_form_irreducible_to_ht_MvL (Param p,int HT,int time) = maybe_KTP:
+  if not low(p,HT) then return to_ht(hermitian_form_irreducible(p,time),HT) fi;
   unitary_test_counter.use();
   let start_time = elapsed_ms()
   then answer =
@@ -299,13 +300,14 @@ set hermitian_form_irreducible_to_ht_MvL (Param p,int HT,int time) = maybe_KTP:
        fi
   | timed_out: was_tested_inter(p, elapsed_ms() - start_time);
     	       unitaryTime+:=elapsed_ms() - start_time; return timed_out()
-  | done(r): let ans = r.convert_cform_hermitian in was_tested(p,elapsed_ms() - start_time,
+  | done(r): let ans = r.convert_cform_hermitian in was_tested_to_ht(p,HT,elapsed_ms() - start_time,
     	     is_pure(ans)); ans.done
   esac
   then () = unitaryTime+:=elapsed_ms() - start_time
   in answer
 
 set hermitian_form_irreducible_to_ht (Param p,int HT) = KTypePol:
+  if not low(p,HT) then return to_ht(hermitian_form_irreducible(p),HT) fi;
   unitary_test_counter.use();
   {if HT > height(p) + 20 then prints(p,HT) fi;}
   let start_time = elapsed_ms(), answer =
@@ -313,7 +315,6 @@ set hermitian_form_irreducible_to_ht (Param p,int HT) = KTypePol:
   then c_form_irreducible_to_ht(p,HT) { not twisted, in equal rank case this is faster }
   else  check_hermitian(p,true); twisted_c_form_irreducible_to_ht(p,HT)
   fi.convert_cform_hermitian
-  then () = unitaryTime+:=elapsed_ms() - start_time
   then () = was_tested_to_ht(p,HT,elapsed_ms() - start_time, is_pure(answer))
   then () = unitaryTime+:=elapsed_ms() - start_time
   in answer
@@ -334,9 +335,9 @@ set is_unitary_to_ht_MvL (Param p,int HT, int time) = int: { -1: no, 0:timed out
    in   if p.is_hermitian
       	else -1
       	then case hermitian_form_irreducible_to_ht_MvL(p, HT, time)
-     	   | timed_out: was_tested_inter(p, elapsed_ms() - start_time); 0
+     	   | timed_out: {was_tested_inter(p, elapsed_ms() - start_time);} 0
 	   | done(result): let boo = result.is_pure
-	     		   in was_tested(p, elapsed_ms() - start_time,boo);
+	     		   in {was_tested(p, elapsed_ms() - start_time,boo);}
 	     		   if boo then 1 else -1 fi
 	   esac
       fi

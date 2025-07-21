@@ -767,7 +767,7 @@ set FPP_unitary_hash_general(RealForm G,Param_hash Uhash, (Param->bool) fancy_te
 
 set FPP_unitary_hash_real_dumb([(KGBElt,ratvec)] xlambdas, Param_hash Uhash,
     (Param->bool) fancy_tester) = void:
-    FPP_unitary_hash_general(xlambdas, Uhash, fancy_tester,local_test_GEO_hash_dumb@(
+    FPP_unitary_hash_general(xlambdas, Uhash, fancy_tester,local_test_GEO_hash_real_dumb@(
     KGBElt,ratvec,LocalVertexData,[[FaceVertsIndex]],
     KTypePol_hash, Param_hash, (Param->bool)))
 
@@ -1019,6 +1019,9 @@ fancy_tester) = void:
 						lambda_sc, Lvd, LF, pol_hash, Uhash, fancy_tester)
 				       elif one_level_revert_flag
 				       then local_test_GEO_hash_one_level(x_sc, lambda_sc, Lvd,
+				       	    	LF, pol_hash, Uhash, fancy_tester)
+				       elif real_dumb_revert_flag
+				       then local_test_GEO_hash_real_dumb(x_sc, lambda_sc, Lvd,
 				       	    	LF, pol_hash, Uhash, fancy_tester)
 				       else local_test_GEO_hash2(x_sc, lambda_sc, Lvd,
 				       	    	LF, pol_hash, Uhash, fancy_tester)
@@ -1342,6 +1345,9 @@ set FPP_unitary_hash_bottom_layer([KGBElt] xs, Param_hash UhashG, (Param->bool) 
 				      elif one_level_revert_flag
 				      then local_test_GEO_hash_one_level(x_sc, M*lambda, Lvd,
 				      LF, pol_hash, Uhash, fancy_tester)
+				      elif real_dumb_revert_flag
+				      then local_test_GEO_hash_real_dumb(x_sc, M*lambda, Lvd,
+				      LF, pol_hash, Uhash, fancy_tester)
 				      else local_test_GEO_hash2(x_sc, M*lambda, Lvd,
 				      LF, pol_hash, Uhash, fancy_tester)
 				      fi
@@ -1535,6 +1541,24 @@ set MyFancyTester(Param p) = bool:
     let () = FPP_unitary_hash2([(p.x,p.lambda)], is_unitary_hash_big_SIMPLE@Param)
     {then () = prints("invoked MFT at p = ",p,", real form = ",p.real_form)}
     in big_unitary_hash.uhash(p.real_form).lookup(herm_center(p)).>=
+
+set FPP_unitary_hash_real_dumb([(KGBElt, ratvec)] xls) = void:
+   if recursive_tester_flag
+   then FPP_unitary_hash_real_dumb(xls, MyFancyTester@Param)
+   else FPP_unitary_hash_real_dumb(xls, is_unitary_hash_big_SIMPLE@Param)
+   fi
+
+set FPP_unitary_hash_real_dumb([KGBElt] xs) = void:
+   if recursive_tester_flag
+   then FPP_unitary_hash_real_dumb(xs, MyFancyTester@Param)
+   else FPP_unitary_hash_real_dumb(xs, is_unitary_hash_big_SIMPLE@Param)
+   fi
+
+set FPP_unitary_hash_real_dumb(RealForm rf) = void:
+   if recursive_tester_flag
+   then FPP_unitary_hash_real_dumb(rf, MyFancyTester@Param)
+   else FPP_unitary_hash_real_dumb(rf, is_unitary_hash_big_SIMPLE@Param)
+   fi
 
 set FPP_unitary_hash_def_dumb([(KGBElt, ratvec)] xls) = void:
    if recursive_tester_flag

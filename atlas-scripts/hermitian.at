@@ -43,7 +43,7 @@ set up_mu_time = int:0
 set mu_time_mult = rat: 1/1 {1/1}
 
 {it "true" use up_mu_hash to calculate heights for is_unitary_to_ht}
-set up_mu_flag = false {true}
+{set up_mu_flag = false {true}}
 
 {multiple of G.rank to use as jump in step size}
 set mu_rank_mult = rat: 1/2 {1/4}
@@ -408,10 +408,12 @@ set drain_plug_time = int: 100000
 set tested_pos_hash = make_Param_hash()
 set tested_pos_times = [int]: [] {one for each tested_pos_hash.list() entry}
 set tested_pos_strings = [string]: []
+set tested_pos_counts = [int]: []
 
 set tested_neg_hash = make_Param_hash()
 set tested_neg_times = [int]: [] {one for each tested_list entry}
 set tested_neg_strings = [string]: []
+set tested_neg_counts = [int]: []
 
 set tested_inter_hash = make_Param_hash()
 set tested_inter_times = [int]: [] {one for each tested_inter_hash.list() entry}
@@ -421,10 +423,12 @@ set tested_inter_counts = [int]: []
 set tested_pos_to_ht_hashes = [Param_hash]: [] {for h:100 do make_Param_hash() od}
 set tested_pos_to_ht_times = [[int]]: [] {for h:100 do [int]:[] od}
 set tested_pos_to_ht_strings = [[string]]: [] {for h:100 do [] od}
+set tested_pos_to_ht_counts = [[int]]: []
 
 set tested_neg_to_ht_hashes = [Param_hash]: [] {for h:100 do make_Param_hash() od}
 set tested_neg_to_ht_times = [[int]]: [] {for h:100 do [int]:[] od}
 set tested_neg_to_ht_strings = [[string]]: [] {for h:100 do [] od}
+set tested_neg_to_ht_counts = [[int]]: []
 
 {set cSp = int:0}
 set was_tested(Param p, int T, bool ans) = void:
@@ -436,10 +440,24 @@ set was_tested(Param p, int T, bool ans) = void:
     then prints(p," took ",print_time_string(T)," to test is_unitary = ", ans)
     fi;
     if ans
-    then let () = tested_pos_hash.match(p)
-       	 in tested_pos_times#:=T; tested_pos_strings #:= test_string
-    else let () = tested_neg_hash.match(p)
-    in tested_neg_times#:=T; tested_neg_strings #:= test_string
+    then let M = tested_pos_hash.size()
+    	 then m = tested_pos_hash.match(p)
+       	 in if m = M
+	    then tested_pos_times#:=T;
+	    	 tested_pos_strings #:= test_string;
+		 tested_pos_counts #:=1
+	    else tested_pos_times[m] +:= T;
+	    	 tested_pos_counts[m] +:= 1
+	    fi
+    else let M = tested_neg_hash.size()
+    	 then m = tested_neg_hash.match(p)
+    	 in if m = M
+	    then tested_neg_times#:=T;
+	    	 tested_neg_strings #:= test_string;
+		 tested_neg_counts #:=1
+	    else tested_neg_times[m] +:= T;
+	    	 tested_neg_counts[m] +:= 1
+	    fi
     fi
 
 set was_tested_inter(Param p, int T) = void:
@@ -468,14 +486,38 @@ set was_tested_to_ht(Param p,int N, int T, bool ans) = void:
 		   tested_pos_to_ht_times ##:= for j:add do [int]: [] od;
 		   tested_neg_to_ht_times ##:= for j:add do [int]: [] od;
 		   tested_pos_to_ht_strings ##:= for j:add do [string]: [] od;
-		   tested_neg_to_ht_strings ##:= for j:add do [string]: [] od
+		   tested_neg_to_ht_strings ##:= for j:add do [string]: [] od;
+		   tested_pos_to_ht_counts ##:= for j:add do [int]: [] od;
+		   tested_neg_to_ht_counts ##:= for j:add do [int]: [] od
 	      fi
     in if ans
-       then let () = tested_pos_to_ht_hashes[h].match(p)
-       	    in tested_pos_to_ht_times[h]#:=T; tested_pos_to_ht_strings[h] #:= test_string
-       else let () = tested_neg_to_ht_hashes[h].match(p)
-       	    in tested_neg_to_ht_times[h]#:=T; tested_neg_to_ht_strings[h] #:= test_string
-       fi
+       then let M = tested_pos_to_ht_hashes[h].size()
+    	    then m = tested_pos_to_ht_hashes[h].match(p)
+       	    in if m = M
+	       then tested_pos_to_ht_times[h]#:=T;
+	    	 tested_pos_to_ht_strings[h] #:= test_string;
+		 tested_pos_to_ht_counts[h] #:=1
+	    else let tpthh = tested_pos_to_ht_times[h]
+	    	 then () = tpthh[m] +:= T
+		 in tested_pos_to_ht_times[h] := tpthh;
+	    	 let tpthc = tested_pos_to_ht_counts[h]
+		 then () = tpthc[m] +:= 1
+		 in tested_pos_to_ht_counts[h] := tpthc
+	    fi
+    else let M = tested_neg_to_ht_hashes[h].size()
+    	 then m = tested_neg_to_ht_hashes[h].match(p)
+    	 in if m = M
+	    then tested_neg_to_ht_times[h]#:=T;
+	    	 tested_neg_to_ht_strings[h] #:= test_string;
+		 tested_neg_to_ht_counts[h] #:=1
+	    else let tnthh = tested_neg_to_ht_times[h]
+	    	 then () = tnthh[m] +:= T
+		 in tested_neg_to_ht_times[h] := tnthh;
+	    	 let tnthc = tested_neg_to_ht_counts[h]
+		 then () = tnthc[m] +:= 1
+		 in tested_neg_to_ht_counts[h] := tnthc
+	    fi
+    fi
 
 set report_tested() = void:
     prints("  ----------------");
@@ -503,11 +545,12 @@ set report_tested() = void:
     prints("  ----------------")
 
 set clear_report_tested() = void:
-    tested_pos_hash.clear(); tested_pos_times:=[]; tested_pos_strings:=[];
-    tested_neg_hash.clear(); tested_neg_times:=[]; tested_neg_strings:=[];
+    tested_pos_hash.clear(); tested_pos_times:=[]; tested_pos_strings:=[]; tested_pos_counts:=[];
+    tested_neg_hash.clear(); tested_neg_times:=[]; tested_neg_strings:=[]; tested_neg_counts:=[]
     tested_inter_hash.clear(); tested_inter_times:=[]; tested_inter_counts:=[]
     for h:#tested_pos_to_ht_hashes
     do tested_pos_to_ht_hashes[h].clear(); tested_pos_to_ht_times[h]:=[]; tested_pos_to_ht_strings[h]:=[];
+       tested_pos_to_ht_counts[h]:=[]; tested_neg_to_ht_counts[h]:=[];
        tested_neg_to_ht_hashes[h].clear(); tested_neg_to_ht_times[h]:=[]; tested_neg_to_ht_strings[h]:=[]
     od
 

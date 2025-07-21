@@ -147,59 +147,13 @@ set most_shifts(KGPElt Q, ratvec v) = [vec]:
 	     fi
        od.##
 
-{if true, throw out too-long shifts}
-set short_shifts_flag = true
-
 set shift_count = int:0
-{Weakly good range allows some NEGATIVE shifts from rho_u. Include ALL
-those as well. Each will be an infl char in FPP on the center of L, so must
-be shorter than rho}
-set all_shifts_old(KGPElt Q, ratvec v) = [vec]:
-    let G = Q.real_form, rhou = rho_u(Q), S = Q.S
-    then B(ratvec wt) = invariant_form(G)(wt,wt)
-    then BG = B(G.rho)
-    then T = complement(G.semisimple_rank, Q.S)
-    then Qdeltafixed = set_bit_positions(AND(to_bitset(T),to_bitset(delta_fixed(G))))
-    then mups = for j in Qdeltafixed
-    	      	do ((rhou+v)*(G.simple_coroots[j]))\1 +1
-		od
-	 {upper bound is the weakly fair condition}
-    then mdowns = for j in Qdeltafixed
-    	 	  do -((dominant(G.simple_coroots[j],G))*G.rho)\1
-		  od
- 	 {lower bound is the chance of FPP condition}
-	 {maybe mdowns should depend on v??}
-     then ms = mups - mdowns
-    then terms = for t in Qdeltafixed
-    	       	 do delta_fixed_fund_wts_long(G)[t]
-		 od
-    then Qbox = box(ms)
-    then Qboxshifted = for b in Qbox do b + mdowns od
-    then answer = for b in Qboxshifted
-       	 	  do let ell = sum(G.rank, for j@k in Qdeltafixed
-       	  	      			   do b[k]*terms[k]
-		      			   od)
-		     {then () = if b = [1,1,-1] then prints(ell) fi}
-	  	     in if ell.denom = 1
-	     	     	and if short_shifts_flag
-		    	    then B(v + rhou - ell) <= BG
-		    	    else true
-		    	    fi
-	     		{and is_FPP(G,ell)}
-	     		then [ratvec_as_vec(ell)]
-	     		else []
-	     		fi
-       		  od.##
-    then () = shift_count +:= #answer
-    in answer.sort_u
-
-set all_shifts_old_flag=false
 
 {Weakly good range allows some NEGATIVE shifts from rho_u. Include ALL
 those as well. Each will be an infl char in FPP on the center of L, so must
 be shorter than rho}
 set all_shifts(KGPElt Q, ratvec v) = [vec]:
-    if all_shifts_old_flag then return all_shifts_old(Q,v) fi;
+    {if all_shifts_old_flag then return all_shifts_old(Q,v) fi;}
     let G = Q.real_form, rhou = rho_u(Q), S = Q.S
     then B(ratvec wt) = invariant_form(G)(wt,wt)
     then BG = B(G.rho){, BL = B(Q.Levi.rho)}
@@ -215,13 +169,6 @@ set all_shifts(KGPElt Q, ratvec v) = [vec]:
     	      	do ((rhou+v)*(G.simple_coroots[j]))\1 +1
 		od
 	 {upper bound is the weakly fair condition}
-    {then mdowns = for j in Qdeltafixed
-    	 	  do {-1 - ((dominant(G.simple_coroots[j],G))*G.rho + G.simple_coroots[j]*(v+rhou))\1}
-		  -1 -(tworhoch*G.rho + tworhoch*(rhou - ell + v))\(tworhoch*terms(j))
-		  od}
- 	 {lower bound is the chance of FPP condition}
-	 {maybe mdowns should depend on v??}
-    {then ms = mups - mdowns}
     {then () = prints("mdowns = ",mdowns, ", mups = ",mups)}
     then Qupbox = box(mups)
     then answer = [vec]:[], have_some = true
@@ -278,8 +225,6 @@ set all_shifts(KGPElt Q, ratvec v) = [vec]:
       then answer = answer.sort_u
       then () = shift_count +:= #answer
       in answer
-
-
 
 {most of the weights that can be subtracted from a unipotent on L to get a weakly
 fair induction for G}

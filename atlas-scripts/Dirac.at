@@ -28,7 +28,7 @@ set short_mu_flag = true
 {but this table should consider the possibility of bigger Dirac_best_steps "cap"}
 {Always "cap" \ge Dirac_best_steps?}
 
-set best_early() = void:
+{set best_early() = void:
     Dirac_best_flag:=true;
     Dirac_best_local_flag:=false
 
@@ -38,13 +38,13 @@ set best_early(int steps) = void:
 
 set best_late() = void:
     Dirac_best_flag:=false;
-    Dirac_best_local_flag:=true
+    Dirac_best_local_flag:=true}
 
-set best_late(int steps) = void:
+{set best_late(int steps) = void:
     best_late();
-    Dirac_best_steps:= steps
+    Dirac_best_steps:= steps}
 
-set include_imag_flag = true
+{set include_imag_flag = true}
 
 {these functions were in unity.at; give useful heights to which to try unitarity}
 {. gives (one of) the K-types of lowest height above mu in the

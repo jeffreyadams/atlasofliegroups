@@ -23,7 +23,7 @@ set red_coroots(Param p) = [vec]:
 set red_count_time =int:0
 
 {whether to use the old version, which does not store root system data}
-set red_count_old_flag = true
+set red_count_old_flag = false
 
 {real parity: gamma+ lambda + rho_real EVEN on alphavee}
 set red_count_old(Param p) = int:

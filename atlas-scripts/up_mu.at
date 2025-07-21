@@ -1,36 +1,6 @@
 < Dirac.at {for shifters}
 < goodroots.at {for antifinalize}
 
-{whether to use this function instead of shifters}
-{set short_mu_flag = true}
-
-{to get correct shifts for a standard rep p, use the the (non-final) K-type K_type(p.x, p.lambda_minus_rho)} {MOVED TO DIRAC.at}
-{set short_shifts(KType mu) = [KType]:
-    let x = mu.x, lambda = mu.lambda, lambdamin = mu.lambda_minus_rho, G = mu.real_form
-    then theta = x.involution, rh = G.rho
-    in for alpha@j in G.posroots
-       do if root_index(G,theta*alpha) > j
-       	     and G.poscoroots[j]*(lambda + theta*lambda) > 0 {now have cplx alpha}
-	  then let tau = K_type(x,lambdamin+alpha)
-	       in [KType]: if {(not tau.=)
-	       	  and} is_standard(tau)
-		  then monomials(1*tau) {[[tau]]}
-		  else []
-		  fi
-	  elif theta*alpha = -alpha
-	  then let y = Cayley(alpha,x)
-	       then ell = (G.poscoroots[j]*lambda).numer
-	       then lambda0min = if (ell%2).=
-		    	       	 then lambdamin - (ell\2 - 1)*alpha
-	       	    	      	 else lambdamin - ((ell-1)\2)*alpha
-			      	 fi
-	       then tau0 = K_type(y, lambda0min), tau1 = K_type(cross(j,y),lambda0min)
-	       in [KType]: if {(not tau0.=) and} is_standard(tau0) then monomials(1*tau0) else [] fi##
-		       if {(not tau1.=) and} is_standard(tau1) then monomials(1*tau1) else [] fi
-	  else []
-	  fi {type is [KType]}
-      od.##}
-
 set_type
 [up_mu_hash_table =
 (  ( -> int) real_form_size {number of real forms considered}
