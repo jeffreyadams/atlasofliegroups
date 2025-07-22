@@ -1530,7 +1530,7 @@ std::vector<type_nr_type> type_expr::add_typedefs
   const type_nr_type n_defs=defs.size(), old_table_size=table_size();
   std::vector<type_data> type_array;
 
-@/@< Copy right hand sides of |defs| type |type_array| and add entries for
+@/@< Copy right hand sides of |defs| to |type_array|, and add entries for
      any of their component types that have themselves any descendants @>
 
   preorder::Preorder graph(type_array.begin(),type_array.end());
@@ -1641,7 +1641,7 @@ termination of the recursion.
 type_nr_type type_expr::dissect_to (std::vector<type_data>& type_array) const
 {
   assert(has_descendants(*this)); // so we need to handle only those cases below
-  sl_list<unsigned short>  out;
+  sl_list<unsigned short> out;
   switch(tag)
   { default: assert(false); // kinds that always fail |has_descendants()|
   break; case row_type: row_variant->record(type_array,out);
@@ -1680,7 +1680,7 @@ without descendants, and although such types seem to be of limited utility as
 right hand sides of type definitions, we must be prepared to handle them;
 fortunately this is quite easy.
 
-@< Copy right hand sides of |defs| type |type_array| and add entries for
+@< Copy right hand sides of |defs| to |type_array|, and add entries for
    any of their component types that have themselves any descendants @>=
 {
   type_array.resize(n_defs); // slots to be filled later
