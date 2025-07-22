@@ -1178,6 +1178,8 @@ set local_testK_hash_know_lower(KGBElt x, ratvec lambda, LocalVertexData Lvd,
     local_testK_hash_know_lower(x, lambda, Lvd, FVKH, eq, gr, classListByFace,
     tester, Uhash, is_unitary_hash_big_SIMPLE@Param)
 
+set tell_all = false
+
 {Delete from LFVKH faces established to be nonunitary using
 min_bottom layer, and deformation. Output is new shorter list
 of candidate faces. Lvd is LOCAL VertexData.  HT is
@@ -1197,6 +1199,11 @@ set local_testK_hash_min_bottom_layer(KGBElt x, ratvec lambda, LocalVertexData L
      Use function known_unitaries from FPP_faces_herm
      Look up class in classListByFace, and mark "T"}
     then start = elapsed_ms(), start_count = unitary_test_counter.use_count()
+    then () = if tell_all
+    	      then prints("hts = ",hts, ", HT = ",HT, ", ONE = ",ONE,", NumClasses = ",NumClasses);
+	      	   prints("FVKH = ",FVKH);
+		   prints("eq = ",eq)
+	      fi
     then () = if KU_flag {and #FVKH = 2}
     	      then let () = KUKU_flag:=false
 	      	   then knownUnitaries = known_unitaries(Uhash, x, lambda, Lvd, FVKH, fancy_tester)
@@ -1205,18 +1212,37 @@ set local_testK_hash_min_bottom_layer(KGBElt x, ratvec lambda, LocalVertexData L
 	      	 	     	do newStatuses[classListByFace[d][j]] := "T"
 	    	 		od
 	      		     od
+		   then () = if fund_face_verbose
+		   	     then prints(count(for str in newStatuses do str[0] = "T" od),
+			     	  " classes are known unitary");
+		       		  if tell_all
+		      		  then prints("these are ",
+		       	    	       for str@i in newStatuses do if str[0] = "T" then [i] else [] fi od.##)
+		       		  fi
+
+			     fi
 		   in KUKU_flag:=true
-	       fi
+	       fi {KU_flag}
      then () = if KNU_flag
      	       then let knownNonUnitaries = known_non_unitaries(x, lambda, Lvd, FVKH, HT)
-	       in for list@d in knownNonUnitaries
-    	      	  do for j in list
-	      	     do let k = classListByFace[d][j]
-			in newStatuses:= updateNUclassesB(newStatuses, gr, k, "F");
-			   newStatuses[k] := "F"
-	    	     od {j in list}
-	      	  od {list@d}
-	        fi
+	       then () = for list@d in knownNonUnitaries
+    	      	       	 do for j in list
+	      	     	    do let k = classListByFace[d][j]
+			       in newStatuses:= updateNUclassesB(newStatuses, gr, k, "F");
+			       	  newStatuses[k] := "F"
+	    	     	    od {j in list}
+			 od {list@d}
+	       in if fund_face_verbose
+		  then prints(count(for str in newStatuses do str[0] = "F" od),
+			     	  " classes are known nonunitary");
+		       if tell_all
+		       then prints("these are ",
+		       	    for str@i in newStatuses do if str[0] = "F" then [i] else [] fi od.##)
+		       fi
+		  fi
+
+
+	        fi {KNU_flag}
 {next if possible label classes known to be nonunitary because they finalize or deform to nonunitary}
     then () = for k:NumClasses
     	     ~do if newStatuses[k] = "?"

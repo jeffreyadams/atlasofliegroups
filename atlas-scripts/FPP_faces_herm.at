@@ -2150,6 +2150,7 @@ set is_unitary_test_big_SIMPLE_interrupt_old(Param p, int step) = bool:
 			 fi
 	       then () = times_to_ht #:= time_to_ht
 	       then () = tau_bd := next_to_lowest(tau_bd);
+	       	       	 old_ht:=ht;
 		    	 ht:=height(tau_bd)
 	       {then () = if time_to_ht > 10000 and test_verbose
 	       	       	 then prints("height ",ht," of SIMPLE_interrupt took ",print_time_string(time_to_ht))
@@ -2226,7 +2227,6 @@ set is_unitary_test_big_SIMPLE_interrupt_Ufirst(Param p, int step) = bool:
 			      next_time := max(next_time,test_time)
 			 else next_time:=2*next_time {in case didn't finish}
 			 fi
-		    	 {ht:=height(tau_bd)}
 	       {then () = if time_to_ht > 10000 and test_verbose
 	       	       	 then prints("height ",ht," of SIMPLE_interrupt took ",
 			      		     print_time_string(time_to_ht))
@@ -2294,10 +2294,10 @@ set is_unitary_test_big_SIMPLE_interrupt(Param p, int step) = bool:
 			 fi
 	       then () = if result.!= {got a result}
 	       	       	 then tau_bd := next_to_lowest(tau_bd);
-			      old_ht := ht;
 			      next_time := max(next_time,test_time)
 			 else next_time:=2*next_time {in case didn't finish}
 			 fi;
+			 old_ht:=ht;
 		    	 ht:=height(tau_bd)
 	       {then () = if time_to_ht > 10000 and test_verbose
 	       	       	 then prints("height ",ht," of SIMPLE_interrupt took ",
@@ -2399,7 +2399,6 @@ set is_unitary_test_big_SIMPLE_interrupted_Ufirst(Param p, int time) = int:
   then result = 0
   then tau_bd = next_to_lowest(LKTs(p)[0])
   then ht = height(tau_bd)
-  then old_ht = ht
   then top_ht = GAM
        {floor((p.infinitesimal_character)*G.two_rho_check)}
        {unitary to top_ht implies unitary}
@@ -2422,7 +2421,6 @@ set is_unitary_test_big_SIMPLE_interrupted_Ufirst(Param p, int time) = int:
 			 fi
 	       then () = if result = 1 and ht <top_ht {got a useless result from to_ht}
 	       	       	 then tau_bd := next_to_lowest(tau_bd);
-			      old_ht := ht;
 			      ht:=height(tau_bd);
 			      result := 0;
 			      next_time := max(next_time,test_time)
@@ -2463,7 +2461,6 @@ set is_unitary_test_big_SIMPLE_interrupted(Param p, int time) = int:
   then result = 0
   then tau_bd = next_to_lowest(LKTs(p)[0])
   then ht = height(tau_bd)
-  then old_ht = ht
   then top_ht = GAM
        {floor((p.infinitesimal_character)*G.two_rho_check)}
        {unitary to top_ht implies unitary}
@@ -2478,7 +2475,6 @@ set is_unitary_test_big_SIMPLE_interrupted(Param p, int time) = int:
 			 fi
 	       then () = if result.> and ht< top_ht {got a useless result}
 	       	       	 then tau_bd := next_to_lowest(tau_bd);
-			      old_ht:= ht;
 			      ht:=height(tau_bd);
 			      result:=0;
 			      next_time := max(next_time,test_time)
@@ -2631,7 +2627,9 @@ set is_unitary_to_hts_big_SIMPLE_interrupt(Param p,[int] Ns, int time) = bool:
 		       	     if which_flag then time := 2*time fi;
 		       	     which_flag := not which_flag
      	      		  od {while result}
-		in if result.< then big_unitary_hash.numatch_height(p,N); return false fi
+		in if result<0
+		   then big_unitary_hash.numatch_height(p,Ns~[0]); return false
+		   fi
 	     od
      in true
 
@@ -2652,18 +2650,8 @@ set is_unitary_to_hts_big_SIMPLE(Param p,[int] Ns) = bool:
     	    then return is_unitary_to_hts(p,Ns) {prints("FPP DANGER TO HT at ",p)}
 	    fi
   {then () = p := herm_center(p)}
-   in {if interrupt_flag
-     then} return is_unitary_to_hts_big_SIMPLE_interrupt(p, Ns, interrupt_base_time)
-     {else if #Ns = 0
-       	  then return is_unitary_hash_big_SIMPLE(p)
-	  fi;
-  	  for N in Ns
-     	  do if not is_unitary_to_ht_big_SIMPLE(p,N)
-     	     then return false
-	     fi
-     	  od;
-     	  true
-     fi}
+  in is_unitary_to_hts_big_SIMPLE_interrupt(p, Ns, interrupt_base_time)
+
 
 { compute Hermitian form to hts on p, report if it is unitary}
 set is_unitary_to_hts_big (Param p,[int] Ns) = bool:
