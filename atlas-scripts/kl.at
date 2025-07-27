@@ -53,8 +53,8 @@ set low(Param p) = (int,int,int):
     	 {is_unitary_to_ht(p,GAM) means unitary}
     in (LAM,NU,GAM)
 
-{If NU (nu part) > LAM (lambda part) *low_frac, then figure to_ht could work better}
-set low_frac = 1/1
+{If NU (nu part) > LAM (lambda part) *nu_frac, then figure to_ht could work better}
+set nu_frac = 1/1
 
 {if target height < GAMMA*gamma_frac, then figure to_ht could be faster. So largest
 reasonable target height is GAMMA*gamma_frac. INCREASE to use to_ht
@@ -82,8 +82,10 @@ set trunc_factor = rat: 2/1
 {true means large nu, so to_ht could be better}
 set low_nu(Param p, int N) = bool:
     let (,NU,) = low(p)
-    in NU > N*low_frac
+    in NU > N*nu_frac
 
+{true means GAM big compared to HT, so is_unitary could be better}
+{If N>= GAM, then to_ht gives answer to unitarity.}
 set low_gamma(Param p, int N) = bool:
     let (,,GAM) = low(p)
     in GAM*gamma_frac > N

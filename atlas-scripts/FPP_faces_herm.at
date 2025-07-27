@@ -973,7 +973,7 @@ set make_big_unitary_hash() = big_unitary_hash_table:
 		       	       	  then let ans = K_type_pol(character_formula(p))
 				       then () = D:=height(p)-1
 				       in ans
-				  elif low(p,D) {low(p.x,p.lambda,D)}
+				  elif low(p,D)
      	  			  then let ans =  hermitian_form_irreducible_to_ht(p,D)
 				       then N = nuhashes[rfnum].size()
 				       then H = impure_height(ans)
@@ -988,7 +988,7 @@ set make_big_unitary_hash() = big_unitary_hash_table:
 					  		      	 nu_heights[rfnum]:= nuheightsrf
 				  			 fi {n=N}
 						 fi {H = -1}
-				       in ans
+				       in ans {from now on low(p,D) is false, so try herm form}
      	 			  else let ans = hermitian_form_irreducible(p)
 				       then () = D:=height(p)-1
 				       then N = nuhashes[rfnum].size()
@@ -1641,10 +1641,7 @@ set hermitian_form_irreducible_big_SIMPLE(Param p) = KTypePol:
     let () = p:=herm_center(p)
     then L = big_unitary_hash.ulookup(herm_center(p))
     in if L.>=
-       then {let startCF = elapsed_ms()}
-       	    {then m = char_counter.use()
-	    then} let ans = K_type_pol(character_formula(p))
-	    {then () = charTime +:= elapsed_ms() - startCF}
+       then let ans = K_type_pol(character_formula(p))
 	    in ans
        else big_unitary_hash.sig_entry(p,height(p)-1) {hermitian_form_irreducible(p)}
        fi
@@ -1909,12 +1906,9 @@ set HOWMANY = int:0
 
 set hermitian_form_irreducible_big(Param p) = KTypePol:
     if is_unitary_hash_big(p)
-    then {let startCF = elapsed_ms()
-       	 then m = char_counter.use()
-	 then} let ans = K_type_pol(character_formula(p))
-	 {then () = charTime +:= elapsed_ms() - startCF}
+    then let ans = K_type_pol(character_formula(p))
 	 in ans
-     else let G = p.real_form
+    else let G = p.real_form
      	  then () = HOWMANY +:= 1
 	  {in hermitian_form_irreducible(p)}
      	  then derps = derived_factor_params0(p)
@@ -1930,12 +1924,10 @@ set hermitian_form_irreducible_big(Param p) = KTypePol:
 	  {in ans}
      fi
 
-{if true, then try is_unitary during is_unitary_to_ht}
-set interrupt_flag = false {KGB(E7_s,20895), lambda = rho is HORRIBLE with "true"}
 set print_int_flag = false
 
 {initial time to give interruptible command}
-set interrupt_base_time = int:200
+set interrupt_base_time = int:500 {was 200 before 7/24/25}
 
 {assume p = u_to_ht_hash.list()[j], h = u_to_ht_hts[j] gives
 is_unitary_to_ht(p,h) = true}
@@ -1958,77 +1950,70 @@ set u_to_ht_clear() = void:
     u_to_ht_hts := ([int]: [])
 
 {assume p is hermitian}
-set hermitian_form_irreducible_to_ht_big_SIMPLE(Param p,int N) = KTypePol:
+set hermitian_form_irreducible_to_ht_big_SIMPLE(Param p,int HT) = KTypePol:
   let G = p.real_form
   then FPP_flag = is_FPP(G,p.infinitesimal_character)
   then () = if not FPP_flag
-    	    then return hermitian_form_irreducible_to_ht(p,N) {prints("FPP DANGER TO HT at ",p)}
+    	    then return hermitian_form_irreducible_to_ht(p,HT) {prints("FPP DANGER TO HT at ",p)}
 	    fi
   then () = p := herm_center(p)
   then L = big_unitary_hash.ulookup(p)
   then () = if L.>=
-       	    then let ans =K_type_pol(character_formula_to_height(p,N))
+       	    then let ans =K_type_pol(character_formula_to_height(p,HT))
 		 in return(ans)
 	     fi
   then j = u_to_ht_hash.lookup(p)
-  then () = if j.>= and u_to_ht_hts[j] >= N
-       	    then let ans =K_type_pol(character_formula_to_height(p,N))
+  then () = if j.>= and u_to_ht_hts[j] >= HT
+       	    then let ans =K_type_pol(character_formula_to_height(p,HT))
 	    	 in return(ans)
 	    fi
-  in big_unitary_hash.sig_entry(p,N)
+  in big_unitary_hash.sig_entry(p,HT) {this uses low(p,HT) to decide how to compute}
 
 set HOWMTH = int:0
 
-set hermitian_form_irreducible_to_ht_big(Param p,int N) = KTypePol:
+set hermitian_form_irreducible_to_ht_big(Param p,int HT) = KTypePol:
     HOWMTH +:= 1;
-    if low(p,N) {low(p.x,p.lambda,N)}
-    then hermitian_form_irreducible_to_ht(p,N)
-    else to_ht(hermitian_form_irreducible(p),N)
+    if low(p,HT) 
+    then hermitian_form_irreducible_to_ht(p,HT)
+    else to_ht(hermitian_form_irreducible(p),HT)
     fi
+
+set is_unitary_to_ht_big_SIMPLE(Param p, int HT) = bool:
+     hermitian_form_irreducible_to_ht_big_SIMPLE(p,HT).is_pure
 
 { meant to be used for G simple }
 { compute Hermitian form to ht on p, report if it is unitary}
-set is_unitary_to_ht_big_SIMPLE_old(Param p,int N) = bool:
+set is_unitary_to_ht_big_SIMPLE_old(Param p,int HT) = bool:
   if (not is_hermitian(p)) then return false fi;
-  if N <= height(p) then return true fi;
+  if HT <= height(p) then return true fi;
   if not (fewer_reducible_unitary_flag or is_pos_on_LKTs(p)) then return false fi;
   let G = p.real_form
   then FPP_flag = is_FPP(G,p.infinitesimal_character)
   then () = if not FPP_flag
-    	    then return is_unitary_to_ht(p,N) {prints("FPP DANGER TO HT at ",p)}
+    	    then return is_unitary_to_ht(p,HT) {prints("FPP DANGER TO HT at ",p)}
 	    fi
   {then () = p := herm_center(p)}
-  then () = if big_unitary_hash.nu_height_lookup_bool(p,N) then return false fi
+  then () = if big_unitary_hash.nu_height_lookup_bool(p,HT) then return false fi
   then j = u_to_ht_hash.lookup(p)
-  then () = if j.>= and u_to_ht_hts[j] >= N
+  then () = if j.>= and u_to_ht_hts[j] >= HT
        	    then return(true)
 	    fi
-  in is_pure(big_unitary_hash.sig_entry(p,N)) {this will use full is_unitary
+  in is_pure(big_unitary_hash.sig_entry(p,HT)) {this will use full is_unitary
      					      if that seems faster}
 
-{ meant to be used for G simple } { run successive is_unitary_to_ht
-tests, recording time; after each, run interruptible is_unitary with
-twice that much time. Integer N \ge 1 is meant to be number of height
-in up_mu_hash.up_heights where we start testing.}
-
-{try is_unitary if H big enough for it to look faster. Increasing ht_bound_frac means
+{try is_unitary if H big enough for it to look faster. Increasing ???  means
 is_unitary is tried LESS often}
 set ht_bound_frac = rat: 1/2
 
-{if low suggests it's worthwhile, try is_unitary with time limit time}
+{this version can't do lookup in big_unitary_hash without putting time versions of sig_entry}
 set is_unitary_to_ht_big_SIMPLE_interrupt(Param p, int HT, int time) = int: {1 means true, -1 false, 0 interrupted}
   if (not is_hermitian(p)) then return -1 fi;
   if not (fewer_reducible_unitary_flag or is_pos_on_LKTs(p)) then return -1 fi;
   if HT < height(p) then return 1 fi;
-  let G = p.real_form, (,NU,) = low(p)
-  then ht_bound = NU/low_frac {this estimates the biggest ht where to_ht could be faster than is_unitary}
+  let G = p.real_form
   then FPP_flag = is_FPP(G,p.infinitesimal_character)
-  then () = if (not FPP_flag) and HT < ht_bound*ht_bound_frac
-    	    then let ans = is_pure(to_ht(hermitian_form_irreducible(p),HT))
-	    	 in return if true then 1 else -1 fi
-	    elif not FPP_flag
-	    then let ans = is_pure(hermitian_form_irreducible_to_ht(p,HT))
-	    	 in return if true then 1 else -1 fi
+  then () = if (not FPP_flag)
+       	    then return hermitian_form_irreducible_to_ht_MvL(p, HT, time).is_pure
 	    fi
   then () = p := herm_center(p)
   then () = if big_unitary_hash.nu_height_lookup_bool(p,HT) then return -1 fi
@@ -2037,36 +2022,22 @@ set is_unitary_to_ht_big_SIMPLE_interrupt(Param p, int HT, int time) = int: {1 m
   then () = if j.>= and u_to_ht_hts[j] >= HT
        	    then return 1
 	    fi
-  then mu = K_type(p.x, p.lambda_minus_rho) {LKTs(p)[0]},
-       top_ht = floor((p.infinitesimal_character)*G.two_rho_check)
-       {unitary to top_ht implies unitary}
-  in is_unitary_to_ht_MvL (p, HT, time)
-
-{if HT > ht_bound*ht_bound_frac {so is_unitary might be faster?}
-     then let maybe_form = hermitian_form_irreducible(p,time)
-  	  in case maybe_form
-       	    | timed_out: 0
-	    | done(form): let H0 = impure_height(form)
-			  in if H0.<
-		      	     then big_unitary_hash.umatch(p); 1
-			     else big_unitary_hash.numatch_height(p,H0);
-				  if H0 > HT {is_pure(to_ht(form,HT))}
-				  then 1
-				  else -1
-				  fi
-			      fi
-	      esac
-       else is_unitary_to_ht_MvL (p, HT, time)
-       fi}
+  in if low(p,HT)
+     then is_unitary_to_ht_MvL (p, HT, time)
+     else to_ht(hermitian_form_irreducible(p,time),HT).is_pure
+     fi
 
 
-{if low suggests it's worthwhile, try is_unitary with time limit time}
+{if low(p,HT) suggests it's worthwhile (FALSE) try is_unitary with time limit time}
 set is_unitary_to_ht_big_SIMPLE(Param p, int HT, int time) = bool:
-    let ans = is_unitary_to_ht_big_SIMPLE_interrupt(p, HT, time)
-    in if ans > 0 then true
-       elif ans < 0 then false
-       else is_unitary_to_ht_big_SIMPLE_old(p,HT)
-       fi
+    if low(p,HT)
+    then is_unitary_to_ht_big_SIMPLE(p, HT)
+    else let ans = hermitian_form_irreducible(p,time) {maybe_KTP}
+    	 in case ans
+	    | timed_out: is_unitary_to_ht_big_SIMPLE(p, HT)
+	    | done(r): is_pure(to_ht(r,HT))
+	    esac
+     fi
 
 {false tries is_unitary intermittently}
 set old_to_ht_flag = true
@@ -2335,7 +2306,7 @@ set is_unitary_test_big_SIMPLE_interrupt(Param p, [int] hts) = bool:
   if #hts = 0 then return is_unitary_test_big_SIMPLE_interrupt(p, 1) fi;
   if hts~[0] <= height(p) then return is_unitary_test_big_SIMPLE_interrupt(p) fi;
   let G = p.real_form, (,NU,) = low(p)
-  then ht_bound = NU*low_frac
+  then ht_bound = NU*nu_frac
   {this estimates the biggest ht where to_ht could be faster than is_unitary}
   then FPP_flag = is_FPP(G,p.infinitesimal_character)
   then () = if not FPP_flag
@@ -2550,13 +2521,6 @@ set wiggle_is_unitary(Param p, KGBElt x, ratvec lambda, LocalVertexData Lvd) = b
 	 for sub in vert_subs
 	 do face_bary(Lvd,sub)
 	 od
-    {then deform_cands = [ratvec]:
-	 for gammabd in deform_cands_big
-	 do if Aff_theta(gammabd) = gammabd {gammabd is a local face}
-	    then [gammabd]
-	    else assert(false); []
-	    fi
-	 od.##}
     then CF = character_formula(p)
     then defs = [[Param]]:
 	 for gammabd in deform_cands
@@ -2739,9 +2703,6 @@ set is_unitary_def_test_big_SIMPLE(Param p,int m) = bool:
     {then () = p := herm_center(p)}
     then () = if (big_unitary_hash.ulookup(p)).>= then return true fi
     then () = if (big_unitary_hash.nulookup(p)).>= then return false fi
-    {then () = if interrupt_flag
-    	      then return is_unitary_def_test_big_SIMPLE_interrupt(p, m, interrupt_base_time)
-	      fi}
     in if low(p, height(p))
        then let (def,flag)= deform_hts(p,m)
        	    in if flag
@@ -2774,7 +2735,7 @@ set is_unitary_next_big_SIMPLE(Param p) = bool:
     then (LAM,NU,) = low(p)
     then FPP_flag = is_FPP(G,p.infinitesimal_character)
     then () = if not FPP_flag
-    	      then if NU > LAM*low_frac
+    	      then if NU > LAM*nu_frac
        	      	   then let n=next_heightB(p)
     	    	   	in if (n+1).=
 	      		   then return true
@@ -2786,7 +2747,7 @@ set is_unitary_next_big_SIMPLE(Param p) = bool:
 		   fi {NU > LAM}
 	       fi {not FPP_flag}
     {then () = p := herm_center(p)}
-    in if NU > LAM*low_frac
+    in if NU > LAM*nu_frac
        then let n=next_heightB(p)
     	    in  if (n+1).=
 	      	then true
@@ -2863,12 +2824,10 @@ set is_FPP_unitary(Param p) = (bool,bool):
 		      in} is_unitary_hash_big_SIMPLE(derpL)
 		   od))
 
-
 {First bool says whether the test applies; second gives result of
 test. Second is meaningful only if first is true; make result
 (false,false) otherwise}
 {Can allow fancy_tester to use FPP_unitary_hash}
-
 set is_FPP_unitary(Param p, (Param -> bool) fancy_tester ) = (bool,bool):
     if not is_FPP_unitary_flag then return (false,false) fi;
     if (not is_hermitian(p)) then return (true,false) fi;
@@ -3586,11 +3545,11 @@ vertex "belongs" (either "is" or "is vertex of the edge")}
    two flipped by involution, OR
 3) tetrahedron in FPP, two pairs of verts exchanged by involution}
 set localFD_1Dirac2\
-  ( KGBElt x, ratvec lambda, LocalVertexData Lvd, PermOrderTwo Perm2) = [[FaceVertsIndex]]:
+  ( KGBElt x, ratvec lambda, int HT, LocalVertexData Lvd, PermOrderTwo Perm2) = [[FaceVertsIndex]]:
 (   {if face_verbose
     then prints(new_line,"start localFD_1Dirac")
     fi;}
-    let G = x.real_form, start = elapsed_ms(), trans_hash = make_vec_hash(), HT = next_heights(parameter(x,lambda,0*lambda),edge_offset +1)~[0]
+    let G = x.real_form, start = elapsed_ms(), trans_hash = make_vec_hash()
     then () = for (m,n) in Perm2.trans do trans_hash.match([m,n]) od
     then Q = ((ratvec,ratvec)->rat): (ratvec v, ratvec w) rat: 0/1
     then DiracBD = 0/1
@@ -3691,6 +3650,10 @@ set localFD_1Dirac2\
        fi
 )
 
+set localFD_1Dirac2\
+  ( KGBElt x, ratvec lambda, LocalVertexData Lvd, PermOrderTwo Perm2) = [[FaceVertsIndex]]:
+  localFD_1Dirac2(x, lambda, next_heights(parameter(x,lambda,0*lambda),edge_offset +1)~[0], Lvd, Perm2)
+
 set FD12bzTime = int:0
 set FD12bzFFTime = int:0
 set FD12bzFTTime = int:0
@@ -3715,13 +3678,12 @@ vertex "belongs" (either "is" or "is vertex of the edge")}
 
 {If red_count_flag, add an extra coordinate recording red_count(p, next_heights[edge_offset])}
 set localFD_1Dirac2_by_zero\
-  ( KGBElt x, ratvec lambda, LocalVertexData Lvd, PermOrderTwo Perm2) =
+  ( KGBElt x, ratvec lambda, int HT, LocalVertexData Lvd, PermOrderTwo Perm2) =
     [[FaceVertsIndex]]:
 (   if fund_face_verbose
     then prints(new_line,"start localFD_1Dirac2_by_zero")
     fi;
     let G = x.real_form, start = elapsed_ms(), trans_hash = make_vec_hash()
-    then HT = next_heights(parameter(x,lambda,0*lambda),edge_offset+1)~[0]
     then () = for (m,n) in Perm2.trans do trans_hash.match([m,n]) od
     then Q = (ratvec,ratvec->rat): (ratvec v, ratvec w) rat: 0/1
     then DiracBD = 0/1, start = elapsed_ms()
@@ -3907,6 +3869,18 @@ set localFD_1Dirac2_by_zero\
        else answer
        fi
 )
+
+
+set localFD_1Dirac2_by_zero\
+  ( KGBElt x, ratvec lambda, LocalVertexData Lvd, PermOrderTwo Perm2) =
+    [[FaceVertsIndex]]:
+    localFD_1Dirac2_by_zero(x,lambda, next_heights(parameter(x,lambda,0*lambda),edge_offset+1)~[0], Lvd, Perm2)
+
+set localFD_1Dirac2_by_zero(KGBElt x, ratvec lambda, int HT) = [[FaceVertsIndex]]:
+    let theta = x.involution, ic = x.inner_class
+    then lamthlam = ((1+theta)*lambda).numer
+    then (Lvd,Perm2) = LPm_table.LPm_entry(ic,theta,lamthlam)
+    in localFD_1Dirac2_by_zero(x,lambda,HT, Lvd,Perm2)
 
 set localFD_1Dirac2_by_zero(KGBElt x, ratvec lambda) = [[FaceVertsIndex]]:
     let theta = x.involution, ic = x.inner_class

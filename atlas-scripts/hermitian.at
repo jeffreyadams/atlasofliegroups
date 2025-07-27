@@ -430,6 +430,10 @@ set tested_neg_to_ht_times = [[int]]: [] {for h:100 do [int]:[] od}
 set tested_neg_to_ht_strings = [[string]]: [] {for h:100 do [] od}
 set tested_neg_to_ht_counts = [[int]]: []
 
+set OT_hash = make_Param_hash()
+set OT_times = [int]: [] {cumulative time for each OT_hash.list() entry}
+set OT_counts = [int]: [] {number of occurrences for each OT_hash.list() entry}
+
 {set cSp = int:0}
 set was_tested(Param p, int T, bool ans) = void:
     {let () = if p = parameter(Sp(6,R),8,[2,1,1],[1,-1,0]/2)
@@ -472,6 +476,31 @@ set was_tested_inter(Param p, int T) = void:
        else tested_inter_times[m] +:= T;
        	    tested_inter_counts[m] +:=1
        fi
+
+{keep track of whether interruption failed}
+set was_tested_inter(Param p, int T, int T_target) = void:
+    if drain_plug_flag and T > drain_plug_time
+    then prints(p," took ",print_time_string(T)," for interrupted is_unitary")
+    fi;
+    if T>(5/4)*T_target
+    then let OTM = OT_hash.size()
+    	 then OTm = OT_hash.match(p)
+	 in if OTm=OTM
+	    then OT_times #:= T - T_target;
+	    	 OT_counts #:= 1
+	    else OT_times[OTm] +:= T - T_target;
+	    	 OT_counts[OTm] +:= 1
+	    fi
+    fi;
+    let M = tested_inter_hash.size()
+    then m = tested_inter_hash.match(p)
+    in if m=M
+       then tested_inter_times #:= T;
+       	    tested_inter_counts #:=1
+       else tested_inter_times[m] +:= T;
+       	    tested_inter_counts[m] +:=1
+       fi
+
 
 set was_tested_to_ht(Param p,int N, int T, bool ans) = void:
     if drain_plug_flag and T > drain_plug_time
@@ -531,8 +560,13 @@ set report_tested() = void:
  	 	   print_time_string(sum(for list in tested_pos_to_ht_times do sum(list) od)),"; ",
 	   sum(for hash in tested_neg_to_ht_hashes do hash.size() od)," neg tests to_ht, in time = ",
  	   	   print_time_string(sum(for list in tested_neg_to_ht_times do sum(list) od)));
+    if OT_hash.size() > 0
+    then prints(OT_hash.size()," params had ", sum(OT_counts), " interrupted tests go too long by ",
+    	 print_time_string(sum(OT_times)))
+    fi;
     prints("#bottom_layer = ",hash_bottom_layerCounter.use_count(), ", #one_level = ",
-    	   hash_one_levelCounter.use_count(), ", #dumb = ",hash_dumbCounter.use_count(),
+    	   hash_one_levelCounter.use_count(), ", #real_dumb = ",
+	   hash_real_dumbCounter.use_count(), ", #dumb = ",hash_dumbCounter.use_count(),
 	   ", #hash2 = ",hash2Counter.use_count());
     prints(print_time_string(unitaryTime)," for ",unitary_test_counter.use_count()," unitarity tests; ",
     print_time_string(charTime), " for ",char_counter.use_count(), " char calculations.");
@@ -546,8 +580,9 @@ set report_tested() = void:
 
 set clear_report_tested() = void:
     tested_pos_hash.clear(); tested_pos_times:=[]; tested_pos_strings:=[]; tested_pos_counts:=[];
-    tested_neg_hash.clear(); tested_neg_times:=[]; tested_neg_strings:=[]; tested_neg_counts:=[]
-    tested_inter_hash.clear(); tested_inter_times:=[]; tested_inter_counts:=[]
+    tested_neg_hash.clear(); tested_neg_times:=[]; tested_neg_strings:=[]; tested_neg_counts:=[];
+    tested_inter_hash.clear(); tested_inter_times:=[]; tested_inter_counts:=[];
+    OT_hash.clear(); OT_times:=[]; OT_counts:=[]
     for h:#tested_pos_to_ht_hashes
     do tested_pos_to_ht_hashes[h].clear(); tested_pos_to_ht_times[h]:=[]; tested_pos_to_ht_strings[h]:=[];
        tested_pos_to_ht_counts[h]:=[]; tested_neg_to_ht_counts[h]:=[];
@@ -665,6 +700,16 @@ set is_unitary(Param p,KTypePol_hash cert_hash) = bool:
 { some time-limited functions, using new built-in |full_deform@(Param,int)| }
 set_type [ maybe_KTP = (void timed_out | KTypePol done) ]
 
+{1 means pure, 0 means timed out, -1 means impure}
+set is_pure(maybe_KTP P) = int:
+    case P
+    | timed_out: 0
+    | done(r): if is_pure(r)
+      	       then 1
+	       else -1
+	       fi
+    esac
+
 set map ((Param->maybe_KTP)f, ParamPol P) = maybe_KTP:
   sum(P.real_form
      ,for c@p in P
@@ -700,7 +745,8 @@ set hermitian_form_irreducible (Param p, int time) = maybe_KTP:
                	      then c_form_irreducible(p,time)
 	 	      else check_hermitian(p,true); twisted_c_form_irreducible(p,time)
 	 	      fi
-   		 | timed_out: unitaryTime+:=elapsed_ms() - start_time; was_tested_inter(p, elapsed_ms() - start_time); return timed_out()
+   		 | timed_out: unitaryTime+:=elapsed_ms() - start_time; was_tested_inter(p, elapsed_ms() - start_time,
+		   time); return timed_out()
    		 | done(r): let ans = r.convert_cform_hermitian
 		   	    then () = was_tested(p, elapsed_ms() - start_time, is_pure(ans)) in return ans.done
    		 esac

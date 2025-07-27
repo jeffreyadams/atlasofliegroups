@@ -2604,7 +2604,7 @@ set hash_def_dumbCounter = make_counter()
 set hash_bottom_layerCounter = make_counter()}
 set one_param_time = int: 0
 
-set wiggle_unitary_flag = true
+set wiggle_unitary_flag = false
 
 {true more than 3/4 of time, so shouldn't do much to_height testing}
 set one_param_test(Param p, Param_hash Uhash) = [Param]:
