@@ -167,7 +167,7 @@ input:	'\n'			{ YYABORT; } /* null input, skip evaluator */
 	| IDENT ':' expr '\n'
 		{ struct raw_id_pat id; id.kind=0x1; id.name=$1;
 		  global_set_identifier(id,$3,0,@$); YYABORT; }
-	| IDENT ':' type '\n' { global_declare_identifier($1,$3); YYABORT; }
+| IDENT ':' type '\n' { global_declare_identifier($1,$3,@$); YYABORT; }
 	| FORGET id '\n'	  { global_forget_identifier($2); YYABORT; }
 	| FORGET id_op '@' type '\n'
 	  { global_forget_overload($2,$4); YYABORT;  }

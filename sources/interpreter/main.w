@@ -417,19 +417,22 @@ until other initialisations have been done), but we defer the details.
   auto oit = force<row_value>(input_path.get())->val.begin();
   for (auto it=paths.begin(); it!=paths.end(); ++it)
     *oit++ = std::make_shared<string_value>(std::string(*it)+'/');
-@/global_id_table->add@|(ip_id, input_path, mk_type("[string]"), false);
+@/global_id_table->add@|
+    (ip_id, input_path, mk_type("[string]"), false,source_location());
   input_path_pointer = global_id_table->address_of(ip_id);
 @)
   own_value prelude_log = std::make_shared<row_value>(0); // start out empty
   id_type pl_id = main_hash_table->match_literal("prelude_log");
   auto& logs = force<row_value>(input_path.get())->val;
   logs.reserve(prelude_filenames.size());
-@/global_id_table->add@|(pl_id, prelude_log, mk_type("[string]"), true);
+@/global_id_table->add@|
+    (pl_id, prelude_log, mk_type("[string]"), true,source_location());
   prelude_log_pointer = global_id_table->address_of(pl_id);
 @)
   own_value back_trace = std::make_shared<row_value>(0); // start out empty
   id_type bt_id = main_hash_table->match_literal("back_trace");
-@/global_id_table->add@|(bt_id, back_trace, mk_type("[string]"), false);
+@/global_id_table->add@|
+    (bt_id, back_trace, mk_type("[string]"), false,source_location());
   back_trace_pointer = global_id_table->address_of(bt_id);
 }
 
