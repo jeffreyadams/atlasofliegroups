@@ -420,6 +420,8 @@ integrality_datum: (RootDatum,ratvec->RootDatum): integral coroots subdatum
   Applied to (rd,gamma), forms the root datum whose coroots form the closed
   subsystem of the coroots of rd that take an integral value on gamma.
 integrality_rank: (RootDatum,ratvec->int): semisimple rank of integrality datum
+integrality_simples: (RootDatum,ratvec->[int]): simple gens of integrality datum
+  Root indices, always non negative, of generators of the integrality datum
 is_integrally_dominant: (RootDatum,ratvec->bool): dominance for integral coroots
   So integrally_dominant(rd,gamma) holds if and only if there are no positive
   coroots alpha_v for which alpha_v*gamma is a (strictly) negative integer

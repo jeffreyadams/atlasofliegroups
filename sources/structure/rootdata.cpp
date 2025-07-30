@@ -1690,7 +1690,7 @@ bool is_long_coroot(const RootSystem& rs, RootNbr alpha)
   number of comparisons necessary. This can be improved by using for instance a
   hash table to detect previously seen orbit elements, but a simpler and
   probably more effective way is used here, which depends on the existence of an
-  increasing chain of subgroups from the stabliser of the initial orbit element
+  increasing chain of subgroups from the stabiliser of the initial orbit element
   to the full group such that the successive subquotients are easy to generate,
   as the full orbit can then be obtained from the Cartesian product of those
   subquotients. Here the chain of subgroups are Levi subgroups, which are
