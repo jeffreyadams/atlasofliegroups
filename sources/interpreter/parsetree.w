@@ -172,6 +172,8 @@ source line.
 @< Definitions of functions not for the parser @>=
 std::ostream& operator<<(std::ostream& out, const source_location& sl)
 {
+  if (sl.start_line == ~0u)
+    return out << "in the prelude";
   out << "at " << main_input_buffer->name_of(sl.file) @|
       << ':' << sl.start_line << ':' << sl.first_col << '-';
   if (sl.extent>0)
