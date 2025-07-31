@@ -1531,6 +1531,7 @@ set is_unitary_to_ht_big_SIMPLE(Param p, int HT) = bool:
 { compute Hermitian form to ht on p, report if it is unitary}
 set is_unitary_to_ht_big_SIMPLE_old(Param p,int HT) = bool:
   if (not is_hermitian(p)) then return false fi;
+  if HT.< then return is_unitary_hash_big_SIMPLE(p) fi;
   if HT <= height(p) then return true fi;
   if not (fewer_reducible_unitary_flag or is_pos_on_LKTs(p)) then return false fi;
   let G = p.real_form
@@ -1539,6 +1540,7 @@ set is_unitary_to_ht_big_SIMPLE_old(Param p,int HT) = bool:
     	    then return is_unitary_to_ht(p,HT) {prints("FPP DANGER TO HT at ",p)}
 	    fi
   {then () = p := herm_center(p)}
+  then () = if (big_unitary_hash.ulookup(p)).>= then return true fi
   then () = if big_unitary_hash.nu_height_lookup_bool(p,HT) then return false fi
   then j = u_to_ht_hash.lookup(p)
   then () = if j.>= and u_to_ht_hts[j] >= HT

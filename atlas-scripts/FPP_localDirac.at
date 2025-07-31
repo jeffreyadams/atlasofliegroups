@@ -2972,6 +2972,164 @@ set local_test_GEO_hash_real_dumb(KGBElt x, ratvec lambda, {VertexData vd,} Loca
 	      " for UParams calculation ", test_string, new_line) fi
    in UParams
 
+{
+{Assume we have local vertices and edges LF, unitary to some low height. herm and pos on LKTs.
+Called when there are not enough heights; presumably small KGBElts??}
+set local_test_GEO_hash_Steve_dumb(KGBElt x, ratvec lambda, LocalVertexData Lvd,
+     [[FaceVertsIndex]] LF, Param_hash Uhash, (Param->bool) fancy_tester) =
+     [Param]:
+    if {zero case} #LF[0] = 0 then return [] fi;
+    if {tempered case} #LF[0] = 1 and ((1-x.involution)*(Lvd.list[LF[0][0][0]])).=
+    then let p = parameter(x,lambda,0*lambda)
+    	 then () = for q in monomials(finalize(p))
+    	       	   do Uhash.match(q)
+		   od
+	 in return [p]
+    fi;
+    let (G,j0) = %x, thetaMinus = x.involution - 1, start = elapsed_ms()
+    then zero_pol = null_module(G)
+    then () = more_after_flag:=false
+    then () = min_after_flag:=false
+    then () = if 1*parameter(x,lambda,lambda) = zero_pol then return [] fi
+    then r = rank(x.involution - 1), NK = #KGB(x.real_form)
+    then pmin = parameter(x,lambda,0*lambda)
+    then () = if {TINY CASE} #LF[0]=1
+    	      then if mix_flag
+	      	   then return one_param_test_min_bottom(parameter(x,lambda,Lvd.list[LF[0][0][0]]),
+		   	{[height(pmin) + more_shift_level],} Uhash)
+		   else return one_param_test(parameter(x,lambda,Lvd.list[LF[0][0][0]]), Uhash)
+		   fi
+	      fi
+    then pmax = pmax(x,lambda,Lvd)
+    then r = rank(x.involution - 1), rk = rank(x_open(G).involution - 1), step = max(G.semisimple_rank\2,1)
+    then FPP_max_ht = (G.rho * G.two_rho_check)\1
+    then tester = (Param->bool): (Param p) bool:
+	 if wiggle_unitary_flag
+	 then wiggle_is_unitary(p)
+	 elif test_interrupt_flag
+	 then is_unitary_test_big_SIMPLE_interrupt(p)
+	 else let test_hts = [int]: next_heights(pmax, r\2)
+	      then too_high = first(for h in test_hts do h > FPP_max_ht od)
+    	      then () = if too_high.>= then {prints(test_hts);} test_hts:=test_hts[:too_high] fi
+	      in is_unitary_test_big_SIMPLE(p, test_hts)
+	 fi
+    {then () = if face_verbose then prints("test_ht = ",test_ht) fi}
+    then () = test_string:= " using local_test_GEO_hash_real_dumb"
+    then () = hash_real_dumbCounter.use()
+    then () = if test_verbose then prints("Chose",test_string) fi
+    then start_count = unitary_test_counter.use_count()
+    then startDBTcount = DBTcount
+    then LFDKH = if red_count_flag and #LF[1] > 0
+    	       	 then let (eq,CLBF) = localGraphRed(LF)
+		      in localFD_KHash_01_graph(x,lambda,Lvd,pol_hash,LF, eq,CLBF)
+		  else localFD_KHash_01(x, lambda, Lvd, pol_hash, LF)
+		  fi {red_count_flag}
+        {compute graph on faces to dim 1, remove failing Dirac}
+    then ((eq,gr),IUCL,CLBF) = localGraphK(LFDKH)
+           {remove from LFDKH all faces failing is_unitary}
+    then () = LFDKH := local_testK_hash_know_lower(x,lambda,Lvd, LFDKH, eq, gr, CLBF,
+    	 tester, Uhash, fancy_tester)
+{here should use DiracBest, not later}
+    then () = if test_verbose then prints("unitary face counts to dim 1: ",
+    	      	 for list in LFDKH do #list od)
+	      fi
+    then () = if quick_flag
+              then let () = LFDKH := localFD_KHashbt_lookDownGEO(x,lambda, Lvd, LFDKH, 2,
+                                r + 1, pol_hash)
+	           then ((eq,gr),IUCL,CLBF) = localGraphK(LFDKH)
+		   in  LFDKH := local_testK_hash_know_lower(x,lambda,Lvd, LFDKH, eq,
+				      gr, CLBF, tester, Uhash)
+	      else let D = int:1
+    then () = while (D <= rank(x.involution-1) - 1  ) and
+    	      	    (#LFDKH = D + 1) and
+		    (#(LFDKH~[0]) > D+1)
+    {can't omit middle because LFDKH is truncated!}
+    {step D in while loop adds faces of dim D+1; then does is_unitary on
+    faces of dim D+1; then adds faces of dim D+2, etc. If there are less than
+    D+2 possibly unitary faces of dim D, then none of dim D+1.}
+    	      do let () = LFDKH := localFD_KHashbt_lookDownGEO(x,lambda, Lvd,
+                       	  	   LFDKH, D+1,D+2,pol_hash)
+		 then ((eq,gr),IUCL,CLBF) = localGraphK(LFDKH)
+       	      	 {compute graph on faces to dim D+1}
+		 then lowUs = sum(for d:D+1 do #LFDKH[d] od)
+			   { write statuses more simply: all unitary except
+			     singleton classes of dim D+1 }
+		 then newDplus1 = [vec]: for j@m in CLBF[D+1]
+		      {D+1-diml face #m belongs to class j}
+		      do if #eq[j] > 1
+		      	 then [LFDKH[D+1][m]]
+		         else let verts = vec: LFDKH[D+1][m][:D+2]
+			      {should insert Uhash.lookup(p).>=
+			      Actually this has no effect in SO(4,4)}
+			      then ps = monomials(finalize(
+					  parameter(x, lambda,
+					  face_bary(Lvd, verts))))
+			      then test = if any(for p in ps
+                                                 do is_finished(p.x, p.lambda){p.x.# < known_to} and
+						      	 	Uhash.lookup(p) = -1
+                                                 od)
+                                          then false
+                                          elif all(for p in ps
+                                                   do Uhash.lookup(p).>=
+                                                   od)
+                                          then true
+                                          else all(for p in ps
+					       	   do tester(p)
+					       	   od)
+                                          fi {any}
+ 		{ these are simplices of dim at least 2 with unitary faces,
+		so expect TRUE usually; so is_unitary faster than tester?}
+                          in if test
+                             then [LFDKH[D+1][m]]
+                             else []
+                             fi
+                          fi
+                       od.##
+		 then () = LFDKH := LFDKH[:D+1] # newDplus1
+		 then () = if test_verbose then prints("face counts to dim ",
+		     D+1,": ", for list in LFDKH do #list od) fi
+                 then ()= D:=D+1
+                 in ()
+     	     od
+	     in ()
+	 fi {if quick_flag}
+    then unitary_by_dim = for L in LFDKH do #L od
+    {now have unitary faces of all dims}
+     {then () = if test_verbose then prints("total number of tests = ",
+                                  unitary_test_counter.use_count())
+				  fi}
+    then () = if test_verbose or test_slightly_verbose
+    	      then prints("unitary faces by dim = ",
+       	       	    	   unitary_by_dim, test_string);
+		 prints("number of tests = ",unitary_test_counter.use_count() - start_count)
+	      fi
+     then UParams = [Param]:
+          for list@d in LFDKH
+          do for v in list
+             do let p = parameter(x,lambda, face_bary(Lvd, v[:d+1]))
+		then () = for  p1 in monomials(finalize(p))
+                      	  do Uhash.match(p1);
+                             if deform_flag
+			     then for q in facet_deformed_new(p1)
+                             	  do Uhash.match(q)
+				  od
+			      fi
+                          od
+		 then () = if long_out_flag
+		      	   then let () =ParamsByDim[d]:=(ParamsByDim[d] next ParamsByDim[d]:=[])#p
+			   	then ()=LFDKHByDim[d] :=(LFDKHByDim[d] next LFDKHByDim[d]:=[])#v
+				in ()
+			   fi
+		 in p
+              od
+           od.##
+   then time = elapsed_ms() - start
+   then () = if time_verbose
+	      then prints("     ", print_time_string(time),
+	      " for UParams calculation ", test_string, new_line) fi
+   in UParams
+}
+
 {Assume we have local vertices and edges LF, herm and pos on LKTs.
 Called when there are not enough heights; presumably small KGBElts??}
 set local_test_GEO_hash_else_dumb(KGBElt x, ratvec lambda, {VertexData vd,} LocalVertexData Lvd,

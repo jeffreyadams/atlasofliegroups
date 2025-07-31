@@ -78,14 +78,15 @@ set Levix(KGBElt x, ratvec lambda, vec av) = (RealForm,KGBElt):
      then xL = KGB_elt(rdL, theta, x.torus_factor)
     in (real_form(xL),xL)
 
+set simpTimer = int:0
 
 {assume roots for L are rational linearly closed in roots for G, and
 L-positive are G-positive; conjugate L to standard Levi}
-set simplifier(RootDatum L, RootDatum G) = WeylElt:
+set simplifier_old(RootDatum L, RootDatum G) = WeylElt:
     if L.semisimple_rank = G.semisimple_rank
     then return W_elt(G,[int]: [])
     fi;
-    let SLv = L.simple_coroots, SL = L.simple_roots
+    let start = elapsed_ms(), SLv = L.simple_coroots, SL = L.simple_roots
     then big = G {we'll shrink to smaller and smaller Levis
     	       	 containing a conjugate of L}
     then S = G.simple_roots, M = id_mat(G.rank)
@@ -109,7 +110,17 @@ set simplifier(RootDatum L, RootDatum G) = WeylElt:
 	     SL := L.simple_roots{;
 	     prints("SLv = ",L.simple_coroots)}
        od;
+       simpTimer+:= elapsed_ms() - start;
        W_elt(G,M)
+
+set old_simplifier_flag = true
+
+set simplifier(RootDatum L, RootDatum G) = WeylElt:
+    if old_simplifier_flag then return simplifier_old(L, G) fi;
+    let start = elapsed_ms(), SL = for alpha in L.simple_roots do root_index(G,alpha) od
+    then (w,) = from_standard_Levi(G,SL)
+    in simpTimer+:= elapsed_ms() - start;
+       w
 
 set standardize(KGBElt x, ratvec lambda, vec av) = (KGBElt, ratvec, vec):
     let (L,) = Levix(x,lambda,av), G = x.real_form
@@ -134,14 +145,16 @@ set ind_quo(KGBElt x, ratvec lambda, vec av, rat t) = ParamPol:
 {given a reducibility coroot av, take generic point on hyperplane
 av*gamma = t, corresponding Q(t) = std/Langlands quotient, and ask
 whether Q(t) has terms of height at most HT}
+{works for HT < 0, telling whether Q(t).!=}
 set test(KGBElt x, ratvec lambda, vec av, rat t, int HT) = bool:
     let QHT = to_ht(HT)(ind_quo(x, lambda, av, t))
     in QHT.!=
 
+{works for HT < 0, giving all reducibility points}
 set red_points(KGBElt x, ratvec lambda, vec av,int HT) = [int]:
-    let (m,M) = range(x,lambda,av)
+    let (m,M) = range(x,lambda,av), thetapl = x.involution+1
     in for j:M-m+1 from m
-       do if test(x,lambda,av,j,HT)
+       do if test(x,lambda,av,j,HT) or ((av*thetapl).= and j.=)
        	  then [j]
 	  else []
 	  fi
@@ -206,12 +219,15 @@ set taus(KGBElt x, ratvec lambda, int HT) = [KType]:
 
 set pos_tester(KGBElt x, ratvec lambda,int HT,ratvec gamma) = bool:
     let p = parameter(x,lambda,gamma), G = x.real_form
-    then Form_p = sum(G, for q in monomials(1*p)
+    then qs = monomials(1*p)
+    in all (for q in qs do @bool: is_unitary_to_ht_big_SIMPLE_old(q,HT) od)
+    {then Form_p = sum(G, for q in monomials(1*p)
        	      do hermitian_form_irreducible_to_ht_big_SIMPLE(q,HT)
 	      {hermitian_form_irreducible_to_ht(q,HT)}
 	      od)
-    in is_pure(Form_p)
+    in is_pure(Form_p)}
 
+{
 {record values of thruple for (x,lambda,HT}
 set xlHT_vecHash = make_vec_hash()
 
@@ -221,6 +237,7 @@ set xlHT_bools = [bool]:[]
 set xlHT_clear() = void:
     xlHT_vecHash.clear();
     xlHT_bools:=[]
+}
 
 set_type
 [steve_hash_table =
@@ -371,15 +388,16 @@ set localFD_1SteveU\
   ( KGBElt x, ratvec lambda, int HT, LocalVertexData Lvd) =
     [FaceVertsIndex]:
 (   if fund_face_verbose
-    then prints(new_line,"start localFD_1Steve")
+    then prints(new_line,"start localFD_1SteveU to ht ",HT)
     fi;
-    let G = x.real_form, start = elapsed_ms(), trans_hash = make_vec_hash()
+    let G = x.real_form, start = elapsed_ms()
     then length = #(Lvd.list)
     then freq = max(length\10,1)
     then answer = for v@j in Lvd.list
        do if fund_face_verbose and (j%freq).=
 	  then prints("at vertex ",j," of ",length,
-	    	       " at time ", print_time_string(elapsed_ms() - start))
+	    	       " at time ", print_time_string(elapsed_ms() - start),
+		       "; vecHash size = ",steve_hash.vecHash(x,lambda,HT).size())
 	  fi;
 	  let p = parameter(x,lambda,v)
 	  in if not is_hermitian(p)
@@ -389,8 +407,11 @@ set localFD_1SteveU\
 	     else []
 	     fi
 	od.## {list of j for which vertex j is a candidate}
-    in prints("Found ",#answer," vertices to ht ",HT," in time ",print_time_string(elapsed_ms() - start));
-       prints("vecHash size = ",steve_hash.vecHash(x,lambda,HT).size());
+    in if fund_face_verbose
+       then prints("Found ",#answer," vertices to ht ",HT," in time ",
+       	    print_time_string(elapsed_ms() - start));
+       	    prints("vecHash size = ",steve_hash.vecHash(x,lambda,HT).size())
+       fi;
        answer
 )
 
@@ -530,8 +551,9 @@ set localFD_2SteveU\
      then LF1 = [FaceVertsIndex]:
     	 for v@j in Edges
 	 do if fund_face_verbose and red_count_flag and (j%freq).=
-	    then prints("at edge ",j," of ",length{,
-	    	       " at time ", print_time_string(elapsed_ms() - start)})
+	    then prints("at edge ",j," of ",length,
+	    	       " at time ", print_time_string(elapsed_ms() - start),
+		       "; vecHash size = ",steve_hash.vecHash(x,lambda,HT).size())
 	    fi;
 	    let nu = face_bary(Lvd,v)
 	    then p = parameter(x,lambda,nu)
@@ -554,9 +576,11 @@ set localFD_2SteveU\
        	      	    then sort(G, Lvd, [LF1])[0]
        	      	    else LF1
        	      	    fi
-    in prints("After localFD_2Steve, face counts are [",#LF0,
+    in if fund_face_verbose
+       then prints("After localFD_2Steve, face counts are [",#LF0,
     		      	   	  ",",#LF1,"]");
-       prints("vecHash size = ",steve_hash.vecHash(x,lambda,HT).size());
+       	    prints("vecHash size = ",steve_hash.vecHash(x,lambda,HT).size())
+       fi;
        LF1
 )
 
@@ -583,8 +607,10 @@ set localFD_lookDownSteveU\
 					 fi
 
 			              od.##);
-		prints("After dim ",dim,", found face counts ",for list in LFKH do #list od,
+		if fund_face_verbose
+		then prints("After dim ",dim,", found face counts ",for list in LFKH do #list od,
 		       " at time ",print_time_string(elapsed_ms() - start))
+		fi
 	 	od{dim:t-#LFKH}
     then () = LFKH := if sort_LFD_flag
     	      	      then sort(G, Lvd, LFKH)
@@ -600,34 +626,97 @@ set localFD_lookDownSteveU\
     in LFKH
 )
 
-
-{all faces unitary to HT}
-set localFD_SteveU(KGBElt x, ratvec lambda, int HT, LocalVertexData Lvd, PermOrderTwo Perm2) =
-    [[FaceVertsKHash]]:
-    let start = elapsed_ms(), LF0 = localFD_1SteveU(x,lambda,HT, Lvd)
-    then LF = [LF0,  localFD_2SteveU(x,lambda,HT,Lvd,Perm2,LF0)]
-    then answer = localFD_lookDownSteveU(x,lambda,HT,Lvd,LF,2,rank(x.involution - 1)+1)
-    in prints("For HT = ",HT, ", time for localFD_SteveU: ",print_time_string(elapsed_ms() - start));
-       prints("vecHash size = ",steve_hash.vecHash(x,lambda,HT).size());
-       answer
-
-set localFD_SteveU(KGBElt x, ratvec lambda, int HT) = [[FaceVertsKHash]]:
-    let ic = x.inner_class, theta = x.involution
-    then (Lvd,Perm2) = LPm_table.LPm_entry(ic, theta, ratvec_as_vec(lambda+theta*lambda))
-    in localFD_SteveU(x, lambda, HT, Lvd, Perm2)
-
 {impose unitary to HT on a collection of faces}
 set test_Steve(KGBElt x, ratvec lambda, int HT, LocalVertexData Lvd, [[FaceVertsKHash]] LFKH) =
     [[FaceVertsKHash]]:
-    for LF in LFKH
-    do let answerd =
-       	   for v in LF
-       	   do if steve_hash.postest(x,lambda,HT,face_bary(Lvd,v))
+    let start = elapsed_ms()
+    in for LF in LFKH
+    do let freq = max(#LF\10,1)
+       then answerd =
+       	   for v@j in LF
+       	   do if (j%freq).= and fund_face_verbose
+	      then prints("at face #",j," of ",#LF," at time ",print_time_string(elapsed_ms() - start),
+	      "; vecHash size = ", steve_hash.vecHash(x,lambda,HT).size())
+	      fi;
+	      if steve_hash.postest(x,lambda,HT,face_bary(Lvd,v))
        	      then [v]
 	      else []
 	      fi
        	   od.##
-	then () = prints("old size = ",#LF,", new size = ",#answerd, ", vecHash size = ",
-	     steve_hash.vecHash(x,lambda,HT).size())
+	then () = if fund_face_verbose
+	     	  then prints("old size = ",#LF,", new size = ",#answerd, ", vecHash size = ",
+	     	       steve_hash.vecHash(x,lambda,HT).size())
+		  fi
 	in answerd
     od
+
+{all faces unitary to HT}
+set localFD_SteveUtoHT(KGBElt x, ratvec lambda, int HT, LocalVertexData Lvd, PermOrderTwo Perm2) =
+    [[FaceVertsKHash]]:
+    let start = elapsed_ms(), LF0 = localFD_1SteveU(x,lambda,HT, Lvd)
+    then LF = [LF0,  localFD_2SteveU(x,lambda,HT,Lvd,Perm2,LF0)]
+    then answer = localFD_lookDownSteveU(x,lambda,HT,Lvd,LF,2,rank(x.involution - 1)+1)
+    in if fund_face_verbose
+       then prints("For HT = ",HT, ", time for localFD_SteveU: ",
+       	    		print_time_string(elapsed_ms() - start));
+       	    prints("vecHash size = ",steve_hash.vecHash(x,lambda,HT).size())
+       fi;
+       answer
+
+set localFD_SteveUtoHT(KGBElt x, ratvec lambda, int HT) = [[FaceVertsKHash]]:
+    let ic = x.inner_class, theta = x.involution
+    then (Lvd,Perm2) = LPm_table.LPm_entry(ic, theta, ratvec_as_vec(lambda+theta*lambda))
+    in localFD_SteveUtoHT(x, lambda, HT, Lvd, Perm2)
+
+
+{all faces unitary}
+set localFD_SteveU(KGBElt x, ratvec lambda, LocalVertexData Lvd, PermOrderTwo Perm2) =
+    [[FaceVertsKHash]]:
+    let start = elapsed_ms(), p0 = parameter(x,lambda,0*lambda)
+    then HT = next_height(p0)
+    then LF0 = localFD_1SteveU(x,lambda,HT, Lvd)
+    then LF = [LF0,  localFD_2SteveU(x,lambda,HT,Lvd,Perm2,LF0)]
+    then () = LF:=test_Steve(x,lambda,-1,Lvd,LF)
+    then answer = localFD_lookDownSteveU(x,lambda,-1,Lvd,LF,2,rank(x.involution - 1)+1)
+    in if fund_face_verbose
+       then prints("For unitarity, time for localFD_SteveU: ",
+       	    print_time_string(elapsed_ms() - start));
+       	    prints("vecHash size = ",steve_hash.vecHash(x,lambda,-1).size())
+       fi;
+       answer
+
+set localFD_SteveU(KGBElt x, ratvec lambda) = [[FaceVertsKHash]]:
+    let ic = x.inner_class, theta = x.involution
+    then (Lvd,Perm2) = LPm_table.LPm_entry(ic, theta, ratvec_as_vec(lambda+theta*lambda))
+    in localFD_SteveU(x, lambda, Lvd, Perm2)
+
+
+{all faces up to dim D >=2 unitary; need hts of size at least D +2 }
+set localFD_SteveUstep(KGBElt x, ratvec lambda, [int] hts, int D) = [[FaceVertsKHash]]:
+    let start = elapsed_ms(), theta = x.involution
+    then r = rank(theta-1)
+    then (Lvd,Perm2) = LPm_table.LPm_entry(x.inner_class, theta, ratvec_as_vec(lambda+theta*lambda))
+    {then hts = next_heights(parameter(x,lambda,0*lambda),r+2)}
+    then LF0 = localFD_1SteveU(x,lambda,hts[0], Lvd)
+    then () = LF0 := test_Steve(x,lambda,hts[1],Lvd,[LF0])[0]
+    then LF = [LF0,localFD_2SteveU(x,lambda,hts[1],Lvd,Perm2,LF0)]
+    then () = LF:=test_Steve(x,lambda,hts[2],Lvd,LF)
+    then d = int:1
+    then () = while (d<=D-1) and #LF~[0] > d+1
+    	 do LF := localFD_lookDownSteveU(x,lambda,hts[d+1],Lvd,LF,d+1,d+2);
+	    LF := test_Steve(x,lambda,hts[d+2],Lvd,LF);
+	    if fund_face_verbose
+	    then prints("To dim ",d+1,", ht ",hts[d+2], ", time for localFD_SteveUstep: ",
+	    	print_time_string(elapsed_ms() - start));
+       	    	prints("face sizes ",for list in LF do #list od,", vecHash size = ",
+	    	steve_hash.vecHash(x,lambda,hts[d+2]).size())
+	    fi;
+	    d +:= 1
+	 od
+    in LF
+
+{all faces unitary to some pretty big height}
+set localFD_SteveUstep(KGBElt x, ratvec lambda) = [[FaceVertsKHash]]:
+    let D = rank(x.involution -1)
+    then hts = next_heights(parameter(x,lambda,0*lambda),D+2)
+    in localFD_SteveUstep(x,lambda,hts,D)
