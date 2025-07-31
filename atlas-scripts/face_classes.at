@@ -4,7 +4,7 @@
 <hash.at {for KTypePol_hash}
 {<to_ht.at {for to_ht}}
 <K_highest_weights {for LKTs}
-<red_count.at {for red_count_flag}
+<FPP_faces_geom.at {for red_count_flag}
 set_type FaceVerts = [ratvec]
 set_type FaceVertsIndex = vec { length k+1 for k-dimensional face }
 set_type LocalFaceVertsHash = vec {length k+5 for k-diml face}

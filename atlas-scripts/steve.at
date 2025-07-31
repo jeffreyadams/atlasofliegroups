@@ -1,0 +1,633 @@
+< basic {for infinitesimal character}
+< aff_cube.at {for local_FPP_extrema}
+< FPP_faces_herm.at {for unitarity tests}
+< hash.at {for hash tables}
+{<K_types.at {for branch_std}}
+set red_coroots(Param p) = [vec]:
+    let G = p.real_form, gamma = p.infinitesimal_character
+    then pos_co = G.poscoroots
+    then theta = p.x.involution
+    in for alphav@j in pos_co
+       do let gammaj = gamma*alphav
+       	  in if is_integer(gammaj) and gammaj.>
+       	     then if alphav*theta = -alphav and Cayley((G.posroots)[j],p) != p
+   	     	  then [alphav] {parity real root}
+	       	  else []
+	       	  fi
+	     elif ((theta*(gamma.numer))*alphav).<
+	     then [alphav] {complex}
+	     else []
+	     fi
+       od.##
+
+set move(WeylElt w) = ((KGBElt,ratvec) -> (KGBElt,ratvec)):
+ (KGBElt x, ratvec lambda) (KGBElt,ratvec):
+ let G = w.root_datum
+ then rhow = G.rho - w*(G.rho) {added to next 7.29.25}
+ then p1 = parameter(cross(w,x), w*lambda + rhow, 0*lambda)
+ in (p1.x, p1.lambda)
+
+
+{should require number of -alphav*theta >= number of alphav}
+set red_coroots(KGBElt x) = [vec]:
+    let G = x.real_form,  theta = x.involution
+    then rho = G.rho, pos_co = G.poscoroots
+    in for alphav@j in pos_co
+       do if (alphav*theta*rho).<
+       	  then [alphav]
+	  else []
+	  fi
+       od.##
+
+{need to study reducibility along av at int values
+from int to int inclusive}
+set range(KGBElt x, ratvec lambda, vec av) = (int, int):
+    let lfe = local_FPP_extrema(x,lambda)
+    then vals = for w in lfe do av*w od
+    in (floor(min(vals)), ceil(max(vals)))
+
+set ranges(KGBElt x, ratvec lambda) = [(vec, int, int)]:
+    let rc = red_coroots(x)
+    then lfe = local_FPP_extrema(x,lambda)
+    in for av in rc
+       do let vals = for w in lfe do av*w od
+       	  in (av, floor(min(vals)), ceil(max(vals)))
+       od
+
+{root datum from all coroots restricting to A as multiple of av}
+set Levix(KGBElt x, ratvec lambda, vec av) = (RealForm,KGBElt):
+    let G = x.real_form, theta = x.involution
+    then pos_r = G.posroots, pos_co = G.poscoroots
+    then av_min_th = av - av*theta
+    then js = for bv@j in pos_co
+    	      do if rank([av_min_th,bv-bv*theta]) <=1
+	      	 then [j]
+		 else []
+		 fi
+	      od.##
+     then two_rho_L = sum(G.rank, for j in js do pos_r[j] od)
+     then min_js = for j in js
+     	  	   do if pos_co[j]*two_rho_L = 2
+		      then [j]
+		      else []
+		      fi
+		   od.##
+     then rdL = root_datum(mat: for j in min_js do pos_r[j] od,
+     	      		   mat: for j in min_js do pos_co[j] od, true)
+     {then tfL = x.torus_factor - G.rho_check + rdL.rho_check}
+     then xL = KGB_elt(rdL, theta, x.torus_factor)
+    in (real_form(xL),xL)
+
+
+{assume roots for L are rational linearly closed in roots for G, and
+L-positive are G-positive; conjugate L to standard Levi}
+set simplifier(RootDatum L, RootDatum G) = WeylElt:
+    if L.semisimple_rank = G.semisimple_rank
+    then return W_elt(G,[int]: [])
+    fi;
+    let SLv = L.simple_coroots, SL = L.simple_roots
+    then big = G {we'll shrink to smaller and smaller Levis
+    	       	 containing a conjugate of L}
+    then S = G.simple_roots, M = id_mat(G.rank)
+    {then () = prints("original SLv = ",SLv)}
+    in while big.semisimple_rank > L.semisimple_rank
+       do let k = first(for a in big.simple_roots do find(SL,a).< od)
+       	  then xiLs = L.fundamental_weights, SLv = L.simple_coroots
+          then PZL(ratvec v) = v - sum(rank(L), for xiL@j in xiLs
+	       		       	   		do (SLv[j]*v)*xiL
+						od)
+       	  then z0 = PZL(dominant(L,big.simple_roots[k]))
+	  {necessarily a positive root in big not in L, \pm roots in L.
+	   Cuts out a nonstd Levi containing L}
+    	  then (w,z1) = from_dominant(big,z0) {wz1 - z0}
+	  {z1 cuts out std Levi new in big containing w^{-1}L}
+	  in M:=M*matrix(w); {carries new L to original L}
+    	     let (,new) = Levi_of_weight(big,z1)
+	     in big:=new;
+	     {prints("z0 = ",z0, ", z1 = ",z1,", w = ", w,", big simplev = ",big.simple_coroots);}
+	     L := matrix(w.inverse)*L;
+	     SL := L.simple_roots{;
+	     prints("SLv = ",L.simple_coroots)}
+       od;
+       W_elt(G,M)
+
+set standardize(KGBElt x, ratvec lambda, vec av) = (KGBElt, ratvec, vec):
+    let (L,) = Levix(x,lambda,av), G = x.real_form
+    then rho = G.rho, y = simplifier(L,G)
+    {then () = prints("y = ",y)}
+    in let (x1,lambda1) = move(y.inverse)(x,lambda)
+    in (x1,lambda1, av*y)
+
+{ rep on minimal real Levi through complex coroot av}
+set pL1(KGBElt x, ratvec lambda, vec av, rat t) = Param:
+    let (x1,lambda1, av1) = standardize(x,lambda,av)
+    then G = x.real_form, (L1,xL1) = Levix(x1,lambda1,av1)
+    in parameter(xL1, lambda1-rho(G)+rho(L1),
+       roots(G)[coroot_index(G,av1)+#G.posroots]*t/2) 
+
+set std_quo(Param p) = ParamPol:
+    1*p-character_formula(1*p)
+
+set ind_quo(KGBElt x, ratvec lambda, vec av, rat t) = ParamPol:
+    real_induce_standard(std_quo(pL1(x,lambda,av,t)), x.real_form)
+
+{given a reducibility coroot av, take generic point on hyperplane
+av*gamma = t, corresponding Q(t) = std/Langlands quotient, and ask
+whether Q(t) has terms of height at most HT}
+set test(KGBElt x, ratvec lambda, vec av, rat t, int HT) = bool:
+    let QHT = to_ht(HT)(ind_quo(x, lambda, av, t))
+    in QHT.!=
+
+set red_points(KGBElt x, ratvec lambda, vec av,int HT) = [int]:
+    let (m,M) = range(x,lambda,av)
+    in for j:M-m+1 from m
+       do if test(x,lambda,av,j,HT)
+       	  then [j]
+	  else []
+	  fi
+       od.##
+
+set red_points(KGBElt x,ratvec lambda, int HT) = [[int]]:
+    for av in red_coroots(x)
+    do red_points(x,lambda,av,HT)
+    od
+
+{record location of rat t with respect to strictly increasing
+sequence of M ints red_pts by integer from -1 to 2M.
+0 means red_pts is empty; 0 means smaller than any, 2M means larger than any;
+2j}
+set location_old([int] red_pts, rat t) = int:
+    if (#red_pts).= then 0
+    else let j0 = first(for red in red_pts do red >= t od)
+       	 in if j0 = -1 then 2*(#red_pts)
+	    elif t = red_pts[j0] then 2*j0 + 1
+	    else 2*j0
+	    fi
+    fi
+
+{ range [0..2*#a]; a[i]=r -> 2i+1; even number: r absent }
+set location([int] a,rat t) = int:
+    let loc = locate_sorted(a,ceil(t)) { first with |a[loc]>=t| }
+    in if loc=#a
+       then 2*loc
+       elif a[loc]=t then 2*loc+1
+       else 2*loc
+       fi
+
+{if red_points is empty, then 0. If red_points has k>=1 values, then
+an integer from 0 to 2k: value 2j+1 means equal to jth reducibility
+point; value 2j means in open interval from j-1th to jth}
+set location_old(KGBElt x, ratvec lambda, vec av,int HT, rat t) = int:
+    let rp = red_points(x,lambda,av,HT)
+    in if (#rp).= then 0
+       else let j0 = first(for red in rp do red >= t od)
+       	    in if j0 = -1 then 2*(#rp) {t > all red pts}
+	       elif t = rp[j0] then 2*j0 + 1 {t = rep pt j0}
+	       else 2*j0 {t between pts j0-1 and j0}
+	       fi
+        fi
+
+set location(KGBElt x, ratvec lambda, vec av,int HT, rat t) = int:
+    let rp = red_points(x,lambda,av,HT)
+    in location(rp,t)
+
+set thruple(KGBElt x, ratvec lambda,int HT, ratvec gamma) = vec:
+    for av in red_coroots(x)
+    do location(x,lambda,av,HT,av*gamma)
+    od
+
+set thruple([vec] red_co, [[int]] red_pts, ratvec gamma) = vec:
+    for av@j in red_co
+    do location(red_pts[j],av*gamma)
+    od
+
+set taus(KGBElt x, ratvec lambda, int HT) = [KType]:
+    monomials(branch(K_type_pol(parameter(x,lambda,0*lambda)),HT))
+
+set pos_tester(KGBElt x, ratvec lambda,int HT,ratvec gamma) = bool:
+    let p = parameter(x,lambda,gamma), G = x.real_form
+    then Form_p = sum(G, for q in monomials(1*p)
+       	      do hermitian_form_irreducible_to_ht_big_SIMPLE(q,HT)
+	      {hermitian_form_irreducible_to_ht(q,HT)}
+	      od)
+    in is_pure(Form_p)
+
+{record values of thruple for (x,lambda,HT}
+set xlHT_vecHash = make_vec_hash()
+
+{one answer for each vec in xlHT_vecHash}
+set xlHT_bools = [bool]:[]
+
+set xlHT_clear() = void:
+    xlHT_vecHash.clear();
+    xlHT_bools:=[]
+
+set_type
+[steve_hash_table =
+( ( -> ) clear {clear the table}
+  , ( -> int) real_form_size {number of real forms included}
+  , ( -> vec) xlhash_sizes {for every real form, the number of pairs(x,lambda)}
+  , ( -> vec) K_type_sizes {number of KTypes for each real form}
+  , ((KGBElt, ratvec) -> vec) heights {list of heights to which reducibility has been studied}
+  , ((KGBElt, ratvec, int) -> vec_hash) vecHash {hash table of location vecs known}
+  , ((KGBElt, ratvec, int) -> [[int]]) red_points {for each reducibility coroot, list of reducibility points}
+  , ((KGBElt, ratvec, int) -> [bool]) postests {size vecHash.size(), listing unitarity results}
+  , ((KGBElt, ratvec, int, ratvec) -> bool) postest {test param(x,lambda,last_arg) for unitarity to ht}
+)
+]
+
+set make_steve_hash() = steve_hash_table:
+(   let real_form_hash = make_RealForm_hash()
+    then K_type_hashes = [KType_hash] : [] {one for each real form; list of KTs considered}
+    then xlhashes = [xlambda_hash]: [] {one for each real form}
+    then heights = [[vec]]:[] {one for each entry in each xlhash}
+    then vechashes = [[[vec_hash]]]:[] {one for each height for each entry in each xlhash}
+    then redpoints = [[[[int]]]]:[] {for each entry in xlhash and height, [int] = bitmap of reducibility
+    	 	     		  points for each reducibility coroot}
+    then statuses = [[[[bool]]]]:[] {one [bool] for each vechash}
+    then clearSH() = void:
+    	 let () = real_form_hash.clear()
+	 then () = K_type_hashes:=[]
+	 then () = xlhashes:=[]
+	 then () = heights:=[]
+	 then () = vechashes:=[]
+	 then () = statuses:=[]
+	 then () = redpoints := []
+	 in ()
+    then add_real_form(RealForm rf) = int:
+    	 let I = real_form_hash.size()
+	 then i = real_form_hash.match(rf)
+    	 then () = if i = I {haven't seen this real form before}
+	      	   then	K_type_hashes #:= make_KType_hash();
+		        xlhashes #:= make_xlambda_hash();
+			heights #:= [];
+			vechashes #:= [];
+			statuses #:= [];
+			redpoints #:= [];
+			assert(real_form_hash.size() = #K_type_hashes and #xlhashes = #K_type_hashes and
+	       	    	   #heights = #xlhashes and #vechashes = #heights and #statuses = #heights and
+			   #redpoints = #heights, "steve_hash damaged on adding real form")
+	    	   fi
+	  in i
+    then add_K_type(KType mu) = (int, int): {real form index, K type index}
+   	 let rfnum = add_real_form(mu.real_form)
+	 then rf = real_form_hash.index(rfnum)
+	 then () = mu := K_type(KGB(rf,mu.x.number), mu.lambda_minus_rho)
+	 {first_K_type(regroup(rf,1*mu))}
+	 {then KTYPENUM = K_type_hashes[rfnum].size()}
+	 in (rfnum, K_type_hashes[rfnum].match(mu))
+    then add_xl(KGBElt x, ratvec lambda) = (int,int): {real form index, xlhash index}
+    	 let rfnum = add_real_form(x.real_form)
+	 then XLNUM = xlhashes[rfnum].size()
+	 then xlnum = xlhashes[rfnum].match(x,lambda)
+	 in if xlnum = XLNUM {new (x,lambda)}
+	    then heights[rfnum]#:=null(0);
+	    	 redpoints[rfnum]#:=[]; {add an empty list of lists of reducibility points for the new height}
+		 vechashes[rfnum]#:=[]; {add an empty list of lists of vec_hash}
+		 statuses[rfnum]#:=[] {add an empty list of lists of bools}
+	    fi;
+	    (rfnum,xlnum)
+    then add_xlht(KGBElt x, ratvec lambda, int HT) = (int,int,int): {real form index, xlhash index, HT index}
+    	 let (rfnum,xlnum) = add_xl(x,lambda)
+	 then J = #heights[rfnum][xlnum], htnum = find(heights[rfnum][xlnum],HT)
+	 in if htnum.< {new HT}
+	    then let hrxl = heights[rfnum][xlnum], {[[int]]}
+	    	     hr = heights[rfnum]
+	    	 then () = hrxl#:= HT
+		 then () = hr[xlnum]:=hrxl
+		 then () = heights[rfnum]:=hr
+		 then rprxl = redpoints[rfnum][xlnum], rpr = redpoints[rfnum]
+		 then () = rprxl #:= for list in red_points(x,lambda,HT) do to_bitset(list) od
+		      {add a new [int]}
+		 then () = rpr[xlnum]:=rprxl
+		 then () = redpoints[rfnum]:=rpr
+		 then vhsxl = vechashes[rfnum][xlnum], vhsr = vechashes[rfnum]
+		 then () = vhsxl #:= make_vec_hash()
+		 		      {add a new vec_hash for new height}
+		 then () = vhsr[xlnum]:=vhsxl
+		 then () = vechashes[rfnum]:=vhsr
+		 then statusxl = statuses[rfnum][xlnum], statusr = statuses[rfnum]
+		 then () = statusxl #:= [] {add a new [bool] for this height}
+		 then () = statusr[xlnum]:=statusxl
+		 then () = statuses[rfnum]:=statusr
+		 in htnum:= J
+	    fi;
+	    (rfnum,xlnum,htnum)
+	 {rfnum, xlnum, htnum, vecnum; statuses[rfnum][xlnum][htnum][vecnum] is the result}
+    then SHthruple(KGBElt x, ratvec lambda, int HT, ratvec gamma) = (int,int,int,int):
+    	 let (rfnum, xlnum, htnum) = add_xlht(x,lambda,HT)
+	 then rcor = red_coroots(x)
+    	 then rp = for M in redpoints[rfnum][xlnum][htnum]
+		   do set_bit_positions(M) {this is [int]}
+		   od {this is [[int]]}
+	 then loc = for av@j in rcor
+	      	    do location(rp[j],av*gamma)
+	    	    od
+	 then VECNUM = vechashes[rfnum][xlnum][htnum].size()
+	 then vecnum = vechashes[rfnum][xlnum][htnum].match(loc)
+	 then () = if vecnum = VECNUM {new location rel hyperplanes}
+	      	   then let srxlht = statuses[rfnum][xlnum][htnum], {[bool]}
+		   	    srxl = statuses[rfnum][xlnum],
+			    sr = statuses[rfnum]
+			then () = srxlht#:=pos_tester(x, lambda, HT, gamma)
+			then () = srxl[htnum]:=srxlht
+			then () = sr[xlnum]:=srxl
+			in statuses[rfnum]:=sr
+		   {statuses[rfnum][xlnum][htnum] #:= pos_tester(x, lambda, HT, gamma)}
+		   fi
+	 in (rfnum, xlnum, htnum, vecnum)
+      in
+  ( ( -> ): {clear} clearSH
+  , ( -> int): {real_form_size} @int: real_form_hash.size()
+  , ( -> vec): {xlhash_sizes} @vec: for xlhash in xlhashes do xlhash.size() od
+  , ( -> vec): {K_type_sizes} @vec: for Khash in K_type_hashes do Khash.size() od
+  , ((KGBElt, ratvec) -> vec): {heights} (KGBElt x, ratvec lambda) vec:
+    let (rfnum, xlnum) = add_xl(x,lambda)
+    in heights[rfnum][xlnum]
+  , ((KGBElt, ratvec, int) -> vec_hash): {vecHash} (KGBElt x, ratvec lambda, int HT) vec_hash:
+    let (rfnum, xlnum, htnum) = add_xlht(x,lambda,HT)
+    in vechashes[rfnum][xlnum][htnum]
+  , ((KGBElt, ratvec, int) -> [[int]]): {red_points} (KGBElt x, ratvec lambda, int HT) [[int]]:
+    let (rfnum, xlnum, htnum) = add_xlht(x,lambda,HT)
+    in for M in redpoints[rfnum][xlnum][htnum]
+       do set_bit_positions(M)
+       od
+  , ((KGBElt, ratvec, int) -> [bool]): {postests} (KGBElt x, ratvec lambda, int HT) [bool]:
+    let (rfnum, xlnum, htnum) = add_xlht(x,lambda,HT)
+    in statuses[rfnum][xlnum][htnum]
+  , ((KGBElt, ratvec, int, ratvec) -> bool): {postest} (KGBElt x, ratvec lambda, int HT, ratvec gamma) bool:
+    let (rfnum, xlnum, htnum, vecnum) = SHthruple(x,lambda,HT,gamma)
+    in statuses[rfnum][xlnum][htnum][vecnum]
+  )
+)
+
+set steve_hash = make_steve_hash()
+
+{takes local data and low global faces and computes local vertices, imposing
+hermitian, pos on LKTs, and pos to HT. Subspace is fixed points of affine involution of
+h*. Perm records involution action on FPP verts. mapAct records local vertex to which an FPP
+vertex "belongs" (either "is" or "is vertex of the edge")}
+set localFD_1SteveU\
+  ( KGBElt x, ratvec lambda, int HT, LocalVertexData Lvd) =
+    [FaceVertsIndex]:
+(   if fund_face_verbose
+    then prints(new_line,"start localFD_1Steve")
+    fi;
+    let G = x.real_form, start = elapsed_ms(), trans_hash = make_vec_hash()
+    then length = #(Lvd.list)
+    then freq = max(length\10,1)
+    then answer = for v@j in Lvd.list
+       do if fund_face_verbose and (j%freq).=
+	  then prints("at vertex ",j," of ",length,
+	    	       " at time ", print_time_string(elapsed_ms() - start))
+	  fi;
+	  let p = parameter(x,lambda,v)
+	  in if not is_hermitian(p)
+	     then []
+	     elif steve_hash.postest(x,lambda,HT,v)
+	     then [[j]]
+	     else []
+	     fi
+	od.## {list of j for which vertex j is a candidate}
+    in prints("Found ",#answer," vertices to ht ",HT," in time ",print_time_string(elapsed_ms() - start));
+       prints("vecHash size = ",steve_hash.vecHash(x,lambda,HT).size());
+       answer
+)
+
+{takes local data and low global faces and local vertices and computes local edges, imposing
+hermitian, pos to HT.}
+{Edge in local picture is either
+1) edge in FPP contained subspace, OR
+2) triangle in FPP meeting subspace in line (one vertex of tri in subspace, other
+   two flipped by involution, OR
+3) tetrahedron in FPP, two pairs of verts exchanged by involution}
+set localFD_2SteveU\
+( KGBElt x, ratvec lambda, int HT, LocalVertexData Lvd, PermOrderTwo Perm2, [FaceVertsIndex] LF0) =
+    [FaceVertsIndex]:
+(   if fund_face_verbose
+    then prints(new_line,"start localFD_2Steve")
+    fi;
+    let G = x.real_form, start = elapsed_ms(), trans_hash = make_vec_hash()
+    then () = for (m,n) in Perm2.trans do trans_hash.match([m,n]) od
+    then () = if #LF0 = 0
+    	      then return []
+	      fi
+    then FixedList = [int]: for v in LF0
+    	 	     	    do let j = v[0]
+			       in if j < #Perm2.fixed
+			       	  then [j]
+				  else break
+				  fi
+			    od.##
+    then f = #FixedList, f0 = #Perm2.fixed
+    then TranList = [int]: for v in LF0[f:] do v[0] od
+    then Llookup = is_member_sorted(FixedList##TranList)
+    then Glookup = {is_member_sorted(for j in FixedList do Perm2.fixed[j] od)}
+    	 	   to_bitset(for j in FixedList do Perm2.fixed[j] od)
+    then {E = sum(for list in FPP_edges_by_zero_unsorted(G) do #list od),}
+         Fverts = FPP_vertices(G)
+    then F = #Fverts
+    then Edges = [vec]:
+    	 {let startFF = elapsed_ms()}
+    	 let EdgesFixFix = [vec]:
+	       if f < 2 then []
+	       elif f < BoundB  {TEST B}
+	       	      	{(E*set_bit_positions(E)~[0]*set_bit_positions(f)~[0])\F} 
+	       then let lookups = FPP_edges_by_zero_indices(G)
+	       	    in for j@i in FixedList[:f-1] {f * (E/F)/2 tests}
+	      	       do for k in FixedList[i+1:f]
+		       	  do if lookups[Perm2.fixed[j]]([Perm2.fixed[j],Perm2.fixed[k]]).>=
+		       	     then [[j,k]]
+		       	     else []
+		       	     fi
+		       	  od.## {list of edges starting with j}
+	       	       od.##
+	       {
+	       elif f < BoundA1 {TEST A1}
+	       	      {2*(E*set_bit_positions(E)~[0]*set_bit_positions(f)~[0])\F}
+	       then for j in FixedList
+    	       	    do for w in FPP_edges_by_zero_unsorted(G)[Perm2.fixed[j]]
+		       do if is_member_bitset(w[1],Glookup)
+		          then [[j,locate_sorted(Perm2.fixed, w[1])]]
+		       	  else []
+		       	  fi
+		       od.## {list of edges starting with j}
+	       	    od.##
+
+	       }
+	       else let FPPEBZ = FPP_edges_by_zero_unsorted(G)
+	       	    in for j in FixedList[:f-1] {TEST C} {seems always a little faster than A1?}
+		    {in E7 spherical, C is seven times faster than B}
+		    {SO OMIT A1}
+	       	       do for w@m in FPPEBZ[Perm2.fixed[j]]
+    	       	       	  do if is_member_bitset(w[1],Glookup) {Glookup(w[0]) and Glookup(w[1])}
+		       	     then [[j, Lvd.lookup(Fverts[w[1]])]] {SEEMS FASTER THAN A1}
+		       	     else []
+		       	     fi
+		    	  od.##
+		       od.##
+	       fi {f < 2}
+	   {then () = FD12bzFFTime +:=elapsed_ms() - startFF}
+	   {then () = if time_verbose
+	   	     then prints("for FixFix, time is ",print_time_string(elapsed_ms() - startFF))
+		     fi}
+	   {then startFT = elapsed_ms()}
+      	   then EdgesFixTrans = [vec]:
+	   	if #FixedList > 0 and #TranList > 0
+		then for j in FixedList
+		     do let cands = FPP_flippable_triangles_by_zero_unsorted(G)[Perm2.fixed[j]]
+			in if #cands > 0
+			   then for v in cands
+			      	do let k = f0 + trans_hash.lookup(v[1:])
+				   in if k >= f0 and Llookup(k) {and Llookup(j)}
+				      then [[j,k]]
+				      else []
+				      fi
+			       	od.## {[vec], all starting with j}
+			    else []
+			    fi {#cands > 0}
+		      od.## {[vec], all j}
+		  else []
+		  fi
+	   {then () = FD12bzFTTime +:= elapsed_ms() - startFT}
+	   {then () = if time_verbose
+	   	     then prints("for FixTranspose, time is ",print_time_string(elapsed_ms() - startFT))
+		     fi}
+	   {then startTT = elapsed_ms()}
+	   then EdgesTransTrans = [vec]: {this is the longest}
+	      if #TranList > 1
+	      then let FEL = FPP_flippable_edge_lookup(G)
+	      	   in for k@m in TranList[:#TranList - 1] {k is the number of a midpoint local vertex}
+		      	  {(i,j)@m in Perm2.trans}
+	      	      do let (i,j) = Perm2.trans[k-f0]
+		      	 then a = FEL([i,j]) {this is m + f0?}
+	      	      	 then cands = FPP_flippable_tetrahedra_by_zero_unsorted(G)[a]
+		      	 in if {#Perm2.trans > m+1 and} #cands > 0
+		      	    then for v in cands
+			      	 do let n = f0 + trans_hash.lookup(v[2:])
+				    in if n >= f0
+				       	  and Llookup(n) {and Llookup(m+f)}
+				       then {prints("used TT!");} [[m+f0,n].sort]
+				       else []
+				       fi
+			       	 od.## {[vec], all starting with mloc}
+			     else []
+			     fi {#Perm2.trans > m+1}
+		       od.## {[vec], all mloc}
+		 else []
+		 fi
+	   {then () = FD12bzTTTime +:= elapsed_ms() - startTT}
+	   {then () = if time_verbose
+	   	     then prints("for TransposeTranspose, time is ",print_time_string(elapsed_ms() - startTT))
+		     fi}
+     	    {then () = prints("EFF = ", EdgesFixFix, ", EFT = ",EdgesFixTrans,", ETT = ",EdgesTransTrans)}
+	   in EdgesFixFix ## EdgesFixTrans ## EdgesTransTrans
+     {then () = if time_verbose
+     	       then prints("after Edges, time is ",print_time_string(elapsed_ms() - start))
+	       fi}
+     then length = #Edges
+     then freq = max(length\10,1)
+     then LF1 = [FaceVertsIndex]:
+    	 for v@j in Edges
+	 do if fund_face_verbose and red_count_flag and (j%freq).=
+	    then prints("at edge ",j," of ",length{,
+	    	       " at time ", print_time_string(elapsed_ms() - start)})
+	    fi;
+	    let nu = face_bary(Lvd,v)
+	    then p = parameter(x,lambda,nu)
+	    in {if Q(nu,nu) > DiracBD
+	       then DTcount +:=1; []} {can't happen}
+	       if not (fewer_reducible_unitary_flag or all(for q in monomials(p)
+	       	      	    do @bool: is_pos_on_LKTs(q)
+			    od))
+	       then []
+	       elif steve_hash.postest(x,lambda,HT,face_bary(Lvd,v))
+	       then [v]
+	       else []
+	       fi
+	 od.##
+    {then () = if time_verbose
+    	      then prints("after LF1, time is ",print_time_string(elapsed_ms() - start))
+	      fi}
+    {then () = FD12bzTime +:= elapsed_ms() - start}
+    then () = LF1:= if sort_LFD_flag
+       	      	    then sort(G, Lvd, [LF1])[0]
+       	      	    else LF1
+       	      	    fi
+    in prints("After localFD_2Steve, face counts are [",#LF0,
+    		      	   	  ",",#LF1,"]");
+       prints("vecHash size = ",steve_hash.vecHash(x,lambda,HT).size());
+       LF1
+)
+
+
+{takes local data to height level, dimension \le b-1, and adds faces from
+b to (t-1)-dimensional FPP-faces that are unitary to ht HT; make sure subfaces are also in list
+Roughly input goes from 0 to b-1 (size b), output 0 to t-1 (size t).
+
+Need to assume b \ge 2, so have a list of potentially unitary faces and edges.}
+set localFD_lookDownSteveU\
+  ( KGBElt x, ratvec lambda, int HT, LocalVertexData Lvd, [[FaceVertsKHash]] LFKH,
+    int b, int t) = [[FaceVertsKHash]]:
+(   {if face_verbose
+    then prints(new_line,"start localFD_lookDownSteveU, b = ",b,", t = ",t)
+    fi;}
+    let G = x.real_form, start=elapsed_ms()
+    then () = for dim:t-#LFKH from #LFKH {b has to be at least 2; dim is the new bigger dim}
+    	      do LFKH := LFKH# (let acts = superFaces_plus(LFKH[0],LFKH[dim-1],0)
+	      	    	       	   in [vec]:
+				      for (actual,locs) in acts {vec of size dim+1, coords of subs}
+	       	    	      	      do if steve_hash.postest(x,lambda,HT,face_bary(Lvd,actual))
+				      	 then [actual]
+					 else []
+					 fi
+
+			              od.##);
+		prints("After dim ",dim,", found face counts ",for list in LFKH do #list od,
+		       " at time ",print_time_string(elapsed_ms() - start))
+	 	od{dim:t-#LFKH}
+    then () = LFKH := if sort_LFD_flag
+    	      	      then sort(G, Lvd, LFKH)
+		      else LFKH
+		      fi
+    then time = elapsed_ms() - start
+    then () = if time_verbose
+	      then prints("     ", print_time_string(time),
+	      	   		" for localFD_Khashbt_lookDownSteve to dim ",t-1,
+			"; face counts = ", for list in LFKH do #list od);
+		   prints("vecHash size = ",steve_hash.vecHash(x,lambda,HT).size())
+	      fi
+    in LFKH
+)
+
+
+{all faces unitary to HT}
+set localFD_SteveU(KGBElt x, ratvec lambda, int HT, LocalVertexData Lvd, PermOrderTwo Perm2) =
+    [[FaceVertsKHash]]:
+    let start = elapsed_ms(), LF0 = localFD_1SteveU(x,lambda,HT, Lvd)
+    then LF = [LF0,  localFD_2SteveU(x,lambda,HT,Lvd,Perm2,LF0)]
+    then answer = localFD_lookDownSteveU(x,lambda,HT,Lvd,LF,2,rank(x.involution - 1)+1)
+    in prints("For HT = ",HT, ", time for localFD_SteveU: ",print_time_string(elapsed_ms() - start));
+       prints("vecHash size = ",steve_hash.vecHash(x,lambda,HT).size());
+       answer
+
+set localFD_SteveU(KGBElt x, ratvec lambda, int HT) = [[FaceVertsKHash]]:
+    let ic = x.inner_class, theta = x.involution
+    then (Lvd,Perm2) = LPm_table.LPm_entry(ic, theta, ratvec_as_vec(lambda+theta*lambda))
+    in localFD_SteveU(x, lambda, HT, Lvd, Perm2)
+
+{impose unitary to HT on a collection of faces}
+set test_Steve(KGBElt x, ratvec lambda, int HT, LocalVertexData Lvd, [[FaceVertsKHash]] LFKH) =
+    [[FaceVertsKHash]]:
+    for LF in LFKH
+    do let answerd =
+       	   for v in LF
+       	   do if steve_hash.postest(x,lambda,HT,face_bary(Lvd,v))
+       	      then [v]
+	      else []
+	      fi
+       	   od.##
+	then () = prints("old size = ",#LF,", new size = ",#answerd, ", vecHash size = ",
+	     steve_hash.vecHash(x,lambda,HT).size())
+	in answerd
+    od

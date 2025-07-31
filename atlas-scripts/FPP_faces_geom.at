@@ -99,6 +99,9 @@ savings in the rest of the computation seems tiny (maybe 1% for F4).}
 {now have Dirac_easy_flag, defaulting to true, which greatly speeds
 the computation of Dirac inequality, at the expense of making it
 slightly less sharp.}
+
+set red_count_flag = false
+
 set Dirac_flag = true
 
 {if true, unitary candidates are checked for Dirac inequality on many

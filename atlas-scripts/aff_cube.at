@@ -2,7 +2,7 @@
 <ratmat.at {for ratmat}
 <hash.at {for hash tables}
 <FPP_faces_geom.at {for fundamental vertices}
-<FPP_faces_herm.at {for FPP_lambdas}
+<FPP_lambdas.at {for FPP_lambdas}
 
 {dimension of the convex hull of the vertices}
 set cvx_hull_dim([ratvec] verts) = int:
@@ -208,7 +208,7 @@ set lFeTimer = int: 0
 {set aff_old_flag = false}
 
 {NEED to compute entirely in delta-fixed cone; test delta_min_1*ans misses
-pairs exchanged by delta}
+pairs exchanged by delta} {This version is six times slower in F4}
 set local_FPP_extrema_old(KGBElt x, ratvec lambda) = [ratvec]:
     let () = lFeCounter +:=1
     then start = elapsed_ms()
@@ -283,8 +283,8 @@ set local_FPP_extrema_med = ((KGBElt, ratvec) -> [ratvec]):
 	then () = lFeTimer +:= elapsed_ms() - start
 	in for m in answer_list[rf][inv][ell] do vlists[rf][m] od
 
-{this version might use less memory?}
-set local_FPP_extrema_small = ((KGBElt, ratvec) -> [ratvec]):
+{this version might use less memory?} {Conceivably fastest??}
+set local_FPP_extrema_small = ((KGBElt, ratvec) -> [ratvec]): 
     let rf_hash = make_RealForm_hash()
     then inv_hash = [mat_hash]: [] {one for each real form}
     then lamthlam_hash = [[vec_hash]]: [] {one for each real form and involution}

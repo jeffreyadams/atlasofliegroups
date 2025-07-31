@@ -126,8 +126,8 @@ set up_Cayley (Param p) = Param:
 set move(WeylElt w) = ((KGBElt,ratvec) -> (KGBElt,ratvec)):
  (KGBElt x, ratvec lambda) (KGBElt,ratvec):
  let G = w.root_datum
- then rhow = G.rho - w*(G.rho)
- then p1 = parameter(cross(w,x), w*lambda, 0*lambda)
+ then rhow = G.rho - w*(G.rho) {added to next 7.29.25}
+ then p1 = parameter(cross(w,x), w*lambda + rhow, 0*lambda)
  in (p1.x, p1.lambda)
 
 set up_complex(KGBElt x, ratvec lambda) = (KGBElt, ratvec):

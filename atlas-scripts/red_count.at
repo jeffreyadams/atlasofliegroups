@@ -1,24 +1,6 @@
 < basic {for infinitesimal character}
-
-{whether to use these functions}
-set red_count_flag = false
-
-set red_coroots(Param p) = [vec]:
-    let G = p.real_form, gamma = p.infinitesimal_character
-    then pos_co = G.poscoroots
-    then theta = p.x.involution
-    in for alphav@j in pos_co
-       do let gammaj = gamma*alphav
-       	  in if is_integer(gammaj) and gammaj.>
-       	     then if alphav*theta = -alphav and Cayley((G.posroots)[j],p) != p
-   	     	  then [alphav] {parity real root}
-	       	  else []
-	       	  fi
-	     elif ((theta*(gamma.numer))*alphav).<
-	     then [alphav] {complex}
-	     else []
-	     fi
-       od.##
+<aff_cube.at {for local_FPP_extrema}
+{<K_types.at {for branch_std}}
 
 set red_count_time =int:0
 
