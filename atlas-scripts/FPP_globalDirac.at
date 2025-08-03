@@ -365,7 +365,7 @@ then coh_ind_unip_few(G,Uhash)}
         	   	   fi {every_lambda_flag}
 		 then startLF = elapsed_ms()
 		 in if {test_neither}test_no_unitary(x,lambda,Lvd)
-		    then {none_count +:= 1;} {prints("SKIPPED ",x,",",lambda);} ()
+		    then {prints("died tnu");}{none_count +:= 1;} {prints("SKIPPED ",x,",",lambda);} ()
 		    else let startDTcount = DTcount
 		 then LF = if by_zero_flag {and height(p0) > 0}
 		      	   then localFD_1Dirac2_by_zero(x, lambda, Lvd, Perm2)
@@ -853,7 +853,8 @@ then coh_ind_unip_few(G,Uhash)}
         	   	   fi {every_lambda_flag}
 		 then startLF = elapsed_ms()
 		 in if test_no_unitary(x,lambda,Lvd)
-		    then ()
+		    then {prints("died tnu");}
+		    ()
 		    else let startDTcount = DTcount
 		 then LF = localFD_SteveU(x,lambda,Lvd,Perm2)
 		 in if #LF[0] = 0
