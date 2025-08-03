@@ -1112,7 +1112,8 @@ WeylWord RootDatum::word_of_inverse_matrix
 }
 
 
-// make |lambda| dominant, and return Weyl word that will convert it back
+// make |v| dominant, and return Weyl word that will convert it back
+// the name suggests factoring $v=w*v'$ where $w$ is result and $v'$ is new $v$
 template<typename C>
   WeylWord RootDatum::factor_dominant (matrix::Vector<C>& v) const
 {
@@ -1134,7 +1135,8 @@ template<typename C>
   return WeylWord(std::move(w).to_vector());
 }
 
-// make |lambda| codominant, and return Weyl word that will convert it back
+// make coweight |v| codominant, and return Weyl word that will convert it back
+// the name suggests factoring $v=v'*w$ where $w$ is result and $v'$ is new $v$
 template<typename C>
   WeylWord RootDatum::factor_codominant (matrix::Vector<C>& v) const
 {
@@ -1161,7 +1163,7 @@ template<typename C>
   WeylWord RootDatum::to_dominant(matrix::Vector<C> lambda) const
 {
   WeylWord result = factor_dominant(lambda);
-  // reverse result (action is from right to left)
+  // reverse result, we are going to, not from, dominant
   std::reverse(result.begin(),result.end());
   return result; // and forget modified |lambda|
 }
@@ -1171,10 +1173,83 @@ template<typename C>
   WeylWord RootDatum::to_codominant(matrix::Vector<C> lambda) const
 {
   WeylWord result = factor_codominant(lambda);
-  // reverse result (action is from right to left)
+  // reverse result, we are going to, not from, dominant
   std::reverse(result.begin(),result.end());
   return result; // and forget modified |lambda|
 }
+
+// make weight |v| dominant for Weyl subgroup given by simple generators |g|
+template<typename C>
+  auto RootDatum::factor_dominant (Gens g, matrix::Vector<C>& v) const
+  -> GenWord
+{
+  containers::sl_list<weyl::Generator> w;
+  weyl::Generator s;
+
+  // greedy approach: find and apply reflections bringing |v| closer to dominant
+  do
+    for (s=0; s<g.size(); ++s)
+    { RootNbr alpha = g[s];
+      if (v.dot(coroot(alpha)) < 0)
+      {
+	w.push_back(s); // actually at front when applying list right-to-left
+	reflect(alpha,v);
+	break;
+      }
+    }
+  while (s<g.size());
+
+  // result is in proper order to transform (right to left) |v| back to original
+  return GenWord(w.to_vector());
+}
+
+// and a version for making coweights codominant for a specified subgroup
+template<typename C>
+  auto RootDatum::factor_codominant (Gens g, matrix::Vector<C>& v) const
+  -> GenWord
+{
+  containers::sl_list<weyl::Generator> w;
+  weyl::Generator s;
+
+  // greedy approach: find and apply reflections bringing |v| closer to dominant
+  do
+    for (s=0; s<g.size(); ++s)
+    { RootNbr alpha = g[s];
+      if (v.dot(root(alpha)) < 0)
+      {
+	w.push_front(s);
+	coreflect(v,alpha);
+	break;
+      }
+    }
+  while (s<g.size());
+
+  // result is in proper order to transform (left to right) |v| back to original
+  return GenWord(std::move(w).to_vector());
+}
+
+// A reduced expression of the shortest |w| making |w*lambda| dominant
+template<typename C>
+  auto RootDatum::to_dominant(Gens g, matrix::Vector<C> lambda) const
+  -> GenWord
+{
+  GenWord result = factor_dominant(g,lambda);
+  // reverse result, we are going to, not from, dominant
+  std::reverse(result.begin(),result.end());
+  return result; // and forget modified |lambda|
+}
+
+// A reduced expression of the shortest |w| making |lambda*w| dominant
+template<typename C>
+  auto RootDatum::to_codominant(Gens g, matrix::Vector<C> lambda) const
+  -> GenWord
+{
+  GenWord result = factor_codominant(g,lambda);
+  // reverse result, we are going to, not from, dominant
+  std::reverse(result.begin(),result.end());
+  return result; // and forget modified |lambda|
+}
+
 
 void RootDatum::act (const WeylWord& ww, RatWeight& gamma) const
 { act(ww,gamma.numerator()); }
@@ -1492,7 +1567,7 @@ RootNbrSet integrality_poscoroots(const RootDatum& rd, const RatWeight& gamma)
 }
 
 sl_list<RootNbr> integrality_simples(const RootDatum& rd, const RatWeight& gamma)
-{ RootNbrSet pos_integrals(rd.numRoots()); // resize to full root system subset
+{ RootNbrSet pos_integrals(rd.numRoots()); // |simpleBasis| expects full root set
   for (RootNbr alpha : integrality_poscoroots(rd,gamma))
     pos_integrals.insert(rd.posRootNbr(alpha)); // convert to full root range
   auto result = rd.simpleBasis(pos_integrals);
@@ -1703,10 +1778,10 @@ bool is_long_coroot(const RootSystem& rs, RootNbr alpha)
 struct orbit_elem // auxiliary data while generating orbit
 {
   Weight v; // current orbit element
-  weyl::Generator s; // generator used to reach it
+  unsigned int gen; // generator or root index used to reach it
   unsigned int prev; // index of orbit element it was reached from
-  orbit_elem(Weight v, weyl::Generator s, unsigned int prev)
-    : v(std::move(v)), s(s), prev(prev) {}
+  orbit_elem(Weight v, unsigned int s, unsigned int prev)
+    : v(std::move(v)), gen(s), prev(prev) {}
 };
 
 // generate parabolic quotient by Levi subgroup generated by |stab| of larger
@@ -1757,8 +1832,76 @@ sl_list<orbit_elem> basic_orbit
   } // |while(true)|
 } // |basic_orbit|
 
+// generate parabolic quotient by Levi subgroup generated by |stab| of larger
+// Levi subgroup with |i| added to generators (and insert |i| into |stab|).
 template<bool dual>
-void extend_orbit_words
+  sl_list<orbit_elem> basic_orbit
+  (const RootDatum& rd, BitMap& stab, unsigned int i)
+{
+  assert(not stab.isMember(i));
+
+  // find a (co)weight on the walls of |stab| but not on that of |i|
+
+  int_Vector v;
+  { // set |v| to an appropriate initial element, stabilised by |stab|
+    const unsigned k = stab.size();
+    int_Matrix A(k,rd.rank());
+    { unsigned i=0;
+      for (auto s : stab)
+	A.set_row(i++,dual?rd.root(s):rd.coroot(s));
+    }
+    A = lattice::kernel(A); // the old |A| has served its purpose
+    v = dual?rd.root(i):rd.coroot(i); // temporarily fix linear form
+    { unsigned int j;
+      int ev;
+      for (j=0; j<A.n_columns(); ++j)
+	if ((ev=v.dot(A.column(j)))!=0)
+	  break;
+      v = A.column(j); // also asserts |j<A.n_columns()|: a |break| occurred
+      if (ev<0)
+	v.negate(); // so that we have positive evaluation on (co)root(i)
+    }
+  }
+
+  sl_list<orbit_elem> result;
+  result.emplace_back(v,-1,-1); // start with a |stab|-fixed vector
+  stab.insert(i); // henceforth |stab| lists generators of acting Weyl subgroup
+  auto start = result.cend(); // level 0 ends after initial vector
+
+  // having level 0, level 1 will also have a singl vector, which we now build
+  if (dual) rd.coreflect(v,i);
+  else rd.reflect(i,v);
+  result.emplace_back(v,i,0); // reached using reflection |i| from |result[0]|
+  auto finish = result.cend(); // level ends here
+
+  unsigned int count=1; // number of element currently generated from
+  while (true) // generate from |start|; possible |return| near end of loop
+  {
+    for (auto it=start; it!=finish; ++it,++count)
+      for (auto r : stab)
+      {
+	auto wt = it->v; // make a copy; actually a coweight if |dual| holds
+	auto level = wt.dot(dual ? rd.root(r) : rd.coroot(r));
+	if (level<=0)
+	  continue; // skip if |wt| fixed or moves to lower layer
+	wt.subtract((dual ? rd.coroot(r) : rd.root(r)).begin(), level);
+
+	auto jt = finish;
+	for ( ; not result.at_end(jt); ++jt)
+	  if (jt->v==wt)
+	    break; // and this will lead to breaking from loop on |s| as well
+
+	if (result.at_end(jt)) // whether not yet present
+	  result.emplace_back(std::move(wt),r,count);
+      } // for |it| and |r|
+    if (result.at_end(finish)) // whether nothing new was contributed
+      return result; // if so, we are done and return directly
+    start = finish; finish = result.end(); // advance, repeat
+  } // |while(true)|
+} // |basic_orbit|
+
+template<bool dual>
+void extend_orbit_Welts
 (const RootDatum& rd, const WeylGroup& W,
    sl_list<WeylElt>& orbit, RankFlags& stab, weyl::Generator i)
 {
@@ -1775,22 +1918,57 @@ void extend_orbit_words
     for (auto jt = start; not cosets.at_end(jt); ++jt)
     {
       auto next = orbit.insert
-	(it, dual ? W.prod(*ref[jt->prev],jt->s) : W.prod(jt->s,*ref[jt->prev]));
+	(it, dual ? W.prod(*ref[jt->prev],jt->gen)
+	          : W.prod(jt->gen,*ref[jt->prev]));
       ref.push_back(&*it); // push pointer to just created |WeylElt|
       it = next; // finally move |it| across the new element
     } // |for(jt)|
     ref.clear(); // for next element of original |orbit|, clean the slate
   } // |while (not orbit.at_end(it))|
-} // |extend_orbit|
+} // |extend_orbit_Welts|
 
+template<bool dual>
+void extend_orbit_Welts
+(const RootDatum& rd, const WeylGroup& W,
+   sl_list<WeylElt>& orbit, BitMap& stab, unsigned int i)
+{
+  const auto cosets = basic_orbit<dual>(rd,stab,i); // this also extends |stab|
+  const auto start = std::next(cosets.begin()); // always skip first element
+  std::vector<WeylElt*> ref; // for rapid indexed access
+  ref.reserve(cosets.size());
+  auto it = orbit.begin();
+  // next loop body will both generate after |it| and advance it
+  while (not orbit.at_end(it))
+  {
+    ref.push_back(&*it); // save pointer to element in original |orbit|
+    ++it; // then advance over it
+    for (auto jt = start; not cosets.at_end(jt); ++jt)
+    {
+      auto next = orbit.insert
+	(it, dual ? W.prod(*ref[jt->prev],rd.reflection_word(jt->gen))
+		  : W.prod(rd.reflection_word(jt->gen),*ref[jt->prev])
+	);
+      ref.push_back(&*it); // push pointer to just created |WeylElt|
+      it = next; // finally move |it| across the new element
+    } // |for(jt)|
+    ref.clear(); // for next element of original |orbit|, clean the slate
+  } // |while (not orbit.at_end(it))|
+} // |extend_orbit_Welts|
+
+// extend |orbit|, whose setwise stabiliser is |stab|, to a |stab+i|-orbit
 template<bool dual>
 void extend_orbit
   (const RootDatum& rd,
    sl_list<Weight>& orbit, RankFlags& stab, weyl::Generator i)
 {
-  const auto cosets = basic_orbit<dual>(rd,stab,i); // this also extends |stab|
-  const auto start = std::next(cosets.begin()); // always skip first element
-  std::vector<Weight*> ref; // for rapid indexed access
+  const auto cosets = basic_orbit<dual>(rd,stab,i); // this also enlarges |stab|
+  // we shall add its images by non-identity cosets after each orbit element
+  const auto start = std::next(cosets.begin()); // so skip the identity coset
+
+  // each coset holds an _index_ |prev| to the coset from which it was obtained
+  // to quickly access the orbit element generated from that, we use pointers:
+  std::vector<Weight*> ref; // for rapid indexed access to new elements
+
   ref.reserve(cosets.size());
   auto it = orbit.begin();
   // next loop body will both generate after |it| and advance it
@@ -1801,8 +1979,8 @@ void extend_orbit
     for (auto jt = start; not cosets.at_end(jt); ++jt)
     {
       auto next = orbit.emplace(it, dual
-				? rd.simple_coreflection(*ref[jt->prev],jt->s)
-				: rd.simple_reflection(jt->s,*ref[jt->prev])
+				? rd.simple_coreflection(*ref[jt->prev],jt->gen)
+				: rd.simple_reflection(jt->gen,*ref[jt->prev])
 	);
       ref.push_back(&*it); // push pointer to just created |Weight|
       it = next; // finally move |it| across the new element
@@ -1811,11 +1989,43 @@ void extend_orbit
   } // |while (not orbit.at_end(it))|
 } // |extend_orbit|
 
-sl_list<WeylElt> Weyl_orbit_words
+template<bool dual>
+  void extend_orbit
+  (const RootDatum& rd, sl_list<Weight>& orbit, BitMap& stab, unsigned int i)
+{
+  const auto cosets = basic_orbit<dual>(rd,stab,i); // this also extends |stab|
+  // we shall add its images by non-identity cosets after each orbit element
+  const auto start = std::next(cosets.begin()); // so skip the identity coset
+
+  // each coset holds an _index_ |prev| to the coset from which it was obtained
+  // to quickly access the orbit element generated from that, we use pointers:
+  std::vector<Weight*> ref; // for rapid indexed access to new elements
+
+  ref.reserve(cosets.size());
+  auto it = orbit.begin();
+  // next loop body will both generate after |it| and advance it
+  while (not orbit.at_end(it))
+  {
+    ref.push_back(&*it); // save pointer to element in original |orbit|
+    ++it; // then advance over it
+    for (auto jt = start; not cosets.at_end(jt); ++jt)
+    {
+      auto next = orbit.emplace(it, dual
+				? rd.coreflection(*ref[jt->prev],jt->gen)
+				: rd.reflection  (jt->gen,*ref[jt->prev])
+	);
+      ref.push_back(&*it); // push pointer to just created |Weight|
+      it = next; // finally move |it| across the new element
+    } // |for(jt)|
+    ref.clear(); // for next element of original |orbit|, clean the slate
+  } // |while (not orbit.at_end(it))|
+} // |extend_orbit|
+
+sl_list<WeylElt> Weyl_orbit_Welts
   (const RootDatum& rd, const WeylGroup& W, Weight v)
 {
-  WeylWord w = rd.factor_dominant(v);
-  std::reverse(w.begin(),w.end()); // need word moving to, not from, (co)dominant
+  WeylWord w = rd.factor_dominant(v); // henceforth |v| is dominant
+  std::reverse(w.begin(),w.end()); // need word moving to, not from, dominant
 
   RankFlags stab;
   for (weyl::Generator s=0; s<rd.semisimple_rank(); ++s)
@@ -1825,15 +2035,15 @@ sl_list<WeylElt> Weyl_orbit_words
 
   sl_list<WeylElt> orbit(1,W.element(w)); // start with mover to current |v|
   for (auto s : non_stab)
-    extend_orbit_words<false>(rd,W,orbit,stab,s);
+    extend_orbit_Welts<false>(rd,W,orbit,stab,s);
   return orbit;
 }
 
-sl_list<WeylElt> Weyl_orbit_words
-  (Weight v, const RootDatum& rd, const WeylGroup& W)
+sl_list<WeylElt> Weyl_orbit_Welts
+  (Coweight v, const RootDatum& rd, const WeylGroup& W)
 {
   WeylWord w = rd.factor_codominant(v);
-  std::reverse(w.begin(),w.end()); // need word moving to, not from, (co)dominant
+  std::reverse(w.begin(),w.end()); // need word moving to, not from, codominant
 
   RankFlags stab;
   for (weyl::Generator s=0; s<rd.semisimple_rank(); ++s)
@@ -1843,9 +2053,53 @@ sl_list<WeylElt> Weyl_orbit_words
 
   sl_list<WeylElt> orbit(1,W.element(w)); // start with mover to current |v|
   for (auto s : non_stab)
-    extend_orbit_words<true>(rd,W,orbit,stab,s);
+    extend_orbit_Welts<true>(rd,W,orbit,stab,s);
   return orbit;
 }
+
+sl_list<WeylElt> Weyl_orbit_Welts
+  (const RootDatum& rd, const WeylGroup& W, Gens g, Weight v)
+{
+  WeylElt w; // now to be set to an element whose action makes |v| dominant
+  for (auto s : rd.factor_dominant(g,v))  // henceforth |v| is dominant
+    w = W.prod(rd.reflection_word(g[s]),w); // compose reflections in reverse
+
+  BitMap stab(rd.numRoots());
+  sl_list<RootNbr> non_stab;
+  for (auto gen : g)
+    if (rd.coroot(gen).dot(v) == 0)
+      stab.insert(gen);
+    else
+      non_stab.push_back(gen);
+
+  sl_list<WeylElt> orbit(1,w); // start with mover to current |v|
+  for (auto gen : non_stab)
+    extend_orbit_Welts<false>(rd,W,orbit,stab,gen);
+  return orbit;
+} // |Weyl_orbit_Welts| on weights for subgroup given by |Gens|
+
+sl_list<WeylElt> Weyl_orbit_Welts
+  (Coweight v,const RootDatum& rd, const WeylGroup& W, Gens g)
+{
+  WeylElt w; // now to be set to an element whose action makes |v| dominant
+  for (auto s : rd.factor_codominant(g,v))  // henceforth |v| is dominant
+    w = W.prod(rd.reflection_word(g[s]),w); // compose reflections in reverse
+// reverse because we want 'to' rather than 'fro', not because |v| is a coweight
+
+  BitMap stab(rd.numRoots());
+  sl_list<RootNbr> non_stab;
+  for (auto gen : g)
+    if (v.dot(rd.root(gen)) == 0)
+      stab.insert(gen);
+    else
+      non_stab.push_back(gen);
+
+  sl_list<WeylElt> orbit(1,w); // start with mover to current |v|
+  for (auto gen : non_stab)
+    extend_orbit_Welts<true>(rd,W,orbit,stab,gen);
+  return orbit;
+} // |Weyl_orbit_Welts| on coweights for subgroup given by |Gens|
+
 
 int_Matrix Weyl_orbit(const RootDatum& rd, Weight v)
 {
@@ -1863,7 +2117,7 @@ int_Matrix Weyl_orbit(const RootDatum& rd, Weight v)
   return { orbit.begin(),orbit.end(),rd.rank(),tags::IteratorTag() };
 }
 
-int_Matrix Weyl_orbit(Weight v, const RootDatum& rd)
+int_Matrix Weyl_orbit(Coweight v, const RootDatum& rd)
 {
   rd.make_codominant(v);
   RankFlags stab;
@@ -1878,6 +2132,47 @@ int_Matrix Weyl_orbit(Weight v, const RootDatum& rd)
     extend_orbit<true>(rd,orbit,stab,s);
   return { orbit.begin(),orbit.end(),rd.rank(),tags::IteratorTag() };
 }
+
+int_Matrix Weyl_orbit(const RootDatum& rd, Gens g, Weight v)
+{
+  rd.make_dominant(g,v);
+
+  BitMap stab(rd.numRoots());
+  sl_list<RootNbr> non_stab;
+  for (auto gen : g)
+    if (rd.coroot(gen).dot(v) == 0)
+      stab.insert(gen);
+    else
+      non_stab.push_back(gen);
+
+  sl_list<Weight> orbit;
+  orbit.push_back(std::move(v));
+
+  for (auto gen : non_stab)
+    extend_orbit<false>(rd,orbit,stab,gen);
+  return { orbit.begin(),orbit.end(),rd.rank(),tags::IteratorTag() };
+}
+
+int_Matrix Weyl_orbit(Weight v, const RootDatum& rd, Gens g)
+{
+  rd.make_codominant(g,v);
+
+  BitMap stab(rd.numRoots());
+  sl_list<RootNbr> non_stab;
+  for (auto gen : g)
+    if (v.dot(rd.root(gen)) == 0)
+      stab.insert(gen);
+    else
+      non_stab.push_back(gen);
+
+  sl_list<Weight> orbit;
+  orbit.push_back(std::move(v));
+
+  for (auto gen : non_stab)
+    extend_orbit<true>(rd,orbit,stab,gen);
+  return { orbit.begin(),orbit.end(),rd.rank(),tags::IteratorTag() };
+}
+
 
 /*****************************************************************************
 
