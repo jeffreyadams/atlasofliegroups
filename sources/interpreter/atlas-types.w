@@ -8516,6 +8516,7 @@ void KL_sum_at_s_wrapper(eval_level l)
     push_value(std::make_shared<virtual_module_value>@|
       (p->rf,p->rt().KL_column_at_s(p->val)));
 }
+@)
 void KL_sum_at_s_to_ht_wrapper(eval_level l)
 { int bound = get<int_value>()->int_val();
   shared_module_parameter p = get<module_parameter_value>();
@@ -8528,6 +8529,42 @@ void KL_sum_at_s_to_ht_wrapper(eval_level l)
       (p->rf,p->rt().KL_column_at_s_to_height(p->val,limit)));
 }
 @)
+void timed_KL_sum_at_s_to_ht_wrapper(eval_level l)
+{ auto period = get<int_value>()->long_val();
+  int bound = get<int_value>()->int_val();
+  shared_module_parameter p = get<module_parameter_value>();
+  test_standard(*p,"Cannot compute Kazhdan-Lusztig sum");
+  test_final(*p,"Cannot compute Kazhdan-Lusztig sum");
+  if (l==eval_level::no_value)
+    return;
+@)
+  set_timer(period);
+  try
+  { repr::level limit = bound>=0 ? bound : -1;
+    // negative becomes maximal unsigned value
+    push_value(std::make_shared<virtual_module_value>@|
+      (p->rf,p->rt().KL_column_at_s_to_height(p->val,limit)));
+  }
+  catch (const time_out& e)
+  { auto result = std::make_shared<tuple_value>(0); // the void
+    push_value(std::make_shared<union_value>(0,std::move(result),
+               main_hash_table->match_literal("timed_out")));
+    return;
+  }
+  clear_timer();
+@)
+  push_value(std::make_shared<union_value>(1,pop_value(),
+               main_hash_table->match_literal("done")));
+  // wrap into union
+}
+
+@ There is also a twisted variant of |KL_sum_at_s|. For now we do not define a
+height-bounded or time-limited version of this function, since these special
+cases are intended for strategic approaches to treating hard cases of unitary
+dual computations for simple groups, which are equal-rank and therefore do not
+require twisted computations.
+
+@< Local function def...@>=
 void twisted_KL_sum_at_s_wrapper(eval_level l)
 { shared_module_parameter p = get<module_parameter_value>();
   test_standard(*p,"Cannot compute Kazhdan-Lusztig sum");
@@ -8744,6 +8781,8 @@ install_function(timed_twisted_full_deform_wrapper,@|"twisted_full_deform"
 install_function(KL_sum_at_s_wrapper,@|"KL_sum_at_s","(Param->ParamPol)");
 install_function(KL_sum_at_s_to_ht_wrapper,@|"KL_sum_at_s_to_height"
 		,"(Param,int->ParamPol)");
+install_function(timed_KL_sum_at_s_to_ht_wrapper,@|"KL_sum_at_s_to_height"
+		,"(Param,int,int->ParamPol)");
 install_function(twisted_KL_sum_at_s_wrapper,@|"twisted_KL_sum_at_s"
                 ,"(Param->ParamPol)");
 install_function(KL_column_wrapper,@|"KL_column","(Param->[int,Param,vec])");

@@ -912,6 +912,7 @@ void KL_table::silent_fill(BlockElt limit)
     // fill the lists
     for (auto it = d_holes.begin(); it() and *it<limit; ++it)
     {
+      interpreter::check_interrupt();
       fill_KL_column(klv,*it,hash);
       d_holes.remove(*it);
     }
@@ -921,7 +922,7 @@ void KL_table::silent_fill(BlockElt limit)
   { // identify and relabel error so that atlas may catch it
     throw std::runtime_error("Numeric overflow in KL computations");
   }
-}
+} // |KL_table::silent_fill|
 
 // Fill the existing |KL_table| object while printing progress reports
 void KL_table::verbose_fill(BlockElt limit)
@@ -948,6 +949,7 @@ void KL_table::verbose_fill(BlockElt limit)
   {
     for (size_t l=minLength; l<=maxLength; ++l) // by length for progress report
     {
+      interpreter::check_interrupt();
       BlockElt y_start = l==minLength ? first_hole() : length_less(l);
       BlockElt y_limit = l<maxLength ? length_less(l+1) : limit;
       for (BlockElt y=y_start; y<y_limit; ++y)
