@@ -77,6 +77,10 @@ set every_lambda_deets_flag = false
 {if true, then report summary each KGBElt in FPP_unitary}
 set every_KGB_flag = false
 
+{whether to use the "tester" version in FPP_unitary_hash_steve, which uses steve only for
+ vertices and edges}
+set steve_tester_flag = true
+
 set contragredient(KGBElt x) = KGBElt:
     let wzero = w0(x.root_datum) in cross(wzero,x)
 
@@ -856,7 +860,12 @@ then coh_ind_unip_few(G,Uhash)}
 		    then {prints("died tnu");}
 		    ()
 		    else let startDTcount = DTcount
-		 then LF = localFD_SteveU(x,lambda,Lvd,Perm2)
+		 then LF = if steve_tester_flag
+		      	   then let LF2 = localFD_Steve2(x,lambda)
+			   	in local_test_GEO_hash_steve_end_faces(x,lambda, Lvd, LF2, Kpol_hash,
+				   					big_unitary_hash.uhash(G))
+			   else localFD_SteveU(x,lambda,Lvd,Perm2)
+			   fi
 		 in if #LF[0] = 0
 		    then finish(x,lambda);
 		    	 none_count +:=1; ()
@@ -865,7 +874,7 @@ then coh_ind_unip_few(G,Uhash)}
 			       test_verbose :=old_test_verbose; test_slightly_verbose := old_test_slightly_verbose
 			  fi;
 			  {prints("LF = ",LF);}
-			  let answer = for list in LF
+			  let answer = for list@d in LF
 			      	       do for v in list
 				       	  do let p = parameter(x,lambda,face_bary(Lvd,v))
 					     in for q in monomials(1*p)
@@ -1111,7 +1120,13 @@ set FPP_unitary_hash_steve([KGBElt] xs, Param_hash Uhash, (Param->bool) fancy_te
 		 			       in if test_no_unitary(x,lambda,Lvd)
 		   				  then {none_count +:= 1;} {prints("SKIPPED ",x,",",lambda);} ()
 		    			       else let startDTcount = DTcount
-					       	    then LF = localFD_SteveU(x,lambda,Lvd,Perm2)
+					       	    then LF = if steve_tester_flag
+		      	   			    	      then let LF2 = localFD_Steve2(x,lambda)
+			   				      	   in local_test_GEO_hash_steve_end_faces(x,
+									lambda, Lvd, LF2, Kpol_hash,
+				   					big_unitary_hash.uhash(G))
+			   				      else localFD_SteveU(x,lambda,Lvd,Perm2)
+			   				      fi
 		 				    	 in if #LF[0] = 0
 		    					    then finish(x,lambda);
 		    					    	  none_count +:=1; ()
@@ -1120,7 +1135,7 @@ set FPP_unitary_hash_steve([KGBElt] xs, Param_hash Uhash, (Param->bool) fancy_te
 			       					 test_verbose :=old_test_verbose; test_slightly_verbose := old_test_slightly_verbose
 			  					 fi;
 			  					 let answer = for list in LF
-			      	       				     	      do for v in list
+			      	       				     	      do for v@d in list
 				       	  				      	 do let p = parameter(x,lambda,face_bary(Lvd,v))
 					     					    in for q in monomials(1*p)
 					     					    do Uhash.match(q)

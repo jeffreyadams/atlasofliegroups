@@ -658,7 +658,7 @@ set localFD_2SteveU\
 			      	 do let n = f0 + trans_hash.lookup(v[2:])
 				    in if n >= f0 {midpoint of v[2:] is a local vertex}
 				       	  and Llookup(n) {and Llookup(m+f)}
-				       then prints("used TT at [",k,",",n,"]!"); [[k,n].sort]
+				       then {prints("used TT at [",k,",",n,"]!");} [[k,n].sort]
 				       else []
 				       fi
 			       	 od.## {[vec], all starting with mloc}
@@ -848,7 +848,7 @@ set localFD_SteveUB(KGBElt x, ratvec lambda) = [[FaceVertsKHash]]:
     then (Lvd,Perm2) = LPm_table.LPm_entry(ic, theta, ratvec_as_vec(lambda+theta*lambda))
     in localFD_SteveUB(x, lambda, Lvd, Perm2)
 
-set steve_B_flag = false
+set steve_B_flag = true
 
 {all faces unitary}
 set localFD_SteveU(KGBElt x, ratvec lambda, LocalVertexData Lvd, PermOrderTwo Perm2) =
