@@ -211,8 +211,8 @@ containing structure rather than by the pointer itself.
 @< Type declarations @>=
 class type_expr;
 @/
-using type_p = type_expr*;
-using const_type_p = const type_expr*;
+using type_p = @[type_expr*@];
+using const_type_p = @[const type_expr*@];
 using type_ptr = std::unique_ptr<type_expr>;
 using const_type_ptr = std::unique_ptr<const type_expr>;
 
@@ -243,8 +243,8 @@ iterators (ones that cannot be used to insert or delete nodes), and the types
 using type_list = containers::simple_list<type_expr>;
 using dressed_type_list = containers::sl_list<type_expr>;
 @)
-using raw_type_list = atlas::containers::sl_node<type_expr>*;
-@/using const_raw_type_list = atlas::containers::sl_node<type_expr>const *;
+using raw_type_list = @[atlas::containers::sl_node<type_expr>*@];
+@/using const_raw_type_list = @[atlas::containers::sl_node<type_expr>const *@];
 using wtl_iterator = containers::weak_sl_list_iterator<type_expr>;
   // wtl = weak type list
 using wtl_const_iterator = containers::weak_sl_list_const_iterator<type_expr>;
@@ -3966,7 +3966,7 @@ fact use this information to double-check our type analysis at run time.
 
 @< Type declarations @>=
 struct value_base;
-using value = const value_base*;
+using value = @[const value_base*@];
 using shared_value = std::shared_ptr<const value_base>;
 using  own_value = std::shared_ptr<value_base>;
 
@@ -4309,11 +4309,13 @@ type). When handling user defined functions, we shall have values that refer to
 (derived from) |expression| objects, and in doing so share them. So in those
 cases, |shared_expression| values will be used.
 
+@s eval_level vector
+
 @< Type declarations @>=
 struct expr; // abstract syntax tree representation, see \.{parsetree.w}
 struct expression_base; // executable expression
-enum class eval_level : unsigned;
-using expression = expression_base*;
+enum @[class @+ eval_level : unsigned@];
+using expression = @[expression_base*@];
 using expression_ptr = std::unique_ptr<const expression_base>;
 using shared_expression = std::shared_ptr<const expression_base>;
 
@@ -4327,7 +4329,8 @@ result is expected to be ``expanded'' on the runtime stack in case it is of a
 tuple type.
 
 @< Type definitions @>=
-enum class eval_level : unsigned @+{ no_value, single_value, multi_value };
+enum @[ class @+ eval_level : unsigned@]
+  @+{ no_value, single_value, multi_value };
 struct expression_base
 { using level = eval_level;
 @)
@@ -4708,7 +4711,7 @@ the interpreter with a level of safety from accidental crashes that is not (for
 efficiency reasons) provided systematically in the library.
 
 @< Type declarations @>=
-using wrapper_function = void (* )(eval_level);
+using wrapper_function = @[void (* )(eval_level)@];
 struct function_base; // a type derived from |value_base|, defined in \.{axis.w}
 using shared_function = std::shared_ptr<const function_base>;
 // specialises |shared_value|
@@ -5000,6 +5003,8 @@ exceptional cases.
 
 @h "parse_types.h" // for |source_location|
 @h "axis.h" // for |do_conversion|
+
+@s entry x
 
 @< Function definitions @>=
 bool coerce(const type_expr& from_type, const type_expr& to_type,

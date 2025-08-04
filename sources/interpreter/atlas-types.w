@@ -37,10 +37,11 @@ programming language of that name, which is independent of the Atlas library.
 @f pi nullptr
 @f alpha nullptr
 @f beta nullptr
+@s atlas x
 
 @c
 namespace atlas { namespace interpreter {
-@< Global variable definitions @>
+@< Global variable definitions @>@;
 namespace {@; @< Local function definitions @>@; }
 @< Function definitions @>@;
 }}
@@ -900,9 +901,9 @@ some of the work done here to its situation.
 void based_involution_wrapper(eval_level l)
 { shared_string s = get<string_value>();
 @/shared_matrix basis = get<matrix_value>();
-@/shared_Lie_type type = get<Lie_type_value>();
+@/shared_Lie_type Lie_tp = get<Lie_type_value>();
 @)
-  unsigned int r=type->val.rank();
+  unsigned int r=Lie_tp->val.rank();
   if (basis->val.n_rows()!=r or basis->val.n_rows()!=r)
   { std::ostringstream o;
     o << "Basis should be given by " << r << 'x' << r << " matrix";
@@ -911,7 +912,7 @@ void based_involution_wrapper(eval_level l)
 @.Basis should be given...@>
 @)
   WeightInvolution inv=lietype::involution
-        (type->val,checked_inner_class_type(s->val.c_str(),type->val));
+        (Lie_tp->val,checked_inner_class_type(s->val.c_str(),Lie_tp->val));
   try
   { push_value(std::make_shared<matrix_value>(inv.on_basis(basis->val)));
     if (l==eval_level::no_value)
@@ -1268,16 +1269,16 @@ condition will cause |PreRootDatum::quotient| to throw a |std::runtime_error|.
 void root_datum_from_type_wrapper(eval_level l)
 { bool prefer_coroots = get<bool_value>()->val;
 @/shared_matrix lattice=get<matrix_value>();
-  shared_Lie_type type=get<Lie_type_value>();
+  shared_Lie_type Lie_tp=get<Lie_type_value>();
   if (lattice->val.n_rows()!=lattice->val.n_columns() @| or
-      lattice->val.n_rows()!=type->val.rank())
+      lattice->val.n_rows()!=Lie_tp->val.rank())
   { std::ostringstream o;
     o << "Sub-lattice matrix should have size " @|
-      << type->val.rank() << 'x' << type->val.rank();
+      << Lie_tp->val.rank() << 'x' << Lie_tp->val.rank();
     throw runtime_error(o.str());
   }
 @.Sub-lattice matrix should...@>
-  PreRootDatum prd(type->val,prefer_coroots);
+  PreRootDatum prd(Lie_tp->val,prefer_coroots);
   prd.quotient(lattice->val);
 @.Sub-lattice matrix not square...@>
 @.Dependent lattice generators@>
@@ -3004,14 +3005,14 @@ weyl::Twist check_involution
       left-act on |delta| by the reverse of~|ww| to make it match |Delta| @>
   if (lo==nullptr)
     return p; // if no details are asked for, we are done now
-@/LieType& type=lo->d_type;
+@/LieType& Lie_tp=lo->d_type;
   InnerClassType& inner_class=lo->d_inner;
   Permutation& pi=lo->d_perm;
-  @< Compute the Lie type |type|, the inner class |inner_class|, and the
+  @< Compute the Lie type |Lie_tp|, the inner class |inner_class|, and the
      permutation |pi| of the simple roots with respect to standard order for
-     |type| @>
+     |Lie_tp| @>
   if (r>s)
-    @< Add type letters to |type| and inner class symbols to |inner_class|
+    @< Add type letters to |Lie_tp| and inner class symbols to |inner_class|
        for the central torus @>
   return p;
 }
@@ -3041,21 +3042,21 @@ lies in another component of the diagram we have a Complex inner class.
 
 @h "dynkin.h"
 
-@< Compute the Lie type |type|, the inner class... @>=
+@< Compute the Lie type |Lie_tp|, the inner class... @>=
 { DynkinDiagram diagram(rd.Cartan_matrix());
   auto comps = diagram.components(); // connected components
-  type = diagram.type();
+  Lie_tp = diagram.type();
   pi = diagram.perm(); // |pi| normalises to Bourbaki order
-  assert(type.size()==comps.size());
+  assert(Lie_tp.size()==comps.size());
 @)
   inner_class.reserve(comps.size()+r-s); // certainly enough
   unsigned int offset=0; // accumulated rank of simple factors seen
 
-  unsigned int i=0; // index into |type|
+  unsigned int i=0; // index into |Lie_tp|
   for (auto cit=comps.begin(); not comps.at_end(cit); ++cit,++i)
   { bool equal_rank=true;
     unsigned int comp_rank = cit->rank();
-    assert (comp_rank==type[i].rank());
+    assert (comp_rank==Lie_tp[i].rank());
        // and |*it| runs through bits in |*cit| in following loop
     for (auto it=&pi[offset]; it!=&pi[offset+comp_rank]; ++it)
       if (p[*it]!=*it) {@; equal_rank=false; break; }
@@ -3063,11 +3064,11 @@ lies in another component of the diagram we have a Complex inner class.
       // identity on this component: compact component
     else if (cit->support.test(p[pi[offset]]))
        // (any) one root stays in component |*cit|: unequal rank
-      inner_class.push_back(type[i].first=='D' and comp_rank%2==0 ? 'u' : 's');
+      inner_class.push_back(Lie_tp[i].first=='D' and comp_rank%2==0 ? 'u' : 's');
     else
     { inner_class.push_back('C'); // record Complex component
       @< Gather elements of Complex inner class component, adapting the values
-         of |type|, |comps|, and~|pi| @>
+         of |Lie_tp|, |comps|, and~|pi| @>
       offset += comp_rank;
       ++cit,++i; // skip over component |i|, loop will skip component |i+1|
     }
@@ -3078,7 +3079,7 @@ lies in another component of the diagram we have a Complex inner class.
 
 @ Complex factors of the inner class involve two simple factors, which requires
 some additional care. The corresponding components of the Dynkin diagram might
-not be consecutive, in which case we must permute the factors of |type| to make
+not be consecutive, in which case we must permute the factors of |Lie_tp| to make
 that true, permute the |comp| subsets to match, and update |pi| as well.
 Moreover we wish that, as seen through |pi|, the permutation |p| interchanges
 the roots of the two now consecutive factors by a fixed shift in the index by
@@ -3095,10 +3096,10 @@ matching factor |i|.
 { auto beta = p[pi[offset]];
     // index of simple root, |delta| image of first one in current component
   @< Find the component~|k| after |i| that contains |beta|, rotate entry |k| of
-     |comps| to position |i+1|, while shifting values in |type| and |pi|
+     |comps| to position |i+1|, while shifting values in |Lie_tp| and |pi|
      upwards by |1| respectively |comp_rank| places @>
 @)
-  type[i+1]=type[i]; // duplicate factor |i|
+  Lie_tp[i+1]=Lie_tp[i]; // duplicate factor |i|
   for (unsigned int j=offset; j<offset+comp_rank; ++j)
     pi[j+comp_rank]=p[pi[j]];
      // reconstruct matching component in matching order, applying~|p|
@@ -3108,7 +3109,7 @@ matching factor |i|.
 @ When the inner class permutation |p| interchanges a component with another, we
 use the image~|beta| of one root in the former component to search for the
 latter component. Then, as remarked above, we can simply shift up any
-intermediate values of |pi|, |type| and |comp| to their new places; only for the
+intermediate values of |pi|, |Lie_tp| and |comp| to their new places; only for the
 bitset |comp[k]| it is worth while to save the old value and reinsert it at its
 moved-down place.
 
@@ -3122,7 +3123,7 @@ moved-down place.
 @.Non matching Complex factor@>
 
 #ifndef NDEBUG
-  assert(type[k]==type[i]); // paired simple types for complex factor
+  assert(Lie_tp[k]==Lie_tp[i]); // paired simple types for complex factor
   for (unsigned int l=1; l<comp_rank; ++l)
     assert(cit1->support.test(p[pi[offset+l]]));
         // image by |p| of remainder of |comp[i]| matches |comp[k]|
@@ -3132,10 +3133,10 @@ moved-down place.
   {
     comps.splice(std::next(cit),comps,cit1);
       // rotate node |*cit1| to position after |cit|
-    std::copy_backward(&type[i+1],&type[k],&type[k+1]); // shift up |1|
+    std::copy_backward(&Lie_tp[i+1],&Lie_tp[k],&Lie_tp[k+1]); // shift up |1|
 @)
     auto j=offset+comp_rank;
-    for (auto it=&type[i+1]; it!=&type[k]; ++it)
+    for (auto it=&Lie_tp[i+1]; it!=&Lie_tp[k]; ++it)
       j += it->rank();
     std::copy_backward(&pi[offset+comp_rank],&pi[j],&pi[j+comp_rank]);
     // shift up |comp_rank|
@@ -3157,10 +3158,10 @@ first $r$ vectors span the lattice to be divided out), express the involution
 of that basis (which will have zeros in the bottom-left $(r-s)\times{s}$
 block), and extract the bottom-right $(r-s)\times(r-s)$ block.
 
-@< Add type letters to |type| and inner class symbols to |inner_class|
+@< Add type letters to |Lie_tp| and inner class symbols to |inner_class|
    for the central torus @>=
 { for (unsigned int k=0; k<r-s; ++k)
-    type.push_back(SimpleLieType('T',1));
+    Lie_tp.push_back(SimpleLieType('T',1));
   int_Matrix root_lattice
     (rd.beginSimpleRoot(),rd.endSimpleRoot(),r,tags::IteratorTag());
 @/CoeffList factor; // values will be unused
@@ -6169,15 +6170,15 @@ void KGP_sum_wrapper(eval_level l)
     return;
 @)
   auto length = rc.kgb().length(srk.x());
-  auto list = rc.KGP_set(srk);
-  own_row result = std::make_shared<row_value>(list.size());
+  auto Kt_list = rc.KGP_set(srk);
+  own_row result = std::make_shared<row_value>(Kt_list.size());
   auto res_p=result->val.begin();
-  for (auto&& t : list)
+  for (auto&& Kt : Kt_list)
   {
     auto tup = std::make_shared<tuple_value>(2);
-    auto dl = length - rc.kgb().length(t.x());
+    auto dl = length - rc.kgb().length(Kt.x());
     tup->val[0] = std::make_shared<int_value>(dl%2==0 ? 1 : -1);
-    tup->val[1] = std::make_shared<K_type_value>(p->rf,std::move(t));
+    tup->val[1] = std::make_shared<K_type_value>(p->rf,std::move(Kt));
     *res_p++ = std::move(tup);
   }
   push_value(std::move(result));
@@ -6192,6 +6193,8 @@ to indicate that no pruning should be done, an the full (still finite) $K$-type
 formula should be computed. Since there is only one method
 |Rep_context::K_typ_formula|, we here transform such a negative integer into the
 highest possible value of the unsigned type |repr::level|.
+
+@s numeric_limits vector
 
 @< Local function def...@>=
 void K_type_formula_wrapper(eval_level l)
@@ -7467,14 +7470,14 @@ void strong_components_wrapper(eval_level l)
     wrap_tuple<2>();
 }
 
-@ The computations with parameters for the extended group, like done by the
-built-in function |twisted_deform| to be defined below, depend on a choice, for
-each parameter, of one of the two extensions of it to the extended group (each
-one corresponding to an equivalence classes of extended parameters, which is
-made by the internal method |Rep_context::default_extend|. In order
-that the user have explicit knowledge of this choice, we also define a user
-function |default_extend| that returns a tuple of the essential components of
-this extended parameter.
+@ In built-in functions like |twisted_deform| to be defined below, the
+computations with parameters for the extended group depend on a choice, for each
+parameter, of one of the two extensions of it to the extended group (each one
+corresponding to an equivalence classes of extended parameters, which is made by
+the internal method |Rep_context::default_extend|. In order that the user have
+explicit knowledge of this choice, we also define a user function
+|default_extend| that returns a tuple of the essential components of this
+extended parameter.
 
 @< Local function def...@>=
 void default_extend_wrapper(eval_level l)
@@ -7569,18 +7572,18 @@ into a list of parameters and three tables in the form of matrices.
     params->val[n] = std::make_shared<module_parameter_value> @|
       (p->rf,rc.sr_gamma(block.x(z),lambda_rho,gamma));
     for (weyl::Generator s=0; s<eb.rank(); ++s)
-    { auto type = eb.descent_type(s,n);
-      types(n,s) = static_cast<int>(type);
-      if (is_like_compact(type) or is_like_nonparity(type))
+    { auto tp = eb.descent_type(s,n);
+      types(n,s) = static_cast<int>(tp);
+      if (is_like_compact(tp) or is_like_nonparity(tp))
       @/{@; links0(n,s)=eb.size(); links1(n,s)=eb.size(); }
       else
-      { links0(n,s)= is_complex(type) ? eb.cross(s,n): eb.Cayley(s,n);
+      { links0(n,s)= is_complex(tp) ? eb.cross(s,n): eb.Cayley(s,n);
         if (eb.epsilon(s,n,links0(n,s))<0)
 	  links0(n,s) = -1-links0(n,s);
-        if (link_count(type)==1)
+        if (link_count(tp)==1)
           links1(n,s)=eb.size(); // leave second matrix entry empty
         else
-        { links1(n,s)= has_double_image(type)
+        { links1(n,s)= has_double_image(tp)
             ? eb.Cayleys(s,n).second
             : eb.cross(s,n);
           if (eb.epsilon(s,n,links1(n,s))<0)
@@ -7926,7 +7929,7 @@ void module_coefficient::evaluate(level l) const
 adding or removing a term in the process), a method |assign_coef| is provided.
 It will be called from the \.{axis} compilation unit (the programming language
 interpreter). The implementation is similar to that of |Free_Abelian::add_term|,
-using the |std:map| interface from which |Free_Abelian| was derived; as is the
+using the |std::map| interface from which |Free_Abelian| was derived; as is the
 case there a term can get created, modified, or deleted, of nothing can happen
 at all,
 
@@ -8376,7 +8379,7 @@ void full_deform_wrapper(eval_level l)
     return;
 @)
   repr::K_type_nr_poly result;
-    // this is the data type used by |Rep_table::full_deformation|
+    // the data type used by |Rep_table::full_deformation|
   auto finals = p->rc().finals_for(p->val);
   for (auto it=finals.begin(); not finals.at_end(it); ++it)
     for (auto&& term : p->rt().full_deformation(std::move(it->first)))
@@ -8398,7 +8401,7 @@ void twisted_full_deform_wrapper(eval_level l)
   auto finals = @;ext_block::
     extended_finalise(rc,p->val,rc.inner_class().distinguished());
   repr::K_type_nr_poly result;
-    // this is the data type used by |Rep_table::twisted_full_deformation|
+    // the data type used by |Rep_table::twisted_full_deformation|
   for (auto it=finals.cbegin(); it!=finals.cend(); ++it)
   { const auto& def = rt.twisted_full_deformation(std::move(it->first));
     result.add_multiple(def,

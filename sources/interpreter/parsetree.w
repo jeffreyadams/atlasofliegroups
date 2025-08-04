@@ -123,11 +123,11 @@ enum expr_kind @+
 typedef struct expr* expr_p; // raw pointer type for use on parser stack
 typedef std::unique_ptr<expr> expr_ptr;
 @)
-@< Declaration of |struct expr| and its extended family @>
+@< Declaration of |struct expr@;| and its extended family @>
 
 @ We separate this out for ease of moving.
 
-@< Declaration of |struct expr| and its extended family @>=
+@< Declaration of |struct expr@;| and its extended family @>=
 @< Type declarations needed in definition of |struct expr@;| @>@;
 struct expr {
   expr_kind kind;
@@ -375,7 +375,7 @@ we shall use a pointer to |std::string|.
 #include <string>
 
 @~For Boolean denotations, the value itself will fit comfortably inside the
-|struct expr@;|. For integers and strings we store a |std::string*| value
+|struct expr@;|. For integers and strings we store a |std::string*@[@]@;| value
 (sharing a single variant), leaving in the case of integers the conversion from
 decimal to |big_int| to be done later. We used to store |std::string| which
 provided an example of how the special member functions of |expr| should handle
@@ -1514,7 +1514,7 @@ by default; it is present only for backward compatibility \.{gcc}~4.6.
 @< Structure and typedef definitions for types built upon |expr| @>=
 struct let_pair { id_pat pattern; expr val; };
 using let_list = containers::simple_list<let_pair>;
-using raw_let_list = containers::sl_node<let_pair>*;
+using raw_let_list = @[containers::sl_node<let_pair>*@];
 @)
 struct let_expr_node
 { id_pat pattern; expr val; expr body;
@@ -2750,7 +2750,7 @@ unique subexpression, a number of new type variables is introduced. This has no
 semantic significance, but the type checking process takes this into account.
 
 @< Type declarations needed in definition of |struct expr@;| @>=
-using abstractor = struct abstr_node*;
+using abstractor = @[struct abstr_node*@];
 
 @~The corresponding node type stores a number of variables and an expression.
 
@@ -3282,7 +3282,7 @@ we need a list of pairs of a type identifier and its defining type expression.
 @< Structure and typedef definitions for types built upon |expr| @>=
 struct typedef_struct {@; id_type id; type_p tp; patlist fields; };
 using typedef_list = containers::simple_list<typedef_struct>;
-using raw_typedef_list = atlas::containers::sl_node<typedef_struct>*;
+using raw_typedef_list = @[atlas::containers::sl_node<typedef_struct>*@];
 
 @ Here are the functions defined for those types.
 
