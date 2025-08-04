@@ -3366,7 +3366,7 @@ set localFD_1Dirac2_by_zero\
 			      	 do let n = f0 + trans_hash.lookup(v[2:])
 				    in if n >= f0
 				       	  and Llookup(n) {and Llookup(m+f)}
-				       then {prints("used TT!");} [[m+f0,n].sort]
+				       then {prints("used TT!");} [[k,n].sort]
 				       else []
 				       fi
 			       	 od.## {[vec], all starting with mloc}
@@ -3557,7 +3557,8 @@ set localFD_by_zero_short\
 		      	 in if {Llookup(m+#Perm2.fixed) and} #Perm2.trans > m+1 and #cands > 0
 		      	    then for v in cands
 			      	 do let n = #Perm2.fixed + trans_hash.lookup(v[2:])
-				    in if n >= #Perm2.fixed {and Llookup(n)}
+				    in if n >= #Perm2.fixed
+				    {and Llookup(n) and Llookup(m+#Perm2.fixed)}
 				       then [[m+#Perm2.fixed,n].sort]
 				       else []
 				       fi
@@ -3851,7 +3852,7 @@ set localFD_2Steve\
 			      	 do let n = f0 + trans_hash.lookup(v[2:])
 				    in if n >= f0
 				       	  and Llookup(n) {and Llookup(m+f)}
-				       then {prints("used TT!");} [[m+f0,n].sort]
+				       then {prints("used TT!");} [[k,n].sort]
 				       else []
 				       fi
 			       	 od.## {[vec], all starting with mloc}
