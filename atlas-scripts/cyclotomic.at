@@ -2,7 +2,7 @@
 <number_theory.at { factorization, totient function |phi@int| and such }
 <sort.at { we need to sort divisors }
 <Gaussian_elim.at { rational matrix operations, linear system solving }
-<polynomial.at { for all polynomial operations }
+<polynomial.at { for all polynomial operations and |convolve| }
 
 { This file implements arithmetic in cyclotomic fields
 
@@ -25,11 +25,10 @@ set_type CyclotomicFieldElement = ([rat] v,CyclotomicField F)
   $a/N$ modulo 1; it is a precondition that |denom(r)| divides |N|.
   The application is that $\exp(2\pi i r)=\zeta^a$ where $\zeta=\exp(2\pi i/N)$
 }
-set to_denominator (rat r, int N) = int:
-   let (numer,denom)=%(r%1) { reduce modulo 1, then split }
-   then (q,r)=N\%denom
-   in assert(=r,"root of unity is not in the specified cyclotomic field");
-   q*numer
+set to_denominator (rat p, int N) = int:
+   let (numer,denom) = (N*p)\%N { scale to unit $1/N$ and reduce modulo $N$ }
+   in assert(denom=1,"root of unity is not in the specified cyclotomic field");
+   numer
 
 { cyclotomic Fields and their elements }
 
@@ -70,7 +69,7 @@ set zero (CyclotomicField F) = CyclotomicFieldElement: embed(0,F)
 set = (CyclotomicFieldElement(v,F),CyclotomicFieldElement(w,G)) = bool:
    assert(F=G,"cyclotomic fieds differ in comparison");
    assert(#v=#w and #F.Phi=#v+1,"unnormalized cyclotimic field element(s)");
-   all(for c@i in v do c=w[i] od) { compare without converting to |ratvec| }
+   =@(rat,rat)! (v,w) { compare as |[rat]| values; do not convert to |ratvec| }
 set != (CyclotomicFieldElement x,CyclotomicFieldElement y) = bool: not x=y
 set = (CyclotomicFieldElement(v,F)) = bool:(v,F)=F.zero
 

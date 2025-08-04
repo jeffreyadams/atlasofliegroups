@@ -184,13 +184,13 @@ set in the first place.
 
 @< Function definitions @>=
 void check_interrupt()
-{@;
+{
   if (interrupt_flag!=0)
   {@; interrupt_flag=0;
     throw user_interrupt();
   }
   if (timer_out!=eternity and std::chrono::steady_clock::now()>timer_out)
-  {@; clear_timer();
+@/{@; clear_timer();
     throw time_out();
   }
 }
@@ -1251,9 +1251,10 @@ types it means the former unifies to the latter; this may seem
 counter-intuitive, but in a mix of more or less polymorphic types, the most
 accepting type will be the least polymorphic one, if all others can unify to it.
 If joining fails due to incomparable types we add the non-conforming types to
-|conflicts|. The call |join_to(common,T)| succeeds without changes if |common|
-already accepts |T|, and otherwise may succeed after setting |common| to |T| is
-|T| accepts |common|; in the remaining cases the call fails without changes.
+|conflicts|. The call |join_to(common,tp)| succeeds without changes if |common|
+already accepts |tp|, and otherwise may succeed after setting |common| to |tp|
+if |tp| accepts |common|; in the remaining cases the call fails without
+changes.
 
 @< Join |common| with each of the types in |comp_data|, copying to
      |conflicts| those for which this fails @>=
@@ -2245,6 +2246,8 @@ tells how the function object wants its arguments prepared, |maybe_push| is a
 hook that does nothing except for recursive functions that use it for their
 implementation, and |report_origin| which serves in forming an back-trace in
 case of errors during execution of the function.
+
+@s eval_level vector
 
 @< Type def... @>=
 // \.{global.h} predeclares |function_base|, and defines:
@@ -4946,14 +4949,14 @@ assignments.
 
 @< Type def... @>=
 struct projector_value : public function_base
-{ type_expr type; // used for printing purposes only
+{ type_expr tp; // used for printing purposes only
   unsigned position;
   id_type id;
   source_location loc;
 @)
   projector_value
      (const type_expr& t,unsigned i,id_type id,const source_location& loc)
-  : type(t.copy()),position(i),id(id),loc(loc) @+ {}
+  : tp(t.copy()),position(i),id(id),loc(loc) @+ {}
   virtual ~projector_value() = default;
   virtual void print(std::ostream& out) const;
   virtual void apply(eval_level l) const;
@@ -4976,7 +4979,7 @@ components.
 @< Function def... @>=
 void projector_value::print(std::ostream& out) const
   { out << "{." << main_hash_table->name_of(id) << ": projector_" << position
-     @| << '('  << type << ") }"; }
+     @| << '('  << tp << ") }"; }
 eval_level projector_value::argument_policy() const
   {@; return eval_level::single_value; }
 void projector_value::report_origin(std::ostream& o) const
@@ -5044,14 +5047,14 @@ not provide any other means of forming values of these types.
 
 @< Type def... @>=
 struct injector_value : public function_base
-{ type_expr type; // used for printing purposes only
+{ type_expr tp; // used for printing purposes only
   unsigned position;
   id_type id;
   source_location loc;
 @)
   injector_value
      (const type_expr& t,unsigned i,id_type id,const source_location& loc)
-  : type(t.copy()),position(i),id(id),loc(loc) @+ {}
+  : tp(t.copy()),position(i),id(id),loc(loc) @+ {}
   virtual ~injector_value() = default;
   virtual void print(std::ostream& out) const;
   virtual void apply(eval_level l) const;
@@ -5074,7 +5077,7 @@ components.
 @< Function def... @>=
 void injector_value::print(std::ostream& out) const
   { out << "{."<< main_hash_table->name_of(id) << ": injector_" << position
-     @| << '(' << type << ") }"; }
+     @| << '(' << tp << ") }"; }
 eval_level injector_value::argument_policy() const
   {@; return eval_level::single_value; }
 void injector_value::report_origin(std::ostream& o) const
@@ -5623,7 +5626,7 @@ whose set of tags do not provide for all tags that were used in the clause.
         failure = true;
         break;
       }
-    } // |for(tag)|
+    } // |for(tag@;@;)@;|
     if (failure)
       candidates.erase(it);
     else
@@ -5631,7 +5634,7 @@ whose set of tags do not provide for all tags that were used in the clause.
         positions=pos.undress();
       ++it;
     }
-  } // |for (it)| looping over |candidates|
+  } // |for (it@;@;)@;| looping over |candidates|
   if (not candidates.singleton())
     @< Report that the number of |candidates| accommodating all |tags|
        is not exactly one @>
@@ -7365,7 +7368,7 @@ case op_cast_expr:
   o << main_hash_table->name_of(c->oper) << '@@' << c_type;
   expression_ptr result;
   type deduced_type = type::wrap(gen_func_type,fc);
-  if (const auto* entry = global_overload_table->entry(c->oper,c_type,fc))
+  if (@[const auto* entry = global_overload_table->entry(c->oper,c_type,fc)@])
   {
     result.reset(new capture_expression(entry->value(),o.str()));
     bool success = functype_absorb(deduced_type,*entry);
@@ -8799,7 +8802,7 @@ case field_ass_stat:
   unsigned pos=-1; // value is anxiolytic for the compiler
   @< Look up a field of |*tuple_tp| named |selector|, and if found assign
      its position to |pos| and set |component| to the corresponding
-     component of |*tuple_tp|; on failure |throw expr_error| @>
+     component of |*tuple_tp|; on failure |throw @[expr_error@]| @>
   expression_ptr r = convert_expr_strongly(rhs,fc,component);
   expression_ptr p;
   if (is_local)

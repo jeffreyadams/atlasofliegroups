@@ -37,10 +37,11 @@ programming language of that name, which is independent of the Atlas library.
 @f pi nullptr
 @f alpha nullptr
 @f beta nullptr
+@s atlas x
 
 @c
 namespace atlas { namespace interpreter {
-@< Global variable definitions @>
+@< Global variable definitions @>@;
 namespace {@; @< Local function definitions @>@; }
 @< Function definitions @>@;
 }}
@@ -333,11 +334,11 @@ the Bourbaki numbering of nodes in a Dynkin diagram. Indeed the permutation
 found is exported as a second component of the result, of type \.{[int]}.
 
 We call |dynkin::lieType| in its version that also produces a permutation |pi|
-(the one that maps the standard ordering of the diagram to the actual ordering),
-and |true| as third argument to request a check that the input was indeed the
-Cartan matrix for that situation (if not a runtime error will be thrown).
-Without this test invalid Lie types could have been formed, for which root datum
-construction would most likely crash.
+(the one that maps the standard ordering of the diagram to the actual ordering).
+This function will throw an |error::Cartan_error| whenever the given matrix does
+not satisfy the (quite strict) conditions for being a Cartan matrix; without
+this precaution, root datum construction would most likely crash when given
+improper matrices.
 
 A user might want to find out whether a call to |Cartan_matrix_type| (maybe
 implicit in the construction of a root datum) will succeed, so that an error
@@ -354,7 +355,7 @@ void type_of_Cartan_matrix_wrapper (eval_level l)
   LieType lt=dynkin::Lie_type(m->val,pi);
   if (l==eval_level::no_value)
     return;
-@)
+@/
   push_value(std::make_shared<Lie_type_value>(lt));
   own_row perm = std::make_shared<row_value>(0);
   perm->val.reserve(pi.size());
@@ -364,13 +365,12 @@ void type_of_Cartan_matrix_wrapper (eval_level l)
   if (l==eval_level::single_value)
     wrap_tuple<2>();
 }
-
+@)
 void is_Cartan_matrix_wrapper (eval_level l)
 { shared_matrix m=get<matrix_value>();
-  Permutation pi;
   try
   {
-    dynkin::Lie_type(m->val,pi);
+    dynkin::Lie_type(m->val); // this may |throw| an |error::Cartan_error|
     push_value(whether(true));
   }
   catch (error::Cartan_error&)
@@ -901,9 +901,9 @@ some of the work done here to its situation.
 void based_involution_wrapper(eval_level l)
 { shared_string s = get<string_value>();
 @/shared_matrix basis = get<matrix_value>();
-@/shared_Lie_type type = get<Lie_type_value>();
+@/shared_Lie_type Lie_tp = get<Lie_type_value>();
 @)
-  unsigned int r=type->val.rank();
+  unsigned int r=Lie_tp->val.rank();
   if (basis->val.n_rows()!=r or basis->val.n_rows()!=r)
   { std::ostringstream o;
     o << "Basis should be given by " << r << 'x' << r << " matrix";
@@ -912,7 +912,7 @@ void based_involution_wrapper(eval_level l)
 @.Basis should be given...@>
 @)
   WeightInvolution inv=lietype::involution
-        (type->val,checked_inner_class_type(s->val.c_str(),type->val));
+        (Lie_tp->val,checked_inner_class_type(s->val.c_str(),Lie_tp->val));
   try
   { push_value(std::make_shared<matrix_value>(inv.on_basis(basis->val)));
     if (l==eval_level::no_value)
@@ -1269,16 +1269,16 @@ condition will cause |PreRootDatum::quotient| to throw a |std::runtime_error|.
 void root_datum_from_type_wrapper(eval_level l)
 { bool prefer_coroots = get<bool_value>()->val;
 @/shared_matrix lattice=get<matrix_value>();
-  shared_Lie_type type=get<Lie_type_value>();
+  shared_Lie_type Lie_tp=get<Lie_type_value>();
   if (lattice->val.n_rows()!=lattice->val.n_columns() @| or
-      lattice->val.n_rows()!=type->val.rank())
+      lattice->val.n_rows()!=Lie_tp->val.rank())
   { std::ostringstream o;
     o << "Sub-lattice matrix should have size " @|
-      << type->val.rank() << 'x' << type->val.rank();
+      << Lie_tp->val.rank() << 'x' << Lie_tp->val.rank();
     throw runtime_error(o.str());
   }
 @.Sub-lattice matrix should...@>
-  PreRootDatum prd(type->val,prefer_coroots);
+  PreRootDatum prd(Lie_tp->val,prefer_coroots);
   prd.quotient(lattice->val);
 @.Sub-lattice matrix not square...@>
 @.Dependent lattice generators@>
@@ -1742,27 +1742,10 @@ void mod_central_torus_info_wrapper(eval_level l)
     wrap_tuple<2>();
 }
 
-@ This function is more recent; it allows constructing a new root (sub-)datum
-by selecting coroots taking integral values on a given rational weight vector.
-
-@< Local function definitions @>=
-void integrality_datum_wrapper(eval_level l)
-{ shared_rational_vector lambda = get<rational_vector_value>();
-  shared_root_datum rd = get<root_datum_value>();
-  if (lambda->val.size()!=rd->val.rank())
-  { std::ostringstream o;
-    o << "Length " << lambda->val.size() @|
-      << " of rational vector differs from rank " << rd->val.rank();
-    throw runtime_error(o.str());
-  }
-@.Length of rational vector...@>
-  if (l!=eval_level::no_value)
-  @/push_value(root_datum_value::build @|
-      (rootdata::integrality_predatum(rd->val,lambda->val)));
-}
-
-@ Some function to allow finding the (semisimple) rank and testing dominance for
-the integral system without constructing the full integrality datum.
+@ For the integral system of a rational weight vector, here are some functions
+to allow finding its (semisimple) rank, simple generators, and testing
+dominance; all this without constructing the full integrality datum as another
+built-in function defined below does.
 
 @< Local function definitions @>=
 void integrality_rank_wrapper(eval_level l)
@@ -1778,6 +1761,26 @@ void integrality_rank_wrapper(eval_level l)
   if (l!=eval_level::no_value)
     push_value(std::make_shared<int_value>
       (rootdata::integrality_rank(rd->val,lambda->val)));
+}
+@)
+void integrality_simples_wrapper(eval_level l)
+{ shared_rational_vector lambda = get<rational_vector_value>();
+  shared_root_datum rd = get<root_datum_value>();
+  if (lambda->val.size()!=rd->val.rank())
+  { std::ostringstream o;
+    o << "Length " << lambda->val.size() @|
+      << " of rational vector differs from rank " << rd->val.rank();
+    throw runtime_error(o.str());
+  }
+@.Length of rational vector...@>
+  if (l==eval_level::no_value)
+    return;
+  auto simples = rootdata::integrality_simples(rd->val,lambda->val);
+  own_row result = std::make_shared<row_value>(0);
+  result->val.reserve(simples.size());
+  for (const auto& alpha : simples)
+    result->val.push_back(convert_to_signed_root_index(rd->val,alpha));
+  push_value(std::move(result));
 }
 @)
 void is_integrally_dominant_wrapper(eval_level l)
@@ -1799,6 +1802,25 @@ void is_integrally_dominant_wrapper(eval_level l)
       push_value(global_false); return;
     }
   push_value(global_true);
+}
+
+@ This function allows constructing a new root (sub-)datum by selecting coroots
+taking integral values on a given rational weight vector.
+
+@< Local function definitions @>=
+void integrality_datum_wrapper(eval_level l)
+{ shared_rational_vector lambda = get<rational_vector_value>();
+  shared_root_datum rd = get<root_datum_value>();
+  if (lambda->val.size()!=rd->val.rank())
+  { std::ostringstream o;
+    o << "Length " << lambda->val.size() @|
+      << " of rational vector differs from rank " << rd->val.rank();
+    throw runtime_error(o.str());
+  }
+@.Length of rational vector...@>
+  if (l!=eval_level::no_value)
+  @/push_value(root_datum_value::build @|
+      (rootdata::integrality_predatum(rd->val,lambda->val)));
 }
 
 @ A related function computes a list of fractions of a line segment where the
@@ -1828,7 +1850,7 @@ void integrality_points_wrapper(eval_level l)
 
 @ Here are four functions for (hopefully) rapid Weyl group orbit generation,
 which can be done using only a root datum. They are implemented by free
-functions |Weyl_orbit| and |Weyl_orbit_words| defined in the \.{rootdata}
+functions |Weyl_orbit| and |Weyl_orbit_Welts| defined in the \.{rootdata}
 compilation unit, both in two forms (for weights and coweights) that differ
 by the order of their arguments. The first of these pairs return an orbits as a
 (usually very wide) |int_Matrix|, the second as a |sl_list<WeylElt>|, the action
@@ -1843,7 +1865,7 @@ void Weyl_orbit_wrapper(eval_level l)
   shared_root_datum rd = get<root_datum_value>();
   if (l==eval_level::no_value)
     return;
-@)
+
   push_value(std::make_shared<matrix_value>(Weyl_orbit(rd->val,v->val)));
 }
 @)
@@ -1853,18 +1875,18 @@ void Weyl_coorbit_wrapper(eval_level l)
   shared_vector v = get<vector_value>();
   if (l==eval_level::no_value)
     return;
-@)
+
   push_value(std::make_shared<matrix_value>(Weyl_orbit(v->val,rd->val)));
 }
-
+@)
 void Weyl_orbit_ws_wrapper(eval_level l)
 {
   shared_vector v = get<vector_value>();
   shared_root_datum rd = get<root_datum_value>();
   if (l==eval_level::no_value)
     return;
-@)
-  const auto& ws = Weyl_orbit_words(rd->val, rd->W(), v->val);
+
+  const auto& ws = Weyl_orbit_Welts(rd->val, rd->W(), v->val);
   own_row result = std::make_shared<row_value>(ws.size());
   size_t i=0;
   for (auto&& w : ws)
@@ -1878,13 +1900,132 @@ void Weyl_coorbit_ws_wrapper(eval_level l)
   shared_vector v = get<vector_value>();
   if (l==eval_level::no_value)
     return;
-@)
-  const auto& ws = Weyl_orbit_words(v->val, rd->val, rd->W());
+
+  const auto& ws = Weyl_orbit_Welts(v->val, rd->val, rd->W());
   own_row result = std::make_shared<row_value>(ws.size());
   size_t i=0;
   for (auto&& w : ws)
     result->val[i++]=std::make_shared<W_elt_value>(rd,w);
   push_value(std::move(result));
+}
+
+@ Here is an auxiliary function to test and transform a list of integer root
+indices supplied by the user to consist of root indices for simple generators of
+a Weyl subgroup (generated by their reflections), returning a vector of internal
+root numbers for those generators.
+
+@< Local function definitions @>=
+std::vector<RootNbr>
+  check_W_subsystem(const RootDatum& rd, const row_value& gens)
+{ std::vector<RootNbr> g; g.reserve(gens.val.size());
+  for (const auto& gen_obj : gens.val)
+    g.push_back
+      (internal_root_index(rd,force<int_value>(gen_obj.get())->int_val(),false));
+  int_Matrix Cartan(g.size(),g.size());
+  for (unsigned int i=0; i<g.size(); ++i)
+    for (unsigned int j=0; j<g.size(); ++j)
+      Cartan(i,j) = rd.root(g[i]).dot(rd.coroot(g[j]));
+
+  try
+  {
+    dynkin::Lie_type(Cartan);
+  }
+  catch (error::Cartan_error&)
+  {
+    std::ostringstream o;
+    o << "Matrix for root indices is not a Cartan matrix: \n  ";
+    @< Write textual representation of matrix |Cartan| to |o| @>
+    throw runtime_error(o.str());
+  }
+  return g;
+}
+
+@ It is useful to do rapid orbit generation for Weyl subgroups (subgroups
+generated by a subset of the reflections) such as the integrality subgroup of a
+rational weight (generated by the reflections whose action on that weight adds
+an element of the root lattice to it). Such a subgroup should be specified by a
+subset of root indices whose Cartan matrix is valid
+
+@< Local function definitions @>=
+void Weyl_sub_orbit_wrapper(eval_level l)
+{
+  shared_vector v = get<vector_value>();
+  shared_row gens_list = get<row_value>();
+  shared_root_datum rd = get<root_datum_value>();
+  std::vector<RootNbr> g = check_W_subsystem(rd->val,*gens_list);
+  if (l==eval_level::no_value)
+    return;
+
+  push_value(std::make_shared<matrix_value>(Weyl_orbit(rd->val, g, v->val)));
+}
+@)
+void Weyl_sub_coorbit_wrapper(eval_level l)
+{
+  shared_row gens_list = get<row_value>();
+  shared_root_datum rd = get<root_datum_value>();
+  shared_vector v = get<vector_value>();
+  std::vector<RootNbr> g = check_W_subsystem(rd->val,*gens_list);
+  if (l==eval_level::no_value)
+    return;
+
+  push_value(std::make_shared<matrix_value>(Weyl_orbit(v->val, rd->val, g)));
+}
+@)
+void Weyl_sub_orbit_ws_wrapper(eval_level l)
+{
+  shared_vector v = get<vector_value>();
+  shared_row gens_list = get<row_value>();
+  shared_root_datum rd = get<root_datum_value>();
+  std::vector<RootNbr> g = check_W_subsystem(rd->val,*gens_list);
+  if (l==eval_level::no_value)
+    return;
+
+  const auto& ws = Weyl_orbit_Welts(rd->val, rd->W(), g, v->val);
+  own_row result = std::make_shared<row_value>(ws.size());
+  size_t i=0;
+  for (auto&& w : ws)
+    result->val[i++]=std::make_shared<W_elt_value>(rd,w);
+  push_value(std::move(result));
+}
+@)
+void Weyl_sub_coorbit_ws_wrapper(eval_level l)
+{
+  shared_row gens_list = get<row_value>();
+  shared_root_datum rd = get<root_datum_value>();
+  shared_vector v = get<vector_value>();
+  std::vector<RootNbr> g = check_W_subsystem(rd->val,*gens_list);
+  if (l==eval_level::no_value)
+    return;
+
+  const auto& ws = Weyl_orbit_Welts(v->val, rd->val, rd->W(), g);
+  own_row result = std::make_shared<row_value>(ws.size());
+  size_t i=0;
+  for (auto&& w : ws)
+    result->val[i++]=std::make_shared<W_elt_value>(rd,w);
+  push_value(std::move(result));
+}
+
+@ We still have to specify how a non-Cartan matrix is represented in an error
+message. We know the matrix is square, and also that it is non-empty (because
+the $0\times0$ matrix \emph{is} a valid Cartan matrix. We choose the format
+\.{[1,-2\char`\| 3,4]} that can be used as input, and for consistency use a
+format that can also be used on input for the $1\times1$ case: \.{[[3]]}.
+
+@< Write textual representation of matrix |Cartan| to |o| @>=
+{
+  if (Cartan.n_rows()==1)
+    o << "[[" << Cartan(0,0) << "]]";
+  else
+  { o << '[';
+    for (unsigned int i=0; i<Cartan.n_rows(); ++i)
+    {
+      for (unsigned int j=0; j<Cartan.n_rows(); ++j)
+        o << Cartan(i,j) <<
+          (j<Cartan.n_rows()-1?','
+          :i<Cartan.n_rows()-1?'|'
+          :']');
+    }
+  }
 }
 
 @ For a root datum with distinguished involution, one can form a ``cofolded''
@@ -2259,10 +2400,12 @@ install_function(derived_info_wrapper,@|
 		 "derived_info","(RootDatum->RootDatum,mat)");
 install_function(mod_central_torus_info_wrapper,@|
 		 "mod_central_torus_info","(RootDatum->RootDatum,mat)");
-install_function(integrality_datum_wrapper,@|
-                 "integrality_datum","(RootDatum,ratvec->RootDatum)");
 install_function(integrality_rank_wrapper,@|
                  "integrality_rank","(RootDatum,ratvec->int)");
+install_function(integrality_simples_wrapper,@|
+                 "integrality_simples","(RootDatum,ratvec->[int])");
+install_function(integrality_datum_wrapper,@|
+                 "integrality_datum","(RootDatum,ratvec->RootDatum)");
 install_function(is_integrally_dominant_wrapper,@|
                  "is_integrally_dominant","(RootDatum,ratvec->bool)");
 install_function(integrality_points_wrapper,@|
@@ -2274,6 +2417,14 @@ install_function(Weyl_orbit_ws_wrapper@|,"Weyl_orbit_ws",
 		"(RootDatum,vec->[WeylElt])");
 install_function(Weyl_coorbit_ws_wrapper@|,"Weyl_orbit_ws",
 		"(vec,RootDatum->[WeylElt])");
+install_function(Weyl_sub_orbit_wrapper@|,"Weyl_orbit",
+		"(RootDatum,[int],vec->mat)");
+install_function(Weyl_sub_coorbit_wrapper@|,"Weyl_orbit",
+		"(vec,RootDatum,[int]->mat)");
+install_function(Weyl_sub_orbit_ws_wrapper@|,"Weyl_orbit_ws",
+		"(RootDatum,[int],vec->[WeylElt])");
+install_function(Weyl_sub_coorbit_ws_wrapper@|,"Weyl_orbit_ws",
+		"(vec,RootDatum,[int]->[WeylElt])");
 install_function(cofolded_wrapper@|,"cofolded","(InnerClass->RootDatum)");
 install_function(walls_wrapper,"walls","(RootDatum,ratvec->[int],int)");
 install_function(alcove_center_wrapper,"alcove_center","(Param->Param)");
@@ -2854,14 +3005,14 @@ weyl::Twist check_involution
       left-act on |delta| by the reverse of~|ww| to make it match |Delta| @>
   if (lo==nullptr)
     return p; // if no details are asked for, we are done now
-@/LieType& type=lo->d_type;
+@/LieType& Lie_tp=lo->d_type;
   InnerClassType& inner_class=lo->d_inner;
   Permutation& pi=lo->d_perm;
-  @< Compute the Lie type |type|, the inner class |inner_class|, and the
+  @< Compute the Lie type |Lie_tp|, the inner class |inner_class|, and the
      permutation |pi| of the simple roots with respect to standard order for
-     |type| @>
+     |Lie_tp| @>
   if (r>s)
-    @< Add type letters to |type| and inner class symbols to |inner_class|
+    @< Add type letters to |Lie_tp| and inner class symbols to |inner_class|
        for the central torus @>
   return p;
 }
@@ -2891,21 +3042,21 @@ lies in another component of the diagram we have a Complex inner class.
 
 @h "dynkin.h"
 
-@< Compute the Lie type |type|, the inner class... @>=
+@< Compute the Lie type |Lie_tp|, the inner class... @>=
 { DynkinDiagram diagram(rd.Cartan_matrix());
   auto comps = diagram.components(); // connected components
-  type = diagram.type();
+  Lie_tp = diagram.type();
   pi = diagram.perm(); // |pi| normalises to Bourbaki order
-  assert(type.size()==comps.size());
+  assert(Lie_tp.size()==comps.size());
 @)
   inner_class.reserve(comps.size()+r-s); // certainly enough
   unsigned int offset=0; // accumulated rank of simple factors seen
 
-  unsigned int i=0; // index into |type|
+  unsigned int i=0; // index into |Lie_tp|
   for (auto cit=comps.begin(); not comps.at_end(cit); ++cit,++i)
   { bool equal_rank=true;
     unsigned int comp_rank = cit->rank();
-    assert (comp_rank==type[i].rank());
+    assert (comp_rank==Lie_tp[i].rank());
        // and |*it| runs through bits in |*cit| in following loop
     for (auto it=&pi[offset]; it!=&pi[offset+comp_rank]; ++it)
       if (p[*it]!=*it) {@; equal_rank=false; break; }
@@ -2913,11 +3064,11 @@ lies in another component of the diagram we have a Complex inner class.
       // identity on this component: compact component
     else if (cit->support.test(p[pi[offset]]))
        // (any) one root stays in component |*cit|: unequal rank
-      inner_class.push_back(type[i].first=='D' and comp_rank%2==0 ? 'u' : 's');
+      inner_class.push_back(Lie_tp[i].first=='D' and comp_rank%2==0 ? 'u' : 's');
     else
     { inner_class.push_back('C'); // record Complex component
       @< Gather elements of Complex inner class component, adapting the values
-         of |type|, |comps|, and~|pi| @>
+         of |Lie_tp|, |comps|, and~|pi| @>
       offset += comp_rank;
       ++cit,++i; // skip over component |i|, loop will skip component |i+1|
     }
@@ -2928,7 +3079,7 @@ lies in another component of the diagram we have a Complex inner class.
 
 @ Complex factors of the inner class involve two simple factors, which requires
 some additional care. The corresponding components of the Dynkin diagram might
-not be consecutive, in which case we must permute the factors of |type| to make
+not be consecutive, in which case we must permute the factors of |Lie_tp| to make
 that true, permute the |comp| subsets to match, and update |pi| as well.
 Moreover we wish that, as seen through |pi|, the permutation |p| interchanges
 the roots of the two now consecutive factors by a fixed shift in the index by
@@ -2945,10 +3096,10 @@ matching factor |i|.
 { auto beta = p[pi[offset]];
     // index of simple root, |delta| image of first one in current component
   @< Find the component~|k| after |i| that contains |beta|, rotate entry |k| of
-     |comps| to position |i+1|, while shifting values in |type| and |pi|
+     |comps| to position |i+1|, while shifting values in |Lie_tp| and |pi|
      upwards by |1| respectively |comp_rank| places @>
 @)
-  type[i+1]=type[i]; // duplicate factor |i|
+  Lie_tp[i+1]=Lie_tp[i]; // duplicate factor |i|
   for (unsigned int j=offset; j<offset+comp_rank; ++j)
     pi[j+comp_rank]=p[pi[j]];
      // reconstruct matching component in matching order, applying~|p|
@@ -2958,7 +3109,7 @@ matching factor |i|.
 @ When the inner class permutation |p| interchanges a component with another, we
 use the image~|beta| of one root in the former component to search for the
 latter component. Then, as remarked above, we can simply shift up any
-intermediate values of |pi|, |type| and |comp| to their new places; only for the
+intermediate values of |pi|, |Lie_tp| and |comp| to their new places; only for the
 bitset |comp[k]| it is worth while to save the old value and reinsert it at its
 moved-down place.
 
@@ -2972,7 +3123,7 @@ moved-down place.
 @.Non matching Complex factor@>
 
 #ifndef NDEBUG
-  assert(type[k]==type[i]); // paired simple types for complex factor
+  assert(Lie_tp[k]==Lie_tp[i]); // paired simple types for complex factor
   for (unsigned int l=1; l<comp_rank; ++l)
     assert(cit1->support.test(p[pi[offset+l]]));
         // image by |p| of remainder of |comp[i]| matches |comp[k]|
@@ -2982,10 +3133,10 @@ moved-down place.
   {
     comps.splice(std::next(cit),comps,cit1);
       // rotate node |*cit1| to position after |cit|
-    std::copy_backward(&type[i+1],&type[k],&type[k+1]); // shift up |1|
+    std::copy_backward(&Lie_tp[i+1],&Lie_tp[k],&Lie_tp[k+1]); // shift up |1|
 @)
     auto j=offset+comp_rank;
-    for (auto it=&type[i+1]; it!=&type[k]; ++it)
+    for (auto it=&Lie_tp[i+1]; it!=&Lie_tp[k]; ++it)
       j += it->rank();
     std::copy_backward(&pi[offset+comp_rank],&pi[j],&pi[j+comp_rank]);
     // shift up |comp_rank|
@@ -3007,10 +3158,10 @@ first $r$ vectors span the lattice to be divided out), express the involution
 of that basis (which will have zeros in the bottom-left $(r-s)\times{s}$
 block), and extract the bottom-right $(r-s)\times(r-s)$ block.
 
-@< Add type letters to |type| and inner class symbols to |inner_class|
+@< Add type letters to |Lie_tp| and inner class symbols to |inner_class|
    for the central torus @>=
 { for (unsigned int k=0; k<r-s; ++k)
-    type.push_back(SimpleLieType('T',1));
+    Lie_tp.push_back(SimpleLieType('T',1));
   int_Matrix root_lattice
     (rd.beginSimpleRoot(),rd.endSimpleRoot(),r,tags::IteratorTag());
 @/CoeffList factor; // values will be unused
@@ -6027,15 +6178,15 @@ void KGP_sum_wrapper(eval_level l)
     return;
 @)
   auto length = rc.kgb().length(srk.x());
-  auto list = rc.KGP_set(srk);
-  own_row result = std::make_shared<row_value>(list.size());
+  auto Kt_list = rc.KGP_set(srk);
+  own_row result = std::make_shared<row_value>(Kt_list.size());
   auto res_p=result->val.begin();
-  for (auto&& t : list)
+  for (auto&& Kt : Kt_list)
   {
     auto tup = std::make_shared<tuple_value>(2);
-    auto dl = length - rc.kgb().length(t.x());
+    auto dl = length - rc.kgb().length(Kt.x());
     tup->val[0] = std::make_shared<int_value>(dl%2==0 ? 1 : -1);
-    tup->val[1] = std::make_shared<K_type_value>(p->rf,std::move(t));
+    tup->val[1] = std::make_shared<K_type_value>(p->rf,std::move(Kt));
     *res_p++ = std::move(tup);
   }
   push_value(std::move(result));
@@ -6058,6 +6209,8 @@ The library also has a method |Rep_table::K_type_formula| that stores the
 formulas it computes, and tries to use them without recomputation when it can;
 it still uses the method from |Rep_context| to do the actual computation.
 We provide two wrapper functions, one without and one with this memoisation.
+
+@s numeric_limits vector
 
 @< Local function def...@>=
 void K_type_formula_wrapper(eval_level l)
@@ -7403,14 +7556,14 @@ void strong_components_wrapper(eval_level l)
     wrap_tuple<2>();
 }
 
-@ The computations with parameters for the extended group, like done by the
-built-in function |twisted_deform| to be defined below, depend on a choice, for
-each parameter, of one of the two extensions of it to the extended group (each
-one corresponding to an equivalence classes of extended parameters, which is
-made by the internal method |Rep_context::default_extend|. In order
-that the user have explicit knowledge of this choice, we also define a user
-function |default_extend| that returns a tuple of the essential components of
-this extended parameter.
+@ In built-in functions like |twisted_deform| to be defined below, the
+computations with parameters for the extended group depend on a choice, for each
+parameter, of one of the two extensions of it to the extended group (each one
+corresponding to an equivalence classes of extended parameters, which is made by
+the internal method |Rep_context::default_extend|. In order that the user have
+explicit knowledge of this choice, we also define a user function
+|default_extend| that returns a tuple of the essential components of this
+extended parameter.
 
 @< Local function def...@>=
 void default_extend_wrapper(eval_level l)
@@ -7505,18 +7658,18 @@ into a list of parameters and three tables in the form of matrices.
     params->val[n] = std::make_shared<module_parameter_value> @|
       (p->rf,rc.sr_gamma(block.x(z),lambda_rho,gamma));
     for (weyl::Generator s=0; s<eb.rank(); ++s)
-    { auto type = eb.descent_type(s,n);
-      types(n,s) = static_cast<int>(type);
-      if (is_like_compact(type) or is_like_nonparity(type))
+    { auto tp = eb.descent_type(s,n);
+      types(n,s) = static_cast<int>(tp);
+      if (is_like_compact(tp) or is_like_nonparity(tp))
       @/{@; links0(n,s)=eb.size(); links1(n,s)=eb.size(); }
       else
-      { links0(n,s)= is_complex(type) ? eb.cross(s,n): eb.Cayley(s,n);
+      { links0(n,s)= is_complex(tp) ? eb.cross(s,n): eb.Cayley(s,n);
         if (eb.epsilon(s,n,links0(n,s))<0)
 	  links0(n,s) = -1-links0(n,s);
-        if (link_count(type)==1)
+        if (link_count(tp)==1)
           links1(n,s)=eb.size(); // leave second matrix entry empty
         else
-        { links1(n,s)= has_double_image(type)
+        { links1(n,s)= has_double_image(tp)
             ? eb.Cayleys(s,n).second
             : eb.cross(s,n);
           if (eb.epsilon(s,n,links1(n,s))<0)
@@ -7868,7 +8021,7 @@ void module_coefficient::evaluate(level l) const
 adding or removing a term in the process), a method |assign_coef| is provided.
 It will be called from the \.{axis} compilation unit (the programming language
 interpreter). The implementation is similar to that of |Free_Abelian::add_term|,
-using the |std:map| interface from which |Free_Abelian| was derived; as is the
+using the |std::map| interface from which |Free_Abelian| was derived; as is the
 case there a term can get created, modified, or deleted, of nothing can happen
 at all,
 
@@ -8318,7 +8471,7 @@ void full_deform_wrapper(eval_level l)
     return;
 @)
   repr::K_type_nr_poly result;
-    // this is the data type used by |Rep_table::full_deformation|
+    // the data type used by |Rep_table::full_deformation|
   auto finals = p->rc().finals_for(p->val);
   for (auto it=finals.begin(); not finals.at_end(it); ++it)
     for (auto&& term : p->rt().full_deformation(std::move(it->first)))
@@ -8340,7 +8493,7 @@ void twisted_full_deform_wrapper(eval_level l)
   auto finals = @;ext_block::
     extended_finalise(rc,p->val,rc.inner_class().distinguished());
   repr::K_type_nr_poly result;
-    // this is the data type used by |Rep_table::twisted_full_deformation|
+    // the data type used by |Rep_table::twisted_full_deformation|
   for (auto it=finals.cbegin(); it!=finals.cend(); ++it)
   { const auto& def = rt.twisted_full_deformation(std::move(it->first));
     result.add_multiple(def,
@@ -8456,6 +8609,7 @@ void KL_sum_at_s_wrapper(eval_level l)
     push_value(std::make_shared<virtual_module_value>@|
       (p->rf,p->rt().KL_column_at_s(p->val)));
 }
+@)
 void KL_sum_at_s_to_ht_wrapper(eval_level l)
 { int bound = get<int_value>()->int_val();
   shared_module_parameter p = get<module_parameter_value>();
@@ -8468,6 +8622,42 @@ void KL_sum_at_s_to_ht_wrapper(eval_level l)
       (p->rf,p->rt().KL_column_at_s_to_height(p->val,limit)));
 }
 @)
+void timed_KL_sum_at_s_to_ht_wrapper(eval_level l)
+{ auto period = get<int_value>()->long_val();
+  int bound = get<int_value>()->int_val();
+  shared_module_parameter p = get<module_parameter_value>();
+  test_standard(*p,"Cannot compute Kazhdan-Lusztig sum");
+  test_final(*p,"Cannot compute Kazhdan-Lusztig sum");
+  if (l==eval_level::no_value)
+    return;
+@)
+  set_timer(period);
+  try
+  { repr::level limit = bound>=0 ? bound : -1;
+    // negative becomes maximal unsigned value
+    push_value(std::make_shared<virtual_module_value>@|
+      (p->rf,p->rt().KL_column_at_s_to_height(p->val,limit)));
+  }
+  catch (const time_out& e)
+  { auto result = std::make_shared<tuple_value>(0); // the void
+    push_value(std::make_shared<union_value>(0,std::move(result),
+               main_hash_table->match_literal("timed_out")));
+    return;
+  }
+  clear_timer();
+@)
+  push_value(std::make_shared<union_value>(1,pop_value(),
+               main_hash_table->match_literal("done")));
+  // wrap into union
+}
+
+@ There is also a twisted variant of |KL_sum_at_s|. For now we do not define a
+height-bounded or time-limited version of this function, since these special
+cases are intended for strategic approaches to treating hard cases of unitary
+dual computations for simple groups, which are equal-rank and therefore do not
+require twisted computations.
+
+@< Local function def...@>=
 void twisted_KL_sum_at_s_wrapper(eval_level l)
 { shared_module_parameter p = get<module_parameter_value>();
   test_standard(*p,"Cannot compute Kazhdan-Lusztig sum");
@@ -8684,6 +8874,8 @@ install_function(timed_twisted_full_deform_wrapper,@|"twisted_full_deform"
 install_function(KL_sum_at_s_wrapper,@|"KL_sum_at_s","(Param->ParamPol)");
 install_function(KL_sum_at_s_to_ht_wrapper,@|"KL_sum_at_s_to_height"
 		,"(Param,int->ParamPol)");
+install_function(timed_KL_sum_at_s_to_ht_wrapper,@|"KL_sum_at_s_to_height"
+		,"(Param,int,int->ParamPol)");
 install_function(twisted_KL_sum_at_s_wrapper,@|"twisted_KL_sum_at_s"
                 ,"(Param->ParamPol)");
 install_function(KL_column_wrapper,@|"KL_column","(Param->[int,Param,vec])");

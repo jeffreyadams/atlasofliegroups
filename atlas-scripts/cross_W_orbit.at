@@ -1,30 +1,16 @@
 <basic.at
-<sort.at { for |sort_u@(int,int->bool)| and |merge@(int,int->bool)| }
-<Weylgroup.at
+<hash.at
 
-{ orbit of |x| by cross actions from |gens|, with example transportin w }
+{ orbit of |x| by cross actions from |gens|, with example transporting |w| }
 set cross_sub_orbit ([WeylElt] gens, KGBElt x) = [KGBElt,WeylElt]:
-(  let G = x.real_form
-   then index = for :KGB_size(G) do minus_1 od
-   , orbit = [(x,id_W(x.root_datum))]
-   , i=0
-in index[#x]:=0 { mark |x| as seen, and present in |orbit[0]| }
-;  while
-      let k=#orbit { variable future position of first new element to be found }
-      then news = [KGBElt,WeylElt]:
-         while i<#orbit
-         do let (y,witness) = orbit[i] next i+:=1
-         in for s in gens
-	    do let z=cross(s,y)
-	    in if index[#z].< then index[#z]:=k; k+:=1; [(z,s*witness)]
-	       else [] { already seen, ignore }
-	       fi
-	    od.##
-	 od.##
-   in {while} >#news
-   do orbit ##:= news
-   od
-; for k@i in index do if k.>= then [orbit[k]] else [] fi od.##
+(  let hi = lift((KGBElt x,WeylElt .)int: #x, triv_hash_info)
+   then hash = make_hash(hi)
+   , actors =
+      for gen in gens
+      do (KGBElt x,WeylElt w)(KGBElt,WeylElt): (cross(gen,x),gen*w)
+      od
+in hash.match(x,id_W(x.root_datum))
+; exhaust(actors,hash)
 )
 
 set cross_orbit (KGBElt x) = [KGBElt,WeylElt]:
@@ -42,7 +28,13 @@ in (found, let (,witness)=orbit[if found then k else 0 fi] in witness)
 
 { solve for w in W in y=cross(w,x); at least one solution should exist }
 set cross_divide (KGBElt y,KGBElt x) {note argument order} = WeylElt:
-   let (found,witness) = is_in_cross_orbit(x)(y)
-in if found then witness
-   else error("Did not find ",y," in cross orbit of ",x)
-   fi
+   let hi = lift((KGBElt x,WeylElt .)int: #x, triv_hash_info)
+   , rd = x.root_datum
+   then hash = Hash<(KGBElt,WeylElt)>: make_hash(hi)
+   , actors =
+      for gen in rd.W_gens do (KGBElt x,WeylElt w): (cross(gen,x),gen*w) od
+   , e = id_W(rd)
+in case hash.match(x,e); exhaust(actors,hash); hash.search(y,e)
+   | none: error("Did not find ",y," in cross-orbit of ",x)
+   | some(i): let (,w)=hash.index(i) in w
+   esac
