@@ -165,9 +165,9 @@ set standardize(KGBElt x, ratvec lambda, vec av) = (KGBElt, ratvec, vec):
     then (y,x1) = simplifier_theta(L,x)
     {then () = prints("y = ",y)}
     in let (x1m,lambda1) = move_theta(y.inverse)(x,lambda)
-       then () = assert(x1m = x1,"problem with move in standardize")
+       { then () = assert(x1m = x1,"problem with move in standardize")
        then () = assert(1*parameter(x,lambda,0*lambda) = 1*parameter(x1,lambda1,0*lambda1),
-       	       	 "problem with x1 and lambda1 in standardize")
+       	       	 "problem with x1 and lambda1 in standardize")}
        in (x1,lambda1, av*y)
 
 set old_standardize(KGBElt x, ratvec lambda, vec av) = (KGBElt, ratvec, vec):
@@ -204,13 +204,13 @@ set std_quo(Param p) = ParamPol:
     1*p-character_formula(1*p)
 
 set ind_quo(KGBElt x, ratvec lambda, vec av, rat t) = ParamPol:
-    let pL = pL(x,lambda,av,t)
-    then () = assert(av*(pL.infinitesimal_character) = t, "bad pL")
-    then pL1 = pL1(x,lambda,av,t)
-    then () = assert(dominant(x.real_form,pL.infinitesimal_character) =
-    	 dominant(x.real_form, pL1.infinitesimal_character),"bad infl char for pL1")
-    then () = assert(#character_formula(1*pL) = (#character_formula(1*pL1)),
-    "bad char for pL1")
+    let {pL = pL(x,lambda,av,t)
+    {then () = assert(av*(pL.infinitesimal_character) = t, "bad pL")}
+    then} pL1 = pL1(x,lambda,av,t)
+    {then () = assert(dominant(x.real_form,pL.infinitesimal_character) =
+    	 dominant(x.real_form, pL1.infinitesimal_character),"bad infl char for pL1")}
+    {then () = assert(#character_formula(1*pL) = (#character_formula(1*pL1)),
+    "bad char for pL1")}
     in real_induce_standard(std_quo(pL1), x.real_form)
 
 {given a reducibility coroot av, take generic point on hyperplane
@@ -230,7 +230,7 @@ set test(KGBElt x, ratvec lambda, vec av, rat t, int HT) = bool:
 set red_points(KGBElt x, ratvec lambda, vec av,int HT) = [int]:
     let (m,M) = range(x,lambda,av), thetapl = x.involution+1
     in for j:M-m+1 from m
-       do if test(x,lambda,av,j,HT) or ((av*thetapl).= and j.=)
+       do if test(x,lambda,av,j,HT) {or ((av*thetapl).= and j.=)}
        	  then [j]
 	  else []
 	  fi
@@ -303,6 +303,19 @@ set pos_tester(KGBElt x, ratvec lambda,int HT,ratvec gamma) = bool:
 	      od)
     in is_pure(Form_p)}
 
+set extra_coord_flag = false
+
+{USE Kpol_hash defined in FPP_faces_geom.at}
+set pos_tester_Kchar(KGBElt x, ratvec lambda,int HT,ratvec gamma) =
+    (bool, vec):
+    let p = parameter(x,lambda,gamma), G = x.real_form
+    then qs = monomials(1*p)
+    in if extra_coord_flag
+       then (all (for q in qs do @bool: is_unitary_to_ht_big_SIMPLE_old(q,HT) od),
+       	    [Kpol_hash.match(K_type_pol(character_formula_to_height(1*p,HT))),#qs])
+       else (all (for q in qs do @bool: is_unitary_to_ht_big_SIMPLE_old(q,HT) od),[])
+       fi
+
 {
 {record values of thruple for (x,lambda,HT}
 set xlHT_vecHash = make_vec_hash()
@@ -325,7 +338,10 @@ set_type
   , ((KGBElt, ratvec, int) -> vec_hash) vecHash {hash table of location vecs known}
   , ((KGBElt, ratvec, int) -> [[int]]) red_points {for each reducibility coroot, list of reducibility points}
   , ((KGBElt, ratvec, int) -> [bool]) postests {size vecHash.size(), listing unitarity results}
+  , ((KGBElt, ratvec, int) -> [vec]) extra_coords {size vecHash.size():
+  [Kchar #, #LQs] if extra_coord_flag, [] else}
   , ((KGBElt, ratvec, int, ratvec) -> bool) postest {test param(x,lambda,last_arg) for unitarity to ht}
+  , ((KGBElt, ratvec, int, ratvec) -> vec) extra_coord {test param(x,lambda,last_arg) for unitarity to ht} 
   , ((KGBElt, ratvec, int, ratvec) -> vec) thruple {loc vec: (x,lambda,gamma) to HT}
 )
 ]
@@ -339,6 +355,7 @@ set make_steve_hash() = steve_hash_table:
     then redpoints = [[[[int]]]]:[] {for each entry in xlhash and height, [int] = bitmap of reducibility
     	 	     		  points for each reducibility coroot}
     then statuses = [[[[bool]]]]:[] {one [bool] for each vechash}
+    then charvecs = [[[[vec]]]]: [] {one [vec] for each vechash}
     then clearSH() = void:
     	 let () = real_form_hash.clear()
 	 then () = K_type_hashes:=[]
@@ -346,6 +363,7 @@ set make_steve_hash() = steve_hash_table:
 	 then () = heights:=[]
 	 then () = vechashes:=[]
 	 then () = statuses:=[]
+	 then () = charvecs:=[]
 	 then () = redpoints := []
 	 in ()
     then add_real_form(RealForm rf) = int:
@@ -358,6 +376,7 @@ set make_steve_hash() = steve_hash_table:
 			vechashes #:= [];
 			statuses #:= [];
 			redpoints #:= [];
+			charvecs #:= [];
 			assert(real_form_hash.size() = #K_type_hashes and #xlhashes = #K_type_hashes and
 	       	    	   #heights = #xlhashes and #vechashes = #heights and #statuses = #heights and
 			   #redpoints = #heights, "steve_hash damaged on adding real form")
@@ -378,7 +397,8 @@ set make_steve_hash() = steve_hash_table:
 	    then heights[rfnum]#:=null(0);
 	    	 redpoints[rfnum]#:=[]; {add an empty list of lists of reducibility points for the new height}
 		 vechashes[rfnum]#:=[]; {add an empty list of lists of vec_hash}
-		 statuses[rfnum]#:=[] {add an empty list of lists of bools}
+		 statuses[rfnum]#:=[]; {add an empty list of lists of bools}
+		 charvecs[rfnum]#:=[] {add an empty list of lists of vecs}
 	    fi;
 	    (rfnum,xlnum)
     then add_xlht(KGBElt x, ratvec lambda, int HT) = (int,int,int): {real form index, xlhash index, HT index}
@@ -404,6 +424,10 @@ set make_steve_hash() = steve_hash_table:
 		 then () = statusxl #:= [] {add a new [bool] for this height}
 		 then () = statusr[xlnum]:=statusxl
 		 then () = statuses[rfnum]:=statusr
+		 then charvecxl = charvecs[rfnum][xlnum], charvecr = charvecs[rfnum]
+		 then () = charvecxl #:= [] {add a new [vec] for this height}
+		 then () = charvecr[xlnum]:=charvecxl
+		 then () = charvecs[rfnum]:=charvecr
 		 in htnum:= J
 	    fi;
 	    (rfnum,xlnum,htnum)
@@ -422,12 +446,24 @@ set make_steve_hash() = steve_hash_table:
 	 then () = if vecnum = VECNUM {new location rel hyperplanes}
 	      	   then let srxlht = statuses[rfnum][xlnum][htnum], {[bool]}
 		   	    srxl = statuses[rfnum][xlnum],
-			    sr = statuses[rfnum]
-			then () = srxlht#:=pos_tester(x, lambda, HT, gamma)
+			    sr = statuses[rfnum],
+			    charvecxlht = charvecs[rfnum][xlnum][htnum], {[vec]}
+		   	    charvecxl = charvecs[rfnum][xlnum],
+			    charvecr = charvecs[rfnum]
+			then (boo,v) = pos_tester_Kchar(x, lambda, HT, gamma)
+			then () = srxlht#:=boo
 			then () = srxl[htnum]:=srxlht
 			then () = sr[xlnum]:=srxl
-			in statuses[rfnum]:=sr
-		   {statuses[rfnum][xlnum][htnum] #:= pos_tester(x, lambda, HT, gamma)}
+
+			then () = charvecxlht#:=v
+			then () = charvecxl[htnum]:=charvecxlht
+			then () = charvecr[xlnum]:=charvecxl
+			in statuses[rfnum]:=sr;
+			   charvecs[rfnum]:=charvecr
+		   {statuses[rfnum][xlnum][htnum] #:= 1st coord of
+		   				  pos_tester_Kchar(x, lambda, HT, gamma)}
+		   {charvecs[rfnum][xlnum][htnum] #:= 2nd coord of
+		   				  pos_tester(x, lambda, HT, gamma)}
 		   fi
 	 in (rfnum, xlnum, htnum, vecnum)
 {      then check() = void:
@@ -455,10 +491,19 @@ set make_steve_hash() = steve_hash_table:
   , ((KGBElt, ratvec, int) -> [bool]): {postests} (KGBElt x, ratvec lambda, int HT) [bool]:
     let (rfnum, xlnum, htnum) = add_xlht(x,lambda,HT)
     in statuses[rfnum][xlnum][htnum]
-  , ((KGBElt, ratvec, int, ratvec) -> bool): {postest} (KGBElt x, ratvec lambda, int HT, ratvec gamma) bool:
+  , ((KGBElt, ratvec, int) -> [vec]): {extra_coords} (KGBElt x, ratvec lambda, int HT) [vec]:
+    let (rfnum, xlnum, htnum) = add_xlht(x,lambda,HT)
+    in charvecs[rfnum][xlnum][htnum]
+  , ((KGBElt, ratvec, int, ratvec) -> bool): {postest} (KGBElt x, ratvec lambda, int HT,
+    ratvec gamma) bool:
     let (rfnum, xlnum, htnum, vecnum) = SHthruple(x,lambda,HT,gamma)
     in statuses[rfnum][xlnum][htnum][vecnum]
-  , ((KGBElt, ratvec, int, ratvec) -> vec): {thruple} (KGBElt x, ratvec lambda, int HT, ratvec gamma) vec:
+  , ((KGBElt, ratvec, int, ratvec) -> vec): {extra_coord} (KGBElt x, ratvec lambda, int HT,
+    ratvec gamma) vec:
+    let (rfnum, xlnum, htnum, vecnum) = SHthruple(x,lambda,HT,gamma)
+    in charvecs[rfnum][xlnum][htnum][vecnum]
+  , ((KGBElt, ratvec, int, ratvec) -> vec): {thruple} (KGBElt x, ratvec lambda, int HT,
+    ratvec gamma) vec:
     let (rfnum, xlnum, htnum, vecnum) = SHthruple(x,lambda,HT,gamma)
     in vechashes[rfnum][xlnum][htnum].index(vecnum)
   )
@@ -650,7 +695,10 @@ set localFD_2SteveU\
 			    od))
 	       then []
 	       elif steve_hash.postest(x,lambda,HT,face_bary(Lvd,v))
-	       then [v]
+	       then if extra_coord_flag
+	       	    then [v##steve_hash.extra_coord(x,lambda,HT,face_bary(Lvd,v))]
+		    else [v]
+		    fi
 	       else []
 	       fi
 	 od.##
@@ -725,7 +773,10 @@ set test_Steve(KGBElt x, ratvec lambda, int HT, LocalVertexData Lvd, [[FaceVerts
 	      "; vecHash size = ", steve_hash.vecHash(x,lambda,HT).size())
 	      fi;
 	      if steve_hash.postest(x,lambda,HT,face_bary(Lvd,v))
-       	      then [v]
+       	      then if extra_coord_flag
+	      	   then [v##steve_hash.extra_coord(x,lambda,HT,face_bary(Lvd,v))]
+	      	   else [v]
+		   fi
 	      else []
 	      fi
        	   od.##
@@ -770,6 +821,8 @@ set localFD_SteveU(KGBElt x, ratvec lambda, LocalVertexData Lvd, PermOrderTwo Pe
     	      then prints("LF1 to height h0 = ",LF[1])
 	      fi
     then () = LF:=test_Steve(x,lambda,-1,Lvd,LF)
+   { then hts = if #LF[1].>=3
+    	       then next_heights(p0,rank(x.involution - 1)+1)}
     then answer = localFD_lookDownSteveU(x,lambda,-1,Lvd,LF,2,rank(x.involution - 1)+1)
     in if fund_face_verbose
        then prints("For unitarity, time for localFD_SteveU: ",
@@ -816,3 +869,60 @@ set localFD_SteveUstep(KGBElt x, ratvec lambda) = [[FaceVertsKHash]]:
     let D = rank(x.involution -1)
     then hts = next_heights(parameter(x,lambda,0*lambda),D+2)
     in localFD_SteveUstep(x,lambda,hts,D)
+
+{get verts, edges to hts[edge_offset] to feed one_level_end, with Kchar and #LQs}
+set localFD_Steve2(KGBElt x, ratvec lambda, LocalVertexData Lvd, PermOrderTwo Perm2) =
+    [[FaceVertsKHash]]:
+    let start = elapsed_ms(), p0 = parameter(x,lambda,0*lambda)
+    then hts = next_heights(p0,edge_offset+1)
+    then LF0 = localFD_1SteveU(x,lambda,hts[0], Lvd)
+    then () = if show_steve_flag
+    	      then prints("LF0 to height ",hts[0]," = ",LF0)
+	      fi
+    then () = extra_coord_flag:=true
+    then () = LF0:= test_Steve(x,lambda,hts[edge_offset],Lvd,[LF0])[0]
+    then LF = [LF0,  localFD_2SteveU(x,lambda,hts[edge_offset],Lvd,Perm2,LF0)]
+    then () = if show_steve_flag
+    	      then prints("LF0 to height ",hts[edge_offset]," = ",LF[0]);
+	      	   prints("LF1 to height ",hts[edge_offset]," = ",LF[1])
+	      fi
+    then () = if fund_face_verbose
+    	      then prints("edge/vert counts to height ",hts[edge_offset], " = ",
+	      	   for list in LF do #list od,"; time  = ",print_time_string(elapsed_ms() - start))
+	      fi
+    in extra_coord_flag:=false; LF
+
+set localFD_Steve2(KGBElt x, ratvec lambda) = [[FaceVertsKHash]]:
+    let ic = x.inner_class, theta = x.involution
+    then (Lvd,Perm2) = LPm_table.LPm_entry(ic, theta, ratvec_as_vec(lambda+theta*lambda))
+    in localFD_Steve2(x, lambda, Lvd, Perm2)
+
+
+
+
+set tester(RealForm G) = void:
+let start=elapsed_ms()
+then () = test_verbose:=false
+then () = test_slightly_verbose:=false
+then () = time_verbose:=false
+then () = unipotents_to_hash(G,big_unitary_hash.uhash(G))
+then () = for x in KGB(G)
+     	  do if twist(x)=x
+	     then for lambda in FPP_lambdas(x)
+   	     	  do let p0 = parameter(x,lambda,0*lambda)
+      	     	     in if is_pos_on_LKTs(p0)
+      	 	     	then let LF = localFD_Steve2( x, lambda), Lvd = Lvd(x,lambda)
+      	      	   	     then HT = next_heights(p0,edge_offset+1)[edge_offset]
+	      		     then () = local_test_GEO_hash_one_level_end(x, lambda, Lvd, LF, Kpol_hash, HT,
+	      	 	     	big_unitary_hash.uhash(G),is_unitary@Param)
+	      		in ()
+	 	   	fi
+   	     	   od
+	      fi
+	 od
+in prints("total time = ",print_time_string(elapsed_ms() - start)," to find ",
+   		 big_unitary_hash.uhash(G).size()," unitary reps.")
+
+
+
+
