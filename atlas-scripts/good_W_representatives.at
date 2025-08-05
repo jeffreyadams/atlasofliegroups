@@ -62,37 +62,31 @@ let M=matrix(w) in eigenpairs(M,M.order)
 
 {coroots vanishing on a set of weights}
 set zero_coroots(RootDatum rd,[CyclotomicVec] wts)=[int]:
-##for alpha_check@i in poscoroots(rd) do
-if all (for v in wts do =dot_product(alpha_check,v) od)
-then [i] else [] fi  od
+for alpha_check@i in poscoroots(rd)
+  if all (for v in wts do =dot_product(alpha_check,v) od)
+  do i
+  fi
+od
 
 {returns a root_datum for a *possibly non-standard* Levi}
 set levi(RootDatum rd,[CyclotomicVec] vecs)=RootDatum:
-let real_vecs=for v in vecs do v+bar(v) od then
-im_vecs  =for v in vecs do v-bar(v) od then
-all_vecs=real_vecs##im_vecs then
-coroots=zero_coroots(rd,all_vecs) then pos_roots=for i in coroots do
-posroots(rd)[i] od then pos_coroots=for i in coroots do
-poscoroots(rd)[i] od in if =#pos_roots then complex_Levi(rd,[int]:[])
-else let
-(simple_roots,simple_coroots)=simple_system_from_positive(pos_roots,pos_coroots)
-in root_datum(simple_roots,simple_coroots,rd.prefers_coroots)
-fi
+let real_vecs=for v in vecs do v+bar(v) od
+then im_vecs  =for v in vecs do v-bar(v) od
+in sub_datum(rd,is_member_fast(zero_coroots(rd,real_vecs##im_vecs)))
 
-set nested_Levis(RootDatum rd,[EigenPair] pairs_in)=
-let F=pairs_in[0].F then
-d=F.order then
-S=[CyclotomicVec]:[] then
-levis=[RootDatum]:[rd] then
-orders=[int]:[0] then
-{only keep 0<=k_1<=k_2...<=d\2}
-pairs=[EigenPair]:[] then
-()=for (k,vecs) in pairs_in do if k<=d\2 then  pairs#:=(k,vecs) fi od then
-()=for (k,vecs) in pairs do
- S##:=vecs;
- levis#:=levi(rd,S);
- orders#:=k od in
-(orders,levis)
+set nested_Levis (RootDatum rd, [EigenPair] pairs)= ([int],[RootDatum]):
+(  let F=pairs[0].F
+   then d=F.order
+   then S=[CyclotomicVec]:[]
+   then levis=[RootDatum]:[rd]
+   then orders=[int]:[0]
+in for (k,vecs) in pairs
+   do if k+k<=d { only keep 0<=k_1<=k_2...<=d\2 }
+      then S##:=vecs; levis#:=levi(rd,S); orders#:=k
+      fi
+   od
+;  (orders,levis)
+)
 
 {map from a nested set of Levi subgroups, and list of orders,
 to semisimple conjugacy classes
@@ -108,32 +102,44 @@ v/d
 set centralizer(RootDatum rd,RootDatum rd_L)=RootDatum:
 centralizer(rd,simple_roots(rd_L))
 
+{ make an element of W(rd) from [W_Elt] for smaller root data}
+set make_W_element ([WeylElt] S,RootDatum rd) = WeylElt:
+   product(rd,for w in S do W_elt(rd,w.matrix) od)
+
 {by induction on length of the sequence, conjugate a nested sequence
 of Levi factors to one where each Levi is standard}
 {nested levis are decreasing: [L_0=G,...,L_n=T]}
-set standardize(RootDatum rd_orig,[RootDatum] nested_levis)=(WeylElt,[RootDatum]):
+set standardize (RootDatum rd_orig,[RootDatum] nested_levis) =
+      (WeylElt,[RootDatum]):
 {make them increasing:}
-let nested_levis=for i:#nested_levis downto 0 do nested_levis[i] od in
-let rec_fun f(RootDatum rd,[WeylElt] S,[RootDatum] levis)=[WeylElt]:
-{ let ()=prints("f:",new_line, rd, new_line, levis) in}
- if =#levis then S else
- let L=levis[#levis-1] then
-{ ()=prints("computing:", rd, " ", L) then}
- w=standard_Levi_witness(rd,L) in
-{ let ()=prints("w:",w) in}
- f(L,w#S,for i:#levis-1 do levis[i] od) fi in
- let w=make_W_element(f(rd_orig,[id_W(rd_orig)],nested_levis)) in
- {change order back!}
- (w,for i:#nested_levis downto 0 do  w*nested_levis[i] od)
+   let nested_levis = reverse(nested_levis) { wash your jeans inside out }
+   then rec_fun f(RootDatum rd,[WeylElt] S,[RootDatum] levis) = [WeylElt]:
+      { let ()=prints("f:",new_line, rd, new_line, levis) in}
+      if =#levis then S
+      else let L=levis~[0] { last Levi }
+       { then ()=prints("computing:", rd, " ", L)}
+         then w = standard_Levi_witness(rd,L)
+      in { prints("w:",w); }
+         f(L,w#S,levis[:~1])
+      fi
+   then w = make_W_element(f(rd_orig,[],nested_levis),rd_orig)
+in { comping out of the machine, turn the jeans right side out }
+   (w,reverse(nested_levis))
 
 {information about the good representative of a conjugacy classes}
-set good_info(WeylElt w)=([(int,[[CyclotomicFieldElement]])],[int],[RootDatum],[RootDatum],WeylElt,ratvec):
-let ep=eigenpairs(w) then
-(orders,levis)=nested_Levis(w.root_datum,ep) then
-(y,std_levis)=standardize(w.root_datum,levis) then
-v_0=nested_Levis_to_semisimple(w.root_datum,orders,std_levis,order(w)) in
-{let v=v_0/order(w) in }
-(ep,orders,levis,std_levis,y,v_0)
+set good_info (WeylElt w) =
+      ([(int,[[CyclotomicFieldElement]])]
+      ,[int]
+      ,[RootDatum]
+      ,[RootDatum]
+      ,WeylElt
+      ,ratvec):
+   let ep=eigenpairs(w)
+   then (orders,levis)=nested_Levis(w.root_datum,ep)
+   then (y,std_levis)=standardize(w.root_datum,levis)
+   then v_0=nested_Levis_to_semisimple(w.root_datum,orders,std_levis,order(w))
+in {let v=v_0/order(w) in }
+   (ep,orders,levis,std_levis,y,v_0)
 
 {same as previous, except also use the affine Weyl group to
 put v_0 in the fundamental alcove}

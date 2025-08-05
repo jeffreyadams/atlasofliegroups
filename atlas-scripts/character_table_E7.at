@@ -138,11 +138,10 @@ set Magma_reorder_E7(WeylClassTable Wct) = [int]: { map Magma to |Wct| numbers }
       4 # for j:Wct.n_classes
 	  do [reps[j].order, sizes[j], Wct.sign[j], Wct.reflection[j] ]
 	  od
-   then profile_ranked = [int]: { columns |e7_profile| ranked |lex_lesseq| }
-      sort(#e7_profile
-	  ,(int i,int j)bool: lex_lesseq(e7_profile[i],e7_profile[j]))
-   , Wct_ranked = { columns of |Wct_prof| ranked by |lex_lesseq| }
-      sort(#Wct_prof,(int i,int j): lex_lesseq(Wct_prof[i],Wct_prof[j]))
+   then profile_ranked = [int]: { columns |e7_profile| ranked |lex_leq| }
+      ranking([vec]:e7_profile)
+   , Wct_ranked = { columns of |Wct_prof| ranked by |lex_leq| }
+      ranking([vec]:Wct_prof)
    in compose_permutations(Wct_ranked,inverse(profile_ranked))
 
 set to_special_E7 = (int i) int:

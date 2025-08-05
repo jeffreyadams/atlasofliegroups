@@ -37,7 +37,7 @@ actually gives mu_i=mu
 {. Auxiliary function (see inds in K_highest_weights.at for some details). .}
 set inds_plus (KHighestWeight mu_in)=[(KType,[Param])]:
    let Q=parabolic_LKT(mu_in) then G=real_form(Q) then
-   result=[] then (,x,tau)=mu_in, L=Levi(Q) then
+   result=[(KType,[Param])]:[] then (,x,tau)=mu_in, L=Levi(Q) then
    mu=tau-two_rho_u_cap_s(Q,x)+rho_l(Q) then
    pL=parameter(KGB(L,#KGB(L)-1),mu,null(rank(L))) then
    all_pL=all_G_spherical_same_differential(pL) in
@@ -57,7 +57,7 @@ L-spherical parameter on L .}
 set K_types_plus (KHighestWeight(,x,v):mu_in)= (Parabolic,[(Param,KType)]):
   let G=real_form(x) then
   Q=parabolic_LKT(mu_in)
-  in assert(is_parabolic_theta_stable(Q), "Q is not theta stable");
+  in assert(parabolic_is_theta_stable(Q), "Q is not theta stable");
   let x_Q=x_min(Q)
   then list=for wt in R_K_dom_mu_orbit(mu_in) do move_weight(wt,x_Q) od
   then test=for weight in list do inds_plus(weight) od in
@@ -113,7 +113,7 @@ set cross_divide_alt (KGBElt x,KGBElt y)=(bool,WeylElt):
 
 set is_strongly_compatible (Param p,Parabolic P) = bool:
    assert(is_final(p),"p is not final");
-   if not is_parabolic_theta_stable(P)
+   if not parabolic_is_theta_stable(P)
    then prints("The parabolic is not theta-stable."); false
    else
       let G=real_form(x(p)), gamma=infinitesimal_character(p*0)

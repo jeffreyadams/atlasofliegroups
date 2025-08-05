@@ -1,4 +1,4 @@
-<basic.at
+<basic.at { for |n_rows@mat| }
 
 { multiplication of a square integer matrix times
   a square sparse matrix on the right}

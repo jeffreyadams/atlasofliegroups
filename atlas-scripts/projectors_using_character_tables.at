@@ -1,69 +1,116 @@
-<cells.at
+<basic.at
+<W_orbit.at { for |W_parabolic_iterator_with_action| }
+<W_classes.at { for |character_value@(WeylCLassTable.[int],WeylElt)| }
+<Weylgroup.at { for |order_W| }
+<W_reps.at { for type |W_rep| }
+<character_tables.at { for type |CharacterTable| }
 
 set projectors_verbose=true
 
-{ If |chi| is the character of an irreducible W-representation, and |(dim,ops)|
-  describes a W_representation, compute a scalar multiple of projection of the
-  representation space of |ops| on isotoypic subspace defined by |chi|.
+{ ------------ projection on isotypic subspace  ----------- }
 
-  If such |chi| is not a constituent of the
+{ scalar multiple of projection of representation space of |ops| on isotoypic
+  subspace defined by character |chi| of an irreducible representation
+
+  When |chi| is an irreducible character of $W$, and |tab| is the class table of
+  $W$, the call |projector(tab,rep,chi)| for a $W$ representation given by |rep|
+  computes a matrix describing a scalar multiple of the projection of the space
+  $V$ on which |rep| acts to its isotypic subspace for |chi|, via the formula
+
+		       $$ \sum_{w\in W}\chi(w)\rho(w), $$
+
+  where $\rho(w)$ is the action in |rep| of |w|. The menioned scalar multiple
+  is $|W|/\dim(\chi)$, as can be seen by taking $\rho$ to be the irredudible
+  corresponding to $\chi$ itself, and computing the trace |W| of the above sum.
+
+  If an irreducible character |chi| is not a constituent of the
   representation defined by |ops|, this gives the null matrix; then since
-  the result depends linearly on |chi|, we can even use this when the
+  the result depends linearly on |chi|, we can even use this when that
   character is reducible, but has a unique irreducible constituent in common
   with |ops|, giving (a multiple of) the projection for that isotypic subspace
 }
-set projector (WeylClassTable tab, W_rep (dim,ops), [int] chi) = mat:
-  let rd=tab.root_datum, Q=null(dim,dim) in
+set projector (WeylClassTable tab, W_rep(dim,ops), [int] chi) = mat:
+   let rd=tab.root_datum
+   then (get,incr) = Iterator<(WeylElt,mat)>: { to sum action over $W$ }
+      W_parabolic_iterator_with_action(rd,all_simples(rd),dim,ops)
+   , Q=null(dim,dim)
+in while
+      case get()
+      | none: dont
+      | some(w,action): do incr()
+        ; Q +:= character_value(tab,chi,w)*action
+      esac
+   od; Q
+
+{ this used to be:
   for (w,action) in W_parabolic_with_action(rd,all_simples(rd),dim,ops)
-  do Q+:=character_value(tab,chi,w)*action
+  do Q+:=character_value(tab,w,chi)*action
   od; Q
+}
 
 { since the preceding function is very slow for large W because of
 class_of(w), report on progress through W (if projectors_verbose=true}
-set projector_verbose (CharacterTable ct, W_rep (dim,ops), [int] char_values) = mat:
-  let rd=ct.root_datum, Q=null(dim,dim), N=#(ct.root_datum.W) in
-  for (w,action) in W_parabolic_with_action(rd,all_simples(rd),dim,ops)
-  do Q+:=char_values[ct.class_of(w)]*action; N-:= 1;
-   if projectors_verbose then if (N%100 = 0) then prints("N=",N) fi fi
-  od; Q
+set projector (WeylClassTable tab, W_rep(dim,ops), [int] chi,(->)f) = mat:
+   let rd=tab.root_datum
+   then (get,incr) = Iterator<(WeylElt,mat)>: { to sum action over $W$ }
+      W_parabolic_iterator_with_action(rd,all_simples(rd),dim,ops)
+   , Q=null(dim,dim)
+in while
+      case get()
+      | none: dont
+      | some(w,action): do
+        Q +:= character_value(tab,chi,w)*action; f(); incr()
+      esac
+   od; Q
+
+{ since the preceding function is very slow for large W because of
+class_of(w), report on progress through W (if projectors_verbose=true}
+set projector_verbose ((WeylClassTable,W_rep,[int])(tab,rho,chi):args) = mat:
+   if projectors_verbose else projector(args)
+   then let N=tab.root_datum.order_W
+   in projector(tab,rho,chi,@:if (N-:=1)%100=0 then prints("N=",N) fi)
+   fi
 
 { since the preceding function is very slow for large W because of
   class_of(w), combine several uses of it into one loop:
-  some_char_values is a list of characters for which the isotypic
+  |chis| is a list of characters for which the isotypic
   projections are to be computed }
-set projectors (CharacterTable ct, W_rep (dim,ops), [[int]] some_char_values) = [mat]:
-let rd=ct.root_datum,
-Q=for j:#some_char_values do null(dim,dim) od,
-N=#(ct.root_datum.W) in
-for (w,action) in W_parabolic_with_action(rd,all_simples(rd),dim,ops)
- do let index = ct.class_of(w) in for j:#some_char_values do
- Q[j]+:=some_char_values[j][index]*action od; N-:= 1;
- if projectors_verbose then if (N%100 = 0) then prints("N=",N) fi fi
-od;
-Q
+set projectors (WeylClassTable tab, W_rep (dim,ops), [[int]] chis,(->)f) = [mat]:
+   let rd=tab.root_datum
+   then (get,incr) = Iterator<(WeylElt,mat)>: { to sum action over $W$ }
+      W_parabolic_iterator_with_action(rd,all_simples(rd),dim,ops)
+   , Qs = for :#chis do null(dim,dim) od
+in while
+      case get()
+      | none: dont
+      | some(w,action): do let class = tab.class_of(w) in
+        for chi@i in chis
+	do Qs[i] +:= chi[class]*action
+	od
+      ; f() { call action function once for each |w| }
+      ; incr()
+      esac
+   od; Qs
 
-set projector (CharacterTable ct, W_rep (dim,ops), [int] char) = mat:
-projectors(ct,(dim,ops),[char])[0]
+set projectors_verbose (WeylClassTable tab, W_rep rho, [[int]] chis) = [mat]:
+   if projectors_verbose else projectors(tab,rho,chis,@:())
+   then let N=tab.root_datum.order_W
+   in projectors(tab,rho,chis,@:if (N-:=1)%100=0 then prints("N=",N) fi)
+   fi
 
-{ restrict representation pi to isotypic subspace (image space of projector) }
 set restrict_representation_isotypic \
    (WeylClassTable Wct, W_rep pi, vec chi) = W_rep:
-  let (basis,factors)=projector(Wct,pi,chi).adapted_basis
+  let (basis,factors) = projector(Wct,pi,chi).adapted_basis
   { operators have integral matrices w.r.t. |basis|, so restriction is OK }
   then P=basis[:#factors] { saturated lattice basis of image of the projector }
   in (#P ,for T in pi.operators do restrict_action(T,P) od)
 
 { projector for a cell representation }
-set projector (WeylClassTable Wct, WCell cell, vec char_values) = mat:
-  projector(Wct,cell_representation(Wct,cell),char_values)
+set projector (WeylClassTable Wct, WCell cell, vec chi) = mat:
+  projector(Wct,cell_representation(Wct,cell),chi)
 
-{ since the preceding function is very slow for large W because of
-  class_of(w), combine several uses of it into one loop:
-  some_char_values is a list of characters for which the isotypic
-  projections are to be computed }
-set projectors (CharacterTable ct, WCell cell, [vec] some_char_values) = [mat]:
-  projectors(ct,cell_representation(ct.class_table,cell),some_char_values)
-
+set projectors (WeylClassTable Wct, WCell cell, [vec] chis) = [mat]:
+  projectors_verbose(Wct,cell_representation(Wct,cell),chis)
 
 { given a cell, compute the cell representation pi, find the smallest k so that
   <pi,sym^k(reflection)>!=0, then this inner product is 1, and the unique
@@ -75,9 +122,6 @@ set special_projector (WeylClassTable Wct, WCell cell) = mat:
   then char = Wct.sym_power_refl(smallest_degree(Wct,character(Wct,cell_rep)))
   in projector(Wct,cell_rep,char)
 
-set special_projector (CharacterTable ct, WCell cell) = mat:
-   special_projector(ct.class_table,cell)
-
 { given a cell, compute the special_projector, and use this to construct
   the special representation itself
 }
@@ -86,19 +130,9 @@ set special_representation_of_cell (WeylClassTable Wct, WCell cell) = W_rep:
   then char = Wct.sym_power_refl(smallest_degree(Wct,character(Wct,cell_rep)))
   in restrict_representation_isotypic(Wct,cell_rep,char)
 
-{ given a cell, compute the special_projector, and use this to construct
-  the special representation itself
-}
-set special_representation_of_cell (CharacterTable ct, WCell cell) = W_rep:
-   special_representation_of_cell(ct.class_table,cell)
-
 {special_projectors for a list of cells}
 set special_projectors(WeylClassTable Wct, [WCell] cells) = [mat]:
   for cell in cells do special_projector(Wct,cell) od
-
-{special_projectors for a list of cells}
-set special_projectors(CharacterTable ct, [WCell] cells) = [mat]:
-   special_projectors(ct.class_table,cells)
 
 {test v, w same up to rational multiple}
 set is_rational_multiple (vec v,vec w) = bool: rank(mat:[v,w])<2
@@ -162,7 +196,7 @@ set print_primitive_ideal_info ([WCell] cells,[mat] projectors) = void:
 { variant function of previous (distinguished by ignored final string argument),
   better suited to large cells
 }
-set print_primitive_ideal_info([WCell] cells,[mat] projectors,string .) = void:
+set print_primitive_ideal_info ([WCell] cells,[mat] projectors,string .) = void:
   for cell@i in cells
   do let P=projectors[i] then g=group_parameters_by_primitive_ideal(cell,P) in
     prints(new_line,"#",i,new_line, "size of cell: ", #P, new_line
@@ -170,6 +204,16 @@ set print_primitive_ideal_info([WCell] cells,[mat] projectors,string .) = void:
   ; for a in g do prints(a) od
   od
 
+{ Define some cases for |CharacterTable|, instead of |WeyClassTable|, as well }
 
+set projectors (CharacterTable ct, WCell cell, [vec] chis) = [mat]:
+  projectors(ct.class_table,cell,chis)
 
-{Param->[(int, ([int],(RootDatum,[([int],[(int,int)])],[sparse_mat]) )    )]}
+set special_projector (CharacterTable ct, WCell cell) = mat:
+   special_projector(ct.class_table,cell)
+
+set special_representation_of_cell (CharacterTable ct, WCell cell) = W_rep:
+   special_representation_of_cell(ct.class_table,cell)
+
+set special_projectors(CharacterTable ct, [WCell] cells) = [mat]:
+   special_projectors(ct.class_table,cells)

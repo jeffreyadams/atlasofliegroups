@@ -532,11 +532,12 @@ set cone (rat limit, [rat] cs { all >0 } ) = mat: { columns are weights }
   then rec_fun cn (rat limit, int k) { from this index on } = mat:
     if k=n { 0 parts } then null(0,1) { one column of size 0; don't miss it! }
     else
-      let c=cs[k] in mat: { conversion safe, there is at least one vector }
-        [vec]: ##
-        for first: limit\c+1
-        do let rec=cn(limit-c*first,k+1) in
-          [vec]: (ones(n_columns(rec))*first)^rec
+      let c=cs[k] in
+      assert(c>0,"Non-positive coefficient in bounding linear form");
+      mat: (n-k) ## { horizontally combine list of |n-k|-column matrices }
+        for first: limit\c+1 { all |first| with $0<=c*first<=limit$ }
+        do let rec=cn(limit-c*first,k+1) in mat:
+	  (ones(n_columns(rec))*first)^rec { prepend row of |first| to |rec| }
         od
     fi
   in cn(limit,0)
@@ -595,7 +596,7 @@ set all_parameters_x_gamma (KGBElt x,ratvec gamma) = [Param]:
    in
    case vec_solve(th1,th1*(gamma_d-rho))
    | else [Param]: [] { without solution no parameters }
-   | solution(lr):
+   | some(lr):
       let lambda = rho + lr, nu=(2-th1){1-theta}*gamma_d/2 in
       for v in all_lambda_differential_0(x) do parameter(x,lambda+v,nu) od
    esac.reduce  { keep only 1 from each equivalence class }
@@ -607,8 +608,8 @@ set all_parameters_gamma (RealForm G,ratvec gamma) = [Param]:
    for x in KGB(G)
    do let th1=1+involution(x) in
       case vec_solve(th1,th1*(v-rho))
-      | no_vec: [Param]:[]
-      | solution(lr):
+      | none: [Param]:[]
+      | some(lr):
         let lambda = rho + lr, nu=(2-th1){1-theta}*v/2 in
         for v in all_lambda_differential_0(x) do parameter(x,lambda+v,nu) od
       esac
@@ -684,7 +685,7 @@ set find_x_with_dominant_rho_c (RealForm G) = KGBElt:
    error("Real form ",G," does not have KGB element with dominant rho_c")
 
 set find_x_with_dominant_rho_c (KGPElt Q) = (KGBElt,bool):
-   assert(is_parabolic_theta_stable(Q), "Q is not theta stable");
+   assert(parabolic_is_theta_stable(Q), "Q is not theta stable");
    let G=real_form(Q),
    C=equivalence_class_of(Q) in let n=#C, done=false in
    let i=0 in let x=C[0] in
@@ -703,14 +704,14 @@ to G, and make a list of the constituents of the induced. This results in
 a list of parameters for each L-spherical parameter. If mu is strongly
 dominant, the output should be a list of singletons. .}
 set inds (KHighestWeight mu_in)=[[Param]]:
-   let Q=parabolic_LKT(mu_in) then G=real_form(Q) then
-   result=[] then (,x,tau)=mu_in, L=Levi(Q) then
-   mu=tau-two_rho_u_cap_s(Q,x)+rho_l(Q) then
-   pL=parameter(KGB(L,#KGB(L)-1),mu,null(rank(L))) then
-   all_pL=all_G_spherical_same_differential(pL) in
-     for qL in all_pL do let
-        ind=monomials(theta_induce_standard(parameter(qL),real_form(x))) in
-      result#:=ind od; result
+   let Q=parabolic_LKT(mu_in)
+   then G = real_form(Q), L = Levi(Q), (,x,tau) = mu_in
+   then mu = tau-two_rho_u_cap_s(Q,x)+rho_l(Q)
+   then pL=parameter(KGB(L,#KGB(L)-1),mu,null(rank(L)))
+   then all_pL=all_G_spherical_same_differential(pL)
+in for qL in all_pL
+   do monomials(theta_induce_standard(parameter(qL),real_form(x)))
+   od
 
 {. Auxiliary function: For a list of lists as computed in the previous
 function, pick out those consisting just of singletons. In the next function,
@@ -729,7 +730,7 @@ set old_K_type_flag = false
 set K_types_old (KHighestWeight(,x,v):mu_in)= [KType]:
    let G=real_form(x)
    then Q=parabolic_LKT(mu_in)
-in assert(is_parabolic_theta_stable(Q), "Q is not theta stable");
+in assert(parabolic_is_theta_stable(Q), "Q is not theta stable");
    let x_Q=x_min(Q)
    then list=for wt in R_K_dom_mu_orbit(mu_in) do move_weight(wt,x_Q) od
    then test=for weight in list do inds(weight) od
@@ -973,7 +974,7 @@ set all_dominant_norm_upto (InnerClass ic, ratvec cowt,int N) =
 set lambda_rho_from_dominant_norm_upto (KGBElt x, ratvec v, int N) = mat: {wts}
    let th1=1+involution(x), rho=rho(root_datum(x))
    then th1_rho = ratvec_as_vec(th1*rho)
-in #rho { all weights have same size (the rank) as |rho| } ##
+in #rho { all weights have same size (the rank) as |rho| } #
    for mu in all_dominant_norm_upto(inner_class(x),v,N)
-   do case solve(th1,mu-th1_rho) | no_vec: [] | solution(s): [s] esac
-   od
+   do case solve(th1,mu-th1_rho) | some(s): [s] | none: [] esac
+   od.##

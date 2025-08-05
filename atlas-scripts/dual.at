@@ -2,7 +2,7 @@
 <parameters.at { for parameter@(KGBElt,KGBElt,ratvec) }
 <synthetic.at { for type KGBElt_gen }
 <Vogan-dual.at { for |dual@(Param,InnerClass)| }
-<polynomial.at { type i_poly,update_matrix_entry@(i_poly_mat,int,int,i_poly) }
+<polynomial.at { types |i_poly|, |i_poly_mat| }
 <extended.at { for type ExtParam }
 <KL_polynomial_matrices.at
 

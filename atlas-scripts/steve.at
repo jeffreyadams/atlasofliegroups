@@ -2,6 +2,7 @@
 < aff_cube.at {for local_FPP_extrema}
 < FPP_faces_herm.at {for unitarity tests}
 < hash.at {for hash tables}
+< FPP_localDirac.at { for |unipotents_to_hash| }
 {<K_types.at {for branch_std}}
 set red_coroots(Param p) = [vec]:
     let G = p.real_form, gamma = p.infinitesimal_character
@@ -24,7 +25,7 @@ set move_theta(WeylElt w) = ((KGBElt,ratvec) -> (KGBElt,ratvec)):
  (KGBElt x, ratvec lambda) (KGBElt,ratvec):
  let G = w.root_datum, x1 = cross(w,x) {added to next 7.29.25}
  then lambda_shift = rho_C(G,x1.involution) - w*rho_C(G, x.involution)
-  then rhow = rho(G) - w*rho(G) 
+  then rhow = rho(G) - w*rho(G)
  then p1 = parameter(x1, w*lambda + rhow - lambda_shift, 0*lambda)
  in (p1.x, p1.lambda)
 
@@ -339,7 +340,7 @@ set_type
   , ((KGBElt, ratvec, int) -> [vec]) extra_coords {size vecHash.size():
   [Kchar #, #LQs] if extra_coord_flag, [] else}
   , ((KGBElt, ratvec, int, ratvec) -> bool) postest {test param(x,lambda,last_arg) for unitarity to ht}
-  , ((KGBElt, ratvec, int, ratvec) -> vec) extra_coord {test param(x,lambda,last_arg) for unitarity to ht} 
+  , ((KGBElt, ratvec, int, ratvec) -> vec) extra_coord {test param(x,lambda,last_arg) for unitarity to ht}
   , ((KGBElt, ratvec, int, ratvec) -> vec) thruple {loc vec: (x,lambda,gamma) to HT}
 )
 ]
@@ -370,11 +371,11 @@ set make_steve_hash() = steve_hash_table:
     	 then () = if i = I {haven't seen this real form before}
 	      	   then	K_type_hashes #:= make_KType_hash();
 		        xlhashes #:= make_xlambda_hash();
-			heights #:= [];
-			vechashes #:= [];
-			statuses #:= [];
-			redpoints #:= [];
-			charvecs #:= [];
+			heights   #:= ([vec]:[]);
+			vechashes #:= ([[vec_hash]]:[]);
+			statuses  #:= ([[[bool]]]:[]);
+			redpoints #:= ([[[int]]]:[]);
+			charvecs  #:= ([[[vec]]]:[]);
 			assert(real_form_hash.size() = #K_type_hashes and #xlhashes = #K_type_hashes and
 	       	    	   #heights = #xlhashes and #vechashes = #heights and #statuses = #heights and
 			   #redpoints = #heights, "steve_hash damaged on adding real form")
@@ -393,10 +394,11 @@ set make_steve_hash() = steve_hash_table:
 	 then xlnum = xlhashes[rfnum].match(x,lambda)
 	 in if xlnum = XLNUM {new (x,lambda)}
 	    then heights[rfnum]#:=null(0);
-	    	 redpoints[rfnum]#:=[]; {add an empty list of lists of reducibility points for the new height}
-		 vechashes[rfnum]#:=[]; {add an empty list of lists of vec_hash}
-		 statuses[rfnum]#:=[]; {add an empty list of lists of bools}
-		 charvecs[rfnum]#:=[] {add an empty list of lists of vecs}
+	    { add empty list of lists of reducibility points for the new height}
+	    	 redpoints[rfnum] #:= ([[int]]:[]);
+		 vechashes[rfnum]#:=([vec_hash]:[]);
+		 statuses[rfnum]#:=([[bool]]:[]);
+		 charvecs[rfnum]#:=([[vec]]:[])
 	    fi;
 	    (rfnum,xlnum)
     then add_xlht(KGBElt x, ratvec lambda, int HT) = (int,int,int): {real form index, xlhash index, HT index}
@@ -419,11 +421,11 @@ set make_steve_hash() = steve_hash_table:
 		 then () = vhsr[xlnum]:=vhsxl
 		 then () = vechashes[rfnum]:=vhsr
 		 then statusxl = statuses[rfnum][xlnum], statusr = statuses[rfnum]
-		 then () = statusxl #:= [] {add a new [bool] for this height}
+		 then () = statusxl #:= ([bool]:[]) { for this height }
 		 then () = statusr[xlnum]:=statusxl
 		 then () = statuses[rfnum]:=statusr
 		 then charvecxl = charvecs[rfnum][xlnum], charvecr = charvecs[rfnum]
-		 then () = charvecxl #:= [] {add a new [vec] for this height}
+		 then () = charvecxl #:= ([vec]:[]) { for this height }
 		 then () = charvecr[xlnum]:=charvecxl
 		 then () = charvecs[rfnum]:=charvecr
 		 in htnum:= J
@@ -582,7 +584,7 @@ set localFD_2SteveU\
     	 let EdgesFixFix = [vec]:
 	       if f < 2 then []
 	       elif f < BoundB  {TEST B}
-	       	      	{(E*set_bit_positions(E)~[0]*set_bit_positions(f)~[0])\F} 
+	       	      	{(E*set_bit_positions(E)~[0]*set_bit_positions(f)~[0])\F}
 	       then let lookups = FPP_edges_by_zero_indices(G)
 	       	    in for j@i in FixedList[:f-1] {f * (E/F)/2 tests}
 	      	       do for k in FixedList[i+1:f]
@@ -970,7 +972,3 @@ then () = for x in KGB(G)
 	 od
 in prints("total time = ",print_time_string(elapsed_ms() - start)," to find ",
    		 big_unitary_hash.uhash(G).size()," unitary reps.")
-
-
-
-

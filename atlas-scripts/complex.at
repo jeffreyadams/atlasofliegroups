@@ -112,18 +112,18 @@ set gamma_R (Param p) = ratvec: (mu_C(p)-nu_C(p))/2
 }
 set parameter_g (RealForm G,ratvec gamma_L, ratvec gamma_R) = Param:
   let n=#gamma_L
-  then lambda = ratvec_as_vec(gamma_L+gamma_R)##null(n) +
-  (G.rho)[:n] ## -G.rho[n:]
-  then nu = concatenate((gamma_L-gamma_R)/2, (gamma_R-gamma_L)/2) in
-  {parameter(KGB(G,0),lambda,nu)}
-  dominant(parameter(KGB(G,0),lambda,nu))
+  then lambda =
+    ratvec_as_vec(gamma_L+gamma_R) ## null(n) + (G.rho)[:n] ## -G.rho[n:]
+  , nu = ((gamma_L-gamma_R)/2) ## ((gamma_R-gamma_L)/2)
+in { used to be parameter(KGB(G,0),lambda,nu) }
+  parameter(KGB(G,0),lambda,nu).dominant
 
 set g_parameter(Param p)=(p.real_form,p.gamma_L,p.gamma_R)
 
 { define a parameter of G complex by (mu,nu) }
 set parameter_m(RealForm G, vec mu, ratvec nu) = Param:
-  {parameter(KGB(G,0), mu##null(#mu), concatenate(nu/2,-nu/2))}
-  dominant(parameter(KGB(G,0), mu##null(#mu), concatenate(nu/2,-nu/2)))
+  let nu2 = nu/2 in
+  parameter(KGB(G,0), mu ## null(#mu), nu2 ## (-nu2)).dominant
 
 set m_parameter(Param p) = (RealForm,vec,ratvec): (p.real_form,p.mu_C,p.nu_C)
 

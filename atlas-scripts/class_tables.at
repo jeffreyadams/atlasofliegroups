@@ -2,14 +2,14 @@
 <W_classes.at { definition of |WeylClassTable| and supporting functions }
 <combinatorics.at { functions for specific classical types }
 <lietypes.at
-<e8_gap.at { load the information from GAP }
+<e8_gap.at { load the information from GAP, like |e8_gap_profile| }
 
 { The purpose of this module is to group case-by-case definitions of W-class
   tables for root data with a specified simple Cartan matrix type, and give a
-  definion of |class_table@RootDatum| the employs the decomposition of the
-  Dynkin diagram of a root datum into connected components to build up, for a
-  general root datum, a |WeylClassTable| built up from those for appropriate
-  sub-root-data.
+  definion of |class_table@RootDatum|. THe latter employs the decomposition of
+  the Dynkin diagram of a root datum into connected components, in order to
+  build up, for a general root datum, a |WeylClassTable| built up from those for
+  appropriate sub-root-data.
 }
 
 
@@ -24,13 +24,9 @@ set combine(RootDatum rd,[WeylClassTable] tables) = WeylClassTable:
    , radix = for table in tables do table.n_classes od { mixed radix list }
    , tr = two_rho(rd)
 in assert(for rdj@j in rds
-          do for i:j { iterate of all pairs |i<j| }
-	     do for alpha_v in simple_coroots(rds[i])
-	        do for beta in simple_roots(rdj)
-	           do =alpha_v*beta
-		   od.all
-	        od.all
-	     od.all
+             for i:j { iterate of all pairs |i<j| }
+	     do (^simple_coroots(rds[i]) * simple_roots(rdj)).=
+	     od
 	  od.all,"Factors are not mutually orthogonal")
 ;  let reps = [[WeylElt]]: { all class representatives, lifted to |rd| }
       for table in tables
@@ -256,8 +252,8 @@ in assert(size=n,"Cycles sum to "+size+" rather than "+n)
 set class_table_D(int n) = WeylClassTable:
    let rd=SO(n+n), classes = [D_class]: D_classes(n)
    then lookup = (D_class->int):
-      let ranked = { |ranked[i]| is index in |classes| of class ranked |i| }
-         sort(#classes,(int i,int j)bool: classes[i]<=classes[j])
+      let ranked = { |ranked[i]| is index into |classes| of class ranked |i| }
+         ranking(<=@(D_class,D_class))(classes)
       then list = for i in ranked do classes[i] od
       in (D_class c) int: { index in |classes| where one finds |c| }
          ranked[binary_search_first((int i)bool: c<=list[i], 0,#classes)]
@@ -272,7 +268,7 @@ set class_table_D(RootDatum rd) = WeylClassTable:
    , class_rep = (D_class->WeylElt): conjugacy_class_D(rd)
    then lookup = (D_class->int):
       let ranked = { |ranked[i]| is index in |classes| of class ranked |i| }
-         sort(#classes,(int i,int j)bool: classes[i]<=classes[j])
+         ranking(<=@(D_class,D_class))(classes)
       then list = for i in ranked do classes[i] od
       in (D_class c) int: { index in |classes| where one finds |c| }
          ranked[binary_search_first((int i)bool:c<=list[i], 0,#classes)]
@@ -366,7 +362,7 @@ set class_table_F (RootDatum rd) = WeylClassTable:
       for class in classes do class_signature_F4(class) od
    then N=1152 { = order_W(rd) }
    ,  lookup = (BiPartition->int):
-      let ranked = sort(#sigs,(int i,int j)bool: sigs[i]<=sigs[j])
+      let ranked = ranking(<=@(BiPartition,BiPartition))(sigs)
       then list = for i in ranked do sigs[i] od { |sigs| sorted by |<=| }
       in (BiPartition sig) int: { index in |sigs| where one finds |sig| }
          ranked[binary_search_first((int i)bool: sig<=list[i], 0,#list)]
@@ -398,7 +394,7 @@ set class_table_E6 (RootDatum rd) = WeylClassTable:
    , leq = leq_equal_sum_partitions@(Partition,Partition)
    then N=51840 { order_W("E6") }
    ,  lookup = (Partition->int):
-      let ranked = sort(#sigs,(int i,int j)bool: leq(sigs[i],sigs[j]))
+      let ranked = ranking(leq)(sigs)
       then list = for i in ranked do sigs[i] od { |sigs| sorted by |leq| }
       in (Partition sig) int: { index in |sigs| where one finds |sig| }
          ranked[binary_search_first((int i)bool: leq(sig,list[i]), 0,#list)]
@@ -474,8 +470,7 @@ set class_table_E7 (RootDatum rd) = WeylClassTable:
    then N=2903040 { order_W("E7") }
    ,  (lookup_w,lookup_cyc) { define two functions that share precomputed data }
          = ((WeylElt->int),(Partition->[int])):
-      let ranked = [int]:
-         sort(#sigs,(int i,int j)bool: leq_E7_signatures(sigs[i],sigs[j]))
+      let ranked = [int]: ranking(leq_E7_signatures)(sigs)
       then (list,locs) = ([Partition],[[int]]): { sorted cycle type, positions }
          let locs=[int]:[], prev= Partition:[]
 	 then out = [Partition,[int]]: { grouping of |sigs[ranked[i]] values }
@@ -541,8 +536,7 @@ set class_table_E8 (RootDatum rd) = WeylClassTable:
    then sigs = [Partition]: for w in classes do class_signature_E8(w) od
    , leq = leq_equal_sum_partitions@(Partition,Partition)
    then lookup = (Partition->int):
-      let ranked =
-         sort(#sigs,(int i,int j)bool: leq(sigs[i],sigs[j]))
+      let ranked = ranking(leq)(sigs)
       then list = for i in ranked do sigs[i] od { |sigs| sorted by |leq| }
       in (Partition sig) int: { index in |sigs| where one finds |sig| }
          ranked[binary_search_first((int i)bool: leq(sig,list[i]), 0,#list)]
@@ -631,12 +625,10 @@ set GAP_reorder_E8 (WeylClassTable Wct) = [int]: { map GAP to |Wct| numbers }
 	     , Wct.reflection[Wct.class_power(j,3)]
 	     ]
 	  od
-   then profile_ranked = [int]: { columns |eg_gap_profile| ranked }
-      sort(#e8_gap_profile
-          ,(int i,int j): lex_lesseq(e8_gap_profile[i],e8_gap_profile[j])
-	  )
-   , Wct_ranked = { columns of |Wct_prof| ranked by |lex_lesseq| }
-      sort(#Wct_prof,(int i,int j): lex_lesseq(Wct_prof[i],Wct_prof[j]))
+   then profile_ranked = [int]: { columns |eg_gap_profile| ranked by |lex_leq| }
+      ranking([vec]:e8_gap_profile)
+   , Wct_ranked = { columns of |Wct_prof| ranked by |lex_leq| }
+      ranking([vec]:Wct_prof)
    in compose_permutations(Wct_ranked,inverse(profile_ranked))
 
 
@@ -652,10 +644,10 @@ set class_table_E (int n) = WeylClassTable:
 set simple_class_table (LieType lt) = WeylClassTable:
 (  let (letter,rank)=lt.simple_type { this also asserts that |lt| is simple }
 in case ascii(letter)-ascii("A")
-   in let (table) = class_table_A(SL(rank+1)) in table
-   ,  let (table) = class_table_B(rank) in table
-   ,  let (table) = class_table_C(rank) in table
-   ,  let (table) = class_table_D(rank) in table
+   in class_table_A(SL(rank+1))
+   ,  class_table_B(rank)
+   ,  class_table_C(rank)
+   ,  class_table_D(rank)
    ,  class_table_E(rank)
    ,  class_table_F(4)
    ,  class_table_G(2)
@@ -665,10 +657,10 @@ in case ascii(letter)-ascii("A")
 
 set class_table_simple (RootDatum rd,string letter,int n) = WeylClassTable:
    case ascii(letter)-ascii("A")
-   in let (table) = class_table_A(rd) in table
-   ,  let (table) = class_table_B(rd) in table
-   ,  let (table) = class_table_C(rd) in table
-   ,  let (table) = class_table_D(rd) in table
+   in class_table_A(rd)
+   ,  class_table_B(rd)
+   ,  class_table_C(rd)
+   ,  class_table_D(rd)
    , case n-6
      in class_table_E6(rd), class_table_E7(rd), class_table_E8(rd)
      esac

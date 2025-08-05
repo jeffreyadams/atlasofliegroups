@@ -88,5 +88,3 @@ let (,x)=%p.x then
 height(p).to_string,p.mu.to_string] od in
 tabulate(header#values,"lllllllll",2," ")
 }
-
-

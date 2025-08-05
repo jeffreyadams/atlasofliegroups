@@ -190,38 +190,41 @@ set imm_succ(RealForm G, xlambda_hash xlHashOld, xlambda_hash xlHashNew, int Ddo
 {keep ascending from (x,lambda) until no ascents are possible: x's are
 no C- and all real roots are too small to allow Cayley}
 set xl_start(KGBElt x, ratvec lambda, int D) = xlambda_hash:
-    let G = x.real_form, h = length(x)
-    then xlHashes = [xlambda_hash]: for n:length(x_open(G))+2 do make_xlambda_hash() od
-    then () = xlHashes[h].match(x,lambda), new_size = int:1
-    then () = while new_size > 0 and h > 0
-       	      do let () = imm_pred(G, xlHashes[h],xlHashes[h-1],D)
-	      	 then () = new_size := xlHashes[h-1].size()
-		 then () = if new_size.> then h-:=1 fi
-	  	 in ()
-       	      od
-   in xlHashes[h]
+(   let G = x.real_form, h = length(x)
+    then xlHashes = [xlambda_hash]:
+       for n:length(x_open(G))+2 do make_xlambda_hash() od
+    , new_size = int:1
+    in xlHashes[h].match(x,lambda)
+    ; while new_size > 0 and h > 0
+      do imm_pred(G, xlHashes[h],xlHashes[h-1],D)
+      ; new_size := xlHashes[h-1].size()
+      ; if new_size.> then h-:=1 fi
+      od
+   ; xlHashes[h]
+)
 
 {keep ascending from (x,lambda) by j0, j1,...,j{m-1} until no ascents are possible: x's have all C- roots
 to small to allow cross, and real roots are too small to allow Cayley. At each step, all the x's have same
 involution.}
 set xl_start_small(KGBElt x, ratvec lambda, int Dup) = (xlambda_hash,[int]):
-    let G = x.real_form, h = length(x), i0 = int: -1
+(    let G = x.real_form, h = length(x), i0 = int: -1
     then xlHashes = [xlambda_hash]: for n:length(x_open(G))+2 do make_xlambda_hash() od
     then new_size = int:1, listans = vec: []
-    then () = xlHashes[h].match(x,lambda), new_size = int:1
-    then () = while new_size > 0 and h > 0
-    	      do let () = i0 := first( for i:G.semisimple_rank
-    	      	     	      	     do @bool: let testxl = imm_pred(G,xlHashes[h],xlHashes[h-1],i,Dup)
-		     		     	       in xlHashes[h-1].size() > 0
-				     od )
-		 then () = if i0.>=
-		      	   then prints("i0 = ",i0,", h = ",h, "  ",xlHashes[h-1].list());
-			   	listans #:= i0; new_size:=xlHashes[h-1].size(); h-:=1
-			   else new_size:=0
-		 	   fi
-		 in ()
-	      od
-    in (xlHashes[h],listans)
+    in xlHashes[h].match(x,lambda)
+    ; while new_size > 0 and h > 0
+      do i0 :=
+         for i:G.semisimple_rank
+	 do @bool: imm_pred(G,xlHashes[h],xlHashes[h-1],i,Dup)
+		   ; xlHashes[h-1].size() > 0
+	 od.first
+      ; if i0>=0
+	then prints("i0 = ",i0,", h = ",h, "  ",xlHashes[h-1].list());
+	     listans #:= i0; new_size:=xlHashes[h-1].size(); h-:=1
+	else new_size:=0
+	fi
+      od
+    ; (xlHashes[h],listans)
+)
 
 {I think the (finite) interval above (x,lambda) might be obtained by
 "ascending" to the pairs (xup,lambdaup) in the result hash.list(); all the

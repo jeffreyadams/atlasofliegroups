@@ -178,23 +178,29 @@ y = first(for i:4 do not  is_root(rd,alpha-i*beta) od) in (x-1,y-1)
 
 set root_string(RootDatum rd)=((vec,vec)->(int,int)):(vec alpha,vec beta):root_string(rd,alpha,beta)
 
-{write a positive root as a sum of simple}
-set rec_fun posroot_as_sum_of_simple(RootDatum rd,vec alpha)=[vec]:
-assert(is_posroot(rd,alpha),"root is not positive");
- if is_simple_root(rd,alpha) then [alpha] else
- let i=first(for i:ss_rank(rd) do alpha*simple_coroots(rd)[i]>0 od) in
- let beta=simple_roots(rd)[i] in beta#posroot_as_sum_of_simple(rd,alpha-beta) fi
+{ write a positive root as a sum of simple roots }
+set posroot_as_sum_of_simple (RootDatum rd,vec alpha) = [vec]:
+   let i = root_index(rd,alpha), npr=rd.nr_of_posroots in
+   if i=npr then error(alpha.to_string + " is not a root")
+   elif i<0 then error(alpha.to_string + " is a negative root")
+   else for c@j in root_expression(rd,i) for :c do root(rd,j) od od
+   fi
 
 {write any root as sum of simple or sum of (-simple)}
-set rec_fun root_as_sum_of_simple(RootDatum rd,vec alpha)=[vec]:
-if is_posroot(rd,alpha) then posroot_as_sum_of_simple(rd,alpha) else
--posroot_as_sum_of_simple(rd,-alpha) fi
+set root_as_sum_of_simple(RootDatum rd,vec alpha) = [vec]:
+   let i = root_index(rd,alpha), npr=rd.nr_of_posroots in
+   if i=npr then error(alpha.to_string + " is not a root")
+   else let re = root_expression(rd,i) in
+      if sum(re)>=0 { all coefficients have the same sign }
+      then for c@j in re for : c do root(rd, j) od od { positive coefficients }
+      else for c@j in re for :-c do root(rd,~j) od od { negative coefficients }
+      fi
+   fi
 
 {alpha>0: return alpha_1  (alpha_1 simple) so alpha= alpha_1+(other simple roots...)
  alpha<0: return -alpha_1 (alpha_1 simple) so alpha=-alpha_1-(other simple roots...)
 }
 set simple_root_summand(RootDatum rd,vec alpha)=vec:
-if is_posroot(rd,alpha) then 
-let i=first(for i:ss_rank(rd) do alpha*simple_coroots(rd)[i]>0 od) in simple_roots(rd)[i] else 
+if is_posroot(rd,alpha) then
+let i=first(for i:ss_rank(rd) do alpha*simple_coroots(rd)[i]>0 od) in simple_roots(rd)[i] else
 let i=first(for i:ss_rank(rd) do alpha*simple_coroots(rd)[i]<0 od) in -simple_roots(rd)[i] fi
-

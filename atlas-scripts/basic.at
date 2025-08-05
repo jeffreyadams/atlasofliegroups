@@ -1,16 +1,74 @@
 { Union types for built-in |linear_solve| and versions of |solve| below
   Such types cannot share |void| tag, so we choose distince ones }
-set_type
-[ linear_solution = ( void empty_set | (vec,int,mat) affine_subspace )
-, maybe_a_vec =     ( void no_vec | vec solution)
-, maybe_a_ratvec =  ( void no_ratvec | ratvec solution )
-, maybe_a_mat =     ( void no_mat | mat solution )
-]
+
+set_type One_of<S,T> = ( S fail | T succeed ) !
+set_type Maybe<T>    = ( void none | T some) !
+set_type Pair<S,T>   = ( S fst , T snd )!
+
+set_type AffineSubspace = (vec base_point, int denom, mat tangent_basis)
+set_type LinearSolution = ( void empty_set | AffineSubspace solution)
+
+
+set_type Iterator<T> = ((->Maybe<T>) get, (->) incr)!
 
 set where() = void:
    for line@i in back_trace
    do if line[:3]="In " then prints([i]," ",line) fi
    od
+
+any_type S,T begin
+set time ((->T)f) = T: let t=elapsed_ms() in f() next print(elapsed_ms ()-t)
+
+set succeeds (One_of<S,T> v) = bool: case v | fail: false | succeed: true esac
+set fails    (One_of<S,T> v) = bool: case v | fail: true | succeed: false esac
+set can (Maybe<T> v) = bool: { because |if can(solve(eqn))| sounds nicer  }
+    case v | none: false | some: true esac
+
+set as_list (One_of<S,T> v) = [T]: case v | fail: [] | succeed(x): [x] esac
+set collect ([Maybe<T>] L) = [T]: for x in L do x.as_list od.##
+
+set requisition (string message) = (One_of<S,T> v) T:
+    case v | fail: error(message) | succeed(v): v esac
+set requisition = (One_of<S,T>->T):
+    requisition("No solution found; having one was required")
+
+set ! (Iterator<T> (get,incr) ) = void:
+   while
+     case get()
+     | none: false
+     | some(value): prints(value); true
+     esac
+   do incr()
+   od
+
+set count (Iterator<T> (get,incr) ) = int: { run through iteration, counting }
+   while get().succeeds do incr() od { in |int| context, |while| loop counts }
+
+set to_list (Iterator<T> (get,incr) ) = [T]:
+   while
+     case get()
+     | none: dont
+     | some(value): do value next incr()
+     esac
+   od
+
+set take (int n,Iterator<T> (get,incr) ) = [T]:
+   for :n do case get() | none: break | some(value): value esac next incr() od
+
+set ! ((S,T->bool)rel) = ([S] a,[T] b)bool: { distribute relation over lists }
+  #a=#b and (for x@i in a do if not rel(x,b[i]) then return false fi od; true)
+
+set print_lines ([T] a) = void: for x in a do print(x) od
+set prints_lines ([T] a) = void: for x in a do prints(x) od
+
+end
+
+
+set ! = prints_lines@T[T] { allow printing any list line-by-line as |list!| }
+
+set == = =@(int,int)! { make comparison of two |[int]| available as |==| }
+set == = =@(vec,vec)! { make comparison of two |[int]| available as |==| }
+set === = ==@([int],[int])! { comparison of two |[[int]]| available as |===| }
 
 set !minus_1 = -1 { used to be more efficient than |-1|, now equally efficient }
 
@@ -18,21 +76,13 @@ set # (int n)= [int]: for i:n do i od       { [0,1,...,n-1] }
 set # (bool b) = int: if b then 1 else 0 fi { Iverson symbol }
 set sign (bool b) = int: { |(-1)^#b|, i.e.: } if b then -1 else 1 fi
 
+set range (int a, int b) = [int]: for i : b-a from a do i od
+
 set ^ = !=@(bool,bool) { simple exclusive or }
 
 set assert (bool b,(->string) report) = void: if not b then error(report()) fi
 set assert (bool b) = void: assert(b,@:"assertion failed") { default message }
 set assert (bool b,string message) = void: if not b then error(message) fi
-
-{ bitsets encoded as functions (int->bool) together with upper bound |limit| }
-
-set list (int limit, (int->bool) predicate) = [int]:
-  for i:limit if predicate(i) do i fi od
-set complement (int limit,(int->bool) predicate) = [int]:
-  for i:limit if not predicate(i) do i fi od
-set complement (int n, [int] list) = [int]:
-  let N = to_bitset(list)
-  in complement(n,(int i)bool: bitwise_subset([i].to_bitset,N))
 
 set count (int limit,(int->bool) predicate) = int:
   let c=0 in for i:limit do if predicate(i) then c+:=1 fi od; c
@@ -52,6 +102,20 @@ set count ([bool] p) = int: { count (sum) number of truths in list }
 set XOR ([bool] p) = bool: { exclusive or (sum modulo 2) of all truths in list }
   let c=false in for b in p do c:=(c!=b) od; c
 
+{ if evaluating conditions is expensive, procedure them with '@:' and call: }
+set all ([(->bool)] p) = bool:
+  for x in p do if not x() then return false fi od; true
+set any ([(->bool)] p) = bool:
+  for x in p do if x() then return true fi od; false
+set none ([(->bool)] p) = bool:
+  for x in p do if x() then return false fi od; true
+set first ([(->bool)] p) = int:
+  for x@i in p do if x() then return i fi od; -1
+set last ([(->bool)] p) = int: { this is somewhat more efficient than first }
+  let i=#p-1 in while >=i and not p[i]() do i-:=1 od; i
+{ there are no lazy versions of |count| and |XOR| }
+
+{ if cases to test are produced as predicates of an integer, one can use: }
 set all (int limit,(int->bool) predicate) = bool:
   for i:limit do if not predicate(i) then return false fi od; true
 set any (int limit,(int->bool) predicate) = bool:
@@ -63,17 +127,79 @@ set first (int limit,(int->bool) predicate) = int:
 set last (int limit,(int->bool) predicate) = int:
   for i:limit ~do if predicate(i) then return i fi od; -1
 
-{ if evaluating conditions is expensive, one can procedure them with '@:'}
-set all ([(->bool)] p) = bool:
-  for x in p do if not x() then return false fi od; true
-set any ([(->bool)] p) = bool:
-  for x in p do if x() then return true fi od; false
-set none ([(->bool)] p) = bool:
-  for x in p do if x() then return false fi od; true
-set first ([(->bool)] p) = int:
-  for x@i in p do if x() then return i fi od; -1
-set last ([(->bool)] p) = int: { this is somewhat more efficient than first }
-  let i=#p-1 in while >=i and not p[i]() do i-:=1 od; i
+{ with values stored in an array, similar functions can be applied to it }
+any_type S,T begin
+
+set all ([T] L,(T->bool) predicate) = bool:
+  all(#L,(int i)bool:L[i].predicate)
+set any ([T] L,(T->bool) predicate) = bool:
+  any(#L,(int i)bool:L[i].predicate)
+set none ([T] L,(T->bool) predicate) = bool:
+  none(#L,(int i)bool:L[i].predicate)
+set first ([T] L,(T->bool) predicate) = int:
+  first(#L,(int i)bool:L[i].predicate)
+set last ([T] L,(T->bool) predicate) = int:
+  last(#L,(int i)bool:L[i].predicate)
+
+set get_first (([T],(T->bool)) (a,):args) = Maybe<T>:
+   let i=first(args) in if i>=0 then a[i].some else ().none fi
+set get_last (([T],(T->bool)) (a,):args) = Maybe<T>:
+   let i=last(args) in if i>=0 then a[i].some else ().none fi
+
+set get_first ((T->S) attr, (S,S->bool)eq) = ([T]a, S b) Maybe<T>:
+   get_first (a,(T x)bool: eq(x.attr,b))
+set get_last ((T->S) attr, (S,S->bool)eq) = ([T]a, S b) Maybe<T>:
+   get_last (a,(T x)bool: eq(x.attr,b))
+
+
+{ Generic functions on any type with a provided total ordering }
+
+{ minimum or maximum of 2 candidates }
+set min ((T,T->bool)leq) = (T x, T y) T: if leq(x,y) then x else y fi
+set max ((T,T->bool)leq) = (T x, T y) T: if leq(x,y) then y else x fi
+
+{ extensions of these to lists of any posiitve length }
+set min_list ((T,T->bool)leq) = ([T] a) T:
+  let l=#a in assert(l.>,"Minimum of an empty list");
+  let m=a~[0] in for i:l-1 do if not leq(m,a[i]) then m:=a[i] fi od; m
+set max_list ((T,T->bool)leq) = ([T] a) T:
+  let l=#a in assert(l.>,"Maximum of an empty list");
+  let m=a~[0] in for i:l-1 do if not leq(a[i],m) then m:=a[i] fi od; m
+
+{ versions seeded with a "limit value" to use in case of an empty list }
+set min_init ((T,T->bool)leq) = (T !seed) ([T]->T):
+  ([T] l)T: let m=seed in for a in l do if not leq(m,a) then m:=a fi od; m
+set max_init ((T,T->bool)leq) = (T !seed) ([T]->T):
+  ([T] l)T: let m=seed in for a in l do if not leq(a,m) then m:=a fi od; m
+
+{ position of first occurrence of minimum, or -1 }
+set mindex ((T,T->bool)leq) = ([T] a) int:
+  let l=#a in
+  if =l then -1
+  else let p=0, m=a[0] in
+    for i:l-1 from 1 do if not leq(m,a[i]) then set (p,m):=(i,a[i]) fi od; p
+  fi
+
+set maxdex ((T,T->bool)leq) = ([T] a) int:
+  let l=#a in
+  if =l then -1
+  else let p=0, m=a[0] in
+    for i:l-1 from 1 do if not leq(a[i],m) then set (p,m):=(i,a[i]) fi od; p
+  fi
+
+set any_has ((S,T->bool)rel) = ([S]a) (T->bool): let n=#a in (T y) bool:
+   any(n,(int i)bool:rel(a[i],y))
+set none_has ((S,T->bool)rel) = ([S]a) (T->bool): let n=#a in (T y) bool:
+   none(n,(int i)bool:rel(a[i],y))
+set all_have ((S,T->bool)rel) = ([S]a) (T->bool): let n=#a in (T y) bool:
+   all(n,(int i)bool:rel(a[i],y))
+
+set reverse ([T] r) = [T]: for x in r do x ~od
+
+end
+
+set is_member = any_has @ T (T,T->bool) { argument is supposed an '=' relation }
+set isnt_member = none_has @ T (T,T->bool) { same }
 
 { binary search first |i| in [low,high) with |pred(i)|, or |high| if none }
 { of course |pred| is assumed monotonic here: $pred(i)\implies pred(i+1)$ }
@@ -82,13 +208,40 @@ set binary_search_first ((int->bool)pred, int low, int high) = int:
   do let mid=(low+high)\2 in if pred(mid) then high:=mid else low:=mid+1 fi
   od; low
 
+any_type S,T begin
+set binary_search_in ([T] a,(T,T->bool) leq) = (T->Maybe<int>):
+  (T x) Maybe<int>:
+  let i = binary_search_first( (int i)bool:leq(x,a[i]) , 0,#a)
+  in if i<#a and leq(a[i],x) then some(i) else none() fi
+
+set binary_search_in ([S] a,(S->T)f,(T,T->bool) leq) = (T->Maybe<int>):
+  (T x) Maybe<int>:
+  let i = binary_search_first( (int i)bool:leq(x,f(a[i])) , 0,#a)
+  in if i<#a and leq(f(a[i]),x) then some(i) else none() fi
+
+set binary_search_get ([S] a,(S->T)f,(T,T->bool) leq) = (T->Maybe<S>):
+  (T x) Maybe<S>:
+  let i = binary_search_first( (int i)bool:leq(x,f(a[i])) , 0,#a)
+  in if i<#a and leq(f(a[i]),x) then some(a[i]) else none() fi
+
+set binary_lookup ((T,T->bool) leq) = (T x,[T]a) Maybe<int>:
+  binary_search_in(a,leq)(x)
+set binary_lookup_by ((S->T)f,(T,T->bool) leq) = (T x,[S]a) Maybe<int>:
+  binary_search_in(a,f,leq)(x)
+
+end
+
+set binary_lookup = binary_lookup(<=@(int,int))
+set binary_lookup = binary_lookup(<=@(string,string))
+
 set locate_sorted ([int] v,int lwb) = int: { first index of entry >= |lwb| }
   binary_search_first((int i):v[i]>=lwb,0,#v)
 
 { transform "stops" representation of weakly increasing function to function }
 set from_stops ([int] stops) = (int->int):
   { at |k| find last index |i| with |stops[i]<=k|; calculated via complement }
-  (int k): locate_sorted(stops,k+1)-1 { find first excess, then back up }
+  (int k): locate_sorted(stops,k+1)-1 { find first excess, then back up 1 }
+
 
 {                               Integers                                }
 
@@ -98,32 +251,14 @@ set sign (int k)= int: case k then -1 in 0 else 1 esac
 set is_odd  (int n) = bool: !=n%2
 set is_even (int n) = bool:  =n%2
 
-set min (int k, int l) = int: if k<l then k else l fi
-set max (int k, int l) = int: if k<l then l else k fi
-
-set min ([int] a) = int: let l=#a in assert(l.>,"Minimum of an empty list");
-  let m=a~[0] in for i:l-1 do if a[i]<m then m:=a[i] fi od; m
-set max ([int] a) = int: let l=#a in assert(l.>,"Maximum of an empty list");
-  let m=a~[0] in for i:l-1 do if a[i]>m then m:=a[i] fi od; m
-
-set min_loc ([int] a) = int: { position of first occurrence of minimum, or -1 }
-  let l=#a in
-  if =l then -1
-  else let p=0, m=a[0] in
-    for i:l-1 from 1 do if a[i]<m then set (p,m):=(i,a[i]) fi od; p
-  fi
-set max_loc ([int] a) = int: { position of first occurrence of maximum, or -1 }
-  let l=#a in
-  if =l then -1
-  else let p=0, m=a[0] in
-    for i:l-1 from 1 do if a[i]>m then set (p,m):=(i,a[i]) fi od; p
-  fi
-
-{ versions seeded with a "limit value" to use in case of an empty list }
-set min (int !seed) = ([int]->int):
-  ([int] l): let m=seed in for a in l do if a<m then m:=a fi od; m
-set max (int !seed) = ([int]->int):
-  ([int] l): let m=seed in for a in l do if a>m then m:=a fi od; m
+set min = min(<=@(int,int))
+set max = max(<=@(int,int))
+set min = min_list(<=@(int,int))
+set max = max_list(<=@(int,int))
+set min = min_init(<=@(int,int))
+set max = max_init(<=@(int,int))
+set min_loc = mindex(<=@(int,int))
+set max_loc = maxdex(<=@(int,int))
 
 set gcd = (int,int->int): { greatest common divisor; no size limit }
    let limit = 2^31 in
@@ -134,7 +269,7 @@ set gcd = (int,int->int): { greatest common divisor; no size limit }
       while let r=a%b in r.!= do a:=b; b:=r od; b
    fi
 
-{ the following cannot be called |gcd|: too cloase to built-in |gcd@vec| }
+{ the following cannot be called |gcd|: too close to built-in |gcd@vec| }
 set gcd_big([int] v) = int:
    let d=0 in for x in v do if (d:=gcd(d,x))=1 then break fi od; d
 
@@ -158,34 +293,27 @@ set exact_divide (int a, int b) = int:
 
 set int_format = to_string@int
 
-set is_member ([int] v) = (int->bool):
-  (int val)bool: any(#v,(int i)bool: v[i]=val)
-set isnt_member ([int] v) = (int->bool):
-  (int val)bool: all(#v,(int i)bool: v[i]!=val)
+{ bitsets encoded as functions (int->bool) together with upper bound |limit| }
 
-{ when |v| is known to be sorted (and long), this can be done faster }
-set is_member_sorted ([int] v) = (int->bool):
-  let l=#v in
-  case l { special cases for |l<=5| }
-  in (int .): false
-  , (int n): n=v[0]
-  , (int n): n=v[0] or n=v[1]
-  , (int n): case n-v[1] then n=v[0] in true else n=v[2] esac
-  , (int n): if n<v[2] then n=v[0] or n=v[1] else n=v[2] or n=v[3] fi
-  , (int n):
-       case n-v[2] then n=v[0] or n=v[1] in true else n=v[3] or n=v[4] esac
-  else
-     (int n)bool: let m = locate_sorted(v,n) in m<l and v[m]=n
-  esac
-set isnt_member_sorted ([int] v) = (int->bool):
-  let member = is_member_sorted(v) in (int n): not member(n)
+set exp_2 (int n) = int: [n].to_bitset { 2^n, but more efficient }
+set full_bitset (int n) = int: exp_2(n)-1 { to_bitset(#n), but more efficient }
 
-set is_member_bitset (int i,int B) = bool: bitwise_subset([i].to_bitset,B)
+set is_member_bitset (int i,int B) = bool: bitwise_subset(exp_2(i),B)
+set isnt_member_bitset (int i,int B) = bool: bitwise_subset(exp_2(i),~B)
 
 set is_member_fast (vec L) = (int->bool):
    let B=L.to_bitset in (int n) bool: is_member_bitset(n,B)
 set isnt_member_fast  (vec L) = (int->bool):
    let B = ~L.to_bitset in (int n) bool: is_member_bitset(n,B)
+
+set list (int limit, (int->bool) predicate) = [int]:
+  for i:limit if predicate(i) do i fi od
+set complement (int limit,(int->bool) predicate) = [int]:
+  for i:limit if not predicate(i) do i fi od
+set complement (int n, vec list) = [int]: list(n, isnt_member_fast(list) )
+
+{ sorting lists of relatively small natural numbers can be done fast }
+set sort_u_below (int n) = ([int] L) [int]: list(n,is_member_fast(L))
 
 set is_subset (vec S,vec L) = bool: bitwise_subset(S.to_bitset,L.to_bitset)
 set is_disjoint (vec S,vec L) = bool: bitwise_subset(S.to_bitset,~L.to_bitset)
@@ -202,7 +330,36 @@ set is_disjoint_from (vec L) = (vec->bool):
 set set_bit_positions (int n) = vec:
    assert(n.>=,"Infinite number of set bits for negative number");
    while let pow = AND_NOT(n,n-1) in !=pow do n-:=pow; bit_length(pow)-1 od
+set first_set_bit (int n) = int:
+   bit_length(AND_NOT(n,n-1))-1
+set without_first_set_bit (int n) = int: AND(n,n-1)
 
+
+set bitwise_intersection ([int] ns) = int:
+   let a=-1 in for n in ns do a:=AND(a,n) od; a
+set bitwise_union ([int] ns) = int:
+   let a=0 in for n in ns do a:=OR(a,n) od; a
+
+
+set is_member   = ([int]->(int->bool)): is_member(=@(int,int))
+set isnt_member = ([int]->(int->bool)): isnt_member(=@(int,int))
+
+{ when |v| is known to be sorted (and long), this can be done faster }
+set is_member_sorted ([int] v) = (int->bool):
+  let l=#v in
+  case l { special cases for |l<=5| }
+  in (int .): false
+  , (int n): n=v[0]
+  , (int n): n=v[0] or n=v[1]
+  , (int n): case n-v[1] then n=v[0] in true else n=v[2] esac
+  , (int n): if n<v[2] then n=v[0] or n=v[1] else n=v[2] or n=v[3] fi
+  , (int n):
+       case n-v[2] then n=v[0] or n=v[1] in true else n=v[3] or n=v[4] esac
+  else
+     (int n)bool: succeeds(binary_lookup(n,v))
+  esac
+set isnt_member_sorted ([int] v) = (int->bool):
+  let member = is_member_sorted(v) in (int n): not member(n)
 
 set is_subset_of_sorted ([int] sorted) = ([int]->bool):
    let test = is_member_sorted(sorted) in
@@ -211,29 +368,47 @@ set is_disjoint_from_sorted ([int] sorted) = ([int]->bool):
    let test = isnt_member_sorted(sorted) in
    ([int] S)bool: all(#S,(int i)bool: test(S[i]))
 
-set bitwise_intersection ([int] ns) = int:
-   let a=-1 in for n in ns do a:=AND(a,n) od; a
-set bitwise_union ([int] ns) = int:
-   let a=0 in for n in ns do a:=OR(a,n) od; a
-
 set fac (int n) = int: let p=1 in for i:n-1 from 2 do p *:=i od; p
+set ! = fac@int { allo conventional factorial notation }
 
 { convert to base n as polynomial: small coef polynomial evaluating to k at n }
-set to_base_poly (int n) = (int->vec): (int k) vec: assert(k.>=);
-  let r=0{dummy for multi-assign} in while !=k do set (k,r):=k\%n; r od
+set to_base_poly (int b) = (int->vec):
+  (int n): assert(n.>=); let r=0{dummy for multi-assign} in
+  vec: while n>0 do set (n,r):=n\%b; r od
 
-set to_base (int n, (int->string) digit) = (int->string):
-  let tbp=to_base_poly(n) in
-  (int k) string: assert(k.>=); for c in tbp(k) ~do c.digit od.##
+set to_base_fixed_length (int b, int l) = (int->vec{of length |l|}):
+  (int n): let r=0{dummy for multi-assign} in
+  vec: for :l do set (n,r):=n\%b; r od { get |l| finals digits, regardless }
+
+
+set to_base (int b, (int->string) digit) = (int->string):
+  let tbp=to_base_poly(b) in
+  (int n) string: for c in tbp(n) ~do c.digit od.##
 
 set binary = (int->string):
   let f=to_base(2,to_string@int) in
   (int n)string: if n.< then "-"##f(-n) else f(n) fi
 
-set hexadecimal = (int->string):
+set digits36 = (int->string): { map digits in base up to 36 to a letter }
   let !shift = "A".ascii-10
-  then f=to_base(16,(int k): if k<=9 then k.to_string else ascii(k+shift) fi)
+  in (int k)string: if k<=9 then k.to_string else ascii(k+shift) fi
+
+set hexadecimal = (int->string):
+  let !shift = "A".ascii-10 then f=to_base(16,digits36@int)
   in (int n)string: if n.< then "-"##f(-n) else f(n) fi
+
+{		some transformations of sequences of numbers		}
+
+set cumulate_forward ([int] seq) = [int]:
+   let sum=0 in for k in seq do sum+:=k od
+set cumulate_backward ([int] seq) = [int]:
+   let sum=0 in for k in seq ~do sum+:=k ~od
+
+set forward_differences ([int] seq) = [int]: { inverse of |cumulate_forward| }
+   let last=0 in for k in seq do k-last next last:=k od
+set backward_differences ([int] seq) = [int]: { inverse of |cumulate_backward| }
+   let last=0 in for k in seq ~do k-last next last:=k ~od
+
 
 {                           Rational numbers                            }
 
@@ -241,9 +416,9 @@ set numer (rat a) = let (n,)=%a in n
 set denom (rat a) = let (,d)=%a in d
 
 set is_integer (rat r) = bool: denom(r)=1
-set sign (rat a)= int: sign(numer(a)) { denominator is always positive }
+set sign (rat a) = int: sign(numer(a)) { denominator is always positive }
 
-set abs(rat a)=rat: sign(a)*a
+set abs (rat a) = rat: sign(a)*a
 
 set \ ((rat,rat)p) = int: floor(/p)
 set \% ((rat,int)p) = (int,rat): (\p,%p) { shouldn't these two be built-in? }
@@ -253,10 +428,19 @@ set \% ((rat,rat)p) = (int,rat): (\p,%p)
 set floor ([rat] v) = vec: for a in v do floor(a) od
 set ceil  ([rat] v) = vec: for a in v do  ceil(a) od
 
+set min = min(<=@(rat,rat))
+set max = min(<=@(rat,rat))
+set min = min_list(<=@(rat,rat))
+set max = min_list(<=@(rat,rat))
+set min = min_init(<=@(rat,rat))
+set max = min_init(<=@(rat,rat))
+set min_loc = mindex(<=@(rat,rat))
+set max_loc = maxdex(<=@(rat,rat))
+
 set sum ([rat] r) = rat: let s=rat:0 in for a in r do s+:=a od; s
 set product ([rat] r) = rat: let p=rat:1 in for a in r do p*:=a od; p
 
-{ extend built-in scalar product of vectors to list of rational case }
+{ extend built-in scalar product of vectors to list of rationals case }
 set * ([rat] v, [rat] w) = rat:
    let s=rat:0 in for vi@i in v do s +:= vi*w[i] od; s
 
@@ -266,33 +450,6 @@ set * ([int] v, [rat] w) = rat:
 { make a rational into an integer if possible }
 set rat_as_int (rat r) = int:
   let (n,d)=%r in if d=1 then n else error("Not an integer") fi
-
-set min (rat k, rat l) = rat: if k<l then k else l fi
-set max (rat k, rat l) = rat: if k<l then l else k fi
-
-set min ([rat] a) = rat: let l=#a in assert(l.>,"Minimum of an empty list");
-  let m=a~[0] in for i:l-1 do if a[i]<m then m:=a[i] fi od; m
-set max ([rat] a) = rat: let l=#a in assert(l.>,"Maximum of an empty list");
-  let m=a~[0] in for i:l-1 do if a[i]>m then m:=a[i] fi od; m
-
-set min_loc ([rat] a) = int: { position of first occurrence of minimum, or -1 }
-  let l=#a in
-  if =l then -1
-  else let p=0, m=a[0] in
-    for i:l-1 from 1 do if a[i]<m then set (p,m):=(i,a[i]) fi od; p
-  fi
-set max_loc ([rat] a) = int: { position of first occurrence of maximum, or -1 }
-  let l=#a in
-  if =l then -1
-  else let p=0, m=a[0] in
-    for i:l-1 from 1 do if a[i]>m then set (p,m):=(i,a[i]) fi od; p
-  fi
-
-{ versions seeded with a "limit value" to use in case of an empty list }
-set min (rat !seed) = ([rat]->rat):
-  ([rat] l): let m=seed in for a in l do if a<m then m:=a fi od; m
-set max (rat !seed) = ([rat]->rat):
-  ([rat] l): let m=seed in for a in l do if a>m then m:=a fi od; m
 
 set with_decimals (int n) = (rat->string): (rat r) string:
 (  let sign=if >=r then "+" else r:=-r; "-" fi, i=floor(r), f=frac(r)
@@ -307,6 +464,9 @@ in sign
 set !new_line = ascii(10) { including this in a string passes to a new line }
 
 set char_index (string c, string s) = int: first(#s,(int i)bool: c=s[i])
+
+set is_member   = ([string]->(string->bool)): is_member(=@(string,string))
+set isnt_member = ([string]->(string->bool)): isnt_member(=@(string,string))
 
 set + = ##@(string,string) { + aliases string concatenation "ax" ## "is" }
 set * = (string,int->string): { repeat string; use recursive doubling }
@@ -341,6 +501,8 @@ set c_adjust (int w, string s) = string:
 
 set width (int n) = int: #int_format(n)
 
+set split (string S) = [string]: for l in S do l od
+
 set split_lines (string text) = [string]:
 ( if text~[0]!=new_line then text := (text next text:="") ## new_line fi
 ; let last=0 in
@@ -348,7 +510,8 @@ set split_lines (string text) = [string]:
 )
 
 set is_substring (string key, string text) = bool:
-  let l=#key in any(#text-l,(int start)bool: text[start:start+l]=key)
+  let l=#key then n_tries=#text+1-l { number of interletter positions to try }
+  in any(n_tries,(int start)bool: text[start:start+l]=key)
 
 set fgrep (string s, string text) = [string]:
   for line in split_lines(text) if is_substring(s,line) do line fi od
@@ -357,17 +520,47 @@ set compact_string (ratvec v) = string:
    let (a,b)=%v in
    ([int]:a).to_string + if b=1 then "" else "/"+b.to_string fi
 
+{				Generics				}
+
+any_type S,T begin
+set filter ((T->bool) pred) = ([T]->[T]):
+  ([T] r): for x in r if pred(x) do x fi od
+
+set map ((S->T) f) = ([S] a) [T]: for x in a do f(x) od
+
+set split ([S,T] l) = ([S],[T]): ( for(s,)in l do s od, for(,t)in l do t od )
+
+set zip ([S] a,[T] b) = [S,T]:
+  if #a<=#b then for x@i in a do (x,b[i]) od else for y@i in b do (a[i],y) od fi
+
+set unzip ([S,T] list) = ([S],[T]):
+  ( for (x,) in list do x od , for (,y) in list do y od )
+
+set transpose ([[T]] rr) = [[T]]:
+{ only for rectangular array with at least one entry no information is lost }
+  if #rr=0 then rr { avoid error for minimum of empty list }
+  else for i: min(map(#@t([t]))(rr)) do for r in rr do r[i] od od
+  fi
+
+{ change one entry, in list-of-rows format }
+set matrix_assign([[T]] a,int i, int j, T v) = [[T]]:
+  let r = a[i] in a[i]:=[]; r[j]:=v; a[i]:=r; a
+
+end
+
 {                               Vectors                                 }
 
 set vector (int n,(int->int)f) = vec: for i:n do f(i) od
 
 { standard basis in rank n }
-set e(int n,int i) = vec: for j:n do #(i=j) od
+set identity_row (int n,int i) = vec: for j:n do #(i=j) od
 
-set ones (int n)= vec: for i:n do 1 od
+set ones (int n) = vec: for i:n do 1 od
+
+set is_member   = ([vec]->(vec->bool)): is_member(=@(vec,vec))
+set isnt_member = ([vec]->(vec->bool)): isnt_member(=@(vec,vec))
 
 set ~ (vec v)= vec: v~[:]
-set reverse ([int] r) = [int]: for x in r do x ~od
 set lower (int k,vec v)= vec: v[:k]
 set upper (int k,vec v)= vec: v[k~:]
 set drop_lower (int k,vec v)= vec: v[k:]
@@ -381,31 +574,49 @@ set sum (int l,[vec] list) = vec: { sum of vecs of constant length l }
 { for large sums |sum(l#list)|, using |sum@mat|, might be marginally faster }
 
 { all words with letter |i| running over elements of |alphabets[i]| }
-set all_words ([[int]] alphabets) = [vec]: {mat:}
+set all_words ([vec] alphabets) = mat:
+{ matrix records |#alphabets| as |n_rows|, even if there whoudl be no columns }
   let rec_fun generate(int final) = [vec]:
-     if =final then [null(0)]
+     if final=0 then [null(0)]
      else final-:=1; let alphabet=alphabets[final] in
 	for prefix in generate(final)
 	   for letter in alphabet do prefix#letter od
 	od
      fi
   , size=#alphabets
-  in generate(size) { ensure column size |size|, even for empty set }
+  in size # generate(size) { convert list of vectors to matrix with |size| rows }
+
+{ we can do the same for other types than integers }
+any_type T begin
+set all_words ([[T]] alphabets) = [[T]]:
+  (#alphabets).
+  (rec_fun generate(int final) [[T]]:
+     if final=0 then [[]] { a single empty list }
+     else final-:=1; let alphabet=alphabets[final] in
+	for prefix in generate(final)
+	   for letter in alphabet do prefix#letter od
+	od
+     fi
+  )
+{ if any alphabet is empty, the result is an empty list, forgetting #alphabets }
+end
 
 { all words of length |#limits|, with letter |i| running over |#limits[i]| }
-set all_words ([int] limits) = [vec]: {mat:}
+set all_words ([int] limits) = mat:
    for n in limits do #n od.all_words
 
 set all_0_1_vecs (int n) = [vec]: all_words(for :n do 2 od)
 
+any_type T begin
+
 set rec_fun power_set (int n) = [[int]]: { indices where 0_1_vecs have 1 }
   if =n then [[]] else let p=power_set(n-:=1) in p ## for S in p do S#n od fi
-set power_set ([int] S) = [[int]]:
+set power_set ([T] S) = [[T]]:
   for inx in power_set(#S) do for i in inx do S[i] od od
-set choices_from ([int] S, int k) = [[int]]: { all $k$-subsets of $S$ }
+set choices_from ([T] S, int k) = [[T]]: { all $k$-subsets of $S$ }
   if k>#S then []
   else { now we will assume $n\geq k$ }
-    let rec_fun from_first(int n,int k) = [[int]]: { $k$ from first $n$ of $S$ }
+    let rec_fun from_first(int n,int k) = [[T]]: { $k$ from first $n$ of $S$ }
       if k=0 then [[]] { unique choice of 0 }
       else { generate by final element, and concatenate }
         for i:n-k+1 from k-1
@@ -414,6 +625,11 @@ set choices_from ([int] S, int k) = [[int]]: { all $k$-subsets of $S$ }
       fi
     in from_first(#S,k)
   fi
+
+set multiplicity ((T,T->bool)eq) = (T,[T]->int):
+  (T n, [T] S) int: for x in S do eq(x,n) od.count
+
+end
 
 set all_0_1_vecs_with_sum (int n,int k) = [vec]:
    let !zero = null(n) in
@@ -430,7 +646,6 @@ set mixed_radix_word([int] radix) = (int->vec):
   (int N) vec: for rad@i in radix ~do let (q,r)= N\%rad in N:=q; r ~od
 
 {. number of times n occurs in [int] S .}
-set multiplicity (int n, [int] S) = int: for x in S do x=n od.count
 
 {add zeros to make total length =N}
 set pad ([int] v,int N) = vec: v##null(N-#v)
@@ -446,8 +661,8 @@ set matrix ((int,int)(r,c),(int,int->int) f) = mat:
 set n_rows    (mat m) = int: let (r,) = shape(m) in r
 set n_columns = #@mat { this one is built in as a # operator overload }
 
-set column (vec v) = mat: [v] { interpret v as single column }
-set row (vec v)    = mat: ^v  { interpret v as single row }
+set as_column (vec v) = mat: [v] { interpret v as single column }
+set as_row = ^@vec               { interpret v as single row }
 
 set ~ (mat A) = mat: { reverse rows and reverse columns }
   swiss_matrix_knife(45,A,0,0,0,0) { transform 45 = 36 + 9, rows&cols reversed }
@@ -471,14 +686,12 @@ set main_diagonal (mat A) = vec:  for i:shape(A).min do A[i,i] od
 set = (mat m,int k) = bool: =(m-k)
 
 { add a column to a matrix, which is not predefined as operator # }
-{ this definition is better than defining #@(mat,vec), as it will allow the
-  generic version to be used with argument types |[vec]| and |[int]| }
-set # = #@([vec],vec) { implicit conversion wil handle |(mat,vec)| arguments }
-set # = #@(vec,[vec]) { implicit conversion wil handle |(vec,mat)| arguments }
+set # (mat m, vec v) = mat: n_rows(m) { require size match } # (columns(m)#v)
+set # (vec v, mat m) = mat: n_rows(m) { require size match } # (v#columns(m))
 
 { add row to a matrix, which is similar; use operator ^ for it }
-set ^ (mat m, vec v) = mat: #v ^ rows(m)#v
-set ^ (vec v, mat m) = mat: #v ^ v#rows(m)
+set ^ (mat m, vec v) = mat: n_columns(m) ^ (rows(m)#v)
+set ^ (vec v, mat m) = mat: n_columns(m) ^ (v#rows(m))
 
 set ## (mat A, mat B) = mat: { concatenate horizontally, must have same depth }
    n_rows(B) # (columns(A)##columns(B))
@@ -511,9 +724,8 @@ set sum (int n,[mat] L) = mat: sum((n,n),L)
 { product left-to-right of list of square matrices, all square of size |n| }
 set product (int n, [mat] L) = mat:
   let len=#L in
-  if =len then id_mat(n)
-  else let p=L[0] in assert(shape(p)=(n,n),"Matrix has wrong shape")
-  ; for i:len-1 from 1 do p *:= L[i] od; p
+  if len=0 then id_mat(n)
+  else let p=L[0] in for i:len-1 from 1 do p *:= L[i] od; p
   fi
 
 set gcd(mat M) = int:
@@ -530,6 +742,8 @@ set % (mat m,int d) = mat: map_on(m)((int e) int: e%d)
 
 set Smith_basis (mat M) = mat: let (basis,)=Smith(M) in basis
 set inv_fact (mat M) = vec: let (,invf)=Smith(M) in invf
+
+set image (mat M) = mat: let (im,,,)=echelon(M) in im
 
 { matrix exponentiation }
 set ^ = (mat,int->mat):
@@ -581,16 +795,13 @@ set saturated_span (mat M) = bool: { whether columns span saturated sublattice }
   =#inv_f or inv_f~[0]=1 { all invariant factors are 1? test last one, if any }
 
 { test all vectors in a list }
-set all ([vec] L,(vec->bool) predicate) = bool:
-  all(#L,(int i)bool:L[i].predicate)
-set any ([vec] L,(vec->bool) predicate) = bool:
-  any(#L,(int i)bool:L[i].predicate)
-set none ([vec] L,(vec->bool) predicate) = bool:
-  none(#L,(int i)bool:L[i].predicate)
-set first ([vec] L,(vec->bool) predicate) = int:
-  first(#L,(int i)bool:L[i].predicate)
-set last ([vec] L,(vec->bool) predicate) = int:
-  last(#L,(int i)bool:L[i].predicate)
+
+
+set all (mat m,(vec->bool) pred) = bool: all([vec]:m,pred)
+set any (mat m,(vec->bool) pred) = bool: any([vec]:m,pred)
+set none (mat m,(vec->bool) pred) = bool: none([vec]:m,pred)
+set first (mat m,(vec->bool) pred) = int: first([vec]:m,pred)
+set last (mat m,(vec->bool) pred) = int: last([vec]:m,pred)
 
 set columns_with ((int,vec->bool) p,mat m) = mat:
   n_rows(m)# for col@j in m if p(j,col) do col fi od
@@ -598,8 +809,8 @@ set columns_with ((vec->bool) p,mat m) = mat:
   n_rows(m)# for col in m if p(col) do col fi od
 set columns_with ((int->bool) p,mat m) = mat:
   n_rows(m)# for col@j in m if p(j) do col fi od
-set a_column_with ((vec->bool) p,mat m) = maybe_a_vec:
-  for col in m do if p(col) then return solution(col) fi od; no_vec()
+set a_column_with ((vec->bool) p,mat m) = Maybe<vec>:
+  for col in m do if p(col) then return some(col) fi od; none()
 
 set rows_with ((int,vec->bool) p,mat m) = mat:
   n_columns(m) ^ for row@i in rows(m) if p(i,row) do row fi od
@@ -607,16 +818,16 @@ set rows_with ((vec->bool) p,mat m) = mat:
   n_columns(m) ^ for row in rows(m) if p(row) do row fi od
 set rows_with ((int->bool) p,mat m) = mat:
   n_columns(m) ^ for row@i in rows(m) if p(i) do row fi od
-set a_row_with ((vec->bool) p,mat m) = maybe_a_vec:
-  for row in rows(m) do if p(row) then return solution(row) fi od; no_vec()
+set a_row_with ((vec->bool) p,mat m) = Maybe<vec>:
+  for row in rows(m) do if p(row) then return some(row) fi od; none()
 
-set >=(mat m) = bool: { non-negative (dominant) columns only } all(m,>=@vec)
-set >(mat m) = bool: { strictly positive (dominant) columns only } all(m,>@vec)
-set <=(mat m) = bool: all(m,<=@vec)
-set <(mat m) = bool: all(m,<@vec)
+set >=([vec] m) = bool: { non-negative (dominant) columns only } all(m,>=@vec)
+set >([vec] m) = bool: { strictly positive (dominant) columns only } all(m,>@vec)
+set <=([vec] m) = bool: all(m,<=@vec)
+set <([vec] m) = bool: all(m,<@vec)
 
 set lookup_column (vec v,mat m) = int: last(columns(m),(vec w)bool: w=v)
-set lookup_row (vec v,mat m) = int: last(rows(m),(vec w)bool: w=v)
+set lookup_row    (vec v,mat m) = int: last(   rows(m),(vec w)bool: w=v)
 
 { sum of columns of a matrix; this is so neat, avoid calling it sum_columns }
 set sum (mat m)= vec: m*ones(n_columns(m))
@@ -627,23 +838,23 @@ set sum (mat m)= vec: m*ones(n_columns(m))
   - solve M*y = b (possibly finding none); this is easy using the echelon form
   - if a solution is found, return x = C*y
 }
-set solve (mat A,vec b) = maybe_a_vec:
+set solve (mat A,vec b) = Maybe<vec>:
 (  let (M,C,s,) = echelon(A) then (n,k)=shape(M)
    then j=0 { runs up to k, used to index backwards }, sol=null(k)
    in assert(#b=n,"equation mismatch")
 ;  for i:n
   ~do if j<#s and i=s~[j] { then it is a pivot row, with pivot at M[j][i] }
       then let Mj=M~[j] then (q,r)=b[i]\%Mj[i] in
-         if !=r then return ().no_vec { because inexact division} fi
+         if !=r then return ().none { because inexact division} fi
        ;  sol~[j]:=q; b-:=Mj*q { correct for contribution from sol[j~] }
        ;  j+:=1
-       elif !=b[i] then return ().no_vec { because no pivot available }
+       elif !=b[i] then return ().none { because no pivot available }
        fi
    od
-;  (C[:k]*sol).solution
+;  (C[:k]*sol).some
 )
 
-set solve (mat A,mat B) = maybe_a_mat: { matrix |X| satisfying |A*X=B|, if any }
+set solve (mat A,mat B) = Maybe<mat>: { matrix |X| satisfying |A*X=B|, if any }
 (  let (M,C,s,) = echelon(A) then (n,k)=shape(M)
    then sols = mat: { column |j| is solutions of |M*y=B[j]| }
       assert(n_rows(B)=n,"equation mismatch");
@@ -654,41 +865,29 @@ set solve (mat A,mat B) = maybe_a_mat: { matrix |X| satisfying |A*X=B|, if any }
       in for i:n
 	~do if j<#s and i=s~[j] { a pivot row, with pivot at |M~[j][i]| }
 	    then let Mj=M~[j] then (q,r)=rem[i]\%Mj[i]
-	    in if !=r then return ().no_mat { because inexact division} fi
+	    in if !=r then return ().none { because inexact division} fi
 	    ;  sol~[j]:=q; rem-:=Mj*q { correct for contribution from sol[j~] }
 	    ;  j+:=1
-	    elif !=rem[i] then return ().no_mat { because no pivot available }
+	    elif !=rem[i] then return ().none { because no pivot available }
 	    fi
 	 od
       ;  sol
       od
-   in (C[:k]*sols).solution
+   in (C[:k]*sols).some
 )
-
-set any (maybe_a_vec x) = bool: case x  | solution: true | no_vec: false esac
-set requisition (string message) = (maybe_a_vec->vec):
-   (maybe_a_vec x) vec: case x  | solution(s): s | else error(message) esac
-set requisition = requisition("No solution found; having one was required")
-
-set any (maybe_a_mat M) = bool: case M  | solution: true | no_mat: false esac
 
 set required_solution ((mat,vec) system) = vec: system.solve.requisition
 
-set any (maybe_a_mat M) = bool:
-   case M  | solution: true | no_mat: false esac
-set mat_requisition (string message) = (maybe_a_mat->mat):
-   (maybe_a_mat M) mat:
-    case M  | solution(s): s | else error(message) esac
-set requisition = mat_requisition("No solution found; having one was required")
 {system (A,B) means solving AX = B}
 set required_solution ((mat,mat) system) = mat: system.solve.requisition
-set required_solution ((mat,mat) system) = mat:system.solve.requisition
 
 { multiplicative order of a matrix, hangs unless finite }
 set order (mat !M) = int:
   let (n,):p =shape(M) in assert(=p,"Matrix is not square");
   let N=M, order=1, I=id_mat(n) in
   while N!=I do N *:= M; order+:=1 od; order
+
+
 
 {                           Rational vectors                            }
 
@@ -726,7 +925,7 @@ set \ (ratvec v, int k) = vec: let (n,d)=%v in n\(k*d)
 set ratvec_as_vec (ratvec v) = vec:
   let (w,d)=%v in assert(d=1,"Not an integer vector"); w
 
-set reverse (ratvec v)= ratvec: v~[:]
+set ~ (ratvec v)= ratvec: v~[:]
 set lower (int k,ratvec v)= ratvec: v[:k]
 set upper (int k,ratvec v)= ratvec: v[k~:]
 set drop_lower (int k,ratvec v)= ratvec: v[k:]
@@ -739,7 +938,7 @@ set <  (ratvec v) = bool: < numer(v)
 { solve(mat A,ratvec b): find a solution ratvec x of A*x=b, or indicate that
   none exists. Solution as in vec case, but exact division requirement is OK.
 }
-set solve (mat A, ratvec b) = maybe_a_ratvec:
+set solve (mat A, ratvec b) = Maybe<ratvec>:
 (  let (M,C,s,) = echelon(A) then (n,k)=shape(M)
    then j=0 { runs up to k, used to index backwards }, sol=for :k do rat:0 od
    in assert(#b=n,"equation mismatch")
@@ -748,20 +947,14 @@ set solve (mat A, ratvec b) = maybe_a_ratvec:
       then let Mj=M~[j] then q=b[i]/Mj[i] in
          sol~[j]:=q; b-:=Mj*q { correct for contribution from sol[j~] }
       ;  j+:=1
-      elif !=b[i] then return ().no_ratvec { because no pivot here }
+      elif !=b[i] then return ().none { because no pivot here }
       fi
    od
-;  (C[:#sol]*sol).solution
+;  (C[:#sol]*sol).some
 )
 
-set any (maybe_a_ratvec x) = bool:
-   case x  | solution: true | no_ratvec: false esac
-set rat_requisition (string message) = (maybe_a_ratvec->ratvec):
-   (maybe_a_ratvec x) ratvec:
-    case x  | solution(s): s | else error(message) esac
-set requisition = rat_requisition("No solution found; having one was required")
-
 set required_solution ((mat,ratvec) system) = ratvec: system.solve.requisition
+
 
 
 {                           Split integers                              }
@@ -886,6 +1079,9 @@ set str (LieType t) = string:
 
 {                               Root data                               }
 
+set root_indices (RootDatum rd) = [int]: { list of all legal root indices }
+   let npr=rd.nr_of_posroots in for i:npr+npr do i-npr od
+
 set central_torus_rank (RootDatum rd) = int: rd.Lie_type.central_torus_rank
 
 { provide default values for coroot preference when building root data }
@@ -895,6 +1091,9 @@ set is_simple(RootDatum rd) = bool: Lie_type(rd).is_simple
 
 set root_datum (mat simple_roots, mat simple_coroots) = RootDatum:
   root_datum(simple_roots,simple_coroots,false) { by default prefer roots }
+
+set torus_datum (int rank) = RootDatum:
+  root_datum(null(rank,0),null(rank,0),false)
 
 set root_datum (LieType type, mat lattice) = RootDatum:
   root_datum(type,lattice,false) { by default prefer roots }
@@ -906,9 +1105,9 @@ set adjoint (LieType type) = RootDatum:
   adjoint(type,false) { by default prefer roots here }
 
 set simply_connected (RootDatum rd) = RootDatum:
-  root_datum(^Cartan_matrix(rd),id_mat(semisimple_rank(rd)),rd.prefers_coroots)
+  root_datum(^Cartan_matrix(rd),id_mat(semisimple_rank(rd)),true)
 set adjoint (RootDatum rd) = RootDatum: { change weight basis to simple roots }
-  root_datum(id_mat(semisimple_rank(rd)),Cartan_matrix(rd),rd.prefers_coroots)
+  root_datum(id_mat(semisimple_rank(rd)),Cartan_matrix(rd),false)
 
 { in |sub_datum| the (co)roots at indices |S| must give a valid Cartan matrix,
   but they need not be positive, and will be taken in the order specified.
@@ -933,6 +1132,9 @@ set root_datum (LieType t, ratvec gen) = RootDatum: root_datum(t,[gen])
 
 { list of indices of all simple roots or coroots }
 set all_simples (RootDatum rd) = [int]: #semisimple_rank(rd)
+set all_posroots (RootDatum rd) = [int]: #nr_of_posroots(rd)
+set all_roots (RootDatum rd) = [int]: let npr = rd.nr_of_posroots in
+    for i: 2*npr from -npr do i od
 
 { the following uses that root_index(rd,v)=nr_of_posroots(rd) for a non-root v }
 set is_root ((RootDatum,vec) (rd,):p) = bool:
@@ -1020,16 +1222,17 @@ set root (RootDatum rd, vec alpha_v) = vec: root(rd,coroot_index(rd,alpha_v))
 set coroot (RootDatum rd, vec alpha) = vec: coroot(rd,root_index(rd,alpha))
 
 set is_orthogonal (RootDatum rd, int i, int j) = bool: =coroot(rd,i)*root(rd,j)
-set is_orthogonal (RootDatum rd, vec alpha, vec beta) = bool: is_orthogonal(rd,root_index(rd,alpha),root_index(rd,beta))
+set is_orthogonal (RootDatum rd, vec alpha, vec beta) = bool:
+   is_orthogonal(rd,root_index(rd,alpha),root_index(rd,beta))
 set is_orthogonal (RootDatum rd, [int] S, int j) = bool:
    for i in S do is_orthogonal(rd,i,j) od.all
 
 { reflection action of roots }
 set reflection (RootDatum rd, int i) = mat: { i indexes a root/coroot pair }
-  1 - column(root(rd,i))*row(coroot(rd,i))
+  1 - root(rd,i).as_column*coroot(rd,i).as_row
 set reflection ((RootDatum,vec)(rd,):p) = mat: { specify root (not coroot) }
   reflection(rd,root_index(p))
-set coreflection ((RootDatum,vec)(rd,):p) = mat: { specify coroot (not root) }
+set reflection_co ((RootDatum,vec)(rd,):p) = mat: { specify coroot (not root) }
   reflection(rd,coroot_index(p))
 set reflect (RootDatum rd, int i, vec v) = vec: { apply reflection(rd,i)*v }
   v -:= root(rd,i) * (coroot(rd,i)*v) { more efficient than matrix multiply }
@@ -1241,7 +1444,7 @@ in root_datum_from_positive((columns_with(pred,posroots(rd))
 			   )
 
 set project_to_dominant_cone (RootDatum rd, ratvec gamma) =
-  (ratvec,int): { (nearest dominant vector to |gamma|, facet identification nr }
+  (ratvec,int): { (nearest dominant vector to |gamma|, facet identification nr) }
 (  let candidates = [rd.semisimple_rank].to_bitset-1 { simple roots to start }
    then !simples = candidates { to use as universe for complementation }
 in while let new_indices = int:
@@ -1256,9 +1459,10 @@ in while let new_indices = int:
 ;  ( gamma, candidates )
 )
 
-set project_to_dominant_cone (RootDatum rd, ratvec gamma, [(mat,int)]
-    wall_projs) =
-  (ratvec,int): { (nearest dominant vector to |gamma|, facet identification nr }
+set project_to_dominant_cone (RootDatum rd, ratvec gamma,
+      [(mat,int)] wall_projs { precomputed |walls_projectos| rational matrices }
+   ) = (ratvec,int):
+   { result is: (nearest dominant vector to |gamma|, facet identification nr) }
 (  let candidates = [rd.semisimple_rank].to_bitset-1 { simple roots to start }
    then !simples = candidates { to use as universe for complementation }
 in while let new_indices = int:
@@ -1329,6 +1533,9 @@ set highest_root (RootDatum rd) = vec:
 
 {                               Weyl group				}
 
+set is_member   = ([WeylElt]->(WeylElt->bool)): is_member(=@(WeylElt,WeylElt))
+set isnt_member = ([WeylElt]->(WeylElt->bool)): isnt_member(=@(WeylElt,WeylElt))
+
 set id_W (RootDatum rd) = WeylElt: W_elt(rd,[int]:[])
 set W_gen (RootDatum rd, int s) = W_elt(rd,[s])
 set W_gens (RootDatum rd) = [WeylElt]:
@@ -1349,14 +1556,73 @@ set rho_diff (WeylElt w) = vec: let rho2=w.root_datum.two_rho in (rho2-w*rho2)\2
 set rho_check_diff (WeylElt w) = vec:
   let rho_check2=w.root_datum.two_rho_check in (rho_check2-rho_check2*w)\2
 
+{ the set of posroots that w maps to negative roots, as a bitset }
+set positive_to_negative (WeylElt w) = [int]:
+  let n=w.root_datum.nr_of_posroots in
+  for x@i in root_permutation(w)[n:] if x<n do i fi od
+set posroot_sum (RootDatum rd,[int] select) = vec:
+  sum(rd.rank # for i in select do root(rd,i) od)
+set poscoroot_sum (RootDatum rd,[int] select) = vec:
+  sum(rd.rank # for i in select do coroot(rd,i) od)
+
+{ make dominant for a Levi subsystem, and find a witness for returning }
+set from_dominant (RootDatum rd, [int] S, vec v) = (WeylElt,vec):
+( let refl = for alpha in S do W_refl(rd,alpha) od
+  , last_asc () = int: last(#S,(int i): coroot(rd,S[i])*v<0)
+  , w = id_W(rd)
+  in while let i=last_asc() in i>=0 do w *:= refl[i]; v:=refl[i]*v od
+; (w,v)
+)
+set from_dominant (RootDatum rd, [int] S, ratvec rv) = (WeylElt,ratvec):
+  let (n,d)=%rv then (w,v) = from_dominant(rd,S,n) in (w,v/d)
+
+set from_dominant (vec v, RootDatum rd, [int] S) = (vec,WeylElt):
+( let refl = for alpha in S do W_refl(rd,alpha) od
+  , last_asc () = int: last(#S,(int i): v*root(rd,S[i])<0)
+  , w = id_W(rd)
+  in while let i=last_asc() in i>=0 do v:=v*refl[i]; w := refl[i]*w od
+  ; (v,w)
+)
+set from_dominant (ratvec rv, RootDatum rd, [int] S) = (ratvec,WeylElt):
+  let (n,d)=%rv then (v,w) = from_dominant(n,rd,S) in (v/d,w)
+
 set chamber ((RootDatum,vec) rd_lambda) = WeylElt:
   let (w,)=from_dominant(rd_lambda) in w
 set dominant ((RootDatum,vec) rd_lambda) = vec:
   let (,dom_wt)=from_dominant(rd_lambda) in dom_wt
+set chamber ((RootDatum,[int],vec) triple) = WeylElt:
+  let (w,)=from_dominant(triple) in w
+set dominant ((RootDatum,[int],vec) triple) = vec:
+  let (,dom_wt)=from_dominant(triple) in dom_wt
+
 set chamber ((vec,RootDatum) lambda_rd) = WeylElt:
   let (,w)=from_dominant(lambda_rd) in w
 set dominant ((vec,RootDatum) lambda_rd) = vec:
   let (dom_cwt,)=from_dominant(lambda_rd) in dom_cwt
+set chamber ((vec,RootDatum,[int]) triple) = WeylElt:
+  let (,w)=from_dominant(triple) in w
+set dominant ((vec,RootDatum,[int]) triple) = vec:
+  let (dom_cwt,)=from_dominant(triple) in dom_cwt
+
+set permuted_root (WeylElt w, int alpha) = int:
+   let npr = w.root_datum.nr_of_posroots in
+   root_permutation(w)[alpha+npr]-npr
+set permuted_coroot (int alpha,WeylElt w) = int:
+   let npr = w.root_datum.nr_of_posroots in
+   root_permutation(/w)[alpha+npr]-npr
+
+set from_dominant_root(RootDatum rd, [int]S, int alpha) = (WeylElt,int):
+(  let npr = rd.nr_of_posroots
+   then w=id_W(rd)
+   , invols = for i in S do root_involution(rd,i) od
+   , last_asc () = int: last(#S,(int i): coroot(rd,S[i])*root(rd,alpha)<0)
+   in while let i=last_asc() in i>=0
+      do w *:= W_refl(rd,i); alpha:=invols[i][npr+alpha]-npr
+      od
+   ;  (w,alpha)
+)
+
+
 set w0 (RootDatum rd) = chamber(rd,-rd.two_rho)
 
 set * (WeylElt w, ratvec gamma) = ratvec: let (n,d)=%gamma in (w*n)/d
@@ -1508,6 +1774,23 @@ set quasicompact_form (InnerClass ic) = RealForm: real_form(ic,0)
 
 set compact_form (RootDatum r) = RealForm:
   quasicompact_form(inner_class(r,id_mat(rank(r))))
+
+set compact_torus (int rank) = RealForm:
+  let ic = inner_class(torus_datum(rank),id_mat(rank)) in real_form(ic,0)
+set split_torus (int rank) = RealForm:
+  let ic = inner_class(torus_datum(rank),-id_mat(rank)) in real_form(ic,0)
+set real_complex_torus (int complex_rank) = RealForm:
+  let rank=2*complex_rank then M=null(rank,rank)
+  then ic = for i:complex_rank do M[i+i,i+i+1]:=1; M[i+i+1,i+i]:=1 od
+          ; inner_class(torus_datum(rank),M)
+  in real_form(ic,0)
+
+set torus(CartanClass C) = RealForm:
+   let ((a,b,c),,,)=Cartan_info(C) then rank = a+b+b+c
+   then M = diagonal(ones(a)##null(b+b)##-ones(c))
+   then ic = for i:b do let k=a+i+i in M[k,k+1]:=1; M[k+1,k]:=1 od
+           ; inner_class(torus_datum(rank),M)
+   in real_form(ic,0)
 
 set is_compatible (RealForm f, RealForm g) = bool:
   let ic = inner_class(f) in
@@ -1703,7 +1986,7 @@ set print_KL_list  ((RealForm,RealForm) p) = void: print_KL_list(block(p))
 set print_W_cells  ((RealForm,RealForm) p) = void: print_W_cells(block(p))
 set print_W_graph  ((RealForm,RealForm) p) = void: print_W_cells(block(p))
 
-{				K types					}
+{				K-types					}
 
 set root_datum (KType t) = RootDatum: real_form(t)
 set inner_class (KType t) = InnerClass: real_form(t)
@@ -2182,7 +2465,7 @@ set monomial  (ParamPol P,int i) = Param: monomials(P)[i]
 {		Rapid look-up in certain fixed structures		}
 
 { remove repetitions from a list of vecs, assumed all same size }
-set no_reps([vec] L) = [vec]: 
+set no_reps([vec] L) = [vec]:
     if =#L then []
     else
        let n = #L[0] then R=null(n,0)
@@ -2246,29 +2529,29 @@ set index_in ([Param] L) = (Param->int): { an efficiency hack: }
 
 { find index of item in list, or -1 if not found; |first| does this }
 
-set find ([int] v, int k) = int:      first(#v,(int i)bool:v[i]=k)
-set find ([Param] L,Param p) = int:   first(#L,(int i)bool:L[i]=p)
-set find ([KGBElt] S,KGBElt x) = int: first(#S,(int i)bool:S[i]=x)
-set find ([vec] S,vec v) = int:       first(#S,(int i)bool:S[i]=v)
-set find ([ratvec] S,ratvec v) = int: first(#S,(int i)bool:S[i]=v)
+any_type S,T begin
+set present_in ([T]a,(T,T->bool)eq) = is_member(eq)(a)
+set find ((T,T->bool)eq) = ([T] a, T y) int: first(a,(T x)bool:eq(x,y))
+set find_in ([T] a, (T,T->bool)eq) = (T x) int: first(a,(T y)bool:eq(x,y))
+set delete ([T] a, int i) = [T]: a[:i] ## a[i+1:]
+end
+
+set find = find(=@(int,int))
+set find = find(=@((int,int),(int,int)))
+set find = find(=@(vec,vec))
+set find = find(=@(ratvec,ratvec))
+set find = find(=@(KGBElt,KGBElt))
+set find = find(=@(Param,Param))
+
+set delete (vec v, int i) = vec: v[:i] ## v[i+1:]
+set delete (mat M, int j) = mat: M[:j] ## M[j+1:]
 
 { No version for finding [int] due to potential ambiguity with vec version.
   Note that |find(L,x)| has alternative |first(for y in L do x=y od)| which
   can be used for all types having =, without separate definition of |find|
 }
 
-set in_string_list (string s,[string] S) = bool:
-  >=first(for t in S do s=t od)
-
-set in_list([int] v,int k)=bool:>=find(v,k)
-
-{ delete one term from a list }
-set delete ([int] v, int k)     =[int]:     v[:k]##v[k+1:]
-set delete ([vec] v, int k)     =[vec]:     v[:k]##v[k+1:]
-set delete ([ratvec] v, int k)  =[ratvec]:  v[:k]##v[k+1:]
-set delete ([[ratvec]] v, int k)=[[ratvec]]:v[:k]##v[k+1:]
-set delete ([[vec]] v, int k)   =[[vec]]:   v[:k]##v[k+1:]
-set delete ([ParamPol] P, int k)=[ParamPol]:P[:k]##P[k+1:]
+set in_string_list (string s,[string] S) = bool: s.(is_member(S))
 
 set positive_imaginary_roots_and_coroots = imaginary_sys@(RootDatum,mat)
 set positive_imaginary_roots_and_coroots = imaginary_sys@KGBElt
@@ -2294,18 +2577,10 @@ set complex_posroots (KGBElt x) =  mat:
 { pad string with blanks (for lining up columns in tables) }
 set pad (string s,int width) = string: l_adjust(width,s)
 
-{ for user convenience; a ParamPol is an associative array ParamPol->Split
-  so selecting its monomials (Param values) by position is not reliable, but
-  allowing so is useful in user sessions to pick terms from a computed result
-}
-set monomials (KTypePol P) = [KType]: for @t in P do t od
-set monomials (ParamPol P) = [Param]: for @p in P do p od
-set monomial  (KTypePol P,int i) = KType: monomials(P)[i]
-set monomial  (ParamPol P,int i) = Param: monomials(P)[i]
 
 { height of a ParamPol is max of height of each term}
-set height (KTypePol P) = int: max(0)(for @t in P do height(t) od)
-set height (ParamPol P) = int: max(0)(for @p in P do height(p) od)
+set height (KTypePol P) = int: max(-1)(for @t in P do height(t) od)
+set height (ParamPol P) = int: max(-1)(for @p in P do height(p) od)
 
 {. Convert a list of KTypePol into the list of distinct parameters occurring;
    careful: don't let terms cancel! .}
@@ -2325,6 +2600,9 @@ set monomials([ParamPol] list) = [Param]:
    in monomials(sum)
    fi
 
-set min_height([Param] params)=[Param]:
-if #params=0 then [] else
-let min=min(for p in params do height(p) od) in for p in params do if height(p)=min then [p] else [] fi od.## fi
+set min_height([Param] params) = [Param]:
+   if #params=0 then []
+   else
+      let min=min(for p in params do height(p) od)
+   in for p in params if height(p)=min do [p] fi od.##
+   fi

@@ -1,6 +1,5 @@
-< basic {for infinitesimal character}
-<aff_cube.at {for local_FPP_extrema}
-{<K_types.at {for branch_std}}
+<basic.at { for |infinitesimal character| }
+<hash.at { for |make_xlambda_hash| }
 
 set red_count_time =int:0
 

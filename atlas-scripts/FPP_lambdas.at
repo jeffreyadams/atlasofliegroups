@@ -7,65 +7,62 @@ dependencies in function ranges in red_count.at}
 
 {version of solve from basic using precomputed echelon form, to speed
 repeated calcs}
-
-set solve(vec b, mat M, mat C, [int] s) = maybe_a_vec:
-(    let (n,k)=shape(M)
-     then j=0 { runs up to k, used to index backwards }, sol=null(k)
-     in assert(#b=n,"equation mismatch");
-     	for i:n
+set solve(vec b, mat M, mat C, [int] s) = Maybe<vec>:
+(   let (n,k)=shape(M)
+    then j=0 { runs up to k, used to index backwards }, sol=null(k)
+    in assert(#b=n,"equation mismatch");
+	for i:n
        ~do if j<#s and i=s~[j] { then it is a pivot row, with pivot at M[j][i] }
-       	   then let Mj=M~[j]
-	   	then (q,r)=b[i]\%Mj[i]
-		in if !=r then return ().no_vec { because inexact division} fi;
-       		   sol~[j]:=q;
+	   then let Mj=M~[j]
+		then (q,r)=b[i]\%Mj[i]
+		in if !=r then return none() { because inexact division} fi;
+		   sol~[j]:=q;
 		   b-:=Mj*q; { correct for contribution from sol[j~] }
-       		   j+:=1
-       	    elif !=b[i] then return ().no_vec { because no pivot available }
-       	    fi
-   	 od;
-	 (C[:k]*sol).solution
+		   j+:=1
+	    elif !=b[i] then return none() { because no pivot available }
+	    fi
+	 od
+    ; some(C[:k]*sol)
 )
 
 {these are the possible lambda+theta*lambda for x.involution = theta. First
 vec_hash will be filled with candidate lamthlam (for which a lambda in X* + rho exists).
 For each lamthlam there is a Perm2 in the second list.}
-set cands_hash(InnerClass ic, mat theta, vec_hash lamthlam_hash) = [PermOrderTwo]:
-    let th1 = 1+theta, verts = FPP_vertices(ic), FEs = FPP_flippable_edges(ic),
-    	Perm2s = [PermOrderTwo]: [], empty = [(int,int)]: []
+set cands_hash(InnerClass ic, mat theta, vec_hash lamthlam_hash) =
+      [PermOrderTwo]:
+(   let th1 = 1+theta, verts = FPP_vertices(ic), FEs = FPP_flippable_edges(ic),
+	Perm2s = [PermOrderTwo]: [], empty = [(int,int)]: []
     then shift = (-th1*ic.rho).numer
-    then () = for v@j in verts
-       	      do let w = th1*v
-       	      	 in if w.denom = 1 and any(vec_solve(th1, w.numer + shift))
-	       	    then let M = lamthlam_hash.size()
-	       	    then m = lamthlam_hash.match(w.numer)
-	       	    in if m = M
-	     	       then let () = Perm2s #:= (vec: [j],empty)
-		       	    in ()
-		       else let Perm2sm = Perm2s[m]
-			    then () = Perm2sm.fixed #:= j
-			    then () = Perm2s[m] := Perm2sm
-			    in ()
-		       fi
-	            fi
-               od
-    then () = for pair in FEs
-    	      do  let a = verts[pair[0]], b = verts[pair[1]]
-	      	  then w = a+theta*b
-	      	  in if theta*w = w and w.denom = 1
-		     and any(vec_solve(th1, w.numer + shift))
-		     then let M = lamthlam_hash.size()
-	             then m = lamthlam_hash.match(w.numer)
-	             in if m = M
-		     	then let () = Perm2s #:= (null(0),[(pair[0],pair[1])])
-			     in ()
-			else let Perm2sm = Perm2s[m]
-			     then () = Perm2sm.trans #:= (pair[0],pair[1])
-			     then () = Perm2s[m] := Perm2sm
-			     in ()
-			fi
-		     fi
-	       od
-     in Perm2s
+ in for v@j in verts
+    do let w = th1*v
+       in if w.denom = 1 and can(vec_solve(th1, w.numer + shift))
+	  then let M = lamthlam_hash.size()
+	  then m = lamthlam_hash.match(w.numer)
+	  in if m = M
+	     then Perm2s #:= (vec: [j],empty)
+	     else let Perm2sm = Perm2s[m]
+	     in Perm2sm.fixed #:= j
+	     ; Perm2s[m] := Perm2sm
+	     fi
+	  fi
+     od
+;    for pair in FEs
+     do  let a = verts[pair[0]], b = verts[pair[1]]
+	 then w = a+theta*b
+	 in if theta*w = w and w.denom = 1
+	    and can(vec_solve(th1, w.numer + shift))
+	    then let M = lamthlam_hash.size()
+	    then m = lamthlam_hash.match(w.numer)
+	    in if m = M
+	       then Perm2s #:= (null(0),[(pair[0],pair[1])])
+	       else let Perm2sm = Perm2s[m]
+	       in Perm2sm.trans #:= (pair[0],pair[1])
+	       ; Perm2s[m] := Perm2sm
+	       fi
+	    fi
+      od
+;  Perm2s
+)
 
 set Lnu(Param p) = RealForm:
     let p1 = to_no_Cplus(p), G=p.real_form
@@ -79,7 +76,7 @@ set Wnu(Param p) = [WeylElt]:
     then theta1 = p1.x.involution
     in for w1 in Weyl_orbit_ws(Lnu,(p1.infinitesimal_character).numer)
        do if w1*theta1 = theta1*w1 and parameter(p1.x, w1*(p1.lambda - rho)+rho, 0*rho) = p1*0
-       	  then [w1]
+	  then [w1]
 	  else [] fi
        od.##
 
@@ -87,14 +84,14 @@ set maxPR_cowts(Param p) = [vec]:
     let p1 = to_no_Cplus(p), G = p.real_form
     then theta = p1.x.involution {, xo = x_open(G)}
     then coweights = for xi in G.fundamental_coweights
-    	 	   do (xi - xi*theta).numer
+		   do (xi - xi*theta).numer
 		   od.no_reps
     then M = null(rank(G),0)
     then () = for tau in coweights
-       	      do if rank(M#tau) = rank(M) + 1
-       	      	 then M#:=tau
-	  	 fi
-       	      od
+	      do if rank(M#tau) = rank(M) + 1
+		 then M#:=tau
+		 fi
+	      od
     in M
 
 {this is useless???}
@@ -107,31 +104,31 @@ set ind_cand_params = (Param -> [Param]):
        let I = param_hash.size()
        then i = param_hash.match(p)
        then () = if i=I
-       	       	 then let G = p.real_form, p1 = to_no_Cplus(p)
-    		      then xo = x_open(G)
-    		      then lists = for tau in maxPR_cowts(p)
-    	 	      	   	   do let Q = parabolic_by_cwt(tau, xo)
-	    		      	      then L = Q.Levi
-	    		      	      then x1L = inverse_embed_KGB(p1.x, L)
-	    		      	      then lambda1L = p1.lambda - rho_u(Q)
-	    		      	      then list = [Param]: []
-	    		      	      then () =  for w1 in Wnu(p)
-	       	       	      	      	   do let p1L = first_param(finalize(
+		 then let G = p.real_form, p1 = to_no_Cplus(p)
+		      then xo = x_open(G)
+		      then lists = for tau in maxPR_cowts(p)
+				   do let Q = parabolic_by_cwt(tau, xo)
+				      then L = Q.Levi
+				      then x1L = inverse_embed_KGB(p1.x, L)
+				      then lambda1L = p1.lambda - rho_u(Q)
+				      then list = [Param]: []
+				      then () =  for w1 in Wnu(p)
+					   do let p1L = first_param(finalize(
 					      parameter(x1L, lambda1L, w1*p1.nu)))
-		       	  		      in if is_hermitian(p1L)
-		      	     		     	    {and is_FPP(L, p1L.infinitesimal_character)}
-		     	    			    and real_induce_irreducible(p1L,G) = p
-	       	     	     		          then list := for q in derived_factor_params0((p1L))										  do herm_center(q)
-						       	       od
-	       		    			  fi
-	 	        		    od
-	    		      	      in list
-	 		    	    od
+					      in if is_hermitian(p1L)
+						    {and is_FPP(L, p1L.infinitesimal_character)}
+						    and real_induce_irreducible(p1L,G) = p
+						  then list := for q in derived_factor_params0((p1L))										  do herm_center(q)
+							       od
+						  fi
+					    od
+				      in list
+				    od
 		       then j = first(for list in lists do #list >0 od)
 		       in if j.>=
-		       	  then answers#:= lists[j]
-			  else answers#:= []
-		   	  fi
+			  then answers#:= lists[j]
+			  else answers#:= ([Param]:[])
+			  fi
 		   fi
 
 	then ()= assert(#answers = param_hash.size(),"ind_cand_params hash damaged")
@@ -148,7 +145,7 @@ set Perm2_to_LPm(InnerClass ic, PermOrderTwo Perm2) = Lvd_Perm2{_mapAct}:
     {maps FPP vertex indices from vd to local indices from Lvd}
     then () = for f@k in Perm2.fixed do mapAct[f]:= k od
     then () = for (p,q)@ell in Perm2.trans do mapAct[p]:=#Perm2.fixed + ell;
-    	      	  	       		      mapAct[q]:=#Perm2.fixed + ell od}
+					      mapAct[q]:=#Perm2.fixed + ell od}
     in (Lvd, Perm2{, mapAct})
 
 {Record for each inner class a list of some involutions in inner class; and for each such involution,
@@ -161,9 +158,9 @@ set_type
   , ( -> ) clear
   , ( -> vec) involution_size {for each inner class, number of involutions so far considered}
   , ( -> [vec]) lamthlam_size {for each inner class and involution, number of d_lambdas (actually lambda+theta*lambda)
-      	 		       so far considered}
+			       so far considered}
 {  , ( -> [vec]) cands_size {for each inner class and involution, number of candidate lambda+theta*lambda
-      	 		       so far considered}}
+			       so far considered}}
   , ( -> [[vec]]) Lvd_list_size {for each inner class and involution and d_lambda, size of Lvd.list}
   , (InnerClass -> VertexData) FPP_vertex_data {one for each inner class}
   , (InnerClass -> (vec -> int)) flippable_edge_lookup
@@ -175,14 +172,14 @@ set_type
   , ((InnerClass, mat) -> [ratvec]) lambda0s {for each involution, list of allowed lambda mod twists}
   , ((InnerClass, mat,vec) -> PermOrderTwo) Perm2 {for each involution and lamthlam, corresponding Perm2}
   , ((InnerClass, mat) -> [(ratvec, Lvd_Perm2{_mapAct})]) LPm_entries {allowed lambda mod twists, corr entry}
-    		       	  	    {like output of old FPP_lambdas_big_new}
+				    {like output of old FPP_lambdas_big_new}
   , ((InnerClass, mat, vec) -> LocalVertexData) Lvd {local vertex data, one for each theta and lambda+theta*lambda}
   , ((InnerClass, mat, vec) -> Lvd_Perm2{_mapAct}) LPm_entry {one for each theta and lambda+theta*lambda}
 {  , ((InnerClass, mat, vec) -> ) append {just compute, don't report LPm entry}}
   , (int -> InnerClass) inner_class_index
   , (int -> VertexData) vd_index {vertex data for inner class}
   , ((int,int,int) -> Lvd_Perm2{_mapAct}) Lvd_Perm2_index {one for each inner class, involution,
-    		      					       lambda + theta*lambda}
+							       lambda + theta*lambda}
 )
 ]
 
@@ -194,12 +191,12 @@ set make_Lvd_Perm2_table() = Lvd_Perm2_table:
     then FPP_local_verts = [[ratvec]]: [] {one list for each inner class}
 {    then cands = [[[vec]]]: [] {one [vec] for each inner class and involution}}
     then lamthlam_hashess = [[vec_hash]]: [] {one for each inner class and involution}
-    	 {entries are vecs of size ic.rank: lamba+theta*lambda, for a
-	 	  certain choice of lambda (defined up to twist and equivalence}
+	 {entries are vecs of size ic.rank: lamba+theta*lambda, for a
+		  certain choice of lambda (defined up to twist and equivalence}
     then Perm2s = [[[PermOrderTwo]]]: [] {one for each involution and cand lamthlam}
     then entries = [[[Lvd_Perm2]]]: [] {one list for each involution and cand lamthlam}
     then clear() = void:
-    	 let () = inner_class_hash.clear()
+	 let () = inner_class_hash.clear()
 	 then () = inv_hashes := []
 	 then () = vertex_datas := []
 	 then () = FELs := []
@@ -210,41 +207,41 @@ set make_Lvd_Perm2_table() = Lvd_Perm2_table:
 	 then () = entries := []
 	 in ()
     then add_inner_class(InnerClass ic) = int:
-    	 let I = inner_class_hash.size()
+	 let I = inner_class_hash.size()
 	 then i = inner_class_hash.match(ic)
-    	 then () = if i = I {haven't seen this inner class before}
-	      	   then inv_hashes #:= make_mat_hash();
-	    	   	vertex_datas #:= FPP_vertex_data(ic);
+	 then () = if i = I {haven't seen this inner class before}
+		   then inv_hashes #:= make_mat_hash();
+			vertex_datas #:= FPP_vertex_data(ic);
 			FELs #:= FPP_flippable_edge_lookup(ic);
-	    	   	FPP_local_verts #:= FPP_local_vertices(ic, vertex_datas[i].list, FELs[i]);
+			FPP_local_verts #:= FPP_local_vertices(ic, vertex_datas[i].list, FELs[i]);
 {			cands #:= [];}
-	    	   	lamthlam_hashess #:= [];
-			Perm2s #:= [];
-	    	   	entries #:= []
-	    	   fi
+			lamthlam_hashess #:= ([vec_hash]:[]);
+			Perm2s #:= ([[PermOrderTwo]]:[]);
+			entries #:= ([[Lvd_Perm2]]:[])
+		   fi
 	  in i
      then add_involution(InnerClass ic, mat theta) = (int, int):
-    	 let i = add_inner_class(ic)
+	 let i = add_inner_class(ic)
 	 then J = inv_hashes[i].size()
-      	 then j = inv_hashes[i].match(theta)
-     	 then () = if j = J {haven't seen this involution before}
-      	      	   then {cands[i] #:= [];}
+	 then j = inv_hashes[i].match(theta)
+	 then () = if j = J {haven't seen this involution before}
+		   then {cands[i] #:= [];}
 			lamthlam_hashess[i] #:= make_vec_hash();
-			Perm2s[i] #:= [];
-		   	entries[i] #:= []
+			Perm2s[i] #:= ([PermOrderTwo]:[]);
+			entries[i] #:= ([Lvd_Perm2]:[])
 		   fi
 	 in (i, j)
     then add_cands(InnerClass ic, mat theta) = (int, int):
-    	 let (i,j) = add_involution(ic,theta)
+	 let (i,j) = add_involution(ic,theta)
 	 then tempPerm2si = Perm2s[i]
 	 then entriesi = entries[i]
 	 then () = if {#cands[i][j] > 0} lamthlam_hashess[i][j].size() > 0
-	 	   then return (i,j)
-	 	   else let Perm2cands = cands_hash(ic,theta, lamthlam_hashess[i][j]) {this  writes to the hash table the possible lamthlam}
+		   then return (i,j)
+		   else let Perm2cands = cands_hash(ic,theta, lamthlam_hashess[i][j]) {this  writes to the hash table the possible lamthlam}
 			then () = tempPerm2si[j] := Perm2cands
 			then () = entriesi[j] := for lamthlam@k in lamthlam_hashess[i][j].list()
-			     	       	    do let Perm2 = Perm2cands[k]
-				     	       in Perm2_to_LPm(ic,Perm2)
+					    do let Perm2 = Perm2cands[k]
+					       in Perm2_to_LPm(ic,Perm2)
 					    od
 			then () = Perm2s[i] :=tempPerm2si
 			then () = entries[i] := entriesi
@@ -252,8 +249,8 @@ set make_Lvd_Perm2_table() = Lvd_Perm2_table:
 		    fi
 	 in (i,j)
     then add_KGBElt(KGBElt x) = (int,int):
-    	 let i = add_inner_class(x.inner_class)
-    	 then n = x.number
+	 let i = add_inner_class(x.inner_class)
+	 then n = x.number
 	 in (i,n)
     in
     ( ( -> int): {inner_class_size} @int: inner_class_hash.size()
@@ -263,7 +260,7 @@ set make_Lvd_Perm2_table() = Lvd_Perm2_table:
     , ( -> [vec]): {lamthlam_size} @[vec]:
       for lamthlam_hashes in lamthlam_hashess {ith inner class}
       do for lamthlam_hash in lamthlam_hashes    {jth involution}
-      	 do lamthlam_hash.size()
+	 do lamthlam_hash.size()
 	 od
       od
     , ( -> [[vec]]): {Lvd_list_size} @[[vec]]:
@@ -295,8 +292,8 @@ set make_Lvd_Perm2_table() = Lvd_Perm2_table:
     , ((InnerClass, mat) -> [ratvec]): {lambda0s} (InnerClass ic, mat theta) [ratvec]:
       let (i,j) = add_cands(ic,theta), th1 = 1+theta
       in for lamthlam in lamthlam_hashess[i][j].list()  {k:lamthlam_hashess[i][j].size()}
-      	 do let lr = required_solution(th1,lamthlam - ratvec_as_vec(th1*ic.rho))
-      	    in lr+ic.rho
+	 do let lr = required_solution(th1,lamthlam - ratvec_as_vec(th1*ic.rho))
+	    in lr+ic.rho
 	 od
     , ((InnerClass, mat,vec) -> PermOrderTwo): {Perm2} (InnerClass ic, mat theta, vec lamthlam):
       let (i,j) = add_cands(ic,theta)
@@ -310,7 +307,7 @@ set make_Lvd_Perm2_table() = Lvd_Perm2_table:
 	    in (lr+ic.rho, entries[i][j][k])
 	 od
     , ((InnerClass, mat, vec) -> LocalVertexData): {Lvd} (InnerClass ic, mat theta, vec lamthlam)
-      		    LocalVertexData:
+		    LocalVertexData:
       let (i,j) = add_cands{lamthlam_hash}(ic,theta), th1 = theta+1
       then k = lamthlam_hashess[i][j].lookup(lamthlam)
       in entries[i][j][k].Lvd
@@ -357,43 +354,43 @@ set make_FPP_lambda_table() = FPP_lambda_table:
 (   let real_form_hash = make_RealForm_hash()
     then lambda_hashess = [[ratvec_hash]]: [] {one ratvec_hash for each real form and KGBElt}
     then clear() = void:
-    	 let () = real_form_hash.clear()
+	 let () = real_form_hash.clear()
 	 then () = lambda_hashess := []
 	 in ()
     then add_real_form(RealForm rf) = int:
-    	 let I = real_form_hash.size()
+	 let I = real_form_hash.size()
 	 then i = real_form_hash.match(rf)
-    	 then () = if i = I {haven't seen this real form before}
-	      	   then lambda_hashess #:= for x in KGB(rf) do make_ratvec_hash() od
-	    	   fi
+	 then () = if i = I {haven't seen this real form before}
+		   then lambda_hashess #:= for x in KGB(rf) do make_ratvec_hash() od
+		   fi
 	  in i
     then add_KGBElt(KGBElt x) = int:
-    	 let i = add_real_form(x.real_form)
-    	 then n = x.number
+	 let i = add_real_form(x.real_form)
+	 then n = x.number
 	 then () = if lambda_hashess[i][n].size() = 0 {haven't computed FPP_lambdas(x)}
-	      	   then {let theta = x.involution
-		   	then tworhoi = sum(imaginary_posroots(G,theta))
+		   then {let theta = x.involution
+			then tworhoi = sum(imaginary_posroots(G,theta))
 			then imag_simple_roots = for alphav in imaginary_poscoroots(G,theta)
-			     		   do if tworhoi*alphav = 2
+					   do if tworhoi*alphav = 2
 					      then [alphav]
 					      else []
 					      fi
 					   od.##}
 			let zeroPol = null_module(x.real_form), zeroNu = null(x.real_form.rank)/1
-		   	then longlist = LPm_table.lambda0s(x.inner_class, x.involution),
+			then longlist = LPm_table.lambda0s(x.inner_class, x.involution),
 			     twists = all_lambda_differential_0(x.involution)
 			then list0 = for lambda0 in longlist
-			     	     do let q = parameter(x, lambda0, zeroNu)
-				     	in if q!= zeroPol
-				     	then [q.lambda]
+				     do let q = parameter(x, lambda0, zeroNu)
+					in if q!= zeroPol
+					then [q.lambda]
 					else []
 					fi
 				     od.##
 			in for l0 in list0
 			   do for tau in twists
 			      do lambda_hashess[i][n].match(parameter(x,l0+tau,zeroNu).lambda)
-	  		      od
-       			   od.##
+			      od
+			   od.##
 		     fi
 	  in n
      in
@@ -419,7 +416,7 @@ set FPP_lambda0s(KGBElt x) = [ratvec]:
     then zeroPol = null_module(G), zeroNu = null(G.rank)/1
     in for lambda0 in longlist
        do if 1*parameter(x, lambda0, zeroNu) != zeroPol
-       	  then [lambda0]
+	  then [lambda0]
 	  else []
 	  fi
        od.##
@@ -430,13 +427,13 @@ set FPP_lambdas(KGBElt x) = [ratvec]:
     if FPP_lambda_table_flag
     then FPP_lam_table.FPP_lambdas(x)
     else let list0 = FPP_lambda0s(x), G=x.real_form
-    	 then twists = all_lambda_differential_0(x.involution)
+	 then twists = all_lambda_differential_0(x.involution)
 	 then zeroNu = null(G.rank)/1
 	 in for ell0 in list0
 	    do for tau in twists
 	       do parameter(x,ell0+tau,zeroNu).lambda
 	       od
-       	     od.##
+	     od.##
     fi
 
 set position_time = int:0
@@ -449,8 +446,8 @@ set position(KGBElt x, ratvec lambda) = int:
     then lambdaNorm = parameter(x,lambda,0*lambda).lambda
     then N = FPP_lam_table.position(x,lambdaNorm)
     then () = if xl_alert_flag and N=-1
-    	      then prints("WARNING: at G = ",x.real_form,", x = ",x.number,", lambda = ",
-    	      	   		    lambdaNorm," is not attached to x.")
+	      then prints("WARNING: at G = ",x.real_form,", x = ",x.number,", lambda = ",
+				    lambdaNorm," is not attached to x.")
 	      fi
     then () = position_time +:= elapsed_ms() - start
     in N

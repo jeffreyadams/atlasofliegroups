@@ -1,3 +1,6 @@
+<basic.at { for |s_to_1| and many others }
+<count.at { for |char_counter| }
+<parameters.at { for |dual_inner_class| }
 
 { KL stuff, including character formulas and composition series
   This implementation seeks to avoid using KL_block, and instead uses
@@ -5,9 +8,6 @@
   Also (compared to old implementation) no regular/singular case distinction
 }
 
-<basic.at
-<count.at {for char_counter}
-<parameters.at {for dual_inner_class}
 {<time.at {for print_time_string}}
 {
   Basic object: column of KL matrix (P-matrix), of polynomials evaluated as s,

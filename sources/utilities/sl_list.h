@@ -109,6 +109,17 @@ struct sl_node
   }
 }; // |struct sl_node| template
 
+// compute length of list from a raw pointer to node
+template<typename T,typename Alloc>
+size_t length (const sl_node<T,Alloc>* l)
+{
+  size_t result=0;
+  for (; l!=nullptr; l=l->next.get())
+    ++result;
+  return result;
+}
+
+
 template<typename T,typename Alloc> class sl_list_iterator;
 template<typename T, typename Alloc >
   class sl_list_const_iterator
@@ -995,6 +1006,21 @@ public:
       sort_next(cbegin(),n,less);
   }
 
+  std::vector<T> to_vector() const &
+  { std::vector<T>result;
+    result.reserve(length(head.get()));
+    for (auto it=wcbegin(); not at_end(it); ++it) // non-counting fill
+      result.push_back(*it);
+    return result;
+  }
+
+  std::vector<T> to_vector() &&
+  { std::vector<T>result; result.reserve(head.get());
+    for (auto it=wbegin(); not at_end(it); ++it) // non-counting fill
+      result.push_back(std::move(*it));
+    return result;
+  }
+
   // accessors
   const T& front () const { return head->contents; }
   const_iterator begin () const noexcept { return const_iterator(head); }
@@ -1023,16 +1049,6 @@ size_t length (const simple_list<T,Alloc>& l)
 {
   size_t result=0;
   for (auto it=l.wbegin(); not l.at_end(it); ++it)
-    ++result;
-  return result;
-}
-
-// allow the alternative of using a raw pointer for the length
-template<typename T,typename Alloc>
-size_t length (const sl_node<T,Alloc>* l)
-{
-  size_t result=0;
-  for (; l!=nullptr; l=l->next.get())
     ++result;
   return result;
 }

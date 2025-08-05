@@ -54,9 +54,9 @@ set compress ([Param] B, mat KL_mat, [i_poly] polys) = ([Param],mat):
 
 {Q(v^{-1}), this is a Laurent polynomial so shouldn't be needed/used,
 except in the subsequent function}
-set Q_v_inverse(i_poly f)=reverse(f)
+set Q_v_inverse(i_poly f) = ~f
 {v^k*Q(v^{-1}), k should be large enough so this is a polynomial}
-set v_to_the_k_times_Q_v_inverse(int N,i_poly f)=null(N-degree(f))##reverse(f)
+set v_to_the_k_times_Q_v_inverse(int N,i_poly f)=null(N-degree(f))##~f
 
 {hodge-version of deformation_terms, using last_column_mat_poly_inverse(KL_mat)
 to compute column of inverse as polynomial in v

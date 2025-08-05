@@ -160,15 +160,13 @@ need here is the dual of folded(dual of G.root_datum)). I think...}
 
 set cofoldedBOTH(RootDatum rd, mat delta) = (RootDatum, RootDatum, mat):
     assert(is_distinguished(rd,delta),"delta is not distinguished");
-    let Tstar = SubTorus:eigen_lattice(delta,1)
+    let Tstar = mat: eigen_lattice(delta,1)
 {Tstar =(X^*)^\delta; columns are a basis of (X^*)^\delta}
 {Tstar is nxr where n=rd.rank and r=dimension(Tstar)}
 { Tstar: matrix of map Tstar->X^*(H) \simeq Z^r -> Z^n: this is Tstar.inject
  ^Tstar: matrix of map X_*(H)->X_*(Tstar) \simeq Z^n->Z^r:   this is
  Tstar.project=Tstar.restrict}
-    then coroots_nonreduced=sort_u(
-	 for alphavee in rd.poscoroots do Tstar.restrict(alphavee) od
-	 )
+    then coroots_nonreduced=sort_u_rlex(for av in rd.poscoroots do av*Tstar od)
     then {DISCARDS COROOTS FOR WHICH ALPHAVEE/2 IS COROOT}
 	corootsC =mat:##(for alphavee in coroots_nonreduced
 	 do if all (for x in alphavee/2 do is_integer(x) od)
@@ -180,15 +178,14 @@ set cofoldedBOTH(RootDatum rd, mat delta) = (RootDatum, RootDatum, mat):
 	 do if find(coroots_nonreduced,2*alphavee)!=-1
 	    then [] else [alphavee] fi
 	 od)
-    then rootsC = [] in
+    then rootsC = [vec]: [] in
 	 for alphavee in corootsC do
 	     let pullback_alphavee = let j = first(
-		 for betavee in rd.poscoroots do Tstar.restrict(betavee) =
-		 alphavee od
+		 for betavee in rd.poscoroots do betavee*Tstar = alphavee od
 	     )
 	      in rd.poscoroots[j] {ONE coroot restricting to alphavee}
 	 then v = sum(##( for betavee in rd.poscoroots do
-		 if Tstar.restrict(betavee) = alphavee
+		 if betavee*Tstar = alphavee
 		 then [root(rd,betavee)]
 		 else []
 		 fi od)) {sum of ALL roots for ALL coroots restr to alphavee}
@@ -197,15 +194,14 @@ set cofoldedBOTH(RootDatum rd, mat delta) = (RootDatum, RootDatum, mat):
 	  in
 	  rootsC#:=ratvec_as_vec(corestrict_w)
 	  od;
-	  let rootsB = [] in
+	  let rootsB = [vec]: [] in
 	  for alphavee in corootsB do
 	     let pullback_alphavee = let j = first(
-		 for betavee in rd.poscoroots do Tstar.restrict(betavee) =
-		 alphavee od
+		 for betavee in rd.poscoroots do betavee*Tstar = alphavee od
 	     )
 	      in rd.poscoroots[j] {ONE coroot restricting to alphavee}
 	 then v = sum(##( for betavee in rd.poscoroots do
-		 if Tstar.restrict(betavee) = alphavee
+		 if betavee*Tstar = alphavee
 		 then [root(rd,betavee)]
 		 else []
 		 fi od)) {sum of ALL roots for ALL coroots restr to alphavee}
@@ -430,12 +426,6 @@ set barycenter ([ratvec] verts) = ratvec: { |verts| should be nonempty }
 set face_bary0(SimpleAffine affd, ratvec gamma0) = FaceBary:
     barycenter(face_verts0(affd,gamma0))
 
-{. produces all k-element subsets of verts. The term "# #verts" is
-[0,1,...,#verts - 1]
- .}
-set choices_from( [ratvec]verts, int k) = [[ratvec]]:
-    for S in choices_from(# #verts,k) do for s in S do verts[s] od od
-
 set faces_fundamental(SimpleAffine affd, int d) = [FaceVerts]:
     choices_from(fundamental_vertices(affd),d+1)
 
@@ -657,7 +647,8 @@ set W_fund_vertices_card(SimpleAffine Affd) = int:
     let n=Affd.ss_rank, N=#W(Affd)
     then listn=for j:n do j od
     in
-    1+sum(for S in choices_from(listn,n-2) do rat_as_int(N/#W(Levi(Affd,S))) od )
+    1+sum(for S in choices_from(listn,n-2)
+          do rat_as_int(N/order_W(Levi_datum(Affd,S))) od )
 
 {.number of d-diml faces in W*(fundamental alcove).}
 set W_fund_d_faces_card(SimpleAffine Affd,int d) = int:
@@ -666,8 +657,8 @@ set W_fund_d_faces_card(SimpleAffine Affd,int d) = int:
     in
     if d=n
     then N
-    else sum(for T in choices_from(listn,n-d) do rat_as_int(N/#W(Levi(Affd,T))) od) +
-	 sum(for S in choices_from(listn,n-d-1) do rat_as_int(N/#W(Levi(Affd,S))) od)
+    else sum(for T in choices_from(listn,n-d) do rat_as_int(N/order_W(Levi_datum(Affd,T))) od) +
+	 sum(for S in choices_from(listn,n-d-1) do rat_as_int(N/order_W(Levi_datum(Affd,S))) od)
     fi
 
 {.number of faces in W*(fundamental alcove).}
@@ -782,13 +773,12 @@ set FPP_vertices(SimpleAffine Affd, int j0) = [ratvec]:
     { if face_verbose then prints("start FPP_vertices.")
     fi;}
     for gamma in fundamental_vertices(Affd)
-    do let aff_short_list = FPP_w_shifts(Affd,gamma,j0)
-	  then aff_list = [AffineCoWeylElt]:
-	       for (w,taus) in aff_short_list
-	       do for tau in taus do (tau,w) od
-	       od.##
-	  in for wtilde in aff_list do wtilde*gamma od
-       od.##
+       for wtilde in
+          for (w,taus) in FPP_w_shifts(Affd,gamma,j0)
+	     for tau in taus do (tau,w) od
+	  od
+       do wtilde*gamma od
+    od
 
 set FPP_vertices = (InnerClass -> [ratvec]):
     { if face_verbose then prints("start FPP_vertices of real form, ",G)
@@ -1017,20 +1007,21 @@ set write_FPP_edges_hash() = void:
 {this command takes 29 min/2.31g on laptop, 36 min, 3.9g on wave}
 {NOT USED as of 7/5/24}
 set FPP_edges_by_zero= (InnerClass ->  [[FaceVertsIndex]]):
-    let ichash = make_InnerClass_hash()
+(   let ichash = make_InnerClass_hash()
     then FPPebz = [[[FaceVertsIndex]]]: [] {one list for each inner class}
-    in (InnerClass -> [[FaceVertsIndex]]): (InnerClass ic) [[FaceVertsIndex]]:
+    , leq(FaceVertsIndex a,FaceVertsIndex b) = bool: a[1]<=b[1]
+ in (InnerClass -> [[FaceVertsIndex]]): (InnerClass ic) [[FaceVertsIndex]]:
        let I = ichash.size()
        then i = ichash.match(ic)
-       then () = if i=I {haven't seen this inner class before}
-       	       then let edges_u = FPP_edges_by_zero_unsorted(ic)
-	       	    then answer = [[FaceVertsIndex]]: for list in edges_u do list.sort od
-	       	    then () = FPPebz #:= answer
-    	      	    {then () = FPPebz_time +:= elapsed_ms() - start}
-	      	    in ()
-	      	 fi
-      in FPPebz[i]
-
+    in if i=I {haven't seen this inner class before}
+       then
+          let edges_u = [[FaceVertsIndex]]: FPP_edges_by_zero_unsorted(ic)
+	  then answer = [[FaceVertsIndex]]:
+	     for list in edges_u do list.(sort(leq)) od
+	  in FPPebz #:= answer
+	fi
+    ; FPPebz[i]
+)
 
 set_type PermOrderTwo = (vec fixed, [(int,int)] trans)
 
@@ -1194,7 +1185,7 @@ set FPP_local_vertices_cube(InnerClass ic) = [ratvec]:
 set FPP_local_vertices_typed_sorted(InnerClass ic) = ([ratvec],[ratvec]):
     let vlist = FPP_vertices(ic)
     then FEL = FPP_flippable_edge_lookup(ic)
-    in (vlist.sort, for w in FPP_flippable_edges(ic) do face_bary(vlist,w) od)
+in (vlist.sort_rlex, for w in FPP_flippable_edges(ic) do face_bary(vlist,w) od)
 
 {to record time computing flippable triangles}
 set Fftri_time = int: 0
@@ -1262,17 +1253,17 @@ set FPP_flippable_triangles_by_zero_unsorted = (InnerClass -> [[FaceVertsIndex]]
 set FPP_flippable_triangles_by_zero= (InnerClass ->  [[FaceVertsIndex]]):
     let ichash = make_InnerClass_hash()
     then Fftrisbz = [[[FaceVertsIndex]]]: [] {one list for each inner class}
-    in (InnerClass -> [[FaceVertsIndex]]): (InnerClass ic) [[FaceVertsIndex]]:
-       let I = ichash.size()
-       then i = ichash.match(ic)
-       then () = if i=I {haven't seen this inner class before}
-       	       then let FEdges_u = FPP_flippable_triangles_by_zero_unsorted(ic)
-	       	    then answer = [[FaceVertsIndex]]: for list in FEdges_u do list.sort od
-	       	    then () = Fftrisbz #:= answer
-    	      	    {then () = Fftrisbz_time +:= elapsed_ms() - start}
-	      	    in ()
-	      	 fi
-      in Fftrisbz[i]
+ in (InnerClass -> [[FaceVertsIndex]]): (InnerClass ic) [[FaceVertsIndex]]:
+    (  let I = ichash.size()
+       , i = ichash.match(ic)
+    in if i=I {haven't seen this inner class before}
+       then let FEdges_u = FPP_flippable_triangles_by_zero_unsorted(ic)
+	    then answer = [[FaceVertsIndex]]:
+	         for list in FEdges_u do list.sort_rlex od
+	 in Fftrisbz #:= answer
+       fi
+    ;  Fftrisbz[i]
+    )
 
 {listed as their three ratvec vertices: the fixed one followed by the flipped pair}
 set FPP_flippable_triangles_rat = (InnerClass -> [[ratvec]]):
@@ -1438,36 +1429,27 @@ set low_FPP_faces_by_zero([[FaceVertsIndex]] lowFPP) = [[[FaceVertsIndex]]]:
     in answer
 
 {3 is possible only for Spin(4k) FALSE! 5/2/24}
-{THIS SCRIPT WAS WRONG FOR SU(2,1), when global_top should be 2. I can't swear to this
-quick fix. I think that should make the code correct, but slower}
+{THIS SCRIPT WAS WRONG FOR SU(2,1), when global_top should be 2.
+ I can't swear to this quick fix. I think that should make the code correct,
+ but slower }
 
-{For non-simply connected ic, the value of global top may be smaller;
-I haven't trie to calculate it.}
+{ For non-simply connected |ic|, the value of global top may be smaller;
+  I haven't tried to calculate it. }
 
 set adjust_time = int:0
-set adjust_global_top(InnerClass ic) = void:
-    let (rd,,) = cofolded(ic), start = elapsed_ms()
-    then CFLT = Lie_type_matrix(rd)
-    {then CTQ = center_torsion_quotient(rd)}
-    then () = if (not CFLT[5].=) or (not CFLT[6].=) or (not CFLT[4][7].=) {F4, G2, E8}
-    	      then global_top:=1;
-	      	   global_faces := low_FPP_faces(ic); adjust_time +:= elapsed_ms() - start; return ()
-	      elif (not CFLT[1].=) or (not CFLT[2].=)
-    	      then global_top:=2;
-	      	   global_faces := low_FPP_faces(ic); adjust_time +:= elapsed_ms() - start; return ()
-	      else global_top:=3
-	      fi
-    then ()= global_faces := low_FPP_faces(ic); adjust_time +:= elapsed_ms() - start
-    in ()
- {   then () = if any(for j:7 do CFLT[3][2*j + 1] > 0 od) and
-    	      	 #CTQ = 2
-    	      then global_top :=3 ; return ()
-	      fi}
-    {then () = if any( for v in CTQ do is_even(v.denom) od)
-    	      then global_top :=2; return ()
-	      fi
-    then () = global_top :=1
-    in ()}
+set adjust_global_top (InnerClass ic) = void:
+(   let (rd,,) = cofolded(ic), start = elapsed_ms()
+    then sf = simple_factors(Lie_type(rd))
+ in global_top:=
+       if for (t,r) in sf do t="F" or t="G" or (t="E" and r=8) od.any
+       then 1
+       elif for (t,) in sf do t="B" or t="C" od.any
+       then 2
+       else 3
+       fi
+    ; global_faces := low_FPP_faces(ic)
+    ; adjust_time +:= elapsed_ms() - start
+)
 
 {Need low_faces to be size dim  \ge 2, so it includes edges and
 faces dim - 1; then find faces of dim by starting with any dim-1

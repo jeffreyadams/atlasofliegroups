@@ -1,48 +1,42 @@
-<basic.at
+<basic.at { for |all@(int,(int->bool))| }
+
 { Gaussian elimination on matrices represented by values of type [[rat]] }
 
-{ matrices by lists of lists of rational numbers, forming their columns }
+{ Use as matrices: lists of their columns, each a list of rational numbers }
 
-{
+{ The main problem considered is fully solving linear systems, including the
+  problem of inverting a rational matrix (when it can(.
+
   The idea is to do full Gauss-Jordan reduction of the original matrix |A|,
   transforming it into an identity matrix, and retain from this process just
   the data describing the row operations performed (the reduced matrix itself
   is uninteresting). That data can then be applied to a RHS column vector to
   solve a linear system, or to a full identity matrix to find |A^-1|. It can
-  also be used to quickly find the determinant of |A|.
+  also be used to quickly find the determinant of |A|. These algorithms are
+  preferable for large matrices to using those built-in for integral matrices,
+  which are prone to suffer from extreme coefficient growth.
 
-  More generally we allow for the possibility of columns for which no pivot can
-  be found (all candidate rows have zeros), in which case we put a different
-  kind of information in the pivot data, which can later be used to determine
-  the kernel of the (original) matrix. Of course this should not happen when a
+  We allow for the possibility of finding columns for which no pivot can be
+  located (all candidate rows have zeros), in which case we put a different kind
+  of information in the pivot data, which can later be used to determine the
+  kernel of the (original) matrix. Of course this should not happen when a
   matrix is to be inversed, but functions try to do what they intend to do in
-  the most general setting (and in general we do not assume square matrices).
+  the most general setting (and here we do not even assume square matrices).
 }
 
-set_type
-[ Pivot_info = ( (int,[rat]) pivot | [rat] no_pivot )
+set_type Pivot_info = ( (int,[rat]) pivot | [rat] no_pivot )
 { When doing a pivot step, we either find a pivot, or not. In the former case
   we record the pivot row number, as well as the row operation to be applied
-  after the cyclic row permutation bringing the pivot to the echelon position
-  is done (row number equal to the number of previous pivots). The latter row
-  operation is left multiplication by a matrix differing by only one column
-  from the identity, and that columns is recorded (it has the inverse of the
-  pivot value on the main diagonal). In case no pivot is found (the part of
-  the column where a pivot is searched is zero) we instead record the nonzero
-  initial part of the column. The union type |Pivot_info| describes these.
+  after the cyclic row permutation bringing the pivot to the echelon position is
+  done (row number equal to the number of previous pivots). The latter row
+  operation is left-multiplication by a matrix differing by only one column from
+  the identity, and that column is recorded. Since we are doing (full)
+  Gauss-Jordan reduction and the row permutation is implied by the pivot number,
+  this column has the inverse of the pivot value on its main diagonal position,
+  and all other coefficients can be arbitrary. In case no pivot is found (the
+  part of the column where a pivot might be found is zero) we instead record the
+  nonzero initial part of the column as the |no_pivot| variant of |Pivot_info|.
 }
-
-, lin_solution = ( void no_rowrat_solution | ([rat],[[rat]]) affine_space )
-{ A solution is either a particular solution and kernel generators, or none }
-
-]
-
-
-{ avoid converting to |ratvec| when testing a (partial) column to be zero }
-forget =@ratvec
-forget !=@ratvec
-set = ([rat] row) = bool: all(#row,(int i) bool: =row[i])
-set != ([rat] row) = bool: not =row
 
 
 set times ([[rat]] M, [rat] v) = [rat]:
@@ -53,11 +47,11 @@ set times ([[rat]] M, [[rat]] N) = [[rat]]: for c in N do times(M,c) od
 { the |pivot_step| takes as argument the choice function for the pivot }
 set pivot_step (([rat]->int) choose_pivot) =
 { and produces a function that takes a matrix and a count of previous pivots }
-    ([[rat]] M, int i) (Pivot_info,[[rat]]):
+    ([[rat]] M, int i) (Pivot_info {for step}, [[rat]] {remaining matrix}):
     { take initial column |M[0]| to work with; its entries in the first |i|
       rows (which already have their pivots) are excluded from pivot choice }
-       let col=M[0] then pivot = col[i:].choose_pivot in
-       if pivot.< { a negative choice result signals no valid pivot exists }
+       let col=M[0] then pivot = choose_pivot(col[i:]) in
+       if pivot<0 { a negative choice result signals no valid pivot exists }
        then (col[:i].no_pivot, M[1:]) { split off and yield initial part |col| }
        else
           let k = i + pivot, n=#col { pivot row, and total number of rows }
@@ -76,49 +70,56 @@ set pivot_step (([rat]->int) choose_pivot) =
         fi
 
 { the simplest strategy is to select the first nonzero coefficient as pivot }
-set greedy ([rat] choices) = int: first(#choices,(int i)bool :choices[i].!=)
+set greedy ([rat] choices) = int: first(#choices,(int i)bool: choices[i]!=0)
 
 set step = pivot_step(greedy@[rat])
 
 set get_data ([[rat]] M) = [Pivot_info]:
     let i=0 { number of previous pivots, increased for each pivot } in
-    while >#M { traverse and remove successive columns of |M|, stop on empty }
-    do let (pi,M0)=step(M,i) in case pi | pivot: i+:=1 | else () esac
-    ; pi next M:=M0
+    while #M>0 { traverse and remove successive columns of |M|, stop on empty }
+    do let (pi,M0)=step(M,i)
+    in case pi | pivot: i+:=1 | else () esac { only increase when pivot found }
+    ; pi next M:=M0 { contribute pivot info |pi|, and repeat with |M0| }
     od
 
 
-{ Once accumulated the different |Pivot_info| values are combined, taking the
-  |pivot| fields together (extracted them for the union type), while
-  transforming the non-pivot information into a matrix whose independent
-  columns span the kernel. A third component of the result is a function that
-  transforms a row-reduced RHS vector, with as many components as there are
-  pivots, into a full size vector, by interspersing zeros at the non-pivot
+{ Once accumulated, the different |Pivot_info| values are combined, taking the
+  |pivot| fields together (extracting them for the union type), while
+  transforming the information of non-pivot cases into a matrix whose columns
+  are independent and span the kernel. A third component of the result is a
+  function that transforms a row-reduced RHS vector, with as many components as
+  there are pivots, into a full size vector solution, by mapping each entry to
+  the corresponfing pivot position, and interspersing zeros at the non-pivot
   positions. This function |spread| is constructed by repeated modification,
-  each newer version first calling the older one and then taking one more
-  entry to its proper destination. We must be careful to avoid building a
-  recursive call, by first binding the old function value to a new name |f|,
-  and calling a function of that name from the newly extended function.
+  each newer version first calling the older one and then taking one more entry
+  to its proper destination. We avoid inadvertently building a recursive call,
+  by first binding the old function value to a new name |f|, and calling a
+  function of that name from the newly extended function.
 }
 
-set split_data ([Pivot_info] data) = ([int,[rat]] , [[rat]] , ([rat]->[rat]) ):
-   let pivots=[int,[rat]]: [], kernel = [[rat]]:[], !n=#data
-   then spread = ([rat]->[rat]): { to map coefficient to their pivot positions }
-       ([rat] c) [rat]: for :n do 0 od { start off by just creating zeros }
+set split_data =
+  let embed (int n, vec pivot_cols) =
+    ([rat] v) [rat]: let result=for :n do rat:0 od
+       in for c@i in pivot_cols do result[c]:=v[i] od; result
+  in ([Pivot_info] data) {header of |split_data|} \
+  ( [int,[rat]] { combined output of the pivot cases }
+  , [[rat]]     { kernel of orignal matrix, computed from non-pivot cases }
+  , ([rat]->[rat]) { transformation to be applied to reduced rhs }
+  ):
+   let pivots=[int,[rat]]: [], kernel = [[rat]]:[], piv_cols = null(0)
+   , !n=#data
    in
    for d@j in data
    do case d
-      | (piv).pivot:
-         let !f=spread, !k=#pivots { freeze these values } in
-         pivots #:= piv; spread := (([rat] c): let v=f(c) in v[j] := c[k]; v)
-      | (col).no_pivot: let kc = spread(col) in kc[j]:=-1; kernel #:= kc
+      | (piv).pivot: pivots #:= piv; piv_cols #:= j
+      | (col).no_pivot:
+         let kc = embed(n,piv_cols)(col) in kc[j]:=(rat:-1); kernel #:= kc
       esac
-   od; (pivots,kernel,spread)
+   od; (pivots,kernel,embed(n,piv_cols))
 
 { From the pivot data we can aso directly compute the determinant, basically the
   product of the inverses of the main diagonal entries of the row operations.
 }
-forget det@[ratvec] { ensure no conflicting definition is present }
 set det ([[rat]] A) = rat:
    let (pivots,kernel,)=A.get_data.split_data in
    if >#kernel then 0 { if there are any non-pivot columns, matrix is singular }
@@ -143,28 +144,31 @@ set apply ([int,[rat]] pivots) = ([rat]->[rat]):
    ([rat] col) [rat]:
        for (k,coefs)@j in pivots do col:=apply(j,k,coefs)(col) od; col
 
-{ Put the above together for solving a rational linear system |A*x=b| }
+{ Now put the above together for solving a rational linear system |A*x=b| }
 
-set full_solve ([[rat]] A, [rat] b) = lin_solution:
-   let (pivots,kernel,spread)= A.get_data.split_data then sol=b.(apply(pivots))
-   in if =sol[#pivots:] { after |#pivots|, any entries of |sol| must be 0 }
-      then (spread(sol) , kernel).affine_space
-      else ().no_rowrat_solution
+set_type affine_subspace = ([rat] base_point ,[[rat]] tangent_space)
+
+set full_solve ([[rat]] A, [rat] b) = Maybe<affine_subspace>:
+   let (pivots,kernel,spread)= A.get_data.split_data
+   then reduced_rhs=b.(apply(pivots)), rank=#pivots
+   in if all(reduced_rhs[rank:],=@rat) { these entries must be 0 }
+      then some(spread(reduced_rhs) , kernel) { return an |affine_subspace| }
+      else none()
       fi
 
 { When we need one solution, pick particular solution or throw error if none }
 set a_solution (([[rat]],[rat])system) = [rat]:
    case full_solve(system)
-   | (v,).affine_space: v
+   | some(solution): solution.base_point
    | else error("No solution")
    esac
 
 { For inverse of a matrix, apply row operations to columns of identity matrix }
 set make_inverse ([(int,[rat])] data) = [[rat]]:
-   let n=#data in for j:n do apply(data)(for i:n do rat: #(i=j) od) od
+   for col in [[rat]]:id_mat(#data) do apply(data)(col) od
 
 set inverse ([[rat]] M) = [[rat]]:
-   if =#M then return M fi; assert(#M=#M[0],"Inverse of non square matrix");
+   if #M=0 then return M fi; assert(#M=#M[0],"Inverse of non square matrix");
    let (pivots,kernel,)= M.get_data.split_data in
    if =#kernel then pivots.make_inverse
    else error("No inverse: matrix has nontrivial kernel",kernel)
