@@ -63,7 +63,7 @@ set print_lines ([T] a) = void: for x in a do print(x) od
 set prints_lines ([T] a) = void: for x in a do prints(x) od
 
 end
-
+set append = #@ T ([[T]],[T]) { so |LL append:= []| is unambiguous }
 
 set ! = prints_lines@T[T] { allow printing any list line-by-line as |list!| }
 
