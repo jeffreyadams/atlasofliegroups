@@ -92,63 +92,70 @@ set simple_actor (RootDatum rd, int i) = (vec -> Maybe<vec>):
    let s=W_refl(rd,i), av=coroot(rd,i) in
    (vec x) Maybe<vec>: if av*x>0 then some(s*x) else none() fi
 
-{ For Weyl group action on X^*, wrap previous form in pre/post processing }
-set generate_from_dom (RootDatum rd,[int] S,vec v) = [vec,WeylElt]:
-   for (x,word) in generate_from_dom(for s in S do simple_actor(rd,s) od,v)
-   do (x,product(rd,for i in word do W_refl(rd,S[i]) od)) od
+{ For refernce we recall how this was applied to the relflection action. Now
+  that the built-in function can handle this musch faster, we don;t use them.
 
+  { For Weyl group action on X^*, wrap previous form in pre/post processing }
+  set generate_from_dom (RootDatum rd,[int] S,vec v) = [vec,WeylElt]:
+     for (x,word) in generate_from_dom(for s in S do simple_actor(rd,s) od,v)
+     do (x,product(rd,for i in word do W_refl(rd,S[i]) od)) od
+  { get orbit of |v| under parabolic subgroup of Weyl group with generators |S|,
+    and witnessing (minimal) Weyl group elements |w|: |x=w*v| for |x| in orbit }
+  set generate_from (RootDatum rd,[int] S,vec v) = [vec,WeylElt]:
+     let (chamber,dom_wt) = from_dominant(rd,S,v)
+     then orbit =
+	generate_from_dom(for s in S do simple_actor(rd,s) od,dom_wt)
+     ,  to_dom= WeylElt: inverse(chamber)
+  in for (x,word) in orbit
+     do (x,product(rd,for i in word do W_refl(rd,S[i]) od)*to_dom)
+     od
+  { when no |WeylElt| elements are needed in the end, we can simplify a bit }
+  set W_orbit_of_dom ((RootDatum,[int], vec) triple) = [vec]:
+     for (x,) in generate_from_dom(triple) do x od
+  set W_orbit ((RootDatum,[int], vec) triple) = [vec]:
+     for (x,) in generate_from(triple) do x od
+  { minimal coset reprs for stabilizer in $W_S$ of dominant weight |v| }
+  set stabiliser_quotient_of_dom ((RootDatum,[int],vec) triple) = [WeylElt]:
+     for (,w) in generate_from_dom(triple) do w od
+  set stabiliser_quotient ((RootDatum,[int],vec) triple) = [WeylElt]:
+     for (,w) in generate_from(triple) do w od
+}
 
-{ get orbit of |v| under parabolic subgroup of Weyl group with generators |S|,
-  and witnessing (minimal) Weyl group elements |w|: |x=w*v| for |x| in orbit }
-set generate_from (RootDatum rd,[int] S,vec v) = [vec,WeylElt]:
-   let (chamber,dom_wt) = from_dominant(rd,S,v)
-   then orbit =
-      generate_from_dom(for s in S do simple_actor(rd,s) od,dom_wt)
-   ,  to_dom= WeylElt: inverse(chamber)
-in for (x,word) in orbit
-   do (x,product(rd,for i in word do W_refl(rd,S[i]) od)*to_dom)
-   od
-
-{ like |generate_from_dominant|, but also returning action matrices }
-set generate_action_from_dom \
-   ( RootDatum rd
-   , [int] S { simple reflections to consider }
-   , vec v { initial weight, assumed dominant }
-   , int dim { size of each action matrix }
-   , [mat] gens_rep { action matrices for considered simple reflections }
-   ) = [vec,WeylElt,mat]:
-   let orbit= generate_action_from_dom
-       (for s in S do simple_actor(rd,s) od,v, dim,for s in S do gens_rep[s] od)
-in for (x,word,act) in orbit do (x,W_elt(rd,for s in word do S[s] od),act) od
-
-{ when no |WeylElt| elements are needed in the end, we can simplify a bit }
-set W_orbit_of_dom ((RootDatum,[int], vec) triple) = [vec]:
-   for (x,) in generate_from_dom(triple) do x od
-set W_orbit ((RootDatum,[int], vec) triple) = [vec]:
-   for (x,) in generate_from(triple) do x od
-
-{ minimal coset representatives for stabilizer in $W_S$ of dominant weight |v| }
-set stabiliser_quotient_of_dom ((RootDatum,[int],vec) triple) = [WeylElt]:
-   for (,w) in generate_from_dom(triple) do w od
-set stabiliser_quotient ((RootDatum,[int],vec) triple) = [WeylElt]:
-   for (,w) in generate_from(triple) do w od
+set W_orbit = (RootDatum,vec{weight}->mat):    Weyl_orbit@(RootDatum,vec)
+set W_orbit = (vec {coweight},RootDatum->mat): Weyl_orbit@(vec,RootDatum)
+set W_orbit = (RootDatum,[int],vec{weight}->mat):
+   Weyl_orbit@(RootDatum,[int],vec)
+set W_orbit = (vec{coweight},RootDatum,[int]->mat):
+   Weyl_orbit@(vec,RootDatum,[int])
 
 { minimal coset representatives for stabilizer in $W_S$ of (any weight) |v| }
-{ for reflection representation with |S| all simple roots, use built-in instead }
-set W_orbit = (RootDatum,vec->mat): Weyl_orbit@(RootDatum,vec)
-set W_orbit_of_dominant = { same }  Weyl_orbit@(RootDatum,vec)
-
-set W_orbit = (vec {coweight},RootDatum->mat): Weyl_orbit@(vec,RootDatum)
-
-set stabiliser_quotient {W/P} = (RootDatum,vec->[WeylElt]):
+{ for reflection representation with |S| all simple roots, using built-ins }
+set stabiliser_quotient {W/P} = (RootDatum,vec{weight}->[WeylElt]):
    Weyl_orbit_ws@(RootDatum,vec)
-set stabiliser_quotient {P\W} = (vec,RootDatum->[WeylElt]):
+set stabiliser_quotient {P\W} = (vec{coweight},RootDatum->[WeylElt]):
    Weyl_orbit_ws@(vec,RootDatum)
+set stabiliser_quotient = (RootDatum,[int],vec{weight}->[WeylElt]):
+   Weyl_orbit_ws@(RootDatum,[int],vec)
+set stabiliser_quotient = (vec{coweight},RootDatum,[int]->[WeylElt]):
+   Weyl_orbit_ws@(vec,RootDatum,[int])
+
 set W_orbit_with_witness ((RootDatum,vec) (,v{weight}):args) = [vec,WeylElt]:
    for w in Weyl_orbit_ws(args) do (w*v,w) od
 set W_orbit_with_witness ((vec,RootDatum) (v{coweight},):args) = [WeylElt,vec]:
    for w in Weyl_orbit_ws(args) do (w,v*w) od
+set W_orbit_with_witness ((RootDatum,[int],vec)(,,v{weight}):args) =
+      [vec,WeylElt]:
+   for w in Weyl_orbit_ws(args) do (w*v,w) od
+set W_orbit_with_witness ((vec,RootDatum,[int])(v{coweight},,):args) =
+      [vec,WeylElt]:
+   for w in Weyl_orbit_ws(args) do (v*w,w) od
 
+{ When it is just required to visit all elements of an orbit, one can avoid
+  storing the full orbit in memory by using iterators. This will still use
+  built-in functions for generating parabolic quotients, but these are smaller.
+}
+
+{ Iterator for running through the Weyl subgroup with simple generators |gens| }
 set W_parabolic_iterator (RootDatum rd, [int] gens) = Iterator<WeylElt>:
    let !ssr = rd.semisimple_rank, !r=rd.rank, ng = #gens
    then !subquotient_stack = [[WeylElt]]:
@@ -158,7 +165,7 @@ set W_parabolic_iterator (RootDatum rd, [int] gens) = Iterator<WeylElt>:
 	 (r ^ for i in para do coroot(rd,i) od) { to fix coroot evaluations }
 	  ^ cokernel(r # for i in para do root(rd,i) od) { to stay in root span }
 	 then v = vec: required_solution(A,identity_row(r,k)/1).numer
-      in stabiliser_quotient_of_dom(rd, para, v)
+      in stabiliser_quotient(rd, para, v)
       od
    then state = null(ng), m = vec: map(#@T[T])(subquotient_stack)
 in ( @Maybe<WeylElt>:
@@ -170,6 +177,7 @@ in ( @Maybe<WeylElt>:
      ; state~[0] +:= 1 { for most significant index, do not wrap around }
    )
 
+{ given action of generators, get action of each generated element on the fly }
 set W_parabolic_iterator_with_action \
    (RootDatum rd, [int] gens, int dim, [mat] gens_rep) = Iterator<(WeylElt,mat)>:
    let !ssr = rd.semisimple_rank, !r=rd.rank, ng = #gens
@@ -201,8 +209,9 @@ in ( @Maybe<(WeylElt,mat)>:
 
 set W_iterator (RootDatum rd) = Iterator<WeylElt>:
    W_parabolic_iterator(rd,all_simples(rd))
-{ all elements of Weyl group of RootDatum, in parabolic	quotient lex order }
-set W (RootDatum rd) = [WeylElt]: rd.W_iterator.to_list
+
+{ if we don't mind storing the full Weyl group, us built-in which is faster }
+set W (RootDatum rd) = [WeylElt]: Weyl_orbit_ws(rd,rd.two_rho)
 
 set W_orbit (RootDatum rd, ratvec rv {weight}) = [ratvec]:
    let (v,d) = %rv in for x in W_orbit(rd,v) do x/d od
@@ -211,7 +220,7 @@ set W_orbit (ratvec rv {coweight},RootDatum rd) = [ratvec]:
 
 set stabiliser_quotient {W/P} (RootDatum rd,ratvec rv) = [WeylElt]:
    Weyl_orbit_ws(rd,numer(rv))
-set stabiliser_quotient {P\W} (RootDatum rd,ratvec rv) = [WeylElt]:
+set stabiliser_quotient {P\W} (ratvec rv,RootDatum rd) = [WeylElt]:
    Weyl_orbit_ws(numer(rv),rd)
 
 set W_orbit_with_witness (RootDatum rd,ratvec rv) = [ratvec,WeylElt]:
@@ -219,20 +228,21 @@ set W_orbit_with_witness (RootDatum rd,ratvec rv) = [ratvec,WeylElt]:
 set W_orbit_with_witness (ratvec rv,RootDatum rd) = [WeylElt,ratvec]:
    for w in Weyl_orbit_ws(numer(rv),rd) do (w,rv*w) od
 
-{ variants of the above for |ratvec| instead of |vec|; reduce to |vec| case }
-{ default S to full set of simple roots }
-set generate_from_dom (RootDatum rd, [int] S, ratvec rv) = [ratvec,WeylElt]:
-  let (n,d) = %rv in for (v,w) in generate_from_dom(rd,S,n) do (v/d,w) od
-set generate_from (RootDatum rd, [int] S, ratvec rv) = [ratvec,WeylElt]:
-  let (n,d) = %rv in for (v,w) in generate_from(rd,S,n) do (v/d,w) od
-set W_orbit_of_dom (RootDatum rd, [int] S, ratvec rv) = [ratvec]:
-  let (n,d) = %rv in for (v,) in generate_from(rd,S,n) do v/d od
-set W_orbit (RootDatum rd, [int] S, ratvec rv) = [ratvec]:
-  let (n,d) = %rv in for (v,) in generate_from(rd,S,n) do v/d od
-set stabiliser_quotient_of_dom (RootDatum rd, [int] S, ratvec rv) = [WeylElt]:
-  stabiliser_quotient_of_dom(rd,S,numer(rv))
-set stabiliser_quotient (RootDatum rd, [int] S, ratvec rv) = [WeylElt]:
+{ variants of the above for subgroups }
+set W_orbit (RootDatum rd, [int] S, ratvec rv{weight}) = [ratvec]:
+  let (n,d) = %rv in for v in W_orbit(rd,S,n) do v/d od
+set W_orbit (ratvec rv{coweight},RootDatum rd, [int] S) = [ratvec]:
+  let (n,d) = %rv in for v in W_orbit(n,rd,S) do v/d od
+set stabiliser_quotient (RootDatum rd, [int] S, ratvec rv{weight}) = [WeylElt]:
   stabiliser_quotient(rd,S,numer(rv))
+set stabiliser_quotient (ratvec rv{coweight},RootDatum rd, [int] S) = [WeylElt]:
+  stabiliser_quotient(numer(rv),rd,S)
+set W_orbit_with_witness (RootDatum rd, [int] S, ratvec rv{weight}) =
+     [ratvec,WeylElt]:
+  let (n,d) = %rv in for (v,w) in W_orbit_with_witness(rd,S,n) do (v/d,w) od
+set W_orbit_with_witness (ratvec rv{coweight},RootDatum rd, [int] S) =
+     [ratvec,WeylElt]:
+  let (n,d) = %rv in for (v,w) in W_orbit_with_witness(n,rd,S) do (v/d,w) od
 
 {
   General orbit generation of |v| for the monoid generated by |S|.
@@ -249,8 +259,8 @@ set stabiliser_quotient (RootDatum rd, [int] S, ratvec rv) = [WeylElt]:
   generators would be the actions of certain $\delta$-stable elements of $W$.
 
 
-  Here we use, instead of |generate_from_dom|, a simplified but less
-  efficient method, using linear search over the full orbit generated so far.
+  Here we use, instead of |W_orbit_with_witness|, a simplified but less
+  efficient method, using hash table search over the full orbit generated so far.
 }
 set generate ([(ratvec->ratvec)] S,ratvec v) = [ratvec,[int]]:
 (  let bag=make_ratvec_hash()
