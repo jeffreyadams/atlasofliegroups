@@ -4,7 +4,7 @@
 <simple_factors.at { for |simple_factors@RootDatum| }
 { Functions for computing with Weyl group elements }
 
-set sgn(WeylElt w)=int:(-1)^length(w)
+set sgn (WeylElt w) = int: minus_1^length(w)
 
 set length ((RootDatum,mat) rd_M) = int: W_elt(rd_M).length
 
@@ -16,10 +16,10 @@ set lengthens (RootDatum rd, int s, mat M) = bool: { for left multiplication }
 
 { write given root (assumed positive) as |w*beta| with |beta| simple }
 set from_simple (RootDatum rd, vec alpha) = (WeylElt,vec):
-  let r = semisimple_rank(rd)
+  let ssr = semisimple_rank(rd)
   then ww = { simple reflections done left-to-right, so back is right-to-left }
     while { first find index that will make alpha shorter, which should exist }
-      let i = first( r, (int i):(coroot(rd,i)*alpha).> ) in
+      let i = last( ssr, (int i): coroot(rd,i)*alpha>0 ) in
       assert(i.>=,"Not a positive root")  { some descent must be found }
     ; alpha != root(rd,i) { this is the condition of the outer while! }
     do alpha := W_gen(rd,i)*alpha; i
@@ -27,9 +27,7 @@ set from_simple (RootDatum rd, vec alpha) = (WeylElt,vec):
   in (W_elt(rd,ww),alpha)
 
 set root_reflection (RootDatum rd, vec alpha) = WeylElt:
-  let (w,beta) = from_simple(rd,alpha) in w*W_gen(rd,root_index(rd,beta))*/w
-
-{ cross action for |KGBElt| and |Param| by |WeylElt|: now defined in basic.at }
+   W_refl(rd,root_index(rd,alpha))
 
 
 {		--- translating to dominant gamma ---			}
@@ -46,8 +44,9 @@ set make_dominant_using_roots (RootDatum rd, ratvec gamma) = (ratvec,vec):
     -min(0)(gamma*simple_coroots(rd)\2)
   in (gamma+diff,diff)
 
+{ if vector was in $X^*$ it remains so, so return it as |vec| }
 set make_dominant_using_roots (RootDatum rd, vec v) = (vec{dom},vec{shift}):
-  let (w,shift) = make_dominant_using_roots(rd,v) in (w\1,shift)
+  let (,shift) = make_dominant_using_roots(rd,v/1) in (v+shift,shift)
 
 { assume infinitesimal character |gamma| of |p| is integrally dominant
   translate by sum of roots to make it dominant
@@ -68,9 +67,10 @@ set integrally_dominant ((RootDatum,ratvec)(,v):rd_v) = ratvec:
 { a W-invariant form on X^* (or its rational span) }
 
 { Each coroot alpha^v defines defines a rank-1 bilinear form on X^* by
-  multiplying its evaluations at a pair of weights. Since alpha^v and -\alpha^v
-  give the same form, summing over all positive coroots gives a W-invariant
-  form, whose radical is the coradical of the root datum. In formula
+  multiplying its evaluations at the pair of argument weights. Since alpha^v
+  and -\alpha^v in this way give the same form, one can obtain a W-invariant
+  biliear form by summing these rank-1 forms over all positive coroots; the
+  radical of this form is the coradical of the root datum. In formula
   $$
     (\mu,\nu)=\sum_{\alpha^v\in\Delta^{\vee+}} <\alpha^v,\mu><\alpha^v\nu>
   $$
@@ -89,10 +89,14 @@ set co_invariant_form_matrix (RootDatum rd) =mat: let M=posroots(rd) in M*^M
 set co_invariant_form (RootDatum rd) = (ratvec,ratvec->rat):
   let A = rd.co_invariant_form_matrix in (ratvec v, ratvec w) rat: v*A*w
 
-set is_elliptic (WeylElt w) = bool:
-  =#eigen_lattice(matrix(w),1) { |eigen_lattice| empty means no eigenvalue 1 }
 
-{ elliptic in the derived group }
+{ elliptic elements of W: their reflection action has no fixed points }
+
+set is_elliptic (WeylElt w) = bool:
+  #eigen_lattice(matrix(w),1)=0 { |eigen_lattice| empty means no eigenvalue 1 }
+
+{ a nonzero central torus makes it impossible to be elliptic; therefore a more
+  practical condition, the weaker |is_relatively_ellptic|, ignores that torus }
 set is_relatively_elliptic (WeylElt w) = bool:
   #eigen_lattice(matrix(w),1) = w.root_datum.central_torus_rank
 
@@ -102,12 +106,12 @@ set is_relatively_elliptic (WeylElt w) = bool:
 }
 set from_no_Cminus (KGBElt x) = (WeylElt,KGBElt):
   let rd=x.root_datum then w=id_W(rd), r=rd.semisimple_rank in
-  while let s = last(r, (int i)bool: =status(i,x) { complex descent } ) in s.>=
+  while let s = last(r, (int i)bool: =status(i,x) { complex descent } ) in s>=0
   do w:=w#s; x:=cross(s,x) od; (w,x)
 
 set from_no_Cplus (KGBElt x) = (WeylElt,KGBElt):
   let rd=x.root_datum then w=id_W(rd), r=rd.semisimple_rank in
-  while let s = last(r, (int i)bool: status(i,x)=4 { complex ascent } ) in s.>=
+  while let s = last(r, (int i)bool: status(i,x)=4 { complex ascent } ) in s>=0
   do w:=w#s; x:=cross(s,x) od; (w,x)
 
 { the same for parameters }

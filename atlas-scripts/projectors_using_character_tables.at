@@ -4,6 +4,7 @@
 <Weylgroup.at { for |order_W| }
 <W_reps.at { for type |W_rep| }
 <character_tables.at { for type |CharacterTable| }
+<lattice.at { for |restrict_action| }
 
 set projectors_verbose=true
 

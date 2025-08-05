@@ -38,7 +38,6 @@ in set (M,):=ech_up(M,pivots); product(M.main_diagonal)=1
   and |Bezout| that might have similar effects. It is to be used in situations
   where only the (saturated) image subspace as a whole, and possibly a choice of
   a complementary subspace, are needed, not a special basis for the image.
-
 }
 set adapted_direct_sum (mat M) = (int,mat):
    let (M0,,pivot,)=echelon(M) then (k,l)=shape(M:=^M0) { forget and reuse |M| }

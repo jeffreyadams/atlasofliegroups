@@ -1,8 +1,6 @@
 <basic.at
-<parabolics.at
-<W_classes.at
+<W_classes.at { for type |WeylClassTable|| }
 <sort.at { for |sort_u@[vec]| }
-<lattice.at { for |restrict_action@(mat,mat)| }
 <sparse.at { for column-grouped |sparse_mat| type }
 <W_orbit.at { for |W_parabolic_act@(RootDatum,[int],int,[mat])| }
 
@@ -228,23 +226,20 @@ set cell_representations (WeylClassTable Wct,[WCell] cells) = [W_rep]:
 
 { ------------------- induction ------------------- }
 
-{ all 2^n standard Levis }
-set standard_Levis (RootDatum rd) = [RootDatum]:
-  for S in power_set(rd.all_simples) do Levi_datum(rd,S) od
-
 { induction from a Levi factor
 
   Suppose L is a Levi in G, and |pi_L| is a class function on W(L),
   we want to compute the class function pi_G=ind_L^G(pi_L) on W(G)
 
   formula: if C is a conjugacy class for G
-  pi_G(C) = |W(G)| / (|W(L)|*|C|)) * \sum |C_j| pi_L(C_j)
-  where the sum runs over the W(L)-conjugacy classes in C\cap W(L) (this follows
-  from Frobenius reciprocity, pairing pi_L with the indicator function for C)
+		pi_G(C) = |W(G)| / (|W(L)|*|C|) * \sum |C_i| pi_L(C_i)
+  where the sum runs over the W(L)-conjugacy classes C_i in C\cap W(L) (this
+  follows from Frobenius reciprocity, by pairing the character pi_L with the
+  indicator function for C)
 
   In other words the value of |pi_L| on each class C_j in W(L) contributes to
   the induced character value only at the class C of W(G) containing it, and for
-  this contribution its character value is multiplied by [W(G):W(L)] * |C|/|C_j|
+  this contribution its character value is multiplied by [W(G):W(L)] * |C_i|/|C|
 
   algorithm: initialize the result to be the 0-character
   run over conjugacy class representatives in L
@@ -275,17 +270,3 @@ set smallest_degree (WeylClassTable Wct, [int] character) = int:
   first(Wct.root_datum.nr_of_posroots+1
        ,(int k) bool: !=Wct.inner(character,Wct.sym_power_refl(k))
        )
-
-{ the Steinberg character (mainly for testing)}
-
-{alternating sum, over all standard Levis, of induced from trivial
- should equal the sign character (if it does not, this function fails) }
-set Steinberg_character (RootDatum rd) = [int]:
-  let ct_G=W_class_table_generic(rd)
-  then result =
-     for L in standard_Levis(rd)
-     do let ct_L=W_class_table_generic(L) in
-        minus_1^semisimple_rank(L) * induce_character(ct_G,ct_L,ct_L.trivial)
-     od
-     .sum
-  in assert(result=ct_G.sign); result

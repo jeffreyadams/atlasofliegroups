@@ -1,37 +1,45 @@
 < basic.at
 < generics.at
 
-{
-create a fresh table with
+{ Hash tables for any type |T| that can provide hahshing and equality testing.
 
-set table = make_hash()
-
-Add polynomials P as table.match(P), which returns the sequence
-number (whether old or new).
-
-If you just need to test for presence without altering the table,
-
-table.lookup(P)
-
-will return a sequence number if previously seen, and -1
-otherwise. There are also
-
-table.size(),  table.capacity()
-
-to obtain those statistics, and
-
-table.index(i)
-
-returns KTypePol in the table with sequence number i.
-
-Currently no method for finding out what is in slot j of the hash
-table (either a polynomial sequence number or nothing), but there is
-probably no need to know about that anyway
-
+  The functions that implement this are combined into a |HashInfo<T>| structure,
+  from which the generic function |make_hash| can make am empty |Hash<T>| value.
+  Filling the table and other functionality is provided by the |Hash<T>|
+  component functions. These are, in order of frequencey of use:
+  . |match| to possibly add an entry, retuning its sequence number in all cases
+  - |could_add| is similar but reports whether the element was new
+  - |index| gets an element from its sequence number
+  - |search| tests for membership and looks up, without modifying the table
+  - |list| produces all values currently in the hash table, by order of arrival
+  - |iterator| provides an |Iterator<T>| to range over entries dynamically
+    (it will also find entries added after the |iterator| call, unlike |list|)
+  - |fill| can add multiple elements to the table
+  - |clear| empties the table so that it can be re-used
+  - |size| tells the number of entries currrently stored
+  - |capacity| gives the current size of the storage used
 }
 
 set_type HashInfo<T> = ((T,int->int) hash_code, (T,T->bool) eq)!
 
+{ Sometimes it is useful to store non-key infomation in a hash table, which does
+  not participate in hashing and testing for equality (and which will therefore
+  be dropped when trying to add an entry for which the key information is
+  already known in the table), but which can be retrieved using |index|, |list|
+  and |iterator|. This can be implemented simply by creating a |HashInfo<T>|
+  for a (tuple) type that contains a hashable subtype |S|. The function |lift|
+  prouced this from a |HashInfo<S>| and a (projection) map |T->S|
+}
+any_type S,T begin
+set lift ((S->T)f, HashInfo<T> (hash_code,eq)) = HashInfo<S>:
+   ( (S x, int m) int: hash_code(f(x),m), (S a,S b)bool: eq(f(a),f(b)) )
+end
+
+{ One can even do this with a subtype |S=int|, which needs no active hashing }
+set triv_hash_info =  HashInfo<int>: { make |int| into a "hashable" type }
+   ( (int a, int mod) int: AND(a,mod-1), =@(int,int) )
+
+{ The specification of the |Hash| interface, a type constructor. }
 set_type Hash<T> =
   ( (   -> int) size
   , (   -> int) capacity
@@ -45,6 +53,7 @@ set_type Hash<T> =
   , (   ->Iterator<T>) iterator
   )!
 
+{ And here is the implementation, in the form of the |make_hash| constructor }
 any_type T begin
 set make_hash (HashInfo<T> (hash_code,eq)) = Hash<T>:
    let !empty=minus_1, values = [T]:[]
@@ -115,7 +124,6 @@ in while
         ; for act in actions do hash.match(act(x)) od
       esac
    od
-
 end { of abstraction of type |T| }
 
 { fast polynomial evaluation modulo power of 2, similar to polynomial |eval| }

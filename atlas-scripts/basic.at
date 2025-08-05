@@ -53,16 +53,17 @@ set to_list (Iterator<T> (get,incr) ) = [T]:
    od
 
 set take (int n,Iterator<T> (get,incr) ) = [T]:
-   for :n do case get() | none: break | some(value): value esac next incr() od
+   for :n do case get() | none: break | some(value): value next incr() esac od
 
-set ! ((S,T->bool)rel) = ([S] a,[T] b)bool: { distribute relation over lists }
+{ distribute relation over lists, almost as in |map(rel)(zip(a,b)).all| }
+set ! ((S,T->bool)rel) = ([S] a,[T] b)bool:
   #a=#b and (for x@i in a do if not rel(x,b[i]) then return false fi od; true)
 
 set print_lines ([T] a) = void: for x in a do print(x) od
 set prints_lines ([T] a) = void: for x in a do prints(x) od
 
 end
-
+set append = #@ T ([[T]],[T]) { so |LL append:= []| is unambiguous }
 
 set ! = prints_lines@T[T] { allow printing any list line-by-line as |list!| }
 
@@ -782,11 +783,14 @@ set trace (mat A) = int:
 set char_poly (mat A) = vec: { characteristic polynomial of integer matrix }
   let ps = vec:[] { power sums of the eigenvalues }
   , es = vec:[1] { elementary sym.fct.s of minus the eigenvalues, reversed }
-  , B=A, (n,):sh=shape(A)
+  , B=null(0,0), (n,):sh=shape(A)
   then trace (mat M) = sum(for i:n do M[i,i] od) { a bit faster than the above }
-  in assert(=sh,"Non square matrix");
+in assert(=sh,"Non square matrix");
   { use Newton's identities $k*e_k=-\sum_{i=1}^k p_i*e_{k-i}$ to compute |es| }
-  for k:n from 1 do ps #:= trace(B); B*:=A; es := (es*ps\-k) # es od; es
+  for k:n from 1
+  do ps #:= trace(B := if k=1 then A else B*A fi) { compute $p_k(\Spec(A))| }
+  ; es := (es*ps\-k) # es { prefix $e_k(-\Spec(A))$ to |es| }
+  od; es
 
 set cokernel (mat M) = ^kernel(^M) { minimal matrix wose kernel is our image }
 
