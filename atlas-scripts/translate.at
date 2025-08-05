@@ -1,5 +1,5 @@
-<basic.at
-{<is_normal.at}
+<basic.at { for |null_module@ParamPol| }
+
 set translate_debug=false
 
 {various versions of the Zuckerman translation principle

@@ -1,5 +1,5 @@
 <basic.at
-<combinatorics { for |Partition| }
+<combinatorics.at { for |Partition| }
 <W_classes.at { for |WeylClassTable| }
 <class_tables.at { for |test_simple_type|, |GAP_reorder_E8| }
 <character_tables.at

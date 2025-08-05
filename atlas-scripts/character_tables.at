@@ -3,15 +3,15 @@
 
 { free function on characters; avoid |vec| to allow very large representations }
 set sum ([int] v,[int] w) = [int]:
-   assert(#v=#w,"not same size"); for i:#v do v[i]+w[i] od
+   assert(#v=#w,"not same size"); for vi@i in v do vi+w[i] od
 
 set tensor_product ([int] v,[int] w) = [int]:
-   assert(#v=#w,"not same size");for i:#v do v[i]*w[i] od
+   assert(#v=#w,"not same size");for vi@i in v do vi*w[i] od
 set tensor = tensor_product@([int],[int]) { convenience }
 
-set tensor_power([int] v,int power)=[int]: for x in v do x^power od
-
 set Cartesian_power([int] x,int n)=[int]:  for v in x do n*v od
+
+set tensor_power([int] v,int power)=[int]: for x in v do x^power od
 
 { Character table structure for Weyl groups (integer valued characters) }
 

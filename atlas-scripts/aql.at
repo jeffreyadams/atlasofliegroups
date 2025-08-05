@@ -30,33 +30,29 @@ set one_dim_params_gamma (ratvec ic, Parabolic P)=[Param]:
    let L=Levi(P) in let n=#KGB(L) in let x=KGB(L,n-1) in
    let G=real_form(P) in
    let list=all_parameters_x_gamma(x,ic) in
-   let result=[] in for p in list do
-   if is_unitary_character(p) then
-   result#:=p fi od; result
+   for p in list if is_unitary_character(p) do p fi od
 
 {. List all one-dimensional unitary characters, in the weakly fair range,
   of L, with given infinitesimal character. .}
 set wf_one_dim_params (ratvec ic, Parabolic P)=[Param]:
    let list=one_dim_params_gamma(ic,P) in let G=real_form(P) in
-   let result=[] in for p in list do if is_weakly_fair(p,G) then
-   result#:=p fi od; result
+   for p in list if is_weakly_fair(p,G) do p fi od
 
 {. Auxiliary function: List of all unitary weakly fair Aq(lambda) modules
   with infinitesimal character of p, and induced from P. .}
 set wf_aqs_param_pol (Param p, Parabolic P)=[(Param,ParamPol)]:
    let G=real_form(P) in
    let ics=inf_chars_for_L(p,P) in
-   let result=[] in
-   for v in ics do
-    let list=wf_one_dim_params (v,P) in
-     for q in list do let aq=theta_induce_irreducible(q,G) in
-     result#:=(q,aq)
-     od od; result
+   for v in ics
+     for q in wf_one_dim_params (v,P)
+     do (q,theta_induce_irreducible(q,G))
+     od
+   od
 
 {. Auxiliary function: As previous function, except a list of all
    parameters occurring as constituents of such modules. .}
 set wf_aqs_param (Param p, Parabolic P)=[(Param,Param)]:
-   let result=[] in
+   let result=[(Param,Param)]:[] in
    for pair in wf_aqs_param_pol (p,P) do let (pL,Q)=pair in
      let R=%Q in for r in R do let (k,q)=r in
      if k!=1 then prints("Warning: negative coefficient!") fi;
@@ -71,7 +67,7 @@ set is_weakly_fair_Aq_from_P (Param p, Parabolic P)=bool:
 
 {. List all proper theta-stable parabolics for G that are not Borels. .}
 set special_theta_stable_parabolics(RealForm G)=[Parabolic]:
-  let result=[] in
+  let result=[Parabolic]: [] in
   for P in theta_stable_parabolics(G) do
   if #S(P)!=0 and #S(P)!=semisimple_rank(G) then
   result#:=P fi od; result
@@ -79,7 +75,7 @@ set special_theta_stable_parabolics(RealForm G)=[Parabolic]:
 {. List all parameters of constituents of weakly fair Aq(lambda) modules with
   the same infinitesimal character as p. .}
 set all_wf_Aq_with_ic_of(Param p)=[Param]:
-  let list=[] in for P in theta_stable_parabolics(real_form(p)) do
+  let list=[Param]:[] in for P in theta_stable_parabolics(real_form(p)) do
   let aqs=wf_aqs_param (p,P) in for pair in aqs do let (,q)=pair in
   list#:=q od od; list
 
@@ -103,7 +99,7 @@ set is_weakly_fair_Aq (Param p) = bool:
 {. List all one-dimensional unitary parameters pL so that p is theta-induced
   from pL in the weakly fair range. .}
 set is_wf_induced_from_one_dim (Param p) = [(Parabolic,Param)]:
-   let result=[] in
+   let result=[Parabolic,Param]:[] in
    if is_zero(p) then prints("Zero Module")
    elif not is_final(p) then prints("Parameter is not final.")
    else
@@ -128,7 +124,7 @@ set is_wf_induced_from_one_dim (Param p) = [(Parabolic,Param)]:
 set one_dim_real_induced_param_pol (Param p, Parabolic P)=[(Param,ParamPol)]:
    let G=real_form(P) in
    let ics=inf_chars_dom_for_L(p,P) in
-   let result=[] in
+   let result=[(Param,ParamPol)]:[] in
    for v in ics do
     let list=one_dim_params_gamma (v,P) in
      for q in list do let mod=real_induce_irreducible(q,G) in
@@ -138,7 +134,7 @@ set one_dim_real_induced_param_pol (Param p, Parabolic P)=[(Param,ParamPol)]:
 {. Auxiliary function: As previous function, except a list of all
    parameters occurring as constituents of such modules. .}
 set one_dim_real_induced_param (Param p, Parabolic P)=[(Param,Param)]:
-   let result=[] in
+   let result=[(Param,Param)]:[] in
    for pair in one_dim_real_induced_param_pol (p,P) do let (pL,Q)=pair in
      let R=%Q in for r in R do let (k,q)=r in
      result#:=(pL,q) od od;
@@ -164,7 +160,8 @@ set is_real_induced_from_one_dimensional (Param p) = bool:
 {. List all one-dimensional unitary parameters pL so that p is real-induced
   from pL .}
 set real_induced_from_one_dim(Param p)=[(Parabolic,Param)]:
-   let result=[] in if is_zero(p) then prints("Zero Module")
+   let result=[(Parabolic,Param)]:[] in
+   if is_zero(p) then prints("Zero Module")
    else if not is_final(p) then prints("Parameter is not final.") else
    let G=real_form(p) in
    let rps=all_real_parabolics(G) in
@@ -178,7 +175,7 @@ set real_induced_from_one_dim(Param p)=[(Parabolic,Param)]:
 set wf_aqs_param_pol (ratvec gamma, Parabolic P)=[(Param,ParamPol)]:
    let G=real_form(P) in
    let ics=inf_chars_for_L(gamma,P) in
-   let result=[] in
+   let result=[(Param,ParamPol)]:[] in
    for v in ics do
     let list=wf_one_dim_params (v,P) in
      for q in list do let aq=theta_induce_irreducible(q,G) in
@@ -188,7 +185,7 @@ set wf_aqs_param_pol (ratvec gamma, Parabolic P)=[(Param,ParamPol)]:
 {. As previous function, except a list of all
    parameters occurring as constituents of such modules. .}
 set wf_aqs_param (ratvec gamma, Parabolic P)=[(Param,Param)]:
-   let result=[] in
+   let result=[(Param,Param)]:[] in
    for pair in wf_aqs_param_pol (gamma,P) do let (pL,Q)=pair in
      let R=%Q in for r in R do let (k,q)=r in
      if k!=1 then prints("Warning: negative coefficient!") fi;

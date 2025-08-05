@@ -1,4 +1,4 @@
-<geck_generic { for |Springer_table_generic_degrees| }
+<geck_generic.at { for |Springer_table_generic_degrees| }
 <nci_nilrad_roots.at {for all_sums@([ratvec])}
 <restricted_roots.at {for remove_zeros@[vec]}
 
@@ -188,7 +188,7 @@ else  {L proper in G, need induction; compute L, sigma_L on L}
 		     )
 	  fi;
 {	  [st_G.ct.tensor_sign_index(i)] {tensor with sign again}}
-	  [i] 
+	  [i]
 	fi
      od.##
  in (M,H_M,y,char_indices_sgn)
@@ -214,7 +214,10 @@ set lusztig_cell_long ({RootDatum G,}SpringerTable st_G,ComplexNilpotent O) = [(
 {an entry in lusztig_cell_long can be (M,H_M,y,[])
  use remove_zeros to eliminate these}
 set lusztig_cell ({RootDatum G,}SpringerTable st_G,ComplexNilpotent O) = [[int]]:
-sort_u(remove_zeros(for (,,,j_values) in lusztig_cell_long({G,}st_G,O) do j_values od))
+( for (,,,j_values) in lusztig_cell_long({G,}st_G,O) do j_values od
+  .remove_zeros
+  .sort_u_lex
+)
 
 {include terms coming from deformation}
 set lusztig_cell_plus ({RootDatum G,}SpringerTable st_G,ComplexNilpotent orbit) = [[int]]:
@@ -235,7 +238,7 @@ rv=for (M,H_M,y) in component_representatives_plus(orbit) do
      sigma_lusztig({G,}st_G,orbit,M,H_M,y+v/(G.coxeter_number+1))
     od
    od.##
-in sort_u(remove_zeros(rv))
+in sort_u_lex(remove_zeros(rv))
 
 {compute lusztig cells, running over given list of nilpotents}
 {returns: array, one entry for each orbit
@@ -257,7 +260,7 @@ set lusztig_cells ({RootDatum G,}SpringerTable st_G,[ComplexNilpotent] orbits) =
 
 set lusztig_cells_plus\
   ({RootDatum G,}SpringerTable st_G,[ComplexNilpotent] orbits) =
-  let G=st_G.root_datum in 
+  let G=st_G.root_datum in
   for orbit@counter in orbits
   do
      if sigma_lusztig_verbose
@@ -299,7 +302,7 @@ set lusztig_cells (RealForm G) =
 {show lusztig cells, running over given list of nilpotents}
 set show_lusztig_cells\
    ({RootDatum G,}SpringerTable st_G,[ComplexNilpotent] orbits) = void:
-   let G=st_G.root_datum in 
+   let G=st_G.root_datum in
    prints("G=", G.nice_format, new_line, "#orbits: ", #orbits);
 let table = [ [string] ]:
     for data@i in lusztig_cells({G,}st_G,orbits) {[[(M,H_M,y,values)]]}
@@ -365,7 +368,7 @@ in {table=[[string]]}
 {show lusztig cells, running over given list of nilpotents}
 set show_lusztig_cells_plus\
    ({RootDatum G,}SpringerTable st_G,[ComplexNilpotent] orbits) = void:
-   let G=st_G.root_datum in 
+   let G=st_G.root_datum in
    prints("G=", G.nice_format, new_line, "#orbits: ", #orbits);
 let table_header =
     ["O","dim","i","rd_int","M","H_M","y","v","Cent(y+v)" { indep. of sigma }

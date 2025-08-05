@@ -1,0 +1,150 @@
+{ Functionality related to Lie types, Dynkin diagrams, and their automorphisms }
+
+<basic.at
+<generics.at { for |foldr| }
+<sort.at { for |partition_by| }
+<combinatorics.at { for |compose_permutation| }
+
+{ Computing diagram automorphismes for a Lie type:
+  For a Lie type, generate all diagram automorphisms as permutation vectors,
+  whose positions correspond to nodes of the diagram, so size is semisimple rank.
+}
+
+set simple_automorphisms (string simple_type, int rank) = [vec]:
+   let identity = vec: #rank
+in case char_index(simple_type,"ABCDEFG")
+   in {A} if rank<=1 then [identity] else [identity, ~identity] fi
+   ,  {B} [identity]
+   ,  {C} [identity]
+   ,  {D} if rank=4
+          then [identity,[0,1,3,2],[2,1,0,3],[2,1,3,0],[3,1,0,2],[3,1,2,0] ]
+	  else [identity, identity[:2~] ## identity~[:2] ]
+	  fi
+   ,  {E} if rank=6 then [identity,[5,1,4,3,2,0] ] else [identity] fi
+   ,  {F} [identity]
+   ,  {G} [identity]
+   ,  {T} error("Cannot list diagram automorphisms for torus factors")
+   else error("Unknown Lie type ",simple_type,rank)
+   esac
+
+{ Find groups of equal simple factors. The caller should make sure not to pass
+  both factors B2 and C2 in the same call: choose one of the two to prefer,
+  and convert the other systematically to that one before calling us.
+}
+set permutable_types ([string,int] simple_factors) = [[int]]:
+   let leq((string t0,int r0),(string t1,int r1)) = bool:
+      if t0!=t1 then t0<=t1 else r0<=r1 fi
+in partition_by ( (int i):simple_factors[i] , leq ) (# #simple_factors)
+
+set diagram_automorphism_iterator (LieType t) = Iterator<vec>:
+(  let types = [string,int]: simple_factors(t)
+   , n = semisimple_rank(t) { size of all permutations }
+   then clusters = [[int]]: permutable_types(types).(filter(([int]a):#a>1))
+   , simple_autos = [int,[vec]]:
+     for type@i in types do (i,simple_automorphisms(type)) od
+     .(filter((int.,[vec]a):#a>1))
+in { replace second component of each |simple_autos| entry }
+   for (k,autos)@i in simple_autos
+   do let m=#autos
+      then deltas = { left-multiply each entry by cyclically preceeding one }
+	for pi@i in autos
+	do compose_permutations(permutation_inverse(autos[(i-1)%m]),pi)
+	od
+      in simple_autos[i] := (k,deltas) { replace after all |autos| are used }
+   od
+;
+{ variables for iteration }
+   let go=true { set to false when |incr| cannot produce anything new }
+   , cur = vec: #n { working permutation }
+   , auto_position = [int,int]:
+     { loop indices while traversing automorphisms, and their modulus }
+     for (,autos) in simple_autos do ( 0, #autos ) od { intially indices are 0 }
+
+{ constants for iteration }
+   , starts = 0 # map(snd)(types).cumulate_forward
+   , modulus = { orders of the lists of automoprhism that are run over }
+     for (,autos) in simple_autos do #autos od
+   , current_perm = [Iterator<vec>]: { one iterator for each cluster }
+     for c in clusters do permutation_iterator(#c) od
+   then
+     advance(int start,vec delta) = void:
+     { right-multiply by permutation |delta| lifted to simpla factor at |start| }
+        let snap = cur[start:start+#delta] { take snapshot of old values } in
+        for dst@src in delta do cur[start+src] := snap[dst] od
+   , install(int k, vec pi) = void: { install permutation |pi| of cluster |k| }
+        let cl = [int]: clusters[k]
+	then (,r) = types[cl[0]] { get rank of each of the factors permuted }
+	, st = for i in cl do starts[i] od { and starting points of each factor }
+	in for d:r
+	   do for dst@src in pi do cur[st[src]+d] := st[dst]+d od
+	   od
+in ( @Maybe<vec>:  { |get| method: value produced this iteration, if any }
+     if go then some(cur) else none() fi
+   , @void:
+     for (c,m)@j in auto_position
+     do let k = (c+1) % m { increment "|c|" }
+     , (i,deltas) = simple_autos[j] { find index of simple factor }
+     in auto_position[j] := (k,m) { replace |c| by |k| }
+     ;  advance(starts[i],deltas[k])
+     ;  if k>0 then return() fi { stop unless |k| was wrapped around }
+     od
+     { now all factor automorphism are back to identity; advan the permutations }
+   ; for (get,incr)@j in current_perm { |perm| is permutation of clusters[j] }
+     do incr();
+        case get()
+        | none(): let size = #clusters[j] in
+	  current_perm[j] := permutation_iterator(size) { reset }
+	  ; install(j,#size) { reset cluster permutation to identity }
+	| some(pi): install(j,pi); return()
+	esac
+     od
+   ; go:=false
+   )
+)
+
+set sanitize (bool to_C) = ((LieType,[int])->LieType,[int]):
+    let (fro,to) = if to_C then ("B","C") else ("C","B") fi
+in  (LieType lt,[int] sigma) (LieType,[int]):
+    let type = LieType:
+       let sum=0 in
+       for (letter,rank):st in simple_factors(lt)
+       do if rank=2 and letter = fro
+	  else letter+rank
+	  then let x=sigma[sum] in sigma[sum]:=sigma[sum+1]; sigma[sum+1]:=x
+	  ; to+rank
+	  fi
+       next sum +:= rank
+       od.##.Lie_type
+    in (type,sigma)
+
+
+set diagram_automorphism_iterator (RootDatum rd) = Iterator<mat>:
+   let (lt,map_to_rd)=Cartan_matrix_type(Cartan_matrix(rd)).(sanitize(false))
+   , ssr=rd.semisimple_rank, r=rd.rank
+   then ext = (#r)[ssr:] { extended permutation by identity }
+   then M = permutation_right_act(root_coradical(rd),map_to_rd ## (#r)[ssr:])
+   then (M1,d) = invert(M)
+   , flip = mat: for i:rank(rd) do if i<ssr then 1 else -1 fi od.diagonal
+   then (get,incr) = diagram_automorphism_iterator(lt)
+   , lift (vec auto) = Maybe<mat>:
+     { solve |M*A=P*M| where |A| is |auto.matrix| extended diagonally by $\pm1$ }
+        let A = permutation_matrix(auto ## ext) { extend by identity }
+	then MA = M*A then prod = MA*M1 in
+	if =prod%d then some(prod\d)
+	elif =(prod:=MA*flip*M1)%d then some(prod\d)
+	else none() { we only try acting by $\pm1$ on central torus, so fail }
+	fi
+in ( @Maybe<mat>: let result = Maybe<mat>: none() in
+     while
+        case get()
+	| none(): dont { quit while loop if inner iterator is exhausted }
+	| some(auto):
+	  case lift(auto)
+	  | none: do incr() { skip this one; continue |while| for another try }
+	  | some(M): result:=some(M); dont
+	  esac
+	esac
+     od; result
+   , @void: incr()
+     { no need to test whether iterator ran out, or to repeat until |lift| }
+   )

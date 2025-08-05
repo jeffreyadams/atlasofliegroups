@@ -138,15 +138,15 @@ else
  rv
 fi
 
-set hodge_reflection(Param p, int i)=
+set hodge_reflection(Param p, int i) = [vec,Param]:
 assert(is_complex(i,p.x) or is_imaginary(p.root_datum.simple_roots[i],p.x),
 "root is not complex or imaginary");
 if is_complex(i,p.x) then  hodge_reflection_complex(p,i)
 else hodge_reflection_imaginary(p,i) fi
 
 {apply reflection #root_number to term #index}
-set hodge_reflection(([vec,Param]) Q,int index,int root_number)=
-let rv=[] in
+set hodge_reflection(([vec,Param]) Q,int index,int root_number) = [vec,Param]:
+let rv=[vec,Param]:[] in
  for (f,p)@i in Q do
   if i=index then
    let R=hodge_reflection(p,root_number) in

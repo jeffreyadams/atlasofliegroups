@@ -4,7 +4,7 @@
 <sort.at { for |sort_u@[vec]| }
 <lattice.at { for |restrict_action@(mat,mat)| }
 <sparse.at { for column-grouped |sparse_mat| type }
-<W_orbit { for |W_parabolic_act@(RootDatum,[int],int,[mat])| }
+<W_orbit.at { for |W_parabolic_act@(RootDatum,[int],int,[mat])| }
 
 { data type for representation of W
   operators[i] is the matrix of the action of simple generator #i
@@ -40,7 +40,7 @@ set is_isomorphic (WeylClassTable tab, W_rep pi, W_rep sigma) = bool:
 {. matrix of inner products of characters of representations .}
 set matrix_of_inner_products (WeylClassTable tab) = ([[int]] characters) mat:
 (  let n=#characters
-   , triangle = [[int]]:
+   , triangle = [[int]]: { avoid computing a same inner product in two ways }
       for f@i in characters do for g in characters[i:] do tab.inner(f,g) od od
    in matrix
      ((n,n)
@@ -48,20 +48,12 @@ set matrix_of_inner_products (WeylClassTable tab) = ([[int]] characters) mat:
      )
 )
 
-{ filter list of representations to a unique copy of any occurring character }
-set sort_u (WeylClassTable tab,[W_rep] list) = [W_rep]:
-  case #list
-  in [], list
-  else let chars = for pi in list do character(tab,pi) od
-     then sorted = [[int]]: sort_u(chars)
-     then positions = for :#sorted do minus_1 od
-     in for char@i in chars
-        do let j =
-           binary_search_first((int j):lex_lesseq(char,sorted[j]),0,#sorted)
-           in assert(char=sorted[j]); if positions[j].< then positions[j]:=i fi
-        od
-     ; for pos in positions do list[pos] od
-  esac
+{ reduce list of representations to one with at most 1 copy of any character }
+set unique (WeylClassTable tab,[W_rep] list) = [W_rep]:
+   let leq = ([int],[int]->bool): lexicographic(<=@(int,int))
+   then classes = [[W_rep,[int]]]:
+      for pi in list do (pi,character(tab,pi)) od.(partition_by(snd,leq))
+in for class in classes do class[0].fst od
 
 { ----------- cell representations --------------}
 
@@ -242,7 +234,7 @@ set standard_Levis (RootDatum rd) = [RootDatum]:
 
 { induction from a Levi factor
 
-  L is a Levi in G, |pi_L| is a class function on W(L)
+  Suppose L is a Levi in G, and |pi_L| is a class function on W(L),
   we want to compute the class function pi_G=ind_L^G(pi_L) on W(G)
 
   formula: if C is a conjugacy class for G
@@ -283,3 +275,17 @@ set smallest_degree (WeylClassTable Wct, [int] character) = int:
   first(Wct.root_datum.nr_of_posroots+1
        ,(int k) bool: !=Wct.inner(character,Wct.sym_power_refl(k))
        )
+
+{ the Steinberg character (mainly for testing)}
+
+{alternating sum, over all standard Levis, of induced from trivial
+ should equal the sign character (if it does not, this function fails) }
+set Steinberg_character (RootDatum rd) = [int]:
+  let ct_G=W_class_table_generic(rd)
+  then result =
+     for L in standard_Levis(rd)
+     do let ct_L=W_class_table_generic(L) in
+        minus_1^semisimple_rank(L) * induce_character(ct_G,ct_L,ct_L.trivial)
+     od
+     .sum
+  in assert(result=ct_G.sign); result

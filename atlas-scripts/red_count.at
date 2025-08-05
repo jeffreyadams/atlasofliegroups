@@ -1,4 +1,5 @@
-< basic {for infinitesimal character}
+<basic.at { for |infinitesimal character| }
+<hash.at { for |make_xlambda_hash| }
 
 {whether to use these functions}
 set red_count_flag = false

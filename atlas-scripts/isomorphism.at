@@ -1,6 +1,8 @@
 <basic.at
 <lietypes.at { for |is_locally_isomorphic| }
-<conjugate.at { for |symmetric_groups| }
+<groups.at { for |GL| }
+<W_orbit.at { for |W| }
+<ratmat.at { for the |ratmat| type }
 
 {permutations relating Cartan matrices
  isomorphism of root systems (local isomorphism)
@@ -14,24 +16,25 @@
   If the Dynkin diagrams are not isomorphic, this returns an empty list.
 }
 set root_permutations(RootDatum rd_1,RootDatum rd_2) = [mat]:
-   if not is_locally_isomorphic(rd_1,rd_2) then [mat]:[] { don't bother searching }
+   if not is_locally_isomorphic(rd_1,rd_2)
+   then [mat]:[] { don't bother searching }
    elif =rd_1.semisimple_rank then [id_mat(0)] {empty root system case}
    else { very laboriously try all possible bijections }
       let C_1=rd_1.Cartan_matrix, C_2=rd_2.Cartan_matrix in
-      for P in symmetric_group(rd_1.semisimple_rank)
-      do if P*C_1=C_2*P then [P] else [] fi
+      for w in W(GL(rd_1.semisimple_rank))
+      do if w*C_1=C_2*w do matrix(w) fi
       od.##
    fi
 
 {return (bool, one permutation matrix), reductive is allowed }
 set root_permutation (RootDatum rd_1, RootDatum rd_2) = (bool,mat):
    if not is_locally_isomorphic(rd_1,rd_2) then (false,id_mat(0))
-   elif =rd_1.semisimple_rank then (true,id_mat(0)) {empty root system case}
+   elif rd_1.semisimple_rank=0 then (true,id_mat(0)) {empty root system case}
    else
-      let S=symmetric_group(rd_1.semisimple_rank)
+      let W=W(GL(rd_1.semisimple_rank))
       then C_1=rd_1.Cartan_matrix, C_2=rd_2.Cartan_matrix
-      then index=first(#S,(int i)bool:let g=S[i] in g*C_1=C_2*g)
-   in if index.< then (false,null(0,0)) else (true,S[index]) fi
+      then index=first(W,(WeylElt g)bool: g*C_1=C_2*g)
+   in if index.< then (false,null(0,0)) else (true,W[index].matrix) fi
    fi
 
 {find g\in GL(n,Q) and permutation matrix P so that

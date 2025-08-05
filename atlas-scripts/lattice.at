@@ -23,30 +23,37 @@ set is_saturated (mat M) = bool:
    let (M,,pivots,)=echelon(M)
 in set (M,):=ech_up(M,pivots); product(M.main_diagonal)=1
 
-{ A function that avoids using |adapted_basis|, |diagonalize|, or other
-  functions that may suffer severe coefficient growth; to be used in situations
-  where only the (saturated) image subspace as a whole, and possibly a choice
-  of a complementary subspace, are needed, not a special basis for the image
+{ The function |adapted_direct_sum| finds the dimenion |k| of the image of |M|,
+  and a $\Z$-inverible matrix |R| whose first |c| columns span the saturation of
+  the image, while remaining ones span a chosen complement of that saturation.
 
-  Find dimension |c| of image, and a $\Z$-inverible matrix whose first |c|
-  columns span saturation of the image; remaining ones span a chosen complement
+  Apart from the initial call of |echelon| to standardise the image and compute
+  the list of |pivot| positions, this function is very similar to |ech_up| in
+  matrix.at, but the inverse of the recording matrix is needed here, and since
+  replacing columns is easier than replacing rows, we maintain the matrix in
+  inverse transposed form so that we can still maintina it by column operations.
+
+  We avoid using |adapted_basis| and |diagonalize|, which may suffer severe
+  coefficient growth for not too small matrices; we do however use |echelon|
+  and |Bezout| that might have similar effects. It is to be used in situations
+  where only the (saturated) image subspace as a whole, and possibly a choice of
+  a complementary subspace, are needed, not a special basis for the image.
+
 }
 set adapted_direct_sum (mat M) = (int,mat):
-   let (M,,pivot,)=echelon(M) then (r,c)=shape(M), !M0=M
-   then R=id_mat(r) { record row operations, held in inversed form }
+   let (M0,,pivot,)=echelon(M) then (k,l)=shape(M:=^M0) { forget and reuse |M| }
+   then R=id_mat(l) { record transpose inverse of column operations applied }
 in { now do coordinate change to make |M| upper triangular }
-   for j:c { loop over columns of M while it is being modified in the loop }
-   do let col=M[j], piv_j=pivot[j]+1 { only consider few rows now: |j:piv_j| }
-   in if j<piv_j { avoid doing any work when our range is a single rows }
+   for i:k { loop over columns of M while it is being modified in the loop }
+   do let piv_i=pivot[i]+1 { only consider few rows now: |i:piv_i| }
+   in if i<pivot[i] { avoid doing any work when our range is a single row }
       then
-         let (d,C)=Bezout(col[j:piv_j]), tM=^M
-         then tM_C=tM[j:piv_j] * C, R_C = R[j:piv_j] * ^C.inverse
+         let (d,C)=Bezout(vector(piv_i-i,(int j):M[i,i+j]))
+         then new_M_cols=M[i:piv_i] * C, new_R_cols = R[i:piv_i] * ^C.inverse
          { updated rows are now spliced into place in |M| and |R|: }
-      in M := c^ for i:r do if i<j or i>pivot[j] then tM[i] else tM_C[i-j] fi od
-      ;  R := r# for i:r do if i<j or i>pivot[j] then  R[i] else  R_C[i-j] fi od
-      ; assert(M[j,j]=d)
+      in for j:piv_i-i do M[i+j]:=new_M_cols[j]; R[i+j]:=new_R_cols[j] od
       fi
-   od; assert(R*M=M0); (c,R)
+   od; assert(R*^M=M0); (k,R)
 
 set image_subspace (mat M) = mat: { generators for $\Q$-span of image of |M| }
    let (c,R)=adapted_direct_sum(M) in R[:c]
@@ -104,13 +111,13 @@ set decompose (mat M, ratvec w) = (ratvec,ratvec):
   which is action of A restricted to that sublattice $\Z^m$, embedded via M
 }
 set restrict_action (mat A, mat M) = mat: { shapes A: n by n, M: n by m }
-   case solve(M,A*M) | solution(B): B
+   case solve(M,A*M) | some(B): B
    | else error("Image lattice M is not fixed by A")
    esac
 
 { assuming M full row rank and ker(M) is A-stable, find unique B with M*A=B*M }
 set corestrict_action (mat M,mat A) = mat:  { shapes M: m by n, A: n by n }
-   case solve(^M,^(M*A)) | solution(tB): ^tB
+   case solve(^M,^(M*A)) | some(tB): ^tB
    | else error("Kernel of M is not fixed by A")
    esac
 
@@ -122,28 +129,27 @@ set quotient_matrix (mat A,mat M) = mat:
   let (c,R)=adapted_direct_sum(M) in (R.inverse[c: , : ]*A*R[ : ,c: ])
 
 set solve_ratvec (mat A, vec v) = ratvec:
-  (A,ratvec:v).solve.(rat_requisition("not in span"))
+  (A,ratvec:v).solve.(requisition("not in span"))
 
 { integer vector (lattice) solutions to linear system }
 
 
 set in_lattice (mat A, ratvec u) = bool: { whether v in image lattice of A }
-  let (b,n)=%u in n=1 and solve(A,b).any
+  let (b,n)=%u in n=1 and can(solve(A,b))
 
-{test if ratvec v is in lattice L + rational subspace V}
-set in_lattice_subspace_sum ([vec] L,[vec] V)=(ratvec->bool):
-(ratvec v):
-if =#V then in_lattice(L,v) else
- let ck=cokernel(V) then (new_V,,,) = echelon(ck*L) in
- let v_new=ck*v in
- if not is_integer(v_new) then false
-  else
-  in_lattice(new_V,ratvec_as_vec(v_new))
- fi
-fi
+{ whether in the sum of lattice |L| and rational subspace spanned by |V| }
+set in_lattice_subspace_sum (mat L,mat V) = (ratvec->bool):
+   assert(n_rows(L)=n_rows(V),"Unequal dimensions");
+   (ratvec v):
+   if =#V then in_lattice(L,v)
+   else
+      let ck=cokernel(V) then (new_V,,,) = echelon(ck*L)
+      then v_new=ck*v
+   in is_integer(v_new) and in_lattice(new_V,ratvec_as_vec(v_new))
+   fi
 
-set vec_solve (mat A, ratvec u) = maybe_a_vec: { integer solution to A*x=b }
-  let (b,n)=%u in if n>1 then no_vec() else solve(A,b) fi
+set vec_solve (mat A, ratvec u) = Maybe<vec>: { integer solution to A*x=b }
+  let (b,n)=%u in if n>1 then none() else solve(A,b) fi
 
 { express columns of M relative to basis A of a sub-lattice that contains them
   A: nxm matrix, columns are a basis of a Z-module V of rank m
@@ -217,7 +223,7 @@ for col@i in A do (col,v[i]) od
  return false if w doesn't exist, or boolean is_integer(w) if it does
 }
 set in_lattice (ratmat A, ratvec v) = bool:
-let (A_int,,d)=A then
-(M,C,pivots,)=echelon(A_int) in
-assert(#M>=#A_int,"columns of matrix are not linearly independent");
-   case solve(A,v) | solution(w): is_integer(w) | else false esac
+   let (A_int,,d)=A
+   then (M,C,pivots,)=echelon(A_int)
+in assert(#M>=#A_int,"columns of matrix are not linearly independent");
+   case solve(A,v) | some(w): is_integer(w) | else false esac

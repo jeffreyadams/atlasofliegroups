@@ -1,12 +1,12 @@
 {NOT CURRENTLY CALLED 2.27.24}
 
-< basic {for required_solution, etc.}
-< ratmat {for ratmat}
-< induction {for theta-stable parabolics}
-< hermitian {for is_unitary}
-< to_ht {for is_unitary_to_ht}
-< FPP_facets_geom {for herm_center}
-< weak_packets {for unipotent_representations}
+< basic.at {for required_solution, etc.}
+< ratmat.at {for ratmat}
+< induction.at {for theta-stable parabolics}
+< hermitian.at {for is_unitary}
+< to_ht.at {for is_unitary_to_ht}
+< FPP_faces_geom.at {for herm_center}
+< weak_packets.at {for unipotent_representations}
 
 { lists real and/or complex simple factors }
 set simple_factors(RealForm G) = [RealForm]:
@@ -182,12 +182,10 @@ set glued_gammas([ratvec] gammas, RealForm G) = ratvec:
   }
 set solve_mod_N(mat M,mat N,ratvec v, int D)=[ratvec]:
   let Dv = ratvec_as_vec(D*v), DN = D*N
-  then sol=solve((M##DN),Dv)
-  in
-   if any(sol)
-   then [ ratvec_as_vec(M*(sol.requisition)[:n_columns(M)]/D + v)]
-   else []
-   fi
+  in case solve((M##DN),Dv)
+     | none: []
+     | some(sol): [ ratvec_as_vec(M*sol[:n_columns(M)]/D + v)]
+     esac
 
 
 {lambdas is one lambdaj for each derived simple factor; assemble into
@@ -290,7 +288,7 @@ set descents(Param p, [int] S) = [Param]:
     let  x = p.x, G = p.real_form, lambda = p.lambda, nu = p.nu,
     	 gamma = p.infinitesimal_character
     then P = Parabolic: (S, x)
-    then () = assert(is_parabolic_theta_stable(P),"Designated P is not theta-stable")
+    then () = assert(parabolic_is_theta_stable(P),"Designated P is not theta-stable")
     then L = P.Levi
     then lambdaL = lambda - G.rho + L.rho, nuL = nu, xL = inverse_embed_KGB(x,L)
     then DSF = derived_simple_factors_easy(L), DSFinfos = derived_infos(L)

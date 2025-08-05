@@ -53,9 +53,11 @@ set std_labels(RootDatum rd) = vec:
 
 set labels(RootDatum rd, ratvec gamma) = vec:
     let SCR = simple_coroots(rd, gamma), zero = null(rd.rank)
-    then LS = linear_solution: linear_solve(SCR,zero)
-    then lpm = vec: case LS | affine_subspace(v,d,M):M[0] |
-       	    	 else error("bad coroots") esac
+    then lpm = vec:
+       case linear_solve(SCR,zero)
+       | some(,,M):M[0]
+       | none: error("bad coroots")
+       esac
     in if lpm[0]>0 then lpm else -lpm fi
 
 {possible values of 2rho for the positive systems of the alcove}
@@ -66,7 +68,7 @@ set tworhos(RootDatum rd, ratvec gamma) = [vec]:
     then labs = vec: labels(rd, gamma)
     then corr = -2*sum(labs)
     in for m@j in labs
-       do if m=1 then let goal=two + corr*e(rd.semisimple_rank+1,j)
+       do if m=1 then let goal=two + corr*identity_row(rd.semisimple_rank+1,j)
 	  in [requisition(solve(^SCR, goal))]
 	  else []
 	  fi

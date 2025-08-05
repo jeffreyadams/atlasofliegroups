@@ -1072,15 +1072,14 @@ set bottom_K_type_Qs(Param p, KGPElt Qmin, int D_low, int D) = [QK_bottom_data]:
 			 od {what to add to highest weight of mu to get to tau}
     then too_many_Ss = [[int]]:
     	 for shift in too_many_shifts
-	 do (Smin## (for col@i in fixc_cowts
-		  do if (shift*col).= then [] else [fixc[i]] fi
-		  od.##)
+	 do (Smin## (for col@i in fixc_cowts if shift*col!=0 do fixc[i] fi od)
 	      ## (for col@j in pairsc_cowts
-		  do if (shift*col).= then [] else pairsc[j] fi
-		  od.##)).sort_u
+	          do if (shift*col).= then [] else pairsc[j] fi
+		  od.##)
+	    ).sort_u
          od  {these are the coroots needed to make a parabolic
 		       	    for which tau is bottom layer}
-    then candSs = too_many_Ss.sort_u
+    then candSs = too_many_Ss.sort_u_lex
     then proper_candSs = for S in candSs
     	 	       	 do if #S = G.semisimple_rank
 			    then []

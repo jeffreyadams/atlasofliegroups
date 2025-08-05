@@ -10,7 +10,7 @@ to change of syntax}
 <W_reps_type_BC.at
 <Vogan-dual.at { for |dual_KGB| }
 <groups.at { for |GL| }
-<finite_dimensional { for |is_finite_dimensional| }
+<finite_dimensional.at { for |is_finite_dimensional| }
 <induction.at { for |induce_irreducible| }
 <stable.at { for |print_stable| }
 <combinatorics.at
@@ -33,7 +33,7 @@ set find_reps_in_Cells ([[int]] W_cells, Param t) = int:
 {Compute minimal elements of parabolics having equivalent KGB elements in the distinguished fiber}
 set x_min_parabolic_in_dis_fiber_Step1 (RealForm G,[int] H)=([KGBElt]):
   for x in distinguished_fiber(G) do x_min(parabolic_by_wt(ratvec:H,x)) od.
-  (sort_by(#@KGBElt))
+  (sort_by(#@KGBElt,<=@(int,int)))
 
 {Step 2 of above}
 set x_min_parabolic_in_dis_fiber (RealForm G,[int] H)=([KGBElt]):
@@ -316,7 +316,7 @@ set Unipotent_information_B (Block B, [int] P)=
 let U=Unipotent_Packet_B(B, P)
 then missing=Missing_Parts_of_Uni_Packet_B(B,P)
 then all_missing=[Param]:[]
-then ()=for params in missing do all_missing##:=params od
+then ()=void: for params in missing do all_missing##:=params od
 then ()=prints("all_missing=",all_missing)
 then G=real_form(B)
 then ()=prints("There are", " ", #U ," ", " real forms (and hence Unipotent packets) of", " ", P, " ","in this block")

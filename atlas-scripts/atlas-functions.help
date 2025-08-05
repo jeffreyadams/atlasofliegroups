@@ -146,15 +146,17 @@ swiss_matrix_knife: (int,mat,int,int,int,int->mat): slice and dice a matrix
 
 gcd: (vec->int): the greatest common divisor of all entries of the vector
 Bezout: (vec->int,mat): gcd of entries, and linear map sending v to (d,0,0,...)
-  In addition to finding the gcd d like the previous function this also produces
-  an invertible matrix (change of coordinates) that sends the argument vector v
-  to d times the first canonical basis vector. That means the first row has a
-  sequence of Bezout coefficients (for the gcd) and the other rows are sequences
-  that similarly produce 0, so any combination of them can be added to the
-  sequence of Bezout coefficients to produce another valid such sequence.
+  In addition to finding the gcd d of the entries of the argument v (like the
+  previous function) this produces an invertible matrix M that records the
+  column operations that transform v viewed as a row matrix into d times the
+  first row of an identity matrix (so that result equals v*M). That means the
+  first column of M is a sequence of Bezout coefficients for v, and the other
+  columns describe linear combinations of the entries of v that are 0, so that
+  any linear combination of them can be added to the first column to produce
+  another valid sequence of Bezout coefficients.
 echelon: (mat->mat,mat,[int],int): column echelon form, with extra information
   This applies to the n*m matrix A column operations and possibly removal of
-  null columns to obtain an n*k matrix M (with k<=m) and an unimodular matrix C
+  null columns to obtain an n*k matrix M (with k<=m) and a unimodular matrix C
   that records the column operations performed; an increasing sequence s of k
   "pivot rows" and the a sign eps equal to the determinant of C are also
   recorded for convenience: the quadruple (M,C,s,eps) is returned. The column
@@ -378,9 +380,9 @@ is_long_coroot: (RootDatum,int->bool): Whether a coroot is considered to be long
 root_involution : (RootDatum,int->vec): full system involution for reflection
   Renumbering the full root system from 0 for the most negative root, this gives
   the involution of those roots for the reflection for the given root/coroot
-root_ladder_bottoms: (RootDatum,int->[int] Starting indices of root ladders
+root_ladder_bottoms: (RootDatum,int->[int]) Starting indices of root ladders
   For (rd,i) the gives those j for which root(rd,j)-root(rd,i) is not a root
-coroot_ladder_bottoms: (RootDatum,int->[int] Starting indices of coroot ladders
+coroot_ladder_bottoms: (RootDatum,int->[int]) Starting indices of coroot ladders
   For (rd,i) the gives those j for which coroot(rd,j)-coroot(rd,i) is no coroot
 fundamental_weight: (RootDatum,int->ratvec): fundamental weight number $i$
 fundamental_coweight: (RootDatum,int->ratvec): fundamental coweight number $i$
@@ -439,6 +441,9 @@ Weyl_orbit_ws: (vec,RootDatum->[WeylElt]): Weyl group elements, coweight orbit
 W_elt: (RootDatum,[int]->WeylElt): Make a WeylElt from a word in W-generators
   The root datum specifies the type of Weyl group, the vector gives the word in
   terms of simple reflections (indexed from 0) defining the Weyl group element
+W_refl: (RootDatum,int->WeylElt): Reflection for a root index as Weyl element
+  For any root index the reflection defined by for the corresponding root and
+  coroot is given by an element of the Weyl group; return that element
 word: (WeylElt->[int]): chosen reduced Weyl word for a Weyl group element
 root_datum: (WeylElt->RootDatum): Root datum underlying a Weyl group element
 length: (WeylElt->int): Length in Weyl group of an element
@@ -758,6 +763,8 @@ operator % : (KType->KGBElt,vec): recover (x,lambda-rho) from a KType
   a KType is constructed; so this is no perfect inverse of the K_type function
 real_form: (KType->RealForm): recover the real form from a KType value
 height: (KType->int): height of a K-type
+  This is the sum of absolute values of the scalar products of (1+theta)lambda
+  and the positive coroots.
 operators =, != : (KType,KType): strict equality of KTypes
   Equality of KTypes implies equality of their real forms
 equivalent: (KType,KType->bool): test equivalence of K-types

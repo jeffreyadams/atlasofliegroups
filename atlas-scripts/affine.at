@@ -54,8 +54,8 @@ set is_one_factor(RootDatum rd)=bool: derived_is_simple(rd)
 set is_one_factor(AffineDatum ad)=bool: is_one_factor(ad.rd)
 
 set number_factors(AffineDatum ad)=int:#ad.affine_roots
-set affine_root_sum(AffineDatum ad)=sum(ad.affine_roots)
-set affine_coroot_sum(AffineDatum ad)=sum(ad.affine_coroots)
+set affine_root_sum(AffineDatum ad)=sum(ad.rd.rank # ad.affine_roots)
+set affine_coroot_sum(AffineDatum ad)=sum(ad.rd.rank # ad.affine_coroots)
 
 {an affine root datum ad is obtained by "folding" from a pair
 (root datum,distinguished automorphism)=(rd,delta)
@@ -360,6 +360,8 @@ let (cwt_1_dom,)=affine_make_dominant(ad,cwt_1),
 (cwt_2_dom,)=affine_make_dominant(ad,cwt_2) in cwt_1_dom=cwt_2_dom
 
 {action of fundamental group on fundamental alcove}
-set action_fundamental_group(ratvec cwt,AffineDatum ad)=
-assert(is_affine_dominant(cwt,ad),"coweight is not in fundamental alcove");
-sort_u(for v in elements_of_fundamental_group(ad.rd) do let (w,)=ad.affine_co_make_dominant(cwt+v)  in w od)
+set action_fundamental_group (ratvec cwt,AffineDatum ad) =
+  assert(is_affine_dominant(cwt,ad),"coweight is not in fundamental alcove");
+  for v in elements_of_fundamental_group(ad.rd)
+  do let (w,)=ad.affine_co_make_dominant(cwt+v) in w
+  od.sort_u_lex

@@ -9,7 +9,7 @@
 
 { look up index of |v|, assumed to be a standard basis vector }
 set index_standard_basis(vec v) = int:
-  let n = #v then j = v * #n in assert(e(n,j)=v); j
+  let n = #v then j = v * #n in assert(j>=0 and j<n and identity_row(n,j)=v); j
 
 set no_F_factor(RootDatum rd) = bool:
    none(for (letter,) in simple_factors(Lie_type(rd)) do letter="F" od)
@@ -55,7 +55,7 @@ set induced_bijection_on_classes(
    mat M, [WeylElt] classes, [WeylElt] classes_new) = [int]:
    let rd_new = classes_new[0].root_datum
 in for w in classes
-   do let test = is_conjugate_to(permute(int_mapping(M),w,rd_new))
+   do let test = is_conjugate_in(rd_new)(permute(int_mapping(M),w,rd_new))
    in first(#classes_new,(int i)bool: test(classes_new[i]) )
    od
 

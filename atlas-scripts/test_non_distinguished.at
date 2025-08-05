@@ -105,7 +105,7 @@ set test_all(RealForm G) = void:
     let LeviClasses = standard_Levi_conjugacy_representatives(G), N= int:0
     in for A in LeviClasses
        do let PA=ComplexParabolic: (G,A)
-	  then LA = PA.Levi, shiftA = PA.rho_u
+	  then LA = PA.sub_datum, shiftA = PA.rho_u
 	  then OAvs = distinguished_nilpotent_orbits(LA.dual)
 	  then gammaAs = for OAv in OAvs do OAv.H/2 od
 	  in for OAv@j in OAvs

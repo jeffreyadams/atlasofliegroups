@@ -1,4 +1,9 @@
-<basic.at
+<basic.at { for |sum@[int] }
+
+{ Functions for some non elementary but general matrix operations, like finding
+  a left or right inverse of a given matrix, if one exists.
+}
+
 
 set upper_unitriangular_inverse (mat U) = mat:
    let n=#U then Q=id_mat(n) { is made to satisfy $Q*U=I_n$ below }
@@ -7,25 +12,41 @@ in for Uj@j in U
      ## Q[j][j:] { retain the final $n-j$ rows of column $j$ of $Q$ }
    od; Q
 
-{ make result of |echelon| upper triangular, possibly with trailing null rows,
-  using row operations; return that triangular matrix and row operations matrix
+{
+  The function |ech_up| is a complement to the built-in |echelon@mat| (which
+  produces an "upper" column echelon form by column operations) that, in case
+  some pivots are below the main diagonal, complements this with row operations
+  to make the result truly "upper" (meaning all sub-diagonal entries are zero).
+
+  Make (assumed) result of |echelon| upper triangular using row operations,
+  possibly with trailing null rows; return the resulting triangular matrix, and
+  the row operations matrix (the one left-multiplied by to obtain it)
 }
 set ech_up (mat M, [int] pivot) = (mat,mat):
-   let (r,c)=shape(M)
-   then R=id_mat(r) { record row operations, held in transposed form }
-in for j:c { loop over columns of M as it is being modified in the loop }
-   do let col=M[j] then (d,C)=Bezout(col[j:pivot[j]+1]), tM=^M
-   then tM_C=tM[j:pivot[j]+1] * C, R_C = R[j:pivot[j]+1] *C
-   in M := c^ for i:r do if i<j or i>pivot[j] then tM[i] else tM_C[i-j] fi od
-   ;  R := r# for i:r do if i<j or i>pivot[j] then  R[i] else  R_C[i-j] fi od
-   ; assert(M[j,j]=d)
-   od; (M,^R)
+{ assumptions: |pivot| is strictly increasing list of pivot row numbers for |M|
+  and one has |M[i,j]=0| whenever |i>pivot[j]
+
+  Since |Bezout| thinks of its argument as a row matrix, we transpose internally
+}
+   let (k,l)=shape(M:=^M)
+   then C = id_mat(l) { record column operations on the l-column transposed M }
+in for i:k { loop over rows of |M|, which get modified by column operations }
+   do let jj=pivot[i]+1 { column of position beyond the pivot in row i }
+   in if i<pivot[i] { avoid doing any work when our range is a single column }
+      then
+         let (d,c_ops) = { gcd of post-diagonal part of row i & colmn ops }
+           Bezout(vector(jj-i,(int j):M[i,i+j])) { a short non-empty range }
+         then new_M_cols = M[i:jj] * c_ops, new_C_cols = C[i:jj] * c_ops
+      in assert(all(jj-i,(int j): new_M_cols[i,j]=if j=0 then d else 0 fi))
+      ; for j:jj-i do M[i+j]:=new_M_cols[j]; C[i+j]:=new_C_cols[j] od
+      fi
+   od; (^M,^C) { transpose back on exit }
 
 set left_inverse(mat A) = mat: { for injective map to saturated sublattice }
 (  let (M,C,pivots,)=echelon(A), c=#A
 in if #M<c then error("not injective (rank is ",#M,"<",c,")") fi
 ;  let (Tri,R)= ech_up(M,pivots)
-in if product(Tri.main_diagonal)=1
+in if let diag=Tri.main_diagonal in diag=ones(#diag)
    then C*upper_unitriangular_inverse(Tri[:c,:])*R[:c,:]
    else error("image is not saturated")
    fi
@@ -33,9 +54,9 @@ in if product(Tri.main_diagonal)=1
 
 set right_inverse(mat A) = mat: { section of a surjective lattice map A }
 (  let (M,C,pivots,)=echelon(^A), c=A.n_rows
-in if M.n_rows<c then error("row rank ",M.n_rows," not full (",c,")") fi
+in if M.n_columns<c then error("row rank ",M.n_columns," not full (",c,")") fi
 ;  let (Tri,R)= ech_up(M,pivots)
-in if product(Tri.main_diagonal)=1
+in if let diag=Tri.main_diagonal in diag=ones(#diag)
    then ^(C*upper_unitriangular_inverse(Tri[:c,:])*R[:c,:])
    else error("matrix is not surjective")
    fi
@@ -75,10 +96,6 @@ in for row in ^M
    od.##
 
 set print_matrix_compact(mat M)=prints(string_compact(M))
-
-{update one entry of a matrix; language already provides this}
-set update_matrix_entry(mat M, int i, int j, int value)= mat:
-  M[i,j]:=value; M
 
 {add an integer to one entry of a matrix; language already provides this}
 set add_to_matrix_entry(mat M, int i, int j, int value)= mat:
