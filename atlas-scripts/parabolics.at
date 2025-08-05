@@ -193,13 +193,13 @@ set Levi_simple_coroots (ComplexParabolic(rd,S)) = mat: { as rows }
 set Levi_coweight (ComplexParabolic (rd,S):cp) = vec:
    let A = Levi_simple_roots(rd,maximize_Levi(cp))
    , k = #S { limit of original Levi roots }
-in (^A,vector(rd.rank,(int i)int:#(i>=k))/1).required_solution.numer
+in (^A,vector(rd.semisimple_rank,(int i)int:#(i>=k))/1).required_solution.numer
 
 { a weight for which the Levi coroots are precisely those that vanish on it }
 set Levi_weight (ComplexParabolic (rd,S):cp) = vec:
    let A = Levi_simple_coroots(rd,maximize_Levi(cp))
    , k = #S { limit of original Levi roots }
-in (A,vector(rd.rank,(int i)int:#(i>=k))/1).required_solution.numer
+in (A,vector(rd.semisimple_rank,(int i)int:#(i>=k))/1).required_solution.numer
 
 { whether an automorphism |theta| of X^* stabilises the complex parabolic }
 set is_stable (mat theta, ComplexParabolic cp) = bool:
