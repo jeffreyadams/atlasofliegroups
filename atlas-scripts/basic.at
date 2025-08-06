@@ -430,11 +430,11 @@ set floor ([rat] v) = vec: for a in v do floor(a) od
 set ceil  ([rat] v) = vec: for a in v do  ceil(a) od
 
 set min = min(<=@(rat,rat))
-set max = min(<=@(rat,rat))
+set max = max(<=@(rat,rat))
 set min = min_list(<=@(rat,rat))
-set max = min_list(<=@(rat,rat))
+set max = max_list(<=@(rat,rat))
 set min = min_init(<=@(rat,rat))
-set max = min_init(<=@(rat,rat))
+set max = max_init(<=@(rat,rat))
 set min_loc = mindex(<=@(rat,rat))
 set max_loc = maxdex(<=@(rat,rat))
 
