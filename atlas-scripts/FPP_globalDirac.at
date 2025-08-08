@@ -139,10 +139,14 @@ set test_bl(KGBElt x, ratvec lambda, LocalVertexData Lvd) = bool:
 {LAM > LARmin*R and LAM < LARmax*R  and GAM > GARmin*R and GAM < GARmax*R}
 
 set test_no_unitary(KGBElt x, ratvec lambda, LocalVertexData Lvd) = bool:
-    if twist(x) != x then return false fi;
+    if twist(x) != x
+    then finish(x,lambda);
+    	 return true fi;
     if fewer_reducible_unitary_flag and
        not is_pos_on_LKTs(parameter(x,lambda, 0*lambda))
-    then return true fi;
+    then finish(x,lambda);
+    	 return true
+    fi;
     let  start = elapsed_ms(), (Rs,CORs) = simple_real_subsystem(x)
     then colCORs = [vec]: for alpha@j in Rs
 		      	  do if (((CORs[j]*lambda).numer)%2).= {parity at zero}
@@ -157,10 +161,15 @@ set test_no_unitary(KGBElt x, ratvec lambda, LocalVertexData Lvd) = bool:
 			     		od)
 	      		  od) {no parity real coroots vanish on any nu}
     then () = test_no_unitary_time +:= elapsed_ms() - start
-    in answer
+    in if answer
+       then finish(x,lambda)
+       fi;
+       answer
 
 set test_no_unitary(KGBElt x, ratvec lambda) = bool:
-    if twist(x) != x then return false fi;
+    test_no_unitary(x,lambda,Lvd(x,lambda))
+
+{if twist(x) != x then return false fi;
     if fewer_reducible_unitary_flag and
        not is_pos_on_LKTs(parameter(x,lambda, 0*lambda))
     then return true fi;
@@ -181,22 +190,25 @@ set test_no_unitary(KGBElt x, ratvec lambda) = bool:
 			     	    od)
 	      	      od) {no parity real coroots vanish on any nu}
     then () = test_no_unitary_time +:= elapsed_ms() - start
-    in answer
-    {test_no_unitary(x, lambda, Lvd(x, lambda))}
+    in answer}
 
 set test_no_Dirac(KGBElt x, ratvec lambda, LocalVertexData Lvd) = bool:
-    if twist(x) != x then return false fi;
+    if twist(x) != x
+    then finish(x,lambda);
+    	 return true
+    fi;
     let start = elapsed_ms(), DiracBD = DiracBD(x,lambda), Q = invariant_form(x.real_form)
     then answer = none(for v in Lvd.list
        	   	        do @bool: Q(v,v) <= DiracBD od)
     then () = test_no_Dirac_time +:= elapsed_ms() - start
-    in answer
+    in if answer then finish(x,lambda) fi;
+       answer
 
 {just test extremal vertices. Not clear that this is OK: Dirac could
 fail for the extreme points, but pass for some interior point. Also SLOWER than test_no_Dirac
 except for #Lvd.list approximately 50000???}
 set test_no_Dirac_extr(KGBElt x, ratvec lambda) = bool:
-    if twist(x) != x then return false fi;
+    if twist(x) != x then return true fi;
     let start = elapsed_ms(), DiracBD = DiracBD(x,lambda), Q = invariant_form(x.real_form)
     then answer = none(for v in local_FPP_extrema(x,lambda)
     	 	       do @bool: Q(v,v) <= DiracBD od)
@@ -293,6 +305,9 @@ set FPP_unitary_hash_general([(KGBElt,ratvec)] xlambdas, Param_hash Uhash,
        then for p in all_parameters_gamma(G,G.rho)
        	    do Uhash.match(p)
 	    od;
+	    for (x,lambda) in xlambdas
+	    do finish(x,lambda)
+	    od;
             return ()
         fi;
     let xlambdasW = if R_packet_flag
@@ -301,7 +316,11 @@ set FPP_unitary_hash_general([(KGBElt,ratvec)] xlambdas, Param_hash Uhash,
 		   	 od
 		    else xlambdas
 	      	    fi
-    then () = if #xlambdasW = 0 then return ()
+    then () = if #xlambdasW = 0
+    	      then for (x,lambda) in xlambdas
+	      	   do finish(x,lambda)
+	    	   od;
+            	   return ()
     	      else let (x,) = xlambdasW[0]
     then G = x.real_form
     then {vd = FPP_vertex_data(G),} start = elapsed_ms(),  zeroNu = null(G.rank)/1
@@ -369,7 +388,7 @@ then coh_ind_unip_few(G,Uhash)}
         	   	   fi {every_lambda_flag}
 		 then startLF = elapsed_ms()
 		 in if {test_neither}test_no_unitary(x,lambda,Lvd)
-		    then {prints("died tnu");}{none_count +:= 1;} {prints("SKIPPED ",x,",",lambda);} ()
+		    then ()
 		    else let startDTcount = DTcount
 		 then LF = if by_zero_flag {and height(p0) > 0}
 		      	   then localFD_1Dirac2_by_zero(x, lambda, Lvd, Perm2)
@@ -857,8 +876,7 @@ then coh_ind_unip_few(G,Uhash)}
         	   	   fi {every_lambda_flag}
 		 then startLF = elapsed_ms()
 		 in if test_no_unitary(x,lambda,Lvd)
-		    then {prints("died tnu");}
-		    ()
+		    then ()
 		    else let startDTcount = DTcount
 		 then LF = if steve_tester_flag
 		      	   then let LF2 = localFD_Steve2(x,lambda)
@@ -1377,6 +1395,7 @@ set FPP_unitary_hash_steve([KGBElt] xs, (Param->bool) fancy_tester) = void:
 set FPP_unitary_hash_steve(RealForm G, (Param->bool) fancy_tester) = void:
     FPP_unitary_hash_steve(G, big_unitary_hash.uhash(G), fancy_tester)
 
+
 set FPP_unitary_hash_bottom_layer([(KGBElt,ratvec)] xlambdas, Param_hash UhashG, (Param->bool)
 fancy_tester) = void:
     if #xlambdas = 0 then return () fi;
@@ -1617,6 +1636,7 @@ fancy_tester) = void:
 	    report_tested()
 	    fi {FPP_report_flag}
      in kill_for_big_uTime(); () 
+
 
 set FPP_unitary_hash_bottom_layer([(KGBElt,ratvec)] xlambdas, (Param -> bool) fancy_tester) = void:
     FPP_unitary_hash_bottom_layer(xlambdas, let (x,lambda) = xlambdas[0]
