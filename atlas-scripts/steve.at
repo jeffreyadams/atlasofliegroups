@@ -117,7 +117,7 @@ set simplifier_old(RootDatum L, RootDatum G) = WeylElt:
 
 {Result (w,y). Assume is L is Levi of nonstandard REAL P at x,
 carried by w standard real at y}
-set simplifier_theta(RootDatum L, KGBElt x) = (WeylElt, KGBElt): {NEED KGBELT??}
+set simplifier_theta_old(RootDatum L, KGBElt x) = (WeylElt, KGBElt): {NEED KGBELT??}
     if L.semisimple_rank = x.root_datum.semisimple_rank
     then return (W_elt(x.real_form,[int]: []),x)
     fi;
@@ -151,6 +151,23 @@ set simplifier_theta(RootDatum L, KGBElt x) = (WeylElt, KGBElt): {NEED KGBELT??}
        od;
        simpTimer+:= elapsed_ms() - start;
        (W_elt(G,M),x)
+
+set old_simplifier_theta_flag = false
+
+{Result (w,xi). Assume is L is Levi of nonstandard REAL P at x,
+carried by w from standard real at y}
+set simplifier_theta(RootDatum L, KGBElt x) = (WeylElt, KGBElt):
+    if old_simplifier_theta_flag then return simplifier_theta_old(L,x) fi;
+    let start = elapsed_ms(), rd = x.root_datum,  thetamin = (1 - x.involution)
+    then S = for a in L.simple_coroots do coroot_index(rd,a) od
+    then T = maximize_Levi(rd,S)
+    then A = Levi_simple_coroots(rd,T), k = #S
+    then wt_theta = thetamin*((A,vector(rd.semisimple_rank,(int i)int:#(i>=k))/1).required_solution.numer)
+    {is this really guaranteed to define L?}
+    then (w,wt_theta_dom) = from_dominant(rd,wt_theta)
+    then x1 = cross(w.inverse,x)
+    in simpTimer+:= elapsed_ms() - start;
+       (w,x1)
 
 set old_simplifier_flag = true
 
@@ -220,8 +237,8 @@ whether Q(t) has terms of height at most HT}
 {works for HT < 0, telling whether Q(t).!=}
 set test(KGBElt x, ratvec lambda, vec av, rat t, int HT) = bool:
     let Q = ind_quo(x, lambda, av, t)
-    then QL = std_quo(pL(x,lambda,av,t))
-    then () = assert((Q.=) = (QL.=),"bad induction!")
+    {then QL = std_quo(pL(x,lambda,av,t))
+    then () = assert((Q.=) = (QL.=),"bad induction!")}
     in to_ht(HT)(Q).!=
 
 {works for HT < 0, giving all reducibility points}
@@ -313,6 +330,14 @@ set pos_tester_Kchar(KGBElt x, ratvec lambda,int HT,ratvec gamma) =
        then (all (for q in qs do @bool: is_unitary_to_ht_big_SIMPLE_old(q,HT) od),
        	    [Kpol_hash.match(K_type_pol(character_formula_to_height(1*p,HT))),#qs])
        else (all (for q in qs do @bool: is_unitary_to_ht_big_SIMPLE_old(q,HT) od),[])
+       fi
+
+set Kchar_vec(KGBElt x, ratvec lambda, int HT, ratvec gamma) = vec:
+    let p = parameter(x,lambda,gamma), G = x.real_form
+    then qs = monomials(1*p)
+    in if extra_coord_flag
+       then [Kpol_hash.match(K_type_pol(character_formula_to_height(1*p,HT))),#qs]
+       else []
        fi
 
 {
@@ -450,7 +475,14 @@ set make_steve_hash() = steve_hash_table:
 			    charvecxlht = charvecs[rfnum][xlnum][htnum], {[vec]}
 		   	    charvecxl = charvecs[rfnum][xlnum],
 			    charvecr = charvecs[rfnum]
-			then (boo,v) = pos_tester_Kchar(x, lambda, HT, gamma)
+			then (boo,v) = if htnum>0
+			     	       then let HTlow = heights[rfnum][xlnum]~[1]
+					     in if not pos_tester(x,lambda,HTlow,gamma)
+					        then (false,Kchar_vec(x,lambda,HT,gamma))
+						else pos_tester_Kchar(x, lambda, HT, gamma)
+						fi
+				       else pos_tester_Kchar(x, lambda, HT, gamma)
+				       fi
 			then () = srxlht#:=boo
 			then () = srxl[htnum]:=srxlht
 			then () = sr[xlnum]:=srxl
@@ -926,16 +958,19 @@ set localFD_Steve2(KGBElt x, ratvec lambda, LocalVertexData Lvd, PermOrderTwo Pe
     [[FaceVertsKHash]]:
     let start = elapsed_ms(), p0 = parameter(x,lambda,0*lambda)
     then hts = next_heights(p0,edge_offset+1)
+    then () = if edge_offset.= then extra_coord_flag:=true fi
     then LF0 = localFD_1SteveU(x,lambda,hts[0], Lvd)
     then () = if show_steve_flag
     	      then prints("LF0 to height ",hts[0]," = ",LF0)
 	      fi
     then () = extra_coord_flag:=true
     then () = LF0:= test_Steve(x,lambda,hts[edge_offset],Lvd,[LF0])[0]
+    then () = if show_steve_flag
+    	      then prints("LF0 with extra to height ",hts[edge_offset]," = ",LF0)
+	      fi
     then LF = [LF0,  localFD_2SteveU(x,lambda,hts[edge_offset],Lvd,Perm2,LF0)]
     then () = if show_steve_flag
-    	      then prints("LF0 to height ",hts[edge_offset]," = ",LF[0]);
-	      	   prints("LF1 to height ",hts[edge_offset]," = ",LF[1])
+    	      then prints("LF1 with extra to height ",hts[edge_offset]," = ",LF[1])
 	      fi
     then () = if fund_face_verbose
     	      then prints("edge/vert counts to height ",hts[edge_offset], " = ",
@@ -947,9 +982,6 @@ set localFD_Steve2(KGBElt x, ratvec lambda) = [[FaceVertsKHash]]:
     let ic = x.inner_class, theta = x.involution
     then (Lvd,Perm2) = LPm_table.LPm_entry(ic, theta, ratvec_as_vec(lambda+theta*lambda))
     in localFD_Steve2(x, lambda, Lvd, Perm2)
-
-
-
 
 set tester(RealForm G) = void:
 let start=elapsed_ms()

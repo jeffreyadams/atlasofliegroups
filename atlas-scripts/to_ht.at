@@ -111,11 +111,15 @@ set twisted_full_deform_to_ht(Param p,int N) = KTypePol:
        fi
 
 set KL_sum_at_s_to_ht(int N) = (Param p) ParamPol:
-  let P = KL_sum_at_s_to_height(p,N)
-  in KL_sum_at_s_to_height(p,N)
+  {let P = KL_sum_at_s_to_height(p,N)
+  in} KL_sum_at_s_to_height(p,N)
 
 set twisted_KL_sum_at_s_to_ht(int N) = (Param p) ParamPol:
   to_ht(N)(twisted_KL_sum_at_s(p))
+
+set twisted_KL_sum_at_s_to_ht(int N) = (Param p) ParamPol:
+  to_ht(N)(twisted_KL_sum_at_s(p))
+
 
 {.write c-invariant form on standard module as a ParamPol of
 standardrepKs to specified height.}
@@ -143,10 +147,22 @@ set twisted_c_form_std_to_ht(int N) = (Param p)KTypePol:
    twisted_full_deform_to_ht(p,N)
 
 {    c_form_to_ht on irreducible representations   }
-
 set oriented_KL_sum_to_ht  (int N) = (Param p)ParamPol:
    let ori_nr_p = orientation_nr(p) in  null_module(real_form(p)) +
    for c@q in KL_sum_at_s_to_height(p,N) do (c*orientation_nr_term(ori_nr_p,q),q) od
+
+{    c_form_to_ht on irreducible representations   }
+{
+set oriented_KL_sum_to_ht  (int N, int time) = (Param p)ParamPol:
+   let ori_nr_p = orientation_nr(p)
+   then Q = KL_sum_at_s_to_height(p,N,time)
+   then num = #Q
+   in  if num = 0 or num = 105553145633924
+       then Q
+       else for c@q in Q
+       	    do (c*orientation_nr_term(ori_nr_p,q),q)
+	    od
+}
 
 { untwisted |c_form_irreducible|, for efficiency; only used in equal rank case }
 {.c-invariant form on irreducible module of p as ParamPol of standardrepKs.}
@@ -182,6 +198,26 @@ set c_form_irreducible_to_ht_MvL (Param p,int N, int time ) = maybe_KTP:
 		  in Q
 	       od}
   in sum(p.real_form, list).done
+
+
+set c_form_irreducible_to_ht_MvL2 (Param p,int N, int time ) = maybe_KTP:
+  let P=oriented_KL_sum_to_ht(N)(p), count=0 then nP=#P, expiration =
+  elapsed_ms()+time, !empty_K = null_K_module(p.real_form)
+  then list = for c@q in P
+       	      ~do let Q = full_deform_to_ht_MvL(q, N, expiration - elapsed_ms())
+	      	  in case Q
+		     | timed_out: return timed_out()
+		     | done(r): c*r
+		     esac
+	       od
+       	     { ~do let Q = c*full_deform_to_ht(q, N)
+	      	  then () = if elapsed_ms() - start > time
+		       	    then flag:= false; break
+			    fi
+		  in Q
+	       od}
+  in sum(p.real_form, list).done
+
 
 { untwisted |c_form_irreducible|, for efficiency; only used in equal rank case }
 {.c-invariant form on irreducible module of p as ParamPol of standardrepKs.}

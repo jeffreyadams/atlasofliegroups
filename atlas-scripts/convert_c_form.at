@@ -1,6 +1,7 @@
 <basic.at
 <extended.at { for E@(mat,KType) }
 <induction.at { for dim_u_cap_p@KGBElt }
+<hash.at {for KType_hash}
 
 { commands for converting from c-form to hermitian-form}
 { Compute (lambda+rho) restricted to torus T }
@@ -77,7 +78,29 @@ set mu_terms  (KType tp,mat delta) = (rat,rat,int):
   , { dim_term        = } dim_u_cap_p(x)
   ) { the sum of these will be interpreted modulo 2/1 }
 
-set mu (KType tp,mat delta) = rat: let (l,t,d) = mu_terms(tp,delta) in l+t+d
+set mu_old (KType tp,mat delta) = rat: let (l,t,d) = mu_terms(tp,delta) in l+t+d
+
+set mu_old_flag = false
+
+set mu = ((KType, mat)->rat):
+    let matrix_hash = make_mat_hash()
+    then K_hashes = [KType_hash]: [] {one for each mat in mathash}
+    then values = [[rat]]: [] {one list [rat] for each mat in mathash}
+    then empty = [rat]:[]
+    in ((KType, mat)->rat): (KType tau, mat delta) rat:
+       if mu_old_flag then return mu_old(tau, delta) fi;
+       let I = matrix_hash.size()
+       then i = matrix_hash.match(delta)
+       then () = if i=I {haven't seen delta before}
+       	       then K_hashes #:= make_KType_hash(); {corresponding to the new delta}
+	       	    values#:=empty {this will be the list for delta}
+	       fi
+       then J = K_hashes[i].size()
+       then j = K_hashes[i].match(tau)
+       then () = if j = J {haven't seen this tau before}
+       	       	 then values[i]#:=mu_old(tau,delta)
+		 fi
+       in values[i][j]
 
 set print_mu (KType tp) = void:
      let (lt,tt,dt)=mu_terms(tp,tp.real_form.distinguished_involution) in

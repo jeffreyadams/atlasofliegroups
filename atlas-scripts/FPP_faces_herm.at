@@ -105,6 +105,9 @@ set branch_hash_flag = true
 {whether to include KGB numbers in output files. True makes them more human-readable, sometimes longer}
 set write_x_flag = false
 
+{whether to include known (x,lambda) maps in output files.}
+set write_x_lambda_flag = false
+
 {whether to use the script branching code instead of library}
 set my_branch_flag = true
 
@@ -264,7 +267,7 @@ set make_big_unitary_hash() = big_unitary_hash_table:
 						 and #K_type_hashes = #x_known and #K_type_pol_hashes = #x_known
 						 and #branches = #x_known and #sigs = #x_known
 						 and #sig_heights = #x_known and #nu_heights = #x_known,
-						 "big_unitarity_hash damaged")
+						 "big_unitary_hash damaged")
 	  in i
     then add_K_type(KType mu) = (int, int): {real form index, K type index}
 	 let rfnum = add_real_form(mu.real_form)
@@ -281,8 +284,8 @@ set make_big_unitary_hash() = big_unitary_hash_table:
 			then () = formula_heights[rfnum] #:= height(mu)
 			then () = branches[rfnum] #:= m
 			then () = branch_heights[rfnum] #:= height(mu)
-			then () = assert(real_form_hash.size() = #K_type_pol_hashes,"big_unitarity_hash damaged")
-			then () = assert(real_form_hash.size() = #K_type_hashes,"big_unitarity_hash damaged")
+			then () = assert(real_form_hash.size() = #K_type_pol_hashes,"big_unitary_hash damaged")
+			then () = assert(real_form_hash.size() = #K_type_hashes,"big_unitary_hash damaged")
 			then () = assert(#branches[rfnum] = K_type_hashes[rfnum].size() and
 				  #branch_heights[rfnum] = #branches[rfnum], "branch_hash_table damaged")
 			then () = assert(#branches[rfnum] = #formula_heights[rfnum] and
@@ -353,9 +356,9 @@ set make_big_unitary_hash() = big_unitary_hash_table:
 			then () = tempbranchhts[ktypenum] := D
 			then () = branch_heights[rfnum] := tempbranchhts
 			then () = branches[rfnum] := tempbranches
-			then () = assert(real_form_hash.size() = #K_type_pol_hashes,"big_unitarity_hash damaged")
-			then () = assert(real_form_hash.size() = #K_type_hashes,"big_unitarity_hash damaged")
-			then () = assert(#branches[rfnum] = K_type_hashes[rfnum].size(), "big_unitarity_hash damaged")
+			then () = assert(real_form_hash.size() = #K_type_pol_hashes,"big_unitary_hash damaged")
+			then () = assert(real_form_hash.size() = #K_type_hashes,"big_unitary_hash damaged")
+			then () = assert(#branches[rfnum] = K_type_hashes[rfnum].size(), "big_unitary_hash damaged")
 			   in ()
 		   else {we've seen mu before}
 		       if branch_heights[rfnum][ktypenum] < D
@@ -405,9 +408,9 @@ set make_big_unitary_hash() = big_unitary_hash_table:
 			then () = tempbranchhts[ktypenum] := D
 			then () = branch_heights[rfnum] := tempbranchhts
 			then () = branches[rfnum] := tempbranches
-			then () = assert(real_form_hash.size() = #K_type_pol_hashes,"big_unitarity_hash damaged")
-			then () = assert(real_form_hash.size() = #K_type_hashes,"big_unitarity_hash damaged")
-			then () = assert(#branches[rfnum] = K_type_hashes[rfnum].size(), "big_unitarity_hash damaged")
+			then () = assert(real_form_hash.size() = #K_type_pol_hashes,"big_unitary_hash damaged")
+			then () = assert(real_form_hash.size() = #K_type_hashes,"big_unitary_hash damaged")
+			then () = assert(#branches[rfnum] = K_type_hashes[rfnum].size(), "big_unitary_hash damaged")
 			in ()
 		   else {we've seen mu before}
 		       let Dold = branch_heights[rfnum][ktypenum]
@@ -471,11 +474,11 @@ set make_big_unitary_hash() = big_unitary_hash_table:
 						 nu_heights[rfnum]:= nuheightsrf
 					fi {n=N}
 				 fi {H = -1}
-		       then () = assert(real_form_hash.size() = #phashes,"big_unitarity_hash damaged")
-		       then () = assert(real_form_hash.size() = #sig_heights,"big_unitarity_hash damaged")
-		       then () = assert(#sigs[rfnum] = phashes[rfnum].size(), "big_unitarity_hash damaged")
-		       then () = assert(#sig_heights[rfnum] = phashes[rfnum].size(), "big_unitarity_hash damaged")
-		       then () = assert(#nu_heights[rfnum] = nuhashes[rfnum].size(), "big_unitarity_hash damaged")
+		       then () = assert(real_form_hash.size() = #phashes,"big_unitary_hash damaged")
+		       then () = assert(real_form_hash.size() = #sig_heights,"big_unitary_hash damaged")
+		       then () = assert(#sigs[rfnum] = phashes[rfnum].size(), "big_unitary_hash damaged")
+		       then () = assert(#sig_heights[rfnum] = phashes[rfnum].size(), "big_unitary_hash damaged")
+		       then () = assert(#nu_heights[rfnum] = nuhashes[rfnum].size(), "big_unitary_hash damaged")
 		       in ()
 		  else {we've seen p before}
 		       if sig_heights[rfnum][pnum] >= height(p)
@@ -556,11 +559,11 @@ set make_big_unitary_hash() = big_unitary_hash_table:
 		       then sigD_ind = K_type_pol_hashes[rfnum].match(sigD)
 		       then () = sigs[rfnum] #:= sigD_ind
 		       then () = sig_heights[rfnum] #:= D
-		       then () = assert(real_form_hash.size() = #phashes,"big_unitarity_hash damaged")
-		       then () = assert(real_form_hash.size() = #sig_heights,"big_unitarity_hash damaged")
-		       then () = assert(#sigs[rfnum] = phashes[rfnum].size(), "big_unitarity_hash damaged")
+		       then () = assert(real_form_hash.size() = #phashes,"big_unitary_hash damaged")
+		       then () = assert(real_form_hash.size() = #sig_heights,"big_unitary_hash damaged")
+		       then () = assert(#sigs[rfnum] = phashes[rfnum].size(), "big_unitary_hash damaged")
 		       then () = assert(#nu_heights[rfnum] = nuhashes[rfnum].size(),
-				 "big_unitarity_hash nu_heights damaged")
+				 "big_unitary_hash nu_heights damaged")
 		       in ()
 		   else {we've seen p before}
 		       if sig_heights[rfnum][pnum] >= height(p) and sig_heights[rfnum][pnum] < D
@@ -608,11 +611,11 @@ set make_big_unitary_hash() = big_unitary_hash_table:
 			    then () = tempsights[pnum]:=D
 			    then () = sigs[rfnum] := tempsigs
 			    then () = sig_heights[rfnum] := tempsights
-			    then () = assert(real_form_hash.size() = #phashes,"big_unitarity_hash damaged")
-			    then () = assert(real_form_hash.size() = #sig_heights,"big_unitarity_hash damaged")
-			    then () = assert(#sigs[rfnum] = phashes[rfnum].size(), "big_unitarity_hash damaged")
+			    then () = assert(real_form_hash.size() = #phashes,"big_unitary_hash damaged")
+			    then () = assert(real_form_hash.size() = #sig_heights,"big_unitary_hash damaged")
+			    then () = assert(#sigs[rfnum] = phashes[rfnum].size(), "big_unitary_hash damaged")
 			    then () = assert(#nu_heights[rfnum] = nuhashes[rfnum].size(),
-				 "big_unitarity_hash nu_heights damaged B")
+				 "big_unitary_hash nu_heights damaged B")
 			    in()
 
 		       fi
@@ -944,13 +947,7 @@ set make_big_unitary_hash() = big_unitary_hash_table:
       then donemap = x_known[i]
       then done_list = [int]:[]
       then () = if write_x_flag then done_list := set_bit_positions(donemap)
-		       {for x in KGB(G)
-		       do if is_member_bitset(x.number, donemap)
-			  then [x.number]
-			  else []
-			  fi
-		       od.##}
-		 fi
+		fi
       in write_real_form(G,Gname);
 	 prints("set j = big_unitary_hash.rf_number(",Gname,")");
 	 for p in plist
@@ -963,6 +960,13 @@ set make_big_unitary_hash() = big_unitary_hash_table:
 	      do prints("void: big_unitary_hash.finishx_num(",Gname,xnum,")")
 	      od
 	 else prints("void: big_unitary_hash.finishxmap(G_temp,",donemap,")")
+	 fi;
+	 if write_x_lambda_flag
+	 then for N@j in xl_known[i]
+	      do if N.!=
+	      	 then prints("void: big_unitary_hash.finish(KGB(G_temp,j),N")
+		 fi
+	      od
 	 fi
 {NOTE: next function records whether a given x is finished, but NOT whether
 some lambdas for that x might be finished.}
@@ -981,15 +985,6 @@ some lambdas for that x might be finished.}
       then donemap = x_known[i]
       then donerangemap = AND(donemap, 2^high - 2^low)
       then done_list = set_bit_positions(donerangemap)
-      {then done_list = [int]: []
-      then () = if write_x_flag then done_list :=
-		       for x in KGB(G)[low:high]
-		       do if is_member_bitset(x.number, donemap)
-			  then [x.number]
-			  else []
-			  fi
-		       od.##
-		fi}
 	   {these are the x's being written for which list is complete}
       in write_real_form(G,Gname);
 	 prints("set j = big_unitary_hash.rf_number(",Gname,")"); {, ptemp = GL(1,R).trivial");}
@@ -1107,7 +1102,7 @@ set is_finished(KGBElt x, ratvec lambda) = bool:
     in answer
 
 {list of all pairs (x,lambda) for which complete FPP-unitary dual is present in big_unitary_hash}
-set all_finished(RealForm G) = [(KGBElt,ratvec)]:
+set list_all_finished(RealForm G) = [(KGBElt,ratvec)]:
     let list = for x in KGB(G)
 	       do set_bit_positions(big_unitary_hash.xl_known(G)[x.number])
 	       od

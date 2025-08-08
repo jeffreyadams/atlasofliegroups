@@ -9,6 +9,10 @@
 set deformLookupCounter = make_counter()
 set deformCalcCounter = make_counter()
 
+{typewise_pure(c_form) is a necessary condition for purity of hermitian form, and rules out a lot}
+set is_typewise_pure(KTypePol P) = bool:
+    all(for c@tau in P do is_pure(c) od)
+
 {let p = pmax(x,lambda,nu) be the FPP parameter of biggest infl char gamma;
 and write LAM = height(pmax), GAM = height(gamma), R = height(rho).}
 
@@ -686,6 +690,34 @@ set hermitian_form_irreducible (Param p) = KTypePol:
 { compute Hermitian form on p, and report if it is unitary }
 set is_unitary (Param p) = bool:
   p.is_hermitian and hermitian_form_irreducible(p).is_pure
+
+{ compute Hermitian form on p, and report if it is unitary }
+set is_unitaryB (Param p) = bool:
+  unitary_test_counter.use();
+  let start_time = elapsed_ms()
+  in if is_equal_rank(p.real_form)
+  then let CF = c_form_irreducible(p)
+       in if not is_typewise_pure(CF)
+       	  then unitaryTime+:=elapsed_ms() - start_time;
+	       was_tested(p, elapsed_ms() - start_time, false);
+	       false
+     	  else let answer = CF.convert_cform_hermitian.is_pure
+	       then () = unitaryTime+:=elapsed_ms() - start_time
+	       then () = was_tested(p, elapsed_ms() - start_time, answer)
+	       in answer
+     	  fi
+   else check_hermitian(p,true);
+   	let TCF = twisted_c_form_irreducible(p)
+	in if not is_typewise_pure(TCF)
+	   then unitaryTime+:=elapsed_ms() - start_time;
+	        was_tested(p, elapsed_ms() - start_time, false);
+	       	false
+	   else let answer = TCF.convert_cform_hermitian.is_pure
+	       then () = unitaryTime+:=elapsed_ms() - start_time
+	       then () = was_tested(p, elapsed_ms() - start_time, answer)
+	       in answer
+	   fi
+   fi
 
 { compute Hermitian form on p, and report
 certificate; unitary means empty certificate }

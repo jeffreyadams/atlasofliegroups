@@ -1406,7 +1406,7 @@ fancy_tester) = void:
 		       else xlambdas
 	      	       fi
     then () = if disconn_flag
-    	      then for (x,lambda) in all_finished(G)
+    	      then for (x,lambda) in list_all_finished(G)
 	      	   do let (xt,lambdat) = (inverse_embed_KGB2(x, Gsc, M), M*lambda)
 	      	      in finish(xt,lambda)
 	      	   od
