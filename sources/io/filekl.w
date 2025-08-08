@@ -152,7 +152,7 @@ we use a special $32$ bit value |magic_code| that should be present in a
 specific place. It's value was chosen in memory of Fokko du Cloux.
 
 @< Constants common for writing and reading @>=
-const BlockElt no_good_ascent = (UndefBlock - 1);
+const BlockElt no_good_ascent = UndefBlock - 1;
   // value flagging that no good ascent exists
 const unsigned int magic_code=0x06ABdCF0; // indication of new matrix format
 
@@ -216,9 +216,9 @@ void write_block_file(const Block& block, std::ostream& out)
       DescentStatus::Value v = block.descentValue(s,x);
       if (DescentStatus::isDescent(v)
 	  or v==DescentStatus::ImaginaryTypeII)
-	basic_io::put_int(no_good_ascent,out);
+	basic_io::put_int(static_cast<std::uint32_t>(no_good_ascent),out);
       else if (v == DescentStatus::RealNonparity)
-	basic_io::put_int(UndefBlock,out);
+	basic_io::put_int(static_cast<std::uint32_t>(UndefBlock),out);
       else if (v == DescentStatus::ComplexAscent)
 	basic_io::put_int(block.cross(s,x),out);
       else if (v == DescentStatus::ImaginaryTypeI)
