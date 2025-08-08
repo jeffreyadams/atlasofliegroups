@@ -8782,7 +8782,7 @@ install_function(KL_sum_at_s_wrapper,@|"KL_sum_at_s","(Param->ParamPol)");
 install_function(KL_sum_at_s_to_ht_wrapper,@|"KL_sum_at_s_to_height"
 		,"(Param,int->ParamPol)");
 install_function(timed_KL_sum_at_s_to_ht_wrapper,@|"KL_sum_at_s_to_height"
-		,"(Param,int,int->ParamPol)");
+		,"(Param,int,int->|ParamPol)");
 install_function(twisted_KL_sum_at_s_wrapper,@|"twisted_KL_sum_at_s"
                 ,"(Param->ParamPol)");
 install_function(KL_column_wrapper,@|"KL_column","(Param->[int,Param,vec])");
