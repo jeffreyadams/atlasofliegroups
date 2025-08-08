@@ -264,7 +264,7 @@ unsigned long long read_var_bytes(unsigned int n,std::istream& in)
   }
 }
 
-void put_int (unsigned int val, std::ostream& out) { write_bytes<4>(val,out); }
+void put_int (std::uint32_t val, std::ostream& out) { write_bytes<4>(val,out); }
 void write_bytes(unsigned int n, unsigned long long val, std::ostream& out)
 { switch(n)
   { case 1: return write_bytes<1>(val,out);
