@@ -213,7 +213,7 @@ set has_theta_stable_Levi (Parabolic(,x):real_para) = bool:
 {. Make a real Levi factor from P=(S,x); the complex Levi of S must
 be theta-stable. .}
 set Levi (Parabolic(S,x):P) = RealForm:
-  assert(has_theta_stable_Levi(P),"Levi factor is not theta-stable");
+  assert(@:has_theta_stable_Levi(P),"Levi factor is not theta-stable");
   let theta=involution(x:=x_min(P)) { effectively assume |x| is minimal }
   then ic_Levi=inner_class(sub_datum(root_datum(x),S),theta)
   in { synthetic } real_form(ic_Levi,theta,torus_factor(x))
@@ -379,7 +379,7 @@ set rho_Levi_by_cwt ((ratvec,KGBElt) H_x) = ratvec: rho(Levi_by_cwt(H_x))
   $\mathfrak u$=positive roots not in M;
   for M to be stable: x must have no C+ roots. .}
 set real_parabolic (KGBElt x) = Parabolic:
-  assert(no_Cplus_roots(x),"x has some C+ roots");
+  assert(@:no_Cplus_roots(x),"x has some C+ roots");
   parabolic_by_wt((1-involution(x))*rho(root_datum(x)),x)
 
 {. Levi factor of real parabolic defined by x (must have no C+ roots). .}
@@ -391,7 +391,7 @@ set real_Levi (KGBElt x) = RealForm: Levi(real_parabolic(x))
   $\mathfrak u$=positive roots not in L;
   for this to be stable: no C- roots. .}
 set theta_stable_parabolic (KGBElt x) = Parabolic:
-  assert(no_Cminus_roots(x),"x has some C- roots");
+  assert(@:no_Cminus_roots(x),"x has some C- roots");
   parabolic_by_wt((1+involution(x))*rho(root_datum(x)),x)
 
 {. Levi factor of theta-stable parabolic defined by x

@@ -12,7 +12,7 @@ set verbose_fdsig=true
 {assuming a rational is an integer, replace it with a string,
 to allow output of integers up to 2^63-1}
 set long_rat_as_integer_string (rat r) =
-assert(denom(r)=1,"r is not an integer");to_string(r)[:2~] {cut off /1}
+assert(@:denom(r)=1,"r is not an integer");to_string(r)[:2~] {cut off /1}
 
 set is_self_dual ({finite dimensional}Param p) = bool:
   let lambda=highest_weight_finite_dimensional(p) in
@@ -128,7 +128,7 @@ set anisotropic_part_trace_string({equal rank finite dimensional}Param p) =
 
 {report using computation of Hermitian form via the Weyl character formula}
 set fd_report_trace (RealForm G, int k) = void:
-  assert(is_equal_rank(G),"G is not equal rank");
+  assert(@:is_equal_rank(G),"G is not equal rank");
   if verbose_fdsig
   then prints
     (new_line

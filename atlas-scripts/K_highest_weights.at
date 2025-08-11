@@ -129,7 +129,7 @@ set LKTs (Param p) = [KType]: p.K_type.LKTs
 
 set LKT (KType t) = KType:
   let lkts=LKTs(t) in
-  assert(#lkts=1,"No unique lowest K-type; use LKTs instead of LKT"); lkts[0]
+  assert(@:#lkts=1,"No unique lowest K-type; use LKTs instead of LKT"); lkts[0]
 set LKT (Param p) = KType: p.K_type.LKT
 
 {. Replace a K-type mu by its (supposed) unique final K-type .}
@@ -142,7 +142,7 @@ set final = LKT@KType
 {. Test if parameter p for G is G-spherical: G must be rel. split, all roots
    in tau(p). .}
 set is_split_spherical (KType t) = bool:
-  assert(is_final(t), "K-type is not final");
+  assert(@:is_final(t), "K-type is not final");
   let G=real_form(t) in
   is_relatively_split(G) and x(t)=x_open(G) and
   for alpha_check in simple_coroots(G)
@@ -154,14 +154,14 @@ set is_split_spherical(Param p) = bool: p.K_type.is_split_spherical
 
 {. Highest weight of a G-spherical K-type (necessarily unique). .}
 set highest_weight_split_spherical (KType t) = KHighestWeight:
-  assert(is_split_spherical(t), "not a spherical rep of a split group");
+  assert(@:is_split_spherical(t), "not a spherical rep of a split group");
   let x=x(t),G=real_form(t) then x_K=KGB(G,0), rd=root_datum(G)
   then i_rd=root_datum_from_positive(imaginary_sys(x_K),rd.prefers_coroots)
   then fw=fundamental_weights(i_rd), mu = ratvec: lambda_minus_rho(t)
   in { project mu to the orthogonal of the |i_rd| roots }
   for alpha_check@i in simple_coroots(i_rd) do mu-:=fw[i]*(alpha_check*mu) od;
 { prints("mu modified=", mu); }
-  assert(all(for alpha_check in simple_coroots(i_rd) do mu*alpha_check=0 od)
+  assert(@:all(for alpha_check in simple_coroots(i_rd) do mu*alpha_check=0 od)
         ,"error, mu isn't orthogonal to all roots");
   k_highest_weight(KGB(G,0),ratvec_as_vec(mu))
 
@@ -180,7 +180,7 @@ set highest_weight_split_spherical (Param p,KGBElt x_K) = KHighestWeight:
 {. This function returns just ONE KHighestWeight of a K-type
   (auxiliary function). .}
 set highest_weight_one (KType t) = KHighestWeight:
-(  assert(is_semifinal(t),"K-type has singular real parity roots")
+(  assert(@:is_semifinal(t),"K-type has singular real parity roots")
 ;  t:=t.to_no_Cminus
 ;  let (Q,pL)=theta_stable_data(param(t))
    then (,x_L,mu_L)=highest_weight_split_spherical(pL)
@@ -222,20 +222,20 @@ set highest_weights (Param p,KGBElt x_K) = [KHighestWeight]:
 {. Unique highest weight of a K-type (or error if not unique). .}
 set highest_weight (KType t) = KHighestWeight:
   let hwts=highest_weights(t) in
-  assert(#hwts=1,"highest weight it not unique, use highest_weights instead");
+  assert(@:#hwts=1,"highest weight it not unique, use highest_weights instead");
   hwts[0]
 
 {. Unique highest weight of a K-type w.r.t. x_K (or error if not unique). .}
 set highest_weight (KType t,KGBElt x_K) = KHighestWeight:
   let hwts=highest_weights(t,x_K) in
-  assert(#hwts=1,"highest weight it not unique, use highest_weights instead");
+  assert(@:#hwts=1,"highest weight it not unique, use highest_weights instead");
   hwts[0]
 
 {. Unique highest weight of (unique) LKT of a parameter
   (or error if not unique). .}
 set highest_weight (Param p) = KHighestWeight:
   let hws=highest_weights(p) in
-  assert(#hws=1,"highest weight it not unique, use highest_weights instead");
+  assert(@:#hws=1,"highest weight it not unique, use highest_weights instead");
   hws[0]
 
 
@@ -250,7 +250,7 @@ set highest_weight (Param p) = KHighestWeight:
 {. (Auxiliary function) .}
 set centralizer(KGBElt x,ratvec v) = KGBElt:
   { result is for root datum centralising the coweight |v| }
-  assert(v*involution(x)=v, "v is not theta-stable");
+  assert(@:v*involution(x)=v, "v is not theta-stable");
   let rd=root_datum(x)
   then roots = columns_with((vec alpha): =alpha*v, posroots(rd))
   then coroots = rank(rd) # for alpha in roots do coroot(rd,alpha) od
@@ -273,7 +273,7 @@ set find_nci_root (KGBElt x,ratvec tau) = int:
             scr[i]*involution(x)*sr[i] = -1 and
             is_noncompact(x)( (1+involution(x))*sr[i] ) { this is a root because alpha and theta(alpha) generate a subsystem of type A_2, so their sum is a root }
          )
-  ; assert(>=j,"error in find_nci_root")
+  ; assert(@:>=j,"error in find_nci_root")
   ; root_index(rd,sr[j]+involution(x)*sr[j])
   fi
 
@@ -390,7 +390,7 @@ set cone (rat limit, [rat] cs { all >0 } ) = mat: { columns are weights }
     if k=n { 0 parts } then null(0,1) { one column of size 0; don't miss it! }
     else
       let c=cs[k] in
-      assert(c>0,"Non-positive coefficient in bounding linear form");
+      assert(@:c>0,"Non-positive coefficient in bounding linear form");
       mat: (n-k) ## { horizontally combine list of |n-k|-column matrices }
         for first: limit\c+1 { all |first| with $0<=c*first<=limit$ }
         do let rec=cn(limit-c*first,k+1) in mat:
@@ -509,7 +509,7 @@ set find_x_with_dominant_rho_c (RealForm G) = KGBElt:
    error("Real form ",G," does not have KGB element with dominant rho_c")
 
 set find_x_with_dominant_rho_c (KGPElt Q) = (KGBElt,bool):
-   assert(parabolic_is_theta_stable(Q), "Q is not theta stable");
+   assert(@:parabolic_is_theta_stable(Q), "Q is not theta stable");
    let G=real_form(Q),
    C=equivalence_class_of(Q) in let n=#C, done=false in
    let i=0 in let x=C[0] in
@@ -553,7 +553,7 @@ set choose_irred_inds ([[[Param]]] list)=[[[Param]]]:
 set K_types (KHighestWeight(,x,v):mu_in)= [KType]:
    let G=real_form(x)
    then Q=parabolic_LKT(mu_in)
-in assert(parabolic_is_theta_stable(Q), "Q is not theta stable");
+in assert(@:parabolic_is_theta_stable(Q), "Q is not theta stable");
    let x_Q=x_min(Q)
    then list=for wt in R_K_dom_mu_orbit(mu_in) do move_weight(wt,x_Q) od
    then test=for weight in list do inds(weight) od
@@ -571,7 +571,7 @@ in assert (k>0,"There is no suitable weight in the R-group orbit.");
 {. K_type with given KHighestWeight if unique (otherwise error). .}
 set K_type (KHighestWeight khwt) = KType:
   let ktypes=K_types(khwt) in
-  assert(#ktypes=1,
+  assert(@:#ktypes=1,
       ##["more than one K-type maps to this KHighestWeight;", new_line,
        "use K_types to get them all"]);
   ktypes[0]
@@ -638,7 +638,7 @@ set K0_params (Param p) = [Param]:
 {. Unique K_0-type in the restriction of (unique) LKT to K_0 (error if not unique). .}
 set K0_param (Param p,KGBElt x_K) = Param:
   let K0_prms=K0_params(p,x_K) in
-  assert(#K0_prms=1,"Parameter has more than one K0 parameter, use K0_param");
+  assert(@:#K0_prms=1,"Parameter has more than one K0 parameter, use K0_param");
   K0_prms[0]
 
 {. Unique K_0-type in the restriction of (unique) LKT to K_0 (error if not unique). .}
@@ -657,7 +657,7 @@ set K_highest_weight_from_fundamental_weights(KGBElt x,vec tau) =
   let K_0=K_0(x), fw=fundamental_weights_K_H(x)
   , weight = ratvec: x.real_form.semisimple_rank.null
   in for i:#tau do weight+:=tau[i]*fw[i] od;
-  assert(is_integer(weight),"Weight is not integral");
+  assert(@:is_integer(weight),"Weight is not integral");
   k_highest_weight(x,ratvec_as_vec(weight))
 
 {. List of the dimensions of the K_0-types in the restriction of the LKTs of parameter p. .}
@@ -682,9 +682,9 @@ set test_K_types (RealForm G)=void:
 {      all discrete/minimal principal series                  }
 
 set all_discrete_series(RealForm G, ratvec gamma)=[Param]:
-   assert(is_equal_rank(G),"group is not equal rank");
-   assert(is_regular(G,gamma),"gamma is not regular");
-   assert(is_integer(gamma+rho(G)),"gamma is not in X^*+rho");
+   assert(@:is_equal_rank(G),"group is not equal rank");
+   assert(@:is_regular(G,gamma),"gamma is not regular");
+   assert(@:is_integer(gamma+rho(G)),"gamma is not in X^*+rho");
    let gamma_dom=dominant(G,gamma), zero_nu=ratvec: null(G.rank) in
    for x in distinguished_fiber(G) do parameter(x,gamma_dom,zero_nu) od
 
@@ -695,7 +695,7 @@ where lambda runs over characters of M=Z_2^rank
 warning: some parameters may fail to be final}
 {.all minimal principal series of split group with given infinitesimal character.}
 set all_minimal_principal_series(RealForm G,ratvec gamma)=[Param]:
-    assert(is_split(G),"group is not split");
+    assert(@:is_split(G),"group is not split");
     all_parameters(minimal_spherical_principal_series(G,gamma))
 
 { all_dominant_norm_less_than(InnerClass ic,ratvec v,int N):

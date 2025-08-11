@@ -20,7 +20,7 @@ set translate_by (Param p, vec shift) = Param:
 { translate to infinitesimal character |gamma_new|, must lie in $\gamma+X^*$ }
 set T (Param p, ratvec gamma_new) = ParamPol:
   let (shift,d) = %(gamma_new-infinitesimal_character(p)) in
-  assert(d=1,"cannot translate to "+to_string(gamma_new));
+  assert(@:d=1,"cannot translate to "+to_string(gamma_new));
   ParamPol: { finalize } translate_by(p,shift)
 
 { translate a |ParamPol| by translating each term }
@@ -48,14 +48,14 @@ set Psi (Param p,int k) = ParamPol:
   let gamma=infinitesimal_character(p)
   then id = integrality_datum(root_datum(p),gamma)
   then (shift,d) = % -to_wall (id,k,gamma)
-  in assert(d=1,"cannot project to wall "+k); { finalize } translate_by(p,shift)
+  in assert(@:d=1,"cannot project to wall "+k); { finalize } translate_by(p,shift)
 
 { translate p to intersection of set of simple root walls of integral system }
 set Psi (Param p, [int] S) = ParamPol:
 ( let gamma=infinitesimal_character(p)
   then id=integrality_datum(root_datum(p),gamma)
   then (shift,d) = % - sum( rank(id), for k in S do to_wall(id,k,gamma) od )
-  in assert(d=1,"cannot project to wall intersection "+to_string(S))
+  in assert(@:d=1,"cannot project to wall intersection "+to_string(S))
 ; { finalize } translate_by(p,shift)
 )
 
@@ -64,7 +64,7 @@ set Psi (Param p, [int] S) = ParamPol:
 set Psi (ParamPol P,ratvec gamma,int k) = ParamPol:
 ( let id = integrality_datum(root_datum(P),gamma)
   then (shift,d) = % -to_wall (id,k,gamma)
-  in assert(d=1,"cannot project to wall "+k)
+  in assert(@:d=1,"cannot project to wall "+k)
 ; P.null_module + for w@q in P do (w,translate_by(q,shift)) od
 )
 
@@ -76,7 +76,7 @@ set Psi (ParamPol P,ratvec gamma,int k) = ParamPol:
 set Psi (ParamPol P, ratvec gamma, [int] S)= ParamPol:
 ( let  id=integrality_datum(root_datum(P),gamma)
   then (shift,d) = % - sum( rank(id), for k in S do to_wall(id,k,gamma) od )
-  in assert(d=1,"cannot project to wall intersection "+to_string(S))
+  in assert(@:d=1,"cannot project to wall intersection "+to_string(S))
 ; translate_by(P,shift)
 )
 
@@ -116,8 +116,8 @@ fi
 { return an actual Param if nonzero }
 set T_irr_nonzero (Param p,ratvec v) = Param:
   let P=T_irr(p,v) in
-  assert(!=P,"module is 0");
-  assert(#P=1,"module is not irreducible");
+  assert(@:P.!=,"module is 0");
+  assert(@:#P=1,"module is not irreducible");
   first_param(P)
 
 {translate an irreducible from singular to regular}

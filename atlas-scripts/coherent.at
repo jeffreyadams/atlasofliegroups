@@ -30,7 +30,7 @@ set Cayley_sum (int k,Param p) = ParamPol:
   user will usually will not need to call this function
 }
 set coherent_std_reg (Param p,int s) = ParamPol:
-  assert(is_regular(p),"infinitesimal character is not regular");
+  assert(@:is_regular(p),"infinitesimal character is not regular");
   let type=status(s,x(p)) in
   if   type=1 { compact imaginary }     then -p
   elif type=3 { non-compact imaginary } then Cayley_sum(s,p)-cross(s,p)
@@ -140,12 +140,12 @@ set_type module = (ParamPol,string)
 set phi(term(p,type), int s, ratvec v) = module:
   let (gamma,rd)=(infinitesimal_character(p),root_datum(p))
   then a=simple_coroots(rd)[s]
-  in assert(is_integer(v-gamma),"translation is not integral");
-    assert(is_regular(rd,v),
+  in assert(@:is_integer(v-gamma),"translation is not integral");
+    assert(@:is_regular(rd,v),
            "translation is not to regular infinitesimal character");
-    assert(a*gamma=0 and a*v !=0,
+    assert(@:a*gamma=0 and a*v !=0,
            "this is not translation away from a single root wall");
-    assert(#singular_roots(rd,gamma)=1,
+    assert(@:#singular_roots(rd,gamma)=1,
            "this is not translation away from a single root wall");
    (as_pol(translate_to(p,v)),type) + coherent(s,(translate_to(p,v),type))
 

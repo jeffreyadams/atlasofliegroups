@@ -60,9 +60,9 @@ in if type_C then [g,f] else [f,g] fi
 )
 
 set symbol_C (Orbit P) = Symbol:
-   assert(is_valid("C",P),"not a type C orbit"); symbol(P)
+   assert(@:is_valid("C",P),"not a type C orbit"); symbol(P)
 set symbol_B (Orbit P) = Symbol:
-   assert(is_valid("B",P),"not a type B orbit"); symbol(P)
+   assert(@:is_valid("B",P),"not a type B orbit"); symbol(P)
 
 set (orbit_C,orbit_B) = ((Symbol->Orbit),(Symbol->Orbit)):
    let merger([int]T0,[int]T1) = Partition: { common workhorse function }
@@ -110,7 +110,7 @@ set orbit (string type,Symbol S) = Orbit:
   esac
 set orbit (RootDatum rd,Symbol S) = Orbit:
   let sf=simple_factors(Lie_type(rd))
-  then (letter,) = assert(#sf=1,"not a simple type"); sf[0]
+  then (letter,) = assert(@:#sf=1,"not a simple type"); sf[0]
   in orbit(letter,S)
 
 { Hn_rep -> Orbit, depends on type B/C }
@@ -130,7 +130,7 @@ set orbit(string type,Hn_rep pi) = Orbit:
 
 set orbit (RootDatum rd, Hn_rep pi) = Orbit:
   let sf=simple_factors(Lie_type(rd))
-  then (letter,) = assert(#sf=1,"not a simple type"); sf[0]
+  then (letter,) = assert(@:#sf=1,"not a simple type"); sf[0]
   in orbit(letter,pi)
 
 { equality of Hn_reps }
@@ -243,8 +243,8 @@ set extract_strings ([int] v) = Partition:
 { type A Levi factor(tau invariant): strings, padded with ones to make rank=n }
 set A_Levi_factor (int rank, [int] tau) = Partition:
    let tau=sort(tau) in
-   assert(tau~[0]< rank,"last entry of tau is greater than rank-1");
-   assert(tau~[0] != rank-1,"Levi factor is of type AC not A");
+   assert(@:tau~[0]< rank,"last entry of tau is greater than rank-1");
+   assert(@:tau~[0] != rank-1,"Levi factor is of type AC not A");
    let strings = for a in extract_strings(tau) do a+1 od in
    strings##(for i:rank-sum(strings) do 1 od)
 
@@ -253,7 +253,7 @@ set ALf (int rank, [int] tau) = [int]: Partition:
    then (type,) =
         Cartan_matrix_type(matrix((r,r),(int i,int j):C[tau[i],tau[j]]))
    then factors = type.simple_factors
-in for (t,rk) in factors do assert(t="A"); rk+1 od.sort_to_partition ##
+in for (t,rk) in factors do assert(@:t="A"); rk+1 od.sort_to_partition ##
    for :rank-type.rank-#factors do 1 od
 
 { AC Levi factor(tau invariant): size of the type C factor in the Levi type
@@ -262,7 +262,7 @@ in for (t,rk) in factors do assert(t="A"); rk+1 od.sort_to_partition ##
 }
 set AC_Levi_factor(int rank, [int] tau) = (int,Partition):
    let tau=sort(tau) in
-   assert(tau~[0] = rank-1,"Levi factor is type A not AC");
+   assert(@:tau~[0] = rank-1,"Levi factor is type A not AC");
    let (c,)=cut_off_last_string(tau) then strings=extract_strings(tau) in
    for i:#strings-1 do strings[i]:=strings[i]+1 od;
    (c,strings## ones(rank-sum(strings)))
@@ -360,7 +360,7 @@ set keep_by_first_entry_and_truncate ([int,Partition] v,int k) =
 
 { find maxmimal part, maximal label, and filter to only maximal part owners }
 set filter_max ([Partition,int] sig) = (int,int,[Partition,int]):
-(  assert(>#sig,"empty signature")
+(  assert(@:>#sig,"empty signature")
 ;  let max_part=0, max_label=0
 in for (lambda,C_rank) in sig
    do if >#lambda and lambda[0]>max_part then max_part:=lambda[0] fi
@@ -391,12 +391,12 @@ in for (lambda,C_rank) in sig
 set max_Hn_rep (int rank,[[int]] tau_invariants) = Hn_rep:
 (  let Levis = C_Levi_signature(rank,tau_invariants)
    , q=Partition:[], p=Partition:[]
-in assert(>#Levis,"empty Levi signature")
+in assert(@:>#Levis,"empty Levi signature")
 ;  while let (max_part,max_label,new_Levis) = filter_max(Levis) in >max_part
    do q#:=max_part-max_label; p#:=max_label; Levis:=new_Levis
    od
 ;  prints("Done with p=",p, "q=",q)
-;  assert(sum(p)+sum(q)=rank,"Error: |p|+|q| != rank")
+;  assert(@:sum(p)+sum(q)=rank,"Error: |p|+|q| != rank")
 ; (transpose(q),transpose(p))
 )
 
@@ -443,7 +443,7 @@ in (rank,A_Levis,AC_Levis,Partition:[],Partition:[]) { initial values } .
          Hn_rep:
       if #A_Levis=0 and #AC_Levis=0
       then prints("Done with p=",p, "q=",q)
-      ;  assert(sum(p)+sum(q)=rank,"Error: |p|+|q| != rank")
+      ;  assert(@:sum(p)+sum(q)=rank,"Error: |p|+|q| != rank")
       ;  (transpose(q),transpose(p))
       elif #A_Levis=1 and #A_Levis[0]=0 and #AC_Levis=0
       then ([rank],[])

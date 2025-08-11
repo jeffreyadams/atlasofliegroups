@@ -18,7 +18,7 @@
 { utility to convert type A-G of a simple root system to a number 0-6
   we allow and ignore (trailing) torus factors; a pure torus classifies as 7 }
 set type_number (LieType t) = int:
-  let codes = simple_factors(t) in assert(#codes<=1,"Non-simple Lie type");
+  let codes = simple_factors(t) in assert(@:#codes<=1,"Non-simple Lie type");
   if =#codes then { pure torus } 7
   else let (c,)=codes[0] in ascii(c)-ascii("A")
   fi
@@ -110,8 +110,8 @@ set nilpotent_orbit_ss_elements (RootDatum rd) = [vec]:
 
 
 set lesseq_partition (Partition v,Partition w) = bool:
-   assert(sum(v)=sum(w),"not comparable");
-   assert(v.>= and w.>= , "negative terms");
+   assert(@:sum(v)=sum(w),"not comparable");
+   assert(@:v.>= and w.>= , "negative terms");
    v:=reverse_sort(v); w:=reverse_sort(w);
    all(for i:min(#v,#w)+1 do sum(v[0:i]) <= sum(w[0:i]) od)
 
