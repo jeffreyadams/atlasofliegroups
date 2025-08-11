@@ -20,7 +20,7 @@ set Wdelta_generators (InnerClass ic) = [WeylElt]:
     gens[j] :=
     if =gen_j then gen_j # i { or equivalently |W_gen(rd,i)| }
     elif { now |gen_j| should be simple reflection forming a pair with i }
-      assert(length(gen_j)=1,"more than two roots mapping to "+j)
+      assert(@:length(gen_j)=1,"more than two roots mapping to "+j)
     ; gen_j*beta=beta
     then gen_j # i { commuting product with |W_gen(rd,i)| }
     else i # gen_j # i { non-commuting; conjugate |gen_j|  by |W_gen(rd,i)| }
@@ -43,4 +43,4 @@ set Wdelta_conjugate (RootDatum rd, mat delta, int j) = (WeylElt, vec):
   then (w_K,beta_simple)= from_simple(rd_delta,beta)
   then w= convert_from_W_K(ic,w_K.inverse) { a Weyl element for full $W$ }
   then beta_simple_upstairs = w*alpha { a root for |rd| }
-  in assert(P*beta_simple_upstairs=beta_simple); (w,beta_simple_upstairs)
+  in assert(@:P*beta_simple_upstairs=beta_simple); (w,beta_simple_upstairs)

@@ -26,10 +26,10 @@ set multinom ([int] a) = int: { multinomial coefficient, upper index implicit }
 
 set multi_choose (int n,int k) = int: binom(n+k-1,k)
 
-set falling_power (int n, int k) = int: assert(>=0,"Negative exponent");
+set falling_power (int n, int k) = int: assert(@:k>=0,"Negative exponent");
    let p=1 in for i:k from n-k+1 do p*:=i od; p
 
-set rising_power (int n, int k) = int: assert(>=0,"Negative exponent");
+set rising_power (int n, int k) = int: assert(@:k>=0,"Negative exponent");
    let p=1 in for i:k from n do p*:=i od; p
 
 { Combinatorial number system ${\N\choose k}\to\N$ encoding and decoding }
@@ -40,7 +40,7 @@ set permutation_encode([int] sigma) = int:
 in for x in sigma
    do let l=#unseen
       then pos = binary_search_first((int i): unseen[i]>=x,0,l)
-   in assert(unseen[pos]=x)
+   in assert(@:unseen[pos]=x)
    ; unseen:=unseen[:pos]##unseen[pos+1:]
    ; acc:=l*acc+pos
    od; acc
@@ -101,7 +101,7 @@ set combination_decode(int k) = (int->[int]):
 in for i:k from 1 ~ { entries are determined in decreasing order }
    do let c_i = binary_search_first((int n)bool: binom(n,i)>N, 1,bound) - 1
    in N -:= binom(c_i,i); bound:=c_i
-  ~od { next assert(N=0) }
+  ~od { next assert(@:N=0) }
 
 { extract components at even or odd positions }
 set even_places ([int] v) = for i:-(-#v)\2 do v[2*i] od
@@ -126,8 +126,9 @@ set compose_permutations ([int] sigma, [int] pi) = [int]:
 set inverse ([int] pi) = [int]: { hope that name causes no conflict }
   let n=#pi then result=for :n do n od { sentinel values} in
   for i@j in pi
-  do assert(i.>= and i<n and result[i]=n { in range, and no seen before }
-           ,to_string("not a permutation (",i,")"));
+  do assert(@:(0<=i and i<n and result[i]=n { in range, and no seen before }
+              ,to_string("not a permutation (",i,")")
+	      ));
      result[i]:=j
   od; result
 
@@ -149,12 +150,12 @@ set cycle_product (int n) = ([[int]]->[int]): { cycles to one-line form }
    permutation_product(mat: n # for c in cycles do c.as_column od)
 
 set permute ([int] pi,vec v) = vec: { replaces |v[i]| by |v[pi.inverse[i]]| }
-  assert(#pi=#v { and |pi| is a permutation },"length mismatch");
+  assert(@:#pi=#v { and |pi| is a permutation },"length mismatch");
   let result=null(#v) in for i@j in pi do result[i]:=v[j] od; result
 
 any_type T begin
 set permute ([int] pi,[T]a) = [T]: { replaces |a[i]| by |a[pi.inverse[i]]| }
-  assert(#pi=#a { and |pi| is a permutation },"length mismatch");
+  assert(@:#pi=#a { and |pi| is a permutation },"length mismatch");
 { here we cannot pre-allocate a row of undefined T values, but have no need to }
   for i in permutation_inverse(pi) do a[i] od
 end
@@ -259,10 +260,10 @@ in result ## if mult=1 then P~[0].to_string else P~[0]+"^"+mult fi ## " ]"
 set leq_equal_sum_partitions(Partition lambda, Partition mu) = bool:
    let m=#mu in
    for l@i in lambda
-   do if i>=m then assert(=l,"unequal sum"); return true
+   do if i>=m then assert(@:l=0,"unequal sum"); return true
       elif l!=mu[i] then return l<mu[i]
       fi
-   od; assert(=mu[#lambda:],"unequal sum"); true
+   od; assert(@:mu[#lambda:].=,"unequal sum"); true
 
 { same, but three-way result in $\{-1,0,1\}$ for less/equal/greater; no 0-ext }
 set cmp_equal_sum_partitions(Partition lambda, Partition mu) = int:
@@ -290,12 +291,12 @@ set index_partition([Partition] sorted_list) = (Partition->int):
 
 { dominance order of partitions }
 set leq_dominance_order_partitions (Partition v,Partition w) = bool:
-   if =#v then assert(=w ,"not comparable"); true
-   elif =#w then assert(=v ,"not comparable"); true
+   if =#v then assert(@:w.= ,"not comparable"); true
+   elif =#w then assert(@:v.= ,"not comparable"); true
    else v:=sort_to_partition(v); w:=sort_to_partition(w)
-   ; assert(v~[0].>= and w~[0].>=,"negative terms")
+   ; assert(@:v~[0]>=0 and w~[0]>=0,"negative terms")
    ; let sums_v = cumulate_forward(v), sums_w = cumulate_forward(w)
-     in assert(sums_v~[0]=sums_w~[0],"not comparable")
+     in assert(@:sums_v~[0]=sums_w~[0],"not comparable")
      ; for i:min(#v,#w) do sums_v[i]<=sums_w[i] od.all { need exactly these }
    fi
 
@@ -347,7 +348,7 @@ set cycle_power ([int] cycles, int k) = [int]:
 
 { character of irreducible Sn representation lambda at give cycle type }
 set Murnaghan_Nakayama (Partition lambda, [int] cycle_type) = int:
-   assert(sum(lambda)=sum(cycle_type),"Size mismatch");
+   assert(@:sum(lambda)=sum(cycle_type),"Size mismatch");
    let (edge,) = edge_sequence(lambda), alpha=cycle_type.sort { increasing } in
    (#alpha-1).
    (rec_fun MN (int j) int:
@@ -594,7 +595,7 @@ set hyperoctahedral_character (
        BiPartition (lambda,mu):pair {irreducible: (trivial,sign) for {1,-1}}
       ,Signed_cycles signed_cycle_type{describes a conjugacy class}
       ) = int:
-   assert(rank(pair)=rank(signed_cycle_type),"Size mismatch");
+   assert(@:rank(pair)=rank(signed_cycle_type),"Size mismatch");
 { The formula implemented is recursive in the number of cycles, similarly to the
   Murnaghan-Nakayama rule. Pick a signed cycle |(k,sign)| (we start with picking
   longest ones, so as to have all length 1 cycles remaining at the bottom of the
@@ -644,7 +645,7 @@ set hyperoctahedral_character (
           then { get fixed row sums and column sums for $\N$-matrix [.,.|.,l] }
             (a,b) = (#hl0,#hl1) { partition sizes to be filled }
           then lwb = max(0,d-a{=b-c}), upb=min(b,d) { bounds for l }
-          in assert(a+b=c+d);
+          in assert(@:a+b=c+d);
           for l:upb-lwb+1 from lwb do (-1)^l*binom(c,b-l)*binom(d,l)od.sum
           * (a.fac\hl0.product)*(b.fac\hl1.product) { factor independent of l }
        fi
@@ -675,7 +676,7 @@ set hyperoctahedral_character (
 }
 
 set core_length (int n) = int: if n.<= then 2*-n else 2*n-1 fi
-set core_number (int k) = int: assert(k.>=); case k in -k\2, -k\-2 esac
+set core_number (int k) = int: assert(@:k>=0); case k in -k\2, -k\-2 esac
 
 { Core number and quotient partition pair. In the latter, as per |BiPartition|
   convention, the partition coming from the EVEN edge positions comes first }
@@ -723,7 +724,7 @@ in if k>l
 set classic_permutation (WeylElt w) = [int]:
 (  let rd=w.root_datum then (lt,map)=Cartan_matrix_type(rd.Cartan_matrix)
    then factors=simple_factors(lt) then nf=#factors
-in assert(nf=1,"Root datum diagram is not connected ("+ nf +" components)")
+in assert(@:(nf=1,"Root datum diagram is not connected ("+ nf +" components)"))
 ;  let word = { |w.word| translated to word for Bourbaki numbered diagram }
       let inv = permutation_inverse(map) in for s in w.word do inv[s] od
    , (type,rank)=factors[0]
@@ -865,7 +866,7 @@ set Dn_irreducibles (int n) = [Dn_irrep]:
 )
 
 set character (Dn_irrep chi, Dn_class C) = int:
-   assert(chi.rank = C.rank,"Size mismatch");
+   assert(@:chi.rank = C.rank,"Size mismatch");
    let pos_cycles(Partition mu)=Signed_cycles: for l in mu do (l,false) od in
    case chi
    | (pair).unsplit_irr:
@@ -878,14 +879,14 @@ set character (Dn_irrep chi, Dn_class C) = int:
      case C
      | (cycles).unsplit_class:
        let (q,r) = hyperoctahedral_character((lambda,lambda),cycles)\%2 in
-       assert(=r,"Odd character value at unsplit class"); q
+       assert(@:r=0,"Odd character value at unsplit class"); q
      | (alpha,delta).split_class:
        let Hn_char = int:
            hyperoctahedral_character((lambda,lambda),pos_cycles(alpha))
        ,   Sn_char = int:
-           assert(alpha.is_very_even,"Split class with odd cycle(s)");
+           assert(@:alpha.is_very_even,"Split class with odd cycle(s)");
            Murnaghan_Nakayama(lambda, alpha\2)
        then (q,r) = (Hn_char+sign(epsilon!=delta)*2^#alpha*Sn_char)\%2
-       in assert(=r,"Parity problem for split-split character value"); q
+       in assert(@:r=0,"Parity problem for split-split character value"); q
      esac
    esac

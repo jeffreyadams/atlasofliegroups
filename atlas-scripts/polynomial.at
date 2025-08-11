@@ -61,7 +61,7 @@ set !poly_0 = constant_poly(0),
     !poly_q2 = i_poly: [0,0,1]
 
 set monic_divide (i_poly P, i_poly D) = (i_poly,i_poly): { quotient, remainder }
-   assert(#D>0 and D~[0]=1,"Not a monic divisor");
+   assert(@:#D>0 and D~[0]=1,"Not a monic divisor");
    let deg_D = #D-1, l_P=#P in
    if l_P<deg_D then (poly_0,P##null(deg_D-l_P))
    else
@@ -109,7 +109,7 @@ set * (int_poly(X,a,), int_poly(,b,)) = int_poly:
 )
 set monic_divide (int_poly(X,P,), int_poly(,D,)) =
        (int_poly,int_poly): { quotient, remainder unstripped: size |degree(D)| }
-   assert(#D>0 and D~[0]=1,"Not a monic divisor");
+   assert(@:#D>0 and D~[0]=1,"Not a monic divisor");
    let deg_D = #D-1, l_P=#P in
    if l_P<deg_D
    then ( constant_poly(int:0,X), to_int_poly(P##for :deg_D-l_P do int:0 od,X) )
@@ -191,7 +191,7 @@ set ^ (rat_poly (X,,):P,int n) = rat_poly: { power of a rational polynomial }
 
 set monic_divide (rat_poly(X,P,), rat_poly(,D,)) =
        (rat_poly,rat_poly): { quotient, remainder unstripped: size |degree(D)| }
-   assert(#D>0 and D~[0]=1,"Not a monic divisor");
+   assert(@:#D>0 and D~[0]=1,"Not a monic divisor");
    let deg_D = #D-1, l_P=#P in
    if l_P<deg_D
    then ( constant_poly(rat:0,X), to_rat_poly(P##for :deg_D-l_P do rat:0 od,X) )
@@ -221,7 +221,7 @@ set unsafe_divide (i_poly p,i_poly d) = (i_poly,i_poly):
 
 set divide (rat_poly(X,P,), rat_poly(,D,)) =
        (rat_poly,[rat]): { quotient, remainder unstripped: size |degree(D)| }
-   let deg_D = #D-1, l_P=#P in assert(deg_D.>=,"Euclidean division by 0");
+   let deg_D = #D-1, l_P=#P in assert(@:deg_D.>=,"Euclidean division by 0");
    if l_P<deg_D
    then ( constant_poly(rat:0,X), P##for :deg_D-l_P do rat:0 od )
    else let lcD = D~[0] in
@@ -301,11 +301,11 @@ set *(i_poly_mat A,i_poly_mat B) = i_poly_mat:
 
 { add lists of polynomials, assumed of same length (name avoids +@(mat,mat)) }
 set poly_list_add([i_poly] v,[i_poly] w) = [i_poly]:
-( assert(#v=#w,"length mismatch adding lists of polynomials")
+( assert(@:#v=#w,"length mismatch adding lists of polynomials")
 ; for p@i in v do p+w[i] od
 )
 set poly_list_sub([i_poly] v,[i_poly] w) = [i_poly]:
-( assert(#v=#w,"length mismatch adding lists of polynomials")
+( assert(@:#v=#w,"length mismatch adding lists of polynomials")
 ; for p@i in v do p-w[i] od
 )
 
@@ -313,11 +313,11 @@ set -(i_poly_mat M) = i_poly_mat: for row in M do for p in row do -p od od
 
 { add or subtract matrices of the same size }
 set +(i_poly_mat A,i_poly_mat B)=i_poly_mat:
-( assert(#A=#B,"number of rows mismatch adding matrices of polynomials")
+( assert(@:#A=#B,"number of rows mismatch adding matrices of polynomials")
 ; for row@i in A do poly_list_add(row,B[i]) od
 )
 set -(i_poly_mat A,i_poly_mat B)=i_poly_mat:
-( assert(#A=#B,"number of rows mismatch adding matrices of polynomials")
+( assert(@:#A=#B,"number of rows mismatch adding matrices of polynomials")
 ; for row@i in A do poly_list_sub(row,B[i]) od
 )
 
@@ -482,7 +482,7 @@ set - = fix_sub@(vec,vec)
 set * = dot_product@(vec,vec)
 
 set sgn_poly (int k) = i_poly:
-  assert(!=k,"taking sign of 0"); [if k.< then -1 else 1 fi]
+  assert(@:k!=0,"taking sign of 0"); [if k.< then -1 else 1 fi]
 
 set divide_by (int k,i_poly v) = i_poly: ratvec_as_vec(v/k)
 

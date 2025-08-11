@@ -38,7 +38,7 @@ set make_regular (Param p) = Param:
   fi
 
 set make_param_pol (RealForm G,[int] coefficients,[Param] params) = ParamPol:
-  assert(#coefficients=#params,"mismatch");
+  assert(@:#coefficients=#params,"mismatch");
   G.null_module + for c@i in coefficients do (c,params[i]) od
 
 {permutations}
@@ -225,7 +225,7 @@ set print_stable_at_singular ([int] S,[Param] B,[Param] subset) = void:
 
 
 set stable ([Param] params) = (mat,[Param]):
-  assert(has_infinitesimal_character(params)
+  assert(@:has_infinitesimal_character(params)
         ,"terms do not all have same infinitesimal character");
   let G=real_form(params[0])
   then p=params[0]

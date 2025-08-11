@@ -52,7 +52,7 @@ in { now do coordinate change to make |M| upper triangular }
          { updated rows are now spliced into place in |M| and |R|: }
       in for j:piv_i-i do M[i+j]:=new_M_cols[j]; R[i+j]:=new_R_cols[j] od
       fi
-   od; assert(R*^M=M0); (k,R)
+   od; assert(@:R*^M=M0); (k,R)
 
 set image_subspace (mat M) = mat: { generators for $\Q$-span of image of |M| }
    let (c,R)=adapted_direct_sum(M) in R[:c]
@@ -66,7 +66,7 @@ set saturation = image_subspace@mat { intersection of $\Z^n$ with $\Q$-span }
   tests that this sublattice is a direct factor, and throws an error if not }
 set free_quotient_lattice_basis (mat M) = mat:
 ( let (E,,,)=echelon(M) in { pre-compute echelon }
-  assert(E.is_saturated,"sublattice is not a direct factor")
+  assert(@:E.is_saturated,"sublattice is not a direct factor")
 ; image_complement_basis(E)
 )
 

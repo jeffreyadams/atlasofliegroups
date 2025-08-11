@@ -38,7 +38,7 @@ in (rec_fun m () inf_node:
 
 
 set exp_divide (inf_list f, inf_list g) = inf_list:
-(  let (c,denom)=g() in assert(c=1,"Division requires unit constant term")
+(  let (c,denom)=g() in assert(@:c=1,"Division requires unit constant term")
 ;  let coefs = { pairs of corresponding coefficients of |denom,result| }
       [int,int]: []
 in (rec_fun m () inf_node:
@@ -66,7 +66,7 @@ set exp_substitute (inf_list g) = (inf_list->inf_list): { f->f[X:=g] }
 	    od.sum\k
 	  , m
 	  )
-in assert(=g0,"Can only substitute series with constant term 0")
+in assert(@:g0=0,"Can only substitute series with constant term 0")
 ;  (inf_list f) inf_list: { the map returned from |exp_substitute| }
      let n=0, power=series_1, result=extend_0(#0), c=0 in
      memoize
@@ -91,7 +91,7 @@ set exp_comp_inverse (inf_list g) = inf_list:
 	    od.sum\k
 	  , m
 	  )
-in assert(=g0 and g1=1,"Can only do series with leading term X")
+in assert(@:g0=0 and g1=1,"Can only do series with leading term X")
 ; let rec_fun r () = inf_node: { no arguments, call modifies |target|, |power| }
      power:=exp_mult(gg,power,n+:=1).memoize { |g^n/n!|, shifted }
      ;  let (c,t_tail) = target(), (,t_power)=power()
@@ -126,7 +126,7 @@ in for l in L
 { Here is more general exponentiation }
 set exp_of_exponential_series (inf_list S) = inf_list:
    let (c,thunk)=S() then coef = 1 next
-      assert(c=0,"Exponential map needs zero constant term")
+      assert(@:c=0,"Exponential map needs zero constant term")
    , coefs = [int,int]: [] { pairs of result coef and coef from |S| }
 in ( @ inf_node:
      ( coef

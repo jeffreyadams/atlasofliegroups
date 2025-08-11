@@ -65,14 +65,14 @@ set deformation_terms (Param p) = ParamPol:
     for c@i in solution
     do { twist (1-s)*solution according to orientation numbers of its terms }
       let x=B[i] then (q,r)=(on_p-orientation_nr(x))\%2 in
-      assert(=r,"odd orientation");
+      assert(@:r=0,"odd orientation");
       (minus_1^q*c*one_minus_s,x) { we have |s^q*c*(1-s) = (-1)^q*c(1-s)| }
       { for the same reason we replaced |s| by |-1| in computations giving |c| }
     od
   fi
 
 set deformation_terms_by_dual (Param p) = ParamPol:
-  assert(p.is_final,"deformation requires a final parameter");
+  assert(@:p.is_final,"deformation requires a final parameter");
   let (block,KL_mat,P_polys) = partial_KL_block(p)
   , (full_block,start,dual_KL_mat,dual_polys) = dual_KL_block(p)
   then pol_eval =  for P in P_polys do eval(P,minus_1) od
@@ -80,7 +80,7 @@ set deformation_terms_by_dual (Param p) = ParamPol:
   , l_sg = for q in block do minus_1^length(q) od
   , to_full = (int->int):
     let map = p.null_module + for q@i in full_block do (Split:(i,1),q) od
-    in (int i) int: let c=map[block[i]] in assert(!=c,"absent"); c.int_part
+    in (int i) int: let c=map[block[i]] in assert(@:c!=0,"absent"); c.int_part
   then P_mat = mat:
     for col@j in KL_mat do for e@i in col do l_sg[i]*l_sg[j]*pol_eval[e] od od
   , Q_mat = mat:
@@ -100,8 +100,8 @@ in null_module(p) +
    od
 
 set deformation_terms_by_dual (Param p,int max_height) = ParamPol:
-(  assert(p.is_final,"deformation requires a final parameter")
-;  assert(p.height<=max_height,"height bound kills term to deform")
+(  assert(@:p.is_final,"deformation requires a final parameter")
+;  assert(@:p.height<=max_height,"height bound kills term to deform")
 ;  let (full_block,start,dual_KL_mat,polys) = dual_KL_block(p)
    then subset = [int]:
      for q@i in full_block if q.height<=max_height do i fi od
@@ -138,12 +138,12 @@ in if rp~[0]=1 then none() else some(p*rp~[0]) fi
 
 set next_down (Param p) = Param:
    let rp=(0/1)#reducibility_points(p)
-in assert(rp~[0]=1,"Not a reducibility: "+p.to_string); p*rp~[1]
+in assert(@:rp~[0]=1,"Not a reducibility: "+p.to_string); p*rp~[1]
 
 { use |deformation_terms_by dual| for a full deformation, in which we try to
   group all successive deformations involving a same block together }
 set deform_to_height (Param p,int max_height) = KTypePol:
-(  assert(p.height<=max_height,"height bound kills term to deform")
+(  assert(@:p.height<=max_height,"height bound kills term to deform")
 ;  let G=real_form(p)
    then !K_empty=null_K_module(G), !empty=null_module(G)
 in { first ensure there is a potential deformation at |p| }
@@ -202,7 +202,7 @@ set recursive_deform (Param p) = KTypePol:
     begin
       p := alcove_center(p);
       prints("full_def with: sc=", sc, ", p=", p);
-      assert(is_standard(p)
+      assert(@:is_standard(p)
 	    ,"non standard parameter encountered in deformation");
       let acc=empty, at_nu0=KTypePol: sc*(p.K_type) { fully deformed |p| } in
       for factor in reducibility_points(p)
@@ -224,7 +224,7 @@ set recursive_deform (Param p) = KTypePol:
 	 { |sc| will simply scale the coefficients of resulting KTypePol }
     begin
       p := alcove_center(p);
-      assert(is_standard(p),"non standard parameter in deformation");
+      assert(@:is_standard(p),"non standard parameter in deformation");
       let acc=empty, at_nu0=KTypePol: sc*(p.K_type) { fully deformed |p| } in
       for factor in reducibility_points(p)
       ~ { direction of deformation is down, towards 0; this is not essential }
@@ -286,7 +286,7 @@ set twisted_c_form_irreducible (Param p) = KTypePol:
 set is_hermitian (Param p) = bool: equivalent(twist(p),p)
 
 set check_hermitian (Param p) = void:
-  assert(p.is_hermitian
+  assert(@:p.is_hermitian
         ,"Irreducible module does not admit any invariant Hermitian form"
 	)
 set hermitian_form_irreducible (Param p) = KTypePol:

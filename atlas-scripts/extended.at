@@ -96,10 +96,10 @@
 set E (mat delta, KGBElt x, ratvec gamma, ratvec g, ratvec lambda) =
   ExtParam:
 begin let ic = inner_class(x), theta = involution(x) in
-  assert(is_fixed(delta,x),"x is not fixed by delta")
-; assert(is_integer(square(x)-g)
+  assert(@:is_fixed(delta,x),"x is not fixed by delta")
+; assert(@:is_integer(square(x)-g)
         ,"x is not compatible with infinitesimal cocharacter g")
-; assert(is_integer(lambda-rho(ic)),"lambda is not in the correct X^*-coset")
+; assert(@:is_integer(lambda-rho(ic)),"lambda is not in the correct X^*-coset")
 { let l = ratvec_as_vec( g-torus_factor(x)*(1+theta)/2-rho_check(real_form(x)) )
   but this is simplified because torus_factor(x) is |^theta|-fixed
 }
@@ -112,13 +112,15 @@ begin let ic = inner_class(x), theta = involution(x) in
   then t   = solve(1-omega,l*(delta-1))
   ,    tau = solve(1-theta,(delta-1)*lambda_E)
   in
-  assert(succeeds(t)
-        ,@: prints("solve(",1-omega,",",l*(delta-1),")")
+  assert(@:(succeeds(t)
+	   ,prints("solve(",1-omega,",",l*(delta-1),")")
             ; "t*(1+theta)=l*(delta-1) has no integral solution t"
+	   )
         )
-; assert(succeeds(tau)
-        ,@: prints("solve(",1-theta,",",(delta-1)*lambda_E,")")
+; assert(@:(succeeds(tau)
+	   ,prints("solve(",1-theta,",",(delta-1)*lambda_E,")")
             ; "(1-theta)tau=(delta-1)*lambda has no integral solution tau"
+	   )
         )
 ; (ic,delta,gamma,lambda_E,theta,g,l,omega,tau.requisition,t.requisition)
 end
@@ -128,12 +130,12 @@ end
 set E (mat delta, ratvec gamma, KGBElt x, ratvec g, KGBElt_gen y) =
   ExtParam:
 begin let ic = inner_class(x), theta = involution(x) in
-  assert(dual(ic)=inner_class(y),"inner classes are not dual")
-; assert(is_fixed(delta,x),"x is not fixed by delta")
-; assert(is_fixed(^delta,y),"y is not fixed by ^delta")
-; assert(=(square(y)-gamma)%1 { difference should be in X^* }
+  assert(@:dual(ic)=inner_class(y),"inner classes are not dual")
+; assert(@:is_fixed(delta,x),"x is not fixed by delta")
+; assert(@:is_fixed(^delta,y),"y is not fixed by ^delta")
+; assert(@:((square(y)-gamma)%1).= { difference should be in X^* }
         ,"y is not compatible with infinitesimal character gamma")
-; assert(=(square(x)-g)%1
+; assert(@:((square(x)-g)%1).=
         ,"x is not compatible with infinitesimal cocharacter g")
 ; let l = (g-torus_factor(x)-rho_check(ic))\1 { convert to vec }
   , omega=involution(y) { NOTE ^theta=-omega }
@@ -141,8 +143,8 @@ begin let ic = inner_class(x), theta = involution(x) in
   then t   = solve(1-omega,l*(delta-1))
   ,    tau = solve(1-theta,(delta-1)*lambda)
   in
-  assert(succeeds(t)  ,"(1-^delta)l=(1-omega)t has no integral solution")
-; assert(succeeds(tau),"(1-delta)lambda=(1-theta)tau has no integral solution")
+  assert(@:succeeds(t)  ,"(1-^delta)l=(1-omega)t has no integral solution")
+; assert(@:succeeds(tau),"(1-delta)lambda=(1-theta)tau has no integral solution")
 ; (ic,delta,gamma,lambda,theta,g,l,omega,tau.requisition,t.requisition)
 end
 
@@ -257,7 +259,7 @@ set z (ExtParam E) = rat: { implicit $\exp_{-1}$ }
   E.l * (E.delta-1) * E.tau / 2 + E.t * E.lambda_rho
 
 set z_quot (ExtParam E, ExtParam F) = int:
-  let d=E.z-F.z in assert(=d%1, "z_quot imaginary"); minus_1^(d\1)
+  let d=E.z-F.z in assert(@:d%1=0, "z_quot imaginary"); minus_1^(d\1)
 
 { print information about an extended block }
 set ext_print_block (mat delta, [Param] B) = void:
@@ -339,6 +341,6 @@ set folded_m (RootDatum rd, mat delta, int i, int j) = int:
 set folded_order (RootDatum rd, mat delta, int i, int j) = int:
 begin
   let m=folded_m(rd,delta,i,j) in
-  assert(m>=0 and m<=4,"fundamental error in mathematics (folder_order)")
+  assert(@:0<=m and m<=4,"fundamental error in mathematics (folder_order)")
 ; [2,3,4,6,1][m] { case m=4: delta(root_i)=root_j }
 end

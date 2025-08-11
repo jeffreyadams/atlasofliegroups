@@ -127,7 +127,7 @@ set # (WGraph (,nodes)) = int: #nodes
 
 {. matrix for s of graph, of coherent continuation action on irreducibles. }
 set graph_action (WGraph (rd,nodes),int s) = sparse_mat:
-   assert(s.>= and s<rd.semisimple_rank,"bad W generator: "+s);
+   assert(@:0<=s and s<rd.semisimple_rank,"bad W generator: "+s);
    let tau_has_s(WNode nd) = bool: is_member(nd.tau)(s) in
    for node@j in nodes
    do if node.tau_has_s
