@@ -1513,10 +1513,10 @@ bool textually_equal (const type_expr& x, const type_expr& y)
     case tabled:
        if (x.type_name()!=y.type_name())
          return false; // distinguished by type names
-       return x.type_name()==type_binding::no_id
-       ? textually_equal(x.expanded(),y.expanded()) @|
-       : textually_equal_lists(x.tabled_args(),y.tabled_args());
+       return x.tabled_nr()==y.tabled_nr() and x.type_name()!=type_binding::no_id
+       @| ? textually_equal_lists(x.tabled_args(),y.tabled_args())
        // check type arguments
+       @| : textually_equal(x.expanded(),y.expanded());
   }
 }
 @)
