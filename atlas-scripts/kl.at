@@ -63,20 +63,26 @@ more often}
 let to character_formula MUCH faster than character_formulas_to_ht: 178 secs vs 978 secs}
 set gamma_frac = 1/4
 
-{if target height < (GAM - LAM)*diff_frac, then figure is_unitary_to_ht could be faster. So largest
-reasonable target height is (GAM-LAM)*diff_frac. INCREASE to use to_ht
-more often}
+{if target height < (GAM - LAM)*diff_frac, then figure
+is_unitary_to_ht could be faster. So largest reasonable target height
+is (GAM-LAM)*diff_frac. INCREASE to use to_ht more often}
 set diff_frac = rat: 3/4
 
-{if target height < (GAM - LAM)*diff_frac, then figure is_unitary_to_ht could be faster. So largest
-reasonable target height is (GAM-LAM)*diff_frac. INCREASE to use to_ht
-more often}
+{if target height < (GAM - LAM)*diff_frac, then figure
+is_unitary_to_ht could be faster. So largest reasonable target height
+is (GAM-LAM)*diff_frac. INCREASE to use to_ht more often}
 set diff_char_frac = rat: 1/10 {1/8 and 1/12 used a bit more memory and time in
     		     	       spherical E7_s}
 
-{ trunc_factor is how much to DISLIKE trunctating character
+{ strict_factor is how much to DISLIKE trunctating character
     formula; increase to truncate LESS often}
-set trunc_factor = rat: 2/1
+set strict_factor = rat: 2/1
+
+{strict versions mean harder be false: they are used to prevent the
+code from EVER using to_ht, they should be false RARELY. Otherwise the
+caller of is_unitary_to_ht can make a local decision about whether to
+use it.}
+
 
 {whether to use to_height in computing to height N}
 {true means large nu, so to_ht could be better}
@@ -84,15 +90,27 @@ set low_nu(Param p, int N) = bool:
     let (,NU,) = low(p)
     in NU > N*nu_frac
 
+set strict_low_nu(Param p, int N) = bool:
+    let (,NU,) = low(p)
+    in strict_factor*NU > N*nu_frac
+
 {true means GAM big compared to HT, so is_unitary could be better}
 {If N>= GAM, then to_ht gives answer to unitarity.}
 set low_gamma(Param p, int N) = bool:
     let (,,GAM) = low(p)
     in GAM*gamma_frac > N
 
+set strict_low_gamma(Param p, int N) = bool:
+    let (,,GAM) = low(p)
+    in strict_factor*GAM*gamma_frac > N
+
 set low_diff(Param p, int N) = bool:
     let (LAM, , GAM) = low(p)
     in (GAM - LAM)*diff_frac > N
+
+set strict_low_diff(Param p, int N) = bool:
+    let (LAM, , GAM) = low(p)
+    in strict_factor*(GAM - LAM)*diff_frac > N
 
 set low_diff_char(Param p, int N) = bool:
     let (LAM, , GAM) = low(p)
@@ -100,7 +118,7 @@ set low_diff_char(Param p, int N) = bool:
 
 set prefer_gamma_flag = true
 
-set prefer_diff_flag = true
+set prefer_diff_flag = false
 
 {set low_test_flag = false
 
@@ -108,14 +126,25 @@ set low_test(Param p, int N) = bool:
     let q = all_parameters_gamma(p.real_form, p.infinitesimal_character)~[0]
     in height(q) - height(p) > N
 }
+{whether to turn off to_ht completely at difficult p}
+set strict_low_flag = true
+
+set strict_low(Param p, int N) = bool:
+    if not strict_low_flag
+    then return true
+    fi;
+    if prefer_gamma_flag
+    then strict_low_gamma(p,N)
+    elif prefer_diff_flag
+    then strict_low_diff(p,N)
+    else strict_low_nu(p,N)
+    fi
 
 set low(Param p, int N) = bool:
-    {if low_test_flag
-    then low_test
-    el}if prefer_diff_flag
-    then low_diff(p,N)
-    elif prefer_gamma_flag
+    if prefer_gamma_flag
     then low_gamma(p,N)
+    elif prefer_diff_flag
+    then low_diff(p,N)
     else low_nu(p,N)
     fi
 

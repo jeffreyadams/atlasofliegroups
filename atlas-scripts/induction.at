@@ -135,6 +135,17 @@ set real_induce_standard (Param p_L,RealForm G) = Param:
   then shift=rho_r(x_G)-rho_r(x_L)+(1-theta)*(rho_S(x_G)-rho_S(x_L))
   in parameter(x_G,lambda(p_L)+shift,  nu(p_L))
 
+{. Real parabolic induction of a standard module of real Levi L (i.e., L
+  must be the Levi factor of a real parabolic subgroup) to G .}
+set real_induce_standard (KType tau_L,RealForm G) = KType:
+  let (x_L,mu_L) = %tau_L
+  in assert(parabolic_is_real(make_parabolic(real_form(x_L),G)),
+         "L is not Levi of real parabolic");
+  let x_G=embed_KGB(x_L,G)
+  then theta=involution(x_G)
+  then shift=rho_r(x_G)-rho_r(x_L)+(1-theta)*(rho_S(x_G)-rho_S(x_L))
+  in K_type(x_G,mu_L)
+
 {. Real parabolic induction of standards, applied to a formal sum of
    parameters (ParamPol). .}
 set real_induce_standard (ParamPol P,RealForm G) = ParamPol:
@@ -147,6 +158,10 @@ set real_induce_irreducible_as_sum_of_standards (Param p_L, RealForm G) =
     ParamPol:
   real_induce_standard(character_formula(p_L),G)
 
+{. Real parabolic induction on K. .}
+set real_induce_standard (KTypePol Q,RealForm G) = KTypePol:
+  null_K_module(G) + for c@tau in Q do (c,real_induce_standard(tau,G)) od
+  
 {. Write the (real) induced $Ind(J(p_L))$ of an irreducible of |L| as a sum of
    irreducibles for |G|; uses composition series to convert output of the
    |real_induce_irreducible_as_sum_of_standards| into sum of irreducibles.

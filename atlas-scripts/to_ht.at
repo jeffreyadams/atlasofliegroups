@@ -51,7 +51,7 @@ set full_deform_to_ht_MvL (Param p, int height, int time) = maybe_KTP:
        	  then return to_ht(regroup(p.real_form, deformedHash.data_index(j)),height).done
 	  fi
   fi;
-  if not low(p,height)
+  if not strict_low(p,height)
   then return to_ht(full_deform(p,time),height)
   fi;
 let !empty_K=null_K_module(p.real_form), !empty=null_module(p)
@@ -81,7 +81,7 @@ elif height(p) = N then K_type_pol(p)
 else let pc = alcove_center(p)
      in if deformed_hash_flag
 	then deformedHash.entry(pc,N)
-	elif not low(pc,N)
+	elif not strict_low(pc,N)
   	then return to_ht(full_deform(pc),N)
 	else deform_to_height(pc,N)
 	fi
@@ -89,7 +89,7 @@ fi
 
 {This version seems NOT faster or smaller}
 set full_deform_to_ht(Param p, int N) = KTypePol:
-  if not low(p,N)
+  if not strict_low(p,N)
   then return to_ht(full_deform(p),N)
   fi;
     if N < 0 then return full_deform(p) fi;
@@ -134,7 +134,7 @@ standardrepKs to specified height.}
 
 set c_form_std_to_ht_MvL(int N) = (Param->KTypePol):(Param p):
 { never involves |twisted_full_deform| }
-  if not low(p,N)
+  if not strict_low(p,N)
   then return to_ht(full_deform(p),N)
   fi;
    full_deform_to_ht_MvL(p,N)
@@ -146,7 +146,7 @@ set c_form_std_to_ht_MvL(int N, int time) = (Param->maybe_KTP):(Param p):
 
 set c_form_std_to_ht(int N) = (Param->KTypePol):(Param p):
 { never involves |twisted_full_deform| }
-  if not low(p,N)
+  if not strict_low(p,N)
   then return to_ht(full_deform(p),N)
   fi;
    full_deform_to_ht(p,N)
@@ -181,7 +181,7 @@ set oriented_KL_sum_to_ht  (int N, int time) = (Param p)ParamPol:
 { untwisted |c_form_irreducible|, for efficiency; only used in equal rank case }
 {.c-invariant form on irreducible module of p as ParamPol of standardrepKs.}
 set c_form_irreducible_to_ht_MvL (Param p,int N) = KTypePol:
-  if not low(p,N)
+  if not strict_low(p,N)
   then return (to_ht(c_form_irreducible(p),N))
   fi;
   if not(herm_report) then
@@ -199,7 +199,7 @@ set c_form_irreducible_to_ht_MvL (Param p,int N) = KTypePol:
 {.c-invariant form on irreducible module of p as ParamPol of standardrepKs.}
 
 set c_form_irreducible_to_ht_MvL (Param p,int N, int time ) = maybe_KTP:
-  if not low(p,N)
+  if not strict_low(p,N)
   then return to_ht(c_form_irreducible(p,time),N)
   fi;
   let P=oriented_KL_sum_to_ht(N)(p), count=0 then nP=#P, expiration =
@@ -221,7 +221,7 @@ set c_form_irreducible_to_ht_MvL (Param p,int N, int time ) = maybe_KTP:
 
 
 set c_form_irreducible_to_ht_MvL2 (Param p,int N, int time ) = maybe_KTP:
-  if not low(p,N)
+  if not strict_low(p,N)
   then return to_ht(c_form_irreducible(p,time),N)
   fi;
   let P=oriented_KL_sum_to_ht(N)(p), count=0 then nP=#P, expiration =
@@ -245,7 +245,7 @@ set c_form_irreducible_to_ht_MvL2 (Param p,int N, int time ) = maybe_KTP:
 { untwisted |c_form_irreducible|, for efficiency; only used in equal rank case }
 {.c-invariant form on irreducible module of p as ParamPol of standardrepKs.}
 set c_form_irreducible_to_ht (Param p,int HT) = KTypePol:
-  if not low(p,HT)
+  if not strict_low(p,HT)
   then return to_ht(c_form_irreducible(p),HT)
   fi;
   if not(herm_report) then
@@ -263,7 +263,7 @@ set c_form_irreducible_to_ht (Param p,int HT) = KTypePol:
 { untwisted |c_form_irreducible|, for efficiency; only used in equal rank case }
 {.c-invariant form on irreducible module of p as ParamPol of standardrepKs.}
 set c_form_irreducible_to_ht (Param p,int HT, int time) = maybe_KTP:
-  if not low(p,HT)
+  if not strict_low(p,HT)
   then return to_ht(c_form_irreducible(p,time),HT)
   fi;
   let G = p.real_form in
@@ -275,7 +275,7 @@ set c_form_irreducible_to_ht (Param p,int HT, int time) = maybe_KTP:
 }
 set twisted_c_form_irreducible_contributions_to_ht(Param p,int HT) =
     (ParamPol,ParamPol): { (fixed part, 2*unfixed part) }
-  if not low(p,HT)
+  if not strict_low(p,HT)
   then let (fix, two_un) = twisted_c_form_irreducible_contributions(p)
        in return (to_ht(HT)(fix), to_ht(HT)(two_un))
   fi;
@@ -344,7 +344,7 @@ set twisted_c_form_irreducible_to_ht_MvL (Param p,int HT, int time) = maybe_KTP:
 {.Hermitian form to ht on a irreducible module, normalization from its
 initial term.}
 set hermitian_form_irreducible_to_ht_MvL (Param p,int HT) = KTypePol:
-  if not low(p,HT) then return to_ht(hermitian_form_irreducible(p),HT) fi;
+  if not strict_low(p,HT) then return to_ht(hermitian_form_irreducible(p),HT) fi;
   unitary_test_counter.use();
   {if HT > height(p) + 20 then prints(p,HT) fi;}
   let start_time = elapsed_ms(), answer =
@@ -359,7 +359,7 @@ set hermitian_form_irreducible_to_ht_MvL (Param p,int HT) = KTypePol:
 {.Hermitian form to ht on a irreducible module, normalization from its
 initial term.}
 set hermitian_form_irreducible_to_ht_MvL (Param p,int HT,int time) = maybe_KTP:
-  if not low(p,HT) then return to_ht(hermitian_form_irreducible(p,time),HT) fi;
+  if not strict_low(p,HT) then return to_ht(hermitian_form_irreducible(p,time),HT) fi;
   unitary_test_counter.use();
   let start_time = elapsed_ms()
   then answer =
@@ -376,7 +376,7 @@ set hermitian_form_irreducible_to_ht_MvL (Param p,int HT,int time) = maybe_KTP:
   in answer
 
 set hermitian_form_irreducible_to_ht (Param p,int HT) = KTypePol:
-  if not low(p,HT) then return to_ht(hermitian_form_irreducible(p),HT) fi;
+  if not strict_low(p,HT) then return to_ht(hermitian_form_irreducible(p),HT) fi;
   unitary_test_counter.use();
   {if HT > height(p) + 20 then prints(p,HT) fi;}
   let start_time = elapsed_ms(), answer =

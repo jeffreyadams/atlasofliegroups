@@ -457,9 +457,10 @@ set make_min_bottom_data () = min_bottom_data:
 					       do height(tau)
 					       od)
 		      then (,list) = mbf[0]
-		      in Lheights#:= for dertauL in list
+		      then addendum = vec: for dertauL in list
 				     	     do next_heights(dertauL.real_form)
 				     	     od
+		      in Lheights#:= addendum
 		 fi
         then () = assert(#bottom_data = K_type_hash.size(),"min_bottom_data damaged")
 	then () = assert(#heights = #bottom_data,"min_bottom_data damaged")
