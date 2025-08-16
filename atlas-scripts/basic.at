@@ -73,7 +73,11 @@ set === = ==@([int],[int])! { comparison of two |[[int]]| available as |===| }
 
 set !minus_1 = -1 { used to be more efficient than |-1|, now equally efficient }
 
-set # (int n)= [int]: for i:n do i od       { [0,1,...,n-1] }
+set # (int n) = [int]: for i:n do i od       { [0,1,...,n-1] }
+any_type T begin
+set indices ([T]a) = [int]: # #a { faster than |for @i in a do i od| }
+end
+
 set # (bool b) = int: if b then 1 else 0 fi { Iverson symbol }
 set sign (bool b) = int: { |(-1)^#b|, i.e.: } if b then -1 else 1 fi
 
