@@ -76,20 +76,30 @@ any_type S,T begin
 
 { Compute list |R| such that |R[i]| is index of element ranked |i| for |leq|.
   For $i<j$ one will have |leq(a[R[i]],a[R[j]])|, and in case of equality
-  (the comparison also holds in the opposite order) one also has |R[i]<R[j]|.
-  This is the inverse of the permutation that stable-sorts the list |a| into
-  into order for |leq|, the latter being called the standardisation of |a|.
-  Therfore this function used to be called |inv_standardisation|.
+  (the comparison also holds in the opposite order) one also has |R[i]<R[j]|
+  (stability). This is the inverse of the permutation that stable-sorts the list
+  |a| into into order for |leq|, the latter being called the standardisation of
+  |a|. Therefore this function used to be called |inv_standardisation|.
 }
 set ranking ((T,T->bool)leq) = ([T] a) [int]:
-  sort((int i,int j)bool:leq(a[i],a[j]))(# #a)
+  sort((int i,int j)bool:leq(a[i],a[j]))(indices(a))
 
 set sort_by ((T->S)f,(S,S->bool)leq) = ([T]->[T]):
-   sort((T x,T y)bool:leq(f(x),f(y)))
+{ do |sort((T x,T y)bool:leq(f(x),f(y)))|, but avoid calling |f| so often: }
+   ([T]a) [T]: for r in for x in a do f(x) od.(ranking(leq)) do a[r] od
 set merge_by ((T->S)f,(S,S->bool)leq) = ([T],[T]->[T]):
-   merge((T x,T y)bool:leq(f(x),f(y)))
+   merge((T x,T y)bool:leq(f(x),f(y))) { don't bother to improve this }
 set sort_u_by ((T->S)f,(S,S->bool)leq) = ([T]->[T]):
-   sort_u((T x,T y)bool:leq(f(x),f(y)))
+{ keep first instance of each |f| value |sort_u((T x,T y)bool:leq(f(x),f(y)))| }
+   ([T]a) [T]:
+   let vals = [S]: for x in a do f(x) od
+   then rank = [int]: vals.(ranking(leq))
+in for r@i in rank
+      if not (i>0 and leq(vals[r],vals[rank[i-1]]) { |leq| implies equality })
+      do a[rank[i]]
+      fi
+   od
+
 set merge_u_by ((T->S)f,(S,S->bool)leq) = ([T],[T]->[T]):
    merge_u((T x,T y)bool:leq(f(x),f(y)))
 { when sorting by integer or rational value, default to increasing sort }
@@ -159,14 +169,14 @@ set sort_by_height = ([(Split,Param)] -> [(Split,Param)]):
  sort_by( (Split s,Param p) int: height(p), <=@(int,int) )
 
 { comparing vectors lexicographically }
-set lex_leq (vec v,vec w) = bool: { assert(#v=#w); }
+set lex_leq (vec v,vec w) = bool: { assert(@:#v=#w); }
 ( let lv=#v,lw=#w in
   for i:min(lv,lw) do if v[i]!=w[i] then return v[i]<w[i] fi od
 ; lv<=lw { break tie using length }
 )
 
 { compariung fixed size vectors lexicographically (restricted lex ordering) }
-set rlex_leq (vec v,vec w) = bool: { assert(#v=#w); }
+set rlex_leq (vec v,vec w) = bool: { assert(@:#v=#w); }
    for x@i in v do if x!=w[i] then return x<w[i] fi od; true
 
 { short lex ordering }

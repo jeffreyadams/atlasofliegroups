@@ -16,17 +16,17 @@ set coherent_simple_reflect (int s,ParamPol P) = ParamPol:
   ).sum
 
 set coherent_act(WeylElt w,ParamPol P) = ParamPol:
-  assert(w.root_datum=P.root_datum);
+  assert(@:w.root_datum=P.root_datum);
   for s in word(w) do P:=coherent_simple_reflect(s,P) od; P
 
 set coherent_act_K(WeylElt w,ParamPol P) = ParamPol: coherent_act(w,P)*0
 
 set restandard (WeylElt w,KType p) = KTypePol:
   let rd=w.root_datum in
-  assert(rd=p.root_datum); K_type(p.x,(w*p.lambda-rd.rho).ratvec_as_vec)
+  assert(@:rd=p.root_datum); K_type(p.x,(w*p.lambda-rd.rho).ratvec_as_vec)
 
 set finals (WeylElt w,Param p) = KTypePol:
-  let rd=w.root_datum in assert(rd=p.root_datum);
+  let rd=w.root_datum in assert(@:rd=p.root_datum);
   K_type(p.x,ratvec_as_vec(w*p.lambda-rd.rho)) { implicitly finalized }
 
 set KGP_set (KGBElt x) = [KGBElt]:

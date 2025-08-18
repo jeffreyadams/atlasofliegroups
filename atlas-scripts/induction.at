@@ -119,7 +119,7 @@ set rho_S (KGBElt x)            = ratvec: sum(makeS(x))/2
 {. Given a Levi subgroup L of G, construct the parabolic with Levi L
   (this reverses Levi(P) defined in parabolics.at). .}
 set make_parabolic (RealForm L,RealForm G)=Parabolic:
-   assert(is_standard_Levi(L,G),"L is not standard in G");
+   assert(@:is_standard_Levi(L,G),"L is not standard in G");
    let rdl=root_datum(L) in
    let S=[int]:[] in for alpha@i in simple_roots(G) do
    if is_posroot((rdl,alpha)) then S #:= i fi od; (S,embed_KGB(KGB(L,0),G))
@@ -128,7 +128,7 @@ set make_parabolic (RealForm L,RealForm G)=Parabolic:
   must be the Levi factor of a real parabolic subgroup) to G .}
 set real_induce_standard (Param p_L,RealForm G) = Param:
   let x_L=x(p_L) in
-  assert(parabolic_is_real(make_parabolic(real_form(x_L),G)),
+  assert(@:parabolic_is_real(make_parabolic(real_form(x_L),G)),
          "L is not Levi of real parabolic");
   let x_G=embed_KGB(x_L,G)
   then theta=involution(x_G)
@@ -371,7 +371,7 @@ set goodness (Param p_L,RealForm G) = string:
 set theta_induce_standard (Param p_L,RealForm G) = ParamPol:
   let L=real_form(x(p_L)), x_G=embed_KGB(x(p_L),G)
   then shift=rho(G)-rho(L)
-  in assert(parabolic_is_theta_stable(make_parabolic(L,G)),
+  in assert(@:parabolic_is_theta_stable(make_parabolic(L,G)),
   "L is not Levi of theta_stable parabolic");
     if ind_verbose
     then prints("theta_induce_standard of parameter on L: ",p_L)
@@ -397,7 +397,7 @@ set theta_induce_standard (Param p_L,RealForm G) = ParamPol:
 {. Given a ParamPol P, form a new ParamPol by theta-inducing each
    summand. .}
 set theta_induce_parampol (ParamPol P, RealForm G)=ParamPol:
-   assert(parabolic_is_theta_stable(make_parabolic(real_form(P),G)),
+   assert(@:parabolic_is_theta_stable(make_parabolic(real_form(P),G)),
           "L is not Levi of theta_stable parabolic");
    sum(G,for coeff@p in P do coeff*theta_induce_standard(p,G) od)
 
@@ -442,7 +442,7 @@ set theta_induce_irreducible (ParamPol P,RealForm G) = ParamPol:
   version suffices: implicit conversion |Param->ParamPol| will apply }
 
 set map_into_distinguished_fiber (KGBElt x)=KGBElt:
-  begin assert(no_Cminus_roots(x),"Only defined if no C- roots")
+  begin assert(@:no_Cminus_roots(x),"Only defined if no C- roots")
   ; let G=real_form(x), tb=torus_bits(x) in
     for x0 in distinguished_fiber(G) do if torus_bits(x0)=tb then return x0 fi od
   ; { if we get here, no suitable |x0| was found }
@@ -467,7 +467,7 @@ set dim_u (ratvec H,KGBElt x) = n_columns(nilrad_by_wt(H,x))
 
 {. Dimension of $\mathfrak u\cap\mathfrak k$ for theta-stable parabolic. .}
 set dim_u_cap_k (Parabolic (,x):P) = int:
-  assert(parabolic_is_theta_stable(P),"Parabolic is not theta-stable");
+  assert(@:parabolic_is_theta_stable(P),"Parabolic is not theta-stable");
   let sum=0/1 in
   for alpha in nilrad_roots(P) do
     if is_complex(alpha,x) then sum +:= 1/2
@@ -483,12 +483,12 @@ set dim_u_cap_k (KGBElt x) = int:dim_u_cap_k(theta_stable_parabolic(x))
   weight lambda. .}
 set dim_u_cap_k(ratvec lambda,KGBElt x) =  int:
   let P=parabolic_by_wt(lambda,x) in
-  assert(parabolic_is_theta_stable(P),"Parabolic is not theta-stable");
+  assert(@:parabolic_is_theta_stable(P),"Parabolic is not theta-stable");
   dim_u_cap_k(P)
 
 {. Dimension of $\mathfrak u\cap\mathfrak p$ for theta-stable parabolic. .}
 set dim_u_cap_p (Parabolic (,x):P) = int:
-  assert(parabolic_is_theta_stable(P),"Parabolic is not theta-stable");
+  assert(@:parabolic_is_theta_stable(P),"Parabolic is not theta-stable");
   let sum=0/1 in
   for alpha in nilrad_roots(P) do
     if is_complex(alpha,x) then sum +:= 1/2
@@ -504,7 +504,7 @@ set dim_u_cap_p (KGBElt x) = int: dim_u_cap_p(theta_stable_parabolic(x))
   weight lambda. .}
 set dim_u_cap_p (ratvec lambda,KGBElt x) = int:
   let P=parabolic_by_wt(lambda,x) in
-  assert(parabolic_is_theta_stable(P),"Parabolic is not theta-stable");
+  assert(@:parabolic_is_theta_stable(P),"Parabolic is not theta-stable");
   dim_u_cap_p(P)
 
 {. (Auxiliary function) .}
@@ -649,19 +649,19 @@ set Aq_reducible (KGBElt x,ratvec lambda, ratvec lambda_q) = ParamPol:
   then t_L_new=trivial(Levi(P_new))
   , shift = w1*lambda-rho_u(P_new)
   in
-  assert(parabolic_is_theta_stable(P_new),"q is not theta-stable");
+  assert(@:parabolic_is_theta_stable(P_new),"q is not theta-stable");
   let pi_L= parameter( x(t_L_new), lambda(t_L_new)+shift, nu(t_L_new)+shift )
   in
-  assert(dimension(pi_L)=1,"pi_L is not one-dimensional");
+  assert(@:dimension(pi_L)=1,"pi_L is not one-dimensional");
   theta_induce_irreducible(pi_L,G)
 
 {. A_q(lambda) module defined as above, but as a parameter, assuming it is
   irreducible. .}
 set Aq (KGBElt x_in,ratvec lambda, ratvec lambda_q) = Param:
   let P=%Aq_reducible(x_in,lambda,lambda_q)
-  in assert(#P<=1,"Aq is not irreducible. Use Aq_reducible(x,lambda) instead");
+  in assert(@:#P<=1,"Aq is not irreducible. Use Aq_reducible(x,lambda) instead");
   let (c,p)=P[0]
-  in assert(c=1,"Aq has multiplicity. Use Aq_reducible(x,lambda) instead");
+  in assert(@:c=1,"Aq has multiplicity. Use Aq_reducible(x,lambda) instead");
   p
 
 {. If not provided, assume lambda_q=lambda in the definition of A_q. .}
@@ -730,8 +730,8 @@ set goodness(KGBElt x,ratvec lambda_in,ratvec lambda_q) = string:
    makes sense if L is the Levi of a (standard) theta-stable parabolic. .}
 set is_good (Param p_L,RealForm G) = bool:
   let L=real_form(p_L) in
-  assert(is_standard_Levi(L,G),"L is not standard");
-  assert(parabolic_is_theta_stable(make_parabolic(L,G)),
+  assert(@:is_standard_Levi(L,G),"L is not standard");
+  assert(@:parabolic_is_theta_stable(make_parabolic(L,G)),
   "L is not Levi of theta-stable parabolic");
   let rho_u=rho(G)-rho(L)
   in let v=infinitesimal_character(p_L)+rho_u
@@ -744,8 +744,8 @@ set is_good (Param p_L,RealForm G) = bool:
    makes sense if L is the Levi of a theta-stable parabolic. .}
 set is_weakly_good (Param p_L,RealForm G) = bool:
   let L=real_form(p_L) in
-  assert(is_standard_Levi(L,G),"L is not standard");
-  assert(parabolic_is_theta_stable(make_parabolic(L,G)),
+  assert(@:is_standard_Levi(L,G),"L is not standard");
+  assert(@:parabolic_is_theta_stable(make_parabolic(L,G)),
   "L is not Levi of theta-stable parabolic");
   let rho_u=rho(G)-rho(L)
   in is_dominant(G,infinitesimal_character(p_L)+rho_u)
@@ -755,8 +755,8 @@ set is_weakly_good (Param p_L,RealForm G) = bool:
    defined if p_L is one_dimensional. .}
 set is_fair (Param p_L,RealForm G) = bool:
   let L=real_form(p_L) in
-  assert(is_standard_Levi(L,G),"L is not standard");
-  assert(parabolic_is_theta_stable(make_parabolic(L,G)),
+  assert(@:is_standard_Levi(L,G),"L is not standard");
+  assert(@:parabolic_is_theta_stable(make_parabolic(L,G)),
   "L is not Levi of theta-stable parabolic");
   let rho_u=rho(G)-rho(L)
   in let v=infinitesimal_character(p_L)+rho_u-rho(L)
@@ -771,8 +771,8 @@ set is_fair (Param p_L,RealForm G) = bool:
    if p_L is one-dimensional. .}
 set is_weakly_fair (Param p_L,RealForm G) = bool:
   let L=real_form(p_L) in
-  assert(is_standard_Levi(L,G),"L is not standard");
-  assert(parabolic_is_theta_stable(make_parabolic(L,G)),
+  assert(@:is_standard_Levi(L,G),"L is not standard");
+  assert(@:parabolic_is_theta_stable(make_parabolic(L,G)),
   "L is not Levi of theta-stable parabolic");
   let rho_u=rho(G)-rho(L)
   in is_one_dimensional(p_L) and
@@ -800,7 +800,7 @@ set goodness (Param p_L,RealForm G) = string:
 set Aq_packet (RealForm G,ComplexParabolic P) = [Param]:
   for Q in theta_stable_parabolics(G,P)
   do let ind=theta_induce_irreducible(trivial(Levi(Q)),G) in
-    assert(#ind=1,"induced in A_packet is not irreducible");
+    assert(@:#ind=1,"induced in A_packet is not irreducible");
     ind.first_param { forget the coefficient, collect the parameter }
   od
 
@@ -838,7 +838,7 @@ set theta_stable_parabolics_with(KGBElt x)=[Parabolic]:
   theta_stable_parabolics(G) as additional input for efficiency. .}
 set theta_stable_parabolics_with([Parabolic] tsp,KGBElt x)=[Parabolic]:
   let G=real_form(x) in
-  assert(G=real_form(tsp[0]),"Group mismatch!");
+  assert(@:G=real_form(tsp[0]),"Group mismatch!");
   let temp=[Parabolic]:[] in for i:#tsp do let (S,y)=tsp[i] in
   if (S,x)=(S,y) then temp#:=tsp[i] fi od; temp
 
@@ -934,7 +934,7 @@ set two_rho_u(Parabolic P)=vec:ratvec_as_vec(2*rho_u(P))
    one \alpha for each complex pair {\alpha,\theta\alpha} of roots in u
 }
 set two_rho_S(Parabolic P,KGBElt x)=vec:
-  assert(parabolic_is_theta_stable(P),"P is not theta-stable");
+  assert(@:parabolic_is_theta_stable(P),"P is not theta-stable");
   let rd=root_datum(x), rd_L=root_datum(Levi(P)), theta=involution(x) in
   two_rho_S(theta,rd)-two_rho_S(theta,rd_L)
 
@@ -1001,7 +1001,7 @@ set two_rho_u_cap_s (Parabolic P,KGBElt x) = vec:
   the resulting term might not be standard
 }
 set twist_by_minus_2rho_u_cap_s(Parabolic P,Param p_L)=Param:
-  assert(nu(p_L)=null(rank(Levi(P))),"nu(p_L)\ne 0");
+  assert(@:nu(p_L)=null(rank(Levi(P))),"nu(p_L)\ne 0");
   let G=real_form(P.x) then
   x_L=x(p_L) then
   x_G=embed_KGB(x_L,G) in

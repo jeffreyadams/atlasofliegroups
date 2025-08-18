@@ -15,7 +15,7 @@ set is_finite_dimensional (Param p) = bool:
 
 {.for protecting functions intended for finite dimensional parameters only.}
 set fd_only (Param p) = Param:
-  assert(is_finite_dimensional(p),"representation is infinite dimensional"); p
+  assert(@:is_finite_dimensional(p),"representation is infinite dimensional"); p
 
 {.dimension of finite dimensional representation from its highest weight.}
 set dimension (RootDatum rd, ratvec lambda) = int:

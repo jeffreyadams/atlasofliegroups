@@ -62,9 +62,9 @@ all (for alpha_check in rd.simple_coroots do
 }
 
 set T_std(Param p,ratvec gamma_target)=ParamPol:
-assert(is_not_less_singular(p.root_datum,p.infinitesimal_character,gamma_target),"translating to less singular infinitesimal character");
-assert(is_dominant(p),"p is not dominant");
-assert(is_integrally_dominant(p.root_datum,gamma_target),"T_std: target is not integrally dominant");
+assert(@:is_not_less_singular(p.root_datum,p.infinitesimal_character,gamma_target),"translating to less singular infinitesimal character");
+assert(@:is_dominant(p),"p is not dominant");
+assert(@:is_integrally_dominant(p.root_datum,gamma_target),"T_std: target is not integrally dominant");
 T_param(p,gamma_target)
 
 { translate a |ParamPol| by translating each term }
@@ -103,21 +103,21 @@ putting it in a ParamPol automatically converts it to (KGB(G,2)),[1],[1/2])
 { translation functor of irreducible; returns |ParamPol| with at most one term
   gamma_target must at least as singular and integrally dominant}
 set T_irr (Param p,ratvec gamma_target) = ParamPol:  {with at most 1 term}
-assert(is_not_less_singular(p.root_datum,p.infinitesimal_character,gamma_target),"translating to less singular infinitesimal character");
-assert(is_dominant(p),"p is not dominant");
-assert(is_integrally_dominant(p.root_datum,gamma_target),"T_irr: target is not integrally dominant:" + gamma_target.to_string);
+assert(@:is_not_less_singular(p.root_datum,p.infinitesimal_character,gamma_target),"translating to less singular infinitesimal character");
+assert(@:is_dominant(p),"p is not dominant");
+assert(@:is_integrally_dominant(p.root_datum,gamma_target),"T_irr: target is not integrally dominant:" + gamma_target.to_string);
 if p.infinitesimal_character=gamma_target then p { trivial case }
 else  #I_will_survive(p,gamma_target)*T_param(p,gamma_target) { multiply by 1 or 0 }
 fi
 {check: translate param(KGB(G,2),[1],[1/2])  -> -1/2: non-dominant gets made dominant}
 {Question: if p is not standard then trouble - allow this?}
 
-{return an actual Param if nonzero}
-set T_irr_nonzero(Param p,ratvec gamma_target)=Param:
-let P=T_irr(p,gamma_target) in
-assert(#P!=0,"module is 0");
-assert(#P=1,"module is not irreducible");
-first_param(P)
+{ return an actual Param if nonzero }
+set T_irr_nonzero (Param p,ratvec v) = Param:
+  let P=T_irr(p,v) in
+  assert(@:P.!=,"module is 0");
+  assert(@:#P=1,"module is not irreducible");
+  first_param(P)
 
 { translate a ParamPol of irreducibles by translating each term by the same shift }
 set T_irr (ParamPol P, ratvec gamma_target)= ParamPol:

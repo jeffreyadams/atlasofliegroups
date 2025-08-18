@@ -65,8 +65,8 @@ See khatHowe Proposition 4.4
 x must be in distinguished fiber, and make 2rho_c G-dominant
 }
 set small_Levi (KGBElt x) = RealForm:
-  assert(in_distinguished_fiber(x),"x is not in distinguished fiber");
-  assert(is_dominant(real_form(x),tworho_c(x))
+  assert(@:in_distinguished_fiber(x),"x is not in distinguished fiber");
+  assert(@:is_dominant(real_form(x),tworho_c(x))
         ,"x does not make 2rho_c dominant");
   { Levi_from_lambda(tworho_c(x),x) }
   Levi(parabolic_by_wt(tworho_c(x),x))
@@ -118,7 +118,7 @@ set R_K_dom (KGBElt x) = [WeylElt]:  {these are elements of W(G,H)}
 set W_K (KGBElt x) = (RootDatum,[WeylElt]): (K_root_datum(x),R_K_dom(x))
 
 set move_weight (KHighestWeight hw,KGBElt y) = KHighestWeight:
-  assert(real_form(hw)=real_form(y),"Real form mismatch");
+  assert(@:real_form(hw)=real_form(y),"Real form mismatch");
   k_highest_weight(y,cross_divide(y,hw.x)*hw.mu)
 
 { first replace (x,mu) with an equivalent ("nice") one such that x makes
@@ -208,7 +208,7 @@ set make_strongly_dominant (KGBElt x,vec mu) =
 { set make_strongly_dominant(KGBElt x,ratvec mu)=(ratvec,mat):
   let (mu_dom,w_1,w_2,done)=
   make_strongly_dominant_long(x,mu) then
-  m_1=assert(done=true,"make_strongly_dominant failed");
+  m_1=assert(@:done=true,"make_strongly_dominant failed");
   lift_action(x,w_1) then
   {()=prints("lifted") then}
   m_2=w_matrix(w_2) then

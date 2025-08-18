@@ -39,28 +39,28 @@ in if =#non_0 then (0,M) { return gcd=0, no column operations }
 
 { no-overflow matrix multiplication }
 set safe_prod (Mat A, Vec B ) = Vec:
-   assert(#A=#B,"size mismatch");
+   assert(@:#A=#B,"size mismatch");
    let tA = for i:#A[0] do for col in A do col[i] od od in
    for row@i in tA do
       let s=0 in for a@j in row do s+:=a*B[j] od; s
    od
 
 set safe_prod (Mat A, Mat B ) = Mat:
-   assert(#A=#B[0],"size mismatch");
+   assert(@:#A=#B[0],"size mismatch");
    let tA = for i:#A[0] do for col in A do col[i] od od in
    for col@k in B do for row@i in tA do
       let s=0 in for a@j in row do s+:=a*col[j] od; s
    od od
 
 set safe_prod (RatMat A, RatVec B ) = RatVec:
-   assert(#A=#B,"size mismatch");
+   assert(@:#A=#B,"size mismatch");
    let tA = for i:#A[0] do for col in A do col[i] od od in
    for row@i in tA do
       let s=rat:0 in for a@j in row do s+:=a*B[j] od; s
    od
 
 set safe_prod (RatMat A, RatMat B ) = RatMat:
-   assert(#A=#B[0],"size mismatch");
+   assert(@:#A=#B[0],"size mismatch");
    let tA = for i:#A[0] do for col in A do col[i] od od in
    for col@k in B do for row@i in tA do
       let s=rat:0 in for a@j in row do s+:=a*col[j] od; s
@@ -126,7 +126,7 @@ set ech_det (Mat A) = int:
 
 
 set ech_solve (Mat A, Vec b) = Maybe<Vec>:
-(  let n= assert(#b=#A,"equation mismatch"); #A, (M,C,s,) = column_echelon(A)
+(  let n= assert(@:#b=#A,"equation mismatch"); #A, (M,C,s,) = column_echelon(A)
    then k=#M, j=0 { runs up to k, used to index backwards }
    then sol= for :k do 0 od
 in for i:n
@@ -143,7 +143,7 @@ in for i:n
 
 { ech_solve(mat A,[rat] b) solves A*x=b for the [rat] x, possibly no solution }
 set ech_solve (Mat A, [rat] b) = Maybe<RatVec>:
-(  let n= assert(#b=#A,"equation mismatch"); #A, (M,C,s,) = column_echelon(A)
+(  let n= assert(@:#b=#A,"equation mismatch"); #A, (M,C,s,) = column_echelon(A)
    then k=#M, j=0 { runs up to k, used to index backwards }
    then sol=for :k do rat:0 od
 in for i:n
@@ -176,7 +176,7 @@ set row_negate (Mat M, int k) = Mat:
    for col in M do for e@i in col do if i=k then -e else e fi od od
 
 set diagonalise (Mat M) = (Mat,Vec,Mat) :
-   let c=#M in assert(>c,"No columns");
+   let c=#M in assert(@:c>0,"No columns");
    let r=#M[0] then L=Mat:id_mat(r), R=Mat:id_mat(c), min = min(r,c) in
    for k:min
    do { first move minimal remaining entry to position (k,k) }
@@ -193,7 +193,7 @@ set diagonalise (Mat M) = (Mat,Vec,Mat) :
       ;  L := for col@k in L do sweep(col) od { here we must do all of L }
       ;  let r=abs_mindex(M[k][k+1:]) in >=r { while we find a nonzero entry }
       do r+:=k+1 {to actual row number}; M:=row_swap(M,k,r); L:=row_swap(L,k,r)
-      ; assert(0<M[k][k] and M[k][k]<pivot,"Pivot advance"); pivot:=M[k][k]
+      ; assert(@:0<M[k][k] and M[k][k]<pivot,"Pivot advance"); pivot:=M[k][k]
       od
    ;  while { a leg or arm at |k| is zero, but the other is not }
          for j:c-(k+1) from k+1
@@ -205,7 +205,7 @@ set diagonalise (Mat M) = (Mat,Vec,Mat) :
          in M:=col_swap(M,k,j); R:=col_swap(R,k,j); pivot:=M[k][k]
          ; for j:c-(k+1) from k+1
            do let (q,r)=M[j][k]\%pivot
-           in R[j] -:= (R[k],q); M[j] -:= (M[k],q); assert(M[j][k]=r)
+           in R[j] -:= (R[k],q); M[j] -:= (M[k],q); assert(@:M[j][k]=r)
            ; !=r
            od.any
          do () od { cleared the arm, but now the leg may have become nonzero }
@@ -218,7 +218,7 @@ set diagonalise (Mat M) = (Mat,Vec,Mat) :
       ;  let r=abs_mindex(M[k][k+1:])
       in if <r then break { if first sweep clears, be done } fi
       ;  while r +:= k+1; M:=row_swap(M,k,r); L:=row_swap(L,k,r)
-         ; assert(0<M[k][k] and M[k][k]<pivot,"Pivot advance"); pivot:=M[k][k]
+         ; assert(@:0<M[k][k] and M[k][k]<pivot,"Pivot advance"); pivot:=M[k][k]
          ; sweep:= row_operation(k,
              for e@i in M[k] do if i<=k then 0 else e\pivot fi od)
          ; for j:c-k from k do M[j]:=sweep(M[j]) od { no effect on M[:k] }

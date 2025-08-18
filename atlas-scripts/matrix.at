@@ -37,7 +37,7 @@ in for i:k { loop over rows of |M|, which get modified by column operations }
          let (d,c_ops) = { gcd of post-diagonal part of row i & colmn ops }
            Bezout(vector(jj-i,(int j):M[i,i+j])) { a short non-empty range }
          then new_M_cols = M[i:jj] * c_ops, new_C_cols = C[i:jj] * c_ops
-      in assert(all(jj-i,(int j): new_M_cols[i,j]=if j=0 then d else 0 fi))
+      in assert(@:all(jj-i,(int j): new_M_cols[i,j]=if j=0 then d else 0 fi))
       ; for j:jj-i do M[i+j]:=new_M_cols[j]; C[i+j]:=new_C_cols[j] od
       fi
    od; (^M,^C) { transpose back on exit }

@@ -240,7 +240,7 @@ set is_elliptic_for_Levi ([int] Levi,WeylElt w) = bool:
 
 set minimal_representatives_with_witness (([int],WeylElt)args) =
    [WeylElt,WeylElt]:
-   assert(is_elliptic_for_Levi(args),"Element not elliptic for Levi subgroup");
+   assert(@:is_elliptic_for_Levi(args),"Element not elliptic for Levi subgroup");
       minima_He(args)
 set minimal_representatives (([int],WeylElt)args) = [WeylElt]:
    args.minimal_representatives_with_witness.(map(fst))
@@ -310,9 +310,10 @@ set untabled_tester (LeviConjugacyTester Levi_test) = ConjugacyTester:
    , ell_test = (WeylElt->bool):
      { first conjugate |x| to standard Levi |sLevi| and check that it arrived }
        let x_image = /w_x * x * w_x in
-       assert(Levi_of(x_image)=sLevi.sort
-             ,@: "Moving "+x.to_string+" to standard Levi "+sLevi.to_string
-	         +" failed: "+x_image.to_string );
+       assert(@:(Levi_of(x_image)=sLevi.sort
+		,"Moving "+x.to_string+" to standard Levi "+sLevi.to_string
+	         +" failed: "+x_image.to_string
+		));
        Levi_test(sLevi,x_image)
 in
    (WeylElt y) bool: { the actual test |is_conjugate_to(x)| }
@@ -537,7 +538,7 @@ set W_class_table ( RootDatum rd
    , !npr=rd.nr_of_posroots
    , !e = class_nr_of(id_W(rd))
    then inner ([int] x, [int] y) = int:
-     assert(#x=ncc and #y=ncc,"Wrong sizes");
+     assert(@:#x=ncc and #y=ncc,"Wrong sizes");
      let s = for size@i in sizes do size*x[i]*y[i] od.sum then (q,r)=s \% nW in
      if r=0 then q else error("Non integer inner product ",s/nW) fi
    , sum ([int] x, [int] y) = [int]: for xi@i in x do xi+y[i] od
@@ -564,16 +565,16 @@ in
 , {inner} inner
 , {direct_sum}
   (([int],[int])(x,y):pair) [int]:
-  assert(#x=ncc and #y=ncc,"Wrong sizes"); sum(pair)
+  assert(@:#x=ncc and #y=ncc,"Wrong sizes"); sum(pair)
 , {Cartesian_power}
-  ([int] x,int n) [int]: assert(#x=ncc,"Wrong size"); for v in x do n*v od
+  ([int] x,int n) [int]: assert(@:#x=ncc,"Wrong size"); for v in x do n*v od
 , {tensor}
   (([int],[int])(x,y):pair) [int]:
-  assert(#x=ncc and #y=ncc,"Wrong sizes");  product(pair)
+  assert(@:#x=ncc and #y=ncc,"Wrong sizes");  product(pair)
 , {tensor_power}
-   ([int] x, int n) [int]: assert(#x=ncc,"Wrong size"); for xi in x do xi^n od
+   ([int] x, int n) [int]: assert(@:#x=ncc,"Wrong size"); for xi in x do xi^n od
 , {sym_power_refl}
-  (int n) [int]: assert(n<=npr,"No symmetric powers recorded beyond "+npr);
+  (int n) [int]: assert(@:n<=npr,"No symmetric powers recorded beyond "+npr);
      while k<n { extend until |reflection_sympowers[n]| has been set }
      do k+:=1; reflection_sympowers[k] :=
         for j:ncc
@@ -626,7 +627,7 @@ set root_datum (WeylClassTable tab) = RootDatum:
 set reorder (WeylClassTable tab, [WeylElt] reps) = WeylClassTable:
    let !n = tab.n_classes, rd = tab.root_datum
    then !class_map = [int]:
-        assert(#reps=n,"There should be "+n+" class representatives")
+        assert(@:#reps=n,"There should be "+n+" class representatives")
       ; for w in reps do tab.class_of(w) od
 in if class_map = #n then tab { no reordering needed }
    else
@@ -634,7 +635,7 @@ in if class_map = #n then tab { no reordering needed }
       , sizes = for v in class_map do tab.class_sizes[v] od
       then export([int]chi) = [int]: for i:n do chi[class_map[i]] od
       , inner([int] x,[int] y) = int:
-	 assert(#x=n and #y=n,"Wrong sizes");
+	 assert(@:#x=n and #y=n,"Wrong sizes");
 	 let s = for size@i in sizes do size*x[i]*y[i] od.sum
 	 then (q,r)=s \% tab.order_W
       in if r=0 then q else error("Non integer inner product ",s/tab.order_W) fi

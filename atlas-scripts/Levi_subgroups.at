@@ -371,28 +371,28 @@ set extend_Levi (RootDatum rd,[int] Levi) = [int]:
 	 AND(mask,to_bitset(bots))
       ))
 in for m in mins do if is_member_bitset(m+npr,bottoms) then return Levi#m fi od
-;  assert(#mins=0) { if there were any candidates, one should work }
+;  assert(@:#mins=0) { if there were any candidates, one should work }
 ;  [] { return indication that |Levi| was already maximal }
 )
 
 { return maximal Levi containing |Levi|, ordered in the way they were found }
 set maximize_Levi (RootDatum rd,[int] !Levi) = [int]:
    let ssr = rd.semisimple_rank, max=Levi in
-   while #max<ssr do max:=extend_Levi(rd,max); assert(#max!=0) od; max
+   while #max<ssr do max:=extend_Levi(rd,max); assert(@:#max!=0) od; max
 
 { find chamber defined by a maximal system, and its simple root permutation }
 set chamber_max_system (RootDatum rd, [int] sys) = (WeylElt,[int]):
    let roots= rd.rank # for index in sys do root(rd,index) od
    , ssr=rd.semisimple_rank
    then positions = { a list of positions in |roots| (rather than a Weyl word) }
-      assert(#sys=ssr) { first check that |sys| has enough roots };
+      assert(@:#sys=ssr) { first check that |sys| has enough roots };
       while let i=first(ssr,(int i)bool: not is_posroot(rd,roots[i]))
       in i>=0
       do roots := left_reflect(rd,roots[i],roots); i { record position }
      ~od
    then { convert |positions| to indices in |rd| of corresponding |roots| }
      perm= for alpha in roots do root_index(rd,alpha) od
-   in assert(perm.sort=#ssr,"Not a complete system");
+   in assert(@:perm.sort=#ssr,"Not a complete system");
    (W_elt(rd,for pos in positions do perm[pos] od),perm)
 
 { for non-standard Levi: some conjugate standard Levi, and conjugator from it }

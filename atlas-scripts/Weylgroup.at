@@ -20,7 +20,7 @@ set from_simple (RootDatum rd, vec alpha) = (WeylElt,vec):
   then ww = { simple reflections done left-to-right, so back is right-to-left }
     while { first find index that will make alpha shorter, which should exist }
       let i = last( ssr, (int i): coroot(rd,i)*alpha>0 ) in
-      assert(i.>=,"Not a positive root")  { some descent must be found }
+      assert(@:i>=0,"Not a positive root")  { some descent must be found }
     ; alpha != root(rd,i) { this is the condition of the outer while! }
     do alpha := W_gen(rd,i)*alpha; i
     od
@@ -153,7 +153,7 @@ set order_W_simple ((string,int)(,rank):pair) = int:
   fac(rank)*product(simple_root_labels(rd))*det(rd.Cartan_matrix)
 
 set order_W_simple (LieType lt) = int:
-  assert(lt.derived_is_simple,"Derived Root Datum is not simple");
+  assert(@:lt.derived_is_simple,"Derived Root Datum is not simple");
 { magic formula for the order of the Weyl group for a simple Lie type: }
   let rd=lt.adjoint, r=semisimple_rank(lt)
   in fac(r)*product(simple_root_labels(rd))*det(lt.Cartan_matrix)

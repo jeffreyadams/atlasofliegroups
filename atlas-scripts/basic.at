@@ -73,7 +73,11 @@ set === = ==@([int],[int])! { comparison of two |[[int]]| available as |===| }
 
 set !minus_1 = -1 { used to be more efficient than |-1|, now equally efficient }
 
-set # (int n)= [int]: for i:n do i od       { [0,1,...,n-1] }
+set # (int n) = [int]: for i:n do i od       { [0,1,...,n-1] }
+any_type T begin
+set indices ([T]a) = [int]: # #a { faster than |for @i in a do i od| }
+end
+
 set # (bool b) = int: if b then 1 else 0 fi { Iverson symbol }
 set sign (bool b) = int: { |(-1)^#b|, i.e.: } if b then -1 else 1 fi
 
@@ -81,9 +85,17 @@ set range (int a, int b) = [int]: for i : b-a from a do i od
 
 set ^ = !=@(bool,bool) { simple exclusive or }
 
-set assert (bool b,(->string) report) = void: if not b then error(report()) fi
-set assert (bool b) = void: assert(b,@:"assertion failed") { default message }
-set assert (bool b,string message) = void: if not b then error(message) fi
+set seat_belt_on = true { whether runtime tests are activated }
+
+set assert ((->bool,string)f) = void: { the fastest form when disabled }
+   if seat_belt_on
+   then let (b,message)=f() in if not b then error(message) fi
+   fi
+set assert ((->bool)b,string message) = void: { for easier conversion }
+   if seat_belt_on { using |and| here would be slightly less efficient }
+   then if not b() then error(message) fi
+   fi
+set assert ((->bool)b) = void: assert(@:(b(),"assertion failed"))
 
 set count (int limit,(int->bool) predicate) = int:
   let c=0 in for i:limit do if predicate(i) then c+:=1 fi od; c
@@ -161,10 +173,10 @@ set max ((T,T->bool)leq) = (T x, T y) T: if leq(x,y) then y else x fi
 
 { extensions of these to lists of any posiitve length }
 set min_list ((T,T->bool)leq) = ([T] a) T:
-  let l=#a in assert(l.>,"Minimum of an empty list");
+  let l=#a in assert(@:l>0,"Minimum of an empty list");
   let m=a~[0] in for i:l-1 do if not leq(m,a[i]) then m:=a[i] fi od; m
 set max_list ((T,T->bool)leq) = ([T] a) T:
-  let l=#a in assert(l.>,"Maximum of an empty list");
+  let l=#a in assert(@:l>0,"Maximum of an empty list");
   let m=a~[0] in for i:l-1 do if not leq(a[i],m) then m:=a[i] fi od; m
 
 { versions seeded with a "limit value" to use in case of an empty list }
@@ -288,9 +300,9 @@ set * (int c,[int] r) = [int]: for a in r do c*a od
 set sum ([int] r) = int: let s=0 in for a in r do s+:=a od; s
 set product ([int] r) = int: let p=1 in for a in r do p*:=a od; p
 
-set half (int n) = int: let (q,r)=n\%2 in assert(=r,"Inexact halving"); q
+set half (int n) = int: let (q,r)=n\%2 in assert(@:r=0,"Inexact halving"); q
 set exact_divide (int a, int b) = int:
-    let (q,r)=a\%b in assert(=r,"Inexact division"); q
+    let (q,r)=a\%b in assert(@:r=0,"Inexact division"); q
 
 set int_format = to_string@int
 
@@ -329,7 +341,7 @@ set is_disjoint_from (vec L) = (vec->bool):
    let b = ~L.to_bitset in (vec S)bool: bitwise_subset(S.to_bitset,b)
 
 set set_bit_positions (int n) = vec:
-   assert(n.>=,"Infinite number of set bits for negative number");
+   assert(@:n>=0,"Infinite number of set bits for negative number");
    while let pow = AND_NOT(n,n-1) in !=pow do n-:=pow; bit_length(pow)-1 od
 set first_set_bit (int n) = int:
    bit_length(AND_NOT(n,n-1))-1
@@ -374,10 +386,13 @@ set ! = fac@int { allo conventional factorial notation }
 
 { convert to base n as polynomial: small coef polynomial evaluating to k at n }
 set to_base_poly (int b) = (int->vec):
-  (int n): assert(n.>=); let r=0{dummy for multi-assign} in
-  vec: while n>0 do set (n,r):=n\%b; r od
+  assert(@:b>=2,"Cannot express integers in base "##b.to_string);
+  (int n):
+    assert(@:n>=0,"Cannot express negative integer in base "##b.to_string);
+    let r=0{dummy for multi-assign} in vec: while n>0 do set (n,r):=n\%b; r od
 
 set to_base_fixed_length (int b, int l) = (int->vec{of length |l|}):
+  assert(@:b>=2,"Cannot express integers in base "##b.to_string);
   (int n): let r=0{dummy for multi-assign} in
   vec: for :l do set (n,r):=n\%b; r od { get |l| finals digits, regardless }
 
@@ -717,7 +732,7 @@ set - (mat m)= mat: { transform 36+128=164: 128 means negate entries }
 set sum ((int,int) shape, [mat] L) = mat:
   let len=#L in
   if =len then null(shape)
-  else let s=L~[0] in assert(shape(s)=shape); for i:len-1 ~do s +:= L[i] od; s
+  else let s=L~[0] in assert(@:shape(s)=shape); for i:len-1 ~do s +:= L[i] od; s
   fi
 { square matrices are frequent, so there is a special case of |sum| for them }
 set sum (int n,[mat] L) = mat: sum((n,n),L)
@@ -754,7 +769,7 @@ set ^ = (mat,int->mat):
         mm*if =r then mm else mm*m fi
     fi
   in { ^@(mat,int) = } (mat m,int n) mat:
-    assert(=shape(m),"Non square matrix in exponentiation");
+    assert(@:shape(m).=,"Non square matrix in exponentiation");
   if n>0 then matrix_power(m,n) elif =n then id_mat(n_rows(m))
   else let (m1,d)=invert(m) in
      if d=1 then matrix_power(m1,-n)
@@ -772,20 +787,21 @@ set / = inverse@mat { so |/M| is the same as |M^-1|, but more direct }
 set rank (mat A) = int: let (,,pivots,)=A.echelon in #pivots
 
 set det (mat A) = int:
-( assert(=shape(A),"Determinant of non-square matrix")
+( assert(@:shape(A).=,"Determinant of non-square matrix")
 ; let (M,,,flip) = echelon(A) in
   if =shape(M) then flip*M.main_diagonal.product else 0 fi
 )
 
 set trace (mat A) = int:
-  let (n,):sh=shape(A) in assert(=sh,"Non square matrix"); A.main_diagonal.sum
+  let (n,):sh=shape(A) in
+  assert(@: =sh,"Non square matrix"); A.main_diagonal.sum
 
 set char_poly (mat A) = vec: { characteristic polynomial of integer matrix }
   let ps = vec:[] { power sums of the eigenvalues }
   , es = vec:[1] { elementary sym.fct.s of minus the eigenvalues, reversed }
   , B=null(0,0), (n,):sh=shape(A)
   then trace (mat M) = sum(for i:n do M[i,i] od) { a bit faster than the above }
-in assert(=sh,"Non square matrix");
+in assert(@: =sh,"Non square matrix");
   { use Newton's identities $k*e_k=-\sum_{i=1}^k p_i*e_{k-i}$ to compute |es| }
   for k:n from 1
   do ps #:= trace(B := if k=1 then A else B*A fi) { compute $p_k(\Spec(A))| }
@@ -845,7 +861,7 @@ set sum (mat m)= vec: m*ones(n_columns(m))
 set solve (mat A,vec b) = Maybe<vec>:
 (  let (M,C,s,) = echelon(A) then (n,k)=shape(M)
    then j=0 { runs up to k, used to index backwards }, sol=null(k)
-   in assert(#b=n,"equation mismatch")
+   in assert(@:#b=n,"equation mismatch")
 ;  for i:n
   ~do if j<#s and i=s~[j] { then it is a pivot row, with pivot at M[j][i] }
       then let Mj=M~[j] then (q,r)=b[i]\%Mj[i] in
@@ -861,7 +877,7 @@ set solve (mat A,vec b) = Maybe<vec>:
 set solve (mat A,mat B) = Maybe<mat>: { matrix |X| satisfying |A*X=B|, if any }
 (  let (M,C,s,) = echelon(A) then (n,k)=shape(M)
    then sols = mat: { column |j| is solutions of |M*y=B[j]| }
-      assert(n_rows(B)=n,"equation mismatch");
+      assert(@:n_rows(B)=n,"equation mismatch");
       k { size of each solution column} #
       for b in B
       do let j=0 { runs up to |k|, used to index |s|, |M| backwards }
@@ -887,7 +903,7 @@ set required_solution ((mat,mat) system) = mat: system.solve.requisition
 
 { multiplicative order of a matrix, hangs unless finite }
 set order (mat !M) = int:
-  let (n,):p =shape(M) in assert(=p,"Matrix is not square");
+  let (n,):p =shape(M) in assert(@: =p,"Matrix is not square");
   let N=M, order=1, I=id_mat(n) in
   while N!=I do N *:= M; order+:=1 od; order
 
@@ -916,7 +932,7 @@ set sum (int l,[ratvec] list) = ratvec: { sum of ratvecs of constant length l }
 }
 set * ([ratvec] M,ratvec v) = ratvec:
   let m=#M { number of columns } in
-  assert(!=m { cannot handle empty matrix } and m=#v,"size mismatch");
+  assert(@:m!=0 { cannot handle empty matrix } and m=#v,"size mismatch");
   let result = null(#M[0])/1 in for col@j in M do result +:= col*v[j] od;
   result
 
@@ -927,7 +943,7 @@ set \ (ratvec v, int k) = vec: let (n,d)=%v in n\(k*d)
 
 { do as |v.numer| (or |\ %v|) would do, but check that denominator is 1 }
 set ratvec_as_vec (ratvec v) = vec:
-  let (w,d)=%v in assert(d=1,"Not an integer vector"); w
+  let (w,d)=%v in assert(@:d=1,"Not an integer vector"); w
 
 set ~ (ratvec v)= ratvec: v~[:]
 set lower (int k,ratvec v)= ratvec: v[:k]
@@ -945,7 +961,7 @@ set <  (ratvec v) = bool: < numer(v)
 set solve (mat A, ratvec b) = Maybe<ratvec>:
 (  let (M,C,s,) = echelon(A) then (n,k)=shape(M)
    then j=0 { runs up to k, used to index backwards }, sol=for :k do rat:0 od
-   in assert(#b=n,"equation mismatch")
+   in assert(@:#b=n,"equation mismatch")
 ;  for i:n
   ~do if j<#s and i=s~[j] { then it is a pivot row, with pivot at M[j][i] }
       then let Mj=M~[j] then q=b[i]/Mj[i] in
@@ -976,13 +992,13 @@ set s_to_minus_1 (Split x) = int: -%x  { let (a,b)=%x in a-b }
 set times_s (Split x) = let (a,b)=%x in Split: (b,a)
 
 set split_as_int (Split x) = int:
-  let (r,y)=%x in assert(=y,"split is not an integer"); r
+  let (r,y)=%x in assert(@:y.=,"split is not an integer"); r
 set \% (Split x, int n) = (Split,Split):
   let (a,b)=%x then (qa,rq)=a\%n, (qb,rb)=b\%n in ((qa,qb),(rq,rb))
 { divide Split by integer, quotient of \% but requiring rest to be zero }
-set half (Split w) = Split: let (q,r)=w\%2 in assert(=r,"Inexact halving"); q
+set half (Split w) = Split: let (q,r)=w\%2 in assert(@: =r,"Inexact halving"); q
 set / (Split w,int n) = Split:
-  let (q,r)=w\%n in assert(=r,"Inexact division"); q
+  let (q,r)=w\%n in assert(@: =r,"Inexact division"); q
 set % (Split w,int n) = Split: let (a,b)=%w in (a%n,b%n)
 set exp_s(int n) = Split: if n.is_even then 1 else s fi
 
@@ -1378,7 +1394,7 @@ set simple_system_from_positive (mat posroots,mat poscoroots) = (mat,mat):
   then test = is_simple_for(sub_2rho_check), co_test = is_simple_for(sub_2rho)
   then Levi = list( #posroots,   (int i)bool: test(posroots[i]) )
   , co_Levi = list( #poscoroots, (int i)bool: co_test(poscoroots[i]) )
-  in assert(Levi=co_Levi,"Not a valid positive system");
+  in assert(@:Levi=co_Levi,"Not a valid positive system");
   ( n_rows(posroots) # for i in Levi do posroots[i] od
   , n_rows(poscoroots) # for i in co_Levi do poscoroots[i] od
   )
@@ -1387,7 +1403,7 @@ set root_datum_from_positive \
   ( (mat,mat) (posroots,poscoroots):pair, bool prefer_coroots ) = RootDatum:
   let (simple_roots,simple_coroots) = pair.simple_system_from_positive
   then rd = root_datum(simple_roots,simple_coroots,prefer_coroots)
-  in assert(sum(posroots)=two_rho(rd) and sum(poscoroots)=two_rho_check(rd));
+  in assert(@:sum(posroots)=two_rho(rd) and sum(poscoroots)=two_rho_check(rd));
   rd
 
 { |sub_datum| with predicate argument preserves positivity of (co)roots }
@@ -1479,7 +1495,7 @@ set (highest_root_indices,highest_coroot_indices) =
       in for i in tops.bitwise_intersection.set_bit_positions
 	 do let re = root_expression(rd,i) { of size |ssr| }
 	    then f=factor_of[first(ssr,(int k):re[k].>)]
-	 in assert(for v@j in re do =v or factor_of[j]=f od.all)
+	 in assert(@:for v@j in re do =v or factor_of[j]=f od.all)
 	 ;  result[f]:=i
 	 od
       ;  result
@@ -1509,7 +1525,7 @@ in sum(rd.semisimple_rank,exprs)
 
 { single highest root, or error if |rd| has not exactly one simple factor }
 set highest_root (RootDatum rd) = vec:
-  assert(derived_is_simple(rd),
+  assert(@:derived_is_simple(rd),
          "Multiple simple factors, no unique highest root");
   let pr=posroots(rd) in
   if not rd.prefers_coroots { when generated in root order, take short cut }
@@ -1637,7 +1653,7 @@ set matrix (WeylElt w) = mat:
    let n=w.root_datum.rank in n # for c in id_mat(n) do w*c od
 set W_elt (RootDatum rd, mat M) = WeylElt:
    let w = chamber(rd,M*two_rho(rd))
-   in assert(matrix(w)=M,"Not the matrix of any Weyl group element"); w
+   in assert(@:matrix(w)=M,"Not the matrix of any Weyl group element"); w
 set W_elt_of_reflection(RootDatum rd,int root) = WeylElt:
    chamber(rd,reflect(rd,root,two_rho(rd)))
 set W_elt_of_reflection(RootDatum rd,vec alpha) = WeylElt:
@@ -1662,7 +1678,7 @@ set inner_class (RootDatum rd, string ict) = InnerClass:
      in involution(extend(lt,"T",r),pi ## for i:r from #pi do i od,ict)
    , P=^coroot_radical(rd) { sublattice basis, in |simply_connected(...)| }
    then (P1,d)=invert(P) then prod=P1*inv0*P { base change from |P|, times |d| }
-   in assert(=(prod%d),"Inner class not compatible with root datum");
+   in assert(@:(prod%d).=,"Inner class not compatible with root datum");
    inner_class(rd,prod\d) { construct inner class from explicit involution }
 
 set inner_class (LieType lt, [ratvec] gens, string ict) = InnerClass:
@@ -1821,10 +1837,10 @@ set Bruhat_order (RealForm G) = (KGBElt,KGBElt->bool):
   let M=inverse(1-KGB_Hasse(G)) in (KGBElt x, KGBElt y) bool: !=M[#x,#y]
 
 set cross (WeylElt w,KGBElt x) = KGBElt:
-  assert(w.root_datum=x.root_datum);
+  assert(@:w.root_datum=x.root_datum);
   for s in w.word ~do x:=cross(s,x) od; x
 set cross (KGBElt x,WeylElt w) = KGBElt:
-  assert(w.root_datum=x.root_datum);
+  assert(@:w.root_datum=x.root_datum);
   for s in w.word do x:=cross(s,x) od; x
 
 set status (vec alpha,KGBElt x) = int: status(root_index(real_form(x),alpha),x)
@@ -1894,10 +1910,10 @@ set rho_check_r ((RootDatum,mat) rd_theta) = ratvec:
 { compact/noncompact status for a given KGBElt of general imaginary roots }
 set is_compact (KGBElt x) = (vec->bool):
   let coweight = rho_check_i(x)+torus_factor(x), is_im=is_imaginary(x)
-  in (vec alpha) bool: assert(is_im(alpha)); =(coweight*alpha)%2
+  in (vec alpha) bool: assert(@:is_im(alpha)); =(coweight*alpha)%2
 set is_noncompact (KGBElt x) = (vec->bool):
   let coweight = rho_check_i(x)+torus_factor(x), is_im=is_imaginary(x)
-  in (vec alpha) bool: assert(is_im(alpha)); !=(coweight*alpha)%2
+  in (vec alpha) bool: assert(@:is_im(alpha)); !=(coweight*alpha)%2
 
 { for roots not known to be imaginary, use these functions instead }
 set is_compact_imaginary (KGBElt x) = (vec->bool):
@@ -2127,10 +2143,10 @@ set trivial (RealForm G) = Param: { parameter for the trivial representation }
   param(G.x_open,null(rank(G)),rho(G))
 
 set cross (WeylElt w,Param p) = Param:
-  assert(w.root_datum=p.integrality_datum);
+  assert(@:w.root_datum=p.integrality_datum);
   for s in w.word ~do p:=cross(s,p) od; p
 set cross (Param p,WeylElt w) = Param:
-  assert(w.root_datum=p.integrality_datum);
+  assert(@:w.root_datum=p.integrality_datum);
   for s in w.word do p:=cross(s,p) od; p
 
 set K_type_pol (Param p) = KTypePol: K_type(p) { restrict, implicitly convert }
@@ -2380,10 +2396,10 @@ set pol_format (ParamPol P)= string:
 
 { find what should be unique infinitesimal character shared by all terms }
 set infinitesimal_character(ParamPol P) = ratvec:
-  assert(!=P,"empty polynomial has no infinitesimal character");
+  assert(@:P.!=,"empty polynomial has no infinitesimal character");
   let (,,gamma)=%first_param(P) in
   for @p in P
-  do assert(infinitesimal_character(p)=gamma
+  do assert(@:infinitesimal_character(p)=gamma
            ,"infinitesimal character not unique")
   od; gamma
 
@@ -2575,9 +2591,14 @@ set monomials([ParamPol] list) = [Param]:
    in monomials(sum)
    fi
 
-set min_height([Param] params) = [Param]:
+set min_height([Param] params) = [Param]: { keep only minimal height terms }
    if #params=0 then []
    else
       let min=min(for p in params do height(p) od)
    in for p in params if height(p)=min do [p] fi od.##
    fi
+
+{ for script backward compatibility, but we should wean off using these: }
+set assert (bool b,(->string) report) = void: if not b then error(report()) fi
+set assert (bool b) = void: assert(b,@:"assertion failed") { default message }
+set assert (bool b,string message) = void: if not b then error(message) fi

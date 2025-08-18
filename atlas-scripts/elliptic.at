@@ -257,7 +257,7 @@ in if =s then [id_W(rd)] { avoid passing empty list to |combine_W_lists| }
 }
 set order_of_centralizer_elliptic_BCD (WeylElt w) = int:
   let type_code = w.classic_permutation.signed_cycle_type_code in
-  assert(type_code.<,"Not an elliptic element");
+  assert(@:type_code.<,"Not an elliptic element");
   let lambda = Partition: -type_code
   , is_D = let (type,)=(w.root_datum.Lie_type.simple_factors)[0] in type="D"
   in product(lambda) * 2^if is_D then #lambda-1 else #lambda fi *
@@ -266,7 +266,7 @@ set order_of_centralizer_elliptic_BCD (WeylElt w) = int:
 set exceptional_elliptic_class_order (string type, int rank, vec chi) =
       int:
    while #chi>rank+1 { remove factors $X-1$ for allowed central torus }
-   do chi := (let s=0 in for c in chi[:1~] do s-:=c od next assert(s=chi~[0]))
+   do chi := (let s=0 in for c in chi[:1~] do s-:=c od next assert(@:s=chi~[0]))
    od; { that was exact Euclidean division by $-1+X$, by increasing degree }
    let pos = case rank-2 in 0, die, 1, die, 2, 3, 4 esac
    then i =
@@ -276,7 +276,7 @@ set exceptional_elliptic_class_order (string type, int rank, vec chi) =
 set exceptional_elliptic_centr_order (string type, int rank, vec chi) =
       int:
    while #chi>rank+1 { remove factors $X-1$ for allowed central torus }
-   do chi := (let s=0 in for c in chi[:1~] do s-:=c od next assert(s=chi~[0]))
+   do chi := (let s=0 in for c in chi[:1~] do s-:=c od next assert(@:s=chi~[0]))
    od; { that was exact Euclidean division by $-1+X$, by increasing degree }
    let pos = case rank-2 in 0, die, 1, die, 2, 3, 4 esac
    then i =

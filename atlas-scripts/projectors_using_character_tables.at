@@ -145,7 +145,7 @@ set is_rational_multiple (vec v,vec w) = bool: rank(mat:[v,w])<2
 set group_vectors_up_to_scalar ([vec] list) = [[int]]:
   let result=[[int]]: [], reps=[vec]: [] in
    for v@i in list
-   do assert(!=v,"Cell member projects to 0: "+i);
+   do assert(@:v.!=,"Cell member projects to 0: "+i);
       let j=first(#reps,(int k)bool: is_rational_multiple(reps[k],v)) in
       if j.< then result #:= [i]; reps#:=v else result[j] #:= i fi
    od; result

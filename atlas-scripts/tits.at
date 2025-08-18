@@ -65,11 +65,11 @@ set left (int s,Tits_elt(rd,v,theta)) = Tits_elt:
 
 { multiplication by canonical lift of WeylElt }
 set left (WeylElt w,Tits_elt xi) = Tits_elt:
-  assert(w.root_datum=xi.root_datum);
+  assert(@:w.root_datum=xi.root_datum);
   for s in w.word ~ do xi:=left(s,xi) od; xi
 
 set right (Tits_elt xi, WeylElt w) = Tits_elt:
-  assert(w.root_datum=xi.root_datum);
+  assert(@:w.root_datum=xi.root_datum);
   for s in w.word do xi:=right(xi,s) od; xi
 
 { left multiply by simple generator with a torus part: \exp(2i\pi v)\sigma_s }

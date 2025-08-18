@@ -23,13 +23,10 @@ set Cayley_sum (int k,Param p) = ParamPol:
   of Vogan's big green book
 }
 
-{ coherent continuation action of simple root on Param in basis of standards }
-
-{only defined for regular infinitesimal character}
-{s is the number of a simple root in the *integrality* root datum}
+{ coherent continuation action of integrally simple root |s| on Param |p|
+  in basis of standards; |s| is simple index in the *integrality* root datum }
 
 set coherent_std (Param p,int s) = ParamPol:
-{  assert(is_regular(p),"infinitesimal character is not regular");}
 { we need the |integrality_datum| on the fly since |status(s,p.x)| would wrongly
   interpret |s| as index into full root system. Here use |status@(vec,KGBElt)| }
   let type=status(p.integrality_datum.simple_roots[s],p.x) in
@@ -93,63 +90,63 @@ set coherent_family_irr (ParamPol P, ratvec gamma_target)=ParamPol:
     {this translation is within the dominant chamber}
  fi
 
-{set T_irr(ParamPol P,ratvec gamma_target) = ParamPol:
+{ set T_irr(ParamPol P,ratvec gamma_target) = ParamPol:
     coherent_family_irr(P,gamma_target)}
 
 { everything commented out from this point on
 
-set_type term = (Param,string)
-set_type module = (ParamPol,string)
+  set_type term = (Param,string)
+  set_type module = (ParamPol,string)
 
-  { ------------phi_alpha: translation of stds/irrs away from one  wall-------- }
+    { ------------phi_alpha: translation of stds/irrs away from one  wall-------- }
 
-  set phi(term(p,type), int s, ratvec v) = module:
+    set phi(term(p,type), int s, ratvec v) = module:
     let (gamma,rd)=(infinitesimal_character(p),root_datum(p))
     then a=simple_coroots(rd)[s]
-    in assert(is_integer(v-gamma),"translation is not integral");
-      assert(is_regular(rd,v),
+    in assert(@:is_integer(v-gamma),"translation is not integral");
+      assert(@:is_regular(rd,v),
 	     "translation is not to regular infinitesimal character");
-      assert(a*gamma=0 and a*v !=0,
+      assert(@:a*gamma=0 and a*v !=0,
 	     "this is not translation away from a single root wall");
-      assert(#singular_roots(rd,gamma)=1,
+      assert(@:#singular_roots(rd,gamma)=1,
 	     "this is not translation away from a single root wall");
      (as_pol(translate_to(p,v)),type) + coherent(s,(translate_to(p,v),type))
 
-  { -----------phi_alpha: translation of ParamPol away from one  wall---------- }
+    { -----------phi_alpha: translation of ParamPol away from one  wall---------- }
 
-  set phi(module(P, type),int s,ratvec v) = module:
-    let Q=(null_module(P),type) in
-    for (w,q) in %P do Q +:= w*phi((q,type),s,v) od; Q
+    set phi(module(P, type),int s,ratvec v) = module:
+      let Q=(null_module(P),type) in
+      for (w,q) in %P do Q +:= w*phi((q,type),s,v) od; Q
 
-  { set psi(ParamPol P,int s)= ParamPol:
-    let Q=null_module(P) in for (w,q) in %P do Q +:= (w,psi(q,s)) od; Q
-  }
+    { set psi(ParamPol P,int s)= ParamPol:
+      let Q=null_module(P) in for (w,q) in %P do Q +:= (w,psi(q,s)) od; Q
+    }
 
-  { phi_alpha*psi_alpha: translation of stds/irrs to and from from one  wall }
+    { phi_alpha*psi_alpha: translation of stds/irrs to and from from one  wall }
 
-  set phi_psi(term(p,type),int s) = module:
-    phi(psi((p,type),s),s,infinitesimal_character(p))
+    set phi_psi(term(p,type),int s) = module:
+      phi(psi((p,type),s),s,infinitesimal_character(p))
 
-  set phi_psi(module(P,type),int s) = module:
-    phi(psi((P,type),s),s,infinitesimal_character(P))
+    set phi_psi(module(P,type),int s) = module:
+      phi(psi((P,type),s),s,infinitesimal_character(P))
 
-  { -----------skew symmetrized coherent continuation ----------- }
+    { -----------skew symmetrized coherent continuation ----------- }
 
-  { sum over W_S of (-1)^{w} (w.P) }
-  set skew_symmetrize_coherent([int] S,module(P,type)) = module:
-    let N=(null_module(real_form(P)),type)
-    , WS=W_orbit_W_elements(root_datum(P),S,ratvectovec(2*rho(root_datum(P))))
-    in for w in WS do N:=N+(-1)^#w*coherent(w,(P,type)) od; N
+    { sum over W_S of (-1)^{w} (w.P) }
+    set skew_symmetrize_coherent([int] S,module(P,type)) = module:
+      let N=(null_module(real_form(P)),type)
+      , WS=W_orbit_W_elements(root_datum(P),S,ratvectovec(2*rho(root_datum(P))))
+      in for w in WS do N:=N+(-1)^#w*coherent(w,(P,type)) od; N
 
-  { same as previous, assuming W_S=W }
-  set skew_symmetrize_coherent(module(P,type)) = module:
-    let S=[int]: for i:rank(root_datum(P)) do i od
-    in skew_symmetrize_coherent(S,(P,type))
+    { same as previous, assuming W_S=W }
+    set skew_symmetrize_coherent(module(P,type)) = module:
+      let S=[int]: for i:rank(root_datum(P)) do i od
+      in skew_symmetrize_coherent(S,(P,type))
 
-  { same as previous, applied to standard or irreducible }
-  set skew_symmetrize_coherent([int] S,term(p,type)) = module:
-    skew_symmetrize_coherent(S,(as_pol(p),type))
-  set skew_symmetrize_coherent(term(p,type)) = module:
-    skew_symmetrize_coherent(as_pol(p),type)
+    { same as previous, applied to standard or irreducible }
+    set skew_symmetrize_coherent([int] S,term(p,type)) = module:
+      skew_symmetrize_coherent(S,(as_pol(p),type))
+    set skew_symmetrize_coherent(term(p,type)) = module:
+      skew_symmetrize_coherent(as_pol(p),type)
 
 }

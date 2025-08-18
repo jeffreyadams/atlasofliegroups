@@ -51,8 +51,8 @@ set square_is_central (InnerClass ic,mat theta,ratvec tf) = bool:
 
 set parity (Param p,vec alpha_hat) = bool: { parity condition }
 ( let x = x(p), gamma=infinitesimal_character(p) in
-  assert(=alpha_hat*(involution(x)+1),"root not real")
-; assert(is_integer(alpha_hat*gamma),"root not integral")
+  assert(@:(alpha_hat*(involution(x)+1)).=,"root not real")
+; assert(@:is_integer(alpha_hat*gamma),"root not integral")
 ; (alpha_hat * (gamma-lambda(p)+rho_r(x))) % 2 = 1/1
 )
 
@@ -90,7 +90,7 @@ set y (Param p, InnerClass G_vee) = KGBElt:
 }
 
 set lambda (ratvec gamma,mat theta,KGBElt y) = ratvec:
-( assert(theta=-^involution(y),"incompatible involutions")
+( assert(@:theta=-^involution(y),"incompatible involutions")
 ; gamma-torus_factor(y)
 )
 

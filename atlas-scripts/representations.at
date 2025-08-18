@@ -20,7 +20,7 @@ set finite_dimensional_fundamental_weight_coordinates (RealForm G,vec tau) =
   Param:
   let fw=fundamental_weights(G), result=ratvec:null(rank(G)) in
   for i:#tau do result+:=tau[i]*fw[i] od;
-  assert(is_integer(result), "weight is not integral");
+  assert(@:is_integer(result), "weight is not integral");
   finite_dimensional(G,result\1)
 
 { the trivial block }
@@ -28,8 +28,8 @@ set trivial_block (RealForm G) = [Param]: block_of(trivial(G))
 
 {return a large fundamental series if G is quasisplit (not necessarily unique)}
 set large_fundamental_series (RealForm G,ratvec lambda) = Param:
-  assert(is_quasisplit(G),"group is not quasisplit");
-  assert(is_regular(G,lambda),"lambda is not regular");
+  assert(@:is_quasisplit(G),"group is not quasisplit");
+  assert(@:is_regular(G,lambda),"lambda is not regular");
   parameter(G,0,lambda,lambda)
 
 set large_fundamental_series (RealForm G) = Param:
@@ -38,7 +38,7 @@ set large_fundamental_series (RealForm G) = Param:
 { return a large discrete series if G is quasisplit and equal rank
   (not necessarily unique) }
 set large_discrete_series (RealForm G,ratvec lambda) = Param:
-  assert(is_equal_rank(G),"group is not equal rank");
+  assert(@:is_equal_rank(G),"group is not equal rank");
   large_fundamental_series(G,lambda)
 
 set large_discrete_series (RealForm G) = Param:
@@ -47,7 +47,7 @@ set large_discrete_series (RealForm G) = Param:
 {warning: p may fail to be final}
 {.minimal principal series of split group with given lambda,nu}
 set minimal_principal_series (RealForm G,ratvec lambda,ratvec nu) = Param:
-  assert(is_split(G),"group is not split");
+  assert(@:is_split(G),"group is not split");
   let n=KGB_size(G)-1 in
   normal(parameter(KGB(G,n),lambda,nu))
 
@@ -62,14 +62,14 @@ set minimal_spherical_principal_series (RealForm G) = Param:
   simple complex, and have standard coordinates (as we use |nilpotent_lambdas|)
 }
 set spherical_unipotent_representations (RealForm G) = [Param]:
-  assert(is_split(G),"group is not split");
+  assert(@:is_split(G),"group is not split");
   let codes = simple_factors(Lie_type(root_datum(G))) then n_factors=#codes in
-  if n_factors=1 then  { assert(is_split(G),"Group is not split");}
+  if n_factors=1 then  { assert(@:is_split(G),"Group is not split");}
     for gamma in nilpotent_lambdas(G)
     do minimal_spherical_principal_series(G,gamma) od
   elif n_factors=2 then { check that it looks like a simple complex group }
     let C_type = Lie_type(codes[0]) in
-    assert(Lie_type(codes[1])=C_type,"not a complex group");
+    assert(@:Lie_type(codes[1])=C_type,"not a complex group");
     let lambdas=nilpotent_lambdas(simply_connected(C_type))
     , x=x(trivial(G)), zero=null(rank(G))
     in {parameter might not be normal}
@@ -79,12 +79,12 @@ set spherical_unipotent_representations (RealForm G) = [Param]:
 
 {
   let lietype=Lie_type(root_datum(G)) in
-  if #lietype=1 then  { assert(is_split(G),"Group is not split");}
+  if #lietype=1 then  { assert(@:is_split(G),"Group is not split");}
     for gamma in nilpotent_lambdas(G)
     do minimal_spherical_principal_series(G,gamma) od
   elif #lietype=2 then { check that it looks like a simple complex group }
     let (first,second)=let arr=%lietype in (arr[0],arr[1]) in
-    assert(Cartan_matrix(first)=Cartan_matrix(second),"not a complex group");
+    assert(@:Cartan_matrix(first)=Cartan_matrix(second),"not a complex group");
     let lambdas=nilpotent_lambdas(simply_connected(first))
     , x=x(trivial(G)), zero=null(rank(G))
     in {parameter might not be normal}
@@ -97,9 +97,9 @@ set spherical_unipotent_representations (RealForm G) = [Param]:
 { Harish-Chandra parameter of (relative) discrete series, with respect to
   given x_b }
 set hc_parameter (Param p,KGBElt x_b) = ratvec:
-  assert(is_equal_rank(derived(real_form(p)))
+  assert(@:is_equal_rank(derived(real_form(p)))
         ,"Group is not equal rank mod center");
-  assert(Cartan_class(p)=fundamental_Cartan(real_form(p))
+  assert(@:Cartan_class(p)=fundamental_Cartan(real_form(p))
         ,"Cartan is not compact mod center");
   let w=cross_divide(x_b,x(p)) in w*lambda(p)
 
@@ -111,9 +111,9 @@ set hc_parameter (Param p) = ratvec:
 { discrete series parameter with given HC parameter lambda, wrt given x }
 set discrete_series (KGBElt x,ratvec lambda) = Param:
   let ic=inner_class(x) then rd=root_datum(ic) in
-  assert(is_equal_rank(derived(ic)),"G is not equal rank mod center");
-  assert(is_integer(lambda-rho(rd)),"lambda is not in rho+X^*");
-  assert(is_regular(rd,lambda),"lambda is not regular");
+  assert(@:is_equal_rank(derived(ic)),"G is not equal rank mod center");
+  assert(@:is_integer(lambda-rho(rd)),"lambda is not in rho+X^*");
+  assert(@:is_regular(rd,lambda),"lambda is not regular");
   let (w,lambda_dom)=from_dominant(rd,lambda) in
   parameter(cross(inverse(w),x),lambda_dom,null(rank(ic)))
 
