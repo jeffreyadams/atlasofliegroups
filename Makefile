@@ -61,6 +61,10 @@ interpreter_made_files := $(interpreter_cwebs:%.w=%.cpp) \
     $(filter-out %main.h,$(interpreter_cwebs:%.w=%.h)) \
     sources/interpreter/parse_types.h \
     sources/interpreter/parser.tab.h sources/interpreter/parser.tab.c
+cwebx_made_files := $(interpreter_made_files) \
+    sources/io/filekl.h sources/io/filekl.cpp \
+    sources/io/filekl_in.h sources/io/filekl_in.cpp
+
 # the following variable is a list of patterns, not files!
 non_atlas_objects := sources/io/interactive%.o \
     sources/interface/%.o sources/test/%.o \
@@ -186,10 +190,15 @@ $(filter-out sources/interface/io.o,$(Fokko_objects)) : %.o : %.cpp
 sources/interface/io.o : sources/interface/io.cpp
 	$(CXX) $(CXXFLAGS) $(Fokko_flags) -DMESSAGE_DIR_MACRO=\""$(messagedir)"\" -o $@ $<
 
+# Here is a special rule to run CWEBx for a sole file outside sources/intepreter
+sources/io/filekl.h sources/io/filekl.cpp \
+sources/io/filekl_in.h sources/io/filekl_in.cpp: \
+sources/io/filekl.w $(cweb_dir)/ctanglex
+	cd sources/io && ../../$(cweb_dir)/ctanglex ++ -pl filekl.w
 
 # for files proper to atlas, the build is defined inside sources/interpreter
 
-atlas: $(cweb_dir)/ctanglex $(interpreter_made_files) $(atlas_objects)
+atlas: $(cweb_dir)/ctanglex $(cwebx_made_files) $(atlas_objects)
 	cd sources/interpreter && $(MAKE) ../../atlas
 
 $(filter-out sources/interpreter/parser.tab.%,$(interpreter_made_files)):
@@ -256,9 +265,9 @@ mostlyclean:
            sources/*/*.tex sources/*/*.dvi sources/*/*.log sources/*/*.toc
 
 clean: mostlyclean newbinary
+	$(RM) $(cwebx_made_files)
 
 veryclean: clean
-	$(RM) $(interpreter_made_files)
 	$(RM) sources/*/*.d cwebx/*.o cwebx/ctanglex cwebx/cweavex \
 
 $(cweb_dir)/ctanglex: $(cweb_dir)/common.h $(cweb_dir)/ctangle.c
