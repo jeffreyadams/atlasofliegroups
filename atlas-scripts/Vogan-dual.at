@@ -33,7 +33,7 @@ set rho_diff_integral (RootDatum rd, ratvec z) = ratvec:
   the term |rho_check| above, which the reflection applied afterwards shifts).
 }
 set theta_stable_diff ((KGBElt, ratvec)(x,z):xz) = ratvec:
-( assert(denom(z*real_posroots(x))=1,"Coroot not integral on real roots")
+( assert(@:denom(z*real_posroots(x))=1,"Coroot not integral on real roots")
 ; let rd = RootDatum: real_form(x) then ssr = semisimple_rank(rd) in
   xz. { apply to original argument pair the following recursive function: }
   (rec_fun tsd (KGBElt x,ratvec z) ratvec:
@@ -58,9 +58,9 @@ set theta_stable_diff ((KGBElt, ratvec)(x,z):xz) = ratvec:
 { given a $\theta$-fixed torus element, find a $\theta$-fixed logarithm }
 set fixed_lift (mat theta_1,ratvec z) = (ratvec,(vec,mat,mat)):
   let (image,denom) = %(z*theta_1), (d,L,R):dLR=diagonalize(theta_1)
-  then r=#d next assert(denom=1,"torus element is not fixed by involution")
+  then r=#d next assert(@:denom=1,"torus element is not fixed by involution")
   then correction = for e@i in image*R do if i<r then e\d[i] else 0 fi od * L
-  in assert(correction*theta_1=image,"no lift possible"); ( z-correction, dLR )
+  in assert(@:correction*theta_1=image,"no lift possible"); ( z-correction, dLR )
 
 {
   When restricting to a centraliser subgroup, we shall need to correct a
@@ -161,7 +161,7 @@ set dual_shift (RootDatum rd, ratvec gamma) = ratvec:
 { integral coweight associated to KGB element: is lambda-rho on dual side }
 set ell (KGBElt x) = vec:
   let (numer,denom) = %(base_grading_vector(real_form(x))-torus_factor(x))
-  in assert(denom=1,"non-integral ell(x)" { should never happen }); numer
+  in assert(@:denom=1,"non-integral ell(x)" { should never happen }); numer
 
 { value that can serve as g; is guaranteed to be strictly integrally dominant }
 set dual_gamma (Param p) = ratvec:

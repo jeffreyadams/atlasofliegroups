@@ -127,7 +127,7 @@ let (selection,top) = (vec,int): { stack of choices made, entries 0<=.<729 }
   then { other private methods using the above }
     cover_constraint (int group, int c) = void: { mark constraint as covered }
     ( let nr=81*group+c, list = options(group)(c) in
-      assert(not covered[nr]
+      assert(@:not covered[nr]
             ,"constraint "+c+" in group "+group+" covered twice")
     ; covered[nr]:=true; for ch in list do remove(ch) od; disabled[nr]:= list
     )
@@ -157,7 +157,7 @@ let (selection,top) = (vec,int): { stack of choices made, entries 0<=.<729 }
         od
       ; B
   in { update state to reflect the initial grid givein in |M| }
-  assert(shape(M)=(9,9))
+  assert(@:shape(M)=(9,9))
 ; for i:9 do for j:9 do let m=M[i,j] in if m>0 then
     choose(((m-1)*9+i)*9+j)
   fi od od
@@ -196,7 +196,7 @@ set solve ( game_interface game ) = [mat]:
       then
         let remaining = { get the unique available choice |k| for |constraint| }
           first(9,(int k):game.available(choice_of(constraint,k))) in
-        assert(>=remaining,"unique choice cannot be found") { check existence }
+        assert(@:>=remaining,"unique choice cannot be found") { check existence }
       ; prints(if not sure then "   " else "" fi { indent }
               ,name_co[group](constraint)
               ,if sure then " has" else " would have" fi, " forced value "

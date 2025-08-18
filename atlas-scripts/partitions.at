@@ -31,7 +31,7 @@ set rec_fun compositions_le (int limit, int n) = [[int]]:
   have level 1 so that all intermediate levels contribute to the result.
 }
 set inter_sums ([int] S, int m) = int{as bitset}:
-(  assert(>=m and all(for s in S do >s od),"Positivity fails")
+(  assert(@:>=m and all(for s in S do >s od),"Positivity fails")
 ;  let multi_add (int a, int{as bitset} S, int m) = int{as bitset}:
    { close set |S| of integers under operation of adding |a|, up to limit |m| }
       let image = S, mult=[a].to_bitset, mask = full_bitset(m+1)
@@ -86,7 +86,7 @@ set divide (power_series S, vec v, int l, int{as bitset} degs) = power_series:
 }
 set partition_count(mat A, ratvec f, int level) = ParamPol:
 (  let fA=ratvec_as_vec(f*A), n=#f { |n=n_rows(A)| }
-in assert(>fA,"Matrix not strictly positive for linear form")
+in assert(@:>fA,"Matrix not strictly positive for linear form")
 ;  let result = power_series: for i:level+1 do const_poly(#=i,n) od
 in for col@j in A do result := divide(result,col,fA[j]) od; result~[0]
 )
@@ -94,7 +94,7 @@ in for col@j in A do result := divide(result,col,fA[j]) od; result~[0]
 set partition_count_sparse(mat A, ratvec f, int level) = ParamPol:
 (  let fA=ratvec_as_vec(f*A), n=#f { |n=n_rows(A)| }
    then degrees = inter_sums(fA,level)
-in assert(>fA,"Matrix not strictly positive for linear form")
+in assert(@:>fA,"Matrix not strictly positive for linear form")
 ;  let result = power_series: for i:level+1 do const_poly(#=i,n) od
 in for col@j in A do result := divide(result,col,fA[j],degrees) od; result~[0]
 )

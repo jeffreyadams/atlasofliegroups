@@ -155,7 +155,7 @@ in case d { three way branch on sign of |d| }
 )
 
 set divide_by ([int] pol) = (inf_list->inf_list):
-(  assert(#pol>1 and pol[0]=1)
+(  assert(@:#pol>1 and pol[0]=1)
 ;  (inf_list g) inf_list:
    let rem =  { get initial terms: henceforth considered the remainder }
      for in pol do let (c,new_g)=g() in g:=new_g; c od
@@ -187,7 +187,7 @@ in pol:=pol[1:] { drop leading coefficient 1 }
   that goes on here. All in all, while slick, this might be less efficient.
 }
 set divide (inf_list N, inf_list denom) = inf_list:
-(  let (c,D)=denom() in assert(c=1,"Division requires unit leading term")
+(  let (c,D)=denom() in assert(@:c=1,"Division requires unit leading term")
 ;  let coefs = [int,int]:[] { pairs of corresponding coefficients of |D,result| }
    , c=0, d=0
 in (rec_fun m () inf_node:
@@ -201,7 +201,7 @@ in (rec_fun m () inf_node:
 
 set divide_by (inf_list f) = (inf_list->inf_list):
   let (!head,!tail)=f() then !ff=memoize(tail) in
-  assert(head=1,"Can only invert series with constant term 1");
+  assert(@:head=1,"Can only invert series with constant term 1");
   rec_fun divide (inf_list remainder) inf_list:
   @: let (y,gg)=remainder() in (y, divide(scale_by(-y)(ff)+gg))
   { here the final result is not passed through |memoize|; if that is desired
@@ -231,7 +231,7 @@ set ^ (inf_list F,int n) = inf_list:
       else let (q,r)=k\%2 then h=p(q) then h2=h*h in if r=0 then h2 else h2*F fi
       fi
 in case n
-   then assert(F.constant_term=1,"Negative power requires unit constant term")
+   then assert(@:F.constant_term=1,"Negative power requires unit constant term")
    ; inverse(p(-n))
    in series_1
    else p(n)
@@ -309,7 +309,7 @@ set n_partitions = (int->int):
 
 set substitute (inf_list g) = (inf_list->inf_list): { f->f[X:=g] }
 (  let (g0,tail)=g() then gg=memoize(tail) { |gg=g/X| }
-in assert(=g0,"Can only substitute series with constant term 0")
+in assert(@:g0=0,"Can only substitute series with constant term 0")
 ;  rec_fun subs (inf_list f) inf_list: { subtitute |g| into |f|, using |gg| }
    memoize(@: let (c,f1)=f() in (c,multiply(gg,subs(f1))))
 )
@@ -318,7 +318,7 @@ in assert(=g0,"Can only substitute series with constant term 0")
 set compositional_inverse (inf_list g) = inf_list:
 (  let (!g0,!tail)=g()
    then power=tail,(!g1,target)=tail() { |target:=(g-X)/X^2| }
-in assert(=g0 and g1=1,"Can only do series with leading term X")
+in assert(@:g0=0 and g1=1,"Can only do series with leading term X")
 ; let rec_fun r () = inf_node: { no arguments, call modifies |target|, |power| }
      power:=multiply(tail,power) { next power of |g/X| }
      ;  let (c,t_tail) = target(), (,t_power)=power()

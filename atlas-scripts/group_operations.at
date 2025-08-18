@@ -150,7 +150,7 @@ B_new=Cartan_matrix(rd) in
 
 {.simply connected cover of complex group, with change of basis matrix.}
 set simply_connected_cover_info(RootDatum rd)=(RootDatum, ratmat):
-assert(is_semisimple(rd), "rd is not semisimple");
+assert(@:is_semisimple(rd), "rd is not semisimple");
 let A=simple_roots(rd) then
 A_new=^Cartan_matrix(rd) then
 B_new=id_mat(rank(rd)) in

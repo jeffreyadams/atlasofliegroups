@@ -27,7 +27,7 @@ set_type CyclotomicFieldElement = ([rat] v,CyclotomicField F)
 }
 set to_denominator (rat p, int N) = int:
    let (numer,denom) = (N*p)\%N { scale to unit $1/N$ and reduce modulo $N$ }
-   in assert(denom=1,"root of unity is not in the specified cyclotomic field");
+   in assert(@:denom=1,"root of unity is not in the specified cyclotomic field");
    numer
 
 { cyclotomic Fields and their elements }
@@ -45,7 +45,7 @@ set = (CyclotomicField E,CyclotomicField F) = bool: F.order=E.order
   reducing |rat_poly| mod |int_poly|, and returning a remainder of fixed length
 }
 set reduce_mod ([int] Phi) = ([rat]->[rat]):
-   assert(Phi~[0]=1,"Non monic cyclotomic polynomial?"); let n=#Phi-1 in
+   assert(@:Phi~[0]=1,"Non monic cyclotomic polynomial?"); let n=#Phi-1 in
    ([rat] v) [rat]:
    (  if #v<n then v ##:= for :n-#v do rat:0 od fi { ensure enough length }
    ;  for i: #v-n do let c=v~[i] in for j:n from 1 do v~[i+j]-:=c*Phi~[j] od od
@@ -67,8 +67,8 @@ set one (CyclotomicField F) = CyclotomicFieldElement:  embed(1,F)
 set zero (CyclotomicField F) = CyclotomicFieldElement: embed(0,F)
 
 set = (CyclotomicFieldElement(v,F),CyclotomicFieldElement(w,G)) = bool:
-   assert(F=G,"cyclotomic fieds differ in comparison");
-   assert(#v=#w and #F.Phi=#v+1,"unnormalized cyclotimic field element(s)");
+   assert(@:F=G,"cyclotomic fieds differ in comparison");
+   assert(@:#v=#w and #F.Phi=#v+1,"unnormalized cyclotimic field element(s)");
    =@(rat,rat)! (v,w) { compare as |[rat]| values; do not convert to |ratvec| }
 set != (CyclotomicFieldElement x,CyclotomicFieldElement y) = bool: not x=y
 set = (CyclotomicFieldElement(v,F)) = bool:(v,F)=F.zero
@@ -82,10 +82,10 @@ set primitive_root (CyclotomicField F) = cyclotomic_field_element([0,1],F)
 { additive operators do not need to call |reduce_by| }
 set + (CyclotomicFieldElement (v,F),CyclotomicFieldElement (w,G)) =
       CyclotomicFieldElement:
-   assert(F=G,"cyclotomic fields do not agree"); (for c@i in v do c+w[i] od,F)
+   assert(@:F=G,"cyclotomic fields do not agree"); (for c@i in v do c+w[i] od,F)
 set - (CyclotomicFieldElement (v,F),CyclotomicFieldElement (w,G)) =
       CyclotomicFieldElement:
-   assert(F=G,"cyclotomic fields do not agree"); (for c@i in v do c-w[i] od,F)
+   assert(@:F=G,"cyclotomic fields do not agree"); (for c@i in v do c-w[i] od,F)
 
 { negation and scalar multiplication need no reduction either }
 set - (CyclotomicFieldElement (v,F)) = CyclotomicFieldElement:
@@ -96,11 +96,11 @@ set * (rat r, CyclotomicFieldElement (v,F)) = CyclotomicFieldElement:
 {.cyclotomic field multiplication.}
 set * (CyclotomicFieldElement (v,F),CyclotomicFieldElement (w,G)) =
       CyclotomicFieldElement:
-   assert(F=G,"cyclotomic fields do not agree"); F.element(convolve(v,w))
+   assert(@:F=G,"cyclotomic fields do not agree"); F.element(convolve(v,w))
 
 set is_rational (CyclotomicFieldElement(v,)) = bool: =v[1:]
 set to_rational (CyclotomicFieldElement z) = rat:
-   assert(z.is_rational,"element is not rational"); z.v[0]
+   assert(@:z.is_rational,"element is not rational"); z.v[0]
 
 set is_integer(CyclotomicFieldElement z) = bool:
    z.is_rational and z.to_rational.is_integer
@@ -169,7 +169,7 @@ set ^ (CyclotomicFieldElement z,int k) = CyclotomicFieldElement:
    if k.< then set (k,z):=(-k,inverse(z)) { force non-negative exponent } fi;
    let bin_k = [bool]: while >k do let (q,r)=k\%2 in k:=q; !=r ~od in
    if =#bin_k then { |k=0| } z.F.one
-   else assert(bin_k[0],"Zero leading bit?"); let p=z in
+   else assert(@:bin_k[0],"Zero leading bit?"); let p=z in
       for odd in bin_k[1:] do p*:=p { always square }; if odd then p*:=z fi od
    ;  p
    fi

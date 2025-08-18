@@ -9,7 +9,7 @@
 
 { check that extended parameter |E| lies over cross image by |kappa| of |p| }
 set test_ext_cross (Param p, {Weyl word} [int] kappa, ExtParam E) = void:
-  assert(valid(E),"Invalid extended parameter");
+  assert(@:valid(E),"Invalid extended parameter");
   let w=W_elt(root_datum(p),kappa) then q=parameter(E), cross=cross(w,p) in
   if q!=cross then error("cross/ext_cross are not consistent: ",q," ",cross) fi
 
@@ -184,7 +184,7 @@ set ext_cross_simple (int j, ExtParam (ic,delta,,,,,,,,):E) =
     ExtParam:
 ( let p=parameter(E), l=ext_length(integrality_datum(E),delta,j) in
 { prints("length is:", l); }
-  assert(is_fixed(delta,p),"Parameter is not fixed by delta")
+  assert(@:is_fixed(delta,p),"Parameter is not fixed by delta")
 ; case l-1 { case statement requires value from 0 }
   in ext_cross_1(j,E)
   ,  ext_cross_2(j,E)
