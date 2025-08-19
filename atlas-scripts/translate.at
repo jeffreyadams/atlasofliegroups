@@ -6,16 +6,6 @@ set translate_debug=false
  mainly staying within a Weyl chamber (for the integral roots)
 }
 
-{formal translation of parameters
-translation_param_by(p,shift):
-translate Param p, at infinitesimal character gamma,
-to new infinitesimal character gamma+shift
-takes parameter(x,lambda,nu) to parameter(x,lambda+shift,nu+shift)
-which has infinitesimal character
-gamma+(1+theta)shift/2 + (1-theta)shift/2=gamma+shift
-the result may fail to be final, standard, non-zero, etc.
-}
-
 {translation of parameters}
 set translate_param_by (Param p, vec shift) = Param:
   let (x,lambda_rho,gamma)=%p in param(x,lambda_rho+shift,gamma+shift)
@@ -133,16 +123,6 @@ set T_irr (ParamPol P, ratvec gamma_target)= ParamPol:
 set to_wall (RootDatum id, int k, ratvec gamma) = ratvec:
   fundamental_weight(id,k)*(coroot(id,k)*gamma)
 
-{ translate J(p) p to simple root wall #k of the integral root system,
- get irreducible or 0}
-set Psi_irr (Param p,int k) = ParamPol:
-  let gamma=infinitesimal_character(p) then
-  id = integrality_datum(root_datum(p),gamma) then
-  (shift,d) = % -to_wall (id,k,gamma) in
-  assert(d=1,"cannot project to wall "+k);
-  {#I_will_survive=0 or 1}
-  #I_will_survive(p,gamma-shift)*translate_param_by(p,shift)
-
 { translate J(p) to intersection of set of simple root walls of integral system
 get irreducible or 0}
 set Psi_irr (Param p, [int] S) = ParamPol:
@@ -192,16 +172,6 @@ translate_param_by(P,shift)
 set make_regular_param(Param p)=Param:T_param(p,p.infinitesimal_character +two_rho(p.root_datum))
 
 { translate a ParamPol by translating each term }
-{set T_irr(ParamPol P, ratvec gamma_target)= ParamPol:
-  if =P then P { without any terms, there is nothing to change }
-  else
-    let rv=0*P in
-{    let gamma = infinitesimal_character(first_param(P))
-    then shift = ratvec_as_vec(gamma_target-gamma) 
-    for w@q in P do rv+:=w*T_irr(q,shift) od;rv}
-     for w@q in P do rv+:=w*T_irr(q,gamma_target) od;rv
-fi
-}
 
 
 { the "pseudo-tau" invariant }
