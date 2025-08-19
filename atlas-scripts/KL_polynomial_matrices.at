@@ -33,18 +33,20 @@ set KL_P_signed_polynomials_at_minus_one (Param p) = mat:
   eval(KL_P_signed_polynomials(p),minus_1)
 
 set KL_P_polynomials([Param] B)=i_poly_mat:
-  let (block,,P,polys)=KL_block(B[0])
+{  let (block,,P,polys)=KL_block(B[0])}
+  let (block,,P,polys)=KL_block(B~[0])
   then (perm,valid)=permutation(B,block), n=#block
-  in assert(@:valid,"given [Param] B does not agree with block_of B[0]");
+  in assert(@:valid,"given [Param] B does not agree with block_of B~[0]");
     for i:n do for j:n do polys[P[perm[i],perm[j]]] od od
 
 set KL_P_polynomials_at_minus_one ([Param] B) = mat:
   eval(KL_P_polynomials(B),minus_1)
 
 set KL_P_signed_polynomials ([Param] B) = i_poly_mat:
-  let (block,,P,polys)=KL_block(B[0])
+{  let (block,,P,polys)=KL_block(B[0])}
+  let (block,,P,polys)=KL_block(B~[0])
   then (perm,valid)=permutation(B,block), n=#block
-  in assert(@:valid,"given [Param] B does not agree with block_of B[0]");
+  in assert(@:valid,"given [Param] B does not agree with block_of B~[0]");
     for i:n do for j:n do
       minus_1^(block[j].length-block[i].length)* polys[P[perm[i],perm[j]]]
     od od
@@ -57,7 +59,8 @@ set KL_Q_polynomials (Param p) = i_poly_mat:
   for i:n do let col = M[i] in for j:n do polys[col[j]] od od { transpose }
 
 set KL_Q_polynomials ([Param] B) = i_poly_mat:
-  let (block,,M,polys)=dual_KL_block(B[0])
+{  let (block,,M,polys)=dual_KL_block(B[0])}
+  let (block,,M,polys)=dual_KL_block(B~[0])
   then (perm,valid)=permutation(B,block), n=#block
   in  { transpose and apply permutation |perm| }
   for i:n do let col = M[perm[i]] in for j:n do polys[col[perm[j]]] od od
@@ -99,9 +102,9 @@ in for col in P do for index in col do
    od od
 
 set KL_P_polynomials ([Param] B_fixed, mat delta) = i_poly_mat:
-  let (block,P,polys)=KL_block(B_fixed[0],delta)
+  let (block,P,polys)=KL_block(B_fixed~[0],delta)  {use ~ to give a maximal element in the block}
   then (perm,valid)=permutation(B_fixed,block), n=#block
-in assert(@:valid,"given [Param] B does not agree with block_of B[0]");
+in assert(@:valid,"given [Param] B does not agree with block_of B~[0]");
   for i:n do for j:n do let index=P[perm[i],perm[j]] in
      if index.< then -polys[-index] else polys[index] fi
   od od
@@ -121,9 +124,9 @@ set KL_P_signed_polynomials_at_minus_one (Param p, mat delta) = mat:
 set KL_P_signed_polynomials([Param] B, mat delta) = i_poly_mat:
   assert(@:all(for p in B do is_fixed(delta,p) od)
         ,"not all parameters in B_fixed are fixed");
-  let (block,P,polys)=partial_extended_KL_block(B[0],delta)
+  let (block,P,polys)=partial_extended_KL_block(B~[0],delta)
   then (perm,valid)=permutation(B,block), n=#block
-in assert(@:valid,"given list of parameters does not for a block");
+in assert(@:valid,"given list of parameters does not agree with a block");
   for i:n do for j:n do polys[P[perm[i],perm[j]]] od od
 
 set KL_P_signed_polynomials_at_minus_one([Param] B, mat delta) = mat:

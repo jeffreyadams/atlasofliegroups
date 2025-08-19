@@ -1,4 +1,4 @@
-<basic.at
+<basic.at { for |assert| }
 
 { Several representations of univariate polynomials are defined below, all have
   in common a dense representation of coefficients starting at degree 0
@@ -456,8 +456,8 @@ set show(i_poly v)=void:printPoly(v)
    0 +1
 }
 
-set printPolyMatrix(i_poly_mat M,int space_size)= void:
-   let string_mat = for row in M do for e in row do poly_format(e,"q") od od
+set printPolyMatrix (i_poly_mat M,int space_size, string X_name) = void:
+   let string_mat = for row in M do for e in row do poly_format(e,X_name) od od
    then space= " "*space_size, wd =
      if =#string_mat then []
      else for j:#M[0] do for row in string_mat do #row[j] od.max od
@@ -466,7 +466,10 @@ in for s_row in string_mat
    do for s@j in s_row do space+l_adjust(wd[j],s) od.##.prints
    od
 
-set printPolyMatrix (i_poly_mat M) = void: printPolyMatrix(M,3)
+set printPolyMatrix (i_poly_mat M,int space_size) = void:
+   printPolyMatrix(M,space_size,"q")
+set printPolyMatrix (i_poly_mat M,string char) = void: printPolyMatrix(M,3,char)
+set printPolyMatrix (i_poly_mat M) = void: printPolyMatrix(M,3,"q")
 
 { this provides maybe more meaningful names for |flex_add| and friends }
 set poly_plus    = +@(i_poly,i_poly) { this binding will remain exported }

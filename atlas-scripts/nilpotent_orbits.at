@@ -1,3 +1,4 @@
+<basic.at
 <combinatorics.at { for |even_places@[int] }
 <parabolics.at { for |Levi@Parabolic|, |parabolic_by_cwt@(ratvec,KGBElt)| }
 <parameters.at { for |parameter@(KGBElt,KGBElt,ratvec)| }
@@ -16,7 +17,8 @@ set_type
 , RealNilpotent    = (vec H, KGBElt x, void .)
 ]
 
-set complex_nilpotent (RootDatum rd, vec H) = ComplexNilpotent: (rd,(),H)
+set complex_nilpotent (RootDatum rd, vec H) = ComplexNilpotent:
+   (rd,(),dominant(H,rd))
 
 {. Two complex nilpotent orbits are equal if the root data are, and
    the H's are conjugate by the Weyl group. .}

@@ -1,21 +1,19 @@
 <basic.at
-<polynomial.at
+<polynomial.at { for type |i_poly| }
 <dual.at { for |dual_block@[Param]| }
 <translate.at { for |Psi@(Param,[int])| }
 <modules.at { for |has_infinitesimal_character@ParamPol| }
 <combinatorics.at { for |pemutation_inverse@[int]| }
-<parameters.at { for |make_regular| }
+<parameters.at { for |make_regular@(RootDatum,ratvec)| }
 
 {stable virtual characters}
 {some elementary operations needed, these should be moved elsewhere}
 
-set indices ([Param] B,[Param] subset) = [int]: for p in subset do find(B,p) od
 set evaluate_at_1 ([i_poly] v)= vec: for w in v do evaluate_at_1(w)  od
 set evaluate_at_1 (i_poly_mat M) = mat:
   if #M=0 then 0 { |null(0,0)| for |[]| } else #M[0] fi ^ { stack rows}
   for v in M do evaluate_at_1(v) od
 
-set number = #@KGBElt { defined as |#| in basic.at }
 set left_kernel = cokernel@mat { defined as |cokernel| in basic.at }
 
 set column (i_poly_mat M,int j) = [i_poly]: for row in M do row[j] od
@@ -34,7 +32,7 @@ set make_regular (Param p) = Param:
   let gamma=infinitesimal_character(p) in
   if is_regular(root_datum(p),gamma) then p
   else let shift = ratvec_as_vec(make_regular(root_datum(p),gamma)-gamma) in
-     translate_by(p,shift)
+     translate_param_by(p,shift)
   fi
 
 set make_param_pol (RealForm G,[int] coefficients,[Param] params) = ParamPol:
@@ -44,10 +42,6 @@ set make_param_pol (RealForm G,[int] coefficients,[Param] params) = ParamPol:
 {permutations}
 {S=[a_0,a_1,...] <-> permutation sigma(i)=a_i}
 
-{inverse permutation}
-set inverse_permutation ([int] sigma) = [int]:
-  let result =for:#sigma do 0 od in
-  for a@i in sigma do result[a]:=i od; result
 
 set permutation_matrix_sort([int] S) = mat:
   let n=#S, sorted=sort(S) in matrix((n,n),(int i,int j)int: #(sorted[i]=S[j]) )
@@ -68,8 +62,8 @@ set in_tau_complement ([int] S,Param p) = bool: { whether $S\cap\tau(p)$ empty }
 
 { translate irreducibles to singular infinitesimal character,
   only keep those for which tau(p)\subset S-complement }
-set Psi ([Param] params,[int] S) = [Param]:
-   for p in params if in_tau_complement(S,p) do Psi(p,S).first_param fi od
+set Psi_irr ([Param] params,[int] S) = [Param]:
+   for p in params if in_tau_complement(S,p) do Psi_irr(p,S).first_param fi od
 
 {from now on [int] S is a set of simple roots,
  [Param] B is a block of parameters with regular infinitesimal character
@@ -105,7 +99,7 @@ set parameters ([int] S,[Param] B) = [int]:
   in for j in dual_params do Q[j] od
 
 set parameters_singular ([int] S,[Param] B) = [Param]:
-  for i in parameters(S,B) do Psi(B[i],S).first_param od
+  for i in parameters(S,B) do Psi_irr(B[i],S).first_param od
 
 {vector of (-1)^{length(p)}, and corresponding diagonal matrix}
 set lengths_signs ([Param] params) = [int]:
@@ -137,6 +131,13 @@ set dual_parameters_standard_basis ([Param] B) = mat:
 set dual_parameters_standard_basis ([int] S,[Param] B) = mat:
   let M=dual_parameters_standard_basis(B) in
   n_columns(M) ^ for i in dual_parameters(S,B) do row(M,i) od
+
+set indices ([Param] B,[Param] subset) = [int]: for p in subset do find(B,p) od
+
+set subspace_injection_matrix ([Param] B,[Param] subset) = mat:
+{ returns a (landscape) |#subset|x|#B| matrix, meant for right-multiplication }
+  let result=null(#subset,#B) in
+  for j@i in indices(B,subset) do result[i,j]:=1 od; result
 
 set get_y ([Param] B) = [int]:
   let dual_inner_class=dual_inner_class(B[0]) in
@@ -177,7 +178,7 @@ set stable_at_singular ([int] S,[Param] B) = (mat,[Param]):
   let params=parameters(S,B)
   then (M,)=stable_at_singular_unsorted(S,B)
   then P=permutation_matrix_sort(params)
-  in (M*^P,for i in sort(params) do Psi(B[i],S).first_param od)
+  in (M*^P,for i in sort(params) do Psi_irr(B[i],S).first_param od)
 
 
 set print_stable_at_singular_unsorted ([int] S,[Param] B) = void:
@@ -194,17 +195,10 @@ set print_stable_at_singular ([int] S,[Param] B) = void:
             "parameters=", params, new_line,
             "dimension space of stable characters:", n_rows(M), new_line,M)
 
-set indices ([Param] B,[Param] subset) = [int]: for p in subset do find(B,p) od
-
-{#subset x #B matrix}
-set subspace_injection_matrix ([Param] B,[Param] subset) = mat:
-  let rv=null(#subset,#B), indices=indices(B,subset) in
-  for i:#indices do rv[i,indices[i]]:=1 od;rv
-
 set stable_at_singular ([int] S,[Param] B,[Param] subset_in) = (mat,[Param]):
   {first replace subset with those so that tau(p)\in S-complement}
 (  let parameters = for i in parameters(S,B) do B[i] od
-in prints("number of parameters in block:", #B)
+in prints("S=",S); prints("number of parameters in block:", #B)
 ;  prints("number of given parameters:", #subset_in)
 ;  let subset = [Param]: for p in subset_in if find(parameters,p).>= do p fi od
 in prints("number of parameters at singular inf char:", #subset)
@@ -232,7 +226,7 @@ set stable ([Param] params) = (mat,[Param]):
   then gamma=infinitesimal_character(p)
   then shift=ratvec_as_vec(make_regular(root_datum(p),gamma)-gamma)
   then S=singular_simple_indices(G,infinitesimal_character(p))
-  then params_reg=for p in params do translate_by(p,shift) od
+  then params_reg=for p in params do translate_param_by(p,shift) od
   then B=block_of(params_reg[0])
   in stable_at_singular(S,B,params_reg)
 
