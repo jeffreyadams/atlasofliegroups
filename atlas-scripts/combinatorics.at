@@ -258,9 +258,8 @@ set compressed_string(Partition P) = string:
       od.##
 in result ## if mult=1 then P~[0].to_string else P~[0]+"^"+mult fi ## " ]"
 
-
-{ comparing partitions of same |n| lexicographically; implicitly 0-extend }
-set leq_equal_sum_partitions(Partition lambda, Partition mu) = bool:
+{ lexicographic comparison restricted to partitions of same |n| (0-extended) }
+set rlex_leq_partitions (Partition lambda, Partition mu) = bool:
    let m=#mu in
    for l@i in lambda
    do if i>=m then assert(@:l=0,"unequal sum"); return true
@@ -269,7 +268,7 @@ set leq_equal_sum_partitions(Partition lambda, Partition mu) = bool:
    od; assert(@:mu[#lambda:].=,"unequal sum"); true
 
 { same, but three-way result in $\{-1,0,1\}$ for less/equal/greater; no 0-ext }
-set cmp_equal_sum_partitions(Partition lambda, Partition mu) = int:
+set rlex_cmp_partitions (Partition lambda, Partition mu) = int:
    let m=#mu in
    for l@i in lambda
    do if l!=mu[i] { equal sum, nonzero entries, so |mu| cannot run out }
@@ -278,26 +277,26 @@ set cmp_equal_sum_partitions(Partition lambda, Partition mu) = int:
    od; 0 { if |lambda| exhausted then so is |mu|, and we have equality }
 
 { comparing partitions by sum then lexicographically; implicitly 0-extend }
-set leq_partitions ((Partition,Partition) (lambda,mu):pair) = bool:
+set slex_leq_partitions ((Partition,Partition) (lambda,mu):pair) = bool:
   let sl=lambda.sum, sm=mu.sum in
-  if sl!=sm then sl<sm else leq_equal_sum_partitions(pair) fi
+  if sl!=sm then sl<sm else rlex_leq_partitions(pair) fi
 
-set cmp_partitions ((Partition,Partition) (lambda,mu):pair) = int:
+set slex_cmp_partitions ((Partition,Partition) (lambda,mu):pair) = int:
   let sl=lambda.sum, sm=mu.sum in
-  case sl-sm then minus_1 in cmp_equal_sum_partitions(pair) else 1 esac
+  case sl-sm then minus_1 in rlex_cmp_partitions(pair) else 1 esac
 
 { look up partition in sorted list of partitions, all assumed of same sum }
 set index_partition([Partition] sorted_list) = (Partition->int):
 (  let l=#sorted_list in { precompute constant }
    (Partition lambda) int:
       binary_search_first
-      ((int i)bool:leq_equal_sum_partitions(lambda,sorted_list[i])
+      ((int i)bool:rlex_leq_partitions(lambda,sorted_list[i])
       ,0,l
       )
 )
 
 { dominance order on compositions, assumed to be so of the same number }
-set leq_dominance_order_partitions (Partition v,Partition w) = bool:
+set dominance_leq_compositions (Partition v,Partition w) = bool:
 (  v:=sort_to_partition(v); w:=sort_to_partition(w)
 ;  if   #v=0 then #w=0 or error("compositions not of same number")
    else assert(@: #w>0,"compositions not of same number")
@@ -309,7 +308,7 @@ set leq_dominance_order_partitions (Partition v,Partition w) = bool:
 )
 
 { same as previous, but assuming |v|,|w| are equal sum partitions (so sorted) }
-set leq_dominance_order_partitions_presorted (Partition v,Partition w) = bool:
+set dominance_leq_partitions (Partition v,Partition w) = bool:
    let limit=#w
 in limit=0 {in which case |#v=0| as well by assumption} or
   (let sum_v=v[0],sum_w=w[0] { both exist, since absence of 0-entries assumed }
@@ -587,7 +586,7 @@ set <=(BiPartition (P,Q), BiPartition (R,S)) = bool:
    case P.sum-R.sum
    then false else true { size balance is decisive, inverted ordering! }
    in { equal size case: compare left partitions, or right if ex aequo }
-      if P=R else (P,R) then (Q,S) fi.leq_equal_sum_partitions
+      if P=R else (P,R) then (Q,S) fi.rlex_leq_partitions
    esac
 
 { look up pair in sorted list of partition pairs, all assumed of same sum }
@@ -885,7 +884,7 @@ set D_classes (int n) = [D_class]:
 
 set D_irreducibles (int n) = [D_irrep]:
 (  for (lambda,):pair in partition_pairs(n)
-      if not leq_partitions(pair) do pair.unsplit_irr fi
+      if not slex_leq_partitions(pair) do pair.unsplit_irr fi
    od
 ##(let (s,r)=n\%2 in
    if =r else []
