@@ -145,6 +145,17 @@
 %destructor { destroy_typedef_list($$); }
 	    type_equation type_equations
 
+%type <type_pt>
+	    td_type td_closed_type
+%destructor { destroy_type($$); }
+	    td_type td_closed_type
+
+%type <type_l>
+            td_union_list_opt td_union_list td_union_list_2 td_type_list
+%destructor { destroy_type_list($$); }
+            td_union_list_opt td_union_list td_union_list_2 td_type_list
+
+
 
 %{
   int yylex (YYSTYPE *, YYLTYPE *);
@@ -167,8 +178,8 @@ input:	'\n'			{ YYABORT; } /* null input, skip evaluator */
 	| IDENT ':' expr '\n'
 		{ struct raw_id_pat id; id.kind=0x1; id.name=$1;
 		  global_set_identifier(id,$3,0,@$); YYABORT; }
-| IDENT ':' type '\n' { global_declare_identifier($1,$3,@$); YYABORT; }
-	| FORGET id '\n'	  { global_forget_identifier($2); YYABORT; }
+	| IDENT ':' type '\n' { global_declare_identifier($1,$3,@$); YYABORT; }
+	| FORGET id '\n'      { global_forget_identifier($2); YYABORT; }
 	| FORGET id_op '@' type '\n'
 	  { global_forget_overload($2,$4); YYABORT;  }
 	| SET_TYPE id_eq type_spec '\n'
@@ -961,11 +972,11 @@ type_equation
 ;
 
 typedef_type
-	:'[' union_list ']'
+	:'[' td_union_list ']'
 	  { $$.type_pt=make_row_type(make_union_type($2)); $$.ip.kind=0x0; }
-	| '(' union_list_2 ')'
+	| '(' td_union_list_2 ')'
 	  { $$.type_pt=make_union_type($2); $$.ip.kind=0x0; }
-	| '(' union_list_opt ARROW union_list_opt ')'
+	| '(' td_union_list_opt ARROW td_union_list_opt ')'
 	  { $$.type_pt=
 	      make_function_type(make_union_type($2),make_union_type($4));
 	    $$.ip.kind=0x0;
@@ -982,6 +993,49 @@ typedef_type
 	  { $$.type_pt=make_prim_type($1); $$.ip.kind=0x0; }
 // we might allow  TYPE_CONSTR '<' type '>' and  TYPE_CONSTR '<' type_list '>'
 // since they cannot refer to type being defined, so cannot be circular
+;
+
+// in a |typedef_type| we want to allow a bare |TYPE_CONSTR| as a type.
+// this gives a whole family of td_ entities that replace their ordinary forms
+
+td_type	: PRIMTYPE	 { $$=make_prim_type($1); }
+	| type_or_constr { $$ = make_tabled_type($1,nullptr); }
+	| TYPE_CONSTR '<' td_type '>'
+	  { $$=make_tabled_type($1,make_type_singleton($3)); }
+	| TYPE_CONSTR '<' td_type_list '>' { $$=make_tabled_type($1,$3); }
+	| td_closed_type
+	| TYPE_VAR { $$=make_type_variable($1); }
+;
+
+td_type_list // at least 2 comma-separated |type|s
+	: td_type ',' td_type  { $$=make_type_list(make_type_singleton($1),$3); }
+	| td_type_list ',' td_type { $$=make_type_list($1,$3); }
+;
+
+td_closed_type
+	: '(' td_union_list ')'	{ $$=make_union_type($2); }
+	| '(' td_union_list_opt ARROW td_union_list_opt ')'
+	  { $$=make_function_type(make_union_type($2),make_union_type($4)); }
+	| '[' td_union_list ']'	{ $$=make_row_type(make_union_type($2)); }
+;
+
+td_union_list_opt // 0 or more comma-or-bar-separated |type|s, as type list
+	:   { $$=make_type_singleton(make_tuple_type(nullptr)); }
+	| td_union_list
+;
+
+td_union_list
+	: td_type { $$ = make_type_singleton($1); }
+	| td_union_list_2
+;
+
+td_union_list_2
+	: td_type_list { $$ = make_type_singleton(make_tuple_type($1)); }
+	| td_union_list_opt '|'
+	  { $$ = make_type_list ($1, make_tuple_type(nullptr)); }
+	| td_union_list_opt '|' td_type { $$ = make_type_list($1,$3); }
+	| td_union_list_opt '|' td_type_list
+	  { $$ = make_type_list($1,make_tuple_type($3)); }
 ;
 
 typedef_struct_specs: typedef_type_field ',' typedef_type_field
@@ -1008,9 +1062,9 @@ typedef_union_specs: typedef_type_field '|' typedef_type_field
 	  }
 ;
 
-typedef_type_field : type TYPE_ID
+typedef_type_field : td_type TYPE_ID
 	  { $$.type_pt=$1; $$.ip.kind=0x1; $$.ip.name=$2; }
-	| type '.'{ $$.type_pt=$1; $$.ip.kind=0x0; }
+	| td_type '.'{ $$.type_pt=$1; $$.ip.kind=0x0; }
 ;
 
 
