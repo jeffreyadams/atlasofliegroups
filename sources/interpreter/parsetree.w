@@ -1708,7 +1708,7 @@ in the |type_expr| variables can have user defined types and type variables that
 are not yet expanded, but encoded as the |tabled| variant of a type in which the
 |tabled_nr()| is simply the identifier code, and any argument types are
 similarly encoded. In order to obtain a |type_expr| that is usable in type
-analysis, clients should apply the method |global_id_table->expand| to these
+analysis, clients should apply the method |global_id_table->swallow| to these
 type values, which will look up the user definitions as necessary. One reason to
 not do this during parsing is that the process can fail (if the length of an
 argument list does not match the arity of the type constructor), but the paser
@@ -1856,7 +1856,7 @@ easy to get used to).
 @< Cases for printing... @>=
 case lambda_expr:
 { const auto& fun=*e.lambda_variant;
-  const type_expr par_tp = global_id_table->expand(fun.parameter_type);
+  const type_expr par_tp = global_id_table->swallow(fun.parameter_type);
   if (par_tp==void_type)
     out << '@@';
   else
@@ -1866,8 +1866,8 @@ case lambda_expr:
 break;
 case rec_lambda_expr:
 { const auto& fun=*e.rec_lambda_variant;
-  const type_expr par_tp = global_id_table->expand(fun.parameter_type);
-  const type_expr res_tp = global_id_table->expand(fun.result_type);
+  const type_expr par_tp = global_id_table->swallow(fun.parameter_type);
+  const type_expr res_tp = global_id_table->swallow(fun.result_type);
   out << "rec_fun " << main_hash_table->name_of(fun.self_id);
   if (par_tp==void_type)
     out << '@@';
@@ -2669,7 +2669,7 @@ case cast_expr: delete cast_variant; break;
 @< Cases for printing... @>=
 case cast_expr:
 {@; const auto& c = *e.cast_variant;
-  const type_expr tp = global_id_table->expand(c.dst_tp);
+  const type_expr tp = global_id_table->swallow(c.dst_tp);
   out << tp << ':' << c.exp ;
 }
 break;
@@ -2738,7 +2738,7 @@ case op_cast_expr: delete op_cast_variant; break;
 @< Cases for printing... @>=
 case op_cast_expr:
 { const auto& c = *e.op_cast_variant;
-  const type_expr tp = global_id_table->expand(c.arg_type);
+  const type_expr tp = global_id_table->swallow(c.arg_type);
   out << main_hash_table->name_of(c.oper) << '@@' << tp;
 }
 break;

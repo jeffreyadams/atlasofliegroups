@@ -966,8 +966,6 @@ type_equations : type_equation
 type_equation
 	: type_or_constr '=' typedef_type
 	  { $$=make_typedef_singleton($1,$3.type_pt,$3.ip); }
-	| '.' '=' typedef_type
-	  { $$=make_typedef_singleton(-1,$3.type_pt,$3.ip); }
 ;
 
 typedef_type
@@ -990,8 +988,11 @@ typedef_type
 	  }
 	| PRIMTYPE // though not very useful, allow a single PRIMITIVE type
 	  { $$.type_pt=make_prim_type($1); $$.ip.kind=0x0; }
-// we might allow  TYPE_CONSTR '<' type '>' and  TYPE_CONSTR '<' type_list '>'
-// since they cannot refer to type being defined, so cannot be circular
+	| TYPE_CONSTR '<' td_type '>'
+	  { $$.type_pt=make_tabled_type($1,make_type_singleton($3));
+	    $$.ip.kind=0x0; }
+	| TYPE_CONSTR '<' td_type_list '>'
+	  { $$.type_pt=make_tabled_type($1,$3); $$.ip.kind=0x0; }
 ;
 
 // in a |typedef_type| we want to allow a bare |TYPE_CONSTR| as a type.

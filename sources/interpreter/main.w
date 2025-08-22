@@ -644,6 +644,11 @@ catch (error_base& err)
     std::cerr << "Runtime error:\n  ";
   else if (dynamic_cast<logic_error*>(&err)!=nullptr)
     std::cerr << "Internal error: ";
+  else if (dynamic_cast<program_error*>(&err)!=nullptr)
+  {@;
+    std::cerr << "Program error: ";
+    ana.reset();
+  }
   std::cerr << err.message << "\n";
 @)
   set_back_trace(err.back_trace);
