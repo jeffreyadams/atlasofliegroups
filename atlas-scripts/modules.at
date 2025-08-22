@@ -13,10 +13,10 @@ set !irr="irr"
 set !K_types="K_types"
 
 set I (Param p) = tag_Param:
-  assert(is_standard(p),"parameter is not standard"); (p,std)
+  assert(@:is_standard(p),"parameter is not standard"); (p,std)
 set J(Param p)=tag_Param:
-  assert(is_standard(p),"parameter is not standard");
-  assert(is_final(p),"parameter is not final");
+  assert(@:is_standard(p),"parameter is not standard");
+  assert(@:is_final(p),"parameter is not final");
   (p,irr)
 
 { set kgb_number(KGBElt x)=int: use #@KGBElt from basic.at for this }
@@ -50,27 +50,27 @@ set array_prints ([string] A) = void: { print strings, one per line }
 
 { composition series of (p,std,[...]) }
 set composition_series (Param p,string type) = tag_ParamPol:
-  assert(type=std,"Composition series not defined for irreducible modules");
+  assert(@:type=std,"Composition series not defined for irreducible modules");
   (composition_series(p),irr)
 
 { composition series of linear combination of standards (ParamPol P,std) }
 set composition_series (tag_ParamPol(P,type))= tag_ParamPol:
-  assert(type=std,"Composition series only defined for standard modules");
+  assert(@:type=std,"Composition series only defined for standard modules");
   (composition_series(P),irr)
 
 { character formula of (p,irr,[...] }
 set character_formula (tag_Param(p,type)) = tag_ParamPol:
-  assert(type = irr,"Character formula only defined for irreducible modules");
+  assert(@:type = irr,"Character formula only defined for irreducible modules");
   (character_formula(p),std)
 
 { character formula of linear combination of standards (ParamPol P,irr) }
 set character_formula (tag_ParamPol(P,type)) = tag_ParamPol:
-  assert(type = irr,"Character formula only defined for irreducible modules");
+  assert(@:type = irr,"Character formula only defined for irreducible modules");
   (character_formula(P),std)
 
 set show (ParamPol P) = void: array_prints(to_str(P))
 set show (tag_ParamPol(,type):tP) = void:
-  assert(type=irr or type=std or type=K_types,"Incorrect type");
+  assert(@:type=irr or type=std or type=K_types,"Incorrect type");
   array_prints(to_str(tP))
 set show(tag_Param tP) = void: prints(to_str(tP))
 
@@ -80,7 +80,7 @@ set show(KGBElt x,ratvec lambda) = void:
 
 
 set as_pol (tag_Param(p,type)) = tag_ParamPol:
-  assert(type=irr or type=std or type=K_types,"Incorrect type");
+  assert(@:type=irr or type=std or type=K_types,"Incorrect type");
   (as_pol(p),type)
 
 

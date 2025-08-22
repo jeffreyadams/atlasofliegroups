@@ -255,10 +255,10 @@ begin
 ; let k=root_index(id,beta) in
   let beta_check=coroot(id,k) in
   let (p,q)=(parameter(E),parameter(F)) in
-  assert(valid(E),"E is not valid")
-; assert(valid(F),"F is not valid")
-; assert(ext_type(j,E)="2i12" and ext_type(j,F)="2r21","Wrong types")
-; assert(q=Cayley_set(j,Cayley_set(k,p)[0])[0] or
+  assert(@:valid(E),"E is not valid")
+; assert(@:valid(F),"F is not valid")
+; assert(@:ext_type(j,E)="2i12" and ext_type(j,F)="2r21","Wrong types")
+; assert(@:q=Cayley_set(j,Cayley_set(k,p)[0])[0] or
          q=Cayley_set(j,Cayley_set(k,p)[0])[1]
         ,"q is not a 2i12 Cayley transform of p")
 ; let l_test_1=in_lattice((1+^theta(E)),l(F)-l(E)) in
@@ -297,8 +297,8 @@ begin
     else prints(E, x(E), y_gen(E), F, x(F), y_gen(F))
     ; error("lambda_test_1 and lambda_test_2 both false") fi
   in
-  assert(valid(E_new),"E_new is not valid")
-; assert(valid(F_new),"F_new is not valid")
+  assert(@:valid(E_new),"E_new is not valid")
+; assert(@:valid(F_new),"F_new is not valid")
 ; let sign_E=sign(E,E_new) in
   let sign_F=sign(F,F_new) in
   let sign=sign_E*sign_F*kappa in
@@ -330,7 +330,7 @@ set sign_2Cr (int j,ExtParam E) = int:
 
 set signs_1i1(int j, ExtParam E, ExtParam E1, ExtParam F) = (int,int):
 begin
-  assert(ext_type(j,E)="1i1","Wrong type in signs_1i1")
+  assert(@:ext_type(j,E)="1i1","Wrong type in signs_1i1")
 ; let alpha=root(E.ic,j), alpha_check=coroot(E.ic,j), F=ext_Cayley(j,E)[0]
   then sigma = solve((1+^omega(F)),alpha)
                .(requisition("can't solve for sigma in signs_1i1"))
@@ -576,7 +576,7 @@ set quadratic(i_poly_mat M, int length)=quadratic(M,length,false)
 }
 set braid(i_poly_mat M,i_poly_mat N, int length,bool show) = bool:
 begin
-  assert(if length<=4 then length>0 else length=6 fi,"wrong length")
+  assert(@:if length<=4 then length>0 else length=6 fi,"wrong length")
 ; let pair = (M,N) { naming components here would make things difficult }
   in for i:length-1 do pair := (let (X,Y)=pair in (Y*M,X*N)) od
 ; let A = -pair { that is dyadic -@(i_poly_mat,polly_mat): take the difference }

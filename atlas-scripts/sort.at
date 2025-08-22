@@ -169,14 +169,14 @@ set sort_by_height = ([(Split,Param)] -> [(Split,Param)]):
  sort_by( (Split s,Param p) int: height(p), <=@(int,int) )
 
 { comparing vectors lexicographically }
-set lex_leq (vec v,vec w) = bool: { assert(#v=#w); }
+set lex_leq (vec v,vec w) = bool: { assert(@:#v=#w); }
 ( let lv=#v,lw=#w in
   for i:min(lv,lw) do if v[i]!=w[i] then return v[i]<w[i] fi od
 ; lv<=lw { break tie using length }
 )
 
 { compariung fixed size vectors lexicographically (restricted lex ordering) }
-set rlex_leq (vec v,vec w) = bool: { assert(#v=#w); }
+set rlex_leq (vec v,vec w) = bool: { assert(@:#v=#w); }
    for x@i in v do if x!=w[i] then return x<w[i] fi od; true
 
 { short lex ordering }

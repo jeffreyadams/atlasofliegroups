@@ -21,7 +21,7 @@ set dual_block ([Param] B, InnerClass dual_inner_class) = ([Param],[int]):
   then (perm,success) =
      let B_dual=for p in B do dual(p,dual_inner_class) od
      in permutation(B_dual,B_vee)
-  in assert(success,"Parameters not in a single dual block"); (B_vee,perm)
+  in assert(@:success,"Parameters not in a single dual block"); (B_vee,perm)
   { B_vee is in length *increasing* order
     B_dual is in length *decreasing* order; B[i]->B_dual[i] is Vogan duality
     B_vee=B_dual up to permutation, roughly reversing order
@@ -43,7 +43,7 @@ set dual_ExtParameter (
 }
 set KL_Q_polynomial ([Param] B, i_poly_mat Q,Param irr,Param std) = i_poly:
   let index_irr=find(B,irr) then index_std=find(B,std) in
-  assert(index_irr>=0 and index_std>=0,"irr and/or std not found in block");
+  assert(@:index_irr>=0 and index_std>=0,"irr and/or std not found in block");
   Q[index_irr][index_std]
 
 { in some cases this test fails because it is off by a permutation which

@@ -119,7 +119,7 @@ set max_eigenvalue (RootDatum rd, vec H) = int:
    max(for alpha in posroots(rd) do H*alpha od)
 
 set eigenspace_dimensions (RootDatum rd, vec H) = [int]:
-   assert(is_dominant(dual(rd),H),"H is not dominant");
+   assert(@:is_dominant(dual(rd),H),"H is not dominant");
    for k:max_eigenvalue(rd,H)+1 do dim_eigenspace(rd,H,k) od
 
 set even_eigenspaces (RootDatum rd, vec H) = [int]:
@@ -412,7 +412,7 @@ set choose_Cayley (int i,KGBElt x) = KGBElt:
    let y=Cayley(i,x) in
    if torus_bits(y)=torus_bits(x) then y
    else let z=cross(i,y) in
-      assert(torus_bits(z)=torus_bits(x),"failure in choose_cayley")
+      assert(@:torus_bits(z)=torus_bits(x),"failure in choose_cayley")
    ;  z
    fi
 
@@ -477,7 +477,7 @@ set all_real_nilpotent_orbit_KGBs (RealForm G,[int] H) = [KGBElt]:
    for M in Levis do test_real_orbit(G,K,M,S) od.##
 
 set is_conjugate_orbit (RealNilpotent O,RealNilpotent P) = bool:
-   assert(O.real_form=P.real_form);
+   assert(@:O.real_form=P.real_form);
    let (H,x,)=move_to_distinguished_fiber(O)
    ,   (K,y,)=move_to_distinguished_fiber(P)
    then L=K*inverse(cross_divide(x,y))
@@ -488,7 +488,7 @@ set dominant (RealNilpotent(H,x,):O) = RealNilpotent:
    let (H_dom,w)=from_dominant(H,O.real_form)
    then O_dom=real_nilpotent(H_dom,cross(w,x))
 in {=(H*inverse(w), cross(w,x))}
-   assert(is_conjugate_orbit(O_dom,O),"dominant(orbit) failed");
+   assert(@:is_conjugate_orbit(O_dom,O),"dominant(orbit) failed");
    O_dom
 
 set find_conjugate ([RealNilpotent] list,RealNilpotent O) = int:

@@ -87,7 +87,7 @@ set make_hash (HashInfo<T> (hash_code,eq)) = Hash<T>:
 	;  if seq>=max_fill()
 	   then rehash()
 	   ; set(code,new):=locate(x)
-	   ; assert(not new,"Miraculous disappearence in rehashing!")
+	   ; assert(@:not new,"Miraculous disappearence in rehashing!")
 	   fi
 	;  seq_nbrs[code] := seq
 	else seq_nbrs[code]
@@ -129,7 +129,7 @@ end { of abstraction of type |T| }
 { fast polynomial evaluation modulo power of 2, similar to polynomial |eval| }
 set eval_at_mod(int n, int m) = (vec->int):
     let mask = m-1 then pow=bit_length(mask) in
-    assert(n>1 and m=exp_2(pow)," bad values for eval_at_mod");
+    assert(@:n>1 and m=exp_2(pow)," bad values for eval_at_mod");
     (vec v) int: let sum=0 in  for e in v ~do sum:=AND(mask,e + n*sum) od; sum
 
 {meant to hash a [vec] to int in [0,d_mod)}

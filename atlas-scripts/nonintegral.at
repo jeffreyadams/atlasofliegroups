@@ -87,7 +87,7 @@ set cross (mat w, Param p) = Param:
 set ext_cross(
   mat w,ExtParam(ic,delta,gamma,lambda_rho,theta,g,l,,tau,t):E) =
     ExtParam:
-  assert(w*delta=delta*w,"w not in W^delta");
+  assert(@:w*delta=delta*w,"w not in W^delta");
   prints("ext_cross by w=",w); prints("E:"); display(E);
   let rd=root_datum(ic), x=x(E), w1= inverse(w), gamma1=w*gamma
   then rho=rho(rd), x1=cross(w,x) { call cross@(mat,KGBElt) from synthetic.at }
@@ -245,7 +245,7 @@ set ext_Cayley (int j, ExtParam E, bool show) = [ExtParam]:
         ("nonintegral:ext_Cayley:extended Cayley transform of type ", type)
     fi
   ; let p=parameter(E) in
-    assert(is_fixed(E.delta,p),"Parameter is not fixed by delta")
+    assert(@:is_fixed(E.delta,p),"Parameter is not fixed by delta")
   ; let rd=root_datum(p), id=integrality_datum(p)
     then alpha = root(id,j) { a simple root of the integral subsystem }
     in

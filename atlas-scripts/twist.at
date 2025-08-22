@@ -86,7 +86,7 @@ set kernel_sublattice (RootDatum rd, [ratvec] generators) = mat:
    then (C,v)=filter_units(all)
 in for gen in generators
    do for vj@j in v
-      do assert((vj*gen[j]).is_integer,"Generator not in center") od
+      do assert(@:(vj*gen[j]).is_integer,"Generator not in center") od
    od
 ;  let d = common_denominator(generators)
    then M = mat: rank(rd) # for gen in generators do ratvec_as_vec(d*gen) od

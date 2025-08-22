@@ -54,7 +54,7 @@ set invertibles_modulo (int n) = [int]:
 
 { Euler totient function }
 set phi (int n) = int:
-   assert(n>0); for (p,c) in factorization(n) do (p-1)*p^(c-1) od.product
+   assert(@:n>0); for (p,c) in factorization(n) do (p-1)*p^(c-1) od.product
 
 set gcd_Bezout_coef (int !a, int !b) = (int,int): { (d,s) such that d=s*a mod b }
    let (s0,s1) = (1,0) { coefficients of |a| modulo |b| in current remainders }
@@ -65,12 +65,12 @@ in while >r0
 
 set Bezout ((int,int) (a,b):pair) = (int,int,int): { (d,s,t) with d=s*a+t*b) }
    let (d,s)= gcd_Bezout_coef(pair) then (q,r)=(s*a)\%b
-   in assert(d=r); (d,s,-q)
+   in assert(@:d=r); (d,s,-q)
 
 set inverse_mod  ((int,int) pair) = int:
 (  let (d,s)= gcd_Bezout_coef(pair)
-   in assert(d=1,
-     @: let (a,n)=pair in a+" is not invertible modulo "+n+", gcd="+d)
+   in assert(@:(d=1
+	       ,let (a,n)=pair in a+" is not invertible modulo "+n+", gcd="+d))
 ;  s
 )
 
