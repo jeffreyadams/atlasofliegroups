@@ -21,27 +21,58 @@ set dimension (KTypePol P) = int:
 set dimension_u_cap_s(Parabolic P)=int:#nci_nilrad_roots_restricted_to_H_theta(P.x_min,P)
 set dimension_wedge_u_cap_s(Parabolic P)=int:2^dimension_u_cap_s(P)
 
-{simply add H to p.lambda and standardize the result}
-set add_weight (Param p,ratvec H) = KTypePol:
-  K_type(parameter(p.x,p.lambda+H,p.nu))
+{NOTE:
+ KType is (KGBElt, ratvec)
+ Typical KType is written mu=(x,lambda) for lambda a ratvec; mu.lambda=lambda
+ HOWEVER
+ but K_type(x,tau) is only defined for tau a vec  (better to use tau not lambda here)
+ mu=K_type(x,tau) => mu.lambda=tau+rho
+ mu=(x,lambda) => mu=K_type(x,ratvec_as_vec(lambda-rho))
+ for example: K_type(x,[0,...,0])=(x,rho)
+ Note: suppose mu is a KType, mu=(x,tau) -> mu=K_type(x,tau-rho)
+}
 
-set add_weights (Param p,(KGBElt->[ratvec]) weights) = KTypePol:
-   sum(p.real_form,for H in weights(p.x) do add_weight(p,H) od)
+{K_type(x,tau)=(x,tau+rho)  *all tau \in X^*  *
+ (x,lambda)=K_type(x,lambda-rho)          *all lambda in X^*+\rho
+ K_type(x,tau)=(x,tau+rho)=(wx,w(tau+rho))=K_type(wx,w\tau + (w\rho-rho))
+ Conclusion: w:K_type(x,tau) -> K_type(x,w\tau + (w\rho-rho)) for *any* tau\in X^*
+}
 
+set *(WeylElt w,KType mu)=KType:
+   let x=mu.x then
+   lambda=mu.lambda {ratvec} then
+   rho=mu.root_datum.rho then
+   tau=lambda-rho {vec; mu=K_type(x,tau)}
+   in K_type(cross(w,x),ratvec_as_vec(w*tau + w*rho-rho))
+
+set make_dominant(KType tau)=KType:
+    let lambda=tau.lambda then  {lambda is a ratvec}
+    x=tau.x then
+    (w,lambda_dom)=to_dominant(tau.root_datum,lambda) in
+    K_type(w*x,ratvec_as_vec(lambda_dom-tau.root_datum.rho))
+
+set add_weight(KType mu,vec H)=KType:make_dominant(K_type(mu.x, ratvec_as_vec(mu.lambda-mu.real_form.rho+H)))
+
+{set add_weights (Param p,(KGBElt->[ratvec]) weights) = KTypePol:
+   sum(p.real_form,for H in weights(p.x) do add_weight(p,H) od)}
+
+set add_weights (KType mu,(KGBElt->[vec]) weights) = KTypePol:
+   sum(mu.real_form,for H in weights(mu.x) do add_weight(mu,H) od)
+   
 {simply add H to each term of P, standardize the results}
-set add_weight (ParamPol P,ratvec H) = KTypePol:
+set add_weight (KTypePol P,vec H) = KTypePol:
    sum(P.real_form,for coef@p in P do coef*add_weight(p,H) od)
 
 {given a function f: KGBElt -> ratvec, replace each p=(x,lambda,nu) with
 standard(parameter(x,lambda+f(x),nu))}
-set add_weight (ParamPol P,(KGBElt->ratvec) f) = KTypePol:
+set add_weight (KTypePol P,(KGBElt->vec) f) = KTypePol:
    sum(P.real_form, for coef@p in P do coef*add_weight(p,f(p.x)) od)
 
-set add_weight (ParamPol P,(KGBElt->ratvec) f)=KTypePol:
+set add_weight (KTypePol P,(KGBElt->vec) f)=KTypePol:
    sum(P.real_form, for coeff@p in P do coeff*add_weight(p,f(p.x)) od)
 
 {same as previous, applied to a ParamPol}
-set add_weights (ParamPol P,(KGBElt ->[ratvec]) weights) = KTypePol:
+set add_weights (KTypePol P,(KGBElt ->[vec]) weights) = KTypePol:
    sum(P.real_form,
        for coef@p in P do for H in weights(p.x) do coef*add_weight(p,H) od od.##
       )
@@ -54,11 +85,11 @@ set add_weight (KTypePol P,(KGBElt->vec) f) = KTypePol:
 {same as previous, applied to a ParamPol}
 set add_weights (KTypePol P,(KGBElt ->[vec]) weights) = KTypePol:
    P.null_K_module +
-   for coef@t in P
-   do let (x,lr)=%t in for H in weights(x) do (coef,K_type(x,lr+H)) od
+   for coef@t in P 
+   do prints("c,t", coef, " ", t); let (x,lr)=%t in prints("x=",x, " ", x.real_form, " lr=",lr);for H in weights(x) do prints("coeff:", coef, "x: ", x, "lr", lr,"H=",H);(coef,K_type(x,lr+H)) od
    od.##
 
-set add_weights (ParamPol P,(KGBElt ->[ratvec]) f)=KTypePol:
+set add_weights (KTypePol P,(KGBElt ->[vec]) f)=KTypePol:
    let G=P.real_form in sum(G, for coeff@p in P do sum(G,for H in
    f(p.x) do coeff*add_weight(p,H) od) od)
 

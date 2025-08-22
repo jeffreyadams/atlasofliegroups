@@ -11,6 +11,7 @@ set KGB_elt_gen(InnerClass ic,mat theta, ratvec v)=KGBElt_gen:
  (ic,theta,v*(1+theta)/2)
  
 set KGB_elt(KGBElt_gen x)=KGB_elt(x.inner_class,x.involution,x.torus_factor)
+set KGB_elt_gen(KGBElt x)=KGB_elt_gen(x.inner_class,x.involution,x.torus_factor)
 set root_datum(KGBElt_gen x)=RootDatum:x.inner_class.root_datum
 
 {NOTE: torus_factor tau is the "normalized" torus factor. This means: tau is theta_x fixed,
@@ -196,13 +197,31 @@ set != ((KGBElt_gen,KGBElt_gen)p) = bool: not =p
   Dangerous bend: this formula appears to be right, with the
   unnormalized torus factors, no dividing by 2, and the transpose
   I'm not 100% sure this is correct
-}
+  I don't like this  (jda 8/18/25)
 
 set *(mat delta,KGBElt_gen(ic,theta,t)) = KGBElt_gen:
   (ic,delta*theta*delta,t*delta)
-
 set *(WeylElt w,KGBElt x)=KGBElt:KGB_elt(x.inner_class,w.matrix*x.involution*inverse(w).matrix, w*x.torus_factor)
 set *(WeylElt w,KGBElt_gen x)=KGBElt_gen:KGB_elt_gen(x.inner_class,w.matrix*x.involution*inverse(w).matrix, w*x.torus_factor)
+}
+
+{x -> t=normalized torus factor 
+   -> mu = unnormalized torus factor = (t+rho_check)/2
+   -> mu_new=mu*w
+   -> t_new=(2*mu_new-rho_check)(1+theta)/2 = normalized torus factor of w*x
+}
+
+set *(mat delta,KGBElt_gen(ic,theta,t))= KGBElt_gen:
+   let mu_new=(t+ic.rho_check)/2 then
+   t_new= (2*mu_new-ic.rho_check)*(1+theta)/2 then
+   theta_new=delta*theta*inverse(delta)
+   in (ic,theta_new,t_new)
+
+set *(WeylElt w,KGBElt_gen x)=KGB_elt_gen(w.matrix*x)
+set *(WeylElt w,KGBElt x)=KGBElt:KGB_elt(w*KGB_elt_gen(x))
+
+
+
 
 set is_fixed (KGBElt_gen y,mat delta) = bool: y = delta*y
 

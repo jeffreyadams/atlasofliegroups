@@ -49,6 +49,16 @@ in columns_with
     have a bug: hodge_branch_std(SL(2,R).trivial,10) gives "index 6 out of range" error
 }
 
+set nci_nilrad_roots_restricted_to_H_theta_old(KGBElt x_L,Parabolic P)=[ratvec]:
+assert(is_parabolic_theta_stable(P),"P is not theta-stable");
+let x_G=embed_KGB(x_L,P.real_form) then
+complex_roots=for root in makeS(x_G,P) do root od in
+##for root in nilrad_roots(P) do if
+is_noncompact_imaginary(root,x_G) then [root] else [] fi od##complex_roots
+
+set nci_nilrad_roots_restricted_to_H_theta_old(Parabolic P)=
+(KGBElt->[ratvec]): (KGBElt x_L): nci_nilrad_roots_restricted_to_H_theta_old(x_L,P)
+
 {returns a function taking a KGBElt to [ratvec]
 }
 set nci_nilrad_roots_restricted_to_H_theta(Parabolic P) =  (KGBElt x_L) [vec]:
