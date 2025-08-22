@@ -1092,7 +1092,7 @@ set make_special (D_irrep chi) = D_irrep:
    esac
 
 set character (D_irrep chi, D_class c) = int:
-   assert(@:chi.rank = C.rank,"Size mismatch");
+   assert(@:chi.rank = c.rank,"Size mismatch");
    let pos_cycles(Partition mu)=Signed_cycles: for l in mu do (l,false) od in
    case chi
    | (pair).unsplit_irr:
