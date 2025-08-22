@@ -218,12 +218,15 @@ set is_partition ([int] seq) = bool: backward_differences(seq).>=
 set frequencies (Partition lambda) = vec: { frequency vector, position 0 unused }
   let v=null(1) in { ensure the unused position 0 is always present }
   for l in lambda
-  do if l>=#v then v ##:= null(l-#v)#1 { append final 1 } else v[l]+:=1 fi
+  do if l>=#v then v ##:= null(l-#v)#1 { append final 1 }
+     elif l>0 then v[l]+:=1
+     elif l<0 then error("Negative entry present") fi
   od; v
 
-{ the following is a right-inverse to |frequencies|, image is all partitions }
+{ the following is a right-inverse to |frequencies|; assuming |frequencies[0]=0|
+  to avoid getting trialing 0's, the image is precisely the set of partitions }
 set repeat_parts (vec frequencies) = Partition:
-  for f@i in frequencies[1:] { skip 0, reverse:} ~ for :f do i+1 od od
+  for f@i in frequencies { reverse: } ~ for :f do i od od
 
 set sort_to_partition ([int] parts) = Partition:
   parts.frequencies.repeat_parts
@@ -237,7 +240,7 @@ set transpose ([int] parts) = Partition:
 { or more "manually", when |parts| assumed already in decreasing order
   if #lambda=0 then []
   else let l=#lambda in
-    for i:lambda[0] { value |lambda[0]| is sentinel ensuring |l>0| below }
+    for i:lambda[0] { since |i<lambda[0]|, we can never set |l:=0| below }
     do while lambda[l-1]<=i do l-:=1 od; l
     od
   fi
@@ -300,22 +303,31 @@ set index_partition([Partition] sorted_list) = (Partition->int):
       )
 )
 
-{ dominance order of partitions }
+{ dominance order on compositions, assumed to be so of the same number }
 set leq_dominance_order_partitions (Partition v,Partition w) = bool:
-   if =#v then assert(@:w.= ,"not comparable"); true
-   elif =#w then assert(@:v.= ,"not comparable"); true
-   else v:=sort_to_partition(v); w:=sort_to_partition(w)
-   ; assert(@:v~[0]>=0 and w~[0]>=0,"negative terms")
-   ; let sums_v = cumulate_forward(v), sums_w = cumulate_forward(w)
-     in assert(@:sums_v~[0]=sums_w~[0],"not comparable")
-     ; for i:min(#v,#w) do sums_v[i]<=sums_w[i] od.all { need exactly these }
+(  v:=sort_to_partition(v); w:=sort_to_partition(w)
+;  if   #v=0 then #w=0 or error("compositions not of same number")
+   else assert(@: #w>0,"compositions not of same number")
+   { |sort_to_partition| balks on negative entries, so |v~[0]>0 and w~[0]>0| }
+   ;  let sums_v = cumulate_forward(v), sums_w = cumulate_forward(w)
+   in assert(@:sums_v~[0]=sums_w~[0],"compositions not of same number")
+   ;  for sw@i in sums_w do @: sums_v[i]<=sw od.all { is safe and sufficient }
    fi
+)
 
-{ same as previous but assume each term is already reverse sorted,
-  and all terms are comparable }
+{ same as previous, but assuming |v|,|w| are equal sum partitions (so sorted) }
 set leq_dominance_order_partitions_presorted (Partition v,Partition w) = bool:
-   let sums_v = cumulate_forward(v), sums_w = cumulate_forward(w)
-   in for i:min(#v,#w) do sums_v[i]<=sums_w[i] od.all
+   let limit=#w
+in limit=0 {in which case |#v=0| as well by assumption} or
+  (let sum_v=v[0],sum_w=w[0] { both exist, since absence of 0-entries assumed }
+   in for i:limit-1 from 1
+      do @: { so that evaluation stops once a |false| is encountered }
+         if sum_v<=sum_w
+         then true next sum_v+:=v[i]; sum_w+:=w[i]
+	 else false
+	 fi
+      od.all
+  )
 
 {		functions related to representations of S_n		}
 
