@@ -42,24 +42,6 @@ set nilpotent_orbit_partitions =
 set nilpotent_orbit_partitions(RootDatum rd) = [Partition]:
    nilpotent_orbit_partitions(Lie_type(rd))
 
-{ test if partition is valid orbit in type ABCD }
-set is_valid (string type,vec P) = bool:
-{ avoid constructing |Lie_type(type[0]+n|, to no choke on "B1" and such }
-  case ascii(type)-ascii("A")
-  in true
-  , { type B } sum(P).is_odd and
-    all(for mult in P.frequencies.even_places do mult.is_even od)
-  , { type C } sum(P).is_even and
-    all(for mult in P.frequencies.odd_places do mult.is_even od)
-  , { type D } sum(P).is_even and
-    all(for mult in P.frequencies.even_places do mult.is_even od)
-  else false { exceptional types are not valid }
-  esac
-
-set is_valid (LieType t,vec P) = bool:
-  let tn=type_number(t), r=t.rank in
-  #P = case tn in r+1, r+r+1, r+r, r+r esac and is_valid("ABCD"[tn],P)
-
 { nilpotent orbits of dual group (types A-D only) }
 set dual_nilpotent_orbit_partitions(RootDatum rd)=[Partition]:
   nilpotent_orbit_partitions(dual(rd))
