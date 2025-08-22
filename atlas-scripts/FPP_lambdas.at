@@ -64,21 +64,42 @@ set cands_hash(InnerClass ic, mat theta, vec_hash lamthlam_hash) =
 ;  Perm2s
 )
 
-set Lnu(Param p) = RealForm:
-    let p1 = to_no_Cplus(p), G=p.real_form
+{this is the Levi defined by d_lambda, but standard. So pL1 has fine LKT on quasisplit Lnu}
+set Llam(Param p) = (RealForm,Param):
+    let (Q1,pL1) = theta_stable_quasi_data(p)
+    in (Q1.Levi,pL1)
+{
     then rhoi1 = rho_i(p1.x)
-    then rdnu = centralizer(G,[rhoi1.numer])
+    then rdnu = centralizer(G,[rhoi1.numer]) {stabilizer of imaginary rho; so automatically a quasisplit Levi}
     in quasisplit_form(inner_class(rdnu, p1.x.involution))
+}
 
+{This is the root datum for the good part of the stabilizer of lambda in the real Weyl group}
+set good_roots(KGBElt x, ratvec lambda) = RootDatum:
+    let (L1,p1) = Llam(parameter(x,lambda,0*lambda)) {now p1 is fine in L1}
+    then lamrho = ratvec_as_vec(p1.lambda - L1.rho)
+    then f(int m) = not is_real(m,p1.x) or is_even(lamrho*poscoroots(L1)[m])
+    in sub_datum(L1,f)
 
+{set Wlam(KGBElt x, ratvec lambda) = root_datum:
+    let gr = good_roots(x,lambda)
+    in for w in W(gr) do embed(gr,x.root_datum,w)}
+
+{as w runs over Wnu, get all parameter(p1.x, p1.lambda, w*p1.nu) theta-inducing to p}
 set Wnu(Param p) = [WeylElt]:
-    let Lnu = Lnu(p), p1 = to_no_Cplus(p), rho = p.real_form.rho
-    then theta1 = p1.x.involution
-    in for w1 in Weyl_orbit_ws(Lnu,(p1.infinitesimal_character).numer)
-       do if w1*theta1 = theta1*w1 and parameter(p1.x, w1*(p1.lambda - rho)+rho, 0*rho) = p1*0
+    let (L1,p1) = Llam(parameter(p.x,p.lambda,0*p.lambda)) {now p1 is fine in L1}
+    then gr = good_roots(p1.x, p1.lambda) {subdatum in L1 stabilizing lambda...}
+    in Weyl_orbit_ws(gr, p1.infinitesimal_character.numer)
+{
+    let L1 = Lnu(p), p1 = to_no_Cplus(p), rho = p.real_form.rho
+    then theta1 = p1.x.involution, xL1= inverse_embed_KGB(p1.x, L1), lambda1 = p1.lambda
+    in for w1 in Weyl_orbit_ws(L1,(p1.infinitesimal_character).numer)
+       do let lambda_shift = rho_C(L1,theta1) - w1*rho_C(L1,theta1)
+       	  in if w1*theta1 = theta1*w1 and parameter(cross(w1,xL1), w1*lambda1 + rho(L1) - w1*rho(L1) - lambda_shift ,0*lambda1) = p1
 	  then [w1]
 	  else [] fi
        od.##
+}
 
 set maxPR_cowts(Param p) = [vec]:
     let p1 = to_no_Cplus(p), G = p.real_form
@@ -96,7 +117,7 @@ set maxPR_cowts(Param p) = [vec]:
 
 {this is useless???}
 {result is tuples ([dpLs]) with pL hermitian and p = Ind_P^G(pL); so pL and p are unitary iff all the dpLs are}
-set ind_cand_params = (Param -> [Param]):
+set ind_cand_params_bad = (Param -> [Param]):
     let param_hash = make_Param_hash()
     then answers = [[Param]]: [] {one for each Param known}
     in (Param -> [Param]): (Param p) [Param]:
@@ -133,6 +154,106 @@ set ind_cand_params = (Param -> [Param]):
 
 	then ()= assert(#answers = param_hash.size(),"ind_cand_params hash damaged")
 	in answers[i]
+
+
+
+{result is tuples ([pL]) with  p \subset Ind_P^G(pL); so p is unitary if pL is}
+set ind_cand_params(Param p) = [[Param]]:
+    if not is_hermitian(p) then return [] fi;
+    let G = p.real_form
+    then (Q1, pL1) = theta_stable_quasi_data(p)
+    then L1 = Q1.Levi
+    then qL1 = anti_finalize(pL1) {now on x_open? in L1}
+    then q1 = parameter(embed_KGB(qL1.x,G), qL1.lambda - rho(L1) + rho(G), qL1.nu)
+    {then () = prints("p1.nu = ",p1.nu,", pL1.nu = ",pL1.nu,", qL1.nu = ",qL1.nu)}
+    then gr = good_roots(qL1.x, qL1.lambda), theta1 = qL1.x.involution
+    then Ws = Weyl_orbit_ws(L1, qL1.nu.numer)
+    then Ws = if is_split(L1.inner_class.adjoint)
+    	      then Ws
+	      else for w in Ws
+	      	   do if theta1*matrix(w) = matrix(w)*theta1
+	      	      then [w]
+		      else []
+		      fi
+		   od.##
+	      fi
+    then xo = x_open(G), (y2,p2) = from_no_Cplus(q1) {real induction}
+    then yinv2 = y2.inverse {goes from q1 to p2}
+    then temp_hash = make_Param_hash()
+    then () = for w in Ws
+    	      do temp_hash.match(parameter(p2.x, yinv2*(w*(q1.lambda - G.rho)) + G.rho {need change in rho_C?} ,yinv2*(w*q1.nu)))
+	      od
+    then theta2 = p2.x.involution
+    then a_cowts = [vec]:
+    	 for xi in G.fundamental_coweights
+	 do (xi - xi*theta2).numer
+	 od.no_reps
+    then P2_max_cowts = null(rank(G),0) {these will define max real at x2}
+    then () = for tau in a_cowts
+	      do if rank(P2_max_cowts#tau) = rank(P2_max_cowts) + 1
+	      	 then P2_max_cowts#:=tau
+		 fi
+	      od
+    then P2s = for tau in a_cowts
+    	       do parabolic_by_cwt(tau,xo)
+	       od
+    then () = for P2 in P2s
+    	      do if not parabolic_is_real(P2)
+	      	 then prints("bad parabolic ",P2," at p = ",p)
+		 fi
+	      od
+    then tempL_hashes = for P2 in P2s do make_Param_hash() od
+    then L2s = for P2 in P2s do P2.Levi od
+    then xL2s = for L2 in L2s do inverse_embed_KGB(p2.x,L2) od
+    then () =  for L2@j in L2s
+       	       do for p2w in temp_hash.list()
+	       	  do tempL_hashes[j].match(parameter(xL2s[j], p2w.lambda - rho(G) + rho_C(G,theta2) +
+		  rho(L2) - rho_C(L2,theta2), p2w.nu))
+	  	  od
+       	       od
+    in for tempL_hash@j in tempL_hashes
+       do for p2Lw in tempL_hash.list()
+       	  do let q2Lws = monomials(finalize(p2Lw))
+	     then k = first(for q2Lw in q2Lws
+		       	    do is_hermitian(q2Lw) and
+		       	 	  real_induce_standard(1*q2Lw,G)[p].!=
+			    od)
+	     in if k.>=
+		then [q2Lws[k]]
+		else []
+		fi
+	  od.## {this is a list of final Hermitian Param's on L2s[j] inducing to p}
+       od
+
+{D stands for "derived." For each final Hermitian pL inducing to p found by ind_cand_params,
+take derived factors [dpL]; so pL is unitary if and only if all dpL are.}
+{This function isn't now used}
+set ind_cand_paramsD(Param p) = [[Param]]:
+    let icp = ind_cand_params(p).##
+    in for pL in icp
+       do derived_factor_params0(pL)
+       od
+
+{1 means unitary, -1 nonunitary, 0 no test}
+set ind_test(Param p) = int:
+    let icp = ind_cand_params(p).##, G = p.real_form
+    then () = for pL in icp
+       	      do if real_induce_irreducible(pL,G) = 1*p
+       	  	 then if all(for dpL in derived_factor_params0(pL) do @bool: is_unitary(dpL) od)
+		      then return 1
+		      else return -1
+		      fi
+	  	 else if all(for dpL in derived_factor_params0(pL) do @bool: is_unitary(dpL) od)
+		      then return 1
+		      else 0
+		      fi
+		 fi
+	      od
+   in 0
+
+set is_u_ind(Param p) = bool:
+    let icpd = ind_cand_paramsD(p), G = p.real_form
+    in any(for list in icpd do @bool: all(for dpL in list do is_unitary(dpL) od) od)
 
 set_type Lvd_Perm2{_mapAct} = (LocalVertexData Lvd, PermOrderTwo Perm2{, vec mapAct})
 

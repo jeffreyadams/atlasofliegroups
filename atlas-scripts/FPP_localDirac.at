@@ -598,10 +598,7 @@ set local_testK_hash_old(KGBElt x, ratvec lambda, LocalVertexData Lvd,
 		     {then () = prints("before ICPU, newStatuses = ",newStatuses)}
 			  then () = if ICPU_flag {test for unitary} and newStatuses[k] = "?"
 				    then if all(for p in ps
-						do #ind_cand_params(p) > 0
-						   and all(for pi in ind_cand_params(p)
-							   do is_unitary_hash_big_SIMPLE(pi)
-							   od)
+						do ind_test(p) = 1
 						od)
 					 then newStatuses[k] := "T";
 					  U_ind_counter+:=1{;
@@ -661,9 +658,10 @@ set local_testK_hash_old(KGBElt x, ratvec lambda, LocalVertexData Lvd,
 			   then () = prints("before ICPNU, newStatuses = ",newStatuses)}
 				     then () = if newStatuses[K] = "?" and ICPU_flag {test for unitary}
 				     then if all(for p in ps
-						 do all(for pi in ind_cand_params(p)
+						 do ind_test(p) = 1
+						 {all(for pi in ind_cand_params(p)
 							do is_unitary_hash_big_SIMPLE(pi)
-							od)
+							od)}
 						od)
 					  then newStatuses:= downdateUclassesB(newStatuses, gr, K, "T");
 						  U_ind_counter+:=1;
@@ -815,10 +813,11 @@ set local_testK_hash(KGBElt x, ratvec lambda, LocalVertexData Lvd,
 		     {then () = prints("before ICPU, newStatuses = ",newStatuses)}
 			  then () = if ICPU_flag and newStatuses[k] = "?" {test for unitary}
 				    then if all(for p in ps
-						do #ind_cand_params(p) > 0
+						do ind_test(p)=1
+						{#ind_cand_params(p) > 0
 						   and all(for pi in ind_cand_params(p)
 							   do is_unitary_hash_big_SIMPLE(pi)
-							   od)
+							   od)}
 						od)
 					 then newStatuses[k] := "T";
 					  U_ind_counter+:=1{;
@@ -882,9 +881,10 @@ set local_testK_hash(KGBElt x, ratvec lambda, LocalVertexData Lvd,
 
 				     then () = if newStatuses[K] = "?" and ICPU_flag {test for unitary}
 				     then if all(for p in ps
-						 do all(for pi in ind_cand_params(p)
+						 do ind_test(p) = 1
+						 {all(for pi in ind_cand_params(p)
 							do is_unitary_hash_big_SIMPLE(pi)
-							od)
+							od)}
 						od)
 					  then newStatuses:= downdateUclassesB(newStatuses, gr, K, "T");
 						  U_ind_counter+:=1;
@@ -1038,9 +1038,10 @@ set local_testK_hash_know_lower(KGBElt x, ratvec lambda, LocalVertexData Lvd,
 			     fi {not is_final}
 		   then () = if  newStatuses[k] = "?" and ICPNU_flag {test for non-unitary}
 			    then if any(for p in ps
-					do any(for pi in ind_cand_params(p)
+					do ind_test(p)= -1
+					{any(for pi in ind_cand_params(p)
 					       do not is_unitary_hash_big_SIMPLE(pi)
-					       od)
+					       od)}
 					od)
 				  then newStatuses:= updateNUclassesB(newStatuses, gr, k, "F");
 				       NU_ind_counter+:=1;
@@ -1050,10 +1051,11 @@ set local_testK_hash_know_lower(KGBElt x, ratvec lambda, LocalVertexData Lvd,
 			     fi {ICP_flag}
 		   then () = if  newStatuses[k] = "?" and ICPU_flag {test for unitary}
 			       then if all(for p in ps
-					   do #ind_cand_params(p) > 0
+					   do ind_test(p) = 1
+					   {#ind_cand_params(p) > 0
 					      and all(for pi in ind_cand_params(p)
 						       do is_unitary_hash_big_SIMPLE(pi)
-						       od)
+						       od)}
 					   od)
 				     then U_ind_counter+:=1;
 					  newStatuses[k] := "T"
@@ -1105,9 +1107,10 @@ set local_testK_hash_know_lower(KGBElt x, ratvec lambda, LocalVertexData Lvd,
 
 				     then () = if ICPU_flag {test for unitary}
 				     then if all(for p in ps
-						 do all(for pi in ind_cand_params(p)
+						 do ind_test(p)=1
+						 {all(for pi in ind_cand_params(p)
 							do is_unitary_hash_big_SIMPLE(pi)
-							od)
+							od)}
 						od)
 					  then newStatuses:= downdateUclassesB(newStatuses, gr, kup, "T");
 						  U_ind_counter+:=1;
@@ -1117,9 +1120,10 @@ set local_testK_hash_know_lower(KGBElt x, ratvec lambda, LocalVertexData Lvd,
 					       fi {ICPU_flag}
 				     then () =  if newStatuses[kup] = "?" and ICPNU_flag {test for non-unitary}
 						then if any(for p in ps
-							do any(for pi in ind_cand_params(p)
+							do ind_test(p)=-1
+							{any(for pi in ind_cand_params(p)
 							       do not is_unitary_hash_big_SIMPLE(pi)
-							       od)
+							       od)}
 							od)
 						     then {newStatuses:= updateNUclassesB(newStatuses, gr, kup, "F");}
 							  NU_ind_counter+:=1;
