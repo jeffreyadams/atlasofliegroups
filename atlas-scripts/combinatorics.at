@@ -469,7 +469,7 @@ set strict_partitions = (int n) [Partition]:
 
 {		Jordan types of nilpotent elements (or orbits)		}
 
-{ test if partition is valid (nilpotent orbit) JOrdan type in type ABCD }
+{ test if partition is valid (nilpotent orbit) Jordan type in type ABCD }
 set is_valid (string type,Partition P) = bool:
 { avoid constructing |Lie_type(type[0]+n|, to avoid choking on "B1" and such }
   P:=P.strip_to_partition; { avoid frequencies of 0 }
@@ -493,6 +493,9 @@ set is_valid (LieType t) = (Partition->bool):
       esac
 in (Partition P) bool: #P = n and is_valid(letter,P)
 
+
+{	Combinatorics specifically for (Weyl groups of) types B,C,D	}
+
 { partitions with even multiplicity of parts of one parity (odd or even) }
 set parity_restricted_partitions (bool restrict_odd_parts) = (int->[Partition]):
   let is_multiplicity_restricted = (int->bool):
@@ -502,7 +505,7 @@ set parity_restricted_partitions (bool restrict_odd_parts) = (int->[Partition]):
   else
     let table = [[ [Partition] ]]: { partitions by sum, then by largest part }
       for m:n+1
-      do if =m then [ [[]] ] { empty partition of 0 } else [] { nothing yet } fi
+      do if m=0 do [[]] { empty partition of 0, else nothing yet } fi
       od
     in
     for m:n from 1
@@ -524,8 +527,6 @@ set parity_restricted_partitions (bool restrict_odd_parts) = (int->[Partition]):
     od
   ; ##table~[0] { concatenate entries of final table row }
   fi
-
-{	Combinatorics specifically for (Weyl groups of) types B,C,D	}
 
 { for conjugagy classes: cycles with product of signs, for simple types B,C,D }
 set_type Signed_cycles = [int,bool] { bool |b| encodes product |minus_1^#b| }
@@ -590,38 +591,6 @@ set to_partition_pair(Signed_cycles cy) = BiPartition:
 , for (part,b) in cy do if b then part else 0 fi od.sort_to_partition
 )
 
-{ partitions with even multiplicity of parts of one parity (odd or even) }
-set parity_restricted_partitions (bool restrict_odd_parts) = (int->[Partition]):
-  let is_multiplicity_restricted = (int->bool):
-    if restrict_odd_parts then is_odd@int else is_even@int fi   in
-  (int n) [Partition]:
-  if n.< or restrict_odd_parts and n.is_odd then [] { impossible, so nothing }
-  else
-    let table = [[ [Partition] ]]: { partitions by sum, then by largest part }
-      for m:n+1
-      do if =m do [[]] { empty partition of 0, else nothing yet } fi
-      od
-    in
-    for m:n from 1
-    do table[m] := ([Partition]: []) { no partitions with largest part 0 } #
-      for k: if m=n then n else min(m,n-m) { truncate to need } fi from 1
-	 { form list of partitions of |m| with largest part |k| }
-      do { traverse all partitions |m-k| with parts at most |min(k,m-k)|: }
-        if k.is_multiplicity_restricted
-        then { restrict use of k to using it twice, |lambda| may also have |k| }
-	  let rem=m-k-k in
-          if rem.< then []  { if a negative remainder, then no solutions here }
-          else for lambda in ##table[rem][:min(k,rem)+1] do [k,k]##lambda od
-          fi
-	else { we use |k| once, |lambda| could have part(s) equal to |k| too }
-	  let rem = m-k in
-          for lambda in ##table[rem][:min(k,rem)+1] do k#lambda od
-        fi
-      od
-    od
-  ; ##table~[0] { concatenate entries of final table row }
-  fi
-
 { generate pairs of partitions of total size |n| with size |k| components
   produced in the order in which |lister| lists them, starting all on left }
 set pairs_of_total_sum (int n,(int->[Partition]) lister) = [BiPartition]:
@@ -648,6 +617,7 @@ set <=(BiPartition (P,Q), BiPartition (R,S)) = bool:
 set index_bipartition ([BiPartition] sorted_list) = (BiPartition->int):
    (BiPartition PQ) int:
       binary_search_first( (int i)bool: PQ<=sorted_list[i], 0, #sorted_list )
+
 
 { counterpart of the Murnaghan-Nakayama rule for hyperocthedral groups }
 
