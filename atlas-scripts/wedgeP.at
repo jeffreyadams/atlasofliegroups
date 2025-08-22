@@ -1,0 +1,43 @@
+set make_dominant(KType mu)=
+let (x,lambda_rho)=%mu {lambda_rho= is a vec} then
+rf=mu.real_form then 
+lambda=lambda_rho+rf.rho then
+(w,lambda_dom)=to_dominant(rf,lambda) then
+lambda_dom_rho=lambda_dom - rf.rho in
+K_type(cross(w,x),ratvec_as_vec(lambda_dom_rho))
+
+set add_weights (KTypePol P,(KGBElt ->[vec]) weights) = KTypePol:
+   P.null_K_module +
+   for coef@t in P do
+   prints("c,t", coef, " ", t);
+   let (x,lr)=%t in
+   prints("x=",x, " ", x.real_form, " lr=",lr);
+   for H in weights(x) do
+   prints("coeff:", coef, "x: ", x, "lr", lr,"H=",H);
+   let mu=K_type(x,lr+H) then
+   mu_dom=make_dominant(mu) in 
+   (coef,mu_dom) od
+   od.##
+
+set P_roots_restricted_to_H_theta (KGBElt x) = mat:
+columns_with((vec alpha)bool: is_noncompact_imaginary(alpha,x) ,x.root_datum.roots) ##makeS(x)
+
+set sums_P_roots_wedge_k_restricted_to_H_theta (int k) =
+     (KGBElt x) [vec]:  sums_of_size_k(P_roots_restricted_to_H_theta(x),k)
+
+set tensor_product(KType t,(KGBElt -> [vec]) weights)=KTypePol:
+let Q=add_weights(K_type_formula(t),weights) in
+let ()=prints("t=",t,new_line, " Q=",Q) in 
+   if height(Q)=-1
+       then
+          prints("Q=",Q, " ", height(Q));null_K_module(t.real_form)
+       else
+          branch_std(Q,height(Q	))
+   fi
+
+set tensor_product_wedge_P(KType mu, int k)=
+ KTypePol:   tensor_product(mu,sums_P_roots_wedge_k_restricted_to_H_theta(k))
+
+
+
+

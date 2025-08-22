@@ -212,13 +212,14 @@ set *(WeylElt w,KGBElt_gen x)=KGBElt_gen:KGB_elt_gen(x.inner_class,w.matrix*x.in
 }
 
 set *(mat delta,KGBElt_gen(ic,theta,t))= KGBElt_gen:
-   let mu_new=(t+ic.rho_check)/2 then
-   t_new= (2*mu_new-ic.rho_check)*(1+theta)/2 then
+   let mu=(t+ic.rho_check)/2 then {unnormalized tf}
+   mu_new=mu*delta then           {act by delta}
+   t_new= (2*mu_new-ic.rho_check)*(1+theta)/2 then  {convert back to normalized tf}
    theta_new=delta*theta*inverse(delta)
    in (ic,theta_new,t_new)
 
 set *(WeylElt w,KGBElt_gen x)=KGB_elt_gen(w.matrix*x)
-set *(WeylElt w,KGBElt x)=KGBElt:KGB_elt(w*KGB_elt_gen(x))
+set *(WeylElt w,KGBElt x)=KGBElt:KGB_elt(w.matrix*KGB_elt_gen(x))
 
 
 
