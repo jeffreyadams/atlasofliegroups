@@ -186,24 +186,40 @@ set Levi_simple_coroots (ComplexParabolic(rd,S)) = mat: { as rows }
    rd.rank ^ for s in S do coroot(rd,s) od
 
 { A coweight for which the Levi roots are precisely those on which it vanishes
-  We used to take a sum of |fundamental_coweight|s here, which works for
-  standard Levis, but this was generalised to work for any Levi subsystem.
-  We use |maximize_Levi| to see |S| as part of a maximal (non standard) Levi.
+  For  standard Levis take a sum of |fundamental_coweight|s, which is fast
 }
-set Levi_coweight (ComplexParabolic (rd,S):cp) = vec:
+set standard_Levi_coweight (ComplexParabolic(rd,S)) = vec:
+  ( rd.rank
+  , for t in complement(rd.semisimple_rank,S) do fundamental_coweight(rd,t) od
+  ).sum.numer
+
+{. weight vanishing on all coroots of the Levi, positive on other poscoroots .}
+set standard_Levi_weight (ComplexParabolic(rd,S)) = vec:
+  ( rd.rank
+  , for t in complement(rd.semisimple_rank,S) do fundamental_weight(rd,t) od
+  ).sum.numer
+
+{ This can be generalised to work for any Levi subgroup, by solving a system
+  of linear equations, after using |maximize_Levi| to see |S| as part of a
+  maximal (non standard) Levi. Alternatively, we could have used the functions
+  above in combination with |from_standard_Levi| from Levi_subgroups.at
+  Note that we write (RootDatum,[int]) rather than |ComplexParabolic|, as using
+  the latter implies |S| a subset of simple roots, which is not assumed here.
+}
+set Levi_coweight ((RootDatum,[int]) (rd,S):cp) = vec:
    let A = Levi_simple_roots(rd,maximize_Levi(cp))
    , k = #S { limit of original Levi roots }
 in (^A,vector(rd.semisimple_rank,(int i)int:#(i>=k))/1).required_solution.numer
 
 { a weight for which the Levi coroots are precisely those that vanish on it }
-set Levi_weight (ComplexParabolic (rd,S):cp) = vec:
+set Levi_weight ((RootDatum,[int]) (rd,S):cp) = vec:
    let A = Levi_simple_coroots(rd,maximize_Levi(cp))
    , k = #S { limit of original Levi roots }
 in (A,vector(rd.semisimple_rank,(int i)int:#(i>=k))/1).required_solution.numer
 
 { whether an automorphism |theta| of X^* stabilises the complex parabolic }
 set is_stable (mat theta, ComplexParabolic cp) = bool:
-   (cp.Levi_coweight * theta * cp.Levi_simple_roots).=
+   (cp.standard_Levi_coweight * theta * cp.Levi_simple_roots).=
 
 {. Test if a complex Levi defined by a set of simple roots $S$ is
    $\theta_x$-stable; .}
@@ -249,12 +265,12 @@ set parabolic_is_real(Parabolic(S,x):P) = bool:
 
 {. Positive coroots in the nilradical u of P (L must be theta-stable). .}
 set nilrad (ComplexParabolic(rd,):P) = mat: { columns are poscoroots }
-  let mu = Levi_weight(P) in { weight on which only Levi coroots vanish }
+  let mu = standard_Levi_weight(P) in { on which only Levi coroots vanish }
   columns_with((vec alpha_v) bool: alpha_v*mu!=0, poscoroots(rd))
 
 {. Positive roots in the nilradical u of P (L must be theta-stable). .}
 set nilrad_roots (ComplexParabolic(rd,):P) = mat: { columns are posroots }
-  let H = Levi_coweight(P) in
+  let H = standard_Levi_coweight(P) in
   columns_with((vec alpha) bool: H*alpha!=0, posroots(rd))
 
 set nilrad (Parabolic P) = mat:       nilrad(complex_parabolic(P))
@@ -269,7 +285,7 @@ set rho_u (Parabolic P) = ratvec: rho_u(complex_parabolic(P))
 
 {. Half sum of positive roots in the Levi (L must be theta-stable). .}
 set rho_l (ComplexParabolic(rd,):P) = ratvec: { rho(Levi(P)) }
-  let H = Levi_coweight(P) in
+  let H = standard_Levi_coweight(P) in
   columns_with((vec alpha) bool: H*alpha=0, posroots(rd)).sum/2
 
 set rho_l (Parabolic P) = ratvec: rho_l(complex_parabolic(P))
