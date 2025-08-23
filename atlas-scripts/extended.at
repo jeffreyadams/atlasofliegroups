@@ -113,13 +113,13 @@ begin let ic = inner_class(x), theta = involution(x) in
   ,    tau = solve(1-theta,(delta-1)*lambda_E)
   in
   assert(@:(succeeds(t)
-	   ,prints("solve(",1-omega,",",l*(delta-1),")")
-            ; "t*(1+theta)=l*(delta-1) has no integral solution t"
+	   ,{prints("solve(",1-omega,",",l*(delta-1),")")
+            ;} "t*(1+theta)=l*(delta-1) has no integral solution t"
 	   )
         )
 ; assert(@:(succeeds(tau)
-	   ,prints("solve(",1-theta,",",(delta-1)*lambda_E,")")
-            ; "(1-theta)tau=(delta-1)*lambda has no integral solution tau"
+	   ,{prints("solve(",1-theta,",",(delta-1)*lambda_E,")")
+            ;} "(1-theta)tau=(delta-1)*lambda has no integral solution tau"
 	   )
         )
 ; (ic,delta,gamma,lambda_E,theta,g,l,omega,tau.requisition,t.requisition)

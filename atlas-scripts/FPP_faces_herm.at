@@ -2020,6 +2020,33 @@ set is_unitary_test_big_SIMPLE_interrupted(Param p, int time) = int:
       then big_unitary_hash.numatch(p)
       fi;
       result
+{This was in FPP_lambdas.at; moved here to use recording is_unitary tests}
+{1 means unitary, -1 nonunitary, 0 no test}
+set ind_test(Param p) = int:
+    let icp = ind_cand_params(p).##, G = p.real_form
+    then () = for pL in icp
+       	      do if real_induce_irreducible(pL,G) = 1*p
+       	  	 then if all(for dpL in derived_factor_params0(pL) do @bool:
+		 is_unitary_test_big_SIMPLE_interrupt(dpL) od)
+		 {is_unitary_hash_big_SIMPLE_weak(dpL) od)}
+		 {is_unitary(dpL) od)}
+		      then return 1
+		      else return -1
+		      fi
+	  	 else if all(for dpL in derived_factor_params0(pL) do @bool:
+		 is_unitary_test_big_SIMPLE_interrupt(dpL) od)
+		 {is_unitary_hash_big_SIMPLE_weak(dpL) od)}
+		 {is_unitary(dpL) od)}
+		      then return 1
+		      else 0
+		      fi
+		 fi
+	      od
+   in 0
+
+set is_u_ind(Param p) = bool:
+    let icpd = ind_cand_paramsD(p), G = p.real_form
+    in any(for list in icpd do @bool: all(for dpL in list do is_unitary(dpL) od) od)
 
 {list is meant to be a not large collection of Param's with the same unitarity
 status; test interruptibly in succession until something gives}
