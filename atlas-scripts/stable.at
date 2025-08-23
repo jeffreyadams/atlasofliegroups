@@ -11,7 +11,6 @@
 {stable virtual characters}
 {some elementary operations needed, these should be moved elsewhere}
 
-set indices ([Param] B,[Param] subset) = [int]: for p in subset do find(B,p) od
 set evaluate_at_1 ([i_poly] v)= vec: for w in v do evaluate_at_1(w)  od
 set evaluate_at_1 (i_poly_mat M) = mat:
   if #M=0 then 0 { |null(0,0)| for |[]| } else #M[0] fi ^ { stack rows}
@@ -135,9 +134,12 @@ set dual_parameters_standard_basis ([int] S,[Param] B) = mat:
   let M=dual_parameters_standard_basis(B) in
   n_columns(M) ^ for i in dual_parameters(S,B) do row(M,i) od
 
+set indices ([Param] B,[Param] subset) = [int]: for p in subset do find(B,p) od
+
 set subspace_injection_matrix ([Param] B,[Param] subset) = mat:
-  let rv=null(#subset,#B), indices=indices(B,subset) in
-  for i:#indices do rv[i,indices[i]]:=1 od;rv
+{ returns a (landscape) |#subset|x|#B| matrix, meant for right-multiplication }
+  let result=null(#subset,#B) in
+  for j@i in indices(B,subset) do result[i,j]:=1 od; result
 
 set get_y ([Param] B) = [int]:
   let dual_inner_class=dual_inner_class(B[0]) in
@@ -250,12 +252,21 @@ set print_stable_at_singular ([int] S,[Param] B) = void:
             "parameters=", params, new_line,
             "dimension space of stable characters:", n_rows(M), new_line,M)
 
-set indices ([Param] B,[Param] subset) = [int]: for p in subset do find(B,p) od
-
-{#subset x #B matrix}
-
-set printParamPol(ParamPol P)=void:
-  tabulate(for c@p in P do [split_format(c), " ", p.to_string] od)
+set stable_at_singular ([int] S,[Param] B,[Param] subset_in) = (mat,[Param]):
+  {first replace subset with those so that tau(p)\in S-complement}
+(  let parameters = for i in parameters(S,B) do B[i] od
+in prints("S=",S); prints("number of parameters in block:", #B)
+;  prints("number of given parameters:", #subset_in)
+;  let subset = [Param]: for p in subset_in if find(parameters,p).>= do p fi od
+in prints("number of parameters at singular inf char:", #subset)
+;  let B_singular=for i in parameters(S,B) do B[i] od
+   then subset_singular = for p in subset if find(B_singular,p).>= do p fi od
+ { , A=^(^kernel_vanishing(S,B)*^subspace_injection_matrix(B_singular,subset)) }
+   , Y=left_kernel(subspace_injection_matrix(B_singular,subset)*
+                     kernel_vanishing(S,B))
+   then signs=lengths_signs_matrix(subset_singular)
+   in (Y*signs,subset_singular)
+)
 
 set print_stable_at_singular ([int] S,[Param] B,[Param] subset) = void:
   let (rv,params)=stable_at_singular(S,B,subset) in
@@ -298,6 +309,9 @@ od;rv fi
 
 set *(mat M,[Param] params)=for v in M do v*params od
 
+set printParamPol(ParamPol P)=void:
+  tabulate(for c@p in P do [split_format(c), " ", p.to_string] od)
+
 set print_sums ([(mat,[Param])] list)=void:
 prints("Number of blocks: ", #list);
 for (M,params)@i in list do
@@ -313,4 +327,3 @@ set print_stable_sums([(int,int,Param)] list)=void:
 set print_stable_sums([[(int,int,Param)]] lists)=void:
 prints("Stable sums for ",#lists," packets:");
 for list@i in lists do prints("-----------------------------------",new_line,"Packet #",i);print(stable_sums(parameters(list))) od
-

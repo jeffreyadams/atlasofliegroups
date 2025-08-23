@@ -33,7 +33,7 @@ BINDIR := $(HOME)/bin
 version := $(shell ./getversion.pl)
 
 messagedir := $(INSTALLDIR)/messages/
-cweb_dir := cwebx
+cwebx_dir := cwebx
 sources_dir := sources
 atlas_dir := sources/interpreter
 
@@ -193,12 +193,12 @@ sources/interface/io.o : sources/interface/io.cpp
 # Here is a special rule to run CWEBx for a sole file outside sources/intepreter
 sources/io/filekl.h sources/io/filekl.cpp \
 sources/io/filekl_in.h sources/io/filekl_in.cpp: \
-sources/io/filekl.w $(cweb_dir)/ctanglex
-	cd sources/io && ../../$(cweb_dir)/ctanglex ++ -pl filekl.w
+sources/io/filekl.w $(cwebx_dir)/ctanglex
+	cd sources/io && ../../$(cwebx_dir)/ctanglex ++ -pl filekl.w
 
 # for files proper to atlas, the build is defined inside sources/interpreter
 
-atlas: $(cweb_dir)/ctanglex $(cwebx_made_files) $(atlas_objects)
+atlas: $(cwebx_dir)/ctanglex $(cwebx_made_files) $(atlas_objects)
 	cd sources/interpreter && $(MAKE) ../../atlas
 
 $(filter-out sources/interpreter/parser.tab.%,$(interpreter_made_files)):
@@ -217,7 +217,7 @@ sources/interpreter/parser.tab.o: \
 	cd sources/interpreter && $(MAKE) parser.tab.o
 
 # generate files that describe which .o files depend on which other (.h) files
-$(dependencies) : %.d : %.cpp
+$(dependencies) : %.d : %.cpp sources/io/filekl.h
 	$(CXX) $(Fokko_includes) -MM -MF $@ -MT "$*.o $*.d" $*.cpp
 
 # now include all the files constructed by the previous rule; this defines
@@ -270,10 +270,10 @@ clean: mostlyclean newbinary
 veryclean: clean
 	$(RM) sources/*/*.d cwebx/*.o cwebx/ctanglex cwebx/cweavex \
 
-$(cweb_dir)/ctanglex: $(cweb_dir)/common.h $(cweb_dir)/ctangle.c
-	cd $(cweb_dir) && $(MAKE) ctanglex
-$(cweb_dir)/cweavex: $(cweb_dir)/common.h $(cweb_dir)/cweave.c
-	cd $(cweb_dir) && $(MAKE) cweavex
+$(cwebx_dir)/ctanglex: $(cwebx_dir)/common.h $(cwebx_dir)/ctangle.c
+	cd $(cwebx_dir) && $(MAKE) ctanglex
+$(cwebx_dir)/cweavex: $(cwebx_dir)/common.h $(cwebx_dir)/cweave.c
+	cd $(cwebx_dir) && $(MAKE) cweavex
 
 showobjects:
 	@echo objects: $(objects)
