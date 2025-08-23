@@ -33,7 +33,6 @@ set rising_power (int n, int k) = int: assert(@:k>=0,"Negative exponent");
    let p=1 in for i:k from n do p*:=i od; p
 
 { Combinatorial number system ${\N\choose k}\to\N$ encoding and decoding }
-
 { represent a permutation as a single number: its lexicographic position }
 set permutation_encode([int] sigma) = int:
    let n=#sigma then unseen=#n, acc=0
@@ -218,15 +217,19 @@ set is_partition ([int] seq) = bool: backward_differences(seq).>=
 set frequencies (Partition lambda) = vec: { frequency vector, position 0 unused }
   let v=null(1) in { ensure the unused position 0 is always present }
   for l in lambda
-  do if l>=#v then v ##:= null(l-#v)#1 { append final 1 }
+  do if l>=#v then v ##:= null(l-#v)#1 { append final 1 } else v[l]+:=1 fi
+  od; v
+{  do if l>=#v then v ##:= null(l-#v)#1 { append final 1 }
      elif l>0 then v[l]+:=1
      elif l<0 then error("Negative entry present") fi
-  od; v
+  od; v} {commented text was added by MvL about 8/20/25, but it appears to be broken}
 
 { the following is a right-inverse to |frequencies|; assuming |frequencies[0]=0|
-  to avoid getting trialing 0's, the image is precisely the set of partitions }
+  to avoid getting trailing 0's, the image is precisely the set of partitions }
 set repeat_parts (vec frequencies) = Partition:
-  for f@i in frequencies { reverse: } ~ for :f do i od od
+  for f@i in frequencies[1:] { skip 0, reverse:} ~ for :f do i+1 od od
+  {for f@i in frequencies { reverse: } ~ for :f do i od od}
+ {commented text was added by MvL about 8/20/25, but it appears to be broken}
 
 set sort_to_partition ([int] parts) = Partition:
   parts.frequencies.repeat_parts
