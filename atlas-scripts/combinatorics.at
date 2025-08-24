@@ -219,14 +219,14 @@ set frequencies (Partition lambda) = vec: { frequency vector, position 0 unused 
   let v=null(1) in { ensure the unused position 0 is always present }
   for l in lambda
   do if l>=#v then v ##:= null(l-#v)#1 { append final 1 }
-     elif l>0 then v[l]+:=1
-     elif l<0 then error("Negative entry present") fi
+     elif l>=0 then v[l]+:=1
+     else error("Negative entry present") fi
   od; v
 
 { the following is a right-inverse to |frequencies|; assuming |frequencies[0]=0|
   to avoid getting trialing 0's, the image is precisely the set of partitions }
 set repeat_parts (vec frequencies) = Partition:
-  for f@i in frequencies { reverse: } ~ for :f do i od od
+  for f@i in frequencies { reverse: } ~ if i>0 for :f do i od fi od
 
 set sort_to_partition ([int] parts) = Partition:
   parts.frequencies.repeat_parts
