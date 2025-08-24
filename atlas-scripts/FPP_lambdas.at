@@ -1,6 +1,7 @@
 <FPP_faces_geom.at
 <K_highest_weights.at
-<hermitian.at {for is_hermitian}
+<hermitian.at { for |is_hermitian| }
+<goodroots.at { for |anti_finalize| }
 {CREATE LAMBDA TABLES}
 {This was separated from FPP_faces_herm.at 7/28/25 to avoid circular
 dependencies in function ranges in red_count.at}

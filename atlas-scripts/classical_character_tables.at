@@ -63,7 +63,7 @@ set index_BC_irrep = ([BiPartition] -> (BiPartition->int)):
       case P.sum-R.sum
       then false else true { size balance is decisive, inverted ordering! }
       in { equal size case: reverse compare left or (if same) right partitions }
-	 if P=R else (R,P) then (S,Q) fi.leq_equal_sum_partitions
+	 if P=R else (R,P) then (S,Q) fi.rlex_leq_partitions
       esac
 in ([BiPartition] list) (BiPartition->int): { assume |list| is sorted by |leq| }
       (BiPartition PQ) int:
@@ -177,7 +177,7 @@ in ( ch_tab, lookup_class, lookup_irrep )
 set D_irreps (int n) = [D_irrep]:
    for (lambda,):pair
      in pairs_of_total_sum(n,(int k):partitions(k)~[:]) { list [k],..,ones(k) }
-   do case cmp_partitions(pair)
+   do case slex_cmp_partitions(pair)
       then { first is strictly less } []
       in { an equal pair } [(lambda,false).split_irr,(lambda,true).split_irr]
       else { first is strictly greater } [pair.unsplit_irr]
@@ -211,7 +211,7 @@ set index_D_irreps = ([D_irrep]->(D_irrep->int)):
 	       then false
 	       in if flag0.< then pair1<=pair0 { just reverse comparison }
 		  else { comparing two split irreps }
-		     case cmp_equal_sum_partitions(nu,mu) { reverse here too }
+		     case rlex_cmp_partitions(nu,mu) { reverse here too }
 		     then true in flag0<=flag1 else false
 		     esac
 		  fi
@@ -226,7 +226,7 @@ set index_D_irreps = ([D_irrep]->(D_irrep->int)):
 	 let key = { like |flatten(chi)|, but maybe swap partitions }
 	    case chi
 	    | ((lambda,mu):pair).unsplit_irr:
-	       (if leq_partitions(pair) then (mu,lambda) else pair fi,minus_1)
+	       (if slex_leq_partitions(pair) then (mu,lambda) else pair fi,-1)
 	    | (lambda,b).split_irr: ((lambda,lambda),#b)
 	    esac
 	 in binary_search_first( (int i)bool: up_to[i](key), 0, len)

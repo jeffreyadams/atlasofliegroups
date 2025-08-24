@@ -391,7 +391,7 @@ set class_table_E6 (RootDatum rd) = WeylClassTable:
    let classes = [WeylElt]: assert(#test_simple_type("E",rd)=6,"Not E6")
 	       ; conjugacy_class_reps(rd)
    then sigs = [Partition]: for w in classes do class_signature_E6(w) od
-   , leq = leq_equal_sum_partitions@(Partition,Partition)
+   , leq = rlex_leq_partitions@(Partition,Partition)
    then N=51840 { order_W("E6") }
    ,  lookup = (Partition->int):
       let ranked = ranking(leq)(sigs)
@@ -443,7 +443,7 @@ in ( for c in root_orbits(w) do #c od.sort_to_partition
 
 { comparison of root cycle types first, use second component to disambiguate }
 set leq_E7_signatures ((Partition P,int m),(Partition Q,int n)) = bool:
-   case cmp_equal_sum_partitions(P,Q) then true in m<=n else false esac
+   case rlex_cmp_partitions(P,Q) then true in m<=n else false esac
 
 { Compared to other types, fast construction of a class table for E7 takes quite
   a bit of preparation effort. Having a sorted list of class signatures will
@@ -485,7 +485,7 @@ set class_table_E7 (RootDatum rd) = WeylClassTable:
       ;  ( for (lambda, ) in out do lambda od, for (,locs) in out do locs od )
       then locate(Partition lambda) = int: { position of |lambda| in |list| }
          binary_search_first
-	   ((int i)bool: leq_equal_sum_partitions(lambda,list[i]), 0,#list)
+	   ((int i)bool: rlex_leq_partitions(lambda,list[i]), 0,#list)
    in ( { lookup_w = } (WeylElt w) int:
         let (lambda,n)=class_signature_E7(w) then locs = locs[locate(lambda)]
 	in if #locs=1 or n=1 {single factor} then locs[0] else locs[1] fi
@@ -534,7 +534,7 @@ set class_table_E8 (RootDatum rd) = WeylClassTable:
    let classes = [WeylElt]: assert(#test_simple_type("E",rd)=8,"Not E8")
 	       ; conjugacy_class_reps(rd)
    then sigs = [Partition]: for w in classes do class_signature_E8(w) od
-   , leq = leq_equal_sum_partitions@(Partition,Partition)
+   , leq = rlex_leq_partitions@(Partition,Partition)
    then lookup = (Partition->int):
       let ranked = ranking(leq)(sigs)
       then list = for i in ranked do sigs[i] od { |sigs| sorted by |leq| }
