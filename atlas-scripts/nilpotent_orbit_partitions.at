@@ -96,9 +96,8 @@ set closures([Partition] orbits) = [[int]]:
 (  orbits := {pre-sort:} for P in orbits do sort_to_partition(P) od
 ;  for P@i in orbits
    do for orb@j in orbits
-      if j!=i and leq_dominance_order_partitions_presorted(orb,P)
-      do j
-      fi od
+      if j!=i and dominance_leq_partitions(orb,P) do j fi
+      od
    od
 )
 
