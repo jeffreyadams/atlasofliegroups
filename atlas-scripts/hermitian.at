@@ -72,6 +72,7 @@ set hashCounter = make_counter()
 set hash2Counter = make_counter()
 set hash_one_levelCounter = make_counter()
 set hash_bottom_layerCounter = make_counter()
+set hash_steveCounter = make_counter()
 
 {to record time spent in is_unitary, is_unitary_to_ht, etc.}
 set unitaryTime = int: 0
@@ -571,13 +572,13 @@ set report_tested() = void:
     prints("#bottom_layer = ",hash_bottom_layerCounter.use_count(), ", #one_level = ",
     	   hash_one_levelCounter.use_count(), ", #real_dumb = ",
 	   hash_real_dumbCounter.use_count(), ", #dumb = ",hash_dumbCounter.use_count(),
-	   ", #hash2 = ",hash2Counter.use_count());
+	   ", #hash2 = ",hash2Counter.use_count(), ", #steve = ",hash_steveCounter.use_count());
     prints(print_time_string(unitaryTime)," for ",unitary_test_counter.use_count()," unitarity tests; ",
     print_time_string(charTime), " for ",char_counter.use_count(), " char calculations.");
-    prints("time for up_mu = ",print_time_string(up_mu_time), ", mu_time_mult = ",mu_time_mult,
-    	   ", shift_frac = ",shift_frac, ", min_ht_mult = ", min_ht_mult);
-    prints("LAGAmax = ",LAGAmax,", GARLAGmin = ",GARLAGmin, ", GARmin = ", GARmin,
-    	   ", Dirac elims = ",DTcount,", Dirac_best elims = ",DBTcount);
+    {prints("time for up_mu = ",print_time_string(up_mu_time), ", mu_time_mult = ",mu_time_mult,
+    	   ", shift_frac = ",shift_frac, ", min_ht_mult = ", min_ht_mult);}
+    prints({"LAGAmax = ",LAGAmax,", GARLAGmin = ",GARLAGmin, ", GARmin = ", GARmin,}
+    	   "Dirac elims = ",DTcount,", Dirac_best elims = ",DBTcount);
     prints("no_unitary_time = ", print_time_string(test_no_unitary_time), ", no_Dirac_time = ",
     	   print_time_string(test_no_Dirac_time)," , #(x,lambda) eliminated by LKTs = ",none_count);
     prints("  ----------------")

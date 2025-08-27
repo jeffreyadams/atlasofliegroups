@@ -1474,7 +1474,7 @@ set hermitian_form_irreducible_big(Param p) = KTypePol:
 set print_int_flag = false
 
 {initial time to give interruptible command}
-set interrupt_base_time = int:500 {was 200 before 7/24/25}
+set interrupt_base_time = int: 100 {was 200 before 7/24/25; sometimes 500...}
 
 {assume p = u_to_ht_hash.list()[j], h = u_to_ht_hts[j] gives
 is_unitary_to_ht(p,h) = true}

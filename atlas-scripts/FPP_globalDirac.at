@@ -465,11 +465,11 @@ then coh_ind_unip_few(G,Uhash)}
 		    bl_step_count*bl_step_size else more_shift_level fi, ", #Params more-missed = ",
 		    more_bad_hash.size(), ", #Params more-caught = ", more_good_hash.size{befmoreCount})
 	    fi;
-       	    prints("  #hash_real_dumb = ",hash_real_dumbCounter.use_count(), ", #hash_dumb = ", hash_dumbCounter.use_count(),
-       	      	 	   ", #hash_def_dumb = ", hash_def_dumbCounter.use_count());
-       	    prints("  #hash = ", hashCounter.use_count(), ", #hash2 = ", hash2Counter.use_count(),
+       	    {prints("  #hash_real_dumb = ",hash_real_dumbCounter.use_count(), ", #hash_dumb = ", hash_dumbCounter.use_count(),
+       	      	 	   ", #hash_def_dumb = ", hash_def_dumbCounter.use_count());}
+       	    {prints("  #hash = ", hashCounter.use_count(), ", #hash2 = ", hash2Counter.use_count(),
 	      	 	", #hash_one_level = ", hash_one_levelCounter.use_count(), ", #hash_bottom_layer = ",
-			hash_bottom_layerCounter.use_count());
+			hash_bottom_layerCounter.use_count());}
 	    report_tested();
        	    prints("Number of unitary params = ", sum(answerCards), ", time for is_finished = ",
 	    print_time_string(is_finished_time), ", time for position = ",
@@ -762,13 +762,13 @@ set FPP_unitary_hash_general([KGBElt] xs, Param_hash Uhash, (Param->bool) fancy_
 		    bl_step_count*bl_step_size else more_shift_level fi, ", #Params more-missed = ",
 		    more_bad_hash.size(), ", #Params more-caught = ",more_good_hash.size(){befmoreCount})
 	    fi;
-       	    prints("  #hash_real_dumb = ",hash_real_dumbCounter.use_count(),
+       	    {prints("  #hash_real_dumb = ",hash_real_dumbCounter.use_count(),
 	      ", #hash_dumb = ", hash_dumbCounter.use_count(),
        	      ", #hash_def_dumb = ", hash_def_dumbCounter.use_count());
        	    prints("  #hash = ", hashCounter.use_count(),
 	      ", #hash2 = ", hash2Counter.use_count(),
 	      ", #hash_one_level = ", hash_one_levelCounter.use_count(),
-              ", #hash_bottom_layer = ", hash_bottom_layerCounter.use_count());
+              ", #hash_bottom_layer = ", hash_bottom_layerCounter.use_count());}
        	    prints("Number of unitary params = ", sum((for list in answerCards do sum(list) od)),
 	    		   ", time for is_finished = ", print_time_string(is_finished_time),
 			   ", time for position = ", print_time_string(position_time));
@@ -951,11 +951,11 @@ then coh_ind_unip_few(G,Uhash)}
 		    bl_step_count*bl_step_size else more_shift_level fi, ", #Params more-missed = ",
 		    more_bad_hash.size(), ", #Params more-caught = ", more_good_hash.size{befmoreCount})
 	    fi;
-       	    prints("  #hash_real_dumb = ",hash_real_dumbCounter.use_count(), ", #hash_dumb = ", hash_dumbCounter.use_count(),
+       	    {prints("  #hash_real_dumb = ",hash_real_dumbCounter.use_count(), ", #hash_dumb = ", hash_dumbCounter.use_count(),
        	      	 	   ", #hash_def_dumb = ", hash_def_dumbCounter.use_count());
        	    prints("  #hash = ", hashCounter.use_count(), ", #hash2 = ", hash2Counter.use_count(),
 	      	 	", #hash_one_level = ", hash_one_levelCounter.use_count(), ", #hash_bottom_layer = ",
-			hash_bottom_layerCounter.use_count());
+			hash_bottom_layerCounter.use_count());}
 	    report_tested();
        	    prints("Number of unitary params = ", sum(answerCards), ", time for is_finished = ",
 	    print_time_string(is_finished_time), ", time for position = ",
@@ -1241,13 +1241,13 @@ set FPP_unitary_hash_steve([KGBElt] xs, Param_hash Uhash, (Param->bool) fancy_te
 		    bl_step_count*bl_step_size else more_shift_level fi, ", #Params more-missed = ",
 		    more_bad_hash.size(), ", #Params more-caught = ",more_good_hash.size(){befmoreCount})
 	    fi;
-       	    prints("  #hash_real_dumb = ",hash_real_dumbCounter.use_count(),
+       	    {prints("  #hash_real_dumb = ",hash_real_dumbCounter.use_count(),
 	      ", #hash_dumb = ", hash_dumbCounter.use_count(),
        	      ", #hash_def_dumb = ", hash_def_dumbCounter.use_count());
        	    prints("  #hash = ", hashCounter.use_count(),
 	      ", #hash2 = ", hash2Counter.use_count(),
 	      ", #hash_one_level = ", hash_one_levelCounter.use_count(),
-              ", #hash_bottom_layer = ", hash_bottom_layerCounter.use_count());
+              ", #hash_bottom_layer = ", hash_bottom_layerCounter.use_count());}
        	    prints("Number of unitary params = ", sum((for list in answerCards do sum(list) od)),
 	    		   ", time for is_finished = ", print_time_string(is_finished_time),
 			   ", time for position = ", print_time_string(position_time));
@@ -1626,10 +1626,10 @@ fancy_tester) = void:
 		    		       	     bl_step_count*bl_step_size else more_shift_level fi);
 	    prints("     #Params more-caught = ", more_good_hash.size(){befmoreCount});
       		 		 ", #Params more-missed = ", more_bad_hash.size());
-       	    prints("  #hash_real_dumb = ",hash_real_dumbCounter.use_count(),",  #hash_dumb = ", hash_dumbCounter.use_count(),
+       	    {prints("  #hash_real_dumb = ",hash_real_dumbCounter.use_count(),",  #hash_dumb = ", hash_dumbCounter.use_count(),
 	      ", #hash_def_dumb = ", hash_def_dumbCounter.use_count(),
 	      ", #hash2 = ", hash2Counter.use_count(), ", #hash_one_level = ", hash_one_levelCounter.use_count(),
-	      ", #hash_bottom_layer = ", hash_bottom_layerCounter.use_count());
+	      ", #hash_bottom_layer = ", hash_bottom_layerCounter.use_count());}
        	    prints("Number of unitary params = ", sum(answerCards), ", time for is_finished = ",
 	    		   print_time_string(is_finished_time), ", time for position = ",
 	    		   print_time_string(position_time));
@@ -1999,10 +1999,10 @@ set FPP_unitary_hash_bottom_layer([KGBElt] xs, Param_hash UhashG, (Param->bool) 
 		    		       	     bl_step_count*bl_step_size else more_shift_level fi);
 	    prints("     #Params more-caught = ", more_good_hash.size(), 
       	    ", #Params more-missed = ", more_bad_hash.size());
-       	    prints("  #hash_real_dumb = ",hash_real_dumbCounter.use_count(),",  #hash_dumb = ", hash_dumbCounter.use_count(),
+       	    {prints("  #hash_real_dumb = ",hash_real_dumbCounter.use_count(),",  #hash_dumb = ", hash_dumbCounter.use_count(),
 	    	   ", #hash_def_dumb = ", hash_def_dumbCounter.use_count(),
 	    	   ", #hash2 = ",hash2Counter.use_count(), ", #hash_one_level = ", hash_one_levelCounter.use_count(), ", #hash_bottom_layer = ",
-	    hash_bottom_layerCounter.use_count());
+	    hash_bottom_layerCounter.use_count());}
        	    prints("Number of unitary params = ", sum(for list in answerCards do sum(list) od),
 	    		   ", time for is_finished = ", print_time_string(is_finished_time),
 			   ", time for position = ", print_time_string(position_time));
