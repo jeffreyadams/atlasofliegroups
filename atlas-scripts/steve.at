@@ -312,8 +312,8 @@ set taus(KGBElt x, ratvec lambda, int HT) = [KType]:
 set pos_tester(KGBElt x, ratvec lambda,int HT,ratvec gamma) = bool:
     let p = parameter(x,lambda,gamma), G = x.real_form
     then qs = monomials(1*p)
-    in all (for q in qs do @bool: {is_unitary_to_ht_big_SIMPLE_old(q,HT) od)}
-       	   is_unitary_to_ht_big_SIMPLE(q,HT) od)
+    in all (for q in qs do @bool: is_unitary_to_ht_big_SIMPLE_old(q,HT) od)
+       	   {is_unitary_to_ht_big_SIMPLE(q,HT) od)}
     {then Form_p = sum(G, for q in monomials(1*p)
        	      do hermitian_form_irreducible_to_ht_big_SIMPLE(q,HT)
 	      {hermitian_form_irreducible_to_ht(q,HT)}
@@ -331,7 +331,7 @@ set pos_tester_Kchar(KGBElt x, ratvec lambda,int HT,ratvec gamma) =
        then (all (for q in qs do @bool: {is_unitary_to_ht_big_SIMPLE_old(q,HT) od),}
        	    	      	      	 	is_unitary_to_ht_big_SIMPLE(q,HT) od),
        	    [Kpol_hash.match(K_type_pol(character_formula_to_height(1*p,HT))),#qs])
-       else (all (for q in qs do @bool:{ is_unitary_to_ht_big_SIMPLE_old(q,HT) od),[])}
+       else (all (for q in qs do @bool: {is_unitary_to_ht_big_SIMPLE_old(q,HT) od),[])}
        	    	      	      	 	 is_unitary_to_ht_big_SIMPLE(q,HT) od),[])
        fi
 
@@ -992,15 +992,16 @@ set localFD_SteveUstep(KGBElt x, ratvec lambda) = [[FaceVertsKHash]]:
     then hts = next_heights(parameter(x,lambda,0*lambda),D+2)
     in localFD_SteveUstep(x,lambda,hts,D)
 
+set first_offset = int:0
 {get verts, edges to hts[edge_offset] to feed one_level_end, with Kchar and #LQs}
 set localFD_Steve2(KGBElt x, ratvec lambda, LocalVertexData Lvd, PermOrderTwo Perm2) =
     [[FaceVertsKHash]]:
     let start = elapsed_ms(), p0 = parameter(x,lambda,0*lambda)
     then hts = next_heights(p0,edge_offset+1)
-    then () = if edge_offset.= then extra_coord_flag:=true fi
-    then LF0 = localFD_1SteveU(x,lambda,hts[0], Lvd)
+    then () = if edge_offset= first_offset then extra_coord_flag:=true fi
+    then LF0 = localFD_1SteveU(x,lambda,hts[first_offset], Lvd)
     then () = if show_steve_flag
-    	      then prints("LF0 to height ",hts[0]," = ",LF0)
+    	      then prints("LF0 to height ",hts[first_offset]," = ",LF0)
 	      fi
     then () = extra_coord_flag:=true
     then () = LF0:= test_Steve(x,lambda,hts[edge_offset],Lvd,[LF0])[0]
@@ -1034,7 +1035,7 @@ then () = for x in KGB(G)
    	     	  do let p0 = parameter(x,lambda,0*lambda)
       	     	     in if is_pos_on_LKTs(p0)
       	 	     	then let LF = localFD_Steve2( x, lambda), Lvd = Lvd(x,lambda)
-	      		     then () = local_test_GEO_hash_steve_end(x, lambda, Lvd, LF, Kpol_hash,
+	      		     then () = local_test_GEO_hash_steve_end(x, lambda, Lvd, LF,
 	      	 	     	big_unitary_hash.uhash(G))
 	      		in ()
 	 	   	fi
@@ -1043,3 +1044,30 @@ then () = for x in KGB(G)
 	 od
 in prints("total time = ",print_time_string(elapsed_ms() - start)," to find ",
    		 big_unitary_hash.uhash(G).size()," unitary reps.")
+
+{here LF has only vertices at (x,lambda)}
+{MUST use Kpol_hash!}
+set local_test_GEO_hash_steve(KGBElt x, ratvec lambda, LocalVertexData Lvd, Param_hash Uhash,
+    (Param->bool) fancy_tester) = [Param]:
+    if {tempered case} #Lvd.list = 1 and ((1-x.involution)*(Lvd.list[0])).=
+    then let p = parameter(x,lambda,0*lambda)
+    	 then () = for q in monomials(finalize(p))
+    	       	   do Uhash.match(q)
+		   od
+	 in return [p]
+    fi;
+    let G = x.real_form
+    then () = if is_compact(G)
+       	      then let all = all_parameters_gamma(G,lambda)
+       	      	   in for p in all
+	       	      do Uhash.match(p)
+	       	      od;
+	       	      return(all)
+	       fi
+    then () = test_string:= " using local_test_GEO_hash_one_level"
+    then () = if test_verbose then prints("Chose",test_string) fi
+    then start_count = unitary_test_counter.use_count()
+    then () = hash_steveCounter.use()
+    then LF2 = localFD_Steve2(x,lambda)
+    in local_test_GEO_hash_steve_end(x,lambda, Lvd, LF2, Uhash)
+
