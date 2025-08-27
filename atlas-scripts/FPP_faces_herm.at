@@ -33,10 +33,10 @@ set temp_sort_u ([KType] K_types) = [KType]:
 set lookups([[vec]] LFD) = [(vec->int)]:
     for L@d in LFD do index_in(for v in L do v[:d+1] od) od
 
-set sort(RealForm G, LocalVertexData Lvd, [[FaceVertsKHash]] LFDKH) = [[FaceVertsKHash]]:
+{tail is how many coords follow the vertex indices}
+set sort(RealForm G, LocalVertexData Lvd, [[FaceVertsKHash]] LFDKH, int tail) = [[FaceVertsKHash]]:
     if #LFDKH[0]=0 then return LFDKH fi;
-    let tail = #LFDKH[0][0]-1
-    in if sort_LFD_flag
+    if sort_LFD_flag
        then let tworhocheck = G.two_rho_check
 	    then f(vec v) = int:
 		 let (num,den) = %((face_bary(Lvd,v[:#v - tail])*tworhocheck)*1000)
@@ -44,6 +44,11 @@ set sort(RealForm G, LocalVertexData Lvd, [[FaceVertsKHash]] LFDKH) = [[FaceVert
 	    in for LFDKHd@d in LFDKH do sort_by(f)(LFDKHd) od
        else LFDKH
        fi
+
+set sort(RealForm G, LocalVertexData Lvd, [[FaceVertsKHash]] LFDKH) = [[FaceVertsKHash]]:
+    if #LFDKH[0]=0 then return LFDKH fi;
+    let tail = #LFDKH[0][0]-1
+    in sort(G, Lvd, LFDKH, tail)
 
 set anti_sort(RealForm G, LocalVertexData Lvd, [[FaceVertsKHash]] LFDKH) = [[FaceVertsKHash]]:
     if #LFDKH[0]=0 then return LFDKH fi;

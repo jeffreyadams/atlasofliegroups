@@ -1407,6 +1407,7 @@ fancy_tester) = void:
 	    od;
             return ()
         fi;
+	if x =x_open(x.real_form) then return FPP_unitary_hash_steve(xlambdas, UhashG, fancy_tester) fi;
     let (x,) = xlambdas[0]
     then G = x.real_form
     then disconn_flag = components_rank(G) > 0
@@ -1727,7 +1728,7 @@ set FPP_unitary_hash_bottom_layer([KGBElt] xs, Param_hash UhashG, (Param->bool) 
     	      do {xs}
 	 if twist(x) != x
 	 then big_unitary_hash.finishx(x)
-	 else
+	 fi;
 	 let easy_test_bl_flag = if rank(x.real_form) < 7
 			       	 then false
     			      	 elif KGB_frac_flag and x.number < KGB_frac*(#KGB(x.real_form))
@@ -1963,7 +1964,6 @@ set FPP_unitary_hash_bottom_layer([KGBElt] xs, Param_hash UhashG, (Param->bool) 
 	 fi {twnum.>= and twnum < j}
 
 }
-	 fi {twist(x) != x}
          od {xs}
     then () = face_verbose:=old_face_verbose; time_verbose:=old_time_verbose; test_verbose:=old_test_verbose;
     	      test_slightly_verbose:=old_test_slightly_verbose
