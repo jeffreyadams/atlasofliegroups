@@ -33,10 +33,10 @@ set temp_sort_u ([KType] K_types) = [KType]:
 set lookups([[vec]] LFD) = [(vec->int)]:
     for L@d in LFD do index_in(for v in L do v[:d+1] od) od
 
-set sort(RealForm G, LocalVertexData Lvd, [[FaceVertsKHash]] LFDKH) = [[FaceVertsKHash]]:
+{tail is how many coords follow the vertex indices}
+set sort(RealForm G, LocalVertexData Lvd, [[FaceVertsKHash]] LFDKH, int tail) = [[FaceVertsKHash]]:
     if #LFDKH[0]=0 then return LFDKH fi;
-    let tail = #LFDKH[0][0]-1
-    in if sort_LFD_flag
+    if sort_LFD_flag
        then let tworhocheck = G.two_rho_check
 	    then f(vec v) = int:
 		 let (num,den) = %((face_bary(Lvd,v[:#v - tail])*tworhocheck)*1000)
@@ -44,6 +44,11 @@ set sort(RealForm G, LocalVertexData Lvd, [[FaceVertsKHash]] LFDKH) = [[FaceVert
 	    in for LFDKHd@d in LFDKH do sort_by(f)(LFDKHd) od
        else LFDKH
        fi
+
+set sort(RealForm G, LocalVertexData Lvd, [[FaceVertsKHash]] LFDKH) = [[FaceVertsKHash]]:
+    if #LFDKH[0]=0 then return LFDKH fi;
+    let tail = #LFDKH[0][0]-1
+    in sort(G, Lvd, LFDKH, tail)
 
 set anti_sort(RealForm G, LocalVertexData Lvd, [[FaceVertsKHash]] LFDKH) = [[FaceVertsKHash]]:
     if #LFDKH[0]=0 then return LFDKH fi;
@@ -1523,7 +1528,7 @@ set hermitian_form_irreducible_big(Param p) = KTypePol:
 set print_int_flag = false
 
 {initial time to give interruptible command}
-set interrupt_base_time = int:500 {was 200 before 7/24/25}
+set interrupt_base_time = int: 100 {was 200 before 7/24/25; sometimes 500...}
 
 {assume p = u_to_ht_hash.list()[j], h = u_to_ht_hts[j] gives
 is_unitary_to_ht(p,h) = true}
@@ -1574,30 +1579,8 @@ set hermitian_form_irreducible_to_ht_big(Param p,int HT) = KTypePol:
     else to_ht(hermitian_form_irreducible(p),HT)
     fi
 
-set is_unitary_to_ht_big_SIMPLE(Param p, int HT) = bool:
+set is_unitary_to_ht_big_SIMPLE_old(Param p, int HT) = bool:
      hermitian_form_irreducible_to_ht_big_SIMPLE(p,HT).is_pure
-
-{ meant to be used for G simple }
-{ compute Hermitian form to ht on p, report if it is unitary}
-set is_unitary_to_ht_big_SIMPLE_old(Param p,int HT) = bool:
-  if (not is_hermitian(p)) then return false fi;
-  if HT.< then return is_unitary_hash_big_SIMPLE(p) fi;
-  if HT <= height(p) then return true fi;
-  if not (fewer_reducible_unitary_flag or is_pos_on_LKTs(p)) then return false fi;
-  let G = p.real_form
-  then FPP_flag = is_FPP(G,p.infinitesimal_character)
-  then () = if not FPP_flag
-    	    then return is_unitary_to_ht(p,HT) {prints("FPP DANGER TO HT at ",p)}
-	    fi
-  {then () = p := herm_center(p)}
-  then () = if (big_unitary_hash.ulookup(p)).>= then return true fi
-  then () = if big_unitary_hash.nu_height_lookup_bool(p,HT) then return false fi
-  then j = u_to_ht_hash.lookup(p)
-  then () = if j.>= and u_to_ht_hts[j] >= HT
-       	    then return(true)
-	    fi
-  in is_pure(big_unitary_hash.sig_entry(p,HT)) {this will use full is_unitary
-     					      if that seems faster}
 
 {try is_unitary if H big enough for it to look faster. Increasing ???  means
 is_unitary is tried LESS often}
@@ -1629,10 +1612,10 @@ set is_unitary_to_ht_big_SIMPLE_interrupt(Param p, int HT, int time) = int: {1 m
 {if low(p,HT) suggests it's worthwhile (FALSE) try is_unitary with time limit time}
 set is_unitary_to_ht_big_SIMPLE(Param p, int HT, int time) = bool:
     if low(p,HT)
-    then is_unitary_to_ht_big_SIMPLE(p, HT)
+    then is_unitary_to_ht_big_SIMPLE_old(p, HT)
     else let ans = hermitian_form_irreducible(p,time) {maybe_KTP}
     	 in case ans
-	    | timed_out: is_unitary_to_ht_big_SIMPLE(p, HT)
+	    | timed_out: is_unitary_to_ht_big_SIMPLE_old(p, HT)
 	    | done(r): is_pure(to_ht(r,HT))
 	    esac
      fi

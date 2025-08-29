@@ -313,6 +313,7 @@ set pos_tester(KGBElt x, ratvec lambda,int HT,ratvec gamma) = bool:
     let p = parameter(x,lambda,gamma), G = x.real_form
     then qs = monomials(1*p)
     in all (for q in qs do @bool: is_unitary_to_ht_big_SIMPLE_old(q,HT) od)
+       	   {is_unitary_to_ht_big_SIMPLE(q,HT) od)}
     {then Form_p = sum(G, for q in monomials(1*p)
        	      do hermitian_form_irreducible_to_ht_big_SIMPLE(q,HT)
 	      {hermitian_form_irreducible_to_ht(q,HT)}
@@ -327,9 +328,11 @@ set pos_tester_Kchar(KGBElt x, ratvec lambda,int HT,ratvec gamma) =
     let p = parameter(x,lambda,gamma), G = x.real_form
     then qs = monomials(1*p)
     in if extra_coord_flag
-       then (all (for q in qs do @bool: is_unitary_to_ht_big_SIMPLE_old(q,HT) od),
+       then (all (for q in qs do @bool: {is_unitary_to_ht_big_SIMPLE_old(q,HT) od),}
+       	    	      	      	 	is_unitary_to_ht_big_SIMPLE(q,HT) od),
        	    [Kpol_hash.match(K_type_pol(character_formula_to_height(1*p,HT))),#qs])
-       else (all (for q in qs do @bool: is_unitary_to_ht_big_SIMPLE_old(q,HT) od),[])
+       else (all (for q in qs do @bool: {is_unitary_to_ht_big_SIMPLE_old(q,HT) od),[])}
+       	    	      	      	 	 is_unitary_to_ht_big_SIMPLE(q,HT) od),[])
        fi
 
 set Kchar_vec(KGBElt x, ratvec lambda, int HT, ratvec gamma) = vec:
@@ -556,20 +559,42 @@ set localFD_1SteveU\
     let G = x.real_form, start = elapsed_ms()
     then length = #(Lvd.list)
     then freq = max(length\10,1)
-    then answer = for v@j in Lvd.list
-       do if fund_face_verbose and (j%freq).=
-	  then prints("at vertex ",j," of ",length,
+    then answer = [vec]:
+    	 if steve_tilde_flag
+	 then for v@j in Lvd.list
+       	      ~do if fund_face_verbose and (j%freq).=
+	      	  then prints("at vertex ",j," of ",length,
 	    	       " at time ", print_time_string(elapsed_ms() - start),
 		       "; vecHash size = ",steve_hash.vecHash(x,lambda,HT).size())
-	  fi;
-	  let p = parameter(x,lambda,v)
-	  in if not is_hermitian(p)
-	     then []
-	     elif steve_hash.postest(x,lambda,HT,v)
-	     then [[j]]
-	     else []
-	     fi
-	od.## {list of j for which vertex j is a candidate}
+	     	  fi;
+	     	  let p = parameter(x,lambda,v)
+	     	  in if not is_hermitian(p)
+	     	     then []
+	     	     elif steve_hash.postest(x,lambda,HT,v)
+	     	     then [[j]]
+	     	     else []
+	     	     fi
+	       od.## {list of j for which vertex j is a candidate}
+          else for v@j in Lvd.list
+       	       do if fund_face_verbose and (j%freq).=
+	      	  then prints("at vertex ",j," of ",length,
+	    	       " at time ", print_time_string(elapsed_ms() - start),
+		       "; vecHash size = ",steve_hash.vecHash(x,lambda,HT).size())
+	     	  fi;
+	     	  let p = parameter(x,lambda,v)
+	     	  in if not is_hermitian(p)
+	     	     then []
+	     	     elif steve_hash.postest(x,lambda,HT,v)
+	     	     then [[j]]
+	     	     else []
+	     	     fi
+	       od.## {list of j for which vertex j is a candidate}
+	   fi
+
+    then () = answer:= if steve_tilde_flag
+    	      	       then for v in answer ~do v od
+		       else answer
+		       fi
     in if fund_face_verbose
        then prints("Found ",#answer," vertices to ht ",HT," in time ",
        	    print_time_string(elapsed_ms() - start));
@@ -626,19 +651,6 @@ set localFD_2SteveU\
 		       	     fi
 		       	  od.## {list of edges starting with j}
 	       	       od.##
-	       {
-	       elif f < BoundA1 {TEST A1}
-	       	      {2*(E*set_bit_positions(E)~[0]*set_bit_positions(f)~[0])\F}
-	       then for j in FixedList
-    	       	    do for w in FPP_edges_by_zero_unsorted(G)[Perm2.fixed[j]]
-		       do if is_member_bitset(w[1],Glookup)
-		          then [[j,locate_sorted(Perm2.fixed, w[1])]]
-		       	  else []
-		       	  fi
-		       od.## {list of edges starting with j}
-	       	    od.##
-
-	       }
 	       else let FPPEBZ = FPP_edges_by_zero_unsorted(G)
 	       	    in for j in FixedList[:f-1] {TEST C} {seems always a little faster than A1?}
 		    {in E7 spherical, C is seven times faster than B}
@@ -705,7 +717,7 @@ set localFD_2SteveU\
 	   {then () = if time_verbose
 	   	     then prints("for TransposeTranspose, time is ",print_time_string(elapsed_ms() - startTT))
 		     fi}
-     	    {then () = prints("EFF = ", EdgesFixFix, ", EFT = ",EdgesFixTrans,", ETT = ",EdgesTransTrans)}
+     	   {then () = prints("EFF = ", EdgesFixFix, ", EFT = ",EdgesFixTrans,", ETT = ",EdgesTransTrans)}
 	   in EdgesFixFix ## EdgesFixTrans ## EdgesTransTrans
      {then () = if time_verbose
      	       then prints("after Edges, time is ",print_time_string(elapsed_ms() - start))
@@ -713,36 +725,67 @@ set localFD_2SteveU\
      then length = #Edges
      then freq = max(length\10,1)
      then LF1 = [FaceVertsIndex]:
-    	 for v@j in Edges
-	 do if fund_face_verbose and red_count_flag and (j%freq).=
-	    then prints("at edge ",j," of ",length,
+	  if steve_tilde_flag
+	  then for v@j in Edges
+	       ~do if fund_face_verbose and red_count_flag and (j%freq).=
+	       	   then prints("at edge ",j," of ",length,
 	    	       " at time ", print_time_string(elapsed_ms() - start),
 		       "; vecHash size = ",steve_hash.vecHash(x,lambda,HT).size())
-	    fi;
-	    let nu = face_bary(Lvd,v)
-	    then p = parameter(x,lambda,nu)
-	    in {if Q(nu,nu) > DiracBD
-	       then DTcount +:=1; []} {can't happen}
-	       if not (fewer_reducible_unitary_flag or all(for q in monomials(p)
+	     	   fi;
+	     let nu = face_bary(Lvd,v)
+	     then p = parameter(x,lambda,nu)
+	     in if not (fewer_reducible_unitary_flag or all(for q in monomials(p)
 	       	      	    do @bool: is_pos_on_LKTs(q)
 			    od))
-	       then []
-	       elif steve_hash.postest(x,lambda,HT,face_bary(Lvd,v))
-	       then if extra_coord_flag
-	       	    then [v##steve_hash.extra_coord(x,lambda,HT,face_bary(Lvd,v))]
-		    else [v]
-		    fi
-	       else []
-	       fi
-	 od.##
+	       	then []
+	       	elif steve_hash.postest(x,lambda,HT,face_bary(Lvd,v))
+	       	then if extra_coord_flag
+		     then [v##steve_hash.extra_coord(x,lambda,HT,face_bary(Lvd,v))]
+	       	    	 {then prints("v = ",v, "extras = ", steve_hash.extra_coord(x,lambda,HT,face_bary(Lvd,v)));}
+		     else [v]
+		     fi
+	        else []
+	       	fi
+	      od.##
+	  else for v@j in Edges
+	       do if fund_face_verbose and red_count_flag and (j%freq).=
+	       	   then prints("at edge ",j," of ",length,
+	    	       " at time ", print_time_string(elapsed_ms() - start),
+		       "; vecHash size = ",steve_hash.vecHash(x,lambda,HT).size())
+	     	   fi;
+	     let nu = face_bary(Lvd,v)
+	     then p = parameter(x,lambda,nu)
+	     in if not (fewer_reducible_unitary_flag or all(for q in monomials(p)
+	       	      	    do @bool: is_pos_on_LKTs(q)
+			    od))
+	       	then []
+	       	elif steve_hash.postest(x,lambda,HT,face_bary(Lvd,v))
+	       	then if extra_coord_flag
+		     then [v##steve_hash.extra_coord(x,lambda,HT,face_bary(Lvd,v))]
+	       	    	 {then prints("v = ",v, "extras = ", steve_hash.extra_coord(x,lambda,HT,face_bary(Lvd,v)));}
+		     else [v]
+		     fi
+	        else []
+	       	fi
+	      od.##
+	   fi
     {then () = if time_verbose
     	      then prints("after LF1, time is ",print_time_string(elapsed_ms() - start))
 	      fi}
     {then () = FD12bzTime +:= elapsed_ms() - start}
+    then tail = if (#LF1).=
+    	      	then 0
+		else {prints("LF1 = ",LF1);}
+		     #(LF1[0]) - 2
+		fi
     then () = LF1:= if sort_LFD_flag
-       	      	    then sort(G, Lvd, [LF1])[0]
+       	      	    then sort(G, Lvd, [LF1], tail)[0]
        	      	    else LF1
        	      	    fi
+    {then LF1 = if steve_tilde_flag
+    	       then for v in LF1 ~do v od
+	       else LF1
+	       fi}
     in if fund_face_verbose
        then prints("After localFD_2Steve, face counts are [",#LF0,
     		      	   	  ",",#LF1,"]");
@@ -919,10 +962,6 @@ set localFD_SteveU(KGBElt x, ratvec lambda) = [[FaceVertsKHash]]:
     then (Lvd,Perm2) = LPm_table.LPm_entry(ic, theta, ratvec_as_vec(lambda+theta*lambda))
     in localFD_SteveU(x, lambda, Lvd, Perm2)
 
-
-
-
-
 {all faces up to dim D >=2 unitary; need hts of size at least D +2 }
 set localFD_SteveUstep(KGBElt x, ratvec lambda, [int] hts, int D) = [[FaceVertsKHash]]:
     let start = elapsed_ms(), theta = x.involution
@@ -953,15 +992,16 @@ set localFD_SteveUstep(KGBElt x, ratvec lambda) = [[FaceVertsKHash]]:
     then hts = next_heights(parameter(x,lambda,0*lambda),D+2)
     in localFD_SteveUstep(x,lambda,hts,D)
 
+set first_offset = int:0
 {get verts, edges to hts[edge_offset] to feed one_level_end, with Kchar and #LQs}
 set localFD_Steve2(KGBElt x, ratvec lambda, LocalVertexData Lvd, PermOrderTwo Perm2) =
     [[FaceVertsKHash]]:
     let start = elapsed_ms(), p0 = parameter(x,lambda,0*lambda)
     then hts = next_heights(p0,edge_offset+1)
-    then () = if edge_offset.= then extra_coord_flag:=true fi
-    then LF0 = localFD_1SteveU(x,lambda,hts[0], Lvd)
+    then () = if edge_offset= first_offset then extra_coord_flag:=true fi
+    then LF0 = localFD_1SteveU(x,lambda,hts[first_offset], Lvd)
     then () = if show_steve_flag
-    	      then prints("LF0 to height ",hts[0]," = ",LF0)
+    	      then prints("LF0 to height ",hts[first_offset]," = ",LF0)
 	      fi
     then () = extra_coord_flag:=true
     then () = LF0:= test_Steve(x,lambda,hts[edge_offset],Lvd,[LF0])[0]
@@ -995,7 +1035,7 @@ then () = for x in KGB(G)
    	     	  do let p0 = parameter(x,lambda,0*lambda)
       	     	     in if is_pos_on_LKTs(p0)
       	 	     	then let LF = localFD_Steve2( x, lambda), Lvd = Lvd(x,lambda)
-	      		     then () = local_test_GEO_hash_steve_end(x, lambda, Lvd, LF, Kpol_hash,
+	      		     then () = local_test_GEO_hash_steve_end(x, lambda, Lvd, LF,
 	      	 	     	big_unitary_hash.uhash(G))
 	      		in ()
 	 	   	fi
@@ -1004,3 +1044,30 @@ then () = for x in KGB(G)
 	 od
 in prints("total time = ",print_time_string(elapsed_ms() - start)," to find ",
    		 big_unitary_hash.uhash(G).size()," unitary reps.")
+
+{here LF has only vertices at (x,lambda)}
+{MUST use Kpol_hash!}
+set local_test_GEO_hash_steve(KGBElt x, ratvec lambda, LocalVertexData Lvd, Param_hash Uhash,
+    (Param->bool) fancy_tester) = [Param]:
+    if {tempered case} #Lvd.list = 1 and ((1-x.involution)*(Lvd.list[0])).=
+    then let p = parameter(x,lambda,0*lambda)
+    	 then () = for q in monomials(finalize(p))
+    	       	   do Uhash.match(q)
+		   od
+	 in return [p]
+    fi;
+    let G = x.real_form
+    then () = if is_compact(G)
+       	      then let all = all_parameters_gamma(G,lambda)
+       	      	   in for p in all
+	       	      do Uhash.match(p)
+	       	      od;
+	       	      return(all)
+	       fi
+    then () = test_string:= " using local_test_GEO_hash_one_level"
+    then () = if test_verbose then prints("Chose",test_string) fi
+    then start_count = unitary_test_counter.use_count()
+    then () = hash_steveCounter.use()
+    then LF2 = localFD_Steve2(x,lambda)
+    in local_test_GEO_hash_steve_end(x,lambda, Lvd, LF2, Uhash)
+
