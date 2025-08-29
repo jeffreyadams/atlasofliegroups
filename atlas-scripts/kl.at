@@ -2,6 +2,8 @@
 <count.at { for |char_counter| }
 <parameters.at { for |dual_inner_class| }
 
+set low_frac=1 {fix this: apparently not used any more}
+
 { KL stuff, including character formulas and composition series
   This implementation seeks to avoid using KL_block, and instead uses
   KL_sum_at_s, as this function stores earlier results
