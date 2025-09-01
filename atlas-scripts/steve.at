@@ -279,9 +279,6 @@ set location([int] a,rat t) = int:
        else 2*loc
        fi
 
-{if red_points is empty, then 0. If red_points has k>=1 values, then
-an integer from 0 to 2k: value 2j+1 means equal to jth reducibility
-point; value 2j means in open interval from j-1th to jth}
 set location_old(KGBElt x, ratvec lambda, vec av,int HT, rat t) = int:
     let rp = red_points(x,lambda,av,HT)
     in if (#rp).= then 0
@@ -306,6 +303,31 @@ set thruple([vec] red_co, [[int]] red_pts, ratvec gamma) = vec:
     do location(red_pts[j],av*gamma)
     od
 
+set is_def_thr(vec base_thr, vec def_thr) = bool:
+    (def_thr != base_thr) and
+    all(for x@j in base_thr
+        do @bool: (is_odd(x) and def_thr[j] = x)
+	   	  or(is_even(x) and abs(def_thr[j] - x) <= 1)
+	od)
+
+set def_thruples_time = int:0
+{can replace each even coord 2*m with 2*m\pm 1}
+set def_thruples(vec thruple) = [vec]:
+    let start = elapsed_ms()
+    then coord_defs = for x in thruple
+    	      	do [int]:
+		   if x.=
+		   then [0,1]
+		   elif is_even(x)
+		   then [-1,0,1]
+		   else [0]
+		   fi
+		od
+    then defs = all_words(coord_defs) {includes unwanted term [0,...,0]}
+    then answer = for def in defs do thruple + def od
+    in def_thruples_time +:= elapsed_ms() - start;
+     	answer
+
 set taus(KGBElt x, ratvec lambda, int HT) = [KType]:
     monomials(branch(K_type_pol(parameter(x,lambda,0*lambda)),HT))
 
@@ -320,7 +342,15 @@ set pos_tester(KGBElt x, ratvec lambda,int HT,ratvec gamma) = bool:
 	      od)
     in is_pure(Form_p)}
 
+{compute vectors of size 2 giving [index of K-char, #Langlands quotients]}
 set extra_coord_flag = false
+
+{try deforming loc to a known one}
+set deform_loc_flag = false
+
+set use_deform_steve() = void:
+    extra_coord_flag:=true;
+    deform_loc_flag:=true
 
 {USE Kpol_hash defined in FPP_faces_geom.at}
 set pos_tester_Kchar(KGBElt x, ratvec lambda,int HT,ratvec gamma) =
@@ -342,7 +372,6 @@ set Kchar_vec(KGBElt x, ratvec lambda, int HT, ratvec gamma) = vec:
        then [Kpol_hash.match(K_type_pol(character_formula_to_height(1*p,HT))),#qs]
        else []
        fi
-
 {
 {record values of thruple for (x,lambda,HT}
 set xlHT_vecHash = make_vec_hash()
@@ -354,6 +383,17 @@ set xlHT_clear() = void:
     xlHT_vecHash.clear();
     xlHT_bools:=[]
 }
+
+{how often deforming location succeeds in proving unitary}
+set hash_def_true_count = int: 0
+
+{how often deforming location succeeds in proving nonunitary}
+set hash_def_false_count = int: 0
+
+set report_def_thruples() = void:
+    prints(print_time_string(def_thruples_time)," to find deformed thruple candidates.");
+    prints("Found ",hash_def_true_count," deformations proving unitarity (to height), ",
+    	   hash_def_false_count," deformations proving nonunitarity (to height).")
 
 set_type
 [steve_hash_table =
@@ -382,7 +422,7 @@ set make_steve_hash() = steve_hash_table:
     then redpoints = [[[[int]]]]:[] {for each entry in xlhash and height, [int] = bitmap of reducibility
     	 	     		  points for each reducibility coroot}
     then statuses = [[[[bool]]]]:[] {one [bool] for each vechash}
-    then charvecs = [[[[vec]]]]: [] {one [vec] for each vechash}
+    then charvecs = [[[[vec]]]]: [] {one [vec] for each vechash; possibly [index of K_char, #LQs]}
     then clearSH() = void:
     	 let () = real_form_hash.clear()
 	 then () = K_type_hashes:=[]
@@ -460,7 +500,7 @@ set make_steve_hash() = steve_hash_table:
 	    fi;
 	    (rfnum,xlnum,htnum)
 	 {rfnum, xlnum, htnum, vecnum; statuses[rfnum][xlnum][htnum][vecnum] is the result}
-    then SHthruple(KGBElt x, ratvec lambda, int HT, ratvec gamma) = (int,int,int,int):
+    then SHthruple_plain(KGBElt x, ratvec lambda, int HT, ratvec gamma) = (int,int,int,int):
     	 let (rfnum, xlnum, htnum) = add_xlht(x,lambda,HT)
 	 then rcor = red_coroots(x)
     	 then rp = for M in redpoints[rfnum][xlnum][htnum]
@@ -471,6 +511,8 @@ set make_steve_hash() = steve_hash_table:
 	    	    od
 	 then VECNUM = vechashes[rfnum][xlnum][htnum].size()
 	 then vecnum = vechashes[rfnum][xlnum][htnum].match(loc)
+	 {then () = prints("vechashes[rfnum][htnum] = ",vechashes[rfnum][xlnum][htnum].list())
+	 then () = prints("loc = ",loc)}
 	 then () = if vecnum = VECNUM {new location rel hyperplanes}
 	      	   then let srxlht = statuses[rfnum][xlnum][htnum], {[bool]}
 		   	    srxl = statuses[rfnum][xlnum],
@@ -478,12 +520,60 @@ set make_steve_hash() = steve_hash_table:
 			    charvecxlht = charvecs[rfnum][xlnum][htnum], {[vec]}
 		   	    charvecxl = charvecs[rfnum][xlnum],
 			    charvecr = charvecs[rfnum]
-			then (boo,v) = if htnum>0
-			     	       then let HTlow = heights[rfnum][xlnum]~[1]
-					     in if not pos_tester(x,lambda,HTlow,gamma)
-					        then (false,Kchar_vec(x,lambda,HT,gamma))
-						else pos_tester_Kchar(x, lambda, HT, gamma)
+			then (boo,v) = pos_tester_Kchar(x, lambda, HT, gamma)
+			then () = srxlht#:=boo
+			then () = srxl[htnum]:=srxlht
+			then () = sr[xlnum]:=srxl
+
+			then () = charvecxlht#:=v
+			then () = charvecxl[htnum]:=charvecxlht
+			then () = charvecr[xlnum]:=charvecxl
+			in statuses[rfnum]:=sr;
+			   charvecs[rfnum]:=charvecr
+		   fi
+	 in (rfnum, xlnum, htnum, vecnum)
+	 {rfnum, xlnum, htnum, vecnum; statuses[rfnum][xlnum][htnum][vecnum] is the result}
+    then SHthruple(KGBElt x, ratvec lambda, int HT, ratvec gamma) = (int,int,int,int):
+    	 if not deform_loc_flag then return SHthruple_plain(x,lambda,HT,gamma) fi;
+    	 let (rfnum, xlnum, htnum) = add_xlht(x,lambda,HT)
+	 then rcor = red_coroots(x)
+    	 then rp = for M in redpoints[rfnum][xlnum][htnum]
+		   do set_bit_positions(M) {this is [int]}
+		   od {this is [[int]]}
+	 then loc = for av@j in rcor
+	      	    do location(rp[j],av*gamma)
+	    	    od
+	 then VECNUM = vechashes[rfnum][xlnum][htnum].size()
+	 then vecnum = vechashes[rfnum][xlnum][htnum].match(loc)
+	 {then () = prints("vechashes[rfnum][htnum] = ",vechashes[rfnum][xlnum][htnum].list())
+	 then () = prints("loc = ",loc)}
+	 then () = if vecnum = VECNUM {new location rel hyperplanes}
+	      	   then let srxlht = statuses[rfnum][xlnum][htnum], {[bool]}
+		   	    srxl = statuses[rfnum][xlnum],
+			    sr = statuses[rfnum],
+			    charvecxlht = charvecs[rfnum][xlnum][htnum], {[vec]}
+		   	    charvecxl = charvecs[rfnum][xlnum],
+			    charvecr = charvecs[rfnum]
+			then start = elapsed_ms()
+			then good_def_nums = for defloc@m in vechashes[rfnum][xlnum][htnum].list()
+			     		     do if is_def_thr(loc,defloc)
+					     	then [m]
+						else []
 						fi
+				 	     od.##
+			then () = def_thruples_time+:= elapsed_ms() - start
+			then Kcv = Kchar_vec(x,lambda,HT,gamma)
+			then (boo,v) = if any(for def_num in good_def_nums
+			     	       	      do @bool: not statuses[rfnum][xlnum][htnum][def_num]
+					      od)
+				       then hash_def_false_count+:=1;
+				       	    (false, Kcv)
+				       elif any(for def_num in good_def_nums
+			     	       	      	do @bool: statuses[rfnum][xlnum][htnum][def_num]
+						   	  and (charvecs[rfnum][xlnum][htnum][def_num] = Kcv)
+					      	od)
+				       then hash_def_true_count+:=1;
+				       	    (true, Kcv)
 				       else pos_tester_Kchar(x, lambda, HT, gamma)
 				       fi
 			then () = srxlht#:=boo
@@ -495,10 +585,6 @@ set make_steve_hash() = steve_hash_table:
 			then () = charvecr[xlnum]:=charvecxl
 			in statuses[rfnum]:=sr;
 			   charvecs[rfnum]:=charvecr
-		   {statuses[rfnum][xlnum][htnum] #:= 1st coord of
-		   				  pos_tester_Kchar(x, lambda, HT, gamma)}
-		   {charvecs[rfnum][xlnum][htnum] #:= 2nd coord of
-		   				  pos_tester(x, lambda, HT, gamma)}
 		   fi
 	 in (rfnum, xlnum, htnum, vecnum)
 {      then check() = void:
@@ -997,13 +1083,13 @@ set first_offset = int:0
 set localFD_Steve2(KGBElt x, ratvec lambda, LocalVertexData Lvd, PermOrderTwo Perm2) =
     [[FaceVertsKHash]]:
     let start = elapsed_ms(), p0 = parameter(x,lambda,0*lambda)
-    then hts = next_heights(p0,edge_offset+1)
+    then hts = next_heights(p0,edge_offset+1), extra_coord_hold = extra_coord_flag
     then () = if edge_offset= first_offset then extra_coord_flag:=true fi
     then LF0 = localFD_1SteveU(x,lambda,hts[first_offset], Lvd)
     then () = if show_steve_flag
     	      then prints("LF0 to height ",hts[first_offset]," = ",LF0)
 	      fi
-    then () = extra_coord_flag:=true
+    then () = extra_coord_flag :=true
     then () = LF0:= test_Steve(x,lambda,hts[edge_offset],Lvd,[LF0])[0]
     then () = if show_steve_flag
     	      then prints("LF0 with extra to height ",hts[edge_offset]," = ",LF0)
@@ -1016,7 +1102,7 @@ set localFD_Steve2(KGBElt x, ratvec lambda, LocalVertexData Lvd, PermOrderTwo Pe
     	      then prints("edge/vert counts to height ",hts[edge_offset], " = ",
 	      	   for list in LF do #list od,"; time  = ",print_time_string(elapsed_ms() - start))
 	      fi
-    in extra_coord_flag:=false; LF
+    in extra_coord_flag:=extra_coord_hold; LF
 
 set localFD_Steve2(KGBElt x, ratvec lambda) = [[FaceVertsKHash]]:
     let ic = x.inner_class, theta = x.involution
@@ -1064,7 +1150,7 @@ set local_test_GEO_hash_steve(KGBElt x, ratvec lambda, LocalVertexData Lvd, Para
 	       	      od;
 	       	      return(all)
 	       fi
-    then () = test_string:= " using local_test_GEO_hash_one_level"
+    then () = test_string:= " using local_test_GEO_hash_steve"
     then () = if test_verbose then prints("Chose",test_string) fi
     then start_count = unitary_test_counter.use_count()
     then () = hash_steveCounter.use()
