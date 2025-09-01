@@ -310,11 +310,40 @@ set is_def_thr(vec base_thr, vec def_thr) = bool:
 	   	  or(is_even(x) and abs(def_thr[j] - x) <= 1)
 	od)
 
+set is_def_intervals(vec thruple) = [[int]]:
+    for x in thruple
+    do [int]:
+       if is_odd(x) then [x]
+       else [x-1,x,x+1]
+       fi
+    od
+
+set is_def_testers(vec thruple) = [(int -> bool)]:
+    for x in thruple
+    do (int y) bool:
+       if is_odd(x)
+       then x=y
+       else let d = x-y
+       	    in d=1 or d=0 or d=-1
+       fi
+    od
+
+set is_def_tester(vec thruple) = (vec -> bool):
+    (vec v): bool:
+    let def_tests = is_def_testers(thruple)
+    in all(for y@i in v do @bool: def_tests[i](y) od)
+
+set is_def_testerB(vec thruple) = (vec -> bool):
+    (vec v): bool:
+    let def_ints = is_def_intervals(thruple)
+    in all(for def_int@i in  is_def_intervals(thruple)
+       	   do @bool: is_member(def_int)(v[i])
+	   od)
+
 set def_thruples_time = int:0
 {can replace each even coord 2*m with 2*m\pm 1}
 set def_thruples(vec thruple) = [vec]:
-    let start = elapsed_ms()
-    then coord_defs = for x in thruple
+    let coord_defs = for x in thruple
     	      	do [int]:
 		   if x.=
 		   then [0,1]
@@ -325,8 +354,7 @@ set def_thruples(vec thruple) = [vec]:
 		od
     then defs = all_words(coord_defs) {includes unwanted term [0,...,0]}
     then answer = for def in defs do thruple + def od
-    in def_thruples_time +:= elapsed_ms() - start;
-     	answer
+    in answer
 
 set taus(KGBElt x, ratvec lambda, int HT) = [KType]:
     monomials(branch(K_type_pol(parameter(x,lambda,0*lambda)),HT))
@@ -348,9 +376,16 @@ set extra_coord_flag = false
 {try deforming loc to a known one}
 set deform_loc_flag = false
 
+{try deforming loc to a known nonunitary one}
+set deform_nonu_flag = true
+
 set use_deform_steve() = void:
     extra_coord_flag:=true;
     deform_loc_flag:=true
+
+set use_deform_nonu_steve() = void:
+    extra_coord_flag:=false;
+    deform_nonu_flag:=true
 
 {USE Kpol_hash defined in FPP_faces_geom.at}
 set pos_tester_Kchar(KGBElt x, ratvec lambda,int HT,ratvec gamma) =
@@ -543,7 +578,7 @@ set make_steve_hash() = steve_hash_table:
 	 in (rfnum, xlnum, htnum, SHthruple_plain_indexed(rfnum, xlnum, htnum, gamma))
 	 {rfnum, xlnum, htnum, vecnum; statuses[rfnum][xlnum][htnum][vecnum] is the result}
     then SHthruple_indexed(int rfnum, int xlnum, int htnum, ratvec gamma) = int:
-    	 if not deform_loc_flag
+    	 if not (deform_loc_flag or deform_nonu_flag)
 	 then return SHthruple_plain_indexed(rfnum, xlnum, htnum, gamma)
 	 fi;
 	 let (x,lambda) = xlhashes[rfnum].index(xlnum), HT = heights[rfnum][xlnum][htnum]
@@ -566,8 +601,9 @@ set make_steve_hash() = steve_hash_table:
 		   	    charvecxl = charvecs[rfnum][xlnum],
 			    charvecr = charvecs[rfnum]
 			then start = elapsed_ms()
-			then good_def_nums = for defloc@m in vechashes[rfnum][xlnum][htnum].list()
-			     		     do if is_def_thr(loc,defloc)
+			then def_tester = is_def_tester(loc)
+			then good_def_nums = for defloc@m in vechashes[rfnum][xlnum][htnum].list()[:vecnum]
+			     		     do if def_tester(defloc)
 					     	then [m]
 						else []
 						fi
@@ -579,7 +615,8 @@ set make_steve_hash() = steve_hash_table:
 					      od)
 				       then hash_def_false_count+:=1;
 				       	    (false, Kcv)
-				       elif any(for def_num in good_def_nums
+				       elif deform_loc_flag and
+				       	    any(for def_num in good_def_nums
 			     	       	      	do @bool: statuses[rfnum][xlnum][htnum][def_num]
 						   	  and (charvecs[rfnum][xlnum][htnum][def_num] = Kcv)
 					      	od)
@@ -601,7 +638,7 @@ set make_steve_hash() = steve_hash_table:
 
     then SHthruple(KGBElt x, ratvec lambda, int HT, ratvec gamma) = (int,int,int,int):
     	 let (rfnum, xlnum, htnum) = add_xlht(x,lambda,HT)
-	 in if deform_loc_flag
+	 in if (deform_loc_flag or deform_nonu_flag)
 	    then (rfnum, xlnum, htnum, SHthruple_indexed(rfnum, xlnum, htnum, gamma))
 	    else (rfnum, xlnum, htnum, SHthruple_plain_indexed(rfnum, xlnum, htnum, gamma))
 	    fi
