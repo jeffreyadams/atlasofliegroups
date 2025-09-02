@@ -314,6 +314,7 @@ set is_def_intervals(vec thruple) = [[int]]:
     for x in thruple
     do [int]:
        if is_odd(x) then [x]
+       elif x.= then [x,x+1]
        else [x-1,x,x+1]
        fi
     od
@@ -333,28 +334,13 @@ set is_def_tester(vec thruple) = (vec -> bool):
     let def_tests = is_def_testers(thruple)
     in all(for y@i in v do @bool: def_tests[i](y) od)
 
-set is_def_testerB(vec thruple) = (vec -> bool):
+{seems to be about half as fast as def_tester}
+{set is_def_testerB(vec thruple) = (vec -> bool):
     (vec v): bool:
     let def_ints = is_def_intervals(thruple)
     in all(for def_int@i in  is_def_intervals(thruple)
-       	   do @bool: is_member(def_int)(v[i])
-	   od)
-
-set def_thruples_time = int:0
-{can replace each even coord 2*m with 2*m\pm 1}
-set def_thruples(vec thruple) = [vec]:
-    let coord_defs = for x in thruple
-    	      	do [int]:
-		   if x.=
-		   then [0,1]
-		   elif is_even(x)
-		   then [-1,0,1]
-		   else [0]
-		   fi
-		od
-    then defs = all_words(coord_defs) {includes unwanted term [0,...,0]}
-    then answer = for def in defs do thruple + def od
-    in answer
+       	   do @bool: is_member_sorted(def_int)(v[i])
+	   od)}
 
 set taus(KGBElt x, ratvec lambda, int HT) = [KType]:
     monomials(branch(K_type_pol(parameter(x,lambda,0*lambda)),HT))
@@ -363,29 +349,25 @@ set pos_tester(KGBElt x, ratvec lambda,int HT,ratvec gamma) = bool:
     let p = parameter(x,lambda,gamma), G = x.real_form
     then qs = monomials(1*p)
     in all (for q in qs do @bool: is_unitary_to_ht_big_SIMPLE_old(q,HT) od)
-       	   {is_unitary_to_ht_big_SIMPLE(q,HT) od)}
-    {then Form_p = sum(G, for q in monomials(1*p)
-       	      do hermitian_form_irreducible_to_ht_big_SIMPLE(q,HT)
-	      {hermitian_form_irreducible_to_ht(q,HT)}
-	      od)
-    in is_pure(Form_p)}
 
 {compute vectors of size 2 giving [index of K-char, #Langlands quotients]}
-set extra_coord_flag = false
+set extra_coord_flag = true
 
 {try deforming loc to a known one}
-set deform_loc_flag = false
+set deform_loc_flag = true
 
 {try deforming loc to a known nonunitary one}
 set deform_nonu_flag = true
 
-set use_deform_steve() = void:
-    extra_coord_flag:=true;
-    deform_loc_flag:=true
+set do_not_use_deform_steve() = void:
+    extra_coord_flag:=false;
+    deform_loc_flag:=false;
+    deform_nonu_flag:=false
 
 set use_deform_nonu_steve() = void:
     extra_coord_flag:=false;
-    deform_nonu_flag:=true
+    deform_nonu_flag:=true;
+    deform_loc_flag:=false
 
 {USE Kpol_hash defined in FPP_faces_geom.at}
 set pos_tester_Kchar(KGBElt x, ratvec lambda,int HT,ratvec gamma) =
@@ -407,23 +389,6 @@ set Kchar_vec(KGBElt x, ratvec lambda, int HT, ratvec gamma) = vec:
        then [Kpol_hash.match(K_type_pol(character_formula_to_height(1*p,HT))),#qs]
        else []
        fi
-{
-{record values of thruple for (x,lambda,HT}
-set xlHT_vecHash = make_vec_hash()
-
-{one answer for each vec in xlHT_vecHash}
-set xlHT_bools = [bool]:[]
-
-set xlHT_clear() = void:
-    xlHT_vecHash.clear();
-    xlHT_bools:=[]
-}
-
-{how often deforming location succeeds in proving unitary}
-set hash_def_true_count = int: 0
-
-{how often deforming location succeeds in proving nonunitary}
-set hash_def_false_count = int: 0
 
 set report_def_thruples() = void:
     prints(print_time_string(def_thruples_time)," to find deformed thruple candidates.");
@@ -600,30 +565,30 @@ set make_steve_hash() = steve_hash_table:
 			    charvecxlht = charvecs[rfnum][xlnum][htnum], {[vec]}
 		   	    charvecxl = charvecs[rfnum][xlnum],
 			    charvecr = charvecs[rfnum]
+			then Kcv = Kchar_vec(x,lambda,HT,gamma)
 			then start = elapsed_ms()
 			then def_tester = is_def_tester(loc)
-			then good_def_nums = for defloc@m in vechashes[rfnum][xlnum][htnum].list()[:vecnum]
-			     		     do if def_tester(defloc)
-					     	then [m]
-						else []
-						fi
-				 	     od.##
-			then () = def_thruples_time+:= elapsed_ms() - start
-			then Kcv = Kchar_vec(x,lambda,HT,gamma)
-			then (boo,v) = if any(for def_num in good_def_nums
-			     	       	      do @bool: not statuses[rfnum][xlnum][htnum][def_num]
-					      od)
-				       then hash_def_false_count+:=1;
-				       	    (false, Kcv)
-				       elif deform_loc_flag and
-				       	    any(for def_num in good_def_nums
-			     	       	      	do @bool: statuses[rfnum][xlnum][htnum][def_num]
-						   	  and (charvecs[rfnum][xlnum][htnum][def_num] = Kcv)
-					      	od)
-				       then hash_def_true_count+:=1;
-				       	    (true, Kcv)
-				       else pos_tester_Kchar(x, lambda, HT, gamma)
-				       fi
+			then (boo,v) = (bool,vec): (false,[])
+			then () = for defloc@m in vechashes[rfnum][xlnum][htnum].list()[:vecnum]
+			     	  do if def_tester(defloc)
+				     then if not statuses[rfnum][xlnum][htnum][m]
+				     	  then hash_def_false_count+:=1;
+					       v:=Kcv;
+					       break
+					  elif deform_loc_flag and
+					       charvecs[rfnum][xlnum][htnum][m] = Kcv
+					  then hash_def_true_count+:=1;
+					       boo:=true;
+					       v:=Kcv;
+					       break
+					  fi
+				      fi
+				   od
+		        then () = def_thruples_time+:= elapsed_ms() - start
+			then () = if (#v).=
+			     	  then boo:= pos_tester(x, lambda, HT, gamma);
+				       v:=Kcv
+				  fi
 			then () = srxlht#:=boo
 			then () = srxl[htnum]:=srxlht
 			then () = sr[xlnum]:=srxl
