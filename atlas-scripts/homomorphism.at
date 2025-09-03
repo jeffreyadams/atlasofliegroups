@@ -232,7 +232,13 @@ lift_delta=M*ic1.distinguished_involution*N  {this is a rational matrix} then
 w_action = ratmat_as_mat(lift_delta)*inverse(ic2.distinguished_involution) {this should be in the Weyl group} in 
 W_elt(ic2,w_action)
 
-set map_distinguished_involution(InnerClass ic1,InnerClass ic2,mat M)=WeylElt:id_W(ic2)
+set map_distinguished_involution(InnerClass ic1,InnerClass ic2,mat M)=WeylElt:
+if is_equal_rank(ic2)
+ then id_W(ic2)
+else
+ prints("Warning: ic1 is not equal rank, not sure what to do");
+ id_W(ic2)
+fi
 
 {to lift w1*delta1: lift w1 as before (one root at a time) and then tack on delta1}
 set map_twisted(InnerClass ic1,InnerClass ic2,mat M,WeylElt w)=WeylElt:
@@ -265,7 +271,8 @@ sigma2_W=map_tits_element(ic1,ic2,M,sigma1_W)  {Tits element of an element of W(
 {sigma2_W=map_tits_element(ic1,ic2,M,sigma1_W.*distinguished_involution(ic2))  {Tits element of an element of W(G2)} then}
 ()=prints("sigma2_W(1): ", sigma2_W) then
 w_delta2=map_distinguished_involution(ic1,ic2,M)  {w2\in W(G2):  w2*delta2 is lift of delta1} then
-sigma_delta2=tits_element(ic2,w_delta2) then
+{sigma_delta2=tits_element(ic2,w_delta2) then}
+sigma_delta2=tits_element(ic2,w_delta2*ic2.distinguished_involution) then
 sigma2=sigma2_W*sigma_delta2 in
 sigma2
 
