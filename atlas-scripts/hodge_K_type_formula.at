@@ -86,7 +86,7 @@ for list in lists do ktypes##:=list od;unique(ktypes)
 set starting_set_of_K_types(KType mu,Parabolic P,int N)=
 let
 weights=sums_nci_nilrad_roots_restricted_to_H_theta(P) then
-K_types=monomials(mu+add_weights(mu,weights)) in
+K_types=monomials(mu+add_weights_to_KType(mu,weights)) in
 {prints(params);}
 union(for p in mu#K_types do
  for q in monomials(branch_std(p,N)) do LKT(q) od
