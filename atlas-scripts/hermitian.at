@@ -86,6 +86,7 @@ set hash_steveCounter = make_counter()
 set unitaryTime = int: 0
 
 set to_ht (KTypePol P,int N) = KTypePol:
+  if N<0 then return P fi;
   let (below,)=height_split(P,N) in below
 
 {take a KTypePol _apparently_ attached to G and make it _actually_ attached

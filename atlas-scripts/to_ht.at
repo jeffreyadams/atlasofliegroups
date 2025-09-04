@@ -37,6 +37,7 @@ set to_ht (int N) = (ParamPol->ParamPol): (ParamPol P):
   fi
 
 set to_ht(maybe_KTP P,int N) = maybe_KTP:
+    if N < 0 then return P fi;
     case P
     | timed_out: timed_out()
     | done(r): done(to_ht(r,N))

@@ -400,6 +400,18 @@ set use_deform_nonu_steve() = void:
     deform_nonu_flag:=true;
     deform_loc_flag:=false
 
+{USE Kpol_hash defined in FPP_faces_geom.at; assume index od }
+set pos_tester_known_Kchar(KGBElt x, ratvec lambda,int HT,ratvec gamma, vec KCv) =
+    (bool, vec):
+    let p = parameter(x,lambda,gamma), G = x.real_form
+    then qs = monomials(1*p)
+    in if extra_coord_flag
+       then (all (for q in qs do @bool: {is_unitary_to_ht_big_SIMPLE_old(q,HT) od),}
+       	    	      	      	 	is_unitary_to_ht_big_SIMPLE(q,HT) od),KCv)
+       else (all (for q in qs do @bool: {is_unitary_to_ht_big_SIMPLE_old(q,HT) od),[])}
+       	    	      	      	 	 is_unitary_to_ht_big_SIMPLE(q,HT) od),[])
+       fi
+
 {USE Kpol_hash defined in FPP_faces_geom.at}
 set pos_tester_Kchar(KGBElt x, ratvec lambda,int HT,ratvec gamma) =
     (bool, vec):
@@ -439,10 +451,14 @@ set_type
   , ((KGBElt, ratvec, int) -> [bool]) postests {size vecHash.size(), listing unitarity results}
   , ((KGBElt, ratvec, int) -> [vec]) extra_coords {size vecHash.size():
   [Kchar #, #LQs] if extra_coord_flag, [] else}
+  , ((int, int, int, ratvec, vec) -> bool) partly_indexed_postest_known_Kchar
+  , ((KGBElt, ratvec, int, ratvec, vec) -> bool) postest_known_Kchar {test param(x,lambda,last_arg) for unitarity to ht}
   , ((int, int, int, int) -> bool) indexed_postest {known rfnum, xlnum, htnum, vecnum}
   , ((int, int, int, ratvec) -> bool) partly_indexed_postest
   , ((KGBElt, ratvec, int, ratvec) -> bool) postest {test param(x,lambda,last_arg) for unitarity to ht}
   , ((KGBElt, ratvec, int, ratvec) -> vec) extra_coord {test param(x,lambda,last_arg) for unitarity to ht}
+  , ((int, int, int, ratvec, vec) -> vec) indexed_thruple_known_Kchar {known rfnum, xlnum, htnum}
+  , ((KGBElt, ratvec, int, ratvec, vec) -> vec) thruple_known_Kchar {loc vec: (x,lambda,gamma) to HT}
   , ((int, int, int, ratvec) -> vec) indexed_thruple {known rfnum, xlnum, htnum}
   , ((KGBElt, ratvec, int, ratvec) -> vec) thruple {loc vec: (x,lambda,gamma) to HT}
 )
@@ -573,6 +589,65 @@ set make_steve_hash() = steve_hash_table:
     	 let (rfnum, xlnum, htnum) = add_xlht(x,lambda,HT)
 	 in (rfnum, xlnum, htnum, SHthruple_plain_indexed(rfnum, xlnum, htnum, gamma))
 	 {rfnum, xlnum, htnum, vecnum; statuses[rfnum][xlnum][htnum][vecnum] is the result}
+    then SHthruple_indexed_known_Kchar(int rfnum, int xlnum, int htnum, ratvec gamma, vec Kcv) = int:
+    	 if not (deform_loc_flag or deform_nonu_flag)
+	 then return SHthruple_plain_indexed(rfnum, xlnum, htnum, gamma)
+	 fi;
+	 let (x,lambda) = xlhashes[rfnum].index(xlnum), HT = heights[rfnum][xlnum][htnum]
+	 then rcor = red_coroots(x)
+    	 then rp = for M in redpoints[rfnum][xlnum][htnum]
+		   do set_bit_positions(M) {this is [int]}
+		   od {this is [[int]]}
+	 then loc = for av@j in rcor
+	      	    do location(rp[j],av*gamma)
+	    	    od
+	 then VECNUM = vechashes[rfnum][xlnum][htnum].size()
+	 then vecnum = vechashes[rfnum][xlnum][htnum].match(loc)
+	 {then () = prints("vechashes[rfnum][htnum] = ",vechashes[rfnum][xlnum][htnum].list())
+	 then () = prints("loc = ",loc)}
+	 then () = if vecnum = VECNUM {new location rel hyperplanes}
+	      	   then let srxlht = statuses[rfnum][xlnum][htnum], {[bool]}
+		   	    srxl = statuses[rfnum][xlnum],
+			    sr = statuses[rfnum],
+			    charvecxlht = charvecs[rfnum][xlnum][htnum], {[vec]}
+		   	    charvecxl = charvecs[rfnum][xlnum],
+			    charvecr = charvecs[rfnum]
+			{then Kcv = Kchar_vec(x,lambda,HT,gamma)}
+			then start = elapsed_ms()
+			then def_tester = is_def_tester(loc)
+			then (boo,v) = (bool,vec): (false,[])
+			then () = for defloc@m in vechashes[rfnum][xlnum][htnum].list()[:vecnum]
+			     	  do if def_tester(defloc)
+				     then if not statuses[rfnum][xlnum][htnum][m]
+				     	  then hash_def_false_count+:=1;
+					       v:=Kcv;
+					       break
+					  elif deform_loc_flag and
+					       charvecs[rfnum][xlnum][htnum][m] = Kcv
+					  then hash_def_true_count+:=1;
+					       boo:=true;
+					       v:=Kcv;
+					       break
+					  fi
+				      fi
+				   od
+		        then () = def_thruples_time+:= elapsed_ms() - start
+			then () = if (#v).=
+			     	  then boo:= pos_tester(x, lambda, HT, gamma);
+				       v:=Kcv
+				  fi
+			then () = srxlht#:=boo
+			then () = srxl[htnum]:=srxlht
+			then () = sr[xlnum]:=srxl
+
+			then () = charvecxlht#:=v
+			then () = charvecxl[htnum]:=charvecxlht
+			then () = charvecr[xlnum]:=charvecxl
+			in statuses[rfnum]:=sr;
+			   charvecs[rfnum]:=charvecr
+		   fi
+	 in vecnum
+
     then SHthruple_indexed(int rfnum, int xlnum, int htnum, ratvec gamma) = int:
     	 if not (deform_loc_flag or deform_nonu_flag)
 	 then return SHthruple_plain_indexed(rfnum, xlnum, htnum, gamma)
@@ -669,6 +744,14 @@ set make_steve_hash() = steve_hash_table:
   , ((KGBElt, ratvec, int) -> [vec]): {extra_coords} (KGBElt x, ratvec lambda, int HT) [vec]:
     let (rfnum, xlnum, htnum) = add_xlht(x,lambda,HT)
     in charvecs[rfnum][xlnum][htnum]
+  , ((int, int, int, ratvec, vec) -> bool): {partly_indexed_postest_known_Kchar}
+  (int rfnum, int xlnum, int htnum, ratvec gamma, vec KCv) bool:
+    let vecnum = SHthruple_indexed_known_Kchar(rfnum, xlnum, htnum, gamma, KCv)
+    in statuses[rfnum][xlnum][htnum][vecnum]
+  , ((KGBElt, ratvec, int, ratvec, vec) -> bool): {postest_known_Kchar} (KGBElt x, ratvec lambda, int HT,
+    ratvec gamma, vec KCv) bool:
+    let (rfnum, xlnum, htnum, vecnum) = SHthruple(x,lambda,HT,gamma)
+    in statuses[rfnum][xlnum][htnum][vecnum]
   , ((int, int, int, int) -> bool): {indexed_postest} (int rfnum, int xlnum, int htnum, int vecnum) bool:
     statuses[rfnum][xlnum][htnum][vecnum]
   , ((int, int, int, ratvec) -> bool): {partly_indexed_postest} (int rfnum, int xlnum, int htnum,
@@ -683,6 +766,14 @@ set make_steve_hash() = steve_hash_table:
     int HT, ratvec gamma) vec:
     let (rfnum, xlnum, htnum, vecnum) = SHthruple(x,lambda,HT,gamma)
     in charvecs[rfnum][xlnum][htnum][vecnum]
+  , ((int, int, int, ratvec, vec) -> vec): {indexed_thruple_known_Kchar} (int rfnum, int xlnum, int htnum,
+    ratvec gamma, vec KCv) vec:
+    let vecnum = SHthruple_indexed_known_Kchar(rfnum, xlnum, htnum, gamma, KCv)
+    in vechashes[rfnum][xlnum][htnum].index(vecnum)
+  , ((KGBElt, ratvec, int, ratvec, vec) -> vec): {thruple_known_Kchar} (KGBElt x, ratvec lambda, int HT,
+    ratvec gamma, vec KCv) vec:
+    let (rfnum, xlnum, htnum, vecnum) = SHthruple(x,lambda,HT,gamma)
+    in vechashes[rfnum][xlnum][htnum].index(vecnum)
   , ((int, int, int, ratvec) -> vec): {indexed_thruple} (int rfnum, int xlnum, int htnum,
     ratvec gamma) vec:
     let vecnum = SHthruple_indexed(rfnum, xlnum, htnum, gamma)
@@ -995,6 +1086,7 @@ set localFD_lookDownSteveU\
 {impose unitary to HT on a collection of faces}
 set test_Steve(KGBElt x, ratvec lambda, int HT, LocalVertexData Lvd, [[FaceVertsKHash]] LFKH) =
     [[FaceVertsKHash]]:
+    if #LFKH[0] = 0 then return LFKH fi;
     let start = elapsed_ms(), (rfnum, xlnum, htnum) = steve_hash.indices(x, lambda, HT)
     then local_extra_coord_flag = extra_coord_flag and #LFKH[0][0] = 1
     in for LF@d in LFKH
@@ -1205,11 +1297,65 @@ then () = for x in KGB(G)
 in prints("total time = ",print_time_string(elapsed_ms() - start)," to find ",
    		 big_unitary_hash.uhash(G).size()," unitary reps.")
 
-{ Input is candidate faces; assume Kchar is recorded in LFVH, as index in Kpol_hash. Output is
-the unitary ones, found by steve_hash.
+{ Input is candidate faces; assume Kchar to HT is recorded in LFVH, as index in Kpol_hash.
+Output is the unitary_to_HT ones, found by steve_hash.
  use and update a complete list Uhash of known unitary faces.
- try to compute and systematically use partial order on faces, working from vertices up}
-set local_test_hash_steve_up(
+ try to compute and systematically use steve partial order on working from vertices up}
+set local_test_hash_steve(
+    KGBElt x,
+    ratvec lambda,
+    LocalVertexData Lvd,
+    [[LocalFaceVertsKHash]] LFVH,
+    int HT
+     ) = [[LocalFaceVertsKHash]]:
+begin
+    let LFVHcat = LFVH.##, G = x.real_form
+    then NumFaces = #LFVHcat,  printInterval = int: 1, start = elapsed_ms()
+    then start_count = unitary_test_counter.use_count()
+    then (rfnum, xlnum, htnum) = steve_hash.indices(x,lambda,HT)
+    in  if test_verbose
+    	then prints("     Examining ",for list in LFVH do #list od,
+	" faces in local_test_hash_steve, to ht ",HT)
+    	fi;
+    	let answer = [[LocalFaceVertsKHash]]:
+	    for list@d in LFVH
+	    do for v@j in list {work from small faces toward big}
+    	       do if fund_face_verbose and (j%printInterval) = 0
+       	       	  then prints("testing ",j,"th face; so far ",unitary_test_counter.use_count() - start_count
+			," is_unitary' tests at ", print_time_string(elapsed_ms() - start))
+			; printInterval := (3*printInterval)\2 + 1
+       	           fi {fund_face_verbose}
+       	         ; let verts = vec: v[:d+1] { extract the "vertices" part of the |vec| }
+       	       	   then gamma = face_bary(Lvd,verts)
+       	       	   then pC = parameter(x, lambda, gamma)
+       	       	   then ps = [Param]: monomials(pC)
+       	       	   in if steve_hash.partly_indexed_postest(rfnum, xlnum, htnum,gamma)
+       	       	      then [v]
+       	  	      else []
+       	  	      fi
+    	        od.##
+	    od
+       in if test_verbose
+       	  then prints("     Total of ",for list in answer do #list od, " faces are unitary to ",HT,".")
+    	  fi
+	  ;   if test_verbose or test_slightly_verbose
+    	      then prints("number of tests = ",unitary_test_counter.use_count() - start_count, ", in ",
+	      	   print_time_string(elapsed_ms() - start))
+    	      fi
+;   answer
+end
+
+{whether to finish local_test_GEO_hash_steve with steve_closer}
+set steve_closer_flag = false
+
+{whether to use steve at every dimension}
+set all_steve_flag = true
+
+{ Input is candidate faces; assume Kchar to HT is recorded in LFVH, as index in Kpol_hash.
+Output is the unitary_to_HT ones, found by steve_hash.
+ use and update a complete list Uhash of known unitary faces.
+ try to compute and systematically use steve partial order on working from vertices up}
+set local_test_closer_steve(
     KGBElt x,
     ratvec lambda,
     LocalVertexData Lvd,
@@ -1222,10 +1368,11 @@ begin
     then (rfnum, xlnum, htnum) = steve_hash.indices(x,lambda,-1)
     then unitary_by_dim = vec: null(#LFVH)
     in  if test_verbose
-    	then prints("     Examining ",NumFaces," faces in local_test_steve_up")
+    	then prints("     Examining ",NumFaces," faces in local_test_closer_steve.")
     	fi;
     	let UParams = [Param]:
     	    for v@j in LFVHcat {work from small faces toward big}
+	    {no tilde finds lots more unitary reps by deformation; not clear whether faster}
     	    do if fund_face_verbose and (j%printInterval) = 0
        	       then prints("testing ",j,"th face; so far ",unitary_test_counter.use_count() - start_count
 			," is_unitary' tests at ", print_time_string(elapsed_ms() - start))
@@ -1233,10 +1380,11 @@ begin
        	       fi {fund_face_verbose};
        	       let d = #v - 3
        	       then verts = vec: v[:d+1] { extract the "vertices" part of the |vec| }
+	       then KCv = vec: v[d+1:]
        	       then gamma = face_bary(Lvd,verts)
        	       then pC = parameter(x, lambda, gamma)
        	       then ps = [Param]: monomials(pC)
-       	       in if steve_hash.partly_indexed_postest(rfnum, xlnum, htnum,gamma)
+       	       in if steve_hash.partly_indexed_postest_known_Kchar(rfnum, xlnum, htnum, gamma, KCv)
        	       	  then for p in ps
        	       	       do big_unitary_hash.uhash(G).match(p)
 	       	       od;
@@ -1258,14 +1406,54 @@ end
 
 {here LF has only vertices at (x,lambda)}
 {MUST use Kpol_hash!}
-set local_test_GEO_hash_steve(KGBElt x, ratvec lambda, LocalVertexData Lvd, Param_hash Uhash,
-    (Param->bool) fancy_tester) = [Param]:
+set local_test_GEO_hash_all_steve(KGBElt x, ratvec lambda, LocalVertexData Lvd, Param_hash Uhash) = [Param]:
     if {tempered case} #Lvd.list = 1 and ((1-x.involution)*(Lvd.list[0])).=
     then let p = parameter(x,lambda,0*lambda)
     	 then () = for q in monomials(finalize(p))
     	       	   do Uhash.match(q)
 		   od
 	 in return [p]
+    fi;
+    let G = x.real_form, r = rank(x.involution -1), p0 = parameter(x,lambda,0*lambda)
+    then () = if is_compact(G)
+       	      then let all = all_parameters_gamma(G,lambda)
+       	      	   in for p in all
+	       	      do Uhash.match(p)
+	       	      od;
+	       	      return(all)
+	       fi
+    then hts = next_heights(p0,edge_offset+1)
+    then one_ht = hts[edge_offset]
+    then () = test_string:= " using local_test_GEO_hash_all_steve"
+    then () = if test_verbose then prints("Chose",test_string) fi
+    then start_count = unitary_test_counter.use_count()
+    then () = hash_steveCounter.use()
+    then LF2 = localFD_Steve2(x,lambda)
+    then LFall = localFD_KHashbt_lookDownGEO(x,lambda, Lvd, LF2, 2, r + 1, one_ht, Kpol_hash)
+    then () = if one_two_reverse_flag
+    	      then LFall := for list in LFall do [vec]: for v in list ~do v od od
+	      fi
+    then LFlast =  local_test_hash_steve(x, lambda, Lvd, LFall, one_ht)
+    then () = if test_verbose
+	      then prints("unitary to ht ",one_ht," face counts to dim ",r,
+				": ", for list in LFlast do #list od)
+	      fi
+    then LFlastchars = extend_K_characters(x,lambda,Lvd,LFlast, Kpol_hash)
+    in local_test_closer_steve(x, lambda, Lvd, LFlastchars)
+
+{here LF has only vertices at (x,lambda)}
+{MUST use Kpol_hash!}
+set local_test_GEO_hash_steve(KGBElt x, ratvec lambda, LocalVertexData Lvd, Param_hash Uhash,
+    (Param -> bool) fancy_tester) = [Param]:
+    if {tempered case} #Lvd.list = 1 and ((1-x.involution)*(Lvd.list[0])).=
+    then let p = parameter(x,lambda,0*lambda)
+    	 then () = for q in monomials(finalize(p))
+    	       	   do Uhash.match(q)
+		   od
+	 in return [p]
+    fi;
+    if all_steve_flag
+    then return local_test_GEO_hash_all_steve(x, lambda, Lvd, Uhash)
     fi;
     let G = x.real_form
     then () = if is_compact(G)
@@ -1280,5 +1468,9 @@ set local_test_GEO_hash_steve(KGBElt x, ratvec lambda, LocalVertexData Lvd, Para
     then start_count = unitary_test_counter.use_count()
     then () = hash_steveCounter.use()
     then LF2 = localFD_Steve2(x,lambda)
-    in local_test_GEO_hash_steve_end(x,lambda, Lvd, LF2, Uhash)
-
+    in if steve_closer_flag
+       then local_test_GEO_hash_steve_steve_end(x, lambda, Lvd, LF2, Uhash,
+       (([[LocalFaceVertsKHash]])->[Param]): ([[LocalFaceVertsKHash]] LFlast): local_test_closer_steve(
+       x,lambda, Lvd, LFlast))
+       else local_test_GEO_hash_steve_end(x,lambda, Lvd, LF2, Uhash)
+       fi
