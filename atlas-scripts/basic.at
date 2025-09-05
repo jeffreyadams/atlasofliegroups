@@ -1,38 +1,59 @@
-{ Union types for built-in |linear_solve| and versions of |solve| below
-  Such types cannot share |void| tag, so we choose distince ones }
+{=== GENERIC TYPE CONSTRUCTORS ===}
 
+set_type Pair<S,T>   = ( S fst , T snd ) !
 set_type One_of<S,T> = ( S fail | T succeed ) !
-set_type Maybe<T>    = ( void none | T some) !
-set_type Pair<S,T>   = ( S fst , T snd )!
 
-set_type AffineSubspace = (vec base_point, int denom, mat tangent_basis)
-set_type LinearSolution = ( void empty_set | AffineSubspace solution)
+{ Often failure needs no extra information; then |One_of| becomes |Maybe|.
+  It is important that, like in |One_of|, failure is the first alternative, but
+  calling it |fail| would create an ambiguous overload of that name; therefore
+  we use a different and in this case more evocative label |none| here.
+}
+set_type Maybe<T>    = ( void none | T some ) !
 
+{ A process producing a stream of |T| can be presented as a |Iterator<T>| value.
+  In each state (including the initial one) the |get| method tries to produce
+  a |T| value, but it may find out there are none left. This may or may not have
+  a side effect, but |get| is not responsible for advancing in the sequence; to
+  do that, call |incr| which moves beyond the current value (it should only be
+  called after |get| succeeding). Although usually not done, calling |get| twice
+  in succession without intervening |incr| should produce the same value.
+}
+set_type Iterator<T> = ((->Maybe<T>) get, (->) incr) !
 
-set_type Iterator<T> = ((->Maybe<T>) get, (->) incr)!
+{ Give a name |LinearSolution| to the type returned by built-in |linear_solve|.
+  The type |AffineSubspace| and its field names only serve as documentation.
+}
+set_type AffineSubspace = ( vec base_point, int denom, mat tangent_basis )
+set_type LinearSolution = ( void empty_set | AffineSubspace solution )
 
-set where() = void:
-   for line@i in back_trace
-   do if line[:3]="In " then prints([i]," ",line) fi
-   od
-
+{ auxiliary functions for |One_of<S,T>|: test just the tag and strip failure }
 any_type S,T begin
-set time ((->T)f) = T: let t=elapsed_ms() in f() next print(elapsed_ms ()-t)
-
 set succeeds (One_of<S,T> v) = bool: case v | fail: false | succeed: true esac
 set fails    (One_of<S,T> v) = bool: case v | fail: true | succeed: false esac
-set can (Maybe<T> v) = bool: { because |if can(solve(eqn))| sounds nicer  }
-    case v | none: false | some: true esac
-
 set as_list (One_of<S,T> v) = [T]: case v | fail: [] | succeed(x): [x] esac
-set collect ([Maybe<T>] L) = [T]: for x in L do x.as_list od.##
 
+{ insist upon succeeding; don't take |fail| for an answer }
 set requisition (string message) = (One_of<S,T> v) T:
     case v | fail: error(message) | succeed(v): v esac
 set requisition = (One_of<S,T>->T):
     requisition("No solution found; having one was required")
+end
 
-set ! (Iterator<T> (get,incr) ) = void:
+{ auxiliary functions for |Maybe<T>| and for |Iterator<T>| }
+any_type T begin
+{ |can(v)| just means |succeeds(v)|, but |if can(solve(eqn)) then| sounds nice }
+set can (Maybe<T> v) = bool:
+    case v | none: false | some: true esac
+
+{ gather actual items from a list of potential contributions }
+set collect ([Maybe<T>] L) = [T]: for x in L do x.as_list od.##
+
+{ iterate, but bound number of iterations to at most |n| }
+set take (int n,Iterator<T> (get,incr) ) = [T]:
+   for :n do case get() | none: break | some(value): value next incr() esac od
+
+{ iterate exhaustively, but only print results without storing them }
+set ! (Iterator<T> (get,incr)) = void:
    while
      case get()
      | none: false
@@ -41,35 +62,68 @@ set ! (Iterator<T> (get,incr) ) = void:
    do incr()
    od
 
-set count (Iterator<T> (get,incr) ) = int: { run through iteration, counting }
+{ iterate exhaustively, but just count the number of iterations }
+set count (Iterator<T> (get,incr)) = int: { run through iteration, counting }
    while get().succeeds do incr() od { in |int| context, |while| loop counts }
 
-set to_list (Iterator<T> (get,incr) ) = [T]:
+{ iterate exhaustively and store all results in a list }
+set to_list (Iterator<T> (get,incr)) = [T]:
    while
      case get()
      | none: dont
      | some(value): do value next incr()
      esac
    od
+end
 
-set take (int n,Iterator<T> (get,incr) ) = [T]:
-   for :n do case get() | none: break | some(value): value next incr() esac od
+{ === TIMING, DIAGNOSTICS, PRINTING, AND TESTING ASSERTIONS === }
 
-{ distribute relation over lists, almost as in |map(rel)(zip(a,b)).all| }
-set ! ((S,T->bool)rel) = ([S] a,[T] b)bool:
-  #a=#b and (for x@i in a do if not rel(x,b[i]) then return false fi od; true)
+any_type T begin
+set time ((->T)f) = T: let t=elapsed_ms() in f() next print(elapsed_ms ()-t)
+
+set where() = void:
+   for line@i in back_trace
+   do if line[:3]="In " then prints([i]," ",line) fi
+   od
 
 set print_lines ([T] a) = void: for x in a do print(x) od
 set prints_lines ([T] a) = void: for x in a do prints(x) od
-
+set ! = prints_lines@[T] { allow printing any list line-by-line as |list!| }
 end
-set append = #@ T ([[T]],[T]) { so |LL append:= []| is unambiguous }
 
-set ! = prints_lines@T[T] { allow printing any list line-by-line as |list!| }
+set seat_belt_on = true { whether runtime tests are activated }
 
+set assert ((->bool,string)f) = void: { the fastest form when disabled }
+   if seat_belt_on
+   then let (b,message)=f() in if not b then error(message) fi
+   fi
+set assert ((->bool)b,string message) = void: { for easier conversion }
+   if seat_belt_on { using |and| here would be slightly less efficient }
+   then if not b() then error(message) fi
+   fi
+set assert ((->bool)b) = void: assert(@:(b(),"assertion failed"))
+
+{ === SOME DEFINITIONS USEFUL FOR AVOIDING OR RESOLVING AMBIGUITIES === }
+
+{ distributing a relation over lists, almost as in |map(rel)(zip(a,b)).all| }
+any_type S,T begin
+set ! ((S,T->bool)rel) = ([S] a,[T] b)bool:
+  #a=#b and (for x@i in a do if not rel(x,b[i]) then return false fi od; true)
+end
+
+{ Some concrete instaces of distribution of an equality relation over a list.
+  Proximity with certain built-in tests forbids calling these |=|, so instead we
+  use |==| or |===|. WHen safe, using |=| (with implicit conversion) is faster.
+}
 set == = =@(int,int)! { make comparison of two |[int]| available as |==| }
 set == = =@(vec,vec)! { make comparison of two |[int]| available as |==| }
 set === = ==@([int],[int])! { comparison of two |[[int]]| available as |===| }
+
+{ one more ambiguity avoiding definition: make an alias for a |#| instance }
+set append = #@ T ([[T]],[T]) { so |LL append:= []| is unambiguous }
+
+
+{ === ITERATION AND LIST SUPPORT FUNCTIONS === }
 
 set !minus_1 = -1 { used to be more efficient than |-1|, now equally efficient }
 
@@ -84,18 +138,6 @@ set sign (bool b) = int: { |(-1)^#b|, i.e.: } if b then -1 else 1 fi
 set range (int a, int b) = [int]: for i : b-a from a do i od
 
 set ^ = !=@(bool,bool) { simple exclusive or }
-
-set seat_belt_on = true { whether runtime tests are activated }
-
-set assert ((->bool,string)f) = void: { the fastest form when disabled }
-   if seat_belt_on
-   then let (b,message)=f() in if not b then error(message) fi
-   fi
-set assert ((->bool)b,string message) = void: { for easier conversion }
-   if seat_belt_on { using |and| here would be slightly less efficient }
-   then if not b() then error(message) fi
-   fi
-set assert ((->bool)b) = void: assert(@:(b(),"assertion failed"))
 
 set count (int limit,(int->bool) predicate) = int:
   let c=0 in for i:limit do if predicate(i) then c+:=1 fi od; c
@@ -140,33 +182,46 @@ set first (int limit,(int->bool) predicate) = int:
 set last (int limit,(int->bool) predicate) = int:
   for i:limit ~do if predicate(i) then return i fi od; -1
 
-{ with values stored in an array, similar functions can be applied to it }
-any_type S,T begin
-
+{ With values stored in an array, similar functions can be applied to it.
+  As the row value already exists, directly looping over it is efficient here.
+}
+any_type T begin
 set all ([T] L,(T->bool) predicate) = bool:
-  all(#L,(int i)bool:L[i].predicate)
+  for x in L do if not predicate(x) then return false fi od; true
 set any ([T] L,(T->bool) predicate) = bool:
-  any(#L,(int i)bool:L[i].predicate)
+  for x in L do if predicate(x) then return true fi od; false
 set none ([T] L,(T->bool) predicate) = bool:
-  none(#L,(int i)bool:L[i].predicate)
+  for x in L do if predicate(x) then return false fi od; true
 set first ([T] L,(T->bool) predicate) = int:
-  first(#L,(int i)bool:L[i].predicate)
+  for x@i in L do if predicate(x) then return i fi od; -1
 set last ([T] L,(T->bool) predicate) = int:
-  last(#L,(int i)bool:L[i].predicate)
+  for x@i in L ~do if predicate(x) then return i fi od; -1
 
-set get_first (([T],(T->bool)) (a,):args) = Maybe<T>:
-   let i=first(args) in if i>=0 then a[i].some else ().none fi
-set get_last (([T],(T->bool)) (a,):args) = Maybe<T>:
-   let i=last(args) in if i>=0 then a[i].some else ().none fi
+set get_first ([T] L,(T->bool) predicate) = Maybe<T>:
+  for x in L do if predicate(x) then return x.some fi od; ().none
+set get_last ([T] L,(T->bool) predicate) = Maybe<T>:
+  for x in L ~do if predicate(x) then return x.some fi od; ().none
+end
 
+any_type S,T begin
 set get_first ((T->S) attr, (S,S->bool)eq) = ([T]a, S b) Maybe<T>:
-   get_first (a,(T x)bool: eq(x.attr,b))
+   for x in a do if eq(x.attr,b) then return x.some fi od; ().none
 set get_last ((T->S) attr, (S,S->bool)eq) = ([T]a, S b) Maybe<T>:
-   get_last (a,(T x)bool: eq(x.attr,b))
+   for x in a ~do if eq(x.attr,b) then return x.some fi od; ().none
+
+{ test for being in a relation to some/none/all of the elements of a list }
+set for_some ((S,T->bool)rel, [T]a) = (S x) bool:
+   for y in a do if rel(x,y) then return true fi od; false
+set for_none ((S,T->bool)rel, [T]a) = (S x) bool:
+   for y in a do if rel(x,y) then return false fi od; true
+set for_all  ((S,T->bool)rel, [T]a) = (S x) bool:
+   for y in a do if not rel(x,y) then return false fi od; true
+end
 
 
 { Generic functions on any type with a provided total ordering }
 
+any_type T begin
 { minimum or maximum of 2 candidates }
 set min ((T,T->bool)leq) = (T x, T y) T: if leq(x,y) then x else y fi
 set max ((T,T->bool)leq) = (T x, T y) T: if leq(x,y) then y else x fi
@@ -200,19 +255,16 @@ set maxdex ((T,T->bool)leq) = ([T] a) int:
     for i:l-1 from 1 do if not leq(a[i],m) then set (p,m):=(i,a[i]) fi od; p
   fi
 
-set any_has ((S,T->bool)rel) = ([S]a) (T->bool): let n=#a in (T y) bool:
-   any(n,(int i)bool:rel(a[i],y))
-set none_has ((S,T->bool)rel) = ([S]a) (T->bool): let n=#a in (T y) bool:
-   none(n,(int i)bool:rel(a[i],y))
-set all_have ((S,T->bool)rel) = ([S]a) (T->bool): let n=#a in (T y) bool:
-   all(n,(int i)bool:rel(a[i],y))
-
 set reverse ([T] r) = [T]: for x in r do x ~od
-
 end
 
-set is_member = any_has @ T (T,T->bool) { argument is supposed an '=' relation }
-set isnt_member = none_has @ T (T,T->bool) { same }
+
+{ === MEMBERSHIP TESTING AND SEARCHING === }
+
+any_type T begin
+set is_member   ((T,T->bool)eq) = ([T] a) (T->bool): for_some(eq,a)
+set isnt_member ((T,T->bool)eq) = ([T] a) (T->bool): for_none(eq,a)
+end
 
 { binary search first |i| in [low,high) with |pred(i)|, or |high| if none }
 { of course |pred| is assumed monotonic here: $pred(i)\implies pred(i+1)$ }
@@ -255,6 +307,8 @@ set from_stops ([int] stops) = (int->int):
   { at |k| find last index |i| with |stops[i]<=k|; calculated via complement }
   (int k): locate_sorted(stops,k+1)-1 { find first excess, then back up 1 }
 
+
+{ === BASIC NON BUILT-IN FUNCTIONALITY FOR SPECIFIC TYPES === }
 
 {                               Integers                                }
 
@@ -381,8 +435,8 @@ set is_disjoint_from_sorted ([int] sorted) = ([int]->bool):
    let test = isnt_member_sorted(sorted) in
    ([int] S)bool: all(#S,(int i)bool: test(S[i]))
 
-set fac (int n) = int: let p=1 in for i:n-1 from 2 do p *:=i od; p
-set ! = fac@int { allo conventional factorial notation }
+set factorial (int n) = int: let p=1 in for i:n-1 from 2 do p *:=i od; p
+set ! = factorial@int { allo conventional factorial notation }
 
 { convert to base n as polynomial: small coef polynomial evaluating to k at n }
 set to_base_poly (int b) = (int->vec):
