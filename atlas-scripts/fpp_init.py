@@ -3,6 +3,7 @@
 import sys, time, datetime, os, getopt, subprocess, gc,re,shutil, math,psutil,signal
 from subprocess import Popen, PIPE, STDOUT
 
+#usage:  fpp_int.py -g "Sp(6,R)" -N sp6R 
 #format atlas command, given as a text string, for passing to atlas via stdin.write
 def format_cmd(atlas_command):
    return('{}'.format(atlas_command).encode('utf-8'))
@@ -32,6 +33,9 @@ def main(argv):
             data_directory=arg
             print("data directory: " + data_directory)
     print("group: ", group, "\ngroup_name: ", group_name, "\ndata directory: ", data_directory)
+    if group=="":
+       print("group must be defined with -g");
+       exit()
 
     #write data/group_name_definition.at
     arg=[atlas_executable,"all.at"]
@@ -58,7 +62,7 @@ def main(argv):
     dirs=[]
     for entry in os.listdir(data_directory):
        print("entry: ", entry)
-       if os.path.isdir(os.path.join(data_directory,entry)) and entry.startswith(group):
+       if os.path.isdir(os.path.join(data_directory,entry)) and entry.startswith(group_name):
           print("adding", entry)
           dirs.append(os.path.join(data_directory,entry))
     print("dirs: ", dirs)
@@ -67,9 +71,11 @@ def main(argv):
     print("look for: " + init_file)
     if os.path.exists(init_file):
         files_to_read.append(init_file)
-        print("adding " + init_file + "to list of files\n")
+        print("adding " + init_file + " to list of files\n")
     for dir in dirs:
+        print("dir: ", dir)
         files=os.listdir(dir)
+        print("files: ", files)
         for file in files:
             if file.endswith("at"):
                 files_to_read.append(dir + "/" + file)

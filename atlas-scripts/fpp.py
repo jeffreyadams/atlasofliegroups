@@ -50,7 +50,7 @@ def execute_atlas_command(atlas_cmd,final_string,my_log,my_proc):
 def atlas_compute(job_number,pid):
    print("starting atlas_compute process #:",job_number, "pid: ", str(pid), " at ", str(time.ctime()))
    proc=procs[job_number]
-   print("output_dir: ", output_dir, flush=True)
+   #print("output_dir: ", output_dir, flush=True)
    log_file=output_dir + "/logs/" + str(job_number) + ".txt"
    log=open(log_file,"w",buffering=1)
    log.write("test_var:" + test_var)
@@ -61,7 +61,6 @@ def atlas_compute(job_number,pid):
    log.write("\nJob number: " + str(job_number) + "\n")
    log.write("Job pid: " +  str(pid) + "\n")
    vars=['algorithm_flag',
-         'all_shifts_old_flag',
          'big_unitary_hash_flag',
          'bl_interrupt_flag',
          'blob_time_flag',
@@ -72,7 +71,6 @@ def atlas_compute(job_number,pid):
          'coh_ind_all_flag',
          'coh_ind_most_flag',
          'coh_ind_report_flag',
-         'coh_ind_tester_flag',
          'def_flag',
          'deformed_hash_flag',
          'deform_flag',
@@ -96,7 +94,6 @@ def atlas_compute(job_number,pid):
          'FPP_report_flag',
          'ICPNU_flag',
          'ICPU_flag',
-         'include_imag_flag',
          'interrupt_flag',
          'is_FPP_unitary_flag',
          'KGB_frac_flag',
@@ -146,7 +143,6 @@ def atlas_compute(job_number,pid):
          'R_packet_flag',
          'short_hts_flag',
          'short_mu_flag',
-         'short_shifts_flag',
          'small_test_flag',
          'sort_LFD_flag',
          'step_flag',
@@ -162,7 +158,6 @@ def atlas_compute(job_number,pid):
          'unip_flag',
          'Uparamhash_flag',
          'up_local_test_flag',
-         'up_mu_flag',
          'use_test_coroots_flag',
          'u_wk_flag',
          'u_wk_Lucas_flag',
@@ -205,11 +200,12 @@ def atlas_compute(job_number,pid):
       log.write("current memory usage vms:" + str(memory_vms) + "\n")
       log.write("elapsed time: " + elapsed_time(starttime))
       try:
+         log.write("current queue size: " + str(xl_pairs_queue.qsize()) + "\n")
          log.write("try to get new (x,lambda) pair\n")
-         x_lambda_number=xl_pairs_queue.get()
-      except Queue.Empty:
+         x_lambda_number=xl_pairs_queue.get(block=True, timeout=.001)
+         log.write("x_lambda_number: " + str(x_lambda_number) + "\n")
+      except Exception as e:
          log.write("Exception\n")
-         log.write("KGB lambda queue is empty\n")
       else:
          log.write("number of new (x,lambda) pair : " + str(x_lambda_number) + "\n")
          atlas_cmd="print_xl_pair(" + group  + " ," + str(x_lambda_number)  + ")\n"
@@ -345,7 +341,7 @@ def atlas_compute(job_number,pid):
 
 #MAIN
 def main(argv):
-   global output_dir,group,group_name,xl_pairs_queue,round,test_var
+   global output_dir,group,group_name,xl_pairs_queue,round,test_var, executable_dir,data_directory, group_definition_file, init_file
    data_directory="./data"
    n_procs=1
    test_var=""
@@ -361,9 +357,23 @@ def main(argv):
    init_file=""
    no_init=False
    queue_size=-1
-   opts, args = getopt.getopt(argv, "g:d:n:l:x:D:x:i:N:t:m:I`")
+   opts, args = getopt.getopt(argv, "g:d:n:l:x:i:G:t:m:I:h")
    for opt, arg in opts:
-      if opt in ('-l'):
+      if opt in ('-h'):
+         print("\
+         \nUsage: FPP.py -g group <options> ([defaults])\n",\
+                "-G: group_name (alternate name suitable for files and directories) [group]\n",\
+                "-d data directory [data]\n", \
+                "-n number of cores [1]\n", \
+                "-l logfile [data/group_name/logs/group_name.log.txt]\n", \
+                "-i init_file [group_name._init.at]\n",\
+                "-x other_files to load (can be used several times)\n", 
+                "-m max queue size [# of (x,lambda) pairs]\n", \
+                "-I: Ignore (don't load) any init file\n",\
+                "-t: testing only (currently no op)\n",\
+                "-h: this help file")
+         exit();
+      elif opt in ('-l'):
          logfile=arg
          print("log file set to: ", logfile)
       elif opt in ('-m'):
@@ -384,7 +394,7 @@ def main(argv):
          group=arg
          group_name=arg
          print("group= " + group)
-      elif opt in ('-N'):
+      elif opt in ('-G'):
          group_name=arg
          print("set group_name: ", group_name)
       elif opt in ('-d'):
@@ -392,19 +402,17 @@ def main(argv):
          print("parent directory: " + data_directory)
       elif opt in ('-x'):
          files_to_read.append(arg)
-      elif opt in ('-D'):
-         default_file_to_read=arg
       elif opt in ('-t'):
          test_only=True
          print("testing only")
       elif opt in ('-x'):
          files_to_read.append(arg)
    if group=="":
-      print("group must be defined with -g");
+      print("group must be defined with -g (-h for help)");
       exit()
    existing = []
-   pattern = re.compile(rf"^{re.escape(group)}.*?(\d+)$")
-   print("pattern: ", pattern)
+   pattern = re.compile(rf"^{re.escape(group_name)}.*?(\d+)$")
+   #print("pattern: ", pattern)
 
    for filename in os.listdir(data_directory):
       match = pattern.match(filename)
@@ -430,20 +438,18 @@ def main(argv):
    except OSError as e:
       print(f"Error creating directory: {e}")
    if len(logfile)==0:
-      logfile=group_name + "_log_" + round + ".txt"
+      logfile=output_dir + "/logs/" + group_name + "_log_" + round + ".txt"
    print("logfile: ", logfile)
-   if len(default_file_to_read)==0:
-      default_file_to_read=group_name + "_init.at"
-   files_to_read.insert(0,default_file_to_read)
+   files_to_read.insert(0,init_file)
    print("files to read: ", files_to_read)
    for file in files_to_read:
       files_to_read_string +=" -x " + file
    print("files to read string: ", files_to_read_string)
    print("Starting at ", time.ctime())
-   print("command line 2: ", " ".join(sys.argv))
-   log_file=output_dir + "/logs/logfile.txt"
-   print("redirecting output to ", log_file)
-   sys.stdout = open(log_file, 'w')
+   #print("command line 2: ", " ".join(sys.argv))
+   #log_file=output_dir + "/logs/logfile.txt"
+   print("redirecting output to ", logfile)
+   sys.stdout = open(logfile, 'w')
    sys.stderr = sys.stdout
    print("Starting at ", time.ctime())
    print("command line: ", " ".join(sys.argv))
@@ -455,7 +461,7 @@ def main(argv):
    proc=None
    print("proc None",flush=True)
    print("init_file: ", init_file,flush=True)
-   #if init_file exists load id
+   #if init_file exists load it
    if len(init_file)>0 and os.path.exists(init_file):
       print("case 1: ", init_file, flush=True)
       atlas_cmd=executable_dir + "atlas"
@@ -466,19 +472,20 @@ def main(argv):
       print("init file is empty, generating big_unitary_hash", flush=True)
       atlas_cmd=executable_dir + "atlas"
       proc=subprocess.Popen([atlas_cmd,'all.at'], stdin=PIPE,stdout=PIPE)
-      atlas_cmd="big_unitary_hash.set_xl_sizes(" + group + ",[]);prints(\"OK\")\n"
-      print("atlas_cmd: ", atlas_cmd, flush=True)
+      #atlas_cmd="big_unitary_hash.set_xl_sizes(" + group + ",[]);prints(\"OK2\")\n"
+      atlas_cmd="big_unitary_hash.set_xl_sizes(" + group + ",[])\n"
       proc.stdin.write(format_cmd(atlas_cmd+ "\n"))
       proc.stdin.flush()
       print("set xl_sizes in big_unitary_hash\n", flush=True)
       line=proc.stdout.readline().decode('ascii').strip()
+      print("IGNORING: ", line)
       #write the init file
       atlas_cmd=">> " + group_name + "_init.at  big_unitary_hash.write()"
       print("atlas: " + atlas_cmd + "\n")
       proc.stdin.write(format_cmd(atlas_cmd+ "\n"))
       proc.stdin.flush()
    print("done with ", flush=True)
-   xl_pairs_queue=Queue()
+   xl_pairs_queue=mp.Queue()
    #print("proc=",proc,flush=True)
    print("created xl_pairs_queue",flush=True)
    #get number of (x,lambda) pairs to make queue of that size
@@ -490,7 +497,6 @@ def main(argv):
       proc.stdin.write(format_cmd(atlas_cmd+ "\n"))
       proc.stdin.flush()
       line=proc.stdout.readline().decode('ascii').strip()
-      #print("LINE: ", line,flush=True)
       re.sub(".* ","",line)
       print("line:", line,":", flush=True)
       queue_size=int(line)
@@ -499,6 +505,7 @@ def main(argv):
    for i in range(queue_size):
       xl_pairs_queue.put(i)
    print("xl_pairs_queue size is now: ", xl_pairs_queue.qsize(),flush=True)
+
    #if x_lambdas_todo_file is given (probably always the case)
    #read file into atlas, just to find the length of the array x_lambdas_todo 
 
@@ -535,7 +542,7 @@ def main(argv):
    print("atlas_cmd: ",  atlas_cmd)
    proc.stdin.write(format_cmd(atlas_cmd))
    proc.stdin.flush()
-   group_definition_file=data_directory + "/" + "the_group.at"
+   group_definition_file=data_directory + "/" + group_name + ".at"
    group_definition=open(group_definition_file,"w",buffering=1)
    group_definition.write("<groups.at\n")
    while True:
@@ -549,14 +556,14 @@ def main(argv):
    print("starting ", n_procs, " atlas processes")
    symlinks_dir=data_directory + "/" + group_name + "_" + round + "/symlinks"
    print("symlinks_dir: ", symlinks_dir, flush=True)
-   print("OK: ", n_procs,flush=True)
+   print("going to make symlinks: ", n_procs,flush=True)
    for i in range(n_procs):
       atlas_cmd=symlinks_dir + "/atlas_" + str(i)
       symlink_cmd="ln -s " + executable_dir + "atlas " + atlas_cmd
-      print("symlink_cmd: ", symlink_cmd, flush=True)
+      #print("symlink_cmd: ", symlink_cmd, flush=True)
       os.system(symlink_cmd)
       myarg=[atlas_cmd,"all.at"]+files_to_read
-      print("myarg: ",  myarg,flush=True)
+      #print("myarg: ",  myarg,flush=True)
       proc=subprocess.Popen(myarg, stdin=PIPE,stdout=PIPE)
       procs.append(proc)
       pid=proc.pid
@@ -567,10 +574,61 @@ def main(argv):
          Q=P.submit(atlas_compute,i,proc.pid)
          print("submitted atlas job ", i, " ", proc.pid)
          T.append(Q)
-         print("TQ",flush=True)
+         #print("TQ",flush=True)
    shutil.rmtree(symlinks_dir)
+   print("done with calculation, removed symlinks\n")
+   print("now updating init file")
+   fpp_init()
+   print("finished fpp_init, exiting")
    freeproc.kill()
 
+def fpp_init():
+   atlas_executable=executable_dir + "atlas" 
+   arg=[executable_dir,"all.at"]
+
+   #read the directories ./data/G2_s_j j=0,1,2,3 (for example)
+   #also read G2_s_init.at if it exists
+   dirs=[]
+   for entry in os.listdir(data_directory):
+      print("entry: ", entry)
+      if os.path.isdir(os.path.join(data_directory,entry)) and entry.startswith(group_name):
+         print("adding", entry)
+         dirs.append(os.path.join(data_directory,entry))
+         print("dirs: ", dirs)
+         files_to_read=["all.at",group_definition_file]
+         init_file=group_name + "_init.at"
+         print("look for: " + init_file)
+   if os.path.exists(init_file):
+      files_to_read.append(init_file)
+      print("adding " + init_file + " to list of files\n")
+   for dir in dirs:
+      print("dir: ", dir)
+      files=os.listdir(dir)
+      print("files: ", files)
+      for file in files:
+         if file.endswith("at"):
+            files_to_read.append(dir + "/" + file)
+            print("dirs: ", dirs)
+            print("files_to_read: ", files_to_read)
+            arg=[atlas_executable] + files_to_read
+            print("arg: ",arg)
+            proc=subprocess.Popen(arg,stdin=PIPE,stdout=PIPE)
+
+   atlas_cmd="big_unitary_hash.set_xl_sizes(" + group +",[]);prints(\"\")\n"  #need prints to get line of output
+   print("atlas_cmd: ", atlas_cmd, flush=True)
+   proc.stdin.write(format_cmd(atlas_cmd))
+   proc.stdin.flush()
+   line=proc.stdout.readline().decode('ascii')
+   print("line: ", line)
+
+   print("sending output to ", init_file, "\n")
+   #    atlas_cmd="> " + init_file + " big_unitary_hash.writeG("+ group + ")"
+   atlas_cmd="> " + init_file + " big_unitary_hash.write()"
+   print("atlas: " + atlas_cmd + "\n")
+   proc.stdin.write(format_cmd(atlas_cmd+ "\n"))
+   proc.stdin.flush()
+   log_file=output_dir + "/logs/logfile.txt"
+   print("redirecting output to ", log_file)
 
 if __name__ == "__main__":
    main(sys.argv[1:])
