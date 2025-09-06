@@ -1,0 +1,175 @@
+<FPP_globalDirac.at
+
+{This script runs (backward, for no serious reason) over a sequence of
+KGBElts x in E7_s, beginning at start and ending before start +
+interval. For each x, it computes the corresponding lambdas; then for
+each (x,lambda) it computes the list of FPP-unitary facets of
+parameters (x,lambda,*). These are assembled in LISTS = [[Param]],
+with one [Param] for each x. In practice what's interesting is the
+final Param's stored in Uhash.
+
+If you replace E7_s by some small group (say F4_s) and start by
+something in the middle of KGB(G) (say 100), you can quickly see what
+it does.
+
+I'm running this precise script on my laptop. After 15 minutes the job
+has grown to 60 mb, and has so far analyzed 8 of the 130 lambdas for
+the FIRST KGBElt. The first 8 lambdas finished probably in less than a
+minute; the ninth is taking a quite a long time.
+
+We can talk about how best to harvest the output from jobs like this,
+but even if the main loop is interrupted with CTRL-C, the hash table
+of Param's Uhash will remain accessible.
+
+I'm not sure whether my little experiment proves that this is viable
+idea or not. My do-them-all jobs on atlas are computing an average of
+one KGBElt each 90 minutes.
+}
+
+{use FPP_unitary_hash2 up to this KGB element; default never
+FPP_unitary_pair_choice}
+set hash2_cutoff=10000
+
+set trivial_group=compact_form(trivial_group)
+set Nullp = trivial_group.trivial
+
+set params(Param_hash unitary_hash)=[Param]:
+ for i:unitary_hash.size() do unitary_hash.index(i) od
+
+set params(Param_hash unitary_hash,KGBElt x)=[Param]:
+ ##for i:unitary_hash.size() do let p=unitary_hash.index(i)  in if p.x=x then [p] else [] fi od
+
+set params([Param] params,KGBElt x)=[Param]:
+ ##for p in params do  if p.x=x then [p] else [] fi od
+
+set params([Param] params,int kgb_number)=[Param]:
+ ##for p in params do  if number(p.x)=kgb_number then [p] else [] fi od
+
+set is_fixed(WeylElt w,KGBElt x)=bool: cross(w,x)=x
+set is_fixed(KGBElt x)=bool: cross(x.real_form.w0,x)=x
+
+set kgb_fixed(RealForm G)=[int]:
+   ##for x in KGB(G) do if is_fixed(G.w0,x) then [number(x)] else [] fi od
+
+set kgb_non_fixed(RealForm G)=
+   ##for x in KGB(G) do if number(cross(G.w0,x))>number(x) then [number(x)] else [] fi od
+
+set kgb_representatives(RealForm G)=kgb_fixed(G)##kgb_non_fixed(G)
+
+set add_to_hash(Param_hash unitary_hash,[Param] params)=void:
+    for p in params do unitary_hash.match(p) od
+
+{add one parameter to hash, return false it was already there, true
+if it was actually added}
+set update(Param_hash param_hash,Param p)=bool:
+    let n=param_hash.size() then
+    ()=param_hash.match(p) in
+    param_hash.size()>n
+
+{add list of params to hash; return (number of new parameters, list of new parameters)}
+set update(Param_hash param_hash,[Param] params)=(int,[Param]):
+let rv= ##for p in params do
+    if update(param_hash,p) then [p] else [] fi
+    od
+in (#rv,rv)
+
+set FPP_lambdas(RealForm G)=[(KGBElt,[ratvec])]:
+for x in KGB(G) do (x,FPP_lambdas(x)) od
+
+set FPP_unitary_hash_bottom_layer(KGBElt x,ratvec lambda)=void:
+FPP_unitary_hash_bottom_layer([(x,lambda)])
+{
+set FPP_unitary_hash(RealForm G,int kgb_number)=void:
+FPP_unitary_hash([KGB(G,kgb_number)])
+
+set FPP_unitary_pair_hash(RealForm G, int kgb_number, ratvec lambda)=void:
+    FPP_unitary_hash([(KGB(G,kgb_number),lambda)])
+}
+set FPP_unitary_pair_hash_bottom_layer(RealForm G, int kgb_number, ratvec lambda)=void:
+    FPP_unitary_hash_bottom_layer([(KGB(G,kgb_number),lambda)])
+
+{set FPP_unitary_hash2(RealForm G,int kgb_number)=void:
+FPP_unitary_hash2([KGB(G,kgb_number)])}
+
+set FPP_unitary_pair_hash2(RealForm G, int kgb_number, ratvec lambda)=void:
+    FPP_unitary_hash2([(KGB(G,kgb_number),lambda)])
+
+set FPP_unitary_pair_choice(RealForm G, int kgb_number, ratvec lambda)=void:
+if more_verbose then prints("FPP_unitary_pair_choice withh hash2_cutoff=", hash2_cutoff, "x=", kgb_number) fi;
+if kgb_number <= hash2_cutoff
+  then
+    if more_verbose then prints("using FPP_unitary_pair_hash2") fi;
+    FPP_unitary_pair_hash2(G,kgb_number,lambda)
+  else
+    if more_verbose then prints("using FPP_unitary_pair_bottom_layer") fi;
+    FPP_unitary_hash_bottom_layer([(KGB(G,kgb_number),lambda)])
+fi
+3
+{
+set FPP_unitary_hash(RealForm G,int kgb_number_start,int kgb_number_finish)=void:
+FPP_unitary_hash(for i:kgb_number_finish-kgb_number_start from kgb_number_start do KGB(G,i) od)
+
+
+
+
+
+
+set FPP_unitary_hash2(RealForm G,int kgb_number_start,int kgb_number_finish)=void:
+FPP_unitary_hash2(for i:kgb_number_finish-kgb_number_start from kgb_number_start do KGB(G,i) od)
+}
+set FPP_unitary_hash_bottom_layer(RealForm G,int kgb_number)=void:
+FPP_unitary_hash_bottom_layer([KGB(G,kgb_number)])
+
+set FPP_unitary_hash_bottom_layer(RealForm G,int kgb_number_start,int kgb_number_finish)=void:
+FPP_unitary_hash_bottom_layer(for i:kgb_number_finish-kgb_number_start from kgb_number_start do KGB(G,i) od)
+
+set FPP_unitary_hash_one_level(RealForm G,int kgb_number)=void:
+FPP_unitary_hash_one_level([KGB(G,kgb_number)])
+
+set FPP_unitary_hash_one_level(RealForm G,int kgb_number_start,int kgb_number_finish)=void:
+FPP_unitary_hash_one_level(for i:kgb_number_finish-kgb_number_start from kgb_number_start do KGB(G,i) od)
+
+{from writeFiles.at, but also include the j line}
+set write_real_form_plus(RealForm G, string GroupName) = void:
+    begin
+	 prints("set rd_saved = RootDatum: root_datum(mat: ")
+    	 ; prints( for alpha in G.simple_roots do alpha od, ", mat:")
+	 ; prints( for betavee in G.simple_coroots do betavee od)
+	 ; prints(",",G.prefers_coroots,")")
+         ; prints("set DI_saved = mat: ")
+    	 ; prints(for col in G.distinguished_involution do col od)
+         ; prints( "set IC_saved = inner_class(rd_saved, DI_saved)")
+    	 ; prints("set ",GroupName,"= real_form(IC_saved, DI_saved,",
+	   	       KGB(G,0).torus_factor,")")
+         ; prints("set j = big_unitary_hash.rf_number(",GroupName,"), ptemp = GL(1,R).trivial")
+    end
+    
+{write list from single KGB(G,j): big_unitary_hash.writeGrange(G,j,j+1)}
+set write_one_x(big_unitary_hash_table big_unitary_hash, RealForm G, int index)=void:
+      big_unitary_hash.writeGrange(G,index,index+1)
+
+set write_one_pair(RealForm G, int kgb_number, ratvec lambda)=void:
+          big_unitary_hash.writexlam_no_G(KGB(G,kgb_number),lambda)
+
+set write_one_pair(RealForm G, int xl_pair_number )=void:
+    let (x,lambda)=xl_pair(G,xl_pair_number) in big_unitary_hash.writexlam_no_G(x,lambda)
+
+set vertices(KGBElt x, ratvec lambda)=LPm_table.Lvd(x.real_form,x.involution,(lambda+x.involution*lambda).numer).list
+set number_vertices(KGBElt x, ratvec lambda)=#vertices(x,lambda)
+
+
+set lambdas_and_vertices(KGBElt x)=for lambda in FPP_lambdas(x) do (lambda,vertices(x,lambda)) od
+
+
+set vertices(KGBElt x)=for lambda in FPP_lambdas(x) do vertices(x,lambda) od
+set number_lambdas(KGBElt x)=#FPP_lambdas(x)
+set number_vertices(KGBElt x)=#(vertices(x).##)
+set number_lambdas_vertices(KGBElt x)=(number_lambdas(x), number_vertices(x))
+set number_lambdas_vertices([KGBElt] list )=for x in list do number_lambdas_vertices(x) od
+set number_lambdas_vertices(RealForm G,[int] list )=number_lambdas_vertices(for i in list do KGB(G,i) od) 
+
+
+
+set numbers_vertices(KGBElt x)=for lambda in FPP_lambdas(x) do number_vertices(x,lambda) od
+
+set numbers_vertices([KGBElt] list)=for x in list do numbers_vertices(x) od
