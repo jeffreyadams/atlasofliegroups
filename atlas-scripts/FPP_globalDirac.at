@@ -371,7 +371,8 @@ then coh_ind_unip_few(G,Uhash)}
     then () = for (x,lambda)@k in xlambdasW
     	      do {xlambdasW}
 	      	let skip_lambda= is_finished(x,lambda),
-		revert_steve_flag = prefer_steve_long_flag and x.number = #KGB(G) - 1
+		revert_steve_flag = prefer_steve_long_flag and
+		x.number = #KGB(G) - 1 and lambda != G.rho
 		in if skip_lambda
 		   then if FPP_report_flag
 		   	then prints("Already computed (",x,",",lambda,")")
@@ -670,9 +671,9 @@ set FPP_unitary_hash_general([KGBElt] xs, Param_hash Uhash, (Param->bool) fancy_
 		   				  then {none_count +:= 1;} {prints("SKIPPED ",x,",",lambda);} ()
 		    			       else let startDTcount = DTcount
  		      		      	       then LF = [[FaceVertsIndex]]:
-					       	         if revert_steve_flag
+					       	         {if revert_steve_flag
 					       	       	 then [[]]
-					       		 elif by_zero_flag
+					       		 el}if by_zero_flag
 		      	      	      	      	       	 then localFD_1Dirac2_by_zero(xW, lambdaW, Lvd, Perm2)
 			   				 else localFD_1Dirac2(xW, lambdaW, Lvd, Perm2)
 			   				 fi {by_zero_flag}
@@ -683,7 +684,7 @@ set FPP_unitary_hash_general([KGBElt] xs, Param_hash Uhash, (Param->bool) fancy_
 			   			    	      " to find [",#LF[0],",",#LF[1],
 							      "] verts and edges; Dirac eliminated ",DTcount - startDTcount)
 	      		   			    	 fi
-			 		   in if (not revert_steve_flag) and #LF[0] = 0
+			 		   in if {(not revert_steve_flag) and} #LF[0] = 0
 					      then none_count +:=1;
 					      	   finish(x, lambda); []
 			    		      else if every_lambda_deets_flag
@@ -692,7 +693,7 @@ set FPP_unitary_hash_general([KGBElt] xs, Param_hash Uhash, (Param->bool) fancy_
 				    	 	   test_verbose :=old_test_verbose;
 						   test_slightly_verbose := old_test_slightly_verbose
 				 		   fi;
-				 		   let answer = if revert_steve_flag
+				 		   let answer = if revert_steve_flag and lambdaW != G.rho
 			      	       		       	      	then local_test_GEO_hash_steve(xW, lambdaW, Lvd,
 								Uhash, fancy_tester)
 						   		else local(xW, lambdaW, Lvd, LF, pol_hash, Uhash,
@@ -1503,7 +1504,7 @@ fancy_tester) = void:
     then () = for (x,lambda)@k in xlambdas
     	      do {xlambdas}
 	      	 let skip_xlambda = is_finished(x,lambda),
-		     revert_steve_flag = prefer_steve_long_flag and x.number = #KGB(G) - 1
+		     revert_steve_flag = prefer_steve_long_flag and x.number = #KGB(G) - 1 and lambda != G.rho
 		 in if skip_xlambda
 		    then if every_lambda_flag and FPP_report_flag
 		    	 then prints("Already computed (",x,",",lambda,")")
@@ -1548,7 +1549,7 @@ fancy_tester) = void:
 			 then face_verbose := old_face_verbose; time_verbose := old_time_verbose;
 			      test_verbose :=old_test_verbose; test_slightly_verbose := old_test_slightly_verbose
 			 fi;
-			 let answer = if revert_steve_flag
+			 let answer = if revert_steve_flag and lambda_sc!=Gsc.rho
 			     	      then local_test_GEO_hash_steve(x_sc, lambda_sc, Lvd, Uhash,
 				      	   fancy_tester)
 				       elif test_bl(x,lambda,Lvd)
@@ -1861,19 +1862,19 @@ set FPP_unitary_hash_bottom_layer([KGBElt] xs, Param_hash UhashG, (Param->bool) 
 		     in if {test_neither}test_no_unitary(x,lambda,Lvd)
 		       	then {none_count +:= 1;} {prints("SKIPPED ",x,",",lambda);} ()
 		    	else let LF = [[FaceVertsIndex]]:
-			     	      if revert_steve_flag 
+			     	      {if revert_steve_flag and lambda != G.rho
 				      then [[]]
-				      elif by_zero_flag {and dominant(G,lamthlam)*G.two_rho_check > 0}
+				      el}if by_zero_flag {and dominant(G,lamthlam)*G.two_rho_check > 0}
  		      	      	      then localFD_1Dirac2_by_zero(x_sc, M*lambda, Lvd, Perm2)
 			   	      else localFD_1Dirac2(x, lambda, Lvd, Perm2)
 			   	      fi
-		             then () = if every_lambda_deets_flag and FPP_report_flag and not revert_steve_flag
+		             then () = if every_lambda_deets_flag and FPP_report_flag {and not revert_steve_flag}
     	      	      	      	then prints("time for localFD_1Dirac2* = ",
 				print_time_string(elapsed_ms() - startLF),
 				" to find [",#LF[0],",",#LF[1],"] verts and edges; Dirac eliminated ",
 				DTcount - startDTcount)
 	      		   	fi
-		       in if (not revert_steve_flag) and #LF[0] = 0
+		       in if {(not revert_steve_flag) and} #LF[0] = 0
 			  then none_count+:=1;
 			       finish(x,lambda); []
 			  else if every_lambda_deets_flag
@@ -1882,7 +1883,7 @@ set FPP_unitary_hash_bottom_layer([KGBElt] xs, Param_hash UhashG, (Param->bool) 
 					 	      old_test_slightly_verbose
 			       fi;
 			       let answer = [Param]:
-			       	      if revert_steve_flag
+			       	      if revert_steve_flag and lambda != G.rho
 			       	      then local_test_GEO_hash_steve(x_sc, M*lambda, Lvd, Uhash,
 				      	   fancy_tester)
 			       	      elif test_bl(x_sc, M*lambda, Lvd) or easy_test_bl_flag

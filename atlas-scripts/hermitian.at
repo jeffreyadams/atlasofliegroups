@@ -58,6 +58,14 @@ set test_no_unitary_time = int: 0
 
 set test_no_Dirac_time = int: 0
 
+{how often deforming location succeeds in proving unitary}
+set hash_def_true_count = int: 0
+
+{how often deforming location succeeds in proving nonunitary}
+set hash_def_false_count = int: 0
+
+set def_thruples_time = int:0
+
 {if true, try to raise mu in few steps to minimize number of to_ht calculations}
 set max_loc_flag = true
 
@@ -78,6 +86,7 @@ set hash_steveCounter = make_counter()
 set unitaryTime = int: 0
 
 set to_ht (KTypePol P,int N) = KTypePol:
+  if N<0 then return P fi;
   let (below,)=height_split(P,N) in below
 
 {take a KTypePol _apparently_ attached to G and make it _actually_ attached
@@ -578,7 +587,10 @@ set report_tested() = void:
     {prints("time for up_mu = ",print_time_string(up_mu_time), ", mu_time_mult = ",mu_time_mult,
     	   ", shift_frac = ",shift_frac, ", min_ht_mult = ", min_ht_mult);}
     prints({"LAGAmax = ",LAGAmax,", GARLAGmin = ",GARLAGmin, ", GARmin = ", GARmin,}
-    	   "Dirac elims = ",DTcount,", Dirac_best elims = ",DBTcount);
+    	   "Dirac elims = ",DTcount,", Dirac_best elims = ",DBTcount, ", ",print_time_string(def_thruples_time),
+	   " to find deformed thruple candidates.");
+    prints("Found ",hash_def_true_count," deformations proving unitarity (to height), ",
+    	   hash_def_false_count," deformations proving nonunitarity (to height).")
     prints("no_unitary_time = ", print_time_string(test_no_unitary_time), ", no_Dirac_time = ",
     	   print_time_string(test_no_Dirac_time)," , #(x,lambda) eliminated by LKTs = ",none_count);
     prints("  ----------------")

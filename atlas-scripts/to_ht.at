@@ -6,6 +6,7 @@
 {Turns out the "preferred" versions are significantly slower almost
 always; don't understand why. So switch to "old" versions as standard,
 labelling others as "new"}
+{If HT < 0, then use full version}
 set herm_report = bool: false
 
 set low_height(KTypePol P) = int:
@@ -36,6 +37,7 @@ set to_ht (int N) = (ParamPol->ParamPol): (ParamPol P):
   fi
 
 set to_ht(maybe_KTP P,int N) = maybe_KTP:
+    if N < 0 then return P fi;
     case P
     | timed_out: timed_out()
     | done(r): done(to_ht(r,N))

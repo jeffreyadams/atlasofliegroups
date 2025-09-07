@@ -2397,6 +2397,7 @@ set branch (ParamPol P, KType t) = Split: branch(K_type_pol(P),t)
 set full_deform (ParamPol P) = KTypePol:
   sum(P.real_form, for c@q in P do c*full_deform(q) od )
 
+{ possibly should make height < 0 return full deform? }
 set deform_to_height (ParamPol P, int height) = KTypePol:
 ( let !empty_K=null_K_module(P.real_form), !empty=null_module(P)
   then output = empty_K, def = empty

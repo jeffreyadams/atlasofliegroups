@@ -1590,6 +1590,7 @@ set ht_bound_frac = rat: 1/2
 set is_unitary_to_ht_big_SIMPLE_interrupt(Param p, int HT, int time) = int: {1 means true, -1 false, 0 interrupted}
   if (not is_hermitian(p)) then return -1 fi;
   if not (fewer_reducible_unitary_flag or is_pos_on_LKTs(p)) then return -1 fi;
+  if HT.< then return is_unitary_hash_big_SIMPLE(p,time) fi;
   if HT < height(p) then return 1 fi;
   let G = p.real_form
   then FPP_flag = is_FPP(G,p.infinitesimal_character)
@@ -1611,6 +1612,7 @@ set is_unitary_to_ht_big_SIMPLE_interrupt(Param p, int HT, int time) = int: {1 m
 
 {if low(p,HT) suggests it's worthwhile (FALSE) try is_unitary with time limit time}
 set is_unitary_to_ht_big_SIMPLE(Param p, int HT, int time) = bool:
+    if HT.< then return is_unitary_hash_big_SIMPLE(p) fi;
     if low(p,HT)
     then is_unitary_to_ht_big_SIMPLE_old(p, HT)
     else let ans = hermitian_form_irreducible(p,time) {maybe_KTP}
