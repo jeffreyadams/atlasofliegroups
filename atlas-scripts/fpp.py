@@ -13,8 +13,9 @@ files_to_copy=[FPP_at_file,FPP_settings_file]
 #unitary_hash_function="FPP_unitary_hash_bottom_layer"   #get this from an atlas variable
 
 #max_memory=20000  #in megabytes: 20,000 = 20 gigabytes
-max_memory=50000   #50,000 megabyte = 50 gigabytes, x 250 jobs=12.5 terabytes
-max_memory=60000   #60,000 megabyte = 60 gigabytes, x 250 jobs=15 terabytes
+#max_memory=50000   #50,000 megabyte = 50 gigabytes, x 250 jobs=12.5 terabytes
+#max_memory=60000   #60,000 megabyte = 60 gigabytes, x 250 jobs=15 terabytes
+max_memory=10000   #10,000 megabyte = 10 gigabytes, x 1000 jobs=10 terabytes
 
 def nice_time(t):
    return(re.sub("\..*","",str(datetime.timedelta(seconds=t))))
@@ -306,9 +307,9 @@ def atlas_compute(job_number,pid):
             #lambda_queue.qsize=0: exit while x_lambdas_todo.qsize()>0 loop
    log.write("No more (x,lambda) pairs to do\ntime: " + str(time.ctime()) + "\n")
    log.write("report on times:\n")
-   log.write("job_number:round:pair number:x:lambda:time\n")
+   log.write("|job_number|round|pair number|x|lambda:time\n")
    for (job_number,round,x_lambda_number,x_number,lambda_,x_lambda_total_time) in reporting_data:
-      log.write(":" + str(job_number) +":" + round + ":" + str(x_lambda_number) + ":" + str(lambda_) + ":" + nice_time(x_lambda_total_time) +"\n")
+      log.write("|" + str(job_number) +"|" + round + "|" + str(x_lambda_number) + "|" + str(lambda_) + "|" + nice_time(x_lambda_total_time) +"\n")
 #      log.write("xl_pair#:" + str(pair_number) + " time:" + str(nice_time(time)) + "\n" )
 #      log.write(str(a) + " " + str(b) + " " + str(nice_time(c)) + "\n", flush=True)
 #
@@ -608,8 +609,8 @@ def fpp_init():
       for file in files:
          if file.endswith("at"):
             files_to_read.append(dir + "/" + file)
-            print("dirs: ", dirs)
-            print("files_to_read: ", files_to_read)
+            #print("dirs: ", dirs)
+            #print("files_to_read: ", files_to_read)
             arg=[atlas_executable] + files_to_read
             print("arg: ",arg)
             proc=subprocess.Popen(arg,stdin=PIPE,stdout=PIPE)
@@ -627,8 +628,8 @@ def fpp_init():
    print("atlas: " + atlas_cmd + "\n")
    proc.stdin.write(format_cmd(atlas_cmd+ "\n"))
    proc.stdin.flush()
-   log_file=output_dir + "/logs/logfile.txt"
-   print("redirecting output to ", log_file)
+   print("Exiting")
+   exit()
 
 if __name__ == "__main__":
    main(sys.argv[1:])
