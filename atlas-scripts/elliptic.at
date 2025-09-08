@@ -261,7 +261,7 @@ set order_of_centralizer_elliptic_BCD (WeylElt w) = int:
   let lambda = Partition: -type_code
   , is_D = let (type,)=(w.root_datum.Lie_type.simple_factors)[0] in type="D"
   in product(lambda) * 2^if is_D then #lambda-1 else #lambda fi *
-    product(for m in frequencies(lambda) do fac(m) od)
+    product(for m in frequencies(lambda) do m! od)
 
 set exceptional_elliptic_class_order (string type, int rank, vec chi) =
       int:

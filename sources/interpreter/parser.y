@@ -363,9 +363,8 @@ secondary : formula
 
 formula : formula_start operand { $$=end_formula($1,$2,@$); }
 ;
-formula_start : operator       { $$=start_unary_formula($1.id,$1.priority,@1); }
-	| comprim operator     { $$=start_formula($1,$2.id,$2.priority,@2); }
-	| ident_expr operator  { $$=start_formula($1,$2.id,$2.priority,@2); }
+formula_start : operator   { $$=start_unary_formula($1.id,$1.priority,@1); }
+	| primary operator { $$=start_formula($1,$2.id,$2.priority,@2); }
 	| formula_start operand operator
 	  { $$=extend_formula($1,$2,$3.id,$3.priority,@3); }
 ;

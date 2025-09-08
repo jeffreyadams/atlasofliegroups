@@ -143,20 +143,20 @@ set *(WeylElt w,RootDatum rd)=RootDatum:matrix(w)*rd
 
 { The magic formula below for the order of the Weyl group must handle the simple
   factors separately: while all the ingredients are defined for arbitrary Lie
-  types and root data, the factor |fac(rank)| comes from the volume formula for
-  a simplex, and is only applicable when the fundamental alcove is a simplex.
+  types and root data, the factor |factorial(rank)| comes from the volume
+  formula for a simplex, applicable only when the fundamental alcove is one.
   Labels could also be for simple coroots, as only their product matters here.
 }
 
 set order_W_simple ((string,int)(,rank):pair) = int:
   let rd=Lie_type(pair).adjoint in
-  fac(rank)*product(simple_root_labels(rd))*det(rd.Cartan_matrix)
+  factorial(rank)*product(simple_root_labels(rd))*det(rd.Cartan_matrix)
 
 set order_W_simple (LieType lt) = int:
   assert(@:lt.derived_is_simple,"Derived Root Datum is not simple");
 { magic formula for the order of the Weyl group for a simple Lie type: }
   let rd=lt.adjoint, r=semisimple_rank(lt)
-  in fac(r)*product(simple_root_labels(rd))*det(lt.Cartan_matrix)
+  in factorial(r)*product(simple_root_labels(rd))*det(lt.Cartan_matrix)
 
 set order_W (LieType lt) = int:
   for pair in lt.simple_factors do order_W_simple(pair) od.product

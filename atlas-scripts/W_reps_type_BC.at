@@ -148,7 +148,7 @@ set hook_length (Partition P, int i, int j) =int:
   let arm = P[i]-j, leg = transpose(P)[j]-i in arm + leg -1
 
 set dim_rep (Partition P) = int:
-  let dim=fac(sum(P)) in
+  let dim=factorial(sum(P)) in
   for i:#P do for j:P[i] do dim \:= hook_length(P,i,j) od od; dim
 
 set dimension (Hn_rep(p,q)) = int: { using hook length formula twice: }
