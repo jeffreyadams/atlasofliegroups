@@ -35,7 +35,7 @@ set lookups([[vec]] LFD) = [(vec->int)]:
 
 {tail is how many coords follow the vertex indices}
 set sort(RealForm G, LocalVertexData Lvd, [[FaceVertsKHash]] LFDKH, int tail) = [[FaceVertsKHash]]:
-    if #LFDKH[0]=0 then return LFDKH fi;
+    if #LFDKH = 0 or #LFDKH[0]=0 then return LFDKH fi;
     if sort_LFD_flag
        then let tworhocheck = G.two_rho_check
 	    then f(vec v) = int:
@@ -46,12 +46,12 @@ set sort(RealForm G, LocalVertexData Lvd, [[FaceVertsKHash]] LFDKH, int tail) = 
        fi
 
 set sort(RealForm G, LocalVertexData Lvd, [[FaceVertsKHash]] LFDKH) = [[FaceVertsKHash]]:
-    if #LFDKH[0]=0 then return LFDKH fi;
+    if #LFDKH = 0 or #LFDKH[0]=0 then return LFDKH fi;
     let tail = #LFDKH[0][0]-1
     in sort(G, Lvd, LFDKH, tail)
 
 set anti_sort(RealForm G, LocalVertexData Lvd, [[FaceVertsKHash]] LFDKH) = [[FaceVertsKHash]]:
-    if #LFDKH[0]=0 then return LFDKH fi;
+    if #LFDKH = 0 or #LFDKH[0]=0 then return LFDKH fi;
     let tail = #LFDKH[0][0]-1
     in if sort_LFD_flag
        then let tworhocheck = G.two_rho_check
