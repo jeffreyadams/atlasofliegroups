@@ -149,6 +149,7 @@ set low(Param p, int N) = bool:
     fi
 
 set character_formula_to_height(Param p, int HT) = ParamPol:
+    if HT.< then return s_to_1(KL_sum_at_s(p)) fi;
     let start = elapsed_ms()
     then answer = if low_diff_char(p,HT)
     	 	  then s_to_1(KL_sum_at_s_to_height(p,HT))
@@ -176,6 +177,7 @@ set composition_series(ParamPol P) = ParamPol:
 set composition_series (Param p) = ParamPol: composition_series(ParamPol: p)
 
 set composition_series_to_ht(ParamPol P, int HT) = ParamPol:
+  if HT.< then return composition_series(P) fi;
   let (PHT,) = height_split(P,HT)
   in null_module(P)+
   while !=PHT { non null module }
@@ -266,6 +268,7 @@ set dualB(Param p) = Param:
 {mult of irr q in std p <-> coeff of std pd in char of irr qd}
 {low_diff_char(p,H) is a terrible way to decide whether to use this}
 set composition_series_to_heightB(Param p, int H) = ParamPol:
+    if H.< then return composition_series(p) fi;
     let start = elapsed_ms()
     then answer = if low_diff_char(p,H)
     	 	  then let Bp = partial_block(p), H0 = height(p)
@@ -288,6 +291,7 @@ set composition_series_to_heightB(Param p, int H) = ParamPol:
 set composition_series_to_heightB(ParamPol P, int H) = ParamPol:
     map(((Param->ParamPol): (Param p): composition_series_to_heightB(p, H)), P)
 
+{WARNING: HAVE NOT MADE THIS WORK FOR NEGATIVE H!}
 {i,j entry is mult of irr i in (partial block) in standard j; so always i <= j, mat is upper triang}
 {column j is comp series of std #j <-> coeffs of std dj in irrs di}
 set composition_series_mat_to_heightB(Param p, int H) = mat:
@@ -302,6 +306,7 @@ set composition_series_mat_to_heightB(Param p, int H) = mat:
     in matrix((#dBpH,#dBpH),f)
 
 set character_formula_to_heightB(Param p, int H) = ParamPol:
+   if H.< then return character_formula(p) fi;
    let Bp = partial_block(p) {block elts q of greater ht (closer to discrete series) than p;
     	     		      things that may occur}
    then BpH_js = for q@j in Bp do if q.height <= H then [j] else [] fi od.##

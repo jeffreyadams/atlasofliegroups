@@ -132,6 +132,7 @@ set K_graph_gens([[FaceVertsIndex]] FDK) = [[int]]:
        od
     od;  edge_gens
 
+{edge_gens[j0] = list of all nodes j1 so j0 --> j1} 
 {generating relations for up graph: an arrow j0 --> j1 means
 nonunitarity at j0 implies nonunitarity at j1}
 set up_graph_gens([[FaceVertsKHash]] FDKHash) = [[int]]:

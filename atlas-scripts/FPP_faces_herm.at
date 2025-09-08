@@ -4372,6 +4372,7 @@ set localFD_KHashbt_lookDownGEO \
 (   {if face_verbose
     then prints(new_line,"start localFD_Khashbt_lookDownGEO, b = ",b,", t = ",t)
     fi;}
+    if #LFKH = 0 or #LFKH[0] = 0 then return [] fi;
     let G = x.real_form, start=elapsed_ms()
     then e = if red_count_flag {red_shift+2}
 	     then 3
@@ -4445,7 +4446,8 @@ Need to assume b \ge 2, so have a list of potentially unitary faces and edges.}
 set localFD_KHashbt_lookDownGEO \
   ( KGBElt x, ratvec lambda, LocalVertexData Lvd, [[FaceVertsKHash]] LFKH,
     int b, int t, int HT, KTypePol_hash ktp_hash) = [[FaceVertsKHash]]:
-(   if face_verbose
+(   if #LFKH = 0 or #LFKH[0] = 0 then return [] fi;
+    if face_verbose
     then prints(new_line,"start localFD_Khashbt_lookDownGEO, b = ",b,", t = ",t)
     fi;
     let G = x.real_form, start=elapsed_ms()
