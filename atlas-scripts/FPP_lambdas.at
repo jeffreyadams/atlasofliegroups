@@ -11,7 +11,7 @@ repeated calcs}
 set solve(vec b, mat M, mat C, [int] s) = Maybe<vec>:
 (   let (n,k)=shape(M)
     then j=0 { runs up to k, used to index backwards }, sol=null(k)
-    in assert(#b=n,"equation mismatch");
+    in assert(@:#b=n,"equation mismatch");
 	for i:n
        ~do if j<#s and i=s~[j] { then it is a pivot row, with pivot at M[j][i] }
 	   then let Mj=M~[j]

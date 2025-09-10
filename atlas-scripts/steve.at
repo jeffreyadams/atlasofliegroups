@@ -477,7 +477,7 @@ set make_steve_hash() = steve_hash_table:
 			statuses  #:= ([[[bool]]]:[]);
 			redpoints #:= ([[[int]]]:[]);
 			charvecs  #:= ([[[vec]]]:[]);
-			assert(real_form_hash.size() = #K_type_hashes and #xlhashes = #K_type_hashes and
+			assert(@:real_form_hash.size() = #K_type_hashes and #xlhashes = #K_type_hashes and
 	       	    	   #heights = #xlhashes and #vechashes = #heights and #statuses = #heights and
 			   #redpoints = #heights, "steve_hash damaged on adding real form")
 	    	   fi
@@ -912,6 +912,7 @@ set make_steve_hash() = steve_hash_table:
 set steve_hash = make_steve_hash()
 
 set location_finder_time = int: 0
+set loclist_time = int: 0
 
 {local faces LFKH; determine which are unitary to height HT; each entry size d+3, last two being KCv
 PERHAPS FOR LOWER height}
@@ -929,6 +930,7 @@ set location_finder(KGBElt x, ratvec lambda, int HT, LocalVertexData Lvd, [FaceV
     then facelist = [[int]]: for j:lochash.size() do [] od
     {entry k is numbers of faces of location #k in lochash}
     then empty = [int]: []
+    then startloc = elapsed_ms()
     then loclist = for v@N in LFKHcat
     	      	   do let d = #v-3
 	      	      then verts = v[:d+1]
@@ -949,6 +951,7 @@ set location_finder(KGBElt x, ratvec lambda, int HT, LocalVertexData Lvd, [FaceV
 			 locnum
 		   od
    in location_finder_time +:= elapsed_ms() - start;
+      loclist_time +:= elapsed_ms() - startloc;
    (lochash,  steve_hash.extra_coords(x, lambda, HT), loclist, facelist)
 
 set location_finder(KGBElt x, ratvec lambda, int HT, LocalVertexData Lvd, [[FaceVertsKHash]] LFKH) =
@@ -983,7 +986,7 @@ set up_graph_gens(vec_hash lochash, [vec] KCvs, [int] loclist) = [[int]]:
 set graph([[int]] edges) = ([[int]],[[int]]):
     strong_components(edges)
 
-set graph_tilde_flag = false
+set graph_tilde_flag = false {so always run through graph "large" faces (highly deformable) to small}
 set steve_graph_time = int:0
 set local_test_graph_steve(
     KGBElt x,
@@ -993,13 +996,13 @@ set local_test_graph_steve(
     int HT
      ) = [FaceVertsKHash]:
 begin
-    let start = elapsed_ms()
-    then (lochash, KCvlist, loclist, facelist) = location_finder(x, lambda, HT,
+    let (lochash, KCvlist, loclist, facelist) = location_finder(x, lambda, HT,
     	Lvd, LFKHcat), G = x.real_form
     {then () = prints("loclist = ", loclist);
 	      prints("facelist = ",facelist);
 	      prints("KCvlist = ", KCvlist)
 	      fi}
+    then start = elapsed_ms()
     then inv_is = [int]: for j:#facelist do -1 od {if j is ith good, then  jth entry is i}
     then good_js = [int]:
     	 let i = 0
@@ -1043,10 +1046,15 @@ begin
 	      then prints("Examining ",NumClasses," classes in local_test_graph_steve to ht ",
 	      	   	   HT)
 	      fi
-    then () = for k:NumClasses
-    	      ~do if statuses[k] = "?"
+    then nums = #NumClasses
+    then () = if graph_tilde_flag then nums:=~nums fi
+    then () = for k in nums
+    	      do if statuses[k] = "?"
 	      	 then let C = eq[k] {list of locs}
-		 then N = short_facelist[C~[0]][0] {first face for last {first} loc}
+		 then N = if graph_tilde_flag
+		      	  then short_facelist[C~[0]]~[0] {last face for last loc in C}
+			  else short_facelist[C[0]][0] {first face for first loc in C}
+			  fi
 		 then v = LFKHcat[N]
 		 then d = #v-3
 		 then verts = v[:d+1]
@@ -1054,11 +1062,15 @@ begin
 		 then p = parameter(x,lambda,gamma)
     		 in statuses[k]:=
 		    if all(for q in monomials(1*p)
-		      	   do tester(q)
+		      	   do @bool: tester(q)
 			   od)
-		    then {downdateUclassesB(statuses, gr, k, "T");} {needed only in forward eq}
-		      	   "T"
-		    else updateNUclassesB(statuses, gr, k, "F"); {needed only in backward eq}
+		    then if not graph_tilde_flag
+		    	 then downdateUclassesB(statuses, gr, k, "T") {needed only in forward eq}
+			 fi;
+		      	 "T"
+		    else if graph_tilde_flag
+		    	 then updateNUclassesB(statuses, gr, k, "F") {needed only in backward eq}
+			 fi;
 		      	   "F"
 		    fi
 		 fi
@@ -1093,12 +1105,24 @@ begin
      then () = if time_verbose then prints("     ", print_time_string(time),
 			       " for local_test_graph_steve; number of tests = ",
 			       unitary_test_counter.use_count() - start_count) fi
-     in LFKHnew
+     in  steve_graph_time+:= elapsed_ms() - start;
+     	 LFKHnew
 {if sort_LFD_flag
 	 then sort(x.real_form, Lvd, FVKHnew)
 	 else FVKHnew
 	 fi}
 end
+
+set report_steve_graph() = void:
+     prints(print_time_string(location_finder_time), " for location_finder, including ",
+     		print_time_string(loclist_time)," for listloc.");
+     prints(print_time_string(steve_graph_time), " for steve_graph construction, including ",
+     		print_time_string(up_graph_gens_time), " for up_graph_gens.")
+set report_steve_clear() = void:
+    location_finder_time:=0;
+    loclist_time:=0;
+    steve_graph_time:=0;
+    up_graph_gens_time:=0
 
 {takes local data and low global faces and computes local vertices, imposing
 hermitian, pos on LKTs, and pos to HT. Subspace is fixed points of affine involution of
@@ -1159,7 +1183,6 @@ set localFD_1SteveU\
        	    print_time_string(elapsed_ms() - start));
        	    prints("vecHash size = ",steve_hash.vecHash(x,lambda,HT).size())
        fi;
-       steve_graph_time+:= elapsed_ms() - start;
        answer
 )
 
@@ -1563,7 +1586,7 @@ set localFD_lookDownSteveU\
     then time = elapsed_ms() - start
     then () = if time_verbose
 	      then prints("     ", print_time_string(time),
-	      	   		" for localFD_Khashbt_lookDownSteve to dim ",t-1,
+	      	   		" for localFD_Khashbt_lookDownSteveU to dim ",t-1,
 			"; face counts = ", for list in LFKH do #list od);
 		   prints("vecHash size = ",steve_hash.vecHash(x,lambda,HT).size())
 	      fi
@@ -2046,7 +2069,7 @@ set local_test_GEO_hash_steve(KGBElt x, ratvec lambda, LocalVertexData Lvd, Para
     if all_steve_flag
     then return local_test_GEO_hash_all_steve(x, lambda, Lvd, Uhash)
     elif steve_graph_flag
-    then return local_test_GEO_hash_steve_graph(x, lambda, Lvd, Uhash) 
+    then return local_test_GEO_hash_steve_graph(x, lambda, Lvd, Uhash)
     fi;
     let G = x.real_form
     then () = if is_compact(G)

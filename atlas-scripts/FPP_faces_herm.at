@@ -82,7 +82,7 @@ set check_pols(KGBElt x, ratvec lambda, LocalVertexData Lvd, [[FaceVertsKHash]] 
        do for v in list
 	  do let p = parameter(x,lambda,face_bary(Lvd,v[:d+1]))
 	     then P = K_type_pol(character_formula_to_height(1*p,HT))
-	     in assert(P = to_ht(pol_hash.index(v[d+red_shift+1]),HT), "wrong K_char")
+	     in assert(@:P = to_ht(pol_hash.index(v[d+red_shift+1]),HT), "wrong K_char")
 	  od
        od
 
@@ -265,7 +265,7 @@ set make_big_unitary_hash() = big_unitary_hash_table:
 			then () = phashes #:= make_Param_hash()
 			in ()
 		   fi
-	  then () = assert(real_form_hash.size() = #phashes and #phashes = #xl_known
+	  then () = assert(@:real_form_hash.size() = #phashes and #phashes = #xl_known
 						 and #uhashes = #phashes and #nuhashes = #phashes
 						 and #phashes = #x_known {and #phashes = #status_strings}
 						 and #x_partial = #x_known
@@ -289,11 +289,11 @@ set make_big_unitary_hash() = big_unitary_hash_table:
 			then () = formula_heights[rfnum] #:= height(mu)
 			then () = branches[rfnum] #:= m
 			then () = branch_heights[rfnum] #:= height(mu)
-			then () = assert(real_form_hash.size() = #K_type_pol_hashes,"big_unitary_hash damaged")
-			then () = assert(real_form_hash.size() = #K_type_hashes,"big_unitary_hash damaged")
-			then () = assert(#branches[rfnum] = K_type_hashes[rfnum].size() and
+			then () = assert(@:real_form_hash.size() = #K_type_pol_hashes,"big_unitary_hash damaged")
+			then () = assert(@:real_form_hash.size() = #K_type_hashes,"big_unitary_hash damaged")
+			then () = assert(@:#branches[rfnum] = K_type_hashes[rfnum].size() and
 				  #branch_heights[rfnum] = #branches[rfnum], "branch_hash_table damaged")
-			then () = assert(#branches[rfnum] = #formula_heights[rfnum] and
+			then () = assert(@:#branches[rfnum] = #formula_heights[rfnum] and
 				#branches[rfnum]  = #formulas[rfnum], "branch_hash_table damagedAKTFTH")
 			in ()
 		   fi
@@ -315,7 +315,7 @@ set make_big_unitary_hash() = big_unitary_hash_table:
 			in ()
 		   fi
 	 {then () = prints(K_type_hashes[rfnum].size(),", bs = ",branches[rfnum], ", fs = ",formulas[rfnum],", bhs = ",branch_heights[rfnum], ", fhs = ",formula_heights[rfnum])}
-	 then() = assert(K_type_hashes[rfnum].size() = #branches[rfnum] and #branches[rfnum] = #formulas[rfnum]
+	 then() = assert(@:K_type_hashes[rfnum].size() = #branches[rfnum] and #branches[rfnum] = #formulas[rfnum]
 			and #branches[rfnum] = #branch_heights[rfnum]
 			and #branches[rfnum] = #formula_heights[rfnum], "branch_hash_table damagedAKTF")
 	 in (rfnum, ktypenum, formulas[rfnum][ktypenum])
@@ -324,7 +324,7 @@ set make_big_unitary_hash() = big_unitary_hash_table:
 	 then rf = real_form_hash.index(rfnum)
 	 then () = mu :=  K_type(KGB(rf,mu.x.number), mu.lambda_minus_rho)
 	 {first_K_type(regroup(rf, 1*mu))}
-	 then () = assert(D >= h, "too-low height argument for K_type_formula")
+	 then () = assert(@:D >= h, "too-low height argument for K_type_formula")
 	 then () = if (formula_heights[rfnum][ktypenum] < D and formula_heights[rfnum][ktypenum] >= h)
 		   then let m = K_type_pol_hashes[rfnum].match({regroup(rf,}K_type_formula(mu,D)){)}
 			then formsrf = formulas[rfnum], formhsrf = formula_heights[rfnum]
@@ -338,7 +338,7 @@ set make_big_unitary_hash() = big_unitary_hash_table:
 		   fi
 	 {then () = if ktypenum = 13 then prints(K_type_hashes[rfnum].size(),", bs = ",branches[rfnum],
 	      ", fs = ",formulas[rfnum], ", bhs = ",branch_heights[rfnum], ", fhs = ",formula_heights[rfnum]) fi}
-	 then() = assert(K_type_hashes[rfnum].size() = #branches[rfnum] and #branches[rfnum] = #formulas[rfnum]
+	 then() = assert(@:K_type_hashes[rfnum].size() = #branches[rfnum] and #branches[rfnum] = #formulas[rfnum]
 			 and #branches[rfnum] = #branch_heights[rfnum]
 			 and #branches[rfnum] = #formula_heights[rfnum], "branch_hash_table damagedAKTFTH")
 	 in (rfnum, ktypenum, formulas[rfnum][ktypenum])
@@ -361,9 +361,9 @@ set make_big_unitary_hash() = big_unitary_hash_table:
 			then () = tempbranchhts[ktypenum] := D
 			then () = branch_heights[rfnum] := tempbranchhts
 			then () = branches[rfnum] := tempbranches
-			then () = assert(real_form_hash.size() = #K_type_pol_hashes,"big_unitary_hash damaged")
-			then () = assert(real_form_hash.size() = #K_type_hashes,"big_unitary_hash damaged")
-			then () = assert(#branches[rfnum] = K_type_hashes[rfnum].size(), "big_unitary_hash damaged")
+			then () = assert(@:real_form_hash.size() = #K_type_pol_hashes,"big_unitary_hash damaged")
+			then () = assert(@:real_form_hash.size() = #K_type_hashes,"big_unitary_hash damaged")
+			then () = assert(@:#branches[rfnum] = K_type_hashes[rfnum].size(), "big_unitary_hash damaged")
 			   in ()
 		   else {we've seen mu before}
 		       if branch_heights[rfnum][ktypenum] < D
@@ -386,7 +386,7 @@ set make_big_unitary_hash() = big_unitary_hash_table:
 	 then () = mu :=  K_type(KGB(rf,mu.x.number), mu.lambda_minus_rho)
 		   {now mu is attached to rf}
 		   {first_K_type(regroup(rf,1*mu))}
-	 then () = assert(D>=height(mu),"branch to D below height(mu)")
+	 then () = assert(@:D>=height(mu),"branch to D below height(mu)")
 	 then KTYPENUM = K_type_hashes[rfnum].size()
 	 then (,ktypenum) = add_K_type(mu)
 	 then () = if ktypenum = KTYPENUM {haven't computed with mu before}
@@ -413,9 +413,9 @@ set make_big_unitary_hash() = big_unitary_hash_table:
 			then () = tempbranchhts[ktypenum] := D
 			then () = branch_heights[rfnum] := tempbranchhts
 			then () = branches[rfnum] := tempbranches
-			then () = assert(real_form_hash.size() = #K_type_pol_hashes,"big_unitary_hash damaged")
-			then () = assert(real_form_hash.size() = #K_type_hashes,"big_unitary_hash damaged")
-			then () = assert(#branches[rfnum] = K_type_hashes[rfnum].size(), "big_unitary_hash damaged")
+			then () = assert(@:real_form_hash.size() = #K_type_pol_hashes,"big_unitary_hash damaged")
+			then () = assert(@:real_form_hash.size() = #K_type_hashes,"big_unitary_hash damaged")
+			then () = assert(@:#branches[rfnum] = K_type_hashes[rfnum].size(), "big_unitary_hash damaged")
 			in ()
 		   else {we've seen mu before}
 		       let Dold = branch_heights[rfnum][ktypenum]
@@ -479,11 +479,11 @@ set make_big_unitary_hash() = big_unitary_hash_table:
 						 nu_heights[rfnum]:= nuheightsrf
 					fi {n=N}
 				 fi {H = -1}
-		       then () = assert(real_form_hash.size() = #phashes,"big_unitary_hash damaged")
-		       then () = assert(real_form_hash.size() = #sig_heights,"big_unitary_hash damaged")
-		       then () = assert(#sigs[rfnum] = phashes[rfnum].size(), "big_unitary_hash damaged")
-		       then () = assert(#sig_heights[rfnum] = phashes[rfnum].size(), "big_unitary_hash damaged")
-		       then () = assert(#nu_heights[rfnum] = nuhashes[rfnum].size(), "big_unitary_hash damaged")
+		       then () = assert(@:real_form_hash.size() = #phashes,"big_unitary_hash damaged")
+		       then () = assert(@:real_form_hash.size() = #sig_heights,"big_unitary_hash damaged")
+		       then () = assert(@:#sigs[rfnum] = phashes[rfnum].size(), "big_unitary_hash damaged")
+		       then () = assert(@:#sig_heights[rfnum] = phashes[rfnum].size(), "big_unitary_hash damaged")
+		       then () = assert(@:#nu_heights[rfnum] = nuhashes[rfnum].size(), "big_unitary_hash damaged")
 		       in ()
 		  else {we've seen p before}
 		       if sig_heights[rfnum][pnum] >= height(p)
@@ -564,10 +564,10 @@ set make_big_unitary_hash() = big_unitary_hash_table:
 		       then sigD_ind = K_type_pol_hashes[rfnum].match(sigD)
 		       then () = sigs[rfnum] #:= sigD_ind
 		       then () = sig_heights[rfnum] #:= D
-		       then () = assert(real_form_hash.size() = #phashes,"big_unitary_hash damaged")
-		       then () = assert(real_form_hash.size() = #sig_heights,"big_unitary_hash damaged")
-		       then () = assert(#sigs[rfnum] = phashes[rfnum].size(), "big_unitary_hash damaged")
-		       then () = assert(#nu_heights[rfnum] = nuhashes[rfnum].size(),
+		       then () = assert(@:real_form_hash.size() = #phashes,"big_unitary_hash damaged")
+		       then () = assert(@:real_form_hash.size() = #sig_heights,"big_unitary_hash damaged")
+		       then () = assert(@:#sigs[rfnum] = phashes[rfnum].size(), "big_unitary_hash damaged")
+		       then () = assert(@:#nu_heights[rfnum] = nuhashes[rfnum].size(),
 				 "big_unitary_hash nu_heights damaged")
 		       in ()
 		   else {we've seen p before}
@@ -616,10 +616,10 @@ set make_big_unitary_hash() = big_unitary_hash_table:
 			    then () = tempsights[pnum]:=D
 			    then () = sigs[rfnum] := tempsigs
 			    then () = sig_heights[rfnum] := tempsights
-			    then () = assert(real_form_hash.size() = #phashes,"big_unitary_hash damaged")
-			    then () = assert(real_form_hash.size() = #sig_heights,"big_unitary_hash damaged")
-			    then () = assert(#sigs[rfnum] = phashes[rfnum].size(), "big_unitary_hash damaged")
-			    then () = assert(#nu_heights[rfnum] = nuhashes[rfnum].size(),
+			    then () = assert(@:real_form_hash.size() = #phashes,"big_unitary_hash damaged")
+			    then () = assert(@:real_form_hash.size() = #sig_heights,"big_unitary_hash damaged")
+			    then () = assert(@:#sigs[rfnum] = phashes[rfnum].size(), "big_unitary_hash damaged")
+			    then () = assert(@:#nu_heights[rfnum] = nuhashes[rfnum].size(),
 				 "big_unitary_hash nu_heights damaged B")
 			    in()
 
@@ -2070,7 +2070,7 @@ set wiggle_is_unitary(Param p, KGBElt x, ratvec lambda, LocalVertexData Lvd) = b
     	 do Lvd.lookup((v+Aff_theta(v))/2)
 	 od.sort_u
     then d = #local_vert_nums - 1
-    then () = assert(gamma = face_bary(Lvd,local_vert_nums),
+    then () = assert(@:gamma = face_bary(Lvd,local_vert_nums),
 	       	    		 "bad Lvd or local_vert_nums")
     then vert_subs = power_set(local_vert_nums)[1:2^(d+1)] {omit empty, include full set}
     then deform_cands = [ratvec]:
@@ -2090,7 +2090,7 @@ set wiggle_is_unitary(Param p, KGBElt x, ratvec lambda, LocalVertexData Lvd) = b
 	    fi
 	 od.##
 	     {these are Params whose unitarity is equivalent to that of p}
-    then () = assert(#helpers > 0,"missing p from helpers?")
+    then () = assert(@:#helpers > 0,"missing p from helpers?")
     then result = false
     then () = if any(for q in helpers do big_unitary_hash.uhash(G).lookup(q).>= od)
 	      then result :=true
@@ -2372,7 +2372,7 @@ set is_FPP_unitary(Param p) = (bool,bool):
      then L = Q.Levi
      then xL = inverse_embed_KGB(p.x,L)
      then pL = parameter(xL,p.lambda - rhou, p.nu)
-     then () = assert(p = first_param(theta_induce_standard(pL,G)),"screwed up pL!")
+     then () = assert(@:p = first_param(theta_induce_standard(pL,G)),"screwed up pL!")
      then derpLs = derived_factor_params0(pL)
      in (true, all(for derpL in derpLs
 		   do @bool:
@@ -2418,7 +2418,7 @@ set is_FPP_unitary(Param p, (Param -> bool) fancy_tester ) = (bool,bool):
      {then () = prints("in isfppu(fancy) at line 1834, p = ",p)}
      then xL = inverse_embed_KGB(p.x,L)
      then pL = parameter(xL,p.lambda - rhou, p.nu)
-     then () = assert(p = first_param(theta_induce_standard(pL,G)),"screwed up pL!")
+     then () = assert(@:p = first_param(theta_induce_standard(pL,G)),"screwed up pL!")
      then derpLs = derived_factor_params0(pL)
      in (true, all(for derpL in derpLs
 		   do @bool: fancy_tester(derpL)
@@ -2511,7 +2511,7 @@ set known_unitaries(Param_hash UhashLocal, LocalVertexData Lvd,
 	    in if #list-1 < #LFDKH
 	       then let local_verts = vec: for ell in list do Lvd.lookup(ell) od.sort
 		    then m = lookups[#list-1](local_verts)
-		    then () = assert(m.>=,"have known unitary not appearing in LFDKH")
+		    then () = assert(@:m.>=,"have known unitary not appearing in LFDKH")
 		    then () = out[#list-1]#:=m
 		    in ()
 	       fi
@@ -4203,7 +4203,7 @@ set localFD_KHash_01_graph (KGBElt x, ratvec lambda, LocalVertexData Lvd, int HT
 	    	      then r0 = LF[d0][j0][d0+1]
 		      in for m in C[1:]
 		      	 do let (d,j) = coords(LF,m)
-			    in assert(r0 = LF[d][j][d+1],"problem with red_count graph")
+			    in assert(@:r0 = LF[d][j][d+1],"problem with red_count graph")
 			 od
 		  fi
 	       od
@@ -4275,7 +4275,7 @@ set localFD_KHash_01_graph (KGBElt x, ratvec lambda, LocalVertexData Lvd, int HT
 {don't compute K_chars, just use red_count}
 set localFD_KHash_01_graph_dry (KGBElt x, ratvec lambda, LocalVertexData Lvd, KTypePol_hash ktp_hash,
 [[FaceVertsIndex]] LF, [[int]] eq, [vec] classListByFace) = [[FaceVertsKHash]]:
-    assert(red_count_flag,"localFD_KHash_01_graph_dry requires red_count_flag :=true");
+    assert(@:red_count_flag,"localFD_KHash_01_graph_dry requires red_count_flag :=true");
     let start = elapsed_ms(), startDBTcount = DBTcount
     then NumClasses = #eq
     then () = if test_verbose
