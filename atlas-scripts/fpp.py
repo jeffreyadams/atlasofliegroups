@@ -39,7 +39,7 @@ def execute_atlas_command(atlas_cmd,final_string,my_log,my_proc):
       if not line:
          my_log.write("[empty line]\n")
       if line.find(final_string)>=0:
-         my_log.write("got termination line with " + final_string + ": " + line + "\n")
+         my_log.write("got termination line with \"" + final_string + "\": " + line + "\n")
          my_log.write("finished executing: " + atlas_cmd + "\n")
          return(line)
       else:
@@ -54,10 +54,9 @@ def atlas_compute(job_number,pid):
    #print("output_dir: ", output_dir, flush=True)
    log_file=output_dir + "/logs/" + str(job_number) + ".txt"
    log=open(log_file,"w",buffering=1)
-   log.write("test_var:" + test_var)
    round=test_var
-   log.write("round:" + round)   
    log.write("Starting computation at " + str(time.ctime()) + "\n")
+   log.write("round:" + round + "\n")   
    log.write("Computing FPP for " + group + "\n")
    log.write("\nJob number: " + str(job_number) + "\n")
    log.write("Job pid: " +  str(pid) + "\n")
@@ -190,23 +189,25 @@ def atlas_compute(job_number,pid):
    proc.stdin.flush()
    line = proc.stdout.readline().decode('ascii')
    log.write("starting size of unitary hashes (job number " + str(job_number) + "): " + line)
-   log.write("xl_pairs_queue.qsize:" + str(xl_pairs_queue.qsize()) + "\n")
+   log.write("xl_pairs_queue.qsize: " + str(xl_pairs_queue.qsize()) + "\n")
+   data_file=output_dir + "/" + str(job_number) + ".at"
+   log.write("output data file: " + data_file + "\n")
    while xl_pairs_queue.qsize()>0:
-      log.write("==================================================================\n")
+      log.write("==================================================================")
       log.write("\nJob number: " + str(job_number) + "\n")
       log.write("Job pid: " +  str(pid) + "\n")
       memory_rss=psutil.Process(pid).memory_info().rss / 1024**2 
       memory_vms=psutil.Process(pid).memory_info().vms / 1024**2
-      log.write("current memory usage rss:" + str(memory_rss) + "\n")
-      log.write("current memory usage vms:" + str(memory_vms) + "\n")
+      log.write("current memory usage rss: " + str(memory_rss) + "\n")
+      log.write("current memory usage vms: " + str(memory_vms) + "\n")
       log.write("elapsed time: " + elapsed_time(starttime))
       try:
          log.write("current queue size: " + str(xl_pairs_queue.qsize()) + "\n")
-         log.write("try to get new (x,lambda) pair\n")
-         x_lambda_number=xl_pairs_queue.get(block=True, timeout=.001)
+         log.write("getting new (x,lambda) pair\n")
+         x_lambda_number=xl_pairs_queue.get(block=True)
          log.write("x_lambda_number: " + str(x_lambda_number) + "\n")
       except Exception as e:
-         log.write("Exception\n")
+         log.write("Exception: " + str(e) + ":" + str(repr(e)) + "\n")
       else:
          log.write("number of new (x,lambda) pair : " + str(x_lambda_number) + "\n")
          atlas_cmd="print_xl_pair(" + group  + " ," + str(x_lambda_number)  + ")\n"
@@ -218,21 +219,19 @@ def atlas_compute(job_number,pid):
          x_number=vals[0]
          lambda_=vals[1]
          log.write("(x,lambda)=(" + x_number + "," + lambda_ + ")\n")
-         data_file=output_dir + "/" + str(job_number) + ".at"
-         log.write("data file: " + data_file + "\n")
          x_lambda_start_time=time.time()
          atlas_cmd="prints(big_unitary_hash.uhash_sizes())\n"
          log.write("atlas_cmd: " + atlas_cmd + "\n")
          proc.stdin.write(format_cmd(atlas_cmd))
          proc.stdin.flush()
          line=proc.stdout.readline().decode('ascii')
-         log.write("line: " + line + "\n")         
+         log.write("line: " + line)
          atlas_cmd="set is_finished=is_finished(" + group + "," + str(x_lambda_number) + ")\n"
          log.write("atlas_cmd: " + atlas_cmd + "\n")
          proc.stdin.write(format_cmd(atlas_cmd))
          proc.stdin.flush()
          line=proc.stdout.readline().decode('ascii')
-         log.write("line: " + line + "\n")
+         log.write("line: " + line)
          atlas_cmd="prints(is_finished)" + "\n"
          log.write("atlas_cmd: " + atlas_cmd + "\n")
          proc.stdin.write(format_cmd(atlas_cmd))
@@ -258,7 +257,7 @@ def atlas_compute(job_number,pid):
             atlas_cmd="set list=FPP_unitary_hash_bottom_layer(xl_pair);prints(\"done_fpp\")"  + "\n"
             log.write("atlas_cmd: " + atlas_cmd + "\n")
             execute_atlas_command(atlas_cmd,"done_fpp",log,proc)
-            log.write("Finished (" + str(x_lambda_number) + "," + x_number + "," + lambda_ + ")\n")
+            log.write("Finished (x_lambda_number,(x,lambda)): (" + str(x_lambda_number) + ",(" + x_number + "," + lambda_ + "))\n")
             #get rid of line: Variable list: void...
             line=proc.stdout.readline().decode('ascii').strip()
             #log.write("line: " + line)
@@ -276,9 +275,8 @@ def atlas_compute(job_number,pid):
          #log.write("Finished pair x_lambda_number:" + str(x_lambda_number) + "\n")
          log.write("elapsed time: " + nice_time(x_lambda_total_time) + "\ntime from start: " + nice_time(x_lambda_end_time-starttime) + "\n")
          reporting_data.append((job_number,round,x_lambda_number,x_number,lambda_,x_lambda_total_time))
-         log.write("added to reporting data: " + str(x_lambda_number))
+         log.write("added to reporting data: " + str(x_lambda_number) + "n")
          log.write("end of loop\n")
-         log.write("Get another pair from queue\n")
          proc.stdout.flush()
          #MEMORY TEST:
          #if this process is using more than max_memory: kill this process
@@ -292,6 +290,9 @@ def atlas_compute(job_number,pid):
          if memory_vms>max_memory:
             log.write("memory_vms>" + str(max_memory)+ ": killing process ")
             log.write("proc.pid: " + str(proc.pid) + "\n")
+            log.write("going to kill atlas process\n")
+            log.write("first write report (process killed due to memory)\n")
+            report(reporting_data,log)
             log.write("Killing process (sending quit to atlas) " + str(proc.pid) + "\n")
             atlas_cmd="quit" + "\n"
             log.write("atlas_cmd: " + atlas_cmd)
@@ -303,16 +304,15 @@ def atlas_compute(job_number,pid):
             log.write("didn't exit, still running...?\n")
          else:
             log.write("memory_vms<" + str(max_memory)+ ": process not killed\n")
+            log.write("Get another pair from queue\n")
             #go back to top of while x_lambdas_todo.qsize()>0 loop
             #lambda_queue.qsize=0: exit while x_lambdas_todo.qsize()>0 loop
    log.write("No more (x,lambda) pairs to do\ntime: " + str(time.ctime()) + "\n")
-   log.write("report on times:\n")
-   log.write("|job_number|round|pair number|x|lambda:time\n")
-   for (job_number,round,x_lambda_number,x_number,lambda_,x_lambda_total_time) in reporting_data:
-      log.write("|" + str(job_number) +"|" + round + "|" + str(x_lambda_number) + "|" + str(lambda_) + "|" + nice_time(x_lambda_total_time) +"\n")
-#      log.write("xl_pair#:" + str(pair_number) + " time:" + str(nice_time(time)) + "\n" )
-#      log.write(str(a) + " " + str(b) + " " + str(nice_time(c)) + "\n", flush=True)
-#
+   report(reporting_data,log)
+   #log.write("report on times:\n")
+   #log.write("|job_number|round|pair number|x|lambda|time\n")
+   #for (job_number,round,x_lambda_number,x_number,lambda_,x_lambda_total_time) in reporting_data:
+   #log.write("|" + str(job_number) +"|" + round + "|" + str(x_lambda_number) + "|" + x_number + "|" + str(lambda_) + "|" + nice_time(x_lambda_total_time) +"\n")
 
 
    atlas_cmd="big_unitary_hash.uhash_size(" + group + ")\n"
@@ -358,7 +358,8 @@ def main(argv):
    init_file=""
    no_init=False
    queue_size=-1
-   opts, args = getopt.getopt(argv, "g:d:n:l:x:i:G:t:m:I:h")
+   reverse=False
+   opts, args = getopt.getopt(argv, "g:d:n:l:x:i:G:t:m:I:hr")
    for opt, arg in opts:
       if opt in ('-h'):
          print("\
@@ -372,11 +373,14 @@ def main(argv):
                 "-m max queue size [# of (x,lambda) pairs]\n", \
                 "-I: Ignore (don't load) any init file\n",\
                 "-t: testing only (currently no op)\n",\
+                "-r: reverse the (x,lambda) list\n",\
                 "-h: this help file")
          exit();
       elif opt in ('-l'):
          logfile=arg
          print("log file set to: ", logfile)
+      elif opt in ('-r'):
+         reverse=True
       elif opt in ('-m'):
          queue_size=int(arg)
       elif opt in ('-I'):
@@ -504,7 +508,12 @@ def main(argv):
    else:
       print("queue size set to " + str(queue_size) +  "(-m option)\n")
    for i in range(queue_size):
-      xl_pairs_queue.put(i)
+      if reverse==True:
+         j=queue_size-i-1
+         print("j=",j)
+      else:
+         j=i
+      xl_pairs_queue.put(j)
    print("xl_pairs_queue size is now: ", xl_pairs_queue.qsize(),flush=True)
 
    #if x_lambdas_todo_file is given (probably always the case)
@@ -614,14 +623,6 @@ def fpp_init():
             arg=[atlas_executable] + files_to_read
             print("arg: ",arg)
             proc=subprocess.Popen(arg,stdin=PIPE,stdout=PIPE)
-
-   atlas_cmd="big_unitary_hash.set_xl_sizes(" + group +",[]);prints(\"\")\n"  #need prints to get line of output
-   print("atlas_cmd: ", atlas_cmd, flush=True)
-   proc.stdin.write(format_cmd(atlas_cmd))
-   proc.stdin.flush()
-   line=proc.stdout.readline().decode('ascii')
-   print("line: ", line)
-
    print("sending output to ", init_file, "\n")
    #    atlas_cmd="> " + init_file + " big_unitary_hash.writeG("+ group + ")"
    atlas_cmd="> " + init_file + " big_unitary_hash.write()"
@@ -630,6 +631,12 @@ def fpp_init():
    proc.stdin.flush()
    print("Exiting")
    exit()
+
+def report(data,log_file):
+   log_file.write("report on times:\n")
+   log_file.write("|job_number|round|pair number|x|lambda|time\n")
+   for (job_number,round,x_lambda_number,x_number,lambda_,x_lambda_total_time) in data:
+      log_file.write("|" + str(job_number) +"|" + round + "|" + str(x_lambda_number) + "|" + x_number + "|" + str(lambda_) + "|" + nice_time(x_lambda_total_time) +"\n")
 
 if __name__ == "__main__":
    main(sys.argv[1:])

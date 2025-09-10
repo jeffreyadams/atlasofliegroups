@@ -6734,7 +6734,7 @@ set KUKU_flag = true
 
 {if false, suppress printing of report after an FPP_unitary_hash* job}
 {need this here for recursive application of smaller FPP's in fancy_tester}
-set FPP_report_flag = false
+set FPP_report_flag = true
 
 {For each list of faces in FVKH, indices of faces for which the corresponding parameter is known
 (by Uhash) to be unitary}

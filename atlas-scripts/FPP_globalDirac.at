@@ -69,13 +69,13 @@ are treated in FPP_unitary}
 set lambda_skip = int:10
 
 {if true, then report summary each lambda in FPP_unitary}
-set every_lambda_flag = false
+set every_lambda_flag = true
 
 {if true, then report progress during each lambda in FPP_unitary}
-set every_lambda_deets_flag = false
+set every_lambda_deets_flag = true
 
 {if true, then report summary each KGBElt in FPP_unitary}
-set every_KGB_flag = false
+set every_KGB_flag = true
 
 {whether to use the "tester" version in FPP_unitary_hash_steve, which uses steve only for
  vertices and edges}
