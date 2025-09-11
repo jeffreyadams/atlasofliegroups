@@ -15,7 +15,8 @@ files_to_copy=[FPP_at_file,FPP_settings_file]
 #max_memory=20000  #in megabytes: 20,000 = 20 gigabytes
 #max_memory=50000   #50,000 megabyte = 50 gigabytes, x 250 jobs=12.5 terabytes
 #max_memory=60000   #60,000 megabyte = 60 gigabytes, x 250 jobs=15 terabytes
-max_memory=10000   #10,000 megabyte = 10 gigabytes, x 1000 jobs=10 terabytes
+#max_memory=10000   #10,000 megabyte = 10 gigabytes, x 1000 jobs=10 terabytes
+max_memory=10   #10 megabytes (for testing)
 
 def nice_time(t):
    return(re.sub("\..*","",str(datetime.timedelta(seconds=t))))
@@ -299,9 +300,11 @@ def atlas_compute(job_number,pid):
             proc.stdin.write(format_cmd(atlas_cmd))
             proc.stdin.flush()
             log.write("killed the process\n")
-            log.write("exiting\n")
-            exit()
-            log.write("didn't exit, still running...?\n")
+            log.write("Restarting the process: job_number: " + str(job_number) + " pid: " + str(pid) + "\n")
+            log.write("P:"+  str(P) +  "\n")
+            Q=P.submit(atlas_compute,job_number,pid)
+            log.write("Q:" + str(Q) + "\n")
+            log.write("Process Restarted\n")
          else:
             log.write("memory_vms<" + str(max_memory)+ ": process not killed\n")
             log.write("Get another pair from queue\n")
@@ -342,7 +345,7 @@ def atlas_compute(job_number,pid):
 
 #MAIN
 def main(argv):
-   global output_dir,group,group_name,xl_pairs_queue,round,test_var, executable_dir,data_directory, group_definition_file, init_file
+   global output_dir,group,group_name,xl_pairs_queue,round,test_var, executable_dir,data_directory, group_definition_file, init_file,P
    data_directory="./data"
    n_procs=1
    test_var=""
