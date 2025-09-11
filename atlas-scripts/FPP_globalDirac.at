@@ -837,7 +837,7 @@ set FPP_unitary_hash_steve([(KGBElt,ratvec)] xlambdas, Param_hash Uhash,
 	      	   branch_builtin_time :=0; branch_script_time := 0
 	      fi
     then () = if FPP_report_flag
-    	      then {clear_report_tested();} DTcount:=0; DBTcount:=0
+    	      then {clear_report_tested();} DTcount:=0; DBTcount:=0; report_steve_clear()
 	      fi
     then xnums = for (x,) in xlambdasW do x.number od
     then lambdas = for (,lambda) in xlambdasW do lambda od
@@ -961,6 +961,7 @@ then coh_ind_unip_few(G,Uhash)}
 	      	 	", #hash_one_level = ", hash_one_levelCounter.use_count(), ", #hash_bottom_layer = ",
 			hash_bottom_layerCounter.use_count());}
 	    report_tested();
+	    report_steve_graph();
        	    prints("Number of unitary params = ", sum(answerCards), ", time for is_finished = ",
 	    print_time_string(is_finished_time), ", time for position = ",
 	    print_time_string(position_time));
@@ -989,7 +990,7 @@ set FPP_unitary_hash_steve([KGBElt] xs, Param_hash Uhash, (Param->bool) fancy_te
     	      then unitaryTime := 0; charTime := 0; FD12Time:=0; FD12bzTime:=0; red_count_time :=0
 	      fi
     then () = if FPP_report_flag
-    	      then {clear_report_tested();} DTcount:=0; DBTcount:=0
+    	      then {clear_report_tested();} DTcount:=0; DBTcount:=0; report_steve_clear()
 	      fi
     then old_face_verbose = face_verbose, old_time_verbose = time_verbose,
     	 old_test_verbose = test_verbose, old_test_slightly_verbose = test_slightly_verbose
@@ -1194,7 +1195,8 @@ set FPP_unitary_hash_steve([KGBElt] xs, Param_hash Uhash, (Param->bool) fancy_te
        	    		  prints("Time spent in char calcs = ",print_time_string(charTime-formerCharTime),
        	      		  	 ", number of char calcs = ", char_counter.use_count() - formerCcounter,
 				 " time spent in red_count = ",  print_time_string(red_count_times[j]));
-			 report_tested()
+			 report_tested();
+			 report_steve_graph()
                      fi
 	   then () = big_unitary_hash.finish(x, full_M) {mark as done all lambdas for x}
 	   in big_unitary_hash.finishx(x) {mark as done all lambdas for x}
@@ -1238,7 +1240,8 @@ set FPP_unitary_hash_steve([KGBElt] xs, Param_hash Uhash, (Param->bool) fancy_te
 			   ", time for position = ", print_time_string(position_time));
       	    prints("Number of known FPP-unitary faces = ",Uhash.size(),
        	      ", number found on this run = ", Uhash.size() - oldUhash);
-	    report_tested()
+	    report_tested();
+	    report_steve_graph()
       fi {FPP_report_flag}
    in kill_for_big_uTime(); ()
 
