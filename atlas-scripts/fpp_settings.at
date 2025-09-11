@@ -1,0 +1,6 @@
+{load this file last so these setting override the defaults}
+
+FPP_report_flag:=true
+every_lambda_deets_flag := true
+every_KGB_flag: = true
+unip_flag:=false  {don't need to load unipotents, they are already in the hash}
