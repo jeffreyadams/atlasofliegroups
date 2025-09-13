@@ -139,9 +139,15 @@ set real_induce_standard (Param p_L,RealForm G) = Param:
   must be the Levi factor of a real parabolic subgroup) to G .}
 set real_induce_standard (KType tau_L,RealForm G) = KType:
   let (x_L,mu_L) = %tau_L
-  in assert(parabolic_is_real(make_parabolic(real_form(x_L),G)),
+  in assert(@:parabolic_is_real(make_parabolic(real_form(x_L),G)),
          "L is not Levi of real parabolic");
   let x_G=embed_KGB(x_L,G)
+  then P = make_parabolic(real_form(x_L),G)
+  then LP = P.Levi
+  then () = if not parabolic_is_real(make_parabolic(real_form(x_L),G))
+       	    then prints("x_G = ",x_G, ", pcr flags = ",LP.prefers_coroots," ",real_form(x_L).prefers_coroots);
+	    	 prints ("diff simple = ",real_form(x_L).simple_roots - LP.simple_roots)
+	    fi
   then theta=involution(x_G)
   then shift=rho_r(x_G)-rho_r(x_L)+(1-theta)*(rho_S(x_G)-rho_S(x_L))
   in K_type(x_G,mu_L)
