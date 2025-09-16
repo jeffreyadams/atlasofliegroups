@@ -486,6 +486,8 @@ const_raw_type_list tuple () const @+
 @)
 type_nr_type tabled_nr () const @+
     {@; assert(tag==tabled); return tabled_variant.nr; }
+void replace_tabled_nr (type_nr_type nr) @+
+    {@; assert(tag==tabled); tabled_variant.nr=nr; }
 const raw_type_list tabled_args() const @+
     {@; assert(tag==tabled); return tabled_variant.type_args; }
 unsigned short tabled_arity() const; // number of arguments taken

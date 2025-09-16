@@ -311,15 +311,23 @@ user), and whose index should become the new |tabled_nr()| value.
 
 For any |type_expr| whose |raw_kind()| is not |tabled|, the recursive method
 |swallow| simply descends into its subexpressions. When a |tabled| case is
-encountered, we look up the type |poly_type| associated to the identifier, check
-the number of type arguments against its arity, and also recursively descend
-into those arguments. Finally we call |simple_subst| on the type definition and
-the processed arguments to obtain the returned type. If the type associated to
-the defined type |id| is a tabled type or type constructor with a standard list
-of successive type variables arguments (as in practice it will be), this amounts
-to replacing |id| be the index of the tabled type; however the code does the
-right thing even if some other kind type expression (with set of type variables
+encountered, we look up the type |poly_type| associated to the identifier, which
+must succeed since the scanner only produces nodes with |raw_kind()==tabled| for
+identifiers that our |Id_table| had reported to have the property
+|is_defined_type| (or the stronger |is_type_constructor|). Then we check the
+number of type arguments against its arity, and also recursively descend into
+those arguments. Finally we call |simple_subst| on the type definition and the
+processed arguments to obtain the returned type. If the type associated to the
+defined type |id| is a tabled type or type constructor with a standard list of
+successive type variables arguments (as in practice it will be), this amounts to
+replacing |id| be the index of the tabled type; however the code does the right
+thing even if some other kind type expression (with set of type variables
 corresponding to its |degree()|) were associated to |id|.
+
+The above statement that |is_defined_type| always holds in the |tabled| case is
+not true when one is processing grouped type definitions, since an as yet unseen
+identifier will be scanned as type identifier there. For this reason, calling
+this |swallow| method should be avoided when processing such definitions.
 
 @< Global function def... @>=
 type_expr Id_table::swallow(const type_expr& tp) const
@@ -337,7 +345,9 @@ type_expr Id_table::swallow(const type_expr& tp) const
     }
     case tabled: // this is where something happens
     { const id_type id = tp.tabled_nr();
-      const type& poly_type = *global_id_table->type_of(id);
+      const auto* p = type_of(id);
+      assert(p!=nullptr); // the scanner ensures this
+      const type& poly_type = *p;
       unsigned int len=length(tp.tabled_args()), degree = poly_type.degree();
       if (len!=degree)
         @< Throw a |program_error| signalling an incorrectly applied type symbol
@@ -1345,7 +1355,7 @@ removes the entry |id| from |type_expr::type_map|.
 @< Global function definitions @>=
 void clean_out_type_identifier(id_type id)
 {
-  const auto* defined_type = global_id_table->type_of(id);
+  const type* defined_type = global_id_table->type_of(id);
   if (defined_type->kind()!=tabled)
     return; // we cannot clear out the pro/in/jector functions, not recorded
   auto type_number = defined_type->tabled_nr();
@@ -1619,9 +1629,9 @@ void process_type_definitions
   @/@< For each equation |i| in |defs| set |position[id]=i| for the
        identifier |id| defined by the equation; |throw| a |program_error|
        if any identifiers in the equation are problematic @>
-  @/@< For any type with |kind==tabled| occurring in |defs|, either replace
-       the stored identifier code by what |position| associates to it, or apply
-       |global_id_table->swallow| to the type @>
+  @/@< Replace, for any type with |kind==tabled| occurring in |defs|,
+       the stored identifier code |id| by |position[id]| if that is set,
+       or else by the|tabled_nr()| obtained from its type in |global_id_table| @>
 @)
 @/  std::vector<std::pair<id_type,const_type_p> > b; b.reserve(n_defs);
     for (auto it=defs.wcbegin(); not defs.at_end(it); ++it)
@@ -1706,9 +1716,9 @@ scanner and parser play together as follows. Within a \&{set\_type} command
 followed by a bracketed list of definitions (the kind processed by
 |process_type_definitions|), the scanner tags identifiers as type identifiers,
 even when |global_id_table->is_defined_type| does not hold; this is so that the
-ones to be defined here can be used as types even before they are seen as a left
-hand side. The scanner does inspect |global_id_table->is_type_constructor|, and
-in case it holds (meaning this is a previously defined type constructor) the
+ones to be defined here will be parsed as types even before they are seen as a
+left hand side. The scanner does inspect |global_id_table->is_type_constructor|,
+and in case it holds (meaning this is a previously defined type constructor) the
 identifier scans as a type constructor. It can then combine with an argument
 type list, as is usual for type constructors; however the grammar also allows a
 use without argument list to cater for the possibility that the type constructor
@@ -1717,26 +1727,23 @@ being defined is collected (which is the case when the code below executed) we
 can tell whether the latter is the case and check that the type constructor is
 used properly.
 
-The parser records uses of type identifiers and type constructors using the
-|tabled| variant of |type_expr|, but the |tabled_nr()| does not refer to
-|type_expr::type_map|: it simply is the identifier code. This used to be a trick
-used only in the right hand side of these grouped type definitions, but is now
-the case throughout: although the scanner does use |global_id_table| to classify
-identifiers, the parser does not look up those type definitions. As a
-consequence we need transform any types recorded by the parser by
-|global_id_table->swallow| before using them, or else give them some other
-special treatment, as is done here.
+Having the parser store an identifier code in a place that normally holds a
+tabled number (an index into |type_expr::type_map|) used to be a trick used only
+for the purpose of representing types in the right hand side of grouped type
+definitions. It is however now the case throughout, and all type expressions
+built in the parser must be either transformed by calling
+|global_id_table->swallow|, or else be given some other special treatment, as
+will be the case here.
 
-Below we replace types by similar types, which differ just in the case of tabled
-type components. We realise this replacement by in-place substitution (this is
-possible since we own the type expressions in |defs|). Traversing type
-expressions is naturally done recursively, but we are getting a bit bored by
-defining a recursive function for every little task, so we do this one
-iteratively instead. We do this with the aid of a manually maintained queue
-|work| of pointers to types remaining to be visited (a stack would have done
-equally well).
+The code in the current module performs a recursive traversal of a right hand
+side type expression, with the actual replacement detailed in a later module.
+Traversing type expressions is naturally done recursively, but we are getting a
+bit bored by defining a recursive function for every little task, so we do this
+one iteratively instead, with the aid of a manually maintained queue |work| of
+pointers to types remaining to be visited (a stack would have done equally
+well).
 
-@< For any type with |kind==tabled| occurring in |defs|... @>=
+@< Replace, for any type with |kind==tabled| occurring in |defs|... @>=
 { containers::queue<type_p> work;
   for (auto it=defs.begin(); not defs.at_end(it); ++it)
   {
@@ -1759,8 +1766,10 @@ equally well).
           work.push(&*it);
       break;
       case tabled:
-        @< If |t.tabled_nr()| is recorded in |position| use that to replace it,
-           or else expand an existing user type definition; if there is none
+        for (wtl_iterator it(t.tabled_args()); not it.at_end(); ++it)
+          work.push(&*it);
+        @< Replace |t.tabled_nr()| by the number that either |position| or the
+           |global_id_table| associates to it; if there is none
            |throw| a |program_error| @>
       break;
       }
@@ -1770,20 +1779,40 @@ equally well).
 
 @ We come here for any type subexpression of a right hand side that is given as
 a type identifier or as an application of an already defined type constructor.
-We recognise those whose identifier is among the ones being defined here by
-inspecting |translate|, and replace their |tabled_nr()| with the value found
-in~|translate|. The remaining ones must be uses of previously defined types or
-type constructors, for which we apply |global_id_table->swallow| to convert them
-from the format used by the parser into the one to be used internally. This may
-fail with a |program_error| either because the identifier table does not hold a
-definition for the identifier at all, or because |swallow| finds a mismatch
-between the arity of a defined type constructor and the number of argument types
-provided.
+In case this is a previously defined type (constructor) we must replace the
+identifier code that parser temporarily stored as |tabled_nr()| of a |tabled|
+type, by the actual tabled number stored in |global_id_table| for that
+identifier; however for identifiers recorded in |position| (which identifiers
+|global_id_table| probably does not know about yet at all), we use the value
+associated there instead. The replacement in the former case is like the one
+that |global_id_table->swallow| performs, but we cannot use that method since it
+does not make the exception for the latter case (and it applies itself
+recursively to type constructor arguments, which application we cannot control
+or suppress). So instead we make the replacement explicitly using the
+|type_expr::replace_tabled_nr| method specifically created for this occasion.
+In-place replacement is possible since we own the type expressions in |defs|.
 
-@< If |t.tabled_nr()| is recorded in |position| use that to replace it... @>=
+Here we explicitly use that the |global_it_table| entry for a user defined type
+(constructor) is always a direct reference to a tabled type, so that we can
+modify the type structure prepared by the parser in-place by inserting the
+number of the tabled type into the type node. In the case of types to be defined
+in the current group, we actually insert a reference to a tabled entry that has
+yet to be created (so currently out of bounds for |type_expr::type_map|),
+knowing that |type_expr::add_typedefs| is designed to handle such references.
+For calls of existing type constructors, the in-place operation allows us to not
+worry about the fact that any type arguments will be visited by the current
+code \emph{after} the type constructor itself. On the other hand we do need to
+explicitly check the number of type arguments against the degree of the
+constructor, a test that is usually left to |global_id_table->swallow|. Finally,
+since the scanner marks all identifiers as types during grouped type
+definitions, we must be prepared to see identifiers that are not known as type
+identifiers at all, and to throw a |program_error| in such cases.
+
+@<  Replace |t.tabled_nr()| by the number that either |position| or the
+    |global_id_table| associates to it... @>=
 { id_type id = t.tabled_nr();
   if (position.count(id)>0)
-    // then type is defined here: replace by future tabled reference
+    // then type is defined in our group: replace by future tabled reference
   {
     if (t.tabled_args()!=nullptr)
     { std::ostringstream o;
@@ -1791,10 +1820,20 @@ provided.
         << "' being defined cannot be given type arguments";
       throw program_error(o.str());
     }
-    t = type_expr::user_type(type_expr::table_size()+position[id],type_list());
+    auto it = position.find(id);
+    assert(it!=position.end());
+    t.replace_tabled_nr(type_expr::table_size()+it->second);
   }
   else if (global_id_table->is_defined_type(id))
-    t = global_id_table->swallow(t);
+  {
+    const type& defined_type = *global_id_table->type_of(id);
+    assert(defined_type.kind()==tabled); // defined types are stored this way
+    unsigned int len=length(t.tabled_args()), degree = defined_type.degree();
+    if (len!=degree)
+       @< Throw a |program_error| signalling an incorrectly applied type symbol
+          or type constructor @>
+    t.replace_tabled_nr(defined_type.tabled_nr());
+  }
   else
   { std::ostringstream o;
     o << "Identifier '" << main_hash_table->name_of(id) @|
