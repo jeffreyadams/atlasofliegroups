@@ -80,6 +80,93 @@ set Levix(KGBElt x, vec av) = (RealForm,KGBElt):
      then xL = KGB_elt(rdL, theta, x.torus_factor)
     in (real_form(xL),xL)
 
+{given a matrix of roots and a matrix of coroots, choose a maximal set of orthogonal ones}
+set orthogonal(mat roots, mat coroots) = ([vec],[vec]):
+    let r = #(roots.^) {number of columns in root matrix}
+    then entry(int p, int q) = int: 0
+    then oroots = [vec]:[], perproots = [vec]: roots
+    then ocoroots = oroots, perpcoroots = [vec]: coroots
+    in while (#perproots).>
+       do let tester = perproots~[0], cotester = perpcoroots~[0]
+       	  {then () = prints("tester = ",tester,", cotester = ",cotester)}
+       	  in oroots#:= tester;
+       	  ocoroots#:= cotester;
+	  perproots := for alpha in perproots do if (alpha*cotester).= then [alpha] else [] fi od.##;
+	  perpcoroots := for av in perpcoroots do if (tester*av).= then [av] else [] fi od.##
+       od;
+       (oroots, ocoroots)
+
+{given a matrix of roots and a matrix of coroots, choose sets of positive ones}
+set pos_choice(mat roots, mat coroots) = ([vec],[vec]):
+    let (O,cO) = orthogonal(roots,coroots)
+    then levels = [int]: for alpha in roots
+    	 	  	 do first(for cotester in cO
+			    	  do (alpha*cotester).!=
+				  od)
+			 od
+    in (for alpha@j in roots
+       do if (alpha*cO[levels[j]]).>
+       	  then [alpha]
+	  else []
+	  fi
+       od.##,
+       for av@j in coroots
+       do if (av*O[levels[j]]).>
+       	  then [av]
+	  else []
+	  fi
+       od.##)
+
+{given a matrix of roots and a matrix of coroots, sets of simple ones}
+set simp_choice(mat roots, mat coroots) = ([vec],[vec]):
+    if #roots = 0 then return ([],[]) fi;
+    let (PR,cPR) = pos_choice(roots,coroots)
+    then tworhocheck = sum(#cPR[0],cPR)
+    then simplejs = for alpha@j in PR
+       	 	    do if alpha*tworhocheck = 2
+       	  	       then [j]
+	  	       else []
+	  	       fi
+       		    od.##
+    in (for j in simplejs
+       	do PR[j]
+	od,
+	for j in simplejs
+       	do cPR[j]
+	od)
+
+
+
+{assume x.involution has maximal -1 eigenspace a; construct restricted root datum on a}
+set res_stuff(KGBElt x) = ([vec],[vec]):
+    let theta = x.involution, G = x.real_form
+    then () = assert(@:rank(1-theta) = split_rank(G), "x was not on max split Cartan")
+    then T_lower_star = mat: eigen_lattice(theta.^,-1)
+    then res_coroot_hash = make_vec_hash()
+    then res_root_hash = make_vec_hash()
+    then () = for av@j in G.coroots
+    	      do let avres = av - av*theta
+		 in if avres = 2*av
+		    then let resav= required_solution(T_lower_star,av) {real coroots}
+		    	 in res_coroot_hash.match(resav);
+		    	    res_root_hash.match(G.roots[j]*T_lower_star)
+		    elif avres.= or is_coroot(G,avres) {omit imaginary and half of real}
+		    then -1
+		    else let resav= required_solution(T_lower_star,avres) {complex coroots}
+		    	 in res_coroot_hash.match(resav);
+			    res_root_hash.match(G.roots[j]*T_lower_star)
+		    fi
+	       od
+     in (res_root_hash.list(), res_coroot_hash.list())
+
+set res_root_datum(KGBElt x) = RootDatum:
+    let (roo,coroo) = res_stuff(x)
+    then (sroo,scoroo) = simp_choice(roo,coroo)
+    in root_datum(sroo, scoroo, x.real_form.prefers_coroots)
+
+set res_root_datum(RealForm G) = RootDatum:
+    res_root_datum(x_open(G))
+
 set simpTimer = int:0
 
 {
@@ -156,6 +243,26 @@ set simplifier_theta_old(RootDatum L, KGBElt x) = (WeylElt, KGBElt): {NEED KGBEL
 set old_simplifier_theta_flag = false
 }
 
+{PREVIOUS FAILED VERSION}
+{Result (w,xi). Assume is L is Levi of nonstandard REAL P at x,
+carried by w from standard real Levi at z1}
+{
+set simplifier_theta(RootDatum L, KGBElt x) = (WeylElt, KGBElt):
+    {if old_simplifier_theta_flag then return simplifier_theta_old(L,x) fi;}
+    let start = elapsed_ms(), rd = x.root_datum,  thetamin = (1 - x.involution)
+    then S = for a in L.simple_coroots do coroot_index(rd,a) od
+    then T = maximize_Levi(rd,S)
+    then A = (Levi_simple_coroots(rd,T)), k = #S
+    then wt_theta = thetamin*((A,vector(rd.semisimple_rank,(int i)int:#(i>=k))/1).required_solution.numer)
+    {is this really guaranteed to define L? NO if G = SU(3,3), x = KGB(G,157), av = [0,1,-1,0,0]}
+    {The powers of two are just a garbage way to make it usually work. Don't know how actually to
+    fix it.}
+    then (w,wt_theta_dom) = from_dominant(rd,wt_theta)
+    then x1 = cross(w.inverse,x)
+    in simpTimer+:= elapsed_ms() - start;
+       (w,x1)
+}
+
 {Result (w,xi). Assume is L is Levi of nonstandard REAL P at x,
 carried by w from standard real Levi at z1}
 set simplifier_theta(RootDatum L, KGBElt x) = (WeylElt, KGBElt):
@@ -165,7 +272,6 @@ set simplifier_theta(RootDatum L, KGBElt x) = (WeylElt, KGBElt):
     then T = maximize_Levi(rd,S)
     then A = (Levi_simple_coroots(rd,T)), k = #S
     then wt_theta = thetamin*((A,vector(rd.semisimple_rank,(int i)int:#(i>=k)*2^i)/1).required_solution.numer)
-    {is this really guaranteed to define L? NO if G = SU(3,3), x = KGB(G,157), av = [0,1,-1,0,0]}
     {The powers of two are just a garbage way to make it usually work. Don't know how actually to
     fix it.}
     then (w,wt_theta_dom) = from_dominant(rd,wt_theta)
