@@ -159,13 +159,21 @@ set res_stuff(KGBElt x) = ([vec],[vec]):
 	       od
      in (res_root_hash.list(), res_coroot_hash.list())
 
-set res_root_datumB = (KGBElt -> RootDatum):
+set res_root_old_flag = false {the hashed version below is just uniformly faster}
+
+set res_root_datum_old(KGBElt x) = RootDatum:
+    let (roo,coroo) = res_stuff(x)
+    then (sroo,scoroo) = simp_choice(roo,coroo)
+    in root_datum(sroo, scoroo, x.real_form.prefers_coroots)
+
+set res_root_datum = (KGBElt -> RootDatum):
     let rfhash = make_RealForm_hash()
     then KGBhashes = [KGBElt_hash]: [] {one hash for each real form}
     then answerhash = make_RootDatum_hash()
     then answer_indices = [vec]: [] {one list of rd indices for each real form,
     	 		  	     size = KGBhash[i].size()}
     in (KGBElt -> RootDatum): (KGBElt x) RootDatum:
+       if res_root_old_flag then return res_root_datum_old(x) fi;
        let I = rfhash.size()
        then i = rfhash.match(x.real_form)
        then () = if i = I {haven't seen G before}
@@ -180,21 +188,12 @@ set res_root_datumB = (KGBElt -> RootDatum):
     		      then k = answerhash.match(root_datum(sroo, scoroo, x.real_form.prefers_coroots))
 		      in answer_indices[i] #:= k
 		 fi
-	in answerhash.index(answer_indices[i][j])
-
-set res_root_B_flag = false
-
-set res_root_datum(KGBElt x) = RootDatum:
-    if res_root_B_flag then return res_root_datumB(x) fi;
-    let (roo,coroo) = res_stuff(x)
-    then (sroo,scoroo) = simp_choice(roo,coroo)
-    in root_datum(sroo, scoroo, x.real_form.prefers_coroots)
+       in answerhash.index(answer_indices[i][j])
 
 set res_root_datum(RealForm G) = RootDatum:
     res_root_datum(x_open(G))
 
 set simpTimer = int:0
-
 
 {assume roots for L are rational linearly closed in roots for G, and
 L-positive are G-positive; conjugate L to standard Levi}
