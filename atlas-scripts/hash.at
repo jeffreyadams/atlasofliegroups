@@ -206,6 +206,9 @@ set hash_code(KGBratvec p, int mod) = int:
 set make_xlambda_hash () = Hash<KGBratvec>:
     make_hash(hash_code@(KGBratvec,int),=@(KGBratvec,KGBratvec))
 
+set hash_code(KGBElt x, int mod) = int:
+    (17*#x) % mod
+
 set_type vec_hash        = Hash<vec>
 set_type ratvec_hash 	 = Hash<ratvec>
 set_type mat_hash 	 = Hash<mat>
@@ -216,6 +219,9 @@ set_type xlambda_hash	 = Hash<KGBratvec>
 set_type KType_hash	 = Hash<KType>
 set_type KTypePol_hash 	 = Hash<KTypePol>
 set_type Param_hash 	 = Hash<Param>
+set_type KGBElt_hash	 = Hash<KGBElt>
 
 set make_RealForm_hash ([RealForm] list, (RealForm,int->int).) = RealForm_hash:
    let table = make_RealForm_hash() in table.fill(list); table
+set make_KGBElt_hash () = Hash<KGBElt>:
+   make_hash(hash_code@(KGBElt,int),=@(KGBElt,KGBElt))

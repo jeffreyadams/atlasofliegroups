@@ -159,7 +159,33 @@ set res_stuff(KGBElt x) = ([vec],[vec]):
 	       od
      in (res_root_hash.list(), res_coroot_hash.list())
 
+set res_root_datumB = (KGBElt -> RootDatum):
+    let rfhash = make_RealForm_hash()
+    then KGBhashes = [KGBElt_hash]: [] {one hash for each real form}
+    then answerhash = make_RootDatum_hash()
+    then answer_indices = [vec]: [] {one list of rd indices for each real form,
+    	 		  	     size = KGBhash[i].size()}
+    in (KGBElt -> RootDatum): (KGBElt x) RootDatum:
+       let I = rfhash.size()
+       then i = rfhash.match(x.real_form)
+       then () = if i = I {haven't seen G before}
+       	       	 then KGBhashes #:=make_KGBElt_hash();
+	       	      answer_indices #:= null(0)
+	  	 fi
+       then J = KGBhashes[i].size(), K = answerhash.size()
+       then j = KGBhashes[i].match(x)
+       then () = if j = J {haven't seen x before}
+       	       	 then let (roo,coroo) = res_stuff(x)
+    		      then (sroo,scoroo) = simp_choice(roo,coroo)
+    		      then k = answerhash.match(root_datum(sroo, scoroo, x.real_form.prefers_coroots))
+		      in answer_indices[i] #:= k
+		 fi
+	in answerhash.index(answer_indices[i][j])
+
+set res_root_B_flag = false
+
 set res_root_datum(KGBElt x) = RootDatum:
+    if res_root_B_flag then return res_root_datumB(x) fi;
     let (roo,coroo) = res_stuff(x)
     then (sroo,scoroo) = simp_choice(roo,coroo)
     in root_datum(sroo, scoroo, x.real_form.prefers_coroots)
@@ -169,99 +195,9 @@ set res_root_datum(RealForm G) = RootDatum:
 
 set simpTimer = int:0
 
-{
+
 {assume roots for L are rational linearly closed in roots for G, and
 L-positive are G-positive; conjugate L to standard Levi}
-set simplifier_old(RootDatum L, RootDatum G) = WeylElt:
-    if L.semisimple_rank = G.semisimple_rank
-    then return W_elt(G,[int]: [])
-    fi;
-    let start = elapsed_ms(), SLv = L.simple_coroots, SL = L.simple_roots
-    then big = G {we'll shrink to smaller and smaller Levis
-    	       	 containing a conjugate of L}
-    then S = G.simple_roots, M = id_mat(G.rank)
-    {then () = prints("original SLv = ",SLv)}
-    in while big.semisimple_rank > L.semisimple_rank
-       do let k = first(for a in big.simple_roots do find(SL,a).< od)
-       	  then xiLs = L.fundamental_weights, SLv = L.simple_coroots
-          then PZL(ratvec v) = v - sum(rank(L), for xiL@j in xiLs
-	       		       	   		do (SLv[j]*v)*xiL
-						od)
-       	  then z0 = PZL(dominant(L,big.simple_roots[k]))
-	  {necessarily a positive root in big not in L, \pm roots in L.
-	   Cuts out a nonstd Levi containing L}
-    	  then (w,z1) = from_dominant(big,z0) {wz1 - z0}
-	  {z1 cuts out std Levi new in big containing w^{-1}L}
-	  in M:=M*matrix(w); {carries new L to original L}
-    	     let (,new) = Levi_of_weight(big,z1)
-	     in big:=new;
-	     {prints("z0 = ",z0, ", z1 = ",z1,", w = ", w,", big simplev = ",big.simple_coroots);}
-	     L := matrix(w.inverse)*L;
-	     SL := L.simple_roots{;
-	     prints("SLv = ",L.simple_coroots)}
-       od;
-       simpTimer+:= elapsed_ms() - start;
-       W_elt(G,M)
-
-{Result (w,y). Assume is L is Levi of nonstandard REAL P at x,
-carried by w standard real at y}
-set simplifier_theta_old(RootDatum L, KGBElt x) = (WeylElt, KGBElt): {NEED KGBELT??}
-    if L.semisimple_rank = x.root_datum.semisimple_rank
-    then return (W_elt(x.real_form,[int]: []),x)
-    fi;
-    let start = elapsed_ms(), G = x.real_form
-    then xL = KGB_elt(L, x.involution, x.torus_factor)
-    then thetamin = (1 - x.involution), M = id_mat(G.rank)
-    then big = G {we'll shrink to smaller and smaller standard real Levis
-    	       	 containing a conjugate of L}
-    then {S = G.simple_roots,} M = id_mat(G.rank)
-   {then () = prints("original SLv = ",SLv)}
-    in while big.semisimple_rank > L.semisimple_rank
-       do let xiLs = L.fundamental_weights, SLv = L.simple_coroots
-       	  then APZL(ratvec v) = thetamin*(v - sum(rank(L), for xiL@j in xiLs
-	       		       	   		do (SLv[j]*v)*xiL
-						od))
-	  then j = first(for a in big.simple_roots do (APZL(a)).!= od)
-	  then (w,cent1) = from_dominant(big, APZL(big.simple_roots[j]))
-	  {cent1 cuts out std Levi new in big containing w^{-1}L}
-	  {then () = prints("(w,cent1) = ", w, "  ",cent1)}
-	  then Mwinv = matrix(w.inverse)
-	  then () = x:=cross(Mwinv,x)
-	  then xbig = KGB_elt(big, x.involution,x.torus_factor)
-	  then () = big:= Levi_by_wt(cent1,xbig)
-	  in M:=M*matrix(w); {carries new L to original L}
-	     L := Mwinv*L;
-	     xL := KGB_elt(L,x.involution,x.torus_factor);
-	     thetamin := 1-x.involution
-	     {prints("x = ",x, ", big simplev = ",
-	     		 big.simple_coroots, "SLv = ",L.simple_coroots)}
-	     {prints("SLv = ",L.simple_coroots)}
-       od;
-       simpTimer+:= elapsed_ms() - start;
-       (W_elt(G,M),x)
-
-set old_simplifier_theta_flag = false
-}
-
-{PREVIOUS FAILED VERSION}
-{Result (w,xi). Assume is L is Levi of nonstandard REAL P at x,
-carried by w from standard real Levi at z1}
-{
-set simplifier_theta(RootDatum L, KGBElt x) = (WeylElt, KGBElt):
-    {if old_simplifier_theta_flag then return simplifier_theta_old(L,x) fi;}
-    let start = elapsed_ms(), rd = x.root_datum,  thetamin = (1 - x.involution)
-    then S = for a in L.simple_coroots do coroot_index(rd,a) od
-    then T = maximize_Levi(rd,S)
-    then A = (Levi_simple_coroots(rd,T)), k = #S
-    then wt_theta = thetamin*((A,vector(rd.semisimple_rank,(int i)int:#(i>=k))/1).required_solution.numer)
-    {is this really guaranteed to define L? NO if G = SU(3,3), x = KGB(G,157), av = [0,1,-1,0,0]}
-    {The powers of two are just a garbage way to make it usually work. Don't know how actually to
-    fix it.}
-    then (w,wt_theta_dom) = from_dominant(rd,wt_theta)
-    then x1 = cross(w.inverse,x)
-    in simpTimer+:= elapsed_ms() - start;
-       (w,x1)
-}
 
 {Result (w,xi). Assume is L is Levi of nonstandard REAL P at x,
 carried by w from standard real Levi at z1}
@@ -279,35 +215,39 @@ set simplifier_theta(RootDatum L, KGBElt x) = (WeylElt, KGBElt):
     in simpTimer+:= elapsed_ms() - start;
        (w,x1)
 
-{
-set old_simplifier_flag = false
-}
-set simplifier(RootDatum L, RootDatum G) = WeylElt:
-    {if old_simplifier_flag then return simplifier_old(L, G) fi;}
-    let start = elapsed_ms(), SL = for alpha in L.simple_roots do root_index(G,alpha) od
-    then (w,) = from_standard_Levi(G,SL)
+{Result (w,xi). Assume is L is Levi of nonstandard REAL P at x,
+carried by w from standard real Levi at z1}
+{w needs to account for difference between xL and xLo??}
+set simplifier_theta_res(RealForm L, KGBElt x) = (WeylElt, KGBElt):
+    {if old_simplifier_theta_flag then return simplifier_theta_old(L,x) fi;}
+    let start = elapsed_ms(), rd = x.root_datum,  thetamin = (1 - x.involution), G = x.real_form
+    then xL = inverse_embed_KGB(x,L)
+    then xLo = x_open(L)
+    then xo = embed_KGB(xLo,G)
+    then thetao  = xo.involution
+    then M = eigen_lattice(thetao.^,-1)
+    then rdo = res_root_datum(xo)
+    then rdoL = res_root_datum(xLo)
+    then S = for a in rdoL.simple_coroots do coroot_index(rdo,a) od
+    then T = maximize_Levi(rdo,S)
+    then A = (Levi_simple_coroots(rdo,T)), k = #S
+    then wt_theta_res = ((A,vector(rdo.semisimple_rank,(int i)int:#(i>=k))/1).required_solution.numer)
+    then wt_thetao = (1-thetao)*(required_solution(M.^, wt_theta_res)) {guaranteed to cut out L}
+    then (w,) = from_dominant(G,wt_thetao)
+    then {x1 = cross(w.inverse,xo),} L1 = (w.inverse)*L
+    then xL1 = KGB(L1, xL.number)
+    then x1 = embed_KGB(xL1,G)
     in simpTimer+:= elapsed_ms() - start;
-       w
-{
-set steve_old_flag = false
-}
+       (w,x1)
 
-{
-set standardize_old(KGBElt x, ratvec lambda, vec av) = (KGBElt, ratvec, vec):
-    let (L,) = Levix(x,av), G = x.real_form
-    then y = if old_simplifier_flag
-    	     then simplifier_old(L,G)
-	     else simplifier(L,G)
-	     fi
-    {then () = prints("y = ",y)}
-    in let (x1,lambda1) = move_theta(y.inverse)(x,lambda)
-    in (x1,lambda1, av*y)
-}
+set simplifier_res_flag = true
 
 set standardize(KGBElt x, ratvec lambda, vec av) = (KGBElt, ratvec, vec):
-    {if steve_old_flag then return standardize_old(x, lambda, av) fi;}
     let (L,) = Levix(x,av), G = x.real_form
-    then (y,x1) = simplifier_theta(L,x)
+    then (y,x1) = if simplifier_res_flag
+    	 	  then simplifier_theta_res(L,x)
+		  else simplifier_theta(L,x)
+		  fi
     {then () = prints("y = ",y)}
     in let (x1m,lambda1) = move_theta(y.inverse)(x,lambda)
         {then () = assert(x1m = x1,"problem with move in standardize")
@@ -328,13 +268,6 @@ set pL(KGBElt x, ratvec lambda, vec av, rat t) = Param:
 {value on av is shift + (t-shift)}
 {shift adjusts so pairing of av with L infl char is t}
 
-{
-{ rep on minimal real Levi through complex coroot av}
-set pL1_old(KGBElt x, ratvec lambda, vec av, rat t) = Param:
-    let (x1,lambda1, av1) = standardize_old(x,lambda,av)
-    in pL(x1,lambda1,av1,t)
-}
-
 { rep on minimal real Levi through complex coroot av}
 set pL1(KGBElt x, ratvec lambda, vec av, rat t) = Param:
     {if steve_old_flag then return pL1_old(x, lambda, av, t) fi;}
@@ -344,14 +277,7 @@ set pL1(KGBElt x, ratvec lambda, vec av, rat t) = Param:
 set std_quo(Param p) = ParamPol:
     1*p-character_formula(1*p)
 
-{
-set ind_quo_old(KGBElt x, ratvec lambda, vec av, rat t) = KTypePol:
-    let pL1 = pL1_old(x,lambda,av,t)
-    in real_induce_standard(K_type_pol(std_quo(pL1)), x.real_form)
-}
-
 set ind_quo(KGBElt x, ratvec lambda, vec av, rat t) = KTypePol:
-    {if steve_old_flag then return ind_quo_old(x, lambda, av, t) fi;}
     let pL1 = pL1(x,lambda,av,t)
     {then () = assert(dominant(x.real_form,pL.infinitesimal_character) =
     	 dominant(x.real_form, pL1.infinitesimal_character),"bad infl char for pL1")
