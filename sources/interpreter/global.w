@@ -298,36 +298,44 @@ shared_share Id_table::address_of(id_type id)
 }
 
 @ The method |Id_table::swallow| transforms a |type_expr| from an external form
-produced by the parser into one used internally; the transformation essentially
-involves user-defined types and type constructors, whose |raw_kind()| both
-before and after the transformation is |tabled|, but whose |tabled_nr()| gets a
-different interpretation. The parser simply stores the code for the type
-identifier there, for which our |Id_table| provides the type it is defined as;
-in practice this is always a |tabled| reference to an entry of the static table
-|type_expr::type_map| that was prepared when processing the type definition
-(this has not always been the case, but preserving the form of a type expression
-allows presenting types in a more readable format in messages back to the
-user), and whose index should become the new |tabled_nr()| value.
+produced by the parser into one used internally, updating the representation of
+user-defined types and type constructors, represented as nodes with
+|raw_kind()==tabled|. The parser stores the code for the type identifier as
+|tabled_nr()|, and our |Id_table| provides the type it is defined as. Due to the
+way type definitions are processed, this type is always |tabled|, holding the
+index into the static table |type_expr::type_map|; some later code essentially
+depends on that, so we feel free to assume it here as well. This has not always
+been the case: rather than calling the |user_type| factory method below, we
+could apply |simple_subst| to the |defined_type| with appropriate arguments, and
+this would cater for arbitrary defining type expressions with fairly little
+hassle.
 
 For any |type_expr| whose |raw_kind()| is not |tabled|, the recursive method
 |swallow| simply descends into its subexpressions. When a |tabled| case is
-encountered, we look up the type |poly_type| associated to the identifier, which
-must succeed since the scanner only produces nodes with |raw_kind()==tabled| for
-identifiers that our |Id_table| had reported to have the property
-|is_defined_type| (or the stronger |is_type_constructor|). Then we check the
-number of type arguments against its arity, and also recursively descend into
-those arguments. Finally we call |simple_subst| on the type definition and the
-processed arguments to obtain the returned type. If the type associated to the
-defined type |id| is a tabled type or type constructor with a standard list of
-successive type variables arguments (as in practice it will be), this amounts to
-replacing |id| be the index of the tabled type; however the code does the right
-thing even if some other kind type expression (with set of type variables
-corresponding to its |degree()|) were associated to |id|.
+encountered, we look up the type |defined_type| associated to the identifier,
+which must succeed since the scanner only produces nodes with
+|raw_kind()==tabled| for identifiers that our |Id_table| had reported to have
+the property |is_defined_type| (or the stronger |is_type_constructor|). Then we
+check the number of type arguments against its arity, and also recursively
+descend into those arguments. Finally we build a new |tabled| reference by
+calling |type_expr::user_type|, taking the transformed list of argument types,
+and using |defined_type.tabled_nr()| as new |tabled_nr()| value.
 
 The above statement that |is_defined_type| always holds in the |tabled| case is
 not true when one is processing grouped type definitions, since an as yet unseen
 identifier will be scanned as type identifier there. For this reason, calling
 this |swallow| method should be avoided when processing such definitions.
+
+Since we are assuming that type definitions stored in |Id_table| directly refer
+to a |type_map| entry, the effect of |swallow| is to make a copy of the type in
+which only the |tabled_nr()| values have been changed. Rather than making a
+copy, this could have been achieved in-place using calls of the
+|type_expr::replace_tabled_nr| method, provided our method took~|tp| as a
+non-|const| reference argument (maybe also returning the same). This in turn
+would require making changes in calling functions to be able to pass such a
+reference, possibly involving making a copy of a |type_expr| value there; we
+decided that the very marginal gains in simplicity and efficiency of our current
+method that could so be achieved do not justify making such changes.
 
 @< Global function def... @>=
 type_expr Id_table::swallow(const type_expr& tp) const
@@ -347,15 +355,15 @@ type_expr Id_table::swallow(const type_expr& tp) const
     { const id_type id = tp.tabled_nr();
       const auto* p = type_of(id);
       assert(p!=nullptr); // the scanner ensures this
-      const type& poly_type = *p;
-      unsigned int len=length(tp.tabled_args()), degree = poly_type.degree();
+      const type& defined_type = *p;
+      unsigned int len=length(tp.tabled_args()), degree = defined_type.degree();
       if (len!=degree)
         @< Throw a |program_error| signalling an incorrectly applied type symbol
            or type constructor @>
-      std::vector<type_expr> arg_vec; arg_vec.reserve(len);
+      dressed_type_list arg_list;
       for (wtl_const_iterator it(tp.tabled_args()); not it.at_end(); ++it)
-        arg_vec.push_back(swallow(*it));
-      return simple_subst(poly_type.unwrap(),arg_vec);
+        arg_list.push_back(swallow(*it));
+      return type_expr::user_type(defined_type.tabled_nr(),arg_list.undress());
     }
   default: return tp.copy(); // undetermined should not occur
   }
