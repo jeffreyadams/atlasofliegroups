@@ -458,7 +458,9 @@ set all_real_parabolics (RealForm G) = [Parabolic]:
   od
 
 set parabolics_with_theta_stable_Levi = (RealForm,[int]->[Parabolic]):
-  theta_stable_parabolics_of_type
+##for P in parabolics(G,(G,S))
+  do if has_theta_stable_Levi(P) then [P] else [] fi
+  od
 
 set minimal_real_parabolic (RealForm G) = Parabolic: real_parabolic(G.x_open)
 set minimal_real_Levi (RealForm G) = RealForm: G.minimal_real_parabolic.Levi
