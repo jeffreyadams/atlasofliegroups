@@ -455,11 +455,13 @@ set all_real_parabolics (RealForm G) = [Parabolic]:
     od
   od
 
-set parabolics_with_theta_stable_Levi = (RealForm,[int]->[Parabolic]):
-  theta_stable_parabolics_of_type
+set parabolics_with_theta_stable_Levi (RealForm G,[int] S) =[Parabolic]:
+  filter(has_theta_stable_Levi@Parabolic)(parabolics(G,(G.root_datum,S)))
 
-set all_parabolics_with_theta_stable_Levi = (RealForm->[KGPElt]):
-  theta_stable_parabolics
+set all_parabolics_with_theta_stable_Levi (RealForm G)= [Parabolic]:
+  for S in power_set(all_simples(G))
+  do parabolics_with_theta_stable_Levi (G,S)
+  od.##
 
 {. For each theta-stable parabolic of G, print S, Levi factor, and maximal x. .}
 set print_theta_stable_parabolics (RealForm G) = void:
