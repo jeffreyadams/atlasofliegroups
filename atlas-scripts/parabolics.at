@@ -1,6 +1,9 @@
 <basic.at
 <W_orbit.at
 <Levi_subgroups.at
+<Weylgroup.at { for |cross@(WeylElt,KGBElt)| }
+<group_operations { for |is_relatively_split| }
+
 
 { See "Parabolic Subgroups and Induction" on the Atlas web site.
 
@@ -44,10 +47,6 @@ More topics addressed in this file:
   $\theta$-stable parabolics;
   real parabolics.
 }
-
-<misc.at { for is_simple_root }
-<Weylgroup.at { for |cross@(WeylElt,KGBElt)| }
-<group_operations { for is_relatively_split }
 
 set_type
 [
@@ -387,37 +386,6 @@ set rho_u_by_cwt ((ratvec,KGBElt) H_x)= ratvec:
 set rho_Levi_by_cwt ((ratvec,KGBElt) H_x) = ratvec: rho(Levi_by_cwt(H_x))
 
 
-{ ----------------------(real) cuspidal parabolics------------------- }
-
-{. Real parabolic defined by x has Levi factor M=centralizer(A),
-  $\mathfrak u$=positive roots not in M;
-  for M to be stable: x must have no C+ roots. .}
-set real_parabolic (KGBElt x) = Parabolic:
-  assert(@:no_Cplus_roots(x),"x has some C+ roots");
-  parabolic_by_wt((1-involution(x))*rho(root_datum(x)),x)
-
-{. Levi factor of real parabolic defined by x (must have no C+ roots). .}
-set real_Levi (KGBElt x) = RealForm: Levi(real_parabolic(x))
-
-{ ---------------------theta-stable split parabolics---------------- }
-
-{. Theta-stable parabolic defined by x has Levi factor L=centralizer(T),
-  $\mathfrak u$=positive roots not in L;
-  for this to be stable: no C- roots. .}
-set theta_stable_parabolic (KGBElt x) = Parabolic:
-  assert(@:no_Cminus_roots(x),"x has some C- roots");
-  parabolic_by_wt((1+involution(x))*rho(root_datum(x)),x)
-
-{. Levi factor of theta-stable parabolic defined by x
-  (must have no C- roots). .}
-set theta_stable_Levi (KGBElt x) = RealForm: Levi(theta_stable_parabolic(x))
-
-{. Check whether a Levi subgroup L is standard in G
-  (simple roots of L are simple for G). .}
-set is_standard_Levi (RealForm L,RealForm G)=bool:
-   let rd=root_datum(G) in
-   all(for alpha in simple_roots(L) do is_simple_root(rd,alpha) od)
-
 { -------------- auxiliary routines------------------}
 
 {. List of K-conjugacy classes of given ComplexParabolic (as KGP elts). .}
@@ -436,12 +404,26 @@ set all_parabolics (RealForm G) = [Parabolic]:
   od
 
 {. List K-conjugacy classes of given ComplexParabolic that are theta-stable. .}
-set theta_stable_parabolics (RealForm G,ComplexParabolic P) = [Parabolic]:
-  filter(parabolic_is_theta_stable@Parabolic)(parabolics(G,P))
+set theta_stable_parabolics (RealForm G,ComplexParabolic(,S)) = [Parabolic]:
+  let tw=twist(G) then tS = vec: for s in S do tw[s] od in
+  if S.to_bitset=tS.to_bitset
+  then
+    for x in distinguished_fiber(G) do maximal(S,x) od
+    .(sort_u(leq_by_number))
+    .(map((KGBElt x)Parabolic:(S,x)))
+  else [] { there are no theta-stable parabolics of asymmetric type |S| }
+  fi
 
 {. List all theta-stable parabolics for G. .}
 set theta_stable_parabolics (RealForm G) = [Parabolic]:
-  filter(parabolic_is_theta_stable@Parabolic)(all_parabolics(G))
+{ compute |filter(parabolic_is_theta_stable@Parabolic)(all_parabolics(G))|,
+  but more efficiently by only generating twist-stable subsets |S| }
+  let partition = [[int]]:
+    for t@s in twist(G) if t>=s do if t=s then [s] else [s,t] fi fi od
+  in
+  for S in for parts in power_set(partition) do parts.##.sort od
+  do theta_stable_parabolics(G,(G.root_datum,S))
+  od.##
 
 {. List all theta-stable parabolics of G, of type S. .}
 set theta_stable_parabolics_of_type (RealForm G,[int] S) = [Parabolic]:
@@ -484,3 +466,35 @@ set support_alt(KGBElt x)=[int]:
 set coset_reps (RootDatum rd, RootDatum rd_L) = [WeylElt]:
    stabiliser_quotient(rd,
      Levi_weight(rd,for a in simple_roots(rd_L) do root_index(rd,a) od))
+
+{ some user-oriented functions, not used }
+
+{ ----------------------(real) cuspidal parabolics------------------- }
+
+{. Real parabolic defined by x has Levi factor M=centralizer(A),
+  $\mathfrak u$=positive roots not in M;
+  for M to be stable: x must have no C+ roots. .}
+set real_parabolic (KGBElt x) = Parabolic:
+  assert(@:no_Cplus_roots(x),"x has some C+ roots");
+  parabolic_by_wt((1-involution(x))*rho(root_datum(x)),x)
+
+{. Levi factor of real parabolic defined by x (must have no C+ roots). .}
+set real_Levi (KGBElt x) = RealForm: Levi(real_parabolic(x))
+
+{ ---------------------theta-stable split parabolics---------------- }
+
+{. Theta-stable parabolic defined by x has Levi factor L=centralizer(T),
+  $\mathfrak u$=positive roots not in L;
+  for this to be stable: no C- roots. .}
+set theta_stable_parabolic (KGBElt x) = Parabolic:
+  assert(@:no_Cminus_roots(x),"x has some C- roots");
+  parabolic_by_wt((1+involution(x))*rho(root_datum(x)),x)
+
+{. Levi factor of theta-stable parabolic defined by x
+  (must have no C- roots). .}
+set theta_stable_Levi (KGBElt x) = RealForm: Levi(theta_stable_parabolic(x))
+
+{. Check whether a Levi subgroup L is standard in G, namely
+   simple roots of L are simple (at level 1 for rho_check) for G. .}
+set is_standard_Levi (RealForm L,RealForm G) = bool:
+   two_rho_check(G)*simple_roots(L) = ones(semisimple_rank(L))*2

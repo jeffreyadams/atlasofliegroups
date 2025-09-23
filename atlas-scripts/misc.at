@@ -37,15 +37,7 @@ set  #(ParamPol P,int t)= ParamPol: { with integer coefficients }
 
 set fiber_partition(RealForm G) = [int]: fiber_partition(Cartan_class(G,0),G)
 
-set in_distinguished_fiber (KGBElt x) = bool:
-  involution(x)=distinguished_involution(real_form(x))
-
-set distinguished_fiber (RealForm G) = [KGBElt]:
-  for x in KGB(G) do if x.in_distinguished_fiber then x else break fi od
-
 set ss_rank (RootDatum rd) = semisimple_rank(rd)
-
-set dimension (RootDatum rd) = 2*nr_of_posroots(rd)+rank(rd)
 
 set root_length(RootDatum rd,vec alpha) = int: rat_as_int(alpha*rho_check(rd))
 set is_simple_root(RootDatum rd,[int] alpha) = bool: root_length(rd,alpha)=1
@@ -101,4 +93,3 @@ set rec_fun box([int] heights) = [[int]]:
   if #heights=0 then [[]] else smash(#heights[0],box(heights[1:])) fi
 
 set flatten = ## @ [[int]]
-
