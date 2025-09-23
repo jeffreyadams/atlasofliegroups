@@ -98,7 +98,8 @@ set down_neighbors ([int] S,KGBElt x) = [KGBElt]:
   od.##
 
 {. decide whether x is maximal in the partial order defined by S. .}
-set is_maximal_for ([int] S,KGBElt x) = bool: #ascents(S,x)=0
+set is_maximal_for ([int] S,KGBElt x) = bool: { whether |#ascents(S,x)=0| }
+  for s in S do is_ascent(s,x) {'nc' or 'C+'} od.none
 
 {. list maximal KGB elements in the partial order defined by S. .}
 set maxima_for ([int] S,RealForm G) = [KGBElt]:
@@ -115,10 +116,8 @@ set x_min (KGPElt(S,x)) = KGBElt:
 
 
 {. build KGBElt (with canonical representative) from |S| and |x|. .}
-set KGP_elt_for (KGPElt(S,):S_x) = KGPElt: (S,maximal(S_x))
-{ alternative implementation:
-  |set KGP_elt_for (KGPElt S_x) = KGPElt: S_x.x:=maximal(S_x); S_x|
-}
+set KGP_elt_for (KGPElt S_x) = KGPElt:
+  (S_x.S,maximal(S_x)) { alternatively: |S_x.x:=maximal(S_x); S_x| }
 
 {. (Unique) maximal KGB element representing a KGP element. .}
 set representative = (KGPElt->KGBElt): maximal@KGPElt
@@ -145,7 +144,7 @@ set is_in_class_of (KGBElt x, KGPElt(S,):P) = bool:
 {. the set of KGP elements associated to a RealForm and a set of
 simple roots S; KGP(G,S) is in bijection with $K\backslash G/P_S$. .}
 set KGP (RealForm G,[int] S) = [KGPElt]:
-  for x in maxima_for(S,G) do KGPElt:(S,x) od
+  for x in KGB(G) if is_maximal_for(S,x) do KGPElt:(S,x) fi od
 
 {. just the index numbers (maximal x) of KGP(G,S). .}
 set KGP_numbers (RealForm G,[int] S) =[int]: for (,x) in KGP(G,S) do #x od
@@ -171,7 +170,8 @@ set complex_parabolic (Parabolic(S,x)) = ComplexParabolic: (root_datum(x),S)
 {			Complex Levi subgroups				}
 
 
-set complex_Levi = sub_datum@(RootDatum,[int]) { defined in basic.at }
+set complex_Levi = (ComplexParabolic->RootDatum):
+  sub_datum@(RootDatum,[int]) { defined in basic.at }
 
 {all (complex) parabolics of a RootDatum}
 set parabolics (RootDatum rd) = [ComplexParabolic]:
@@ -235,11 +235,9 @@ set Levi (Parabolic(S,x):P) = RealForm:
   in { synthetic } real_form(ic_Levi,theta,torus_factor(x))
 
 {. Test whether parabolic P=(S,x) is theta-stable: this means that
-   the complex Levi factor L is theta-stable, P is closed, and for all
-   alpha simple not in S one has alpha is imaginary or C+ wrt maximal(P). .}
-set parabolic_is_theta_stable (Parabolic(S,x):P) = bool:
-   is_closed(P) and
-   is_stable(x.inner_class.distinguished_involution,complex_parabolic(P))
+   P is closed, and the complex Levi factor L is theta-stable.}
+set parabolic_is_theta_stable (Parabolic P) = bool:
+   is_closed(P) and has_theta_stable_Levi(P)
 
 {. Test if parabolic |P=(S,x)| is real: this means that its Levi |L| is
    theta-stable, that |P| is open, and that outside |S| there are no imaginary
@@ -423,12 +421,19 @@ set is_standard_Levi (RealForm L,RealForm G)=bool:
 { -------------- auxiliary routines------------------}
 
 {. List of K-conjugacy classes of given ComplexParabolic (as KGP elts). .}
-set KGP (RealForm G,ComplexParabolic (,S)) = [KGPElt]:
-  for x in maxima_for(S,G) do KGPElt:(S,x) od
+set KGP (RealForm G,ComplexParabolic (,S)) = [KGPElt]: KGP(G,S)
 
 { This is identical to the previous function, since |Parabolic| is |KGBElt| }
 {. List K-conjugacy classes of given ComplexParabolic (as Parabolics). .}
 set parabolics = (RealForm,ComplexParabolic->[Parabolic]): KGP
+
+set all_parabolics (RealForm G) = [Parabolic]:
+  let simples = all_simples(G) in
+  for x in KGB(G)
+    for S in power_set(for s in simples if is_descent(s,x) do s fi od)
+    do Parabolic:(S,x)
+    od
+  od
 
 {. List K-conjugacy classes of given ComplexParabolic that are theta-stable. .}
 set theta_stable_parabolics (RealForm G,ComplexParabolic P) = [Parabolic]:
@@ -436,9 +441,7 @@ set theta_stable_parabolics (RealForm G,ComplexParabolic P) = [Parabolic]:
 
 {. List all theta-stable parabolics for G. .}
 set theta_stable_parabolics (RealForm G) = [Parabolic]:
-  for S in power_set(semisimple_rank(G))
-  do theta_stable_parabolics(G,ComplexParabolic:(G,S))
-  od.## { concatenate all loop bodies }
+  filter(parabolic_is_theta_stable@Parabolic)(all_parabolics(G))
 
 {. List all theta-stable parabolics of G, of type S. .}
 set theta_stable_parabolics_of_type (RealForm G,[int] S) = [Parabolic]:
@@ -449,19 +452,13 @@ set all_rel_split_theta_stable_parabolics (RealForm G) = [Parabolic]:
   for P in theta_stable_parabolics(G) if is_relatively_split(Levi(P)) do P fi od
 
 set all_real_parabolics (RealForm G) = [Parabolic]:
-  for S in power_set(semisimple_rank(G))
-    for P in parabolics(G,(G,S))
-       if parabolic_is_real(P) do P fi
-    od
-  od
+  filter(parabolic_is_real@Parabolic)(all_parabolics(G))
 
-set parabolics_with_theta_stable_Levi (RealForm G,[int] S) =[Parabolic]:
+set parabolics_with_theta_stable_Levi (RealForm G,[int] S) = [Parabolic]:
   filter(has_theta_stable_Levi@Parabolic)(parabolics(G,(G.root_datum,S)))
 
-set all_parabolics_with_theta_stable_Levi (RealForm G)= [Parabolic]:
-  for S in power_set(all_simples(G))
-  do parabolics_with_theta_stable_Levi (G,S)
-  od.##
+set all_parabolics_with_theta_stable_Levi (RealForm G) = [Parabolic]:
+  filter(has_theta_stable_Levi@Parabolic)(all_parabolics(G))
 
 {. For each theta-stable parabolic of G, print S, Levi factor, and maximal x. .}
 set print_theta_stable_parabolics (RealForm G) = void:
