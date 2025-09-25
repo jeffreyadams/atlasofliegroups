@@ -40,15 +40,7 @@ set  #(ParamPol P,int t)= ParamPol: { with integer coefficients }
 
 set fiber_partition(RealForm G) = [int]: fiber_partition(Cartan_class(G,0),G)
 
-set in_distinguished_fiber (KGBElt x) = bool:
-  involution(x)=distinguished_involution(real_form(x))
-
-set distinguished_fiber (RealForm G) = [KGBElt]:
-  for x in KGB(G) do if x.in_distinguished_fiber then x else break fi od
-
 set ss_rank (RootDatum rd) = semisimple_rank(rd)
-
-set dimension (RootDatum rd) = 2*nr_of_posroots(rd)+rank(rd)
 
 set root_length(RootDatum rd,vec alpha) = int: rat_as_int(alpha*rho_check(rd))
 set is_simple_root(RootDatum rd,[int] alpha) = bool: root_length(rd,alpha)=1
@@ -149,18 +141,20 @@ set sgn(RootDatum rd)=(vec->int):(vec alpha):sgn(rd,alpha)
  alpha<0: height(alpha)=height(-alpha)(
 }
 set height(RootDatum rd,vec alpha)=int:
-assert(is_root(rd,alpha),"not a root");
-abs(rat_as_int(rho_check(rd)*alpha))
+  assert(is_root(rd,alpha),"not a root");
+  abs(half(two_rho_check(rd)*alpha))
 set height(RootDatum rd)=(vec->int):(vec alpha):height(rd,alpha)
 
 {list roots of given height}
-set roots_of_height(RootDatum rd,int height)=[vec]:
-## for alpha in roots(rd) do if height(rd,alpha)=height then [alpha] else [] fi od
+set roots_of_height(RootDatum rd,int height) = [vec]:
+  for alpha in roots(rd) if height(rd,alpha)=height do alpha fi od
 
-set max_height(RootDatum rd)=int:max(for alpha in rd.roots do height(rd,alpha) od)
+set max_height(RootDatum rd) = int:
+  max(0)(for alpha in rd.posroots do height(rd,alpha) od)
 
 {all roots, sorted by height}
-set roots_by_height(RootDatum rd)=[[vec]]:for i:max_height(rd) do roots_of_height(rd,i) od
+set roots_by_height(RootDatum rd) = [[vec]]:
+  for i:max_height(rd) do roots_of_height(rd,i) od
 
 {return (p,q) where
 alpha+p\beta is a root (maximal such p)

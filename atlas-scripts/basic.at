@@ -1158,6 +1158,8 @@ set root_indices (RootDatum rd) = [int]: { list of all legal root indices }
 
 set central_torus_rank (RootDatum rd) = int: rd.Lie_type.central_torus_rank
 
+set dimension (RootDatum rd) = int: 2*nr_of_posroots(rd)+rank(rd)
+
 { provide default values for coroot preference when building root data }
 
 set derived_is_simple(RootDatum rd) = bool: Lie_type(rd).derived_is_simple
@@ -1739,6 +1741,11 @@ set inner_class (LieType lt, [ratvec] gens, string ict) = InnerClass:
    let basis = quotient_basis(lt,gens) in
    inner_class(root_datum(lt,basis),involution(lt,basis,ict))
 
+set twist (InnerClass ic) = vec: { automorphism of Dynkin diagram, mapped }
+  for alpha in distinguished_involution(ic)*simple_roots(ic)
+  do root_index(ic,alpha)
+  od
+
 { integrality inner class (dual side) defined by inf. character and involution }
 set dual_integral (InnerClass ic, ratvec gamma) = InnerClass:
   inner_class(dual(integrality_datum(ic,gamma)),-^distinguished_involution(ic))
@@ -1866,6 +1873,10 @@ set root_datum (KGBElt x) = RootDatum: real_form(x)
 set inner_class (KGBElt x) = InnerClass: real_form(x)
 
 set KGB (RealForm rf) = [KGBElt]: for i:KGB_size(rf) do KGB(rf,i) od
+
+set in_distinguished_fiber (KGBElt x) = bool: length(x)=0
+set distinguished_fiber (RealForm G) = [KGBElt]:
+  for i: KGB_size(G) do let x=KGB(G,i) in if length(x)>0 then break fi; x od
 
 { all KGB elements of G mapping to its Cartan class H }
 set KGB (CartanClass H,RealForm G) = [KGBElt]:
