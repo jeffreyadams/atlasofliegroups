@@ -174,6 +174,20 @@ set res_root_datum = (KGBElt -> RootDatum):
     	 		  	     size = KGBhash[i].size()}
     in (KGBElt -> RootDatum): (KGBElt x) RootDatum:
        if res_root_old_flag then return res_root_datum_old(x) fi;
+       let theta = x.involution, rd = x.root_datum
+       in if ((1+theta)*(rd.simple_roots)).=
+       {x.real_form.derived.split_rank = x.real_form.semisimple_rank}
+       then let T_lower_star = mat: eigen_lattice(theta.^,-1)
+       	    in return root_datum(
+	       for alpha in rd.simple_roots
+       	       do alpha*T_lower_star
+	       od,
+	       for av in rd.simple_coroots
+	       do required_solution(T_lower_star,av)
+	       od,
+	       rd.prefers_coroots
+	       )
+       fi;
        let I = rfhash.size()
        then i = rfhash.match(x.real_form)
        then () = if i = I {haven't seen G before}
@@ -1868,22 +1882,22 @@ let start=elapsed_ms()
 then () = test_verbose:=false
 then () = test_slightly_verbose:=false
 then () = time_verbose:=false
-then () = unipotents_to_hash(G,big_unitary_hash.uhash(G))
+then () = unipotents_to_hash(G{,big_unitary_hash.uhash(G)})
 then () = for x in KGB(G)
      	  do if twist(x)=x
 	     then for lambda in FPP_lambdas(x)
    	     	  do let p0 = parameter(x,lambda,0*lambda)
       	     	     in if is_pos_on_LKTs(p0)
       	 	     	then let LF = localFD_Steve2( x, lambda), Lvd = Lvd(x,lambda)
-	      		     then () = local_test_GEO_hash_steve_end(x, lambda, Lvd, LF,
-	      	 	     	big_unitary_hash.uhash(G))
+	      		     then () = local_test_GEO_hash_steve_end(x, lambda, Lvd, LF{,
+	      	 	     	big_unitary_hash.uhash(G)})
 	      		in ()
 	 	   	fi
    	     	   od
 	      fi
 	 od
 in prints("total time = ",print_time_string(elapsed_ms() - start)," to find ",
-   		 big_unitary_hash.uhash(G).size()," unitary reps.")
+   		 big_unitary_hash.u_size(G)," unitary reps.")
 
 { Input is candidate faces; assume Kchar to HT is recorded in LFVH, as index in Kpol_hash.
 Output is the unitary_to_HT ones, found by steve_hash.
@@ -1975,7 +1989,12 @@ begin
        	       then ps = [Param]: monomials(pC)
        	       in if steve_hash.partly_indexed_postest_known_Kchar(rfnum, xlnum, htnum, gamma, KCv)
        	       	  then for p in ps
-       	       	       do big_unitary_hash.uhash(G).match(p)
+		       do if deform_flag
+		  	  then for q1d in local_face_defs(p) {facet_deformed_new(q1)}
+		       	       do big_unitary_hash.umatch(q1d)
+		       	       od
+		  	   else big_unitary_hash.umatch(p)
+		  	   fi
 	       	       od;
 		       unitary_by_dim[d]+:=1;
 	       	       [pC]
@@ -2003,11 +2022,11 @@ local_test_closer_steve(x, lambda, Lvd, LFVH.##)
 
 {here LF has only vertices at (x,lambda)}
 {MUST use Kpol_hash!}
-set local_test_GEO_hash_all_steve(KGBElt x, ratvec lambda, LocalVertexData Lvd, Param_hash Uhash) = [Param]:
+set local_test_GEO_hash_all_steve(KGBElt x, ratvec lambda, LocalVertexData Lvd{, Param_hash Uhash}) = [Param]:
     if {tempered case} #Lvd.list = 1 and ((1-x.involution)*(Lvd.list[0])).=
     then let p = parameter(x,lambda,0*lambda)
     	 then () = for q in monomials(finalize(p))
-    	       	   do Uhash.match(q)
+    	       	   do big_unitary_hash.umatch(q)
 		   od
 	 in return [p]
     fi;
@@ -2015,7 +2034,7 @@ set local_test_GEO_hash_all_steve(KGBElt x, ratvec lambda, LocalVertexData Lvd, 
     then () = if is_compact(G)
        	      then let all = all_parameters_gamma(G,lambda)
        	      	   in for p in all
-	       	      do Uhash.match(p)
+	       	      do big_unitary_hash.umatch(p)
 	       	      od;
 	       	      return(all)
 	       fi
@@ -2040,12 +2059,12 @@ set local_test_GEO_hash_all_steve(KGBElt x, ratvec lambda, LocalVertexData Lvd, 
 
 {here LF has only vertices at (x,lambda)}
 {MUST use Kpol_hash!}
-set local_test_GEO_hash_steve_graph(KGBElt x, ratvec lambda, LocalVertexData Lvd, Param_hash Uhash) =
+set local_test_GEO_hash_steve_graph(KGBElt x, ratvec lambda, LocalVertexData Lvd{, Param_hash Uhash}) =
     [Param]:
     if {tempered case} #Lvd.list = 1 and ((1-x.involution)*(Lvd.list[0])).=
     then let p = parameter(x,lambda,0*lambda)
     	 then () = for q in monomials(finalize(p))
-    	       	   do Uhash.match(q)
+    	       	   do big_unitary_hash.umatch(q)
 		   od
 	 in return [p]
     fi;
@@ -2053,7 +2072,7 @@ set local_test_GEO_hash_steve_graph(KGBElt x, ratvec lambda, LocalVertexData Lvd
     then () = if is_compact(G)
        	      then let all = all_parameters_gamma(G,lambda)
        	      	   in for p in all
-	       	      do Uhash.match(p)
+	       	      do big_unitary_hash.umatch(p)
 	       	      od;
 	       	      return(all)
 	       fi
@@ -2087,7 +2106,12 @@ set local_test_GEO_hash_steve_graph(KGBElt x, ratvec lambda, LocalVertexData Lvd
        	  	      then pC = parameter(x, lambda, gamma)
        	  	      then ps = [Param]: monomials(pC)
        	  	      in for p in ps
-       	     	      	 do big_unitary_hash.uhash(G).match(p)
+       	     	      	 do if deform_flag
+		  	    then for q1d in local_face_defs(p)
+		       	     	 do big_unitary_hash.umatch(q1d)
+		       		 od
+		  	    else big_unitary_hash.umatch(p)
+		  	    fi {deform_flag}
 	     		 od;
 	     		 unitary_by_dim[d]+:=1;
 	     		 [pC]
@@ -2109,25 +2133,25 @@ set steve_graph_flag = false
 
 {here LF has only vertices at (x,lambda)}
 {MUST use Kpol_hash!}
-set local_test_GEO_hash_steve(KGBElt x, ratvec lambda, LocalVertexData Lvd, Param_hash Uhash,
+set local_test_GEO_hash_steve(KGBElt x, ratvec lambda, LocalVertexData Lvd{, Param_hash Uhash},
     (Param -> bool) fancy_tester) = [Param]:
     if {tempered case} #Lvd.list = 1 and ((1-x.involution)*(Lvd.list[0])).=
     then let p = parameter(x,lambda,0*lambda)
     	 then () = for q in monomials(finalize(p))
-    	       	   do Uhash.match(q)
+    	       	   do big_unitary_hash.umatch(q)
 		   od
 	 in return [p]
     fi;
     if all_steve_flag
-    then return local_test_GEO_hash_all_steve(x, lambda, Lvd, Uhash)
+    then return local_test_GEO_hash_all_steve(x, lambda, Lvd{, Uhash})
     elif steve_graph_flag
-    then return local_test_GEO_hash_steve_graph(x, lambda, Lvd, Uhash)
+    then return local_test_GEO_hash_steve_graph(x, lambda, Lvd{, Uhash})
     fi;
     let G = x.real_form
     then () = if is_compact(G)
        	      then let all = all_parameters_gamma(G,lambda)
        	      	   in for p in all
-	       	      do Uhash.match(p)
+	       	      do big_unitary_hash.umatch(p)
 	       	      od;
 	       	      return(all)
 	       fi
@@ -2137,8 +2161,8 @@ set local_test_GEO_hash_steve(KGBElt x, ratvec lambda, LocalVertexData Lvd, Para
     then () = hash_steveCounter.use()
     then LF2 = localFD_Steve2(x,lambda)
     in if steve_closer_flag
-       then local_test_GEO_hash_steve_steve_end(x, lambda, Lvd, LF2, Uhash,
+       then local_test_GEO_hash_steve_steve_end(x, lambda, Lvd, LF2, {Uhash,}
        (([[LocalFaceVertsKHash]])->[Param]): ([[LocalFaceVertsKHash]] LFlast): local_test_closer_steve(
        x,lambda, Lvd, LFlast))
-       else local_test_GEO_hash_steve_end(x,lambda, Lvd, LF2, Uhash)
+       else local_test_GEO_hash_steve_end(x,lambda, Lvd, LF2{, Uhash})
        fi

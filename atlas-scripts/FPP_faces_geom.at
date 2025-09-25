@@ -1741,15 +1741,19 @@ set local_vertices2(Param p) = (FaceVerts,int):
     in (for n in fixed do list[n] od ##
         for (n,m) in trans do (vd.list[n] + vd.list[m])/2 od, #fixed)
 
+set local_vertex_time = int:0
 {compute the vertices of the local face containing the HERMITIAN FPP
 parameter p.}
 set local_vertices(Param p) = FaceVerts:
-    let G = p.real_form, gamma = p.infinitesimal_character
+    let start = elapsed_ms()
+    then G = p.real_form, gamma = p.infinitesimal_character
     then list = global_vertices(G, gamma)
     then LLvd = to_vertex_data(list), x = p.x, lambda = p.lambda
     then Perm = thetaAct(x,lambda,LLvd)
     then () = assert(@:Perm.>=,"p appears not to be a hermitian parameter")
-    in for v@j in list do (v + list[Perm[j]])/2 od.no_reps
+    then ans = for v@j in list do (v + list[Perm[j]])/2 od.no_reps
+    in local_vertex_time +:= elapsed_ms() - start;
+       ans
 
 set hermCenterOldTime = int:0
 
@@ -1803,7 +1807,7 @@ sum(P.real_form, for c@q in P do c*parameter(q.x, q.lambda, gamma0) od)
 a list of 2^{#local_vertices} - 1 ParamPol's, the character formulas
 on the boundary faces. If p is unitary, this is a sum with positive coeffs of
 characters of unitary reps} {OOPS! these may not be hermitian ?? what??}
-set local_defs(Param p) = [ParamPol]:
+set local_defs_old(Param p) = [ParamPol]:
  {let start = elapsed_ms()
  then () = char_counter.use()xs
  then} let CF = character_formula(p)
@@ -1817,6 +1821,23 @@ set local_defs(Param p) = [ParamPol]:
        in wiggle(CF,gamma0)
        od
     od.##
+
+{compute the deformations of irrep p to boundary faces of its face. This is
+a list of 2^{#local_vertices}-1 ParamPol's, the character formulas
+on the boundary faces. If p is unitary, this is a sum with positive coeffs of
+characters of unitary reps} {OOPS! these may not be hermitian ?? what??}
+set local_defs(Param p) = [ParamPol]:
+ {let start = elapsed_ms()
+ then () = char_counter.use()xs
+ then} let CF = character_formula(p)
+ {then () = charTime +:= elapsed_ms() -start}
+ then list = local_vertices(p)
+ then () = if #list = 1 then return [] fi
+ in for S in power_set(list)[1:]
+    do let gamma0 = sum(#list[0],S)/(#S)
+    in wiggle(CF,gamma0)
+    od
+
 
 {compute the deformations of irrep p to boundary facets (codim 1) of
 its face. This is a list of #local_vertices ParamPol's, the character
@@ -1834,6 +1855,22 @@ set local_facet_defs(Param p) = [ParamPol]:
        	       do wiggle(CF, (sum - v)/(d-1))
        	       od
        fi
+
+set local_face_defs_time = int:0
+
+{deform to ALL boundary faces, including trivial deformation}
+set local_face_defs(Param p) = [Param]:
+    let list = local_vertices(p)
+    then start = elapsed_ms()
+    then vert_subs = power_set(list)[1:]{omit empty vertex set}
+    then CF = character_formula(p)
+    then ans = for F in vert_subs
+       	       do let def_vert = sum(#list[0], F)/#F
+       	       	  in monomials(composition_series(wiggle(CF, def_vert)))
+       	       od.##
+    in local_face_defs_time +:= elapsed_ms() - start;
+       ans
+
 {
 {compute the deformations of parameter p to boundary faces of its
 face. This begins with a list of 2^{#local_vertices} - 1 Param's

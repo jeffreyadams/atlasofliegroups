@@ -261,21 +261,22 @@ set big_unitary_hash_flag = true
 set factor_unipotent_representations(RealForm G) = [Param]:
     let dLs = derived_simple_factorsRF(G)
     then unip_lists = for dL in dLs
-    	 	      do let dL_hash = big_unitary_hash.uhash(dL)
-		      	 in if big_unitary_hash_flag and dL_hash.lookup(dL.trivial).>=
-			    then dL_hash.list()
-			    else let list_dL = unipotent_representations(dL)
-			      	 then () = for p_dL in list_dL do dL_hash.match(p_dL) od
-    				 in list_dL
-			    fi
+    	 	      do {let dL_hash = big_unitary_hash.uhash(dL)
+		      	 in}
+			 if big_unitary_hash_flag and big_unitary_hash.ulookup(dL.trivial).>=
+			 then big_unitary_hash.ulist(dL)
+			 else let list_dL = unipotent_representations(dL)
+			      then () = for p_dL in list_dL do big_unitary_hash.umatch(p_dL) od
+    			      in list_dL
+			 fi
 		      od
     in glue_params(G,unip_lists)
 
 set factor_unipotent_representations(RealForm G, ratvec v) = [Param]:
     let dLs = derived_simple_factorsRF(G)
     then unip_lists = for dL in dLs
-    	 	      do if big_unitary_hash_flag and big_unitary_hash.uhash(dL).lookup(dL.trivial).>=
-		      	 then big_unitary_hash.uhash(dL).list()
+    	 	      do if big_unitary_hash_flag and big_unitary_hash.ulookup(dL.trivial).>=
+		      	 then big_unitary_hash.ulist(dL)
 			 else unipotent_representations(dL)
 			 fi
 		      od
@@ -291,11 +292,11 @@ set my_unitary_hash = make_big_unitary_hash()
 set factor_my_representations(RealForm G) = [Param]:
     let dLs = derived_simple_factorsRF(G)
     then my_unip_lists = for dL in dLs
-    	 	      do let dL_hash = my_unitary_hash.uhash(dL)
-		      	 in if my_unitary_hash_flag and dL_hash.size().>
-			    then dL_hash.list()
+    	 	      do {let dL_hash = my_unitary_hash.uhash(dL)
+		      	 in} if my_unitary_hash_flag and big_unitary_hash.ulookup(dL.trivial).>
+			    then big_unitary_hash.ulist(dL)
 			    else let list_dL = unipotent_representations(dL)
-			      	 then () = for p_dL in list_dL do dL_hash.match(p_dL) od
+			      	 then () = for p_dL in list_dL do big_unitary_hash.umatch(p_dL) od
     				 in list_dL
 			    fi
 		      od
@@ -304,11 +305,11 @@ set factor_my_representations(RealForm G) = [Param]:
 set factor_my_representations(RealForm G, ratvec v) = [Param]:
     let dLs = derived_simple_factorsRF(G)
     then my_unip_lists = for dL in dLs
-    	 	      do let dL_hash = my_unitary_hash.uhash(dL)
-		         in if my_unitary_hash_flag and my_unitary_hash.uhash(dL).size().>
-		      	    then dL_hash.list()
+    	 	      do {let dL_hash = my_unitary_hash.uhash(dL)
+		         in} if my_unitary_hash_flag and big_unitary_hash.ulookup(dL.trivial).>
+		      	    then big_unitary_hash.ulist(dL)
 			    else let list_dL = unipotent_representations(dL)
-			    	 then () = for p_dL in list_dL do dL_hash.match(p_dL) od
+			    	 then () = for p_dL in list_dL do big_unitary_hash.umatch(p_dL) od
     			    	 in list_dL
 			    fi
 		      od

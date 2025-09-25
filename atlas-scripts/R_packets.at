@@ -427,12 +427,12 @@ set FPP_unitary_hash_blob(KGBElt x, ratvec lambda) = void:
 	      fi
     then  (catLvd, catLFs) = blob_data(x,lambda) {these are vertices and edges}
     then Ps = case algorithm_flag
-    	      in local_test_GEO_hash_bottom_layer(x,lambda,catLvd,catLFs,pol_hash,
-    	      big_unitary_hash.uhash(x.real_form))
-	      , local_test_GEO_hash_one_level(x,lambda,catLvd,catLFs,pol_hash,
-    	      big_unitary_hash.uhash(x.real_form))
-	      , local_test_GEO_hash2(x,lambda,catLvd,catLFs,pol_hash,
-    	      big_unitary_hash.uhash(x.real_form))
+    	      in local_test_GEO_hash_bottom_layer(x,lambda,catLvd,catLFs,pol_hash{,
+    	      big_unitary_hash.uhash(x.real_form)})
+	      , local_test_GEO_hash_one_level(x,lambda,catLvd,catLFs,pol_hash{,
+    	      big_unitary_hash.uhash(x.real_form)})
+	      , local_test_GEO_hash2(x,lambda,catLvd,catLFs,pol_hash{,
+    	      big_unitary_hash.uhash(x.real_form)})
 	      esac
     in for (y,tau) in xls do finish(y,tau) od
 
@@ -444,13 +444,13 @@ set FPP_unitary_hash_blob(RealForm G) = void:
     then oldUcounter = unitary_test_counter.use_count()
     then () = blobCounter := 0
     then () = unitaryTime:=0
-    then () = unipotents_to_hash(G,big_unitary_hash.uhash(G))
+    then () = unipotents_to_hash(G{,big_unitary_hash.uhash(G)})
     then counter = #KGB(G)\60
     then () = for x in KGB(G)
     	      do if (x.number)%counter = 0
 	      	 then prints(new_line,"starting KGBElt ",x.number, "; so far ",
 		      	     print_time_string(elapsed_ms() - start),
-		      	     " for ",big_unitary_hash.uhash(G).size(), " unitary faces");
+		      	     " for ",big_unitary_hash.u_size(G), " unitary faces");
 		      prints("Time spent in char calcs = ",print_time_string(charTime),
        	      	      	     ", number of char calcs = ", char_counter.use_count(),
 	      		     ", time spent in red_count = ",  print_time_string(red_count_time));
@@ -465,7 +465,7 @@ set FPP_unitary_hash_blob(RealForm G) = void:
      	      od
     in prints("----------------");
        prints("Total time = ", print_time_string(elapsed_ms()-start));
-       prints("number of unitary faces = ", big_unitary_hash.uhash(G).size(), ", in time ",
+       prints("number of unitary faces = ", big_unitary_hash.u_size(G), ", in time ",
               print_time_string(elapsed_ms() - start), " for ",blobCounter, " blobs");
        prints(" time spent in is_unitary = ",print_time_string(unitaryTime),
               ", number of unitarity tests = ", unitary_test_counter.use_count() - oldUcounter);

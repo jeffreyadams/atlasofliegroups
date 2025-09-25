@@ -267,7 +267,7 @@ set unip_factor_flag = true
 set two_flag = true
 
 {assume v is {G-dominant and?} central for L}
-set coh_ind_unip_few(KGPElt Q, Param_hash Uhash, ratvec v) = void:
+set coh_ind_unip_few(KGPElt Q, {Param_hash Uhash,} ratvec v) = void:
     let L = Q.Levi, G = Q.real_form
     then uLs = if unip_factor_flag
 	       then my_unitary_hash_flag:=true;
@@ -286,21 +286,22 @@ set coh_ind_unip_few(KGPElt Q, Param_hash Uhash, ratvec v) = void:
 		   in void:
 		      for @q in P
 		      do if is_FPP(G,q.infinitesimal_character)
-			       then if my_unitary_hash_flag
+			 then big_unitary_hash.umatch(herm_center(q))
+			       {if my_unitary_hash_flag
 				       then Uhash.match(herm_center(q))
 				       else Uhash.match(q)
-				    fi
-			       else -1
-			       fi
+				    fi}
+			  else -1
+			  fi
 		      od
 		 od
 	     od
 
-set coh_ind_unip_few(KGPElt Q, ratvec v) = void:
-    coh_ind_unip_few(Q, big_unitary_hash.uhash(Q.real_form),v)
+{set coh_ind_unip_few(KGPElt Q, ratvec v) = void:
+    coh_ind_unip_few(Q, big_unitary_hash.uhash(Q.real_form),v)}
 
 {assume v is {G-dominant and?} central for L}
-set coh_ind_unip_most(KGPElt Q, Param_hash Uhash,ratvec v) = void:
+set coh_ind_unip_most(KGPElt Q, {Param_hash Uhash,} ratvec v) = void:
     let L = Q.Levi, G = Q.real_form
     then uLs = if unip_factor_flag
 	       then my_unitary_hash_flag:=true;
@@ -320,23 +321,24 @@ set coh_ind_unip_most(KGPElt Q, Param_hash Uhash,ratvec v) = void:
 				pL.lambda - tau, pL.nu), G)
 			   fi {two_flag}
 			   in void: for @q in P
-				    do if my_unitary_hash_flag
+				    do big_unitary_hash.umatch(herm_center(q))
+				    {if my_unitary_hash_flag
 				       then Uhash.match(herm_center(q))
 				       else Uhash.match(q)
-				       fi
+				       fi}
 				    od
 		      fi {FPP(G,gamma)}
 		 od
 	     od
 
-set coh_ind_unip_most(KGPElt Q, ratvec v) = void:
-    coh_ind_unip_most(Q, big_unitary_hash.uhash(Q.real_form),v)
+{set coh_ind_unip_most(KGPElt Q, ratvec v) = void:
+    coh_ind_unip_most(Q, big_unitary_hash.uhash(Q.real_form),v)}
 
 set coh_ind_report_flag = false
 
 set coh_ind_report = [(Param,Param)]: []
 {assume v is {G-dominant and?} central for L}
-set coh_ind_unip_all(KGPElt Q, Param_hash Uhash,ratvec v) = void:
+set coh_ind_unip_all(KGPElt Q, {Param_hash Uhash,} ratvec v) = void:
     let L = Q.Levi, G = Q.real_form
     then uLs = if unip_factor_flag
 	       then my_unitary_hash_flag:=true;
@@ -364,115 +366,115 @@ set coh_ind_unip_all(KGPElt Q, Param_hash Uhash,ratvec v) = void:
 				       then if coh_ind_report_flag
 					    then coh_ind_report#:=(pL,q)
 					    fi;
-					    Uhash.match(herm_center(q))
+					    big_unitary_hash.umatch(herm_center(q))
 				       else if coh_ind_report_flag
 					    then coh_ind_report#:=(pL,q)
 					    fi;
-					    Uhash.match(q)
+					    big_unitary_hash.umatch(q)
 				       fi
 				    od
 		      fi
 		 od
 	     od
 
-set coh_ind_unip_all(KGPElt Q, ratvec v) = void:
-    coh_ind_unip_all(Q, big_unitary_hash.uhash(Q.real_form),v)
+{set coh_ind_unip_all(KGPElt Q, ratvec v) = void:
+    coh_ind_unip_all(Q, big_unitary_hash.uhash(Q.real_form),v)}
 
-set coh_ind_unip_few(RealForm G, [KGPElt] Qs, Param_hash Uhash) = void:
+set coh_ind_unip_few(RealForm G, [KGPElt] Qs{, Param_hash Uhash}) = void:
     if coh_ind_unip_verbose
     then prints("Examining ",#Qs," parabolics in coh_ind_unip_few")
     fi;
-    let startTime = elapsed_ms(), oldSize = Uhash.size()
+    let startTime = elapsed_ms(), oldSize = big_unitary_hash.u_size(G)
     then () = for Q@j in Qs
 	      do for v in offsets(Q)
-		 do coh_ind_unip_few(Q,Uhash,v)
+		 do coh_ind_unip_few(Q,{Uhash,}v)
 		 od;
 		 if coh_ind_unip_verbose and
 		    j%(max(#Qs\40,1)) = 0
 		 then prints("finished parabolic #", j,
 		    " of ",#Qs," after ",
 		    print_time_string(elapsed_ms() - startTime),
-		    "; found ",Uhash.size() - oldSize, " reps.")
+		    "; found ",big_unitary_hash.u_size(G) - oldSize, " reps.")
 		 fi
 	      od
     then () = if time_verbose
-	 then prints("Found ",Uhash.size() - oldSize, " new unitary reps.");
+	 then prints("Found ",big_unitary_hash.u_size(G) - oldSize, " new unitary reps.");
 	      prints("Total time for coh_ind_unip_few = ",
 		  print_time_string(elapsed_ms() - startTime))
 	 fi
     in ()
 
-set coh_ind_unip_few(RealForm G, [KGPElt] Qs) = void:
-    coh_ind_unip_few(G, Qs, big_unitary_hash.uhash(G))
+{set coh_ind_unip_few(RealForm G, [KGPElt] Qs) = void:
+    coh_ind_unip_few(G, Qs, big_unitary_hash.uhash(G))}
 
 {"most" means all Qshifts AND version of shifts sllowing some negstive weights}
-set coh_ind_unip_most(RealForm G, [KGPElt] Qs, Param_hash Uhash) = void:
+set coh_ind_unip_most(RealForm G, [KGPElt] Qs{, Param_hash Uhash}) = void:
     if coh_ind_unip_verbose
     then prints("Examining ",#Qs," parabolics in coh_ind_unip_most")
     fi;
-    let startTime = elapsed_ms(), oldSize = Uhash.size()
+    let startTime = elapsed_ms(), oldSize = big_unitary_hash.u_size(G)
     then () = for Q@j in Qs
 	      do for v in offsets(Q)
-		 do coh_ind_unip_most(Q,Uhash,v)
+		 do coh_ind_unip_most(Q,{Uhash,}v)
 		 od;
 		 if coh_ind_unip_verbose and
 		    j%(max(#Qs\40,1)) = 0
 		 then prints("finished parabolic #", j,
 		    " of ",#Qs," after ",
 		    print_time_string(elapsed_ms() - startTime),
-		    "; found ",Uhash.size() - oldSize, " reps.")
+		    "; found ",big_unitary_hash.u_size(G) - oldSize, " reps.")
 		 fi
 	      od
     then () = if time_verbose
-	 then prints("Found ",Uhash.size() - oldSize, " new unitary reps.");
+	 then prints("Found ", big_unitary_hash.u_size(G) - oldSize, " new unitary reps.");
 	      prints("Total time for coh_ind_unip_most = ",
 		  print_time_string(elapsed_ms() - startTime))
 	 fi
     in ()
 
-set coh_ind_unip_most(RealForm G, [KGPElt] Qs) = void:
-    coh_ind_unip_most(G, Qs, big_unitary_hash.uhash(G))
+{set coh_ind_unip_most(RealForm G, [KGPElt] Qs) = void:
+    coh_ind_unip_most(G, Qs, big_unitary_hash.uhash(G))}
 
 {"all" means all Qshifts AND version of shifts sllowing all possible negstive weights}
-set coh_ind_unip_all(RealForm G, [KGPElt] Qs, Param_hash Uhash) = void:
+set coh_ind_unip_all(RealForm G, [KGPElt] Qs{, Param_hash Uhash}) = void:
     if coh_ind_unip_verbose
     then prints("Examining ",#Qs," parabolics in coh_ind_unip_all")
     fi;
-    let startTime = elapsed_ms(), oldSize = Uhash.size()
+    let startTime = elapsed_ms(), oldSize = big_unitary_hash.u_size(G)
     then () = for Q@j in Qs
 	      do for v in offsets(Q)
-		 do coh_ind_unip_all(Q,Uhash,v)
+		 do coh_ind_unip_all(Q,{Uhash,}v)
 		 od;
 		 if coh_ind_unip_verbose and
 		    j%(max(#Qs\40,1)) = 0
 		 then prints("finished parabolic #", j,
 		    " of ",#Qs," after ",print_time_string(elapsed_ms() - startTime),
-		    "; found ",Uhash.size() - oldSize, " reps.")
+		    "; found ",big_unitary_hash.u_size(G) - oldSize, " reps.")
 		 fi
 	      od
     then () = if time_verbose
-	 then prints("Found ",Uhash.size() - oldSize, " new unitary reps.");
+	 then prints("Found ",big_unitary_hash.u_size(G) - oldSize, " new unitary reps.");
 	      prints("Total time for coh_ind_unip_all = ",
 		  print_time_string(elapsed_ms() - startTime))
 	 fi
     in ()
 
-set coh_ind_unip_all(RealForm G, [KGPElt] Qs) = void:
-    coh_ind_unip_all(G, Qs, big_unitary_hash.uhash(G))
+{set coh_ind_unip_all(RealForm G, [KGPElt] Qs) = void:
+    coh_ind_unip_all(G, Qs, big_unitary_hash.uhash(G))}
 
 {just induced from proper Q}
 
-set coh_ind_unip_few(RealForm G, Param_hash Uhash) = void:
-    coh_ind_unip_few(G,Qs(G),Uhash)
+set coh_ind_unip_few(RealForm G{, Param_hash Uhash}) = void:
+    coh_ind_unip_few(G,Qs(G){,Uhash})
 
-set coh_ind_unip_few(RealForm G) = void:
-    coh_ind_unip_few(G,big_unitary_hash.uhash(G))
+{set coh_ind_unip_few(RealForm G) = void:
+    coh_ind_unip_few(G,big_unitary_hash.uhash(G))}
 
-set coh_ind_unip_most(RealForm G, Param_hash Uhash) = void:
-    coh_ind_unip_most(G,Qs(G),Uhash)
+set coh_ind_unip_most(RealForm G{, Param_hash Uhash}) = void:
+    coh_ind_unip_most(G,Qs(G){,Uhash})
 
-set coh_ind_unip_most(RealForm G) = void:
-    coh_ind_unip_most(G,big_unitary_hash.uhash(G))
+{set coh_ind_unip_most(RealForm G) = void:
+    coh_ind_unip_most(G,big_unitary_hash.uhash(G))}
 
 {Divide job into n portions and do #d}
 set coh_ind_unip_most(RealForm G, int n, int d) = void:
@@ -481,16 +483,16 @@ set coh_ind_unip_most(RealForm G, int n, int d) = void:
     then N = #Qs
     then Ni = N\n
     in if d < n-1
-       then coh_ind_unip_most(G,Qs[d*Ni:(d+1)*Ni], big_unitary_hash.uhash(G))
-       else coh_ind_unip_most(G,Qs[(n-1)*Ni:], big_unitary_hash.uhash(G))
+       then coh_ind_unip_most(G,Qs[d*Ni:(d+1)*Ni]{, big_unitary_hash.uhash(G)})
+       else coh_ind_unip_most(G,Qs[(n-1)*Ni:]{, big_unitary_hash.uhash(G)})
        fi
 
 
-set coh_ind_unip_all(RealForm G, Param_hash Uhash) = void:
-    coh_ind_unip_all(G,Qs(G),Uhash)
+set coh_ind_unip_all(RealForm G{, Param_hash Uhash}) = void:
+    coh_ind_unip_all(G,Qs(G){,Uhash})
 
-set coh_ind_unip_all(RealForm G) = void:
-    coh_ind_unip_all(G,big_unitary_hash.uhash(G))
+{set coh_ind_unip_all(RealForm G) = void:
+    coh_ind_unip_all(G,big_unitary_hash.uhash(G))}
 
 {Divide job into n portions and do #d}
 set coh_ind_unip_all(RealForm G, int n, int d) = void:
@@ -499,25 +501,25 @@ set coh_ind_unip_all(RealForm G, int n, int d) = void:
     then N = #Qs
     then Ni = N\n
     in if d < n-1
-       then coh_ind_unip_all(G,Qs[d*Ni:(d+1)*Ni], big_unitary_hash.uhash(G))
-       else coh_ind_unip_all(G,Qs[(n-1)*Ni:], big_unitary_hash.uhash(G))
+       then coh_ind_unip_all(G,Qs[d*Ni:(d+1)*Ni]{, big_unitary_hash.uhash(G)})
+       else coh_ind_unip_all(G,Qs[(n-1)*Ni:]{, big_unitary_hash.uhash(G)})
        fi
 
 {include unip reps of G}
-set coh_ind_unip_few_G(RealForm G, Param_hash Uhash) = void:
-    coh_ind_unip_few(G,Qs(G)#parabolic_by_wt(null(G.rank),KGB(G,0)),Uhash)
+set coh_ind_unip_few_G(RealForm G{, Param_hash Uhash}) = void:
+    coh_ind_unip_few(G,Qs(G)#parabolic_by_wt(null(G.rank),KGB(G,0)){,Uhash})
 
-set coh_ind_unip_few_G(RealForm G) = void:
-    coh_ind_unip_few_G(G,big_unitary_hash.uhash(G))
+{set coh_ind_unip_few_G(RealForm G) = void:
+    coh_ind_unip_few_G(G,big_unitary_hash.uhash(G))}
 
-set coh_ind_unip_most_G(RealForm G, Param_hash Uhash) = void:
-    coh_ind_unip_most(G,Qs(G)#parabolic_by_wt(null(G.rank),KGB(G,0)),Uhash)
+set coh_ind_unip_most_G(RealForm G{, Param_hash Uhash}) = void:
+    coh_ind_unip_most(G,Qs(G)#parabolic_by_wt(null(G.rank),KGB(G,0)){,Uhash})
 
-set coh_ind_unip_most_G(RealForm G) = void:
-    coh_ind_unip_most_G(G,big_unitary_hash.uhash(G))
+{set coh_ind_unip_most_G(RealForm G) = void:
+    coh_ind_unip_most_G(G,big_unitary_hash.uhash(G))}
 
-set coh_ind_unip_all_G(RealForm G, Param_hash Uhash) = void:
-    coh_ind_unip_all(G,Qs(G)#parabolic_by_wt(null(G.rank),KGB(G,0)),Uhash)
+set coh_ind_unip_all_G(RealForm G{, Param_hash Uhash}) = void:
+    coh_ind_unip_all(G,Qs(G)#parabolic_by_wt(null(G.rank),KGB(G,0)){,Uhash})
 
-set coh_ind_unip_all_G(RealForm G) = void:
-    coh_ind_unip_all_G(G,big_unitary_hash.uhash(G))
+{set coh_ind_unip_all_G(RealForm G) = void:
+    coh_ind_unip_all_G(G,big_unitary_hash.uhash(G))}

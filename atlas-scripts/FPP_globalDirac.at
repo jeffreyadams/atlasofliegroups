@@ -297,16 +297,16 @@ to record unitary factors.}
 
 
 {uses LPm_table to keep track of local face info}
-set FPP_unitary_hash_general([(KGBElt,ratvec)] xlambdas, Param_hash Uhash,
+set FPP_unitary_hash_general([(KGBElt,ratvec)] xlambdas, {Param_hash Uhash,}
     (Param->bool) fancy_tester, (KGBElt, ratvec, LocalVertexData,[[FaceVertsIndex]],
-    KTypePol_hash, Param_hash, (Param->bool)->[Param])
+    KTypePol_hash, {Param_hash,} (Param->bool)->[Param])
     local) = void:
     if #xlambdas = 0 then return () fi;
     let (x,) = xlambdas[0]
     then G = x.real_form
     in if is_compact(G)
        then for p in all_parameters_gamma(G,G.rho)
-       	    do Uhash.match(p)
+       	    do big_unitary_hash.umatch(p)
 	    od;
 	    for (x,lambda) in xlambdas
 	    do finish(x,lambda)
@@ -349,19 +349,19 @@ set FPP_unitary_hash_general([(KGBElt,ratvec)] xlambdas, Param_hash Uhash,
 	      fi
     then () = face_verbose:=false; time_verbose:=false; test_verbose:=false; test_slightly_verbose:=false
     then () = if unip_flag
-    	      then unipotents_to_hash(G,Uhash)
+    	      then unipotents_to_hash(G{,Uhash})
 	      fi
     then () = if coh_ind_all_flag 
-    	      then coh_ind_unip_all(G,Uhash) {this takes several seconds for F4_s}
+    	      then coh_ind_unip_all(G{,Uhash}) {this takes several seconds for F4_s}
 	      elif coh_ind_most_flag
-	      then coh_ind_unip_most(G,Uhash)
+	      then coh_ind_unip_most(G{,Uhash})
 	      {elif coh_ind_few_flag
-then coh_ind_unip_few(G,Uhash)}
+then coh_ind_unip_few(G{,Uhash})}
 	      fi
     then xlambdatimes = [int]: null(#xlambdasW)
     then answerCards = [int]: null(#xlambdasW) {number of unitary parameters found}
-    then oldUhash = Uhash.size()
-    then current = elapsed_ms(), oldUhash = Uhash.size(), currentUhash = Uhash.size(), formerUhash = Uhash.size(),
+    then oldUhash = big_unitary_hash.u_size(G)
+    then current = elapsed_ms(), oldUhash = big_unitary_hash.u_size(G), currentUhash = big_unitary_hash.u_size(G), formerUhash = big_unitary_hash.u_size(G),
          oldUtime = unitaryTime, currentUtime = unitaryTime, oldCtime = charTime, currentCtime = charTime,
     	 oldUcounter = unitary_test_counter.use_count(), currentUcounter = unitary_test_counter.use_count(),
 		   oldCcounter = char_counter.use_count(), currentCcounter = char_counter.use_count()
@@ -378,7 +378,7 @@ then coh_ind_unip_few(G,Uhash)}
 		   	then prints("Already computed (",x,",",lambda,")")
 			fi; ()
 		   else
-	 	 let startxl = elapsed_ms(), startUhash = Uhash.size(),
+	 	 let startxl = elapsed_ms(), startUhash = big_unitary_hash.u_size(G),
 		     		   startUcounter = unitary_test_counter.use_count(),
 				   startCcounter = char_counter.use_count(),
 				   startUTime = unitaryTime, startCTime = charTime, theta = x.involution
@@ -387,7 +387,7 @@ then coh_ind_unip_few(G,Uhash)}
 		 then (Lvd, Perm2{, mapAct}) = LPmss[k]
 		 then () = if every_lambda_flag and FPP_report_flag
       	      	   	      then prints("     start #", k, " = (",x,",",lambda,"), Uhash.size() = ",
-			      Uhash.size(), ", runtime = ", print_time_string(elapsed_ms() - start),
+			      big_unitary_hash.u_size(G), ", runtime = ", print_time_string(elapsed_ms() - start),
 			      ", #uparams so far = ",sum(answerCards));
 		   		   prints("  ------------------")
         	   	   fi {every_lambda_flag}
@@ -423,16 +423,16 @@ then coh_ind_unip_few(G,Uhash)}
 			       test_verbose :=old_test_verbose; test_slightly_verbose := old_test_slightly_verbose
 			  fi;
 			  let answer = if revert_steve_flag
-			      	       then local_test_GEO_hash_steve(x, lambda, Lvd, Uhash,
+			      	       then local_test_GEO_hash_steve(x, lambda, Lvd, {Uhash,}
 				      	   fancy_tester)
-			      	       else local(x, lambda, Lvd, LF, pol_hash, Uhash, fancy_tester)
+			      	       else local(x, lambda, Lvd, LF, pol_hash, {Uhash,} fancy_tester)
 				       fi
 			  then () = finish(x,lambda)
 			  then () = answerCards[k] := #answer
 			  then () = if Uparamhash_flag
 			       	    then for p in answer do Uparamhash.match(p) od
 				    fi
-   		    	  then () = current := elapsed_ms(); currentUhash := Uhash.size();
+   		    	  then () = current := elapsed_ms(); currentUhash := big_unitary_hash.u_size(G);
 			       	    currentUcounter := unitary_test_counter.use_count();
 				    currentCcounter := char_counter.use_count()
     		 	  then () = xlambdatimes[k] := current - startxl
@@ -440,7 +440,7 @@ then coh_ind_unip_few(G,Uhash)}
 	      		     then prints("  ",print_time_string(xlambdatimes[k]),
 			   	" = time for (x,lambda) #",k, " = (", xnums[k], ",",lambdas[k],")", test_string);
 			         prints("    #LF = ", for L in LF do #L od, "; #unitary params = ", answerCards[k],
-				 ", #new unitary = ", Uhash.size() - startUhash,
+				 ", #new unitary = ", big_unitary_hash.u_size(G) - startUhash,
 				 ", #tests for lambda = ", unitary_test_counter.use_count() - startUcounter,
 				 ", time = ", print_time_string(unitaryTime - startUTime));
 				 prints("     #char calcs for this lambda = ",char_counter.use_count() - startCcounter,
@@ -485,14 +485,14 @@ then coh_ind_unip_few(G,Uhash)}
        	    prints("Number of unitary params = ", sum(answerCards), ", time for is_finished = ",
 	    print_time_string(is_finished_time), ", time for position = ",
 	    print_time_string(position_time));
-       	    prints("Number of FPP-unitary faces = ",Uhash.size(), ", number found on this run = ", Uhash.size() - oldUhash)
+       	    prints("Number of FPP-unitary faces = ",big_unitary_hash.u_size(G), ", number found on this run = ", big_unitary_hash.u_size(G) - oldUhash)
 	fi {FPP_report_flag}
        in () fi {#xlambdasW = 0}
      in kill_for_big_uTime(); ()
 
-set FPP_unitary_hash_general([KGBElt] xs, Param_hash Uhash, (Param->bool) fancy_tester,
+set FPP_unitary_hash_general([KGBElt] xs, {Param_hash Uhash,} (Param->bool) fancy_tester,
     (KGBElt, ratvec, LocalVertexData,[[FaceVertsIndex]],
-    KTypePol_hash, Param_hash,(Param->bool)->[Param])
+    KTypePol_hash, {Param_hash,}(Param->bool)->[Param])
     local) = void:
     if #xs = 0
     then return ()
@@ -500,7 +500,7 @@ set FPP_unitary_hash_general([KGBElt] xs, Param_hash Uhash, (Param->bool) fancy_
     let G = xs[0].real_form
     in if is_compact(G)
        then for p in all_parameters_gamma(G,G.rho)
-       	    do Uhash.match(p)
+       	    do big_unitary_hash.umatch(p)
 	    od;
             return ()
         fi;
@@ -525,21 +525,21 @@ set FPP_unitary_hash_general([KGBElt] xs, Param_hash Uhash, (Param->bool) fancy_
     then () = test_verbose:=false
     then () = test_slightly_verbose:=false
     then () = if unip_flag
-    	      then unipotents_to_hash(G,Uhash)
+    	      then unipotents_to_hash(G{,Uhash})
 	      fi
     then () = if coh_ind_all_flag 
-    	      then coh_ind_unip_all(G,Uhash) {this takes several seconds for F4_s}
+    	      then coh_ind_unip_all(G{,Uhash}) {this takes several seconds for F4_s}
 	      elif coh_ind_most_flag
-	      then coh_ind_unip_most(G,Uhash)
+	      then coh_ind_unip_most(G{,Uhash})
 	      {elif coh_ind_few_flag
-	      then coh_ind_unip_few(G,Uhash)}
+	      then coh_ind_unip_few(G{,Uhash})}
 	      fi
     then times = [int]: null(#xs)
     then red_count_times = [int]: null(#xs)
     then lambdatimes = [[int]]: for j:#xs do [] od
     then answerCards = [[int]]: for j:#xs do [] od {number of unitary parameters found}
      then current = elapsed_ms()
-    then oldUhash = Uhash.size(), currentUhash = Uhash.size(), formerUhash = Uhash.size(),
+    then oldUhash = big_unitary_hash.u_size(G), currentUhash = big_unitary_hash.u_size(G), formerUhash = big_unitary_hash.u_size(G),
     	 oldUcounter = unitary_test_counter.use_count(), currentUcounter = unitary_test_counter.use_count(),
 	 oldUtime = unitaryTime, oldCcounter = char_counter.use_count(), currentCcounter = char_counter.use_count()
     then skipx = false
@@ -577,9 +577,9 @@ set FPP_unitary_hash_general([KGBElt] xs, Param_hash Uhash, (Param->bool) fancy_
 		    fi{A}
 	then () = if xtwist != x
 	     	  then {prints("skipping x = ",x.number," for xtwist = ",xtwist.number);}
-	    	       for p in Uhash.list()
+	    	       for p in big_unitary_hash.ulist(G)
 	    	       do if p.x = xtwist
-	       	       	  then Uhash.match(parameter(x, p.lambda, p.nu))
+	       	       	  then big_unitary_hash.umatch(parameter(x, p.lambda, p.nu))
 	       	    	  fi
 	    	       od;
 	    	       big_unitary_hash.finish(x, full_M); {mark as done all lambdas for x}
@@ -604,9 +604,9 @@ set FPP_unitary_hash_general([KGBElt] xs, Param_hash Uhash, (Param->bool) fancy_
 		     fi{B}
 	  then () = if xcont != x
 		    then {prints("skipping x = ",x.number," for xcont = ",xcont.number);}
-		       	 for p in Uhash.list()
+		       	 for p in big_unitary_hash.ulist(G)
 	      	       	 do if p.x = xcont
-		       	    then Uhash.match(contragredient(p))
+		       	    then big_unitary_hash.umatch(contragredient(p))
 		    	    fi
 		       	 od;
 		         big_unitary_hash.finish(x,full_M); {mark as done all lambdas for x}
@@ -619,7 +619,7 @@ set FPP_unitary_hash_general([KGBElt] xs, Param_hash Uhash, (Param->bool) fancy_
 	 	  	 then templambdatimes = null(Ncases)
 	 		 then () = if every_KGB_flag and FPP_report_flag
       	      	   	      then prints("     start KGBElt #", x.number, ", #lambdas = ",#lambdas,
-		   	       " Uhash.size() = ", Uhash.size(), ", runtime = ",
+		   	       " Uhash.size() = ", big_unitary_hash.u_size(G), ", runtime = ",
 			       	 print_time_string(elapsed_ms() - start), ", #uparams so far = ",
 			       sum(for list in answerCards do sum(list) od) + sum(tempanswerCards));
 		   		   prints("  ------------------")
@@ -641,7 +641,7 @@ set FPP_unitary_hash_general([KGBElt] xs, Param_hash Uhash, (Param->bool) fancy_
 
 		 		      then () = if every_lambda_flag and FPP_report_flag
       	      	   	     	      	      	then prints("     start #", index, " = (",x,",",lambda,
-						"), Uhash.size() = ", Uhash.size(),
+						"), Uhash.size() = ", big_unitary_hash.u_size(G),
 						", runtime = ", print_time_string(elapsed_ms() - start),
 			      			", #uparams so far = ",sum(for list in answerCards do sum(list) od) + sum(tempanswerCards));
 		   		   prints("  ------------------")
@@ -655,14 +655,14 @@ set FPP_unitary_hash_general([KGBElt] xs, Param_hash Uhash, (Param->bool) fancy_
 			 		       od;
 		    	 	               big_unitary_hash.finish(xW,to_bitset([index]));
 					       {mark as done this lambda for xW}
-			            	       for p in Uhash.list()
+			            	       for p in big_unitary_hash.ulist(G)
 	      	       		    	       do if p.x = xW and p.lambda = lambdacont
-		       	  	       	       	  then Uhash.match(contragredient(p))
+		       	  	       	       	  then big_unitary_hash.umatch(contragredient(p))
 		    	  	       		  fi
 		       		    	       od
 					  else let lamthlam = ((1+xW.involution)*lambdaW).numer
 		      		      	       then (Lvd, Perm2{, mapAct}) = LPm_table.LPm_entry(G,xW.involution,lamthlam)
-		      		      	       then  startlambda = elapsed_ms(), startUhash = Uhash.size(),
+		      		      	       then  startlambda = elapsed_ms(), startUhash = big_unitary_hash.u_size(G),
 					       	     startUcounter = unitary_test_counter.use_count(),
 						     startUtime = unitaryTime, startCcounter =
 						     char_counter.use_count(), startCtime = charTime
@@ -696,8 +696,8 @@ set FPP_unitary_hash_general([KGBElt] xs, Param_hash Uhash, (Param->bool) fancy_
 				 		   let answer = 
 						       if revert_steve_flag and lambdaW != G.rho
 			      	       		       then local_test_GEO_hash_steve(xW, lambdaW, Lvd,
-								Uhash, fancy_tester)
-						       else local(xW, lambdaW, Lvd, LF, pol_hash, Uhash,
+								{Uhash,} fancy_tester)
+						       else local(xW, lambdaW, Lvd, LF, pol_hash, {Uhash,}
 								fancy_tester)
 						       fi
 						   then () = finish(x, lambda)
@@ -718,7 +718,7 @@ set FPP_unitary_hash_general([KGBElt] xs, Param_hash Uhash, (Param->bool) fancy_
 							   lambdaW, ")", test_string);
 				         		   prints("    #LF = ", for L in LF do #L od,
 							   ", #unitary params = ", tempanswerCards[index],
-			     	                	   ", #new unitary = ", Uhash.size() - startUhash,
+			     	                	   ", #new unitary = ", big_unitary_hash.u_size(G) - startUhash,
 							   ", #tests for this lambda = ",
 							   unitary_test_counter.use_count() - startUcounter,
 							   ", unitary time for lambda = ",
@@ -735,7 +735,7 @@ set FPP_unitary_hash_general([KGBElt] xs, Param_hash Uhash, (Param->bool) fancy_
                    		od{lambda}
 				{would be easy enough to get [Param] for each (x,lambda), but for now just
 				put unitary reps in Uhash}
-           then () = current := elapsed_ms(); currentUhash := Uhash.size();  times[j] := current -former_time;
+           then () = current := elapsed_ms(); currentUhash := big_unitary_hash.u_size(G);  times[j] := current -former_time;
 	   	     red_count_times[j] := red_count_time - former_red_count_time;
 	   	     lambdatimes[j] := templambdatimes; currentUcounter := unitary_test_counter.use_count();
 		     currentCcounter := char_counter.use_count(); answerCards[j]:= tempanswerCards
@@ -793,33 +793,33 @@ set FPP_unitary_hash_general([KGBElt] xs, Param_hash Uhash, (Param->bool) fancy_
        	    prints("Number of unitary params = ", sum((for list in answerCards do sum(list) od)),
 	    		   ", time for is_finished = ", print_time_string(is_finished_time),
 			   ", time for position = ", print_time_string(position_time));
-      	    prints("Number of known FPP-unitary faces = ",Uhash.size(),
-       	      ", number found on this run = ", Uhash.size() - oldUhash);
+      	    prints("Number of known FPP-unitary faces = ",big_unitary_hash.u_size(G),
+       	      ", number found on this run = ", big_unitary_hash.u_size(G) - oldUhash);
 	    report_tested()
       fi {FPP_report_flag}
    in kill_for_big_uTime(); ()
 
-set FPP_unitary_hash_general(RealForm G,Param_hash Uhash, (Param->bool) fancy_tester,
+set FPP_unitary_hash_general(RealForm G,{Param_hash Uhash,} (Param->bool) fancy_tester,
     (KGBElt,ratvec, LocalVertexData, [[FaceVertsIndex]],
-    KTypePol_hash, Param_hash, (Param->bool)->[Param])
+    KTypePol_hash, {Param_hash,} (Param->bool)->[Param])
     local) = void:
     if is_compact(G)
     then for p in all_parameters_gamma(G,G.rho)
-    do Uhash.match(p) od
+    do big_unitary_hash.umatch(p) od
     else
-    FPP_unitary_hash_general(KGB(G), Uhash, fancy_tester, local)
+    FPP_unitary_hash_general(KGB(G), {Uhash,} fancy_tester, local)
     fi
 {STEVE HERE}
 
 {uses LPm_table to keep track of local face info}
-set FPP_unitary_hash_steve([(KGBElt,ratvec)] xlambdas, Param_hash Uhash,
+set FPP_unitary_hash_steve([(KGBElt,ratvec)] xlambdas, {Param_hash Uhash,}
     (Param->bool) fancy_tester) = void:
     if #xlambdas = 0 then return () fi;
     let (x,) = xlambdas[0]
     then G = x.real_form
     in if is_compact(G)
        then for p in all_parameters_gamma(G,G.rho)
-       	    do Uhash.match(p)
+       	    do big_unitary_hash.umatch(p)
 	    od;
             return ()
         fi;
@@ -854,19 +854,19 @@ set FPP_unitary_hash_steve([(KGBElt,ratvec)] xlambdas, Param_hash Uhash,
 	      fi
     then () = face_verbose:=false; time_verbose:=false; test_verbose:=false; test_slightly_verbose:=false
     then () = if unip_flag
-    	      then unipotents_to_hash(G,Uhash)
+    	      then unipotents_to_hash(G{,Uhash})
 	      fi
     then () = if coh_ind_all_flag 
-    	      then coh_ind_unip_all(G,Uhash) {this takes several seconds for F4_s}
+    	      then coh_ind_unip_all(G{,Uhash}) {this takes several seconds for F4_s}
 	      elif coh_ind_most_flag
-	      then coh_ind_unip_most(G,Uhash)
+	      then coh_ind_unip_most(G{,Uhash})
 	      {elif coh_ind_few_flag
-then coh_ind_unip_few(G,Uhash)}
+then coh_ind_unip_few(G{,Uhash})}
 	      fi
     then xlambdatimes = [int]: null(#xlambdasW)
     then answerCards = [int]: null(#xlambdasW) {number of unitary parameters found}
-    then oldUhash = Uhash.size()
-    then current = elapsed_ms(), oldUhash = Uhash.size(), currentUhash = Uhash.size(), formerUhash = Uhash.size(),
+    then oldUhash = big_unitary_hash.u_size(G)
+    then current = elapsed_ms(), oldUhash = big_unitary_hash.u_size(G), currentUhash = big_unitary_hash.u_size(G), formerUhash = big_unitary_hash.u_size(G),
          oldUtime = unitaryTime, currentUtime = unitaryTime, oldCtime = charTime, currentCtime = charTime,
     	 oldUcounter = unitary_test_counter.use_count(), currentUcounter = unitary_test_counter.use_count(),
 		   oldCcounter = char_counter.use_count(), currentCcounter = char_counter.use_count()
@@ -881,7 +881,7 @@ then coh_ind_unip_few(G,Uhash)}
 		   	then prints("Already computed (",x,",",lambda,")")
 			fi; ()
 		   else
-	 	 let startxl = elapsed_ms(), startUhash = Uhash.size(),
+	 	 let startxl = elapsed_ms(), startUhash = big_unitary_hash.u_size(G),
 		     		   startUcounter = unitary_test_counter.use_count(),
 				   startCcounter = char_counter.use_count(),
 				   startUTime = unitaryTime, startCTime = charTime, theta = x.involution
@@ -889,8 +889,8 @@ then coh_ind_unip_few(G,Uhash)}
 		 {then () = prints("time before LPmss[",k,"] = ",print_time_string(elapsed_ms() - start))}
 		 then (Lvd, Perm2) = LPmss[k]
 		 then () = if every_lambda_flag and FPP_report_flag
-      	      	   	      then prints("     start #", k, " = (",x,",",lambda,"), Uhash.size() = ",
-			      Uhash.size(), ", runtime = ", print_time_string(elapsed_ms() - start),
+      	      	   	      then prints("     start #", k, " = (",x,",",lambda,"), big_unitary_hash.u_size(G) = ",
+			      big_unitary_hash.u_size(G), ", runtime = ", print_time_string(elapsed_ms() - start),
 			      ", #uparams so far = ",sum(answerCards));
 		   		   prints("  ------------------")
         	   	   fi {every_lambda_flag}
@@ -899,7 +899,7 @@ then coh_ind_unip_few(G,Uhash)}
 		 then UParams = [Param]:
 		      if TNU
 		      then []
-		      else local_test_GEO_hash_steve(x, lambda, Lvd, Uhash, fancy_tester)
+		      else local_test_GEO_hash_steve(x, lambda, Lvd, {Uhash,} fancy_tester)
 		      fi
 		 then () = finish(x,lambda)
 		 then () = if #UParams = 0
@@ -913,7 +913,7 @@ then coh_ind_unip_few(G,Uhash)}
 		 then () = if Uparamhash_flag
 			   then for p in UParams do Uparamhash.match(p) od
 			   fi
-   		 then () = current := elapsed_ms(); currentUhash := Uhash.size();
+   		 then () = current := elapsed_ms(); currentUhash := big_unitary_hash.u_size(G);
 			       	    currentUcounter := unitary_test_counter.use_count();
 				    currentCcounter := char_counter.use_count()
     		 then () = xlambdatimes[k] := current - startxl
@@ -921,7 +921,7 @@ then coh_ind_unip_few(G,Uhash)}
 	      	    then prints("  ",print_time_string(xlambdatimes[k]),
 			   	" = time for (x,lambda) #",k, " = (", xnums[k], ",",lambdas[k],")", test_string);
 			 prints("   #unitary params = ", answerCards[k],
-				 ", #new unitary = ", Uhash.size() - startUhash,
+				 ", #new unitary = ", big_unitary_hash.u_size(G) - startUhash,
 				 ", #tests for lambda = ", unitary_test_counter.use_count() - startUcounter,
 				 ", time = ", print_time_string(unitaryTime - startUTime));
 			 prints("     #char calcs for this lambda = ",char_counter.use_count() - startCcounter,
@@ -965,19 +965,19 @@ then coh_ind_unip_few(G,Uhash)}
        	    prints("Number of unitary params = ", sum(answerCards), ", time for is_finished = ",
 	    print_time_string(is_finished_time), ", time for position = ",
 	    print_time_string(position_time));
-       	    prints("Number of FPP-unitary faces = ",Uhash.size(), ", number found on this run = ", Uhash.size() - oldUhash)
+       	    prints("Number of FPP-unitary faces = ",big_unitary_hash.u_size(G), ", number found on this run = ", big_unitary_hash.u_size(G) - oldUhash)
 	fi {FPP_report_flag}
        in () fi {#xlambdasW = 0}
      in kill_for_big_uTime(); ()
 
-set FPP_unitary_hash_steve([KGBElt] xs, Param_hash Uhash, (Param->bool) fancy_tester) = void:
+set FPP_unitary_hash_steve([KGBElt] xs, {Param_hash Uhash,} (Param->bool) fancy_tester) = void:
     if #xs = 0
     then return ()
     fi;
     let G = xs[0].real_form
     in if is_compact(G)
        then for p in all_parameters_gamma(G,G.rho)
-       	    do Uhash.match(p)
+       	    do big_unitary_hash.umatch(p)
 	    od;
             return ()
         fi;
@@ -999,21 +999,21 @@ set FPP_unitary_hash_steve([KGBElt] xs, Param_hash Uhash, (Param->bool) fancy_te
     then () = test_verbose:=false
     then () = test_slightly_verbose:=false
     then () = if unip_flag
-    	      then unipotents_to_hash(G,Uhash)
+    	      then unipotents_to_hash(G{,Uhash})
 	      fi
     then () = if coh_ind_all_flag 
-    	      then coh_ind_unip_all(G,Uhash) {this takes several seconds for F4_s}
+    	      then coh_ind_unip_all(G{,Uhash}) {this takes several seconds for F4_s}
 	      elif coh_ind_most_flag
-	      then coh_ind_unip_most(G,Uhash)
+	      then coh_ind_unip_most(G{,Uhash})
 	      {elif coh_ind_few_flag
-	      then coh_ind_unip_few(G,Uhash)}
+	      then coh_ind_unip_few(G{,Uhash})}
 	      fi
     then times = [int]: null(#xs)
     then red_count_times = [int]: null(#xs)
     then lambdatimes = [[int]]: for j:#xs do [] od
     then answerCards = [[int]]: for j:#xs do [] od {number of unitary parameters found}
      then current = elapsed_ms()
-    then oldUhash = Uhash.size(), currentUhash = Uhash.size(), formerUhash = Uhash.size(),
+    then oldUhash = big_unitary_hash.u_size(G), currentUhash = big_unitary_hash.u_size(G), formerUhash = big_unitary_hash.u_size(G),
     	 oldUcounter = unitary_test_counter.use_count(), currentUcounter = unitary_test_counter.use_count(),
 	 oldUtime = unitaryTime, oldCcounter = char_counter.use_count(), currentCcounter = char_counter.use_count()
     then skipx = false
@@ -1050,9 +1050,9 @@ set FPP_unitary_hash_steve([KGBElt] xs, Param_hash Uhash, (Param->bool) fancy_te
 		    fi{A}
 	then () = if xtwist != x
 	     	  then {prints("skipping x = ",x.number," for xtwist = ",xtwist.number);}
-	    	       for p in Uhash.list()
+	    	       for p in big_unitary_hash.ulist(G)
 	    	       do if p.x = xtwist
-	       	       	  then Uhash.match(parameter(x, p.lambda, p.nu))
+	       	       	  then big_unitary_hash.umatch(parameter(x, p.lambda, p.nu))
 	       	    	  fi
 	    	       od;
 	    	       big_unitary_hash.finish(x, full_M); {mark as done all lambdas for x}
@@ -1077,9 +1077,9 @@ set FPP_unitary_hash_steve([KGBElt] xs, Param_hash Uhash, (Param->bool) fancy_te
 		     fi{B}
 	  then () = if xcont != x
 		    then {prints("skipping x = ",x.number," for xcont = ",xcont.number);}
-		       	 for p in Uhash.list()
+		       	 for p in big_unitary_hash.ulist(G)
 	      	       	 do if p.x = xcont
-		       	    then Uhash.match(contragredient(p))
+		       	    then big_unitary_hash.umatch(contragredient(p))
 		    	    fi
 		       	 od;
 		         big_unitary_hash.finish(x,full_M); {mark as done all lambdas for x}
@@ -1092,7 +1092,7 @@ set FPP_unitary_hash_steve([KGBElt] xs, Param_hash Uhash, (Param->bool) fancy_te
 	 	  	 then templambdatimes = null(Ncases)
 	 		 then () = if every_KGB_flag and FPP_report_flag
       	      	   	      then prints("     start KGBElt #", x.number, ", #lambdas = ",#lambdas,
-		   	       " Uhash.size() = ", Uhash.size(), ", runtime = ",
+		   	       " Uhash.size() = ", big_unitary_hash.u_size(G), ", runtime = ",
 			       	 print_time_string(elapsed_ms() - start), ", #uparams so far = ",
 			       sum(for list in answerCards do sum(list) od) + sum(tempanswerCards));
 		   		   prints("  ------------------")
@@ -1114,7 +1114,7 @@ set FPP_unitary_hash_steve([KGBElt] xs, Param_hash Uhash, (Param->bool) fancy_te
 
 		 		      then () = if every_lambda_flag and FPP_report_flag
       	      	   	     	      	      	then prints("     start #", index, " = (",x,",",lambda,
-						"), Uhash.size() = ", Uhash.size(),
+						"), Uhash.size() = ", big_unitary_hash.u_size(G),
 						", runtime = ", print_time_string(elapsed_ms() - start),
 			      			", #uparams so far = ",sum(for list in answerCards do sum(list) od) + sum(tempanswerCards));
 		   		   prints("  ------------------")
@@ -1128,14 +1128,14 @@ set FPP_unitary_hash_steve([KGBElt] xs, Param_hash Uhash, (Param->bool) fancy_te
 			 		       od;
 		    	 	               big_unitary_hash.finish(xW,to_bitset([index]));
 					       {mark as done this lambda for xW}
-			            	       for p in Uhash.list()
+			            	       for p in big_unitary_hash.ulist(G)
 	      	       		    	       do if p.x = xW and p.lambda = lambdacont
-		       	  	       	       	  then Uhash.match(contragredient(p))
+		       	  	       	       	  then big_unitary_hash.umatch(contragredient(p))
 		    	  	       		  fi
 		       		    	       od
 					  else let lamthlam = ((1+xW.involution)*lambdaW).numer
 		      		      	       then (Lvd, Perm2) = LPm_table.LPm_entry(G,xW.involution,lamthlam)
-		      		      	       then  startlambda = elapsed_ms(), startUhash = Uhash.size(),
+		      		      	       then  startlambda = elapsed_ms(), startUhash = big_unitary_hash.u_size(G),
 					       	     startUcounter = unitary_test_counter.use_count(),
 						     startUtime = unitaryTime, startCcounter =
 						     char_counter.use_count(), startCtime = charTime
@@ -1144,7 +1144,7 @@ set FPP_unitary_hash_steve([KGBElt] xs, Param_hash Uhash, (Param->bool) fancy_te
 					       then UParams = [Param]:
 					       	    if TNU
 						    then []
-						    else local_test_GEO_hash_steve(x, lambda, Lvd, Uhash, fancy_tester)
+						    else local_test_GEO_hash_steve(x, lambda, Lvd, {Uhash,} fancy_tester)
 						    fi
 					       then () = finish(x,lambda)
 					       then () = if #UParams = 0
@@ -1164,7 +1164,7 @@ set FPP_unitary_hash_steve([KGBElt] xs, Param_hash Uhash, (Param->bool) fancy_te
 			   	    	 	      	   " = time for (x,lambda) = (", xW.number, ",",index," = ",
 							   lambdaW, ")", test_string);
 				         		   prints("     #unitary params = ", tempanswerCards[index],
-			     	                	   ", #new unitary = ", Uhash.size() - startUhash,
+			     	                	   ", #new unitary = ", big_unitary_hash.u_size(G) - startUhash,
 							   ", #tests for this lambda = ",
 							   unitary_test_counter.use_count() - startUcounter,
 							   ", unitary time for lambda = ",
@@ -1179,7 +1179,7 @@ set FPP_unitary_hash_steve([KGBElt] xs, Param_hash Uhash, (Param->bool) fancy_te
                    		od{lambda}
 				{would be easy enough to get [Param] for each (x,lambda), but for now just
 				put unitary reps in Uhash}
-           then () = current := elapsed_ms(); currentUhash := Uhash.size();  times[j] := current -former_time;
+           then () = current := elapsed_ms(); currentUhash := big_unitary_hash.u_size(G);  times[j] := current -former_time;
 	   	     red_count_times[j] := red_count_time - former_red_count_time;
 	   	     lambdatimes[j] := templambdatimes; currentUcounter := unitary_test_counter.use_count();
 		     currentCcounter := char_counter.use_count(); answerCards[j]:= tempanswerCards
@@ -1238,164 +1238,164 @@ set FPP_unitary_hash_steve([KGBElt] xs, Param_hash Uhash, (Param->bool) fancy_te
        	    prints("Number of unitary params = ", sum((for list in answerCards do sum(list) od)),
 	    		   ", time for is_finished = ", print_time_string(is_finished_time),
 			   ", time for position = ", print_time_string(position_time));
-      	    prints("Number of known FPP-unitary faces = ",Uhash.size(),
-       	      ", number found on this run = ", Uhash.size() - oldUhash);
+      	    prints("Number of known FPP-unitary faces = ",big_unitary_hash.u_size(G),
+       	      ", number found on this run = ", big_unitary_hash.u_size(G) - oldUhash);
 	    report_tested();
 	    report_steve_graph()
       fi {FPP_report_flag}
    in kill_for_big_uTime(); ()
 
-set FPP_unitary_hash_steve(RealForm G,Param_hash Uhash, (Param->bool) fancy_tester) = void:
+set FPP_unitary_hash_steve(RealForm G,{Param_hash Uhash,} (Param->bool) fancy_tester) = void:
     if is_compact(G)
     then for p in all_parameters_gamma(G,G.rho)
-    do Uhash.match(p) od
+    do big_unitary_hash.umatch(p) od
     else
-    FPP_unitary_hash_steve(KGB(G), Uhash, fancy_tester)
+    FPP_unitary_hash_steve(KGB(G), {Uhash,} fancy_tester)
     fi
 {END STEVE HERE}
 
-set FPP_unitary_hash_real_dumb([(KGBElt,ratvec)] xlambdas, Param_hash Uhash,
+set FPP_unitary_hash_real_dumb([(KGBElt,ratvec)] xlambdas, {Param_hash Uhash,}
     (Param->bool) fancy_tester) = void:
-    FPP_unitary_hash_general(xlambdas, Uhash, fancy_tester,local_test_GEO_hash_real_dumb@(
+    FPP_unitary_hash_general(xlambdas, {Uhash,} fancy_tester,local_test_GEO_hash_real_dumb@(
     KGBElt,ratvec,LocalVertexData,[[FaceVertsIndex]],
-    KTypePol_hash, Param_hash, (Param->bool)))
+    KTypePol_hash, {Param_hash,} (Param->bool)))
 
 set FPP_unitary_hash_real_dumb([(KGBElt,ratvec)] xlambdas, (Param->bool) fancy_tester) = void:
-    FPP_unitary_hash_real_dumb(xlambdas, let (x,) = xlambdas[0] in big_unitary_hash.uhash(x.real_form),
+    FPP_unitary_hash_real_dumb(xlambdas, {let (x,) = xlambdas[0] in big_unitary_hash.uhash(x.real_form),}
     fancy_tester)
 
-set FPP_unitary_hash_real_dumb([KGBElt] xs, Param_hash Uhash, (Param->bool) fancy_tester) = void:
-    FPP_unitary_hash_general(xs, Uhash, fancy_tester, local_test_GEO_hash_real_dumb@(
-    KGBElt,ratvec,LocalVertexData,[[FaceVertsIndex]],KTypePol_hash,Param_hash,(Param->bool)))
+set FPP_unitary_hash_real_dumb([KGBElt] xs, {Param_hash Uhash,} (Param->bool) fancy_tester) = void:
+    FPP_unitary_hash_general(xs, {Uhash,} fancy_tester, local_test_GEO_hash_real_dumb@(
+    KGBElt,ratvec,LocalVertexData,[[FaceVertsIndex]],KTypePol_hash,{Param_hash,}(Param->bool)))
 
 set FPP_unitary_hash_real_dumb([KGBElt] xs, (Param->bool) fancy_tester) = void:
-    FPP_unitary_hash_real_dumb(xs, big_unitary_hash.uhash(xs[0].real_form), fancy_tester)
+    FPP_unitary_hash_real_dumb(xs, {big_unitary_hash.uhash(xs[0].real_form),} fancy_tester)
 
 set FPP_unitary_hash_real_dumb(RealForm G, (Param->bool) fancy_tester) = void:
     FPP_unitary_hash_real_dumb(KGB(G), fancy_tester)
 
-set FPP_unitary_hash_def_dumb([(KGBElt,ratvec)] xlambdas, Param_hash Uhash, (Param->bool) fancy_tester) =
+set FPP_unitary_hash_def_dumb([(KGBElt,ratvec)] xlambdas, {Param_hash Uhash,} (Param->bool) fancy_tester) =
     void:
-    FPP_unitary_hash_general(xlambdas, Uhash, fancy_tester, local_test_GEO_hash_def_dumb@(
-    KGBElt,ratvec,{VertexData,} LocalVertexData,[[FaceVertsIndex]], KTypePol_hash, Param_hash,
+    FPP_unitary_hash_general(xlambdas, {Uhash,} fancy_tester, local_test_GEO_hash_def_dumb@(
+    KGBElt,ratvec,{VertexData,} LocalVertexData,[[FaceVertsIndex]], KTypePol_hash, {Param_hash,}
     (Param->bool)))
 
 set FPP_unitary_hash_def_dumb([(KGBElt,ratvec)] xlambdas, (Param->bool) fancy_tester) = void:
-    FPP_unitary_hash_def_dumb(xlambdas, let (x,) = xlambdas[0] in big_unitary_hash.uhash(x.real_form),
+    FPP_unitary_hash_def_dumb(xlambdas, {let (x,) = xlambdas[0] in big_unitary_hash.uhash(x.real_form),}
     fancy_tester)
 
-set FPP_unitary_hash_def_dumb([KGBElt] xs, Param_hash Uhash, (Param->bool) fancy_tester) = void:
+set FPP_unitary_hash_def_dumb([KGBElt] xs, {Param_hash Uhash,} (Param->bool) fancy_tester) = void:
     let () = def_flag:=true then () = real_flag:=false in
-    FPP_unitary_hash_general(xs, Uhash, fancy_tester, local_test_GEO_hash_def_dumb@(KGBElt,ratvec,
-    LocalVertexData, [[FaceVertsIndex]], KTypePol_hash, Param_hash, (Param->bool)))
+    FPP_unitary_hash_general(xs, {Uhash,} fancy_tester, local_test_GEO_hash_def_dumb@(KGBElt,ratvec,
+    LocalVertexData, [[FaceVertsIndex]], KTypePol_hash, {Param_hash,} (Param->bool)))
 
 set FPP_unitary_hash_def_dumb([KGBElt] xs, (Param->bool) fancy_tester) = void:
-    FPP_unitary_hash_def_dumb(xs, big_unitary_hash.uhash(xs[0].real_form), fancy_tester)
+    FPP_unitary_hash_def_dumb(xs, {big_unitary_hash.uhash(xs[0].real_form),} fancy_tester)
 
 set FPP_unitary_hash_def_dumb(RealForm G, (Param->bool) fancy_tester) = void:
     FPP_unitary_hash_def_dumb(KGB(G), fancy_tester)
 
-set FPP_unitary_hash_dumb([(KGBElt,ratvec)] xlambdas, Param_hash Uhash, (Param->bool) fancy_tester) = void:
+set FPP_unitary_hash_dumb([(KGBElt,ratvec)] xlambdas, {Param_hash Uhash,} (Param->bool) fancy_tester) = void:
     let () = def_flag:=false then () = real_flag:=false in
-    FPP_unitary_hash_general(xlambdas, Uhash, fancy_tester, local_test_GEO_hash_dumb@(
+    FPP_unitary_hash_general(xlambdas, {Uhash,} fancy_tester, local_test_GEO_hash_dumb@(
     KGBElt,ratvec, LocalVertexData,[[FaceVertsIndex]],
-    KTypePol_hash, Param_hash, (Param->bool)))
+    KTypePol_hash, {Param_hash,} (Param->bool)))
 
 set FPP_unitary_hash_dumb([(KGBElt,ratvec)] xlambdas, (Param->bool) fancy_tester) = void:
-    FPP_unitary_hash_dumb(xlambdas, let (x,) = xlambdas[0] in big_unitary_hash.uhash(x.real_form),
+    FPP_unitary_hash_dumb(xlambdas, {let (x,) = xlambdas[0] in big_unitary_hash.uhash(x.real_form),}
     fancy_tester)
 
-set FPP_unitary_hash_dumb([KGBElt] xs, Param_hash Uhash, (Param->bool) fancy_tester) = void:
+set FPP_unitary_hash_dumb([KGBElt] xs, {Param_hash Uhash,} (Param->bool) fancy_tester) = void:
     let () = def_flag:=false then () = real_flag:=false in
-    FPP_unitary_hash_general(xs, Uhash, fancy_tester, local_test_GEO_hash_dumb@(
+    FPP_unitary_hash_general(xs, {Uhash,} fancy_tester, local_test_GEO_hash_dumb@(
     KGBElt,ratvec, LocalVertexData,[[FaceVertsIndex]],
-    KTypePol_hash, Param_hash, (Param->bool)))
+    KTypePol_hash, {Param_hash,} (Param->bool)))
 
 set FPP_unitary_hash_dumb([KGBElt] xs, (Param->bool) fancy_tester) = void:
-    FPP_unitary_hash_dumb(xs, big_unitary_hash.uhash(xs[0].real_form), fancy_tester)
+    FPP_unitary_hash_dumb(xs, {big_unitary_hash.uhash(xs[0].real_form),} fancy_tester)
 
 set FPP_unitary_hash_dumb(RealForm G, (Param->bool) fancy_tester) = void:
     FPP_unitary_hash_dumb(KGB(G), fancy_tester)
 
-set FPP_unitary_hash([(KGBElt,ratvec)] xlambdas, Param_hash Uhash, (Param->bool) fancy_tester) = void:
-    FPP_unitary_hash_general(xlambdas, Uhash, fancy_tester, local_test_GEO_hash@(
-    KGBElt,ratvec, LocalVertexData, [[FaceVertsIndex]], KTypePol_hash, Param_hash, (Param->bool)))
+set FPP_unitary_hash([(KGBElt,ratvec)] xlambdas, {Param_hash Uhash,} (Param->bool) fancy_tester) = void:
+    FPP_unitary_hash_general(xlambdas, {Uhash,} fancy_tester, local_test_GEO_hash@(
+    KGBElt,ratvec, LocalVertexData, [[FaceVertsIndex]], KTypePol_hash, {Param_hash,} (Param->bool)))
 
 set FPP_unitary_hash([(KGBElt,ratvec)] xlambdas, (Param->bool) fancy_tester) = void:
-    FPP_unitary_hash(xlambdas, let (x,) = xlambdas[0] in big_unitary_hash.uhash(x.real_form), fancy_tester)
+    FPP_unitary_hash(xlambdas, {let (x,) = xlambdas[0] in big_unitary_hash.uhash(x.real_form),} fancy_tester)
 
-set FPP_unitary_hash([KGBElt] xs, Param_hash Uhash, (Param->bool) fancy_tester) = void:
-    FPP_unitary_hash_general(xs, Uhash, fancy_tester, local_test_GEO_hash@(
+set FPP_unitary_hash([KGBElt] xs, {Param_hash Uhash,} (Param->bool) fancy_tester) = void:
+    FPP_unitary_hash_general(xs, {Uhash,} fancy_tester, local_test_GEO_hash@(
     KGBElt,ratvec,{VertexData,} LocalVertexData,[[FaceVertsIndex]],
-    KTypePol_hash, Param_hash, (Param->bool)))
+    KTypePol_hash, {Param_hash,} (Param->bool)))
 
 set FPP_unitary_hash([KGBElt] xs,(Param->bool) fancy_tester) = void:
-    FPP_unitary_hash(xs, big_unitary_hash.uhash(xs[0].real_form), fancy_tester)
+    FPP_unitary_hash(xs, {big_unitary_hash.uhash(xs[0].real_form),} fancy_tester)
 
 set FPP_unitary_hash(RealForm G, (Param->bool) fancy_tester) = void:
-    FPP_unitary_hash(KGB(G), big_unitary_hash.uhash(G), fancy_tester)
+    FPP_unitary_hash(KGB(G), {big_unitary_hash.uhash(G),} fancy_tester)
 
-set FPP_unitary_hash2([(KGBElt,ratvec)] xlambdas, Param_hash Uhash, (Param->bool) fancy_tester) = void:
-    FPP_unitary_hash_general(xlambdas, Uhash, fancy_tester, local_test_GEO_hash2@(
+set FPP_unitary_hash2([(KGBElt,ratvec)] xlambdas, {Param_hash Uhash,} (Param->bool) fancy_tester) = void:
+    FPP_unitary_hash_general(xlambdas, {Uhash,} fancy_tester, local_test_GEO_hash2@(
    KGBElt,ratvec, LocalVertexData,[[FaceVertsIndex]],
-    KTypePol_hash, Param_hash, (Param->bool)))
+    KTypePol_hash, {Param_hash,} (Param->bool)))
 
 set FPP_unitary_hash2([(KGBElt,ratvec)] xlambdas, (Param->bool) fancy_tester) = void:
-    FPP_unitary_hash2(xlambdas, let (x,) = xlambdas[0] in big_unitary_hash.uhash(x.real_form), fancy_tester)
+    FPP_unitary_hash2(xlambdas, {let (x,) = xlambdas[0] in big_unitary_hash.uhash(x.real_form),} fancy_tester)
 
-set FPP_unitary_hash2([KGBElt] xs, Param_hash Uhash, (Param->bool) fancy_tester) = void:
-    FPP_unitary_hash_general(xs, Uhash, fancy_tester, local_test_GEO_hash2@(
+set FPP_unitary_hash2([KGBElt] xs, {Param_hash Uhash,} (Param->bool) fancy_tester) = void:
+    FPP_unitary_hash_general(xs, {Uhash,} fancy_tester, local_test_GEO_hash2@(
     KGBElt,ratvec, LocalVertexData,[[FaceVertsIndex]],
-    KTypePol_hash, Param_hash, (Param->bool)))
+    KTypePol_hash, {Param_hash,} (Param->bool)))
 
 set FPP_unitary_hash2([KGBElt] xs, (Param->bool) fancy_tester) = void:
-    FPP_unitary_hash2(xs, big_unitary_hash.uhash(xs[0].real_form), fancy_tester)
+    FPP_unitary_hash2(xs, {big_unitary_hash.uhash(xs[0].real_form),} fancy_tester)
 
 set FPP_unitary_hash2(RealForm G, (Param->bool) fancy_tester) = void:
     FPP_unitary_hash2(KGB(G), fancy_tester)
 
-set FPP_unitary_hash_one_level([(KGBElt,ratvec)] xlambdas, Param_hash Uhash, (Param->bool) fancy_tester) =
+set FPP_unitary_hash_one_level([(KGBElt,ratvec)] xlambdas, {Param_hash Uhash,} (Param->bool) fancy_tester) =
     void:
-    FPP_unitary_hash_general(xlambdas, Uhash, fancy_tester, local_test_GEO_hash_one_level@(
-    KGBElt,ratvec,LocalVertexData,[[FaceVertsIndex]], KTypePol_hash, Param_hash, (Param->bool)))
+    FPP_unitary_hash_general(xlambdas, {Uhash,} fancy_tester, local_test_GEO_hash_one_level@(
+    KGBElt,ratvec,LocalVertexData,[[FaceVertsIndex]], KTypePol_hash, {Param_hash,} (Param->bool)))
 
 set FPP_unitary_hash_one_level([(KGBElt,ratvec)] xlambdas, (Param->bool) fancy_tester) = void:
-    FPP_unitary_hash_one_level(xlambdas, let (x,) = xlambdas[0] in big_unitary_hash.uhash(x.real_form),
+    FPP_unitary_hash_one_level(xlambdas, {let (x,) = xlambdas[0] in big_unitary_hash.uhash(x.real_form),}
     fancy_tester)
 
-set FPP_unitary_hash_one_level([KGBElt] xs, Param_hash Uhash, (Param->bool) fancy_tester) = void:
-    FPP_unitary_hash_general(xs, Uhash, fancy_tester, local_test_GEO_hash_one_level@(
-    KGBElt,ratvec, LocalVertexData,[[FaceVertsIndex]], KTypePol_hash, Param_hash,
+set FPP_unitary_hash_one_level([KGBElt] xs, {Param_hash Uhash,} (Param->bool) fancy_tester) = void:
+    FPP_unitary_hash_general(xs, {Uhash,} fancy_tester, local_test_GEO_hash_one_level@(
+    KGBElt,ratvec, LocalVertexData,[[FaceVertsIndex]], KTypePol_hash, {Param_hash,}
     (Param->bool)))
 
 set FPP_unitary_hash_one_level([KGBElt] xs, (Param->bool) fancy_tester) = void:
-    FPP_unitary_hash_one_level(xs, big_unitary_hash.uhash(xs[0].real_form), fancy_tester)
+    FPP_unitary_hash_one_level(xs, {big_unitary_hash.uhash(xs[0].real_form),} fancy_tester)
 
 set FPP_unitary_hash_one_level(RealForm G, (Param->bool) fancy_tester) = void:
     FPP_unitary_hash_one_level(KGB(G), fancy_tester)
 
 set FPP_unitary_hash_steve([(KGBElt,ratvec)] xlambdas, (Param->bool) fancy_tester) = void:
-    FPP_unitary_hash_steve(xlambdas, let (x,) = xlambdas[0] in big_unitary_hash.uhash(x.real_form), fancy_tester)
+    FPP_unitary_hash_steve(xlambdas, {let (x,) = xlambdas[0] in big_unitary_hash.uhash(x.real_form),} fancy_tester)
 
 set FPP_unitary_hash_steve([KGBElt] xs, (Param->bool) fancy_tester) = void:
-    FPP_unitary_hash_steve(xs, big_unitary_hash.uhash(xs[0].real_form), fancy_tester)
+    FPP_unitary_hash_steve(xs, {big_unitary_hash.uhash(xs[0].real_form),} fancy_tester)
 
 set FPP_unitary_hash_steve(RealForm G, (Param->bool) fancy_tester) = void:
-    FPP_unitary_hash_steve(G, big_unitary_hash.uhash(G), fancy_tester)
+    FPP_unitary_hash_steve(G, {big_unitary_hash.uhash(G),} fancy_tester)
 
 
-set FPP_unitary_hash_bottom_layer([(KGBElt,ratvec)] xlambdas, Param_hash UhashG, (Param->bool)
+set FPP_unitary_hash_bottom_layer([(KGBElt,ratvec)] xlambdas, {Param_hash UhashG,} (Param->bool)
 fancy_tester) = void:
     if #xlambdas = 0 then return () fi;
     let (x,) = xlambdas[0]
     then G = x.real_form
     in if is_compact(G)
        then for p in all_parameters_gamma(G,G.rho)
-       	    do UhashG.match(p)
+       	    do big_unitary_hash.umatch(p)
 	    od;
             return ()
         fi;
-	if x =x_open(x.real_form) then return FPP_unitary_hash_steve(xlambdas, UhashG, fancy_tester) fi;
+	if x =x_open(x.real_form) then return FPP_unitary_hash_steve(xlambdas, {UhashG,} fancy_tester) fi;
     let (x,) = xlambdas[0]
     then G = x.real_form
     then disconn_flag = components_rank(G) > 0
@@ -1419,11 +1419,11 @@ fancy_tester) = void:
 	      	      in finish(xt,lambda)
 	      	   od
 	       fi
-    then Uhash = if disconn_flag {this will hold the unitary reps on Gsc}
+    {then Uhash = if disconn_flag {this will hold the unitary reps on Gsc}
     	      	 then big_unitary_hash.uhash(Gsc) {make_Param_hash()}
 		 {this is for unitary reps of Gsc that factor to G}
 		 else UhashG
-		 fi
+		 fi}
     {then () = pol_hash.clear()} {in recursive calls, this screws up bigger G, which has
     	  already indexed some K_chars here.}
     then () = if FPP_report_flag
@@ -1442,30 +1442,30 @@ fancy_tester) = void:
     	 old_test_verbose = test_verbose, old_test_slightly_verbose = test_slightly_verbose
     then () = face_verbose:=false; time_verbose:=false; test_verbose:=false; test_slightly_verbose:=false
     then () = if unip_flag
-    	      then unipotents_to_hash(G,UhashG)
+    	      then unipotents_to_hash(G{,UhashG})
 	      fi
     then () = if coh_ind_all_flag
-    	      then coh_ind_unip_all(G,UhashG)
+    	      then coh_ind_unip_all(G{,UhashG})
 	      elif coh_ind_most_flag
-	      then coh_ind_unip_most(G,Uhash)
+	      then coh_ind_unip_most(G{,Uhash})
 	      {elif coh_ind_few_flag
-	      then coh_ind_unip_few(G,Uhash)}
+	      then coh_ind_unip_few(G{,Uhash})}
 	      fi
     then () = if disconn_flag
-    	      then for j:UhashG.size()
-	      	   do for psc in sc_lifts2(UhashG.index(j), Gsc, M)
-		      do Uhash.match(psc)
+    	      then for p in big_unitary_hash.ulist(G)
+	      	   do for psc in sc_lifts2(p, Gsc, M)
+		      do big_unitary_hash.umatch(psc)
 		      od
-		   od{; prints("# unitary faces on Gsc = ",Uhash.size())}
+		   od{; prints("# unitary faces on Gsc = ",big_unitary_hash.u_size(G))}
 	      fi
     then xlambdatimes = [int]: null(#xlambdas)
     then answerCards = [int]: null(#xlambdas) {number of unitary parameters found}
-    then oldUhash = Uhash.size()
+    then oldUhash = big_unitary_hash.u_size(G)
     {then () = adjust_global_top(Gsc)}
     {then () = if by_zero_flag
     	      then global_faces_by_zero := low_FPP_faces_by_zero(global_faces)
 	      fi}
-    then current = elapsed_ms(), oldUhash = UhashG.size(), currentUhash = Uhash.size(), formerUhash = Uhash.size(),
+    then current = elapsed_ms(), oldUhash = big_unitary_hash.u_size(G), currentUhash = big_unitary_hash.u_size(G), formerUhash = big_unitary_hash.u_size(G),
     	 oldUcounter = unitary_test_counter.use_count(), currentUcounter = unitary_test_counter.use_count(),
 	 currentUtime = unitaryTime, currentCtime = charTime,
 	 oldCcounter = char_counter.use_count(), currentCcounter = char_counter.use_count()
@@ -1478,7 +1478,7 @@ fancy_tester) = void:
 		    then if every_lambda_flag and FPP_report_flag
 		    	 then prints("Already computed (",x,",",lambda,")")
 		      	 fi
-	 	    else let startxl = elapsed_ms(), startUhash = Uhash.size(), (x_sc,lambda_sc) = xlambdas_sc[k],
+	 	    else let startxl = elapsed_ms(), startUhash = big_unitary_hash.u_size(G), (x_sc,lambda_sc) = xlambdas_sc[k],
 		     		   startUcounter = unitary_test_counter.use_count(),
 				   startUtime = unitaryTime, theta = x.involution,
 				   startCcounter = char_counter.use_count(), startCtime = charTime,
@@ -1487,7 +1487,7 @@ fancy_tester) = void:
 		 then (Lvd, Perm2{, mapAct}) = LPmss[k] {already lives on Gsc}
 		 then () = if every_lambda_flag and FPP_report_flag
       	      	   	      then prints("     start #", k, " = (",x,",",lambda,"), Uhash.size() = ",
-			      Uhash.size(), ", runtime = ", print_time_string(elapsed_ms() - start),
+			      big_unitary_hash.u_size(G), ", runtime = ", print_time_string(elapsed_ms() - start),
 			      ", #uparams so far = ",sum(answerCards));
 		   		   prints("  ------------------")
         	   		   fi {every_lambda_flag}
@@ -1519,19 +1519,19 @@ fancy_tester) = void:
 			      test_verbose :=old_test_verbose; test_slightly_verbose := old_test_slightly_verbose
 			 fi;
 			 let answer = if revert_steve_flag and lambda_sc!=Gsc.rho
-			     	      then local_test_GEO_hash_steve(x_sc, lambda_sc, Lvd, Uhash,
+			     	      then local_test_GEO_hash_steve(x_sc, lambda_sc, Lvd, {Uhash,}
 				      	   fancy_tester)
 				       elif test_bl(x,lambda,Lvd)
 			     	       then local_test_GEO_hash_bottom_layer(x_sc,
-						lambda_sc, Lvd, LF, pol_hash, Uhash, fancy_tester)
+						lambda_sc, Lvd, LF, pol_hash, {Uhash,} fancy_tester)
 				       elif one_level_revert_flag
 				       then local_test_GEO_hash_one_level(x_sc, lambda_sc, Lvd,
-				       	    	LF, pol_hash, Uhash, fancy_tester)
+				       	    	LF, pol_hash, {Uhash,} fancy_tester)
 				       elif real_dumb_revert_flag
 				       then local_test_GEO_hash_real_dumb(x_sc, lambda_sc, Lvd,
-				       	    	LF, pol_hash, Uhash, fancy_tester)
+				       	    	LF, pol_hash, {Uhash,} fancy_tester)
 				       else local_test_GEO_hash2(x_sc, lambda_sc, Lvd,
-				       	    	LF, pol_hash, Uhash, fancy_tester)
+				       	    	LF, pol_hash, {Uhash,} fancy_tester)
 				       fi
 			 then () = finish(x_sc, lambda_sc)
 			 then () = if disconn_flag
@@ -1539,7 +1539,7 @@ fancy_tester) = void:
 				   fi
 			 then () = answerCards[k] := #answer
 			 then () = for p in answer do Uparamhash.match(p) od
-   		    	 then () = current := elapsed_ms(); currentUhash := Uhash.size();
+   		    	 then () = current := elapsed_ms(); currentUhash := big_unitary_hash.u_size(G);
 			       	   currentUcounter := unitary_test_counter.use_count();
 				   currentUtime := unitaryTime;
 				   currentCcounter := char_counter.use_count();
@@ -1554,7 +1554,7 @@ fancy_tester) = void:
 				  fi in Q.Levi.Lie_type,
 				  ",",test_string);
 			         prints("    #LF = ", for L in LF do #L od, "; #unitary params = ", answerCards[k],
-				 ", #new unitary = ", Uhash.size() - startUhash,
+				 ", #new unitary = ", big_unitary_hash.u_size(G) - startUhash,
 				 ", #tests for this lambda = ", currentUcounter - startUcounter,
 				 ", unitary time = ", print_time_string(currentUtime - startUtime));
 				 prints("  #char calcs = ", currentCcounter - startCcounter,
@@ -1579,9 +1579,9 @@ fancy_tester) = void:
 		 fi {is_finished(x,lambda)}
 		 od{xlambdas}
     then () = if disconn_flag
-	      then for j: Uhash.size()
-		   do for p in sc_descends(Uhash.index(j), G, M)
-		      do UhashG.match(p)
+	      then for p_sc in big_unitary_hash.ulist(Gsc) {j: Uhash.size()}
+		   do for p in sc_descends(p_sc, G, M)
+		      do big_unitary_hash.umatch(p)
 		      od
 		   od
 	       fi
@@ -1628,24 +1628,24 @@ fancy_tester) = void:
        	    prints("Number of unitary params = ", sum(answerCards), ", time for is_finished = ",
 	    		   print_time_string(is_finished_time), ", time for position = ",
 	    		   print_time_string(position_time));
-       	    prints("Number of FPP-unitary faces = ",UhashG.size(), ", number found on this run = ", UhashG.size() - oldUhash);
+       	    prints("Number of FPP-unitary faces = ",big_unitary_hash.u_size(G), ", number found on this run = ", big_unitary_hash.u_size(G) - oldUhash);
 	    report_tested()
 	    fi {FPP_report_flag}
      in kill_for_big_uTime(); () 
 
 
 set FPP_unitary_hash_bottom_layer([(KGBElt,ratvec)] xlambdas, (Param -> bool) fancy_tester) = void:
-    FPP_unitary_hash_bottom_layer(xlambdas, let (x,lambda) = xlambdas[0]
-    in big_unitary_hash.uhash(x.real_form), fancy_tester)
+    FPP_unitary_hash_bottom_layer(xlambdas, {let (x,lambda) = xlambdas[0]
+    in big_unitary_hash.uhash(x.real_form),} fancy_tester)
 
-set FPP_unitary_hash_bottom_layer([KGBElt] xs, Param_hash UhashG, (Param->bool) fancy_tester) = void:
+set FPP_unitary_hash_bottom_layer([KGBElt] xs, {Param_hash UhashG,} (Param->bool) fancy_tester) = void:
     if #xs = 0
     then return ()
     fi;
     let G = xs[0].real_form
     in if is_compact(G)
        then for p in all_parameters_gamma(G,G.rho)
-       	    do UhashG.match(p)
+       	    do big_unitary_hash.umatch(p)
 	    od;
             return ()
         fi;
@@ -1662,10 +1662,10 @@ set FPP_unitary_hash_bottom_layer([KGBElt] xs, Param_hash UhashG, (Param->bool) 
     	       	 then for x in xs do inverse_embed_KGB2(x, Gsc, M) od
 	      	 else xs
 	      	 fi
-    then Uhash = if disconn_flag {this will hold the unitary irrs on Gsc}
+    {then Uhash = if disconn_flag {this will hold the unitary irrs on Gsc}
     	       	 then big_unitary_hash.uhash(Gsc) {make_Param_hash()}
 		 else UhashG
-		 fi
+		 fi}
     then UparamhashTilde = if disconn_flag {this will hold the unitary standard Params on Gsc}
     	       	 	   then make_Param_hash()
 		 	   else Uparamhash
@@ -1690,19 +1690,19 @@ set FPP_unitary_hash_bottom_layer([KGBElt] xs, Param_hash UhashG, (Param->bool) 
     then () = test_verbose:=false
     then () = test_slightly_verbose:=false
     then () = if unip_flag
-    	      then unipotents_to_hash(G,UhashG)
+    	      then unipotents_to_hash(G{,UhashG})
 	      fi
     then () = if coh_ind_all_flag
-    	      then coh_ind_unip_all(G,UhashG)
+    	      then coh_ind_unip_all(G{,UhashG})
 	      elif coh_ind_most_flag
-    	      then coh_ind_unip_most(G,UhashG)
+    	      then coh_ind_unip_most(G{,UhashG})
 	      {elif coh_ind_few_flag
-	      then coh_ind_unip_few(G,UhashG)}
+	      then coh_ind_unip_few(G{,UhashG})}
 	      fi
     then () = if disconn_flag
-    	      then for j:UhashG.size()
-	      	   do for psc in sc_lifts2(UhashG.index(j), Gsc, M)
-		      do Uhash.match(psc)
+    	      then for p in big_unitary_hash.ulist(G) {j:UhashG.size()}
+	      	   do for psc in sc_lifts2(p, Gsc, M)
+		      do big_unitary_hash.umatch(psc)
 		      od
 		   od
 	       fi
@@ -1713,7 +1713,7 @@ set FPP_unitary_hash_bottom_layer([KGBElt] xs, Param_hash UhashG, (Param->bool) 
     {then () = adjust_global_top(Gsc)}
     {then () = global_faces_by_zero := low_FPP_faces_by_zero(global_faces)}
     then current = elapsed_ms()
-    then oldUhash = UhashG.size(), currentUhash = Uhash.size(), formerUhash = Uhash.size(),
+    then oldUhash = big_unitary_hash.u_size(G), currentUhash =big_unitary_hash.u_size(G), formerUhash = big_unitary_hash.u_size(G),
     	 oldUcounter = unitary_test_counter.use_count(), currentUcounter = unitary_test_counter.use_count(),
 	 oldCcounter = char_counter.use_count(), currentCcounter = char_counter.use_count(), oldUtime = unitaryTime,
 	 oldcharTime = charTime, currentcharTime = charTime, currentUtime = unitaryTime
@@ -1760,9 +1760,9 @@ set FPP_unitary_hash_bottom_layer([KGBElt] xs, Param_hash UhashG, (Param->bool) 
 		    fi{A}
 	then () = if xtwist != x
 	     	  then {prints("skipping x = ",x.number," for xtwist = ",xtwist.number);}
-	    	       for p in Uhash.list()
+	    	       for p in big_unitary_hash.ulist(G)
 	    	       do if p.x = xtwist
-	       	       	  then Uhash.match(parameter(x, p.lambda, p.nu))
+	       	       	  then big_unitary_hash.umatch(parameter(x, p.lambda, p.nu))
 	       	    	  fi
 	    	       od;
 	    	       big_unitary_hash.finish(x, full_N1); {mark as done all lambdas for x}
@@ -1787,9 +1787,9 @@ set FPP_unitary_hash_bottom_layer([KGBElt] xs, Param_hash UhashG, (Param->bool) 
 		     fi{B}
 	  then () = if xcont != x
 		    then {prints("skipping x = ",x.number," for xcont = ",xcont.number);}
-		       	 for p in Uhash.list()
+		       	 for p in big_unitary_hash.ulist(G)
 	      	       	 do if p.x = xcont
-		       	    then Uhash.match(contragredient(p))
+		       	    then big_unitary_hash.umatch(contragredient(p))
 		    	    fi
 		       	 od;
 		         big_unitary_hash.finish(x,full_N1); {mark as done all lambdas for x}
@@ -1802,7 +1802,7 @@ set FPP_unitary_hash_bottom_layer([KGBElt] xs, Param_hash UhashG, (Param->bool) 
 	 then templambdatimes = null(Ncases)
 	 then () = if every_KGB_flag and FPP_report_flag
       	      	   then prints("     start KGBElt #", x.number, ", #lambdas = ",Ncases,
-		   	       " Uhash.size() = ", Uhash.size(), ", runtime = ",
+		   	       " Uhash.size() = ", big_unitary_hash.u_size(G), ", runtime = ",
 			       print_time_string(elapsed_ms() - start), ", #uparams so far = ",
 			       sum(for list in answerCards do sum(list) od));
 		   	prints("  ------------------")
@@ -1814,7 +1814,7 @@ set FPP_unitary_hash_bottom_layer([KGBElt] xs, Param_hash UhashG, (Param->bool) 
 		      	       	 then to_vertex_data(for v in Lvd1.list do M*v od, Lvd1.pair_start)
 			   	 else Lvd1
 				 fi
-		      then  startlambda = elapsed_ms(), startUhash = Uhash.size(), startUcounter =
+		      then  startlambda = elapsed_ms(), startUhash = big_unitary_hash.u_size(G), startUcounter =
 		      	    unitary_test_counter.use_count(), startUtime = unitaryTime,
 			    startminlambda = good_hash.size(), startminbadlambda = bad_hash.size(),
 			    startmorebadlambda = more_bad_hash.size(), startmorelambda = more_good_hash.size(),
@@ -1822,7 +1822,7 @@ set FPP_unitary_hash_bottom_layer([KGBElt] xs, Param_hash UhashG, (Param->bool) 
 			    startCcounter = char_counter.use_count(), startCtime = charTime
 		      then () = if every_lambda_flag and FPP_report_flag
       	      	   	     	then prints("     start #", index, " = (",x,",",lambda,
-					    "), Uhash.size() = ", Uhash.size(),
+					    "), Uhash.size() = ", big_unitary_hash.u_size(G),
 					    ", runtime = ", print_time_string(elapsed_ms() - start){,
 			      		    ", #uparams so far = ",sum(answerCards)});
 		   		   prints("  ------------------")
@@ -1853,19 +1853,19 @@ set FPP_unitary_hash_bottom_layer([KGBElt] xs, Param_hash UhashG, (Param->bool) 
 			       fi;
 			       let answer = [Param]:
 			       	      if revert_steve_flag and (lambda != G.rho)
-			       	      then local_test_GEO_hash_steve(x_sc, M*lambda, Lvd, Uhash,
+			       	      then local_test_GEO_hash_steve(x_sc, M*lambda, Lvd, {Uhash,}
 				      	   fancy_tester)
 			       	      elif test_bl(x_sc, M*lambda, Lvd) or easy_test_bl_flag
 			     	      then local_test_GEO_hash_bottom_layer(x_sc, M*lambda, Lvd, LF,
-				      	   pol_hash, Uhash, fancy_tester)
+				      	   pol_hash, {Uhash,} fancy_tester)
 				      elif one_level_revert_flag
 				      then local_test_GEO_hash_one_level(x_sc, M*lambda, Lvd,
-				      	   LF, pol_hash, Uhash, fancy_tester)
+				      	   LF, pol_hash, {Uhash,} fancy_tester)
 				      elif real_dumb_revert_flag
 				      then local_test_GEO_hash_real_dumb(x_sc, M*lambda, Lvd,
-				      	   LF, pol_hash, Uhash, fancy_tester)
+				      	   LF, pol_hash, {Uhash,} fancy_tester)
 				      else local_test_GEO_hash2(x_sc, M*lambda, Lvd,
-				      	   LF, pol_hash, Uhash, fancy_tester)
+				      	   LF, pol_hash, {Uhash,} fancy_tester)
 				      fi
 			       then y_scs = isotwistKGBs(x_sc)
 			       then () = for y_sc in y_scs
@@ -1882,10 +1882,10 @@ set FPP_unitary_hash_bottom_layer([KGBElt] xs, Param_hash UhashG, (Param->bool) 
 						    	      od
 					       	  	 fi
 					        in for tsc in monomials(finalize(rsc))
-				           	   do Uhash.match(tsc);
+				           	   do big_unitary_hash.umatch(tsc);
 					      	      if disconn_flag
 					      	      then for t in sc_descends(tsc,G,M)
-						      	   do UhashG.match(t)
+						      	   do big_unitary_hash.umatch(t)
 						   	   od
 					       	       fi
 					    	   od {tsc}
@@ -1901,7 +1901,7 @@ set FPP_unitary_hash_bottom_layer([KGBElt] xs, Param_hash UhashG, (Param->bool) 
 				    fi in Q.Levi.Lie_type, ",",test_string);
 				         {if more_flag or bl_step_flag
 					 then} prints("    #LF = ", for L in LF do #L od, ", #unitary params = ",
-					      	tempanswerCards[index], ", #new unitary = ", Uhash.size() - startUhash,
+					      	tempanswerCards[index], ", #new unitary = ", big_unitary_hash.u_size(G) - startUhash,
 						", #tests for this lambda = ", unitary_test_counter.use_count() - startUcounter,
 						", time = ",print_time_string(unitaryTime - startUtime));
 					      prints("     #char calcs for lambda = ", char_counter.use_count() - startCcounter,
@@ -1923,13 +1923,13 @@ set FPP_unitary_hash_bottom_layer([KGBElt] xs, Param_hash UhashG, (Param->bool) 
                  od {lambdas} {good_entries} {would be easy enough to get [Param] for each (x,lambda),
 		    	      		     but for now just put unitary reps in Uhash}
     	   then () = if disconn_flag
-	   	     then for j: Uhash.size()
-		     	  do for p in sc_descends(Uhash.index(j), G, M)
-			     do UhashG.match(p)
+	   	     then for p_sc in big_unitary_hash.ulist(Gsc)
+		     	  do for p in sc_descends(p_sc, G, M)
+			     do big_unitary_hash.umatch(p)
 			     od
 			  od
 		     fi
-            then () = current := elapsed_ms(); currentUhash := Uhash.size();  times[j] := current -former_time;
+            then () = current := elapsed_ms(); currentUhash := big_unitary_hash.u_size(G);  times[j] := current -former_time;
 	    	     red_count_times[j] := red_count_time - former_red_count_time; currentUtime := unitaryTime;
 	   	     lambdatimes[j] := templambdatimes; currentUcounter := unitary_test_counter.use_count();
 		     currentCcounter := char_counter.use_count(); answerCards[j] := tempanswerCards
@@ -2007,14 +2007,14 @@ set FPP_unitary_hash_bottom_layer([KGBElt] xs, Param_hash UhashG, (Param->bool) 
        	    prints("Number of unitary params = ", sum(for list in answerCards do sum(list) od),
 	    		   ", time for is_finished = ", print_time_string(is_finished_time),
 			   ", time for position = ", print_time_string(position_time));
-            prints("Number of known FPP-unitary faces = ",UhashG.size(),
-       	      ", number found on this run = ", UhashG.size() - oldUhash);
+            prints("Number of known FPP-unitary faces = ",big_unitary_hash.u_size(G),
+       	      ", number found on this run = ", big_unitary_hash.u_size(G) - oldUhash);
 	    report_tested()
       fi {FPP_report_flag}
      in kill_for_big_uTime(); ()
 
 set FPP_unitary_hash_bottom_layer([KGBElt] xs, (Param->bool) fancy_tester) = void:
-    FPP_unitary_hash_bottom_layer(xs, big_unitary_hash.uhash(xs[0].real_form),fancy_tester)
+    FPP_unitary_hash_bottom_layer(xs, {big_unitary_hash.uhash(xs[0].real_form),}fancy_tester)
 
 set FPP_unitary_hash_bottom_layer(RealForm G, (Param->bool) fancy_tester) = void:
     FPP_unitary_hash_bottom_layer(KGB(G), fancy_tester)
@@ -2053,7 +2053,7 @@ if one is going to do a bunch of related is_unitary tests, for ex as in known_un
 set MyFancyTester(Param p) = bool:
     let () = FPP_unitary_hash2([(p.x,p.lambda)], is_unitary_hash_big_SIMPLE@Param)
     {then () = prints("invoked MFT at p = ",p,", real form = ",p.real_form)}
-    in big_unitary_hash.uhash(p.real_form).lookup(herm_center(p)).>=
+    in big_unitary_hash.ulookup(herm_center(p)).>=
 
 set FPP_unitary_hash_real_dumb([(KGBElt, ratvec)] xls) = void:
    if recursive_tester_flag
@@ -2204,7 +2204,7 @@ set FPP_unitary_hash_bottom_layer(RealForm rf) = void:
 
 {all nu so parameter(x,lambda,nu) is in unitary hash for G}
 set unitary_nus(RealForm G, KGBElt x, ratvec lambda) = [ratvec]:
-    let list = big_unitary_hash.uhash(G).list()
+    let list = big_unitary_hash.ulist(G)
     in for p in list
        do if p.x = x and p.lambda = lambda then [p.nu]
 	  else []
@@ -2219,7 +2219,7 @@ set unitary_nus(RealForm G) = [[[ratvec]]]:
 	   do []
 	   od
 	od
-     then list = big_unitary_hash.uhash(G).list()
+     then list = big_unitary_hash.ulist(G)
      then () = for p in list
        	       do let answerx = answer[p.x.number]
 	       	  then () = answerx[position(p.x, p.lambda)] #:= p.nu
@@ -2913,7 +2913,7 @@ set precomputeNUR(RealForm G) = void:
 		 else FPP_unitary_hash2(rf)
 		 fi;
 		 {big_unitary_hash.nuhash_fill(rf);}
-		 prints("found ",big_unitary_hash.nuhash(rf).size(), " nonunitary reps")
+		 prints("found ",big_unitary_hash.nu_size(G), " nonunitary reps")
 	      od
     then () = FPP_report_flag:=true
     in ()
@@ -2935,24 +2935,24 @@ set precomputeALL(RealForm G) = void:
 		 else FPP_unitary_hash2(rf)
 		 fi;
 		 prints("At time ",print_time_string(elapsed_ms() - start), ", finished # ",k,"/",
-	      	 	    #rflist," = ",rf, ", #FPPreps = ",big_unitary_hash.uhash(rf).size())
+	      	 	    #rflist," = ",rf, ", #FPPreps = ",big_unitary_hash.u_size(G))
 	      od
     then FPP_time = elapsed_ms()
     then () = FPP_report_flag:=temp_report_flag
-    then N0 = big_unitary_hash.uhash(G).size()
+    then N0 = big_unitary_hash.u_size(G)
     then () = real_induced(G)
-    then NR = big_unitary_hash.uhash(G).size()
+    then NR = big_unitary_hash.u_size(G)
     then () = prints("In ",print_time_string(elapsed_ms() -FPP_time), ", real induction found ",NR-N0,
     	      		 " FPP unitary faces for G.")
     then RI_time = elapsed_ms()
     then () = theta_induced(G)
-    then NTheta =  big_unitary_hash.uhash(G).size()
+    then NTheta =  big_unitary_hash.u_size(G)
     then () = prints("In ",print_time_string(elapsed_ms() -RI_time), ", coh induction found additional ",NTheta-NR,
        		  	" FPP unitary faces for G.")
     then Th_time = elapsed_ms()
     then unips = unipotent_representations(G), IG = big_unitary_hash.rf_number(G)
     then () = for p in unips do big_unitary_hash.long_umatch(p,IG) od
-    then NUnip =  big_unitary_hash.uhash(G).size()
+    then NUnip =  big_unitary_hash.u_size(G)
     then () = prints("In ",print_time_string(elapsed_ms() -Th_time), ", found additional ",NUnip - NTheta,
        		  	" unipotent faces for G.")
     in prints("Altogether found ",NUnip-N0, " FPP unitary faces for G.")

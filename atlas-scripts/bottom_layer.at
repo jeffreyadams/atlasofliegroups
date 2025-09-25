@@ -741,7 +741,7 @@ set min_small_bottom_elim_factors(Param p0, Param p, KTypePol P) = bool:
 		   od.## {now in bij with LKTs of p0}
     then Lbranches = for derpL0j@j in derpL0js {indexed by j, factors of L}
 	    	     do let sigLj = KTypePol: {signature for derpLj}
-			    if big_unitary_hash.uhash(derLjs[j]).lookup(derpL0j).>=
+			    if big_unitary_hash.ulookup(derpL0j).>=
 			    then {let startCF = elapsed_ms()}
 			       	 let QLj = character_formula_to_height(derpL0j,DLs[j])
 			       	 {then () = charTime +:= elapsed_ms() - startCF
@@ -809,7 +809,7 @@ set min_bottom_elim_factors(Param p0, Param p, KTypePol P) = bool:
 		  fi
     then Lbranches = for derpL0j@j in derpL0js
 	    	     do let sigLj =
-		            if big_unitary_hash.uhash(derLjs[j]).lookup(derpL0j).>=
+		            if big_unitary_hash.ulookup(derpL0j).>=
 			    then let QLj = character_formula_to_height(derpL0j,DLs[j])
 				 in K_type_pol(QLj)
 			    elif RF_code
