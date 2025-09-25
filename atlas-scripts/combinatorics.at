@@ -6,10 +6,10 @@
 <sort.at
 <groups.at { for root data computed by |GL|, |Sp|, |SO| }
 
-{ |fac@int| is now defined in basic.at }
+{ |factorial@int| is now defined in basic.at, and it can be written as |n!| }
 
 set binom (int n, int k) = int:
-   if n.>= and k+k>n then k:=n-k fi; { use symmetry to limit |k| }
+   if n>=0 and k+k>n then k:=n-k fi; { use symmetry to limit |k| }
    case k then 0 in 1, n
    else let p=n*(n-1) in for i:k-2 from 2 do p:=p\i*(n-i) od; p\k
    esac
@@ -40,7 +40,7 @@ in for x in sigma
    do let l=#unseen
       then pos = binary_search_first((int i): unseen[i]>=x,0,l)
    in assert(@:unseen[pos]=x)
-   ; unseen:=unseen[:pos]##unseen[pos+1:]
+   ; unseen := delete(unseen,pos)
    ; acc:=l*acc+pos
    od; acc
 
@@ -84,7 +84,7 @@ in ( @Maybe<vec>: if go then some(pi) else none() fi
 any_type T begin
 set permutations([T] xs) = [[T]]: { permutations of entries, ignore equalities }
    let n  = #xs
-in for i:fac(n) do for e in permutation_decode(i,n) do xs[e] od od
+in for i: n! do for e in permutation_decode(i,n) do xs[e] od od
 end
 
 { Represent any $k$-combination on $\N$ as a single natural number
@@ -336,7 +336,7 @@ set hook_lengths (Partition lambda) = [int]:
    od.sort_to_partition { not viewed as partition, but sorting is the same }
 
 set Sn_representation_dimension (Partition lambda) = int:
-   let hl=lambda.hook_lengths in hl.#.fac\hl.product
+   let hl=lambda.hook_lengths in hl.#.factorial\hl.product
 
 set hook_lengths ([bool] edges) = [int]:
    let last=#edges-1
@@ -357,9 +357,9 @@ set edge_sequence (Partition lambda) = ([bool],int):
 
 set cycle_type_order = lcm@[int]
 set cycle_centralizer_order ([int] cycles) = int:
-  product(cycles)*product(for m in cycles.frequencies do m.fac od)
+  product(cycles)*product(for m in cycles.frequencies do m! od)
 set cycle_class_size ([int] cycles) = int:
-  cycles.sum.fac \ cycle_centralizer_order(cycles)
+  cycles.sum.factorial \ cycle_centralizer_order(cycles)
 
 { compute cycle type of power of a permutation, given its cycle type }
 set cycle_power ([int] cycles, int k) = [int]:
@@ -385,7 +385,7 @@ set Murnaghan_Nakayama (Partition lambda, [int] cycle_type) = int:
 	  od
 	 .sum { add up value from all candidate positions }
        then { |k=1| case, used the hook length formula for remaining partition }
-          let hl=edge.hook_lengths in hl.#.fac\hl.product
+          let hl=edge.hook_lengths in hl.#.factorial\hl.product
        fi
     fi
    )
@@ -691,7 +691,8 @@ set hyperoctahedral_character (
           then lwb = max(0,d-a{=b-c}), upb=min(b,d) { bounds for l }
           in assert(@:a+b=c+d);
           for l:upb-lwb+1 from lwb do (-1)^l*binom(c,b-l)*binom(d,l)od.sum
-          * (a.fac\hl0.product)*(b.fac\hl1.product) { factor independent of l }
+          * (a! \ hl0.product)
+	  * (b! \ hl1.product) { factors independent of |l| }
        fi
     fi
    )
@@ -815,10 +816,10 @@ set cycle_centralizer_order (Signed_cycles cycles) = int:
   let plus_cycles = for (c,s) in cycles if not s do c fi od
   ,  minus_cycles = for (c,s) in cycles if   s   do c fi od
   in product(for (cycle,) in cycles do cycle+cycle od)*
-     product(for m in plus_cycles.frequencies do m.fac od)*
-     product(for m in minus_cycles.frequencies do m.fac od)
+     product(for m in plus_cycles.frequencies  do m! od)*
+     product(for m in minus_cycles.frequencies do m! od)
 set cycle_class_size (Signed_cycles cycles) = int:
-  let n=rank(cycles) in n.fac * 2^n \ cycle_centralizer_order(cycles)
+  let n=rank(cycles) in n! * 2^n \ cycle_centralizer_order(cycles)
 
 { compute cycle type of power of a signed permutation, given its cycle type }
 set cycle_power (Signed_cycles cycles, int k) = Signed_cycles:
@@ -929,7 +930,7 @@ set centralizer_order (D_class c) = int:
        alpha.cycle_centralizer_order*2^#alpha { add a factor 2 for each cycle }
    esac
 set class_size (D_class c) = int:
-  let n=rank(c) in n.fac * 2^(n-1) \ centralizer_order(c)
+  let n=rank(c) in n! * 2^(n-1) \ centralizer_order(c)
 
 { compute cycle type of power of a signed permutation, given its cycle type }
 set cycle_power (D_class c, int k) = D_class:

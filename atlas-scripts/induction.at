@@ -1,14 +1,12 @@
-<misc.at { for |simple_imaginary_subsystem| }
+<basic.at
 <parabolics.at
 <kl.at { for |character_formula| }
 <coherent.at
-{<coherent_irreducible.at}
 <synthetic.at { for |unnormalized_torus_factor| }
 <Weylgroup.at { for |to_no_Cminus@Param| }
 <K.at
 <W_K.at { for |cross_divide| }
 <finite_dimensional.at
-<W_reps.at
 
 {! Parabolic induction from real and $\theta$-stable parabolics; cuspidal and
 $\theta$-stable data of a parameter, and some functions related to $\theta$-stable parabolics.
@@ -274,12 +272,14 @@ set coherent_std_imaginary (WeylElt w,Param p) = ParamPol:
 }
 set standardize (Param p) = ParamPol:
   if is_standard(p) then ParamPol:p
-{  else p:=p.to_no_Cplus;} else p:=p.to_no_Cplus;
-  let (w,lambda_dom) =
-     let (pr,pcr) = p.x.simple_imaginary_subsystem in
-     from_dominant(root_datum(pr,pcr,p.root_datum.prefers_coroots),p.lambda)
-  then p_dom=parameter(x(p), lambda_dom, nu(p))
-  in {prints("p_dom: ", p_dom, "w: ", w);}coherent_std_imaginary(w,p_dom)
+  else p:=p.to_no_Cplus
+  ; let rd = root_datum(p)
+    then S =
+      for alpha in p.x.imaginary_sys.simple_system_from_positive.fst
+      do root_index(rd,alpha)
+      od
+    then (w,lambda_dom) = from_dominant(rd,S,lambda(p))
+    in coherent_std_imaginary(w,parameter(x(p), lambda_dom, nu(p)))
   fi
 
 {. standardize a formal linear combination of possibly non-standard parameters .}
@@ -658,9 +658,9 @@ set Aq_reducible (KGBElt x,ratvec lambda, ratvec lambda_q) = ParamPol:
 {. A_q(lambda) module defined as above, but as a parameter, assuming it is
   irreducible. .}
 set Aq (KGBElt x_in,ratvec lambda, ratvec lambda_q) = Param:
-  let P=%Aq_reducible(x_in,lambda,lambda_q)
+  let P = ParamPol: Aq_reducible(x_in,lambda,lambda_q)
   in assert(@:#P<=1,"Aq is not irreducible. Use Aq_reducible(x,lambda) instead");
-  let (c,p)=P[0]
+  let (c,p) = first_term(P)
   in assert(@:c=1,"Aq has multiplicity. Use Aq_reducible(x,lambda) instead");
   p
 
@@ -814,10 +814,10 @@ set Aq_packet(RealForm G,[*] S)=[Param]:Aq_packet(G,[int]:S)
 
 {. List all good Aq(0) (inf. char. rho) of G; this is more or less
   blocku (there may be duplications). .}
-set Aq_zeros(RealForm G)=[Param]:
+set Aq_zeros(RealForm G) = [Param]:
   let tsl=for P in theta_stable_parabolics(G) do Levi(P) od in
   let Aqs= for L in tsl do theta_induce_irreducible(trivial(L),G) od in
-  for Q in Aqs do let S=%Q in let (c,p)=S[0] in p od
+  for Q in Aqs do first_param(Q) od
 
 {. Given a KGB element x, list all theta-stable parabolics in G
   with maximal element x. .}

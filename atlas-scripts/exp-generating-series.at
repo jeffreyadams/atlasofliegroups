@@ -165,7 +165,7 @@ set count_permutations_with_cycles (inf_list allowed_cycles) = inf_list:
 	   else { now |length| is allowed; emit term and advance |c| }
 	      set (c,thunk):=thunk()
 	   ;  assert (c>length,"Allowed cycle lengths not increasing")
-	   ;  (fac(length-1) { for $X^l\over l$ } next length+:=1,f)
+	   ;  (factorial(length-1) { for $X^l\over l$ } next length+:=1,f)
 	   fi
        )
      ).memoize
