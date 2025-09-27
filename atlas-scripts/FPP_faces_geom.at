@@ -1804,46 +1804,31 @@ set wiggle(ParamPol P, ratvec gamma0) = ParamPol:
 sum(P.real_form, for c@q in P do c*parameter(q.x, q.lambda, gamma0) od)
 
 {compute the deformations of irrep p to boundary faces of its face. This is
-a list of 2^{#local_vertices} - 1 ParamPol's, the character formulas
-on the boundary faces. If p is unitary, this is a sum with positive coeffs of
-characters of unitary reps} {OOPS! these may not be hermitian ?? what??}
-set local_defs_old(Param p) = [ParamPol]:
+a list of 2^{#local_vertices} ParamPol's, the character formulas
+on the boundary faces; term 0 is null_module. If p is unitary, this is a sum
+with positive coeffs of characters of unitary reps}
+{OOPS! these may not be hermitian ?? what??}
+set local_def_pols(Param p) = [ParamPol]:
  {let start = elapsed_ms()
  then () = char_counter.use()xs
  then} let CF = character_formula(p)
  {then () = charTime +:= elapsed_ms() -start}
  then list = local_vertices(p)
  then () = if #list = 1 then return [] fi
- then d = #list {dim of local face plus 1; between 2 and dim A+1}
- in for j:d-2 from 2
-    do for S in choices_from(list,j)
-       do let gamma0 = sum(#list[0],S)/j
-       in wiggle(CF,gamma0)
-       od
-    od.##
-
-{compute the deformations of irrep p to boundary faces of its face. This is
-a list of 2^{#local_vertices}-1 ParamPol's, the character formulas
-on the boundary faces. If p is unitary, this is a sum with positive coeffs of
-characters of unitary reps} {OOPS! these may not be hermitian ?? what??}
-set local_defs(Param p) = [ParamPol]:
- {let start = elapsed_ms()
- then () = char_counter.use()xs
- then} let CF = character_formula(p)
- {then () = charTime +:= elapsed_ms() -start}
- then list = local_vertices(p)
- then () = if #list = 1 then return [] fi
- in for S in power_set(list)[1:]
-    do let gamma0 = sum(#list[0],S)/(#S)
-    in wiggle(CF,gamma0)
+ in for S in power_set(list)
+    do if #S = 0
+       then 0*p
+       else let gamma0 = sum(#list[0],S)/(#S)
+       	    in wiggle(CF,gamma0)
+       fi
     od
 
 
-{compute the deformations of irrep p to boundary facets (codim 1) of
+{compute the deformations of irrep p to codim 1 boundary faces of
 its face. This is a list of #local_vertices ParamPol's, the character
 formulas on the facets. If p is unitary, each is a sum with positive
 coeffs of characters of unitary reps}
-set local_facet_defs(Param p) = [ParamPol]:
+set local_codim1_defs(Param p) = [ParamPol]:
     let list = local_vertices(p)
     in if #list = 1 then [ParamPol]: []
        else {let start = elapsed_ms()
@@ -1859,17 +1844,10 @@ set local_facet_defs(Param p) = [ParamPol]:
 set local_face_defs_time = int:0
 
 {deform to ALL boundary faces, including trivial deformation}
-set local_face_defs(Param p) = [Param]:
-    let list = local_vertices(p)
-    then start = elapsed_ms()
-    then vert_subs = power_set(list)[1:]{omit empty vertex set}
-    then CF = character_formula(p)
-    then ans = for F in vert_subs
-       	       do let def_vert = sum(#list[0], F)/#F
-       	       	  in monomials(composition_series(wiggle(CF, def_vert)))
-       	       od.##
-    in local_face_defs_time +:= elapsed_ms() - start;
-       ans
+set local_face_defs(Param p) = [[Param]]:
+    for P in local_def_pols(p)
+    do monomials(composition_series(P))
+    od
 
 {
 {compute the deformations of parameter p to boundary faces of its
@@ -1888,15 +1866,15 @@ in for j:d from 1
 
 {this is all the irrs arising by deformation to boundary faces of one irr p}
 set deformed_pol(Param p) = ParamPol:
-sum(p.real_form, local_defs(p))
+sum(p.real_form, local_def_pols(p))
 
 {this is all the irrs arising by deformation to boundary facets of one irr p}
-set facet_deformed_pol(Param p) = ParamPol:
-sum(p.real_form, local_facet_defs(p))
+set codim1_deformed_pol(Param p) = ParamPol:
+sum(p.real_form, local_codim1_defs(p))
 
 set deformed(Param p) = [Param]:
     monomials(composition_series(deformed_pol(p)))
-
+{
 set proper_deformed(Param p) = [Param]:
     let x = p.x
     in for q in deformed(p)
@@ -1925,3 +1903,4 @@ set facet_deformed_new(Param p) = [Param]:
        else []
        fi
     od.##
+}

@@ -169,6 +169,7 @@ set_type
   , (RealForm -> vec) statuses {vec of size phash; entry j records info about Param j}
   , (Param -> int) status {status of parameter, which is added to phash (better to give an impossible response if
     	      	   	   parameter is not known??)}
+  , (Param -> [int]) deformations {list of all deformations}
   , (RealForm -> [Param]) ulist {list of known unitary}
   , (RealForm -> [Param]) nulist {list of known nonunitary}
   , (RealForm -> vec) nu_heights {list of heights to which nu reps are known non-unitary; -1 if none known}
@@ -211,6 +212,8 @@ set make_big_unitary_hash() = big_unitary_hash_table:
 (   let real_form_hash = make_RealForm_hash()
     then phashes = [Param_hash]: [] {one for each real form}
     then status_vecs = [vec]: [] {one for each real form; entry j is an int m, explained above.}
+    then is_defs = [[bool]]: [] {one for each real form; entry j says whether deformations[rfnum][pnum] is done}
+    then deformations = [[[int]]]: [] {one for each Param in each phash}
     then K_type_hashes = [KType_hash] : [] {one for each real form; list of LKTs of params}
     then K_type_pol_hashes = [KTypePol_hash] : []  {one for each real form}
     then formulas = [vec]:[] {size of K_type_hash; entry in K_type_pol_hash recording K_type_formula}
@@ -230,6 +233,8 @@ set make_big_unitary_hash() = big_unitary_hash_table:
 	 let () = real_form_hash.clear()
 	 then () = phashes := []
 	 then () = status_vecs := []
+	 then () = is_defs := []
+	 then () = deformations := []
 	 then () = K_type_hashes := []
 	 then () = K_type_pol_hashes := []
 	 then () = formulas := []
@@ -242,25 +247,29 @@ set make_big_unitary_hash() = big_unitary_hash_table:
 	 then () = x_known := []
 	 then () = x_partial := []
 	 in ()
+{MvL suggestion: make type consisting of a tuple of what's attached to each Param}
     then add_real_form(RealForm rf) = int:
 	 let I = real_form_hash.size()
 	 then i = real_form_hash.match(rf)
 	 then () = if i = I {haven't seen this real form before}
-		   then	let empty = [int]: nullint(#KGB(rf))
-			then () = K_type_hashes #:= make_KType_hash();
-			     K_type_pol_hashes #:= make_KTypePol_hash();
-			     formulas #:= null(0);
-			     formula_heights #:= null(0);
-			     branches #:= null(0);
-			     sigs #:= null(0);
-			     branch_heights #:= null(0);
-			     sig_heights #:= null(0)
-			then () = xl_known #:= empty {null(#KGB(rf))}
-			then () = x_known #:= 0
-			then () = x_partial #:= 0
-			then () = status_vecs #:= null(0)
-			then () = phashes #:= make_Param_hash()
-			in ()
+		   then	let empty_xl = [int]: null(#KGB(rf))
+		   	{then empty_ints = [[int]]: []}
+			{then empty_bools = [bool]: []}
+			in  K_type_hashes #:= make_KType_hash();
+			    K_type_pol_hashes #:= make_KTypePol_hash();
+			    formulas #:= null(0);
+			    formula_heights #:= null(0);
+			    branches #:= null(0);
+			    sigs #:= null(0);
+			    branch_heights #:= null(0);
+			    sig_heights #:= null(0);
+			    xl_known append:= empty_xl; {#:= null(#KGB(rf));}
+			    x_known #:= 0;
+			    x_partial #:= 0;
+			    status_vecs #:= null(0);
+			    is_defs append:= [];
+			    deformations append:= [];
+			    phashes #:= make_Param_hash()
 		   fi
 	  then () = assert(@:real_form_hash.size() = #phashes and #phashes = #xl_known
 						 and #phashes = #x_known {and #phashes = #status_strings}
@@ -268,7 +277,10 @@ set make_big_unitary_hash() = big_unitary_hash_table:
 						 and #K_type_hashes = #x_known
 						 and #K_type_pol_hashes = #x_known
 						 and #branches = #x_known and #sigs = #x_known
-						 and #sig_heights = #x_known,
+						 and #sig_heights = #x_known
+						 and #status_vecs = #phashes
+						 and #is_defs = #phashes
+						 and #deformations = #phashes,
 						 "big_unitary_hash damaged")
 	  in i
     then add_K_type(KType mu) = (int, int): {real form index, K type index}
@@ -445,6 +457,34 @@ set make_big_unitary_hash() = big_unitary_hash_table:
 			in ()
 		     fi {ktypenum = KTYPENUM}
 	in (rfnum, ktypenum, branches[rfnum][ktypenum])
+    then add_param_null(Param p) = (int,int): {add a param, do as little as possible}
+	let  rfnum = add_real_form(p.real_form)
+	then PNUM = phashes[rfnum].size(), rf = real_form_hash.index(rfnum)
+	then pnum = phashes[rfnum].match(p)
+	in if pnum=PNUM {haven't seen p}
+	   then let ans = convert_cform_hermitian(K_type_pol(p)), D=height(p)
+	   	then H = impure_height(ans), sig_ind = K_type_pol_hashes[rfnum].match(ans)
+		then () = if H = -1 {is_pure(ans)}
+		     	  then status_vecs[rfnum] #:= D+2
+			  else status_vecs[rfnum] #:=-D-2
+			  fi {H = -1}
+		in deformations[rfnum] append:= [];
+		   is_defs[rfnum]#:=false;
+		   sigs[rfnum]#:=sig_ind;
+		   sig_heights[rfnum]#:=D
+	    fi;
+	    (rfnum,pnum)
+    then add_param_def(Param p, [int] defs) = (int, int): {add a param with (indices in
+    	 		     	      phashes[rfnum]) of its deformations}
+        let (rfnum,pnum) = add_param_null(p)
+	in if not is_defs[rfnum][pnum]
+	   then let isdefsrf = is_defs[rfnum], deformationsrf = deformations[rfnum]
+	   	in deformationsrf[pnum] := defs;
+		   isdefsrf[pnum] := true;
+		   deformations[rfnum]:=deformationsrf;
+		   is_defs[rfnum] := isdefsrf
+	   fi;
+	   (rfnum,pnum)
     then add_param_inf(Param p) = (int, int, int): {add a param, full herm form}
 	let  rfnum = add_real_form(p.real_form)
 	then PNUM = phashes[rfnum].size(), rf = real_form_hash.index(rfnum)
@@ -454,21 +494,30 @@ set make_big_unitary_hash() = big_unitary_hash_table:
 	then () = p:=parameter(rf, p.x.number, p.lambda, sum(#list[0],list)/#list)
 	then pnum = phashes[rfnum].match(p)
 	then () = if pnum = PNUM {haven't computed with p before}
-		  then let sig = hermitian_form_irreducible(p) {insert computation from good?}
-		       then sig_ind = K_type_pol_hashes[rfnum].match(sig)
-		       then () = sigs[rfnum] #:= sig_ind
-		       then () = sig_heights[rfnum] #:= height(p) - 1
-		       then H = impure_height(sig)
-		       then () = if H = - 1
-				 then status_vecs[rfnum] #:= 1
-				 else status_vecs[rfnum] #:= -H-2
-				 fi {H = -1}
-		       then () = assert(@:real_form_hash.size() = #phashes,"big_unitary_hash damaged")
+		  {then {compute deformations}
+		       if #list = 1
+		       then deformations[rfnum] #:= []
+		       else let Ps = local_defs(p) {2^(#local verts) ParamPol's; 0th is null_module}
+		       	    then pdefnums = for P in Ps
+			    	 	    do for pd in monomials(composition_series(P))
+					       do
+					       }
+	           then let sig = hermitian_form_irreducible(p) {insert computation from good?}
+		       	then sig_ind = K_type_pol_hashes[rfnum].match(sig)
+		       	then () = sigs[rfnum] #:= sig_ind
+		       	then () = sig_heights[rfnum] #:= height(p) - 1
+		       	then H = impure_height(sig)
+		       	then () = if H = - 1
+				  then status_vecs[rfnum] #:= 1
+				  else status_vecs[rfnum] #:= -H-2
+				  fi {H = -1}
+		       	then () = assert(@:real_form_hash.size() = #phashes,"big_unitary_hash damaged")
 		       then () = assert(@:real_form_hash.size() = #sig_heights,"big_unitary_hash damaged")
 		       then () = assert(@:#sigs[rfnum] = phashes[rfnum].size(), "big_unitary_hash damaged")
 		       then () = assert(@:#sig_heights[rfnum] = phashes[rfnum].size(), "big_unitary_hash damaged")
-		       in ()
-		  else {we've seen p before}
+		       in deformations[rfnum] append:= [];
+		       	  is_defs[rfnum]#:=false
+		   else {we've seen p before}
 		       if sig_heights[rfnum][pnum] >= height(p)
 		       then let tempsigs = sigs[rfnum], tempsights = sig_heights[rfnum]
 			    then sigD = if status_vecs[rfnum][pnum] = 1
@@ -508,15 +557,7 @@ set make_big_unitary_hash() = big_unitary_hash_table:
 	then () = p:=parameter(rf, p.x.number, p.lambda, sum(#list[0],list)/#list)
 	then pnum = phashes[rfnum].match(p)
 	then () = if pnum = PNUM {haven't computed with p before}
-		  then let sigD = if D = height(p)
-				  then let ans = convert_cform_hermitian(K_type_pol(p))
-				       then H = impure_height(ans)
-				       then () = if H = -1 {is_pure(ans)}
-						 then status_vecs[rfnum] #:= D+2
-						 else status_vecs[rfnum] #:=-H-2
-						 fi {H = -1}
-				       in ans
-				  elif low(p,D)
+		  then let sigD = if low(p,D)
      	  			  then let ans =  hermitian_form_irreducible_to_ht(p,D)
 				       then H = impure_height(ans)
 				       then () = if H = -1 {is_pure(ans)}
@@ -539,7 +580,8 @@ set make_big_unitary_hash() = big_unitary_hash_table:
 		       then () = assert(@:real_form_hash.size() = #phashes,"big_unitary_hash damaged")
 		       then () = assert(@:real_form_hash.size() = #sig_heights,"big_unitary_hash damaged")
 		       then () = assert(@:#sigs[rfnum] = phashes[rfnum].size(), "big_unitary_hash damaged")
-		       in ()
+		       in deformations[rfnum] append:= [];
+		       	  is_defs[rfnum]#:=false
 		   else {we've seen p before}
 		       if sig_heights[rfnum][pnum] >= height(p) and sig_heights[rfnum][pnum] < D
 		       then let tempsigs = sigs[rfnum], tempsights = sig_heights[rfnum]
@@ -581,15 +623,14 @@ set make_big_unitary_hash() = big_unitary_hash_table:
 		       fi
 		   fi
 	 in (rfnum, pnum, sigs[rfnum][pnum])
-    then add_param(Param p) = (int, int): {add a param, form to height height(p)}
-    	 let (rfnum, pnum,) = add_param_ht(p,height(p))
-	 in (rfnum,pnum)
     then clearG(RealForm rf) =
 	 let i = real_form_hash.lookup(rf)
 	 in if i >= 0
 	    then {prints(i);}
 		 phashes[i].clear();
 		 status_vecs[i]:=[];
+		 is_defs[i]:=[];
+		 deformations[i]:=[];
 		 K_type_hashes[i].clear();
 		 K_type_pol_hashes[i].clear();
 		 formulas[i]:=[];
@@ -768,8 +809,11 @@ set make_big_unitary_hash() = big_unitary_hash_table:
       let rfnum = add_real_form(rf)
       in status_vecs[rfnum]
     , (Param -> int): {status} (Param p) int:
-      let (rfnum, pnum) = add_param(p)
+      let (rfnum, pnum) = add_param_null(p)
       in status_vecs[rfnum][pnum]
+    , (Param -> [int]): {deformations} (Param p) [int]:
+      let (rfnum, pnum) = add_param_null(p)
+      in deformations[rfnum][pnum]
     , (RealForm -> [Param]): {ulist} (RealForm rf) [Param]:
       let rfnum = add_real_form(rf)
       then list = phashes[rfnum].list(), statuses = status_vecs[rfnum]
@@ -846,7 +890,7 @@ set make_big_unitary_hash() = big_unitary_hash_table:
       let (i,,sigD) = add_param_ht(p,N)
       in is_pure(to_ht(K_type_pol_hashes[i].list()[sigD], N))
     , (Param -> int): {umatch} (Param p):
-      let (rfnum,pnum) = add_param(p)
+      let (rfnum,pnum) = add_param_null(p)
       then statuses = status_vecs[rfnum]
       in if statuses[pnum]!= 1
       	 then let () = statuses[pnum] := 1
@@ -855,7 +899,7 @@ set make_big_unitary_hash() = big_unitary_hash_table:
 	 else pnum
 	 fi
     , ((Param,int) -> int): {numatch_height} (Param p, int H):
-      let (rfnum,pnum) = add_param(p)
+      let (rfnum,pnum) = add_param_null(p)
       then statuses = status_vecs[rfnum]
       in if statuses[pnum] < -H -2 or statuses[pnum] >= -1
       	 then let () = statuses[pnum]:= -H-2
@@ -864,7 +908,7 @@ set make_big_unitary_hash() = big_unitary_hash_table:
 	 else pnum
 	 fi
     , (Param -> int): {numatch} (Param p):
-      let (rfnum, pnum) = add_param(p)
+      let (rfnum, pnum) = add_param_null(p)
       then statuses = status_vecs[rfnum]
       in if statuses[pnum] .>=
       	 then let () = statuses[pnum]:=-1
@@ -873,7 +917,7 @@ set make_big_unitary_hash() = big_unitary_hash_table:
 	 else pnum
 	 fi
     , ((Param,int) -> int): {long_umatch} (Param p, int rfnum):
-      let (,pnum) = add_param(p)
+      let (,pnum) = add_param_null(p)
       then statuses = status_vecs[rfnum]
       in if statuses[pnum]!= 1
       	 then let () = statuses[pnum] := 1
@@ -882,7 +926,7 @@ set make_big_unitary_hash() = big_unitary_hash_table:
 	 else pnum
 	 fi
     , ((Param,int) -> int): {long_match} (Param p, int rfnum):
-      let (,pnum) = add_param(p)
+      let (rfnum,pnum) = add_param_null(p)
       then statuses = status_vecs[rfnum]
       in if statuses[pnum]!= 1
       	 then let () = statuses[pnum] := 1

@@ -1990,7 +1990,7 @@ begin
        	       in if steve_hash.partly_indexed_postest_known_Kchar(rfnum, xlnum, htnum, gamma, KCv)
        	       	  then for p in ps
 		       do if deform_flag
-		  	  then for q1d in local_face_defs(p) {facet_deformed_new(q1)}
+		  	  then for q1d in local_face_defs(p).## {facet_deformed_new(q1)}
 		       	       do big_unitary_hash.umatch(q1d)
 		       	       od
 		  	   else big_unitary_hash.umatch(p)
@@ -2107,7 +2107,7 @@ set local_test_GEO_hash_steve_graph(KGBElt x, ratvec lambda, LocalVertexData Lvd
        	  	      then ps = [Param]: monomials(pC)
        	  	      in for p in ps
        	     	      	 do if deform_flag
-		  	    then for q1d in local_face_defs(p)
+		  	    then for q1d in local_face_defs(p).##
 		       	     	 do big_unitary_hash.umatch(q1d)
 		       		 od
 		  	    else big_unitary_hash.umatch(p)

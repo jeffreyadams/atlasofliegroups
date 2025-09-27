@@ -2648,13 +2648,10 @@ set real_induced(RealForm G) = void:
 	       do {prints("At time ",print_time_string(elapsed_ms() - start_time), ", start induction from parabolic ",i);}
 	          for pL in cands[i]
 		  do for q in monomials(real_induce_irreducible(pL,G))
-		     do let qdeflist = [q]##
-		            if wiggle_flag
-			    then for Qdef in local_defs(q)
-			     	 do monomials(composition_series(Qdef))
-			     	 od.##
-			    else [Param]: []
-			    fi
+		     do let qdeflist = if wiggle_flag
+			    	       then local_face_defs(q).##
+			    	       else [q]
+			    	       fi
 		     	in for qdef in qdeflist
 			   do big_unitary_hash.umatch(herm_center(qdef))
 			   od {qdef in qdeflist}

@@ -1845,7 +1845,7 @@ set local_test_hash_old(KGBElt x, ratvec lambda, LocalVertexData Lvd,
 			     fi;
 			     for q1 in monomials(finalize(q))
 			     do if deform_flag
-				then for q1d in local_face_defs(q1) {facet_deformed_new(q1)}
+				then for q1d in local_face_defs(q1).##
 				     do big_unitary_hash.umatch(q1d)
 				     od
 				else big_unitary_hash.umatch(q1)
@@ -2015,7 +2015,7 @@ in {prints("at last in, ",unitary_test_counter.use_count() - start_count
 	       fi
 	    ;  for @q1 in finalize(q)
 	       do if deform_flag
-		  then for q1d in local_face_defs(q1) {facet_deformed_new(q1)}
+		  then for q1d in local_face_defs(q1).## {facet_deformed_new(q1)}
 		       do big_unitary_hash.umatch(q1d)
 		       od
 		  else {prints("before adding ",q1,", ",unitary_test_counter.use_count() - start_count
@@ -2355,7 +2355,7 @@ set local_test_hash(KGBElt x, ratvec lambda, LocalVertexData Lvd,
 			     fi;
 			  for q1 in monomials(finalize(q))
 			  do if deform_flag
-		  	     then for q1d in local_face_defs(q1) {facet_deformed_new(q1)}
+		  	     then for q1d in local_face_defs(q1).## {facet_deformed_new(q1)}
 		       	     	  do big_unitary_hash.umatch(q1d)
 		       		  od
 		  	     else big_unitary_hash.umatch(q1)
@@ -2519,7 +2519,7 @@ set local_test_hash_bottom(KGBElt x, ratvec lambda, LocalVertexData Lvd,
 			 then q = parameter(x,lambda, face_bary(Lvd,verts))
 			 then () = for q1 in monomials(finalize(q))
 			      	   do if deform_flag
-		  	     	      then for q1d in local_face_defs(q1) {facet_deformed_new(q1)}
+		  	     	      then for q1d in local_face_defs(q1).## {facet_deformed_new(q1)}
 		       	     	      	   do big_unitary_hash.umatch(q1d)
 		       		  	   od
 		  	     	      else big_unitary_hash.umatch(q1)
@@ -2624,7 +2624,7 @@ set local_test_wiggle_hash(KGBElt x, ratvec lambda, LocalVertexData Lvd,
 			then q = parameter(x,lambda, face_bary(Lvd,verts))
 			then () = for q1 in monomials(finalize(q))
 			      	  do if deform_flag
-		  	     	     then for q1d in local_face_defs(q1) {facet_deformed_new(q1)}
+		  	     	     then for q1d in local_face_defs(q1).## {facet_deformed_new(q1)}
 		       	     	      	  do big_unitary_hash.umatch(q1d)
 		       		  	  od
 		  	     	      else big_unitary_hash.umatch(q1)
@@ -2998,7 +2998,7 @@ set local_test_GEO_hash_real_dumb(KGBElt x, ratvec lambda, {VertexData vd,} Loca
              do let p = parameter(x,lambda, face_bary(Lvd, v[:d+1]))
 		then () = for q1 in monomials(finalize(p))
 			  do if deform_flag
-		  	     then for q1d in local_face_defs(q1) {facet_deformed_new(q1)}
+		  	     then for q1d in local_face_defs(q1).## {facet_deformed_new(q1)}
 		       	     	  do big_unitary_hash.umatch(q1d)
 		       		  od
 		  	     else big_unitary_hash.umatch(q1)
@@ -3325,7 +3325,7 @@ set local_test_GEO_hash_else_dumb(KGBElt x, ratvec lambda, {VertexData vd,} Loca
              do let p = parameter(x,lambda, face_bary(Lvd, v[:d+1]))
 		then () = for q1 in monomials(finalize(p))
 			  do if deform_flag
-		  	     then for q1d in local_face_defs(q1) {facet_deformed_new(q1)}
+		  	     then for q1d in local_face_defs(q1).## {facet_deformed_new(q1)}
 		       	     	  do big_unitary_hash.umatch(q1d)
 		       		  od
 		  	     else big_unitary_hash.umatch(q1)
@@ -3631,7 +3631,7 @@ set local_test_GEO_hash_def_dumb(KGBElt x, ratvec lambda, LocalVertexData Lvd, [
              do let p = parameter(x,lambda, face_bary(Lvd, v[:d+1]))
 		then () = for q1 in monomials(finalize(p))
 			  do if deform_flag
-		  	     then for q1d in local_face_defs(q1) {facet_deformed_new(q1)}
+		  	     then for q1d in local_face_defs(q1).## {facet_deformed_new(q1)}
 		       	     	  do big_unitary_hash.umatch(q1d)
 		       		  od
 		  	     else big_unitary_hash.umatch(q1)
@@ -4768,7 +4768,7 @@ set local_test_GEO_hash_one_level_end(KGBElt x, ratvec lambda, LocalVertexData L
                   do let p = parameter(x,lambda, face_bary(Lvd, v[:d+1]))
 		     then () = for q1 in monomials(finalize(p))
 			       do if deform_flag
-		  	       	  then for q1d in local_face_defs(q1) {facet_deformed_new(q1)}
+		  	       	  then for q1d in local_face_defs(q1).## {facet_deformed_new(q1)}
 		       	     	       do big_unitary_hash.umatch(q1d)
 		       		       od
 		  	     	  else big_unitary_hash.umatch(q1)
