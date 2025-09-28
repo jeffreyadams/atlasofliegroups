@@ -290,7 +290,20 @@ set pL1(KGBElt x, ratvec lambda, vec av, rat t) = Param:
 set std_quo(Param p) = ParamPol:
     1*p-character_formula(1*p)
 
+set steve_new_flag = true
+
+set ind_quo_new(KGBElt x, ratvec lambda, vec av, rat t) = KTypePol:
+    let pL = pL(x,lambda,av,t)
+    {then () = assert(dominant(x.real_form,pL.infinitesimal_character) =
+    	 dominant(x.real_form, pL1.infinitesimal_character),"bad infl char for pL1")
+    then () = assert(#character_formula(1*pL) = (#character_formula(1*pL1)),
+    "bad char for pL1")}
+    in K_type_pol(std_quo(pL))
+
 set ind_quo(KGBElt x, ratvec lambda, vec av, rat t) = KTypePol:
+    if steve_new_flag
+    then return ind_quo_new(x,lambda,av,t)
+    fi;
     let pL1 = pL1(x,lambda,av,t)
     {then () = assert(dominant(x.real_form,pL.infinitesimal_character) =
     	 dominant(x.real_form, pL1.infinitesimal_character),"bad infl char for pL1")
@@ -298,11 +311,29 @@ set ind_quo(KGBElt x, ratvec lambda, vec av, rat t) = KTypePol:
     "bad char for pL1")}
     in real_induce_standard(K_type_pol(std_quo(pL1)), x.real_form)
 
+
+set to_ht_G(RealForm G, KTypePol QL, int HT) = KTypePol:
+    if HT.< then return QL fi;
+    sum(QL.real_form,
+	for c@tauL in QL
+    	do if dominant(G,parameter(tauL).d_lambda)*(G.two_rho_check) <= HT
+	   then c*tauL
+	   else 0*tauL
+	   fi
+	od)
+
+set test_new(KGBElt x, ratvec lambda, vec av, rat t, int HT) = bool:
+    let QL = ind_quo_new(x,lambda,av,t)
+    in to_ht_G(x.real_form, QL,HT).!=
+
 {given a reducibility coroot av, take generic point on hyperplane
 av*gamma = t, corresponding Q(t) = std/Langlands quotient, and ask
 whether Q(t) has terms of height at most HT}
 {works for HT < 0, telling whether Q(t).!=}
 set test(KGBElt x, ratvec lambda, vec av, rat t, int HT) = bool:
+    if steve_new_flag
+    then return test_new(x,lambda,av,t,HT)
+    fi;
     let Q = ind_quo(x, lambda, av, t)
     {then QL = std_quo(pL(x,lambda,av,t))
     then () = assert((Q.=) = (QL.=),"bad induction!")}
@@ -310,9 +341,23 @@ set test(KGBElt x, ratvec lambda, vec av, rat t, int HT) = bool:
 
 set red_points_time = int:0
 
+set red_points_new(KGBElt x, ratvec lambda, vec av,int HT) = [int]:
+    let start = elapsed_ms(), (m,M) = range(x,lambda,av), thetapl = x.involution+1
+    then ans = for j:M-m+1 from m
+       	       do if test_new(x,lambda,av,j,HT) {or ((av*thetapl).= and j.=)}
+       	       	  then [j]
+	  	  else []
+	  	  fi
+       	       od.##
+     in red_points_time +:= elapsed_ms() - start;
+     	ans
+
 {works for HT < 0, giving all reducibility points}
 {omitting the singular real roots gives 2 too many unitary in Sp(6,R)}
 set red_points(KGBElt x, ratvec lambda, vec av,int HT) = [int]:
+    if steve_new_flag
+    then return red_points_new(x,lambda,av,HT)
+    fi;
     let start = elapsed_ms(), (m,M) = range(x,lambda,av), thetapl = x.involution+1
     then ans = for j:M-m+1 from m
        	       do if test(x,lambda,av,j,HT) {or ((av*thetapl).= and j.=)}
@@ -323,7 +368,15 @@ set red_points(KGBElt x, ratvec lambda, vec av,int HT) = [int]:
      in red_points_time +:= elapsed_ms() - start;
      	ans
 
+set red_points_new(KGBElt x,ratvec lambda, int HT) = [[int]]:
+    for av in red_coroots(x)
+    do red_points_new(x,lambda,av,HT)
+    od
+
 set red_points(KGBElt x,ratvec lambda, int HT) = [[int]]:
+    if steve_new_flag
+    then return(red_points_new(x,lambda,HT))
+    fi;
     for av in red_coroots(x)
     do red_points(x,lambda,av,HT)
     od
