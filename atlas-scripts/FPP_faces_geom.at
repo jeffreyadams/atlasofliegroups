@@ -381,10 +381,13 @@ set sorted_is_disjoint([int] a, [int] b) = bool:
    ;  if x=b[i] then return false fi
    od; true
 
-set is_FPP(RootDatum rd, ratvec gamma) = bool:
+set is_dom_FPP(RootDatum rd, ratvec gamma) = bool:
     all(for alphavee in rd.simple_coroots
     	do gamma*alphavee <= 1 and gamma*alphavee >= 0
 	od)
+
+set is_FPP(RootDatum rd, ratvec gamma) = bool:
+    is_dom_FPP(rd,dominant(rd,gamma))
 
 set index_in_face_list([LocalFaceVertsKHash] L) = (vec->int):
     let m = #L[0]-4 

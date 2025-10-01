@@ -11,13 +11,13 @@ the FPP}
 
 set coh_ind_unip_verbose = false
 
-set is_dom_FPP(RootDatum rd, ratvec gamma) = bool:
+{set is_dom_FPP(RootDatum rd, ratvec gamma) = bool:
     all(for alphavee in rd.simple_coroots
 	do gamma*alphavee <= 1 and gamma*alphavee >= 0
 	od)
 
 set is_FPP(RootDatum rd, ratvec gamma) = bool:
-    is_dom_FPP(rd,dominant(rd,gamma))
+    is_dom_FPP(rd,dominant(rd,gamma))}
 
 set imag_simple(InnerClass ic) = [int]:
     for j:ic.semisimple_rank

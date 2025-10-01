@@ -573,6 +573,10 @@ set_type
   , ((KGBElt, ratvec, int, ratvec, vec) -> vec) thruple_known_Kchar_no_stat {loc vec: (x,lambda,gamma) to HT; don't compute status}
   , ((int, int, int, ratvec) -> vec) indexed_thruple_no_stat {known rfnum, xlnum, htnum; don't compute status}
   , ((KGBElt, ratvec, int, ratvec) -> vec) thruple_no_stat {loc vec: (x,lambda,gamma) to HT; don't compute status}
+  , ((Param,int) -> (int, int, int,int)) umatch {(Param p, int HT) -> (rfnum, xlnum, locnum);
+    statuses set "true"}
+  , ((Param,int) -> (int, int, int, int)) numatch {(Param p, int HT) -> (rfnum, xlnum, locnum);
+    statuses set "false"}
 )
 ]
 
@@ -580,8 +584,6 @@ set make_steve_hash() = steve_hash_table:
 (   let real_form_hash = make_RealForm_hash()
     then K_type_hashes = [KType_hash] : [] {one for each real form; list of KTs considered}
     then xlhashes = [xlambda_hash]: [] {one for each real form}
-    {then paramhashes = [[Param_hash]]: []} {one for each entry in each xlhash}
-    {then ktps = [[[KTypePol]]]: []} {one for each entry in each paramhash: ind_quo?}
     then heights = [[vec]]:[] {one for each entry in each xlhash}
     then vechashes = [[[vec_hash]]]:[] {one for each height for each entry in each xlhash}
     then redpoints = [[[[int]]]]:[] {for each entry in xlhash and height, [int] = bitmap of reducibility
@@ -640,68 +642,32 @@ set make_steve_hash() = steve_hash_table:
 		 charvecs[rfnum]#:=([[vec]]:[])
 	    fi;
 	    (rfnum,xlnum)
-    {then add_xlp(Param qL, RealForm G) = (int,int,int): {real form index, xlhash index, param index}
-    	 let (rfnum,xlnum) = add_xl(qL.x, qL.lambda)
-	 then PLNUM = paramhashes[rfnum][xlnum].size()
-	 then pLnum = paramhashes[rfnum][xlnum].match(qL)
-	 in if pLnum = PLNUM {new pL}
-	    then let ktpsr = ktps[rfnum] {[[KTypePol]]},
-	    	     ktpsrxl = ktps[rfnum][xlnum] {[KTypePol]}
-	    	 then () = ktpsrxl#:= real_induce_standard(K_type_pol(std_quo(qL)), G)
-		 then () = ktpsr[xlnum]:=ktpsrxl
-		 then () = ktps[rfnum]:=ktpsr
-		 in ()
-	     fi;
-	     (rfnum, xlnum, pLnum)}
-    {then SHind_quo(KGBElt x, ratvec lambda, vec av, int m) = KTypePol:
-    	let qL1 = pL1(x,lambda,av, m)
-    	then (rfnum, xlnum, pLnum) = add_xlp(qL1, x.real_form)
-	in ktps[rfnum][xlnum][pLnum]}
-    {then SHtest(KGBElt x, ratvec lambda, vec av, int m, int HT) = bool:
-    	 let SHIQ = SHind_quo(x,lambda,av,m)
-	 in to_ht(SHIQ,HT).!=}
-    {then SHred_points(KGBElt x, ratvec lambda, vec av,int HT) = [int]:
-    	 let (m,M) = range(x,lambda,av), thetapl = x.involution+1
-    	 in for j:M-m+1 from m
-       	    do if SHtest(x,lambda,av,j,HT)
-       	       then [j]
-	       else []
-	       fi
-       	    od.##}
-    {then SHred_points_list(KGBElt x,ratvec lambda, int HT) = [[int]]:
-    	 let start = elapsed_ms()
-    	 then ans = for av in red_coroots(x)
-    	      	    do SHred_points(x,lambda,av,HT)
-    	 	    od
-	 in red_points_time +:= elapsed_ms() - start;
-	    ans}
     then add_xlht(KGBElt x, ratvec lambda, int HT) = (int,int,int): {real form index, xlhash index, HT index}
     	 let (rfnum,xlnum) = add_xl(x,lambda)
 	 then J = #heights[rfnum][xlnum], htnum = find(heights[rfnum][xlnum],HT)
 	 in if htnum.< {new HT}
-	    then let hrxl = heights[rfnum][xlnum], {[[int]]}
-	    	     hr = heights[rfnum]
-	    	 then () = hrxl#:= HT
-		 then () = hr[xlnum]:=hrxl
-		 then () = heights[rfnum]:=hr
-		 then rprxl = redpoints[rfnum][xlnum], rpr = redpoints[rfnum]
-		 then () = rprxl #:= for list in red_points(x,lambda,HT) do to_bitset(list) od
-		      {add a new [int]}
-		 then () = rpr[xlnum]:=rprxl
-		 then () = redpoints[rfnum]:=rpr
-		 then vhsxl = vechashes[rfnum][xlnum], vhsr = vechashes[rfnum]
-		 then () = vhsxl #:= make_vec_hash()
-		 		      {add a new vec_hash for new height}
-		 then () = vhsr[xlnum]:=vhsxl
-		 then () = vechashes[rfnum]:=vhsr
-		 then statusxl = statuses[rfnum][xlnum], statusr = statuses[rfnum]
-		 then () = statusxl #:= ([bool]:[]) { for this height }
-		 then () = statusr[xlnum]:=statusxl
-		 then () = statuses[rfnum]:=statusr
-		 then charvecxl = charvecs[rfnum][xlnum], charvecr = charvecs[rfnum]
-		 then () = charvecxl #:= ([vec]:[]) { for this height }
-		 then () = charvecr[xlnum]:=charvecxl
-		 then () = charvecs[rfnum]:=charvecr
+	    then let redpointsrxl = redpoints[rfnum][xlnum], redpointsr = redpoints[rfnum],
+	    	 vechashesrxl = vechashes[rfnum][xlnum], vechashesr = vechashes[rfnum],
+		 statusesrxl = statuses[rfnum][xlnum], statusesr = statuses[rfnum],
+		 charvecsrxl = charvecs[rfnum][xlnum], charvecsr = charvecs[rfnum],
+		 heightsrxl = heights[rfnum][xlnum], heightsr = heights[rfnum]
+	    	 then () = redpointsrxl #:= ([int]: for list in red_points(x,lambda,HT)
+	    	 			     	     do to_bitset(list)
+						     od);
+		 vechashesrxl #:= make_vec_hash();
+		 statusesrxl append:= [];
+		 charvecsrxl append:= [];
+		 heightsrxl#:=HT
+		 then () = redpointsr[xlnum]:=redpointsrxl;
+		 vechashesr[xlnum]:=vechashesrxl;
+		 statusesr[xlnum]:=statusesrxl;
+		 charvecsr[xlnum]:=charvecsrxl;
+		 heightsr[xlnum]:=heightsrxl
+		 then () = redpoints[rfnum]:=redpointsr;
+		 vechashes[rfnum]:=vechashesr;
+		 statuses[rfnum]:= statusesr;
+		 charvecs[rfnum]:= charvecsr;
+		 heights[rfnum]:= heightsr
 		 in htnum:= J
 	    fi;
 	    (rfnum,xlnum,htnum)
@@ -792,12 +758,11 @@ set make_steve_hash() = steve_hash_table:
 			then () = srxlht#:=boo
 			then () = srxl[htnum]:=srxlht
 			then () = sr[xlnum]:=srxl
-
 			then () = charvecxlht#:=v
 			then () = charvecxl[htnum]:=charvecxlht
 			then () = charvecr[xlnum]:=charvecxl
-			in statuses[rfnum]:=sr;
-			   charvecs[rfnum]:=charvecr
+			in statuses[rfnum] := sr;
+			   charvecs[rfnum] := charvecr
 		   fi
 	 in vecnum
     then SHthruple_indexed(int rfnum, int xlnum, int htnum, ratvec gamma) = int:
@@ -850,15 +815,13 @@ set make_steve_hash() = steve_hash_table:
 			then () = srxlht#:=boo
 			then () = srxl[htnum]:=srxlht
 			then () = sr[xlnum]:=srxl
-
 			then () = charvecxlht#:=v
 			then () = charvecxl[htnum]:=charvecxlht
 			then () = charvecr[xlnum]:=charvecxl
 			in statuses[rfnum]:=sr;
 			   charvecs[rfnum]:=charvecr
-		   fi
+		    fi
 	 in vecnum
-
     then SHthruple(KGBElt x, ratvec lambda, int HT, ratvec gamma) = (int,int,int,int):
     	 let (rfnum, xlnum, htnum) = add_xlht(x,lambda,HT)
 	 in if (deform_loc_flag or deform_nonu_flag)
@@ -944,13 +907,6 @@ set make_steve_hash() = steve_hash_table:
     in heights[rfnum][xlnum]
   , ((KGBElt, ratvec, int) -> (int, int, int)): {indices} (KGBElt x, ratvec lambda, int HT) (int, int, int):
     add_xlht(x,lambda,HT)
-  {, ((KGBElt, ratvec, vec, int) -> KTypePol): {ind_quo} (KGBElt x, ratvec lambda, vec av, int m) KTypePol:
-    let qL = pL1(x,lambda,av,m/1)
-    then (rfnum, xlnum, paramnum) = add_xlp(qL, x.real_form)
-    in ktps[rfnum][xlnum][paramnum]}
-  {, ((KGBElt, ratvec, vec, int, int) -> bool): {test} (KGBElt x, ratvec lambda, vec av, int m, int HT) bool:
-    let Q = SHind_quo(x, lambda, av, m)
-    in to_ht(Q,HT).!=}
   , ((KGBElt, ratvec, int) -> vec_hash): {vecHash} (KGBElt x, ratvec lambda, int HT) vec_hash:
     let (rfnum, xlnum, htnum) = add_xlht(x,lambda,HT)
     in vechashes[rfnum][xlnum][htnum]
@@ -1020,10 +976,30 @@ set make_steve_hash() = steve_hash_table:
     ratvec gamma) vec:
     let (rfnum, xlnum, htnum, vecnum) = SHthruple_no_stat(x,lambda,HT,gamma)
     in vechashes[rfnum][xlnum][htnum].index(vecnum)
+  , ((Param,int) -> (int, int, int, int)): {umatch} (Param p, int HT) (int, int, int, int):
+    let (rfnum, xlnum, htnum, vecnum) = SHthruple_no_stat(p.x,p.lambda,HT,p.infinitesimal_character)
+    then statusrxlh = statuses[rfnum][xlnum][htnum], statusrxl = statuses[rfnum][xlnum],
+    	 statusr = statuses[rfnum]
+    then () = statusrxlh[vecnum]:=true;
+    	      statusrxl[htnum]:=statusrxlh;
+	      statusr[xlnum]:=statusrxl;
+	      statuses[rfnum]:= statusr
+    in (rfnum, xlnum, htnum, vecnum)
+  , ((Param,int) -> (int, int, int,int)): {numatch} (Param p, int HT) (int, int, int, int):
+    let (rfnum, xlnum, htnum, vecnum) = SHthruple_no_stat(p.x,p.lambda,HT,p.infinitesimal_character)
+    then statusrxlh = statuses[rfnum][xlnum][htnum], statusrxl = statuses[rfnum][xlnum],
+    	 statusr = statuses[rfnum]
+    then () = statusrxlh[vecnum]:=false;
+    	      statusrxl[htnum]:=statusrxlh;
+	      statusr[xlnum]:=statusrxl;
+	      statuses[rfnum]:= statusr
+    in (rfnum, xlnum, htnum, vecnum)
   )
 )
 
 set steve_hash = make_steve_hash()
+
+{set is_unitary_to_ht_steve(Param p, int H) = bool:}
 
 set location_finder_time = int: 0
 set loclist_time = int: 0

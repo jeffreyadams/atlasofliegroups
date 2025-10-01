@@ -140,6 +140,7 @@ set_type
   , (RealForm -> int) u_size {for one real form, number of unitary reps}
   , ( -> vec) nu_sizes {for every real form, the number of nonunitary reps}
   , (RealForm -> int) nu_size {for one real form, number of nonunitary reps}
+  , (RealForm -> int) p_size {for one real form, number of reps}
   , ( -> vec) K_type_size {number of LKTs for each real form}
   , ( -> vec) K_type_pol_size
   , (KType -> KTypePol) K_type_formula
@@ -181,6 +182,7 @@ set_type
   , ((Param,int) -> bool) nu_height_lookup_bool {whether p is known to be nonunitary to int}
   , (Param -> bool) check {check whether p is unitary, and add to appropriate hash table}
   , ((Param,int) -> bool) check_to_ht {check whether p is unitary to height}
+  , ((Param,int) -> int) umatch_height {add p to phash, mark unitary to ht}
   , (Param -> int) umatch {add p to phash, mark unitary}
   , ((Param,int) -> int) numatch_height {add p to phash, mark non-unitary to ht}
   , (Param -> int) numatch {add p to phash, mark non-unitary}
@@ -462,7 +464,11 @@ set make_big_unitary_hash() = big_unitary_hash_table:
 	then PNUM = phashes[rfnum].size(), rf = real_form_hash.index(rfnum)
 	then pnum = phashes[rfnum].match(p)
 	in if pnum=PNUM {haven't seen p}
-	   then let ans = convert_cform_hermitian(K_type_pol(p)), D=height(p)
+	   then let D = height(p)
+	   	then ans = if is_equal_rank(rf) or #LKTs(p) = 1
+	   	    	   then convert_cform_hermitian(K_type_pol(p))
+			   else hermitian_form_irreducible_to_ht(p,D)
+			   fi
 	   	then H = impure_height(ans), sig_ind = K_type_pol_hashes[rfnum].match(ans)
 		then () = if H = -1 {is_pure(ans)}
 		     	  then status_vecs[rfnum] #:= D+2
@@ -658,6 +664,9 @@ set make_big_unitary_hash() = big_unitary_hash_table:
     , (RealForm -> int): {nu_size} (RealForm rf) int:
      let rfnum = add_real_form(rf)
      in count(for j in status_vecs[rfnum] do j<0 od)
+    , (RealForm -> int): {p_size} (RealForm rf) int:
+      let rfnum = add_real_form(rf)
+      in phashes[rfnum].size()
     , ( -> vec): {K_type_size} @vec: for hash in K_type_hashes do hash.size() od
     , ( -> vec): {K_type_pol_size} @vec: for hash in K_type_pol_hashes do hash.size() od
     , (KType -> KTypePol): {K_type_formula} (KType mu) KTypePol:
@@ -889,6 +898,18 @@ set make_big_unitary_hash() = big_unitary_hash_table:
     , ((Param,int) -> bool): {check_to_ht} (Param p, int N) bool:
       let (i,,sigD) = add_param_ht(p,N)
       in is_pure(to_ht(K_type_pol_hashes[i].list()[sigD], N))
+    , ((Param,int) -> int): {umatch_height} (Param p, int H):
+      let (rfnum,pnum) = add_param_null(p)
+      then statuses = status_vecs[rfnum]
+      then stat = statuses[pnum]
+      in if stat = 1 or stat < 0
+      	 then pnum
+	 elif stat = 0 or (1 < stat and stat < H + 2)
+      	 then let () = statuses[pnum]:= H + 2
+	      in status_vecs[rfnum] :=statuses;
+	      	 pnum
+	 else pnum
+	 fi
     , (Param -> int): {umatch} (Param p):
       let (rfnum,pnum) = add_param_null(p)
       then statuses = status_vecs[rfnum]
@@ -901,8 +922,10 @@ set make_big_unitary_hash() = big_unitary_hash_table:
     , ((Param,int) -> int): {numatch_height} (Param p, int H):
       let (rfnum,pnum) = add_param_null(p)
       then statuses = status_vecs[rfnum]
+      {then () = assert(H > height(p),"setting nonunitary nowhere!")}
+      then () = assert( p != parameter(E6_s,51,[-2,-2,2,1,2,-2]/1,[-1,-1,1,0,1,-1]/2),"who ordered this?")
       in if statuses[pnum] < -H -2 or statuses[pnum] >= -1
-      	 then let () = statuses[pnum]:= -H-2
+      	 then let () = statuses[pnum]:= -H-2 {PROBLEM HERE IF H = ht(p)??}
 	      in status_vecs[rfnum] :=statuses;
 	      	 pnum
 	 else pnum
@@ -1812,7 +1835,7 @@ set is_unitary_test_big_SIMPLE_interrupt(Param p, int step) = bool:
 	    fi
   then () = p := herm_center(p)
   then () = if (big_unitary_hash.ulookup(p)).>=
-       	    then prints("OK by lookup at ",p);
+       	    then{ prints("OK by lookup at ",p);}
 	    	 return true
 	    elif is_finished(p.x,p.lambda)
 	    then return false
@@ -2101,8 +2124,36 @@ set mult_is_unitary([Param] list) = bool:
 	      od
     in answer.>
 
+{list is meant to be a not large collection of Param's with the same unitarity
+status; test interruptibly in succession until something gives}
+set mult_is_unitary_to_ht([Param] list, int HT) = bool:
+    list := for q in list do if height(q) >= HT then [] else [q] fi od.##;
+    if #list = 0 then return true fi;
+    if #list = 1 then return is_unitary_to_ht_big_SIMPLE(list[0], HT) fi;
+    let next_time = interrupt_base_time
+    then answer = int:0
+    then () = while answer = 0
+    	      do for p in list
+	      	 do let this = is_unitary_to_ht_big_SIMPLE_interrupt(p, HT, next_time)
+		    in if this.!=
+		       then answer := this;
+		       	    break
+		       fi
+		 od;
+		 if answer.= then next_time:=2*next_time fi;
+		 if next_time > 100000
+		 then return any (for p in list
+		      	     	  do @bool: is_unitary_to_ht_big_SIMPLE(p,HT)
+				  od)
+		 fi
+	      od
+    in answer.>
+
 set wiggle_is_unitary(Param p, KGBElt x, ratvec lambda, LocalVertexData Lvd) = bool:
     if not is_hermitian(p) then return false fi;
+    if not is_FPP(p.root_datum,p.infinitesimal_character)
+    then return is_unitary(p)
+    fi;
     p:= herm_center(p);
     let theta = p.x.involution, G = p.real_form
     then delta = G.distinguished_involution, gamma = p.infinitesimal_character
@@ -2136,21 +2187,26 @@ set wiggle_is_unitary(Param p, KGBElt x, ratvec lambda, LocalVertexData Lvd) = b
 	     {these are Params whose unitarity is equivalent to that of p}
     then () = assert(@:#helpers > 0,"missing p from helpers?")
     then result = false
-    then () = if any(for q in helpers do big_unitary_hash.ulookup(q).>= od)
-	      then result :=true
-	      elif any(for list in defs
+    then result = if any(for q in helpers do big_unitary_hash.ulookup(q).>= od)
+	      	  then true
+	      	  elif any(for list in defs
 		       do any(for q in list do @bool: big_unitary_hash.nulookup(q).>= od)
 		       od)
-	      then result := false
-	      else result := mult_is_unitary(helpers)
-	      fi
+	      	  then false
+	      	  else mult_is_unitary(helpers)
+	      	  fi
      in if result
 	then for list in defs
 	     do for q in list
-	     	do big_unitary_hash.umatch(q)
+	     	do {assert(@:is_unitary(q),"false pos in wiggle_is_unitary");
+		   prints("well, ",q, " checked out");}
+		   big_unitary_hash.umatch(q)
 	     	od
 	     od
-	 else big_unitary_hash.numatch(p)
+	 else for q in helpers
+	      do {assert(@:not is_unitary(q),"false neg in wiggle_is_unitary");}
+	      	 big_unitary_hash.numatch(q)
+	      od
 	 fi;
 	 result
 
@@ -2158,6 +2214,82 @@ set wiggle_is_unitary(Param p) = bool:
     let x = p.x, lambda = p.lambda
     then Lvd = Lvd(x,lambda)
     in wiggle_is_unitary(p,x,lambda,Lvd)
+
+
+set wiggle_is_unitary_to_ht(Param p, KGBElt x, ratvec lambda, LocalVertexData Lvd, int HT) = bool:
+    if not is_hermitian(p) then return false fi;
+    if HT < 0 then return(wiggle_is_unitary(p, x, lambda, Lvd)) fi;
+    if not is_FPP(p.root_datum,p.infinitesimal_character)
+    then return is_unitary_to_ht(p,HT)
+    fi;
+    p:= herm_center(p);
+    let theta = p.x.involution, G = p.real_form
+    then delta = G.distinguished_involution, gamma = p.infinitesimal_character
+    then lamthlam = ratvec_as_vec((1+theta)*lambda)
+    then Aff_theta(ratvec v) =  -theta*v + lamthlam
+    then FV = for v in face_verts(G,gamma) do (v+delta*v)/2 od
+    then local_vert_nums = [int]:
+    	 for v in FV
+    	 do Lvd.lookup((v+Aff_theta(v))/2)
+	 od.sort_u
+    then d = #local_vert_nums - 1
+    then () = assert(@:gamma = face_bary(Lvd,local_vert_nums),
+	       	    		 "bad Lvd or local_vert_nums")
+    then vert_subs = power_set(local_vert_nums)[1:2^(d+1)] {omit empty, include full set}
+    then deform_cands = [ratvec]:
+	 for sub in vert_subs
+	 do face_bary(Lvd,sub)
+	 od
+    then CF = character_formula(p)
+    then defs = [[Param]]:
+	 for gammabd in deform_cands
+	 do  monomials(composition_series_to_ht(wiggle(CF, gammabd),HT))
+	 od
+    then helpers = [Param]:
+	 for list in defs
+	 do if #list = 1
+	    then [list[0]]
+	    else []
+	    fi
+	 od.##
+	     {these are Params whose unitarity is equivalent to that of p}
+    then () = assert(@:#helpers > 0,"missing p from helpers?")
+    then result = false
+    then () = if any(for q in helpers
+    	      	     do @bool:
+		     	let stat = big_unitary_hash.status(q)
+			in  stat = 1 or stat >= HT+2 {unitary, or tested unitary to HT}
+    		     od)
+	      then result :=true
+	      elif any(for list in defs
+		       do @bool: any(for q in list
+		       	      	     do @bool: (not is_hermitian(q)) or 
+			      	     	(let stat = big_unitary_hash.status(q)
+				 	in stat < -1 and stat >= -HT - 2)
+			      	     od)
+		       	      od)
+	      then result := false
+	      else result := mult_is_unitary_to_ht(helpers, HT) {neither test conclusive}
+	      fi
+     in if result
+	then for list in defs
+	     do for q in list
+	     	do {assert(@:is_unitary_to_ht(q,HT),"false pos in wiggle_is_unitary_to_ht");
+		   prints("well, ",q, " checked out");}
+		   big_unitary_hash.umatch_height(q,HT)
+	     	od
+	     od
+	 else for q in helpers
+	      do {assert(@:not is_unitary_to_ht(q,HT),"false neg in wiggle_is_unitary_to_ht");}
+	      	 big_unitary_hash.numatch_height(q,HT)
+	      od
+	 fi;
+	 result
+
+set wiggle_is_unitary_to_ht(Param p, int HT) = bool:
+    let x = p.x, lambda = p.lambda
+    then Lvd = Lvd(x,lambda)
+    in wiggle_is_unitary_to_ht(p,x,lambda,Lvd,HT)
 
 set to_hts_count_mat = null(10,10)
 set to_hts_count = null(10)
