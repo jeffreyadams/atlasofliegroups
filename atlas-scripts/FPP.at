@@ -151,8 +151,12 @@ set write_one_x(big_unitary_hash_table big_unitary_hash, RealForm G, int index)=
 set write_one_pair(RealForm G, int kgb_number, ratvec lambda)=void:
           big_unitary_hash.writexlam_no_G(KGB(G,kgb_number),lambda)
 
-set write_one_pair(RealForm G, int xl_pair_number )=void:
-    let (x,lambda)=xl_pair(G,xl_pair_number) in big_unitary_hash.writexlam_no_G(x,lambda)
+set write_one_pair(RealForm G, int xl_pair_number )=string:
+    let (x,lambda)=xl_pair(G,xl_pair_number) then
+    str=big_unitary_hash.writexlam_no_G(x,lambda) + new_line + "END" 
+    {then ()=prints("write_one_pair string: ", str, "\n") }
+    in str
+
 
 set vertices(KGBElt x, ratvec lambda)=LPm_table.Lvd(x.real_form,x.involution,(lambda+x.involution*lambda).numer).list
 set number_vertices(KGBElt x, ratvec lambda)=#vertices(x,lambda)

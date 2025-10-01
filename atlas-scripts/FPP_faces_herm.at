@@ -187,7 +187,7 @@ set_type
   , (RealForm -> ) writeG {output data for one group to file}
   , ((RealForm, int, int) -> ) writeGrange {output data for KGB(G)[low,high]}
   , ((KGBElt, ratvec) -> ) writexlam {output data for one x,lambda}
-  , ((KGBElt, ratvec) -> ) writexlam_no_G {output data for one x,lambda; wit-hout writing G}
+  , ((KGBElt, ratvec) -> string ) writexlam_no_G {output data for one x,lambda; wit-hout writing G}
   , (RealForm, [int] -> ) set_xl_sizes {set xl_sizes(RealForm)=[int]}
 )
 ]
@@ -1003,6 +1003,7 @@ set make_big_unitary_hash() = big_unitary_hash_table:
 		  od
 	     else prints("void: big_unitary_hash.finishxmap(",Gname,",",donemap,")")
 	     fi;
+             prints("void: big_unitary_hash.set_xl_sizes(",Gname,",",xl_sizes[i],")");
 	     prints("set ",intlistname,"=[int]:[]");
 	     write_append(bitmapintlist,intlistname);
 	     prints("big_unitary_hash.finishall(",Gname,",",intlistname,")")
@@ -1092,8 +1093,10 @@ some lambdas for that x might be finished.}
 	 if is_member_bitset(position(x,lambda), xl_known[i][xnum])
 	 then prints("big_unitary_hash.finish_num(",Gname,",",xnum,",",to_string(N),")")
 	 fi
-    , ((KGBElt,ratvec) -> ): {writexlam_no_G} (KGBElt x, ratvec lambda):
-      let G = x.real_form
+     {changed writexlam_no_G to return a string}
+    , ((KGBElt,ratvec) -> string ): {writexlam_no_G} (KGBElt x, ratvec lambda):
+      let str=string:""
+      then G = x.real_form
       then xnum = x.number
       then i = add_real_form(G)
       then Gname = "G_temp"
@@ -1107,13 +1110,13 @@ some lambdas for that x might be finished.}
 		   od.##
       then N = to_bitset([position(x,lambda)])
       in {write_real_form(G,Gname);}
-	 prints("set j = big_unitary_hash.rf_number(",Gname,")");
-	 for p in plist
-	 do prints("void: big_unitary_hash.long_match(parameter(G_temp,",xnum,",",lambda,",",p.nu,"),j)")
+	 str+:="set j = big_unitary_hash.rf_number(" + Gname + ")\n";
+	 for p in plist do
+           str+:="void: big_unitary_hash.long_match(parameter(G_temp," + xnum + "," +to_string(lambda) + "," + to_string(p.nu) +"),j)\n"
 	 od;
 	 if is_member_bitset(position(x,lambda), xl_known[i][xnum])
-	 then prints("big_unitary_hash.finish_num(",Gname,",",xnum,",",to_string(N),")")
-	 fi
+	 then str+:="big_unitary_hash.finish_num(" + Gname + "," + xnum + "," + to_string(N) + ")\n"
+	 fi;str
    , ((RealForm,[int]) -> ): {set_xl_sizes} (RealForm G,[int] precomputed_xl_sizes):
        let i=add_real_form(G) in
        xl_sizes[i]:=
@@ -1193,6 +1196,17 @@ set is_finished(KGBElt x, ratvec lambda) = bool:
 		  fi
     then () = is_finished_time +:= elapsed_ms() - start
     in answer
+
+{requires G is in big_unitary_hash and cumulative_sizes is set}
+set is_finished(RealForm G,[int] cumulative_sizes,int j)=bool:
+    let (x,lambda)=xl_pair(G,cumulative_sizes,j) in is_finished(x,lambda)
+
+{get cumulative_sizes from big_unitary_hash}
+set is_finished(RealForm G,int j)=bool:
+    let cumulative_sizes=big_unitary_hash.xl_sizes_cumulative(G) then
+    ()=assert(!=cumulative_sizes,"cumulative_sizes not set") then
+    (x,lambda)=xl_pair(G,cumulative_sizes,j) in
+    is_finished(x,lambda)
 
 {list of all pairs (x,lambda) for which complete FPP-unitary dual is present in big_unitary_hash}
 set list_all_finished(RealForm G) = [(KGBElt,ratvec)]:

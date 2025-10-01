@@ -34,7 +34,7 @@ set write_vecs([vec] list) = void:
 
 set write_append([int] list, string listname) = void:
     begin
-	 for M@j in list do prints(listname,"#:=",M) od
+	 for M@j in list do prints("void:",listname,"#:=",M) od
 {	 , if j<#list-1 then  
     ";" else "" fi) od}  {This creates a single long expression with
     #list pieces: interpreter can't read if it's more than a few thousand}

@@ -1,8 +1,9 @@
 #!/bin/python3
 
+import random
 import sys, time, datetime, os, getopt, subprocess, gc,re,shutil, math,psutil,signal
 import concurrent.futures
-from subprocess import Popen, PIPE, STDOUT
+from subprocess import Popen, PIPE, STDOUT 
 import multiprocessing as mp   #only for cpu count
 from multiprocessing import Process, Queue
 
@@ -24,57 +25,67 @@ def format_cmd(atlas_command):
 
 
 #execute atlas command, read/write output to log file, until encountering final_string
-def execute_atlas_command(atlas_cmd,final_string,my_log,my_proc):
+def execute_atlas_command(atlas_cmd,final_string,my_log,output_file,my_proc):
    my_log.write("executing atlas_cmd: " + atlas_cmd + "\n")
    my_proc.stdin.write(format_cmd(atlas_cmd))
    my_proc.stdin.flush()
+   my_log.write("output from command:\n")
    while True:
-      line=my_proc.stdout.readline().decode('ascii').strip()
+      #my_log.write("in loop\n")
+      line=my_proc.stdout.readline().decode('ascii')
       #my_log.write("LINE: " + line)
       if not line:
          my_log.write("[empty line]\n")
       if line.find(final_string)>=0:
          my_log.write("got termination line with \"" + final_string + "\": " + line + "\n")
-         my_log.write("finished executing: " + atlas_cmd + "\n")
+         my_log.write("end of output from command: " + atlas_cmd + "\n")
          return(line)
       else:
-         my_log.write(line + "\n")
-
+         #don't know why this is needed: \n isn't recognized as a newline, but this replacement fixes it
+         line=line.replace("\\n","\n")
+         output_file.write(line)
+   my_log.write("finished execute_atlas_command\n")
+   
 def wrapper(round,job_number,files_to_read):
    log_file=output_dir + "/logs/" + str(job_number) + ".txt"
    log=open(log_file,"w",buffering=1)
    print("log file: ", log_file,"\n")
-   print("Wrapper:", "\njob_number=", job_number,"\nround=", round, "\nfiles_to_read=", files_to_read)
-   print("symlinks_dir: ", symlinks_dir)
+   data_file=output_dir + "/" + str(job_number) + ".at"
+   log.write("data output file: " + data_file + "\n")
+   print("In wrapper:", "\njob_number=", job_number,"\nround=", round, "\nfiles_to_read=", files_to_read)
+   #print("symlinks_dir: ", symlinks_dir)
    run_atlas_symlink_cmd=symlinks_dir + "/atlas_" + str(job_number)
-   print("runatlas_symlink_cmd: ", run_atlas_symlink_cmd)
+   #print("runatlas_symlink_cmd: ", run_atlas_symlink_cmd)
    make_symlink_cmd="ln -s " + executable_dir + "atlas " + run_atlas_symlink_cmd
    #print("make_symlink_cmd: ", make_symlink_cmd, flush=True)
    os.system(make_symlink_cmd)
    print("made link:", run_atlas_symlink_cmd,"\n")
-   counter=0
+   start_counter=0
    while True:
-      log.write("=================================================================")
-      log.write("Top of while loop\n")
-      log.write("counter: " + str(counter) + "\n")
-      counter=counter+1
+      log.write("=================================================================\n")
+      log.write("start_counter: " + str(start_counter) + "\n")
+      start_counter=start_counter+1
       myarg=[run_atlas_symlink_cmd,"all.at"]+files_to_read
-      log.write("myarg: " +   str(myarg) + "\n")
-      proc=subprocess.Popen(myarg, stdin=PIPE,stdout=PIPE)
-      pid=proc.pid
-      log.write("procid: " + str(pid) + "\n")
-      result=atlas_compute(job_number,round,proc,log)
-      log.write("Result: " + str(result) + "\n")
-      (message,job_number,round)=result
-      if message == "halted due to memory":
-         log.write("Halted due to memory\n")
-         log.write("starting new proc\n")
-      elif (message=="Completed"):
-         log.write("Job completed, exiting\n")
-         break;
-      else:
-         log.write("not halted or completed?, exiting")
-         break;
+      with open(data_file,"a") as data:
+         try:
+            proc=subprocess.Popen(myarg, stdin=PIPE,stdout=PIPE,stderr=PIPE)
+            pid=proc.pid
+            log.write("procid: " + str(pid) + "\n")
+            result=atlas_compute(job_number,round,start_counter,proc,log,data)
+            log.write("\nResult: " + str(result) + "\n")
+            (message,job_number,round)=result
+            if message == "halted due to memory":
+               log.write("Halted due to memory\n")
+               log.write("starting new proc\n")
+            elif (message=="Completed"):
+               log.write("Job completed, exiting\n")
+               break;
+            else:
+               log.write("not halted or completed?, exiting")
+               break;
+            print("success")
+         except subprocess.CalledProcessError as e:
+            print(f"Command failed with error: {e}")
    print("Wrapper loop completed, exiting\n")
    exit()
 
@@ -82,8 +93,8 @@ def wrapper(round,job_number,files_to_read):
 #call the atlas process proc, with arguments:
 #procs: array of processes
 #i: number of process
-def atlas_compute(job_number,round,proc,log):
-   print("atlas_compute\n")
+def atlas_compute(job_number,round,start_counter,proc,log,data):
+   #print("atlas_compute\n")
    pid=proc.pid
    print("starting atlas_compute process\nproc id: ", str(pid),"\njob_number: ",job_number, "\nround: ", str(round), "\ntime: ", str(time.ctime()))
    log.write("Starting computation at " + str(time.ctime()) + "\n")
@@ -115,7 +126,6 @@ def atlas_compute(job_number,round,proc,log):
          'drain_plug_flag',
          'dry_flag',
          'DV_K_type_flag',
-         'easy_up_flag',
          'edge_report_flag',
          'every_KGB_flag',
          'every_lambda_deets_flag',
@@ -126,7 +136,6 @@ def atlas_compute(job_number,round,proc,log):
          'FPP_report_flag',
          'ICPNU_flag',
          'ICPU_flag',
-         'interrupt_flag',
          'is_FPP_unitary_flag',
          'KGB_frac_flag',
          'KGB_path_hash_flag',
@@ -145,7 +154,6 @@ def atlas_compute(job_number,round,proc,log):
          'my_branch_flag',
          'my_formula_flag',
          'my_unitary_hash_flag',
-         'next_taus_flag',
          'nuhash_flag',
          'old_K_type_flag',
          'old_local_test_flag',
@@ -220,18 +228,20 @@ def atlas_compute(job_number,round,proc,log):
    log.write("atlas_cmd: " + atlas_cmd + "\n")
    proc.stdin.flush()
    line = proc.stdout.readline().decode('ascii')
-   log.write("starting size of unitary hashes (job number " + str(job_number) + "): " + line)
+   log.write("starting size of unitary hashes (job number " + str(job_number) + "): " + line + "\n")
    log.write("xl_pairs_queue.qsize: " + str(xl_pairs_queue.qsize()) + "\n")
-   data_file=output_dir + "/" + str(job_number) + ".at"
-   log.write("output data file: " + data_file + "\n")
+   #data_file=output_dir + "/" + str(job_number) + ".at"
+   #log.write("output data file: " + data_file + "\n")
+   #log.write("data output: " + str(data) + "\n")
    while xl_pairs_queue.qsize()>0:
       log.write("*******************************************************************" + "\n")
       log.write("\nJob number: " + str(job_number) + "\n")
       memory_rss=psutil.Process(pid).memory_info().rss / 1024**2 
       memory_vms=psutil.Process(pid).memory_info().vms / 1024**2
-      log.write("current memory usage rss: " + str(memory_rss) + "\n")
-      log.write("current memory usage vms: " + str(memory_vms) + "\n")
+      log.write("current memory usage rss (" + str(pid) + "); " + str(memory_rss) + "\n")
+      log.write("current memory usage vms (" + str(pid) + "); " + str(memory_vms) + "\n")
       log.write("elapsed time: " + elapsed_time(starttime))
+
       try:
          log.write("current queue size: " + str(xl_pairs_queue.qsize()) + "\n")
          log.write("getting new (x,lambda) pair\n")
@@ -274,10 +284,10 @@ def atlas_compute(job_number,round,proc,log):
          elif "false" in line:
             log.write("(x,lambda) not done\n")
             atlas_cmd="set xl_pair=xl_pair(" + group + "," + str(x_lambda_number) + ")\nprints(new_line,\"got_pair\")" + "\n"
-            execute_atlas_command(atlas_cmd,"got_pair",log,proc)
+            execute_atlas_command(atlas_cmd,"got_pair",log,log,proc)
 
             atlas_cmd="print_xl_pair(" + group  + " ," + str(x_lambda_number)  + ")\n"
-            log.write("atlas_cmd: " + atlas_cmd + "\n")
+            #log.write("atlas_cmd: " + atlas_cmd + "\n")
             proc.stdin.write(format_cmd(atlas_cmd))
             proc.stdin.flush()
             line = proc.stdout.readline().decode('ascii').strip()
@@ -286,8 +296,8 @@ def atlas_compute(job_number,round,proc,log):
             lambda_=vals[1]
             log.write("x: " + x_number + " lambda_: " + lambda_ + "\n")
             atlas_cmd="set list=FPP_unitary_hash_bottom_layer(xl_pair);prints(\"done_fpp\")"  + "\n"
-            log.write("atlas_cmd: " + atlas_cmd + "\n")
-            execute_atlas_command(atlas_cmd,"done_fpp",log,proc)
+            #log.write("atlas_cmd: " + atlas_cmd + "\n")
+            execute_atlas_command(atlas_cmd,"done_fpp",log,log,proc)
             log.write("Finished (x_lambda_number,(x,lambda)): (" + str(x_lambda_number) + ",(" + x_number + "," + lambda_ + "))\n")
             #get rid of line: Variable list: void...
             line=proc.stdout.readline().decode('ascii').strip()
@@ -296,25 +306,33 @@ def atlas_compute(job_number,round,proc,log):
             log.write("Got neither true nor false\n")
             log.write("GOT: " + line + "n")
          #log.write("finished true test\n")
+
          x_lambda_end_time=time.time()
          x_lambda_total_time=x_lambda_end_time-x_lambda_start_time
-         atlas_cmd=">>\"" + data_file  + "\" write_one_pair(" + group + "," + str(x_lambda_number) + ")\n"
-         log.write("atlas_cmd: " + atlas_cmd)
-         proc.stdin.write(format_cmd(atlas_cmd))
-         proc.stdin.flush()
-
-         #log.write("Finished pair x_lambda_number:" + str(x_lambda_number) + "\n")
+         #atlas_cmd=">>\"" + data_file  + "\" write_one_pair(" + group + "," + str(x_lambda_number) + ")\n"
+         atlas_cmd="prints(\"start_counter: \","  + str(start_counter) + ",new_line,\"END\")\n"
+         log.write("data atlas_cmd: " + atlas_cmd)
+         execute_atlas_command(atlas_cmd,"END",log,data,proc)
+         atlas_cmd="prints(write_one_pair(" + group + "," + str(x_lambda_number) + "))\n"
+         log.write("data atlas_cmd: " + atlas_cmd)
+         execute_atlas_command(atlas_cmd,"END",log,data,proc)
+         memory_rss=psutil.Process(pid).memory_info().rss / 1024**2
+         memory_vms=psutil.Process(pid).memory_info().vms / 1024**2
+         log.write("current memory usage rss (" + str(pid) + "); " + str(memory_rss) + "\n")
+         log.write("current memory usage vms (" + str(pid) + "); " + str(memory_vms) + "\n")
+         #log.write("finished atlas cmd 1\n")
+         log.write("Finished pair x_lambda_number:" + str(x_lambda_number) + "\n")
          log.write("elapsed time: " + nice_time(x_lambda_total_time) + "\ntime from start: " + nice_time(x_lambda_end_time-starttime) + "\n")
-         reporting_data.append((job_number,round,x_lambda_number,x_number,lambda_,x_lambda_total_time))
-         log.write("added to reporting data: " + str(x_lambda_number) + "n")
+         reporting_data.append((job_number,round,start_counter,x_lambda_number,x_number,lambda_,x_lambda_total_time))
+         log.write("added to reporting data: " + str(x_lambda_number) + "\n")
          log.write("end of loop\n")
-         proc.stdout.flush()
+         #proc.stdout.flush()
          #MEMORY TEST:
          #if this process is using more than max_memory: kill this process
          log.write("Memory Test")
          log.write("\nJob number: " + str(job_number) + "\n")
          log.write("Job pid: " +  str(pid) + "\n")
-         memory_rss=psutil.Process(pid).memory_info().rss / 1024**2 
+         memory_rss=psutil.Process(pid).memory_info().rss / 1024**2
          memory_vms=psutil.Process(pid).memory_info().vms / 1024**2
          log.write("checking current memory usage rss:" + str(memory_rss) + "\n")
          log.write("checking current memory usage vms:" + str(memory_vms) + "\n")
@@ -322,16 +340,27 @@ def atlas_compute(job_number,round,proc,log):
             log.write("memory_vms>" + str(max_memory)+ ": killing (E) process ")
             log.write("proc.pid: " + str(pid) + "\n")
             log.write("going to kill atlas process\n")
-            log.write("first write report (process killed due to memory)\n")
-            #report(reporting_data,log)
-            log.write("Killing (D) process (sending quit to atlas) " + str(pid) + "\n")
+            log.write("write report\n")
+            report(reporting_data,log)
+            log.write("Killing process (sending quit to atlas) " + str(pid) + "\n")
             atlas_cmd="quit" + "\n"
             #exit()
             proc.stdin.write(format_cmd(atlas_cmd))
             proc.stdin.flush()
             log.write("quit atlas \n")
             log.write("killing proc\n")
-            proc.kill()
+            #proc.kill()
+            proc.terminate()
+            if proc.stdin:
+               proc.stdin.close()
+            if proc.stdout:
+               proc.stdout.close()
+            if proc.stderr:
+               proc.stderr.close()
+            proc.wait()
+            log.write("done killing and cleaning up\n")
+
+               
             log.write("killed proc")
             return("halted due to memory",job_number,round)
             #log.write("Restarting the process: job_number: " + str(job_number) + " pid: " + str(pid) + "\n")
@@ -348,10 +377,10 @@ def atlas_compute(job_number,round,proc,log):
             log.write("Get another pair from queue\n")
             #go back to top of while x_lambdas_todo.qsize()>0 loop
             #lambda_queue.qsize=0: exit while x_lambdas_todo.qsize()>0 loop
-   log.write("No more (x,lambda) pairs to do\ntime: " + str(time.ctime()) + "\n")
+   log.write("No more (x,lambda) pairs to do\ntime: " + str(time.ctime()) + "\n\n")
    report(reporting_data,log)
    atlas_cmd="big_unitary_hash.uhash_size(" + group + ")\n"
-   log.write("atlas_cmd: " + atlas_cmd)
+   #log.write("atlas_cmd: " + atlas_cmd)
    proc.stdin.write(format_cmd(atlas_cmd))
    proc.stdin.flush()
    line = proc.stdout.readline().decode('ascii').strip()
@@ -368,18 +397,17 @@ def atlas_compute(job_number,round,proc,log):
    #            log.write("x:" + str(x) + " " + nice_time(t) + "\n")
    #         log.write("Total time for " + str(x_lambda_count) + " x/lambda pairs: "+ elapsed + "\n")
    log.write("finished x_lambda queue\n")
-   log.write("Killing (B) process at " + str(time.ctime()) + "\n")
    #log.close()
    #print("Closed log file\n")
    #data.close()
-   log.write("killing process (C)" + str(job_number) +  " at " + str(time.ctime()) + "\n")
+   log.write("killing process, job_number " + str(job_number) +  " at " + str(time.ctime()) + "\n")
    proc.kill()
-   log.write("returning Completed\n")
+   log.write("returning: (Completed,"+ str(job_number) + "," + str(round) + "\n")
    return(("Completed",job_number,round))
 
 #MAIN
 def main(argv):
-   global output_dir,group,group_name,xl_pairs_queue,round,test_var, executable_dir,data_directory, group_definition_file, init_file,P,T, files_to_read,procs,max_memory, queue_size, symlinks_dir,log_dir
+   global output_dir,group,group_name,xl_pairs_queue,round,test_var, executable_dir,data_directory, group_definition_file, init_file,P,T, files_to_read,procs,max_memory, queue_size, symlinks_dir,log_dir,data_file,data
    data_directory="./data"
    n_procs=1
    test_var=""
@@ -387,7 +415,7 @@ def main(argv):
    round=""
    group=""
    logfile=""
-   executable_dir="/.ccs/u02/jdada11/atlasSoftware/david_facets/"
+   executable_dir="/.ccs/u02/jdada11/atlasSoftware/to_ht_branch_jeff/"
    files_to_read=[]
    files_to_read_string=""
    default_file_to_read=""
@@ -395,13 +423,14 @@ def main(argv):
    init_file=""
    no_init=False
    write_init_only=False
-   max_memory=10000   #10,000 megabyte = 10 gigabytes, x 1000 jobs=10 terabytes
    #max_memory=20000  #in megabytes: 20,000 = 20 gigabytes
    #max_memory=50000   #50,000 megabyte = 50 gigabytes, x 250 jobs=12.5 terabytes
    #max_memory=60000   #60,000 megabyte = 60 gigabytes, x 250 jobs=15 terabytes
+   #default: 10 gigabytes
+   max_memory=10000   #10,000 megabyte = 10 gigabytes, x 1000 jobs=10 terabytes
    queue_size=-1
    reverse=False
-   opts, args = getopt.getopt(argv, "g:d:n:l:x:i:G:t:m:I:hr")
+   opts, args = getopt.getopt(argv, "g:d:n:l:x:i:G:t:m:I:hrw")
    for opt, arg in opts:
       if opt in ('-h'):
          print("\
@@ -463,6 +492,7 @@ def main(argv):
    if group=="" and write_init_only==False:
       print("group must be defined with -g (-h for help)");
       exit()
+   group_definition_file=data_directory + "/" + group_name + ".at"
    if write_init_only:
       fpp_init()
       exit()
@@ -516,6 +546,10 @@ def main(argv):
    sys.stderr = sys.stdout
    print("Starting at ", time.ctime())
    print("command line: ", " ".join(sys.argv))
+   freeproc=subprocess.Popen(["./free.py","-d" + log_dir], stdin=PIPE,stdout=PIPE,stderr=PIPE)
+   cpu_count=mp.cpu_count()
+   print("Number of cores available: ", cpu_count)
+
    print("Number of cores being used: ", n_procs,flush=True)
    #if no_init==True: don't load the init file, and don't initialize the hash
    #if no_init==False:
@@ -526,18 +560,18 @@ def main(argv):
    print("init_file: ", init_file,flush=True)
    #if init_file exists load it
    if len(init_file)>0 and os.path.exists(init_file):
-      print("found init filed: ", init_file, flush=True)
+      #print("found init file: ", init_file, flush=True)
       atlas_cmd=executable_dir + "atlas"
-      proc=subprocess.Popen([atlas_cmd,"all.at",init_file], stdin=PIPE,stdout=PIPE)
+      proc=subprocess.Popen([atlas_cmd,"all.at",init_file], stdin=PIPE,stdout=PIPE,stderr=PIPE)
       print("Loaded init file: ", init_file,flush=True)
       #proc.kill()
    else:
       print("init file is empty, generating big_unitary_hash", flush=True)
       atlas_cmd=executable_dir + "atlas"
-      proc=subprocess.Popen([atlas_cmd,'all.at'], stdin=PIPE,stdout=PIPE)
+      proc=subprocess.Popen([atlas_cmd,'all.at'], stdin=PIPE,stdout=PIPE,stderr=PIPE)
       #atlas_cmd="big_unitary_hash.set_xl_sizes(" + group + ",[]);prints(\"OK2\")\n"
       atlas_cmd="big_unitary_hash.set_xl_sizes(" + group + ",[])\n"
-      proc.stdin.write(format_cmd(atlas_cmd+ "\n"))
+      proc.stdin.write(format_cmd(atlas_cmd + "\n"))
       proc.stdin.flush()
       print("set xl_sizes in big_unitary_hash\n", flush=True)
       line=proc.stdout.readline().decode('ascii').strip()
@@ -547,10 +581,13 @@ def main(argv):
       print("atlas: " + atlas_cmd + "\n")
       proc.stdin.write(format_cmd(atlas_cmd+ "\n"))
       proc.stdin.flush()
+      log.write("moving on\n")
+      #line=proc.stdout.readline().decode('ascii').strip()
+      #log.write("after > statement, line:" +  line)
    xl_pairs_queue=mp.Queue()
    print("created xl_pairs_queue",flush=True)
    #get number of (x,lambda) pairs to make queue of that size
-   #if -m was called use that instead (if not, queue_size=-1)
+   #if -q was called use that instead (if not, queue_size=-1)
    if queue_size==-1:
       print("setting queue size using atlas")
       atlas_cmd="prints(big_unitary_hash.xl_sizes_cumulative(" + group + ")~[0])\n"
@@ -576,10 +613,7 @@ def main(argv):
    #read file into atlas, just to find the length of the array x_lambdas_todo 
 
    #launch free.py (monitoring processes)
-   print("launching free.py\n")
-   freeproc=subprocess.Popen(["./free.py","-d" + log_dir], stdin=PIPE,stdout=PIPE)
-   cpu_count=mp.cpu_count()
-   print("Number of cores available: ", cpu_count,"\n")
+   print("running free.py\n")
    for file in files_to_copy:
       if len(file)>0:
          print("Copying " + file + " to logs directory")
@@ -587,7 +621,7 @@ def main(argv):
    #run git log -n 1 to get last log entry and print it out
    print("git log -n 1:")
    git_cmd=['git','log','-n','1']
-   proc=subprocess.Popen(git_cmd, stdin=PIPE,stdout=PIPE)
+   proc=subprocess.Popen(git_cmd, stdin=PIPE,stdout=PIPE,stderr=PIPE)
    proc.stdin.flush()
    gitlog=proc.stdout.read().decode('ascii')
    print(gitlog)
@@ -600,7 +634,7 @@ def main(argv):
    print("running one atlas job to write group definition file")
    atlas_cmd=executable_dir + "atlas" 
    #print("atlas_cmd: " + atlas_cmd)
-   proc=subprocess.Popen([atlas_cmd,"all.at"], stdin=PIPE,stdout=PIPE)
+   proc=subprocess.Popen([atlas_cmd,"all.at"], stdin=PIPE,stdout=PIPE,stderr=PIPE)
    atlas_cmd="<FPP.at\n"
    proc.stdin.write(format_cmd(atlas_cmd))
    proc.stdin.flush()
@@ -608,7 +642,6 @@ def main(argv):
    #print("atlas_cmd: ",  atlas_cmd)
    proc.stdin.write(format_cmd(atlas_cmd))
    proc.stdin.flush()
-   group_definition_file=data_directory + "/" + group_name + ".at"
    group_definition=open(group_definition_file,"w",buffering=1)
    group_definition.write("<groups.at\n")
    while True:
@@ -681,7 +714,7 @@ def fpp_init():
             #print("files_to_read: ", files_to_read)
             arg=[atlas_executable] + files_to_read
             print("arg: ",arg)
-            proc=subprocess.Popen(arg,stdin=PIPE,stdout=PIPE)
+            proc=subprocess.Popen(arg,stdin=PIPE,stdout=PIPE,stderr=PIPE)
    print("sending output to ", init_file, "\n")
    #    atlas_cmd="> " + init_file + " big_unitary_hash.writeG("+ group + ")"
    atlas_cmd="> " + init_file + " big_unitary_hash.write()"
@@ -693,9 +726,9 @@ def fpp_init():
 
 def report(data,log_file):
    log_file.write("report on times:\n")
-   log_file.write("|job_number|round|pair number|x|lambda|time\n")
-   for (job_number,round,x_lambda_number,x_number,lambda_,x_lambda_total_time) in data:
-      log_file.write("|" + str(job_number) +"|" + round + "|" + str(x_lambda_number) + "|" + x_number + "|" + str(lambda_) + "|" + nice_time(x_lambda_total_time) +"\n")
+   log_file.write("|job_number|round|restart|pair number|x|lambda|time\n")
+   for (job_number,round,start_counter,x_lambda_number,x_number,lambda_,x_lambda_total_time) in data:
+      log_file.write("|" + str(job_number) +"|" + round + "|" + "|" + str(start_counter) + "|" + str(x_lambda_number) + "|" + x_number + "|" + str(lambda_) + "|" + nice_time(x_lambda_total_time) +"\n")
 
 if __name__ == "__main__":
    main(sys.argv[1:])
