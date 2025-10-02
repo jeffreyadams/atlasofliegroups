@@ -372,7 +372,7 @@ then coh_ind_unip_few(G,Uhash)}
     	      do {xlambdasW}
 	      	let skip_lambda= is_finished(x,lambda),
 		revert_steve_flag = prefer_steve_long_flag and
-		x.number = #KGB(G) - 1 and lambda != G.rho
+		(x.number = #KGB(G) - 1) and (lambda != G.rho)
 		in if skip_lambda
 		   then if FPP_report_flag
 		   	then prints("Already computed (",x,",",lambda,")")
@@ -415,7 +415,7 @@ then coh_ind_unip_few(G,Uhash)}
 			   prints("gr = ",gr);
 			   prints("CLBF = ",CLBF)
 }
-		 in if (not revert_steve_flag) and #LF[0]=0 
+		 in if (not revert_steve_flag) and (#LF = 0 or #LF[0]=0) 
 		    then finish(x,lambda);
 		    	 none_count +:=1; ()
 		     else if every_lambda_deets_flag
@@ -551,7 +551,7 @@ set FPP_unitary_hash_general([KGBElt] xs, Param_hash Uhash, (Param->bool) fancy_
 	 let former_time = current, formerUhash = currentUhash, formerUcounter = currentUcounter,
 	     formerUtime = unitaryTime, formerCcounter = currentCcounter, formerCharTime = charTime,
 	     former_red_count_time = red_count_time, revert_steve_flag = prefer_steve_long_flag and
-	     			   x.number = #KGB(G) - 1
+	     			   (x.number = #KGB(G) - 1)
 	 then xtwists = isotwistKGBs(x), twists = all_lambda_differential_0(x)
 	 then M = #FPP_lambdas(x)
 	 then full_M = to_bitset([M])-1
@@ -677,14 +677,14 @@ set FPP_unitary_hash_general([KGBElt] xs, Param_hash Uhash, (Param->bool) fancy_
 		      	      	      	      	       	 then localFD_1Dirac2_by_zero(xW, lambdaW, Lvd, Perm2)
 			   				 else localFD_1Dirac2(xW, lambdaW, Lvd, Perm2)
 			   				 fi {by_zero_flag}
-				      	       then () = if every_lambda_deets_flag and FPP_report_flag and
-					       	       	    not revert_steve_flag
+				      	       then () = if every_lambda_deets_flag and FPP_report_flag {and
+					       	       	    not revert_steve_flag}
     	      	      	              	       	       	 then prints("time for localFD_1Dirac2* = ",
 				      	       	    	      print_time_string(elapsed_ms() - startLF),
 			   			    	      " to find [",#LF[0],",",#LF[1],
 							      "] verts and edges; Dirac eliminated ",DTcount - startDTcount)
 	      		   			    	 fi
-			 		   in if {(not revert_steve_flag) and} #LF[0] = 0
+			 		   in if {(not revert_steve_flag) and} (#LF = 0 or #LF[0] = 0)
 					      then none_count +:=1;
 					      	   finish(x, lambda); []
 			    		      else if every_lambda_deets_flag
@@ -693,12 +693,13 @@ set FPP_unitary_hash_general([KGBElt] xs, Param_hash Uhash, (Param->bool) fancy_
 				    	 	   test_verbose :=old_test_verbose;
 						   test_slightly_verbose := old_test_slightly_verbose
 				 		   fi;
-				 		   let answer = if revert_steve_flag and lambdaW != G.rho
-			      	       		       	      	then local_test_GEO_hash_steve(xW, lambdaW, Lvd,
+				 		   let answer = 
+						       if revert_steve_flag and lambdaW != G.rho
+			      	       		       then local_test_GEO_hash_steve(xW, lambdaW, Lvd,
 								Uhash, fancy_tester)
-						   		else local(xW, lambdaW, Lvd, LF, pol_hash, Uhash,
+						       else local(xW, lambdaW, Lvd, LF, pol_hash, Uhash,
 								fancy_tester)
-								fi
+						       fi
 						   then () = finish(x, lambda)
 						   {then p = parameter(Sp(6,R),8,[2,1,1],[1,-1,0]/2)
 						   then Lp = big_unitary_hash.lookup(p)
@@ -836,7 +837,7 @@ set FPP_unitary_hash_steve([(KGBElt,ratvec)] xlambdas, Param_hash Uhash,
 	      	   branch_builtin_time :=0; branch_script_time := 0
 	      fi
     then () = if FPP_report_flag
-    	      then {clear_report_tested();} DTcount:=0; DBTcount:=0
+    	      then {clear_report_tested();} DTcount:=0; DBTcount:=0; report_steve_clear()
 	      fi
     then xnums = for (x,) in xlambdasW do x.number od
     then lambdas = for (,lambda) in xlambdasW do lambda od
@@ -894,56 +895,40 @@ then coh_ind_unip_few(G,Uhash)}
 		   		   prints("  ------------------")
         	   	   fi {every_lambda_flag}
 		 then startLF = elapsed_ms()
-		 in if test_no_unitary(x,lambda,Lvd)
-		    then ()
-		    else let startDTcount = DTcount
-		 then LF = if steve_tester_flag
-		      	   then let LF2 = localFD_Steve2(x,lambda)
-			   	in local_test_GEO_hash_steve_end_faces(x,lambda, Lvd, LF2,
-				   					big_unitary_hash.uhash(G))
-			   else localFD_SteveU(x,lambda,Lvd,Perm2)
+		 then TNU = test_no_unitary(x,lambda,Lvd)
+		 then UParams = [Param]:
+		      if TNU
+		      then []
+		      else local_test_GEO_hash_steve(x, lambda, Lvd, Uhash, fancy_tester)
+		      fi
+		 then () = finish(x,lambda)
+		 then () = if #UParams = 0
+		      	   then none_count +:=1
 			   fi
-		 in if #LF[0] = 0
-		    then finish(x,lambda);
-		    	 none_count +:=1; ()
-		     else if every_lambda_deets_flag
-			  then face_verbose := old_face_verbose; time_verbose := old_time_verbose;
+		 then () = if every_lambda_deets_flag and not TNU
+			   then face_verbose := old_face_verbose; time_verbose := old_time_verbose;
 			       test_verbose :=old_test_verbose; test_slightly_verbose := old_test_slightly_verbose
-			  fi;
-			  {prints("LF = ",LF);}
-			  let answer = for list@d in LF
-			      	       do for v in list
-				       	  do let p = parameter(x,lambda,face_bary(Lvd,v))
-					     in for q in monomials(1*p)
-					     	do Uhash.match(q)
-						od;
-						p
-					  od {list of Param's from list}
-				       od.##
-			  then () = finish(x,lambda)
-			  {then () = prints("answer = ",answer)}
-			  then () = answerCards[k] := #answer
-			  then () = if Uparamhash_flag
-			       	    then for p in answer do Uparamhash.match(p) od
-				    fi
-   		    	  then () = current := elapsed_ms(); currentUhash := Uhash.size();
+			   fi
+		 then () = answerCards[k] := #UParams
+		 then () = if Uparamhash_flag
+			   then for p in UParams do Uparamhash.match(p) od
+			   fi
+   		 then () = current := elapsed_ms(); currentUhash := Uhash.size();
 			       	    currentUcounter := unitary_test_counter.use_count();
 				    currentCcounter := char_counter.use_count()
-    		 	  then () = xlambdatimes[k] := current - startxl
-    			  in if every_lambda_flag and FPP_report_flag
-	      		     then prints("  ",print_time_string(xlambdatimes[k]),
+    		 then () = xlambdatimes[k] := current - startxl
+    		 in if every_lambda_flag and FPP_report_flag and not TNU
+	      	    then prints("  ",print_time_string(xlambdatimes[k]),
 			   	" = time for (x,lambda) #",k, " = (", xnums[k], ",",lambdas[k],")", test_string);
-			         prints("    #LF = ", for L in LF do #L od, "; #unitary params = ", answerCards[k],
+			 prints("   #unitary params = ", answerCards[k],
 				 ", #new unitary = ", Uhash.size() - startUhash,
 				 ", #tests for lambda = ", unitary_test_counter.use_count() - startUcounter,
 				 ", time = ", print_time_string(unitaryTime - startUTime));
-				 prints("     #char calcs for this lambda = ",char_counter.use_count() - startCcounter,
+			 prints("     #char calcs for this lambda = ",char_counter.use_count() - startCcounter,
 				 ", time = ",print_time_string(charTime - startCTime));
 				  report_tested();
-				 prints("  ------------------")
-			     fi {every_lambda_flag}
-		    fi {#LF[0]=0}
-		    fi {test_no_unitary}
+			 prints("  ------------------")
+		      fi {every_lambda_flag}
 		    fi{skip_lambda}
 		 od{xlambdasW}
     then () = face_verbose:=old_face_verbose; time_verbose:=old_time_verbose;
@@ -976,6 +961,7 @@ then coh_ind_unip_few(G,Uhash)}
 	      	 	", #hash_one_level = ", hash_one_levelCounter.use_count(), ", #hash_bottom_layer = ",
 			hash_bottom_layerCounter.use_count());}
 	    report_tested();
+	    report_steve_graph();
        	    prints("Number of unitary params = ", sum(answerCards), ", time for is_finished = ",
 	    print_time_string(is_finished_time), ", time for position = ",
 	    print_time_string(position_time));
@@ -1004,7 +990,7 @@ set FPP_unitary_hash_steve([KGBElt] xs, Param_hash Uhash, (Param->bool) fancy_te
     	      then unitaryTime := 0; charTime := 0; FD12Time:=0; FD12bzTime:=0; red_count_time :=0
 	      fi
     then () = if FPP_report_flag
-    	      then {clear_report_tested();} DTcount:=0; DBTcount:=0
+    	      then {clear_report_tested();} DTcount:=0; DBTcount:=0; report_steve_clear()
 	      fi
     then old_face_verbose = face_verbose, old_time_verbose = time_verbose,
     	 old_test_verbose = test_verbose, old_test_slightly_verbose = test_slightly_verbose
@@ -1148,53 +1134,36 @@ set FPP_unitary_hash_steve([KGBElt] xs, Param_hash Uhash, (Param->bool) fancy_te
 		    	  	       		  fi
 		       		    	       od
 					  else let lamthlam = ((1+xW.involution)*lambdaW).numer
-		      		      	       then (Lvd, Perm2{, mapAct}) = LPm_table.LPm_entry(G,xW.involution,lamthlam)
+		      		      	       then (Lvd, Perm2) = LPm_table.LPm_entry(G,xW.involution,lamthlam)
 		      		      	       then  startlambda = elapsed_ms(), startUhash = Uhash.size(),
 					       	     startUcounter = unitary_test_counter.use_count(),
 						     startUtime = unitaryTime, startCcounter =
 						     char_counter.use_count(), startCtime = charTime
 				      	       then startLF = elapsed_ms()
-		 			       in if test_no_unitary(x,lambda,Lvd)
-		   				  then {none_count +:= 1;} {prints("SKIPPED ",x,",",lambda);} ()
-		    			       else let startDTcount = DTcount
-					       	    then LF = if steve_tester_flag
-		      	   			    	      then let LF2 = localFD_Steve2(x,lambda)
-			   				      	   in local_test_GEO_hash_steve_end_faces(x,
-									lambda, Lvd, LF2,
-				   					big_unitary_hash.uhash(G))
-			   				      else localFD_SteveU(x,lambda,Lvd,Perm2)
-			   				      fi
-		 				    	 in if #LF[0] = 0
-		    					    then finish(x,lambda);
-		    					    	  none_count +:=1; ()
-		    					    else if every_lambda_deets_flag
-			  				    	 then face_verbose := old_face_verbose; time_verbose := old_time_verbose;
-			       					 test_verbose :=old_test_verbose; test_slightly_verbose := old_test_slightly_verbose
-			  					 fi;
-			  					 let answer = for list in LF
-			      	       				     	      do for v@d in list
-				       	  				      	 do let p = parameter(x,lambda,face_bary(Lvd,v))
-					     					    in for q in monomials(1*p)
-					     					    do Uhash.match(q)
-										    od;
-										    p
-					  					 od {list of Param's from list}
-				       					      od.##
-						   then () = finish(x, lambda)
-				 		   then () = for p in answer do Uparamhash.match(p) od
-			  	 		   then () = tempanswerCards[index] := #answer
-			  	 		   then () = for p in answer do Uparamhash.match(p) od
-				 		   then () = if every_lambda_deets_flag
-			    	      	   	   	     then face_verbose := old_face_verbose; time_verbose := old_time_verbose;
-				 	   		     	  test_verbose := old_test_verbose; test_slightly_verbose := old_test_slightly_verbose
-				 	   		     fi
- 			 	 		   then () = templambdatimes [index] := elapsed_ms() - startlambda
-			 	 		   in if every_lambda_flag and FPP_report_flag
+		 			       then TNU = test_no_unitary(x,lambda,Lvd)
+					       then UParams = [Param]:
+					       	    if TNU
+						    then []
+						    else local_test_GEO_hash_steve(x, lambda, Lvd, Uhash, fancy_tester)
+						    fi
+					       then () = finish(x,lambda)
+					       then () = if #UParams = 0
+		      	   		       	       	 then none_count +:=1
+			   				 fi
+		 			       then () = if every_lambda_deets_flag and not TNU
+			   		       	       	 then face_verbose := old_face_verbose; time_verbose := old_time_verbose;
+			       test_verbose :=old_test_verbose; test_slightly_verbose := old_test_slightly_verbose
+			       		    		 fi
+						then () = tempanswerCards[index]:=#UParams
+		 				then () = if Uparamhash_flag
+			   			     	  then for p in UParams do Uparamhash.match(p) od
+			   				  fi
+ 			 	 		then () = templambdatimes [index] := elapsed_ms() - startlambda
+			 	 		in if every_lambda_flag and FPP_report_flag and not TNU
 				    		      then prints("  ",print_time_string(templambdatimes[index]),
 			   	    	 	      	   " = time for (x,lambda) = (", xW.number, ",",index," = ",
 							   lambdaW, ")", test_string);
-				         		   prints("    #LF = ", for L in LF do #L od,
-							   ", #unitary params = ", tempanswerCards[index],
+				         		   prints("     #unitary params = ", tempanswerCards[index],
 			     	                	   ", #new unitary = ", Uhash.size() - startUhash,
 							   ", #tests for this lambda = ",
 							   unitary_test_counter.use_count() - startUcounter,
@@ -1206,8 +1175,6 @@ set FPP_unitary_hash_steve([KGBElt] xs, Param_hash Uhash, (Param->bool) fancy_te
 				  			   report_tested();
 					 		   prints("  ------------------")
 				    		       fi{every_lambda_flag}
-			      			 fi{#LF[0] = 0}
-					      fi {test_no_unitary}
 					    fi{lcontnum.>=}
                    		od{lambda}
 				{would be easy enough to get [Param] for each (x,lambda), but for now just
@@ -1228,7 +1195,8 @@ set FPP_unitary_hash_steve([KGBElt] xs, Param_hash Uhash, (Param->bool) fancy_te
        	    		  prints("Time spent in char calcs = ",print_time_string(charTime-formerCharTime),
        	      		  	 ", number of char calcs = ", char_counter.use_count() - formerCcounter,
 				 " time spent in red_count = ",  print_time_string(red_count_times[j]));
-			 report_tested()
+			 report_tested();
+			 report_steve_graph()
                      fi
 	   then () = big_unitary_hash.finish(x, full_M) {mark as done all lambdas for x}
 	   in big_unitary_hash.finishx(x) {mark as done all lambdas for x}
@@ -1272,7 +1240,8 @@ set FPP_unitary_hash_steve([KGBElt] xs, Param_hash Uhash, (Param->bool) fancy_te
 			   ", time for position = ", print_time_string(position_time));
       	    prints("Number of known FPP-unitary faces = ",Uhash.size(),
        	      ", number found on this run = ", Uhash.size() - oldUhash);
-	    report_tested()
+	    report_tested();
+	    report_steve_graph()
       fi {FPP_report_flag}
    in kill_for_big_uTime(); ()
 
@@ -1504,7 +1473,7 @@ fancy_tester) = void:
     then () = for (x,lambda)@k in xlambdas
     	      do {xlambdas}
 	      	 let skip_xlambda = is_finished(x,lambda),
-		     revert_steve_flag = prefer_steve_long_flag and x.number = #KGB(G) - 1 and lambda != G.rho
+		     revert_steve_flag = prefer_steve_long_flag and (x.number = #KGB(G) - 1) and (lambda != G.rho)
 		 in if skip_xlambda
 		    then if every_lambda_flag and FPP_report_flag
 		    	 then prints("Already computed (",x,",",lambda,")")
@@ -1539,7 +1508,7 @@ fancy_tester) = void:
     	      	      	   then prints("time for localFD_1Dirac2* = ", print_time_string(elapsed_ms() - startLF),
 			   	       " to find [",#LF[0],",",#LF[1],"] verts and edges; Dirac eliminated ",DTcount - startDTcount)
 	      		   fi
-		 in if (not revert_steve_flag) and #LF[0] = 0
+		 in if (not revert_steve_flag) and (#LF = 0 or #LF[0] = 0)
 		    then let () = finish(x_sc, lambda_sc)
 		    	 then ()= none_count +:= 1
 			 in if disconn_flag
@@ -1761,7 +1730,7 @@ set FPP_unitary_hash_bottom_layer([KGBElt] xs, Param_hash UhashG, (Param->bool) 
 			       	 then false
 			       	 else true
 			         fi,
-	     revert_steve_flag = prefer_steve_long_flag and x.number = #KGB(G) - 1
+	     revert_steve_flag = prefer_steve_long_flag and (x.number = #KGB(G) - 1)
 	 then former_time = current, formerUhash = currentUhash, formerUcounter = currentUcounter, x_sc = xs_sc[j],
 	     formerUtime = unitaryTime, formerCcounter = currentCcounter, formerCharTime = charTime,
 	     former_red_count_time = red_count_time,  startmorebadx = more_bad_hash.size(),
@@ -1874,7 +1843,7 @@ set FPP_unitary_hash_bottom_layer([KGBElt] xs, Param_hash UhashG, (Param->bool) 
 				" to find [",#LF[0],",",#LF[1],"] verts and edges; Dirac eliminated ",
 				DTcount - startDTcount)
 	      		   	fi
-		       in if {(not revert_steve_flag) and} #LF[0] = 0
+		       in if {(not revert_steve_flag) and} (#LF = 0 or #LF[0] = 0)
 			  then none_count+:=1;
 			       finish(x,lambda); []
 			  else if every_lambda_deets_flag
@@ -1883,7 +1852,7 @@ set FPP_unitary_hash_bottom_layer([KGBElt] xs, Param_hash UhashG, (Param->bool) 
 					 	      old_test_slightly_verbose
 			       fi;
 			       let answer = [Param]:
-			       	      if revert_steve_flag and lambda != G.rho
+			       	      if revert_steve_flag and (lambda != G.rho)
 			       	      then local_test_GEO_hash_steve(x_sc, M*lambda, Lvd, Uhash,
 				      	   fancy_tester)
 			       	      elif test_bl(x_sc, M*lambda, Lvd) or easy_test_bl_flag

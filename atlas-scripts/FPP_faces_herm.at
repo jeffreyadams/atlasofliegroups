@@ -978,7 +978,7 @@ set make_big_unitary_hash() = big_unitary_hash_table:
     in for rf@i in rf_list
        do let Gname = "G"+to_string(i)
 	  then listname = Gname+"_list"
-	  then intlistname = Gname+"_XLK"
+	  {then intlistname = Gname+"_XLK"}
 	  then plist = uhashes[i].list()
 	  then bitmapintlist = xl_known[i]
 	  then donemap = x_known[i]

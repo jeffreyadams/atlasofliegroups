@@ -144,7 +144,15 @@ root_datum(M*simple_roots(rd)
 	  ,^inverse(M)*simple_coroots(rd)
 	  ,rd.prefers_coroots)
 
+set *(mat M, InnerClass ic) = InnerClass:
+inner_class(M*(ic.root_datum), M*(ic.distinguished_involution)*(M.inverse))
+
+set *(mat M, RealForm G) = RealForm:
+let ic = M*G.inner_class
+in real_form(ic, ic.distinguished_involution, (KGB(G,0).torus_factor)*(M.inverse))
+
 set *(WeylElt w,RootDatum rd)=RootDatum:matrix(w)*rd
+set *(WeylElt w,RealForm G)=RealForm:matrix(w)*G
 
 { The magic formula below for the order of the Weyl group must handle the simple
   factors separately: while all the ingredients are defined for arbitrary Lie

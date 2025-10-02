@@ -159,7 +159,7 @@ twisted_root_datum calculates the DUAL folded root datum; so what we
 need here is the dual of folded(dual of G.root_datum)). I think...}
 
 set cofoldedBOTH(RootDatum rd, mat delta) = (RootDatum, RootDatum, mat):
-    assert(is_distinguished(rd,delta),"delta is not distinguished");
+    assert(@:is_distinguished(rd,delta),"delta is not distinguished");
     let Tstar = mat: eigen_lattice(delta,1)
 {Tstar =(X^*)^\delta; columns are a basis of (X^*)^\delta}
 {Tstar is nxr where n=rd.rank and r=dimension(Tstar)}
@@ -998,7 +998,7 @@ set write_vecsss([[[vec]]] listsss, string listsss_name) = void:
 
 set write_FPP_edges_hash() = void:
    let list_ic = ichashezu.list()
-   then () = assert(#list_ic = #FPPebzu,"Sizes of ichashezu and FPPebzu don't match")
+   then () = assert(@:#list_ic = #FPPebzu,"Sizes of ichashezu and FPPebzu don't match")
    then () = write_ic_list(list_ic,"ebzu_ics")
    then () = write_vecsss(FPPebzu, "ebzu_FVIs")
    in prints("for ic@j in ebzu_ics do append_to_febzu(ic, ebzu_FVIs[j]) od")
@@ -1459,7 +1459,7 @@ set FPP_add_dim (SimpleAffine Affd, int dim, [[FaceVertsIndex]] low_faces) =
     [[FaceVertsIndex]]:
 
 (   let dim = #low_faces, num_verts = #low_faces[0]
-    then () = assert(#low_faces > 1,"In FPP_add_dim, low_faces must include edges")
+    then () = assert(@:#low_faces > 1,"In FPP_add_dim, low_faces must include edges")
     then () = if face_verbose
     	      then prints(new_line,"start FPP_add_dim, adding faces of dim ", dim)
     	      fi
@@ -1509,7 +1509,7 @@ set FPP_add_dim_B (SimpleAffine Affd, int dim, [[FaceVertsIndex]] low_faces) =
     [[FaceVertsIndex]]:
 
 (   let dim = #low_faces, num_verts = #low_faces[0]
-    then () = assert(#low_faces > 1,"In FPP_add_dim, low_faces must include edges")
+    then () = assert(@:#low_faces > 1,"In FPP_add_dim, low_faces must include edges")
     then () = if face_verbose
     	      then prints(new_line,"start FPP_add_dim_B, adding faces of dim ", dim)
     	      fi
@@ -1735,9 +1735,9 @@ set local_vertices2(Param p) = (FaceVerts,int):
     then vd = FPP_vertex_data(G)
     then list = global_vertices(G,gamma)
     then nums = for v in list do vd.lookup(v) od
-    then () = assert(nums.>=,"p appears not to be an FPP parameter")
+    then () = assert(@:nums.>=,"p appears not to be an FPP parameter")
     then (fixed,trans) = thetaAct2(p.x, p.lambda)
-    then () = assert(#fixed + 2*#trans = #list, "p appears not to be a hermitian parameter")
+    then () = assert(@:#fixed + 2*#trans = #list, "p appears not to be a hermitian parameter")
     in (for n in fixed do list[n] od ##
         for (n,m) in trans do (vd.list[n] + vd.list[m])/2 od, #fixed)
 
@@ -1748,7 +1748,7 @@ set local_vertices(Param p) = FaceVerts:
     then list = global_vertices(G, gamma)
     then LLvd = to_vertex_data(list), x = p.x, lambda = p.lambda
     then Perm = thetaAct(x,lambda,LLvd)
-    then () = assert(Perm.>=,"p appears not to be a hermitian parameter")
+    then () = assert(@:Perm.>=,"p appears not to be a hermitian parameter")
     in for v@j in list do (v + list[Perm[j]])/2 od.no_reps
 
 set hermCenterOldTime = int:0

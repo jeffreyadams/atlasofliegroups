@@ -4947,6 +4947,8 @@ set local_test_GEO_hash_steve_end(KGBElt x, ratvec lambda, LocalVertexData Lvd,
 	      in ()
 	      fi{quick_flag}
     {now LFDKH is everything unitary to ht one_ht}
+    {then () = prints("at ",lambda,", #LFUcands = ",for list in LFDKH do #list od)}
+    {then () = prints(LFDKH.##)}
     then () = ICPNU_flag:= ICPNU_flag_hold
     then unitary_by_dim = vec: for L in LFDKH do #L od
     then () = if test_verbose then { prints("unitary to ht ",one_ht, " faces by dim = ",
