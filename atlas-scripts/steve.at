@@ -276,7 +276,16 @@ set pL1(KGBElt x, ratvec lambda, vec av, rat t) = Param:
 set std_quo(Param p) = ParamPol:
     1*p-character_formula(1*p)
 
+set steve_new_flag = true
+
+set ind_quo_new(KGBElt x, ratvec lambda, vec av, rat t) = KTypePol:
+    let pL = pL(x,lambda,av,t)
+    in K_type_pol(std_quo(pL))
+
 set ind_quo(KGBElt x, ratvec lambda, vec av, rat t) = KTypePol:
+    if steve_new_flag
+    then return ind_quo_new(x,lambda,av,t)
+    fi;
     let pL1 = pL1(x,lambda,av,t)
     {then () = assert(dominant(x.real_form,pL.infinitesimal_character) =
     	 dominant(x.real_form, pL1.infinitesimal_character),"bad infl char for pL1")
