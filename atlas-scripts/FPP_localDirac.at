@@ -1413,7 +1413,7 @@ set local_testK_hash_bottom_layer_more(KGBElt x, ratvec lambda, LocalVertexData 
 		     then verts = vec: FVKH[d][j][:d+1]
 		     then pC = parameter(x, lambda, face_bary(Lvd, verts))
 		     then ps = monomials(finalize(pC))
-		     then test = if all(for p in ps do @bool:Uhash.lookup(p).>= od)
+		     then test = if all(for p in ps do @bool:big_unitary_hash.ulookup(p).>= od)
 				 then true
 				 elif #ps = 1 {otherwise the K-char is wrong!}{)}
 				 then bottom_elim_factors_more(ps[0], pC, datas,
@@ -1453,7 +1453,7 @@ set local_testK_hash_bottom_layer_more(KGBElt x, ratvec lambda, LocalVertexData 
 {Assume datass is built of bottom layer K-types up to Ds[0], enumerated in KHash.
 Find first j from 1 where [Ds[j-1],Ds[j]) gives more bottom layer K-types; add those to KHash;
 replace Ds by Ds[j:]. }
-set add_datas(Param p, KGPElt Qmin, {KType_hash KHash,} [int] Ds) =
+set add_datas(Param p, KGPElt Qmin, [int] Ds) =
     ([QKL_bottom_data], [int]):
     let Es = [Ds~[0]], old_size = bl_KHash.size()
     then answer = [(KGPElt,[(KType,[KType])])]: []
@@ -2614,9 +2614,9 @@ set one_param_time = int: 0
 set wiggle_unitary_flag = false
 
 {true more than 3/4 of time, so shouldn't do much to_height testing}
-set one_param_test(Param p, Param_hash Uhash) = [Param]:
+set one_param_test(Param p) = [Param]:
     let start = elapsed_ms(), Q = monomials(finalize(p)), G = p.real_form
-    then () = if all(for q in Q do Uhash.lookup(q).>= od)
+    then () = if all(for q in Q do big_unitary_hash.ulookup(q).>= od)
 	      then return [p]
 	      elif any(for q in Q do big_unitary_hash.nulookup(q).>= od)
 	      then return []
@@ -2682,37 +2682,38 @@ set one_param_test_min_bottom(Param p, Param_hash Uhash) = [Param]:
        fi
 
 {assume min_bottom already called, so lookup failed}
-set one_param_test_bottom(Param p, [int] Ds, Param_hash Uhash) = [Param]:
+set one_param_test_bottom(Param p, [int] Es) = [Param]:
     let start = elapsed_ms(), QG = monomials(finalize(p)),G = p.real_form
     {Next statement, to check here whether terms of QG already known, sometimes omitted?}
-    then () = if all(for q in QG do Uhash.lookup(q).>= od)
+    then () = if all(for q in QG do big_unitary_hash.ulookup(q).>= od)
     	      then return [p]
 	      elif any(for q in QG do big_unitary_hash.nulookup(q).>= od)
 	      then return []
 	      fi
+    then () = bl_KHash.clear()
     then () = hash_bottom_layerCounter.use()
     then still_here = true
-    then Es = (if #Ds > 1 then Ds
-    	      else height(p)#Ds
-	      fi).sort_u
     then (Qmin,) = if small_test_flag
     	 	    then theta_stable_data_small(p)
 		    else theta_stable_quasi_data(p)
 		    fi
-    {then MU = big_unitary_hash.branch(K_type_pol(p),Es~[0])} {branch_std(p,Es~[0])}
     then () = if #Es > 1
-       	      then let () = if more_verbose then prints("start more with p = ",p, ", Es = ",Es) fi
+       	      then let () = if more_verbose then prints("start one_param_test_bottom with p = ",p, ", Es = ",Es) fi
 	    	   then Ps = for q in QG do K_type_pol(character_formula(q)) od
 		   in while still_here and #Es > 1
 		      do let old_size = bl_KHash.size()
-			 then (datasNEW, EsNEW) = add_datas(p, Qmin, {bl_KHash,} Es{, MU})
+			 then (datasNEW, EsNEW) = add_datas(p, Qmin, Es)
 			 in if bl_KHash.size() > old_size
 			    then Es:= EsNEW;
 		   		 still_here := all(for q@i in QG
 						   do @bool:
 						      let ans = bottom_elim_factors_more(q, p, datasNEW, Ps[i])
 						      in if not ans
-						      	 then more_bad_hash.match(q)
+						      	 then if more_verbose
+		then prints("finish one_param_test_bottom with Es = ",Es) fi;
+		     		    			       	  more_bad_hash.match(q)
+							 else if more_verbose
+		then prints("continue one_param_test_bottom with Es = ",Es) fi
 							 fi; ans
 						   od)
 			     else break
@@ -2728,9 +2729,7 @@ set one_param_test_bottom(Param p, [int] Ds, Param_hash Uhash) = [Param]:
 			   do @bool: let ans = 
 			      if test_interrupt_flag {up_mu_flag}
 		    	      then is_unitary_test_big_SIMPLE_interrupt(q)
-		    	      else {let DEFHTS = [int]: next_heights(p, r\2)
-			      	   in is_unitary_test_big_SIMPLE(q, DEFHTS)}
-				   is_unitary_hash_big_SIMPLE(q)
+		    	      else is_unitary_hash_big_SIMPLE(q)
 		    	      fi
 			      then () = if not ans and more_after_flag
 		            {HERE USE DIRAC ON MORE K-types}
@@ -2752,11 +2751,15 @@ set one_param_test_bottom(Param p, [int] Ds, Param_hash Uhash) = [Param]:
 	     in []
         fi
 
+set one_param_test_bottom(Param p) = [Param]:
+    let Es = [height(p)]##next_heights(p,2*edge_offset)
+    in one_param_test_bottom(p,Es)
+
 {don't assume min_bottom already called; should only be called if ht > 0?}
-set one_param_test_all_bottom(Param p, [int] Ds, Param_hash Uhash) = [Param]:
+set one_param_test_all_bottom(Param p, [int] Ds) = [Param]:
     let start = elapsed_ms(), Q = monomials(finalize(p)),G = p.real_form
     {then () = prints("Ds = ",Ds)}
-    then () = if all(for q in Q do Uhash.lookup(q).>= od)
+    then () = if all(for q in Q do big_unitary_hash.ulookup(q).>= od)
     	      then return [p]
 	      elif any(for q in Q do big_unitary_hash.nulookup(q).>= od)
 	      then return []
@@ -2806,7 +2809,7 @@ set one_param_test_all_bottom(Param p, [int] Ds, Param_hash Uhash) = [Param]:
 	    then () = if more_verbose then prints("your final answer was ",test) fi
 	    in if test
 	       then let () = for q in Q
-		     	     do Uhash.match(q)
+		     	     do big_unitary_hash.umatch(q)
 		     	     od
 	    	    then () = one_true_counter.use()
 	    	    then () = one_param_time +:= elapsed_ms() - start
@@ -2847,7 +2850,7 @@ set local_test_GEO_hash_real_dumb(KGBElt x, ratvec lambda, {VertexData vd,} Loca
     	      then if mix_flag
 	      	   then return one_param_test_min_bottom(parameter(x,lambda,Lvd.list[LF[0][0][0]]),
 		   	{[height(pmin) + more_shift_level],} Uhash)
-		   else return one_param_test(parameter(x,lambda,Lvd.list[LF[0][0][0]]), Uhash)
+		   else return one_param_test(parameter(x,lambda,Lvd.list[LF[0][0][0]]))
 		   fi
 	      fi
     then pmax = pmax(x,lambda,Lvd)
@@ -3160,7 +3163,7 @@ set local_test_GEO_hash_else_dumb(KGBElt x, ratvec lambda, {VertexData vd,} Loca
     then () = if {TINY CASE} #LF[0]=1
     	      then if mix_flag
 	      	   then return one_param_test_min_bottom(parameter(x,lambda,Lvd.list[LF[0][0][0]]), Uhash) 
-		   else return one_param_test(parameter(x,lambda,Lvd.list[LF[0][0][0]]), Uhash)
+		   else return one_param_test(parameter(x,lambda,Lvd.list[LF[0][0][0]]))
 		   fi
 	      fi
     then FPP_max_ht = (G.rho * G.two_rho_check)\1
@@ -3463,7 +3466,7 @@ set local_test_GEO_hash_def_dumb(KGBElt x, ratvec lambda, LocalVertexData Lvd, [
     	      then if mix_flag
 	      	   then return one_param_test_min_bottom(parameter(x,lambda,Lvd.list[LF[0][0][0]]),
 		   	       {[height(pmin) + more_shift_level],} Uhash)
-		   else return one_param_test(parameter(x,lambda,Lvd.list[LF[0][0][0]]), Uhash)
+		   else return one_param_test(parameter(x,lambda,Lvd.list[LF[0][0][0]]))
 		   fi
 	      fi
     then pmax = pmax(x,lambda, Lvd)
@@ -3832,7 +3835,7 @@ set local_test_GEO_hash(KGBElt x, ratvec lambda, LocalVertexData Lvd, [[FaceVert
     	      then if mix_flag
 	      	   then return one_param_test_min_bottom(parameter(x,lambda,Lvd.list[LF[0][0][0]]),
 		   	       {[height(pmin) + more_shift_level],} Uhash)
-		   else return one_param_test(parameter(x,lambda,Lvd.list[LF[0][0][0]]), Uhash)
+		   else return one_param_test(parameter(x,lambda,Lvd.list[LF[0][0][0]]))
 		   fi
 	      fi
     then vertexDiff = #Lvd.list/#FPP_vertices(G){vd.list}
@@ -3944,7 +3947,7 @@ set local_test_GEO_hash2(KGBElt x, ratvec lambda, {VertexData vd,} LocalVertexDa
     	      then if mix_flag
 	      	   then return one_param_test_min_bottom(parameter(x,lambda,Lvd.list[LF[0][0][0]]),
 		   	       {[height(pmin) + more_shift_level],} Uhash) 
-		   else return one_param_test(parameter(x,lambda,Lvd.list[LF[0][0][0]]), Uhash)
+		   else return one_param_test(parameter(x,lambda,Lvd.list[LF[0][0][0]]))
 		   fi
 	      fi
     {then edge_offset_temp = edge_offset}
@@ -4310,7 +4313,7 @@ set local_test_GEO_hash_one_level(KGBElt x, ratvec lambda, {VertexData vd,}
     	      then if mix_flag
 	      	   then return one_param_test_min_bottom(parameter(x,lambda,Lvd.list[LF[0][0][0]]),
 		   	       {[height(pmin) + more_shift_level],} Uhash)
-		   else return one_param_test(parameter(x,lambda,Lvd.list[LF[0][0][0]]), Uhash)
+		   else return one_param_test(parameter(x,lambda,Lvd.list[LF[0][0][0]]))
 		   fi
 	      fi
     then pmax = pmax(x,lambda,Lvd)
@@ -4592,6 +4595,7 @@ set local_test_GEO_hash_one_level_end(KGBElt x, ratvec lambda, LocalVertexData L
     			KTypePol_hash pol_hash, int HK_known, Param_hash Uhash,
 			(Param->bool) fancy_tester) = [Param]:
     let G = x.real_form, r = rank(x.involution -1), thetaMinus = 1-x.involution
+    then () = prints("LFDKH = ",LFDKH, ", #LFDKH[0] = ", #LFDKH[0])
     then ONE = {if one_level = -1 then} edge_offset {+ max(1, (r+2)\2)*edge_skip}
     	       {else one_level
 	       fi}
@@ -4599,6 +4603,14 @@ set local_test_GEO_hash_one_level_end(KGBElt x, ratvec lambda, LocalVertexData L
     	      else last_level
 	      fi}
     then long_out_temp_flag = long_out_flag
+    then () = if #LFDKH[0] = 0
+    	      then return []
+	      fi
+    then () = if #LFDKH[0] = 1
+    	      then let p1 = parameter(x,lambda, Lvd.list[LFDKH[0][0][0]])
+	      	   in prints("lone param at one_level_end is ",p1);
+		      return one_param_test_bottom(p1)
+    	      fi
     then () = long_out_flag:=false {to allow using local_test_hash without recording Params}
     then pmax = pmax(x, lambda, Lvd)
     then mu = K_type(x,pmax.lambda_minus_rho)
@@ -4622,6 +4634,7 @@ set local_test_GEO_hash_one_level_end(KGBElt x, ratvec lambda, LocalVertexData L
     	      then {let () = prints("lambda = ",lambda,", one_ht = ",one_ht,", HK_known = ",HK_known)}
 	      	   {let () = pol_hash_min.clear()
 	      	   in} LFDKH := extend_K_characters(x,lambda,Lvd,LFDKH,one_ht,pol_hash)
+	      else one_ht:=HK_known
 	      fi
     {then () = prints("after extend, pol_hash_min.list() is ",pol_hash_min.list())}
     {to_ht invalidates ICPNU???}
@@ -5253,8 +5266,8 @@ set local_test_GEO_hash_bottom_layer_interrupt(KGBElt x, ratvec lambda, LocalVer
    then () = if #LFDKH[0] = 0 then return [] fi
    then () = if #LFDKH[0] = 1 {not clear whether Ds help here; already passed min_bottom}
    	     then return if more_flag then one_param_test_bottom(parameter(x,lambda,
-	     	  	    	      Lvd.list[LFDKH[0][0][0]]), Ds, Uhash)
-	     	  	 else one_param_test(parameter(x,lambda, Lvd.list[LFDKH[0][0][0]]),Uhash)
+	     	  	    	      Lvd.list[LFDKH[0][0][0]]), Ds)
+	     	  	 else one_param_test(parameter(x,lambda, Lvd.list[LFDKH[0][0][0]]))
 			 fi
 	     fi
    then start_datas = elapsed_ms(), newDs = [int]:[]
@@ -5296,7 +5309,7 @@ set local_test_GEO_hash_bottom_layer_interrupt(KGBElt x, ratvec lambda, LocalVer
 		    	    fi
    	          then () = if #LFDKH[0] = 0 then return [] fi
    		  then () = if #LFDKH[0] = 1 {already passed newDs, so test_bottom useless}
-   	     	       	    then return one_param_test(parameter(x,lambda, Lvd.list[LFDKH[0][0][0]]), Uhash)
+   	     	       	    then return one_param_test(parameter(x,lambda, Lvd.list[LFDKH[0][0][0]]))
 	     		    fi
 		  in ()
 	      elif test_verbose
@@ -5416,7 +5429,7 @@ set local_test_GEO_hash_bottom_layer_step(KGBElt x, ratvec lambda, {VertexData v
 		    	    fi
    	          then () = if #LFDKH[0] = 0 then return [] fi
    		  then () = if #LFDKH[0] = 1 {already passed Ds, so bottom_test useless}
-   	     	       	    then return one_param_test(parameter(x,lambda, Lvd.list[LFDKH[0][0][0]]), Uhash)
+   	     	       	    then return one_param_test(parameter(x,lambda, Lvd.list[LFDKH[0][0][0]]))
 	     		    fi
 		  in ()
 	      fi
@@ -5510,9 +5523,9 @@ set local_test_GEO_hash_bottom_layer(KGBElt x, ratvec lambda, {VertexData vd,}
 	      	   in return [pmin]
 	      fi
     then () = if {TINY CASE} #LF[0]=1
-    	      then return one_param_test_min_bottom(pmin, Uhash)
+    	      then return one_param_test_bottom(pmin)
 	      fi
-    {then () = prints("Got past one_param_test_all_bottom")}
+    {then () = prints("Got past one_param_test_bottom")}
     then LKDatas = if small_test_flag
     	 	   then minSmallBottomData.entry(x,lambda)
 		   else for mu in LKTs(pmin)
@@ -5543,8 +5556,8 @@ set local_test_GEO_hash_bottom_layer(KGBElt x, ratvec lambda, {VertexData vd,}
 	      fi
     then pmax = pmax(x,lambda,Lvd)
     then gamma = pmax.infinitesimal_character
-    then ht_max = ht + min([more_shift_level, floor(gamma* G.two_rho_check) - ht,
-    	 floor(min_ht_mult*(min_ht_max - ht))])
+    then ht_max = ht + min([more_shift_level, floor(gamma* G.two_rho_check) - ht])
+    	 {floor(min_ht_mult*(min_ht_max - ht))])}
     {then () = prints("Got past small LFDatas")}
     {then pol_hash_min = make_KTypePol_hash()} {to hold K-chars for min bottom layer, to height min_ht_max}
     then () = test_string:= " using local_test_GEO_hash_bottom_layer"
@@ -5586,9 +5599,8 @@ set local_test_GEO_hash_bottom_layer(KGBElt x, ratvec lambda, {VertexData vd,}
    	     then return []
 	     fi
    then () = if #LFDKH[0] = 1
-   	     then return if more_flag then one_param_test_bottom(parameter(x,lambda, Lvd.list[LFDKH[0][0][0]]),
-	     	  	    	      	   					     [ht_max], Uhash)
-	     	  	 else one_param_test(parameter(x,lambda, Lvd.list[LFDKH[0][0][0]]),Uhash)
+   	     then return if more_flag then one_param_test_bottom(parameter(x,lambda, Lvd.list[LFDKH[0][0][0]]))
+	     	  	 else one_param_test(parameter(x,lambda, Lvd.list[LFDKH[0][0][0]]))
 			 fi
 	     fi
     then () = if bl_step_flag {bl_step_count steps of size bl_step_size; defaults to 2 and 5}
@@ -5647,7 +5659,7 @@ set local_test_GEO_hash_bottom_layer(KGBElt x, ratvec lambda, {VertexData vd,}
 				     else max(for(,list) in datas
 		       		     	      do max( (for (tau,) in list do height(tau) od)#height(pmin)) od)
 				     fi
-		  {then () = prints("at line 3813, min_HT_max = ",min_ht_max," and more_HT_max = ",more_ht_max)}
+		  then () = prints("at line 5652, min_HT_max = ",min_ht_max," and more_HT_max = ",more_ht_max)
 		  then () = HK_known := max(HK_known, more_ht_max)
 	     	  then () = if more_ht_max > min_ht_max
 		       	    then LFDKH := {if red_count_flag
@@ -5661,7 +5673,7 @@ set local_test_GEO_hash_bottom_layer(KGBElt x, ratvec lambda, {VertexData vd,}
 		   then () = if more_ht_max > height(pmin)
 		   	     then let ((eq,gr),IUCL,CLBF) = localGraphK(LFDKH, pol_hash, more_ht_max)
 			     	  then () = LFDKH := local_testK_hash_bottom_layer_more(x,lambda, Lvd,
-			    	      	   	 LFDKH, eq, gr, CLBF, {maxQs,} datas, pol_hash, Uhash)
+			    	      	   	 LFDKH, eq, gr, CLBF, datas, pol_hash, Uhash)
 			    	  	 {bottom layer test on K-types in datas}
    		  	       	  then () = if test_verbose then prints("unitary on more_bottom layer to ",
 				       	       more_ht_max, " face counts to dim 1: ",for list in LFDKH do #list od)
@@ -5669,8 +5681,16 @@ set local_test_GEO_hash_bottom_layer(KGBElt x, ratvec lambda, {VertexData vd,}
    		  	     	  then () = if #LFDKH[0] = 0 then return [] fi
 			          then () = more_after_flag:=true
 		  	          then () = if #LFDKH[0] = 1 {already passed D}
-   	     	       	    	            then return one_param_test(parameter(x,lambda,
-			    	      	   	   Lvd.list[LFDKH[0][0][0]]),Uhash)
+   	     	       	    	            then let p = parameter(x,lambda, Lvd.list[LFDKH[0][0][0]])
+					    	 then () = prints("singleton p = ",p,", more_ht_max = ",more_ht_max)
+					    	 in if not all(for q in monomials(p)
+						       	       do bottom_elim_factors_more(p,q,more_ht_max+2*G.rank)
+							       od)
+						    then prints("Whew, got it by more_ht_max+G.rank");
+						    	 return []
+						    else prints("Sigh, missed it by more_ht_max+2*G.rank");
+						    return one_param_test_bottom(p)
+						    fi
 	     		    	             fi
 		  	          in ()
 			     elif test_verbose
@@ -5686,6 +5706,7 @@ set local_test_GEO_hash_bottom_layer(KGBElt x, ratvec lambda, {VertexData vd,}
    {want to pass HK_known}
    then () = more_after_flag := more_flag
    then () = min_after_flag := not more_flag
+   then () = prints("leaving bottom_layer; one_level_revert_flag = ",one_level_revert_flag)
    in if one_level_revert_flag
       then local_test_GEO_hash_one_level_end(x, lambda, Lvd, LFDKH, pol_hash, HK_known, Uhash, fancy_tester)
       else local_test_GEO_hash2_end(x, lambda, Lvd, LFDKH, pol_hash, HK_known, Uhash, fancy_tester)

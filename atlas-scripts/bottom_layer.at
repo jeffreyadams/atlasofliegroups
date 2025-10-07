@@ -531,9 +531,9 @@ set make_min_small_bottom_data () = min_small_bottom_data:
 		      	      		       do max(for(tau,) in mbf do height(tau) od)
 					       od)
 		      then (,list) = mbfs[0][0]
-		      in Lheights#:= for dertauL in list
+		      in Lheights #:= (vec: for dertauL in list
 		      	 	     do next_heights(dertauL.real_form)
-				     od
+				     od)
 		 fi
         then () = assert(#bottom_data = xl_hash.size(),"min_small_bottom_data damaged")
 	then () = assert(#heights = #bottom_data,"min_small_bottom_data damaged")
