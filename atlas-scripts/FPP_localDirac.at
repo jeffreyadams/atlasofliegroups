@@ -2752,7 +2752,8 @@ set one_param_test_bottom(Param p, [int] Es) = [Param]:
         fi
 
 set one_param_test_bottom(Param p) = [Param]:
-    let Es = [height(p)]##next_heights(p,2*edge_offset)
+    let Es = {[height(p)]##next_heights(p,2*edge_offset)}
+    	     [height(p), height(p) + more_shift_level]
     in one_param_test_bottom(p,Es)
 
 {don't assume min_bottom already called; should only be called if ht > 0?}
@@ -5523,7 +5524,10 @@ set local_test_GEO_hash_bottom_layer(KGBElt x, ratvec lambda, {VertexData vd,}
 	      	   in return [pmin]
 	      fi
     then () = if {TINY CASE} #LF[0]=1
-    	      then return one_param_test_bottom(pmin)
+    	      then if more_flag
+	      	   then return one_param_test_bottom(pmin)
+		   else return one_param_test_min_bottom(pmin,Uhash)
+		   fi
 	      fi
     {then () = prints("Got past one_param_test_bottom")}
     then LKDatas = if small_test_flag
@@ -5598,8 +5602,13 @@ set local_test_GEO_hash_bottom_layer(KGBElt x, ratvec lambda, {VertexData vd,}
    	     then return []
 	     fi
    then () = if #LFDKH[0] = 1
-   	     then return one_param_test_bottom(parameter(x,lambda, Lvd.list[LFDKH[0][0][0]]))
-	     fi
+   	     then if more_flag
+	      	   then return one_param_test_bottom(
+		   	parameter(x,lambda, Lvd.list[LFDKH[0][0][0]]))
+		   else return one_param_test_min_bottom(
+		   	parameter(x,lambda, Lvd.list[LFDKH[0][0][0]]), Uhash)
+		   fi
+	      fi
     then () = if bl_step_flag {bl_step_count steps of size bl_step_size; defaults to 2 and 5}
     	      then more_flag:=true;
     	      	   {if more_shift_level = 0 then more_shift_level := maxht - ht fi;}
