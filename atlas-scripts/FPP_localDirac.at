@@ -5530,7 +5530,7 @@ set local_test_GEO_hash_bottom_layer(KGBElt x, ratvec lambda, {VertexData vd,}
 		   fi
 	      fi
     {then () = prints("Got past one_param_test_bottom")}
-    then LKDatas = if small_test_flag
+    then LKDatas = if small_test_flag {[LK_data]}
     	 	   then minSmallBottomData.entry(x,lambda)
 		   else for mu in LKTs(pmin)
 			do minBottomData.entry(mu)
@@ -5558,6 +5558,7 @@ set local_test_GEO_hash_bottom_layer(KGBElt x, ratvec lambda, {VertexData vd,}
 		   	       fancy_tester)
 		   fi
 	      fi
+{Now there are min_bottom_layer K-types, or else more_flag; bl_KHash contains them, LKDatas}
     then pmax = pmax(x,lambda,Lvd)
     then gamma = pmax.infinitesimal_character
     then ht_max = ht + min([more_shift_level, floor(gamma* G.two_rho_check) - ht])
@@ -5571,7 +5572,7 @@ set local_test_GEO_hash_bottom_layer(KGBElt x, ratvec lambda, {VertexData vd,}
     then  () = hash_bottom_layerCounter.use()
     then () = if test_verbose then prints("face counts to dim 1: ",
 			  for list in LF do #list od);
-		  prints("testing height = ", min_ht_max, new_line)
+		  prints("testing min_bottom height = ", min_ht_max, new_line)
 	       fi
     then UTCstart = unitary_test_counter.use_count()
     then startDBTcount = DBTcount
@@ -5583,11 +5584,11 @@ set local_test_GEO_hash_bottom_layer(KGBElt x, ratvec lambda, {VertexData vd,}
 		  fi {red_count_flag}
        {label each face (vertex/edge) with index
    	      	in pol_hash of its K-character}
-   then () = for list in LKDatas
+{   then () = for list in LKDatas
    	     do for (tau,) in list
 	     	do bl_KHash.match(tau)
 		od
-	     od
+	     od}
    then ((eq,gr),IUCL,CLBF) = localGraphK(LFDKH)
     	{next remove from LFDKH all faces failing min_bottom_factors_elim}
    then () = LFDKH:= local_testK_hash_min_bottom_layer(x,lambda, Lvd, LFDKH, eq,
@@ -5622,99 +5623,49 @@ set local_test_GEO_hash_bottom_layer(KGBElt x, ratvec lambda, {VertexData vd,}
 		      else []
 		      fi
 		   od.##
-   then start_data = elapsed_ms()
    then HK_known = min_ht_max
-   then () = if more_flag {want to use non-minimal theta-stable q} {??? USE Qs2 ???}
-   	     then let datas = if Qs2_flag
-	     	      	      then let ans = for mu in LKTs(pmin)
-			      	       	     do if Qs2B_flag
-					      	then bottom_factors(bottom_K_type_Qs2B(mu,Q0,height(pmin),ht_max))
-						else for (Q,pL) in maxQps
-				       	      	      do let (,data) = bottom_K_type_Qs2(mu,Q,ht_max)
-						      	 in if #data > 1
-						       	    then [(Q,data)]
-						       	    else []
-						       	    fi
-					  	      od.##
-						  fi
-				       	      od.##
-				   {then () = for (Q,) in ans do prints(Q, Q.S) od}
-				   in if test_verbose
-				      then prints("time to compute Qs2 data at (",x,",",lambda,") = ",
-				      	   print_time_string(elapsed_ms() - start_data))
-				      fi;
-				      ans
-			      else let ans = [QKL_bottom_data]:
-				       bottom_factors(bottom_K_type_Qs(pmin, Q0, ht_max))
-				   then good_ans = for (Q,data) in ans
-				   		   do if #data > 1
-						      then [(Q,data)]
-						      else []
-						      fi
-						   od.##
-				   in if test_verbose
-		   		      then prints("time to compute QKL data at (",x,",",lambda,") = ",
-				      	    print_time_string(elapsed_ms() - start_data))
-		   		      fi;{test_verbose}
-		   		      good_ans
-			      fi {Qs2_flag}
-		  then () = datas := sort(datas, height(pmin), ht_max, bl_KHash)
+   then () = if more_flag
+   	     then let start_data = elapsed_ms()
+   	     	  then Es = [ht,ht_max]
+		  {[height(pmin)]##next_heights(pmin,rank(G))}
+	     	  then () = while #Es > 1 {and HK_known < height(pmin) + more_shift_level}
+   	     	       	    do let (datas, newEs) = add_datas(pmin, Q0, Es)
+   		     then HK_known = max([min_ht_max]##(for tau in bl_KHash.list() do height(tau) od))
+		     then () = datas := sort(datas, height(pmin), ht_max, bl_KHash)
 		       {sort guarantees each term is nonempty}
-		  then more_ht_max = if #datas = 0
-		       		     then height(pmin)
-				     else max(for(,list) in datas
-		       		     	      do max( (for (tau,) in list do height(tau) od)#height(pmin)) od)
-				     fi
-		  then () = prints("at line 5652, min_HT_max = ",min_ht_max," and more_HT_max = ",more_ht_max)
-		  then () = HK_known := max(HK_known, more_ht_max)
-	     	  then () = if more_ht_max > min_ht_max
-		       	    then LFDKH := {if red_count_flag
-    	      	       	    	       	  then let (eq_red,CLBF_red) = localGraphRed(LFDKH)
-		       	    	     	       in extend_K_characters_graph(x, lambda, Lvd, LFDKH, more_ht_max,
-					       	     	pol_hash, eq_red, CLBF_red)
-		       	       	       	   else} extend_K_characters(x, lambda, Lvd, LFDKH, more_ht_max,
-						     pol_hash)
-		       		       	   {fi} {now K-chars to height max(min_ht_max, more_ht_max)}
-			     fi
-		   then () = if more_ht_max > height(pmin)
-		   	     then let ((eq,gr),IUCL,CLBF) = localGraphK(LFDKH, pol_hash, more_ht_max)
-			     	  then () = LFDKH := local_testK_hash_bottom_layer_more(x,lambda, Lvd,
+		     then () = if HK_known {more_ht_max} > min_ht_max
+		       	       then LFDKH := extend_K_characters(x, lambda, Lvd, LFDKH, HK_known,
+					     pol_hash)
+			       fi
+		     then ((eq,gr),IUCL,CLBF) = localGraphK(LFDKH, pol_hash, HK_known)
+		     then () = LFDKH := local_testK_hash_bottom_layer_more(x,lambda, Lvd,
 			    	      	   	 LFDKH, eq, gr, CLBF, datas, pol_hash, Uhash)
 			    	  	 {bottom layer test on K-types in datas}
-   		  	       	  then () = if test_verbose then prints("unitary on more_bottom layer to ",
-				       	       more_ht_max, " face counts to dim 1: ",for list in LFDKH do #list od)
-		    	    	            fi
-   		  	     	  then () = if #LFDKH[0] = 0 then return [] fi
-			          then () = more_after_flag:=true
-		  	          then () = if #LFDKH[0] = 1 {already passed D}
-   	     	       	    	            then let p = parameter(x,lambda, Lvd.list[LFDKH[0][0][0]])
-					    	 then () = if test_verbose
-						      	   then prints("singleton p = ",p,", more_ht_max = ",more_ht_max)
-							   fi
-					    	 in if not all(for q in monomials(p)
-						       	       do bottom_elim_factors_more(q,p,more_ht_max+2*G.rank)
-							       od)
-						    then if test_verbose
-						    	 then prints("Whew, got it by more_ht_max+2*G.rank")
-							 fi;
-						    	 return []
-						    else if test_verbose
-						    	 then prints("Sigh, missed it by more_ht_max+2*G.rank")
-							 fi;
-						    	 return one_param_test(p)
-						    fi
-	     		    	             fi
-		  	          in ()
-			     elif test_verbose
-			     then prints("no more_bottom K-types")
-			     fi {more_ht_max > height(pmin)}
-		   then () = if test_verbose
-   	     	       	     then prints("unitary on more_bottom layer face counts to dim 1: ",
+   		     then () = if test_verbose
+		   	       then prints("unitary on more_bottom layer to ", HK_known,
+			     	  	 " face counts to dim 1: ", for list in LFDKH do #list od)
+		    	       fi
+   		     then () = if #LFDKH[0] = 0 then break {return []} fi
+		     in Es:= newEs
+		     	     od
+		 in ()
+	     fi {more_flag}
+    then () = if test_verbose
+	      then prints("no more_bottom K-types");
+		   prints("unitary on more_bottom layer face counts to dim 1: ",
    	     	  		  for list in LFDKH do #list od)
+		   fi
+    then () = if #LFDKH[0] = 0
+	      then return []
+	      fi
+    then () = if #LFDKH[0] = 1 {already passed lots of bottom layer}
+   	      then let p = parameter(x,lambda, Lvd.list[LFDKH[0][0][0]])
+		   then () = if test_verbose
+			     then prints("singleton p = ",p,", HK_known = ",HK_known)
 			     fi
-		   in ()
-	      fi {more_flag}
-	      {now have list of vertices and edges passing bottom layer tests out to D}
+		   in return one_param_test(p)
+	       fi
+   {now have list of vertices and edges passing bottom layer tests out to HK_known}
    {want to pass HK_known}
    then () = more_after_flag := more_flag
    then () = min_after_flag := not more_flag
