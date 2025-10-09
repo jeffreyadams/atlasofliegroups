@@ -293,12 +293,39 @@ set ind_quo(KGBElt x, ratvec lambda, vec av, rat t) = KTypePol:
     "bad char for pL1")}
     in real_induce_standard(K_type_pol(std_quo(pL1)), x.real_form)
 
+set to_ht_G(RealForm G, KTypePol QL, int HT) = KTypePol:
+    if HT.< then return QL fi;
+    sum(QL.real_form,
+	for c@tauL in QL
+    	do if dominant(G,parameter(tauL).d_lambda)*(G.two_rho_check) <= HT
+	   then c*tauL
+	   else 0*tauL
+	   fi
+	od)
+
+set to_ht_G(RealForm G, KTypePol QL, int HT) = KTypePol:
+    if HT.< then return QL fi;
+    sum(QL.real_form,
+	for c@tauL in QL
+    	do if dominant(G,parameter(tauL).d_lambda)*(G.two_rho_check) <= HT
+	   then c*tauL
+	   else 0*tauL
+	   fi
+	od)
+
+set test_new(KGBElt x, ratvec lambda, vec av, rat t, int HT) = bool:
+    let QL = ind_quo_new(x,lambda,av,t)
+    in to_ht_G(x.real_form, QL,HT).!=
+
 {given a reducibility coroot av, take generic point on hyperplane
 av*gamma = t, corresponding Q(t) = std/Langlands quotient, and ask
 whether Q(t) has terms of height at most HT}
 {works for HT < 0, telling whether Q(t).!=}
 set test(KGBElt x, ratvec lambda, vec av, rat t, int HT) = bool:
-    let Q = ind_quo(x, lambda, av, t)
+    if steve_new_flag
+    then return test_new(x,lambda,av,t,HT)
+    fi;
+    let Q = ind_quo(x, lambda, av, t) {probably on L1}
     {then QL = std_quo(pL(x,lambda,av,t))
     then () = assert((Q.=) = (QL.=),"bad induction!")}
     in to_ht(Q,HT).!=
