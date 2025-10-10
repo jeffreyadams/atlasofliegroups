@@ -24,7 +24,7 @@ def format_cmd(atlas_command):
 
 #execute atlas command, read/write output to log file, until encountering final_string
 def execute_atlas_command(atlas_cmd,final_string,my_log,output_file,my_proc):
-   my_log.write("executing atlas_cmd: " + atlas_cmd + "\n")
+   my_log.write("executing atlas_cmd:\n[" + atlas_cmd + "]\n")
    my_proc.stdin.write(format_cmd(atlas_cmd))
    my_proc.stdin.flush()
    my_log.write("output from command:\n")
@@ -36,7 +36,7 @@ def execute_atlas_command(atlas_cmd,final_string,my_log,output_file,my_proc):
          my_log.write("[empty line]\n")
       if line.find(final_string)>=0:
          my_log.write("got termination line with \"" + final_string + "\": " + line)
-         my_log.write("end of output from command: " + atlas_cmd)
+         my_log.write("end of output\n")
          return(line)
       else:
          #don't know why this is needed: \n isn't recognized as a newline, but this replacement fixes it
@@ -47,10 +47,9 @@ def execute_atlas_command(atlas_cmd,final_string,my_log,output_file,my_proc):
 def wrapper(round,job_number,files_to_read):
    log_file=output_dir + "/logs/" + str(job_number) + ".txt"
    log=open(log_file,"w",buffering=1)
-   log.write("log file: " +  str(log_file) + "\n")
+   log.write("Logging output for job_number " + str(job_number)  + "\nround=" + str(round) +  "\nfiles_to_read=" +  str(files_to_read) + "\n")
    data_file=output_dir + "/" + str(job_number) + ".at"
    log.write("data output file: " + data_file + "\n")
-   log.write("In wrapper\njob_number=" + str(job_number)  + "\nround=" + str(round) +  "\nfiles_to_read=" +  str(files_to_read) + "\n")
    #print("symlinks_dir: ", symlinks_dir)
    run_atlas_symlink_cmd=symlinks_dir + "/atlas_" + str(job_number)
    #print("runatlas_symlink_cmd: ", run_atlas_symlink_cmd)
@@ -216,7 +215,7 @@ def atlas_compute(job_number,round,start_counter,proc,log,data):
          log.write(line+"\n")
       log.write("done with flags and other settings\n")
    else:
-      log.write("(skipping flags and other settings)\n")
+      log.write("(skipping flags and other settings)")
    starttime=time.time()
    #some initialization
    log.write("\nsome initialization\n")
@@ -232,13 +231,13 @@ def atlas_compute(job_number,round,start_counter,proc,log,data):
    log.write("atlas_cmd: " + atlas_cmd + "\n")
    proc.stdin.flush()
    line = proc.stdout.readline().decode('ascii')
-   log.write("starting size of unitary hashes (job number " + str(job_number) + "): " + line + "\n")
+   log.write("starting size of unitary hashes (job number " + str(job_number) + "): " + line)
    log.write("xl_pairs_queue.qsize: " + str(xl_pairs_queue.qsize()) + "\n")
    #data_file=output_dir + "/" + str(job_number) + ".at"
    #log.write("output data file: " + data_file + "\n")
    #log.write("data output: " + str(data) + "\n")
    while xl_pairs_queue.qsize()>0:
-      log.write("*******************************************************************" + "\n")
+      log.write("*******************************************************************")
       log.write("\nJob number: " + str(job_number) + "\n")
       memory_rss=psutil.Process(pid).memory_info().rss / 1024**2 
       memory_vms=psutil.Process(pid).memory_info().vms / 1024**2
@@ -333,7 +332,7 @@ def atlas_compute(job_number,round,start_counter,proc,log,data):
          log.write("elapsed time: " + nice_time(x_lambda_total_time) + "\ntime from start: " + nice_time(x_lambda_end_time-starttime) + "\n")
          reporting_data.append((job_number,round,start_counter,x_lambda_number,x_number,lambda_,x_lambda_total_time))
          log.write("one line of time report:\n")
-         log.write("|" + str(job_number) +"|" + round + "|" + "|" + str(start_counter) + "|" + str(x_lambda_number) + "|" + x_number + "|" + str(lambda_) + "|" + nice_time(x_lambda_total_time) +"\n")
+         log.write(".|" + str(job_number) +"|" + round + "|" + "|" + str(start_counter) + "|" + str(x_lambda_number) + "|" + x_number + "|" + str(lambda_) + "|" + nice_time(x_lambda_total_time) +"\n")
          log.write("added to reporting data (x,lambda) pair number " + str(x_lambda_number) + "\n")
          log.write("end of loop\n")
          #proc.stdout.flush()
@@ -563,17 +562,18 @@ def main(argv):
       atlas_cmd=executable_dir + "atlas"
       proc=subprocess.Popen([atlas_cmd,'all.at'], stdin=PIPE,stdout=PIPE,stderr=PIPE)
       atlas_cmd="big_unitary_hash.set_xl_sizes(" + group + ",[])\n"
+      #atlas_cmd="prints(12345)\n"
+      #main_log.write("atlas cmd: " + atlas_cmd + "\n")
       proc.stdin.write(format_cmd(atlas_cmd + "\n"))
       proc.stdin.flush()
       main_log.write("set xl_sizes in big_unitary_hash\n")
       line=proc.stdout.readline().decode('ascii').strip()
-      print("IGNORING: ", line)
       #write the init file
       atlas_cmd=">> " + group_name + "_init.at  big_unitary_hash.write()"
       print("atlas: " + atlas_cmd + "\n")
       proc.stdin.write(format_cmd(atlas_cmd+ "\n"))
       proc.stdin.flush()
-      log.write("moving on\n")
+      main_log.write("moving on\n")
       #line=proc.stdout.readline().decode('ascii').strip()
       #log.write("after > statement, line:" +  line)
    xl_pairs_queue=mp.Queue()
@@ -583,7 +583,7 @@ def main(argv):
    if queue_size==-1:
       main_log.write("setting queue size using atlas\n")
       atlas_cmd="prints(big_unitary_hash.xl_sizes_cumulative(" + group + ")~[0])\n"
-      main_log.write("atlas_cmd: " +  atlas_cmd.strip() + "\n")
+      #main_log.write("atlas_cmd: " +  atlas_cmd.strip() + "\n")
       proc.stdin.write(format_cmd(atlas_cmd+ "\n"))
       proc.stdin.flush()
       line=proc.stdout.readline().decode('ascii').strip()
@@ -663,9 +663,10 @@ def main(argv):
    with concurrent.futures.ProcessPoolExecutor(n_procs) as P:
       for job_number in range(n_procs):
          #time.sleep(2)
-         main_log.write("job_number:" + str(job_number) + "\n")
-         main_log.write("round: " + str(round) +"\n")
-         main_log.write("files_to_read:" +  str(files_to_read) + "\n")
+         main_log.write("submitting job number:" + str(job_number) + " round:" + str(round) + " reading files:" + str(files_to_read) + "\n")
+         #main_log.write("job number:" + str(job_number) + "\n")
+         #main_log.write("round: " + str(round) +"\n")
+         #main_log.write("files_to_read:" +  str(files_to_read) + "\n")
          Q=P.submit(wrapper,round,job_number,files_to_read)
          print(Q)
          #main_log.write("submitted job: " + str(job_number) + "\n")
