@@ -2646,6 +2646,13 @@ set one_param_test(Param p) = [Param]:
 	    []
        fi
 
+{each vec of size 6 will record initial vertex/edge sizes; sizes after min_bottom;
+and sizes after more_bottom}
+set bl_size_hash = make_vec_hash()
+set LF_pre_vec = vec: []
+set LF_min_bl_vec = vec:[]
+set LF_more_bl_vec = vec:[]
+
 {only does min_bottom test}
 set one_param_test_min_bottom(Param p, Param_hash Uhash) = [Param]:
     let start = elapsed_ms(), Q = monomials(finalize(p)), G = p.real_form
@@ -2656,6 +2663,11 @@ set one_param_test_min_bottom(Param p, Param_hash Uhash) = [Param]:
 	      fi
     then () = hash_bottom_layerCounter.use()
     then elim_min = all(for q in Q do min_bottom_elim_factors(q,p) od)
+    then () = LF_min_bl_vec := if elim_min
+    	      		    then [1,0]
+			    else [0,0]
+			    fi
+    then () = bl_size_hash.match(LF_pre_vec##LF_min_bl_vec##LF_min_bl_vec)
     then () = if not elim_min
     	      then let () = one_false_counter.use()
 	      	   then ()= one_param_time +:= elapsed_ms() - start
@@ -2720,6 +2732,11 @@ set one_param_test_bottom(Param p, [int] Es) = [Param]:
 			     fi
 		       od
 		fi {#Es > 1}
+    then () = LF_more_bl_vec:= if still_here
+    	      		       then [1,0]
+			       else [0,0]
+			       fi
+    then () = bl_size_hash.match(LF_pre_vec##LF_min_bl_vec##LF_more_bl_vec)
     then () = if more_verbose then prints("result of bottom_elim_more was ",still_here) fi
     then r = rank(p.x.involution-1) {, step = max(G.semisimple_rank\2,1)}
     in if still_here
@@ -2767,6 +2784,10 @@ set one_param_test_all_bottom(Param p, [int] Ds) = [Param]:
 	      fi
     then () = hash_bottom_layerCounter.use()
     then elim_min = all(for q in Q do min_bottom_elim_factors(q,p) od)
+    then () = LF_min_bl_vec:= if elim_min
+    	      		      then [1,0]
+			      else [0,0]
+			      fi
     then () = if not elim_min
     	      then let () = one_false_counter.use()
 	      	   then ()= one_param_time +:= elapsed_ms() - start
@@ -2792,6 +2813,11 @@ set one_param_test_all_bottom(Param p, [int] Ds) = [Param]:
 		   in elim_more:= still_here
 		fi {#Es > 1}
     then () = if more_verbose then prints("result of elim_more was ",elim_more) fi
+    then () = LF_more_bl_vec:= if elim_more
+    	      		       then [1,0]
+			       else [0,0]
+			       fi
+    then () = bl_size_hash.match(LF_pre_vec##LF_min_bl_vec##LF_more_bl_vec)
     in if elim_more
        then let () = if test_verbose then prints("one parameter unitary on bottom layer to height ",Es~[0]) fi
        	    then test = all( [(->bool)]:
@@ -5530,6 +5556,7 @@ set local_test_GEO_hash_bottom_layer(KGBElt x, ratvec lambda, {VertexData vd,}
 		   fi
 	      fi
     {then () = prints("Got past one_param_test_bottom")}
+    then () = LF_pre_vec := for list in LF do #list od
     then LKDatas = if small_test_flag {[LK_data]}
     	 	   then minSmallBottomData.entry(x,lambda)
 		   else for mu in LKTs(pmin)
@@ -5594,13 +5621,15 @@ set local_test_GEO_hash_bottom_layer(KGBElt x, ratvec lambda, {VertexData vd,}
    then () = LFDKH:= local_testK_hash_min_bottom_layer(x,lambda, Lvd, LFDKH, eq,
 		       	    	    gr, CLBF, min_ht_max, pol_hash, Uhash, fancy_tester)
    	    	 {then () = prints("min bot faces = ",for list in LFDKH do #list od)}
+
+   then () = LF_min_bl_vec := for list in LFDKH do #list od
    then () = if test_verbose
-	     then prints("unitary on min_bottom layer face counts to dim 1: ",
-   	    	       	       		for list in LFDKH do #list od)
+	     then prints("unitary on min_bottom layer face counts to dim 1: ", LF_min_bl_vec)
 	     fi
    then () = min_after_flag := not more_flag
    then () = if #LFDKH[0] = 0
-   	     then return []
+   	     then bl_size_hash.match(LF_pre_vec##LF_min_bl_vec);
+	     return []
 	     fi
    then () = if #LFDKH[0] = 1
    	     then if more_flag
@@ -5641,6 +5670,7 @@ set local_test_GEO_hash_bottom_layer(KGBElt x, ratvec lambda, {VertexData vd,}
 		     then () = LFDKH := local_testK_hash_bottom_layer_more(x,lambda, Lvd,
 			    	      	   	 LFDKH, eq, gr, CLBF, datas, pol_hash, Uhash)
 			    	  	 {bottom layer test on K-types in datas}
+		     then () = LF_more_bl_vec := for list in LFDKH do #list od
    		     then () = if test_verbose
 		   	       then prints("unitary on more_bottom layer to ", HK_known,
 			     	  	 " face counts to dim 1: ", for list in LFDKH do #list od)
@@ -5650,11 +5680,11 @@ set local_test_GEO_hash_bottom_layer(KGBElt x, ratvec lambda, {VertexData vd,}
 		     	     od
 		 in ()
 	     fi {more_flag}
-    then () = if test_verbose
-	      then prints("no more_bottom K-types");
-		   prints("unitary on more_bottom layer face counts to dim 1: ",
-   	     	  		  for list in LFDKH do #list od)
-		   fi
+   then () = bl_size_hash.match(LF_pre_vec##LF_min_bl_vec##LF_more_bl_vec)
+      then () = if test_verbose
+	     then prints("no more_bottom K-types");
+	     	  prints("unitary on more_bottom layer face counts to dim 1: ", LF_more_bl_vec)
+	     fi
     then () = if #LFDKH[0] = 0
 	      then return []
 	      fi

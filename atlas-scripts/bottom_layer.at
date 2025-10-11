@@ -1019,7 +1019,7 @@ set delta_on_simple(InnerClass ic) = [int]:
 
 
 {whether to use bottom_K_type_Qs2 in bottom layer}
-set Qs2_flag = true
+set Qs2_flag = false {true} {changed to false 10/10/25}
 
 {For Param p, minimal Qmin, lists the K-types tau in height range (D_low,D] which
 
