@@ -1,10 +1,10 @@
 <basic.at
 <combinatorics.at { for |Partition| }
 <W_classes.at { for |WeylClassTable| }
-<class_tables.at { for |test_simple_type|, |GAP_reorder_E8| }
+<class_tables.at { for |class_table_E8| }
 <character_tables.at
 
-<e8_gap.at { load the information from GAP }
+<e8_gap.at { load the information from GAP: |e8_gap_table|, |e8_gap_profile| }
 
 { atlas character table for W(E8)
   for history of its construction see character_table_E8.txt in Dropbox }
@@ -83,21 +83,21 @@ set character_table_E8 = (RootDatum->CharacterTable):
    let ct= trivial_character_table { place holder value }
    , compute (RootDatum rd) = CharacterTable:
       let Wct = class_table_E8(rd)
-      then reordering = GAP_reorder_E8(Wct)
-      then E8_name(vec chi) = string:
-	 let psi = null(#chi)
+      then reordering = GAP_reorder_E8(Wct) { will force GAP ordering }
+      then E8_name(vec chi) = string: { name for character |chi| from GAP }
+	 let psi = null(#chi) { to rebuild the character in |Wct| numbering }
 	 then degree = { first reorder |chi| for |Wct| into |psi| }
 	    for j@i in reordering do psi[j]:=chi[i] od { inverse reordering }
 	 ;  first(Wct.root_datum.nr_of_posroots+1
-		 ,(int k) bool: Wct.inner(psi,Wct.sym_power_refl(k)).>
+		 ,(int k) bool: Wct.inner(psi,Wct.sym_power_refl(k))>0
 		 )
 	 in to_string("irrep(dim:",psi[0],",deg:",degree,")")
       then classes = [WeylElt,string]:
 	 let reps = Wct.class_representatives
-	 in for j in reordering
+	 in for j@i in reordering
 	    do (reps[j]
 	       ,to_string(class_signature_E8(reps[j]).compressed_string
-			 ," (GAP:",e8_gap_classes[j],")")
+			 ," (GAP:",e8_gap_classes[i],")")
 	       )
 	    od
       ,  irreps = [[int],string]:
