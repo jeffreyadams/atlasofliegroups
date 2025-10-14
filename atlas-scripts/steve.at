@@ -907,7 +907,10 @@ set make_steve_hash() = steve_hash_table:
       in
   ( ( -> ): {clear} clearSH
   , ((KGBElt, ratvec) ->): {clear_xl} (KGBElt x, ratvec lambda) void:
-    let (rfnum, xlnum) = add_xl(x,lambda)
+    let rfnum = real_form_hash.lookup(x.real_form)
+    then () = if rfnum.< then return () fi
+    then xlnum = xlhashes[rfnum].lookup(x,lambda)
+    then () = if xlnum.< then return () fi
     then heightsrf = heights[rfnum], vechsrf = vechashes[rfnum], redptsrf = redpoints[rfnum],
     	 statrf = statuses[rfnum], charvecsrf = charvecs[rfnum]
     in heightsrf[xlnum]:=[];
@@ -2491,6 +2494,8 @@ set local_test_GEO_hash_steve(KGBElt x, ratvec lambda, LocalVertexData Lvd, Para
 		  local_test_closer_steve(x,lambda, Lvd, LFlast))
        		  else local_test_GEO_hash_steve_end(x,lambda, Lvd, LF2, Uhash)
        		  fi
-    in steve_hash.clear_xl(x,lambda);
-       steve_hash_small.clear();
+    in if steve_small_flag
+       then steve_hash_small.clear()
+       else steve_hash.clear_xl(x,lambda)
+       fi;
        answer
