@@ -280,24 +280,24 @@ in W_class_table( rd, for class in classes do class_rep(class) od
 
 {				type G2					}
 
-set ! G2_class_words = [[],[0],[1],[0,1],[0,1,0,1],[0,1,0,1,0,1]]
+set ! G2_class_words = [[],[1],[0],[0,1,0,1,0,1],[0,1,0,1],[0,1]]
 
 set class_table_G (RootDatum rd) = WeylClassTable:
   let map=test_simple_type("G",rd)
   then magic_coweight = 5*coroot(rd,map[0])+9*coroot(rd,map[1]), rho=rho(rd)\1
   then type(WeylElt w) = int:
     case magic_coweight*(w*rho) { mod 15; all collisions are conjugate }
-    in die, 5, 2, die, 1, die, die, 3, 4, die, die, 2, die, 1, 0
+    in die, 3, 1, die, 2, die, die, 5, 4, die, die, 1, die, 2, 0
     esac
   , reps =
       for word in G2_class_words do W_elt(rd,for bit in word do map[bit] od) od
   in W_class_table( rd, reps
-		  , (int i) int: {class size} case i in 1,3,3,2,2,1 esac
+		  , (int i) int: {class size} case i in 1,3,3,1,2,2 esac
 		  , {classify |w|} type
 		  , (int i,int k) int: {class powers}
-		    case i-3 else { order 2 } case k in 0,i esac
-		    in {i=3} case k in 0,3,4,5,4,3 esac
-		    ,  {i=4} case k in 0,4,4 esac
+		    case i-4 else { orders 1 and 2 } case k in 0,i esac
+		    in {i=4} case k in 0,4,4 esac
+		    ,  {i=5} case k in 0,5,4,3,4,5 esac
 		    esac
 		  )
 
@@ -310,11 +310,9 @@ set class_table_G (int n) = WeylClassTable:
 { orbit sizes on long respectively short roots; these characterise classes }
 set class_signature_F4 (WeylElt w) = (Partition,Partition):
    let rd=root_datum(w), orbits = root_orbits(w)
-   then longs = Partition:
-     for c in orbits do if is_long_root(rd,c[0]) then [#c] else [] fi od.##
-   , shorts = Partition:
-     for c in orbits do if is_long_root(rd,c[0]) then [] else [#c] fi od.##
-   in (longs.sort_to_partition,shorts.sort_to_partition)
+   then long_sizes = for c in orbits if is_long_root(rd,c[0]) do #c fi od
+   , short_sizes = for c in orbits if not is_long_root(rd,c[0]) do #c fi od
+   in (long_sizes.sort_to_partition,short_sizes.sort_to_partition)
 
 { list conjugacy classes in Kondo order; non standard ordering of diagram is
   allowed: |map| maps Bourbaki indices to corresponding indices in |rd| }
@@ -357,18 +355,18 @@ in for w in
 
 
 set class_table_F (RootDatum rd) = WeylClassTable:
-   let classes = [WeylElt]: classes_Kondo_F4(rd)
+   let classes = [WeylElt]: test_simple_type("F",rd)
+		 ; conjugacy_class_reps(rd)
    then sigs = [BiPartition]:
       for class in classes do class_signature_F4(class) od
+   then ranked = ranking(<=@(BiPartition,BiPartition))(sigs)
+   then sigs_sorted = for i in ranked do sigs[i] od { |sigs| sorted by |<=| }
    then N=1152 { = order_W(rd) }
-   ,  lookup = (BiPartition->int):
-      let ranked = ranking(<=@(BiPartition,BiPartition))(sigs)
-      then list = for i in ranked do sigs[i] od { |sigs| sorted by |<=| }
-      in (BiPartition sig) int: { index in |sigs| where one finds |sig| }
-         ranked[binary_search_first((int i)bool: sig<=list[i], 0,#list)]
+   , lookup (BiPartition sig) = int: { index in |sigs| where one finds |sig| }
+      binary_lookup(<=@(BiPartition,BiPartition))(sig,sigs_sorted).requisition
 in W_class_table ( rd
-		 , classes
-		 , (int i) int: N\centralizer_order(classes[i])
+		 , for r in ranked do classes[r] od
+		 , (int i) int: N\centralizer_order(classes[ranked[i]])
 		 , (WeylElt w) int: lookup(class_signature_F4(w))
 		 , (int i,int k) int:
 		   let (a,b) = sigs[i]

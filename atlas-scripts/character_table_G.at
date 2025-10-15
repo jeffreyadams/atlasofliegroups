@@ -3,7 +3,7 @@
 <character_tables.at { for type |CharacterTable| }
 
 { the list |G2_class_words| of conjugacy class representatives is fixed in
-  character_tables.at, and |character_table_G@RootDatum| will produce a
+  class_tables.at, and |character_table_G@RootDatum| will produce a
   corresponding |[WeylElt]|; the character data below follow this ordering.
   The numbering (and naming) of the $W(G_2)$ irreducibles is fixed (locally) in
   |character_table_G@RootDatum| below, so we can define data relative to this
@@ -14,14 +14,14 @@ set to_special_G2 = (int i) int:
    case i in 0, 5, 5, 3, 5, 5 else error("Wrong G2 irrep number") esac
 
 set character_table_G = (RootDatum -> CharacterTable):
-   let class_names = ["e", "S_short", "S_long", "R/6", "R/3", "R/2"]
+   let class_names = ["e", "S_long", "S_short", "R/2", "R/3", "R/6"]
    , irreps = [[int],string]:
      [ ( [1,1,1,1,1,1]   ,  "trivial" )
-     , ( [1,-1,1,-1,1,-1], "short sign" )
-     , ( [1,1,-1,-1,1,-1], "long sign" )
+     , ( [1,1,-1,-1,1,-1], "short sign" )
+     , ( [1,-1,1,-1,1,-1], "long sign" )
      , ( [1,-1,-1,1,1,1] , "full sign" )
-     , ( [2,0,0,-1,-1,2] , "triangular reflection" )
-     , ( [2,0,0,1,-1,-2] , "hexagonal reflection" )
+     , ( [2,0,0,2,-1,-1] , "triangular reflection" )
+     , ( [2,0,0,-2,-1,1] , "hexagonal reflection" )
      ]
 in (RootDatum rd) CharacterTable:
 (  let class_table = class_table_G(rd)

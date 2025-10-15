@@ -2,12 +2,12 @@
 <class_tables.at { for |class_table_F| }
 <character_tables.at { for type |CharacterTable| }
 
-{ the function |classes_Kondo_F4| define in character_tables.at lists conjugacy
+{ the function |classes_Kondo_F4| defined in class_tables.at lists conjugacy
   class representatives for any $F_4T_k$ type root datum in a fixed order, which
-  order is used below to write down characters below. The numbering of the
-  $W(F_4)$ irreducibles is determined by the |character_table_F4_data| table.
-  The following functions efunction |character_table_F| will then construct
-  a valid character table, which those numberings, for any such root datum. }
+  order is used below to write down characters. The numbering of the $W(F_4)$
+  irreducibles is determined by the |character_table_F4_data| table.
+  The function |character_table_F| will then construct a valid character table,
+  with those numberings, for any such root datum. }
 
 set !character_table_F4_data = [[int],int,int]: { character, degree, n_primes }
 {   e    ...             long refl ..  short refl ... }
@@ -49,6 +49,9 @@ in for (chi,deg,) in character_table_F4_data
 set F4_name(int dim, int degree, int n_primes) = string:
    ("phi(", dim, ",", degree,")").to_string +n_primes*"'"
 
+set Kondo_positions (WeylClassTable Wct) = [int]: { |Wct| classes to Kondo }
+   for w in classes_Kondo_F4(root_datum(Wct)) do Wct.class_of(w) od.inverse
+
 set to_special_F4 = (int i) int:
    case i
    in 0{sp}, 15, 15, 3{sp}
@@ -64,15 +67,20 @@ set to_special_F4 = (int i) int:
    esac
 
 set character_table_F = (RootDatum -> CharacterTable):
-(  let irreps = [[int],string]:
+(  let !irreps_Kondo = [[int],string]:
       for (line,degree,n_primes) in character_table_F4_data
       do (line,F4_name(line[0],degree,n_primes))
       od
 in (RootDatum rd) CharacterTable:
    let Wct = class_table_F(rd)
+   then K_pos = Kondo_positions (Wct)
    then classes = [WeylElt,string]:
       for w@i in Wct.class_representatives
       do (w,class_signature_F4(w).compressed_string)
+      od
+   , irreps = [[int],string]: { reorder to |Wct| conjugacy class order }
+      for (line,name) in irreps_Kondo
+      do (for p in K_pos do line[p] od,name)
       od
    in character_table(Wct,classes,irreps,to_special_F4@int)
 )
