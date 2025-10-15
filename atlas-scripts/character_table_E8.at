@@ -79,6 +79,25 @@ set to_special_E8 = (int i) int:
    else error("Wrong E8 irrep number")
    esac
 
+set GAP_reorder_E8 (WeylClassTable Wct) = [int]: { map GAP to |Wct| numbers }
+   let Wct_prof = [vec]: { 112 vectors of size 5 }
+      for j:Wct.n_classes
+      do [ Wct.class_representatives[j].order
+	 , Wct.class_sizes[j]
+	 , Wct.sign[j]
+	 , Wct.reflection[j]
+	 , Wct.reflection[Wct.class_power(j,3)]
+	 ]
+      od
+   then rank_of_GAP_elts = [int]: { for x in e8_gap_profile its |lex_leq| rank }
+      ranking([vec]:e8_gap_profile).inverse
+   , Wct_ranked = ranking(Wct_prof)
+   in for r@pos in rank_of_GAP_elts
+      do let class_nr = Wct_ranked[r]
+         in assert(e8_gap_profile[pos]=Wct_prof[class_nr])
+      ; class_nr
+      od
+
 set character_table_E8 = (RootDatum->CharacterTable):
    let ct= trivial_character_table { place holder value }
    , compute (RootDatum rd) = CharacterTable:

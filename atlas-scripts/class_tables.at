@@ -1,12 +1,12 @@
 <basic.at
+<sort.at { for |ranking @ A (A,A->bool)| }
 <W_classes.at { definition of |WeylClassTable| and supporting functions }
 <combinatorics.at { functions for specific classical types }
 <lietypes.at
-<e8_gap.at { load the information from GAP, like |e8_gap_profile| }
 
 { The purpose of this module is to group case-by-case definitions of W-class
   tables for root data with a specified simple Cartan matrix type, and give a
-  definion of |class_table@RootDatum|. THe latter employs the decomposition of
+  definion of |class_table@RootDatum|. The latter employs the decomposition of
   the Dynkin diagram of a root datum into connected components, in order to
   build up, for a general root datum, a |WeylClassTable| built up from those for
   appropriate sub-root-data.
@@ -390,19 +390,19 @@ in for c in root_orbits(w) do #c od.sort_to_partition
 set class_table_E6 (RootDatum rd) = WeylClassTable:
    let classes = [WeylElt]: assert(#test_simple_type("E",rd)=6,"Not E6")
 	       ; conjugacy_class_reps(rd)
-   then sigs = [Partition]: for w in classes do class_signature_E6(w) od
+   then sigs = [Partition]:
+      for w in classes do class_signature_E6(w) od
    , leq = rlex_leq_partitions@(Partition,Partition)
+   then ranked = ranking(leq)(sigs) { map from rank to position in |sigs| }
+   then sigs_sorted = for i in ranked do sigs[i] od
    then N=51840 { order_W("E6") }
-   ,  lookup = (Partition->int):
-      let ranked = ranking(leq)(sigs)
-      then list = for i in ranked do sigs[i] od { |sigs| sorted by |leq| }
-      in (Partition sig) int: { index in |sigs| where one finds |sig| }
-         ranked[binary_search_first((int i)bool: leq(sig,list[i]), 0,#list)]
+   , lookup (Partition sig) = int: { index of |sig| in |sigs| }
+      binary_lookup(leq)(sig,sigs_sorted).requisition
 in W_class_table ( rd
-		 , classes
-		 , (int i) int: N\centralizer_order(classes[i])
+		 , for r in ranked do classes[r] od
+		 , (int i) int: N\centralizer_order(classes[ranked[i]])
 		 , (WeylElt w) int: lookup(class_signature_E6(w))
-		 , (int i,int k) int: lookup(cycle_power(sigs[i],k))
+		 , (int i,int k) int: lookup(cycle_power(sigs_sorted[i],k))
 		 )
 
 { we shall do storage of the class table for one particular E6 root datum }
@@ -435,75 +435,72 @@ set class_table_E6 () = WeylClassTable: class_table_E6(standard_datum_E6)
   characterise conjugacy classes, useful for looking up arbitrary elements |w|.
 }
 
-set class_signature_E7 (WeylElt w) = (Partition,int):
+set_type E7_signature = (Partition,int)
+set class_signature_E7 (WeylElt w) = E7_signature:
    let rd=root_datum(w)
 in ( for c in root_orbits(w) do #c od.sort_to_partition
    , w.Levi_datum.Lie_type.simple_factors.#
    )
 
 { comparison of root cycle types first, use second component to disambiguate }
-set leq_E7_signatures ((Partition P,int m),(Partition Q,int n)) = bool:
+set leq_E7_signatures (E7_signature(P,m),E7_signature(Q,n)) = bool:
    case rlex_cmp_partitions(P,Q) then true in m<=n else false esac
 
-{ Compared to other types, fast construction of a class table for E7 takes quite
-  a bit of preparation effort. Having a sorted list of class signatures will
-  speed up searching for elements, as in other types, but computing class powers
-  is harder. In most cases using just the root permutation cycle type suffices:
-  for unambiguous classes their powers are also unambiguous, and it turns out
-  that even powers of ambiguous classes are unambiguous as well (the ambiguous
-  classes have even element orders 2,4,6). Odd powers of ambiguous classes are
-  still ambiguous; in most cases they are the ambiguous class itself, but the
-  third powers of the ambiguous classes with element order 6 give the ambiguous
-  classes with order 2, with the "one simple factor" condition unchanged. We can
-  therefore avoid actually computing powers of signatures of class
-  representatives. This however requires the sorted list of class signatures to
-  be transformed into a sorted |list| of just permutation cycle types (for
-  searching without needing to know the Levi datum), with associated to each a
-  list of 1 or 2 class numbers. In most cases the number of factors is not used
-  at all, but in the ambiguous cases we use whether or not that number equals 1.
+{ Compared to other types, fast construction of a class table for E7 is a bit
+  more complicated. We prepare a list |sigs_sorted| of class signatures sorted
+  by |leq_E7_signatures| (so first lexicographically by the root partition type,
+  then for those pairs where it is necessary by the second component), in which
+  we can do binary search for the signature of a |WeylElt|. For the table of
+  powers of classes, we could use this to look up powers of a class
+  representative, but with a bit of effort we can manage using signatures only.
+
+  For classes with an unambiguous root partition type, their powers will
+  similarly have unambiguous types, so we can use |cycle_power@(partition,int)|
+  to get the new root partition type and look it up using |binary_lookup_by|. In
+  the remaining "ambiguous" classes, the even powers are unambiguous (so looking
+  up the type suffices), while their odd powers are ambiguous, but retain their
+  relative position (first or second) among the classes with their root
+  partition type. (Most of the time these odd powers determine the base class
+  itself, but for the case where the base class has order 6, the third power has
+  order 2.) So to compute the |k|-th power of a class, we take the partition for
+  the class, apply |cycle_power| to get the |k|-th power cycle type, and look up
+  its first occurrence in |sigs_sorted|. The position found will be the value
+  returned, unless the base class was the second of an ambiguous pair and |k| is
+  odd, in which case we add 1 to the position. Below we hard-code the positions
+  6,17,36 of the second elements of ambiguous pairs; being positions in a sorted
+  list these should never change, but we include as comment code that makes
+  explicit the condition by which those numbers were singled out.
 }
 set class_table_E7 (RootDatum rd) = WeylClassTable:
    let classes = [WeylElt]: assert(#test_simple_type("E",rd)=7,"Not E7")
 	       ; conjugacy_class_reps(rd)
-   then sigs = [Partition,int]: { class signatures; to be modified a bit below }
+   then sigs = [E7_signature]: { class signatures }
       for w in classes do class_signature_E7(w) od
-   then N=2903040 { order_W("E7") }
-   ,  (lookup_w,lookup_cyc) { define two functions that share precomputed data }
-         = ((WeylElt->int),(Partition->[int])):
-      let ranked = [int]: ranking(leq_E7_signatures)(sigs)
-      then (list,locs) = ([Partition],[[int]]): { sorted cycle type, positions }
-         let locs=[int]:[], prev= Partition:[]
-	 then out = [Partition,[int]]: { grouping of |sigs[ranked[i]] values }
-	    for loc@rank in ranked
-	    do let (lambda,)=sigs[loc] in
-	       if =rank then [] next prev:=lambda; locs:=[loc]
-	       elif lambda=prev then [] next locs#:=loc
-	       else [(prev,locs)] next prev:=lambda; locs:=[loc]
-	       fi
-	    od.##
-      in out #:= (prev,locs) { attach last group; now split into (list,locs): }
-      ;  ( for (lambda, ) in out do lambda od, for (,locs) in out do locs od )
-      then locate(Partition lambda) = int: { position of |lambda| in |list| }
-         binary_search_first
-	   ((int i)bool: rlex_leq_partitions(lambda,list[i]), 0,#list)
-   in ( { lookup_w = } (WeylElt w) int:
-        let (lambda,n)=class_signature_E7(w) then locs = locs[locate(lambda)]
-	in if #locs=1 or n=1 {single factor} then locs[0] else locs[1] fi
-      , { lookup_cyc = } (Partition mu) [int]: locs[locate(mu)]
-      )
+   then ranked =  { map from rank to position in |sigs| }
+     ranking(leq_E7_signatures)(sigs)
+   then sigs_sorted = [E7_signature]: for i in ranked do sigs[i] od
+   then lookup_w (WeylElt w) = int:
+      binary_lookup(leq_E7_signatures)
+      (class_signature_E7(w),sigs_sorted).requisition
+   , class_power = (int,int->int):
+       let is_second = (int->bool):
+          { (int i)bool: i=0 or
+	       (let (prev,)=sigs_sorted[i-1],(sig,n)=sigs_sorted[i]
+		in n=1 or prev!=sig) }
+          is_member([6,17,36]) { so second of its ambiguity class }
+       in (int i, int k) int:
+          let first = int:
+	     binary_lookup_by
+	     ((E7_signature(sig,))Partition:sig,rlex_leq_partitions)
+	     (cycle_power(fst(sigs_sorted[i]),k),sigs_sorted)
+	     .requisition
+          in if i.is_second and k.is_odd then first+1 else first fi
+   , N=2903040 { order_W("E7") }
 in W_class_table ( rd
-		 , classes
-		 , (int i) int: N\centralizer_order(classes[i])
+		 , for r in ranked do classes[r] od
+		 , (int i) int: N\centralizer_order(classes[ranked[i]])
 		 , lookup_w
-		 , (int i,int k) int:
-		   let (lambda,n)=sigs[i] then locs = lookup_cyc(lambda)
-		   in if k.is_odd and #locs>1
-		      else cycle_power(lambda,k).lookup_cyc [0] {unambiguous}
-		      then { cycle type will still be ambiguous }
-		         let seq = #(n>1) in { 0/1 value to disambiguate }
-			 assert(locs[seq]=i); { check }
-			 cycle_power(lambda,k).lookup_cyc [seq]
-		      fi
+		 , class_power
 		 )
 
 { we shall do storage of the class table for one particular E6 root datum }
@@ -530,68 +527,94 @@ set class_signature_E8 (WeylElt w) = Partition:
    let rd=root_datum(w)
 in for c in root_orbits(w) do #c od.sort_to_partition
 
+{ the code below hard-codes some tables, presumably for faster construction of
+  the E8 class table. We provide equivalent code that will reproduce the data. }
 set class_table_E8 (RootDatum rd) = WeylClassTable:
    let classes = [WeylElt]: assert(#test_simple_type("E",rd)=8,"Not E8")
-	       ; conjugacy_class_reps(rd)
+	       ; conjugacy_class_reps(rd) { order should not matter here }
    then sigs = [Partition]: for w in classes do class_signature_E8(w) od
    , leq = rlex_leq_partitions@(Partition,Partition)
-   then lookup = (Partition->int):
-      let ranked = ranking(leq)(sigs)
-      then list = for i in ranked do sigs[i] od { |sigs| sorted by |leq| }
-      in (Partition sig) int: { index in |sigs| where one finds |sig| }
-         ranked[binary_search_first((int i)bool: leq(sig,list[i]), 0,#list)]
-   , sizes = [int]: { |for w in classes do 696729600\centralizer_order(w)| }
-     [1,120,3780,2240,80640,45360,37800,580608
-     ,604800,907200,3150,37800,100800,268800,113400,151200
-     ,1209600,1814400,5806080,1612800,4838400,1209600,2721600,37800
-     ,453600,1209600,3628800,4838400,6451200,806400,1612800,89600
-     ,907200,7257600,10886400,11612160,7257600,14515200,24883200,3780
-     ,680400,604800,2419200,5443200,8709120,8709120,2419200,100800
-     ,1209600,3225600,5443200,19353600,24883200,14515200,11612160,5806080
-     ,10886400,268800,1612800,2419200,80640,453600,120,14515200
-     ,19353600,2419200,4838400,268800,1209600,9676800,14515200,17418240
-     ,11612160,24883200,43545600,45360,907200,3628800,1814400,14515200
-     ,17418240,29030400,23224320,29030400,34836480,12902400,23224320,6451200
-     ,24883200,2419200,9676800,2419200,1161216,4838400,2419200,11612160
-     ,12902400,3628800,580608,5443200,4480,89600,268800,403200
-     ,806400,1209600,1161216,15120,2240,37800,4480,1
+   then ranked = ranking(leq)(sigs) { map from rank to position in |sigs| }
+   then sigs_sorted = for i in ranked do sigs[i] od
+   then lookup (Partition sig) = int: { index of |sig| in |sigs| }
+      binary_lookup(leq)(sig,sigs_sorted).requisition
+   then sizes = vec:
+     { for i in ranked do 696729600\centralizer_order(classes[i]) od }
+     [1 { classes grouped by order, which is also maximal orbit size on roots }
+     ,120,3780,37800,3150,113400,37800,3780,120,1 { order 2 }
+     ,2240,268800,89600,4480 { order 3 }
+     ,45360,907200,151200,2721600,907200,45360,37800
+       ,453600,680400,453600,37800,5443200,907200,15120 { order 4 }
+     ,580608,1161216 { order 5 }
+     ,80640,1612800,268800,604800,1209600,100800,100800
+       ,1209600,604800,80640,2240,2419200,3225600,4838400
+       ,1612800,2419200,806400,806400,403200,14515200,4838400
+       ,2419200,1612800,268800,2419200,268800,89600,4480 { order 6 }
+     ,24883200 { order 7 }
+     ,1814400,10886400,1814400,5443200,10886400,5443200,43545600
+       ,3628800 { order 8 }
+     ,6451200,12902400 { order 9 }
+     ,5806080,8709120,8709120,5806080,580608,1161216 { order 10 }
+     ,3628800,7257600,1209600,1209600,7257600,3628800,1209600
+       ,1209600,9676800,4838400,2419200,14515200,14515200,4838400
+       ,2419200,29030400,9676800,2419200 { order 12 }
+     ,24883200,24883200,24883200 { order 14 }
+     ,11612160,23224320 { order 15 }
+     ,19353600,19353600,6451200,12902400 { order 18 }
+     ,17418240,17418240,34836480 { order 20 }
+     ,14515200,14515200,29030400 { order 24 }
+     ,11612160,11612160,11612160,23224320 { order 30 }
      ]
-   , pows = [[int]]: { list |i| gives class of powers 2..order\2 of class |i| }
-     [[],[],[],[],[3,1],[2],[],[7]
-     ,[3,2],[2],[],[10],[3,10],[],[],[2]
-     ,[8,15,3,16,2],[11,17,10],[7,18,7,1],[13,1],[13,6],[3,6],[2],[]
-     ,[10],[3,23],[8,5,3,26,2],[29,11,31,27,10],[28,31,28],[31,10],[13,10],[]
-     ,[2],[8,32,3,33,2],[11,34,10],[35,7,35,3,7,35]
-       ,[8,9,3,36,2],[13,14],[38,38],[]
-     ,[10],[3,39],[13,39],[40,43,10],[7,44,7,39],[7,45,7,2],[13,2],[3,10]
-     ,[47,11,3,48,10],[13,10],[14],[28,57,28,51,31,51,28,62]
-         ,[38,52,38,52,38,62],[29,61,31,53,10]
-         ,[35,55,35,60,7,54,35,55,3,54,7,54,35,62],[7,55,7,62]
-     ,[40,56,10],[31,62],[13,62],[31,6],[3,62],[10],[],[29,24,31,63,10]
-     ,[28,67,28,64,31,64,28,1],[31,23],[13,23],[31,1]
-         ,[8,15,3,68,2],[46,15,13,69,2]
-         ,[48,17,47,70,11,70,3,17,48,70,10],[45,71,7,5,45,71,7,71,2]
-     ,[35,18,35,4,7,72,35,18,3,72,7,72,35,1],[38,73,38,73,38,1],[50,74,14],[2]
-       ,[39],[8,75,3,77,2],[11,78,10],[48,78,47,79,11,79,3,78,48,79,10]
-     ,[45,80,7,75,45,80,7,80,2],[42,76,13,81,39]
-              ,[86,92,86,100,106,82,86,92,110,82,106,82,86,111]
-	      ,[89,97,100,83,107,83,110,97,89,83,111]
-	    ,[92,84,106,107,92,84,106,84,111],[96,101,96,85,31,85,96,111]
-	    ,[86,106,86,110,106,86],[28,101,28,87,31,87,28,111]
-     ,[38,88,38,88,38,111],[100,107,110,89,111]
-            ,[102,107,13,90,111],[103,109,110,91,10]
-	    ,[106,92,106,111],[29,109,31,93,10]
-            ,[103,11,110,94,10],[35,98,35,108,7,95,35,98,3,95,7,95,35,111]
-     ,[96,31,96],[107,97,111],[7,98,7,111],[40,99,10]
-       ,[110,111],[31,111],[13,111]
-     ,[110,10],[31,10],[47,109,3,105,10],[106],[111],[3,111],[10],[],[]
+   , pows = [vec]: { |pows[i]| gives class of powers 2..order\2 of class |i| }
+   { for r in ranked
+     do let w=classes[r] then n=order(w)
+     in for i:(n-2)\2 from 2 do lookup(class_signature_E8(w^i)) od
+     od
+   }
+   { for sig in sigs_sorted
+     do let n=sig[0] { maximal cycle size equals order }
+     in for k:(n-2)\2 from 2 do lookup(cycle_power(sig,k)) od
+     od
+   }
+     [[]
+     ,[],[],[],[],[],[],[],[],[]
+     ,[],[],[],[]
+     ,[2],[2],[2],[2],[2],[2],[4],[4],[4],[4],[4],[5],[7],[9]
+     ,[28],[29]
+     ,[10,1],[11,1],[12,1],[10,2],[10,3],[10,4],[10,4]
+       ,[10,6],[10,7],[10,8],[10,9],[11,2],[11,4],[11,3]
+       ,[11,4],[12,3],[12,4],[12,4],[13,4],[11,5],[11,6]
+       ,[11,7],[11,8],[11,9],[12,6],[12,8],[12,9],[13,9]
+     ,[58,58]
+     ,[20,59,4],[20,60,4],[20,61,4],[22,62,4],[22,63,4],[22,64,4],[25,65,5]
+       ,[27,66,9]
+     ,[67,12,67],[68,12,68]
+     ,[28,69,28,1],[28,70,28,2],[28,71,28,7]
+       ,[28,72,28,8],[28,73,28,9],[29,74,29,9]
+     ,[33,14,10,75,2],[33,15,10,76,2],[33,16,10,77,2],[33,16,10,78,2]
+       ,[33,18,10,79,2],[33,19,10,80,2],[35,20,10,81,4],[35,24,10,82,4]
+       ,[41,16,11,83,2],[47,20,12,84,4],[48,20,13,85,4],[47,21,12,86,4]
+       ,[47,23,12,87,4],[47,24,12,88,4],[48,24,13,89,4],[51,26,11,90,7]
+       ,[53,27,11,91,9],[57,27,13,92,9]
+     ,[58,93,58,93,58,1],[58,94,58,94,58,8],[58,95,58,95,58,9]
+     ,[96,28,96,10,28,96],[97,29,97,13,29,97]
+     ,[67,32,67,98,12,98,67,1],[67,55,67,99,12,99,67,8]
+       ,[67,56,67,100,12,100,67,9],[68,56,68,101,12,101,68,9]
+     ,[70,102,28,14,70,102,28,102,2],[70,103,28,19,70,103,28,103,2]
+       ,[74,104,29,27,74,104,29,104,9]
+     ,[81,59,35,105,20,105,10,59,81,105,4],[81,61,35,106,20,106,10,61,81,106,4]
+       ,[92,66,57,107,27,107,13,66,92,107,9]
+     ,[96,69,96,30,28,108,96,69,10,108,28,108,96,1]
+       ,[96,72,96,39,28,109,96,72,10,109,28,109,96,8]
+       ,[96,73,96,40,28,110,96,73,10,110,28,110,96,9]
+       ,[97,74,97,57,29,111,97,74,13,111,29,111,97,9]
      ]
 in W_class_table ( rd
-		 , classes
+		 , for rank in ranked do classes[rank] od
 		 , (int i) int: sizes[i]
 		 , (WeylElt w) int: lookup(class_signature_E8(w))
-		 , (int i,int k) int: { lookup(cycle_power(sigs[i],k)) }
-		   let n=classes[i].order, pow=pows[i] in
+		 , (int i,int k) int: { lookup(cycle_power(sigs_sorted[i],k)) }
+		   let n=classes[ranked[i]].order, pow=pows[i] in
 		   if (k%:=n)<2 then case k in 0,i esac
 		   elif k<=n\2 then pow[k-2]
 		   elif k=n-1 then i
@@ -613,24 +636,6 @@ in (RootDatum rd) WeylClassTable:
    fi
 
 set class_table_E8 () = WeylClassTable: class_table_E8(standard_datum_E8)
-
-set GAP_reorder_E8 (WeylClassTable Wct) = [int]: { map GAP to |Wct| numbers }
-   let Wct_prof = mat: { with shape (5,25) }
-      let reps=Wct.class_representatives, sizes=Wct.class_sizes in
-      5 # for j:Wct.n_classes
-          do [ reps[j].order
-	     , sizes[j]
-	     , Wct.sign[j]
-	     , Wct.reflection[j]
-	     , Wct.reflection[Wct.class_power(j,3)]
-	     ]
-	  od
-   then profile_ranked = [int]: { columns |eg_gap_profile| ranked by |lex_leq| }
-      ranking([vec]:e8_gap_profile)
-   , Wct_ranked = { columns of |Wct_prof| ranked by |lex_leq| }
-      ranking([vec]:Wct_prof)
-   in compose_permutations(Wct_ranked,inverse(profile_ranked))
-
 
 set class_table_E (int n) = WeylClassTable:
    case n-6

@@ -37,15 +37,15 @@ set character_table ( WeylClassTable Wct
    , reps = for (w,) in class_reps do w od
 in Wct:=reorder(Wct,reps) { henceforth |Wct| has class order we imposed }
 ;  let labels = [string]: for (,s) in chars do s od
-,  character_table = mat: n^for (char,) in chars do char od { |char| is a row }
-,  sizes = Wct.class_sizes
-,  degrees = [int]:
-   for i:n
-   do
-     let (char,)=chars[i] in
-     first(rd.nr_of_posroots+1
-          ,(int k) bool: !=Wct.inner(char,Wct.sym_power_refl(k)))
-   od
+   ,  character_table = mat:
+        n^for (char,) in chars do char od { |char| is a row }
+   ,  degrees = [int]:
+      for i:n
+      do
+	let (char,)=chars[i] in
+	first(rd.nr_of_posroots+1
+	     ,(int k) bool: !=Wct.inner(char,Wct.sym_power_refl(k)))
+      od
 in
    ( { class_table } WeylClassTable: Wct
    , { class_label } (int i)string: let (,cl)=class_reps[i] in cl
