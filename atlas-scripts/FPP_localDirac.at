@@ -483,8 +483,11 @@ set ICPNU_flag = false {true becomes very slow in rk 6}
 {if true, functions in FPP_global pass through KGB backwards}
 set tilde_flag = false
 
-{if true, steve passes through FPP vertices from longest to shortest through KGB backwards}
-set steve_tilde_flag = true
+{if true, steve passes through FPP vertices from longest to shortest
+through KGB backwards}
+{true costs time before #lambda 1024 in KGB(E8_s,220459: almost a
+factor of two? Maybe 25% for KGB(E7_s,20000)?}
+set steve_tilde_flag = false {true}
 
 {set this to true to use wiggle tests in local_testK_hash_bottom_layer,
 which handles the most cases}

@@ -454,7 +454,19 @@ set taus(KGBElt x, ratvec lambda, int HT) = [KType]:
 set pos_tester(KGBElt x, ratvec lambda,int HT,ratvec gamma) = bool:
     let p = parameter(x,lambda,gamma), G = x.real_form
     then qs = monomials(1*p)
-    in all (for q in qs do @bool: is_unitary_to_ht_big_SIMPLE_old(q,HT) od)
+    in all(for q in qs do @bool: is_unitary_to_ht_big_SIMPLE_old(q,HT) od)
+
+{should be called only if height(x,lambda,0) > 0 and HT >= minBottomData.G_min_height(x,lambda)}
+set pos_tester_min(KGBElt x, ratvec lambda,int HT,ratvec gamma) = bool:
+    let p = parameter(x,lambda,gamma), G = x.real_form
+    then qs = monomials(1*p)
+    in {prints("got to pos_tester_min at ",p);}
+       if not all(for q in qs do @bool: min_bottom_elim_factors(q,p) od)
+       then {prints("... and bottom worked!");}
+       	    return false
+       fi;
+       all (for q in qs do @bool: is_unitary_to_ht_big_SIMPLE_old(q,HT) od)
+
 
 {compute vectors of size 2 giving [index of K-char, #Langlands quotients]}
 set extra_coord_flag = true
@@ -486,11 +498,47 @@ set pos_tester_known_Kchar(KGBElt x, ratvec lambda,int HT,ratvec gamma, vec KCv)
        fi
 
 {USE Kpol_hash defined in FPP_faces_geom.at}
-set pos_tester_Kchar(KGBElt x, ratvec lambda,int HT,ratvec gamma) =
-    (bool, vec):
+set pos_tester_Kchar(KGBElt x, ratvec lambda,int HT,ratvec gamma) = (bool, vec):
     let p = parameter(x,lambda,gamma), G = x.real_form
     then qs = monomials(1*p)
     in if extra_coord_flag
+       then (all (for q in qs do @bool: is_unitary_to_ht_big_SIMPLE(q,HT) od),
+       	    [Kpol_hash.match(K_type_pol(character_formula_to_height(1*p,HT))),#qs])
+       else (all (for q in qs do @bool: is_unitary_to_ht_big_SIMPLE(q,HT) od),[])
+       fi
+
+{should only be invoked if height(x,lambda)>0 and HT >= minBottomData.G_min_height(x,lambda)}
+{SHOULD USE KNOWN Kchar KCv[0] if possible}
+{USE Kpol_hash defined in FPP_faces_geom.at; assume index od }
+set pos_tester_known_Kchar_min(KGBElt x, ratvec lambda,int HT,ratvec gamma, vec KCv) =
+    (bool, vec):
+    let p = parameter(x,lambda,gamma), G = x.real_form
+    then qs = monomials(1*p)
+    in {prints("got to pos_tester_known_Kchar_min");}
+       if not all(for q in qs do @bool: min_bottom_elim_factors(q,p) od)
+       then return if extra_coord_flag
+       	    	   then (false,KCv)
+		   else (false,[])
+		   fi
+       fi;
+       if extra_coord_flag
+       then (all (for q in qs do @bool: is_unitary_to_ht_big_SIMPLE(q,HT) od),KCv)
+       else (all (for q in qs do @bool: is_unitary_to_ht_big_SIMPLE(q,HT) od),[])
+       fi
+
+{USE Kpol_hash defined in FPP_faces_geom.at}
+set pos_tester_Kchar_min(KGBElt x, ratvec lambda,int HT,ratvec gamma) =
+    (bool, vec):
+    let p = parameter(x,lambda,gamma), G = x.real_form
+    then qs = monomials(1*p)
+    in {prints("got to pos_tester_Kchar_min");}
+       if not all(for q in qs do @bool: min_bottom_elim_factors(q,p) od)
+       then return if extra_coord_flag
+       	    	   then (false,[Kpol_hash.match(K_type_pol(character_formula_to_height(1*p,HT))),#qs])
+		   else (false,[])
+		   fi
+       fi;
+       if extra_coord_flag
        then (all (for q in qs do @bool: is_unitary_to_ht_big_SIMPLE(q,HT) od),
        	    [Kpol_hash.match(K_type_pol(character_formula_to_height(1*p,HT))),#qs])
        else (all (for q in qs do @bool: is_unitary_to_ht_big_SIMPLE(q,HT) od),[])
@@ -1042,12 +1090,17 @@ set_type
 )
 ]
 
+{whether to try min_bottom_elim in the middle of pos_tests}
+set steve_min_flag = false
+
 set make_steve_hash_small() = steve_hash_small_table:
 (   let rfSHS = RealForm: GL(1,R)
     then xSHS = KGBElt: KGB(rfSHS,0)
     then lambdaSHS = ratvec: rfSHS.rho
     then rcor = [vec]: [] {reducibility coroots for x}
     then heights = vec:[]
+    then min_flag = bool: false {whether to try min_bottom}
+    then min_height = int: 0
     then vechashes = [vec_hash]:[] {one for each height for each entry in each xlhash}
     then redpoints = [[int]]:[] {for each height, [int] = bitmap of reducibility
     	 	     		  points for each reducibility coroot}
@@ -1059,6 +1112,8 @@ set make_steve_hash_small() = steve_hash_small_table:
 	 then () = lambdaSHS:=[0]/1
 	 then () = rcor := []
 	 then () = heights:=[]
+	 then () = min_flag:=false
+	 then () = min_height:=0
 	 then () = vechashes:=[]
 	 then () = redpoints := []
 	 then () = statuses:=[]
@@ -1090,7 +1145,10 @@ set make_steve_hash_small() = steve_hash_small_table:
 	 {then () = prints("vechashes[htnum] = ",vechashes[htnum].list())
 	 then () = prints("loc = ",loc)}
 	 then () = if vecnum = VECNUM {new location rel hyperplanes}
-	      	   then let (boo,v) = pos_tester_Kchar(xSHS, lambdaSHS, HT, gamma)
+	      	   then let (boo,v) = if min_flag and (HT >= min_height or HT < 0)
+		   	    	      then pos_tester_Kchar_min(xSHS, lambdaSHS, HT, gamma)
+		   	    	      else pos_tester_Kchar(xSHS, lambdaSHS, HT, gamma)
+				      fi
 			in statuses[htnum] #:=boo;
 			   charvecs[htnum]#:=v
 		   fi
@@ -1135,7 +1193,10 @@ set make_steve_hash_small() = steve_hash_small_table:
 				   od
 		        then () = def_thruples_time+:= elapsed_ms() - start
 			then () = if (#v).=
-			     	  then boo:= pos_tester(xSHS, lambdaSHS, HT, gamma);
+			     	  then boo:= if min_flag and (HT >= min_height or HT < 0)
+				       	     then pos_tester_min(xSHS, lambdaSHS, HT, gamma)
+					     else pos_tester(xSHS, lambdaSHS, HT, gamma)
+					     fi;
 				       v:=Kcv
 				  fi
 			in statuses[htnum]#:=boo;
@@ -1179,7 +1240,10 @@ set make_steve_hash_small() = steve_hash_small_table:
 				   od
 		        then () = def_thruples_time+:= elapsed_ms() - start
 			then () = if (#v).=
-			     	  then boo:= pos_tester(xSHS, lambdaSHS, HT, gamma);
+			     	  then boo:= if min_flag and (HT >= min_height or HT < 0)
+				       	     then pos_tester_min(xSHS, lambdaSHS, HT, gamma)
+					     else pos_tester(xSHS, lambdaSHS, HT, gamma)
+					     fi;
 				       v:=Kcv
 				  fi
 			in statuses[htnum]#:=boo;
@@ -1255,6 +1319,12 @@ set make_steve_hash_small() = steve_hash_small_table:
     rfSHS := x.real_form;
     xSHS := x;
     lambdaSHS := lambda;
+    let p0 = parameter(xSHS,lambdaSHS,0*lambdaSHS)
+    then min_ht_max = max(for mu in LKTs(p0) do minBottomData.G_min_height(mu) od)
+    in min_flag := steve_min_flag and
+       		   x.number > (#KGB(rfSHS))/3 and
+		   (height(p0) > 0) and (min_ht_max > height(p0));
+       min_height := min_ht_max;
     heights := [HT];
     rcor := red_coroots(x);
     vechashes := [make_vec_hash()];
@@ -1267,6 +1337,10 @@ set make_steve_hash_small() = steve_hash_small_table:
     rfSHS := x.real_form;
     xSHS := x;
     lambdaSHS := lambda;
+    let p0 = parameter(xSHS,lambdaSHS,0*lambdaSHS)
+    then min_ht_max = max(for mu in LKTs(p0) do minBottomData.G_min_height(mu) od)
+    in min_flag := (height(p0) > 0) and (min_ht_max > height(p0));
+       min_height := min_ht_max;
     heights := [];
     rcor := red_coroots(x);
     vechashes := [];
@@ -1812,7 +1886,7 @@ set localFD_2SteveU\
      	  	  	 	  then (0,0,steve_hash_small.ht_index(HT))
 				  else steve_hash.indices(x, lambda, HT)
 				  fi
-     then LF1 = [FaceVertsIndex]: {RETURN steve_tilde_flag}
+     then LF1 = [FaceVertsIndex]:
           if steve_tilde_flag
 	  then for v@j in Edges
 	       ~do if fund_face_verbose and red_count_flag and (j%freq).=
@@ -2171,6 +2245,9 @@ set localFD_Steve2(KGBElt x, ratvec lambda, LocalVertexData Lvd, PermOrderTwo Pe
     	      then prints("orig vert count = ", #(Lvd.list))
 	      fi
     then LF0 = localFD_1SteveU(x,lambda,hts[first_offset], Lvd)
+    then () = if (#LF0).=
+    	      then return [[],[]]
+	      fi
     then () = if fund_face_verbose
     	      then prints("LF0 to height ",hts[first_offset]," = ",#LF0)
 	      fi
@@ -2487,7 +2564,14 @@ set local_test_GEO_hash_steve(KGBElt x, ratvec lambda, LocalVertexData Lvd, Para
     then () = if test_verbose then prints("Chose",test_string) fi
     then start_count = unitary_test_counter.use_count()
     then () = hash_steveCounter.use()
-    then LF2 = localFD_Steve2(x,lambda)
+    then LF2 = localFD_Steve2 (x,lambda)
+    then () = if (#LF2).= or (#LF2[0]).=
+    	      then if steve_small_flag
+       	      	   then steve_hash_small.clear()
+       		   else steve_hash.clear_xl(x,lambda)
+       		   fi;
+		   return []
+	      fi
     then answer = if steve_closer_flag
        	 	  then local_test_GEO_hash_steve_steve_end(x, lambda, Lvd, LF2, Uhash,
        		  (([[LocalFaceVertsKHash]])->[Param]): ([[LocalFaceVertsKHash]] LFlast):
