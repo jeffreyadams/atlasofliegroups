@@ -34,9 +34,8 @@ set !e6_table = [vec]: { characters, with conjugacy classes in Magma order }
 ]
 
 
-{ some stuff to figure out in what order Magma has listed classes }
-
-{from magma} { orders, then class sizes, of conjugacy classes in magma order }
+{ some stuff to figure out in what order Magma has listed classes:
+  element orders, then class sizes, of conjugacy classes, in Magma order }
 
 set e6_profile = mat: { 4*25 matrix with unique columns, characterising a class }
    let e6_orders_sizes = mat:
@@ -49,17 +48,16 @@ set e6_profile = mat: { 4*25 matrix with unique columns, characterising a class 
    , reflection_index=2
 in e6_orders_sizes ^ ^[e6_table[sgn_index],e6_table[reflection_index]]
 
-set Magma_reorder_E6(WeylClassTable Wct) = [int]: { map Magma to |Wct| numbers }
-   let Wct_prof = mat: { with shape (4,25) }
-      let reps=Wct.class_representatives, sizes=Wct.class_sizes in
-      4 # for j:Wct.n_classes
-	  do [reps[j].order, sizes[j], Wct.sign[j], Wct.reflection[j] ]
-	  od
-   then profile_ranked = [int]: { columns |e6_profile| ranked |lex_leq| }
-      ranking([vec]:e6_profile)
-   , Wct_ranked = { columns of |Wct_prof| ranked by |lex_leq| }
-      ranking([vec]:Wct_prof)
-in compose_permutations(Wct_ranked,inverse(profile_ranked))
+set Magma_positions_E6 (WeylClassTable Wct) = [int]: { |Wct| classes to Magma }
+   let Magma_ranked = [int]: { column indices of |e6_profile| ranked |lex_leq| }
+      ranking(rlex_leq@(vec,vec))([vec]:e6_profile)
+   then profiles_sorted = for r in Magma_ranked do e6_profile[r] od
+   , lookup = binary_lookup(rlex_leq@(vec,vec))
+   in for w@i in Wct.class_representatives
+      do let prof = vec:
+         [order(w),Wct.class_size(i),Wct.sign[i], Wct.reflection[i]]
+      in Magma_ranked[lookup(prof,profiles_sorted).requisition]
+      od
 
 set to_special_E6 = (int i) int:
    case i
@@ -78,39 +76,30 @@ set to_special_E6 = (int i) int:
    else error("Wrong E6 irrep number")
    esac
 
-set character_table_E6 = (RootDatum->CharacterTable):
-   let ct= trivial_character_table { place holder value }
-   , compute (RootDatum rd) = CharacterTable:
-      let Wct = class_table_E6(rd)
-      then reordering = Magma_reorder_E6(Wct)
-      then E6_name(vec chi) = string:
-	 let psi = null(#chi)
-	 then degree = { first reorder |chi| for |Wct| into |psi| }
-	   for j@i in reordering do psi[j]:=chi[i] od { inverse reorder }
-	   ;  first(Wct.root_datum.nr_of_posroots+1
-		   ,(int k) bool: Wct.inner(psi,Wct.sym_power_refl(k)).>
-		   )
-	 in to_string("irrep(dim:",psi[0],",deg:",degree,")")
-      then classes = [WeylElt,string]:
-	 let reps = Wct.class_representatives
-	 in for j in reordering
-	    do (reps[j],class_signature_E6(reps[j]).compressed_string)
-	    od
-      ,  irreps = [[int],string]:
-	 for line@i in e6_table
-	 do ( line
-	    , case i in "trivial", "sign", "reflection" else E6_name(line) esac
-	    )
-	 od
-      in { result of |compute| }
-	 character_table(Wct,classes,irreps,to_special_E6@int)
-in (RootDatum rd) CharacterTable:
-   if rd != standard_datum_E6 then compute(rd)
-   elif =ct.root_datum.rank { whether this is the first time we are called }
-   then ct:=compute(rd) { compute and store the first time }
-   else ct { any next time just return the previously computed value }
-   fi
+set character_table_E6 (WeylClassTable Wct) = CharacterTable:
+   let M_pos = Magma_positions_E6(Wct)
+   then class_names = [string]:
+      for w in Wct.class_representatives
+      do class_signature_E6(w).compressed_string
+      od
+   , chars = for line in e6_table do for p in M_pos do line[p] od od
+   then named_chars = [[int],string]:
+      let limit = Wct.root_datum.nr_of_posroots+1 in
+      for chi@i in chars
+      do let degree =
+	 first(limit,(int k) bool: Wct.inner(chi,Wct.sym_power_refl(k))>0)
+      in ( chi
+	 , case i in "trivial", "sign", "reflection"
+	   else to_string("irrep(dim:",chi[0],",deg:",degree,")")
+	   esac
+	 )
+      od
+   in character_table(Wct,class_names,named_chars,to_special_E6@int)
 
+set character_table_E6 = (RootDatum->CharacterTable):
+((RootDatum rd) CharacterTable: character_table_E6(class_table_E6(rd))
+, standard_datum_E6
+).memo_1_rd
 
 set character_table_E6() = CharacterTable:
    character_table_E6(standard_datum_E6)

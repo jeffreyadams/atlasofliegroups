@@ -66,14 +66,13 @@ set to_special_F4 = (int i) int:
    else error("Wrong F4 irrep number")
    esac
 
-set character_table_F = (RootDatum -> CharacterTable):
-(  let !irreps_Kondo = [[int],string]:
+set character_table_F = (WeylClassTable -> CharacterTable):
+   let !irreps_Kondo = [[int],string]:
       for (line,degree,n_primes) in character_table_F4_data
       do (line,F4_name(line[0],degree,n_primes))
       od
-in (RootDatum rd) CharacterTable:
-   let Wct = class_table_F(rd)
-   then K_pos = Kondo_positions (Wct)
+in (WeylClassTable Wct) CharacterTable:
+   let K_pos = Kondo_positions (Wct)
    then classes = [WeylElt,string]:
       for w@i in Wct.class_representatives
       do (w,class_signature_F4(w).compressed_string)
@@ -83,7 +82,9 @@ in (RootDatum rd) CharacterTable:
       do (for p in K_pos do line[p] od,name)
       od
    in character_table(Wct,classes,irreps,to_special_F4@int)
-)
+
+set character_table_F (RootDatum rd) = CharacterTable:
+   character_table_F(class_table_F(rd))
 
 set character_table_F(int n) = CharacterTable:
    assert(n=4,"Inexistent type F"+n); character_table_F(simply_connected("F4"))

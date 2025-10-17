@@ -28,6 +28,28 @@ set_type
   )
 ]
 
+{ a constructor that keeps the class ordering of |Wct|, attaches names in order }
+set character_table ( WeylClassTable !Wct
+		    , [string] class_names
+		    , [[int],string] chars
+		    , (int->int) to_special
+		    ) =  CharacterTable:
+(  let degrees = [int]:
+      let limit = Wct.root_datum.nr_of_posroots+1 in
+      for i:Wct.n_classes
+      do let (char,)=chars[i]
+      in first(limit, (int k) bool: !=Wct.inner(char,Wct.sym_power_refl(k)))
+      od
+in
+   ( { class_table } WeylClassTable: Wct
+   , { class_label } (int j)string: class_names[j]
+   , { irreducible_label } (int i)string: chars[i].snd
+   , { character table } mat:
+       Wct.n_classes ^ for (char,) in chars do char od { |char| is a row }
+   , { deg_spec } [int,int]: for deg@i in degrees do (deg,to_special(i)) od
+   )
+)
+
 set character_table ( WeylClassTable Wct
 		    , [WeylElt,string] class_reps
 		    , [[int],string] chars
@@ -180,6 +202,16 @@ set signature(CharacterTable ct) = ([int] char)[int]: signature(ct,char)
 
 set decompose(CharacterTable ct) = (vec v)[int]: { list of irrep multiplicities }
    for i:#ct.table do ct.inner_product(v,ct.character(i)) od
+
+set memo_1_rd ((RootDatum->CharacterTable) compute, RootDatum special) =
+   (RootDatum->CharacterTable):
+   let ct= trivial_character_table { place holder value }
+in (RootDatum rd) CharacterTable:
+   if rd != special then compute(rd)
+   elif ct.root_datum.rank=0 { whether this is the first time we are called }
+   then ct:=compute(rd) { compute and store the first time }
+   else ct { any next time just return the previously computed value }
+   fi
 
 
 { |mults| is a vector of multiplicities of the irreducible characters;

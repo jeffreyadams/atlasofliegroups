@@ -13,9 +13,9 @@
 set to_special_G2 = (int i) int:
    case i in 0, 5, 5, 3, 5, 5 else error("Wrong G2 irrep number") esac
 
-set character_table_G = (RootDatum -> CharacterTable):
-   let class_names = ["e", "S_long", "S_short", "R/2", "R/3", "R/6"]
-   , irreps = [[int],string]:
+set character_table_G = (WeylClassTable -> CharacterTable):
+   let !class_names = ["e", "S_long", "S_short", "R/2", "R/3", "R/6"]
+   , !irreps = [[int],string]:
      [ ( [1,1,1,1,1,1]   ,  "trivial" )
      , ( [1,1,-1,-1,1,-1], "short sign" )
      , ( [1,-1,1,-1,1,-1], "long sign" )
@@ -23,12 +23,13 @@ set character_table_G = (RootDatum -> CharacterTable):
      , ( [2,0,0,2,-1,-1] , "triangular reflection" )
      , ( [2,0,0,-2,-1,1] , "hexagonal reflection" )
      ]
-in (RootDatum rd) CharacterTable:
-(  let class_table = class_table_G(rd)
-   then classes = [WeylElt,string]:
+in (WeylClassTable class_table) CharacterTable:
+   let classes = [WeylElt,string]:
       for w@i in class_table.class_representatives do (w,class_names[i]) od
    in character_table(class_table,classes,irreps,to_special_G2@int)
-)
+
+set character_table_G (RootDatum rd) = CharacterTable:
+   character_table_G(class_table_G(rd))
 
 set character_table_G (int n) = CharacterTable:
    assert(n=2,"Inexistent type G"+n); character_table_G(simply_connected("G2"))
