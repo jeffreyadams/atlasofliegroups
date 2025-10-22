@@ -1,0 +1,206 @@
+set_type reportDatum =(int xl_pair_number,
+int x_lambda_total_time,
+int tested_pos_hash_size,
+int sum_tested_pos_times,
+int tested_neg_hash_size,
+int sum_tested_neg_times,
+int sum_tested_inter_counts,
+int tested_inter_hash_size,
+int sum_tested_inter_times,
+int sum_tested_pos_to_ht_hash_size,
+int sum_tested_pos_to_ht_time_sum,
+int sum_tested_neg_to_ht_hashes_size,
+int sum_tested_neg_to_ht_times_sum,
+int OT_hash_size,
+int sum_OT_counts,
+int sum_OT_times,
+int hash_bottom_layerCounter_use_count,
+int hash_one_levelCounter_use_count,
+int hash_real_dumbCounter_use_count,
+int hash_dumbCounter_use_count,
+int hash2Counter_use_count,
+int hash_steveCounter_use_count,
+int unitaryTime,
+int unitary_test_counter_use_count,
+int charTime,
+int char_counter_use_count,
+int up_mu_time,
+int DTcount,
+int DBTcount,
+int def_thruples_time,
+int hash_def_false_count,
+int test_no_unitary_time,
+int test_no_Dirac_time,
+int none_count,
+rat mu_time_mult,
+rat shift_frac,
+rat min_ht_mult)
+
+set =(reportDatum a,reportDatum b)=bool:a.xl_pair_number=b.xl_pair_number
+set hash_code (reportDatum d,int mod)=int:d.xl_pair_number%mod
+set make_report_hash() = Hash<reportDatum>:
+   make_hash(hash_code@(reportDatum,int),=@(reportDatum,reportDatum))
+set_type reportHash     = Hash<reportDatum>
+
+{write one line report: (xl_pair number, x_lambda_total time get passed}
+set report(int xl_pair_number,int x_lambda_total_time)=reportDatum:
+(xl_pair_number,
+x_lambda_total_time,
+tested_pos_hash.size(),
+sum(tested_pos_times),
+tested_neg_hash.size(),
+sum(tested_neg_times),
+sum(tested_inter_counts),
+tested_inter_hash.size(),
+sum(tested_inter_times),
+sum(for hash in tested_pos_to_ht_hashes do hash.size() od),
+sum(for list in tested_pos_to_ht_times do sum(list) od),
+sum(for hash in tested_neg_to_ht_hashes do hash.size() od),
+sum(for list in tested_neg_to_ht_times do sum(list) od),
+OT_hash.size(),
+sum(OT_counts),
+sum(OT_times),
+hash_bottom_layerCounter.use_count(),
+hash_one_levelCounter.use_count(),
+hash_real_dumbCounter.use_count(),
+hash_dumbCounter.use_count(),
+hash2Counter.use_count(),
+hash_steveCounter.use_count(),
+unitaryTime,
+unitary_test_counter.use_count(),
+charTime,
+char_counter.use_count(),
+up_mu_time,
+DTcount,
+DBTcount,
+def_thruples_time,
+hash_def_false_count,
+test_no_unitary_time,
+test_no_Dirac_time,
+none_count,
+mu_time_mult,
+shift_frac,
+min_ht_mult)
+
+set report_string(reportDatum d)=string:"report_hash.match" + to_string("",d)
+set report_string(int xl_pair_number,int x_lambda_total_time)=string:report_string(report(xl_pair_number,x_lambda_total_time))
+
+set write(reportHash h)=void:
+for d in h.list() do prints("void:" + report_string(d)) od
+
+{make an empty report_hash, so fpp.py processes have something to write to;
+see write_one_pair in FPP.at}
+
+set report_hash=make_report_hash()
+
+set reportDatumFields=
+([xl_pair_number@reportDatum,
+x_lambda_total_time@reportDatum,
+tested_pos_hash_size@reportDatum,
+sum_tested_pos_times@reportDatum,
+tested_neg_hash_size@reportDatum,
+sum_tested_neg_times@reportDatum,
+sum_tested_inter_counts@reportDatum,
+tested_inter_hash_size@reportDatum,
+sum_tested_inter_times@reportDatum,
+sum_tested_pos_to_ht_hash_size@reportDatum,
+sum_tested_pos_to_ht_time_sum@reportDatum,
+sum_tested_neg_to_ht_hashes_size@reportDatum,
+sum_tested_neg_to_ht_times_sum@reportDatum,
+OT_hash_size@reportDatum,
+sum_OT_counts@reportDatum,
+sum_OT_times@reportDatum,
+hash_bottom_layerCounter_use_count@reportDatum,
+hash_one_levelCounter_use_count@reportDatum,
+hash_real_dumbCounter_use_count@reportDatum,
+hash_dumbCounter_use_count@reportDatum,
+hash2Counter_use_count@reportDatum,
+hash_steveCounter_use_count@reportDatum,
+unitaryTime@reportDatum,
+unitary_test_counter_use_count@reportDatum,
+charTime@reportDatum,
+char_counter_use_count@reportDatum,
+up_mu_time@reportDatum,
+DTcount@reportDatum,
+DBTcount@reportDatum,
+def_thruples_time@reportDatum,
+hash_def_false_count@reportDatum,
+test_no_unitary_time@reportDatum,
+test_no_Dirac_time@reportDatum,
+none_count@reportDatum],
+[mu_time_mult@reportDatum,
+shift_frac@reportDatum,
+min_ht_mult@reportDatum])
+
+set reportDatumFieldNames=
+(["xl_pair_number",
+"x_lambda_total_time",
+"tested_pos_hash_size",
+"sum_tested_pos_times",
+"tested_neg_hash_size",
+"sum_tested_neg_times",
+"sum_tested_inter_counts",
+"tested_inter_hash_size",
+"sum_tested_inter_times",
+"sum_tested_pos_to_ht_hash_size",
+"sum_tested_pos_to_ht_time_sum",
+"sum_tested_neg_to_ht_hashes_size",
+"sum_tested_neg_to_ht_times_sum",
+"OT_hash_size",
+"sum_OT_counts",
+"sum_OT_times",
+"hash_bottom_layerCounter_use_count",
+"hash_one_levelCounter_use_count",
+"hash_real_dumbCounter_use_count",
+"hash_dumbCounter_use_count",
+"hash2Counter_use_count",
+"hash_steveCounter_use_count",
+"unitaryTime",
+"unitary_test_counter_use_count",
+"charTime",
+"char_counter_use_count",
+"up_mu_time",
+"DTcount",
+"DBTcount",
+"def_thruples_time",
+"hash_def_false_count",
+"test_no_unitary_time",
+"test_no_Dirac_time",
+"none_count]",
+"[mu_time_mult",
+"shift_frac",
+"min_ht_mult"])
+
+
+
+set show(reportDatum d)=void:
+let (int_fields,rat_fields)=reportDatumFields in
+for f@i in int_fields do prints(reportDatumFieldNames[i], ": ", f(d)) od
+
+set sort_report_data_by_field((reportDatum->int) field)=([reportDatum] -> [reportDatum]):
+sort_by(field,<=@(int,int))
+
+set sort_report_hash_by_field(reportHash m, (reportDatum->int) field)=[reportDatum]:
+let sort=sort_report_data_by_field(field) in
+sort(m.list())
+
+set sort_report_data_by_field_reverse((reportDatum->int) field)=([reportDatum] -> [reportDatum]):
+sort_by(field,>=@(int,int))
+
+set sort_report_hash_by_field_reverse(reportHash m, (reportDatum->int) field)=[reportDatum]:
+let sort=sort_report_data_by_field_reverse(field) in
+sort(m.list())
+
+
+
+{
+
+set reportDatumIntegerFields=let (a,)=reportDatumFields in a
+set reportDatumRatFields=let (,b)=reportDatumFields in b
+
+set report_string_complicated(reportDatum d)=string:
+let str="(" in
+ for f in reportDatumIntegerFields do str +:=to_string(f(d)) + "," od;
+ for i:#reportDatumRatFields-1 do str +:=to_string(reportDatumRatFields[i](d)) + "," od;
+ str+:=to_string(reportDatumRatFields~[0](d)) + ")";str
+}

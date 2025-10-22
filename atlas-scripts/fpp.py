@@ -316,11 +316,10 @@ def atlas_compute(job_number,round,start_counter,proc,log,data):
 
          x_lambda_end_time=time.time()
          x_lambda_total_time=x_lambda_end_time-x_lambda_start_time
-         #atlas_cmd=">>\"" + data_file  + "\" write_one_pair(" + group + "," + str(x_lambda_number) + ")\n"
          atlas_cmd="prints(\"start_counter: \","  + str(start_counter) + ",new_line,\"END\")\n"
          log.write("data atlas_cmd: " + atlas_cmd)
          execute_atlas_command(atlas_cmd,"END",log,data,proc)
-         atlas_cmd="prints(write_one_pair(" + group + "," + str(x_lambda_number) + "))\n"
+         atlas_cmd="prints(write_one_pair(" + group + "," + str(x_lambda_number) + "," + str(int(x_lambda_total_time)) + "))\n"
          log.write("data atlas_cmd: " + atlas_cmd)
          execute_atlas_command(atlas_cmd,"END",log,data,proc)
          memory_rss=psutil.Process(pid).memory_info().rss / 1024**2
@@ -328,7 +327,7 @@ def atlas_compute(job_number,round,start_counter,proc,log,data):
          log.write("current memory usage rss (" + str(pid) + "); " + str(memory_rss) + "\n")
          log.write("current memory usage vms (" + str(pid) + "); " + str(memory_vms) + "\n")
          #log.write("finished atlas cmd 1\n")
-         log.write("Finished pair x_lambda_number:" + str(x_lambda_number) + "\n")
+         log.write("Finished pair x_lambda_number:" + str(x_lambda_number)  + "\n")
          log.write("elapsed time: " + nice_time(x_lambda_total_time) + "\ntime from start: " + nice_time(x_lambda_end_time-starttime) + "\n")
          reporting_data.append((job_number,round,start_counter,x_lambda_number,x_number,lambda_,x_lambda_total_time))
          log.write("one line of time report:\n")
@@ -423,6 +422,7 @@ def main(argv):
    #max_memory=20000  #in megabytes: 20,000 = 20 gigabytes
    #max_memory=50000   #50,000 megabyte = 50 gigabytes, x 250 jobs=12.5 terabytes
    #max_memory=60000   #60,000 megabyte = 60 gigabytes, x 250 jobs=15 terabytes
+   #max_memory=30000   #30,000 megabyte = 30 gigabytes, x 500 jobs=15 terabytes
    #default: 10 gigabytes
    max_memory=10000   #10,000 megabyte = 10 gigabytes, x 1000 jobs=10 terabytes
    queue_size=-1
@@ -704,6 +704,8 @@ def release_lock(lock_file,log,pid):
       log.write(f"Error releasing lock: {e}")
    return(pid)
 
+#write the updated init file (default [group_name]_init.at
+# also the report file [group_name]_report.at}
 def fpp_init(lock_file,log,pid):
    if set_lock(lock_file,log,pid):
       log.write("lock file not found: updating init file\n")
@@ -720,8 +722,7 @@ def fpp_init(lock_file,log,pid):
             dirs.append(os.path.join(data_directory,entry))
             #print("dirs: ", dirs)
             files_to_read=["all.at",group_definition_file]
-            init_file=group_name + "_init.at"
-            #print("look for: " + init_file)
+      init_file=group_name + "_init.at"
       if os.path.exists(init_file):
          files_to_read.append(init_file)
          print("adding " + init_file + " to list of files\n")
@@ -746,6 +747,13 @@ def fpp_init(lock_file,log,pid):
       log.write("atlas_cmd " + atlas_cmd + "\n")
       fpp_init_proc.stdin.write(format_cmd(atlas_cmd+ "\n"))
       fpp_init_proc.stdin.flush()
+      #write the report file
+      report_file=group_name + "_report.at"
+      atlas_cmd="> " + report_file + " write(report_hash)"
+      log.write("atlas_cmd " + atlas_cmd + "\n")
+      fpp_init_proc.stdin.write(format_cmd(atlas_cmd+ "\n"))
+      fpp_init_proc.stdin.flush()
+      
       #log.write("releasing lock_file " + lock_file + " " + str(log) + " " + str(pid) + "\n")
       release=release_lock(lock_file,log,pid)
       log.write("released lock file " + str(pid) + "\n")

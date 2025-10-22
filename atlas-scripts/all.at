@@ -60,5 +60,6 @@
 {<G2_unitary_dual.at}
 <adams_johnson.at
 <speh.at
+<report.at
 <FPP.at
 <fpp_settings.at {load this file last to override default settings}
