@@ -1104,6 +1104,7 @@ set steve_hash = make_steve_hash()
 set_type
 [steve_hash_small_table =
 ( ( -> ) clear {clear the table}
+  , ((KGBElt, ratvec, int, bool) ->) reset_with_ht_min {change to new (x,lambda,HT)), set min_flag}
   , ((KGBElt, ratvec, int) ->) reset_with_ht {change to new (x,lambda,HT)}
   , ((KGBElt, ratvec) ->) reset {erase old}
   {, ( -> vec) heights {list of heights to which reducibility has been studied}}
@@ -1199,6 +1200,7 @@ set make_steve_hash_small() = steve_hash_small_table:
 	 sigsL :=[];
 	 charvecs:=[];
 	 charvecsL:=[]
+    {plain means do not use deformation testing}
     then SHthruple_plain(ratvec gamma) = int:
 	 let rp = for M in redpoints
 		   do set_bit_positions(M) {this is [int]}
@@ -1368,21 +1370,18 @@ set make_steve_hash_small() = steve_hash_small_table:
 				       {then taus_HT = monomials(sigL_HT)}
 				       {signature to htSHS on all bl K_types}
 				       in booL:= is_pure(sigL_HT)
-				       {if is_pure(sigL_HT)
-				       	  	 then true
-				       	  	 else all(for q in monomials(1*parameter(xSHS,lambdaSHS,gamma))
-				       	    	      	  do let mult = big_unitary_hash.branch(K_type_pol(
-						       	     	      character_formula(q)),HT)
-						   	     in @bool: all(for tau in taus_HT
-						   	     	 do @bool: int_part(sigL_HT[tau]) >=
-								    int_part(mult[tau])
-							  	 od)
-							  od)
-					   	  fi}
-				    fi
+				   fi
 			in boo:= if not booL
 			     	   then false
-			     	   else pos_tester(xSHS, lambdaSHS, htSHS, gamma)
+			     	   elif let qs = monomials(parameter(xSHS, lambdaSHS, gamma))
+				   	in all(for q in qs do @bool: (big_unitary_hash.ulookup(q)).>= od)
+				   then true
+				   elif let qs = monomials(parameter(xSHS, lambdaSHS, gamma))
+				   	in any(for q in qs
+					       do @bool: big_unitary_hash.nu_height_lookup_bool(q, htSHS)
+					       od)
+				   then false {some q fails unitary to ht}
+				   else pos_tester(xSHS, lambdaSHS, htSHS, gamma)
 				   fi;
 			   v:=Kcv;
 			   statuses#:=boo;
@@ -1428,7 +1427,8 @@ set make_steve_hash_small() = steve_hash_small_table:
 	 in vecnum
       in
   ( ( -> ): {clear} clear_SHS
-  , ((KGBElt, ratvec, int) ->): {reset_with_ht} (KGBElt x, ratvec lambda, int HT) void:
+  , ((KGBElt, ratvec, int, bool) ->): {reset_with_ht_min} (KGBElt x, ratvec lambda, int HT, bool minBool) void:
+    min_flag:=minBool;
     if xSHS = x and lambdaSHS = lambda
     then if htSHS = HT
     	 then return ()
@@ -1446,10 +1446,44 @@ set make_steve_hash_small() = steve_hash_small_table:
     in dlSHS := (1+xSHS.involution)*(lambdaSHS.numer);
        let (wm,) = from_dominant(rfSHS, dlSHS)
        in wmin:=wm.inverse;
-       min_flag := steve_min_flag and
+       rcor := red_coroots(x);
+       SL := to_bitset(for av@j in rcor do if (av*dlSHS).= then [j] else [] fi od.##);
+       rcorL := (for j in set_bit_positions(SL) do rcor[j]*wmin od){*wmin}; {outside fails?}
+       htSHS := HT;
+       vechash.clear();
+       redpoints := for list in red_points(x,lambda,HT)
+		  do to_bitset(list)
+		  od;
+       redpointsL := for j in set_bit_positions(SL)
+       		     do redpoints[j]
+		     od;
+       statuses := [];
+       vechashL.clear();
+       statusesL := [];
+       sigsL := [];
+       charvecs := [];
+       charvecsL := []
+  , ((KGBElt, ratvec, int) ->): {reset_with_ht} (KGBElt x, ratvec lambda, int HT) void:
+    if xSHS = x and lambdaSHS = lambda
+    then if htSHS = HT
+    	 then return ()
+	 else SHSnew_ht(HT);
+	      return()
+	 fi
+    fi;
+    rfSHS := x.real_form;
+    xSHS := x;
+    lambdaSHS := lambda;
+    p0 := parameter(x,lambda,0*lambda);
+    let (,pL) = theta_stable_quasi_data(p0)
+    then () = p0L:= pL
+    then min_ht_max = max(for mu in LKTs(p0) do minBottomData.G_min_height(mu) od)
+    in dlSHS := (1+x.involution)*(lambda.numer);
+       let (wm,) = from_dominant(rfSHS, dlSHS)
+       in wmin:=wm.inverse;
+       min_flag:= steve_min_flag and
        		   x.number > (#KGB(rfSHS))/3 and
 		   (height(p0) > 0) and (min_ht_max > height(p0));
-       {min_height := min_ht_max;}
        rcor := red_coroots(x);
        SL := to_bitset(for av@j in rcor do if (av*dlSHS).= then [j] else [] fi od.##);
        rcorL := (for j in set_bit_positions(SL) do rcor[j]*wmin od){*wmin}; {outside fails?}
@@ -1790,7 +1824,7 @@ set localFD_1SteveU\
 (   if fund_face_verbose
     then prints(new_line,"start localFD_1SteveU to ht ",HT)
     fi;
-    steve_hash_small.reset_with_ht(x,lambda,HT);
+    steve_hash_small.reset_with_ht_min(x,lambda,HT, false); {don't do min_bottom}
     {if fund_face_verbose then prints("looks like p0 = ",steve_hash_small.pzero()) fi;}
     let G = x.real_form, start = elapsed_ms(), (rfnum, xlnum, htnum) =
     	if steve_small_flag
@@ -1924,8 +1958,15 @@ set localFD_1SteveUmin\
 	     	  in if not is_hermitian(p)
 	     	     then []
 		     elif is_pure(to_ht(steve_hash_small.sigL(v),HT))
-		     then count +:=1;
-		     	  [[j]]
+	     	     then let extra = if extra_coord_flag
+		     	      	      then if steve_small_flag
+				      	   then steve_hash_small.extra_coord(v)
+				      	   else steve_hash.extra_coord(x,lambda,HT,v)
+					   fi
+				       else null(0)
+				       fi
+		     	   in count+:=1;
+			      [[j]##extra]
 	     	     else [] {min pos test failed}
 	     	     fi
 	       od.## {list of j for which vertex j is a min-unitary candidate}
@@ -1943,14 +1984,21 @@ set localFD_1SteveUmin\
 			fi
 	     	  fi;
 	     	  let p = parameter(x,lambda,v)
-		  then () = if fund_face_verbose
+		  {then () = if fund_face_verbose
 		       	    then prints("p = ",p,", sigL(v) = ", steve_hash_small.sigL(v))
-			    fi
+			    fi}
 	     	  in if not is_hermitian(p)
 	     	     then []
 		     elif is_pure(to_ht(steve_hash_small.sigL(v),HT))
-		     then count +:=1;
-		     	  [[j]]
+	     	     then let extra = if extra_coord_flag
+		     	      	      then if steve_small_flag
+				      	   then steve_hash_small.extra_coord(v)
+				      	   else steve_hash.extra_coord(x,lambda,HT,v)
+					   fi
+				       else null(0)
+				       fi
+		     	   in count+:=1;
+			      [[j]##extra]
 	     	     else [] {min pos test failed}
 	     	     fi
 	       od.## {list of candidate vertices}
@@ -2424,7 +2472,7 @@ set test_Steve(KGBElt x, ratvec lambda, int HT, LocalVertexData Lvd, [[FaceVerts
     [[FaceVertsKHash]]:
     if #LFKH[0] = 0 then return LFKH fi;
     if fund_face_verbose then prints("start test_steve to height ",HT) fi;
-    steve_hash_small.reset_with_ht(x,lambda,HT);
+    steve_hash_small.reset_with_ht_min(x,lambda,HT,false);
     let start = elapsed_ms(), (rfnum, xlnum, htnum) = if steve_small_flag
     	      		      	      	     	      then (0,0,0)
 						      else steve_hash.indices(x, lambda, HT)
@@ -2484,7 +2532,6 @@ set localFD_Steve2(KGBElt x, ratvec lambda, LocalVertexData Lvd, PermOrderTwo Pe
     let start = elapsed_ms(), p0 = parameter(x,lambda,0*lambda)
     then hts = next_heights(p0,edge_offset+1), extra_coord_hold = extra_coord_flag
     then H0 = hts[first_offset]
-    {then () = steve_hash_small.reset_with_ht(x,lambda,H0)}
     then () = if (edge_offset= first_offset)
     	      then extra_coord_flag := true
 	      else extra_coord_flag := false
