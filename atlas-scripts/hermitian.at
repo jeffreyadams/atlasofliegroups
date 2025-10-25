@@ -579,9 +579,12 @@ set report_tested() = void:
     	 print_time_string(sum(OT_times)))
     fi;
     prints("#bottom_layer = ",hash_bottom_layerCounter.use_count(), ", #one_level = ",
-    	   hash_one_levelCounter.use_count(), ", #real_dumb = ",
-	   hash_real_dumbCounter.use_count(), ", #dumb = ",hash_dumbCounter.use_count(),
-	   ", #hash2 = ",hash2Counter.use_count(), ", #steve = ",hash_steveCounter.use_count());
+    	   hash_one_levelCounter.use_count(), {", #real_dumb = "} ", #dumb = ",
+	   hash_real_dumbCounter.use_count() +
+    	   hash_dumbCounter.use_count() +
+   	    hash_def_dumbCounter.use_count(), ", #hash = ",
+    	    hashCounter.use_count(), ", #hash2 = ",
+    	    hash2Counter.use_count(), ", #steve = ",hash_steveCounter.use_count());
     prints(print_time_string(unitaryTime)," for ",unitary_test_counter.use_count()," unitarity tests; ",
     print_time_string(charTime), " for ",char_counter.use_count(), " char calculations.");
     {prints("time for up_mu = ",print_time_string(up_mu_time), ", mu_time_mult = ",mu_time_mult,

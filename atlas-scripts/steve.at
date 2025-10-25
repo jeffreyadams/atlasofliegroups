@@ -2735,6 +2735,8 @@ set local_test_closer_steve(
      ) = [Param]:
 local_test_closer_steve(x, lambda, Lvd, LFVH.##)
 
+set steve_xl_hash = make_xlambda_hash()
+
 {here LF has only vertices at (x,lambda)}
 {MUST use Kpol_hash!}
 set local_test_GEO_hash_all_steve(KGBElt x, ratvec lambda, LocalVertexData Lvd, Param_hash Uhash) = [Param]:
@@ -2744,6 +2746,9 @@ set local_test_GEO_hash_all_steve(KGBElt x, ratvec lambda, LocalVertexData Lvd, 
     	       	   do Uhash.match(q)
 		   od
 	 in return [p]
+    fi;
+    if {tiny case} #Lvd.list = 1
+    then return one_param_test_min_bottom(parameter(x,lambda,Lvd.list[0]), Uhash)
     fi;
     let G = x.real_form, r = rank(x.involution -1), p0 = parameter(x,lambda,0*lambda)
     then () = if is_compact(G)
@@ -2759,6 +2764,7 @@ set local_test_GEO_hash_all_steve(KGBElt x, ratvec lambda, LocalVertexData Lvd, 
     then () = if test_verbose then prints("Chose",test_string) fi
     then start_count = unitary_test_counter.use_count()
     then () = hash_steveCounter.use()
+    then () = steve_xl_hash.match(x,lambda)
     then (LF2,H1) = localFD_Steve2(x,lambda)
     then LFall = localFD_KHashbt_lookDownGEO(x,lambda, Lvd, LF2, 2, r + 1, one_ht, Kpol_hash)
     then () = if one_two_reverse_flag
@@ -2784,6 +2790,9 @@ set local_test_GEO_hash_steve_graph(KGBElt x, ratvec lambda, LocalVertexData Lvd
 		   od
 	 in return [p]
     fi;
+    if {tiny case} #Lvd.list = 1
+    then return one_param_test_min_bottom(parameter(x,lambda,Lvd.list[0]), Uhash)
+    fi;
     let G = x.real_form, start = elapsed_ms(), start_count = unitary_test_counter.use_count()
     then () = if is_compact(G)
        	      then let all = all_parameters_gamma(G,lambda)
@@ -2796,6 +2805,7 @@ set local_test_GEO_hash_steve_graph(KGBElt x, ratvec lambda, LocalVertexData Lvd
     then () = if test_verbose then prints("Chose",test_string) fi
     then start_count = unitary_test_counter.use_count()
     then () = hash_steveCounter.use()
+    then () = steve_xl_hash.match(x,lambda)
     then theta = x.involution, p0 = parameter(x,lambda,0*lambda)
     then (,Perm2) = LPm_table.LPm_entry(G, theta, ratvec_as_vec(lambda+theta*lambda))
     then hts = next_heights(p0,edge_offset+1)
@@ -2853,6 +2863,9 @@ set local_test_GEO_hash_steve(KGBElt x, ratvec lambda, LocalVertexData Lvd, Para
 		   od
 	 in return [p]
     fi;
+    if {tiny case} #Lvd.list = 1
+    then return one_param_test_min_bottom(parameter(x,lambda,Lvd.list[0]), Uhash)
+    fi;
     if all_steve_flag
     then return local_test_GEO_hash_all_steve(x, lambda, Lvd, Uhash)
     elif steve_graph_flag
@@ -2870,6 +2883,7 @@ set local_test_GEO_hash_steve(KGBElt x, ratvec lambda, LocalVertexData Lvd, Para
     then () = if test_verbose then prints("Chose",test_string) fi
     then start_count = unitary_test_counter.use_count()
     then () = hash_steveCounter.use()
+    then () = steve_xl_hash.match(x,lambda)
     then (LF2,H1) = localFD_Steve2 (x,lambda)
     then () = if (#LF2).= or (#LF2[0]).=
     	      then {if steve_small_flag
@@ -2877,6 +2891,9 @@ set local_test_GEO_hash_steve(KGBElt x, ratvec lambda, LocalVertexData Lvd, Para
        		   else steve_hash.clear_xl(x,lambda)
        		   fi;}
 		   return []
+	      fi
+    then () = if #LF2[0] = 1
+    	      then return one_param_test_min_bottom(parameter(x,lambda,Lvd.list[LF2[0][0][0]]), Uhash)
 	      fi
     then answer = if steve_closer_flag
        	 	  then local_test_GEO_hash_steve_steve_end(x, lambda, Lvd, LF2, Uhash,

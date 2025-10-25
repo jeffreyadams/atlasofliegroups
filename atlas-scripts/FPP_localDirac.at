@@ -3717,6 +3717,7 @@ set local_test_GEO_dumb(KGBElt x, ratvec lambda) =
 set vert_diff_cutoff = int: 10
 
 {set hashCounter = make_counter()}
+set hash_xl_hash = make_xlambda_hash()
 
 {assume we've already got hts, #hts >= 1, imposed Dirac, and decided not to use _dumb
 Assume LF is vertices and edges, already pos on LKTs and hermitian and Dirac}
@@ -3732,6 +3733,7 @@ set local_test_GEO_hash_no_dumb(KGBElt x, ratvec lambda, {VertexData vd,} LocalV
 	 in return [p]
     fi;
     let () = hashCounter.use()
+    then () = hash_xl_hash.match(x,lambda)
     then () = more_after_flag:=false
     then () = min_after_flag:=false
     then () = test_string:= " using local_test_GEO_hash"
@@ -4319,6 +4321,7 @@ from one_level+1 to last_level) to speed elimination of nonunitary. Need
 to have last_level \ge one_level}
 set last_level = int: -1
 
+set one_level_xl_hash = make_xlambda_hash()
 {set hash_one_levelCounter = make_counter()}
 
 {assume local faces to dim 1 are recorded in LF, already herm and pos on LKTs}
@@ -4329,7 +4332,7 @@ set local_test_GEO_hash_one_level(KGBElt x, ratvec lambda, {VertexData vd,}
     if {tempered case} #LF[0] = 1 and ((1-x.involution)*(Lvd.list[LF[0][0][0]])).=
     then let p = parameter(x,lambda,0*lambda)
     	 then () = for q in monomials(finalize(p))
-    	       	   do Uhash.match(q)
+    	 do Uhash.match(q)
 		   od
 	 in return [p]
     fi;
@@ -4395,6 +4398,7 @@ set local_test_GEO_hash_one_level(KGBElt x, ratvec lambda, {VertexData vd,}
     then () = if test_verbose then prints("Chose",test_string) fi
     then start_count = unitary_test_counter.use_count()
     then  () = hash_one_levelCounter.use()
+    then () = one_level_xl_hash.match(x,lambda)
     then zero_ht = if step_flag
     	 	   then hts[ZERO]
 		   else 0
@@ -5032,7 +5036,7 @@ and LFDKH faces are unitary to that height. MUST use Kpol_hash.}
 set local_test_GEO_hash_steve_end_faces(KGBElt x, ratvec lambda, LocalVertexData Lvd,
     [[FaceVertsKHash]] LFDKH, Param_hash Uhash) = [[FaceVertsKHash]]:
     let G = x.real_form, r = rank(x.involution -1), thetaMinus = 1-x.involution
-    then () = hash_steveCounter.use()
+    {then () = hash_steveCounter.use() ???}
     then long_out_temp_flag = long_out_flag
     then () = long_out_flag:=false {to allow using local_test_hash without recording Params}
     then p0 = parameter(x, lambda, 0*lambda)

@@ -253,6 +253,7 @@ set isotwistKGBs(KGBElt x) = [KGBElt]:
     then twists = all_even_lambda_differential_0(rd.dual, -theta.^), X = KGB(G)
     in for tau in twists do X[KGB_elt(rd, theta, tf + tau).number] od
 
+
 set spherical_xs(RealForm G) = [KGBElt]:
     let real_rank = rank(x_open(G).involution + 1)
     in for x in KGB(G)
@@ -370,88 +371,137 @@ then coh_ind_unip_few(G,Uhash)}
 	      fi}
     then () = for (x,lambda)@k in xlambdasW
     	      do {xlambdasW}
-	      	let skip_lambda= is_finished(x,lambda),
-		revert_steve_flag = prefer_steve_long_flag and
-		(x.number = #KGB(G) - 1) and (lambda != G.rho)
-		in if skip_lambda
-		   then if FPP_report_flag
-		   	then prints("Already computed (",x,",",lambda,")")
-			fi; ()
-		   else
-	 	 let startxl = elapsed_ms(), startUhash = Uhash.size(),
-		     		   startUcounter = unitary_test_counter.use_count(),
-				   startCcounter = char_counter.use_count(),
-				   startUTime = unitaryTime, startCTime = charTime, theta = x.involution
-		 then p0 = parameter(x,lambda,zeroNu)
-		 {then () = prints("time before LPmss[",k,"] = ",print_time_string(elapsed_ms() - start))}
-		 then (Lvd, Perm2{, mapAct}) = LPmss[k]
-		 then () = if every_lambda_flag and FPP_report_flag
-      	      	   	      then prints("     start #", k, " = (",x,",",lambda,"), Uhash.size() = ",
-			      Uhash.size(), ", runtime = ", print_time_string(elapsed_ms() - start),
-			      ", #uparams so far = ",sum(answerCards));
-		   		   prints("  ------------------")
-        	   	   fi {every_lambda_flag}
-		 then startLF = elapsed_ms()
-		 in if {test_neither}test_no_unitary(x,lambda,Lvd)
-		    then ()
-		    else let startDTcount = DTcount
-		 then LF = [[FaceVertsIndex]]:
-		      	   if revert_steve_flag
-			   then [[]]
-		      	   elif by_zero_flag {and height(p0) > 0}
-		      	   then localFD_1Dirac2_by_zero(x, lambda, Lvd, Perm2)
-			   else localFD_1Dirac2(x, lambda, Lvd, Perm2)
-			   fi {just red_count to edge_offset}
-		 then () = if every_lambda_deets_flag and FPP_report_flag and not revert_steve_flag
-    	      	      	   then prints("time for localFD_1Dirac2* = ",print_time_string(elapsed_ms() - startLF),
-			   " to find [",#LF[0],",",#LF[1],"] verts and edges; Dirac eliminated ",
-			   DTcount - startDTcount)
-	      		   fi
-{
-		 then ((eq,gr),CLBF) = localGraphRedMed(LF)
-		 then () = prints("Lvd.list = ",for v@j in Lvd.list do (j,v) od);
-		      	   for d:2 do prints("LF[",d,"] = ",LF[d]) od;
-			   prints("eq = ",eq);
-			   prints("gr = ",gr);
-			   prints("CLBF = ",CLBF)
-}
-		 in if (not revert_steve_flag) and (#LF = 0 or #LF[0]=0) 
-		    then finish(x,lambda);
-		    	 none_count +:=1; ()
-		     else if every_lambda_deets_flag
-			  then face_verbose := old_face_verbose; time_verbose := old_time_verbose;
-			       test_verbose :=old_test_verbose; test_slightly_verbose := old_test_slightly_verbose
-			  fi;
-			  let answer = if revert_steve_flag
-			      	       then local_test_GEO_hash_steve(x, lambda, Lvd, Uhash,
-				      	   fancy_tester)
-			      	       else local(x, lambda, Lvd, LF, pol_hash, Uhash, fancy_tester)
+	      	if twist(x) != x {close 482}
+		then big_unitary_hash.finishx(x)
+		elif is_finished(x,lambda) {this includes possibility that x is finished}
+		then if FPP_report_flag
+		     then prints("Already computed (",x,",",lambda,")")
+		     fi;
+		     ()
+		else let xtwists = isotwistKGBs(x), twists = all_lambda_differential_0(x)
+		     then tw = first(for y in xtwists[1:] do is_finished(y, lambda) od)
+		     then twnum = if tw.>=
+		     	  	  then last(for (y,tau) in xlambdasW[k:]
+				       	    do y=xtwists[tw+1] and tau = lambda
+					    od)
+				  else -1
+				  fi
+		     then () = if twnum.>=
+		     	       then answerCards[k]:= answerCards[twnum];
+			       {too low if xtwist wasn't calculated here}
+			       	    if Uparamhash_flag
+	    	 	       	    then for p in Uparamhash.list()
+	              	       	    	 do if p.x = xtwists[tw+1] and p.lambda = lambda
+		      	     	       	    then Uparamhash.match(parameter(x,lambda,p.nu))
+		    	 	       	    fi
+		      	     	    	 od
+			       	     fi
+			  	 fi
+		     then () = if tw.>=
+		     	       then for p in Uhash.list()
+			       	    do if p.x = xtwists[tw+1] and p.lambda = lambda
+				       then Uhash.match(parameter(x,lambda,p.nu))
 				       fi
-			  then () = finish(x,lambda)
-			  then () = answerCards[k] := #answer
-			  then () = if Uparamhash_flag
-			       	    then for p in answer do Uparamhash.match(p) od
-				    fi
-   		    	  then () = current := elapsed_ms(); currentUhash := Uhash.size();
-			       	    currentUcounter := unitary_test_counter.use_count();
-				    currentCcounter := char_counter.use_count()
-    		 	  then () = xlambdatimes[k] := current - startxl
-    			  in if every_lambda_flag and FPP_report_flag
-	      		     then prints("  ",print_time_string(xlambdatimes[k]),
-			   	" = time for (x,lambda) #",k, " = (", xnums[k], ",",lambdas[k],")", test_string);
-			         prints("    #LF = ", for L in LF do #L od, "; #unitary params = ", answerCards[k],
+				    od;
+				    if FPP_report_flag and every_lambda_flag
+		   		    then prints("Matching (",x,",",lambda,") with previously computed")
+				    fi;
+				    finish(x,lambda)
+				fi
+		     then (xcont,lambdacont) = contragredient(x,lambda)
+		     then () = if is_finished(xcont,lambdacont)
+			       then for p in Uhash.list()
+			       	    do if p.x = xcont and p.lambda = lambdacont
+				       then Uhash.match(contragredient(p))
+				       fi
+				    od;
+				    if FPP_report_flag and every_lambda_flag
+		   		    then prints("Contragredient of (",x,",",lambda,") was previously computed")
+				    fi;
+				    tw:=0;
+				    finish(x,lambda)
+			       fi
+	      	     in if tw.< {still have work to do close 482}
+		     	then let revert_steve_flag = prefer_steve_long_flag and
+		     	     (x.number = #KGB(G) - 1) and (lambda != G.rho)
+		     	     in let startxl = elapsed_ms(), startUhash = Uhash.size(),
+		     	     	startUcounter = unitary_test_counter.use_count(),
+			     	startCcounter = char_counter.use_count(),
+			     	startUTime = unitaryTime, startCTime = charTime, theta = x.involution
+		 		then p0 = parameter(x,lambda,zeroNu)
+		 	{then () = prints("time before LPmss[",k,"] = ",
+			      print_time_string(elapsed_ms() - start))}
+		 	      	then (Lvd, Perm2) = LPmss[k]
+		 		then () = if every_lambda_flag and FPP_report_flag
+      	      	   	      	     	  then prints("     start #", k,
+					       " = (",x,",",lambda,"), Uhash.size() = ",
+			      		       Uhash.size(), ", runtime = ",
+					       print_time_string(elapsed_ms() - start),
+			      		       ", #uparams so far = ",sum(answerCards));
+		   		   	       prints("  ------------------")
+        	   	   		   fi {every_lambda_flag}
+		 	        then startLF = elapsed_ms()
+		 		in if test_no_unitary(x,lambda,Lvd) {close 481}
+		    		   then ()
+		    		   else let startDTcount = DTcount {now we're actually computing}
+				   	then LF = [[FaceVertsIndex]]:
+		      	   		     if revert_steve_flag
+			   		     then [[]]
+		      	   		     elif by_zero_flag {and height(p0) > 0}
+		      	   		     then localFD_1Dirac2_by_zero(x, lambda, Lvd, Perm2)
+			   		     else localFD_1Dirac2(x, lambda, Lvd, Perm2)
+			   		     fi {just red_count to edge_offset}
+		 			then () = if every_lambda_deets_flag and FPP_report_flag
+					     	     and not revert_steve_flag
+    	      	      	   			  then prints("time for localFD_1Dirac2* = ",
+						       print_time_string(elapsed_ms() - startLF),
+			   			       " to find [",#LF[0],",",#LF[1],
+						       "] verts and edges; Dirac eliminated ",
+			  			        DTcount - startDTcount)
+	      		   			   fi
+		 			 in if (not revert_steve_flag) and (#LF = 0 or #LF[0]=0) {close 480}
+		    			    then finish(x,lambda);
+		    	 		    	 none_count +:=1; ()
+		     			    else if every_lambda_deets_flag
+			 		    	 then face_verbose := old_face_verbose;
+						      time_verbose := old_time_verbose;
+			       			      test_verbose :=old_test_verbose;
+						      test_slightly_verbose := old_test_slightly_verbose
+			  			  fi;
+			  			  let answer =
+						      if revert_steve_flag
+			      	       		      then local_test_GEO_hash_steve(x, lambda, Lvd,
+						      Uhash, fancy_tester)
+			      	       		      else local(x, lambda, Lvd, LF, pol_hash, Uhash,
+						      fancy_tester)
+				       		      fi
+			  			   in finish(x,lambda);
+			  			      answerCards[k] := #answer;
+			  			      if Uparamhash_flag
+			       	    		      then for p in answer do Uparamhash.match(p) od
+				    		      fi;
+   		    	  			      current := elapsed_ms(); currentUhash := Uhash.size();
+			       	    		      currentUcounter := unitary_test_counter.use_count();
+				    		      currentCcounter := char_counter.use_count();
+    		 	  			      xlambdatimes[k] := current - startxl;
+    			if every_lambda_flag and FPP_report_flag
+	      		then prints("  ",print_time_string(xlambdatimes[k]), " = time for (x,lambda) #",k,
+			     " = (", xnums[k], ",",lambdas[k],")", test_string);
+			     prints("    #LF = ", for L in LF do #L od, "; #unitary params = ", answerCards[k],
 				 ", #new unitary = ", Uhash.size() - startUhash,
 				 ", #tests for lambda = ", unitary_test_counter.use_count() - startUcounter,
 				 ", time = ", print_time_string(unitaryTime - startUTime));
-				 prints("     #char calcs for this lambda = ",char_counter.use_count() - startCcounter,
+			     prints("     #char calcs for this lambda = ",
+			     	char_counter.use_count() - startCcounter,
 				 ", time = ",print_time_string(charTime - startCTime));
-				  report_tested();
-				 prints("  ------------------")
-			     fi {every_lambda_flag}
-		    fi {#LF[0]=0}
-		    fi {test_no_unitary}
-		    fi{skip_lambda}
-		 od{xlambdasW}
+			     report_tested();
+			     prints("  ------------------")
+			  fi {every_lambda_flag}
+		    fi {not revert_steve_flag and #LF[0]=0 line 442}
+		    fi {test_no_unitary line 424}
+		    fi {tw.< line 404}
+		    fi{twist(x)!=x line 375}
+		 od{xlambdasW line 374}
     then () = face_verbose:=old_face_verbose; time_verbose:=old_time_verbose;
     	      test_verbose:=old_test_verbose; test_slightly_verbose:=old_test_slightly_verbose
     then longest = max_loc(xlambdatimes)
@@ -875,13 +925,58 @@ then coh_ind_unip_few(G,Uhash)}
 	      fi}
     then () = for (x,lambda)@k in xlambdasW
     	      do {xlambdasW}
-	      	let skip_lambda= is_finished(x,lambda)
-		in if skip_lambda
-		   then if FPP_report_flag
-		   	then prints("Already computed (",x,",",lambda,")")
-			fi; ()
-		   else
-	 	 let startxl = elapsed_ms(), startUhash = Uhash.size(),
+	      	if twist(x) != x
+		then big_unitary_hash.finishx(x)
+		elif is_finished(x,lambda) {this includes possibility that x is finished}
+		then if FPP_report_flag
+		     then prints("Already computed (",x,",",lambda,")")
+		     fi;
+		     ()
+		else let xtwists = isotwistKGBs(x), twists = all_lambda_differential_0(x)
+		     then tw = first(for y in xtwists[1:] do is_finished(y, lambda) od)
+		     then twnum = if tw.>=
+		     	  	   then last(for (y,tau) in xlambdasW[k:]
+				   	     do y=xtwists[tw+1] and tau = lambda
+					     od)
+				   else -1
+				   fi
+		     then () = if twnum.>=
+		     	       then answerCards[k]:= answerCards[twnum];
+			       {too low if xtwist wasn't calculated here}
+			       	    if Uparamhash_flag
+	    	 	       	    then for p in Uparamhash.list()
+	              	       	    	 do if p.x = xtwists[tw+1] and p.lambda = lambda
+		      	     	       	    then Uparamhash.match(parameter(x,lambda,p.nu))
+		    	 	       	    fi
+		      	     	    	 od
+			       	     fi
+			  	 fi
+		     then () = if tw.>=
+		     	       then for p in Uhash.list()
+			       	    do if p.x = xtwists[tw+1] and p.lambda = lambda
+				       then Uhash.match(parameter(x,lambda,p.nu))
+				       fi
+				    od;
+				    if FPP_report_flag and every_lambda_flag
+		   		    then prints("Matching (",x,",",lambda,") with previously computed")
+				    fi;
+				    finish(x,lambda)
+				fi
+		     then (xcont,lambdacont) = contragredient(x,lambda)
+		     then () = if is_finished(xcont,lambdacont)
+			       then for p in Uhash.list()
+			       	    do if p.x = xcont and p.lambda = lambdacont
+				       then Uhash.match(contragredient(p))
+				       fi
+				    od;
+				    if FPP_report_flag and every_lambda_flag
+		   		    then prints("Contragredient of (",x,",",lambda,") was previously computed")
+				    fi;
+				    tw:=0;
+				    finish(x,lambda)
+			       fi
+	      	     in if tw.< {still have work to do}
+		     	then let startxl = elapsed_ms(), startUhash = Uhash.size(),
 		     		   startUcounter = unitary_test_counter.use_count(),
 				   startCcounter = char_counter.use_count(),
 				   startUTime = unitaryTime, startCTime = charTime, theta = x.involution
@@ -929,7 +1024,8 @@ then coh_ind_unip_few(G,Uhash)}
 				  report_tested();
 			 prints("  ------------------")
 		      fi {every_lambda_flag}
-		    fi{skip_lambda}
+		    fi{tw.>=}
+		    fi {twist(x)!=x}
 		 od{xlambdasW}
     then () = face_verbose:=old_face_verbose; time_verbose:=old_time_verbose;
     	      test_verbose:=old_test_verbose; test_slightly_verbose:=old_test_slightly_verbose
@@ -1472,20 +1568,67 @@ fancy_tester) = void:
 		   {start_min_L_bottom_factors = minBottomData.min_L_bottom_factors_time()}
     then () = for (x,lambda)@k in xlambdas
     	      do {xlambdas}
-	      	 let skip_xlambda = is_finished(x,lambda),
-		     revert_steve_flag = prefer_steve_long_flag and (x.number = #KGB(G) - 1) and (lambda != G.rho)
-		 in if skip_xlambda
-		    then if every_lambda_flag and FPP_report_flag
-		    	 then prints("Already computed (",x,",",lambda,")")
-		      	 fi
-	 	    else let startxl = elapsed_ms(), startUhash = Uhash.size(), (x_sc,lambda_sc) = xlambdas_sc[k],
+	      	 if twist(x) != x {start 1545}
+		 then big_unitary_hash.finishx(x)
+		 elif is_finished(x,lambda) {this includes possibility that x is finished}
+		 then if FPP_report_flag
+		      then prints("Already computed (",x,",",lambda,")")
+		      fi
+		 else let xtwists = isotwistKGBs(x), twists = all_lambda_differential_0(x)
+		      then tw = first(for y in xtwists[1:] do is_finished(y, lambda) od)
+		      then twnum = if tw.>=
+		     	  	   then last(for (y,tau) in xlambdas[k:]
+				       	    do y=xtwists[tw+1] and tau = lambda
+					    od)
+				    else -1
+				    fi
+		      then () = if twnum.>=
+		     	       	then answerCards[k]:= answerCards[twnum];
+			       	{too low if xtwist wasn't calculated here}
+			       	    if Uparamhash_flag
+	    	 	       	    then for p in Uparamhash.list()
+	              	       	    	 do if p.x = xtwists[tw+1] and p.lambda = lambda
+		      	     	       	    then Uparamhash.match(parameter(x,lambda,p.nu))
+		    	 	       	    fi
+		      	     	    	 od
+			       	     fi
+			  	 fi
+		      then () = if tw.>=
+		     	       	then for p in Uhash.list()
+			       	     do if p.x = xtwists[tw+1] and p.lambda = lambda
+				       	then Uhash.match(parameter(x,lambda,p.nu))
+				       	fi
+				     od;
+				     if FPP_report_flag and every_lambda_flag
+		   		     then prints("Matching (",x,",",lambda,") with previously computed")
+				     fi;
+				     finish(x,lambda)
+				fi
+		      then (xcont,lambdacont) = contragredient(x,lambda)
+		      then () = if is_finished(xcont,lambdacont)
+			        then for p in Uhash.list()
+			       	     do if p.x = xcont and p.lambda = lambdacont
+				        then Uhash.match(contragredient(p))
+				        fi
+				     od;
+				     if FPP_report_flag and every_lambda_flag
+		   		     then prints("Contragredient of (",x,",",lambda,") was previously computed")
+				     fi;
+				     tw:=0;
+				     finish(x,lambda)
+			         fi
+	      	     in if tw.< {still have work to do close 1545; here 1581}
+		     	then let revert_steve_flag = prefer_steve_long_flag and
+			     (x.number = #KGB(G) - 1) and (lambda != G.rho)
+		 	     in let startxl = elapsed_ms(), startUhash = Uhash.size(),
+			     	    (x_sc,lambda_sc) = xlambdas_sc[k],
 		     		   startUcounter = unitary_test_counter.use_count(),
 				   startUtime = unitaryTime, theta = x.involution,
 				   startCcounter = char_counter.use_count(), startCtime = charTime,
 				   startCTime = charTime, startmorebad = more_bad_hash.size()
 				   {startUparamhash = Uparamhash.size(),} 
-		 then (Lvd, Perm2{, mapAct}) = LPmss[k] {already lives on Gsc}
-		 then () = if every_lambda_flag and FPP_report_flag
+		 		 then (Lvd, Perm2{, mapAct}) = LPmss[k] {already lives on Gsc}
+		 		 then () = if every_lambda_flag and FPP_report_flag
       	      	   	      then prints("     start #", k, " = (",x,",",lambda,"), Uhash.size() = ",
 			      Uhash.size(), ", runtime = ", print_time_string(elapsed_ms() - start),
 			      ", #uparams so far = ",sum(answerCards));
@@ -1493,21 +1636,22 @@ fancy_tester) = void:
         	   		   fi {every_lambda_flag}
 		 then startLF = elapsed_ms(){, startDTcount = DTcount}
 	 	 then p0 = parameter(x,lambda, 0*lambda)
-		 in if {test_neither}test_no_unitary(x,lambda,Lvd)
-		    then {none_count +:= 1;} {prints("SKIPPED ",x,",",lambda);} ()
+		 in if test_no_unitary(x,lambda,Lvd) {here 1600; close 1685}
+		    then ()
 		    else let startDTcount = DTcount
-		 {then () = time_verbose := old_time_verbose} {REMOVE THIS LINE??}
-		 then LF = [[FaceVertsIndex]]:
+		    	 then LF = [[FaceVertsIndex]]:
 		      	   if revert_steve_flag
 			   then [[]]
 		      	   elif by_zero_flag {and height(parameter(x,lambda,0*lambda)) > 0}
 		      	   then localFD_1Dirac2_by_zero(x_sc, lambda_sc, Lvd, Perm2)
 			   else localFD_1Dirac2(x_sc, lambda_sc, Lvd, Perm2)
 			   fi
-		 then () = if every_lambda_deets_flag and FPP_report_flag and not revert_steve_flag
-    	      	      	   then prints("time for localFD_1Dirac2* = ", print_time_string(elapsed_ms() - startLF),
-			   	       " to find [",#LF[0],",",#LF[1],"] verts and edges; Dirac eliminated ",DTcount - startDTcount)
-	      		   fi
+		        then () = if every_lambda_deets_flag and FPP_report_flag and not revert_steve_flag
+    	      	      	     	  then prints("time for localFD_1Dirac2* = ",
+				       print_time_string(elapsed_ms() - startLF),
+			   	       " to find [",#LF[0],",",#LF[1],"] verts and edges; Dirac eliminated ",
+				       DTcount - startDTcount)
+	      		   	   fi
 		 in if (not revert_steve_flag) and (#LF = 0 or #LF[0] = 0)
 		    then let () = finish(x_sc, lambda_sc)
 		    	 then ()= none_count +:= 1
@@ -1538,8 +1682,10 @@ fancy_tester) = void:
 			      	   then finish(x,lambda)
 				   fi
 			 then () = answerCards[k] := #answer
-			 then () = for p in answer do Uparamhash.match(p) od
-   		    	 then () = current := elapsed_ms(); currentUhash := Uhash.size();
+			 then () = if Uparamhash_flag
+			      	   then for p in answer do Uparamhash.match(p) od
+				   fi;
+   		    	 	   current := elapsed_ms(); currentUhash := Uhash.size();
 			       	   currentUcounter := unitary_test_counter.use_count();
 				   currentUtime := unitaryTime;
 				   currentCcounter := char_counter.use_count();
@@ -1575,8 +1721,9 @@ fancy_tester) = void:
 				 prints("  ------------------")
 			    fi
 		    fi{#LF[0] = 0}
-		   fi {test_no_unitary}
-		 fi {is_finished(x,lambda)}
+		   fi {test_no_unitary line 1600}
+		 fi {tw.< line 1581}
+		 fi {twist(x)!=x line 1545}
 		 od{xlambdas}
     then () = if disconn_flag
 	      then for j: Uhash.size()
