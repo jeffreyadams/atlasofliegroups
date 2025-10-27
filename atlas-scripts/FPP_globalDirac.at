@@ -607,8 +607,9 @@ set FPP_unitary_hash_general([KGBElt] xs, Param_hash Uhash, (Param->bool) fancy_
 	 then full_M = to_bitset([M])-1
 	 then known_x = big_unitary_hash.x_known(G)
 	 then () = skipx:= is_member_bitset(x.number,known_x)
-	 then tw = first(for y in xtwists[1:] do is_member_bitset(y.number, known_x) od) {there's a twist of x which is known}
-			 {full_M = big_unitary_hash.xl_known(G)[y.number]}
+	 then tw = first(for y in xtwists[1:] do is_member_bitset(y.number, known_x) od)
+	      {there's a twist of x which is known}
+	      {full_M = big_unitary_hash.xl_known(G)[y.number]}
 	 then xtwist = if tw.>= and not skipx
 	      	       then skipx := true;
 		       	    xtwists[tw+1]
@@ -743,20 +744,14 @@ set FPP_unitary_hash_general([KGBElt] xs, Param_hash Uhash, (Param->bool) fancy_
 				    	 	   test_verbose :=old_test_verbose;
 						   test_slightly_verbose := old_test_slightly_verbose
 				 		   fi;
-				 		   let answer = 
+				 		   let answer =
 						       if revert_steve_flag and lambdaW != G.rho
 			      	       		       then local_test_GEO_hash_steve(xW, lambdaW, Lvd,
 								Uhash, fancy_tester)
 						       else local(xW, lambdaW, Lvd, LF, pol_hash, Uhash,
 								fancy_tester)
 						       fi
-						   then () = finish(x, lambda)
-						   {then p = parameter(Sp(6,R),8,[2,1,1],[1,-1,0]/2)
-						   then Lp = big_unitary_hash.lookup(p)
-						   then () = prints ("Lp = ",Lp," at (",x,",",lambda, ")")}
-				 		   then () = for p in answer do Uparamhash.match(p) od
 			  	 		   then () = tempanswerCards[index] := #answer
-			  	 		   then () = for p in answer do Uparamhash.match(p) od
 				 		   then () = if every_lambda_deets_flag
 			    	      	   	   	     then face_verbose := old_face_verbose; time_verbose := old_time_verbose;
 				 	   		     	  test_verbose := old_test_verbose; test_slightly_verbose := old_test_slightly_verbose
@@ -785,6 +780,29 @@ set FPP_unitary_hash_general([KGBElt] xs, Param_hash Uhash, (Param->bool) fancy_
                    		od{lambda}
 				{would be easy enough to get [Param] for each (x,lambda), but for now just
 				put unitary reps in Uhash}
+{this is a bad idea because don't have here a list of all final unitary faces at (x,lambda)}
+{	  then xtwistsNew = for y in xtwists
+			    do if not is_member_bitset(y.number, known_x)
+			       then [y]
+			       else []
+			       fi
+			    od.## {should always include x}
+			       			   then () = for q in answer
+				       	 	   	     do for y in xtwistsNew
+				     	    		     	do let r = parameter(y, q.lambda, q.nu)
+				     	       		     	   then () = if Uparamhash_flag
+							     	       	     then Uparamhash.match(r)
+									     fi
+							           in for t in monomials(finalize(r))
+								      do Uhash.match(t)
+								      od
+								od {let r}
+							     od {for y}
+						   then () = for y in xtwistsNew
+					   	    	     do finish(y,lambda)
+					   		     od
+}
+
            then () = current := elapsed_ms(); currentUhash := Uhash.size();  times[j] := current -former_time;
 	   	     red_count_times[j] := red_count_time - former_red_count_time;
 	   	     lambdatimes[j] := templambdatimes; currentUcounter := unitary_test_counter.use_count();
@@ -1620,6 +1638,12 @@ fancy_tester) = void:
 	      	     in if tw.< {still have work to do close 1545; here 1581}
 		     	then let revert_steve_flag = prefer_steve_long_flag and
 			     (x.number = #KGB(G) - 1) and (lambda != G.rho)
+			     then easy_test_bl_flag = if rank(x.real_form) < 7
+			       	  		      then false
+    			      	 		      elif KGB_frac_flag and x.number < KGB_frac*(#KGB(x.real_form))
+			       	 		      then false
+			       	 		      else true
+			         		      fi
 		 	     in let startxl = elapsed_ms(), startUhash = Uhash.size(),
 			     	    (x_sc,lambda_sc) = xlambdas_sc[k],
 		     		   startUcounter = unitary_test_counter.use_count(),
@@ -1665,7 +1689,7 @@ fancy_tester) = void:
 			 let answer = if revert_steve_flag and lambda_sc!=Gsc.rho
 			     	      then local_test_GEO_hash_steve(x_sc, lambda_sc, Lvd, Uhash,
 				      	   fancy_tester)
-				       elif test_bl(x,lambda,Lvd)
+				       elif easy_test_bl_flag and test_bl(x,lambda,Lvd)
 			     	       then local_test_GEO_hash_bottom_layer(x_sc,
 						lambda_sc, Lvd, LF, pol_hash, Uhash, fancy_tester)
 				       elif one_level_revert_flag
@@ -2002,7 +2026,7 @@ set FPP_unitary_hash_bottom_layer([KGBElt] xs, Param_hash UhashG, (Param->bool) 
 			       	      if revert_steve_flag and (lambda != G.rho)
 			       	      then local_test_GEO_hash_steve(x_sc, M*lambda, Lvd, Uhash,
 				      	   fancy_tester)
-			       	      elif test_bl(x_sc, M*lambda, Lvd) or easy_test_bl_flag
+			       	      elif easy_test_bl_flag and test_bl(x_sc, M*lambda, Lvd)
 			     	      then local_test_GEO_hash_bottom_layer(x_sc, M*lambda, Lvd, LF,
 				      	   pol_hash, Uhash, fancy_tester)
 				      elif one_level_revert_flag
@@ -2014,10 +2038,8 @@ set FPP_unitary_hash_bottom_layer([KGBElt] xs, Param_hash UhashG, (Param->bool) 
 				      else local_test_GEO_hash2(x_sc, M*lambda, Lvd,
 				      	   LF, pol_hash, Uhash, fancy_tester)
 				      fi
-			       then y_scs = isotwistKGBs(x_sc)
-			       then () = for y_sc in y_scs
-					 do finish(y_sc,M*lambda)
-					 od
+			       {better to do next when y_sc is called for}
+			       {then y_scs = isotwistKGBs(x_sc)
 			       then () = tempanswerCards[index] := #answer
 			       then () = for qsc in answer
 				       	 do for y_sc in y_scs
@@ -2038,6 +2060,9 @@ set FPP_unitary_hash_bottom_layer([KGBElt] xs, Param_hash UhashG, (Param->bool) 
 					    	   od {tsc}
 				      	     od {y_sc}
 				    	   od{qsc}
+			         then () = for y_sc in y_scs
+					   do finish(y_sc,M*lambda)
+					   od}
  			 	 then () = templambdatimes [index] := elapsed_ms() - startlambda
 			 	 in if every_lambda_flag and FPP_report_flag
 				    then prints("  ",print_time_string(templambdatimes[index]),
@@ -2245,7 +2270,7 @@ set FPP_unitary_hash_dumb([(KGBElt, ratvec)] xls) = void:
    else FPP_unitary_hash_dumb(xls, is_unitary_hash_big_SIMPLE@Param)
    fi
 
-set FPP_unitary_hash_def_dumb([KGBElt] xs) = void:
+set FPP_unitary_hash_dumb([KGBElt] xs) = void:
    if recursive_tester_flag
    then FPP_unitary_hash_dumb(xs, MyFancyTester@Param)
    else FPP_unitary_hash_dumb(xs, is_unitary_hash_big_SIMPLE@Param)

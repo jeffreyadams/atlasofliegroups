@@ -16,6 +16,7 @@
 
 {lowest level (index in hts[]) to start testing}
 {1 gives small improvement over 2 in E6; haven't tested bigger G}
+{3 is slight improvement over 2 in E7}
 set edge_offset = int: 3
 
 {how much to increase index in hts[] for testing at various levels}

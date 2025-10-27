@@ -211,7 +211,8 @@ set min_after_flag = false
 
 {lowest level (index in hts[]) to start testing}
 {2 seems better than 1 and 3 in E6?}
-set edge_offset = int: 2
+{Now set at 3 in FPP_faces_herm.at}
+{set edge_offset = int: 2}
 
 {how much to increase index in hts[] for testing at various levels}
 {1 improves E6_s and E6_q time by almost 10% }
