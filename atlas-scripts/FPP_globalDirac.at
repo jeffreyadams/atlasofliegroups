@@ -2038,9 +2038,9 @@ set FPP_unitary_hash_bottom_layer([KGBElt] xs, Param_hash UhashG, (Param->bool) 
 				      else local_test_GEO_hash2(x_sc, M*lambda, Lvd,
 				      	   LF, pol_hash, Uhash, fancy_tester)
 				      fi
+			       then () = tempanswerCards[index] := #answer
 			       {better to do next when y_sc is called for}
 			       {then y_scs = isotwistKGBs(x_sc)
-			       then () = tempanswerCards[index] := #answer
 			       then () = for qsc in answer
 				       	 do for y_sc in y_scs
 				     	    do let rsc = parameter(y_sc, qsc.lambda, qsc.nu)

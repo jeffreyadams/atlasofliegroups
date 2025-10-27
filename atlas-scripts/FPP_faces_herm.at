@@ -3134,6 +3134,10 @@ set localFD_1Dirac2\
 	       fi
 	  od.##
     {then () = prints("after LFO, time is ",print_time_string(elapsed_ms() - start))}
+    then () = if #LF0 <= 1
+    	      then FD12Time +:= elapsed_ms() - start;
+	      	   return [LF0,[]]
+	      fi
     then Llookup = is_member_sorted((for v in LF0 do v[0] od))
     then Edges = [vec]:
 	 let EdgesFixFix = [vec]:
@@ -3276,8 +3280,12 @@ set localFD_1Dirac2_by_zero\
     {then () = if time_verbose
 	      then prints("for LF0, time is ",print_time_string(elapsed_ms() - start))
 	      fi}
-    then () = if #LF0 = 0
+    {then () = if #LF0 = 0
 	      then return [[],[]]
+	      fi}
+    then () = if #LF0 <= 1
+    	      then FD12bzTime +:= elapsed_ms() - start;
+	      	   return [LF0,[]]
 	      fi
     then FixedList = [int]: for v in LF0
 			    do let j = v[0]
