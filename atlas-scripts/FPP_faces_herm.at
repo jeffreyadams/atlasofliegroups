@@ -183,6 +183,7 @@ set_type
   , (RealForm -> ) writeG {output data for one group to file}
   , ((RealForm, int, int) -> ) writeGrange {output data for KGB(G)[low,high]}
   , ((KGBElt, ratvec) -> ) writexlam {output data for one x,lambda}
+  , (([KGBElt,ratvec]) -> ) writexlams {output data for list of (x,lambda)}
   , ((KGBElt, ratvec) -> ) writexlam_no_G {output data for one x,lambda; wit-hout writing G}
 )
 ]
@@ -988,7 +989,7 @@ some lambdas for that x might be finished.}
 		      else []
 		      fi
 		   od.##
-      then donemap = x_known[i]
+      then donemap = x_known[i] {bitmap of completed x for real form #i}
       then donerangemap = AND(donemap, 2^high - 2^low)
       then done_list = set_bit_positions(donerangemap)
 	   {these are the x's being written for which list is complete}
@@ -1025,7 +1026,35 @@ some lambdas for that x might be finished.}
 	 od;
 	 if is_member_bitset(position(x,lambda), xl_known[i][xnum])
 	 then prints("big_unitary_hash.finish_num(",Gname,",",xnum,",",to_string(N),")")
-	 fi
+	 fi {this adds the location of lambda to the bitset of known lambdas at x}
+    , (([KGBElt,ratvec]) -> ): {writexlams} ([(KGBElt,ratvec)] xls):
+      if #xls = 0 then return () fi;
+      let (x0,lambda0) = xls[0]
+      then G = x0.real_form
+      then i = add_real_form(G)
+      then Gname = "G_temp"
+      then listname = Gname+"_list"
+      then xlhash = make_xlambda_hash()
+      then () = for xl in xls do xlhash.match(xl) od
+      then longlist = uhashes[i].list()
+      then plist = for p in longlist
+		   do if xlhash.lookup(p.x,p.lambda).>=
+		      then [p]
+		      else []
+		      fi
+		   od.##
+      then Ns = xl_known[i]
+      in write_real_form(G,Gname);
+	 prints("set j = big_unitary_hash.rf_number(",Gname,")");
+	 for p in plist
+	 do prints("void: big_unitary_hash.long_match(parameter(G_temp,",
+	    p.x.number,",",p.lambda,",",p.nu,"),j)")
+	 od;
+	 for N@xnum in Ns
+	 do if N.>
+	    then prints("big_unitary_hash.finish_num(",Gname,",",xnum,",",to_string(N),")")
+	    fi {this adds the location of lambda to the bitset of known lambdas at x}
+	 od
     , ((KGBElt,ratvec) -> ): {writexlam_no_G} (KGBElt x, ratvec lambda):
       let G = x.real_form
       then xnum = x.number
