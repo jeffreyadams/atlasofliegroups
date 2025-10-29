@@ -103,15 +103,22 @@ slightly less sharp.}
 set red_count_flag = false
 
 set Dirac_flag = true
+set Dirac_flag_factor = 1/5
 
 {if true, unitary candidates are checked for Dirac inequality on many
 K-types when the K-chars are computed.}
+set best_Dirac_flag_factor = 2/5
 set Dirac_best_flag = true
 
 {if true, unitary candidates are checked for Dirac inequality on many
 K-types when the local_testK_hash is computed.}
 set Dirac_best_local_flag = false
 
+set adjust_Dirac_flags(KGBElt x) = void:
+    let G = x.real_form
+    then xo = x_open(G)
+    in Dirac_flag := length(x) > length(xo)*Dirac_flag_factor;
+       Dirac_best_flag := length(x) > length(xo)*best_Dirac_flag_factor
 { useful to assign this to 'true" to get information about the
   progress of long calculations }
 set face_verbose = false
