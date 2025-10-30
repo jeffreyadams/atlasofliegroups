@@ -1260,7 +1260,7 @@ set delta_on_simple(InnerClass ic) = [int]:
 
 
 {whether to use bottom_K_type_Qs2 in bottom layer}
-set Qs2_flag = false {true} {changed to false 10/10/25}
+{set Qs2_flag = false} {true} {changed to false 10/10/25}
 
 {For Param p, minimal Qmin, lists the K-types tau in height range (D_low,D] which
 
@@ -1343,8 +1343,9 @@ set bfBTime = int: 0
 
 {whether to use the following instead of bottom_K_type_Qs. Meant to make bottom layer signature arguments happen
 on smaller Q}
-set Qs2B_flag = true
-
+{
+set Qs2B_flag = false {true; changed 10/30/25}
+}
 {For KType mu, assumed coh ind from Q, lists the K-types tau which
 
 a) occur in standard(mu)
@@ -1356,6 +1357,8 @@ Each is paired with the smallest Q on which it's bottom layer
 }
 {the parabolics here all contain Qmin, and so can only be studied with fundamental KGBElts coming from Lmin.
 Trying to move coordinates to KGB(G,0) is a mistake.}
+{MUCH slower and produces FAR fewer K-types than bottom_K_type_Qs}
+{
 set bottom_K_type_Qs2B(KType mu, KGPElt Qmin, int D_low, int D) = [QK_bottom_data]:
     let G = mu.real_form,  Smin = Qmin.S, Lmin = Qmin.Levi
     then Proj = projection_to_K_matrix(G), start = elapsed_ms()
@@ -1474,7 +1477,7 @@ set bottom_K_type_Qs2B(KType mu, KGPElt Qmin, int D_low, int D) = [QK_bottom_dat
 			fi}
 		  od{.##}
     in bfBTime+:= elapsed_ms() - start; QKData
-
+}
 {For KType mu, assumed coh ind from Q, lists the K-types tau which
 
 a) occur in standard(mu)
@@ -1483,6 +1486,8 @@ c) are bottom layer for Q;
 d) corr dertauL is in scaled (by (rk derL)/(rk G)) height range
 }
 {this seems to produce too much data. So reduce DLs by a factor of #derLs}
+{seems slower and smaller than bottom_K_type_Qs}
+{
 set bottom_K_type_Qs2(KType mu, KGPElt Q, int D_low, int D) = QKL_bottom_data:
     let G = mu.real_form,  SFRP = simple_factor_root_partition(Q), L = Q.Levi
     then Proj = projection_to_K_matrix(G), start = elapsed_ms()
@@ -1557,7 +1562,7 @@ set bottom_K_type_Qs2(KType mu, KGPElt Q, int D_low, int D) = QKL_bottom_data:
 		     fi
 		  od.##
     in bfTime+:= elapsed_ms() - start; (Q,LKData)
-
+}
 
 
 {For the Param p, lists the K-types tau in height range (D_low,D] which
@@ -1575,8 +1580,10 @@ list is indexed by Q.}
 set bottom_K_type_Qs(Param p, KGPElt Qmin, int D) = [QK_bottom_data]:
     bottom_K_type_Qs(p, Qmin, height(p), D)
 
+{
 set bottom_K_type_Qs2(KType mu, KGPElt Q, int D) = QKL_bottom_data:
     bottom_K_type_Qs2(mu, Q, height(mu), D)
+}
 
 {argument is [(KGPElt,[KType])]}
 set card([QK_bottom_data] data) = int:
@@ -1724,19 +1731,24 @@ set bottom_elim_factors_more(Param p0, Param p, int D_low, int D, KTypePol P)= b
                         {attest_is_unitary(p, G_pure);}
 			return G_pure
 	        fi
-     then test = if small_test_flag and Qs2B_flag
+     then test = {
+     	       	 if small_test_flag and Qs2B_flag
      	       	 then all(for mu in LKTs(p)
 		      	  do @bool: all(for (Q,list) in bottom_K_type_Qs2B(mu,Q0,D_low,D)
 	       	      	     	    	do @bool : bottom_elim_factors(p0, p, bottom_factors(Q,list), P)
 			  	    	od)
 			  od)
-     		 else all(for mu in LKTs(p)
+     		 elif Qs2_flag
+		 then all(for mu in LKTs(p)
 		      	  do @bool: all(for (Q,pL) in maxQps
      	       	      	     	    	do @bool: bottom_elim_factors(p0, p,
-					    	bottom_K_type_Qs2(mu,Q,D_low,D), P)
+					    	bottom_K_type_Qs2(mu,Q0,D_low,D), P)
 				        od)
 			  od)
-		 fi
+	         else} all(for data in bottom_factors(bottom_K_type_Qs(p ,Q0,D_low,D))
+		      	  do @bool: bottom_elim_factors(p0, p, data, P)
+			  od)
+		 {fi}
     then () = if not test
     	      then let MG = more_good_hash.size()
 		   then mg = more_good_hash.match(p0)
@@ -1845,7 +1857,7 @@ set bottom_test_factors_more(Param p0, Param p, int D, KTypePol P) = bool:
 		      return G_pure
 	      fi
     then () = befmoreTime+:= elapsed_ms() - start
-    then () = if Qs2_flag
+    then () = {if Qs2_flag
     	      then if not all(for (Q,pL) in maxQps
      	       	      	      do @bool: all(for mu in LKTs(p)
 			     	     	    do  @bool: bottom_elim_factors(p0, p,
@@ -1862,11 +1874,13 @@ set bottom_test_factors_more(Param p0, Param p, int D, KTypePol P) = bool:
 		    	 let () = befmoreTime +:= elapsed_ms() - start
 		         in return false
 	             fi
-	      else if not all(for mu in LKTs(p)
-			 do @bool: all(for (Q,list) in bottom_K_type_Qs(p0,Q0 ,D)
+	      else}
+	      if not {all(for mu in LKTs(p)
+			 do @bool:}
+			 not all(for (Q,list) in bottom_K_type_Qs(p0,Q0 ,D)
 			    	       do @bool: bottom_elim_factors(p, bottom_factors(Q,list), P)
 				       od)
-		         od)
+		         {od)}
 	       	   then {let MG = more_good_hash.size()
 		    	then mg = more_good_hash.match(p)
 		    	then () = if mg=MG
@@ -1877,7 +1891,7 @@ set bottom_test_factors_more(Param p0, Param p, int D, KTypePol P) = bool:
 		        let () = befmoreTime +:= elapsed_ms() - start
 		    	in return false
 	       	   fi
-	      fi{Qs2_flag}
+	      {fi}{Qs2_flag}
      {now either bottom layer has succeeded, or it can't help}
      then () = if bottom_verbose then prints("sorry, doing is_unitary") fi
      in is_unitary_hash_big_SIMPLE(p0)

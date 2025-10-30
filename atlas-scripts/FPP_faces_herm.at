@@ -184,7 +184,7 @@ set_type
   , ((RealForm, int, int) -> ) writeGrange {output data for KGB(G)[low,high]}
   , ((KGBElt, ratvec) -> ) writexlam {output data for one x,lambda}
   , (([KGBElt,ratvec]) -> ) writexlams {output data for list of (x,lambda)}
-  , ((KGBElt, ratvec) -> ) writexlam_no_G {output data for one x,lambda; wit-hout writing G}
+  , ((KGBElt, ratvec) -> ) writexlam_no_G {output data for one x,lambda; without writing G}
 )
 ]
 
