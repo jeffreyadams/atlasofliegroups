@@ -5544,13 +5544,19 @@ set local_test_GEO_hash_bottom_layer(KGBElt x, ratvec lambda, {VertexData vd,}
 		   	return local_test_GEO_hash2(x, lambda, Lvd, LF, pol_hash, Uhash, fancy_tester)
 		   fi
 	      fi
+    {if L0 is maximal, should here make more_flag (temporarily) false. This is a weak way...}
+    then more_flag_temp = more_flag, more_shift_level_temp = more_shift_level
+    then () = if L0.semisimple_rank <= G.semisimple_rank - 1
+    	      then more_flag_temp :=false;
+	      	   more_shift_level_temp:=0
+	      fi
     then r = rank(thetaMinus)
     then () = if (x.involution - 1).=
     	      then let () = Uhash.match(first_param(finalize(pmin)))
 	      	   in return [pmin]
 	      fi
     then () = if {TINY CASE} #LF[0]=1
-    	      then if more_flag
+    	      then if more_flag_temp
 	      	   then return one_param_test_bottom(pmin)
 		   else return one_param_test_min_bottom(pmin,Uhash)
 		   fi
@@ -5566,7 +5572,7 @@ set local_test_GEO_hash_bottom_layer(KGBElt x, ratvec lambda, {VertexData vd,}
     then () = bl_KHash.clear()
     then () = for list in LKDatas do for (tau,) in list do bl_KHash.match(tau) od od
     then min_ht_max = max((for tau in bl_KHash.list() do height(tau) od)#height(pmin))
-    then () = if min_ht_max= height(pmin) and not more_flag
+    then () = if min_ht_max= height(pmin) and not more_flag_temp
    	      then if one_level_revert_flag
 	      	   then if test_verbose
 		   	then prints("no min_bottom layer; reverting to one_level")
@@ -5588,7 +5594,7 @@ set local_test_GEO_hash_bottom_layer(KGBElt x, ratvec lambda, {VertexData vd,}
 {Now there are min_bottom_layer K-types, or else more_flag; bl_KHash contains them, LKDatas}
     then pmax = pmax(x,lambda,Lvd)
     then gamma = pmax.infinitesimal_character
-    then ht_max = ht + min([more_shift_level, floor(gamma* G.two_rho_check) - ht])
+    then ht_max = ht + min([more_shift_level_temp, floor(gamma* G.two_rho_check) - ht])
     	 {floor(min_ht_mult*(min_ht_max - ht))])}
     {then () = prints("Got past small LFDatas")}
     then () = test_string:= " using local_test_GEO_hash_bottom_layer"
@@ -5626,21 +5632,21 @@ set local_test_GEO_hash_bottom_layer(KGBElt x, ratvec lambda, {VertexData vd,}
    then () = if test_verbose
 	     then prints("unitary on min_bottom layer face counts to dim 1: ", LF_min_bl_vec)
 	     fi
-   then () = min_after_flag := not more_flag
+   then () = min_after_flag := not more_flag_temp
    then () = if #LFDKH[0] = 0
    	     then bl_size_hash.match(LF_pre_vec##LF_min_bl_vec);
 	     return []
 	     fi
    then () = if #LFDKH[0] = 1
-   	     then if more_flag
+   	     then if more_flag_temp
 	      	   then return one_param_test_bottom(
 		   	parameter(x,lambda, Lvd.list[LFDKH[0][0][0]]))
 		   else return one_param_test_min_bottom(
 		   	parameter(x,lambda, Lvd.list[LFDKH[0][0][0]]), Uhash)
 		   fi
 	      fi
-    then () = if bl_step_flag {bl_step_count steps of size bl_step_size; defaults to 2 and 5}
-    	      then more_flag:=true;
+    then () = if bl_step_flag and more_flag_temp {bl_step_count steps of size bl_step_size; defaults to 2 and 5}
+    	      then {more_flag:=true;}
     	      	   {if more_shift_level = 0 then more_shift_level := maxht - ht fi;}
     	           return local_test_GEO_hash_bottom_layer_step(x, lambda, Lvd, LFDKH, pol_hash, Uhash,
 		   	  fancy_tester)
@@ -5653,7 +5659,7 @@ set local_test_GEO_hash_bottom_layer(KGBElt x, ratvec lambda, {VertexData vd,}
 		      fi
 		   od.##
    then HK_known = min_ht_max
-   then () = if more_flag
+   then () = if more_flag_temp
    	     then let start_data = elapsed_ms()
    	     	  then Es = [ht,ht_max]
 		  {[height(pmin)]##next_heights(pmin,rank(G))}
@@ -5679,7 +5685,7 @@ set local_test_GEO_hash_bottom_layer(KGBElt x, ratvec lambda, {VertexData vd,}
 		     in Es:= newEs
 		     	     od
 		 in ()
-	     fi {more_flag}
+	     fi {more_flag_temp}
    then () = bl_size_hash.match(LF_pre_vec##LF_min_bl_vec##LF_more_bl_vec)
       then () = if test_verbose
 	     then prints("no more_bottom K-types");
@@ -5697,8 +5703,8 @@ set local_test_GEO_hash_bottom_layer(KGBElt x, ratvec lambda, {VertexData vd,}
 	       fi
    {now have list of vertices and edges passing bottom layer tests out to HK_known}
    {want to pass HK_known}
-   then () = more_after_flag := more_flag
-   then () = min_after_flag := not more_flag
+   then () = more_after_flag := more_flag_temp
+   then () = min_after_flag := not more_flag_temp
    {then () = prints("leaving bottom_layer; one_level_revert_flag = ",one_level_revert_flag)}
    in if one_level_revert_flag
       then local_test_GEO_hash_one_level_end(x, lambda, Lvd, LFDKH, pol_hash, HK_known, Uhash, fancy_tester)
