@@ -5546,7 +5546,7 @@ set local_test_GEO_hash_bottom_layer(KGBElt x, ratvec lambda, {VertexData vd,}
 	      fi
     {if L0 is maximal, should here make more_flag (temporarily) false. This is a weak way...}
     then more_flag_temp = more_flag, more_shift_level_temp = more_shift_level
-    then () = if L0.semisimple_rank <= G.semisimple_rank - 1
+    then () = if L0.semisimple_rank >= G.semisimple_rank - 1
     	      then more_flag_temp :=false;
 	      	   more_shift_level_temp:=0
 	      fi
