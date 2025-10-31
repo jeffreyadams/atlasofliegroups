@@ -1475,14 +1475,17 @@ set add_datas(Param p, KGPElt Qmin, [int] Ds) =
 			     else} bottom_factors(bottom_K_type_Qs(p,Qmin,height(p), Ds[j]))
 			     {fi} {Qs2_flag}
 		 then new_datas = for (Q,list) in datas
-				  do (Q, for (tau,local) in list
+				  do {if Q = Qmin  {SLOW!!!}
+				     then []
+				     else [}(Q, for (tau,local) in list
 					 do let M = bl_KHash.size()
 					    in if bl_KHash.match(tau) = M
 					       then [(tau,local)]
 					       else []
 					       fi
-					 od.##)
-				  od
+					 od.##){]
+				      fi}
+				  od{.##}
 		 in if bl_KHash.size() > old_size {we found some new bottom layer K-types}
 		    then Es:= Ds[j:];
 			 answer:=new_datas;
@@ -2697,6 +2700,9 @@ set one_param_test_min_bottom(Param p, Param_hash Uhash) = [Param]:
 	    []
        fi
 
+set one_param_test_min_bottom(Param p) = [Param]:
+    one_param_test_min_bottom(p, big_unitary_hash.uhash(p.real_form))
+
 {assume min_bottom already called, so lookup failed}
 set one_param_test_bottom(Param p, [int] Es) = [Param]:
     let start = elapsed_ms(), QG = monomials(finalize(p)),G = p.real_form
@@ -2853,6 +2859,12 @@ set one_param_test_all_bottom(Param p, [int] Ds) = [Param]:
 	     then () = one_param_time +:= elapsed_ms() - start
 	     in []
         fi
+
+set one_param_test_all_bottom(Param p) = [Param]:
+    let Es = {[height(p)]##next_heights(p,2*edge_offset)}
+    	     [height(p), height(p) + more_shift_level]
+    in one_param_test_all_bottom(p,Es)
+
 
 {skips all unitary_to_ht tests in dims 2-top; just does at the end}
 set quick_flag = true
@@ -4644,7 +4656,7 @@ set local_test_GEO_hash_one_level_end(KGBElt x, ratvec lambda, LocalVertexData L
     then () = if #LFDKH[0] = 1
     	      then let p1 = parameter(x,lambda, Lvd.list[LFDKH[0][0][0]])
 	      	   in prints("lone param at one_level_end is ",p1);
-		      return one_param_test_bottom(p1)
+		      return one_param_test_all_bottom(p1)
     	      fi
     then () = long_out_flag:=false {to allow using local_test_hash without recording Params}
     then pmax = pmax(x, lambda, Lvd)
@@ -5264,7 +5276,10 @@ set local_test_GEO_hash_bottom_layer_interrupt(KGBElt x, ratvec lambda, LocalVer
 		   fi
 	      fi
     then () = if {TINY CASE} #LF[0]=1
-    	      then return one_param_test_min_bottom(pmin, Uhash)
+    	      then if more_flag
+	      	   then return one_param_test_all_bottom(pmin)
+		   else return one_param_test_min_bottom(pmin, Uhash)
+		   fi
 	      fi
     then () = test_string:= " using local_test_GEO_hash_bottom_layer"
     then () = if test_verbose then prints("Chose",test_string) fi
@@ -5557,7 +5572,7 @@ set local_test_GEO_hash_bottom_layer(KGBElt x, ratvec lambda, {VertexData vd,}
 	      fi
     then () = if {TINY CASE} #LF[0]=1
     	      then if more_flag_temp
-	      	   then return one_param_test_bottom(pmin)
+	      	   then return one_param_test_all_bottom(pmin)
 		   else return one_param_test_min_bottom(pmin,Uhash)
 		   fi
 	      fi
@@ -5651,13 +5666,13 @@ set local_test_GEO_hash_bottom_layer(KGBElt x, ratvec lambda, {VertexData vd,}
     	           return local_test_GEO_hash_bottom_layer_step(x, lambda, Lvd, LFDKH, pol_hash, Uhash,
 		   	  fancy_tester)
 	      fi
-   then maxQps = max_Qps(pmin,pmin)
+   {then maxQps = max_Qps(pmin,pmin)
    then () = maxQps := for (Q,pL) in maxQps
     	 	   do if is_hermitian(pL)
 		      then [(Q,pL)]
 		      else []
 		      fi
-		   od.##
+		   od.##}
    then HK_known = min_ht_max
    then () = if more_flag_temp
    	     then let start_data = elapsed_ms()

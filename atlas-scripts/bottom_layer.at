@@ -1270,6 +1270,81 @@ c) are bottom layer for (smallest possible) theta-stable parabolic Q containing 
 
 list is indexed by Q.}
 
+set bottom_K_type_Qs(KGBElt x, ratvec lambda, int D_low, int D) = [QK_bottom_data]:
+    let p = parameter(x,lambda,0*lambda), G = x.real_form
+    then (Qmin,) = theta_stable_quasi_data(p)
+    then Lmin = Qmin.Levi, Smin = Qmin.S
+    then Proj = projection_to_K_matrix(G), start = elapsed_ms()
+    then ProjInv = right_inverse(Proj)
+    then Krk = #ProjInv, delta = G.distinguished_involution
+    then Sminc = complement(G.semisimple_rank,Smin), DOS = delta_on_simple(G)
+    then fixc = for a in Sminc {type [int]}
+    	      	do if DOS[a] = a
+		   then [a]
+		   else []
+		   fi
+		od.##
+    then pairsc = for a in Sminc {type [[int]]}
+    	 	  do if DOS[a] > a
+		     then [[a,DOS[a]]]
+		     else []
+		     fi
+		  od.##
+    then fixc_cowts = mat:
+    	 if #fixc = 0
+	 then null(rank(G),0)
+    	 else for a in fixc
+    	      do (G.fundamental_coweights[a].numer)*ProjInv
+	      od
+	 fi
+    then pairsc_cowts = mat:
+    	 if #pairsc = 0
+	 then null(rank(G),0)
+    	 else for pair in pairsc
+    	      do sum(G.rank, for a in pair do G.fundamental_coweights[a].numer od)*ProjInv
+              od
+	 fi
+    then xcLmin = KGB(Lmin,0)
+    then xcG = embed_KGB(xcLmin, G)
+    then M = big_unitary_hash.branch(K_type_pol(p),D)
+    then mu = LKTs(p)[0]
+    then too_many_taus = monomials(M - to_ht(M,D_low)) {now all tau have height in desired range}
+    {then () = prints("D = ",D,", D_low = ",D_low," TMT = ",too_many_taus)}
+    then hwt = K0_param(mu,xcG).lambda_minus_rho
+    then too_many_shifts = for tau in too_many_taus
+    	 	       	 do K0_param(tau,xcG).lambda_minus_rho - hwt
+			 od {what to add to highest weight of mu to get to tau}
+    then too_many_Ss = [[int]]:
+    	 for shift in too_many_shifts
+	 do (Smin## (for col@i in fixc_cowts if shift*col!=0 do fixc[i] fi od)
+	      ## (for col@j in pairsc_cowts
+	          do if (shift*col).= then [] else pairsc[j] fi
+		  od.##)
+	    ).sort_u
+         od  {these are the coroots needed to make a parabolic
+		       	    for which tau is bottom layer}
+    then candSs = too_many_Ss.sort_u_lex
+    then proper_candSs = for S in candSs
+    	 	       	 do if #S = G.semisimple_rank
+			    then []
+			    else [S]
+			    fi
+			 od.##
+    then () = bfTime:=elapsed_ms() - start
+    in for S in proper_candSs
+       do let list = for tau@j in too_many_taus
+       	      	     do if too_many_Ss[j] = S
+	     	     	then [tau]
+	     		else []
+	     		fi
+	 	     od.## {this is all tau's attached to S}
+	   {then shifts = for }
+	   in (KGPElt:(S, xcG),list)
+       od
+
+set bottom_K_type_Qs(KType mu, int D_low, int D) = [QK_bottom_data]:
+    bottom_K_type_Qs(mu.x, mu.lambda, D_low, D)
+
 set bottom_K_type_Qs(Param p, KGPElt Qmin, int D_low, int D) = [QK_bottom_data]:
     let G = p.real_form,  Lmin = Qmin.Levi, Smin = Qmin.S
     then Proj = projection_to_K_matrix(G), start = elapsed_ms()
