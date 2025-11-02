@@ -741,7 +741,7 @@ set max_goodness(Param p) = [(bool, bool, bool)]:
 {this time counter INCLUDES the time in bottom_factor, which is separately counted by bfTime. Correct
 at printing in FPP_globalDirac.at}
 set befmoreTime = int:0 {time spent with non-minimal parabolics}
-{set befmoreCount = int: 0}
+{set befmoreCount = int: 0}{replaced with more_good_hash}
 
 set mbefTime = int: 0 {time spent in min_bottom_elim_factors}
 {set mbefCount = int: 0}
@@ -922,8 +922,8 @@ set min_bottom_sig(Param p0) = KTypePol:
     then mu = mus[0]
     then DG = max(for mu in mus do minBottomData.G_min_height(mu) od)
     then muL = highest_LK(mu,Q)
-    then () = assert(@:is_final(pL0),"nonfinal pL0 in min_bottom_elim_factors")
-    then () = assert(@:is_hermitian(pL0),"nonherm pL0 in min_bottom_elim_factors")
+    then () = assert(@:is_final(pL0),"nonfinal pL0 in min_bottom_sig")
+    then () = assert(@:is_hermitian(pL0),"nonherm pL0 in min_bottom_sig")
     then derpL0js = derived_factor_params0(pL0) {all height 0}
     then dermuLjs = derived_factor_K_types0(muL)
     then DLs = minBottomData.L_min_heights(mu)
@@ -966,8 +966,8 @@ set min_bottom_sig(Param p0, int HT) = KTypePol:
     then mu = mus[0]
     then DG = max(for mu in mus do minBottomData.G_min_height_to_bd(mu,HT) od)
     then muL = highest_LK(mu,Q)
-    then () = assert(@:is_final(pL0),"nonfinal pL0 in min_bottom_elim_factors")
-    then () = assert(@:is_hermitian(pL0),"nonherm pL0 in min_bottom_elim_factors")
+    then () = assert(@:is_final(pL0),"nonfinal pL0 in min_bottom_sig")
+    then () = assert(@:is_hermitian(pL0),"nonherm pL0 in min_bottom_sig")
     then derpL0js = derived_factor_params0(pL0) {all height 0}
     then dermuLjs = derived_factor_K_types0(muL)
     then DLs = minBottomData.L_min_heights_to_bd(mu,HT)
@@ -1121,7 +1121,7 @@ set min_bottom_test_factors(Param p, KTypePol P) = bool:
 
 set bfTime = int: 0
 {Should run over qLmin pieces corr to LKTs of p}
-{Give minimal stuff (Qmin, pLmin) (either kind). K-types tau on G need to be descended to each derLj.}
+{Give minimal stuff (Qmin, pLmin) (either kind). K-types tau on G are descended to each derLj.}
 {Each term in answer is (tau,list of corr dertauj's).}
 set bottom_factors(QK_bottom_data (Q,taus)) = QKL_bottom_data: {(KGPElt,[(KType, [KType])])}
     let start = elapsed_ms()
@@ -1167,9 +1167,10 @@ set bottom_elim_factors(Param p0, Param p, QKL_bottom_data (Q, LKdata), KTypePol
     	 	 then theta_stable_data_small(p)
 		 else theta_stable_quasi_data(p)
 		 fi
-    then () = if #(Q.S) = p.real_form.semisimple_rank
+    {then () = if #(Q.S) = p.real_form.semisimple_rank
     	      then prints("tried to use Q=G in bottom_elim_factors"); error()
-	      fi
+	      fi}
+    then () = assert(@:#(Q.S) < p.real_form.semisimple_rank,"tried to use Q=G in bottom_elim_factors")
     then Lm = Qm.Levi, mu = LKTs(p0)[0]
     then muL = highest_LK(mu,Q), muLm = highest_LK(mu,Qm)
     then pLmis = monomials(1*pLm)
@@ -1260,7 +1261,7 @@ set delta_on_simple(InnerClass ic) = [int]:
 
 
 {whether to use bottom_K_type_Qs2 in bottom layer}
-{set Qs2_flag = false} {true} {changed to false 10/10/25}
+set Qs2_flag = false {true} {changed to false 10/10/25}
 
 {For Param p, minimal Qmin, lists the K-types tau in height range (D_low,D] which
 
@@ -1562,7 +1563,7 @@ d) corr dertauL is in scaled (by (rk derL)/(rk G)) height range
 }
 {this seems to produce too much data. So reduce DLs by a factor of #derLs}
 {seems slower and smaller than bottom_K_type_Qs}
-{
+
 set bottom_K_type_Qs2(KType mu, KGPElt Q, int D_low, int D) = QKL_bottom_data:
     let G = mu.real_form,  SFRP = simple_factor_root_partition(Q), L = Q.Levi
     then Proj = projection_to_K_matrix(G), start = elapsed_ms()
@@ -1637,8 +1638,6 @@ set bottom_K_type_Qs2(KType mu, KGPElt Q, int D_low, int D) = QKL_bottom_data:
 		     fi
 		  od.##
     in bfTime+:= elapsed_ms() - start; (Q,LKData)
-}
-
 
 {For the Param p, lists the K-types tau in height range (D_low,D] which
 
@@ -1655,10 +1654,9 @@ list is indexed by Q.}
 set bottom_K_type_Qs(Param p, KGPElt Qmin, int D) = [QK_bottom_data]:
     bottom_K_type_Qs(p, Qmin, height(p), D)
 
-{
 set bottom_K_type_Qs2(KType mu, KGPElt Q, int D) = QKL_bottom_data:
     bottom_K_type_Qs2(mu, Q, height(mu), D)
-}
+
 
 {argument is [(KGPElt,[KType])]}
 set card([QK_bottom_data] data) = int:
