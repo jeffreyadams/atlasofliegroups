@@ -1817,7 +1817,7 @@ set report_steve_clear() = void:
     up_graph_gens_time:=0
 
 {takes x, lambda, HT, Lvd and computes local vertices, imposing
-hermitian, pos on LKTs, and pos to HT.}
+hermitian, pos on LKTs, pos to HT, and Dirac.}
 set localFD_1SteveU\
   ( KGBElt x, ratvec lambda, int HT, LocalVertexData Lvd) =
     [FaceVertsIndex]:
@@ -1831,6 +1831,18 @@ set localFD_1SteveU\
 	then (0,0,0)
 	else steve_hash.indices(x, lambda, HT)
 	fi
+    then Q = ((ratvec,ratvec)->rat): (ratvec v, ratvec w) rat: 0/1
+    then DiracBD = 0/1
+    then () = if Dirac_flag
+	      then let bd = DiracBD(x,lambda)
+		   then QG = {Dirac_easy_hash.invt_form(G)} invariant_form(G)
+		   then index = first(for v in Lvd.list
+				      do @bool: QG(v,v) > bd
+				      od)
+		   in if index.>=
+		      then Q:=QG; DiracBD:=bd
+		      fi
+	      fi
     then length = #(Lvd.list)
     then freq = max(length\100,1)
     then count = int:0
@@ -1848,10 +1860,16 @@ set localFD_1SteveU\
 			then prints("So far ",count," verts unitary to ",HT,"; vecLHash size = ",
 			     steve_hash_small.vecHashL().size())
 			fi
-	     	  fi;
+	     fi;
 	     	  let p = parameter(x,lambda,v)
 	     	  in if not is_hermitian(p)
 	     	     then []
+		     elif Q(v,v) > DiracBD
+	       	     then DTcount +:=1; []
+	       	     elif not (fewer_reducible_unitary_flag or all(for q in monomials(p)
+			    do @bool: is_pos_on_LKTs(q)
+			    od))
+	       	     then []
 	     	     elif if steve_small_flag
 		     	  then steve_hash_small.postest(v)
 			  else steve_hash.partly_indexed_postest(rfnum, xlnum, htnum, v)
@@ -1884,6 +1902,12 @@ set localFD_1SteveU\
 	     	  let p = parameter(x,lambda,v)
 	     	  in if not is_hermitian(p)
 	     	     then []
+		     elif Q(v,v) > DiracBD
+	       	     then DTcount +:=1; []
+	       	     elif not (fewer_reducible_unitary_flag or all(for q in monomials(p)
+			    do @bool: is_pos_on_LKTs(q)
+			    od))
+	       	     then []
 	     	     elif if steve_small_flag
 		     	  then steve_hash_small.postest(v)
 			  else steve_hash.partly_indexed_postest(rfnum, xlnum, htnum, v)

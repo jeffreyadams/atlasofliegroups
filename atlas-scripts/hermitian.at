@@ -562,8 +562,8 @@ set was_tested_to_ht(Param p,int N, int T, bool ans) = void:
 	    fi
     fi
 
-set report_tested() = void:
-    prints("  ----------------");
+set report_tested(string label) = void:
+    prints("...",label,"...");
     prints(tested_pos_hash.size()," pos is_unitary tests, in time = ",
     	print_time_string(sum(tested_pos_times)),"; ",tested_neg_hash.size()," neg is_unitary tests, in time = ",
     	print_time_string(sum(tested_neg_times)));
@@ -589,15 +589,18 @@ set report_tested() = void:
     print_time_string(charTime), " for ",char_counter.use_count(), " char calculations.");
     {prints("time for up_mu = ",print_time_string(up_mu_time), ", mu_time_mult = ",mu_time_mult,
     	   ", shift_frac = ",shift_frac, ", min_ht_mult = ", min_ht_mult);}
-    prints({"LAGAmax = ",LAGAmax,", GARLAGmin = ",GARLAGmin, ", GARmin = ", GARmin,}
+    {prints({"LAGAmax = ",LAGAmax,", GARLAGmin = ",GARLAGmin, ", GARmin = ", GARmin,}
     	   "Dirac elims = ",DTcount,", Dirac_best elims = ",DBTcount, ", ",print_time_string(def_thruples_time),
 	   " to find deformed thruple candidates.");
     prints("Found ",hash_def_true_count," deformations proving unitarity (to height), ",
     	   hash_def_false_count," deformations proving nonunitarity (to height).")
     prints("no_unitary_time = ", print_time_string(test_no_unitary_time), ", no_Dirac_time = ",
-    	   print_time_string(test_no_Dirac_time)," , #(x,lambda) eliminated by LKTs = ",none_count);
+    	   print_time_string(test_no_Dirac_time)," , #(x,lambda) eliminated by LKTs = ",none_count);}
     prints("  ----------------")
 
+set report_tested() = void: report_tested("")
+
+{doesn't work with report_tested_cum}
 set clear_report_tested() = void:
     tested_pos_hash.clear(); tested_pos_times:=[]; tested_pos_strings:=[]; tested_pos_counts:=[];
     tested_neg_hash.clear(); tested_neg_times:=[]; tested_neg_strings:=[]; tested_neg_counts:=[];
@@ -609,6 +612,97 @@ set clear_report_tested() = void:
        tested_neg_to_ht_hashes[h].clear(); tested_neg_to_ht_times[h]:=[]; tested_neg_to_ht_strings[h]:=[]
     od
 
+set report_tested_cum = ((string, string) -> void):
+    let tph = int: 0, tpt = int:0, tnh = int: 0, tnt = int:0, oth = int:0, otc = int:0, ott = int:0
+    then tic = int: 0, tih = int: 0, tit = int:0, tphh = int: 0, tpht = int:0, tnhh = int: 0, tnht = int: 0,
+    	 utc = int: 0, utt = int: 0, ct = int:0, cu = int: 0
+    in ((string,string)->void): (string local_label, string running_label) void:
+    prints("  ----------------");
+    prints("...",local_label,"...");
+    prints(tested_pos_hash.size() - tph, " pos is_unitary tests, in time = ",
+    	print_time_string(sum(tested_pos_times) - tpt),"; ",tested_neg_hash.size() - tnh,
+	" neg is_unitary tests, in time = ",print_time_string(sum(tested_neg_times) - tnt));
+	tph:=tested_pos_hash.size();
+	tpt := sum(tested_pos_times);
+	tnh:=tested_neg_hash.size();
+	tnt := sum(tested_neg_times);
+    prints(sum(tested_inter_counts) - tic, " interrupted is_unitary tests, of ",
+    	   tested_inter_hash.size() - tih, " different parameters, in time ",
+	print_time_string(sum(tested_inter_times) - tit));
+	tic:= sum(tested_inter_counts);
+	tih:= tested_inter_hash.size();
+	tit:=sum(tested_inter_times);
+    prints(sum(for hash in tested_pos_to_ht_hashes do hash.size() od) -tphh," pos tests to_ht, in time = ",
+    	print_time_string(sum(for list in tested_pos_to_ht_times do sum(list) od) - tpht),"; ",
+	   sum(for hash in tested_neg_to_ht_hashes do hash.size() od) - tnhh," neg tests to_ht, in time = ",
+ 	   	   print_time_string(sum(for list in tested_neg_to_ht_times do sum(list) od) - tnht));
+        tphh:= sum(for hash in tested_pos_to_ht_hashes do hash.size() od);
+	tpht:=sum(for list in tested_pos_to_ht_times do sum(list) od);
+        tnhh:= sum(for hash in tested_neg_to_ht_hashes do hash.size() od);
+	tnht:=sum(for list in tested_neg_to_ht_times do sum(list) od);
+    if OT_hash.size() - oth > 0
+    then prints(OT_hash.size()-oth," params had ", sum(OT_counts)-otc, " interrupted tests go too long by ",
+    	 print_time_string(sum(OT_times) -ott));
+	 oth:=OT_hash.size();
+	 otc := sum(OT_counts);
+	 ott := sum(OT_times)
+    fi;
+    prints("#bottom_layer = ",hash_bottom_layerCounter.use_count(), ", #one_level = ",
+    	   hash_one_levelCounter.use_count(), {", #real_dumb = "} ", #dumb = ",
+	   hash_real_dumbCounter.use_count() +
+    	   hash_dumbCounter.use_count() +
+   	    hash_def_dumbCounter.use_count(), ", #hash = ",
+    	    hashCounter.use_count(), ", #hash2 = ",
+    	    hash2Counter.use_count(), ", #steve = ",hash_steveCounter.use_count());
+    prints(print_time_string(unitaryTime - utt)," for ",unitary_test_counter.use_count() -utc,
+    					 " unitarity tests; ",
+    			     print_time_string(charTime - ct), " for ",char_counter.use_count() -cu,
+			     " char calculations.");
+	 utt:= unitaryTime;
+	 utc:=unitary_test_counter.use_count();
+	 ct:=charTime;
+	 cu:= char_counter.use_count();
+    {prints("time for up_mu = ",print_time_string(up_mu_time), ", mu_time_mult = ",mu_time_mult,
+    	   ", shift_frac = ",shift_frac, ", min_ht_mult = ", min_ht_mult);}
+    {prints({"LAGAmax = ",LAGAmax,", GARLAGmin = ",GARLAGmin, ", GARmin = ", GARmin,}
+    	   "Dirac elims = ",DTcount,", Dirac_best elims = ",DBTcount, ", ",print_time_string(def_thruples_time),
+	   " to find deformed thruple candidates.");
+    prints("Found ",hash_def_true_count," deformations proving unitarity (to height), ",
+    	   hash_def_false_count," deformations proving nonunitarity (to height).");
+    prints("no_unitary_time = ", print_time_string(test_no_unitary_time), ", no_Dirac_time = ",
+    	   print_time_string(test_no_Dirac_time)," , #(x,lambda) eliminated by LKTs = ",none_count);}
+    prints("...",running_label,"...");
+    prints(tph," pos is_unitary tests, in time = ", print_time_string(tpt),"; ",tnh,
+	" neg is_unitary tests, in time = ",print_time_string(tnt));
+    prints(tic, " interrupted is_unitary tests, of ",tih, " different parameters, in time ",
+	print_time_string(tit));
+    prints(tphh," pos tests to_ht, in time = ",print_time_string(tpht),"; ",tnhh," neg tests to_ht, in time = ",
+ 	print_time_string(tnht));
+    if oth.>
+    then prints(OT_hash.size()," params had ", sum(OT_counts), " interrupted tests go too long by ",
+    	 print_time_string(sum(OT_times)))
+    fi;
+    prints("#bottom_layer = ",hash_bottom_layerCounter.use_count(), ", #one_level = ",
+    	   hash_one_levelCounter.use_count(), {", #real_dumb = "} ", #dumb = ",
+	   hash_real_dumbCounter.use_count() +
+    	   hash_dumbCounter.use_count() +
+   	    hash_def_dumbCounter.use_count(), ", #hash = ",
+    	    hashCounter.use_count(), ", #hash2 = ",
+    	    hash2Counter.use_count(), ", #steve = ",hash_steveCounter.use_count());
+    prints(print_time_string(unitaryTime)," for ",unitary_test_counter.use_count()," unitarity tests; ",
+    print_time_string(charTime), " for ",char_counter.use_count(), " char calculations.");
+    {prints("time for up_mu = ",print_time_string(up_mu_time), ", mu_time_mult = ",mu_time_mult,
+    	   ", shift_frac = ",shift_frac, ", min_ht_mult = ", min_ht_mult);}
+    {prints({"LAGAmax = ",LAGAmax,", GARLAGmin = ",GARLAGmin, ", GARmin = ", GARmin,}
+    	   "Dirac elims = ",DTcount,", Dirac_best elims = ",DBTcount, ", ",print_time_string(def_thruples_time),
+	   " to find deformed thruple candidates.");
+    prints("Found ",hash_def_true_count," deformations proving unitarity (to height), ",
+    	   hash_def_false_count," deformations proving nonunitarity (to height).");
+    prints("no_unitary_time = ", print_time_string(test_no_unitary_time), ", no_Dirac_time = ",
+    	   print_time_string(test_no_Dirac_time)," , #(x,lambda) eliminated by LKTs = ",none_count);}
+    prints("  ----------------")
+
+set report_tested_cum() = report_tested_cum("","")
 
 {.write c-invariant form on standard module as a KTypePol }
 { never involves |twisted_full_deform| }

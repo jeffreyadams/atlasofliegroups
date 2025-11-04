@@ -1601,13 +1601,14 @@ set is_unitary_to_ht_big_SIMPLE(Param p, int HT, int time) = bool:
 {false tries is_unitary intermittently}
 set old_to_ht_flag = true
 
-set avtime_frac = rat: 16/1
+set avtime_frac = rat: 1{16/1 changed 11/3/25}
 
 set is_unitary_to_ht_big_SIMPLE(Param p, int H) = bool:
     if old_to_ht_flag then return is_unitary_to_ht_big_SIMPLE_old(p, H) fi;
     if H < height(p) then return true fi;
     let N_hts = min(#tested_pos_to_ht_times, H - height(p))
-    then prevtimes = for j:N_hts do tested_pos_to_ht_times[j] od.##
+    then prevtimes = (for j:N_hts do tested_pos_to_ht_times[j] od
+    	 	   ##for j:N_hts do tested_neg_to_ht_times[j] od).##
     then () = if #prevtimes = 0
 	      then return is_unitary_to_ht_big_SIMPLE(p,H,floor(avtime_frac*100))
 	      fi
