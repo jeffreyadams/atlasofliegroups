@@ -985,6 +985,14 @@ set febzu_report() = void:
     prints("# inner classes = ",ichashezu.size(), ", # edge lists = ",#FPPebzu,", # edges = ",
     	      sum(for list in FPPebzu do #list od))
 
+{assume temp_list already created}
+set write_vecs_new([vec] list) = void:
+    begin prints("void:temp_list:=([vec]:[])");
+	  for v in list
+	  do prints("void:temp_list #:= (vec:",v,")") {put list into temp_list}
+          od
+    end
+
 set write_vecss([[vec]] listss, string listss_name) = void:
     begin
 	prints("set ",listss_name," = [[vec]]: [], temp_lists = [vec]: []")
@@ -994,12 +1002,30 @@ set write_vecss([[vec]] listss, string listss_name) = void:
           od
     end
 
+{assume temp_lists already created, put lists there}
+set write_vecss_new([[vec]] lists) = void:
+    begin prints("void:temp_lists:=[]");
+	  for list in lists
+	  do write_vecs_new(list); {puts lists in temp_list}
+	     prints("void:temp_lists#:= temp_list")
+          od
+    end
+
 set write_vecsss([[[vec]]] listsss, string listsss_name) = void:
     begin
 	prints("set ",listsss_name," = [[[vec]]]: [], temp_lists = [[vec]]: []")
 	; for listss in listsss
 	  do write_vecss(listss,"temp_listss");
-	     prints("void: ",listsss_name,"#:= temp_lists")
+	     prints("void: ",listsss_name,"#:= temp_listss")
+          od
+    end
+
+{Assume ebzu_FVIs already created, put listss there}
+set write_vecsss_new([[[vec]]] listss) = void:
+    begin prints("void:ebzu_FVIs :=[]");
+	  for lists in listss
+	  do write_vecss_new(lists); {puts lists in temp_lists}
+	     prints("void: ebzu_FVIs#:= temp_lists")
           od
     end
 
@@ -1009,6 +1035,15 @@ set write_FPP_edges_hash() = void:
    then () = write_ic_list(list_ic,"ebzu_ics")
    then () = write_vecsss(FPPebzu, "ebzu_FVIs")
    in prints("for ic@j in ebzu_ics do append_to_febzu(ic, ebzu_FVIs[j]) od")
+
+set write_FPP_edges_hash_new() = void:
+   let list_ic = ichashezu.list()
+   then () = assert(@:#list_ic = #FPPebzu,"Sizes of ichashezu and FPPebzu don't match")
+   then () = write_ic_list(list_ic,"ebzu_ics")
+   then () = prints("set ebzu_FVIs = [[[vec]]]: [], temp_lists = [[vec]]: [], temp_list =  [vec]: []")
+   then () = write_vecsss_new(FPPebzu)
+   in prints("for ic@j in ebzu_ics do append_to_febzu(ic, ebzu_FVIs[j]) od")
+
 
 {edges in a list indexed by first vertex; size is number of FPP vertices. Sort each sublist by second vertex.}
 {this command takes 29 min/2.31g on laptop, 36 min, 3.9g on wave}

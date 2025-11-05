@@ -409,7 +409,7 @@ then coh_ind_unip_few(G,Uhash)}
 				    finish(x,lambda)
 				fi
 		     then (xcont,lambdacont) = contragredient(x,lambda)
-		     then () = if is_finished(xcont,lambdacont)
+		     then () = if tw.< and is_finished(xcont,lambdacont)
 			       then for p in Uhash.list()
 			       	    do if p.x = xcont and p.lambda = lambdacont
 				       then Uhash.match(contragredient(p))
@@ -496,7 +496,8 @@ then coh_ind_unip_few(G,Uhash)}
 			     prints("     #char calcs for this lambda = ",
 			     	char_counter.use_count() - startCcounter,
 				 ", time = ",print_time_string(charTime - startCTime));
-			     report_tested_cum("for this lambda","running totals");
+			     report_tested_cum("for (x,lam)=(#"+to_string(x.number)+","+to_string(lambda)+")",
+			     			    "running totals");
 			     prints("  ------------------")
 			  fi {every_lambda_flag}
 		    fi {not revert_steve_flag and #LF[0]=0 line 442}
@@ -774,7 +775,8 @@ set FPP_unitary_hash_general([KGBElt] xs, Param_hash Uhash, (Param->bool) fancy_
 					 		   prints("  char calcs for lambda = ",
 						   	   char_counter.use_count() - startCcounter,
 					 	 	   " char time = ", print_time_string(charTime - startCtime));
-				  			   report_tested("cumulative totals after lambda");
+				  			   report_tested(
+			"cumulative totals after (x,lam)=(#"+to_string(x.number)+","+to_string(lambda)+")");
 					 		   prints("  ------------------")
 				    		       fi{every_lambda_flag}
 			      			 fi{#LF[0] = 0}
@@ -822,7 +824,7 @@ set FPP_unitary_hash_general([KGBElt] xs, Param_hash Uhash, (Param->bool) fancy_
        	    		  prints("Time spent in char calcs = ",print_time_string(charTime-formerCharTime),
        	      		  	 ", number of char calcs = ", char_counter.use_count() - formerCcounter,
 				 " time spent in red_count = ",  print_time_string(red_count_times[j]));
-			 report_tested_cum("for this x","running totals")
+			 report_tested_cum("for x=#"+to_string(x.number),"running totals")
                      fi
 	   then () = big_unitary_hash.finish(x, full_M) {mark as done all lambdas for x}
 	   in big_unitary_hash.finishx(x) {mark as done all lambdas for x}
@@ -984,7 +986,7 @@ then coh_ind_unip_few(G,Uhash)}
 				    finish(x,lambda)
 				fi
 		     then (xcont,lambdacont) = contragredient(x,lambda)
-		     then () = if is_finished(xcont,lambdacont)
+		     then () = if tw.< and is_finished(xcont,lambdacont)
 			       then for p in Uhash.list()
 			       	    do if p.x = xcont and p.lambda = lambdacont
 				       then Uhash.match(contragredient(p))
@@ -1056,7 +1058,8 @@ then coh_ind_unip_few(G,Uhash)}
 				 more_good_hash.size() - startmorexl, {befmoreCount}
       		 		 {", #Params more-missed = ", more_bad_hash.size());}
 				 ", #more-caught total = ",more_good_hash.size());
-			 report_tested_cum("for this lambda","running totals");
+			 report_tested_cum("for (x,lam)=(#"+to_string(x.number)+","+to_string(lambda)+")",
+			 			"running totals");
 			 prints("  ------------------")
 		      fi {every_lambda_flag}
 		    fi{tw.>=}
@@ -1304,7 +1307,8 @@ set FPP_unitary_hash_steve([KGBElt] xs, Param_hash Uhash, (Param->bool) fancy_te
 					 		   prints("  char calcs for lambda = ",
 						   	   char_counter.use_count() - startCcounter,
 					 	 	   " char time = ", print_time_string(charTime - startCtime));
-				  			   report_tested("cumulative totals after lambda");
+				  			   report_tested(
+				"cumulative totals after (x,lam)=(#"+to_string(x.number)+","+to_string(lambda)+")");
 					 		   prints("  ------------------")
 				    		       fi{every_lambda_flag}
 					    fi{lcontnum.>=}
@@ -1325,7 +1329,7 @@ set FPP_unitary_hash_steve([KGBElt] xs, Param_hash Uhash, (Param->bool) fancy_te
 	    		  	 ", time in min_bottom_elim_factors = ", print_time_string(mbefTime));
 	    		  prints("     #Params min-caught for this x = ", good_hash.size() - startminx,
 	    		  {", #Params min-missed for this x = ", bad_hash.size() - startminbadx}
-	    		  ", #min-caught total = good_hash.size()");
+	    		  ", #min-caught total = ",good_hash.size());
  	    		  prints("Time in bottom_factors = ", print_time_string(bfTime),
 	    		  ", time in bottom_elim_factors_more = ", print_time_string(befmoreTime),
 	    		  ", more_shift_level = ", if bl_step_flag then bl_step_count*bl_step_size else more_shift_level fi);
@@ -1338,7 +1342,7 @@ set FPP_unitary_hash_steve([KGBElt] xs, Param_hash Uhash, (Param->bool) fancy_te
        	    		  prints("Time spent in char calcs = ",print_time_string(charTime-formerCharTime),
        	      		  	 ", number of char calcs = ", char_counter.use_count() - formerCcounter,
 				 " time spent in red_count = ",  print_time_string(red_count_times[j]));
-			 report_tested_cum("for this x","running totals");
+			 report_tested_cum("for x=#"+to_string(x.number),"running totals");
 			 report_steve_graph()
                      fi
 	   then () = big_unitary_hash.finish(x, full_M) {mark as done all lambdas for x}
@@ -1652,7 +1656,7 @@ fancy_tester) = void:
 				     finish(x,lambda)
 				fi
 		      then (xcont,lambdacont) = contragredient(x,lambda)
-		      then () = if is_finished(xcont,lambdacont)
+		      then () = if tw.< and is_finished(xcont,lambdacont)
 			        then for p in Uhash.list()
 			       	     do if p.x = xcont and p.lambda = lambdacont
 				        then Uhash.match(contragredient(p))
@@ -1716,8 +1720,8 @@ fancy_tester) = void:
 			    then finish(x,lambda)
 			    fi; ()
 		    else if every_lambda_deets_flag
-			 then face_verbose := old_face_verbose; time_verbose := old_time_verbose;
-			      test_verbose :=old_test_verbose; test_slightly_verbose := old_test_slightly_verbose
+			 then face_verbose := true{old_face_verbose}; time_verbose := true{old_time_verbose};
+			      test_verbose :=true{old_test_verbose}; test_slightly_verbose := true {old_test_slightly_verbose}
 			 fi;
 			 let answer = if revert_steve_flag and lambda_sc!=Gsc.rho
 			     	      then local_test_GEO_hash_steve(x_sc, lambda_sc, Lvd, Uhash,
@@ -1777,7 +1781,8 @@ fancy_tester) = void:
 				 more_good_hash.size() - startmorexl, {befmoreCount}
       		 		 {", #Params more-missed = ", more_bad_hash.size());}
 				 ", #more-caught total = ",more_good_hash.size());
-				 report_tested_cum("for this lambda","running totals");
+				 report_tested_cum("for (x,lam)=(#"+to_string(x.number)+","+to_string(lambda)+")",
+				 "running totals");
 				 prints("  ------------------")
 			    fi
 		    fi{#LF[0] = 0}
@@ -2121,7 +2126,7 @@ set FPP_unitary_hash_bottom_layer([KGBElt] xs, Param_hash UhashG, (Param->bool) 
 	    ", time in min_bottom_elim_factors = ", print_time_string(mbefTime);
 	    prints("     #Params min-caught for lambda = ", good_hash.size() - startminxl,
 	    {", #Params min-missed for lambda = ", bad_hash.size() - startminbadlambda}
-	    ", #min-caught total = ",more_good_hash.size());
+	    ", #min-caught total = ",good_hash.size());
  	    prints("Time in bottom_factors = ", print_time_string(bfTime),
 	    ", time in bottom_elim_factors_more = ", print_time_string(befmoreTime),
 	    ", more_shift_level = ", if bl_step_flag then bl_step_count*bl_step_size else more_shift_level fi);
@@ -2156,7 +2161,7 @@ set FPP_unitary_hash_bottom_layer([KGBElt] xs, Param_hash UhashG, (Param->bool) 
 	    ", time in min_bottom_elim_factors = ", print_time_string(mbefTime));
 	    prints("     #Params min-caught for this x = ", good_hash.size() - startminx,
 	    {", #Params min-missed for this x = ", bad_hash.size() - startminbadx}
-	    ", #min-caught total = good_hash.size()");
+	    ", #min-caught total = ",good_hash.size());
  	    prints("Time in bottom_factors = ", print_time_string(bfTime),
 	    ", time in bottom_elim_factors_more = ", print_time_string(befmoreTime),
 	    ", more_shift_level = ", if bl_step_flag then bl_step_count*bl_step_size else more_shift_level fi);
@@ -2169,7 +2174,7 @@ set FPP_unitary_hash_bottom_layer([KGBElt] xs, Param_hash UhashG, (Param->bool) 
 	    prints("     Time spent in char calcs = ", print_time_string(charTime - formerCharTime),
 			      	     ", number of char calcs = ", currentCcounter - formerCcounter,
 				     ", time for red_count = ",print_time_string(red_count_times[j]));
-			   report_tested_cum("for this x","running totals")
+			   report_tested_cum("for x=#"+to_string(x.number),"running totals")
                      fi {every_KGB_flag}
 	   then () = big_unitary_hash.finish(x, full_N1) {mark as done all lambdas for x}
 	   in big_unitary_hash.finishx(x)
