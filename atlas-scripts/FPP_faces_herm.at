@@ -978,7 +978,7 @@ set make_big_unitary_hash() = big_unitary_hash_table:
     in for rf@i in rf_list
        do let Gname = "G"+to_string(i)
 	  then listname = Gname+"_list"
-	  {then intlistname = Gname+"_XLK"}
+	  then intlistname = Gname+"_XLK"
 	  then plist = uhashes[i].list()
 	  then bitmapintlist = xl_known[i]
 	  then donemap = x_known[i]
@@ -1003,10 +1003,10 @@ set make_big_unitary_hash() = big_unitary_hash_table:
 		  od
 	     else prints("void: big_unitary_hash.finishxmap(",Gname,",",donemap,")")
 	     fi;
-             prints("void: big_unitary_hash.set_xl_sizes(",Gname,",",xl_sizes[i],")")
-             {prints("set ",intlistname,"=[int]:[]");
+             prints("void: big_unitary_hash.set_xl_sizes(",Gname,",",xl_sizes[i],")");
+             prints("set ",intlistname,"=[int]:[]");
 	     write_append(bitmapintlist,intlistname);
-	     prints("big_unitary_hash.finishall(",Gname,",",intlistname,")")}
+	     prints("big_unitary_hash.finishall(",Gname,",",intlistname,")")
 	od
     , (RealForm -> ): {writeG} (RealForm G):
       let i = add_real_form(G)

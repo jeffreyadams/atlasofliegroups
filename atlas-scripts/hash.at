@@ -153,7 +153,8 @@ set hash_code (KType p, int mod) = int:
 
 {meant to hash Params for single group G}
 set hash_code (Param p, int mod) = int:
-   let (x,lr,nu) = %p then (nun,nud) = %nu
+{   let (x,lr,nu) = %p then (nun,nud) = %nu}
+   let (x,lr,) = %p then (nun,nud) = %(p.nu)
    in hash_code(vec: (#x) # lr ## (nun#nud), mod)
 
 {meant to hash a [KTypePol]}

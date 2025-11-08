@@ -119,6 +119,11 @@ set bl_shift(KGBElt x, ratvec lambda, LocalVertexData Lvd) = int:
 set test_bl(KGBElt x, ratvec lambda, LocalVertexData Lvd) = bool:
     if not test_bl_flag then return true fi;
     if rank(x.real_form) < 7 then return false fi;
+    {modified 10/24 to adapt more shift}
+    if KGB_frac_flag and x.number > 2*KGB_frac*(#KGB(x.real_form)) then
+       more_shift(50);
+       return true
+    fi;
     if KGB_frac_flag and x.number < KGB_frac*(#KGB(x.real_form)) then return false fi;
     {if one_level_frac_flag then one_level_revert_flag := x.number > one_level_frac*(#KGB(x.real_form)) fi;}
     let start = elapsed_ms(), pmax = pmax(x,lambda,Lvd), rd = x.root_datum,

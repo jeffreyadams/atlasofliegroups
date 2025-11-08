@@ -1,4 +1,5 @@
 set_type reportDatum =(int xl_pair_number,
+int file_number,
 int x_lambda_total_time,
 int tested_pos_hash_size,
 int sum_tested_pos_times,
@@ -36,6 +37,24 @@ rat mu_time_mult,
 rat shift_frac,
 rat min_ht_mult)
 
+set seconds_in_day = 86400
+set seconds_in_hour = 3600
+set seconds_in_minute = 60
+
+set convert(int time)=(int,int,int,int):
+    let days = time\seconds_in_day then
+    time = time%seconds_in_day then
+    hours=time\seconds_in_hour then
+    time =time%seconds_in_hour then
+    minutes=time\seconds_in_minute then
+    seconds=time%seconds_in_minute in (days,hours,minutes,seconds)
+
+set seconds_to_nice_string(int time)=string:
+    let (days,hours,minutes,seconds)=convert(time) in
+    to_string(days) + ":" + to_string(hours) + ":" + to_string(minutes) + ":" + to_string(seconds)
+
+set nice_time(reportDatum d)=string:seconds_to_nice_string(x_lambda_total_time(d))
+
 set =(reportDatum a,reportDatum b)=bool:a.xl_pair_number=b.xl_pair_number
 set hash_code (reportDatum d,int mod)=int:d.xl_pair_number%mod
 set make_report_hash() = Hash<reportDatum>:
@@ -43,8 +62,9 @@ set make_report_hash() = Hash<reportDatum>:
 set_type reportHash     = Hash<reportDatum>
 
 {write one line report: (xl_pair number, x_lambda_total time get passed}
-set report(int xl_pair_number,int x_lambda_total_time)=reportDatum:
+set report(int xl_pair_number,int file_number,int x_lambda_total_time)=reportDatum:
 (xl_pair_number,
+file_number,
 x_lambda_total_time,
 tested_pos_hash.size(),
 sum(tested_pos_times),
@@ -83,7 +103,7 @@ shift_frac,
 min_ht_mult)
 
 set report_string(reportDatum d)=string:"report_hash.match" + to_string("",d)
-set report_string(int xl_pair_number,int x_lambda_total_time)=string:report_string(report(xl_pair_number,x_lambda_total_time))
+set report_string(int xl_pair_number,int file_number,int x_lambda_total_time)=string:report_string(report(xl_pair_number,file_number,x_lambda_total_time))
 
 set write(reportHash h)=void:
 for d in h.list() do prints("void:" + report_string(d)) od
@@ -95,6 +115,7 @@ set report_hash=make_report_hash()
 
 set reportDatumFields=
 ([xl_pair_number@reportDatum,
+file_number@reportDatum,
 x_lambda_total_time@reportDatum,
 tested_pos_hash_size@reportDatum,
 sum_tested_pos_times@reportDatum,
@@ -134,6 +155,7 @@ min_ht_mult@reportDatum])
 
 set reportDatumFieldNames=
 (["xl_pair_number",
+"file_number",
 "x_lambda_total_time",
 "tested_pos_hash_size",
 "sum_tested_pos_times",
@@ -175,7 +197,10 @@ set reportDatumFieldNames=
 
 set show(reportDatum d)=void:
 let (int_fields,rat_fields)=reportDatumFields in
-for f@i in int_fields do prints(reportDatumFieldNames[i], ": ", f(d)) od
+for f@i in int_fields do
+  if i=2 then  prints(reportDatumFieldNames[i], " ", seconds_to_nice_string(f(d)))
+  else prints(reportDatumFieldNames[i], " ", f(d)) fi od
+
 
 set sort_report_data_by_field((reportDatum->int) field)=([reportDatum] -> [reportDatum]):
 sort_by(field,<=@(int,int))
@@ -191,6 +216,27 @@ set sort_report_hash_by_field_reverse(reportHash m, (reportDatum->int) field)=[r
 let sort=sort_report_data_by_field_reverse(field) in
 sort(m.list())
 
+set Show(reportHash m, int n)=void:
+let datum=sort_report_hash_by_field(m,x_lambda_total_time@reportDatum) in
+for i:n do 
+let str=to_string("",m.list()[i], "-", nice_time(m.list()[i])) in prints(str) od
+
+set Show([reportDatum] d)=void:
+for record in d do
+let str=to_string("",record, "-", nice_time(record)) in prints(str) od
+
+set Show([reportDatum] d,int max)=void:
+for i:max do
+let record=d[i] in
+let str=to_string("",record, "-", nice_time(record)) in prints(str) od
+
+set show([reportDatum] d,RealForm G,int max)=void:
+tabulate(
+["pair","x","lambda","days:hours:mins:secs"] #for i:max do
+let record=d[i] then
+index=record.xl_pair_number then
+(x,lambda)=xl_pair(G,index) in 
+[to_string(record.xl_pair_number), to_string(x.number), to_string(lambda), nice_time(record)] od)
 
 
 {

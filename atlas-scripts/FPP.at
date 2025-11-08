@@ -152,9 +152,9 @@ set write_one_x(big_unitary_hash_table big_unitary_hash, RealForm G, int index)=
 set write_one_pair(RealForm G, int kgb_number, ratvec lambda)=void:
           big_unitary_hash.writexlam_no_G(KGB(G,kgb_number),lambda)
 
-set write_one_pair(RealForm G, int xl_pair_number,int x_lambda_total_time )=string:
+set write_one_pair(RealForm G,  int xl_pair_number, int file_number,int x_lambda_total_time )=string:
     let (x,lambda)=xl_pair(G,xl_pair_number) then
-    str=big_unitary_hash.writexlam_no_G(x,lambda) + new_line + report_string(xl_pair_number,x_lambda_total_time) + new_line + "END" 
+    str=big_unitary_hash.writexlam_no_G(x,lambda) + new_line + report_string(xl_pair_number,file_number,x_lambda_total_time) + new_line + "END" 
     {then ()=prints("write_one_pair string: ", str, "\n")  }
     in str
 
