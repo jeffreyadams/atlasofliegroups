@@ -155,13 +155,11 @@ in while
         ; for act in actions do hash.match(act(x)) od
       esac
    od
-end { of abstraction of type |T| }
-
-any_type T begin
 set make_hash (HashInfo<T> hinf) = Hash<T>: make_hash(hinf, 0, ([T]:[]))
 set make_hash (HashInfo<T> hinf, [T] data) = Hash<T>: make_hash(hinf, #data, data)
 set make_hash (HashInfo<T> hinf, int N) = Hash<T>: make_hash(hinf, N, ([T]:[]))
-end
+end { of abstraction of type |T| }
+
 
 { fast polynomial evaluation modulo power of 2, similar to polynomial |eval| }
 set eval_at_mod(int n, int m) = (vec->int):
@@ -200,8 +198,8 @@ set hash_code (KType p, int mod) = int:
 
 {meant to hash Params for single group G}
 set hash_code (Param p, int mod) = int:
-   let (x,lr,) = %p then (nun,nud) = %(p.nu)
-   in hash_code(vec: (#x) # lr ## (nun#nud), mod)
+   let (x,lr,gamma) = %p then (gamman,gammad) = %gamma
+   in hash_code(vec: (#x) # lr ## (gamman#gammad), mod)
 
 {meant to hash a [KTypePol]}
 set to_vecs (KTypePol P) = [vec]:

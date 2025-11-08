@@ -3132,9 +3132,9 @@ vertex "belongs" (either "is" or "is vertex of the edge")}
 3) tetrahedron in FPP, two pairs of verts exchanged by involution}
 set localFD_1Dirac2\
   ( KGBElt x, ratvec lambda, int HT, LocalVertexData Lvd, PermOrderTwo Perm2) = [[FaceVertsIndex]]:
-(   {if face_verbose
-    then prints(new_line,"start localFD_1Dirac")
-    fi;}
+(   if face_verbose
+    then prints(new_line,"start localFD_1Dirac2")
+    fi;
     let G = x.real_form, start = elapsed_ms(), trans_hash = make_vec_hash()
     then () = for (m,n) in Perm2.trans do trans_hash.match([m,n]) od
     then Q = ((ratvec,ratvec)->rat): (ratvec v, ratvec w) rat: 0/1
@@ -3221,7 +3221,7 @@ set localFD_1Dirac2\
 			    od))
 		then [] {from now on p is pos_on_LKTs}
 		elif Q(nu,nu) > DiracBD
-		then DTcount +:=1; prints("GOT HERE!"); []
+		then DTcount +:=1; {prints("GOT HERE!");} []
 		elif red_count_flag
 		then [v#red_count(p,HT)]
 		else [v]
@@ -4043,10 +4043,19 @@ set localFD_KHash_01 (KGBElt x, ratvec lambda, LocalVertexData Lvd, int HT, KTyp
 	 if not Dirac_best_flag then false
 	 else let mus = LKTs(parameter(x,lambda,0*lambda))
 	      then QG = invariant_form(x.real_form)
-	      then best_bounds = for mu in mus do truncate(best_Dirac_bound(mu),HT) od
-	      then bestbd = min(for (,hs,bs) in best_bounds
+	      then best_bounds = for mu in mus
+	      	   	       	 do let (taus,hs,bs) = truncate(best_Dirac_bound(mu),HT)
+				    in if #bs > 0
+				       then [(taus,hs,bs)]
+				       else []
+				       fi
+				  od.##
+	      then bestbd = if #best_bounds = 0
+	      	   	    then 0/1
+			    else min(for (,hs,bs) in best_bounds
 				do bs~[0]
 				od)
+			    fi
 	     {then () = prints("best_bounds = ",best_bounds)}
 	     then index = first(for v in Lvd.list
 				do @bool: QG(v,v) > bestbd

@@ -1376,8 +1376,12 @@ takes longer}
 set more_shift_level = int: 0
 
 set more_shift(int n) = void:
-    let () = more_flag:=true
-    in more_shift_level:=n
+    if n > 0
+    then more_flag:=true;
+    	 more_shift_level:=n
+    else more_flag:=false;
+    	 more_shift_level:=0
+    fi
 
 {Delete from LFVKH faces established to be nonunitary using
 known_lower, bottom layer, and deformation. Output is new shorter list
