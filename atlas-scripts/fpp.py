@@ -47,6 +47,7 @@ def execute_atlas_command(atlas_cmd,final_string,my_log,output_file,my_proc):
 def wrapper(round,job_number,files_to_read):
    log_file=output_dir + "/logs/" + str(job_number) + ".txt"
    log=open(log_file,"w",buffering=1)
+   log.write(str(time.ctime()))
    log.write("Logging output for job_number " + str(job_number)  + "\nround=" + str(round) +  "\nfiles_to_read=" +  str(files_to_read) + "\n")
    data_file=output_dir + "/" + str(job_number) + ".at"
    log.write("data output file: " + data_file + "\n")
@@ -102,7 +103,7 @@ def atlas_compute(job_number,round,start_counter,proc,log,data):
    log.write("Computing FPP for " + group + "\n")
    log.write("Job number: " + str(job_number) + "\n")
    log.write("maximum memory per process in megabytes: " + str(max_memory) + "\n")
-   log.write("maximum size of queue (default #(x,lambda) pairs: " + str(queue_size) + "\n")
+   log.write("maximum size of queue (default #(x,lambda) pairs: " + str(max_queue_size) + "\n")
    vars=['algorithm_flag',
          'big_unitary_hash_flag',
          'bl_interrupt_flag',
@@ -238,6 +239,7 @@ def atlas_compute(job_number,round,start_counter,proc,log,data):
    #log.write("data output: " + str(data) + "\n")
    while xl_pairs_queue.qsize()>0:
       log.write("*******************************************************************")
+      log.write("Time: " + str(time.ctime()) + "\n")
       log.write("\nJob number: " + str(job_number) + "\n")
       memory_rss=psutil.Process(pid).memory_info().rss / 1024**2 
       memory_vms=psutil.Process(pid).memory_info().vms / 1024**2
@@ -260,7 +262,7 @@ def atlas_compute(job_number,round,start_counter,proc,log,data):
          log.write("atlas_cmd: " + atlas_cmd)
          proc.stdin.write(format_cmd(atlas_cmd))
          proc.stdin.flush()
-         log.write("my proc status is now: " + str(proc.poll) + "\n")
+         #log.write("my proc status is now: " + str(proc.poll) + "\n")
          log.write("my procid id is now: " + str(proc.pid) + "\n")
          line = proc.stdout.readline().decode('ascii').strip()
          vals=line.split(':')
@@ -399,12 +401,12 @@ def atlas_compute(job_number,round,start_counter,proc,log,data):
    #data.close()
    log.write("killing process, job_number " + str(job_number) +  " at " + str(time.ctime()) + "\n")
    proc.kill()
-   log.write("returning: (Completed,"+ str(job_number) + "," + str(round) + "\n")
+   log.write("returning: (Completed,"+ str(job_number) + "," + str(round) + ")\n")
    return(("Completed",job_number,round))
 
 #MAIN
 def main(argv):
-   global output_dir,group,group_name,xl_pairs_queue,round, executable_dir,data_directory, group_definition_file, init_file,P,T, files_to_read,procs,max_memory, queue_size, symlinks_dir,log_dir,data_file,data,init_lock_file
+   global output_dir,group,group_name,xl_pairs_queue,round, executable_dir,data_directory, group_definition_file, init_file,P,T, files_to_read,procs,max_memory, max_queue_size, symlinks_dir,log_dir,data_file,data,init_lock_file
    data_directory=os.getcwd() + "/data"
    n_procs=1
    run_index=-1
@@ -426,9 +428,9 @@ def main(argv):
    #max_memory=30000   #30,000 megabyte = 30 gigabytes, x 500 jobs=15 terabytes
    #default: 10 gigabytes
    max_memory=10000   #10,000 megabyte = 10 gigabytes, x 1000 jobs=10 terabytes
-   queue_size=-1
+   max_queue_size=-1
    reverse=False
-   opts, args = getopt.getopt(argv, "g:d:n:l:x:i:G:t:m:I:hrw")
+   opts, args = getopt.getopt(argv, "g:d:n:l:x:i:G:t:m:I:q:hrw")
    for opt, arg in opts:
       if opt in ('-h'):
          print("\
@@ -454,7 +456,7 @@ def main(argv):
       elif opt in ('-m'):
          max_memory=int(arg)
       elif opt in ('-q'):
-         queue_size=int(arg)
+         max_queue_size=int(arg)
       elif opt in ('-I'):
          no_init=True
       elif opt in ('-i'):
@@ -579,32 +581,33 @@ def main(argv):
       #log.write("after > statement, line:" +  line)
    xl_pairs_queue=mp.Queue()
    main_log.write("created xl_pairs_queue\n")
-   #get number of (x,lambda) pairs to make queue of that size
-   #if -q was called use that instead (if not, queue_size=-1)
-   if queue_size==-1:
-      main_log.write("setting queue size using atlas\n")
-      atlas_cmd="prints(big_unitary_hash.xl_sizes_cumulative(" + group + ")~[0])\n"
-      #main_log.write("atlas_cmd: " +  atlas_cmd.strip() + "\n")
-      proc.stdin.write(format_cmd(atlas_cmd+ "\n"))
-      proc.stdin.flush()
-      line=proc.stdout.readline().decode('ascii').strip()
-      re.sub(".* ","",line)
-      main_log.write("line:" + line + "\n")
-      queue_size=int(line)
-   else:
-      main_log.write("queue size set to " + str(queue_size) +  "(-m option)\n")
-   for i in range(queue_size):
+   #make a queue of integers: integer k occurs <-> xl_pair(G,k) is on list of pairs to test}
+   #cut the list off at given length if -q was called
+   main_log.write("getting xl_pairs_todo(G)\n")
+   atlas_cmd="prints(xl_pairs_todo(big_unitary_hash," + group + "))\n"
+   main_log.write("atlas_cmd: " + atlas_cmd)
+   proc.stdin.write(format_cmd(atlas_cmd + "\n"))
+   proc.stdin.flush()
+   line=proc.stdout.readline().decode('ascii').strip()
+   main_log.write("xl_pairs_todo line: " + line + "\n")
+   line=re.sub("\[|\]","",line)
+   if not line:
+      main_log.write("There are no (x,lambda) pairs to do. Exiting\n")
+      exit()
+   entries=line.split(',')
+   main_log.write("entries: " + str(entries) + "\n")
+   n=len(entries)
+   main_log.write("n (entries):= " + str(n) + "\n")
+   if max_queue_size>=0:
+      n=max(n,max_queue_size)
+      main_log.write("truncating queue to size " + str(max_queue_size) + "\n")
+   for i in range(n):
       if reverse==True:
-         j=queue_size-i-1
-         main_log.write("j=",j)
+         j=n-i-1
       else:
          j=i
       xl_pairs_queue.put(j)
-   main_log.write("xl_pairs_queue size is now: " + str(xl_pairs_queue.qsize()) + "\n")
-
-   #if x_lambdas_todo_file is given (probably always the case)
-   #read file into atlas, just to find the length of the array x_lambdas_todo 
-
+   main_log.write("done creating xl_pairs_queue, of size "  + str(xl_pairs_queue.qsize()) + "\n")
    #launch free.py (monitoring processes)
    main_log.write("running free.py\n")
    for file in files_to_copy:

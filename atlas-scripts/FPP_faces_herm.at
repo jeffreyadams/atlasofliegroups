@@ -4748,3 +4748,37 @@ set extend_K_characters_graph(KGBElt x, ratvec lambda, LocalVertexData Lvd,
      then () = if time_verbose then prints("     ", print_time_string(time),
 		  " for extend_K_characters_graph") fi
      in answer
+
+{convert the information stored in the bitmaps xl_known for G into
+an array of integers:
+integer k occurs in the list if is_finished(G,k)=false
+don't compute it this way (too slow)
+let i=0...KGB_size(G)
+  set number_lambdas=table.xl_sizes(G)[i]  (number of lambdas for this x)
+  set shift=table.xl_sizes_cumulative[i-1]   
+  set b=xl_known(G)[i] (bitset of lambdas for this x)
+  if b=[]: append [shift_0,shift+1,...,shift_number_lambdas-1] to return array
+     (indicating all of these lambdas have not been done)
+  set v=convert b to base 2, and pad with zeros to make it of number_lambdas
+  let j=0...#v
+     if v[j]=0 (this lambda has not been done) add shift+j to the return value
+}
+
+set xl_pairs_todo(big_unitary_hash_table table,RealForm G)=
+let xl_pair_bitsets=table.xl_known(G) then
+xl_sizes=table.xl_sizes(G) then
+xl_sizes_cumulative=table.xl_sizes_cumulative(G) in
+for b@i in xl_pair_bitsets do
+  let shift=(0#xl_sizes_cumulative)[i] in
+  if b=0 then  {add all lambdas for this x to the list}
+     for j:xl_sizes[i] do {prints("other: i: ", i, " j:", j, " shift: ", shift);} [shift+j] od.##
+  else
+     let v0=to_base_poly(2)(b) then
+     v=pad(v0,xl_sizes[i]) in
+     {()=prints("v0=", v0, " v=", v) then
+     ()=prints("i= ", i, " b=", b, " shift= ", shift, " v=", v) in}
+     for j:#v do
+        if =v[j] then {prints("zero:", j, " ", shift);}[shift+j] else {prints("not zero:", j);}[] fi
+     od.##
+  fi
+od.##
