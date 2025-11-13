@@ -563,7 +563,7 @@ set was_tested_to_ht(Param p,int N, int T, bool ans) = void:
     fi
 
 set report_tested(string label) = void:
-    prints("...",label,"...");
+    prints("...",label,"...",DTcount," Dirac elim, ",DBTcount," best-Dirac elim");
     prints(tested_pos_hash.size()," pos is_unitary tests, in time = ",
     	print_time_string(sum(tested_pos_times)),"; ",tested_neg_hash.size()," neg is_unitary tests, in time = ",
     	print_time_string(sum(tested_neg_times)));
@@ -615,10 +615,11 @@ set clear_report_tested() = void:
 set (report_tested_cum,clear_report_tested_cum_clear) = (((string, string) -> void),(void->void)):
     let tph = int: 0, tpt = int:0, tnh = int: 0, tnt = int:0, oth = int:0, otc = int:0, ott = int:0
     then tic = int: 0, tih = int: 0, tit = int:0, tphh = int: 0, tpht = int:0, tnhh = int: 0, tnht = int: 0,
-    	 utc = int: 0, utt = int: 0, ct = int:0, cu = int: 0
+    	 utc = int: 0, utt = int: 0, ct = int:0, cu = int: 0, DTc = int:0, DBTc = int: 0
     in (((string,string)->void): (string local_label, string running_label) void:
     prints("  ----------------");
-    prints("...",local_label,"...");
+    prints("...",local_label,"...",DTcount - DTc," Dirac elim, ",DBTcount - DBTc," best-Dirac elim");
+    	DTc :=DTcount; DBTc := DBTcount;
     prints(tested_pos_hash.size() - tph, " pos is_unitary tests, in time = ",
     	print_time_string(sum(tested_pos_times) - tpt),"; ",tested_neg_hash.size() - tnh,
 	" neg is_unitary tests, in time = ",print_time_string(sum(tested_neg_times) - tnt));
@@ -662,16 +663,7 @@ set (report_tested_cum,clear_report_tested_cum_clear) = (((string, string) -> vo
 	 utc:=unitary_test_counter.use_count();
 	 ct:=charTime;
 	 cu:= char_counter.use_count();
-    {prints("time for up_mu = ",print_time_string(up_mu_time), ", mu_time_mult = ",mu_time_mult,
-    	   ", shift_frac = ",shift_frac, ", min_ht_mult = ", min_ht_mult);}
-    {prints({"LAGAmax = ",LAGAmax,", GARLAGmin = ",GARLAGmin, ", GARmin = ", GARmin,}
-    	   "Dirac elims = ",DTcount,", Dirac_best elims = ",DBTcount, ", ",print_time_string(def_thruples_time),
-	   " to find deformed thruple candidates.");
-    prints("Found ",hash_def_true_count," deformations proving unitarity (to height), ",
-    	   hash_def_false_count," deformations proving nonunitarity (to height).");
-    prints("no_unitary_time = ", print_time_string(test_no_unitary_time), ", no_Dirac_time = ",
-    	   print_time_string(test_no_Dirac_time)," , #(x,lambda) eliminated by LKTs = ",none_count);}
-    prints("...",running_label,"...time for test_bl = ",print_time_string(test_bl_time));
+    prints("...",running_label,"...",DTcount," Dirac elim, ",DBTcount," best-Dirac elim");
     prints(tph," pos is_unitary tests, in time = ", print_time_string(tpt),"; ",tnh,
 	" neg is_unitary tests, in time = ",print_time_string(tnt));
     prints(tic, " interrupted is_unitary tests, of ",tih, " different parameters, in time ",
@@ -691,20 +683,11 @@ set (report_tested_cum,clear_report_tested_cum_clear) = (((string, string) -> vo
     	    hash2Counter.use_count(), ", #steve = ",hash_steveCounter.use_count());
     prints(print_time_string(unitaryTime)," for ",unitary_test_counter.use_count()," unitarity tests; ",
     print_time_string(charTime), " for ",char_counter.use_count(), " char calculations.");
-    {prints("time for up_mu = ",print_time_string(up_mu_time), ", mu_time_mult = ",mu_time_mult,
-    	   ", shift_frac = ",shift_frac, ", min_ht_mult = ", min_ht_mult);}
-    {prints({"LAGAmax = ",LAGAmax,", GARLAGmin = ",GARLAGmin, ", GARmin = ", GARmin,}
-    	   "Dirac elims = ",DTcount,", Dirac_best elims = ",DBTcount, ", ",print_time_string(def_thruples_time),
-	   " to find deformed thruple candidates.");
-    prints("Found ",hash_def_true_count," deformations proving unitarity (to height), ",
-    	   hash_def_false_count," deformations proving nonunitarity (to height).");
-    prints("no_unitary_time = ", print_time_string(test_no_unitary_time), ", no_Dirac_time = ",
-    	   print_time_string(test_no_Dirac_time)," , #(x,lambda) eliminated by LKTs = ",none_count);}
     prints("  ----------------")
     , @: {clear_report_tested_cum_clear}
      tph := 0; tpt := 0; tnh := 0; tnt :=0; oth :=0; otc :=0; ott :=0;
      tic := 0; tih := 0; tit :=0; tphh := 0; tpht :=0; tnhh := 0; tnht := 0;
-     utc := 0; utt := 0; ct :=0; cu := 0)
+     utc := 0; utt := 0; ct :=0; cu := 0; DTc:=0; DBTc:=0)
 
 set report_tested_cum() = report_tested_cum("","")
 

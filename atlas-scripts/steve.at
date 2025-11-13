@@ -1237,13 +1237,7 @@ set make_steve_hash_small() = steve_hash_small_table:
 	 then () = prints("loc = ",loc, ", min_flag = ",min_flag)}
 	 in if vecnum = VECNUM {new location rel hyperplanes}
 	    then statuses #:=boo;
-		 charvecs #:= if extra_coord_flag
-       			      then let p = parameter(xSHS,lambdaSHS,gamma)
-				   then Q = 1*p
-				   in [Kpol_hash.match(K_type_pol(character_formula_to_height(Q,htSHS))),
-				     	#monomials(Q)]
-			      else []
-			      fi
+		 charvecs #:= Kchar_vec(xSHS,lambdaSHS,htSHS,gamma)
 	    fi;
 	    vecnum
     then SHthrupleL(ratvec gamma) = int:
@@ -1762,10 +1756,19 @@ begin
 	      then prints("Examining ",NumClasses," classes in local_test_graph_steve to ht ",
 	      	   	   HT)
 	      fi
-    then nums = #NumClasses
+    then nums = #NumClasses {[0,1,2..NumClasses-1]}
+    then freq = max(NumClasses\100,1)
+    then count = int:0
     then () = if graph_tilde_flag then nums:=~nums fi
     then () = for k in nums
-    	      do if statuses[k] = "?"
+    	      do if fund_face_verbose and (k%freq).=
+	      	 then prints("at class ",k," of ",NumClasses, " at time ",print_time_string(elapsed_ms() - start))
+		      {"; vecHash size = ",if steve_small_flag
+		       	  	       	   then steve_hash_small.vecHash().size()
+					   else steve_hash.vecHash(x,lambda,HT).size()
+					   fi)}
+		 fi;
+	      if statuses[k] = "?"
 	      	 then let C = eq[k] {list of locs}
 		 then N = if graph_tilde_flag
 		      	  then short_facelist[C~[0]]~[0] {last face for last loc in C}
@@ -1843,9 +1846,35 @@ set report_steve_clear() = void:
     steve_graph_test_time:=0;
     up_graph_gens_time:=0
 
+set warmup_time = int: 0
+set warmup_flag = true
+
+{put known statuses into steve_hash_small}
+set warmup(KGBElt x, ratvec lambda, int HT, LocalVertexData Lvd, [[FaceVertsIndex]] FVIs) = [[FaceVertsIndex]]:
+    if warmup_flag = false then return FVIs fi;
+    let start= elapsed_ms()
+    then answer =
+    for FVI@d in FVIs
+    do for v in FVI
+       do let gamma = face_bary(Lvd, v[:d+1])
+       	  then qs = monomials(finalize(parameter(x,lambda,gamma)))
+       	  in if any(for q in qs do big_unitary_hash.nu_height_lookup_bool(q,HT) od)
+       	     then steve_hash_small.numatch(gamma);
+	     []
+	     elif all(for q in qs do big_unitary_hash.ulookup(q).>=
+	     	     or (let m = u_to_ht_hash.lookup(q)
+		     	 in m.>= and u_to_ht_hts[m] >= HT) od)
+       	     then steve_hash_small.umatch(gamma);
+	     [v]
+	     else [v]
+	     fi
+       od.##
+    od
+    in warmup_time +:= elapsed_ms() - start;
+       answer
+
 {takes x, lambda, HT, Lvd and computes local vertices, imposing
 hermitian, pos on LKTs, pos to HT, and Dirac.}
-{should put the Dirac failures in steve_hash labeled indefinite}
 set localFD_1SteveU\
   ( KGBElt x, ratvec lambda, int HT, LocalVertexData Lvd) =
     [FaceVertsIndex]:
@@ -1862,26 +1891,64 @@ set localFD_1SteveU\
 	then (0,0,0)
 	else steve_hash.indices(x, lambda, HT)
 	fi
-    then Q = ((ratvec,ratvec)->rat): (ratvec v, ratvec w) rat: 0/1
+    then LF00 = [FaceVertsIndex]: for j:#Lvd.list do [j] od
+    then LF01 = warmup(x,lambda,HT,Lvd,[LF00])[0]
+    then Q = (ratvec,ratvec ->rat): (ratvec v, ratvec w) rat: 0/1
     then DiracBD = 0/1
-    then () = if Dirac_flag
-	      then let bd = DiracBD(x,lambda)
-		   then QG = {Dirac_easy_hash.invt_form(G)} invariant_form(G)
-		   then index = first(for v in Lvd.list
-				      do @bool: QG(v,v) > bd
-				      od)
-		   in if index.>=
-		      then Q:=QG; DiracBD:=bd
-		      fi
-	      fi
-    then length = #(Lvd.list)
+    then temp_Dirac_best_flag = bool:
+	 if not (Dirac_best_flag and extra_coord_flag) then false
+	 else let mus = LKTs(parameter(x,lambda,0*lambda))
+	      then QG = invariant_form(x.real_form)
+	      then best_bounds = for mu in mus
+	      	   	       	 do let (taus,hs,bs) = truncate(best_Dirac_bound(mu),HT)
+				    in if #bs > 0
+				       then [(taus,hs,bs)]
+				       else []
+				       fi
+				  od.##
+	      then bestbd = if #best_bounds = 0
+	      	   	    then 0/1
+			    else min(for (,hs,bs) in best_bounds
+				do bs~[0]
+				od)
+			    fi
+	     {then () = prints("best_bounds = ",best_bounds)}
+	     then index = if bestbd.=
+	     	  	  then -1
+			  else first(for v in LF01
+				     do let gamma = Lvd.list[v[0]]
+				     	in @bool: QG(gamma,gamma) > bestbd
+				     od)
+			  fi
+	     in if index.>=
+		then DiracBD := bestbd; Q:=QG; true
+		else false
+		fi
+	 fi
+    then temp_Dirac_flag =
+    	 if Dirac_flag and not(temp_Dirac_best_flag) and
+    	 		       max(for mu in LKTs(parameter(x,lambda,0*lambda)) do tensor_p_hts(mu) od) <=HT
+	 then let bd = DiracBD(x,lambda)
+	      then QG = {Dirac_easy_hash.invt_form(G)} invariant_form(G)
+	      then index = first(for v in LF01
+				 do let gamma = Lvd.list[v[0]]
+				    in @bool: QG(gamma,gamma) > bd
+				 od)
+	      in if index.>=
+		 then Q:=QG; DiracBD:=bd; true
+		 else false
+		 fi
+	  else false
+	  fi {these two flags best_Dirac and _Dirac are either FF, FT, or TF}
+    then extra = vec:[]
+    then length = #LF01  {(Lvd.list)}
     then freq = max(length\100,1)
     then count = int:0
     then answer = [vec]:
     	 if steve_tilde_flag
-	 then for v@j in Lvd.list
-       	 ~do if fund_face_verbose and (j%freq).=
-	      	  then prints("at vertex ",j," of ",length,
+	 then for v@k in LF01
+       	 ~do if fund_face_verbose and (k%freq).=
+	      	  then prints("at vertex ",k," of ",length,
 	    	       " at time ", print_time_string(elapsed_ms() - start),
 		       "; vecHash size = ",if steve_small_flag
 		       	  	       	   then steve_hash_small.vecHash().size()
@@ -1892,38 +1959,39 @@ set localFD_1SteveU\
 			     steve_hash_small.vecHashL().size())
 			fi
 	     fi;
-	     	  let p = parameter(x,lambda,v)
-	     	  in if not is_hermitian(p)
-	     	     then []
-		     elif Q(v,v) > DiracBD
-	       	     then DTcount +:=1;
+	     	  let gamma = Lvd.list[v[0]]
+		  then p = parameter(x,lambda,gamma)
+		  in if not is_hermitian(p)
+		     then []
+		     elif temp_Dirac_best_flag and Q(gamma,gamma) > DiracBD
+		     	  and (let () = extra:=Kchar_vec(x,lambda,HT,gamma)
+		     	       in not DiracBestTest(p,HT,Kpol_hash.index(extra[0])))
+		     then DBTcount +:=1;
 		     	  if steve_small_flag
-			  then [[j]##steve_hash_small.numatch(v)]
-			  else []
+			  then steve_hash_small.numatch(gamma)
+			  fi;
+			  [] {DiracBest says nonunitary}
+		     elif temp_Dirac_flag and Q(gamma,gamma) > DiracBD
+		     then DTcount +:= 1;
+		     	  if steve_small_flag
+			  then steve_hash_small.numatch(gamma)
+			  fi;
+			  [] {Dirac says nonunitary}
+	     	     elif if #extra = 0 and extra_coord_flag
+		     	  then extra:=Kchar_vec(x,lambda,HT,gamma)
+			  fi;
+		     	  if steve_small_flag
+		     	  then steve_hash_small.postest_known_Kchar(gamma,extra)
+			  else steve_hash.partly_indexed_postest_known_Kchar(rfnum, xlnum, htnum, gamma,extra)
 			  fi
-	       	     {elif not (fewer_reducible_unitary_flag or all(for q in monomials(p)
-			    do @bool: is_pos_on_LKTs(q)
-			    od))
-	       	     then []}
-	     	     elif if steve_small_flag
-		     	  then steve_hash_small.postest(v)
-			  else steve_hash.partly_indexed_postest(rfnum, xlnum, htnum, v)
-			  fi
-	     	     then let extra = if extra_coord_flag
-		     	      	      then if steve_small_flag
-				      	   then steve_hash_small.extra_coord(v)
-				      	   else steve_hash.extra_coord(x,lambda,HT,v)
-					   fi
-				       else null(0)
-				       fi
-		     	   in count+:=1;
-			      [[j]##extra]
+	     	     then count+:=1;
+			  [v##extra] {unitary to HT!}
 	     	     else [] {pos test failed}
 	     	     fi
 	       od.## {list of candidate vertices}
-       	 else  for v@j in Lvd.list
-	       do if fund_face_verbose and (j%freq).=
-	      	  then prints("at vertex ",j," of ",length,
+       	 else  for v@k in LF01
+	       do if fund_face_verbose and (k%freq).=
+	      	  then prints("at vertex ",k," of ",length,
 	    	       " at time ", print_time_string(elapsed_ms() - start),
 		       "; vecHash size = ",if steve_small_flag
 		       	  	       	   then steve_hash_small.vecHash(HT).size()
@@ -1934,31 +2002,36 @@ set localFD_1SteveU\
 			     steve_hash_small.vecHashL().size())
 			fi
 	     	  fi;
-	     	  let p = parameter(x,lambda,v)
+	     	  let gamma = Lvd.list[v[0]]
+		  then p = parameter(x,lambda,gamma)
 	     	  in if not is_hermitian(p)
 	     	     then []
-		     elif Q(v,v) > DiracBD
-	       	     then DTcount +:=1; []
-	       	     elif not (fewer_reducible_unitary_flag or all(for q in monomials(p)
-			    do @bool: is_pos_on_LKTs(q)
-			    od))
-	       	     then []
-	     	     elif if steve_small_flag
-		     	  then steve_hash_small.postest(v)
-			  else steve_hash.partly_indexed_postest(rfnum, xlnum, htnum, v)
+		     elif temp_Dirac_best_flag and Q(gamma,gamma) > DiracBD
+		     	  and (let () = extra:=Kchar_vec(x,lambda,HT,gamma)
+		     	       in not DiracBestTest(p,HT,Kpol_hash.index(extra[0])))
+		     then DBTcount +:=1;
+		     	  if steve_small_flag
+			  then steve_hash_small.numatch(gamma)
+			  fi;
+			  [] {DiracBest says nonunitary}
+		     elif temp_Dirac_flag and Q(gamma,gamma) > DiracBD
+		     then DTcount +:= 1;
+		     	  if steve_small_flag
+			  then steve_hash_small.numatch(gamma)
+			  fi;
+			  [] {Dirac says nonunitary}
+	     	     elif if #extra = 0 and extra_coord_flag
+		     	  then extra:=Kchar_vec(x,lambda,HT,gamma)
+			  fi;
+			  if steve_small_flag
+		     	  then steve_hash_small.postest_known_Kchar(gamma,extra)
+			  else steve_hash.partly_indexed_postest_known_Kchar(rfnum, xlnum, htnum, gamma, extra)
 			  fi
-	     	     then let extra = if extra_coord_flag
-		     	      	      then if steve_small_flag
-				      	   then steve_hash_small.extra_coord(v)
-				      	   else steve_hash.extra_coord(x,lambda,HT,v)
-					   fi
-				       else null(0)
-				       fi
-		     	   in count +:=1;
-			      [[j]##extra]
+		     then count+:=1;
+			 [v##extra] {unitary to HT!}
 	     	     else [] {pos test failed}
 	     	     fi
-	         od.## {list candidate vertices}
+	       od.## {list of candidate vertices}
 	    fi
 {next step is needed because of comment before localFD_2SteveU}
     then () = answer:= if steve_tilde_flag
@@ -1979,7 +2052,6 @@ set localFD_1SteveU\
 )
 
 
-
 {takes x, lambda, HT, Lvd and computes local vertices, imposing Dirac,
 hermitian, pos on LKTs, and pos to min-lowest K-types to HT.}
 set localFD_1SteveUmin\
@@ -1998,13 +2070,28 @@ set localFD_1SteveUmin\
 	then (0,0,0)
 	else steve_hash.indices(x, lambda, HT)
 	fi
+    then LF00 = [FaceVertsIndex]: for j:#Lvd.list do [j] od
+    then LF01 = warmup(x,lambda,HT,Lvd,[LF00])[0]
+    {then ucand_list = big_unitary_hash.uhash(G).list(), nucand_list = big_unitary_hash.nuhash(G).list()
+    	 {DUPLICATE ELSEWHERE?}
+    then () = for p in ucand_list
+    	      do if p.x = x and p.lambda = lambda
+		 then steve_hash_small.umatch(p.infinitesimal_character)
+		 fi
+	      od
+    then () = for p in nucand_list
+    	      do if p.x = x and p.lambda = lambda
+		 then steve_hash_small.numatch(p.infinitesimal_character)
+		 fi
+	      od}
     then Q = ((ratvec,ratvec)->rat): (ratvec v, ratvec w) rat: 0/1
     then DiracBD = 0/1
-    then () = if Dirac_flag
+    then () = if Dirac_flag and max(for mu in LKTs(parameter(x,lambda,0*lambda)) do tensor_p_hts(mu) od) <=HT
 	      then let bd = DiracBD(x,lambda)
 		   then QG = {Dirac_easy_hash.invt_form(G)} invariant_form(G)
-		   then index = first(for v in Lvd.list
-				      do @bool: QG(v,v) > bd
+		   then index = first(for v in LF01
+				      do let gamma = Lvd.list[v[0]]
+				      	 in @bool: QG(gamma,gamma) > bd
 				      od)
 		   in if index.>=
 		      then Q:=QG; DiracBD:=bd
@@ -2032,7 +2119,11 @@ set localFD_1SteveUmin\
 	     	  in if not is_hermitian(p)
 	     	     then []
 		     elif Q(v,v) > DiracBD
-		     then DTcount +:= 1; []
+		     then DTcount +:= 1;
+		     	  if steve_small_flag
+			  then steve_hash_small.numatch(v)
+			  fi;
+			  []
 		     elif is_pure(to_ht(steve_hash_small.sigL(v),HT))
 	     	     then let extra = if extra_coord_flag
 		     	      	      then if steve_small_flag
@@ -2110,31 +2201,102 @@ set localFD_1SteveU_graph\
     then prints(new_line,"start localFD_1SteveUgraph to ht ",HT)
     fi;
     if not is_pos_on_LKTs(parameter(x,lambda,0*lambda)) then return [] fi;
-    let G = x.real_form, start = elapsed_ms()
+    steve_hash_small.reset_with_ht(x,lambda,HT);
+    let G = x.real_form, start = elapsed_ms(), (rfnum, xlnum, htnum) =
+    	if steve_small_flag
+	then (0,0,0)
+	else steve_hash.indices(x, lambda, HT)
+	fi
+    then LF00 = [FaceVertsIndex]: for j:#Lvd.list do [j] od
+    then LF01 = warmup(x,lambda,HT,Lvd,[LF00])[0]
     then Q = ((ratvec,ratvec)->rat): (ratvec v, ratvec w) rat: 0/1
     then DiracBD = 0/1
-    then () = if Dirac_flag
-	      then let bd = DiracBD(x,lambda)
-		   then QG = {Dirac_easy_hash.invt_form(G)} invariant_form(G)
-		   then index = first(for v in Lvd.list
-				      do @bool: QG(v,v) > bd
-				      od)
-		   in if index.>=
-		      then Q:=QG; DiracBD:=bd
-		      fi
-	      fi
-    then LF0 = for v@j in Lvd.list
-    	       do let p = parameter(x,lambda,v)
+    then temp_Dirac_best_flag = bool:
+	 if not (Dirac_best_flag and extra_coord_flag) then false
+	 else let mus = LKTs(parameter(x,lambda,0*lambda))
+	      then QG = invariant_form(x.real_form)
+	      then best_bounds = for mu in mus
+	      	   	       	 do let (taus,hs,bs) = truncate(best_Dirac_bound(mu),HT)
+				    in if #bs > 0
+				       then [(taus,hs,bs)]
+				       else []
+				       fi
+				  od.##
+	      then bestbd = if #best_bounds = 0
+	      	   	    then 0/1
+			    else min(for (,hs,bs) in best_bounds
+				do bs~[0]
+				od)
+			    fi
+	     {then () = prints("best_bounds = ",best_bounds)}
+	     then index = if bestbd.=
+	     	  	  then -1
+			  else first(for v in LF01
+				     do let gamma = Lvd.list[v[0]]
+				     	in @bool: QG(gamma,gamma) > bestbd
+				     od)
+			  fi
+	     in if index.>=
+		then DiracBD := bestbd; Q:=QG; true
+		else false
+		fi
+	 fi
+    then temp_Dirac_flag =
+    	 if Dirac_flag and not(temp_Dirac_best_flag) and
+    	 		       max(for mu in LKTs(parameter(x,lambda,0*lambda)) do tensor_p_hts(mu) od) <=HT
+	 then let bd = DiracBD(x,lambda)
+	      then QG = {Dirac_easy_hash.invt_form(G)} invariant_form(G)
+	      then index = first(for v in LF01
+				 do let gamma = Lvd.list[v[0]]
+				    in @bool: QG(gamma,gamma) > bd
+				 od)
+	      in if index.>=
+		 then Q:=QG; DiracBD:=bd; true
+		 else false
+		 fi
+	  else false
+	  fi {these two flags best_Dirac and _Dirac are either FF, FT, or TF}
+    then extra = vec:[]
+    then answer = for v@k in LF01
+    	       do let gamma = Lvd.list[v[0]]
+	       	  then p = parameter(x,lambda,gamma)
 	       	  in if not is_hermitian(p)
 		     then []
-		     elif Q(v,v) > DiracBD
-		     then DTcount +:= 1; []
-		     elif extra_coord_flag
-		     then [[j,0,#monomials(1*p)]]
-		     else [[j]]
-		     fi
-	       od.##
-    in local_test_graph_steve(x,lambda,Lvd,LF0,HT)
+		     elif temp_Dirac_best_flag and Q(gamma,gamma) > DiracBD
+		     	  and (let () = extra:=Kchar_vec(x,lambda,HT,gamma)
+		     	       in not DiracBestTest(p,HT,Kpol_hash.index(extra[0])))
+		     then DBTcount +:=1;
+		     	  if steve_small_flag
+			  then steve_hash_small.numatch(gamma)
+			  fi;
+			  [] {DiracBest says nonunitary}
+		     elif temp_Dirac_flag and Q(gamma,gamma) > DiracBD
+		     then DTcount +:= 1;
+		     	  if steve_small_flag
+			  then steve_hash_small.numatch(gamma)
+			  fi;
+			  [] {Dirac says nonunitary}
+	     	     else if #extra = 0 and extra_coord_flag
+		     	  then extra:=Kchar_vec(x,lambda,HT,gamma)
+			  fi;
+{
+if steve_small_flag
+then steve_hash_small.postest_known_Kchar(gamma,extra)
+else steve_hash.partly_indexed_postest_known_Kchar(rfnum, xlnum, htnum, gamma,extra)
+fi
+}			  [v##extra] {candidate for testing in graph}
+	     	     {else [] {pos test failed}}
+	     	     fi
+	       od.## {list of candidate vertices}
+    in if fund_face_verbose
+       then prints("Found ",#answer," vertices to ht ",HT," in time ",
+       	    print_time_string(elapsed_ms() - start));
+       	    prints("vecHash size = ", if steve_small_flag
+	    		    	      then steve_hash_small.vecHash(HT).size()
+				      else steve_hash.vecHash(x,lambda,HT).size()
+				      fi){;
+	    prints("LF0 = ",answer)}
+       fi;local_test_graph_steve(x,lambda,Lvd,answer,HT)
 )
 
 
@@ -2154,6 +2316,18 @@ set localFD_2SteveU\
     {prints("in localFD_2SteveU, LF0 = ",LF0);}  {COMMENT OUT!}
     let G = x.real_form, start = elapsed_ms(), trans_hash = make_vec_hash()
     then () = for (m,n) in Perm2.trans do trans_hash.match([m,n]) od
+    then ucand_list = big_unitary_hash.uhash(G).list(), nucand_list = big_unitary_hash.nuhash(G).list()
+    	 {DUPLICATE ELSEWHERE?}
+    then () = for p in ucand_list
+    	      do if p.x = x and p.lambda = lambda
+		 then steve_hash_small.umatch(p.infinitesimal_character)
+		 fi
+	      od
+    then () = for p in nucand_list
+    	      do if p.x = x and p.lambda = lambda
+		 then steve_hash_small.numatch(p.infinitesimal_character)
+		 fi
+	      od
     then Q = ((ratvec,ratvec)->rat): (ratvec v, ratvec w) rat: 0/1
     then DiracBD = 0/1
     then () = if Dirac_flag
@@ -2392,6 +2566,18 @@ set localFD_2SteveUgraph\
     then () = if #LF0 = 0
     	      then return []
 	      fi
+    then ucand_list = big_unitary_hash.uhash(G).list(), nucand_list = big_unitary_hash.nuhash(G).list()
+    	 {DUPLICATE ELSEWHERE?}
+    then () = for p in ucand_list
+    	      do if p.x = x and p.lambda = lambda
+		 then steve_hash_small.umatch(p.infinitesimal_character)
+		 fi
+	      od
+    then () = for p in nucand_list
+    	      do if p.x = x and p.lambda = lambda
+		 then steve_hash_small.numatch(p.infinitesimal_character)
+		 fi
+	      od
     then Q = ((ratvec,ratvec)->rat): (ratvec v, ratvec w) rat: 0/1
     then DiracBD = 0/1
     then () = if Dirac_flag
@@ -2598,12 +2784,70 @@ set test_Steve(KGBElt x, ratvec lambda, int HT, LocalVertexData Lvd, [[FaceVerts
     if #LFKH[0] = 0 then return LFKH fi;
     if fund_face_verbose then prints("start test_steve to height ",HT) fi;
     steve_hash_small.reset_with_ht_min(x,lambda,HT,false);
-    let start = elapsed_ms(), (rfnum, xlnum, htnum) = if steve_small_flag
+    let start = elapsed_ms(), G = x.real_form, (rfnum, xlnum, htnum) = if steve_small_flag
     	      		      	      	     	      then (0,0,0)
 						      else steve_hash.indices(x, lambda, HT)
 						      fi
 		{may need to adjust extra coords to reflect K-char to larger height}
     then local_extra_coord_flag = extra_coord_flag {and #LFKH[0][0] = 1}
+    then ucand_list = big_unitary_hash.uhash(G).list(), nucand_list = big_unitary_hash.nuhash(G).list()
+    	 {DUPLICATE ELSEWHERE?}
+    then () = for p in ucand_list
+    	      do if p.x = x and p.lambda = lambda
+		 then steve_hash_small.umatch(p.infinitesimal_character)
+		 fi
+	      od
+    then () = for p in nucand_list
+    	      do if p.x = x and p.lambda = lambda
+		 then steve_hash_small.numatch(p.infinitesimal_character)
+		 fi
+	      od
+    then Q = (ratvec,ratvec ->rat): (ratvec v, ratvec w) rat: 0/1
+    then DiracBD = 0/1
+    then temp_Dirac_best_flag = bool:
+	 if not (Dirac_best_flag and extra_coord_flag) then false
+	 else let mus = LKTs(parameter(x,lambda,0*lambda))
+	      then QG = invariant_form(G)
+	      then best_bounds = for mu in mus
+	      	   	       	 do let (taus,hs,bs) = truncate(best_Dirac_bound(mu),HT)
+				    in if #bs > 0
+				       then [(taus,hs,bs)]
+				       else []
+				       fi
+				  od.##
+	      then bestbd = if #best_bounds = 0
+	      	   	    then 0/1
+			    else min(for (,hs,bs) in best_bounds
+				do bs~[0]
+				od)
+			    fi
+	     {then () = prints("best_bounds = ",best_bounds)}
+	     then index = if bestbd.=
+	     	  	  then -1
+			  else first(for v in Lvd.list
+			       	     do @bool: QG(v,v) > bestbd
+				     od)
+			  fi
+	     in if index.>=
+		then DiracBD := bestbd; Q:=QG; true
+		else false
+		fi
+	 fi
+    then temp_Dirac_flag =
+    	 if Dirac_flag and not(temp_Dirac_best_flag) and
+    	 		       max(for mu in LKTs(parameter(x,lambda,0*lambda)) do tensor_p_hts(mu) od) <=HT
+	 then let bd = DiracBD(x,lambda)
+	      then QG = {Dirac_easy_hash.invt_form(G)} invariant_form(G)
+	      then index = first(for v in Lvd.list
+				 do @bool: QG(v,v) > bd
+				 od)
+	      in if index.>=
+		 then Q:=QG; DiracBD:=bd; true
+		 else false
+		 fi
+	  else false
+	  fi {these two flags best_Dirac and _Dirac are either FF, FT, or TF}
+    then extra = vec:[]
     in for LF@d in LFKH
     do let freq = max(#LF\10,1)
        then answerd =
@@ -2617,21 +2861,31 @@ set test_Steve(KGBElt x, ratvec lambda, int HT, LocalVertexData Lvd, [[FaceVerts
 		   prints(steve_hash_small.sigsL())
 	      fi;
 	      v:=v[:d+1];
-	      let gamma = face_bary(Lvd, v{[:d+1]})
-	      in if if steve_small_flag
-	      	    then steve_hash_small.postest(gamma)
-		    else steve_hash.partly_indexed_postest(rfnum, xlnum, htnum, gamma)
-		    fi
-       	      	 then let extra = if local_extra_coord_flag {pos test passes}
-	      	      	  	  then if steve_small_flag
-		      	   	       then steve_hash_small.extra_coord(gamma)
-			   	       else steve_hash.extra_coord(x,lambda,HT,gamma)
-				       fi
-				  else null(0)
-			   	  fi
-		       in [v##extra]
-	      	   else [] {pos test fails}
-		   fi
+	      let gamma = face_bary(Lvd, v)
+	      in if temp_Dirac_best_flag and Q(gamma,gamma) > DiracBD
+		     	  and (let () = extra:=Kchar_vec(x,lambda,HT,gamma)
+		     	       in not DiracBestTest(parameter(x,lambda,gamma),HT,Kpol_hash.index(extra[0])))
+		 then DBTcount +:=1;
+		      if steve_small_flag
+		      then steve_hash_small.numatch(gamma)
+		      fi;
+		      [] {DiracBest says nonunitary}
+		 elif temp_Dirac_flag and Q(gamma,gamma) > DiracBD
+		 then DTcount +:= 1;
+		      if steve_small_flag
+		      then steve_hash_small.numatch(gamma)
+		      fi;
+		      [] {Dirac says nonunitary}
+		 elif if #extra = 0 and extra_coord_flag
+		      then extra:=Kchar_vec(x,lambda,HT,gamma)
+		      fi;
+		      if steve_small_flag
+		      then steve_hash_small.postest_known_Kchar(gamma,extra)
+		      else steve_hash.partly_indexed_postest_known_Kchar(rfnum, xlnum, htnum, gamma,extra)
+		      fi
+       	      	 then [v##extra]
+	      	 else [] {pos test fails}
+		 fi
        	     od.##
 	then () = if fund_face_verbose
 	     	  then prints("old size = ",#LF,", new size = ",#answerd, ", vecHash size = ",

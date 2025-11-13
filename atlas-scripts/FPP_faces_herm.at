@@ -3139,7 +3139,7 @@ set localFD_1Dirac2\
     then () = for (m,n) in Perm2.trans do trans_hash.match([m,n]) od
     then Q = ((ratvec,ratvec)->rat): (ratvec v, ratvec w) rat: 0/1
     then DiracBD = 0/1
-    then () = if Dirac_flag
+    then () = if Dirac_local_flag
 	      then let bd = DiracBD(x,lambda)
 		   then QG = {Dirac_easy_hash.invt_form(G)} invariant_form(G)
 		   then index = first(for v in Lvd.list
@@ -3277,7 +3277,7 @@ set localFD_1Dirac2_by_zero\
     then () = for (m,n) in Perm2.trans do trans_hash.match([m,n]) od
     then Q = (ratvec,ratvec->rat): (ratvec v, ratvec w) rat: 0/1
     then DiracBD = 0/1, start = elapsed_ms()
-    then () = if Dirac_flag
+    then () = if Dirac_local_flag
 	      then let bd = DiracBD(x,lambda)
 		   then QG = {Dirac_easy_hash.invt_form(G)} invariant_form(G)
 		   then index = first(for v in Lvd.list
@@ -3488,7 +3488,7 @@ set localFD_1Dirac2_add_red(KGBElt x, ratvec lambda, int HT, LocalVertexData Lvd
     let G = x.real_form
     then Q = (ratvec,ratvec->rat): (ratvec v, ratvec w) rat: 0/1
     then DiracBD = 0/1
-    then () = if Dirac_flag
+    then () = if Dirac_local_flag
 	      then let bd = DiracBD(x,lambda)
 		   then QG = {Dirac_easy_hash.invt_form(G)} invariant_form(G)
 		   then index = first(for v in Lvd.list
@@ -3655,7 +3655,7 @@ set localFD_1Dirac2_by_zero_old\
     then () = for (m,n) in Perm2.trans do trans_hash.match([m,n]) od
     then Q = (ratvec,ratvec->rat): (ratvec v, ratvec w) rat: 0/1
     then DiracBD = 0/1
-    then () = if Dirac_flag
+    then () = if Dirac_local_flag
 	      then let bd = DiracBD(x,lambda)
 		   then QG = {Dirac_easy_hash.invt_form(G)} invariant_form(G)
 		   then index = first(for v in Lvd.list
@@ -3958,7 +3958,7 @@ set localFD_KHash_01 (KGBElt x, ratvec lambda, LocalVertexData Lvd, KTypePol_has
     then Q = (ratvec,ratvec->rat): (ratvec v, ratvec w) rat: 0/1
     then DiracBestBD = 0/1
     then temp_Dirac_best_flag = bool:
-	 if not Dirac_best_flag then false
+	 if not Dirac_best_local_flag then false
 	 else let mus = LKTs(parameter(x,lambda,0*lambda))
 	      then QG = {Dirac_easy_hash.invt_form(x.real_form)} invariant_form(x.real_form)
 	      then best_bounds = for mu in mus do best_Dirac_bound(mu) od
@@ -4040,7 +4040,7 @@ set localFD_KHash_01 (KGBElt x, ratvec lambda, LocalVertexData Lvd, int HT, KTyp
     then Q = (ratvec,ratvec ->rat): (ratvec v, ratvec w) rat: 0/1
     then DiracBestBD = 0/1
     then temp_Dirac_best_flag = bool:
-	 if not Dirac_best_flag then false
+	 if not Dirac_best_local_flag then false
 	 else let mus = LKTs(parameter(x,lambda,0*lambda))
 	      then QG = invariant_form(x.real_form)
 	      then best_bounds = for mu in mus
@@ -4156,7 +4156,7 @@ set localFD_KHash_01_graph (KGBElt x, ratvec lambda, LocalVertexData Lvd, KTypeP
     then Q = (ratvec,ratvec->rat): (ratvec v, ratvec w) rat: 0/1
     then DiracBestBD = 0/1
     then temp_Dirac_best_flag = bool:
-	 if not Dirac_best_flag then false
+	 if not Dirac_best_local_flag then false
 	 else let mus = LKTs(parameter(x,lambda,0*lambda))
 	      then QG = {Dirac_easy_hash.invt_form(x.real_form)} invariant_form(x.real_form)
 	      then best_bounds = for mu in mus do best_Dirac_bound(mu) od
@@ -4225,7 +4225,7 @@ set localFD_KHash_01_graph (KGBElt x, ratvec lambda, LocalVertexData Lvd, int HT
     then Q = (ratvec,ratvec->rat): (ratvec v, ratvec w) rat: 0/1
     then DiracBestBD = 0/1
     then temp_Dirac_best_flag = bool:
-	 if not Dirac_best_flag then false
+	 if not Dirac_best_local_flag then false
 	 else let mus = LKTs(parameter(x,lambda,0*lambda))
 	      then QG = invariant_form(x.real_form)
 	      then best_bounds = for mu in mus do truncate(best_Dirac_bound(mu),HT) od
