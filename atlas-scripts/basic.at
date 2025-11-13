@@ -394,13 +394,20 @@ set is_subset_of (vec L) = (vec->bool):
 set is_disjoint_from (vec L) = (vec->bool):
    let b = ~L.to_bitset in (vec S)bool: bitwise_subset(S.to_bitset,b)
 
+set first_set_bit (int n) = int: bit_length(AND_NOT(n-1,n))
+set unset_first_set_bit (int n) = int: AND(n,n-1)
 set set_bit_positions (int n) = vec:
    assert(@:n>=0,"Infinite number of set bits for negative number");
-   while let pow = AND_NOT(n,n-1) in !=pow do n-:=pow; bit_length(pow)-1 od
-set first_set_bit (int n) = int:
-   bit_length(AND_NOT(n,n-1))-1
-set without_first_set_bit (int n) = int: AND(n,n-1)
+   while n>0 do first_set_bit(n) next n AND:= n-1 od
+set set_bit_positions (int n,int limit) = vec:
+   n AND:= full_bitset(limit); while n>0 do first_set_bit(n) next n AND:= n-1 od
 
+set first_unset_bit (int n) = int: bit_length(AND_NOT(n,n+1))
+set set_first_unset_bit (int n) = int: OR(n,n+1)
+set unset_bit_positions (int n) = vec:
+   assert(@:n<0,"Infinite number of unset bits for positive number");
+   while n<-1 do first_unset_bit(n) next n OR:= n+1 od
+set unset_bit_positions (int n,int limit) = vec: set_bit_positions(~n,limit)
 
 set bitwise_intersection ([int] ns) = int:
    let a=-1 in for n in ns do a:=AND(a,n) od; a
