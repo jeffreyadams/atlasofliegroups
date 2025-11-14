@@ -461,7 +461,7 @@ set pos_tester_min(KGBElt x, ratvec lambda,int HT,ratvec gamma) = bool:
     let p = parameter(x,lambda,gamma), G = x.real_form
     then qs = monomials(1*p)
     in {prints("got to pos_tester_min at ",p);}
-       if not all(for q in qs do @bool: min_bottom_elim_factors(q,p) od)
+       if not all(for q in qs do @bool: min_bottom_elim_factors(q,p,HT) od)
        then {prints("got to pos_tester_min at ",p," and bottom worked!");}
        	    return false
        fi;
@@ -515,7 +515,7 @@ set pos_tester_known_Kchar_min(KGBElt x, ratvec lambda,int HT,ratvec gamma, vec 
     let p = parameter(x,lambda,gamma), G = x.real_form
     then qs = monomials(1*p)
     in {prints("got to pos_tester_known_Kchar_min");}
-       if not all(for q in qs do @bool: min_bottom_elim_factors(q,p) od)
+       if not all(for q in qs do @bool: min_bottom_elim_factors(q,p,HT) od)
        then {prints("got to pos_tester_known_Kchar_min at ",p," and bottom worked!");}
        	    return if extra_coord_flag
        	    	   then (false,KCv)
@@ -533,7 +533,7 @@ set pos_tester_Kchar_min(KGBElt x, ratvec lambda,int HT,ratvec gamma) =
     let p = parameter(x,lambda,gamma), G = x.real_form
     then qs = monomials(1*p)
     in {prints("got to pos_tester_Kchar_min at ",p,"...");}
-       if not all(for q in qs do @bool: min_bottom_elim_factors(q,p) od)
+       if not all(for q in qs do @bool: min_bottom_elim_factors(q,p,HT) od)
        then {prints("...and bottom worked!");}
        	    return if extra_coord_flag
        	    	   then (false,[Kpol_hash.match(K_type_pol(character_formula_to_height(1*p,HT))),#qs])
@@ -1403,18 +1403,23 @@ set make_steve_hash_small() = steve_hash_small_table:
     xSHS := x;
     lambdaSHS := lambda;
     let p0 = parameter(xSHS,lambdaSHS,0*lambdaSHS)
+    then (,p0L) = theta_stable_quasi_data(p0)
     then min_ht_max = max(for mu in LKTs(p0) do minBottomData.G_min_height(mu) od)
     in min_flag := (height(p0) > 0) and (min_ht_max > height(p0));
        min_height := min_ht_max;
     hts := [];
     rcor := red_coroots(x);
+    rcorL := red_coroots(p0L.x);
     vechashes := [];
     redpoints := [];
     statuses := [];
     vechashL.clear();
     statusesL := [];
     charvecs := [[]];
-    charvecsL:=[]
+    charvecsL:=[];
+    redpointsL := for list in red_points(p0L.x, p0L.lambda, -1)
+		  do to_bitset(list)
+		  od
   , ( -> vec): {heights} @vec:
     hts
   , (int -> int): {ht_index} (int HT) int:
@@ -1736,7 +1741,7 @@ set localFD_1SteveU\
 	else steve_hash.indices(x, lambda, HT)
 	fi
     then length = #(Lvd.list)
-    then freq = max(length\10,1)
+    then freq = max(length\20,1)
     then answer = [vec]:
     	 if steve_tilde_flag
 	 then for v@j in Lvd.list
@@ -2307,6 +2312,10 @@ set test_Steve(KGBElt x, ratvec lambda, int HT, LocalVertexData Lvd, [[FaceVerts
 set show_steve_flag = false
 
 set first_offset = int:0
+
+{now that steve_min_flag works with smaller H, don't need?}
+{set H1_min_factor = rat:2/1}
+
 {get verts, edges to hts[edge_offset] to feed one_level_end, with Kchar and #LQs}
 set localFD_Steve2(KGBElt x, ratvec lambda, LocalVertexData Lvd, PermOrderTwo Perm2) =
     ([[FaceVertsKHash]],int):
@@ -2328,7 +2337,7 @@ set localFD_Steve2(KGBElt x, ratvec lambda, LocalVertexData Lvd, PermOrderTwo Pe
     then min_ht_max = max(for mu in LKTs(p0) do minBottomData.G_min_height(mu) od)
     then H1 = if steve_min_flag and height(p0) > 0
     	      	 and x.number > (#KGB(x.real_form))/3 and min_ht_max > height(p0)
-		 and (min_ht_max+height(p0)) <= 2*(hts[edge_offset])
+		 {and (min_ht_max-height(p0)) <= H1_min_factor*(hts[edge_offset]-height(p0))}
     	      then min_ht_max
     	      else hts[edge_offset]
 	      fi
