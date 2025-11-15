@@ -180,7 +180,7 @@ set tensor_p = (KType -> [KType]):
 	   fi
 
 
-set tensor_p_hts = (KType -> int):
+set tensor_p_hts_old = (KType -> int):
     let Khash = make_KType_hash() {to hold all K-types studied}
     then tph = vec: [] {to hold answers}
     in (KType -> int): (KType tau):
@@ -254,6 +254,7 @@ set_type
    {possible improvements of Dirac over LKT, at most cap of them}
    , (KType -> ([KType], [int], [rat])) easy_best_Dirac_bound_inf
    {all possible improvements of Dirac over LKT}
+   , (KType->int) tensor_p_hts {maximum height of K-types in mu\otimes (g/k)}
    , ( -> (KType_hash,[ratvec],[rat], [[int]],[bool])) test
    , (KType -> (int,bool)) completion {how many steps up for best_Dirac are computed, and whether that's all}
 )
@@ -276,11 +277,14 @@ set make_Dirac_easy_hash() = Dirac_easy_hash_table:
 				  is meant to be an upper bd on ht(mu').}
    then muss = [[[int]]]:[] {for each G and mu, list of indices into muhash for
 			   easy_best_Dirac_bd}
+   {then Cartan_p_hts = [[int]]:[]} {for each G and mu, either -1 or max ht of Cartan pieces of
+   	   	for Cartan pieces of tensor_p(mu)}
+   then p_hwts = [[vec]]: [] {for each G, list of hwts of K0 on g/k} 
    then muDones = [[bool]]: [] {for each G, one bool for each mu, saying whether muss is
 			    as long as possible}
    then clear() = void:
-	real_form_hash.clear(); Qs:=[]; K0s := []; Ms := [];
-	Mrts := []; muhashes:=[]; muPRVs :=[]; DiracBDs :=[]; muss :=[]; muDones :=[]
+	real_form_hash.clear(); Qs:=[]; K0s := []; Ms := []; Mrts := []; muhashes:=[];
+	muPRVs :=[]; DiracBDs :=[]; muss :=[]; {Cartan_p_muss := [];} muDones :=[]
    then add_real_form(RealForm rf) = int:
    (	let I = real_form_hash.size()
 	then i = real_form_hash.match(rf)
@@ -298,10 +302,25 @@ set make_Dirac_easy_hash() = Dirac_easy_hash_table:
 		   ; DiracBDs #:= ([rat]:[])
 		   ; DiracBD_hts #:= ([int]:[])
 		   ; muss #:= ([[int]]:[])
+		   {; Cartan_p_hts #:= ([int]:[])}
+		   ; p_hwts #:= ((for beta in noncompact_posroots(KGB(rf,0))
+		     	    	do if is_dominant(K0s[i], Ms[i]*beta)
+				   then [beta]
+				   elif is_dominant(K0s[i], -Ms[i]*beta)
+				   then [-beta]
+				   else []
+				   fi
+				od.##)##
+				(for phi in complex_posroots(KGB(rf,0))
+				 do if is_dominant(K0s[i], Ms[i]*phi)
+				 then [phi]
+				 else []
+				 fi
+				 od.##)).no_reps
 		   ; muDones #:= ([bool]:[])
 		   ; assert(real_form_hash.size() = #Qs and
 			    #Qs = #muhashes and #Qs = #muPRVs and
-			    #Qs = #DiracBDs and #Qs = #muss and #Ms = #Qs and
+			    #Qs = #DiracBDs and #Qs = #muss {and #Cartan_p_hts = #Qs} and #Ms = #Qs and
 			    #Mrts = #Qs, "Dirac_easy_hash damaged")
 		   fi
 	in i
@@ -330,16 +349,31 @@ set make_Dirac_easy_hash() = Dirac_easy_hash_table:
 			    then (w,wt1) = from_dominant(G,wt0+rhoc) {wt1 is dominant, w*wt1 = wt0+rhoc}
 			    in dominant(G, Mrt*dominant(K0, M*(wt0 - inverse(w)*(rho - rhoc))) + rhoc)}
 			 then () = DiracBDs[rfnum] #:= Qs[rfnum](newmprv)
-			 then () = DiracBD_hts[rfnum] #:= tensor_p_hts(mu)
+			 then () = DiracBD_hts[rfnum] #:= -1 {tensor_p_hts(mu)}
 			 then () = muss[rfnum] #:= [ktypenum]
+			 {then () = Cartan_p_hts[rfnum] #:= -1}
 			 then () = muDones[rfnum] #:= false
 			 then () = assert(@: #DiracBDs[rfnum] = muhashes[rfnum].size()
 				      and #muPRVs[rfnum] = #DiracBDs[rfnum]
 				      and #DiracBD_hts[rfnum] = #DiracBDs[rfnum]
+				      {and #Cartan_p_hts[rfnum] = #DiracBDs[rfnum]}
 				      and #muss[rfnum] = #DiracBDs[rfnum], "Dirac_easy_hash damaged in akt")
 			 in ()
 		    fi
 	in (rfnum, ktypenum)
+      then tensor_hts(KType mu) = int:
+      let (rfnum,ktypenum) = add_K_type(mu)
+      then M = DiracBD_hts[rfnum][ktypenum]
+      in if M.<
+      	 then let G = real_form_hash.index(rfnum), cphtsrf = DiracBD_hts[rfnum]
+      	      then x0 = KGB(G,0)
+      	      then muwt = highest_weights(mu,x0)[0].mu
+      	      then taus = for v in p_hwts[rfnum] do K_type(((),x0,muwt+v)) od
+	      in M := max(for tau in taus do height(tau) od);
+	      	 cphtsrf[ktypenum] := M;
+	      	 DiracBD_hts[rfnum]:=cphtsrf
+	 fi;
+	 M
     then add_muss_cap(KType mu, int cap) = (int,int): {real form index, K type index}
 	 let (rfnum,ktypenum) = add_K_type(mu)
 	 {then () = prints("#K-types for rf is ",muhashes[rfnum].size(),", #muss = ",#muss[rfnum])}
@@ -532,7 +566,19 @@ set make_Dirac_easy_hash() = Dirac_easy_hash_table:
 		 od
      in (taus, if old_best_flag
      	       then for tau in taus do height(tau) od
-	       else for m in taunums do DiracBD_hts[rfnum][m] od
+	       else for tau@m in taus
+	       	    do let M = DiracBD_hts[rfnum][m]
+		       in if M.<
+		       	  then let G = real_form_hash.index(rfnum), cphtsrf = DiracBD_hts[rfnum]
+      	      		       then x0 = KGB(G,0)
+      	      		       then tauwt = highest_weights(tau,x0)[0].mu
+      	      		       then shifts = for v in p_hwts[rfnum] do K_type(((),x0,tauwt+v)) od
+	      		       in M := max(for sigma in shifts do height(sigma) od);
+	      		       	  cphtsrf[ktypenum] := M;
+	      	 	       	  DiracBD_hts[rfnum]:=cphtsrf
+			  fi;
+			  M
+		    od
 	       fi, for m in taunums do DiracBDs[rfnum][m] od)
    , ((KType,int) -> ([KType], [int], [rat])): {easy_best_Dirac_bound_cap}
 		  (KType mu, int cap) ([KType],[int],[rat]):
@@ -555,6 +601,20 @@ set make_Dirac_easy_hash() = Dirac_easy_hash_table:
      	       then for tau in taus do height(tau) od
 	       else for m in taunums do DiracBD_hts[rfnum][m] od
 	       fi, for m in taunums do DiracBDs[rfnum][m] od)
+    , (KType->int): {tensor_p_hts} (KType mu)int:
+      let (rfnum,ktypenum) = add_K_type(mu)
+      then M = DiracBD_hts[rfnum][ktypenum]
+      in if M.<
+      	 then let G = real_form_hash.index(rfnum), cphtsrf = DiracBD_hts[rfnum]
+      	      then x0 = KGB(G,0)
+      	      then muwt = highest_weights(mu,x0)[0].mu
+      	      	then taus = for v in p_hwts[rfnum] do K_type(((),x0,muwt+v)) od
+	      	in M := max(for tau in taus do height(tau) od);
+	      	   cphtsrf[ktypenum] := M;
+	      	   DiracBD_hts[rfnum]:=cphtsrf;
+      	      	 M
+	 fi;
+	 M
     , ( -> (KType_hash,[ratvec],[rat],[[int]],[bool])): {test} @(KType_hash,[ratvec],[rat],[[int]],[bool]):
       (muhashes[0],muPRVs[0],DiracBDs[0],muss[0],muDones[0])
     , (KType -> (int,bool)): {completion} (KType mu) (int, bool):
@@ -564,6 +624,8 @@ set make_Dirac_easy_hash() = Dirac_easy_hash_table:
 )
 
 set Dirac_easy_hash = make_Dirac_easy_hash()
+
+set tensor_p_hts(KType mu) = int: Dirac_easy_hash.tensor_p_hts(mu)
 
 {instead of running over all fundamental x's, just use one making hwt(mu) dominant}
 set easy_muPRV_remember(KType mu) = ratvec: {= (KType -> ratvec):}
