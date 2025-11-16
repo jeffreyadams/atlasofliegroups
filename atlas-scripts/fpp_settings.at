@@ -5,5 +5,8 @@ every_lambda_deets_flag := true
 every_KGB_flag:= true
 unip_flag:=false  {don't need to load unipotents, they are already in the hash}
 
-more_shift(50)
+more_shift(30)
 seat_belt_on:=false
+Dirac_flag:=false
+Dirac_best_flag:=false
+
