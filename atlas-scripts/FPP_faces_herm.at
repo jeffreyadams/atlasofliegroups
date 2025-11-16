@@ -16,6 +16,7 @@
 
 {lowest level (index in hts[]) to start testing}
 {1 gives small improvement over 2 in E6; haven't tested bigger G}
+{3 is slight improvement over 2 in E7}
 set edge_offset = int: 3
 
 {how much to increase index in hts[] for testing at various levels}
@@ -187,6 +188,7 @@ set_type
   , (RealForm -> ) writeG {output data for one group to file}
   , ((RealForm, int, int) -> ) writeGrange {output data for KGB(G)[low,high]}
   , ((KGBElt, ratvec) -> ) writexlam {output data for one x,lambda}
+{  , (([KGBElt,ratvec]) -> ) writexlams {output data for list of (x,lambda)}}
   , ((KGBElt, ratvec) -> string ) writexlam_no_G {output data for one x,lambda; wit-hout writing G}
   , (RealForm, [int] -> ) set_xl_sizes {set xl_sizes(RealForm)=[int]}
 )
@@ -1055,7 +1057,7 @@ some lambdas for that x might be finished.}
 		      else []
 		      fi
 		   od.##
-      then donemap = x_known[i]
+      then donemap = x_known[i] {bitmap of completed x for real form #i}
       then donerangemap = AND(donemap, 2^high - 2^low)
       then done_list = set_bit_positions(donerangemap)
 	   {these are the x's being written for which list is complete}
@@ -1673,13 +1675,14 @@ set is_unitary_to_ht_big_SIMPLE(Param p, int HT, int time) = bool:
 {false tries is_unitary intermittently}
 set old_to_ht_flag = true
 
-set avtime_frac = rat: 16/1
+set avtime_frac = rat: 1{16/1 changed 11/3/25}
 
 set is_unitary_to_ht_big_SIMPLE(Param p, int H) = bool:
     if old_to_ht_flag then return is_unitary_to_ht_big_SIMPLE_old(p, H) fi;
     if H < height(p) then return true fi;
     let N_hts = min(#tested_pos_to_ht_times, H - height(p))
-    then prevtimes = for j:N_hts do tested_pos_to_ht_times[j] od.##
+    then prevtimes = (for j:N_hts do tested_pos_to_ht_times[j] od
+    	 	   ##for j:N_hts do tested_neg_to_ht_times[j] od).##
     then () = if #prevtimes = 0
 	      then return is_unitary_to_ht_big_SIMPLE(p,H,floor(avtime_frac*100))
 	      fi
@@ -3203,14 +3206,14 @@ vertex "belongs" (either "is" or "is vertex of the edge")}
 3) tetrahedron in FPP, two pairs of verts exchanged by involution}
 set localFD_1Dirac2\
   ( KGBElt x, ratvec lambda, int HT, LocalVertexData Lvd, PermOrderTwo Perm2) = [[FaceVertsIndex]]:
-(   {if face_verbose
-    then prints(new_line,"start localFD_1Dirac")
-    fi;}
+(   if face_verbose
+    then prints(new_line,"start localFD_1Dirac2")
+    fi;
     let G = x.real_form, start = elapsed_ms(), trans_hash = make_vec_hash()
     then () = for (m,n) in Perm2.trans do trans_hash.match([m,n]) od
     then Q = ((ratvec,ratvec)->rat): (ratvec v, ratvec w) rat: 0/1
     then DiracBD = 0/1
-    then () = if Dirac_flag
+    then () = if Dirac_local_flag
 	      then let bd = DiracBD(x,lambda)
 		   then QG = {Dirac_easy_hash.invt_form(G)} invariant_form(G)
 		   then index = first(for v in Lvd.list
@@ -3235,6 +3238,10 @@ set localFD_1Dirac2\
 	       fi
 	  od.##
     {then () = prints("after LFO, time is ",print_time_string(elapsed_ms() - start))}
+    then () = if #LF0 <= 1
+    	      then FD12Time +:= elapsed_ms() - start;
+	      	   return [LF0,[]]
+	      fi
     then Llookup = is_member_sorted((for v in LF0 do v[0] od))
     then Edges = [vec]:
 	 let EdgesFixFix = [vec]:
@@ -3288,7 +3295,7 @@ set localFD_1Dirac2\
 			    od))
 		then [] {from now on p is pos_on_LKTs}
 		elif Q(nu,nu) > DiracBD
-		then DTcount +:=1; prints("GOT HERE!"); []
+		then DTcount +:=1; {prints("GOT HERE!");} []
 		elif red_count_flag
 		then [v#red_count(p,HT)]
 		else [v]
@@ -3344,7 +3351,7 @@ set localFD_1Dirac2_by_zero\
     then () = for (m,n) in Perm2.trans do trans_hash.match([m,n]) od
     then Q = (ratvec,ratvec->rat): (ratvec v, ratvec w) rat: 0/1
     then DiracBD = 0/1, start = elapsed_ms()
-    then () = if Dirac_flag
+    then () = if Dirac_local_flag
 	      then let bd = DiracBD(x,lambda)
 		   then QG = {Dirac_easy_hash.invt_form(G)} invariant_form(G)
 		   then index = first(for v in Lvd.list
@@ -3377,8 +3384,12 @@ set localFD_1Dirac2_by_zero\
     {then () = if time_verbose
 	      then prints("for LF0, time is ",print_time_string(elapsed_ms() - start))
 	      fi}
-    then () = if #LF0 = 0
+    {then () = if #LF0 = 0
 	      then return [[],[]]
+	      fi}
+    then () = if #LF0 <= 1
+    	      then FD12bzTime +:= elapsed_ms() - start;
+	      	   return [LF0,[]]
 	      fi
     then FixedList = [int]: for v in LF0
 			    do let j = v[0]
@@ -3551,7 +3562,7 @@ set localFD_1Dirac2_add_red(KGBElt x, ratvec lambda, int HT, LocalVertexData Lvd
     let G = x.real_form
     then Q = (ratvec,ratvec->rat): (ratvec v, ratvec w) rat: 0/1
     then DiracBD = 0/1
-    then () = if Dirac_flag
+    then () = if Dirac_local_flag
 	      then let bd = DiracBD(x,lambda)
 		   then QG = {Dirac_easy_hash.invt_form(G)} invariant_form(G)
 		   then index = first(for v in Lvd.list
@@ -3718,7 +3729,7 @@ set localFD_1Dirac2_by_zero_old\
     then () = for (m,n) in Perm2.trans do trans_hash.match([m,n]) od
     then Q = (ratvec,ratvec->rat): (ratvec v, ratvec w) rat: 0/1
     then DiracBD = 0/1
-    then () = if Dirac_flag
+    then () = if Dirac_local_flag
 	      then let bd = DiracBD(x,lambda)
 		   then QG = {Dirac_easy_hash.invt_form(G)} invariant_form(G)
 		   then index = first(for v in Lvd.list
@@ -4021,7 +4032,7 @@ set localFD_KHash_01 (KGBElt x, ratvec lambda, LocalVertexData Lvd, KTypePol_has
     then Q = (ratvec,ratvec->rat): (ratvec v, ratvec w) rat: 0/1
     then DiracBestBD = 0/1
     then temp_Dirac_best_flag = bool:
-	 if not Dirac_best_flag then false
+	 if not Dirac_best_local_flag then false
 	 else let mus = LKTs(parameter(x,lambda,0*lambda))
 	      then QG = {Dirac_easy_hash.invt_form(x.real_form)} invariant_form(x.real_form)
 	      then best_bounds = for mu in mus do best_Dirac_bound(mu) od
@@ -4103,13 +4114,22 @@ set localFD_KHash_01 (KGBElt x, ratvec lambda, LocalVertexData Lvd, int HT, KTyp
     then Q = (ratvec,ratvec ->rat): (ratvec v, ratvec w) rat: 0/1
     then DiracBestBD = 0/1
     then temp_Dirac_best_flag = bool:
-	 if not Dirac_best_flag then false
+	 if not Dirac_best_local_flag then false
 	 else let mus = LKTs(parameter(x,lambda,0*lambda))
 	      then QG = invariant_form(x.real_form)
-	      then best_bounds = for mu in mus do truncate(best_Dirac_bound(mu),HT) od
-	      then bestbd = min(for (,hs,bs) in best_bounds
+	      then best_bounds = for mu in mus
+	      	   	       	 do let (taus,hs,bs) = truncate(best_Dirac_bound(mu),HT)
+				    in if #bs > 0
+				       then [(taus,hs,bs)]
+				       else []
+				       fi
+				  od.##
+	      then bestbd = if #best_bounds = 0
+	      	   	    then 0/1
+			    else min(for (,hs,bs) in best_bounds
 				do bs~[0]
 				od)
+			    fi
 	     {then () = prints("best_bounds = ",best_bounds)}
 	     then index = first(for v in Lvd.list
 				do @bool: QG(v,v) > bestbd
@@ -4210,7 +4230,7 @@ set localFD_KHash_01_graph (KGBElt x, ratvec lambda, LocalVertexData Lvd, KTypeP
     then Q = (ratvec,ratvec->rat): (ratvec v, ratvec w) rat: 0/1
     then DiracBestBD = 0/1
     then temp_Dirac_best_flag = bool:
-	 if not Dirac_best_flag then false
+	 if not Dirac_best_local_flag then false
 	 else let mus = LKTs(parameter(x,lambda,0*lambda))
 	      then QG = {Dirac_easy_hash.invt_form(x.real_form)} invariant_form(x.real_form)
 	      then best_bounds = for mu in mus do best_Dirac_bound(mu) od
@@ -4279,7 +4299,7 @@ set localFD_KHash_01_graph (KGBElt x, ratvec lambda, LocalVertexData Lvd, int HT
     then Q = (ratvec,ratvec->rat): (ratvec v, ratvec w) rat: 0/1
     then DiracBestBD = 0/1
     then temp_Dirac_best_flag = bool:
-	 if not Dirac_best_flag then false
+	 if not Dirac_best_local_flag then false
 	 else let mus = LKTs(parameter(x,lambda,0*lambda))
 	      then QG = invariant_form(x.real_form)
 	      then best_bounds = for mu in mus do truncate(best_Dirac_bound(mu),HT) od

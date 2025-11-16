@@ -119,6 +119,80 @@ set shifters(KType tau) = ([vec],KGBElt):
 	   od.##
       in (ansu##ansl,x0G)
 
+{These are (more than) possible constituents of mu \otimes (g/k)}
+set tensor_p_old(KType tau) = [KType]:
+    let G = tau.real_form
+    then x0 = KGB(G,0)
+    then M = projection_to_K_matrix(G)
+    then Mrt = right_inverse(M)
+    then K0 = K_0(G)
+    then pos_p_roots = noncompact_posroots(x0)##complex_posroots(x0) {wts of g/k on K0}
+    then p_roots = pos_p_roots##(-pos_p_roots) #null(G.rank)
+    then tauwt = highest_weights(tau,x0)[0].mu
+    then cands = for v in p_roots
+    	       	 do let cand = M*(tauwt+v)
+		    in if is_dominant(K0,cand)
+		       then [cand]
+		       else []
+		    fi
+		 od.##.no_reps
+    in for cand in cands
+       do K_type(K_highest_weight_from_K0_weight(x0,cand))
+       od
+
+{These are (more than) possible constituents of mu \otimes (g/k)}
+set tensor_p = (KType -> [KType]):
+    let base_Khash = make_KType_hash()
+    	{to hold KType's considered}
+    then tensor_p_Khash = make_KType_hash() {to hold comps of tensor with p}
+    then tps = [vec]:[] {one vec for each K_type in base_Khash}
+    	       	     {entries are indices into tensor_p_KHash}
+    in (KType -> [KType]): (KType tau):
+       let J = base_Khash.size()
+       then j = base_Khash.match(tau)
+       in if j = J {this is a new tau}
+       	  then let G = tau.real_form
+       	       then x0 = KGB(G,0)
+       	       then M = projection_to_K_matrix(G)
+    	       then Mrt = right_inverse(M)
+    	       then K0 = K_0(G)
+    	       then pos_p_roots = noncompact_posroots(x0)##complex_posroots(x0)
+	       	    {wts of g/k on K0}
+    	       then p_roots = pos_p_roots##(-pos_p_roots) #null(G.rank)
+    	       then tauwt = highest_weights(tau,x0)[0].mu
+    	       then cands = for v in p_roots
+    	       	    	    do let cand = M*(tauwt+v)
+		    	       in if is_dominant(K0,cand)
+		       	       	  then [cand]
+		       		  else []
+		    		  fi
+		 	    od.##.no_reps
+    	       then ans = for cand in cands
+       	       	    	  do K_type(K_highest_weight_from_K0_weight(x0,cand))
+       			  od
+	       in tps #:= (vec: for tau1 in ans
+	       	      	  do tensor_p_Khash.match(tau1)
+			  od);
+		  ans
+	   else for i in tps[j]
+	   	do tensor_p_Khash.index(i)
+		od
+	   fi
+
+
+set tensor_p_hts_old = (KType -> int):
+    let Khash = make_KType_hash() {to hold all K-types studied}
+    then tph = vec: [] {to hold answers}
+    in (KType -> int): (KType tau):
+       let M = Khash.size()
+       then m = Khash.match(tau)
+       in if m = M {this is a new tau}
+       	  then let ans = max(for mu in tensor_p(tau) do height(mu) od)
+	       in tph#:= ans;
+	       	  ans
+	  else tph[m]
+	  fi
+
 set short_shifts_hash = make_KType_hash()
 
 {to get correct shifts for a standard rep p, use the the (non-final) K-type K_type(p.x, p.lambda_minus_rho)}
@@ -160,6 +234,9 @@ set short_shifts(KType mu) = [KType]:
 	       od
     in short_shifts_hash.list()
 
+{if true, don't worry about height bound in best_Dirac}
+set old_best_flag = false
+
 set_type
 [Dirac_easy_hash_table =
 (  ( -> int) real_form_size {number of real forms considered}
@@ -177,11 +254,13 @@ set_type
    {possible improvements of Dirac over LKT, at most cap of them}
    , (KType -> ([KType], [int], [rat])) easy_best_Dirac_bound_inf
    {all possible improvements of Dirac over LKT}
+   , (KType->int) tensor_p_hts {maximum height of K-types in mu\otimes (g/k)}
    , ( -> (KType_hash,[ratvec],[rat], [[int]],[bool])) test
    , (KType -> (int,bool)) completion {how many steps up for best_Dirac are computed, and whether that's all}
 )
 ]
-
+{KType mu -> highest_weights(mu,x0G)[0].mu
+highest wt wt --> K_type(K_highest_weight_from_K0_weight(x0G,M*wt))}
 
 set make_Dirac_easy_hash() = Dirac_easy_hash_table:
 (  let real_form_hash = make_RealForm_hash()
@@ -193,13 +272,19 @@ set make_Dirac_easy_hash() = Dirac_easy_hash_table:
    then muPRVs = [[ratvec]]:[] {for each G, list of one for each mu}
 			       {now made G-dominant; could keep list of K~ weights??}
    then DiracBDs = [[rat]]:[] {for each G, list of one for each mu}
+   then DiracBD_hts = [[int]]:[] {Same size as DiracBDs. Violation of Dirac at mu means form is
+   		       		  indefinite on some mu' so mu'\otimes (g/k) hits mu giving DiracBD. This
+				  is meant to be an upper bd on ht(mu').}
    then muss = [[[int]]]:[] {for each G and mu, list of indices into muhash for
 			   easy_best_Dirac_bd}
+   {then Cartan_p_hts = [[int]]:[]} {for each G and mu, either -1 or max ht of Cartan pieces of
+   	   	for Cartan pieces of tensor_p(mu)}
+   then p_hwts = [[vec]]: [] {for each G, list of hwts of K0 on g/k} 
    then muDones = [[bool]]: [] {for each G, one bool for each mu, saying whether muss is
 			    as long as possible}
    then clear() = void:
-	real_form_hash.clear(); Qs:=[]; K0s := []; Ms := [];
-	Mrts := []; muhashes:=[]; muPRVs :=[]; DiracBDs :=[]; muss :=[]; muDones :=[]
+	real_form_hash.clear(); Qs:=[]; K0s := []; Ms := []; Mrts := []; muhashes:=[];
+	muPRVs :=[]; DiracBDs :=[]; muss :=[]; {Cartan_p_muss := [];} muDones :=[]
    then add_real_form(RealForm rf) = int:
    (	let I = real_form_hash.size()
 	then i = real_form_hash.match(rf)
@@ -215,11 +300,27 @@ set make_Dirac_easy_hash() = Dirac_easy_hash_table:
 		   ; muhashes #:=make_KType_hash()
 		   ; muPRVs #:= ([ratvec]: [])
 		   ; DiracBDs #:= ([rat]:[])
+		   ; DiracBD_hts #:= ([int]:[])
 		   ; muss #:= ([[int]]:[])
+		   {; Cartan_p_hts #:= ([int]:[])}
+		   ; p_hwts #:= ((for beta in noncompact_posroots(KGB(rf,0))
+		     	    	do if is_dominant(K0s[i], Ms[i]*beta)
+				   then [beta]
+				   elif is_dominant(K0s[i], -Ms[i]*beta)
+				   then [-beta]
+				   else []
+				   fi
+				od.##)##
+				(for phi in complex_posroots(KGB(rf,0))
+				 do if is_dominant(K0s[i], Ms[i]*phi)
+				 then [phi]
+				 else []
+				 fi
+				 od.##)).no_reps
 		   ; muDones #:= ([bool]:[])
 		   ; assert(real_form_hash.size() = #Qs and
 			    #Qs = #muhashes and #Qs = #muPRVs and
-			    #Qs = #DiracBDs and #Qs = #muss and #Ms = #Qs and
+			    #Qs = #DiracBDs and #Qs = #muss {and #Cartan_p_hts = #Qs} and #Ms = #Qs and
 			    #Mrts = #Qs, "Dirac_easy_hash damaged")
 		   fi
 	in i
@@ -232,26 +333,47 @@ set make_Dirac_easy_hash() = Dirac_easy_hash_table:
 		   then let newmprv = ratvec:
 			    let G = real_form_hash.index(rfnum)
 			    then x0 = KGB(G,0)
-			    then wt0 = highest_weights(mu)[0].mu, rhoc = rho_c(x0), rho = G.rho
-			    {DANGER: this wt0 need not be delta-fixed!}
+			    then wt0 = highest_weights(mu,x0)[0].mu, rhoc = rho_c(x0), rho = G.rho
+			    {DANGER: this wt0 need not be delta-fixed! M*wt0 is K0 hwt of mu}
 			    then M = Ms[rfnum], Mrt = Mrts[rfnum], K0 = K0s[rfnum]
 			    then (w,wt1) = from_dominant(G,Mrt*M*wt0+rhoc)
 				 {wt1 is dominant, w*wt1 = wt0+rhoc}
-			    in dominant(G, Mrt*dominant(K0, M*(wt0 - w*rho + rhoc)) + rhoc)
+			    then wt_tilde = Mrt*dominant(K0, M*(wt0 - w*rho + rhoc))
+			    {the K~ rep relevant to Dirac.}
+			    in dominant(G, wt_tilde + rhoc)
+			       		   {OLD FORMULA; IRRELEVANT}{dominant(K0, M*(wt0 - w*rho + rhoc))}
+			{then wt1 = wt_tilde + w*(rho-rhoc)}
 			then() = muPRVs[rfnum] #:= newmprv
 			    {let x0 = KGB(G,0)
 			    then wt0 = highest_weights(mu,x0)[0].mu, rhoc = rho_c(x0), rho = G.rho
 			    then (w,wt1) = from_dominant(G,wt0+rhoc) {wt1 is dominant, w*wt1 = wt0+rhoc}
 			    in dominant(G, Mrt*dominant(K0, M*(wt0 - inverse(w)*(rho - rhoc))) + rhoc)}
 			 then () = DiracBDs[rfnum] #:= Qs[rfnum](newmprv)
+			 then () = DiracBD_hts[rfnum] #:= -1 {tensor_p_hts(mu)}
 			 then () = muss[rfnum] #:= [ktypenum]
+			 {then () = Cartan_p_hts[rfnum] #:= -1}
 			 then () = muDones[rfnum] #:= false
-			 then () = assert(#DiracBDs[rfnum] = muhashes[rfnum].size()
+			 then () = assert(@: #DiracBDs[rfnum] = muhashes[rfnum].size()
 				      and #muPRVs[rfnum] = #DiracBDs[rfnum]
+				      and #DiracBD_hts[rfnum] = #DiracBDs[rfnum]
+				      {and #Cartan_p_hts[rfnum] = #DiracBDs[rfnum]}
 				      and #muss[rfnum] = #DiracBDs[rfnum], "Dirac_easy_hash damaged in akt")
 			 in ()
 		    fi
 	in (rfnum, ktypenum)
+      then tensor_hts(KType mu) = int:
+      let (rfnum,ktypenum) = add_K_type(mu)
+      then M = DiracBD_hts[rfnum][ktypenum]
+      in if M.<
+      	 then let G = real_form_hash.index(rfnum), cphtsrf = DiracBD_hts[rfnum]
+      	      then x0 = KGB(G,0)
+      	      then muwt = highest_weights(mu,x0)[0].mu
+      	      then taus = for v in p_hwts[rfnum] do K_type(((),x0,muwt+v)) od
+	      in M := max(for tau in taus do height(tau) od);
+	      	 cphtsrf[ktypenum] := M;
+	      	 DiracBD_hts[rfnum]:=cphtsrf
+	 fi;
+	 M
     then add_muss_cap(KType mu, int cap) = (int,int): {real form index, K type index}
 	 let (rfnum,ktypenum) = add_K_type(mu)
 	 {then () = prints("#K-types for rf is ",muhashes[rfnum].size(),", #muss = ",#muss[rfnum])}
@@ -442,7 +564,22 @@ set make_Dirac_easy_hash() = Dirac_easy_hash_table:
      then taus = for m in taunums
 		 do muhashes[rfnum].index(m)
 		 od
-     in (taus, for tau in taus do height(tau) od, for m in taunums do DiracBDs[rfnum][m] od)
+     in (taus, if old_best_flag
+     	       then for tau in taus do height(tau) od
+	       else for tau@m in taus
+	       	    do let M = DiracBD_hts[rfnum][m]
+		       in if M.<
+		       	  then let G = real_form_hash.index(rfnum), cphtsrf = DiracBD_hts[rfnum]
+      	      		       then x0 = KGB(G,0)
+      	      		       then tauwt = highest_weights(tau,x0)[0].mu
+      	      		       then shifts = for v in p_hwts[rfnum] do K_type(((),x0,tauwt+v)) od
+	      		       in M := max(for sigma in shifts do height(sigma) od);
+	      		       	  cphtsrf[ktypenum] := M;
+	      	 	       	  DiracBD_hts[rfnum]:=cphtsrf
+			  fi;
+			  M
+		    od
+	       fi, for m in taunums do DiracBDs[rfnum][m] od)
    , ((KType,int) -> ([KType], [int], [rat])): {easy_best_Dirac_bound_cap}
 		  (KType mu, int cap) ([KType],[int],[rat]):
      let (rfnum,ktypenum) = add_muss_cap(mu, cap)
@@ -450,14 +587,34 @@ set make_Dirac_easy_hash() = Dirac_easy_hash_table:
      then taus = for m in taunums
 		 do muhashes[rfnum].index(m)
 		 od
-     in (taus, for tau in taus do height(tau) od, for m in taunums do DiracBDs[rfnum][m] od)
+     in (taus, if old_best_flag
+     	       then for tau in taus do height(tau) od
+	       else for m in taunums do DiracBD_hts[rfnum][m] od
+	       fi, for m in taunums do DiracBDs[rfnum][m] od)
    , (KType -> ([KType], [int], [rat])): {easy_best_Dirac_bound_inf} (KType mu) ([KType],[int],[rat]):
      let (rfnum,ktypenum) = add_muss(mu)
      then taunums = muss[rfnum][ktypenum]
      then taus = for m in taunums
 		 do muhashes[rfnum].index(m)
 		 od
-     in (taus, for tau in taus do height(tau) od, for m in taunums do DiracBDs[rfnum][m] od)
+     in (taus, if old_best_flag
+     	       then for tau in taus do height(tau) od
+	       else for m in taunums do DiracBD_hts[rfnum][m] od
+	       fi, for m in taunums do DiracBDs[rfnum][m] od)
+    , (KType->int): {tensor_p_hts} (KType mu)int:
+      let (rfnum,ktypenum) = add_K_type(mu)
+      then M = DiracBD_hts[rfnum][ktypenum]
+      in if M.<
+      	 then let G = real_form_hash.index(rfnum), cphtsrf = DiracBD_hts[rfnum]
+      	      then x0 = KGB(G,0)
+      	      then muwt = highest_weights(mu,x0)[0].mu
+      	      	then taus = for v in p_hwts[rfnum] do K_type(((),x0,muwt+v)) od
+	      	in M := max(for tau in taus do height(tau) od);
+	      	   cphtsrf[ktypenum] := M;
+	      	   DiracBD_hts[rfnum]:=cphtsrf;
+      	      	 M
+	 fi;
+	 M
     , ( -> (KType_hash,[ratvec],[rat],[[int]],[bool])): {test} @(KType_hash,[ratvec],[rat],[[int]],[bool]):
       (muhashes[0],muPRVs[0],DiracBDs[0],muss[0],muDones[0])
     , (KType -> (int,bool)): {completion} (KType mu) (int, bool):
@@ -467,6 +624,8 @@ set make_Dirac_easy_hash() = Dirac_easy_hash_table:
 )
 
 set Dirac_easy_hash = make_Dirac_easy_hash()
+
+set tensor_p_hts(KType mu) = int: Dirac_easy_hash.tensor_p_hts(mu)
 
 {instead of running over all fundamental x's, just use one making hwt(mu) dominant}
 set easy_muPRV_remember(KType mu) = ratvec: {= (KType -> ratvec):}

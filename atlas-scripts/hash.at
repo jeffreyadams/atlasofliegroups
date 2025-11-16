@@ -43,6 +43,7 @@ set triv_hash_info =  HashInfo<int>: { make |int| into a "hashable" type }
 set_type Hash<T> =
   ( (   -> int) size
   , (   -> int) capacity
+  , (int->    ) grow {enlarge the capacity to make room for int new entries}
   , ([T]->    ) fill
   , (   ->    ) clear
   , (   -> [T]) list
@@ -55,12 +56,11 @@ set_type Hash<T> =
 
 { And here is the implementation, in the form of the |make_hash| constructor }
 any_type T begin
-set make_hash (HashInfo<T> (hash_code,eq)) = Hash<T>:
-   let !empty=minus_1, values = [T]:[]
-   then seq_nbrs = [empty,empty]
-   then max_fill() = 2*#seq_nbrs\3
-   then clear() = void: seq_nbrs := [empty,empty]; values:=[]
-   , locate(T x) = (int,bool):
+set make_hash (HashInfo<T> (hash_code,eq), int N, [T] data) = Hash<T>:
+   let !empty=minus_1, values = ([T]:[])
+   then N2 = exp_2(bit_length((3*N)\2))
+   then seq_nbrs = for j:max(2, N2) do empty od{[empty,empty]}
+   then locate(T x) = (int,bool):
      let  capacity=#seq_nbrs
      then code = hash_code(x,capacity)
      then i=seq_nbrs[code]
@@ -69,8 +69,37 @@ set make_hash (HashInfo<T> (hash_code,eq)) = Hash<T>:
 	; i:=seq_nbrs[code]
         od
      ; (code,i=empty) { slot in |seq_nbrs|, and whether it is new }
-   then rehash() = void:
-     begin seq_nbrs := for j:2*#seq_nbrs do empty od
+   then () = for d@i in data
+	do let (code,new) = locate(d)
+	in if new then seq_nbrs[code] := i; values #:= d
+	   fi
+	od
+   then max_fill() = 2*#seq_nbrs\3
+   then clear() = void: seq_nbrs := [empty,empty]; values:=[]
+   {, locate(T x) = (int,bool):
+     let  capacity=#seq_nbrs
+     then code = hash_code(x,capacity)
+     then i=seq_nbrs[code]
+     in while not (i=empty or eq(values[i],x))
+        do if (code+:=1)=capacity then code:=0 fi
+	; i:=seq_nbrs[code]
+        od
+     ; (code,i=empty) { slot in |seq_nbrs|, and whether it is new }}
+   then grow(int N) = void:
+   	let N2 = exp_2(bit_length((3*(N+#values)\2))) {proposed new capacity}
+     	in if N2 > #seq_nbrs
+	      then seq_nbrs:= for j:N2 do empty od;
+	      	   for v@i in values
+	      	   do let (code,new) = locate(v)
+		      in if new
+		      	 then seq_nbrs[code] := i
+	   	      	 else error("value ",v.to_string," at positions ",seq_nbrs[code]
+		     	   		     ," and ",i," while growing")
+	   	    	 fi
+	       	   od
+	       fi
+   then rehash() = void: grow(0)
+{    begin seq_nbrs := for j:2*#seq_nbrs do empty od
      ;  for v@i in values
 	do let (code,new) = locate(v)
 	in if new then seq_nbrs[code] := i
@@ -79,6 +108,7 @@ set make_hash (HashInfo<T> (hash_code,eq)) = Hash<T>:
 	   fi
 	od
      end
+}
    then acquire(T x) = (bool,int):
       let (code,new) = locate(x), seq=#values in
       ( new
@@ -95,8 +125,9 @@ set make_hash (HashInfo<T> (hash_code,eq)) = Hash<T>:
       )
 in ( { (   -> int) size     } @: #values
    , { (   -> int) capacity } @: #seq_nbrs
+   , { (int->    ) grow     } (int N): grow(N)
    , { ([T]->    ) fill	    }
-     ([T] list)void: for item in list do acquire(item) od
+     ([T] list)void: grow(#list); for item in list do acquire(item) od
    , { (   ->    ) clear    } clear
    , { (   -> [T]) list	    } @[T]: values
    , { (int->T   ) index    } (int i)T: values[i]
@@ -124,7 +155,11 @@ in while
         ; for act in actions do hash.match(act(x)) od
       esac
    od
+set make_hash (HashInfo<T> hinf) = Hash<T>: make_hash(hinf, 0, ([T]:[]))
+set make_hash (HashInfo<T> hinf, [T] data) = Hash<T>: make_hash(hinf, #data, data)
+set make_hash (HashInfo<T> hinf, int N) = Hash<T>: make_hash(hinf, N, ([T]:[]))
 end { of abstraction of type |T| }
+
 
 { fast polynomial evaluation modulo power of 2, similar to polynomial |eval| }
 set eval_at_mod(int n, int m) = (vec->int):
@@ -143,9 +178,19 @@ set hash_code (ratvec v, int mod) = int: let(n,d)=%v in hash_code(n#d,mod)
 
 
 set make_vec_hash () = Hash<vec>: make_hash(hash_code@(vec,int),=@(vec,vec))
+set make_vec_hash ([vec] data) = Hash<vec>: make_hash((hash_code@(vec,int),=@(vec,vec)), data)
+set make_vec_hash (int N) = Hash<vec>: make_hash((hash_code@(vec,int),=@(vec,vec)),N)
+
 set make_mat_hash () = Hash<mat>: make_hash(hash_code@(mat,int),=@(mat,mat))
+set make_mat_hash ([mat] data) = Hash<mat>: make_hash((hash_code@(mat,int),=@(mat,mat)), data)
+set make_mat_hash (int N) = Hash<mat>: make_hash((hash_code@(mat,int),=@(mat,mat)),N)
+
 set make_ratvec_hash () = Hash<ratvec>:
    make_hash(hash_code@(ratvec,int),=@(ratvec,ratvec))
+set make_ratvec_hash ([ratvec] data) = Hash<ratvec>:
+   make_hash((hash_code@(ratvec,int),=@(ratvec,ratvec)), data)
+set make_ratvec_hash (int N) = Hash<ratvec>:
+   make_hash((hash_code@(ratvec,int),=@(ratvec,ratvec)),N)
 
 {meant to hash KTypes for single group G}
 set hash_code (KType p, int mod) = int:
@@ -153,9 +198,8 @@ set hash_code (KType p, int mod) = int:
 
 {meant to hash Params for single group G}
 set hash_code (Param p, int mod) = int:
-{   let (x,lr,nu) = %p then (nun,nud) = %nu}
-   let (x,lr,) = %p then (nun,nud) = %(p.nu)
-   in hash_code(vec: (#x) # lr ## (nun#nud), mod)
+   let (x,lr,gamma) = %p then (gamman,gammad) = %gamma
+   in hash_code(vec: (#x) # lr ## (gamman#gammad), mod)
 
 {meant to hash a [KTypePol]}
 set to_vecs (KTypePol P) = [vec]:
