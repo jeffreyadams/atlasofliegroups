@@ -172,7 +172,6 @@ def atlas_compute(job_number,round,start_counter,proc,log,data):
          'print_big_B_flag',
          'print_int_flag',
          'proj_hash_flag',
-         'Qs2B_flag',
          'Qs2_flag',
          'quick_flag',
          'quitNIH_flag',
@@ -606,7 +605,7 @@ def main(argv):
          j=n-i-1
       else:
          j=i
-      xl_pairs_queue.put(j)
+      xl_pairs_queue.put(entries[j])
    main_log.write("done creating xl_pairs_queue, of size "  + str(xl_pairs_queue.qsize()) + "\n")
    #launch free.py (monitoring processes)
    main_log.write("running free.py\n")
