@@ -312,8 +312,10 @@ set write_twisted_deformation_hash(RealForm G) = void:
 	     ")")
        od
 {whether to use these hash tables. "False" saves quite a bit of memory
-(about 10% in F4_s) with very little speed cost (less than 1% in F4_s)}
-set deformed_hash_flag = false
+(about 10% in F4_s) with very little speed cost (less than 1% in
+F4_s)}
+{TRUE should help interrupted to_ht}
+set deformed_hash_flag = true
 
 set deformedHash = make_deformation_hash_to_ht()
 set twistedDeformedHash = make_twisted_deformation_hash()

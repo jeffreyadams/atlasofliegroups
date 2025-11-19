@@ -1526,6 +1526,12 @@ set u_to_ht_clear() = void:
     u_to_ht_hash.clear();
     u_to_ht_hts := ([int]: [])
 
+set is_known_u_to_ht(Param p, int HT) = bool:
+    let j = u_to_ht_hash.lookup(p)
+    in if j.<
+       then false
+       else u_to_ht_hts[j] >= HT
+       fi
 {assume p is hermitian}
 set hermitian_form_irreducible_to_ht_big_SIMPLE(Param p,int HT) = KTypePol:
   let G = p.real_form
@@ -1580,22 +1586,22 @@ set is_unitary_to_ht_big_SIMPLE_interrupt(Param p, int HT, int time) = int: {1 m
   then () = if j.>= and u_to_ht_hts[j] >= HT
 	    then return 1
 	    fi
-  in if low(p,HT)
-     then is_unitary_to_ht_MvL (p, HT, time)
-     else to_ht(hermitian_form_irreducible(p,time),HT).is_pure
-     fi
+  in {if low(p,HT) {small HT, to_ht may be faster}
+     then} is_unitary_to_ht_MvL (p, HT, time)
+     {else to_ht(hermitian_form_irreducible(p,time),HT).is_pure
+     fi}
 
 
-{if low(p,HT) suggests it's worthwhile (FALSE) try is_unitary with time limit time}
+{if low(p,HT) suggests it's worthwhile (false; big HT) try is_unitary with time limit time}
 set is_unitary_to_ht_big_SIMPLE(Param p, int HT, int time) = bool:
     if HT.< then return is_unitary_hash_big_SIMPLE(p) fi;
-    if low(p,HT)
-    then is_unitary_to_ht_big_SIMPLE_old(p, HT)
-    else let ans = hermitian_form_irreducible(p,time) {maybe_KTP}
+    if not low(p,HT)
+    then let ans = hermitian_form_irreducible(p,time) {maybe_KTP}
     	 in case ans
 	    | timed_out: is_unitary_to_ht_big_SIMPLE_old(p, HT)
 	    | done(r): is_pure(to_ht(r,HT))
 	    esac
+    else is_unitary_to_ht_big_SIMPLE_old(p, HT)
      fi
 
 {false tries is_unitary intermittently}
@@ -2036,6 +2042,249 @@ set is_unitary_test_big_SIMPLE_interrupted(Param p, int time) = int:
       then big_unitary_hash.numatch(p)
       fi;
       result
+{use is_unitary_to_ht_big_SIMPLE instead of interrupted version}
+set old_testing_flag = false
+
+set is_unitary_to_ht_big_SIMPLE_interrupt_Ufirst(Param p, int HT) = bool:
+  if old_testing_flag then return is_unitary_to_ht_big_SIMPLE(p,HT) fi;
+  if (not is_hermitian(p)) then return false fi;
+  if not (fewer_reducible_unitary_flag or is_pos_on_LKTs(p)) then return false fi;
+  let G = p.real_form {, (LAM,NU,GAM) = low(p)}
+  then FPP_flag = is_FPP(G,p.infinitesimal_character)
+  then () = if not FPP_flag
+	    then return is_unitary_to_ht(p,HT) {prints("FPP DANGER TO HT at ",p)}
+	    fi
+  then () = p := herm_center(p)
+  then () = if (big_unitary_hash.ulookup(p)).>=
+	    then return true
+	    elif (big_unitary_hash.nu_height_lookup_bool(p,HT))
+	    then return false
+	    elif is_known_u_to_ht(p,HT)
+	    then return true
+	    fi
+  then result = 0
+  then to_ht_time = int: interrupt_base_time,
+       u_time = int: interrupt_base_time, test_time = int:0
+  then u_factor = if low(p,HT)
+       		  then 1
+		  else 2
+		  fi
+  then () = while result = 0
+       	    do let start_u = elapsed_ms()
+	       then form = hermitian_form_irreducible(p,u_time)
+	       then () = result := is_pure(to_ht(form,HT));
+		       	 test_time:= elapsed_ms() - start_u;
+	       		 if test_interrupt_verbose
+		       	 then prints("result ",result," from is_unitary, in time ",
+				      	 print_time_string(test_time))
+			 fi
+	       then () = if result.!=
+	       	       	 then if is_pure(form).>
+			      then big_unitary_hash.umatch(p)
+			      else big_unitary_hash.numatch(p)
+			      fi;
+			      if result.<
+			      then big_unitary_hash.numatch_height(p,HT)
+			      else add_to_u_to_ht(p,HT)
+			      fi;
+			      break
+			 fi
+	       then start_to_ht = elapsed_ms()
+	       then () = result := is_unitary_to_ht_big_SIMPLE_interrupt(p,HT,to_ht_time)
+	       then () = test_time:=elapsed_ms() - start_to_ht
+	       then () = if test_interrupt_verbose
+	       	       	 then prints("result ", result, " from to_ht ",HT,", in time ",
+			      print_time_string(test_time))
+			 fi
+	       then () = if result.= {no result from to_ht}
+			 then to_ht_time*:=2;
+			      u_time*:=u_factor{in case didn't finish}
+			 fi
+	       {then () = if test_time > 10000 and test_verbose
+	       	       	 then prints("height ",ht," of SIMPLE_interrupt took ",
+			      		     print_time_string(test_time))
+			 fi}
+	       in if result = -1
+	       	  then big_unitary_hash.numatch_height(p,HT)
+		  elif result = 1
+		  then add_to_u_to_ht(p,HT)
+		  fi
+	    od
+   in if result > 0
+      then true
+      elif result < 0
+      then false
+      else is_unitary_to_ht_big_SIMPLE(p,HT) {shouldn't come to here}
+      fi
+
+set is_unitary_to_ht_big_SIMPLE_interrupt_TOHTfirst(Param p, int HT) = bool:
+  if old_testing_flag then return is_unitary_to_ht_big_SIMPLE(p,HT) fi;
+  if (not is_hermitian(p)) then return false fi;
+  if not (fewer_reducible_unitary_flag or is_pos_on_LKTs(p)) then return false fi;
+  let G = p.real_form {, (LAM,NU,GAM) = low(p)}
+  then FPP_flag = is_FPP(G,p.infinitesimal_character)
+  then () = if not FPP_flag
+	    then return is_unitary_to_ht(p,HT) {prints("FPP DANGER TO HT at ",p)}
+	    fi
+  then () = p := herm_center(p)
+  then () = if (big_unitary_hash.ulookup(p)).>=
+	    then return true
+	    elif (big_unitary_hash.nu_height_lookup_bool(p,HT))
+	    then return false
+	    elif is_known_u_to_ht(p,HT)
+	    then return true
+	    fi
+  then result = 0
+  then to_ht_time = int: interrupt_base_time,
+       u_time = int: interrupt_base_time, test_time = int:0
+  then u_factor = if low(p,HT)
+       		  then 1
+		  else 2
+		  fi
+  then () = while result = 0
+       	    do let start_to_ht = elapsed_ms()
+	       then () = result :=
+	       	    is_unitary_to_ht_big_SIMPLE_interrupt(p,HT,to_ht_time)
+	       then () = test_time:=elapsed_ms() - start_to_ht
+	       then () = if test_interrupt_verbose
+	       	       	 then prints("result ", result, " from to_ht ",HT,", in time ",
+			      print_time_string(test_time))
+			 fi
+	       then () = if result.!=
+	       	       	 then break
+	       		 else {no result from to_ht}
+			      to_ht_time*:=2;
+			      u_time*:=u_factor
+			 fi
+	       {then () = if test_time > 10000 and test_verbose
+	       	       	 then prints("height ",ht," of SIMPLE_interrupt took ",
+			      		     print_time_string(test_time))
+			 fi}
+	       then start_u = elapsed_ms()
+	       then form = hermitian_form_irreducible(p,u_time)
+	       then () = result := is_pure(to_ht(form,HT));
+		       	 test_time:= elapsed_ms() - start_u;
+	       		 if test_interrupt_verbose
+		       	 then prints("result ",result," from is_unitary, in time ",
+				      	 print_time_string(test_time))
+			 fi
+	       then () = if result.!=
+	       	       	 then if is_pure(form).>
+			      then big_unitary_hash.umatch(p)
+			      else big_unitary_hash.numatch(p)
+			      fi;
+			      if result.<
+			      then big_unitary_hash.numatch_height(p,HT)
+			      else add_to_u_to_ht(p,HT)
+			      fi
+			 fi
+	       {then () = if test_time > 10000 and test_verbose
+	       	       	 then prints("height ",ht," of SIMPLE_interrupt took ",
+			      		     print_time_string(test_time))
+			 fi}
+	       in if result = -1
+	       	  then big_unitary_hash.numatch_height(p,HT)
+		  elif result = 1
+		  then add_to_u_to_ht(p,HT)
+		  fi
+	    od
+   in if result > 0
+      then true
+      elif result < 0
+      then false
+      else is_unitary_to_ht_big_SIMPLE(p,HT) {shouldn't come to here}
+      fi
+
+set is_unitary_to_hts_big_SIMPLE_interrupt_TOHTfirst(Param p, [int] HTs) = bool:
+  if old_testing_flag then return is_unitary_to_hts{_big_SIMPLE}(p,HTs) fi; {should reorder to use big_simple}
+  if #HTs = 1 then return is_unitary_to_ht_big_SIMPLE_interrupt_TOHTfirst(p, HTs[0]) fi;
+  if (not is_hermitian(p)) then return false fi;
+  if not (fewer_reducible_unitary_flag or is_pos_on_LKTs(p)) then return false fi;
+  let G = p.real_form {, (LAM,NU,GAM) = low(p)}
+  then FPP_flag = is_FPP(G,p.infinitesimal_character)
+  then () = if not FPP_flag
+	    then return is_unitary_to_hts(p,HTs) {prints("FPP DANGER TO HTs at ",p)}
+	    fi
+  then () = p := herm_center(p)
+  then () = if (big_unitary_hash.ulookup(p)).>=
+	    then return true
+	    elif (big_unitary_hash.nu_height_lookup_bool(p,HTs~[0]))
+	    then return false
+	    elif is_known_u_to_ht(p,HTs~[0])
+	    then return true
+	    fi
+  then result = 0, HTfirst = HTs[0], HTlast = HTs~[0]
+  then to_ht_time = int: interrupt_base_time,
+       u_time = int: interrupt_base_time, test_time = int:0
+  then u_factor = if low(p,HTlast)
+       		  then 1
+		  else 2
+		  fi
+  then level = 0, HT = HTfirst
+  then () = while (result = 0) or (result = 1 and HT < HTlast)
+       	    do let start_to_ht = elapsed_ms()
+	       then () = result :=
+	       	    is_unitary_to_ht_big_SIMPLE_interrupt(p,HT,to_ht_time)
+	       then () = test_time:=elapsed_ms() - start_to_ht
+	       then () = if test_interrupt_verbose
+	       	       	 then prints("result ", result, " from to_ht ",HT,", in time ",
+			      print_time_string(test_time))
+			 fi
+	       then () = if result.>
+	       	       	 then if HT=HTlast
+			      then break
+			      else level +:= 1;
+			      	   HT :=HTs[level];
+			      	   to_ht_time*:=2;
+			      	   u_time*:=u_factor
+			      fi
+			 fi
+	       then () = if result.<
+	       	       	 then break
+	       		 else {no result from to_ht}
+			      to_ht_time*:=2;
+			      u_time*:=u_factor
+			 fi
+	       {then () = if test_time > 10000 and test_verbose
+	       	       	 then prints("height ",ht," of SIMPLE_interrupt took ",
+			      		     print_time_string(test_time))
+			 fi}
+	       then start_u = elapsed_ms()
+	       then form = hermitian_form_irreducible(p,u_time)
+	       then () = result := is_pure(to_ht(form,HTlast));
+		       	 test_time:= elapsed_ms() - start_u;
+	       		 if test_interrupt_verbose
+		       	 then prints("result ",result," from is_unitary, in time ",
+				      	 print_time_string(test_time))
+			 fi
+	       then () = if result.!=
+	       	       	 then if is_pure(form).>
+			      then big_unitary_hash.umatch(p)
+			      else big_unitary_hash.numatch(p)
+			      fi;
+			      if result.<
+			      then big_unitary_hash.numatch_height(p,HT)
+			      else add_to_u_to_ht(p,HT)
+			      fi
+			 fi
+	       {then () = if test_time > 10000 and test_verbose
+	       	       	 then prints("height ",ht," of SIMPLE_interrupt took ",
+			      		     print_time_string(test_time))
+			 fi}
+	       in if result = -1
+	       	  then big_unitary_hash.numatch_height(p,HT)
+		  elif result = 1
+		  then add_to_u_to_ht(p,HT)
+		  fi
+	    od
+   in if result > 0
+      then true
+      elif result < 0
+      then false
+      else is_unitary_to_ht_big_SIMPLE(p,HTlast) {shouldn't come to here}
+      fi
+
+
 {This was in FPP_lambdas.at; moved here to use recording is_unitary tests}
 {1 means unitary, -1 nonunitary, 0 no test}
 set ind_test(Param p) = int:
@@ -4080,16 +4329,16 @@ set localFD_KHash_01 (KGBElt x, ratvec lambda, LocalVertexData Lvd, int HT, KTyp
 					    else character_formula_to_height(P,HT)
 					    fi)
 		      then m = ktp_hash.match(KCF)
-		      in if (not temp_Dirac_best_flag) or (Q(gamma,gamma) <= DiracBestBD)
-			    or DiracBestTest(p0,HT)
-			 then {prints("gain param at p0 = ",p0, ", vert = ",v[0]," tests = ",
+		      in if (Q(gamma,gamma) > DiracBestBD)
+			    and not DiracBestTest(p0,HT,KCF)
+			 then {prints("lose param at p0 = ",p0, ", vert = ",v[0], " tests = ",
+			       not temp_Dirac_best_flag," ", (Q(gamma,gamma) <= DiracBestBD)," ",
+			       DiracBestTest(p0,HT));}
+			       [] 
+			 else  {prints("gain param at p0 = ",p0, ", vert = ",v[0]," tests = ",
 			      not temp_Dirac_best_flag," ", (Q(gamma,gamma) <= DiracBestBD)," ",
 			      DiracBestTest(p0,HT,KCF));}
 			      [v##[m,#monomials(P)]]
-			 else  {prints("lose param at p0 = ",p0, ", vert = ",v[0], " tests = ",
-			       not temp_Dirac_best_flag," ", (Q(gamma,gamma) <= DiracBestBD)," ",
-			       DiracBestTest(p0,HT));}
-					    []
 			 fi
 		   od.##
     {then () = prints("answer0 = ",answer0)}
@@ -4099,39 +4348,40 @@ set localFD_KHash_01 (KGBElt x, ratvec lambda, LocalVertexData Lvd, int HT, KTyp
 			     do v[:1]
 			     od)
      {then () = if to_htB_flag then LF[1] :=~LF[1] fi}
-    then answer1 = for v@k in LF[1]
+    then answer1 = [vec]: for v@k in LF[1]
 		  ~do if k%(max(#LF[1]\10,2))=0 and fund_face_verbose {E7_s spherical: 20% slower without tilde}
 		      then prints("calculating K-character on edge ",k,
 			   " in time ",print_time_string(elapsed_ms() - start),"; #ktp_hash = ",ktp_hash.size())
 		      fi;
 		      let i = lookup0D([v[0]]), j = lookup0D([v[1]])
-		      in if i < 0 or j < 0 {one edge endpoint has been removed already}
+		      in [vec]: if i < 0 or j < 0 {one edge endpoint has been removed already}
 			 then []
 			 else let nu = face_bary(Lvd,v[:2])
 			      then p0 = parameter(x, lambda, nu)
 			      then P = finalize(p0)
-			      in if red_count_flag
-				 then if answer0[i][1] = v[2] {red_counts match}
-				      then [v##[answer0[i][2],#monomials(P)]]
-				      elif answer0[j][1] = v[2] {red_counts match}
-				      then [v##[answer0[j][2], #monomials(P)]]
-				      else let m = ktp_hash.match(K_type_pol(
-					       if to_htB_flag
-					       then composition_series_to_heightB(P,HT)
-					       else character_formula_to_height(P,HT)
-					       fi))
-					    in [v##[m, #monomials(P)]]
-				      fi {answer = v[2]}
-				 else let m = ktp_hash.match(K_type_pol(
-					  if to_htB_flag
-					  then composition_series_to_heightB(P,HT)
-					  else character_formula_to_height(P,HT)
-					  fi))
-				      in {prints("gain param at p0 = ",p0, ", verts = ", v[:2], " tests = ",
-						      not temp_Dirac_best_flag," ",
-						      (Q(nu,nu) <= DiracBestBD)," ",
-						      DiracBestTest(p0,HT))
-					   ;} [v##[m, #monomials(P)]]
+			      in if red_count_flag and answer0[i][1] = v[2] {red_counts match}
+				 then [v##[answer0[i][2],#monomials(P)]]
+				 elif red_count_flag and answer0[j][1] = v[2] {red_counts match}
+				 then [v##[answer0[j][2], #monomials(P)]]
+				 else let KCF = K_type_pol(
+				      	   if to_htB_flag
+				      	   then composition_series_to_heightB(P,HT)
+					   else character_formula_to_height(P,HT)
+					   fi)
+				      then m = ktp_hash.match(KCF)
+		      		      in if (Q(nu,nu) > DiracBestBD)
+			    	      	     and not DiracBestTest(p0,HT,KCF)
+			 		 then
+					 {prints("lose param at p0 = ",p0, ", vert = ",v[0], " tests = ",
+			       		 not temp_Dirac_best_flag," ", (Q(gamma,gamma) <= DiracBestBD)," ",
+			       		 DiracBestTest(p0,HT));}
+					      []
+			 		 else
+					 {prints("gain param at p0 = ",p0, ", vert = ",v[0]," tests = ",
+			      		 not temp_Dirac_best_flag," ", (Q(gamma,gamma) <= DiracBestBD)," ",
+			      		 DiracBestTest(p0,HT,KCF));}
+					       [v##[m,#monomials(P)]]
+			 		 fi {Q >}
 				 fi{red_count_flag}
 			 fi{i<0}
 		     od.##

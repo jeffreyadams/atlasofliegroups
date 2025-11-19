@@ -85,7 +85,7 @@ use it.}
 
 
 {whether to use to_height in computing to height N}
-{true means large nu, so to_ht could be better}
+{true means large nu/small ht, so is_unitary {to_ht} could be better}
 set low_nu(Param p, int N) = bool:
     let (,NU,) = low(p)
     in NU > N*nu_frac
@@ -94,7 +94,7 @@ set strict_low_nu(Param p, int N) = bool:
     let (,NU,) = low(p)
     in strict_factor*NU > N*nu_frac
 
-{true means GAM big compared to HT, so is_unitary could be better}
+{true means GAM big compared to HT, so is_unitary_to_ht could be better}
 {If N>= GAM, then to_ht gives answer to unitarity.}
 set low_gamma(Param p, int N) = bool:
     let (,,GAM) = low(p)

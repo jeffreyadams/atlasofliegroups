@@ -235,7 +235,7 @@ set short_shifts(KType mu) = [KType]:
     in short_shifts_hash.list()
 
 {if true, don't worry about height bound in best_Dirac}
-set old_best_flag = false
+set old_best_flag = true
 
 set_type
 [Dirac_easy_hash_table =
