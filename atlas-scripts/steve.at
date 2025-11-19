@@ -154,8 +154,6 @@ set simp_choice(mat roots, mat coroots) = ([vec],[vec]):
        	do cPR[j]
 	od)
 
-
-
 {assume x.involution has maximal -1 eigenspace a; construct restricted root datum on a}
 set res_stuff(KGBElt x) = ([vec],[vec]):
     let theta = x.involution, G = x.real_form
@@ -421,50 +419,6 @@ set is_def_thr(vec base_thr, vec def_thr) = bool:
 	   	  or(is_even(x) and abs(def_thr[j] - x) <= 1)
 	od)
 
-{set is_def_intervals(vec thruple) = [[int]]:
-    for x in thruple
-    do [int]:
-       if is_odd(x) then [x]
-       elif x.= then [x,x+1]
-       else [x-1,x,x+1]
-       fi
-    od}
-
-{set is_def_testers(vec thruple) = [(int -> bool)]:
-    for x in thruple
-    do (int y) bool:
-       if is_odd(x)
-       then x=y
-       else let d = x-y
-       	    in d=1 or d=0 or d=-1
-       fi
-    od}
-
-{set is_def_testers(vec thruple) = [(int -> bool)]:
-    for x in thruple
-    do (int y) bool:
-       if is_odd(x)
-       then x=y
-       else case x-y+1
-       	    in true,true,true
-	    else false
-	    esac
-       fi
-    od}
-
-{set is_def_testers(vec thruple) = [(int -> bool)]:
-    for x in thruple
-    do (int y) bool:
-       let d = x-y
-       in if is_odd(x)
-       	  then d.=
-       	  else case d+1
-       	       in true,true,true
-	       else false
-	       esac
-       	  fi
-    od}
-
 {set is_def_testerA(vec thruple) = (vec -> bool):
     (vec v): bool:
     let def_tests = is_def_testers(thruple)
@@ -635,10 +589,7 @@ set_type
 
 set make_steve_hash() = steve_hash_table:
 (   let real_form_hash = make_RealForm_hash()
-    {then K_type_hashes = [KType_hash] : [] {one for each real form; list of KTs considered}}
     then xlhashes = [xlambda_hash]: [] {one for each real form}
-    {then paramhashes = [[Param_hash]]: []} {one for each entry in each xlhash}
-    {then ktps = [[[KTypePol]]]: []} {one for each entry in each paramhash: ind_quo?}
     then heights = [[vec]]:[] {one for each entry in each xlhash}
     then vechashes = [[[vec_hash]]]:[] {one for each height for each entry in each xlhash}
     then redpoints = [[[[int]]]]:[] {for each entry in xlhash and height, [int] = bitmap of reducibility
@@ -675,13 +626,6 @@ set make_steve_hash() = steve_hash_table:
 			   #redpoints = #heights, "steve_hash damaged on adding real form")
 	    	   fi
 	  in i
-    {then add_K_type(KType mu) = (int, int): {real form index, K type index}
-   	 let rfnum = add_real_form(mu.real_form)
-	 then rf = real_form_hash.index(rfnum)
-	 then () = mu := K_type(KGB(rf,mu.x.number), mu.lambda_minus_rho)
-	 {first_K_type(regroup(rf,1*mu))}
-	 {then KTYPENUM = K_type_hashes[rfnum].size()}
-	 in (rfnum, K_type_hashes[rfnum].match(mu))}
     then add_xl(KGBElt x, ratvec lambda) = (int,int): {real form index, xlhash index}
     	 let rfnum = add_real_form(x.real_form)
 	 then XLNUM = xlhashes[rfnum].size()
@@ -697,41 +641,6 @@ set make_steve_hash() = steve_hash_table:
 		 charvecs[rfnum]#:=([[vec]]:[])
 	    fi;
 	    (rfnum,xlnum)
-    {then add_xlp(Param qL, RealForm G) = (int,int,int): {real form index, xlhash index, param index}
-    	 let (rfnum,xlnum) = add_xl(qL.x, qL.lambda)
-	 then PLNUM = paramhashes[rfnum][xlnum].size()
-	 then pLnum = paramhashes[rfnum][xlnum].match(qL)
-	 in if pLnum = PLNUM {new pL}
-	    then let ktpsr = ktps[rfnum] {[[KTypePol]]},
-	    	     ktpsrxl = ktps[rfnum][xlnum] {[KTypePol]}
-	    	 then () = ktpsrxl#:= real_induce_standard(K_type_pol(std_quo(qL)), G)
-		 then () = ktpsr[xlnum]:=ktpsrxl
-		 then () = ktps[rfnum]:=ktpsr
-		 in ()
-	     fi;
-	     (rfnum, xlnum, pLnum)}
-    {then SHind_quo(KGBElt x, ratvec lambda, vec av, int m) = KTypePol:
-    	let qL1 = pL1(x,lambda,av, m)
-    	then (rfnum, xlnum, pLnum) = add_xlp(qL1, x.real_form)
-	in ktps[rfnum][xlnum][pLnum]}
-    {then SHtest(KGBElt x, ratvec lambda, vec av, int m, int HT) = bool:
-    	 let SHIQ = SHind_quo(x,lambda,av,m)
-	 in to_ht(SHIQ,HT).!=}
-    {then SHred_points(KGBElt x, ratvec lambda, vec av,int HT) = [int]:
-    	 let (m,M) = range(x,lambda,av), thetapl = x.involution+1
-    	 in for j:M-m+1 from m
-       	    do if SHtest(x,lambda,av,j,HT)
-       	       then [j]
-	       else []
-	       fi
-       	    od.##}
-    {then SHred_points_list(KGBElt x,ratvec lambda, int HT) = [[int]]:
-    	 let start = elapsed_ms()
-    	 then ans = for av in red_coroots(x)
-    	      	    do SHred_points(x,lambda,av,HT)
-    	 	    od
-	 in red_points_time +:= elapsed_ms() - start;
-	    ans}
     then add_xlht(KGBElt x, ratvec lambda, int HT) = (int,int,int): {real form index, xlhash index, HT index}
     	 let (rfnum,xlnum) = add_xl(x,lambda)
 	 then J = #heights[rfnum][xlnum], htnum = find(heights[rfnum][xlnum],HT)
@@ -1708,10 +1617,6 @@ set local_test_graph_steve(
 begin
     let (lochash, KCvlist, loclist, facelist) = location_finder(x, lambda, HT,
     	Lvd, LFKHcat), G = x.real_form
-    {then () = prints("loclist = ", loclist);
-	      prints("facelist = ",facelist);
-	      prints("KCvlist = ", KCvlist)
-	      fi}
     then start = elapsed_ms()
     then inv_is = [int]: for j:#facelist do -1 od {if j is ith good, then  jth entry is i}
     then good_js = [int]:
@@ -1724,32 +1629,15 @@ begin
 	       else []
 	       fi
 	    od.##
-    {then precheck = [bool]: for v in LFKHcat
-    	 	    	    do let p = parameter(x,lambda, face_bary(Lvd,v[:#v-2]))
-			       then ps = monomials(1*p)
-			       in all(for q in ps
-			       	      do is_unitary_to_ht(q,HT)
-				      od)
-			     od}
     then short_facelist = for j in good_js do facelist[j] od
     then () = assert(@:sum(for list in short_facelist do #list od) = #LFKHcat)
     then short_KCvlist = for j in good_js do KCvlist[j] od
     then short_loclist = for j in loclist do inv_is[j] od
     then short_lochash = make_vec_hash()
     then () = for j in good_js do short_lochash.match(lochash.index(j)) od
-    {then () = if x = x_open(G)
-    	      then prints("LFKHcat = ",LFKHcat);
-		   prints("short_loclist = ", loclist);
-	      	   prints("short_facelist = ",facelist);
-		   prints("short_KCvlist = ", KCvlist)
-	      fi}
     then tester(Param p) = is_unitary_to_ht_big_SIMPLE(p,HT)
     then up_gens = up_graph_gens(short_lochash, short_KCvlist, short_loclist)
     then (eq,gr) = graph(up_gens)
-    {then () = if x = x_open(G)
-    	      then prints("eq = ",eq);
-		   prints("gr = ",gr)
-	      fi}
     then NumClasses = #eq, printInterval = int: 1, start_count = unitary_test_counter.use_count()
     then statuses = [string]: for j:#eq do "?" od
     then () = if test_verbose
@@ -1762,11 +1650,8 @@ begin
     then () = if graph_tilde_flag then nums:=~nums fi
     then () = for k in nums
     	      do if fund_face_verbose and (k%freq).=
-	      	 then prints("at class ",k," of ",NumClasses, " at time ",print_time_string(elapsed_ms() - start))
-		      {"; vecHash size = ",if steve_small_flag
-		       	  	       	   then steve_hash_small.vecHash().size()
-					   else steve_hash.vecHash(x,lambda,HT).size()
-					   fi)}
+	      	 then prints("at class ",k," of ",NumClasses, " at time ",
+		      		 print_time_string(elapsed_ms() - start))
 		 fi;
 	      if statuses[k] = "?"
 	      	 then let C = eq[k] {list of locs}
@@ -1807,11 +1692,7 @@ begin
 		     	   LFKHcat[j]
 			od {[FaceVertsKHash]}
 		  od.## {still [FaceVertsKHash]}
-	     else {for k in C 
-		  do let js = short_facelist[k]
-		     in for j in js do assert(not(precheck[j]),"bad false with local_test_graph") od
-		  od;}
-	     	  []
+	     else []
 	     fi
 	  od.##
      then () = if test_verbose
@@ -1827,8 +1708,8 @@ begin
      in  steve_graph_test_time+:= elapsed_ms() - start;
      	 LFKHnew
 {if sort_LFD_flag
-	 then sort(x.real_form, Lvd, FVKHnew)
-	 else FVKHnew
+	 then sort(x.real_form, Lvd, LFKHnew)
+	 else LFKHnew
 	 fi}
 end
 
@@ -1929,7 +1810,7 @@ set localFD_1SteveU\
     	 if Dirac_flag and not(temp_Dirac_best_flag) and
     	 		       max(for mu in LKTs(parameter(x,lambda,0*lambda)) do tensor_p_hts(mu) od) <=HT
 	 then let bd = DiracBD(x,lambda)
-	      then QG = {Dirac_easy_hash.invt_form(G)} invariant_form(G)
+	      then QG = invariant_form(G)
 	      then index = first(for v in LF01
 				 do let gamma = Lvd.list[v[0]]
 				    in @bool: QG(gamma,gamma) > bd
@@ -2072,23 +1953,11 @@ set localFD_1SteveUmin\
 	fi
     then LF00 = [FaceVertsIndex]: for j:#Lvd.list do [j] od
     then LF01 = warmup(x,lambda,HT,Lvd,[LF00])[0]
-    {then ucand_list = big_unitary_hash.uhash(G).list(), nucand_list = big_unitary_hash.nuhash(G).list()
-    	 {DUPLICATE ELSEWHERE?}
-    then () = for p in ucand_list
-    	      do if p.x = x and p.lambda = lambda
-		 then steve_hash_small.umatch(p.infinitesimal_character)
-		 fi
-	      od
-    then () = for p in nucand_list
-    	      do if p.x = x and p.lambda = lambda
-		 then steve_hash_small.numatch(p.infinitesimal_character)
-		 fi
-	      od}
     then Q = ((ratvec,ratvec)->rat): (ratvec v, ratvec w) rat: 0/1
     then DiracBD = 0/1
     then () = if Dirac_flag and max(for mu in LKTs(parameter(x,lambda,0*lambda)) do tensor_p_hts(mu) od) <=HT
 	      then let bd = DiracBD(x,lambda)
-		   then QG = {Dirac_easy_hash.invt_form(G)} invariant_form(G)
+		   then QG = invariant_form(G)
 		   then index = first(for v in LF01
 				      do let gamma = Lvd.list[v[0]]
 				      	 in @bool: QG(gamma,gamma) > bd

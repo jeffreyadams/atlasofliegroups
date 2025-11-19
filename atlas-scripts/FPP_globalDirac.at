@@ -87,10 +87,23 @@ set prefer_steve_long_flag = true
 set contragredient(KGBElt x) = KGBElt:
     let wzero = w0(x.root_datum) in cross(wzero,x)
 
-{if false, then always use bottom layer when it's called for}
-set test_bl_flag = true
+set K_ss_rk = (RealForm -> int):
+    let Ghash = make_RealForm_hash()
+    then kssrks = vec:[]
+    in (RealForm -> int): (RealForm G) int:
+       let N = Ghash.size()
+       then n = Ghash.match(G)
+       in if n=N
+       	  then let r = rank(K_0(adjoint(G)))
+	       in kssrks#:=r
+	  fi;
+	  kssrks[n]
 
-{if true, and test_bl_flag true, then introduce more_shift}
+{if false, then always use bottom layer when it's called for}
+{set test_bl_flag = false} {true; changed to false AFTER 11/14 commit}
+{DELETED 11/16: accomplish by easy_test_flag:=false and hard_test_flag:=false}
+
+{if true, and test_bl_flag true, then introduce more_shift when appropriate}
 set test_more_flag = true
 
 {how close to next_heights(G) the largest more_shift can be; maybe in range (0,1)?}
@@ -108,12 +121,18 @@ set KGB_frac = rat:1/3
 {if more_KGB_frac_flag and x between these fractions of KGB, use more}
 set start_more_KGB_frac = rat: 4/5
 set end_more_KGB_frac = rat: 49/50
-{set one_level_frac_flag =true
+{set one_level_frac_flag =true}
 
+
+{if true, use test_bl to decide about bottom_layer}
+set hard_test_flag = false
+
+{if true, and hard_test_flag is false, then use easy_test_flag}
+set easy_test_flag = true
 
 {If one_level_frac_flag and x exceeds this fraction of KGB, then make one_level_revert_flag true}
-set one_level_frac = 2/3
-}
+{set one_level_frac = 2/3}
+
 {if NOT KGB_frac, and height is smaller than this fraction of max height, then switch
     from bottom_layer to one_level or hash2}
 set lambda_frac = rat: 2/3
@@ -125,43 +144,47 @@ set bl_shift(KGBElt x, ratvec lambda, LocalVertexData Lvd) = int:
     in floor(min((LAM+1)*more_bound, (GAM - LAM)*shift_frac)) + 1
 
 {Meant to be the biggest useful more-shift??}
-set most_more(RealForm G) = (G.semisimple_rank - 3)*(G.semisimple_rank - 4)
+set most_more(RealForm G) = (G.semisimple_rank - 3)*(G.semisimple_rank - 3)
+
 {returning "true" means bottom layer ought to be used}
-{for now (5/17/25) don't do more_shift}
-{start messing again 11/5/25. This version only depends on x.}
-set test_bl(KGBElt x, ratvec lambda, LocalVertexData Lvd) = bool:
-    if not test_bl_flag then return true fi;
+{start messing again 11/5/25. This version  sets more_shift to be zero
+unless x.number >= (#KGB)*start_more_KGB_frac, and L(x,lambda) is not maximal.}
+set hard_test_bl(KGBElt x, ratvec lambda) = bool:
     if semisimple_rank(x.real_form) < 7 then return false fi;
     if KGB_frac_flag and x.number < KGB_frac*(#KGB(x.real_form)) then return false fi;
-    {if one_level_frac_flag then one_level_revert_flag := x.number > one_level_frac*(#KGB(x.real_form)) fi;}
-    let start = elapsed_ms(), {pmax = pmax(x,lambda,Lvd), rd = x.root_datum,} G=x.real_form,
-    	{theta = x.involution,} ans = true, N = #KGB(x.real_form), n = x.number
-    then rk = G.semisimple_rank
-    {then () = if not KGB_frac_flag and height(pmax) < lambda_frac*(rd.rho)*(rd.two_rho_check)
-    	      then return false fi}
-    then most_more = {next_heights(G)*more_shift_frac} most_more(G)
-    then () = if test_more_flag
-    	      then if n > start_more_KGB_frac*N and n < end_more_KGB_frac*N
-    	      	   then more_shift(most_more)
-	      	   else more_shift(0)
-	      	   fi
+    if not test_more_flag then return true fi;
+    let start = elapsed_ms(), G=x.real_form,
+        N = #KGB(x.real_form), n = x.number
+    then () = if n < start_more_KGB_frac*N
+    	      then more_shift(0);
+	      	   test_bl_time +:= elapsed_ms() - start;
+	      	   return true
+	      else more_shift(most_more(G))
 	      fi
-{most_more*(n - KGB_frac*N)/((1-KGB_frac)*N))} {this worked poorly on E7_s}
-    {then gamma = pmax.infinitesimal_character
-    then () = more_flag :=false
-    then () = more_shift_level:=0
-    then (LAM,NU,GAM) = low(pmax), R = (G.rho)*(G.two_rho_check)}
-    {then ans := GAM*GAM + R*LAM > R*GAM*GARLAGmin and LAM < GAM*LAGAmax}
-    {then () = if GAM > R*GARmin
-    	      then more_shift(bl_shift(x,lambda,Lvd))
-	      fi}
-    then () = test_bl_time +:= elapsed_ms() - start
-    {then () = if not ans and test_verbose
-    	      then prints("reverting from bottom_layer because of test_bl")
-	      fi}
-    in ans
+    then p = parameter(x,lambda,0*lambda)
+    then (Q,) = theta_stable_quasi_data(p)
+    then L = Q.Levi
+    in if K_ss_rk(L) >= K_ss_rk(G) - 1
+       then more_shift(0)
+       fi;
+       test_bl_time +:= elapsed_ms() - start;
+       true
 
-{LAM > LARmin*R and LAM < LARmax*R  and GAM > GARmin*R and GAM < GARmax*R}
+{returning "true" means bottom layer ought to be used}
+set easy_test_bl(KGBElt x) = bool:
+    let G = x.real_form
+    then N = #KGB(G), n = x.number
+    in if semisimple_rank(x.real_form) < 7
+       then false
+       elif KGB_frac_flag and n < KGB_frac*N
+       then false
+       elif n > start_more_KGB_frac*N and
+       	    n < end_more_KGB_frac*N
+       then more_shift(most_more(G));
+       	    true
+       else more_shift(0);
+       	    true
+       fi
 
 set test_no_unitary(KGBElt x, ratvec lambda, LocalVertexData Lvd) = bool:
     if twist(x) != x
@@ -1694,21 +1717,13 @@ fancy_tester) = void:
 		     	then let revert_steve_flag = prefer_steve_long_flag and
 			     (x.number = #KGB(G) - 1) and (lambda != G.rho)
 			     then startminxl = good_hash.size(), startmorexl = more_good_hash.size()
-			     then easy_test_bl_flag =
-			     	  let N = #KGB(G), n = x.number
-				  in if not test_bl_flag
-			     	     then true
-				     elif rank(x.real_form) < 7
-			       	     then false
-    			      	     elif KGB_frac_flag and n < KGB_frac*N
-			       	     then false
-				     elif n > start_more_KGB_frac*N and
-				     	  n < end_more_KGB_frac*N
-				     then more_shift(most_more);
-				     	  true
-				     else more_shift(0);
-				     	  true
-			             fi
+			     then local_test_bl_flag = bool:
+			     	  if hard_test_flag
+				  then hard_test_bl(x,lambda)
+			     	  elif easy_test_flag
+				  then easy_test_bl(x)
+				  else true
+				  fi
 		 	     in let startxl = elapsed_ms(), startUhash = Uhash.size(),
 			     	    (x_sc,lambda_sc) = xlambdas_sc[k],
 		     		   startUcounter = unitary_test_counter.use_count(),
@@ -1723,6 +1738,9 @@ fancy_tester) = void:
 			      ", #uparams so far = ",sum(answerCards));
 		   		   prints("  ------------------")
         	   		   fi {every_lambda_flag}
+
+
+
 		 then startLF = elapsed_ms(){, startDTcount = DTcount}
 	 	 then p0 = parameter(x,lambda, 0*lambda)
 		 in if test_no_unitary(x,lambda,Lvd) {here 1600; close 1685}
@@ -1755,7 +1773,7 @@ fancy_tester) = void:
 			 let answer = if revert_steve_flag and lambda_sc!=Gsc.rho
 			     	      then local_test_GEO_hash_steve(x_sc, lambda_sc, Lvd, Uhash,
 				      	   fancy_tester)
-				       elif easy_test_bl_flag {and test_bl(x,lambda,Lvd)}
+				       elif local_test_bl_flag
 			     	       then local_test_GEO_hash_bottom_layer(x_sc,
 						lambda_sc, Lvd, LF, pol_hash, Uhash, fancy_tester)
 				       elif one_level_revert_flag
@@ -1966,21 +1984,7 @@ set FPP_unitary_hash_bottom_layer([KGBElt] xs, Param_hash UhashG, (Param->bool) 
 	 if twist(x) != x
 	 then big_unitary_hash.finishx(x)
 	 fi;
-	 let easy_test_bl_flag = let N = #KGB(G), n = x.number
-				 in if not test_bl_flag
-			     	    then true
-				    elif rank(x.real_form) < 7
-			       	    then false
-    			      	    elif KGB_frac_flag and n < KGB_frac*N
-			       	    then false
-				    elif n > start_more_KGB_frac*N and
-				     	 n < end_more_KGB_frac*N
-				    then more_shift(most_more);
-				     	 true
-				    else more_shift(0);
-				     	 true
-			            fi,
-	     revert_steve_flag = prefer_steve_long_flag and (x.number = #KGB(G) - 1)
+	 let revert_steve_flag = prefer_steve_long_flag and (x.number = #KGB(G) - 1)
 	 then former_time = current, formerUhash = currentUhash, formerUcounter = currentUcounter, x_sc = xs_sc[j],
 	     formerUtime = unitaryTime, formerCcounter = currentCcounter, formerCharTime = charTime,
 	     former_red_count_time = red_count_time,  startmorebadx = more_bad_hash.size(),
@@ -2047,6 +2051,11 @@ set FPP_unitary_hash_bottom_layer([KGBElt] xs, Param_hash UhashG, (Param->bool) 
 		     fi
 	 then () = if {C} skipx = false
 	 then let lambdas = FPP_lambdas(x)
+	      then local_test_bl_flag =
+	      	   if easy_test_flag and not hard_test_flag
+		   then easy_test_bl(x)
+		   else true
+		   fi
     	 then Ncases = #lambdas
 	 then tempanswerCards = null(Ncases)
 	 then templambdatimes = null(Ncases)
@@ -2057,7 +2066,7 @@ set FPP_unitary_hash_bottom_layer([KGBElt] xs, Param_hash UhashG, (Param->bool) 
 			       sum(for list in answerCards do sum(list) od));
 		   	prints("  ------------------")
         	   fi
-	 then () = for lambda@index in lambdas
+	 then () = for lambda@index in lambdas {ought to look at contragredient(x,lambda) here!}
 	      	   do let lamthlam = ((1+x.involution)*lambda).numer
 		      then (Lvd1, Perm2{, mapAct}) = LPm_table.LPm_entry(G,x.involution,lamthlam)
 		      then Lvd = if disconn_flag
@@ -2077,6 +2086,9 @@ set FPP_unitary_hash_bottom_layer([KGBElt] xs, Param_hash UhashG, (Param->bool) 
 			      		    ", #uparams so far = ",sum(answerCards)});
 		   		   prints("  ------------------")
         	   		fi {every_lambda_flag}
+		      then () = if hard_test_flag
+		      	      	then local_test_bl_flag := hard_test_bl(x,lambda)
+				fi
 		      then startDTcount = DTcount
 		     in if {test_neither}test_no_unitary(x,lambda,Lvd)
 		       	then {none_count +:= 1;} {prints("SKIPPED ",x,",",lambda);} ()
@@ -2106,7 +2118,7 @@ set FPP_unitary_hash_bottom_layer([KGBElt] xs, Param_hash UhashG, (Param->bool) 
 			       	      if revert_steve_flag and (lambda != G.rho)
 			       	      then local_test_GEO_hash_steve(x_sc, M*lambda, Lvd, Uhash,
 				      	   fancy_tester)
-			       	      elif easy_test_bl_flag {and test_bl(x_sc, M*lambda, Lvd)}
+			       	      elif local_test_bl_flag
 			     	      then local_test_GEO_hash_bottom_layer(x_sc, M*lambda, Lvd, LF,
 				      	   pol_hash, Uhash, fancy_tester)
 				      elif one_level_revert_flag

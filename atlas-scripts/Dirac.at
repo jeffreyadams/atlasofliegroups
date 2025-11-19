@@ -235,7 +235,7 @@ set short_shifts(KType mu) = [KType]:
     in short_shifts_hash.list()
 
 {if true, don't worry about height bound in best_Dirac}
-set old_best_flag = false
+set old_best_flag = true
 
 set_type
 [Dirac_easy_hash_table =
@@ -277,14 +277,12 @@ set make_Dirac_easy_hash() = Dirac_easy_hash_table:
 				  is meant to be an upper bd on ht(mu').}
    then muss = [[[int]]]:[] {for each G and mu, list of indices into muhash for
 			   easy_best_Dirac_bd}
-   {then Cartan_p_hts = [[int]]:[]} {for each G and mu, either -1 or max ht of Cartan pieces of
-   	   	for Cartan pieces of tensor_p(mu)}
    then p_hwts = [[vec]]: [] {for each G, list of hwts of K0 on g/k} 
    then muDones = [[bool]]: [] {for each G, one bool for each mu, saying whether muss is
 			    as long as possible}
    then clear() = void:
 	real_form_hash.clear(); Qs:=[]; K0s := []; Ms := []; Mrts := []; muhashes:=[];
-	muPRVs :=[]; DiracBDs :=[]; muss :=[]; {Cartan_p_muss := [];} muDones :=[]
+	muPRVs :=[]; DiracBDs :=[]; DiracBD_hts:=[]; muss :=[]; p_hwts:= []; muDones :=[]
    then add_real_form(RealForm rf) = int:
    (	let I = real_form_hash.size()
 	then i = real_form_hash.match(rf)
@@ -566,19 +564,7 @@ set make_Dirac_easy_hash() = Dirac_easy_hash_table:
 		 od
      in (taus, if old_best_flag
      	       then for tau in taus do height(tau) od
-	       else for tau@m in taus
-	       	    do let M = DiracBD_hts[rfnum][m]
-		       in if M.<
-		       	  then let G = real_form_hash.index(rfnum), cphtsrf = DiracBD_hts[rfnum]
-      	      		       then x0 = KGB(G,0)
-      	      		       then tauwt = highest_weights(tau,x0)[0].mu
-      	      		       then shifts = for v in p_hwts[rfnum] do K_type(((),x0,tauwt+v)) od
-	      		       in M := max(for sigma in shifts do height(sigma) od);
-	      		       	  cphtsrf[ktypenum] := M;
-	      	 	       	  DiracBD_hts[rfnum]:=cphtsrf
-			  fi;
-			  M
-		    od
+	       else for tau in taus do tensor_hts(tau) od
 	       fi, for m in taunums do DiracBDs[rfnum][m] od)
    , ((KType,int) -> ([KType], [int], [rat])): {easy_best_Dirac_bound_cap}
 		  (KType mu, int cap) ([KType],[int],[rat]):
@@ -589,7 +575,7 @@ set make_Dirac_easy_hash() = Dirac_easy_hash_table:
 		 od
      in (taus, if old_best_flag
      	       then for tau in taus do height(tau) od
-	       else for m in taunums do DiracBD_hts[rfnum][m] od
+	       else for tau in taus do tensor_hts(tau) od
 	       fi, for m in taunums do DiracBDs[rfnum][m] od)
    , (KType -> ([KType], [int], [rat])): {easy_best_Dirac_bound_inf} (KType mu) ([KType],[int],[rat]):
      let (rfnum,ktypenum) = add_muss(mu)
@@ -599,7 +585,7 @@ set make_Dirac_easy_hash() = Dirac_easy_hash_table:
 		 od
      in (taus, if old_best_flag
      	       then for tau in taus do height(tau) od
-	       else for m in taunums do DiracBD_hts[rfnum][m] od
+	       else for tau in taus do tensor_hts(tau) od
 	       fi, for m in taunums do DiracBDs[rfnum][m] od)
     , (KType->int): {tensor_p_hts} (KType mu)int:
       let (rfnum,ktypenum) = add_K_type(mu)
