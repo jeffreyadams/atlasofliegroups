@@ -299,13 +299,13 @@ set make_twisted_deformation_hash() = twisted_deformation_hash:
 		  twisted_deformed_data#:=P;
 		  twisted_deform_max_heights #:=h;
 		  twisted_deform_use_count#:=0
-	      elif {i>=0; p seen} h=0 and deform_max_heights[i].>
+	      elif {i>=0; p seen} h=0 and twisted_deform_max_heights[i].>
 	      then twistedDeformCalcCounter.use();
 	      	   P := twisted_full_deform(p);
 		   twisted_deform_max_heights[i]:=0;
 		   twisted_deformed_data[i]:=P
-	      elif {i >0, h>0 or } deform_max_heights[i] > 0
-	       	    and h > deform_max_heights[i]
+	      elif {i >0, h>0 or } twisted_deform_max_heights[i] > 0
+	       	    and h > twisted_deform_max_heights[i]
 	      then twistedDeformCalcCounter.use();
 	      	   P := to_ht(twisted_full_deform(p),h);
 		   twisted_deform_max_heights[i]:=h;
@@ -323,18 +323,18 @@ set make_twisted_deformation_hash() = twisted_deformation_hash:
        then regroup(p.real_form,to_ht(twisted_deformed_data[i],h))
        else regroup(p.real_form,twisted_deformed_data[i])
        fi
-  , (Param->int): {lookup} (Param p): deform_param_hash.lookup(p)
+  , (Param->int): {lookup} (Param p): twisted_deform_param_hash.lookup(p)
   , ((Param,int,KTypePol)->): {append} (Param p, int h, KTypePol P):
-    let I = deform_param_hash.size()
-    then i = deform_param_hash.match(p)
+    let I = twisted_deform_param_hash.size()
+    then i = twisted_deform_param_hash.match(p)
     in if i=I {haven't seen p before}
-       then deform_max_heights #:=h;
-	    deformed_data#:=P;
-	    deform_use_count#:=0
-       elif {i < I} (h=0 and deform_max_heights[i].>) 
-	    or h>deform_max_heights[i] {seen p, but not to h}
-       then deform_max_heights[i]:=h;
-	    deformed_data[i]:=P
+       then twisted_deform_max_heights #:=h;
+	    twisted_deformed_data#:=P;
+	    twisted_deform_use_count#:=0
+       elif {i < I} (h=0 and twisted_deform_max_heights[i].>) 
+	    or h>twisted_deform_max_heights[i] {seen p, but not to h}
+       then twisted_deform_max_heights[i]:=h;
+	    twisted_deformed_data[i]:=P
        fi
   , ((Param,int,maybe_KTP)->): {maybe_append} (Param p, int HT, maybe_KTP P):
     case P
@@ -347,7 +347,7 @@ set make_twisted_deformation_hash() = twisted_deformation_hash:
 	      	   twisted_deformed_data#:=result;
 	   	   twisted_deform_use_count#:=0
        	      elif {i < I} (HT=0 and twisted_deform_max_heights[i].>) 
-	      	   or HT>deform_max_heights[i] {seen p, but not to HT}
+	      	   or HT>twisted_deform_max_heights[i] {seen p, but not to HT}
        	      then twisted_deform_max_heights[i]:=HT;
 	      	   twisted_deformed_data[i]:=result
        	      fi
@@ -941,8 +941,8 @@ set twisted_c_form_irreducible (Param p,int time) = maybe_KTP:
   , expiration = elapsed_ms() + time
 { |1+s| divides |unfixed|, no need for |scale_extended|; take half at |nu=0| }
   in case
-        map( (Param p) maybe_KTP: (let ans = twisted_full_deform(p,expiration-elapsed_ms())
-	     	       		  in twistedDeformedHash.maybe_append(p,0,ans);
+        map( (Param q) maybe_KTP: (let ans = twisted_full_deform(q,expiration-elapsed_ms())
+	     	       		  in twistedDeformedHash.maybe_append(q,0,ans);
 				     ans)
 	   , fixed
 	   )
