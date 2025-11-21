@@ -1,5 +1,4 @@
 <basic.at
-<misc.at { for |in_distinguished_fiber| }
 <K.at
 <parabolics.at
 <Weylgroup.at { for |root_reflection| }

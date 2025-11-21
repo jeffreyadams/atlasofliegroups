@@ -3510,7 +3510,7 @@ case lambda_expr:
   const id_pat& pat=fun.pattern;
   type_expr fun_type = gen_func_type.copy();
   type_expr& par_tp = fun_type.func()->arg_type;
-  par_tp.specialise(global_id_table->expand(fun.parameter_type));
+  par_tp.specialise(global_id_table->swallow(fun.parameter_type));
       // argument type specified in |fun|
   if (not par_tp.can_specialise(pattern_type(pat)))
     throw expr_error
@@ -3571,8 +3571,8 @@ case rec_lambda_expr:
 { const rec_lambda_node& fun=*e.rec_lambda_variant;
   const id_pat& pat=fun.pattern;
   type_expr fun_type = type_expr::function
-    ( global_id_table->expand(fun.parameter_type)
-    , global_id_table->expand(fun.result_type)
+    ( global_id_table->swallow(fun.parameter_type)
+    , global_id_table->swallow(fun.result_type)
     );
   type_expr& par_tp = fun_type.func()->arg_type;
   if (not par_tp.can_specialise(pattern_type(pat)))
@@ -7322,7 +7322,7 @@ if it is exported from that scope.
 @< Cases for type-checking and converting... @>=
 case cast_expr:
 { cast_node& c=*e.cast_variant;
-  type_expr cast_tp = global_id_table->expand(c.dst_tp);
+  type_expr cast_tp = global_id_table->swallow(c.dst_tp);
   if (tp.unify_specialise(cast_tp)) // see if we can do without coercion
     return convert_expr(c.exp,tp); // in which case use now specialised |tp|
   expression_ptr p = convert_expr_strongly(c.exp,fc,cast_tp);
@@ -7363,7 +7363,7 @@ which uses |overload_table::variants|.
 @< Cases for type-checking and converting... @>=
 case op_cast_expr:
 { const op_cast& c=e.op_cast_variant;
-  const type_expr c_type = global_id_table->expand(c->arg_type);
+  const type_expr c_type = global_id_table->swallow(c->arg_type);
   std::ostringstream o; // prepare name for value, and for error message
   o << main_hash_table->name_of(c->oper) << '@@' << c_type;
   expression_ptr result;

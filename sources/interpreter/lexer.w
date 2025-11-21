@@ -91,7 +91,7 @@ mentioned here, but we do not know if or how this could be arranged).
 @< Class declarations @>=
 class Lexical_analyser
 { enum states @+ { initial, normal, type_defining, ended };
-  using eggs = sl_list<id_type>; // contents of |nest|
+  using eggs = sl_list<id_type>; // type of each clutch in the |nest|
 @)BufferedInput& input;
   Hash_table& id_table;
   id_type keyword_limit; // first non-keyword identifier
@@ -115,7 +115,7 @@ public:
   const char* scanned_file_name() const @+{@; return file_name.c_str(); }
   id_type first_identifier() const @+{@; return type_limit; }
   bool is_initial () const @+{@; return state==initial; }
-  void push_nest() @+ {@; nest.push_front(eggs{}); }
+  void push_nest() @+ {@; nest.push_front(eggs{}); } // prepare a new clutch
   void pop_nest(); // pop and decommission a clutch of type variables
   void put_type_variable(id_type v);
   unsigned int typevar_level() const;
@@ -333,27 +333,26 @@ std::string Lexical_analyser::scan_quoted_string() const
 @*1 The main scanning routine.
 %
 Now we come to the function |get_token| that will actually be called by the
-parser and return a token to it. The token is an integral value that is either
-a character code in the case of single character tokens, or a token value
+parser, and return to it a token type. The token is an integral value that is
+either a character code (in case of a single character token), or a token value
 defined in \.{parser.tab.h}. The null token value has the special meaning of
-signalling the end of the input to be recognised by the parser, which it wants
-to see before returning successfully. Since our parser is written to recognise
-individual commands rather than the full input source, we take measures to
-send a null token after each command, even though the input buffer does
-not signal end of input.
+signalling the end of the input to be recognised by the parser, which the latter
+wants to see before returning successfully to its caller. Since our parser is
+written to recognise individual commands rather than the full input source, we
+take measures to send a null token after each command, even though the input
+buffer does not signal the end of its input.
 
 If it should happen that the input buffer does signal end of input by making
-|input.shift()=='\0'|, then this will be transmitted to the parser as the end
-of a command by the code below, by the general mechanism that characters that
-are not specifically recognised are transmitted with a token value equal to
-the character value. But this is really a marginal case, since the input
-buffer guarantees that end of input cannot occur in the middle of a line;
-normally the previous line will therefore be completely processed, and the
-end-of-input condition is signalled by a failure of the call of the |reset|
-method of the lexical analyser rather than by |input.shift()=='\0'| occurring
-in its |getline| method. The only way the latter can happen is if the
-preceding newline character was ignored by |skip_space|, due to
-|prevent_termination| or |nest|.
+|input.shift()=='\0'|, then this will be transmitted to the parser as the end of
+a command by the code below, by the general mechanism that characters that are
+not specifically recognised are transmitted with a token type equal to their
+character value. But this is really a marginal case, since the input buffer
+guarantees that end of input cannot occur in the middle of a line; normally the
+previous line will therefore be completely processed, and the end-of-input
+condition is signalled by a failure of the call of the |reset| method of the
+lexical analyser rather than by |input.shift()=='\0'| occurring in its |getline|
+method. The only way the latter can happen is if the preceding newline character
+was ignored by |skip_space|, due to |prevent_termination| or |nest|.
 
 The way in which we arrange to signal the end of a command from |get_token| is
 by sending \emph{two} successive tokens, a |'\n'| followed by a null token.
@@ -391,46 +390,57 @@ scanned, so everything inside the brackets is scanned with
 |state==type_defining|). Finally, scanning a command-terminating newline will set
 |state=ended|.
 
-Besides returning a token code, each token defines a value for
-|prevent_termination|. Since the previous value is only used in |skip_space|,
-we set this variable to its most common value |'\0'| after the call to that
-function, so that only for those tokens that cannot end a command we have to
-set that value explicitly.
+@< Definitions of class members @>=
+int Lexical_analyser::get_token(YYSTYPE *valp, YYLTYPE* locp)
+{ int token_type;
+  if (state==ended)
+    {@; state=initial; return 0; } // send end of input
+  @< Scan a token, store its type in |token_type|,
+     and possibly fill the corresponding variant of |*valp| @>
+@/if (state==initial)
+    state=normal;
+  return token_type;
+}
+
+@ Besides returning a token code, each token defines a value for
+|prevent_termination|. Since the previous value is only used in |skip_space|, we
+set this variable to its most common value |'\0'| after the call to that
+function, so that only for those tokens that cannot end a command we have to set
+that value explicitly.
 
 The code below also deals with setting the fields of the |locp| to delimit the
 token scanned.
 
-@< Definitions of class members @>=
-int Lexical_analyser::get_token(YYSTYPE *valp, YYLTYPE* locp)
-{ if (state==ended)
-    {@; state=initial; return 0; } // send end of input
-  skip_space();
+@< Scan a token, store its type in |token_type|,... @> =
+{ skip_space();
   previous_termination = prevent_termination;
   prevent_termination='\0';
   input.locate(input.point(),locp->first_line,locp->first_column);
-  int code; char c=input.shift();
+  char c=input.shift();
   if (std::isalpha(c) or c=='_')
-    @< Scan an identifier or a keyword @>
+    @< Scan an identifier or a keyword, and set |token_type| appropriately @>
   else if (std::isdigit(c))
-    @< Scan a number @>
+    @/{@; @< Scan a number, setting |valp->str| to the digit string @>
+      token_type=INT;
+    }
   else
-    @< Scan a token starting with a non alphanumeric character @>
+    @< Scan a token starting with a non alphanumeric character, and set
+       |token_type| accordingly  @>
+@)
   input.locate(input.point(),locp->last_line,locp->last_column);
-@/if (state==initial)
-    state=normal;
-  return code;
 }
 
 @ Everything that looks like an identifier is either that, or a keyword, or a
-type name. In any case we start with looking it up in the |id_table|, and then
-the numeric value of the code returned, which is determined by the order in
-which names were first entered into |id_table|, will allow us to discriminate
-the possibilities. All keywords get distinct code numbers, determined by their
-offset from the first keyword; this implies that we cannot handle distinct but
-synonymous keywords (in other words that scan as the same token), but there
-does not seem to be any demand for that anyway. However type names for
-primitive types all get the same category |TYPE|, with the actual name stored
-in the token value |valp->type_code|.
+type name, type constructor or type variable (those last three each have a
+distinct token type). In any case we start with looking it up in the |id_table|,
+and setting |id_code| to the numeric value of the code returned (determined by
+the order in which names were first entered into |id_table|), which will allow
+us to discriminate the possibilities. All keywords get distinct token types,
+determined by their offset from the first keyword (this implies that we cannot
+handle distinct but synonymous keywords, in other words that scan as the same
+token, but there does not seem to be any need for that anyway). By contrast,
+type names for primitive types all get the same token type |PRIMTYPE|, with the
+actual name stored in the token value |valp->type_code|.
 
 While user defined type names (abbreviations) are equivalent to primitive ones
 at the syntactic level, we give them a different category |TYPE_ID|, because
@@ -449,7 +459,7 @@ a type definition, including injector or projector names, will be scanned as
 
 @h "global.h" // need to inspect |global_id_table|
 
-@< Scan an identifier or a keyword @>=
+@< Scan an identifier or a keyword,... @>=
 { const char* p=input.point()-1; // start of token
   do
     c=input.shift();
@@ -457,35 +467,36 @@ a type definition, including injector or projector names, will be scanned as
   input.unshift();
   id_type id_code=id_table.match(p,input.point()-p);
   if (id_code>=type_limit+type_vars.capacity())
+    // then ensure bitmap |type_vars| is large enough
     type_vars.set_capacity(id_code-type_limit+1);
   if (id_code>=type_limit)
   { if (type_vars.isMember(id_code-type_limit))
-    { code = TYPE_VAR; // a name temporarily used to designate an arbitrary type
+    { token_type = TYPE_VAR;
+        // a name temporarily used to designate an arbitrary type
       @< Set |valp->id_code| to the sequence number of |id_code| in the |nest| @>
     }
     else
     { valp->id_code=id_code;
       if (global_id_table->is_type_constructor(id_code))
-        code=TYPE_CONSTR;
+        token_type=TYPE_CONSTR;
       else if (state==type_defining or global_id_table->is_defined_type(id_code))
-        code=TYPE_ID;
+        token_type=TYPE_ID;
       else
-        code=IDENT;
+        token_type=IDENT;
     }
   }
   else if (id_code>=keyword_limit)
-  @/{@; valp->type_code=id_code-keyword_limit; code=PRIMTYPE; }
+  @/{@; valp->type_code=id_code-keyword_limit; token_type=PRIMTYPE; }
   else
   // we have |id_code<keyword_limit|, so it is a keyword
   @< Scan |id| as a keyword @>
 }
 
-@ Scanning keywords is done by computing |code| by a shift from |id_code|; in
-some cases seeing the keyword provokes some activity on the |nest|.
+@ Scanning keywords is done by computing |token_type| by a shift from |id_code|;
+in some cases seeing the keyword provokes some activity on the |nest|.
 
 @< Scan |id| as a keyword @>=
-{ code=QUIT+id_code;
-  switch(code)
+{ switch((token_type=QUIT+id_code))
   {
     case LET: push_nest(); input.push_prompt('L'); break;
     case BEGIN:
@@ -514,11 +525,7 @@ some cases seeing the keyword provokes some activity on the |nest|.
 list of currently active type variables. These variables are recorded in |nest|,
 with newer clutches being pushed at the front of the list. This means that, if
 we want to avoid reversing the list, we must record the position of the
-identifier within its clutch and add to that sizes of all later clutches. We
-skip |nest.front()|, which serves only as a place to prepare type variables to
-be added soon (it should be empty when we reach this code, since
-addition of new type variables will only be triggered by the parser when a list
-of ordinary identifiers is found).
+identifier within its clutch and add to that sizes of all later clutches.
 
 @< Set |valp->id_code| to the sequence number of |id_code| in the |nest| @>=
 {
@@ -535,6 +542,7 @@ of ordinary identifiers is found).
       }
     }
   valp->id_code = count;
+  assert(seen); // we should not come here unless |id_code| is a type variable
 }
 
 @ Sometimes we need to know the current total number of type variables, and the
@@ -558,13 +566,13 @@ parser needing to know about the |arithmetic::big_int| class that will be used
 to represent them. As explained below for strings denotations, we store a raw
 pointer to a |std::string|, again to minimise complications for the parser.
 
-@< Scan a number @>=
+@< Scan a number, setting |valp->str| to the digit string @>=
 { const char* p=input.point()-1; // start of token
   do
     c=input.shift();
   while(std::isdigit(c));
   input.unshift();
-  valp->str = new std::string(p,input.point()); code=INT;
+  valp->str = new std::string(p,input.point());
 }
 
 @ The method |put_type_variable| is repeatedly called from the parser when a
@@ -581,11 +589,11 @@ parser generator allows its parser to do reductions even when a token has
 already been seen that will inevitably cause a syntax error after the
 reduction). When called in such erroneous situations, |put_type_variable| may
 either find an already formed clutch present that is not expecting any more type
-variables, or (more likely) a completely empty nest. We don't mind that in the
-former case the clutch is unduly extended, since the coming syntax error will
-wipe it out anyway, but in the latter case we do not want to crash the program
-by accessing a non-existing |nest.front()|, so we test for |nest.empty()|, in
-which case we do nothing.
+variables, or (more likely) a completely empty nest (not even en empty clutch is
+present). We don't mind that in the former case the clutch is unduly extended,
+since the coming syntax error will wipe it out anyway, but in the latter case we
+do not want to crash the program by accessing a non-existing |nest.front()|, so
+we test for |nest.empty()|, in which case we do nothing.
 
 These type variables will revert to their previous status at the matching call
 of |pop_nest|. We could test in |put_type_variable| that all identifiers in the
@@ -663,16 +671,16 @@ reason its operator priority, although set here, is not really relevant).
   {      case '"': @< Scan a string denotation @> @+
   break; case '(':
          case '{':
-         case '[': push_nest(); input.push_prompt(c); code=c;
+         case '[': push_nest(); input.push_prompt(c); token_type=c;
   break; case ')':
          case '}':
-         case ']': pop_nest(); input.pop_prompt(); code=c;
+         case ']': pop_nest(); input.pop_prompt(); token_type=c;
   break; case ',':
          case ';':
          case '.':
-         code=prevent_termination=c;
+         token_type=prevent_termination=c;
   break; case ':': prevent_termination=c;
-    code = input.shift()=='=' ? BECOMES  : (input.unshift(),c);
+    token_type = input.shift()=='=' ? BECOMES  : (input.unshift(),c);
   break; case '=':
          valp->oper.priority = 2;
 	 operator_termination(c);
@@ -681,7 +689,7 @@ reason its operator priority, although set here, is not really relevant).
            while(c=='<' or c=='=' or c=='>');
            input.unshift();
            valp->oper.id=id_table.match(p,input.point()-p);
-           code = p==input.point()-1 ? '=' : OPERATOR;
+           token_type = p==input.point()-1 ? '=' : OPERATOR;
            // don't try |OPERATOR_BECOMES|
          }
   break; case '!':
@@ -689,21 +697,21 @@ reason its operator priority, although set here, is not really relevant).
          { valp->oper.id = id_table.match_literal("!=");
            valp->oper.priority = 2;
            operator_termination('=');
-           code = OPERATOR; // don't try |OPERATOR_BECOMES|
+           token_type = OPERATOR; // don't try |OPERATOR_BECOMES|
          }
          else
          {
            valp->oper.id = id_table.match_literal("!");
            valp->oper.priority = 10; // not really relevant
-           code= (input.unshift(),c);
+           token_type= (input.unshift(),c);
          }
   break; case '<':
          case '>': @< Scan a token starting with |'<'| or |'>'| @>
   break; case '~': @< Handle the |'~'| case, involving some look-ahead @>
-  break; case '\f': code=END_OF_FILE; // tell the parser a file ended
+  break; case '\f': token_type=END_OF_FILE; // tell the parser a file ended
   break; @/@< Cases of arithmetic operators, ending with |break| @>
          case '\n': state=ended; // and {\bf fall through}.
-         default: code=c;
+         default: token_type=c;
   }
 }
 
@@ -713,7 +721,7 @@ designate forced inclusion (if file was already included before) respectively
 appending output redirection. In any other state the character either is a
 single-character token with |code| equal to the character value, or a
 multi-character (relation) symbol composed of characters from |"<=>"|, with
-|code==OPERATOR|. The single-character versions have a special role in the
+|token_type==OPERATOR|. The single-character versions have a special role in the
 parser, notably in applying user-define type constructors, but will still be
 used as if they were operator symbols in other contexts, which is why we set a
 (fairly low) |priority| value in all cases (except those with |state==initial|).
@@ -734,7 +742,7 @@ the lexical scanner would be a messy affair, which we do not attempt.
 @< Scan a token starting with |'<'| or |'>'| @>=
 {
   if (state==initial)
-  { code= c=='<'
+  { token_type= c=='<'
     ? input.shift()=='<' ? FORCEFROMFILE:  (input.unshift(),FROMFILE)
     : input.shift()=='>' ? ADDTOFILE : (input.unshift(),TOFILE) ;
     @< Read in |file_name| @>
@@ -749,13 +757,13 @@ the lexical scanner would be a messy affair, which we do not attempt.
   if (p!=input.point()-1) // at least one extra character was absorbed
   {
     valp->oper.id=id_table.match(p,input.point()-p);
-    code = OPERATOR; operator_termination(*p);
+    token_type = OPERATOR; operator_termination(*p);
   }
   else
   // scan as (unique) character token |*p|, but also fetch identifier
   {@; c=*p;
     valp->oper.id=id_table.match_literal(c=='<' ? "<" : ">");
-    code = c;
+    token_type = c;
   }
 }
 @ The tilde character was long unused, but was introduced in subscriptions,
@@ -792,7 +800,7 @@ question are not very long.
 
 @< Handle the |'~'| case, involving some look-ahead @>=
 if (input.shift()=='[') // recognise combination for parse reason
-{@; code = TLSUB; push_nest(); input.push_prompt('['); }
+{@; token_type = TLSUB; push_nest(); input.push_prompt('['); }
 else
  // now see if, skipping spaces and comments, next can follow |'~'|
 { input.unshift(); prevent_termination='~'; skip_space();
@@ -806,11 +814,11 @@ else
 @/special = special or std::strncmp(p,"for",3)==0
     @| and not (p[3]=='_' or std::isalnum((unsigned char)p[3]));
   if (special)
-    code=c; // return |'~'|
+    token_type=c; // return |'~'|
   else
   { valp->oper.id = id_table.match_literal("~");
     valp->oper.priority = 8; // same precedence as \.{\#}
-    code = becomes_follows() ? OPERATOR_BECOMES : OPERATOR;
+    token_type = becomes_follows() ? OPERATOR_BECOMES : OPERATOR;
   }
 }
 
@@ -821,29 +829,29 @@ getting too long.
     case '+': operator_termination(c);
        valp->oper.id = id_table.match_literal("+");
        valp->oper.priority = 4;
-       code = becomes_follows() ? OPERATOR_BECOMES : OPERATOR;
+       token_type = becomes_follows() ? OPERATOR_BECOMES : OPERATOR;
 break; case '-': operator_termination(c);
        if (input.shift()=='>')
-          code= ARROW;
+          token_type= ARROW;
        else
        { input.unshift();
          valp->oper.id = id_table.match_literal("-");
          valp->oper.priority = 4;
-         code = becomes_follows() ? OPERATOR_BECOMES : OPERATOR;
+         token_type = becomes_follows() ? OPERATOR_BECOMES : OPERATOR;
        }
 break; case '&': operator_termination(c);
        valp->oper.id = id_table.match_literal("&");
        valp->oper.priority = 5;
-       code = becomes_follows() ? OPERATOR_BECOMES : OPERATOR;
+       token_type = becomes_follows() ? OPERATOR_BECOMES : OPERATOR;
 break; case '*': operator_termination(c);
        valp->oper.id = id_table.match_literal("*");
        valp->oper.priority = 6;
-       code = becomes_follows() ? OPERATOR_BECOMES : c;
+       token_type = becomes_follows() ? OPERATOR_BECOMES : c;
 break; case '%': case '/': operator_termination(c);
        valp->oper.id =
           id_table.match_literal(c=='%' ? "%" : "/");
        valp->oper.priority = 6;
-       code = becomes_follows() ? OPERATOR_BECOMES : OPERATOR;
+       token_type = becomes_follows() ? OPERATOR_BECOMES : OPERATOR;
 break; case '\\':
        operator_termination(c);
        valp->oper.priority = 6;
@@ -855,11 +863,11 @@ break; case '\\':
        {@; input.unshift();
          valp->oper.id = id_table.match_literal("\\");
        }
-       code = becomes_follows() ? OPERATOR_BECOMES : OPERATOR;
+       token_type = becomes_follows() ? OPERATOR_BECOMES : OPERATOR;
 break; case '^': operator_termination(c);
        valp->oper.id = id_table.match_literal("^");
        valp->oper.priority = 7; // exponentiation is right-associative
-       code = becomes_follows() ? OPERATOR_BECOMES : OPERATOR;
+       token_type = becomes_follows() ? OPERATOR_BECOMES : OPERATOR;
 break; case '#': operator_termination(c);
        valp->oper.priority = 8;
        if (input.shift()=='#')
@@ -868,7 +876,7 @@ break; case '#': operator_termination(c);
        {@; input.unshift();
          valp->oper.id = id_table.match_literal("#");
        }
-       code = becomes_follows() ? OPERATOR_BECOMES : OPERATOR;
+       token_type = becomes_follows() ? OPERATOR_BECOMES : OPERATOR;
 break;
 
 @ We hand to the parser a pointer to a dynamic variable move-constructed from
@@ -888,7 +896,7 @@ when the current code is executed the start of the token is recorded in
 of parser rules involving |STRING|.
 
 @< Scan a string... @>=
-{@; valp->str = new std::string(scan_quoted_string()); code=STRING; }
+{@; valp->str = new std::string(scan_quoted_string()); token_type=STRING; }
 
 @ Since file names have a different lexical structure than identifiers, they
 are treated separately in the scanner; moreover since at most one file name

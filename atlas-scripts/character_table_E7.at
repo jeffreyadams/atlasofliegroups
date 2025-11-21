@@ -14,8 +14,8 @@ set E7_positions = [int]:
 [1,3,5,9,8,11,15,14,17,19,21,27,24,26,29
 ,31,33,35,37,41,40,43,47,46,49,51,53,55,57,59]
 
-{ the characters in the subset |dual_map| under Magma numbering }
-set !e7_table = [vec]: { 60 entries each, broken 20|20|20 across lines }
+{ the characters in the subset |E7_positions| under Magma numbering }
+set !e7_half_table = [vec]: { 60 entries each, broken 20|20|20 across lines }
 [[1,-1,-1,1,1,-1,1,-1,1,-1,1,1,1,1,-1,-1,-1,1,1,1
  ,-1,1,-1,1,-1,-1,-1,-1,1,1,-1,-1,1,1,-1,1,-1,-1,1,1
  ,-1,1,-1,1,-1,1,1,-1,1,-1,-1,1,-1,1,-1,1,-1,1,-1,-1] { 1:1a', sign character }
@@ -113,7 +113,7 @@ set !e7_characters = [vec]:
    , comp = complement(60,E7_positions)
    , result = for :60 do null(0) od { start with empty slots }
 in for p@i in E7_positions
-   do result[p]:=e7_table[i]; result[comp[i]]:=tensor(e7_table[i],e7_table[0])
+   do result[comp[i]]:=tensor(result[p]:=e7_half_table[i],e7_half_table[0])
    od; result
 
 { element order and class size, one column for each class in Magma order }
@@ -132,17 +132,16 @@ set e7_profile = mat: { shape (4,60) }
    , sgn_index=1, reflection_index=3
 in e7_orders_sizes ^ ^[e7_characters[sgn_index],e7_characters[reflection_index]]
 
-set Magma_reorder_E7(WeylClassTable Wct) = [int]: { map Magma to |Wct| numbers }
-   let  Wct_prof = mat: { with shape (4,60) }
-      let reps=Wct.class_representatives, sizes=Wct.class_sizes in
-      4 # for j:Wct.n_classes
-	  do [reps[j].order, sizes[j], Wct.sign[j], Wct.reflection[j] ]
-	  od
-   then profile_ranked = [int]: { columns |e7_profile| ranked |lex_leq| }
-      ranking([vec]:e7_profile)
-   , Wct_ranked = { columns of |Wct_prof| ranked by |lex_leq| }
-      ranking([vec]:Wct_prof)
-   in compose_permutations(Wct_ranked,inverse(profile_ranked))
+set Magma_positions_E7 (WeylClassTable Wct) = [int]: { |Wct| classes to Magma }
+   let Magma_ranked = [int]: { column indices of |e6_profile| ranked |lex_leq| }
+      ranking(rlex_leq@(vec,vec))([vec]:e7_profile)
+   then profiles_sorted = for r in Magma_ranked do e7_profile[r] od
+   , lookup = binary_lookup(rlex_leq@(vec,vec))
+   in for w@i in Wct.class_representatives
+      do let prof = vec:
+         [order(w),Wct.class_size(i),Wct.sign[i], Wct.reflection[i]]
+      in Magma_ranked[lookup(prof,profiles_sorted).requisition]
+      od
 
 set to_special_E7 = (int i) int:
    case i
@@ -171,44 +170,30 @@ set to_special_E7 = (int i) int:
    else error("Wrong E7 irrep number")
    esac
 
+set character_table_E7 (WeylClassTable Wct) = CharacterTable:
+   let M_pos = Magma_positions_E7(Wct)
+   then class_names = [string]:
+       for w in Wct.class_representatives
+       do let (P,n)=class_signature_E7(w) in P.compressed_string + n
+       od
+   , chars = for line in e7_characters do for p in M_pos do line[p] od od
+   then named_chars = [[int],string]:
+      let limit = Wct.root_datum.nr_of_posroots+1 in
+      for chi@i in chars
+      do let degree =
+         first(limit,(int k) bool: Wct.inner(chi,Wct.sym_power_refl(k))>0)
+      in ( chi
+	 , case i in "trivial", "sign", "sign*reflection", "reflection"
+	   else to_string("irrep(dim:",chi[0],",deg:",degree,")")
+	   esac
+	 )
+      od
+   in character_table(Wct,class_names,named_chars,to_special_E7@int)
 
-{ voluntarily override previous definition to memoize for |standard_datum_E7| }
 set character_table_E7 = (RootDatum->CharacterTable):
-   let ct= trivial_character_table { place holder value }
-   , compute (RootDatum rd) = CharacterTable:
-      let Wct = class_table_E7(rd)
-      then reordering = Magma_reorder_E7(Wct)
-      then E7_name(vec chi) = string:
-	 let psi = null(#chi)
-	 then degree = { first reorder |chi| for |Wct| into |psi| }
-	    for j@i in reordering do psi[j]:=chi[i] od { inverse reordering }
-	 ;  first(Wct.root_datum.nr_of_posroots+1
-		 ,(int k) bool: Wct.inner(psi,Wct.sym_power_refl(k)).>
-		 )
-	 in to_string("irrep(dim:",psi[0],",deg:",degree,")")
-      then classes = [WeylElt,string]:
-	 let reps = Wct.class_representatives
-	 in for j in reordering
-	    do (reps[j]
-	       ,let (P,n)=class_signature_E7(reps[j]) in P.compressed_string + n
-	       )
-	    od
-      ,  irreps = [[int],string]:
-	 for character@i in e7_characters
-	 do ( character
-	    , case i in "trivial", "sign", "sign*reflection", "reflection"
-	      else E7_name(character)
-	      esac
-	    )
-	 od
-      in { result of |compute| }
-      character_table(Wct,classes,irreps,to_special_E7@int)
-in (RootDatum rd) CharacterTable:
-   if rd != standard_datum_E7 then compute(rd)
-   elif =ct.root_datum.rank { whether this is the first time we are called }
-   then ct:=compute(rd) { compute and store the first time }
-   else ct { any next time just return the previously computed value }
-   fi
+((RootDatum rd) CharacterTable: character_table_E7(class_table_E7(rd))
+, standard_datum_E7
+).memo_1_rd
 
 set character_table_E7() = CharacterTable:
    character_table_E7(standard_datum_E7)

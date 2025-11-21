@@ -486,6 +486,8 @@ const_raw_type_list tuple () const @+
 @)
 type_nr_type tabled_nr () const @+
     {@; assert(tag==tabled); return tabled_variant.nr; }
+void replace_tabled_nr (type_nr_type nr) @+
+    {@; assert(tag==tabled); tabled_variant.nr=nr; }
 const raw_type_list tabled_args() const @+
     {@; assert(tag==tabled); return tabled_variant.type_args; }
 unsigned short tabled_arity() const; // number of arguments taken
@@ -1238,6 +1240,7 @@ type_expr simple_subst
       return type_expr::tuple_or_union(tp.raw_kind(),aux.undress());
     }
     case tabled:
+    // apply |assign| to argument types, then reconstruct |tabled| type
     { dressed_type_list aux;
       for (wtl_const_iterator it(tp.tabled_args()); not it.at_end(); ++it)
         aux.push_back(simple_subst(*it,assign));
@@ -1542,14 +1545,12 @@ detected anyway.)
 
 Type equivalence is defined in a conceptually simple way: two type expressions
 are equivalent if they can be made identical by finitely many expansions of user
-type and type constructor definitions. (This is somewhat stricter than the pure
-structural equivalence that we used to use before the introduction of user type
-constructors: (applications of) distinct recursive type (constructor)
-definitions may give rise to types for which no difference can be exhibited at
-any depth, but which are not equivalent under our current definition. Cases
-where this would make a difference seem contrived though, so we do not
-expect the change of definition to affect users; the new definition seems
-easier to adapt to type constructors.)
+type and type constructor definitions. (A less strict pure structural
+equivalence was used before the introduction of user type constructors, which
+equated recursive types for which no difference can be exhibited at any depth;
+now applications of distinct recursive type (constructor) definitions are never
+equated. Cases where this would make a difference seem contrived, and we do not
+expect this change of type equivalence relation to affect users.)
 
 Tabled types are introduced either by a call of |add_simple_typedef| above, or
 by a calls of |add_typedefs|. The latter actually introduces a group of tabled
@@ -1567,10 +1568,11 @@ subexpression of one of the right hand sides of the definitions. Edges are for
 direct descendant relations, or for references within the definition group,
 represented by |tabled| types with |tabled_nr()>=table_size()|. (The |tabled|
 case with |tabled_nr()<table_size()| can also occur, as an application of an
-already tabled type constructor; it is treated like built-in type constructors
-with any argument types being type subexpressions.) This graph can serve to
-detect actual recursion patterns as cliques of mutually two-way reachability
-among vertices.
+already tabled type constructor; whether that constructor is recursive or not,
+it will be treated in the same way a built-in type constructor would be, with
+any argument types being its type subexpressions.) This graph can serve to
+detect actual recursion patterns, which appear as cliques for the relation of
+mutual reachability among vertices.
 
 To process a group of type definitions, we first decompose the right hand side
 type expressions into ``nodes'' for which all type subexpressions will (also)
@@ -1616,13 +1618,14 @@ std::vector<type_nr_type> type_expr::add_typedefs
 @ A first concern is which component types of the right hand sides should get a
 separate slot in |type_array|; the minimal requirement is any intermediate type
 in a recursion, i.e., one that both descends from some type being defined, and
-that has the same type as descendant. As we are going to use |type_array| to
-find out such recursive relations it is not practical to limit ourselves to such
-types, so we shall make a slot for any type expression that has itself any
-descendants: row, function, tuple and union types, and instances of already
-defined tabled type constructors with |tabled_arity()>0| (whose argument types
-we count as descendants).In order to easily see which direct descendants of a
-node produce a link in |graph| we define the predicate |has_descendants|.
+that has the same type as descendant. Since we are going to use |type_array| to
+find out such recursive relations, it is not practical to use recursion as a
+criterion for allocating slots in |type_array|; therefore we shall create such a
+slot for any type expression that has itself any descendant type. These are:
+row, function, tuple and union types, and instances of already defined tabled
+type constructors with |tabled_arity()>0| (whose argument types we count as
+descendants). In order to easily see which direct descendants of a node produce
+a link in |graph|, we define the predicate |has_descendants|.
 
 We do not accept the applications of previously tabled type constructors as
 entries of |type_map|, to avoid having |type_expr::expanded| on one tabled type
@@ -1661,7 +1664,7 @@ edges correspond to those directly descendant types~|tp| of the node for which
 of |type_map| corresponding to the node, with those descendants that are also
 present in |type_map| replaced by |tabled| references.
 
-We provide |begin| and |end| iterators that actually iterator over the |out|
+We provide |begin| and |end| iterators that actually iterate over the |out|
 list.
 
 @< Local type definitions @>=
@@ -1861,7 +1864,7 @@ defined types).
     break; case tabled:
       @< Apply |rewrite| to every type in |data.tp->tabled_args()|,
          then assign to |tp| the expansion of the tabled type number
-         |data.tp->tabled_nr()| to that list of argument types @>
+         |data.tp->tabled_nr()| applied to that list of argument types @>
      }
     type_map.emplace_back(std::move(tp),n_args);
     if (rec.isMember(i))
@@ -1872,16 +1875,26 @@ defined types).
 }
 
 @ The case where an entry of |type_array| has |tag==tabled| arises when a
-previously tabled type constructor with positive arity is applied. The case had
-to be taken into account because the result of the application can have one or
-more of the types currently being defined as descendants, if they are passed via
-type arguments to the constructor, and thus must be aware of such relations when
-identifying recursive cliques. The more complicated way that |tp| is obtained
-here can result in a |type_map| entry that is somewhat more complicated than one
-would get directly; for instance if we apply a previous recursive type
-constructor, we necessarily get components that are a type constructor with a
-non-standard argument list: one containing other tabled references rather than
-just type variables. However, it does not seem like this can cause problems.
+previously tabled type constructor with positive arity is applied inside a right
+hand side type expression. The case had to be taken into account when detecting
+type recursion, since recursion may arise though type arguments to such a type
+constructor. (If the type constructor would fail to actually use its argument,
+this might result in a spurious detection of recursion; not using a type
+argument should therefore probably be forbidden, but no such restriction
+is enforced at the time of writing.)
+
+After processing the type argument list, which is similar to the processing in
+tuple and union types, we build a |user_type| from the type constructor and the
+processed argument list, and then |expand| the application to obtain the type
+|tp| that will be stored into |type_map|. This expansion is necessary to ensure
+that the tabled type will require just a single expansion to produce a type with
+non-tabled |top_kind()|. It does mean that the name of type constructor used in
+the right hand side of the definition cannot be reproduced on output of the
+defined type; this unfortunate effect might have been avoided as long as the
+usage happens in a \emph{subexpression} of that right hand side, by not creating
+a |type_map| entry for it. But already having given it a separate slot in
+|type_array|, that avoidance would require additional work, and is not currently
+done.
 
 @< Apply |rewrite| to every type in |data.tp->tabled_args()|... @>=
 { dressed_type_list aux;
