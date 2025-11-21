@@ -82,6 +82,9 @@ set hash_one_levelCounter = make_counter()
 set hash_bottom_layerCounter = make_counter()
 set hash_steveCounter = make_counter()
 
+{ the next type is the same as |Maybe<KTypePol>|, but injector names differ }
+set_type maybe_KTP = (void timed_out | KTypePol done)
+
 {to record time spent in is_unitary, is_unitary_to_ht, etc.}
 set unitaryTime = int: 0
 
@@ -109,6 +112,7 @@ set_type
   , ((Param,int)->KTypePol) entry
   , (Param->int) lookup
   , ((Param,int,KTypePol)->) append
+  , ((Param,int,maybe_KTP)->) maybe_append
   , (int -> Param) param_index {parameter #j}
   , (int -> int) height_index {height to which parameter #j is deformed}
   , (int -> KTypePol) data_index {deformation of parameter #j to its ht}
@@ -179,6 +183,22 @@ set make_deformation_hash_to_ht () = deformation_hash_to_ht:
        then deform_max_heights[i]:=h;
 	    deformed_data[i]:=P
        fi
+  , ((Param,int,maybe_KTP)->): {maybe_append} (Param p, int HT, maybe_KTP P):
+    case P
+    	 | timed_out: ()
+    	 | done(result):
+    	   let I = deform_param_hash.size()
+    	   then i = deform_param_hash.match(p)
+    	   in if i=I {haven't seen p before}
+       	      then deform_max_heights #:=HT;
+	      	   deformed_data#:=result;
+	   	    deform_use_count#:=0
+       	      elif {i < I} (HT=0 and deform_max_heights[i].>) 
+	      	   or HT>deform_max_heights[i] {seen p, but not to HT}
+       	      then deform_max_heights[i]:=HT;
+	      	   deformed_data[i]:=result
+       	      fi
+    esac
   , (int -> Param): {param_index} (int j): deform_param_hash.index(j)
   , (int -> int): {height_index} (int j): deform_max_heights[j]
   , (int -> KTypePol): {data_index} (int j): deformed_data[j]
@@ -831,7 +851,7 @@ set is_unitary(Param p,KTypePol_hash cert_hash) = bool:
 { some time-limited functions, using new built-in |full_deform@(Param,int)| }
 
 { the next type is the same as |Maybe<KTypePol>|, but injector names differ }
-set_type maybe_KTP = (void timed_out | KTypePol done)
+{set_type maybe_KTP = (void timed_out | KTypePol done)}
 
 {1 means pure, 0 means timed out, -1 means impure}
 set is_pure(maybe_KTP P) = int:

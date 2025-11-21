@@ -54,7 +54,9 @@ set full_deform_to_ht_MvL (Param p, int height, int time) = maybe_KTP:
 	  fi
   fi;
   if not strict_low(p,height)
-  then return to_ht(full_deform(p,time),height)
+  then let answer = to_ht(full_deform(p,time),height)
+       in deformedHash.maybe_append(p,height,answer);
+       return answer
   fi;
 let !empty_K=null_K_module(p.real_form), !empty=null_module(p)
   then output = empty_K, def = empty, expiration = elapsed_ms() + time

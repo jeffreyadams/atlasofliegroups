@@ -1609,6 +1609,24 @@ set old_to_ht_flag = true
 
 set avtime_frac = rat: 1{16/1 changed 11/3/25}
 
+{how long to_ht has been taking}
+set av_to_ht_time() = rat:
+    let N_hts = #tested_pos_to_ht_times
+    then prevtimes = (for j:N_hts do tested_pos_to_ht_times[j] od
+     	 	   ##for j:N_hts do tested_neg_to_ht_times[j] od).##
+    in if #prevtimes = 0
+       then interrupt_base_time
+       else sum(prevtimes)/#prevtimes
+       fi
+
+{how long is_unitary has been taking}
+set av_u_time() = rat:
+    let prevtimes = tested_pos_times ## tested_neg_times
+    in if #prevtimes = 0
+       then interrupt_base_time
+       else sum(prevtimes)/#prevtimes
+       fi
+
 set is_unitary_to_ht_big_SIMPLE(Param p, int H) = bool:
     if old_to_ht_flag then return is_unitary_to_ht_big_SIMPLE_old(p, H) fi;
     if H < height(p) then return true fi;
@@ -1648,7 +1666,7 @@ set is_unitary_to_ht_big(Param p,int N) = bool:
 set test_interrupt_verbose=false
 set old_test_interrupt_flag = false
 set Ufirst_flag = false
-
+set DHsize() = int: deformedHash.size() + twistedDeformedHash.size()
 {"step" is how many steps up in to_ht list to start}
 set is_unitary_test_big_SIMPLE_interrupt_old(Param p, int step) = bool:
   if (not is_hermitian(p)) then return false fi;
@@ -1689,6 +1707,7 @@ set is_unitary_test_big_SIMPLE_interrupt_old(Param p, int step) = bool:
 	       then () = tau_bd := next_to_lowest(tau_bd);
 	       	       	 old_ht:=ht;
 		    	 ht:=height(tau_bd)
+	       then u_time = mu_time_mult*max(times_to_ht)
 	       {then () = if time_to_ht > 10000 and test_verbose
 			 then prints("height ",ht," of SIMPLE_interrupt took ",print_time_string(time_to_ht))
 			 fi}
@@ -1696,13 +1715,13 @@ set is_unitary_test_big_SIMPLE_interrupt_old(Param p, int step) = bool:
 			    then big_unitary_hash.numatch_height(p,old_ht); -1
 			    elif old_ht >= top_ht
 			    then big_unitary_hash.umatch(p); 1
-			    elif test_interrupt_verbose
-			    then let startu = elapsed_ms()
-				 then r = is_unitary(p,floor(mu_time_mult*max(times_to_ht)))
-				 then () = prints("result ",r," from is_unitary, in time ",
-					 print_time_string(elapsed_ms() - startu))
+			    else let startu = elapsed_ms()
+				 then r = is_unitary(p,floor(u_time))
+				 then () = if test_interrupt_verbose
+				      	   then prints("result ",r," from is_unitary, in time ",
+					   	print_time_string(elapsed_ms() - startu))
+					   fi
 				 in r
-			    else is_unitary(p,floor(mu_time_mult*max(times_to_ht)))
 			    fi
 	    od
    in if result > 0 then true
@@ -1740,29 +1759,30 @@ set is_unitary_test_big_SIMPLE_interrupt_Ufirst(Param p, int step) = bool:
   then top_ht = GAM
        {floor((p.infinitesimal_character)*G.two_rho_check)}
        {unitary to top_ht implies unitary}
-  then next_time = int: interrupt_base_time, test_time = int:0
+  then u_time = int: interrupt_base_time, to_ht_time = int: interrupt_base_time, test_time = int:0
   then () = while result = 0 {and ht < ht_bound}
-       	    do let start_u = elapsed_ms()
-	       then () = result := is_unitary(p, next_time);
+       	    do let start_u = elapsed_ms(), DHsize = DHsize()
+	       then () = result := is_unitary(p, u_time);
 		       	 test_time:= elapsed_ms() - start_u;
 	       		 if test_interrupt_verbose
 		       	 then prints("result ",result," from is_unitary, in time ",
 				      	 print_time_string(test_time))
 			 fi
 	       then () = if result.!= then break fi
-	       then start_to_ht = elapsed_ms()
-	       then () = result := is_unitary_to_ht_big_SIMPLE_interrupt(p,ht,next_time)
+	       then () = if DHsize() = DHsize then u_time*:= 2 fi
+	       then start_to_ht = elapsed_ms(), DHsize = DHsize()
+	       then () = result := is_unitary_to_ht_big_SIMPLE_interrupt(p,ht,to_ht_time)
 	       then () = test_time:=elapsed_ms() - start_to_ht
 	       then () = if test_interrupt_verbose
-	       	       	 then prints("result = ", result, " from to_ht ",ht,", in time ",
+	       	       	 then prints("result ", result, " from to_ht ",ht,", in time ",
 			      print_time_string(test_time))
 			 fi
+	       then () = if DHsize = DHsize() then to_ht_time *:=2 fi
 	       then () = if result.!= {got a result from to_ht}
 	       	       	 then tau_bd := next_to_lowest(tau_bd);
 			      old_ht := ht;
 			      ht:=height(tau_bd);
-			      next_time := max(next_time,test_time)
-			 else next_time:=2*next_time {in case didn't finish}
+			      to_ht_time := max(to_ht_time,test_time)
 			 fi
 	       {then () = if time_to_ht > 10000 and test_verbose
 	       	       	 then prints("height ",ht," of SIMPLE_interrupt took ",
@@ -1820,19 +1840,18 @@ set is_unitary_test_big_SIMPLE_interrupt(Param p, int step) = bool:
   then top_ht = GAM
        {floor((p.infinitesimal_character)*G.two_rho_check)}
        {unitary to top_ht implies unitary}
-  then next_time = int: interrupt_base_time, test_time = int:0
+  then u_time = int: interrupt_base_time, to_ht_time = int: interrupt_base_time, test_time = int:0
   then () = while result = 0 {and ht < ht_bound}
-       	    do let  start_to_ht = elapsed_ms()
-	       then () = result := is_unitary_to_ht_big_SIMPLE_interrupt(p,ht,next_time)
+       	    do let  start_to_ht = elapsed_ms(), DHsize = DHsize()
+	       then () = result := is_unitary_to_ht_big_SIMPLE_interrupt(p,ht,to_ht_time)
 	       then () = test_time:=elapsed_ms() - start_to_ht
 	       then () = if test_interrupt_verbose
-			 then prints("result = ", result, " from to_ht ",ht,", in time ",
+			 then prints("result ", result, " from to_ht ",ht,", in time ",
 			      print_time_string(test_time))
 			 fi
+	       then () = if result.= and DHsize = DHsize() then to_ht_time*:=2 fi
 	       then () = if result.!= {got a result}
-			 then tau_bd := next_to_lowest(tau_bd);
-			      next_time := max(next_time,test_time)
-			 else next_time:=2*next_time {in case didn't finish}
+			 then tau_bd := next_to_lowest(tau_bd)
 			 fi;
 			 old_ht:=ht;
 			 ht:=height(tau_bd)
@@ -1844,10 +1863,10 @@ set is_unitary_test_big_SIMPLE_interrupt(Param p, int step) = bool:
 		  then big_unitary_hash.numatch_height(p,old_ht)
 		  elif result = 1 and old_ht >= top_ht
 		  then big_unitary_hash.umatch(p)
-		  else let startu = elapsed_ms() {to_ht was indeterminate}
-		       in result := is_unitary(p, next_time);
+		  else let startu = elapsed_ms(), DHsize = DHsize() {to_ht was indeterminate}
+		       in result := is_unitary(p, u_time);
 			  test_time:= elapsed_ms() - startu;
-			  next_time:= max(next_time,test_time);
+			  if result = 0 and DHsize = DHsize() then u_time *:= 2 fi {max(next_time,test_time)};
 			  if test_interrupt_verbose
 			  then prints("result ",result," from is_unitary, in time ",
 					 print_time_string(test_time))
@@ -1953,7 +1972,7 @@ set is_unitary_test_big_SIMPLE_interrupted_Ufirst(Param p, int time) = int:
 	       then () = result := is_unitary_to_ht_big_SIMPLE_interrupt(p,ht,next_time)
 	       then () = test_time:=elapsed_ms() - start_to_ht
 	       then () = if test_interrupt_verbose
-	       	       	 then prints("result = ", result, " from to_ht ",ht,", in time ",
+	       	       	 then prints("result ", result, " from to_ht ",ht,", in time ",
 			      print_time_string(test_time))
 			 fi
 	       then () = if result = 1 and ht <top_ht {got a useless result from to_ht}
@@ -2007,7 +2026,7 @@ set is_unitary_test_big_SIMPLE_interrupted(Param p, int time) = int:
 	       then () = result := is_unitary_to_ht_big_SIMPLE_interrupt(p,ht,next_time)
 	       then () = test_time:=elapsed_ms() - start_to_ht
 	       then () = if test_interrupt_verbose
-	       	       	 then prints("result = ", result, " from to_ht ",ht,", in time ",
+	       	       	 then prints("result ", result, " from to_ht ",ht,", in time ",
 			      print_time_string(test_time))
 			 fi
 	       then () = if result.> and ht< top_ht {got a useless result}
@@ -2063,20 +2082,24 @@ set is_unitary_to_ht_big_SIMPLE_interrupt_Ufirst(Param p, int HT) = bool:
 	    then return true
 	    fi
   then result = 0
-  then to_ht_time = int: interrupt_base_time,
-       u_time = int: interrupt_base_time, test_time = int:0
-  then u_factor = if low(p,HT)
+  then to_ht_time = int: floor(av_to_ht_time() + interrupt_base_time),
+       u_time = int: floor(av_u_time() + interrupt_base_time), test_time = int:0
+  then u_factor = if strict_low(p,HT)
        		  then 1
 		  else 2
 		  fi
   then () = while result = 0
-       	    do let start_u = elapsed_ms()
+       	    do let start_u = elapsed_ms(), DHsize = deformedHash.size()
 	       then form = hermitian_form_irreducible(p,u_time)
 	       then () = result := is_pure(to_ht(form,HT));
 		       	 test_time:= elapsed_ms() - start_u;
 	       		 if test_interrupt_verbose
 		       	 then prints("result ",result," from is_unitary, in time ",
 				      	 print_time_string(test_time))
+			 fi
+	       then () = if result.= {no result from is_u}
+	       	       	    and deformedHash.size() = DHsize {didn't record anything}
+			 then u_time*:=2
 			 fi
 	       then () = if result.!=
 	       	       	 then if is_pure(form).>
@@ -2089,7 +2112,7 @@ set is_unitary_to_ht_big_SIMPLE_interrupt_Ufirst(Param p, int HT) = bool:
 			      fi;
 			      break
 			 fi
-	       then start_to_ht = elapsed_ms()
+	       then start_to_ht = elapsed_ms(), DHsize = deformedHash.size()
 	       then () = result := is_unitary_to_ht_big_SIMPLE_interrupt(p,HT,to_ht_time)
 	       then () = test_time:=elapsed_ms() - start_to_ht
 	       then () = if test_interrupt_verbose
@@ -2097,8 +2120,8 @@ set is_unitary_to_ht_big_SIMPLE_interrupt_Ufirst(Param p, int HT) = bool:
 			      print_time_string(test_time))
 			 fi
 	       then () = if result.= {no result from to_ht}
-			 then to_ht_time*:=2;
-			      u_time*:=u_factor{in case didn't finish}
+	       	       	    and deformedHash.size() = DHsize {didn't record anything}
+			 then to_ht_time*:=2
 			 fi
 	       {then () = if test_time > 10000 and test_verbose
 	       	       	 then prints("height ",ht," of SIMPLE_interrupt took ",
@@ -2135,9 +2158,90 @@ set is_unitary_to_ht_big_SIMPLE_interrupt_TOHTfirst(Param p, int HT) = bool:
 	    then return true
 	    fi
   then result = 0
-  then to_ht_time = int: interrupt_base_time,
-       u_time = int: interrupt_base_time, test_time = int:0
-  then u_factor = if low(p,HT)
+  then to_ht_time = int: floor(av_to_ht_time() + interrupt_base_time),
+       u_time = int: floor(av_u_time() + interrupt_base_time), test_time = int:0
+  then () = while result = 0
+       	    do let start_to_ht = elapsed_ms(), DHsize = deformedHash.size()
+	       then () = result := is_unitary_to_ht_big_SIMPLE_interrupt(p,HT,to_ht_time)
+	       then () = test_time:=elapsed_ms() - start_to_ht
+	       then () = if test_interrupt_verbose
+	       	       	 then prints("result ", result, " from to_ht ",HT,", in time ",
+			      print_time_string(test_time))
+			 fi
+	       then () = if result.!=
+	       	       	 then if result.<
+			      then big_unitary_hash.numatch_height(p,HT)
+			      else add_to_u_to_ht(p,HT)
+			      fi;
+			      break
+			 fi
+	       then () = if result.= {no result from to_ht}
+	       	       	    and deformedHash.size() = DHsize {recorded nothing}
+			 then to_ht_time*:=2;
+			      if test_interrupt_verbose
+			      then prints("Increase to_ht_time to ",print_time_string(to_ht_time))
+			      fi
+			 fi
+	       then start_u = elapsed_ms(), DHsize = deformedHash.size()
+	       then form = hermitian_form_irreducible(p,u_time)
+	       then () = result := is_pure(to_ht(form,HT));
+		       	 test_time:= elapsed_ms() - start_u;
+	       		 if test_interrupt_verbose
+		       	 then prints("result ",result," from is_unitary, in time ",
+				      	 print_time_string(test_time))
+			 fi
+	       then () = if result.= {no result from to_ht}
+	       	       	 then if deformedHash.size() = DHsize {recorded nothing}
+			      then u_time*:=2
+			      fi;
+			      if test_interrupt_verbose
+			      then prints("Increase u_time to ",print_time_string(u_time))
+			      fi
+			 elif is_pure(form).> {from here result \ne 0}
+			 then big_unitary_hash.umatch(p)
+			 else big_unitary_hash.numatch(p);
+			      if result.<
+			      then big_unitary_hash.numatch_height(p,HT)
+			      else add_to_u_to_ht(p,HT)
+			      fi;
+			      break
+			 fi
+	       in if result = -1
+	       	  then big_unitary_hash.numatch_height(p,HT)
+		  elif result = 1
+		  then add_to_u_to_ht(p,HT)
+		  fi
+	    od
+   in if result > 0
+      then true
+      elif result < 0
+      then false
+      else is_unitary_to_ht_big_SIMPLE(p,HT) {shouldn't come to here}
+      fi
+
+{
+set is_unitary_to_ht_big_SIMPLE_interrupt_TOHTfirst(Param p, int HT) = bool:
+  if old_testing_flag then return is_unitary_to_ht_big_SIMPLE(p,HT) fi;
+  if (not is_hermitian(p)) then return false fi;
+  if not (fewer_reducible_unitary_flag or is_pos_on_LKTs(p)) then return false fi;
+  let G = p.real_form {, (LAM,NU,GAM) = low(p)}
+  then FPP_flag = is_FPP(G,p.infinitesimal_character)
+  then () = if not FPP_flag
+	    then return is_unitary_to_ht(p,HT) {prints("FPP DANGER TO HT at ",p)}
+	    fi
+  then () = p := herm_center(p)
+  then () = if (big_unitary_hash.ulookup(p)).>=
+	    then return true
+	    elif (big_unitary_hash.nu_height_lookup_bool(p,HT))
+	    then return false
+	    elif is_known_u_to_ht(p,HT)
+	    then return true
+	    fi
+  then result = 0
+  then to_ht_time = int: floor(av_to_ht_time() + interrupt_base_time), {interrupt_base_time,}
+       u_time = int: floor(av_u_time() + interrupt_base_time),
+       	      {interrupt_base_time,} test_time = int:0
+  then u_factor = if strict_low(p,HT)
        		  then 1
 		  else 2
 		  fi
@@ -2194,6 +2298,7 @@ set is_unitary_to_ht_big_SIMPLE_interrupt_TOHTfirst(Param p, int HT) = bool:
       then false
       else is_unitary_to_ht_big_SIMPLE(p,HT) {shouldn't come to here}
       fi
+}
 
 set is_unitary_to_hts_big_SIMPLE_interrupt_TOHTfirst(Param p, [int] HTs) = bool:
   if old_testing_flag then return is_unitary_to_hts{_big_SIMPLE}(p,HTs) fi; {should reorder to use big_simple}
@@ -2214,15 +2319,15 @@ set is_unitary_to_hts_big_SIMPLE_interrupt_TOHTfirst(Param p, [int] HTs) = bool:
 	    then return true
 	    fi
   then result = 0, HTfirst = HTs[0], HTlast = HTs~[0]
-  then to_ht_time = int: interrupt_base_time,
-       u_time = int: interrupt_base_time, test_time = int:0
-  then u_factor = if low(p,HTlast)
+  then to_ht_time = int: floor(av_to_ht_time() + interrupt_base_time), {interrupt_base_time,}
+       u_time = int: floor(av_u_time() + interrupt_base_time), {interrupt_base_time,} test_time = int:0
+  then u_factor = if strict_low(p,HTlast)
        		  then 1
 		  else 2
 		  fi
   then level = 0, HT = HTfirst
   then () = while (result = 0) or (result = 1 and HT < HTlast)
-       	    do let start_to_ht = elapsed_ms()
+       	    do let start_to_ht = elapsed_ms(), DHsize = deformedHash.size()
 	       then () = result :=
 	       	    is_unitary_to_ht_big_SIMPLE_interrupt(p,HT,to_ht_time)
 	       then () = test_time:=elapsed_ms() - start_to_ht
@@ -2234,22 +2339,17 @@ set is_unitary_to_hts_big_SIMPLE_interrupt_TOHTfirst(Param p, [int] HTs) = bool:
 	       	       	 then if HT=HTlast
 			      then break
 			      else level +:= 1;
-			      	   HT :=HTs[level];
+			      	   HT :=HTs[level]{;
 			      	   to_ht_time*:=2;
-			      	   u_time*:=u_factor
+			      	   u_time*:=u_factor}
 			      fi
 			 fi
 	       then () = if result.<
 	       	       	 then break
-	       		 else {no result from to_ht}
-			      to_ht_time*:=2;
-			      u_time*:=u_factor
+	       		 elif deformedHash.size() = DHsize {no result from to_ht}
+			 then to_ht_time*:=2
 			 fi
-	       {then () = if test_time > 10000 and test_verbose
-	       	       	 then prints("height ",ht," of SIMPLE_interrupt took ",
-			      		     print_time_string(test_time))
-			 fi}
-	       then start_u = elapsed_ms()
+	       then start_u = elapsed_ms(), DHsize = deformedHash.size()
 	       then form = hermitian_form_irreducible(p,u_time)
 	       then () = result := is_pure(to_ht(form,HTlast));
 		       	 test_time:= elapsed_ms() - start_u;
@@ -2266,11 +2366,9 @@ set is_unitary_to_hts_big_SIMPLE_interrupt_TOHTfirst(Param p, [int] HTs) = bool:
 			      then big_unitary_hash.numatch_height(p,HT)
 			      else add_to_u_to_ht(p,HT)
 			      fi
-			 fi
-	       {then () = if test_time > 10000 and test_verbose
-	       	       	 then prints("height ",ht," of SIMPLE_interrupt took ",
-			      		     print_time_string(test_time))
-			 fi}
+			  elif DHsize = deformedHash.size()
+			  then u_time*:=2
+			  fi
 	       in if result = -1
 	       	  then big_unitary_hash.numatch_height(p,HT)
 		  elif result = 1
