@@ -118,7 +118,7 @@ set twisted_full_deform_to_ht(Param p,int N) = KTypePol:
     if N < 0 then return twisted_full_deform(p) fi;
     let pc = alcove_center(p)
     in if deformed_hash_flag
-       then twistedDeformedHash.entry_to_ht(pc,N)
+       then twistedDeformedHash.entry(pc,N)
        else to_ht(twisted_full_deform(pc),N)
        fi
 

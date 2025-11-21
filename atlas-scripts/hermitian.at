@@ -6,8 +6,11 @@
 <cohom_reductionND {for derived_factor_params}
 <FPP_faces_geom {for herm_center}{get charTime!}
 <writeFiles {for write commands}
+
 set deformLookupCounter = make_counter()
 set deformCalcCounter = make_counter()
+set twistedDeformLookupCounter = make_counter()
+set twistedDeformCalcCounter = make_counter()
 
 {typewise_pure(c_form) is a necessary condition for purity of hermitian form, and rules out a lot}
 set is_typewise_pure(KTypePol P) = bool:
@@ -92,6 +95,10 @@ set to_ht (KTypePol P,int N) = KTypePol:
   if N<0 then return P fi;
   let (below,)=height_split(P,N) in below
 
+{set to_ht (ParamPol P,int N) = ParamPol:
+  if N<0 then return P fi;
+  let (below,)=height_split(P,N) in below}
+
 {take a KTypePol _apparently_ attached to G and make it _actually_ attached
 to G. Need this to use looked-up deformations.}
 set regroup(RealForm G, KTypePol P) = KTypePol:
@@ -119,7 +126,6 @@ set_type
   )
 ]
 
-
 set deform_param_hash = make_Param_hash() {used as index into...}
 set deformed_data = [KTypePol] : []
 set deform_max_heights = [int] : []
@@ -146,7 +152,7 @@ set make_deformation_hash_to_ht () = deformation_hash_to_ht:
 		   deform_max_heights #:= h;
 		   deformed_data#:=P;
 		   deform_use_count#:=0
-	      elif {i>0; p seen} h=0 and deform_max_heights[i].>
+	      elif {i>=0; p seen} h=0 and deform_max_heights[i].>
 	      then deformCalcCounter.use();
 	      	   P := full_deform(p);
 		   deform_max_heights[i]:=0;
@@ -257,47 +263,97 @@ set_type
 [ twisted_deformation_hash =
 ( ( -> int) size {number of parameters stored}
   , ( -> ) clear
-  , (Param->KTypePol) entry
-  , ((Param, int)->KTypePol) entry_to_ht
+  , (Param -> int) height {maximum height to which p is deformed}
+  , ((Param,int)->KTypePol) entry
+  , (Param->int) lookup
+  , ((Param,int,KTypePol)->) append
+  , ((Param,int,maybe_KTP)->) maybe_append
   , (int -> Param) param_index {parameter #j}
+  , (int -> int) height_index {height to which parameter #j is deformed}
   , (int -> KTypePol) data_index {deformation of parameter #j}
   )
 ]
 
 set twisted_deform_param_hash = make_Param_hash() {used as index into...}
 set twisted_deformed_data = [KTypePol] : []
+set twisted_deform_max_heights = [int] : []
+set twisted_deform_use_count = [int] : []
 
 set make_twisted_deformation_hash() = twisted_deformation_hash:
-(  {let param_hash = make_Param_hash()
-   then deformed_data = [KTypePol] : []}
-   let clear() = void:
+(   let clear() = void:
        let () =  twisted_deform_param_hash.clear()
+       then () = twisted_deform_max_heights :=[]
        then () = twisted_deformed_data :=[]
+       then () = twisted_deform_use_count := []
        in ()
-   then add_param(Param p) = int:
+   then add_param(Param p, int h) = int:
        	let I =  twisted_deform_param_hash.size()
 	then i =  twisted_deform_param_hash.match(p)
 	then P = null_K_module(SL(1,R))
 	then () = if i=I {haven't seen this p before}
-	     then deformCalcCounter.use();
-	     	  P := twisted_full_deform(p);
-		  twisted_deformed_data#:=P
-	      else deformLookupCounter.use()
+	     then twistedDeformCalcCounter.use();
+	     	  P := if h=0
+		       then twisted_full_deform(p)
+		       else to_ht(twisted_full_deform(p),h)
+		       fi;
+		  twisted_deformed_data#:=P;
+		  twisted_deform_max_heights #:=h;
+		  twisted_deform_use_count#:=0
+	      elif {i>=0; p seen} h=0 and deform_max_heights[i].>
+	      then twistedDeformCalcCounter.use();
+	      	   P := twisted_full_deform(p);
+		   twisted_deform_max_heights[i]:=0;
+		   twisted_deformed_data[i]:=P
+	      elif {i >0, h>0 or } deform_max_heights[i] > 0
+	       	    and h > deform_max_heights[i]
+	      then twistedDeformCalcCounter.use();
+	      	   P := to_ht(twisted_full_deform(p),h);
+		   twisted_deform_max_heights[i]:=h;
+		   twisted_deformed_data[i]:=P
+	      else twistedDeformLookupCounter.use()
 	      fi
 	  in i
    in
    ( ( -> int): {size} @int:  twisted_deform_param_hash.size()
   , ( -> ): {clear} clear
-  , (Param->KTypePol): {entry} (Param p):
-    let i = add_param(p)
-    in regroup(p.real_form,twisted_deformed_data[i])
-  , ((Param, int)->KTypePol): {entry_to_ht} (Param p, int h):
-    let i = add_param(p)
+  , (Param -> int): {height} (Param p):twisted_deform_max_heights[deform_param_hash.lookup(p)]
+  , ((Param,int)->KTypePol): {entry} (Param p, int h):
+    let i = add_param(p,h)
     in if h > 0
        then regroup(p.real_form,to_ht(twisted_deformed_data[i],h))
        else regroup(p.real_form,twisted_deformed_data[i])
        fi
+  , (Param->int): {lookup} (Param p): deform_param_hash.lookup(p)
+  , ((Param,int,KTypePol)->): {append} (Param p, int h, KTypePol P):
+    let I = deform_param_hash.size()
+    then i = deform_param_hash.match(p)
+    in if i=I {haven't seen p before}
+       then deform_max_heights #:=h;
+	    deformed_data#:=P;
+	    deform_use_count#:=0
+       elif {i < I} (h=0 and deform_max_heights[i].>) 
+	    or h>deform_max_heights[i] {seen p, but not to h}
+       then deform_max_heights[i]:=h;
+	    deformed_data[i]:=P
+       fi
+  , ((Param,int,maybe_KTP)->): {maybe_append} (Param p, int HT, maybe_KTP P):
+    case P
+    	 | timed_out: ()
+    	 | done(result):
+    	   let I = twisted_deform_param_hash.size()
+    	   then i = twisted_deform_param_hash.match(p)
+    	   in if i=I {haven't seen p before}
+       	      then twisted_deform_max_heights #:=HT;
+	      	   twisted_deformed_data#:=result;
+	   	   twisted_deform_use_count#:=0
+       	      elif {i < I} (HT=0 and twisted_deform_max_heights[i].>) 
+	      	   or HT>deform_max_heights[i] {seen p, but not to HT}
+       	      then twisted_deform_max_heights[i]:=HT;
+	      	   twisted_deformed_data[i]:=result
+       	      fi
+    esac
   , (int -> Param): {param_index} (int j):  twisted_deform_param_hash.index(j)
+  , (int -> int): {height_index} (int j): twisted_deform_max_heights[j]
   , (int -> KTypePol): {data_index} (int j): twisted_deformed_data[j]
   )
 )
@@ -725,7 +781,7 @@ set c_form_std(Param p) = KTypePol:
 set twisted_c_form_std(Param p) = KTypePol: { c-form on extended group}
     let pc = alcove_center(p)
     in if deformed_hash_flag
-       then twistedDeformedHash.entry(pc)
+       then twistedDeformedHash.entry(pc,0)
        else twisted_full_deform(pc)
        fi
 
@@ -874,7 +930,9 @@ set c_form_irreducible (Param p,int time) = maybe_KTP:
    let ori_nr_p = orientation_nr(p), expiration = elapsed_ms() + time
    then oriented_KL_sum = ParamPol: null_module(p) +
       for c@q in KL_sum_at_s(p) do (c*orientation_nr_term(ori_nr_p,q),q) od
-   in map( (Param p) maybe_KTP: full_deform(p,expiration-elapsed_ms())
+   in map( (Param p) maybe_KTP: (let ans =full_deform(p,expiration-elapsed_ms())
+      	   	     		in deformedHash.maybe_append(p, 0, ans);
+				   ans)
       , oriented_KL_sum
       )
 
@@ -883,7 +941,9 @@ set twisted_c_form_irreducible (Param p,int time) = maybe_KTP:
   , expiration = elapsed_ms() + time
 { |1+s| divides |unfixed|, no need for |scale_extended|; take half at |nu=0| }
   in case
-        map( (Param p) maybe_KTP: twisted_full_deform(p,expiration-elapsed_ms())
+        map( (Param p) maybe_KTP: (let ans = twisted_full_deform(p,expiration-elapsed_ms())
+	     	       		  in twistedDeformedHash.maybe_append(p,0,ans);
+				     ans)
 	   , fixed
 	   )
      | timed_out: timed_out()
