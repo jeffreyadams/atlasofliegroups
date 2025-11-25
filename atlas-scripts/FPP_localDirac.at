@@ -1,4 +1,3 @@
-
 <FPP_faces_herm
 <simple_factors { for simple_factors }
 <basic.at { for power_set, choices_from, sum@(int,[ratvec]), no_reps}
