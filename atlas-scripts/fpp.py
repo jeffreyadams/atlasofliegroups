@@ -186,7 +186,6 @@ def atlas_compute(job_number,round,start_counter,proc,log,data):
          'small_test_flag',
          'sort_LFD_flag',
          'step_flag',
-         'test_bl_flag',
          'test_interrupt_flag',
          'test_neither_flag',
          'tilde_flag',
