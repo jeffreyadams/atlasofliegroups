@@ -162,8 +162,7 @@ set full_deform_to_ht_MvL_base(Param p, int height) = KTypePol:
   in output
 )
 
-{ table of full_deform to ht, indexed by Param. MODIFY 11/22/25: NEG HEIGHT
-MEANS NO CUTOFF. {OLD: Height zero means no cutoff.}}
+{ table of full_deform to ht, indexed by Param. MODIFY 11/22/25: NEG HEIGHT MEANS NO CUTOFF. {OLD: Height zero means no cutoff.}}
 {since untwisted is not used for unequal rank, store only twisted in that case.}
 {Twisted always stored with no cutoff, since we don't now have a good twisted
 to_ht, so make that a separate type.}
@@ -985,8 +984,8 @@ set u_predictor(Param p, int HT) = int:
 	    	 {have we stored answer? Storage location j if yes, -1 if no}
     	    then known_indices = [int]: for j in indices
     	 	       	       	 do if j >= 0
-			       	       {and ((deformedHash.height_index(j) < 0)
-			       	       or HT.>= and deformedHash.height_index(j) >= HT))}
+			       	       and ((deformedHash.height_index(j) < 0)
+			       	       or (HT.>= and deformedHash.height_index(j) >= HT))
 			    	    do j {loop that runs 0 or 1 times}
 				    fi
 			      	 od.##
@@ -999,16 +998,21 @@ set u_predictor(Param p, int HT) = int:
 		fi;
        	        let ans = if n = 0 {no known times; compute _one_ such time}
        	     	    	  then let q = if HT < 0
-			       	       then list[3*#list\5]
-				       else list[#list\3]
+			       	       then list[2*#list\5] {moderately difficult term}
+				       else list[#list\6] {earlier in list is harder}
 				       fi
 	    	 	       then Q = deformedHash.maybe_entry(q,HT,10*WSF)
 		  	       in case Q
 		     	       	  | timed_out: 2*WSF
-		 	  	  | done(r): max(N*deform_times~[0], interrupt_base_time)
+		 	  	  | done(r): let j0 = deformedHash.lookup(q)
+				    	     in if predictor_verbose
+					     	then prints("chosen random time ",
+						     print_time_string(deform_times[j0]))
+						fi;
+						max(N*deform_times[j0], interrupt_base_time)
 		     		  esac
 			   elif N-n = 0 {everything known, calculation is just lookup}
-	     		   then 100*interrupt_base_time{10* was not enough}
+	     		   then 10*N*interrupt_base_time{10* was not enough}
 	     		   else  max((N-n)*max(times), interrupt_base_time) {N, n both nonzero}
 	     		   fi
 		 in if predictor_verbose
