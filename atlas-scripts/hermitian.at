@@ -965,10 +965,10 @@ set worst_so_far(Param p, int H) = int:
     fi
 
 {whether to insist that a timed deform compute at least one term}
-push_deform_flag = false
+set push_deform_flag = false
 
 set predictor_verbose =false
-set
+
 {predicted time in milliseconds to complete is_unitary{to_ht}(p,{HT})}
 set u_predictor(Param p, int HT) = int:
     let WSF = max(100*(p.real_form.semisimple_rank)^2, worst_so_far(p,HT))
@@ -1013,7 +1013,7 @@ set u_predictor(Param p, int HT) = int:
 		 in if predictor_verbose
 		    then prints("prediction ",print_time_string(ans))
 		    fi;
-		    push_deform_flag:=false
+		    push_deform_flag:=false;
 		    ans
 	    fi
 
