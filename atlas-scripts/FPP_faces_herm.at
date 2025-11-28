@@ -1683,7 +1683,7 @@ set is_unitary_to_ht_big_SIMPLE_interrupt(Param p, int HT, int time) = int: {1 m
 {if low(p,HT) suggests it's worthwhile (false; big HT) try is_unitary with time limit time}
 set is_unitary_to_ht_big_SIMPLE(Param p, int HT, int time) = bool:
     if HT.< then return is_unitary_hash_big_SIMPLE(p) fi;
-    if not low(p,HT)
+    if not strict_low(p,HT)
     then let ans = hermitian_form_irreducible(p,time) {maybe_KTP}
     	 in case ans
 	    | timed_out: is_unitary_to_ht_big_SIMPLE_old(p, HT)
@@ -2020,7 +2020,7 @@ set is_unitary_test_big_SIMPLE_interrupt(Param p, int step) = bool:
 			      fi}
 			 fi {result.>}
 	        fi{A};  {to_ht_time < 5*u_time}
-		if{B} u_time < {max(}10*to_ht_time{, elapsed_ms() - start)}
+		if{B} u_time < {max(}5*to_ht_time{, elapsed_ms() - start)}
 		then let startu = elapsed_ms()
 		     {then () = DHsize := DHsize()}
 		     then () = result := is_unitary(p, 5*u_time);
