@@ -412,7 +412,7 @@ def main(argv):
    group=""
    group_name=""
    logfile=""
-   executable_dir="/.ccs/u02/jdada11/atlasSoftware/to_ht_branch_jeff/"
+   executable_dir="/.ccs/u02/jdada11/atlasSoftware/to_ht_branch_jeff_2/"
    files_to_read=[]
    files_to_read_string=""
    default_file_to_read=""
