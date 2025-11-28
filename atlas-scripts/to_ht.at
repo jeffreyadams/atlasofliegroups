@@ -271,8 +271,9 @@ set c_form_irreducible_to_ht_MvL (Param p,int HT, int time ) = maybe_KTP:
       	   then let j = deformedHash.lookup(q)
 	        in if keep_next and
 		      (j < 0 or (deform_max_heights[j] >= 0 and (HT<0 or HT > deform_max_heights[j])))
-	   	   then keep_next:=false;
-	   	   	deformedHash.entry(q,HT).done
+	   	   then keep_next:=false; push_deform_flag:=false;
+		   	deformedHash.entry(q,HT).done
+		   	{deformedHash.entry(q,HT).done}
 	           else deformedHash.maybe_entry(q,HT,expiration-elapsed_ms())
 		   fi
 	   else full_deform_to_ht_MvL(q, HT, expiration - elapsed_ms())
