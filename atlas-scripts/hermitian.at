@@ -977,15 +977,15 @@ set u_predictor(Param p, int HT) = int:
        else push_deform_flag:=true;
        	    let list = {is_unitary runs over terms in KL_sum_to_ht(p,HT)}
 	    if HT < 0  {will do full_deform(q,HT) on each term}
-    	    then partial_block(p) {INCREASING x}
-	    else monomials(KL_sum_at_s_to_height(p,HT)) {DECREASING x}
+    	    then sort_by_height(partial_block(p)) {INCREASING height: get easier}
+	    else monomials(KL_sum_at_s_to_height(p,HT)) {INtCREASING height: get easier}
 	    fi
     	    then indices = for q in list do deformedHash.lookup(q) od
 	    	 {have we stored answer? Storage location j if yes, -1 if no}
     	    then known_indices = [int]: for j in indices
     	 	       	       	 do if j >= 0
 			       	       and ((deformedHash.height_index(j) < 0)
-			       	       or (HT.>= and deformedHash.height_index(j) >= HT))
+				       or (HT >= 0 and deformedHash.height_index(j) >= HT))
 			    	    do j {loop that runs 0 or 1 times}
 				    fi
 			      	 od.##
@@ -997,13 +997,20 @@ set u_predictor(Param p, int HT) = int:
 		     prints("(N,n) = (",N,",",n, "), times = ",times)
 		fi;
        	        let ans = if n = 0 {no known times; compute _one_ such time}
-       	     	    	  then let q = if HT < 0
-			       	       then list[2*#list\5] {moderately difficult term}
-				       else list[#list\6] {earlier in list is harder}
-				       fi
-	    	 	       then Q = deformedHash.maybe_entry(q,HT,10*WSF)
+       	     	    	  then let i0 = #list\2
+				       {if HT < 0
+			       	       then 3*#list\5 {moderately difficult term}
+				       else #list\6 {earlier in list is harder}
+				       fi}
+			       then q = list[i0]
+			       then () = if predictor_verbose
+			       	       	 then prints("chosen random q is number ",i0,
+					      " of ",N,": ",q)
+					 fi
+	    	 	       then Q = {deformedHash.entry(q,HT)}
+			       deformedHash.maybe_entry(q,HT,2*WSF)
 		  	       in case Q
-		     	       	  | timed_out: 2*WSF
+		     	       	  | timed_out: max(2*N*WSF, interrupt_base_time)
 		 	  	  | done(r): let j0 = deformedHash.lookup(q)
 				    	     in if predictor_verbose
 					     	then prints("chosen random time ",
@@ -1189,10 +1196,14 @@ set c_form_irreducible (Param p,int time) = maybe_KTP:
       if expiration - elapsed_ms() < 0 and not keep_next
       then timed_out()
       else if deformed_hash_flag
-      	   then if (deformedHash.lookup(q).< or deform_max_heights[deformedHash.lookup(q)] >= 0)
-	   	then keep_next:=false
-		fi;
-	   	deformedHash.entry(q,-1).done
+      	   then let j = deformedHash.lookup(q)
+	   	in if keep_next and
+		      (j < 0 or deform_max_heights[j] >= 0)
+	   	   then keep_next:=false; push_deform_flag:=false;
+		     	deformedHash.entry(q,-1).done
+	   		{deformedHash.entry(q,-1).done}
+	   	   else  deformedHash.maybe_entry(q,-1, expiration - elapsed_ms())
+		   fi
 	   else full_deform(q, expiration - elapsed_ms())
 	   fi
       fi
@@ -1213,7 +1224,7 @@ set twisted_c_form_irreducible (Param p,int time) = maybe_KTP:
       	then timed_out()
       	else if deformed_hash_flag
 	     then if (deformedHash.lookup(q).< or deform_max_heights[deformedHash.lookup(q)] >= 0)
-	     	  then keep_next:= false
+	     	  then keep_next:= false; push_deform_flag:=false
 		  fi;
 	     	  deformedHash.entry(q,-1).done
 	     else twisted_full_deform(q, expiration - elapsed_ms())

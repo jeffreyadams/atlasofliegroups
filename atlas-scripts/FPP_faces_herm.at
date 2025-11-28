@@ -1601,7 +1601,7 @@ set is_unitary_to_ht_big_SIMPLE_interrupt(Param p, int HT, int time) = int: {1 m
 	    then return 1
 	    fi
   in {if low(p,HT) {small HT, to_ht may be faster}
-     then} is_unitary_to_ht_MvL (p, HT, time)
+     then} push_deform_flag:=true; is_unitary_to_ht_MvL (p, HT, time)
      {else to_ht(hermitian_form_irreducible(p,time),HT).is_pure
      fi}
 
@@ -1737,6 +1737,7 @@ set is_unitary_test_big_SIMPLE_interrupt_old(Param p, int step) = bool:
 	       {then () = if time_to_ht > 10000 and test_verbose
 			 then prints("height ",ht," of SIMPLE_interrupt took ",print_time_string(time_to_ht))
 			 fi}
+	       then () = push_deform_flag:=true
 	       in result := if not to_ht_ans
 			    then big_unitary_hash.numatch_height(p,old_ht); -1
 			    elif old_ht >= top_ht
@@ -1801,7 +1802,7 @@ set is_unitary_test_big_SIMPLE_interrupt_Ufirst(Param p, int step) = bool:
   then () = while result = 0 {and ht < ht_bound}
        	    do if{A} u_time < {max(}5*to_ht_time{, elapsed_ms() - start)}
 	       then let start_u = elapsed_ms()
-	       	    {then () = DHsize := DHsize()}
+	       	    then () = push_deform_flag:=true
 	       	    then () = result := is_unitary(p, 5*u_time);
 		       	      test_time:= elapsed_ms() - start_u;
 	       		      if test_interrupt_verbose
@@ -1827,7 +1828,7 @@ set is_unitary_test_big_SIMPLE_interrupt_Ufirst(Param p, int step) = bool:
 	       fi{A}; {u_time < 5*to_ht_time}
 	       if{B} to_ht_time < {max(}5*u_time{, elapsed_ms() - start)}
 	       then let start_to_ht = elapsed_ms()
-	       	    {then () = DHsize := DHsize()}
+	       	    then () = push_deform_flag:=true
 	       	    then () = result := is_unitary_to_ht_big_SIMPLE_interrupt(p,ht,5*to_ht_time);
 	       	    	      test_time:=elapsed_ms() - start_to_ht;
 	       		      if test_interrupt_verbose
@@ -1917,7 +1918,8 @@ set is_unitary_test_big_SIMPLE_interrupt(Param p, int step) = bool:
        	    do if{A} to_ht_time < {max(}5*u_time{, elapsed_ms() - start)}{to_ht_time < 5*u_time}
 	       then let  start_to_ht = elapsed_ms()
 	       	    {then () = DHsize := DHsize()}
-	       	    then () = result := is_unitary_to_ht_big_SIMPLE_interrupt(p,ht,5*to_ht_time);
+	       	    then () = push_deform_flag:=true;
+		    	      result := is_unitary_to_ht_big_SIMPLE_interrupt(p,ht,5*to_ht_time);
 	       	    	      test_time:=elapsed_ms() - start_to_ht;
 	       		      if test_interrupt_verbose
 			      then prints("result ", result, " from to_ht ",ht,", in time ",
@@ -1949,7 +1951,8 @@ set is_unitary_test_big_SIMPLE_interrupt(Param p, int step) = bool:
 		if{B} u_time < {max(}5*to_ht_time{, elapsed_ms() - start)}
 		then let startu = elapsed_ms()
 		     {then () = DHsize := DHsize()}
-		     then () = result := is_unitary(p, 5*u_time);
+		     then () = push_deform_flag:=true;
+		     	       result := is_unitary(p, 5*u_time);
 			       test_time:= elapsed_ms() - startu;
 			       if test_interrupt_verbose
 			       then prints("result ",result," from is_unitary, in time ",
@@ -2028,6 +2031,7 @@ set is_unitary_test_big_SIMPLE_interrupt(Param p, [int] hts) = bool:
 	       {then () = if time_to_ht > 10000 and test_verbose
 			 then prints("ht ",ht," of SIMPLE_interrupt took ",print_time_string(time_to_ht))
 			 fi}
+	       then () = push_deform_flag:=true
 	       in result := if not to_ht_ans
 			    then big_unitary_hash.numatch_height(p,ht); -1
 			    elif ht >= top_ht
@@ -2085,7 +2089,8 @@ set is_unitary_test_big_SIMPLE_interrupted_Ufirst(Param p, int time) = int:
        	    do if{A} u_time < {max(}5*to_ht_time{, elapsed_ms() - start)}
 	       then let start_u = elapsed_ms()
 	       {then () = DHsize := DHsize()}
-	       then () = result := is_unitary(p, 5*u_time);
+	       then () = push_deform_flag:=true;
+	       	       	 result := is_unitary(p, 5*u_time);
 		       	 test_time:= elapsed_ms() - start_u;
 	       		 if test_interrupt_verbose
 		       	 then prints("result ",result," from is_unitary, in time ",
@@ -2108,7 +2113,8 @@ set is_unitary_test_big_SIMPLE_interrupted_Ufirst(Param p, int time) = int:
 	       if{B} to_ht_time < {max(} 5*u_time{, elapsed_ms() - start)}
 	       then let start_to_ht = elapsed_ms()
 	       	    {then () = DHsize := DHsize()}
-	       	    then () = result := is_unitary_to_ht_big_SIMPLE_interrupt(p,ht,5*to_ht_time);
+	       	    then () = push_deform_flag:=true;
+		    	      result := is_unitary_to_ht_big_SIMPLE_interrupt(p,ht,5*to_ht_time);
 	       	    	      test_time:=elapsed_ms() - start_to_ht;
 	       		      if test_interrupt_verbose
 	       	       	      then prints("result ", result, " from to_ht ",ht,", in time ",
@@ -2184,7 +2190,8 @@ set is_unitary_test_big_SIMPLE_interrupted(Param p, int time) = int:
        	    do if{A} to_ht_time < 5*u_time{, elapsed_ms() - start)}
 	       then let start_to_ht = elapsed_ms()
 	       {then DHsize:=DHsize()}
-	       then () = result := is_unitary_to_ht_big_SIMPLE_interrupt(p,ht,5*to_ht_time);
+	       then () = push_deform_flag:=true;
+	       	       	 result := is_unitary_to_ht_big_SIMPLE_interrupt(p,ht,5*to_ht_time);
 	       	       	 test_time:=elapsed_ms() - start_to_ht;
 	       		 if test_interrupt_verbose
 	       	       	 then prints("result ", result, " from to_ht ",ht,", in time ",
@@ -2216,7 +2223,8 @@ set is_unitary_test_big_SIMPLE_interrupted(Param p, int time) = int:
 	       if{B} u_time < max(5*to_ht_time, elapsed_ms() - start)
 	       then let start_u = elapsed_ms()
 	       {then () = DHsize := DHsize()}
-	       then () = result := is_unitary(p, 5*u_time);
+	       then () = push_deform_flag:=true;
+	       	       	 result := is_unitary(p, 5*u_time);
 		       	 test_time:= elapsed_ms() - start_u;
 	       		 if test_interrupt_verbose
 		       	 then prints("result ",result," from is_unitary, in time ",
@@ -2281,7 +2289,8 @@ set is_unitary_to_ht_big_SIMPLE_interrupt_Ufirst(Param p, int HT) = bool:
        	    do if{A} u_time < max(5*to_ht_time, elapsed_ms() - start)
 	       then let start_u = elapsed_ms()
 	       	    then form = hermitian_form_irreducible(p,5*u_time)
-	       	    then () = result := is_pure(to_ht(form,HT));
+	       	    then () = push_deform_flag:=true;
+		    	      result := is_pure(to_ht(form,HT));
 		       	      test_time:= elapsed_ms() - start_u;
 	       		      if test_interrupt_verbose
 		       	      then prints("result ",result," from is_unitary, in time ",
@@ -2303,7 +2312,8 @@ set is_unitary_to_ht_big_SIMPLE_interrupt_Ufirst(Param p, int HT) = bool:
 	       fi; {A} {u_time < 5*to_ht_time}
 	       if{B} to_ht_time < max(5*u_time, elapsed_ms() - start)
 	       then let start_to_ht = elapsed_ms()
-	       	    then () = result := is_unitary_to_ht_big_SIMPLE_interrupt(p,HT,5*to_ht_time);
+	       	    then () = push_deform_flag:=true;
+		    	      result := is_unitary_to_ht_big_SIMPLE_interrupt(p,HT,5*to_ht_time);
 	       		      test_time:=elapsed_ms() - start_to_ht;
 	       		      if test_interrupt_verbose
 	       	       	      then prints("result ", result, " from to_ht ",HT,", in time ",
@@ -2362,7 +2372,8 @@ set is_unitary_to_ht_big_SIMPLE_interrupt_TOHTfirst(Param p, int HT) = bool:
        	    do if{A} to_ht_time < max(5*u_time, elapsed_ms() - start)
 	       then let start_to_ht = elapsed_ms()
 	       	    {then () = DHsize:=DHsize()}
-	       	    then () = result := is_unitary_to_ht_big_SIMPLE_interrupt(p,HT,5*to_ht_time);
+	       	    then () = push_deform_flag:=true;
+		    	      result := is_unitary_to_ht_big_SIMPLE_interrupt(p,HT,5*to_ht_time);
 	       	              test_time:=elapsed_ms() - start_to_ht;
 	       	    	      if test_interrupt_verbose
 	       	       	      then prints("result ", result, " from to_ht ",HT,", in time ",
@@ -2385,7 +2396,8 @@ set is_unitary_to_ht_big_SIMPLE_interrupt_TOHTfirst(Param p, int HT) = bool:
 	       then let start_u = elapsed_ms()
 		    {then () = DHsize := DHsize()}
 	       	    then form =hermitian_form_irreducible(p,5*u_time)
-		    then () = result := is_pure(to_ht(form,HT));
+		    then () = push_deform_flag:=true;
+		    	      result := is_pure(to_ht(form,HT));
 		       	      test_time:= elapsed_ms() - start_u;
 	       		 if test_interrupt_verbose
 		       	 then prints("result ",result," from is_unitary, in time ",
@@ -2461,7 +2473,8 @@ set is_unitary_to_hts_big_SIMPLE_interrupt_TOHTfirst(Param p, [int] HTs) = bool:
   then () = while (result = 0) {or (result = 1 and HT < HTlast)}
        	    do if{A} to_ht_time < max(5*u_time, elapsed_ms() - start)
 	       then let start_to_ht = elapsed_ms()
-	       	    then () = result := is_unitary_to_ht_big_SIMPLE_interrupt(p,HT,5*to_ht_time);
+	       	    then () = push_deform_flag:=true;
+			      result := is_unitary_to_ht_big_SIMPLE_interrupt(p,HT,5*to_ht_time);
 	       		      test_time:=elapsed_ms() - start_to_ht;
 	       		      if test_interrupt_verbose
 	       	       	      then prints("result ", result, " from to_ht ",HT,", in time ",
@@ -2488,6 +2501,7 @@ set is_unitary_to_hts_big_SIMPLE_interrupt_TOHTfirst(Param p, [int] HTs) = bool:
 		fi; {A} {to_ht_time < 5*u_time}
 	        if {B} u_time < {max(}5*to_ht_time {, elapsed_ms() - start)}
 		then let start_u = elapsed_ms()
+		     then () = push_deform_flag:=true
 		     then form = hermitian_form_irreducible(p,5*u_time)
 	       	     then () = result := is_pure(to_ht(form,HTlast));
 		       	 test_time:= elapsed_ms() - start_u;
@@ -2650,7 +2664,8 @@ set is_unitary_to_hts_big_SIMPLE_interrupt(Param p,[int] Ns, int time) = bool:
     then () = for N@i in Ns
 	     do let result = 0, which_flag = low(p,N), start = elapsed_ms()
 		then () = while result = 0
-			  do result:= if which_flag
+			  do push_deform_flag:=true;
+			     result:= if which_flag
 				     then is_unitary_to_ht_MvL(p,N,time)
 				     else case hermitian_form_irreducible(p,time)
 					  | timed_out: 0
