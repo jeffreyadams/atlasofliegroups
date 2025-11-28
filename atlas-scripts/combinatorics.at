@@ -34,60 +34,6 @@ set rising_power (int n, int k) = int: assert(@:k>=0,"Negative exponent");
 
 { Combinatorial number system ${\N\choose k}\to\N$ encoding and decoding }
 
-{ represent a permutation as a single number: its lexicographic position }
-set permutation_encode([int] sigma) = int:
-   let n=#sigma then unseen=#n, acc=0
-in for x in sigma
-   do let l=#unseen
-      then pos = binary_search_first((int i): unseen[i]>=x,0,l)
-   in assert(@:unseen[pos]=x)
-   ; unseen := delete(unseen,pos)
-   ; acc:=l*acc+pos
-   od; acc
-
-set permutation_decode(int code, int n) = [int]:
-(   let result=null(n), unseen=#n
-in  (code,1).
-    (rec_fun f (int rem, int i) void:
-       let (q,r)=rem\%i in
-       if i<n then f(q,i+1) fi
-    ;  result~[i-1] := unseen[r]
-    ;  unseen := unseen[:r]##unseen[r+1:]
-    )
-;   result
-)
-
-{ The following generates partitions starting froim #n, without large storage
-  Example (this is subtle: body does |next| to yield old before preparing new):
-
-    let pi=vec:#4, go=true in
-    while go
-    do pi
-    next case next_permutation(pi) | none: go:=false | some(sig): pi:=sig esac
-    od
-
-  This can be applied even if some entries of |sigma| are the same (a multiset
-  permutation), in which case the lexicographically next permutation is found.
-}
-set permutation_iterator (int n) = Iterator<vec>:
-   let pi = vec: #n, go=true
-in ( @Maybe<vec>: if go then some(pi) else none() fi
-   , @void:
-      let i = last(n-1,(int i)bool: pi[i]<pi[i+1]) in
-      if i<0 then go:=false
-      else let x=pi[i], j=0
-      in while pi~[j]<=x do j+:=1 od { search least element >x after it}
-      ;  pi[i] := pi~[j]; pi~[j] := x { swap to increase |perm[i]| }
-      ;  pi := pi[:i+1] ## pi~[:i+1~] { reverse tail after |pi[i]| }
-      fi
-   )
-
-any_type T begin
-set permutations([T] xs) = [[T]]: { permutations of entries, ignore equalities }
-   let n  = #xs
-in for i: n! do for e in permutation_decode(i,n) do xs[e] od od
-end
-
 { Represent any $k$-combination on $\N$ as a single natural number
   For fixed $k$ this is bijective, and a decoding follows.
 }
@@ -110,68 +56,92 @@ set odd_places  ([int] v) = for i:#v\2 do v[2*i+1] od
 
 {				Permutations				}
 
+set_type Permutation = vec { second line of 2-line form of a permutation }
+
+set is_permutation (vec v) = bool:
+   let n=#v then seen = for :n do false od
+in for e in v
+   do if e<0 or e>=n or seen[e] then return false
+      else seen[e]:=true
+      fi
+   od; true
+
 { Matrix whose left-multiplication to a column vector permutes it by |pi|.
   It has nonzero entries at each (pi(j),j), it could have been defined (using
   |matrix| from basic.at) as |matrix((#pi,#pi),(int i,int j): #(i=pi[j]) )|.
 }
-set permutation_matrix ([int] pi) = mat:
+set permutation_matrix (Permutation pi) = mat:
    let n=#pi then I=n.id_mat in n# for v in pi do I[v] od
 
-set permutation (mat P) { assumed a permutation matrix} = [int]:
+set permutation (mat P) { assumed a permutation matrix} = Permutation:
   (vec: #P.n_rows)*P { right-act on row [0,1,...,n-1] for one-line form }
 
-set compose_permutations ([int] sigma, [int] pi) = [int]:
+set compose_permutations (Permutation sigma, Permutation pi) = Permutation:
   for i in pi do sigma[i] od
 
-set inverse ([int] pi) = [int]: { hope that name causes no conflict }
-  let n=#pi then result=for :n do n od { sentinel values} in
-  for i@j in pi
-  do assert(@:(0<=i and i<n and result[i]=n { in range, and no seen before }
-              ,to_string("not a permutation (",i,")")
-	      ));
+set inverse (Permutation pi) = Permutation: { hope the name causes no conflict }
+   let n=#pi then result = Permutation: for :n do n od { sentinel values}
+in for i@j in pi
+   do assert(@:(0<=i and i<n and result[i]=n { in range, and no seen before }
+               ,to_string("not a permutation (",i,")")
+	       ));
      result[i]:=j
-  od; result
+   od; result
 
 { longer name for non-checking (so faster) version of the above }
-set permutation_inverse ([int] pi) = [int]:
+set permutation_inverse (Permutation pi) = Permutation:
   let result=null(#pi) in for i@j in pi do result[i]:=j od; result
 
 { a product of many permutations, arranged as columns of a matrix }
-set permutation_product (mat M) = [int]:
+set permutation_product (mat M) = Permutation:
    for i: n_rows(M) do let x=i in for j:n_columns(M) ~do x:=M[x,j] od; x od
 
-set cyclic_permutation (int n) = ([int]->[int]): { cycle to one-line form }
-   ([int] cycle) [int]:
-   let pi=#n, l=#cycle in for e@i in cycle do pi[e]:=cycle[(i+1)%l] od; pi
+{ get transpositions as |cyclic_permutation(n)([i,j])|, and cycles similarly }
+set cyclic_permutation (int n) = ([int] cycle) Permutation:
+   let pi=vec:#n { default to fixed points }, l=#cycle
+in for e@i in cycle do pi[e]:=cycle[(i+1)%l] od; pi
 
-set cycle_product (int n) = ([[int]]->[int]): { cycles to one-line form }
+{ similarly make a permutation from a product of cycles (disjoint or not) }
+set cycle_product (int n) = ([[int]]->Permutation):
    let as_column = cyclic_permutation(n) in
-   ([[int]] cycles)[int]:
+   ([[int]] cycles) Permutation:
    permutation_product(mat: n # for c in cycles do c.as_column od)
 
-set permute ([int] pi,vec v) = vec: { replaces |v[i]| by |v[pi.inverse[i]]| }
-  assert(@:#pi=#v { and |pi| is a permutation },"length mismatch");
-  let result=null(#v) in for i@j in pi do result[i]:=v[j] od; result
+{ permutation action on |vec| values }
+set permute (Permutation pi,vec v) = vec:
+   assert(@:(#pi=#v and is_permutation(pi)
+            ,to_string("cannot permute ",v," by ",pi)
+	    ));
+   let result=null(#v)
+in for i@j in pi do result[i]:=v[j] od; result
 
 any_type T begin
-set permute ([int] pi,[T]a) = [T]: { replaces |a[i]| by |a[pi.inverse[i]]| }
-  assert(@:#pi=#a { and |pi| is a permutation },"length mismatch");
+set permute (Permutation pi,[T]a) = [T]:
+  assert(@:(#pi=#a and is_permutation(pi)
+           ,to_string("cannot permute row of length ",#a," by ",pi)
+	   ));
 { here we cannot pre-allocate a row of undefined T values, but have no need to }
   for i in permutation_inverse(pi) do a[i] od
 end
 
-set permutation_act([int] sigma, mat M) = mat: { permutation_matrix(sigma)*M }
+{ left-multiply by permutation matrix (permute rows by permutation) }
+set permutation_act (Permutation sigma, mat M) = mat:
    M.n_columns ^ for i in permutation_inverse(sigma) do row(M,i) od
 
-{ M*inverse(permutation_matrix(sigma)), for a right-action of S_n }
-set permutation_right_act (mat M,[int] sigma) = mat:
+{ right-multiply by permutation matrix (permute columns by inverse permutation) }
+set permutation_right_act (mat M,Permutation sigma) = mat:
    M.n_rows # for j in sigma do column(M,j) od
 
-set permutation_conjuagation([int] sigma, mat M) = mat:
-   permutation_act(sigma,permutation_right_act(M,sigma))
+set permute_rows = permutation_act@(Permutation,mat)
+set permute_columns (Permutation sigma,mat M) = mat:
+   permutation_right_act(M,permutation_inverse(sigma))
+
+set permutation_conjugation (Permutation sigma, mat M) = mat:
+   let s_inv = permutation_inverse(sigma)
+in matrix(shape(M),(int i,int j) int: M[s_inv[i],s_inv[j]])
 
 
-set permutation_cycles ([int] pi) = [[int]]:
+set permutation_cycles (Permutation pi) = [[int]]:
   let n=#pi then todo = full_bitset(n) in
   for start:n { try every index once as |start|, those visited give 0-cycles }
   do let ii = exp_2(start)
@@ -183,6 +153,70 @@ set permutation_cycles ([int] pi) = [[int]]:
 	od
      in if #cycle>0 do cycle fi { suppress the 0-cycles }
   od.##
+
+{ represent a permutation as a single number: its lexicographic position }
+set permutation_encode (Permutation sigma) = int:
+   let n=#sigma then unseen=#n, acc=0
+in for x in sigma
+   do case binary_lookup(x,unseen)
+      | none(): error("Not a permutation")
+      | some(pos): acc:=(#unseen)*acc+pos; unseen delete:= pos
+      esac
+   od; acc
+
+
+{ permutation number |code| in lexicographic order among permutations of |n| }
+set permutation_decode(int code, int n) = Permutation:
+(   let result=null(n), unseen = #n
+in  (code,1). { use recursion so as to post-process in reverse order of |i| }
+    (rec_fun f (int rem, int i) void: { action is to modify |result|, |seen| }
+       let (q,r)=rem\%i in
+       if i<n then f(q,i+1) fi
+    ;  result~[i-1] := unseen[r]; unseen delete:= r
+    )
+;   result
+)
+
+{ The following generates partitions starting from #n, without large storage
+
+    let (get,incr)= permutation_iterator(#n) in
+    while
+      case get() | none(): false | some(perm): process(perm); true esac
+    do incr()
+    od
+
+  Instead of |#n| one can supply any vector |pi| as starting value, which will
+  generate all permutations only if |pi| is weakly increasing. In case of
+  equality among entries of |pi|, permuting these among each other is avoided.
+}
+set permutation_iterator (vec pi) = Iterator<vec>:
+   let n=#pi, go=true
+in ( @Maybe<vec>: if go then some(pi) else none() fi
+   , @void:
+      let i = last(n-1,(int i)bool: pi[i]<pi[i+1]) in
+      if i<0 then go:=false
+      else let x=pi[i], j=0
+      in while pi~[j]<=x do j+:=1 od { search least element >x after it}
+      ;  pi[i] := pi~[j]; pi~[j] := x { swap to increase |perm[i]| }
+      ;  pi := pi[:i+1] ## pi~[:i+1~] { reverse tail after |pi[i]| }
+      fi
+   )
+
+{ generate |(#xs)!| permutations of |xs|, not avoiding permutation of equals }
+any_type T begin
+set permutations([T] xs) = [[T]]:
+   (xs,#xs).
+   (rec_fun perms ([T]xs,int n) [[T]]:
+    if n<=1 then [xs]
+    else
+       for x@i in xs
+          for ps in perms(delete(xs,i),n-1)
+	  do x#ps
+	  od
+       od
+    fi
+   )
+end
 
 { group root indices by orbits under action of cyclic group generated by |w| }
 set root_orbits (WeylElt w) = [[int]]:
@@ -744,7 +778,7 @@ in if k>l
   commuting with $x \mapsto -x$, and the one-line format consists of a list of
   the images of $1, 2, ..., n$ (1-based); it determines the signed permutation.
 }
-set classic_permutation (WeylElt w) = [int]:
+set classic_permutation (WeylElt w) = Permutation:
 (  let rd=w.root_datum then (lt,map)=Cartan_matrix_type(rd.Cartan_matrix)
    then factors=simple_factors(lt) then nf=#factors
 in assert(@:(nf=1,"Root datum diagram is not connected ("+ nf +" components)"))

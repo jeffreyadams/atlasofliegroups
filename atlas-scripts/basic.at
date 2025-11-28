@@ -296,8 +296,9 @@ set binary_lookup_by ((S->T)f,(T,T->bool) leq) = (T x,[S]a) Maybe<int>:
 
 end
 
-set binary_lookup = binary_lookup(<=@(int,int))
-set binary_lookup = binary_lookup(<=@(string,string))
+set binary_lookup = (int,[int]->Maybe<int>): binary_lookup(<=@(int,int))
+set binary_lookup = (string,[string]->Maybe<int>):
+    binary_lookup(<=@(string,string))
 
 set locate_sorted ([int] v,int lwb) = int: { first index of entry >= |lwb| }
   binary_search_first((int i):v[i]>=lwb,0,#v)
