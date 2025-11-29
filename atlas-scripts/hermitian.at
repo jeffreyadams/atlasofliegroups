@@ -1191,48 +1191,70 @@ set c_form_irreducible (Param p,int time) = maybe_KTP:
    let ori_nr_p = orientation_nr(p), expiration = elapsed_ms() + time
    then oriented_KL_sum = ParamPol: null_module(p) +
       for c@q in KL_sum_at_s(p) do (c*orientation_nr_term(ori_nr_p,q),q) od
-   then keep_next = deformed_hash_flag and push_deform_flag
+   then list = [Param]: [], indices = [int]: [], unknown_ks = [int]: []
+   then () = if deformed_hash_flag {this will compute one full_deform, unless that takes more than 20*time}
+   	     then let () = list := monomials(oriented_KL_sum)
+	     	  then () = indices := for p in list do deformedHash.lookup(p) od
+		  then () = unknown_ks := for j@k in indices
+    	 	       	       	 	     do if j < 0
+			       	       	     	   or (deformedHash.height_index(j) >= 0)
+			    	    		   do k {loop that runs 0 or 1 times}
+				    		fi
+			      	 	     od.##
+		  in if #unknown_ks > 0
+		     then deformedHash.maybe_entry(list[unknown_ks[(#unknown_ks-1)\2]],-1, 5*time)
+		     fi
+	     fi
+   {then keep_next = deformed_hash_flag and push_deform_flag}
    in map( (Param q) maybe_KTP:
-      if expiration - elapsed_ms() < 0 and not keep_next
+      if expiration - elapsed_ms() < 0 {and not keep_next}
       then timed_out()
       else if deformed_hash_flag
       	   then let j = deformedHash.lookup(q)
-	   	in if keep_next and
+	   	in {if keep_next and
 		      (j < 0 or deform_max_heights[j] >= 0)
 	   	   then keep_next:=false; push_deform_flag:=false;
 		     	deformedHash.entry(q,-1).done
 	   		{deformedHash.entry(q,-1).done}
-	   	   else  deformedHash.maybe_entry(q,-1, expiration - elapsed_ms())
-		   fi
+	   	   else}  deformedHash.maybe_entry(q,-1, expiration - elapsed_ms())
+		   {fi}
 	   else full_deform(q, expiration - elapsed_ms())
 	   fi
       fi
-      	   	     		{(let start = elapsed_ms(), ans =full_deform(p,expiration-elapsed_ms())
-      	   	     		in deformedHash.maybe_append_time(p, -1, ans, elapsed_ms()-start);
-				   ans)}
       , oriented_KL_sum
       )
 
 {if deform_hash_flag, guaranteed to deform at least one term}
 set twisted_c_form_irreducible (Param p,int time) = maybe_KTP:
 ( let (fixed,unfixed)=twisted_c_form_irreducible_contributions(p)
-  , expiration = elapsed_ms() + time, keep_next = deformed_hash_flag and push_deform_flag
+  , expiration = elapsed_ms() + time{, keep_next = deformed_hash_flag and push_deform_flag}
 { |1+s| divides |unfixed|, no need for |scale_extended|; take half at |nu=0| }
+   then list = [Param]: [], indices = [int]: [], unknown_ks = [int]: []
+   then () = if deformed_hash_flag
+   	     then let () = list := monomials(fixed)
+	     	  then () = indices := for p in list do deformedHash.lookup(p) od
+		  then () = unknown_ks := for j@k in indices
+    	 	       	       	 	     do if j < 0
+			       	       	     	   or (deformedHash.height_index(j) >= 0)
+			    	    		   do k {loop that runs 0 or 1 times}
+				    		fi
+			      	 	     od.##
+		  in if #unknown_ks > 0
+		     then deformedHash.maybe_entry(list[unknown_ks[(#unknown_ks-1)\2]],-1,5*time)
+		     fi
+	     fi
   in case
         map( (Param q) maybe_KTP:
-	if expiration - elapsed_ms() < 0 and not keep_next
+	if expiration - elapsed_ms() < 0 {and not keep_next}
       	then timed_out()
       	else if deformed_hash_flag
-	     then if (deformedHash.lookup(q).< or deform_max_heights[deformedHash.lookup(q)] >= 0)
+	     then {if (deformedHash.lookup(q).< or deform_max_heights[deformedHash.lookup(q)] >= 0)
 	     	  then keep_next:= false; push_deform_flag:=false
-		  fi;
+		  fi;}
 	     	  deformedHash.entry(q,-1).done
 	     else twisted_full_deform(q, expiration - elapsed_ms())
 	     fi
-      	fi				{(let start = elapsed_ms(),
-	     	       		       ans = twisted_full_deform(q,expiration-elapsed_ms())
-	     	       		  in {twistedD}deformedHash.maybe_append(q,-1,ans);
-				     ans)}
+      	fi
 	   , fixed
 	   )
      | timed_out: timed_out()
