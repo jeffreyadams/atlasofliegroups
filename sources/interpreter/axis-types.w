@@ -3975,7 +3975,22 @@ necessary, or use inheritance and the dynamic cast feature of \Cpp. We choose
 the second option, which is quite convenient to use, although this means that in
 reality we have dynamic type information stored within the values, even though
 that information had already been determined during type analysis. We shall in
-fact use this information to double-check our type analysis at run time.
+fact, when debugging is enabled, use this information to double-check our type
+analysis at run time.
+
+In our semantic model, all values are immutable (a new value can be assigned to
+a variable, but no value can itself undergo an internal change), which is why
+|shared_value| is defined as a (smart) pointer to constant. We therefore cannot
+implement computations by in-place modification of objects accessed through a
+|shared_value| pointer; when we are certain to have a |std::shared_pointer| that
+is actually unshared, as we are immediately after it is created, we use an
+|own_value| instead, whose destination we may modify. Nonetheless, certain
+primitive operations on values are most conveniently implemented by in-place
+modification of a existing value; for them we must first convert a
+|shared_value| into an |own_value|, copying the object if necessary. Thus we
+implement a copy-on-write policy of sharing values. Actual copying can be
+avoided in case the |shared_value| that accesses the value is found to actually
+be unshared (the reference count is~$1$).
 
 @< Type declarations @>=
 struct value_base;
@@ -3983,61 +3998,69 @@ using value = @[const value_base*@];
 using shared_value = std::shared_ptr<const value_base>;
 using  own_value = std::shared_ptr<value_base>;
 
-@~We start with a base class for values. For it to be an abstract class, there
-must be at least one pure virtual function in the class; the destructor having
-to be virtual anyway, we make it pure virtual (this does not mean it is
-unimplemented, in fact it must be implemented as it will always be called,
-after the destructor for a derived class; it just means derived
-classes \emph{must} override the default). The printing function does not have
-a useful default, so we make it pure virtual as well, without providing an
-implementation (in the base class). This |print| method will demonstrate the
-ease of using dynamic typing via inheritance; it will not do any dynamic
-casting, but other operations on values will.
+@ One of the things that we want to be able to do with all values is to print
+them (or produce some representation as a string; so to put it more generally,
+to write them to an output stream). This operation has to be defined separately
+for all different kinds of values, and the natural way to do that is to define a
+pure virtual method of |value_base| to do the printing. This works well, but has
+as consequence that the way values are represented is entirely determined by
+there internal representation of the values, with no possibility of control by
+the axis user.
+
+One consequence of this is that, if we want to have user defined types that
+behave as (new) primitive types, shielding the actual representation behind
+collection of interface functions, then that interface can control textual
+rendering of these values if it actually wraps the internal representation into
+a new (kind of) value distinguished from it, so that the printing function will
+not simply show the internal representation for such values.
 
 @< Includes needed in \.{axis-types.h} @>=
 #include <iostream> // needed for specification of |print| method below
 
-@~Apart from virtual methods, we define other methods that will be redefined in
-all or some derived classes, and which are selected based on the static type at
-hand in the calling code rather than on the dynamic type, as the former will be
-known to match the latter due to our type system. The method |name| is used in
-reporting logic errors from function templates, notably the failure of a value
-to be of the predicted type, where |name| names that predicted type. Since
-callers are functions that know the type (via a template argument) but need not
-have any object of that type at hand, we define |name| to be a |static|. For
-certain derived types there will be operations implemented by making changes to
-an existing value; we use copy-on-write when our reference to the initial value
-is shared, and these derived classes provide a (usually default) copy
-constructor, which will be invoked by the |get_own| function template below. It
-used to call a virtual |clone| method, but that forces \emph{all} derived
-classes to implement copying, while in the current situation those that do not
-use |get_own| may simply not implement copying by deleting the copy constructor.
+@ The class |value_base| is a base class for values. It is an abstract class,
+since we want to give access to values of derived types using a pointer to the
+base class; this means its destructor must be virtual, to allow derived objects
+accessed through a base class pointer to be properly destroyed. The base class
+destructor must be defined (it will be called as last step in polymorphic
+destruction) and we do so with an empty body. The destructor used to be
+(nonetheless) pure virtual with an out-of-line definition; this forces derived
+classes to define their own destructors. But when destruction of a derived class
+object only involves automatic destruction of its members, we can safely rely on
+the destructor that will be implicitly defined, provided we give an in-line
+definition of the |value_base| destructor; we therefore opt to do that. We
+define another virtual method |print|, and this one is pure, so this is really
+an abstract class (no objects of the base class are allowed). We need no other
+virtual functions because polymorphism is under control of the type system:
+whenever we want access to derived values, we know that the actual value is of
+that type, and we can use a static down-cast to the derived type (or a dynamic
+one if we want to double-check the type system).
 
-We disable assignment of |value_base| objects, since they
-should always be handled by reference; the base class is abstract anyway, but
-this ensures us that for no derived class an implicitly defined assignment
-operator is accidentally invoked. Though derived copy constructors will be
-|private|, they need to copy the base object, so we provide a |protected| copy
-constructor.
+The copying involved in our copy-on-write discipline used to be implemented by a
+virtual method |clone| of |value_base|. That method was later removed as
+unnecessary, because whenever such copying is needed, it is for a known derived
+type, whose copy constructor can be invoked directly by the |get_own| function
+template below. So it suffices to define a copy constructor for those derived
+types for which |get_own| is somewhere called. More generally, for functionality
+in derived classes that is invoked by function templates like |get_own|, there
+is no need to have any virtual method in the base class. Thus derived classes
+will have a static method |name| to designate them in error messages that will
+be defined independently for each of them.
 
-Values are always handled via pointers. The raw pointer type is |value|, and a
-shared smart pointer-to-constant is |shared_value|. The const-ness of the
-latter reflects a copy-on-write policy: we rarely need to modify values
-in-place, but when we do, we ensure our shared pointer is actually unique, and
-then |const_cast| it to a derived version of |own_value| for modification (this
-will be hidden in a function template defined later).
+To enable defining derived copy constructors, we do keep the implicitly defined
+|value_base| copy constructor. On the other hand, since value assignment is
+implemented by replacement of a pointer to |value_base| rather than of a
+derived-from-|value_base| instance itself, we disable |value_base::operator=|;
+this ensures that for no derived class an implicitly defined assignment operator
+can be accidentally invoked.
 
 @< Type definitions @>=
 struct value_base
 { value_base() @+ {}
-@/virtual ~value_base() = 0;
+@/virtual ~value_base() @+ {}
   virtual void print(std::ostream& out) const =0;
-@)
-// |static const char* name();| just a model; defined in derived classes
 @)
   value_base& operator=(const value_base& x) = delete;
 };
-inline value_base::~value_base() @+{} // necessary but empty implementation
 
 @ We can already make sure that the operator~`|<<|' will do the right thing
 for any of our values.
