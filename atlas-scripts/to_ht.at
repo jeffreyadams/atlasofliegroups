@@ -160,9 +160,13 @@ set twisted_full_deform_to_ht(Param p,int HT) = KTypePol:
        else to_ht(twisted_full_deform(pc),HT)
        fi
 
-set KL_sum_at_s_to_ht(int N) = (Param p) ParamPol:
-  {let P = KL_sum_at_s_to_height(p,N)
-  in} KL_sum_at_s_to_height(p,N)
+set KL_sum_at_s_to_ht(int HT) = (Param p) ParamPol:
+  {let P = KL_sum_at_s_to_height(p,N) in}
+  if low_diff_char(p,HT)
+  then KL_sum_at_s_to_height(p,HT)
+  else let (below,) = height_split(KL_sum_at_s(p),HT)
+       in below
+  fi
 
 set twisted_KL_sum_at_s_to_ht(int N) = (Param p) ParamPol:
   to_ht(N)(twisted_KL_sum_at_s(p))
@@ -174,12 +178,12 @@ set twisted_KL_sum_at_s_to_ht(int N) = (Param p) ParamPol:
 {.write c-invariant form on standard module as a ParamPol of
 standardrepKs to specified height.}
 
-set c_form_std_to_ht_MvL(int N) = (Param->KTypePol):(Param p):
+set c_form_std_to_ht_MvL(int HT) = (Param->KTypePol):(Param p):
 { never involves |twisted_full_deform| }
-  if not strict_low(p,N)
-  then return to_ht(full_deform(p),N)
+  if not strict_low(p,HT)
+  then return to_ht(full_deform(p),HT)
   fi;
-   full_deform_to_ht_MvL(p,N)
+   full_deform_to_ht_MvL(p,HT)
 
 set c_form_std_to_ht_MvL(int N, int time) = (Param->maybe_KTP):(Param p):
 { never involves |twisted_full_deform| }
@@ -256,6 +260,7 @@ set c_form_irreducible_to_ht_MvL (Param p,int N) = KTypePol:
 { untwisted |c_form_irreducible|, for efficiency; only used in equal rank case }
 {.c-invariant form on irreducible module of p as ParamPol of standardrepKs.}
 {now guaranteed to deform at least one term}
+{finishes without interruption if all terms already deformed}
 set c_form_irreducible_to_ht_MvL (Param p,int HT, int time ) = maybe_KTP:
   if not strict_low(p,HT)
   then return to_ht(c_form_irreducible(p,time),HT)
@@ -268,16 +273,19 @@ set c_form_irreducible_to_ht_MvL (Param p,int HT, int time ) = maybe_KTP:
    	     then let () = list := monomials(oriented_KL_sum)
 	     	  then () = indices := for p in list do deformedHash.lookup(p) od
 		  then () = unknown_ks := for j@k in indices
-    	 	       	       	 	     do if j < 0
-			       	       	     	   or (deformedHash.height_index(j) >= 0 and HT < 0)
-						   or (deformedHash.height_index(j) >= 0 and HT > deformedHash.height_index(j))
-			    	    		   do k {loop that runs 0 or 1 times}
-				    		fi
-			      	 	     od.##
-		  in if #unknown_ks > 0
-		     then deformedHash.entry(list[unknown_ks[(#unknown_ks-1)\2]],HT)
-		     fi
-	     fi
+    	 	       	    do if j < 0
+			       	  or (deformedHash.height_index(j) >= 0 and HT < 0)
+				  or (deformedHash.height_index(j) >= 0 and
+				     HT > deformedHash.height_index(j))
+			       do k {loop that runs 0 or 1 times}
+			       fi
+			    od.##
+	   in if #unknown_ks = 0
+	      then return map( (Param q) KTypePol:
+	      	   	      deformedHash.entry(q,HT), oriented_KL_sum).done
+	       else deformedHash.entry(list[unknown_ks[(#unknown_ks-1)\2]],HT)
+	       fi {#unknown_ks}
+	     fi {deformed_hash_flag}
    {then keep_next = deformed_hash_flag and push_deform_flag}
    in map( (Param q) maybe_KTP:
       if expiration - elapsed_ms() < 0 {and not keep_next}
@@ -396,7 +404,7 @@ set twisted_c_form_irreducible_contributions_to_ht(Param p,int HT) =
 }
 {.twisted c-invariant form to height HT on an irreducible in terms of
 standardrepKs.}
-
+{p must be fixed by standard involution!}
 set twisted_c_form_irreducible_to_ht (Param p,int HT) = KTypePol:
 ( let (fixed,unfixed)=twisted_c_form_irreducible_contributions_to_ht(p,HT)
 { |1+s| divides |unfixed|, no need for |scale_extended|; take half at |nu=0| }
@@ -414,6 +422,7 @@ set twisted_c_form_irreducible_to_ht (Param p,int HT) = KTypePol:
   fi
 )
 
+{p must be fixed by standard involution!}
 set twisted_c_form_irreducible_to_ht (Param p,int HT, int time) = maybe_KTP:
 ( let (fixed,unfixed)=twisted_c_form_irreducible_contributions_to_ht(p,HT), start = elapsed_ms(),
   !empty_K = null_K_module(p.real_form), flag = true

@@ -121,7 +121,7 @@ set regroup(RealForm G, Param p) = Param:
 
 set full_deform_to_ht_MvL_base(Param p, int height, int time) = maybe_KTP:
 ( if not strict_low(p,height)
-  then to_ht(full_deform(p,time),height)
+  then return to_ht(full_deform(p,time),height)
   fi;
   let start = elapsed_ms(), !empty_K=null_K_module(p.real_form), !empty=null_module(p)
   then output = empty_K, def = empty, expiration = elapsed_ms() + time
@@ -143,7 +143,7 @@ set full_deform_to_ht_MvL_base(Param p, int height, int time) = maybe_KTP:
 
 set full_deform_to_ht_MvL_base(Param p, int height) = KTypePol:
 ( if not strict_low(p,height)
-  then to_ht(full_deform(p),height)
+  then return to_ht(full_deform(p),height)
   fi;
   let !empty_K=null_K_module(p.real_form), !empty=null_module(p)
   then output = empty_K, def = empty
@@ -246,7 +246,7 @@ set make_deformation_hash_to_ht () = deformation_hash_to_ht:
 	  then () = deform_use_count[i] +:=1
 	  in i
   then maybe_add_param(Param p, int h, int time) = int:
-   	let I = deform_param_hash.size()
+   	let I = deform_param_hash.size(), G = p.real_form
 	{then () = prints("I = ",I)}
 	then k = deform_param_hash.lookup(p)
 	{then () = prints("k = ",k)}
@@ -254,10 +254,16 @@ set make_deformation_hash_to_ht () = deformation_hash_to_ht:
 	then start = elapsed_ms()
 	then () = if k.< {haven't seen this p before}
 	     then deformCalcCounter.use();
-	     	  P := if h<0
-	     	      then full_deform(p,time)
-		      else full_deform_to_ht_MvL_base(p,h,time)
-		      fi; {this step should not change deformation_hash_table!}
+	     	  P := if is_equal_rank(p.real_form)
+		       then if h<0
+	     	       	    then full_deform(p,time)
+		      	    else full_deform_to_ht_MvL_base(p,h,time)
+			    fi
+		       else if h<0
+		       	    then twisted_full_deform(p,time)
+			    else to_ht(twisted_full_deform(p,time),h)
+			    fi
+		   fi; {this step should not change deformation_hash_table!}
 		   case P
 		   	| timed_out: return -1
 			| done(result):
@@ -271,7 +277,10 @@ set make_deformation_hash_to_ht () = deformation_hash_to_ht:
 		   esac
 	      elif {k>=0; p seen} h<0 and deform_max_heights[k].>=
 	      then deformCalcCounter.use();
-	      	   P := full_deform(p,time);
+	      	   P := if is_equal_rank(G)
+		     	then full_deform(p,time)
+			else twisted_full_deform(p,time)
+			fi;
 		   case P
 		   	| timed_out: return -1
 			| done(result):
@@ -282,7 +291,10 @@ set make_deformation_hash_to_ht () = deformation_hash_to_ht:
 		   esac
 	      elif {k =>0, h>=0 or } deform_max_heights[k] >= 0 and h > deform_max_heights[k]
 	      then deformCalcCounter.use();
-	      	   P := full_deform_to_ht_MvL_base(p,h,time);
+	      	   P := if is_equal_rank(G)
+		     	then full_deform_to_ht_MvL_base(p,h,time)
+			else to_ht(twisted_full_deform(p,time),h)
+			fi;
 		   case P
 		   	| timed_out: return -1
 			| done(result):
@@ -956,9 +968,9 @@ set (report_tested_cum,clear_report_tested_cum_clear) = (((string, string) -> vo
 set report_tested_cum() = report_tested_cum("","")
 
 set worst_so_far(Param p, int H) = int:
-    if H.>=
-    then let THcard = #tested_neg_to_ht_times
-     	 then top = min(THcard+1, height(p)-H+1)
+    if H.>= then
+       	 let THcard = #tested_neg_to_ht_times
+     	 then top = min(THcard, height(p)-H+1)
      	 in max((tested_neg_to_ht_times[:top] ## tested_pos_to_ht_times[:top]##[[0]]).##)
     else max(tested_neg_times##tested_pos_times##[0])
     fi
@@ -971,15 +983,25 @@ set predictor_verbose =false
 
 {predicted time in milliseconds to complete is_unitary{to_ht}(p,{HT})}
 set u_predictor(Param p, int HT) = int:
-    let WSF = max(100*(p.real_form.semisimple_rank)^2, worst_so_far(p,HT))
+    let WSF = max(100*(p.real_form.semisimple_rank)^2, worst_so_far(p,HT)),
+    	delta = p.real_form.distinguished_involution, start_pred = elapsed_ms()
     in if not deformed_hash_flag
        then WSF
-       else push_deform_flag:=true;
+       else {push_deform_flag:=true;}
        	    let list = {is_unitary runs over terms in KL_sum_to_ht(p,HT)}
 	    if HT < 0  {will do full_deform(q,HT) on each term}
     	    then sort_by_height(partial_block(p)) {INCREASING height: get easier}
-	    else monomials(KL_sum_at_s_to_height(p,HT)) {INtCREASING height: get easier}
+	    else if low_diff_char(p,HT)
+	    	 then monomials(KL_sum_at_s_to_height(p,HT)) {INtCREASING height: get easier}
+		 else let (below,) = height_split(KL_sum_at_s(p),HT)
+		      in monomials(below)
+		 fi
 	    fi
+	    then () = list := for q in list
+	    	 	    do if is_fixed(delta,q)
+			       do q
+			       fi
+			    od.##
     	    then indices = for q in list do deformedHash.lookup(q) od
 	    	 {have we stored answer? Storage location j if yes, -1 if no}
     	    then known_indices = [int]: for j in indices
@@ -997,7 +1019,7 @@ set u_predictor(Param p, int HT) = int:
 		     prints("(N,n) = (",N,",",n, "), times = ",times)
 		fi;
        	        let ans = if n = 0 {no known times; compute _one_ such time}
-       	     	    	  then let i0 = #list\2
+       	     	    	  then let i0 = (2*#list)\3 {#list\2}
 				       {if HT < 0
 			       	       then 3*#list\5 {moderately difficult term}
 				       else #list\6 {earlier in list is harder}
@@ -1023,7 +1045,8 @@ set u_predictor(Param p, int HT) = int:
 	     		   else  max((N-n)*max(times), interrupt_base_time) {N, n both nonzero}
 	     		   fi
 		 in if predictor_verbose
-		    then prints("prediction ",print_time_string(ans))
+		    then prints("prediction ",print_time_string(ans), " in time ",
+		    	 print_time_string(elapsed_ms() - start_pred))
 		    fi;
 		    ans
 	    fi
@@ -1037,10 +1060,11 @@ set c_form_std(Param p) = KTypePol:
        else full_deform(pc)
        fi
 
+{p must be fixed by standard involution!}
 set twisted_c_form_std(Param p) = KTypePol: { c-form on extended group}
     let pc = alcove_center(p)
     in if deformed_hash_flag
-       then {twistedD}deformedHash.entry(pc,-1)
+       then deformedHash.entry(pc,-1)
        else twisted_full_deform(pc)
        fi
 
@@ -1060,6 +1084,7 @@ in map(c_form_std@Param, oriented_KL_sum )
   no deformation is done, but orientation numbers are included;
   fixed contributions are already halved; for unfixed ones this needs to wait
 }
+{p must be fixed by standard involution!}
 set twisted_c_form_irreducible_contributions (Param p) =
     (ParamPol,ParamPol): { (fixed part, 2*unfixed part) }
   let G=p.real_form, ori_nr_p = orientation_nr(p)
@@ -1082,6 +1107,7 @@ set twisted_c_form_irreducible_contributions (Param p) =
   separately and at the end divide the sum of such contributions by 2.
 }
 {.twisted c-invariant form on an irreducible in terms of standardrepKs.}
+{p must be fixed by standard involution!}
 set twisted_c_form_irreducible_unnormalized (Param p) = KTypePol:
 ( let (fixed,unfixed)=twisted_c_form_irreducible_contributions(p)
 { |1+s| divides |unfixed|, no need for |scale_extended|; take half at |nu=0| }
@@ -1089,6 +1115,7 @@ set twisted_c_form_irreducible_unnormalized (Param p) = KTypePol:
 )
 
 { normalization here means making the leading term 1 (rather than |s|) }
+{p must be fixed by standard involution!}
 set twisted_c_form_irreducible (Param p) = KTypePol:
    let unnormalized=twisted_c_form_irreducible_unnormalized(p)
    then (c,)=first_term(unnormalized)
@@ -1187,6 +1214,7 @@ set map ((Param->maybe_KTP)f, ParamPol P) = maybe_KTP:
 
 
 {if deform_hash_flag, guaranteed to deform at least one term}
+{finishes without interruption if all terms already deformed}
 set c_form_irreducible (Param p,int time) = maybe_KTP:
    let ori_nr_p = orientation_nr(p), expiration = elapsed_ms() + time
    then oriented_KL_sum = ParamPol: null_module(p) +
@@ -1201,23 +1229,19 @@ set c_form_irreducible (Param p,int time) = maybe_KTP:
 			    	    		   do k {loop that runs 0 or 1 times}
 				    		fi
 			      	 	     od.##
-		  in if #unknown_ks > 0
-		     then deformedHash.maybe_entry(list[unknown_ks[(#unknown_ks-1)\2]],-1, 5*time)
-		     fi
-	     fi
-   {then keep_next = deformed_hash_flag and push_deform_flag}
+		  in if #unknown_ks = 0
+		     then return map( (Param q) KTypePol:
+	      	   	      	      deformedHash.entry(q,-1), oriented_KL_sum).done
+		     else deformedHash.maybe_entry(list[unknown_ks[(#unknown_ks-1)\2]],-1, 5*time)
+
+		     fi {#unknown_ks = 0}
+	     fi {deformed_hash_flag}
    in map( (Param q) maybe_KTP:
       if expiration - elapsed_ms() < 0 {and not keep_next}
       then timed_out()
       else if deformed_hash_flag
       	   then let j = deformedHash.lookup(q)
-	   	in {if keep_next and
-		      (j < 0 or deform_max_heights[j] >= 0)
-	   	   then keep_next:=false; push_deform_flag:=false;
-		     	deformedHash.entry(q,-1).done
-	   		{deformedHash.entry(q,-1).done}
-	   	   else}  deformedHash.maybe_entry(q,-1, expiration - elapsed_ms())
-		   {fi}
+	   	in deformedHash.maybe_entry(q,-1, expiration - elapsed_ms())
 	   else full_deform(q, expiration - elapsed_ms())
 	   fi
       fi
