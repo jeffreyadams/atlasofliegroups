@@ -1838,7 +1838,7 @@ set is_unitary_test_big_SIMPLE_interrupt_old(Param p, int step) = bool:
       fi
 
 {increase the interruptible times by this}
-set to_ht_factor = int: 3
+set to_ht_factor = int: 5
 set u_factor = int: 1
 
 {"step" is how many steps up in to_ht list to start}
