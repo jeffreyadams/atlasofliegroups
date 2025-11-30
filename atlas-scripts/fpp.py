@@ -237,13 +237,13 @@ def atlas_compute(job_number,round,start_counter,proc,log,data):
    #log.write("data output: " + str(data) + "\n")
    while xl_pairs_queue.qsize()>0:
       log.write("*******************************************************************")
-      log.write("Time: " + str(time.ctime()) + "\n")
+      log.write("\nTime: " + str(time.ctime()) + "\n")
+      log.write("elapsed time: " + elapsed_time(starttime))
       log.write("\nJob number: " + str(job_number) + "\n")
       memory_rss=psutil.Process(pid).memory_info().rss / 1024**2 
       memory_vms=psutil.Process(pid).memory_info().vms / 1024**2
       log.write("current memory usage rss (" + str(pid) + "); " + str(memory_rss) + "\n")
       log.write("current memory usage vms (" + str(pid) + "); " + str(memory_vms) + "\n")
-      log.write("elapsed time: " + elapsed_time(starttime))
       try:
          log.write("current queue size: " + str(xl_pairs_queue.qsize()) + "\n")
          if xl_pairs_queue.qsize()==0:
