@@ -207,9 +207,9 @@ set twisted_c_form_std_to_ht(int N) = (Param p)KTypePol:
    twisted_full_deform_to_ht(p,N)
 
 {    c_form_to_ht on irreducible representations   }
-set oriented_KL_sum_to_ht  (int N) = (Param p)ParamPol:
+set oriented_KL_sum_to_ht  (int HT) = (Param p)ParamPol:
    let ori_nr_p = orientation_nr(p) in  null_module(real_form(p)) +
-   for c@q in KL_sum_at_s_to_ht(p,N) do (c*orientation_nr_term(ori_nr_p,q),q) od
+   for c@q in KL_sum_at_s_to_ht(HT)(p) do (c*orientation_nr_term(ori_nr_p,q),q) od
 
 {    c_form_to_ht on irreducible representations   }
 {
