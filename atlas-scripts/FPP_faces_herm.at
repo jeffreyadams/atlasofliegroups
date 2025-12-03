@@ -17,7 +17,7 @@
 {lowest level (index in hts[]) to start testing}
 {1 gives small improvement over 2 in E6; haven't tested bigger G}
 {3 is slight improvement over 2 in E7}
-set edge_offset = int: 3
+set edge_offset = int: 1
 
 {how much to increase index in hts[] for testing at various levels}
 {1 improves E6_s and E6_q time by almost 10% }
@@ -2323,7 +2323,7 @@ set is_unitary_to_ht_big_SIMPLE_interrupt_Ufirst(Param p, int HT) = bool:
 		fi {B} {to_ht_time < 5*u_time}
 	    od
    in if test_interrupt_verbose
-      then prints("Finish is_unitary_test_big_SIMPLE_interrupt_Ufirst, time ",
+      then prints("Finish is_unitary_to_ht_big_SIMPLE_interrupt_Ufirst, time ",
       	   	  print_time_string(elapsed_ms() - start), " result ",result,new_line)
       fi;
       if result > 0
@@ -2423,7 +2423,7 @@ set is_unitary_to_ht_big_SIMPLE_interrupt_TOHTfirst(Param p, int HT) = bool:
 	       fi
 	    od
    in if test_interrupt_verbose
-      then prints("Finish is_unitary_test_big_SIMPLE_interrupt_TOHTfirst, time ",
+      then prints("Finish is_unitary_to_ht_big_SIMPLE_interrupt_TOHTfirst, time ",
       	   	  print_time_string(elapsed_ms() - start), " result ",result,new_line)
       fi;
       if result > 0
@@ -2520,7 +2520,7 @@ set is_unitary_to_hts_big_SIMPLE_interrupt_TOHTfirst(Param p, [int] HTs) = bool:
 		 fi{C} {u_time < 5*to_ht_time}
 	    od
    in if test_interrupt_verbose
-      then prints("Finish is_unitary_test_big_SIMPLE_interrupt_TOHTfirst, time ",
+      then prints("Finish is_unitary_to_hts_big_SIMPLE_interrupt_TOHTfirst, time ",
       	   	  print_time_string(elapsed_ms() - start), " result ",result,new_line)
       fi;
       if result > 0

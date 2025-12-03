@@ -445,8 +445,11 @@ set taus(KGBElt x, ratvec lambda, int HT) = [KType]:
 set pos_tester(KGBElt x, ratvec lambda,int HT,ratvec gamma) = bool:
     let p = parameter(x,lambda,gamma), G = x.real_form
     then qs = monomials(1*p)
-    in all(for q in qs do @bool: {is_unitary_to_ht_big_SIMPLE_old}
-    is_unitary_to_ht_big_SIMPLE_interrupt_TOHTfirst(q,HT) od)
+    in all(for q in qs do @bool:
+       	       if HT >= 0
+       	       then is_unitary_to_ht_big_SIMPLE_interrupt_TOHTfirst(q,HT)
+	       else is_unitary_test_big_SIMPLE_interrupt(q)
+	       fi od)
 
 {should be called only if height(x,lambda,0) > 0 and HT >= minBottomData.G_min_height(x,lambda)}
 set pos_tester_min(KGBElt x, ratvec lambda,int HT,ratvec gamma) = bool:
@@ -457,9 +460,11 @@ set pos_tester_min(KGBElt x, ratvec lambda,int HT,ratvec gamma) = bool:
        then {prints("got to pos_tester_min at ",p," and bottom worked!");}
        	    return false
        fi;
-       all (for q in qs do @bool: {is_unitary_to_ht_big_SIMPLE_old}
-       is_unitary_to_ht_big_SIMPLE_interrupt_TOHTfirst(q,HT) od)
-
+       all (for q in qs do @bool:
+       if HT >= 0
+       	       then is_unitary_to_ht_big_SIMPLE_interrupt_TOHTfirst(q,HT)
+	       else is_unitary_test_big_SIMPLE_interrupt(q)
+	       fi od)
 
 {compute vectors of size 2 giving [index of K-char, #Langlands quotients]}
 set extra_coord_flag = true
@@ -486,10 +491,16 @@ set pos_tester_known_Kchar(KGBElt x, ratvec lambda,int HT,ratvec gamma, vec KCv)
     let p = parameter(x,lambda,gamma), G = x.real_form
     then qs = monomials(1*p)
     in if extra_coord_flag
-       then (all (for q in qs do @bool: {is_unitary_to_ht_big_SIMPLE}
-       is_unitary_to_ht_big_SIMPLE_interrupt_TOHTfirst(q,HT) od),KCv)
-       else (all (for q in qs do @bool: {is_unitary_to_ht_big_SIMPLE}
-       is_unitary_to_ht_big_SIMPLE_interrupt_TOHTfirst(q,HT) od),[])
+       then (all (for q in qs do @bool:
+       	    	 if HT >= 0
+       	       	 then is_unitary_to_ht_big_SIMPLE_interrupt_TOHTfirst(q,HT)
+	       	 else is_unitary_test_big_SIMPLE_interrupt(q)
+	       	 fi od),KCv)
+       else (all (for q in qs do @bool:
+       	       if HT >= 0
+       	       then is_unitary_to_ht_big_SIMPLE_interrupt_TOHTfirst(q,HT)
+	       else is_unitary_test_big_SIMPLE_interrupt(q)
+	       fi od),[])
        fi
 
 {USE Kpol_hash defined in FPP_faces_geom.at}
@@ -497,11 +508,17 @@ set pos_tester_Kchar(KGBElt x, ratvec lambda,int HT,ratvec gamma) = (bool, vec):
     let p = parameter(x,lambda,gamma), G = x.real_form
     then qs = monomials(1*p)
     in if extra_coord_flag
-       then (all (for q in qs do @bool: {is_unitary_to_ht_big_SIMPLE}
-       is_unitary_to_ht_big_SIMPLE_interrupt_TOHTfirst(q,HT) od),
+       then (all (for q in qs do @bool:
+       	    	 if HT >= 0
+       	       	 then is_unitary_to_ht_big_SIMPLE_interrupt_TOHTfirst(q,HT)
+	       	 else is_unitary_test_big_SIMPLE_interrupt(q)
+	       	 fi od),
        	    [Kpol_hash.match(K_type_pol(character_formula_to_height(1*p,HT))),#qs])
-       else (all (for q in qs do @bool: {is_unitary_to_ht_big_SIMPLE}
-       is_unitary_to_ht_big_SIMPLE_interrupt_TOHTfirst(q,HT) od),[])
+       else (all (for q in qs do @bool:
+       	    	 if HT >= 0
+       	       	 then is_unitary_to_ht_big_SIMPLE_interrupt_TOHTfirst(q,HT)
+	       	 else is_unitary_test_big_SIMPLE_interrupt(q)
+	       	 fi od),[])
        fi
 
 {should only be invoked if height(x,lambda)>0 and HT >= minBottomData.G_min_height(x,lambda)}
@@ -520,10 +537,16 @@ set pos_tester_known_Kchar_min(KGBElt x, ratvec lambda,int HT,ratvec gamma, vec 
 		   fi
        fi;
        if extra_coord_flag
-       then (all (for q in qs do @bool: {is_unitary_to_ht_big_SIMPLE}
-       is_unitary_to_ht_big_SIMPLE_interrupt_TOHTfirst(q,HT) od),KCv)
-       else (all (for q in qs do @bool: {is_unitary_to_ht_big_SIMPLE}
-       is_unitary_to_ht_big_SIMPLE_interrupt_TOHTfirst(q,HT) od),[])
+       then (all (for q in qs do @bool:
+       	    	 if HT >= 0
+       	       	 then is_unitary_to_ht_big_SIMPLE_interrupt_TOHTfirst(q,HT)
+	       	 else is_unitary_test_big_SIMPLE_interrupt(q)
+	       	 fi od),KCv)
+       else (all (for q in qs do @bool:
+       	    	 if HT >= 0
+       	       	 then is_unitary_to_ht_big_SIMPLE_interrupt_TOHTfirst(q,HT)
+	       	 else is_unitary_test_big_SIMPLE_interrupt(q)
+	       	 fi od),[])
        fi
 
 {USE Kpol_hash defined in FPP_faces_geom.at}
@@ -540,11 +563,17 @@ set pos_tester_Kchar_min(KGBElt x, ratvec lambda,int HT,ratvec gamma) =
 		   fi
        fi;
        if extra_coord_flag
-       then (all (for q in qs do @bool: {is_unitary_to_ht_big_SIMPLE}
-       is_unitary_to_ht_big_SIMPLE_interrupt_TOHTfirst(q,HT) od),
+       then (all (for q in qs do @bool:
+       	    	 if HT >= 0
+       	       	 then is_unitary_to_ht_big_SIMPLE_interrupt_TOHTfirst(q,HT)
+	       	 else is_unitary_test_big_SIMPLE_interrupt(q)
+	       	 fi od),
        	    [Kpol_hash.match(K_type_pol(character_formula_to_height(1*p,HT))),#qs])
-       else (all (for q in qs do @bool: {is_unitary_to_ht_big_SIMPLE}
-       is_unitary_to_ht_big_SIMPLE_interrupt_TOHTfirst(q,HT) od),[])
+       else (all (for q in qs do @bool:
+       	    	 if HT >= 0
+       	       	 then is_unitary_to_ht_big_SIMPLE_interrupt_TOHTfirst(q,HT)
+	       	 else is_unitary_test_big_SIMPLE_interrupt(q)
+	       	 fi od),[])
        fi
 
 set Kchar_vec_time = int: 0
@@ -1645,7 +1674,11 @@ begin
     then short_loclist = for j in loclist do inv_is[j] od
     then short_lochash = make_vec_hash()
     then () = for j in good_js do short_lochash.match(lochash.index(j)) od
-    then tester(Param p) = is_unitary_to_ht_big_SIMPLE_interrupt_TOHTfirst{is_unitary_to_ht_big_SIMPLE}(p,HT)
+    then tester(Param p) =
+    	 if HT >= 0
+	 then is_unitary_to_ht_big_SIMPLE_interrupt_TOHTfirst(p,HT)
+	 else is_unitary_test_big_SIMPLE_interrupt(p)
+	 fi
     then up_gens = up_graph_gens(short_lochash, short_KCvlist, short_loclist)
     then (eq,gr) = graph(up_gens)
     then NumClasses = #eq, printInterval = int: 1, start_count = unitary_test_counter.use_count()
@@ -1915,8 +1948,14 @@ set localFD_1SteveU\
 		     	  then extra:=Kchar_vec(x,lambda,HT,gamma)
 			  fi;
 			  if steve_small_flag
-		     	  then steve_hash_small.postest_known_Kchar(gamma,extra)
-			  else steve_hash.partly_indexed_postest_known_Kchar(rfnum, xlnum, htnum, gamma, extra)
+		     	  then if extra_coord_flag
+			       then steve_hash_small.postest_known_Kchar(gamma,extra)
+			       else steve_hash_small.postest(gamma)
+			       fi
+			  else if extra_coord_flag
+			       then steve_hash.partly_indexed_postest_known_Kchar(rfnum, xlnum, htnum, gamma, extra)
+			       else steve_hash.partly_indexed_postest(rfnum, xlnum, htnum, gamma)
+			       fi
 			  fi
 		     then count+:=1;
 			 [v##extra] {unitary to HT!}
@@ -2158,13 +2197,7 @@ set localFD_1SteveU_graph\
 	     	     else if #extra = 0 and extra_coord_flag
 		     	  then extra:=Kchar_vec(x,lambda,HT,gamma)
 			  fi;
-{
-if steve_small_flag
-then steve_hash_small.postest_known_Kchar(gamma,extra)
-else steve_hash.partly_indexed_postest_known_Kchar(rfnum, xlnum, htnum, gamma,extra)
-fi
-}			  [v##extra] {candidate for testing in graph}
-	     	     {else [] {pos test failed}}
+			  [v##extra] {candidate for testing in graph}
 	     	     fi
 	       od.## {list of candidate vertices}
     in if fund_face_verbose
@@ -2175,7 +2208,7 @@ fi
 				      else steve_hash.vecHash(x,lambda,HT).size()
 				      fi){;
 	    prints("LF0 = ",answer)}
-       fi;local_test_graph_steve(x,lambda,Lvd,answer,HT)
+       fi; local_test_graph_steve(x,lambda,Lvd,answer,HT)
 )
 
 

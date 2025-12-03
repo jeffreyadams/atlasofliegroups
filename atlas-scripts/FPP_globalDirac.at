@@ -84,6 +84,20 @@ set steve_tester_flag = true
 {whether to switch to _steve when x = x_open}
 set prefer_steve_long_flag = true
 
+set revert_steve_flag(KGBElt x) = bool:
+    let G = x.real_form
+    in prefer_steve_long_flag and
+       is_quasisplit(G) and
+       (x.number = #KGB(G) - 1){ and
+       (lambda != G.rho)}
+
+set revert_steve_flag(KGBElt x, ratvec lambda) = bool:
+    let G = x.real_form
+    in prefer_steve_long_flag and
+       is_quasisplit(G) and
+       (x.number = #KGB(G) - 1) and
+       (lambda != G.rho)
+
 set contragredient(KGBElt x) = KGBElt:
     let wzero = w0(x.root_datum) in cross(wzero,x)
 
@@ -468,8 +482,7 @@ then coh_ind_unip_few(G,Uhash)}
 			       fi
 	      	     in if tw.< {still have work to do close 482}
 		     	then adjust_Dirac_flags(x);
-			     let revert_steve_flag = prefer_steve_long_flag and
-		     	     (x.number = #KGB(G) - 1) and (lambda != G.rho)
+			     let revert_steve_flag = revert_steve_flag(x,lambda)
 		     	     in let startxl = elapsed_ms(), startUhash = Uhash.size(),
 		     	     	startUcounter = unitary_test_counter.use_count(),
 			     	startCcounter = char_counter.use_count(),
@@ -493,7 +506,7 @@ then coh_ind_unip_few(G,Uhash)}
 				   	let startDTcount = DTcount {now we're actually computing}
 				   	then LF = [[FaceVertsIndex]]:
 		      	   		     if revert_steve_flag
-			   		     then [[]]
+					     then [[]]
 		      	   		     elif by_zero_flag {and height(p0) > 0}
 		      	   		     then localFD_1Dirac2_by_zero(x, lambda, Lvd, Perm2)
 			   		     else localFD_1Dirac2(x, lambda, Lvd, Perm2)
@@ -517,7 +530,8 @@ then coh_ind_unip_few(G,Uhash)}
 			  			  fi;
 			  			  let answer =
 						      if revert_steve_flag
-			      	       		      then local_test_GEO_hash_steve(x, lambda, Lvd,
+			      	       		      then edge_offset:=1;
+							   local_test_GEO_hash_steve(x, lambda, Lvd,
 						      Uhash, fancy_tester)
 			      	       		      else local(x, lambda, Lvd, LF, pol_hash, Uhash,
 						      fancy_tester)
@@ -648,8 +662,7 @@ set FPP_unitary_hash_general([KGBElt] xs, Param_hash Uhash, (Param->bool) fancy_
 	 else
 	 let former_time = current, formerUhash = currentUhash, formerUcounter = currentUcounter,
 	     formerUtime = unitaryTime, formerCcounter = currentCcounter, formerCharTime = charTime,
-	     former_red_count_time = red_count_time, revert_steve_flag = prefer_steve_long_flag and
-	     			   (x.number = #KGB(G) - 1)
+	     former_red_count_time = red_count_time
 	 then xtwists = isotwistKGBs(x), twists = all_lambda_differential_0(x)
 	 then M = #FPP_lambdas(x)
 	 then full_M = to_bitset([M])-1
@@ -712,7 +725,7 @@ set FPP_unitary_hash_general([KGBElt] xs, Param_hash Uhash, (Param->bool) fancy_
 		       	 big_unitary_hash.finishx(x)
 		     fi
 	  then () = if {C} skipx = false
-	       	    then let lambdas = FPP_lambdas(x)
+	       	    then let lambdas = FPP_lambdas(x), revert_steve_flag = revert_steve_flag(x)
     	 	    	 then Ncases = #lambdas
 	          	 then tempanswerCards = null(Ncases)
 	 	  	 then templambdatimes = null(Ncases)
@@ -771,20 +784,20 @@ set FPP_unitary_hash_general([KGBElt] xs, Param_hash Uhash, (Param->bool) fancy_
 		    			       else adjust_Dirac_flags(xW);
 					       	    let startDTcount = DTcount
  		      		      	       then LF = [[FaceVertsIndex]]:
-					       	         {if revert_steve_flag
+					       	         if revert_steve_flag
 					       	       	 then [[]]
-					       		 el}if by_zero_flag
+					       		 elif by_zero_flag
 		      	      	      	      	       	 then localFD_1Dirac2_by_zero(xW, lambdaW, Lvd, Perm2)
 			   				 else localFD_1Dirac2(xW, lambdaW, Lvd, Perm2)
 			   				 fi {by_zero_flag}
-				      	       then () = if every_lambda_deets_flag and FPP_report_flag {and
-					       	       	    not revert_steve_flag}
+				      	       then () = if every_lambda_deets_flag and FPP_report_flag and
+					       	       	    not revert_steve_flag
     	      	      	              	       	       	 then prints("time for localFD_1Dirac2* = ",
 				      	       	    	      print_time_string(elapsed_ms() - startLF),
 			   			    	      " to find [",#LF[0],",",#LF[1],
 							      "] verts and edges; Dirac eliminated ",DTcount - startDTcount)
 	      		   			    	 fi
-			 		   in if {(not revert_steve_flag) and} (#LF = 0 or #LF[0] = 0)
+			 		   in if (not revert_steve_flag) and (#LF = 0 or #LF[0] = 0)
 					      then none_count +:=1;
 					      	   finish(x, lambda); []
 			    		      else if every_lambda_deets_flag
@@ -794,8 +807,9 @@ set FPP_unitary_hash_general([KGBElt] xs, Param_hash Uhash, (Param->bool) fancy_
 						   test_slightly_verbose := old_test_slightly_verbose
 				 		   fi;
 				 		   let answer =
-						       if revert_steve_flag and lambdaW != G.rho
-			      	       		       then local_test_GEO_hash_steve(xW, lambdaW, Lvd,
+						       if revert_steve_flag and lambdaW!= G.rho {(xW,lambdaW)}
+			      	       		       then edge_offset:=1;
+							    local_test_GEO_hash_steve(xW, lambdaW, Lvd,
 								Uhash, fancy_tester)
 						       else local(xW, lambdaW, Lvd, LF, pol_hash, Uhash,
 								fancy_tester)
@@ -1588,9 +1602,8 @@ fancy_tester) = void:
 	    od;
             return ()
         fi;
-	if x =x_open(x.real_form) then return FPP_unitary_hash_steve(xlambdas, UhashG, fancy_tester) fi;
-    let (x,) = xlambdas[0]
-    then disconn_flag = components_rank(G) > 0
+	{if x =x_open(x.real_form) then return FPP_unitary_hash_steve(xlambdas, UhashG, fancy_tester) fi;}
+    let disconn_flag = components_rank(G) > 0
     then (Gsc,M) = if disconn_flag
     	      	   then derived_cover_real_form_info(G)
 	      	   else (G,id_mat(G.rank))
@@ -1714,8 +1727,7 @@ fancy_tester) = void:
 				     finish(x,lambda)
 			         fi
 	      	     in if tw.< {still have work to do close 1545; here 1581}
-		     	then let revert_steve_flag = prefer_steve_long_flag and
-			     (x.number = #KGB(G) - 1) and (lambda != G.rho)
+		     	then let revert_steve_flag = revert_steve_flag(x,lambda)
 			     then startminxl = good_hash.size(), startmorexl = more_good_hash.size()
 			     then local_test_bl_flag = bool:
 			     	  if hard_test_flag
@@ -1770,8 +1782,9 @@ fancy_tester) = void:
 			 then face_verbose := true{old_face_verbose}; time_verbose := true{old_time_verbose};
 			      test_verbose :=true{old_test_verbose}; test_slightly_verbose := true {old_test_slightly_verbose}
 			 fi;
-			 let answer = if revert_steve_flag and lambda_sc!=Gsc.rho
-			     	      then local_test_GEO_hash_steve(x_sc, lambda_sc, Lvd, Uhash,
+			 let answer = if revert_steve_flag {and lambda_sc!=Gsc.rho}
+			     	      then edge_offset:=1;
+					   local_test_GEO_hash_steve(x_sc, lambda_sc, Lvd, Uhash,
 				      	   fancy_tester)
 				       elif local_test_bl_flag
 			     	       then local_test_GEO_hash_bottom_layer(x_sc,
@@ -1984,7 +1997,7 @@ set FPP_unitary_hash_bottom_layer([KGBElt] xs, Param_hash UhashG, (Param->bool) 
 	 if twist(x) != x
 	 then big_unitary_hash.finishx(x)
 	 fi;
-	 let revert_steve_flag = prefer_steve_long_flag and (x.number = #KGB(G) - 1)
+	 let revert_steve_flag = revert_steve_flag(x){prefer_steve_long_flag and (x.number = #KGB(G) - 1)}
 	 then former_time = current, formerUhash = currentUhash, formerUcounter = currentUcounter, x_sc = xs_sc[j],
 	     formerUtime = unitaryTime, formerCcounter = currentCcounter, formerCharTime = charTime,
 	     former_red_count_time = red_count_time,  startmorebadx = more_bad_hash.size(),
@@ -2089,24 +2102,27 @@ set FPP_unitary_hash_bottom_layer([KGBElt] xs, Param_hash UhashG, (Param->bool) 
 		      then () = if hard_test_flag
 		      	      	then local_test_bl_flag := hard_test_bl(x,lambda)
 				fi
+		      then () = if revert_steve_flag
+		      	      	then revert_steve_flag:=revert_steve_flag(x,lambda)
+				fi
 		      then startDTcount = DTcount
+		      {then revert_steve_flag = revert_steve_flag(x,lambda)}
 		     in if {test_neither}test_no_unitary(x,lambda,Lvd)
 		       	then {none_count +:= 1;} {prints("SKIPPED ",x,",",lambda);} ()
 		    	else adjust_Dirac_flags(x);
 			     let LF = [[FaceVertsIndex]]:
-			     	      {if revert_steve_flag and lambda != G.rho
-				      then [[]]
-				      el}if by_zero_flag {and dominant(G,lamthlam)*G.two_rho_check > 0}
+			     	      if revert_steve_flag then [[]]
+				      elif by_zero_flag {and dominant(G,lamthlam)*G.two_rho_check > 0}
  		      	      	      then localFD_1Dirac2_by_zero(x_sc, M*lambda, Lvd, Perm2)
 			   	      else localFD_1Dirac2(x, lambda, Lvd, Perm2)
 			   	      fi
-		             then () = if every_lambda_deets_flag and FPP_report_flag {and not revert_steve_flag}
+		             then () = if every_lambda_deets_flag and FPP_report_flag and not revert_steve_flag
     	      	      	      	then prints("time for localFD_1Dirac2* = ",
 				print_time_string(elapsed_ms() - startLF),
 				" to find [",#LF[0],",",#LF[1],"] verts and edges; Dirac eliminated ",
 				DTcount - startDTcount)
 	      		   	fi
-		       in if {(not revert_steve_flag) and} (#LF = 0 or #LF[0] = 0)
+		       in if not revert_steve_flag and (#LF = 0 or #LF[0] = 0)
 			  then none_count+:=1;
 			       finish(x,lambda); []
 			  else if every_lambda_deets_flag
@@ -2115,8 +2131,9 @@ set FPP_unitary_hash_bottom_layer([KGBElt] xs, Param_hash UhashG, (Param->bool) 
 					 	      old_test_slightly_verbose
 			       fi;
 			       let answer = [Param]:
-			       	      if revert_steve_flag and (lambda != G.rho)
-			       	      then local_test_GEO_hash_steve(x_sc, M*lambda, Lvd, Uhash,
+			       	      if revert_steve_flag
+			       	      then edge_offset:=1;
+				      	   local_test_GEO_hash_steve(x_sc, M*lambda, Lvd, Uhash,
 				      	   fancy_tester)
 			       	      elif local_test_bl_flag
 			     	      then local_test_GEO_hash_bottom_layer(x_sc, M*lambda, Lvd, LF,

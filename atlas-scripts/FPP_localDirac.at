@@ -4133,7 +4133,7 @@ set local_test_GEO_hash2(KGBElt x, ratvec lambda, {VertexData vd,} LocalVertexDa
 	      	      	" unitary candidates in ",#eq," equivalence classes.");
 		   prints("using is_unitary_tester_big_SIMPLE_interrupt")
 	      fi
-    then mu_tester(Param p) = bool: is_unitary_test_big_SIMPLE_interrupt(p, hts[min(Dlast,Dmid)+1:])
+    then mu_tester(Param p) = bool: is_unitary_test_big_SIMPLE_interrupt(p, {hts[}min(Dlast,Dmid){+1:]})
     then start=elapsed_ms() {already unitary to height hts[Dlast] = hts[max(r,2)]}
     then UParams = local_test_hash(x, lambda, Lvd, LFDKH, eq, gr, CLBF, (Param->bool): (Param p):
 		 if test_interrupt_flag {up_mu_flag}
@@ -4260,7 +4260,7 @@ set local_test_GEO_hash2_end(KGBElt x, ratvec lambda, LocalVertexData Lvd, [[Fac
 	      	      	" unitary candidates in ",#eq," equivalence classes.");
 		   prints("using is_unitary_tester_big_SIMPLE_interrupt")
 	      fi
-    then mu_tester(Param p) = bool: is_unitary_test_big_SIMPLE_interrupt(p,hts[Dlast + 1:])
+    then mu_tester(Param p) = bool: is_unitary_test_big_SIMPLE_interrupt(p,{hts[}Dlast {+ 1:]})
     {list hts[Dlast+1:] is automatically empty ???}
     {is_unitary_test_big_SIMPLE_interrupt(p,1) is equivalent}
     then start=elapsed_ms() {already unitary to height hts[Dlast] = hts[max(r,2)]}
@@ -4557,7 +4557,7 @@ set local_test_GEO_hash_one_level(KGBElt x, ratvec lambda, {VertexData vd,}
     then start=elapsed_ms()
     then () = long_out_flag := long_out_temp_flag
     {then mu = K_type(x, pmax.lambda_minus_rho) {LKTs(pmax)[0]}}
-    then mu_tester(Param p) = bool: is_unitary_test_big_SIMPLE_interrupt(p,hts[ONE+1:])
+    then mu_tester(Param p) = bool: is_unitary_test_big_SIMPLE_interrupt(p, ONE{,hts[ONE+1:]})
     {then () = if test_verbose then prints("one_ht = ",one_ht) fi}
     then ((eq,gr),IUCL,CLBF) = localGraphK(LFDKH)
     then UParams = local_test_hash(x, lambda, Lvd, LFDKH, eq, gr, CLBF, (Param->bool): (Param p):
@@ -4773,7 +4773,7 @@ set local_test_GEO_hash_one_level_end(KGBElt x, ratvec lambda, LocalVertexData L
        	       	   		      		      unitary_by_dim);}
 		prints("number of tests so far = ",unitary_test_counter.use_count() - start_count)
 	      fi
-    then mu_tester(Param p) = bool: is_unitary_test_big_SIMPLE_interrupt(p, hts[ONE+1:])
+    then mu_tester(Param p) = bool: is_unitary_test_big_SIMPLE_interrupt(p,ONE{, hts[ONE+1:]})
     then start=elapsed_ms()
     then () = long_out_flag := long_out_temp_flag
     {then () = if test_verbose then prints("one_ht = ",one_ht) fi}
@@ -4916,7 +4916,7 @@ set local_test_GEO_hash_steve_steve_end(KGBElt x, ratvec lambda, LocalVertexData
        	       	   		      		      unitary_by_dim);}
 		prints("number of tests so far = ",unitary_test_counter.use_count() - start_count)
 	      fi
-    then mu_tester(Param p) = bool: is_unitary_test_big_SIMPLE_interrupt(p, hts)
+    then mu_tester(Param p) = bool: is_unitary_test_big_SIMPLE_interrupt(p{, hts})
     then start=elapsed_ms()
     then () = long_out_flag := long_out_temp_flag
     {then () = if test_verbose then prints("one_ht = ",one_ht) fi}
@@ -5017,7 +5017,7 @@ set local_test_GEO_hash_steve_end(KGBElt x, ratvec lambda, LocalVertexData Lvd,
        	       	   		      		      unitary_by_dim);}
 		prints("number of tests so far = ",unitary_test_counter.use_count() - start_count)
 	      fi
-    then mu_tester(Param p) = bool: is_unitary_test_big_SIMPLE_interrupt(p, H1)
+    then mu_tester(Param p) = bool: is_unitary_test_big_SIMPLE_interrupt(p{, [H1]})
     then start=elapsed_ms()
     then () = long_out_flag := long_out_temp_flag
     {then () = if test_verbose then prints("one_ht = ",one_ht) fi}
@@ -5038,7 +5038,7 @@ set local_test_GEO_hash_steve_end(KGBElt x, ratvec lambda, LocalVertexData Lvd,
 	      	      	   " unitary candidates in ",#eq," equivalence classes.") fi
          in local_test_hash(x, lambda, Lvd, LFDKH, eq, gr, CLBF, (Param->bool):(Param p):
 		      		    if test_interrupt_flag
-				    then is_unitary_test_big_SIMPLE_interrupt(p,[H1])
+				    then is_unitary_test_big_SIMPLE_interrupt(p) {,[H1])}
 				    else is_unitary_hash_big_SIMPLE(p)
 		      		    fi, Uhash)
     then time = elapsed_ms() - start

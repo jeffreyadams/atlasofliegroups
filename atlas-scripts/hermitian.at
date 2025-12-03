@@ -888,7 +888,7 @@ set clear_report_tested() = void:
        tested_neg_to_ht_hashes[h].clear(); tested_neg_to_ht_times[h]:=[]; tested_neg_to_ht_strings[h]:=[]
     od
 
-set (report_tested_cum,clear_report_tested_cum_clear) = (((string, string) -> void),(void->void)):
+set (report_tested_cum,clear_report_tested_cum) = (((string, string) -> void),(void->void)):
     let tph = int: 0, tpt = int:0, tnh = int: 0, tnt = int:0, oth = int:0, otc = int:0, ott = int:0
     then tic = int: 0, tih = int: 0, tit = int:0, tphh = int: 0, tpht = int:0, tnhh = int: 0, tnht = int: 0,
     	 utc = int: 0, utt = int: 0, ct = int:0, cu = int: 0, DTc = int:0, DBTc = int: 0
@@ -960,7 +960,7 @@ set (report_tested_cum,clear_report_tested_cum_clear) = (((string, string) -> vo
     prints(print_time_string(unitaryTime)," for ",unitary_test_counter.use_count()," unitarity tests; ",
     print_time_string(charTime), " for ",char_counter.use_count(), " char calculations.");
     prints("  ----------------")
-    , @: {clear_report_tested_cum_clear}
+    , @: {clear_report_tested_cum}
      tph := 0; tpt := 0; tnh := 0; tnt :=0; oth :=0; otc :=0; ott :=0;
      tic := 0; tih := 0; tit :=0; tphh := 0; tpht :=0; tnhh := 0; tnht := 0;
      utc := 0; utt := 0; ct :=0; cu := 0; DTc:=0; DBTc:=0)

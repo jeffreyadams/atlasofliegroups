@@ -116,11 +116,11 @@ set Dirac_flag_factor = 1/5
 set Dirac_best_local_flag = true
 set best_Dirac_flag_factor = 2/5
 
-
-
 {if true, unitary candidates are checked for Dirac inequality on many
 K-types when the local_testK_hash is computed.}
 set Dirac_best_K_hash_flag = false
+
+set edge_offset = int: 1
 
 set adjust_Dirac_flags(KGBElt x) = void:
     if not Dirac_allow_adjust_flag then return () fi;
@@ -128,6 +128,7 @@ set adjust_Dirac_flags(KGBElt x) = void:
     then xo = x_open(G)
     in Dirac_local_flag := Dirac_flag and length(x) > length(xo)*Dirac_flag_factor;
        Dirac_best_local_flag := Dirac_best_flag and length(x) > length(xo)*best_Dirac_flag_factor
+
 
 { useful to assign this to 'true" to get information about the
   progress of long calculations }
