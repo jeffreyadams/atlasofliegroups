@@ -1268,7 +1268,7 @@ set next_taus(KTypePol P) = KTypePol:
 set next_heightC_flag = true
 
 {returns the height of the next K-type > HT, or -1 if none exists}
-set next_heightC = ((Param,int) -> int):
+set next_heightC_old = ((Param,int) -> int):
     let p = Param: SL(2,R).trivial
     then current_height = int: -1
     then taus_so_far = KTypePol: null_K_module(p.real_form) {meant to be all branch_irr UP TO current height}
@@ -1277,6 +1277,7 @@ set next_heightC = ((Param,int) -> int):
  in ((Param,int) -> int): (Param q, int HT):
     if not p=q
     then p:=q;
+    	 prints("about to compute K-char of ",p);
     	 KCF:=  K_type_pol(character_formula(p));
 	 current_height:=height(q)-1;
 	 taus_so_far:= null_K_module(p.real_form);
@@ -1287,8 +1288,11 @@ set next_heightC = ((Param,int) -> int):
     	 in return height(first_K_type(above))
     fi;
     while KCF.!= and (taus_so_far.= or height(taus_so_far) <= HT)
-    do new_taus := next_taus(KCF); {nonzero of ht > current height, <=HT}
+    do prints("current_height = ",current_height, ", new_taus = ",new_taus);
+       new_taus := next_taus(KCF); {nonzero of ht > current height, <=HT}
        current_height:= height(new_taus);
+       prints("new current_height = ", current_height,", new_taus = ",new_taus);
+       prints("about to correct KCF by new_taus");
        KCF := KCF - sum(p.real_form, for c@tau in new_taus do c*
        big_unitary_hash.K_type_formula(tau) od);
        taus_so_far +:= new_taus
@@ -1300,6 +1304,66 @@ set next_heightC = ((Param,int) -> int):
     else height(new_taus)
     fi
 
+set next_heightC_verbose = false
+
+{returns the height of the next K-type > HT, or -1 if none exists}
+set next_heightC = ((Param,int) -> int):
+    let p = Param: SL(2,R).trivial
+    then HT_bound = let (,,GAM) = low(p) in GAM {to_ht to HT_bound is is_unitary}
+    then current_tau_bound = tensor_p_big(LKTs(p)[0])
+    then current_bound = height(current_tau_bound)
+    then current_height = int: -1
+    then taus_so_far = KTypePol: null_K_module(p.real_form) {meant to be all branch_irr UP TO current height}
+    then KCF = KTypePol: K_type_pol(character_formula_to_height(p,current_bound)) {meant to be K-char(p)
+    	 to current_bound MINUS formulas of taus_so_far}
+    then new_taus = KTypePol: null_K_module(p.real_form) {most recent additions to taus_so_far}
+ in ((Param,int) -> int): (Param q, int HT):
+    if not p=q
+    then p:=q;
+    	 HT_bound := (let (,,GAM) = low(q) in GAM); {to_ht to HT_bound is is_unitary}
+	 current_tau_bound := tensor_p_big(LKTs(q)[0]);
+	 current_bound := height(current_tau_bound);
+    	 if next_heightC_verbose
+	 then prints("about to compute K-char to height ",current_bound) fi;
+    	 KCF:=  K_type_pol(character_formula_to_height(p,current_bound));
+	 current_height:=height(q)-1;
+	 taus_so_far:= null_K_module(q.real_form);
+	 new_taus := null_K_module(q.real_form)
+    fi;
+    if taus_so_far.!= and height(taus_so_far) > HT
+    then let (,above) = height_split(taus_so_far,HT)
+    	 in return height(first_K_type(above))
+    fi;
+    while HT >= current_bound
+    do current_tau_bound:=tensor_p_big(current_tau_bound);
+       current_bound := height(current_tau_bound);
+       if next_heightC_verbose
+       then prints("about to compute K-char to height ",current_bound) fi;
+       KCF := K_type_pol(character_formula_to_height(p,current_bound));
+       if next_heightC_verbose
+       then prints("about to correct KCF by taus_so_far") fi;
+       KCF -:= for c@tau in taus_so_far
+       	       do c*big_unitary_hash.K_type_formula_to_ht(tau,current_bound)
+	       od
+    od;
+    while KCF.!= and (taus_so_far.= or height(taus_so_far) <= HT)
+    do if next_heightC_verbose
+       then prints("current_height = ",current_height, ", new_taus = ",new_taus) fi;
+       new_taus := next_taus(KCF); {nonzero of ht > current height, <=HT}
+       current_height:= height(new_taus);
+       if next_heightC_verbose
+       then prints("new current_height = ", current_height,", new_taus = ",new_taus);
+       	    prints("about to correct KCF by new_taus") fi;
+       KCF := KCF - sum(p.real_form, for c@tau in new_taus do c*
+       big_unitary_hash.K_type_formula_to_ht(tau,current_bound) od);
+       taus_so_far +:= new_taus
+    od; {now KCF is zero, or starts > HT}
+    if new_taus.=
+    then -1
+    elif height(new_taus) <= HT
+    then -1
+    else height(new_taus)
+    fi
 
 set UHBS_time = int: 0
 
@@ -2264,10 +2328,14 @@ set is_unitary_test_big_SIMPLE_interrupted(Param p, int time) = int:
 	    elif (big_unitary_hash.nulookup(p)).>=
 	    then return -1
 	    fi
-  then result = 0, tau_bd = next_to_lowest(LKTs(p)[0]){, DHsize = DHsize()}
-  then ht = height(tau_bd), top_ht = GAM
+  then result = 0, ht = height(p), top_ht = GAM, tau_bd = LKTs(p)[0]
        {floor((p.infinitesimal_character)*G.two_rho_check)}
        {unitary to top_ht implies unitary}
+  then () = if next_heightC_flag
+       	    then ht := next_heightC(p,ht)
+       	    else tau_bd := next_to_lowest(tau_bd);
+  	    	 ht := height(tau_bd)
+	    fi
   then u_time = int:  u_predictor(p,-1), test_time = int:0,
        to_ht_time = int: u_predictor(p,ht)
   then () = if test_interrupt_verbose
@@ -2288,19 +2356,18 @@ set is_unitary_test_big_SIMPLE_interrupted(Param p, int time) = int:
 			 fi
 	       in if result.<
 	       	  then big_unitary_hash.numatch_height(p,ht);
-		   	break
-	       	  elif result.> and ht< top_ht {got a useless result}
-	       	  then ht:= {if elapsed_ms() - start > 1000
-			    then next_height(p,ht)
-			    else} (tau_bd := next_to_lowest(tau_bd);
-			      	 height(tau_bd))
-			    {fi};
-		       result:=0;
-		       to_ht_time := u_predictor(p,ht)
-		  elif result.> {now ht>= top_ht}
+		       break
+		  elif result.> and ht >= top_ht
 		  then big_unitary_hash.umatch(p);
 		       break
-		  else to_ht_time := u_predictor(p,ht)
+	       	  elif result.> {got a useless result}
+	       	  then if next_heightC_flag
+		       then ht:= next_heightC(p,ht)
+		       else tau_bd := next_to_lowest(tau_bd);
+			    ht := height(tau_bd)
+		       fi;
+		       result:=0;
+		       to_ht_time := u_predictor(p,ht)
 		  fi {result.<}
 	       fi; {A} {to_ht_time < 5*u_time}
 	       if{B} u_time < 5*to_ht_time
