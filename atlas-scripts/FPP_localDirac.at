@@ -2661,6 +2661,7 @@ set one_param_test(Param p) = [Param]:
     in if test
        then one_true_counter.use();
 	    one_param_time +:= elapsed_ms() - start;
+	    for q in Q do big_unitary_hash.umatch(q) od;
 	    [p]
        else one_false_counter.use();
  	    one_param_time +:= elapsed_ms() - start;
@@ -2708,6 +2709,7 @@ set one_param_test_min_bottom(Param p, Param_hash Uhash) = [Param]:
     in if test
        then one_true_counter.use();
 	    one_param_time +:= elapsed_ms() - start;
+	    for q in Q do big_unitary_hash.umatch(q) od;
 	    [p]
        else one_false_counter.use();
 	    one_param_time +:= elapsed_ms() - start;
@@ -2780,16 +2782,17 @@ set one_param_test_bottom(Param p, [int] Es) = [Param]:
 			   od)
 	    then () = if more_verbose then prints("your final answer was ",test) fi
 	    in if test
-	       then 	    	    let () = one_true_counter.use()
-	    	    then () = one_param_time +:= elapsed_ms() - start
-	    	    in [p]
-	       else let () = one_false_counter.use() {if test is false}
-	       	    then () = one_param_time +:= elapsed_ms() - start
-		    in []
+	       then one_true_counter.use();
+	    	    one_param_time +:= elapsed_ms() - start;
+		    for q in QG do big_unitary_hash.umatch(q) od;
+	    	    [p]
+	       else one_false_counter.use(); {if test is false}
+	       	    one_param_time +:= elapsed_ms() - start;
+		    []
                fi
-	else let () = one_false_counter.use() {if still_here is false}
-	     then () = one_param_time +:= elapsed_ms() - start
-	     in []
+	else one_false_counter.use(); {if still_here is false}
+	     one_param_time +:= elapsed_ms() - start;
+	     []
         fi
 
 set one_param_test_bottom(Param p) = [Param]:

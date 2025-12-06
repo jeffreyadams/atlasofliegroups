@@ -200,11 +200,16 @@ set easy_test_bl(KGBElt x) = bool:
        	    true
        fi
 
-set KGB_next_frac = 2/5
+{whether to adjust next_heightC_flag}
+set test_next_flag = true
+
+set KGB_next_frac = 3/5
 
 set test_next(KGBElt x) = void:
-    if x.number > KGB_next_frac * #(KGB(x.real_form))
+    if not test_next_flag then return () fi;
+    if x.real_form.semisimple_rank >= 6 and x.number > KGB_next_frac * #(KGB(x.real_form)) 
     then next_heightC_flag:=true
+    else next_heightC_flag:=false
     fi
 
 set test_no_unitary(KGBElt x, ratvec lambda, LocalVertexData Lvd) = bool:
@@ -392,7 +397,7 @@ set FPP_unitary_hash_general([(KGBElt,ratvec)] xlambdas, Param_hash Uhash,
 	    	   od;
             	   return ()
     	      else let (x,) = xlambdasW[0]
-    then G = x.real_form
+    then G = x.real_form, revert_steve_flag = false
     then {vd = FPP_vertex_data(G),} start = elapsed_ms(),  zeroNu = null(G.rank)/1
     then () = if FPP_report_flag
     	      then unitaryTime := 0; charTime := 0; FD12Time:=0; FD12bzTime:=0; red_count_time :=0;
@@ -437,9 +442,7 @@ then coh_ind_unip_few(G,Uhash)}
 	      fi}
     then () = for (x,lambda)@k in xlambdasW
     	      do {xlambdasW}
-	      	if not next_heightC_flag
-		then test_next(x)
-		fi;
+	      	test_next(x);
 	      	if twist(x) != x {close 482}
 		then big_unitary_hash.finishx(x)
 		elif is_finished(x,lambda) {this includes possibility that x is finished}
@@ -492,8 +495,10 @@ then coh_ind_unip_few(G,Uhash)}
 			       fi
 	      	     in if tw.< {still have work to do close 482}
 		     	then adjust_Dirac_flags(x);
-			     let revert_steve_flag = revert_steve_flag(x,lambda)
-		     	     in let startxl = elapsed_ms(), startUhash = Uhash.size(),
+			     if x=x_open(G)
+			     then revert_steve_flag := revert_steve_flag(x,lambda)
+			     fi;
+		     	     let startxl = elapsed_ms(), startUhash = Uhash.size(),
 		     	     	startUcounter = unitary_test_counter.use_count(),
 			     	startCcounter = char_counter.use_count(),
 			     	startUTime = unitaryTime, startCTime = charTime, theta = x.involution
@@ -629,7 +634,7 @@ set FPP_unitary_hash_general([KGBElt] xs, Param_hash Uhash, (Param->bool) fancy_
     let () = if tilde_flag
     	      then xs:= for x in xs ~do x od{; deform_flag:=false}
     	      fi
-    then G = xs[0].real_form
+    then G = xs[0].real_form, revert_steve_flag = false
     then start = elapsed_ms(), zeroPol = null_module(G), zeroNu = null(G.rank)/1
     then () = if FPP_report_flag
     	      then unitaryTime := 0; charTime := 0; FD12Time:=0; FD12bzTime:=0; red_count_time :=0
@@ -667,9 +672,7 @@ set FPP_unitary_hash_general([KGBElt] xs, Param_hash Uhash, (Param->bool) fancy_
     then skipx = false
     then () = for x@j in xs
     	      do {xs}
-	 if not next_heightC_flag
-	 then test_next(x)
-	 fi;
+	 test_next(x);
 	 if twist(x) != x
 	 then big_unitary_hash.finishx(x)
 	 else
@@ -738,7 +741,7 @@ set FPP_unitary_hash_general([KGBElt] xs, Param_hash Uhash, (Param->bool) fancy_
 		       	 big_unitary_hash.finishx(x)
 		     fi
 	  then () = if {C} skipx = false
-	       	    then let lambdas = FPP_lambdas(x), revert_steve_flag = revert_steve_flag(x)
+	       	    then let lambdas = FPP_lambdas(x)
     	 	    	 then Ncases = #lambdas
 	          	 then tempanswerCards = null(Ncases)
 	 	  	 then templambdatimes = null(Ncases)
@@ -751,7 +754,7 @@ set FPP_unitary_hash_general([KGBElt] xs, Param_hash Uhash, (Param->bool) fancy_
         	   		   fi {every_KGB_flag}
 			 then xW = x
 	 		 then () = for lambda@index in lambdas
-	      	   	      	   do if revert_steve_flag
+	      	   	      	   do if x=x_open(G)
 		      	      	      then revert_steve_flag:=revert_steve_flag(x,lambda)
 				      fi;
 				      let lambdaW = lambda
@@ -823,7 +826,7 @@ set FPP_unitary_hash_general([KGBElt] xs, Param_hash Uhash, (Param->bool) fancy_
 						   test_slightly_verbose := old_test_slightly_verbose
 				 		   fi;
 				 		   let answer =
-						       if revert_steve_flag and lambdaW!= G.rho {(xW,lambdaW)}
+						       if revert_steve_flag
 			      	       		       then edge_offset:=1;
 							    local_test_GEO_hash_steve(xW, lambdaW, Lvd,
 								Uhash, fancy_tester)
@@ -1023,9 +1026,7 @@ then coh_ind_unip_few(G,Uhash)}
 	      fi}
     then () = for (x,lambda)@k in xlambdasW
     	      do {xlambdasW}
-	      	if not next_heightC_flag
-		then test_next(x)
-		fi;
+		test_next(x);
 	      	if twist(x) != x
 		then big_unitary_hash.finishx(x)
 		elif is_finished(x,lambda) {this includes possibility that x is finished}
@@ -1231,9 +1232,7 @@ set FPP_unitary_hash_steve([KGBElt] xs, Param_hash Uhash, (Param->bool) fancy_te
     then skipx = false
     then () = for x@j in xs
     	      do {xs}
-	 if not next_heightC_flag
-	 then test_next(x)
-	 fi;
+	 test_next(x);
 	 if twist(x) != x
 	 then big_unitary_hash.finishx(x)
 	 else
@@ -1699,9 +1698,7 @@ fancy_tester) = void:
 		   {start_min_L_bottom_factors = minBottomData.min_L_bottom_factors_time()}
     then () = for (x,lambda)@k in xlambdas
     	      do {xlambdas}
-	      	if not next_heightC_flag
-		then test_next(x)
-		fi;
+		test_next(x);
 		if twist(x) != x {start 1545}
 		 then big_unitary_hash.finishx(x)
 		 elif is_finished(x,lambda) {this includes possibility that x is finished}
@@ -2016,9 +2013,7 @@ set FPP_unitary_hash_bottom_layer([KGBElt] xs, Param_hash UhashG, (Param->bool) 
     then skipx = false
     then () = for x@j in xs
     	      do {xs}
-	 if not next_heightC_flag
-	 then test_next(x)
-	 fi;
+	 test_next(x);
 	 if twist(x) != x
 	 then big_unitary_hash.finishx(x)
 	 fi;
@@ -2127,7 +2122,7 @@ set FPP_unitary_hash_bottom_layer([KGBElt] xs, Param_hash UhashG, (Param->bool) 
 		      then () = if hard_test_flag
 		      	      	then local_test_bl_flag := hard_test_bl(x,lambda)
 				fi
-		      then () = if revert_steve_flag
+		      then () = if x=x_open(G)
 		      	      	then revert_steve_flag:=revert_steve_flag(x,lambda)
 				fi
 		      then startDTcount = DTcount
