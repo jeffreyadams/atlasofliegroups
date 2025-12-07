@@ -2312,7 +2312,7 @@ const deformation_unit& Rep_table::deformation(const StandardRepr& z)
 {
   assert(is_final(z));
 
-  auto h=alcove_hash.match(deformation_unit(*this,z));
+  auto h=alcove_hash.match(deformation_unit(*this,z,false));
   {
     deformation_unit& result = pool[h];
     if (result.has_def_contrib())
@@ -2632,7 +2632,9 @@ const deformation_unit&
   assert(is_delta_fixed(z));
   const auto& delta = inner_class().distinguished();
 
-  auto h = alcove_hash.match(deformation_unit(*this,z));
+  auto h = alcove_hash.match(deformation_unit(*this,z,true));
+  if (not pool[h].is_delta_fixed()) // previous value was from untwisted case
+    pool[h].replace_sample(z); // replace by our value, was tested delta-fixed
   if (pool[h].has_twdef_contrib())
   {
     Ext_rep_context ctxt(*this,delta);
