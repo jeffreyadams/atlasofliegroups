@@ -200,6 +200,21 @@ set easy_test_bl(KGBElt x) = bool:
        	    true
        fi
 
+{whether to adjust edge_offset}
+set test_edge_flag = true
+
+set KGB_edge_frac = 39/40
+
+set test_edge(KGBElt x) = void:
+    if not test_edge_flag then return () fi;
+    edge_offset:=1;
+    if x.number > KGB_edge_frac*#KGB(x.real_form)
+    then edge_offset := 2;
+    	 if x.involution+1 = 0
+	 then edge_offset :=(x.real_form.rank+1)\3
+	 fi
+    fi
+
 {whether to adjust next_heightC_flag}
 set test_next_flag = true
 
@@ -443,6 +458,7 @@ then coh_ind_unip_few(G,Uhash)}
     then () = for (x,lambda)@k in xlambdasW
     	      do {xlambdasW}
 	      	test_next(x);
+		test_edge(x);
 	      	if twist(x) != x {close 482}
 		then big_unitary_hash.finishx(x)
 		elif is_finished(x,lambda) {this includes possibility that x is finished}
@@ -546,6 +562,7 @@ then coh_ind_unip_few(G,Uhash)}
 			  			  let answer =
 						      if revert_steve_flag
 			      	       		      then edge_offset:=1;
+						      	   steve_graph_flag:=true;
 							   local_test_GEO_hash_steve(x, lambda, Lvd,
 						      Uhash, fancy_tester)
 			      	       		      else local(x, lambda, Lvd, LF, pol_hash, Uhash,
@@ -673,6 +690,7 @@ set FPP_unitary_hash_general([KGBElt] xs, Param_hash Uhash, (Param->bool) fancy_
     then () = for x@j in xs
     	      do {xs}
 	 test_next(x);
+	 test_edge(x);
 	 if twist(x) != x
 	 then big_unitary_hash.finishx(x)
 	 else
@@ -828,6 +846,7 @@ set FPP_unitary_hash_general([KGBElt] xs, Param_hash Uhash, (Param->bool) fancy_
 				 		   let answer =
 						       if revert_steve_flag
 			      	       		       then edge_offset:=1;
+						       	    steve_graph_flag:=true;
 							    local_test_GEO_hash_steve(xW, lambdaW, Lvd,
 								Uhash, fancy_tester)
 						       else local(xW, lambdaW, Lvd, LF, pol_hash, Uhash,
@@ -1623,7 +1642,6 @@ fancy_tester) = void:
 	    od;
             return ()
         fi;
-	{if x =x_open(x.real_form) then return FPP_unitary_hash_steve(xlambdas, UhashG, fancy_tester) fi;}
     let disconn_flag = components_rank(G) > 0
     then (Gsc,M) = if disconn_flag
     	      	   then derived_cover_real_form_info(G)
@@ -1699,6 +1717,7 @@ fancy_tester) = void:
     then () = for (x,lambda)@k in xlambdas
     	      do {xlambdas}
 		test_next(x);
+		test_edge(x);
 		if twist(x) != x {start 1545}
 		 then big_unitary_hash.finishx(x)
 		 elif is_finished(x,lambda) {this includes possibility that x is finished}
@@ -1803,6 +1822,7 @@ fancy_tester) = void:
 			 fi;
 			 let answer = if revert_steve_flag {and lambda_sc!=Gsc.rho}
 			     	      then edge_offset:=1;
+				      	   steve_graph_flag:=true;
 					   local_test_GEO_hash_steve(x_sc, lambda_sc, Lvd, Uhash,
 				      	   fancy_tester)
 				       elif local_test_bl_flag
@@ -2014,6 +2034,7 @@ set FPP_unitary_hash_bottom_layer([KGBElt] xs, Param_hash UhashG, (Param->bool) 
     then () = for x@j in xs
     	      do {xs}
 	 test_next(x);
+	 test_edge(x);
 	 if twist(x) != x
 	 then big_unitary_hash.finishx(x)
 	 fi;
@@ -2153,6 +2174,7 @@ set FPP_unitary_hash_bottom_layer([KGBElt] xs, Param_hash UhashG, (Param->bool) 
 			       let answer = [Param]:
 			       	      if revert_steve_flag
 			       	      then edge_offset:=1;
+				      	   steve_graph_flag:=true;
 				      	   local_test_GEO_hash_steve(x_sc, M*lambda, Lvd, Uhash,
 				      	   fancy_tester)
 			       	      elif local_test_bl_flag
