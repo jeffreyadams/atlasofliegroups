@@ -203,7 +203,7 @@ set easy_test_bl(KGBElt x) = bool:
 {whether to adjust edge_offset}
 set test_edge_flag = true
 
-set KGB_edge_frac = 39/40
+set KGB_edge_frac = 1/2
 
 set test_edge(KGBElt x) = void:
     if not test_edge_flag then return () fi;
@@ -216,7 +216,7 @@ set test_edge(KGBElt x) = void:
     fi
 
 {whether to adjust next_heightC_flag}
-set test_next_flag = true
+set test_next_flag = false
 
 set KGB_next_frac = 3/5
 
@@ -452,6 +452,10 @@ then coh_ind_unip_few(G,Uhash)}
          oldUtime = unitaryTime, currentUtime = unitaryTime, oldCtime = charTime, currentCtime = charTime,
     	 oldUcounter = unitary_test_counter.use_count(), currentUcounter = unitary_test_counter.use_count(),
 		   oldCcounter = char_counter.use_count(), currentCcounter = char_counter.use_count()
+    then () = if every_lambda_deets_flag
+	      then face_verbose := old_face_verbose; time_verbose := old_time_verbose;
+    	 	   test_verbose := old_test_verbose; test_slightly_verbose := old_test_slightly_verbose
+	       fi
     {then () = if every_lambda_deets_flag
     	      then prints("time up to main loop = ",print_time_string(elapsed_ms() - start))
 	      fi}
@@ -510,7 +514,12 @@ then coh_ind_unip_few(G,Uhash)}
 				    finish(x,lambda)
 			       fi
 	      	     in if tw.< {still have work to do close 482}
-		     	then adjust_Dirac_flags(x);
+		     	then if every_lambda_deets_flag
+			     then face_verbose := old_face_verbose; time_verbose := old_time_verbose;
+    	 			  test_verbose := old_test_verbose; test_slightly_verbose :=
+				  old_test_slightly_verbose
+			     fi;
+			     adjust_Dirac_flags(x);
 			     if x=x_open(G)
 			     then revert_steve_flag := revert_steve_flag(x,lambda)
 			     fi;
@@ -682,7 +691,11 @@ set FPP_unitary_hash_general([KGBElt] xs, Param_hash Uhash, (Param->bool) fancy_
     then red_count_times = [int]: null(#xs)
     then lambdatimes = [[int]]: for j:#xs do [] od
     then answerCards = [[int]]: for j:#xs do [] od {number of unitary parameters found}
-     then current = elapsed_ms()
+    then current = elapsed_ms()
+    then () = if every_lambda_deets_flag
+	      then face_verbose := old_face_verbose; time_verbose := old_time_verbose;
+    	 	   test_verbose := old_test_verbose; test_slightly_verbose := old_test_slightly_verbose
+	       fi
     then oldUhash = Uhash.size(), currentUhash = Uhash.size(), formerUhash = Uhash.size(),
     	 oldUcounter = unitary_test_counter.use_count(), currentUcounter = unitary_test_counter.use_count(),
 	 oldUtime = unitaryTime, oldCcounter = char_counter.use_count(), currentCcounter = char_counter.use_count()
@@ -837,13 +850,7 @@ set FPP_unitary_hash_general([KGBElt] xs, Param_hash Uhash, (Param->bool) fancy_
 			 		   in if (not revert_steve_flag) and (#LF = 0 or #LF[0] = 0)
 					      then none_count +:=1;
 					      	   finish(x, lambda); []
-			    		      else if every_lambda_deets_flag
-			       	 	      	   then face_verbose := old_face_verbose;
-						   time_verbose := old_time_verbose;
-				    	 	   test_verbose :=old_test_verbose;
-						   test_slightly_verbose := old_test_slightly_verbose
-				 		   fi;
-				 		   let answer =
+			    		      else let answer =
 						       if revert_steve_flag
 			      	       		       then edge_offset:=1;
 						       	    steve_graph_flag:=true;
@@ -1043,6 +1050,10 @@ then coh_ind_unip_few(G,Uhash)}
     {then () = if every_lambda_deets_flag
     	      then prints("time up to main loop = ",print_time_string(elapsed_ms() - start))
 	      fi}
+    then () = if every_lambda_deets_flag
+	      then face_verbose := old_face_verbose; time_verbose := old_time_verbose;
+    	 	   test_verbose := old_test_verbose; test_slightly_verbose := old_test_slightly_verbose
+	       fi
     then () = for (x,lambda)@k in xlambdasW
     	      do {xlambdasW}
 		test_next(x);
@@ -1249,6 +1260,10 @@ set FPP_unitary_hash_steve([KGBElt] xs, Param_hash Uhash, (Param->bool) fancy_te
     	 oldUcounter = unitary_test_counter.use_count(), currentUcounter = unitary_test_counter.use_count(),
 	 oldUtime = unitaryTime, oldCcounter = char_counter.use_count(), currentCcounter = char_counter.use_count()
     then skipx = false
+    then () = if every_lambda_deets_flag
+	      then face_verbose := old_face_verbose; time_verbose := old_time_verbose;
+    	 	   test_verbose := old_test_verbose; test_slightly_verbose := old_test_slightly_verbose
+	       fi
     then () = for x@j in xs
     	      do {xs}
 	 test_next(x);
@@ -1714,6 +1729,10 @@ fancy_tester) = void:
 	 currentUtime = unitaryTime, currentCtime = charTime,
 	 oldCcounter = char_counter.use_count(), currentCcounter = char_counter.use_count()
 		   {start_min_L_bottom_factors = minBottomData.min_L_bottom_factors_time()}
+    then () = if every_lambda_deets_flag
+	      then face_verbose := old_face_verbose; time_verbose := old_time_verbose;
+    	 	   test_verbose := old_test_verbose; test_slightly_verbose := old_test_slightly_verbose
+	       fi
     then () = for (x,lambda)@k in xlambdas
     	      do {xlambdas}
 		test_next(x);
@@ -1816,11 +1835,7 @@ fancy_tester) = void:
 			 in if disconn_flag
 			    then finish(x,lambda)
 			    fi; ()
-		    else if every_lambda_deets_flag
-			 then face_verbose := true{old_face_verbose}; time_verbose := true{old_time_verbose};
-			      test_verbose :=true{old_test_verbose}; test_slightly_verbose := true {old_test_slightly_verbose}
-			 fi;
-			 let answer = if revert_steve_flag {and lambda_sc!=Gsc.rho}
+		    else let answer = if revert_steve_flag {and lambda_sc!=Gsc.rho}
 			     	      then edge_offset:=1;
 				      	   steve_graph_flag:=true;
 					   local_test_GEO_hash_steve(x_sc, lambda_sc, Lvd, Uhash,
@@ -2031,6 +2046,10 @@ set FPP_unitary_hash_bottom_layer([KGBElt] xs, Param_hash UhashG, (Param->bool) 
 	 oldcharTime = charTime, currentcharTime = charTime, currentUtime = unitaryTime
 {try to deal with x already recorded as known}
     then skipx = false
+    then () = if every_lambda_deets_flag
+	      then face_verbose := {true}old_face_verbose; time_verbose := {true}old_time_verbose;
+	      test_verbose :={true}old_test_verbose; test_slightly_verbose := {true}old_test_slightly_verbose
+	      fi
     then () = for x@j in xs
     	      do {xs}
 	 test_next(x);
@@ -2166,12 +2185,7 @@ set FPP_unitary_hash_bottom_layer([KGBElt] xs, Param_hash UhashG, (Param->bool) 
 		       in if not revert_steve_flag and (#LF = 0 or #LF[0] = 0)
 			  then none_count+:=1;
 			       finish(x,lambda); []
-			  else if every_lambda_deets_flag
-			       then face_verbose := old_face_verbose; time_verbose := old_time_verbose;
-				    test_verbose :=old_test_verbose; test_slightly_verbose :=
-					 	      old_test_slightly_verbose
-			       fi;
-			       let answer = [Param]:
+			  else let answer = [Param]:
 			       	      if revert_steve_flag
 			       	      then edge_offset:=1;
 				      	   steve_graph_flag:=true;

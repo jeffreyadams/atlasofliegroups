@@ -1262,7 +1262,7 @@ set next_taus(KTypePol P) = KTypePol:
     fi
 {whether to use following function}
 set next_heightC_flag = false
-set next_heightC_time = int:0
+
 {returns the height of the next K-type > HT, or -1 if none exists}
 set next_heightC_old = ((Param,int) -> int):
     let p = Param: SL(2,R).trivial
