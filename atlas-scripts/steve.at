@@ -1347,7 +1347,8 @@ set make_steve_hash_small() = steve_hash_small_table:
 				   then true
 				   elif let qs = monomials(parameter(xSHS, lambdaSHS, gamma))
 				   	in any(for q in qs
-					       do @bool: big_unitary_hash.nu_height_lookup_bool(q, htSHS)
+					       do @bool: status(q, htSHS) > 0
+					       {big_unitary_hash.nu_height_lookup_bool(q, htSHS)}
 					       od)
 				   then false {some q fails unitary to ht}
 				   else pos_tester(xSHS, lambdaSHS, htSHS, gamma)
@@ -1884,12 +1885,13 @@ set warmup(KGBElt x, ratvec lambda, int HT, LocalVertexData Lvd, [[FaceVertsInde
     do for v in FVI
        do let gamma = face_bary(Lvd, v[:d+1])
        	  then qs = monomials(finalize(parameter(x,lambda,gamma)))
-       	  in if any(for q in qs do big_unitary_hash.nu_height_lookup_bool(q,HT) od)
+	  then stats = for q in qs do status(q,HT) od
+       	  in if any(for stat in stats do stat < 0 od) {q in qs do big_unitary_hash.nu_height_lookup_bool(q,HT) od)}
        	     then steve_hash_small.numatch(gamma);
 	     []
-	     elif all(for q in qs do big_unitary_hash.ulookup(q).>=
-	     	     or (let m = u_to_ht_hash.lookup(q)
-		     	 in m.>= and u_to_ht_hts[m] >= HT) od)
+	     elif all(for stat in stats do stat > 0 od) {q in qs do big_unitary_hash.ulookup(q).>=}
+	     	     {or (let m = u_to_ht_hash.lookup(q)
+		     	 in m.>= and u_to_ht_hts[m] >= HT) od)}
        	     then steve_hash_small.umatch(gamma);
 	     [v]
 	     else [v]
@@ -2324,7 +2326,8 @@ set localFD_2SteveU\
     then return []
     fi;
     if fund_face_verbose
-    then prints(new_line,"start localFD_2Steve")
+    then prints(new_line,"start localFD_2Steve");
+    	 prints("LF0 = ",LF0)
     fi;
     steve_hash_small.reset_with_ht(x,lambda,HT);
     {prints("in localFD_2SteveU, LF0 = ",LF0);}  {COMMENT OUT!}

@@ -4295,7 +4295,7 @@ set local_test_GEO_hash_one_level(KGBElt x, ratvec lambda, {VertexData vd,}
     	 	     	 then let (eq,CLBF) = localGraphRed(LF)
 	      	     	      in localFD_KHash_01_graph(x, lambda, Lvd, zero_ht,
 			      	 pol_hash,LF, eq,CLBF)
-    	 	     	 else localFD_KHash_01(x, lambda, Lvd, zero_ht, Kpol_hash, LF)
+    	 	     	 else localFD_KHash_01(x, lambda, Lvd, zero_ht, pol_hash, LF)
 	 	     	 fi {red_count_flag}
     		     then () = check_pols(x, lambda, Lvd, ans, zero_ht, pol_hash)
     	   	     then tester0 = if prefer_to_hts
@@ -4551,7 +4551,9 @@ set local_test_GEO_hash_one_level_end(KGBElt x, ratvec lambda, LocalVertexData L
     	      then LFDKH := for list in LFDKH do [vec]: for v in list ~do v od od
 	      fi
     then ((eq,gr),IUCL,CLBF) = localGraphK(LFDKH, pol_hash, one_ht)
-    then () = LFDKH := local_testK_hash(x,lambda,Lvd, LFDKH, eq, gr, CLBF, tester1, one_ht, Uhash, fancy_tester)
+    then () = if one_ht > HK_known
+    	      then LFDKH := local_testK_hash(x,lambda,Lvd, LFDKH, eq, gr, CLBF, tester1, one_ht, Uhash, fancy_tester)
+	      fi
     then () = if test_verbose then prints("unitary to ht ", one_ht,
                         " face counts to dim 1: ",for list in LFDKH do #list od)
 			{,"; Dirac_best eliminated ", DBTcount - startDBTcount)} fi
@@ -4598,9 +4600,10 @@ set local_test_GEO_hash_one_level_end(KGBElt x, ratvec lambda, LocalVertexData L
 					  parameter(x, lambda,
 					  face_bary(Lvd, verts))))
 					  in if all(for p in ps
-					     	    do not (big_unitary_hash.nu_height_lookup_bool(p,one_ht))
-						       or Uhash.lookup(p).>=
-						       or tester1(p)
+					     	    do status(p, one_ht) > 0
+						    {(big_unitary_hash.nu_height_lookup_bool(p,one_ht))
+						       or Uhash.lookup(p).>=}
+						       or (status(p,one_ht) = 0 and tester1(p))
 						    od)
 					     then [LFDKH[D+1][m]]
 					     else []
@@ -4741,9 +4744,10 @@ set local_test_GEO_hash_steve_steve_end(KGBElt x, ratvec lambda, LocalVertexData
 					  parameter(x, lambda,
 					  face_bary(Lvd, verts))))
 					  in if all(for p in ps
-					     	    do not (big_unitary_hash.nu_height_lookup_bool(p,one_ht))
-						       or Uhash.lookup(p).>=
-						       or tester1(p)
+					     	    do status(p,one_ht) > 0
+						    {not (big_unitary_hash.nu_height_lookup_bool(p,one_ht))
+						       or Uhash.lookup(p).>=}
+						       or (status(p,one_ht) = 0 and tester1(p))
 						    od)
 					     then [LFDKH[D+1][m]]
 					     else []
@@ -4840,9 +4844,10 @@ set local_test_GEO_hash_steve_end(KGBElt x, ratvec lambda, LocalVertexData Lvd,
 					  parameter(x, lambda,
 					  face_bary(Lvd, verts))))
 					  in if all(for p in ps
-					     	    do not (big_unitary_hash.nu_height_lookup_bool(p,H1))
-						       or Uhash.lookup(p).>=
-						       or tester1(p)
+					     	    do status(p,H1) > 0
+						    {not (big_unitary_hash.nu_height_lookup_bool(p,H1))
+						       or Uhash.lookup(p).>=}
+						       or (status(p,H1) = 0 and tester1(p))
 						    od)
 					     then [LFDKH[D+1][m]]
 					     else []
@@ -4969,9 +4974,10 @@ set local_test_GEO_hash_steve_end_faces(KGBElt x, ratvec lambda, LocalVertexData
 					  parameter(x, lambda,
 					  face_bary(Lvd, verts))))
 					  in if all(for p in ps
-					     	    do not (big_unitary_hash.nu_height_lookup_bool(p,one_ht))
-						       or Uhash.lookup(p).>=
-						       or tester1(p)
+					     	    do status(p,one_ht) > 0
+						    {not (big_unitary_hash.nu_height_lookup_bool(p,one_ht))
+						       or Uhash.lookup(p).>=}
+						       or (status(p,one_ht) = 0 and tester1(p))
 						    od)
 					     then [LFDKH[D+1][m]]
 					     else []

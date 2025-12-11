@@ -847,12 +847,23 @@ F4_s)}
 {TRUE should help interrupted to_ht}
 set deformed_hash_flag = true
 
-set xlv_flag = false {true costs 10% time for E7_s near x.number = 12000}
+{set xlv_flag = false {true costs 10% time for E7_s near x.number = 12000}}
 
-set deformedHash = if xlv_flag
+{set deformedHash = if xlv_flag
     		   then make_deformation_hash_to_htB()
 		   else make_deformation_hash_to_ht()
-		   fi
+		   fi}
+
+set deformedHashA =  make_deformation_hash_to_ht()
+set deformedHashB =  make_deformation_hash_to_htB()
+set deformedHash = deformedHashA
+
+set choose_xlv(bool choice) = void:
+    if choice
+    then deformedHash:= deformedHashB
+    else deformedHash:= deformedHashA
+    fi
+
 
 {set twistedDeformedHash = make_twisted_deformation_hash()}
 
@@ -993,6 +1004,7 @@ set was_tested(Param p, int T, bool ans) = void:
     	     then cSp+:=1; 1/(cSp-4)
 	     else 1/1
 	     fi}
+    if p = parameter(F4_s,44,[0,1,1,0]/1,[-2,1,2,-3]/2) then 1/0 fi;
     if drain_plug_flag and T > drain_plug_time
     then prints(p," took ",print_time_string(T)," to test is_unitary = ", ans)
     fi;
