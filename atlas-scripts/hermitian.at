@@ -1004,7 +1004,6 @@ set was_tested(Param p, int T, bool ans) = void:
     	     then cSp+:=1; 1/(cSp-4)
 	     else 1/1
 	     fi}
-    if p = parameter(F4_s,44,[0,1,1,0]/1,[-2,1,2,-3]/2) then 1/0 fi;
     if drain_plug_flag and T > drain_plug_time
     then prints(p," took ",print_time_string(T)," to test is_unitary = ", ans)
     fi;
