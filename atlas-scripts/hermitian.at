@@ -1257,13 +1257,15 @@ set worst_so_far(Param p, int H) = int:
 set push_deform_flag = true
 
 set predictor_verbose =false
+set predictor_flag = false
+set predictor_time = int:0
 
 {predicted time in milliseconds to complete is_unitary{to_ht}(p,{HT})}
 set u_predictor(Param p, int HT) = int:
-    let WSF = max(100*(p.real_form.semisimple_rank)^2, worst_so_far(p,HT)),
+    let start = elapsed_ms(), WSF = max(100*(p.real_form.semisimple_rank)^2, worst_so_far(p,HT)),
     	delta = p.real_form.distinguished_involution, start_pred = elapsed_ms()
-    in if not deformed_hash_flag
-       then WSF
+    in if not (deformed_hash_flag and predictor_flag)
+       then predictor_time+:= elapsed_ms() - start; WSF
        else {push_deform_flag:=true;}
        	    let list = {is_unitary runs over terms in KL_sum_to_ht(p,HT)}
 	    if HT < 0  {will do full_deform(q,HT) on each term}
@@ -1325,6 +1327,7 @@ set u_predictor(Param p, int HT) = int:
 		    then prints("prediction ",print_time_string(ans), " in time ",
 		    	 print_time_string(elapsed_ms() - start_pred))
 		    fi;
+		    predictor_time+:= elapsed_ms() - start;
 		    ans
 	    fi
 
