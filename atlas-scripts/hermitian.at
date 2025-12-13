@@ -118,6 +118,27 @@ set regroup(RealForm G, KTypePol P) = KTypePol:
 set regroup(RealForm G, Param p) = Param:
     parameter(G, p.x.number, p.lambda, p.nu)
 
+set low_height(KTypePol P) = int:
+    if P.= then -1
+    else min(0)(for @t in P do height(t) od)
+    fi
+
+set low_height(ParamPol P) = int:
+    if P.= then -1
+    else min(0)(for @t in P do height(t) od)
+    fi
+
+set impure_height(KTypePol P) = int:
+    if is_pure(P) then -1
+    else let (a, mu) = first_term(P)
+    	 then () = if not is_pure(a) then return height(mu) fi
+	 then () = for c@tau in a*P
+	    	   do if not s_part(c).=
+		      then return height(tau)
+		      fi
+		   od
+	 in -1
+     fi
 
 set full_deform_to_ht_MvL_base(Param p, int height, int time) = maybe_KTP:
 ( if not strict_low(p,height)
@@ -1004,6 +1025,12 @@ set was_tested(Param p, int T, bool ans) = void:
     	     then cSp+:=1; 1/(cSp-4)
 	     else 1/1
 	     fi}
+    {if p = parameter(F4_s,101,[1,1,1,-1]/1,[0,1,0,-2]/1)
+    then assert(@:false); prints("testing p0")
+    fi;}
+    {if p = parameter(F4_s,102,[2,2,1,-4]/1,[1,4,0,-9]/4)
+    then assert(@:false); prints("testing p1")
+    fi;}
     if drain_plug_flag and T > drain_plug_time
     then prints(p," took ",print_time_string(T)," to test is_unitary = ", ans)
     fi;
@@ -1432,6 +1459,13 @@ set hermitian_form_irreducible (Param p) = KTypePol:
 set is_unitary (Param p) = bool:
   p.is_hermitian and hermitian_form_irreducible(p).is_pure
 
+{-1 if is_unitary, otherwise lowest height at which fails}
+set is_unitary_depth(Param p) = int:
+    if not p.is_hermitian
+    then -2
+    else hermitian_form_irreducible(p).impure_height
+    fi
+
 { compute Hermitian form on p, and report if it is unitary }
 set is_unitaryB (Param p) = bool:
   unitary_test_counter.use();
@@ -1589,6 +1623,20 @@ set is_unitary (Param p, int time) = int: { -1: no, 0:timed out, 1: yes }
        	 | done(result): if result.is_pure then 1 else -1 fi
        	 esac
     fi
+
+{1: is unitary, 0: timed out, -1: non-hermitian, otherwise -2*(lowest nonunitary height+1)}
+set is_unitary_depth (Param p, int time) = int: 
+    if p.is_hermitian
+    else -1
+    then case hermitian_form_irreducible(p,time)
+       	 | timed_out: 0
+       	 | done(result): let D = result.impure_height
+	   		 in if D<0 then 1
+			    else -2*(D+1)
+			    fi
+       	 esac
+    fi
+
 
 { end of core unitarity functionality, remaining variations for user comfort }
 

@@ -203,16 +203,20 @@ set easy_test_bl(KGBElt x) = bool:
 {whether to adjust edge_offset}
 set test_edge_flag = true
 
-set KGB_edge_frac = 1/2
+set KGB_edge_frac = 1/10
 
+{for E7_s spherical 3 is better than 0,1,2,4}
 set test_edge(KGBElt x) = void:
     if not test_edge_flag then return () fi;
-    edge_offset:=1;
+    edge_offset:=0;
     if x.number > KGB_edge_frac*#KGB(x.real_form)
-    then edge_offset := 2;
-    	 if x.involution+1 = 0
-	 then edge_offset :=(x.real_form.rank+1)\3
-	 fi
+    then edge_offset := 2
+    fi;
+    if x.number > KGB_frac*#KGB(x.real_form)
+    then edge_offset := (x.real_form.rank+1)\2
+    fi;
+    if x.involution+1 = 0
+    then edge_offset :=(x.real_form.rank-1)\2
     fi
 
 {whether to adjust next_heightC_flag}
@@ -415,7 +419,7 @@ set FPP_unitary_hash_general([(KGBElt,ratvec)] xlambdas, Param_hash Uhash,
     then G = x.real_form, revert_steve_flag = false
     then {vd = FPP_vertex_data(G),} start = elapsed_ms(),  zeroNu = null(G.rank)/1
     then () = if FPP_report_flag
-    	      then unitaryTime := 0; charTime := 0; FD12Time:=0; FD12bzTime:=0; red_count_time :=0;
+    	      then {unitaryTime := 0;} charTime := 0; FD12Time:=0; FD12bzTime:=0; red_count_time :=0;
 	      	   branch_builtin_time :=0; branch_script_time := 0
 	      fi
     then () = if FPP_report_flag
@@ -570,8 +574,10 @@ then coh_ind_unip_few(G,Uhash)}
 			  			  fi;
 			  			  let answer =
 						      if revert_steve_flag
-			      	       		      then edge_offset:=1;
-						      	   steve_graph_flag:=true;
+			      	       		      then edge_offset:=2{1};
+								{changed 12/12/25 because of (x,lambda) #123 in E7}
+						      	   steve_graph_flag:=false {true};
+							   	{changed 12/12/25 by E7 testing}
 							   local_test_GEO_hash_steve(x, lambda, Lvd,
 						      Uhash, fancy_tester)
 			      	       		      else local(x, lambda, Lvd, LF, pol_hash, Uhash,
@@ -663,7 +669,7 @@ set FPP_unitary_hash_general([KGBElt] xs, Param_hash Uhash, (Param->bool) fancy_
     then G = xs[0].real_form, revert_steve_flag = false
     then start = elapsed_ms(), zeroPol = null_module(G), zeroNu = null(G.rank)/1
     then () = if FPP_report_flag
-    	      then unitaryTime := 0; charTime := 0; FD12Time:=0; FD12bzTime:=0; red_count_time :=0
+    	      then {unitaryTime := 0;} charTime := 0; FD12Time:=0; FD12bzTime:=0; red_count_time :=0
 	      fi
     {then {xnums = for x in xs do x.number od, xtimes = null(#xs),}}
     {then () = pol_hash.clear()} {in recursive calls, this screws up bigger G, which has
@@ -852,8 +858,8 @@ set FPP_unitary_hash_general([KGBElt] xs, Param_hash Uhash, (Param->bool) fancy_
 					      	   finish(x, lambda); []
 			    		      else let answer =
 						       if revert_steve_flag
-			      	       		       then edge_offset:=1;
-						       	    steve_graph_flag:=true;
+			      	       		       then edge_offset:=2{1};
+						       	    steve_graph_flag:=false {true};
 							    local_test_GEO_hash_steve(xW, lambdaW, Lvd,
 								Uhash, fancy_tester)
 						       else local(xW, lambdaW, Lvd, LF, pol_hash, Uhash,
@@ -1010,7 +1016,7 @@ set FPP_unitary_hash_steve([(KGBElt,ratvec)] xlambdas, Param_hash Uhash,
     	      else let (x,) = xlambdasW[0]
     then start = elapsed_ms(),  zeroNu = null(G.rank)/1
     then () = if FPP_report_flag
-    	      then unitaryTime := 0; charTime := 0; FD12Time:=0; FD12bzTime:=0; red_count_time :=0;
+    	      then {unitaryTime := 0;} charTime := 0; FD12Time:=0; FD12bzTime:=0; red_count_time :=0;
 	      	   branch_builtin_time :=0; branch_script_time := 0
 	      fi
     then () = if FPP_report_flag
@@ -1230,7 +1236,7 @@ set FPP_unitary_hash_steve([KGBElt] xs, Param_hash Uhash, (Param->bool) fancy_te
     then G = xs[0].real_form
     then start = elapsed_ms(), zeroPol = null_module(G), zeroNu = null(G.rank)/1
     then () = if FPP_report_flag
-    	      then unitaryTime := 0; charTime := 0; FD12Time:=0; FD12bzTime:=0; red_count_time :=0
+    	      then {unitaryTime := 0;} charTime := 0; FD12Time:=0; FD12bzTime:=0; red_count_time :=0
 	      fi
     then () = if FPP_report_flag
     	      then {clear_report_tested();} DTcount:=0; DBTcount:=0; report_steve_clear()
@@ -1690,7 +1696,7 @@ fancy_tester) = void:
 	      fi
     then start = elapsed_ms()
     then () = if FPP_report_flag
-    	      then unitaryTime := 0; charTime := 0; FD12Time:=0; FD12bzTime:=0; red_count_time :=0
+    	      then {unitaryTime := 0;} charTime := 0; FD12Time:=0; FD12bzTime:=0; red_count_time :=0
 	      fi
     then xnums = for (x,) in xlambdas do let (,m) = %x in m od
     {then lambdas = for (,lambda) in xlambdas do lambda od}
@@ -1998,7 +2004,7 @@ set FPP_unitary_hash_bottom_layer([KGBElt] xs, Param_hash UhashG, (Param->bool) 
 		 	   else Uparamhash
 		 	   fi
     then start = elapsed_ms(), zeroPol = null_module(G), zeroNu = null(G.rank)/1
-    then () = unitaryTime := 0
+    {then () = unitaryTime := 0}
     then () = charTime :=0
     then () = dfkiTime := 0
     then () = FD12Time := 0

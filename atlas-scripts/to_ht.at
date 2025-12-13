@@ -9,28 +9,6 @@ labelling others as "new"}
 {If HT < 0, then use full version}
 set herm_report = bool: false
 
-set low_height(KTypePol P) = int:
-    if P.= then -1
-    else min(0)(for @t in P do height(t) od)
-    fi
-
-set low_height(ParamPol P) = int:
-    if P.= then -1
-    else min(0)(for @t in P do height(t) od)
-    fi
-
-set impure_height(KTypePol P) = int:
-    if is_pure(P) then -1
-    else let (a, mu) = first_term(P)
-    	 then () = if not is_pure(a) then return height(mu) fi
-	 then () = for c@tau in a*P
-	    	   do if not s_part(c).=
-		      then return height(tau)
-		      fi
-		   od
-	 in -1
-     fi
-
 set to_ht (int N) = (ParamPol->ParamPol): (ParamPol P):
   if N < 0 then P
   else let (below,)=height_split(P,N) in below
@@ -470,8 +448,9 @@ set hermitian_form_irreducible_to_ht_MvL (Param p,int HT,int time) = maybe_KTP:
        fi
   | timed_out: was_tested_inter(p, elapsed_ms() - start_time, time);
     	       unitaryTime+:=elapsed_ms() - start_time; return timed_out()
-  | done(r): let ans = r.convert_cform_hermitian in was_tested_to_ht(p,HT,elapsed_ms() - start_time,
-    	     is_pure(ans)); ans.done
+  | done(r): let ans = r.convert_cform_hermitian
+    	     in was_tested_to_ht(p,HT,elapsed_ms() - start_time, is_pure(ans));
+	     	ans.done
   esac
   then () = unitaryTime+:=elapsed_ms() - start_time
   in answer
@@ -495,21 +474,50 @@ set is_unitary_to_ht_base (Param p,int HT) = bool:
    else p.is_hermitian and hermitian_form_irreducible_to_ht(p,HT).is_pure
    fi
 
+{-1 if is_unitary to HT, otherwise lowest height<=HT at which fails}
+set is_unitary_to_ht_base_depth (Param p,int HT) = int:
+    if not p.is_hermitian then -2
+    elif HT < 0 then is_unitary_depth(p)
+    else  hermitian_form_irreducible_to_ht(p,HT).impure_height
+    fi
+
+
 { compute Hermitian form to ht on p, and report if it is unitary }
 set is_unitary_to_ht_MvL (Param p,int HT) = bool:
       p.is_hermitian and hermitian_form_irreducible_to_ht_MvL(p,HT).is_pure
 
+{-1 if is_unitary to HT, otherwise lowest height<=HT at which fails}
+set is_unitary_to_ht_MvL_depth (Param p,int HT) = int:
+    if not p.is_hermitian
+    then -2
+    elif HT < 0 then is_unitary_depth(p)
+    else hermitian_form_irreducible_to_ht_MvL(p,HT).impure_height
+    fi
+
 { compute Hermitian form to ht on p, and report if it is unitary }
 set is_unitary_to_ht_MvL (Param p,int HT, int time) = int: { -1: no, 0:timed out, 1: yes }
-   let start_time = elapsed_ms()
-   in   if p.is_hermitian
-      	else -1
-      	then case hermitian_form_irreducible_to_ht_MvL(p, HT, time)
+    if p.is_hermitian
+    else -1
+    then case hermitian_form_irreducible_to_ht_MvL(p, HT, time)
      	   | timed_out: 0
 	   | done(result): let boo = result.is_pure
 	     		   in if boo then 1 else -1 fi
 	   esac
-      fi
+    fi
+
+{1: is unitary to HT, 0: timed out, -1: non-hermitian, otherwise -2*(lowest nonunitary height below HT+1)}
+{ compute Hermitian form to ht on p, and report if it is unitary }
+set is_unitary_to_ht_MvL_depth (Param p,int HT, int time) = int: { -1: no, 0:timed out, 1: yes }
+    if p.is_hermitian
+    else -1
+    then case hermitian_form_irreducible_to_ht_MvL(p, HT, time)
+     	 | timed_out: 0
+	 | done(result): let D = result.impure_height
+	     		   in if D < 0then 1
+			      else -2*(D+1)
+			      fi
+	 esac
+    fi
 
 { compute Hermitian form to ht on p, report if it is unitary,
   and record certificate }
