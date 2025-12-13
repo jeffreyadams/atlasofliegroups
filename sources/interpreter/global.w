@@ -5920,13 +5920,16 @@ install_function(section_wrapper,"mod2_section","(mat->mat)");
 install_function(subspace_normal_wrapper,@|
    "subspace_normal","(mat->mat,mat,mat,[int])");
 
-@*1 The program timer.
+@*1 Real time and system interaction.
 
-This one atypical function does not fit in any of the
-other categories, but it is a global function in the sense that it provides
-information about the program as a whole (which at least justifies its presence
-in this file). Apart from being user callable, we also call it from the |main|
-function, so it must be exported.
+We define here a few atypical functions that do not fit in any of the other
+categories. They are global functions in the sense that they do not relate to
+any particular aspect of the program, but rather provide interaction with the
+outside world of real time and other computational resources; this justifies
+their presence in this file.
+
+Apart from being user callable, the |elapsed_wrapper| function is also called
+from the |main| function, so it must be exported.
 
 @< Declarations of exported functions @>=
 void elapsed_wrapper(eval_level l);
@@ -5948,9 +5951,88 @@ void elapsed_wrapper(eval_level l)
     push_value(std::make_shared<int_value>(stopwatch.elapsed_ms()));
 }
 
+@ The function |query| provides a means to obtain an interactive response from
+the user.
+
+@< Local function def... @>=
+void query_wrapper(eval_level l)
+{
+  auto prompt=get<string_value>();
+  std::cout << prompt->val;
+  std::string line;
+  std::getline(std::cin,line);
+  if (not std::cin.good())
+  { std::cin.clear(); // give main command loop a chance to recover
+    throw runtime_error("Failed to read from standard input");
+  }
+  if (l!=eval_level::no_value)
+    push_value(std::make_shared<string_value>(std::move(line)));
+}
+
+@ The function |system| provides a means to call any command on the system
+(through the intermediary of a shell that interprets a string as a command),
+and to import the text that was written on standard output by this command into
+a string. We return in all cases both the exit code of the command (which might
+be the shell signalling its inability to run the command) and the output string
+(which might of course be empty).
+
+@h <unistd.h>
+
+@< Local function def... @>=
+void system_wrapper(eval_level l)
+{
+  auto command=get<string_value>();
+  auto result = std::make_shared<tuple_value>(0);
+  auto* pipe = popen(command->val.c_str(),"r");
+  // run |command| in a child process
+  if (pipe!=nullptr)
+    @< Extract all data from |pipe| and call |pclose(pipe)|, then if successful
+       push the exit status and the output string to |result->val| @>
+@)
+  if (l==eval_level::no_value)
+    return;
+  static id_type failure=main_hash_table->match_literal("fail");
+  static id_type success=main_hash_table->match_literal("succeed");
+
+  if (result->val.size()==0)
+    push_value(std::make_shared<union_value>(0,std::move(result),failure));
+  else
+    push_value(std::make_shared<union_value>(1,std::move(result),success));
+}
+
+@ The call to |popen| created a child process that may write to |pipe|; but it
+is only guaranteed to continue running if we read all the data out of |pipe|,
+which we do in a simple loop. Then we call |pclose| to ensure we wait until
+completion of the child process, to clean up that process as well as the pipe,
+and to obtain the exit status. Since |pclose| acts in part as a |wait|
+operation, the status returned combines information about how the child was
+stopped and the exit status it may have returned. We only return successfully it
+the child terminated normally (rather than by receiving a signal), and we use
+macros that come with the |wait| call to get relevant information from the
+|status| returned by |pclose|.
+
+@h <sys/wait.h>
+
+@< Extract all data from |pipe| and call |pclose(pipe)|, then if successful
+   push the exit status and the output string to |result->val| @>=
+{ char buf[4096];
+  std::ostringstream o;
+  while (fgets(buf,4096,pipe)!=nullptr)
+    o << buf;
+  int status = pclose(pipe);
+  if (WIFEXITED(status))
+  {
+    result->val.reserve(2);
+    result->val.push_back(std::make_shared<int_value>(WEXITSTATUS(status)));
+    result->val.push_back(std::make_shared<string_value>(o.str()));
+  }
+}
+
 @ And we must install the function
 @< Initialise... @>=
 install_function(elapsed_wrapper,"elapsed_ms","(->int)");
+install_function(query_wrapper,"query","(string->string)");
+install_function(system_wrapper,"system","(string->|int,string)");
 
 @* Index.
 

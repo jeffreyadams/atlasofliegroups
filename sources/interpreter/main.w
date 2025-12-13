@@ -398,8 +398,12 @@ while (*++argv!=nullptr)
   static const size_t pol = std::strlen(path_opt);
   std::string arg(*argv);
   if (arg=="--no-readline")
-    {@; use_readline = false; continue; }
-  if (arg.substr(0,pol)==path_opt)
+    use_readline = false;
+  else if (arg=="--prompt")
+    do_prompting = true;
+  else if (arg=="--no-prompt")
+    do_prompting = false;
+  else if (arg.substr(0,pol)==path_opt)
      paths.push_back(&(*argv)[pol]);
   else prelude_filenames.push_back(*argv);
 }

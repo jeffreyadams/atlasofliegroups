@@ -486,17 +486,17 @@ class deformation_unit
 
   void set_LKTs();
 public:
-  deformation_unit(Rep_table& rt, const StandardRepr& sr)
+  deformation_unit(Rep_table& rt, const StandardRepr& sr, bool twisted)
     : sample(sr)
     , lowest_K_types(), def_contrib(), LKTs_twisted(), def_contrib_twisted()
-    , rt(rt), status(0)
+    , rt(rt), status(twisted ? 0x4 : 0)
   {
     set_LKTs();
   }
-  deformation_unit(Rep_table& rt, StandardRepr&& sr)
+  deformation_unit(Rep_table& rt, StandardRepr&& sr, bool twisted)
   : sample(std::move(sr))
   , lowest_K_types(), def_contrib(), LKTs_twisted(), def_contrib_twisted()
-  , rt(rt), status(0)
+  , rt(rt), status(twisted ? 0x4 : 0)
   {
     set_LKTs();
   }
@@ -505,6 +505,7 @@ public:
 
   bool has_def_contrib() const { return status.test(0); }
   bool has_twdef_contrib() const { return status.test(1); }
+  bool is_delta_fixed() const { return status.test(2); }
   // no separate test for |LKTs_twisted|: it is set whenever |has_twdef_contrib|
 
   const KT_nr_pol& LKTs() const { return lowest_K_types; }
@@ -519,6 +520,9 @@ public:
   void set_LKTs_at_minus_1(KT_nr_pol&& p) { LKTs_twisted = std::move(p); }
   void set_twisted_contribution(KT_nr_pol&& p)
   { status.set(1); def_contrib_twisted=std::move(p); }
+
+  void replace_sample(StandardRepr z) // to force a delta-fixed sample value
+  { sample = std::move(z); status |= RankFlags(0x4); }
 
 // special members required by HashTable
   using Pooltype = std::vector<deformation_unit>;

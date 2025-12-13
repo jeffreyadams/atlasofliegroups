@@ -378,7 +378,7 @@ template<typename T, typename Alloc>
       // construct new node with default constructed value
       node_ptr p = allocate_node();
       p->next = std::move(head);
-      head.reset(p); // splice in new node
+      head.reset(p); // incorporate new node at front of the list
     }
   }
 
