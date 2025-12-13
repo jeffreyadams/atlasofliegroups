@@ -257,7 +257,7 @@ version:
 distribution:
 	bash make_distribution.sh $(version)
 
-.PHONY: newbinary mostlyclean clean veryclean showobjects
+.PHONY: newbinary mostlyclean clean veryclean dependencies showobjects
 newbinary:
 	$(RM) $(objects) Fokko atlas
 mostlyclean:
@@ -268,7 +268,10 @@ clean: mostlyclean newbinary
 	$(RM) $(cwebx_made_files)
 
 veryclean: clean
-	$(RM) sources/*/*.d cwebx/*.o cwebx/ctanglex cwebx/cweavex \
+	$(RM) sources/*/*.d cwebx/*.o cwebx/ctanglex cwebx/cweavex
+
+dependencies: $(dependencies)
+	@echo "Object file dependencies have been made"
 
 $(cwebx_dir)/ctanglex: $(cwebx_dir)/common.h $(cwebx_dir)/ctangle.c
 	cd $(cwebx_dir) && $(MAKE) ctanglex
