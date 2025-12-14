@@ -120,8 +120,6 @@ set best_Dirac_flag_factor = 2/5
 K-types when the local_testK_hash is computed.}
 set Dirac_best_K_hash_flag = false
 
-set edge_offset = int: 1
-
 set adjust_Dirac_flags(KGBElt x) = void:
     if not Dirac_allow_adjust_flag then return () fi;
     let G = x.real_form

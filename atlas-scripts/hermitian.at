@@ -55,6 +55,9 @@ set mu_time_mult = rat: 1/1 {1/1}
 {multiple of G.rank to use as jump in step size}
 set mu_rank_mult = rat: 1/2 {1/4}
 
+{how far above LKT to start is_unitary_to_ht tests}
+set edge_offset = int: 1
+
 set test_bl_time = int: 0
 
 set test_no_unitary_time = int: 0
@@ -1034,15 +1037,21 @@ set was_tested(Param p, int T, bool ans) = void:
     if drain_plug_flag and T > drain_plug_time
     then prints(p," took ",print_time_string(T)," to test is_unitary = ", ans)
     fi;
+    unitary_test_counter.use();
     if ans
     then let M = tested_pos_hash.size()
     	 then m = tested_pos_hash.match(p)
-       	 in if m = M
+       	 in {prints("M = ",M,", m = ",m);}
+	    if m = M
 	    then tested_pos_times#:=T;
 	    	 tested_pos_strings #:= test_string;
 		 tested_pos_counts #:=1
 	    else tested_pos_times[m] +:= T;
 	    	 tested_pos_counts[m] +:= 1
+	    fi;
+	    if tested_pos_counts[m] = 2
+	    then prints("tpcs = ",tested_pos_counts);
+		 assert(@:false)
 	    fi
     else let M = tested_neg_hash.size()
     	 then m = tested_neg_hash.match(p)
@@ -1059,6 +1068,7 @@ set was_tested_inter(Param p, int T) = void:
     if drain_plug_flag and T > drain_plug_time
     then prints(p," took ",print_time_string(T)," for interrupted is_unitary")
     fi;
+    unitary_test_counter.use();
     let M = tested_inter_hash.size()
     then m = tested_inter_hash.match(p)
     in if m=M
@@ -1083,6 +1093,7 @@ set was_tested_inter(Param p, int T, int T_target) = void:
 	    	 OT_counts[OTm] +:= 1
 	    fi
     fi;
+    unitary_test_counter.use();
     let M = tested_inter_hash.size()
     then m = tested_inter_hash.match(p)
     in if m=M
@@ -1098,6 +1109,7 @@ set was_tested_to_ht(Param p,int N, int T, bool ans) = void:
     then prints(p," took ",print_time_string(T)," to test is_unitary_to_ht ", N,
     	 	 " = ",ans)
     fi;
+    unitary_test_counter.use();
     let h = N - height(p)
     then add = h+1 - #tested_pos_to_ht_hashes
     then () = if add>0
@@ -1140,8 +1152,9 @@ set was_tested_to_ht(Param p,int N, int T, bool ans) = void:
     fi
 
 set report_tested(string label) = void:
-    prints("...",label,"...",DTcount," Dirac elim, ",DBTcount," best-Dirac elim; next_heightC_time = ",
-           print_time_string(next_heightC_time));
+    prints("...",label,"...",DTcount," Dirac elim, ",DBTcount," best-Dirac elim; edge_offset = ",edge_offset);
+    {next_heightC_time = ",}
+           {print_time_string(next_heightC_time));}
     prints(tested_pos_hash.size()," pos is_unitary tests, in time = ",
     	print_time_string(sum(tested_pos_times)),"; ",tested_neg_hash.size()," neg is_unitary tests, in time = ",
     	print_time_string(sum(tested_neg_times)));
@@ -1197,7 +1210,8 @@ set (report_tested_cum,clear_report_tested_cum) = (((string, string) -> void),(v
     in (((string,string)->void): (string local_label, string running_label) void:
     prints("  ----------------");
     prints("...",local_label,"...",DTcount - DTc," Dirac elim, ",DBTcount - DBTc,
-    " best-Dirac elim;, next_heightC_time = ",print_time_string(next_heightC_time - nhtC_time));
+    " best-Dirac elim, edge_offset = ",edge_offset);
+    {next_heightC_time = ",print_time_string(next_heightC_time - nhtC_time));}
     	DTc :=DTcount; DBTc := DBTcount; nhtC_time:=next_heightC_time;
     prints(tested_pos_hash.size() - tph, " pos is_unitary tests, in time = ",
     	print_time_string(sum(tested_pos_times) - tpt),"; ",tested_neg_hash.size() - tnh,
@@ -1243,7 +1257,8 @@ set (report_tested_cum,clear_report_tested_cum) = (((string, string) -> void),(v
 	 ct:=charTime;
 	 cu:= char_counter.use_count();
     prints("...",running_label,"...",DTcount," Dirac elim, ",DBTcount,
-    	   " best-Dirac elim; next_heightC_time = ",print_time_string(next_heightC_time));
+    	   " best-Dirac elim; edge_offset = ",edge_offset);
+	   {next_heightC_time = ",print_time_string(next_heightC_time));}
     prints(tph," pos is_unitary tests, in time = ", print_time_string(tpt),"; ",tnh,
 	" neg is_unitary tests, in time = ",print_time_string(tnt));
     prints(tic, " interrupted is_unitary tests, of ",tih, " different parameters, in time ",
@@ -1445,15 +1460,15 @@ set show_unitary_time() = void: prints("Time so far for is_unitary = ",
 
 {.Hermitian form on a irreducible module, normalization from its initial term.}
 set hermitian_form_irreducible (Param p) = KTypePol:
-  unitary_test_counter.use();
+  {unitary_test_counter.use();}
   let start_time = elapsed_ms()
   then answer = if is_equal_rank(real_form(p))
        	      	then c_form_irreducible(p) { not twisted, in equal rank case this is faster }
  		else check_hermitian(p,true); twisted_c_form_irreducible(p)
   		fi.convert_cform_hermitian
-  then () = unitaryTime+:=elapsed_ms() - start_time
-  then () = was_tested(p, elapsed_ms() - start_time, is_pure(answer))
-  in answer
+  in unitaryTime+:=elapsed_ms() - start_time;
+     was_tested(p, elapsed_ms() - start_time, is_pure(answer));
+     answer
 
 { compute Hermitian form on p, and report if it is unitary }
 set is_unitary (Param p) = bool:
@@ -1468,7 +1483,7 @@ set is_unitary_depth(Param p) = int:
 
 { compute Hermitian form on p, and report if it is unitary }
 set is_unitaryB (Param p) = bool:
-  unitary_test_counter.use();
+  {unitary_test_counter.use();}
   let start_time = elapsed_ms()
   in if is_equal_rank(p.real_form)
   then let CF = c_form_irreducible(p)
@@ -1601,19 +1616,22 @@ set twisted_c_form_irreducible (Param p,int time) = maybe_KTP:
 )
 
 set hermitian_form_irreducible (Param p, int time) = maybe_KTP:
-   unitary_test_counter.use();
+   {unitary_test_counter.use();}
    let start_time = elapsed_ms()
    then answer = case if is_equal_rank(real_form(p))
                	      then c_form_irreducible(p,time)
-	 	      else check_hermitian(p,true); twisted_c_form_irreducible(p,time)
+	 	      else check_hermitian(p,true);
+		      	   twisted_c_form_irreducible(p,time)
 	 	      fi
-   		 | timed_out: unitaryTime+:=elapsed_ms() - start_time; was_tested_inter(p, elapsed_ms() - start_time,
-		   time); return timed_out()
+   		 | timed_out: was_tested_inter(p, elapsed_ms() - start_time);
+		   	      timed_out()
    		 | done(r): let ans = r.convert_cform_hermitian
-		   	    then () = was_tested(p, elapsed_ms() - start_time, is_pure(ans)) in return ans.done
+		   	    then total_time=elapsed_ms() - start_time, boo = is_pure(ans)
+			    in was_tested(p, total_time, boo);
+			       ans.done
    		 esac
-  then () = unitaryTime+:=elapsed_ms() - start_time
-  in answer
+  in unitaryTime+:=elapsed_ms() - start_time;
+     answer
 
 set is_unitary (Param p, int time) = int: { -1: no, 0:timed out, 1: yes }
     if p.is_hermitian

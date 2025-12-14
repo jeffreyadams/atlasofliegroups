@@ -424,22 +424,22 @@ set twisted_c_form_irreducible_to_ht_MvL (Param p,int HT, int time) = maybe_KTP:
 initial term.}
 set hermitian_form_irreducible_to_ht_MvL (Param p,int HT) = KTypePol:
   if not strict_low(p,HT) then return to_ht(hermitian_form_irreducible(p),HT) fi;
-  unitary_test_counter.use();
+  {unitary_test_counter.use();}
   {if HT > height(p) + 20 then prints(p,HT) fi;}
   let start_time = elapsed_ms(), answer =
   if is_equal_rank(real_form(p))
   then c_form_irreducible_to_ht_MvL(p,HT) { not twisted, in equal rank case this is faster }
   else  check_hermitian(p,true); twisted_c_form_irreducible_to_ht_MvL(p,HT)
   fi.convert_cform_hermitian
-  then () = unitaryTime+:=elapsed_ms() - start_time
-  then () = was_tested_to_ht(p,HT, elapsed_ms() - start_time,is_pure(answer))
-  in answer
+  in unitaryTime+:=elapsed_ms() - start_time;
+     was_tested_to_ht(p,HT, elapsed_ms() - start_time,is_pure(answer));
+     answer
 
 {.Hermitian form to ht on a irreducible module, normalization from its
 initial term.}
 set hermitian_form_irreducible_to_ht_MvL (Param p,int HT,int time) = maybe_KTP:
   if not strict_low(p,HT) then return to_ht(hermitian_form_irreducible(p,time),HT) fi;
-  unitary_test_counter.use();
+  {unitary_test_counter.use();}
   let start_time = elapsed_ms()
   then answer =
   case if is_equal_rank(real_form(p))
@@ -447,17 +447,17 @@ set hermitian_form_irreducible_to_ht_MvL (Param p,int HT,int time) = maybe_KTP:
        else  check_hermitian(p,true); twisted_c_form_irreducible_to_ht_MvL(p,HT,time)
        fi
   | timed_out: was_tested_inter(p, elapsed_ms() - start_time, time);
-    	       unitaryTime+:=elapsed_ms() - start_time; return timed_out()
+    	       timed_out()
   | done(r): let ans = r.convert_cform_hermitian
     	     in was_tested_to_ht(p,HT,elapsed_ms() - start_time, is_pure(ans));
 	     	ans.done
   esac
-  then () = unitaryTime+:=elapsed_ms() - start_time
-  in answer
+  in unitaryTime+:=elapsed_ms() - start_time;
+     answer
 
 set hermitian_form_irreducible_to_ht (Param p,int HT) = KTypePol:
   if not strict_low(p,HT) then return to_ht(hermitian_form_irreducible(p),HT) fi;
-  unitary_test_counter.use();
+  {unitary_test_counter.use();}
   {if HT > height(p) + 20 then prints(p,HT) fi;}
   let start_time = elapsed_ms(), answer =
   if is_equal_rank(real_form(p))
