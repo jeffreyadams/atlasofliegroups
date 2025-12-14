@@ -478,7 +478,7 @@ set make_big_unitary_hash() = big_unitary_hash_table:
 				 fi
 		       then sig_ind = K_type_pol_hashes[rfnum].match(sig)
 		       then () = sigs[rfnum] #:= sig_ind
-		       then () = sig_heights[rfnum] #:= height(p) - 1
+		       then () = sig_heights[rfnum] #:= {height(p)} - 1
 		       then N = nuhashes[rfnum].size()
 		       then H = impure_height(sig)
 		       then () = if H = - 1
@@ -520,7 +520,7 @@ set make_big_unitary_hash() = big_unitary_hash_table:
 				      fi {H = -1}
 			    then sigD_ind = K_type_pol_hashes[rfnum].match(sigD)
 			    then () = tempsigs[pnum] := sigD_ind
-			    then () = tempsights[pnum]:= height(p) - 1
+			    then () = tempsights[pnum]:= {height(p)} - 1
 			    then () = sigs[rfnum] := tempsigs
 			    then () = sig_heights[rfnum] := tempsights
 			    in()
@@ -539,7 +539,7 @@ set make_big_unitary_hash() = big_unitary_hash_table:
 	then () = if pnum = PNUM {haven't computed with p before}
 		  then let sigD = if uhashes[rfnum].lookup(p).>=
 				  then let ans = K_type_pol(character_formula(p))
-				       then () = D:=height(p)-1
+				       then () = D:={height(p)}-1
 				       in ans
 				  elif strict_low(p,D) {added strict 12/13/25}
      	  			  then let ans =  hermitian_form_irreducible_to_ht(p,D)
@@ -558,7 +558,7 @@ set make_big_unitary_hash() = big_unitary_hash_table:
 						 fi {H = -1}
 				       in ans
 				  else let ans = hermitian_form_irreducible(p)
-				       then () = D:=height(p)-1
+				       then () = D:={height(p)} -1
 				       then N = nuhashes[rfnum].size()
 				       then H = impure_height(ans)
 				       then () = if H = -1
@@ -589,7 +589,7 @@ set make_big_unitary_hash() = big_unitary_hash_table:
 			    {then start_sig = elapsed_ms()}
 			    then sigD = if uhashes[rfnum].lookup(p).>=
 					then let ans = K_type_pol(character_formula(p))
-					     then () = D:=height(p)-1
+					     then () = D:={height(p)}-1
 					     in ans
 					elif strict_low(p,D) {strict 12/13/25}{low(p.x,p.lambda,N)}
 					then let ans = hermitian_form_irreducible_to_ht(p,D)
@@ -610,7 +610,7 @@ set make_big_unitary_hash() = big_unitary_hash_table:
 					else let ans = hermitian_form_irreducible(p)
 					     then N = nuhashes[rfnum].size()
 					     then H = impure_height(ans)
-					     then () = D:=height(p)-1
+					     then () = D:={height(p)}-1
 					     then () = if H = -1
 						       then uhashes[rfnum].match(p)
 						       else let n = nuhashes[rfnum].match(p)
@@ -641,12 +641,165 @@ set make_big_unitary_hash() = big_unitary_hash_table:
 	 in (rfnum, pnum, sigs[rfnum][pnum])
     then add_param_inf_interrupt(Param p, int time) = (int, int, int,bool): {add a param, full herm form;
     	 			       	  false if not finished}
-	 let (rfnum, pnum, signum) = add_param_inf(p)
-	 in (rfnum, pnum, signum, true)
+	let  rfnum = add_real_form(p.real_form)
+	then PNUM = phashes[rfnum].size(), rf = real_form_hash.index(rfnum)
+	{then () = p := regroup(rf, herm_center(p))}
+	then list = global_vertices(rf, p.infinitesimal_character)
+	{then phc = herm_center(p)}
+	then () = p:=parameter(rf, p.x.number, p.lambda, sum(#list[0],list)/#list)
+	then pnum = phashes[rfnum].match(p)
+	then () = if pnum = PNUM {haven't computed with p before}
+		  then let m_sig = if uhashes[rfnum].lookup(p).>=
+				 then K_type_pol(character_formula(p)).done
+				 else hermitian_form_irreducible(p,time) {insert computation from good?}
+				 fi
+		       then sig = case m_sig
+		       	       	  | timed_out: return (-1,-1,-1,false); 0*K_type_pol(p)
+				  | done (sig): sig
+				  esac
+		       then sig_ind = K_type_pol_hashes[rfnum].match(sig)
+		       then () = sigs[rfnum] #:= sig_ind
+		       then () = sig_heights[rfnum] #:= {height(p)} - 1
+		       then N = nuhashes[rfnum].size()
+		       then H = impure_height(sig)
+		       then () = if H = - 1
+				 then uhashes[rfnum].match(p)
+				 else let n = nuhashes[rfnum].match(p)
+				      in if n=N
+					 then nu_heights[rfnum] #:=H
+					 elif nu_heights[rfnum][n] > H
+					 then let nuheightsrf = nu_heights[rfnum]
+					      in nuheightsrf[n] :=H;
+						 nu_heights[rfnum]:= nuheightsrf
+					fi {n=N}
+				 fi {H = -1}
+		       then () = assert(@:real_form_hash.size() = #phashes,"big_unitary_hash damaged")
+		       then () = assert(@:real_form_hash.size() = #sig_heights,"big_unitary_hash damaged")
+		       then () = assert(@:#sigs[rfnum] = phashes[rfnum].size(), "big_unitary_hash damaged")
+		       then () = assert(@:#sig_heights[rfnum] = phashes[rfnum].size(), "big_unitary_hash damaged")
+		       then () = assert(@:#nu_heights[rfnum] = nuhashes[rfnum].size(), "big_unitary_hash damaged")
+		       in ()
+		  else {we've seen p before}
+		       if sig_heights[rfnum][pnum] >= height(p)
+		       then let tempsigs = sigs[rfnum], tempsights = sig_heights[rfnum]
+			    then m_sigD = if uhashes[rfnum].lookup(p).>=
+					then K_type_pol(character_formula(p)).done
+					else hermitian_form_irreducible(p,time)
+					fi
+			    then sigD = case m_sigD
+			    	      	| timed_out: return (-1,-1,-1,false); 0*K_type_pol(p)
+					| done(sigD): sigD
+					esac
+			    then N = nuhashes[rfnum].size()
+			    then H = impure_height(sigD)
+			    then () = if H = -1
+				      then uhashes[rfnum].match(p)
+				      else let n = nuhashes[rfnum].match(p)
+					   in if n=N
+					      then nu_heights[rfnum] #:= H
+					      elif nu_heights[rfnum][n] > H
+					      then let nuheightsrf = nu_heights[rfnum]
+						   in nuheightsrf[n] :=H;
+						      nu_heights[rfnum]:= nuheightsrf
+					      fi {n=N}
+				      fi {H = -1}
+			    then sigD_ind = K_type_pol_hashes[rfnum].match(sigD)
+			    then () = tempsigs[pnum] := sigD_ind
+			    then () = tempsights[pnum]:= {height(p)} - 1
+			    then () = sigs[rfnum] := tempsigs
+			    then () = sig_heights[rfnum] := tempsights
+			    in()
+		       fi {sigheights >= height(p)}
+		  fi {pnum = PNUM}
+	 in (rfnum, pnum, sigs[rfnum][pnum],true)
     then add_param_interrupt(Param p, int D, int time) = (int, int, int,bool): {add a param, form to ht D;
     	 			      	  assume D >= ht(p); false if not finished}
-	 let (rfnum, pnum, signum) = add_param(p,D)
-	 in (rfnum, pnum, signum, true)
+	let  rfnum = add_real_form(p.real_form)
+	then rf = real_form_hash.index(rfnum)
+	then PNUM = phashes[rfnum].size()
+	{then () = p:=regroup(rf,herm_center(p))}
+	then list = global_vertices(rf, p.infinitesimal_character)
+	{then phc = herm_center(p)}
+	then () = p:=parameter(rf, p.x.number, p.lambda, sum(#list[0],list)/#list)
+	then pnum = phashes[rfnum].match(p)
+	then () = if pnum = PNUM {haven't computed with p before}
+		  then let m_sigD = if uhashes[rfnum].lookup(p).>=
+				  then D:= -1;
+				       K_type_pol(character_formula(p)).done
+				  elif strict_low(p,D) {added strict 12/13/25}
+     	  			  then hermitian_form_irreducible_to_ht_MvL(p,D,time)
+				  else D:= -1;
+				       hermitian_form_irreducible(p,time)
+				  fi
+		        then sigD = case m_sigD
+		       	       	    | timed_out: return (-1,-1,-1,false); 0*K_type_pol(p)
+				    | done (sigD): sigD
+				    esac
+			then sigD_ind = K_type_pol_hashes[rfnum].match(sigD)
+			then N = nuhashes[rfnum].size()
+			then H = impure_height(sigD)
+			in if H = -1 {is_pure(ans)}
+			   then ()
+			   else let n = nuhashes[rfnum].match(p)
+				in if n=N
+				   then nu_heights[rfnum]#:=H
+				   elif nu_heights[rfnum][n] > H
+				   then let nuheightsrf = nu_heights[rfnum]
+					in nuheightsrf[n] :=H;
+					   nu_heights[rfnum]:= nuheightsrf
+				   fi {n=N}
+			   fi; {H = -1}
+			   sigs[rfnum] #:= sigD_ind;
+		       	   sig_heights[rfnum] #:= D;
+		       	   assert(@:real_form_hash.size() = #phashes,"big_unitary_hash damaged");
+		       	   assert(@:real_form_hash.size() = #sig_heights,"big_unitary_hash damaged");
+		       	   assert(@:#sigs[rfnum] = phashes[rfnum].size(), "big_unitary_hash damaged");
+		       	   assert(@:#nu_heights[rfnum] = nuhashes[rfnum].size(),
+				 "big_unitary_hash nu_heights damaged")
+		   else {we've seen p before}
+		       if sig_heights[rfnum][pnum] >= height(p) and sig_heights[rfnum][pnum] < D
+		       then let tempsigs = sigs[rfnum], tempsights = sig_heights[rfnum]
+			    {then start_sig = elapsed_ms()}
+			    then m_sigD = if uhashes[rfnum].lookup(p).>=
+					  then D:= -1;
+					       K_type_pol(character_formula(p)).done
+					  elif strict_low(p,D) {strict 12/13/25}{low(p.x,p.lambda,N)}
+					  then hermitian_form_irreducible_to_ht_MvL(p,D,time)
+					  else D:=-1;
+					     hermitian_form_irreducible(p,time)
+					fi
+		             then sigD = case m_sigD
+		       	       	       	 | timed_out: return (-1,-1,-1,false); 0*K_type_pol(p)
+				    	 | done (sigD): sigD
+				    	 esac
+			     then sigD_ind = K_type_pol_hashes[rfnum].match(sigD)
+			     then N = nuhashes[rfnum].size()
+			     then H = impure_height(sigD)
+			     in if H = -1
+				then ()
+				else let n = nuhashes[rfnum].match(p)
+				       in if n=N
+				       	  then nu_heights[rfnum]#:=H
+				       	  elif nu_heights[rfnum][n] > H
+				       	  then let nuheightsrf = nu_heights[rfnum]
+					       in nuheightsrf[n] :=H;
+					       	  nu_heights[rfnum]:= nuheightsrf
+				       	  fi {n=N}
+				 fi {H = -1};
+			    	  tempsigs[pnum] := sigD_ind;
+			    	  {prints("#tempsigs = ",#tempsigs);}
+			    	  tempsights[pnum]:=D;
+			    	  sigs[rfnum] := tempsigs;
+			    	  sig_heights[rfnum] := tempsights;
+			    	  assert(@:real_form_hash.size() = #phashes,"big_unitary_hash damaged");
+			    	  assert(@:real_form_hash.size() = #sig_heights,"big_unitary_hash damaged");
+			    	  assert(@:#sigs[rfnum] = phashes[rfnum].size(), "big_unitary_hash damaged");
+			    	  assert(@:#nu_heights[rfnum] = nuhashes[rfnum].size(),
+				 "big_unitary_hash nu_heights damaged B")
+		       fi {sig_heights[rfnum][pnum] >= height(p) and sig_heights[rfnum][pnum] < D}
+		   fi {pnum = PNUM}
+	 in (rfnum, pnum, sigs[rfnum][pnum],true)
+
     then clearG(RealForm rf) =
 	 let i = real_form_hash.lookup(rf)
 	 in if i >= 0
@@ -1849,8 +2002,12 @@ set is_unitary_to_ht_big_SIMPLE_interrupt(Param p, int HT, int time) = int: {1 m
        	    then return hermitian_form_irreducible_to_ht_MvL(p, HT, time).is_pure
 	    fi
   then () = p := herm_center(p)
+  then (,,GAM) = low(p) {unitary to HT >= GAM means unitary}
   in {if p = parameter(F4_s,101,[1,1,1,-1]/1,[0,1,0,-2]/1) then prints("got to output line") fi;}
-     let P = big_unitary_hash.sig_entry_interrupt(p, HT, time)
+     let P = if HT >= GAM
+     	     then big_unitary_hash.sig_entry_interrupt(p, -1, time)
+	     else big_unitary_hash.sig_entry_interrupt(p, HT, time)
+	     fi
      {hermitian_form_irreducible_to_ht_MvL(p, HT, time)}
      {then () = if p = parameter(F4_s,101,[1,1,1,-1]/1,[0,1,0,-2]/1)
      	       then prints("P = ",P)
@@ -1987,7 +2144,7 @@ set is_unitary_test_big_SIMPLE_interrupt_old(Param p, int step) = bool:
   then result = 0, mu = LKTs(p)[0]
   then taus = next_taus(p,step)
   then tau_bd = taus~[0]
-  then ht = height(tau_bd)
+  then ht = min(height(tau_bd),GAM)
   then old_ht = ht
   then {tau_bd = next_taus(mu,step)~[0],} top_ht = GAM {floor((p.infinitesimal_character)*G.two_rho_check)}
        {unitary to top_ht implies unitary}
@@ -2217,6 +2374,10 @@ set is_unitary_test_big_SIMPLE_interrupt(Param p, int step) = bool:
 			      fi
 		     then () = if result.<
 		     	       then {big_unitary_hash.numatch_height(p,ht);}
+			       	    break
+			       fi
+		     then () = if result.> and ht >= top_ht
+		     	       then {big_unitary_hash.umatch(p);}
 			       	    break
 			       fi
 		     in if result.> {got a (useless positive result}

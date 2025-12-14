@@ -58,6 +58,11 @@ set mu_rank_mult = rat: 1/2 {1/4}
 {how far above LKT to start is_unitary_to_ht tests}
 set edge_offset = int: 1
 
+{when the non-minimal parabolics are used at the end, how much above
+height(p) to look at K-types.  A larger number finds more nonunitary,
+takes longer}
+set more_shift_level = int: 0
+
 set test_bl_time = int: 0
 
 set test_no_unitary_time = int: 0
@@ -1048,11 +1053,11 @@ set was_tested(Param p, int T, bool ans) = void:
 		 tested_pos_counts #:=1
 	    else tested_pos_times[m] +:= T;
 	    	 tested_pos_counts[m] +:= 1
-	    fi;
+	    fi{;
 	    if tested_pos_counts[m] = 2
 	    then prints("tpcs = ",tested_pos_counts);
 		 assert(@:false)
-	    fi
+	    fi}
     else let M = tested_neg_hash.size()
     	 then m = tested_neg_hash.match(p)
     	 in if m = M
@@ -1210,7 +1215,7 @@ set (report_tested_cum,clear_report_tested_cum) = (((string, string) -> void),(v
     in (((string,string)->void): (string local_label, string running_label) void:
     prints("  ----------------");
     prints("...",local_label,"...",DTcount - DTc," Dirac elim, ",DBTcount - DBTc,
-    " best-Dirac elim, edge_offset = ",edge_offset);
+    " best-Dirac elim, more_shift_level = ",more_shift_level, ",edge_offset = ",edge_offset);
     {next_heightC_time = ",print_time_string(next_heightC_time - nhtC_time));}
     	DTc :=DTcount; DBTc := DBTcount; nhtC_time:=next_heightC_time;
     prints(tested_pos_hash.size() - tph, " pos is_unitary tests, in time = ",
@@ -1257,7 +1262,7 @@ set (report_tested_cum,clear_report_tested_cum) = (((string, string) -> void),(v
 	 ct:=charTime;
 	 cu:= char_counter.use_count();
     prints("...",running_label,"...",DTcount," Dirac elim, ",DBTcount,
-    	   " best-Dirac elim; edge_offset = ",edge_offset);
+    	   " best-Dirac elim" {; more_shift_level = ",more_shift_level,", edge_offset = ",edge_offset} );
 	   {next_heightC_time = ",print_time_string(next_heightC_time));}
     prints(tph," pos is_unitary tests, in time = ", print_time_string(tpt),"; ",tnh,
 	" neg is_unitary tests, in time = ",print_time_string(tnt));

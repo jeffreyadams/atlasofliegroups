@@ -1371,11 +1371,6 @@ set local_testK_hash_min_bottom_layer(KGBElt x, ratvec lambda, LocalVertexData L
     local_testK_hash_min_bottom_layer(x, lambda, Lvd, FVKH, eq, gr, classListByFace, HT,
     pol_hash, Uhash, is_unitary_hash_big_SIMPLE@Param)
 
-{when the non-minimal parabolics are used at the end, how much above
-height(p) to look at K-types.  A larger number finds more nonunitary,
-takes longer}
-set more_shift_level = int: 0
-
 set more_shift(int n) = void:
     if n > 0
     then more_flag:=true;
