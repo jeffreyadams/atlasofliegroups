@@ -224,7 +224,6 @@ def atlas_compute(job_number,round,start_counter,proc,log,data):
    line = proc.stdout.readline().decode('ascii')
    log.write("defined group: " + line + "\n")
    proc.stdout.flush()
-   reporting_data=[]
    atlas_cmd="prints(big_unitary_hash.uhash_sizes())\n"
    proc.stdin.write(format_cmd(atlas_cmd))
    log.write("atlas_cmd: " + atlas_cmd + "\n")
@@ -316,9 +315,9 @@ def atlas_compute(job_number,round,start_counter,proc,log,data):
 
          x_lambda_end_time=time.time()
          x_lambda_total_time=x_lambda_end_time-x_lambda_start_time
-         atlas_cmd="prints(\"start_counter: \","  + str(start_counter) + ",new_line,\"END\")\n"
-         log.write("data atlas_cmd: " + atlas_cmd)
-         execute_atlas_command(atlas_cmd,"END",log,data,proc)
+         #atlas_cmd="prints(\"start_counter: \","  + str(start_counter) + ",new_line,\"END\")\n"
+         #log.write("data atlas_cmd: " + atlas_cmd)
+         #execute_atlas_command(atlas_cmd,"END",log,data,proc)
          atlas_cmd="prints(write_one_pair(" + group + "," + str(x_lambda_number) + "," + str(job_number) + "," + str(int(x_lambda_total_time)) + "))\n"
          log.write("data atlas_cmd: " + atlas_cmd)
          execute_atlas_command(atlas_cmd,"END",log,data,proc)
@@ -329,7 +328,6 @@ def atlas_compute(job_number,round,start_counter,proc,log,data):
          #log.write("finished atlas cmd 1\n")
          log.write("Finished pair x_lambda_number:" + str(x_lambda_number)  + "\n")
          log.write("elapsed time: " + nice_time(x_lambda_total_time) + "\ntime from start: " + nice_time(x_lambda_end_time-starttime) + "\n")
-         reporting_data.append((job_number,round,start_counter,x_lambda_number,x_number,lambda_,x_lambda_total_time))
          log.write("one line of time report:\n")
          log.write(".|" + str(job_number) +"|" + round + "|" + "|" + str(start_counter) + "|" + str(x_lambda_number) + "|" + x_number + "|" + str(lambda_) + "|" + nice_time(x_lambda_total_time) +"\n")
          log.write("added to reporting data (x,lambda) pair number " + str(x_lambda_number) + "\n")
@@ -348,8 +346,6 @@ def atlas_compute(job_number,round,start_counter,proc,log,data):
             log.write("memory_vms>" + str(max_memory)+ ": killing (E) process ")
             log.write("proc.pid: " + str(pid) + "\n")
             log.write("going to kill atlas process\n")
-            log.write("write report\n")
-            report(reporting_data,log)
             log.write("Killing process (sending quit to atlas) " + str(pid) + "\n")
             atlas_cmd="quit" + "\n"
             #exit()
@@ -375,7 +371,6 @@ def atlas_compute(job_number,round,start_counter,proc,log,data):
             #go back to top of while x_lambdas_todo.qsize()>0 loop
             #lambda_queue.qsize=0: exit while x_lambdas_todo.qsize()>0 loop
    log.write("No more (x,lambda) pairs to do\ntime: " + str(time.ctime()) + "\n\n")
-   report(reporting_data,log)
    atlas_cmd="big_unitary_hash.uhash_size(" + group + ")\n"
    #log.write("atlas_cmd: " + atlas_cmd)
    proc.stdin.write(format_cmd(atlas_cmd))
@@ -389,10 +384,6 @@ def atlas_compute(job_number,round,start_counter,proc,log,data):
    log.write("size of unitary_hash after all pairs: (job number " + str(job_number) +  "): " +  line + "\n")
    stoptime=time.time()
    elapsed = nice_time(stoptime-starttime)
-
-   #         for (x,t) in reporting_data:
-   #            log.write("x:" + str(x) + " " + nice_time(t) + "\n")
-   #         log.write("Total time for " + str(x_lambda_count) + " x/lambda pairs: "+ elapsed + "\n")
    log.write("finished x_lambda queue\n")
    #log.close()
    #print("Closed log file\n")
@@ -487,7 +478,7 @@ def main(argv):
    group_definition_file=data_directory + "/" + group_name + ".at"
    if write_init_only:
       print("OK")
-      fpp_init_simple(group_name)
+      fpp_init_simple(group,group_name)
       exit()
 
    #get the round:
@@ -712,67 +703,10 @@ def fpp_init(lock_file,log,pid):
    if set_lock(lock_file,log,pid):
       log.write("lock file not found: updating init file\n")
       log.write("pid: " + str(pid) + "\n")
-      atlas_executable=executable_dir + "atlas"
-      arg=[executable_dir,"all.at"]
-      #read the directories ./data/G2_s_j j=0,1,2,3 (for example)
-      #also read G2_s_init.at if it exists
-      dirs=[]
-      for entry in os.listdir(data_directory):
-         #print("entry: ", entry)
-         if os.path.isdir(os.path.join(data_directory,entry)) and entry.startswith(group_name):
-            #print("adding", entry)
-            dirs.append(os.path.join(data_directory,entry))
-            #print("dirs: ", dirs)
-            files_to_read=["all.at",group_definition_file]
-      init_file=group_name + "_init.at"
-      if os.path.exists(init_file):
-         files_to_read.append(init_file)
-         print("adding " + init_file + " to list of files\n")
-      log.write("primary files to read: " + str(files_to_read) + "\n")
-      log.write("listing data files to read\n")
-      data_files=[]
-      for dir in dirs:
-         print("dir: ", dir)
-         files=os.listdir(dir)
-         print("files: ", files)
-         for file in files:
-            if file.endswith("at"):
-               data_files.append(dir + "/" + file)
-      log.write("data files: " + str(data_files) + "\n")
-      arg=[atlas_executable] + files_to_read #not including data files
-      log.write("arg: " + str(arg) + "\n")
-      fpp_init_proc=subprocess.Popen(arg,stdin=PIPE,stdout=PIPE,stderr=PIPE)
-      fpp_init_proc_pid=fpp_init_proc.pid
-      log.write("fpp_init_proc id: " + str(fpp_init_proc_pid) + "\n")
-      #load data files on at a atime
-      for file in data_files:
-         log.write("loading: " + file + "\n")
-         atlas_cmd="<\"" + file + "\"\n"
-         log.write("atlas_cmd to load file: "  + atlas_cmd + "\n")
-         fpp_init_proc.stdin.write(format_cmd(atlas_cmd))
-         fpp_init_proc.stdin.flush()
-         while  True:
-            line=fpp_init_proc.stdout.readline().decode('ascii')
-            if "Completely" in line:
-               break;
-         print("done loading: " + file + "\n")
-      log.write("done loading data files\n")
-      print("sending output to ", init_file, "\n")
-      atlas_cmd="> " + init_file + " big_unitary_hash.write()"
-      log.write("atlas_cmd " + atlas_cmd + "\n")
-      fpp_init_proc.stdin.write(format_cmd(atlas_cmd+ "\n"))
-      fpp_init_proc.stdin.flush()
-      #write the report file
-      report_file=group_name + "_report.at"
-      atlas_cmd="> " + report_file + " write(report_hash)"
-      log.write("atlas_cmd " + atlas_cmd + "\n")
-      fpp_init_proc.stdin.write(format_cmd(atlas_cmd+ "\n"))
-      fpp_init_proc.stdin.flush()
-
-      #log.write("releasing lock_file " + lock_file + " " + str(log) + " " + str(pid) + "\n")
-      release=release_lock(lock_file,log,pid)
-      log.write("released lock file " + str(pid) + "\n")
-      #fpp_init_proc.terminate()
+      fpp_init_arg=["fpp_init.py","-g" + group,"-G" + group_name]
+      print("init_arg: ", init_arg)
+      fpp_init_proc=subprocess.Popen(int_arg, stdin=PIPE,stdout=PIPE,stderr=PIPE)
+      print("done running fpp_init_proc")
       if fpp_init_proc.stdin:
          fpp_init_proc.stdin.close()
       if fpp_init_proc.stdout:
@@ -780,77 +714,28 @@ def fpp_init(lock_file,log,pid):
       if fpp_init_proc.stderr:
          fpp_init_proc.stderr.close()
       fpp_init_proc.wait()
-      log.write("done killing and cleaning up fpp_init_proc, id " + str(fpp_init_proc_pid)  + "\n")
    else:
       log.write("lock file found, not updating the init file\n")
 
+def fpp_init_simple(group,group_name):
+      fpp_init_arg=["./fpp_init.py","-g" + group,"-G" + group_name]
+      print("init_arg: ", fpp_init_arg)
+      fpp_init_proc=subprocess.Popen(fpp_init_arg, stdin=PIPE,stdout=PIPE,stderr=PIPE)
+      print("done running fpp_init_proc")
+      if fpp_init_proc.stdin:
+         fpp_init_proc.stdin.close()
+      if fpp_init_proc.stdout:
+         fpp_init_proc.stdout.close()
+      if fpp_init_proc.stderr:
+         fpp_init_proc.stderr.close()
+      fpp_init_proc.wait()
+      exit()
+      
 def report(data,log_file):
    log_file.write("report on times:\n")
    log_file.write("|job_number|round|restart|pair number|x|lambda|time\n")
    for (job_number,round,start_counter,x_lambda_number,x_number,lambda_,x_lambda_total_time) in data:
       log_file.write("|" + str(job_number) +"|" + round + "|" + "|" + str(start_counter) + "|" + str(x_lambda_number) + "|" + x_number + "|" + str(lambda_) + "|" + nice_time(x_lambda_total_time) +"\n")
-
-def fpp_init_simple(group_name):
-   atlas_executable=executable_dir + "atlas"
-   arg=[executable_dir,"all.at"]
-   #read the directories ./data/G2_s_j j=0,1,2,3 (for example)
-   #also read G2_s_init.at if it exists
-   dirs=[]
-   for entry in os.listdir(data_directory):
-      #print("entry: ", entry)
-      if os.path.isdir(os.path.join(data_directory,entry)) and entry.startswith(group_name):
-         #print("adding", entry)
-         dirs.append(os.path.join(data_directory,entry))
-         #print("dirs: ", dirs)
-         files_to_read=["all.at",group_definition_file]
-   init_file=group_name + "_init.at"
-   if os.path.exists(init_file):
-      files_to_read.append(init_file)
-      print("adding " + init_file + " to list of files\n")
-   print("primary files to read: " + str(files_to_read) + "\n")
-   print("listing data files to read\n")
-   data_files=[]
-   for dir in dirs:
-      print("dir: ", dir)
-      files=os.listdir(dir)
-      print("files: ", files)
-      for file in files:
-         if file.endswith("at"):
-            data_files.append(dir + "/" + file)
-   print("data files: " + str(data_files) + "\n")
-   arg=[atlas_executable] + files_to_read #not including data files
-   print("arg: " + str(arg) + "\n")
-   fpp_init_proc=subprocess.Popen(arg,stdin=PIPE,stdout=PIPE,stderr=PIPE)
-   fpp_init_proc_pid=fpp_init_proc.pid
-   print("fpp_init_proc id: " + str(fpp_init_proc_pid) + "\n")
-   #load data files on at a atime
-   for file in data_files:
-      print("loading: " + file + "\n")
-      atlas_cmd="<\"" + file + "\"\n"
-      print("atlas_cmd to load file: "  + atlas_cmd + "\n")
-      fpp_init_proc.stdin.write(format_cmd(atlas_cmd))
-      fpp_init_proc.stdin.flush()
-      while  True:
-         line=fpp_init_proc.stdout.readline().decode('ascii')
-         if "Completely" in line:
-            print("done loading: " + file + "\n")
-            break;
-   print("done loading data files\n")
-   #write the report file
-   report_file=group_name + "_report.at"
-   atlas_cmd="> " + report_file + " write(report_hash)"
-   print("atlas_cmd " + atlas_cmd + "\n")
-   fpp_init_proc.stdin.write(format_cmd(atlas_cmd+ "\n"))
-   fpp_init_proc.stdin.flush()
-   #fpp_init_proc.terminate()
-   if fpp_init_proc.stdin:
-      fpp_init_proc.stdin.close()
-   if fpp_init_proc.stdout:
-      fpp_init_proc.stdout.close()
-   if fpp_init_proc.stderr:
-      fpp_init_proc.stderr.close()
-   fpp_init_proc.wait()
-   print("done killing and cleaning up fpp_init_proc, id " + str(fpp_init_proc_pid)  + "\n")
 
 if __name__ == "__main__":
    main(sys.argv[1:])

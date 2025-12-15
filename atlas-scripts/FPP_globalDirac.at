@@ -1588,7 +1588,8 @@ fancy_tester) = void:
 	    od;
             return ()
         fi;
-	if x =x_open(x.real_form) then return FPP_unitary_hash_steve(xlambdas, UhashG, fancy_tester) fi;
+        {fix according to email from DAV 12/2/25:}
+{	if x =x_open(x.real_form) then return FPP_unitary_hash_steve(xlambdas, UhashG, fancy_tester) fi;}
     let (x,) = xlambdas[0]
     then disconn_flag = components_rank(G) > 0
     then (Gsc,M) = if disconn_flag

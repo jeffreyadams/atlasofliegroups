@@ -18,7 +18,7 @@ def main(argv):
     cutoff=-1
     excluded=0
     number_of_pairs=0
-    line_start_string=".|"  #look for lines starting with this
+    line_start_string="void:rA"  #look for lines starting with this
                            #default: |  to read single line running reports use ".|"
     opts,args=getopt.getopt(argv,"o:d:n:h:l:G:c:")
     for opt, arg in opts:
@@ -38,18 +38,20 @@ def main(argv):
             help(base_directory)
     if group_name=="":
         help(base_directory)
-    directories=base_directory + "/" + group_name + "_[0-9]*/logs"
-    files=directories + "/[0-9]*.txt"
+    directories=base_directory + "/" + group_name + "_[0-9]*"
+    files=directories + "/[0-9]*.at"
+    init_file=group_name + "_init.at"
     if outputfile=="":
-        outputfile="./" + group_name + ".times.txt"
+        outputfile="./" + group_name + "_times.at"
     print("reading files: ", files,"\nwriting to file: ", outputfile)
-    tempfile="time_report.tmp"
-    output_file_tmp=open(tempfile,'a')
-    #grep_arg= "grep -n \"^|\" " + directories + "/[0-9]*txt"
-    grep_arg= "grep -n \"^" + line_start_string + "\" " + directories + "/[0-9]*txt"
+    output_file=open(outputfile,'w')
+    output_file.write("<" + init_file + "\n" + "rA:=make_report(G_temp)\n")
+    output_file.close()
+    grep_arg= "grep  -h \"^" + line_start_string + "\" " + files + ">>" + outputfile
     print("running: ", grep_arg)
     data=subprocess.run(grep_arg,shell=True,stdout=subprocess.PIPE)
     print("finished running ", grep_arg)
+    exit()
     d=data.stdout.splitlines()
     total_time=0
     #|job_number|round|restart|pair number|x|lambda|time
@@ -57,7 +59,7 @@ def main(argv):
     print("processing lines")
     for line in d:
         line=line.decode('ascii')
-        #print("line: ", line)
+        print("line: ", line)
         if "job" in line:
             #print("skipping")
             junk=0

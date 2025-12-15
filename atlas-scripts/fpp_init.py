@@ -72,16 +72,17 @@ def main(argv):
     #print("atlas_cmd: ",  atlas_cmd)
     proc.stdin.write(format_cmd(atlas_cmd))
     proc.stdin.flush()
-    group_definition_file=data_directory + "/" + group_name + "_definition.at"
+    group_definition_file= data_directory + "/" + group_name + "_definition.at"
     #print("group_definition_file: ", group_definition_file)
     group_definition=open(group_definition_file,"w",buffering=1)
-    #print("Opened" , group_definition_file)
+    print("Opened" , group_definition_file)
     group_definition.write("<groups.at\n")
     while True:
        line = proc.stdout.readline().decode('ascii').strip()
        #print("line in definition process: ", line)
        group_definition.write(line + "\n")
        if line.find("rf_number")>=0:
+          print("done reading definition file")
           break
           group_definition.close()
     #git list of directories: data_directory/e8q_j j=1,2,3... (for example)
@@ -90,32 +91,37 @@ def main(argv):
     dirs=""
     for entry in os.listdir(data_directory):
        if os.path.isdir(os.path.join(data_directory,entry)) and entry.startswith(group_name):
+          print("adding ", entry)
           dirs= dirs + os.path.join(data_directory,entry + "/*at ")
+    print("done creating list of data files to read: ", dirs)
     #use grep to capture all relevant lines from #.at files in dirs
     #relevant: big_unitary_hash.finish_num(G_temp,158,131072)
     #          void: big_unitary_hash.long_match(parameter(G_temp,264,[0,1,1,0,1,1,1,1]/1,[0,0,0,0,0,0,0,0]/1),j)
     #not relevant: set j = big_unitary_hash.rf_number(G_temp)
-    temp_file=group_name + "_grep.at"
-    grep_arg= "grep -E -h \"big_unitary_hash.(finish|long)\" " + dirs + "> " + temp_file
-    #print("grep arg: ", grep_arg)
-    data=subprocess.run(grep_arg,shell=True,stdout=subprocess.PIPE)
-    files_to_read=["all.at",group_definition_file,temp_file]
+    files_to_read=["all.at",group_definition_file]
+    if len(dirs)>0:
+       temp_file=group_name + "_grep.at"
+       grep_arg= "grep -E -h \"big_unitary_hash.(finish|long)\" " + dirs + "> " + temp_file
+       print("executing ", grep_arg)
+       data=subprocess.run(grep_arg,shell=True,stdout=subprocess.PIPE)
+       print("done running grep")
+       files_to_read.append(temp_file)
     init_file=group_name + "_init.at"
     if os.path.exists(init_file):
         files_to_read.append(init_file)
         #print("adding " + init_file + " to list of files\n")
     arg=[atlas_executable] + files_to_read
+    #print("arg: ", arg)
     #print("loading atlas, definition file, init file")
-    #print("files_to_read: ", files_to_read)
+    print("reading files: ", files_to_read)
     proc=subprocess.Popen(arg,stdin=PIPE,stdout=PIPE)
-    main_dir=data_directory + "/" + group_name + "_" + str(round)
+    print("done reading files")
     atlas_cmd="prints(G_temp)\n"
     #print("atlas_cmd1: ", atlas_cmd)
     proc.stdin.write(format_cmd(atlas_cmd + "\n"))
     proc.stdin.flush()
     line = proc.stdout.readline().decode('ascii').strip()
     #print("gtemp line: ", line)
-    #print("main_dir: ", main_dir)
     if len(output_file)==0:
         output_file=group_name + "_init.at"
         #print("output_file is now: ", output_file)
@@ -125,7 +131,13 @@ def main(argv):
     proc.stdin.write(format_cmd(atlas_cmd + "\n"))
     proc.stdin.flush()
     line = proc.stdout.readline().decode('ascii').strip()
+    line= re.search(r'\d+', line).group(0)
+    print("number of unitary parameters: ", line)
     atlas_cmd="> " + output_file + " big_unitary_hash.write()"
+    proc.stdin.write(format_cmd(atlas_cmd + "\n"))
+    proc.stdin.flush()
+    atlas_cmd=">> " + output_file  + " prints(\"set rA=make_report(0)\")"
+    print("atlas_cmd: ", atlas_cmd, "\n")
     proc.stdin.write(format_cmd(atlas_cmd + "\n"))
     proc.stdin.flush()
 

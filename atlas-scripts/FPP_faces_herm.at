@@ -978,7 +978,8 @@ set make_big_unitary_hash() = big_unitary_hash_table:
     , ( -> ): {write} @void:
     let rf_list = real_form_hash.list()
     in for rf@i in rf_list
-       do let Gname = "G"+to_string(i)
+{       do let Gname = "G"+to_string(i)}
+       do let Gname = "G_temp"
 	  then listname = Gname+"_list"
 	  then intlistname = Gname+"_XLK"
 	  then plist = uhashes[i].list()
@@ -1141,6 +1142,8 @@ set xl_pair(RealForm G,int j)=(KGBElt,ratvec):
 {    let ()=    assert(!=cumulative_sizes,"xl_sizes(G) not in big_unitary_hash. Probably do: big_unitary_hash.set_xl_sizes(G,[])") then}
 {let()=     assert(cumulative_sizes != null(#cumulative_sizes),"xl_sizes(G) not in big_unitary_hash. Probably do: big_unitary_hash.set_xl_sizes(G,[])") in}
     xl_pair(G,cumulative_sizes,j)
+
+set number_xl_pairs(RealForm G)=int:big_unitary_hash.xl_sizes_cumulative(G)~[0]
 
 {print xl_pair in format: x_number:lambda}
 set print_xl_pair(RealForm G,int j)=void:

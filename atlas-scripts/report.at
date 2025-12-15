@@ -1,6 +1,12 @@
+{note: big_unitary_hash.xl_sizes(G) must be set (for the lookup xl_pair_number->(x,lambda))
+ if it isn't, do big_unitary_hash.set_xl_sizes(G,[])  (not recommended for big groups)}
+
 set_type reportDatum =(int xl_pair_number,
+int kgb_number,
+ratvec lambda,
 int file_number,
 int x_lambda_total_time,
+string nice_x_lambda_total_time,
 int tested_pos_hash_size,
 int sum_tested_pos_times,
 int tested_neg_hash_size,
@@ -37,11 +43,78 @@ rat mu_time_mult,
 rat shift_frac,
 rat min_ht_mult)
 
+set =(reportDatum a,reportDatum b)=bool:a.xl_pair_number=b.xl_pair_number
+set emptyReportDatum=reportDatum:
+(
+-1,{int xl_pair_number}
+-1,{int kgb_number}
+ratvec:[], {lambda}
+-1,{int file_number}
+-1,{int x_lambda_total_time}
+"", {string nice_x_lambda_total_time}
+-1,{int tested_pos_hash_size}
+-1,{int sum_tested_pos_times}
+-1,{int tested_neg_hash_size}
+-1,{int sum_tested_neg_times}
+-1,{int sum_tested_inter_counts}
+-1,{int tested_inter_hash_size}
+-1,{int sum_tested_inter_times}
+-1,{int sum_tested_pos_to_ht_hash_size}
+-1,{int sum_tested_pos_to_ht_time_sum}
+-1,{int sum_tested_neg_to_ht_hashes_size}
+-1,{int sum_tested_neg_to_ht_times_sum}
+-1,{int OT_hash_size}
+-1,{int sum_OT_counts}
+-1,{int sum_OT_times}
+-1,{int hash_bottom_layerCounter_use_count}
+-1,{int hash_one_levelCounter_use_count}
+-1,{int hash_real_dumbCounter_use_count}
+-1,{int hash_dumbCounter_use_count}
+-1,{int hash2Counter_use_count}
+-1,{int hash_steveCounter_use_count}
+-1,{int unitaryTime}
+-1,{int unitary_test_counter_use_count}
+-1,{int charTime}
+-1,{int char_counter_use_count}
+-1,{int up_mu_time}
+-1,{int DTcount}
+-1,{int DBTcount}
+-1,{int def_thruples_time}
+-1,{int hash_def_false_count}
+-1,{int test_no_unitary_time}
+-1,{int test_no_Dirac_time}
+-1,{int none_count}
+-1/1, {rat mu_time_mult}
+-1/1, {rat shift_frac}
+-1/1 {rat min_ht_mult}
+)
+set_type reportArray = [reportDatum]
+
+{size: the number of (x,lambda) pairs}
+{make an empty report}
+set make_report(int size)=reportArray:for i:size do emptyReportDatum od
+set make_report(RealForm G)=reportArray:make_report(number_xl_pairs(G))
+
+{make a report from scratch from [reportDatum]}
+set make_report(int size,[reportDatum] list)=
+  let report=make_report(size) in
+  for datum in list do report[datum.xl_pair_number]:=datum od;
+  report
+
+{add single reportDatum to reportArray}
+set add_to_report(reportArray rA,reportDatum rd)=reportArray:
+rA[rd.xl_pair_number]:=rd;rA
+
+{add [reportDatum] to reportArray}
+set add_to_report(reportArray rA,[reportDatum] data)=reportArray:
+for rd in data do add_to_report(rA,rd) od;rA
+
 set seconds_in_day = 86400
 set seconds_in_hour = 3600
 set seconds_in_minute = 60
 
-set convert(int time)=(int,int,int,int):
+{convert seconds to days:hours:minutes:seconds}
+set convert_seconds(int time)=(int,int,int,int):
     let days = time\seconds_in_day then
     time = time%seconds_in_day then
     hours=time\seconds_in_hour then
@@ -49,23 +122,33 @@ set convert(int time)=(int,int,int,int):
     minutes=time\seconds_in_minute then
     seconds=time%seconds_in_minute in (days,hours,minutes,seconds)
 
-set seconds_to_nice_string(int time)=string:
-    let (days,hours,minutes,seconds)=convert(time) in
+set convert_dayhourminutesecond(int days,int hours,int minutes,int seconds)=int:
+days*seconds_in_day + hours*seconds_in_hour + minutes*seconds_in_minute + seconds
+
+set time_string(int days,int hours,int minutes,int seconds)=string:
+to_string(days) + ":" + to_string(hours) + ":" + to_string(minutes) + ":" + to_string(seconds)
+
+set nice_time(int time_in_seconds)=string:
+    let (days,hours,minutes,seconds)=convert_seconds(time_in_seconds) in
     to_string(days) + ":" + to_string(hours) + ":" + to_string(minutes) + ":" + to_string(seconds)
 
-set nice_time(reportDatum d)=string:seconds_to_nice_string(x_lambda_total_time(d))
+set nice_time(reportDatum d)=string:nice_time(x_lambda_total_time(d))
 
-set =(reportDatum a,reportDatum b)=bool:a.xl_pair_number=b.xl_pair_number
-set hash_code (reportDatum d,int mod)=int:d.xl_pair_number%mod
-set make_report_hash() = Hash<reportDatum>:
-   make_hash(hash_code@(reportDatum,int),=@(reportDatum,reportDatum))
-set_type reportHash     = Hash<reportDatum>
-
-{write one line report: (xl_pair number, x_lambda_total time get passed}
-set report(int xl_pair_number,int file_number,int x_lambda_total_time)=reportDatum:
-(xl_pair_number,
+{make a report datum (xl_pair_number, file_number, x_lambda_total_time, ... min_ht_mult)
+ the first 3 entries are taken from the arguments, and the 4th is nice_time(x_lambda_total_time)
+ all the rest come from big_unitary_hash
+note: big_unitary_hash.xl_sizes(G) must be set (for the lookup xl_pair_number->(x,lambda))
+ if it isn't, do big_unitary_hash.set_xl_sizes(G,[])  (not recommended for big groups)}
+ 
+set report_datum(RealForm G,int xl_pair_number,int file_number,int x_lambda_total_time)=reportDatum:
+let (x,lambda)=xl_pair(G,xl_pair_number) in 
+(
+xl_pair_number,
+number(x),
+lambda,
 file_number,
 x_lambda_total_time,
+nice_time(x_lambda_total_time),
 tested_pos_hash.size(),
 sum(tested_pos_times),
 tested_neg_hash.size(),
@@ -102,151 +185,5 @@ mu_time_mult,
 shift_frac,
 min_ht_mult)
 
-set report_string(reportDatum d)=string:"report_hash.match" + to_string("",d)
-set report_string(int xl_pair_number,int file_number,int x_lambda_total_time)=string:report_string(report(xl_pair_number,file_number,x_lambda_total_time))
-
-set write(reportHash h)=void:
-for d in h.list() do prints("void:" + report_string(d)) od
-
-{make an empty report_hash, so fpp.py processes have something to write to;
-see write_one_pair in FPP.at}
-
-set report_hash=make_report_hash()
-
-set reportDatumFields=
-([xl_pair_number@reportDatum,
-file_number@reportDatum,
-x_lambda_total_time@reportDatum,
-tested_pos_hash_size@reportDatum,
-sum_tested_pos_times@reportDatum,
-tested_neg_hash_size@reportDatum,
-sum_tested_neg_times@reportDatum,
-sum_tested_inter_counts@reportDatum,
-tested_inter_hash_size@reportDatum,
-sum_tested_inter_times@reportDatum,
-sum_tested_pos_to_ht_hash_size@reportDatum,
-sum_tested_pos_to_ht_time_sum@reportDatum,
-sum_tested_neg_to_ht_hashes_size@reportDatum,
-sum_tested_neg_to_ht_times_sum@reportDatum,
-OT_hash_size@reportDatum,
-sum_OT_counts@reportDatum,
-sum_OT_times@reportDatum,
-hash_bottom_layerCounter_use_count@reportDatum,
-hash_one_levelCounter_use_count@reportDatum,
-hash_real_dumbCounter_use_count@reportDatum,
-hash_dumbCounter_use_count@reportDatum,
-hash2Counter_use_count@reportDatum,
-hash_steveCounter_use_count@reportDatum,
-unitaryTime@reportDatum,
-unitary_test_counter_use_count@reportDatum,
-charTime@reportDatum,
-char_counter_use_count@reportDatum,
-up_mu_time@reportDatum,
-DTcount@reportDatum,
-DBTcount@reportDatum,
-def_thruples_time@reportDatum,
-hash_def_false_count@reportDatum,
-test_no_unitary_time@reportDatum,
-test_no_Dirac_time@reportDatum,
-none_count@reportDatum],
-[mu_time_mult@reportDatum,
-shift_frac@reportDatum,
-min_ht_mult@reportDatum])
-
-set reportDatumFieldNames=
-(["xl_pair_number",
-"file_number",
-"x_lambda_total_time",
-"tested_pos_hash_size",
-"sum_tested_pos_times",
-"tested_neg_hash_size",
-"sum_tested_neg_times",
-"sum_tested_inter_counts",
-"tested_inter_hash_size",
-"sum_tested_inter_times",
-"sum_tested_pos_to_ht_hash_size",
-"sum_tested_pos_to_ht_time_sum",
-"sum_tested_neg_to_ht_hashes_size",
-"sum_tested_neg_to_ht_times_sum",
-"OT_hash_size",
-"sum_OT_counts",
-"sum_OT_times",
-"hash_bottom_layerCounter_use_count",
-"hash_one_levelCounter_use_count",
-"hash_real_dumbCounter_use_count",
-"hash_dumbCounter_use_count",
-"hash2Counter_use_count",
-"hash_steveCounter_use_count",
-"unitaryTime",
-"unitary_test_counter_use_count",
-"charTime",
-"char_counter_use_count",
-"up_mu_time",
-"DTcount",
-"DBTcount",
-"def_thruples_time",
-"hash_def_false_count",
-"test_no_unitary_time",
-"test_no_Dirac_time",
-"none_count]",
-"[mu_time_mult",
-"shift_frac",
-"min_ht_mult"])
 
 
-
-set show(reportDatum d)=void:
-let (int_fields,rat_fields)=reportDatumFields in
-for f@i in int_fields do
-  if i=2 then  prints(reportDatumFieldNames[i], " ", seconds_to_nice_string(f(d)))
-  else prints(reportDatumFieldNames[i], " ", f(d)) fi od
-
-
-set sort_report_data_by_field((reportDatum->int) field)=([reportDatum] -> [reportDatum]):
-sort_by(field,<=@(int,int))
-
-set sort_report_hash_by_field(reportHash m, (reportDatum->int) field)=[reportDatum]:
-let sort=sort_report_data_by_field(field) in
-sort(m.list())
-
-set sort_report_data_by_field_reverse((reportDatum->int) field)=([reportDatum] -> [reportDatum]):
-sort_by(field,>=@(int,int))
-
-set sort_report_hash_by_field_reverse(reportHash m, (reportDatum->int) field)=[reportDatum]:
-let sort=sort_report_data_by_field_reverse(field) in
-sort(m.list())
-
-set Show(reportHash m, int n)=void:
-let datum=sort_report_hash_by_field(m,x_lambda_total_time@reportDatum) in
-for i:n do 
-let str=to_string("",m.list()[i], "-", nice_time(m.list()[i])) in prints(str) od
-
-set Show([reportDatum] d)=void:
-for record in d do
-let str=to_string("",record, "-", nice_time(record)) in prints(str) od
-
-set Show([reportDatum] d,int max)=void:
-for i:max do
-let record=d[i] in
-let str=to_string("",record, "-", nice_time(record)) in prints(str) od
-
-set show([reportDatum] d,RealForm G,int max)=void:
-tabulate(
-["pair","x","lambda","days:hours:mins:secs"] #for i:max do
-let record=d[i] then
-index=record.xl_pair_number then
-(x,lambda)=xl_pair(G,index) in 
-[to_string(record.xl_pair_number), to_string(x.number), to_string(lambda), nice_time(record)] od)
-
-
-{
-
-set reportDatumIntegerFields=let (a,)=reportDatumFields in a
-set reportDatumRatFields=let (,b)=reportDatumFields in b
-
-set report_string_complicated(reportDatum d)=string:
-let str="(" in
- for f in reportDatumIntegerFields do str +:=to_string(f(d)) + "," od;
- for i:#reportDatumRatFields-1 do str +:=to_string(reportDatumRatFields[i](d)) + "," od;
- str+:=to_string(reportDatumRatFields~[0](d)) + ")";str
-}

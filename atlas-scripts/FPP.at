@@ -1,5 +1,4 @@
 <FPP_globalDirac.at
-<report.at
 
 {This script runs (backward, for no serious reason) over a sequence of
 KGBElts x in E7_s, beginning at start and ending before start +
@@ -154,9 +153,15 @@ set write_one_pair(RealForm G, int kgb_number, ratvec lambda)=void:
 
 set write_one_pair(RealForm G,  int xl_pair_number, int file_number,int x_lambda_total_time )=string:
     let (x,lambda)=xl_pair(G,xl_pair_number) then
-    str=big_unitary_hash.writexlam_no_G(x,lambda) + new_line + report_string(xl_pair_number,file_number,x_lambda_total_time) + new_line + "END" 
+    rd=report_datum(G,xl_pair_number,file_number,x_lambda_total_time) then
+    rd_string=to_string("",rd) then
+    unitary_string=big_unitary_hash.writexlam_no_G(x,lambda) then
+    report_string="void:rA:=add_to_report(rA," + rd_string + ")" then
+    total_string=unitary_string + new_line + report_string + new_line + "END" 
+{    str=big_unitary_hash.writexlam_no_G(x,lambda) + new_line + report_string(xl_pair_number,file_number,x_lambda_total_time) + new_line + "END" }
     {then ()=prints("write_one_pair string: ", str, "\n")  }
-    in str
+    in total_string
+
 
 
 set vertices(KGBElt x, ratvec lambda)=LPm_table.Lvd(x.real_form,x.involution,(lambda+x.involution*lambda).numer).list

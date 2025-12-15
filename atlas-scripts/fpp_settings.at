@@ -3,6 +3,7 @@
 FPP_report_flag:=true
 every_lambda_deets_flag := true
 every_KGB_flag:= true
+fund_face_verbose:=true
 
 unip_flag:=false  {don't need to load unipotents, they are already in the hash}
 
@@ -12,4 +13,10 @@ seat_belt_on:=false
 
 {Dirac_flag:=false
 Dirac_best_flag:=false}
+
+{default edge_offset=0;
+to change it:
+test_edge_flag:=false
+edge_offset:=3
+}
 
