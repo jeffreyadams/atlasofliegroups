@@ -21,8 +21,6 @@ for p in list do
 
 set parameter(KGBElt x,KGBElt_gen y,ratvec gamma)=Param:parameter(x,gamma-y.torus_factor,gamma)
 
-
-
 set simple_imaginary_roots(KGBElt x)=mat:
 let (simple_imaginary_roots,)=simple_imaginary_subsystem(x) in simple_imaginary_roots
 

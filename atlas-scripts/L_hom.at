@@ -41,16 +41,34 @@ let (w,gamma_dom)=to_dominant(y.root_datum,gamma) in (w*x,(w*y,gamma_dom))
 set make_dominant(L_homomorphism (y,gamma))=L_homomorphism:
 let (w,gamma_dom)=to_dominant(y.root_datum,gamma) in (w*y,gamma_dom)
 
-set L_packet(RealForm G,L_homomorphism phi)=[Param]:
+{this is wrong: L_packet(phi) involves finalization, which changes x's}
+{set component_group(L_homomorphism phi)=[KGBElt]:
+for p in ##L_packet(phi) do p.x od}
+
+{component_group(phi): set of KGB elements
+ roughly: those appearing in parameters (x,lambda,nu) in the L-packet of phi
+ that isn't quite right because of finalization (see preceding comment)
+ precisely: fiber(G,-^y.involution) where y comes from phi (made dominant???)}
+set component_group(RealForm G,L_homomorphism phi)=[KGBElt]:
 assert(is_valid(phi), "phi is not valid");
 let phi_dom=make_dominant(phi) then
 (y,gamma)=phi_dom in
 assert(is_valid(y,gamma), "(y,gamma) is not valid");
-let fiber=fiber(G,-^y.involution) in
-##for x in fiber do
- let p=parameter(x,y,gamma)  then
- P=finalize(p) in
- monomials(P) od
+fiber(G,-^y.involution)
+
+set component_group(L_homomorphism phi)=[[KGBElt]]:
+for G in pure_strong_real_forms(dual_quasisplit_form(phi.y.inner_class)) do
+ let cg=component_group(G,phi) in 
+ if #cg>0 then [cg] else [] fi od.##
+
+set pure_component_group(L_homomorphism phi)=[KGBElt]:
+##for x in ##component_group(phi) do if is_pure(x) then [x] else [] fi od
+
+set L_packet(RealForm G,L_homomorphism phi)=[Param]:
+let phi_dom=make_dominant(phi) then
+(y,gamma)=phi_dom in 
+##for x in ##component_group(phi_dom) do
+monomials(finalize(parameter(x,y,gamma))) od
 
 set L_packet(L_homomorphism phi)=[[Param]]:
 for G in strong_real_forms(dual_quasisplit_form(phi.y.inner_class)) do
@@ -70,11 +88,6 @@ set phi([Param] l_packet)=L_homomorphism:
 assert(!=#l_packet,"L_packet is empty");phi(l_packet[0])
 set phis(RealForm G,ratvec gamma)=[L_homomorphism]: for packet in L_packets(G,gamma) do phi(packet) od
 
-set component_group(L_homomorphism phi)=[KGBElt]:
-for p in ##L_packet(phi) do p.x od
-
-set pure_component_group(L_homomorphism phi)=[KGBElt]:
-##for p in ##L_packet(phi) do if is_pure(p.x) then [p.x] else [] fi od
 
 set parameter(KGBElt x,L_homomorphism phi)=Param:parameter(x,phi.y,phi.gamma)
 
