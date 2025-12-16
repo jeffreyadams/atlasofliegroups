@@ -2166,7 +2166,7 @@ set is_unitary_test_big_SIMPLE_interrupt_old(Param p, int step) = bool:
 	       	       	 old_ht:=ht;
 		    	 ht:= height(tau_bd)
 	       then u_time = mu_time_mult*max(times_to_ht)
-	       then () = push_deform_flag:=true
+	       {then () = push_deform_flag:=true}
 	       in result := if not to_ht_ans
 			    then big_unitary_hash.numatch_height(p,old_ht); -1
 			    elif old_ht >= top_ht
@@ -2242,9 +2242,9 @@ set is_unitary_test_big_SIMPLE_interrupt_Ufirst(Param p, int step) = bool:
 	    	        ", u_time = ", print_time_string(u_time))
 	    fi
   then () = while result = 0 {and ht < ht_bound}
-       	    do if{A} u_time < 5*to_ht_time
+       	    do if{A} u_time < {5*}to_ht_time
 	       then let start_u = elapsed_ms()
-	       	    then () = push_deform_flag:=true
+	       	    {then () = push_deform_flag:=true}
 	       	    then D = is_unitary_depth(p, u_factor*u_time)
 		    in if D>0
 		       then big_unitary_hash.umatch(p);
@@ -2262,10 +2262,10 @@ set is_unitary_test_big_SIMPLE_interrupt_Ufirst(Param p, int step) = bool:
 				     "; total = ", print_time_string(elapsed_ms() - start))
 			fi;
 	       	       u_time:=u_predictor(p,-1)
-	       fi{A}; {u_time < 5*to_ht_time}
+	       fi{A}; {u_time < {5*}to_ht_time}
 	       if{B} to_ht_time < {max(}5*u_time{, elapsed_ms() - start)}
 	       then let start_to_ht = elapsed_ms()
-	       	    then () = push_deform_flag:=true
+	       	    {then () = push_deform_flag:=true}
 	       	    then () = result := is_unitary_to_ht_big_SIMPLE_interrupt(p,ht,to_ht_factor*to_ht_time);
 	       	    	      test_time:=elapsed_ms() - start_to_ht;
 	       		      if test_interrupt_verbose
@@ -2326,12 +2326,12 @@ set is_unitary_test_big_SIMPLE_interrupt(Param p, int step) = bool:
     	    then return is_unitary(p) {prints("FPP DANGER TO HT at ",p)}
 	    fi
   then () = p := herm_center(p)
-  then () = if (big_unitary_hash.ulookup(p)).>=
+  then () = {if (big_unitary_hash.ulookup(p)).>=
        	    then return true
-	    elif is_finished(p.x,p.lambda)
+	    el}if is_finished(p.x,p.lambda)
 	    then return false
-	    elif (big_unitary_hash.nulookup(p)).>=
-	    then return false
+	    {elif (big_unitary_hash.nulookup(p)).>=
+	    then return false}
 	    fi
   then result = 0, mu = LKTs(p)[0]
   then taus = [KType]: [] {next_taus(p,step)}
@@ -2364,60 +2364,51 @@ set is_unitary_test_big_SIMPLE_interrupt(Param p, int step) = bool:
   then () = while result = 0 
        	    do if{A} to_ht_time < 5*u_time
 	       then let  start_to_ht = elapsed_ms()
-	       	    then () = {push_deform_flag:=true;}
-		    	      result := is_unitary_to_ht_big_SIMPLE_interrupt(p,ht,to_ht_factor*to_ht_time);
-	       	    	      test_time:=elapsed_ms() - start_to_ht;
-	       		      if test_interrupt_verbose
-			      then prints("result ", result, " from to_ht ",ht,", in time ",
-			      print_time_string(test_time),
-					 "; total = ", print_time_string(elapsed_ms() - start))
-			      fi
-		     then () = if result.<
-		     	       then {big_unitary_hash.numatch_height(p,ht);}
-			       	    break
-			       fi
-		     then () = if result.> and ht >= top_ht
-		     	       then {big_unitary_hash.umatch(p);}
-			       	    break
-			       fi
-		     in if result.> {got a (useless positive result}
+	       	    in  {push_deform_flag:=true;}
+		    	result := is_unitary_to_ht_big_SIMPLE_interrupt(p,ht,to_ht_factor*to_ht_time);
+	       	    	test_time:=elapsed_ms() - start_to_ht;
+	       		if test_interrupt_verbose
+			then prints("result ", result, " from to_ht ",ht,", in time ",
+			     		    print_time_string(test_time),
+			      		    "; total = ", print_time_string(elapsed_ms() - start))
+			fi;
+		     	if result.< then break fi;
+			if result.> and ht >= top_ht then break fi;
+		     	if result.> {got a (useless) positive result at ht; move up} 
 			then result:=0;
 			     if next_heightC_flag
 			     then ht:= next_heightC(p,ht)
 			     else old_ht:=ht;
 			     	  tau_bd := next_to_lowest(tau_bd);
 				  ht := height(tau_bd)
-			     fi;
-			     to_ht_time := u_predictor(p,ht);
-			     if test_interrupt_verbose
-			     then prints("  Predicted to_ht_time for ht = ",ht," is ",
-			     	  print_time_string(to_ht_time))
 			     fi
-			 else to_ht_time:=u_predictor(p,ht)
-			 fi {result.>}
+			fi;
+			to_ht_time := u_predictor(p,ht);
+			if test_interrupt_verbose
+			then prints("  Predicted to_ht_time for ht = ",ht," is ",
+			     print_time_string(to_ht_time))
+			 fi
 	        fi{A};  {to_ht_time < 5*u_time}
-		if{B} u_time < 5*to_ht_time
+		if{B} u_time < {5*}to_ht_time
 		then let startu = elapsed_ms()
 		     then () = {push_deform_flag:=true}
 		     	       result := is_unitary_hash_big_SIMPLE(p, u_factor*u_time)
 		     {then D = is_unitary_depth(p, u_factor*u_time)} {is_unitary_big_SIMPLE_interrupt(p,time)}
 		     in test_time:= elapsed_ms() - startu;
-		     	if test_interrupt_verbose and result != 0
+		     	if test_interrupt_verbose {and result != 0}
 		       then prints("result ",result," from is_unitary, in time ",
 			    	   print_time_string(test_time), "; total = ",
 				   print_time_string(elapsed_ms() - start))
 			fi;
-			if result > 0 {D>0}
-		       	then {big_unitary_hash.umatch(p);}
-			     result := 1;
-			     break
-		       elif result < 0
-		       then {big_unitary_hash.numatch_height(p, -1 - D\2);
-			    result:= -1;}
-			    break
-		       fi; {only get here if result = 0}
-		       u_time := u_predictor(p,-1)
-		 fi{B}; {u_time < 5*to_ht_time}
+			if result != 0
+			then break
+			else u_time := u_predictor(p,-1);
+			     if test_interrupt_verbose
+			     then prints("  Predicted u_time is now ",
+			     	  print_time_string(u_time))
+			     fi
+			fi
+		 fi{B}; {u_time < {5*}to_ht_time}
 		 if result = 1 and old_ht >= top_ht
 		 then big_unitary_hash.umatch(p)
 		 else if result = 1 then result:=0 fi
@@ -2479,9 +2470,9 @@ set is_unitary_test_big_SIMPLE_interrupt(Param p, [int] hts) = bool:
 	       {then () = if time_to_ht > 10000 and test_verbose
 			 then prints("ht ",ht," of SIMPLE_interrupt took ",print_time_string(time_to_ht))
 			 fi}
-	       then () = push_deform_flag:=true
+	       {then () = push_deform_flag:=true}
 	       in result := if not to_ht_ans
-			    then big_unitary_hash.numatch_height(p,ht); -1
+			    then {big_unitary_hash.numatch_height(p,ht);} -1
 			    elif ht >= top_ht
 			    then big_unitary_hash.umatch(p); 1
 			    else is_unitary(p,floor(mu_time_mult*times_to_ht))
@@ -2540,38 +2531,39 @@ set is_unitary_test_big_SIMPLE_interrupted_Ufirst(Param p, int time) = int:
 	    	        ", u_time = ", print_time_string(u_time))
 	    fi
   then () = while result = 0 and elapsed_ms() - start < time
-       	    do if{A} u_time < 5*to_ht_time
+       	    do if{A} u_time < {5*}to_ht_time
 	       then let start_u = elapsed_ms()
-	       then () = push_deform_flag:=true;
-	       	       	 result := is_unitary(p, u_factor*u_time);
+	       {then () = push_deform_flag:=true;}
+	       	     in result := is_unitary_hash_big_SIMPLE(p, u_factor*u_time);
+			 {is_unitary(p, u_factor*u_time);}
 		       	 test_time:= elapsed_ms() - start_u;
 	       		 if test_interrupt_verbose
 		       	 then prints("result ",result," from is_unitary, in time ",
 				      	 print_time_string(test_time),
 				 "; total = ", print_time_string(elapsed_ms() - start))
-			 fi
-	       in if result.!=
-	       	  then break
-		  else u_time := u_predictor(p,-1);
-		       if test_interrupt_verbose
-		       then prints("  Predicted u_time now ",print_time_string(u_time))
-		       fi
-		  fi {result.!=}
-	       fi; {A} {u_time < 5*to_ht_time}
+			 fi;
+	       		 if result.!=
+	       	  	 then break
+		  	 else u_time := u_predictor(p,-1);
+		       	      if test_interrupt_verbose
+		       	      then prints("  Predicted u_time now ",print_time_string(u_time))
+		       	      fi
+		  	 fi {result.!=}
+	       fi; {A} {u_time < {5*}to_ht_time}
 	       if{B} to_ht_time < u_time
 	       then let start_to_ht = elapsed_ms()
 	       	    {then () = DHsize := DHsize()}
-	       	    then () = push_deform_flag:=true;
-		    	      result := is_unitary_to_ht_big_SIMPLE_interrupt(p,ht,to_ht_factor*to_ht_time);
-	       	    	      test_time:=elapsed_ms() - start_to_ht;
-	       		      if test_interrupt_verbose
-	       	       	      then prints("result ", result, " from to_ht ",ht,", in time ",
+	       	    {then () = push_deform_flag:=true;}
+		    in result := is_unitary_to_ht_big_SIMPLE_interrupt(p,ht,to_ht_factor*to_ht_time);
+	       	       test_time:=elapsed_ms() - start_to_ht;
+	       	       if test_interrupt_verbose
+	       	       then prints("result ", result, " from to_ht ",ht,", in time ",
 			      	   print_time_string(test_time),
 				   "; total = ", print_time_string(elapsed_ms() - start))
-			      fi
-		in if result.<
-		   then big_unitary_hash.numatch_height(p,ht);
-		   	break
+		       fi;
+		       if result.<
+		       then {big_unitary_hash.numatch_height(p,ht);}
+		       break
 		   elif result.> and ht >= top_ht
 		   then big_unitary_hash.umatch(p);
 		   	break
@@ -2643,35 +2635,36 @@ set is_unitary_test_big_SIMPLE_interrupted(Param p, int time) = int:
        	    do if{A} to_ht_time < 5*u_time
 	       then let start_to_ht = elapsed_ms()
 	       {then DHsize:=DHsize()}
-	       then () = push_deform_flag:=true;
-	       	       	 result := is_unitary_to_ht_big_SIMPLE_interrupt(p,ht,to_ht_factor*to_ht_time);
-	       	       	 test_time:=elapsed_ms() - start_to_ht;
-	       		 if test_interrupt_verbose
-	       	       	 then prints("result ", result, " from to_ht ",ht,", in time ",
-			      print_time_string(test_time),
+	       {then () = push_deform_flag:=true;}
+	       	    in result := is_unitary_to_ht_big_SIMPLE_interrupt(p,ht,to_ht_factor*to_ht_time);
+	       	       test_time:=elapsed_ms() - start_to_ht;
+	       	       if test_interrupt_verbose
+	       	       then prints("result ", result, " from to_ht ",ht,", in time ",
+			     print_time_string(test_time),
 			      "; total = ", print_time_string(elapsed_ms() - start))
-			 fi
-	       in if result.<
-	       	  then big_unitary_hash.numatch_height(p,ht);
-		       break
-		  elif result.> and ht >= top_ht
-		  then big_unitary_hash.umatch(p);
-		       break
-	       	  elif result.> {got a useless result}
-	       	  then if next_heightC_flag
-		       then ht:= next_heightC(p,ht)
-		       else tau_bd := next_to_lowest(tau_bd);
-			    ht := height(tau_bd)
 		       fi;
-		       result:=0;
-		       to_ht_time := u_predictor(p,ht)
+	       	       if result.<
+	       	       then {big_unitary_hash.numatch_height(p,ht);}
+		       break
+		       elif result.> and ht >= top_ht
+		       then big_unitary_hash.umatch(p);
+		       	    break
+		       elif result.> {got a useless result}
+	       	       then if next_heightC_flag
+		       	    then ht:= next_heightC(p,ht)
+		       	    else tau_bd := next_to_lowest(tau_bd);
+			    	 ht := height(tau_bd)
+		            fi;
+		       	    result:=0;
+		       	    to_ht_time := u_predictor(p,ht)
 		  fi {result.<}
 	       fi; {A} {to_ht_time < 5*u_time}
-	       if{B} u_time < 5*to_ht_time
+	       if{B} u_time < {5*}to_ht_time
 	       then let start_u = elapsed_ms()
 	       {then () = DHsize := DHsize()}
-	       then () = push_deform_flag:=true;
-	       	       	 result := is_unitary(p, u_factor*u_time);
+	       then () = {push_deform_flag:=true;}
+	       	       	 result := is_unitary_hash_big_SIMPLE(p, u_factor*u_time);
+			 {is_unitary(p, u_factor*u_time);}
 		       	 test_time:= elapsed_ms() - start_u;
 	       		 if test_interrupt_verbose
 		       	 then prints("result ",result," from is_unitary, in time ",
@@ -2682,7 +2675,7 @@ set is_unitary_test_big_SIMPLE_interrupted(Param p, int time) = int:
 	       	  then break
 		  else u_time := u_predictor(p,-1)
 		  fi {result.!=}
-	       fi {B} {u_time < 5*to_ht_time}
+	       fi {B} {u_time < {5*}to_ht_time}
 	    od
    in if test_interrupt_verbose
       then prints("Finish is_unitary_test_big_SIMPLE_interrupted, time ",
@@ -2726,45 +2719,46 @@ set is_unitary_to_ht_big_SIMPLE_interrupt_Ufirst(Param p, int HT) = bool:
 	    	        ", u_time = ", print_time_string(u_time))
 	    fi
   then () = while result = 0
-       	    do if{A} u_time < 5*to_ht_time
+       	    do if{A} u_time < {5*}to_ht_time
 	       then let start_u = elapsed_ms()
 	       	    then form = hermitian_form_irreducible(p,u_factor*u_time)
-	       	    then () = push_deform_flag:=true;
-		    	      result := is_pure(to_ht(form,HT));
-		       	      test_time:= elapsed_ms() - start_u;
-	       		      if test_interrupt_verbose
-		       	      then prints("result ",result," from is_unitary, in time ",
-				      	 print_time_string(test_time),
-			     "; total = ", print_time_string(elapsed_ms() - start))
-			     fi
-	       	    in if is_pure(form).> {from here result.!=}
+	       	    {then () = push_deform_flag:=true;}
+		    in result := is_pure(to_ht(form,HT));
+		       test_time:= elapsed_ms() - start_u;
+	       	       if test_interrupt_verbose
+		       then prints("result ",result," from is_unitary, in time ",
+				   print_time_string(test_time), "; total = ",
+				   print_time_string(elapsed_ms() - start))
+		       fi;
+	       	       if is_pure(form).> {from here result.!=}
 		       then big_unitary_hash.umatch(p)
 		       elif is_pure(form).<
 		       then big_unitary_hash.numatch(p)
 		       fi;
 	       	       if result.<
-		       then big_unitary_hash.numatch_height(p,HT);
+		       then {big_unitary_hash.numatch_height(p,HT);}
 		       	    break
 		       elif result.>
 		       then add_to_u_to_ht(p,HT)
 		       else u_time := u_predictor(p,-1)
 		       fi {result.<}
-	       fi; {A} {u_time < 5*to_ht_time}
+	       fi; {A} {u_time < {5*}to_ht_time}
 	       if{B} to_ht_time < 5*u_time
 	       then let start_to_ht = elapsed_ms()
-	       	    then () = push_deform_flag:=true;
-		    	      result := is_unitary_to_ht_big_SIMPLE_interrupt(p,HT,to_ht_factor*to_ht_time);
-	       		      test_time:=elapsed_ms() - start_to_ht;
-	       		      if test_interrupt_verbose
-	       	       	      then prints("result ", result, " from to_ht ",HT,", in time ",
+	       	    {then () = push_deform_flag:=true;}
+		    in result := is_unitary_to_ht_big_SIMPLE_interrupt(p,HT,to_ht_factor*to_ht_time);
+	       	       test_time:=elapsed_ms() - start_to_ht;
+	       	       if test_interrupt_verbose
+	       	       then prints("result ", result, " from to_ht ",HT,", in time ",
 			      print_time_string(test_time),
 			      "; total = ", print_time_string(elapsed_ms() - start))
-			      fi
-	       	     in if result.<
-	       	  	then big_unitary_hash.numatch_height(p,HT)
-		  	elif result.>
-		  	then add_to_u_to_ht(p,HT)
-			else to_ht_time:= u_predictor(p,HT)
+		       fi;
+	       	       if result.<
+	       	       then {big_unitary_hash.numatch_height(p,HT)}
+			     break
+		       elif result.>
+		       then add_to_u_to_ht(p,HT)
+		       else to_ht_time:= u_predictor(p,HT)
 			     {if test_interrupt_verbose
 	       	       	     then prints("  to_ht_time now ", print_time_string(to_ht_time))
 			     fi}
@@ -2815,22 +2809,22 @@ set is_unitary_to_ht_big_SIMPLE_interrupt_Ufirst_new(Param p, int HT) = bool:
 	    	        ", u_time = ", print_time_string(u_time))
 	    fi
   then () = while result = 0
-       	    do if{A} u_time < 5*to_ht_time
+       	    do if{A} u_time < {5*}to_ht_time
 	       then let start_u = elapsed_ms()
-	       	    then form = hermitian_form_irreducible(p,u_factor*u_time)
-	       	    then () = push_deform_flag:=true;
-		    	      result := is_pure(to_ht(form,HT));
-		       	      test_time:= elapsed_ms() - start_u;
-	       		      if test_interrupt_verbose
-		       	      then prints("result ",result," from is_unitary, in time ",
-				      	 print_time_string(test_time),
-			     "; total = ", print_time_string(elapsed_ms() - start))
-			     fi
-	       	    in if is_pure(form).> {from here result.!=}
+	       	    then form = big_unitary_hash.sig_entry_interrupt({hermitian_form_irreducible(}p,-1,u_factor*u_time)
+	       	    {then () = push_deform_flag:=true;}
+		    in result := is_pure(to_ht(form,HT));
+		       test_time:= elapsed_ms() - start_u;
+	       	       if test_interrupt_verbose
+		       then prints("result ",result," from is_unitary, in time ",
+				    print_time_string(test_time), "; total = ",
+				    print_time_string(elapsed_ms() - start))
+		       fi;
+	       	       { if is_pure(form).> {from here result.!=}
 		       then big_unitary_hash.umatch(p)
 		       elif is_pure(form).<
 		       then big_unitary_hash.numatch(p)
-		       fi;
+		       fi;}
 	       	       if result.<
 		       then {big_unitary_hash.numatch_height(p,HT);}
 		       	    break
@@ -2838,31 +2832,28 @@ set is_unitary_to_ht_big_SIMPLE_interrupt_Ufirst_new(Param p, int HT) = bool:
 		       then add_to_u_to_ht(p,HT)
 		       else u_time := u_predictor(p,-1)
 		       fi {result.<}
-	       fi; {A} {u_time < 5*to_ht_time}
+	       fi; {A} {u_time < {5*}to_ht_time}
 	       if{B} to_ht_time < 5*u_time
 	       then let start_to_ht = elapsed_ms()
-	       	    then () = push_deform_flag:=true;
-		    	      result := is_unitary_to_ht_big_SIMPLE_interrupt(p,ht,to_ht_factor*to_ht_time);
-	       		      test_time:=elapsed_ms() - start_to_ht;
-	       		      if test_interrupt_verbose
-	       	       	      then prints("result ", result, " from to_ht ",ht,", in time ",
-			      print_time_string(test_time),
-			      "; total = ", print_time_string(elapsed_ms() - start))
-			      fi
-	       	     in if result.<
-	       	  	then {big_unitary_hash.numatch_height(p,ht);} break
-		  	elif result.>
-		  	then add_to_u_to_ht(p,ht);
-		       	     if ht < HT
-			     then ht:= min(HT,next_heightC(p,ht));
-			     	  result:=0;
-				  to_ht_time:= u_predictor(p,ht)
-			     else break
-			     fi
+	       	    {then () = push_deform_flag:=true;}
+		    in result := is_pure(big_unitary_hash.sig_entry_interrupt(p,HT,u_factor*u_time));
+	       	       test_time:=elapsed_ms() - start_to_ht;
+	       	       if test_interrupt_verbose
+	       	       then prints("result ", result, " from to_ht ",ht,", in time ",
+			        print_time_string(test_time), "; total = ",
+				print_time_string(elapsed_ms() - start))
+		       fi;
+	       	       if result.<
+	       	       then {big_unitary_hash.numatch_height(p,ht);} break
+		       elif result.>
+		       then add_to_u_to_ht(p,ht);
+		       	    if ht < HT
+			    then ht:= min(HT,next_heightC(p,ht));
+			     	 result:=0;
+				 to_ht_time:= u_predictor(p,ht)
+			    else break
+			    fi
 			else to_ht_time:= u_predictor(p,ht)
-			     {if test_interrupt_verbose
-	       	       	     then prints("  to_ht_time now ", print_time_string(to_ht_time))
-			     fi}
 		  	fi { result.<}
 		fi {B} {to_ht_time < 5*u_time}
 	    od
@@ -2921,7 +2912,7 @@ set is_unitary_to_ht_big_SIMPLE_interrupt_TOHTfirst(Param p, int HT) = bool:
 			    fi
 		       fi
 	       fi{A}; {to_ht_time < 5*u_time}
-	       if{C} u_time < 5*to_ht_time
+	       if{C} u_time < {5*}to_ht_time
 	       then let start_u = elapsed_ms()
 	       	    then form = big_unitary_hash.sig_entry_interrupt{hermitian_form_irreducible}
 		    	 (p, -1, u_factor*u_time)
@@ -2952,7 +2943,7 @@ set is_unitary_to_ht_big_SIMPLE_interrupt_TOHTfirst(Param p, int HT) = bool:
 			then add_to_u_to_ht(p,HT);
 			     break
 			fi
-	       fi{C}{;} {u_time < 5*to_ht_time}
+	       fi{C}{;} {u_time < {5*}to_ht_time}
 	       {if result = -1
 	       then big_unitary_hash.numatch_height(p,HT)
 	       elif result = 1
@@ -3000,15 +2991,15 @@ set is_unitary_to_ht_big_SIMPLE_interrupt_TOHTfirst_new(Param p, int HT) = bool:
   then () = while result = 0
        	    do if{A} to_ht_time < 5*u_time
 	       then let start_to_ht = elapsed_ms()
-	       	    then () = push_deform_flag:=true;
-		    	      result := is_unitary_to_ht_big_SIMPLE_interrupt(p,ht,to_ht_factor*to_ht_time);
-	       	              test_time:=elapsed_ms() - start_to_ht;
-	       	    	      if test_interrupt_verbose
-	       	       	      then prints("result ", result, " from to_ht ",ht,", in time ",
-			      	   print_time_string(test_time),
-				   "; total = ", print_time_string(elapsed_ms() - start))
-			      fi
-	       	    in if result.<
+	       	    {then () = push_deform_flag:=true;}
+		    in result := is_unitary_to_ht_big_SIMPLE_interrupt(p,ht,to_ht_factor*to_ht_time);
+	       	       test_time:=elapsed_ms() - start_to_ht;
+	       	       if test_interrupt_verbose
+	       	       then prints("result ", result, " from to_ht ",ht,", in time ",
+			      	   print_time_string(test_time), "; total = ",
+				   print_time_string(elapsed_ms() - start))
+		       fi;
+	       	       if result.<
 		       then {big_unitary_hash.numatch_height(p,ht);} break
 		       elif result.>
 		       then add_to_u_to_ht(p,HT);
@@ -3024,7 +3015,7 @@ set is_unitary_to_ht_big_SIMPLE_interrupt_TOHTfirst_new(Param p, int HT) = bool:
 			    fi
 		       fi
 	       fi{A}; {to_ht_time < 5*u_time}
-	       if{C} u_time < 5*to_ht_time
+	       if{C} u_time < {5*}to_ht_time
 	       then let start_u = elapsed_ms()
 	       	    then form =big_unitary_hash.sig_entry_interrupt{hermitian_form_irreducible}
 		    (p, -1, u_factor*u_time)
@@ -3055,7 +3046,7 @@ set is_unitary_to_ht_big_SIMPLE_interrupt_TOHTfirst_new(Param p, int HT) = bool:
 			then add_to_u_to_ht(p,HT);
 			     break
 			fi
-	       fi{C}{;} {u_time < 5*to_ht_time}
+	       fi{C}{;} {u_time < {5*}to_ht_time}
 	       {if result = -1
 	       then big_unitary_hash.numatch_height(p,HT)
 	       elif result = 1
@@ -3107,7 +3098,7 @@ set is_unitary_to_hts_big_SIMPLE_interrupt_TOHTfirst(Param p, [int] HTs) = bool:
   then () = while result = 0 {or (result = 1 and HT < HTlast)}
        	    do if{A} to_ht_time < 5*u_time
 	       then let start_to_ht = elapsed_ms()
-	       	    then () = push_deform_flag:=true;
+	       	    then () = {push_deform_flag:=true;}
 			      result := is_unitary_to_ht_big_SIMPLE_interrupt(p,HT,to_ht_factor*to_ht_time);
 	       		      test_time:=elapsed_ms() - start_to_ht;
 	       		      if test_interrupt_verbose
@@ -3133,9 +3124,9 @@ set is_unitary_to_hts_big_SIMPLE_interrupt_TOHTfirst(Param p, [int] HTs) = bool:
 			     break
 			fi {result.>}
 		fi; {A} {to_ht_time < 5*u_time}
-	        if {B} u_time < 5*to_ht_time
+	        if {B} u_time < {5*}to_ht_time
 		then let start_u = elapsed_ms()
-		     then () = push_deform_flag:=true
+		     {then () = push_deform_flag:=true}
 		     {then depth = is_unitary_depth(p,u_factor*u_time)}
 		     then form = big_unitary_hash.sig_entry_interrupt(p,-1 ,u_factor*u_time)
 		     {then form = hermitian_form_irreducible(p,u_factor*u_time)}
@@ -3165,7 +3156,7 @@ set is_unitary_to_hts_big_SIMPLE_interrupt_TOHTfirst(Param p, [int] HTs) = bool:
 			 if test_interrupt_verbose
 			 then prints("  Predicted u_time now ",print_time_string(u_time))
 			 fi
-		 fi{B} {u_time < 5*to_ht_time}
+		 fi{B} {u_time < {5*}to_ht_time}
 	    od
    in if test_interrupt_verbose
       then prints("Finish is_unitary_to_hts_big_SIMPLE_interrupt_TOHTfirst, time ",
@@ -3304,7 +3295,7 @@ set is_unitary_to_hts_big_SIMPLE_interrupt(Param p,[int] Ns, int time) = bool:
     then () = for N@i in Ns
 	     do let result = 0, which_flag = low(p,N), start = elapsed_ms()
 		then () = while result = 0
-			  do push_deform_flag:=true;
+			  do {push_deform_flag:=true;}
 			     result:= if which_flag
 				     then is_unitary_to_ht_MvL(p,N,time)
 				     else case hermitian_form_irreducible(p,time)

@@ -446,7 +446,7 @@ set hermitian_form_irreducible_to_ht_MvL (Param p,int HT,int time) = maybe_KTP:
        then c_form_irreducible_to_ht_MvL(p,HT,time) { not twisted, in equal rank case this is faster }
        else  check_hermitian(p,true); twisted_c_form_irreducible_to_ht_MvL(p,HT,time)
        fi
-  | timed_out: was_tested_inter(p, elapsed_ms() - start_time, time);
+  | timed_out: was_tested_inter_to_ht(p, HT, elapsed_ms() - start_time{, time});
     	       timed_out()
   | done(r): let ans = r.convert_cform_hermitian
     	     in was_tested_to_ht(p,HT,elapsed_ms() - start_time, is_pure(ans));
