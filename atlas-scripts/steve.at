@@ -445,8 +445,11 @@ set taus(KGBElt x, ratvec lambda, int HT) = [KType]:
 set pos_tester(KGBElt x, ratvec lambda,int HT,ratvec gamma) = bool:
     let p = parameter(x,lambda,gamma), G = x.real_form
     then qs = monomials(1*p)
-    in all(for q in qs do @bool: {is_unitary_to_ht_big_SIMPLE_old}
-    is_unitary_to_ht_big_SIMPLE_interrupt_TOHTfirst(q,HT) od)
+    in all(for q in qs do @bool:
+       	       if HT >= 0
+       	       then is_unitary_to_ht_big_SIMPLE_interrupt_TOHTfirst(q,HT)
+	       else is_unitary_test_big_SIMPLE_interrupt(q)
+	       fi od)
 
 {should be called only if height(x,lambda,0) > 0 and HT >= minBottomData.G_min_height(x,lambda)}
 set pos_tester_min(KGBElt x, ratvec lambda,int HT,ratvec gamma) = bool:
@@ -457,9 +460,11 @@ set pos_tester_min(KGBElt x, ratvec lambda,int HT,ratvec gamma) = bool:
        then {prints("got to pos_tester_min at ",p," and bottom worked!");}
        	    return false
        fi;
-       all (for q in qs do @bool: {is_unitary_to_ht_big_SIMPLE_old}
-       is_unitary_to_ht_big_SIMPLE_interrupt_TOHTfirst(q,HT) od)
-
+       all (for q in qs do @bool:
+       if HT >= 0
+       	       then is_unitary_to_ht_big_SIMPLE_interrupt_TOHTfirst(q,HT)
+	       else is_unitary_test_big_SIMPLE_interrupt(q)
+	       fi od)
 
 {compute vectors of size 2 giving [index of K-char, #Langlands quotients]}
 set extra_coord_flag = true
@@ -486,10 +491,16 @@ set pos_tester_known_Kchar(KGBElt x, ratvec lambda,int HT,ratvec gamma, vec KCv)
     let p = parameter(x,lambda,gamma), G = x.real_form
     then qs = monomials(1*p)
     in if extra_coord_flag
-       then (all (for q in qs do @bool: {is_unitary_to_ht_big_SIMPLE}
-       is_unitary_to_ht_big_SIMPLE_interrupt_TOHTfirst(q,HT) od),KCv)
-       else (all (for q in qs do @bool: {is_unitary_to_ht_big_SIMPLE}
-       is_unitary_to_ht_big_SIMPLE_interrupt_TOHTfirst(q,HT) od),[])
+       then (all (for q in qs do @bool:
+       	    	 if HT >= 0
+       	       	 then is_unitary_to_ht_big_SIMPLE_interrupt_TOHTfirst(q,HT)
+	       	 else is_unitary_test_big_SIMPLE_interrupt(q)
+	       	 fi od),KCv)
+       else (all (for q in qs do @bool:
+       	       if HT >= 0
+       	       then is_unitary_to_ht_big_SIMPLE_interrupt_TOHTfirst(q,HT)
+	       else is_unitary_test_big_SIMPLE_interrupt(q)
+	       fi od),[])
        fi
 
 {USE Kpol_hash defined in FPP_faces_geom.at}
@@ -497,11 +508,17 @@ set pos_tester_Kchar(KGBElt x, ratvec lambda,int HT,ratvec gamma) = (bool, vec):
     let p = parameter(x,lambda,gamma), G = x.real_form
     then qs = monomials(1*p)
     in if extra_coord_flag
-       then (all (for q in qs do @bool: {is_unitary_to_ht_big_SIMPLE}
-       is_unitary_to_ht_big_SIMPLE_interrupt_TOHTfirst(q,HT) od),
+       then (all (for q in qs do @bool:
+       	    	 if HT >= 0
+       	       	 then is_unitary_to_ht_big_SIMPLE_interrupt_TOHTfirst(q,HT)
+	       	 else is_unitary_test_big_SIMPLE_interrupt(q)
+	       	 fi od),
        	    [Kpol_hash.match(K_type_pol(character_formula_to_height(1*p,HT))),#qs])
-       else (all (for q in qs do @bool: {is_unitary_to_ht_big_SIMPLE}
-       is_unitary_to_ht_big_SIMPLE_interrupt_TOHTfirst(q,HT) od),[])
+       else (all (for q in qs do @bool:
+       	    	 if HT >= 0
+       	       	 then is_unitary_to_ht_big_SIMPLE_interrupt_TOHTfirst(q,HT)
+	       	 else is_unitary_test_big_SIMPLE_interrupt(q)
+	       	 fi od),[])
        fi
 
 {should only be invoked if height(x,lambda)>0 and HT >= minBottomData.G_min_height(x,lambda)}
@@ -520,10 +537,16 @@ set pos_tester_known_Kchar_min(KGBElt x, ratvec lambda,int HT,ratvec gamma, vec 
 		   fi
        fi;
        if extra_coord_flag
-       then (all (for q in qs do @bool: {is_unitary_to_ht_big_SIMPLE}
-       is_unitary_to_ht_big_SIMPLE_interrupt_TOHTfirst(q,HT) od),KCv)
-       else (all (for q in qs do @bool: {is_unitary_to_ht_big_SIMPLE}
-       is_unitary_to_ht_big_SIMPLE_interrupt_TOHTfirst(q,HT) od),[])
+       then (all (for q in qs do @bool:
+       	    	 if HT >= 0
+       	       	 then is_unitary_to_ht_big_SIMPLE_interrupt_TOHTfirst(q,HT)
+	       	 else is_unitary_test_big_SIMPLE_interrupt(q)
+	       	 fi od),KCv)
+       else (all (for q in qs do @bool:
+       	    	 if HT >= 0
+       	       	 then is_unitary_to_ht_big_SIMPLE_interrupt_TOHTfirst(q,HT)
+	       	 else is_unitary_test_big_SIMPLE_interrupt(q)
+	       	 fi od),[])
        fi
 
 {USE Kpol_hash defined in FPP_faces_geom.at}
@@ -540,11 +563,17 @@ set pos_tester_Kchar_min(KGBElt x, ratvec lambda,int HT,ratvec gamma) =
 		   fi
        fi;
        if extra_coord_flag
-       then (all (for q in qs do @bool: {is_unitary_to_ht_big_SIMPLE}
-       is_unitary_to_ht_big_SIMPLE_interrupt_TOHTfirst(q,HT) od),
+       then (all (for q in qs do @bool:
+       	    	 if HT >= 0
+       	       	 then is_unitary_to_ht_big_SIMPLE_interrupt_TOHTfirst(q,HT)
+	       	 else is_unitary_test_big_SIMPLE_interrupt(q)
+	       	 fi od),
        	    [Kpol_hash.match(K_type_pol(character_formula_to_height(1*p,HT))),#qs])
-       else (all (for q in qs do @bool: {is_unitary_to_ht_big_SIMPLE}
-       is_unitary_to_ht_big_SIMPLE_interrupt_TOHTfirst(q,HT) od),[])
+       else (all (for q in qs do @bool:
+       	    	 if HT >= 0
+       	       	 then is_unitary_to_ht_big_SIMPLE_interrupt_TOHTfirst(q,HT)
+	       	 else is_unitary_test_big_SIMPLE_interrupt(q)
+	       	 fi od),[])
        fi
 
 set Kchar_vec_time = int: 0
@@ -1041,6 +1070,8 @@ set_type
   , ((ratvec,vec) -> bool) postest_known_Kchar {gamma, Kcv}
   , (int -> bool) indexed_postest {vecnum}
   , (ratvec -> bool) postest {test param(x,lambda,ratvec) for unitarity to ht}
+  , (vec -> int) lookup {see whether location vec is already known unitary (1) or
+    	       	    	    known nonunitary (-1) or unknown (0)}
   , (ratvec -> vec) umatch {declare that a certain gamma is unitary to ht; return extra}
   , (ratvec -> vec) numatch {declare that a certain gamma is nonunitary to ht; return extra}
   , (ratvec -> bool) postestL {test (param(x,lambda,ratvec))_L for unitarity on bot layer}
@@ -1316,7 +1347,8 @@ set make_steve_hash_small() = steve_hash_small_table:
 				   then true
 				   elif let qs = monomials(parameter(xSHS, lambdaSHS, gamma))
 				   	in any(for q in qs
-					       do @bool: big_unitary_hash.nu_height_lookup_bool(q, htSHS)
+					       do @bool: status(q, htSHS) > 0
+					       {big_unitary_hash.nu_height_lookup_bool(q, htSHS)}
 					       od)
 				   then false {some q fails unitary to ht}
 				   else pos_tester(xSHS, lambdaSHS, htSHS, gamma)
@@ -1488,6 +1520,12 @@ set make_steve_hash_small() = steve_hash_small_table:
     statuses[vecnum]
   , ((ratvec) -> bool): {postest} (ratvec gamma) bool:
     statuses[SHthruple(gamma)]
+  , (vec -> int): {lookup} (vec loc) int:
+    let ell = vechash.lookup(loc)
+    in if ell < 0 then 0
+       elif statuses[ell] then 1
+       else -1
+       fi
   , (ratvec -> vec): {umatch} (ratvec gamma) vec: charvecs[SHthruple_known_stat(gamma,true)]
   , (ratvec -> vec): {numatch} (ratvec gamma) vec: charvecs[SHthruple_known_stat(gamma,false)]
   , (ratvec -> bool): {postestL} (ratvec gamma) bool:
@@ -1523,6 +1561,72 @@ set loclist_time = int: 0
 
 {local faces LFKH; determine which are unitary to height HT; each entry size d+3, last two being KCv
 PERHAPS FOR LOWER height}
+set location_finder_add_Kchar(KGBElt x, ratvec lambda, int HT, LocalVertexData Lvd, [FaceVertsIndex] LFcat) = (vec_hash, [vec], [int], [[int]]):
+    let start = elapsed_ms(), start_count = unitary_test_counter.use_count()
+    then extra_coord_flag_hold = extra_coord_flag
+    then () = extra_coord_flag:=true
+    then lochash = if steve_small_flag
+    	 	   then steve_hash_small.reset_with_ht(x,lambda,HT);
+		   	steve_hash_small.vecHash(HT)
+		   else steve_hash.vecHash(x, lambda, HT)
+		   fi
+    {make_vec_hash()} {list of all locations of faces in LFKH}
+    {then loclist = [int]:[] {for each face in LFKHcat, index of location}}
+    {then KCvlist = [vec]:
+    	 if steve_small_flag
+	 then steve_hash_small.extra_coords(HT)
+	 else steve_hash.extra_coords(x, lambda, HT)
+	 fi}
+    {then () = prints("in location_finder, start with lambda = ",lambda, ", lochash.size() = ",
+    lochash.size(), ", KCvlist = ", KCvlist)}
+    	{for each location in lochash, vec of size 2 [index of Kchar, #LQ's]}
+    then red_co = red_coroots(x)
+    then red_pts = if steve_small_flag
+	 	   then steve_hash_small.red_points(HT)
+	 	   else steve_hash.red_points(x, lambda, HT)
+	 	   fi
+    then facelist = [[int]]: for j:lochash.size() do [] od
+    {entry k is numbers of faces of location #k in lochash}
+    then empty = [int]: []
+    then startloc = elapsed_ms()
+    then loclist = for verts@N in LFcat
+    	      	   do let {d = #v-3 {dimension of face}
+	      	      then verts = v[:d+1]
+		      then} gamma = face_bary(Lvd,verts)
+		      then p = parameter(x,lambda,gamma)
+		      then LOCNUM = lochash.size()
+		      then loc = if steve_small_flag
+	 	      	       	 then steve_hash_small.thruple_no_stat(gamma)
+	 	   		 else steve_hash.thruple_no_stat(x, lambda, HT, gamma)
+	 	   		 fi
+		      then locnum = lochash.match(loc)
+		      in if lochash.size() > LOCNUM {haven't seen this location before}
+		      	 then facelist #:= empty;
+			      let extra = vec:
+			      	 if steve_small_flag
+	 	      	       	 then steve_hash_small.extra_coord(gamma)
+	 	   		 else steve_hash.extra_coord(x, lambda, HT, gamma)
+	 	   		 fi
+			      {[Kpol_hash.match(K_type_pol(
+			      character_formula_to_height(1*p,HT))),v[d+2]]}
+			      in  assert(@:Kpol_hash.match(K_type_pol(character_formula_to_height(1*p,HT)))
+						= extra[0],"bad extra")
+			 fi;
+			 facelist[locnum]#:=N;
+			 locnum
+		   od
+   in assert(@:unitary_test_counter.use_count() = start_count, "unitarity testing in location_finder_add_K_char");
+      location_finder_time +:= elapsed_ms() - start;
+      loclist_time +:= elapsed_ms() - startloc;
+      extra_coord_flag:=extra_coord_flag_hold;
+   (lochash,  if steve_small_flag
+   	      then steve_hash_small.extra_coords(HT)
+	      else steve_hash.extra_coords(x, lambda, HT)
+	      fi , loclist, facelist)
+
+
+{local faces LFKH; determine which are unitary to height HT; each entry size d+3, last two being KCv
+PERHAPS FOR LOWER height}
 set location_finder(KGBElt x, ratvec lambda, int HT, LocalVertexData Lvd, [FaceVertsKHash] LFKHcat) = (vec_hash, [vec], [int], [[int]]):
     let start = elapsed_ms(), start_count = unitary_test_counter.use_count()
     then lochash = if steve_small_flag
@@ -1550,7 +1654,7 @@ set location_finder(KGBElt x, ratvec lambda, int HT, LocalVertexData Lvd, [FaceV
     then empty = [int]: []
     then startloc = elapsed_ms()
     then loclist = for v@N in LFKHcat
-    	      	   do let d = #v-3
+    	      	   do let d = #v-3 {dimension of face}
 	      	      then verts = v[:d+1]
 		      then gamma = face_bary(Lvd,verts)
 		      then p = parameter(x,lambda,gamma)
@@ -1621,12 +1725,15 @@ set local_test_graph_steve(
     KGBElt x,
     ratvec lambda,
     LocalVertexData Lvd,
-    [FaceVertsKHash] LFKHcat, {don't sort by dim}
-    int HT
+    [FaceVertsKHash] LFKHcat, {don't sort by dim; may or may not have Kcharvec, according to flag K_chars_yet}
+    int HT, bool K_chars_yet
      ) = [FaceVertsKHash]:
 begin
-    let (lochash, KCvlist, loclist, facelist) = location_finder(x, lambda, HT,
-    	Lvd, LFKHcat), G = x.real_form
+    let (lochash, KCvlist, loclist, facelist) =
+    	if not K_chars_yet
+	then location_finder_add_Kchar(x, lambda, HT, Lvd, LFKHcat)
+	else location_finder(x, lambda, HT, Lvd, LFKHcat)
+	fi, G = x.real_form
     then start = elapsed_ms()
     then inv_is = [int]: for j:#facelist do -1 od {if j is ith good, then  jth entry is i}
     then good_js = [int]:
@@ -1645,18 +1752,28 @@ begin
     then short_loclist = for j in loclist do inv_is[j] od
     then short_lochash = make_vec_hash()
     then () = for j in good_js do short_lochash.match(lochash.index(j)) od
-    then tester(Param p) = is_unitary_to_ht_big_SIMPLE_interrupt_TOHTfirst{is_unitary_to_ht_big_SIMPLE}(p,HT)
+    then tester(Param p) =
+    	 if HT >= 0
+	 then is_unitary_to_ht_big_SIMPLE_interrupt_TOHTfirst(p,HT)
+	 else is_unitary_test_big_SIMPLE_interrupt(p)
+	 fi
     then up_gens = up_graph_gens(short_lochash, short_KCvlist, short_loclist)
     then (eq,gr) = graph(up_gens)
     then NumClasses = #eq, printInterval = int: 1, start_count = unitary_test_counter.use_count()
     then statuses = [string]: for j:#eq do "?" od
-    then () = if test_verbose
+    {then () = for k:#eq
+    	      do let C = eq[k]
+	      	 then Ns = for j in C
+		      	   do short_face_list[j]}
+    {would like to list faces in C and see whether any is marked (from warmup) in steve_hash_small}
+    then () = if fund_face_verbose
 	      then prints("Examining ",NumClasses," classes in local_test_graph_steve to ht ",
 	      	   	   HT)
 	      fi
     then nums = #NumClasses {[0,1,2..NumClasses-1]}
-    then freq = max(NumClasses\100,1)
+    then freq = max(NumClasses\20,1)
     then count = int:0
+    then end_shift = int: if K_chars_yet then 3 else 1 fi
     then () = if graph_tilde_flag then nums:=~nums fi
     then () = for k in nums
     	      do if fund_face_verbose and (k%freq).=
@@ -1665,29 +1782,48 @@ begin
 		 fi;
 	      if statuses[k] = "?"
 	      	 then let C = eq[k] {list of locs}
-		 then N = if graph_tilde_flag
-		      	  then short_facelist[C~[0]]~[0] {last face for last loc in C}
-			  else short_facelist[C[0]][0] {first face for first loc in C}
-			  fi
-		 then v = LFKHcat[N]
-		 then d = #v-3
-		 then verts = v[:d+1]
-		 then gamma = face_bary(Lvd,verts)
-		 then p = parameter(x,lambda,gamma)
-    		 in statuses[k]:=
-		    if all(for q in monomials(1*p)
-		      	   do @bool: tester(q)
-			   od)
-		    then if not graph_tilde_flag
-		    	 then downdateUclassesB(statuses, gr, k, "T") {needed only in forward eq}
-			 fi;
-		      	 "T"
-		    else if graph_tilde_flag
-		    	 then updateNUclassesB(statuses, gr, k, "F") {needed only in backward eq}
-			 fi;
-		      	   "F"
-		    fi
-		 fi
+		 {then loc = steve_hash_small.vecHash().index(loclist[C[0]]) {location vector for C}
+		 then known = steve_hash_small.lookup(loc)
+		 then () = if known != 0
+		      	   then prints("Class ",k," already had status ",known)
+			   fi
+		 then () = statuses[k] :=
+		      	 if known > 0
+ 		      	 then if not graph_tilde_flag
+		    	      then downdateUclassesB(statuses, gr, k, "T") {needed only in forward eq}
+			      fi;
+		      	      "T"
+		      	 elif known < 0
+			 then if graph_tilde_flag
+		    	      then updateNUclassesB(statuses, gr, k, "F") {needed only in backward eq}
+			      fi;
+		      	      "F"
+			 else "$"
+		      	 fi}
+		 {in if statuses[k] = "?"}
+		    then {let} N = if graph_tilde_flag
+		      	       	 then short_facelist[C~[0]]~[0] {last face for last loc in C}
+			      	 else short_facelist[C[0]][0] {first face for first loc in C}
+			      	 fi
+		      then v = LFKHcat[N]
+		      then d = #v-end_shift
+		      then verts = v[:d+1]
+		      then gamma = face_bary(Lvd,verts)
+		      then p = parameter(x,lambda,gamma)
+    		      in statuses[k]:=
+		      	 if all(for q in monomials(1*p)
+		      	    	do @bool: tester(q)
+			   	od)
+		    	 then if not graph_tilde_flag
+		    	      then downdateUclassesB(statuses, gr, k, "T") {needed only in forward eq}
+			      fi;
+		      	      "T"
+		    	 else if graph_tilde_flag
+		    	      then updateNUclassesB(statuses, gr, k, "F") {needed only in backward eq}
+			      fi;
+		      	      "F"
+		    	 fi {all(q in monomials}
+		    fi {statuses[k] = "?"}
 	       od
 
      {then () = prints("statuses = ",statuses)}
@@ -1705,7 +1841,7 @@ begin
 	     else []
 	     fi
 	  od.##
-     then () = if test_verbose
+     then () = if fund_face_verbose
 	       then prints("Total of ", count(for ans in statuses do ans[0] = "T" od),
 				 " classes are unitary candidates, giving ", #LFKHnew,
 			   " unitary_to_ht faces")
@@ -1749,12 +1885,13 @@ set warmup(KGBElt x, ratvec lambda, int HT, LocalVertexData Lvd, [[FaceVertsInde
     do for v in FVI
        do let gamma = face_bary(Lvd, v[:d+1])
        	  then qs = monomials(finalize(parameter(x,lambda,gamma)))
-       	  in if any(for q in qs do big_unitary_hash.nu_height_lookup_bool(q,HT) od)
+	  then stats = for q in qs do status(q,HT) od
+       	  in if any(for stat in stats do stat < 0 od) {q in qs do big_unitary_hash.nu_height_lookup_bool(q,HT) od)}
        	     then steve_hash_small.numatch(gamma);
 	     []
-	     elif all(for q in qs do big_unitary_hash.ulookup(q).>=
-	     	     or (let m = u_to_ht_hash.lookup(q)
-		     	 in m.>= and u_to_ht_hts[m] >= HT) od)
+	     elif all(for stat in stats do stat > 0 od) {q in qs do big_unitary_hash.ulookup(q).>=}
+	     	     {or (let m = u_to_ht_hash.lookup(q)
+		     	 in m.>= and u_to_ht_hts[m] >= HT) od)}
        	     then steve_hash_small.umatch(gamma);
 	     [v]
 	     else [v]
@@ -1833,7 +1970,7 @@ set localFD_1SteveU\
 	  fi {these two flags best_Dirac and _Dirac are either FF, FT, or TF}
     then extra = vec:[]
     then length = #LF01  {(Lvd.list)}
-    then freq = max(length\100,1)
+    then freq = max(length\20,1)
     then count = int:0
     then answer = [vec]:
     	 if steve_tilde_flag
@@ -1915,8 +2052,14 @@ set localFD_1SteveU\
 		     	  then extra:=Kchar_vec(x,lambda,HT,gamma)
 			  fi;
 			  if steve_small_flag
-		     	  then steve_hash_small.postest_known_Kchar(gamma,extra)
-			  else steve_hash.partly_indexed_postest_known_Kchar(rfnum, xlnum, htnum, gamma, extra)
+		     	  then if extra_coord_flag
+			       then steve_hash_small.postest_known_Kchar(gamma,extra)
+			       else steve_hash_small.postest(gamma)
+			       fi
+			  else if extra_coord_flag
+			       then steve_hash.partly_indexed_postest_known_Kchar(rfnum, xlnum, htnum, gamma, extra)
+			       else steve_hash.partly_indexed_postest(rfnum, xlnum, htnum, gamma)
+			       fi
 			  fi
 		     then count+:=1;
 			 [v##extra] {unitary to HT!}
@@ -2158,13 +2301,7 @@ set localFD_1SteveU_graph\
 	     	     else if #extra = 0 and extra_coord_flag
 		     	  then extra:=Kchar_vec(x,lambda,HT,gamma)
 			  fi;
-{
-if steve_small_flag
-then steve_hash_small.postest_known_Kchar(gamma,extra)
-else steve_hash.partly_indexed_postest_known_Kchar(rfnum, xlnum, htnum, gamma,extra)
-fi
-}			  [v##extra] {candidate for testing in graph}
-	     	     {else [] {pos test failed}}
+			  [v##extra] {candidate for testing in graph}
 	     	     fi
 	       od.## {list of candidate vertices}
     in if fund_face_verbose
@@ -2175,7 +2312,7 @@ fi
 				      else steve_hash.vecHash(x,lambda,HT).size()
 				      fi){;
 	    prints("LF0 = ",answer)}
-       fi;local_test_graph_steve(x,lambda,Lvd,answer,HT)
+       fi; local_test_graph_steve(x,lambda,Lvd,answer,HT,extra_coord_flag)
 )
 
 
@@ -2189,7 +2326,8 @@ set localFD_2SteveU\
     then return []
     fi;
     if fund_face_verbose
-    then prints(new_line,"start localFD_2Steve")
+    then prints(new_line,"start localFD_2Steve");
+    	 prints("LF0 = ",LF0)
     fi;
     steve_hash_small.reset_with_ht(x,lambda,HT);
     {prints("in localFD_2SteveU, LF0 = ",LF0);}  {COMMENT OUT!}
@@ -2587,7 +2725,7 @@ set localFD_2SteveUgraph\
 	   in v##[0,#monomials(1*p)]
 	od
    {then () = prints("LF1cand = ",LF1cand)}
-   then answer = local_test_graph_steve(x, lambda, Lvd, LF0##LF1cand, HT)
+   then answer = local_test_graph_steve(x, lambda, Lvd, LF0##LF1cand, HT, true)
    then LF1 = [LocalFaceVertsKHash]:
    	    for v in answer
 	    do if #v=4
@@ -2863,6 +3001,64 @@ set localFD_Steve2_graph(KGBElt x, ratvec lambda, LocalVertexData Lvd, PermOrder
 	      fi
     in extra_coord_flag:=extra_coord_hold; (LF,hts[edge_offset])
 
+{get verts, edges to hts[edge_offset] to feed one_level_end, with Kchar and #LQs}
+set localFD_Steve2_graph(KGBElt x, ratvec lambda, LocalVertexData Lvd, PermOrderTwo Perm2) =
+    ([[FaceVertsKHash]],int):
+    let start = elapsed_ms(), p0 = parameter(x,lambda,0*lambda)
+    then hts = next_heights(p0,edge_offset+1), extra_coord_hold = extra_coord_flag
+    then () = if edge_offset= first_offset then extra_coord_flag:=true fi
+    then LF0 = localFD_1SteveU(x,lambda,hts[first_offset], Lvd)
+    then () = if show_steve_flag
+    	      then prints("LF0 to height ",hts[first_offset]," = ",LF0)
+	      fi
+    then () = extra_coord_flag :=true
+    then () = if edge_offset > first_offset
+    	      then LF0:= test_Steve(x,lambda,hts[edge_offset],Lvd,[LF0])[0]
+	      fi
+    then () = if show_steve_flag
+    	      then prints("LF0 with extra to height ",hts[edge_offset]," = ",LF0)
+	      fi
+    then LF = [LF0,  localFD_2SteveU(x,lambda,hts[edge_offset],Lvd,Perm2,LF0)]
+    then () = if show_steve_flag
+    	      then prints("LF1 with extra to height ",hts[edge_offset]," = ",LF[1])
+	      fi
+    then () = if fund_face_verbose
+    	      then prints("edge/vert counts to height ",hts[edge_offset], " = ",
+	      	   for list in LF do #list od,"; time  = ",print_time_string(elapsed_ms() - start))
+	      fi
+    in extra_coord_flag:=extra_coord_hold; (LF,hts[edge_offset])
+
+{get verts, edges to hts[edge_offset] to feed one_level_end, with Kchar and #LQs}
+set localFD_Steve12_graph(KGBElt x, ratvec lambda, LocalVertexData Lvd, PermOrderTwo Perm2) =
+    ([[FaceVertsKHash]],int):
+    let start = elapsed_ms(), p0 = parameter(x,lambda,0*lambda)
+    then hts = next_heights(p0,edge_offset+1)
+    then LF01 = localFD_1Dirac2_by_zero(x,lambda).##
+    then LF01_tested = local_test_graph_steve(x,lambda,Lvd, LF01, hts[first_offset],false)
+    then () = if show_steve_flag
+    	      then prints("LF01 to height ",hts[first_offset]," = ",LF01_tested)
+	      fi
+    then () = if edge_offset > first_offset
+    	      then LF01_tested := local_test_graph_steve(x, lambda, Lvd,LF01_tested, hts[edge_offset],
+	      	   false)
+	      fi
+    then () = if show_steve_flag
+    	      then prints("LF01 with extra to height ",hts[edge_offset]," = ",LF01_tested)
+	      fi
+    then () = if fund_face_verbose
+    	      then prints("edge/vert counts to height ",hts[edge_offset], " = ", #LF01_tested,
+	      	   {for list in LF do #list od,}"; time  = ",print_time_string(elapsed_ms() - start))
+	      fi
+    then LF_tested0 = [FaceVertsKHash]: [], LF_tested1 = [FaceVertsKHash]: []
+    in  for v in LF01_tested
+    	do if #v = 1
+	   then LF_tested0 #:= v
+	   else LF_tested1 #:= v
+	   fi
+	od;
+    	(localFD_KHash_01(x, lambda, Lvd, hts[edge_offset], Kpol_hash, [LF_tested0, LF_tested1])
+			     ,hts[edge_offset])
+
 { Input is candidate faces; assume Kchar to HT is recorded in LFVH, as index in Kpol_hash.
 Output is the unitary_to_HT ones, found by steve_hash.
  use and update a complete list Uhash of known unitary faces.
@@ -2883,7 +3079,7 @@ begin
     	 	 	       	 then (0,0,0)
 				 else steve_hash.indices(x,lambda,HT)
 				 fi
-    in if test_verbose
+    in if fund_face_verbose
     	then prints("     Examining ",for list in LFVH do #list od,
 	" faces in local_test_hash_steve, to ht ",HT)
     	fi;
@@ -2908,10 +3104,10 @@ begin
        	  	      fi
     	        od.##
 	    od
-       in if test_verbose
+       in if fund_face_verbose
        	  then prints("     Total of ",for list in answer do #list od, " faces are unitary to ",HT,".")
     	  fi
-	  ;   if test_verbose or test_slightly_verbose
+	  ;   if fund_face_verbose or test_slightly_verbose
     	      then prints("number of tests = ",unitary_test_counter.use_count() - start_count, ", in ",
 	      	   print_time_string(elapsed_ms() - start))
     	      fi
@@ -2945,7 +3141,7 @@ begin
 				 else steve_hash.indices(x,lambda,-1)
 				 fi
     then unitary_by_dim = vec: null(rank(x.involution - 1)+1)
-    in  if test_verbose
+    in  if fund_face_verbose
     	then prints("     Examining ",NumFaces," faces in local_test_closer_steve.")
     	fi;
     	let UParams = [Param]:
@@ -2974,10 +3170,10 @@ begin
        	  	  else []
        	  	  fi
     	    od.##
-       in if test_verbose
+       in if fund_face_verbose
        	  then prints("     Total of ", #UParams, " out of ",NumFaces, " faces are unitary.")
     	  fi
-	  ;   if test_verbose or test_slightly_verbose
+	  ;   if fund_face_verbose or test_slightly_verbose
     	      then prints("unitary faces by dim = ",unitary_by_dim, test_string);
 	      	   prints("number of tests = ",unitary_test_counter.use_count() - start_count, ", in ",
 	      	   print_time_string(elapsed_ms() - start))
@@ -3008,6 +3204,7 @@ set local_test_GEO_hash_all_steve(KGBElt x, ratvec lambda, LocalVertexData Lvd, 
     if {tiny case} #Lvd.list = 1
     then return one_param_test_min_bottom(parameter(x,lambda,Lvd.list[0]), Uhash)
     fi;
+    if fund_face_verbose then prints("starting local_test_GEO_hash_all_steve with ",#Lvd.list," local vertices") fi;
     let G = x.real_form, r = rank(x.involution -1), p0 = parameter(x,lambda,0*lambda)
     then () = if is_compact(G)
        	      then let all = all_parameters_gamma(G,lambda)
@@ -3019,7 +3216,7 @@ set local_test_GEO_hash_all_steve(KGBElt x, ratvec lambda, LocalVertexData Lvd, 
     then hts = next_heights(p0,edge_offset+1)
     then one_ht = hts[edge_offset]
     then () = test_string:= " using local_test_GEO_hash_all_steve"
-    then () = if test_verbose then prints("Chose",test_string) fi
+    then () = if fund_face_verbose then prints("Chose",test_string) fi
     then start_count = unitary_test_counter.use_count()
     then () = hash_steveCounter.use()
     then () = steve_xl_hash.match(x,lambda)
@@ -3029,13 +3226,16 @@ set local_test_GEO_hash_all_steve(KGBElt x, ratvec lambda, LocalVertexData Lvd, 
     	      then LFall := for list in LFall do [vec]: for v in list ~do v od od
 	      fi
     then LFlast =  local_test_hash_steve(x, lambda, Lvd, LFall, one_ht)
-    then () = if test_verbose
+    then () = if fund_face_verbose
 	      then prints("unitary to ht ",one_ht," face counts to dim ",r,
 				": ", for list in LFlast do #list od)
 	      fi
     then LFlastchars = extend_K_characters(x,lambda,Lvd,LFlast, Kpol_hash)
     in local_test_closer_steve(x, lambda, Lvd, LFlastchars)
 
+{whether to make graph of vertices and edges together}
+{cost of doing is_unitary on all the edges seems to outweigh any advantage of small graph}
+set steve_one_two_flag = false
 
 {here LF has only vertices at (x,lambda)}
 {MUST use Kpol_hash!}
@@ -3051,6 +3251,7 @@ set local_test_GEO_hash_steve_graph(KGBElt x, ratvec lambda, LocalVertexData Lvd
     if {tiny case} #Lvd.list = 1
     then return one_param_test_min_bottom(parameter(x,lambda,Lvd.list[0]), Uhash)
     fi;
+    if fund_face_verbose then prints("starting local_test_GEO_hash_steve_graph with ",#Lvd.list," local vertices") fi;
     let G = x.real_form, start = elapsed_ms(), start_count = unitary_test_counter.use_count()
     then () = if is_compact(G)
        	      then let all = all_parameters_gamma(G,lambda)
@@ -3060,28 +3261,39 @@ set local_test_GEO_hash_steve_graph(KGBElt x, ratvec lambda, LocalVertexData Lvd
 	       	      return(all)
 	       fi
     then () = test_string:= " using local_test_GEO_hash_steve_graph"
-    then () = if test_verbose then prints("Chose",test_string) fi
+    then () = if fund_face_verbose then prints("Chose",test_string) fi
     then start_count = unitary_test_counter.use_count()
     then () = hash_steveCounter.use()
     then () = steve_xl_hash.match(x,lambda)
     then theta = x.involution, p0 = parameter(x,lambda,0*lambda)
     then (,Perm2) = LPm_table.LPm_entry(G, theta, ratvec_as_vec(lambda+theta*lambda))
-    then hts = next_heights(p0,edge_offset+1)
+    then (LFKH,HT) =
+    	 if steve_one_two_flag
+	    then localFD_Steve12_graph(x,lambda,Lvd,Perm2)
+	    else localFD_Steve2_graph(x,lambda,Lvd,Perm2)
+	    fi
+    in local_test_GEO_hash_one_level_end(x,lambda,Lvd,LFKH,Kpol_hash,HT, Uhash, is_unitary@Param)
+
+
+ {   then hts = next_heights(p0,edge_offset+1)
     then FIRST_HT = hts[first_offset], ONE_HT = hts[edge_offset], r = rank(theta-1)
     then LF_first = localFD_1SteveU_graph(x, lambda, FIRST_HT, Lvd)
     then LF_one = if FIRST_HT = ONE_HT
     	 	  then LF_first
-		  else local_test_graph_steve(x,lambda,Lvd, LF_first, ONE_HT)
+		  else local_test_graph_steve(x,lambda,Lvd, LF_first, ONE_HT, extra_coord_flag)
 		  fi
     {then () = prints(new_line, "LF_one = ",LF_one)}
     then LF01 = localFD_2SteveUgraph(x,lambda, ONE_HT, Lvd, Perm2, LF_one)
+    then () = if not all_steve_flag
+    	      then return local_test_GEO_hash_steve_end(x, lambda, Lvd, LF01, ONE_HT, Uhash)
+	      fi
     {then () = prints("LF01 = ",LF01,new_line)}
     then LFcands = localFD_KHashbt_lookDownGEO(x,lambda, Lvd, LF01, 2, r + 1, ONE_HT, Kpol_hash)
     then LFUcands = local_test_graph_steve(x, lambda, Lvd, LFcands.##, ONE_HT) {unitary to HT}
     {then () = prints("LFUcands = ",LFUcands)
     {then () = prints("at ",lambda,", #LFUcands = ",#LFUcands)}
     then () = prints(LFUcands)}
-    then LFU = local_test_graph_steve(x,lambda,Lvd, LFUcands,-1)
+    then LFU = local_test_graph_steve(x,lambda,Lvd, LFUcands,-1,true)
     then unitary_by_dim = vec: null(rank(x.involution - 1)+1)
     then UParams = for v@j in LFU 
        	 	   do let d = #v - 3
@@ -3095,16 +3307,16 @@ set local_test_GEO_hash_steve_graph(KGBElt x, ratvec lambda, LocalVertexData Lvd
 	     		 unitary_by_dim[d]+:=1;
 	     		 [pC]
     	     	   od.##
-    in if test_verbose
+    in if fund_face_verbose
        then prints("     Total of ", #LFU, " out of ", #LFUcands, " faces are unitary.")
        fi;
-       if test_verbose or test_slightly_verbose
+       if fund_face_verbose or test_slightly_verbose
        then prints("unitary faces by dim = ",unitary_by_dim, test_string);
 	    prints("number of tests = ",unitary_test_counter.use_count() - start_count, ", in ",
 	    print_time_string(elapsed_ms() - start))
        fi;
        {report_steve_graph();}
-       UParams
+       UParams}
     {local_test_closer_steve(x, lambda, Lvd, LFUcands)}
     {closer_steve fails because steve_hash statuses haven't been updated properly}
 
@@ -3129,6 +3341,7 @@ set local_test_GEO_hash_steve(KGBElt x, ratvec lambda, LocalVertexData Lvd, Para
     elif steve_graph_flag
     then return local_test_GEO_hash_steve_graph(x, lambda, Lvd, Uhash)
     fi;
+    if fund_face_verbose then prints("starting local_test_GEO_hash_steve with ",#Lvd.list," local vertices") fi;
     let G = x.real_form
     then () = if is_compact(G)
        	      then let all = all_parameters_gamma(G,lambda)
@@ -3138,7 +3351,7 @@ set local_test_GEO_hash_steve(KGBElt x, ratvec lambda, LocalVertexData Lvd, Para
 	       	      return(all)
 	       fi
     then () = test_string:= " using local_test_GEO_hash_steve"
-    then () = if test_verbose then prints("Chose",test_string) fi
+    then () = if fund_face_verbose then prints("Chose",test_string) fi
     then start_count = unitary_test_counter.use_count()
     then () = hash_steveCounter.use()
     then () = steve_xl_hash.match(x,lambda)

@@ -55,6 +55,14 @@ set mu_time_mult = rat: 1/1 {1/1}
 {multiple of G.rank to use as jump in step size}
 set mu_rank_mult = rat: 1/2 {1/4}
 
+{how far above LKT to start is_unitary_to_ht tests}
+set edge_offset = int: 1
+
+{when the non-minimal parabolics are used at the end, how much above
+height(p) to look at K-types.  A larger number finds more nonunitary,
+takes longer}
+set more_shift_level = int: 0
+
 set test_bl_time = int: 0
 
 set test_no_unitary_time = int: 0
@@ -118,6 +126,27 @@ set regroup(RealForm G, KTypePol P) = KTypePol:
 set regroup(RealForm G, Param p) = Param:
     parameter(G, p.x.number, p.lambda, p.nu)
 
+set low_height(KTypePol P) = int:
+    if P.= then -1
+    else min(0)(for @t in P do height(t) od)
+    fi
+
+set low_height(ParamPol P) = int:
+    if P.= then -1
+    else min(0)(for @t in P do height(t) od)
+    fi
+
+set impure_height(KTypePol P) = int:
+    if is_pure(P) then -1
+    else let (a, mu) = first_term(P)
+    	 then () = if not is_pure(a) then return height(mu) fi
+	 then () = for c@tau in a*P
+	    	   do if not s_part(c).=
+		      then return height(tau)
+		      fi
+		   od
+	 in -1
+     fi
 
 set full_deform_to_ht_MvL_base(Param p, int height, int time) = maybe_KTP:
 ( if not strict_low(p,height)
@@ -162,6 +191,34 @@ set full_deform_to_ht_MvL_base(Param p, int height) = KTypePol:
   in output
 )
 
+{should require number of -alphav*theta >= number of alphav}
+set red_coroots(KGBElt x) = [vec]:
+    let G = x.real_form,  theta = x.involution
+    then rho = G.rho, pos_co = G.poscoroots
+    in for alphav@j in pos_co
+       do if (alphav*theta*rho).< and poscoroot_index(G, -alphav*theta) >= j
+       	  then [alphav]
+	  else []
+	  fi
+       od.##
+
+set MvL_alcove_time = int:0
+{This vec characterizes the half-open alcove in which Marc puts p}
+set MvL_alcove(Param p) = vec:
+    let start = elapsed_ms(), theta1= 1+p.x.involution, p0 = p*0
+    then answer = vec:
+    	 for alphav in red_coroots(p.x)
+    	 do if (alphav*theta1).=
+       	    then if is_parity(root(p.root_datum,alphav), p0)
+       	    	 then floor((alphav*p.infinitesimal_character)\2)
+	    	 else floor((alphav*p.infinitesimal_character - 1)\2)
+	    	 fi
+       	    else floor(alphav*p.infinitesimal_character)
+       	    fi
+    	 od
+     in MvL_alcove_time +:= elapsed_ms() - start;
+     	answer
+
 { table of full_deform to ht, indexed by Param. MODIFY 11/22/25: NEG HEIGHT MEANS NO CUTOFF. {OLD: Height zero means no cutoff.}}
 {since untwisted is not used for unequal rank, store only twisted in that case.}
 {Twisted always stored with no cutoff, since we don't now have a good twisted
@@ -190,6 +247,16 @@ set deformed_data = [KTypePol] : []
 set deform_max_heights = [int] : []
 set deform_use_count = [int] : []
 set deform_times = [int]: []
+
+set_type xlv_type = (KGBElt x, ratvec lambda, vec v)
+
+set xlv_hash_code(xlv_type xlv, int N) = int:
+    (hash_code(xlv.x,N) + 3*hash_code(xlv.lambda,N) + 7*hash_code(xlv.v,N))%N
+
+set xlv_equality(xlv_type xlv, xlv_type ymw) = bool:
+    xlv.x = ymw.x and xlv.lambda = ymw.lambda and xlv.v = ymw.v
+
+set deform_xlv_hash = make_hash(xlv_hash_code, xlv_equality)
 
 set make_deformation_hash_to_ht () = deformation_hash_to_ht:
 (  let clear() = void:
@@ -402,6 +469,224 @@ set make_deformation_hash_to_ht () = deformation_hash_to_ht:
   )
 )
 
+
+set make_deformation_hash_to_htB () = deformation_hash_to_ht:
+(  let clear() = void:
+       let () = deform_xlv_hash.clear()
+       then () = deform_max_heights :=[]
+       then () = deformed_data :=[]
+       then () = deform_times :=[]
+       then () = deform_use_count := []
+       in ()
+   then add_param(Param p, int h) = int:
+       	let I = deform_xlv_hash.size()
+	then xlv = (p.x,p.lambda, MvL_alcove(p))
+	then i = deform_xlv_hash.lookup(xlv)
+	then P = null_K_module(SL(1,R))
+	then start = elapsed_ms()
+	{then() = if p.nu = [-1,0,2,0,-1,2,-1]/2 then 1\0 else 0 fi}
+	then () = if i.< {haven't seen this MvL_alcove before}
+	     then deformCalcCounter.use();
+	     	  P := if h<0
+	     	      then if is_equal_rank(p.real_form)
+		      	   then full_deform(p)
+			   else twisted_full_deform(p)
+			   fi
+		      else if is_equal_rank(p.real_form)
+		      	   then full_deform_to_ht_MvL_base(p,h)
+			   else to_ht(twisted_full_deform(p),h)
+			   fi
+		      fi;
+		   deform_times #:= elapsed_ms() - start;
+		   deform_xlv_hash.match(xlv);
+		   i:=I;
+		   deform_max_heights #:= h;
+		   deformed_data#:=P;
+		   deform_use_count#:=0
+	      elif {i>=0; p seen} h < 0 and deform_max_heights[i].>=
+	      then deformCalcCounter.use();
+	      	   P := if is_equal_rank(p.real_form)
+		      	then full_deform(p)
+			else twisted_full_deform(p)
+			fi {full_deform(p)};
+		   deform_times[i]:=elapsed_ms() - start;
+		   deform_max_heights[i]:=-1;
+		   deformed_data[i]:=P
+	      elif {i >=0, h>=0 } deform_max_heights[i] >= 0 and h > deform_max_heights[i]
+	      then deformCalcCounter.use();
+	      	   P := if is_equal_rank(p.real_form)
+		      	then full_deform_to_ht_MvL_base(p,h)
+			else to_ht(twisted_full_deform(p),h)
+			fi {deform_to_height(p,h)};
+		   deform_times[i]:=elapsed_ms() - start;
+		   deform_max_heights[i]:=h;
+		   deformed_data[i]:=P
+	      else deformLookupCounter.use()
+	      fi
+	  then () = deform_use_count[i] +:=1
+	  in i
+  then maybe_add_param(Param p, int h, int time) = int:
+   	let I = deform_xlv_hash.size(), G = p.real_form
+	{then () = prints("I = ",I)}
+	then xlv = (p.x, p.lambda, MvL_alcove(p))
+	then k = deform_xlv_hash.lookup(xlv)
+	{then () = prints("k = ",k)}
+	then P = maybe_KTP: timed_out()
+	then start = elapsed_ms()
+	then () = if k.< {haven't seen this p before}
+	     then deformCalcCounter.use();
+	     	  P := if is_equal_rank(p.real_form)
+		       then if h<0
+	     	       	    then full_deform(p,time)
+		      	    else full_deform_to_ht_MvL_base(p,h,time)
+			    fi
+		       else if h<0
+		       	    then twisted_full_deform(p,time)
+			    else to_ht(twisted_full_deform(p,time),h)
+			    fi
+		   fi; {this step should not change deformation_hash_table!}
+		   case P
+		   	| timed_out: return -1
+			| done(result):
+		   k:=deform_xlv_hash.match(xlv);
+		   {prints("k = ",k,", I = ",deform_xlv_hash.size());}
+		   {assert(@:k=I,"def table changed inside maybe_add_param?");}
+		   deform_times #:= elapsed_ms() - start;
+		   deform_max_heights #:= h;
+		   deformed_data#:=result;
+		   deform_use_count#:=0
+		   esac
+	      elif {k>=0; p seen} h<0 and deform_max_heights[k].>=
+	      then deformCalcCounter.use();
+	      	   P := if is_equal_rank(G)
+		     	then full_deform(p,time)
+			else twisted_full_deform(p,time)
+			fi;
+		   case P
+		   	| timed_out: return -1
+			| done(result):
+		   deform_times[k]:=elapsed_ms() - start;
+		   deform_max_heights[k]:=-1;
+		   deformed_data[k]:=result;
+		   deform_use_count[k]+:=1
+		   esac
+	      elif {k =>0, h>=0 or } deform_max_heights[k] >= 0 and h > deform_max_heights[k]
+	      then deformCalcCounter.use();
+	      	   P := if is_equal_rank(G)
+		     	then full_deform_to_ht_MvL_base(p,h,time)
+			else to_ht(twisted_full_deform(p,time),h)
+			fi;
+		   case P
+		   	| timed_out: return -1
+			| done(result):
+		   deform_times[k]:=elapsed_ms() - start;
+		   deform_xlv_hash.match(p.x, p.lambda,MvL_alcove(p));
+		   deform_max_heights[k]:= h;
+		   deformed_data[k]:=result;
+		   deform_use_count[k] +:=1
+		   esac
+	      else deformLookupCounter.use()
+	      fi
+	  in k
+   in
+   ( ( -> int): {size} @int: deform_xlv_hash.size()
+  , ( -> ): {clear} clear
+  , (Param -> int): {height} (Param p): deform_max_heights[deform_param_hash.lookup(p)]
+  , ((Param, int)->KTypePol): {entry} (Param p, int h):
+    let i = add_param(p, h)
+    in if h >= 0
+       then regroup(p.real_form,to_ht(deformed_data[i],h))
+       else regroup(p.real_form,deformed_data[i])
+       fi
+  , ((Param,int,int)->maybe_KTP): {maybe_entry} (Param p, int h, int time):
+    let j = maybe_add_param(p, h, time)
+    in if j < 0
+       then timed_out()
+       else if h.>=
+       	    then (regroup(p.real_form, to_ht(deformed_data[j],h))).done
+	    else (regroup(p.real_form,deformed_data[j])).done
+	    fi
+       fi
+  , (Param->int): {lookup} (Param p): deform_xlv_hash.lookup(p.x,p.lambda,MvL_alcove(p))
+  , ((Param,int,KTypePol)->): {append} (Param p, int h, KTypePol P):
+    let I = deform_xlv_hash.size()
+    then i = deform_xlv_hash.match(p.x,p.lambda,MvL_alcove(p))
+    in if i=I {haven't seen p before}
+       then deform_max_heights #:=h;
+	    deformed_data#:=P;
+	    deform_times#:=0;
+	    deform_use_count#:=0
+       elif {i < I} (h<0 and deform_max_heights[i].>=)
+	    or h>deform_max_heights[i] {seen p, but not to h}
+       then deform_max_heights[i]:=h;
+	    deformed_data[i]:=P;
+	    deform_use_count[i]+:=1
+       fi
+  , ((Param,int,KTypePol,int)->): {append_time} (Param p, int h, KTypePol P, int time):
+    let I = deform_xlv_hash.size()
+    then i = deform_xlv_hash.match(p.x, p.lambda, MvL_alcove(p))
+    {then () = if p.nu = [-1,0,2,0,-1,2,-1]/2 then 1\0 else 0 fi}
+    in if i=I {haven't seen p before}
+       then deform_max_heights #:=h;
+	    deformed_data#:=P;
+	    deform_use_count#:=0;
+	    deform_times #:=time
+       elif {i < I} (h<0 and deform_max_heights[i].>=)
+	    or h>deform_max_heights[i] {seen p, but not to h}
+       then deform_max_heights[i]:=h;
+	    deformed_data[i]:=P;
+	    deform_use_count[i]+:=1;
+	    deform_times[i]:=time
+       fi
+  , ((Param,int,maybe_KTP)->): {maybe_append} (Param p, int HT, maybe_KTP P):
+    case P
+    	 | timed_out: ()
+    	 | done(result):
+    	   let I = deform_xlv_hash.size()
+    	   then i = deform_xlv_hash.match(p.x,p.lambda,MvL_alcove(p))
+    	   {then () = if p.nu = [-1,0,2,0,-1,2,-1]/2 then 1\0 else 0 fi}
+    	   in if i=I {haven't seen p before}
+       	      then deform_max_heights #:=HT;
+	      	   deformed_data#:=result;
+		   deform_times#:=0;
+	   	   deform_use_count#:=0
+       	      elif {i < I} (HT<0 and deform_max_heights[i].>=)
+	      	   or HT>deform_max_heights[i] {seen p, but not to HT}
+       	      then deform_max_heights[i]:=HT;
+	      	   deformed_data[i]:=result
+       	      fi
+    esac
+  , ((Param,int,maybe_KTP,int)->): {maybe_append_time}  (Param p, int HT, maybe_KTP P, int time):
+    case P
+    	 | timed_out: ()
+    	 | done(result):
+    	   let I = deform_xlv_hash.size()
+    	   then i = deform_xlv_hash.match(p.x,p.lambda, MvL_alcove(p))
+    	   {then () = if p.nu = [-1,0,2,0,-1,2,-1]/2 then 1\0 else 0 fi}
+    	   in if i=I {haven't seen p before}
+       	      then deform_max_heights #:=HT;
+	      	   deformed_data#:=result;
+		   deform_times#:=time;
+	   	   deform_use_count#:=0
+       	      elif {i < I} (HT<0 and deform_max_heights[i].>=)
+	      	   or HT>deform_max_heights[i] {seen p, but not to HT}
+       	      then deform_max_heights[i]:=HT;
+	      	   deformed_data[i]:=result;
+		   deform_times[i]:=time;
+		   deform_use_count[i]+:=1
+       	      fi
+    esac
+  , (int -> Param): {Param_index} (int j):
+    prints("not a good question for xlv hash");
+    prints("xlv entry is ",deform_xlv_hash.index(j));
+    SL(2,R).trivial
+  , (int -> int): {height_index} (int j): deform_max_heights[j]
+  , (int -> int): {time_index}  (int j): deform_times[j]
+  , (int -> KTypePol): {data_index} (int j): deformed_data[j]
+  )
+)
+
+
 set append_to_deformation_hash(RealForm G, Param p, [KPolTermDatum] data, int ht, int use) = void:
     let I = deform_param_hash.size()
     then i = deform_param_hash.lookup(p)
@@ -591,7 +876,24 @@ F4_s)}
 {TRUE should help interrupted to_ht}
 set deformed_hash_flag = true
 
-set deformedHash = make_deformation_hash_to_ht()
+{set xlv_flag = false {true costs 10% time for E7_s near x.number = 12000}}
+
+{set deformedHash = if xlv_flag
+    		   then make_deformation_hash_to_htB()
+		   else make_deformation_hash_to_ht()
+		   fi}
+
+set deformedHashA =  make_deformation_hash_to_ht()
+set deformedHashB =  make_deformation_hash_to_htB()
+set deformedHash = deformedHashA
+
+set choose_xlv(bool choice) = void:
+    if choice
+    then deformedHash:= deformedHashB
+    else deformedHash:= deformedHashA
+    fi
+
+
 {set twistedDeformedHash = make_twisted_deformation_hash()}
 
 {like is_pure, but in case of false, second value is the lowest K-type where
@@ -685,6 +987,7 @@ set DTcount = int: 0
 {meant to hold number of NEGATIVE Dirac_best inequality tests}
 set DBTcount = int: 0
 
+set next_heightC_time = int: 0
 
 {will be modified to name of local test being run}
 set test_string = string: ""
@@ -730,19 +1033,31 @@ set was_tested(Param p, int T, bool ans) = void:
     	     then cSp+:=1; 1/(cSp-4)
 	     else 1/1
 	     fi}
+    {if p = parameter(F4_s,101,[1,1,1,-1]/1,[0,1,0,-2]/1)
+    then assert(@:false); prints("testing p0")
+    fi;}
+    {if p = parameter(F4_s,102,[2,2,1,-4]/1,[1,4,0,-9]/4)
+    then assert(@:false); prints("testing p1")
+    fi;}
     if drain_plug_flag and T > drain_plug_time
     then prints(p," took ",print_time_string(T)," to test is_unitary = ", ans)
     fi;
+    unitary_test_counter.use();
     if ans
     then let M = tested_pos_hash.size()
     	 then m = tested_pos_hash.match(p)
-       	 in if m = M
+       	 in {prints("M = ",M,", m = ",m);}
+	    if m = M
 	    then tested_pos_times#:=T;
 	    	 tested_pos_strings #:= test_string;
 		 tested_pos_counts #:=1
 	    else tested_pos_times[m] +:= T;
 	    	 tested_pos_counts[m] +:= 1
-	    fi
+	    fi{;
+	    if tested_pos_counts[m] = 2
+	    then prints("tpcs = ",tested_pos_counts);
+		 assert(@:false)
+	    fi}
     else let M = tested_neg_hash.size()
     	 then m = tested_neg_hash.match(p)
     	 in if m = M
@@ -758,6 +1073,7 @@ set was_tested_inter(Param p, int T) = void:
     if drain_plug_flag and T > drain_plug_time
     then prints(p," took ",print_time_string(T)," for interrupted is_unitary")
     fi;
+    unitary_test_counter.use();
     let M = tested_inter_hash.size()
     then m = tested_inter_hash.match(p)
     in if m=M
@@ -782,6 +1098,7 @@ set was_tested_inter(Param p, int T, int T_target) = void:
 	    	 OT_counts[OTm] +:= 1
 	    fi
     fi;
+    unitary_test_counter.use();
     let M = tested_inter_hash.size()
     then m = tested_inter_hash.match(p)
     in if m=M
@@ -797,6 +1114,7 @@ set was_tested_to_ht(Param p,int N, int T, bool ans) = void:
     then prints(p," took ",print_time_string(T)," to test is_unitary_to_ht ", N,
     	 	 " = ",ans)
     fi;
+    unitary_test_counter.use();
     let h = N - height(p)
     then add = h+1 - #tested_pos_to_ht_hashes
     then () = if add>0
@@ -839,7 +1157,9 @@ set was_tested_to_ht(Param p,int N, int T, bool ans) = void:
     fi
 
 set report_tested(string label) = void:
-    prints("...",label,"...",DTcount," Dirac elim, ",DBTcount," best-Dirac elim");
+    prints("...",label,"...",DTcount," Dirac elim, ",DBTcount," best-Dirac elim; edge_offset = ",edge_offset);
+    {next_heightC_time = ",}
+           {print_time_string(next_heightC_time));}
     prints(tested_pos_hash.size()," pos is_unitary tests, in time = ",
     	print_time_string(sum(tested_pos_times)),"; ",tested_neg_hash.size()," neg is_unitary tests, in time = ",
     	print_time_string(sum(tested_neg_times)));
@@ -888,14 +1208,16 @@ set clear_report_tested() = void:
        tested_neg_to_ht_hashes[h].clear(); tested_neg_to_ht_times[h]:=[]; tested_neg_to_ht_strings[h]:=[]
     od
 
-set (report_tested_cum,clear_report_tested_cum_clear) = (((string, string) -> void),(void->void)):
+set (report_tested_cum,clear_report_tested_cum) = (((string, string) -> void),(void->void)):
     let tph = int: 0, tpt = int:0, tnh = int: 0, tnt = int:0, oth = int:0, otc = int:0, ott = int:0
     then tic = int: 0, tih = int: 0, tit = int:0, tphh = int: 0, tpht = int:0, tnhh = int: 0, tnht = int: 0,
-    	 utc = int: 0, utt = int: 0, ct = int:0, cu = int: 0, DTc = int:0, DBTc = int: 0
+    	 utc = int: 0, utt = int: 0, ct = int:0, cu = int: 0, DTc = int:0, DBTc = int: 0, nhtC_time = int:0
     in (((string,string)->void): (string local_label, string running_label) void:
     prints("  ----------------");
-    prints("...",local_label,"...",DTcount - DTc," Dirac elim, ",DBTcount - DBTc," best-Dirac elim");
-    	DTc :=DTcount; DBTc := DBTcount;
+    prints("...",local_label,"...",DTcount - DTc," Dirac elim, ",DBTcount - DBTc,
+    " best-Dirac elim, more_shift_level = ",more_shift_level, ",edge_offset = ",edge_offset);
+    {next_heightC_time = ",print_time_string(next_heightC_time - nhtC_time));}
+    	DTc :=DTcount; DBTc := DBTcount; nhtC_time:=next_heightC_time;
     prints(tested_pos_hash.size() - tph, " pos is_unitary tests, in time = ",
     	print_time_string(sum(tested_pos_times) - tpt),"; ",tested_neg_hash.size() - tnh,
 	" neg is_unitary tests, in time = ",print_time_string(sum(tested_neg_times) - tnt));
@@ -939,7 +1261,9 @@ set (report_tested_cum,clear_report_tested_cum_clear) = (((string, string) -> vo
 	 utc:=unitary_test_counter.use_count();
 	 ct:=charTime;
 	 cu:= char_counter.use_count();
-    prints("...",running_label,"...",DTcount," Dirac elim, ",DBTcount," best-Dirac elim");
+    prints("...",running_label,"...",DTcount," Dirac elim, ",DBTcount,
+    	   " best-Dirac elim" {; more_shift_level = ",more_shift_level,", edge_offset = ",edge_offset} );
+	   {next_heightC_time = ",print_time_string(next_heightC_time));}
     prints(tph," pos is_unitary tests, in time = ", print_time_string(tpt),"; ",tnh,
 	" neg is_unitary tests, in time = ",print_time_string(tnt));
     prints(tic, " interrupted is_unitary tests, of ",tih, " different parameters, in time ",
@@ -960,10 +1284,10 @@ set (report_tested_cum,clear_report_tested_cum_clear) = (((string, string) -> vo
     prints(print_time_string(unitaryTime)," for ",unitary_test_counter.use_count()," unitarity tests; ",
     print_time_string(charTime), " for ",char_counter.use_count(), " char calculations.");
     prints("  ----------------")
-    , @: {clear_report_tested_cum_clear}
+    , @: {clear_report_tested_cum}
      tph := 0; tpt := 0; tnh := 0; tnt :=0; oth :=0; otc :=0; ott :=0;
      tic := 0; tih := 0; tit :=0; tphh := 0; tpht :=0; tnhh := 0; tnht := 0;
-     utc := 0; utt := 0; ct :=0; cu := 0; DTc:=0; DBTc:=0)
+     utc := 0; utt := 0; ct :=0; cu := 0; DTc:=0; DBTc:=0; nhtC_time:=0)
 
 set report_tested_cum() = report_tested_cum("","")
 
@@ -980,13 +1304,15 @@ set worst_so_far(Param p, int H) = int:
 set push_deform_flag = true
 
 set predictor_verbose =false
+set predictor_flag = false
+set predictor_time = int:0
 
 {predicted time in milliseconds to complete is_unitary{to_ht}(p,{HT})}
 set u_predictor(Param p, int HT) = int:
-    let WSF = max(100*(p.real_form.semisimple_rank)^2, worst_so_far(p,HT)),
+    let start = elapsed_ms(), WSF = max(100*(p.real_form.semisimple_rank)^2, worst_so_far(p,HT)),
     	delta = p.real_form.distinguished_involution, start_pred = elapsed_ms()
-    in if not deformed_hash_flag
-       then WSF
+    in if not (deformed_hash_flag and predictor_flag)
+       then predictor_time+:= elapsed_ms() - start; WSF
        else {push_deform_flag:=true;}
        	    let list = {is_unitary runs over terms in KL_sum_to_ht(p,HT)}
 	    if HT < 0  {will do full_deform(q,HT) on each term}
@@ -1048,6 +1374,7 @@ set u_predictor(Param p, int HT) = int:
 		    then prints("prediction ",print_time_string(ans), " in time ",
 		    	 print_time_string(elapsed_ms() - start_pred))
 		    fi;
+		    predictor_time+:= elapsed_ms() - start;
 		    ans
 	    fi
 
@@ -1138,23 +1465,30 @@ set show_unitary_time() = void: prints("Time so far for is_unitary = ",
 
 {.Hermitian form on a irreducible module, normalization from its initial term.}
 set hermitian_form_irreducible (Param p) = KTypePol:
-  unitary_test_counter.use();
+  {unitary_test_counter.use();}
   let start_time = elapsed_ms()
   then answer = if is_equal_rank(real_form(p))
        	      	then c_form_irreducible(p) { not twisted, in equal rank case this is faster }
  		else check_hermitian(p,true); twisted_c_form_irreducible(p)
   		fi.convert_cform_hermitian
-  then () = unitaryTime+:=elapsed_ms() - start_time
-  then () = was_tested(p, elapsed_ms() - start_time, is_pure(answer))
-  in answer
+  in unitaryTime+:=elapsed_ms() - start_time;
+     was_tested(p, elapsed_ms() - start_time, is_pure(answer));
+     answer
 
 { compute Hermitian form on p, and report if it is unitary }
 set is_unitary (Param p) = bool:
   p.is_hermitian and hermitian_form_irreducible(p).is_pure
 
+{-1 if is_unitary, otherwise lowest height at which fails}
+set is_unitary_depth(Param p) = int:
+    if not p.is_hermitian
+    then -2
+    else hermitian_form_irreducible(p).impure_height
+    fi
+
 { compute Hermitian form on p, and report if it is unitary }
 set is_unitaryB (Param p) = bool:
-  unitary_test_counter.use();
+  {unitary_test_counter.use();}
   let start_time = elapsed_ms()
   in if is_equal_rank(p.real_form)
   then let CF = c_form_irreducible(p)
@@ -1287,19 +1621,22 @@ set twisted_c_form_irreducible (Param p,int time) = maybe_KTP:
 )
 
 set hermitian_form_irreducible (Param p, int time) = maybe_KTP:
-   unitary_test_counter.use();
+   {unitary_test_counter.use();}
    let start_time = elapsed_ms()
    then answer = case if is_equal_rank(real_form(p))
                	      then c_form_irreducible(p,time)
-	 	      else check_hermitian(p,true); twisted_c_form_irreducible(p,time)
+	 	      else check_hermitian(p,true);
+		      	   twisted_c_form_irreducible(p,time)
 	 	      fi
-   		 | timed_out: unitaryTime+:=elapsed_ms() - start_time; was_tested_inter(p, elapsed_ms() - start_time,
-		   time); return timed_out()
+   		 | timed_out: was_tested_inter(p, elapsed_ms() - start_time);
+		   	      timed_out()
    		 | done(r): let ans = r.convert_cform_hermitian
-		   	    then () = was_tested(p, elapsed_ms() - start_time, is_pure(ans)) in return ans.done
+		   	    then total_time=elapsed_ms() - start_time, boo = is_pure(ans)
+			    in was_tested(p, total_time, boo);
+			       ans.done
    		 esac
-  then () = unitaryTime+:=elapsed_ms() - start_time
-  in answer
+  in unitaryTime+:=elapsed_ms() - start_time;
+     answer
 
 set is_unitary (Param p, int time) = int: { -1: no, 0:timed out, 1: yes }
     if p.is_hermitian
@@ -1309,6 +1646,20 @@ set is_unitary (Param p, int time) = int: { -1: no, 0:timed out, 1: yes }
        	 | done(result): if result.is_pure then 1 else -1 fi
        	 esac
     fi
+
+{1: is unitary, 0: timed out, -1: non-hermitian, otherwise -2*(lowest nonunitary height+1)}
+set is_unitary_depth (Param p, int time) = int: 
+    if p.is_hermitian
+    else -1
+    then case hermitian_form_irreducible(p,time)
+       	 | timed_out: 0
+       	 | done(result): let D = result.impure_height
+	   		 in if D<0 then 1
+			    else -2*(D+1)
+			    fi
+       	 esac
+    fi
+
 
 { end of core unitarity functionality, remaining variations for user comfort }
 

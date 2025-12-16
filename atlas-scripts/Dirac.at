@@ -179,6 +179,42 @@ set tensor_p = (KType -> [KType]):
 		od
 	   fi
 
+{This is a largest height constituent of mu \otimes (g/k)}
+set tensor_p_big = (KType -> KType):
+    let base_Khash = make_KType_hash()
+    	{to hold KType's considered}
+    then tensor_p_Khash = make_KType_hash() {to hold comps of tensor with p}
+    then tpbs = [int]:[] {one int for each K_type in base_Khash}
+    	       	     {entries are indices into tensor_p_KHash}
+    in (KType -> KType): (KType tau):
+       let J = base_Khash.size()
+       then j = base_Khash.match(tau)
+       in if j = J {this is a new tau}
+       	  then let G = tau.real_form
+       	       then x0 = KGB(G,0)
+       	       then M = projection_to_K_matrix(G)
+    	       then Mrt = right_inverse(M)
+    	       then K0 = K_0(G)
+    	       then pos_p_roots = noncompact_posroots(x0)##complex_posroots(x0)
+	       	    {wts of g/k on K0}
+    	       then p_roots = pos_p_roots##(-pos_p_roots) #null(G.rank)
+    	       then tauwt = highest_weights(tau,x0)[0].mu
+    	       then cands = for v in p_roots
+    	       	    	    do let cand = M*(tauwt+v)
+		    	       in if is_dominant(K0,cand)
+		       	       	  then [cand]
+		       		  else []
+		    		  fi
+		 	    od.##.no_reps
+    	       then ans = for cand in cands
+       	       	    	  do K_type(K_highest_weight_from_K0_weight(x0,cand))
+       			  od
+	       then big_loc = max_loc(for tau in ans do height(tau) od)
+	       in tpbs #:= tensor_p_Khash.match(ans[big_loc]);
+		  ans[big_loc]
+	   else tensor_p_Khash.index(tpbs[j])
+	   fi
+
 
 set tensor_p_hts_old = (KType -> int):
     let Khash = make_KType_hash() {to hold all K-types studied}

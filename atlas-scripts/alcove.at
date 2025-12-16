@@ -81,7 +81,7 @@ in for ind@i in walls
 
 set in_same_alcove(Param p, Param q) = bool:
    let (x,lr,gamma_p)=%p, (xx,lrr,gamma_q)=%q, rd = p.root_datum
-   then theta = x.involution next assert(x=xx and lr = lrr,"x or lr mismatch")
+   then theta = x.involution next assert(@:x=xx and lr = lrr,"x or lr mismatch")
    , is_negative = is_negative_coroot(rd)
 in for alpha_v@i in poscoroots(rd)
    do let diff = (alpha_v*gamma_p)\1 - (alpha_v*gamma_q)\1 in
@@ -189,7 +189,7 @@ set promote_in_alcove(Param p) = Param:
          od
       )
   then q= param(x, lr, gamma+corr)
-  in assert(in_same_alcove(p,q),"correction leaves alcove for "+p.to_string); q
+  in assert(@:in_same_alcove(p,q),"correction leaves alcove for "+p.to_string); q
 )
 
 set wall_components(RootDatum rd, [int] walls) = [[int]]:

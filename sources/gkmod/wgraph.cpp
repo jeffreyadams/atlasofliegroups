@@ -14,7 +14,7 @@
 #include <algorithm>
 #include <iostream>
 
-#include "filekl_in.h"	// for alternative |wGraph| function
+#include "filekl_in.h"	// for use in alternative |wGraph| function
 
 namespace atlas {
 

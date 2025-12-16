@@ -1430,3 +1430,21 @@ print_W_cells: (Block->):
 print_W_graph: (Block->):
   These commands give the output of the corresponding commands, present under
   that name in Fokko, for printing the information the name suggests
+
+query: (string->string): Prompt, and get user response as a string value
+  The prompt is written to the standard output of the atlas program (even if
+  output for the current expression is redirected) and the input is a sequence
+  of characters from the standard input (even when currently reading in a
+  script) up to a newline character (not included in the result).
+  Currently the user input is not processed by readline.
+
+system: (string->(void|(int,string))): Execute a shell command, return its output
+  Pass the string to the system shell for execution (in a child process), wait
+  for its termination and if successful return the exit status and the text
+  produced on the standard output of the child process. If something goes very
+  wrong (like no system shell is found, or the child process is terminated by an
+  external interrupt) then the void alternative of the union is returned
+  (equivalent to fail()); in all other cases an exit code and output text (which
+  may be empty) are returned as the (int,string) alternative of the union, as in
+  succeed(code,output). In this case, a non-zero exit code usually indicates some
+  kind of problem; possibly even the shell being unable to execute the command.
