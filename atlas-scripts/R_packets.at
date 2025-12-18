@@ -118,11 +118,6 @@ then () = while (#S).>
     in (p0.x, parameter(p0.x, p0.lambda + twists[j], p0.nu).lambda)
 }
 
-{perform to_more_split Cayley transforms through singular imaginary roots as long as possible}
-set up_Cayley (Param p) = Param:
-    let (y,tau) = up_Cayley(p.x, p.lambda)
-    in parameter(y,tau,p.nu)
-
 set move(WeylElt w) = ((KGBElt,ratvec) -> (KGBElt,ratvec)):
  (KGBElt x, ratvec lambda) (KGBElt,ratvec):
  let G = w.root_datum

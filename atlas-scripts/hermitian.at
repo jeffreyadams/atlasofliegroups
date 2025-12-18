@@ -102,6 +102,10 @@ set_type maybe_KTP = (void timed_out | KTypePol done)
 {to record time spent in is_unitary, is_unitary_to_ht, etc.}
 set unitaryTime = int: 0
 
+set predictor_verbose =false
+set predictor_flag = false
+set predictor_time = int:0
+
 set to_ht (KTypePol P,int N) = KTypePol:
   if N<0 then return P fi;
   let (below,)=height_split(P,N) in below
@@ -1054,29 +1058,32 @@ set was_tested(Param p, int T, bool ans) = void:
     then prints(p," took ",print_time_string(T)," to test is_unitary = ", ans)
     fi;
     unitary_test_counter.use();
-    let M = tested_pos_hash.size()
-    then m = tested_pos_hash.match(p)
-    then i = tested_inter_hash.lookup(p)
+    let i = tested_inter_hash.lookup(p)
     in if i >= 0
        then T+:=tested_inter_times[i]
        fi;
-       if ans
-       then {prints("M = ",M,", m = ",m);}
-	    if m = M
+    if ans
+    then let M = tested_pos_hash.size()
+       	 then m = tested_pos_hash.match(p)
+       	 {then prints("M = ",M,", m = ",m)}
+	 in if m = M
 	    then tested_pos_times#:=T;
 	    	 tested_pos_strings #:= test_string;
 		 tested_pos_counts #:=1
 	    else tested_pos_times[m] +:= T;
 	    	 tested_pos_counts[m] +:= 1
 	    fi
-       else if m = M
+    else let M = tested_neg_hash.size()
+       	 then m = tested_neg_hash.match(p)
+	 {then prints("M = ",M,", m = ",m)}
+	 in if m = M
 	    then tested_neg_times#:=T;
 	    	 tested_neg_strings #:= test_string;
 		 tested_neg_counts #:=1
 	    else tested_neg_times[m] +:= T;
 	    	 tested_neg_counts[m] +:= 1
 	    fi
-       fi
+    fi
 
 set was_tested_inter(Param p, int T) = void:
     if drain_plug_flag and T > drain_plug_time
@@ -1230,7 +1237,9 @@ set was_tested_inter_to_ht(Param p,int HT, int T) = void:
        fi}
 
 set report_tested(string label) = void:
-    prints("...",label,"...",DTcount," Dirac elim, ",DBTcount," best-Dirac elim; edge_offset = ",edge_offset);
+    prints("...",label,"...",DTcount," Dirac elim, ",DBTcount," best-Dirac elim; predictor_time = ",
+    	  print_time_string(predictor_time));
+    {edge_offset = ",edge_offset);}
     {next_heightC_time = ",}
            {print_time_string(next_heightC_time));}
     prints(tested_pos_hash.size()," pos is_unitary tests, in time = ",
@@ -1288,7 +1297,7 @@ set (report_tested_cum,clear_report_tested_cum) = (((string, string) -> void),(v
     in (((string,string)->void): (string local_label, string running_label) void:
     prints("  ----------------");
     prints("...",local_label,"...",DTcount - DTc," Dirac elim, ",DBTcount - DBTc,
-    " best-Dirac elim, more_shift_level = ",more_shift_level, ",edge_offset = ",edge_offset);
+    " best-Dirac elim, more_shift_level = ",more_shift_level, ", edge_offset = ",edge_offset);
     {next_heightC_time = ",print_time_string(next_heightC_time - nhtC_time));}
     	DTc :=DTcount; DBTc := DBTcount; nhtC_time:=next_heightC_time;
     prints(tested_pos_hash.size() - tph, " pos is_unitary tests, in time = ",
@@ -1335,7 +1344,8 @@ set (report_tested_cum,clear_report_tested_cum) = (((string, string) -> void),(v
 	 ct:=charTime;
 	 cu:= char_counter.use_count();
     prints("...",running_label,"...",DTcount," Dirac elim, ",DBTcount,
-    	   " best-Dirac elim" {; more_shift_level = ",more_shift_level,", edge_offset = ",edge_offset} );
+    	   " best-Dirac elim; predictor_time = ",print_time_string(predictor_time));
+	   {more_shift_level = ",more_shift_level,", edge_offset = ",edge_offset );}
 	   {next_heightC_time = ",print_time_string(next_heightC_time));}
     prints(tph," pos is_unitary tests, in time = ", print_time_string(tpt),"; ",tnh,
 	" neg is_unitary tests, in time = ",print_time_string(tnt));
@@ -1408,10 +1418,6 @@ set worst_so_far(Param p, int H) = int:
 
 {whether to insist that a timed deform compute at least one term}
 {set push_deform_flag = true}
-
-set predictor_verbose =false
-set predictor_flag = false
-set predictor_time = int:0
 
 {predicted time in milliseconds to complete is_unitary{to_ht}(p,{HT})}
 set u_predictor(Param p, int HT) = int:

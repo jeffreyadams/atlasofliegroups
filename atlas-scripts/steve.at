@@ -31,7 +31,8 @@ set move_theta(WeylElt w) = ((KGBElt,ratvec) -> (KGBElt,ratvec)):
 
 
 {should require number of -alphav*theta >= number of alphav}
-set red_coroots(KGBElt x) = [vec]:
+{defined in hermitian.at}
+{set red_coroots(KGBElt x) = [vec]:
     let G = x.real_form,  theta = x.involution
     then rho = G.rho, pos_co = G.poscoroots
     in for alphav@j in pos_co
@@ -40,6 +41,7 @@ set red_coroots(KGBElt x) = [vec]:
 	  else []
 	  fi
        od.##
+}
 
 {need to study reducibility along av at int values
 from int to int inclusive}
@@ -309,16 +311,6 @@ set ind_quo(KGBElt x, ratvec lambda, vec av, rat t) = KTypePol:
     then () = assert(#character_formula(1*pL) = (#character_formula(1*pL1)),
     "bad char for pL1")}
     in real_induce_standard(K_type_pol(std_quo(pL1)), x.real_form)
-
-set to_ht_G(RealForm G, KTypePol QL, int HT) = KTypePol:
-    if HT.< then return QL fi;
-    sum(QL.real_form,
-	for c@tauL in QL
-    	do if dominant(G,parameter(tauL).d_lambda)*(G.two_rho_check) <= HT
-	   then c*tauL
-	   else 0*tauL
-	   fi
-	od)
 
 set to_ht_G(RealForm G, KTypePol QL, int HT) = KTypePol:
     if HT.< then return QL fi;
@@ -1716,8 +1708,9 @@ set up_graph_gens(vec_hash lochash, [vec] KCvs, [int] loclist) = [[int]]:
        edge_gens
 
 {output is what was generally called (eq,gr) in FPP_localDirac.at}
-set graph([[int]] edges) = ([[int]],[[int]]):
-    strong_components(edges)
+{USE strong_components!}
+{set graph([[int]] edges) = ([[int]],[[int]]):
+    strong_components(edges)}
 
 set graph_tilde_flag = false {so always run through graph "large" faces (highly deformable) to small}
 set steve_graph_test_time = int:0
@@ -1758,7 +1751,7 @@ begin
 	 else is_unitary_test_big_SIMPLE_interrupt(p)
 	 fi
     then up_gens = up_graph_gens(short_lochash, short_KCvlist, short_loclist)
-    then (eq,gr) = graph(up_gens)
+    then (eq,gr) = strong_components{graph}(up_gens)
     then NumClasses = #eq, printInterval = int: 1, start_count = unitary_test_counter.use_count()
     then statuses = [string]: for j:#eq do "?" od
     {then () = for k:#eq
@@ -2974,7 +2967,7 @@ set localFD_Steve2(KGBElt x, ratvec lambda) = ([[FaceVertsKHash]], int):
     then (Lvd,Perm2) = LPm_table.LPm_entry(ic, theta, ratvec_as_vec(lambda+theta*lambda))
     in localFD_Steve2(x, lambda, Lvd, Perm2)
 
-{get verts, edges to hts[edge_offset] to feed one_level_end, with Kchar and #LQs}
+{get verts, edges to hts[edge_offset] to feed one_level_end, with Kchar and #LQs}{FIRST}
 set localFD_Steve2_graph(KGBElt x, ratvec lambda, LocalVertexData Lvd, PermOrderTwo Perm2) =
     ([[FaceVertsKHash]],int):
     let start = elapsed_ms(), p0 = parameter(x,lambda,0*lambda)
@@ -3002,31 +2995,6 @@ set localFD_Steve2_graph(KGBElt x, ratvec lambda, LocalVertexData Lvd, PermOrder
     in extra_coord_flag:=extra_coord_hold; (LF,hts[edge_offset])
 
 {get verts, edges to hts[edge_offset] to feed one_level_end, with Kchar and #LQs}
-set localFD_Steve2_graph(KGBElt x, ratvec lambda, LocalVertexData Lvd, PermOrderTwo Perm2) =
-    ([[FaceVertsKHash]],int):
-    let start = elapsed_ms(), p0 = parameter(x,lambda,0*lambda)
-    then hts = next_heights(p0,edge_offset+1), extra_coord_hold = extra_coord_flag
-    then () = if edge_offset= first_offset then extra_coord_flag:=true fi
-    then LF0 = localFD_1SteveU(x,lambda,hts[first_offset], Lvd)
-    then () = if show_steve_flag
-    	      then prints("LF0 to height ",hts[first_offset]," = ",LF0)
-	      fi
-    then () = extra_coord_flag :=true
-    then () = if edge_offset > first_offset
-    	      then LF0:= test_Steve(x,lambda,hts[edge_offset],Lvd,[LF0])[0]
-	      fi
-    then () = if show_steve_flag
-    	      then prints("LF0 with extra to height ",hts[edge_offset]," = ",LF0)
-	      fi
-    then LF = [LF0,  localFD_2SteveU(x,lambda,hts[edge_offset],Lvd,Perm2,LF0)]
-    then () = if show_steve_flag
-    	      then prints("LF1 with extra to height ",hts[edge_offset]," = ",LF[1])
-	      fi
-    then () = if fund_face_verbose
-    	      then prints("edge/vert counts to height ",hts[edge_offset], " = ",
-	      	   for list in LF do #list od,"; time  = ",print_time_string(elapsed_ms() - start))
-	      fi
-    in extra_coord_flag:=extra_coord_hold; (LF,hts[edge_offset])
 
 {get verts, edges to hts[edge_offset] to feed one_level_end, with Kchar and #LQs}
 set localFD_Steve12_graph(KGBElt x, ratvec lambda, LocalVertexData Lvd, PermOrderTwo Perm2) =

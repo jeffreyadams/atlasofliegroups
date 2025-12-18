@@ -58,7 +58,7 @@ assert(@:is_integrally_dominant(p.root_datum,gamma_target),"T_std: target is not
 T_param(p,gamma_target)
 
 { translate a |ParamPol| by translating each term }
-set T_std (ParamPol P, ratvec gamma_target) = ParamPol:
+set T_std_general (ParamPol P, ratvec gamma_target) = ParamPol:
   P.null_module + for w@q in P do w*T_std(q,gamma_target) od
 
 { T_param of ParamPol of parameters, assuming each term has the

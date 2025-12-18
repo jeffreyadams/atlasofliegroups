@@ -1,5 +1,6 @@
 <basic.at
 <tits.at
+<misc.at {for complement}
 { various ways of defining parameters }
 
 { torus_factor, aka "normalized torus factor", is $\theta$-fixed,
@@ -158,9 +159,9 @@ all(for a in A do find (B,a)!=-1 od)
 set is_proper_subset([Param] A,[Param] B)=bool:
 is_subset(A,B) and #A<#B
 
-{complement of A in B}
-set complement([Param] A,[Param] B)=[Param]:
-##for p in B do if find(A,p)=-1 then [p] else [] fi od
+{complement of A in B}{DEFINED IN misc.at}
+{set complement([Param] A,[Param] B)=[Param]:
+##for p in B do if find(A,p)=-1 then [p] else [] fi od}
 
 {turn [Param] into a ParamPol}
 set param_pol ([Param] params,RealForm G) = ParamPol:

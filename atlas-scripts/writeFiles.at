@@ -163,10 +163,6 @@ set write_K_type_pols(RealForm G, [[KPolTermDatum]] KPolsData,
 set write_K_type_pols(RealForm G, [[KPolTermDatum]] KPolsData) = void:
     write_K_type_pols(G,KPolsData,default_K_type_pols_name)
 
-
-set write_K_type_pols(RealForm G, [[KPolTermDatum]] KPolsData) = void:
-     write_K_type_pols(G, KPolsData, default_K_type_pols_name)
-
 set default_K_type_pols_data_name = "KPols_saved_data"
 
 {. Same thing, writing only data and not KTypePol's.}

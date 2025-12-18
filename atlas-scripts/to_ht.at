@@ -9,6 +9,7 @@ labelling others as "new"}
 {If HT < 0, then use full version}
 set herm_report = bool: false
 
+{defined in hermitian.at}
 set to_ht (int N) = (ParamPol->ParamPol): (ParamPol P):
   if N < 0 then P
   else let (below,)=height_split(P,N) in below
@@ -148,10 +149,6 @@ set KL_sum_at_s_to_ht(int HT) = (Param p) ParamPol:
 
 set twisted_KL_sum_at_s_to_ht(int N) = (Param p) ParamPol:
   to_ht(N)(twisted_KL_sum_at_s(p))
-
-set twisted_KL_sum_at_s_to_ht(int N) = (Param p) ParamPol:
-  to_ht(N)(twisted_KL_sum_at_s(p))
-
 
 {.write c-invariant form on standard module as a ParamPol of
 standardrepKs to specified height.}
