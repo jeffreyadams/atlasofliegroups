@@ -156,7 +156,11 @@ set full_deform_to_ht_MvL_base(Param p, int height, int time) = maybe_KTP:
 ( if not strict_low(p,height)
   then return to_ht(full_deform(p,time),height)
   fi;
-  let start = elapsed_ms(), !empty_K=null_K_module(p.real_form), !empty=null_module(p)
+  let start = elapsed_ms(), !empty_K=null_K_module(p.real_form), !empty=null_module(p){,
+      deformed_hash_flag_hold = deformed_hash_flag}
+  {then () = if height >= 0
+       	    then deformed_hash_flag:=true
+	    fi}
   then output = empty_K, def = empty, expiration = elapsed_ms() + time
   then P = empty +
   { snap p down to a reducibility point, or tempered parameter }
@@ -166,12 +170,14 @@ set full_deform_to_ht_MvL_base(Param p, int height, int time) = maybe_KTP:
   then () = while >#P
        	    do set (def,P) :=
                (let q=first_param(P) in block_deform(q,P next P:=empty,height))
-  	       ; if elapsed_ms() > expiration then return timed_out() fi
+  	       ; if elapsed_ms() > expiration
+	       	 then {deformed_hash_flag := deformed_hash_flag_hold;}
+		 return timed_out() fi
   	       ;  let kt = for c@m in def if  =nu(m) do (c,m.K_type) fi od
      	       	  ,   pp = for c@m in def if !=nu(m) do (c,m) fi od
   	      in output := (output next output:=empty_K) + kt; P := (P next P:=empty) + pp
   	    od
-  in done(output)
+  in {deformed_hash_flag := deformed_hash_flag_hold;} done(output)
 )
 
 set full_deform_to_ht_MvL_base(Param p, int height) = KTypePol:
@@ -179,7 +185,10 @@ set full_deform_to_ht_MvL_base(Param p, int height) = KTypePol:
   then return to_ht(full_deform(p),height)
   fi;
   let !empty_K=null_K_module(p.real_form), !empty=null_module(p)
-  then output = empty_K, def = empty
+  then output = empty_K, def = empty{, deformed_hash_flag_hold = deformed_hash_flag}
+  {then () = if height >= 0
+       	    then deformed_hash_flag:=true
+	    fi}
   then P = empty +
   { snap p down to a reducibility point, or tempered parameter }
      (let rp = reducibility_points(p)
@@ -878,7 +887,7 @@ set write_twisted_deformation_hash(RealForm G) = void:
 (about 10% in F4_s) with very little speed cost (less than 1% in
 F4_s)}
 {TRUE should help interrupted to_ht}
-set deformed_hash_flag = true
+set deformed_hash_flag = false {true}
 
 {set xlv_flag = false {true costs 10% time for E7_s near x.number = 12000}}
 
@@ -1241,16 +1250,20 @@ set report_tested(string label) = void:
     {edge_offset = ",edge_offset);}
     {next_heightC_time = ",}
            {print_time_string(next_heightC_time));}
-    prints(tested_pos_hash.size()," pos is_unitary tests, in time = ",
+    prints(new_line,tested_pos_hash.size()," pos is_unitary tests, in time = ",
     	print_time_string(sum(tested_pos_times)),"; ",tested_neg_hash.size()," neg is_unitary tests, in time = ",
     	print_time_string(sum(tested_neg_times)));
     prints(sum(tested_inter_counts), " interrupted is_unitary tests, of ",
     	   tested_inter_hash.size(), " different parameters, in time ",
 	print_time_string(sum(tested_inter_times)));
-    prints(sum(for hash in tested_pos_to_ht_hashes do hash.size() od)," pos tests to_ht, in time = ",
+    prints(new_line,sum(for hash in tested_pos_to_ht_hashes do hash.size() od)," pos tests to_ht, in time = ",
  	 	   print_time_string(sum(for list in tested_pos_to_ht_times do sum(list) od)),"; ",
 	   sum(for hash in tested_neg_to_ht_hashes do hash.size() od)," neg tests to_ht, in time = ",
  	   	   print_time_string(sum(for list in tested_neg_to_ht_times do sum(list) od)));
+    prints(sum(for hash in tested_inter_to_ht_hashes do hash.size() od)," interrupted tests to_ht, in time = ",
+ 	 	   print_time_string(sum(for list in tested_inter_to_ht_times do sum(list) od)),"; ",
+	   sum(for hash in tested_inter_to_ht_hashes do hash.size() od)," interrupted tests to_ht, in time = ",
+ 	   	   print_time_string(sum(for list in tested_neg_to_ht_times do sum(list) od)),new_line);
     if OT_hash.size() > 0
     then prints(OT_hash.size()," params had ", sum(OT_counts), " interrupted tests go too long by ",
     	 print_time_string(sum(OT_times)))
@@ -1286,12 +1299,15 @@ set clear_report_tested() = void:
     for h:#tested_pos_to_ht_hashes
     do tested_pos_to_ht_hashes[h].clear(); tested_pos_to_ht_times[h]:=[]; tested_pos_to_ht_strings[h]:=[];
        tested_pos_to_ht_counts[h]:=[]; tested_neg_to_ht_counts[h]:=[];
-       tested_neg_to_ht_hashes[h].clear(); tested_neg_to_ht_times[h]:=[]; tested_neg_to_ht_strings[h]:=[]
+       tested_neg_to_ht_hashes[h].clear(); tested_neg_to_ht_times[h]:=[]; tested_neg_to_ht_strings[h]:=[];
+       tested_inter_to_ht_hashes[h].clear(); tested_inter_to_ht_times[h]:=[]; tested_inter_to_ht_strings[h]:=[];
+       tested_inter_to_ht_counts[h]:=[]
     od
 
 set (report_tested_cum,clear_report_tested_cum) = (((string, string) -> void),(void->void)):
     let tph = int: 0, tpt = int:0, tnh = int: 0, tnt = int:0, oth = int:0, otc = int:0, ott = int:0
     then tic = int: 0, tih = int: 0, tit = int:0, tphh = int: 0, tpht = int:0, tnhh = int: 0, tnht = int: 0,
+    	 tihh = int:0, tiht = int:0,
     	 utc = int: 0, utt = int: 0, ct = int:0, cu = int: 0, DTc = int:0, DBTc = int: 0, nhtC_time = int:0
     in (((string,string)->void): (string local_label, string running_label) void:
     prints("  ----------------");
@@ -1299,7 +1315,7 @@ set (report_tested_cum,clear_report_tested_cum) = (((string, string) -> void),(v
     " best-Dirac elim, more_shift_level = ",more_shift_level, ", edge_offset = ",edge_offset);
     {next_heightC_time = ",print_time_string(next_heightC_time - nhtC_time));}
     	DTc :=DTcount; DBTc := DBTcount; nhtC_time:=next_heightC_time;
-    prints(tested_pos_hash.size() - tph, " pos is_unitary tests, in time = ",
+    prints(new_line,tested_pos_hash.size() - tph, " pos is_unitary tests, in time = ",
     	print_time_string(sum(tested_pos_times) - tpt),"; ",tested_neg_hash.size() - tnh,
 	" neg is_unitary tests, in time = ",print_time_string(sum(tested_neg_times) - tnt));
 	tph:=tested_pos_hash.size();
@@ -1312,7 +1328,7 @@ set (report_tested_cum,clear_report_tested_cum) = (((string, string) -> void),(v
 	tic:= sum(tested_inter_counts);
 	tih:= tested_inter_hash.size();
 	tit:=sum(tested_inter_times);
-    prints(sum(for hash in tested_pos_to_ht_hashes do hash.size() od) -tphh," pos tests to_ht, in time = ",
+    prints(new_line,sum(for hash in tested_pos_to_ht_hashes do hash.size() od) -tphh," pos tests to_ht, in time = ",
     	print_time_string(sum(for list in tested_pos_to_ht_times do sum(list) od) - tpht),"; ",
 	   sum(for hash in tested_neg_to_ht_hashes do hash.size() od) - tnhh," neg tests to_ht, in time = ",
  	   	   print_time_string(sum(for list in tested_neg_to_ht_times do sum(list) od) - tnht));
@@ -1320,6 +1336,12 @@ set (report_tested_cum,clear_report_tested_cum) = (((string, string) -> void),(v
 	tpht:=sum(for list in tested_pos_to_ht_times do sum(list) od);
         tnhh:= sum(for hash in tested_neg_to_ht_hashes do hash.size() od);
 	tnht:=sum(for list in tested_neg_to_ht_times do sum(list) od);
+    prints(sum(for hash in tested_inter_to_ht_hashes do hash.size() od)," interrupted tests to_ht, in time = ",
+ 	 	   print_time_string(sum(for list in tested_inter_to_ht_times do sum(list) od)),"; ",
+	   sum(for hash in tested_inter_to_ht_hashes do hash.size() od) - tihh," interrupted tests to_ht, in time = ",
+ 	   	   print_time_string(sum(for list in tested_inter_to_ht_times do sum(list) od) - tiht),new_line);
+	tihh:=sum(for hash in tested_inter_to_ht_hashes do hash.size() od);
+	tiht:=sum(for list in tested_inter_to_ht_times do sum(list) od);
     if OT_hash.size() - oth > 0
     then prints(OT_hash.size()-oth," params had ", sum(OT_counts)-otc, " interrupted tests go too long by ",
     	 print_time_string(sum(OT_times) -ott));
@@ -1346,12 +1368,16 @@ set (report_tested_cum,clear_report_tested_cum) = (((string, string) -> void),(v
     	   " best-Dirac elim; predictor_time = ",print_time_string(predictor_time));
 	   {more_shift_level = ",more_shift_level,", edge_offset = ",edge_offset );}
 	   {next_heightC_time = ",print_time_string(next_heightC_time));}
-    prints(tph," pos is_unitary tests, in time = ", print_time_string(tpt),"; ",tnh,
+    prints(new_line,tph," pos is_unitary tests, in time = ", print_time_string(tpt),"; ",tnh,
 	" neg is_unitary tests, in time = ",print_time_string(tnt));
     prints(tic, " interrupted is_unitary tests, of ",tih, " different parameters, in time ",
 	print_time_string(tit));
-    prints(tphh," pos tests to_ht, in time = ",print_time_string(tpht),"; ",tnhh," neg tests to_ht, in time = ",
+    prints(new_line,tphh," pos tests to_ht, in time = ",print_time_string(tpht),"; ",tnhh," neg tests to_ht, in time = ",
  	print_time_string(tnht));
+    prints(sum(for hash in tested_inter_to_ht_hashes do hash.size() od)," interrupted tests to_ht, in time = ",
+ 	 	   print_time_string(sum(for list in tested_inter_to_ht_times do sum(list) od)),"; ",
+	   sum(for hash in tested_inter_to_ht_hashes do hash.size() od)," interrupted tests to_ht, in time = ",
+ 	   	   print_time_string(sum(for list in tested_neg_to_ht_times do sum(list) od)),new_line);
     if oth.>
     then prints(OT_hash.size()," params had ", sum(OT_counts), " interrupted tests go too long by ",
     	 print_time_string(sum(OT_times)))
@@ -1369,6 +1395,7 @@ set (report_tested_cum,clear_report_tested_cum) = (((string, string) -> void),(v
     , @: {clear_report_tested_cum}
      tph := 0; tpt := 0; tnh := 0; tnt :=0; oth :=0; otc :=0; ott :=0;
      tic := 0; tih := 0; tit :=0; tphh := 0; tpht :=0; tnhh := 0; tnht := 0;
+     tihh:=0; tiht:=0;
      utc := 0; utt := 0; ct :=0; cu := 0; DTc:=0; DBTc:=0; nhtC_time:=0)
 
 set report_tested_cum() = report_tested_cum("","")

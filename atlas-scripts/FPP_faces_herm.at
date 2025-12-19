@@ -31,8 +31,9 @@ set temp_sort_u ([KType] K_types) = [KType]:
   fi
 
 {collection of lookup functions for faces of various dimensions}
-set lookups([[vec]] LFD) = [(vec->int)]:
-    for L@d in LFD do index_in(for v in L do v[:d+1] od) od
+{defined in face_classes.at}
+{set lookups([[vec]] LFD) = [(vec->int)]:
+    for L@d in LFD do index_in(for v in L do v[:d+1] od) od}
 
 {tail is how many coords follow the vertex indices}
 set sort(RealForm G, LocalVertexData Lvd, [[FaceVertsKHash]] LFDKH, int tail) = [[FaceVertsKHash]]:
