@@ -423,8 +423,8 @@ set hermitian_form_irreducible_to_ht_MvL (Param p,int HT) = KTypePol:
   if not strict_low(p,HT) then return to_ht(hermitian_form_irreducible(p),HT) fi;
   {unitary_test_counter.use();}
   {if HT > height(p) + 20 then prints(p,HT) fi;}
-  let start_time = elapsed_ms(), deformed_flag_hold = deformed_hash_flag
-  then () = deformed_hash_flag := true
+  let start_time = elapsed_ms(){, deformed_flag_hold = deformed_hash_flag}
+  {then () = deformed_hash_flag := true}
   then answer =
        if is_equal_rank(real_form(p))
        then c_form_irreducible_to_ht_MvL(p,HT) { not twisted, in equal rank case this is faster }
@@ -432,7 +432,7 @@ set hermitian_form_irreducible_to_ht_MvL (Param p,int HT) = KTypePol:
        fi.convert_cform_hermitian
   in unitaryTime+:=elapsed_ms() - start_time;
      was_tested_to_ht(p,HT, elapsed_ms() - start_time,is_pure(answer));
-     deformed_hash_flag:=deformed_flag_hold;
+     {deformed_hash_flag:=deformed_flag_hold;}
      answer
 
 {.Hermitian form to ht on a irreducible module, normalization from its
@@ -440,8 +440,8 @@ initial term.}
 set hermitian_form_irreducible_to_ht_MvL (Param p,int HT,int time) = maybe_KTP:
   if not strict_low(p,HT) then return to_ht(hermitian_form_irreducible(p,time),HT) fi;
   {unitary_test_counter.use();}
-  let start_time = elapsed_ms(), deformed_flag_hold = deformed_hash_flag
-  then () = deformed_hash_flag := true
+  let start_time = elapsed_ms(){, deformed_flag_hold = deformed_hash_flag}
+  {then () = deformed_hash_flag := true}
   then answer =
   case if is_equal_rank(real_form(p))
        then c_form_irreducible_to_ht_MvL(p,HT,time) { not twisted, in equal rank case this is faster }
@@ -454,15 +454,15 @@ set hermitian_form_irreducible_to_ht_MvL (Param p,int HT,int time) = maybe_KTP:
 	     	ans.done
   esac
   in unitaryTime+:=elapsed_ms() - start_time;
-     deformed_hash_flag:=deformed_flag_hold;
+     {deformed_hash_flag:=deformed_flag_hold;}
      answer
 
 set hermitian_form_irreducible_to_ht (Param p,int HT) = KTypePol:
   if not strict_low(p,HT) then return to_ht(hermitian_form_irreducible(p),HT) fi;
   {unitary_test_counter.use();}
   {if HT > height(p) + 20 then prints(p,HT) fi;}
-  let start_time = elapsed_ms(), deformed_flag_hold = deformed_hash_flag
-  then () = deformed_hash_flag := true
+  let start_time = elapsed_ms(){, deformed_flag_hold = deformed_hash_flag}
+  {then () = deformed_hash_flag := true}
   then answer =
   if is_equal_rank(real_form(p))
   then c_form_irreducible_to_ht(p,HT) { not twisted, in equal rank case this is faster }
@@ -471,7 +471,7 @@ set hermitian_form_irreducible_to_ht (Param p,int HT) = KTypePol:
   then () = unitaryTime+:=elapsed_ms() - start_time
   in was_tested_to_ht(p,HT,elapsed_ms() - start_time, is_pure(answer));
      unitaryTime+:=elapsed_ms() - start_time;
-     deformed_hash_flag:=deformed_flag_hold; 
+     {deformed_hash_flag:=deformed_flag_hold;}
      answer
 
 { compute Hermitian form to ht on p, and report if it is unitary }
