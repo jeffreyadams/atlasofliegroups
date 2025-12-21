@@ -4632,13 +4632,9 @@ set local_test_GEO_hash_one_level_end(KGBElt x, ratvec lambda, LocalVertexData L
 	      then () = if test_verbose then prints(sum(for list in LFDKH do #list od),
 	      	      	   " unitary candidates in ",#eq," equivalence classes.") fi
               in local_test_hash(x, lambda, Lvd, LFDKH, eq, gr, CLBF, (Param->bool):(Param p):
-	      	 		    {if test_interrupt_flag {up_mu_flag} and prefer_to_hts
-				    then is_unitary_test_big_SIMPLE_interrupt(p,[hts[ONE])
-		      		    el}if test_interrupt_flag
+	      	 		    if test_interrupt_flag
 				    then is_unitary_test_big_SIMPLE_interrupt(p,ONE)
 				    {this is same as argument [hts[ONE]] ???}
-				    {elif prefer_to_hts
-				    then is_unitary_test_big_SIMPLE(p,hts[ONE+1:])}
 				    else is_unitary_hash_big_SIMPLE(p)
 		      		    fi, Uhash)
           else for list@d in LFDKH
