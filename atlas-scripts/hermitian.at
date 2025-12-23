@@ -103,7 +103,7 @@ set_type maybe_KTP = (void timed_out | KTypePol done)
 set unitaryTime = int: 0
 
 set predictor_verbose =false
-set predictor_flag = true {evening 12/19/25; was false}
+set predictor_flag = false {evening 12/21/25; was false until 12/19, when something went wrong}
 set predictor_time = int:0
 
 set to_ht (KTypePol P,int N) = KTypePol:

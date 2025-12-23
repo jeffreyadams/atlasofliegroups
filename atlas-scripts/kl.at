@@ -26,6 +26,7 @@
 }
 
 { ------------------------------------------------------------------- }
+{seat_belt_on:=false}
 
 {set CF_flag = false}
 set charTime = int:0
