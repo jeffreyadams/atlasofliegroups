@@ -1371,7 +1371,7 @@ set finish(KGBElt x) = void:
     in} big_unitary_hash.finishx(x)
 
 {check whether a bit in xl_known is set}
-set is_finished(KGBElt x, ratvec lambda) = bool:
+set is_finished_old(KGBElt x, ratvec lambda) = bool:
     let start = elapsed_ms(), Mx_known = big_unitary_hash.x_known(x.real_form),
 	Mx_partial = big_unitary_hash.x_partial(x.real_form), M = big_unitary_hash.xl_known(x.real_form)[x.number]
     {then () = prints("Mx_known = ",Mx_known,", Mx_partial = ",Mx_partial,", M = ",M)}
@@ -1388,6 +1388,18 @@ set is_finished(KGBElt x, ratvec lambda) = bool:
 		  fi
     then () = is_finished_time +:= elapsed_ms() - start
     in answer
+
+{check whether a bit in xl_known is set}
+set is_finished(KGBElt x, ratvec lambda) = bool:
+    let start = elapsed_ms(), M = big_unitary_hash.xl_known(x.real_form)[x.number]
+    {then () = prints("Mx_known = ",Mx_known,", Mx_partial = ",Mx_partial,", M = ",M)}
+    then answer = let pos = FPP_lam_table.position(x,lambda)
+		  in if pos.>=
+		     then is_member_bitset(pos,M)
+		     else false
+		     fi
+    in is_finished_time +:= elapsed_ms() - start;
+       answer
 
 {list of all pairs (x,lambda) for which complete FPP-unitary dual is present in big_unitary_hash}
 set list_all_finished(RealForm G) = [(KGBElt,ratvec)]:

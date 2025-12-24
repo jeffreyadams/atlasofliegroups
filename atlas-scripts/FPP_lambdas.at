@@ -478,7 +478,7 @@ set position_time = int:0
 set xl_alert_flag = false
 
 {location of lambda in FPP_lambdas(x)}
-set position(KGBElt x, ratvec lambda) = int:
+set position_old(KGBElt x, ratvec lambda) = int:
     let start = elapsed_ms()
     then lambdaNorm = parameter(x,lambda,0*lambda).lambda
     then N = FPP_lam_table.position(x,lambdaNorm)
@@ -488,6 +488,12 @@ set position(KGBElt x, ratvec lambda) = int:
 	      fi
     then () = position_time +:= elapsed_ms() - start
     in N
+
+set position(KGBElt x, ratvec lambda) = int:
+    let start = elapsed_ms()
+    then N = FPP_lam_table.position(x,lambda)
+    in position_time +:= elapsed_ms() - start;
+    N
 
 set FPP_lambdas([KGBElt] xs) = [[ratvec]]:
     for x in xs
