@@ -1,3 +1,5 @@
+<sorted_pairs.at
+
 {note: big_unitary_hash.xl_sizes(G) must be set (for the lookup xl_pair_number->(x,lambda))
  if it isn't, do big_unitary_hash.set_xl_sizes(G,[])  (not recommended for big groups)}
 
@@ -88,22 +90,31 @@ ratvec:[], {lambda}
 -1/1, {rat shift_frac}
 -1/1 {rat min_ht_mult}
 )
-set_type reportArray = [reportDatum]
 
-{size: the number of (x,lambda) pairs}
+{sortedPairs: [(xl_number, time)] of top N pairs, sorted descending by time
+ N=summary_size is fixed small number, for example 100}
+
+set summary_size=100
+
+set_type reportArray = (sortedPairs sorted_pairs,[reportDatum] report_data)
+
+{size: the number of (x,lambda) pairs;
+ summary_size: number of (x,lambda) pairs, with largest times, saved for reporting}
 {make an empty report}
-set make_report(int size)=reportArray:for i:size do emptyReportDatum od
+set make_report(int size)=reportArray:(empty_sorted_pairs(summary_size),for i:size do emptyReportDatum od)
 set make_report(RealForm G)=reportArray:make_report(number_xl_pairs(G))
 
 {make a report from scratch from [reportDatum]}
 set make_report(int size,[reportDatum] list)=
-  let report=make_report(size) in
-  for datum in list do report[datum.xl_pair_number]:=datum od;
-  report
+  let (pairs,data)=make_report(size) in
+  for datum in list do data[datum.xl_pair_number]:=datum od;
+  (pairs,data)
 
 {add single reportDatum to reportArray}
 set add_to_report(reportArray rA,reportDatum rd)=reportArray:
-rA[rd.xl_pair_number]:=rd;rA
+let (pairs,data)=rA in
+pairs:=insert(pairs,(rd.xl_pair_number,rd.x_lambda_total_time));
+data[rd.xl_pair_number]:=rd; (pairs,data)
 
 {add [reportDatum] to reportArray}
 set add_to_report(reportArray rA,[reportDatum] data)=reportArray:
@@ -185,5 +196,116 @@ mu_time_mult,
 shift_frac,
 min_ht_mult)
 
+set report_datum(reportArray rA, int xl_pair_number)=reportDatum:
+let (,list)=rA in list[xl_pair_number]
+
+set show_short(reportArray rA, int number_lines)=void:
+let ((,pairs),data)=rA in
+tabulate( ["pair","x", "lambda", "time", "time in seconds"]#
+for i:number_lines do
+ let (xl_number,time)=pairs[i] then
+ rd=data[xl_number] in
+ [to_string(xl_number),to_string(rd.kgb_number),to_string(rd.lambda), rd.nice_time,to_string(rd.x_lambda_total_time)]
+od)
+
+set show_short(reportArray rA)=void:show_short(rA,20)
+
+set reportDatumFields=(
+[xl_pair_number@reportDatum,
+kgb_number@reportDatum,
+file_number@reportDatum,
+x_lambda_total_time@reportDatum,
+tested_pos_hash_size@reportDatum,
+sum_tested_pos_times@reportDatum,
+tested_neg_hash_size@reportDatum,
+sum_tested_neg_times@reportDatum,
+sum_tested_inter_counts@reportDatum,
+tested_inter_hash_size@reportDatum,
+sum_tested_inter_times@reportDatum,
+sum_tested_pos_to_ht_hash_size@reportDatum,
+sum_tested_pos_to_ht_time_sum@reportDatum,
+sum_tested_neg_to_ht_hashes_size@reportDatum,
+sum_tested_neg_to_ht_times_sum@reportDatum,
+OT_hash_size@reportDatum,
+sum_OT_counts@reportDatum,
+sum_OT_times@reportDatum,
+hash_bottom_layerCounter_use_count@reportDatum,
+hash_one_levelCounter_use_count@reportDatum,
+hash_real_dumbCounter_use_count@reportDatum,
+hash_dumbCounter_use_count@reportDatum,
+hash2Counter_use_count@reportDatum,
+hash_steveCounter_use_count@reportDatum,
+unitaryTime@reportDatum,
+unitary_test_counter_use_count@reportDatum,
+charTime@reportDatum,
+char_counter_use_count@reportDatum,
+up_mu_time@reportDatum,
+DTcount@reportDatum,
+DBTcount@reportDatum,
+def_thruples_time@reportDatum,
+hash_def_false_count@reportDatum,
+test_no_unitary_time@reportDatum,
+test_no_Dirac_time@reportDatum,
+none_count@reportDatum],
+[mu_time_mult@reportDatum,
+shift_frac@reportDatum,
+min_ht_mult@reportDatum],
+[lambda@reportDatum],  {ratvec}
+[nice_x_lambda_total_time@reportDatum] {string}
+)
+
+set reportDatumFieldNames=
+(["xl_pair_number",
+"kgb_number",
+"file_number",
+"x_lambda_total_time",
+"tested_pos_hash_size",
+"sum_tested_pos_times",
+"tested_neg_hash_size",
+"sum_tested_neg_times",
+"sum_tested_inter_counts",
+"tested_inter_hash_size",
+"sum_tested_inter_times",
+"sum_tested_pos_to_ht_hash_size",
+"sum_tested_pos_to_ht_time_sum",
+"sum_tested_neg_to_ht_hashes_size",
+"sum_tested_neg_to_ht_times_sum",
+"OT_hash_size",
+"sum_OT_counts",
+"sum_OT_times",
+"hash_bottom_layerCounter_use_count",
+"hash_one_levelCounter_use_count",
+"hash_real_dumbCounter_use_count",
+"hash_dumbCounter_use_count",
+"hash2Counter_use_count",
+"hash_steveCounter_use_count",
+"unitaryTime",
+"unitary_test_counter_use_count",
+"charTime",
+"char_counter_use_count",
+"up_mu_time",
+"DTcount",
+"DBTcount",
+"def_thruples_time",
+"hash_def_false_count",
+"test_no_unitary_time",
+"test_no_Dirac_time",
+"none_count"],
+["mu_time_mult",
+"shift_frac",
+"min_ht_mult"],
+["lambda"],
+["time"]
+)
+
+set show(reportDatum d)=void:
+let (int_fields,rat_fields, ratvec_fields, string_fields)=reportDatumFields then
+(int_names,rat_names,ratvec_names,string_names)=reportDatumFieldNames in
+prints("xl_pair_number: ", xl_pair_number(d));
+prints("x: ", kgb_number(d));
+prints("lambda: ", lambda(d));
+for f@i in string_fields do prints(string_names[i], ": ", f(d)) od;
+for f@i in int_fields do prints(int_names[i], ": ", f(d)) od;
+for f@i in rat_fields do prints(rat_names[i], ": ", f(d)) od
 
 

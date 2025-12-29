@@ -136,7 +136,7 @@ def main(argv):
     atlas_cmd="> " + output_file + " big_unitary_hash.write()"
     proc.stdin.write(format_cmd(atlas_cmd + "\n"))
     proc.stdin.flush()
-    atlas_cmd=">> " + output_file  + " prints(\"set rA=make_report(0)\")"
+    atlas_cmd=">> " + output_file  + " prints(\"set rA=make_report(number_xl_pairs(G_temp))\")"
     print("atlas_cmd: ", atlas_cmd, "\n")
     proc.stdin.write(format_cmd(atlas_cmd + "\n"))
     proc.stdin.flush()

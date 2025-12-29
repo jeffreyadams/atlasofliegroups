@@ -1,0 +1,51 @@
+{list=[(int,int)] sorted decreasing by second entry
+ use binary sort to insert (int,int) into the list}
+
+{weakly descending list of integers of length <=max_size
+assumption: entries=(x_i,y_i); y_i \ge y_{i+1}}
+set_type sortedPairs=(int max_size, [(int,int)] entries)
+
+set sorted_pairs([(int,int)] list)=sortedPairs:(#list,list)
+set sorted_pairs(int max_size,[(int,int)] list)=sortedPairs:(max_size,list[:max_size])
+set empty_sorted_pairs(int max_size)=sortedPairs:(max_size,[(int,int)]:[])
+
+any_type S,T begin
+{same as binary_search_in except looking for inequality not equality
+assumption: for any x: leq(x,a[i])=>leq(x,a[i+1])
+ binary_search_in_weak(list,leq)(value)
+ returns k.some or ().none (smallest k such that leq(value,list[k])):
+ returns 0.some <=> value<=list[0]
+ returns k.some <=> list[k-1]<value<=list[k] (k=1,...,#list-1)
+ returns ().non <=> list[k]>=value}
+set binary_search_in_weak ([T] list,(T,T->bool) comparison) = (T->Maybe<int>):
+  (T x) Maybe<int>:
+  let i = binary_search_first( (int i)bool:comparison(x,list[i]) , 0,#list)
+  in if i<#list then some(i) else none() fi
+set binary_search_in_weak ([T] list,(T,T->bool) comparison,T value) = Maybe<int>:
+binary_search_in_weak(list,comparison)(value)
+
+{examples:
+1) (T->int f), f(i)<=f(i+1),  comparison =leq
+2) (T->int f), f(i)>=f(i+1),  comparison =geq
+}
+
+end
+
+{return integer k where pair (x,y) should be inserted to preserve order}
+set locate([(int,int)] list,(int x,int y))=
+let geq_pair((int x,int y),(int z, int w))=bool:y>=w in 
+binary_search_in_weak(list,geq_pair)(x,y)
+
+{insert (x,y) into [(int,int)] preserving order}
+set insert([(int,int)] list,(int,int) pair)=[(int,int)]:
+let k=locate(list,pair) in
+ if k.succeeds then list[:k.requisition]##[pair]##list[k.requisition:] else list#pair fi
+
+{insert value=(x,y) into entries, truncate if necessary to keep length<=list.max_size}
+set insert(sortedPairs list, (int,int) value)=sortedPairs:
+(list.max_size, insert(list.entries,value)[:min(#list.entries+1,list.max_size)])	
+
+set list=sorted_pairs([(34,20),(6,16),(29,14),(3,10),(33,5)])
+
+
+
