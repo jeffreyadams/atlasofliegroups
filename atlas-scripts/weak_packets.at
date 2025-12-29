@@ -314,11 +314,12 @@ set factor_my_representations(RealForm G, ratvec v) = [Param]:
 		      od
     in glue_params(G,my_unip_lists,v)
 
-set mult([[(int,int,Param)]] packet)=((int,int,int)->int):(int orbit,int block,int cell):
+{already defined at line 190}
+{set mult([[(int,int,Param)]] packet)=((int,int,int)->int):(int orbit,int block,int cell):
 let rv=0 in
 for (b,c,p) in packet[orbit] do
  if b=block and c=cell then rv+:=1 fi
-od;rv
+od;rv}
 
 {  output routines: show_...   }
 

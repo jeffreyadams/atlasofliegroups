@@ -16,8 +16,9 @@ set is_dom_FPP(RootDatum rd, ratvec gamma) = bool:
 	do gamma*alphavee <= 1 and gamma*alphavee >= 0
 	od)
 
-set is_FPP(RootDatum rd, ratvec gamma) = bool:
-    is_dom_FPP(rd,dominant(rd,gamma))
+{already defined in FPP_faces_geom}
+{set is_FPP(RootDatum rd, ratvec gamma) = bool:
+    is_dom_FPP(rd,dominant(rd,gamma))}
 
 set imag_simple(InnerClass ic) = [int]:
     for j:ic.semisimple_rank

@@ -216,7 +216,7 @@ set min_after_flag = false
 
 {how much to increase index in hts[] for testing at various levels}
 {1 improves E6_s and E6_q time by almost 10% }
-set edge_skip = int: 1
+{set edge_skip = int: 1}
 
 set difficulty(Param p) = rat:
     let rA = HTA(p)
@@ -943,26 +943,19 @@ set local_testK_hash(KGBElt x, ratvec lambda, LocalVertexData Lvd,
 	 else FVKHnew
 	 fi
 
-set local_testK_hash(KGBElt x, ratvec lambda, LocalVertexData Lvd,
+set local_testK_hash(KGBElt x, ratvec lambda, LocalVertexData Lvd, {def 2}
     [[FaceVertsKHash]] FVKH, [[int]] eq, [[int]] gr, [vec] classListByFace, (Param->bool) tester,
     int HT, Param_hash Uhash) = [[FaceVertsKHash]]:
     local_testK_hash(x, lambda, Lvd, FVKH, eq, gr, classListByFace, tester, HT, Uhash,
     is_unitary_hash_big_SIMPLE@Param)
 
-set local_testK_hash(KGBElt x, ratvec lambda, LocalVertexData Lvd,
+set local_testK_hash(KGBElt x, ratvec lambda, LocalVertexData Lvd, {def 3}
     [[FaceVertsKHash]] FVKH, [[int]] eq, [[int]] gr, [vec] classListByFace, int ht,
     Param_hash Uhash, (Param->bool) fancy_tester) = [[FaceVertsKHash]]:
     let tester = ((Param->bool): (Param p) bool:
     	is_unitary_to_ht_big_SIMPLE_interrupt_TOHTfirst(p, ht))
      in local_testK_hash(x, lambda, Lvd, FVKH, eq, gr, classListByFace, tester,
      ht, Uhash, fancy_tester)
-
-set local_testK_hash(KGBElt x, ratvec lambda, LocalVertexData Lvd,
-    [[FaceVertsKHash]] FVKH, [[int]] eq, [[int]] gr, [vec] classListByFace, int ht,
-    Param_hash Uhash, (Param->bool) fancy_tester) = [[FaceVertsKHash]]:
-    let tester = ((Param->bool): (Param p) bool: is_unitary_to_ht_big_SIMPLE_interrupt_TOHTfirst(p, ht))
-     in local_testK_hash(x, lambda, Lvd, FVKH, eq, gr, classListByFace, tester, ht, Uhash,
-     fancy_tester)
 
 set local_testK_hash(KGBElt x, ratvec lambda, LocalVertexData Lvd,
     [[FaceVertsKHash]] FVKH, [[int]] eq, [[int]] gr, [vec] classListByFace,
@@ -4639,13 +4632,9 @@ set local_test_GEO_hash_one_level_end(KGBElt x, ratvec lambda, LocalVertexData L
 	      then () = if test_verbose then prints(sum(for list in LFDKH do #list od),
 	      	      	   " unitary candidates in ",#eq," equivalence classes.") fi
               in local_test_hash(x, lambda, Lvd, LFDKH, eq, gr, CLBF, (Param->bool):(Param p):
-	      	 		    {if test_interrupt_flag {up_mu_flag} and prefer_to_hts
-				    then is_unitary_test_big_SIMPLE_interrupt(p,[hts[ONE])
-		      		    el}if test_interrupt_flag
+	      	 		    if test_interrupt_flag
 				    then is_unitary_test_big_SIMPLE_interrupt(p,ONE)
 				    {this is same as argument [hts[ONE]] ???}
-				    {elif prefer_to_hts
-				    then is_unitary_test_big_SIMPLE(p,hts[ONE+1:])}
 				    else is_unitary_hash_big_SIMPLE(p)
 		      		    fi, Uhash)
           else for list@d in LFDKH

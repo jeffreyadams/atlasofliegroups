@@ -31,7 +31,8 @@ set move_theta(WeylElt w) = ((KGBElt,ratvec) -> (KGBElt,ratvec)):
 
 
 {should require number of -alphav*theta >= number of alphav}
-set red_coroots(KGBElt x) = [vec]:
+{defined in hermitian.at}
+{set red_coroots(KGBElt x) = [vec]:
     let G = x.real_form,  theta = x.involution
     then rho = G.rho, pos_co = G.poscoroots
     in for alphav@j in pos_co
@@ -40,6 +41,7 @@ set red_coroots(KGBElt x) = [vec]:
 	  else []
 	  fi
        od.##
+}
 
 {need to study reducibility along av at int values
 from int to int inclusive}
@@ -320,16 +322,6 @@ set to_ht_G(RealForm G, KTypePol QL, int HT) = KTypePol:
 	   fi
 	od)
 
-set to_ht_G(RealForm G, KTypePol QL, int HT) = KTypePol:
-    if HT.< then return QL fi;
-    sum(QL.real_form,
-	for c@tauL in QL
-    	do if dominant(G,parameter(tauL).d_lambda)*(G.two_rho_check) <= HT
-	   then c*tauL
-	   else 0*tauL
-	   fi
-	od)
-
 set test_new(KGBElt x, ratvec lambda, vec av, rat t, int HT) = bool:
     let QL = ind_quo_new(x,lambda,av,t)
     in to_ht_G(x.real_form, QL,HT).!=
@@ -528,6 +520,7 @@ set pos_tester_known_Kchar_min(KGBElt x, ratvec lambda,int HT,ratvec gamma, vec 
     (bool, vec):
     let p = parameter(x,lambda,gamma), G = x.real_form
     then qs = monomials(1*p)
+    
     in {prints("got to pos_tester_known_Kchar_min");}
        if not all(for q in qs do @bool: min_bottom_elim_factors(q,p,HT) od)
        then {prints("got to pos_tester_known_Kchar_min at ",p," and bottom worked!");}
@@ -554,7 +547,19 @@ set pos_tester_Kchar_min(KGBElt x, ratvec lambda,int HT,ratvec gamma) =
     (bool, vec):
     let p = parameter(x,lambda,gamma), G = x.real_form
     then qs = monomials(1*p)
-    in {prints("got to pos_tester_Kchar_min at ",p,"...");}
+    then stats = for q in qs do status(q,HT) od
+    in 	{prints("got to pos_tester_Kchar_min at ",p,"...");}
+       if all(for stat in stats do stat > 0 od)
+       then return (true, if extra_coord_flag
+       	    	   	  then [Kpol_hash.match(K_type_pol(character_formula_to_height(1*p,HT))),#qs]
+			  else []
+			  fi)
+       elif any(for stat in stats do stat < 0 od)
+       then return (false, if extra_coord_flag
+       	    	   	   then [Kpol_hash.match(K_type_pol(character_formula_to_height(1*p,HT))),#qs]
+			   else []
+			   fi)
+       fi;
        if not all(for q in qs do @bool: min_bottom_elim_factors(q,p,HT) od)
        then {prints("...and bottom worked!");}
        	    return if extra_coord_flag
@@ -1340,16 +1345,13 @@ set make_steve_hash_small() = steve_hash_small_table:
 				       {signature to htSHS on all bl K_types}
 				       in booL:= is_pure(sigL_HT)
 				   fi
+			then qs = monomials(parameter(xSHS, lambdaSHS, gamma))
+			then stats = for q in qs do status(q,htSHS) od
 			in boo:= if not booL
 			     	   then false
-			     	   elif let qs = monomials(parameter(xSHS, lambdaSHS, gamma))
-				   	in all(for q in qs do @bool: (big_unitary_hash.ulookup(q)).>= od)
+			     	   elif all(for stat in stats do stat > 0 od)
 				   then true
-				   elif let qs = monomials(parameter(xSHS, lambdaSHS, gamma))
-				   	in any(for q in qs
-					       do @bool: status(q, htSHS) > 0
-					       {big_unitary_hash.nu_height_lookup_bool(q, htSHS)}
-					       od)
+				   elif any(for stat in stats do stat < 0 od)
 				   then false {some q fails unitary to ht}
 				   else pos_tester(xSHS, lambdaSHS, htSHS, gamma)
 				   fi;
@@ -1716,8 +1718,9 @@ set up_graph_gens(vec_hash lochash, [vec] KCvs, [int] loclist) = [[int]]:
        edge_gens
 
 {output is what was generally called (eq,gr) in FPP_localDirac.at}
-set graph([[int]] edges) = ([[int]],[[int]]):
-    strong_components(edges)
+{USE strong_components!}
+{set graph([[int]] edges) = ([[int]],[[int]]):
+    strong_components(edges)}
 
 set graph_tilde_flag = false {so always run through graph "large" faces (highly deformable) to small}
 set steve_graph_test_time = int:0
@@ -1758,7 +1761,7 @@ begin
 	 else is_unitary_test_big_SIMPLE_interrupt(p)
 	 fi
     then up_gens = up_graph_gens(short_lochash, short_KCvlist, short_loclist)
-    then (eq,gr) = graph(up_gens)
+    then (eq,gr) = strong_components{graph}(up_gens)
     then NumClasses = #eq, printInterval = int: 1, start_count = unitary_test_counter.use_count()
     then statuses = [string]: for j:#eq do "?" od
     {then () = for k:#eq
@@ -2326,8 +2329,8 @@ set localFD_2SteveU\
     then return []
     fi;
     if fund_face_verbose
-    then prints(new_line,"start localFD_2Steve");
-    	 prints("LF0 = ",LF0)
+    then prints(new_line,"start localFD_2SteveU to height ",HT){;
+    	 prints("LF0 = ",LF0)}
     fi;
     steve_hash_small.reset_with_ht(x,lambda,HT);
     {prints("in localFD_2SteveU, LF0 = ",LF0);}  {COMMENT OUT!}
@@ -2460,14 +2463,15 @@ set localFD_2SteveU\
      	       then prints("after Edges, time is ",print_time_string(elapsed_ms() - start))
 	       fi}
      {then () = prints("#Edges in localFD_2SteveU = ",#Edges)} {COMMENT THIS OUT!}
-     then length = #Edges
+     then length = #Edges, extra = vec:[]
      then freq = max(length\10,1)
      then (rfnum, xlnum, htnum) = if steve_small_flag
      	  	  	 	  then (0,0,0)
 				  else steve_hash.indices(x, lambda, HT)
 				  fi
+     then ()= if fund_face_verbose then prints("found ",#Edges," edges.") fi
      then LF1 = [FaceVertsIndex]:
-          if steve_tilde_flag
+          if steve_tilde_flag {BACKWARD through Edges}
 	  then for v@j in Edges
 	       ~do if fund_face_verbose and red_count_flag and (j%freq).=
 	       	   then prints("at edge ",j," of ",length,
@@ -2484,24 +2488,25 @@ set localFD_2SteveU\
 			    od))
 	       	then []}
 		if Q(nu,nu) > DiracBD
-		then DTcount +:=1; []
-	       	elif if steve_small_flag
-		     then steve_hash_small.postest(face_bary(Lvd,v))
-		     else steve_hash.partly_indexed_postest(rfnum, xlnum, htnum, face_bary(Lvd,v))
-		     fi
-	       	then let extra = if extra_coord_flag {pos test passes}
-		     	       	 then if steve_small_flag
-				      then steve_hash_small.extra_coord(face_bary(Lvd,v))
-				      else steve_hash.extra_coord(x,lambda,HT,face_bary(Lvd,v))
-				      fi
-				  else null(0)
-				  fi
-		     in [v##extra]
-	       	    {then prints("v = ",v, "extras = ", steve_hash.extra_coord(x,lambda,HT,face_bary(Lvd,v)));}
-		  else [] {pos test fails}
+		then DTcount +:=1;
+		if steve_small_flag
+		then steve_hash_small.numatch(nu)
+		fi; []
+	       	elif let () = extra := if steve_small_flag
+		     	      	       then steve_hash_small.extra_coord(face_bary(Lvd,v))
+			 	       else steve_hash.extra_coord(x,lambda,HT,face_bary(Lvd,v))
+			 	       fi
+		     in if steve_small_flag
+		     	then steve_hash_small.postest_known_Kchar(face_bary(Lvd,v),extra)
+		     	else steve_hash.partly_indexed_postest_known_Kchar(rfnum, xlnum, htnum,
+			      face_bary(Lvd,v),extra)
+		     	fi
+	       	then [v## if extra_coord_flag then extra else null(0) fi] {pos test passes}
+		{then prints("v = ",v, "extras = ", steve_hash.extra_coord(x,lambda,HT,face_bary(Lvd,v)));}
+		else [] {pos test fails}
 		  fi {not fewer}
 	      od.## {v in Edges}
-	      else for v@j in Edges
+	      else for v@j in Edges {now FORWARD through Edges}
 	       	   do if fund_face_verbose and red_count_flag and (j%freq).=
 	       	   then prints("at edge ",j," of ",length,
 	    	       " at time ", print_time_string(elapsed_ms() - start),
@@ -2516,22 +2521,27 @@ set localFD_2SteveU\
 	       	      	    do @bool: is_pos_on_LKTs(q)
 			    od))}
 	        if Q(nu,nu) > DiracBD
-	       	then DTcount +:=1; []
-	       	elif if steve_small_flag
-		     then steve_hash_small.postest(face_bary(Lvd,v))
-		     else steve_hash.partly_indexed_postest(rfnum, xlnum, htnum, face_bary(Lvd,v))
-		     fi
-	       	then let extra = if extra_coord_flag {pos test passes}
-		     	       	 then if steve_small_flag
-				      then steve_hash_small.extra_coord(face_bary(Lvd,v))
-				      else steve_hash.extra_coord(x,lambda,HT,face_bary(Lvd,v))
-				      fi
-				  else null(0)
-				  fi
-		     in [v##extra]
+	       	then DTcount +:=1;
+		     if steve_small_flag
+		     then steve_hash_small.numatch(nu)
+		     fi;
+		     []
+		 elif let () = extra := if steve_small_flag
+				 then steve_hash_small.extra_coord(face_bary(Lvd,v))
+				 else steve_hash.extra_coord(x,lambda,HT,face_bary(Lvd,v))
+				 fi
+		      {then real_ans = is_unitary_to_ht(Finalize(p),HT)}
+	       	      in if steve_small_flag
+		      	 then {let steve_ans =} steve_hash_small.postest_known_Kchar(face_bary(Lvd,v),extra)
+			      {in assert(@:steve_ans = real_ans,"steve postest problem");
+			      	 real_ans}
+		     	 else steve_hash.partly_indexed_postest_known_Kchar(rfnum, xlnum, htnum,
+			      face_bary(Lvd,v),extra)
+		     	 fi
+		 then [v##if extra_coord_flag then extra else null(0) fi] {pos test passes}
 	       	    {then prints("v = ",v, "extras = ", steve_hash.extra_coord(x,lambda,HT,face_bary(Lvd,v)));}
-		  else [] {pos test fails}
-		  fi {not fewer}
+		 else [] {pos test fails}
+		 fi {not fewer}
 	      od.## {v in Edges}
 	      fi {steve_tilde_flag}
 	{then () = if steve_tilde_flag
@@ -2974,7 +2984,7 @@ set localFD_Steve2(KGBElt x, ratvec lambda) = ([[FaceVertsKHash]], int):
     then (Lvd,Perm2) = LPm_table.LPm_entry(ic, theta, ratvec_as_vec(lambda+theta*lambda))
     in localFD_Steve2(x, lambda, Lvd, Perm2)
 
-{get verts, edges to hts[edge_offset] to feed one_level_end, with Kchar and #LQs}
+{get verts, edges to hts[edge_offset] to feed one_level_end, with Kchar and #LQs}{FIRST}
 set localFD_Steve2_graph(KGBElt x, ratvec lambda, LocalVertexData Lvd, PermOrderTwo Perm2) =
     ([[FaceVertsKHash]],int):
     let start = elapsed_ms(), p0 = parameter(x,lambda,0*lambda)
@@ -3002,31 +3012,6 @@ set localFD_Steve2_graph(KGBElt x, ratvec lambda, LocalVertexData Lvd, PermOrder
     in extra_coord_flag:=extra_coord_hold; (LF,hts[edge_offset])
 
 {get verts, edges to hts[edge_offset] to feed one_level_end, with Kchar and #LQs}
-set localFD_Steve2_graph(KGBElt x, ratvec lambda, LocalVertexData Lvd, PermOrderTwo Perm2) =
-    ([[FaceVertsKHash]],int):
-    let start = elapsed_ms(), p0 = parameter(x,lambda,0*lambda)
-    then hts = next_heights(p0,edge_offset+1), extra_coord_hold = extra_coord_flag
-    then () = if edge_offset= first_offset then extra_coord_flag:=true fi
-    then LF0 = localFD_1SteveU(x,lambda,hts[first_offset], Lvd)
-    then () = if show_steve_flag
-    	      then prints("LF0 to height ",hts[first_offset]," = ",LF0)
-	      fi
-    then () = extra_coord_flag :=true
-    then () = if edge_offset > first_offset
-    	      then LF0:= test_Steve(x,lambda,hts[edge_offset],Lvd,[LF0])[0]
-	      fi
-    then () = if show_steve_flag
-    	      then prints("LF0 with extra to height ",hts[edge_offset]," = ",LF0)
-	      fi
-    then LF = [LF0,  localFD_2SteveU(x,lambda,hts[edge_offset],Lvd,Perm2,LF0)]
-    then () = if show_steve_flag
-    	      then prints("LF1 with extra to height ",hts[edge_offset]," = ",LF[1])
-	      fi
-    then () = if fund_face_verbose
-    	      then prints("edge/vert counts to height ",hts[edge_offset], " = ",
-	      	   for list in LF do #list od,"; time  = ",print_time_string(elapsed_ms() - start))
-	      fi
-    in extra_coord_flag:=extra_coord_hold; (LF,hts[edge_offset])
 
 {get verts, edges to hts[edge_offset] to feed one_level_end, with Kchar and #LQs}
 set localFD_Steve12_graph(KGBElt x, ratvec lambda, LocalVertexData Lvd, PermOrderTwo Perm2) =
@@ -3273,7 +3258,7 @@ set local_test_GEO_hash_steve_graph(KGBElt x, ratvec lambda, LocalVertexData Lvd
 	    else localFD_Steve2_graph(x,lambda,Lvd,Perm2)
 	    fi
     in local_test_GEO_hash_one_level_end(x,lambda,Lvd,LFKH,Kpol_hash,HT, Uhash, is_unitary@Param)
-
+{at FPP_local line 4488; }
 
  {   then hts = next_heights(p0,edge_offset+1)
     then FIRST_HT = hts[first_offset], ONE_HT = hts[edge_offset], r = rank(theta-1)

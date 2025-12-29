@@ -49,7 +49,7 @@ set best_late() = void:
 {these functions were in unity.at; give useful heights to which to try unitarity}
 {. gives (one of) the K-types of lowest height above mu in the
 standard of LKT mu .} {NEED USEFUL BOUND in K_type_formula.}
-set next_to_lowest(KType mu, int step) = KType:
+set next_to_lowest_Dirac(KType mu, int step) = KType:
     let form = null_K_module(mu.real_form)
     then m = height(mu)
     then () = for j:60 from 1
@@ -62,12 +62,12 @@ set next_to_lowest(KType mu, int step) = KType:
 	      od
     in last_K_type(form)
 
-set next_to_lowest(KType mu) = KType:
-    next_to_lowest(mu,1)
+set next_to_lowest_Dirac(KType mu) = KType:
+    next_to_lowest_Dirac(mu,1)
 
 {. height of a smallest non-lowest K_type of standard with LKT mu .}
-set next_height(KType mu)  = int:
-    height(next_to_lowest(mu))
+set next_height_Dirac(KType mu)  = int:
+    height(next_to_lowest_Dirac(mu))
 
 {set next_height(KType mu) = int:
     let m = height(mu)
@@ -78,13 +78,13 @@ set next_height(KType mu)  = int:
      fi od)}
 
 {. height of a smallest non-lowest K_type of p .}
-set next_height(Param p) = int:
-    min(for mu in LKTs(p) do height(next_to_lowest(mu)) od)
+set next_height_Dirac(Param p) = int:
+    min(for mu in LKTs(p) do height(next_to_lowest_Dirac(mu)) od)
 
-set next_taus(KType mu, int D) = [KType]:
+set next_taus_Dirac(KType mu, int D) = [KType]:
     let taus = [mu]
     then () = while #taus < D+1
-	      do taus #:= next_to_lowest(taus~[0])
+	      do taus #:= next_to_lowest_Dirac(taus~[0])
 	      od
     in taus[1:]
 

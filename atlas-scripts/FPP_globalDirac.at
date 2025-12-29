@@ -300,6 +300,7 @@ set test_no_Dirac(KGBElt x, ratvec lambda, LocalVertexData Lvd) = bool:
 {just test extremal vertices. Not clear that this is OK: Dirac could
 fail for the extreme points, but pass for some interior point. Also SLOWER than test_no_Dirac
 except for #Lvd.list approximately 50000???}
+{
 set test_no_Dirac_extr(KGBElt x, ratvec lambda) = bool:
     if twist(x) != x then return true fi;
     let start = elapsed_ms(), DiracBD = DiracBD(x,lambda), Q = invariant_form(x.real_form)
@@ -307,10 +308,10 @@ set test_no_Dirac_extr(KGBElt x, ratvec lambda) = bool:
     	 	       do @bool: Q(v,v) <= DiracBD od)
     then () = test_no_Dirac_time +:= elapsed_ms() - start
     in answer
-
-set test_no_Dirac_extr(KGBElt x, ratvec lambda) = bool:
+}
+{set test_no_Dirac_extr(KGBElt x, ratvec lambda) = bool:
     test_no_Dirac(x, lambda, Lvd(x, lambda))
-
+}
 {if lots of local verts, then use local_FPP_extrema; increasing this means
 use local_FPP_extrema less}
 set test_list_frac = rat:11/10 {at the moment FPP_extrema is too slow to be helpful}
@@ -321,10 +322,10 @@ set test_neither(KGBElt x, ratvec lambda, LocalVertexData Lvd) = bool:
     if not test_neither_flag then return false fi;
     if twist(x) != x then return false fi;
     test_no_unitary(x,lambda,Lvd) or
-    	if #Lvd.list > test_list_frac*(#FPP_vertices(x.real_form))
+    	{if #Lvd.list > test_list_frac*(#FPP_vertices(x.real_form))
     	then test_no_Dirac_extr(x,lambda)
-    	else test_no_Dirac(x, lambda, Lvd)
-    	fi
+    	else} test_no_Dirac(x, lambda, Lvd)
+    	{fi}
 
 set test_neither(KGBElt x, ratvec lambda) = bool:
     if not test_neither_flag then return false fi;

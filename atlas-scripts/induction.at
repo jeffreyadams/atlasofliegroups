@@ -88,12 +88,14 @@ ________________________
 set ind_verbose=false
 
 {. If L is a theta-stable Levi factor in G,  KGB for L embeds in KGB for G. .}
-set embed_KGB (KGBElt x_L,RealForm G) = KGBElt:
-  KGB_elt(G,involution(x_L), torus_factor(x_L))
+{defined in parabolics.at}
+{set embed_KGB (KGBElt x_L,RealForm G) = KGBElt:
+  KGB_elt(G,involution(x_L), torus_factor(x_L))}
 
 {. Given a KGB element of G, find one for the theta-stable Levi L which maps to it. .}
-set inverse_embed_KGB (KGBElt x_G,RealForm L) = KGBElt:
-  KGB_elt(L,involution(x_G), torus_factor(x_G))
+{defined in parabolics.at}
+{set inverse_embed_KGB (KGBElt x_G,RealForm L) = KGBElt:
+  KGB_elt(L,involution(x_G), torus_factor(x_G))}
 
 
 {--------------------- real parabolic induction -------------------}
@@ -101,26 +103,31 @@ set inverse_embed_KGB (KGBElt x_G,RealForm L) = KGBElt:
 {. Given an involution theta and a root datum, return the set S of complex roots
    containing the first positive representative of each quadruple
    ($\pm$ alpha,$\pm$ theta(alpha)). .}
-set makeS (mat theta,RootDatum rd) = mat:
-  columns_with((int j,vec alpha):posroot_index(rd,theta*alpha)>j,posroots(rd))
+{defined in parabolics.at}
+{set makeS (mat theta,RootDatum rd) = mat:
+  columns_with((int j,vec alpha):posroot_index(rd,theta*alpha)>j,posroots(rd))}
 
 {. As the previous function, with argument a KGB element x determining the
    involution and root datum .}
-set makeS (KGBElt x) = mat: makeS(involution(x),root_datum(x))
+{defined in parabolics.at}
+{set makeS (KGBElt x) = mat: makeS(involution(x),root_datum(x))}
 
 {. Half sum of roots in chosen set S of complex roots, described above. .}
-set rho_S ((mat,RootDatum)pair) = ratvec: sum(makeS(pair))/2
+{defined in parabolics.at}
+{set rho_S ((mat,RootDatum)pair) = ratvec: sum(makeS(pair))/2}
 
 {. As previous function, with argument KGB element x. .}
-set rho_S (KGBElt x)            = ratvec: sum(makeS(x))/2
+{defined in parabolics.at}
+{set rho_S (KGBElt x)            = ratvec: sum(makeS(x))/2}
 
 {. Given a Levi subgroup L of G, construct the parabolic with Levi L
   (this reverses Levi(P) defined in parabolics.at). .}
-set make_parabolic (RealForm L,RealForm G)=Parabolic:
+{defined in parabolics.at}
+{set make_parabolic (RealForm L,RealForm G)=Parabolic:
    assert(@:is_standard_Levi(L,G),"L is not standard in G");
    let rdl=root_datum(L) in
    let S=[int]:[] in for alpha@i in simple_roots(G) do
-   if is_posroot((rdl,alpha)) then S #:= i fi od; (S,embed_KGB(KGB(L,0),G))
+   if is_posroot((rdl,alpha)) then S #:= i fi od; (S,embed_KGB(KGB(L,0),G))}
 
 {. Real parabolic induction of a standard module of real Levi L (i.e., L
   must be the Levi factor of a real parabolic subgroup) to G .}
@@ -396,7 +403,6 @@ set is_weakly_fair (Param p_L,RealForm G) = bool:
   then weight=project_on_center (v,rdl)
   in all(for alpha_check in pcg do weight*alpha_check>=0 or
     is_positive_coroot(rdl)(alpha_check) od)
-
 
 {. Determine the "goodness" of a parameter for L; returns "good", "weakly good",
   "fair", "weakly fair", or "none"; only makes sense if L is Levi of theta-stable
@@ -831,74 +837,17 @@ set goodness(KGBElt x,ratvec lambda_in,ratvec lambda_q) = string:
   else "None"
   fi
 
-{. Decide whether a parameter for L is in the good range for G; this only
-   makes sense if L is the Levi of a (standard) theta-stable parabolic. .}
-set is_good (Param p_L,RealForm G) = bool:
-  let L=real_form(p_L) in
-  assert(@:is_standard_Levi(L,G),"L is not standard");
-  assert(@:parabolic_is_theta_stable(make_parabolic(L,G)),
-  "L is not Levi of theta-stable parabolic");
-  let rho_u=rho(G)-rho(L)
-  in let v=infinitesimal_character(p_L)+rho_u
-  in let pcg=poscoroots(G)
-  in let rdl=root_datum(L)
-  in all(for alpha_check in pcg do v*alpha_check>0 or
-    is_positive_coroot(rdl)(alpha_check) od)
-
-{. Decide whether a parameter for L is in the weakly good range for G; this only
-   makes sense if L is the Levi of a theta-stable parabolic. .}
-set is_weakly_good (Param p_L,RealForm G) = bool:
-  let L=real_form(p_L) in
-  assert(@:is_standard_Levi(L,G),"L is not standard");
-  assert(@:parabolic_is_theta_stable(make_parabolic(L,G)),
-  "L is not Levi of theta-stable parabolic");
-  let rho_u=rho(G)-rho(L)
-  in is_dominant(G,infinitesimal_character(p_L)+rho_u)
-
-{. Decide whether a parameter for L is in the fair range for G; this only
-   makes sense if L is the Levi of a theta-stable parabolic, and is only
-   defined if p_L is one_dimensional. .}
-set is_fair (Param p_L,RealForm G) = bool:
-  let L=real_form(p_L) in
-  assert(@:is_standard_Levi(L,G),"L is not standard");
-  assert(@:parabolic_is_theta_stable(make_parabolic(L,G)),
-  "L is not Levi of theta-stable parabolic");
-  let rho_u=rho(G)-rho(L)
-  in let v=infinitesimal_character(p_L)+rho_u-rho(L)
-  in let pcg=poscoroots(G)
-  in let rdl=root_datum(L)
-  in is_one_dimensional(p_L) and
-    all(for alpha_check in pcg do v*alpha_check>0 or
-    is_positive_coroot(rdl)(alpha_check) od)
-
 {. Decide whether a parameter for L is in the weakly fair range for G; this only
    makes sense if L is the Levi of a theta-stable parabolic, and is only defined
    if p_L is one-dimensional. .}
-set is_weakly_fair (Param p_L,RealForm G) = bool:
+{set is_weakly_fair (Param p_L,RealForm G) = bool:
   let L=real_form(p_L) in
   assert(@:is_standard_Levi(L,G),"L is not standard");
   assert(@:parabolic_is_theta_stable(make_parabolic(L,G)),
   "L is not Levi of theta-stable parabolic");
   let rho_u=rho(G)-rho(L)
   in is_one_dimensional(p_L) and
-     is_dominant(G,infinitesimal_character(p_L)+rho_u-rho(L))
-
-{. Determine the "goodness" of a parameter for L; returns "good", "weakly good",
-  "fair", "weakly fair", or "none"; only makes sense if L is Levi of theta-stable
-  parabolic. .}
-set goodness (Param p_L,RealForm G) = string:
-  let L=real_form(p_L) then rho_l=rho(L)
-  then rho_u=rho(G)-rho_l, infchar_l=infinitesimal_character(p_L)
-  in
-{ prints("infinitesimal character(l)=", infchar_l);
-  prints("infinitesimal character(l)+rho(u)=", infchar_l+rho_u);
-  prints("infinitesimal character(l)+rho(u)-rho(l)=", infchar_l+rho_u-rho_l); }
-  if is_good(p_L,G) then "Good"
-  elif is_weakly_good(p_L,G) then "Weakly good"
-  elif is_fair(p_L,G) then "Fair"
-  elif is_weakly_fair(p_L,G) then "Weakly fair"
-  else "None"
-  fi
+     is_dominant(G,infinitesimal_character(p_L)+rho_u-rho(L))}
 
 {. List all A_q(0) (actually: R_q(trivial): infinitesimal character rho(G))
    modules with Q a theta-stable parabolic of type P. .}

@@ -28,6 +28,7 @@ set low_frac=1 {fix this: apparently not used any more}
 }
 
 { ------------------------------------------------------------------- }
+{seat_belt_on:=false}
 
 {set CF_flag = false}
 set charTime = int:0
@@ -87,36 +88,43 @@ use it.}
 
 
 {whether to use to_height in computing to height N}
-{true means large nu/small ht, so is_unitary {to_ht} could be better}
+{true means large nu/small ht, so is_unitary_to_ht could be better}
 set low_nu(Param p, int N) = bool:
+    if N < 0 then return  false fi;
     let (,NU,) = low(p)
-    in NU > N*nu_frac
+    in (N >= 0) and (NU > N*nu_frac)
 
 set strict_low_nu(Param p, int N) = bool:
+    if N < 0 then return  false fi;
     let (,NU,) = low(p)
-    in strict_factor*NU > N*nu_frac
+    in (N >= 0) and (strict_factor*NU > N*nu_frac)
 
 {true means GAM big compared to HT, so is_unitary_to_ht could be better}
 {If N>= GAM, then to_ht gives answer to unitarity.}
 set low_gamma(Param p, int N) = bool:
+    if N < 0 then return  false fi;
     let (,,GAM) = low(p)
-    in GAM*gamma_frac > N
+    in (N >= 0) and (GAM*gamma_frac > N)
 
 set strict_low_gamma(Param p, int N) = bool:
+    if N < 0 then return  false fi;
     let (,,GAM) = low(p)
-    in strict_factor*GAM*gamma_frac > N
+    in (N >= 0) and (strict_factor*GAM*gamma_frac > N)
 
 set low_diff(Param p, int N) = bool:
+    if N < 0 then return  false fi;
     let (LAM, , GAM) = low(p)
-    in (GAM - LAM)*diff_frac > N
+    in (N >= 0) and ((GAM - LAM)*diff_frac > N)
 
 set strict_low_diff(Param p, int N) = bool:
+    if N < 0 then return  false fi;
     let (LAM, , GAM) = low(p)
-    in strict_factor*(GAM - LAM)*diff_frac > N
+    in (N >= 0) and (strict_factor*(GAM - LAM)*diff_frac > N)
 
 set low_diff_char(Param p, int N) = bool:
+    if N < 0 then return  false fi;
     let (LAM, , GAM) = low(p)
-    in (GAM - LAM)*diff_char_frac > N
+    in (N >= 0) and ((GAM - LAM)*diff_char_frac > N)
 
 set prefer_gamma_flag = true
 
@@ -132,6 +140,7 @@ set low_test(Param p, int N) = bool:
 set strict_low_flag = true
 
 set strict_low(Param p, int N) = bool:
+    if N < 0 then return  false fi;
     if not strict_low_flag
     then return true
     fi;
@@ -143,6 +152,7 @@ set strict_low(Param p, int N) = bool:
     fi
 
 set low(Param p, int N) = bool:
+    if N < 0 then return  false fi;
     if prefer_gamma_flag
     then low_gamma(p,N)
     elif prefer_diff_flag
