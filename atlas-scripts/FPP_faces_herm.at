@@ -2781,7 +2781,7 @@ set is_unitary_to_ht_big_SIMPLE_interrupt_Ufirst(Param p, int HT) = bool:
 
 set is_unitary_to_ht_big_SIMPLE_interrupt_TOHTfirst(Param p, int HT) = bool:
   if (stat_holder:=status(p,HT)).!= then return stat_holder > 0 fi;
-  {save 100/7200 Spin(4,4)}
+  {removing saves 100/7200 in Spin(4,4); but keeping helps in higher rank.}
   if old_testing_flag then return is_unitary_to_ht_big_SIMPLE(p,HT) fi;
   if not (fewer_reducible_unitary_flag or is_pos_on_LKTs(p)) then return false fi;
   if test_interrupt_verbose
@@ -3619,8 +3619,8 @@ set known_non_unitaries_wiggle_old(KGBElt x, ratvec lambda, LocalVertexData Lvd,
 		     {to have an interesting test to HT, terms should have strictly smaller HT}
 		 fi {now pdef consists of final Params that must be unitary to HT if p is}
 	     in if any(for q in pdef
-		       do @bool: (status(q,HT) < 0)
-		       {not big_unitary_hash.nu_height_lookup_bool(q,HT))}
+		       do @bool: (status(q,HT) < 0) {no appearance in Spin(4,4)}
+		       {not big_unitary_hash.nu_height_lookup_bool(q,HT)}
 			  {or (height(q) > H0 and  status(q,HT) = 0
 			      and (not is_unitary_to_hts_big_SIMPLE(q,HTs)))}
 		       od) {CONCERN if HTs[0] < H0?}
@@ -3693,7 +3693,7 @@ set known_non_unitaries_wiggle(KGBElt x, ratvec lambda, LocalVertexData Lvd,
 	  do if (not is_final(p)) or d=0
 	     then let pdef = monomials(p)
 		  in if any(for q in pdef
-			    do @bool: status(q,HT) < 0
+			    do @bool: status(q,HT) < 0 {no saving in Spin(4,4)}
 			    {big_unitary_hash.nu_height_lookup_bool(q,HT)}
 			    od)
 		     then answer[d]#:= j
@@ -3711,9 +3711,9 @@ set known_non_unitaries_wiggle(KGBElt x, ratvec lambda, LocalVertexData Lvd,
 		     do let pdefi = monomials(composition_series_to_ht(
 					 wiggle(CF, face_bary(Lvd,sv)) , HT - 1))
 			in if any (for q in pdefi
-				  do @bool: (status(q,HT)<0 
-				  {big_unitary_hash.nu_height_lookup_bool(q,HT))}
-				   or (height(q) > H0 and not is_unitary_to_hts_big_SIMPLE(q,HTs)))
+				  do @bool: status(q,HT)<0 {no saving in Spin(4,4)}
+				  {big_unitary_hash.nu_height_lookup_bool(q,HT)}
+			{or (height(q) > H0 and not is_unitary_to_hts_big_SIMPLE(q,HTs))}
 				  od) {CONCERN if HTs[0] < H0?}
 			   then answer[d]#:= j;
 				for ji in short_js
@@ -3786,7 +3786,8 @@ set known_non_unitaries_wiggle(KGBElt x, ratvec lambda, LocalVertexData Lvd,
 	  do if (not is_final(p)) or d=0
 	     then let pdef = monomials(p)
 		  in if any(for q in pdef
-			    do @bool: status(q,-1) < 0 {(big_unitary_hash.nulookup(q)).>=}
+			    do @bool: status(q,-1) < 0 {no savings Spin(4,4)}
+			       {(big_unitary_hash.nulookup(q)).>=}
 			    od)
 		     then answer[d]#:= j
 		     fi
@@ -3802,7 +3803,8 @@ set known_non_unitaries_wiggle(KGBElt x, ratvec lambda, LocalVertexData Lvd,
 		  in for sv in short_verts {run over the d+1 (d-1)-diml faces}
 		     do let pdefi = monomials(composition_series(wiggle(CF, face_bary(Lvd,sv))))
 			in if any (for q in pdefi
-				  do @bool: status(q,-1) < 0 {(big_unitary_hash.nulookup(q)).>=}
+				  do @bool: status(q,-1) < 0 {no savings in Spin(4,4)}
+				     {(big_unitary_hash.nulookup(q)).>=}
 				      {or (height(q) > H0 and not
 				      is_unitary_test_big_SIMPLE_interrupt(q))}
 				  od)
@@ -3837,7 +3839,8 @@ set known_non_unitaries(KGBElt x, ratvec lambda, LocalVertexData Lvd,
        do for p@j in ps[d]
 	  do let qs = monomials(finalize(p))
 	     in if any(for q in qs
-		       do @bool: status(p,HT) < 0 { big_unitary_hash.nu_height_lookup_bool(q,HT)}
+		       do @bool: {status(p,HT) < 0} {save 2200 tests in Spin(4,4)}
+		       	  not big_unitary_hash.nu_height_lookup_bool(q,HT)
 		       od)
 		then [j]
 		else []
@@ -3860,8 +3863,8 @@ set known_non_unitaries(KGBElt x, ratvec lambda, LocalVertexData Lvd,
     in for d:#LFDKH
        do for p@j in ps[d]
 	  do let qs = monomials(finalize(p))
-	     in if any(for q in qs
-		       do @bool: status(q,-1) < 0 {(big_unitary_hash.nulookup(q)).>=}
+	     in if any(for q in qs {save 1000 reports for Spin(4,4)}
+		       do @bool: {status(q,-1) < 0} (big_unitary_hash.nulookup(q)).>=
 		       od)
 		then [j]
 		else []

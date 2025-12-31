@@ -4588,10 +4588,10 @@ set local_test_GEO_hash_one_level_end(KGBElt x, ratvec lambda, LocalVertexData L
 					  parameter(x, lambda,
 					  face_bary(Lvd, verts))))
 					  in if all(for p in ps
-					     	    do status(p, one_ht) > 0
+					     	    do (stat_holder:=status(p, one_ht)) > 0
 						    {(big_unitary_hash.nu_height_lookup_bool(p,one_ht))
 						       or Uhash.lookup(p).>=}
-						       or (status(p,one_ht) = 0 and tester1(p))
+						       or (stat_holder = 0 and tester1(p))
 						    od)
 					     then [LFDKH[D+1][m]]
 					     else []
@@ -4728,10 +4728,10 @@ set local_test_GEO_hash_steve_steve_end(KGBElt x, ratvec lambda, LocalVertexData
 					  parameter(x, lambda,
 					  face_bary(Lvd, verts))))
 					  in if all(for p in ps
-					     	    do status(p,one_ht) > 0
+					     	    do (stat_holder:=status(p,one_ht)) > 0
 						    {not (big_unitary_hash.nu_height_lookup_bool(p,one_ht))
 						       or Uhash.lookup(p).>=}
-						       or (status(p,one_ht) = 0 and tester1(p))
+						       or (stat_holder = 0 and tester1(p))
 						    od)
 					     then [LFDKH[D+1][m]]
 					     else []
@@ -4828,10 +4828,10 @@ set local_test_GEO_hash_steve_end(KGBElt x, ratvec lambda, LocalVertexData Lvd,
 					  parameter(x, lambda,
 					  face_bary(Lvd, verts))))
 					  in if all(for p in ps
-					     	    do status(p,H1) > 0
+					     	    do (stat_holder:=status(p,H1)) > 0
 						    {not (big_unitary_hash.nu_height_lookup_bool(p,H1))
 						       or Uhash.lookup(p).>=}
-						       or (status(p,H1) = 0 and tester1(p))
+						       or (stat_holder = 0 and tester1(p))
 						    od)
 					     then [LFDKH[D+1][m]]
 					     else []
@@ -4958,10 +4958,10 @@ set local_test_GEO_hash_steve_end_faces(KGBElt x, ratvec lambda, LocalVertexData
 					  parameter(x, lambda,
 					  face_bary(Lvd, verts))))
 					  in if all(for p in ps
-					     	    do status(p,one_ht) > 0
+					     	    do (stat_holder:=status(p,one_ht)) > 0
 						    {not (big_unitary_hash.nu_height_lookup_bool(p,one_ht))
 						       or Uhash.lookup(p).>=}
-						       or (status(p,one_ht) = 0 and tester1(p))
+						       or (stat_holder = 0 and tester1(p))
 						    od)
 					     then [LFDKH[D+1][m]]
 					     else []
