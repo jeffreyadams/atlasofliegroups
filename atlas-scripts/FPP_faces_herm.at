@@ -1745,8 +1745,7 @@ set is_unitary_hash_big_SIMPLE_weak_Lucas(Param p) = bool:
 {this version is only for G simple, FPP hermitian and herm center p}
 {tries first Lucas, then weakly good}
 set is_unitary_hash_big_SIMPLE_Lucas_weak(Param p) = bool:
-    stat_holder :=status(p,-1);
-    if stat_holder.!= then return stat_holder > 0 fi;
+    if (stat_holder:=status(p,-1)).!= then return stat_holder > 0 fi;
     let gamma = p.infinitesimal_character, rd = p.root_datum, G = p.real_form
     then rdi = integrality_datum(rd,gamma)
     then alphavs = for alphav@j in rd.simple_coroots
@@ -1804,8 +1803,7 @@ set is_unitary_hash_big_SIMPLE_Lucas_weak(Param p) = bool:
 
 {this version is only for G simple}
 set is_unitary_hash_big_SIMPLE_Lucas(Param p) = bool:
-    stat_holder :=status(p,-1);
-    if stat_holder.!= then return stat_holder > 0 fi;
+    if (stat_holder:= status(p,-1)).!= then return stat_holder > 0 fi;
     let gamma = p.infinitesimal_character, rd = p.root_datum, G=p.real_form
     then rdi = integrality_datum(rd,gamma)
     then alphavs = for alphav@j in rd.simple_coroots
@@ -1847,8 +1845,7 @@ set is_unitary_hash_big_SIMPLE_Lucas(Param p) = bool:
 {this version is only for G simple and hermitian FPP params}
 {does weakly good induction}
 set is_unitary_hash_big_SIMPLE_weak(Param p) = bool:
-    stat_holder :=status(p,-1);
-    if stat_holder.!= then return stat_holder > 0 fi;
+    if (stat_holder:= status(p,-1)).!= then return stat_holder > 0 fi;
     let (,pL) = wkgood_Q(p), G = p.real_form
     then derpLs = for qLj in derived_factor_params0(pL)
 		  do monomials(finalize(qLj))
@@ -1881,9 +1878,12 @@ set u_Lucas_wk_flag = false
 
 {this version is only for G simple}
 set is_unitary_hash_big_SIMPLE(Param p) = bool:
-    {stat_holder :=status(p,-1);
-    if stat_holder.!= then return stat_holder > 0 fi;
-    if not is_hermitian(p) then return false fi;} {save 12 reports/7000 in Spin(4,4)}
+    if not is_hermitian(p) then return false fi;
+    if big_unitary_hash.ulookup(p) >= 0 then return true fi;
+    if big_unitary_hash.nulookup(p) >= 0 then return false fi;
+    {stat_holder :=status(p,-1);}
+    {if (stat_holder:=status(p,-1).!= then return stat_holder > 0 fi;}
+    {save 12 reports/7000 in Spin(4,4)}
     let G = p.real_form
     then FPP_flag = is_FPP(G,p.infinitesimal_character)
     then () = if not FPP_flag
@@ -1899,9 +1899,11 @@ set is_unitary_hash_big_SIMPLE(Param p) = bool:
 {this version is only for G simple}
 {return 1 means true, -1 false, 0 interrupted}
 set is_unitary_hash_big_SIMPLE(Param p, int TIME) = int:
-    {stat_holder :=status(p,-1);
-    if (stat_holder:=status(p,-1)).!= then return stat_holder fi;} {save nothing in Spin(4,4)}
     if not is_hermitian(p) then return -1 fi;
+    if big_unitary_hash.ulookup(p) >= 0 then return 1 fi;
+    if big_unitary_hash.nulookup(p) >= 0 then return -1 fi;
+    {stat_holder :=status(p,-1);}
+    {if (stat_holder:=status(p,-1)).!= then return stat_holder fi;} {save nothing in Spin(4,4)}
     let G = p.real_form
     then FPP_flag = is_FPP(G,p.infinitesimal_character)
     then () = if not FPP_flag
@@ -1911,8 +1913,8 @@ set is_unitary_hash_big_SIMPLE(Param p, int TIME) = int:
     in big_unitary_hash.check_interrupt(p,TIME)
 
 set is_unitary_hash_big(Param p) = bool:
-    stat_holder :=status(p,-1);
-    if stat_holder.!= then return stat_holder > 0 fi;
+    {stat_holder :=status(p,-1);
+    if stat_holder.!= then return stat_holder > 0 fi;}
     if not is_hermitian(p) then return false fi;
     let pds = derived_factor_params0(p)
     in all(for pd in pds do @bool: is_unitary_hash_big_SIMPLE(pd) od)
@@ -2066,7 +2068,7 @@ set is_unitary_to_ht_wiggle_big_SIMPLE(KGBElt x, ratvec lambda, vec verts,
     then H0 = height(p), short_verts = for i:d+1 do delete(verts,i) od
     then CF = character_formula_to_height(1*p,HT)
     then pdef1 = for sv in short_verts
-		 do monomials(composition_series_to_ht(wiggle(CF, face_bary(Lvd,sv)), HT - 1))
+		 do monomials(composition_series_to_ht(wiggle(CF, face_bary(Lvd,sv)), HT {- 1}))
 		 od.##
     in not any(for q in pdef1
 	   do @bool: height(q)>H0 and not is_unitary_to_ht_big_SIMPLE(q,HT)
@@ -3615,7 +3617,7 @@ set known_non_unitaries_wiggle_old(KGBElt x, ratvec lambda, LocalVertexData Lvd,
 		      in  monomials(composition_series_to_ht((sum(x.real_form,
 					    for k:d+1
 					    do wiggle(CF, face_bary(Lvd,verts[:k]##verts[k+1:]))
-					    od)), HT - 1))
+					    od)), HT{ - 1}))
 		     {to have an interesting test to HT, terms should have strictly smaller HT}
 		 fi {now pdef consists of final Params that must be unitary to HT if p is}
 	     in if any(for q in pdef
@@ -3709,9 +3711,10 @@ set known_non_unitaries_wiggle(KGBElt x, ratvec lambda, LocalVertexData Lvd,
 				  od
 		  in for sv in short_verts
 		     do let pdefi = monomials(composition_series_to_ht(
-					 wiggle(CF, face_bary(Lvd,sv)) , HT - 1))
+					 wiggle(CF, face_bary(Lvd,sv)) , HT {- 1}))
 			in if any (for q in pdefi
-				  do @bool: status(q,HT)<0 {no saving in Spin(4,4)}
+				  do @bool: not big_unitary_hash.nu_height_lookup_bool(q,HT)
+				  {status(q,HT)<0} {no saving in Spin(4,4)}
 				  {big_unitary_hash.nu_height_lookup_bool(q,HT)}
 			{or (height(q) > H0 and not is_unitary_to_hts_big_SIMPLE(q,HTs))}
 				  od) {CONCERN if HTs[0] < H0?}

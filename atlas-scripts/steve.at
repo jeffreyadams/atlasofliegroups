@@ -520,7 +520,6 @@ set pos_tester_known_Kchar_min(KGBElt x, ratvec lambda,int HT,ratvec gamma, vec 
     (bool, vec):
     let p = parameter(x,lambda,gamma), G = x.real_form
     then qs = monomials(1*p)
-    
     in {prints("got to pos_tester_known_Kchar_min");}
        if not all(for q in qs do @bool: min_bottom_elim_factors(q,p,HT) od)
        then {prints("got to pos_tester_known_Kchar_min at ",p," and bottom worked!");}
@@ -547,14 +546,20 @@ set pos_tester_Kchar_min(KGBElt x, ratvec lambda,int HT,ratvec gamma) =
     (bool, vec):
     let p = parameter(x,lambda,gamma), G = x.real_form
     then qs = monomials(1*p)
-    then stats = for q in qs do status(q,HT) od
+    {then stats = for q in qs do status(q,HT) od} {nothing for Spin(4,4)}
     in 	{prints("got to pos_tester_Kchar_min at ",p,"...");}
-       if all(for stat in stats do stat > 0 od)
+       if all(for q in qs
+       	      do big_unitary_hash.uhash(G).lookup(q) >= 0
+       {stat in stats do stat > 0}
+       od)
        then return (true, if extra_coord_flag
        	    	   	  then [Kpol_hash.match(K_type_pol(character_formula_to_height(1*p,HT))),#qs]
 			  else []
 			  fi)
-       elif any(for stat in stats do stat < 0 od)
+       elif any(for q in qs
+       	    	do @bool: not big_unitary_hash.nu_height_lookup_bool(q,HT)
+		{stat in stats do stat < 0}
+       	    	od)
        then return (false, if extra_coord_flag
        	    	   	   then [Kpol_hash.match(K_type_pol(character_formula_to_height(1*p,HT))),#qs]
 			   else []
@@ -1346,12 +1351,20 @@ set make_steve_hash_small() = steve_hash_small_table:
 				       in booL:= is_pure(sigL_HT)
 				   fi
 			then qs = monomials(parameter(xSHS, lambdaSHS, gamma))
-			then stats = for q in qs do status(q,htSHS) od
+			{then stats = for q in qs do status(q,htSHS) od}
+			{save 24/422 for Spin(4,4)}
 			in boo:= if not booL
 			     	   then false
-			     	   elif all(for stat in stats do stat > 0 od)
+			     	   elif all(for q in qs
+			do big_unitary_hash.uhash(rfSHS).lookup(q) >= 0
+					    od)
+				   {for stat in stats do stat > 0 od)}
 				   then true
-				   elif any(for stat in stats do stat < 0 od)
+				   elif any(for q in qs
+				   	    do @bool:
+					    not big_unitary_hash.nu_height_lookup_bool(q,htSHS)
+					    od)
+				   {for stat in stats do stat < 0 od)}
 				   then false {some q fails unitary to ht}
 				   else pos_tester(xSHS, lambdaSHS, htSHS, gamma)
 				   fi;
@@ -1882,17 +1895,22 @@ set warmup_flag = true
 {put known statuses into steve_hash_small}
 set warmup(KGBElt x, ratvec lambda, int HT, LocalVertexData Lvd, [[FaceVertsIndex]] FVIs) = [[FaceVertsIndex]]:
     if warmup_flag = false then return FVIs fi;
+    {skipping saves 122/446 in Spin(4,4); 122/221 in steve}
     let start= elapsed_ms()
     then answer =
     for FVI@d in FVIs
     do for v in FVI
        do let gamma = face_bary(Lvd, v[:d+1])
        	  then qs = monomials(finalize(parameter(x,lambda,gamma)))
-	  then stats = for q in qs do status(q,HT) od
-       	  in if any(for stat in stats do stat < 0 od) {q in qs do big_unitary_hash.nu_height_lookup_bool(q,HT) od)}
+	  {then stats = for q in qs do status(q,HT) od}
+       	  in if any({for stat in stats do stat < 0}
+	            for q in qs do not big_unitary_hash.nu_height_lookup_bool(q,HT)
+	     	    od)
        	     then steve_hash_small.numatch(gamma);
 	     []
-	     elif all(for stat in stats do stat > 0 od) {q in qs do big_unitary_hash.ulookup(q).>=}
+	     elif all(for {stat in stats do stat > 0}
+	     	  	  q in qs do big_unitary_hash.ulookup(q).>=
+	     	      od) 
 	     	     {or (let m = u_to_ht_hash.lookup(q)
 		     	 in m.>= and u_to_ht_hts[m] >= HT) od)}
        	     then steve_hash_small.umatch(gamma);
