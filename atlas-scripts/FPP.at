@@ -155,7 +155,7 @@ set write_one_pair(RealForm G,  int xl_pair_number, int file_number,int x_lambda
     let (x,lambda)=xl_pair(G,xl_pair_number) then
     rd=report_datum(G,xl_pair_number,file_number,x_lambda_total_time) then
     rd_string=to_string("",rd) then
-    unitary_string=big_unitary_hash.writexlam_no_G(x,lambda) then
+    unitary_string=big_unitary_hash.writexlam_no_G_string(x,lambda) then
     report_string="void:rA:=add_to_report(rA," + rd_string + ")" then
     total_string=unitary_string + new_line + report_string + new_line + "END" 
 {    str=big_unitary_hash.writexlam_no_G(x,lambda) + new_line + report_string(xl_pair_number,file_number,x_lambda_total_time) + new_line + "END" }
