@@ -3033,7 +3033,7 @@ set is_unitary_to_hts_big_SIMPLE_interrupt_TOHTfirst(Param p, [int] HTs) = bool:
 			      	   print_time_string(test_time),
 				   "; total = ", print_time_string(elapsed_ms() - start));
 			           prints(to_ht_count," to_ht tests so far.")
-			      fi;
+			      fi
 			      {prints(to_ht_count," to_ht tests so far.")}
 	       	    in if result.>
 	       	       then add_to_u_to_ht(p,HT);
