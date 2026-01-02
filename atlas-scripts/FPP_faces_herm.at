@@ -1454,17 +1454,6 @@ set is_finished_old(KGBElt x, ratvec lambda) = bool:
     then () = is_finished_time +:= elapsed_ms() - start
     in answer
 
-{requires G is in big_unitary_hash and cumulative_sizes is set}
-set is_finished(RealForm G,[int] cumulative_sizes,int j)=bool:
-    let (x,lambda)=xl_pair(G,cumulative_sizes,j) in is_finished(x,lambda)
-
-{get cumulative_sizes from big_unitary_hash}
-set is_finished(RealForm G,int j)=bool:
-    let cumulative_sizes=big_unitary_hash.xl_sizes_cumulative(G) then
-    ()=assert(!=cumulative_sizes,"cumulative_sizes not set") then
-    (x,lambda)=xl_pair(G,cumulative_sizes,j) in
-    is_finished(x,lambda)
-
 {check whether a bit in xl_known is set}
 set is_finished(KGBElt x, ratvec lambda) = bool:
     let start = elapsed_ms(), M = big_unitary_hash.xl_known(x.real_form)[x.number]
@@ -1476,7 +1465,17 @@ set is_finished(KGBElt x, ratvec lambda) = bool:
 		     fi
     in is_finished_time +:= elapsed_ms() - start;
        answer
->>>>>>> to_ht_branch
+
+{requires G is in big_unitary_hash and cumulative_sizes is set}
+set is_finished(RealForm G,[int] cumulative_sizes,int j)=bool:
+    let (x,lambda)=xl_pair(G,cumulative_sizes,j) in is_finished(x,lambda)
+
+{get cumulative_sizes from big_unitary_hash}
+set is_finished(RealForm G,int j)=bool:
+    let cumulative_sizes=big_unitary_hash.xl_sizes_cumulative(G) then
+    ()=assert(!=cumulative_sizes,"cumulative_sizes not set") then
+    (x,lambda)=xl_pair(G,cumulative_sizes,j) in
+    is_finished(x,lambda)
 
 {list of all pairs (x,lambda) for which complete FPP-unitary dual is present in big_unitary_hash}
 set list_all_finished(RealForm G) = [(KGBElt,ratvec)]:

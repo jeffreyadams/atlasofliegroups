@@ -112,13 +112,13 @@ set make_report(int size,[reportDatum] list)=
 
 {add single reportDatum to reportArray}
 set add_to_report(reportArray rA,reportDatum rd)=reportArray:
-let (pairs,data)=rA in
+let (pairs,data)=rA in let ()=prints(pairs) in
 pairs:=insert(pairs,(rd.xl_pair_number,rd.x_lambda_total_time));
 data[rd.xl_pair_number]:=rd; (pairs,data)
 
 {add [reportDatum] to reportArray}
 set add_to_report(reportArray rA,[reportDatum] data)=reportArray:
-for rd in data do add_to_report(rA,rd) od;rA
+for rd@i in data do  add_to_report(rA,rd) od;rA
 
 set seconds_in_day = 86400
 set seconds_in_hour = 3600

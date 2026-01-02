@@ -415,6 +415,8 @@ def main(argv):
    #max_memory=50000   #50,000 megabyte = 50 gigabytes, x 250 jobs=12.5 terabytes
    #max_memory=60000   #60,000 megabyte = 60 gigabytes, x 250 jobs=15 terabytes
    #max_memory=30000   #30,000 megabyte = 30 gigabytes, x 500 jobs=15 terabytes
+   #max_memory=50000 n=100: 50000 megabytes=50 gigabytes * 100 jobs= 5 terabytes
+
    #default: 10 gigabytes
    max_memory=10000   #10,000 megabyte = 10 gigabytes, x 1000 jobs=10 terabytes
    max_queue_size=-1
