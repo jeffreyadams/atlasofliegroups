@@ -802,7 +802,6 @@ set make_big_unitary_hash() = big_unitary_hash_table:
 		       fi {sig_heights[rfnum][pnum] >= height(p) and sig_heights[rfnum][pnum] < D}
 		   fi {pnum = PNUM}
 	 in (rfnum, pnum, sigs[rfnum][pnum],true)
-
     then clearG(RealForm rf) =
 	 let i = real_form_hash.lookup(rf)
 	 in if i >= 0
@@ -845,7 +844,8 @@ set make_big_unitary_hash() = big_unitary_hash_table:
     begin
      if not my_formula_flag then return K_type_formula(mu) fi;
      let (rfnum,,m) = add_K_type_formula(mu)
-     in regroup(mu.real_form, K_type_pol_hashes[rfnum].index(m))
+     in K_type_pol_hashes[rfnum].index(m)
+     {regroup(mu.real_form, K_type_pol_hashes[rfnum].index(m))}
     end
     , (KTypePol -> KTypePol): {mult_K_type_formula} (KTypePol pol) KTypePol:
     begin
@@ -862,7 +862,8 @@ set make_big_unitary_hash() = big_unitary_hash_table:
     begin
       if not my_formula_flag then return K_type_formula(mu,D) fi;
       let (rfnum,,m) = add_K_type_formula_to_ht(mu,D)
-      in regroup(mu.real_form, to_ht(K_type_pol_hashes[rfnum].index(m), D))
+      in to_ht(K_type_pol_hashes[rfnum].index(m), D)
+      {regroup(mu.real_form, to_ht(K_type_pol_hashes[rfnum].index(m), D))}
     end
     , ((KType, int) -> KTypePol): {branch_entry} (KType mu, int D) KTypePol:
      begin
@@ -870,7 +871,8 @@ set make_big_unitary_hash() = big_unitary_hash_table:
 			       then add_K_type_my_branch(mu,D)
 			       else add_K_type_branch(mu,D)
 			       fi
-	in regroup(mu.real_form, to_ht(K_type_pol_hashes[rf].index(m), D))
+	in to_ht(K_type_pol_hashes[rf].index(m), D)
+	{regroup(mu.real_form, to_ht(K_type_pol_hashes[rf].index(m), D))}
      end
 
     , ((KTypePol, int) -> KTypePol): {branch} (KTypePol pol, int D) KTypePol:
@@ -881,13 +883,20 @@ set make_big_unitary_hash() = big_unitary_hash_table:
       then terms = [(Split, KType)]: for c@mu in to_ht(pol,D)
 				    do (c,mu)
 				    od
-      in regroup(G, to_ht(sum(rf, for (c,mu) in terms
+      in to_ht(sum(rf, for (c,mu) in terms
 				   do let (,,m) = if my_branch_flag
 						    then add_K_type_my_branch(mu,D)
 						    else add_K_type_branch(mu,D)
 						    fi
 				      in c*K_type_pol_hashes[rfnum].index(m)
-				   od) , D))
+				   od) , D)
+      {regroup(G, to_ht(sum(rf, for (c,mu) in terms
+				   do let (,,m) = if my_branch_flag
+						    then add_K_type_my_branch(mu,D)
+						    else add_K_type_branch(mu,D)
+						    fi
+				      in c*K_type_pol_hashes[rfnum].index(m)
+				   od) , D))}
       {for the next one assume my_branch; there is a built in interruptible}
     , ((KTypePol, int, int) -> maybe_KTP): {branch_interrupt} (KTypePol pol, int D, int time) maybe_KTP:
       let G = pol.real_form
@@ -903,18 +912,19 @@ set make_big_unitary_hash() = big_unitary_hash_table:
 		   let (,,m) = add_K_type_my_branch(mu,D)
 		   in ans +:= c*K_type_pol_hashes[rfnum].index(m)
 		od
-      in done(regroup(G, to_ht(ans, D)))
+      in done(to_ht(ans, D))
+      {done(regroup(G, to_ht(ans, D)))}
     , (KTypePol -> int): {KTypePol_lookup} (KTypePol pol) int:
       let G = pol.real_form
       then rfnum = add_real_form(G)
       then rf = real_form_hash.index(rfnum)
-      in pol := regroup(rf,pol);
+      in {pol := regroup(rf,pol);}
       	 K_type_pol_hashes[rfnum].lookup(pol)
     , (KTypePol -> int): {KTypePol_match} (KTypePol pol) int:
       let G = pol.real_form
       then rfnum = add_real_form(G)
       then rf = real_form_hash.index(rfnum)
-      in pol := regroup(rf,pol);
+      in {pol := regroup(rf,pol);}
       	 K_type_pol_hashes[rfnum].match(pol)
     , ((RealForm, int) -> KTypePol): {KTypePol_index} (RealForm G, int pol_index): KTypePol:
       let  rfnum = add_real_form(G)
@@ -922,27 +932,31 @@ set make_big_unitary_hash() = big_unitary_hash_table:
       in  K_type_pol_hashes[rfnum].index(pol_index)
     , ((Param,int) -> KTypePol): {sig_entry} (Param p, int D) KTypePol:
      begin
-	let (rfnum,pnum,sig_ind) = if D < height(p)
+	let (rfnum,pnum,sig_ind) = if D < 0
 				then add_param_inf(p)
 				else add_param(p,D)
 				fi
 	then G = p.real_form, rf = real_form_hash.index(rfnum)
-	in if D < height(p)
-	   then regroup(G, K_type_pol_hashes[rfnum].index(sig_ind))
-	   else regroup(G, to_ht(K_type_pol_hashes[rfnum].index(sig_ind), D))
+	in if D < 0
+	   then K_type_pol_hashes[rfnum].index(sig_ind)
+	   {regroup(G, K_type_pol_hashes[rfnum].index(sig_ind))}
+	   else to_ht(K_type_pol_hashes[rfnum].index(sig_ind), D)
+	   {regroup(G, to_ht(K_type_pol_hashes[rfnum].index(sig_ind), D))}
 	   fi
      end
     , ((Param,int,int) -> maybe_KTP): {sig_entry_interrupt} (Param p, int HT, int time): maybe_KTP:
      begin
-	let (rfnum,pnum,sig_ind, finished) = if HT < height(p)
+	let (rfnum,pnum,sig_ind, finished) = if HT < 0
 				   then add_param_inf_interrupt(p,time)
 				   else add_param_interrupt(p,HT,time)
 				   fi
 	in if finished
 	   then let G = p.real_form, rf = real_form_hash.index(rfnum)
-	   	in if HT < height(p)
-	   	   then regroup(G, K_type_pol_hashes[rfnum].index(sig_ind)).done
-	   	   else regroup(G, to_ht(K_type_pol_hashes[rfnum].index(sig_ind), HT)).done
+	   	in if HT < 0
+	   	   then K_type_pol_hashes[rfnum].index(sig_ind).done
+		   {regroup(G, K_type_pol_hashes[rfnum].index(sig_ind)).done}
+	   	   else to_ht(K_type_pol_hashes[rfnum].index(sig_ind), HT).done
+		   {regroup(G, to_ht(K_type_pol_hashes[rfnum].index(sig_ind), HT)).done}
 		   fi
 	   else timed_out()
 	   fi
@@ -3001,6 +3015,7 @@ set is_unitary_to_hts_big_SIMPLE_interrupt_TOHTfirst(Param p, [int] HTs) = bool:
   then () = p := herm_center(p)
   then result = 0, HTfirst = HTs[0], HTlast = HTs~[0], deformed_flag_hold = deformed_hash_flag
   then to_ht_time = int: u_predictor(p,HTfirst), u_time = int: u_predictor(p,-1), test_time = int:0
+  then to_ht_count = int:0, u_count = int:0
   then level = 0, HT = HTfirst
   then () = if test_interrupt_verbose
        	    then prints("starting to_ht_time = ", print_time_string(to_ht_time),
@@ -3011,12 +3026,15 @@ set is_unitary_to_hts_big_SIMPLE_interrupt_TOHTfirst(Param p, [int] HTs) = bool:
 	       then let start_to_ht = elapsed_ms()
 	       	    then () = {push_deform_flag:=true;}
 			      result := is_unitary_to_ht_big_SIMPLE_interrupt(p,HT,to_ht_factor*to_ht_time);
+			      to_ht_count+:=1;
 	       		      test_time:=elapsed_ms() - start_to_ht;
 	       		      if test_interrupt_verbose
 	       	       	      then prints("result ", result, " from to_ht ",HT,", in time ",
 			      	   print_time_string(test_time),
-				   "; total = ", print_time_string(elapsed_ms() - start))
-			      fi
+				   "; total = ", print_time_string(elapsed_ms() - start));
+			           prints(to_ht_count," to_ht tests so far.")
+			      fi;
+			      {prints(to_ht_count," to_ht tests so far.")}
 	       	    in if result.>
 	       	       then add_to_u_to_ht(p,HT);
 		       	    if HT=HTlast
@@ -3033,6 +3051,10 @@ set is_unitary_to_hts_big_SIMPLE_interrupt_TOHTfirst(Param p, [int] HTs) = bool:
 			elif result.<
 	       	        then big_unitary_hash.numatch_height(p,HT);
 			     break
+			else to_ht_time:=u_predictor(p,HT);
+			     if test_interrupt_verbose
+			     then prints("  Predicted to_ht_time now ",print_time_string(to_ht_time))
+			     fi
 			fi {result.>}
 		fi; {A} {to_ht_time < 5*u_time}
 	        if {B} u_time < {5*}to_ht_time
@@ -3041,12 +3063,16 @@ set is_unitary_to_hts_big_SIMPLE_interrupt_TOHTfirst(Param p, [int] HTs) = bool:
 		     {then depth = is_unitary_depth(p,u_factor*u_time)}
 		     then form = big_unitary_hash.sig_entry_interrupt(p,-1 ,u_factor*u_time)
 		     {then form = hermitian_form_irreducible(p,u_factor*u_time)}
-	       	     in test_time:= elapsed_ms() - start_u;
+	       	     in u_count+:=1;
+		     	test_time:= elapsed_ms() - start_u;
+			result:=is_pure(to_ht(form,HTlast));
 	       		if test_interrupt_verbose
-		       	then prints("result ",result:=is_pure(to_ht(form,HTlast))," from is_unitary, in time ",
+		       	then prints("result ",result," from is_unitary, in time ",
 				      	 print_time_string(test_time),
-				   "; total = ", print_time_string(elapsed_ms() - start))
+				   "; total = ", print_time_string(elapsed_ms() - start));
+			     prints(u_count," u_tests so far.")
 			fi;
+			{prints(u_count," u_tests so far.");}
 			if result != 0 then break fi;
 			u_time:=u_predictor(p,-1);
 			if test_interrupt_verbose
