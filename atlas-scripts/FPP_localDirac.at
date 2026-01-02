@@ -590,7 +590,7 @@ set local_testK_hash_old(KGBElt x, ratvec lambda, LocalVertexData Lvd,
 					 then CF = character_formula_to_height(1*pC,HT)
 					 then pdef1 = for sv in short_verts
 						      do monomials(composition_series_to_ht(wiggle(CF,
-								face_bary(Lvd,sv)), HT - 1))
+								face_bary(Lvd,sv)), HT {- 1}))
 						      od.##
 					 in if any(for q in pdef1
 						   do height(q) > H0 and not tester(q)
@@ -652,7 +652,7 @@ set local_testK_hash_old(KGBElt x, ratvec lambda, LocalVertexData Lvd,
 						    then CF = character_formula_to_height(1*pC,HT)
 						    then pdef1 = for sv in short_verts
 								 do monomials(composition_series_to_ht(wiggle(CF,
-								face_bary(Lvd,sv)), HT - 1))
+								face_bary(Lvd,sv)), HT {- 1}))
 								  od.##
 						     in if any(for q in pdef1
 							       do height(q) > H0 and not tester(q)
@@ -805,7 +805,7 @@ set local_testK_hash(KGBElt x, ratvec lambda, LocalVertexData Lvd,
 					 then CF = character_formula_to_height(1*pC,HT)
 					 then pdef1 = for sv in short_verts
 						      do monomials(composition_series_to_ht(wiggle(CF,
-								face_bary(Lvd,sv)), HT - 1))
+								face_bary(Lvd,sv)), HT {- 1}))
 						      od.##
 					 in if any(for q in pdef1
 						   do height(q) > H0 and not tester(q)
@@ -873,7 +873,7 @@ set local_testK_hash(KGBElt x, ratvec lambda, LocalVertexData Lvd,
 						    then CF = character_formula_to_height(1*pC,HT)
 						    then pdef1 = for sv in short_verts
 								 do monomials(composition_series_to_ht(wiggle(CF,
-								face_bary(Lvd,sv)), HT - 1))
+								face_bary(Lvd,sv)), HT {- 1}))
 								  od.##
 						     in if any(for q in pdef1
 							       do height(q) > H0 and not tester(q)
@@ -1936,7 +1936,11 @@ in  if test_verbose
 			 do monomials(composition_series(wiggle(CF,
 					   face_bary(Lvd,sv))))
 			 od.##
-	 in if any(for q in pdef1 do @: height(q) > H0 and not tester(q) od)
+	 in if any(for q in pdef1 do @: height(q) > H0 and
+	       	       not tester(q)
+		       {(status(q,-1) < 0)
+		       or (height(q) > 0 and not tester(q))}
+		       od)
 	    then {prints("parameter ",pC," tests nonunitary by wiggle, verts = ",verts);}
 		 newStatuses:= updateNUclassesB(newStatuses, gr, m)
 	    ;	 newStatuses[m] := "F"
@@ -4588,10 +4592,11 @@ set local_test_GEO_hash_one_level_end(KGBElt x, ratvec lambda, LocalVertexData L
 					  parameter(x, lambda,
 					  face_bary(Lvd, verts))))
 					  in if all(for p in ps
-					     	    do status(p, one_ht) > 0
+					     	    do tester1(p) {no effect in Spin(4,4)}
+						    {(stat_holder:=status(p, one_ht)) > 0}
 						    {(big_unitary_hash.nu_height_lookup_bool(p,one_ht))
 						       or Uhash.lookup(p).>=}
-						       or (status(p,one_ht) = 0 and tester1(p))
+						       {or (stat_holder = 0 and tester1(p))}
 						    od)
 					     then [LFDKH[D+1][m]]
 					     else []
@@ -4728,10 +4733,11 @@ set local_test_GEO_hash_steve_steve_end(KGBElt x, ratvec lambda, LocalVertexData
 					  parameter(x, lambda,
 					  face_bary(Lvd, verts))))
 					  in if all(for p in ps
-					     	    do status(p,one_ht) > 0
+					     	    do tester1(p) {no effect in Spin(4,4)}
+						    {(stat_holder:=status(p,one_ht)) > 0}
 						    {not (big_unitary_hash.nu_height_lookup_bool(p,one_ht))
 						       or Uhash.lookup(p).>=}
-						       or (status(p,one_ht) = 0 and tester1(p))
+						       {or (stat_holder = 0 and tester1(p))}
 						    od)
 					     then [LFDKH[D+1][m]]
 					     else []
@@ -4828,11 +4834,11 @@ set local_test_GEO_hash_steve_end(KGBElt x, ratvec lambda, LocalVertexData Lvd,
 					  parameter(x, lambda,
 					  face_bary(Lvd, verts))))
 					  in if all(for p in ps
-					     	    do status(p,H1) > 0
-						    {not (big_unitary_hash.nu_height_lookup_bool(p,H1))
-						       or Uhash.lookup(p).>=}
-						       or (status(p,H1) = 0 and tester1(p))
-						    od)
+					     	    do Uhash.lookup(p).>= or
+						    {(stat_holder:=status(p,H1)) > 0}
+					(not (big_unitary_hash.nu_height_lookup_bool(p,H1)))
+						       or {(stat_holder = 0 and} tester1(p)
+						    od) {removing status:n o effect in Spin(4,4)}
 					     then [LFDKH[D+1][m]]
 					     else []
 					     fi
@@ -4958,10 +4964,10 @@ set local_test_GEO_hash_steve_end_faces(KGBElt x, ratvec lambda, LocalVertexData
 					  parameter(x, lambda,
 					  face_bary(Lvd, verts))))
 					  in if all(for p in ps
-					     	    do status(p,one_ht) > 0
-						    {not (big_unitary_hash.nu_height_lookup_bool(p,one_ht))
-						       or Uhash.lookup(p).>=}
-						       or (status(p,one_ht) = 0 and tester1(p))
+					     	    do @bool: (Uhash.lookup(p).>=)
+						    {stat_holder:=status(p,one_ht) > 0}
+				or (not big_unitary_hash.nu_height_lookup_bool(p,one_ht))
+						       or ({stat_holder = 0 and} tester1(p))
 						    od)
 					     then [LFDKH[D+1][m]]
 					     else []

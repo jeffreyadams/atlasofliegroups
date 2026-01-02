@@ -45,6 +45,9 @@ set LARmax = rat: 4/5
 set LAGAmin = 1/1
 set LARmin = rat: 1/2
 
+
+set status_time = int: 0
+set status_count = int: 0
 {next three global variables concern function is_unitary_test_big_SIMPLE_interrupt in FPP_faces_herm.at}
 set up_mu_time = int:0
 set mu_time_mult = rat: 1/1 {1/1}
@@ -1241,8 +1244,10 @@ set was_tested_inter_to_ht(Param p,int HT, int T) = void:
        fi}
 
 set report_tested(string label) = void:
-    prints("...",label,"...",DTcount," Dirac elim, ",DBTcount," best-Dirac elim; predictor_time = ",
-    	  print_time_string(predictor_time));
+{    prints("...",label,"...",DTcount," Dirac elim, ",DBTcount," best-Dirac elim; predictor_time = ",
+    	  print_time_string(predictor_time));}
+    prints("...",label,"...",DTcount + DBTcount," Dirac elim; status_time = ",
+    	   print_time_string(status_time), " for ", status_count," reports");
     {edge_offset = ",edge_offset);}
     {next_heightC_time = ",}
            {print_time_string(next_heightC_time));}
@@ -1360,8 +1365,8 @@ set (report_tested_cum,clear_report_tested_cum) = (((string, string) -> void),(v
 	 utc:=unitary_test_counter.use_count();
 	 ct:=charTime;
 	 cu:= char_counter.use_count();
-    prints("...",running_label,"...",DTcount," Dirac elim, ",DBTcount,
-    	   " best-Dirac elim; predictor_time = ",print_time_string(predictor_time));
+    prints("...",running_label,"...",DTcount + DBTcount," Dirac elim; status_time = ",
+    	   print_time_string(status_time), " for ", status_count," reports");
     prints(new_line,tph," pos is_unitary tests, in time = ", print_time_string(tpt),"; ",tnh,
 	" neg is_unitary tests, in time = ",print_time_string(tnt));
     prints(tic, " interrupted is_unitary tests, of ",tih, " different parameters, in time ",
