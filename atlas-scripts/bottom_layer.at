@@ -1743,7 +1743,7 @@ set bottom_elim_factors_more(Param p0, Param p, [QKL_bottom_data] data, KTypePol
 		    in return false
 	       fi
      then () = befmoreTime +:= elapsed_ms() - start
-     then () = if bottom_verbose then prints("sorry, don't know") fi
+     then () = if bottom_verbose then prints("at p = ",p0,", sorry, don't know") fi
      in true
 
 {insist that p0 is final, p0 is a LQ of p}
