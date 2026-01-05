@@ -13,6 +13,8 @@ def help(base_directory):
 def main(argv):
     base_directory="data" #default; input directory will be directory/logs
     outputfile=""
+    outputfile_short=""
+    number_lines=100 #number of lines to write to short file
     group_name=""
     number_processors=1
     cutoff=-1
@@ -43,14 +45,35 @@ def main(argv):
     init_file=group_name + "_init.at"
     if outputfile=="":
         outputfile="./" + group_name + "_times.at"
+        outputfile_short = "./" + group_name + "_times_short.at"
+    else:
+        outputfile_short = outputfile + "_short.at"
+    print("main output: ", outputfile)
+    print("short output ", outputfile_short)
     print("reading files: ", files,"\nwriting to file: ", outputfile)
-    output_file=open(outputfile,'w')
-    output_file.write("<" + init_file + "\n" + "rA:=make_report(G_temp)\n")
-    output_file.close()
-    grep_arg= "grep  -h \"^" + line_start_string + "\" " + files + ">>" + outputfile
+    outputfiletmp=outputfile + "_tmp"
+    #grep_arg= "grep  -h \"^" + line_start_string + "\" " + files + ">>" + outputfiletmp
+    grep_arg= "grep  -h  add_to " + files + ">>" + outputfiletmp
     print("running: ", grep_arg)
     data=subprocess.run(grep_arg,shell=True,stdout=subprocess.PIPE)
     print("finished running ", grep_arg)
+    output_file_handle=open(outputfile,'w')
+    output_file_handle.write("<" + init_file + "\n" + "rA:=make_report(G_temp)\n")
+    output_file_handle.close()
+    sort_arg="sort -r -n -t ',' -k 12  " + outputfiletmp +  ">>" + outputfile
+    print("sort_arg: ", sort_arg)
+    data=subprocess.run(sort_arg,shell=True,stdout=subprocess.PIPE)
+    print("finished sorting")
+    number_lines_string=str(number_lines+1)
+    short_arg="head -n " + number_lines_string  +  " " + outputfile + ">" + outputfile_short
+    print("short_arg: ", short_arg)
+    data=subprocess.run(short_arg,shell=True,stdout=subprocess.PIPE)
+    print("finshed writing short file")
+    if os.path.exists(outputfiletmp):
+        print("removing " + outputfiletmp)
+        os.remove(outputfiletmp)
+    else:
+        print("not removing " + outputfiletmp + "?")
     exit()
     d=data.stdout.splitlines()
     total_time=0

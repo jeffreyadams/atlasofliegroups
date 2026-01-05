@@ -96,29 +96,28 @@ ratvec:[], {lambda}
 
 set summary_size=100
 
-set_type reportArray = (sortedPairs sorted_pairs,[reportDatum] report_data)
+set_type reportArray = [reportDatum]
 
 {size: the number of (x,lambda) pairs;
  summary_size: number of (x,lambda) pairs, with largest times, saved for reporting}
 {make an empty report}
-set make_report(int size)=reportArray:(empty_sorted_pairs(summary_size),for i:size do emptyReportDatum od)
+set make_report(int size)=reportArray:(for i:size do emptyReportDatum od)
 set make_report(RealForm G)=reportArray:make_report(number_xl_pairs(G))
 
 {make a report from scratch from [reportDatum]}
 set make_report(int size,[reportDatum] list)=
-  let (pairs,data)=make_report(size) in
+  let data=make_report(size) in
   for datum in list do data[datum.xl_pair_number]:=datum od;
-  (pairs,data)
+  data
 
-{add single reportDatum to reportArray}
-set add_to_report(reportArray rA,reportDatum rd)=reportArray:
-let (pairs,data)=rA in let ()=prints(pairs) in
-pairs:=insert(pairs,(rd.xl_pair_number,rd.x_lambda_total_time));
-data[rd.xl_pair_number]:=rd; (pairs,data)
+{add single reportDatum to reportArray:
+ this is slow, so should not be used for many updates}
+set update_report(reportArray rA,reportDatum rd)=void:
+rA[rd.xl_pair_number]:=rd
 
-{add [reportDatum] to reportArray}
-set add_to_report(reportArray rA,[reportDatum] data)=reportArray:
-for rd@i in data do  add_to_report(rA,rd) od;rA
+{assuming reportDatum rA is defined, do this:
+ however don't do it here, do it after you've defined rA}
+{set add(reportDatum rd)=void:rA[rd.xl_pair_number]:=rd}
 
 set seconds_in_day = 86400
 set seconds_in_hour = 3600
@@ -196,19 +195,27 @@ mu_time_mult,
 shift_frac,
 min_ht_mult)
 
-set report_datum(reportArray rA, int xl_pair_number)=reportDatum:
-let (,list)=rA in list[xl_pair_number]
-
-set show_short(reportArray rA, int number_lines)=void:
-let ((,pairs),data)=rA in
-tabulate( ["pair","x", "lambda", "time", "time in seconds"]#
-for i:number_lines do
- let (xl_number,time)=pairs[i] then
- rd=data[xl_number] in
- [to_string(xl_number),to_string(rd.kgb_number),to_string(rd.lambda), rd.nice_time,to_string(rd.x_lambda_total_time)]
+set show(reportArray rA,  int start, int stop)=void:
+tabulate( ["i","pair","x", "lambda", "time", "time in seconds"]#
+for i:stop-start from start  do
+ let rd=rA[i] in
+ [to_string(i),to_string(rd.xl_pair_number),to_string(rd.kgb_number),to_string(rd.lambda), rd.nice_time,to_string(rd.x_lambda_total_time)]
 od)
 
-set show_short(reportArray rA)=void:show_short(rA,20)
+set show_short(reportArray rA)=void:show(rA,0,20)
+set show(reportArray rA)=void:show(rA,0,#rA)
+
+{sort [(int,int)] descending by the second entry}
+set geq((int a, int b),(int c, int d))=b>=d
+set sort_pairs=sort(geq@((int,int),(int,int)))
+set test=[(20,3),(10,4),(9,20),(0,11),(24,5)]
+
+set my_sort([int] list)=sort_pairs(for a@i in list do (i,a) od)
+
+set time_geq(reportDatum a,reportDatum b)=bool:a.x_lambda_total_time>=b.x_lambda_total_time
+set sort_report_data=sort(time_geq@(reportDatum,reportDatum))
+set sort([reportDatum] data)=sort_report_data(data)
+
 
 set reportDatumFields=(
 [xl_pair_number@reportDatum,
@@ -307,5 +314,16 @@ prints("lambda: ", lambda(d));
 for f@i in string_fields do prints(string_names[i], ": ", f(d)) od;
 for f@i in int_fields do prints(int_names[i], ": ", f(d)) od;
 for f@i in rat_fields do prints(rat_names[i], ": ", f(d)) od
+
+set total_time(reportArray rA)=int:sum(for rd in rA do rd.x_lambda_total_time od)
+set max_time(reportArray rA)=int:max(for rd in rA do rd.x_lambda_total_time od)
+set average_time_per_pair(reportArray rA)=total_time(rA)\#rA
+set time_data(reportArray rA,int number_processes)=void:
+let t=total_time(rA) then
+m=max_time(rA) 
+in prints("#pairs: ", #rA,new_line,"total time: ", t, " seconds; ", nice_time(t),
+new_line,"avg time/processor: ", t\number_processes, " seconds; ", nice_time(t\number_processes),new_line,
+"longest pair time: ", m, " ", nice_time(m))
+
 
 

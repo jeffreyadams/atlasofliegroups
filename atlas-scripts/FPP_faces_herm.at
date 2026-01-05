@@ -202,7 +202,8 @@ set_type
   , ((KGBElt, ratvec) -> ) writexlam {output data for one x,lambda}
   , (([KGBElt,ratvec]) -> ) writexlams {output data for list of (x,lambda)}
   , ((KGBElt, ratvec) -> ) writexlam_no_G {output data for one x,lambda; without writing G}
-  , ((KGBElt, ratvec) -> string ) writexlam_no_G_string {output data for one x,lambda; wit-hout writing G}  
+  , ((KGBElt, ratvec) -> string ) writexlam_no_G_string {output data for one x,lambda; wit-hout writing G}
+  , (RealForm, [int] -> ) set_xl_sizes {set xl_sizes(RealForm)=[int]}
 )
 ]
 
@@ -305,6 +306,8 @@ set make_big_unitary_hash() = big_unitary_hash_table:
 	 then () = branch_heights := []
 	 then () = sig_heights := []
 	 then () = nu_heights := []
+         then () = xl_sizes := []
+         then () = xl_sizes_cumulative := []
 	 then () = xl_known := []
 	 then () = x_known := []
 	 then () = x_partial := []
@@ -314,6 +317,7 @@ set make_big_unitary_hash() = big_unitary_hash_table:
 	 then i = real_form_hash.match(rf)
 	 then () = if i = I {haven't seen this real form before}
 		   then	let empty = [int]: nullint(#KGB(rf))
+                        then null_list=[int]:[] 
 			then () = K_type_hashes #:= make_KType_hash();
 			     K_type_pol_hashes #:= make_KTypePol_hash();
 			     formulas #:= null(0);
@@ -323,6 +327,8 @@ set make_big_unitary_hash() = big_unitary_hash_table:
 			     branch_heights #:= null(0);
 			     sig_heights #:= null(0);
 			     nu_heights #:= null(0)
+                        then ()=  xl_sizes #:= null_list
+                        then ()=  xl_sizes_cumulative #:= null_list
 			then () = xl_known #:= empty {null(#KGB(rf))}
 			then () = x_known #:= 0
 			then () = x_partial #:= 0
@@ -1227,11 +1233,11 @@ set make_big_unitary_hash() = big_unitary_hash_table:
     , ( -> ): {write} @void:
     let rf_list = real_form_hash.list()
     in for rf@i in rf_list
-       do let Gname = "G"+to_string(i)
+       do let Gname = "G_temp"
 	  then listname = Gname+"_list"
-	  {then intlistname = Gname+"_XLK"}
+      	  then intlistname = Gname+"_XLK"
 	  then plist = uhashes[i].list()
-	  {then bitmapintlist = xl_known[i]}
+      	  then bitmapintlist = xl_known[i]
 	  then donemap = x_known[i]
 	  then done_list = [int]:[]
 	  then () = if write_x_flag then done_list :=
@@ -1253,10 +1259,11 @@ set make_big_unitary_hash() = big_unitary_hash_table:
 		  do prints("void: big_unitary_hash.finishx_num(",Gname,",",xnum,")")
 		  od
 	     else prints("void: big_unitary_hash.finishxmap(",Gname,",",donemap,")")
-	     fi
-	     {prints("set ",intlistname,"=[int]:[]");
+	     fi;
+             prints("void: big_unitary_hash.set_xl_sizes(",Gname,",",xl_sizes[i],")");
+             prints("set ",intlistname,"=[int]:[]");
 	     write_append(bitmapintlist,intlistname);
-	     prints("big_unitary_hash.finishall(",Gname,",",intlistname,")")}
+	     prints("big_unitary_hash.finishall(",Gname,",",intlistname,")")
 	od
     , (RealForm -> ): {writeG} (RealForm G):
       let i = add_real_form(G)
@@ -1282,14 +1289,15 @@ set make_big_unitary_hash() = big_unitary_hash_table:
 	      od
 	 else prints("void: big_unitary_hash.finishxmap(G_temp,",donemap,")")
 	 fi;
+         prints("void: big_unitary_hash.set_xl_sizes(G_temp,",xl_sizes[i],")");
 	 if write_x_lambda_flag
 	 then for N@j in xl_known[i]
 	      do if N.!=
 	      	 then prints("void: big_unitary_hash.finish(KGB(G_temp,j),N")
 		 fi
 	      od
-	 fi
-
+	 fi;
+         prints("void: big_unitary_hash.set_xl_sizes(G_temp,",xl_sizes[i],")")
     , (RealForm -> ): {writeG_nu} (RealForm G):
       let i = add_real_form(G)
       then Gname = "G_temp"
@@ -1429,8 +1437,20 @@ some lambdas for that x might be finished.}
 	 if is_member_bitset(position(x,lambda), xl_known[i][xnum])
 	 then str+:="big_unitary_hash.finish_num(" + Gname + "," + xnum + "," + to_string(N) + ")\n"
 	 fi;str
+   , ((RealForm,[int]) -> ): {set_xl_sizes} (RealForm G,[int] precomputed_xl_sizes):
+       let i=add_real_form(G) in
+       let ()=prints("OKOK") in
+              let ()=prints("i=", i) in
+       let ()=prints("xl_sizes: ", xl_sizes) in 
+       xl_sizes[i]:=
+         if #precomputed_xl_sizes=0
+            then {compute the answer} for x in KGB(G) do #FPP_lambdas(x) od
+            else precomputed_xl_sizes
+         fi;
+       let ()=prints("cs: ", xl_sizes[i]) in 
+       xl_sizes_cumulative[i]:=cumulate_forward(xl_sizes[i])
     )
-)
+    )
 
 
 set big_unitary_hash = make_big_unitary_hash()
@@ -1512,6 +1532,18 @@ set is_finished(KGBElt x, ratvec lambda) = bool:
 		     fi
     in is_finished_time +:= elapsed_ms() - start;
        answer
+
+{requires G is in big_unitary_hash and cumulative_sizes is set}
+set is_finished(RealForm G,[int] cumulative_sizes,int j)=bool:
+    let (x,lambda)=xl_pair(G,cumulative_sizes,j) in is_finished(x,lambda)
+
+{get cumulative_sizes from big_unitary_hash}
+set is_finished(RealForm G,int j)=bool:
+    let cumulative_sizes=big_unitary_hash.xl_sizes_cumulative(G) then
+    ()=assert(!=cumulative_sizes,"cumulative_sizes not set") then
+    (x,lambda)=xl_pair(G,cumulative_sizes,j) in
+    is_finished(x,lambda)
+
 
 {list of all pairs (x,lambda) for which complete FPP-unitary dual is present in big_unitary_hash}
 set list_all_finished(RealForm G) = [(KGBElt,ratvec)]:
@@ -5837,3 +5869,37 @@ set extend_K_characters_graph(KGBElt x, ratvec lambda, LocalVertexData Lvd,
      then () = if time_verbose then prints("     ", print_time_string(time),
 		  " for extend_K_characters_graph") fi
      in answer
+
+{convert the information stored in the bitmaps xl_known for G into
+an array of integers:
+integer k occurs in the list if is_finished(G,k)=false
+don't compute it this way (too slow)
+let i=0...KGB_size(G)
+  set number_lambdas=table.xl_sizes(G)[i]  (number of lambdas for this x)
+  set shift=table.xl_sizes_cumulative[i-1]   
+  set b=xl_known(G)[i] (bitset of lambdas for this x)
+  if b=[]: append [shift_0,shift+1,...,shift_number_lambdas-1] to return array
+     (indicating all of these lambdas have not been vdone)
+  set v=convert b to base 2, and pad with zeros to make it of number_lambdas
+  let j=0...#v
+     if v[j]=0 (this lambda has not been done) add shift+j to the return value
+}
+
+set xl_pairs_todo(big_unitary_hash_table table,RealForm G)=
+let xl_pair_bitsets=table.xl_known(G) then
+xl_sizes=table.xl_sizes(G) then
+xl_sizes_cumulative=table.xl_sizes_cumulative(G) in
+for b@i in xl_pair_bitsets do
+  let shift=(0#xl_sizes_cumulative)[i] in
+  if b=0 then  {add all lambdas for this x to the list}
+     for j:xl_sizes[i] do {prints("other: i: ", i, " j:", j, " shift: ", shift);} [shift+j] od.##
+  else
+     let v0=to_base_poly(2)(b) then
+     v=pad(v0,xl_sizes[i]) in
+     {()=prints("v0=", v0, " v=", v) then
+     ()=prints("i= ", i, " b=", b, " shift= ", shift, " v=", v) in}
+     for j:#v do
+        if =v[j] then {prints("zero:", j, " ", shift);}[shift+j] else {prints("not zero:", j);}[] fi
+     od.##
+  fi
+od.##
