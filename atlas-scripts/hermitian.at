@@ -106,7 +106,7 @@ set_type maybe_KTP = (void timed_out | KTypePol done)
 set unitaryTime = int: 0
 
 set predictor_verbose =false
-set predictor_flag = false {evening 12/21/25; was false until 12/19, when something went wrong}
+set predictor_flag = true {false} {need true in Jeff E8_q examples}
 set predictor_time = int:0
 
 set to_ht (KTypePol P,int N) = KTypePol:
@@ -1247,7 +1247,8 @@ set report_tested(string label) = void:
 {    prints("...",label,"...",DTcount," Dirac elim, ",DBTcount," best-Dirac elim; predictor_time = ",
     	  print_time_string(predictor_time));}
     prints("...",label,"...",DTcount + DBTcount," Dirac elim; status_time = ",
-    	   print_time_string(status_time), " for ", status_count," reports");
+    	   print_time_string(status_time), " for ", status_count," reports, predictor_time = ",
+	   print_time_string(predictor_time));
     {edge_offset = ",edge_offset);}
     {next_heightC_time = ",}
            {print_time_string(next_heightC_time));}
@@ -1366,7 +1367,8 @@ set (report_tested_cum,clear_report_tested_cum) = (((string, string) -> void),(v
 	 ct:=charTime;
 	 cu:= char_counter.use_count();
     prints("...",running_label,"...",DTcount + DBTcount," Dirac elim; status_time = ",
-    	   print_time_string(status_time), " for ", status_count," reports");
+    	   print_time_string(status_time), " for ", status_count," reports, predictor_time = ",
+	   print_time_string(predictor_time));
     prints(new_line,tph," pos is_unitary tests, in time = ", print_time_string(tpt),"; ",tnh,
 	" neg is_unitary tests, in time = ",print_time_string(tnt));
     prints(tic, " interrupted is_unitary tests, of ",tih, " different parameters, in time ",
@@ -1445,6 +1447,32 @@ set worst_so_far(Param p, int H) = int:
     	    fi {index >=0}
     fi {H.>=}
 
+set deform_times(Param p, int HT) = void:
+    let list = {is_unitary runs over terms in KL_sum_to_ht(p,HT)}
+	    if HT < 0  {will do full_deform(q,HT) on each term}
+    	    then sort_by_height(partial_block(p)) {INCREASING height: get easier}
+	    else if low_diff_char(p,HT)
+	    	 then monomials(KL_sum_at_s_to_height(p,HT)) {INCREASING height: get easier}
+		 else let (below,) = height_split(KL_sum_at_s(p),HT)
+		      in monomials(below)
+		 fi
+	    fi
+     then indices = for q in list do deformedHash.lookup(q) od
+	    	 {have we stored answer? Storage location j if yes, -1 if no}
+     then known_indices = [int]: for j in indices
+    	 	       	       	 do if j >= 0
+			       	       and ((deformedHash.height_index(j) < 0)
+				       or (HT >= 0 and deformedHash.height_index(j) >= HT))
+			    	    do j {loop that runs 0 or 1 times}
+				    fi
+			      	 od.##
+     then N = #indices, n = #known_indices, {possible terms, known terms}
+    	  times = for j in known_indices do deformedHash.time_index(j) od
+ 	      {recorded times to compute known full_deform}
+     in prints("For param ",p," to height ",HT, ", have ",N," terms to deform, with ",n," known.");
+	prints("Times for known ones are = ",times)
+
+
 {whether to insist that a timed deform compute at least one term}
 {set push_deform_flag = true}
 
@@ -1460,7 +1488,7 @@ set u_predictor(Param p, int HT) = int:
 	    if HT < 0  {will do full_deform(q,HT) on each term}
     	    then sort_by_height(partial_block(p)) {INCREASING height: get easier}
 	    else if low_diff_char(p,HT)
-	    	 then monomials(KL_sum_at_s_to_height(p,HT)) {INtCREASING height: get easier}
+	    	 then monomials(KL_sum_at_s_to_height(p,HT)) {INCREASING height: get easier}
 		 else let (below,) = height_split(KL_sum_at_s(p),HT)
 		      in monomials(below)
 		 fi
@@ -1510,7 +1538,7 @@ set u_predictor(Param p, int HT) = int:
 		     		  esac
 			   elif N-n = 0 {everything known, calculation is just lookup}
 	     		   then 10*N*interrupt_base_time{10* was not enough}
-	     		   else  max((N-n)*max(times), interrupt_base_time) {N, n both nonzero}
+	     		   else  max((N-n)*max(times), interrupt_base_time) {N-n, n both nonzero}
 	     		   fi
 		 in if predictor_verbose
 		    then prints("prediction ",print_time_string(ans), " in time ",
