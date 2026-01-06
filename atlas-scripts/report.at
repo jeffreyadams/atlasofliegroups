@@ -195,6 +195,10 @@ mu_time_mult,
 shift_frac,
 min_ht_mult)
 
+{default output for each reportDatum: index, xl_pair_number, kgb_number, lambda, nice_time, x_lambda_total_time
+ for more complex information use show_detail
+ for result sorted by time use show_sorted}
+{default output for reportDatum[j] from start to stop}
 set show(reportArray rA,  int start, int stop)=void:
 tabulate( ["i","pair","x", "lambda", "time", "time in seconds"]#
 for i:stop-start from start  do
@@ -202,7 +206,9 @@ for i:stop-start from start  do
  [to_string(i),to_string(rd.xl_pair_number),to_string(rd.kgb_number),to_string(rd.lambda), rd.nice_time,to_string(rd.x_lambda_total_time)]
 od)
 
+{short: just the top 20 entries}
 set show_short(reportArray rA)=void:show(rA,0,20)
+{all rows, usually way to long to be useful}
 set show(reportArray rA)=void:show(rA,0,#rA)
 
 {sort [(int,int)] descending by the second entry}
@@ -212,11 +218,29 @@ set test=[(20,3),(10,4),(9,20),(0,11),(24,5)]
 
 set my_sort([int] list)=sort_pairs(for a@i in list do (i,a) od)
 
+{sort reportArray decreasing by time; the result is list=[reportDatum],
+ Note: in a reportArray rA[j].xl_pair_number=j
+ this is not true in list, so this shouldn't be considered a reportArray}
+
 set time_geq(reportDatum a,reportDatum b)=bool:a.x_lambda_total_time>=b.x_lambda_total_time
 set sort_report_data=sort(time_geq@(reportDatum,reportDatum))
-set sort([reportDatum] data)=sort_report_data(data)
+set sort(reportArray rA)=[reportDatum]:sort_report_data(rA)
+set sorted_xl_pair_numbers(reportArray rA)=[int]:for rd in sort(rA) do rd.xl_pair_number od
+
+{for sorted output, pass the list sorted of [reportData] sorted by time;
+ to create this do set sorted=sorted_xl_pair_number(rA)}
+set show_sorted(reportArray rA, [int] sorted,  int start, int stop)=void:
+tabulate( ["i","pair","x", "lambda", "time", "time in seconds"]#
+for i:stop-start from start  do
+ let rd=rA[sorted[i]] in
+ [to_string(i),to_string(rd.xl_pair_number),to_string(rd.kgb_number),to_string(rd.lambda), rd.nice_time,to_string(rd.x_lambda_total_time)]
+od)
 
 
+
+
+
+{list of fields, for use in reporting}
 set reportDatumFields=(
 [xl_pair_number@reportDatum,
 kgb_number@reportDatum,

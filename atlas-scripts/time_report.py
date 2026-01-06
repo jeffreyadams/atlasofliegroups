@@ -53,12 +53,13 @@ def main(argv):
     print("reading files: ", files,"\nwriting to file: ", outputfile)
     outputfiletmp=outputfile + "_tmp"
     #grep_arg= "grep  -h \"^" + line_start_string + "\" " + files + ">>" + outputfiletmp
-    grep_arg= "grep  -h  add_to " + files + ">>" + outputfiletmp
+    grep_arg= "grep  -h  add " + files + ">>" + outputfiletmp
     print("running: ", grep_arg)
     data=subprocess.run(grep_arg,shell=True,stdout=subprocess.PIPE)
     print("finished running ", grep_arg)
     output_file_handle=open(outputfile,'w')
     output_file_handle.write("<" + init_file + "\n" + "rA:=make_report(G_temp)\n")
+    output_file_handle.write("set add(reportDatum rd)=void:rA[rd.xl_pair_number]:=rd\n")
     output_file_handle.close()
     sort_arg="sort -r -n -t ',' -k 12  " + outputfiletmp +  ">>" + outputfile
     print("sort_arg: ", sort_arg)
