@@ -1,6 +1,6 @@
 <tensor_product.at
 
-set wedgeP_verbose=true {set to true/false  for more/less extra information}
+set wedgeP_verbose=false {set to true/false  for more/less extra diagnostic information}
 
 {computing the K-module wedge(P)
  primary application: computing H^i(\g,K,\pi)
@@ -30,7 +30,8 @@ trivial K-type = [(spherical PS) -(sum of two DS)] restricted to K}
 set trivial_K_type(RealForm G)=KType:LKT(G.trivial)
 
 {technical tool: the algorithm can produce a KType which is not dominant
- for G; this is a valid KType but equivalent to one which is dominant}
+for G; this is a valid KType but equivalent to one which is dominant}
+set make_dominant(KType mu)=KType:
 let (x,lambda_rho)=%mu {lambda_rho= is a vec} then
 rf=mu.real_form then 
 lambda=lambda_rho+rf.rho then
