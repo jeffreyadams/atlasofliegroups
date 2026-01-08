@@ -1,7 +1,7 @@
 <hodge_functions.at
 <K_type_formula.at
 <bigMatrices.at {for is_non_negative@i_poly_mat}
-<tensor_product.at
+<wedgeP.at {for add_weights@(KTypePol,(KGBElt->[vec]))}
 
 {debugging stuff}
 set hodge_K_type_formula_verbose=false  {short for hodge_K_type_formula_verbose}

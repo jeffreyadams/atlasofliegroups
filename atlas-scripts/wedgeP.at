@@ -1,0 +1,130 @@
+<tensor_product.at
+
+set wedgeP_verbose=true {set to true/false  for more/less extra information}
+
+{computing the K-module wedge(P)
+ primary application: computing H^i(\g,K,\pi)
+
+these functions make extensive use of K_types as realized in atlas;
+see K_highest_weights.at
+The main reference is Vogan, "Branching to a Maximal Compact Subgroup"
+
+K-type: an irreducible representation of K
+tempiric representation: irreducible, tempered representation with real infinitesimal character
+these two sets are in bijection by the map taking a tempiric representation to its (unique) lowest K-type
+tempiric parameter: Langlands parameter for a tempiric representation;
+  p -> I(p) standard with unique irreducible tempiric quotient pi(p)
+KTypePol: \sum a_i p_i  finite sum of tempiric parameters
+
+p=tempiric representation
+K_type_formula(p) is a KTypePol
+K_type_formula(p)=\sum a_i p_i means:
+LKT(p) = \sum a_i (restriction of I(p_i) to K)
+for example:
+p=trivial representation of SL(2,R)
+LKT(p)=trivial representation of K
+K_type_formula(p)=(spherical principal series) - (holomorphic discrete series + anti-hol discrete series)
+  (all of these are at infinitesimal character rho)
+trivial K-type = [(spherical PS) -(sum of two DS)] restricted to K}
+
+set trivial_K_type(RealForm G)=KType:LKT(G.trivial)
+
+{technical tool: the algorithm can produce a KType which is not dominant
+ for G; this is a valid KType but equivalent to one which is dominant}
+let (x,lambda_rho)=%mu {lambda_rho= is a vec} then
+rf=mu.real_form then 
+lambda=lambda_rho+rf.rho then
+(w,lambda_dom)=to_dominant(rf,lambda) then
+lambda_dom_rho=lambda_dom - rf.rho in
+K_type(cross(w,x),ratvec_as_vec(lambda_dom_rho))
+
+{Note: the weights of a finite dimensional representation of K are given by a function KGBElt->[vec]
+given:
+ a KTypePol P, representing \sum a_i I(p_i) (restricted to K)
+ weights: KGBElt->[vec] representing a finite dimensional representation F of K
+return the KTypePol representing \sum a_i I(p_i)\otimes F}
+set add_weights (KTypePol P,(KGBElt ->[vec]) weights) = KTypePol:
+   P.null_K_module +
+   for coef@t in P do
+   if wedgeP_verbose then prints("c,t", coef, " ", t) fi;
+   let (x,lr)=%t in
+   if wedgeP_verbose then prints("x=",x, " ", x.real_form, " lr=",lr) fi;
+   for H in weights(x) do
+   if wedgeP_verbose then prints("coeff:", coef, "x: ", x, "lr", lr,"H=",H) fi;
+   let mu=K_type(x,lr+H) then
+   mu_dom=make_dominant(mu) in 
+   (coef,mu_dom) od
+   od.##
+
+{\g = \k\oplus \p  (Cartan decomposition of \g=Lie(G) with respect to theta (\g,\k,\p are complex vector spaces)
+given KGBElt x -> involution theta_x of H
+return the restrictions of the roots of \p to H^theta (columns of matrix)}
+set P_roots_restricted_to_H_theta (KGBElt x) = mat:
+columns_with((vec alpha)bool: is_noncompact_imaginary(alpha,x) ,x.root_datum.roots) ##makeS(x)
+
+{all sums of roots from previous command of size k, i.e. the weights of \wedge^k(\p) restricted to H^theta}
+set sums_P_roots_wedge_k_restricted_to_H_theta (int k) =(KGBElt x) [vec]:
+  sums_of_size_k(P_roots_restricted_to_H_theta(x),k) 
+
+{PRIMARY FUNCTION
+Given a K-type mu (irreducible finite dimensional representation of K) and
+ a weight function weights <-> finite dimensional K-representation F
+ return mu\otimes F 
+
+algorithm: write mu=\sum a_i I(p_i) (i.e. K_type_formula(mu))
+ compute \sum a_i I(p_i)\otimes F (using add_weights)
+ compute the branching of this to K (this is a finite sum)
+}
+set tensor_product(KType t,(KGBElt -> [vec]) weights)=KTypePol:
+let Q=add_weights(K_type_formula(t),weights) in
+let ()=if wedgeP_verbose then prints("t=",t,new_line, " Q=",Q) fi in 
+   if height(Q)=-1
+       then
+          if wedgeP_verbose then prints("Q=",Q, " ", height(Q))fi;null_K_module(t.real_form)
+       else
+          branch_std(Q,height(Q	))
+   fi
+
+{compute mu\otimes \wedge^k(\p) as a sum of K-types}
+set tensor_product_wedge_P(KType mu, int k)=
+ KTypePol:   tensor_product(mu,sums_P_roots_wedge_k_restricted_to_H_theta(k))
+
+{abbreviation}
+set tpw(KType mu, int k)=tensor_product_wedge_P(mu,k)
+
+{wedge^k(\p)}
+set wedge_P(RealForm G,int k)=tensor_product_wedge_P(trivial_K_type(G),k)
+
+{dimension of Hom_K(trivial K-type, \wedge^k(\p))}
+set dimension_Hom_K_trivial_wedge_P(RealForm G,int k)=int:
+let V=wedge_P(G,k) in split_as_int(V[trivial_K_type(G)])
+
+{returns array of dim(Hom(trivial K-type,\wedge^k(\p))) for k=0,...,dim(\p)}
+set dimensions_Hom_K_trivial_wedge_P(RealForm G)=[int]:
+for k: dimension(G)-dimension(K_0(G))+1 do dimension_Hom_K_trivial_wedge_P(G,k) od
+
+{shift: dimension(u\cap \p)}
+set g_k_cohomology(RealForm G,Parabolic P)=[int]:
+let shift=dim_u_cap_p(P) then
+L=Levi(P) then 
+dims=dimensions_Hom_K_trivial_wedge_P(L) then
+()=if wedgeP_verbose then prints("L=", L, new_line,"shift=dim(u\cap p)=", shift, new_line,
+"dim(l\cap p)=", dimension(L)-dimension(K_0(L)), new_line,
+"dims=", dims) fi in
+null(shift)##dims
+
+set g_k_cohomology(RealForm G)=[(Parabolic,[int])]:
+for P in theta_stable_parabolics(G) do (P,g_k_cohomology(G,P)) od
+
+set show(RealForm G, [(Parabolic, [int])] data)=void:
+prints();tabulate(["theta-stable Levi","cohomology", "dim(u\cap p)", "dim(l\cap p)"]#
+for (P,dims) in data do
+[Levi(P).to_string,
+dims.to_string,
+dim_u_cap_p(P).to_string,
+(dimension(Levi(P))-dimension(K_0(Levi(P)))).to_string
+] od)
+
+set show_g_k_cohomology(RealForm G)=void:show(G,g_k_cohomology(G))
+
+
