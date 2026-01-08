@@ -156,9 +156,9 @@ set impure_height(KTypePol P) = int:
      fi
 
 set full_deform_to_ht_MvL_base(Param p, int height, int time) = maybe_KTP:
-( if not strict_low(p,height)
+( {if not strict_low(p,height)
   then return to_ht(full_deform(p,time),height)
-  fi;
+  fi;}
   let start = elapsed_ms(), !empty_K=null_K_module(p.real_form), !empty=null_module(p){,
       deformed_hash_flag_hold = deformed_hash_flag}
   {then () = if height >= 0
@@ -184,9 +184,9 @@ set full_deform_to_ht_MvL_base(Param p, int height, int time) = maybe_KTP:
 )
 
 set full_deform_to_ht_MvL_base(Param p, int height) = KTypePol:
-( if not strict_low(p,height)
+( {if not strict_low(p,height)
   then return to_ht(full_deform(p),height)
-  fi;
+  fi;}
   let !empty_K=null_K_module(p.real_form), !empty=null_module(p)
   then output = empty_K, def = empty
   then P = empty +
@@ -1525,9 +1525,15 @@ set u_predictor(Param p, int HT) = int:
 			       	       	 then prints("chosen random q is number ",i0,
 					      " of ",N,": ",q)
 					 fi
-	    	 	       then Q = {deformedHash.entry(q,HT)}
-			       deformedHash.maybe_entry(q,HT,2*WSF)
-		  	       in case Q
+	    	 	       then Q = deformedHash.entry(q,HT) {restore 1/7/26}
+			       {deformedHash.maybe_entry(q,HT,2*WSF)}
+		  	       in let j0 = deformedHash.lookup(q)
+				   in if predictor_verbose
+				      then prints("chosen random time ",
+						     print_time_string(deform_times[j0]))
+				       fi;
+				       max(N*deform_times[j0], interrupt_base_time)
+				  {case Q
 		     	       	  | timed_out: max(2*N*WSF, interrupt_base_time)
 		 	  	  | done(r): let j0 = deformedHash.lookup(q)
 				    	     in if predictor_verbose
@@ -1535,7 +1541,7 @@ set u_predictor(Param p, int HT) = int:
 						     print_time_string(deform_times[j0]))
 						fi;
 						max(N*deform_times[j0], interrupt_base_time)
-		     		  esac
+		     		  esac}
 			   elif N-n = 0 {everything known, calculation is just lookup}
 	     		   then 10*N*interrupt_base_time{10* was not enough}
 	     		   else  max((N-n)*max(times), interrupt_base_time) {N-n, n both nonzero}
