@@ -207,7 +207,7 @@ def atlas_compute(job_number,round,start_counter,proc,log,data):
       log.write("some flags and other settings:\n")
       for var in vars:
          atlas_cmd="prints(\"" + var + ": \"," +  var + ")" + "\n"
-         #log.write("atlas_cmd: " + atlas_cmd)
+         log.write("atlas_cmd: " + atlas_cmd)
          proc.stdin.write(format_cmd(atlas_cmd))
          proc.stdin.flush()
          line = proc.stdout.readline().decode('ascii').strip()

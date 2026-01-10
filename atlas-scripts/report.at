@@ -339,15 +339,16 @@ for f@i in string_fields do prints(string_names[i], ": ", f(d)) od;
 for f@i in int_fields do prints(int_names[i], ": ", f(d)) od;
 for f@i in rat_fields do prints(rat_names[i], ": ", f(d)) od
 
+set number_jobs(reportArray rA)=max(for rd in rA do rd.file_number od)+1
 set total_time(reportArray rA)=int:sum(for rd in rA do rd.x_lambda_total_time od)
 set max_time(reportArray rA)=int:max(for rd in rA do rd.x_lambda_total_time od)
 set average_time_per_pair(reportArray rA)=total_time(rA)\#rA
-set time_data(reportArray rA,int number_processes)=void:
+set summary(reportArray rA,int number_jobs)=void:
 let t=total_time(rA) then
 m=max_time(rA) 
 in prints("#pairs: ", #rA,new_line,"total time: ", t, " seconds; ", nice_time(t),
-new_line,"avg time/processor: ", t\number_processes, " seconds; ", nice_time(t\number_processes),new_line,
+new_line,"avg time/job: ", t\number_jobs, " seconds; ", nice_time(t\number_jobs),new_line,
 "longest pair time: ", m, " ", nice_time(m))
-
+set summary(reportArray rA)=void:summary(rA,number_jobs(rA))
 
 

@@ -13,8 +13,6 @@ def help(base_directory):
 def main(argv):
     base_directory="data" #default; input directory will be directory/logs
     outputfile=""
-    outputfile_short=""
-    number_lines=100 #number of lines to write to short file
     group_name=""
     number_processors=1
     cutoff=-1
@@ -45,11 +43,7 @@ def main(argv):
     init_file=group_name + "_init.at"
     if outputfile=="":
         outputfile="./" + group_name + "_times.at"
-        outputfile_short = "./" + group_name + "_times_short.at"
-    else:
-        outputfile_short = outputfile + "_short.at"
     print("main output: ", outputfile)
-    print("short output ", outputfile_short)
     print("reading files: ", files,"\nwriting to file: ", outputfile)
     outputfiletmp=outputfile + "_tmp"
     #grep_arg= "grep  -h \"^" + line_start_string + "\" " + files + ">>" + outputfiletmp
@@ -65,11 +59,11 @@ def main(argv):
     print("sort_arg: ", sort_arg)
     data=subprocess.run(sort_arg,shell=True,stdout=subprocess.PIPE)
     print("finished sorting")
-    number_lines_string=str(number_lines+1)
-    short_arg="head -n " + number_lines_string  +  " " + outputfile + ">" + outputfile_short
-    print("short_arg: ", short_arg)
-    data=subprocess.run(short_arg,shell=True,stdout=subprocess.PIPE)
-    print("finshed writing short file")
+    # number_lines_string=str(number_lines+1)
+    # short_arg="head -n " + number_lines_string  +  " " + outputfile + ">" + outputfile_short
+    # print("short_arg: ", short_arg)
+    # data=subprocess.run(short_arg,shell=True,stdout=subprocess.PIPE)
+    # print("finshed writing short file")
     if os.path.exists(outputfiletmp):
         print("removing " + outputfiletmp)
         os.remove(outputfiletmp)
