@@ -59,9 +59,16 @@ set add_weights (KTypePol P,(KGBElt ->[vec]) weights) = KTypePol:
 
 {\g = \k\oplus \p  (Cartan decomposition of \g=Lie(G) with respect to theta (\g,\k,\p are complex vector spaces)
 given KGBElt x -> involution theta_x of H
-return the restrictions of the roots of \p to H^theta (columns of matrix)}
+return the restrictions of the roots of \p to (H^theta)_0 (columns of matrix)
+each (positive or negative) nci root occurs once
+a 4-tuple {\pm\alpha,\pm theta(\alpha)} contributes {alpha,-\alpha}
+each positive real roots contributes alpha (which is 0 on (H^theta)_0)
+Cartan H (with theta_x) contributes split_rank H (wrt theta_x) 0-vectors}
 set P_roots_restricted_to_H_theta (KGBElt x) = mat:
-columns_with((vec alpha)bool: is_noncompact_imaginary(alpha,x) ,x.root_datum.roots) ##makeS(x)
+columns_with((vec alpha)bool: is_noncompact_imaginary(alpha,x) ,x.root_datum.roots) ##makeS(x)##(-makeS(x))##real_posroots(x)##null(rank(x.root_datum),split_rank(Cartan_class(x)))
+
+
+
 
 {all sums of roots from previous command of size k, i.e. the weights of \wedge^k(\p) restricted to H^theta}
 set sums_P_roots_wedge_k_restricted_to_H_theta (int k) =(KGBElt x) [vec]:
@@ -107,12 +114,13 @@ for k: dimension(G)-dimension(K_0(G))+1 do dimension_Hom_K_trivial_wedge_P(G,k) 
 {shift: dimension(u\cap \p)}
 set g_k_cohomology(RealForm G,Parabolic P)=[int]:
 let shift=dim_u_cap_p(P) then
+top_degree=dimension(G)-dimension(K_0(G)) then
 L=Levi(P) then 
 dims=dimensions_Hom_K_trivial_wedge_P(L) then
 ()=if wedgeP_verbose then prints("L=", L, new_line,"shift=dim(u\cap p)=", shift, new_line,
 "dim(l\cap p)=", dimension(L)-dimension(K_0(L)), new_line,
 "dims=", dims) fi in
-null(shift)##dims
+null(shift)##dims##null(top_degree-shift-#dims+1)
 
 set g_k_cohomology(RealForm G)=[(Parabolic,[int])]:
 for P in theta_stable_parabolics(G) do (P,g_k_cohomology(G,P)) od
