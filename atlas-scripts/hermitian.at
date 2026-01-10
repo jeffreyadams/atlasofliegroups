@@ -11,7 +11,8 @@ set deformLookupCounter = make_counter()
 set deformCalcCounter = make_counter()
 set twistedDeformLookupCounter = make_counter()
 set twistedDeformCalcCounter = make_counter()
-
+set require_to_height_flag = false
+set require_hold = false
 {typewise_pure(c_form) is a necessary condition for purity of hermitian form, and rules out a lot}
 set is_typewise_pure(KTypePol P) = bool:
     all(for c@tau in P do is_pure(c) od)
@@ -156,7 +157,7 @@ set impure_height(KTypePol P) = int:
      fi
 
 set full_deform_to_ht_MvL_base(Param p, int height, int time) = maybe_KTP:
-( if not strict_low(p,height)
+  if not (require_to_height_flag or strict_low(p,height))
   then return to_ht(full_deform(p,time),height)
   fi;
   let start = elapsed_ms(), !empty_K=null_K_module(p.real_form), !empty=null_module(p){,
@@ -181,10 +182,12 @@ set full_deform_to_ht_MvL_base(Param p, int height, int time) = maybe_KTP:
   	      in output := (output next output:=empty_K) + kt; P := (P next P:=empty) + pp
   	    od
   in {deformed_hash_flag := deformed_hash_flag_hold;} done(output)
-)
+
+
+{should sometimes replace block_deform(q, P, height) by some truncation of full_deform???}
 
 set full_deform_to_ht_MvL_base(Param p, int height) = KTypePol:
-( if not strict_low(p,height)
+( if not (require_to_height_flag or strict_low(p,height))
   then return to_ht(full_deform(p),height)
   fi;
   let !empty_K=null_K_module(p.real_form), !empty=null_module(p)
@@ -887,6 +890,7 @@ set write_twisted_deformation_hash(RealForm G) = void:
 F4_s)}
 {TRUE should help interrupted to_ht}
 set deformed_hash_flag = false {true}
+set deformed_flag_hold = false
 
 {set xlv_flag = false {true costs 10% time for E7_s near x.number = 12000}}
 
@@ -1477,12 +1481,10 @@ set deform_times(Param p, int HT) = void:
 {set push_deform_flag = true}
 
 {predicted time in milliseconds to complete is_unitary{to_ht}(p,{HT})}
-set u_predictor(Param p, int HT) = int:
+set actual_u_predictor(Param p, int HT) = int:
     let WSF = max(100*(p.real_form.semisimple_rank)^2, worst_so_far(p,HT)),
     	start_pred = elapsed_ms()
-    in if not (deformed_hash_flag and predictor_flag)
-       then WSF
-       else {push_deform_flag:=true;}
+    in  {push_deform_flag:=true;}
        	    let delta = p.real_form.distinguished_involution,
 	    	list = {is_unitary runs over terms in KL_sum_to_ht(p,HT)}
 	    if HT < 0  {will do full_deform(q,HT) on each term}
@@ -1525,9 +1527,15 @@ set u_predictor(Param p, int HT) = int:
 			       	       	 then prints("chosen random q is number ",i0,
 					      " of ",N,": ",q)
 					 fi
-	    	 	       then Q = {deformedHash.entry(q,HT)}
-			       deformedHash.maybe_entry(q,HT,2*WSF)
-		  	       in case Q
+	    	 	       then Q = deformedHash.entry(q,HT) {restore 1/7/26}
+			       {deformedHash.maybe_entry(q,HT,2*WSF)}
+		  	       in let j0 = deformedHash.lookup(q)
+				   in if predictor_verbose
+				      then prints("chosen random time ",
+						     print_time_string(deform_times[j0]))
+				       fi;
+				       max((N-1)*deform_times[j0], 10*N*interrupt_base_time)
+				  {case Q
 		     	       	  | timed_out: max(2*N*WSF, interrupt_base_time)
 		 	  	  | done(r): let j0 = deformedHash.lookup(q)
 				    	     in if predictor_verbose
@@ -1535,7 +1543,7 @@ set u_predictor(Param p, int HT) = int:
 						     print_time_string(deform_times[j0]))
 						fi;
 						max(N*deform_times[j0], interrupt_base_time)
-		     		  esac
+		     		  esac}
 			   elif N-n = 0 {everything known, calculation is just lookup}
 	     		   then 10*N*interrupt_base_time{10* was not enough}
 	     		   else  max((N-n)*max(times), interrupt_base_time) {N-n, n both nonzero}
@@ -1546,7 +1554,14 @@ set u_predictor(Param p, int HT) = int:
 		    fi;
 		    predictor_time+:= elapsed_ms() - start_pred;
 		    ans
-	    fi
+
+set u_predictor(Param p, int HT) = int:
+    let WSF = max(100*(p.real_form.semisimple_rank)^2, worst_so_far(p,HT)),
+    	start_pred = elapsed_ms()
+    in if not (deformed_hash_flag and require_to_height_flag and predictor_flag)
+       then WSF
+       else actual_u_predictor(p,HT)
+       fi
 
 {.write c-invariant form on standard module as a KTypePol }
 { never involves |twisted_full_deform| }

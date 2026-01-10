@@ -184,11 +184,13 @@ set hard_test_bl(KGBElt x, ratvec lambda) = bool:
        test_bl_time +:= elapsed_ms() - start;
        true
 
+set min_bl_rank = int: 7
+
 {returning "true" means bottom layer ought to be used}
 set easy_test_bl(KGBElt x) = bool:
     let G = x.real_form
     then N = #KGB(G), n = x.number
-    in if semisimple_rank(x.real_form) < 7
+    in if semisimple_rank(x.real_form) < min_bl_rank
        then false
        elif KGB_frac_flag and n < KGB_frac*N
        then false

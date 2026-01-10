@@ -601,7 +601,7 @@ set make_big_unitary_hash() = big_unitary_hash_table:
 				  then let ans = K_type_pol(character_formula(p))
 				       then () = D:={height(p)}-1
 				       in ans
-				  elif strict_low(p,D) {added strict 12/13/25}
+				  elif (require_to_height_flag or strict_low(p,D))  {added strict 12/13/25}
      	  			  then let ans =  hermitian_form_irreducible_to_ht(p,D)
 				       then N = nuhashes[rfnum].size()
 				       then H = impure_height(ans)
@@ -651,7 +651,8 @@ set make_big_unitary_hash() = big_unitary_hash_table:
 					then let ans = K_type_pol(character_formula(p))
 					     then () = D:={height(p)}-1
 					     in ans
-					elif strict_low(p,D) {strict 12/13/25}{low(p.x,p.lambda,N)}
+					elif (require_to_height_flag or strict_low(p,D))
+					     {strict 12/13/25}{low(p.x,p.lambda,N)}
 					then let ans = hermitian_form_irreducible_to_ht(p,D)
 					     then N = nuhashes[rfnum].size()
 					     then H = impure_height(ans)
@@ -787,7 +788,7 @@ set make_big_unitary_hash() = big_unitary_hash_table:
 		  then let m_sigD = if uhashes[rfnum].lookup(p).>=
 				  then D:= -1;
 				       K_type_pol(character_formula(p)).done
-				  elif strict_low(p,D) {added strict 12/13/25}
+				  elif (require_to_height_flag or strict_low(p,D)) {added strict 12/13/25}
      	  			  then hermitian_form_irreducible_to_ht_MvL(p,D,time)
 				  else D:= -1;
 				       hermitian_form_irreducible(p,time)
@@ -825,11 +826,12 @@ set make_big_unitary_hash() = big_unitary_hash_table:
 			    then m_sigD = if uhashes[rfnum].lookup(p).>=
 					  then D:= -1;
 					       K_type_pol(character_formula(p)).done
-					  elif strict_low(p,D) {strict 12/13/25}{low(p.x,p.lambda,N)}
+					  elif (require_to_height_flag or strict_low(p,D))
+					  {strict 12/13/25}{low(p.x,p.lambda,N)}
 					  then hermitian_form_irreducible_to_ht_MvL(p,D,time)
 					  else D:=-1;
 					     hermitian_form_irreducible(p,time)
-					fi
+					  fi
 		             then sigD = case m_sigD
 		       	       	       	 | timed_out: return (-1,-1,-1,false); 0*K_type_pol(p)
 				    	 | done (sigD): sigD
@@ -2098,10 +2100,10 @@ set HOWMTH = int:0
 
 set hermitian_form_irreducible_to_ht_big(Param p,int HT) = KTypePol:
     HOWMTH +:= 1;
-    if strict_low(p,HT) {added strict 12/13/25}
-    then {let answer =} hermitian_form_irreducible_to_ht(p,HT)
-    	 {then D = first_impure_height(answer)
-	 in if D<0
+    if (require_to_height_flag or strict_low(p,HT)) {added strict 12/13/25}
+    then hermitian_form_irreducible_to_ht(p,HT)
+    	 {then D = first_impure_height(answer)}
+	 {in if D<0
 	    then big_unitary_hash...}
     else to_ht(hermitian_form_irreducible(p),HT)
     fi
@@ -2126,7 +2128,7 @@ set is_unitary_to_ht_big_SIMPLE_interrupt(Param p, int HT, int time) = int: {1 m
 	    fi
   then () = p := herm_center(p)
   then (,,GAM) = low(p) {unitary to HT >= GAM means unitary}
-       ,deformed_flag_hold = deformed_hash_flag
+  then () = deformed_flag_hold := deformed_hash_flag
   in let P = if HT >= GAM
      	     then big_unitary_hash.sig_entry_interrupt(p, -1, time)
 	     else deformed_hash_flag:=true;
@@ -2148,9 +2150,9 @@ set is_unitary_to_ht_big_SIMPLE(Param p, int HT, int time) = bool:
     if (stat_holder:= status(p,HT)).!= then return stat_holder > 0 fi;}
     {save nothing in Spin(4,4)}
     if HT.< then return is_unitary_hash_big_SIMPLE(p) fi;
-    if not strict_low(p,HT)
-    then let deformed_flag_hold = deformed_hash_flag
-    	 in deformed_hash_flag:=true;
+    if not (require_to_height_flag or strict_low(p,HT))
+    then deformed_flag_hold := deformed_hash_flag;
+    	 deformed_hash_flag:=true;
 	    let ans = hermitian_form_irreducible(p,time)
 	    in deformed_hash_flag :=deformed_flag_hold;
     	    case hermitian_form_irreducible(p,time) {maybe_KTP}
@@ -2248,7 +2250,8 @@ set is_unitary_test_big_SIMPLE_interrupt_old(Param p, int step) = bool:
 	    then return is_unitary(p) {prints("FPP DANGER TO HT at ",p)}
 	    fi
   then () = p := herm_center(p)
-  then result = 0, mu = LKTs(p)[0], deformed_flag_hold = deformed_hash_flag
+  then result = 0, mu = LKTs(p)[0]
+  then () = deformed_flag_hold:= deformed_hash_flag
   then () = deformed_hash_flag := true
   then taus = next_taus(p,step)
   then tau_bd = taus~[0]
@@ -2302,6 +2305,9 @@ set is_unitary_test_big_SIMPLE_interrupt_old(Param p, int step) = bool:
 set to_ht_factor = int: 5
 set u_factor = int: 1
 
+{if u_predictor(-1) > require_factor*u_predictor(HT), then use to_ht}
+set require_factor = int:5
+
 {"step" is how many steps up in to_ht list to start}
 set is_unitary_test_big_SIMPLE_interrupt_Ufirst(Param p, int step) = bool:
   {{stat_holder :=status(p,-1);} {save nothing in Spin(4,4)}
@@ -2315,11 +2321,13 @@ set is_unitary_test_big_SIMPLE_interrupt_Ufirst(Param p, int step) = bool:
   let G = p.real_form, (,,GAM) = low(p)
   then FPP_flag = is_FPP(G,p.infinitesimal_character)
   then () = if not FPP_flag
-	    then return is_unitary(p) {prints("FPP DANGER TO HT at ",p)}
+	    then require_to_height_flag:=require_hold;
+	    	 return is_unitary(p) {prints("FPP DANGER TO HT at ",p)}
 	    fi
   then () = p := herm_center(p)
-  then result = 0, mu = LKTs(p)[0], ht = height(p),
-       deformed_flag_hold = deformed_hash_flag
+  then () = require_hold:=require_to_height_flag
+  then result = 0, mu = LKTs(p)[0], ht = height(p)
+  then () = deformed_flag_hold := deformed_hash_flag
   then taus = [KType]:[]
   then tau_bd = KType:mu
   then ht = int: height(p) {(tau_bd)}
@@ -2334,14 +2342,15 @@ set is_unitary_test_big_SIMPLE_interrupt_Ufirst(Param p, int step) = bool:
 	    deformed_hash_flag:=true;
 	    ht := min(GAM,height(tau_bd))
   then () = if ht < 0 {p is finite-dimensional; we're in FPP, so 1-diml}
-       	    then return true
+       	    then require_to_height_flag:=require_hold;
+	    	 return true
 	    fi
   then old_ht = ht
   then top_ht = GAM
        {floor((p.infinitesimal_character)*G.two_rho_check)}
        {unitary to top_ht implies unitary}
-  then u_time = int: u_predictor(p,-1), {interrupt_base_time,}
-       to_ht_time = int: u_predictor(p,ht),{interrupt_base_time,}
+  then u_time = int: actual_u_predictor(p,-1), {interrupt_base_time,}
+       to_ht_time = int: actual_u_predictor(p,ht),{interrupt_base_time,}
        test_time = int:0,
        start = elapsed_ms()
   then () = if test_interrupt_verbose
@@ -2349,7 +2358,10 @@ set is_unitary_test_big_SIMPLE_interrupt_Ufirst(Param p, int step) = bool:
 	    	        ", u_time = ", print_time_string(u_time))
 	    fi
   then () = while result = 0
-       	    do if{A} u_time < to_ht_time
+       	    do if (not strict_low(p,ht)) and (u_time > require_factor*to_ht_time)
+	       then require_to_height_flag:=true
+	       fi;
+	       if{A} u_time < to_ht_time
 	       then let start_u = elapsed_ms()
 	       	    then () = result := is_unitary_hash_big_SIMPLE(p, u_factor*u_time)
 		    in test_time:= elapsed_ms() - start_u;
@@ -2402,6 +2414,7 @@ set is_unitary_test_big_SIMPLE_interrupt_Ufirst(Param p, int step) = bool:
 	           fi{B} {to_ht_time < 5*u_time}
 	    od
    in deformed_hash_flag:=deformed_flag_hold;
+      require_to_height_flag:=require_hold;
       if test_interrupt_verbose
       then prints("Finish is_unitary_test_big_SIMPLE_interrupt_Ufirst, time ",
       	   print_time_string(elapsed_ms() - start), " result ",result,new_line)
@@ -2425,7 +2438,9 @@ set is_unitary_test_big_SIMPLE_interrupt(Param p, int step) = bool:
     	    then return is_unitary(p) {prints("FPP DANGER TO HT at ",p)}
 	    fi
   then () = p := herm_center(p)
-  then result = 0, mu = LKTs(p)[0], deformed_flag_hold = deformed_hash_flag
+  then () = require_hold:=require_to_height_flag
+  then result = 0, mu = LKTs(p)[0]
+  then () = deformed_flag_hold := deformed_hash_flag
   then taus = [KType]: [] {next_taus(p,step)}
   then tau_bd = KType: mu {taus~[0]}
   then ht = int: height(p) {(tau_bd)}
@@ -2446,16 +2461,19 @@ set is_unitary_test_big_SIMPLE_interrupt(Param p, int step) = bool:
   then top_ht = GAM
        {floor((p.infinitesimal_character)*G.two_rho_check)}
        {unitary to top_ht implies unitary}
-  then u_time = int: u_predictor(p,-1), {interrupt_base_time,}
-       to_ht_time = int: u_predictor(p,ht), {interrupt_base_time,}
+  then u_time = int: actual_u_predictor(p,-1), {interrupt_base_time,}
+       to_ht_time = int: actual_u_predictor(p,ht), {interrupt_base_time,}
        test_time = int:0,
        start = elapsed_ms()
   then () = if test_interrupt_verbose
        	    then prints("starting to_ht_time = ", print_time_string(to_ht_time),
 	    	        ", u_time = ", print_time_string(u_time))
 	    fi
-  then () = while result = 0 
-       	    do if{A} to_ht_time < 5*u_time
+  then () = while result = 0
+       	    do if not (require_to_height_flag or strict_low(p,ht)) and (u_time > require_factor*to_ht_time)
+	       then require_to_height_flag:=true
+	       fi;
+	       if{A} to_ht_time < 5*u_time
 	       then let start_to_ht = elapsed_ms()
 	       	    in 	result := is_unitary_to_ht_big_SIMPLE_interrupt(p,ht,to_ht_factor*to_ht_time);
 	       	    	test_time:=elapsed_ms() - start_to_ht;
@@ -2466,7 +2484,7 @@ set is_unitary_test_big_SIMPLE_interrupt(Param p, int step) = bool:
 			fi;
 		     	if result.< then break fi;
 			if result.> and ht >= top_ht then break fi;
-		     	if result.> {got a (useless) positive result at ht; move up} 
+		     	if result.> {got a (useless) positive result at ht; move up}
 			then result:=0;
 			     if next_heightC_flag
 			     then ht:= next_heightC(p,ht)
@@ -2505,6 +2523,7 @@ set is_unitary_test_big_SIMPLE_interrupt(Param p, int step) = bool:
 		 fi
 	     od
    in deformed_hash_flag:=deformed_flag_hold;
+      require_to_height_flag:=require_hold;
       if test_interrupt_verbose
       then prints("Finish is_unitary_test_big_SIMPLE_interrupt, time ",
       	   print_time_string(elapsed_ms() - start), " result ",result,new_line)
@@ -2541,10 +2560,12 @@ set is_unitary_test_big_SIMPLE_interrupt(Param p, [int] hts) = bool:
 	    then return is_unitary(p) {prints("FPP DANGER TO HT at ",p)}
 	    fi
   then () = p := herm_center(p)
+  then () = require_hold:=require_to_height_flag
   then result = 0, mu = LKTs(p)[0], top_ht = floor((p.infinitesimal_character)*G.two_rho_check)
        {unitary to top_ht implies unitary}
-  then times_to_ht = int: 0, start = elapsed_ms(), deformed_flag_hold = deformed_hash_flag
+  then times_to_ht = int: 0, start = elapsed_ms()
   then i0 = first(for ht in hts do ht > height(p) od)
+  then () = deformed_flag_hold := deformed_hash_flag
   then () = hts:= hts[i0:]; deformed_hash_flag:=true
   then () = for ht in hts
 	    do let start_to_ht = elapsed_ms()
@@ -2590,8 +2611,8 @@ set is_unitary_test_big_SIMPLE_interrupted_Ufirst(Param p, int time) = int:
     	    then return is_unitary(p,time) {prints("FPP DANGER TO HT at ",p)}
 	    fi
   then () = p := herm_center(p)
-  then result = 0, mu = LKTs(p)[0], ht = height(p), top_ht = GAM,
-       deformed_flag_hold = deformed_hash_flag
+  then result = 0, mu = LKTs(p)[0], ht = height(p), top_ht = GAM
+  then () = deformed_flag_hold:= deformed_hash_flag
         {floor((p.infinitesimal_character)*G.two_rho_check)}
        {unitary to top_ht implies unitary}
   then tau_bd = KType: mu
@@ -2602,14 +2623,18 @@ set is_unitary_test_big_SIMPLE_interrupted_Ufirst(Param p, int time) = int:
 	    fi;
 	    deformed_hash_flag:=true;
 	    ht := min(ht,GAM)
-  then u_time = int:  u_predictor(p,-1), test_time = int:0,
-       to_ht_time = int: u_predictor(p,ht)
+  then () = require_hold:=require_to_height_flag
+  then u_time = int:  actual_u_predictor(p,-1), test_time = int:0,
+       to_ht_time = int: actual_u_predictor(p,ht)
   then () = if test_interrupt_verbose
        	    then prints("starting to_ht_time = ", print_time_string(to_ht_time),
 	    	        ", u_time = ", print_time_string(u_time))
 	    fi
   then () = while result = 0 and elapsed_ms() - start < time
-       	    do if{A} u_time < to_ht_time
+       	    do if not (require_to_height_flag or strict_low(p,ht)) and (u_time > require_factor*to_ht_time)
+	       then require_to_height_flag:=true
+	       fi;
+	       if{A} u_time < to_ht_time
 	       then let start_u = elapsed_ms()
 	       	     in result := is_unitary_hash_big_SIMPLE(p, u_factor*u_time);
 		       	 test_time:= elapsed_ms() - start_u;
@@ -2659,6 +2684,7 @@ set is_unitary_test_big_SIMPLE_interrupted_Ufirst(Param p, int time) = int:
 		 fi{B}  {to_ht_time < 5*u_time}
 	    od
    in deformed_hash_flag :=deformed_flag_hold;
+      require_to_height_flag:=require_hold;
       if test_interrupt_verbose
       then prints("Finish is_unitary_test_big_SIMPLE_interrupted_Ufirst, time ",
       	   	  print_time_string(elapsed_ms() - start), " result ",result,new_line)
@@ -2686,8 +2712,9 @@ set is_unitary_test_big_SIMPLE_interrupted(Param p, int time) = int:
     	    then return is_unitary(p,time) {prints("FPP DANGER TO HT at ",p)}
 	    fi
   then () = p := herm_center(p)
-  then result = 0, ht = height(p), top_ht = GAM, tau_bd = LKTs(p)[0],
-       deformed_flag_hold = deformed_hash_flag
+  then () = require_hold:=require_to_height_flag
+  then result = 0, ht = height(p), top_ht = GAM, tau_bd = LKTs(p)[0]
+  then () = deformed_flag_hold := deformed_hash_flag
        {floor((p.infinitesimal_character)*G.two_rho_check)}
        {unitary to top_ht implies unitary}
   then () = if next_heightC_flag
@@ -2703,7 +2730,10 @@ set is_unitary_test_big_SIMPLE_interrupted(Param p, int time) = int:
 	    	        ", u_time = ", print_time_string(u_time))
 	    fi
   then () = while result = 0 and elapsed_ms() - start < time
-       	    do if{A} to_ht_time < 5*u_time
+       	    do if not (require_to_height_flag or strict_low(p,ht)) and (u_time > require_factor*to_ht_time)
+	       then require_to_height_flag:=true
+	       fi;
+	       if{A} to_ht_time < 5*u_time
 	       then let start_to_ht = elapsed_ms()
 	       	    in result := is_unitary_to_ht_big_SIMPLE_interrupt(p,ht,to_ht_factor*to_ht_time);
 	       	       test_time:=elapsed_ms() - start_to_ht;
@@ -2745,6 +2775,7 @@ set is_unitary_test_big_SIMPLE_interrupted(Param p, int time) = int:
 	       fi {B} {u_time < {5*}to_ht_time}
 	    od
    in deformed_hash_flag:=deformed_flag_hold;
+      require_to_height_flag:=require_hold;
    if test_interrupt_verbose
       then prints("Finish is_unitary_test_big_SIMPLE_interrupted, time ",
       	   	  print_time_string(elapsed_ms() - start), " result ",result,new_line)
@@ -2773,15 +2804,20 @@ set is_unitary_to_ht_big_SIMPLE_interrupt_Ufirst(Param p, int HT) = bool:
 	    then return is_unitary_to_ht(p,HT) {prints("FPP DANGER TO HT at ",p)}
 	    fi
   then () = p := herm_center(p)
+  then () = require_hold:=require_to_height_flag
   then result = 0, to_ht_time = int: u_predictor(p,HT), u_time = int: u_predictor(p,-1),
-       test_time = int:0, deformed_flag_hold = deformed_hash_flag
+       test_time = int:0
+  then () = deformed_flag_hold := deformed_hash_flag
   then () = if test_interrupt_verbose
        	    then prints("starting to_ht_time = ", print_time_string(to_ht_time),
 	    	        ", u_time = ", print_time_string(u_time))
 	    fi;
 	    deformed_hash_flag:=true
   then () = while result = 0
-       	    do if{A} u_time < {5*}to_ht_time
+       	    do if not(require_to_height_flag or strict_low(p,HT)) and (u_time > require_factor*to_ht_time)
+	       then require_to_height_flag:=true
+	       fi;
+	       if{A} u_time < {5*}to_ht_time
 	       then let start_u = elapsed_ms()
 	       	    then form = hermitian_form_irreducible(p,u_factor*u_time)
 	       	    {then () = push_deform_flag:=true;}
@@ -2828,6 +2864,7 @@ set is_unitary_to_ht_big_SIMPLE_interrupt_Ufirst(Param p, int HT) = bool:
 		fi {B} {to_ht_time < 5*u_time}
 	    od
    in deformed_hash_flag:=deformed_flag_hold;
+      require_to_height_flag:=require_hold;
       if test_interrupt_verbose
       then prints("Finish is_unitary_to_ht_big_SIMPLE_interrupt_Ufirst, time ",
       	   	  print_time_string(elapsed_ms() - start), " result ",result,new_line)
@@ -2939,15 +2976,19 @@ set is_unitary_to_ht_big_SIMPLE_interrupt_TOHTfirst(Param p, int HT) = bool:
 	    then return is_unitary_to_ht(p,HT) {prints("FPP DANGER TO HT at ",p)}
 	    fi
   then () = p := herm_center(p)
-  then result = 0, to_ht_time = int: u_predictor(p,HT), deformed_flag_hold = deformed_hash_flag,
-       u_time = int: u_predictor(p,-1), test_time = int:0
+  then () = require_hold:=require_to_height_flag
+  then result = 0, to_ht_time = int: u_predictor(p,HT), u_time = int: u_predictor(p,-1), test_time = int:0
+  then () = deformed_flag_hold := deformed_hash_flag
   then () = if test_interrupt_verbose
        	    then prints("starting to_ht_time = ", print_time_string(to_ht_time),
 	    	        ", u_time = ", print_time_string(u_time))
 	    fi;
 	    deformed_hash_flag:=true
   then () = while result = 0
-       	    do if{A} to_ht_time < 5*u_time
+       	    do if not (require_to_height_flag or strict_low(p,HT)) and (u_time > require_factor*to_ht_time)
+	       then require_to_height_flag:=true
+	       fi;
+	       if{A} to_ht_time < 5*u_time
 	       then let start_to_ht = elapsed_ms()
 	       	    then () = result := is_unitary_to_ht_big_SIMPLE_interrupt(p,HT,to_ht_factor*to_ht_time);
 	       	              test_time:=elapsed_ms() - start_to_ht;
@@ -3008,6 +3049,7 @@ set is_unitary_to_ht_big_SIMPLE_interrupt_TOHTfirst(Param p, int HT) = bool:
 	       fi}
 	    od
    in deformed_hash_flag := deformed_flag_hold;
+      require_to_height_flag:=require_hold;
       if test_interrupt_verbose
       then prints("Finish is_unitary_to_ht_big_SIMPLE_interrupt_TOHTfirst, time ",
       	   	  print_time_string(elapsed_ms() - start), " result ",result,new_line)
@@ -3137,13 +3179,16 @@ set is_unitary_to_hts_big_SIMPLE_interrupt_TOHTfirst(Param p, [int] HTs) = bool:
   if test_interrupt_verbose
   then prints(new_line,"Starting is_unitary_to_hts_big_SIMPLE_interrupt_TOHTfirst, p = ",p, ", HTs = ",HTs)
   fi;
-  let G = p.real_form, start = elapsed_ms()
+  let G = p.real_form
+  then start_all = int: elapsed_ms()
   then FPP_flag = is_FPP(G,p.infinitesimal_character)
   then () = if not FPP_flag
 	    then return is_unitary_to_hts(p,HTs) {prints("FPP DANGER TO HTs at ",p)}
 	    fi
   then () = p := herm_center(p)
-  then result = 0, HTfirst = HTs[0], HTlast = HTs~[0], deformed_flag_hold = deformed_hash_flag
+  then () = require_hold:=require_to_height_flag
+  then result = 0, HTfirst = HTs[0], HTlast = HTs~[0]
+  then () = deformed_flag_hold := deformed_hash_flag
   then to_ht_time = int: u_predictor(p,HTfirst), u_time = int: u_predictor(p,-1), test_time = int:0
   then to_ht_count = int:0, u_count = int:0
   then level = 0, HT = HTfirst
@@ -3152,7 +3197,10 @@ set is_unitary_to_hts_big_SIMPLE_interrupt_TOHTfirst(Param p, [int] HTs) = bool:
 	    	        ", u_time = ", print_time_string(u_time))
 	    fi
   then () = while result = 0 {or (result = 1 and HT < HTlast)}
-       	    do if{A} to_ht_time < 5*u_time
+       	    do if not (require_to_height_flag or strict_low(p,HT)) and (u_time > require_factor*to_ht_time)
+	       then require_to_height_flag:=true
+	       fi;
+	       if{A} to_ht_time < 5*u_time
 	       then let start_to_ht = elapsed_ms()
 	       	    then () = {push_deform_flag:=true;}
 			      result := is_unitary_to_ht_big_SIMPLE_interrupt(p,HT,to_ht_factor*to_ht_time);
@@ -3161,7 +3209,7 @@ set is_unitary_to_hts_big_SIMPLE_interrupt_TOHTfirst(Param p, [int] HTs) = bool:
 	       		      if test_interrupt_verbose
 	       	       	      then prints("result ", result, " from to_ht ",HT,", in time ",
 			      	   print_time_string(test_time),
-				   "; total = ", print_time_string(elapsed_ms() - start));
+				   "; total = ", print_time_string(elapsed_ms() - start_all));
 			           prints(to_ht_count," to_ht tests so far.")
 			      fi
 			      {prints(to_ht_count," to_ht tests so far.")}
@@ -3199,7 +3247,7 @@ set is_unitary_to_hts_big_SIMPLE_interrupt_TOHTfirst(Param p, [int] HTs) = bool:
 	       		if test_interrupt_verbose
 		       	then prints("result ",result," from is_unitary, in time ",
 				      	 print_time_string(test_time),
-				   "; total = ", print_time_string(elapsed_ms() - start));
+				   "; total = ", print_time_string(elapsed_ms() - start_all));
 			     prints(u_count," u_tests so far.")
 			fi;
 			{prints(u_count," u_tests so far.");}
@@ -3211,9 +3259,10 @@ set is_unitary_to_hts_big_SIMPLE_interrupt_TOHTfirst(Param p, [int] HTs) = bool:
 		 fi{B} {u_time < {5*}to_ht_time}
 	    od
    in deformed_hash_flag := deformed_flag_hold;
+      require_to_height_flag:=require_hold;
       if test_interrupt_verbose
       then prints("Finish is_unitary_to_hts_big_SIMPLE_interrupt_TOHTfirst, time ",
-      	   	  print_time_string(elapsed_ms() - start), " result ",result,new_line)
+      	   	  print_time_string(elapsed_ms() - start_all), " result ",result,new_line)
       fi;
       if result > 0
       then true
