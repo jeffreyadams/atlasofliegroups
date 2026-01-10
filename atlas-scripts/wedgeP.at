@@ -65,7 +65,11 @@ a 4-tuple {\pm\alpha,\pm theta(\alpha)} contributes {alpha,-\alpha}
 each positive real roots contributes alpha (which is 0 on (H^theta)_0)
 Cartan H (with theta_x) contributes split_rank H (wrt theta_x) 0-vectors}
 set P_roots_restricted_to_H_theta (KGBElt x) = mat:
-columns_with((vec alpha)bool: is_noncompact_imaginary(alpha,x) ,x.root_datum.roots) ##makeS(x)##(-makeS(x))##real_posroots(x)##null(rank(x.root_datum),split_rank(Cartan_class(x)))
+let theta=involution(x) then
+im=columns_with((vec alpha)bool: is_noncompact_imaginary(alpha,x) ,x.root_datum.roots) then
+cx=(1+theta)*makeS(x)##(-makeS(x))\2 then
+re=null(rank(x.root_datum),#real_posroots(x) + split_rank(Cartan_class(x))) in 
+im##cx##re
 
 
 
