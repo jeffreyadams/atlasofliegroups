@@ -156,7 +156,7 @@ set impure_height(KTypePol P) = int:
      fi
 
 set full_deform_to_ht_MvL_base(Param p, int height, int time) = maybe_KTP:
-( if not (to_ht_over_u_flag or strict_low(p,height))
+( if not ({to_ht_over_u_flag} strict_low(p,height))
   then return to_ht(full_deform(p,time),height)
   fi;
   let start = elapsed_ms(), !empty_K=null_K_module(p.real_form), !empty=null_module(p){,
@@ -184,7 +184,7 @@ set full_deform_to_ht_MvL_base(Param p, int height, int time) = maybe_KTP:
 )
 
 set full_deform_to_ht_MvL_base(Param p, int height) = KTypePol:
-( if not to_ht_over_u_flag {strict_low(p,height)}
+( if not {to_ht_over_u_flag} strict_low(p,height)
   then return to_ht(full_deform(p),height)
   fi;
   let !empty_K=null_K_module(p.real_form), !empty=null_module(p)
@@ -1522,14 +1522,15 @@ set u_predictor(Param p, int HT) = int:
 		    ans
 	    fi
 
-set adjust_factor = int: 5
+{set adjust_factor = int: 5}
 
 {return predicted (u_time, to_ht_time)}
 set adjust_to_ht_over_u(Param p,int HT) = (int,int):
-    if HT <= height(p) then return (0,0) fi;
+    (u_predictor(p,-1), u_predictor(p,HT))
+    {if HT <= height(p) then return (0,0) fi;
     let u_time = u_predictor(p,-1), to_ht_time = u_predictor(p,HT)
     in to_ht_over_u_flag := (u_time > adjust_factor* to_ht_time) or strict_low(p,HT);
-       (u_time,to_ht_time)
+       (u_time,to_ht_time)}
 
 {.write c-invariant form on standard module as a KTypePol }
 { never involves |twisted_full_deform| }
