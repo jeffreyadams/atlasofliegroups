@@ -28,6 +28,9 @@
 { ------------------------------------------------------------------- }
 {seat_belt_on:=false}
 
+{whether to use to_ht instead of truncating full_deform}
+set to_ht_over_u_flag = true
+
 {set CF_flag = false}
 set charTime = int:0
 

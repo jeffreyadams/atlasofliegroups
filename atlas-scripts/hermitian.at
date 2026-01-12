@@ -156,7 +156,7 @@ set impure_height(KTypePol P) = int:
      fi
 
 set full_deform_to_ht_MvL_base(Param p, int height, int time) = maybe_KTP:
-( if not strict_low(p,height)
+( if not {strict_low(p,height)} to_ht_over_u_flag
   then return to_ht(full_deform(p,time),height)
   fi;
   let start = elapsed_ms(), !empty_K=null_K_module(p.real_form), !empty=null_module(p){,
@@ -184,7 +184,7 @@ set full_deform_to_ht_MvL_base(Param p, int height, int time) = maybe_KTP:
 )
 
 set full_deform_to_ht_MvL_base(Param p, int height) = KTypePol:
-( if not strict_low(p,height)
+( if not to_ht_over_u_flag {strict_low(p,height)}
   then return to_ht(full_deform(p),height)
   fi;
   let !empty_K=null_K_module(p.real_form), !empty=null_module(p)
@@ -1247,7 +1247,8 @@ set report_tested(string label) = void:
 {    prints("...",label,"...",DTcount," Dirac elim, ",DBTcount," best-Dirac elim; predictor_time = ",
     	  print_time_string(predictor_time));}
     prints("...",label,"...",DTcount + DBTcount," Dirac elim; status_time = ",
-    	   print_time_string(status_time), " for ", status_count," reports");
+    	   print_time_string(status_time), " for ", status_count," reports, predictor_time = ",
+	   print_time_string(predictor_time));
     {edge_offset = ",edge_offset);}
     {next_heightC_time = ",}
            {print_time_string(next_heightC_time));}
@@ -1366,7 +1367,8 @@ set (report_tested_cum,clear_report_tested_cum) = (((string, string) -> void),(v
 	 ct:=charTime;
 	 cu:= char_counter.use_count();
     prints("...",running_label,"...",DTcount + DBTcount," Dirac elim; status_time = ",
-    	   print_time_string(status_time), " for ", status_count," reports");
+    	   print_time_string(status_time), " for ", status_count," reports, predictor_time = ",
+	   print_time_string(predictor_time));
     prints(new_line,tph," pos is_unitary tests, in time = ", print_time_string(tpt),"; ",tnh,
 	" neg is_unitary tests, in time = ",print_time_string(tnt));
     prints(tic, " interrupted is_unitary tests, of ",tih, " different parameters, in time ",
@@ -1519,6 +1521,15 @@ set u_predictor(Param p, int HT) = int:
 		    predictor_time+:= elapsed_ms() - start_pred;
 		    ans
 	    fi
+
+set adjust_factor = int: 5
+
+{return predicted (u_time, to_ht_time)}
+set adjust_to_ht_over_u(Param p,int HT) = (int,int):
+    if HT <= height(p) then return (0,0) fi;
+    let u_time = u_predictor(p,-1), to_ht_time = u_predictor(p,HT)
+    in to_ht_over_u_flag := (u_time > adjust_factor* to_ht_time) or strict_low(p,HT);
+       (u_time,to_ht_time)
 
 {.write c-invariant form on standard module as a KTypePol }
 { never involves |twisted_full_deform| }
