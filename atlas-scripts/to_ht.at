@@ -201,32 +201,32 @@ set oriented_KL_sum_to_ht  (int N, int time) = (Param p)ParamPol:
 
 { untwisted |c_form_irreducible|, for efficiency; only used in equal rank case }
 {.c-invariant form on irreducible module of p as ParamPol of standardrepKs.}
-set c_form_irreducible_to_ht_MvL (Param p,int N) = KTypePol:
-  if not (to_ht_over_u_flag or strict_low(p,N))
-  then return (to_ht(c_form_irreducible(p),N))
+set c_form_irreducible_to_ht_MvL (Param p,int HT) = KTypePol:
+  if not (to_ht_over_u_flag or strict_low(p,HT))
+  then return c_form_irreducible_cut(p,HT)
   fi;
   if not(herm_report)
   then
-  let P=oriented_KL_sum_to_ht(N)(p), count=0 then nP=#P
+  let P=oriented_KL_sum_to_ht(HT)(p), count=0 then nP=#P
   then
     f(Param q) = KTypePol:
     	let start = elapsed_ms()
-	then ans = full_deform_to_ht(q,N)
+	then ans = full_deform_to_ht(q,HT)
 	in if deformed_hash_flag
-	   then deformedHash.append_time(q,N,ans,elapsed_ms() - start)
+	   then deformedHash.append_time(q,HT,ans,elapsed_ms() - start)
 	   fi;
 	   ans
   in map(f, P)
   else
-  let P=oriented_KL_sum_to_ht(N)(p), count=0 then nP=#P
+  let P=oriented_KL_sum_to_ht(HT)(p), count=0 then nP=#P
   then
     f(Param q) = if count<11 or count%10=0 or nP-count<=10
                  then prints("Term ",count,": ",p)
                  fi; count+:=1;
 		 let start = elapsed_ms()
-		 then ans = full_deform_to_ht(q,N)
+		 then ans = full_deform_to_ht(q,HT)
 		 in if deformed_hash_flag
-		    then deformedHash.append_time(q,N,ans,elapsed_ms() - start)
+		    then deformedHash.append_time(q,HT,ans,elapsed_ms() - start)
 		    fi;
 		    ans
   in prints("Fully deforming ",nP," terms"); map(f, P)
@@ -238,7 +238,7 @@ set c_form_irreducible_to_ht_MvL (Param p,int N) = KTypePol:
 {finishes without interruption if all terms already deformed}
 set c_form_irreducible_to_ht_MvL (Param p,int HT, int time ) = maybe_KTP:
   if not (to_ht_over_u_flag or strict_low(p,HT))
-  then return to_ht(c_form_irreducible(p,time),HT)
+  then return c_form_irreducible_cut(p,HT,time)
   fi;
    let ori_nr_p = orientation_nr(p), expiration = elapsed_ms() + time
    then oriented_KL_sum = ParamPol: null_module(p) +
@@ -308,7 +308,7 @@ set c_form_irreducible_to_ht_MvL2 (Param p,int N, int time ) = maybe_KTP:
 {.c-invariant form on irreducible module of p as ParamPol of standardrepKs.}
 set c_form_irreducible_to_ht (Param p,int HT) = KTypePol:
   if not (to_ht_over_u_flag or strict_low(p,HT))
-  then return to_ht(c_form_irreducible(p),HT)
+  then return c_form_irreducible_cut(p,HT)
   fi;
   if not(herm_report)
   then
@@ -339,7 +339,7 @@ set c_form_irreducible_to_ht (Param p,int HT) = KTypePol:
 {.c-invariant form on irreducible module of p as ParamPol of standardrepKs.}
 set c_form_irreducible_to_ht (Param p,int HT, int time) = maybe_KTP:
   if not (to_ht_over_u_flag or strict_low(p,HT))
-  then return to_ht(c_form_irreducible(p,time),HT)
+  then return c_form_irreducible_cut(p,time,HT)
   fi;
   let G = p.real_form in
   map(c_form_std_to_ht_MvL(HT,time), oriented_KL_sum_to_ht(HT)(p) )
