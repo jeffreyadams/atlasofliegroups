@@ -132,9 +132,6 @@ set KGB_frac_flag =true
 {if KGB_frac_flag and x is less than this fraction of KGB, then switch from bottom_layer to one_level}
 set KGB_frac = rat:1/3
 
-{if x is greater than this fraction of KGB, then turn on predictor_flag}
-set adjust_frac = rat: 2/3
-
 {if more_KGB_frac_flag and x between these fractions of KGB, use more}
 set start_more_KGB_frac = rat: 4/5
 set end_more_KGB_frac = rat: 49/50
@@ -471,7 +468,6 @@ then coh_ind_unip_few(G,Uhash)}
 	      fi}
     then () = for (x,lambda)@k in xlambdasW
     	      do {xlambdasW}
-	      	predictor_flag:= x.number > adjust_frac*#KGB(G);
 	      	test_next(x);
 		test_edge(x);
 	      	if twist(x) != x {close 482}
@@ -715,7 +711,6 @@ set FPP_unitary_hash_general([KGBElt] xs, Param_hash Uhash, (Param->bool) fancy_
     then skipx = false
     then () = for x@j in xs
     	      do {xs}
-	 predictor_flag:= x.number > adjust_frac*#KGB(G);
 	 test_next(x);
 	 test_edge(x);
 	 if twist(x) != x
@@ -1070,7 +1065,6 @@ then coh_ind_unip_few(G,Uhash)}
 	       fi
     then () = for (x,lambda)@k in xlambdasW
     	      do {xlambdasW}
-	      	predictor_flag:= x.number > adjust_frac*#KGB(G);
 		test_next(x);
 	      	if twist(x) != x
 		then big_unitary_hash.finishx(x)
@@ -1281,7 +1275,6 @@ set FPP_unitary_hash_steve([KGBElt] xs, Param_hash Uhash, (Param->bool) fancy_te
 	       fi
     then () = for x@j in xs
     	      do {xs}
-	 predictor_flag:= x.number > adjust_frac*#KGB(G);
 	 test_next(x);
 	 if twist(x) != x
 	 then big_unitary_hash.finishx(x)
@@ -1751,7 +1744,6 @@ fancy_tester) = void:
 	       fi
     then () = for (x,lambda)@k in xlambdas
     	      do {xlambdas}
-	        predictor_flag:= x.number > adjust_frac*#KGB(G);
 		test_next(x);
 		test_edge(x);
 		if twist(x) != x {start 1545}
@@ -2069,7 +2061,6 @@ set FPP_unitary_hash_bottom_layer([KGBElt] xs, Param_hash UhashG, (Param->bool) 
 	      fi
     then () = for x@j in xs
     	      do {xs}
-	 predictor_flag:= x.number > adjust_frac*#KGB(G);
 	 test_next(x);
 	 test_edge(x);
 	 if twist(x) != x
