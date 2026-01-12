@@ -540,9 +540,9 @@ set make_big_unitary_hash() = big_unitary_hash_table:
 	then () = if pnum = PNUM {haven't computed with p before}
 		  then let sigD = if uhashes[rfnum].lookup(p).>=
 				  then let ans = K_type_pol(character_formula(p))
-				       then () = D:={height(p)}-1
+				       then () = D:=-1
 				       in ans
-				  elif to_ht_over_u_flag {strict_low(p,D)} {added strict 12/13/25}
+				  elif (to_ht_over_u_flag or strict_low(p,D)) {added strict 12/13/25}
      	  			  then let ans =  hermitian_form_irreducible_to_ht(p,D)
 				       then N = nuhashes[rfnum].size()
 				       then H = impure_height(ans)
@@ -592,7 +592,7 @@ set make_big_unitary_hash() = big_unitary_hash_table:
 					then let ans = K_type_pol(character_formula(p))
 					     then () = D:={height(p)}-1
 					     in ans
-					elif to_ht_over_u_flag {strict_low(p,D)}
+					elif (to_ht_over_u_flag or strict_low(p,D))
 					     {strict 12/13/25}{low(p.x,p.lambda,N)}
 					then let ans = hermitian_form_irreducible_to_ht(p,D)
 					     then N = nuhashes[rfnum].size()
@@ -729,7 +729,7 @@ set make_big_unitary_hash() = big_unitary_hash_table:
 		  then let m_sigD = if uhashes[rfnum].lookup(p).>=
 				  then D:= -1;
 				       K_type_pol(character_formula(p)).done
-				  elif to_ht_over_u_flag {strict_low(p,D)} {added strict 12/13/25}
+				  elif (to_ht_over_u_flag or strict_low(p,D)) {added strict 12/13/25}
      	  			  then hermitian_form_irreducible_to_ht_MvL(p,D,time)
 				  else D:= -1;
 				       hermitian_form_irreducible(p,time)
@@ -767,7 +767,7 @@ set make_big_unitary_hash() = big_unitary_hash_table:
 			    then m_sigD = if uhashes[rfnum].lookup(p).>=
 					  then D:= -1;
 					       K_type_pol(character_formula(p)).done
-					  elif to_ht_over_u_flag {strict_low(p,D)}
+					  elif (to_ht_over_u_flag or strict_low(p,D))
 					  {strict 12/13/25}{low(p.x,p.lambda,N)}
 					  then hermitian_form_irreducible_to_ht_MvL(p,D,time)
 					  else D:=-1;
@@ -1971,7 +1971,7 @@ set HOWMTH = int:0
 
 set hermitian_form_irreducible_to_ht_big(Param p,int HT) = KTypePol:
     HOWMTH +:= 1;
-    if to_ht_over_u_flag {strict_low(p,HT)} {added strict 12/13/25}
+    if (to_ht_over_u_flag or strict_low(p,HT)) {added strict 12/13/25}
     then {let answer =} hermitian_form_irreducible_to_ht(p,HT)
     	 {then D = first_impure_height(answer)
 	 in if D<0
@@ -2021,7 +2021,7 @@ set is_unitary_to_ht_big_SIMPLE(Param p, int HT, int time) = bool:
     if (stat_holder:= status(p,HT)).!= then return stat_holder > 0 fi;}
     {save nothing in Spin(4,4)}
     if HT.< then return is_unitary_hash_big_SIMPLE(p) fi;
-    if not to_ht_over_u_flag {strict_low(p,HT)}
+    if not (to_ht_over_u_flag or strict_low(p,HT))
     then let deformed_flag_hold = deformed_hash_flag
     	 in deformed_hash_flag:=true;
 	    let ans = hermitian_form_irreducible(p,time)

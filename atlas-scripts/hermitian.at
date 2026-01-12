@@ -156,7 +156,7 @@ set impure_height(KTypePol P) = int:
      fi
 
 set full_deform_to_ht_MvL_base(Param p, int height, int time) = maybe_KTP:
-( if not {strict_low(p,height)} to_ht_over_u_flag
+( if not (to_ht_over_u_flag or strict_low(p,height))
   then return to_ht(full_deform(p,time),height)
   fi;
   let start = elapsed_ms(), !empty_K=null_K_module(p.real_form), !empty=null_module(p){,
