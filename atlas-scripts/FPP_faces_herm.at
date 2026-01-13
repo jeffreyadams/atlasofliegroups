@@ -1698,7 +1698,7 @@ set stat_holder = int:0
 {this version is only for G simple, p FPP hermitian and centered}
 {First weakly good, then Lucas}
 set is_unitary_hash_big_SIMPLE_weak_Lucas(Param p) = bool:
-    if (stat_holder := status(p,-1)).!= then return stat_holder > 0 fi;
+    {if (stat_holder := status(p,-1)).!= then return stat_holder > 0 fi;}
     let (,pL) = wkgood_Q(p), G = p.real_form {first try weakly good induction}
     then L = pL.real_form
     then goodL = good_L(p)
@@ -1761,7 +1761,7 @@ set is_unitary_hash_big_SIMPLE_weak_Lucas(Param p) = bool:
 {this version is only for G simple, FPP hermitian and herm center p}
 {tries first Lucas, then weakly good}
 set is_unitary_hash_big_SIMPLE_Lucas_weak(Param p) = bool:
-    if (stat_holder:=status(p,-1)).!= then return stat_holder > 0 fi;
+    {if (stat_holder:=status(p,-1)).!= then return stat_holder > 0 fi;}
     let gamma = p.infinitesimal_character, rd = p.root_datum, G = p.real_form
     then rdi = integrality_datum(rd,gamma)
     then alphavs = for alphav@j in rd.simple_coroots
@@ -1819,7 +1819,7 @@ set is_unitary_hash_big_SIMPLE_Lucas_weak(Param p) = bool:
 
 {this version is only for G simple}
 set is_unitary_hash_big_SIMPLE_Lucas(Param p) = bool:
-    if (stat_holder:= status(p,-1)).!= then return stat_holder > 0 fi;
+    {if (stat_holder:= status(p,-1)).!= then return stat_holder > 0 fi;}
     let gamma = p.infinitesimal_character, rd = p.root_datum, G=p.real_form
     then rdi = integrality_datum(rd,gamma)
     then alphavs = for alphav@j in rd.simple_coroots
@@ -1861,7 +1861,7 @@ set is_unitary_hash_big_SIMPLE_Lucas(Param p) = bool:
 {this version is only for G simple and hermitian FPP params}
 {does weakly good induction}
 set is_unitary_hash_big_SIMPLE_weak(Param p) = bool:
-    if (stat_holder:= status(p,-1)).!= then return stat_holder > 0 fi;
+    {if (stat_holder:= status(p,-1)).!= then return stat_holder > 0 fi;}
     let (,pL) = wkgood_Q(p), G = p.real_form
     then derpLs = for qLj in derived_factor_params0(pL)
 		  do monomials(finalize(qLj))
@@ -2801,7 +2801,7 @@ set is_unitary_to_ht_big_SIMPLE_interrupt_Ufirst(Param p, int HT) = bool:
       fi}
 
 set is_unitary_to_ht_big_SIMPLE_interrupt_TOHTfirst(Param p, int HT) = bool:
-  if (stat_holder:=status(p,HT)).!= then return stat_holder > 0 fi;
+  {if (stat_holder:=status(p,HT)).!= then return stat_holder > 0 fi;}
   {removing saves 100/7200 in Spin(4,4); but keeping helps in higher rank.}
   if old_testing_flag then return is_unitary_to_ht_big_SIMPLE(p,HT) fi;
   if not (fewer_reducible_unitary_flag or is_pos_on_LKTs(p)) then return false fi;
@@ -3002,7 +3002,7 @@ set is_unitary_to_ht_big_SIMPLE_interrupt_TOHTfirst(Param p, int HT) = bool:
 
 
 set is_unitary_to_hts_big_SIMPLE_interrupt_TOHTfirst(Param p, [int] HTs) = bool:
-  if (stat_holder:=status(p,HTs~[0])).!= then return stat_holder > 0 fi;
+  {if (stat_holder:=status(p,HTs~[0])).!= then return stat_holder > 0 fi;}
   {remove  status saves 200/7200 Spin(4,4), but requires repeating tests in Spin(5,5).
   Better kept.}
   if old_testing_flag then return is_unitary_to_hts{_big_SIMPLE}(p,HTs) fi; {should reorder to use big_simple}
