@@ -102,6 +102,8 @@ set interrupt_base_time = int: 100 {was 200 before 7/24/25; sometimes 500...}
 { the next type is the same as |Maybe<KTypePol>|, but injector names differ }
 set_type maybe_KTP = (void timed_out | KTypePol done)
 
+set_type maybe_PP =  (void timed_out_PP | ParamPol done_PP)
+
 {to record time spent in is_unitary, is_unitary_to_ht, etc.}
 set unitaryTime = int: 0
 
@@ -119,6 +121,22 @@ set to_ht(maybe_KTP P,int N) = maybe_KTP:
     | timed_out: timed_out()
     | done(r): done(to_ht(r,N))
     esac
+
+set KL_sum_at_s_to_ht(int HT) = (Param p) ParamPol:
+  {let P = KL_sum_at_s_to_height(p,N) in}
+  if low_diff_char(p,HT)
+  then KL_sum_at_s_to_height(p,HT)
+  else let (below,) = height_split(KL_sum_at_s(p),HT)
+       in below
+  fi
+
+set KL_sum_at_s_to_ht_inter(int HT) = (Param p,int time) maybe_PP:
+  {let P = KL_sum_at_s_to_height(p,N) in}
+  if low_diff_char(p,HT)
+  then KL_sum_at_s_to_height(p,HT,time)
+  else let (below,) = height_split(KL_sum_at_s(p),HT)
+       in below.done_PP
+  fi
 
 {set to_ht (ParamPol P,int N) = ParamPol:
   if N<0 then return P fi;
@@ -1462,7 +1480,7 @@ set u_predictor(Param p, int HT) = int:
 	    if HT < 0  {will do full_deform(q,HT) on each term}
     	    then sort_by_height(partial_block(p)) {INCREASING height: get easier}
 	    else if low_diff_char(p,HT)
-	    	 then monomials(KL_sum_at_s_to_height(p,HT)) {INtCREASING height: get easier}
+	    	 then monomials(KL_sum_at_s_to_ht(HT)(p)) {INtCREASING height: get easier}
 		 else let (below,) = height_split(KL_sum_at_s(p),HT)
 		      in monomials(below)
 		 fi
@@ -1573,7 +1591,7 @@ in map(c_form_std@Param, oriented_KL_sum )
 set c_form_irreducible_cut (Param p,int HT) = KTypePol:
    let ori_nr_p = orientation_nr(p)
    then oriented_KL_sum = ParamPol: null_module(p) +
-      for c@q in KL_sum_at_s_to_height(p,HT) do (c*orientation_nr_term(ori_nr_p,q),q) od
+      for c@q in KL_sum_at_s_to_ht(HT)(p) do (c*orientation_nr_term(ori_nr_p,q),q) od
    {then cfsc = (Param -> KTypePol): (Param p) KTypePol: c_form_std_cut(HT)(p)}
 in to_ht(map((Param -> KTypePol):(Param p):c_form_std_cut(HT)(p) , oriented_KL_sum),HT)
 
@@ -1759,7 +1777,7 @@ set c_form_irreducible (Param p,int time) = maybe_KTP:
 set c_form_irreducible_cut (Param p,int HT, int time) = maybe_KTP:
    let ori_nr_p = orientation_nr(p), expiration = elapsed_ms() + time
    then oriented_KL_sum = ParamPol: null_module(p) +
-      for c@q in KL_sum_at_s_to_height(p,HT) do (c*orientation_nr_term(ori_nr_p,q),q) od
+      for c@q in KL_sum_at_s_to_ht(HT)(p) do (c*orientation_nr_term(ori_nr_p,q),q) od
    then list = [Param]: [], indices = [int]: [], unknown_ks = [int]: []
    then () = if deformed_hash_flag {this will compute one full_deform, unless that takes more than 20*time}
    	     then let () = list := monomials(oriented_KL_sum)

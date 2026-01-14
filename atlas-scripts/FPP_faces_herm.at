@@ -2113,8 +2113,8 @@ set is_unitary_to_ht_big_SIMPLE_old(Param p, int HT) = bool:
      {fi}
 
 set is_unitary_to_ht_big_SIMPLE_interrupt(Param p, int HT, int time) = int: {1 means true, -1 false, 0 interrupted}
-  {{stat_holder :=status(p,HT);}
-  if (stat_holder:=status(p,HT)).!= then return stat_holder fi;} {save 400/7200 in Spin(4,4))}
+  {{stat_holder :=status(p,HT);}}
+  if (stat_holder:=status(p,HT)).!= then return stat_holder fi; {A} {save 400/7200 in Spin(4,4))}
   if not (fewer_reducible_unitary_flag or is_pos_on_LKTs(p)) then return -1 fi;
   if HT.< then return is_unitary_hash_big_SIMPLE(p,time) fi;
   if HT < height(p) then return 1 fi;
@@ -2409,8 +2409,8 @@ set is_unitary_test_big_SIMPLE_interrupt_Ufirst(Param p, int step) = bool:
 
 {"step" is how many steps up in to_ht list to start}
 set is_unitary_test_big_SIMPLE_interrupt(Param p, int step) = bool:
-  {{stat_holder :=status(p,-1);} {save 80/7200 in Spin(4,4)}
-  if (stat_holder:=status(p,-1)).!= then return stat_holder > 0 fi;}
+  {stat_holder :=status(p,-1);} {save 80/7200 in Spin(4,4)}
+  {if (stat_holder:=status(p,-1)).!= then return stat_holder > 0 fi;}{B}
   if old_test_interrupt_flag then return is_unitary_test_big_SIMPLE_interrupt_old(p,step) fi;
   if Ufirst_flag then return is_unitary_test_big_SIMPLE_interrupt_Ufirst(p,step) fi;
   if not (fewer_reducible_unitary_flag or is_pos_on_LKTs(p)) then return false fi;
@@ -2927,7 +2927,7 @@ set is_unitary_to_ht_big_SIMPLE_interrupt_Ufirst(Param p, int HT) = bool:
       fi}
 
 set is_unitary_to_ht_big_SIMPLE_interrupt_TOHTfirst(Param p, int HT) = bool:
-  {if (stat_holder:=status(p,HT)).!= then return stat_holder > 0 fi;}
+  if (stat_holder:=status(p,HT)).!= then return stat_holder > 0 fi;{C}
   {removing saves 100/7200 in Spin(4,4); but keeping helps in higher rank.}
   if old_testing_flag then return is_unitary_to_ht_big_SIMPLE(p,HT) fi;
   if not (fewer_reducible_unitary_flag or is_pos_on_LKTs(p)) then return false fi;
@@ -3128,7 +3128,7 @@ set is_unitary_to_ht_big_SIMPLE_interrupt_TOHTfirst(Param p, int HT) = bool:
 
 
 set is_unitary_to_hts_big_SIMPLE_interrupt_TOHTfirst(Param p, [int] HTs) = bool:
-  {if (stat_holder:=status(p,HTs~[0])).!= then return stat_holder > 0 fi;}
+  {if (stat_holder:=status(p,HTs~[0])).!= then return stat_holder > 0 fi;}{D}
   {remove  status saves 200/7200 Spin(4,4), but requires repeating tests in Spin(5,5).
   Better kept.}
   if old_testing_flag then return is_unitary_to_hts{_big_SIMPLE}(p,HTs) fi; {should reorder to use big_simple}
@@ -3381,7 +3381,7 @@ set is_unitary_to_hts_big_SIMPLE_interrupt(Param p,[int] Ns, int time) = bool:
 set is_unitary_to_hts_big_SIMPLE(Param p,[int] Ns) = bool:
   if not (fewer_reducible_unitary_flag or is_pos_on_LKTs(p)) then return false fi;
   if #Ns = 0 or Ns~[0] < height(p) then return true fi;
-  {if (stat_holder:=status(p, Ns~[0])).!= then return stat_holder > 0 fi;}
+  {if (stat_holder:=status(p, Ns~[0])).!= then return stat_holder > 0 fi;}{E}
   let j0 = first(for N in Ns do N>= height(p) od)
   then () = Ns:=Ns[j0:]
   then G = p.real_form
@@ -3404,7 +3404,7 @@ set is_unitary_to_hts_big (Param p,[int] Ns) = bool:
 {ONLY for G simple}
 { compute Hermitian form to height N; if it's positive, then compute full form }
 set is_unitary_test_big_SIMPLE(Param p, int N) = bool:
-    {if (stat_holder:=status(p,N)).!= then return stat_holder > 0 fi;}
+    {if (stat_holder:=status(p,N)).!= then return stat_holder > 0 fi;}{F}
     if not (fewer_reducible_unitary_flag or is_pos_on_LKTs(p)) then return false fi;
     if N < height(p) then return is_unitary_hash_big_SIMPLE(p) fi;
     let G = p.real_form

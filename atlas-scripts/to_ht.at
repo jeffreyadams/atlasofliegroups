@@ -139,13 +139,6 @@ set twisted_full_deform_to_ht(Param p,int HT) = KTypePol:
        else to_ht(twisted_full_deform(pc),HT)
        fi
 
-set KL_sum_at_s_to_ht(int HT) = (Param p) ParamPol:
-  {let P = KL_sum_at_s_to_height(p,N) in}
-  if low_diff_char(p,HT)
-  then KL_sum_at_s_to_height(p,HT)
-  else let (below,) = height_split(KL_sum_at_s(p),HT)
-       in below
-  fi
 
 set twisted_KL_sum_at_s_to_ht(int N) = (Param p) ParamPol:
   to_ht(N)(twisted_KL_sum_at_s(p))
@@ -190,7 +183,7 @@ set oriented_KL_sum_to_ht  (int HT) = (Param p)ParamPol:
 {
 set oriented_KL_sum_to_ht  (int N, int time) = (Param p)ParamPol:
    let ori_nr_p = orientation_nr(p)
-   then Q = KL_sum_at_s_to_height(p,N,time)
+   then Q = KL_sum_at_s_to_ht(N)(p,time)
    then num = #Q
    in  if num = 0 or num = 105553145633924
        then Q
