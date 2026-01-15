@@ -601,38 +601,23 @@ set make_big_unitary_hash() = big_unitary_hash_table:
 				       then () = D:=-1
 				       in ans
 				  elif ({to_ht_over_u_flag} strict_low(p,D)) {added strict 12/13/25}
-     	  			  then let ans =  hermitian_form_irreducible_to_ht(p,D)
-				       then N = nuhashes[rfnum].size()
-				       then H = impure_height(ans)
-				       then () = if H = -1 {is_pure(ans)}
-						 then ()
-						 else let n = nuhashes[rfnum].match(p)
-						      in if n=N
-							 then nu_heights[rfnum]#:=H
-							 elif nu_heights[rfnum][n] > H
-							 then let nuheightsrf = nu_heights[rfnum]
-							      in nuheightsrf[n] :=H;
-								 nu_heights[rfnum]:= nuheightsrf
-							 fi {n=N}
-						 fi {H = -1}
-				       in ans
-				  else let ans = hermitian_form_irreducible(p)
-				       then () = D:={height(p)} -1
-				       then N = nuhashes[rfnum].size()
-				       then H = impure_height(ans)
-				       then () = if H = -1
-						 then uhashes[rfnum].match(p)
-						 else let n = nuhashes[rfnum].match(p)
-						      in if n=N
-							 then nu_heights[rfnum]#:=H
-							 elif nu_heights[rfnum][n] > H
-							 then let nuheightsrf = nu_heights[rfnum]
-							      in nuheightsrf[n] :=H;
-								 nu_heights[rfnum]:= nuheightsrf
-							 fi {n=N}
-						 fi {H = -1}
-				       in ans {this records full sig!}
-				   fi {uhashes[rfnum].lookup(p).>=}
+     	  			  then hermitian_form_irreducible_to_ht(p,D)
+				  else hermitian_form_irreducible_cut(p,D)
+				  fi
+		  then N = nuhashes[rfnum].size()
+		  then H = impure_height(sigD)
+		  then () = if H = -1 {is_pure(ans)}
+			    then ()
+			    else let n = nuhashes[rfnum].match(p)
+				 in if n=N
+				    then nu_heights[rfnum]#:=H
+				    elif nu_heights[rfnum][n] > H
+				    then let nuheightsrf = nu_heights[rfnum]
+					 in nuheightsrf[n] :=H;
+					    nu_heights[rfnum]:= nuheightsrf
+				    fi {n=N}
+			     fi {H = -1}
+						 {uhashes[rfnum].lookup(p).>=}
 		       then sigD_ind = K_type_pol_hashes[rfnum].match(sigD)
 		       then () = sigs[rfnum] #:= sigD_ind
 		       then () = sig_heights[rfnum] #:= D
@@ -642,48 +627,32 @@ set make_big_unitary_hash() = big_unitary_hash_table:
 		       then () = assert(@:#nu_heights[rfnum] = nuhashes[rfnum].size(),
 				 "big_unitary_hash nu_heights damaged")
 		       in ()
-		   else {we've seen p before}
+
+	            else {we've seen p before}
 		       if sig_heights[rfnum][pnum] >= height(p) and sig_heights[rfnum][pnum] < D
 		       then let tempsigs = sigs[rfnum], tempsights = sig_heights[rfnum]
 			    {then start_sig = elapsed_ms()}
 			    then sigD = if uhashes[rfnum].lookup(p).>=
-					then let ans = K_type_pol(character_formula(p))
-					     then () = D:={height(p)}-1
-					     in ans
-					elif ({to_ht_over_u_flag} strict_low(p,D))
+					then D:=-1;
+					     K_type_pol(character_formula(p))
+					elif strict_low(p,D)
 					     {strict 12/13/25}{low(p.x,p.lambda,N)}
-					then let ans = hermitian_form_irreducible_to_ht(p,D)
-					     then N = nuhashes[rfnum].size()
-					     then H = impure_height(ans)
-					     then () = if H = -1
-						       then ()
-						       else let n = nuhashes[rfnum].match(p)
-							    in if n=N
-							       then nu_heights[rfnum]#:=H
-							       elif nu_heights[rfnum][n] > H
-							       then let nuheightsrf = nu_heights[rfnum]
-							       in nuheightsrf[n] :=H;
-								    nu_heights[rfnum]:= nuheightsrf
-							       fi {n=N}
-						       fi {H = -1}
-					     in ans
-					else let ans = hermitian_form_irreducible(p)
-					     then N = nuhashes[rfnum].size()
-					     then H = impure_height(ans)
-					     then () = D:={height(p)}-1
-					     then () = if H = -1
-						       then uhashes[rfnum].match(p)
-						       else let n = nuhashes[rfnum].match(p)
-							    in if n=N
-							       then nu_heights[rfnum]#:=H
-							       elif nu_heights[rfnum][n] > H
-							       then let nuheightsrf = nu_heights[rfnum]
-							       in nuheightsrf[n] :=H;
-								    nu_heights[rfnum]:= nuheightsrf
-							       fi {n=N}
-						       fi {H=-1}
-					     in ans
+					then hermitian_form_irreducible_to_ht(p,D)
+					else hermitian_form_irreducible_cut(p,D)
 					fi
+			    then N = nuhashes[rfnum].size(), H = impure_height(sigD)
+			    then () = if H = -1
+				      then ()
+				      else let n = nuhashes[rfnum].match(p)
+				      in if n=N
+					 then nu_heights[rfnum]#:=H
+					 elif nu_heights[rfnum][n] > H
+					 then let nuheightsrf = nu_heights[rfnum]
+					      in nuheightsrf[n] :=H;
+						 nu_heights[rfnum]:= nuheightsrf
+					 fi {n=N}
+				      fi {H = -1}
+
 			    then sigD_ind = K_type_pol_hashes[rfnum].match(sigD)
 			    then () = tempsigs[pnum] := sigD_ind
 			    then () = tempsights[pnum]:=D
@@ -785,12 +754,11 @@ set make_big_unitary_hash() = big_unitary_hash_table:
 	then pnum = phashes[rfnum].lookup(p)
 	then () = if pnum = -1 {haven't computed with p before}
 		  then let m_sigD = if uhashes[rfnum].lookup(p).>=
-				  then D:= -1;
-				       K_type_pol(character_formula(p)).done
-				  elif ({to_ht_over_u_flag} strict_low(p,D)) {added strict 12/13/25}
-     	  			  then hermitian_form_irreducible_to_ht_MvL(p,D,time)
-				  else D:= -1;
-				       hermitian_form_irreducible(p,time)
+				    then D:= -1;
+				       	 K_type_pol(character_formula(p)).done
+				    elif ({to_ht_over_u_flag} strict_low(p,D)) {added strict 12/13/25}
+     	  			    then hermitian_form_irreducible_to_ht_MvL(p,D,time)
+				    else hermitian_form_irreducible_cut(p,D,time)
 				  fi
 		        then sigD = case m_sigD
 		       	       	    | timed_out: return (-1,-1,-1,false); 0*K_type_pol(p)
@@ -828,8 +796,7 @@ set make_big_unitary_hash() = big_unitary_hash_table:
 					  elif ({to_ht_over_u_flag} strict_low(p,D))
 					  {strict 12/13/25}{low(p.x,p.lambda,N)}
 					  then hermitian_form_irreducible_to_ht_MvL(p,D,time)
-					  else D:=-1;
-					     hermitian_form_irreducible(p,time)
+					  else hermitian_form_irreducible_cut(p,D,time)
 					fi
 		             then sigD = case m_sigD
 		       	       	       	 | timed_out: return (-1,-1,-1,false); 0*K_type_pol(p)
